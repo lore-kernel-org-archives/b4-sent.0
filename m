@@ -1,20 +1,20 @@
 From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-Date: Tue, 30 Aug 2022 09:31:26 -0400
-Subject: [PATCH RESEND v3 1/4] arm64: defconfig: Enable devfreq cooling device
+Date: Tue, 30 Aug 2022 09:31:27 -0400
+Subject: [PATCH RESEND v3 2/4] arm64: dts: allwinner: h6: Add cooling map for GPU
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain; charset="utf-8"
-Message-Id: <20220825-test-endpoint-send-2-v3-1-736c986dd55c@linuxfoundation.org>
+Message-Id: <20220825-test-endpoint-send-2-v3-2-736c986dd55c@linuxfoundation.org>
 References: <20220825-test-endpoint-send-2-v3-0-736c986dd55c@linuxfoundation.org>
 In-Reply-To: <20220825-test-endpoint-send-2-v3-0-736c986dd55c@linuxfoundation.org>
 To: mricon@kernel.org
 X-Mailer: b4 0.10.0-dev-bfc54
-X-Developer-Signature: v=1; a=openpgp-sha256; l=785;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1268;
  i=konstantin@linuxfoundation.org; h=from:subject:message-id;
- bh=FU4rpA5Zu6K7vHlXo8FyTKJHZMRZ3Jx8Kx1vK3vaEp4=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJL5BHWjlSUO7uc83CC7JOZJSs/BjWwXqvsCHniHxGsUJ+4O
- ZKjsKGVhEONikBVTZCnbF7spqPChh1x6jynMHFYmkCEMXJwCMBHe6YwMnX8uPKyu/R3IqMu9PjbwvX
- P3lO7jbL9Wf1oqvuKM0sFQV0aGi/NVn2ox6QR6x93Z4+TiYJq3Y9HjpmyeF3Mbf5/5WNTLDwA=
+ bh=wRudayeQ8oD2C3KbXYZd/nJU5+GNJKMvMWNAssJKIR4=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJL5BPXYPpR5icUWHzRKrHF3ydqn9Pv+apMKn9lFPb0eGwt1
+ PO06SlkYxLgYZMUUWcr2xW4KKnzoIZfeYwozh5UJZAgDF6cATEQynJHh6Ybtz2+/NX1yU3Fn/bU8yw
+ jdrpkG/Z/6jTULFCpZ1k17y8jwIsOJ+1KINJdGyQ2Nq72ypeY/P/4Q3NdxTOnqJu5rEzYyAwA=
 X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
 X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
@@ -22,27 +22,52 @@ List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
 From: Clément Péron <peron.clem@gmail.com>
 
-Devfreq cooling device framework is used in Panfrost
-to throttle GPU in order to regulate its temperature.
-
-Enable this driver for ARM64 SoC.
+Add a simple cooling map for the GPU.
 
 Signed-off-by: Clément Péron <peron.clem@gmail.com>
-Acked-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+Acked-by: Samuel Holland <samuel@sholland.org>
 Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index d5b2d2dd4904..109004e44d21 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -584,6 +584,7 @@ CONFIG_SENSORS_INA2XX=m
- CONFIG_SENSORS_INA3221=m
- CONFIG_THERMAL_GOV_POWER_ALLOCATOR=y
- CONFIG_CPU_THERMAL=y
-+CONFIG_DEVFREQ_THERMAL=y
- CONFIG_THERMAL_EMULATION=y
- CONFIG_IMX_SC_THERMAL=m
- CONFIG_IMX8MM_THERMAL=m
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi b/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
+index 5a28303d3d4c..943ae5374dd6 100644
+--- a/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
++++ b/arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi
+@@ -186,6 +186,7 @@ gpu: gpu@1800000 {
+ 			clocks = <&ccu CLK_GPU>, <&ccu CLK_BUS_GPU>;
+ 			clock-names = "core", "bus";
+ 			resets = <&ccu RST_BUS_GPU>;
++			#cooling-cells = <2>;
+ 			status = "disabled";
+ 		};
+ 
+@@ -1075,6 +1076,27 @@ gpu-thermal {
+ 			polling-delay-passive = <0>;
+ 			polling-delay = <0>;
+ 			thermal-sensors = <&ths 1>;
++
++			trips {
++				gpu_alert: gpu-alert {
++					temperature = <85000>;
++					hysteresis = <2000>;
++					type = "passive";
++				};
++
++				gpu-crit {
++					temperature = <100000>;
++					hysteresis = <0>;
++					type = "critical";
++				};
++			};
++
++			cooling-maps {
++				map0 {
++					trip = <&gpu_alert>;
++					cooling-device = <&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
+ 		};
+ 	};
+ };
 
 -- 
 b4 0.10.0-dev-bfc54
