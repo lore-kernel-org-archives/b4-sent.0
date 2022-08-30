@@ -1,52 +1,53 @@
-From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-Date: Mon, 29 Aug 2022 13:49:20 -0400
-Subject: [PATCH v3 4/4] arm64: dts: allwinner: beelink-gs1: Enable GPU OPP
+Subject: [PATCH RESEND v3 0/4] Completely fake series
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Content-Type: text/plain; charset="utf-8"
-Message-Id: <20220825-test-endpoint-send-2-v3-4-e29bfe9731e0@linuxfoundation.org>
-References: <20220825-test-endpoint-send-2-v3-0-e29bfe9731e0@linuxfoundation.org>
-In-Reply-To: <20220825-test-endpoint-send-2-v3-0-e29bfe9731e0@linuxfoundation.org>
+Content-Transfer-Encoding: 8bit
+From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Date: Tue, 30 Aug 2022 09:31:25 -0400
+Message-Id: <20220825-test-endpoint-send-2-v3-0-736c986dd55c@linuxfoundation.org>
+X-b4-tracking: H4sIAC0RDmMC/43Oy6rCMBAG4FeRrM9IMrGn6sr3EBfTZGwDNZEkLYr03R10K+hqLvB/Mw9VOAcuar
+ 96qMxzKCFFGezfSrmBYs8QvMwKNaLeYgOVSwWO/ppCrFCkAwS3Q3tmZ7TXnZJoR4WhyxTdIOE4jaMs
+ h1BqyvfXqdlIOX5RZwMauLXInSPabOkwhjjdzmmKnqo8uk65VyehZ/yFQ+Gs17pB09pNYw79hcK4du
+ nyRuwviBWEvCP3b3yzw/bzT8uyPAFsmn7yWwEAAA==
 To: mricon@kernel.org
-X-Mailer: b4 0.10.0-dev-65ba7
-X-Developer-Signature: v=1; a=openpgp-sha256; l=885;
+X-Mailer: b4 0.10.0-dev-bfc54
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1101;
  i=konstantin@linuxfoundation.org; h=from:subject:message-id;
- bh=Qr3s8jOoe3h/47KVIGHPxRIoa7LD5uKtv3jm7eyG6/8=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJJ5/igv+8zrLGWwQYkxdr+o9MopAYf2pzz6OO1jIVtn6dKE
- PdoHOkpZGMS4GGTFFFnK9sVuCip86CGX3mMKM4eVCWQIAxenAEzk02RGhi3G772Xnu7cpprzZo7HMR
- +vNotFJjMqHZwWC85ddPabhxLD/2CTakPm+0yqq2f4nxBdm3Cz0kamQrn+5KRsJh4N75OX+AE=
+ bh=7mHNgptN96qkzteBPQC69Oz8Eod6Pwb8cHeOjXMJSHQ=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJL5BHXfOVRdS+idNae/jSthfvSGL+Fms7nzfGeoyB6O3s9a
+ t3FHRykLgxgXg6yYIkvZvthNQYUPPeTSe0xh5rAygQxh4OIUgIm4ujIydD2+opNmVd3Dls9uuu5P87
+ w9M7o+m0zs8ffVfn/UxNG4h+GfmdgSxuP/jjxgPGujnKai/m1OfMDB004PKydtE1Q9rMLDDQA=
 X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
 X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-From: Clément Péron <peron.clem@gmail.com>
+Another completely fake series to test b4 endpoint sending. Please
+ignore it -- it's a random set of patches that exists elsewhere.
 
-Enable GPU OPP table for Beelink GS1
-
-Signed-off-by: Clément Péron <peron.clem@gmail.com>
 Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h6-beelink-gs1.dts b/arch/arm64/boot/dts/allwinner/sun50i-h6-beelink-gs1.dts
-index 6249e9e02928..20fc0584d1c6 100644
---- a/arch/arm64/boot/dts/allwinner/sun50i-h6-beelink-gs1.dts
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h6-beelink-gs1.dts
-@@ -5,6 +5,7 @@
- 
- #include "sun50i-h6.dtsi"
- #include "sun50i-h6-cpu-opp.dtsi"
-+#include "sun50i-h6-gpu-opp.dtsi"
- 
- #include <dt-bindings/gpio/gpio.h>
- 
-@@ -261,6 +262,7 @@ reg_dcdca: dcdca {
- 			};
- 
- 			reg_dcdcc: dcdcc {
-+				regulator-always-on;
- 				regulator-enable-ramp-delay = <32000>;
- 				regulator-min-microvolt = <810000>;
- 				regulator-max-microvolt = <1080000>;
+---
+Changes in v2:
+- No changes
+- Link to v1: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v1-0-e732ebcaa48a@linuxfoundation.org
 
+---
+Clément Péron (4):
+      arm64: defconfig: Enable devfreq cooling device
+      arm64: dts: allwinner: h6: Add cooling map for GPU
+      arm64: dts: allwinner: h6: Add GPU OPP table
+      arm64: dts: allwinner: beelink-gs1: Enable GPU OPP
+
+ .../boot/dts/allwinner/sun50i-h6-beelink-gs1.dts   |  2 +
+ .../boot/dts/allwinner/sun50i-h6-gpu-opp.dtsi      | 88 ++++++++++++++++++++++
+ arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi       | 22 ++++++
+ arch/arm64/configs/defconfig                       |  1 +
+ 4 files changed, 113 insertions(+)
+---
+base-commit: 4c2d0b039c5cc0112206a5b22431b577cb1c57ad
+change-id: 20220825-test-endpoint-send-2-c923fec10d0b
+
+Best regards,
 -- 
-b4 0.10.0-dev-65ba7
+Konstantin Ryabitsev <konstantin@linuxfoundation.org>
