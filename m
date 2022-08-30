@@ -1,53 +1,48 @@
-Subject: [PATCH RESEND v3 0/4] Completely fake series
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
 From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-Date: Tue, 30 Aug 2022 09:31:25 -0400
-Message-Id: <20220825-test-endpoint-send-2-v3-0-736c986dd55c@linuxfoundation.org>
-X-b4-tracking: H4sIAC0RDmMC/43Oy6rCMBAG4FeRrM9IMrGn6sr3EBfTZGwDNZEkLYr03R10K+hqLvB/Mw9VOAcuar
- 96qMxzKCFFGezfSrmBYs8QvMwKNaLeYgOVSwWO/ppCrFCkAwS3Q3tmZ7TXnZJoR4WhyxTdIOE4jaMs
- h1BqyvfXqdlIOX5RZwMauLXInSPabOkwhjjdzmmKnqo8uk65VyehZ/yFQ+Gs17pB09pNYw79hcK4du
- nyRuwviBWEvCP3b3yzw/bzT8uyPAFsmn7yWwEAAA==
+Date: Tue, 30 Aug 2022 09:31:26 -0400
+Subject: [PATCH RESEND v3 1/4] arm64: defconfig: Enable devfreq cooling device
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <20220825-test-endpoint-send-2-v3-1-736c986dd55c@linuxfoundation.org>
+References: <20220825-test-endpoint-send-2-v3-0-736c986dd55c@linuxfoundation.org>
+In-Reply-To: <20220825-test-endpoint-send-2-v3-0-736c986dd55c@linuxfoundation.org>
 To: mricon@kernel.org
 X-Mailer: b4 0.10.0-dev-bfc54
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1101;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=785;
  i=konstantin@linuxfoundation.org; h=from:subject:message-id;
- bh=7mHNgptN96qkzteBPQC69Oz8Eod6Pwb8cHeOjXMJSHQ=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJL5BHXfOVRdS+idNae/jSthfvSGL+Fms7nzfGeoyB6O3s9a
- t3FHRykLgxgXg6yYIkvZvthNQYUPPeTSe0xh5rAygQxh4OIUgIm4ujIydD2+opNmVd3Dls9uuu5P87
- w9M7o+m0zs8ffVfn/UxNG4h+GfmdgSxuP/jjxgPGujnKai/m1OfMDB004PKydtE1Q9rMLDDQA=
+ bh=FU4rpA5Zu6K7vHlXo8FyTKJHZMRZ3Jx8Kx1vK3vaEp4=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJL5BHWjlSUO7uc83CC7JOZJSs/BjWwXqvsCHniHxGsUJ+4O
+ ZKjsKGVhEONikBVTZCnbF7spqPChh1x6jynMHFYmkCEMXJwCMBHe6YwMnX8uPKyu/R3IqMu9PjbwvX
+ P3lO7jbL9Wf1oqvuKM0sFQV0aGi/NVn2ox6QR6x93Z4+TiYJq3Y9HjpmyeF3Mbf5/5WNTLDwA=
 X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
 X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-Another completely fake series to test b4 endpoint sending. Please
-ignore it -- it's a random set of patches that exists elsewhere.
+From: Clément Péron <peron.clem@gmail.com>
 
+Devfreq cooling device framework is used in Panfrost
+to throttle GPU in order to regulate its temperature.
+
+Enable this driver for ARM64 SoC.
+
+Signed-off-by: Clément Péron <peron.clem@gmail.com>
+Acked-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 
----
-Changes in v2:
-- No changes
-- Link to v1: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v1-0-e732ebcaa48a@linuxfoundation.org
+diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
+index d5b2d2dd4904..109004e44d21 100644
+--- a/arch/arm64/configs/defconfig
++++ b/arch/arm64/configs/defconfig
+@@ -584,6 +584,7 @@ CONFIG_SENSORS_INA2XX=m
+ CONFIG_SENSORS_INA3221=m
+ CONFIG_THERMAL_GOV_POWER_ALLOCATOR=y
+ CONFIG_CPU_THERMAL=y
++CONFIG_DEVFREQ_THERMAL=y
+ CONFIG_THERMAL_EMULATION=y
+ CONFIG_IMX_SC_THERMAL=m
+ CONFIG_IMX8MM_THERMAL=m
 
----
-Clément Péron (4):
-      arm64: defconfig: Enable devfreq cooling device
-      arm64: dts: allwinner: h6: Add cooling map for GPU
-      arm64: dts: allwinner: h6: Add GPU OPP table
-      arm64: dts: allwinner: beelink-gs1: Enable GPU OPP
-
- .../boot/dts/allwinner/sun50i-h6-beelink-gs1.dts   |  2 +
- .../boot/dts/allwinner/sun50i-h6-gpu-opp.dtsi      | 88 ++++++++++++++++++++++
- arch/arm64/boot/dts/allwinner/sun50i-h6.dtsi       | 22 ++++++
- arch/arm64/configs/defconfig                       |  1 +
- 4 files changed, 113 insertions(+)
----
-base-commit: 4c2d0b039c5cc0112206a5b22431b577cb1c57ad
-change-id: 20220825-test-endpoint-send-2-c923fec10d0b
-
-Best regards,
 -- 
-Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+b4 0.10.0-dev-bfc54
