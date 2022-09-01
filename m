@@ -1,20 +1,20 @@
 From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-Date: Thu, 01 Sep 2022 15:29:01 -0400
-Subject: [PATCH v5 16/21] objtool: Disable CFI warnings
+Date: Thu, 01 Sep 2022 15:29:02 -0400
+Subject: [PATCH v5 17/21] kallsyms: Drop CONFIG_CFI_CLANG workarounds
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20220901-kcfi_support-v5-16-be2007d8da63@linuxfoundation.org>
+Message-Id: <20220901-kcfi_support-v5-17-be2007d8da63@linuxfoundation.org>
 References: <20220901-kcfi_support-v5-0-be2007d8da63@linuxfoundation.org>
 In-Reply-To: <20220901-kcfi_support-v5-0-be2007d8da63@linuxfoundation.org>
 To: mricon@kernel.org
 X-Mailer: b4 0.10.0-dev-03aea
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1743;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1280;
  i=konstantin@linuxfoundation.org; h=from:subject:message-id;
- bh=8U0LqN/pNuls3IF/m+5+L84TWapgLWeHQLZO2/xF8Ic=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJIF2X/XvbzssC7jIfud3QE/b7bZ90cXsRdsUNCbyCI6ba3a
- ErHojlIWBjEuBlkxRZayfbGbggofesil95jCzGFlAhnCwMUpABO5nMTwP6i20yO6QSP+WV3lMeVQHd
- Xr5zP2a2Us+fOhd8f5+yuNlzAyTLjwpGi2WEv/+46trx6s0p/R2r7cfNorU5/KfWa9tys0OAA=
+ bh=O18i3r5CGr1t/dYMbNXG0m9J5jEQNbepIxCYWdvskpI=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJIF2X8faA41aOq7ei7wvtwhI4nngtZL1qp6zOsOltBlrdiq
+ 8kuzo5SFQYyLQVZMkaVsX+ymoMKHHnLpPaYwc1iZQIYwcHEKwESuZDD84c9KOnsrrCQ4bPnfyknGVY
+ pLBbSOvsxlf772jNhhgfpfcowMm55aHZxgt+7u8ugH51OPrt/642DG7Flr7p9RF8rjebjwDyMA
 X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
 X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
@@ -22,52 +22,50 @@ List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
 From: Sami Tolvanen <samitolvanen@google.com>
 
-The __cfi_ preambles contain a mov instruction that embeds the KCFI
-type identifier in the following format:
-
-  ; type preamble
-  __cfi_function:
-    mov <id>, %eax
-  function:
-    ...
-
-While the preamble symbols are STT_FUNC and contain valid
-instructions, they are never executed and always fall through. Skip
-the warning for them.
-
-.kcfi_traps sections point to CFI traps in text sections. Also skip
-the warning about them referencing !ENDBR instructions.
+With -fsanitize=kcfi, the compiler no longer renames static
+functions with CONFIG_CFI_CLANG + ThinLTO. Drop the code that cleans
+up the ThinLTO hash from the function names.
 
 Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
-Acked-by: Josh Poimboeuf <jpoimboe@kernel.org>
+Reviewed-by: Nick Desaulniers <ndesaulniers@google.com>
 Reviewed-by: Kees Cook <keescook@chromium.org>
 Tested-by: Kees Cook <keescook@chromium.org>
 
-diff --git a/tools/objtool/check.c b/tools/objtool/check.c
-index e55fdf952a3a..48e18737a2d1 100644
---- a/tools/objtool/check.c
-+++ b/tools/objtool/check.c
-@@ -3316,6 +3316,10 @@ static int validate_branch(struct objtool_file *file, struct symbol *func,
- 		next_insn = next_insn_to_validate(file, insn);
+diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
+index 3e7e2c2ad2f7..b27e6ea31f8b 100644
+--- a/kernel/kallsyms.c
++++ b/kernel/kallsyms.c
+@@ -159,7 +159,6 @@ static bool cleanup_symbol_name(char *s)
+ 	 * character in an identifier in C. Suffixes observed:
+ 	 * - foo.llvm.[0-9a-f]+
+ 	 * - foo.[0-9a-f]+
+-	 * - foo.[0-9a-f]+.cfi_jt
+ 	 */
+ 	res = strchr(s, '.');
+ 	if (res) {
+@@ -167,22 +166,6 @@ static bool cleanup_symbol_name(char *s)
+ 		return true;
+ 	}
  
- 		if (func && insn->func && func != insn->func->pfunc) {
-+			/* Ignore KCFI type preambles, which always fall through */
-+			if (!strncmp(func->name, "__cfi_", 6))
-+				return 0;
-+
- 			WARN("%s() falls through to next function %s()",
- 			     func->name, insn->func->name);
- 			return 1;
-@@ -4113,7 +4117,8 @@ static int validate_ibt(struct objtool_file *file)
- 		    !strcmp(sec->name, "__bug_table")			||
- 		    !strcmp(sec->name, "__ex_table")			||
- 		    !strcmp(sec->name, "__jump_table")			||
--		    !strcmp(sec->name, "__mcount_loc"))
-+		    !strcmp(sec->name, "__mcount_loc")			||
-+		    !strcmp(sec->name, ".kcfi_traps"))
- 			continue;
+-	if (!IS_ENABLED(CONFIG_CFI_CLANG) ||
+-	    !IS_ENABLED(CONFIG_LTO_CLANG_THIN) ||
+-	    CONFIG_CLANG_VERSION >= 130000)
+-		return false;
+-
+-	/*
+-	 * Prior to LLVM 13, the following suffixes were observed when thinLTO
+-	 * and CFI are both enabled:
+-	 * - foo$[0-9]+
+-	 */
+-	res = strrchr(s, '$');
+-	if (res) {
+-		*res = '\0';
+-		return true;
+-	}
+-
+ 	return false;
+ }
  
- 		list_for_each_entry(reloc, &sec->reloc->reloc_list, list)
 
 -- 
 b4 0.10.0-dev-03aea
