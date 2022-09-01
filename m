@@ -1,20 +1,20 @@
 From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-Date: Thu, 01 Sep 2022 15:28:53 -0400
-Subject: [PATCH v5 08/21] psci: Fix the function type for psci_initcall_t
+Date: Thu, 01 Sep 2022 15:28:54 -0400
+Subject: [PATCH v5 09/21] arm64: Add types to indirect called assembly functions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20220901-kcfi_support-v5-8-be2007d8da63@linuxfoundation.org>
+Message-Id: <20220901-kcfi_support-v5-9-be2007d8da63@linuxfoundation.org>
 References: <20220901-kcfi_support-v5-0-be2007d8da63@linuxfoundation.org>
 In-Reply-To: <20220901-kcfi_support-v5-0-be2007d8da63@linuxfoundation.org>
 To: mricon@kernel.org
 X-Mailer: b4 0.10.0-dev-03aea
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1652;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3668;
  i=konstantin@linuxfoundation.org; h=from:subject:message-id;
- bh=VQyqr/oVocdsEsziUvpbjifYbypg4sUuWX/HDGRqAT8=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJIF2X+tqWD1nMnrU20oNPVM7TXX53o3wqf6XJx4YlZsS6bp
- xjeyHaUsDGJcDLJiiixl+2I3BRU+9JBL7zGFmcPKBDKEgYtTACYSb8vIMPXXnY2e+68EGmjNOjp1/d
- ror3kPZi6fN2/ZIma9x5+vRvAyMizpOJ+z995znfgilUelh64eSYk9cOaKvrHz0uNZf6dsKmMAAA==
+ bh=eDbjvzAyRymkmMwP4ShkQDYkP1mI9N4cKsW4VirkkAc=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJIF2X+JOXD9jnSLuFx0VsjWj7/ALKrzy8mw+1lXFou8M52y
+ 5PnmjlIWBjEuBlkxRZayfbGbggofesil95jCzGFlAhnCwMUpABNRPsfIsOWn4q4pitKOHPw6lz2fB5
+ 25UyjxQyVKd6Owe1l45PuUtQz/tG75u75edcVJQDx40Va/ivuyGh3Nj1/PFH58LDFPhD2eDQA=
 X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
 X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
@@ -22,55 +22,120 @@ List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
 From: Sami Tolvanen <samitolvanen@google.com>
 
-Functions called through a psci_initcall_t pointer all have
-non-const arguments. Fix the type definition to avoid tripping
-indirect call checks with CFI_CLANG.
+With CONFIG_CFI_CLANG, assembly functions indirectly called from C
+code must be annotated with type identifiers to pass CFI checking. Use
+SYM_TYPED_FUNC_START for the indirectly called functions.
 
-Suggested-by: Mark Rutland <mark.rutland@arm.com>
 Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
 Reviewed-by: Kees Cook <keescook@chromium.org>
 Tested-by: Kees Cook <keescook@chromium.org>
 
-diff --git a/drivers/firmware/psci/psci.c b/drivers/firmware/psci/psci.c
-index cfb448eabdaa..75ef784a3789 100644
---- a/drivers/firmware/psci/psci.c
-+++ b/drivers/firmware/psci/psci.c
-@@ -274,7 +274,7 @@ static void set_conduit(enum arm_smccc_conduit conduit)
- 	psci_conduit = conduit;
- }
- 
--static int get_set_conduit_method(struct device_node *np)
-+static int get_set_conduit_method(const struct device_node *np)
- {
- 	const char *method;
- 
-@@ -528,7 +528,7 @@ typedef int (*psci_initcall_t)(const struct device_node *);
-  *
-  * Probe based on PSCI PSCI_VERSION function
+diff --git a/arch/arm64/crypto/ghash-ce-core.S b/arch/arm64/crypto/ghash-ce-core.S
+index 7868330dd54e..ebe5558929b7 100644
+--- a/arch/arm64/crypto/ghash-ce-core.S
++++ b/arch/arm64/crypto/ghash-ce-core.S
+@@ -6,6 +6,7 @@
   */
--static int __init psci_0_2_init(struct device_node *np)
-+static int __init psci_0_2_init(const struct device_node *np)
- {
- 	int err;
  
-@@ -549,7 +549,7 @@ static int __init psci_0_2_init(struct device_node *np)
- /*
-  * PSCI < v0.2 get PSCI Function IDs via DT.
+ #include <linux/linkage.h>
++#include <linux/cfi_types.h>
+ #include <asm/assembler.h>
+ 
+ 	SHASH		.req	v0
+@@ -350,11 +351,11 @@ CPU_LE(	rev64		T1.16b, T1.16b	)
+ 	 * void pmull_ghash_update(int blocks, u64 dg[], const char *src,
+ 	 *			   struct ghash_key const *k, const char *head)
+ 	 */
+-SYM_FUNC_START(pmull_ghash_update_p64)
++SYM_TYPED_FUNC_START(pmull_ghash_update_p64)
+ 	__pmull_ghash	p64
+ SYM_FUNC_END(pmull_ghash_update_p64)
+ 
+-SYM_FUNC_START(pmull_ghash_update_p8)
++SYM_TYPED_FUNC_START(pmull_ghash_update_p8)
+ 	__pmull_ghash	p8
+ SYM_FUNC_END(pmull_ghash_update_p8)
+ 
+diff --git a/arch/arm64/crypto/sm3-ce-core.S b/arch/arm64/crypto/sm3-ce-core.S
+index ef97d3187cb7..ca70cfacd0d0 100644
+--- a/arch/arm64/crypto/sm3-ce-core.S
++++ b/arch/arm64/crypto/sm3-ce-core.S
+@@ -6,6 +6,7 @@
   */
--static int __init psci_0_1_init(struct device_node *np)
-+static int __init psci_0_1_init(const struct device_node *np)
- {
- 	u32 id;
- 	int err;
-@@ -585,7 +585,7 @@ static int __init psci_0_1_init(struct device_node *np)
- 	return 0;
- }
  
--static int __init psci_1_0_init(struct device_node *np)
-+static int __init psci_1_0_init(const struct device_node *np)
- {
- 	int err;
+ #include <linux/linkage.h>
++#include <linux/cfi_types.h>
+ #include <asm/assembler.h>
  
+ 	.irp		b, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+@@ -73,7 +74,7 @@
+ 	 *                       int blocks)
+ 	 */
+ 	.text
+-SYM_FUNC_START(sm3_ce_transform)
++SYM_TYPED_FUNC_START(sm3_ce_transform)
+ 	/* load state */
+ 	ld1		{v8.4s-v9.4s}, [x0]
+ 	rev64		v8.4s, v8.4s
+diff --git a/arch/arm64/kernel/cpu-reset.S b/arch/arm64/kernel/cpu-reset.S
+index 48a8af97faa9..6b752fe89745 100644
+--- a/arch/arm64/kernel/cpu-reset.S
++++ b/arch/arm64/kernel/cpu-reset.S
+@@ -8,6 +8,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <linux/cfi_types.h>
+ #include <asm/assembler.h>
+ #include <asm/sysreg.h>
+ #include <asm/virt.h>
+@@ -28,7 +29,7 @@
+  * branch to what would be the reset vector. It must be executed with the
+  * flat identity mapping.
+  */
+-SYM_CODE_START(cpu_soft_restart)
++SYM_TYPED_FUNC_START(cpu_soft_restart)
+ 	mov_q	x12, INIT_SCTLR_EL1_MMU_OFF
+ 	pre_disable_mmu_workaround
+ 	/*
+@@ -47,6 +48,6 @@ SYM_CODE_START(cpu_soft_restart)
+ 	mov	x1, x3				// arg1
+ 	mov	x2, x4				// arg2
+ 	br	x8
+-SYM_CODE_END(cpu_soft_restart)
++SYM_FUNC_END(cpu_soft_restart)
+ 
+ .popsection
+diff --git a/arch/arm64/mm/proc.S b/arch/arm64/mm/proc.S
+index 7837a69524c5..8b9f419fcad9 100644
+--- a/arch/arm64/mm/proc.S
++++ b/arch/arm64/mm/proc.S
+@@ -10,6 +10,7 @@
+ #include <linux/init.h>
+ #include <linux/linkage.h>
+ #include <linux/pgtable.h>
++#include <linux/cfi_types.h>
+ #include <asm/assembler.h>
+ #include <asm/asm-offsets.h>
+ #include <asm/asm_pointer_auth.h>
+@@ -185,7 +186,7 @@ SYM_FUNC_END(cpu_do_resume)
+  * This is the low-level counterpart to cpu_replace_ttbr1, and should not be
+  * called by anything else. It can only be executed from a TTBR0 mapping.
+  */
+-SYM_FUNC_START(idmap_cpu_replace_ttbr1)
++SYM_TYPED_FUNC_START(idmap_cpu_replace_ttbr1)
+ 	save_and_disable_daif flags=x2
+ 
+ 	__idmap_cpu_set_reserved_ttbr1 x1, x3
+@@ -253,7 +254,7 @@ SYM_FUNC_END(idmap_cpu_replace_ttbr1)
+ SYM_DATA(__idmap_kpti_flag, .long 1)
+ 	.popsection
+ 
+-SYM_FUNC_START(idmap_kpti_install_ng_mappings)
++SYM_TYPED_FUNC_START(idmap_kpti_install_ng_mappings)
+ 	cpu		.req	w0
+ 	temp_pte	.req	x0
+ 	num_cpus	.req	w1
 
 -- 
 b4 0.10.0-dev-03aea
