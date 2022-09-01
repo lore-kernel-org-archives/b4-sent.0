@@ -1,202 +1,83 @@
-Subject: [PATCH v5 00/21] KCFI support
+From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Date: Thu, 01 Sep 2022 15:28:46 -0400
+Subject: [PATCH v5 01/21] treewide: Filter out CC_FLAGS_CFI
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-b4-tracking: H4sIAO0HEWMC/0WMQQ7CIBAAv2L27DYLRCue/IkB3LZEyjbQ9tL073LzOJPMHFC5RK7wvBxQeI81Sm
- 5wu14gTC6PjPHTGDRpTZYUfsMQ33VbFikrUu8tBauC9T20xLvK6IvLYWpR3lJqcigy4zoVdv/Tw5A2
- RmnbGborQoXVzXGVtLvM+TWKjIm7IDOc5w/c7ptKpAAAAA==
-From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-Date: Thu, 01 Sep 2022 15:28:45 -0400
-Message-Id: <20220901-kcfi_support-v5-0-be2007d8da63@linuxfoundation.org>
+Message-Id: <20220901-kcfi_support-v5-1-be2007d8da63@linuxfoundation.org>
+References: <20220901-kcfi_support-v5-0-be2007d8da63@linuxfoundation.org>
+In-Reply-To: <20220901-kcfi_support-v5-0-be2007d8da63@linuxfoundation.org>
 To: mricon@kernel.org
 X-Mailer: b4 0.10.0-dev-03aea
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7784;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2787;
  i=konstantin@linuxfoundation.org; h=from:subject:message-id;
- bh=hr3itPAA2RGwnRHMveKjeLWMqDkjop94kV6JsOO0JhI=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJIF2X8Zfrq3zrryw75NAvKJ/eoLb/zZJ8W+Yppbk9G18juz
- zH/v6ChlYRDjYpAVU2Qp2xe7KajwoYdceo8pzBxWJpAhDFycAjCRXU8Z/inm/N7wLPRs92OONTaHsv
- 5bPlI8KC6m/vDI3Il3zQx7tiUz/E9lOZH1+fML5sMyy6a7LpjfE/z+5vHiYhY7M6+Hxsrv2lkB
+ bh=AatfIZieEbfgI0HHZlJUDHO2r9S7X0LR2FFf0WYWIIU=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJIF2X9JZ2yQ/Np+/+ylKdrf5zPweNX1LVatXMH3ZXNjTpk8
+ x7eWjlIWBjEuBlkxRZayfbGbggofesil95jCzGFlAhnCwMUpABNZosPwi+kbw38Zk1WXPXl5bJcxmr
+ 241HTUeqPlgbqSkA2W8rfOXWH4zboyU7dUzbDoefzZf1c9+9iL5nl9iDsjkbf/36Wri+I2cAEA
 X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
 X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-KCFI is a forward-edge control-flow integrity scheme in the upcoming
-Clang 16 release, which is more suitable for kernel use than the
-existing CFI scheme used by CONFIG_CFI_CLANG. KCFI doesn't require
-LTO, doesn't alter function references to point to a jump table, and
-won't break function address equality.
+From: Sami Tolvanen <samitolvanen@google.com>
 
-This series replaces the current arm64 CFI implementation with KCFI
-and adds support for x86_64.
+In preparation for removing CC_FLAGS_CFI from CC_FLAGS_LTO, explicitly
+filter out CC_FLAGS_CFI in all the makefiles where we currently filter
+out CC_FLAGS_LTO.
 
-KCFI requires assembly functions that are indirectly called from C
-code to be annotated with type identifiers. As type information is
-only available in C, the compiler emits expected type identifiers
-into the symbol table, so they can be referenced from assembly
-without having to hardcode type hashes. Patch 6 adds helper macros
-for annotating functions, and patches 9 and 19 add annotations.
+Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
+Reviewed-by: Kees Cook <keescook@chromium.org>
+Tested-by: Kees Cook <keescook@chromium.org>
 
-In case of a type mismatch, KCFI always traps. To support error
-handling, the compiler generates a .kcfi_traps section for x86_64,
-which contains the locations of each trap, and for arm64, encodes
-the necessary register information to the ESR. Patches 10 and 21 add
-arch-specific error handlers.
+diff --git a/arch/arm64/kernel/vdso/Makefile b/arch/arm64/kernel/vdso/Makefile
+index bafbf78fab77..619e2dc7ee14 100644
+--- a/arch/arm64/kernel/vdso/Makefile
++++ b/arch/arm64/kernel/vdso/Makefile
+@@ -40,7 +40,8 @@ ccflags-y += -DDISABLE_BRANCH_PROFILING -DBUILD_VDSO
+ # kernel with CONFIG_WERROR enabled.
+ CFLAGS_REMOVE_vgettimeofday.o = $(CC_FLAGS_FTRACE) -Os $(CC_FLAGS_SCS) \
+ 				$(RANDSTRUCT_CFLAGS) $(GCC_PLUGINS_CFLAGS) \
+-				$(CC_FLAGS_LTO) -Wmissing-prototypes -Wmissing-declarations
++				$(CC_FLAGS_LTO) $(CC_FLAGS_CFI) \
++				-Wmissing-prototypes -Wmissing-declarations
+ KASAN_SANITIZE			:= n
+ KCSAN_SANITIZE			:= n
+ UBSAN_SANITIZE			:= n
+diff --git a/arch/x86/entry/vdso/Makefile b/arch/x86/entry/vdso/Makefile
+index 12f6c4d714cd..381d3333b996 100644
+--- a/arch/x86/entry/vdso/Makefile
++++ b/arch/x86/entry/vdso/Makefile
+@@ -91,7 +91,7 @@ ifneq ($(RETPOLINE_VDSO_CFLAGS),)
+ endif
+ endif
+ 
+-$(vobjs): KBUILD_CFLAGS := $(filter-out $(CC_FLAGS_LTO) $(RANDSTRUCT_CFLAGS) $(GCC_PLUGINS_CFLAGS) $(RETPOLINE_CFLAGS),$(KBUILD_CFLAGS)) $(CFL)
++$(vobjs): KBUILD_CFLAGS := $(filter-out $(CC_FLAGS_LTO) $(CC_FLAGS_CFI) $(RANDSTRUCT_CFLAGS) $(GCC_PLUGINS_CFLAGS) $(RETPOLINE_CFLAGS),$(KBUILD_CFLAGS)) $(CFL)
+ $(vobjs): KBUILD_AFLAGS += -DBUILD_VDSO
+ 
+ #
+@@ -153,6 +153,7 @@ KBUILD_CFLAGS_32 := $(filter-out $(RANDSTRUCT_CFLAGS),$(KBUILD_CFLAGS_32))
+ KBUILD_CFLAGS_32 := $(filter-out $(GCC_PLUGINS_CFLAGS),$(KBUILD_CFLAGS_32))
+ KBUILD_CFLAGS_32 := $(filter-out $(RETPOLINE_CFLAGS),$(KBUILD_CFLAGS_32))
+ KBUILD_CFLAGS_32 := $(filter-out $(CC_FLAGS_LTO),$(KBUILD_CFLAGS_32))
++KBUILD_CFLAGS_32 := $(filter-out $(CC_FLAGS_CFI),$(KBUILD_CFLAGS_32))
+ KBUILD_CFLAGS_32 += -m32 -msoft-float -mregparm=0 -fpic
+ KBUILD_CFLAGS_32 += -fno-stack-protector
+ KBUILD_CFLAGS_32 += $(call cc-option, -foptimize-sibling-calls)
+diff --git a/drivers/firmware/efi/libstub/Makefile b/drivers/firmware/efi/libstub/Makefile
+index d0537573501e..234fb2910622 100644
+--- a/drivers/firmware/efi/libstub/Makefile
++++ b/drivers/firmware/efi/libstub/Makefile
+@@ -39,6 +39,8 @@ KBUILD_CFLAGS			:= $(cflags-y) -Os -DDISABLE_BRANCH_PROFILING \
+ 
+ # remove SCS flags from all objects in this directory
+ KBUILD_CFLAGS := $(filter-out $(CC_FLAGS_SCS), $(KBUILD_CFLAGS))
++# disable CFI
++KBUILD_CFLAGS := $(filter-out $(CC_FLAGS_CFI), $(KBUILD_CFLAGS))
+ # disable LTO
+ KBUILD_CFLAGS := $(filter-out $(CC_FLAGS_LTO), $(KBUILD_CFLAGS))
+ 
 
-To test this series, you'll a ToT Clang toolchain. The series is
-also available in GitHub:
-
-  https://github.com/samitolvanen/linux/commits/kcfi-v4
-
----
-Changes in v5:
-- Imported into b4.
-
-Changes in v4:
-- Dropped the RFC now that Clang support is merged.
-
-- Changed the x86_64 function preamble to match the the preamble
-  generated by the compiler, and fixed a code generation issue,
-  which Peter pointed out.
-
-- Added a patch to fix arm64 psci_initcall_t type mismatch based
-  on Mark's suggestion.
-
-Changes in v3:
-- Merged the patches that split CC_FLAGS_CFI from CC_FLAGS_LTO.
-
-- Dropped the psci_initcall_t patch as Mark volunteered to send a
-  patch for this. Note that this patch is still needed to boot a
-  CFI kernel on certain arm64 systems:
-  https://lore.kernel.org/lkml/YoNhKaTT3EDukxXY@FVFF77S0Q05N/
-
-- Added a patch to remove the now unnecessary workarounds with
-  CFI+ThinLTO in kallsyms.
-
-- Added an lkdtm patch to ensure the test actually generates an
-  indirect call.
-
-- Changed report_cfi_failure to clearly indicate if we failed to
-  decode target address.
-
-- Switched to relative offsets for .kcfi_traps.
-
-- On x86_64, moved CFI error handling from traps.c to cfi.c, and
-  as we only call memcpy indirectly w/ CONFIG_MODULES, ensured that
-  the compiler emits __kcfi_typeid_memcpy also without modules.
-
-- On x86_64, added a check for the cmpl REX prefix to handle the
-  case where the compiler might not use r8-r15 registers for the
-  call target.
-
-- On the compiler side, ensured that on x86_64 calls are emitted
-  immediately after the CFI check, fixed the __cfi_ preamble
-  linkage, and changed the compiler to emit relative offsets in
-  .kcfi_traps.
-
-Changes in v2:
-- Changed the compiler patch to encode arm64 target and type details
-  in the ESR, and updated the kernel error handling patch accordingly.
-
-- Changed the compiler patch to embed the x86_64 type hash in a valid
-  instruction to avoid special casing objtool instruction decoding, and
-  added a __cfi_ symbol for the preamble. Changed the kernel error
-  handling and manual type annotations to match.
-
-- Dropped the .kcfi_types section as that’s no longer needed by
-  objtool, and changed the objtool patch to simply ignore the __cfi_
-  preambles falling through.
-
-- Dropped the .kcfi_traps section on arm64 as it’s no longer needed,
-  and moved the trap look-up code behind CONFIG_ARCH_USES_CFI_TRAPS,
-  which is selected only for x86_64.
-
-- Dropped __nocfi attributes from arm64 code where CFI was disabled
-  due to address space confusion issues, and added type annotations to
-  relevant assembly functions.
-
-- Dropped __nocfi from __init.
-
----
-Sami Tolvanen (21):
-      treewide: Filter out CC_FLAGS_CFI
-      scripts/kallsyms: Ignore __kcfi_typeid_
-      cfi: Remove CONFIG_CFI_CLANG_SHADOW
-      cfi: Drop __CFI_ADDRESSABLE
-      cfi: Switch to -fsanitize=kcfi
-      cfi: Add type helper macros
-      lkdtm: Emit an indirect call for CFI tests
-      psci: Fix the function type for psci_initcall_t
-      arm64: Add types to indirect called assembly functions
-      arm64: Add CFI error handling
-      arm64: Drop unneeded __nocfi attributes
-      init: Drop __nocfi from __init
-      treewide: Drop function_nocfi
-      treewide: Drop WARN_ON_FUNCTION_MISMATCH
-      treewide: Drop __cficanonical
-      objtool: Disable CFI warnings
-      kallsyms: Drop CONFIG_CFI_CLANG workarounds
-      x86/tools/relocs: Ignore __kcfi_typeid_ relocations
-      x86: Add types to indirectly called assembly functions
-      x86/purgatory: Disable CFI
-      x86: Add support for CONFIG_CFI_CLANG
-
- Makefile                                  |  13 +-
- arch/Kconfig                              |  18 +-
- arch/arm64/crypto/ghash-ce-core.S         |   5 +-
- arch/arm64/crypto/sm3-ce-core.S           |   3 +-
- arch/arm64/include/asm/brk-imm.h          |   6 +
- arch/arm64/include/asm/ftrace.h           |   2 +-
- arch/arm64/include/asm/mmu_context.h      |   4 +-
- arch/arm64/kernel/acpi_parking_protocol.c |   2 +-
- arch/arm64/kernel/alternative.c           |   2 +-
- arch/arm64/kernel/cpu-reset.S             |   5 +-
- arch/arm64/kernel/cpufeature.c            |   4 +-
- arch/arm64/kernel/ftrace.c                |   2 +-
- arch/arm64/kernel/machine_kexec.c         |   2 +-
- arch/arm64/kernel/psci.c                  |   2 +-
- arch/arm64/kernel/smp_spin_table.c        |   2 +-
- arch/arm64/kernel/traps.c                 |  47 +++-
- arch/arm64/kernel/vdso/Makefile           |   3 +-
- arch/arm64/mm/proc.S                      |   5 +-
- arch/x86/Kconfig                          |   2 +
- arch/x86/crypto/blowfish-x86_64-asm_64.S  |   5 +-
- arch/x86/entry/vdso/Makefile              |   3 +-
- arch/x86/include/asm/cfi.h                |  22 ++
- arch/x86/include/asm/linkage.h            |   9 +
- arch/x86/kernel/Makefile                  |   2 +
- arch/x86/kernel/cfi.c                     |  85 ++++++++
- arch/x86/kernel/traps.c                   |   4 +-
- arch/x86/lib/memcpy_64.S                  |   3 +-
- arch/x86/purgatory/Makefile               |   4 +
- arch/x86/tools/relocs.c                   |   1 +
- drivers/firmware/efi/libstub/Makefile     |   2 +
- drivers/firmware/psci/psci.c              |  12 +-
- drivers/misc/lkdtm/cfi.c                  |  15 +-
- drivers/misc/lkdtm/usercopy.c             |   2 +-
- include/asm-generic/bug.h                 |  16 --
- include/asm-generic/vmlinux.lds.h         |  37 ++--
- include/linux/cfi.h                       |  59 ++---
- include/linux/cfi_types.h                 |  57 +++++
- include/linux/compiler-clang.h            |  14 +-
- include/linux/compiler.h                  |  16 +-
- include/linux/compiler_types.h            |   4 -
- include/linux/init.h                      |   6 +-
- include/linux/module.h                    |  10 +-
- include/linux/pci.h                       |   4 +-
- kernel/cfi.c                              | 352 +++++-------------------------
- kernel/kallsyms.c                         |  17 --
- kernel/kthread.c                          |   3 +-
- kernel/module/main.c                      |  50 +----
- kernel/workqueue.c                        |   2 +-
- scripts/kallsyms.c                        |   1 +
- scripts/module.lds.S                      |  23 +-
- tools/objtool/check.c                     |   7 +-
- 51 files changed, 423 insertions(+), 553 deletions(-)
----
-base-commit: dcf8e5633e2e69ad60b730ab5905608b756a032f
-change-id: 20220901-kcfi_support-07b90c91c9b7
-
-Best regards,
 -- 
-Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+b4 0.10.0-dev-03aea
