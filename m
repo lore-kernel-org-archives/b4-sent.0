@@ -1,114 +1,129 @@
 From: =?utf-8?q?Noralf=20Tr=C3=B8nnes?= <noralf@tronnes.org>
-Date: Tue, 22 Nov 2022 21:58:41 +0100
-Subject: [PATCH 3/6] drm/gud: Don't retry a failed framebuffer flush
+Date: Tue, 22 Nov 2022 21:58:42 +0100
+Subject: [PATCH 4/6] drm/gud: Split up gud_flush_work()
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain; charset="utf-8"
-Message-Id: <20221122-gud-shadow-plane-v1-3-9de3afa3383e@tronnes.org>
+Message-Id: <20221122-gud-shadow-plane-v1-4-9de3afa3383e@tronnes.org>
 References: <20221122-gud-shadow-plane-v1-0-9de3afa3383e@tronnes.org>
 In-Reply-To: <20221122-gud-shadow-plane-v1-0-9de3afa3383e@tronnes.org>
 To: Thomas Zimmermann <tzimmermann@suse.de>, stable@vger.kernel.org, Dave Airlie <airlied@redhat.com>,
  dri-devel@lists.freedesktop.org, Hans de Goede <hdegoede@redhat.com>, Noralf Trønnes <noralf@tronnes.org>,
  Maxime Ripard <mripard@kernel.org>, Javier Martinez Canillas <javierm@redhat.com>
 X-Mailer: b4 0.10.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1669150743; l=3318;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1669150743; l=3252;
  i=noralf@tronnes.org; s=20221122; h=from:subject:message-id;
- bh=WoqUfaV4qOjeTTioJmv/b108ZXmqpkiwyL9e90U7xn4=;
- b=nYE9PBMqUPKK8i4e9wDK0dwNQT6OCA8Sf4UlCzZhgOzAxpNIT8ralswP032gdY4PPrR628/q4uaX
- vbrD/g1RBsedTSdG6V89BgUtNt2krQ+W1DgjCtzRUwQ0ECQFDfYa
+ bh=ahKXg6Xr5HyjHv3T70OJ3XcsDN6UVfaIf3j92RcQJLk=;
+ b=hkaLXrdhOvsy9qN2VfPsRyfI9DZkqa2UeUx0U0XU0wFHKawXhNL2KI2S1T+ur/NDk3fi8kqzYPF/
+ TjXmjMmeDSfIANrGmBl1cTuF7PzO6FiDTYqy1fc07oh/atsvo1XY
 X-Developer-Key: i=noralf@tronnes.org; a=ed25519;
  pk=0o9is4iddvvlrY3yON5SVtAbgPnVs0LfQsjfqR2Hvz8=
 X-Endpoint-Received: by B4 Submission Endpoint for noralf@tronnes.org/20221122 with auth_id=8
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-If a framebuffer flush fails the driver will do one retry by requeing the
-worker. Currently the worker is used even for synchronous flushing, but a
-later patch will inline it, so this needs to change. Thinking about how to
-solve this I came to the conclusion that this retry mechanism was a fix
-for a problem that was only in the mind of the developer (me) and not
-something that solved a real problem.
-
-So let's remove this for now and revisit later should it become necessary.
-gud_add_damage() has now only one caller so it can be inlined.
+In preparation for inlining synchronous flushing split out the part of
+gud_flush_work() that can be shared by the sync and async code paths.
 
 Signed-off-by: Noralf Trønnes <noralf@tronnes.org>
 ---
- drivers/gpu/drm/gud/gud_pipe.c | 48 +++++++-----------------------------------
- 1 file changed, 8 insertions(+), 40 deletions(-)
+ drivers/gpu/drm/gud/gud_pipe.c | 72 +++++++++++++++++++++++-------------------
+ 1 file changed, 39 insertions(+), 33 deletions(-)
 
 diff --git a/drivers/gpu/drm/gud/gud_pipe.c b/drivers/gpu/drm/gud/gud_pipe.c
-index 61f4abaf1811..ff1358815af5 100644
+index ff1358815af5..d2af9947494f 100644
 --- a/drivers/gpu/drm/gud/gud_pipe.c
 +++ b/drivers/gpu/drm/gud/gud_pipe.c
-@@ -333,37 +333,6 @@ void gud_clear_damage(struct gud_device *gdrm)
+@@ -333,15 +333,49 @@ void gud_clear_damage(struct gud_device *gdrm)
  	gdrm->damage.y2 = 0;
  }
  
--static void gud_add_damage(struct gud_device *gdrm, struct drm_rect *damage)
--{
--	gdrm->damage.x1 = min(gdrm->damage.x1, damage->x1);
--	gdrm->damage.y1 = min(gdrm->damage.y1, damage->y1);
--	gdrm->damage.x2 = max(gdrm->damage.x2, damage->x2);
--	gdrm->damage.y2 = max(gdrm->damage.y2, damage->y2);
--}
--
--static void gud_retry_failed_flush(struct gud_device *gdrm, struct drm_framebuffer *fb,
--				   struct drm_rect *damage)
--{
--	/*
--	 * pipe_update waits for the worker when the display mode is going to change.
--	 * This ensures that the width and height is still the same making it safe to
--	 * add back the damage.
--	 */
--
--	mutex_lock(&gdrm->damage_lock);
--	if (!gdrm->fb) {
--		drm_framebuffer_get(fb);
--		gdrm->fb = fb;
--	}
--	gud_add_damage(gdrm, damage);
--	mutex_unlock(&gdrm->damage_lock);
--
--	/* Retry only once to avoid a possible storm in case of continues errors. */
--	if (!gdrm->prev_flush_failed)
--		queue_work(system_long_wq, &gdrm->work);
--	gdrm->prev_flush_failed = true;
--}
--
- void gud_flush_work(struct work_struct *work)
- {
- 	struct gud_device *gdrm = container_of(work, struct gud_device, work);
-@@ -407,14 +376,10 @@ void gud_flush_work(struct work_struct *work)
- 		ret = gud_flush_rect(gdrm, fb, format, &rect);
- 		if (ret) {
- 			if (ret != -ENODEV && ret != -ECONNRESET &&
--			    ret != -ESHUTDOWN && ret != -EPROTO) {
--				bool prev_flush_failed = gdrm->prev_flush_failed;
--
--				gud_retry_failed_flush(gdrm, fb, &damage);
--				if (!prev_flush_failed)
--					dev_err_ratelimited(fb->dev->dev,
--							    "Failed to flush framebuffer: error=%d\n", ret);
--			}
++static void gud_flush_damage(struct gud_device *gdrm, struct drm_framebuffer *fb,
++			     struct drm_rect *damage)
++{
++	const struct drm_format_info *format;
++	unsigned int i, lines;
++	size_t pitch;
++	int ret;
++
++	format = fb->format;
++	if (format->format == DRM_FORMAT_XRGB8888 && gdrm->xrgb8888_emulation_format)
++		format = gdrm->xrgb8888_emulation_format;
++
++	/* Split update if it's too big */
++	pitch = drm_format_info_min_pitch(format, 0, drm_rect_width(damage));
++	lines = drm_rect_height(damage);
++
++	if (gdrm->bulk_len < lines * pitch)
++		lines = gdrm->bulk_len / pitch;
++
++	for (i = 0; i < DIV_ROUND_UP(drm_rect_height(damage), lines); i++) {
++		struct drm_rect rect = *damage;
++
++		rect.y1 += i * lines;
++		rect.y2 = min_t(u32, rect.y1 + lines, damage->y2);
++
++		ret = gud_flush_rect(gdrm, fb, format, &rect);
++		if (ret) {
++			if (ret != -ENODEV && ret != -ECONNRESET &&
 +			    ret != -ESHUTDOWN && ret != -EPROTO)
 +				dev_err_ratelimited(fb->dev->dev,
 +						    "Failed to flush framebuffer: error=%d\n", ret);
 +			gdrm->prev_flush_failed = true;
- 			break;
- 		}
++			break;
++		}
++	}
++}
++
+ void gud_flush_work(struct work_struct *work)
+ {
+ 	struct gud_device *gdrm = container_of(work, struct gud_device, work);
+-	const struct drm_format_info *format;
+ 	struct drm_framebuffer *fb;
+ 	struct drm_rect damage;
+-	unsigned int i, lines;
+-	int idx, ret = 0;
+-	size_t pitch;
++	int idx;
  
-@@ -439,7 +404,10 @@ static void gud_fb_queue_damage(struct gud_device *gdrm, struct drm_framebuffer
- 		gdrm->fb = fb;
- 	}
+ 	if (!drm_dev_enter(&gdrm->drm, &idx))
+ 		return;
+@@ -356,35 +390,7 @@ void gud_flush_work(struct work_struct *work)
+ 	if (!fb)
+ 		goto out;
  
--	gud_add_damage(gdrm, damage);
-+	gdrm->damage.x1 = min(gdrm->damage.x1, damage->x1);
-+	gdrm->damage.y1 = min(gdrm->damage.y1, damage->y1);
-+	gdrm->damage.x2 = max(gdrm->damage.x2, damage->x2);
-+	gdrm->damage.y2 = max(gdrm->damage.y2, damage->y2);
+-	format = fb->format;
+-	if (format->format == DRM_FORMAT_XRGB8888 && gdrm->xrgb8888_emulation_format)
+-		format = gdrm->xrgb8888_emulation_format;
+-
+-	/* Split update if it's too big */
+-	pitch = drm_format_info_min_pitch(format, 0, drm_rect_width(&damage));
+-	lines = drm_rect_height(&damage);
+-
+-	if (gdrm->bulk_len < lines * pitch)
+-		lines = gdrm->bulk_len / pitch;
+-
+-	for (i = 0; i < DIV_ROUND_UP(drm_rect_height(&damage), lines); i++) {
+-		struct drm_rect rect = damage;
+-
+-		rect.y1 += i * lines;
+-		rect.y2 = min_t(u32, rect.y1 + lines, damage.y2);
+-
+-		ret = gud_flush_rect(gdrm, fb, format, &rect);
+-		if (ret) {
+-			if (ret != -ENODEV && ret != -ECONNRESET &&
+-			    ret != -ESHUTDOWN && ret != -EPROTO)
+-				dev_err_ratelimited(fb->dev->dev,
+-						    "Failed to flush framebuffer: error=%d\n", ret);
+-			gdrm->prev_flush_failed = true;
+-			break;
+-		}
+-
+-		gdrm->prev_flush_failed = false;
+-	}
++	gud_flush_damage(gdrm, fb, &damage);
  
- 	mutex_unlock(&gdrm->damage_lock);
- 
+ 	drm_framebuffer_put(fb);
+ out:
 
 -- 
 b4 0.10.1
