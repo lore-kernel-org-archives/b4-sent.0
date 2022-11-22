@@ -1,91 +1,114 @@
 From: =?utf-8?q?Noralf=20Tr=C3=B8nnes?= <noralf@tronnes.org>
-Date: Tue, 22 Nov 2022 21:58:40 +0100
-Subject: [PATCH 2/6] drm/gud: Fix UBSAN warning
+Date: Tue, 22 Nov 2022 21:58:41 +0100
+Subject: [PATCH 3/6] drm/gud: Don't retry a failed framebuffer flush
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain; charset="utf-8"
-Message-Id: <20221122-gud-shadow-plane-v1-2-9de3afa3383e@tronnes.org>
+Message-Id: <20221122-gud-shadow-plane-v1-3-9de3afa3383e@tronnes.org>
 References: <20221122-gud-shadow-plane-v1-0-9de3afa3383e@tronnes.org>
 In-Reply-To: <20221122-gud-shadow-plane-v1-0-9de3afa3383e@tronnes.org>
 To: Thomas Zimmermann <tzimmermann@suse.de>, stable@vger.kernel.org, Dave Airlie <airlied@redhat.com>,
  dri-devel@lists.freedesktop.org, Hans de Goede <hdegoede@redhat.com>, Noralf Trønnes <noralf@tronnes.org>,
  Maxime Ripard <mripard@kernel.org>, Javier Martinez Canillas <javierm@redhat.com>
 X-Mailer: b4 0.10.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1669150743; l=3198;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1669150743; l=3318;
  i=noralf@tronnes.org; s=20221122; h=from:subject:message-id;
- bh=ogMSE9EsFPrqPZEUwysXH8lyHyy6tDQqqNui2sxir30=;
- b=sDJN+srNmYtspJkZWFj6PEgW4229F2NCN9iGDnbPOYeOByMep7wr3ivfINEEM1pOnTM2pPn4nXMf
- p0jdQ7xzAAiUOCw1dLGEq+zwwmuVJBdb5yHrye32YbplHZn8wel/
+ bh=WoqUfaV4qOjeTTioJmv/b108ZXmqpkiwyL9e90U7xn4=;
+ b=nYE9PBMqUPKK8i4e9wDK0dwNQT6OCA8Sf4UlCzZhgOzAxpNIT8ralswP032gdY4PPrR628/q4uaX
+ vbrD/g1RBsedTSdG6V89BgUtNt2krQ+W1DgjCtzRUwQ0ECQFDfYa
 X-Developer-Key: i=noralf@tronnes.org; a=ed25519;
  pk=0o9is4iddvvlrY3yON5SVtAbgPnVs0LfQsjfqR2Hvz8=
 X-Endpoint-Received: by B4 Submission Endpoint for noralf@tronnes.org/20221122 with auth_id=8
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-UBSAN complains about invalid value for bool:
+If a framebuffer flush fails the driver will do one retry by requeing the
+worker. Currently the worker is used even for synchronous flushing, but a
+later patch will inline it, so this needs to change. Thinking about how to
+solve this I came to the conclusion that this retry mechanism was a fix
+for a problem that was only in the mind of the developer (me) and not
+something that solved a real problem.
 
-[  101.165172] [drm] Initialized gud 1.0.0 20200422 for 2-3.2:1.0 on minor 1
-[  101.213360] gud 2-3.2:1.0: [drm] fb1: guddrmfb frame buffer device
-[  101.213426] usbcore: registered new interface driver gud
-[  101.989431] ================================================================================
-[  101.989441] UBSAN: invalid-load in /home/pi/linux/include/linux/iosys-map.h:253:9
-[  101.989447] load of value 121 is not a valid value for type '_Bool'
-[  101.989451] CPU: 1 PID: 455 Comm: kworker/1:6 Not tainted 5.18.0-rc5-gud-5.18-rc5 #3
-[  101.989456] Hardware name: Hewlett-Packard HP EliteBook 820 G1/1991, BIOS L71 Ver. 01.44 04/12/2018
-[  101.989459] Workqueue: events_long gud_flush_work [gud]
-[  101.989471] Call Trace:
-[  101.989474]  <TASK>
-[  101.989479]  dump_stack_lvl+0x49/0x5f
-[  101.989488]  dump_stack+0x10/0x12
-[  101.989493]  ubsan_epilogue+0x9/0x3b
-[  101.989498]  __ubsan_handle_load_invalid_value.cold+0x44/0x49
-[  101.989504]  dma_buf_vmap.cold+0x38/0x3d
-[  101.989511]  ? find_busiest_group+0x48/0x300
-[  101.989520]  drm_gem_shmem_vmap+0x76/0x1b0 [drm_shmem_helper]
-[  101.989528]  drm_gem_shmem_object_vmap+0x9/0xb [drm_shmem_helper]
-[  101.989535]  drm_gem_vmap+0x26/0x60 [drm]
-[  101.989594]  drm_gem_fb_vmap+0x47/0x150 [drm_kms_helper]
-[  101.989630]  gud_prep_flush+0xc1/0x710 [gud]
-[  101.989639]  ? _raw_spin_lock+0x17/0x40
-[  101.989648]  gud_flush_work+0x1e0/0x430 [gud]
-[  101.989653]  ? __switch_to+0x11d/0x470
-[  101.989664]  process_one_work+0x21f/0x3f0
-[  101.989673]  worker_thread+0x200/0x3e0
-[  101.989679]  ? rescuer_thread+0x390/0x390
-[  101.989684]  kthread+0xfd/0x130
-[  101.989690]  ? kthread_complete_and_exit+0x20/0x20
-[  101.989696]  ret_from_fork+0x22/0x30
-[  101.989706]  </TASK>
-[  101.989708] ================================================================================
+So let's remove this for now and revisit later should it become necessary.
+gud_add_damage() has now only one caller so it can be inlined.
 
-The source of this warning is in iosys_map_clear() called from
-dma_buf_vmap(). It conditionally sets values based on map->is_iomem. The
-iosys_map variables are allocated uninitialized on the stack leading to
-->is_iomem having all kinds of values and not only 0/1.
-
-Fix this by zeroing the iosys_map variables.
-
-Fixes: 40e1a70b4aed ("drm: Add GUD USB Display driver")
-Cc: <stable@vger.kernel.org> # v5.18+
 Signed-off-by: Noralf Trønnes <noralf@tronnes.org>
 ---
- drivers/gpu/drm/gud/gud_pipe.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/gud/gud_pipe.c | 48 +++++++-----------------------------------
+ 1 file changed, 8 insertions(+), 40 deletions(-)
 
 diff --git a/drivers/gpu/drm/gud/gud_pipe.c b/drivers/gpu/drm/gud/gud_pipe.c
-index 7c6dc2bcd14a..61f4abaf1811 100644
+index 61f4abaf1811..ff1358815af5 100644
 --- a/drivers/gpu/drm/gud/gud_pipe.c
 +++ b/drivers/gpu/drm/gud/gud_pipe.c
-@@ -157,8 +157,8 @@ static int gud_prep_flush(struct gud_device *gdrm, struct drm_framebuffer *fb,
+@@ -333,37 +333,6 @@ void gud_clear_damage(struct gud_device *gdrm)
+ 	gdrm->damage.y2 = 0;
+ }
+ 
+-static void gud_add_damage(struct gud_device *gdrm, struct drm_rect *damage)
+-{
+-	gdrm->damage.x1 = min(gdrm->damage.x1, damage->x1);
+-	gdrm->damage.y1 = min(gdrm->damage.y1, damage->y1);
+-	gdrm->damage.x2 = max(gdrm->damage.x2, damage->x2);
+-	gdrm->damage.y2 = max(gdrm->damage.y2, damage->y2);
+-}
+-
+-static void gud_retry_failed_flush(struct gud_device *gdrm, struct drm_framebuffer *fb,
+-				   struct drm_rect *damage)
+-{
+-	/*
+-	 * pipe_update waits for the worker when the display mode is going to change.
+-	 * This ensures that the width and height is still the same making it safe to
+-	 * add back the damage.
+-	 */
+-
+-	mutex_lock(&gdrm->damage_lock);
+-	if (!gdrm->fb) {
+-		drm_framebuffer_get(fb);
+-		gdrm->fb = fb;
+-	}
+-	gud_add_damage(gdrm, damage);
+-	mutex_unlock(&gdrm->damage_lock);
+-
+-	/* Retry only once to avoid a possible storm in case of continues errors. */
+-	if (!gdrm->prev_flush_failed)
+-		queue_work(system_long_wq, &gdrm->work);
+-	gdrm->prev_flush_failed = true;
+-}
+-
+ void gud_flush_work(struct work_struct *work)
  {
- 	struct dma_buf_attachment *import_attach = fb->obj[0]->import_attach;
- 	u8 compression = gdrm->compression;
--	struct iosys_map map[DRM_FORMAT_MAX_PLANES];
--	struct iosys_map map_data[DRM_FORMAT_MAX_PLANES];
-+	struct iosys_map map[DRM_FORMAT_MAX_PLANES] = { };
-+	struct iosys_map map_data[DRM_FORMAT_MAX_PLANES] = { };
- 	struct iosys_map dst;
- 	void *vaddr, *buf;
- 	size_t pitch, len;
+ 	struct gud_device *gdrm = container_of(work, struct gud_device, work);
+@@ -407,14 +376,10 @@ void gud_flush_work(struct work_struct *work)
+ 		ret = gud_flush_rect(gdrm, fb, format, &rect);
+ 		if (ret) {
+ 			if (ret != -ENODEV && ret != -ECONNRESET &&
+-			    ret != -ESHUTDOWN && ret != -EPROTO) {
+-				bool prev_flush_failed = gdrm->prev_flush_failed;
+-
+-				gud_retry_failed_flush(gdrm, fb, &damage);
+-				if (!prev_flush_failed)
+-					dev_err_ratelimited(fb->dev->dev,
+-							    "Failed to flush framebuffer: error=%d\n", ret);
+-			}
++			    ret != -ESHUTDOWN && ret != -EPROTO)
++				dev_err_ratelimited(fb->dev->dev,
++						    "Failed to flush framebuffer: error=%d\n", ret);
++			gdrm->prev_flush_failed = true;
+ 			break;
+ 		}
+ 
+@@ -439,7 +404,10 @@ static void gud_fb_queue_damage(struct gud_device *gdrm, struct drm_framebuffer
+ 		gdrm->fb = fb;
+ 	}
+ 
+-	gud_add_damage(gdrm, damage);
++	gdrm->damage.x1 = min(gdrm->damage.x1, damage->x1);
++	gdrm->damage.y1 = min(gdrm->damage.y1, damage->y1);
++	gdrm->damage.x2 = max(gdrm->damage.x2, damage->x2);
++	gdrm->damage.y2 = max(gdrm->damage.y2, damage->y2);
+ 
+ 	mutex_unlock(&gdrm->damage_lock);
+ 
 
 -- 
 b4 0.10.1
