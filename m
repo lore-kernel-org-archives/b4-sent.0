@@ -1,74 +1,51 @@
-Subject: [PATCH RESEND v10 0/2] Completely fake series
+From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Date: Wed, 30 Nov 2022 14:17:03 -0500
+Subject: [PATCH RESEND v10 1/2] arm64: defconfig: Enable devfreq cooling device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-Date: Wed, 30 Nov 2022 14:17:02 -0500
-Message-Id: <20220825-test-endpoint-send-2-v10-0-54367f64fb8c@linuxfoundation.org>
+Message-Id: <20220825-test-endpoint-send-2-v10-1-54367f64fb8c@linuxfoundation.org>
+References: <20220825-test-endpoint-send-2-v10-0-54367f64fb8c@linuxfoundation.org>
+In-Reply-To: <20220825-test-endpoint-send-2-v10-0-54367f64fb8c@linuxfoundation.org>
 To: Tésting Tést <mricon@kernel.org>
 X-Mailer: b4 0.11.0-dev-6404c
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1848;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=847;
  i=konstantin@linuxfoundation.org; h=from:subject:message-id;
- bh=pDvKQl4G3SNER7sX7qUVYgIIaU3khixpXU8FDrgAEwA=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJLb1xhmPMzPETzCq14mv3+22JnZqkn/mn6X1+7OlLCXmP5z
- ellKRykLgxgXg6yYIkvZvthNQYUPPeTSe0xh5rAygQxh4OIUgInULWL4p7r7cp/FGq0E0yl3rt4SXr
- lxu7NZ+rGDebZiLxz3vPm9h5OR4e3VZwvOd9dtuFF1Oyvp+evUnazh/1WFz5d4rElSjWvi5wQA
+ bh=XeHDnwhIC2Pa++gn1fltBElJbM1iEI5GuLVmTjhWhJA=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJLb1xgysm6dfa47c3amtOf9XP471v4yhhyhrLcMTjFo/Dyr
+ O8m6o5SFQYyLQVZMkaVsX+ymoMKHHnLpPaYwc1iZQIYwcHEKwEQqFjMytGwMvGozJaudlcmxqTzi8J
+ KNNuVdVak+agbyLe+EJq1XZvgrNCUx+Czzn23Ndm1t3+8WX93w1frO94pbE/ZveLvFKU2RGQA=
 X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
 X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-Another completely fake series to test b4 endpoint sending. Please
-ignore it -- it's a random set of patches that exists elsewhere.
+From: Clément Péron <peron.clem@gmail.com>
 
+Devfreq cooling device framework is used in Panfrost
+to throttle GPU in order to regulate its temperature.
+
+Enable this driver for ARM64 SoC.
+
+Signed-off-by: Clément Péron <peron.clem@gmail.com>
+Acked-by: Jernej Skrabec <jernej.skrabec@gmail.com>
 Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 ---
-Changes in v10:
-- No changes, just junk.
-- Link to v9: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v9-0-b88029795c86@linuxfoundation.org
-
-Changes in v9:
-- No changes, just junk.
-- Link to v8: https://lore.kernel.org/r/20220907130327.139757-1-jpanis@baylibre.com
-
-Changes in v8:
-- No changes, just junk.
-- Link to v7: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v7-0-cb9adabcb8df@linuxfoundation.org
-
-Changes in v7:
-- No changes, just junk
-- Link to v6: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v6-0-897ea7d26b87@linuxfoundation.org
-
-Changes in v6:
-- No changes, just junk.
-- Link to v5: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v5-0-9473e5c87f1a@linuxfoundation.org
-
-Changes in v5:
-- No changes, just junk.
-- Link to v4: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v4-0-30ef563fc249@linuxfoundation.org
-
-Changes in v4:
-- Rebased on v6.0-rc3
-- Link to v3: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v3-0-6e3357d699cd@linuxfoundation.org
-
-Changes in v2:
-- No changes
-- Link to v1: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v1-0-e732ebcaa48a@linuxfoundation.org
-
----
-Clément Péron (1):
-      arm64: defconfig: Enable devfreq cooling device
-
-Konstantin Ryabitsev (1):
-      Junk babootich
-
- Makefile                     | 2 +-
  arch/arm64/configs/defconfig | 1 +
- 2 files changed, 2 insertions(+), 1 deletion(-)
----
-base-commit: b90cb1053190353cc30f0fef0ef1f378ccc063c5
-change-id: 20220825-test-endpoint-send-2-c923fec10d0b
+ 1 file changed, 1 insertion(+)
 
-Best regards,
+diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
+index d5b2d2dd4904..109004e44d21 100644
+--- a/arch/arm64/configs/defconfig
++++ b/arch/arm64/configs/defconfig
+@@ -584,6 +584,7 @@ CONFIG_SENSORS_INA2XX=m
+ CONFIG_SENSORS_INA3221=m
+ CONFIG_THERMAL_GOV_POWER_ALLOCATOR=y
+ CONFIG_CPU_THERMAL=y
++CONFIG_DEVFREQ_THERMAL=y
+ CONFIG_THERMAL_EMULATION=y
+ CONFIG_IMX_SC_THERMAL=m
+ CONFIG_IMX8MM_THERMAL=m
+
 -- 
-Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+2.38.1
