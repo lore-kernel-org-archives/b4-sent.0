@@ -1,75 +1,93 @@
-Subject: [PATCH v2 0/6] drm/gud: Use the shadow plane helper
+From: Noralf Trønnes <noralf@tronnes.org>
+Date: Wed, 30 Nov 2022 20:26:49 +0100
+Subject: [PATCH v2 1/6] drm/gud: Fix UBSAN warning
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAHiuh2MC/32NQQrCMBBFr1KydqRJFFtX3kNcTDtjEygTybQVKb
- m7wQO4+rwP7//dKOfIaq7NbjJvUWOSCu7QmDGgTAyRKhvXOmetczCtBBqQ0hteMwoDsr9gf6YTdW
- SqNqAyDBllDFWUdZ5rGaIuKX9+N5utcf+zuFlooSf2+ETvO8+3JScR1mPKk3mUUr5o3D6rtwAAAA ==
-From: Noralf Trønnes <noralf@tronnes.org>
-Date: Wed, 30 Nov 2022 20:26:48 +0100
-Message-Id: <20221122-gud-shadow-plane-v2-0-435037990a83@tronnes.org>
+Message-Id: <20221122-gud-shadow-plane-v2-1-435037990a83@tronnes.org>
+References: <20221122-gud-shadow-plane-v2-0-435037990a83@tronnes.org>
+In-Reply-To: <20221122-gud-shadow-plane-v2-0-435037990a83@tronnes.org>
 To: Thomas Zimmermann <tzimmermann@suse.de>, Javier Martinez Canillas <javierm@redhat.com>,
  dri-devel@lists.freedesktop.org, Maxime Ripard <mripard@kernel.org>, stable@vger.kernel.org,
  Noralf Trønnes <noralf@tronnes.org>
 X-Mailer: b4 0.11.0-dev-cc6f6
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1669836415; l=1893;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1669836415; l=3300;
  i=noralf@tronnes.org; s=20221122; h=from:subject:message-id;
- bh=XGONUzrpJG3cabIJ/iio3JwrsnBPyUBQgL4MPUuLEjM=;
- b=FRbiv6TSsd500P09sjCmwqMbHCOsKrgz9/z4n4GqaYQE3AMTyQrRKQMDVtu9yrR5ui5TM31Y3xmo
- +ZVxG5AAA/1CnNUYmEeGBFbo8SZdJ3q2OxVAv0vG+j5Y2Ezshxh/
+ bh=PzSe1nnPqjEXoHU8M/VpXxhI5a+C9xTR6TXu27/NDkc=;
+ b=yT+ErcyFJVZW9kNrwpFsB7sGEK2idvseX80LS5xiton+0aVSKQvSkxz9uyTQM1uDW1zsy1FNJk14
+ D6VkzGFLA0S7E0+SRZ0zpj2JGnrjiIpHJAHLMzuEgsNeTr5Ouq+i
 X-Developer-Key: i=noralf@tronnes.org; a=ed25519;
  pk=0o9is4iddvvlrY3yON5SVtAbgPnVs0LfQsjfqR2Hvz8=
 X-Endpoint-Received: by B4 Submission Endpoint for noralf@tronnes.org/20221122 with auth_id=8
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-Hi,
+UBSAN complains about invalid value for bool:
 
-I have started to look at igt for testing and want to use CRC tests. To
-implement support for this I need to move away from the simple kms
-helper.
+[  101.165172] [drm] Initialized gud 1.0.0 20200422 for 2-3.2:1.0 on minor 1
+[  101.213360] gud 2-3.2:1.0: [drm] fb1: guddrmfb frame buffer device
+[  101.213426] usbcore: registered new interface driver gud
+[  101.989431] ================================================================================
+[  101.989441] UBSAN: invalid-load in linux/include/linux/iosys-map.h:253:9
+[  101.989447] load of value 121 is not a valid value for type '_Bool'
+[  101.989451] CPU: 1 PID: 455 Comm: kworker/1:6 Not tainted 5.18.0-rc5-gud-5.18-rc5 #3
+[  101.989456] Hardware name: Hewlett-Packard HP EliteBook 820 G1/1991, BIOS L71 Ver. 01.44 04/12/2018
+[  101.989459] Workqueue: events_long gud_flush_work [gud]
+[  101.989471] Call Trace:
+[  101.989474]  <TASK>
+[  101.989479]  dump_stack_lvl+0x49/0x5f
+[  101.989488]  dump_stack+0x10/0x12
+[  101.989493]  ubsan_epilogue+0x9/0x3b
+[  101.989498]  __ubsan_handle_load_invalid_value.cold+0x44/0x49
+[  101.989504]  dma_buf_vmap.cold+0x38/0x3d
+[  101.989511]  ? find_busiest_group+0x48/0x300
+[  101.989520]  drm_gem_shmem_vmap+0x76/0x1b0 [drm_shmem_helper]
+[  101.989528]  drm_gem_shmem_object_vmap+0x9/0xb [drm_shmem_helper]
+[  101.989535]  drm_gem_vmap+0x26/0x60 [drm]
+[  101.989594]  drm_gem_fb_vmap+0x47/0x150 [drm_kms_helper]
+[  101.989630]  gud_prep_flush+0xc1/0x710 [gud]
+[  101.989639]  ? _raw_spin_lock+0x17/0x40
+[  101.989648]  gud_flush_work+0x1e0/0x430 [gud]
+[  101.989653]  ? __switch_to+0x11d/0x470
+[  101.989664]  process_one_work+0x21f/0x3f0
+[  101.989673]  worker_thread+0x200/0x3e0
+[  101.989679]  ? rescuer_thread+0x390/0x390
+[  101.989684]  kthread+0xfd/0x130
+[  101.989690]  ? kthread_complete_and_exit+0x20/0x20
+[  101.989696]  ret_from_fork+0x22/0x30
+[  101.989706]  </TASK>
+[  101.989708] ================================================================================
 
-When looking around for examples I came across Thomas' nice shadow
-helper and thought, yes this is perfect for drm/gud. So I'll switch to
-that before I move away from the simple kms helper.
+The source of this warning is in iosys_map_clear() called from
+dma_buf_vmap(). It conditionally sets values based on map->is_iomem. The
+iosys_map variables are allocated uninitialized on the stack leading to
+->is_iomem having all kinds of values and not only 0/1.
 
-The async framebuffer flushing code path now uses a shadow buffer and
-doesn't touch the framebuffer when it shouldn't. I have also taken the
-opportunity to inline the synchronous flush code path and make this the
-default flushing stategy.
+Fix this by zeroing the iosys_map variables.
 
-Noralf.
-
-Cc: Maxime Ripard <mripard@kernel.org>
-Cc: Thomas Zimmermann <tzimmermann@suse.de>
-Cc: dri-devel@lists.freedesktop.org
+Fixes: 40e1a70b4aed ("drm: Add GUD USB Display driver")
+Cc: <stable@vger.kernel.org> # v5.18+
+Reviewed-by: Javier Martinez Canillas <javierm@redhat.com>
+Reviewed-by: Thomas Zimmermann <tzimmermann@suse.de>
 Signed-off-by: Noralf Trønnes <noralf@tronnes.org>
-
 ---
-Changes in v2:
-- Drop patch (Thomas):
-  drm/gem: shadow_fb_access: Prepare imported buffers for CPU access
-- Use src as variable name for iosys_map (Thomas)
-- Prepare imported buffer for CPU access in the driver (Thomas)
-- New patch: make sync flushing the default (Thomas)
-- Link to v1: https://lore.kernel.org/r/20221122-gud-shadow-plane-v1-0-9de3afa3383e@tronnes.org
+ drivers/gpu/drm/gud/gud_pipe.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
----
-Noralf Trønnes (6):
-      drm/gud: Fix UBSAN warning
-      drm/gud: Don't retry a failed framebuffer flush
-      drm/gud: Split up gud_flush_work()
-      drm/gud: Prepare buffer for CPU access in gud_flush_work()
-      drm/gud: Use the shadow plane helper
-      drm/gud: Enable synchronous flushing by default
+diff --git a/drivers/gpu/drm/gud/gud_pipe.c b/drivers/gpu/drm/gud/gud_pipe.c
+index 7c6dc2bcd14a..61f4abaf1811 100644
+--- a/drivers/gpu/drm/gud/gud_pipe.c
++++ b/drivers/gpu/drm/gud/gud_pipe.c
+@@ -157,8 +157,8 @@ static int gud_prep_flush(struct gud_device *gdrm, struct drm_framebuffer *fb,
+ {
+ 	struct dma_buf_attachment *import_attach = fb->obj[0]->import_attach;
+ 	u8 compression = gdrm->compression;
+-	struct iosys_map map[DRM_FORMAT_MAX_PLANES];
+-	struct iosys_map map_data[DRM_FORMAT_MAX_PLANES];
++	struct iosys_map map[DRM_FORMAT_MAX_PLANES] = { };
++	struct iosys_map map_data[DRM_FORMAT_MAX_PLANES] = { };
+ 	struct iosys_map dst;
+ 	void *vaddr, *buf;
+ 	size_t pitch, len;
 
- drivers/gpu/drm/gud/gud_drv.c      |   1 +
- drivers/gpu/drm/gud/gud_internal.h |   1 +
- drivers/gpu/drm/gud/gud_pipe.c     | 222 ++++++++++++++++++-------------------
- 3 files changed, 112 insertions(+), 112 deletions(-)
----
-base-commit: 7257702951305b1f0259c3468c39fc59d1ad4d8b
-change-id: 20221122-gud-shadow-plane-ae37a95d4d8d
-
-Best regards,
 -- 
-Noralf Trønnes <noralf@tronnes.org>
+2.34.1
