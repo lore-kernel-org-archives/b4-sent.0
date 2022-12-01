@@ -1,69 +1,74 @@
-From: Noralf Trønnes <noralf@tronnes.org>
-Date: Wed, 30 Nov 2022 20:26:54 +0100
-Subject: [PATCH v2 6/6] drm/gud: Enable synchronous flushing by default
+Subject: [PATCH RESEND v10 0/2] Completely fake series
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20221122-gud-shadow-plane-v2-6-435037990a83@tronnes.org>
-References: <20221122-gud-shadow-plane-v2-0-435037990a83@tronnes.org>
-In-Reply-To: <20221122-gud-shadow-plane-v2-0-435037990a83@tronnes.org>
-To: Thomas Zimmermann <tzimmermann@suse.de>, Javier Martinez Canillas <javierm@redhat.com>,
- dri-devel@lists.freedesktop.org, Maxime Ripard <mripard@kernel.org>, stable@vger.kernel.org,
- Noralf Trønnes <noralf@tronnes.org>
-X-Mailer: b4 0.11.0-dev-cc6f6
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1669836415; l=2023;
- i=noralf@tronnes.org; s=20221122; h=from:subject:message-id;
- bh=h2o+XqMBQHUWEJfpLcc+HZU/hC6MAxxmg8TWrtkZl5c=;
- b=PVR2ctkGVWUaqtpGxbUgZ6431+rt3RQPRUMnZWnZ7iu59dZF437cyLiFf+lDYBYV9Ety0wLM71xE
- NwFjFV4RAr/uKnDq6ZbyeWe5J2FCEiZAER7z/jH+5e/qUwVYAyjZ
-X-Developer-Key: i=noralf@tronnes.org; a=ed25519;
- pk=0o9is4iddvvlrY3yON5SVtAbgPnVs0LfQsjfqR2Hvz8=
-X-Endpoint-Received: by B4 Submission Endpoint for noralf@tronnes.org/20221122 with auth_id=8
+From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Date: Thu, 01 Dec 2022 14:45:12 -0500
+Message-Id: <20220825-test-endpoint-send-2-v10-0-3dc263da9082@linuxfoundation.org>
+To: =?utf-8?q?T=C3=A9sting_T=C3=A9st?= <mricon@kernel.org>
+X-Mailer: b4 0.11.0-dev-6404c
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1848;
+ i=konstantin@linuxfoundation.org; h=from:subject:message-id;
+ bh=pDvKQl4G3SNER7sX7qUVYgIIaU3khixpXU8FDrgAEwA=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJI7Wbxn8asfqn7/T2PJsk3LPxrahtSkz2++NIeP84bTf51p
+ JSsndpSyMIhxMciKKbKU7YvdFFT40EMuvccUZg4rE8gQBi5OAZhI7ByGf1o6k2O7ukVunVRfeGSVye
+ pTL56e1VGJilD/l/bp/Ua1r6EM/+sKFWcIvbYWVxfe/HdNgHXRwbasaY2LInsXrNErORj6ghkA
+X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
+ fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
+X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-gud has a module parameter that controls whether framebuffer flushing
-happens synchronously during the commit or asynchronously in a worker.
+Another completely fake series to test b4 endpoint sending. Please
+ignore it -- it's a random set of patches that exists elsewhere.
 
-GNOME before version 3.38 handled all displays in the same rendering loop.
-This lead to gud slowing down the refresh rate for a faster monitor. This
-has now been fixed so lets change the default.
-
-The plan is to remove async flushing in the future. The code is now
-structured in a way that makes it easy to do this.
-
-Link: https://blogs.gnome.org/shell-dev/2020/07/02/splitting-up-the-frame-clock/
-Suggested-by: Thomas Zimmermann <tzimmermann@suse.de>
-Signed-off-by: Noralf Trønnes <noralf@tronnes.org>
+Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 ---
- drivers/gpu/drm/gud/gud_pipe.c | 12 ++++--------
- 1 file changed, 4 insertions(+), 8 deletions(-)
+Changes in v10:
+- No changes, just junk.
+- Link to v9: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v9-0-b88029795c86@linuxfoundation.org
 
-diff --git a/drivers/gpu/drm/gud/gud_pipe.c b/drivers/gpu/drm/gud/gud_pipe.c
-index 92189474a7ed..62c43d3632d4 100644
---- a/drivers/gpu/drm/gud/gud_pipe.c
-+++ b/drivers/gpu/drm/gud/gud_pipe.c
-@@ -25,17 +25,13 @@
- #include "gud_internal.h"
- 
- /*
-- * Some userspace rendering loops runs all displays in the same loop.
-+ * Some userspace rendering loops run all displays in the same loop.
-  * This means that a fast display will have to wait for a slow one.
-- * For this reason gud does flushing asynchronous by default.
-- * The down side is that in e.g. a single display setup userspace thinks
-- * the display is insanely fast since the driver reports back immediately
-- * that the flush/pageflip is done. This wastes CPU and power.
-- * Such users might want to set this module parameter to false.
-+ * Such users might want to enable this module parameter.
-  */
--static bool gud_async_flush = true;
-+static bool gud_async_flush;
- module_param_named(async_flush, gud_async_flush, bool, 0644);
--MODULE_PARM_DESC(async_flush, "Enable asynchronous flushing [default=true]");
-+MODULE_PARM_DESC(async_flush, "Enable asynchronous flushing [default=0]");
- 
- /*
-  * FIXME: The driver is probably broken on Big Endian machines.
+Changes in v9:
+- No changes, just junk.
+- Link to v8: https://lore.kernel.org/r/20220907130327.139757-1-jpanis@baylibre.com
 
+Changes in v8:
+- No changes, just junk.
+- Link to v7: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v7-0-cb9adabcb8df@linuxfoundation.org
+
+Changes in v7:
+- No changes, just junk
+- Link to v6: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v6-0-897ea7d26b87@linuxfoundation.org
+
+Changes in v6:
+- No changes, just junk.
+- Link to v5: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v5-0-9473e5c87f1a@linuxfoundation.org
+
+Changes in v5:
+- No changes, just junk.
+- Link to v4: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v4-0-30ef563fc249@linuxfoundation.org
+
+Changes in v4:
+- Rebased on v6.0-rc3
+- Link to v3: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v3-0-6e3357d699cd@linuxfoundation.org
+
+Changes in v2:
+- No changes
+- Link to v1: https://lore.kernel.org/r/20220825-test-endpoint-send-2-v1-0-e732ebcaa48a@linuxfoundation.org
+
+---
+Clément Péron (1):
+      arm64: defconfig: Enable devfreq cooling device
+
+Konstantin Ryabitsev (1):
+      Junk babootich
+
+ Makefile                     | 2 +-
+ arch/arm64/configs/defconfig | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+---
+base-commit: b90cb1053190353cc30f0fef0ef1f378ccc063c5
+change-id: 20220825-test-endpoint-send-2-c923fec10d0b
+
+Best regards,
 -- 
-2.34.1
+Konstantin Ryabitsev <konstantin@linuxfoundation.org>
