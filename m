@@ -1,44 +1,41 @@
-From: Konstantin =?utf-8?q?Ry=C3=A0bitsev?= <mricon@gmail.com>
-Date: Thu, 01 Dec 2022 16:04:51 -0500
-Subject: [PATCH RESEND v11 2/2] Junk babootich
+Subject: [PATCH RFC bupkes 0/2] Another completely bogus series, ignore
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20220825-test-endpoint-send-2-v11-2-ac6c8bd3211c@gmail.com>
-References: <20220825-test-endpoint-send-2-v11-0-ac6c8bd3211c@gmail.com>
-In-Reply-To: <20220825-test-endpoint-send-2-v11-0-ac6c8bd3211c@gmail.com>
-To: =?utf-8?q?T=C3=A9sting_T=C3=A9st?= <mricon@kernel.org>
-X-Mailer: b4 0.11.0-dev-6404c
-X-Developer-Signature: v=1; a=openpgp-sha256; l=518; i=mricon@gmail.com;
- h=from:subject:message-id; bh=wP8axK3Fj0dMaLLAcedWCWthBqyomrzaO88azX/HUBI=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJI7xX5wsb16JnZw059zs6qn765xmhrzg585MLz89MnphqeV
- et2dO0pZGMS4GGTFFFnK9sVuCip86CGX3mMKM4eVCWQIAxenAEyk6STDH/6ktxbN9w/Pe92zmNnb0+
- z29rc3d+o9PhEp/2LSk5C0ih0M/7TcLjXN0JIxaCjp5X51dunpJC/WeytUeJSCy6z8kq01eAE=
-X-Developer-Key: i=mricon@gmail.com; a=openpgp;
+X-B4-Tracking: v=1; b=H4sIACdojmMC/x2NwQqDQAxEf0VybmA3ILa9FvoBvZYeNhp1KV0lqU UQ/73rHh8zb2YDE41icK02UPlFi1PK4E8VtGNIg2DsMgM5Ik+uRl7mtxjyNCyG5951XPuG3MVDVj iYIGtI7XhIn2Bf0SOYVfq4lp8nPO63Ui5L8Nr3PzaPTXSGAAAA
+From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Date: Mon, 05 Dec 2022 16:52:39 -0500
+Message-Id: <20221205-bupkes-bogus-v1-0-89a054d233c8@linuxfoundation.org>
+To: mricon@kernel.org
+X-Mailer: b4 0.11.0-dev-cb489
+X-Developer-Signature: v=1; a=openpgp-sha256; l=521;
+ i=konstantin@linuxfoundation.org; h=from:subject:message-id;
+ bh=pPKc7iQWB9xsP9dtKakOsscc9SD3r7Pahu0jIcQCkyg=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJL7MnSXeNkmnvigbVxxVsN8+RL3xdo3rj7k1gtneMqoczgg
+ yfl8RykLgxgXg6yYIkvZvthNQYUPPeTSe0xh5rAygQxh4OIUgIlM/sDwh/ev2nOvZfEH/x/XvH7xsg
+ KT+uF1OmvT+9b+8nw5VTdG9wcjw7LZr4N3fQub/fFMws7zxoeE41Pb8hr/JgYuS78Relp6Gi8A
+X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
-X-Endpoint-Received: by B4 Submission Endpoint for mricon@gmail.com/default with auth_id=10
+X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-This is junk.
+This is a bogus series. It has no purpose other than testing b4
+functionality
 
-Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Signed-off-by: Konstantin Ryabitsev <mricon@kernel.org>
+
 ---
+Konstantin Ryabitsev (2):
+      Makefile: Make it a ninja penguin
+      Rename linux into pengux
+
  Makefile | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ README   | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+---
+base-commit: bce9332220bd677d83b19d21502776ad555a0e73
+change-id: 20221205-bupkes-bogus-8f0db5172091
 
-diff --git a/Makefile b/Makefile
-index 952d354069a4..114b14101182 100644
---- a/Makefile
-+++ b/Makefile
-@@ -3,7 +3,7 @@ VERSION = 6
- PATCHLEVEL = 0
- SUBLEVEL = 0
- EXTRAVERSION = -rc3
--NAME = Hurr durr I'ma ninja sloth
-+NAME = Hurr durr I'ma ninja pirate
- 
- # *DOCUMENTATION*
- # To see a list of typical targets execute "make help"
-
+Best regards,
 -- 
-2.38.1
+Konstantin Ryabitsev <konstantin@linuxfoundation.org>
