@@ -1,48 +1,63 @@
-From: Noralf =?utf-8?q?Tr=C3=B8nnes?= <noralf@tronnes.org>
-Date: Wed, 07 Dec 2022 20:51:25 +0100
-Subject: [PATCH] drm/gud: Fix missing include
+Subject: [PATCH RFC v5 0/2] Another completely bogus series, ignore
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Message-Id: <20221207-gud-missing-include-v1-0-c5b32c9c59da@tronnes.org>
-To: dri-devel@lists.freedesktop.org, tzimmermann@suse.de, kernel test robot <lkp@intel.com>, Noralf =?utf-8?q?Tr=C3=B8nnes?= <noralf@tronnes.org>
-X-Mailer: b4 0.11.0-dev-b77ec
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1670442742; l=810;
- i=noralf@tronnes.org; s=20221122; h=from:subject:message-id;
- bh=Sy9oNM1AjyUtgivdSQfr1nLU6XGfgTofHWkK4Acvx/c=;
- b=xfIAU439zxo+rCQgXY2YaOisRrx2EEGtsCwZBhVm3sfsrE0JdIgJiYyFs2eebOVZcbAXyFRkcrdE
- /B8xFfsXAK7FN13RMs1HbLpFzyLD6ill3Gm8/8zDYuLAqDsztmhI
-X-Developer-Key: i=noralf@tronnes.org; a=ed25519;
- pk=0o9is4iddvvlrY3yON5SVtAbgPnVs0LfQsjfqR2Hvz8=
-X-Endpoint-Received: by B4 Submission Endpoint for noralf@tronnes.org/20221122 with auth_id=8
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAMz6kGMC/33OS27DIBAA0KtErEPEYENMV5Uq9QDdVlnwGduoLU Rgo1SR7x7sdeLVaH5v5k4yJo+ZvB3uJGHx2cdQE3E8EDvqMCD1ruaEM86BM0HNfP3BTE0c5ky7nj kj4MyZAlJXjM5ITdLBjuvSn84TprVxTdj723bnm3x9fqy1IsilhtHnKab/7YMC28DzYwUoo53STL SON43t3n99mG99nIPTU/37FNOwkYXvMbwyDs+ylWikAvmaafaYpjKWIyippMZOv2baPaZdGSN6QA ZWKHjOLMvyAJAO6J6rAQAA
+From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Date: Wed, 07 Dec 2022 15:42:52 -0500
+Message-Id: <20221205-bupkes-bogus-v5-0-9af8cfc6eb38@linuxfoundation.org>
+To: Linux Devver <konstantin.ryabitsev@linux.dev>, Coach K <coachk@hey.com>
+Cc: Le Castor Anxieux <k@castoranxieux.ca>, Dev Nuller <devnull@kernel.org>, Konstantin Ryabitsev <konstantin@linuxfoundation.org>, Googler Goog <mricon@gmail.com>
+X-Mailer: b4 0.11.0-dev-93339
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1425;
+ i=konstantin@linuxfoundation.org; h=from:subject:message-id;
+ bh=X/z5kyG7vmUagUPcD/KfHOGxlQd/49zYIq/S1dVjdyY=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJIn/Lr3PUnzZ4rLfbn9FSkye88dVjPWcr73WDrKeXV/gcl8
+ 4clTOkpZGMS4GGTFFFnK9sVuCip86CGX3mMKM4eVCWQIAxenAEykx4Phf9Q0uw2yu3cfEfxSy7g67s
+ euhfGnmF4GzWj6yPhJev4rORGG/xlSUhtOG+r23fr3gTtzdvAextKCrRV75kROvmK8desMdTYA
+X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
+ fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
+X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-Add missing vmalloc.h include.
+This is a bogus series. It has no purpose other than testing b4
+functionality. If you receive this email by error, please ignore it
+(it means I screwed something up).
 
-Fixes: c17d048609bf ("drm/gud: Use the shadow plane helper")
-Reported-by: kernel test robot <lkp@intel.com>
-Signed-off-by: Noralf Trønnes <noralf@tronnes.org>
+To: Linux Devver <konstantin.ryabitsev@linux.dev>
+To: Coach K <coachk@hey.com>
+Cc: Le Castor Anxieux <k@castoranxieux.ca>
+Cc: Dev Nuller <devnull@kernel.org>
+Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 ---
- drivers/gpu/drm/gud/gud_pipe.c | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v5:
+- No changes, just need a new revision
+- Link to v4: https://lore.kernel.org/r/20221205-bupkes-bogus-v4-0-cb5f1e01c591@linuxfoundation.org
 
-diff --git a/drivers/gpu/drm/gud/gud_pipe.c b/drivers/gpu/drm/gud/gud_pipe.c
-index 62c43d3632d4..dc16a92625d4 100644
---- a/drivers/gpu/drm/gud/gud_pipe.c
-+++ b/drivers/gpu/drm/gud/gud_pipe.c
-@@ -5,6 +5,7 @@
- 
- #include <linux/lz4.h>
- #include <linux/usb.h>
-+#include <linux/vmalloc.h>
- #include <linux/workqueue.h>
- 
- #include <drm/drm_atomic.h>
+Changes in v4:
+- No changes, just need a new revision
+- Link to v3: https://lore.kernel.org/r/20221205-bupkes-bogus-v3-0-c2e19696ae8a@linuxfoundation.org
+
+Changes in v3:
+- No changes, just need a new revision
+- Link to v2: https://lore.kernel.org/r/20221205-bupkes-bogus-v2-0-de7646eb6916@linuxfoundation.org
+
+Changes in v2:
+- No changes, just need a new revision
+- Link to v1: https://lore.kernel.org/r/20221205-bupkes-bogus-v1-0-89a054d233c8@linuxfoundation.org
 
 ---
-base-commit: 5ad8e63ebba3d5a0730b43180b200e41eeb9409c
-change-id: 20221207-gud-missing-include-9ccf56382f8a
+Konstantin Ryabitsev (2):
+      Makefile: Make it a ninja penguin
+      Rename linux into pengux
+
+ Makefile | 2 +-
+ README   | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+---
+base-commit: bce9332220bd677d83b19d21502776ad555a0e73
+change-id: 20221205-bupkes-bogus-8f0db5172091
 
 Best regards,
 -- 
-Noralf Trønnes <noralf@tronnes.org>
+Konstantin Ryabitsev <konstantin@linuxfoundation.org>
