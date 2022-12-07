@@ -1,46 +1,48 @@
-From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-Date: Wed, 07 Dec 2022 14:44:50 -0500
-Subject: [PATCH RFC v5 2/2] Rename linux into pengux
+From: Noralf =?utf-8?q?Tr=C3=B8nnes?= <noralf@tronnes.org>
+Date: Wed, 07 Dec 2022 20:46:30 +0100
+Subject: [PATCH] drm/gud: Fix missing include
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20221205-bupkes-bogus-v5-2-d317d78bfa5d@linuxfoundation.org>
-References: <20221205-bupkes-bogus-v5-0-d317d78bfa5d@linuxfoundation.org>
-In-Reply-To: <20221205-bupkes-bogus-v5-0-d317d78bfa5d@linuxfoundation.org>
-To: Linux Devver <konstantin.ryabitsev@linux.dev>, Coach K <coachk@hey.com>
-Cc: Le Castor Anxieux <k@castoranxieux.ca>, Dev Nuller <devnull@kernel.org>, Konstantin Ryabitsev <konstantin@linuxfoundation.org>, Googler Goog <mricon@gmail.com>
-X-Mailer: b4 0.11.0-dev-93339
-X-Developer-Signature: v=1; a=openpgp-sha256; l=551;
- i=konstantin@linuxfoundation.org; h=from:subject:message-id;
- bh=S6XGzjv5YZA8TZwLloqVXtlsJDoi3yXibWtGw7KGo78=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJInvDW80mZ2UWDaI+7X4Zf7G+7/3No17+R5AceQ9S7qDmZn
- t9q/6ihlYRDjYpAVU2Qp2xe7KajwoYdceo8pzBxWJpAhDFycAjCRBWsY/kfc+RBqcLT36b2ER5H/+X
- 6crCuZ13d5Q/EDLkGF6EDd2O0M/+uEinq/hhs/m7h8r+ujqYc4r18XV18RYGU0Nyn0+k/tcGYA
-X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
- fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
-X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Message-Id: <20221207-gud-missing-include-v1-0-4198a61ca407@tronnes.org>
+To: dri-devel@lists.freedesktop.org, tzimmermann@suse.de, kernel test robot <lkp@intel.com>, Noralf =?utf-8?q?Tr=C3=B8nnes?= <noralf@tronnes.org>
+X-Mailer: b4 0.11.0-dev-b77ec
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1670442392; l=810;
+ i=noralf@tronnes.org; s=20221122; h=from:subject:message-id;
+ bh=Sy9oNM1AjyUtgivdSQfr1nLU6XGfgTofHWkK4Acvx/c=;
+ b=TwhLOH08eaL1+2/WTtcygwCNCtUnHZJy8eGz8bWsDymRBTQdCY/RTmqi9B2Gaxi+Qu7mrH07Zm7U
+ 293DBsWzCOn6hnUtcJ3tLD6n0zt+IAKdZlLZ+ALTJcvjCuiBA0UC
+X-Developer-Key: i=noralf@tronnes.org; a=ed25519;
+ pk=0o9is4iddvvlrY3yON5SVtAbgPnVs0LfQsjfqR2Hvz8=
+X-Endpoint-Received: by B4 Submission Endpoint for noralf@tronnes.org/20221122 with auth_id=8
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-I want to make commits.
+Add missing vmalloc.h include.
 
-Cc: Googler Goog <mricon@gmail.com>
-Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Fixes: c17d048609bf ("drm/gud: Use the shadow plane helper")
+Reported-by: kernel test robot <lkp@intel.com>
+Signed-off-by: Noralf Trønnes <noralf@tronnes.org>
 ---
- README | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/gud/gud_pipe.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/README b/README
-index 669ac7c32292..fccb839e9a40 100644
---- a/README
-+++ b/README
-@@ -1,5 +1,5 @@
--Linux kernel
--============
-+Pengux kernel
-+=============
+diff --git a/drivers/gpu/drm/gud/gud_pipe.c b/drivers/gpu/drm/gud/gud_pipe.c
+index 62c43d3632d4..dc16a92625d4 100644
+--- a/drivers/gpu/drm/gud/gud_pipe.c
++++ b/drivers/gpu/drm/gud/gud_pipe.c
+@@ -5,6 +5,7 @@
  
- There are several guides for kernel developers and users. These guides can
- be rendered in a number of formats, like HTML and PDF. Please read
+ #include <linux/lz4.h>
+ #include <linux/usb.h>
++#include <linux/vmalloc.h>
+ #include <linux/workqueue.h>
+ 
+ #include <drm/drm_atomic.h>
 
+---
+base-commit: 5ad8e63ebba3d5a0730b43180b200e41eeb9409c
+change-id: 20221207-gud-missing-include-9ccf56382f8a
+
+Best regards,
 -- 
-2.38.1
+Noralf Trønnes <noralf@tronnes.org>
