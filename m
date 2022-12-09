@@ -1,46 +1,64 @@
 From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-Date: Wed, 07 Dec 2022 15:42:54 -0500
-Subject: [PATCH RFC v5 2/2] Rename linux into pengux
+Date: Fri, 09 Dec 2022 16:47:36 -0500
+Subject: [PATCH RFC foobar v3] Makefile: pirate > ninja
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20221205-bupkes-bogus-v5-2-9af8cfc6eb38@linuxfoundation.org>
-References: <20221205-bupkes-bogus-v5-0-9af8cfc6eb38@linuxfoundation.org>
-In-Reply-To: <20221205-bupkes-bogus-v5-0-9af8cfc6eb38@linuxfoundation.org>
-To: Linux Devver <konstantin.ryabitsev@linux.dev>, Coach K <coachk@hey.com>
-Cc: Le Castor Anxieux <k@castoranxieux.ca>, Dev Nuller <devnull@kernel.org>, Konstantin Ryabitsev <konstantin@linuxfoundation.org>, Googler Goog <mricon@gmail.com>
-X-Mailer: b4 0.11.0-dev-93339
-X-Developer-Signature: v=1; a=openpgp-sha256; l=551;
+Message-Id: <20220921-single-patch-v3-1-9cde759c1cbe@linuxfoundation.org>
+X-B4-Tracking: v=1; b=H4sIAPisk2MC/33OTQ7CIBAF4KsY1mJgqG1x5T2MC/5aSAgYaImm6 d2duFZXkzfJ+2Y2Ul0JrpLLYSPFtVBDThjE8UCMV2l2NFjMBBgAk8BpDWmOjj7UYjzlnekZqMlo KQlWtKqO6qKS8VhKa4y49KEuubw+JxrHcfuhNU45FedRqmEQwrL+GkNan1Nek1ULPnbKZSZ3JBv 8YwCZ0cgOdDdIsPo7s+/7G/hHMBn+AAAA
+To: Dev Nuller <devnull@kernel.org>, Castor Anxieux <k@castoranxieux.ca>, Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Cc: Kay Arr <konstantin.ryabitsev@linux.dev>
+X-Mailer: b4 0.11.0-dev-b33dc
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1181;
  i=konstantin@linuxfoundation.org; h=from:subject:message-id;
- bh=S6XGzjv5YZA8TZwLloqVXtlsJDoi3yXibWtGw7KGo78=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGJIn/LrnFH1D4e9Hxj0+QtvvMUffqzmhcaH0tNZcdanJ3Eqf
- trVN6yhlYRDjYpAVU2Qp2xe7KajwoYdceo8pzBxWJpAhDFycAjCRkFMM/9NZWTxWyxwT29f69t8fq3
- 0v/hbvspB7n3H1k/0Chu3JK1Yx/FOyvmV1aZ5Ho8JWa/Zta33Kb7m/ZRRbHZJ27PbZVu1PDVwA
+ bh=ZH2YCs2zT9RQFoQSDes8XrKFFrwa39ukT8+Rd9UYDKs=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGJInr2X9zp/hm5n7Ljn4/UTHee8qFuce1bTkVLjiKnaw409y
+ WKJhRykLgxgXg6yYIkvZvthNQYUPPeTSe0xh5rAygQxh4OIUgIlMyWD471wvbrSAa14JN+e/P27PTs
+ mwG3s0lT3m/bT1zCIVgQRND4b/FfsPcop/n8x7gm3ZncuRfPcnaPSJLnv1y3sqg7/dnAv2nAA=
 X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
 X-Endpoint-Received: by B4 Submission Endpoint for konstantin@linuxfoundation.org/default with auth_id=3
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-I want to make commits.
+Pirates are always better than ninjas.
 
-Cc: Googler Goog <mricon@gmail.com>
+Cc: Kay Arr <konstantin.ryabitsev@linux.dev>
 Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 ---
- README | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Here we include some extra info about the series.
+---
+Changes in v3:
+- No changes, just need a new revision
+- Link to v2: https://lore.kernel.org/r/20220921-single-patch-v2-1-8c942b4792db@linuxfoundation.org
 
-diff --git a/README b/README
-index 669ac7c32292..fccb839e9a40 100644
---- a/README
-+++ b/README
-@@ -1,5 +1,5 @@
--Linux kernel
--============
-+Pengux kernel
-+=============
+Changes in v2:
+- No changes, just need a new revision
+- Link to v1: https://lore.kernel.org/r/20220921-single-patch-v1-1-3589a7733d06@linuxfoundation.org
+
+Changes in v1:
+- Taken from junky stuff
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 0992f827888d..c61b4ecd6a7c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -3,7 +3,7 @@ VERSION = 6
+ PATCHLEVEL = 1
+ SUBLEVEL = 0
+ EXTRAVERSION = -rc8
+-NAME = Hurr durr I'ma ninja sloth
++NAME = Hurr durr I'ma pirate sloth
  
- There are several guides for kernel developers and users. These guides can
- be rendered in a number of formats, like HTML and PDF. Please read
+ # *DOCUMENTATION*
+ # To see a list of typical targets execute "make help"
 
+---
+base-commit: 76dcd734eca23168cb008912c0f69ff408905235
+change-id: 20220921-single-patch-14c602afcb99
+
+Best regards,
 -- 
-2.38.1
+Konstantin Ryabitsev <konstantin@linuxfoundation.org>
