@@ -1,11 +1,12 @@
 From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 07 Jan 2023 19:26:24 +0100
-Subject: [PATCH 10/15] staging: fbtft: core: Introduce backlight_is_blank()
+Date: Sat, 07 Jan 2023 19:26:25 +0100
+Subject: [PATCH 11/15] powerpc: via-pmu-backlight: Introduce
+ backlight_get_brightness()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Message-Id: 
- <20230107-sam-video-backlight-drop-fb_blank-v1-10-1bd9bafb351f@ravnborg.org>
+ <20230107-sam-video-backlight-drop-fb_blank-v1-11-1bd9bafb351f@ravnborg.org>
 References: 
  <20230107-sam-video-backlight-drop-fb_blank-v1-0-1bd9bafb351f@ravnborg.org>
 In-Reply-To: 
@@ -24,65 +25,47 @@ Cc: linux-fbdev@vger.kernel.org, dri-devel@lists.freedesktop.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-omap@vger.kernel.org, linux-staging@lists.linux.dev,
  linuxppc-dev@lists.ozlabs.org, Stephen Kitt <steve@sk2.org>,
- Sam Ravnborg <sam@ravnborg.org>, Thomas Zimmermann <tzimmermann@suse.de>,
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
- Javier Martinez Canillas <javierm@redhat.com>,
- Peter Suti <peter.suti@streamunlimited.com>
+ Sam Ravnborg <sam@ravnborg.org>
 X-Mailer: b4 0.11.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1673115978; l=1663;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1673115978; l=1090;
  i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=Wny8vn8SDkRFcw+Qd/s3t358GYJs/Zyqd9rf2tuHfYI=;
- b=pUFPIy6NmR07yB69L54dJFCXBLLZDCl3QadyGkyvIJRXwpp/cDw+au/L/QLDJM/P3+uhQAXfQqQh
- c5dV85FVDaufnLt7Gjhp/q9XLr2r6KxOVyTl6bK1oMF8wdtfOS7s
+ bh=lPqymbzfNTifpXa2QzoPI3zSglttX8N9s2/xbxu8aQ4=;
+ b=oM0VPahuDXBa8NICHQ0XEZfUD/cH3Cz8tGxqgZI94evf9mznv/gWoWJFlh9dpNlj1GiU49BWm0cl
+ g1Zmn+5lAV0k2VgXGHyPJ7cqtCg0PIxR/iXKZWAR3vZGmqh+vYaD
 X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
  pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
 X-Endpoint-Received: by B4 Submission Endpoint for sam@ravnborg.org/20230107 with auth_id=22
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-Avoiding direct access to backlight_properties.props.
-
-Access to the deprecated props.fb_blank replaced by backlight_is_blank().
-Access to props.power is dropped - it was only used for debug.
+Introduce backlight_get_brightness() to simplify logic
+and avoid direct access to backlight properties.
 
 Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
-Cc: Thomas Zimmermann <tzimmermann@suse.de>
-Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Cc: Javier Martinez Canillas <javierm@redhat.com>
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Benjamin Herrenschmidt <benh@kernel.crashing.org>
 Cc: Sam Ravnborg <sam@ravnborg.org>
-Cc: Stephen Kitt <steve@sk2.org>
-Cc: Peter Suti <peter.suti@streamunlimited.com>
-Cc: linux-fbdev@vger.kernel.org
+Cc: linuxppc-dev@lists.ozlabs.org
 ---
- drivers/staging/fbtft/fbtft-core.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ drivers/macintosh/via-pmu-backlight.c | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
 
-diff --git a/drivers/staging/fbtft/fbtft-core.c b/drivers/staging/fbtft/fbtft-core.c
-index afaba94d1d1c..1746327e1939 100644
---- a/drivers/staging/fbtft/fbtft-core.c
-+++ b/drivers/staging/fbtft/fbtft-core.c
-@@ -132,15 +132,15 @@ static int fbtft_backlight_update_status(struct backlight_device *bd)
+diff --git a/drivers/macintosh/via-pmu-backlight.c b/drivers/macintosh/via-pmu-backlight.c
+index 2194016122d2..c2d87e7fa85b 100644
+--- a/drivers/macintosh/via-pmu-backlight.c
++++ b/drivers/macintosh/via-pmu-backlight.c
+@@ -71,12 +71,7 @@ static int pmu_backlight_get_level_brightness(int level)
+ static int __pmu_backlight_update_status(struct backlight_device *bd)
  {
- 	struct fbtft_par *par = bl_get_data(bd);
- 	bool polarity = par->polarity;
-+	bool blank = backlight_is_blank(bd);
+ 	struct adb_request req;
+-	int level = bd->props.brightness;
+-
+-
+-	if (bd->props.power != FB_BLANK_UNBLANK ||
+-	    bd->props.fb_blank != FB_BLANK_UNBLANK)
+-		level = 0;
++	int level = backlight_get_brightness(bd);
  
--	fbtft_par_dbg(DEBUG_BACKLIGHT, par,
--		      "%s: polarity=%d, power=%d, fb_blank=%d\n",
--		      __func__, polarity, bd->props.power, bd->props.fb_blank);
-+	fbtft_par_dbg(DEBUG_BACKLIGHT, par, "%s: polarity=%d, blank=%d\n",
-+		      __func__, polarity, blank);
- 
--	if (!backlight_is_blank(bd))
--		gpiod_set_value(par->gpio.led[0], polarity);
--	else
-+	if (blank)
- 		gpiod_set_value(par->gpio.led[0], !polarity);
-+	else
-+		gpiod_set_value(par->gpio.led[0], polarity);
- 
- 	return 0;
- }
+ 	if (level > 0) {
+ 		int pmulevel = pmu_backlight_get_level_brightness(level);
 
 -- 
 2.34.1
