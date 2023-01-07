@@ -1,12 +1,12 @@
 From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 07 Jan 2023 19:26:22 +0100
+Date: Sat, 07 Jan 2023 19:26:23 +0100
 Subject: 
- [PATCH 08/15] video: fbdev: omap2: Introduce backlight_get_brightness()
+ [PATCH 09/15] staging: fbtft: fb_ssd1351.c: Introduce backlight_is_blank()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Message-Id: 
- <20230107-sam-video-backlight-drop-fb_blank-v1-8-1bd9bafb351f@ravnborg.org>
+ <20230107-sam-video-backlight-drop-fb_blank-v1-9-1bd9bafb351f@ravnborg.org>
 References: 
  <20230107-sam-video-backlight-drop-fb_blank-v1-0-1bd9bafb351f@ravnborg.org>
 In-Reply-To: 
@@ -25,135 +25,57 @@ Cc: linux-fbdev@vger.kernel.org, dri-devel@lists.freedesktop.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-omap@vger.kernel.org, linux-staging@lists.linux.dev,
  linuxppc-dev@lists.ozlabs.org, Stephen Kitt <steve@sk2.org>,
- Sam Ravnborg <sam@ravnborg.org>, Allison Randal <allison@lohutok.net>,
- Kate Stewart <kstewart@linuxfoundation.org>,
- Thomas Gleixner <tglx@linutronix.de>, Enrico Weigelt <info@metux.net>,
- Alexios Zavras <alexios.zavras@intel.com>
+ Sam Ravnborg <sam@ravnborg.org>,
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 X-Mailer: b4 0.11.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1673115978; l=3952;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1673115978; l=1470;
  i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=rBdlXn3SJoyXVGp9uzOjpAfLNvN20Ns2vzMuJ6kxYVQ=;
- b=Se0re9Bl1ixbeQqgTVCOFbfiMaV8wK5dyWiyyTDaZXRNHbQpUsMhAzYvPdOF7Fw51VxQ1DRCZitU
- +Z1PfROxCt3Qh2feioD4dKYYqFcvi1MHfgqxhL6GFEL5iOWFqHYg
+ bh=G6rOZdtEwpeQEO+0r3oVVgedO7Rz1feTEQR8eX27nq4=;
+ b=+S7h4F0wUNPp/JDzVLZhorRrHoeXoMU92DpeyUhmf+Ru9VbwxZ4HQL+EQ45PgrZJYvAfns99nGaz
+ +nssZXN1Aj803PnEukV8/v1tXrrRhgpXnDQN/jH9brZR1cK2eNGw
 X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
  pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
 X-Endpoint-Received: by B4 Submission Endpoint for sam@ravnborg.org/20230107 with auth_id=22
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-Introduce backlight_get_brightness() to simplify logic
-and avoid direct access to backlight properties.
+Avoiding direct access to backlight_properties.props.
+
+Access to the deprecated props.fb_blank replaced by backlight_is_blank().
+Access to props.power is dropped - it was only used for debug.
 
 Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
-Cc: Allison Randal <allison@lohutok.net>
-Cc: Sam Ravnborg <sam@ravnborg.org>
+Cc: Stephen Kitt <steve@sk2.org>
 Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Kate Stewart <kstewart@linuxfoundation.org>
-Cc: Thomas Gleixner <tglx@linutronix.de>
-Cc: Enrico Weigelt <info@metux.net>
-Cc: Alexios Zavras <alexios.zavras@intel.com>
+Cc: Daniel Thompson <daniel.thompson@linaro.org>
+Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: linux-fbdev@vger.kernel.org
 ---
- .../fbdev/omap2/omapfb/displays/panel-dsi-cm.c     | 19 +-----------------
- .../omap2/omapfb/displays/panel-sony-acx565akm.c   | 23 +++++++---------------
- 2 files changed, 8 insertions(+), 34 deletions(-)
+ drivers/staging/fbtft/fb_ssd1351.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/video/fbdev/omap2/omapfb/displays/panel-dsi-cm.c b/drivers/video/fbdev/omap2/omapfb/displays/panel-dsi-cm.c
-index a2c7c5cb1523..bd73aa5328c9 100644
---- a/drivers/video/fbdev/omap2/omapfb/displays/panel-dsi-cm.c
-+++ b/drivers/video/fbdev/omap2/omapfb/displays/panel-dsi-cm.c
-@@ -330,14 +330,8 @@ static int dsicm_bl_update_status(struct backlight_device *dev)
+diff --git a/drivers/staging/fbtft/fb_ssd1351.c b/drivers/staging/fbtft/fb_ssd1351.c
+index b8d55aa8c5c7..995fbd2f3dc6 100644
+--- a/drivers/staging/fbtft/fb_ssd1351.c
++++ b/drivers/staging/fbtft/fb_ssd1351.c
+@@ -190,15 +190,12 @@ static struct fbtft_display display = {
+ static int update_onboard_backlight(struct backlight_device *bd)
  {
- 	struct panel_drv_data *ddata = dev_get_drvdata(&dev->dev);
- 	struct omap_dss_device *in = ddata->in;
-+	int level = backlight_get_brightness(dev);
- 	int r;
--	int level;
--
--	if (dev->props.fb_blank == FB_BLANK_UNBLANK &&
--			dev->props.power == FB_BLANK_UNBLANK)
--		level = dev->props.brightness;
--	else
--		level = 0;
+ 	struct fbtft_par *par = bl_get_data(bd);
+-	bool on;
++	bool blank = backlight_is_blank(bd);
  
- 	dev_dbg(&ddata->pdev->dev, "update brightness to %d\n", level);
+-	fbtft_par_dbg(DEBUG_BACKLIGHT, par,
+-		      "%s: power=%d, fb_blank=%d\n",
+-		      __func__, bd->props.power, bd->props.fb_blank);
++	fbtft_par_dbg(DEBUG_BACKLIGHT, par, "%s: blank=%d\n", __func__, blank);
  
-@@ -360,17 +354,7 @@ static int dsicm_bl_update_status(struct backlight_device *dev)
- 	return r;
+-	on = !backlight_is_blank(bd);
+ 	/* Onboard backlight connected to GPIO0 on SSD1351, GPIO1 unused */
+-	write_reg(par, 0xB5, on ? 0x03 : 0x02);
++	write_reg(par, 0xB5, !blank ? 0x03 : 0x02);
+ 
+ 	return 0;
  }
- 
--static int dsicm_bl_get_intensity(struct backlight_device *dev)
--{
--	if (dev->props.fb_blank == FB_BLANK_UNBLANK &&
--			dev->props.power == FB_BLANK_UNBLANK)
--		return dev->props.brightness;
--
--	return 0;
--}
--
- static const struct backlight_ops dsicm_bl_ops = {
--	.get_brightness = dsicm_bl_get_intensity,
- 	.update_status  = dsicm_bl_update_status,
- };
- 
-@@ -1251,7 +1235,6 @@ static int dsicm_probe(struct platform_device *pdev)
- 
- 		ddata->bldev = bldev;
- 
--		bldev->props.fb_blank = FB_BLANK_UNBLANK;
- 		bldev->props.power = FB_BLANK_UNBLANK;
- 		bldev->props.brightness = 255;
- 
-diff --git a/drivers/video/fbdev/omap2/omapfb/displays/panel-sony-acx565akm.c b/drivers/video/fbdev/omap2/omapfb/displays/panel-sony-acx565akm.c
-index c0965bee12c5..c9c8f10e2e2f 100644
---- a/drivers/video/fbdev/omap2/omapfb/displays/panel-sony-acx565akm.c
-+++ b/drivers/video/fbdev/omap2/omapfb/displays/panel-sony-acx565akm.c
-@@ -337,16 +337,10 @@ static int acx565akm_get_actual_brightness(struct panel_drv_data *ddata)
- static int acx565akm_bl_update_status(struct backlight_device *dev)
- {
- 	struct panel_drv_data *ddata = dev_get_drvdata(&dev->dev);
--	int level;
-+	int level = backlight_get_brightness(dev);
- 
- 	dev_dbg(&ddata->spi->dev, "%s\n", __func__);
- 
--	if (dev->props.fb_blank == FB_BLANK_UNBLANK &&
--			dev->props.power == FB_BLANK_UNBLANK)
--		level = dev->props.brightness;
--	else
--		level = 0;
--
- 	if (ddata->has_bc)
- 		acx565akm_set_brightness(ddata, level);
- 	else
-@@ -364,15 +358,13 @@ static int acx565akm_bl_get_intensity(struct backlight_device *dev)
- 	if (!ddata->has_bc)
- 		return -ENODEV;
- 
--	if (dev->props.fb_blank == FB_BLANK_UNBLANK &&
--			dev->props.power == FB_BLANK_UNBLANK) {
--		if (ddata->has_bc)
--			return acx565akm_get_actual_brightness(ddata);
--		else
--			return dev->props.brightness;
--	}
-+	if (backlight_is_blank(dev))
-+		return 0;
- 
--	return 0;
-+	if (ddata->has_bc)
-+		return acx565akm_get_actual_brightness(ddata);
-+	else
-+		return backlight_get_brightness(dev);
- }
- 
- static int acx565akm_bl_update_status_locked(struct backlight_device *dev)
-@@ -795,7 +787,6 @@ static int acx565akm_probe(struct spi_device *spi)
- 	}
- 
- 	memset(&props, 0, sizeof(props));
--	props.fb_blank = FB_BLANK_UNBLANK;
- 	props.power = FB_BLANK_UNBLANK;
- 	props.type = BACKLIGHT_RAW;
- 
 
 -- 
 2.34.1
