@@ -1,12 +1,12 @@
 From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 07 Jan 2023 19:26:20 +0100
+Date: Sat, 07 Jan 2023 19:26:21 +0100
 Subject: 
- [PATCH 06/15] video: fbdev: aty128fb: Introduce backlight_get_brightness()
+ [PATCH 07/15] video: fbdev: mx3fb: Introduce backlight_get_brightness()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Message-Id: 
- <20230107-sam-video-backlight-drop-fb_blank-v1-6-1bd9bafb351f@ravnborg.org>
+ <20230107-sam-video-backlight-drop-fb_blank-v1-7-1bd9bafb351f@ravnborg.org>
 References: 
  <20230107-sam-video-backlight-drop-fb_blank-v1-0-1bd9bafb351f@ravnborg.org>
 In-Reply-To: 
@@ -25,13 +25,16 @@ Cc: linux-fbdev@vger.kernel.org, dri-devel@lists.freedesktop.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-omap@vger.kernel.org, linux-staging@lists.linux.dev,
  linuxppc-dev@lists.ozlabs.org, Stephen Kitt <steve@sk2.org>,
- Sam Ravnborg <sam@ravnborg.org>
+ Sam Ravnborg <sam@ravnborg.org>, Kate Stewart <kstewart@linuxfoundation.org>,
+ Thomas Gleixner <tglx@linutronix.de>,
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
+ Arnd Bergmann <arnd@arndb.de>, Jani Nikula <jani.nikula@intel.com>
 X-Mailer: b4 0.11.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1673115978; l=1162;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1673115978; l=1512;
  i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=n8Kx2XY+cYFmLkcdV5dyk6zjH/vhpqMDIzovg3Z1GFo=;
- b=qvKdgsM7OlWqGoR/P13Xavz5UkNGEdv1D6H6ewY0ou7Vszpmyqw86Gyff1CGVv3rHRS/v1qiPegZ
- IzxoKSMSBSuVXcEH8FTi9l2NNIUcaugLu4GMLSPyYepKLKiAsSsb
+ bh=drvkdW0PBheGrMYY3qAlAUiLqN5UfH4VOwcA/aXugg0=;
+ b=8iTbagfWb1Lj07cocG5qMfP8Ayj4BAQY4d64KWfzkOktfkyCN7IXzBwcj/9U/iJWYWB0GCaKShTH
+ 0OiuscjyAkCEJdcJGgJQX9THB3GVRSWeiPGBowlxgEHvu9p/2eio
 X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
  pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
 X-Endpoint-Received: by B4 Submission Endpoint for sam@ravnborg.org/20230107 with auth_id=22
@@ -41,36 +44,43 @@ Introduce backlight_get_brightness() to simplify logic
 and avoid direct access to backlight properties.
 
 Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
-Cc: Paul Mackerras <paulus@samba.org>
-Cc: linux-fbdev@vger.kernel.org
+Cc: Sam Ravnborg <sam@ravnborg.org>
+Cc: Kate Stewart <kstewart@linuxfoundation.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Arnd Bergmann <arnd@arndb.de>
+Cc: Jani Nikula <jani.nikula@intel.com>
 ---
- drivers/video/fbdev/aty/aty128fb.c | 11 ++---------
- 1 file changed, 2 insertions(+), 9 deletions(-)
+ drivers/video/fbdev/mx3fb.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
 
-diff --git a/drivers/video/fbdev/aty/aty128fb.c b/drivers/video/fbdev/aty/aty128fb.c
-index dd31b9d7d337..736126cc5049 100644
---- a/drivers/video/fbdev/aty/aty128fb.c
-+++ b/drivers/video/fbdev/aty/aty128fb.c
-@@ -1764,17 +1764,10 @@ static int aty128_bl_update_status(struct backlight_device *bd)
+diff --git a/drivers/video/fbdev/mx3fb.c b/drivers/video/fbdev/mx3fb.c
+index b945b68984b9..bc35f664cbff 100644
+--- a/drivers/video/fbdev/mx3fb.c
++++ b/drivers/video/fbdev/mx3fb.c
+@@ -283,12 +283,7 @@ static int mx3fb_bl_get_brightness(struct backlight_device *bl)
+ static int mx3fb_bl_update_status(struct backlight_device *bl)
  {
- 	struct aty128fb_par *par = bl_get_data(bd);
- 	unsigned int reg = aty_ld_le32(LVDS_GEN_CNTL);
--	int level;
+ 	struct mx3fb_data *fbd = bl_get_data(bl);
+-	int brightness = bl->props.brightness;
 -
--	if (bd->props.power != FB_BLANK_UNBLANK ||
--	    bd->props.fb_blank != FB_BLANK_UNBLANK ||
--	    !par->lcd_on)
--		level = 0;
--	else
--		level = bd->props.brightness;
-+	int level = backlight_get_brightness(bd);
+-	if (bl->props.power != FB_BLANK_UNBLANK)
+-		brightness = 0;
+-	if (bl->props.fb_blank != FB_BLANK_UNBLANK)
+-		brightness = 0;
++	int brightness = backlight_get_brightness(bl);
  
- 	reg |= LVDS_BL_MOD_EN | LVDS_BLON;
--	if (level > 0) {
-+	if (level > 0 || par->lcd_on) {
- 		reg |= LVDS_DIGION;
- 		if (!(reg & LVDS_ON)) {
- 			reg &= ~LVDS_BLON;
+ 	fbd->backlight_level = (fbd->backlight_level & ~0xFF) | brightness;
+ 
+@@ -325,7 +320,6 @@ static void mx3fb_init_backlight(struct mx3fb_data *fbd)
+ 
+ 	fbd->bl = bl;
+ 	bl->props.power = FB_BLANK_UNBLANK;
+-	bl->props.fb_blank = FB_BLANK_UNBLANK;
+ 	bl->props.brightness = mx3fb_bl_get_brightness(bl);
+ }
+ 
 
 -- 
 2.34.1
