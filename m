@@ -1,21 +1,21 @@
 From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 21 Jan 2023 21:08:36 +0100
-Subject: [PATCH 58/86] drm/meson: Direct include headers from
+Date: Sat, 21 Jan 2023 21:08:37 +0100
+Subject: [PATCH 59/86] drm/mgag200: Direct include headers from
  drm_atomic_helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230113-drm-include-v1-v1-58-c5cf72d8a5a2@ravnborg.org>
+Message-Id: <20230113-drm-include-v1-v1-59-c5cf72d8a5a2@ravnborg.org>
 References: <20230113-drm-include-v1-v1-0-c5cf72d8a5a2@ravnborg.org>
 In-Reply-To: <20230113-drm-include-v1-v1-0-c5cf72d8a5a2@ravnborg.org>
 To: dri-devel@lists.freedesktop.org
 Cc: Sam Ravnborg <sam@ravnborg.org>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1674331667; l=3972;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1674331667; l=5806;
  i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=jCwcsRpkVFtT7dpucK+cI3K65QI61fn2HIgeEMDX5ks=;
- b=GMeqZ19Mt/RT2ofJ+Zb7IdWMcpg1zJBYd6Y5Qzz66cvU7qO8ZInQxJkrg8fSnvymBNYB4dWUVN+f
- lpFrc3DBDU9fSCRyDXMVFg+ndcqN4XZ1+wNdGSs4jdHeH/5RRl8k
+ bh=Yp30o823nCAjBhXYe4vdspilb0UuUxwsNajR4U9I5Fs=;
+ b=Q4ZMsQrG0j5Ae+p8CRAfzLlU28G2JEJnqvOUILBU6O38sARG6EciWvHzqdQ8ZdBQN4MuzE9uevfl
+ e71QhZq4C0PYh11SEew6GeZSwTiQGilIPz8t3nMXDGgBaWWGztx2
 X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
  pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
 X-Endpoint-Received: by B4 Submission Endpoint for sam@ravnborg.org/20230107 with auth_id=22
@@ -27,105 +27,156 @@ include only the minimal set of headers.
 
 Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
 ---
- drivers/gpu/drm/meson/meson_crtc.c         | 3 +++
- drivers/gpu/drm/meson/meson_drv.c          | 1 +
- drivers/gpu/drm/meson/meson_encoder_cvbs.c | 1 +
- drivers/gpu/drm/meson/meson_encoder_hdmi.c | 1 +
- drivers/gpu/drm/meson/meson_overlay.c      | 2 ++
- drivers/gpu/drm/meson/meson_plane.c        | 2 ++
- 6 files changed, 10 insertions(+)
+ drivers/gpu/drm/mgag200/mgag200_g200.c    | 2 ++
+ drivers/gpu/drm/mgag200/mgag200_g200eh.c  | 2 ++
+ drivers/gpu/drm/mgag200/mgag200_g200eh3.c | 2 ++
+ drivers/gpu/drm/mgag200/mgag200_g200er.c  | 2 ++
+ drivers/gpu/drm/mgag200/mgag200_g200ev.c  | 2 ++
+ drivers/gpu/drm/mgag200/mgag200_g200ew3.c | 2 ++
+ drivers/gpu/drm/mgag200/mgag200_g200se.c  | 2 ++
+ drivers/gpu/drm/mgag200/mgag200_g200wb.c  | 2 ++
+ drivers/gpu/drm/mgag200/mgag200_mode.c    | 2 ++
+ 9 files changed, 18 insertions(+)
 
-diff --git a/drivers/gpu/drm/meson/meson_crtc.c b/drivers/gpu/drm/meson/meson_crtc.c
-index d70616da8ce2..d2f677ee13ef 100644
---- a/drivers/gpu/drm/meson/meson_crtc.c
-+++ b/drivers/gpu/drm/meson/meson_crtc.c
-@@ -13,7 +13,10 @@
- #include <linux/soc/amlogic/meson-canvas.h>
+diff --git a/drivers/gpu/drm/mgag200/mgag200_g200.c b/drivers/gpu/drm/mgag200/mgag200_g200.c
+index bf5d7fe525a3..646e17d7e1d2 100644
+--- a/drivers/gpu/drm/mgag200/mgag200_g200.c
++++ b/drivers/gpu/drm/mgag200/mgag200_g200.c
+@@ -5,8 +5,10 @@
  
+ #include <drm/drm_atomic.h>
  #include <drm/drm_atomic_helper.h>
 +#include <drm/drm_atomic_state_helper.h>
-+#include <drm/drm_crtc.h>
- #include <drm/drm_device.h>
+ #include <drm/drm_drv.h>
+ #include <drm/drm_gem_atomic_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_probe_helper.h>
+ 
+ #include "mgag200_drv.h"
+diff --git a/drivers/gpu/drm/mgag200/mgag200_g200eh.c b/drivers/gpu/drm/mgag200/mgag200_g200eh.c
+index fad62453a91d..bc75d711d833 100644
+--- a/drivers/gpu/drm/mgag200/mgag200_g200eh.c
++++ b/drivers/gpu/drm/mgag200/mgag200_g200eh.c
+@@ -5,8 +5,10 @@
+ 
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_drv.h>
+ #include <drm/drm_gem_atomic_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_probe_helper.h>
+ 
+ #include "mgag200_drv.h"
+diff --git a/drivers/gpu/drm/mgag200/mgag200_g200eh3.c b/drivers/gpu/drm/mgag200/mgag200_g200eh3.c
+index 0f7d8112cd49..4ef9dc37b4bc 100644
+--- a/drivers/gpu/drm/mgag200/mgag200_g200eh3.c
++++ b/drivers/gpu/drm/mgag200/mgag200_g200eh3.c
+@@ -4,8 +4,10 @@
+ 
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_drv.h>
+ #include <drm/drm_gem_atomic_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_probe_helper.h>
+ 
+ #include "mgag200_drv.h"
+diff --git a/drivers/gpu/drm/mgag200/mgag200_g200er.c b/drivers/gpu/drm/mgag200/mgag200_g200er.c
+index bce267e0f7de..bccf602c7ac8 100644
+--- a/drivers/gpu/drm/mgag200/mgag200_g200er.c
++++ b/drivers/gpu/drm/mgag200/mgag200_g200er.c
+@@ -5,8 +5,10 @@
+ 
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_drv.h>
+ #include <drm/drm_gem_atomic_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_probe_helper.h>
+ 
+ #include "mgag200_drv.h"
+diff --git a/drivers/gpu/drm/mgag200/mgag200_g200ev.c b/drivers/gpu/drm/mgag200/mgag200_g200ev.c
+index ac957f42abe1..fbf98a93d5c7 100644
+--- a/drivers/gpu/drm/mgag200/mgag200_g200ev.c
++++ b/drivers/gpu/drm/mgag200/mgag200_g200ev.c
+@@ -5,8 +5,10 @@
+ 
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_drv.h>
+ #include <drm/drm_gem_atomic_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_probe_helper.h>
+ 
+ #include "mgag200_drv.h"
+diff --git a/drivers/gpu/drm/mgag200/mgag200_g200ew3.c b/drivers/gpu/drm/mgag200/mgag200_g200ew3.c
+index 170934414d7d..16f745716394 100644
+--- a/drivers/gpu/drm/mgag200/mgag200_g200ew3.c
++++ b/drivers/gpu/drm/mgag200/mgag200_g200ew3.c
+@@ -4,8 +4,10 @@
+ 
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_drv.h>
+ #include <drm/drm_gem_atomic_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_probe_helper.h>
+ 
+ #include "mgag200_drv.h"
+diff --git a/drivers/gpu/drm/mgag200/mgag200_g200se.c b/drivers/gpu/drm/mgag200/mgag200_g200se.c
+index bd6e573c9a1a..e279f9d05c1e 100644
+--- a/drivers/gpu/drm/mgag200/mgag200_g200se.c
++++ b/drivers/gpu/drm/mgag200/mgag200_g200se.c
+@@ -5,8 +5,10 @@
+ 
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_drv.h>
+ #include <drm/drm_gem_atomic_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_probe_helper.h>
+ 
+ #include "mgag200_drv.h"
+diff --git a/drivers/gpu/drm/mgag200/mgag200_g200wb.c b/drivers/gpu/drm/mgag200/mgag200_g200wb.c
+index 9baa727ac6f9..bd4c1b630458 100644
+--- a/drivers/gpu/drm/mgag200/mgag200_g200wb.c
++++ b/drivers/gpu/drm/mgag200/mgag200_g200wb.c
+@@ -5,8 +5,10 @@
+ 
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_drv.h>
+ #include <drm/drm_gem_atomic_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_probe_helper.h>
+ 
+ #include "mgag200_drv.h"
+diff --git a/drivers/gpu/drm/mgag200/mgag200_mode.c b/drivers/gpu/drm/mgag200/mgag200_mode.c
+index 0a5aaf78172a..5ed071989910 100644
+--- a/drivers/gpu/drm/mgag200/mgag200_mode.c
++++ b/drivers/gpu/drm/mgag200/mgag200_mode.c
+@@ -13,12 +13,14 @@
+ 
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_damage_helper.h>
+ #include <drm/drm_format_helper.h>
+ #include <drm/drm_fourcc.h>
+ #include <drm/drm_framebuffer.h>
+ #include <drm/drm_gem_atomic_helper.h>
+ #include <drm/drm_gem_framebuffer_helper.h>
 +#include <drm/drm_modeset_helper_vtables.h>
  #include <drm/drm_print.h>
  #include <drm/drm_probe_helper.h>
- #include <drm/drm_vblank.h>
-diff --git a/drivers/gpu/drm/meson/meson_drv.c b/drivers/gpu/drm/meson/meson_drv.c
-index 79bfe3938d3c..eff20c9bfc7e 100644
---- a/drivers/gpu/drm/meson/meson_drv.c
-+++ b/drivers/gpu/drm/meson/meson_drv.c
-@@ -21,6 +21,7 @@
- #include <drm/drm_fbdev_generic.h>
- #include <drm/drm_gem_dma_helper.h>
- #include <drm/drm_gem_framebuffer_helper.h>
-+#include <drm/drm_modeset_helper.h>
- #include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_module.h>
- #include <drm/drm_probe_helper.h>
-diff --git a/drivers/gpu/drm/meson/meson_encoder_cvbs.c b/drivers/gpu/drm/meson/meson_encoder_cvbs.c
-index 3f73b211fa8e..6d3d9c53efa9 100644
---- a/drivers/gpu/drm/meson/meson_encoder_cvbs.c
-+++ b/drivers/gpu/drm/meson/meson_encoder_cvbs.c
-@@ -13,6 +13,7 @@
- #include <linux/of_graph.h>
  
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_bridge.h>
- #include <drm/drm_bridge_connector.h>
- #include <drm/drm_device.h>
-diff --git a/drivers/gpu/drm/meson/meson_encoder_hdmi.c b/drivers/gpu/drm/meson/meson_encoder_hdmi.c
-index 53231bfdf7e2..db27a59223b8 100644
---- a/drivers/gpu/drm/meson/meson_encoder_hdmi.c
-+++ b/drivers/gpu/drm/meson/meson_encoder_hdmi.c
-@@ -17,6 +17,7 @@
- #include <media/cec-notifier.h>
- 
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_bridge.h>
- #include <drm/drm_bridge_connector.h>
- #include <drm/drm_device.h>
-diff --git a/drivers/gpu/drm/meson/meson_overlay.c b/drivers/gpu/drm/meson/meson_overlay.c
-index 7f98de38842b..756b65dd63d2 100644
---- a/drivers/gpu/drm/meson/meson_overlay.c
-+++ b/drivers/gpu/drm/meson/meson_overlay.c
-@@ -9,6 +9,7 @@
- 
- #include <drm/drm_atomic.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_blend.h>
- #include <drm/drm_device.h>
- #include <drm/drm_fb_dma_helper.h>
-@@ -16,6 +17,7 @@
- #include <drm/drm_framebuffer.h>
- #include <drm/drm_gem_atomic_helper.h>
- #include <drm/drm_gem_dma_helper.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- 
- #include "meson_overlay.h"
- #include "meson_registers.h"
-diff --git a/drivers/gpu/drm/meson/meson_plane.c b/drivers/gpu/drm/meson/meson_plane.c
-index 815dfe30492b..f6b81d50738f 100644
---- a/drivers/gpu/drm/meson/meson_plane.c
-+++ b/drivers/gpu/drm/meson/meson_plane.c
-@@ -13,6 +13,7 @@
- 
- #include <drm/drm_atomic.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_blend.h>
- #include <drm/drm_device.h>
- #include <drm/drm_fb_dma_helper.h>
-@@ -20,6 +21,7 @@
- #include <drm/drm_framebuffer.h>
- #include <drm/drm_gem_atomic_helper.h>
- #include <drm/drm_gem_dma_helper.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- 
- #include "meson_plane.h"
- #include "meson_registers.h"
 
 -- 
 2.34.1
