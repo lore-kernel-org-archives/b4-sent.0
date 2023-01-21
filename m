@@ -1,21 +1,21 @@
 From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 21 Jan 2023 21:08:46 +0100
-Subject: [PATCH 68/86] drm/sprd: Direct include headers from
+Date: Sat, 21 Jan 2023 21:08:47 +0100
+Subject: [PATCH 69/86] drm/sti: Direct include headers from
  drm_atomic_helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230113-drm-include-v1-v1-68-c5cf72d8a5a2@ravnborg.org>
+Message-Id: <20230113-drm-include-v1-v1-69-c5cf72d8a5a2@ravnborg.org>
 References: <20230113-drm-include-v1-v1-0-c5cf72d8a5a2@ravnborg.org>
 In-Reply-To: <20230113-drm-include-v1-v1-0-c5cf72d8a5a2@ravnborg.org>
 To: dri-devel@lists.freedesktop.org
 Cc: Sam Ravnborg <sam@ravnborg.org>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1674331667; l=1880;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1674331667; l=5364;
  i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=1/75aVFE/jNOCmrkv1r2SWbKkiotoeNjncdsaURVeaM=;
- b=QnexHRtnbjI6Y82E0C9x+VG/pIMgzJY4kirOgsbsAy5jFPmC13LsB625/nj/7vz0BmssVCt9oCQp
- 1c4B2W3eAuKPkCPxlzVtHHVb0tegx3meXc4sJksv8id9T+5huZ2b
+ bh=hBXi3TseUAIaY1mOqQMEy+COUR00sgOpcd3o32Hs+wc=;
+ b=VlJrbTMcKMUjOJRAJeRTIULtlO1SO7KvTCu26BF+9ocm5TViyKfk/us/Sdc7wnHi5e5XUAm/8kI5
+ 1Dt53Iz/BAwWeIjhOCpfYfEr0EWQ5jhGBuiSta51xcaF7f2HbhAj
 X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
  pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
 X-Endpoint-Received: by B4 Submission Endpoint for sam@ravnborg.org/20230107 with auth_id=22
@@ -27,53 +27,159 @@ include only the minimal set of headers.
 
 Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
 ---
- drivers/gpu/drm/sprd/sprd_dpu.c | 2 ++
- drivers/gpu/drm/sprd/sprd_drm.c | 1 +
- drivers/gpu/drm/sprd/sprd_dsi.c | 1 +
- 3 files changed, 4 insertions(+)
+ drivers/gpu/drm/sti/sti_crtc.c   | 2 ++
+ drivers/gpu/drm/sti/sti_cursor.c | 2 ++
+ drivers/gpu/drm/sti/sti_dvo.c    | 2 ++
+ drivers/gpu/drm/sti/sti_gdp.c    | 2 ++
+ drivers/gpu/drm/sti/sti_hda.c    | 2 ++
+ drivers/gpu/drm/sti/sti_hdmi.c   | 2 ++
+ drivers/gpu/drm/sti/sti_hqvdp.c  | 2 ++
+ drivers/gpu/drm/sti/sti_tvout.c  | 1 +
+ drivers/gpu/drm/sti/sti_vid.c    | 1 +
+ 9 files changed, 16 insertions(+)
 
-diff --git a/drivers/gpu/drm/sprd/sprd_dpu.c b/drivers/gpu/drm/sprd/sprd_dpu.c
-index b96fc6837b0d..db8b9e75f260 100644
---- a/drivers/gpu/drm/sprd/sprd_dpu.c
-+++ b/drivers/gpu/drm/sprd/sprd_dpu.c
-@@ -17,11 +17,13 @@
- #include <linux/workqueue.h>
+diff --git a/drivers/gpu/drm/sti/sti_crtc.c b/drivers/gpu/drm/sti/sti_crtc.c
+index 3c7154f2d5f3..5887c7056a74 100644
+--- a/drivers/gpu/drm/sti/sti_crtc.c
++++ b/drivers/gpu/drm/sti/sti_crtc.c
+@@ -10,8 +10,10 @@
  
+ #include <drm/drm_atomic.h>
  #include <drm/drm_atomic_helper.h>
 +#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_blend.h>
+ #include <drm/drm_device.h>
+ #include <drm/drm_print.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_probe_helper.h>
+ #include <drm/drm_vblank.h>
+ 
+diff --git a/drivers/gpu/drm/sti/sti_cursor.c b/drivers/gpu/drm/sti/sti_cursor.c
+index db0a1eb53532..22bc2d0c4769 100644
+--- a/drivers/gpu/drm/sti/sti_cursor.c
++++ b/drivers/gpu/drm/sti/sti_cursor.c
+@@ -10,10 +10,12 @@
+ #include <linux/seq_file.h>
+ 
+ #include <drm/drm_atomic.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_device.h>
  #include <drm/drm_fb_dma_helper.h>
  #include <drm/drm_framebuffer.h>
  #include <drm/drm_gem_dma_helper.h>
- #include <drm/drm_gem_framebuffer_helper.h>
 +#include <drm/drm_modeset_helper_vtables.h>
  
- #include "sprd_drm.h"
- #include "sprd_dpu.h"
-diff --git a/drivers/gpu/drm/sprd/sprd_drm.c b/drivers/gpu/drm/sprd/sprd_drm.c
-index be60c0d546a3..0563b4ba1fdd 100644
---- a/drivers/gpu/drm/sprd/sprd_drm.c
-+++ b/drivers/gpu/drm/sprd/sprd_drm.c
-@@ -14,6 +14,7 @@
- #include <drm/drm_drv.h>
- #include <drm/drm_gem_dma_helper.h>
- #include <drm/drm_gem_framebuffer_helper.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_of.h>
- #include <drm/drm_probe_helper.h>
- #include <drm/drm_vblank.h>
-diff --git a/drivers/gpu/drm/sprd/sprd_dsi.c b/drivers/gpu/drm/sprd/sprd_dsi.c
-index ab0e5cce7adb..b00b09405795 100644
---- a/drivers/gpu/drm/sprd/sprd_dsi.c
-+++ b/drivers/gpu/drm/sprd/sprd_dsi.c
-@@ -13,6 +13,7 @@
+ #include "sti_compositor.h"
+ #include "sti_cursor.h"
+diff --git a/drivers/gpu/drm/sti/sti_dvo.c b/drivers/gpu/drm/sti/sti_dvo.c
+index 577c477b5f46..3d5660ac886e 100644
+--- a/drivers/gpu/drm/sti/sti_dvo.c
++++ b/drivers/gpu/drm/sti/sti_dvo.c
+@@ -12,8 +12,10 @@
+ #include <linux/platform_device.h>
  
  #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
  #include <drm/drm_bridge.h>
+ #include <drm/drm_device.h>
 +#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_of.h>
+ #include <drm/drm_panel.h>
+ #include <drm/drm_print.h>
+ #include <drm/drm_probe_helper.h>
+diff --git a/drivers/gpu/drm/sti/sti_gdp.c b/drivers/gpu/drm/sti/sti_gdp.c
+index 43c72c2604a0..bbec2b44a096 100644
+--- a/drivers/gpu/drm/sti/sti_gdp.c
++++ b/drivers/gpu/drm/sti/sti_gdp.c
+@@ -11,11 +11,13 @@
+ #include <linux/seq_file.h>
+ 
+ #include <drm/drm_atomic.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_device.h>
+ #include <drm/drm_fb_dma_helper.h>
+ #include <drm/drm_fourcc.h>
+ #include <drm/drm_framebuffer.h>
+ #include <drm/drm_gem_dma_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ 
+ #include "sti_compositor.h"
+ #include "sti_gdp.h"
+diff --git a/drivers/gpu/drm/sti/sti_hda.c b/drivers/gpu/drm/sti/sti_hda.c
+index 15097ac67931..1a13007b5807 100644
+--- a/drivers/gpu/drm/sti/sti_hda.c
++++ b/drivers/gpu/drm/sti/sti_hda.c
+@@ -13,10 +13,12 @@
+ #include <linux/seq_file.h>
+ 
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_bridge.h>
+ #include <drm/drm_debugfs.h>
+ #include <drm/drm_device.h>
+ #include <drm/drm_file.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_print.h>
  #include <drm/drm_probe_helper.h>
  
+diff --git a/drivers/gpu/drm/sti/sti_hdmi.c b/drivers/gpu/drm/sti/sti_hdmi.c
+index 8539fe1fedc4..6388cfc54e66 100644
+--- a/drivers/gpu/drm/sti/sti_hdmi.c
++++ b/drivers/gpu/drm/sti/sti_hdmi.c
+@@ -15,11 +15,13 @@
+ #include <linux/reset.h>
+ 
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_bridge.h>
+ #include <drm/drm_debugfs.h>
+ #include <drm/drm_drv.h>
+ #include <drm/drm_edid.h>
+ #include <drm/drm_file.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_print.h>
+ #include <drm/drm_probe_helper.h>
+ 
+diff --git a/drivers/gpu/drm/sti/sti_hqvdp.c b/drivers/gpu/drm/sti/sti_hqvdp.c
+index 02b77279f6e4..388da64092d1 100644
+--- a/drivers/gpu/drm/sti/sti_hqvdp.c
++++ b/drivers/gpu/drm/sti/sti_hqvdp.c
+@@ -15,11 +15,13 @@
+ #include <linux/seq_file.h>
+ 
+ #include <drm/drm_atomic.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_device.h>
+ #include <drm/drm_fb_dma_helper.h>
+ #include <drm/drm_fourcc.h>
+ #include <drm/drm_framebuffer.h>
+ #include <drm/drm_gem_dma_helper.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ 
+ #include "sti_compositor.h"
+ #include "sti_drv.h"
+diff --git a/drivers/gpu/drm/sti/sti_tvout.c b/drivers/gpu/drm/sti/sti_tvout.c
+index 2499715a69b7..3a86c4e57b57 100644
+--- a/drivers/gpu/drm/sti/sti_tvout.c
++++ b/drivers/gpu/drm/sti/sti_tvout.c
+@@ -19,6 +19,7 @@
+ #include <drm/drm_debugfs.h>
+ #include <drm/drm_device.h>
+ #include <drm/drm_file.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ #include <drm/drm_print.h>
+ 
+ #include "sti_crtc.h"
+diff --git a/drivers/gpu/drm/sti/sti_vid.c b/drivers/gpu/drm/sti/sti_vid.c
+index 2d818397918d..e10e57c76230 100644
+--- a/drivers/gpu/drm/sti/sti_vid.c
++++ b/drivers/gpu/drm/sti/sti_vid.c
+@@ -5,6 +5,7 @@
+  */
+ #include <linux/seq_file.h>
+ 
++#include <drm/drm_crtc.h>
+ #include <drm/drm_debugfs.h>
+ #include <drm/drm_file.h>
+ #include <drm/drm_print.h>
 
 -- 
 2.34.1
