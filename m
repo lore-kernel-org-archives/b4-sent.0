@@ -1,21 +1,21 @@
 From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 21 Jan 2023 21:08:05 +0100
-Subject: [PATCH 27/86] drm/bridge: analogix: Direct include headers from
+Date: Sat, 21 Jan 2023 21:08:06 +0100
+Subject: [PATCH 28/86] drm/bridge: chipone: Direct include headers from
  drm_atomic_helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230113-drm-include-v1-v1-27-c5cf72d8a5a2@ravnborg.org>
+Message-Id: <20230113-drm-include-v1-v1-28-c5cf72d8a5a2@ravnborg.org>
 References: <20230113-drm-include-v1-v1-0-c5cf72d8a5a2@ravnborg.org>
 In-Reply-To: <20230113-drm-include-v1-v1-0-c5cf72d8a5a2@ravnborg.org>
 To: dri-devel@lists.freedesktop.org
 Cc: Sam Ravnborg <sam@ravnborg.org>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1674331667; l=2982;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1674331667; l=752;
  i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=lhRyPXfKe8W/KT6+0MccpX31a3kDyzXdGm3SKRB99cs=;
- b=W9ApTJ6p0ucXt8u4tQdx5OQobJhMV6ERJBNlIk4yy4+MA0RVsnSvcR9xQEpstKiam3wZ/wwB5BF1
- SS5XnlvEAmXFMRY09hNw6EoVGYP+uUy0Hs8FmMTl6M8YqsoahYGW
+ bh=CCiekg4XlpvboJrXUN+jmDUp6jn6KGxwy1N1Qr9jgDo=;
+ b=coMEfyrw2GuyPbfR9v5X98/hRZU0cU9tQ1dOSK0i7a/aJYXB2dg8YCkiNLsvF+/rQxsZFRmFAfEi
+ m9wTl8UGCtrug5gl3+8cIPXKWQ/MPaNLvifGrgajYA/xVK6FQzXA
 X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
  pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
 X-Endpoint-Received: by B4 Submission Endpoint for sam@ravnborg.org/20230107 with auth_id=22
@@ -27,72 +27,20 @@ include only the minimal set of headers.
 
 Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
 ---
- drivers/gpu/drm/bridge/analogix/analogix-anx6345.c | 2 ++
- drivers/gpu/drm/bridge/analogix/analogix-anx78xx.c | 2 ++
- drivers/gpu/drm/bridge/analogix/analogix_dp_core.c | 2 ++
- drivers/gpu/drm/bridge/analogix/anx7625.c          | 1 +
- 4 files changed, 7 insertions(+)
+ drivers/gpu/drm/bridge/chipone-icn6211.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/gpu/drm/bridge/analogix/analogix-anx6345.c b/drivers/gpu/drm/bridge/analogix/analogix-anx6345.c
-index 3577c532abb4..86e41cccd60c 100644
---- a/drivers/gpu/drm/bridge/analogix/analogix-anx6345.c
-+++ b/drivers/gpu/drm/bridge/analogix/analogix-anx6345.c
-@@ -20,9 +20,11 @@
+diff --git a/drivers/gpu/drm/bridge/chipone-icn6211.c b/drivers/gpu/drm/bridge/chipone-icn6211.c
+index 0e37840cd7a8..939d8fe68f0e 100644
+--- a/drivers/gpu/drm/bridge/chipone-icn6211.c
++++ b/drivers/gpu/drm/bridge/chipone-icn6211.c
+@@ -5,6 +5,7 @@
+  */
  
- #include <drm/display/drm_dp_helper.h>
  #include <drm/drm_atomic_helper.h>
 +#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_bridge.h>
- #include <drm/drm_crtc.h>
- #include <drm/drm_edid.h>
-+#include <drm/drm_modeset_helper_vtables.h>
  #include <drm/drm_of.h>
- #include <drm/drm_panel.h>
  #include <drm/drm_print.h>
-diff --git a/drivers/gpu/drm/bridge/analogix/analogix-anx78xx.c b/drivers/gpu/drm/bridge/analogix/analogix-anx78xx.c
-index a3a38bbe2786..616a44961a98 100644
---- a/drivers/gpu/drm/bridge/analogix/analogix-anx78xx.c
-+++ b/drivers/gpu/drm/bridge/analogix/analogix-anx78xx.c
-@@ -20,9 +20,11 @@
- 
- #include <drm/display/drm_dp_helper.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_bridge.h>
- #include <drm/drm_crtc.h>
- #include <drm/drm_edid.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_print.h>
- #include <drm/drm_probe_helper.h>
- 
-diff --git a/drivers/gpu/drm/bridge/analogix/analogix_dp_core.c b/drivers/gpu/drm/bridge/analogix/analogix_dp_core.c
-index df9370e0ff23..d12fc4e6cc09 100644
---- a/drivers/gpu/drm/bridge/analogix/analogix_dp_core.c
-+++ b/drivers/gpu/drm/bridge/analogix/analogix_dp_core.c
-@@ -21,10 +21,12 @@
- #include <drm/bridge/analogix_dp.h>
- #include <drm/drm_atomic.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_bridge.h>
- #include <drm/drm_crtc.h>
- #include <drm/drm_device.h>
- #include <drm/drm_edid.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_panel.h>
- #include <drm/drm_print.h>
- #include <drm/drm_probe_helper.h>
-diff --git a/drivers/gpu/drm/bridge/analogix/anx7625.c b/drivers/gpu/drm/bridge/analogix/anx7625.c
-index 6846199a2ee1..992ba7b25f9d 100644
---- a/drivers/gpu/drm/bridge/analogix/anx7625.c
-+++ b/drivers/gpu/drm/bridge/analogix/anx7625.c
-@@ -25,6 +25,7 @@
- #include <drm/display/drm_dp_helper.h>
- #include <drm/display/drm_hdcp_helper.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_bridge.h>
- #include <drm/drm_edid.h>
  #include <drm/drm_mipi_dsi.h>
 
 -- 
