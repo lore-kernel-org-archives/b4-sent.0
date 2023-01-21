@@ -1,21 +1,21 @@
 From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 21 Jan 2023 21:08:57 +0100
-Subject: [PATCH 79/86] drm/vc4: Direct include headers from
+Date: Sat, 21 Jan 2023 21:08:58 +0100
+Subject: [PATCH 80/86] drm/virtio: Direct include headers from
  drm_atomic_helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230113-drm-include-v1-v1-79-c5cf72d8a5a2@ravnborg.org>
+Message-Id: <20230113-drm-include-v1-v1-80-c5cf72d8a5a2@ravnborg.org>
 References: <20230113-drm-include-v1-v1-0-c5cf72d8a5a2@ravnborg.org>
 In-Reply-To: <20230113-drm-include-v1-v1-0-c5cf72d8a5a2@ravnborg.org>
 To: dri-devel@lists.freedesktop.org
 Cc: Sam Ravnborg <sam@ravnborg.org>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1674331667; l=4914;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1674331667; l=1510;
  i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=XH8eGk7lxq1aL1uljefXhGuYSZF9w0zVP09UKOmkh80=;
- b=b6VrRN/PXEUIhzbanKy/IbBaudwVt60K6mJthYr13TvPxUBiD0BCGT7DhEkOtZ/B8929wuwSqKL5
- 5lViQBE7DdyEsGbGJwMmhU+iUguplDWOj0yazE28YfSIrf4ewGSL
+ bh=pMd8haXpuQzhdhfsb5QIvZj/rNkq3BMQdrHRZ82WU1U=;
+ b=jAR8vawYdNsH5SgEHnDYd264P3NYSSGoIG/eHrfd9SsNsC2rXjul7ghnuIbeBf2TignC+Jss1AQg
+ nHMQdJnPBRk2Hps/8OlwhjXZxmrwq6HT29OHXqi4PHxSUJ8f2Muk
 X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
  pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
 X-Endpoint-Received: by B4 Submission Endpoint for sam@ravnborg.org/20230107 with auth_id=22
@@ -27,140 +27,43 @@ include only the minimal set of headers.
 
 Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
 ---
- drivers/gpu/drm/vc4/vc4_crtc.c  | 2 ++
- drivers/gpu/drm/vc4/vc4_dpi.c   | 1 +
- drivers/gpu/drm/vc4/vc4_dsi.c   | 1 +
- drivers/gpu/drm/vc4/vc4_hdmi.c  | 2 ++
- drivers/gpu/drm/vc4/vc4_kms.c   | 2 ++
- drivers/gpu/drm/vc4/vc4_plane.c | 2 ++
- drivers/gpu/drm/vc4/vc4_txp.c   | 2 ++
- drivers/gpu/drm/vc4/vc4_vec.c   | 2 ++
- 8 files changed, 14 insertions(+)
+ drivers/gpu/drm/virtio/virtgpu_display.c | 3 +++
+ drivers/gpu/drm/virtio/virtgpu_plane.c   | 2 ++
+ 2 files changed, 5 insertions(+)
 
-diff --git a/drivers/gpu/drm/vc4/vc4_crtc.c b/drivers/gpu/drm/vc4/vc4_crtc.c
-index cdc0559221f0..251c6f76e19e 100644
---- a/drivers/gpu/drm/vc4/vc4_crtc.c
-+++ b/drivers/gpu/drm/vc4/vc4_crtc.c
-@@ -36,10 +36,12 @@
- 
- #include <drm/drm_atomic.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_atomic_uapi.h>
- #include <drm/drm_fb_dma_helper.h>
- #include <drm/drm_framebuffer.h>
- #include <drm/drm_drv.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_print.h>
- #include <drm/drm_probe_helper.h>
- #include <drm/drm_vblank.h>
-diff --git a/drivers/gpu/drm/vc4/vc4_dpi.c b/drivers/gpu/drm/vc4/vc4_dpi.c
-index f518d6e59ed6..938a22723c53 100644
---- a/drivers/gpu/drm/vc4/vc4_dpi.c
-+++ b/drivers/gpu/drm/vc4/vc4_dpi.c
-@@ -15,6 +15,7 @@
- #include <drm/drm_bridge.h>
- #include <drm/drm_drv.h>
- #include <drm/drm_edid.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_of.h>
- #include <drm/drm_panel.h>
- #include <drm/drm_probe_helper.h>
-diff --git a/drivers/gpu/drm/vc4/vc4_dsi.c b/drivers/gpu/drm/vc4/vc4_dsi.c
-index a5c075f802e4..71a7b6c7f94e 100644
---- a/drivers/gpu/drm/vc4/vc4_dsi.c
-+++ b/drivers/gpu/drm/vc4/vc4_dsi.c
-@@ -30,6 +30,7 @@
- #include <linux/pm_runtime.h>
- 
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_bridge.h>
- #include <drm/drm_edid.h>
- #include <drm/drm_mipi_dsi.h>
-diff --git a/drivers/gpu/drm/vc4/vc4_hdmi.c b/drivers/gpu/drm/vc4/vc4_hdmi.c
-index 14628864487a..8de4cd05af62 100644
---- a/drivers/gpu/drm/vc4/vc4_hdmi.c
-+++ b/drivers/gpu/drm/vc4/vc4_hdmi.c
-@@ -34,7 +34,9 @@
- #include <drm/display/drm_hdmi_helper.h>
- #include <drm/display/drm_scdc_helper.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_drv.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_probe_helper.h>
- #include <drm/drm_simple_kms_helper.h>
- #include <linux/clk.h>
-diff --git a/drivers/gpu/drm/vc4/vc4_kms.c b/drivers/gpu/drm/vc4/vc4_kms.c
-index a7e3d47c50f4..bb60563219df 100644
---- a/drivers/gpu/drm/vc4/vc4_kms.c
-+++ b/drivers/gpu/drm/vc4/vc4_kms.c
-@@ -16,9 +16,11 @@
- 
- #include <drm/drm_atomic.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_crtc.h>
- #include <drm/drm_fourcc.h>
- #include <drm/drm_gem_framebuffer_helper.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_probe_helper.h>
- #include <drm/drm_vblank.h>
- 
-diff --git a/drivers/gpu/drm/vc4/vc4_plane.c b/drivers/gpu/drm/vc4/vc4_plane.c
-index dee525bacd4b..bad505206f55 100644
---- a/drivers/gpu/drm/vc4/vc4_plane.c
-+++ b/drivers/gpu/drm/vc4/vc4_plane.c
-@@ -17,6 +17,7 @@
- 
- #include <drm/drm_atomic.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_atomic_uapi.h>
- #include <drm/drm_blend.h>
- #include <drm/drm_drv.h>
-@@ -24,6 +25,7 @@
- #include <drm/drm_fourcc.h>
- #include <drm/drm_framebuffer.h>
- #include <drm/drm_gem_atomic_helper.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- 
- #include "uapi/drm/vc4_drm.h"
- 
-diff --git a/drivers/gpu/drm/vc4/vc4_txp.c b/drivers/gpu/drm/vc4/vc4_txp.c
-index ef5cab2a3aa9..872dc0cd2e4b 100644
---- a/drivers/gpu/drm/vc4/vc4_txp.c
-+++ b/drivers/gpu/drm/vc4/vc4_txp.c
-@@ -15,11 +15,13 @@
- 
- #include <drm/drm_atomic.h>
- #include <drm/drm_atomic_helper.h>
-+#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_drv.h>
- #include <drm/drm_edid.h>
- #include <drm/drm_fb_dma_helper.h>
- #include <drm/drm_fourcc.h>
- #include <drm/drm_framebuffer.h>
-+#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_panel.h>
- #include <drm/drm_probe_helper.h>
- #include <drm/drm_vblank.h>
-diff --git a/drivers/gpu/drm/vc4/vc4_vec.c b/drivers/gpu/drm/vc4/vc4_vec.c
-index a3782d05cd66..0ad9f4fdc1e8 100644
---- a/drivers/gpu/drm/vc4/vc4_vec.c
-+++ b/drivers/gpu/drm/vc4/vc4_vec.c
-@@ -14,8 +14,10 @@
+diff --git a/drivers/gpu/drm/virtio/virtgpu_display.c b/drivers/gpu/drm/virtio/virtgpu_display.c
+index 9ea7611a9e0f..712c98535f4d 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_display.c
++++ b/drivers/gpu/drm/virtio/virtgpu_display.c
+@@ -26,10 +26,13 @@
   */
  
  #include <drm/drm_atomic_helper.h>
 +#include <drm/drm_atomic_state_helper.h>
- #include <drm/drm_drv.h>
+ #include <drm/drm_damage_helper.h>
  #include <drm/drm_edid.h>
+ #include <drm/drm_fourcc.h>
+ #include <drm/drm_gem_framebuffer_helper.h>
++#include <drm/drm_modeset_helper.h>
 +#include <drm/drm_modeset_helper_vtables.h>
- #include <drm/drm_panel.h>
  #include <drm/drm_probe_helper.h>
  #include <drm/drm_simple_kms_helper.h>
+ 
+diff --git a/drivers/gpu/drm/virtio/virtgpu_plane.c b/drivers/gpu/drm/virtio/virtgpu_plane.c
+index 4c09e313bebc..d0fc333f6b3f 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_plane.c
++++ b/drivers/gpu/drm/virtio/virtgpu_plane.c
+@@ -24,8 +24,10 @@
+  */
+ 
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_state_helper.h>
+ #include <drm/drm_damage_helper.h>
+ #include <drm/drm_fourcc.h>
++#include <drm/drm_modeset_helper_vtables.h>
+ 
+ #include "virtgpu_drv.h"
+ 
 
 -- 
 2.34.1
