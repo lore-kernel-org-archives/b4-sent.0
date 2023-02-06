@@ -1,125 +1,157 @@
-From: Niall Leonard <nl250060@ncr.com>
-Date: Tue, 31 Jan 2023 13:49:38 +0000
-Subject: [PATCH v2 2/2] gpio: mmio: Use new flag BGPIOF_NO_INPUT.
+From: Nathan Lynch <nathanl@linux.ibm.com>
+Subject: [PATCH v2 00/19] RTAS maintenance
+Date: Mon, 06 Feb 2023 12:54:16 -0600
+Message-Id: <20230125-b4-powerpc-rtas-queue-v2-0-9aa6bd058063@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230126-gpio-mmio-fix-v2-2-38397aace340@ncr.com>
-References: <20230126-gpio-mmio-fix-v2-0-38397aace340@ncr.com>
-In-Reply-To: <20230126-gpio-mmio-fix-v2-0-38397aace340@ncr.com>
-To: Linus Walleij <linus.walleij@linaro.org>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>
-Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Niall Leonard <nl250060@ncr.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3171; i=nl250060@ncr.com;
- h=from:subject:message-id; bh=qw+ukSOOr1LL8jakS9qqqS7Ifx1mSYww3yijW1VYn/c=;
- b=owEBbQKS/ZANAwAKAVGiIrYFD2P/AcsmYgBj2RxzG8Rs4mvsqSBm+6z29boecXRRXeqa8Uuy4anQ
- ehqbzcSJAjMEAAEKAB0WIQSha1EPjh6hUqdtwZNRoiK2BQ9j/wUCY9kccwAKCRBRoiK2BQ9j/9FKEA
- DNju1HJb+AUeRe9LgvDDLjnqhfbAV0+NsnUco9AgeNNsZ87CaMOIThcNTLH6kLkwxeeMb7XuWieLMe
- x6CDnp9Gj2PUsvqJZBSuNw9oX2DnxytOxXB8je/3fzhDvDTUAo4caKnXA7pna8rQbeY7NxbsItkBqy
- vpRYD3LoKFXsIrVPsvUbn7/wkW4flcjhuY5AcwCGHIzOUsiAxKqYRVhAl8oX+g7PT6xH0BeLg6xX9x
- Fldqj93K4zJXEFypyYcrwVzzWEpHE3sWPPazVYBv+0D2TJIFWaVIwgCDlnoNgbvCB7grUaeskAmrCS
- Gr6val+X4RZmUcv7iQua+13bzeLWeZ9Q1yYffKpdWBB7vJnYQIDHqQ3nkNC6Azgx8msVcSPdTDsF8Q
- EvqPLSB8RvkQ73JKHwfx0R/ROdSfqNGS9Znzbr9Qh4pLvq4OLz1F8Ao1dLlQ4XTNTBNAczNk+MOw3x
- 8e2LAmLv0x6CYMnPHC3VWZ3KKOepEKneoLJ3ec0PykAkMt1GVhAskcopvCUXaWKik2dogK0nZd0aAh
- RX1R42naQaNEK0fE/tw6iZLlJz0t/UU1ZiMb87edPInPTW+wYjSsmRij1JGaoPNEskwjZ1qgNRWcqm
- 5VdwCAqUsIc/ocBhTdEjer4JBiYr01gvxrJginHJNWG8OcrfN+IIfg6UPiAw==
-X-Developer-Key: i=nl250060@ncr.com; a=openpgp;
- fpr=A16B510F8E1EA152A76DC19351A222B6050F63FF
-X-Endpoint-Received: by B4 Submission Endpoint for nl250060@ncr.com/default with auth_id=26
+X-B4-Tracking: v=1; b=H4sIANhM4WMC/x2OQQ6DIBQFr2JY9xtBsdpV79G4APqpJBQsiLUx3
+ r3ociZ5mbeRiMFgJLdiIwEXE413GdilIGoU7oVgnpkJq1hdUcZBNjD5L4ZJQZhFhE/ChKB0x1E
+ 1Lde6J3krRUSQQTg15rVL1mY5BdRmPWOPIfNo4uzD72wv9LBHhlFKO8qrK6dl0/Z1XwMFJ+b8x
+ t6tcWktjXyXyr/JsO/7H3cymp7CAAAA
+To: Michael Ellerman <mpe@ellerman.id.au>, 
+ Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Kajol Jain <kjain@linux.ibm.com>, Laurent Dufour <ldufour@linux.ibm.com>, 
+ Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
+ Andrew Donnellan <ajd@linux.ibm.com>, Nick Child <nnac123@linux.ibm.com>
+Cc: linuxppc-dev@lists.ozlabs.org, Nathan Lynch <nathanl@linux.ibm.com>
+X-Mailer: b4 0.12.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1675709663; l=6172;
+ i=nathanl@linux.ibm.com; s=20230206; h=from:subject:message-id;
+ bh=wq37oRMfEAOKfFU8vXR47uunp3Y8BkUds7FY3ZDc+Dg=;
+ b=XgsHIJnHQNmGQvEYO7aEc9fqjPmye4UN5QRmIZ0ZhykRrx3RjKlmGfPu6BZ6LnCgZPqVMA0BF
+ maslNQ74aegCkp/wj5kxk4GDARMdhl1EV/jT3ON6RncRMEK6orM259H
+X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
+ pk=6daubz/ymoaMF+8voz7UHwnhluEsmDZuqygIIMWpQQY=
+X-Endpoint-Received: by B4 Submission Endpoint for nathanl@linux.ibm.com/20230206 with auth_id=27
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-Add new flag BGPIOF_NO_INPUT to header file.
-Use the existing shadow data register 'bgpio_data' to allow
-the last written value to be returned by the read operation
-when BGPIOF_NO_INPUT flag is set.
-Ensure this change only applies to the specific binding "wd,mbl-gpio".
+Proposed changes for the RTAS subsystem and client code.
 
-Signed-off-by: Niall Leonard <nl250060@ncr.com>
+Fixes that are subject to backporting are at the front of the queue.
+The rest of the queue is roughly ordered with respect to maturity:
+i.e. patches that have already garnered some review and discussion
+precede newer, more experimental changes.
+
+Major features:
+
+* Static tracepoints around RTAS entry/exit.
+* An allocator for work area buffers.
+* A new client of the work area allocator in the form of a
+  higher-level API for PAPR system parameter retrieval.
+* Constant-time symbolic RTAS function token lookups.
+
+Tested with ppc64le in PowerVM LPARs and QEMU's pseries
+model. Obsolescent RTAS platforms (chrp, cell, maple) get build
+coverage.
+
 ---
- drivers/gpio/gpio-mmio.c    | 24 +++++++++++++++++++++---
- include/linux/gpio/driver.h |  1 +
- 2 files changed, 22 insertions(+), 3 deletions(-)
+Changes in v2:
 
-diff --git a/drivers/gpio/gpio-mmio.c b/drivers/gpio/gpio-mmio.c
-index d9dff3dc92ae..9939fdbf6345 100644
---- a/drivers/gpio/gpio-mmio.c
-+++ b/drivers/gpio/gpio-mmio.c
-@@ -164,6 +164,11 @@ static int bgpio_get_set_multiple(struct gpio_chip *gc, unsigned long *mask,
- 	return 0;
- }
- 
-+static int bgpio_get_shadow(struct gpio_chip *gc, unsigned int gpio)
-+{
-+	return !!(gc->bgpio_data & bgpio_line2mask(gc, gpio));
-+}
-+
- static int bgpio_get(struct gpio_chip *gc, unsigned int gpio)
- {
- 	return !!(gc->read_reg(gc->reg_dat) & bgpio_line2mask(gc, gpio));
-@@ -526,7 +531,10 @@ static int bgpio_setup_io(struct gpio_chip *gc,
- 		 * reading each line individually in that fringe case.
- 		 */
- 	} else {
--		gc->get = bgpio_get;
-+		if (flags & BGPIOF_NO_INPUT)
-+			gc->get = bgpio_get_shadow;
-+		else
-+			gc->get = bgpio_get;
- 		if (gc->be_bits)
- 			gc->get_multiple = bgpio_get_multiple_be;
- 		else
-@@ -630,7 +638,11 @@ int bgpio_init(struct gpio_chip *gc, struct device *dev,
- 	if (ret)
- 		return ret;
- 
--	gc->bgpio_data = gc->read_reg(gc->reg_dat);
-+	if (flags & BGPIOF_NO_INPUT)
-+		gc->bgpio_data = 0;
-+	else
-+		gc->bgpio_data = gc->read_reg(gc->reg_dat);
-+
- 	if (gc->set == bgpio_set_set &&
- 			!(flags & BGPIOF_UNREADABLE_REG_SET))
- 		gc->bgpio_data = gc->read_reg(gc->reg_set);
-@@ -694,8 +706,9 @@ static struct bgpio_pdata *bgpio_parse_dt(struct platform_device *pdev,
- 					  unsigned long *flags)
- {
- 	struct bgpio_pdata *pdata;
-+	const struct of_device_id *of_id;
- 
--	if (!of_match_device(bgpio_of_match, &pdev->dev))
-+	if (!(of_id = of_match_device(bgpio_of_match, &pdev->dev)))
- 		return NULL;
- 
- 	pdata = devm_kzalloc(&pdev->dev, sizeof(struct bgpio_pdata),
-@@ -711,6 +724,11 @@ static struct bgpio_pdata *bgpio_parse_dt(struct platform_device *pdev,
- 	if (of_property_read_bool(pdev->dev.of_node, "no-output"))
- 		*flags |= BGPIOF_NO_OUTPUT;
- 
-+	if (!strcmp(of_id->compatible, "wd,mbl-gpio")) {
-+		if (of_property_read_bool(pdev->dev.of_node, "no-input"))
-+			*flags |= BGPIOF_NO_INPUT;
-+	}
-+
- 	return pdata;
- }
- #else
-diff --git a/include/linux/gpio/driver.h b/include/linux/gpio/driver.h
-index 44783fc16125..e8e57310e3b8 100644
---- a/include/linux/gpio/driver.h
-+++ b/include/linux/gpio/driver.h
-@@ -682,6 +682,7 @@ int bgpio_init(struct gpio_chip *gc, struct device *dev,
- #define BGPIOF_READ_OUTPUT_REG_SET	BIT(4) /* reg_set stores output value */
- #define BGPIOF_NO_OUTPUT		BIT(5) /* only input */
- #define BGPIOF_NO_SET_ON_INPUT		BIT(6)
-+#define BGPIOF_NO_INPUT				BIT(7)	/* only output */
- 
- int gpiochip_irq_map(struct irq_domain *d, unsigned int irq,
- 		     irq_hw_number_t hwirq);
+* Drop applied patches:
+  - powerpc/rtas: document rtas_call()
+  - powerpc/rtasd: use correct OF API for event scan rate
+  - powerpc/rtas: avoid device tree lookups in rtas_os_term()
+  - powerpc/rtas: avoid scheduling in rtas_os_term()
+  - powerpc/pseries/eeh: use correct API for error log size
+  - powerpc/rtas: clean up rtas_error_log_max initialization
+  - powerpc/rtas: clean up includes
+  - powerpc/rtas: define pr_fmt and convert printk call sites
+  - powerpc/rtas: mandate RTAS syscall filtering
 
+* Additions:
+  - Safe early-boot fallback in rtas_busy_delay().
+  - Fixes for missed RTAS function call retries in various places.
+  - Remove RTAS timebase sync from pseries, previously posted
+    separately as "powerpc/pseries: drop RTAS-based timebase
+    synchronization":
+    https://lore.kernel.org/linuxppc-dev/20230110042845.121792-1-nathanl@linux.ibm.com/T/#u
+  - RTAS work area buffer allocator.
+  - Conversion of pseries DLPAR code to work area allocator.
+  - A pseries-specific PAPR system parameter API built on top of the
+    RTAS work area allocator.
+  - Conversion of ibm,get-system-parameter users to papr_sysparm API.
+  - New rtas_function_token() API and associated conversions.
+
+* Modifications to existing patches:
+  - Convert RTAS tracepoint definitions to unconditional
+    variants (TRACE_EVENT_CONDITION() -> TRACE_EVENT()), dropping a
+    cpu_online() check that duplicates work already done at the call
+    site.
+  - Skip tracepoints in unsafe contexts (real mode, CPU
+    offline). (Nicholas Piggin)
+  - Use bool bitfield for "banned on LE" function flag.
+  - Better documentation for "banned on LE" function flag. (Andrew Donnellan)
+  - Drop unnecessary cast for xa_load() key argument. (Nick Child)
+
+* Link to v1: https://lore.kernel.org/r/20221118150751.469393-1-nathanl@linux.ibm.com
+
+---
+Nathan Lynch (19):
+      powerpc/rtas: handle extended delays safely in early boot
+      powerpc/perf/hv-24x7: add missing RTAS retry status handling
+      powerpc/pseries/lpar: add missing RTAS retry status handling
+      powerpc/pseries/lparcfg: add missing RTAS retry status handling
+      powerpc/pseries/setup: add missing RTAS retry status handling
+      powerpc/pseries: drop RTAS-based timebase synchronization
+      powerpc/rtas: improve function information lookups
+      powerpc/rtas: strengthen do_enter_rtas() type safety, drop inline
+      powerpc/tracing: tracepoints for RTAS entry and exit
+      powerpc/rtas: add tracepoints around RTAS entry
+      powerpc/rtas: add work area allocator
+      powerpc/pseries/dlpar: use RTAS work area API
+      powerpc/pseries: PAPR system parameter API
+      powerpc/pseries: convert CMO probe to papr_sysparm API
+      powerpc/pseries/lparcfg: convert to papr_sysparm API
+      powerpc/pseries/hv-24x7: convert to papr_sysparm API
+      powerpc/pseries/lpar: convert to papr_sysparm API
+      powerpc/rtas: introduce rtas_function_token() API
+      powerpc/rtas: arch-wide function token lookup conversions
+
+ arch/powerpc/include/asm/papr-sysparm.h       |  38 ++
+ arch/powerpc/include/asm/rtas-work-area.h     |  45 ++
+ arch/powerpc/include/asm/rtas.h               | 185 +++++
+ arch/powerpc/include/asm/trace.h              | 103 +++
+ arch/powerpc/kernel/Makefile                  |   3 +-
+ arch/powerpc/kernel/rtas-proc.c               |  24 +-
+ arch/powerpc/kernel/rtas-rtc.c                |   6 +-
+ arch/powerpc/kernel/rtas-work-area.c          | 208 ++++++
+ arch/powerpc/kernel/rtas.c                    | 942 +++++++++++++++++++++-----
+ arch/powerpc/kernel/rtas_flash.c              |  21 +-
+ arch/powerpc/kernel/rtas_pci.c                |   8 +-
+ arch/powerpc/kernel/rtasd.c                   |   2 +-
+ arch/powerpc/perf/hv-24x7.c                   |  45 +-
+ arch/powerpc/platforms/52xx/efika.c           |   4 +-
+ arch/powerpc/platforms/cell/ras.c             |   4 +-
+ arch/powerpc/platforms/cell/smp.c             |   4 +-
+ arch/powerpc/platforms/chrp/nvram.c           |   4 +-
+ arch/powerpc/platforms/chrp/pci.c             |   4 +-
+ arch/powerpc/platforms/chrp/setup.c           |   4 +-
+ arch/powerpc/platforms/maple/setup.c          |   4 +-
+ arch/powerpc/platforms/pseries/Makefile       |   2 +-
+ arch/powerpc/platforms/pseries/dlpar.c        |  29 +-
+ arch/powerpc/platforms/pseries/eeh_pseries.c  |  22 +-
+ arch/powerpc/platforms/pseries/hotplug-cpu.c  |   4 +-
+ arch/powerpc/platforms/pseries/io_event_irq.c |   2 +-
+ arch/powerpc/platforms/pseries/lpar.c         |  37 +-
+ arch/powerpc/platforms/pseries/lparcfg.c      | 104 +--
+ arch/powerpc/platforms/pseries/mobility.c     |   4 +-
+ arch/powerpc/platforms/pseries/msi.c          |   4 +-
+ arch/powerpc/platforms/pseries/nvram.c        |   4 +-
+ arch/powerpc/platforms/pseries/papr-sysparm.c | 151 +++++
+ arch/powerpc/platforms/pseries/pci.c          |   2 +-
+ arch/powerpc/platforms/pseries/ras.c          |   2 +-
+ arch/powerpc/platforms/pseries/setup.c        |  27 +-
+ arch/powerpc/platforms/pseries/smp.c          |  12 +-
+ arch/powerpc/sysdev/xics/ics-rtas.c           |   8 +-
+ arch/powerpc/xmon/xmon.c                      |  16 +-
+ 37 files changed, 1660 insertions(+), 428 deletions(-)
+---
+base-commit: 0bfb97203f5f300777624a2ad6f8f84aea3e8658
+change-id: 20230125-b4-powerpc-rtas-queue-cf85ec465ff9
+
+Best regards,
 -- 
-2.34.1
+Nathan Lynch <nathanl@linux.ibm.com>
 
