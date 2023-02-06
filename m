@@ -1,11 +1,11 @@
 From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Mon, 06 Feb 2023 12:54:21 -0600
-Subject: [PATCH v2 05/19] powerpc/pseries/setup: add missing RTAS retry
- status handling
+Date: Mon, 06 Feb 2023 12:54:22 -0600
+Subject: [PATCH v2 06/19] powerpc/pseries: drop RTAS-based timebase
+ synchronization
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230125-b4-powerpc-rtas-queue-v2-5-9aa6bd058063@linux.ibm.com>
+Message-Id: <20230125-b4-powerpc-rtas-queue-v2-6-9aa6bd058063@linux.ibm.com>
 References: <20230125-b4-powerpc-rtas-queue-v2-0-9aa6bd058063@linux.ibm.com>
 In-Reply-To: <20230125-b4-powerpc-rtas-queue-v2-0-9aa6bd058063@linux.ibm.com>
 To: Michael Ellerman <mpe@ellerman.id.au>, 
@@ -16,68 +16,50 @@ To: Michael Ellerman <mpe@ellerman.id.au>,
  Andrew Donnellan <ajd@linux.ibm.com>, Nick Child <nnac123@linux.ibm.com>
 Cc: linuxppc-dev@lists.ozlabs.org, Nathan Lynch <nathanl@linux.ibm.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1675709663; l=1829;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1675709663; l=1232;
  i=nathanl@linux.ibm.com; s=20230206; h=from:subject:message-id;
- bh=aH9kPV3aFPMqcCE52OuDxtWD73a59nhFm3joQpSLnP0=;
- b=4xJnuF+DRuHTPnwNSeX13rmXo2I4fZMm32MIiqANcRo948gDLxKAaTVvPklLGd0CRztxhyIpc
- gIqq73IpYOhCgP7k+4lg7gEqXU/zu/rx3c0ntlNunyPyem6ODNaYXRL
+ bh=tFcGWQ1AkW6nsQJJK1c3LerD+9XTZywFqC0rfZVIXdk=;
+ b=nF3sLrHRppShxQzSS75GEDBvSu0I3Fqo44gMZOkgyz3+2/m2oyVuox1SMxwVfWkjGYol/p/0b
+ Earyoeg7NRDCI4s8Mhxsi+EdcRwyuVJ4W3DMfICr9nGc6MHXrTOZOF8
 X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
  pk=6daubz/ymoaMF+8voz7UHwnhluEsmDZuqygIIMWpQQY=
 X-Endpoint-Received: by B4 Submission Endpoint for nathanl@linux.ibm.com/20230206 with auth_id=27
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-The ibm,get-system-parameter RTAS function may return -2 or 990x,
-which indicate that the caller should try again.
+The pseries platform has been LPAR-only for several generations, and
+the PAPR spec:
 
-pSeries_cmo_feature_init() ignores this, making it possible to fail to
-detect cooperative memory overcommit capabilities during boot.
+* Guarantees that timebase synchronization is performed by
+  the platform ("The timebase registers are synchronized by the
+  platform before CPUs are given to the OS" - 7.3.8 SMP Support).
 
-Move the RTAS call into a conventional rtas_busy_delay()-based
-loop, dropping unnecessary clearing of rtas_data_buf.
+* Completely omits the RTAS freeze-time-base and thaw-time-base RTAS
+  functions, which are CHRP artifacts.
+
+This code is effectively unused on currently supported models, so drop
+it.
 
 Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
 ---
- arch/powerpc/platforms/pseries/setup.c | 20 ++++++++++++--------
- 1 file changed, 12 insertions(+), 8 deletions(-)
+ arch/powerpc/platforms/pseries/smp.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-diff --git a/arch/powerpc/platforms/pseries/setup.c b/arch/powerpc/platforms/pseries/setup.c
-index 8ef3270515a9..74e50b6b28d4 100644
---- a/arch/powerpc/platforms/pseries/setup.c
-+++ b/arch/powerpc/platforms/pseries/setup.c
-@@ -941,21 +941,25 @@ void pSeries_coalesce_init(void)
-  */
- static void __init pSeries_cmo_feature_init(void)
- {
-+	const s32 token = rtas_token("ibm,get-system-parameter");
- 	char *ptr, *key, *value, *end;
- 	int call_status;
- 	int page_order = IOMMU_PAGE_SHIFT_4K;
+diff --git a/arch/powerpc/platforms/pseries/smp.c b/arch/powerpc/platforms/pseries/smp.c
+index fd2174edfa1d..2bcfee86ff87 100644
+--- a/arch/powerpc/platforms/pseries/smp.c
++++ b/arch/powerpc/platforms/pseries/smp.c
+@@ -278,11 +278,5 @@ void __init smp_init_pseries(void)
+ 		cpumask_clear_cpu(boot_cpuid, of_spin_mask);
+ 	}
  
- 	pr_debug(" -> fw_cmo_feature_init()\n");
--	spin_lock(&rtas_data_buf_lock);
--	memset(rtas_data_buf, 0, RTAS_DATA_BUF_SIZE);
--	call_status = rtas_call(rtas_token("ibm,get-system-parameter"), 3, 1,
--				NULL,
--				CMO_CHARACTERISTICS_TOKEN,
--				__pa(rtas_data_buf),
--				RTAS_DATA_BUF_SIZE);
- 
--	if (call_status != 0) {
-+	do {
-+		spin_lock(&rtas_data_buf_lock);
-+		call_status = rtas_call(token, 3, 1, NULL,
-+					CMO_CHARACTERISTICS_TOKEN,
-+					__pa(rtas_data_buf),
-+					RTAS_DATA_BUF_SIZE);
-+		if (call_status == 0)
-+			break;
- 		spin_unlock(&rtas_data_buf_lock);
-+	} while (rtas_busy_delay(call_status));
-+
-+	if (call_status != 0) {
- 		pr_debug("CMO not available\n");
- 		pr_debug(" <- fw_cmo_feature_init()\n");
- 		return;
+-	/* Non-lpar has additional take/give timebase */
+-	if (rtas_token("freeze-time-base") != RTAS_UNKNOWN_SERVICE) {
+-		smp_ops->give_timebase = rtas_give_timebase;
+-		smp_ops->take_timebase = rtas_take_timebase;
+-	}
+-
+ 	pr_debug(" <- smp_init_pSeries()\n");
+ }
 
 -- 
 2.39.1
