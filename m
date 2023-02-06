@@ -1,11 +1,11 @@
 From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Mon, 06 Feb 2023 12:54:18 -0600
-Subject: [PATCH v2 02/19] powerpc/perf/hv-24x7: add missing RTAS retry
+Date: Mon, 06 Feb 2023 12:54:19 -0600
+Subject: [PATCH v2 03/19] powerpc/pseries/lpar: add missing RTAS retry
  status handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230125-b4-powerpc-rtas-queue-v2-2-9aa6bd058063@linux.ibm.com>
+Message-Id: <20230125-b4-powerpc-rtas-queue-v2-3-9aa6bd058063@linux.ibm.com>
 References: <20230125-b4-powerpc-rtas-queue-v2-0-9aa6bd058063@linux.ibm.com>
 In-Reply-To: <20230125-b4-powerpc-rtas-queue-v2-0-9aa6bd058063@linux.ibm.com>
 To: Michael Ellerman <mpe@ellerman.id.au>, 
@@ -16,95 +16,68 @@ To: Michael Ellerman <mpe@ellerman.id.au>,
  Andrew Donnellan <ajd@linux.ibm.com>, Nick Child <nnac123@linux.ibm.com>
 Cc: linuxppc-dev@lists.ozlabs.org, Nathan Lynch <nathanl@linux.ibm.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1675709663; l=2749;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1675709663; l=2144;
  i=nathanl@linux.ibm.com; s=20230206; h=from:subject:message-id;
- bh=/LsCrvhYcOs18AHY/8B4mKFcVOBSY003WWGJyJqeLe0=;
- b=pHbKpFCnUZ9xxJWt4MlN94+/yR2o/5AzcVkx2M/b9uKFYM0YQpUVL+3BOpCGbU0ghLdoE2Z+f
- JLeFAYRHQofB3hj3ZJJpME43a2eEbc8ha0ZkKVpEMZbh5F+DqMoX659
+ bh=ajtkYWVOaFKCXAuikYVhaPDQDEeGzBrJnlrOFdrl4PE=;
+ b=yUbbTlfhqzUtPdBb1ORSX8ZPMDzrxB5eN3eHY8Ckaj9IXVFBrKMppVJRyqkXKx96NuFUfMT8x
+ UualyMegJwaBNj2IGYbjZfn4bmzxtz8Jit9ZJFo3w7DUyY6Vpp7x+Q9
 X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
  pk=6daubz/ymoaMF+8voz7UHwnhluEsmDZuqygIIMWpQQY=
 X-Endpoint-Received: by B4 Submission Endpoint for nathanl@linux.ibm.com/20230206 with auth_id=27
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
 The ibm,get-system-parameter RTAS function may return -2 or 990x,
-which indicate that the caller should try again. read_24x7_sys_info()
-ignores this, allowing transient failures in reporting processor
-module information.
+which indicate that the caller should try again.
 
-Move the RTAS call into a coventional rtas_busy_delay()-based loop,
-along with the parsing of results on success.
+pseries_lpar_read_hblkrm_characteristics() ignores this, making it
+possible to incorrectly detect TLB block invalidation characteristics
+at boot.
+
+Move the RTAS call into a coventional rtas_busy_delay()-based loop.
 
 Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
-Fixes: 8ba214267382 ("powerpc/hv-24x7: Add rtas call in hv-24x7 driver to get processor details")
+Fixes: 1211ee61b4a8 ("powerpc/pseries: Read TLB Block Invalidate Characteristics")
 ---
- arch/powerpc/perf/hv-24x7.c | 42 ++++++++++++++++++------------------------
- 1 file changed, 18 insertions(+), 24 deletions(-)
+ arch/powerpc/platforms/pseries/lpar.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/arch/powerpc/perf/hv-24x7.c b/arch/powerpc/perf/hv-24x7.c
-index 33c23225fd54..fcfebf5bd378 100644
---- a/arch/powerpc/perf/hv-24x7.c
-+++ b/arch/powerpc/perf/hv-24x7.c
-@@ -79,9 +79,8 @@ static u32 phys_coresperchip; /* Physical cores per chip */
-  */
- void read_24x7_sys_info(void)
+diff --git a/arch/powerpc/platforms/pseries/lpar.c b/arch/powerpc/platforms/pseries/lpar.c
+index 97ef6499e501..6597b2126ebb 100644
+--- a/arch/powerpc/platforms/pseries/lpar.c
++++ b/arch/powerpc/platforms/pseries/lpar.c
+@@ -1481,22 +1481,22 @@ static inline void __init check_lp_set_hblkrm(unsigned int lp,
+ 
+ void __init pseries_lpar_read_hblkrm_characteristics(void)
  {
--	int call_status, len, ntypes;
--
--	spin_lock(&rtas_data_buf_lock);
 +	const s32 token = rtas_token("ibm,get-system-parameter");
-+	int call_status;
+ 	unsigned char local_buffer[SPLPAR_TLB_BIC_MAXLENGTH];
+ 	int call_status, len, idx, bpsize;
  
- 	/*
- 	 * Making system parameter: chips and sockets and cores per chip
-@@ -91,32 +90,27 @@ void read_24x7_sys_info(void)
- 	phys_chipspersocket = 1;
- 	phys_coresperchip = 1;
+ 	if (!firmware_has_feature(FW_FEATURE_BLOCK_REMOVE))
+ 		return;
  
+-	spin_lock(&rtas_data_buf_lock);
+-	memset(rtas_data_buf, 0, RTAS_DATA_BUF_SIZE);
 -	call_status = rtas_call(rtas_token("ibm,get-system-parameter"), 3, 1,
 -				NULL,
--				PROCESSOR_MODULE_INFO,
+-				SPLPAR_TLB_BIC_TOKEN,
 -				__pa(rtas_data_buf),
 -				RTAS_DATA_BUF_SIZE);
+-	memcpy(local_buffer, rtas_data_buf, SPLPAR_TLB_BIC_MAXLENGTH);
+-	local_buffer[SPLPAR_TLB_BIC_MAXLENGTH - 1] = '\0';
+-	spin_unlock(&rtas_data_buf_lock);
 +	do {
 +		spin_lock(&rtas_data_buf_lock);
-+		call_status = rtas_call(token, 3, 1, NULL, PROCESSOR_MODULE_INFO,
++		memset(rtas_data_buf, 0, RTAS_DATA_BUF_SIZE);
++		call_status = rtas_call(token, 3, 1, NULL, SPLPAR_TLB_BIC_TOKEN,
 +					__pa(rtas_data_buf), RTAS_DATA_BUF_SIZE);
-+		if (call_status == 0) {
-+			int ntypes = be16_to_cpup((__be16 *)&rtas_data_buf[2]);
-+			int len = be16_to_cpup((__be16 *)&rtas_data_buf[0]);
-+
-+			if (len >= 8 && ntypes != 0) {
-+				phys_sockets = be16_to_cpup((__be16 *)&rtas_data_buf[4]);
-+				phys_chipspersocket = be16_to_cpup((__be16 *)&rtas_data_buf[6]);
-+				phys_coresperchip = be16_to_cpup((__be16 *)&rtas_data_buf[8]);
-+			}
-+		}
++		memcpy(local_buffer, rtas_data_buf, SPLPAR_TLB_BIC_MAXLENGTH);
++		local_buffer[SPLPAR_TLB_BIC_MAXLENGTH - 1] = '\0';
 +		spin_unlock(&rtas_data_buf_lock);
 +	} while (rtas_busy_delay(call_status));
  
  	if (call_status != 0) {
- 		pr_err("Error calling get-system-parameter %d\n",
- 		       call_status);
--	} else {
--		len = be16_to_cpup((__be16 *)&rtas_data_buf[0]);
--		if (len < 8)
--			goto out;
--
--		ntypes = be16_to_cpup((__be16 *)&rtas_data_buf[2]);
--
--		if (!ntypes)
--			goto out;
--
--		phys_sockets = be16_to_cpup((__be16 *)&rtas_data_buf[4]);
--		phys_chipspersocket = be16_to_cpup((__be16 *)&rtas_data_buf[6]);
--		phys_coresperchip = be16_to_cpup((__be16 *)&rtas_data_buf[8]);
- 	}
--
--out:
--	spin_unlock(&rtas_data_buf_lock);
- }
- 
- /* Domains for which more than one result element are returned for each event. */
+ 		pr_warn("%s %s Error calling get-system-parameter (0x%x)\n",
 
 -- 
 2.39.1
