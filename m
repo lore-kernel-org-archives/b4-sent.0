@@ -1,11 +1,10 @@
 From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Fri, 10 Feb 2023 12:42:05 -0600
-Subject: [PATCH v3 17/20] powerpc/pseries/hv-24x7: convert to papr_sysparm
- API
+Date: Fri, 10 Feb 2023 12:42:06 -0600
+Subject: [PATCH v3 18/20] powerpc/pseries/lpar: convert to papr_sysparm API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230125-b4-powerpc-rtas-queue-v3-17-26929c8cce78@linux.ibm.com>
+Message-Id: <20230125-b4-powerpc-rtas-queue-v3-18-26929c8cce78@linux.ibm.com>
 References: <20230125-b4-powerpc-rtas-queue-v3-0-26929c8cce78@linux.ibm.com>
 In-Reply-To: <20230125-b4-powerpc-rtas-queue-v3-0-26929c8cce78@linux.ibm.com>
 To: Michael Ellerman <mpe@ellerman.id.au>, 
@@ -16,97 +15,107 @@ To: Michael Ellerman <mpe@ellerman.id.au>,
  Andrew Donnellan <ajd@linux.ibm.com>, Nick Child <nnac123@linux.ibm.com>
 Cc: linuxppc-dev@lists.ozlabs.org, Nathan Lynch <nathanl@linux.ibm.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1676054526; l=2846;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1676054526; l=3125;
  i=nathanl@linux.ibm.com; s=20230206; h=from:subject:message-id;
- bh=lmBcfoH0lj/2CvQfdz+MmavuamXOYSbQQ5ghGV+grHI=;
- b=AOT/fhTgdkVHkIWKvOZC5Ni5yMFdl1W6U4lgA9sqfSjU4iiW2691zewTZTBqwqsm3EQgtg7qy
- sn+1uW5C/Z0B2hYKvMVRx4BxMl6LAuANBhAF1isqoFVQfUIFzDjj3t+
+ bh=aaR7aumIxEJSYWOkDTaOL4g2oJrS4KScc2sc8zj694c=;
+ b=fOO7qDl0hoxTDfxlP2d7MZ1E/zJL12TlqF+CB2PR9+7BDmewCiM0sbV6EhCQNdYVL2i88lmws
+ HneYSNqUEKPA2iSxAmwNl8r/S8ZO9Jloy5Lp+uHWieqOkpIl5GFgCJx
 X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
  pk=6daubz/ymoaMF+8voz7UHwnhluEsmDZuqygIIMWpQQY=
 X-Endpoint-Received: by B4 Submission Endpoint for nathanl@linux.ibm.com/20230206 with auth_id=27
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-The new papr_sysparm API handles the details of system parameter
-retrieval. Use that instead of open-coding the RTAS call, work area
-management, and retries.
+Convert the TLB block invalidate characteristics discovery to the new
+papr_sysparm API. This occurs too early in boot to use
+papr_sysparm_buf_alloc(), so use a static buffer.
 
 Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
 ---
- arch/powerpc/perf/hv-24x7.c | 37 +++++++++++++++----------------------
- 1 file changed, 15 insertions(+), 22 deletions(-)
+ arch/powerpc/platforms/pseries/lpar.c | 37 +++++++++--------------------------
+ 1 file changed, 9 insertions(+), 28 deletions(-)
 
-diff --git a/arch/powerpc/perf/hv-24x7.c b/arch/powerpc/perf/hv-24x7.c
-index fcfebf5bd378..f388b984a336 100644
---- a/arch/powerpc/perf/hv-24x7.c
-+++ b/arch/powerpc/perf/hv-24x7.c
-@@ -18,6 +18,7 @@
- #include <asm/firmware.h>
- #include <asm/hvcall.h>
- #include <asm/io.h>
+diff --git a/arch/powerpc/platforms/pseries/lpar.c b/arch/powerpc/platforms/pseries/lpar.c
+index 6597b2126ebb..2eab323f6970 100644
+--- a/arch/powerpc/platforms/pseries/lpar.c
++++ b/arch/powerpc/platforms/pseries/lpar.c
+@@ -32,6 +32,7 @@
+ #include <asm/iommu.h>
+ #include <asm/tlb.h>
+ #include <asm/cputable.h>
 +#include <asm/papr-sysparm.h>
- #include <linux/byteorder/generic.h>
+ #include <asm/udbg.h>
+ #include <asm/smp.h>
+ #include <asm/trace.h>
+@@ -1469,8 +1470,6 @@ static inline void __init check_lp_set_hblkrm(unsigned int lp,
+ 	}
+ }
  
- #include <asm/rtas.h>
-@@ -66,8 +67,6 @@ static bool is_physical_domain(unsigned int domain)
-  * Refer PAPR+ document to get parameter token value as '43'.
-  */
- 
--#define PROCESSOR_MODULE_INFO   43
+-#define SPLPAR_TLB_BIC_TOKEN		50
 -
- static u32 phys_sockets;	/* Physical sockets */
- static u32 phys_chipspersocket;	/* Physical chips per socket*/
- static u32 phys_coresperchip; /* Physical cores per chip */
-@@ -79,8 +78,7 @@ static u32 phys_coresperchip; /* Physical cores per chip */
-  */
- void read_24x7_sys_info(void)
+ /*
+  * The size of the TLB Block Invalidate Characteristics is variable. But at the
+  * maximum it will be the number of possible page sizes *2 + 10 bytes.
+@@ -1481,42 +1480,24 @@ static inline void __init check_lp_set_hblkrm(unsigned int lp,
+ 
+ void __init pseries_lpar_read_hblkrm_characteristics(void)
  {
 -	const s32 token = rtas_token("ibm,get-system-parameter");
--	int call_status;
-+	struct papr_sysparm_buf *buf;
+-	unsigned char local_buffer[SPLPAR_TLB_BIC_MAXLENGTH];
+-	int call_status, len, idx, bpsize;
++	static struct papr_sysparm_buf buf __initdata;
++	int len, idx, bpsize;
  
- 	/*
- 	 * Making system parameter: chips and sockets and cores per chip
-@@ -90,27 +88,22 @@ void read_24x7_sys_info(void)
- 	phys_chipspersocket = 1;
- 	phys_coresperchip = 1;
+ 	if (!firmware_has_feature(FW_FEATURE_BLOCK_REMOVE))
+ 		return;
  
 -	do {
 -		spin_lock(&rtas_data_buf_lock);
--		call_status = rtas_call(token, 3, 1, NULL, PROCESSOR_MODULE_INFO,
+-		memset(rtas_data_buf, 0, RTAS_DATA_BUF_SIZE);
+-		call_status = rtas_call(token, 3, 1, NULL, SPLPAR_TLB_BIC_TOKEN,
 -					__pa(rtas_data_buf), RTAS_DATA_BUF_SIZE);
--		if (call_status == 0) {
--			int ntypes = be16_to_cpup((__be16 *)&rtas_data_buf[2]);
--			int len = be16_to_cpup((__be16 *)&rtas_data_buf[0]);
-+	buf = papr_sysparm_buf_alloc();
-+	if (!buf)
-+		return;
- 
--			if (len >= 8 && ntypes != 0) {
--				phys_sockets = be16_to_cpup((__be16 *)&rtas_data_buf[4]);
--				phys_chipspersocket = be16_to_cpup((__be16 *)&rtas_data_buf[6]);
--				phys_coresperchip = be16_to_cpup((__be16 *)&rtas_data_buf[8]);
--			}
-+	if (!papr_sysparm_get(PAPR_SYSPARM_PROC_MODULE_INFO, buf)) {
-+		int ntypes = be16_to_cpup((__be16 *)&buf->val[0]);
-+		int len = be16_to_cpu(buf->len);
-+
-+		if (len >= 8 && ntypes != 0) {
-+			phys_sockets = be16_to_cpup((__be16 *)&buf->val[2]);
-+			phys_chipspersocket = be16_to_cpup((__be16 *)&buf->val[4]);
-+			phys_coresperchip = be16_to_cpup((__be16 *)&buf->val[6]);
- 		}
+-		memcpy(local_buffer, rtas_data_buf, SPLPAR_TLB_BIC_MAXLENGTH);
+-		local_buffer[SPLPAR_TLB_BIC_MAXLENGTH - 1] = '\0';
 -		spin_unlock(&rtas_data_buf_lock);
 -	} while (rtas_busy_delay(call_status));
 -
 -	if (call_status != 0) {
--		pr_err("Error calling get-system-parameter %d\n",
--		       call_status);
- 	}
-+
-+	papr_sysparm_buf_free(buf);
- }
+-		pr_warn("%s %s Error calling get-system-parameter (0x%x)\n",
+-			__FILE__, __func__, call_status);
++	if (papr_sysparm_get(PAPR_SYSPARM_TLB_BLOCK_INVALIDATE_ATTRS, &buf))
+ 		return;
+-	}
  
- /* Domains for which more than one result element are returned for each event. */
+-	/*
+-	 * The first two (2) bytes of the data in the buffer are the length of
+-	 * the returned data, not counting these first two (2) bytes.
+-	 */
+-	len = be16_to_cpu(*((u16 *)local_buffer)) + 2;
++	len = be16_to_cpu(buf.len);
+ 	if (len > SPLPAR_TLB_BIC_MAXLENGTH) {
+ 		pr_warn("%s too large returned buffer %d", __func__, len);
+ 		return;
+ 	}
+ 
+-	idx = 2;
++	idx = 0;
+ 	while (idx < len) {
+-		u8 block_shift = local_buffer[idx++];
++		u8 block_shift = buf.val[idx++];
+ 		u32 block_size;
+ 		unsigned int npsize;
+ 
+@@ -1525,9 +1506,9 @@ void __init pseries_lpar_read_hblkrm_characteristics(void)
+ 
+ 		block_size = 1 << block_shift;
+ 
+-		for (npsize = local_buffer[idx++];
++		for (npsize = buf.val[idx++];
+ 		     npsize > 0 && idx < len; npsize--)
+-			check_lp_set_hblkrm((unsigned int) local_buffer[idx++],
++			check_lp_set_hblkrm((unsigned int)buf.val[idx++],
+ 					    block_size);
+ 	}
+ 
 
 -- 
 2.39.1
