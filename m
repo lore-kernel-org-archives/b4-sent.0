@@ -1,93 +1,85 @@
-From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Mon, 13 Feb 2023 13:23:51 -0600
-Subject: [PATCH v2] powerpc/machdep: warn when machine_is() used too early
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Subject: [PATCH RESEND 2 v7 0/5] PWM and keyboard backlight driver for ARM
+ Macs
+Date: Tue, 14 Feb 2023 16:57:22 +0100
+Message-Id: <20230214-fpwm-v7-0-fb0a6bfbd037@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230210-warn-on-machine-is-before-probe-machine-v2-1-b57f8243c51c@linux.ibm.com>
-X-B4-Tracking: v=1; b=H4sIAEaO6mMC/5WOwQ6CMBBEf4X07BJaJCSe/A/DoVu3som0ZIuII
- fy7hYN3j28meTOrSiRMSV2KVQnNnDiGDOZUKNfb8CDge2ZlKlNXRlfwthIgBhis6znkOgGSj0I
- wSkT65XXb6Aa1P9eIKtvQJgIUG1y/+wabJpK9GIU8L8eFW5e55zRF+RyPZr2n/4/PGjT4yqFtW
- m0aj9cnh9dSMg6li4Pqtm37Am6AbAj7AAAA
-To: Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>, 
- Christophe Leroy <christophe.leroy@csgroup.eu>
-Cc: linuxppc-dev@lists.ozlabs.org, Nathan Lynch <nathanl@linux.ibm.com>
+X-B4-Tracking: v=1; b=H4sIAGKv62MC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyzHUUlJIzE
+ vPSU3UzU4B8JSMDI2MDI0MT3bSC8lzdFIs0c7OkZIuUlGRDJaDSpMTiVN2kosS85AyQ4tzE4pL
+ UIpBEQVFqWmYF2PxopSDXYFc/FwUjpdjaWgAskuCreQAAAA==
+To: Thierry Reding <thierry.reding@gmail.com>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>, 
+ Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ - <asahi@lists.linux.dev>, Sasha Finkelstein <fnkl.kernel@gmail.com>, 
+ Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>
+Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Sasha Finkelstein <7d578vix8hzw@opayq.net>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1676316241; l=2389;
- i=nathanl@linux.ibm.com; s=20230206; h=from:subject:message-id;
- bh=U3ysgvX48P2OhQ8+xTLXW5puL0334RlB2L8QsGv/IKE=;
- b=xj6L8LjBONdygVBMhBaA2rb/K/eyTrNwMkG341NO9eCEME4hEsTrMAZSivJXcUOs4uP9AIc3k
- 68arfJ7oESyBaEXqktpv7uDs6Uwra5cdA/HLJRftQWa6j7uzqt9tBBs
-X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
- pk=6daubz/ymoaMF+8voz7UHwnhluEsmDZuqygIIMWpQQY=
-X-Endpoint-Received: by B4 Submission Endpoint for nathanl@linux.ibm.com/20230206 with auth_id=27
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1676390260; l=1884;
+ i=fnkl.kernel@gmail.com; s=20230213; h=from:subject:message-id;
+ bh=W8XkJNoaiihOtRWm+VY9HVS5fVLKZtL0zeEomIi3nCs=;
+ b=NNzni8bsONdHN+vK075/ukK3vHLt6lXE29h50S9lr03r5LdR0Vz2QqGwkelViFa7HJbypuvD9
+ n7xtlxPq2dgCIwU7Y6oGOwsQpiAkHBT7vF5sRq3j/IVAG8gWA9cnby0
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=7LFSAJtxIWAs9LzCIyX0sSvCZy2wQTyEIu1zch6o804=
+X-Endpoint-Received: by B4 Submission Endpoint for fnkl.kernel@gmail.com/20230213 with auth_id=28
 List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
 
-machine_is() can't provide correct results before probe_machine() has
-run. Warn when it's used too early in boot, placing the WARN_ON() in a
-helper function so the reported file:line indicates exactly what went
-wrong.
+Hi,
 
-checkpatch complains about __attribute__((weak)) in the patch, so
-change that to __weak, and align the line continuations as well.
+This is the second resend of the v7 of the patch series to add PWM and keyboard
+backlight driver for ARM macs. No significant changes this time.
 
-Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
----
-Prompted by my attempts to do some pseries-specific setup during
-rtas_initialize() and being puzzled for a while that it wasn't
-working.
+Changes in v1:
+Addressing the review comments.
 
 Changes in v2:
-- Use WARN_ON(), not WARN().
-- Introduce __machine_is() helper function so the line reported is
-  accurate.
-- Update __attribute__((weak)) to __weak for checkpatch's sake.
-- Link to v1: https://lore.kernel.org/r/20230210-warn-on-machine-is-before-probe-machine-v1-1-f0cba57125fb@linux.ibm.com
----
- arch/powerpc/include/asm/machdep.h | 16 +++++++++++-----
- 1 file changed, 11 insertions(+), 5 deletions(-)
+Added the reviewed-by and acked-by tags.
+Addressing a review comment.
 
-diff --git a/arch/powerpc/include/asm/machdep.h b/arch/powerpc/include/asm/machdep.h
-index 378b8d5836a7..459736d5e511 100644
---- a/arch/powerpc/include/asm/machdep.h
-+++ b/arch/powerpc/include/asm/machdep.h
-@@ -3,6 +3,7 @@
- #define _ASM_POWERPC_MACHDEP_H
- #ifdef __KERNEL__
- 
-+#include <linux/compiler.h>
- #include <linux/seq_file.h>
- #include <linux/init.h>
- #include <linux/dma-mapping.h>
-@@ -220,11 +221,16 @@ extern struct machdep_calls *machine_id;
- 	EXPORT_SYMBOL(mach_##name);				\
- 	struct machdep_calls mach_##name __machine_desc =
- 
--#define machine_is(name) \
--	({ \
--		extern struct machdep_calls mach_##name \
--			__attribute__((weak));		 \
--		machine_id == &mach_##name; \
-+static inline bool __machine_is(const struct machdep_calls *md)
-+{
-+	WARN_ON(!machine_id); // complain if used before probe_machine()
-+	return machine_id == md;
-+}
-+
-+#define machine_is(name)                                        \
-+	({                                                      \
-+		extern struct machdep_calls mach_##name __weak; \
-+		__machine_is(&mach_##name);                     \
- 	})
- 
- static inline void log_error(char *buf, unsigned int err_type, int fatal)
+Changes in v3 and v4:
+Addressing the review comments.
+
+Changes in v5:
+Added t600x device tree changes
+
+v1: https://www.spinics.net/lists/linux-pwm/msg19500.html
+v2: https://www.spinics.net/lists/linux-pwm/msg19562.html
+v3: https://www.spinics.net/lists/linux-pwm/msg19901.html
+v4: https://www.spinics.net/lists/linux-pwm/msg20093.html
+v5: https://www.spinics.net/lists/linux-pwm/msg20150.html
+v6: https://www.spinics.net/lists/linux-pwm/msg20190.html
 
 ---
-base-commit: 0bfb97203f5f300777624a2ad6f8f84aea3e8658
-change-id: 20230210-warn-on-machine-is-before-probe-machine-37515b1f43bb
+Sasha Finkelstein (5):
+      dt-bindings: pwm: Add Apple PWM controller
+      pwm: Add Apple PWM controller
+      arm64: dts: apple: t8103: Add PWM controller
+      arm64: dts: apple: t600x: Add PWM controller
+      MAINTAINERS: Add entries for Apple PWM driver
+
+ .../devicetree/bindings/pwm/apple,s5l-fpwm.yaml    |  51 +++++++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t600x-die0.dtsi          |   9 ++
+ arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi     |  18 +++
+ arch/arm64/boot/dts/apple/t8103-j293.dts           |  17 +++
+ arch/arm64/boot/dts/apple/t8103-j313.dts           |  17 +++
+ arch/arm64/boot/dts/apple/t8103.dtsi               |   9 ++
+ drivers/pwm/Kconfig                                |  12 ++
+ drivers/pwm/Makefile                               |   1 +
+ drivers/pwm/pwm-apple.c                            | 159 +++++++++++++++++++++
+ 10 files changed, 295 insertions(+)
+---
+base-commit: ceaa837f96adb69c0df0397937cd74991d5d821a
+change-id: 20230214-fpwm-d8f76bc8ddc1
 
 Best regards,
 -- 
-Nathan Lynch <nathanl@linux.ibm.com>
+Sasha Finkelstein <fnkl.kernel@gmail.com>
 
