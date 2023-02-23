@@ -1,107 +1,67 @@
-From: Benjamin Tissoires <benjamin.tissoires@redhat.com>
-Date: Wed, 15 Feb 2023 17:48:36 +0100
-Subject: [PATCH] HID: mcp-2221: prevent UAF in delayed work
+From: Rob Bradford <rbradford@rivosinc.com>
+Date: Thu, 23 Feb 2023 17:13:57 +0000
+Subject: [PATCH] virtio-net: Fix probe of virtio-net on kvmtool
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230215-wip-mcp2221-v1-1-d7d1da261a5c@redhat.com>
-X-B4-Tracking: v=1; b=H4sIAOMM7WMC/x2NywqDMBAAf0X23AV3bRD9ldJDEldd0DQk9AHiv
- 7v0OAPDHFClqFQYmwOKfLTqKxnQrYG4+rQI6mQM3HLXMjn8asY9ZmYmHPphuhM5mYMDK4KvgqH
- 4FFdr0nvbTOYis/7+i8fzPC9zHK4GcgAAAA==
-To: Rishi Gupta <gupt21@gmail.com>, Jiri Kosina <jikos@kernel.org>, 
- Pietro Borrello <borrello@diag.uniroma1.it>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Benjamin Tissoires <benjamin.tissoires@redhat.com>
+Message-Id: <20230223-virtio-net-kvmtool-v1-1-fc23d29b9d7a@rivosinc.com>
+X-B4-Tracking: v=1; b=H4sIANSe92MC/22OwQrCMBBEf6Xs2YV0Q6n4K+IhqVu7qIlsQiiU/
+ rur4M3LwGN4w2xQWIULnLoNlJsUycmgP3QwLSHdGOVqDOTIOyKPTbRKxsQV7+1Zc37gcZz9OPR
+ DZCIwMYbCGDWkafmp6AgtZ1n/DHycl7KV3yPny76/AQAyPqCYAAAA
+To: "Michael S. Tsirkin" <mst@redhat.com>, Jason Wang <jasowang@redhat.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: virtualization@lists.linux-foundation.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Rob Bradford <rbradford@rivosinc.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1676479731; l=2755;
- i=benjamin.tissoires@redhat.com; s=20230215; h=from:subject:message-id;
- bh=ZAV9AC74hbxWCBTTNRrOTw2lYGjCcjlsI2cLyvC0tkA=;
- b=E4ih/2BE+S5H93iNdEsJpXCj47czOefRfS92Rf51/q8F5Neke3bwRdncxQL3Enm/A2fo4dU8W
- vnJd4ic/7AnABiMd5nULcqmerv48V8UwhSSpIDRBwe4Oaq18tv+7UuK
-X-Developer-Key: i=benjamin.tissoires@redhat.com; a=ed25519;
- pk=7D1DyAVh6ajCkuUTudt/chMuXWIJHlv2qCsRkIizvFw=
-X-Endpoint-Received: by B4 Submission Endpoint for benjamin.tissoires@redhat.com/20230215 with auth_id=29
-List-Id: B4 Web Endpoint Patches <b4-sent.feeds.kernel.org>
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1677172452; l=1694;
+ i=rbradford@rivosinc.com; s=20230223; h=from:subject:message-id;
+ bh=z4BoSYh1zWAdqXeZO03vzqGwuNOqVDWaqEjXIgKixEQ=;
+ b=sG/nKDOFR38MMLity9ZDXFHvYN9SbTx8eCMH1h1jh/fv3AC+ZcaV5qNk+SkzIcizdScKvRc4B
+ RhVLyHozFqaD3+B2TZTIjArEVoS4xdsMmCsqDmkkHd/1yM2EsnO0tNV
+X-Developer-Key: i=rbradford@rivosinc.com; a=ed25519;
+ pk=LZhCh/kJ+nOqxgEGWkLfx2jKUM5LlyU0Jlip8qsjuA8=
+X-Endpoint-Received: by B4 Relay for rbradford@rivosinc.com/20230223 with auth_id=34
+List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If the device is plugged/unplugged without giving time for mcp_init_work()
-to complete, we might kick in the devm free code path and thus have
-unavailable struct mcp_2221 while in delayed work.
+kvmtool does not support the VIRTIO_NET_F_CTRL_GUEST_OFFLOADS feature
+but does advertise the VIRTIO_NET_F_GUEST_TSO{4,6} features. Check that
+the VIRTIO_NET_F_CTRL_GUEST_OFFLOADS feature is present before setting
+the NETIF_F_GRO_HW feature bit as otherwise an attempt will be made to
+program the virtio-net device using the ctrl queue which will fail.
 
-Add a boolean and a spinlock to prevent scheduling the deleyed work if
-we are in the operation of removing the device.
+This resolves the following error when running on kvmtool:
 
-Signed-off-by: Benjamin Tissoires <benjamin.tissoires@redhat.com>
+[    1.865992] net eth0: Fail to set guest offload.
+[    1.872491] virtio_net virtio2 eth0: set_features() failed (-22); wanted 0x0000000000134829, left 0x0080000000134829
+
+Signed-off-by: Rob Bradford <rbradford@rivosinc.com>
 ---
-Similar to Pietro's series, we can see the pattern in hid-mcp2221,
-except that this time the ledclass is not involved.
+ drivers/net/virtio_net.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-Link: https://lore.kernel.org/linux-input/20230125-hid-unregister-leds-v4-5-7860c5763c38@diag.uniroma1.it/
----
- drivers/hid/hid-mcp2221.c | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/hid/hid-mcp2221.c b/drivers/hid/hid-mcp2221.c
-index e61dd039354b..de8b988f4a48 100644
---- a/drivers/hid/hid-mcp2221.c
-+++ b/drivers/hid/hid-mcp2221.c
-@@ -95,6 +95,8 @@ struct mcp2221 {
- 	struct mutex lock;
- 	struct completion wait_in_report;
- 	struct delayed_work init_work;
-+	spinlock_t init_work_lock;
-+	bool removing;
- 	u8 *rxbuf;
- 	u8 txbuf[64];
- 	int rxbuf_idx;
-@@ -922,6 +924,14 @@ static void mcp2221_hid_unregister(void *ptr)
- /* This is needed to be sure hid_hw_stop() isn't called twice by the subsystem */
- static void mcp2221_remove(struct hid_device *hdev)
- {
-+	struct mcp2221 *mcp = hid_get_drvdata(hdev);
-+	unsigned long flags;
-+
-+	spin_lock_irqsave(&mcp->init_work_lock, flags);
-+	mcp->removing = true;
-+	spin_unlock_irqrestore(&mcp->init_work_lock, flags);
-+
-+	cancel_delayed_work_sync(&mcp->init_work);
- }
+diff --git a/drivers/net/virtio_net.c b/drivers/net/virtio_net.c
+index 61e33e4dd0cd..59951e51fe76 100644
+--- a/drivers/net/virtio_net.c
++++ b/drivers/net/virtio_net.c
+@@ -3781,9 +3781,8 @@ static int virtnet_probe(struct virtio_device *vdev)
+ 	if (virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_CSUM))
+ 		dev->features |= NETIF_F_RXCSUM;
+ 	if (virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_TSO4) ||
+-	    virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_TSO6))
+-		dev->features |= NETIF_F_GRO_HW;
+-	if (virtio_has_feature(vdev, VIRTIO_NET_F_CTRL_GUEST_OFFLOADS))
++	    virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_TSO6) &&
++	    virtio_has_feature(vdev, VIRTIO_NET_F_CTRL_GUEST_OFFLOADS))
+ 		dev->hw_features |= NETIF_F_GRO_HW;
  
- #if IS_REACHABLE(CONFIG_IIO)
-@@ -1040,6 +1050,7 @@ static void mcp_init_work(struct work_struct *work)
- 	struct mcp2221_iio *data;
- 	static int retries = 5;
- 	int ret, num_channels;
-+	unsigned long flags;
- 
- 	hid_hw_power(mcp->hdev, PM_HINT_FULLON);
- 	mutex_lock(&mcp->lock);
-@@ -1090,7 +1101,10 @@ static void mcp_init_work(struct work_struct *work)
- 		return;
- 
- 	/* Device is not ready to read SRAM or FLASH data, try again */
--	schedule_delayed_work(&mcp->init_work, msecs_to_jiffies(100));
-+	spin_lock_irqsave(&mcp->init_work_lock, flags);
-+	if (!mcp->removing)
-+		schedule_delayed_work(&mcp->init_work, msecs_to_jiffies(100));
-+	spin_unlock_irqrestore(&mcp->init_work_lock, flags);
- }
- #endif
- 
-@@ -1131,6 +1145,7 @@ static int mcp2221_probe(struct hid_device *hdev,
- 	}
- 
- 	mutex_init(&mcp->lock);
-+	spin_lock_init(&mcp->init_work_lock);
- 	init_completion(&mcp->wait_in_report);
- 	hid_set_drvdata(hdev, mcp);
- 	mcp->hdev = hdev;
+ 	dev->vlan_features = dev->features;
 
 ---
-base-commit: d883fd110dc17308a1506c5bf17e00ce9fe7b2a2
-change-id: 20230215-wip-mcp2221-979d4115efb5
+base-commit: c39cea6f38eefe356d64d0bc1e1f2267e282cdd3
+change-id: 20230223-virtio-net-kvmtool-87f37515be22
 
 Best regards,
 -- 
-Benjamin Tissoires <benjamin.tissoires@redhat.com>
+Rob Bradford <rbradford@rivosinc.com>
 
