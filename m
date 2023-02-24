@@ -1,61 +1,58 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Fri, 24 Feb 2023 11:20:09 +0100
-Subject: [PATCH RFC 4/4] MAINTAINERS: Add entries for Apple Z2 touchscreen
- driver
+Date: Fri, 24 Feb 2023 12:59:31 +0100
+Subject: [PATCH] bluetooth: btbcm: Fix logic error in forming the board
+ name.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230223-z2-for-ml-v1-4-028f2b85dc15@gmail.com>
-References: <20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com>
-In-Reply-To: <20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com>
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- - <asahi@lists.linux.dev>, Henrik Rydberg <rydberg@bitmath.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-input@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>
+Message-Id: <20230224-btbcm-wtf-v1-1-be717d728e56@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKKm+GMC/x2NQQ7CMAwEv1L5jKXg9AJfQRyS1G59aEB2BJWq/
+ p2U42hnNTs4m7LDfdjB+KOur9rhehmgLKnOjDp1BgoUA9GIueWy4rcJikQSniLfYoDu5+SM2VI
+ ty/lYkze2c3gbi27/yON5HD9e6z/4dAAAAA==
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Johan Hedberg <johan.hedberg@gmail.com>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>
+Cc: linux-bluetooth@vger.kernel.org, stable@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1677234010; l=1179;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1677239981; l=1021;
  i=fnkl.kernel@gmail.com; s=20230213; h=from:subject:message-id;
- bh=ggm8RQAgJMgDmyKCZW5wheYPzEDID9Bijlhv3t/bJyQ=;
- b=ENiTipmIoLajED2qHTBaE1/jKCUb7/G8ftPxAilvHYwrfNUbOCmash09AKIAa80Je9DyxdEZd
- GEq2eHPPOLXCFqkrUc4lgVskHrtLJTTxppc34us0xJKLom6OkmU50KZ
+ bh=liXj6eso7YibAPpq3C6GEb2euORWvG95T35Md9MPiuM=;
+ b=Fk8BUaDW2JcDWQIOtNnG7UY8stvFMte2f8CocTlQj9cWdcvSB9Q9Rq5Ltk3Y+zJDD4RD4ZG8d
+ ZoqwvFk4SQCDcUwZhfNQp87ASdy5EqrY3VRFNyE2mtnVRXwFN7LgshB
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=7LFSAJtxIWAs9LzCIyX0sSvCZy2wQTyEIu1zch6o804=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20230213 with auth_id=28
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the MAINTAINERS entries for the driver
+This patch fixes an incorrect loop exit condition in code that replaces
+'/' symbols in the board name. There might also be a memory corruption
+issue here, but it is unlikely to be a real problem.
 
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- MAINTAINERS | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/bluetooth/btbcm.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 135d93368d36..12811aa1bd01 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1958,6 +1958,7 @@ F:	Documentation/devicetree/bindings/clock/apple,nco.yaml
- F:	Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
- F:	Documentation/devicetree/bindings/dma/apple,admac.yaml
- F:	Documentation/devicetree/bindings/i2c/apple,i2c.yaml
-+F:	Documentation/devicetree/bindings/input/touchscreen/apple,z2-touchscreen.yaml
- F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
- F:	Documentation/devicetree/bindings/iommu/apple,dart.yaml
- F:	Documentation/devicetree/bindings/iommu/apple,sart.yaml
-@@ -1976,6 +1977,7 @@ F:	drivers/cpufreq/apple-soc-cpufreq.c
- F:	drivers/dma/apple-admac.c
- F:	drivers/i2c/busses/i2c-pasemi-core.c
- F:	drivers/i2c/busses/i2c-pasemi-platform.c
-+F:	drivers/input/touchscreen/apple_z2.c
- F:	drivers/iommu/apple-dart.c
- F:	drivers/iommu/io-pgtable-dart.c
- F:	drivers/irqchip/irq-apple-aic.c
+diff --git a/drivers/bluetooth/btbcm.c b/drivers/bluetooth/btbcm.c
+index 3006e2a0f37e..43e98a598bd9 100644
+--- a/drivers/bluetooth/btbcm.c
++++ b/drivers/bluetooth/btbcm.c
+@@ -511,7 +511,7 @@ static const char *btbcm_get_board_name(struct device *dev)
+ 	len = strlen(tmp) + 1;
+ 	board_type = devm_kzalloc(dev, len, GFP_KERNEL);
+ 	strscpy(board_type, tmp, len);
+-	for (i = 0; i < board_type[i]; i++) {
++	for (i = 0; i < len; i++) {
+ 		if (board_type[i] == '/')
+ 			board_type[i] = '-';
+ 	}
 
+---
+base-commit: c9c3395d5e3dcc6daee66c6908354d47bf98cb0c
+change-id: 20230224-btbcm-wtf-ff32fed3e930
+
+Best regards,
 -- 
-Git-137.1)
+Sasha Finkelstein <fnkl.kernel@gmail.com>
 
