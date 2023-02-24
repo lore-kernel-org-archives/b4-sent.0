@@ -1,13 +1,13 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Subject: [PATCH RFC 0/4] Driver for Apple Z2 touchscreens.
-Date: Fri, 24 Feb 2023 11:20:05 +0100
-Message-Id: <20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com>
+Date: Fri, 24 Feb 2023 11:20:06 +0100
+Subject: [PATCH RFC 1/4] dt-bindings: input: touchscreen: Add Z2 controller
+ bindings.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFWP+GMC/x2NQQqDQAxFryJZN6DRFum20AO4LS5mbKYG6iiJF
- FG8u2OXj/8+bwNjFTa4Zxso/8RkjAmKSwZd7+KHUd6JgXIqc6ISV8IwKg5fLOrgr1TdQuVrSL5
- 3xujVxa4/H4OzmfUcJuUgyz/ygub5gHbfD/nmbFF5AAAA
+Message-Id: <20230223-z2-for-ml-v1-1-028f2b85dc15@gmail.com>
+References: <20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com>
+In-Reply-To: <20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com>
 To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
  Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
@@ -18,48 +18,112 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-input@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1677234010; l=1467;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1677234010; l=2766;
  i=fnkl.kernel@gmail.com; s=20230213; h=from:subject:message-id;
- bh=iO9PN0y1qjt6XxSGQL41NucjZnvl8Vrb0aCV9l4Baxw=;
- b=dImDJPnm2PjAzixKlaYbuO+xXG0Y6YZ4B4bWEsmaK9XI/9tzCa8+2bLT0yto9OtWiqh83pRqY
- qM6HrTIDAOcArxJFYMyemiDG6YVmwXVJgxx8kVAqt5UfoTFGbwNqHHn
+ bh=TIFeuBdRxzykTftxnIb6paUfaCW7E97Qi1elJFdmf7U=;
+ b=c+U5qTMzGRBHyc/3ErDETUt6IQ+mC5Oe26vWKbSJ6yB7qx9I7uJB8eFYGoWMwv0y49Wz6mwi5
+ /qtg+m5apLKAs8MZnNIbISBEZ2l5ghoQt4wXe5W+3gnSSPYTI81yhhL
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=7LFSAJtxIWAs9LzCIyX0sSvCZy2wQTyEIu1zch6o804=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20230213 with auth_id=28
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi.
-
-This series adds support for Apple touchscreens using the Z2 protocol.
-Those are used as the primary touchscreen on mobile Apple devices, and for the
-touchbar on laptops using the M-series chips. (T1/T2 laptops have a coprocessor
-in charge of speaking Z2 to the touchbar).
-
-Sending this as a RFC for now, since this series requires the SPI controller
-support which is not upstream yet:
-https://lore.kernel.org/all/20211212034726.26306-1-marcan@marcan.st/
+Add bindings for touchscreen controllers attached using the Z2 protocol.
+Those are present in most Apple devices.
 
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
-Sasha Finkelstein (4):
-      dt-bindings: input: touchscreen: Add Z2 controller bindings.
-      input: apple_z2: Add a driver for Apple Z2 touchscreens
-      arm64: dts: apple: t8103: Add touchbar bindings
-      MAINTAINERS: Add entries for Apple Z2 touchscreen driver
+ .../input/touchscreen/apple,z2-touchscreen.yaml    | 81 ++++++++++++++++++++++
+ 1 file changed, 81 insertions(+)
 
- .../input/touchscreen/apple,z2-touchscreen.yaml    |  81 ++++
- MAINTAINERS                                        |   2 +
- arch/arm64/boot/dts/apple/t8103-j293.dts           |  20 +
- arch/arm64/boot/dts/apple/t8103.dtsi               |  12 +
- drivers/input/touchscreen/Kconfig                  |  13 +
- drivers/input/touchscreen/Makefile                 |   1 +
- drivers/input/touchscreen/apple_z2.c               | 465 +++++++++++++++++++++
- 7 files changed, 594 insertions(+)
----
-base-commit: c9c3395d5e3dcc6daee66c6908354d47bf98cb0c
-change-id: 20230223-z2-for-ml-18fb5246f4b8
+diff --git a/Documentation/devicetree/bindings/input/touchscreen/apple,z2-touchscreen.yaml b/Documentation/devicetree/bindings/input/touchscreen/apple,z2-touchscreen.yaml
+new file mode 100644
+index 000000000000..695594494b1e
+--- /dev/null
++++ b/Documentation/devicetree/bindings/input/touchscreen/apple,z2-touchscreen.yaml
+@@ -0,0 +1,81 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/input/touchscreen/apple,z2-touchscreen.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple touchscreens attached using the Z2 protocol.
++
++maintainers:
++  - asahi@lists.linux.dev
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++description: A series of touschscreen controllers used in Apple products.
++
++allOf:
++  - $ref: touchscreen.yaml#
++  - $ref: /schemas/spi/spi-peripheral-props.yaml#
++
++properties:
++  compatible:
++    const: apple,z2-touchscreen
++
++  reg:
++    maxItems: 1
++
++  interrupts-extended:
++    maxItems: 1
++
++  reset-gpios:
++    maxItems: 1
++
++  cs-gpios:
++    maxItems: 1
++
++  firmware-name:
++    maxItems: 1
++
++  apple,z2-device-name:
++    description: The name to be used for the input device
++    $ref: /schemas/types.yaml#/definitions/string
++
++  touchscreen-size-x: true
++  touchscreen-size-y: true
++  spi-max-frequency: true
++
++required:
++  - compatible
++  - interrupts-extended
++  - reset-gpios
++  - cs-gpios
++  - firmware-name
++  - apple,z2-device-name
++  - touchscreen-size-x
++  - touchscreen-size-y
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    spi {
++            #address-cells = <1>;
++            #size-cells = <0>;
++
++            touchscreen@0 {
++                    compatible = "apple,z2-touchscreen";
++                    reg = <0>;
++                    spi-max-frequency = <11500000>;
++                    reset-gpios = <&pinctrl_ap 139 0>;
++                    cs-gpios = <&pinctrl_ap 109 0>;
++                    interrupts-extended = <&pinctrl_ap 194 IRQ_TYPE_EDGE_FALLING>;
++                    firmware-name = "apple/dfrmtfw-j293.bin";
++                    touchscreen-size-x = <23045>;
++                    touchscreen-size-y = <640>;
++                    apple,z2-device-name = "MacBookPro17,1 Touch Bar";
++            };
++    };
++
++...
 
-Best regards,
 -- 
-Sasha Finkelstein <fnkl.kernel@gmail.com>
+Git-137.1)
 
