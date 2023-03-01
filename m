@@ -1,49 +1,47 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Wed, 01 Mar 2023 18:51:32 +0000
-Subject: [PATCH v2 07/16] check_whence: error on directory listed as File
+Date: Wed, 01 Mar 2023 18:51:33 +0000
+Subject: [PATCH v2 08/16] copy-firmware: remove non-applicable file
+ presence test
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230301-fixes-and-compression-v2-7-6061ab1a0483@gmail.com>
+Message-Id: <20230301-fixes-and-compression-v2-8-6061ab1a0483@gmail.com>
 References: <20230301-fixes-and-compression-v2-0-6061ab1a0483@gmail.com>
 In-Reply-To: <20230301-fixes-and-compression-v2-0-6061ab1a0483@gmail.com>
 To: Josh Boyer <jwboyer@kernel.org>, Adam Sampson <ats@offog.org>, 
  David Woodhouse <dwmw2@infradead.org>, 
  Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1677696718; l=859;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1677696718; l=655;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=F3j5Qldgen7pQ7rPea6JFL3+27lQd6Q2y34UCLnJp7k=;
- b=uIyH00cjYeloh83fZEScmbeJ96qo8Xrpl0KWYkUhdqEeEIxK5voKtuaEIt/hWtHEvubxvYZq5
- lpFnSTfzBRWA1pdBVU+wQ7xWdOPx9fcsoyCAwJT+j/VkRAzCd8lZd4S
+ bh=xcjzktk1cmFxjASRD0WzRiBZcDi7DUscCBvzM13kFwk=;
+ b=KPIgR6+9fpOfgstc9b4dfmpIoPI0bZSvsYR+tygXF58TPUIWvkiBy6v/AIdGmnpmO9n72vZlD
+ jRXwZGQP5keCqCQDAO8+EVpsetjI+6CRxQZ4o3o1uAqUMQuc8gHQrlG
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-No occurrences in-tree, but it makes sense to sanity check that.
+The check_whence.py script already ensures that the files listed in
+WHENCE are present on-disk. Thus the extra check isn't needed.
 
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- check_whence.py | 5 +++++
- 1 file changed, 5 insertions(+)
+ copy-firmware.sh | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/check_whence.py b/check_whence.py
-index 7ff21f6..130966e 100755
---- a/check_whence.py
-+++ b/check_whence.py
-@@ -47,6 +47,11 @@ def main():
-     known_prefixes = set(name for name in whence_list if name.endswith('/'))
-     git_files = set(list_git())
+diff --git a/copy-firmware.sh b/copy-firmware.sh
+index 6bceef3..656b0ec 100755
+--- a/copy-firmware.sh
++++ b/copy-firmware.sh
+@@ -32,7 +32,6 @@ while test $# -gt 0; do
+ done
  
-+    for name in set(name for name in whence_files if name.endswith('/')):
-+        sys.stderr.write('E: %s listed in WHENCE as File, but is directory\n' %
-+                         name)
-+        ret = 1
-+
-     for name in set(fw for fw in whence_files if whence_files.count(fw) > 1):
-         sys.stderr.write('E: %s listed in WHENCE twice\n' % name)
-         ret = 1
+ grep '^File:' WHENCE | sed -e's/^File: *//g' | while read f; do
+-    test -f "$f" || continue
+     $verbose "copying file $f"
+     install -d $destdir/$(dirname "$f")
+     cp -d "$f" $destdir/"$f"
 
 -- 
 2.39.2
