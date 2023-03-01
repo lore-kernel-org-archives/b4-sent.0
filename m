@@ -1,157 +1,75 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Wed, 01 Mar 2023 18:51:41 +0000
-Subject: [PATCH v2 16/16] Makefile, copy-firmware: support xz/zstd
- compressed firmware
+Subject: [PATCH RESEND v2 00/16] Misc fixes, sanity checks and xz/zstd
+ compression
+Date: Wed, 01 Mar 2023 18:56:14 +0000
+Message-Id: <20230301-fixes-and-compression-v2-0-e2b71974e842@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230301-fixes-and-compression-v2-16-6061ab1a0483@gmail.com>
-References: <20230301-fixes-and-compression-v2-0-6061ab1a0483@gmail.com>
-In-Reply-To: <20230301-fixes-and-compression-v2-0-6061ab1a0483@gmail.com>
-To: Josh Boyer <jwboyer@kernel.org>, Adam Sampson <ats@offog.org>, 
+To: linux-firmware@kernel.org
+Cc: Josh Boyer <jwboyer@kernel.org>, Adam Sampson <ats@offog.org>, 
  David Woodhouse <dwmw2@infradead.org>, 
  Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1677696718; l=4104;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1677696976; l=2014;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=PRPQN2jK0uWMC2spdCgfbybC/qE0g9wrVkW5mSSOQwI=;
- b=vfKUbovacPM8zjMiu5ttwCVGAij4J8kq7to7D69iL8I9G39kxuMOyRc1dRgwFKlFCdyli9yzc
- fS8J95GZotzB9R1e9JZU2A+8zOcnfP+Dgd+GHkMna9i3HQAJro9tcct
+ bh=lEUKziagfS9TQH5uWWD4nJ79NWK0qA8ZxG9IL4sHw/U=;
+ b=Fp8M1nZeUyO8EZYToKCPcRkJV8gl6jBZw/s7EGQ0cS2HN8GLh1oiHmk4iWtHG64PvbK2cx6ou
+ MhXKkLiW/CMDojBBu0/Gw+On+i95w48iwfz1WUfx7Ovd3AvOPJam1pa
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The kernel has supported compressed firmware for quite some time. So
-let's add a couple of targets to produce that. In practical terms this
-means it we'll use ~5x times less space on disk.
+Hey everyone,
 
-Reportedly the amd ucode, needs to be uncompressed _within_ the
-initrd in order to work. Using compressed ucode in late load just works.
-Ideally this will be addressed by the initrd generators, but considering
-the files are tiny in size let's skip the compression.
+Here's an updated series which fixes some outstanding issues, enhances
+the check_whence checks and adds xz/zstd firmware support.
 
-v2
- - commit message, skip compression for files annotated as Raw
+v2:
+ - Commend out duplicated MediaTek firmware
+ - Tweak list_links_list() after Adam's approach
+ - Skip compression of amd ucode
 
-Cc: David Woodhouse <dwmw2@infradead.org>
+Link to v1: https://lore.kernel.org/linux-firmware/CACvgo50RhmRKnUoos2wGWOP-Pb8oGo1BMPunfTtBQO0eX1D2Dg@mail.gmail.com/T/
+
+Josh, others, kindly let me know if you'd prefer a PR or if there is
+anything I can do to move this forward. Be that as a whole, or chunks of
+it.
+
+Thanks
+Emil
+
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- Makefile         |  8 ++++++++
- WHENCE           |  5 +++++
- copy-firmware.sh | 38 ++++++++++++++++++++++++++++++++++----
- 3 files changed, 47 insertions(+), 4 deletions(-)
+Emil Velikov (16):
+      WHENCE: remove trailing white space
+      WHENCE: remove unnecessary filename quotation
+      check_whence, WHENCE, copy-firmware: escape filenames with spaces
+      WHENCE: remove duplicate File entries
+      WHENCE: comment out duplicate MediaTek firmware
+      check_whence: error on duplicate file entries
+      check_whence: error on directory listed as File
+      copy-firmware: remove non-applicable file presence test
+      check_whence: error if File: is actually a link
+      check_whence: error if symlinks are in-tree
+      copy-firmware: remove unreachable symlink workarounds
+      copy-firmware: quote deskdir to prevent word splitting
+      copy-firmware: tweak sed invocation
+      copy-firmware: quote the output of dirname
+      copy-firmware: silence the last shellcheck warnings
+      Makefile, copy-firmware: support xz/zstd compressed firmware
 
-diff --git a/Makefile b/Makefile
-index 83a0ec6..50a4c29 100644
---- a/Makefile
-+++ b/Makefile
-@@ -11,3 +11,11 @@ check:
- install:
- 	install -d $(DESTDIR)$(FIRMWAREDIR)
- 	./copy-firmware.sh $(DESTDIR)$(FIRMWAREDIR)
-+
-+install-xz:
-+	install -d $(DESTDIR)$(FIRMWAREDIR)
-+	./copy-firmware.sh --xz $(DESTDIR)$(FIRMWAREDIR)
-+
-+install-zst:
-+	install -d $(DESTDIR)$(FIRMWAREDIR)
-+	./copy-firmware.sh --zstd $(DESTDIR)$(FIRMWAREDIR)
-diff --git a/WHENCE b/WHENCE
-index bce94c5..6e44afa 100644
---- a/WHENCE
-+++ b/WHENCE
-@@ -3878,14 +3878,19 @@ License: Redistributable. See LICENSE.amd-sev for details
- Driver: microcode_amd - AMD CPU Microcode Update Driver for Linux
- 
- File: amd-ucode/microcode_amd.bin
-+Raw: amd-ucode/microcode_amd.bin
- Version: 2013-07-10
- File: amd-ucode/microcode_amd_fam15h.bin
-+Raw: amd-ucode/microcode_amd_fam15h.bin
- Version: 2018-05-24
- File: amd-ucode/microcode_amd_fam16h.bin
-+Raw: amd-ucode/microcode_amd_fam16h.bin
- Version: 2014-10-28
- File: amd-ucode/microcode_amd_fam17h.bin
-+Raw: amd-ucode/microcode_amd_fam17h.bin
- Version: 2022-04-08
- File: amd-ucode/microcode_amd_fam19h.bin
-+Raw: amd-ucode/microcode_amd_fam19h.bin
- Version: 2023-01-31
- File: amd-ucode/README
- 
-diff --git a/copy-firmware.sh b/copy-firmware.sh
-index a52b847..6da9111 100755
---- a/copy-firmware.sh
-+++ b/copy-firmware.sh
-@@ -5,6 +5,9 @@
- #
- 
- verbose=:
-+# shellcheck disable=SC2209
-+compress=cat
-+compext=
- 
- while test $# -gt 0; do
-     case $1 in
-@@ -14,6 +17,28 @@ while test $# -gt 0; do
-             shift
-             ;;
- 
-+        --xz)
-+            if test "$compext" == ".zst"; then
-+                echo "ERROR: cannot mix XZ and ZSTD compression"
-+                exit 1
-+            fi
-+            compress="xz --compress --quiet --stdout --check=crc32"
-+            compext=".xz"
-+            shift
-+            ;;
-+
-+        --zstd)
-+            if test "$compext" == ".xz"; then
-+                echo "ERROR: cannot mix XZ and ZSTD compression"
-+                exit 1
-+            fi
-+            # shellcheck disable=SC2209
-+            verbose=echo
-+            compress="zstd --compress --quiet --stdout"
-+            compext=".zst"
-+            shift
-+            ;;
-+
-         *)
-             if test "x$destdir" != "x"; then
-                 echo "ERROR: unknown command-line options: $*"
-@@ -28,16 +53,21 @@ done
- 
- # shellcheck disable=SC2162
- grep '^File:' WHENCE | sed -e 's/^File: *//g' | while read f; do
--    $verbose "copying file $f"
-     install -d "$destdir/$(dirname "$f")"
--    cp "$f" "$destdir/$f"
-+    $verbose "copying/compressing file $f$compext"
-+    if test "$compress" != "cat" && grep -q "^Raw: $f\$" WHENCE; then
-+        $verbose "compression will be skipped for file $f"
-+        cat "$f" > "$destdir/$f"
-+    else
-+        $compress "$f" > "$destdir/$f$compext"
-+    fi
- done
- 
- # shellcheck disable=SC2162
- grep -E '^Link:' WHENCE | sed -e 's/^Link: *//g;s/-> //g' | while read f d; do
--    $verbose "creating link $f -> $d"
-     install -d "$destdir/$(dirname "$f")"
--    ln -s "$d" "$destdir/$f"
-+    $verbose "creating link $f$compext -> $d$compext"
-+    ln -s "$d$compext" "$destdir/$f$compext"
- done
- 
- exit 0
+ Makefile         |   8 +++++
+ WHENCE           | 107 ++++++++++++++++++++++++-------------------------------
+ check_whence.py  |  53 +++++++++++++++++++++++----
+ copy-firmware.sh |  76 ++++++++++++++++++++-------------------
+ 4 files changed, 141 insertions(+), 103 deletions(-)
+---
+base-commit: 60971a6485ee604c47cc905ff77c583ae001f9df
+change-id: 20230301-fixes-and-compression-7247407cab21
 
+Best regards,
 -- 
-2.39.2
+Emil Velikov <emil.l.velikov@gmail.com>
 
