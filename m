@@ -1,116 +1,76 @@
-From: Rob Bradford <rbradford@rivosinc.com>
-Date: Wed, 01 Mar 2023 13:59:52 +0000
-Subject: [PATCH v3] virtio-net: Fix probe of virtio-net on kvmtool
+From: Emil Velikov <emil.l.velikov@gmail.com>
+Subject: [PATCH v2 00/16] Misc fixes, sanity checks and xz/zstd compression
+Date: Wed, 01 Mar 2023 18:51:25 +0000
+Message-Id: <20230301-fixes-and-compression-v2-0-6061ab1a0483@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230223-virtio-net-kvmtool-v3-1-e038660624de@rivosinc.com>
-X-B4-Tracking: v=1; b=H4sIAFda/2MC/4WOQQrCMBBFr1KydqSZUNO68h7iok0ndlATSUpQS
- u9uWnAjopuBN5//+JOIFJii2BeTCJQ4sncZ1KYQZmjdmYD7zAJLVCWigsRhZA+ORrik2+j9FWp
- tla5k1RGiyMWujQRdaJ0Z3lUoEfK1/PgiWDr3QDlchxxPmQeOow/PdVeSy/fnhCRBgjWoemy6p
- tftIXDykZ3ZGn8TizHhfwtmS02mUZWUtNP2wzLP8wtIA04KMQEAAA==
-To: "Michael S. Tsirkin" <mst@redhat.com>, Jason Wang <jasowang@redhat.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: virtualization@lists.linux-foundation.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Rob Bradford <rbradford@rivosinc.com>
+X-B4-Tracking: v=1; b=H4sIAK2e/2MC/x3MQQrDMAwEwK8EnStwnIAhXyk9yI7S6BC7SFAKI
+ X+P3OPuMnuCsQobLMMJyl8xadVDfAxQdqpvRlk9QwxxClMYcZMfG1JdsbTjo2xdYIpzmkMqlOM
+ IbjMZY1aqZe96ay2T9sHF/8Hb5+u6btCcQrCAAAAA
+To: Josh Boyer <jwboyer@kernel.org>, Adam Sampson <ats@offog.org>, 
+ David Woodhouse <dwmw2@infradead.org>, 
+ Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1677679192; l=3604;
- i=rbradford@rivosinc.com; s=20230223; h=from:subject:message-id;
- bh=uAe/SKwsHTpefY9V/DL39NAvpPxAdiRm85ilJO0Tds4=;
- b=k3aNNNHOyZhbPNqhoQd4/ZrfM9IEXIi8pClhR7JYzeZ1xW0xniVNY7ktwc8A5oqTs9584QUIF
- jJQ1lPRhD6cDPKufx8BQoSk+9x7invBgdec+Om5UZGc3Nmdvwv95leh
-X-Developer-Key: i=rbradford@rivosinc.com; a=ed25519;
- pk=LZhCh/kJ+nOqxgEGWkLfx2jKUM5LlyU0Jlip8qsjuA8=
-X-Endpoint-Received: by B4 Relay for rbradford@rivosinc.com/20230223 with auth_id=34
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1677696718; l=2014;
+ i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
+ bh=lEUKziagfS9TQH5uWWD4nJ79NWK0qA8ZxG9IL4sHw/U=;
+ b=FlItx+8stUmRg+zgWuget6b4mQY2e5CfrJzcOICG8ZVXNAAZWJ/les5d69MyPP4U6zSc+I10A
+ e1/2OeBG4ILCdr+ImLnCjS+hbJEB8jjrNOVoBQoOfHMvnHn69zBWhwv
+X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
+ pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
+X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since the following commit virtio-net on kvmtool has printed a warning
-during the probe:
+Hey everyone,
 
-commit dbcf24d153884439dad30484a0e3f02350692e4c
-Author: Jason Wang <jasowang@redhat.com>
-Date:   Tue Aug 17 16:06:59 2021 +0800
+Here's an updated series which fixes some outstanding issues, enhances
+the check_whence checks and adds xz/zstd firmware support.
 
-    virtio-net: use NETIF_F_GRO_HW instead of NETIF_F_LRO
+v2:
+ - Commend out duplicated MediaTek firmware
+ - Tweak list_links_list() after Adam's approach
+ - Skip compression of amd ucode
 
-[    1.865992] net eth0: Fail to set guest offload.
-[    1.872491] virtio_net virtio2 eth0: set_features() failed (-22); wanted 0x0000000000134829, left 0x0080000000134829
+Link to v1: https://lore.kernel.org/linux-firmware/CACvgo50RhmRKnUoos2wGWOP-Pb8oGo1BMPunfTtBQO0eX1D2Dg@mail.gmail.com/T/
 
-This is because during the probing the underlying netdev device has
-identified that the netdev features on the device has changed and
-attempts to update the virtio-net offloads through the virtio-net
-control queue. kvmtool however does not have a control queue that supports
-offload changing (VIRTIO_NET_F_CTRL_GUEST_OFFLOADS is not advertised)
+Josh, others, kindly let me know if you'd prefer a PR or if there is
+anything I can do to move this forward. Be that as a whole, or chunks of
+it.
 
-The netdev features have changed due to validation checks in
-netdev_fix_features():
+Thanks
+Emil
 
-if (!(features & NETIF_F_RXCSUM)) {
-	/* NETIF_F_GRO_HW implies doing RXCSUM since every packet
-	 * successfully merged by hardware must also have the
-	 * checksum verified by hardware.  If the user does not
-	 * want to enable RXCSUM, logically, we should disable GRO_HW.
-	 */
-	if (features & NETIF_F_GRO_HW) {
-		netdev_dbg(dev, "Dropping NETIF_F_GRO_HW since no RXCSUM feature.\n");
-		features &= ~NETIF_F_GRO_HW;
-	}
-}
-
-Since kvmtool does not advertise the VIRTIO_NET_F_GUEST_CSUM feature the
-NETIF_F_RXCSUM bit is not present and so the NETIF_F_GRO_HW bit is
-cleared. This results in the netdev features changing, which triggers
-the attempt to reprogram the virtio-net offloads which then fails.
-
-This commit prevents that set of netdev features from changing by
-preemptively applying the same validation and only setting
-NETIF_F_GRO_HW if NETIF_F_RXCSUM is set because the device supports both
-VIRTIO_NET_F_GUEST_CSUM and VIRTIO_NET_F_GUEST_TSO{4,6}
-
-Signed-off-by: Rob Bradford <rbradford@rivosinc.com>
+Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
-Changes in v3:
-- Identified root-cause of feature bit changing and updated conditions
-  check
-- Link to v2: https://lore.kernel.org/r/20230223-virtio-net-kvmtool-v2-1-8ec93511e67f@rivosinc.com
+Emil Velikov (16):
+      WHENCE: remove trailing white space
+      WHENCE: remove unnecessary filename quotation
+      check_whence, WHENCE, copy-firmware: escape filenames with spaces
+      WHENCE: remove duplicate File entries
+      WHENCE: comment out duplicate MediaTek firmware
+      check_whence: error on duplicate file entries
+      check_whence: error on directory listed as File
+      copy-firmware: remove non-applicable file presence test
+      check_whence: error if File: is actually a link
+      check_whence: error if symlinks are in-tree
+      copy-firmware: remove unreachable symlink workarounds
+      copy-firmware: quote deskdir to prevent word splitting
+      copy-firmware: tweak sed invocation
+      copy-firmware: quote the output of dirname
+      copy-firmware: silence the last shellcheck warnings
+      Makefile, copy-firmware: support xz/zstd compressed firmware
 
-Changes in v2:
-- Use parentheses to group logical OR of features 
-- Link to v1:
-  https://lore.kernel.org/r/20230223-virtio-net-kvmtool-v1-1-fc23d29b9d7a@rivosinc.com
+ Makefile         |   8 +++++
+ WHENCE           | 107 ++++++++++++++++++++++++-------------------------------
+ check_whence.py  |  53 +++++++++++++++++++++++----
+ copy-firmware.sh |  76 ++++++++++++++++++++-------------------
+ 4 files changed, 141 insertions(+), 103 deletions(-)
 ---
- drivers/net/virtio_net.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/net/virtio_net.c b/drivers/net/virtio_net.c
-index 61e33e4dd0cd..2e7705142ca5 100644
---- a/drivers/net/virtio_net.c
-+++ b/drivers/net/virtio_net.c
-@@ -3778,11 +3778,13 @@ static int virtnet_probe(struct virtio_device *vdev)
- 			dev->features |= dev->hw_features & NETIF_F_ALL_TSO;
- 		/* (!csum && gso) case will be fixed by register_netdev() */
- 	}
--	if (virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_CSUM))
-+	if (virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_CSUM)) {
- 		dev->features |= NETIF_F_RXCSUM;
--	if (virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_TSO4) ||
--	    virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_TSO6))
--		dev->features |= NETIF_F_GRO_HW;
-+		/* This dependency is enforced by netdev_fix_features */
-+		if (virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_TSO4) ||
-+		    virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_TSO6))
-+			dev->features |= NETIF_F_GRO_HW;
-+	}
- 	if (virtio_has_feature(vdev, VIRTIO_NET_F_CTRL_GUEST_OFFLOADS))
- 		dev->hw_features |= NETIF_F_GRO_HW;
- 
-
----
-base-commit: c39cea6f38eefe356d64d0bc1e1f2267e282cdd3
-change-id: 20230223-virtio-net-kvmtool-87f37515be22
+base-commit: 60971a6485ee604c47cc905ff77c583ae001f9df
+change-id: 20230301-fixes-and-compression-7247407cab21
 
 Best regards,
 -- 
-Rob Bradford <rbradford@rivosinc.com>
+Emil Velikov <emil.l.velikov@gmail.com>
 
