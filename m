@@ -1,158 +1,74 @@
-From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Wed, 01 Mar 2023 18:56:30 +0000
-Subject: [PATCH RESEND v2 16/16] Makefile, copy-firmware: support xz/zstd
- compressed firmware
+From: Patrick Blass <patrickblass@mailbox.org>
+Date: Fri, 03 Mar 2023 20:06:29 +0100
+Subject: [PATCH] rust: str: fix requierments->requirements typo for rust
+ str
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230301-fixes-and-compression-v2-16-e2b71974e842@gmail.com>
-References: <20230301-fixes-and-compression-v2-0-e2b71974e842@gmail.com>
-In-Reply-To: <20230301-fixes-and-compression-v2-0-e2b71974e842@gmail.com>
-To: linux-firmware@kernel.org
-Cc: Josh Boyer <jwboyer@kernel.org>, Adam Sampson <ats@offog.org>, 
- David Woodhouse <dwmw2@infradead.org>, 
- Emil Velikov <emil.l.velikov@gmail.com>
+Message-Id: <20230303-str-rs-typo-v1-1-d022b4a57591@mailbox.org>
+X-B4-Tracking: v=1; b=H4sIADRFAmQC/x2N0QpAQBBFf0XzbAqbwq/Iw+4azIOlmU0k/27pP
+ p1up3ODkjApdNkNQgcrbyFBmWfgFxtmQh4TQ1VUpkhDjYKiGK99Q0el9009utZMkAxnldCJDX7
+ 5nNVqJPmOXWji88/0w/O8RFEmYnYAAAA=
+To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Wedson Almeida Filho <wedsonaf@gmail.com>, 
+ Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Morgan Bartlett <mjmouse9999@gmail.com>, 
+ Niklas Mohrin <dev@niklasmohrin.de>
+Cc: Geoffrey Thomas <geofft@ldpreload.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Viktor Garske <viktor@v-gar.de>, Sven Van Asbroeck <thesven73@gmail.com>, 
+ rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Patrick Blass <patrickblass@mailbox.org>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1677696976; l=4104;
- i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=PRPQN2jK0uWMC2spdCgfbybC/qE0g9wrVkW5mSSOQwI=;
- b=X+2ks5U/6r6FnF1OvjAXfdrDwG0htFh1aQ33tetIatNRmvEOsgNuUnGCscabj14hkykvSWPlM
- TPL259iwETKADGpPmVskTJDznkp+Ael2zZ4uyCNJrhubtNxbl3WajF2
-X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
- pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
-X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1205;
+ i=patrickblass@mailbox.org; h=from:subject:message-id;
+ bh=g3xJefQ8BmKAXAFUnDC8xFZ5SkostIUiVotzVhaztoc=;
+ b=owEBbQKS/ZANAwAIAfr4tNPd5QZuAcsmYgBkAkVeU24iFhTfN+ud2zUjZukIEj9jZkHDkPJ0KTfS
+ zsYYtjqJAjMEAAEIAB0WIQRyvooYoKyvwaJCarP6+LTT3eUGbgUCZAJFXgAKCRD6+LTT3eUGbpw4EA
+ C4KmCm4ce1obC81DpHCncMJR8ODGcnmy/oGrsOnVXZHIShD8Ve3uOtZ+JZFET+8lDz1q5S+Rjlbbgk
+ QG9KoTymReH2sNC96yCCy2ZClOPvDAtVvRVuXzIDPGTFHlvqmVPMbfq+nTeynAoTdY2iEZjkdD3fsh
+ AzXlMX6c4tToXwQM/VLby4vrVo0wPp9NjPJRPA+ntk1+gtqzHRyeWzbdrFXhqVSXM+iv6xO6H27+XL
+ cUgG4gn5B5LT2n7xntqw1nKHTgkE7wXmnOxyPnVFrBZAYw2XcsEEyZEjipB6zqZlbA/xpY/xnuaa06
+ R/ipAsUHiZv9POQZ/Kcg8IE/MJWQZ6O7m0ZS2xitvI6Y+tQtOooCjPan4dMQuZcADI4leGNNz1hTNI
+ GoO0xuJFGQ/IBcPGRQf04h8QtNpZpqT0dJ/GB7OjdDD53YI4JJCqZmzGqbC/D0Mj/tDhQ6FBJUNq6y
+ 1E9FOqwNFjyR0iWWz3KPvjyzSntF/S7Qzq+VmQUidg0cBOHZu5WWfJ51mPlMzLMkv796IU1lxFd32n
+ dQexjejIHgpQP+qCsbf6wCE5cHUALFDAQZPwMVsvTqwaHs6BrXaSLP0lRGdHIT9lyjQ0w/vVnxh65O
+ ykWIfZzDYmX6+z2cyKLv8E+Od+L52A/af90PSeBrtJ6PAJTIy+rCXZ4YvaWw==
+X-Developer-Key: i=patrickblass@mailbox.org; a=openpgp;
+ fpr=72BE8A18A0ACAFC1A2426AB3FAF8B4D3DDE5066E
+X-Endpoint-Received: by B4 Relay for patrickblass@mailbox.org/default with auth_id=36
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The kernel has supported compressed firmware for quite some time. So
-let's add a couple of targets to produce that. In practical terms this
-means it we'll use ~5x times less space on disk.
+Fix a trivial spelling error in the rust str file.
 
-Reportedly the amd ucode, needs to be uncompressed _within_ the
-initrd in order to work. Using compressed ucode in late load just works.
-Ideally this will be addressed by the initrd generators, but considering
-the files are tiny in size let's skip the compression.
-
-v2
- - commit message, skip compression for files annotated as Raw
-
-Cc: David Woodhouse <dwmw2@infradead.org>
-Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
+Fixes: 247b365dc8dc ("rust: add `kernel` crate")
+Reported-by: Miguel Ojeda <ojeda@kernel.org>
+Link: https://github.com/Rust-for-Linux/linux/issues/978
+Signed-off-by: Patrick Blass <patrickblass@mailbox.org>
 ---
- Makefile         |  8 ++++++++
- WHENCE           |  5 +++++
- copy-firmware.sh | 38 ++++++++++++++++++++++++++++++++++----
- 3 files changed, 47 insertions(+), 4 deletions(-)
+ rust/kernel/str.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Makefile b/Makefile
-index 83a0ec6..50a4c29 100644
---- a/Makefile
-+++ b/Makefile
-@@ -11,3 +11,11 @@ check:
- install:
- 	install -d $(DESTDIR)$(FIRMWAREDIR)
- 	./copy-firmware.sh $(DESTDIR)$(FIRMWAREDIR)
-+
-+install-xz:
-+	install -d $(DESTDIR)$(FIRMWAREDIR)
-+	./copy-firmware.sh --xz $(DESTDIR)$(FIRMWAREDIR)
-+
-+install-zst:
-+	install -d $(DESTDIR)$(FIRMWAREDIR)
-+	./copy-firmware.sh --zstd $(DESTDIR)$(FIRMWAREDIR)
-diff --git a/WHENCE b/WHENCE
-index bce94c5..6e44afa 100644
---- a/WHENCE
-+++ b/WHENCE
-@@ -3878,14 +3878,19 @@ License: Redistributable. See LICENSE.amd-sev for details
- Driver: microcode_amd - AMD CPU Microcode Update Driver for Linux
- 
- File: amd-ucode/microcode_amd.bin
-+Raw: amd-ucode/microcode_amd.bin
- Version: 2013-07-10
- File: amd-ucode/microcode_amd_fam15h.bin
-+Raw: amd-ucode/microcode_amd_fam15h.bin
- Version: 2018-05-24
- File: amd-ucode/microcode_amd_fam16h.bin
-+Raw: amd-ucode/microcode_amd_fam16h.bin
- Version: 2014-10-28
- File: amd-ucode/microcode_amd_fam17h.bin
-+Raw: amd-ucode/microcode_amd_fam17h.bin
- Version: 2022-04-08
- File: amd-ucode/microcode_amd_fam19h.bin
-+Raw: amd-ucode/microcode_amd_fam19h.bin
- Version: 2023-01-31
- File: amd-ucode/README
- 
-diff --git a/copy-firmware.sh b/copy-firmware.sh
-index a52b847..6da9111 100755
---- a/copy-firmware.sh
-+++ b/copy-firmware.sh
-@@ -5,6 +5,9 @@
- #
- 
- verbose=:
-+# shellcheck disable=SC2209
-+compress=cat
-+compext=
- 
- while test $# -gt 0; do
-     case $1 in
-@@ -14,6 +17,28 @@ while test $# -gt 0; do
-             shift
-             ;;
- 
-+        --xz)
-+            if test "$compext" == ".zst"; then
-+                echo "ERROR: cannot mix XZ and ZSTD compression"
-+                exit 1
-+            fi
-+            compress="xz --compress --quiet --stdout --check=crc32"
-+            compext=".xz"
-+            shift
-+            ;;
-+
-+        --zstd)
-+            if test "$compext" == ".xz"; then
-+                echo "ERROR: cannot mix XZ and ZSTD compression"
-+                exit 1
-+            fi
-+            # shellcheck disable=SC2209
-+            verbose=echo
-+            compress="zstd --compress --quiet --stdout"
-+            compext=".zst"
-+            shift
-+            ;;
-+
-         *)
-             if test "x$destdir" != "x"; then
-                 echo "ERROR: unknown command-line options: $*"
-@@ -28,16 +53,21 @@ done
- 
- # shellcheck disable=SC2162
- grep '^File:' WHENCE | sed -e 's/^File: *//g' | while read f; do
--    $verbose "copying file $f"
-     install -d "$destdir/$(dirname "$f")"
--    cp "$f" "$destdir/$f"
-+    $verbose "copying/compressing file $f$compext"
-+    if test "$compress" != "cat" && grep -q "^Raw: $f\$" WHENCE; then
-+        $verbose "compression will be skipped for file $f"
-+        cat "$f" > "$destdir/$f"
-+    else
-+        $compress "$f" > "$destdir/$f$compext"
-+    fi
- done
- 
- # shellcheck disable=SC2162
- grep -E '^Link:' WHENCE | sed -e 's/^Link: *//g;s/-> //g' | while read f d; do
--    $verbose "creating link $f -> $d"
-     install -d "$destdir/$(dirname "$f")"
--    ln -s "$d" "$destdir/$f"
-+    $verbose "creating link $f$compext -> $d$compext"
-+    ln -s "$d$compext" "$destdir/$f$compext"
- done
- 
- exit 0
+diff --git a/rust/kernel/str.rs b/rust/kernel/str.rs
+index b771310fa4a4..cd3d2a6cf1fc 100644
+--- a/rust/kernel/str.rs
++++ b/rust/kernel/str.rs
+@@ -408,7 +408,7 @@ impl RawFormatter {
+     /// If `pos` is less than `end`, then the region between `pos` (inclusive) and `end`
+     /// (exclusive) must be valid for writes for the lifetime of the returned [`RawFormatter`].
+     pub(crate) unsafe fn from_ptrs(pos: *mut u8, end: *mut u8) -> Self {
+-        // INVARIANT: The safety requierments guarantee the type invariants.
++        // INVARIANT: The safety requirements guarantee the type invariants.
+         Self {
+             beg: pos as _,
+             pos: pos as _,
 
+---
+base-commit: c9c3395d5e3dcc6daee66c6908354d47bf98cb0c
+change-id: 20230303-str-rs-typo-be1cc85db93f
+
+Best regards,
 -- 
-2.39.2
+Patrick Blass <patrickblass@mailbox.org>
 
