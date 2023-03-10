@@ -1,14 +1,12 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Subject: [PATCH v8 0/5] PWM and keyboard backlight driver for ARM Macs
-Date: Fri, 10 Mar 2023 19:44:06 +0100
-Message-Id: <20230214-fpwm-v8-0-65518a0d4944@gmail.com>
+Date: Fri, 10 Mar 2023 19:44:07 +0100
+Subject: [PATCH v8 1/5] dt-bindings: pwm: Add Apple PWM controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHd6C2QC/12Nyw6DIBREf8XcdWkQGyFd9T8aFzwucpOiBgxtY
- /z3ossuz8zJzAYZE2GGe7NBwkKZ5qmCujRgg55GZOQqg+Ci46K9Mb+8I3PKy95Y5ZxtoapGZ2Q
- m6cmGQ446r5iOYkno6XPuP4fKgfI6p+95V+SR/i0XyTjzhuveeON4Jx9j1PS62jnCsO/7Dznun
- 7uxAAAA
+Message-Id: <20230214-fpwm-v8-1-65518a0d4944@gmail.com>
+References: <20230214-fpwm-v8-0-65518a0d4944@gmail.com>
+In-Reply-To: <20230214-fpwm-v8-0-65518a0d4944@gmail.com>
 To: Thierry Reding <thierry.reding@gmail.com>, 
  =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>, 
  Rob Herring <robh+dt@kernel.org>, 
@@ -18,72 +16,86 @@ To: Thierry Reding <thierry.reding@gmail.com>,
  Alyssa Rosenzweig <alyssa@rosenzweig.io>
 Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
- Sasha Finkelstein <7d578vix8hzw@opayq.net>
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1678473848; l=1982;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1678473848; l=1759;
  i=fnkl.kernel@gmail.com; s=20230213; h=from:subject:message-id;
- bh=9VDi+rkGZZUEFOqtKV0WoGhoAKQoF41aoKOynoKNy1I=;
- b=j8gEc4haSzTfWjUIbkJAmBECKuP2NdZuJHbm/V0WBmaoqeVu5goVUQ4iQv6PhTytAwDEDJE1N
- x6izkUJvLT2Db7DIafMNJL//cJ5FYVl0j5mhintszd5kZ31Wo+mhT4m
+ bh=BeW75+AIFJcFrpFjOZabHWBRDLlSvckpqesK7uzTCx4=;
+ b=/vTGd02mkahO4nOW3DJTyFY7h2pzCXFuk1VQ99SdbaFb+bj7m7O9RB6ZxgZuRhbVaXY0cKb1/
+ JWnTavY++JJCkpOU5xYbvCd3JLp2XSgpiNqeGgUdh/NBKc3pzYSgJsp
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=7LFSAJtxIWAs9LzCIyX0sSvCZy2wQTyEIu1zch6o804=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20230213 with auth_id=28
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+Apple SoCs such as the M1 contain a PWM controller used
+among other things to control the keyboard backlight.
 
-This is the v8 of the patch series to add PWM and keyboard
-backlight driver for ARM macs. 
-
-Changes in v1:
-Addressing the review comments.
-
-Changes in v2:
-Added the reviewed-by and acked-by tags.
-Addressing a review comment.
-
-Changes in v3 and v4:
-Addressing the review comments.
-
-Changes in v5:
-Added t600x device tree changes
-
-Changes in v8:
-Changed the overflow handling to clamp instead of erroring.
-
-v1: https://www.spinics.net/lists/linux-pwm/msg19500.html
-v2: https://www.spinics.net/lists/linux-pwm/msg19562.html
-v3: https://www.spinics.net/lists/linux-pwm/msg19901.html
-v4: https://www.spinics.net/lists/linux-pwm/msg20093.html
-v5: https://www.spinics.net/lists/linux-pwm/msg20150.html
-v6: https://www.spinics.net/lists/linux-pwm/msg20190.html
-v7: https://lore.kernel.org/r/20230214-fpwm-v7-0-fb0a6bfbd037@gmail.com
-
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Acked-by: Sven Peter <sven@svenpeter.dev>
 ---
-Sasha Finkelstein (5):
-      dt-bindings: pwm: Add Apple PWM controller
-      pwm: Add Apple PWM controller
-      arm64: dts: apple: t8103: Add PWM controller
-      arm64: dts: apple: t600x: Add PWM controller
-      MAINTAINERS: Add entries for Apple PWM driver
+ .../devicetree/bindings/pwm/apple,s5l-fpwm.yaml    | 51 ++++++++++++++++++++++
+ 1 file changed, 51 insertions(+)
 
- .../devicetree/bindings/pwm/apple,s5l-fpwm.yaml    |  51 +++++++
- MAINTAINERS                                        |   2 +
- arch/arm64/boot/dts/apple/t600x-die0.dtsi          |   9 ++
- arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi     |  18 +++
- arch/arm64/boot/dts/apple/t8103-j293.dts           |  17 +++
- arch/arm64/boot/dts/apple/t8103-j313.dts           |  17 +++
- arch/arm64/boot/dts/apple/t8103.dtsi               |   9 ++
- drivers/pwm/Kconfig                                |  12 ++
- drivers/pwm/Makefile                               |   1 +
- drivers/pwm/pwm-apple.c                            | 159 +++++++++++++++++++++
- 10 files changed, 295 insertions(+)
----
-base-commit: fe15c26ee26efa11741a7b632e9f23b01aca4cc6
-change-id: 20230214-fpwm-d8f76bc8ddc1
+diff --git a/Documentation/devicetree/bindings/pwm/apple,s5l-fpwm.yaml b/Documentation/devicetree/bindings/pwm/apple,s5l-fpwm.yaml
+new file mode 100644
+index 000000000000..142157bff0cd
+--- /dev/null
++++ b/Documentation/devicetree/bindings/pwm/apple,s5l-fpwm.yaml
+@@ -0,0 +1,51 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/pwm/apple,s5l-fpwm.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple FPWM controller
++
++maintainers:
++  - asahi@lists.linux.dev
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++description: PWM controller used for keyboard backlight on ARM Macs
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,t8103-fpwm
++          - apple,t6000-fpwm
++          - apple,t8112-fpwm
++      - const: apple,s5l-fpwm
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++
++  power-domains:
++    maxItems: 1
++
++  "#pwm-cells":
++    const: 2
++
++required:
++  - compatible
++  - reg
++  - clocks
++
++additionalProperties: false
++
++examples:
++  - |
++    pwm@235044000 {
++      compatible = "apple,t8103-fpwm", "apple,s5l-fpwm";
++      reg = <0x35044000 0x4000>;
++      power-domains = <&ps_fpwm1>;
++      clocks = <&clkref>;
++      #pwm-cells = <2>;
++    };
 
-Best regards,
 -- 
-Sasha Finkelstein <fnkl.kernel@gmail.com>
+Git-137.1)
 
