@@ -1,10 +1,10 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Fri, 10 Mar 2023 19:44:09 +0100
-Subject: [PATCH v8 3/5] arm64: dts: apple: t8103: Add PWM controller
+Date: Fri, 10 Mar 2023 19:44:10 +0100
+Subject: [PATCH v8 4/5] arm64: dts: apple: t600x: Add PWM controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230214-fpwm-v8-3-65518a0d4944@gmail.com>
+Message-Id: <20230214-fpwm-v8-4-65518a0d4944@gmail.com>
 References: <20230214-fpwm-v8-0-65518a0d4944@gmail.com>
 In-Reply-To: <20230214-fpwm-v8-0-65518a0d4944@gmail.com>
 To: Thierry Reding <thierry.reding@gmail.com>, 
@@ -15,46 +15,72 @@ To: Thierry Reding <thierry.reding@gmail.com>,
  Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>
 Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ Sasha Finkelstein <7d578vix8hzw@opayq.net>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1678473848; l=2869;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1678473848; l=2061;
  i=fnkl.kernel@gmail.com; s=20230213; h=from:subject:message-id;
- bh=R6FVHucw/1bUgNYLGZV8OMhopQA9RB5yXaUd/bpvUDM=;
- b=cUg8P9AdXnzmDv14iHCuwOq60Rj1JRnKQrxEUbnY4smKJpzzZjIc95Yp40CWdTAgTpZapOS0J
- xW7z222gB53CNJxEh7CbjOjJTTs1JTUuHGpV5QAo+8wCeTXA2zDGd/J
+ bh=kC8e0IqG+WMbKwdUXKBwuQCvwcxm5IAUASQM0mxJcPI=;
+ b=F7yQVfm5aPAgMPY2ACL3tNlGDcgvbrejU0z+OT0V5MhYfS98A5n69rZljI4n3AUkzmNJicuiw
+ MaoCf0W0Ew6DcboaGgTqXS25fr2IHrwLibz2RMQhdPEVu6iPi8UFACN
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=7LFSAJtxIWAs9LzCIyX0sSvCZy2wQTyEIu1zch6o804=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20230213 with auth_id=28
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds PWM controller and keyboard backlight bindings for M1 MacBooks
+From: Sasha Finkelstein <7d578vix8hzw@opayq.net>
+
+Adds PWM controller and keyboard backlight bindings for M1 Pro/Max MacBook Pros
 
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Acked-by: Sven Peter <sven@svenpeter.dev>
+Acked-by: Hector Martin <marcan@marcan.st>
 ---
- arch/arm64/boot/dts/apple/t8103-j293.dts | 17 +++++++++++++++++
- arch/arm64/boot/dts/apple/t8103-j313.dts | 17 +++++++++++++++++
- arch/arm64/boot/dts/apple/t8103.dtsi     |  9 +++++++++
- 3 files changed, 43 insertions(+)
+ arch/arm64/boot/dts/apple/t600x-die0.dtsi      |  9 +++++++++
+ arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi | 18 ++++++++++++++++++
+ 2 files changed, 27 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/apple/t8103-j293.dts b/arch/arm64/boot/dts/apple/t8103-j293.dts
-index 151074109a11..fc55ce0fa40d 100644
---- a/arch/arm64/boot/dts/apple/t8103-j293.dts
-+++ b/arch/arm64/boot/dts/apple/t8103-j293.dts
-@@ -11,10 +11,23 @@
+diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
+index 1c41954e3899..9157ae2a9f7f 100644
+--- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
++++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
+@@ -71,6 +71,15 @@ sio_dart_1: iommu@39b008000 {
+ 		power-domains = <&ps_sio_cpu>;
+ 	};
  
- #include "t8103.dtsi"
- #include "t8103-jxxx.dtsi"
++	fpwm0: pwm@39b030000 {
++		compatible = "apple,t6000-fpwm", "apple,s5l-fpwm";
++		reg = <0x3 0x9b030000 0x0 0x4000>;
++		power-domains = <&ps_fpwm0>;
++		clocks = <&clkref>;
++		#pwm-cells = <2>;
++		status = "disabled";
++	};
++
+ 	i2c0: i2c@39b040000 {
+ 		compatible = "apple,t6000-i2c", "apple,i2c";
+ 		reg = <0x3 0x9b040000 0x0 0x4000>;
+diff --git a/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi b/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi
+index 34906d522f0a..96de7165df6d 100644
+--- a/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi
++++ b/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi
+@@ -9,6 +9,8 @@
+  * Copyright The Asahi Linux Contributors
+  */
+ 
 +#include <dt-bindings/leds/common.h>
- 
++
  / {
- 	compatible = "apple,j293", "apple,t8103", "apple,arm-platform";
- 	model = "Apple MacBook Pro (13-inch, M1, 2020)";
+ 	aliases {
+ 		serial0 = &serial0;
+@@ -34,6 +36,18 @@ memory@10000000000 {
+ 		device_type = "memory";
+ 		reg = <0x100 0 0x2 0>; /* To be filled by loader */
+ 	};
 +
 +	led-controller {
 +		compatible = "pwm-leds";
 +		led-0 {
-+			pwms = <&fpwm1 0 40000>;
++			pwms = <&fpwm0 0 40000>;
 +			label = "kbd_backlight";
 +			function = LED_FUNCTION_KBD_BACKLIGHT;
 +			color = <LED_COLOR_ID_WHITE>;
@@ -64,71 +90,17 @@ index 151074109a11..fc55ce0fa40d 100644
 +	};
  };
  
- &bluetooth0 {
-@@ -47,3 +60,7 @@ &i2c2 {
- &i2c4 {
- 	status = "okay";
+ &serial0 {
+@@ -110,5 +124,9 @@ &pcie0_dart_3 {
+ 	status = "disabled";
  };
-+
-+&fpwm1 {
+ 
++&fpwm0 {
 +	status = "okay";
 +};
-diff --git a/arch/arm64/boot/dts/apple/t8103-j313.dts b/arch/arm64/boot/dts/apple/t8103-j313.dts
-index bc1f865aa790..1e26aa1ef525 100644
---- a/arch/arm64/boot/dts/apple/t8103-j313.dts
-+++ b/arch/arm64/boot/dts/apple/t8103-j313.dts
-@@ -11,10 +11,23 @@
- 
- #include "t8103.dtsi"
- #include "t8103-jxxx.dtsi"
-+#include <dt-bindings/leds/common.h>
- 
- / {
- 	compatible = "apple,j313", "apple,t8103", "apple,arm-platform";
- 	model = "Apple MacBook Air (M1, 2020)";
 +
-+	led-controller {
-+		compatible = "pwm-leds";
-+		led-0 {
-+			pwms = <&fpwm1 0 40000>;
-+			label = "kbd_backlight";
-+			function = LED_FUNCTION_KBD_BACKLIGHT;
-+			color = <LED_COLOR_ID_WHITE>;
-+			max-brightness = <255>;
-+			default-state = "keep";
-+		};
-+	};
- };
- 
- &bluetooth0 {
-@@ -39,3 +52,7 @@ &pcie0_dart_2 {
- 
- /delete-node/ &port01;
  /delete-node/ &port02;
-+
-+&fpwm1 {
-+	status = "okay";
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index 9859219699f4..5300fd115561 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -432,6 +432,15 @@ i2c4: i2c@235020000 {
- 			status = "disabled"; /* only used in J293 */
- 		};
- 
-+		fpwm1: pwm@235044000 {
-+			compatible = "apple,t8103-fpwm", "apple,s5l-fpwm";
-+			reg = <0x2 0x35044000 0x0 0x4000>;
-+			power-domains = <&ps_fpwm1>;
-+			clocks = <&clkref>;
-+			#pwm-cells = <2>;
-+			status = "disabled";
-+		};
-+
- 		serial0: serial@235200000 {
- 			compatible = "apple,s5l-uart";
- 			reg = <0x2 0x35200000 0x0 0x1000>;
+ /delete-node/ &port03;
 
 -- 
 Git-137.1)
