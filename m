@@ -1,123 +1,144 @@
-From: Michael Riesch <michael.riesch@wolfvision.net>
-Date: Thu, 06 Apr 2023 16:31:13 +0200
-Subject: [PATCH RFC 4/4] media: v4l2-ctrls: add controls for individual
- zoom lenses
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Date: Sun, 09 Apr 2023 11:18:46 +0200
+Subject: [PATCH] arm64: dts: apple: t8112: Add PWM controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230406-feature-controls-lens-v1-4-543189a680de@wolfvision.net>
-References: <20230406-feature-controls-lens-v1-0-543189a680de@wolfvision.net>
-In-Reply-To: <20230406-feature-controls-lens-v1-0-543189a680de@wolfvision.net>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: libcamera-devel@lists.libcamera.org, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Matthias Fend <Matthias.Fend@wolfvision.net>, linux-media@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Michael Riesch <michael.riesch@wolfvision.net>
-X-Mailer: b4 0.12.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1680791498; l=4975;
- i=michael.riesch@wolfvision.net; s=20230406; h=from:subject:message-id;
- bh=bWxc8Ua5gbQYUJyRGSLgrVBk7cmDY97sq4ZtW5eVx8o=;
- b=FRhHgOOPeeWYPHlfi10xNaxB9EQWRcKsY/3IdhIFJJQnh6VhfwiI2bRP4HI/PTIV4h0MrUMc1
- +qwu9p8YNc9BKVePQhZXrNxF1IQWgFlFqjRPSmyvOQ8UmuHnnQTeJmn
-X-Developer-Key: i=michael.riesch@wolfvision.net; a=ed25519;
- pk=G03kuYHL670EcdsWaNfVA7KnHWmkSpj98XziQm/hjbk=
-X-Endpoint-Received: by B4 Relay for michael.riesch@wolfvision.net/20230406 with auth_id=38
+Message-Id: <20230409-t8112-fpwm-v1-1-feffa5f8b99b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPaCMmQC/x2NywrCMBAAf6Xs2cW8lOqvFA/bZGv2YFqyRYXSf
+ zf1OAzDbKBchRXu3QaV36Iylwb21EHMVJ6MkhqDM86bYG649tY6nJbPC82Vgw8x+kufoAUjKeN
+ YqcR8JKSUBXWO57Qeeqk8yff/Gh77/gOATlWmewAAAA==
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sasha Finkelstein <fnkl.kernel@gmail.com>
+X-Mailer: b4 0.12.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1681031927; l=3074;
+ i=fnkl.kernel@gmail.com; s=20230213; h=from:subject:message-id;
+ bh=oZH+o0OuBKtAeL1N+AILko2fVUAecOJUeYZVbst1W5o=;
+ b=C18AutLzDFanW7c9JjMjZfk0eZAnVX7s7KUp5iGQQ+Xga9D+G1Fwk2ky0g2IDzDC1+b6xsTgs
+ 6muF/T8FkQ9AAYwfsTeW9Q/xO9EOCGv3VJO3ck8bLAS5cJohh33NURk
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=7LFSAJtxIWAs9LzCIyX0sSvCZy2wQTyEIu1zch6o804=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20230213 with auth_id=28
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A zoom lens group may consist of several lenses, and in a calibration
-context it may be necessary to position the lenses individually. Add a pair
-of V4L2_CID_LENS_CALIB_ZOOMx_ABSOLUTE and V4L2_CID_LENS_CALIB_ZOOMx_STATUS
-controls for each individual lens, where x = {1...5}.
+This patch adds the device tree entries for the PWM controller
+present on M2 macbooks that is connected to the keyboard backlight.
 
-Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- .../userspace-api/media/v4l/ext-ctrls-camera.rst          | 12 ++++++++++++
- drivers/media/v4l2-core/v4l2-ctrls-defs.c                 | 15 +++++++++++++++
- include/uapi/linux/v4l2-controls.h                        | 12 ++++++++++++
- 3 files changed, 39 insertions(+)
+ arch/arm64/boot/dts/apple/t8112-j413.dts | 17 +++++++++++++++++
+ arch/arm64/boot/dts/apple/t8112-j493.dts | 17 +++++++++++++++++
+ arch/arm64/boot/dts/apple/t8112.dtsi     |  9 +++++++++
+ 3 files changed, 43 insertions(+)
 
-diff --git a/Documentation/userspace-api/media/v4l/ext-ctrls-camera.rst b/Documentation/userspace-api/media/v4l/ext-ctrls-camera.rst
-index 441467a971ac..920c7be2823d 100644
---- a/Documentation/userspace-api/media/v4l/ext-ctrls-camera.rst
-+++ b/Documentation/userspace-api/media/v4l/ext-ctrls-camera.rst
-@@ -332,6 +332,18 @@ enum v4l2_auto_focus_range -
-     * - ``V4L2_LENS_CALIB_FAILED``
-       - Lens calibration procedure has failed.
+diff --git a/arch/arm64/boot/dts/apple/t8112-j413.dts b/arch/arm64/boot/dts/apple/t8112-j413.dts
+index 9e758edeaa82..6f69658623bf 100644
+--- a/arch/arm64/boot/dts/apple/t8112-j413.dts
++++ b/arch/arm64/boot/dts/apple/t8112-j413.dts
+@@ -11,6 +11,7 @@
  
-+``V4L2_CID_LENS_CALIB_ZOOM{1...5}_ABSOLUTE`` (integer)
-+    Set the absolute position of the individual lens of the zoom lens group.
-+    Most likely, this is done in a calibration context. The unit is
-+    driver-specific.
+ #include "t8112.dtsi"
+ #include "t8112-jxxx.dtsi"
++#include <dt-bindings/leds/common.h>
+ 
+ / {
+ 	compatible = "apple,j413", "apple,t8112", "apple,arm-platform";
+@@ -20,6 +21,18 @@ aliases {
+ 		bluetooth0 = &bluetooth0;
+ 		wifi0 = &wifi0;
+ 	};
 +
-+``V4L2_CID_LENS_CALIB_ZOOM{1...5}_STATUS`` (struct)
-+    The current status of the individual lens of the zoom lens group. Most
-+    likely, this is done in a calibration context. This is a read-only control.
-+    The returned data structure contains the current position and movement
-+    indication flags. The unit of the current position is driver-specific. For
-+    the description of the flags refer to V4L2_CID_ZOOM_ABSOLUTE.
++	led-controller {
++		compatible = "pwm-leds";
++		led-0 {
++			pwms = <&fpwm1 0 40000>;
++			label = "kbd_backlight";
++			function = LED_FUNCTION_KBD_BACKLIGHT;
++			color = <LED_COLOR_ID_WHITE>;
++			max-brightness = <255>;
++			default-state = "keep";
++		};
++	};
+ };
+ 
+ /*
+@@ -61,3 +74,7 @@ hpm5: usb-pd@3a {
+ &i2c4 {
+ 	status = "okay";
+ };
 +
- ``V4L2_CID_IRIS_ABSOLUTE (integer)``
-     This control sets the camera's aperture to the specified value. The
-     unit is undefined. Larger values open the iris wider, smaller values
-diff --git a/drivers/media/v4l2-core/v4l2-ctrls-defs.c b/drivers/media/v4l2-core/v4l2-ctrls-defs.c
-index 382abf6be9de..7d1154d05102 100644
---- a/drivers/media/v4l2-core/v4l2-ctrls-defs.c
-+++ b/drivers/media/v4l2-core/v4l2-ctrls-defs.c
-@@ -1050,6 +1050,16 @@ const char *v4l2_ctrl_get_name(u32 id)
- 	case V4L2_CID_ZOOM_SPEED:		return "Zoom, Speed";
- 	case V4L2_CID_LENS_CALIB_CONTROL:	return "Lens Calibration, Control";
- 	case V4L2_CID_LENS_CALIB_STATUS:	return "Lens Calibration, Status";
-+	case V4L2_CID_LENS_CALIB_ZOOM1_ABSOLUTE:	return "Zoom1, Absolute";
-+	case V4L2_CID_LENS_CALIB_ZOOM2_ABSOLUTE:	return "Zoom2, Absolute";
-+	case V4L2_CID_LENS_CALIB_ZOOM3_ABSOLUTE:	return "Zoom3, Absolute";
-+	case V4L2_CID_LENS_CALIB_ZOOM4_ABSOLUTE:	return "Zoom4, Absolute";
-+	case V4L2_CID_LENS_CALIB_ZOOM5_ABSOLUTE:	return "Zoom5, Absolute";
-+	case V4L2_CID_LENS_CALIB_ZOOM1_STATUS:	return "Zoom1, Status";
-+	case V4L2_CID_LENS_CALIB_ZOOM2_STATUS:	return "Zoom2, Status";
-+	case V4L2_CID_LENS_CALIB_ZOOM3_STATUS:	return "Zoom3, Status";
-+	case V4L2_CID_LENS_CALIB_ZOOM4_STATUS:	return "Zoom4, Status";
-+	case V4L2_CID_LENS_CALIB_ZOOM5_STATUS:	return "Zoom5, Status";
++&fpwm1 {
++	status = "okay";
++};
+diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
+index 8552c15be265..0ad908349f55 100644
+--- a/arch/arm64/boot/dts/apple/t8112-j493.dts
++++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
+@@ -11,6 +11,7 @@
  
- 	/* FM Radio Modulator controls */
- 	/* Keep the order of the 'case's the same as in v4l2-controls.h! */
-@@ -1602,6 +1612,11 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
- 		break;
- 	case V4L2_CID_FOCUS_STATUS:
- 	case V4L2_CID_ZOOM_STATUS:
-+	case V4L2_CID_LENS_CALIB_ZOOM1_STATUS:
-+	case V4L2_CID_LENS_CALIB_ZOOM2_STATUS:
-+	case V4L2_CID_LENS_CALIB_ZOOM3_STATUS:
-+	case V4L2_CID_LENS_CALIB_ZOOM4_STATUS:
-+	case V4L2_CID_LENS_CALIB_ZOOM5_STATUS:
- 		*type = V4L2_CTRL_TYPE_LENS_STATUS;
- 		*flags |= V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
- 		break;
-diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
-index 34601ad1213a..232e6d1d7655 100644
---- a/include/uapi/linux/v4l2-controls.h
-+++ b/include/uapi/linux/v4l2-controls.h
-@@ -1020,6 +1020,18 @@ struct v4l2_ctrl_lens_status {
+ #include "t8112.dtsi"
+ #include "t8112-jxxx.dtsi"
++#include <dt-bindings/leds/common.h>
  
- #define V4L2_CID_LENS_CALIB_STATUS		(V4L2_CID_CAMERA_CLASS_BASE + 42)
- 
-+#define V4L2_CID_LENS_CALIB_ZOOM1_ABSOLUTE	(V4L2_CID_CAMERA_CLASS_BASE + 43)
-+#define V4L2_CID_LENS_CALIB_ZOOM2_ABSOLUTE	(V4L2_CID_CAMERA_CLASS_BASE + 44)
-+#define V4L2_CID_LENS_CALIB_ZOOM3_ABSOLUTE	(V4L2_CID_CAMERA_CLASS_BASE + 45)
-+#define V4L2_CID_LENS_CALIB_ZOOM4_ABSOLUTE	(V4L2_CID_CAMERA_CLASS_BASE + 46)
-+#define V4L2_CID_LENS_CALIB_ZOOM5_ABSOLUTE	(V4L2_CID_CAMERA_CLASS_BASE + 47)
+ / {
+ 	compatible = "apple,j493", "apple,t8112", "apple,arm-platform";
+@@ -20,6 +21,18 @@ aliases {
+ 		bluetooth0 = &bluetooth0;
+ 		wifi0 = &wifi0;
+ 	};
 +
-+#define V4L2_CID_LENS_CALIB_ZOOM1_STATUS	(V4L2_CID_CAMERA_CLASS_BASE + 48)
-+#define V4L2_CID_LENS_CALIB_ZOOM2_STATUS	(V4L2_CID_CAMERA_CLASS_BASE + 49)
-+#define V4L2_CID_LENS_CALIB_ZOOM3_STATUS	(V4L2_CID_CAMERA_CLASS_BASE + 50)
-+#define V4L2_CID_LENS_CALIB_ZOOM4_STATUS	(V4L2_CID_CAMERA_CLASS_BASE + 51)
-+#define V4L2_CID_LENS_CALIB_ZOOM5_STATUS	(V4L2_CID_CAMERA_CLASS_BASE + 52)
-+
- /* FM Modulator class control IDs */
++	led-controller {
++		compatible = "pwm-leds";
++		led-0 {
++			pwms = <&fpwm1 0 40000>;
++			label = "kbd_backlight";
++			function = LED_FUNCTION_KBD_BACKLIGHT;
++			color = <LED_COLOR_ID_WHITE>;
++			max-brightness = <255>;
++			default-state = "keep";
++		};
++	};
+ };
  
- #define V4L2_CID_FM_TX_CLASS_BASE		(V4L2_CTRL_CLASS_FM_TX | 0x900)
+ /*
+@@ -50,3 +63,7 @@ bluetooth0: bluetooth@0,1 {
+ &i2c4 {
+ 	status = "okay";
+ };
++
++&fpwm1 {
++	status = "okay";
++};
+diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
+index 698a436e7dac..1666e6ab250b 100644
+--- a/arch/arm64/boot/dts/apple/t8112.dtsi
++++ b/arch/arm64/boot/dts/apple/t8112.dtsi
+@@ -458,6 +458,15 @@ i2c4: i2c@235020000 {
+ 			status = "disabled";
+ 		};
+ 
++		fpwm1: pwm@235044000 {
++			compatible = "apple,t8112-fpwm", "apple,s5l-fpwm";
++			reg = <0x2 0x35044000 0x0 0x4000>;
++			power-domains = <&ps_fpwm1>;
++			clocks = <&clkref>;
++			#pwm-cells = <2>;
++			status = "disabled";
++		};
++
+ 		serial0: serial@235200000 {
+ 			compatible = "apple,s5l-uart";
+ 			reg = <0x2 0x35200000 0x0 0x1000>;
 
+---
+base-commit: 8d59efc33fdaa2c82072b4d3ba5f67d7dd9270d0
+change-id: 20230409-t8112-fpwm-06e434cc358d
+
+Best regards,
 -- 
-2.30.2
+Sasha Finkelstein <fnkl.kernel@gmail.com>
 
