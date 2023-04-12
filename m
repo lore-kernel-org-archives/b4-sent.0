@@ -1,144 +1,98 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Sun, 09 Apr 2023 11:18:46 +0200
-Subject: [PATCH] arm64: dts: apple: t8112: Add PWM controller
+From: Abhijeet Rastogi <abhijeet.1989@gmail.com>
+Date: Wed, 12 Apr 2023 13:49:08 -0700
+Subject: [PATCH] ipvs: change ip_vs_conn_tab_bits range to [8,31]
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230409-t8112-fpwm-v1-1-feffa5f8b99b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAPaCMmQC/x2NywrCMBAAf6Xs2cW8lOqvFA/bZGv2YFqyRYXSf
- zf1OAzDbKBchRXu3QaV36Iylwb21EHMVJ6MkhqDM86bYG649tY6nJbPC82Vgw8x+kufoAUjKeN
- YqcR8JKSUBXWO57Qeeqk8yff/Gh77/gOATlWmewAAAA==
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>
-X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1681031927; l=3074;
- i=fnkl.kernel@gmail.com; s=20230213; h=from:subject:message-id;
- bh=oZH+o0OuBKtAeL1N+AILko2fVUAecOJUeYZVbst1W5o=;
- b=C18AutLzDFanW7c9JjMjZfk0eZAnVX7s7KUp5iGQQ+Xga9D+G1Fwk2ky0g2IDzDC1+b6xsTgs
- 6muF/T8FkQ9AAYwfsTeW9Q/xO9EOCGv3VJO3ck8bLAS5cJohh33NURk
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=7LFSAJtxIWAs9LzCIyX0sSvCZy2wQTyEIu1zch6o804=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20230213 with auth_id=28
+Message-Id: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAEMZN2QC/x2N0QqDMAxFf0XyvEIbZbD9yhglrdnMw6IkIgPx3
+ 1f3eDiXc3dwNmGHe7eD8SYuszZIlw7qRPrmIGNjwIh9HBIG0WpMzlmWzXOdVfNKJRdZPQw9Yr3
+ FkTBdoRVK24VipHU6Gx/yle0Ui/FLvv/bx/M4ftkrbyCGAAAA
+To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, 
+ Pablo Neira Ayuso <pablo@netfilter.org>, 
+ Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, 
+ netfilter-devel@vger.kernel.org, coreteam@netfilter.org, 
+ linux-kernel@vger.kernel.org, Abhijeet Rastogi <abhijeet.1989@gmail.com>
+X-Mailer: b4 0.12.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1681332551; l=2681;
+ i=abhijeet.1989@gmail.com; s=20230412; h=from:subject:message-id;
+ bh=diB2UNBoozij8cEFsyQbJS4LF1vmwJ3a6Chw+mzNh7I=;
+ b=P+q2BDiUkpHSIUlanv0uhX+uIFT2uT4OzEwmTdXXla/nmmIrpI/IXDTzgS0FBPJ5E2k2s7yp6
+ BTzbnfMaj1vAOe9Em5PMNAMEQLfL4s9XOHYeLIGoyhXO/lySLPcoEuQ
+X-Developer-Key: i=abhijeet.1989@gmail.com; a=ed25519;
+ pk=VinODWUuJys1VAWZP2Uv9slcHekoZvxAp4RY1p5+OfU=
+X-Endpoint-Received: by B4 Relay for abhijeet.1989@gmail.com/20230412 with auth_id=40
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds the device tree entries for the PWM controller
-present on M2 macbooks that is connected to the keyboard backlight.
+Current range [8, 20] is set purely due to historical reasons
+because at the time, ~1M (2^20) was considered sufficient.
 
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Previous change regarding this limit is here.
+
+Link: https://lore.kernel.org/all/86eabeb9dd62aebf1e2533926fdd13fed48bab1f.1631289960.git.aclaudi@redhat.com/T/#u
+
+Signed-off-by: Abhijeet Rastogi <abhijeet.1989@gmail.com>
 ---
- arch/arm64/boot/dts/apple/t8112-j413.dts | 17 +++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j493.dts | 17 +++++++++++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi     |  9 +++++++++
- 3 files changed, 43 insertions(+)
+The conversation for this started at: 
 
-diff --git a/arch/arm64/boot/dts/apple/t8112-j413.dts b/arch/arm64/boot/dts/apple/t8112-j413.dts
-index 9e758edeaa82..6f69658623bf 100644
---- a/arch/arm64/boot/dts/apple/t8112-j413.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j413.dts
-@@ -11,6 +11,7 @@
+https://www.spinics.net/lists/netfilter/msg60995.html
+
+The upper limit for algo is any bit size less than 32, so this
+change will allow us to set bit size > 20. Today, it is common to have
+RAM available to handle greater than 2^20 connections per-host.
+
+Distros like RHEL already have higher limits set.
+---
+ net/netfilter/ipvs/Kconfig      | 4 ++--
+ net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
+index 271da8447b29..3e3371f8c0f9 100644
+--- a/net/netfilter/ipvs/Kconfig
++++ b/net/netfilter/ipvs/Kconfig
+@@ -44,7 +44,7 @@ config	IP_VS_DEBUG
  
- #include "t8112.dtsi"
- #include "t8112-jxxx.dtsi"
-+#include <dt-bindings/leds/common.h>
+ config	IP_VS_TAB_BITS
+ 	int "IPVS connection table size (the Nth power of 2)"
+-	range 8 20
++	range 8 31
+ 	default 12
+ 	help
+ 	  The IPVS connection hash table uses the chaining scheme to handle
+@@ -54,7 +54,7 @@ config	IP_VS_TAB_BITS
  
- / {
- 	compatible = "apple,j413", "apple,t8112", "apple,arm-platform";
-@@ -20,6 +21,18 @@ aliases {
- 		bluetooth0 = &bluetooth0;
- 		wifi0 = &wifi0;
- 	};
-+
-+	led-controller {
-+		compatible = "pwm-leds";
-+		led-0 {
-+			pwms = <&fpwm1 0 40000>;
-+			label = "kbd_backlight";
-+			function = LED_FUNCTION_KBD_BACKLIGHT;
-+			color = <LED_COLOR_ID_WHITE>;
-+			max-brightness = <255>;
-+			default-state = "keep";
-+		};
-+	};
- };
+ 	  Note the table size must be power of 2. The table size will be the
+ 	  value of 2 to the your input number power. The number to choose is
+-	  from 8 to 20, the default number is 12, which means the table size
++	  from 8 to 31, the default number is 12, which means the table size
+ 	  is 4096. Don't input the number too small, otherwise you will lose
+ 	  performance on it. You can adapt the table size yourself, according
+ 	  to your virtual server application. It is good to set the table size
+diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
+index 13534e02346c..bc0fe1a698d4 100644
+--- a/net/netfilter/ipvs/ip_vs_conn.c
++++ b/net/netfilter/ipvs/ip_vs_conn.c
+@@ -1484,8 +1484,8 @@ int __init ip_vs_conn_init(void)
+ 	int idx;
  
- /*
-@@ -61,3 +74,7 @@ hpm5: usb-pd@3a {
- &i2c4 {
- 	status = "okay";
- };
-+
-+&fpwm1 {
-+	status = "okay";
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
-index 8552c15be265..0ad908349f55 100644
---- a/arch/arm64/boot/dts/apple/t8112-j493.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
-@@ -11,6 +11,7 @@
- 
- #include "t8112.dtsi"
- #include "t8112-jxxx.dtsi"
-+#include <dt-bindings/leds/common.h>
- 
- / {
- 	compatible = "apple,j493", "apple,t8112", "apple,arm-platform";
-@@ -20,6 +21,18 @@ aliases {
- 		bluetooth0 = &bluetooth0;
- 		wifi0 = &wifi0;
- 	};
-+
-+	led-controller {
-+		compatible = "pwm-leds";
-+		led-0 {
-+			pwms = <&fpwm1 0 40000>;
-+			label = "kbd_backlight";
-+			function = LED_FUNCTION_KBD_BACKLIGHT;
-+			color = <LED_COLOR_ID_WHITE>;
-+			max-brightness = <255>;
-+			default-state = "keep";
-+		};
-+	};
- };
- 
- /*
-@@ -50,3 +63,7 @@ bluetooth0: bluetooth@0,1 {
- &i2c4 {
- 	status = "okay";
- };
-+
-+&fpwm1 {
-+	status = "okay";
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index 698a436e7dac..1666e6ab250b 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -458,6 +458,15 @@ i2c4: i2c@235020000 {
- 			status = "disabled";
- 		};
- 
-+		fpwm1: pwm@235044000 {
-+			compatible = "apple,t8112-fpwm", "apple,s5l-fpwm";
-+			reg = <0x2 0x35044000 0x0 0x4000>;
-+			power-domains = <&ps_fpwm1>;
-+			clocks = <&clkref>;
-+			#pwm-cells = <2>;
-+			status = "disabled";
-+		};
-+
- 		serial0: serial@235200000 {
- 			compatible = "apple,s5l-uart";
- 			reg = <0x2 0x35200000 0x0 0x1000>;
+ 	/* Compute size and mask */
+-	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 20) {
+-		pr_info("conn_tab_bits not in [8, 20]. Using default value\n");
++	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 31) {
++		pr_info("conn_tab_bits not in [8, 31]. Using default value\n");
+ 		ip_vs_conn_tab_bits = CONFIG_IP_VS_TAB_BITS;
+ 	}
+ 	ip_vs_conn_tab_size = 1 << ip_vs_conn_tab_bits;
 
 ---
-base-commit: 8d59efc33fdaa2c82072b4d3ba5f67d7dd9270d0
-change-id: 20230409-t8112-fpwm-06e434cc358d
+base-commit: 09a9639e56c01c7a00d6c0ca63f4c7c41abe075d
+change-id: 20230412-increase_ipvs_conn_tab_bits-4322c90da216
 
 Best regards,
 -- 
-Sasha Finkelstein <fnkl.kernel@gmail.com>
+Abhijeet Rastogi <abhijeet.1989@gmail.com>
 
