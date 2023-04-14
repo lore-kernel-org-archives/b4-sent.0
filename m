@@ -1,98 +1,60 @@
-From: Abhijeet Rastogi <abhijeet.1989@gmail.com>
-Date: Wed, 12 Apr 2023 13:49:08 -0700
-Subject: [PATCH] ipvs: change ip_vs_conn_tab_bits range to [8,31]
+From: Jaime Breva <jbreva@nayarsystems.com>
+Date: Fri, 14 Apr 2023 13:07:40 +0200
+Subject: [PATCH] net: wwan: Expose secondary AT port on DATA1
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230412-increase_ipvs_conn_tab_bits-v1-1-60a4f9f4c8f2@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEMZN2QC/x2N0QqDMAxFf0XyvEIbZbD9yhglrdnMw6IkIgPx3
- 1f3eDiXc3dwNmGHe7eD8SYuszZIlw7qRPrmIGNjwIh9HBIG0WpMzlmWzXOdVfNKJRdZPQw9Yr3
- FkTBdoRVK24VipHU6Gx/yle0Ui/FLvv/bx/M4ftkrbyCGAAAA
-To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, 
- Pablo Neira Ayuso <pablo@netfilter.org>, 
- Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, 
+Message-Id: <20230414-rpmsg-wwan-secondary-at-port-v1-1-6d7307527911@nayarsystems.com>
+X-B4-Tracking: v=1; b=H4sIAPwzOWQC/x2NQQqDMBAAvyJ77oKmQaFfKT1skq3mYBJ2Q7WIf
+ 2/scRiYOUBZIis8ugOEP1FjTg2GWwd+oTQzxtAYTG/uvR0sSll1xm2jhMo+p0DyRapYslQMbjI
+ 0jp4nS9ASjpTRCSW/XJGVtLJcogi/4/7/Pl/n+QMph2lPhwAAAA==
+To: Stephan Gerhold <stephan@gerhold.net>, 
+ Loic Poulain <loic.poulain@linaro.org>, 
+ Sergey Ryazanov <ryazanov.s.a@gmail.com>, 
+ Johannes Berg <johannes@sipsolutions.net>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, lvs-devel@vger.kernel.org, 
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org, 
- linux-kernel@vger.kernel.org, Abhijeet Rastogi <abhijeet.1989@gmail.com>
+Cc: netdev@vger.kernel.org, linux-remoteproc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jaime Breva <jbreva@nayarsystems.com>
 X-Mailer: b4 0.12.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1681332551; l=2681;
- i=abhijeet.1989@gmail.com; s=20230412; h=from:subject:message-id;
- bh=diB2UNBoozij8cEFsyQbJS4LF1vmwJ3a6Chw+mzNh7I=;
- b=P+q2BDiUkpHSIUlanv0uhX+uIFT2uT4OzEwmTdXXla/nmmIrpI/IXDTzgS0FBPJ5E2k2s7yp6
- BTzbnfMaj1vAOe9Em5PMNAMEQLfL4s9XOHYeLIGoyhXO/lySLPcoEuQ
-X-Developer-Key: i=abhijeet.1989@gmail.com; a=ed25519;
- pk=VinODWUuJys1VAWZP2Uv9slcHekoZvxAp4RY1p5+OfU=
-X-Endpoint-Received: by B4 Relay for abhijeet.1989@gmail.com/20230412 with auth_id=40
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1681470586; l=1075;
+ i=jbreva@nayarsystems.com; s=20230414; h=from:subject:message-id;
+ bh=cSR4ZQap91Ye+xWxHZdF++TRRzXHB58d7aORnQDEYqM=;
+ b=UtqPg4Ls/omSuTtTSlV0VkJABHHRNDsCfzzMZBGbx0UTm78zIV39iYILVj5p0bOVV8LWiNvRi
+ 1InMJSqRsISARwe/xrdCFAgj+PEDNk4JRU+vdLJAYeKPJMiP3rqDHnJ
+X-Developer-Key: i=jbreva@nayarsystems.com; a=ed25519;
+ pk=zDC7l1kB518eXlRUJzDUyrUOKe2m/yx+62R/yqmd/kM=
+X-Endpoint-Received: by B4 Relay for jbreva@nayarsystems.com/20230414 with auth_id=42
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Current range [8, 20] is set purely due to historical reasons
-because at the time, ~1M (2^20) was considered sufficient.
+Our use-case needs two AT ports available:
+One for running a ppp daemon, and another one for management
 
-Previous change regarding this limit is here.
+This patch enables a second AT port on DATA1
 
-Link: https://lore.kernel.org/all/86eabeb9dd62aebf1e2533926fdd13fed48bab1f.1631289960.git.aclaudi@redhat.com/T/#u
-
-Signed-off-by: Abhijeet Rastogi <abhijeet.1989@gmail.com>
+Signed-off-by: Jaime Breva <jbreva@nayarsystems.com>
 ---
-The conversation for this started at: 
+ drivers/net/wwan/rpmsg_wwan_ctrl.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-https://www.spinics.net/lists/netfilter/msg60995.html
-
-The upper limit for algo is any bit size less than 32, so this
-change will allow us to set bit size > 20. Today, it is common to have
-RAM available to handle greater than 2^20 connections per-host.
-
-Distros like RHEL already have higher limits set.
----
- net/netfilter/ipvs/Kconfig      | 4 ++--
- net/netfilter/ipvs/ip_vs_conn.c | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/net/netfilter/ipvs/Kconfig b/net/netfilter/ipvs/Kconfig
-index 271da8447b29..3e3371f8c0f9 100644
---- a/net/netfilter/ipvs/Kconfig
-+++ b/net/netfilter/ipvs/Kconfig
-@@ -44,7 +44,7 @@ config	IP_VS_DEBUG
- 
- config	IP_VS_TAB_BITS
- 	int "IPVS connection table size (the Nth power of 2)"
--	range 8 20
-+	range 8 31
- 	default 12
- 	help
- 	  The IPVS connection hash table uses the chaining scheme to handle
-@@ -54,7 +54,7 @@ config	IP_VS_TAB_BITS
- 
- 	  Note the table size must be power of 2. The table size will be the
- 	  value of 2 to the your input number power. The number to choose is
--	  from 8 to 20, the default number is 12, which means the table size
-+	  from 8 to 31, the default number is 12, which means the table size
- 	  is 4096. Don't input the number too small, otherwise you will lose
- 	  performance on it. You can adapt the table size yourself, according
- 	  to your virtual server application. It is good to set the table size
-diff --git a/net/netfilter/ipvs/ip_vs_conn.c b/net/netfilter/ipvs/ip_vs_conn.c
-index 13534e02346c..bc0fe1a698d4 100644
---- a/net/netfilter/ipvs/ip_vs_conn.c
-+++ b/net/netfilter/ipvs/ip_vs_conn.c
-@@ -1484,8 +1484,8 @@ int __init ip_vs_conn_init(void)
- 	int idx;
- 
- 	/* Compute size and mask */
--	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 20) {
--		pr_info("conn_tab_bits not in [8, 20]. Using default value\n");
-+	if (ip_vs_conn_tab_bits < 8 || ip_vs_conn_tab_bits > 31) {
-+		pr_info("conn_tab_bits not in [8, 31]. Using default value\n");
- 		ip_vs_conn_tab_bits = CONFIG_IP_VS_TAB_BITS;
- 	}
- 	ip_vs_conn_tab_size = 1 << ip_vs_conn_tab_bits;
+diff --git a/drivers/net/wwan/rpmsg_wwan_ctrl.c b/drivers/net/wwan/rpmsg_wwan_ctrl.c
+index 31c24420ab2e..e964bdeea2b3 100644
+--- a/drivers/net/wwan/rpmsg_wwan_ctrl.c
++++ b/drivers/net/wwan/rpmsg_wwan_ctrl.c
+@@ -149,6 +149,7 @@ static const struct rpmsg_device_id rpmsg_wwan_ctrl_id_table[] = {
+ 	/* RPMSG channels for Qualcomm SoCs with integrated modem */
+ 	{ .name = "DATA5_CNTL", .driver_data = WWAN_PORT_QMI },
+ 	{ .name = "DATA4", .driver_data = WWAN_PORT_AT },
++	{ .name = "DATA1", .driver_data = WWAN_PORT_AT },
+ 	{},
+ };
+ MODULE_DEVICE_TABLE(rpmsg, rpmsg_wwan_ctrl_id_table);
 
 ---
-base-commit: 09a9639e56c01c7a00d6c0ca63f4c7c41abe075d
-change-id: 20230412-increase_ipvs_conn_tab_bits-4322c90da216
+base-commit: c9c3395d5e3dcc6daee66c6908354d47bf98cb0c
+change-id: 20230414-rpmsg-wwan-secondary-at-port-db72a66ce74a
 
 Best regards,
 -- 
-Abhijeet Rastogi <abhijeet.1989@gmail.com>
+Jaime Breva <jbreva@nayarsystems.com>
 
