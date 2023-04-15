@@ -1,60 +1,55 @@
-From: Jaime Breva <jbreva@nayarsystems.com>
-Date: Fri, 14 Apr 2023 13:07:40 +0200
-Subject: [PATCH] net: wwan: Expose secondary AT port on DATA1
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH RFC 0/3] mmc: add support for the dw-mmc controller on
+ Hi3798MV200
+Date: Sat, 15 Apr 2023 22:18:43 +0800
+Message-Id: <20230415-mmc-hi3798mv200-v1-0-db5b91d939d4@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230414-rpmsg-wwan-secondary-at-port-v1-1-6d7307527911@nayarsystems.com>
-X-B4-Tracking: v=1; b=H4sIAPwzOWQC/x2NQQqDMBAAvyJ77oKmQaFfKT1skq3mYBJ2Q7WIf
- 2/scRiYOUBZIis8ugOEP1FjTg2GWwd+oTQzxtAYTG/uvR0sSll1xm2jhMo+p0DyRapYslQMbjI
- 0jp4nS9ASjpTRCSW/XJGVtLJcogi/4/7/Pl/n+QMph2lPhwAAAA==
-To: Stephan Gerhold <stephan@gerhold.net>, 
- Loic Poulain <loic.poulain@linaro.org>, 
- Sergey Ryazanov <ryazanov.s.a@gmail.com>, 
- Johannes Berg <johannes@sipsolutions.net>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-remoteproc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jaime Breva <jbreva@nayarsystems.com>
-X-Mailer: b4 0.12.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1681470586; l=1075;
- i=jbreva@nayarsystems.com; s=20230414; h=from:subject:message-id;
- bh=cSR4ZQap91Ye+xWxHZdF++TRRzXHB58d7aORnQDEYqM=;
- b=UtqPg4Ls/omSuTtTSlV0VkJABHHRNDsCfzzMZBGbx0UTm78zIV39iYILVj5p0bOVV8LWiNvRi
- 1InMJSqRsISARwe/xrdCFAgj+PEDNk4JRU+vdLJAYeKPJMiP3rqDHnJ
-X-Developer-Key: i=jbreva@nayarsystems.com; a=ed25519;
- pk=zDC7l1kB518eXlRUJzDUyrUOKe2m/yx+62R/yqmd/kM=
-X-Endpoint-Received: by B4 Relay for jbreva@nayarsystems.com/20230414 with auth_id=42
+X-B4-Tracking: v=1; b=H4sIAEOyOmQC/x2NQQrCMBAAv1L2bCBJbWy8Cj6gV/GQxNXsIVF2S
+ xFK/27qcRiGWUGQCQXO3QqMCwm9awNz6CDlUF+o6NEYrLa9PppBlZJUpv7kx7JYrVVCM6CP3o3
+ OQatiEFSRQ01570qQGXkXH8Ynff+rG0zXC9y37Qd+CibYfwAAAA==
+To: Ulf Hansson <ulf.hansson@linaro.org>, 
+ Jaehoon Chung <jh80.chung@samsung.com>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Yang Xiwen <forbidden405@outlook.com>
+Cc: linux-mmc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1681568331; l=1144;
+ i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
+ bh=NU2bCHBCBu/FVM8V5ZxWORQ+XnnJ/22QxWvmPvYrkQw=;
+ b=3xDF9NiFLIw4XcXlfHospvvBjb4Bhkt3ICZkU3monaSgRKpk0SYnAOCP83Nip5dD4fK9lOTlj
+ pz/WjDjUWCACfbtinZekZdg/c7PNTyeth7SCAwKXNcxsbcz7a2UHwgN
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Our use-case needs two AT ports available:
-One for running a ppp daemon, and another one for management
+The dw-mmc controller found on Hi3798MV200 is like the one found on
+Hi3798CV200, but has some tweaks.
+Also refreshed the dt binding and converted it to YAML.
+Unfortunately, DDR52 is not supported yet.
 
-This patch enables a second AT port on DATA1
-
-Signed-off-by: Jaime Breva <jbreva@nayarsystems.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/net/wwan/rpmsg_wwan_ctrl.c | 1 +
- 1 file changed, 1 insertion(+)
+Yang Xiwen (3):
+      mmc: dw_mmc-hi3798cv200: rename to dw_mmc-histb
+      mmc: dw_mmc-histb: add support for hi3798mv200
+      binding: mmc: hi3798cv200-dw-mshc: convert to YAML and rename to histb-dw-mshc, add compatible of hi3798mv200
 
-diff --git a/drivers/net/wwan/rpmsg_wwan_ctrl.c b/drivers/net/wwan/rpmsg_wwan_ctrl.c
-index 31c24420ab2e..e964bdeea2b3 100644
---- a/drivers/net/wwan/rpmsg_wwan_ctrl.c
-+++ b/drivers/net/wwan/rpmsg_wwan_ctrl.c
-@@ -149,6 +149,7 @@ static const struct rpmsg_device_id rpmsg_wwan_ctrl_id_table[] = {
- 	/* RPMSG channels for Qualcomm SoCs with integrated modem */
- 	{ .name = "DATA5_CNTL", .driver_data = WWAN_PORT_QMI },
- 	{ .name = "DATA4", .driver_data = WWAN_PORT_AT },
-+	{ .name = "DATA1", .driver_data = WWAN_PORT_AT },
- 	{},
- };
- MODULE_DEVICE_TABLE(rpmsg, rpmsg_wwan_ctrl_id_table);
-
+ .../bindings/mmc/hi3798cv200-dw-mshc.txt           |  40 ---
+ .../devicetree/bindings/mmc/histb-dw-mshc.yaml     |  90 ++++++
+ drivers/mmc/host/Kconfig                           |   8 +-
+ drivers/mmc/host/Makefile                          |   2 +-
+ drivers/mmc/host/dw_mmc-hi3798cv200.c              | 206 -------------
+ drivers/mmc/host/dw_mmc-histb.c                    | 336 +++++++++++++++++++++
+ 6 files changed, 431 insertions(+), 251 deletions(-)
 ---
-base-commit: c9c3395d5e3dcc6daee66c6908354d47bf98cb0c
-change-id: 20230414-rpmsg-wwan-secondary-at-port-db72a66ce74a
+base-commit: 76f598ba7d8e2bfb4855b5298caedd5af0c374a8
+change-id: 20230415-mmc-hi3798mv200-ce15e9b96866
 
 Best regards,
 -- 
-Jaime Breva <jbreva@nayarsystems.com>
+Yang Xiwen <forbidden405@outlook.com>
 
