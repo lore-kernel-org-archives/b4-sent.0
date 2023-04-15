@@ -1,10 +1,11 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Sun, 16 Apr 2023 01:13:17 +0800
-Subject: [PATCH RFC v2 2/3] mmc: dw_mmc-histb: add support for hi3798mv200
+Date: Sun, 16 Apr 2023 01:13:18 +0800
+Subject: [PATCH RFC v2 3/3] binding: mmc: hi3798cv200-dw-mshc: convert to
+ YAML and rename to histb-dw-mshc, add compatible of hi3798mv200
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230415-mmc-hi3798mv200-v2-2-1d274f9b71da@outlook.com>
+Message-Id: <20230415-mmc-hi3798mv200-v2-3-1d274f9b71da@outlook.com>
 References: <20230415-mmc-hi3798mv200-v2-0-1d274f9b71da@outlook.com>
 In-Reply-To: <20230415-mmc-hi3798mv200-v2-0-1d274f9b71da@outlook.com>
 To: Ulf Hansson <ulf.hansson@linaro.org>, 
@@ -17,209 +18,166 @@ Cc: tianshuliang <tianshuliang@hisilicon.com>,
  linux-mmc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1681578841; l=5756;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1681578841; l=4832;
  i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
- bh=BbS/l7vrq8NmARY0G9T42pzQupVXhImCLr1VN3mh6sA=;
- b=OfPsfIkbummvSPmaS8k6+VwGFK91apAhf9qWFdECma/0SQ5q4vw0BHQGc5tabfTK1lyXih5+m
- 0HhmN0DmfHLA8/4NIX9t3tmNISQoXoqiYeE6S1xmxR5QoFEsbc42qN8
+ bh=JIt1WKO/E/jF6bqUj7ql5V34Mtu9RTATejU7vIuUpXk=;
+ b=u+DeFJqw2haCSzMfeqhvP2+DgCHXLB0jvJLFSB40eogHx+N9bppnzPPJx/MzKvlvlMTaaDB6y
+ OKF8RVoe8f1AkohL1hka/dk8TBQtRha+8gG7Ln7nWYAvebbeBgIxA+B
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for Hi3798MV200 specific extension.
+Hi3798MV200 has an extra clock, also document it here.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/mmc/host/dw_mmc-histb.c | 110 +++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 109 insertions(+), 1 deletion(-)
+ .../bindings/mmc/hi3798cv200-dw-mshc.txt           | 40 ----------
+ .../devicetree/bindings/mmc/histb-dw-mshc.yaml     | 90 ++++++++++++++++++++++
+ 2 files changed, 90 insertions(+), 40 deletions(-)
 
-diff --git a/drivers/mmc/host/dw_mmc-histb.c b/drivers/mmc/host/dw_mmc-histb.c
-index 106e586bcff4b..039b6df0e8c4d 100644
---- a/drivers/mmc/host/dw_mmc-histb.c
-+++ b/drivers/mmc/host/dw_mmc-histb.c
-@@ -16,10 +16,14 @@
- #include "dw_mmc.h"
- #include "dw_mmc-pltfm.h"
- 
-+#define SDMMC_TUNING_CTRL	0x118
-+#define SDMMC_TUNING_FIND_EDGE	BIT(5)
+diff --git a/Documentation/devicetree/bindings/mmc/hi3798cv200-dw-mshc.txt b/Documentation/devicetree/bindings/mmc/hi3798cv200-dw-mshc.txt
+deleted file mode 100644
+index a0693b7145f2a..0000000000000
+--- a/Documentation/devicetree/bindings/mmc/hi3798cv200-dw-mshc.txt
++++ /dev/null
+@@ -1,40 +0,0 @@
+-* Hisilicon Hi3798CV200 specific extensions to the Synopsys Designware Mobile
+-  Storage Host Controller
+-
+-Read synopsys-dw-mshc.txt for more details
+-
+-The Synopsys designware mobile storage host controller is used to interface
+-a SoC with storage medium such as eMMC or SD/MMC cards. This file documents
+-differences between the core Synopsys dw mshc controller properties described
+-by synopsys-dw-mshc.txt and the properties used by the Hisilicon Hi3798CV200
+-specific extensions to the Synopsys Designware Mobile Storage Host Controller.
+-
+-Required Properties:
+-- compatible: Should contain "hisilicon,hi3798cv200-dw-mshc".
+-- clocks: A list of phandle + clock-specifier pairs for the clocks listed
+-  in clock-names.
+-- clock-names: Should contain the following:
+-	"ciu" - The ciu clock described in synopsys-dw-mshc.txt.
+-	"biu" - The biu clock described in synopsys-dw-mshc.txt.
+-	"ciu-sample" - Hi3798CV200 extended phase clock for ciu sampling.
+-	"ciu-drive"  - Hi3798CV200 extended phase clock for ciu driving.
+-
+-Example:
+-
+-	emmc: mmc@9830000 {
+-		compatible = "hisilicon,hi3798cv200-dw-mshc";
+-		reg = <0x9830000 0x10000>;
+-		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
+-		clocks = <&crg HISTB_MMC_CIU_CLK>,
+-			 <&crg HISTB_MMC_BIU_CLK>,
+-			 <&crg HISTB_MMC_SAMPLE_CLK>,
+-			 <&crg HISTB_MMC_DRV_CLK>;
+-		clock-names = "ciu", "biu", "ciu-sample", "ciu-drive";
+-		fifo-depth = <256>;
+-		clock-frequency = <200000000>;
+-		cap-mmc-highspeed;
+-		mmc-ddr-1_8v;
+-		mmc-hs200-1_8v;
+-		non-removable;
+-		bus-width = <8>;
+-	};
+diff --git a/Documentation/devicetree/bindings/mmc/histb-dw-mshc.yaml b/Documentation/devicetree/bindings/mmc/histb-dw-mshc.yaml
+new file mode 100644
+index 0000000000000..ea377bd5ea4bf
+--- /dev/null
++++ b/Documentation/devicetree/bindings/mmc/histb-dw-mshc.yaml
+@@ -0,0 +1,90 @@
++# SPDX-License-Identifier: GPL-2.0
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/mmc/histb-dw-mshc.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
- #define ALL_INT_CLR		0x1ffff
- 
- enum dw_mci_histb_type {
- 	DW_MCI_TYPE_HI3798CV200,
-+	DW_MCI_TYPE_HI3798MV200,
- };
- 
- static struct dw_mci_histb_compat {
-@@ -29,6 +33,9 @@ static struct dw_mci_histb_compat {
- 	{
- 		.compatible = "hisilicon,hi3798cv200-dw-mshc",
- 		.ctrl_type = DW_MCI_TYPE_HI3798CV200,
-+	}, {
-+		.compatible = "hisilicon,hi3798mv200-dw-mshc",
-+		.ctrl_type = DW_MCI_TYPE_HI3798MV200,
- 	},
- };
- 
-@@ -36,6 +43,7 @@ struct dw_mci_histb_priv {
- 	enum dw_mci_histb_type ctrl_type;
- 	struct clk *sample_clk;
- 	struct clk *drive_clk;
-+	struct clk *sap_dll_mode_clk;
- };
- 
- static void dw_mci_histb_set_ios(struct dw_mci *host, struct mmc_ios *ios)
-@@ -68,7 +76,10 @@ static void dw_mci_histb_set_ios(struct dw_mci *host, struct mmc_ios *ios)
- 	if (ios->timing == MMC_TIMING_MMC_HS ||
- 	    ios->timing == MMC_TIMING_LEGACY)
- 		clk_set_phase(priv->drive_clk, 180);
--	else if (ios->timing == MMC_TIMING_MMC_HS200)
-+	else if (ios->timing == MMC_TIMING_MMC_DDR52) {
-+		clk_set_phase(priv->drive_clk, 90);
-+		clk_set_phase(priv->sample_clk, 45);
-+	} else if (ios->timing == MMC_TIMING_MMC_HS200)
- 		clk_set_phase(priv->drive_clk, 135);
- }
- 
-@@ -133,6 +144,75 @@ static int dw_mci_hi3798cv200_execute_tuning(struct dw_mci_slot *slot,
- 	return err;
- }
- 
-+static int dw_mci_hi3798mv200_execute_tuning_mix_mode(struct dw_mci_slot *slot,
-+					     u32 opcode)
-+{
-+	static const int degrees[] = { 0, 45, 90, 135, 180, 225, 270, 315 };
-+	struct dw_mci *host = slot->host;
-+	struct dw_mci_histb_priv *priv = host->priv;
-+	int raise_point = -1, fall_point = -1;
-+	int err, prev_err = -1;
-+	int found = 0;
-+	int regval;
-+	int i;
++title:
++  Hisilicon HiSTB SoC specific extensions to the Synopsys Designware Mobile
++  Storage Host Controller
 +
-+	clk_disable(priv->sap_dll_mode_clk);
-+	for (i = 0; i < ARRAY_SIZE(degrees); i++) {
-+		clk_set_phase(priv->sample_clk, degrees[i]);
-+		mci_writel(host, RINTSTS, ALL_INT_CLR);
++maintainers:
++  - Yang Xiwen <forbidden405@outlook.com>
 +
-+		err = mmc_send_tuning(slot->mmc, opcode, NULL);
-+		if (err)
-+			found = 1;
-+		else {
-+			regval = mci_readl(host, TUNING_CTRL);
-+			if (regval & SDMMC_TUNING_FIND_EDGE)
-+				found = 1;
-+		};
++description:
++  The Synopsys designware mobile storage host controller is used to interface a
++  SoC with storage medium such as eMMC or SD/MMC cards. This file documents
++  differences between the core Synopsys dw mshc controller properties described
++  by synopsys-dw-mshc.txt and the properties used by the Hisilicon HiSTB SoC
++  specific extensions to the Synopsys Designware Mobile Storage Host Controller.
 +
-+		if (i > 0) {
-+			if (err && !prev_err)
-+				fall_point = i - 1;
-+			if (!err && prev_err)
-+				raise_point = i;
-+		}
++allOf:
++  - $ref: "synopsys-dw-mshc-common.yaml#"
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: hisilicon,hi3798mv200-dw-mshc
++    then:
++      properties:
++        clocks:
++          minItems: 5
 +
-+		if (raise_point != -1 && fall_point != -1)
-+			goto tuning_out;
++        clock-names:
++          minItems: 5
 +
-+		prev_err = err;
-+		err = 0;
-+	}
++properties:
++  compatible:
++    enum:
++      - hisilicon,hi3798cv200-dw-mshc
++      - hisilicon,hi3798mv200-dw-mshc
 +
-+tuning_out:
-+	clk_enable(priv->sap_dll_mode_clk);
-+	if (found) {
-+		if (raise_point == -1)
-+			raise_point = 0;
-+		if (fall_point == -1)
-+			fall_point = ARRAY_SIZE(degrees) - 1;
-+		if (fall_point < raise_point) {
-+			if ((raise_point + fall_point) >
-+			    (ARRAY_SIZE(degrees) - 1))
-+				i = fall_point / 2;
-+			else
-+				i = (raise_point + ARRAY_SIZE(degrees) - 1) / 2;
-+		} else {
-+			i = (raise_point + fall_point) / 2;
-+		}
++  reg:
++    maxItems: 1
 +
-+		clk_set_phase(priv->sample_clk, degrees[i]);
-+		dev_dbg(host->dev, "Tuning clk_sample[%d, %d], set[%d]\n",
-+			raise_point, fall_point, degrees[i]);
-+	} else {
-+		dev_err(host->dev, "No valid clk_sample shift! use default\n");
-+		err = -EINVAL;
-+	}
++  interrupts:
++    maxItems: 1
 +
-+	mci_writel(host, RINTSTS, ALL_INT_CLR);
-+	return err;
-+}
++  clocks:
++    minItems: 4
++    maxItems: 5
++    description: A list of phandles for the clocks listed in clock-names
 +
- static int dw_mci_histb_init(struct dw_mci *host)
- {
- 	struct dw_mci_histb_priv *priv;
-@@ -160,6 +240,14 @@ static int dw_mci_histb_init(struct dw_mci *host)
- 		return PTR_ERR(priv->drive_clk);
- 	}
- 
-+	if (priv->ctrl_type == DW_MCI_TYPE_HI3798MV200) {
-+		priv->sap_dll_mode_clk = devm_clk_get(host->dev, "sap-dll-mode");
-+		if (IS_ERR(priv->sap_dll_mode_clk)) {
-+			dev_err(host->dev, "failed to get sap-dll-mode clock\n");
-+			return PTR_ERR(priv->sap_dll_mode_clk);
-+		}
-+	}
++  clock-names:
++    minItems: 4
++    items:
++      - const: ciu
++      - const: biu
++      - const: ciu-sample
++      - const: ciu-drive
++      - const: sap-dll-mode
 +
- 	ret = clk_prepare_enable(priv->sample_clk);
- 	if (ret) {
- 		dev_err(host->dev, "failed to enable ciu-sample clock\n");
-@@ -172,9 +260,19 @@ static int dw_mci_histb_init(struct dw_mci *host)
- 		goto disable_sample_clk;
- 	}
- 
-+	if (priv->ctrl_type == DW_MCI_TYPE_HI3798MV200) {
-+		ret = clk_prepare_enable(priv->sap_dll_mode_clk);
-+		if (ret) {
-+			dev_err(host->dev, "failed to disable tuning mode");
-+			goto disable_drive_clk;
-+		}
-+	}
++unevaluatedProperties: false
 +
- 	host->priv = priv;
- 	return 0;
- 
-+disable_drive_clk:
-+	clk_disable_unprepare(priv->drive_clk);
- disable_sample_clk:
- 	clk_disable_unprepare(priv->sample_clk);
- 	return ret;
-@@ -187,8 +285,16 @@ static const struct dw_mci_drv_data hi3798cv200_data = {
- 	.execute_tuning = dw_mci_hi3798cv200_execute_tuning,
- };
- 
-+static const struct dw_mci_drv_data hi3798mv200_data = {
-+	.common_caps = MMC_CAP_CMD23,
-+	.init = dw_mci_histb_init,
-+	.set_ios = dw_mci_histb_set_ios,
-+	.execute_tuning = dw_mci_hi3798mv200_execute_tuning_mix_mode,
-+};
++required:
++  - compatible
++  - reg
++  - interrupts
++  - clocks
++  - clock-names
 +
- static const struct of_device_id dw_mci_histb_match[] = {
- 	{ .compatible = "hisilicon,hi3798cv200-dw-mshc", .data = &hi3798cv200_data },
-+	{ .compatible = "hisilicon,hi3798mv200-dw-mshc", .data = &hi3798mv200_data },
- 	{},
- };
- 
-@@ -208,6 +314,8 @@ static int dw_mci_histb_remove(struct platform_device *pdev)
- 
- 	clk_disable_unprepare(priv->drive_clk);
- 	clk_disable_unprepare(priv->sample_clk);
-+	if (priv->ctrl_type == DW_MCI_TYPE_HI3798MV200)
-+		clk_disable_unprepare(priv->sap_dll_mode_clk);
- 
- 	dw_mci_pltfm_remove(pdev);
- 
++examples:
++  - |
++    emmc: mmc@9830000 {
++            compatible = "hisilicon,hi3798cv200-dw-mshc";
++            reg = <0x9830000 0x10000>;
++            interrupts = <35>;
++            clocks = <&crg 1>,
++                     <&crg 2>,
++                     <&crg 3>,
++                     <&crg 4>;
++            clock-names = "ciu", "biu", "ciu-sample", "ciu-drive";
++            fifo-depth = <256>;
++            clock-frequency = <200000000>;
++            cap-mmc-highspeed;
++            mmc-ddr-1_8v;
++            mmc-hs200-1_8v;
++            non-removable;
++            bus-width = <8>;
++    };
++
 
 -- 
 2.39.2
