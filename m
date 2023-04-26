@@ -1,54 +1,73 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Subject: [PATCH v3 0/2] clk: fix corner case of
- clk_mux_determine_rate_flags()
-Date: Thu, 27 Apr 2023 03:34:15 +0800
-Message-Id: <20230421-clk-v3-0-9ff79e7e7fed@outlook.com>
+Date: Thu, 27 Apr 2023 03:34:16 +0800
+Subject: [PATCH v3 1/2] clk: use ULONG_MAX as the initial value for the
+ iteration in clk_mux_determine_rate_flags()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALd8SWQC/22OSw7CMAwFr4KyxihxSpFYcQ/EonEdGvUTlJQIV
- PXuJN1VYjn2e2MvInJwHMX1sIjAyUXnpwz6eBDUNdOTwbWZBUrUskIFNPRQV1SbmlFRa0ROmiY
- ymNBM1JXs2MSZQ1m8Alv32fT3R+bOxdmH73YtqTLdi5MCBcacpbZokay++fc8eN+fyI+iGBL+a
- SFIuOSfiBBV1ap9a13XH1Tv8/znAAAA
+Message-Id: <20230421-clk-v3-1-9ff79e7e7fed@outlook.com>
+References: <20230421-clk-v3-0-9ff79e7e7fed@outlook.com>
+In-Reply-To: <20230421-clk-v3-0-9ff79e7e7fed@outlook.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>
 Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1682537658; l=901;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1682537658; l=1478;
  i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
- bh=maf6/BWfgU2ncGnj6zGDd1S57xHd7EW9VanLw4HM0lQ=;
- b=SIb8BOsguv8fnRlfotQhfHQXWXc+E+Db4OKYO/BHbSNJaXC/Dr9OX7sk8NwFAZYgTBvkng8C1
- CXt5kM/XsQxDfudX6xYcK+gn2tcJp9Vm/aWQRoX+4aAaAY3z+Prp10V
+ bh=Iu0E0q+m/ABmoRJdE8XwPzuxx9jb5jEc73TdhQk/cwU=;
+ b=lp6Wlz34BkiBEGirNzXxZ4uIqmEe8WkQ7rtxd06Gw/mE8ROkS5KmsbZezY6429bqJEzGkcBS3
+ 0v4ZInnmIhqDGo+5HmSxUMr3njgcI+rASch/8W1a6GgkcCvu7XT62Qh
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+Currently, clk_mux_determine_rate_flags() use 0 as the initial value for
+selecting the best matching parent. However, this will choose a
+non-existant rate(0) if the requested rate is closer to 0 than the
+minimum rate the parents have.
+
+Fix that by initializing the initial value to ULONG_MAX and treat it as a
+magic number.
+
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Changes in v3:
-- Add many unittest functions for mux determine_rate
-- Add more checks for ULONG_MAX
-- Link to v2: https://lore.kernel.org/r/20230421-clk-v2-0-74c6cc2214d1@outlook.com
+ drivers/clk/clk.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
-Changes in v2:
-- Add a unit test to clk_test.c
-- Link to v1: https://lore.kernel.org/r/20230421-clk-v1-1-bb503f2f2cf3@outlook.com
+diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
+index ae07685c7588b..6184d4aa88193 100644
+--- a/drivers/clk/clk.c
++++ b/drivers/clk/clk.c
+@@ -541,6 +541,17 @@ EXPORT_SYMBOL_GPL(__clk_is_enabled);
+ static bool mux_is_better_rate(unsigned long rate, unsigned long now,
+ 			   unsigned long best, unsigned long flags)
+ {
++	if (rate == ULONG_MAX) {
++		// select the highest clock rate
++		if (best == ULONG_MAX)
++			return true;
++		else
++			return now > best;
++	}
++
++	if (best == ULONG_MAX && now <= rate)
++		return true;
++
+ 	if (flags & CLK_MUX_ROUND_CLOSEST)
+ 		return abs(now - rate) < abs(best - rate);
+ 
+@@ -600,7 +611,7 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
+ {
+ 	struct clk_core *core = hw->core, *parent, *best_parent = NULL;
+ 	int i, num_parents, ret;
+-	unsigned long best = 0;
++	unsigned long best = ULONG_MAX;
+ 
+ 	/* if NO_REPARENT flag set, pass through to current parent */
+ 	if (core->flags & CLK_SET_RATE_NO_REPARENT) {
 
----
-Yang Xiwen (2):
-      clk: use ULONG_MAX as the initial value for the iteration in clk_mux_determine_rate_flags()
-      clk: tests: Add missing test cases for mux determine_rate
-
- drivers/clk/clk.c      |  13 ++++-
- drivers/clk/clk_test.c | 131 ++++++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 141 insertions(+), 3 deletions(-)
----
-base-commit: 76f598ba7d8e2bfb4855b5298caedd5af0c374a8
-change-id: 20230421-clk-64c6b6e21cdb
-
-Best regards,
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+2.39.2
 
