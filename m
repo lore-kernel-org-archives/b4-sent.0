@@ -1,58 +1,54 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Tue, 25 Apr 2023 15:46:40 +0800
-Subject: [PATCH v2 2/2] clk: tests: Add missing test case for mux
- determine_rate
+Subject: [PATCH v3 0/2] clk: fix corner case of
+ clk_mux_determine_rate_flags()
+Date: Thu, 27 Apr 2023 03:34:15 +0800
+Message-Id: <20230421-clk-v3-0-9ff79e7e7fed@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230421-clk-v2-2-74c6cc2214d1@outlook.com>
-References: <20230421-clk-v2-0-74c6cc2214d1@outlook.com>
-In-Reply-To: <20230421-clk-v2-0-74c6cc2214d1@outlook.com>
+X-B4-Tracking: v=1; b=H4sIALd8SWQC/22OSw7CMAwFr4KyxihxSpFYcQ/EonEdGvUTlJQIV
+ PXuJN1VYjn2e2MvInJwHMX1sIjAyUXnpwz6eBDUNdOTwbWZBUrUskIFNPRQV1SbmlFRa0ROmiY
+ ymNBM1JXs2MSZQ1m8Alv32fT3R+bOxdmH73YtqTLdi5MCBcacpbZokay++fc8eN+fyI+iGBL+a
+ SFIuOSfiBBV1ap9a13XH1Tv8/znAAAA
 To: Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>
 Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1682408804; l=1148;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1682537658; l=901;
  i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
- bh=9OLnZFueJynRZ3/SvtdA921aQdEuKJhzY8cmJ1y5r2Y=;
- b=pdXVz8zXO1kXbFfAdJ/F15BBHF/1kAn2fhFbi8+/zSxB0PPgyE7tRm3SSeQEjMvI/zH4HDqAQ
- /LWxPZfpgvADWcbrp4mevnApifX4nH2eR+d3HP1k0vnov5Tg2gcRW9J
+ bh=maf6/BWfgU2ncGnj6zGDd1S57xHd7EW9VanLw4HM0lQ=;
+ b=SIb8BOsguv8fnRlfotQhfHQXWXc+E+Db4OKYO/BHbSNJaXC/Dr9OX7sk8NwFAZYgTBvkng8C1
+ CXt5kM/XsQxDfudX6xYcK+gn2tcJp9Vm/aWQRoX+4aAaAY3z+Prp10V
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a missing test case for determine_rate implemented by mux. It tests
-the behavior of determine_rate when requesting a rate that none of the
-parents could give.
-
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/clk/clk_test.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Changes in v3:
+- Add many unittest functions for mux determine_rate
+- Add more checks for ULONG_MAX
+- Link to v2: https://lore.kernel.org/r/20230421-clk-v2-0-74c6cc2214d1@outlook.com
 
-diff --git a/drivers/clk/clk_test.c b/drivers/clk/clk_test.c
-index f9a5c2964c65d..9b1c90de90454 100644
---- a/drivers/clk/clk_test.c
-+++ b/drivers/clk/clk_test.c
-@@ -2215,6 +2215,15 @@ static void clk_leaf_mux_set_rate_parent_determine_rate(struct kunit *test)
- 	KUNIT_EXPECT_EQ(test, req.best_parent_rate, DUMMY_CLOCK_RATE_2);
- 	KUNIT_EXPECT_PTR_EQ(test, req.best_parent_hw, &ctx->mux_ctx.hw);
- 
-+	// Test a non-existant rate which none of the parents could give
-+	clk_hw_init_rate_request(hw, &req, DUMMY_CLOCK_INIT_RATE);
-+
-+	ret = __clk_determine_rate(hw, &req);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	KUNIT_EXPECT_EQ(test, req.rate, DUMMY_CLOCK_RATE_1);
-+	KUNIT_EXPECT_EQ(test, req.best_parent_rate, DUMMY_CLOCK_RATE_1);
-+	KUNIT_EXPECT_PTR_EQ(test, req.best_parent_hw, &ctx->mux_ctx.hw);
- 	clk_put(clk);
- }
- 
+Changes in v2:
+- Add a unit test to clk_test.c
+- Link to v1: https://lore.kernel.org/r/20230421-clk-v1-1-bb503f2f2cf3@outlook.com
 
+---
+Yang Xiwen (2):
+      clk: use ULONG_MAX as the initial value for the iteration in clk_mux_determine_rate_flags()
+      clk: tests: Add missing test cases for mux determine_rate
+
+ drivers/clk/clk.c      |  13 ++++-
+ drivers/clk/clk_test.c | 131 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 141 insertions(+), 3 deletions(-)
+---
+base-commit: 76f598ba7d8e2bfb4855b5298caedd5af0c374a8
+change-id: 20230421-clk-64c6b6e21cdb
+
+Best regards,
 -- 
-2.39.2
+Yang Xiwen <forbidden405@outlook.com>
 
