@@ -1,187 +1,60 @@
-From: Yang Xiwen <forbidden405@outlook.com>
-Date: Thu, 27 Apr 2023 03:34:17 +0800
-Subject: [PATCH v3 2/2] clk: tests: Add missing test cases for mux
- determine_rate
+From: Gabriel Tremblay <tremblay.gabriel@gmail.com>
+Date: Tue, 02 May 2023 14:31:14 -0400
+Subject: [PATCH] Change the interrupt from level_low to edge_falling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230421-clk-v3-2-9ff79e7e7fed@outlook.com>
-References: <20230421-clk-v3-0-9ff79e7e7fed@outlook.com>
-In-Reply-To: <20230421-clk-v3-0-9ff79e7e7fed@outlook.com>
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>
-Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yang Xiwen <forbidden405@outlook.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1682537658; l=5403;
- i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
- bh=ukorzXXoz+p+cK/h39SCI45QuctGTK8HaAHvB2BLCPA=;
- b=6p+VF7zVTR+fhfTHdnuIoe2hf+VoUFHmMHisF+4IK1eRKaodzSANNDsUSQY+kTsu9fyva1loQ
- OtvgowCOTkdBy3JMtQTG3eA1Xl6373lZVPcdn/NHyKh/1DsvQo8Ra4g
-X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
- pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
-X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
+Message-Id: <20230502-gtremblay-x13s-keyboard-v1-1-6bc3e59b0d39@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPFWUWQC/zXNQQqDMBCF4avIrDs0ThSaXqV0MdExhraxTEpRx
+ Ls3Cl3+PD7eClk0SoZrtYLKN+Y4pRL1qYJu5BQEY18ayJA1rSEMH5WXf/KCc20zPmTxE2uPdHH
+ OtoMjEoKiPWdBr5y6cfe+OQf5031/qwxxPp5v9237AVB2ldOJAAAA
+To: Bjorn Andersson <andersson@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Gabriel Tremblay <tremblay.gabriel@gmail.com>
+X-Mailer: b4 0.12.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1683052280; l=1193;
+ i=tremblay.gabriel@gmail.com; s=20230502; h=from:subject:message-id;
+ bh=nbP1Xx1KAt958LpS5KvFFCWaYnFLYSX2Yz32vSKwDHU=;
+ b=faBX9jx+sw9zzbs1OOJBCsG/3856f4GkZfvQqQ38ycrkKmFhL/mIyyzW1Lp+daHZlpOK7/PJZ
+ hxMDIG9RBBdCfD19KjPfkiBjUBQg0fEv9Dh0H/kTAUS83Kol88Ly/sL
+X-Developer-Key: i=tremblay.gabriel@gmail.com; a=ed25519;
+ pk=QBcAw+03yiRPOAXsWfAlyaNIhBRPIH3l8tURId7/7Nw=
+X-Endpoint-Received: by B4 Relay for tremblay.gabriel@gmail.com/20230502 with auth_id=45
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add lots of test cases for mux determine_rate to cover more possible
-cases, the original test case is renamed for the change.
 
-Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
+
 ---
- drivers/clk/clk_test.c | 131 ++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 129 insertions(+), 2 deletions(-)
+Lenovo's x13s internal keyboard shows responsivity issues when fast
+typing occurs. The problem is not replicated with external HID keyboard.
 
-diff --git a/drivers/clk/clk_test.c b/drivers/clk/clk_test.c
-index f9a5c2964c65d..4f7f9a964637a 100644
---- a/drivers/clk/clk_test.c
-+++ b/drivers/clk/clk_test.c
-@@ -2194,7 +2194,47 @@ static void clk_leaf_mux_set_rate_parent_test_exit(struct kunit *test)
-  * parent, the rate request structure returned by __clk_determine_rate
-  * is sane and will be what we expect.
-  */
--static void clk_leaf_mux_set_rate_parent_determine_rate(struct kunit *test)
-+static void clk_leaf_mux_set_rate_parent_determine_rate_case1(struct kunit *test)
-+{
-+	struct clk_leaf_mux_ctx *ctx = test->priv;
-+	struct clk_hw *hw = &ctx->hw;
-+	struct clk *clk = clk_hw_get_clk(hw, NULL);
-+	struct clk_rate_request req;
-+	unsigned long rate;
-+	int ret;
-+
-+	rate = clk_get_rate(clk);
-+	KUNIT_ASSERT_EQ(test, rate, DUMMY_CLOCK_RATE_1);
-+
-+	clk_hw_init_rate_request(hw, &req, 0);
-+
-+	ret = __clk_determine_rate(hw, &req);
-+	KUNIT_ASSERT_EQ(test, ret, -EINVAL);
-+
-+	clk_put(clk);
-+}
-+
-+static void clk_leaf_mux_set_rate_parent_determine_rate_case2(struct kunit *test)
-+{
-+	struct clk_leaf_mux_ctx *ctx = test->priv;
-+	struct clk_hw *hw = &ctx->hw;
-+	struct clk *clk = clk_hw_get_clk(hw, NULL);
-+	struct clk_rate_request req;
-+	unsigned long rate;
-+	int ret;
-+
-+	rate = clk_get_rate(clk);
-+	KUNIT_ASSERT_EQ(test, rate, DUMMY_CLOCK_RATE_1);
-+
-+	clk_hw_init_rate_request(hw, &req, DUMMY_CLOCK_INIT_RATE);
-+
-+	ret = __clk_determine_rate(hw, &req);
-+	KUNIT_ASSERT_EQ(test, ret, -EINVAL);
-+
-+	clk_put(clk);
-+}
-+
-+static void clk_leaf_mux_set_rate_parent_determine_rate_case3(struct kunit *test)
- {
- 	struct clk_leaf_mux_ctx *ctx = test->priv;
- 	struct clk_hw *hw = &ctx->hw;
-@@ -2218,8 +2258,95 @@ static void clk_leaf_mux_set_rate_parent_determine_rate(struct kunit *test)
- 	clk_put(clk);
- }
+This fix tries to alleviate the problem but requires further testing
+and commenting.
+
+Signed-off-by: Gabriel Tremblay <tremblay.gabriel@gmail.com>
+---
+ arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts b/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
+index bdcba719fc38..e8d7f02c9bf3 100644
+--- a/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
++++ b/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
+@@ -639,7 +639,7 @@ keyboard@68 {
+ 		reg = <0x68>;
  
-+static void clk_leaf_mux_set_rate_parent_determine_rate_case4(struct kunit *test)
-+{
-+	struct clk_leaf_mux_ctx *ctx = test->priv;
-+	struct clk_hw *hw = &ctx->hw;
-+	struct clk *clk = clk_hw_get_clk(hw, NULL);
-+	struct clk_rate_request req;
-+	unsigned long rate;
-+	int ret;
-+
-+	rate = clk_get_rate(clk);
-+	KUNIT_ASSERT_EQ(test, rate, DUMMY_CLOCK_RATE_1);
-+
-+	clk_hw_init_rate_request(hw, &req, (DUMMY_CLOCK_RATE_1 + DUMMY_CLOCK_RATE_2) / 2);
-+
-+	ret = __clk_determine_rate(hw, &req);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	KUNIT_EXPECT_EQ(test, req.rate, DUMMY_CLOCK_RATE_1);
-+	KUNIT_EXPECT_EQ(test, req.best_parent_rate, DUMMY_CLOCK_RATE_1);
-+	KUNIT_EXPECT_PTR_EQ(test, req.best_parent_hw, &ctx->mux_ctx.hw);
-+
-+	clk_put(clk);
-+}
-+
-+static void clk_leaf_mux_set_rate_parent_determine_rate_case5(struct kunit *test)
-+{
-+	struct clk_leaf_mux_ctx *ctx = test->priv;
-+	struct clk_hw *hw = &ctx->hw;
-+	struct clk *clk = clk_hw_get_clk(hw, NULL);
-+	struct clk_rate_request req;
-+	unsigned long rate;
-+	int ret;
-+
-+	rate = clk_get_rate(clk);
-+	KUNIT_ASSERT_EQ(test, rate, DUMMY_CLOCK_RATE_1);
-+
-+	clk_hw_init_rate_request(hw, &req, DUMMY_CLOCK_RATE_2 + 100000);
-+
-+	ret = __clk_determine_rate(hw, &req);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	KUNIT_EXPECT_EQ(test, req.rate, DUMMY_CLOCK_RATE_2);
-+	KUNIT_EXPECT_EQ(test, req.best_parent_rate, DUMMY_CLOCK_RATE_2);
-+	KUNIT_EXPECT_PTR_EQ(test, req.best_parent_hw, &ctx->mux_ctx.hw);
-+
-+	clk_put(clk);
-+}
-+
-+static void clk_leaf_mux_set_rate_parent_determine_rate_case6(struct kunit *test)
-+{
-+	struct clk_leaf_mux_ctx *ctx = test->priv;
-+	struct clk_hw *hw = &ctx->hw;
-+	struct clk *clk = clk_hw_get_clk(hw, NULL);
-+	struct clk_rate_request req;
-+	unsigned long rate;
-+	int ret;
-+
-+	rate = clk_get_rate(clk);
-+	KUNIT_ASSERT_EQ(test, rate, DUMMY_CLOCK_RATE_1);
-+
-+	clk_hw_init_rate_request(hw, &req, ULONG_MAX);
-+
-+	ret = __clk_determine_rate(hw, &req);
-+	KUNIT_ASSERT_EQ(test, ret, 0);
-+
-+	KUNIT_EXPECT_EQ(test, req.rate, DUMMY_CLOCK_RATE_2);
-+	KUNIT_EXPECT_EQ(test, req.best_parent_rate, DUMMY_CLOCK_RATE_2);
-+	KUNIT_EXPECT_PTR_EQ(test, req.best_parent_hw, &ctx->mux_ctx.hw);
-+
-+	clk_put(clk);
-+}
-+
-+/* We test 6 cases here:
-+ * 1. The requested rate is 0;
-+ * 2. The requested rate is not 0 but lower than any rate that parents could offer;
-+ * 3. The requested rate is exactly one of the parents' clock rate;
-+ * 4. The requested rate is between the lowest clock rate and the highest clock rate that the parents could offer;
-+ * 5. The requested rate is larger than all rates that parents could offer;
-+ * 6. The requested rate is ULONG_MAX.
-+ *
-+ * Hopefully they covered all cases.
-+ */
- static struct kunit_case clk_leaf_mux_set_rate_parent_test_cases[] = {
--	KUNIT_CASE(clk_leaf_mux_set_rate_parent_determine_rate),
-+	KUNIT_CASE(clk_leaf_mux_set_rate_parent_determine_rate_case1),
-+	KUNIT_CASE(clk_leaf_mux_set_rate_parent_determine_rate_case2),
-+	KUNIT_CASE(clk_leaf_mux_set_rate_parent_determine_rate_case3),
-+	KUNIT_CASE(clk_leaf_mux_set_rate_parent_determine_rate_case4),
-+	KUNIT_CASE(clk_leaf_mux_set_rate_parent_determine_rate_case5),
-+	KUNIT_CASE(clk_leaf_mux_set_rate_parent_determine_rate_case6),
- 	{}
- };
+ 		hid-descr-addr = <0x1>;
+-		interrupts-extended = <&tlmm 104 IRQ_TYPE_LEVEL_LOW>;
++		interrupts-extended = <&tlmm 104 IRQ_TYPE_EDGE_FALLING>;
+ 		vdd-supply = <&vreg_misc_3p3>;
+ 		vddl-supply = <&vreg_s10b>;
  
 
+---
+base-commit: 84e2893b4573da3bc0c9f24e2005442e420e3831
+change-id: 20230502-gtremblay-x13s-keyboard-289935f922e2
+
+Best regards,
 -- 
-2.39.2
+Gabriel Tremblay <tremblay.gabriel@gmail.com>
 
