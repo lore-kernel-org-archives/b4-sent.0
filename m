@@ -1,60 +1,83 @@
-From: Gabriel Tremblay <tremblay.gabriel@gmail.com>
-Date: Tue, 02 May 2023 14:31:14 -0400
-Subject: [PATCH] Change the interrupt from level_low to edge_falling
+From: Caleb Connolly <caleb.connolly@linaro.org>
+Subject: [PATCH v8 0/2] power: supply: introduce support for the Qualcomm
+ smb2 charger
+Date: Wed, 24 May 2023 01:34:16 +0100
+Message-Id: <20230524-pmi8998-charger-v8-0-b87ffcd9864d@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230502-gtremblay-x13s-keyboard-v1-1-6bc3e59b0d39@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAPFWUWQC/zXNQQqDMBCF4avIrDs0ThSaXqV0MdExhraxTEpRx
- Ls3Cl3+PD7eClk0SoZrtYLKN+Y4pRL1qYJu5BQEY18ayJA1rSEMH5WXf/KCc20zPmTxE2uPdHH
- OtoMjEoKiPWdBr5y6cfe+OQf5031/qwxxPp5v9237AVB2ldOJAAAA
-To: Bjorn Andersson <andersson@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Gabriel Tremblay <tremblay.gabriel@gmail.com>
-X-Mailer: b4 0.12.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1683052280; l=1193;
- i=tremblay.gabriel@gmail.com; s=20230502; h=from:subject:message-id;
- bh=nbP1Xx1KAt958LpS5KvFFCWaYnFLYSX2Yz32vSKwDHU=;
- b=faBX9jx+sw9zzbs1OOJBCsG/3856f4GkZfvQqQ38ycrkKmFhL/mIyyzW1Lp+daHZlpOK7/PJZ
- hxMDIG9RBBdCfD19KjPfkiBjUBQg0fEv9Dh0H/kTAUS83Kol88Ly/sL
-X-Developer-Key: i=tremblay.gabriel@gmail.com; a=ed25519;
- pk=QBcAw+03yiRPOAXsWfAlyaNIhBRPIH3l8tURId7/7Nw=
-X-Endpoint-Received: by B4 Relay for tremblay.gabriel@gmail.com/20230502 with auth_id=45
+X-B4-Tracking: v=1; b=H4sIAIhbbWQC/x2NQQqDMBBFryKz7rQhRjvpVUoXiRl1FqYyASmId
+ zd2+Xj/8XcorMIFXs0OypsU+eYKdGtgmEOeGCVVBmtsazrrcF2EvCesVidWJGt8inF89o6gVjE
+ UxqghD/PVlbSQ6x793WHi7RqsyqP8/pfvz3Gcd6ajroIAAAA=
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Caleb Connolly <caleb.connolly@linaro.org>, Andy Gross <agross@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, 
+ Nathan Chancellor <nathan@kernel.org>, 
+ Nick Desaulniers <ndesaulniers@google.com>, Tom Rix <trix@redhat.com>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Joel Selvaraj <joelselvaraj.oss@gmail.com>
+X-Mailer: b4 0.13-dev-1ec66
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1501;
+ i=caleb.connolly@linaro.org; h=from:subject:message-id;
+ bh=grr9x/N/VP19B6Af/fwQVdP70KTtMERFQJVJQj+7M+8=;
+ b=owEBbQKS/ZANAwAIAQWDMSsZX2S2AcsmYgBkbVucI7lxOiqYKTm8CTAStsuPKFmnMs5YDsYN2
+ FCaZZ6pnDqJAjMEAAEIAB0WIQS2UaFGPGq+0GkMVc0FgzErGV9ktgUCZG1bnAAKCRAFgzErGV9k
+ tlt0D/4vqoWHEdygCZEXrnaFrUn9i8Isyqol2BP6/1tk6bqtYUisiD66UAhPsfg8JkpDXo/77YH
+ 5DHmG2vOtME1oIdDjGX1ejBLmI3eS7cbkIexEn0HyHwUbZimxiXy4vT4J+TX1Of+GJNMIJeDtSQ
+ ydhsr29WFxPZDWsSvSjAB92H9ytAO8wjK0ing5/GRFmPe9dzAZoowZJBcm1N8OzDSJwqBj97Llf
+ C5YXDIYXwQhbcvdPQsC8q2OUZ7HWdQ56toZ24rNheaiwFi6T06peDRNnKGAXpYZJspz37eoKOIm
+ VXoOGZX1ljAnwolLH64y+Uv9Fj0mVVCXwTuOiEe6u65oBpWA+VziruGNAW9dhtA5F/IJNr7HU/K
+ W9cKBtFSCENUDcCzUHeRDFYm7Fb4/REp85onez8mTUZ6C3H/ziwwI5AA4Bgtv8zDOc+xwt29ZBa
+ w7UlzOIH/kioHG9QCowL1WS5P1eqx1m//yn/aTfruYSQN+z/iK18JXTFWRbRojaTdZICM0bt9q+
+ RKvFqg5Bw28ziIennihC3JUgp6BPBVXyGYl3HhGEOIAB/sokaC6rvtGNLMQn6LsNjlH5da058LA
+ ZMoU6iwwZ3cQujRtIs7VuY8y1uNCc1rK47FehW31iqLZN1Fqb8XzRrIXw3CcuKR+tv6g0hoN4Fd
+ TXrcClheTEGkNDg==
+X-Developer-Key: i=caleb.connolly@linaro.org; a=openpgp;
+ fpr=83B24DA7FE145076BC38BB250CD904EB673A7C47
+X-Endpoint-Received: by B4 Relay for caleb.connolly@linaro.org/default with auth_id=49
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+Add a driver for the Qualcomm PMI8998/PM660 Switch-Mode Battery Charger.
+This is the second generation SMB charger, and replaces the previous
+SMBB hardware found in older PMICs.
 
+Changes since v7:
+ * Implement fixes suggested by Sebastian
+ * Fix format warning
+V7: https://lore.kernel.org/linux-arm-msm/20230127230506.3140297-1-caleb.connolly@linaro.org/
 
----
-Lenovo's x13s internal keyboard shows responsivity issues when fast
-typing occurs. The problem is not replicated with external HID keyboard.
-
-This fix tries to alleviate the problem but requires further testing
-and commenting.
-
-Signed-off-by: Gabriel Tremblay <tremblay.gabriel@gmail.com>
----
- arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts b/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
-index bdcba719fc38..e8d7f02c9bf3 100644
---- a/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
-+++ b/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
-@@ -639,7 +639,7 @@ keyboard@68 {
- 		reg = <0x68>;
- 
- 		hid-descr-addr = <0x1>;
--		interrupts-extended = <&tlmm 104 IRQ_TYPE_LEVEL_LOW>;
-+		interrupts-extended = <&tlmm 104 IRQ_TYPE_EDGE_FALLING>;
- 		vdd-supply = <&vreg_misc_3p3>;
- 		vddl-supply = <&vreg_s10b>;
- 
+To: Sebastian Reichel <sre@kernel.org>
+To: Rob Herring <robh+dt@kernel.org>
+To: Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Caleb Connolly <caleb.connolly@linaro.org>
+To: Andy Gross <agross@kernel.org>
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konrad.dybcio@linaro.org>
+To: Nathan Chancellor <nathan@kernel.org>
+To: Nick Desaulniers <ndesaulniers@google.com>
+To: Tom Rix <trix@redhat.com>
 
 ---
-base-commit: 84e2893b4573da3bc0c9f24e2005442e420e3831
-change-id: 20230502-gtremblay-x13s-keyboard-289935f922e2
+Caleb Connolly (2):
+      dt-bindings: power: supply: qcom,pmi8998-charger: add bindings for smb2 driver
+      power: supply: add Qualcomm PMI8998 SMB2 Charger driver
+
+ .../power/supply/qcom,pmi8998-charger.yaml         |   82 ++
+ drivers/power/supply/Kconfig                       |    9 +
+ drivers/power/supply/Makefile                      |    1 +
+ drivers/power/supply/qcom_pmi8998_charger.c        | 1059 ++++++++++++++++++++
+ 4 files changed, 1151 insertions(+)
+---
+base-commit: ac9a78681b921877518763ba0e89202254349d1b
+change-id: 20230524-pmi8998-charger-8209dbbf7648
 
 Best regards,
 -- 
-Gabriel Tremblay <tremblay.gabriel@gmail.com>
+Caleb Connolly <caleb.connolly@linaro.org>
 
