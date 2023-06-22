@@ -1,81 +1,81 @@
-From: Ludvig Michaelsson <ludvig.michaelsson@yubico.com>
-Date: Wed, 21 Jun 2023 13:17:43 +0200
-Subject: [PATCH] HID: hidraw: fix data race on device refcount
+From: =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>
+Date: Thu, 22 Jun 2023 21:24:40 +0200
+Subject: [PATCH] rust: alloc: Add realloc and alloc_zeroed to the
+ GlobalAlloc impl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20230621-hidraw-race-v1-1-a58e6ac69bab@yubico.com>
-X-B4-Tracking: v=1; b=H4sIAFbckmQC/x2NQQqEMAxFryJZT8FUxoVXGVykbbRZ2JFEHEG8u
- 3WW730e/wRjFTYYmhOUdzH5lgr4aiBmKjM7SZXBt75re48uS1L6OaXILrwxIIYJkRPUIpBVqVR
- ifpqFbGN9hlV5kuN/8xmv6waz9WPwdgAAAA==
-To: Jiri Kosina <jikos@kernel.org>, 
- Benjamin Tissoires <benjamin.tissoires@redhat.com>, 
- =?utf-8?q?Andr=C3=A9_Almeida?= <andrealmeid@igalia.com>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Ludvig Michaelsson <ludvig.michaelsson@yubico.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20230622-global_alloc_methods-v1-1-3d3561593e23@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAPeflGQC/x2N0QqDMAwAf0XyvICrOMZ+ZQxJ2mgLXTuaOgTx3
+ 1f3eBzH7aBSgig8uh2KfIOGnBpcLx1YT2kRDK4xmN4M/c0YXGJmihPFmO30luqzUySeRx5luDs
+ maCmTCnKhZP0Zl1UrJtnq6T5F5rD9l8/XcfwAwBIEP4IAAAA=
+To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Wedson Almeida Filho <wedsonaf@gmail.com>, 
+ Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ Benno Lossin <benno.lossin@proton.me>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>
 X-Mailer: b4 0.12.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1903;
- i=ludvig.michaelsson@yubico.com; h=from:subject:message-id;
- bh=H+F1GtqsL31H9za8Cp+DCcNUqK2U4w+0+a9OPk49764=;
- b=owJ4nJvAy8zAJWab5fnkyINtxYyn1ZIYUibdmRlX2tG4s3tDGdfyaQ+1fizccmSzmKnMjKvTT
- 51TYl94IECno5SFQYyLQVZMkWVzAfN/0QUZS4SfcsvAzGFlAhnCwMUpABMpEmT4pyN1vSThYWFb
- Oss69VsFraGikyKTnh3ao7tnT6jToYPV3Qz/q2W85zi8F1t3TW73EdkjXJ0+M9enGVU5GYSZVlj
- G8IjwAgB2p0pI
-X-Developer-Key: i=ludvig.michaelsson@yubico.com; a=openpgp;
- fpr=78D997D53E9C0A2A205392ED14A19784723C9988
-X-Endpoint-Received: by B4 Relay for ludvig.michaelsson@yubico.com/default with auth_id=54
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1687461921; l=1764;
+ i=bjorn3_gh@protonmail.com; s=20230622; h=from:subject:message-id;
+ bh=M9xHvSYYCEDVh9+hr5YwUYJxj2f5jgjrI/bZdGQDX+8=;
+ b=Uc+YPwcRyWhLPWVXHVbl9sDKW/vsIauXT/uasYNYN/UJvZyOEGqrkYHZeuUTIFQQr3HioDaU7
+ z60y8bv6qypAXeUx+ukjus+tQp2WW0xph9OU58grNqnqpQtUCukuqDY
+X-Developer-Key: i=bjorn3_gh@protonmail.com; a=ed25519;
+ pk=tXjaafs1PnnuO6sr/Z6Wl6BuT7c22k9Rf9fpX863CJs=
+X-Endpoint-Received: by B4 Relay for bjorn3_gh@protonmail.com/20230622 with auth_id=55
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The hidraw_open() function increments the hidraw device reference
-counter. The counter has no dedicated synchronization mechanism,
-resulting in a potential data race when concurrently opening a device.
+While there are default impls for these methods, using the respective C
+api's is faster. Currently neither the existing nor these new
+GlobalAlloc method implementations are actually called. Instead the
+__rust_* function defined below the GlobalAlloc impl are used. With
+rustc 1.71 these functions will be gone and all allocation calls will go
+through the GlobalAlloc implementation.
 
-The race is a regression introduced by commit 8590222e4b02 ("HID:
-hidraw: Replace hidraw device table mutex with a rwsem"). While
-minors_rwsem is intended to protect the hidraw_table itself, by instead
-acquiring the lock for writing, the reference counter is also protected.
-This is symmetrical to hidraw_release().
-
-Link: https://github.com/systemd/systemd/issues/27947
-Fixes: 8590222e4b02 ("HID: hidraw: Replace hidraw device table mutex with a rwsem")
-Signed-off-by: Ludvig Michaelsson <ludvig.michaelsson@yubico.com>
+Link: https://github.com/Rust-for-Linux/linux/issues/68
+Signed-off-by: Björn Roy Baron <bjorn3_gh@protonmail.com>
 ---
- drivers/hid/hidraw.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ rust/kernel/allocator.rs | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-diff --git a/drivers/hid/hidraw.c b/drivers/hid/hidraw.c
-index 93e62b161501..e63c56a0d57f 100644
---- a/drivers/hid/hidraw.c
-+++ b/drivers/hid/hidraw.c
-@@ -272,7 +272,12 @@ static int hidraw_open(struct inode *inode, struct file *file)
- 		goto out;
- 	}
+diff --git a/rust/kernel/allocator.rs b/rust/kernel/allocator.rs
+index 397a3dd57a9b..e0a27b1326b5 100644
+--- a/rust/kernel/allocator.rs
++++ b/rust/kernel/allocator.rs
+@@ -21,6 +21,26 @@ unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+             bindings::kfree(ptr as *const core::ffi::c_void);
+         }
+     }
++
++    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
++        unsafe {
++            bindings::krealloc(
++                ptr as *const core::ffi::c_void,
++                new_size,
++                bindings::GFP_KERNEL,
++            ) as *mut u8
++        }
++    }
++
++    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
++        unsafe {
++            bindings::krealloc(
++                core::ptr::null(),
++                layout.size(),
++                bindings::GFP_KERNEL | bindings::__GFP_ZERO,
++            ) as *mut u8
++        }
++    }
+ }
  
--	down_read(&minors_rwsem);
-+	/*
-+	 * Technically not writing to the hidraw_table but a write lock is
-+	 * required to protect the device refcount. This is symmetrical to
-+	 * hidraw_release().
-+	 */
-+	down_write(&minors_rwsem);
- 	if (!hidraw_table[minor] || !hidraw_table[minor]->exist) {
- 		err = -ENODEV;
- 		goto out_unlock;
-@@ -301,7 +306,7 @@ static int hidraw_open(struct inode *inode, struct file *file)
- 	spin_unlock_irqrestore(&hidraw_table[minor]->list_lock, flags);
- 	file->private_data = list;
- out_unlock:
--	up_read(&minors_rwsem);
-+	up_write(&minors_rwsem);
- out:
- 	if (err < 0)
- 		kfree(list);
+ #[global_allocator]
 
 ---
-base-commit: 45a3e24f65e90a047bef86f927ebdc4c710edaa1
-change-id: 20230621-hidraw-race-b51b11bf11ed
+base-commit: d2e3115d717197cb2bc020dd1f06b06538474ac3
+change-id: 20230622-global_alloc_methods-abf5b5e38dba
 
 Best regards,
 -- 
-Ludvig Michaelsson <ludvig.michaelsson@yubico.com>
+Björn Roy Baron <bjorn3_gh@protonmail.com>
 
