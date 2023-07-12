@@ -1,55 +1,82 @@
-From: =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
-Date: Thu, 06 Jul 2023 15:42:47 +0200
-Subject: [PATCH] security: smack: smackfs: fix typo (lables->labels)
+From: Janne Grunau <j@jannau.net>
+Date: Wed, 12 Jul 2023 08:42:20 +0200
+Subject: [PATCH] kbuild: rpm-pkg: Add dtbs support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20230706-smackfs-lables-fix-v1-1-228c8da5a526@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANbEpmQC/x2MSQqAMAwAvyI5G6g7+hXxUGOqwZUGRJD+3eJxB
- mZeUPbCCl3ygudbVM4jQpYmQIs9ZkaZIkNu8sI0pkbdLa1OcbPjxopOHrTU1hWVVDatgxhenqP
- +p/0QwgfggIfrZAAAAA==
-To: Casey Schaufler <casey@schaufler-ca.com>, 
- Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, 
- "Serge E. Hallyn" <serge@hallyn.com>
-Cc: linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20230712-kbuild_rpm_dtbs-v1-1-99693e8faaaf@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAEtLrmQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2MDc0Mj3eyk0syclPiigtz4lJKkYt0UA1PTRGNzC4OkpFQloK6CotS0zAq
+ widGxtbUAJFQ7cGEAAAA=
+To: Masahiro Yamada <masahiroy@kernel.org>, 
+ Nathan Chancellor <nathan@kernel.org>, 
+ Nick Desaulniers <ndesaulniers@google.com>, 
+ Nicolas Schier <nicolas@fjasle.eu>
+Cc: linux-kbuild@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1688650991; l=959;
- i=gomba007@gmail.com; s=20230706; h=from:subject:message-id;
- bh=S9HyRNyzLwD2W29A0DsX2ZZZiM4IO3L3DpcXXpfmTVs=;
- b=+l3RH2YK8ag+dH4tuUELH+9cCBBPq/Q/0jA3y2RaAMzIg/aM05m2xuKO2LqP1+WPWo8bU9u9R
- eJrj3WH5m+wCBZgCrQW0f5XpFTJJfh+0d8KcynKf72E51KCl0BZbNoI
-X-Developer-Key: i=gomba007@gmail.com; a=ed25519;
- pk=iY9MjPCbud82ULS2PQJIq3QwjKyP/Sg730I6T2M8Y5U=
-X-Endpoint-Received: by B4 Relay for gomba007@gmail.com/20230706 with auth_id=60
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2064; i=j@jannau.net;
+ h=from:subject:message-id; bh=pqGGqDq9keUrENGYOALz/M+BMKf1FbSWOisiewqrdWw=;
+ b=owJ4nJvAy8zAJbZQ2uZ2r35qGuNptSSGlHXePilL8v9Nb7kXvHy/hEax8s0vUYeldk7jW13n1
+ KO9OHr5Mo2OUhYGMS4GWTFFliTtlx0Mq2sUY2ofhMHMYWUCGcLAxSkAEzknx8jw4oDAK1Hh2vur
+ 3s03twqYv7793qWJ7fafPl+ut0lvVmo1YPgrx3zOoOFWRt/0e78kL5m05J+Yc/s9/yHTrvka6ks
+ WqacxAwBrX0jq
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix a spelling error in smakcfs.
+Based on the dtbs support in builddeb. Both Fedora and openSUSE kernel
+rpm install their dtbs in "/boot/dtb-${KERNELRELEASE}". There seems no
+other popular rpm based distributions which would benefit from dtbs
+support and are not derived from those two.
 
-Signed-off-by: Tóth János <gomba007@gmail.com>
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- security/smack/smackfs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ scripts/package/mkspec | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/security/smack/smackfs.c b/security/smack/smackfs.c
-index 5590eaad241b..2b79c30d4bb6 100644
---- a/security/smack/smackfs.c
-+++ b/security/smack/smackfs.c
-@@ -114,7 +114,7 @@ struct smack_known *smack_syslog_label;
-  * SMACK_PTRACE_DEFAULT    regular smack ptrace rules (/proc based)
-  * SMACK_PTRACE_EXACT      labels must match, but can be overriden with
-  *			   CAP_SYS_PTRACE
-- * SMACK_PTRACE_DRACONIAN  lables must match, CAP_SYS_PTRACE has no effect
-+ * SMACK_PTRACE_DRACONIAN  labels must match, CAP_SYS_PTRACE has no effect
-  */
- int smack_ptrace_rule = SMACK_PTRACE_DEFAULT;
+diff --git a/scripts/package/mkspec b/scripts/package/mkspec
+index 8049f0e2c110..a170b0c0a93f 100755
+--- a/scripts/package/mkspec
++++ b/scripts/package/mkspec
+@@ -28,6 +28,14 @@ else
+ 	M=DEL
+ fi
  
++# Only some architectures with OF support have the dtbs_install target
++if grep -q CONFIG_OF_EARLY_FLATTREE=y include/config/auto.conf && \
++   [ -d "${srctree}/arch/${SRCARCH}/boot/dts" ]; then
++	D=
++else
++	D=DEL
++fi
++
+ __KERNELRELEASE=$(echo $KERNELRELEASE | sed -e "s/-/_/g")
+ EXCLUDES="$RCS_TAR_IGNORE --exclude=*vmlinux* --exclude=*.mod \
+ --exclude=*.o --exclude=*.ko --exclude=*.cmd --exclude=Documentation \
+@@ -38,6 +46,8 @@ EXCLUDES="$RCS_TAR_IGNORE --exclude=*vmlinux* --exclude=*.mod \
+ # Labels:
+ #  $S: this line is enabled only when building source package
+ #  $M: this line is enabled only when CONFIG_MODULES is enabled
++#  $D: this line is enabled only when CONFIG_OF_EARLY_FLATTREE is enabled and
++#      the arch has a dts directory
+ sed -e '/^DEL/d' -e 's/^\t*//' <<EOF
+ 	Name: kernel
+ 	Summary: The Linux Kernel
+@@ -103,6 +113,7 @@ $S
+ 	%endif
+ $M	$MAKE %{?_smp_mflags} INSTALL_MOD_PATH=%{buildroot} modules_install
+ 	$MAKE %{?_smp_mflags} INSTALL_HDR_PATH=%{buildroot}/usr headers_install
++$D	$MAKE %{?_smp_mflags} INSTALL_DTBS_PATH=%{buildroot}/boot/dtb-${KERNELRELEASE} dtbs_install
+ 	cp System.map %{buildroot}/boot/System.map-$KERNELRELEASE
+ 	cp .config %{buildroot}/boot/config-$KERNELRELEASE
+ $S$M	rm -f %{buildroot}/lib/modules/$KERNELRELEASE/build
 
 ---
-base-commit: 6995e2de6891c724bfeb2db33d7b87775f913ad1
-change-id: 20230706-smackfs-lables-fix-ac965c4c479f
+base-commit: 06c2afb862f9da8dc5efa4b6076a0e48c3fbaaa5
+change-id: 20230712-kbuild_rpm_dtbs-d055a3780bbe
 
 Best regards,
 -- 
-Tóth János <gomba007@gmail.com>
+Janne Grunau <j@jannau.net>
 
