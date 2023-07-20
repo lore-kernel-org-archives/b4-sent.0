@@ -1,10 +1,11 @@
 From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Thu, 20 Jul 2023 14:29:35 +0300
-Subject: [PATCH v3 35/42] ARM: dts: ep93xx: add ts7250 board
+Date: Thu, 20 Jul 2023 14:29:36 +0300
+Subject: [PATCH v3 36/42] ARM: ep93xx: DT for the Cirrus ep93xx SoC
+ platforms
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230605-ep93xx-v3-35-3d63a5f1103e@maquefel.me>
+Message-Id: <20230605-ep93xx-v3-36-3d63a5f1103e@maquefel.me>
 References: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 In-Reply-To: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 To: Hartley Sweeten <hsweeten@visionengravers.com>, 
@@ -45,321 +46,115 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-mtd@lists.infradead.org, linux-ide@vger.kernel.org, 
  linux-input@vger.kernel.org, alsa-devel@alsa-project.org
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=6188;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=3077;
  i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=ha5ittSqqPfphW5CaHdpis/fQLU7CJDCkNuAv0g4BaA=;
- b=QmSYbABUx60eGH/7OzXmpMZCEJ2vVIKzXtwvNv88OtTJ5ioQKGH3bz0TfpH+wkNkwvYH1nC/bjub
- Y7QPRfoqC0ilRI3fMDaF9idHBkcMV2tZrtOdW6l5ZrgsyS9pER9y
+ bh=LUqUfEyd9NJUel2yKVUkZUKAloLn0lR2WIXsqjtamgw=;
+ b=zjs1scrJJBZAVcanfJF1vglijajwtHzebC2iAdKdPKRDQVOGSj1v+asIrAwOuwDRiN/0IgMnnfjg
+ 7fD8dlz+CJh/ZtZzDAO6Qa8hRKLvPkvdTge59bPVyVJCCy/ZekCU
 X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device tree file for Technologic Systems ts7250 board and
-Liebherr bk3 board which have many in common, both are based on
-ep9302 SoC variant.
+This adds compulsory device tree support to the Cirrus ep93xx ARMv4
+platform.
+
+- We select PINCTRL_EP93xx
+- We select COMMON_CLK_EP93XX, as clock driver moved out of platform
+  code
+- We select ARCH_HAS_RESET_CONTROLLER
+
+And also we need ARM_ATAG_DTB_COMPAT to update device tree with
+information about memory passed from bootloader.
+
+We have to leave all MACH options as they are used for board checking
+before decomp, to turn off watchdog and ethernet DMA.
 
 Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
- arch/arm/boot/dts/cirrus/Makefile          |   3 +
- arch/arm/boot/dts/cirrus/ep93xx-bk3.dts    | 126 +++++++++++++++++++++++++
- arch/arm/boot/dts/cirrus/ep93xx-ts7250.dts | 145 +++++++++++++++++++++++++++++
- 3 files changed, 274 insertions(+)
+ arch/arm/Makefile             |  1 -
+ arch/arm/mach-ep93xx/Kconfig  | 20 ++++++++++----------
+ arch/arm/mach-ep93xx/Makefile | 11 -----------
+ 3 files changed, 10 insertions(+), 22 deletions(-)
 
-diff --git a/arch/arm/boot/dts/cirrus/Makefile b/arch/arm/boot/dts/cirrus/Makefile
-index e944d3e2129d..211a7e2f2115 100644
---- a/arch/arm/boot/dts/cirrus/Makefile
-+++ b/arch/arm/boot/dts/cirrus/Makefile
-@@ -3,3 +3,6 @@ dtb-$(CONFIG_ARCH_CLPS711X) += \
- 	ep7211-edb7211.dtb
- dtb-$(CONFIG_ARCH_CLPS711X) += \
- 	ep7211-edb7211.dtb
-+dtb-$(CONFIG_ARCH_EP93XX) += \
-+	ep93xx-bk3.dtb \
-+	ep93xx-ts7250.dtb
-diff --git a/arch/arm/boot/dts/cirrus/ep93xx-bk3.dts b/arch/arm/boot/dts/cirrus/ep93xx-bk3.dts
-new file mode 100644
-index 000000000000..91d76a1a8571
---- /dev/null
-+++ b/arch/arm/boot/dts/cirrus/ep93xx-bk3.dts
-@@ -0,0 +1,126 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Device Tree file for Liebherr controller BK3.1 based on Cirrus EP9302 SoC
-+ */
-+/dts-v1/;
-+#include "ep93xx.dtsi"
-+
-+/ {
-+	model = "Liebherr controller BK3.1";
-+	compatible = "liebherr,bk3", "cirrus,ep9301";
-+	#address-cells = <1>;
-+	#size-cells = <1>;
-+
-+	chosen {
-+	};
-+
-+	memory@0 {
-+		device_type = "memory";
-+		/* should be set from ATAGS */
-+		reg = <0x00000000 0x02000000>,
-+		      <0x000530c0 0x01fdd000>;
-+	};
-+
-+	nand-controller@60000000 {
-+		compatible = "technologic,ts7200-nand";
-+		reg = <0x60000000 0x8000000>;
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		nand@0 {
-+			reg = <0>;
-+			partitions {
-+				compatible = "fixed-partitions";
-+				#address-cells = <1>;
-+				#size-cells = <1>;
-+
-+				partition@0 {
-+					label = "System";
-+					reg = <0x00000000 0x01e00000>;
-+					read-only;
-+				};
-+
-+				partition@1e00000 {
-+					label = "Data";
-+					reg = <0x01e00000 0x05f20000>;
-+				};
-+
-+				partition@7d20000 {
-+					label = "RedBoot";
-+					reg = <0x07d20000 0x002e0000>;
-+					read-only;
-+				};
-+			};
-+		};
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+		led-0 {
-+			label = "grled";
-+			gpios = <&gpio4 0 GPIO_ACTIVE_HIGH>;
-+			linux,default-trigger = "heartbeat";
-+			function = LED_FUNCTION_HEARTBEAT;
-+		};
-+
-+		led-1 {
-+			label = "rdled";
-+			gpios = <&gpio4 1 GPIO_ACTIVE_HIGH>;
-+			function = LED_FUNCTION_FAULT;
-+		};
-+	};
-+};
-+
-+&eth0 {
-+	phy-handle = <&phy0>;
-+};
-+
-+&i2c0 {
-+	status = "okay";
-+};
-+
-+&i2s {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2s_on_ac97_pins>;
-+	status = "okay";
-+};
-+
-+&gpio1 {
-+	/* PWM */
-+	gpio-ranges = <&pinctrl 6 163 1>;
-+};
-+
-+&gpio4 {
-+	gpio-ranges = <&pinctrl 0 97 2>;
-+	status = "okay";
-+};
-+
-+&gpio6 {
-+	gpio-ranges = <&pinctrl 0 87 2>;
-+	status = "okay";
-+};
-+
-+&gpio7 {
-+	gpio-ranges = <&pinctrl 2 199 4>;
-+	status = "okay";
-+};
-+
-+&mdio0 {
-+	phy0: ethernet-phy@1 {
-+		reg = <1>;
-+		device_type = "ethernet-phy";
-+	};
-+};
-+
-+&uart0 {
-+	status = "okay";
-+};
-+
-+&uart1 {
-+	status = "okay";
-+};
-+
-+&usb0 {
-+	status = "okay";
-+};
-+
-diff --git a/arch/arm/boot/dts/cirrus/ep93xx-ts7250.dts b/arch/arm/boot/dts/cirrus/ep93xx-ts7250.dts
-new file mode 100644
-index 000000000000..625202f8cd25
---- /dev/null
-+++ b/arch/arm/boot/dts/cirrus/ep93xx-ts7250.dts
-@@ -0,0 +1,145 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Device Tree file for Technologic Systems ts7250 board based on Cirrus EP9302 SoC
-+ */
-+/dts-v1/;
-+#include "ep93xx.dtsi"
-+#include <dt-bindings/dma/cirrus,ep93xx-dma.h>
-+
-+/ {
-+	compatible = "technologic,ts7250", "cirrus,ep9301";
-+	model = "TS-7250 SBC";
-+	#address-cells = <1>;
-+	#size-cells = <1>;
-+
-+	chosen {
-+	};
-+
-+	memory@0 {
-+		device_type = "memory";
-+		/* should be set from ATAGS */
-+		reg = <0x00000000 0x02000000>,
-+		      <0x000530c0 0x01fdd000>;
-+	};
-+
-+	nand-controller@60000000 {
-+		compatible = "technologic,ts7200-nand";
-+		reg = <0x60000000 0x8000000>;
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		nand@0 {
-+			reg = <0>;
-+			partitions {
-+				compatible = "fixed-partitions";
-+				#address-cells = <1>;
-+				#size-cells = <1>;
-+
-+				partition@0 {
-+					label = "TS-BOOTROM";
-+					reg = <0x00000000 0x00020000>;
-+					read-only;
-+				};
-+
-+				partition@20000 {
-+					label = "Linux";
-+					reg = <0x00020000 0x07d00000>;
-+				};
-+
-+				partition@7d20000 {
-+					label = "RedBoot";
-+					reg = <0x07d20000 0x002e0000>;
-+					read-only;
-+				};
-+			};
-+		};
-+	};
-+
-+	rtc1: rtc@10800000 {
-+		compatible = "st,m48t86";
-+		reg = <0x10800000 0x1>,
-+		      <0x11700000 0x1>;
-+	};
-+
-+	watchdog1: watchdog@23800000 {
-+		compatible = "technologic,ts7200-wdt";
-+		reg = <0x23800000 0x01>,
-+		      <0x23c00000 0x01>;
-+		timeout-sec = <30>;
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+		led-0 {
-+			label = "grled";
-+			gpios = <&gpio4 0 GPIO_ACTIVE_HIGH>;
-+			linux,default-trigger = "heartbeat";
-+			function = LED_FUNCTION_HEARTBEAT;
-+		};
-+
-+		led-1 {
-+			label = "rdled";
-+			gpios = <&gpio4 1 GPIO_ACTIVE_HIGH>;
-+			function = LED_FUNCTION_FAULT;
-+		};
-+	};
-+};
-+
-+&eth0 {
-+	phy-handle = <&phy0>;
-+};
-+
-+&gpio1 {
-+	/* PWM */
-+	gpio-ranges = <&pinctrl 6 163 1>;
-+};
-+
-+&gpio4 {
-+	gpio-ranges = <&pinctrl 0 97 2>;
-+	status = "okay";
-+};
-+
-+&gpio6 {
-+	gpio-ranges = <&pinctrl 0 87 2>;
-+	status = "okay";
-+};
-+
-+&gpio7 {
-+	gpio-ranges = <&pinctrl 2 199 4>;
-+	status = "okay";
-+};
-+
-+&i2c0 {
-+	status = "okay";
-+};
-+
-+&spi0 {
-+	cs-gpios = <&gpio5 2 GPIO_ACTIVE_HIGH>;
-+	dmas = <&dma1 EP93XX_DMA_SSP>;
-+	status = "okay";
-+
-+	tmp122_spi: tmp122@0 {
-+		compatible = "ti,tmp122";
-+		reg = <0>;
-+		spi-max-frequency = <2000000>;
-+	};
-+};
-+
-+&mdio0 {
-+	phy0: ethernet-phy@1 {
-+		reg = <1>;
-+		device_type = "ethernet-phy";
-+	};
-+};
-+
-+&uart0 {
-+	status = "okay";
-+};
-+
-+&uart1 {
-+	status = "okay";
-+};
-+
-+&usb0 {
-+	status = "okay";
-+};
+diff --git a/arch/arm/Makefile b/arch/arm/Makefile
+index 547e5856eaa0..0e3d637cae6c 100644
+--- a/arch/arm/Makefile
++++ b/arch/arm/Makefile
+@@ -179,7 +179,6 @@ machine-$(CONFIG_ARCH_CLPS711X)		+= clps711x
+ machine-$(CONFIG_ARCH_DAVINCI)		+= davinci
+ machine-$(CONFIG_ARCH_DIGICOLOR)	+= digicolor
+ machine-$(CONFIG_ARCH_DOVE)		+= dove
+-machine-$(CONFIG_ARCH_EP93XX)		+= ep93xx
+ machine-$(CONFIG_ARCH_EXYNOS)		+= exynos
+ machine-$(CONFIG_ARCH_FOOTBRIDGE)	+= footbridge
+ machine-$(CONFIG_ARCH_GEMINI)		+= gemini
+diff --git a/arch/arm/mach-ep93xx/Kconfig b/arch/arm/mach-ep93xx/Kconfig
+index 703f3d232a60..812b71dcf60e 100644
+--- a/arch/arm/mach-ep93xx/Kconfig
++++ b/arch/arm/mach-ep93xx/Kconfig
+@@ -3,27 +3,27 @@ menuconfig ARCH_EP93XX
+ 	bool "EP93xx-based"
+ 	depends on ATAGS
+ 	depends on ARCH_MULTI_V4T
++	# CONFIG_ARCH_MULTI_V7 is not set
+ 	depends on CPU_LITTLE_ENDIAN
++	select ARCH_HAS_RESET_CONTROLLER
+ 	select ARCH_SPARSEMEM_ENABLE
+ 	select ARM_AMBA
+ 	select ARM_VIC
++	select ARM_APPENDED_DTB # Old Redboot bootloaders deployed
++	select ARM_ATAG_DTB_COMPAT # we need this to update dt memory node
++	select COMMON_CLK_EP93XX
++	select EP93XX_TIMER
+ 	select CLKSRC_MMIO
+ 	select CPU_ARM920T
+ 	select GPIOLIB
++	select PINCTRL
++	select PINCTRL_EP93XX
+ 	help
+ 	  This enables support for the Cirrus EP93xx series of CPUs.
+ 
+ if ARCH_EP93XX
+ 
+-menu "Cirrus EP93xx Implementation Options"
+-
+-config EP93XX_SOC_COMMON
+-	bool
+-	default y
+-	select SOC_BUS
+-	select LEDS_GPIO_REGISTER
+-
+-comment "EP93xx Platforms"
++# menu "EP93xx Platforms"
+ 
+ config MACH_BK3
+ 	bool "Support Liebherr BK3.1"
+@@ -103,6 +103,6 @@ config MACH_VISION_EP9307
+ 	  Say 'Y' here if you want your kernel to support the
+ 	  Vision Engraving Systems EP9307 SoM.
+ 
+-endmenu
++# endmenu
+ 
+ endif
+diff --git a/arch/arm/mach-ep93xx/Makefile b/arch/arm/mach-ep93xx/Makefile
+deleted file mode 100644
+index 62e37403df14..000000000000
+--- a/arch/arm/mach-ep93xx/Makefile
++++ /dev/null
+@@ -1,11 +0,0 @@
+-# SPDX-License-Identifier: GPL-2.0
+-#
+-# Makefile for the linux kernel.
+-#
+-obj-y			:= core.o clock.o timer-ep93xx.o
+-
+-obj-$(CONFIG_EP93XX_DMA)	+= dma.o
+-
+-obj-$(CONFIG_MACH_EDB93XX)	+= edb93xx.o
+-obj-$(CONFIG_MACH_TS72XX)	+= ts72xx.o
+-obj-$(CONFIG_MACH_VISION_EP9307)+= vision_ep9307.o
 
 -- 
 2.39.2
