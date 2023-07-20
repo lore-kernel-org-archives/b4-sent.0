@@ -1,10 +1,10 @@
 From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Thu, 20 Jul 2023 14:29:32 +0300
-Subject: [PATCH v3 32/42] wdt: ts72xx: add DT support for ts72xx
+Date: Thu, 20 Jul 2023 14:29:33 +0300
+Subject: [PATCH v3 33/42] gpio: ep93xx: add DT support for gpio-ep93xx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230605-ep93xx-v3-32-3d63a5f1103e@maquefel.me>
+Message-Id: <20230605-ep93xx-v3-33-3d63a5f1103e@maquefel.me>
 References: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 In-Reply-To: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 To: Hartley Sweeten <hsweeten@visionengravers.com>, 
@@ -43,13 +43,14 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-pwm@vger.kernel.org, linux-spi@vger.kernel.org, 
  netdev@vger.kernel.org, dmaengine@vger.kernel.org, 
  linux-mtd@lists.infradead.org, linux-ide@vger.kernel.org, 
- linux-input@vger.kernel.org, alsa-devel@alsa-project.org
+ linux-input@vger.kernel.org, alsa-devel@alsa-project.org, 
+ Andy Shevchenko <andy.shevchenko@gmail.com>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=1025;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=929;
  i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=/pFUHJmR8DUvfiw1Xz02EuXbI462fkIA+hdLJYGTYiA=;
- b=M3Wqmsi/7579i7J2GmgDeoutVdTKMlSiRw3XikhI9+UmnTQ6CCCyDOK5PkSYehbZgMpn5MdhjPKq
- VG/8YZ6XC/Y39kKPNCogijp3J6krn6Z+WVWsRQFU1SEQBm3v0QSa
+ bh=AIgxDPw6Du0WKxKzpJ2J6mJyCGWG+VkPvYnSwlxlDVo=;
+ b=P9tiL+QONUN9Lf/JsaT+NThJ+mTaQiDZtRBxcubdV/wbrGKNPsXVmcOIgmYxj61qo448MUqF05E3
+ lmPiq39GCeTCef2+gQpuc3Ps+fCGcy44ZIcYD31wcfDjpC1muJJc
 X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
@@ -57,41 +58,33 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Add OF ID match table.
 
+Reviewed-by: Andy Shevchenko <andy.shevchenko@gmail.com>
+Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
 Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
- drivers/watchdog/ts72xx_wdt.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ drivers/gpio/gpio-ep93xx.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/drivers/watchdog/ts72xx_wdt.c b/drivers/watchdog/ts72xx_wdt.c
-index 3d57670befe1..ac709dc31a65 100644
---- a/drivers/watchdog/ts72xx_wdt.c
-+++ b/drivers/watchdog/ts72xx_wdt.c
-@@ -12,6 +12,7 @@
-  */
- 
- #include <linux/platform_device.h>
-+#include <linux/mod_devicetable.h>
- #include <linux/module.h>
- #include <linux/watchdog.h>
- #include <linux/io.h>
-@@ -160,10 +161,17 @@ static int ts72xx_wdt_probe(struct platform_device *pdev)
- 	return 0;
+diff --git a/drivers/gpio/gpio-ep93xx.c b/drivers/gpio/gpio-ep93xx.c
+index 9a25bb0caf17..c4e272a8773d 100644
+--- a/drivers/gpio/gpio-ep93xx.c
++++ b/drivers/gpio/gpio-ep93xx.c
+@@ -360,9 +360,15 @@ static int ep93xx_gpio_probe(struct platform_device *pdev)
+ 	return devm_gpiochip_add_data(&pdev->dev, gc, egc);
  }
  
-+static const struct of_device_id ts72xx_wdt_of_ids[] = {
-+	{ .compatible = "technologic,ts7200-wdt" },
++static const struct of_device_id ep93xx_gpio_match[] = {
++	{ .compatible = "cirrus,ep9301-gpio" },
 +	{ /* sentinel */ }
 +};
-+MODULE_DEVICE_TABLE(of, ts72xx_wdt_of_ids);
 +
- static struct platform_driver ts72xx_wdt_driver = {
- 	.probe		= ts72xx_wdt_probe,
+ static struct platform_driver ep93xx_gpio_driver = {
  	.driver		= {
- 		.name	= "ts72xx-wdt",
-+		.of_match_table = ts72xx_wdt_of_ids,
+ 		.name	= "gpio-ep93xx",
++		.of_match_table = ep93xx_gpio_match,
  	},
+ 	.probe		= ep93xx_gpio_probe,
  };
- 
 
 -- 
 2.39.2
