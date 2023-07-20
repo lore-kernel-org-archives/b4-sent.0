@@ -1,10 +1,10 @@
 From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Thu, 20 Jul 2023 14:29:26 +0300
-Subject: [PATCH v3 26/42] ata: pata_ep93xx: add device tree support
+Date: Thu, 20 Jul 2023 14:29:27 +0300
+Subject: [PATCH v3 27/42] dt-bindings: input: Add Cirrus EP93xx keypad
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230605-ep93xx-v3-26-3d63a5f1103e@maquefel.me>
+Message-Id: <20230605-ep93xx-v3-27-3d63a5f1103e@maquefel.me>
 References: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 In-Reply-To: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 To: Hartley Sweeten <hsweeten@visionengravers.com>, 
@@ -45,96 +45,116 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-mtd@lists.infradead.org, linux-ide@vger.kernel.org, 
  linux-input@vger.kernel.org, alsa-devel@alsa-project.org
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=2575;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=3019;
  i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=k/Fzw6JdkE/3suqIiyO5Zhyi7BJas3Z1DAR17iWACYM=;
- b=k+ORk4S+LFBcP5CmCkp0oZYl98QLD0d1fLzPkLcanD+VxyScBfMYMDLH2SX/gub+L0/xrW3NXAvd
- oDttOcshA50/3i3jd3h3wByJH3KV5lorfsUjlKEZR9ua8Z6c8eLB
+ bh=g0MUCZkg2rX+GKJDRd4qYqHcSTO79UgcgnWDEBlcpgs=;
+ b=Soq9yCs9gqZ4jcR50fZ/ujDjbxFtrJNBCjnYwgzlSG3lrE9fWcFzviCIYGa/ieHN5cQ5/DAdzE6C
+ og338hrCCKAjHuPVnoyz1kGLUiQbgyVHWp04Yi5IIOrBcXqDYghV
 X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-- Add OF ID match table
-- Drop ep93xx_chip_revision and use soc_device_match instead
+Add YAML bindings for ep93xx SoC keypad.
 
 Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
- drivers/ata/pata_ep93xx.c | 26 ++++++++++++++++++++------
- 1 file changed, 20 insertions(+), 6 deletions(-)
+ .../bindings/input/cirrus,ep9307-keypad.yaml       | 87 ++++++++++++++++++++++
+ 1 file changed, 87 insertions(+)
 
-diff --git a/drivers/ata/pata_ep93xx.c b/drivers/ata/pata_ep93xx.c
-index c6e043e05d43..a88824dfc5fa 100644
---- a/drivers/ata/pata_ep93xx.c
-+++ b/drivers/ata/pata_ep93xx.c
-@@ -40,9 +40,11 @@
- #include <linux/ata.h>
- #include <linux/libata.h>
- #include <linux/platform_device.h>
-+#include <linux/sys_soc.h>
- #include <linux/delay.h>
- #include <linux/dmaengine.h>
- #include <linux/ktime.h>
-+#include <linux/mod_devicetable.h>
- 
- #include <linux/platform_data/dma-ep93xx.h>
- #include <linux/soc/cirrus/ep93xx.h>
-@@ -910,6 +912,12 @@ static struct ata_port_operations ep93xx_pata_port_ops = {
- 	.port_start		= ep93xx_pata_port_start,
- };
- 
-+static const struct soc_device_attribute ep93xx_soc_table[] = {
-+	{ .revision = "E1", .data = (void *)ATA_UDMA3 },
-+	{ .revision = "E2", .data = (void *)ATA_UDMA4 },
-+	{ /* sentinel */ }
-+};
+diff --git a/Documentation/devicetree/bindings/input/cirrus,ep9307-keypad.yaml b/Documentation/devicetree/bindings/input/cirrus,ep9307-keypad.yaml
+new file mode 100644
+index 000000000000..8b6be0c5a688
+--- /dev/null
++++ b/Documentation/devicetree/bindings/input/cirrus,ep9307-keypad.yaml
+@@ -0,0 +1,87 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/input/cirrus,ep9307-keypad.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
- static int ep93xx_pata_probe(struct platform_device *pdev)
- {
- 	struct ep93xx_pata_data *drv_data;
-@@ -939,7 +947,7 @@ static int ep93xx_pata_probe(struct platform_device *pdev)
- 
- 	drv_data = devm_kzalloc(&pdev->dev, sizeof(*drv_data), GFP_KERNEL);
- 	if (!drv_data) {
--		err = -ENXIO;
-+		err = -ENOMEM;
- 		goto err_rel_gpio;
- 	}
- 
-@@ -976,12 +984,11 @@ static int ep93xx_pata_probe(struct platform_device *pdev)
- 	 * so this driver supports only UDMA modes.
- 	 */
- 	if (drv_data->dma_rx_channel && drv_data->dma_tx_channel) {
--		int chip_rev = ep93xx_chip_revision();
-+		const struct soc_device_attribute *match;
- 
--		if (chip_rev == EP93XX_CHIP_REV_E1)
--			ap->udma_mask = ATA_UDMA3;
--		else if (chip_rev == EP93XX_CHIP_REV_E2)
--			ap->udma_mask = ATA_UDMA4;
-+		match = soc_device_match(ep93xx_soc_table);
-+		if (match)
-+			ap->udma_mask = (unsigned int) match->data;
- 		else
- 			ap->udma_mask = ATA_UDMA2;
- 	}
-@@ -1016,9 +1023,16 @@ static int ep93xx_pata_remove(struct platform_device *pdev)
- 	return 0;
- }
- 
-+static const struct of_device_id ep93xx_pata_of_ids[] = {
-+	{ .compatible = "cirrus,ep9312-pata" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, ep93xx_pata_of_ids);
++title: Cirrus ep93xx keypad
 +
- static struct platform_driver ep93xx_pata_platform_driver = {
- 	.driver = {
- 		.name = DRV_NAME,
-+		.of_match_table = ep93xx_pata_of_ids,
- 	},
- 	.probe = ep93xx_pata_probe,
- 	.remove = ep93xx_pata_remove,
++maintainers:
++  - Alexander Sverdlin <alexander.sverdlin@gmail.com>
++
++allOf:
++  - $ref: /schemas/input/matrix-keymap.yaml#
++
++description:
++  The KPP is designed to interface with a keypad matrix with 2-point contact
++  or 3-point contact keys. The KPP is designed to simplify the software task
++  of scanning a keypad matrix. The KPP is capable of detecting, debouncing,
++  and decoding one or multiple keys pressed simultaneously on a keypad.
++
++properties:
++  compatible:
++    oneOf:
++      - const: cirrus,ep9307-keypad
++      - items:
++          - enum:
++              - cirrus,ep9312-keypad
++              - cirrus,ep9315-keypad
++          - const: cirrus,ep9307-keypad
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++
++  debounce-delay-ms:
++    description: |
++          Time in microseconds that key must be pressed or
++          released for state change interrupt to trigger.
++
++  cirrus,prescale:
++    description: row/column counter pre-scaler load value
++    $ref: /schemas/types.yaml#/definitions/uint16
++    maximum: 1023
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - clocks
++  - linux,keymap
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/clock/cirrus,ep93xx-clock.h>
++    #include <dt-bindings/input/input.h>
++    keypad@800f0000 {
++      compatible = "cirrus,ep9307-keypad";
++      reg = <0x800f0000 0x0c>;
++      interrupt-parent = <&vic0>;
++      interrupts = <29>;
++      clocks = <&syscon EP93XX_CLK_KEYPAD>;
++      pinctrl-names = "default";
++      pinctrl-0 = <&keypad_default_pins>;
++      linux,keymap = <KEY_UP>,
++                     <KEY_DOWN>,
++                     <KEY_VOLUMEDOWN>,
++                     <KEY_HOME>,
++                     <KEY_RIGHT>,
++                     <KEY_LEFT>,
++                     <KEY_ENTER>,
++                     <KEY_VOLUMEUP>,
++                     <KEY_F6>,
++                     <KEY_F8>,
++                     <KEY_F9>,
++                     <KEY_F10>,
++                     <KEY_F1>,
++                     <KEY_F2>,
++                     <KEY_F3>,
++                     <KEY_POWER>;
++    };
 
 -- 
 2.39.2
