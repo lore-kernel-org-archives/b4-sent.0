@@ -1,10 +1,10 @@
 From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Thu, 20 Jul 2023 14:29:30 +0300
-Subject: [PATCH v3 30/42] rtc: m48t86: add DT support for m48t86
+Date: Thu, 20 Jul 2023 14:29:31 +0300
+Subject: [PATCH v3 31/42] dt-bindings: wdt: Add ts72xx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230605-ep93xx-v3-30-3d63a5f1103e@maquefel.me>
+Message-Id: <20230605-ep93xx-v3-31-3d63a5f1103e@maquefel.me>
 References: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 In-Reply-To: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 To: Hartley Sweeten <hsweeten@visionengravers.com>, 
@@ -45,54 +45,75 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-mtd@lists.infradead.org, linux-ide@vger.kernel.org, 
  linux-input@vger.kernel.org, alsa-devel@alsa-project.org
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=1084;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=1621;
  i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=ehFfMUFPSDk+3aqtlEGp6k1Cn9nX+Zuoc/v7Lg62J6w=;
- b=Q238e2fSIiIG4LxbRXPl9BVz0A7fMIFNSLQhjud/iwbjRvKKrpwpjnng97SWbloCe6t6MpeoXXkn
- jjZc3wP8DMKx8SCCQlCyET5yYeXmGD2ZrnAkJxVsc3NuIPs7VAev
+ bh=+iYdXLpj952sAwmYjKp/GVeiFhMZU99T9LpFVI9aGx0=;
+ b=PYSrwjwZv3XMUrmUJ9Az9NVYoHn7v8/AorkIYoItE7iogjVur0EJBmY3tfD/koJ6+KDVHoBUk+kM
+ k0IoLxwnDZgB/qsuAZxmKuToLG10AKjeCt/JSJTZIho3VrzkJ2eT
 X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add OF ID match table.
+Add DT binding for Technologic Systems TS-72xx watchdog.
 
-Acked-by: Arnd Bergmann <arnd@arndb.de>
-Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
 Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
- drivers/rtc/rtc-m48t86.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ .../bindings/watchdog/technologic,ts7200-wdt.yaml  | 46 ++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
 
-diff --git a/drivers/rtc/rtc-m48t86.c b/drivers/rtc/rtc-m48t86.c
-index 481c9525b1dd..dd4a62e2d39c 100644
---- a/drivers/rtc/rtc-m48t86.c
-+++ b/drivers/rtc/rtc-m48t86.c
-@@ -11,6 +11,7 @@
-  */
- 
- #include <linux/module.h>
-+#include <linux/mod_devicetable.h>
- #include <linux/rtc.h>
- #include <linux/platform_device.h>
- #include <linux/bcd.h>
-@@ -269,9 +270,16 @@ static int m48t86_rtc_probe(struct platform_device *pdev)
- 	return 0;
- }
- 
-+static const struct of_device_id m48t86_rtc_of_ids[] = {
-+	{ .compatible = "st,m48t86" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, m48t86_rtc_of_ids);
+diff --git a/Documentation/devicetree/bindings/watchdog/technologic,ts7200-wdt.yaml b/Documentation/devicetree/bindings/watchdog/technologic,ts7200-wdt.yaml
+new file mode 100644
+index 000000000000..4f7f004ffdd3
+--- /dev/null
++++ b/Documentation/devicetree/bindings/watchdog/technologic,ts7200-wdt.yaml
+@@ -0,0 +1,46 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/watchdog/technologic,ts7200-wdt.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
- static struct platform_driver m48t86_rtc_platform_driver = {
- 	.driver		= {
- 		.name	= "rtc-m48t86",
-+		.of_match_table = m48t86_rtc_of_ids,
- 	},
- 	.probe		= m48t86_rtc_probe,
- };
++title: Technologic Systems TS-72xx based SBCs watchdog
++
++maintainers:
++  - Nikita Shubin <nikita.shubin@maquefel.me>
++
++allOf:
++  - $ref: watchdog.yaml#
++
++properties:
++  compatible:
++    oneOf:
++      - const: technologic,ts7200-wdt
++      - items:
++          - enum:
++              - technologic,ts7300-wdt
++              - technologic,ts7260-wdt
++              - technologic,ts7250-wdt
++          - const: technologic,ts7200-wdt
++
++  reg:
++    items:
++      - description: control register
++      - description: feed register
++
++required:
++  - compatible
++  - reg
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    watchdog@23800000 {
++      compatible = "technologic,ts7200-wdt";
++      reg = <0x23800000 0x01>, <0x23c00000 0x01>;
++      timeout-sec = <30>;
++    };
++
++...
++
 
 -- 
 2.39.2
