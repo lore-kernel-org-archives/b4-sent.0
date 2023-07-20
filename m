@@ -1,10 +1,10 @@
 From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Thu, 20 Jul 2023 14:29:31 +0300
-Subject: [PATCH v3 31/42] dt-bindings: wdt: Add ts72xx
+Date: Thu, 20 Jul 2023 14:29:32 +0300
+Subject: [PATCH v3 32/42] wdt: ts72xx: add DT support for ts72xx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230605-ep93xx-v3-31-3d63a5f1103e@maquefel.me>
+Message-Id: <20230605-ep93xx-v3-32-3d63a5f1103e@maquefel.me>
 References: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 In-Reply-To: <20230605-ep93xx-v3-0-3d63a5f1103e@maquefel.me>
 To: Hartley Sweeten <hsweeten@visionengravers.com>, 
@@ -45,75 +45,53 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-mtd@lists.infradead.org, linux-ide@vger.kernel.org, 
  linux-input@vger.kernel.org, alsa-devel@alsa-project.org
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=1621;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1689852591; l=1025;
  i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=+iYdXLpj952sAwmYjKp/GVeiFhMZU99T9LpFVI9aGx0=;
- b=PYSrwjwZv3XMUrmUJ9Az9NVYoHn7v8/AorkIYoItE7iogjVur0EJBmY3tfD/koJ6+KDVHoBUk+kM
- k0IoLxwnDZgB/qsuAZxmKuToLG10AKjeCt/JSJTZIho3VrzkJ2eT
+ bh=/pFUHJmR8DUvfiw1Xz02EuXbI462fkIA+hdLJYGTYiA=;
+ b=M3Wqmsi/7579i7J2GmgDeoutVdTKMlSiRw3XikhI9+UmnTQ6CCCyDOK5PkSYehbZgMpn5MdhjPKq
+ VG/8YZ6XC/Y39kKPNCogijp3J6krn6Z+WVWsRQFU1SEQBm3v0QSa
 X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add DT binding for Technologic Systems TS-72xx watchdog.
+Add OF ID match table.
 
 Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
- .../bindings/watchdog/technologic,ts7200-wdt.yaml  | 46 ++++++++++++++++++++++
- 1 file changed, 46 insertions(+)
+ drivers/watchdog/ts72xx_wdt.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/watchdog/technologic,ts7200-wdt.yaml b/Documentation/devicetree/bindings/watchdog/technologic,ts7200-wdt.yaml
-new file mode 100644
-index 000000000000..4f7f004ffdd3
---- /dev/null
-+++ b/Documentation/devicetree/bindings/watchdog/technologic,ts7200-wdt.yaml
-@@ -0,0 +1,46 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/watchdog/technologic,ts7200-wdt.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/drivers/watchdog/ts72xx_wdt.c b/drivers/watchdog/ts72xx_wdt.c
+index 3d57670befe1..ac709dc31a65 100644
+--- a/drivers/watchdog/ts72xx_wdt.c
++++ b/drivers/watchdog/ts72xx_wdt.c
+@@ -12,6 +12,7 @@
+  */
+ 
+ #include <linux/platform_device.h>
++#include <linux/mod_devicetable.h>
+ #include <linux/module.h>
+ #include <linux/watchdog.h>
+ #include <linux/io.h>
+@@ -160,10 +161,17 @@ static int ts72xx_wdt_probe(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
++static const struct of_device_id ts72xx_wdt_of_ids[] = {
++	{ .compatible = "technologic,ts7200-wdt" },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, ts72xx_wdt_of_ids);
 +
-+title: Technologic Systems TS-72xx based SBCs watchdog
-+
-+maintainers:
-+  - Nikita Shubin <nikita.shubin@maquefel.me>
-+
-+allOf:
-+  - $ref: watchdog.yaml#
-+
-+properties:
-+  compatible:
-+    oneOf:
-+      - const: technologic,ts7200-wdt
-+      - items:
-+          - enum:
-+              - technologic,ts7300-wdt
-+              - technologic,ts7260-wdt
-+              - technologic,ts7250-wdt
-+          - const: technologic,ts7200-wdt
-+
-+  reg:
-+    items:
-+      - description: control register
-+      - description: feed register
-+
-+required:
-+  - compatible
-+  - reg
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    watchdog@23800000 {
-+      compatible = "technologic,ts7200-wdt";
-+      reg = <0x23800000 0x01>, <0x23c00000 0x01>;
-+      timeout-sec = <30>;
-+    };
-+
-+...
-+
+ static struct platform_driver ts72xx_wdt_driver = {
+ 	.probe		= ts72xx_wdt_probe,
+ 	.driver		= {
+ 		.name	= "ts72xx-wdt",
++		.of_match_table = ts72xx_wdt_of_ids,
+ 	},
+ };
+ 
 
 -- 
 2.39.2
