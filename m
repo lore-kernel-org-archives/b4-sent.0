@@ -1,52 +1,54 @@
-From: =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
-Date: Thu, 20 Jul 2023 12:45:22 +0200
-Subject: [PATCH RESEND] security: smack: smackfs: fix typo (lables->labels)
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH 0/2] clk: fix a bug in CCF which results in a clock being
+ enabled twice.
+Date: Mon, 24 Jul 2023 05:16:53 +0800
+Message-Id: <20230724-clk_fix-v1-0-283f5b427070@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20230720-smackfs-lables-fix-v1-1-7994a1f7e45a@gmail.com>
-To: Casey Schaufler <casey@schaufler-ca.com>, 
- Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, 
- "Serge E. Hallyn" <serge@hallyn.com>
-Cc: linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAMWYvWQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2MDcyMT3eSc7Pi0zApdwyRzIzPTFDMz40QLJaDqgqJUoDDYpOjY2loAXn9
+ EX1kAAAA=
+To: Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1689849933; l=959;
- i=gomba007@gmail.com; s=20230706; h=from:subject:message-id;
- bh=S9HyRNyzLwD2W29A0DsX2ZZZiM4IO3L3DpcXXpfmTVs=;
- b=XYaR86b7SPYm2uXmkLcj3CqPenNe9TpKXk3lIAAOYRLSyyGrVDIADV94Uh2cqBkvExkRCO4nL
- bBni3x5S3snD52/vgxYtNhQYlTPd9BnVsZJk2MR1sMKOrTOGalzsdM2
-X-Developer-Key: i=gomba007@gmail.com; a=ed25519;
- pk=iY9MjPCbud82ULS2PQJIq3QwjKyP/Sg730I6T2M8Y5U=
-X-Endpoint-Received: by B4 Relay for gomba007@gmail.com/20230706 with auth_id=60
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1690147024; l=1082;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=jM3H69U/XUQ0Lsn8g5o066UYOJN1VbwLr9q+jBTeJac=;
+ b=t5Xo/bOFJo0VuTAU3eNqQlW3N9cdDz0n5ABIuk4bknFcLYByVu0TUnmCHGhhdDSv21TxyZRwp
+ WkqoTmPY/FRDGWxQyZdT4my1nTbvvxenzm7hmLHQzoBd7LDXPjFVlT8
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix a spelling error in smakcfs.
+Currently, ccf_clk_endisable() calls clk_enable() / clk_disable()
+directly depending on the request. However, this function is also
+referenced in clk->ops, which is also called in clk_enable() /
+clk_disable().
 
-Signed-off-by: Tóth János <gomba007@gmail.com>
+This caused a recursion and made the clock enabled twice if clk_enable()
+is invoked. So we have to call clk_disable() twice to disable the clock.
+It can be easily reproduced with few extra lines of debug code.
+
+Fix that by calling clk->ops->enable/disable directly in
+ccf_clk_endisable() rather than using the framework functions.
+
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- security/smack/smackfs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Yang Xiwen (2):
+      clk: move clk_get_ops() to a common header
+      clk: ccf: invoke ops provided by clk directly
 
-diff --git a/security/smack/smackfs.c b/security/smack/smackfs.c
-index 5590eaad241b..2b79c30d4bb6 100644
---- a/security/smack/smackfs.c
-+++ b/security/smack/smackfs.c
-@@ -114,7 +114,7 @@ struct smack_known *smack_syslog_label;
-  * SMACK_PTRACE_DEFAULT    regular smack ptrace rules (/proc based)
-  * SMACK_PTRACE_EXACT      labels must match, but can be overriden with
-  *			   CAP_SYS_PTRACE
-- * SMACK_PTRACE_DRACONIAN  lables must match, CAP_SYS_PTRACE has no effect
-+ * SMACK_PTRACE_DRACONIAN  labels must match, CAP_SYS_PTRACE has no effect
-  */
- int smack_ptrace_rule = SMACK_PTRACE_DEFAULT;
- 
-
+ drivers/clk/clk-uclass.c |  5 -----
+ drivers/clk/clk.c        | 10 ++++++++--
+ include/clk.h            | 17 +++++++++++++++++
+ 3 files changed, 25 insertions(+), 7 deletions(-)
 ---
-base-commit: 6995e2de6891c724bfeb2db33d7b87775f913ad1
-change-id: 20230706-smackfs-lables-fix-ac965c4c479f
+base-commit: 580eb31199be8a822e62f20965854a242f895d03
+change-id: 20230724-clk_fix-1b7265d663a8
 
 Best regards,
 -- 
-Tóth János <gomba007@gmail.com>
+Yang Xiwen <forbidden405@outlook.com>
 
