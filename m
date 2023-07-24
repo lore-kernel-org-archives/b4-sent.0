@@ -1,66 +1,56 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Mon, 24 Jul 2023 05:16:55 +0800
-Subject: [PATCH 2/2] clk: ccf: invoke ops provided by clk directly
+Subject: [PATCH 0/2] net: add support for HiSilicon Fast Ethernet
+ Controller driver
+Date: Tue, 25 Jul 2023 00:20:07 +0800
+Message-Id: <20230725-wip-hisi_femac-trunk-v1-0-88469a170310@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230724-clk_fix-v1-2-283f5b427070@outlook.com>
-References: <20230724-clk_fix-v1-0-283f5b427070@outlook.com>
-In-Reply-To: <20230724-clk_fix-v1-0-283f5b427070@outlook.com>
-To: Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>
-Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+X-B4-Tracking: v=1; b=H4sIALekvmQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2MDcyMT3fLMAt0MoLL4tNTcxGTdkqLSvGxdwzRT8zQDSwuzNINkJaDWgqL
+ UtMwKsLHRsbW1ACAj2BBmAAAA
+To: Joe Hershberger <joe.hershberger@ni.com>, 
+ Ramon Fried <rfried.dev@gmail.com>
+Cc: Yisen Zhuang <yisen.zhuang@huawei.com>, 
+ Salil Mehta <salil.mehta@huawei.com>, David Yang <mmyangfl@gmail.com>, 
+ u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1690147024; l=1144;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1690215608; l=1066;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=JP4zaTIzokdks3s8U9GOplONTe4iUmPO05hIETDcfV4=;
- b=ld4jUfPxtIWc/PGWYcCTSbXh3bNoYh29aJVvpUpInCvfCPNGly9je63xC7pw2374Z83F3cKUG
- 45balCrjtXBARpdkMxcO+7Yv1N5EUYA1iGLOovaZD31lFm3V51kgsLq
+ bh=oklXERr8FMwt6uEJGE9VaehniYtKEakouGV6e5/jhfo=;
+ b=bQzUEMnsR6uS8C9mDGoQD5t9gmSrpQy0KMVs6Zs97qV2GsVvQqbPB+zDtB5g/9lC4KtIBr2Dm
+ TBT7ua+CwomBVyj+s25+51H8dc0/MNvzCjryPoA/bLnMqilsIfMI4Je
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Invoking clk_enable() or clk_disable() in clk->ops context causes a
-recursion, results in a clock being enabled twice.
+This core is found on many HiSilicon chips. This patchset adds support
+for it and the integrated MDIO bus.
+
+The driver code comes from linux kernel driver, downstream u-boot driver
+and the datasheet. It's already tested on a Hi3798MV200 based STB.
+
+Note that currently this driver can't be used for Hi3798MV200 since the
+clock driver is missing. I will implement and submit the clock driver
+and the framework in a later patchset.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/clk/clk.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+Yang Xiwen (2):
+      net: add hifemac Ethernet driver for HiSilicon platform
+      net: add hifemac_mdio MDIO bus driver for HiSilicon platform
 
-diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
-index a5a3461b66..bd455e44a4 100644
---- a/drivers/clk/clk.c
-+++ b/drivers/clk/clk.c
-@@ -10,7 +10,6 @@
- #include <clk.h>
- #include <clk-uclass.h>
- #include <log.h>
--#include <dm/device.h>
- #include <dm/uclass.h>
- #include <dm/lists.h>
- #include <dm/device-internal.h>
-@@ -115,11 +114,18 @@ int ccf_clk_set_parent(struct clk *clk, struct clk *parent)
- static int ccf_clk_endisable(struct clk *clk, bool enable)
- {
- 	struct clk *c;
-+	const struct clk_ops *ops = clk_dev_ops(clk->dev);
- 	int err = clk_get_by_id(clk->id, &c);
- 
- 	if (err)
- 		return err;
--	return enable ? clk_enable(c) : clk_disable(c);
-+
-+	if (enable && ops->enable)
-+		return ops->enable(c);
-+	else if (!enable && ops->disable)
-+		return ops->disable(c);
-+
-+	return 0;
- }
- 
- int ccf_clk_enable(struct clk *clk)
+ drivers/net/Kconfig        |  17 ++
+ drivers/net/Makefile       |   2 +
+ drivers/net/hifemac.c      | 478 +++++++++++++++++++++++++++++++++++++++++++++
+ drivers/net/hifemac_mdio.c | 116 +++++++++++
+ 4 files changed, 613 insertions(+)
+---
+base-commit: 580eb31199be8a822e62f20965854a242f895d03
+change-id: 20230724-wip-hisi_femac-trunk-1f57f0986f0c
 
+Best regards,
 -- 
-2.34.1
+Yang Xiwen <forbidden405@outlook.com>
 
