@@ -1,256 +1,63 @@
-From: Mitchell Levy <levymitchell0@gmail.com>
-Date: Wed, 26 Jul 2023 00:23:31 +0000
-Subject: [PATCH] hv_balloon: Update the balloon driver to use the SBRM API
+From: Jon Mason <jon.mason@arm.com>
+Date: Wed, 26 Jul 2023 08:01:34 -0400
+Subject: [PATCH] arm-bsp/corstone1000: update u-boot preferred version
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230726-master-v1-1-b2ce6a4538db@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAIJnwGQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI2MDcyNT3dzE4pLUIt2kpOQUSyMDU3NTiyQloOKCotS0zAqwQdGxtbUAcXR
- m81gAAAA=
-To: "K. Y. Srinivasan" <kys@microsoft.com>, 
- Haiyang Zhang <haiyangz@microsoft.com>, Wei Liu <wei.liu@kernel.org>, 
- Dexuan Cui <decui@microsoft.com>
-Cc: linux-hyperv@vger.kernel.org, linux-kernel@vger.kernel.org, 
- mikelly@microsoft.com, peterz@infradead.org, 
- Boqun Feng <boqun.feng@gmail.com>, 
- "Mitchell Levy (Microsoft)" <levymitchell0@gmail.com>
+Message-Id: <20230726-master-next-v1-1-cd4758222729@arm.com>
+X-B4-Tracking: v=1; b=H4sIAB0LwWQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2MDcyMz3dzE4pLUIt281IoSXbNUcyNTyyQjc1MTQyWgjoKi1LTMCrBp0bG
+ 1tQBV992uXQAAAA==
+To: meta-arm@lists.yoctoproject.org
+Cc: Jon Mason <jon.mason@arm.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1690331022; l=7710;
- i=levymitchell0@gmail.com; s=20230725; h=from:subject:message-id;
- bh=84uGYvJcj5OV/bgfkKqlgiyUtrhDwWgEQj+Xrg0YrbI=;
- b=BD5lgOcxZEQ142ZfkGpO3DuyzHnugCgXqED3QlEpvQ8EGyB3Hb629rgO6ebbbP9C8XgIh4FC3
- uam7fNanBfgDV6LNQ6LINu2kpzcBU7M1DU1TzddZ3XXjORIkxVGdVRs
-X-Developer-Key: i=levymitchell0@gmail.com; a=ed25519;
- pk=o3BLKQtTK7QMnUiW3/7p5JcITesvc3qL/w+Tz19oYeE=
-X-Endpoint-Received: by B4 Relay for levymitchell0@gmail.com/20230725 with auth_id=69
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1024; i=jon.mason@arm.com;
+ h=from:subject:message-id; bh=sQE0DuhcCmT8Is/m+0RQlkke4os2pbu4QWdetsfVc2o=;
+ b=owEBbQKS/ZANAwAKAW5mS6x6i9IjAcsmYgBkwQsszsrLxz+xD2/ZkpPM9DAWKmpTA9UidU9bD
+ /svpvBpVgSJAjMEAAEKAB0WIQSgT1v1zdTYnFf3yapuZkuseovSIwUCZMELLAAKCRBuZkuseovS
+ I+dxD/9EhgixHNEnlRSuBqqyLX2qVnDsxUJrUUZctSwrsR3Zr3jAk4wRpVzyhg63dVyKuxRmBxt
+ UXthDDq+TkfoW6wvoj6sSeeuWIAYIfTc9FdvRLZbthDNkXnKKidXOKj1MYWGk8wB5ZM4s4k3tl/
+ Z6Tf4sbVODDmYtZmPbIl9SGBQYxFMywYwowIrSifLIOKZVrqwSKF2jNQApfhYshVWNSM+8LhkO8
+ 98mnUPaUBYPcXdVFgtFBccRvSCwTlCPamc1fklfnmtTwbfvzZM+isBHURknRAjU+TPN7DZQONJG
+ YFB7jb51/duwZvlRPoTzWTgATRFYDOLypsxYOpy7jCyx9+4RQ9JhGumNRdDYwjh2JlLS2rn9Upd
+ shQTLAb8AYFj2dLx8cFmqBgaqjqt2vnGIQliY82B3KTJtoXTgkpaaGJuApjOcA6OH39khm3AwHE
+ MM7tpFO1nZGr82aphY3qKViMWO9aK8eLQOEHYDPHNpzuohc2RSb8C+qSu18/OMTlWeYji44HZow
+ m+Hx5EwHqFjyp+TqFPFgQVokVkdfv/faGZz+r2Tjt0IGnw8H0UpHfIi8kr+IVf/XvWWSBIpNy9p
+ q8lXqxOMAEfW+P3FFSc2Z73iX7XtD7hTT+1GOp4/bb6DpwyM/WfZJ1/AqAL+kPEi5WHvh/9URyh
+ neId8d7Jv3wAMrg==
+X-Developer-Key: i=jon.mason@arm.com; a=openpgp;
+ fpr=A04F5BF5CDD4D89C57F7C9AA6E664BAC7A8BD223
+X-Endpoint-Received: by B4 Relay for jon.mason@arm.com/default with auth_id=58
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+The upstream u-boot recipe did a minor version update, which is causing
+a "preferred version not available" warning.  Add a '%' to resolve this
+issue.
 
+Signed-off-by: Jon Mason <jon.mason@arm.com>
+---
+ meta-arm-bsp/conf/machine/include/corstone1000.inc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/meta-arm-bsp/conf/machine/include/corstone1000.inc b/meta-arm-bsp/conf/machine/include/corstone1000.inc
+index da668c95218d..aeb1411ab992 100644
+--- a/meta-arm-bsp/conf/machine/include/corstone1000.inc
++++ b/meta-arm-bsp/conf/machine/include/corstone1000.inc
+@@ -22,7 +22,7 @@ TFM_SIGN_PRIVATE_KEY = "${libdir}/tfm-scripts/root-RSA-3072_1.pem"
+ RE_IMAGE_OFFSET = "0x1000"
+ 
+ # u-boot
+-PREFERRED_VERSION_u-boot ?= "2023.07"
++PREFERRED_VERSION_u-boot ?= "2023.07%"
+ EXTRA_IMAGEDEPENDS += "u-boot"
+ 
+ UBOOT_CONFIG ??= "EFI"
 
 ---
-This patch is intended as a proof-of-concept for the new SBRM
-machinery[1]. For some brief background, the idea behind SBRM is using
-the __cleanup__ attribute to automatically unlock locks (or otherwise
-release resources) when they go out of scope, similar to C++ style RAII.
-This promises some benefits such as making code simpler (particularly
-where you have lots of goto fail; type constructs) as well as reducing
-the surface area for certain kinds of bugs.
-
-The changes in this patch should not result in any difference in how the
-code actually runs (i.e., it's purely an exercise in this new syntax
-sugar). In one instance SBRM was not appropriate, so I left that part
-alone, but all other locking/unlocking is handled automatically in this
-patch.
-
-Link: https://lore.kernel.org/all/20230626125726.GU4253@hirez.programming.kicks-ass.net/ [1]
-
-Suggested-by: Boqun Feng <boqun.feng@gmail.com>
-Signed-off-by: "Mitchell Levy (Microsoft)" <levymitchell0@gmail.com>
----
- drivers/hv/hv_balloon.c | 82 +++++++++++++++++++++++--------------------------
- 1 file changed, 38 insertions(+), 44 deletions(-)
-
-diff --git a/drivers/hv/hv_balloon.c b/drivers/hv/hv_balloon.c
-index dffcc894f117..2812601e84da 100644
---- a/drivers/hv/hv_balloon.c
-+++ b/drivers/hv/hv_balloon.c
-@@ -8,6 +8,7 @@
- 
- #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
- 
-+#include <linux/cleanup.h>
- #include <linux/kernel.h>
- #include <linux/jiffies.h>
- #include <linux/mman.h>
-@@ -646,7 +647,7 @@ static int hv_memory_notifier(struct notifier_block *nb, unsigned long val,
- 			      void *v)
- {
- 	struct memory_notify *mem = (struct memory_notify *)v;
--	unsigned long flags, pfn_count;
-+	unsigned long pfn_count;
- 
- 	switch (val) {
- 	case MEM_ONLINE:
-@@ -655,21 +656,22 @@ static int hv_memory_notifier(struct notifier_block *nb, unsigned long val,
- 		break;
- 
- 	case MEM_OFFLINE:
--		spin_lock_irqsave(&dm_device.ha_lock, flags);
--		pfn_count = hv_page_offline_check(mem->start_pfn,
--						  mem->nr_pages);
--		if (pfn_count <= dm_device.num_pages_onlined) {
--			dm_device.num_pages_onlined -= pfn_count;
--		} else {
--			/*
--			 * We're offlining more pages than we managed to online.
--			 * This is unexpected. In any case don't let
--			 * num_pages_onlined wrap around zero.
--			 */
--			WARN_ON_ONCE(1);
--			dm_device.num_pages_onlined = 0;
-+		scoped_guard(spinlock_irqsave, &dm_device.ha_lock) {
-+			pfn_count = hv_page_offline_check(mem->start_pfn,
-+							  mem->nr_pages);
-+			if (pfn_count <= dm_device.num_pages_onlined) {
-+				dm_device.num_pages_onlined -= pfn_count;
-+			} else {
-+				/*
-+				 * We're offlining more pages than we
-+				 * managed to online. This is
-+				 * unexpected. In any case don't let
-+				 * num_pages_onlined wrap around zero.
-+				 */
-+				WARN_ON_ONCE(1);
-+				dm_device.num_pages_onlined = 0;
-+			}
- 		}
--		spin_unlock_irqrestore(&dm_device.ha_lock, flags);
- 		break;
- 	case MEM_GOING_ONLINE:
- 	case MEM_GOING_OFFLINE:
-@@ -721,24 +723,23 @@ static void hv_mem_hot_add(unsigned long start, unsigned long size,
- 	unsigned long start_pfn;
- 	unsigned long processed_pfn;
- 	unsigned long total_pfn = pfn_count;
--	unsigned long flags;
- 
- 	for (i = 0; i < (size/HA_CHUNK); i++) {
- 		start_pfn = start + (i * HA_CHUNK);
- 
--		spin_lock_irqsave(&dm_device.ha_lock, flags);
--		has->ha_end_pfn +=  HA_CHUNK;
-+		scoped_guard(spinlock_irqsave, &dm_device.ha_lock) {
-+			has->ha_end_pfn +=  HA_CHUNK;
- 
--		if (total_pfn > HA_CHUNK) {
--			processed_pfn = HA_CHUNK;
--			total_pfn -= HA_CHUNK;
--		} else {
--			processed_pfn = total_pfn;
--			total_pfn = 0;
--		}
-+			if (total_pfn > HA_CHUNK) {
-+				processed_pfn = HA_CHUNK;
-+				total_pfn -= HA_CHUNK;
-+			} else {
-+				processed_pfn = total_pfn;
-+				total_pfn = 0;
-+			}
- 
--		has->covered_end_pfn +=  processed_pfn;
--		spin_unlock_irqrestore(&dm_device.ha_lock, flags);
-+			has->covered_end_pfn +=  processed_pfn;
-+		}
- 
- 		reinit_completion(&dm_device.ol_waitevent);
- 
-@@ -758,10 +759,10 @@ static void hv_mem_hot_add(unsigned long start, unsigned long size,
- 				 */
- 				do_hot_add = false;
- 			}
--			spin_lock_irqsave(&dm_device.ha_lock, flags);
--			has->ha_end_pfn -= HA_CHUNK;
--			has->covered_end_pfn -=  processed_pfn;
--			spin_unlock_irqrestore(&dm_device.ha_lock, flags);
-+			scoped_guard(spinlock_irqsave, &dm_device.ha_lock) {
-+				has->ha_end_pfn -= HA_CHUNK;
-+				has->covered_end_pfn -=  processed_pfn;
-+			}
- 			break;
- 		}
- 
-@@ -781,10 +782,9 @@ static void hv_mem_hot_add(unsigned long start, unsigned long size,
- static void hv_online_page(struct page *pg, unsigned int order)
- {
- 	struct hv_hotadd_state *has;
--	unsigned long flags;
- 	unsigned long pfn = page_to_pfn(pg);
- 
--	spin_lock_irqsave(&dm_device.ha_lock, flags);
-+	guard(spinlock_irqsave)(&dm_device.ha_lock);
- 	list_for_each_entry(has, &dm_device.ha_region_list, list) {
- 		/* The page belongs to a different HAS. */
- 		if ((pfn < has->start_pfn) ||
-@@ -794,7 +794,6 @@ static void hv_online_page(struct page *pg, unsigned int order)
- 		hv_bring_pgs_online(has, pfn, 1UL << order);
- 		break;
- 	}
--	spin_unlock_irqrestore(&dm_device.ha_lock, flags);
- }
- 
- static int pfn_covered(unsigned long start_pfn, unsigned long pfn_cnt)
-@@ -803,9 +802,8 @@ static int pfn_covered(unsigned long start_pfn, unsigned long pfn_cnt)
- 	struct hv_hotadd_gap *gap;
- 	unsigned long residual, new_inc;
- 	int ret = 0;
--	unsigned long flags;
- 
--	spin_lock_irqsave(&dm_device.ha_lock, flags);
-+	guard(spinlock_irqsave)(&dm_device.ha_lock);
- 	list_for_each_entry(has, &dm_device.ha_region_list, list) {
- 		/*
- 		 * If the pfn range we are dealing with is not in the current
-@@ -852,7 +850,6 @@ static int pfn_covered(unsigned long start_pfn, unsigned long pfn_cnt)
- 		ret = 1;
- 		break;
- 	}
--	spin_unlock_irqrestore(&dm_device.ha_lock, flags);
- 
- 	return ret;
- }
-@@ -947,7 +944,6 @@ static unsigned long process_hot_add(unsigned long pg_start,
- {
- 	struct hv_hotadd_state *ha_region = NULL;
- 	int covered;
--	unsigned long flags;
- 
- 	if (pfn_cnt == 0)
- 		return 0;
-@@ -979,9 +975,9 @@ static unsigned long process_hot_add(unsigned long pg_start,
- 		ha_region->covered_end_pfn = pg_start;
- 		ha_region->end_pfn = rg_start + rg_size;
- 
--		spin_lock_irqsave(&dm_device.ha_lock, flags);
--		list_add_tail(&ha_region->list, &dm_device.ha_region_list);
--		spin_unlock_irqrestore(&dm_device.ha_lock, flags);
-+		scoped_guard(spinlock_irqsave, &dm_device.ha_lock) {
-+			list_add_tail(&ha_region->list, &dm_device.ha_region_list);
-+		}
- 	}
- 
- do_pg_range:
-@@ -2047,7 +2043,6 @@ static void balloon_remove(struct hv_device *dev)
- 	struct hv_dynmem_device *dm = hv_get_drvdata(dev);
- 	struct hv_hotadd_state *has, *tmp;
- 	struct hv_hotadd_gap *gap, *tmp_gap;
--	unsigned long flags;
- 
- 	if (dm->num_pages_ballooned != 0)
- 		pr_warn("Ballooned pages: %d\n", dm->num_pages_ballooned);
-@@ -2073,7 +2068,7 @@ static void balloon_remove(struct hv_device *dev)
- #endif
- 	}
- 
--	spin_lock_irqsave(&dm_device.ha_lock, flags);
-+	guard(spinlock_irqsave)(&dm_device.ha_lock);
- 	list_for_each_entry_safe(has, tmp, &dm->ha_region_list, list) {
- 		list_for_each_entry_safe(gap, tmp_gap, &has->gap_list, list) {
- 			list_del(&gap->list);
-@@ -2082,7 +2077,6 @@ static void balloon_remove(struct hv_device *dev)
- 		list_del(&has->list);
- 		kfree(has);
- 	}
--	spin_unlock_irqrestore(&dm_device.ha_lock, flags);
- }
- 
- static int balloon_suspend(struct hv_device *hv_dev)
-
----
-base-commit: 3f01e9fed8454dcd89727016c3e5b2fbb8f8e50c
-change-id: 20230725-master-bbcd9205758b
+base-commit: cfcc8a4d13c26793ecab2d8da9274eb98b8cb4ce
+change-id: 20230726-master-next-6e7259b27541
 
 Best regards,
 -- 
-Mitchell Levy <levymitchell0@gmail.com>
+Jon Mason <jon.mason@arm.com>
 
