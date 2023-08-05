@@ -1,54 +1,48 @@
 From: Xilin Wu <wuxilin123@gmail.com>
-Date: Sat, 05 Aug 2023 19:23:35 +0800
-Subject: [PATCH] media: rc: ir-spi: Correct regulator name
+Subject: [PATCH 0/3] Add initial support for Xiaomi Mi 11 Ultra
+Date: Sun, 06 Aug 2023 01:03:09 +0800
+Message-Id: <20230806-xiaomi-star-v1-0-0c384e8b5737@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230805-ir-spi-v1-1-33af4a556139@gmail.com>
-X-B4-Tracking: v=1; b=H4sIADYxzmQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI2MDCwNT3cwi3eKCTF1jE3PjZNM0IGVmogRUXFCUmpZZATYoOra2FgDzgm5
- UWAAAAA==
-To: Sean Young <sean@mess.org>, Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAM2AzmQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2MDCwMz3YrMxPzcTN3iksQi3VRT4xQLs0TjJFPLVCWgjoKi1LTMCrBp0bG
+ 1tQDLOwb7XQAAAA==
+To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kees Cook <keescook@chromium.org>, 
+ Tony Luck <tony.luck@intel.com>, 
+ "Guilherme G. Piccoli" <gpiccoli@igalia.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-hardening@vger.kernel.org, 
  Xilin Wu <wuxilin123@gmail.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1691234622; l=927;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1691254992; l=698;
  i=wuxilin123@gmail.com; s=20230805; h=from:subject:message-id;
- bh=+DkvKMI3r/F0yMEERA2wc0VwRO9F51Sgxxn9bTGF1zY=;
- b=BbC1D3biwOPvuRARvE7eVazY2c5pGzMwarU0ZE2bB7HXUn7mFqo97HHVYSIm9uvGwABB96jB0
- fQXhqbBV//pAH72/mrgujnR0wnvxKgz/IUkxTRTEQcJh2bElZBiXX6U
+ bh=h5eU9XX1o4OOf6S1Raai5CwCugmHSOAJ95Q+DWakPuw=;
+ b=OQntiV/U7W7Rd3Y6oKVtP7h9tiC8jZyOIZJXVbI7q66nLcgekYC8dPLbkpz3+elHdgC+e5Emt
+ e05ygSe7qp7B1fzegauog7IlNEUxEgdJd564vM4/+wSoYzNbAfBcMbO
 X-Developer-Key: i=wuxilin123@gmail.com; a=ed25519;
  pk=OZIrHT2qWm7yEdp5fsVR7GsFx1wxciIii20H06Ud088=
 X-Endpoint-Received: by B4 Relay for wuxilin123@gmail.com/20230805 with auth_id=73
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver wrongly assumes regulator is called "irda_regulator"
-instead of "power".
-
-Change it to "power" to match device tree binding.
-
 Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
 ---
- drivers/media/rc/ir-spi.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Xilin Wu (3):
+      soc: qcom: pmic_glink: enable UCSI for SM8350
+      dt-bindings: arm: qcom: Add Xiaomi Mi 11 Ultra
+      arm64: dts: qcom: Add device tree for Xiaomi Mi 11 Ultra
 
-diff --git a/drivers/media/rc/ir-spi.c b/drivers/media/rc/ir-spi.c
-index bbc81bed4f90..a447bb36100d 100644
---- a/drivers/media/rc/ir-spi.c
-+++ b/drivers/media/rc/ir-spi.c
-@@ -119,7 +119,7 @@ static int ir_spi_probe(struct spi_device *spi)
- 	if (!idata)
- 		return -ENOMEM;
- 
--	idata->regulator = devm_regulator_get(&spi->dev, "irda_regulator");
-+	idata->regulator = devm_regulator_get(&spi->dev, "power");
- 	if (IS_ERR(idata->regulator))
- 		return PTR_ERR(idata->regulator);
- 
-
+ Documentation/devicetree/bindings/arm/qcom.yaml |    1 +
+ arch/arm64/boot/dts/qcom/Makefile               |    1 +
+ arch/arm64/boot/dts/qcom/sm8350-xiaomi-star.dts | 1251 +++++++++++++++++++++++
+ drivers/soc/qcom/pmic_glink.c                   |    1 +
+ 4 files changed, 1254 insertions(+)
 ---
-base-commit: 024ff300db33968c133435a146d51ac22db27374
-change-id: 20230805-ir-spi-3473c5f34764
+base-commit: d2aae0f5a3d5af50b13b13cb452745cd0428ce5e
+change-id: 20230806-xiaomi-star-e53d86a3b59e
 
 Best regards,
 -- 
