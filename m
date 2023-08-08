@@ -1,48 +1,50 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Subject: [PATCH 0/5] clk: A few bugfixes/enhancements for CCF
-Date: Wed, 09 Aug 2023 00:37:40 +0800
-Message-Id: <20230809-clk-fix-v1-0-808dbae54e5e@outlook.com>
+Date: Wed, 09 Aug 2023 00:37:41 +0800
+Subject: [PATCH 1/5] clk: export clk_register_mux_table()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFRv0mQC/x3NQQqDMBCF4avIrDuQKJLoVaSLGEcdbKPMlCKId
- ze6/HkfvAOUhEmhLQ4Q+rPymnLYVwFxDmki5CE3lKasjDcO42fBkXe0jnxTj67x1kHWfVDCXkK
- K8+2/QX8k97AJZf9cdO/zvACsD0ubcgAAAA==
+Message-Id: <20230809-clk-fix-v1-1-808dbae54e5e@outlook.com>
+References: <20230809-clk-fix-v1-0-808dbae54e5e@outlook.com>
+In-Reply-To: <20230809-clk-fix-v1-0-808dbae54e5e@outlook.com>
 To: Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>
 Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1691512665; l=867;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1691512665; l=922;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=HRI1qmWbSnnmrsMMWS7kDsrErXlHhOstH6hcX+XwmEQ=;
- b=KNGs2dHV3AFnhL218imdK1SWCB6CJ4ikwGxpE9oWL1qaU3+wUsgb3JijA/b676i9T7Bju2jj9
- ea1pCVWA4ncAdNzUPew75dwjAZzI92ZXsvcgRZj9lbow4Jy92oxLLJ0
+ bh=rrxWAZujevzzupl/nb4QWkR3QDVpqMIWdYkkWfQ6VWg=;
+ b=xCqwBId7SrHCA32MAgYKdi54m6fOXBv+KmwMPP86TJ0uz4Nx7DgRqwtdS4fQER+I8kMUNzQMG
+ iAIbX3ya/DNA/I3ogsGpZ3uKUN2ZQLUUSyamIvs+7ZMHTudHG9c7fDr
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-They are found during my development for HiSilicon clock driver. Details
-are in commit logs.
+It's already implemented in clk-mux.c, export it in the header file.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Yang Xiwen (5):
-      clk: export clk_register_mux_table()
-      clk: call log_debug() instead to avoid console log printing
-      clk: also handle ENOENT in *_optional functions
-      clk: promote clk_dev_ops to linux/clk-provider.h
-      clk: ccf: call clock provided ops directly for endisable()
+ include/linux/clk-provider.h | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
- drivers/clk/clk-uclass.c     |  5 -----
- drivers/clk/clk.c            | 16 +++++++++++++---
- include/clk.h                |  8 +++++---
- include/linux/clk-provider.h | 11 +++++++++++
- 4 files changed, 29 insertions(+), 11 deletions(-)
----
-base-commit: 580eb31199be8a822e62f20965854a242f895d03
-change-id: 20230807-clk-fix-17e895f79817
+diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
+index b8acacd49e..801404480b 100644
+--- a/include/linux/clk-provider.h
++++ b/include/linux/clk-provider.h
+@@ -247,6 +247,12 @@ struct clk *clk_register_mux(struct device *dev, const char *name,
+ 		void __iomem *reg, u8 shift, u8 width,
+ 		u8 clk_mux_flags);
+ 
++struct clk *clk_register_mux_table(struct device *dev, const char *name,
++				   const char * const *parent_names, u8 num_parents,
++				   unsigned long flags,
++				   void __iomem *reg, u8 shift, u32 mask,
++				   u8 clk_mux_flags, u32 *table);
++
+ struct clk *clk_register_fixed_rate(struct device *dev, const char *name,
+ 				    ulong rate);
+ 
 
-Best regards,
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+2.34.1
 
