@@ -1,258 +1,48 @@
-From: Mitchell Levy <levymitchell0@gmail.com>
-Date: Mon, 07 Aug 2023 23:55:47 +0000
-Subject: [PATCH v2] hv_balloon: Update the balloon driver to use the SBRM
- API
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH 0/5] clk: A few bugfixes/enhancements for CCF
+Date: Wed, 09 Aug 2023 00:37:40 +0800
+Message-Id: <20230809-clk-fix-v1-0-808dbae54e5e@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230807-sbrm-hyperv-v2-1-9d2ac15305bd@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAIKE0WQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
- vPSU3UzU4B8JSMDI2MDCwNz3eKkolzdjMqC1KIy3TQzQwNjwzRDS5O0FCWgjoKi1LTMCrBp0bG
- 1tQB9jYGqXQAAAA==
-To: "K. Y. Srinivasan" <kys@microsoft.com>, 
- Haiyang Zhang <haiyangz@microsoft.com>, Wei Liu <wei.liu@kernel.org>, 
- Dexuan Cui <decui@microsoft.com>
-Cc: linux-hyperv@vger.kernel.org, linux-kernel@vger.kernel.org, 
- mikelley@microsoft.com, peterz@infradead.org, 
- Boqun Feng <boqun.feng@gmail.com>, 
- "Mitchell Levy (Microsoft)" <levymitchell0@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAFRv0mQC/x3NQQqDMBCF4avIrDuQKJLoVaSLGEcdbKPMlCKId
+ ze6/HkfvAOUhEmhLQ4Q+rPymnLYVwFxDmki5CE3lKasjDcO42fBkXe0jnxTj67x1kHWfVDCXkK
+ K8+2/QX8k97AJZf9cdO/zvACsD0ubcgAAAA==
+To: Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1691452566; l=7813;
- i=levymitchell0@gmail.com; s=20230725; h=from:subject:message-id;
- bh=qH667BeI+YacELlrdyYKeSaj+DTDq6h6BdMkt//SEmI=;
- b=Fs3VVour8GZIOKMwjFGRXC6gps6Wl3IttieNphHdnaElyQ2U6hptqgNrftOHk6HApzo5w2bpv
- Bq3PBltGMFrDGASv2ZZiWtRpKlz7MRyGtsIcdAmWCE23anBl5ofMITJ
-X-Developer-Key: i=levymitchell0@gmail.com; a=ed25519;
- pk=o3BLKQtTK7QMnUiW3/7p5JcITesvc3qL/w+Tz19oYeE=
-X-Endpoint-Received: by B4 Relay for levymitchell0@gmail.com/20230725 with auth_id=69
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1691512665; l=867;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=HRI1qmWbSnnmrsMMWS7kDsrErXlHhOstH6hcX+XwmEQ=;
+ b=KNGs2dHV3AFnhL218imdK1SWCB6CJ4ikwGxpE9oWL1qaU3+wUsgb3JijA/b676i9T7Bju2jj9
+ ea1pCVWA4ncAdNzUPew75dwjAZzI92ZXsvcgRZj9lbow4Jy92oxLLJ0
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch is intended as a proof-of-concept for the new SBRM
-machinery[1]. For some brief background, the idea behind SBRM is using
-the __cleanup__ attribute to automatically unlock locks (or otherwise
-release resources) when they go out of scope, similar to C++ style RAII.
-This promises some benefits such as making code simpler (particularly
-where you have lots of goto fail; type constructs) as well as reducing
-the surface area for certain kinds of bugs.
+They are found during my development for HiSilicon clock driver. Details
+are in commit logs.
 
-The changes in this patch should not result in any difference in how the
-code actually runs (i.e., it's purely an exercise in this new syntax
-sugar). In one instance SBRM was not appropriate, so I left that part
-alone, but all other locking/unlocking is handled automatically in this
-patch.
-
-[1] https://lore.kernel.org/all/20230626125726.GU4253@hirez.programming.kicks-ass.net/
-
-Suggested-by: Boqun Feng <boqun.feng@gmail.com>
-Signed-off-by: "Mitchell Levy (Microsoft)" <levymitchell0@gmail.com>
-Reviewed-by: Boqun Feng <boqun.feng@gmail.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Changes from v1 to v2:
-- Fixed some formatting errors
----
- drivers/hv/hv_balloon.c | 82 +++++++++++++++++++++++--------------------------
- 1 file changed, 38 insertions(+), 44 deletions(-)
+Yang Xiwen (5):
+      clk: export clk_register_mux_table()
+      clk: call log_debug() instead to avoid console log printing
+      clk: also handle ENOENT in *_optional functions
+      clk: promote clk_dev_ops to linux/clk-provider.h
+      clk: ccf: call clock provided ops directly for endisable()
 
-diff --git a/drivers/hv/hv_balloon.c b/drivers/hv/hv_balloon.c
-index 0d7a3ba66396..e000fa3b9f97 100644
---- a/drivers/hv/hv_balloon.c
-+++ b/drivers/hv/hv_balloon.c
-@@ -8,6 +8,7 @@
- 
- #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
- 
-+#include <linux/cleanup.h>
- #include <linux/kernel.h>
- #include <linux/jiffies.h>
- #include <linux/mman.h>
-@@ -646,7 +647,7 @@ static int hv_memory_notifier(struct notifier_block *nb, unsigned long val,
- 			      void *v)
- {
- 	struct memory_notify *mem = (struct memory_notify *)v;
--	unsigned long flags, pfn_count;
-+	unsigned long pfn_count;
- 
- 	switch (val) {
- 	case MEM_ONLINE:
-@@ -655,21 +656,22 @@ static int hv_memory_notifier(struct notifier_block *nb, unsigned long val,
- 		break;
- 
- 	case MEM_OFFLINE:
--		spin_lock_irqsave(&dm_device.ha_lock, flags);
--		pfn_count = hv_page_offline_check(mem->start_pfn,
--						  mem->nr_pages);
--		if (pfn_count <= dm_device.num_pages_onlined) {
--			dm_device.num_pages_onlined -= pfn_count;
--		} else {
--			/*
--			 * We're offlining more pages than we managed to online.
--			 * This is unexpected. In any case don't let
--			 * num_pages_onlined wrap around zero.
--			 */
--			WARN_ON_ONCE(1);
--			dm_device.num_pages_onlined = 0;
-+		scoped_guard(spinlock_irqsave, &dm_device.ha_lock) {
-+			pfn_count = hv_page_offline_check(mem->start_pfn,
-+							  mem->nr_pages);
-+			if (pfn_count <= dm_device.num_pages_onlined) {
-+				dm_device.num_pages_onlined -= pfn_count;
-+			} else {
-+				/*
-+				 * We're offlining more pages than we
-+				 * managed to online. This is
-+				 * unexpected. In any case don't let
-+				 * num_pages_onlined wrap around zero.
-+				 */
-+				WARN_ON_ONCE(1);
-+				dm_device.num_pages_onlined = 0;
-+			}
- 		}
--		spin_unlock_irqrestore(&dm_device.ha_lock, flags);
- 		break;
- 	case MEM_GOING_ONLINE:
- 	case MEM_GOING_OFFLINE:
-@@ -721,24 +723,23 @@ static void hv_mem_hot_add(unsigned long start, unsigned long size,
- 	unsigned long start_pfn;
- 	unsigned long processed_pfn;
- 	unsigned long total_pfn = pfn_count;
--	unsigned long flags;
- 
- 	for (i = 0; i < (size/HA_CHUNK); i++) {
- 		start_pfn = start + (i * HA_CHUNK);
- 
--		spin_lock_irqsave(&dm_device.ha_lock, flags);
--		has->ha_end_pfn +=  HA_CHUNK;
-+		scoped_guard(spinlock_irqsave, &dm_device.ha_lock) {
-+			has->ha_end_pfn +=  HA_CHUNK;
- 
--		if (total_pfn > HA_CHUNK) {
--			processed_pfn = HA_CHUNK;
--			total_pfn -= HA_CHUNK;
--		} else {
--			processed_pfn = total_pfn;
--			total_pfn = 0;
--		}
-+			if (total_pfn > HA_CHUNK) {
-+				processed_pfn = HA_CHUNK;
-+				total_pfn -= HA_CHUNK;
-+			} else {
-+				processed_pfn = total_pfn;
-+				total_pfn = 0;
-+			}
- 
--		has->covered_end_pfn +=  processed_pfn;
--		spin_unlock_irqrestore(&dm_device.ha_lock, flags);
-+			has->covered_end_pfn +=  processed_pfn;
-+		}
- 
- 		reinit_completion(&dm_device.ol_waitevent);
- 
-@@ -758,10 +759,10 @@ static void hv_mem_hot_add(unsigned long start, unsigned long size,
- 				 */
- 				do_hot_add = false;
- 			}
--			spin_lock_irqsave(&dm_device.ha_lock, flags);
--			has->ha_end_pfn -= HA_CHUNK;
--			has->covered_end_pfn -=  processed_pfn;
--			spin_unlock_irqrestore(&dm_device.ha_lock, flags);
-+			scoped_guard(spinlock_irqsave, &dm_device.ha_lock) {
-+				has->ha_end_pfn -= HA_CHUNK;
-+				has->covered_end_pfn -=  processed_pfn;
-+			}
- 			break;
- 		}
- 
-@@ -781,10 +782,9 @@ static void hv_mem_hot_add(unsigned long start, unsigned long size,
- static void hv_online_page(struct page *pg, unsigned int order)
- {
- 	struct hv_hotadd_state *has;
--	unsigned long flags;
- 	unsigned long pfn = page_to_pfn(pg);
- 
--	spin_lock_irqsave(&dm_device.ha_lock, flags);
-+	guard(spinlock_irqsave)(&dm_device.ha_lock);
- 	list_for_each_entry(has, &dm_device.ha_region_list, list) {
- 		/* The page belongs to a different HAS. */
- 		if ((pfn < has->start_pfn) ||
-@@ -794,7 +794,6 @@ static void hv_online_page(struct page *pg, unsigned int order)
- 		hv_bring_pgs_online(has, pfn, 1UL << order);
- 		break;
- 	}
--	spin_unlock_irqrestore(&dm_device.ha_lock, flags);
- }
- 
- static int pfn_covered(unsigned long start_pfn, unsigned long pfn_cnt)
-@@ -803,9 +802,8 @@ static int pfn_covered(unsigned long start_pfn, unsigned long pfn_cnt)
- 	struct hv_hotadd_gap *gap;
- 	unsigned long residual, new_inc;
- 	int ret = 0;
--	unsigned long flags;
- 
--	spin_lock_irqsave(&dm_device.ha_lock, flags);
-+	guard(spinlock_irqsave)(&dm_device.ha_lock);
- 	list_for_each_entry(has, &dm_device.ha_region_list, list) {
- 		/*
- 		 * If the pfn range we are dealing with is not in the current
-@@ -852,7 +850,6 @@ static int pfn_covered(unsigned long start_pfn, unsigned long pfn_cnt)
- 		ret = 1;
- 		break;
- 	}
--	spin_unlock_irqrestore(&dm_device.ha_lock, flags);
- 
- 	return ret;
- }
-@@ -947,7 +944,6 @@ static unsigned long process_hot_add(unsigned long pg_start,
- {
- 	struct hv_hotadd_state *ha_region = NULL;
- 	int covered;
--	unsigned long flags;
- 
- 	if (pfn_cnt == 0)
- 		return 0;
-@@ -979,9 +975,9 @@ static unsigned long process_hot_add(unsigned long pg_start,
- 		ha_region->covered_end_pfn = pg_start;
- 		ha_region->end_pfn = rg_start + rg_size;
- 
--		spin_lock_irqsave(&dm_device.ha_lock, flags);
--		list_add_tail(&ha_region->list, &dm_device.ha_region_list);
--		spin_unlock_irqrestore(&dm_device.ha_lock, flags);
-+		scoped_guard(spinlock_irqsave, &dm_device.ha_lock) {
-+			list_add_tail(&ha_region->list, &dm_device.ha_region_list);
-+		}
- 	}
- 
- do_pg_range:
-@@ -2047,7 +2043,6 @@ static void balloon_remove(struct hv_device *dev)
- 	struct hv_dynmem_device *dm = hv_get_drvdata(dev);
- 	struct hv_hotadd_state *has, *tmp;
- 	struct hv_hotadd_gap *gap, *tmp_gap;
--	unsigned long flags;
- 
- 	if (dm->num_pages_ballooned != 0)
- 		pr_warn("Ballooned pages: %d\n", dm->num_pages_ballooned);
-@@ -2073,7 +2068,7 @@ static void balloon_remove(struct hv_device *dev)
- #endif
- 	}
- 
--	spin_lock_irqsave(&dm_device.ha_lock, flags);
-+	guard(spinlock_irqsave)(&dm_device.ha_lock);
- 	list_for_each_entry_safe(has, tmp, &dm->ha_region_list, list) {
- 		list_for_each_entry_safe(gap, tmp_gap, &has->gap_list, list) {
- 			list_del(&gap->list);
-@@ -2082,7 +2077,6 @@ static void balloon_remove(struct hv_device *dev)
- 		list_del(&has->list);
- 		kfree(has);
- 	}
--	spin_unlock_irqrestore(&dm_device.ha_lock, flags);
- }
- 
- static int balloon_suspend(struct hv_device *hv_dev)
-
+ drivers/clk/clk-uclass.c     |  5 -----
+ drivers/clk/clk.c            | 16 +++++++++++++---
+ include/clk.h                |  8 +++++---
+ include/linux/clk-provider.h | 11 +++++++++++
+ 4 files changed, 29 insertions(+), 11 deletions(-)
 ---
-base-commit: 14f9643dc90adea074a0ffb7a17d337eafc6a5cc
-change-id: 20230807-sbrm-hyperv-f61031f194fd
+base-commit: 580eb31199be8a822e62f20965854a242f895d03
+change-id: 20230807-clk-fix-17e895f79817
 
 Best regards,
 -- 
-Mitchell Levy <levymitchell0@gmail.com>
+Yang Xiwen <forbidden405@outlook.com>
 
