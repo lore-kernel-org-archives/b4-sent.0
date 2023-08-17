@@ -1,193 +1,45 @@
-From: Yang Xiwen <forbidden405@outlook.com>
-Date: Mon, 14 Aug 2023 01:47:32 +0800
-Subject: [PATCH v2 2/2] net: add hifemac_mdio MDIO bus driver for HiSilicon
- platform
+From: Nathan Lynch <nathanl@linux.ibm.com>
+Subject: [PATCH 0/2] powerpc/selftests: miscellaneous improvements
+Date: Thu, 17 Aug 2023 11:21:51 -0500
+Message-Id: <20230817-powerpc-selftest-misc-v1-0-a84cc1ef78b2@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230814-wip-hisi_femac-trunk-v2-2-1e29f400585d@outlook.com>
-References: <20230814-wip-hisi_femac-trunk-v2-0-1e29f400585d@outlook.com>
-In-Reply-To: <20230814-wip-hisi_femac-trunk-v2-0-1e29f400585d@outlook.com>
-To: Joe Hershberger <joe.hershberger@ni.com>, 
- Ramon Fried <rfried.dev@gmail.com>
-Cc: Yisen Zhuang <yisen.zhuang@huawei.com>, 
- Salil Mehta <salil.mehta@huawei.com>, David Yang <mmyangfl@gmail.com>, 
- u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAB9J3mQC/x3MywqDMBBG4VeRWTvgJFjFVxEXJf7aAS8hI21Bf
+ HeDy29xzkmGpDDqipMSvmq6bxlSFhQ+720G65hNrnK+aqXhuP+QYmDDMh2wg1e1wOLCS6T28K6
+ l3MaESf/Ptx+u6wZU2UJ7ZwAAAA==
+To: Michael Ellerman <mpe@ellerman.id.au>, 
+ Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>
+Cc: linuxppc-dev@lists.ozlabs.org, Nathan Lynch <nathanl@linux.ibm.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1691948851; l=4568;
- i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=4syExiz9un8re9MThVdbJUfNlN8n7QxQCeyhvkwV2UM=;
- b=iS84mYzHgK8KdZyqSxfM9rUzXeu+o6dLrBPU6f9neM+kzq7rn8+ZHJ7ksrK7Y1aQoU+iSBGB3
- 6FLy++d8nCcCa6iBO39R7VI9XlUl7Pi7br7OARDaGUiaOMdp3SRUdV7
-X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
- pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
-X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1692289329; l=717;
+ i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
+ bh=GfQHMVoWl2gmXXD4EiVWjePpkzCiMUIeoepITvP2O/o=;
+ b=ioBzEPeDFokNnzBxp8fwEZpjvmrfYyX/OiLkqgG6cFDboxG3YcrWtViYTzzGBal9TfmnstUmn
+ 5fRke7ZM/oaAaWqk2q2ozOkvo9DUKn6GzY9O+Cl4PTQK+AEeZI4aKCW
+X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
+ pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
+X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It adds the driver for the internal MDIO bus of HIFEMAC Ethernet
-controller.  It's based on the mainstream linux driver.
+Just some minor things to tidy up I noticed when adding tests.
 
-Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/net/Kconfig        |   8 ++++
- drivers/net/Makefile       |   1 +
- drivers/net/hifemac_mdio.c | 116 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 125 insertions(+)
+Nathan Lynch (2):
+      powerpc/selftests: sort mm/.gitignore, add exec_prot
+      selftests/powerpc: add const qualification where possible
 
-diff --git a/drivers/net/Kconfig b/drivers/net/Kconfig
-index bc1d6e3905..5c5bfb1263 100644
---- a/drivers/net/Kconfig
-+++ b/drivers/net/Kconfig
-@@ -895,6 +895,14 @@ config HIFEMAC_ETH
- 	  This driver supports HIFEMAC Ethernet controller found on
- 	  HiSilicon SoCs.
- 
-+config HIFEMAC_MDIO
-+	bool "HiSilicon Fast Ethernet Controller MDIO interface"
-+	depends on DM_MDIO
-+	select DM_CLK
-+	help
-+	  This driver supports the internal MDIO interface of HIFEMAC
-+	  Ethernet controller.
-+
- config HIGMACV300_ETH
- 	bool "HiSilicon Gigabit Ethernet Controller"
- 	select DM_RESET
-diff --git a/drivers/net/Makefile b/drivers/net/Makefile
-index de6bf1d014..b2d3da6934 100644
---- a/drivers/net/Makefile
-+++ b/drivers/net/Makefile
-@@ -46,6 +46,7 @@ obj-$(CONFIG_FTGMAC100) += ftgmac100.o
- obj-$(CONFIG_FTMAC100) += ftmac100.o
- obj-$(CONFIG_GMAC_ROCKCHIP) += gmac_rockchip.o
- obj-$(CONFIG_HIFEMAC_ETH) += hifemac.o
-+obj-$(CONFIG_HIFEMAC_MDIO) += hifemac_mdio.o
- obj-$(CONFIG_HIGMACV300_ETH) += higmacv300.o
- obj-$(CONFIG_KS8851_MLL) += ks8851_mll.o
- obj-$(CONFIG_KSZ9477) += ksz9477.o
-diff --git a/drivers/net/hifemac_mdio.c b/drivers/net/hifemac_mdio.c
-new file mode 100644
-index 0000000000..343c5f3a38
---- /dev/null
-+++ b/drivers/net/hifemac_mdio.c
-@@ -0,0 +1,116 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * Hisilicon Fast Ethernet MDIO Bus Driver
-+ *
-+ * Copyright (c) 2016 HiSilicon Technologies Co., Ltd.
-+ */
-+
-+#include <dm.h>
-+#include <clk.h>
-+#include <miiphy.h>
-+#include <linux/io.h>
-+#include <linux/iopoll.h>
-+
-+#define MDIO_RWCTRL		0x00
-+#define MDIO_RO_DATA		0x04
-+#define MDIO_WRITE		BIT(13)
-+#define MDIO_RW_FINISH		BIT(15)
-+#define BIT_PHY_ADDR_OFFSET	8
-+#define BIT_WR_DATA_OFFSET	16
-+
-+struct hisi_femac_mdio_data {
-+	struct clk *clk;
-+	void __iomem *membase;
-+};
-+
-+static int hisi_femac_mdio_wait_ready(struct hisi_femac_mdio_data *data)
-+{
-+	u32 val;
-+
-+	return readl_poll_timeout(data->membase + MDIO_RWCTRL,
-+				  val, val & MDIO_RW_FINISH, 10000);
-+}
-+
-+static int hisi_femac_mdio_read(struct udevice *dev, int addr, int devad, int reg)
-+{
-+	struct hisi_femac_mdio_data *data = dev_get_priv(dev);
-+	int ret;
-+
-+	ret = hisi_femac_mdio_wait_ready(data);
-+	if (ret)
-+		return ret;
-+
-+	writel((addr << BIT_PHY_ADDR_OFFSET) | reg,
-+	       data->membase + MDIO_RWCTRL);
-+
-+	ret = hisi_femac_mdio_wait_ready(data);
-+	if (ret)
-+		return ret;
-+
-+	return readl(data->membase + MDIO_RO_DATA) & 0xFFFF;
-+}
-+
-+static int hisi_femac_mdio_write(struct udevice *dev, int addr, int devad, int reg, u16 val)
-+{
-+	struct hisi_femac_mdio_data *data = dev_get_priv(dev);
-+	int ret;
-+
-+	ret = hisi_femac_mdio_wait_ready(data);
-+	if (ret)
-+		return ret;
-+
-+	writel(MDIO_WRITE | (val << BIT_WR_DATA_OFFSET) |
-+	       (addr << BIT_PHY_ADDR_OFFSET) | reg,
-+	       data->membase + MDIO_RWCTRL);
-+
-+	return hisi_femac_mdio_wait_ready(data);
-+}
-+
-+static int hisi_femac_mdio_of_to_plat(struct udevice *dev)
-+{
-+	struct hisi_femac_mdio_data *data = dev_get_priv(dev);
-+	int ret;
-+
-+	data->membase = dev_remap_addr(dev);
-+	if (IS_ERR(data->membase)) {
-+		ret = PTR_ERR(data->membase);
-+		return log_msg_ret("Failed to remap base addr", ret);
-+	}
-+
-+	// clk is optional
-+	data->clk = devm_clk_get_optional(dev, NULL);
-+
-+	return 0;
-+}
-+
-+static int hisi_femac_mdio_probe(struct udevice *dev)
-+{
-+	struct hisi_femac_mdio_data *data = dev_get_priv(dev);
-+	int ret;
-+
-+	ret = clk_prepare_enable(data->clk);
-+	if (ret)
-+		return log_msg_ret("Failed to enable clk", ret);
-+
-+	return 0;
-+}
-+
-+static const struct mdio_ops hisi_femac_mdio_ops = {
-+	.read = hisi_femac_mdio_read,
-+	.write = hisi_femac_mdio_write,
-+};
-+
-+static const struct udevice_id hisi_femac_mdio_dt_ids[] = {
-+	{ .compatible = "hisilicon,hisi-femac-mdio" },
-+	{ }
-+};
-+
-+U_BOOT_DRIVER(hisi_femac_mdio_driver) = {
-+	.name = "hisi-femac-mdio",
-+	.id = UCLASS_MDIO,
-+	.of_match = hisi_femac_mdio_dt_ids,
-+	.of_to_plat = hisi_femac_mdio_of_to_plat,
-+	.probe = hisi_femac_mdio_probe,
-+	.ops = &hisi_femac_mdio_ops,
-+	.priv_auto = sizeof(struct hisi_femac_mdio_data),
-+};
+ tools/testing/selftests/powerpc/harness.c         |  4 ++--
+ tools/testing/selftests/powerpc/include/subunit.h | 16 ++++++++--------
+ tools/testing/selftests/powerpc/include/utils.h   |  2 +-
+ tools/testing/selftests/powerpc/mm/.gitignore     | 17 +++++++++--------
+ 4 files changed, 20 insertions(+), 19 deletions(-)
+---
+base-commit: 4f894fe22343138f0dc0ce18b49abfa45cdfeb6b
+change-id: 20230817-powerpc-selftest-misc-12c61153e328
 
+Best regards,
 -- 
-2.34.1
+Nathan Lynch <nathanl@linux.ibm.com>
 
