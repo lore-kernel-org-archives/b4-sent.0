@@ -1,193 +1,102 @@
-From: Yang Xiwen <forbidden405@outlook.com>
-Date: Wed, 23 Aug 2023 01:03:43 +0800
-Subject: [PATCH RESEND v2 2/2] net: add hifemac_mdio MDIO bus driver for
- HiSilicon platform
+From: Nathan Lynch <nathanl@linux.ibm.com>
+Subject: [PATCH RFC 0/2] powerpc/pseries: new character devices for RTAS
+ functions
+Date: Tue, 22 Aug 2023 16:33:38 -0500
+Message-Id: <20230822-papr-sys_rtas-vs-lockdown-v1-0-932623cf3c7b@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230823-wip-hisi_femac-trunk-v2-2-f64c28dc9b95@outlook.com>
-References: <20230823-wip-hisi_femac-trunk-v2-0-f64c28dc9b95@outlook.com>
-In-Reply-To: <20230823-wip-hisi_femac-trunk-v2-0-f64c28dc9b95@outlook.com>
-To: Joe Hershberger <joe.hershberger@ni.com>, 
- Ramon Fried <rfried.dev@gmail.com>
-Cc: Yisen Zhuang <yisen.zhuang@huawei.com>, 
- Salil Mehta <salil.mehta@huawei.com>, David Yang <mmyangfl@gmail.com>, 
- u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+X-B4-Tracking: v=1; b=H4sIALIp5WQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2MDC0Nz3YLEgiLd4sri+KKSxGLdsmLdnPzk7JT88jxd02RTE1MD05Qkc0s
+ jJaD+gqLUtMwKsNnRSkFuzkqxtbUAE+q8h3AAAAA=
+To: Michael Ellerman <mpe@ellerman.id.au>, 
+ Nicholas Piggin <npiggin@gmail.com>, 
+ =?utf-8?q?Michal_Such=C3=A1nek?= <msuchanek@suse.de>
+Cc: linuxppc-dev@lists.ozlabs.org, tyreld@linux.ibm.com, 
+ gcwilson@linux.ibm.com, Nathan Lynch <nathanl@linux.ibm.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1692723823; l=4568;
- i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=4syExiz9un8re9MThVdbJUfNlN8n7QxQCeyhvkwV2UM=;
- b=FUZx5n1DWdO9/6SKxVJ1pGRTcWBcXqyxjD5ynQBAI4xG9pRIKmS2XGYrTiUNLttU9EWCh8zKk
- MF3HYB73b4wBE0v7ZFiZLUF23Z7xtITL1a/Ch9hnMf/QZVCEq0un2XF
-X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
- pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
-X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1692740044; l=2907;
+ i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
+ bh=z9fzCwu05p/kJat1VErjewoOFwejlqxL+Y9vVVA5YfE=;
+ b=tbEDW3JN5f4jc5uhfkxn/pJjIwxbrWp0AnlI1Rn2WpSx8JKa/TFRAhPWQlr/3QzlYVb4lDWQ2
+ 7JLUF54mu9tABjKxRciHESjLtpbuk1GQB87ghoeTt3sTDqMbM6DSefl
+X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
+ pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
+X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It adds the driver for the internal MDIO bus of HIFEMAC Ethernet
-controller.  It's based on the mainstream linux driver.
+This is a proposal for adding chardev-based access to a select subset
+of RTAS functions on the pseries platform.
 
-Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
+The problem: important platform features are enabled on Linux VMs
+through the powerpc-specific rtas() syscall in combination with
+writeable mappings of /dev/mem. In typical usage, this is encapsulated
+behind APIs provided by the librtas library. This paradigm is
+incompatible with lockdown, which prohibits /dev/mem access.
+
+The solution I'm working on is to add a small pseries-specific
+"driver" for each functional area, exposing the relevant features to
+user space in ways that are compatible with lockdown. In most of these
+areas, I believe it's possible to change librtas to prefer the new
+chardev interfaces without disrupting existing users.
+
+I've broken down the affected functions into the following areas and
+priorities:
+
+High priority:
+* VPD retrieval.
+* System parameters: retrieval and update.
+
+Medium priority:
+* Platform dump retrieval.
+* Light path diagnostics (get/set-dynamic-indicator,
+  get-dynamic-sensor-state, get-indices).
+
+Low priority (may never happen):
+* Error injection: would have to be carefully restricted.
+* Physical attestation: no known users.
+* LPAR perftools: no known users.
+
+Out of scope:
+* DLPAR (configure-connector et al): involves device tree updates
+  which must be handled entirely in-kernel for lockdown. This is the
+  object of a separate effort.
+
+See https://github.com/ibm-power-utilities/librtas/issues/29 for more
+details.
+
+In this RFC, I've included a single driver for VPD retrieval. Clients
+use ioctl() to obtain a file descriptor-based handle for the VPD they
+want. I think this could be a good model for the other areas too, but
+I'd like to get opinions on it.
+
+In the next iteration I expect to add a separate driver for system
+parameters.
+
+For reference, I floated a different approach for system parameters
+here:
+
+https://lore.kernel.org/linuxppc-dev/20220730000458.130938-1-nathanl@linux.ibm.com/
+
 ---
- drivers/net/Kconfig        |   8 ++++
- drivers/net/Makefile       |   1 +
- drivers/net/hifemac_mdio.c | 116 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 125 insertions(+)
+Nathan Lynch (2):
+      powerpc/pseries: papr-vpd char driver for VPD retrieval
+      powerpc/selftests: add test for papr-vpd
 
-diff --git a/drivers/net/Kconfig b/drivers/net/Kconfig
-index bc1d6e3905..5c5bfb1263 100644
---- a/drivers/net/Kconfig
-+++ b/drivers/net/Kconfig
-@@ -895,6 +895,14 @@ config HIFEMAC_ETH
- 	  This driver supports HIFEMAC Ethernet controller found on
- 	  HiSilicon SoCs.
- 
-+config HIFEMAC_MDIO
-+	bool "HiSilicon Fast Ethernet Controller MDIO interface"
-+	depends on DM_MDIO
-+	select DM_CLK
-+	help
-+	  This driver supports the internal MDIO interface of HIFEMAC
-+	  Ethernet controller.
-+
- config HIGMACV300_ETH
- 	bool "HiSilicon Gigabit Ethernet Controller"
- 	select DM_RESET
-diff --git a/drivers/net/Makefile b/drivers/net/Makefile
-index de6bf1d014..b2d3da6934 100644
---- a/drivers/net/Makefile
-+++ b/drivers/net/Makefile
-@@ -46,6 +46,7 @@ obj-$(CONFIG_FTGMAC100) += ftgmac100.o
- obj-$(CONFIG_FTMAC100) += ftmac100.o
- obj-$(CONFIG_GMAC_ROCKCHIP) += gmac_rockchip.o
- obj-$(CONFIG_HIFEMAC_ETH) += hifemac.o
-+obj-$(CONFIG_HIFEMAC_MDIO) += hifemac_mdio.o
- obj-$(CONFIG_HIGMACV300_ETH) += higmacv300.o
- obj-$(CONFIG_KS8851_MLL) += ks8851_mll.o
- obj-$(CONFIG_KSZ9477) += ksz9477.o
-diff --git a/drivers/net/hifemac_mdio.c b/drivers/net/hifemac_mdio.c
-new file mode 100644
-index 0000000000..343c5f3a38
---- /dev/null
-+++ b/drivers/net/hifemac_mdio.c
-@@ -0,0 +1,116 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * Hisilicon Fast Ethernet MDIO Bus Driver
-+ *
-+ * Copyright (c) 2016 HiSilicon Technologies Co., Ltd.
-+ */
-+
-+#include <dm.h>
-+#include <clk.h>
-+#include <miiphy.h>
-+#include <linux/io.h>
-+#include <linux/iopoll.h>
-+
-+#define MDIO_RWCTRL		0x00
-+#define MDIO_RO_DATA		0x04
-+#define MDIO_WRITE		BIT(13)
-+#define MDIO_RW_FINISH		BIT(15)
-+#define BIT_PHY_ADDR_OFFSET	8
-+#define BIT_WR_DATA_OFFSET	16
-+
-+struct hisi_femac_mdio_data {
-+	struct clk *clk;
-+	void __iomem *membase;
-+};
-+
-+static int hisi_femac_mdio_wait_ready(struct hisi_femac_mdio_data *data)
-+{
-+	u32 val;
-+
-+	return readl_poll_timeout(data->membase + MDIO_RWCTRL,
-+				  val, val & MDIO_RW_FINISH, 10000);
-+}
-+
-+static int hisi_femac_mdio_read(struct udevice *dev, int addr, int devad, int reg)
-+{
-+	struct hisi_femac_mdio_data *data = dev_get_priv(dev);
-+	int ret;
-+
-+	ret = hisi_femac_mdio_wait_ready(data);
-+	if (ret)
-+		return ret;
-+
-+	writel((addr << BIT_PHY_ADDR_OFFSET) | reg,
-+	       data->membase + MDIO_RWCTRL);
-+
-+	ret = hisi_femac_mdio_wait_ready(data);
-+	if (ret)
-+		return ret;
-+
-+	return readl(data->membase + MDIO_RO_DATA) & 0xFFFF;
-+}
-+
-+static int hisi_femac_mdio_write(struct udevice *dev, int addr, int devad, int reg, u16 val)
-+{
-+	struct hisi_femac_mdio_data *data = dev_get_priv(dev);
-+	int ret;
-+
-+	ret = hisi_femac_mdio_wait_ready(data);
-+	if (ret)
-+		return ret;
-+
-+	writel(MDIO_WRITE | (val << BIT_WR_DATA_OFFSET) |
-+	       (addr << BIT_PHY_ADDR_OFFSET) | reg,
-+	       data->membase + MDIO_RWCTRL);
-+
-+	return hisi_femac_mdio_wait_ready(data);
-+}
-+
-+static int hisi_femac_mdio_of_to_plat(struct udevice *dev)
-+{
-+	struct hisi_femac_mdio_data *data = dev_get_priv(dev);
-+	int ret;
-+
-+	data->membase = dev_remap_addr(dev);
-+	if (IS_ERR(data->membase)) {
-+		ret = PTR_ERR(data->membase);
-+		return log_msg_ret("Failed to remap base addr", ret);
-+	}
-+
-+	// clk is optional
-+	data->clk = devm_clk_get_optional(dev, NULL);
-+
-+	return 0;
-+}
-+
-+static int hisi_femac_mdio_probe(struct udevice *dev)
-+{
-+	struct hisi_femac_mdio_data *data = dev_get_priv(dev);
-+	int ret;
-+
-+	ret = clk_prepare_enable(data->clk);
-+	if (ret)
-+		return log_msg_ret("Failed to enable clk", ret);
-+
-+	return 0;
-+}
-+
-+static const struct mdio_ops hisi_femac_mdio_ops = {
-+	.read = hisi_femac_mdio_read,
-+	.write = hisi_femac_mdio_write,
-+};
-+
-+static const struct udevice_id hisi_femac_mdio_dt_ids[] = {
-+	{ .compatible = "hisilicon,hisi-femac-mdio" },
-+	{ }
-+};
-+
-+U_BOOT_DRIVER(hisi_femac_mdio_driver) = {
-+	.name = "hisi-femac-mdio",
-+	.id = UCLASS_MDIO,
-+	.of_match = hisi_femac_mdio_dt_ids,
-+	.of_to_plat = hisi_femac_mdio_of_to_plat,
-+	.probe = hisi_femac_mdio_probe,
-+	.ops = &hisi_femac_mdio_ops,
-+	.priv_auto = sizeof(struct hisi_femac_mdio_data),
-+};
+ Documentation/userspace-api/ioctl/ioctl-number.rst |   2 +
+ arch/powerpc/include/uapi/asm/papr-vpd.h           |  29 ++
+ arch/powerpc/platforms/pseries/Makefile            |   1 +
+ arch/powerpc/platforms/pseries/papr-vpd.c          | 353 +++++++++++++++++++++
+ tools/testing/selftests/powerpc/Makefile           |   1 +
+ .../testing/selftests/powerpc/papr_vpd/.gitignore  |   1 +
+ tools/testing/selftests/powerpc/papr_vpd/Makefile  |  12 +
+ .../testing/selftests/powerpc/papr_vpd/papr_vpd.c  | 351 ++++++++++++++++++++
+ 8 files changed, 750 insertions(+)
+---
+base-commit: d77497508a229529830850ba07e1e52596463d21
+change-id: 20230817-papr-sys_rtas-vs-lockdown-5c54505db792
 
+Best regards,
 -- 
-2.34.1
+Nathan Lynch <nathanl@linux.ibm.com>
 
