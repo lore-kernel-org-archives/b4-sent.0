@@ -1,71 +1,58 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Fri, 18 Aug 2023 01:04:04 +0800
-Subject: [PATCH RESEND 5/5] clk: ccf: call clock provided ops directly for
- endisable()
+Subject: [PATCH RESEND v2 0/2] net: add support for HiSilicon Fast Ethernet
+ Controller driver
+Date: Wed, 23 Aug 2023 01:03:41 +0800
+Message-Id: <20230823-wip-hisi_femac-trunk-v2-0-f64c28dc9b95@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230818-clk-fix-v1-5-49ec18f820bf@outlook.com>
-References: <20230818-clk-fix-v1-0-49ec18f820bf@outlook.com>
-In-Reply-To: <20230818-clk-fix-v1-0-49ec18f820bf@outlook.com>
-To: Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>
-Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+To: Joe Hershberger <joe.hershberger@ni.com>, 
+ Ramon Fried <rfried.dev@gmail.com>
+Cc: Yisen Zhuang <yisen.zhuang@huawei.com>, 
+ Salil Mehta <salil.mehta@huawei.com>, David Yang <mmyangfl@gmail.com>, 
+ u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1692291852; l=1348;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1692723823; l=1239;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=TgVT16K9zaLUEOhpgO1T2uH2QBfAht6D9ePnHRxlfEs=;
- b=DgxbdUdSnGi1NsOABYobcfpgqoPIRuaxcRMH33Z9D5YGn1+EOVWzdrQuvdGCaY5J1AAJkZjEp
- VZlKJsqB6xkBGJvGyStWO4qGzsdikE7DMIUOcA9GVbTjKcVk7YwKmyn
+ bh=6NJqaJvdjGHbug0V5ivKzYtBV8Sd2+bQXnF+m+rLY38=;
+ b=7W9L65ErtM9ldFdCcTZJ8BFx5tmfQoBRpwg4oLhcWgFhxq1Do2gk2NXUtsCFuI0q9gdKQ0+F5
+ ZB/iFiBv9GMD1VpQXzwiOOcEn9+8PU7S06Mhrb7V0gJQnBnrg/O64g0
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Calling into CCF framework will cause a clock being enabled twice
-instead of once (clk->enable_count becomes 2 rather than 1), thus making
-it hard to disable (needs to call clk_disable() twice).
-Fix that by calling clock provided ops directly.
+This core is found on many HiSilicon chips. This patchset adds support
+for it and the integrated MDIO bus.
+
+The driver code comes from linux kernel driver, downstream u-boot driver
+and the datasheet. It's already tested on a Hi3798MV200 based STB.
+
+Note that currently this driver can't be used for Hi3798MV200 since the
+clock driver is missing. I will implement and submit the clock driver
+and the framework in a later patchset.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/clk/clk.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+Changes in v2:
+- hisi_femac: clear previous irq before sending
+- Link to v1: https://lore.kernel.org/r/20230725-wip-hisi_femac-trunk-v1-0-88469a170310@outlook.com
 
-diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
-index a38daaac0c..00d082c46f 100644
---- a/drivers/clk/clk.c
-+++ b/drivers/clk/clk.c
-@@ -14,6 +14,7 @@
- #include <dm/uclass.h>
- #include <dm/lists.h>
- #include <dm/device-internal.h>
-+#include <linux/clk-provider.h>
- 
- int clk_register(struct clk *clk, const char *drv_name,
- 		 const char *name, const char *parent_name)
-@@ -115,11 +116,20 @@ int ccf_clk_set_parent(struct clk *clk, struct clk *parent)
- static int ccf_clk_endisable(struct clk *clk, bool enable)
- {
- 	struct clk *c;
-+	const struct clk_ops *ops;
- 	int err = clk_get_by_id(clk->id, &c);
- 
- 	if (err)
- 		return err;
--	return enable ? clk_enable(c) : clk_disable(c);
-+	else
-+		ops = clk_dev_ops(c->dev);
-+
-+	if (enable && ops->enable)
-+		return ops->enable(c);
-+	else if (!enable && ops->disable)
-+		return ops->disable(c);
-+
-+	return -ENOSYS;
- }
- 
- int ccf_clk_enable(struct clk *clk)
+---
+Yang Xiwen (2):
+      net: add hifemac Ethernet driver for HiSilicon platform
+      net: add hifemac_mdio MDIO bus driver for HiSilicon platform
 
+ drivers/net/Kconfig        |  17 ++
+ drivers/net/Makefile       |   2 +
+ drivers/net/hifemac.c      | 481 +++++++++++++++++++++++++++++++++++++++++++++
+ drivers/net/hifemac_mdio.c | 116 +++++++++++
+ 4 files changed, 616 insertions(+)
+---
+base-commit: 580eb31199be8a822e62f20965854a242f895d03
+change-id: 20230724-wip-hisi_femac-trunk-1f57f0986f0c
+
+Best regards,
 -- 
-2.34.1
+Yang Xiwen <forbidden405@outlook.com>
 
