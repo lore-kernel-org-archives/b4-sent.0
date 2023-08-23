@@ -1,70 +1,62 @@
-From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Wed, 23 Aug 2023 12:03:15 +0300
-Subject: [PATCH 2/2] rtc: m48t86: add DT support for m48t86
+From: Hui Liu <quic_huliu@quicinc.com>
+Date: Wed, 23 Aug 2023 17:15:53 +0800
+Subject: [PATCH] usb: typec: qcom: check regulator enable status before
+ disabling it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230823-m48t86_device_tree-v1-2-240023b435ac@maquefel.me>
-References: <20230823-m48t86_device_tree-v1-0-240023b435ac@maquefel.me>
-In-Reply-To: <20230823-m48t86_device_tree-v1-0-240023b435ac@maquefel.me>
-To: Alessandro Zummo <a.zummo@towertech.it>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>, 
- Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-rtc@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Nikita Shubin <nikita.shubin@maquefel.me>, 
- Arnd Bergmann <arnd@arndb.de>, Linus Walleij <linus.walleij@linaro.org>
-X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1692781413; l=1084;
- i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=ehFfMUFPSDk+3aqtlEGp6k1Cn9nX+Zuoc/v7Lg62J6w=;
- b=2ABaIsohEYpfETx/myw5s5Wg75v3Kr4NyOqQviyUbY7TJttQ9J+nNNY3NlpYKURudeo9LpjjdSDA
- kx+IWOvADZ54mqfCsrqeQQexVZYNDdC3pI+b2PWvcfVBEUC9+KWc
-X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
- pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
-X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
+Message-Id: <20230823-qcom-tcpc-v1-1-fa81a09ca056@quicinc.com>
+X-B4-Tracking: v=1; b=H4sIAEnO5WQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2MDCyMj3cLk/FzdkuSCZN0UE0NLU5PEZDPTtEQloPqCotS0zAqwWdGxtbU
+ AqbU6oVsAAAA=
+To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Andy Gross <agross@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, quic_fenglinw@quicinc.com, 
+ subbaram@quicinc.com, Hui Liu <quic_huliu@quicinc.com>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1692782156; l=1109;
+ i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
+ bh=Eq7q1VhxzBMiiLW046ihxgswENpgBh2pfv7VGXtEKDE=;
+ b=7tSyma7eOKcwSWhtFR3YWbPboVUNtB1aFtgl+IJz8Z5x79QAvbVQgQRdLLt4yr2C5EQp28ApZ
+ +uFnUcgg7SYADBTV3R07hBfaXnBJsVtbi3JZo7lHwWYqkzHNvz5R+5u
+X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
+ pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
+X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add OF ID match table.
+Check regulator enable status before disabling it to avoid
+unbalanced regulator disable warnings.
 
-Acked-by: Arnd Bergmann <arnd@arndb.de>
-Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
-Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
+Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
 ---
- drivers/rtc/rtc-m48t86.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/rtc/rtc-m48t86.c b/drivers/rtc/rtc-m48t86.c
-index 481c9525b1dd..dd4a62e2d39c 100644
---- a/drivers/rtc/rtc-m48t86.c
-+++ b/drivers/rtc/rtc-m48t86.c
-@@ -11,6 +11,7 @@
-  */
+diff --git a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
+index bb0b8479d80f..ca616b17b5b6 100644
+--- a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
++++ b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
+@@ -422,7 +422,8 @@ static int qcom_pmic_typec_pdphy_disable(struct pmic_typec_pdphy *pmic_typec_pdp
+ 	ret = regmap_write(pmic_typec_pdphy->regmap,
+ 			   pmic_typec_pdphy->base + USB_PDPHY_EN_CONTROL_REG, 0);
  
- #include <linux/module.h>
-+#include <linux/mod_devicetable.h>
- #include <linux/rtc.h>
- #include <linux/platform_device.h>
- #include <linux/bcd.h>
-@@ -269,9 +270,16 @@ static int m48t86_rtc_probe(struct platform_device *pdev)
- 	return 0;
+-	regulator_disable(pmic_typec_pdphy->vdd_pdphy);
++	if (regulator_is_enabled(pmic_typec_pdphy->vdd_pdphy))
++		regulator_disable(pmic_typec_pdphy->vdd_pdphy);
+ 
+ 	return ret;
  }
- 
-+static const struct of_device_id m48t86_rtc_of_ids[] = {
-+	{ .compatible = "st,m48t86" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, m48t86_rtc_of_ids);
-+
- static struct platform_driver m48t86_rtc_platform_driver = {
- 	.driver		= {
- 		.name	= "rtc-m48t86",
-+		.of_match_table = m48t86_rtc_of_ids,
- 	},
- 	.probe		= m48t86_rtc_probe,
- };
 
+---
+base-commit: bbb9e06d2c6435af9c62074ad7048910eeb2e7bc
+change-id: 20230822-qcom-tcpc-d41954ac65fa
+
+Best regards,
 -- 
-2.39.2
+Hui Liu <quic_huliu@quicinc.com>
 
