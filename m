@@ -1,62 +1,48 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Wed, 23 Aug 2023 17:15:53 +0800
-Subject: [PATCH] usb: typec: qcom: check regulator enable status before
- disabling it
+From: Nikita Shubin <nikita.shubin@maquefel.me>
+Subject: [PATCH 0/2] ata: pata_ep93xx: dt convert preparation fixes
+Date: Wed, 23 Aug 2023 12:47:26 +0300
+Message-Id: <20230823-ep93xx_pata_fixes-v1-0-d7e7229be148@maquefel.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230823-qcom-tcpc-v1-1-fa81a09ca056@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAEnO5WQC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI2MDCyMj3cLk/FzdkuSCZN0UE0NLU5PEZDPTtEQloPqCotS0zAqwWdGxtbU
- AqbU6oVsAAAA=
-To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Guenter Roeck <linux@roeck-us.net>, Andy Gross <agross@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, quic_fenglinw@quicinc.com, 
- subbaram@quicinc.com, Hui Liu <quic_huliu@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1692782156; l=1109;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=Eq7q1VhxzBMiiLW046ihxgswENpgBh2pfv7VGXtEKDE=;
- b=7tSyma7eOKcwSWhtFR3YWbPboVUNtB1aFtgl+IJz8Z5x79QAvbVQgQRdLLt4yr2C5EQp28ApZ
- +uFnUcgg7SYADBTV3R07hBfaXnBJsVtbi3JZo7lHwWYqkzHNvz5R+5u
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+X-B4-Tracking: v=1; b=H4sIAK7V5WQC/x3LUQqDMBCE4avIPjegCU1tr1JE1jjWfWgaslIC4
+ t0b+/jP8O2kyAKlR7NTxldUPrFGd2korBxfMDLXJtta1/bWGaS7K2VMvPG4SIGaq4f3tz7Mfum
+ ouokVZsocw3rKN+uGfB4p4y/q+hyO4wfSwjdCfAAAAA==
+To: Sergey Shtylyov <s.shtylyov@omp.ru>, 
+ Damien Le Moal <dlemoal@kernel.org>
+Cc: linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nikita Shubin <nikita.shubin@maquefel.me>
+X-Mailer: b4 0.12.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1692784059; l=769;
+ i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
+ bh=krhBKvq/7yPmNk8KhXgmxPtGwbeLJ0wWfNZMNkB+FyY=;
+ b=R1E0ShJVgJ6+6M5JL8czSJJXXgcXGRt7mmcphEarVt02Mxf78/HoG4PiPHg3Aes8zSORUrvu2k/o
+ jPQZMvG+DgxQIpAoqr7qUCOcuhAfGoary9BGk2rr9lANs5zi8ygA
+X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
+ pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
+X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Check regulator enable status before disabling it to avoid
-unbalanced regulator disable warnings.
+Sending some fixes in prior to "ep93xx device tree conversion" series,
+as per Sergey request:
 
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
+- simple replacement s/-ENXIO/-ENOMEM/ as it suits better.
+- second is s/ep93xx_chip_revision()/soc_device_match(), so i can drop 
+  ep93xx_chip_revision() entirely in later series.
+
+Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
- drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Nikita Shubin (2):
+      ata: pata_ep93xx: fix error return code in probe
+      ata: pata_ep93xx: use soc_device_match for UDMA modes
 
-diff --git a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
-index bb0b8479d80f..ca616b17b5b6 100644
---- a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
-+++ b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
-@@ -422,7 +422,8 @@ static int qcom_pmic_typec_pdphy_disable(struct pmic_typec_pdphy *pmic_typec_pdp
- 	ret = regmap_write(pmic_typec_pdphy->regmap,
- 			   pmic_typec_pdphy->base + USB_PDPHY_EN_CONTROL_REG, 0);
- 
--	regulator_disable(pmic_typec_pdphy->vdd_pdphy);
-+	if (regulator_is_enabled(pmic_typec_pdphy->vdd_pdphy))
-+		regulator_disable(pmic_typec_pdphy->vdd_pdphy);
- 
- 	return ret;
- }
-
+ drivers/ata/pata_ep93xx.c | 20 +++++++++++++-------
+ 1 file changed, 13 insertions(+), 7 deletions(-)
 ---
-base-commit: bbb9e06d2c6435af9c62074ad7048910eeb2e7bc
-change-id: 20230822-qcom-tcpc-d41954ac65fa
+base-commit: 89bf6209cad66214d3774dac86b6bbf2aec6a30d
+change-id: 20230823-ep93xx_pata_fixes-56e6678cd6f1
 
 Best regards,
 -- 
-Hui Liu <quic_huliu@quicinc.com>
+Nikita Shubin <nikita.shubin@maquefel.me>
 
