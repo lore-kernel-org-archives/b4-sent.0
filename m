@@ -1,78 +1,69 @@
-From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Wed, 23 Aug 2023 12:47:28 +0300
-Subject: [PATCH 2/2] ata: pata_ep93xx: use soc_device_match for UDMA modes
+From: Hui Liu <quic_huliu@quicinc.com>
+Date: Thu, 24 Aug 2023 10:32:03 +0800
+Subject: [PATCH v2] usb: typec: qcom: check regulator enable status before
+ disabling it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230823-ep93xx_pata_fixes-v1-2-d7e7229be148@maquefel.me>
-References: <20230823-ep93xx_pata_fixes-v1-0-d7e7229be148@maquefel.me>
-In-Reply-To: <20230823-ep93xx_pata_fixes-v1-0-d7e7229be148@maquefel.me>
-To: Sergey Shtylyov <s.shtylyov@omp.ru>, 
- Damien Le Moal <dlemoal@kernel.org>
-Cc: linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Nikita Shubin <nikita.shubin@maquefel.me>
-X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1692784059; l=1745;
- i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=S/mHeNOqmdky76OBBe9mnLniUEhK/mD6hu3snL8cYnQ=;
- b=Zh3hEy1066mg5eGLVabyipHBoWgKlB/mlIUlnn3UXSC5kJzVHxfeCrDPtloT6CVJEy6typOP/Xr/
- dVZGid7DB4vtZGfpF9FlFskH0r6PPnwSJwFO0y+J3BDXN2HhVqMM
-X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
- pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
-X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
+Message-Id: <20230824-qcom-tcpc-v2-1-3dd8c3424564@quicinc.com>
+X-B4-Tracking: v=1; b=H4sIACTB5mQC/03MQQ6CMBCF4auQWVvTFkrAlfcwLCZDK7OwQIuNh
+ vTuVhITl//Ly7dDtIFthEu1Q7CJI8++hD5VQBP6uxU8lgYtdS07rcVK80NstJAYG9WbBqk1DqH
+ 8l2Advw7rNpSeOG5zeB90Ut/1p9R/SlJCCYedQtkTStNe1ycTezqXCww55w+PsU6OpAAAAA==
+To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Andy Gross <agross@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, quic_fenglinw@quicinc.com, 
+ subbaram@quicinc.com, Hui Liu <quic_huliu@quicinc.com>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1692844340; l=1421;
+ i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
+ bh=RCxBxOmCdTDGIzvmHMT7qgcrSyfaH/WPRHb6SCAOpuk=;
+ b=rPA/Tw4FDHy3n9OoyyeOWS1qi2tjEcPxU8Gs5vUKx3yx7nHtxv4tqcjwQXGAKuLMQRLlMnE/u
+ CTNkGOEVUYfCHdNp8w0JTsFJaTgEWMyw1+qt8KD362Y+Ch+JvN8n4rR
+X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
+ pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
+X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace ep93xx_chip_revision() with soc_device_match(), so
-ep93xx_chip_revision() can be safetly dropped from exported functions.
+Check regulator enable status before disabling it to avoid
+unbalanced regulator disable warnings.
 
-Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
+Reviewed-by: Guenter Roeck <linux@roeck-us.net>
+Fixes: a4422ff22142 ("usb: typec: qcom: Add Qualcomm PMIC Type-C driver")
+Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
+Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
 ---
- drivers/ata/pata_ep93xx.c | 16 +++++++++++-----
- 1 file changed, 11 insertions(+), 5 deletions(-)
+Changes in v2:
+- Add Fixes tag
+- Link to v1: https://lore.kernel.org/r/20230823-qcom-tcpc-v1-1-fa81a09ca056@quicinc.com
+---
+ drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/ata/pata_ep93xx.c b/drivers/ata/pata_ep93xx.c
-index 4ce0f37c7a89..3f91b6cff353 100644
---- a/drivers/ata/pata_ep93xx.c
-+++ b/drivers/ata/pata_ep93xx.c
-@@ -40,6 +40,7 @@
- #include <linux/ata.h>
- #include <linux/libata.h>
- #include <linux/platform_device.h>
-+#include <linux/sys_soc.h>
- #include <linux/delay.h>
- #include <linux/dmaengine.h>
- #include <linux/ktime.h>
-@@ -910,6 +911,12 @@ static struct ata_port_operations ep93xx_pata_port_ops = {
- 	.port_start		= ep93xx_pata_port_start,
- };
+diff --git a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
+index bb0b8479d80f..ca616b17b5b6 100644
+--- a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
++++ b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
+@@ -422,7 +422,8 @@ static int qcom_pmic_typec_pdphy_disable(struct pmic_typec_pdphy *pmic_typec_pdp
+ 	ret = regmap_write(pmic_typec_pdphy->regmap,
+ 			   pmic_typec_pdphy->base + USB_PDPHY_EN_CONTROL_REG, 0);
  
-+static const struct soc_device_attribute ep93xx_soc_table[] = {
-+	{ .revision = "E1", .data = (void *)ATA_UDMA3 },
-+	{ .revision = "E2", .data = (void *)ATA_UDMA4 },
-+	{ /* sentinel */ }
-+};
-+
- static int ep93xx_pata_probe(struct platform_device *pdev)
- {
- 	struct ep93xx_pata_data *drv_data;
-@@ -976,12 +983,11 @@ static int ep93xx_pata_probe(struct platform_device *pdev)
- 	 * so this driver supports only UDMA modes.
- 	 */
- 	if (drv_data->dma_rx_channel && drv_data->dma_tx_channel) {
--		int chip_rev = ep93xx_chip_revision();
-+		const struct soc_device_attribute *match;
+-	regulator_disable(pmic_typec_pdphy->vdd_pdphy);
++	if (regulator_is_enabled(pmic_typec_pdphy->vdd_pdphy))
++		regulator_disable(pmic_typec_pdphy->vdd_pdphy);
  
--		if (chip_rev == EP93XX_CHIP_REV_E1)
--			ap->udma_mask = ATA_UDMA3;
--		else if (chip_rev == EP93XX_CHIP_REV_E2)
--			ap->udma_mask = ATA_UDMA4;
-+		match = soc_device_match(ep93xx_soc_table);
-+		if (match)
-+			ap->udma_mask = (unsigned int) match->data;
- 		else
- 			ap->udma_mask = ATA_UDMA2;
- 	}
+ 	return ret;
+ }
 
+---
+base-commit: bbb9e06d2c6435af9c62074ad7048910eeb2e7bc
+change-id: 20230822-qcom-tcpc-d41954ac65fa
+
+Best regards,
 -- 
-2.39.2
+Hui Liu <quic_huliu@quicinc.com>
 
