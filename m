@@ -1,69 +1,66 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Thu, 24 Aug 2023 10:32:03 +0800
-Subject: [PATCH v2] usb: typec: qcom: check regulator enable status before
- disabling it
+From: Nikita Shubin <nikita.shubin@maquefel.me>
+Subject: [PATCH v2 0/2] device tree support for ST M48T86
+Date: Fri, 25 Aug 2023 11:43:24 +0300
+Message-Id: <20230823-m48t86_device_tree-v2-0-21ff275f949d@maquefel.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230824-qcom-tcpc-v2-1-3dd8c3424564@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIACTB5mQC/03MQQ6CMBCF4auQWVvTFkrAlfcwLCZDK7OwQIuNh
- vTuVhITl//Ly7dDtIFthEu1Q7CJI8++hD5VQBP6uxU8lgYtdS07rcVK80NstJAYG9WbBqk1DqH
- 8l2Advw7rNpSeOG5zeB90Ut/1p9R/SlJCCYedQtkTStNe1ycTezqXCww55w+PsU6OpAAAAA==
-To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Guenter Roeck <linux@roeck-us.net>, Andy Gross <agross@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, quic_fenglinw@quicinc.com, 
- subbaram@quicinc.com, Hui Liu <quic_huliu@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1692844340; l=1421;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=RCxBxOmCdTDGIzvmHMT7qgcrSyfaH/WPRHb6SCAOpuk=;
- b=rPA/Tw4FDHy3n9OoyyeOWS1qi2tjEcPxU8Gs5vUKx3yx7nHtxv4tqcjwQXGAKuLMQRLlMnE/u
- CTNkGOEVUYfCHdNp8w0JTsFJaTgEWMyw1+qt8KD362Y+Ch+JvN8n4rR
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+X-B4-Tracking: v=1; b=H4sIAKxp6GQC/32NTQ6CMBBGr0JmbU0pVYor72EIGcogTSzotBIN4
+ e4WDuDyfT95CwRiRwEu2QJMswtuGhOoQwZ2wPFOwnWJQUlVSKMK4bWJ5tx0aWupiUwksFSEqCp
+ dVgbSscVAomUc7bBdPYZIvBVPpt59dtutTjy4ECf+7vI539K/njkXUigt06TVxQnt1ePrTT09j
+ p6gXtf1B2QIIJXPAAAA
+To: Alessandro Zummo <a.zummo@towertech.it>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-rtc@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Nikita Shubin <nikita.shubin@maquefel.me>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Arnd Bergmann <arnd@arndb.de>, Linus Walleij <linus.walleij@linaro.org>
+X-Mailer: b4 0.12.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1692953023; l=1298;
+ i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
+ bh=vnXQ9pNzSHGVvPmZJ7uQHNEZVNLQ05YRY8c7hb7Ravk=;
+ b=UMK5u45Hw5yI/xg/NWbYvdUnHJhZO/nb7EBm0ZXilbIfLzsQ7FHSj56ClPW4RbRvESJW8o2cnqsk
+ mlIGoqixDBVTcjor5QBif9BAnfX6kjz8V70snTLiYMQgzk7njo3W
+X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
+ pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
+X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Check regulator enable status before disabling it to avoid
-unbalanced regulator disable warnings.
+Add device tree support for ST M48T86.
 
-Reviewed-by: Guenter Roeck <linux@roeck-us.net>
-Fixes: a4422ff22142 ("usb: typec: qcom: Add Qualcomm PMIC Type-C driver")
-Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
+The reason it can't go to trivial-rtc.yaml, is that it has 2 registers
+instead of a single one. The registers are 1 byte wide.
+
+Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
 Changes in v2:
-- Add Fixes tag
-- Link to v1: https://lore.kernel.org/r/20230823-qcom-tcpc-v1-1-fa81a09ca056@quicinc.com
----
- drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+- add links to mailthreads where the actual tags were recieved:
+  - dt-bindings: rtc: Add ST M48T86 was Reviewed-by Krzysztof in v3 "ep93xx device tree conversion"
+  - rtc: m48t86: add DT support for m48t86:
+     - Acked-by Arnd in very first "ep93xx device tree conversion"
+     - Reviewed-by Linus in v1 "ep93xx device tree conversion"
 
-diff --git a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
-index bb0b8479d80f..ca616b17b5b6 100644
---- a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
-+++ b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_pdphy.c
-@@ -422,7 +422,8 @@ static int qcom_pmic_typec_pdphy_disable(struct pmic_typec_pdphy *pmic_typec_pdp
- 	ret = regmap_write(pmic_typec_pdphy->regmap,
- 			   pmic_typec_pdphy->base + USB_PDPHY_EN_CONTROL_REG, 0);
- 
--	regulator_disable(pmic_typec_pdphy->vdd_pdphy);
-+	if (regulator_is_enabled(pmic_typec_pdphy->vdd_pdphy))
-+		regulator_disable(pmic_typec_pdphy->vdd_pdphy);
- 
- 	return ret;
- }
+Was asked by Krzysztof to send this part separately.
+
+Link: https://lore.kernel.org/lkml/61b9e036-7864-65c6-d43b-463fff896ddc@linaro.org/
+Link: https://lore.kernel.org/lkml/20230601054549.10843-12-nikita.shubin@maquefel.me/
 
 ---
-base-commit: bbb9e06d2c6435af9c62074ad7048910eeb2e7bc
-change-id: 20230822-qcom-tcpc-d41954ac65fa
+Nikita Shubin (2):
+      dt-bindings: rtc: Add ST M48T86
+      rtc: m48t86: add DT support for m48t86
+
+ .../devicetree/bindings/rtc/st,m48t86.yaml         | 38 ++++++++++++++++++++++
+ drivers/rtc/rtc-m48t86.c                           |  8 +++++
+ 2 files changed, 46 insertions(+)
+---
+base-commit: 89bf6209cad66214d3774dac86b6bbf2aec6a30d
+change-id: 20230823-m48t86_device_tree-a72eaa294798
 
 Best regards,
 -- 
-Hui Liu <quic_huliu@quicinc.com>
+Nikita Shubin <nikita.shubin@maquefel.me>
 
