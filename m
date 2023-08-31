@@ -1,15 +1,15 @@
 From: Hui Liu <quic_huliu@quicinc.com>
-Date: Wed, 30 Aug 2023 11:00:56 +0800
-Subject: [PATCH v4] usb: typec: qcom: Update the logic of regulator enable
+Date: Thu, 31 Aug 2023 18:19:45 +0800
+Subject: [PATCH v5] usb: typec: qcom: Update the logic of regulator enable
  and disable
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230830-qcom-tcpc-v4-1-c19b0984879b@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAOiw7mQC/2XMSw7CIBSF4a0YxmJ4VnDkPowDvIBlYB9Qiabp3
- qVNTDAOz839/hklF4NL6LSbUXQ5pNB3ZYj9DkFrurvDwZaNGGGcKMbwCP0DTzAAtoJqKQw00ht
- U/ofofHhtrcu17DakqY/vLZ3pev1WeFXJFFPsjaKGaDBENufxGSB0cCgvaO1kVltRW1Yst1YBF
- 0zIRvxbXltVW16s0/J2NN5wYfWvXZblA0LHVyocAQAA
+Message-Id: <20230831-qcom-tcpc-v5-1-5e2661dc6c1d@quicinc.com>
+X-B4-Tracking: v=1; b=H4sIAEJp8GQC/2XMyw6CMBCF4VchXVvTyxRaV76HcVGmRbqQu0RDe
+ HcLiUkNyzOZ71/I6IfgR3LJFjL4OYyhbeJQp4xgbZuHp8HFTQQTkmkhaI/tk07YIXXAjQKLuao
+ sif/d4Kvw3lu3e9x1GKd2+OzpmW/XX0UmlZlTTiuruWUGLVP5tX8FDA2e4wvZOrNILaRWRCud0
+ yhBgMrhaGVqdWpltN6osrCVleDM0UJiJUstRIvclMxo0IUp/+26rl978+U1WAEAAA==
 To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
  Guenter Roeck <linux@roeck-us.net>, Andy Gross <agross@kernel.org>, 
  Bjorn Andersson <andersson@kernel.org>, 
@@ -20,11 +20,11 @@ Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org,
  linux-kernel@vger.kernel.org, quic_fenglinw@quicinc.com, 
  subbaram@quicinc.com, Hui Liu <quic_huliu@quicinc.com>
 X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1693364531; l=3183;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1693477188; l=3206;
  i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=sW9SVhPDWvfd2enRPcyusPbQVKd0LuSbX7srvMe6UZU=;
- b=NlMXLmyY7A12OZhYKX+dnlXgCU2fnjQ1/XWqZSXMkfPVV+1pK79/wMLzOMSHgEDWTdWVgnxys
- 5Moangy4iymAgAr8/5/9RgPeVWVXHumrPRyQEK1/23K+XAoV8iD8jl5
+ bh=2oArl3p3f4nGra9OaL8wrTdlGSIGZy5nArkkLq2X1WQ=;
+ b=wOFTaj5NpC1jhXmeOUvbOaohgy/Xu/GtXVUzhJKflZyqduIAuYv5G39xqA53jvCNzGTHHKqpR
+ Bfc2iH5VL1UAyHiaeHQ/Ns4YOJLUt+SFai/7v3Un2em5H1yxHpyAkSq
 X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
  pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
 X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
@@ -35,17 +35,19 @@ in reset function. Enable the regulator in qcom_pmic_typec_start
 function and disable it in qcom_pmic_typec_stop function to
 avoid unbalanced regulator disable warnings.
 
-Reviewed-by: Guenter Roeck <linux@roeck-us.net>
 Fixes: a4422ff22142 ("usb: typec: qcom: Add Qualcomm PMIC Type-C driver")
 Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
 Acked-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
+Tested-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org> # rb5
 Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
 ---
+Changes in v5:
+- Removed Reviewed-by: Guenter Roeck <linux@roeck-us.net>
+- Updated V4 history
+- Link to v4: https://lore.kernel.org/r/20230830-qcom-tcpc-v4-1-c19b0984879b@quicinc.com
+
 Changes in v4:
-- Removed regulator_enable and regulator_diable from
-pmic_typec_pdphy_reset function. And enable regulator in
-qcom_pmic_typec_pdphy_start function and disable it in
-qcom_pmic_typec_pdphy_stop function.
+- Rephrased commit text
 - Link to v3: https://lore.kernel.org/r/20230828-qcom-tcpc-v3-1-e95b7afa34d9@quicinc.com
 
 Changes in v3:
