@@ -1,10 +1,10 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Wed, 06 Sep 2023 12:03:23 +0200
-Subject: [PATCH 2/8] arm: Remove sentinel elem from ctl_table arrays
+Date: Wed, 06 Sep 2023 12:03:24 +0200
+Subject: [PATCH 3/8] arch/x86: Remove sentinel elem from ctl_table arrays
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230906-jag-sysctl_remove_empty_elem_arch-v1-2-3935d4854248@samsung.com>
+Message-Id: <20230906-jag-sysctl_remove_empty_elem_arch-v1-3-3935d4854248@samsung.com>
 References: <20230906-jag-sysctl_remove_empty_elem_arch-v1-0-3935d4854248@samsung.com>
 In-Reply-To: <20230906-jag-sysctl_remove_empty_elem_arch-v1-0-3935d4854248@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
@@ -31,18 +31,18 @@ Cc: linux-fsdevel@vger.kernel.org, linux-s390@vger.kernel.org,
  linux-ia64@vger.kernel.org, linux-csky@vger.kernel.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4110;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1462;
  i=j.granados@samsung.com; h=from:subject:message-id;
- bh=kRRgU9TB4640um/mWRntJEhdx6NG5ds+BwxX9jXrRXA=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBk+E6Ur2J0kuQcNZObNxMe0aJ2hWc7iqqapxvuF
- OwJdlhaURSJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZPhOlAAKCRC6l81St5ZB
- T1yUC/4yflkwsD8iS/7Czi88MHtKqSjX9ywAVic2vtw9U3RHdGW1Cpc9iSXsTYtOI/FHD7Wtnb3
- fSLNGEliGcqaGR9KNJbwTfnCFZg7LquUXjT2ecnK7FdliQNOvehRbMkkJUj5awgq/g14eC4cpPq
- 27uxAt9wOVU35+G1zNJybSMVlhYlRBFX+Mt9XlFB6zLXeAyIR5TMidTAiw9EHNQ1UpP24K14cd+
- XBTab+hvuXZ8gu4koUQS+ASkCRBVn6VdA5ZWeh5w5YoiPemdG4r5vfIDDl4oz6RQ5Ysm9Iq5swx
- 9sByh27nj7dLaFs+8N59sQoSiICG4FKxxj9V9N94wAmol2bpNdFqQSYq+RQnMvet1FsUWpHUrdY
- +Q4tMhoT1vzhKpOmX+5dZ23riHPK7gEC+nRb2wBafDrBrk+zirIqkyMaN0iULzIVKo8ffkoweDy
- 6Tz91Srx2S1YeBzrf1azOZwHUho/4ZRuirvEAjww3hnI2HniWQj7Oud+TjCR8MwiCFOqg=
+ bh=zE8VMMPVQAIy8aYws+rz9C7nboCop5JGzS4P9YCQBl8=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBk+E6UOpNP14i3hne/osuimerfTGC3syLUxLuIE
+ wJnpVtSWo2JAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZPhOlAAKCRC6l81St5ZB
+ Ty+ADACIdkG3Hd7tMm/sgfnkWqZQ41Yqd4IqdWF3+e/5NOpevgoE/o35ullHAkd+2+l54Gro3re
+ 805skkVS7qQpu0GSacvMb47Ph0nmJsJ/3t+fQxhqRqfQZlhrqDpTY3sJYdbls932x0mXiXdRePW
+ onZGnYDxlkWQlKKOjPUAdV8ydzH8RRVhEibZfi/O9W/oqOCvySZGu3WH/frsjAvYcR5m9xeYOV1
+ sWc6C293qC6bApVsEyywLxZb6a/FO+J3R5mFpq8AEIoKH5HLwQe7kj8DbPLQ7Hy8OVR6Xg5cXFr
+ 17bCYjl2uGbwXx90Zeg8x1lmyvF86/CWj6u+wrPIyXxT99cq6GWFGsIzA62RT+vtmiqa51QrniI
+ 27jCQay0zabmB/WRkRMcq6n2I7Lt6wGJ0g/i7gI3MfBBqi/cpAtcvde3NNHcGoZoDKvnPY3bhSB
+ dQdCAAKz/tFS678n2zpX68mI+DJnUxqI/EweCEX18IdWgPBEkYQ0iOIhXhO/XiPyrsM/g=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -54,123 +54,42 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Removed the sentinel as well as the explicit size from ctl_isa_vars. The
-size is redundant as the initialization sets it.
-Changed insn_emulation->sysctl from a 2 element array of struct
-ctl_table to a simple struct. This has no consequence for the sysctl
-registration as it is forwarded as a pointer.
-Removed sentinel from sve_defatul_vl_table, sme_default_vl_table,
-tagged_addr_sysctl_table and armv8_pmu_sysctl_table.
+Remove sentinel element from sld_sysctl and itmt_kern_table.
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- arch/arm/kernel/isa.c                | 4 ++--
- arch/arm64/kernel/armv8_deprecated.c | 8 +++-----
- arch/arm64/kernel/fpsimd.c           | 6 ++----
- arch/arm64/kernel/process.c          | 3 +--
- drivers/perf/arm_pmuv3.c             | 3 +--
- 5 files changed, 9 insertions(+), 15 deletions(-)
+ arch/x86/kernel/cpu/intel.c | 3 +--
+ arch/x86/kernel/itmt.c      | 3 +--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm/kernel/isa.c b/arch/arm/kernel/isa.c
-index 20218876bef2..0b9c28077092 100644
---- a/arch/arm/kernel/isa.c
-+++ b/arch/arm/kernel/isa.c
-@@ -16,7 +16,7 @@
- 
- static unsigned int isa_membase, isa_portbase, isa_portshift;
- 
--static struct ctl_table ctl_isa_vars[4] = {
-+static struct ctl_table ctl_isa_vars[] = {
- 	{
- 		.procname	= "membase",
- 		.data		= &isa_membase, 
-@@ -35,7 +35,7 @@ static struct ctl_table ctl_isa_vars[4] = {
- 		.maxlen		= sizeof(isa_portshift),
- 		.mode		= 0444,
- 		.proc_handler	= proc_dointvec,
--	}, {}
-+	}
- };
- 
- static struct ctl_table_header *isa_sysctl_header;
-diff --git a/arch/arm64/kernel/armv8_deprecated.c b/arch/arm64/kernel/armv8_deprecated.c
-index e459cfd33711..dd6ce86d4332 100644
---- a/arch/arm64/kernel/armv8_deprecated.c
-+++ b/arch/arm64/kernel/armv8_deprecated.c
-@@ -52,10 +52,8 @@ struct insn_emulation {
- 	int min;
- 	int max;
- 
--	/*
--	 * sysctl for this emulation + a sentinal entry.
--	 */
--	struct ctl_table sysctl[2];
-+	/* sysctl for this emulation */
-+	struct ctl_table sysctl;
- };
- 
- #define ARM_OPCODE_CONDTEST_FAIL   0
-@@ -558,7 +556,7 @@ static void __init register_insn_emulation(struct insn_emulation *insn)
- 	update_insn_emulation_mode(insn, INSN_UNDEF);
- 
- 	if (insn->status != INSN_UNAVAILABLE) {
--		sysctl = &insn->sysctl[0];
-+		sysctl = &insn->sysctl;
- 
- 		sysctl->mode = 0644;
- 		sysctl->maxlen = sizeof(int);
-diff --git a/arch/arm64/kernel/fpsimd.c b/arch/arm64/kernel/fpsimd.c
-index 91e44ac7150f..db3ad1ba8272 100644
---- a/arch/arm64/kernel/fpsimd.c
-+++ b/arch/arm64/kernel/fpsimd.c
-@@ -588,8 +588,7 @@ static struct ctl_table sve_default_vl_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= vec_proc_do_default_vl,
- 		.extra1		= &vl_info[ARM64_VEC_SVE],
+diff --git a/arch/x86/kernel/cpu/intel.c b/arch/x86/kernel/cpu/intel.c
+index be4045628fd3..e63391b82624 100644
+--- a/arch/x86/kernel/cpu/intel.c
++++ b/arch/x86/kernel/cpu/intel.c
+@@ -1015,8 +1015,7 @@ static struct ctl_table sld_sysctls[] = {
+ 		.proc_handler	= proc_douintvec_minmax,
+ 		.extra1         = SYSCTL_ZERO,
+ 		.extra2         = SYSCTL_ONE,
 -	},
--	{ }
+-	{}
 +	}
  };
  
- static int __init sve_sysctl_init(void)
-@@ -612,8 +611,7 @@ static struct ctl_table sme_default_vl_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= vec_proc_do_default_vl,
- 		.extra1		= &vl_info[ARM64_VEC_SME],
--	},
--	{ }
-+	}
- };
- 
- static int __init sme_sysctl_init(void)
-diff --git a/arch/arm64/kernel/process.c b/arch/arm64/kernel/process.c
-index 0fcc4eb1a7ab..48861cdc3aae 100644
---- a/arch/arm64/kernel/process.c
-+++ b/arch/arm64/kernel/process.c
-@@ -723,8 +723,7 @@ static struct ctl_table tagged_addr_sysctl_table[] = {
- 		.proc_handler	= proc_dointvec_minmax,
+ static int __init sld_mitigate_sysctl_init(void)
+diff --git a/arch/x86/kernel/itmt.c b/arch/x86/kernel/itmt.c
+index ee4fe8cdb857..5f2ccff38297 100644
+--- a/arch/x86/kernel/itmt.c
++++ b/arch/x86/kernel/itmt.c
+@@ -73,8 +73,7 @@ static struct ctl_table itmt_kern_table[] = {
+ 		.proc_handler	= sched_itmt_update_handler,
  		.extra1		= SYSCTL_ZERO,
  		.extra2		= SYSCTL_ONE,
 -	},
--	{ }
+-	{}
 +	}
  };
  
- static int __init tagged_addr_init(void)
-diff --git a/drivers/perf/arm_pmuv3.c b/drivers/perf/arm_pmuv3.c
-index e5a2ac4155f6..c4aa6a8d1b05 100644
---- a/drivers/perf/arm_pmuv3.c
-+++ b/drivers/perf/arm_pmuv3.c
-@@ -1172,8 +1172,7 @@ static struct ctl_table armv8_pmu_sysctl_table[] = {
- 		.proc_handler	= armv8pmu_proc_user_access_handler,
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_ONE,
--	},
--	{ }
-+	}
- };
- 
- static void armv8_pmu_register_sysctl_table(void)
+ static struct ctl_table_header *itmt_sysctl_header;
 
 -- 
 2.30.2
