@@ -1,10 +1,10 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Wed, 06 Sep 2023 12:03:25 +0200
-Subject: [PATCH 4/8] x86 vdso: rm sentinel element from ctl_table array
+Date: Wed, 06 Sep 2023 12:03:26 +0200
+Subject: [PATCH 5/8] riscv: Remove sentinel element from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230906-jag-sysctl_remove_empty_elem_arch-v1-4-3935d4854248@samsung.com>
+Message-Id: <20230906-jag-sysctl_remove_empty_elem_arch-v1-5-3935d4854248@samsung.com>
 References: <20230906-jag-sysctl_remove_empty_elem_arch-v1-0-3935d4854248@samsung.com>
 In-Reply-To: <20230906-jag-sysctl_remove_empty_elem_arch-v1-0-3935d4854248@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
@@ -31,18 +31,18 @@ Cc: linux-fsdevel@vger.kernel.org, linux-s390@vger.kernel.org,
  linux-ia64@vger.kernel.org, linux-csky@vger.kernel.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1000;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1003;
  i=j.granados@samsung.com; h=from:subject:message-id;
- bh=vL1EzsjYbFXKFrtK9nHJVvAi8tmBe++iatkzXK58byA=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBk+E6VLWSScWJxr1IbmgKPa1RZW7ObxI6WU/TSb
- /w1xzkBrsGJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZPhOlQAKCRC6l81St5ZB
- T411C/4nYVxay01MI0fYlh2tXeRCZT4XrLhFpLHSsLO88W+1QBZQtZ8gO2vM+93YWSmHFkQoCsR
- KcoJwZ+EkkMf8WsQfME5NZZe9QqAWa0BuN3fag7YtX7JeDKjC5MraH/M3Zm35qVZ29hSCd/4mDY
- 8DDTvWypGbwepR7WT38A30v9LrG80iOyooAB06kaGaxwXBA3ii+b2P6VHUVMlvMLuWkUOyok6/z
- nA2x0x83Wvsq170HlyQKHOBwap14ZhJ6OPoFSyTWUr6U983PpnqsfDmTcYgdE+OARYk8x4Ngmcx
- IRZjjJbvj2Sm+tgS6ENeITYZVJd8V0y0m8MU6xbC9ZLpoWEJGxj6JLAvO/ZSPaiRekoLloMAteJ
- es6duh9rqCsTesV5rsulOZIo6tufJTM0rY9CFw8vaGH/f/Kt3xBuSdy2fhgoBSo+hfeoGpSsKyE
- sbPcJ2atpAF8XbaZ3GdfKliG0jmCzxzi14sxh9li2gbxkwNwKNDKPBCYFUWsOqoMQezN8=
+ bh=t3WkpVtcuZNgLfzODS/f6Wl7+8aj87aPFtcdo3tcO7g=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBk+E6Von/T+ilU5pBn4tuVN9msXbNXiDEdCeNZM
+ WZu4HJ8S0eJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZPhOlQAKCRC6l81St5ZB
+ Tz3jC/9dN3MWg/3ZWUm/XKdTghUQEp17Vk2HqbZ/vM6brez2iYSNe78aEZgEeiVqr9uX1yKcNlL
+ yv9Yx9SlvuX5AVA7JTJD9S9MXahhpbfHtiI9Am58HnMs2Z7Lzl2Ko/pKVIMu8J+pCSzNiPqpFOZ
+ xe1xyI5cemTS8YFjjL/q9ABG7R+ug+GAv2Iuy+7jJn2PQ7Fyh0GFdc4zsjdwQBY+4vB0SxFV6ka
+ XuUtM9oMYkSjDy7a9pdUOxQBBy1xBFnjmsyS8srdB1t8+/A4rjeqcZIytVtQejZa8lqPjmqoMuk
+ XZOreS5jqEblBcNJPg41oJ1o0J8jTiG4qbQZ65xtyyVPeSYekAyUVQHxF2iZ+WkIPV2APheEDU0
+ Cemyp+peINjokedAcLEjKDIqxg9XQNYXhTdmBvhU2FdgRkKIBf67ryX5hN5lkSktgPVaJqSFWvc
+ Bn01a42l5syjn7KRc/p1e2FbBVgv2tHfrjWzpcWJaHvsbjOKL24B4TSWJBtabzIHzyYXs=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -54,27 +54,27 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel element from abi_table2.
+Remove sentinel element from riscv_v_default_vstate_table.
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- arch/x86/entry/vdso/vdso32-setup.c | 3 +--
+ arch/riscv/kernel/vector.c | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/arch/x86/entry/vdso/vdso32-setup.c b/arch/x86/entry/vdso/vdso32-setup.c
-index f3b3cacbcbb0..37b761802181 100644
---- a/arch/x86/entry/vdso/vdso32-setup.c
-+++ b/arch/x86/entry/vdso/vdso32-setup.c
-@@ -66,8 +66,7 @@ static struct ctl_table abi_table2[] = {
- 		.proc_handler	= proc_dointvec_minmax,
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_ONE,
+diff --git a/arch/riscv/kernel/vector.c b/arch/riscv/kernel/vector.c
+index 8d92fb6c522c..a1ae68b2ac0f 100644
+--- a/arch/riscv/kernel/vector.c
++++ b/arch/riscv/kernel/vector.c
+@@ -254,8 +254,7 @@ static struct ctl_table riscv_v_default_vstate_table[] = {
+ 		.maxlen		= sizeof(riscv_v_implicit_uacc),
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dobool,
 -	},
--	{}
+-	{ }
 +	}
  };
  
- static __init int ia32_binfmt_init(void)
+ static int __init riscv_v_sysctl_init(void)
 
 -- 
 2.30.2
