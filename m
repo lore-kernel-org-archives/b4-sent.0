@@ -1,25 +1,26 @@
 From: Janne Grunau <j@jannau.net>
-Date: Sun, 10 Sep 2023 18:39:39 +0200
-Subject: [PATCH] drm/simpledrm: Add support for multiple "power-domains"
+Date: Tue, 12 Sep 2023 22:22:05 +0200
+Subject: [PATCH v2] drm/simpledrm: Add support for multiple "power-domains"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230910-simpledrm-multiple-power-domains-v1-1-f8718aefc685@jannau.net>
-X-B4-Tracking: v=1; b=H4sIAErx/WQC/x2NywqDMBAAf0X27EJipaC/UnqIZlMXzINdtQXx3
- xu8zVxmTlASJoWxOUHoYOWcqti2gXlx6UPIvjp0pnuYwRpUjmUlLxHjvm5cGUv+kqDP0XFSDL2
- l4J7OD9MMNVOEAv/uxet9XX/dov7xcgAAAA==
+Message-Id: <20230912-simpledrm-multiple-power-domains-v2-1-01b66bfb1980@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAGzIAGUC/5WNQQ6CMBBFr0Jm7RiKiuDKexgWI53KGNqSFlBDu
+ LuVG7j77y/eWyByEI5wyRYIPEsU7xIUuwzajtyDUXRiKPLikNcqxyh26FkHi3bqR0kbB//igNp
+ bEhfRHBUbKknX9xaSZghs5L0lbk3iTuLow2crzur3/iGfFSo01VlVxKYtq9P1Sc7RtHc8QrOu6
+ xfOQqoA0QAAAA==
 To: Thomas Zimmermann <tzimmermann@suse.de>, 
  Javier Martinez Canillas <javierm@redhat.com>, 
  David Airlie <airlied@gmail.com>, Daniel Vetter <daniel@ffwll.ch>
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- asahi@lists.linux.dev
+ asahi@lists.linux.dev, Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5664; i=j@jannau.net;
- h=from:subject:message-id; bh=EJPagUuzxc0WqRlov5ut5ybAy0M3MV6MA3GMn1r/gd8=;
- b=owGbwMvMwCG2UNrmdq9+ahrjabUkhpS/H8MYXzPpOTWEfjfa6HD/FX9UTc8GXzOBCXV7HNSSl
- leL5c3tKGVhEONgkBVTZEnSftnBsLpGMab2QRjMHFYmkCEMXJwCMJGFCxgZHsxV28SbomKz6ICV
- 8rEXtT7+kQLm7AbLJkqq1xx1N7kuw/C/Rn1dyMES7nAGvVlC5hKa+5RX/dize/eNyECWJ+/Tz/X
- xAQA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5966; i=j@jannau.net;
+ h=from:subject:message-id; bh=++CkedQIUrBzc1lKOmCeLyAl+ixyBvXQdHhD4vxqutU=;
+ b=owGbwMvMwCG2UNrmdq9+ahrjabUkhlSGEyW2vvVGhqHXdtQw/ft+hEn+Wkj+8ofiuf+sjt4/c
+ Fhqs0RjRykLgxgHg6yYIkuS9ssOhtU1ijG1D8Jg5rAygQxh4OIUgInENjIytDEZlMmVBafybp6W
+ 1BI0q3cK665daUd9525OPHHLKk/3LsM/vQdvPjl9aL2Z5LTx6PtdN/fWVuj3yixwViiaqjNHpD6
+ WAQA=
 X-Developer-Key: i=j@jannau.net; a=openpgp;
  fpr=8B336A6BE4E5695E89B8532B81E806F586338419
 X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
@@ -37,11 +38,20 @@ the display controller and a DP phy power domain on.
 
 Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- drivers/gpu/drm/tiny/simpledrm.c | 106 +++++++++++++++++++++++++++++++++++++++
- 1 file changed, 106 insertions(+)
+Changes in v2:
+- removed broken drm_err() log statement only ment for debugging
+- removed commented cast
+- use correct format spcifier for 'int' in log statement
+- add 'continue;' after failure to get device for power_domain
+- use drm_warn() in non fatal error cases
+- removed duplicate PTR_ERR conversion
+- Link to v1: https://lore.kernel.org/r/20230910-simpledrm-multiple-power-domains-v1-1-f8718aefc685@jannau.net
+---
+ drivers/gpu/drm/tiny/simpledrm.c | 105 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 105 insertions(+)
 
 diff --git a/drivers/gpu/drm/tiny/simpledrm.c b/drivers/gpu/drm/tiny/simpledrm.c
-index ff86ba1ae1b8..efedede57d42 100644
+index ff86ba1ae1b8..9c597461d1e2 100644
 --- a/drivers/gpu/drm/tiny/simpledrm.c
 +++ b/drivers/gpu/drm/tiny/simpledrm.c
 @@ -6,6 +6,7 @@
@@ -65,7 +75,7 @@ index ff86ba1ae1b8..efedede57d42 100644
  
  	/* simplefb settings */
  	struct drm_display_mode mode;
-@@ -468,6 +475,102 @@ static int simpledrm_device_init_regulators(struct simpledrm_device *sdev)
+@@ -468,6 +475,101 @@ static int simpledrm_device_init_regulators(struct simpledrm_device *sdev)
  }
  #endif
  
@@ -94,10 +104,8 @@ index ff86ba1ae1b8..efedede57d42 100644
 +static void simpledrm_device_detach_genpd(void *res)
 +{
 +	int i;
-+	struct simpledrm_device *sdev = /*(struct simpledrm_device *)*/res;
++	struct simpledrm_device *sdev = res;
 +
-+
-+	drm_err(&sdev->dev, "% power-domains count:%d\n", __func__, sdev->pwr_dom_count);
 +	if (sdev->pwr_dom_count <= 1)
 +		return;
 +
@@ -141,10 +149,11 @@ index ff86ba1ae1b8..efedede57d42 100644
 +			int ret = PTR_ERR(sdev->pwr_dom_devs[i]);
 +			if (ret == -EPROBE_DEFER) {
 +				simpledrm_device_detach_genpd(sdev);
-+				return PTR_ERR(sdev->pwr_dom_devs[i]);
++				return ret;
 +			}
-+			drm_err(&sdev->dev,
-+				"pm_domain_attach_by_id(%u) failed: %d\n", i, ret);
++			drm_warn(&sdev->dev,
++				 "pm_domain_attach_by_id(%u) failed: %d\n", i, ret);
++			continue;
 +		}
 +
 +		sdev->pwr_dom_links[i] = device_link_add(dev,
@@ -153,7 +162,7 @@ index ff86ba1ae1b8..efedede57d42 100644
 +							 DL_FLAG_PM_RUNTIME |
 +							 DL_FLAG_RPM_ACTIVE);
 +		if (!sdev->pwr_dom_links[i])
-+			drm_err(&sdev->dev, "failed to link power-domain %u\n", i);
++			drm_warn(&sdev->dev, "failed to link power-domain %d\n", i);
 +	}
 +
 +	return devm_add_action_or_reset(dev, simpledrm_device_detach_genpd, sdev);
@@ -168,7 +177,7 @@ index ff86ba1ae1b8..efedede57d42 100644
  /*
   * Modesetting
   */
-@@ -651,6 +754,9 @@ static struct simpledrm_device *simpledrm_device_create(struct drm_driver *drv,
+@@ -651,6 +753,9 @@ static struct simpledrm_device *simpledrm_device_create(struct drm_driver *drv,
  	if (ret)
  		return ERR_PTR(ret);
  	ret = simpledrm_device_init_regulators(sdev);
