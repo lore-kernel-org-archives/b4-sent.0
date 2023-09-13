@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Wed, 13 Sep 2023 11:10:57 +0200
-Subject: [PATCH v2 3/8] arch/x86: Remove now superfluous sentinel elem from
- ctl_table arrays
+Date: Wed, 13 Sep 2023 11:10:58 +0200
+Subject: [PATCH v2 4/8] x86/vdso: Remove now superfluous sentinel element
+ from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230913-jag-sysctl_remove_empty_elem_arch-v2-3-d1bd13a29bae@samsung.com>
+Message-Id: <20230913-jag-sysctl_remove_empty_elem_arch-v2-4-d1bd13a29bae@samsung.com>
 References: <20230913-jag-sysctl_remove_empty_elem_arch-v2-0-d1bd13a29bae@samsung.com>
 In-Reply-To: <20230913-jag-sysctl_remove_empty_elem_arch-v2-0-d1bd13a29bae@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
@@ -31,20 +31,20 @@ Cc: linux-fsdevel@vger.kernel.org, linux-s390@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-riscv@lists.infradead.org, linuxppc-dev@lists.ozlabs.org, 
  linux-ia64@vger.kernel.org, linux-csky@vger.kernel.org, 
- Joel Granados <j.granados@samsung.com>, Ingo Molnar <mingo@kernel.org>
+ Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1714;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1118;
  i=j.granados@samsung.com; h=from:subject:message-id;
- bh=/mE3FCrO8N9N5ocA17o8WorvC+93ienB9ASm3953JX0=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlAXy+P6IyIJVAiVruEBhUNPQKqpELjF18dzfN2
- Sau5oc9p9+JAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZQF8vgAKCRC6l81St5ZB
- TzOGC/wKtjbMwVyYSrKGZCdpsS8BeR6Sb+Sw1O/9MDzjfyeDErxvdriTX+K97uSfafn9EC9VkE4
- 3+Dp5zJgbrSjxpxaY2pQf/y4ZqY0JxZ0XcLRBRaXvXHA4u/m2ZyMGMCFwXPcQ0TxgJJaeL7z1M2
- e0gVVu0zh/JY3KgtFwL3m+F2xqoPO5vSfr0CQMtxeGtoCRzB7GaeJOZKfjaNfg9MTQ9pd97hzBv
- IUrCdqoOJomMpsFaPQH7XD/nTx/PznAIXJTILEYG3Q5+bJd8wNgyEu2FJqYY5PJrl4XgVS1lxo1
- kU6vP6K1K5MEB4/41nrGXYIbQaG5xcCKIJ6aaIe5MI7VPHkPALZYq34tMa04Rb6q1qZlNVGmgln
- zZrnVgpFSoN7JFJig1ruKLb7yTIGrMX/dyYqV4XGkG5Tf7fyvC4WTycYJB590I/V2P9s9jSr8xv
- 9FPq+RexsVQK5qYHFtthR/GrgPD5lrwWhuEzkCp0GM7f7Kh9f4hEAmQ+CxP14FEa65FCw=
+ bh=mobvr+1RgXQsfarnPqkIwzTWvcFKWXaq/pj/RSIk4eU=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlAXy+NsgXY5S9mwVEQGhj4lM9wRuJzSo3tbcRP
+ WD9kEpUcv+JAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZQF8vgAKCRC6l81St5ZB
+ TxObC/9Z4dNEvfnMP1bUXWKfUoJirbjQe+i6TcQ6EY2ZoXS0+6CjRcjGOnh11RNPS4YBwzf6u+O
+ mXPr1yV6j5IazDCs+LXcgb7XhWpvHgGOE4+DuAXD/hvf+fDEKkSYxxFmJXLNtk/PQ9e+8NGxQUx
+ 7kwnx9OpemaKoBQpRVr7M/Nodalu52YPoyNwE377qdVdES+l0p9lUzR+019muavTD6q3IEhV17b
+ sJAQhhOzSSySjyIAX/+tvd7NS3cBfT0tk9NaoKeg9wtyNkcedTqKgUg5Z6pPi7wq26YSI5cizb1
+ aIKJtE/YvtJDkq/qkbYjon4fMarirUWNOxO5BO9EzR4zihF+QxTYMTw4fdHO7uTeWxxvHXIAUpX
+ EenIpLPD2kxY1m2yuSvY+gQ0tQDPtHZ/vpF3ZB08YDZYJ2ra4dHQ37KlDSsrjCjXLdBbZAzC75x
+ mwBVBmEnYN4uf9TFa8H3zRLf+nlvlG7jNFi7QFKWEEVI8pTKMXEKALUjbeRpCzok85jHQ=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -56,38 +56,21 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel element from sld_sysctl and itmt_kern_table. This
-removal is safe because register_sysctl_init and register_sysctl
-implicitly use the array size in addition to checking for the sentinel.
+Remove sentinel element from abi_table2. This removal is safe because
+register_sysctl implicitly uses ARRAY_SIZE() in addition to checking for
+the sentinel.
 
-Reviewed-by: Ingo Molnar <mingo@kernel.org>
-Acked-by: Dave Hansen <dave.hansen@linux.intel.com> # for x86
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- arch/x86/kernel/cpu/intel.c | 3 +--
- arch/x86/kernel/itmt.c      | 3 +--
- 2 files changed, 2 insertions(+), 4 deletions(-)
+ arch/x86/entry/vdso/vdso32-setup.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/arch/x86/kernel/cpu/intel.c b/arch/x86/kernel/cpu/intel.c
-index be4045628fd3..e63391b82624 100644
---- a/arch/x86/kernel/cpu/intel.c
-+++ b/arch/x86/kernel/cpu/intel.c
-@@ -1015,8 +1015,7 @@ static struct ctl_table sld_sysctls[] = {
- 		.proc_handler	= proc_douintvec_minmax,
- 		.extra1         = SYSCTL_ZERO,
- 		.extra2         = SYSCTL_ONE,
--	},
--	{}
-+	}
- };
- 
- static int __init sld_mitigate_sysctl_init(void)
-diff --git a/arch/x86/kernel/itmt.c b/arch/x86/kernel/itmt.c
-index ee4fe8cdb857..5f2ccff38297 100644
---- a/arch/x86/kernel/itmt.c
-+++ b/arch/x86/kernel/itmt.c
-@@ -73,8 +73,7 @@ static struct ctl_table itmt_kern_table[] = {
- 		.proc_handler	= sched_itmt_update_handler,
+diff --git a/arch/x86/entry/vdso/vdso32-setup.c b/arch/x86/entry/vdso/vdso32-setup.c
+index f3b3cacbcbb0..37b761802181 100644
+--- a/arch/x86/entry/vdso/vdso32-setup.c
++++ b/arch/x86/entry/vdso/vdso32-setup.c
+@@ -66,8 +66,7 @@ static struct ctl_table abi_table2[] = {
+ 		.proc_handler	= proc_dointvec_minmax,
  		.extra1		= SYSCTL_ZERO,
  		.extra2		= SYSCTL_ONE,
 -	},
@@ -95,7 +78,7 @@ index ee4fe8cdb857..5f2ccff38297 100644
 +	}
  };
  
- static struct ctl_table_header *itmt_sysctl_header;
+ static __init int ia32_binfmt_init(void)
 
 -- 
 2.30.2
