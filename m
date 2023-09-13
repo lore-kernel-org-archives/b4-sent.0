@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Wed, 13 Sep 2023 11:11:00 +0200
-Subject: [PATCH v2 6/8] powerpc: Remove now superfluous sentinel element
- from ctl_table arrays
+Date: Wed, 13 Sep 2023 11:11:01 +0200
+Subject: [PATCH v2 7/8] ia64: Remove now superfluous sentinel element from
+ ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230913-jag-sysctl_remove_empty_elem_arch-v2-6-d1bd13a29bae@samsung.com>
+Message-Id: <20230913-jag-sysctl_remove_empty_elem_arch-v2-7-d1bd13a29bae@samsung.com>
 References: <20230913-jag-sysctl_remove_empty_elem_arch-v2-0-d1bd13a29bae@samsung.com>
 In-Reply-To: <20230913-jag-sysctl_remove_empty_elem_arch-v2-0-d1bd13a29bae@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
@@ -33,18 +33,18 @@ Cc: linux-fsdevel@vger.kernel.org, linux-s390@vger.kernel.org,
  linux-ia64@vger.kernel.org, linux-csky@vger.kernel.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1652;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1022;
  i=j.granados@samsung.com; h=from:subject:message-id;
- bh=Y5aFvjpy8hnP3BxMe92wukoMH7BspM7ptVXcM2uJq5s=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlAXy/xLS9tN6wR4DTogukmf0SR2Ukel+W6p3j5
- MCK5Hj/WweJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZQF8vwAKCRC6l81St5ZB
- T1XIC/sE7BuNn+96xT2x1msylJMtzgid9hN+e61HJ/NrDH1qqtScW6m30OKC6e0si6quzFz+YTi
- pAV4GZ7idF5xMOvHsbvwHIV1RwdZ9DhNtNL/LcDHG/XvJ7MwTgh/8AoLebpm6OVkPQzqaWghP1b
- bzT8rmYjV96saQgi8rPwt5ll57v8gv1g5ILyY4y+b+6f2Be19zRDDsj4YI3KdSau+0Rkw0OzdOr
- YOniWyBhmeW8vrb7Dfj3gECbAbjc2ndqLK72/WvPmgSrYzSVOezRh/xCsdldI9yTZOMnsLSSH+X
- GdOpAmEzI2XbDYlu3A2G8O7cg/mK+ZxT0+EA+PGFF8F8/pkZzHBXH02cunz12+R+VITnonmfxDD
- evvGMCqFZn2DmF/LgB+pptc/gO+Gs4uaedB1/T1oRlknK5y5fLNj0ce0Dw6GubZDNd5LaWme77D
- rnaLwKeVw2DfKOzgC+qKXHFSFjgISSSh1/pXUwVODumOI/GkOK8K95eDP4hfIXZ3+/M1Y=
+ bh=lfucH0fE8uQFBzo2EP5V/PmdZ4osPZqCeYafiOtbfRE=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlAXy/IrVGWKts3t7qO7epOhGK03/TUs7HC3Aht
+ 61eeHhSd6WJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZQF8vwAKCRC6l81St5ZB
+ T1qXC/955BgLg+IseBXTIS9fcvV95BuKTAMxBJeylP/3uT/84KdU6CA8PQILJr4QWPTncvV2oFg
+ C5js1ma1h0Ak2ndYSvUUh7C24rfIM5N7HW0X6W2rgeo/TUzexc1bQDk2YaRJuUABtI/+7MQjBY9
+ dN/JjBF9PdLXde4EcRVrJfvYjOGX9A3CYI+V+Sb6o/J4zva5hvRuVPWF6czcENFd0P1OxVT4A5P
+ K7QEmzlxVqbYMqcR8NxJOwoGiuxkaJ6q7St95Nm7KMh/+EtR1RDI2MhkA4pQtPrsUZSyKlmopcT
+ FZujBQxUfYpXn08bUXhQlor7gLp3KkSVugiPZLHoqNld5DzvBZWgmgF8yiH7RjXVfqzC8MmaQTy
+ WRz63EbdYN4/8UInqWjBuxPPitn9iucNOMRWV4E+GyCSmMjmF8oQvSC/FHjikZhp9qeNZ2Js2p3
+ +hhsDdk3on0AxHDllu98rHNusDz6G/ueEuVhC+eYmyDvjXtif26siW/vEQe2Lc9PMNWQY=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -56,44 +56,29 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel from powersave_nap_ctl_table and nmi_wd_lpm_factor_ctl_table.
-This removal is safe because register_sysctl implicitly uses ARRAY_SIZE()
-in addition to checking for the sentinel.
+Remove sentinel from kdump_ctl_table. This removal is safe because
+register_sysctl implicitly uses ARRAY_SIZE() in addition to checking for
+the sentinel.
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- arch/powerpc/kernel/idle.c                | 3 +--
- arch/powerpc/platforms/pseries/mobility.c | 3 +--
- 2 files changed, 2 insertions(+), 4 deletions(-)
+ arch/ia64/kernel/crash.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/arch/powerpc/kernel/idle.c b/arch/powerpc/kernel/idle.c
-index b1c0418b25c8..a8591f5fa70e 100644
---- a/arch/powerpc/kernel/idle.c
-+++ b/arch/powerpc/kernel/idle.c
-@@ -104,8 +104,7 @@ static struct ctl_table powersave_nap_ctl_table[] = {
- 		.maxlen		= sizeof(int),
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec,
+diff --git a/arch/ia64/kernel/crash.c b/arch/ia64/kernel/crash.c
+index 88b3ce3e66cd..fbf8893a570c 100644
+--- a/arch/ia64/kernel/crash.c
++++ b/arch/ia64/kernel/crash.c
+@@ -231,8 +231,7 @@ static struct ctl_table kdump_ctl_table[] = {
+ 		.maxlen = sizeof(int),
+ 		.mode = 0644,
+ 		.proc_handler = proc_dointvec,
 -	},
--	{}
+-	{ }
 +	}
  };
+ #endif
  
- static int __init
-diff --git a/arch/powerpc/platforms/pseries/mobility.c b/arch/powerpc/platforms/pseries/mobility.c
-index 0161226d8fec..d82b0c802fbb 100644
---- a/arch/powerpc/platforms/pseries/mobility.c
-+++ b/arch/powerpc/platforms/pseries/mobility.c
-@@ -60,8 +60,7 @@ static struct ctl_table nmi_wd_lpm_factor_ctl_table[] = {
- 		.maxlen		= sizeof(int),
- 		.mode		= 0644,
- 		.proc_handler	= proc_douintvec_minmax,
--	},
--	{}
-+	}
- };
- 
- static int __init register_nmi_wd_lpm_factor_sysctl(void)
 
 -- 
 2.30.2
