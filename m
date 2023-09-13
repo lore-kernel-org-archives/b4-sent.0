@@ -1,198 +1,241 @@
-From: Janne Grunau <j@jannau.net>
-Date: Tue, 12 Sep 2023 22:22:05 +0200
-Subject: [PATCH v2] drm/simpledrm: Add support for multiple "power-domains"
+From: Joel Granados <j.granados@samsung.com>
+Subject: [PATCH v2 0/8] sysctl: Remove sentinel elements from arch
+Date: Wed, 13 Sep 2023 11:10:54 +0200
+Message-Id: <20230913-jag-sysctl_remove_empty_elem_arch-v2-0-d1bd13a29bae@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230912-simpledrm-multiple-power-domains-v2-1-01b66bfb1980@jannau.net>
-X-B4-Tracking: v=1; b=H4sIAGzIAGUC/5WNQQ6CMBBFr0Jm7RiKiuDKexgWI53KGNqSFlBDu
- LuVG7j77y/eWyByEI5wyRYIPEsU7xIUuwzajtyDUXRiKPLikNcqxyh26FkHi3bqR0kbB//igNp
- bEhfRHBUbKknX9xaSZghs5L0lbk3iTuLow2crzur3/iGfFSo01VlVxKYtq9P1Sc7RtHc8QrOu6
- xfOQqoA0QAAAA==
-To: Thomas Zimmermann <tzimmermann@suse.de>, 
- Javier Martinez Canillas <javierm@redhat.com>, 
- David Airlie <airlied@gmail.com>, Daniel Vetter <daniel@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- asahi@lists.linux.dev, Janne Grunau <j@jannau.net>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5966; i=j@jannau.net;
- h=from:subject:message-id; bh=++CkedQIUrBzc1lKOmCeLyAl+ixyBvXQdHhD4vxqutU=;
- b=owGbwMvMwCG2UNrmdq9+ahrjabUkhlSGEyW2vvVGhqHXdtQw/ft+hEn+Wkj+8ofiuf+sjt4/c
- Fhqs0RjRykLgxgHg6yYIkuS9ssOhtU1ijG1D8Jg5rAygQxh4OIUgInENjIytDEZlMmVBafybp6W
- 1BI0q3cK665daUd9525OPHHLKk/3LsM/vQdvPjl9aL2Z5LTx6PtdN/fWVuj3yixwViiaqjNHpD6
- WAQA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
+X-B4-Tracking: v=1; b=H4sIAJ58AWUC/42NQQ6CMBAAv0L2bE0phYAn/2FIU8sKNZSSLjYSw
+ t+tJN49zhxmNiAMFgku2QYBoyXrpwTilIEZ9NQjs11iEFwUvOGSPXXPaCWzjCqg8xEVunlZFY7
+ olA5mYHXe3bmusDJGQurMAR/2fTxubeLB0uLDeixj/rW/evVHPeaMs6Ipyk7WpRSyvpJ29Jr6s
+ /EO2n3fPyJm99bUAAAA
+To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
+ josh@joshtriplett.org, Kees Cook <keescook@chromium.org>, 
+ Iurii Zaikin <yzaikin@google.com>, Heiko Carstens <hca@linux.ibm.com>, 
+ Vasily Gorbik <gor@linux.ibm.com>, 
+ Alexander Gordeev <agordeev@linux.ibm.com>, 
+ Christian Borntraeger <borntraeger@linux.ibm.com>, 
+ Sven Schnelle <svens@linux.ibm.com>, 
+ Gerald Schaefer <gerald.schaefer@linux.ibm.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Mark Rutland <mark.rutland@arm.com>, Thomas Gleixner <tglx@linutronix.de>, 
+ Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
+ Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
+ "H. Peter Anvin" <hpa@zytor.com>, Andy Lutomirski <luto@kernel.org>, 
+ Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, Guo Ren <guoren@kernel.org>, 
+ Alexey Gladkov <legion@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-s390@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-riscv@lists.infradead.org, linuxppc-dev@lists.ozlabs.org, 
+ linux-ia64@vger.kernel.org, linux-csky@vger.kernel.org, 
+ Joel Granados <j.granados@samsung.com>, Ingo Molnar <mingo@kernel.org>
+X-Mailer: b4 0.13-dev-86aa5
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8698;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=KIqswrAVMdhaWb/JbcZcIzXf/NYrgSb7sP/BTqWOdYY=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlAXy963a+0HLyfnoYmbG27az0WEoNmgVTomdUX
+ Hr6xAbPgcuJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZQF8vQAKCRC6l81St5ZB
+ T8o4C/0Zq95HrASlp0txb2/xovzLqmJ9WEKkTKx2USnCrRDjlxRQmgR5U7DmMUuohQFIV+0KR9S
+ vyHAWw53ehtrNqeX++6LB6slyNaFUJeY4mDs/l3MjRAzWhYJ7yWZV51U77MLeFn1YuiScWaHIo2
+ xXk6mQ8R6ZUUpXKkYIhsfH5ozGwLJYGChNF6/1UhfehOaYd5mUAhzy4RMsHC97fAlUTQtfxW1NT
+ dUPcHF6ZSfLHD2MDKITxxbWh+qZgAXSgibDGmOaM8Tmo1axwGvXqJxSez/zax7kUPjPJ3WT6hb4
+ rbWXkzRkT7XJg9dGYAhWhjGHDk1bqcDMOCLkLDw+PfhYXUKSpBDtmoRrKD6kThbn+IelfgDr9Yt
+ RISkf0KOqi8SKPATEEMtz/SScWjBavkqQvxZe3tIOoEb+ezASWYTlcBKSbiHSOTFjxLXc+Gp29Y
+ jdNYL0jmq2y5Y6G4u+FXOrVCfHlFsP/QKZ14pwBmq9CpPV3G5eg2foyffZMFJXmfqiwS4=
+X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Multiple power domains need to be handled explicitly in each driver. The
-driver core can not handle it automatically since it is not aware of
-power sequencing requirements the hardware might have. This is not a
-problem for simpledrm since everything is expected to be powered on by
-the bootloader. simpledrm has just ensure it remains powered on during
-its lifetime.
-This is required on Apple silicon M2 and M2 Pro/Max/Ultra desktop
-systems. The HDMI output initialized by the bootloader requires keeping
-the display controller and a DP phy power domain on.
+What?
+These commits remove the sentinel element (last empty element) from the
+sysctl arrays of all the files under the "arch/" directory that use a
+sysctl array for registration. The merging of the preparation patches
+(in https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
+to mainline allows us to just remove sentinel elements without changing
+behavior. This is now safe because the sysctl registration code
+(register_sysctl() and friends) use the array size in addition to
+checking for a sentinel ([1] for more info).
 
-Signed-off-by: Janne Grunau <j@jannau.net>
----
-Changes in v2:
-- removed broken drm_err() log statement only ment for debugging
-- removed commented cast
-- use correct format spcifier for 'int' in log statement
-- add 'continue;' after failure to get device for power_domain
-- use drm_warn() in non fatal error cases
-- removed duplicate PTR_ERR conversion
-- Link to v1: https://lore.kernel.org/r/20230910-simpledrm-multiple-power-domains-v1-1-f8718aefc685@jannau.net
----
- drivers/gpu/drm/tiny/simpledrm.c | 105 +++++++++++++++++++++++++++++++++++++++
- 1 file changed, 105 insertions(+)
+These commits are part of a bigger set (bigger patchset here
+https://github.com/Joelgranados/linux/tree/tag/sysctl_remove_empty_elem_V4)
+that remove the ctl_table sentinel. The idea is to make the review
+process easier by chunking the 52 commits into manageable pieces. By
+sending out one chunk at a time, they can be reviewed separately without
+noise from parallel sets. After the "arch/" commits in this set are
+reviewed, I will continue with drivers/*, fs/*, kernel/*, net/* and
+miscellaneous. The final set will remove the unneeded check for
+->procname == NULL.
 
-diff --git a/drivers/gpu/drm/tiny/simpledrm.c b/drivers/gpu/drm/tiny/simpledrm.c
-index ff86ba1ae1b8..9c597461d1e2 100644
---- a/drivers/gpu/drm/tiny/simpledrm.c
-+++ b/drivers/gpu/drm/tiny/simpledrm.c
-@@ -6,6 +6,7 @@
- #include <linux/of_address.h>
- #include <linux/platform_data/simplefb.h>
- #include <linux/platform_device.h>
-+#include <linux/pm_domain.h>
- #include <linux/regulator/consumer.h>
- 
- #include <drm/drm_aperture.h>
-@@ -227,6 +228,12 @@ struct simpledrm_device {
- 	unsigned int regulator_count;
- 	struct regulator **regulators;
- #endif
-+	/* power-domains */
-+#if defined CONFIG_OF && defined CONFIG_PM_GENERIC_DOMAINS
-+	int pwr_dom_count;
-+	struct device **pwr_dom_devs;
-+	struct device_link **pwr_dom_links;
-+#endif
- 
- 	/* simplefb settings */
- 	struct drm_display_mode mode;
-@@ -468,6 +475,101 @@ static int simpledrm_device_init_regulators(struct simpledrm_device *sdev)
+Why?
+By removing the sysctl sentinel elements we avoid kernel bloat as
+ctl_table arrays get moved out of kernel/sysctl.c into their own
+respective subsystems. This move was started long ago to avoid merge
+conflicts; the sentinel removal bit came after Mathew Wilcox suggested
+it to avoid bloating the kernel by one element as arrays moved out. This
+patchset will reduce the overall build time size of the kernel and run
+time memory bloat by about ~64 bytes per declared ctl_table array. I
+have consolidated some links that shed light on the history of this
+effort [2].
+
+V2:
+* Added clarification both in the commit messages and the coverletter as
+  to why this patch is safe to apply.
+* Added {Acked,Reviewed,Tested}-by from list
+* Link to v1: https://lore.kernel.org/r/20230906-jag-sysctl_remove_empty_elem_arch-v1-0-3935d4854248@samsung.com
+
+Testing:
+* Ran sysctl selftests (./tools/testing/selftests/sysctl/sysctl.sh)
+* Ran this through 0-day with no errors or warnings
+
+Size saving after removing all sentinels:
+  A consequence of eventually removing all the sentinels (64 bytes per
+  sentinel) is the bytes we save. These are *not* numbers that we will
+  get after this patch set; these are the numbers that we will get after
+  removing all the sentinels. I included them here because they are
+  relevant and to get an idea of just how much memory we are talking
+  about.
+    * bloat-o-meter:
+        - The "yesall" configuration results save 9158 bytes (bloat-o-meter output here
+          https://lore.kernel.org/all/20230621091000.424843-1-j.granados@samsung.com/)
+        - The "tiny" config + CONFIG_SYSCTL save 1215 bytes (bloat-o-meter output here
+          https://lore.kernel.org/all/20230809105006.1198165-1-j.granados@samsung.com/)
+    * memory usage:
+        we save some bytes in main memory as well. In my testing kernel
+        I measured a difference of 7296 bytes. I include the way to
+        measure in [3]
+
+Size saving after this patchset:
+  Here I give the values that I measured for the architecture that I'm
+  running (x86_64). This can give an approximation of how many bytes are
+  saved for each arch. I won't publish for all the archs because I don't
+  have access to all of them.
+    * bloat-o-meter
+        - The "yesall" config saves 192 bytes (bloat-o-meter output [4])
+        - The "tiny" config saves 64 bytes (bloat-o-meter output [5])
+    * memory usage:
+        In this case there were no bytes saved. To measure it comment the
+        printk in `new_dir` and uncomment the if conditional in `new_links`
+        [3].
+
+Comments/feedback greatly appreciated
+
+Best
+Joel
+
+[1]
+https://lore.kernel.org/all/20230809105006.1198165-1-j.granados@samsung.com/
+
+[2]
+Links Related to the ctl_table sentinel removal:
+* Good summary from Luis sent with the "pull request" for the
+  preparation patches.
+  https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+* Another very good summary from Luis.
+  https://lore.kernel.org/all/ZMFizKFkVxUFtSqa@bombadil.infradead.org/
+* This is a patch set that replaces register_sysctl_table with register_sysctl
+  https://lore.kernel.org/all/20230302204612.782387-1-mcgrof@kernel.org/
+* Patch set to deprecate register_sysctl_paths()
+  https://lore.kernel.org/all/20230302202826.776286-1-mcgrof@kernel.org/
+* Here there is an explicit expectation for the removal of the sentinel element.
+  https://lore.kernel.org/all/20230321130908.6972-1-frank.li@vivo.com
+* The "ARRAY_SIZE" approach was mentioned (proposed?) in this thread
+  https://lore.kernel.org/all/20220220060626.15885-1-tangmeng@uniontech.com
+
+[3]
+To measure the in memory savings apply this on top of this patchset.
+
+"
+diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+index c88854df0b62..e0073a627bac 100644
+--- a/fs/proc/proc_sysctl.c
++++ b/fs/proc/proc_sysctl.c
+@@ -976,6 +976,8 @@ static struct ctl_dir *new_dir(struct ctl_table_set *set,
+        table[0].procname = new_name;
+        table[0].mode = S_IFDIR|S_IRUGO|S_IXUGO;
+        init_header(&new->header, set->dir.header.root, set, node, table, 1);
++       // Counts additional sentinel used for each new dir.
++       printk("%ld sysctl saved mem kzalloc \n", sizeof(struct ctl_table));
+
+        return new;
  }
- #endif
- 
-+#if defined CONFIG_OF && defined CONFIG_PM_GENERIC_DOMAINS
-+/*
-+ * Generic power domain handling code.
-+ *
-+ * Here we handle the power-domains properties of our "simple-framebuffer"
-+ * dt node. This is only necessary if there is more than one power-domain.
-+ * A single power-domains is handled automatically by the driver core. Multiple
-+ * power-domains have to be handled by drivers since the driver core can't know
-+ * the correct power sequencing. Power sequencing is not an issue for simpledrm
-+ * since the bootloader has put the power domains already in the correct state.
-+ * simpledrm has only to ensure they remain active for its lifetime.
-+ *
-+ * When the driver unloads, we detach from the power-domains.
-+ *
-+ * We only complain about errors here, no action is taken as the most likely
-+ * error can only happen due to a mismatch between the bootloader which set
-+ * up the "simple-framebuffer" dt node, and the PM domain providers in the
-+ * device tree. Chances are that there are no adverse effects, and if there are,
-+ * a clean teardown of the fb probe will not help us much either. So just
-+ * complain and carry on, and hope that the user actually gets a working fb at
-+ * the end of things.
-+ */
-+static void simpledrm_device_detach_genpd(void *res)
-+{
-+	int i;
-+	struct simpledrm_device *sdev = res;
-+
-+	if (sdev->pwr_dom_count <= 1)
-+		return;
-+
-+	for (i = sdev->pwr_dom_count - 1; i >= 0; i--) {
-+		if (!sdev->pwr_dom_links[i])
-+			device_link_del(sdev->pwr_dom_links[i]);
-+		if (!IS_ERR_OR_NULL(sdev->pwr_dom_devs[i]))
-+			dev_pm_domain_detach(sdev->pwr_dom_devs[i], true);
-+	}
-+}
-+
-+static int simpledrm_device_attach_genpd(struct simpledrm_device *sdev)
-+{
-+	struct device *dev = sdev->dev.dev;
-+	int i;
-+
-+	sdev->pwr_dom_count = of_count_phandle_with_args(dev->of_node, "power-domains",
-+							 "#power-domain-cells");
-+	/*
-+	 * Single power-domain devices are handled by driver core nothing to do
-+	 * here. The same for device nodes without "power-domains" property.
-+	 */
-+	if (sdev->pwr_dom_count <= 1)
-+		return 0;
-+
-+	sdev->pwr_dom_devs = devm_kcalloc(dev, sdev->pwr_dom_count,
-+					       sizeof(*sdev->pwr_dom_devs),
-+					       GFP_KERNEL);
-+	if (!sdev->pwr_dom_devs)
-+		return -ENOMEM;
-+
-+	sdev->pwr_dom_links = devm_kcalloc(dev, sdev->pwr_dom_count,
-+						sizeof(*sdev->pwr_dom_links),
-+						GFP_KERNEL);
-+	if (!sdev->pwr_dom_links)
-+		return -ENOMEM;
-+
-+	for (i = 0; i < sdev->pwr_dom_count; i++) {
-+		sdev->pwr_dom_devs[i] = dev_pm_domain_attach_by_id(dev, i);
-+		if (IS_ERR(sdev->pwr_dom_devs[i])) {
-+			int ret = PTR_ERR(sdev->pwr_dom_devs[i]);
-+			if (ret == -EPROBE_DEFER) {
-+				simpledrm_device_detach_genpd(sdev);
-+				return ret;
-+			}
-+			drm_warn(&sdev->dev,
-+				 "pm_domain_attach_by_id(%u) failed: %d\n", i, ret);
-+			continue;
-+		}
-+
-+		sdev->pwr_dom_links[i] = device_link_add(dev,
-+							 sdev->pwr_dom_devs[i],
-+							 DL_FLAG_STATELESS |
-+							 DL_FLAG_PM_RUNTIME |
-+							 DL_FLAG_RPM_ACTIVE);
-+		if (!sdev->pwr_dom_links[i])
-+			drm_warn(&sdev->dev, "failed to link power-domain %d\n", i);
-+	}
-+
-+	return devm_add_action_or_reset(dev, simpledrm_device_detach_genpd, sdev);
-+}
-+#else
-+static int simpledrm_device_attach_genpd(struct simpledrm_device *sdev)
-+{
-+	return 0;
-+}
-+#endif
-+
- /*
-  * Modesetting
-  */
-@@ -651,6 +753,9 @@ static struct simpledrm_device *simpledrm_device_create(struct drm_driver *drv,
- 	if (ret)
- 		return ERR_PTR(ret);
- 	ret = simpledrm_device_init_regulators(sdev);
-+	if (ret)
-+		return ERR_PTR(ret);
-+	ret = simpledrm_device_attach_genpd(sdev);
- 	if (ret)
- 		return ERR_PTR(ret);
- 
+@@ -1199,6 +1201,9 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table_
+                link_name += len;
+                link++;
+        }
++       // Counts additional sentinel used for each new registration
++       //if ((head->ctl_table + head->ctl_table_size)->procname)
++               printk("%ld sysctl saved mem kzalloc \n", sizeof(struct ctl_table));
+        init_header(links, dir->header.root, dir->header.set, node, link_table,
+                    head->ctl_table_size);
+        links->nreg = nr_entries;
+"
+and then run the following bash script in the kernel:
+
+accum=0
+for n in $(dmesg | grep kzalloc | awk '{print $3}') ; do
+    echo $n
+    accum=$(calc "$accum + $n")
+done
+echo $accum
+
+[4]
+add/remove: 0/0 grow/shrink: 0/3 up/down: 0/-192 (-192)
+Function                                     old     new   delta
+sld_sysctls                                  128      64     -64
+itmt_kern_table                              128      64     -64
+abi_table2                                   128      64     -64
+Total: Before=429173594, After=429173402, chg -0.00%
+
+[5]
+add/remove: 0/0 grow/shrink: 1/0 up/down: 64/0 (64)
+Function                                     old     new   delta
+sld_sysctls                                   64     128     +64
+Total: Before=1886119, After=1886183, chg +0.00%
+
+Signed-off-by: Joel Granados <j.granados@samsung.com>
 
 ---
-base-commit: 15d30b46573d75f5cb58cfacded8ebab9c76a2b0
-change-id: 20230910-simpledrm-multiple-power-domains-f41efa6ad9bc
+
+---
+Joel Granados (8):
+      S390: Remove now superfluous sentinel elem from ctl_table arrays
+      arm: Remove now superfluous sentinel elem from ctl_table arrays
+      arch/x86: Remove now superfluous sentinel elem from ctl_table arrays
+      x86/vdso: Remove now superfluous sentinel element from ctl_table array
+      riscv: Remove now superfluous sentinel element from ctl_table array
+      powerpc: Remove now superfluous sentinel element from ctl_table arrays
+      ia64: Remove now superfluous sentinel element from ctl_table array
+      c-sky: Remove now superfluous sentinel element from ctl_talbe array
+
+ arch/arm/kernel/isa.c                     | 4 ++--
+ arch/arm64/kernel/armv8_deprecated.c      | 8 +++-----
+ arch/arm64/kernel/fpsimd.c                | 6 ++----
+ arch/arm64/kernel/process.c               | 3 +--
+ arch/csky/abiv1/alignment.c               | 3 +--
+ arch/ia64/kernel/crash.c                  | 3 +--
+ arch/powerpc/kernel/idle.c                | 3 +--
+ arch/powerpc/platforms/pseries/mobility.c | 3 +--
+ arch/riscv/kernel/vector.c                | 3 +--
+ arch/s390/appldata/appldata_base.c        | 6 ++----
+ arch/s390/kernel/debug.c                  | 3 +--
+ arch/s390/kernel/topology.c               | 3 +--
+ arch/s390/mm/cmm.c                        | 3 +--
+ arch/s390/mm/pgalloc.c                    | 3 +--
+ arch/x86/entry/vdso/vdso32-setup.c        | 3 +--
+ arch/x86/kernel/cpu/intel.c               | 3 +--
+ arch/x86/kernel/itmt.c                    | 3 +--
+ drivers/perf/arm_pmuv3.c                  | 3 +--
+ 18 files changed, 23 insertions(+), 43 deletions(-)
+---
+base-commit: 708283abf896dd4853e673cc8cba70acaf9bf4ea
+change-id: 20230904-jag-sysctl_remove_empty_elem_arch-81db0a6e6cc4
 
 Best regards,
 -- 
-Janne Grunau <j@jannau.net>
+Joel Granados <j.granados@samsung.com>
 
