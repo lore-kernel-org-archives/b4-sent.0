@@ -1,110 +1,105 @@
 From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Fri, 15 Sep 2023 11:11:02 +0300
-Subject: [PATCH v4 20/42] spi: ep93xx: add DT support for Cirrus EP93xx
+Date: Fri, 15 Sep 2023 11:11:03 +0300
+Subject: [PATCH v4 21/42] dt-bindings: net: Add Cirrus EP93xx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230915-ep93xx-v4-20-a1d779dcec10@maquefel.me>
+Message-Id: <20230915-ep93xx-v4-21-a1d779dcec10@maquefel.me>
 References: <20230915-ep93xx-v4-0-a1d779dcec10@maquefel.me>
 In-Reply-To: <20230915-ep93xx-v4-0-a1d779dcec10@maquefel.me>
-To: Mark Brown <broonie@kernel.org>
-Cc: linux-spi@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Arnd Bergmann <arnd@arndb.de>, 
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Alexander Sverdlin <alexander.sverdlin@gmail.com>, 
+ Nikita Shubin <nikita.shubin@maquefel.me>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>, 
  Alexander Sverdlin <alexander.sverdlin@gmail.com>
 X-Mailer: b4 0.13-dev-e3e53
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1694765525; l=2702;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1694765525; l=1963;
  i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=ZWn5JZLALLuK4G847aw+YC2k8LjRei15o646pYI1xGQ=;
- b=VKuO2C7qqnyexAG+u0v3ihHQPeM3GpjzYwML0vh5RImwhqpNidBkpO19Zr6afoPhy3CgGrNhI8x6
- TRiy+d7QBMwum8/bwpdMp672/UeEibNZuKKC+CV9kx5RpHfG9mCG
+ bh=IVmfCvMs//Z2ipPGURGz6saGZ4W56uIvLBfUBFiUyHM=;
+ b=KFopxrNEENJGHjnrEuKxBqUFYu1RNRbYXM+AX5ixTrEim34Wgrn84WhB5uByN7G6b5MQEuFXyZ4n
+ S2P97OacDBOyGeX1RjJ+x2liMKhlKSDOSyg0P+qnVMgo5jCMUw8w
 X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-- add OF ID match table
+Add YAML bindings for ep93xx SoC Ethernet Controller.
 
-Instead of platform use_dma flag - check if DT dmas property is present to
-decide to use dma ot not.
-
-Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
-Tested-by: Alexander Sverdlin <alexander.sverdlin@gmail.com>
-Acked-by: Alexander Sverdlin <alexander.sverdlin@gmail.com>
 Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
- drivers/spi/spi-ep93xx.c | 28 +++++++++++++++++++++++++++-
- 1 file changed, 27 insertions(+), 1 deletion(-)
+ .../devicetree/bindings/net/cirrus,ep9301-eth.yaml | 59 ++++++++++++++++++++++
+ 1 file changed, 59 insertions(+)
 
-diff --git a/drivers/spi/spi-ep93xx.c b/drivers/spi/spi-ep93xx.c
-index 1615fd22f9a2..f93cd506bf17 100644
---- a/drivers/spi/spi-ep93xx.c
-+++ b/drivers/spi/spi-ep93xx.c
-@@ -22,6 +22,7 @@
- #include <linux/bitops.h>
- #include <linux/interrupt.h>
- #include <linux/module.h>
-+#include <linux/property.h>
- #include <linux/platform_device.h>
- #include <linux/sched.h>
- #include <linux/scatterlist.h>
-@@ -644,6 +645,23 @@ static void ep93xx_spi_release_dma(struct ep93xx_spi *espi)
- 		free_page((unsigned long)espi->zeropage);
- }
- 
-+#ifdef CONFIG_OF
-+static struct ep93xx_spi_info dt_spi_info;
+diff --git a/Documentation/devicetree/bindings/net/cirrus,ep9301-eth.yaml b/Documentation/devicetree/bindings/net/cirrus,ep9301-eth.yaml
+new file mode 100644
+index 000000000000..ad0915307095
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/cirrus,ep9301-eth.yaml
+@@ -0,0 +1,59 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/cirrus,ep9301-eth.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+static struct ep93xx_spi_info *ep93xx_spi_get_platdata(struct platform_device *pdev)
-+{
-+	if (device_property_present(&pdev->dev, "dmas"))
-+		dt_spi_info.use_dma = 1;
++title: EP93xx SoC Ethernet Controller
 +
-+	return &dt_spi_info;
-+}
-+#else
-+static struct ep93xx_spi_info *ep93xx_spi_get_platdata(struct platform_device *pdev)
-+{
-+	return dev_get_platdata(&pdev->dev);
-+}
-+#endif
++maintainers:
++  - Alexander Sverdlin <alexander.sverdlin@gmail.com>
++  - Nikita Shubin <nikita.shubin@maquefel.me>
 +
- static int ep93xx_spi_probe(struct platform_device *pdev)
- {
- 	struct spi_master *master;
-@@ -653,7 +671,7 @@ static int ep93xx_spi_probe(struct platform_device *pdev)
- 	int irq;
- 	int error;
- 
--	info = dev_get_platdata(&pdev->dev);
-+	info = ep93xx_spi_get_platdata(pdev);
- 	if (!info) {
- 		dev_err(&pdev->dev, "missing platform data\n");
- 		return -EINVAL;
-@@ -726,6 +744,7 @@ static int ep93xx_spi_probe(struct platform_device *pdev)
- 	/* make sure that the hardware is disabled */
- 	writel(0, espi->mmio + SSPCR1);
- 
-+	device_set_node(&master->dev, dev_fwnode(&pdev->dev));
- 	error = devm_spi_register_master(&pdev->dev, master);
- 	if (error) {
- 		dev_err(&pdev->dev, "failed to register SPI master\n");
-@@ -753,9 +772,16 @@ static void ep93xx_spi_remove(struct platform_device *pdev)
- 	ep93xx_spi_release_dma(espi);
- }
- 
-+static const struct of_device_id ep93xx_spi_of_ids[] = {
-+	{ .compatible = "cirrus,ep9301-spi" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, ep93xx_spi_of_ids);
++allOf:
++  - $ref: ethernet-controller.yaml#
 +
- static struct platform_driver ep93xx_spi_driver = {
- 	.driver		= {
- 		.name	= "ep93xx-spi",
-+		.of_match_table = ep93xx_spi_of_ids,
- 	},
- 	.probe		= ep93xx_spi_probe,
- 	.remove_new	= ep93xx_spi_remove,
++properties:
++  compatible:
++    oneOf:
++      - const: cirrus,ep9301-eth
++      - items:
++          - enum:
++              - cirrus,ep9302-eth
++              - cirrus,ep9307-eth
++              - cirrus,ep9312-eth
++              - cirrus,ep9315-eth
++          - const: cirrus,ep9301-eth
++
++  reg:
++    items:
++      - description: The physical base address and size of IO range
++
++  interrupts:
++    items:
++      - description: Combined signal for various interrupt events
++
++  phy-handle: true
++
++  mdio:
++    $ref: mdio.yaml#
++    unevaluatedProperties: false
++    description: optional node for embedded MDIO controller
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - phy-handle
++
++additionalProperties: false
++
++examples:
++  - |
++    ethernet@80010000 {
++        compatible = "cirrus,ep9301-eth";
++        reg = <0x80010000 0x10000>;
++        interrupt-parent = <&vic1>;
++        interrupts = <7>;
++        phy-handle = <&phy0>;
++    };
 
 -- 
 2.39.2
