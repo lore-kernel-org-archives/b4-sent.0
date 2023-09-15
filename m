@@ -1,163 +1,160 @@
 From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Fri, 15 Sep 2023 11:10:50 +0300
-Subject: [PATCH v4 08/42] power: reset: Add a driver for the ep93xx reset
+Date: Fri, 15 Sep 2023 11:10:51 +0300
+Subject: [PATCH v4 09/42] dt-bindings: soc: Add Cirrus EP93xx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230915-ep93xx-v4-8-a1d779dcec10@maquefel.me>
+Message-Id: <20230915-ep93xx-v4-9-a1d779dcec10@maquefel.me>
 References: <20230915-ep93xx-v4-0-a1d779dcec10@maquefel.me>
 In-Reply-To: <20230915-ep93xx-v4-0-a1d779dcec10@maquefel.me>
-To: Sebastian Reichel <sre@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+To: Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Nikita Shubin <nikita.shubin@maquefel.me>, 
+ Alexander Sverdlin <alexander.sverdlin@gmail.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Arnd Bergmann <arnd@arndb.de>, 
  Alexander Sverdlin <alexander.sverdlin@gmail.com>
 X-Mailer: b4 0.13-dev-e3e53
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1694765525; l=4419;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1694765525; l=3868;
  i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=ue19S7x0buqeac3S+9Rq3Mq9gtPiw4CWJl2XJVARssk=;
- b=QJUbM+uVMMUIDyTOR2gHpk1dTPaI19Z9JgWjVkfgVTwuDp8zFwUglkPCvmNdTvzZW+UcRfUfEDn6
- 8/9/rx6rDDPJpd0DRjoWl0RoDqkgnNP+sHmmVds2+qYRwhV7HYXc
+ bh=sETUUAT5hDZfN2BadAoOQHzR1eVKgsUzzClRS2h7n78=;
+ b=FTd8jF/0f33oNxHEMwrxdWEQ1tN0Y9DN64lCQ+NR5l/s7/UZp0n5swGWziBb6J1iz0En6tMB0Q4h
+ cI9WmBsuDLuzTNyjgVff87tB2ZdHedwx4VMzknp50OfgMmeV+shS
 X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement the reset behaviour of the various EP93xx SoCS in drivers/power/reset.
-
-It used to be located in arch/arm/mach-ep93xx.
+Add device tree bindings for the Cirrus Logic EP93xx SoC.
 
 Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
-Acked-by: Sebastian Reichel <sre@kernel.org>
 ---
- drivers/power/reset/Kconfig          | 10 +++++
- drivers/power/reset/Makefile         |  1 +
- drivers/power/reset/ep93xx-restart.c | 85 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 96 insertions(+)
+ .../bindings/arm/cirrus/cirrus,ep9301.yaml         | 38 ++++++++++++
+ .../bindings/soc/cirrus/cirrus,ep9301-syscon.yaml  | 71 ++++++++++++++++++++++
+ 2 files changed, 109 insertions(+)
 
-diff --git a/drivers/power/reset/Kconfig b/drivers/power/reset/Kconfig
-index fff07b2bd77b..9c2aa9218841 100644
---- a/drivers/power/reset/Kconfig
-+++ b/drivers/power/reset/Kconfig
-@@ -75,6 +75,16 @@ config POWER_RESET_BRCMSTB
- 	  Say Y here if you have a Broadcom STB board and you wish
- 	  to have restart support.
- 
-+config POWER_RESET_EP93XX
-+	bool "Cirrus EP93XX reset driver" if COMPILE_TEST
-+	depends on MFD_SYSCON
-+	default ARCH_EP93XX
-+	help
-+	  This driver provides restart support for Cirrus EP93XX SoC.
-+
-+	  Say Y here if you have a Cirrus EP93XX SoC and you wish
-+	  to have restart support.
-+
- config POWER_RESET_GEMINI_POWEROFF
- 	bool "Cortina Gemini power-off driver"
- 	depends on ARCH_GEMINI || COMPILE_TEST
-diff --git a/drivers/power/reset/Makefile b/drivers/power/reset/Makefile
-index d763e6735ee3..61f4e11619b2 100644
---- a/drivers/power/reset/Makefile
-+++ b/drivers/power/reset/Makefile
-@@ -7,6 +7,7 @@ obj-$(CONFIG_POWER_RESET_ATC260X) += atc260x-poweroff.o
- obj-$(CONFIG_POWER_RESET_AXXIA) += axxia-reset.o
- obj-$(CONFIG_POWER_RESET_BRCMKONA) += brcm-kona-reset.o
- obj-$(CONFIG_POWER_RESET_BRCMSTB) += brcmstb-reboot.o
-+obj-$(CONFIG_POWER_RESET_EP93XX) += ep93xx-restart.o
- obj-$(CONFIG_POWER_RESET_GEMINI_POWEROFF) += gemini-poweroff.o
- obj-$(CONFIG_POWER_RESET_GPIO) += gpio-poweroff.o
- obj-$(CONFIG_POWER_RESET_GPIO_RESTART) += gpio-restart.o
-diff --git a/drivers/power/reset/ep93xx-restart.c b/drivers/power/reset/ep93xx-restart.c
+diff --git a/Documentation/devicetree/bindings/arm/cirrus/cirrus,ep9301.yaml b/Documentation/devicetree/bindings/arm/cirrus/cirrus,ep9301.yaml
 new file mode 100644
-index 000000000000..4da456d45d29
+index 000000000000..97dd8b6aefa9
 --- /dev/null
-+++ b/drivers/power/reset/ep93xx-restart.c
-@@ -0,0 +1,85 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * Cirrus EP93xx SoC reset driver
-+ *
-+ * Copyright (C) 2021 Nikita Shubin <nikita.shubin@maquefel.me>
-+ */
++++ b/Documentation/devicetree/bindings/arm/cirrus/cirrus,ep9301.yaml
+@@ -0,0 +1,38 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/arm/cirrus/cirrus,ep9301.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+#include <linux/bits.h>
-+#include <linux/delay.h>
-+#include <linux/mfd/syscon.h>
-+#include <linux/notifier.h>
-+#include <linux/of.h>
-+#include <linux/platform_device.h>
-+#include <linux/reboot.h>
++title: Cirrus Logic EP93xx platforms
 +
-+#include <linux/soc/cirrus/ep93xx.h>
++description:
++  The EP93xx SoC is a ARMv4T-based with 200 MHz ARM9 CPU.
 +
-+#define EP93XX_SYSCON_DEVCFG		0x80
-+#define EP93XX_SYSCON_DEVCFG_SWRST	BIT(31)
++maintainers:
++  - Alexander Sverdlin <alexander.sverdlin@gmail.com>
++  - Nikita Shubin <nikita.shubin@maquefel.me>
 +
-+struct ep93xx_restart {
-+	struct regmap *map;
-+	struct notifier_block restart_handler;
-+};
++properties:
++  $nodename:
++    const: '/'
++  compatible:
++    oneOf:
++      - description: The TS-7250 is a compact, full-featured Single Board Computer (SBC)
++          based upon the Cirrus EP9302 ARM9 CPU
++        items:
++          - const: technologic,ts7250
++          - const: cirrus,ep9301
 +
-+static int ep93xx_restart_handle(struct notifier_block *this,
-+				 unsigned long mode, void *cmd)
-+{
-+	struct ep93xx_restart *priv =
-+		container_of(this, struct ep93xx_restart, restart_handler);
++      - description: The Liebherr BK3 is a derivate from ts7250 board
++        items:
++          - const: liebherr,bk3
++          - const: cirrus,ep9301
 +
-+	/* Issue the reboot */
-+	ep93xx_regmap_update_bits(priv->map, EP93XX_SYSCON_DEVCFG,
-+				  EP93XX_SYSCON_DEVCFG_SWRST, EP93XX_SYSCON_DEVCFG_SWRST);
-+	ep93xx_regmap_update_bits(priv->map, EP93XX_SYSCON_DEVCFG,
-+				  EP93XX_SYSCON_DEVCFG_SWRST, 0);
++      - description: EDB302 is an evaluation board by Cirrus Logic,
++          based on a Cirrus Logic EP9302 CPU
++        items:
++          - const: cirrus,edb9302
++          - const: cirrus,ep9301
 +
-+	return NOTIFY_DONE;
-+}
++additionalProperties: true
+diff --git a/Documentation/devicetree/bindings/soc/cirrus/cirrus,ep9301-syscon.yaml b/Documentation/devicetree/bindings/soc/cirrus/cirrus,ep9301-syscon.yaml
+new file mode 100644
+index 000000000000..1692250251d9
+--- /dev/null
++++ b/Documentation/devicetree/bindings/soc/cirrus/cirrus,ep9301-syscon.yaml
+@@ -0,0 +1,71 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/soc/cirrus/cirrus,ep9301-syscon.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+static int ep93xx_reboot_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	struct ep93xx_restart *priv;
-+	struct device_node *parent;
-+	int err;
++title: Cirrus Logic EP93xx Platforms System Controller
 +
-+	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
-+	if (!priv)
-+		return -ENOMEM;
++maintainers:
++  - Alexander Sverdlin <alexander.sverdlin@gmail.com>
++  - Nikita Shubin <nikita.shubin@maquefel.me>
 +
-+	parent = of_get_parent(dev->of_node);
-+	if (!parent)
-+		return dev_err_probe(dev, -EINVAL, "no syscon parent for reboot node\n");
++properties:
++  compatible:
++    oneOf:
++      - items:
++          - enum:
++              - cirrus,ep9302-syscon
++              - cirrus,ep9307-syscon
++              - cirrus,ep9312-syscon
++              - cirrus,ep9315-syscon
++          - const: cirrus,ep9301-syscon
++          - const: syscon
++          - const: simple-mfd
++      - items:
++          - const: cirrus,ep9301-syscon
++          - const: syscon
++          - const: simple-mfd
 +
-+	priv->map = syscon_node_to_regmap(parent);
-+	of_node_put(parent);
-+	if (IS_ERR(priv->map))
-+		return dev_err_probe(dev, -EINVAL, "no syscon regmap\n");
++  reg:
++    maxItems: 1
 +
-+	priv->restart_handler.notifier_call = ep93xx_restart_handle;
-+	priv->restart_handler.priority = 128;
++  reboot:
++    type: object
++    $ref: /schemas/power/reset/cirrus,ep9301-reboot.yaml
 +
-+	err = register_restart_handler(&priv->restart_handler);
-+	if (err)
-+		return dev_err_probe(dev, err, "can't register restart notifier\n");
++  clock-controller:
++    type: object
++    $ref: /schemas/clock/cirrus,ep9301-clk.yaml
 +
-+	return 0;
-+}
++  pinctrl:
++    type: object
++    $ref: /schemas/pinctrl/cirrus,ep9301-pinctrl.yaml
 +
-+static const struct of_device_id ep93xx_reboot_of_match[] = {
-+	{
-+		.compatible = "cirrus,ep9301-reboot",
-+	},
-+	{ /* sentinel */ }
-+};
++required:
++  - compatible
++  - reg
 +
-+static struct platform_driver ep93xx_reboot_driver = {
-+	.probe = ep93xx_reboot_probe,
-+	.driver = {
-+		.name = "ep9301-reboot",
-+		.of_match_table = ep93xx_reboot_of_match,
-+	},
-+};
-+builtin_platform_driver(ep93xx_reboot_driver);
++additionalProperties: false
++
++examples:
++  - |
++    syscon@80930000 {
++        compatible = "cirrus,ep9301-syscon",
++                     "syscon", "simple-mfd";
++        reg = <0x80930000 0x1000>;
++
++        clock-controller {
++            compatible = "cirrus,ep9301-clk";
++            #clock-cells = <1>;
++            clocks = <&xtali>;
++        };
++
++        pinctrl {
++            compatible = "cirrus,ep9301-pinctrl";
++        };
++
++        reboot {
++            compatible = "cirrus,ep9301-reboot";
++        };
++    };
 
 -- 
 2.39.2
