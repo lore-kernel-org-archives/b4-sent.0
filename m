@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 28 Sep 2023 15:21:39 +0200
-Subject: [PATCH 14/15] hyper-v/azure: Remove now superfluous sentinel
- element from ctl_table array
+Date: Thu, 28 Sep 2023 15:21:40 +0200
+Subject: [PATCH 15/15] intel drm: Remove now superfluous sentinel element
+ from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-14-e59120fca9f9@samsung.com>
+Message-Id: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-15-e59120fca9f9@samsung.com>
 References: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-0-e59120fca9f9@samsung.com>
 In-Reply-To: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-0-e59120fca9f9@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
@@ -44,17 +44,18 @@ Cc: linux-kernel@vger.kernel.org, xen-devel@lists.xenproject.org,
  intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=961; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=4F2+ffa3GXhFGEYppFEHm2Mtt4QSfNMs1+9vGf3WJxo=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlFX3f7bbg+0UaO56WXQOXlIq7JJTQoGGJcP1ef
- /0I3/y2l9yJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZRV93wAKCRC6l81St5ZB
- T4FKC/9a2qdj27UKReYhOR67fov89RkcBAc0SAtrPXpSnnrATI2eCpgilBgK1TJnsd0vUJGn0v3
- HjutmUfnoXup+S3WT9l3Slop3hFazPlp4SGiLhCk1S23c/OlDwWO3IiAx8fA32NnNESs+MiBioa
- mXZu1jueoTISV7491NrBE5AqSzUD6+hA+gD6YfMNt4IFj5W3Hgy97oNrKmbVPktauNusnunZZ3F
- o192QRllKpTe1YlCVbYhL7flWa+1/barEVZyZWVtxgNuB0P57zgVImqQ8XQmCxmECx8AD0wq5Ks
- O59WWgdwa2mnVSl6yc2foQ8tNalHJ38XJAfBwByhMtcPnw4jsyyRTs/yPy24cW1Ht3s4r+RdWr1
- SWhzfXIIcW9zXul6wENWenDvXgVnHgPonLkKr/3w7ZFnRaLRczi94+a9SLqVIsthKPjIE+3Oj1E
- nOgzwMEh2XX72oDthoVuqB9I+Pl7Reo4jpwdDfbqp1O6tARRauhhozGbiE+umxbAGQwJo=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1010;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=Z9ZtfK3DEA99EXZ7fr8sV5mKU3DvB0mjVyvX0TU3lCI=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlFX3gFlneS4Mf90CaCbyJH1c7W29aNmmDMi/fY
+ CLHmU/OGzqJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZRV94AAKCRC6l81St5ZB
+ T+SdC/9jFG0RUkuS7dLpAVcMO6D7jlVD+ZtX/jfu+rwthZV8WGVLtJ8kcAR7BPdgAWXivaJ86Dp
+ P8HoauS68D0RI9Rl9X/gHaLDOKz2eejqJOE8LOTNyc5oeWYoHn33YzNJbhBnz6UoWV0vUdddE34
+ GRQqY6MKoVxUSV4CWxcsjFchdIDzBQiMIwUqspGaJghb9FT9hzSCLfXyl5vJzx8A+y2J8mT49k2
+ Zu4B/1iFwUdke4OebC6tbh93+vu6byFilf9UV3QNKYcRyJ5GGOmA8VWdq1U89/l+7ecOpeI+39E
+ VAvGXaumDhZWUpNQ1QcR6XhGrFL3IBE/XkZwVuXcVyY6NfbR19/0xgBykkluiUglYLyjlLnmfcl
+ 5XmrIaXdLBsIKU3e2gt+wdTGHqGSyzFDdbp0RF2kkLOO1GnpNivaGGSl8okOViY6fb1bAGKWSZM
+ FhB8ybdTYNi+IqN7tj+lwciJDUGicuxAJy3KGeA8aLCwF3Lo29sNp5FS7A428ifTZoZbQ=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -66,27 +67,27 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel from hv_ctl_table
+Remove sentinel from oa_table
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- drivers/hv/hv_common.c | 3 +--
+ drivers/gpu/drm/i915/i915_perf.c | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/hv/hv_common.c b/drivers/hv/hv_common.c
-index ccad7bca3fd3..bc7d678030aa 100644
---- a/drivers/hv/hv_common.c
-+++ b/drivers/hv/hv_common.c
-@@ -147,8 +147,7 @@ static struct ctl_table hv_ctl_table[] = {
- 		.proc_handler	= proc_dointvec_minmax,
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_ONE
--	},
+diff --git a/drivers/gpu/drm/i915/i915_perf.c b/drivers/gpu/drm/i915/i915_perf.c
+index 04bc1f4a1115..97ef6d2ad037 100644
+--- a/drivers/gpu/drm/i915/i915_perf.c
++++ b/drivers/gpu/drm/i915/i915_perf.c
+@@ -4895,8 +4895,7 @@ static struct ctl_table oa_table[] = {
+ 	 .proc_handler = proc_dointvec_minmax,
+ 	 .extra1 = SYSCTL_ZERO,
+ 	 .extra2 = &oa_sample_rate_hard_limit,
+-	 },
 -	{}
 +	}
  };
  
- static int hv_die_panic_notify_crash(struct notifier_block *self,
+ static u32 num_perf_groups_per_gt(struct intel_gt *gt)
 
 -- 
 2.30.2
