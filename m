@@ -1,153 +1,269 @@
-From: Fenglin Wu <quic_fenglinw@quicinc.com>
-Date: Wed, 27 Sep 2023 14:05:04 +0800
-Subject: [PATCH v7 3/3] input: pm8xxx-vibrator: add new SPMI vibrator
- support
+From: Joel Granados <j.granados@samsung.com>
+Subject: [PATCH 00/15] sysctl: Remove sentinel elements from drivers
+Date: Thu, 28 Sep 2023 15:21:25 +0200
+Message-Id: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-0-e59120fca9f9@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230927-pm8xxx-vibrator-v7-3-b5d8c92ce818@quicinc.com>
-References: <20230927-pm8xxx-vibrator-v7-0-b5d8c92ce818@quicinc.com>
-In-Reply-To: <20230927-pm8xxx-vibrator-v7-0-b5d8c92ce818@quicinc.com>
-To: linux-arm-msm@vger.kernel.org, Andy Gross <agross@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, quic_collinsd@quicinc.com, 
- quic_subbaram@quicinc.com, quic_kamalw@quicinc.com, jestar@qti.qualcomm.com, 
- Luca Weiss <luca.weiss@fairphone.com>, 
- Fenglin Wu <quic_fenglinw@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1695794704; l=3749;
- i=quic_fenglinw@quicinc.com; s=20230725; h=from:subject:message-id;
- bh=wJayTUhik7klfO9cHbbqPgCXQ4qQW2jIadjS/C/xeqc=;
- b=z3E0B9xNNfgb3Z7/KUkWFu2BAgQz8RVXruY4jFynxmzBbRt9I4MnpNsnkBVeKy7S3Wy+k11+n
- u+AjV6gAm2RAPTPeAay4z0AcPtGIYbR2WOFrR+dkIjT3FeV4hqjVGUS
-X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
- pk=hleIDz3Unk1zeiwwOnZUjoQVMMelRancDFXg927lNjI=
-X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20230725 with auth_id=68
+X-B4-Tracking: v=1; b=H4sIANV9FWUC/x3NQQrCMBBG4auUWRuIqaj1KiIhJH/rSNOWmRIsp
+ Xc3uPw27+2kEIbSo9lJUFh5nirOp4biO0wDDKdqcta1tnM38wmD0U3jOnpBngs88rJuHiOyT8I
+ Foqa37aW7umDTPVJNLYKev//N83UcPwjXVN92AAAA
+To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
+ josh@joshtriplett.org, Kees Cook <keescook@chromium.org>, 
+ Phillip Potter <phil@philpotter.co.uk>, 
+ Clemens Ladisch <clemens@ladisch.de>, Arnd Bergmann <arnd@arndb.de>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Juergen Gross <jgross@suse.com>, 
+ Stefano Stabellini <sstabellini@kernel.org>, 
+ Oleksandr Tyshchenko <oleksandr_tyshchenko@epam.com>, 
+ Jiri Slaby <jirislaby@kernel.org>, 
+ "James E.J. Bottomley" <jejb@linux.ibm.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ Doug Gilbert <dgilbert@interlog.com>, 
+ Sudip Mukherjee <sudipm.mukherjee@gmail.com>, 
+ Jason Gunthorpe <jgg@ziepe.ca>, Leon Romanovsky <leon@kernel.org>, 
+ Corey Minyard <minyard@acm.org>, Theodore Ts'o <tytso@mit.edu>, 
+ "Jason A. Donenfeld" <Jason@zx2c4.com>, David Ahern <dsahern@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Robin Holt <robinmholt@gmail.com>, Steve Wahl <steve.wahl@hpe.com>, 
+ Russ Weight <russell.h.weight@intel.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Song Liu <song@kernel.org>, 
+ "K. Y. Srinivasan" <kys@microsoft.com>, 
+ Haiyang Zhang <haiyangz@microsoft.com>, Wei Liu <wei.liu@kernel.org>, 
+ Dexuan Cui <decui@microsoft.com>, Jani Nikula <jani.nikula@linux.intel.com>, 
+ Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
+ Rodrigo Vivi <rodrigo.vivi@intel.com>, 
+ Tvrtko Ursulin <tvrtko.ursulin@linux.intel.com>, 
+ David Airlie <airlied@gmail.com>, Daniel Vetter <daniel@ffwll.ch>
+Cc: linux-kernel@vger.kernel.org, xen-devel@lists.xenproject.org, 
+ linux-serial@vger.kernel.org, linux-scsi@vger.kernel.org, 
+ linuxppc-dev@lists.ozlabs.org, linux-rdma@vger.kernel.org, 
+ openipmi-developer@lists.sourceforge.net, netdev@vger.kernel.org, 
+ linux-raid@vger.kernel.org, linux-hyperv@vger.kernel.org, 
+ intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ Joel Granados <j.granados@samsung.com>
+X-Mailer: b4 0.13-dev-86aa5
+X-Developer-Signature: v=1; a=openpgp-sha256; l=10065;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=fRUi88e8Yrfs5rdUzu1POWjh/qONRBnWNcqSlQXmGgc=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlFX3bNyb1VxuwdtMXcfZEsTF6o4ERzgUMNE5M8
+ lqmBKMN3YiJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZRV92wAKCRC6l81St5ZB
+ T4AtC/4mhShg1QMnei1FJl3JIv1Quh127jI/+NM0CoRgmiCk+zTJLLlylW6VOYX1i8V8pr9JOo4
+ vny6+C4lgliXTc+PohQ77bmfuM/TDLZeVOnKnuIrsJWYwW4Kf8EshmF7Z+S3HzYBDHWn4jC6r7l
+ Pffc4T8MVQMtDD2xLl3mDsjmiCLck/UiOBLcpNFd5gKKLiICG33x/vmFvDN5Bt01LeEe45GD4NG
+ O1uuxbZLByRu2Nxs5hSMK+WstfoyThZ9klbHQdSyFzlRNVbZsJhNV/35qYf8JSInt63K/fwVivN
+ pftbvCU/Yu7xhzpGL0OcEQMhW+TwzbRh72FP7LoRbW9Y+KWfogwMPIdWHWSW/yU4Grw1DWHEU+I
+ lI8DJ789JvZR3iYix0NrBVRczvxeopZSBMLSbu4KcByTnJm5/egA6gwRDwR/mDO8qZV41BwmsKH
+ ffucunTJ6gTNc87dnIILxwbb13f7weZvk5go6QdqwvuIgXwv2hZyR90mGRyNdtFobBzT8=
+X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add new SPMI vibrator module which is very similar to the SPMI vibrator
-module inside PM8916 but just has a finer drive voltage step (1mV vs
-100mV) hence its drive level control is expanded to across 2 registers.
-The vibrator module can be found in Qualcomm PMIC PMI632, then following
-PM7250B, PM7325B, PM7550BA PMICs.
+What?
+These commits remove the sentinel element (last empty element) from the
+sysctl arrays of all the files under the "drivers/" directory that use a
+sysctl array for registration. The merging of the preparation patches
+(in https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
+to mainline allows us to just remove sentinel elements without changing
+behavior (more info here [1]).
 
-Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
-Tested-by: Luca Weiss <luca.weiss@fairphone.com> # sdm632-fairphone-fp3 (pmi632)
+These commits are part of a bigger set (here
+https://github.com/Joelgranados/linux/tree/tag/sysctl_remove_empty_elem_V4)
+that remove the ctl_table sentinel. Make the review process easier by
+chunking the commits into manageable pieces. Each chunk can be reviewed
+separately without noise from parallel sets.
+
+Now that the architecture chunk has been mostly reviewed [6], we send
+the "drivers/" directory. Once this one is done, it will be follwed by
+"fs/*", "kernel/*", "net/*" and miscellaneous. The final set will remove
+the unneeded check for ->procname == NULL.
+
+Why?
+By removing the sysctl sentinel elements we avoid kernel bloat as
+ctl_table arrays get moved out of kernel/sysctl.c into their own
+respective subsystems. This move was started long ago to avoid merge
+conflicts; the sentinel removal bit came after Mathew Wilcox suggested
+it to avoid bloating the kernel by one element as arrays moved out. This
+patchset will reduce the overall build time size of the kernel and run
+time memory bloat by about ~64 bytes per declared ctl_table array. I
+have consolidated some links that shed light on the history of this
+effort [2].
+
+Testing:
+* Ran sysctl selftests (./tools/testing/selftests/sysctl/sysctl.sh)
+* Ran this through 0-day with no errors or warnings
+
+Size saving after removing all sentinels:
+  These are the bytes that we save after removing all the sentinels
+  (this plus all the other chunks). I included them to get an idea of
+  how much memory we are talking about.
+    * bloat-o-meter:
+        - The "yesall" configuration results save 9158 bytes
+          https://lore.kernel.org/all/20230621091000.424843-1-j.granados@samsung.com/
+        - The "tiny" config + CONFIG_SYSCTL save 1215 bytes
+          https://lore.kernel.org/all/20230809105006.1198165-1-j.granados@samsung.com/
+    * memory usage:
+        In memory savings are measured to be 7296 bytes. (here is how to
+        measure [3])
+
+Size saving after this patchset:
+    * bloat-o-meter
+        - The "yesall" config saves 2432 bytes [4]
+        - The "tiny" config saves 64 bytes [5]
+    * memory usage:
+        In this case there were no bytes saved because I do not have any
+        of the drivers in the patch. To measure it comment the printk in
+        `new_dir` and uncomment the if conditional in `new_links` [3].
+
+Comments/feedback greatly appreciated
+
+Best
+Joel
+
+[1]
+We are able to remove a sentinel table without behavioral change by
+introducing a table_size argument in the same place where procname is
+checked for NULL. The idea is for it to keep stopping when it hits
+->procname == NULL, while the sentinel is still present. And when the
+sentinel is removed, it will stop on the table_size. You can go to 
+(https://lore.kernel.org/all/20230809105006.1198165-1-j.granados@samsung.com/)
+for more information.
+
+[2]
+Links Related to the ctl_table sentinel removal:
+* Good summary from Luis sent with the "pull request" for the
+  preparation patches.
+  https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+* Another very good summary from Luis.
+  https://lore.kernel.org/all/ZMFizKFkVxUFtSqa@bombadil.infradead.org/
+* This is a patch set that replaces register_sysctl_table with register_sysctl
+  https://lore.kernel.org/all/20230302204612.782387-1-mcgrof@kernel.org/
+* Patch set to deprecate register_sysctl_paths()
+  https://lore.kernel.org/all/20230302202826.776286-1-mcgrof@kernel.org/
+* Here there is an explicit expectation for the removal of the sentinel element.
+  https://lore.kernel.org/all/20230321130908.6972-1-frank.li@vivo.com
+* The "ARRAY_SIZE" approach was mentioned (proposed?) in this thread
+  https://lore.kernel.org/all/20220220060626.15885-1-tangmeng@uniontech.com
+
+[3]
+To measure the in memory savings apply this on top of this patchset.
+
+"
+diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+index c88854df0b62..e0073a627bac 100644
+--- a/fs/proc/proc_sysctl.c
++++ b/fs/proc/proc_sysctl.c
+@@ -976,6 +976,8 @@ static struct ctl_dir *new_dir(struct ctl_table_set *set,
+        table[0].procname = new_name;
+        table[0].mode = S_IFDIR|S_IRUGO|S_IXUGO;
+        init_header(&new->header, set->dir.header.root, set, node, table, 1);
++       // Counts additional sentinel used for each new dir.
++       printk("%ld sysctl saved mem kzalloc \n", sizeof(struct ctl_table));
+
+        return new;
+ }
+@@ -1199,6 +1201,9 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table_
+                link_name += len;
+                link++;
+        }
++       // Counts additional sentinel used for each new registration
++       //if ((head->ctl_table + head->ctl_table_size)->procname)
++               printk("%ld sysctl saved mem kzalloc \n", sizeof(struct ctl_table));
+        init_header(links, dir->header.root, dir->header.set, node, link_table,
+                    head->ctl_table_size);
+        links->nreg = nr_entries;
+"
+and then run the following bash script in the kernel:
+
+accum=0
+for n in $(dmesg | grep kzalloc | awk '{print $3}') ; do
+    echo $n
+    accum=$(calc "$accum + $n")
+done
+echo $accum
+
+[4]
+add/remove: 0/0 grow/shrink: 0/21 up/down: 0/-2432 (-2432)
+Function                                     old     new   delta
+xpc_sys_xpc_hb                               192     128     -64
+xpc_sys_xpc                                  128      64     -64
+vrf_table                                    128      64     -64
+ucma_ctl_table                               128      64     -64
+tty_table                                    192     128     -64
+sg_sysctls                                   128      64     -64
+scsi_table                                   128      64     -64
+random_table                                 448     384     -64
+raid_table                                   192     128     -64
+oa_table                                     192     128     -64
+mac_hid_files                                256     192     -64
+iwcm_ctl_table                               128      64     -64
+ipmi_table                                   128      64     -64
+hv_ctl_table                                 128      64     -64
+hpet_table                                   128      64     -64
+firmware_config_table                        192     128     -64
+cdrom_table                                  448     384     -64
+balloon_table                                128      64     -64
+parport_sysctl_template                      912     720    -192
+parport_default_sysctl_table                 584     136    -448
+parport_device_sysctl_template               776     136    -640
+Total: Before=429940038, After=429937606, chg -0.00%
+
+[5]
+add/remove: 0/0 grow/shrink: 0/1 up/down: 0/-64 (-64)
+Function                                     old     new   delta
+random_table                                 448     384     -64
+Total: Before=1885527, After=1885463, chg -0.00%
+
+[6] https://lore.kernel.org/all/20230913-jag-sysctl_remove_empty_elem_arch-v2-0-d1bd13a29bae@samsung.com/
+
+Signed-off-by: Joel Granados <j.granados@samsung.com>
+
 ---
- drivers/input/misc/pm8xxx-vibrator.c | 42 +++++++++++++++++++++++++++++++++---
- 1 file changed, 39 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/input/misc/pm8xxx-vibrator.c b/drivers/input/misc/pm8xxx-vibrator.c
-index ba9be374f892..82c788841f1f 100644
---- a/drivers/input/misc/pm8xxx-vibrator.c
-+++ b/drivers/input/misc/pm8xxx-vibrator.c
-@@ -21,6 +21,13 @@
- #define SPMI_VIB_DRV_LEVEL_MASK		GENMASK(4, 0)
- #define SPMI_VIB_DRV_SHIFT		0
- 
-+#define SPMI_VIB_GEN2_DRV_REG		0x40
-+#define SPMI_VIB_GEN2_DRV_MASK		GENMASK(7, 0)
-+#define SPMI_VIB_GEN2_DRV_SHIFT		0
-+#define SPMI_VIB_GEN2_DRV2_REG		0x41
-+#define SPMI_VIB_GEN2_DRV2_MASK		GENMASK(3, 0)
-+#define SPMI_VIB_GEN2_DRV2_SHIFT	8
-+
- #define SPMI_VIB_EN_REG			0x46
- #define SPMI_VIB_EN_BIT			BIT(7)
- 
-@@ -33,12 +40,14 @@
- enum vib_hw_type {
- 	SSBI_VIB,
- 	SPMI_VIB,
-+	SPMI_VIB_GEN2
- };
- 
- struct pm8xxx_vib_data {
- 	enum vib_hw_type	hw_type;
- 	unsigned int		enable_addr;
- 	unsigned int		drv_addr;
-+	unsigned int		drv2_addr;
- };
- 
- static const struct pm8xxx_vib_data ssbi_vib_data = {
-@@ -52,6 +61,13 @@ static const struct pm8xxx_vib_data spmi_vib_data = {
- 	.drv_addr	= SPMI_VIB_DRV_REG,
- };
- 
-+static const struct pm8xxx_vib_data spmi_vib_gen2_data = {
-+	.hw_type	= SPMI_VIB_GEN2,
-+	.enable_addr	= SPMI_VIB_EN_REG,
-+	.drv_addr	= SPMI_VIB_GEN2_DRV_REG,
-+	.drv2_addr	= SPMI_VIB_GEN2_DRV2_REG,
-+};
-+
- /**
-  * struct pm8xxx_vib - structure to hold vibrator data
-  * @vib_input_dev: input device supporting force feedback
-@@ -96,9 +112,12 @@ static int pm8xxx_vib_set(struct pm8xxx_vib *vib, bool on)
- 		mask = SPMI_VIB_DRV_LEVEL_MASK;
- 		shift = SPMI_VIB_DRV_SHIFT;
- 		break;
-+	case SPMI_VIB_GEN2:
-+		mask = SPMI_VIB_GEN2_DRV_MASK;
-+		shift = SPMI_VIB_GEN2_DRV_SHIFT;
-+		break;
- 	default:
- 		return -EINVAL;
--
- 	}
- 
- 	if (on)
-@@ -112,6 +131,19 @@ static int pm8xxx_vib_set(struct pm8xxx_vib *vib, bool on)
- 
- 	vib->reg_vib_drv = val;
- 
-+	if (vib->data->hw_type == SPMI_VIB_GEN2) {
-+		mask = SPMI_VIB_GEN2_DRV2_MASK;
-+		shift = SPMI_VIB_GEN2_DRV2_SHIFT;
-+		if (on)
-+			val = (vib->level >> shift) & mask;
-+		else
-+			val = 0;
-+		rc = regmap_update_bits(vib->regmap,
-+				vib->reg_base + vib->data->drv2_addr, mask, val);
-+		if (rc < 0)
-+			return rc;
-+	}
-+
- 	if (vib->data->hw_type == SSBI_VIB)
- 		return 0;
- 
-@@ -136,10 +168,13 @@ static void pm8xxx_work_handler(struct work_struct *work)
- 		vib->active = true;
- 		vib->level = ((VIB_MAX_LEVELS * vib->speed) / MAX_FF_SPEED) +
- 						VIB_MIN_LEVEL_mV;
--		vib->level /= 100;
-+		if (vib->data->hw_type != SPMI_VIB_GEN2)
-+			vib->level /= 100;
- 	} else {
- 		vib->active = false;
--		vib->level = VIB_MIN_LEVEL_mV / 100;
-+		vib->level = VIB_MIN_LEVEL_mV;
-+		if (vib->data->hw_type != SPMI_VIB_GEN2)
-+			vib->level /= 100;
- 	}
- 
- 	pm8xxx_vib_set(vib, vib->active);
-@@ -274,6 +309,7 @@ static const struct of_device_id pm8xxx_vib_id_table[] = {
- 	{ .compatible = "qcom,pm8058-vib", .data = &ssbi_vib_data },
- 	{ .compatible = "qcom,pm8921-vib", .data = &ssbi_vib_data },
- 	{ .compatible = "qcom,pm8916-vib", .data = &spmi_vib_data },
-+	{ .compatible = "qcom,pmi632-vib", .data = &spmi_vib_gen2_data },
- 	{ }
- };
- MODULE_DEVICE_TABLE(of, pm8xxx_vib_id_table);
+---
+Joel Granados (15):
+      cdrom: Remove now superfluous sentinel element from ctl_table array
+      hpet: Remove now superfluous sentinel element from ctl_table array
+      xen: Remove now superfluous sentinel element from ctl_table array
+      tty: Remove now superfluous sentinel element from ctl_table array
+      scsi: Remove now superfluous sentinel element from ctl_table array
+      parport: Remove the now superfluous sentinel element from ctl_table array
+      macintosh: Remove the now superfluous sentinel element from ctl_table array
+      infiniband: Remove the now superfluous sentinel element from ctl_table array
+      char-misc: Remove the now superfluous sentinel element from ctl_table array
+      vrf: Remove the now superfluous sentinel element from ctl_table array
+      sgi-xp: Remove the now superfluous sentinel element from ctl_table array
+      fw loader: Remove the now superfluous sentinel element from ctl_table array
+      raid: Remove now superfluous sentinel element from ctl_table array
+      hyper-v/azure: Remove now superfluous sentinel element from ctl_table array
+      intel drm: Remove now superfluous sentinel element from ctl_table array
 
+ drivers/base/firmware_loader/fallback_table.c |  3 +-
+ drivers/cdrom/cdrom.c                         |  3 +-
+ drivers/char/hpet.c                           |  3 +-
+ drivers/char/ipmi/ipmi_poweroff.c             |  3 +-
+ drivers/char/random.c                         |  3 +-
+ drivers/gpu/drm/i915/i915_perf.c              |  3 +-
+ drivers/hv/hv_common.c                        |  3 +-
+ drivers/infiniband/core/iwcm.c                |  3 +-
+ drivers/infiniband/core/ucma.c                |  3 +-
+ drivers/macintosh/mac_hid.c                   |  3 +-
+ drivers/md/md.c                               |  3 +-
+ drivers/misc/sgi-xp/xpc_main.c                |  6 ++--
+ drivers/net/vrf.c                             |  3 +-
+ drivers/parport/procfs.c                      | 42 ++++++++++++---------------
+ drivers/scsi/scsi_sysctl.c                    |  3 +-
+ drivers/scsi/sg.c                             |  3 +-
+ drivers/tty/tty_io.c                          |  3 +-
+ drivers/xen/balloon.c                         |  3 +-
+ 18 files changed, 36 insertions(+), 60 deletions(-)
+---
+base-commit: 0e945134b680040b8613e962f586d91b6d40292d
+change-id: 20230927-jag-sysctl_remove_empty_elem_drivers-f034962a0d8c
+
+Best regards,
 -- 
-2.25.1
+Joel Granados <j.granados@samsung.com>
 
