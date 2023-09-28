@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 28 Sep 2023 15:21:37 +0200
-Subject: [PATCH 12/15] fw loader: Remove the now superfluous sentinel
- element from ctl_table array
+Date: Thu, 28 Sep 2023 15:21:38 +0200
+Subject: [PATCH 13/15] raid: Remove now superfluous sentinel element from
+ ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-12-e59120fca9f9@samsung.com>
+Message-Id: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-13-e59120fca9f9@samsung.com>
 References: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-0-e59120fca9f9@samsung.com>
 In-Reply-To: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-0-e59120fca9f9@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
@@ -44,18 +44,17 @@ Cc: linux-kernel@vger.kernel.org, xen-devel@lists.xenproject.org,
  intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1099;
- i=j.granados@samsung.com; h=from:subject:message-id;
- bh=IR+b7PptXcF/Oyt7GII4OytQxFoRCLXOyY8FOTQVz/s=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlFX3fTo3kXpUY6L3nYABmnsBNawGT28Z3SlPam
- YfpaY395dKJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZRV93wAKCRC6l81St5ZB
- T8TaC/9cDBQVLZYH4Fdmw6vKuueXYd7pABhWuZZOmPgU8kP984zBWEF8yAPOxtCqZKnUQVkYDT9
- waw5OPrbtH7Cj5Ljs6zW7XQjbeHOXi/mCJnfxYKOJYgP46vtfuBJLls3tXnVd1YYOnCm9RWYr37
- JtU0m7McLmcwBDou77zQKrmFA2NQLgVPt8w+q+UgXo1XKtCuiLSu3G9pqUkcUZWNbDt2slckrdI
- D3PL+UVlpD9hz7SXyy4dbOqOMMBH5GNGZ+jLrM00pLwb1cKDqFFmIS9/6YCc7Mi2SXUpAaICEdw
- 296JfYljQ93faYsdJfS/vz1mP0qOl8oxlwNN3MB/zLBT51rkA4CkBz3o7Uc2UHMNA+XvKjpEsB0
- YT/Sex/r1M8Rs2guSZE0bqzXIpOmgF/aIgLP6mpRS4H7kVLn7641YhjsAGpapmRxcwDowR1yYks
- LUkw71CcusI5v074k5FRJK5s8cHeKcBUgr/I21329k6u29vxMfRVdPlR/ZQILG6HhQqHg=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=881; i=j.granados@samsung.com;
+ h=from:subject:message-id; bh=hLoUxHXjHICsfJhbjVPlPY534xjBTCrGFUyV0qQFO8k=;
+ b=owEB7AET/pANAwAKAbqXzVK3lkFPAcsmYgBlFX3fSmb3JiEBomhDsQ0pRhV92J1BiKariV8CH
+ I/W/L1q3F+JAbIEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZRV93wAKCRC6l81St5ZB
+ T8aLC/jP8MCZa3PEhuvknQGR+TNEMb9/sNQf49cF1k/BAyzDsFzY66dheGN5WfDfw9gFPH1BAGC
+ mYDHGZ/Ef83bVTjOKxWIr5FY1xZPPiq8Lj0IOUY885EE0Vqta+zhznwJy48L+DavP+QTdcdzNGr
+ /SjfAg1wQH7UoWdImUsYYFEZwFYdTasgOIq+kHYD1dVl5/7YQ48ksc/ZBUPKcOZTnbASa2XLJ6U
+ 8eZSJDcHZNJFf40edYxbXObiufbuPYN7qxohVYR8Dss/si8enpUhlp2t4KSgpZoXixNFVdhqTfc
+ lXP1vgHjnT6dLILhSOYJBI/nvGtjo2UiIbRio9vQ1bdy6IbVkv3oytkBjNrblyOcP2EGiM2SbL2
+ xiSaTb8iKFmbrr4OP5Ub4xjOTfInkaQjhKuLLcsfJFTqkEpjbjT88xxGZiSKrJnKK5n4vj2tTgw
+ CYz/Ud2OnEk44McFYHvFQhN+Kfn87BbWv6vLXMouD4AmlbqVVp4Ri7xfLqVqEIVrBvjg==
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -67,27 +66,27 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel from firmware_config_table
+Remove sentinel from raid_table
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- drivers/base/firmware_loader/fallback_table.c | 3 +--
+ drivers/md/md.c | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/base/firmware_loader/fallback_table.c b/drivers/base/firmware_loader/fallback_table.c
-index e5ac098d0742..968aef19e118 100644
---- a/drivers/base/firmware_loader/fallback_table.c
-+++ b/drivers/base/firmware_loader/fallback_table.c
-@@ -43,8 +43,7 @@ static struct ctl_table firmware_config_table[] = {
- 		.proc_handler   = proc_douintvec_minmax,
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_ONE,
+diff --git a/drivers/md/md.c b/drivers/md/md.c
+index a104a025084d..3866d8f754a0 100644
+--- a/drivers/md/md.c
++++ b/drivers/md/md.c
+@@ -304,8 +304,7 @@ static struct ctl_table raid_table[] = {
+ 		.maxlen		= sizeof(int),
+ 		.mode		= S_IRUGO|S_IWUSR,
+ 		.proc_handler	= proc_dointvec,
 -	},
 -	{ }
 +	}
  };
  
- static struct ctl_table_header *firmware_config_sysct_table_header;
+ static int start_readonly;
 
 -- 
 2.30.2
