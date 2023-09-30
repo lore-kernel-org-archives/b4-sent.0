@@ -1,94 +1,97 @@
-From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 28 Sep 2023 15:21:40 +0200
-Subject: [PATCH 15/15] intel drm: Remove now superfluous sentinel element
- from ctl_table array
+From: Janne Grunau <j@jannau.net>
+Date: Sat, 30 Sep 2023 10:19:26 +0200
+Subject: [PATCH] watchdog: apple: Deactivate on suspend
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-15-e59120fca9f9@samsung.com>
-References: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-0-e59120fca9f9@samsung.com>
-In-Reply-To: <20230928-jag-sysctl_remove_empty_elem_drivers-v1-0-e59120fca9f9@samsung.com>
-To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
- josh@joshtriplett.org, Kees Cook <keescook@chromium.org>, 
- Phillip Potter <phil@philpotter.co.uk>, 
- Clemens Ladisch <clemens@ladisch.de>, Arnd Bergmann <arnd@arndb.de>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Juergen Gross <jgross@suse.com>, 
- Stefano Stabellini <sstabellini@kernel.org>, 
- Oleksandr Tyshchenko <oleksandr_tyshchenko@epam.com>, 
- Jiri Slaby <jirislaby@kernel.org>, 
- "James E.J. Bottomley" <jejb@linux.ibm.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>, 
- Doug Gilbert <dgilbert@interlog.com>, 
- Sudip Mukherjee <sudipm.mukherjee@gmail.com>, 
- Jason Gunthorpe <jgg@ziepe.ca>, Leon Romanovsky <leon@kernel.org>, 
- Corey Minyard <minyard@acm.org>, Theodore Ts'o <tytso@mit.edu>, 
- "Jason A. Donenfeld" <Jason@zx2c4.com>, David Ahern <dsahern@kernel.org>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Robin Holt <robinmholt@gmail.com>, Steve Wahl <steve.wahl@hpe.com>, 
- Russ Weight <russell.h.weight@intel.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Song Liu <song@kernel.org>, 
- "K. Y. Srinivasan" <kys@microsoft.com>, 
- Haiyang Zhang <haiyangz@microsoft.com>, Wei Liu <wei.liu@kernel.org>, 
- Dexuan Cui <decui@microsoft.com>, Jani Nikula <jani.nikula@linux.intel.com>, 
- Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, 
- Tvrtko Ursulin <tvrtko.ursulin@linux.intel.com>, 
- David Airlie <airlied@gmail.com>, Daniel Vetter <daniel@ffwll.ch>
-Cc: linux-kernel@vger.kernel.org, xen-devel@lists.xenproject.org, 
- linux-serial@vger.kernel.org, linux-scsi@vger.kernel.org, 
- linuxppc-dev@lists.ozlabs.org, linux-rdma@vger.kernel.org, 
- openipmi-developer@lists.sourceforge.net, netdev@vger.kernel.org, 
- linux-raid@vger.kernel.org, linux-hyperv@vger.kernel.org, 
- intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
- Joel Granados <j.granados@samsung.com>
-X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1010;
- i=j.granados@samsung.com; h=from:subject:message-id;
- bh=Z9ZtfK3DEA99EXZ7fr8sV5mKU3DvB0mjVyvX0TU3lCI=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlFX3gFlneS4Mf90CaCbyJH1c7W29aNmmDMi/fY
- CLHmU/OGzqJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZRV94AAKCRC6l81St5ZB
- T+SdC/9jFG0RUkuS7dLpAVcMO6D7jlVD+ZtX/jfu+rwthZV8WGVLtJ8kcAR7BPdgAWXivaJ86Dp
- P8HoauS68D0RI9Rl9X/gHaLDOKz2eejqJOE8LOTNyc5oeWYoHn33YzNJbhBnz6UoWV0vUdddE34
- GRQqY6MKoVxUSV4CWxcsjFchdIDzBQiMIwUqspGaJghb9FT9hzSCLfXyl5vJzx8A+y2J8mT49k2
- Zu4B/1iFwUdke4OebC6tbh93+vu6byFilf9UV3QNKYcRyJ5GGOmA8VWdq1U89/l+7ecOpeI+39E
- VAvGXaumDhZWUpNQ1QcR6XhGrFL3IBE/XkZwVuXcVyY6NfbR19/0xgBykkluiUglYLyjlLnmfcl
- 5XmrIaXdLBsIKU3e2gt+wdTGHqGSyzFDdbp0RF2kkLOO1GnpNivaGGSl8okOViY6fb1bAGKWSZM
- FhB8ybdTYNi+IqN7tj+lwciJDUGicuxAJy3KGeA8aLCwF3Lo29sNp5FS7A428ifTZoZbQ=
-X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
+Message-Id: <20230930-apple-watchdog-suspend-v1-1-1998c0be9fd7@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAA3aF2UC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2MDS2MD3cSCgpxU3fLEkuSMlPx03eLS4oLUvBRd8zRzYwtjQ0Njg7QkJaD
+ mgqLUtMwKsMHRsbW1AAVOok1oAAAA
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-watchdog@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Janne Grunau <j@jannau.net>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2007; i=j@jannau.net;
+ h=from:subject:message-id; bh=+tQiILihRq5o4N62Yd4BUwts5HYkI5tfzlOjXU3MCSQ=;
+ b=owGbwMvMwCG2UNrmdq9+ahrjabUkhlTxW4KTvB7z2UddmJ6rPD/L5aGfgFxyUCR/5qFClbwo+
+ YLZpqs7SlkYxDgYZMUUWZK0X3YwrK5RjKl9EAYzh5UJZAgDF6cATOSVPMP/iL75jLdTnDPNFrpY
+ iG5aWeomdapyIjufzK5Fr/ZXdZgFMTK89XdY5lUubBX3a7fkvQOJl6cKsiydf2zdvNr8X7cCY1o
+ ZAA==
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This commit comes at the tail end of a greater effort to remove the
-empty elements at the end of the ctl_table arrays (sentinels) which
-will reduce the overall build time size of the kernel and run time
-memory bloat by ~64 bytes per sentinel (further information Link :
-https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
+The watchdog remains active after putting the system into suspend. Add
+PM callbacks to deactivate the watchdog on suspend an re-activate it on
+resume.
 
-Remove sentinel from oa_table
-
-Signed-off-by: Joel Granados <j.granados@samsung.com>
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- drivers/gpu/drm/i915/i915_perf.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/watchdog/apple_wdt.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
-diff --git a/drivers/gpu/drm/i915/i915_perf.c b/drivers/gpu/drm/i915/i915_perf.c
-index 04bc1f4a1115..97ef6d2ad037 100644
---- a/drivers/gpu/drm/i915/i915_perf.c
-+++ b/drivers/gpu/drm/i915/i915_perf.c
-@@ -4895,8 +4895,7 @@ static struct ctl_table oa_table[] = {
- 	 .proc_handler = proc_dointvec_minmax,
- 	 .extra1 = SYSCTL_ZERO,
- 	 .extra2 = &oa_sample_rate_hard_limit,
--	 },
--	{}
-+	}
- };
+diff --git a/drivers/watchdog/apple_wdt.c b/drivers/watchdog/apple_wdt.c
+index eddeb0fede89..2167e0ba705e 100644
+--- a/drivers/watchdog/apple_wdt.c
++++ b/drivers/watchdog/apple_wdt.c
+@@ -173,6 +173,8 @@ static int apple_wdt_probe(struct platform_device *pdev)
+ 	if (!wdt->clk_rate)
+ 		return -EINVAL;
  
- static u32 num_perf_groups_per_gt(struct intel_gt *gt)
++	platform_set_drvdata(pdev, wdt);
++
+ 	wdt->wdd.ops = &apple_wdt_ops;
+ 	wdt->wdd.info = &apple_wdt_info;
+ 	wdt->wdd.max_timeout = U32_MAX / wdt->clk_rate;
+@@ -190,6 +192,28 @@ static int apple_wdt_probe(struct platform_device *pdev)
+ 	return devm_watchdog_register_device(dev, &wdt->wdd);
+ }
+ 
++static int __maybe_unused apple_wdt_resume(struct device *dev)
++{
++	struct apple_wdt *wdt = dev_get_drvdata(dev);
++
++	if (watchdog_active(&wdt->wdd) || watchdog_hw_running(&wdt->wdd))
++		apple_wdt_start(&wdt->wdd);
++
++	return 0;
++}
++
++static int __maybe_unused apple_wdt_suspend(struct device *dev)
++{
++	struct apple_wdt *wdt = dev_get_drvdata(dev);
++
++	if (watchdog_active(&wdt->wdd) || watchdog_hw_running(&wdt->wdd))
++		apple_wdt_stop(&wdt->wdd);
++
++	return 0;
++}
++
++static SIMPLE_DEV_PM_OPS(apple_wdt_pm_ops, apple_wdt_suspend, apple_wdt_resume);
++
+ static const struct of_device_id apple_wdt_of_match[] = {
+ 	{ .compatible = "apple,wdt" },
+ 	{},
+@@ -200,6 +224,7 @@ static struct platform_driver apple_wdt_driver = {
+ 	.driver = {
+ 		.name = "apple-watchdog",
+ 		.of_match_table = apple_wdt_of_match,
++		.pm = pm_sleep_ptr(&apple_wdt_pm_ops),
+ 	},
+ 	.probe = apple_wdt_probe,
+ };
 
+---
+base-commit: 0bb80ecc33a8fb5a682236443c1e740d5c917d1d
+change-id: 20230930-apple-watchdog-suspend-7f73831130fb
+
+Best regards,
 -- 
-2.30.2
+Janne Grunau <j@jannau.net>
 
