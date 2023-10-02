@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Mon, 02 Oct 2023 10:55:30 +0200
-Subject: [PATCH v2 13/15] raid: Remove now superfluous sentinel element
- from ctl_table array
+Date: Mon, 02 Oct 2023 10:55:31 +0200
+Subject: [PATCH v2 14/15] Drivers: hv: Remove now superfluous sentinel
+ element from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231002-jag-sysctl_remove_empty_elem_drivers-v2-13-02dd0d46f71e@samsung.com>
+Message-Id: <20231002-jag-sysctl_remove_empty_elem_drivers-v2-14-02dd0d46f71e@samsung.com>
 References: <20231002-jag-sysctl_remove_empty_elem_drivers-v2-0-02dd0d46f71e@samsung.com>
 In-Reply-To: <20231002-jag-sysctl_remove_empty_elem_drivers-v2-0-02dd0d46f71e@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
@@ -44,17 +44,17 @@ Cc: Joel Granados <j.granados@samsung.com>, linux-kernel@vger.kernel.org,
  linux-hyperv@vger.kernel.org, intel-gfx@lists.freedesktop.org, 
  dri-devel@lists.freedesktop.org
 X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=829; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=e2yFW2EFHsQwkB5PotCjZgXoqNEEyAhbQnmUD5zfaNQ=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlGoV/Vs6zaJYkusRcda3GvHqHD8FkD0XllyxOR
- gpkY40Yv/6JAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZRqFfwAKCRC6l81St5ZB
- T+5+C/9PG7Hu/Q+dsKCXDvY5Iy6CwCHH/JFsZ4t/aJUGwdfzUbDixMixD2mtLH27N3jGk6EsP+f
- TuT8qWNicQP6gZrT5r/weMxtSLFJObHVzSmm7laysrDcBw992wSR/bSaa22COnNEBPqIC8esU0Q
- pGb1W4km4w2r1wQCyP4ciYMGGrzDlkkP9Ftg7+PrhQgUzqHwcgNSiQkAYaMrHNx9aUE7pN65eqW
- S6r5qG3U+doLXvkDZyRHPifN3KC63mSs2PpDc/NX3fp5y86xBczeVNYidlNzguQK2QuZ+FROlNb
- xakkCrxK6U7rjUfK5FHvHYSSOStbsSOmjPmzhbCIYDHB/I8zWeGPGIKRJzP1C4yRCEl77u49B/h
- Suqp6Db8KacQipTzrj5zKGnSXTTwjMaoljlvWzrd0uCEgyFiJEbdb/BYb8M0GeDb+Kf8+KLxzWD
- Q6+VM9vMi9hHwjythRlXiqljd0T1YtM5HwY8rmd392dMC+XgoD9p38YjDqsyBZSkPCk04=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=895; i=j.granados@samsung.com;
+ h=from:subject:message-id; bh=aRo7NVdYCvLdNgGSBgQ6l0+E6oBOdQJH07rUCLQlR94=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlGoV/RVrZ++DlZt66bGmFv2tACCjFtyc9bKCyt
+ Xh72+xBYa2JAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZRqFfwAKCRC6l81St5ZB
+ T9wCC/9S9uDWtQoaUtTyJySq/BwgMLnAny2OrneSlhO0UKqMZFvbOgUuQGiJNs8VyC7IlWrxHVm
+ 2gbT3WD/mQhI9WX/B0z4TarGuU+BJmzwoPPun5D3G6oUedf0JdyIZLs9TJwZyL4KbQHIhVQ8skt
+ 9d2ELBqWveNmV8f+e8MKgjsdagi/9I77W0Dlj2eujgXgyIiPLQ/ZS+2g+heBSUicyN16ibHEu82
+ LllVj4x/NiItYuyLOncHEA6dI2/PYrOmYAHIkg5yUqWOhwDEKS4RmcYq0Y0lzUl8APdk06uQkJb
+ FFdVwsBnc3/rIeI8WobAqGTPjJ+p7k6APq5wq2IG+SuGmix2X7nozc7PdKVDApIkihzXIqIdVzt
+ YXt3lgmdjZI5hmlPt6RyTPvW/lX88Ru+QtyDLF7HtMgyQnjyq5zqqu1URjGJnly2oy19F7wlilb
+ AGIwY7o8qjN9C7sQC6yGWy2cGGyxw/g56tiwhVyVidw8uSz1wSXK/WM5kW7C0TiW0R8hQ=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -66,25 +66,25 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel from raid_table
+Remove sentinel from hv_ctl_table
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- drivers/md/md.c | 1 -
+ drivers/hv/hv_common.c | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/drivers/md/md.c b/drivers/md/md.c
-index a104a025084d..3bdff9e03188 100644
---- a/drivers/md/md.c
-+++ b/drivers/md/md.c
-@@ -305,7 +305,6 @@ static struct ctl_table raid_table[] = {
- 		.mode		= S_IRUGO|S_IWUSR,
- 		.proc_handler	= proc_dointvec,
+diff --git a/drivers/hv/hv_common.c b/drivers/hv/hv_common.c
+index ccad7bca3fd3..4372f5d146ab 100644
+--- a/drivers/hv/hv_common.c
++++ b/drivers/hv/hv_common.c
+@@ -148,7 +148,6 @@ static struct ctl_table hv_ctl_table[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 		.extra2		= SYSCTL_ONE
  	},
--	{ }
+-	{}
  };
  
- static int start_readonly;
+ static int hv_die_panic_notify_crash(struct notifier_block *self,
 
 -- 
 2.30.2
