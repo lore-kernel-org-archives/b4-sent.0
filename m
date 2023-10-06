@@ -1,11 +1,11 @@
 From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Fri, 06 Oct 2023 16:01:06 -0500
-Subject: [PATCH 3/7] powerpc/rtas: serialize ibm,get-vpd service with
- papr-vpd sequences
+Date: Fri, 06 Oct 2023 16:01:07 -0500
+Subject: [PATCH 4/7] powerpc/pseries/papr-sysparm: validate buffer object
+ lengths
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231006-papr-sys_rtas-vs-lockdown-v1-3-3a36bfb66e2e@linux.ibm.com>
+Message-Id: <20231006-papr-sys_rtas-vs-lockdown-v1-4-3a36bfb66e2e@linux.ibm.com>
 References: <20231006-papr-sys_rtas-vs-lockdown-v1-0-3a36bfb66e2e@linux.ibm.com>
 In-Reply-To: <20231006-papr-sys_rtas-vs-lockdown-v1-0-3a36bfb66e2e@linux.ibm.com>
 To: Michael Ellerman <mpe@ellerman.id.au>, 
@@ -14,84 +14,117 @@ To: Michael Ellerman <mpe@ellerman.id.au>,
 Cc: linuxppc-dev@lists.ozlabs.org, tyreld@linux.ibm.com, 
  gcwilson@linux.ibm.com, Nathan Lynch <nathanl@linux.ibm.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1696626070; l=2480;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1696626070; l=3564;
  i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=TLQEPvXfc9R9GBYp7+/JmWBLObxsGORpqehfwb/txZ8=;
- b=UHaQGOqqHEUmH9IJF52wkgojMjEit0tdQ9iE5mO/lOPjb1DGUSFlv3zAvQp3dvCL3t3+UPsY1
- BiloGJ+MJfECcjL7ytTpDpunuuqe+zgDMhKktiqRcC1LPxbN/d13du3
+ bh=6bbrgd0ovnUjw1itj15WIksclWVAl56tP1qwG+1R09U=;
+ b=7yWFD6E0XhGaF5bGhQmIbPKUeIseq+a5oHUVltzOd6cUs0obeKkGX34jy/+C3RrPsmH7YHmtq
+ tr0deufiAGYD66fp2sM25LOuXo3E/z7Pbl+FwxoNEl370o1rJ5IPMUq
 X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
  pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
 X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Take the papr-vpd driver's internal mutex when sys_rtas performs
-ibm,get-vpd calls. This prevents sys_rtas(ibm,get-vpd) calls from
-interleaving with sequences performed by the driver, ensuring that
-such sequences are not disrupted.
+The ability to get and set system parameters will be exposed to user
+space, so let's get a little more strict about malformed
+papr_sysparm_buf objects.
 
-However, it cannot prevent the driver from interleaving with sequences
-that are initiated via sys_rtas, since control returns to user space
-with each sys_rtas(ibm,get-vpd) call.
+* Create accessors for the length field of struct papr_sysparm_buf.
+  The length is always stored in MSB order and this is better than
+  spreading the necessary conversions all over.
 
-Emit a notice on first use of sys_rtas(ibm,get-vpd) encouraging users
-to migrate to /dev/papr-vpd.
+* Reject attempts to submit invalid buffers to RTAS.
+
+* Warn if RTAS returns a buffer with an invalid length, clamping the
+  returned length to a safe value that won't overrun the buffer.
+
+These are meant as precautionary measures to mitigate both firmware
+and kernel bugs in this area, should they arise, but I am not aware of
+any.
 
 Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
 ---
- arch/powerpc/kernel/rtas.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+ arch/powerpc/platforms/pseries/papr-sysparm.c | 47 +++++++++++++++++++++++++++
+ 1 file changed, 47 insertions(+)
 
-diff --git a/arch/powerpc/kernel/rtas.c b/arch/powerpc/kernel/rtas.c
-index eddc031c4b95..70ae118d2a13 100644
---- a/arch/powerpc/kernel/rtas.c
-+++ b/arch/powerpc/kernel/rtas.c
-@@ -37,6 +37,7 @@
- #include <asm/machdep.h>
- #include <asm/mmu.h>
- #include <asm/page.h>
-+#include <asm/papr-vpd.h>
- #include <asm/rtas-work-area.h>
- #include <asm/rtas.h>
- #include <asm/time.h>
-@@ -1861,6 +1862,28 @@ SYSCALL_DEFINE1(rtas, struct rtas_args __user *, uargs)
- 		goto copy_return;
- 	}
+diff --git a/arch/powerpc/platforms/pseries/papr-sysparm.c b/arch/powerpc/platforms/pseries/papr-sysparm.c
+index fedc61599e6c..a1e7aeac7416 100644
+--- a/arch/powerpc/platforms/pseries/papr-sysparm.c
++++ b/arch/powerpc/platforms/pseries/papr-sysparm.c
+@@ -23,6 +23,46 @@ void papr_sysparm_buf_free(struct papr_sysparm_buf *buf)
+ 	kfree(buf);
+ }
  
-+	if (token == rtas_function_token(RTAS_FN_IBM_GET_VPD)) {
-+		/*
-+		 * ibm,get-vpd potentially needs to be invoked
-+		 * multiple times to obtain complete results.
-+		 * Interleaved ibm,get-vpd sequences disrupt each
-+		 * other.
-+		 *
-+		 * /dev/papr-vpd doesn't have this problem and users
-+		 * do not need to be aware of each other to use it
-+		 * safely.
-+		 *
-+		 * We can prevent this call from disrupting a
-+		 * /dev/papr-vpd-initiated sequence in progress by
-+		 * reaching into the driver to take its internal
-+		 * lock. Unfortunately there is no way to prevent
-+		 * interference in the other direction without
-+		 * resorting to even worse hacks.
-+		 */
-+		pr_notice_once("Calling ibm,get-vpd via sys_rtas is allowed but deprecated. Use /dev/papr-vpd instead.\n");
-+		papr_vpd_mutex_lock();
-+	}
++static size_t papr_sysparm_buf_get_length(const struct papr_sysparm_buf *buf)
++{
++	return be16_to_cpu(buf->len);
++}
 +
- 	buff_copy = get_errorlog_buffer();
- 
- 	raw_spin_lock_irqsave(&rtas_lock, flags);
-@@ -1870,6 +1893,9 @@ SYSCALL_DEFINE1(rtas, struct rtas_args __user *, uargs)
- 	do_enter_rtas(&rtas_args);
- 	args = rtas_args;
- 
-+	if (token == rtas_function_token(RTAS_FN_IBM_GET_VPD))
-+		papr_vpd_mutex_unlock();
++static void papr_sysparm_buf_set_length(struct papr_sysparm_buf *buf, size_t length)
++{
++	WARN_ONCE(length > sizeof(buf->val),
++		  "bogus length %zu, clamping to safe value", length);
++	length = min(sizeof(buf->val), length);
++	buf->len = cpu_to_be16(length);
++}
 +
- 	/* A -1 return code indicates that the last command couldn't
- 	   be completed due to a hardware error. */
- 	if (be32_to_cpu(args.rets[0]) == -1)
++/*
++ * For use on buffers returned from ibm,get-system-parameter before
++ * returning them to callers. Ensures the encoded length of valid data
++ * cannot overrun buf->val[].
++ */
++static void papr_sysparm_buf_clamp_length(struct papr_sysparm_buf *buf)
++{
++	papr_sysparm_buf_set_length(buf, papr_sysparm_buf_get_length(buf));
++}
++
++/*
++ * Perform some basic diligence on the system parameter buffer before
++ * submitting it to RTAS.
++ */
++static bool papr_sysparm_buf_can_submit(const struct papr_sysparm_buf *buf)
++{
++	/*
++	 * Firmware ought to reject buffer lengths that exceed the
++	 * maximum specified in PAPR, but there's no reason for the
++	 * kernel to allow them either.
++	 */
++	if (papr_sysparm_buf_get_length(buf) > sizeof(buf->val))
++		return false;
++
++	return true;
++}
++
+ /**
+  * papr_sysparm_get() - Retrieve the value of a PAPR system parameter.
+  * @param: PAPR system parameter token as described in
+@@ -63,6 +103,9 @@ int papr_sysparm_get(papr_sysparm_t param, struct papr_sysparm_buf *buf)
+ 	if (token == RTAS_UNKNOWN_SERVICE)
+ 		return -ENOENT;
+ 
++	if (!papr_sysparm_buf_can_submit(buf))
++		return -EINVAL;
++
+ 	work_area = rtas_work_area_alloc(sizeof(*buf));
+ 
+ 	memcpy(rtas_work_area_raw_buf(work_area), buf, sizeof(*buf));
+@@ -77,6 +120,7 @@ int papr_sysparm_get(papr_sysparm_t param, struct papr_sysparm_buf *buf)
+ 	case 0:
+ 		ret = 0;
+ 		memcpy(buf, rtas_work_area_raw_buf(work_area), sizeof(*buf));
++		papr_sysparm_buf_clamp_length(buf);
+ 		break;
+ 	case -3: /* parameter not implemented */
+ 		ret = -EOPNOTSUPP;
+@@ -115,6 +159,9 @@ int papr_sysparm_set(papr_sysparm_t param, const struct papr_sysparm_buf *buf)
+ 	if (token == RTAS_UNKNOWN_SERVICE)
+ 		return -ENOENT;
+ 
++	if (!papr_sysparm_buf_can_submit(buf))
++		return -EINVAL;
++
+ 	work_area = rtas_work_area_alloc(sizeof(*buf));
+ 
+ 	memcpy(rtas_work_area_raw_buf(work_area), buf, sizeof(*buf));
 
 -- 
 2.41.0
