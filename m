@@ -1,252 +1,101 @@
-From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Fri, 13 Oct 2023 16:32:14 -0500
-Subject: [PATCH v2 7/7] powerpc/selftests: add test for papr-sysparm
+From: Janne Grunau <j@jannau.net>
+Date: Mon, 16 Oct 2023 08:58:01 +0200
+Subject: [PATCH v2] watchdog: apple: Deactivate on suspend
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231013-papr-sys_rtas-vs-lockdown-v2-7-ead01ce01722@linux.ibm.com>
-References: <20231013-papr-sys_rtas-vs-lockdown-v2-0-ead01ce01722@linux.ibm.com>
-In-Reply-To: <20231013-papr-sys_rtas-vs-lockdown-v2-0-ead01ce01722@linux.ibm.com>
-To: Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>, 
- =?utf-8?q?Michal_Such=C3=A1nek?= <msuchanek@suse.de>
-Cc: linuxppc-dev@lists.ozlabs.org, tyreld@linux.ibm.com, 
- gcwilson@linux.ibm.com, Nathan Lynch <nathanl@linux.ibm.com>
+Message-Id: <20231016-apple-watchdog-suspend-v2-1-7ffff8042dbc@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAPneLGUC/4WNQQ6DIBREr2L+ur8BWShd9R6NC4SP0DRIALWN8
+ e6lXqCZ1Ztk3uyQKXnKcGt2SLT67OdQob00oJ0KE6E3laFlrWBSMFQxvgg3VbQz84R5yZGCwc5
+ 2ohecC2ZHqOOYyPr3KX4MlZ3PZU6f82flv/avcuVYI2Wv2UjSmu7+VCGo5RqowHAcxxdCaA19v
+ QAAAA==
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-watchdog@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1697232739; l=5975;
- i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=EyKsLg5PlqamjBFZY7FoxQ1n1iuFYypDgQInBUtVOl0=;
- b=w4Htru5nKYcge98GU3TLoyLwedlfA/JHysf/K7W2AnTxpIScNqGemcEdN4KEvrKNTlDU+Q2m+
- BGxsGda6ZN6DOeidzzPEWGIVbtREBMKwuqMROKQ5hus3rmpRSGhZkn3
-X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
- pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
-X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2139; i=j@jannau.net;
+ h=from:subject:message-id; bh=qR9R65p5QA5TUKQf3OVfeiREsktHYZDElKSYt9mdCaI=;
+ b=owGbwMvMwCG2UNrmdq9+ahrjabUkhlSd+wx/NBy7ua6cvxDYVJ11IvDv3N0fMlL+PeG4sD5p7
+ wrx1fNlO0pZGMQ4GGTFFFmStF92MKyuUYypfRAGM4eVCWQIAxenAEyk7jAjw+9qGZ/YyzM3vGxZ
+ ph2y4NYj3sZ/wvf+q2w6eS+uyCMg6Rcjw2KGzTM/HKwSb0xVqO013fhUyrBh44fI2hccKvsZhPt
+ ZeAA=
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Consistently testing system parameter access is a bit difficult by
-nature -- the set of parameters available depends on the model and
-system configuration, and updating a parameter should be considered a
-destructive operation reserved for the admin.
+The watchdog remains active after putting the system into suspend. Add
+PM callbacks to deactivate the watchdog on suspend an re-activate it on
+resume.
 
-So we validate some of the error paths and retrieve the SPLPAR
-characteristics string, but not much else.
-
-Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- tools/testing/selftests/powerpc/Makefile           |   1 +
- .../selftests/powerpc/papr_sysparm/.gitignore      |   1 +
- .../selftests/powerpc/papr_sysparm/Makefile        |  12 ++
- .../selftests/powerpc/papr_sysparm/papr_sysparm.c  | 164 +++++++++++++++++++++
- 4 files changed, 178 insertions(+)
+Changes in v2:
+- use DEFINE_SIMPLE_DEV_PM_OPS
+- Link to v1: https://lore.kernel.org/r/20230930-apple-watchdog-suspend-v1-1-1998c0be9fd7@jannau.net
+---
+ drivers/watchdog/apple_wdt.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
-diff --git a/tools/testing/selftests/powerpc/Makefile b/tools/testing/selftests/powerpc/Makefile
-index 7de972612786..2f3fa91a1f52 100644
---- a/tools/testing/selftests/powerpc/Makefile
-+++ b/tools/testing/selftests/powerpc/Makefile
-@@ -33,6 +33,7 @@ SUB_DIRS = alignment		\
- 	   math		\
- 	   papr_attributes	\
- 	   papr_vpd		\
-+	   papr_sysparm		\
- 	   ptrace	\
- 	   security	\
- 	   mce
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/.gitignore b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-new file mode 100644
-index 000000000000..f2a69bf59d40
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-@@ -0,0 +1 @@
-+/papr_sysparm
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/Makefile b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-new file mode 100644
-index 000000000000..7f79e437634a
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-@@ -0,0 +1,12 @@
-+# SPDX-License-Identifier: GPL-2.0
-+noarg:
-+	$(MAKE) -C ../
+diff --git a/drivers/watchdog/apple_wdt.c b/drivers/watchdog/apple_wdt.c
+index eddeb0fede89..d4f739932f0b 100644
+--- a/drivers/watchdog/apple_wdt.c
++++ b/drivers/watchdog/apple_wdt.c
+@@ -173,6 +173,8 @@ static int apple_wdt_probe(struct platform_device *pdev)
+ 	if (!wdt->clk_rate)
+ 		return -EINVAL;
+ 
++	platform_set_drvdata(pdev, wdt);
 +
-+TEST_GEN_PROGS := papr_sysparm
-+
-+top_srcdir = ../../../../..
-+include ../../lib.mk
-+
-+$(TEST_GEN_PROGS): ../harness.c ../utils.c
-+
-+$(OUTPUT)/papr_sysparm: CFLAGS += $(KHDR_INCLUDES)
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-new file mode 100644
-index 000000000000..fc25c03e8bc7
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-@@ -0,0 +1,164 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <stdlib.h>
-+#include <sys/ioctl.h>
-+#include <unistd.h>
-+#include <asm/papr-sysparm.h>
-+
-+#include "utils.h"
-+
-+#define DEVPATH "/dev/papr-sysparm"
-+
-+static int open_close(void)
+ 	wdt->wdd.ops = &apple_wdt_ops;
+ 	wdt->wdd.info = &apple_wdt_info;
+ 	wdt->wdd.max_timeout = U32_MAX / wdt->clk_rate;
+@@ -190,6 +192,28 @@ static int apple_wdt_probe(struct platform_device *pdev)
+ 	return devm_watchdog_register_device(dev, &wdt->wdd);
+ }
+ 
++static int apple_wdt_resume(struct device *dev)
 +{
-+	const int devfd = open(DEVPATH, O_RDONLY);
++	struct apple_wdt *wdt = dev_get_drvdata(dev);
 +
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(close(devfd) != 0);
++	if (watchdog_active(&wdt->wdd) || watchdog_hw_running(&wdt->wdd))
++		apple_wdt_start(&wdt->wdd);
 +
 +	return 0;
 +}
 +
-+static int get_splpar(void)
++static int apple_wdt_suspend(struct device *dev)
 +{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 20, // SPLPAR characteristics
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
++	struct apple_wdt *wdt = dev_get_drvdata(dev);
 +
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != 0);
-+	FAIL_IF(sp.length == 0);
-+	FAIL_IF(sp.length > sizeof(sp.data));
-+	FAIL_IF(close(devfd) != 0);
++	if (watchdog_active(&wdt->wdd) || watchdog_hw_running(&wdt->wdd))
++		apple_wdt_stop(&wdt->wdd);
 +
 +	return 0;
 +}
 +
-+static int get_bad_parameter(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = UINT32_MAX, // there are only ~60 specified parameters
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
++static DEFINE_SIMPLE_DEV_PM_OPS(apple_wdt_pm_ops, apple_wdt_suspend, apple_wdt_resume);
 +
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != -1);
-+	FAIL_IF(errno != EOPNOTSUPP);
-+
-+	// Ensure the buffer is unchanged
-+	FAIL_IF(sp.length != 0);
-+	for (size_t i = 0; i < ARRAY_SIZE(sp.data); ++i)
-+		FAIL_IF(sp.data[i] != 0);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_common(unsigned long cmd)
-+{
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, cmd, NULL) != -1);
-+	FAIL_IF(errno != EFAULT);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_get(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_GET);
-+}
-+
-+static int check_efault_set(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_SET);
-+}
-+
-+static int set_hmc0(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 0, // HMC0, not a settable parameter
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_SET, &sp) != -1);
-+	FAIL_IF(errno != EPERM);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+struct sysparm_test {
-+	int (*function)(void);
-+	const char *description;
-+};
-+
-+static const struct sysparm_test sysparm_tests[] = {
-+	{
-+		.function = open_close,
-+		.description = "open and close " DEVPATH " without issuing commands",
-+	},
-+	{
-+		.function = get_splpar,
-+		.description = "retrieve SPLPAR characteristics",
-+	},
-+	{
-+		.function = get_bad_parameter,
-+		.description = "verify EOPNOTSUPP for known-bad parameter",
-+	},
-+	{
-+		.function = check_efault_get,
-+		.description = "PAPR_SYSPARM_IOC_GET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = check_efault_set,
-+		.description = "PAPR_SYSPARM_IOC_SET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = set_hmc0,
-+		.description = "ensure EPERM on attempt to update HMC0",
-+	},
-+};
-+
-+int main(void)
-+{
-+	size_t fails = 0;
-+
-+	for (size_t i = 0; i < ARRAY_SIZE(sysparm_tests); ++i) {
-+		const struct sysparm_test *t = &sysparm_tests[i];
-+
-+		if (test_harness(t->function, t->description))
-+			++fails;
-+	}
-+
-+	return fails == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
-+}
+ static const struct of_device_id apple_wdt_of_match[] = {
+ 	{ .compatible = "apple,wdt" },
+ 	{},
+@@ -200,6 +224,7 @@ static struct platform_driver apple_wdt_driver = {
+ 	.driver = {
+ 		.name = "apple-watchdog",
+ 		.of_match_table = apple_wdt_of_match,
++		.pm = pm_sleep_ptr(&apple_wdt_pm_ops),
+ 	},
+ 	.probe = apple_wdt_probe,
+ };
 
+---
+base-commit: 0bb80ecc33a8fb5a682236443c1e740d5c917d1d
+change-id: 20230930-apple-watchdog-suspend-7f73831130fb
+
+Best regards,
 -- 
-2.41.0
+Janne Grunau <j@jannau.net>
 
