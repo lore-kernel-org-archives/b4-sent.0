@@ -1,11 +1,10 @@
 From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Wed, 25 Oct 2023 22:24:18 -0500
-Subject: [PATCH v3 04/10] powerpc/rtas: Warn if per-function lock isn't
- held
+Date: Wed, 25 Oct 2023 22:24:19 -0500
+Subject: [PATCH v3 05/10] powerpc/uapi: Export papr-miscdev.h header
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231025-papr-sys_rtas-vs-lockdown-v3-4-5eb04559e7d8@linux.ibm.com>
+Message-Id: <20231025-papr-sys_rtas-vs-lockdown-v3-5-5eb04559e7d8@linux.ibm.com>
 References: <20231025-papr-sys_rtas-vs-lockdown-v3-0-5eb04559e7d8@linux.ibm.com>
 In-Reply-To: <20231025-papr-sys_rtas-vs-lockdown-v3-0-5eb04559e7d8@linux.ibm.com>
 To: Michael Ellerman <mpe@ellerman.id.au>, 
@@ -14,71 +13,39 @@ Cc: linuxppc-dev@lists.ozlabs.org,
  =?utf-8?q?Michal_Such=C3=A1nek?= <msuchanek@suse.de>, tyreld@linux.ibm.com, 
  gcwilson@linux.ibm.com, Nathan Lynch <nathanl@linux.ibm.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1698290680; l=1868;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1698290680; l=765;
  i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=MsLg2VOCa1maTk74nl6FHSf51sridi3guj7MF6Dq5zU=;
- b=Z+bk4iMGyADjbwFlmpN/5XT/yolqS353bPkd2sc42piV9VYGGHTmpVF8KrTdm5MtT99S32j0G
- XZHHxspenFMAKb47kW8vxjT8yCy7QZyuBZzF14GUtFvL2EjfwmEOTt2
+ bh=JMz2KShlBYHoqW3y8kJSBWwgwMz0qhqY8agvfGwn8cc=;
+ b=AI4lh6arfehrPIFcIXi42ASZgI0uHLhJ7JlHJwwpZYmyhY4NQrvbhdJJydd5w9rLWTetCf7Cx
+ GY415FHuIBMCWUeP1+fffowD9JRLfZDClzhe7tI11YFSuK6eAuANPUO
 X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
  pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
 X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If the function descriptor has a populated lock member, then callers
-are required to hold it across calls. Now that the firmware activation
-sequence is appropriately guarded, we can warn when the requirement
-isn't satisfied.
-
-__do_enter_rtas_trace() gets reorganized a bit as a result of
-performing the function descriptor lookup unconditionally now.
+Allocate one identifying code (the first column of the ioctl-number
+table) for the collection of PAPR miscdev drivers to share.
 
 Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
 ---
- arch/powerpc/kernel/rtas.c | 21 +++++++++------------
- 1 file changed, 9 insertions(+), 12 deletions(-)
+ arch/powerpc/include/uapi/asm/papr-miscdev.h | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/arch/powerpc/kernel/rtas.c b/arch/powerpc/kernel/rtas.c
-index 864d140e7247..0a0ae81fac99 100644
---- a/arch/powerpc/kernel/rtas.c
-+++ b/arch/powerpc/kernel/rtas.c
-@@ -670,28 +670,25 @@ static void __do_enter_rtas(struct rtas_args *args)
- 
- static void __do_enter_rtas_trace(struct rtas_args *args)
- {
--	const char *name = NULL;
-+	struct rtas_function *func = rtas_token_to_function(be32_to_cpu(args->token));
- 
--	if (args == &rtas_args)
--		lockdep_assert_held(&rtas_lock);
- 	/*
--	 * If the tracepoints that consume the function name aren't
--	 * active, avoid the lookup.
-+	 * If there is a per-function lock, it must be held by the
-+	 * caller.
- 	 */
--	if ((trace_rtas_input_enabled() || trace_rtas_output_enabled())) {
--		const s32 token = be32_to_cpu(args->token);
--		const struct rtas_function *func = rtas_token_to_function(token);
-+	if (func->lock)
-+		WARN_ON(!mutex_is_locked(func->lock));
- 
--		name = func->name;
--	}
-+	if (args == &rtas_args)
-+		lockdep_assert_held(&rtas_lock);
- 
--	trace_rtas_input(args, name);
-+	trace_rtas_input(args, func->name);
- 	trace_rtas_ll_entry(args);
- 
- 	__do_enter_rtas(args);
- 
- 	trace_rtas_ll_exit(args);
--	trace_rtas_output(args, name);
-+	trace_rtas_output(args, func->name);
- }
- 
- static void do_enter_rtas(struct rtas_args *args)
+diff --git a/arch/powerpc/include/uapi/asm/papr-miscdev.h b/arch/powerpc/include/uapi/asm/papr-miscdev.h
+new file mode 100644
+index 000000000000..49a2a270b7f3
+--- /dev/null
++++ b/arch/powerpc/include/uapi/asm/papr-miscdev.h
+@@ -0,0 +1,9 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++#ifndef _UAPI_PAPR_MISCDEV_H_
++#define _UAPI_PAPR_MISCDEV_H_
++
++enum {
++	PAPR_MISCDEV_IOC_ID = 0xb2,
++};
++
++#endif /* _UAPI_PAPR_MISCDEV_H_ */
 
 -- 
 2.41.0
