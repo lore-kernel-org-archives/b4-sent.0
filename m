@@ -1,252 +1,53 @@
-From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Wed, 25 Oct 2023 22:24:24 -0500
-Subject: [PATCH v3 10/10] powerpc/selftests: Add test for papr-sysparm
+From: Richard Leitner <richard.leitner@linux.dev>
+Subject: [PATCH v2 0/2] hwmon: add ti,ina237 support to ina238 driver
+Date: Thu, 26 Oct 2023 09:08:48 +0200
+Message-Id: <20231026-ina237-v2-0-dec44811a3c9@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231025-papr-sys_rtas-vs-lockdown-v3-10-5eb04559e7d8@linux.ibm.com>
-References: <20231025-papr-sys_rtas-vs-lockdown-v3-0-5eb04559e7d8@linux.ibm.com>
-In-Reply-To: <20231025-papr-sys_rtas-vs-lockdown-v3-0-5eb04559e7d8@linux.ibm.com>
-To: Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>
-Cc: linuxppc-dev@lists.ozlabs.org, 
- =?utf-8?q?Michal_Such=C3=A1nek?= <msuchanek@suse.de>, tyreld@linux.ibm.com, 
- gcwilson@linux.ibm.com, Nathan Lynch <nathanl@linux.ibm.com>
+X-B4-Tracking: v=1; b=H4sIAIAQOmUC/2XMywrCMBCF4VcpszYyM7WWuPI9pIuQix2QVBINl
+ ZJ3N3br8j8cvg2yT+IzXLoNki+SZYkt+NCBnU28eyWuNTByT8iDkmi4HxUGMtrSKbjBQTs/kw+
+ y7tBtaj1Lfi3ps7uFfusfUUihMkj6TKRHRnt9SHyvR+cLTLXWLz4oR82cAAAA
+To: Guenter Roeck <linux@roeck-us.net>, Jean Delvare <jdelvare@suse.com>, 
+ Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-hwmon@vger.kernel.org, 
+ devicetree@vger.kernel.org, Richard Leitner <richard.leitner@linux.dev>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1698290680; l=5975;
- i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=Gud1aDPXi5gwBA6uWmnVHj9xhhAyFG01m+C6FGtJFX0=;
- b=j5gWXi55uoWp7YTJPhsV9mGXu79S+md/DUzFbcwAjD9itQc8kgOAh0Q29Y5tqBHkCIvJgh3po
- 4Vax12ft56sCFgs90yI/xdRYJXjuSrKdHR8xic/+m3a5t8XqYvK5RZB
-X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
- pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
-X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1698304135; l=878;
+ i=richard.leitner@linux.dev; s=20231025; h=from:subject:message-id;
+ bh=/GtJaouCP9uYvnQf/YrQKxvci6Y4JpBN0GXQjS2r29E=;
+ b=0tI3/dPziYw9MSGLgP4np9BF9AJSZ2F7UAb/TMp0Q9VBuy5n3mYqM+tlptr9PzIZ5Ry7Nh3zqkVY
+ Rw49LwMcAnEYWN8DrDuEHdJAHZxMWhV1HXkKjLNHKC3636hVLHYJ
+X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
+ pk=ZYa5+0m9RFYtnNU6DLet7sHyPehnVHa0ucJlYiAu2NU=
+X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20231025 with auth_id=90
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Consistently testing system parameter access is a bit difficult by
-nature -- the set of parameters available depends on the model and
-system configuration, and updating a parameter should be considered a
-destructive operation reserved for the admin.
+This series adds support for the ina237 power monitor to the ina238
+driver as those two are very similar.
 
-So we validate some of the error paths and retrieve the SPLPAR
-characteristics string, but not much else.
-
-Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
+Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- tools/testing/selftests/powerpc/Makefile           |   1 +
- .../selftests/powerpc/papr_sysparm/.gitignore      |   1 +
- .../selftests/powerpc/papr_sysparm/Makefile        |  12 ++
- .../selftests/powerpc/papr_sysparm/papr_sysparm.c  | 164 +++++++++++++++++++++
- 4 files changed, 178 insertions(+)
+Changes in v2:
+- Drop separate MAINTAINERS entry as it's covered by hwmon
+- Drop separate dt-bindings for ina23{7,8} as discussed with Krzysztof
+- Link to v1: https://lore.kernel.org/r/20231025-ina237-v1-0-a0196119720c@linux.dev
 
-diff --git a/tools/testing/selftests/powerpc/Makefile b/tools/testing/selftests/powerpc/Makefile
-index 05fc68d446c2..c376151982c4 100644
---- a/tools/testing/selftests/powerpc/Makefile
-+++ b/tools/testing/selftests/powerpc/Makefile
-@@ -33,6 +33,7 @@ SUB_DIRS = alignment		\
- 	   math		\
- 	   papr_attributes	\
- 	   papr_vpd		\
-+	   papr_sysparm		\
- 	   ptrace	\
- 	   security	\
- 	   mce
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/.gitignore b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-new file mode 100644
-index 000000000000..f2a69bf59d40
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-@@ -0,0 +1 @@
-+/papr_sysparm
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/Makefile b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-new file mode 100644
-index 000000000000..7f79e437634a
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-@@ -0,0 +1,12 @@
-+# SPDX-License-Identifier: GPL-2.0
-+noarg:
-+	$(MAKE) -C ../
-+
-+TEST_GEN_PROGS := papr_sysparm
-+
-+top_srcdir = ../../../../..
-+include ../../lib.mk
-+
-+$(TEST_GEN_PROGS): ../harness.c ../utils.c
-+
-+$(OUTPUT)/papr_sysparm: CFLAGS += $(KHDR_INCLUDES)
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-new file mode 100644
-index 000000000000..fc25c03e8bc7
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-@@ -0,0 +1,164 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <stdlib.h>
-+#include <sys/ioctl.h>
-+#include <unistd.h>
-+#include <asm/papr-sysparm.h>
-+
-+#include "utils.h"
-+
-+#define DEVPATH "/dev/papr-sysparm"
-+
-+static int open_close(void)
-+{
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int get_splpar(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 20, // SPLPAR characteristics
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != 0);
-+	FAIL_IF(sp.length == 0);
-+	FAIL_IF(sp.length > sizeof(sp.data));
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int get_bad_parameter(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = UINT32_MAX, // there are only ~60 specified parameters
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != -1);
-+	FAIL_IF(errno != EOPNOTSUPP);
-+
-+	// Ensure the buffer is unchanged
-+	FAIL_IF(sp.length != 0);
-+	for (size_t i = 0; i < ARRAY_SIZE(sp.data); ++i)
-+		FAIL_IF(sp.data[i] != 0);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_common(unsigned long cmd)
-+{
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, cmd, NULL) != -1);
-+	FAIL_IF(errno != EFAULT);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_get(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_GET);
-+}
-+
-+static int check_efault_set(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_SET);
-+}
-+
-+static int set_hmc0(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 0, // HMC0, not a settable parameter
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_SET, &sp) != -1);
-+	FAIL_IF(errno != EPERM);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+struct sysparm_test {
-+	int (*function)(void);
-+	const char *description;
-+};
-+
-+static const struct sysparm_test sysparm_tests[] = {
-+	{
-+		.function = open_close,
-+		.description = "open and close " DEVPATH " without issuing commands",
-+	},
-+	{
-+		.function = get_splpar,
-+		.description = "retrieve SPLPAR characteristics",
-+	},
-+	{
-+		.function = get_bad_parameter,
-+		.description = "verify EOPNOTSUPP for known-bad parameter",
-+	},
-+	{
-+		.function = check_efault_get,
-+		.description = "PAPR_SYSPARM_IOC_GET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = check_efault_set,
-+		.description = "PAPR_SYSPARM_IOC_SET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = set_hmc0,
-+		.description = "ensure EPERM on attempt to update HMC0",
-+	},
-+};
-+
-+int main(void)
-+{
-+	size_t fails = 0;
-+
-+	for (size_t i = 0; i < ARRAY_SIZE(sysparm_tests); ++i) {
-+		const struct sysparm_test *t = &sysparm_tests[i];
-+
-+		if (test_harness(t->function, t->description))
-+			++fails;
-+	}
-+
-+	return fails == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
-+}
+---
+Richard Leitner (2):
+      hwmon: ina238: add ina237 support
+      dt-bindings: hwmon: ti,ina2xx: add ti,ina237
 
+ Documentation/devicetree/bindings/hwmon/ti,ina2xx.yaml | 1 +
+ drivers/hwmon/ina238.c                                 | 3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+---
+base-commit: 4f82870119a46b0d04d91ef4697ac4977a255a9d
+change-id: 20231025-ina237-0f1a9c14fd5d
+
+Best regards,
 -- 
-2.41.0
+Richard Leitner <richard.leitner@linux.dev>
 
