@@ -1,67 +1,57 @@
-From: Davide Cavalca <dcavalca@meta.com>
-Date: Fri, 03 Nov 2023 23:33:42 +0000
-Subject: [PATCH] rpm-pkg: simplify installkernel %post
+From: Nathan Lynch <nathanl@linux.ibm.com>
+Subject: [PATCH 0/7] powerpc/rtas: Trivial, coding style, and kernel-doc
+ fixes
+Date: Mon, 06 Nov 2023 07:42:52 -0600
+Message-Id: <20231106-rtas-trivial-v1-0-61847655c51f@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231103-rpmpost-v1-1-9c18afab47f4@meta.com>
-X-B4-Tracking: v=1; b=H4sIAFWDRWUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI2NDQwNj3aKC3IL84hLdNNNkS0tTUyNLQ8s0JaDqgqLUtMwKsEnRsbW1AG7
- r41lZAAAA
-To: Masahiro Yamada <masahiroy@kernel.org>, 
- Nathan Chancellor <nathan@kernel.org>, 
- Nick Desaulniers <ndesaulniers@google.com>, 
- Nicolas Schier <nicolas@fjasle.eu>
-Cc: linux-kbuild@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Davide Cavalca <dcavalca@meta.com>
+X-B4-Tracking: v=1; b=H4sIAF3tSGUC/x3MQQqAIBBA0avIrBNszIiuEi3ExhqIilEikO6et
+ HyL/wskEqYEoyogdHPi86hoGwVh88dKmpdqQIO2Nei0ZJ90Fr7Z7xoDYqDB2dj1UJNLKPLz76b
+ 5fT/omXtAXgAAAA==
+To: Michael Ellerman <mpe@ellerman.id.au>, 
+ Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>
+Cc: linuxppc-dev@lists.ozlabs.org, Nathan Lynch <nathanl@linux.ibm.com>, 
+ kernel test robot <lkp@intel.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1699054440; l=1637;
- i=dcavalca@meta.com; s=20231103; h=from:subject:message-id;
- bh=X5JC+W01uXiyXPVwSIF965qjWZWJ67z2pjY23Aa3nRA=;
- b=P/fwUPABI1VqrtkXrn3F4SbHZSLLxC/fFwBtcokkm2L/H4YTgu3ESNj4oYbXwAiF1LqOCDRrJ
- j9Hs9PSf7MaBETvJfqIJnlqTUHIMjYvwf+QJgK6vs4El3C26IFbFvpL
-X-Developer-Key: i=dcavalca@meta.com; a=ed25519;
- pk=9b8tquSs5okUyZ8q4DQqRfT95N/++7b/GgqRBdqUDBU=
-X-Endpoint-Received: by B4 Relay for dcavalca@meta.com/20231103 with auth_id=95
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1699278208; l=1321;
+ i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
+ bh=9pQwjUL7PMtkICM3/JD7Qu1swEeqMIjv9S2iKiZDUTc=;
+ b=JrW+Hf9xPog4O7u0O5jPQgBqHi0ee4XAIIbc7nwjyBCzra0D7hBuantEwSbrG/sy3UAFZMVe1
+ tIkHMImp0j/CIK0h9uXpLoxss5eAw+nUo+ox14UJx4n1T3XDMKR74Tp
+X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
+ pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
+X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The %post currently does a shuffling dance before calling installkernel.
-This isn't actually necessary afaict, and the current implementation
-ends up triggering downstream issues such as
-https://github.com/systemd/systemd/issues/29568
-
-This commit simplifies the logic to remove the shuffling. For reference,
-the original logic was added in commit 3c9c7a14b627("rpm-pkg: add %post
-section to create initramfs and grub hooks").
-
-Signed-off-by: Davide Cavalca <dcavalca@meta.com>
----
- scripts/package/kernel.spec | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
-
-diff --git a/scripts/package/kernel.spec b/scripts/package/kernel.spec
-index 3eee0143e0c5..cc4292c03ea2 100644
---- a/scripts/package/kernel.spec
-+++ b/scripts/package/kernel.spec
-@@ -77,11 +77,7 @@ rm -rf %{buildroot}
- 
- %post
- if [ -x /sbin/installkernel -a -r /boot/vmlinuz-%{KERNELRELEASE} -a -r /boot/System.map-%{KERNELRELEASE} ]; then
--cp /boot/vmlinuz-%{KERNELRELEASE} /boot/.vmlinuz-%{KERNELRELEASE}-rpm
--cp /boot/System.map-%{KERNELRELEASE} /boot/.System.map-%{KERNELRELEASE}-rpm
--rm -f /boot/vmlinuz-%{KERNELRELEASE} /boot/System.map-%{KERNELRELEASE}
--/sbin/installkernel %{KERNELRELEASE} /boot/.vmlinuz-%{KERNELRELEASE}-rpm /boot/.System.map-%{KERNELRELEASE}-rpm
--rm -f /boot/.vmlinuz-%{KERNELRELEASE}-rpm /boot/.System.map-%{KERNELRELEASE}-rpm
-+/sbin/installkernel %{KERNELRELEASE} /boot/vmlinuz-%{KERNELRELEASE} /boot/System.map-%{KERNELRELEASE}
- fi
- 
- %preun
+* Fix recently introduced kernel-doc warnings.
+* Make minor coding style adjustments for readability.
+* Remove rtas_service_present() and an old call_rtas() declaration.
+* Move a pseries-specific function prototype to pseries code.
 
 ---
-base-commit: e392ea4d4d00880bf94550151b1ace4f88a4b17a
-change-id: 20231103-rpmpost-f5c99552919f
+Nathan Lynch (7):
+      powerpc/pseries/rtas-work-area: Fix rtas_work_area_reserve_arena() kernel-doc
+      powerpc/rtas: Fix ppc_rtas_rmo_buf_show() kernel-doc
+      powerpc/rtas: Drop declaration of undefined call_rtas() function
+      powerpc/rtas: Remove unused rtas_service_present()
+      powerpc/rtas: Move post_mobility_fixup() declaration to pseries
+      powerpc/rtas: Remove trailing space
+      powerpc/rtas: Remove 'extern' from function declarations in rtas.h
+
+ arch/powerpc/include/asm/rtas.h                 | 62 ++++++++++++-------------
+ arch/powerpc/kernel/rtas-proc.c                 |  2 +
+ arch/powerpc/kernel/rtas.c                      | 23 ++++-----
+ arch/powerpc/platforms/pseries/pseries.h        |  1 +
+ arch/powerpc/platforms/pseries/rtas-work-area.c |  1 +
+ arch/powerpc/platforms/pseries/suspend.c        |  1 +
+ 6 files changed, 43 insertions(+), 47 deletions(-)
+---
+base-commit: 303d77a6e1707498f09c9d8ee91b1dc07ca315a5
+change-id: 20231025-rtas-trivial-2c22ce853f46
 
 Best regards,
 -- 
-Davide Cavalca <dcavalca@meta.com>
+Nathan Lynch <nathanl@linux.ibm.com>
 
