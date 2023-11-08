@@ -1,84 +1,85 @@
-From: Steev Klimaszewski <steev@kali.org>
-Date: Tue, 07 Nov 2023 23:17:10 -0600
-Subject: [PATCH v2] arm64: dts: qcom: sdm850-lenovo-yoga: Add
- wakeup-sources
+From: Hui Liu <quic_huliu@quicinc.com>
+Date: Wed, 08 Nov 2023 14:05:12 +0800
+Subject: [PATCH] ARM: dts: qcom: Add LPG LED device description
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231107-wakeup-source-v2-1-bf1562ef9367@kali.org>
-X-B4-Tracking: v=1; b=H4sIANUZS2UC/3XMQQ6CMBCF4auQWVvDtKEGV96DsKgwhQmGkqmgh
- vTuVvYu/5e8b4dIwhThWuwgtHHkMOfQpwK60c0DKe5zgy61QSytermJ1kXFsEpHCivnra+cNbq
- G/FmEPL8Pr2lzjxyfQT4Hv+Fv/SdtqFAZe0dvarIX398m9+BzkAHalNIXbIqAvKkAAAA=
+Message-Id: <20231108-qcom_leds-v1-1-c3e1c8572cb0@quicinc.com>
+X-B4-Tracking: v=1; b=H4sIABklS2UC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2NDQwML3cLk/Nz4nNSUYt1k4ySDJHMDI0sDAwsloPqCotS0zAqwWdGxtbU
+ AJTBULVsAAAA=
 To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
  Conor Dooley <conor+dt@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Steev Klimaszewski <steev@kali.org>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1699420633; l=1476;
- i=steev@kali.org; s=20231106; h=from:subject:message-id;
- bh=hOaVryeA8/dNuUZsiO2uJEGRMT7i9AIrp/ZBfau6X9Q=;
- b=9wHrEPFbaFJvva63VF0vjULs/N1mDpxpdj//WykGfE7qJhoLJUxnfDOBEn+bimJ4kXb7tR9r9
- OdBPKQsTZf/AKD5HmITT0TL70Hu8woeoWyRusNCeGIaFlJE5lXUfQwJ
-X-Developer-Key: i=steev@kali.org; a=ed25519;
- pk=KY+JnLRNy7Hdf04yfpE5ubOsDBIIfXAWnBijkySXbb4=
-X-Endpoint-Received: by B4 Relay for steev@kali.org/20231106 with auth_id=97
+ linux-kernel@vger.kernel.org, quic_fenglinw@quicinc.com, 
+ quic_uchheda@quicinc.com, kamalw@qti.qualcomm.com, 
+ Hui Liu <quic_huliu@quicinc.com>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1699423518; l=1242;
+ i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
+ bh=NDo+ug2xivotbN/xsmZgwuX6Kewv3ppT7LsFeWs76Jw=;
+ b=RljxyHRNT45DJuHIAuZuGUdPAx1iNvdE50l+UdUDEOalLsuw49dIGrF8fUhBac0Cgpic77vmG
+ QPJ6QM17/SDC1A5fMZ8TeAn2e9q1TxYc5bOQbl0TZutUnDGAKgrX2Hw
+X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
+ pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
+X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The keyboard and touchpad can be used to wake the machine
-up from sleep, so mark them as such in the dts file.
+Add LPG LED device description.
 
-Signed-off-by: Steev Klimaszewski <steev@kali.org>
+Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
 ---
-It would be nice to wake up the Lenovo Yoga C630 from suspend by hitting
-the keyboard or touchpad, so this patch enables that
-ability.
----
-Changes in v2:
-- Drop touchscreen from being a wakeup-source.
-- Link to v1: https://lore.kernel.org/r/20231106-wakeup-source-v1-1-36b1f39e67fd@kali.org
----
- arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts | 6 ++++++
- 1 file changed, 6 insertions(+)
+ arch/arm64/boot/dts/qcom/pm8350c.dtsi | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts b/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts
-index 92a812b5f423..8f68c99965cd 100644
---- a/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts
-@@ -392,6 +392,8 @@ tsc2: hid@2c {
- 		hid-descr-addr = <0x20>;
+diff --git a/arch/arm64/boot/dts/qcom/pm8350c.dtsi b/arch/arm64/boot/dts/qcom/pm8350c.dtsi
+index f28e71487d5c..11b9f384d99c 100644
+--- a/arch/arm64/boot/dts/qcom/pm8350c.dtsi
++++ b/arch/arm64/boot/dts/qcom/pm8350c.dtsi
+@@ -4,6 +4,7 @@
+  */
  
- 		interrupts-extended = <&tlmm 37 IRQ_TYPE_LEVEL_HIGH>;
+ #include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/leds/common.h>
+ #include <dt-bindings/spmi/spmi.h>
+ 
+ &spmi_bus {
+@@ -34,6 +35,27 @@ pm8350c_pwm: pwm {
+ 			compatible = "qcom,pm8350c-pwm";
+ 			#pwm-cells = <2>;
+ 			status = "disabled";
 +
-+		wakeup-source;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			led@1 {
++				reg = <1>;
++				color = <LED_COLOR_ID_RED>;
++				label = "red";
++			};
++
++			led@2 {
++				reg = <2>;
++				color = <LED_COLOR_ID_GREEN>;
++				label = "green";
++			};
++
++			led@3 {
++				reg = <3>;
++				color = <LED_COLOR_ID_BLUE>;
++				label = "blue";
++			};
+ 		};
  	};
  };
- 
-@@ -408,6 +410,8 @@ tsc1: hid@10 {
- 
- 		pinctrl-names = "default";
- 		pinctrl-0 = <&i2c5_hid_active>;
-+
-+		wakeup-source;
- 	};
- };
- 
-@@ -482,6 +486,8 @@ ecsh: hid@5c {
- 
- 		pinctrl-names = "default";
- 		pinctrl-0 = <&i2c11_hid_active>;
-+
-+		wakeup-source;
- 	};
- };
- 
 
 ---
-base-commit: 5cd631a52568a18b12fd2563418985c8cb63e4b0
-change-id: 20231106-wakeup-source-15af6f5a6329
+base-commit: b9604be241587fb29c0f40450e53d0a37dc611b5
+change-id: 20231108-qcom_leds-c3b0b7029008
 
 Best regards,
 -- 
-Steev Klimaszewski <steev@kali.org>
+Hui Liu <quic_huliu@quicinc.com>
 
