@@ -1,85 +1,94 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Wed, 08 Nov 2023 14:05:12 +0800
-Subject: [PATCH] ARM: dts: qcom: Add LPG LED device description
+From: Fenglin Wu <quic_fenglinw@quicinc.com>
+Subject: [PATCH RESEND v7 0/3] Add support for vibrator in multiple PMICs
+Date: Wed, 08 Nov 2023 15:36:33 +0800
+Message-Id: <20231108-pm8xxx-vibrator-v7-0-632c731d25a8@quicinc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231108-qcom_leds-v1-1-c3e1c8572cb0@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIABklS2UC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI2NDQwML3cLk/Nz4nNSUYt1k4ySDJHMDI0sDAwsloPqCotS0zAqwWdGxtbU
- AJTBULVsAAAA=
-To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, quic_fenglinw@quicinc.com, 
- quic_uchheda@quicinc.com, kamalw@qti.qualcomm.com, 
- Hui Liu <quic_huliu@quicinc.com>
+To: linux-arm-msm@vger.kernel.org, Andy Gross <agross@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, quic_collinsd@quicinc.com, 
+ quic_subbaram@quicinc.com, quic_kamalw@quicinc.com, jestar@qti.qualcomm.com, 
+ Luca Weiss <luca.weiss@fairphone.com>, 
+ Fenglin Wu <quic_fenglinw@quicinc.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1699423518; l=1242;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=NDo+ug2xivotbN/xsmZgwuX6Kewv3ppT7LsFeWs76Jw=;
- b=RljxyHRNT45DJuHIAuZuGUdPAx1iNvdE50l+UdUDEOalLsuw49dIGrF8fUhBac0Cgpic77vmG
- QPJ6QM17/SDC1A5fMZ8TeAn2e9q1TxYc5bOQbl0TZutUnDGAKgrX2Hw
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1699429013; l=2464;
+ i=quic_fenglinw@quicinc.com; s=20230725; h=from:subject:message-id;
+ bh=SSzKXj4HYgTm7zHPy0rOpxw6Ed5QTb2H+dQfnhkXJKo=;
+ b=w3GvfpwJQDcTKDhpETrdjoDKdj197h/+qiHfVkUkJNswYpwyg8QvMme8o2T5kCRvhdf2W26AM
+ qNQoRzbn6QyBTaZ6pPu7f5QcGQUzWTnyC4Fy8f0aW0+uYgfWxqUvu7L
+X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
+ pk=hleIDz3Unk1zeiwwOnZUjoQVMMelRancDFXg927lNjI=
+X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20230725 with auth_id=68
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add LPG LED device description.
+Add SW support for the vibrator module inside PMI632, PM7250B, PM7325B, PM7550BA.
+It is very similar to the vibrator module inside PM8916 which is supported in
+pm8xxx-vib driver but just the drive amplitude is controlled with 2 registers,
+and the register base offset in each PMIC is different.
 
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
+Changes in v7;
+  1. Fix a typo: SSBL_VIB_DRV_REG --> SSBI_VIB_DRV_REG
+  2. Move the hw_type switch case in pm8xxx_vib_set() to the refactoring
+     change.
+
+Changes in v6:
+  1. Add "qcom,pmi632-vib" as a standalone compatible string.
+
+Changes in v5:
+  1. Drop "qcom,spmi-vib-gen2" generic compatible string as requested
+     and use device specific compatible strings only.
+
+Changes in v4:
+  1. Update to use the combination of the HW type and register offset
+     as the constant match data, the register base address defined in
+     'reg' property will be added when accessing SPMI registers using
+     regmap APIs.
+  2. Remove 'qcom,spmi-vib-gen1' generic compatible string.
+
+Changes in v3:
+  1. Refactor the driver to support different type of the vibrators with
+    better flexibility by introducing the HW type with corresponding
+    register fields definitions.
+  2. Add 'qcom,spmi-vib-gen1' and 'qcom,spmi-vib-gen2' compatible
+    strings, and add PMI632, PM7250B, PM7325B, PM7550BA as compatbile as
+    spmi-vib-gen2.
+
+Changes in v2:
+  Remove the "pm7550ba-vib" compatible string as it's compatible with pm7325b.
+
+Fenglin Wu (3):
+  input: pm8xxx-vib: refactor to easily support new SPMI vibrator
+  dt-bindings: input: qcom,pm8xxx-vib: add new SPMI vibrator module
+  input: pm8xxx-vibrator: add new SPMI vibrator support
+
+ .../bindings/input/qcom,pm8xxx-vib.yaml       |  16 +-
+ drivers/input/misc/pm8xxx-vibrator.c          | 171 ++++++++++++------
+ 2 files changed, 132 insertions(+), 55 deletions(-)
+
+--
+2.25.1
+
 ---
- arch/arm64/boot/dts/qcom/pm8350c.dtsi | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+Fenglin Wu (3):
+      input: pm8xxx-vib: refactor to easily support new SPMI vibrator
+      dt-bindings: input: qcom,pm8xxx-vib: add new SPMI vibrator module
+      input: pm8xxx-vibrator: add new SPMI vibrator support
 
-diff --git a/arch/arm64/boot/dts/qcom/pm8350c.dtsi b/arch/arm64/boot/dts/qcom/pm8350c.dtsi
-index f28e71487d5c..11b9f384d99c 100644
---- a/arch/arm64/boot/dts/qcom/pm8350c.dtsi
-+++ b/arch/arm64/boot/dts/qcom/pm8350c.dtsi
-@@ -4,6 +4,7 @@
-  */
- 
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/leds/common.h>
- #include <dt-bindings/spmi/spmi.h>
- 
- &spmi_bus {
-@@ -34,6 +35,27 @@ pm8350c_pwm: pwm {
- 			compatible = "qcom,pm8350c-pwm";
- 			#pwm-cells = <2>;
- 			status = "disabled";
-+
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			led@1 {
-+				reg = <1>;
-+				color = <LED_COLOR_ID_RED>;
-+				label = "red";
-+			};
-+
-+			led@2 {
-+				reg = <2>;
-+				color = <LED_COLOR_ID_GREEN>;
-+				label = "green";
-+			};
-+
-+			led@3 {
-+				reg = <3>;
-+				color = <LED_COLOR_ID_BLUE>;
-+				label = "blue";
-+			};
- 		};
- 	};
- };
-
+ .../devicetree/bindings/input/qcom,pm8xxx-vib.yaml |  16 +-
+ drivers/input/misc/pm8xxx-vibrator.c               | 170 ++++++++++++++-------
+ 2 files changed, 131 insertions(+), 55 deletions(-)
 ---
-base-commit: b9604be241587fb29c0f40450e53d0a37dc611b5
-change-id: 20231108-qcom_leds-c3b0b7029008
+base-commit: 650cda2ce25f08e8fae391b3ba6be27e7296c6a5
+change-id: 20230925-pm8xxx-vibrator-62df3df46a6c
 
 Best regards,
 -- 
-Hui Liu <quic_huliu@quicinc.com>
+Fenglin Wu <quic_fenglinw@quicinc.com>
 
