@@ -1,93 +1,85 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Fri, 10 Nov 2023 10:06:03 +0800
-Subject: [PATCH v2] arm64: dts: qcom: Add definition for three LEDs.
+From: Yang Xiwen <forbidden405@outlook.com>
+Date: Sat, 11 Nov 2023 03:19:52 +0800
+Subject: [PATCH v2] clk: check parent_name in clk_register to avoid
+ confusing log_error() output
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231110-qcom_leds-v2-1-3cad1fbbc65a@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAAuQTWUC/23MQQrCMBCF4auUWRuZpEijK+8hRcx0tAOatIkGp
- eTuxq5d/o/Ht0DiKJzg0CwQOUuS4GuYTQM0XvyNlQy1waBptUarZgqP852HpKh16Do0e0QL9T9
- Fvsp7tU597VHSM8TPSmf9W/8pWStdKdZkd50hh8f5JSSetvUCfSnlC6NJdVekAAAA
-To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, quic_fenglinw@quicinc.com, 
- quic_uchheda@quicinc.com, kamalw@qti.qualcomm.com, 
- Hui Liu <quic_huliu@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1699582034; l=1518;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=+byzyNon88kZIXy3k8pUtWoNy6CulqY/Nh3zLuQhX1k=;
- b=Mj6pihkt2mJr539ga3W5cLKcpidoCLrTg07uAJnwp4wEuAxrqKT1hjQX8jTqCq1GDwhCengtq
- UNwsI/tmI8pB8353ceQcrLBz5VKU2vav6g7rP2cwKBqk/tnNy00/SyQ
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+Message-Id: <20230807-clk-fix-v2-1-0b688e21fb4e@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAFeCTmUC/z2Nyw6CMBREf4Xctde0VdLiyv8wLEq5SMOjpK1EQ
+ /h3WxJdnpmTmQ0CeUsBbsUGnlYbrJsTiFMBptfzk9C2iUEwcWGKSTTjgJ19I5ekqrKTleISkt3
+ oQNh4PZs++5MOkXwuFk/JPy4edeLehuj853hceU5/49V/fOXIUDHVNprKK5V0d684OjecjZug3
+ vf9C4qsuOm5AAAA
+To: Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1699643996; l=1981;
+ i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
+ bh=EhPK7ucNW+E0Yp0KcbIofxN1hvfnmLx5BFY4JsVqXag=;
+ b=S31tMR/BIpt98MPWMGFJ0J2158bMKoiQnokSn5QZnWzECAor7fwieaaK7ukdTHbymTDHxmTYN
+ UCNEyQRJpi4BPW9YnuTRTPlSSxjn5XOs3GQrC/WH9v4JXHAEQvfS/ba
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add definition for three LEDs to make sure they can
-be enabled base on QCOM LPG LED driver.
+For some gate clocks and fixed clocks without a parent, calling
+clk_register will print an useless error message indicating that parent
+is missing. Fix that by gaurding log_xxx() with an if-statement.
 
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
+Suggested-by: Sean Anderson <seanga2@gmail.com>
+---
+It's found during my development for HiSilicon clock driver.
 ---
 Changes in v2:
-- Rephrased commit text and updated the nodes to board file.
-- Link to v1: https://lore.kernel.org/r/20231108-qcom_leds-v1-1-c3e1c8572cb0@quicinc.com
+- drop the commit which exports clk_mux_register.
+- drop the commit which is already merged
+- drop ccf enable_count fix as it'll be in another patchset
+- use Anderson's patch for clk_register()
+- Link to v1: https://lore.kernel.org/r/20230809-clk-fix-v1-0-808dbae54e5e@outlook.com
 ---
- arch/arm64/boot/dts/qcom/sc7280-idp.dtsi | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+ drivers/clk/clk.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sc7280-idp.dtsi b/arch/arm64/boot/dts/qcom/sc7280-idp.dtsi
-index 2ff549f4dc7a..228e2aaeb861 100644
---- a/arch/arm64/boot/dts/qcom/sc7280-idp.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sc7280-idp.dtsi
-@@ -7,6 +7,7 @@
+diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
+index a5a3461b66..6ede1b4d4d 100644
+--- a/drivers/clk/clk.c
++++ b/drivers/clk/clk.c
+@@ -18,17 +18,19 @@
+ int clk_register(struct clk *clk, const char *drv_name,
+ 		 const char *name, const char *parent_name)
+ {
+-	struct udevice *parent;
++	struct udevice *parent = NULL;
+ 	struct driver *drv;
+ 	int ret;
  
- #include <dt-bindings/iio/qcom,spmi-adc7-pmk8350.h>
- #include <dt-bindings/input/linux-event-codes.h>
-+#include <dt-bindings/leds/common.h>
- #include "sc7280.dtsi"
- #include "pm7325.dtsi"
- #include "pm8350c.dtsi"
-@@ -365,6 +366,30 @@ vreg_bob: bob {
- 	};
- };
+-	ret = uclass_get_device_by_name(UCLASS_CLK, parent_name, &parent);
+-	if (ret) {
+-		log_err("%s: failed to get %s device (parent of %s)\n",
+-			__func__, parent_name, name);
+-	} else {
+-		log_debug("%s: name: %s parent: %s [0x%p]\n", __func__, name,
+-			  parent->name, parent);
++	if (parent_name) {
++		ret = uclass_get_device_by_name(UCLASS_CLK, parent_name, &parent);
++		if (ret) {
++			log_err("%s: failed to get %s device (parent of %s)\n",
++				__func__, parent_name, name);
++		} else {
++			log_debug("%s: name: %s parent: %s [0x%p]\n", __func__, name,
++				  parent->name, parent);
++		}
+ 	}
  
-+&pm8350c_pwm {
-+	status = "okay";
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	led@1 {
-+		reg = <1>;
-+		color = <LED_COLOR_ID_RED>;
-+		label = "red";
-+	};
-+
-+	led@2 {
-+		reg = <2>;
-+		color = <LED_COLOR_ID_GREEN>;
-+		label = "green";
-+	};
-+
-+	led@3 {
-+		reg = <3>;
-+		color = <LED_COLOR_ID_BLUE>;
-+		label = "blue";
-+	};
-+};
-+
- &gpi_dma0 {
- 	status = "okay";
- };
+ 	drv = lists_driver_lookup_name(drv_name);
 
 ---
-base-commit: b9604be241587fb29c0f40450e53d0a37dc611b5
-change-id: 20231108-qcom_leds-c3b0b7029008
+base-commit: 580eb31199be8a822e62f20965854a242f895d03
+change-id: 20230807-clk-fix-17e895f79817
 
 Best regards,
 -- 
-Hui Liu <quic_huliu@quicinc.com>
+Yang Xiwen <forbidden405@outlook.com>
 
