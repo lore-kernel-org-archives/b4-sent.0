@@ -1,14 +1,13 @@
 From: Nathan Lynch <nathanl@linux.ibm.com>
-Subject: [PATCH 0/3] powerpc/pseries/memhp: Fix minor bugs and improve
- error logging
-Date: Tue, 14 Nov 2023 11:01:52 -0600
-Message-Id: <20231114-pseries-memhp-fixes-v1-0-fb8f2bb7c557@linux.ibm.com>
+Date: Tue, 14 Nov 2023 11:01:53 -0600
+Subject: [PATCH 1/3] powerpc/pseries/memhp: Fix access beyond end of drmem
+ array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAACoU2UC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI2NDQ0MT3QKIBt3c1NyMAt20zAog29DC1NLCIiUl1SjRQAmos6AoFSwB1Bg
- dW1sLAIjdJyxlAAAA
+Message-Id: <20231114-pseries-memhp-fixes-v1-1-fb8f2bb7c557@linux.ibm.com>
+References: <20231114-pseries-memhp-fixes-v1-0-fb8f2bb7c557@linux.ibm.com>
+In-Reply-To: <20231114-pseries-memhp-fixes-v1-0-fb8f2bb7c557@linux.ibm.com>
 To: Michael Ellerman <mpe@ellerman.id.au>, 
  Nicholas Piggin <npiggin@gmail.com>
 Cc: Nick Child <nnac123@linux.ibm.com>, 
@@ -16,32 +15,103 @@ Cc: Nick Child <nnac123@linux.ibm.com>,
  Scott Cheloha <cheloha@linux.ibm.com>, linuxppc-dev@lists.ozlabs.org, 
  Nathan Lynch <nathanl@linux.ibm.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1699981353; l=644;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1699981353; l=3108;
  i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=zdbILnLJ8Bse+F5hjFg/R9HPGLYwSKFm8c754/A0PGM=;
- b=6iG3yJoacYElVhp7oJuqIzdI2jyjd84ec391zC88z3nIqOPYe3GikpSgyb9BCW50ISrB4d0pH
- 3bZy/oPmZ5/B30YXtCCF2z5pQ/CDftqxpXWG7WUJQEB/GxSSpWwRY25
+ bh=JfdO7IChIyr2z7+sLSjJxJt2DzwWsrD+aR6av5i3oPM=;
+ b=Ji2XFZ86qogvsSILN11/mqWaKs8DTa9DzJR3vHXCXH9N3RuMePSEcTagmPR0fonPjoekihHLQ
+ 2atTukl3wXiCMYegFQblfbKauzPx7q8KY2pd1ySCIN1nj/sA/Ksvp9/
 X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
  pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
 X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This includes a fix for an array bounds read overrun that can be
-triggered when debug messages are enabled.
+dlpar_memory_remove_by_index() may access beyond the bounds of the
+drmem lmb array when the LMB lookup fails to match an entry with the
+given DRC index. When the search fails, the cursor is left pointing to
+&drmem_info->lmbs[drmem_info->n_lmbs], which is one element past the
+last valid entry in the array. The debug message at the end of the
+function then dereferences this pointer:
 
+        pr_debug("Failed to hot-remove memory at %llx\n",
+                 lmb->base_addr);
+
+This was found by inspection and confirmed with KASAN:
+
+  pseries-hotplug-mem: Attempting to hot-remove LMB, drc index 1234
+  ==================================================================
+  BUG: KASAN: slab-out-of-bounds in dlpar_memory+0x298/0x1658
+  Read of size 8 at addr c000000364e97fd0 by task bash/949
+
+  dump_stack_lvl+0xa4/0xfc (unreliable)
+  print_report+0x214/0x63c
+  kasan_report+0x140/0x2e0
+  __asan_load8+0xa8/0xe0
+  dlpar_memory+0x298/0x1658
+  handle_dlpar_errorlog+0x130/0x1d0
+  dlpar_store+0x18c/0x3e0
+  kobj_attr_store+0x68/0xa0
+  sysfs_kf_write+0xc4/0x110
+  kernfs_fop_write_iter+0x26c/0x390
+  vfs_write+0x2d4/0x4e0
+  ksys_write+0xac/0x1a0
+  system_call_exception+0x268/0x530
+  system_call_vectored_common+0x15c/0x2ec
+
+  Allocated by task 1:
+   kasan_save_stack+0x48/0x80
+   kasan_set_track+0x34/0x50
+   kasan_save_alloc_info+0x34/0x50
+   __kasan_kmalloc+0xd0/0x120
+   __kmalloc+0x8c/0x320
+   kmalloc_array.constprop.0+0x48/0x5c
+   drmem_init+0x2a0/0x41c
+   do_one_initcall+0xe0/0x5c0
+   kernel_init_freeable+0x4ec/0x5a0
+   kernel_init+0x30/0x1e0
+   ret_from_kernel_user_thread+0x14/0x1c
+
+  The buggy address belongs to the object at c000000364e80000
+   which belongs to the cache kmalloc-128k of size 131072
+  The buggy address is located 0 bytes to the right of
+   allocated 98256-byte region [c000000364e80000, c000000364e97fd0)
+
+  ==================================================================
+  pseries-hotplug-mem: Failed to hot-remove memory at 0
+
+Log failed lookups with a separate message and dereference the
+cursor only when it points to a valid entry.
+
+Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
+Fixes: 51925fb3c5c9 ("powerpc/pseries: Implement memory hotplug remove in the kernel")
 ---
-Nathan Lynch (3):
-      powerpc/pseries/memhp: Fix access beyond end of drmem array
-      powerpc/pseries/memhp: Remove unbalanced dlpar_release_drc() call
-      powerpc/pseries/memhp: Log more error conditions in add path
+ arch/powerpc/platforms/pseries/hotplug-memory.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
- arch/powerpc/platforms/pseries/hotplug-memory.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
----
-base-commit: 707df298cbde200b939c70be2577b20775fe3345
-change-id: 20231114-pseries-memhp-fixes-185988dde2a0
+diff --git a/arch/powerpc/platforms/pseries/hotplug-memory.c b/arch/powerpc/platforms/pseries/hotplug-memory.c
+index a43bfb01720a..6f2eebae7bee 100644
+--- a/arch/powerpc/platforms/pseries/hotplug-memory.c
++++ b/arch/powerpc/platforms/pseries/hotplug-memory.c
+@@ -436,14 +436,15 @@ static int dlpar_memory_remove_by_index(u32 drc_index)
+ 		}
+ 	}
+ 
+-	if (!lmb_found)
++	if (!lmb_found) {
++		pr_debug("Failed to look up LMB for drc index %x\n", drc_index);
+ 		rc = -EINVAL;
+-
+-	if (rc)
++	} else if (rc) {
+ 		pr_debug("Failed to hot-remove memory at %llx\n",
+ 			 lmb->base_addr);
+-	else
++	} else {
+ 		pr_debug("Memory at %llx was hot-removed\n", lmb->base_addr);
++	}
+ 
+ 	return rc;
+ }
 
-Best regards,
 -- 
-Nathan Lynch <nathanl@linux.ibm.com>
+2.41.0
 
