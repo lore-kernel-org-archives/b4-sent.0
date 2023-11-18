@@ -1,78 +1,59 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Sun, 19 Nov 2023 06:07:07 +0800
-Subject: [PATCH 4/4] test: dm: clk_ccf: get "i2c_root" clock from &clk_ccf
+Subject: [PATCH v2 0/4] clk: ccf: fix enable_count mismatch
+Date: Sun, 19 Nov 2023 06:10:04 +0800
+Message-Id: <20231111-enable_count-v2-0-20e3728600b5@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231111-enable_count-v1-4-509f400a99cb@outlook.com>
-References: <20231111-enable_count-v1-0-509f400a99cb@outlook.com>
-In-Reply-To: <20231111-enable_count-v1-0-509f400a99cb@outlook.com>
+X-B4-Tracking: v=1; b=H4sIADw2WWUC/3WNwQ6CMBBEf4X0bM22iBFP/ochZlsWaYSuaQvRE
+ P7dwt25vZlM3iIiBUdRXItFBJpddOwz6EMhbI/+SdK1mYUGXaocSR7NQA/Lk08S2wpAlfp8UZX
+ IF4ORpAnobb+dRoyJwja8A3Xus3vuTebexcThu2tntbV/DLOSICuouxMA1rU1N57SwPw6Wh5Fs
+ 67rD9hGnM7DAAAA
 To: Simon Glass <sjg@chromium.org>, Lukasz Majewski <lukma@denx.de>, 
  Sean Anderson <seanga2@gmail.com>
 Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1700345230; l=1735;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1700345405; l=1251;
  i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
- bh=kEgPFJ4X6SdN9/xo6Bpw8Z8sY9qknlOpf5kLOse5840=;
- b=WZeT5/D5PDKUSNmnpm+pLyroi9u5B2uHyuiGPckM0BwlCfADW3pipr4Lmi5d0GwyT9n2lX17S
- nRKeNHcTfxgBpJn288X6QwOSwIyifkHkNqOLnDy+R+fzQSLwOKTql/6
+ bh=cIJV6B09g+7Xx319ac9aHiH8ENi3eVyuNM0Ph9jsENg=;
+ b=QTRVdx+VB8iyOPawZnuOQ0CkwnJbwR98lmbst7ZNbdyFqfAixe74NULSP5AKanre/V63seBmw
+ bIxdMuCnptNAX7dVCfVFCgNW2cyGUh1G66Ysnu8JEJw/6tR2b+28yi0
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-get i2c_root clock from device tree. In this way we get an CCF clock and
-also test ccf_clk_ops.
+As described in [1], enable_count is incremented by 2 when
+ccf_clk_enable() is called. This series of patch fixed this issue and
+added a testcase for that.
+
+[1]: https://lore.kernel.org/all/SEZPR06MB695927A6DEEEF8489A06897396A7A@SEZPR06MB6959.apcprd06.prod.outlook.com/
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- test/dm/clk_ccf.c | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+Changes in v2:
+- add missing SoB in patch 1/4, no functional change
+- Link to v1: https://lore.kernel.org/r/20231111-enable_count-v1-0-509f400a99cb@outlook.com
 
-diff --git a/test/dm/clk_ccf.c b/test/dm/clk_ccf.c
-index e4ebb93cda..b8be6d6572 100644
---- a/test/dm/clk_ccf.c
-+++ b/test/dm/clk_ccf.c
-@@ -18,8 +18,8 @@
- /* Tests for Common Clock Framework driver */
- static int dm_test_clk_ccf(struct unit_test_state *uts)
- {
--	struct clk *clk, *pclk;
--	struct udevice *dev;
-+	struct clk *clk, *pclk, clk_ccf;
-+	struct udevice *dev, *test_dev;
- 	long long rate;
- 	int ret;
- #if CONFIG_IS_ENABLED(CLK_CCF)
-@@ -29,6 +29,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
- 
- 	/* Get the device using the clk device */
- 	ut_assertok(uclass_get_device_by_name(UCLASS_CLK, "clk-ccf", &dev));
-+	ut_assertok(uclass_get_device_by_name(UCLASS_MISC, "clk-test", &test_dev));
- 
- 	/* Test for clk_get_by_id() */
- 	ret = clk_get_by_id(SANDBOX_CLK_ECSPI_ROOT, &clk);
-@@ -110,11 +111,18 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
- 
- #if CONFIG_IS_ENABLED(CLK_CCF)
- 	/* Test clk tree enable/disable */
-+
-+	ret = clk_get_by_index(test_dev, SANDBOX_CLK_TEST_ID_I2C_ROOT, &clk_ccf);
-+	ut_assertok(ret);
-+	ut_asserteq_str("clk-ccf", clk_ccf.dev->name);
-+	ut_asserteq(clk_ccf.id, SANDBOX_CLK_I2C_ROOT);
-+
- 	ret = clk_get_by_id(SANDBOX_CLK_I2C_ROOT, &clk);
- 	ut_assertok(ret);
- 	ut_asserteq_str("i2c_root", clk->dev->name);
-+	ut_asserteq(clk->id, SANDBOX_CLK_I2C_ROOT);
- 
--	ret = clk_enable(clk);
-+	ret = clk_enable(&clk_ccf);
- 	ut_assertok(ret);
- 
- 	ret = sandbox_clk_enable_count(clk);
+---
+Yang Xiwen (4):
+      clk: clk_sandbox_ccf: assign ccf_clk_ops to .ops of the driver
+      clk: get correct ops for clk_enable() and clk_disable()
+      clk: clk_sandbox: get devm clock i2c_root
+      test: dm: clk_ccf: get "i2c_root" clock from &clk_ccf
 
+ arch/sandbox/dts/test.dts      |  6 ++++--
+ arch/sandbox/include/asm/clk.h |  1 +
+ drivers/clk/clk-uclass.c       |  2 ++
+ drivers/clk/clk_sandbox_ccf.c  |  1 +
+ drivers/clk/clk_sandbox_test.c |  5 +++++
+ test/dm/clk_ccf.c              | 14 +++++++++++---
+ 6 files changed, 24 insertions(+), 5 deletions(-)
+---
+base-commit: 3b913c148249a2b9d12ff25517ec311646e83bee
+change-id: 20231111-enable_count-ad5001326815
+
+Best regards,
 -- 
-2.39.2
+Yang Xiwen <forbidden405@outlook.com>
 
