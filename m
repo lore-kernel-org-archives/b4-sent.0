@@ -1,252 +1,53 @@
-From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Fri, 17 Nov 2023 23:14:31 -0600
-Subject: [PATCH v4 13/13] powerpc/selftests: Add test for papr-sysparm
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH 0/4] clk: ccf: fix enable_count mismatch
+Date: Sun, 19 Nov 2023 06:07:03 +0800
+Message-Id: <20231111-enable_count-v1-0-509f400a99cb@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231117-papr-sys_rtas-vs-lockdown-v4-13-b794d8cb8502@linux.ibm.com>
-References: <20231117-papr-sys_rtas-vs-lockdown-v4-0-b794d8cb8502@linux.ibm.com>
-In-Reply-To: <20231117-papr-sys_rtas-vs-lockdown-v4-0-b794d8cb8502@linux.ibm.com>
-To: Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>
-Cc: linuxppc-dev@lists.ozlabs.org, 
- =?utf-8?q?Michal_Such=C3=A1nek?= <msuchanek@suse.de>, tyreld@linux.ibm.com, 
- gcwilson@linux.ibm.com, Nathan Lynch <nathanl@linux.ibm.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1700284468; l=5975;
- i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=Gud1aDPXi5gwBA6uWmnVHj9xhhAyFG01m+C6FGtJFX0=;
- b=TxvpmKHqw7F59q0TfVY8BzI1BVLSuXzdBiOnmocVJ5huBwSJ11KCjMG9CFZskQOmuwWaISopI
- RIkY4WuCP05CQhuWz43usNrUI1eOyViswe+V7a6Nj+qQAV39zNCSVgr
-X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
- pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
-X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
+X-B4-Tracking: v=1; b=H4sIAIc1WWUC/x2N0QqDMAxFf0XyvEJbcch+ZYyR1kwDWxyJiiD+u
+ 9X7drgczgZGymTwqDZQWth4lALhVkEeUHpy3BWG6GMdyhwJpi+98zjL5LBrvA91vLehgaIkNHJ
+ JUfJwSj+0ifQ8/kofXq/O87XvB/6pXzR3AAAA
+To: Simon Glass <sjg@chromium.org>, Lukasz Majewski <lukma@denx.de>, 
+ Sean Anderson <seanga2@gmail.com>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1700345230; l=1081;
+ i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
+ bh=iin3xZ+JkOyUu2uZ/IzDEpsRulY2m4chnRnvE6WUc7U=;
+ b=8ryuv1of+5Hm3lL9kTURlFffDw9OLZ2OBUjQsi5xfstYl3e1rooMJtEgQ9XlMW5YSF+3/T4mI
+ O082B7aE3KHAh48+WkaIkQiVlnMKbuTCwU0MweDjNDqei0OELCP1bnI
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Consistently testing system parameter access is a bit difficult by
-nature -- the set of parameters available depends on the model and
-system configuration, and updating a parameter should be considered a
-destructive operation reserved for the admin.
+As described in [1], enable_count is incremented by 2 when
+ccf_clk_enable() is called. This series of patch fixed this issue and
+added a testcase for that.
 
-So we validate some of the error paths and retrieve the SPLPAR
-characteristics string, but not much else.
+[1]: https://lore.kernel.org/all/SEZPR06MB695927A6DEEEF8489A06897396A7A@SEZPR06MB6959.apcprd06.prod.outlook.com/
 
-Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- tools/testing/selftests/powerpc/Makefile           |   1 +
- .../selftests/powerpc/papr_sysparm/.gitignore      |   1 +
- .../selftests/powerpc/papr_sysparm/Makefile        |  12 ++
- .../selftests/powerpc/papr_sysparm/papr_sysparm.c  | 164 +++++++++++++++++++++
- 4 files changed, 178 insertions(+)
+Yang Xiwen (4):
+      clk: clk_sandbox_ccf: assign ccf_clk_ops to .ops of the driver
+      clk: get correct ops for clk_enable() and clk_disable()
+      clk: clk_sandbox: get devm clock i2c_root
+      test: dm: clk_ccf: get "i2c_root" clock from &clk_ccf
 
-diff --git a/tools/testing/selftests/powerpc/Makefile b/tools/testing/selftests/powerpc/Makefile
-index 05fc68d446c2..c376151982c4 100644
---- a/tools/testing/selftests/powerpc/Makefile
-+++ b/tools/testing/selftests/powerpc/Makefile
-@@ -33,6 +33,7 @@ SUB_DIRS = alignment		\
- 	   math		\
- 	   papr_attributes	\
- 	   papr_vpd		\
-+	   papr_sysparm		\
- 	   ptrace	\
- 	   security	\
- 	   mce
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/.gitignore b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-new file mode 100644
-index 000000000000..f2a69bf59d40
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-@@ -0,0 +1 @@
-+/papr_sysparm
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/Makefile b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-new file mode 100644
-index 000000000000..7f79e437634a
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-@@ -0,0 +1,12 @@
-+# SPDX-License-Identifier: GPL-2.0
-+noarg:
-+	$(MAKE) -C ../
-+
-+TEST_GEN_PROGS := papr_sysparm
-+
-+top_srcdir = ../../../../..
-+include ../../lib.mk
-+
-+$(TEST_GEN_PROGS): ../harness.c ../utils.c
-+
-+$(OUTPUT)/papr_sysparm: CFLAGS += $(KHDR_INCLUDES)
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-new file mode 100644
-index 000000000000..fc25c03e8bc7
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-@@ -0,0 +1,164 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <stdlib.h>
-+#include <sys/ioctl.h>
-+#include <unistd.h>
-+#include <asm/papr-sysparm.h>
-+
-+#include "utils.h"
-+
-+#define DEVPATH "/dev/papr-sysparm"
-+
-+static int open_close(void)
-+{
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int get_splpar(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 20, // SPLPAR characteristics
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != 0);
-+	FAIL_IF(sp.length == 0);
-+	FAIL_IF(sp.length > sizeof(sp.data));
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int get_bad_parameter(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = UINT32_MAX, // there are only ~60 specified parameters
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != -1);
-+	FAIL_IF(errno != EOPNOTSUPP);
-+
-+	// Ensure the buffer is unchanged
-+	FAIL_IF(sp.length != 0);
-+	for (size_t i = 0; i < ARRAY_SIZE(sp.data); ++i)
-+		FAIL_IF(sp.data[i] != 0);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_common(unsigned long cmd)
-+{
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, cmd, NULL) != -1);
-+	FAIL_IF(errno != EFAULT);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_get(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_GET);
-+}
-+
-+static int check_efault_set(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_SET);
-+}
-+
-+static int set_hmc0(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 0, // HMC0, not a settable parameter
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_SET, &sp) != -1);
-+	FAIL_IF(errno != EPERM);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+struct sysparm_test {
-+	int (*function)(void);
-+	const char *description;
-+};
-+
-+static const struct sysparm_test sysparm_tests[] = {
-+	{
-+		.function = open_close,
-+		.description = "open and close " DEVPATH " without issuing commands",
-+	},
-+	{
-+		.function = get_splpar,
-+		.description = "retrieve SPLPAR characteristics",
-+	},
-+	{
-+		.function = get_bad_parameter,
-+		.description = "verify EOPNOTSUPP for known-bad parameter",
-+	},
-+	{
-+		.function = check_efault_get,
-+		.description = "PAPR_SYSPARM_IOC_GET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = check_efault_set,
-+		.description = "PAPR_SYSPARM_IOC_SET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = set_hmc0,
-+		.description = "ensure EPERM on attempt to update HMC0",
-+	},
-+};
-+
-+int main(void)
-+{
-+	size_t fails = 0;
-+
-+	for (size_t i = 0; i < ARRAY_SIZE(sysparm_tests); ++i) {
-+		const struct sysparm_test *t = &sysparm_tests[i];
-+
-+		if (test_harness(t->function, t->description))
-+			++fails;
-+	}
-+
-+	return fails == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
-+}
+ arch/sandbox/dts/test.dts      |  6 ++++--
+ arch/sandbox/include/asm/clk.h |  1 +
+ drivers/clk/clk-uclass.c       |  2 ++
+ drivers/clk/clk_sandbox_ccf.c  |  1 +
+ drivers/clk/clk_sandbox_test.c |  5 +++++
+ test/dm/clk_ccf.c              | 14 +++++++++++---
+ 6 files changed, 24 insertions(+), 5 deletions(-)
+---
+base-commit: 3b913c148249a2b9d12ff25517ec311646e83bee
+change-id: 20231111-enable_count-ad5001326815
 
+Best regards,
 -- 
-2.41.0
+Yang Xiwen <forbidden405@outlook.com>
 
