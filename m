@@ -1,80 +1,78 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Sun, 19 Nov 2023 06:10:07 +0800
-Subject: [PATCH v2 3/4] clk: clk_sandbox: get devm clock i2c_root
+Date: Sun, 19 Nov 2023 06:10:08 +0800
+Subject: [PATCH v2 4/4] test: dm: clk_ccf: get "i2c_root" clock from
+ &clk_ccf
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231111-enable_count-v2-3-20e3728600b5@outlook.com>
+Message-Id: <20231111-enable_count-v2-4-20e3728600b5@outlook.com>
 References: <20231111-enable_count-v2-0-20e3728600b5@outlook.com>
 In-Reply-To: <20231111-enable_count-v2-0-20e3728600b5@outlook.com>
 To: Simon Glass <sjg@chromium.org>, Lukasz Majewski <lukma@denx.de>, 
  Sean Anderson <seanga2@gmail.com>
 Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1700345405; l=1883;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1700345405; l=1735;
  i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
- bh=NV6lQRVixnIUlPN940DJuyvXA1K8ViHVEEbIhr+SFt8=;
- b=8WjCaR9drj9U4zJTKtcUbH40XCXBjSHcbFyOe3/PaAS4xylt5o9U20Ciq3Th8NL6CdNeL842a
- q8hIT4ypCcVB0P9XUiNGKd8xgqrp/jDwwNX4onWaPDKWSyPna3ZDXZ4
+ bh=kEgPFJ4X6SdN9/xo6Bpw8Z8sY9qknlOpf5kLOse5840=;
+ b=wUskUNU0LOLnt604lHn7i3NBTNmkVqKUiUTXqFKnwBGDueXFXz5fqXxv18SuviLZK1Yxhqu+M
+ EQl6YurMF/BDmHQ0Po/7zxtnVJBijKKwh+eIo0PR5fiaYOWLBg8t7oG
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This clock is added to dts. Get it in the devm group in the driver or
-the testcases will fail.
+get i2c_root clock from device tree. In this way we get an CCF clock and
+also test ccf_clk_ops.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- arch/sandbox/dts/test.dts      | 5 +++--
- arch/sandbox/include/asm/clk.h | 1 +
- drivers/clk/clk_sandbox_test.c | 5 +++++
- 3 files changed, 9 insertions(+), 2 deletions(-)
+ test/dm/clk_ccf.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
 
-diff --git a/arch/sandbox/dts/test.dts b/arch/sandbox/dts/test.dts
-index b1773f1bc2..f99397c528 100644
---- a/arch/sandbox/dts/test.dts
-+++ b/arch/sandbox/dts/test.dts
-@@ -632,8 +632,9 @@
- 			 <&clk_sandbox 1>,
- 			 <&clk_sandbox 0>,
- 			 <&clk_sandbox 3>,
--			 <&clk_sandbox 2>;
--		clock-names = "fixed", "i2c", "spi", "uart2", "uart1";
-+			 <&clk_sandbox 2>,
-+			 <&ccf 11>;
-+		clock-names = "fixed", "i2c", "spi", "uart2", "uart1", "i2c_root";
- 	};
+diff --git a/test/dm/clk_ccf.c b/test/dm/clk_ccf.c
+index e4ebb93cda..b8be6d6572 100644
+--- a/test/dm/clk_ccf.c
++++ b/test/dm/clk_ccf.c
+@@ -18,8 +18,8 @@
+ /* Tests for Common Clock Framework driver */
+ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ {
+-	struct clk *clk, *pclk;
+-	struct udevice *dev;
++	struct clk *clk, *pclk, clk_ccf;
++	struct udevice *dev, *test_dev;
+ 	long long rate;
+ 	int ret;
+ #if CONFIG_IS_ENABLED(CLK_CCF)
+@@ -29,6 +29,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
  
- 	clk-test2 {
-diff --git a/arch/sandbox/include/asm/clk.h b/arch/sandbox/include/asm/clk.h
-index df7156fe31..597bc528dc 100644
---- a/arch/sandbox/include/asm/clk.h
-+++ b/arch/sandbox/include/asm/clk.h
-@@ -41,6 +41,7 @@ enum sandbox_clk_test_id {
- 	SANDBOX_CLK_TEST_ID_I2C,
- 	SANDBOX_CLK_TEST_ID_DEVM1,
- 	SANDBOX_CLK_TEST_ID_DEVM2,
-+	SANDBOX_CLK_TEST_ID_I2C_ROOT,
- 	SANDBOX_CLK_TEST_ID_DEVM_NULL,
+ 	/* Get the device using the clk device */
+ 	ut_assertok(uclass_get_device_by_name(UCLASS_CLK, "clk-ccf", &dev));
++	ut_assertok(uclass_get_device_by_name(UCLASS_MISC, "clk-test", &test_dev));
  
- 	SANDBOX_CLK_TEST_ID_COUNT,
-diff --git a/drivers/clk/clk_sandbox_test.c b/drivers/clk/clk_sandbox_test.c
-index 5807a454f3..c0623dee10 100644
---- a/drivers/clk/clk_sandbox_test.c
-+++ b/drivers/clk/clk_sandbox_test.c
-@@ -53,6 +53,11 @@ int sandbox_clk_test_devm_get(struct udevice *dev)
- 		return PTR_ERR(clk);
- 	sbct->clkps[SANDBOX_CLK_TEST_ID_DEVM2] = clk;
+ 	/* Test for clk_get_by_id() */
+ 	ret = clk_get_by_id(SANDBOX_CLK_ECSPI_ROOT, &clk);
+@@ -110,11 +111,18 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
  
-+	clk = devm_clk_get_optional(dev, "i2c_root");
-+	if (IS_ERR(clk))
-+		return PTR_ERR(clk);
-+	sbct->clkps[SANDBOX_CLK_TEST_ID_I2C_ROOT] = clk;
+ #if CONFIG_IS_ENABLED(CLK_CCF)
+ 	/* Test clk tree enable/disable */
 +
- 	sbct->clkps[SANDBOX_CLK_TEST_ID_DEVM_NULL] = NULL;
- 	clk = devm_clk_get_optional(dev, "not_an_existing_clock");
- 	if (IS_ERR(clk))
++	ret = clk_get_by_index(test_dev, SANDBOX_CLK_TEST_ID_I2C_ROOT, &clk_ccf);
++	ut_assertok(ret);
++	ut_asserteq_str("clk-ccf", clk_ccf.dev->name);
++	ut_asserteq(clk_ccf.id, SANDBOX_CLK_I2C_ROOT);
++
+ 	ret = clk_get_by_id(SANDBOX_CLK_I2C_ROOT, &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("i2c_root", clk->dev->name);
++	ut_asserteq(clk->id, SANDBOX_CLK_I2C_ROOT);
+ 
+-	ret = clk_enable(clk);
++	ret = clk_enable(&clk_ccf);
+ 	ut_assertok(ret);
+ 
+ 	ret = sandbox_clk_enable_count(clk);
 
 -- 
 2.39.2
