@@ -1,199 +1,231 @@
 From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Wed, 22 Nov 2023 12:00:16 +0300
-Subject: [PATCH v5 38/39] ASoC: cirrus: edb93xx: Delete driver
+Date: Wed, 22 Nov 2023 12:00:17 +0300
+Subject: [PATCH v5 39/39] dma: cirrus: remove platform code
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231122-ep93xx-v5-38-d59a76d5df29@maquefel.me>
+Message-Id: <20231122-ep93xx-v5-39-d59a76d5df29@maquefel.me>
 References: <20231122-ep93xx-v5-0-d59a76d5df29@maquefel.me>
 In-Reply-To: <20231122-ep93xx-v5-0-d59a76d5df29@maquefel.me>
-To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Alexander Sverdlin <alexander.sverdlin@gmail.com>, 
- Arnd Bergmann <arnd@arndb.de>, Nikita Shubin <nikita.shubin@maquefel.me>, 
- Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>
-Cc: Nicolas Ferre <nicolas.ferre@microchip.com>, 
- Takashi Iwai <tiwai@suse.de>, linux-kernel@vger.kernel.org, 
- linux-sound@vger.kernel.org, 
+To: Vinod Koul <vkoul@kernel.org>, 
+ Nikita Shubin <nikita.shubin@maquefel.me>, 
+ Alexander Sverdlin <alexander.sverdlin@gmail.com>
+Cc: linux-kernel@vger.kernel.org, dmaengine@vger.kernel.org, 
  Alexander Sverdlin <alexander.sverdlin@gmail.com>
 X-Mailer: b4 0.13-dev-e3e53
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1700643671; l=5014;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1700643671; l=6309;
  i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=h2rduEcwWz7/6MY2gxmHuwdvmGLXXkP6apssDcKmh10=;
- b=2DjZPOp6uL9zdbpP3pv+ckvYpPfcVgHX69763m2nk3ziE5/C7JOein+Lc3tN1JPuKPraDSbHnCkb
- xJlLr+4bBLvGMCKuTuYXcHy0lPSKzmMUJ4QHUmgIj/VzGt8Qx56z
+ bh=+tLkemiit8U40rwcZBRxzc8wAunM3ib1SVOlQnohSXM=;
+ b=p9PGpVWHh/kf4iQleyY6J4d/xlCca4my8YA3NVriyoJJEQt6NK3bwhZrPKA0vNnF/hspo1qf3FkZ
+ rbGvyzVuBgTdHBQ99luwFWo92OGt7SrZXscB4hGSiyGMXx3JoQVs
 X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Alexander Sverdlin <alexander.sverdlin@gmail.com>
+Remove DMA platform header, from now on we use device tree for dma
+clients.
 
-Can be replaced with "simple-audio-card" for the rates up to 50kHz, refer
-to commit "ARM: dts: ep93xx: Add EDB9302 DT".
-
-Signed-off-by: Alexander Sverdlin <alexander.sverdlin@gmail.com>
-Acked-by: Mark Brown <broonie@kernel.org>
 Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
- sound/soc/cirrus/Kconfig   |   9 ----
- sound/soc/cirrus/Makefile  |   4 --
- sound/soc/cirrus/edb93xx.c | 117 ---------------------------------------------
- 3 files changed, 130 deletions(-)
+ drivers/dma/ep93xx_dma.c                 | 51 +++++++++++++++--
+ include/linux/platform_data/dma-ep93xx.h | 98 --------------------------------
+ 2 files changed, 47 insertions(+), 102 deletions(-)
 
-diff --git a/sound/soc/cirrus/Kconfig b/sound/soc/cirrus/Kconfig
-index 38a83c4dcc2d..97def4e53fbc 100644
---- a/sound/soc/cirrus/Kconfig
-+++ b/sound/soc/cirrus/Kconfig
-@@ -31,12 +31,3 @@ config SND_EP93XX_SOC_I2S_WATCHDOG
+diff --git a/drivers/dma/ep93xx_dma.c b/drivers/dma/ep93xx_dma.c
+index 5e29b64caa46..1c879b6187b1 100644
+--- a/drivers/dma/ep93xx_dma.c
++++ b/drivers/dma/ep93xx_dma.c
+@@ -17,6 +17,7 @@
+ #include <linux/clk.h>
+ #include <linux/init.h>
+ #include <linux/interrupt.h>
++#include <linux/dma-mapping.h>
+ #include <linux/dmaengine.h>
+ #include <linux/module.h>
+ #include <linux/mod_devicetable.h>
+@@ -26,8 +27,6 @@
+ #include <linux/platform_device.h>
+ #include <linux/slab.h>
  
- endif # if SND_EP93XX_SOC_I2S
- 
--config SND_EP93XX_SOC_EDB93XX
--	tristate "SoC Audio support for Cirrus Logic EDB93xx boards"
--	depends on SND_EP93XX_SOC && (MACH_EDB9301 || MACH_EDB9302 || MACH_EDB9302A || MACH_EDB9307A || MACH_EDB9315A)
--	select SND_EP93XX_SOC_I2S
--	select SND_SOC_CS4271_I2C if I2C
--	select SND_SOC_CS4271_SPI if SPI_MASTER
--	help
--	  Say Y or M here if you want to add support for I2S audio on the
--	  Cirrus Logic EDB93xx boards.
-diff --git a/sound/soc/cirrus/Makefile b/sound/soc/cirrus/Makefile
-index 19a86daad660..5916c03888cb 100644
---- a/sound/soc/cirrus/Makefile
-+++ b/sound/soc/cirrus/Makefile
-@@ -6,7 +6,3 @@ snd-soc-ep93xx-i2s-objs	 			:= ep93xx-i2s.o
- obj-$(CONFIG_SND_EP93XX_SOC)			+= snd-soc-ep93xx.o
- obj-$(CONFIG_SND_EP93XX_SOC_I2S)		+= snd-soc-ep93xx-i2s.o
- 
--# EP93XX Machine Support
--snd-soc-edb93xx-objs				:= edb93xx.o
+-#include <linux/platform_data/dma-ep93xx.h>
 -
--obj-$(CONFIG_SND_EP93XX_SOC_EDB93XX)		+= snd-soc-edb93xx.o
-diff --git a/sound/soc/cirrus/edb93xx.c b/sound/soc/cirrus/edb93xx.c
+ #include "dmaengine.h"
+ 
+ /* M2P registers */
+@@ -107,6 +106,26 @@
+ #define DMA_MAX_CHAN_BYTES		0xffff
+ #define DMA_MAX_CHAN_DESCRIPTORS	32
+ 
++/*
++ * M2P channels.
++ *
++ * Note that these values are also directly used for setting the PPALLOC
++ * register.
++ */
++#define EP93XX_DMA_I2S1			0
++#define EP93XX_DMA_I2S2			1
++#define EP93XX_DMA_AAC1			2
++#define EP93XX_DMA_AAC2			3
++#define EP93XX_DMA_AAC3			4
++#define EP93XX_DMA_I2S3			5
++#define EP93XX_DMA_UART1		6
++#define EP93XX_DMA_UART2		7
++#define EP93XX_DMA_UART3		8
++#define EP93XX_DMA_IRDA			9
++/* M2M channels */
++#define EP93XX_DMA_SSP			10
++#define EP93XX_DMA_IDE			11
++
+ enum ep93xx_dma_type {
+ 	M2P_DMA,
+ 	M2M_DMA,
+@@ -243,6 +262,32 @@ static struct ep93xx_dma_chan *to_ep93xx_dma_chan(struct dma_chan *chan)
+ 	return container_of(chan, struct ep93xx_dma_chan, chan);
+ }
+ 
++static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
++{
++	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
++		return true;
++
++	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
++}
++
++/**
++ * ep93xx_dma_chan_direction - returns direction the channel can be used
++ * @chan: channel
++ *
++ * This function can be used in filter functions to find out whether the
++ * channel supports given DMA direction. Only M2P channels have such
++ * limitation, for M2M channels the direction is configurable.
++ */
++static inline enum dma_transfer_direction
++ep93xx_dma_chan_direction(struct dma_chan *chan)
++{
++	if (!ep93xx_dma_chan_is_m2p(chan))
++		return DMA_TRANS_NONE;
++
++	/* even channels are for TX, odd for RX */
++	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
++}
++
+ /**
+  * ep93xx_dma_set_active - set new active descriptor chain
+  * @edmac: channel
+@@ -1432,8 +1477,6 @@ static struct dma_chan *ep93xx_m2m_dma_of_xlate(struct of_phandle_args *dma_spec
+ 	u8 port = dma_spec->args[0];
+ 	u8 direction = dma_spec->args[1];
+ 
+-	dev_info(edma->dma_dev.dev, "%s: port=%d", __func__, port);
+-
+ 	switch (port) {
+ 	case EP93XX_DMA_SSP:
+ 	case EP93XX_DMA_IDE:
+diff --git a/include/linux/platform_data/dma-ep93xx.h b/include/linux/platform_data/dma-ep93xx.h
 deleted file mode 100644
-index 6b6817256331..000000000000
---- a/sound/soc/cirrus/edb93xx.c
+index 7a2ef279498b..000000000000
+--- a/include/linux/platform_data/dma-ep93xx.h
 +++ /dev/null
-@@ -1,117 +0,0 @@
--// SPDX-License-Identifier: GPL-2.0-or-later
+@@ -1,98 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+-#ifndef __ASM_ARCH_DMA_H
+-#define __ASM_ARCH_DMA_H
+-
+-#include <linux/types.h>
+-#include <linux/dmaengine.h>
+-#include <linux/dma-mapping.h>
+-#include <linux/property.h>
+-
 -/*
-- * SoC audio for EDB93xx
+- * M2P channels.
 - *
-- * Copyright (c) 2010 Alexander Sverdlin <subaparts@yandex.ru>
-- *
-- * This driver support CS4271 codec being master or slave, working
-- * in control port mode, connected either via SPI or I2C.
-- * The data format accepted is I2S or left-justified.
-- * DAPM support not implemented.
+- * Note that these values are also directly used for setting the PPALLOC
+- * register.
 - */
+-#define EP93XX_DMA_I2S1		0
+-#define EP93XX_DMA_I2S2		1
+-#define EP93XX_DMA_AAC1		2
+-#define EP93XX_DMA_AAC2		3
+-#define EP93XX_DMA_AAC3		4
+-#define EP93XX_DMA_I2S3		5
+-#define EP93XX_DMA_UART1	6
+-#define EP93XX_DMA_UART2	7
+-#define EP93XX_DMA_UART3	8
+-#define EP93XX_DMA_IRDA		9
+-/* M2M channels */
+-#define EP93XX_DMA_SSP		10
+-#define EP93XX_DMA_IDE		11
 -
--#include <linux/platform_device.h>
--#include <linux/gpio.h>
--#include <linux/module.h>
--#include <linux/soc/cirrus/ep93xx.h>
--#include <sound/core.h>
--#include <sound/pcm.h>
--#include <sound/soc.h>
--#include <asm/mach-types.h>
+-/**
+- * struct ep93xx_dma_data - configuration data for the EP93xx dmaengine
+- * @port: peripheral which is requesting the channel
+- * @direction: TX/RX channel
+- * @name: optional name for the channel, this is displayed in /proc/interrupts
+- *
+- * This information is passed as private channel parameter in a filter
+- * function. Note that this is only needed for slave/cyclic channels.  For
+- * memcpy channels %NULL data should be passed.
+- */
+-struct ep93xx_dma_data {
+-	int				port;
+-	enum dma_transfer_direction	direction;
+-	const char			*name;
+-};
 -
--static int edb93xx_hw_params(struct snd_pcm_substream *substream,
--			     struct snd_pcm_hw_params *params)
+-/**
+- * struct ep93xx_dma_chan_data - platform specific data for a DMA channel
+- * @name: name of the channel, used for getting the right clock for the channel
+- * @base: mapped registers
+- * @irq: interrupt number used by this channel
+- */
+-struct ep93xx_dma_chan_data {
+-	const char			*name;
+-	void __iomem			*base;
+-	int				irq;
+-};
+-
+-/**
+- * struct ep93xx_dma_platform_data - platform data for the dmaengine driver
+- * @channels: array of channels which are passed to the driver
+- * @num_channels: number of channels in the array
+- *
+- * This structure is passed to the DMA engine driver via platform data. For
+- * M2P channels, contract is that even channels are for TX and odd for RX.
+- * There is no requirement for the M2M channels.
+- */
+-struct ep93xx_dma_platform_data {
+-	struct ep93xx_dma_chan_data	*channels;
+-	size_t				num_channels;
+-};
+-
+-static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
 -{
--	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
--	struct snd_soc_dai *codec_dai = snd_soc_rtd_to_codec(rtd, 0);
--	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
--	int err;
--	unsigned int mclk_rate;
--	unsigned int rate = params_rate(params);
+-	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
+-		return true;
 -
--	/*
--	 * According to CS4271 datasheet we use MCLK/LRCK=256 for
--	 * rates below 50kHz and 128 for higher sample rates
--	 */
--	if (rate < 50000)
--		mclk_rate = rate * 64 * 4;
--	else
--		mclk_rate = rate * 64 * 2;
--
--	err = snd_soc_dai_set_sysclk(codec_dai, 0, mclk_rate,
--				     SND_SOC_CLOCK_IN);
--	if (err)
--		return err;
--
--	return snd_soc_dai_set_sysclk(cpu_dai, 0, mclk_rate,
--				      SND_SOC_CLOCK_OUT);
+-	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
 -}
 -
--static const struct snd_soc_ops edb93xx_ops = {
--	.hw_params	= edb93xx_hw_params,
--};
--
--SND_SOC_DAILINK_DEFS(hifi,
--	DAILINK_COMP_ARRAY(COMP_CPU("ep93xx-i2s")),
--	DAILINK_COMP_ARRAY(COMP_CODEC("spi0.0", "cs4271-hifi")),
--	DAILINK_COMP_ARRAY(COMP_PLATFORM("ep93xx-i2s")));
--
--static struct snd_soc_dai_link edb93xx_dai = {
--	.name		= "CS4271",
--	.stream_name	= "CS4271 HiFi",
--	.dai_fmt	= SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
--			  SND_SOC_DAIFMT_CBC_CFC,
--	.ops		= &edb93xx_ops,
--	SND_SOC_DAILINK_REG(hifi),
--};
--
--static struct snd_soc_card snd_soc_edb93xx = {
--	.name		= "EDB93XX",
--	.owner		= THIS_MODULE,
--	.dai_link	= &edb93xx_dai,
--	.num_links	= 1,
--};
--
--static int edb93xx_probe(struct platform_device *pdev)
+-/**
+- * ep93xx_dma_chan_direction - returns direction the channel can be used
+- * @chan: channel
+- *
+- * This function can be used in filter functions to find out whether the
+- * channel supports given DMA direction. Only M2P channels have such
+- * limitation, for M2M channels the direction is configurable.
+- */
+-static inline enum dma_transfer_direction
+-ep93xx_dma_chan_direction(struct dma_chan *chan)
 -{
--	struct snd_soc_card *card = &snd_soc_edb93xx;
--	int ret;
+-	if (!ep93xx_dma_chan_is_m2p(chan))
+-		return DMA_TRANS_NONE;
 -
--	ret = ep93xx_i2s_acquire();
--	if (ret)
--		return ret;
--
--	card->dev = &pdev->dev;
--
--	ret = snd_soc_register_card(card);
--	if (ret) {
--		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n",
--			ret);
--		ep93xx_i2s_release();
--	}
--
--	return ret;
+-	/* even channels are for TX, odd for RX */
+-	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
 -}
 -
--static void edb93xx_remove(struct platform_device *pdev)
--{
--	struct snd_soc_card *card = platform_get_drvdata(pdev);
--
--	snd_soc_unregister_card(card);
--	ep93xx_i2s_release();
--}
--
--static struct platform_driver edb93xx_driver = {
--	.driver		= {
--		.name	= "edb93xx-audio",
--	},
--	.probe		= edb93xx_probe,
--	.remove_new	= edb93xx_remove,
--};
--
--module_platform_driver(edb93xx_driver);
--
--MODULE_AUTHOR("Alexander Sverdlin <subaparts@yandex.ru>");
--MODULE_DESCRIPTION("ALSA SoC EDB93xx");
--MODULE_LICENSE("GPL");
--MODULE_ALIAS("platform:edb93xx-audio");
+-#endif /* __ASM_ARCH_DMA_H */
 
 -- 
 2.41.0
