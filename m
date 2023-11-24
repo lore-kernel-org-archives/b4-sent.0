@@ -1,13 +1,12 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Subject: [PATCH v2 0/2] Add support for LTC4282
-Date: Fri, 24 Nov 2023 15:18:15 +0100
-Message-Id: <20231124-ltc4282-support-v2-0-952bf926f83c@analog.com>
+Date: Fri, 24 Nov 2023 15:18:16 +0100
+Subject: [PATCH v2 1/2] dt-bindings: hwmon: Add LTC4282 bindings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAKiwYGUC/03MQQ6DIBBA0auYWXcMA6LoqvdouiB0VBIFA9o0M
- d69pKsu3+L/EzInzxmG6oTEb599DAXyVoGbbZgY/asYpJCKSDa47K6RRmI+ti2mHY2jttOsSAs
- DpdoSj/7zOz6exWOKK+5zYvv3IUGaeqFranVvOoUKwxFine3dBrvEqXZxhev6AhJ3lvafAAAA
+Content-Transfer-Encoding: 7bit
+Message-Id: <20231124-ltc4282-support-v2-1-952bf926f83c@analog.com>
+References: <20231124-ltc4282-support-v2-0-952bf926f83c@analog.com>
+In-Reply-To: <20231124-ltc4282-support-v2-0-952bf926f83c@analog.com>
 To: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-doc@vger.kernel.org
 Cc: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
@@ -17,95 +16,255 @@ Cc: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>,
  Bartosz Golaszewski <brgl@bgdev.pl>, 
  Linus Walleij <linus.walleij@linaro.org>, Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1700835504; l=3566;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1700835504; l=7583;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=uUJTbaCd7Vo6Sti9JdVroV1uYWkZ/cQnxQ94paZ9TME=;
- b=H5MYSzpyc32lZ4hUJgkdgeMFQOSC4eZWgSewE5GQ47D4cIXnrBOpDcVJUCq5kGNyymx93rZRK
- 3cSqwG1QrG4Cz28KoMtFZiVigFY29HP/QRzjGVMDvUXKyl4BeDO8QTd
+ bh=OsmBFs3WX3gV38NkMDwvqrVkUAAW0yysY75GmZvn7xY=;
+ b=AaYiW0WTAAKx7mUkzlCLaxn6Q9O0c5gdLWcEfM47PnPF5O9Xeb9TZAikjqdVHlbnEku1ugrKt
+ iR2uHGxMpAmCHTWi2LY2oryMswM/n72pU7VVzbtmpuGDcWkr86I/Okg
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-v1:
- * https://lore.kernel.org/linux-hwmon/20231110151905.1659873-1-nuno.sa@analog.com/
+Add bindings for the LTC4282 High Current Hot Swap Controller with I2C
+Compatible Monitoring.
 
-v2:
-- driver
-  * Add Docs to index.rst;
-  * Removed ltc4282_power_on() - Not very reasonable to enable/disable
-    an hot swap from the driver;
-  * Removed struct device *dev parameter from struct ltc4282_state;
-  * Error out for rsense-nano-ohms < 100;
-  * Return 0 on .is_visible() - not a negative error;
-  * Moved to 80 column limit (Sorry about this one - it adds a lot of
-    unnecessary diffs);
-  * Replace ENOTSUPP with EOPNOTSUPP;
-  * Return 0 on .is_visible() - not a negative error;
-  * Remove Power Average (Should be done in userspace) - With it, no
-    need for handling energy + tick overflows;
-  * Return 0 instead of 'ret' in ltc4282_read_energy();
-  * Add adi prefix to 'vin-mode-microvolt';
-  * Changed 'adi,current-limit-microvolt' to
-    'adi,current-limit-sense-microvolt' so it's clear the device expects
-     volts to be configured;
-  * Moved fault logs to debugfs while adding a new interface to clear all
-    faults in one write;
-  * Keep historic alarms in ltc4282_read_alarm()
-  * Cache energy status so we don't have to read it from the device on
-    every energy value read;
-  * Use enable attributes to switch between VDD - VSOURCE;
-  * Support reset_history;
-  * Sync with bindings - use strings properties;
-  * Move to clock provider to support the clockout settings;
-  * Support gpio valid_mask;
-  * Use field_prep() instead of a driver specific macro (to be coherent
-    with other drivers);
-  * Add comment on the big sleep pos reset;
-  * Be consistent in hex letters;
-  * Use BIT() in the power formulas;
-  * Make use of in_range();
-  * Use SENSOR_DEVICE_ATTR_[RO|WO];
-  * No comma for the terminator line;
-  * Update ltc4282.rst doc.
-
-- bindings
-  * Use string properties for gpio_modes and over/under voltage dividers;
-  * Added #clock-cells;
-  * Add adi prefix to 'vin-mode-microvolt;
-  * Changed adi,current-limit-microvolt -> adi,current-limit-sense-microvolt;
-  * Updated the dts example accordingly.
-
-V2 ended up with huge changes. Specially the introduction of the enabled
-stuff between VSOURCE and VDD since these are mutaally exclusive (share
-the same registers and we need to mux between one of them). It feels
-that I'm overdoing things a bit but OTOH, I'm fairly happy with the
-result. Hopefully, it is acceptable.
-
-I would also like to mention that there are still some questionable
-custom sysfs interfaces as I was not sure if I should remove them and
-got not reply in v1 (which is fine).
-
-Lastly, as one can see, there are lots of changes since v1 so I'm sorry
-if I missed some of the comments given in review. Not on purpose... And
-it would be really nice if one of the GPIO maintainers could look at the
-GPIO stuff. Please see my V1 cover where I speak about it. I'm not
-really sure I'm properly handling the pins.
-
+Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
-Nuno Sa (2):
-      dt-bindings: hwmon: Add LTC4282 bindings
-      hwmon: ltc4282: add support for the LTC4282 chip
+ .../devicetree/bindings/hwmon/adi,ltc4282.yaml     | 206 +++++++++++++++++++++
+ MAINTAINERS                                        |   6 +
+ 2 files changed, 212 insertions(+)
 
- .../devicetree/bindings/hwmon/adi,ltc4282.yaml     |  206 +++
- Documentation/hwmon/index.rst                      |    1 +
- Documentation/hwmon/ltc4282.rst                    |  108 ++
- MAINTAINERS                                        |    8 +
- drivers/hwmon/Kconfig                              |   11 +
- drivers/hwmon/Makefile                             |    1 +
- drivers/hwmon/ltc4282.c                            | 1891 ++++++++++++++++++++
- 7 files changed, 2226 insertions(+)
+diff --git a/Documentation/devicetree/bindings/hwmon/adi,ltc4282.yaml b/Documentation/devicetree/bindings/hwmon/adi,ltc4282.yaml
+new file mode 100644
+index 000000000000..6c979f70687e
+--- /dev/null
++++ b/Documentation/devicetree/bindings/hwmon/adi,ltc4282.yaml
+@@ -0,0 +1,206 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/hwmon/adi,ltc4282.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Analog Devices LTC4282 I2C High Current Hot Swap Controller over I2C
++
++maintainers:
++  - Nuno Sa <nuno.sa@analog.com>
++
++description: |
++  Analog Devices LTC4282 I2C High Current Hot Swap Controller over I2C.
++
++  https://www.analog.com/media/en/technical-documentation/data-sheets/ltc4282.pdf
++
++properties:
++  compatible:
++    enum:
++      - adi,ltc4282
++
++  reg:
++    maxItems: 1
++
++  vdd-supply: true
++
++  clocks:
++    maxItems: 1
++
++  '#clock-cells':
++    const: 0
++
++  adi,rsense-nano-ohms:
++    description: Value of the sense resistor.
++
++  adi,vin-mode-microvolt:
++    description:
++      Selects operating range for the Undervoltage, Overvoltage and Foldback
++      pins. Also for the ADC. Should be set to the nominal input voltage.
++    enum: [3300000, 5000000, 12000000, 24000000]
++    default: 12000000
++
++  adi,fet-bad-timeout-ms:
++    description:
++      From the moment a FET bad conditions is present, this property selects the
++      wait time/timeout for a FET-bad fault to be signaled. Setting this to 0,
++      disables FET bad faults to be reported.
++    default: 255
++    maximum: 255
++
++  adi,overvoltage-dividers:
++    description: |
++      Select which dividers to use for VDD Overvoltage detection. Note that
++      when the internal dividers are used the threshold is referenced to VDD.
++      The percentages in the datasheet are misleading since the actual values
++      to look for are in the "Absolute Maximum Ratings" table in the
++      "Comparator Inputs" section. In there there's a line for each of the 5%,
++      10% and 15% settings with the actual min, typical and max tolerances.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [external, vdd_5_percent, vdd_10_percent, vdd_15_percent]
++    default: 0
++
++  adi,undervoltage-dividers:
++    description: |
++      Select which dividers to use for VDD Overvoltage detection. Note that
++      when the internal dividers are used the threshold is referenced to VDD.
++      The percentages in the datasheet are misleading since the actual values
++      to look for are in the "Absolute Maximum Ratings" table in the
++      "Comparator Inputs" section. In there there's a line for each of the 5%,
++      10% and 15% settings with the actual min, typical and max tolerances.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [external, vdd_5_percent, vdd_10_percent, vdd_15_percent]
++    default: 0
++
++  adi,current-limit-sense-microvolt:
++    description:
++      The current limit sense voltage of the chip is adjustable between
++      12.5mV and 34.4mV in 3.1mV steps. This effectively limits the current
++      on the load.
++    enum: [12500, 15625, 18750, 21875, 25000, 28125, 31250, 34375]
++    default: 25000
++
++  adi,overcurrent-retry:
++    description:
++      If set, enables the chip to auto-retry 256 timer cycles after an
++      Overcurrent fault.
++    type: boolean
++
++  adi,overvoltage-retry-disable:
++    description:
++      If set, disables the chip to auto-retry 50ms after an Overvoltage fault.
++      It's enabled by default.
++    type: boolean
++
++  adi,undervoltage-retry-disable:
++    description:
++      If set, disables the chip to auto-retry 50ms after an Undervoltage fault.
++      It's enabled by default.
++    type: boolean
++
++  adi,fault-log-enable:
++    description:
++      If set, enables the FAULT_LOG and ADC_ALERT_LOG registers to be written
++      to the EEPROM when a fault bit transitions high and hence, will be
++      available after a power cycle (the chip loads the contents of
++      the EE_FAULT_LOG register - the one in EEPROM - into FAULT_LOG at boot).
++    type: boolean
++
++  adi,gpio-alert:
++    description: Use the ALERT pin as a GPIO.
++    type: boolean
++
++  adi,gpio1-mode:
++    description: Defines the function of the Pin.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [gpio, power_bad, power_good]
++
++  adi,gpio2-mode:
++    description: Defines the function of the Pin.
++          0 - GPIO Mode.
++          1 - Acts as an input pin and it is feeded into the ADC.
++          2 - Pulls Low when the MOSFET is dissipating power (stress).
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [gpio, adc_input, stress_fet]
++
++  adi,gpio3-mode:
++    description: Defines the function of the Pin.
++          0 - GPIO Mode.
++          1 - Acts as an input pin and it is feeded into the ADC.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [gpio, adc_input]
++
++  gpio-controller:
++    description:
++      This property applies if some of the pins are used as GPIOs.
++
++  '#gpio-cells':
++    const: 2
++
++required:
++  - compatible
++  - reg
++  - adi,rsense-nano-ohms
++
++dependencies:
++  adi,alert-as-gpio: [gpio-controller, '#gpio-cells']
++
++allOf:
++  - if:
++      required:
++        - adi,gpio1-mode
++    then:
++      allOf:
++        - if:
++            properties:
++              adi,gpio1-mode:
++                const: gpio
++          then:
++            dependencies:
++              adi,gpio1-mode: [gpio-controller, '#gpio-cells']
++  - if:
++      required:
++        - adi,gpio2-mode
++    then:
++      allOf:
++        - if:
++            properties:
++              adi,gpio2-mode:
++                const: gpio
++          then:
++            dependencies:
++              adi,gpio2-mode: [gpio-controller, '#gpio-cells']
++  - if:
++      required:
++        - adi,gpio3-mode
++    then:
++      allOf:
++        - if:
++            properties:
++              adi,gpio3-mode:
++                const: gpio
++          then:
++            dependencies:
++              adi,gpio3-mode: [gpio-controller, '#gpio-cells']
++
++additionalProperties: false
++
++examples:
++  - |
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        hwmon@50 {
++            compatible = "adi,ltc4282";
++            reg = <0x50>;
++            adi,rsense-nano-ohms = <500>;
++
++            gpio-controller;
++            #gpio-cells = <2>;
++
++            adi,gpio1-mode = "power_good";
++            adi,gpio2-mode = "gpio";
++        };
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 97f51d5ec1cf..4a2b84ea1274 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -12629,6 +12629,12 @@ S:	Maintained
+ F:	Documentation/hwmon/ltc4261.rst
+ F:	drivers/hwmon/ltc4261.c
+ 
++LTC4282 HARDWARE MONITOR DRIVER
++M:	Nuno Sa <nuno.sa@analog.com>
++L:	linux-hwmon@vger.kernel.org
++S:	Supported
++F:	Documentation/devicetree/bindings/hwmon/adi,ltc4282.yaml
++
+ LTC4306 I2C MULTIPLEXER DRIVER
+ M:	Michael Hennerich <michael.hennerich@analog.com>
+ L:	linux-i2c@vger.kernel.org
 
-Thanks!
-- Nuno Sá
+-- 
+2.41.0
 
