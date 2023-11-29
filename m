@@ -1,10 +1,10 @@
 From: "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>
-Date: Wed, 29 Nov 2023 15:50:26 -0600
-Subject: [PATCH 08/16] fs: add vfs_get_fscaps()
+Date: Wed, 29 Nov 2023 15:50:27 -0600
+Subject: [PATCH 09/16] fs: add vfs_set_fscaps()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231129-idmap-fscap-refactor-v1-8-da5a26058a5b@kernel.org>
+Message-Id: <20231129-idmap-fscap-refactor-v1-9-da5a26058a5b@kernel.org>
 References: <20231129-idmap-fscap-refactor-v1-0-da5a26058a5b@kernel.org>
 In-Reply-To: <20231129-idmap-fscap-refactor-v1-0-da5a26058a5b@kernel.org>
 To: Christian Brauner <brauner@kernel.org>, Serge Hallyn <serge@hallyn.com>, 
@@ -16,120 +16,137 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  linux-unionfs@vger.kernel.org, 
  "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3647; i=sforshee@kernel.org;
- h=from:subject:message-id; bh=+rNu+aEJtyNDKr3Mz+sg00VpaKJj7LN1+EUYKCn22bc=;
- b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBlZ7I4/avu6/WjMpQysJRD4e086dAG/Cwb8KohO3Og
- fd3i1iGJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZWeyOAAKCRBTA5mu5fQxyUF1B/
- 9oQr2DVGypJwRSipJa6KV9qSjXlv20xo0hNhsSFvuH9Ach0ImZwoiRJyWGJTQ1qBcQPq7seTQQ+7B+
- S2dK266E1ICJEoRmy+cIe8P+BJme5M6yUAyFiSPqel1NPeKIbMFIGG6LST8fWtudf6UinqfhFZKyvd
- qE1ALWh6jQ12XE2xqlEPn0/tDpmo8eT7EU0F0z5LdbBiLGrQIQwMQpHnldwMwrCZkrjFnViq2fZbAj
- wzu2f79hmFumu4lFZ7Y4Gtb7CrOmipp/+6R4MsVmbtiaiiDpWIn3MrIlDO0ivXbVWESxV66lWPdbWZ
- CcbdRRuAOliiqvt4XyKPp1qO4gEpFI
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3947; i=sforshee@kernel.org;
+ h=from:subject:message-id; bh=9l5fqS0lfJcyX9vw4KCwkH1iHUQkPeV3R9q3VUBroWs=;
+ b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBlZ7I5R91Ab7BjTptx2E/V9ecRYanz35z2BVyB57QQ
+ pm6SV2CJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZWeyOQAKCRBTA5mu5fQxyfZwB/
+ 45NtsnoK+BQ3Ly7m1AOvL3fWkADguQcZ36JnrA/kmjz3u4R5+qB6Yfz1HQjo9g8MKR2mZh7D9itHuQ
+ J9jpu/t0jdnNDwSedgG6j1ZHUfOoVKnmbpy4xKtahohtVRS9xaQ4ziaxHBG81RRmuc2MXeVApFQN5c
+ wFrL74wgMl1inxRy4/s59AR/BlT6QYXtatl6m5zLBDAOxUwlbvU5rp1tLUiHl4C4B8gbor1ETNEome
+ MyjCTJLeAZrx1p7mnXZR6XWf9/qYQZOz2VSqIq48NsMSLPxTl1svnt64tZ1qAm91QCQkjx8eBPjRIC
+ Qkx/iwFGKwS+YSpydOUNvpJY2tdx/L
 X-Developer-Key: i=sforshee@kernel.org; a=openpgp;
  fpr=2ABCA7498D83E1D32D51D3B5AB4800A62DB9F73A
 X-Endpoint-Received: by B4 Relay for sforshee@kernel.org/default with auth_id=103
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Provide a type-safe interface for retrieving filesystem capabilities and
-a generic implementation suitable for most filesystems. Also add an
-internal interface, __vfs_get_fscaps(), which skips security checks for
-later use from the capability code.
+Provide a type-safe interface for setting filesystem capabilities and a
+generic implementation suitable for most filesystems.
 
 Signed-off-by: Seth Forshee (DigitalOcean) <sforshee@kernel.org>
 ---
- fs/xattr.c         | 66 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  4 ++++
- 2 files changed, 70 insertions(+)
+ fs/xattr.c         | 87 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h |  2 ++
+ 2 files changed, 89 insertions(+)
 
 diff --git a/fs/xattr.c b/fs/xattr.c
-index 09d927603433..3abaf9bef0a5 100644
+index 3abaf9bef0a5..03cc824e4f87 100644
 --- a/fs/xattr.c
 +++ b/fs/xattr.c
-@@ -181,6 +181,72 @@ xattr_supports_user_prefix(struct inode *inode)
+@@ -247,6 +247,93 @@ int vfs_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
  }
- EXPORT_SYMBOL(xattr_supports_user_prefix);
+ EXPORT_SYMBOL(vfs_get_fscaps);
  
-+static int generic_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
-+			      struct vfs_caps *caps)
++static int generic_set_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
++			      const struct vfs_caps *caps, int flags)
 +{
 +	struct inode *inode = d_inode(dentry);
-+	struct vfs_ns_cap_data *nscaps = NULL;
-+	int ret;
++	struct vfs_ns_cap_data nscaps;
++	int size;
 +
-+	ret = (int)vfs_getxattr_alloc(idmap, dentry, XATTR_NAME_CAPS,
-+				      (char **)&nscaps, 0, GFP_NOFS);
++	size = vfs_caps_to_xattr(idmap, i_user_ns(inode), caps,
++				 &nscaps, sizeof(nscaps));
++	if (size < 0)
++		return size;
 +
-+	if (ret >= 0)
-+		ret = vfs_caps_from_xattr(idmap, i_user_ns(inode), caps, nscaps, ret);
-+
-+	kfree(nscaps);
-+	return ret;
++	return __vfs_setxattr_noperm(idmap, dentry, XATTR_NAME_CAPS,
++				     &nscaps, size, flags);
 +}
 +
 +/**
-+ * __vfs_get_fscaps - get filesystem capabilities without security checks
++ * vfs_set_fscaps - set filesystem capabilities
 + * @idmap: idmap of the mount the inode was found from
-+ * @dentry: the dentry from which to get filesystem capabilities
-+ * @caps: storage in which to return the filesystem capabilities
++ * @dentry: the dentry on which to set filesystem capabilities
++ * @caps: the filesystem capabilities to be written
++ * @flags: setxattr flags to use when writing the capabilities xattr
 + *
-+ * This function gets the filesystem capabilities for the dentry and returns
-+ * them in @caps. It does not perform security checks.
++ * This function writes the supplied filesystem capabilities to the dentry.
 + *
 + * Return: 0 on success, a negative errno on error.
 + */
-+int __vfs_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
-+		     struct vfs_caps *caps)
++int vfs_set_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
++		   const struct vfs_caps *caps, int flags)
 +{
 +	struct inode *inode = d_inode(dentry);
-+
-+	if (inode->i_op->get_fscaps)
-+		return inode->i_op->get_fscaps(idmap, dentry, caps);
-+	return generic_get_fscaps(idmap, dentry, caps);
-+}
-+
-+/**
-+ * vfs_get_fscaps - get filesystem capabilities
-+ * @idmap: idmap of the mount the inode was found from
-+ * @dentry: the dentry from which to get filesystem capabilities
-+ * @caps: storage in which to return the filesystem capabilities
-+ *
-+ * This function gets the filesystem capabilities for the dentry and returns
-+ * them in @caps.
-+ *
-+ * Return: 0 on success, a negative errno on error.
-+ */
-+int vfs_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
-+		   struct vfs_caps *caps)
-+{
-+	int error;
++	struct inode *delegated_inode = NULL;
++	struct vfs_ns_cap_data nscaps;
++	int size, error;
 +
 +	/*
-+	 * The VFS has no restrictions on reading security.* xattrs, so
-+	 * xattr_permission() isn't needed. Only LSMs get a say.
++	 * Unfortunately EVM wants to have the raw xattr value to compare to
++	 * the on-disk version, so we need to pass the raw xattr to the
++	 * security hooks. But we also want to do security checks before
++	 * breaking leases, so that means a conversion to the raw xattr here
++	 * which will usually be reduntant with the conversion we do for
++	 * writing the xattr to disk.
 +	 */
-+	error = security_inode_getxattr(dentry, XATTR_NAME_CAPS);
-+	if (error)
-+		return error;
++	size = vfs_caps_to_xattr(idmap, i_user_ns(inode), caps, &nscaps,
++				 sizeof(nscaps));
++	if (size < 0)
++		return size;
 +
-+	return __vfs_get_fscaps(idmap, dentry, caps);
++retry_deleg:
++	inode_lock(inode);
++
++	error = xattr_permission(idmap, inode, XATTR_NAME_CAPS, MAY_WRITE);
++	if (error)
++		goto out_inode_unlock;
++	error = security_inode_setxattr(idmap, dentry, XATTR_NAME_CAPS, &nscaps,
++					size, flags);
++	if (error)
++		goto out_inode_unlock;
++
++	error = try_break_deleg(inode, &delegated_inode);
++	if (error)
++		goto out_inode_unlock;
++
++	if (inode->i_opflags & IOP_XATTR) {
++		if (inode->i_op->set_fscaps)
++			error = inode->i_op->set_fscaps(idmap, dentry, caps, flags);
++		else
++			error = generic_set_fscaps(idmap, dentry, caps, flags);
++	} else if (unlikely(is_bad_inode(inode))) {
++		error = -EIO;
++	} else {
++		error = -EOPNOTSUPP;
++	}
++
++out_inode_unlock:
++	inode_unlock(inode);
++
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry_deleg;
++	}
++
++	return error;
 +}
-+EXPORT_SYMBOL(vfs_get_fscaps);
++EXPORT_SYMBOL(vfs_set_fscaps);
 +
  int
  __vfs_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
  	       struct inode *inode, const char *name, const void *value,
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index a0a77f67b999..e25b39e4017a 100644
+index e25b39e4017a..80992e210b83 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -2055,6 +2055,10 @@ extern int vfs_dedupe_file_range(struct file *file,
- extern loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 					struct file *dst_file, loff_t dst_pos,
- 					loff_t len, unsigned int remap_flags);
-+extern int __vfs_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
-+			    struct vfs_caps *caps);
-+extern int vfs_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
-+			  struct vfs_caps *caps);
+@@ -2059,6 +2059,8 @@ extern int __vfs_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
+ 			    struct vfs_caps *caps);
+ extern int vfs_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
+ 			  struct vfs_caps *caps);
++extern int vfs_set_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
++			  const struct vfs_caps *caps, int flags);
  
  enum freeze_holder {
  	FREEZE_HOLDER_KERNEL	= (1U << 0),
