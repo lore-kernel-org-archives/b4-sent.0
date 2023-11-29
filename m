@@ -1,10 +1,10 @@
 From: "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>
-Date: Wed, 29 Nov 2023 15:50:30 -0600
-Subject: [PATCH 12/16] ovl: use vfs_{get,set}_fscaps() for copy-up
+Date: Wed, 29 Nov 2023 15:50:31 -0600
+Subject: [PATCH 13/16] fs: use vfs interfaces for capabilities xattrs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231129-idmap-fscap-refactor-v1-12-da5a26058a5b@kernel.org>
+Message-Id: <20231129-idmap-fscap-refactor-v1-13-da5a26058a5b@kernel.org>
 References: <20231129-idmap-fscap-refactor-v1-0-da5a26058a5b@kernel.org>
 In-Reply-To: <20231129-idmap-fscap-refactor-v1-0-da5a26058a5b@kernel.org>
 To: Christian Brauner <brauner@kernel.org>, Serge Hallyn <serge@hallyn.com>, 
@@ -16,160 +16,264 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  linux-unionfs@vger.kernel.org, 
  "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4000; i=sforshee@kernel.org;
- h=from:subject:message-id; bh=sdaoEg9ciUZftk2H34h2y651gj0bEkfe58vTpkMB1yM=;
- b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBlZ7I7nj2pDM1Swf1xxfWdnQF142gaU0cjaKHbr9wa
- IfaLDx2JATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZWeyOwAKCRBTA5mu5fQxyagzB/
- 9p+FECwvuMkt4XpREQZadycge188mmaG0BdTCbVb2BetQ3LKBPtUkg4sx9fWHrGjDqMTmYASWswk8w
- ZxaDGEGJ4Hu1GJI6t42C5f0v6yLIm3xXZa54SVpbW6saMAY4YcZBAHtg+Lq5zJqjHxSy/WWSI3lNco
- 7/L9wXsaUPMpHWuiy8v7p4EhXAxCjGiNTCHLkM/2FnayolmIwXVgBMiQ7PSU+KwElFmf/JHBmc/CXJ
- qy3Ibx41A7h81JLGZSY+rnHq7KdXnC0tbY7F1bbXdlD5Sr0pkfDOA7r7RplaqTUtg48HD5m1hJ7hp5
- YxnKnn+lyAuSXl8IlHlrpCCrEeLE8U
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8524; i=sforshee@kernel.org;
+ h=from:subject:message-id; bh=2HiADlLvgGW720oIUK6woDmD2V9EI+/r0VTeM20LPPs=;
+ b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBlZ7I84eoLP86nEuxsd0EOX/Og50rHT0ZAzT63Z49r
+ 9RiM2oOJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZWeyPAAKCRBTA5mu5fQxyZhyB/
+ 9gYYIbkYFa10api1PrNd0MoEaeKZ/aJybzoVQjHKThBmpvtRrAxol4IrKQr4Gruq6rBfw62ZdbflNs
+ AgQHicVr/QIC6zxyar2Voa6KkLhLKnAajluGF6ghiJG+gkoOd+qRPX6HmmOfUH8ge7hAK+ils71Wdb
+ emuoGBOu7J4L1641adZs1rEEfEBzVhPAT/2lPD2rvpco0QupuBPFU9ty3XyQdtRF6Gb3vuxFUnGWzm
+ rkoNeZCp6VhQkcEpsCQ6nF8ypGwiTXGUsf6+aJy1+LK/gsgNSq519SdLiQ0i5VlzDTtQOb4qIHrm6/
+ QazLsgiYauqobTgzmjki+Qj658voFS
 X-Developer-Key: i=sforshee@kernel.org; a=openpgp;
  fpr=2ABCA7498D83E1D32D51D3B5AB4800A62DB9F73A
 X-Endpoint-Received: by B4 Relay for sforshee@kernel.org/default with auth_id=103
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Using vfs_{get,set}xattr() for fscaps will be blocked in a future
-commit, so convert ovl to use the new interfaces. Also remove the now
-unused ovl_getxattr_value().
+Now that all the plumbing is in place, switch over to using the new
+inode operations to get/set fs caps. This pushes all mapping of ids into
+the caller's user ns to above the vfs_*() level, making this consistent
+with other vfs_*() interfaces.
+
+cap_convert_nscap() is updated to return vfs_caps and moved to be called
+from the new code path for setting fscaps. This means that use of
+vfs_setxattr() will no longer remap ids in fscap xattrs, but all code
+which used vfs_setxattr() for fscaps xattrs has been converted to the
+new interfaces.
+
+Removing the mapping of fscaps rootids from vfs_getxattr() is more
+invovled and will be addressed in a later commit.
 
 Signed-off-by: Seth Forshee (DigitalOcean) <sforshee@kernel.org>
 ---
- fs/overlayfs/copy_up.c | 72 ++++++++++++++++++++++++++------------------------
- 1 file changed, 37 insertions(+), 35 deletions(-)
+ fs/xattr.c                 | 49 ++++++++++++++++++++++++----
+ include/linux/capability.h |  2 +-
+ security/commoncap.c       | 79 +++++++++++++++-------------------------------
+ 3 files changed, 69 insertions(+), 61 deletions(-)
 
-diff --git a/fs/overlayfs/copy_up.c b/fs/overlayfs/copy_up.c
-index 4382881b0709..b43af5ce4b21 100644
---- a/fs/overlayfs/copy_up.c
-+++ b/fs/overlayfs/copy_up.c
-@@ -73,6 +73,23 @@ static int ovl_copy_acl(struct ovl_fs *ofs, const struct path *path,
- 	return err;
- }
+diff --git a/fs/xattr.c b/fs/xattr.c
+index f60ef2a79dfa..372644b15457 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -540,13 +540,6 @@ vfs_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 	const void  *orig_value = value;
+ 	int error;
  
-+static int ovl_copy_fscaps(struct ovl_fs *ofs, const struct path *oldpath,
-+			   struct dentry *new)
-+{
-+	struct vfs_caps capability;
-+	int err;
+-	if (size && strcmp(name, XATTR_NAME_CAPS) == 0) {
+-		error = cap_convert_nscap(idmap, dentry, &value, size);
+-		if (error < 0)
+-			return error;
+-		size = error;
+-	}
+-
+ retry_deleg:
+ 	inode_lock(inode);
+ 	error = __vfs_setxattr_locked(idmap, dentry, name, value, size,
+@@ -857,6 +850,24 @@ int do_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 		return do_set_acl(idmap, dentry, ctx->kname->name,
+ 				  ctx->kvalue, ctx->size);
+ 
++	if (strcmp(ctx->kname->name, XATTR_NAME_CAPS) == 0) {
++		struct vfs_caps caps;
++		int ret;
 +
-+	err = vfs_get_fscaps(mnt_idmap(oldpath->mnt), oldpath->dentry,
-+			     &capability);
-+	if (err) {
-+		if (err == -ENODATA || err == -EOPNOTSUPP)
-+			return 0;
-+		return err;
++		/*
++		 * rootid is already in the mount idmap, so pass nop_mnt_idmap
++		 * so that it won't be mapped.
++		 */
++		ret = vfs_caps_from_xattr(&nop_mnt_idmap, current_user_ns(),
++					  &caps, ctx->kvalue, ctx->size);
++		if (ret)
++			return ret;
++		ret = cap_convert_nscap(idmap, dentry, &caps);
++		if (ret)
++			return ret;
++		return vfs_set_fscaps(idmap, dentry, &caps, ctx->flags);
 +	}
 +
-+	return vfs_set_fscaps(ovl_upper_mnt_idmap(ofs), new, &capability, 0);
-+}
-+
- int ovl_copy_xattr(struct super_block *sb, const struct path *oldpath, struct dentry *new)
- {
- 	struct dentry *old = oldpath->dentry;
-@@ -130,6 +147,14 @@ int ovl_copy_xattr(struct super_block *sb, const struct path *oldpath, struct de
- 			break;
- 		}
+ 	return vfs_setxattr(idmap, dentry, ctx->kname->name,
+ 			ctx->kvalue, ctx->size, ctx->flags);
+ }
+@@ -955,6 +966,27 @@ do_getxattr(struct mnt_idmap *idmap, struct dentry *d,
+ 	ssize_t error;
+ 	char *kname = ctx->kname->name;
  
-+		if (!strcmp(name, XATTR_NAME_CAPS)) {
-+			error = ovl_copy_fscaps(OVL_FS(sb), oldpath, new);
-+			if (!error)
-+				continue;
-+			/* fs capabilities must be copied */
-+			break;
-+		}
++	if (strcmp(kname, XATTR_NAME_CAPS) == 0) {
++		struct vfs_caps caps;
++		struct vfs_ns_cap_data data;
++		int ret;
 +
- retry:
- 		size = ovl_do_getxattr(oldpath, name, value, value_size);
- 		if (size == -ERANGE)
-@@ -1006,61 +1031,40 @@ static bool ovl_need_meta_copy_up(struct dentry *dentry, umode_t mode,
- 	return true;
++		ret = vfs_get_fscaps(idmap, d, &caps);
++		if (ret)
++			return ret;
++		/*
++		 * rootid is already in the mount idmap, so pass nop_mnt_idmap
++		 * so that it won't be mapped.
++		 */
++		ret = vfs_caps_to_user_xattr(&nop_mnt_idmap, current_user_ns(),
++					     &caps, &data, ctx->size);
++		if (ret < 0)
++			return ret;
++		if (ctx->size && copy_to_user(ctx->value, &data, ret))
++			return -EFAULT;
++		return ret;
++	}
++
+ 	if (ctx->size) {
+ 		if (ctx->size > XATTR_SIZE_MAX)
+ 			ctx->size = XATTR_SIZE_MAX;
+@@ -1145,6 +1177,9 @@ removexattr(struct mnt_idmap *idmap, struct dentry *d,
+ 	if (is_posix_acl_xattr(kname))
+ 		return vfs_remove_acl(idmap, d, kname);
+ 
++	if (strcmp(kname, XATTR_NAME_CAPS) == 0)
++		return vfs_remove_fscaps(idmap, d);
++
+ 	return vfs_removexattr(idmap, d, kname);
  }
  
--static ssize_t ovl_getxattr_value(const struct path *path, char *name, char **value)
--{
--	ssize_t res;
--	char *buf;
+diff --git a/include/linux/capability.h b/include/linux/capability.h
+index c0bd9447685b..563f084e9453 100644
+--- a/include/linux/capability.h
++++ b/include/linux/capability.h
+@@ -229,6 +229,6 @@ int get_vfs_caps_from_disk(struct mnt_idmap *idmap,
+ 			   struct vfs_caps *cpu_caps);
+ 
+ int cap_convert_nscap(struct mnt_idmap *idmap, struct dentry *dentry,
+-		      const void **ivalue, size_t size);
++		      struct vfs_caps *caps);
+ 
+ #endif /* !_LINUX_CAPABILITY_H */
+diff --git a/security/commoncap.c b/security/commoncap.c
+index c645330f83a0..bd95b806af2f 100644
+--- a/security/commoncap.c
++++ b/security/commoncap.c
+@@ -484,27 +484,21 @@ int cap_inode_getsecurity(struct mnt_idmap *idmap,
+ }
+ 
+ /**
+- * rootid_from_xattr - translate root uid of vfs caps
++ * rootid_from_vfs_caps - translate root uid of vfs caps
+  *
+- * @value:	vfs caps value which may be modified by this function
+- * @size:	size of @ivalue
++ * @caps:	vfs caps value which may be modified by this function
+  * @task_ns:	user namespace of the caller
++ *
++ * Return the rootid from a v3 fs cap, or the id of root in the task's user
++ * namespace for v1 and v2 fs caps.
+  */
+-static vfsuid_t rootid_from_xattr(const void *value, size_t size,
+-				  struct user_namespace *task_ns)
++static vfsuid_t rootid_from_vfs_caps(const struct vfs_caps *caps,
++				     struct user_namespace *task_ns)
+ {
+-	const struct vfs_ns_cap_data *nscap = value;
+-	uid_t rootid = 0;
 -
--	res = ovl_do_getxattr(path, name, NULL, 0);
--	if (res == -ENODATA || res == -EOPNOTSUPP)
--		res = 0;
+-	if (size == XATTR_CAPS_SZ_3)
+-		rootid = le32_to_cpu(nscap->rootid);
 -
--	if (res > 0) {
--		buf = kzalloc(res, GFP_KERNEL);
--		if (!buf)
--			return -ENOMEM;
--
--		res = ovl_do_getxattr(path, name, buf, res);
--		if (res < 0)
--			kfree(buf);
--		else
--			*value = buf;
--	}
--	return res;
+-	return VFSUIDT_INIT(make_kuid(task_ns, rootid));
 -}
--
- /* Copy up data of an inode which was copied up metadata only in the past. */
- static int ovl_copy_up_meta_inode_data(struct ovl_copy_up_ctx *c)
- {
- 	struct ovl_fs *ofs = OVL_FS(c->dentry->d_sb);
- 	struct path upperpath;
- 	int err;
--	char *capability = NULL;
--	ssize_t cap_size;
-+	struct vfs_caps capability;
-+	bool has_capability = false;
++	if ((caps->magic_etc & VFS_CAP_REVISION_MASK) == VFS_CAP_REVISION_3)
++		return caps->rootid;
  
- 	ovl_path_upper(c->dentry, &upperpath);
- 	if (WARN_ON(upperpath.dentry == NULL))
- 		return -EIO;
- 
- 	if (c->stat.size) {
--		err = cap_size = ovl_getxattr_value(&upperpath, XATTR_NAME_CAPS,
--						    &capability);
--		if (cap_size < 0)
-+		err = vfs_get_fscaps(mnt_idmap(upperpath.mnt), upperpath.dentry,
-+				     &capability);
-+		if (!err)
-+			has_capability = 1;
-+		else if (err != -ENODATA && err != EOPNOTSUPP)
- 			goto out;
- 	}
- 
- 	err = ovl_copy_up_data(c, &upperpath);
- 	if (err)
--		goto out_free;
-+		goto out;
- 
- 	/*
- 	 * Writing to upper file will clear security.capability xattr. We
- 	 * don't want that to happen for normal copy-up operation.
- 	 */
- 	ovl_start_write(c->dentry);
--	if (capability) {
--		err = ovl_do_setxattr(ofs, upperpath.dentry, XATTR_NAME_CAPS,
--				      capability, cap_size, 0);
-+	if (has_capability) {
-+		err = vfs_set_fscaps(mnt_idmap(upperpath.mnt), upperpath.dentry,
-+				     &capability, 0);
- 	}
- 	if (!err) {
- 		err = ovl_removexattr(ofs, upperpath.dentry,
-@@ -1068,13 +1072,11 @@ static int ovl_copy_up_meta_inode_data(struct ovl_copy_up_ctx *c)
- 	}
- 	ovl_end_write(c->dentry);
- 	if (err)
--		goto out_free;
-+		goto out;
- 
- 	ovl_clear_flag(OVL_HAS_DIGEST, d_inode(c->dentry));
- 	ovl_clear_flag(OVL_VERIFIED_DIGEST, d_inode(c->dentry));
- 	ovl_set_upperdata(d_inode(c->dentry));
--out_free:
--	kfree(capability);
- out:
- 	return err;
+-static bool validheader(size_t size, const struct vfs_cap_data *cap)
+-{
+-	return is_v2header(size, cap) || is_v3header(size, cap);
++	return VFSUIDT_INIT(make_kuid(task_ns, 0));
  }
+ 
+ /**
+@@ -512,11 +506,10 @@ static bool validheader(size_t size, const struct vfs_cap_data *cap)
+  *
+  * @idmap:	idmap of the mount the inode was found from
+  * @dentry:	used to retrieve inode to check permissions on
+- * @ivalue:	vfs caps value which may be modified by this function
+- * @size:	size of @ivalue
++ * @caps:	vfs caps which may be modified by this function
+  *
+- * User requested a write of security.capability.  If needed, update the
+- * xattr to change from v2 to v3, or to fixup the v3 rootid.
++ * User requested a write of security.capability.  Check permissions, and if
++ * needed, update the xattr to change from v2 to v3.
+  *
+  * If the inode has been found through an idmapped mount the idmap of
+  * the vfsmount must be passed through @idmap. This function will then
+@@ -524,59 +517,39 @@ static bool validheader(size_t size, const struct vfs_cap_data *cap)
+  * permissions. On non-idmapped mounts or if permission checking is to be
+  * performed on the raw inode simply pass @nop_mnt_idmap.
+  *
+- * Return: On success, return the new size; on error, return < 0.
++ * Return: On success, return 0; on error, return < 0.
+  */
+ int cap_convert_nscap(struct mnt_idmap *idmap, struct dentry *dentry,
+-		      const void **ivalue, size_t size)
++		      struct vfs_caps *caps)
+ {
+-	struct vfs_ns_cap_data *nscap;
+-	uid_t nsrootid;
+-	const struct vfs_cap_data *cap = *ivalue;
+-	__u32 magic, nsmagic;
+ 	struct inode *inode = d_backing_inode(dentry);
+ 	struct user_namespace *task_ns = current_user_ns(),
+ 		*fs_ns = inode->i_sb->s_user_ns;
+-	kuid_t rootid;
+ 	vfsuid_t vfsrootid;
+-	size_t newsize;
++	__u32 revision;
+ 
+-	if (!*ivalue)
+-		return -EINVAL;
+-	if (!validheader(size, cap))
++	revision = sansflags(caps->magic_etc);
++	if (revision != VFS_CAP_REVISION_2 && revision != VFS_CAP_REVISION_3)
+ 		return -EINVAL;
+ 	if (!capable_wrt_inode_uidgid(idmap, inode, CAP_SETFCAP))
+ 		return -EPERM;
+-	if (size == XATTR_CAPS_SZ_2 && (idmap == &nop_mnt_idmap))
++	if (revision == VFS_CAP_REVISION_2 && (idmap == &nop_mnt_idmap))
+ 		if (ns_capable(inode->i_sb->s_user_ns, CAP_SETFCAP))
+ 			/* user is privileged, just write the v2 */
+-			return size;
++			return 0;
+ 
+-	vfsrootid = rootid_from_xattr(*ivalue, size, task_ns);
++	vfsrootid = rootid_from_vfs_caps(caps, task_ns);
+ 	if (!vfsuid_valid(vfsrootid))
+ 		return -EINVAL;
+ 
+-	rootid = from_vfsuid(idmap, fs_ns, vfsrootid);
+-	if (!uid_valid(rootid))
++	if (!vfsuid_has_fsmapping(idmap, fs_ns, vfsrootid))
+ 		return -EINVAL;
+ 
+-	nsrootid = from_kuid(fs_ns, rootid);
+-	if (nsrootid == -1)
+-		return -EINVAL;
++	caps->rootid = vfsrootid;
++	caps->magic_etc = VFS_CAP_REVISION_3 |
++			  (caps->magic_etc & VFS_CAP_FLAGS_EFFECTIVE);
+ 
+-	newsize = sizeof(struct vfs_ns_cap_data);
+-	nscap = kmalloc(newsize, GFP_ATOMIC);
+-	if (!nscap)
+-		return -ENOMEM;
+-	nscap->rootid = cpu_to_le32(nsrootid);
+-	nsmagic = VFS_CAP_REVISION_3;
+-	magic = le32_to_cpu(cap->magic_etc);
+-	if (magic & VFS_CAP_FLAGS_EFFECTIVE)
+-		nsmagic |= VFS_CAP_FLAGS_EFFECTIVE;
+-	nscap->magic_etc = cpu_to_le32(nsmagic);
+-	memcpy(&nscap->data, &cap->data, sizeof(__le32) * 2 * VFS_CAP_U32);
+-
+-	*ivalue = nscap;
+-	return newsize;
++	return 0;
+ }
+ 
+ /*
 
 -- 
 2.43.0
