@@ -1,124 +1,91 @@
-From: Janne Grunau <j@jannau.net>
-Date: Fri, 01 Dec 2023 08:12:33 +0100
-Subject: [PATCH v2] arm: apple: t602x: Add missing MMIO regions to memmap
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH v3 0/2] Add support for LTC4282
+Date: Tue, 05 Dec 2023 16:22:54 +0100
+Message-Id: <20231205-ltc4282-support-v3-0-e0877b281bc2@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20231201-apple_t602x_extend_memmap-v2-1-a3831a0f3105@jannau.net>
-X-B4-Tracking: v=1; b=H4sIAGCHaWUC/42NQQ6CMBBFr0JmbU07BIKuvIchTZ2OUiOlaSvBE
- O5u5QQu30v++yskjo4TnKsVIs8uuckXwEMFNBj/YOFsYUCJtVK1FCaEF+vcSlw0L5m91SOPowm
- COqQGkUxHEso+RL67ZW9f+8KDS3mKn/1qVj/7T3VWQgmyp/aGjbJo6fI03pv30XOGftu2L7vGO
- cnDAAAA
-To: Mark Kettenis <kettenis@openbsd.org>, Tom Rini <trini@konsulko.com>
-Cc: u-boot@lists.denx.de, asahi@lists.linux.dev
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAE5Ab2UC/03MQQ6DIBBA0auYWXcMA6LoqvdouiB0VBIFA9o0M
+ d69pKsu3+L/EzInzxmG6oTEb599DAXqVoGbbZgY/asYpJCKSDa47K6RRmI+ti2mHY2jttOsSAs
+ DpdoSj/7zOz6exWOKK+5zYvv3IUGaeqFranVvOoUKwxFine3dBrvEqXZxhev6ArTQuAKfAAAA
+To: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-doc@vger.kernel.org
+Cc: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
+ Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3003; i=j@jannau.net;
- h=from:subject:message-id; bh=4FSp+FL6oA+RNFZSKEu4rSlOBmR9+tDcRmnu9XGpMIo=;
- b=owGbwMvMwCG2UNrmdq9+ahrjabUkhtTM9vQlP0Jy9i5Rmv9Ut3ej37U5TVuZxJd//3VGLHvTo
- 62O930/d5SyMIhxMMiKKbIkab/sYFhdoxhT+yAMZg4rE8gQBi5OAZgI13JGhquG6VNnbZds9mO9
- c2pmn/y5tXukleYGcnIpX2s4ZbhbQ5uR4a9V6MHdD1aofJ3dzckkssptLu/yDIW2gBjXdhGhCLM
- ZLAA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1701789775; l=2306;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=zmMe6JBH09XXMGADR7GVSPNl3I74k767y2uX7Ridnpw=;
+ b=y+rnkM3pXhxCNJfuqsOWQ7W778iLQ8AibszEbiqJrlzeuh9DYCA2OvLdY63+O4C1a8SrnRN2o
+ XOUeKCuhWZoDLTqOagsansAxcS3ciSBeCS5V1KB0hwZ2z5kxWM4I0dn
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The memory maps for Apple's M2 Pro/Max/Ultra left MMIO space out which
-was not used by any driver at the time. The display out exposed as
-simple-framebuffer use a power-domain controlled by a device in an
-unmapped region.
-Add a map covering this region as well as another MMIO region in the
-range 0x4'0000'0000 - 0x5'0000'0000. The added regions cover all MMIO
-annotated in Apple's device tree in this range.
+v1:
+ * https://lore.kernel.org/linux-hwmon/20231110151905.1659873-1-nuno.sa@analog.com/
 
-Signed-off-by: Janne Grunau <j@jannau.net>
----
-Changes in v2:
-- use SZ_1G as block size
-- Link to v1: https://lore.kernel.org/r/20231130-apple_t602x_extend_memmap-v1-1-cd96b251d2dc@jannau.net
----
- arch/arm/mach-apple/board.c | 48 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 48 insertions(+)
+v2:
+ * https://lore.kernel.org/linux-hwmon/20231124-ltc4282-support-v2-0-952bf926f83c@analog.com 
 
-diff --git a/arch/arm/mach-apple/board.c b/arch/arm/mach-apple/board.c
-index 47393babbc..7a6151a972 100644
---- a/arch/arm/mach-apple/board.c
-+++ b/arch/arm/mach-apple/board.c
-@@ -370,6 +370,22 @@ static struct mm_region t6020_mem_map[] = {
- 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
- 			 PTE_BLOCK_NON_SHARE |
- 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
-+	}, {
-+		/* I/O */
-+		.virt = 0x400000000,
-+		.phys = 0x400000000,
-+		.size = SZ_1G,
-+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
-+			PTE_BLOCK_NON_SHARE |
-+			PTE_BLOCK_PXN | PTE_BLOCK_UXN
-+	}, {
-+		/* I/O */
-+		.virt = 0x480000000,
-+		.phys = 0x480000000,
-+		.size = SZ_1G,
-+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
-+			PTE_BLOCK_NON_SHARE |
-+			PTE_BLOCK_PXN | PTE_BLOCK_UXN
- 	}, {
- 		/* I/O */
- 		.virt = 0x580000000,
-@@ -471,6 +487,22 @@ static struct mm_region t6022_mem_map[] = {
- 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
- 			 PTE_BLOCK_NON_SHARE |
- 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
-+	}, {
-+		/* I/O */
-+		.virt = 0x400000000,
-+		.phys = 0x400000000,
-+		.size = SZ_1G,
-+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
-+			PTE_BLOCK_NON_SHARE |
-+			PTE_BLOCK_PXN | PTE_BLOCK_UXN
-+	}, {
-+		/* I/O */
-+		.virt = 0x480000000,
-+		.phys = 0x480000000,
-+		.size = SZ_1G,
-+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
-+			PTE_BLOCK_NON_SHARE |
-+			PTE_BLOCK_PXN | PTE_BLOCK_UXN
- 	}, {
- 		/* I/O */
- 		.virt = 0x580000000,
-@@ -551,6 +583,22 @@ static struct mm_region t6022_mem_map[] = {
- 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
- 			 PTE_BLOCK_NON_SHARE |
- 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
-+	}, {
-+		/* I/O */
-+		.virt = 0x2400000000,
-+		.phys = 0x2400000000,
-+		.size = SZ_1G,
-+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
-+			PTE_BLOCK_NON_SHARE |
-+			PTE_BLOCK_PXN | PTE_BLOCK_UXN
-+	}, {
-+		/* I/O */
-+		.virt = 0x2480000000,
-+		.phys = 0x2480000000,
-+		.size = SZ_1G,
-+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
-+			PTE_BLOCK_NON_SHARE |
-+			PTE_BLOCK_PXN | PTE_BLOCK_UXN
- 	}, {
- 		/* I/O */
- 		.virt = 0x2580000000,
+Changes in V3:
+- Bindings:
+   * Remove 'default' from string types;
+   * Update gpios descriptions and removed leftovers from when they were
+     integer types.
+   * Dropped gpio function. With that, adi,gpio3-mode and adi,gpio-alert were
+     dropped.
+- Driver:
+   * Make all clock ops static;
+   * Dropped macro to create debugfs attributes;
+   * Dropped GPIO support;
+   * Removed regulator consumer header (leftover from v1).
+
+There are still some possible interfaces which are dubious from an hwmon
+point view. Namely:
+
+* fet_short_fault
+* fet_bad_fault
+* power1_good
+
+power1_good and fet_short can be "monitored" with gpio1 and 2
+respectively so maybe we could remove the. OTHO, some users might want
+the pins free for GPIO usage. fet_bad_fault is a status bit (we also have it in
+fault_logs) that might be meaningful to monitor (I think).
+
+Also to note, I'm still seeing the following sparse issue:
+
+"CHECK   drivers/hwmon/ltc4282.c
+drivers/hwmon/ltc4282.c:805:34: warning: dubious: x & !y
+drivers/hwmon/ltc4282.c:895:34: warning: dubious: x & !y" 
+
+However, this does not look to be directly related with the driver. It's
+on FIED_PREP() taking values like !val or !!val.
+
+I'm also removing the GPIO maintainers/reviewers from Cc since there's no
+gpiochip support anymore. If not adequate, I'll Cc them again...
 
 ---
-base-commit: 43f2873fa98b1da6eb56d756315c7bd7db63db27
-change-id: 20231130-apple_t602x_extend_memmap-c82c522ca8c0
+Nuno Sa (2):
+      dt-bindings: hwmon: Add LTC4282 bindings
+      hwmon: ltc4282: add support for the LTC4282 chip
 
-Best regards,
--- 
-Janne Grunau <j@jannau.net>
+ .../devicetree/bindings/hwmon/adi,ltc4282.yaml     |  142 ++
+ Documentation/hwmon/index.rst                      |    1 +
+ Documentation/hwmon/ltc4282.rst                    |  108 ++
+ MAINTAINERS                                        |    8 +
+ drivers/hwmon/Kconfig                              |   11 +
+ drivers/hwmon/Makefile                             |    1 +
+ drivers/hwmon/ltc4282.c                            | 1705 ++++++++++++++++++++
+ 7 files changed, 1976 insertions(+)
+---
+base-commit: 44482310b7f8ac4cd8fa7be4cee8c1b260ea5ee9
+change-id: 20231124-ltc4282-support-8c1675e31508
+--
+
+Thanks!
+- Nuno Sá
 
