@@ -1,13 +1,12 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Subject: [PATCH v3 0/2] Add support for LTC4282
-Date: Tue, 05 Dec 2023 16:22:54 +0100
-Message-Id: <20231205-ltc4282-support-v3-0-e0877b281bc2@analog.com>
+Date: Tue, 05 Dec 2023 16:22:55 +0100
+Subject: [PATCH v3 1/2] dt-bindings: hwmon: Add LTC4282 bindings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAE5Ab2UC/03MQQ6DIBBA0auYWXcMA6LoqvdouiB0VBIFA9o0M
- d69pKsu3+L/EzInzxmG6oTEb599DAXqVoGbbZgY/asYpJCKSDa47K6RRmI+ti2mHY2jttOsSAs
- DpdoSj/7zOz6exWOKK+5zYvv3IUGaeqFranVvOoUKwxFine3dBrvEqXZxhev6ArTQuAKfAAAA
+Content-Transfer-Encoding: 7bit
+Message-Id: <20231205-ltc4282-support-v3-1-e0877b281bc2@analog.com>
+References: <20231205-ltc4282-support-v3-0-e0877b281bc2@analog.com>
+In-Reply-To: <20231205-ltc4282-support-v3-0-e0877b281bc2@analog.com>
 To: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-doc@vger.kernel.org
 Cc: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
@@ -15,77 +14,191 @@ Cc: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>,
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
  Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1701789775; l=2306;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1701789775; l=6103;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=zmMe6JBH09XXMGADR7GVSPNl3I74k767y2uX7Ridnpw=;
- b=y+rnkM3pXhxCNJfuqsOWQ7W778iLQ8AibszEbiqJrlzeuh9DYCA2OvLdY63+O4C1a8SrnRN2o
- XOUeKCuhWZoDLTqOagsansAxcS3ciSBeCS5V1KB0hwZ2z5kxWM4I0dn
+ bh=mwYxsKMqbzfWUYbcRx2BgaOGzoY5k7xtjGAxAqKnnQE=;
+ b=EevwlVAcQxtr6iLUgNHO5djjOpgSgSdgJM4AQNxAC8hWH5Dj3beVM/vgkMG0FF0cxZBI7f6BH
+ hp9/VCA25XbC/+VN8m1fbZuVzkqQptEaWEqSpJvQMv+c85d7+tR/SsM
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-v1:
- * https://lore.kernel.org/linux-hwmon/20231110151905.1659873-1-nuno.sa@analog.com/
+Add bindings for the LTC4282 High Current Hot Swap Controller with I2C
+Compatible Monitoring.
 
-v2:
- * https://lore.kernel.org/linux-hwmon/20231124-ltc4282-support-v2-0-952bf926f83c@analog.com 
-
-Changes in V3:
-- Bindings:
-   * Remove 'default' from string types;
-   * Update gpios descriptions and removed leftovers from when they were
-     integer types.
-   * Dropped gpio function. With that, adi,gpio3-mode and adi,gpio-alert were
-     dropped.
-- Driver:
-   * Make all clock ops static;
-   * Dropped macro to create debugfs attributes;
-   * Dropped GPIO support;
-   * Removed regulator consumer header (leftover from v1).
-
-There are still some possible interfaces which are dubious from an hwmon
-point view. Namely:
-
-* fet_short_fault
-* fet_bad_fault
-* power1_good
-
-power1_good and fet_short can be "monitored" with gpio1 and 2
-respectively so maybe we could remove the. OTHO, some users might want
-the pins free for GPIO usage. fet_bad_fault is a status bit (we also have it in
-fault_logs) that might be meaningful to monitor (I think).
-
-Also to note, I'm still seeing the following sparse issue:
-
-"CHECK   drivers/hwmon/ltc4282.c
-drivers/hwmon/ltc4282.c:805:34: warning: dubious: x & !y
-drivers/hwmon/ltc4282.c:895:34: warning: dubious: x & !y" 
-
-However, this does not look to be directly related with the driver. It's
-on FIED_PREP() taking values like !val or !!val.
-
-I'm also removing the GPIO maintainers/reviewers from Cc since there's no
-gpiochip support anymore. If not adequate, I'll Cc them again...
-
+Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
-Nuno Sa (2):
-      dt-bindings: hwmon: Add LTC4282 bindings
-      hwmon: ltc4282: add support for the LTC4282 chip
+ .../devicetree/bindings/hwmon/adi,ltc4282.yaml     | 142 +++++++++++++++++++++
+ MAINTAINERS                                        |   6 +
+ 2 files changed, 148 insertions(+)
 
- .../devicetree/bindings/hwmon/adi,ltc4282.yaml     |  142 ++
- Documentation/hwmon/index.rst                      |    1 +
- Documentation/hwmon/ltc4282.rst                    |  108 ++
- MAINTAINERS                                        |    8 +
- drivers/hwmon/Kconfig                              |   11 +
- drivers/hwmon/Makefile                             |    1 +
- drivers/hwmon/ltc4282.c                            | 1705 ++++++++++++++++++++
- 7 files changed, 1976 insertions(+)
----
-base-commit: 44482310b7f8ac4cd8fa7be4cee8c1b260ea5ee9
-change-id: 20231124-ltc4282-support-8c1675e31508
---
+diff --git a/Documentation/devicetree/bindings/hwmon/adi,ltc4282.yaml b/Documentation/devicetree/bindings/hwmon/adi,ltc4282.yaml
+new file mode 100644
+index 000000000000..be3db64b9c18
+--- /dev/null
++++ b/Documentation/devicetree/bindings/hwmon/adi,ltc4282.yaml
+@@ -0,0 +1,142 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/hwmon/adi,ltc4282.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Analog Devices LTC4282 I2C High Current Hot Swap Controller over I2C
++
++maintainers:
++  - Nuno Sa <nuno.sa@analog.com>
++
++description: |
++  Analog Devices LTC4282 I2C High Current Hot Swap Controller over I2C.
++
++  https://www.analog.com/media/en/technical-documentation/data-sheets/ltc4282.pdf
++
++properties:
++  compatible:
++    enum:
++      - adi,ltc4282
++
++  reg:
++    maxItems: 1
++
++  vdd-supply: true
++
++  clocks:
++    maxItems: 1
++
++  '#clock-cells':
++    const: 0
++
++  adi,rsense-nano-ohms:
++    description: Value of the sense resistor.
++
++  adi,vin-mode-microvolt:
++    description:
++      Selects operating range for the Undervoltage, Overvoltage and Foldback
++      pins. Also for the ADC. Should be set to the nominal input voltage.
++    enum: [3300000, 5000000, 12000000, 24000000]
++    default: 12000000
++
++  adi,fet-bad-timeout-ms:
++    description:
++      From the moment a FET bad conditions is present, this property selects the
++      wait time/timeout for a FET-bad fault to be signaled. Setting this to 0,
++      disables FET bad faults to be reported.
++    default: 255
++    maximum: 255
++
++  adi,overvoltage-dividers:
++    description: |
++      Select which dividers to use for VDD Overvoltage detection. Note that
++      when the internal dividers are used the threshold is referenced to VDD.
++      The percentages in the datasheet are misleading since the actual values
++      to look for are in the "Absolute Maximum Ratings" table in the
++      "Comparator Inputs" section. In there there's a line for each of the 5%,
++      10% and 15% settings with the actual min, typical and max tolerances.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [external, vdd_5_percent, vdd_10_percent, vdd_15_percent]
++
++  adi,undervoltage-dividers:
++    description: |
++      Select which dividers to use for VDD Overvoltage detection. Note that
++      when the internal dividers are used the threshold is referenced to VDD.
++      The percentages in the datasheet are misleading since the actual values
++      to look for are in the "Absolute Maximum Ratings" table in the
++      "Comparator Inputs" section. In there there's a line for each of the 5%,
++      10% and 15% settings with the actual min, typical and max tolerances.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [external, vdd_5_percent, vdd_10_percent, vdd_15_percent]
++
++  adi,current-limit-sense-microvolt:
++    description:
++      The current limit sense voltage of the chip is adjustable between
++      12.5mV and 34.4mV in 3.1mV steps. This effectively limits the current
++      on the load.
++    enum: [12500, 15625, 18750, 21875, 25000, 28125, 31250, 34375]
++    default: 25000
++
++  adi,overcurrent-retry:
++    description:
++      If set, enables the chip to auto-retry 256 timer cycles after an
++      Overcurrent fault.
++    type: boolean
++
++  adi,overvoltage-retry-disable:
++    description:
++      If set, disables the chip to auto-retry 50ms after an Overvoltage fault.
++      It's enabled by default.
++    type: boolean
++
++  adi,undervoltage-retry-disable:
++    description:
++      If set, disables the chip to auto-retry 50ms after an Undervoltage fault.
++      It's enabled by default.
++    type: boolean
++
++  adi,fault-log-enable:
++    description:
++      If set, enables the FAULT_LOG and ADC_ALERT_LOG registers to be written
++      to the EEPROM when a fault bit transitions high and hence, will be
++      available after a power cycle (the chip loads the contents of
++      the EE_FAULT_LOG register - the one in EEPROM - into FAULT_LOG at boot).
++    type: boolean
++
++  adi,gpio1-mode:
++    description: Defines the function of the Pin. It can indicate that power is
++      good (PULL the pin low when power is not good) or that power is bad (Go
++      into high-z when power is not good).
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [power_bad, power_good]
++
++  adi,gpio2-mode:
++    description: Defines the function of the Pin. It can be set as the input for
++      the ADC or indicating that the MOSFET is in stress (dissipating power).
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [adc_input, stress_fet]
++
++required:
++  - compatible
++  - reg
++  - adi,rsense-nano-ohms
++
++additionalProperties: false
++
++examples:
++  - |
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        hwmon@50 {
++            compatible = "adi,ltc4282";
++            reg = <0x50>;
++            adi,rsense-nano-ohms = <500>;
++
++            adi,gpio1-mode = "power_good";
++            adi,gpio2-mode = "adc_input";
++        };
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index cd9591df77d7..1d209f226ffa 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -12636,6 +12636,12 @@ S:	Maintained
+ F:	Documentation/hwmon/ltc4261.rst
+ F:	drivers/hwmon/ltc4261.c
+ 
++LTC4282 HARDWARE MONITOR DRIVER
++M:	Nuno Sa <nuno.sa@analog.com>
++L:	linux-hwmon@vger.kernel.org
++S:	Supported
++F:	Documentation/devicetree/bindings/hwmon/adi,ltc4282.yaml
++
+ LTC4306 I2C MULTIPLEXER DRIVER
+ M:	Michael Hennerich <michael.hennerich@analog.com>
+ L:	linux-i2c@vger.kernel.org
 
-Thanks!
-- Nuno Sá
+-- 
+2.43.0
 
