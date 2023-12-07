@@ -1,194 +1,70 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Tue, 05 Dec 2023 18:06:48 +0100
-Subject: [PATCH 8/8] iio: adc: adi-axi-adc: convert to regmap
+Subject: [PATCH v2 0/8] iio: ad9467 and axi-adc cleanups
+Date: Thu, 07 Dec 2023 13:39:23 +0100
+Message-Id: <20231207-iio-backend-prep-v2-0-a4a33bc4d70e@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20231205-iio-backend-prep-v1-8-7c9bc18d612b@analog.com>
-References: <20231205-iio-backend-prep-v1-0-7c9bc18d612b@analog.com>
-In-Reply-To: <20231205-iio-backend-prep-v1-0-7c9bc18d612b@analog.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAPy8cWUC/32NQQ6CMBBFr0Jm7Zi2IIIr72FYlHaAidqS1jQa0
+ rtbOYDL95L//gaRAlOES7VBoMSRvSugDhWYRbuZkG1hUELVUokTMnsctbmTs7gGWrGxfUtT3Ta
+ iE1BmRU783pO3ofDC8eXDZ39I8mf/xJJEgWfTj0Z2tpVqvGqnH34+Gv+EIef8BZqpNUWxAAAA
 To: linux-iio@vger.kernel.org
 Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>
+ Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>, 
+ David Lechner <dlechner@baylibre.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1701796004; l=4779;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1701952767; l=1795;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=pXYTHlTNV0lEKqQpwgzCRwzdqvuOQxn+WxE6GekCLjY=;
- b=Xi31l1QZs6q4LaGqTXlAxo6t1vAzB3KErDwZU8OuKdW+DfAtkJeUSR227iTJmTxdNMlTdo3Dg
- ypm6VmShTShA3bbhjBv6BbJTeXyUbWT78Vl06Jgx9q7H1nslI85NHXM
+ bh=wUA4Tq0B1/koCIeTJDDgCQRKEa6nZJuFEgep+ax7t/U=;
+ b=W31xjp6xn74qnSOMDzP3WHkqJyfdNJY4Zfj4fGgEcA53RKoA0ldbFHej3t5zvVjvI3qfitYFj
+ +oAg/JFddggBL1XWBLw8VK+7215+DH/n77X50ljjwttO63oL3b1iOzo
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use MMIO regmap interface. It makes things easier for manipulating bits.
+As requested in [1], this is a preparatory series with some basic cleanups for
+the ad9467 and adi-axi-adc drivers.
 
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+This means that the iio backend series [2] will depend on this one but
+hopefully we'll quickly get this one in.
+
+[1]: https://lore.kernel.org/linux-iio/20231204144925.4fe9922f@jic23-huawei/T/#ma7ed8a58d747e78e1ff2273c2d6cdd11de22f177
+[2]: https://lore.kernel.org/linux-iio/20231204144925.4fe9922f@jic23-huawei/T/#m222f5175273b81dbfe40b7f0daffcdc67d6cb8ff
+
 ---
- drivers/iio/adc/adi-axi-adc.c | 85 ++++++++++++++++++++++++++-----------------
- 1 file changed, 52 insertions(+), 33 deletions(-)
+Changes in v2:
+- Patch 1.
+  * Use IS_ERR_OR_NULL() and PTR_ERR_OR_ZERO();
+  * Improved commit message (mention it's inverted polarity).
+- Patch 4:
+  * Properly allocate enough memory for the scale array;
+  * Use devm_kmalloc_array() as we don't need to zero initialize it;
+  * Don't multiple by 2 in the for() loop. We just want to go over the
+    rows.
+ 
+- Link to v1: https://lore.kernel.org/r/20231205-iio-backend-prep-v1-0-7c9bc18d612b@analog.com
 
-diff --git a/drivers/iio/adc/adi-axi-adc.c b/drivers/iio/adc/adi-axi-adc.c
-index ae83ada7f9f2..c247ff1541d2 100644
---- a/drivers/iio/adc/adi-axi-adc.c
-+++ b/drivers/iio/adc/adi-axi-adc.c
-@@ -14,6 +14,7 @@
- #include <linux/of.h>
- #include <linux/platform_device.h>
- #include <linux/property.h>
-+#include <linux/regmap.h>
- #include <linux/slab.h>
- 
- #include <linux/iio/iio.h>
-@@ -62,7 +63,7 @@ struct adi_axi_adc_state {
- 	struct mutex				lock;
- 
- 	struct adi_axi_adc_client		*client;
--	void __iomem				*regs;
-+	struct regmap				*regmap;
- };
- 
- struct adi_axi_adc_client {
-@@ -90,19 +91,6 @@ void *adi_axi_adc_conv_priv(struct adi_axi_adc_conv *conv)
- }
- EXPORT_SYMBOL_NS_GPL(adi_axi_adc_conv_priv, IIO_ADI_AXI);
- 
--static void adi_axi_adc_write(struct adi_axi_adc_state *st,
--			      unsigned int reg,
--			      unsigned int val)
--{
--	iowrite32(val, st->regs + reg);
--}
--
--static unsigned int adi_axi_adc_read(struct adi_axi_adc_state *st,
--				     unsigned int reg)
--{
--	return ioread32(st->regs + reg);
--}
--
- static int adi_axi_adc_config_dma_buffer(struct device *dev,
- 					 struct iio_dev *indio_dev)
- {
-@@ -163,17 +151,20 @@ static int adi_axi_adc_update_scan_mode(struct iio_dev *indio_dev,
- {
- 	struct adi_axi_adc_state *st = iio_priv(indio_dev);
- 	struct adi_axi_adc_conv *conv = &st->client->conv;
--	unsigned int i, ctrl;
-+	unsigned int i;
-+	int ret;
- 
- 	for (i = 0; i < conv->chip_info->num_channels; i++) {
--		ctrl = adi_axi_adc_read(st, ADI_AXI_REG_CHAN_CTRL(i));
--
- 		if (test_bit(i, scan_mask))
--			ctrl |= ADI_AXI_REG_CHAN_CTRL_ENABLE;
-+			ret = regmap_set_bits(st->regmap,
-+					      ADI_AXI_REG_CHAN_CTRL(i),
-+					      ADI_AXI_REG_CHAN_CTRL_ENABLE);
- 		else
--			ctrl &= ~ADI_AXI_REG_CHAN_CTRL_ENABLE;
--
--		adi_axi_adc_write(st, ADI_AXI_REG_CHAN_CTRL(i), ctrl);
-+			ret = regmap_clear_bits(st->regmap,
-+						ADI_AXI_REG_CHAN_CTRL(i),
-+						ADI_AXI_REG_CHAN_CTRL_ENABLE);
-+		if (ret)
-+			return ret;
- 	}
- 
- 	return 0;
-@@ -310,21 +301,32 @@ static int adi_axi_adc_setup_channels(struct device *dev,
- 	}
- 
- 	for (i = 0; i < conv->chip_info->num_channels; i++) {
--		adi_axi_adc_write(st, ADI_AXI_REG_CHAN_CTRL(i),
--				  ADI_AXI_REG_CHAN_CTRL_DEFAULTS);
-+		ret = regmap_write(st->regmap, ADI_AXI_REG_CHAN_CTRL(i),
-+				   ADI_AXI_REG_CHAN_CTRL_DEFAULTS);
-+		if (ret)
-+			return ret;
- 	}
- 
- 	return 0;
- }
- 
--static void axi_adc_reset(struct adi_axi_adc_state *st)
-+static int axi_adc_reset(struct adi_axi_adc_state *st)
- {
--	adi_axi_adc_write(st, ADI_AXI_REG_RSTN, 0);
-+	int ret;
-+
-+	ret = regmap_write(st->regmap, ADI_AXI_REG_RSTN, 0);
-+	if (ret)
-+		return ret;
-+
- 	mdelay(10);
--	adi_axi_adc_write(st, ADI_AXI_REG_RSTN, ADI_AXI_REG_RSTN_MMCM_RSTN);
-+	ret = regmap_write(st->regmap, ADI_AXI_REG_RSTN,
-+			   ADI_AXI_REG_RSTN_MMCM_RSTN);
-+	if (ret)
-+		return ret;
-+
- 	mdelay(10);
--	adi_axi_adc_write(st, ADI_AXI_REG_RSTN,
--			  ADI_AXI_REG_RSTN_RSTN | ADI_AXI_REG_RSTN_MMCM_RSTN);
-+	return regmap_write(st->regmap, ADI_AXI_REG_RSTN,
-+			    ADI_AXI_REG_RSTN_RSTN | ADI_AXI_REG_RSTN_MMCM_RSTN);
- }
- 
- static void adi_axi_adc_cleanup(void *data)
-@@ -335,12 +337,20 @@ static void adi_axi_adc_cleanup(void *data)
- 	module_put(cl->dev->driver->owner);
- }
- 
-+static const struct regmap_config axi_adc_regmap_config = {
-+	.val_bits = 32,
-+	.reg_bits = 32,
-+	.reg_stride = 4,
-+	.max_register = 0x0800,
-+};
-+
- static int adi_axi_adc_probe(struct platform_device *pdev)
- {
- 	struct adi_axi_adc_conv *conv;
- 	struct iio_dev *indio_dev;
- 	struct adi_axi_adc_client *cl;
- 	struct adi_axi_adc_state *st;
-+	void __iomem *base;
- 	unsigned int ver;
- 	int ret;
- 
-@@ -361,15 +371,24 @@ static int adi_axi_adc_probe(struct platform_device *pdev)
- 	cl->state = st;
- 	mutex_init(&st->lock);
- 
--	st->regs = devm_platform_ioremap_resource(pdev, 0);
--	if (IS_ERR(st->regs))
--		return PTR_ERR(st->regs);
-+	base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(base))
-+		return PTR_ERR(base);
-+
-+	st->regmap = devm_regmap_init_mmio(&pdev->dev, base,
-+					   &axi_adc_regmap_config);
-+	if (IS_ERR(st->regmap))
-+		return PTR_ERR(st->regmap);
- 
- 	conv = &st->client->conv;
- 
--	axi_adc_reset(st);
-+	ret = axi_adc_reset(st);
-+	if (ret)
-+		return ret;
- 
--	ver = adi_axi_adc_read(st, ADI_AXI_REG_VERSION);
-+	ret = regmap_read(st->regmap, ADI_AXI_REG_VERSION, &ver);
-+	if (ret)
-+		return ret;
- 
- 	if (cl->info->version > ver) {
- 		dev_err(&pdev->dev,
+---
+Nuno Sa (8):
+      iio: adc: ad9467: fix reset gpio handling
+      iio: adc: ad9467: don't ignore error codes
+      iio: adc: ad9467: add mutex to struct ad9467_state
+      iio: adc: ad9467: fix scale setting
+      iio: adc: ad9467: use spi_get_device_match_data()
+      iio: adc: ad9467: use chip_info variables instead of array
+      iio: adc: ad9467: use the more common !val NULL check
+      iio: adc: adi-axi-adc: convert to regmap
 
--- 
-2.43.0
+ drivers/iio/adc/ad9467.c            | 207 +++++++++++++++++++++++-------------
+ drivers/iio/adc/adi-axi-adc.c       | 159 ++++++++++++---------------
+ include/linux/iio/adc/adi-axi-adc.h |   4 +
+ 3 files changed, 204 insertions(+), 166 deletions(-)
+---
+base-commit: 5c8f90655a7bdb6232b2cea6503df16367b11a53
+change-id: 20231205-iio-backend-prep-4d96ef364080
+--
+
+Thanks!
+- Nuno Sá
 
