@@ -1,196 +1,185 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Thu, 07 Dec 2023 13:39:31 +0100
-Subject: [PATCH v2 8/8] iio: adc: adi-axi-adc: convert to regmap
+From: Nathan Lynch <nathanl@linux.ibm.com>
+Subject: [PATCH v5 00/13] powerpc/pseries: New character devices for system
+ parameters and VPD
+Date: Thu, 07 Dec 2023 17:35:39 -0600
+Message-Id: <20231207-papr-sys_rtas-vs-lockdown-v5-0-2ce965636a58@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20231207-iio-backend-prep-v2-8-a4a33bc4d70e@analog.com>
-References: <20231207-iio-backend-prep-v2-0-a4a33bc4d70e@analog.com>
-In-Reply-To: <20231207-iio-backend-prep-v2-0-a4a33bc4d70e@analog.com>
-To: linux-iio@vger.kernel.org
-Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>, 
- David Lechner <dlechner@baylibre.com>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1701952767; l=4831;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=ey/6CMRvNpLRnhwev6g9elWLuN6NjDAcgBWhuHS/xe0=;
- b=vya9zRUMhCS4T+se37Z2KFkNnao+lne9BBQwH3NyYHajGli1J1M3dtPkLnRY/anWTlHWpXLYv
- +I9DYCLrj0vCYn3sCOxV3judJEHWe6K+fJYCCL11XkPgHrkYZWTXBLT
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAMtWcmUC/4XR3U7DMAwF4FeZck0mx2maliveAyGUH5dFbE2Vj
+ LBp6ruTTggQTOXyWPLnI/nCMqVAmd1vLixRCTnEsQZ1t2FuZ8YX4sHXzBBQQic0n8yUeD7n53Q
+ 0mZfM99G9+vg+cuVUo0B5q3tkdX9KNITT1X58qnkX8jGm8/VUEcv0U0VcUYvgwHuJLUo3SKftw
+ z6Mb6dtsIeti4fl0KIIgPY/RRrZ2sG2LSH9UpZ+Bb86CRByTcOqkfEgHIHQiLc0+UNDtabJqim
+ y0CjVk/bdLa351sTqF0pTtfqCxnfOdgr+dJvn+QP6wo2C9gEAAA==
+To: Michael Ellerman <mpe@ellerman.id.au>, 
+ Nicholas Piggin <npiggin@gmail.com>
+Cc: linuxppc-dev@lists.ozlabs.org, 
+ =?utf-8?q?Michal_Such=C3=A1nek?= <msuchanek@suse.de>, 
+ "Aneesh Kumar K.V (IBM)" <aneesh.kumar@kernel.org>, tyreld@linux.ibm.com, 
+ gcwilson@linux.ibm.com, Nathan Lynch <nathanl@linux.ibm.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1701992313; l=7953;
+ i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
+ bh=Z5FrPSlrpNyihWJgo/BhYVW9Duj9UibbgWf4eqWu6S4=;
+ b=z8t/DQOBit644htqh6z2aWvfZkI7NL6EZJ+Dk7eVPyK8J9GXDQVa1cEuW5OA+yCm5s854JGLT
+ rJqpMdxtr04CHLIa+obk5KhipoSq8T9Wc0C5bbvFnN7ihBgl5z7OVQ+
+X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
+ pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
+X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use MMIO regmap interface. It makes things easier for manipulating bits.
+Add character devices that expose PAPR-specific system parameters and
+VPD to user space.
 
-Reviewed-by: David Lechner <dlechner@baylibre.com>
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+The problem: important platform features are enabled on Linux VMs
+through the powerpc-specific rtas() syscall in combination with
+writeable mappings of /dev/mem. In typical usage, this is encapsulated
+behind APIs provided by the librtas library. This paradigm is
+incompatible with lockdown, which prohibits /dev/mem access. It also
+is too low-level in many cases: a single logical operation may require
+multiple sys_rtas() calls in succession to complete. This carries the
+risk that a process may exit while leaving an operation unfinished. It
+also means that callers must coordinate their use of the syscall for
+functions that cannot tolerate multiple concurrent clients, such as
+ibm,get-vpd.
+
+These are the general problems, but it's difficult to formulate a
+similarly general solution in the form of a single replacement ABI for
+sys_rtas(). Instead, each platform facility we expose to user space
+needs a specific interface that forms the kernel-user interactions at
+a higher level than individual RTAS calls.
+
+I've identified system parameter support as a high priority for this
+effort, since the software that communicates with the management
+console relies on it and therefore does not work at all with lockdown
+enabled on current kernels. VPD retrieval is also important (for
+licensing/entitlement things I think?), and serves as a good initial
+example of encapsulating sequence-based RTAS calls. So this series
+proposes a model for incrementally solving these issues by introducing
+a small pseries-specific "driver" for each of these platform
+functions. The new drivers expose these facilities to user space in
+ways that are compatible with lockdown, and they require no
+coordination between their clients.
+
+In preparation, per-function mutexes are added to the core RTAS code
+to serialize access to sequence-based RTAS functions. These prevent
+kernel-based sequences from interfering with each other, and they
+prevent sys_rtas() users from disrupting kernel-based users. The RTAS
+core enforces correct lock usage when lockdep is enabled.
+
+Both drivers could potentially support poll() methods to notify
+clients of changes to parameters or VPD that happen due to partition
+migration and other events. But that should be safe to leave for
+later, assuming there's any interest.
+
+I have made changes to librtas to prefer the new interfaces and
+verified that existing clients work correctly with the new code. A
+draft PR for that work is here:
+
+https://github.com/ibm-power-utilities/librtas/pull/36
+
+The user-space ABI has not changed since v1 of this series.
+
+I expect to propose at least one more small driver in this style for
+platform dump retrieval in a separate submission in the future. Other
+facilities may follow as needs are identified.
+
 ---
- drivers/iio/adc/adi-axi-adc.c | 85 ++++++++++++++++++++++++++-----------------
- 1 file changed, 52 insertions(+), 33 deletions(-)
+Changes in v5:
+- Add to the front of the queue another fix for a latent bug where
+  sys_rtas() users can trigger a spurious warning backtrace.
+- Merge "powerpc/uapi: Export papr-miscdev.h header" into "Add
+  papr-vpd character driver for VPD retrieval" so we don't temporarily
+  expose the PAPR_MISCDEV_IOC_ID constant via UAPI without also
+  updating the ioctl-number documentation. (Michael Ellerman)
+- Drop rtas_function_{un}lock() in favor of more explicit use of the new
+  per-function mutexes; make rtas_ibm_get_vpd_lock extern for use by
+  papr-vpd.
+- Assert that rtas_ibm_get_vpd_lock is held in rtas_ibm_get_vpd().
+- Add example usage to "powerpc/rtas: Facilitate high-level call
+  sequences". (Aneesh Kumar K.V)
+- Drop the now-unnecessary 04/13 "powerpc/rtas: Factor out function
+  descriptor lookup".
+- Include document version when citing the PAPR+ specification
+  throughout. (Michael Ellerman)
+- Add missing include directives to papr-vpd and papr-sysparm. (Michal
+  Suchánek)
+- Fix spurious testcase failure in environments without a working
+  ibm,set-system-parameter RTAS function. (Michael Ellerman)
+- Link to v4: https://lore.kernel.org/r/20231117-papr-sys_rtas-vs-lockdown-v4-0-b794d8cb8502@linux.ibm.com
 
-diff --git a/drivers/iio/adc/adi-axi-adc.c b/drivers/iio/adc/adi-axi-adc.c
-index ae83ada7f9f2..c247ff1541d2 100644
---- a/drivers/iio/adc/adi-axi-adc.c
-+++ b/drivers/iio/adc/adi-axi-adc.c
-@@ -14,6 +14,7 @@
- #include <linux/of.h>
- #include <linux/platform_device.h>
- #include <linux/property.h>
-+#include <linux/regmap.h>
- #include <linux/slab.h>
- 
- #include <linux/iio/iio.h>
-@@ -62,7 +63,7 @@ struct adi_axi_adc_state {
- 	struct mutex				lock;
- 
- 	struct adi_axi_adc_client		*client;
--	void __iomem				*regs;
-+	struct regmap				*regmap;
- };
- 
- struct adi_axi_adc_client {
-@@ -90,19 +91,6 @@ void *adi_axi_adc_conv_priv(struct adi_axi_adc_conv *conv)
- }
- EXPORT_SYMBOL_NS_GPL(adi_axi_adc_conv_priv, IIO_ADI_AXI);
- 
--static void adi_axi_adc_write(struct adi_axi_adc_state *st,
--			      unsigned int reg,
--			      unsigned int val)
--{
--	iowrite32(val, st->regs + reg);
--}
--
--static unsigned int adi_axi_adc_read(struct adi_axi_adc_state *st,
--				     unsigned int reg)
--{
--	return ioread32(st->regs + reg);
--}
--
- static int adi_axi_adc_config_dma_buffer(struct device *dev,
- 					 struct iio_dev *indio_dev)
- {
-@@ -163,17 +151,20 @@ static int adi_axi_adc_update_scan_mode(struct iio_dev *indio_dev,
- {
- 	struct adi_axi_adc_state *st = iio_priv(indio_dev);
- 	struct adi_axi_adc_conv *conv = &st->client->conv;
--	unsigned int i, ctrl;
-+	unsigned int i;
-+	int ret;
- 
- 	for (i = 0; i < conv->chip_info->num_channels; i++) {
--		ctrl = adi_axi_adc_read(st, ADI_AXI_REG_CHAN_CTRL(i));
--
- 		if (test_bit(i, scan_mask))
--			ctrl |= ADI_AXI_REG_CHAN_CTRL_ENABLE;
-+			ret = regmap_set_bits(st->regmap,
-+					      ADI_AXI_REG_CHAN_CTRL(i),
-+					      ADI_AXI_REG_CHAN_CTRL_ENABLE);
- 		else
--			ctrl &= ~ADI_AXI_REG_CHAN_CTRL_ENABLE;
--
--		adi_axi_adc_write(st, ADI_AXI_REG_CHAN_CTRL(i), ctrl);
-+			ret = regmap_clear_bits(st->regmap,
-+						ADI_AXI_REG_CHAN_CTRL(i),
-+						ADI_AXI_REG_CHAN_CTRL_ENABLE);
-+		if (ret)
-+			return ret;
- 	}
- 
- 	return 0;
-@@ -310,21 +301,32 @@ static int adi_axi_adc_setup_channels(struct device *dev,
- 	}
- 
- 	for (i = 0; i < conv->chip_info->num_channels; i++) {
--		adi_axi_adc_write(st, ADI_AXI_REG_CHAN_CTRL(i),
--				  ADI_AXI_REG_CHAN_CTRL_DEFAULTS);
-+		ret = regmap_write(st->regmap, ADI_AXI_REG_CHAN_CTRL(i),
-+				   ADI_AXI_REG_CHAN_CTRL_DEFAULTS);
-+		if (ret)
-+			return ret;
- 	}
- 
- 	return 0;
- }
- 
--static void axi_adc_reset(struct adi_axi_adc_state *st)
-+static int axi_adc_reset(struct adi_axi_adc_state *st)
- {
--	adi_axi_adc_write(st, ADI_AXI_REG_RSTN, 0);
-+	int ret;
-+
-+	ret = regmap_write(st->regmap, ADI_AXI_REG_RSTN, 0);
-+	if (ret)
-+		return ret;
-+
- 	mdelay(10);
--	adi_axi_adc_write(st, ADI_AXI_REG_RSTN, ADI_AXI_REG_RSTN_MMCM_RSTN);
-+	ret = regmap_write(st->regmap, ADI_AXI_REG_RSTN,
-+			   ADI_AXI_REG_RSTN_MMCM_RSTN);
-+	if (ret)
-+		return ret;
-+
- 	mdelay(10);
--	adi_axi_adc_write(st, ADI_AXI_REG_RSTN,
--			  ADI_AXI_REG_RSTN_RSTN | ADI_AXI_REG_RSTN_MMCM_RSTN);
-+	return regmap_write(st->regmap, ADI_AXI_REG_RSTN,
-+			    ADI_AXI_REG_RSTN_RSTN | ADI_AXI_REG_RSTN_MMCM_RSTN);
- }
- 
- static void adi_axi_adc_cleanup(void *data)
-@@ -335,12 +337,20 @@ static void adi_axi_adc_cleanup(void *data)
- 	module_put(cl->dev->driver->owner);
- }
- 
-+static const struct regmap_config axi_adc_regmap_config = {
-+	.val_bits = 32,
-+	.reg_bits = 32,
-+	.reg_stride = 4,
-+	.max_register = 0x0800,
-+};
-+
- static int adi_axi_adc_probe(struct platform_device *pdev)
- {
- 	struct adi_axi_adc_conv *conv;
- 	struct iio_dev *indio_dev;
- 	struct adi_axi_adc_client *cl;
- 	struct adi_axi_adc_state *st;
-+	void __iomem *base;
- 	unsigned int ver;
- 	int ret;
- 
-@@ -361,15 +371,24 @@ static int adi_axi_adc_probe(struct platform_device *pdev)
- 	cl->state = st;
- 	mutex_init(&st->lock);
- 
--	st->regs = devm_platform_ioremap_resource(pdev, 0);
--	if (IS_ERR(st->regs))
--		return PTR_ERR(st->regs);
-+	base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(base))
-+		return PTR_ERR(base);
-+
-+	st->regmap = devm_regmap_init_mmio(&pdev->dev, base,
-+					   &axi_adc_regmap_config);
-+	if (IS_ERR(st->regmap))
-+		return PTR_ERR(st->regmap);
- 
- 	conv = &st->client->conv;
- 
--	axi_adc_reset(st);
-+	ret = axi_adc_reset(st);
-+	if (ret)
-+		return ret;
- 
--	ver = adi_axi_adc_read(st, ADI_AXI_REG_VERSION);
-+	ret = regmap_read(st->regmap, ADI_AXI_REG_VERSION, &ver);
-+	if (ret)
-+		return ret;
- 
- 	if (cl->info->version > ver) {
- 		dev_err(&pdev->dev,
+Changes in v4:
+- Fix latent issue in rtas_token_to_function() which causes boot-time
+  crashes.
+- More small preparatory changes: a function table iterator and
+  additional symbolic constants for RTAS function return values.
+- Use symbolic constants for ibm,get-vpd statuses in papr-vpd.c.
+- Add commentary to papr_vpd_ioc_create_handle() explaining choice to
+  retrieve all VPD at file handle creation time instead of deferring
+  it to the read handler.
+- Rebase on current powerpc/next.
+- Link to v3: https://lore.kernel.org/r/20231025-papr-sys_rtas-vs-lockdown-v3-0-5eb04559e7d8@linux.ibm.com
 
+Changes in v3:
+- Add new rtas_function_lock()/unlock() APIs and convert existing code
+  to use them.
+- Convert papr-vpd to use rtas_function_lock()/unlock() instead of
+  having sys_rtas() obtain a driver-private mutex.
+- Rebase on current powerpc/next.
+- Link to v2: https://lore.kernel.org/r/20231013-papr-sys_rtas-vs-lockdown-v2-0-ead01ce01722@linux.ibm.com
+
+Changes in v2:
+- Fix unused-but-set variable warning in papr-sysparm code.
+- Rebase on powerpc/next branch.
+- Link to v1: https://lore.kernel.org/r/20231006-papr-sys_rtas-vs-lockdown-v1-0-3a36bfb66e2e@linux.ibm.com
+
+Changes in v1 vs initial RFC:
+- Add papr-sysparm driver and tests.
+- Add a papr-miscdev.h uapi header.
+- Prevent sys_rtas() from interfering with papr-vpd call sequences.
+- Handle -4 ("VPD changed") status in papr-vpd.
+- Include string_helpers.h in papr-vpd.c, per Michal Suchánek
+- Link to RFC: https://lore.kernel.org/r/20230822-papr-sys_rtas-vs-lockdown-v1-0-932623cf3c7b@linux.ibm.com
+
+---
+Nathan Lynch (13):
+      powerpc/rtas: Avoid warning on invalid token argument to sys_rtas()
+      powerpc/rtas: Add for_each_rtas_function() iterator
+      powerpc/rtas: Fall back to linear search on failed token->function lookup
+      powerpc/rtas: Add function return status constants
+      powerpc/rtas: Move token validation from block_rtas_call() to sys_rtas()
+      powerpc/rtas: Facilitate high-level call sequences
+      powerpc/rtas: Serialize firmware activation sequences
+      powerpc/rtas: Warn if per-function lock isn't held
+      powerpc/pseries: Add papr-vpd character driver for VPD retrieval
+      powerpc/pseries/papr-sysparm: Validate buffer object lengths
+      powerpc/pseries/papr-sysparm: Expose character device to user space
+      powerpc/selftests: Add test for papr-vpd
+      powerpc/selftests: Add test for papr-sysparm
+
+ Documentation/userspace-api/ioctl/ioctl-number.rst |   4 +
+ arch/powerpc/include/asm/papr-sysparm.h            |  17 +-
+ arch/powerpc/include/asm/rtas.h                    |  28 +-
+ arch/powerpc/include/uapi/asm/papr-miscdev.h       |   9 +
+ arch/powerpc/include/uapi/asm/papr-sysparm.h       |  58 +++
+ arch/powerpc/include/uapi/asm/papr-vpd.h           |  22 +
+ arch/powerpc/kernel/rtas.c                         | 184 +++++--
+ arch/powerpc/platforms/pseries/Makefile            |   1 +
+ arch/powerpc/platforms/pseries/papr-sysparm.c      | 202 +++++++-
+ arch/powerpc/platforms/pseries/papr-vpd.c          | 541 +++++++++++++++++++++
+ tools/testing/selftests/powerpc/Makefile           |   2 +
+ .../selftests/powerpc/papr_sysparm/.gitignore      |   1 +
+ .../selftests/powerpc/papr_sysparm/Makefile        |  12 +
+ .../selftests/powerpc/papr_sysparm/papr_sysparm.c  | 165 +++++++
+ .../testing/selftests/powerpc/papr_vpd/.gitignore  |   1 +
+ tools/testing/selftests/powerpc/papr_vpd/Makefile  |  12 +
+ .../testing/selftests/powerpc/papr_vpd/papr_vpd.c  | 352 ++++++++++++++
+ 17 files changed, 1562 insertions(+), 49 deletions(-)
+---
+base-commit: 27951e1d8274e9f9a2925b069e4492939a3f2099
+change-id: 20230817-papr-sys_rtas-vs-lockdown-5c54505db792
+
+Best regards,
 -- 
-2.43.0
+Nathan Lynch <nathanl@linux.ibm.com>
 
