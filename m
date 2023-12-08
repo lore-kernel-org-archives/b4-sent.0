@@ -1,254 +1,62 @@
-From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Thu, 07 Dec 2023 17:35:52 -0600
-Subject: [PATCH v5 13/13] powerpc/selftests: Add test for papr-sysparm
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v2 0/2] Add some devices nodes for S4.
+Date: Fri, 08 Dec 2023 15:16:25 +0800
+Message-Id: <20231208-s4-dts-v2-0-5a93fa356c5d@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231207-papr-sys_rtas-vs-lockdown-v5-13-2ce965636a58@linux.ibm.com>
-References: <20231207-papr-sys_rtas-vs-lockdown-v5-0-2ce965636a58@linux.ibm.com>
-In-Reply-To: <20231207-papr-sys_rtas-vs-lockdown-v5-0-2ce965636a58@linux.ibm.com>
-To: Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>
-Cc: linuxppc-dev@lists.ozlabs.org, 
- =?utf-8?q?Michal_Such=C3=A1nek?= <msuchanek@suse.de>, 
- "Aneesh Kumar K.V (IBM)" <aneesh.kumar@kernel.org>, tyreld@linux.ibm.com, 
- gcwilson@linux.ibm.com, Nathan Lynch <nathanl@linux.ibm.com>
+X-B4-Tracking: v=1; b=H4sIAMnCcmUC/0XMQQ6CMBCF4auQWTuknVZCXXkP46LSASYRSlqiR
+ MLdbdy4/JL/vR0yJ+EMl2qHxC/JEucCOlXQjX4eGCUUAykymlSL2WJYM5IN/AjNuSHloMRL4l6
+ 239HtXtynOOE6Jvb/uSanHDnratLKGNOixk38/GapP6OPVz894yBd3cUJjuMLP2hC5pwAAAA=
+To: Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1701992313; l=6039;
- i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=ducrKfswVTVhi6LZ07K+mUoOfeocSLYQ9YCd2ZJkwbs=;
- b=A9Vm1H3dCb6pqz/U/ogt3qHypJ5vNOVn45csyDvmYAq6oiirLlpSfAI1MP8qWh16NrpQx/+D6
- tV1dJTVO/H9BoGeA1GKG2dECdzEFQfTIK2KHQWnhAo+AUUoFjB23dLr
-X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
- pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
-X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1702019788; l=1074;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=x1LVuWnPlnaL4+2ytK6scMJJiGc0PC686IXbzerTiJw=;
+ b=ec+Ua7KFxOXT8HGqxc1F4xX4Bxgl9cTzrFEJxXZPSLqxRST5tvzJdnm2ui19/ZBp6SAD0ck5l
+ lZlTeCFIAC2BJ+NJl5bWz97x6ZiBFhzLebcuXOWgOFX6ZZnSMlCmcE4
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Consistently testing system parameter access is a bit difficult by
-nature -- the set of parameters available depends on the model and
-system configuration, and updating a parameter should be considered a
-destructive operation reserved for the admin.
+Add some device nodes for SoC S4, including periphs clock controller
+node, PLL clock controller node, I2C nodes, SPICC node, NAND
+controller node, Ethernet MAC and PHY node.
 
-So we validate some of the error paths and retrieve the SPLPAR
-characteristics string, but not much else.
+Add reserved memory for board AQ222 which is used by ATF.
+Enable NAND, SPICC nodes for board AQ222.
 
-Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
 ---
- tools/testing/selftests/powerpc/Makefile           |   1 +
- .../selftests/powerpc/papr_sysparm/.gitignore      |   1 +
- .../selftests/powerpc/papr_sysparm/Makefile        |  12 ++
- .../selftests/powerpc/papr_sysparm/papr_sysparm.c  | 165 +++++++++++++++++++++
- 4 files changed, 179 insertions(+)
+Changes in v2:
+- Separate and independent commit for dts file.
+- Revision format error.
+- Add comment for resered memory.
+- Link to v1: https://lore.kernel.org/all/20231129092949.2103338-1-xianwei.zhao@amlogic.com/
 
-diff --git a/tools/testing/selftests/powerpc/Makefile b/tools/testing/selftests/powerpc/Makefile
-index 05fc68d446c2..c376151982c4 100644
---- a/tools/testing/selftests/powerpc/Makefile
-+++ b/tools/testing/selftests/powerpc/Makefile
-@@ -33,6 +33,7 @@ SUB_DIRS = alignment		\
- 	   math		\
- 	   papr_attributes	\
- 	   papr_vpd		\
-+	   papr_sysparm		\
- 	   ptrace	\
- 	   security	\
- 	   mce
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/.gitignore b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-new file mode 100644
-index 000000000000..f2a69bf59d40
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-@@ -0,0 +1 @@
-+/papr_sysparm
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/Makefile b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-new file mode 100644
-index 000000000000..7f79e437634a
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-@@ -0,0 +1,12 @@
-+# SPDX-License-Identifier: GPL-2.0
-+noarg:
-+	$(MAKE) -C ../
-+
-+TEST_GEN_PROGS := papr_sysparm
-+
-+top_srcdir = ../../../../..
-+include ../../lib.mk
-+
-+$(TEST_GEN_PROGS): ../harness.c ../utils.c
-+
-+$(OUTPUT)/papr_sysparm: CFLAGS += $(KHDR_INCLUDES)
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-new file mode 100644
-index 000000000000..9d4850c25aed
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-@@ -0,0 +1,165 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <stdlib.h>
-+#include <sys/ioctl.h>
-+#include <unistd.h>
-+#include <asm/papr-sysparm.h>
-+
-+#include "utils.h"
-+
-+#define DEVPATH "/dev/papr-sysparm"
-+
-+static int open_close(void)
-+{
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int get_splpar(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 20, // SPLPAR characteristics
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != 0);
-+	FAIL_IF(sp.length == 0);
-+	FAIL_IF(sp.length > sizeof(sp.data));
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int get_bad_parameter(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = UINT32_MAX, // there are only ~60 specified parameters
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != -1);
-+	FAIL_IF(errno != EOPNOTSUPP);
-+
-+	// Ensure the buffer is unchanged
-+	FAIL_IF(sp.length != 0);
-+	for (size_t i = 0; i < ARRAY_SIZE(sp.data); ++i)
-+		FAIL_IF(sp.data[i] != 0);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_common(unsigned long cmd)
-+{
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, cmd, NULL) != -1);
-+	FAIL_IF(errno != EFAULT);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_get(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_GET);
-+}
-+
-+static int check_efault_set(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_SET);
-+}
-+
-+static int set_hmc0(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 0, // HMC0, not a settable parameter
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_SET, &sp) != -1);
-+	SKIP_IF_MSG(errno == EOPNOTSUPP, "operation not supported");
-+	FAIL_IF(errno != EPERM);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+struct sysparm_test {
-+	int (*function)(void);
-+	const char *description;
-+};
-+
-+static const struct sysparm_test sysparm_tests[] = {
-+	{
-+		.function = open_close,
-+		.description = "open and close " DEVPATH " without issuing commands",
-+	},
-+	{
-+		.function = get_splpar,
-+		.description = "retrieve SPLPAR characteristics",
-+	},
-+	{
-+		.function = get_bad_parameter,
-+		.description = "verify EOPNOTSUPP for known-bad parameter",
-+	},
-+	{
-+		.function = check_efault_get,
-+		.description = "PAPR_SYSPARM_IOC_GET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = check_efault_set,
-+		.description = "PAPR_SYSPARM_IOC_SET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = set_hmc0,
-+		.description = "ensure EPERM on attempt to update HMC0",
-+	},
-+};
-+
-+int main(void)
-+{
-+	size_t fails = 0;
-+
-+	for (size_t i = 0; i < ARRAY_SIZE(sysparm_tests); ++i) {
-+		const struct sysparm_test *t = &sysparm_tests[i];
-+
-+		if (test_harness(t->function, t->description))
-+			++fails;
-+	}
-+
-+	return fails == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
-+}
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 
+---
+Xianwei Zhao (2):
+      arm64: dts: amlogic: add some device nodes for S4
+      arm64: dts: amlogic: enable some nodes for board AQ222
+
+ .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     |  56 ++++
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 350 ++++++++++++++++++++-
+ 2 files changed, 405 insertions(+), 1 deletion(-)
+---
+base-commit: 093098370b4693b0da8b7fdf5fd212cb46705928
+change-id: 20231208-s4-dts-24debd656209
+
+Best regards,
 -- 
-2.41.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
