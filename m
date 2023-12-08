@@ -1,113 +1,77 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 08 Dec 2023 15:16:27 +0800
-Subject: [PATCH v2 2/2] arm64: dts: amlogic: enable some nodes for board
- AQ222
+From: Rodrigo Cataldo <rodrigo.cadore@l-acoustics.com>
+Date: Fri, 08 Dec 2023 15:58:16 +0100
+Subject: [PATCH iwl-net] igc: Fix hicredit calculation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231208-s4-dts-v2-2-5a93fa356c5d@amlogic.com>
-References: <20231208-s4-dts-v2-0-5a93fa356c5d@amlogic.com>
-In-Reply-To: <20231208-s4-dts-v2-0-5a93fa356c5d@amlogic.com>
-To: Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1702019788; l=1856;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=FPfG6Qexq9rPMZ1Ih+HGmxDokcf3sZTqaUTwsk9LhrI=;
- b=TFxXu9LH3b6E9JDbmpAZ++m2/kXsninEktll5WYBjpjcq4iwMqaSQLy3IOChg7F93LIiVrCfR
- vGEFzRjx+eQBxCdJgF3nIihzGVUXl5mqHOYM3yH21A9+s/2yWEB7pQT
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Message-Id: <20231208-igc-fix-hicredit-calc-v1-1-7e505fbe249d@l-acoustics.com>
+X-B4-Tracking: v=1; b=H4sIAAcvc2UC/x2M0QpGQBQGX0Xn2qm1+pFXkYt1HHylpV2h5N1t/
+ +XUzDwUNUAjtdlDQU9EbD5BkWcki/OzMsbEZI0tC2sqxiw84eYFEnTEweJWYWObYapL+RnXUGr
+ 3oEn6fzvCtbLXg/r3/QCLV9ZIcAAAAA==
+To: Jesse Brandeburg <jesse.brandeburg@intel.com>, 
+ Tony Nguyen <anthony.l.nguyen@intel.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Aravindhan Gunasekaran <aravindhan.gunasekaran@intel.com>, 
+ Mallikarjuna Chilakala <mallikarjuna.chilakala@intel.com>, 
+ Vinicius Costa Gomes <vinicius.gomes@intel.com>
+Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Kurt Kanzenbach <kurt@linutronix.de>, 
+ Rodrigo Cataldo <rodrigo.cadore@l-acoustics.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1657;
+ i=rodrigo.cadore@l-acoustics.com; h=from:subject:message-id;
+ bh=weMSbJurKkzqYl3uCO65fr+skPXlmh7FrZPzSvAd/0U=;
+ b=owGbwMvMwCGWd67IourLsUDG02pJDKnF+qIb625IOjBMseo/ujNfr2h/wfewxacfxdQHmTE/a
+ ZgwOde2o5SFQYyDQVZMkUX/N5/T6jIlI47EySth5rAygQxh4OIUgIk8+8XwPzTNNpGBL+zR5MKJ
+ p5+Kz2J44/LG1P7HE1UO7Y16mb2/LRkZzta4mXeZPFXaEt0UcW9y+Ou8iaGeHh88FVJOc0ZK2TE
+ zAQA=
+X-Developer-Key: i=rodrigo.cadore@l-acoustics.com; a=openpgp;
+ fpr=E0F4E67DE69A235AC356157D2DDD1455748BC38F
+X-Endpoint-Received: by B4 Relay for rodrigo.cadore@l-acoustics.com/default with auth_id=109
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add reserved memory for board AQ222 which is used by ATF.
-Enable NAND, SPICC nodes for board AQ222.
+According to the Intel Software Manual for I225, Section 7.5.2.7,
+hicredit should be multiplied by the constant link-rate value, 0x7736.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Currently, the old constant link-rate value, 0x7735, from the boards
+supported on igb are being used, most likely due to a copy'n'paste, as
+the rest of the logic is the same for both drivers.
+
+Update hicredit accordingly.
+
+Fixes: 1ab011b0bf07 ("igc: Add support for CBS offloading")
+Reviewed-by: Kurt Kanzenbach <kurt@linutronix.de>
+Signed-off-by: Rodrigo Cataldo <rodrigo.cadore@l-acoustics.com>
 ---
- .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     | 56 ++++++++++++++++++++++
- 1 file changed, 56 insertions(+)
+This is a simple fix for the credit calculation on igc devices
+(i225/i226) to match the Intel software manual.
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
-index c1f322c73982..18789242f05f 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
-@@ -23,6 +23,17 @@ memory@0 {
- 		reg = <0x0 0x0 0x0 0x40000000>;
- 	};
- 
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		/* 52 MiB reserved for ARM Trusted Firmware */
-+		secmon_reserved: secmon@5000000 {
-+			reg = <0x0 0x05000000 0x0 0x3400000>;
-+			no-map;
-+		};
-+	};
- };
- 
- &uart_B {
-@@ -34,3 +45,48 @@ &ir {
- 	pinctrl-0 = <&remote_pins>;
- 	pinctrl-names = "default";
- };
-+
-+&nand {
-+	status = "okay";
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	pinctrl-0 = <&nand_pins>;
-+	pinctrl-names = "default";
-+
-+	nand@0 {
-+		reg = <0>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+
-+		nand-on-flash-bbt;
-+
-+		partition@0 {
-+			label = "boot";
-+			reg = <0x0 0x00200000>;
-+		};
-+		partition@200000 {
-+			label = "env";
-+			reg = <0x00200000 0x00400000>;
-+		};
-+		partition@600000 {
-+			label = "system";
-+			reg = <0x00600000 0x00a00000>;
-+		};
-+		partition@1000000 {
-+			label = "rootfs";
-+			reg = <0x01000000 0x03000000>;
-+		};
-+		partition@4000000 {
-+			label = "media";
-+			reg = <0x04000000 0x8000000>;
-+		};
-+	};
-+};
-+
-+&spicc0 {
-+	status = "okay";
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&spicc0_pins_x>;
-+	cs-gpios = <&gpio GPIOX_10 GPIO_ACTIVE_LOW>;
-+};
+This is my first contribution to the Linux Kernel. Apologies for any
+mistakes and let me know if I improve anything.
+---
+ drivers/net/ethernet/intel/igc/igc_tsn.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/drivers/net/ethernet/intel/igc/igc_tsn.c b/drivers/net/ethernet/intel/igc/igc_tsn.c
+index a9c08321aca9..22cefb1eeedf 100644
+--- a/drivers/net/ethernet/intel/igc/igc_tsn.c
++++ b/drivers/net/ethernet/intel/igc/igc_tsn.c
+@@ -227,7 +227,7 @@ static int igc_tsn_enable_offload(struct igc_adapter *adapter)
+ 			wr32(IGC_TQAVCC(i), tqavcc);
+ 
+ 			wr32(IGC_TQAVHC(i),
+-			     0x80000000 + ring->hicredit * 0x7735);
++			     0x80000000 + ring->hicredit * 0x7736);
+ 		} else {
+ 			/* Disable any CBS for the queue */
+ 			txqctl &= ~(IGC_TXQCTL_QAV_SEL_MASK);
+
+---
+base-commit: 2078a341f5f609d55667c2dc6337f90d8f322b8f
+change-id: 20231206-igc-fix-hicredit-calc-028bf73c50a8
+
+Best regards,
 -- 
-2.37.1
+Rodrigo Cataldo <rodrigo.cadore@l-acoustics.com>
 
