@@ -1,11 +1,11 @@
 From: Fenglin Wu <quic_fenglinw@quicinc.com>
-Date: Mon, 11 Dec 2023 11:16:59 +0800
-Subject: [PATCH 1/4] regulator: qcom-rpmh: extend to support multiple
- linear voltage ranges
+Date: Mon, 11 Dec 2023 11:17:00 +0800
+Subject: [PATCH 2/4] regulator: qcom,rpmh: add compatible for pm8010 RPMH
+ regultor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231211-pm8010-regulator-v1-1-571e05fb4ecc@quicinc.com>
+Message-Id: <20231211-pm8010-regulator-v1-2-571e05fb4ecc@quicinc.com>
 References: <20231211-pm8010-regulator-v1-0-571e05fb4ecc@quicinc.com>
 In-Reply-To: <20231211-pm8010-regulator-v1-0-571e05fb4ecc@quicinc.com>
 To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
@@ -20,312 +20,64 @@ Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>,
  quic_subbaram@quicinc.com, quic_jprakash@quicinc.com, 
  Fenglin Wu <quic_fenglinw@quicinc.com>
 X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1702264624; l=12688;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1702264625; l=1788;
  i=quic_fenglinw@quicinc.com; s=20230725; h=from:subject:message-id;
- bh=SVdEgd5HQdyb6pk8HrvszSttzRjxR/pNoavtPI/WJDA=;
- b=a0nC/lXmMu8N5CJ1BTzSb0LfKHy2qICXPGOYivDs/Yi+L3+7PPgEFQ80Cw99uEu5mcxFcjxoa
- yMxaTJkFjELAVHzqYowUAK3jrIDaWrcv6SQ7625eaqIThcrK8ntRaW+
+ bh=/J1wecI9Idvjq7+Myo0iVzg5n9YS96HwefGimd5GXh0=;
+ b=B2XAMLyw0PnUkBiHmr494YTzxtLfHCg1lERz5M0eHkH+P/+9iy/4BE4G02pCOVJCNkV4fcJOn
+ SQs5YuqIjmkD7mRqszoRKiwFnjopSraMvK5xelAZld5KYaoGV2SqQu1
 X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
  pk=hleIDz3Unk1zeiwwOnZUjoQVMMelRancDFXg927lNjI=
 X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20230725 with auth_id=68
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update rpmh_vreg_hw_data to support multiple linear voltage ranges for
-potential regulators which have discrete voltage program ranges.
+Add compatible for PM8010 RPMH regulators present on sm8550-qrd and
+sm8550-mtp boards.
 
 Suggested-by: David Collins <quic_collinsd@quicinc.com>
 Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
- drivers/regulator/qcom-rpmh-regulator.c | 115 ++++++++++++++++++++++++--------
- 1 file changed, 89 insertions(+), 26 deletions(-)
+ .../devicetree/bindings/regulator/qcom,rpmh-regulator.yaml | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/drivers/regulator/qcom-rpmh-regulator.c b/drivers/regulator/qcom-rpmh-regulator.c
-index cf502eec0915..43b45feb02e6 100644
---- a/drivers/regulator/qcom-rpmh-regulator.c
-+++ b/drivers/regulator/qcom-rpmh-regulator.c
-@@ -1,5 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0
- // Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
-+// Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+diff --git a/Documentation/devicetree/bindings/regulator/qcom,rpmh-regulator.yaml b/Documentation/devicetree/bindings/regulator/qcom,rpmh-regulator.yaml
+index acd37f28ef53..27c6d5152413 100644
+--- a/Documentation/devicetree/bindings/regulator/qcom,rpmh-regulator.yaml
++++ b/Documentation/devicetree/bindings/regulator/qcom,rpmh-regulator.yaml
+@@ -42,6 +42,7 @@ description: |
+       For PM7325, smps1 - smps8, ldo1 - ldo19
+       For PM8005, smps1 - smps4
+       For PM8009, smps1 - smps2, ldo1 - ldo7
++      For PM8010, ldo1 - ldo7
+       For PM8150, smps1 - smps10, ldo1 - ldo18
+       For PM8150L, smps1 - smps8, ldo1 - ldo11, bob, flash, rgb
+       For PM8350, smps1 - smps12, ldo1 - ldo10
+@@ -68,6 +69,7 @@ properties:
+       - qcom,pm8005-rpmh-regulators
+       - qcom,pm8009-rpmh-regulators
+       - qcom,pm8009-1-rpmh-regulators
++      - qcom,pm8010-rpmh-regulators
+       - qcom,pm8150-rpmh-regulators
+       - qcom,pm8150l-rpmh-regulators
+       - qcom,pm8350-rpmh-regulators
+@@ -238,6 +240,18 @@ allOf:
+         "^vdd-l[1-47]-supply$": true
+         "^vdd-s[1-2]-supply$": true
  
- #define pr_fmt(fmt) "%s: " fmt, __func__
- 
-@@ -68,10 +69,11 @@ enum rpmh_regulator_type {
-  * @regulator_type:		RPMh accelerator type used to manage this
-  *				regulator
-  * @ops:			Pointer to regulator ops callback structure
-- * @voltage_range:		The single range of voltages supported by this
-- *				PMIC regulator type
-+ * @voltage_ranges:		The possible ranges of voltages supported by this
-+ * 				PMIC regulator type
-+ * @n_linear_ranges:		Number of entries in voltage_ranges
-  * @n_voltages:			The number of unique voltage set points defined
-- *				by voltage_range
-+ *				by voltage_ranges
-  * @hpm_min_load_uA:		Minimum load current in microamps that requires
-  *				high power mode (HPM) operation.  This is used
-  *				for LDO hardware type regulators only.
-@@ -85,7 +87,8 @@ enum rpmh_regulator_type {
- struct rpmh_vreg_hw_data {
- 	enum rpmh_regulator_type		regulator_type;
- 	const struct regulator_ops		*ops;
--	const struct linear_range	voltage_range;
-+	const struct linear_range		*voltage_ranges;
-+	int					n_linear_ranges;
- 	int					n_voltages;
- 	int					hpm_min_load_uA;
- 	const int				*pmic_mode_map;
-@@ -449,8 +452,8 @@ static int rpmh_regulator_init_vreg(struct rpmh_vreg *vreg, struct device *dev,
- 	vreg->mode = REGULATOR_MODE_INVALID;
- 
- 	if (rpmh_data->hw_data->n_voltages) {
--		vreg->rdesc.linear_ranges = &rpmh_data->hw_data->voltage_range;
--		vreg->rdesc.n_linear_ranges = 1;
-+		vreg->rdesc.linear_ranges = rpmh_data->hw_data->voltage_ranges;
-+		vreg->rdesc.n_linear_ranges = rpmh_data->hw_data->n_linear_ranges;
- 		vreg->rdesc.n_voltages = rpmh_data->hw_data->n_voltages;
- 	}
- 
-@@ -613,7 +616,10 @@ static unsigned int rpmh_regulator_pmic4_bob_of_map_mode(unsigned int rpmh_mode)
- static const struct rpmh_vreg_hw_data pmic4_pldo = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_drms_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(1664000, 0, 255, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(1664000, 0, 255, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 256,
- 	.hpm_min_load_uA = 10000,
- 	.pmic_mode_map = pmic_mode_map_pmic4_ldo,
-@@ -623,7 +629,10 @@ static const struct rpmh_vreg_hw_data pmic4_pldo = {
- static const struct rpmh_vreg_hw_data pmic4_pldo_lv = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_drms_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(1256000, 0, 127, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+	       REGULATOR_LINEAR_RANGE(1256000, 0, 127, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 128,
- 	.hpm_min_load_uA = 10000,
- 	.pmic_mode_map = pmic_mode_map_pmic4_ldo,
-@@ -633,7 +642,10 @@ static const struct rpmh_vreg_hw_data pmic4_pldo_lv = {
- static const struct rpmh_vreg_hw_data pmic4_nldo = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_drms_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(312000, 0, 127, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(312000, 0, 127, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 128,
- 	.hpm_min_load_uA = 30000,
- 	.pmic_mode_map = pmic_mode_map_pmic4_ldo,
-@@ -643,7 +655,10 @@ static const struct rpmh_vreg_hw_data pmic4_nldo = {
- static const struct rpmh_vreg_hw_data pmic4_hfsmps3 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(320000, 0, 215, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(320000, 0, 215, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 216,
- 	.pmic_mode_map = pmic_mode_map_pmic4_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -652,7 +667,10 @@ static const struct rpmh_vreg_hw_data pmic4_hfsmps3 = {
- static const struct rpmh_vreg_hw_data pmic4_ftsmps426 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(320000, 0, 258, 4000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(320000, 0, 258, 4000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 259,
- 	.pmic_mode_map = pmic_mode_map_pmic4_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -661,7 +679,10 @@ static const struct rpmh_vreg_hw_data pmic4_ftsmps426 = {
- static const struct rpmh_vreg_hw_data pmic4_bob = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_bypass_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(1824000, 0, 83, 32000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(1824000, 0, 83, 32000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 84,
- 	.pmic_mode_map = pmic_mode_map_pmic4_bob,
- 	.of_map_mode = rpmh_regulator_pmic4_bob_of_map_mode,
-@@ -676,7 +697,10 @@ static const struct rpmh_vreg_hw_data pmic4_lvs = {
- static const struct rpmh_vreg_hw_data pmic5_pldo = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_drms_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(1504000, 0, 255, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(1504000, 0, 255, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 256,
- 	.hpm_min_load_uA = 10000,
- 	.pmic_mode_map = pmic_mode_map_pmic5_ldo,
-@@ -686,7 +710,10 @@ static const struct rpmh_vreg_hw_data pmic5_pldo = {
- static const struct rpmh_vreg_hw_data pmic5_pldo_lv = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_drms_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(1504000, 0, 62, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(1504000, 0, 62, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 63,
- 	.hpm_min_load_uA = 10000,
- 	.pmic_mode_map = pmic_mode_map_pmic5_ldo,
-@@ -696,7 +723,10 @@ static const struct rpmh_vreg_hw_data pmic5_pldo_lv = {
- static const struct rpmh_vreg_hw_data pmic5_pldo515_mv = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_drms_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(1800000, 0, 187, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(1800000, 0, 187, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 188,
- 	.hpm_min_load_uA = 10000,
- 	.pmic_mode_map = pmic_mode_map_pmic5_ldo,
-@@ -706,7 +736,10 @@ static const struct rpmh_vreg_hw_data pmic5_pldo515_mv = {
- static const struct rpmh_vreg_hw_data pmic5_nldo = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_drms_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(320000, 0, 123, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(320000, 0, 123, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 124,
- 	.hpm_min_load_uA = 30000,
- 	.pmic_mode_map = pmic_mode_map_pmic5_ldo,
-@@ -716,7 +749,10 @@ static const struct rpmh_vreg_hw_data pmic5_nldo = {
- static const struct rpmh_vreg_hw_data pmic5_nldo515 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_drms_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(320000, 0, 210, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(320000, 0, 210, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 211,
- 	.hpm_min_load_uA = 30000,
- 	.pmic_mode_map = pmic_mode_map_pmic5_ldo,
-@@ -726,7 +762,10 @@ static const struct rpmh_vreg_hw_data pmic5_nldo515 = {
- static const struct rpmh_vreg_hw_data pmic5_hfsmps510 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(320000, 0, 215, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(320000, 0, 215, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 216,
- 	.pmic_mode_map = pmic_mode_map_pmic5_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -735,7 +774,10 @@ static const struct rpmh_vreg_hw_data pmic5_hfsmps510 = {
- static const struct rpmh_vreg_hw_data pmic5_ftsmps510 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(300000, 0, 263, 4000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(300000, 0, 263, 4000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 264,
- 	.pmic_mode_map = pmic_mode_map_pmic5_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -744,7 +786,10 @@ static const struct rpmh_vreg_hw_data pmic5_ftsmps510 = {
- static const struct rpmh_vreg_hw_data pmic5_ftsmps520 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(300000, 0, 263, 4000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(300000, 0, 263, 4000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 264,
- 	.pmic_mode_map = pmic_mode_map_pmic5_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -753,7 +798,10 @@ static const struct rpmh_vreg_hw_data pmic5_ftsmps520 = {
- static const struct rpmh_vreg_hw_data pmic5_ftsmps525_lv = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(300000, 0, 267, 4000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(300000, 0, 267, 4000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 268,
- 	.pmic_mode_map = pmic_mode_map_pmic5_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -762,7 +810,10 @@ static const struct rpmh_vreg_hw_data pmic5_ftsmps525_lv = {
- static const struct rpmh_vreg_hw_data pmic5_ftsmps525_mv = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(600000, 0, 267, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(600000, 0, 267, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 268,
- 	.pmic_mode_map = pmic_mode_map_pmic5_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -771,7 +822,10 @@ static const struct rpmh_vreg_hw_data pmic5_ftsmps525_mv = {
- static const struct rpmh_vreg_hw_data pmic5_ftsmps527 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(320000, 0, 215, 8000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(320000, 0, 215, 8000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 215,
- 	.pmic_mode_map = pmic_mode_map_pmic5_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -780,7 +834,10 @@ static const struct rpmh_vreg_hw_data pmic5_ftsmps527 = {
- static const struct rpmh_vreg_hw_data pmic5_hfsmps515 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(320000, 0, 235, 16000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(320000, 0, 235, 16000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 236,
- 	.pmic_mode_map = pmic_mode_map_pmic5_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -789,7 +846,10 @@ static const struct rpmh_vreg_hw_data pmic5_hfsmps515 = {
- static const struct rpmh_vreg_hw_data pmic5_hfsmps515_1 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(900000, 0, 4, 16000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(900000, 0, 4, 16000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 5,
- 	.pmic_mode_map = pmic_mode_map_pmic5_smps,
- 	.of_map_mode = rpmh_regulator_pmic4_smps_of_map_mode,
-@@ -798,7 +858,10 @@ static const struct rpmh_vreg_hw_data pmic5_hfsmps515_1 = {
- static const struct rpmh_vreg_hw_data pmic5_bob = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_bypass_ops,
--	.voltage_range = REGULATOR_LINEAR_RANGE(3000000, 0, 31, 32000),
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(3000000, 0, 31, 32000),
-+	},
-+	.n_linear_ranges = 1,
- 	.n_voltages = 32,
- 	.pmic_mode_map = pmic_mode_map_pmic5_bob,
- 	.of_map_mode = rpmh_regulator_pmic4_bob_of_map_mode,
++  - if:
++      properties:
++        compatible:
++          enum:
++            - qcom,pm8010-rpmh-regulators
++    then:
++      properties:
++        vdd-l1-l2-supply: true
++        vdd-l3-l4-supply: true
++      patternProperties:
++        "^vdd-l[5-7]-supply$": true
++
+   - if:
+       properties:
+         compatible:
 
 -- 
 2.25.1
