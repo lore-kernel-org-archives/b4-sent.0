@@ -1,11 +1,11 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Wed, 13 Dec 2023 16:02:35 +0100
-Subject: [PATCH v3 4/8] of: property: add device link support for
- io-backends
+Date: Wed, 13 Dec 2023 16:02:36 +0100
+Subject: [PATCH v3 5/8] iio: buffer-dmaengine: export buffer alloc and free
+ functions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231213-dev-iio-backend-v3-4-bb9f12a5c6dc@analog.com>
+Message-Id: <20231213-dev-iio-backend-v3-5-bb9f12a5c6dc@analog.com>
 References: <20231213-dev-iio-backend-v3-0-bb9f12a5c6dc@analog.com>
 In-Reply-To: <20231213-dev-iio-backend-v3-0-bb9f12a5c6dc@analog.com>
 To: devicetree@vger.kernel.org, linux-iio@vger.kernel.org
@@ -15,49 +15,105 @@ Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
  Lars-Peter Clausen <lars@metafoo.de>, 
  Michael Hennerich <Michael.Hennerich@analog.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Olivier Moysan <olivier.moysan@foss.st.com>
+ Conor Dooley <conor+dt@kernel.org>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1702479785; l=1344;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1702479785; l=3896;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=2i9xrdAocIPl4YQTG6hWpMO06qbcjhyhzYcdjiTi4iw=;
- b=5ml+vW67HdGFxZPq0w6zBxW4bWfRhTSkNN0OahKW3iwVuAfLWRXD2XZgH0EX1qb2JFOZY4yip
- dpbCOrG+JvHBNIdgLCBJvAAplJ7BO46A59bs1uNs6q0k2K5s3qxGLXj
+ bh=cjaGOyWTrE8LAeK/7OmPfxV5Pw9l12vWmc4D8TkuW0g=;
+ b=54Hx7S5cvABESQ7LDKXJXXA19vj9QI+E+d7dpRn1buSyRPYYLXOhxzF0H5rcGFA3uRHyGQfFJ
+ eo/igjURm+7DD661IN0qlT5vHyhCYqcMqEetvSQfthrl890hOvu1BP5
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Olivier Moysan <olivier.moysan@foss.st.com>
+Export iio_dmaengine_buffer_free() and iio_dmaengine_buffer_alloc().
+This is in preparation of introducing IIO backends support. This will
+allow us to allocate a buffer and control it's lifetime from a device
+different from the one holding the DMA firmware properties. Effectively,
+in this case the struct device holding the firmware information about
+the DMA channels is not the same as iio_dev->dev.parent (typical case).
 
-Add support for creating device links out of more DT properties.
+While at it, namespace the buffer-dmaengine exports and update the
+current user of these buffers.
 
-Signed-off-by: Olivier Moysan <olivier.moysan@foss.st.com>
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/of/property.c | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/iio/adc/adi-axi-adc.c                      | 1 +
+ drivers/iio/buffer/industrialio-buffer-dmaengine.c | 8 +++++---
+ include/linux/iio/buffer-dmaengine.h               | 3 +++
+ 3 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/of/property.c b/drivers/of/property.c
-index afdaefbd03f6..a4835447759f 100644
---- a/drivers/of/property.c
-+++ b/drivers/of/property.c
-@@ -1244,6 +1244,7 @@ DEFINE_SIMPLE_PROP(interconnects, "interconnects", "#interconnect-cells")
- DEFINE_SIMPLE_PROP(iommus, "iommus", "#iommu-cells")
- DEFINE_SIMPLE_PROP(mboxes, "mboxes", "#mbox-cells")
- DEFINE_SIMPLE_PROP(io_channels, "io-channel", "#io-channel-cells")
-+DEFINE_SIMPLE_PROP(io_backends, "io-backends", NULL)
- DEFINE_SIMPLE_PROP(interrupt_parent, "interrupt-parent", NULL)
- DEFINE_SIMPLE_PROP(dmas, "dmas", "#dma-cells")
- DEFINE_SIMPLE_PROP(power_domains, "power-domains", "#power-domain-cells")
-@@ -1334,6 +1335,7 @@ static const struct supplier_bindings of_supplier_bindings[] = {
- 	{ .parse_prop = parse_iommu_maps, .optional = true, },
- 	{ .parse_prop = parse_mboxes, },
- 	{ .parse_prop = parse_io_channels, },
-+	{ .parse_prop = parse_io_backends, },
- 	{ .parse_prop = parse_interrupt_parent, },
- 	{ .parse_prop = parse_dmas, .optional = true, },
- 	{ .parse_prop = parse_power_domains, },
+diff --git a/drivers/iio/adc/adi-axi-adc.c b/drivers/iio/adc/adi-axi-adc.c
+index c247ff1541d2..0f21d1d98b9f 100644
+--- a/drivers/iio/adc/adi-axi-adc.c
++++ b/drivers/iio/adc/adi-axi-adc.c
+@@ -447,3 +447,4 @@ module_platform_driver(adi_axi_adc_driver);
+ MODULE_AUTHOR("Michael Hennerich <michael.hennerich@analog.com>");
+ MODULE_DESCRIPTION("Analog Devices Generic AXI ADC IP core driver");
+ MODULE_LICENSE("GPL v2");
++MODULE_IMPORT_NS(IIO_DMAENGINE_BUFFER);
+diff --git a/drivers/iio/buffer/industrialio-buffer-dmaengine.c b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
+index 5f85ba38e6f6..0d53c0a07b0d 100644
+--- a/drivers/iio/buffer/industrialio-buffer-dmaengine.c
++++ b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
+@@ -159,7 +159,7 @@ static const struct iio_dev_attr *iio_dmaengine_buffer_attrs[] = {
+  * Once done using the buffer iio_dmaengine_buffer_free() should be used to
+  * release it.
+  */
+-static struct iio_buffer *iio_dmaengine_buffer_alloc(struct device *dev,
++struct iio_buffer *iio_dmaengine_buffer_alloc(struct device *dev,
+ 	const char *channel)
+ {
+ 	struct dmaengine_buffer *dmaengine_buffer;
+@@ -210,6 +210,7 @@ static struct iio_buffer *iio_dmaengine_buffer_alloc(struct device *dev,
+ 	kfree(dmaengine_buffer);
+ 	return ERR_PTR(ret);
+ }
++EXPORT_SYMBOL_NS_GPL(iio_dmaengine_buffer_alloc, IIO_DMAENGINE_BUFFER);
+ 
+ /**
+  * iio_dmaengine_buffer_free() - Free dmaengine buffer
+@@ -217,7 +218,7 @@ static struct iio_buffer *iio_dmaengine_buffer_alloc(struct device *dev,
+  *
+  * Frees a buffer previously allocated with iio_dmaengine_buffer_alloc().
+  */
+-static void iio_dmaengine_buffer_free(struct iio_buffer *buffer)
++void iio_dmaengine_buffer_free(struct iio_buffer *buffer)
+ {
+ 	struct dmaengine_buffer *dmaengine_buffer =
+ 		iio_buffer_to_dmaengine_buffer(buffer);
+@@ -227,6 +228,7 @@ static void iio_dmaengine_buffer_free(struct iio_buffer *buffer)
+ 
+ 	iio_buffer_put(buffer);
+ }
++EXPORT_SYMBOL_NS_GPL(iio_dmaengine_buffer_free, IIO_DMAENGINE_BUFFER);
+ 
+ static void __devm_iio_dmaengine_buffer_free(void *buffer)
+ {
+@@ -288,7 +290,7 @@ int devm_iio_dmaengine_buffer_setup(struct device *dev,
+ 
+ 	return iio_device_attach_buffer(indio_dev, buffer);
+ }
+-EXPORT_SYMBOL_GPL(devm_iio_dmaengine_buffer_setup);
++EXPORT_SYMBOL_NS_GPL(devm_iio_dmaengine_buffer_setup, IIO_DMAENGINE_BUFFER);
+ 
+ MODULE_AUTHOR("Lars-Peter Clausen <lars@metafoo.de>");
+ MODULE_DESCRIPTION("DMA buffer for the IIO framework");
+diff --git a/include/linux/iio/buffer-dmaengine.h b/include/linux/iio/buffer-dmaengine.h
+index 5c355be89814..cbb8ba957fad 100644
+--- a/include/linux/iio/buffer-dmaengine.h
++++ b/include/linux/iio/buffer-dmaengine.h
+@@ -10,6 +10,9 @@
+ struct iio_dev;
+ struct device;
+ 
++struct iio_buffer *iio_dmaengine_buffer_alloc(struct device *dev,
++					      const char *channel);
++void iio_dmaengine_buffer_free(struct iio_buffer *buffer);
+ int devm_iio_dmaengine_buffer_setup(struct device *dev,
+ 				    struct iio_dev *indio_dev,
+ 				    const char *channel);
 
 -- 
 2.43.0
