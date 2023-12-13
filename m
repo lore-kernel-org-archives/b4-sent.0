@@ -1,285 +1,118 @@
-From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Tue, 12 Dec 2023 11:02:00 -0600
-Subject: [PATCH v6 13/13] powerpc/selftests: Add test for papr-sysparm
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH v3 0/8] iio: add new backend framework
+Date: Wed, 13 Dec 2023 16:02:31 +0100
+Message-Id: <20231213-dev-iio-backend-v3-0-bb9f12a5c6dc@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20231212-papr-sys_rtas-vs-lockdown-v6-13-e9eafd0c8c6c@linux.ibm.com>
-References: <20231212-papr-sys_rtas-vs-lockdown-v6-0-e9eafd0c8c6c@linux.ibm.com>
-In-Reply-To: <20231212-papr-sys_rtas-vs-lockdown-v6-0-e9eafd0c8c6c@linux.ibm.com>
-To: Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>
-Cc: linuxppc-dev@lists.ozlabs.org, 
- =?utf-8?q?Michal_Such=C3=A1nek?= <msuchanek@suse.de>, 
- "Aneesh Kumar K.V (IBM)" <aneesh.kumar@kernel.org>, tyreld@linux.ibm.com, 
- gcwilson@linux.ibm.com, Nathan Lynch <nathanl@linux.ibm.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1702400519; l=6919;
- i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=U+AuzZbE8Hdy3+M7m+3GC4Pc3MlEhnZoOej5ShbLU8w=;
- b=ne82ZenGNQELevD3LP1tRq8StKOSXP8w8sPl68J+6mziKo0XCJ+tbG3vuWUzDRUytLs768fRl
- hoFjwLkDV76DErE0C+iVtgQJZfvBNJSxsv7Ng/x4cJlYYkI3XNJXnus
-X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
- pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
-X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAIfHeWUC/2WNQQ6CMBBFr0Jm7Zi20AiuvIdhUdoBJmpLWtNoC
+ He34tLle8l/f4VEkSnBuVohUubEwReoDxXY2fiJkF1hUELVUiqBjjIyBxyMvZF36GQzNKfaSNe
+ NUFZLpJFfe/HaF545PUN87wdZfe2vpUT718oKBepGi07LttMkL8abe5iONjyg37btAykssoGvA
+ AAA
+To: devicetree@vger.kernel.org, linux-iio@vger.kernel.org
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Rob Herring <robh+dt@kernel.org>, 
+ Frank Rowand <frowand.list@gmail.com>, Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Olivier Moysan <olivier.moysan@foss.st.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1702479785; l=3859;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=2eAeAB2OSKA3kMHm2dotaI1S60CZCs+9Bu00lkPC4pg=;
+ b=ZdBPKtdhFrWiX5W0MlzQLvi5FZAO29nTrtsbsIrwQyNVmksYsFYN3aNJp7tbTT/Pzydz4Kyu6
+ Ro2nEf24vrgDj2mOP5fBmOfBhshsYQ05u5TeNgbAzwgpVYH7RLxq+nw
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Consistently testing system parameter access is a bit difficult by
-nature -- the set of parameters available depends on the model and
-system configuration, and updating a parameter should be considered a
-destructive operation reserved for the admin.
+v1:
+ https://lore.kernel.org/linux-iio/20231204144925.4fe9922f@jic23-huawei/T/#m222f5175273b81dbfe40b7f0daffcdc67d6cb8ff
 
-So we validate some of the error paths and retrieve the SPLPAR
-characteristics string, but not much else.
+v2:
+ https://lore.kernel.org/r/20231208-dev-iio-backend-v2-0-5450951895e1@analog.com
 
-Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
+Changes in v3:
+- Patch 1:
+ * Use proposed generic schema [1]. Also make it a required property;
+ * Improved the commit message.
+- Patch 2:
+ * Improved commit message.
+- Patch 4:
+ * Namespace all IIO DMAENGINE buffer exports;
+ * Removed unrelated new line removal change.
+- Patch 5:
+ * Namespace all IIO backend exports.
+- Patch 6:
+ * Set backend.h in alphabetical order;
+ * Import IIO backend namespace.
+- Patch 7:
+ * Don't depend on OF in kbuild anymore;
+ * Import IIO backend namespace.
+
+For the bindings patches, I tried not to enter into much details about
+the IIO framework as I think specifics of the implementation don't care
+from the bindings perspective. Hopefully the commit messages are good
+enough.
+
+I'm also aware that patch 1 is not backward compatible but we are
+anyways doing it on the driver side (and on the driver the property is
+indeed required). Anyways, just let me know if making the property
+required is not acceptable (I'm fairly confident no one was using the
+upstream version of the driver and so validating devicetrees for it). 
+
+Keeping the block diagram in v3's cover so we don't have to follow links
+to check the one of the typicals setups. 
+
+                                           -------------------------------------------------------
+ ------------------                        | -----------         ------------      -------  FPGA |
+ |     ADC        |------------------------| | AXI ADC |---------| DMA CORE |------| RAM |       |
+ | (Frontend/IIO) | Serial Data (eg: LVDS) | |(backend)|---------|          |------|     |       |
+ |                |------------------------| -----------         ------------      -------       |
+ ------------------                        -------------------------------------------------------
+ 
+Jonathan, I was also tempted in including the diagram in the source
+file. Would that be a good idea?
+
+[1]: https://github.com/devicetree-org/dt-schema/pull/120
+
 ---
- tools/testing/selftests/powerpc/Makefile           |   1 +
- .../selftests/powerpc/papr_sysparm/.gitignore      |   1 +
- .../selftests/powerpc/papr_sysparm/Makefile        |  12 ++
- .../selftests/powerpc/papr_sysparm/papr_sysparm.c  | 196 +++++++++++++++++++++
- 4 files changed, 210 insertions(+)
+Nuno Sa (7):
+      dt-bindings: adc: ad9467: add new io-backend property
+      dt-bindings: adc: axi-adc: deprecate 'adi,adc-dev'
+      driver: core: allow modifying device_links flags
+      iio: buffer-dmaengine: export buffer alloc and free functions
+      iio: add the IIO backend framework
+      iio: adc: ad9467: convert to backend framework
+      iio: adc: adi-axi-adc: move to backend framework
 
-diff --git a/tools/testing/selftests/powerpc/Makefile b/tools/testing/selftests/powerpc/Makefile
-index 05fc68d446c2..c376151982c4 100644
---- a/tools/testing/selftests/powerpc/Makefile
-+++ b/tools/testing/selftests/powerpc/Makefile
-@@ -33,6 +33,7 @@ SUB_DIRS = alignment		\
- 	   math		\
- 	   papr_attributes	\
- 	   papr_vpd		\
-+	   papr_sysparm		\
- 	   ptrace	\
- 	   security	\
- 	   mce
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/.gitignore b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-new file mode 100644
-index 000000000000..f2a69bf59d40
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/.gitignore
-@@ -0,0 +1 @@
-+/papr_sysparm
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/Makefile b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-new file mode 100644
-index 000000000000..7f79e437634a
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/Makefile
-@@ -0,0 +1,12 @@
-+# SPDX-License-Identifier: GPL-2.0
-+noarg:
-+	$(MAKE) -C ../
-+
-+TEST_GEN_PROGS := papr_sysparm
-+
-+top_srcdir = ../../../../..
-+include ../../lib.mk
-+
-+$(TEST_GEN_PROGS): ../harness.c ../utils.c
-+
-+$(OUTPUT)/papr_sysparm: CFLAGS += $(KHDR_INCLUDES)
-diff --git a/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-new file mode 100644
-index 000000000000..d5436de5b8ed
---- /dev/null
-+++ b/tools/testing/selftests/powerpc/papr_sysparm/papr_sysparm.c
-@@ -0,0 +1,196 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <stdlib.h>
-+#include <sys/ioctl.h>
-+#include <unistd.h>
-+#include <asm/papr-sysparm.h>
-+
-+#include "utils.h"
-+
-+#define DEVPATH "/dev/papr-sysparm"
-+
-+static int open_close(void)
-+{
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int get_splpar(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 20, // SPLPAR characteristics
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != 0);
-+	FAIL_IF(sp.length == 0);
-+	FAIL_IF(sp.length > sizeof(sp.data));
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int get_bad_parameter(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = UINT32_MAX, // there are only ~60 specified parameters
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_GET, &sp) != -1);
-+	FAIL_IF(errno != EOPNOTSUPP);
-+
-+	// Ensure the buffer is unchanged
-+	FAIL_IF(sp.length != 0);
-+	for (size_t i = 0; i < ARRAY_SIZE(sp.data); ++i)
-+		FAIL_IF(sp.data[i] != 0);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_common(unsigned long cmd)
-+{
-+	const int devfd = open(DEVPATH, O_RDWR);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, cmd, NULL) != -1);
-+	FAIL_IF(errno != EFAULT);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int check_efault_get(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_GET);
-+}
-+
-+static int check_efault_set(void)
-+{
-+	return check_efault_common(PAPR_SYSPARM_IOC_SET);
-+}
-+
-+static int set_hmc0(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 0, // HMC0, not a settable parameter
-+	};
-+	const int devfd = open(DEVPATH, O_RDWR);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_SET, &sp) != -1);
-+	SKIP_IF_MSG(errno == EOPNOTSUPP, "operation not supported");
-+	FAIL_IF(errno != EPERM);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+static int set_with_ro_fd(void)
-+{
-+	struct papr_sysparm_io_block sp = {
-+		.parameter = 0, // HMC0, not a settable parameter.
-+	};
-+	const int devfd = open(DEVPATH, O_RDONLY);
-+
-+	SKIP_IF_MSG(devfd < 0 && errno == ENOENT,
-+		    DEVPATH " not present");
-+
-+	FAIL_IF(devfd < 0);
-+
-+	// Ensure expected error
-+	FAIL_IF(ioctl(devfd, PAPR_SYSPARM_IOC_SET, &sp) != -1);
-+	SKIP_IF_MSG(errno == EOPNOTSUPP, "operation not supported");
-+
-+	// HMC0 isn't a settable parameter and we would normally
-+	// expect to get EPERM on attempts to modify it. However, when
-+	// the file is open read-only, we expect the driver to prevent
-+	// the attempt with a distinct error.
-+	FAIL_IF(errno != EBADF);
-+
-+	FAIL_IF(close(devfd) != 0);
-+
-+	return 0;
-+}
-+
-+struct sysparm_test {
-+	int (*function)(void);
-+	const char *description;
-+};
-+
-+static const struct sysparm_test sysparm_tests[] = {
-+	{
-+		.function = open_close,
-+		.description = "open and close " DEVPATH " without issuing commands",
-+	},
-+	{
-+		.function = get_splpar,
-+		.description = "retrieve SPLPAR characteristics",
-+	},
-+	{
-+		.function = get_bad_parameter,
-+		.description = "verify EOPNOTSUPP for known-bad parameter",
-+	},
-+	{
-+		.function = check_efault_get,
-+		.description = "PAPR_SYSPARM_IOC_GET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = check_efault_set,
-+		.description = "PAPR_SYSPARM_IOC_SET returns EFAULT on bad address",
-+	},
-+	{
-+		.function = set_hmc0,
-+		.description = "ensure EPERM on attempt to update HMC0",
-+	},
-+	{
-+		.function = set_with_ro_fd,
-+		.description = "PAPR_IOC_SYSPARM_SET returns EACCESS on read-only fd",
-+	},
-+};
-+
-+int main(void)
-+{
-+	size_t fails = 0;
-+
-+	for (size_t i = 0; i < ARRAY_SIZE(sysparm_tests); ++i) {
-+		const struct sysparm_test *t = &sysparm_tests[i];
-+
-+		if (test_harness(t->function, t->description))
-+			++fails;
-+	}
-+
-+	return fails == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
-+}
+Olivier Moysan (1):
+      of: property: add device link support for io-backends
 
--- 
-2.41.0
+ .../devicetree/bindings/iio/adc/adi,ad9467.yaml    |   5 +
+ .../devicetree/bindings/iio/adc/adi,axi-adc.yaml   |   4 +-
+ MAINTAINERS                                        |   8 +
+ drivers/base/core.c                                |  14 +-
+ drivers/iio/Kconfig                                |   5 +
+ drivers/iio/Makefile                               |   1 +
+ drivers/iio/adc/Kconfig                            |   4 +-
+ drivers/iio/adc/ad9467.c                           | 243 +++++++------
+ drivers/iio/adc/adi-axi-adc.c                      | 381 +++++---------------
+ drivers/iio/buffer/industrialio-buffer-dmaengine.c |   8 +-
+ drivers/iio/industrialio-backend.c                 | 386 +++++++++++++++++++++
+ drivers/of/property.c                              |   2 +
+ include/linux/iio/adc/adi-axi-adc.h                |  68 ----
+ include/linux/iio/backend.h                        |  68 ++++
+ include/linux/iio/buffer-dmaengine.h               |   3 +
+ 15 files changed, 730 insertions(+), 470 deletions(-)
+---
+base-commit: 3cde3cdb0b23151dbaac476b17eb1868335993aa
+change-id: 20231120-dev-iio-backend-d14b473a1d9f
+--
+
+Thanks!
+- Nuno Sá
 
