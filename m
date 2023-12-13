@@ -1,10 +1,11 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Wed, 13 Dec 2023 16:02:34 +0100
-Subject: [PATCH v3 3/8] driver: core: allow modifying device_links flags
+Date: Wed, 13 Dec 2023 16:02:35 +0100
+Subject: [PATCH v3 4/8] of: property: add device link support for
+ io-backends
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231213-dev-iio-backend-v3-3-bb9f12a5c6dc@analog.com>
+Message-Id: <20231213-dev-iio-backend-v3-4-bb9f12a5c6dc@analog.com>
 References: <20231213-dev-iio-backend-v3-0-bb9f12a5c6dc@analog.com>
 In-Reply-To: <20231213-dev-iio-backend-v3-0-bb9f12a5c6dc@analog.com>
 To: devicetree@vger.kernel.org, linux-iio@vger.kernel.org
@@ -14,60 +15,49 @@ Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
  Lars-Peter Clausen <lars@metafoo.de>, 
  Michael Hennerich <Michael.Hennerich@analog.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
+ Conor Dooley <conor+dt@kernel.org>, 
+ Olivier Moysan <olivier.moysan@foss.st.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1702479785; l=1762;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1702479785; l=1344;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=NLZHAx7QEa2fUUjKTtfo6RESv2OQO0JG++qc/yxWC4M=;
- b=03Z23fvem0p5C1zLIj2fOt0pZb3H1fLDXnlHY5Ku+kXOyyQykL8s7Q4nEKAtWwxFSIXyWjIFe
- OqQgcrgWqq6Ci7b6euzGvk2aOps0bO7lEMwCSM3n/s059oHZZNGt/tc
+ bh=2i9xrdAocIPl4YQTG6hWpMO06qbcjhyhzYcdjiTi4iw=;
+ b=5ml+vW67HdGFxZPq0w6zBxW4bWfRhTSkNN0OahKW3iwVuAfLWRXD2XZgH0EX1qb2JFOZY4yip
+ dpbCOrG+JvHBNIdgLCBJvAAplJ7BO46A59bs1uNs6q0k2K5s3qxGLXj
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If a device_link is previously created (eg: via
-fw_devlink_create_devlink()) before the supplier + consumer are both
-present and bound to their respective drivers, there's no way to set
-DL_FLAG_AUTOREMOVE_CONSUMER anymore while one can still set
-DL_FLAG_AUTOREMOVE_SUPPLIER. Hence, rework the flags checks to allow
-for DL_FLAG_AUTOREMOVE_CONSUMER in the same way
-DL_FLAG_AUTOREMOVE_SUPPLIER is done.
+From: Olivier Moysan <olivier.moysan@foss.st.com>
 
-While at it, make sure that we are never left with
-DL_FLAG_AUTOPROBE_CONSUMER set together with one of
-DL_FLAG_AUTOREMOVE_CONSUMER or DL_FLAG_AUTOREMOVE_SUPPLIER.
+Add support for creating device links out of more DT properties.
 
+Signed-off-by: Olivier Moysan <olivier.moysan@foss.st.com>
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/base/core.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ drivers/of/property.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/base/core.c b/drivers/base/core.c
-index 67ba592afc77..fdbb5abc75d5 100644
---- a/drivers/base/core.c
-+++ b/drivers/base/core.c
-@@ -807,11 +807,15 @@ struct device_link *device_link_add(struct device *consumer,
- 		 * update the existing link to stay around longer.
- 		 */
- 		if (flags & DL_FLAG_AUTOREMOVE_SUPPLIER) {
--			if (link->flags & DL_FLAG_AUTOREMOVE_CONSUMER) {
--				link->flags &= ~DL_FLAG_AUTOREMOVE_CONSUMER;
--				link->flags |= DL_FLAG_AUTOREMOVE_SUPPLIER;
--			}
--		} else if (!(flags & DL_FLAG_AUTOREMOVE_CONSUMER)) {
-+			link->flags &= ~DL_FLAG_AUTOREMOVE_CONSUMER;
-+			link->flags &= ~DL_FLAG_AUTOPROBE_CONSUMER;
-+			link->flags |= DL_FLAG_AUTOREMOVE_SUPPLIER;
-+
-+		} else if (flags & DL_FLAG_AUTOREMOVE_CONSUMER) {
-+			link->flags &= ~DL_FLAG_AUTOREMOVE_SUPPLIER;
-+			link->flags &= ~DL_FLAG_AUTOPROBE_CONSUMER;
-+			link->flags |= DL_FLAG_AUTOREMOVE_CONSUMER;
-+		} else {
- 			link->flags &= ~(DL_FLAG_AUTOREMOVE_CONSUMER |
- 					 DL_FLAG_AUTOREMOVE_SUPPLIER);
- 		}
+diff --git a/drivers/of/property.c b/drivers/of/property.c
+index afdaefbd03f6..a4835447759f 100644
+--- a/drivers/of/property.c
++++ b/drivers/of/property.c
+@@ -1244,6 +1244,7 @@ DEFINE_SIMPLE_PROP(interconnects, "interconnects", "#interconnect-cells")
+ DEFINE_SIMPLE_PROP(iommus, "iommus", "#iommu-cells")
+ DEFINE_SIMPLE_PROP(mboxes, "mboxes", "#mbox-cells")
+ DEFINE_SIMPLE_PROP(io_channels, "io-channel", "#io-channel-cells")
++DEFINE_SIMPLE_PROP(io_backends, "io-backends", NULL)
+ DEFINE_SIMPLE_PROP(interrupt_parent, "interrupt-parent", NULL)
+ DEFINE_SIMPLE_PROP(dmas, "dmas", "#dma-cells")
+ DEFINE_SIMPLE_PROP(power_domains, "power-domains", "#power-domain-cells")
+@@ -1334,6 +1335,7 @@ static const struct supplier_bindings of_supplier_bindings[] = {
+ 	{ .parse_prop = parse_iommu_maps, .optional = true, },
+ 	{ .parse_prop = parse_mboxes, },
+ 	{ .parse_prop = parse_io_channels, },
++	{ .parse_prop = parse_io_backends, },
+ 	{ .parse_prop = parse_interrupt_parent, },
+ 	{ .parse_prop = parse_dmas, .optional = true, },
+ 	{ .parse_prop = parse_power_domains, },
 
 -- 
 2.43.0
