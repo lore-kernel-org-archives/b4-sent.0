@@ -1,10 +1,10 @@
 From: Fenglin Wu <quic_fenglinw@quicinc.com>
-Date: Thu, 14 Dec 2023 10:59:14 +0800
-Subject: [PATCH v2 4/5] arm64: dts: qcom: sm8550-mtp: Add pm8010 regulators
+Date: Thu, 14 Dec 2023 10:59:15 +0800
+Subject: [PATCH v2 5/5] arm64: dts: qcom: sm8550-qrd: add PM8010 regulators
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231214-pm8010-regulator-v2-4-82131df6b97b@quicinc.com>
+Message-Id: <20231214-pm8010-regulator-v2-5-82131df6b97b@quicinc.com>
 References: <20231214-pm8010-regulator-v2-0-82131df6b97b@quicinc.com>
 In-Reply-To: <20231214-pm8010-regulator-v2-0-82131df6b97b@quicinc.com>
 To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
@@ -19,28 +19,28 @@ Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>,
  quic_subbaram@quicinc.com, quic_jprakash@quicinc.com, 
  Fenglin Wu <quic_fenglinw@quicinc.com>
 X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1702522752; l=4205;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1702522752; l=4210;
  i=quic_fenglinw@quicinc.com; s=20230725; h=from:subject:message-id;
- bh=4C8r1RX6jrprmI3bI9Nod0mp3ISCSyQLdpiWSlrmkOE=;
- b=1Rji7b2dj+2vfGExHlkN46xe7+Qr0OGIoHdNTEC2ZriIqR8pFgAfoDTSHBNcaJ6+oP6kMDviT
- aLOCev936BzDKcau3FT+Kh2Z+upnz8ufv5MGiGFLy4MN5sg1sCSBQFp
+ bh=Uw7hfR/4pMi0fyvOVpXG2sUU2LLsU8c8fd4IwNmDJIU=;
+ b=KRGkOXLmixQwqOnTzAmjoeUMMKd4rYrLST6Tw9n1Q4pEIGjBDOil1tRI4QJEKFfWpbcu5TPNi
+ FSo8gmWtscJBD/NjNAOLcTHS5UfOLrR9IVWR/Q92bGr82BrQIpQjg8W
 X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
  pk=hleIDz3Unk1zeiwwOnZUjoQVMMelRancDFXg927lNjI=
 X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20230725 with auth_id=68
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add PM8010 regulator device nodes for sm8550-mtp board.
+Add PM8010 regulator device nodes for sm8550-qrd board.
 
 Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
- arch/arm64/boot/dts/qcom/sm8550-mtp.dts | 120 ++++++++++++++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8550-qrd.dts | 120 ++++++++++++++++++++++++++++++++
  1 file changed, 120 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-mtp.dts b/arch/arm64/boot/dts/qcom/sm8550-mtp.dts
-index 9a70875028b7..8395d363d18d 100644
---- a/arch/arm64/boot/dts/qcom/sm8550-mtp.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8550-mtp.dts
-@@ -510,6 +510,126 @@ vreg_l3g_1p2: ldo3 {
+diff --git a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
+index eef811def39b..7ca93c149215 100644
+--- a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
++++ b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
+@@ -527,6 +527,126 @@ vreg_l3g_1p2: ldo3 {
  			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
  		};
  	};
@@ -49,10 +49,10 @@ index 9a70875028b7..8395d363d18d 100644
 +		compatible = "qcom,pm8010-rpmh-regulators";
 +		qcom,pmic-id = "m";
 +
-+		vdd-l1-l2-supply = <&vreg_s4g_1p3>;
++		vdd-l1-l2-supply = <&vreg_s4g_1p25>;
 +		vdd-l3-l4-supply = <&vreg_bob2>;
-+		vdd-l5-supply = <&vreg_s6g_1p8>;
-+		vdd-l6-supply = <&vreg_s6g_1p8>;
++		vdd-l5-supply = <&vreg_s6g_1p86>;
++		vdd-l6-supply = <&vreg_s6g_1p86>;
 +		vdd-l7-supply = <&vreg_bob1>;
 +
 +		vreg_l1m_1p056: ldo1 {
@@ -109,9 +109,9 @@ index 9a70875028b7..8395d363d18d 100644
 +		compatible = "qcom,pm8010-rpmh-regulators";
 +		qcom,pmic-id = "n";
 +
-+		vdd-l1-l2-supply = <&vreg_s4g_1p3>;
++		vdd-l1-l2-supply = <&vreg_s4g_1p25>;
 +		vdd-l3-l4-supply = <&vreg_bob2>;
-+		vdd-l5-supply = <&vreg_s6g_1p8>;
++		vdd-l5-supply = <&vreg_s6g_1p86>;
 +		vdd-l6-supply = <&vreg_bob1>;
 +		vdd-l7-supply = <&vreg_bob1>;
 +
