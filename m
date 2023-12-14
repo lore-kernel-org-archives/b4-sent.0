@@ -1,11 +1,10 @@
 From: Fenglin Wu <quic_fenglinw@quicinc.com>
-Date: Thu, 14 Dec 2023 10:59:13 +0800
-Subject: [PATCH v2 3/5] regulator: qcom-rpmh: add support for pm8010
- regulators
+Date: Thu, 14 Dec 2023 10:59:14 +0800
+Subject: [PATCH v2 4/5] arm64: dts: qcom: sm8550-mtp: Add pm8010 regulators
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231214-pm8010-regulator-v2-3-82131df6b97b@quicinc.com>
+Message-Id: <20231214-pm8010-regulator-v2-4-82131df6b97b@quicinc.com>
 References: <20231214-pm8010-regulator-v2-0-82131df6b97b@quicinc.com>
 In-Reply-To: <20231214-pm8010-regulator-v2-0-82131df6b97b@quicinc.com>
 To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
@@ -20,130 +19,154 @@ Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>,
  quic_subbaram@quicinc.com, quic_jprakash@quicinc.com, 
  Fenglin Wu <quic_fenglinw@quicinc.com>
 X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1702522752; l=4412;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1702522752; l=4205;
  i=quic_fenglinw@quicinc.com; s=20230725; h=from:subject:message-id;
- bh=vd754S3f7iq11y03Lq7bRtGpZERa2WUH879dDd2vxGQ=;
- b=c6AtN57+S2RfrI9K722KUnjsh+PHY4nrO9AobgEFEgyIWFRP5c85Nl4gl/rK6UnLO0f12GPls
- d57TzGsDMdQCBBYNUqzB1qXfnATuqOm8biU0I2OwzzF//RBR8xXFA2G
+ bh=4C8r1RX6jrprmI3bI9Nod0mp3ISCSyQLdpiWSlrmkOE=;
+ b=1Rji7b2dj+2vfGExHlkN46xe7+Qr0OGIoHdNTEC2ZriIqR8pFgAfoDTSHBNcaJ6+oP6kMDviT
+ aLOCev936BzDKcau3FT+Kh2Z+upnz8ufv5MGiGFLy4MN5sg1sCSBQFp
 X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
  pk=hleIDz3Unk1zeiwwOnZUjoQVMMelRancDFXg927lNjI=
 X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20230725 with auth_id=68
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add RPMH regulators exposed by Qualcomm Technologies, Inc. PM8010
-PMIC. It has 7 LDOs with 3 different types, LDO1 - LDO2 are L502
-NMOS LDOs, LDO5 and LDO7 are L502 PMOS LDOs, LDO3/LDO4/LDO6 are
-L502 PMOS LDO for low noise applications. Also, LDO3 - LDO7 don't
-support LPM.
+Add PM8010 regulator device nodes for sm8550-mtp board.
 
-Suggested-by: David Collins <quic_collinsd@quicinc.com>
-Reviewed-by: David Collins <quic_collinsd@quicinc.com>
 Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
- drivers/regulator/qcom-rpmh-regulator.c | 62 +++++++++++++++++++++++++++++++++
- 1 file changed, 62 insertions(+)
+ arch/arm64/boot/dts/qcom/sm8550-mtp.dts | 120 ++++++++++++++++++++++++++++++++
+ 1 file changed, 120 insertions(+)
 
-diff --git a/drivers/regulator/qcom-rpmh-regulator.c b/drivers/regulator/qcom-rpmh-regulator.c
-index 43b45feb02e6..80e304711345 100644
---- a/drivers/regulator/qcom-rpmh-regulator.c
-+++ b/drivers/regulator/qcom-rpmh-regulator.c
-@@ -511,6 +511,14 @@ static const int pmic_mode_map_pmic5_ldo[REGULATOR_MODE_STANDBY + 1] = {
- 	[REGULATOR_MODE_FAST]    = -EINVAL,
+diff --git a/arch/arm64/boot/dts/qcom/sm8550-mtp.dts b/arch/arm64/boot/dts/qcom/sm8550-mtp.dts
+index 9a70875028b7..8395d363d18d 100644
+--- a/arch/arm64/boot/dts/qcom/sm8550-mtp.dts
++++ b/arch/arm64/boot/dts/qcom/sm8550-mtp.dts
+@@ -510,6 +510,126 @@ vreg_l3g_1p2: ldo3 {
+ 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+ 		};
+ 	};
++
++	regulators-6 {
++		compatible = "qcom,pm8010-rpmh-regulators";
++		qcom,pmic-id = "m";
++
++		vdd-l1-l2-supply = <&vreg_s4g_1p3>;
++		vdd-l3-l4-supply = <&vreg_bob2>;
++		vdd-l5-supply = <&vreg_s6g_1p8>;
++		vdd-l6-supply = <&vreg_s6g_1p8>;
++		vdd-l7-supply = <&vreg_bob1>;
++
++		vreg_l1m_1p056: ldo1 {
++			regulator-name = "vreg_l1m_1p056";
++			regulator-min-microvolt = <1056000>;
++			regulator-max-microvolt = <1056000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l2m_1p056: ldo2 {
++			regulator-name = "vreg_l2m_1p056";
++			regulator-min-microvolt = <1056000>;
++			regulator-max-microvolt = <1056000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l3m_2p8: ldo3 {
++			regulator-name = "vreg_l3m_2p8";
++			regulator-min-microvolt = <2800000>;
++			regulator-max-microvolt = <2800000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l4m_2p8: ldo4 {
++			regulator-name = "vreg_l4m_2p8";
++			regulator-min-microvolt = <2800000>;
++			regulator-max-microvolt = <2800000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l5m_1p8: ldo5 {
++			regulator-name = "vreg_l5m_1p8";
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l6m_1p8: ldo6 {
++			regulator-name = "vreg_l6m_1p8";
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l7m_2p9: ldo7 {
++			regulator-name = "vreg_l7m_2p9";
++			regulator-min-microvolt = <2800000>;
++			regulator-max-microvolt = <2904000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++	};
++
++	regulators-7 {
++		compatible = "qcom,pm8010-rpmh-regulators";
++		qcom,pmic-id = "n";
++
++		vdd-l1-l2-supply = <&vreg_s4g_1p3>;
++		vdd-l3-l4-supply = <&vreg_bob2>;
++		vdd-l5-supply = <&vreg_s6g_1p8>;
++		vdd-l6-supply = <&vreg_bob1>;
++		vdd-l7-supply = <&vreg_bob1>;
++
++		vreg_l1n_1p1: ldo1 {
++			regulator-name = "vreg_l1n_1p1";
++			regulator-min-microvolt = <1104000>;
++			regulator-max-microvolt = <1200000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l2n_1p1: ldo2 {
++			regulator-name = "vreg_l2n_1p1";
++			regulator-min-microvolt = <1104000>;
++			regulator-max-microvolt = <1200000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l3n_2p8: ldo3 {
++			regulator-name = "vreg_l3n_2p8";
++			regulator-min-microvolt = <2800000>;
++			regulator-max-microvolt = <3000000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l4n_2p8: ldo4 {
++			regulator-name = "vreg_l4n_2p8";
++			regulator-min-microvolt = <2800000>;
++			regulator-max-microvolt = <3300000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l5n_1p8: ldo5 {
++			regulator-name = "vreg_l5n_1p8";
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l6n_3p3: ldo6 {
++			regulator-name = "vreg_l6n_3p3";
++			regulator-min-microvolt = <2800000>;
++			regulator-max-microvolt = <3304000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l7n_2p96: ldo7 {
++			regulator-name = "vreg_l7n_2p96";
++			regulator-min-microvolt = <2800000>;
++			regulator-max-microvolt = <2960000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++	};
  };
  
-+static const int pmic_mode_map_pmic5_ldo_hpm[REGULATOR_MODE_STANDBY + 1] = {
-+	[REGULATOR_MODE_INVALID] = -EINVAL,
-+	[REGULATOR_MODE_STANDBY] = -EINVAL,
-+	[REGULATOR_MODE_IDLE]    = -EINVAL,
-+	[REGULATOR_MODE_NORMAL]  = PMIC5_LDO_MODE_HPM,
-+	[REGULATOR_MODE_FAST]    = -EINVAL,
-+};
-+
- static unsigned int rpmh_regulator_pmic4_ldo_of_map_mode(unsigned int rpmh_mode)
- {
- 	unsigned int mode;
-@@ -733,6 +741,33 @@ static const struct rpmh_vreg_hw_data pmic5_pldo515_mv = {
- 	.of_map_mode = rpmh_regulator_pmic4_ldo_of_map_mode,
- };
- 
-+static const struct rpmh_vreg_hw_data pmic5_pldo502 = {
-+	.regulator_type = VRM,
-+	.ops = &rpmh_regulator_vrm_ops,
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(1504000, 0, 255, 8000),
-+	},
-+	.n_linear_ranges = 1,
-+	.n_voltages = 256,
-+	.pmic_mode_map = pmic_mode_map_pmic5_ldo_hpm,
-+	.of_map_mode = rpmh_regulator_pmic4_ldo_of_map_mode,
-+};
-+
-+static const struct rpmh_vreg_hw_data pmic5_pldo502ln = {
-+	.regulator_type = VRM,
-+	.ops = &rpmh_regulator_vrm_ops,
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(1800000, 0,  2,  200000),
-+		REGULATOR_LINEAR_RANGE(2608000, 3,  28, 16000),
-+		REGULATOR_LINEAR_RANGE(3104000, 29, 30, 96000),
-+		REGULATOR_LINEAR_RANGE(3312000, 31, 31, 0),
-+	},
-+	.n_linear_ranges = 4,
-+	.n_voltages = 32,
-+	.pmic_mode_map = pmic_mode_map_pmic5_ldo_hpm,
-+	.of_map_mode = rpmh_regulator_pmic4_ldo_of_map_mode,
-+};
-+
- static const struct rpmh_vreg_hw_data pmic5_nldo = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_drms_ops,
-@@ -759,6 +794,19 @@ static const struct rpmh_vreg_hw_data pmic5_nldo515 = {
- 	.of_map_mode = rpmh_regulator_pmic4_ldo_of_map_mode,
- };
- 
-+static const struct rpmh_vreg_hw_data pmic5_nldo502 = {
-+	.regulator_type = VRM,
-+	.ops = &rpmh_regulator_vrm_drms_ops,
-+	.voltage_ranges = (struct linear_range[]) {
-+		REGULATOR_LINEAR_RANGE(528000, 0, 127, 8000),
-+	},
-+	.n_linear_ranges = 1,
-+	.n_voltages = 128,
-+	.hpm_min_load_uA = 30000,
-+	.pmic_mode_map = pmic_mode_map_pmic5_ldo,
-+	.of_map_mode = rpmh_regulator_pmic4_ldo_of_map_mode,
-+};
-+
- static const struct rpmh_vreg_hw_data pmic5_hfsmps510 = {
- 	.regulator_type = VRM,
- 	.ops = &rpmh_regulator_vrm_ops,
-@@ -1210,6 +1258,16 @@ static const struct rpmh_vreg_init_data pm8009_1_vreg_data[] = {
- 	{}
- };
- 
-+static const struct rpmh_vreg_init_data pm8010_vreg_data[] = {
-+	RPMH_VREG("ldo1",   "ldo%s1",  &pmic5_nldo502,   "vdd-l1-l2"),
-+	RPMH_VREG("ldo2",   "ldo%s2",  &pmic5_nldo502,   "vdd-l1-l2"),
-+	RPMH_VREG("ldo3",   "ldo%s3",  &pmic5_pldo502ln, "vdd-l3-l4"),
-+	RPMH_VREG("ldo4",   "ldo%s4",  &pmic5_pldo502ln, "vdd-l3-l4"),
-+	RPMH_VREG("ldo5",   "ldo%s5",  &pmic5_pldo502,   "vdd-l5"),
-+	RPMH_VREG("ldo6",   "ldo%s6",  &pmic5_pldo502ln, "vdd-l6"),
-+	RPMH_VREG("ldo7",   "ldo%s7",  &pmic5_pldo502,   "vdd-l7"),
-+};
-+
- static const struct rpmh_vreg_init_data pm6150_vreg_data[] = {
- 	RPMH_VREG("smps1",  "smp%s1",  &pmic5_ftsmps510, "vdd-s1"),
- 	RPMH_VREG("smps2",  "smp%s2",  &pmic5_ftsmps510, "vdd-s2"),
-@@ -1525,6 +1583,10 @@ static const struct of_device_id __maybe_unused rpmh_regulator_match_table[] = {
- 		.compatible = "qcom,pm8009-1-rpmh-regulators",
- 		.data = pm8009_1_vreg_data,
- 	},
-+	{
-+		.compatible = "qcom,pm8010-rpmh-regulators",
-+		.data = pm8010_vreg_data,
-+	},
- 	{
- 		.compatible = "qcom,pm8150-rpmh-regulators",
- 		.data = pm8150_vreg_data,
+ &i2c_master_hub_0 {
 
 -- 
 2.25.1
