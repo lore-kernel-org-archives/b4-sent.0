@@ -1,174 +1,90 @@
-From: Fenglin Wu <quic_fenglinw@quicinc.com>
-Date: Fri, 15 Dec 2023 16:01:46 +0800
-Subject: [PATCH v3 2/2] arm64: dts: qcom: sm8550-qrd: add PM8010 regulators
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Fri, 15 Dec 2023 16:28:00 +0800
+Subject: [PATCH] arm64: dts: amlogic: fix format for s4 uart node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231215-pm8010-regulator-v3-2-1bfc4b7ee5ab@quicinc.com>
-References: <20231215-pm8010-regulator-v3-0-1bfc4b7ee5ab@quicinc.com>
-In-Reply-To: <20231215-pm8010-regulator-v3-0-1bfc4b7ee5ab@quicinc.com>
-To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh+dt@kernel.org>, 
+Message-Id: <20231215-s4-dts-v1-1-7831ab6972be@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAA8OfGUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI2NDI0ND3WIT3ZSSYl2TREMLA9OkFFOzNAMloOKCotS0zAqwQdGxtbUAJ0N
+ 5KlgAAAA=
+To: Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, kernel@quicinc.com
-Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, quic_collinsd@quicinc.com, 
- quic_subbaram@quicinc.com, quic_jprakash@quicinc.com, 
- Fenglin Wu <quic_fenglinw@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1702627317; l=4265;
- i=quic_fenglinw@quicinc.com; s=20230725; h=from:subject:message-id;
- bh=CWUiGxnJ4SLz6vk8vxxSFV8erbPvd24GIEgmmiaDxH4=;
- b=bTK9eDjnWBY9hAaZxZS0QMW5ozdF8C+jdU56AfovUogp87Ujv3F9WiYaBHdQ9Y3tqMDWZH3XY
- 0Ya8XnRogy+D/boXosRzlxQxQhb0i5THUNMMrzsds3AW0sOsDkfQ+/U
-X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
- pk=hleIDz3Unk1zeiwwOnZUjoQVMMelRancDFXg927lNjI=
-X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20230725 with auth_id=68
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1702628927; l=1770;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=RArDScP4iapdXOoGmXRe1ouD3aGqNXEnjFAHeK0j36Y=;
+ b=8YWVWYB68WIuagKY9/MmSOxi3cDEmfkIpy1lKXTc9hgqrbNzIU7HJskJxS+EyIteu9O7mhXxX
+ +LUZ9N6K9wADTtpyiKd7z41yH/rd/YIMyc5TnCzuE6FhItyitGm7sjB
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add PM8010 regulator device nodes for sm8550-qrd board.
+Aliases use lowercase letters and place status in end.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
-Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/boot/dts/qcom/sm8550-qrd.dts | 120 ++++++++++++++++++++++++++++++++
- 1 file changed, 120 insertions(+)
+ arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts | 4 ++--
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi             | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-index eef811def39b..7ca93c149215 100644
---- a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-@@ -527,6 +527,126 @@ vreg_l3g_1p2: ldo3 {
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 		};
+diff --git a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
+index 18789242f05f..983caddc409c 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
++++ b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
+@@ -15,7 +15,7 @@ / {
+ 	#size-cells = <2>;
+ 
+ 	aliases {
+-		serial0 = &uart_B;
++		serial0 = &uart_b;
  	};
-+
-+	regulators-6 {
-+		compatible = "qcom,pm8010-rpmh-regulators";
-+		qcom,pmic-id = "m";
-+
-+		vdd-l1-l2-supply = <&vreg_s4g_1p25>;
-+		vdd-l3-l4-supply = <&vreg_bob2>;
-+		vdd-l5-supply = <&vreg_s6g_1p86>;
-+		vdd-l6-supply = <&vreg_s6g_1p86>;
-+		vdd-l7-supply = <&vreg_bob1>;
-+
-+		vreg_l1m_1p056: ldo1 {
-+			regulator-name = "vreg_l1m_1p056";
-+			regulator-min-microvolt = <1056000>;
-+			regulator-max-microvolt = <1056000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l2m_1p056: ldo2 {
-+			regulator-name = "vreg_l2m_1p056";
-+			regulator-min-microvolt = <1056000>;
-+			regulator-max-microvolt = <1056000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3m_2p8: ldo3 {
-+			regulator-name = "vreg_l3m_2p8";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l4m_2p8: ldo4 {
-+			regulator-name = "vreg_l4m_2p8";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l5m_1p8: ldo5 {
-+			regulator-name = "vreg_l5m_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l6m_1p8: ldo6 {
-+			regulator-name = "vreg_l6m_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l7m_2p9: ldo7 {
-+			regulator-name = "vreg_l7m_2p9";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2904000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-7 {
-+		compatible = "qcom,pm8010-rpmh-regulators";
-+		qcom,pmic-id = "n";
-+
-+		vdd-l1-l2-supply = <&vreg_s4g_1p25>;
-+		vdd-l3-l4-supply = <&vreg_bob2>;
-+		vdd-l5-supply = <&vreg_s6g_1p86>;
-+		vdd-l6-supply = <&vreg_bob1>;
-+		vdd-l7-supply = <&vreg_bob1>;
-+
-+		vreg_l1n_1p1: ldo1 {
-+			regulator-name = "vreg_l1n_1p1";
-+			regulator-min-microvolt = <1104000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l2n_1p1: ldo2 {
-+			regulator-name = "vreg_l2n_1p1";
-+			regulator-min-microvolt = <1104000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3n_2p8: ldo3 {
-+			regulator-name = "vreg_l3n_2p8";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <3000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l4n_2p8: ldo4 {
-+			regulator-name = "vreg_l4n_2p8";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <3300000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l5n_1p8: ldo5 {
-+			regulator-name = "vreg_l5n_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l6n_3p3: ldo6 {
-+			regulator-name = "vreg_l6n_3p3";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <3304000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l7n_2p96: ldo7 {
-+			regulator-name = "vreg_l7n_2p96";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2960000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
+ 
+ 	memory@0 {
+@@ -36,7 +36,7 @@ secmon_reserved: secmon@5000000 {
+ 	};
  };
  
- &i2c_master_hub_0 {
+-&uart_B {
++&uart_b {
+ 	status = "okay";
+ };
+ 
+diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
+index c6b524e1a1ee..ce90b35686a2 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
++++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
+@@ -455,14 +455,14 @@ nand: nand-controller@8c800 {
+ 				status = "disabled";
+ 			};
+ 
+-			uart_B: serial@7a000 {
++			uart_b: serial@7a000 {
+ 				compatible = "amlogic,meson-s4-uart",
+ 					     "amlogic,meson-ao-uart";
+ 				reg = <0x0 0x7a000 0x0 0x18>;
+ 				interrupts = <GIC_SPI 169 IRQ_TYPE_EDGE_RISING>;
+-				status = "disabled";
+ 				clocks = <&xtal>, <&clkc_periphs CLKID_UART_B>, <&xtal>;
+ 				clock-names = "xtal", "pclk", "baud";
++				status = "disabled";
+ 			};
+ 
+ 			reset: reset-controller@2000 {
 
+---
+base-commit: 078c5db2a961f674cc27c10f15d15949eece6a49
+change-id: 20231211-s4-dts-4a1805bd56f0
+
+Best regards,
 -- 
-2.25.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
