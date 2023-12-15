@@ -1,96 +1,64 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Fri, 15 Dec 2023 17:33:32 +0800
-Subject: [PATCH v3] arm64: dts: qcom: qcs6490-idp: Add definition for three
- LEDs.
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH v3 0/2] clk: ccf: fix enable_count mismatch
+Date: Sat, 16 Dec 2023 02:28:50 +0800
+Message-Id: <20231111-enable_count-v3-0-08a821892fa9@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231215-lpg-v3-1-4e2db0c6df5f@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAHAdfGUC/0XMQQ6CMBCF4auQWTuGaUGNK+9hjBnaASYBCq0SE
- 8Ldbdy4/JL/vQ2SRJUE12KDKKsmDVOGPRTgep46QfXZYEpjyVCNw9xhxey9PVcXIoZczlFa/fx
- e7o/sNoYRX30U/m+JSlxcGJ+D+ISrQULr2FPbNO5U8215q9PJHXMC+/4FmQQtqJgAAAA=
-To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Hui Liu <quic_huliu@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1702633636; l=1646;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=jkgKPcTHB0LvObnOdM+JMFH2yGRqbzzTL1fwXf6UZho=;
- b=8cRQyf8GFCz6G7Lm8RUia1YB/uRkxLY/eTLY+R57RE12nYTwiZcxIu40k7vqcqHeR5rBPK33r
- b4+KOeOABaKCoioDKb2XNu2GP83ffvmeGQobZ0KgCb0vzcXQ2u/SMUz
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+X-B4-Tracking: v=1; b=H4sIAOKafGUC/32NQQ7CIBAAv9JwFrOAra0n/2GMAbq1xBYMtETT9
+ O9Cbx50b7Ob2VlIQG8wkFOxEI/RBONsArEriO6lvSM1bWLCgQuWhqKVasCbdrOdqGxLACZ4VbO
+ SJEXJgFR5aXWfpVGGCX0+PD125rV1LtfEvQmT8+8tG1ne/ihERoGW0HQHANk0Wp3dPA3OPfbaj
+ SS/ivyfzpPOAcWR1xWAKr/1dV0/Bg0eXwIBAAA=
+To: Simon Glass <sjg@chromium.org>, Lukasz Majewski <lukma@denx.de>, 
+ Sean Anderson <seanga2@gmail.com>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1702664931; l=1401;
+ i=forbidden405@outlook.com; s=20230415; h=from:subject:message-id;
+ bh=OUovCpskf3sjR88V7uRl9KTZC43ZbpJtQSn38lTvjqk=;
+ b=tkgiV1QT1VUw06eQuTJ0AKBio9C1QAt5nKD05m0lnxNHrBb+gcB7+5CZgZKBsIcST2q0X3XNt
+ KhSVzoVzENlBP7Hr8TgX6zSH2xLHR1jHg/8TCIOrPwbjlQLnOHgs3bL
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=hfdpPU3AXR+t7fdv58tXCD4UzRNq+fop2TMJezFlAhM=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230415 with auth_id=44
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add definition for three LEDs to make sure they can
-be enabled base on QCOM LPG LED driver.
+As described in [1], enable_count is incremented by 2 when
+ccf_clk_enable() is called. This series of patch fixed this issue and
+added a testcase for that.
 
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
+[1]: https://lore.kernel.org/all/SEZPR06MB695927A6DEEEF8489A06897396A7A@SEZPR06MB6959.apcprd06.prod.outlook.com/
+
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
 Changes in v3:
-- Rephrased commit text and updated the nodes to qcm6490-idp board file.
-- Link to v2: https://lore.kernel.org/all/20231110-qcom_leds-v2-1-3cad1fbbc65a@quicinc.com/
+- move i2v_root in front of devm clocks. So that clk_test driver needs a
+  minimum modification
+- squash patch 1, 3 and 4. -- Suggested by Sean
+- rewrite commit log for clarity.
+- Link to v2: https://lore.kernel.org/r/20231111-enable_count-v2-0-20e3728600b5@outlook.com
 
 Changes in v2:
-- Rephrased commit text and updated the nodes to board file.
-- Link to v1: https://lore.kernel.org/r/20231108-qcom_leds-v1-1-c3e1c8572cb0@quicinc.com
----
- arch/arm64/boot/dts/qcom/qcm6490-idp.dts | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-index 37c91fdf3ab9..f801144a1556 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-@@ -5,6 +5,7 @@
- 
- /dts-v1/;
- 
-+#include <dt-bindings/leds/common.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- #include "sc7280.dtsi"
- #include "pm7325.dtsi"
-@@ -414,6 +415,30 @@ vreg_bob_3p296: bob {
- 	};
- };
- 
-+&pm8350c_pwm {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
-+
-+	led@1 {
-+		reg = <1>;
-+		color = <LED_COLOR_ID_RED>;
-+		label = "red";
-+	};
-+
-+	led@2 {
-+		reg = <2>;
-+		color = <LED_COLOR_ID_GREEN>;
-+		label = "green";
-+	};
-+
-+	led@3 {
-+		reg = <3>;
-+		color = <LED_COLOR_ID_BLUE>;
-+		label = "blue";
-+	};
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
+- add missing SoB in patch 1/4, no functional change
+- Link to v1: https://lore.kernel.org/r/20231111-enable_count-v1-0-509f400a99cb@outlook.com
 
 ---
-base-commit: 17cb8a20bde66a520a2ca7aad1063e1ce7382240
-change-id: 20231215-lpg-4aadd374811a
+Yang Xiwen (2):
+      clk: get correct ops for clk_enable() and clk_disable()
+      test: dm: clk_ccf: test ccf_clk_ops
+
+ arch/sandbox/dts/test.dts      |  4 +++-
+ arch/sandbox/include/asm/clk.h |  1 +
+ drivers/clk/clk-uclass.c       |  2 ++
+ drivers/clk/clk_sandbox_ccf.c  |  1 +
+ drivers/clk/clk_sandbox_test.c |  1 +
+ test/dm/clk_ccf.c              | 14 +++++++++++---
+ 6 files changed, 19 insertions(+), 4 deletions(-)
+---
+base-commit: 3b913c148249a2b9d12ff25517ec311646e83bee
+change-id: 20231111-enable_count-ad5001326815
 
 Best regards,
 -- 
-Hui Liu <quic_huliu@quicinc.com>
+Yang Xiwen <forbidden405@outlook.com>
 
