@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 04 Jan 2024 16:02:26 +0100
-Subject: [PATCH v2 05/10] seccomp: Remove the now superfluous sentinel
+Date: Thu, 04 Jan 2024 16:02:27 +0100
+Subject: [PATCH v2 06/10] scheduler: Remove the now superfluous sentinel
  elements from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240104-jag-sysctl_remove_empty_elem_kernel-v2-5-836cc04e00ec@samsung.com>
+Message-Id: <20240104-jag-sysctl_remove_empty_elem_kernel-v2-6-836cc04e00ec@samsung.com>
 References: <20240104-jag-sysctl_remove_empty_elem_kernel-v2-0-836cc04e00ec@samsung.com>
 In-Reply-To: <20240104-jag-sysctl_remove_empty_elem_kernel-v2-0-836cc04e00ec@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org, 
@@ -39,17 +39,18 @@ Cc: linux-kernel@vger.kernel.org, kexec@lists.infradead.org,
  linux-fsdevel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
  bpf@vger.kernel.org, Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=933; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=z6EeWSeb/wAILeyqvWIX8FMlRbwGB4xwjlfltNsIiys=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBllsiQF0oBNt6LJkb+zVY5GGJCeSKg2G1eOlNY/
- U9hMugX/3qJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZZbIkAAKCRC6l81St5ZB
- T7e6DACU+v+qIRdOgR0Vmu/bybMMTZLCFfSEqP2vKHZSh37Ah76SyGQpohwFYIlyBeOBBnPNVyJ
- w8p0UWOfIBTtC+RGTtt2n0ijQHCmzEUBwd2OS+8KyEGACtGvfQ/HTz0ohTLF+dkeSuN36ne0Pc/
- 5e7X+WCLZT9/SrcD0xsDhmm1eBnRUVHbBwQVfRVipKlX1xm3KrnZmSfeC5RrFvx0C5HJrJeJ/lA
- /hKTvsd4Lz3IMWylzkkAgqXGSjXjftqgJUEkAHGjptsRIAFAOuOvPq/UN6RctFRocbfHGq4y2is
- jGLLoDYRoLk43HuSXfJlB2y+a4pRp77W8ZH2uzwJkinqJpEMfHIHKB4zlq/sXgYIpyt0m7FMEK+
- diaryq9MeBCXKGs6k1+XLcyj/vWSI1KAYrB2xLVuKd2dsT+dFwovPvTkPayLoVRQusHMPEWXJAg
- /b49Ubys+BjHCNculOLNQoH4Nm+SfvkyVDsf6IrMme51A2DKU3QkWmvfzwebLsO9PnjAE=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3002;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=Xa7JcmuwlJTq/SA5ehycdcY7bcWSGAbQacdTyMWnUTk=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBllsiQbIczHWbA4zQWXlEme0igfFkoWIsxmXPBc
+ CUCAXAJAquJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZZbIkAAKCRC6l81St5ZB
+ T+sFC/4z8OHS2Jhpxg/muIoqFJFCx92BwSioQWQgxJqUOKKdgfweslcLr/dIkxHa1s1yhWlu79H
+ FrbQZs7tWs4EeLTuz/0ucBuBUEL03XSk1slxTJzlU6Yxf5Wt6SnErVBEGmRMzqDz9HFfqizNRhm
+ rKnkOIsjlFq5NmsVoISr4mL98mhBW3bTKRN/WwjS3esxVfzIjegH928NqKvvo6gyYsL+OLuas/J
+ EK551LdSTfSpr7PdtnCxVUpvyLOJb94MJKLr9DzZhPlVRU3mO0LQLoBmJmyUkTWZAEQ1HEETxQx
+ UzT+ncJf5C9wWRGEGhaRgXksWdblHKqBn7K+mufKwYWfB039x02ctFPeZY8Zc8E1HQxdrCsdKIc
+ w+GFYqcrdOkoJwkm1waSCdCnHjc232iIKWr088ReNk4aSRknHtzf8v5K3yWaoyDMur8u8CZ/vuU
+ K3OxAL4Yy0KSBRglb1nKHWv7LdlJZzQioOTDk8JpXzATWG6xbI4Y9g3UmcVRewIIsEgjc=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -61,26 +62,91 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel element from seccomp_sysctl_table.
+rm sentinel element from ctl_table arrays
 
-Acked-by: Kees Cook <keescook@chromium.org>
+Acked-by: "Peter Zijlstra (Intel)" <peterz@infradead.org>
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- kernel/seccomp.c | 1 -
- 1 file changed, 1 deletion(-)
+ kernel/sched/autogroup.c | 1 -
+ kernel/sched/core.c      | 1 -
+ kernel/sched/deadline.c  | 1 -
+ kernel/sched/fair.c      | 1 -
+ kernel/sched/rt.c        | 1 -
+ kernel/sched/topology.c  | 1 -
+ 6 files changed, 6 deletions(-)
 
-diff --git a/kernel/seccomp.c b/kernel/seccomp.c
-index 255999ba9190..b727b4351c1b 100644
---- a/kernel/seccomp.c
-+++ b/kernel/seccomp.c
-@@ -2445,7 +2445,6 @@ static struct ctl_table seccomp_sysctl_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= seccomp_actions_logged_handler,
+diff --git a/kernel/sched/autogroup.c b/kernel/sched/autogroup.c
+index 991fc9002535..db68a964e34e 100644
+--- a/kernel/sched/autogroup.c
++++ b/kernel/sched/autogroup.c
+@@ -19,7 +19,6 @@ static struct ctl_table sched_autogroup_sysctls[] = {
+ 		.extra1         = SYSCTL_ZERO,
+ 		.extra2         = SYSCTL_ONE,
  	},
--	{ }
+-	{}
  };
  
- static int __init seccomp_sysctl_init(void)
+ static void __init sched_autogroup_sysctl_init(void)
+diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+index a708d225c28e..5631d0ec161b 100644
+--- a/kernel/sched/core.c
++++ b/kernel/sched/core.c
+@@ -4708,7 +4708,6 @@ static struct ctl_table sched_core_sysctls[] = {
+ 		.extra2		= SYSCTL_FOUR,
+ 	},
+ #endif /* CONFIG_NUMA_BALANCING */
+-	{}
+ };
+ static int __init sched_core_sysctl_init(void)
+ {
+diff --git a/kernel/sched/deadline.c b/kernel/sched/deadline.c
+index b28114478b82..58cf9defc3b9 100644
+--- a/kernel/sched/deadline.c
++++ b/kernel/sched/deadline.c
+@@ -43,7 +43,6 @@ static struct ctl_table sched_dl_sysctls[] = {
+ 		.proc_handler   = proc_douintvec_minmax,
+ 		.extra2         = (void *)&sysctl_sched_dl_period_max,
+ 	},
+-	{}
+ };
+ 
+ static int __init sched_dl_sysctl_init(void)
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index d7a3c63a2171..8f5f016ebc46 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -157,7 +157,6 @@ static struct ctl_table sched_fair_sysctls[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 	},
+ #endif /* CONFIG_NUMA_BALANCING */
+-	{}
+ };
+ 
+ static int __init sched_fair_sysctl_init(void)
+diff --git a/kernel/sched/rt.c b/kernel/sched/rt.c
+index 6aaf0a3d6081..350f4e8b3b2f 100644
+--- a/kernel/sched/rt.c
++++ b/kernel/sched/rt.c
+@@ -56,7 +56,6 @@ static struct ctl_table sched_rt_sysctls[] = {
+ 		.mode           = 0644,
+ 		.proc_handler   = sched_rr_handler,
+ 	},
+-	{}
+ };
+ 
+ static int __init sched_rt_sysctl_init(void)
+diff --git a/kernel/sched/topology.c b/kernel/sched/topology.c
+index 10d1391e7416..e3a354173005 100644
+--- a/kernel/sched/topology.c
++++ b/kernel/sched/topology.c
+@@ -322,7 +322,6 @@ static struct ctl_table sched_energy_aware_sysctls[] = {
+ 		.extra1         = SYSCTL_ZERO,
+ 		.extra2         = SYSCTL_ONE,
+ 	},
+-	{}
+ };
+ 
+ static int __init sched_energy_aware_sysctl_init(void)
 
 -- 
 2.30.2
