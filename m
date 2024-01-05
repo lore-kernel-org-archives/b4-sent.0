@@ -1,61 +1,148 @@
-From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Thu, 04 Jan 2024 10:06:07 -0600
-Subject: [PATCH] powerpc/pseries/lparcfg: drop error message from guest
- name lookup
+From: Christoph Winklhofer <cj.winklhofer@gmail.com>
+Subject: [PATCH v3 0/3] w1: add UART w1 bus driver
+Date: Fri, 05 Jan 2024 09:26:41 +0100
+Message-Id: <20240105-w1-uart-v3-0-8687093b2e76@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240104-lparcfg-updates-v1-1-66a0184a4eb1@linux.ibm.com>
-X-B4-Tracking: v=1; b=H4sIAG7XlmUC/x3MTQqAIBBA4avErBP8yYSuEi3ERhuIEq0IxLsnL
- b/FewUyJsIMU1cg4UOZzqNB9B24zR4BGa3NILlUQgrJ9miT84HdcbUXZoZe6EEZN2rDoVUxoaf
- 3P85LrR9VyZygYQAAAA==
-To: Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>, 
- "Aneesh Kumar K.V" <aneesh.kumar@linux.ibm.com>, 
- "Naveen N. Rao" <naveen.n.rao@linux.ibm.com>
-Cc: linuxppc-dev@lists.ozlabs.org, Nathan Lynch <nathanl@linux.ibm.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1704384374; l=1163;
- i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=GMz0IiAh9zK5P880g/A7U6ApcCcqSeLA3Ql+a2XZK9Y=;
- b=O1xFqRDdGK5iRd8E3mmF8YTU9mQPmDWI4unbFo8rvxNIHwPuNzNIQJ+kvN0QEvz9QKmOdtkFB
- wgYIHj6T2l1DU/bmiamqFGCoamt6/CFJUFtQla9AD4xRuTvkiYtXVbp
-X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
- pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
-X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
+X-B4-Tracking: v=1; b=H4sIAEG9l2UC/zXMwQqDMBAE0F+RPXdlo4lIT/2P0kOwG93WGFltL
+ Yj/3lDoYQ4PZmaHhVV4gXOxg/JbFklTRn0qoBv81DPKPRsqqiwZsrgZfHldkbltWueN844gt2f
+ lIJ/f0/WWHTRFXAdl/9/XpsohstSW1pJr0GD3KDeZnuOQAuulj17GsksRjuML1wHc95oAAAA=
+To: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Rob Herring <robh+dt@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
+ Christoph Winklhofer <cj.winklhofer@gmail.com>, 
+ Rob Herring <robh@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-serial@vger.kernel.org, linux-doc@vger.kernel.org
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1704443222; l=4768;
+ i=cj.winklhofer@gmail.com; s=20240104; h=from:subject:message-id;
+ bh=J9zv5oHyamS5PRZOF0tXtJ/G7Rms0rZ2TZXyj5Hx/qE=;
+ b=oJYrb7YMqdI2yRcQld2Z45q1j8586OsLVG+BXbM26rhykV4fUMLxosVq7IokqvcjqsXcuHS86
+ CVS8+U07jxRAG2ripWJ0TPXClw2P21/7f4Mr2RHk/tutkWjmzjI5IuT
+X-Developer-Key: i=cj.winklhofer@gmail.com; a=ed25519;
+ pk=lgjGjOt7hFKJT9UXhgUyrdthxvZ7DJ5F1U/7d9qdAsk=
+X-Endpoint-Received: by B4 Relay for cj.winklhofer@gmail.com/20240104 with auth_id=111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It's not an error or exceptional situation when the hosting
-environment does not expose a name for the LP/guest via RTAS or the
-device tree. This happens with qemu when run without the '-name'
-option. The message also lacks a newline. Remove it.
+Hello!
 
-Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
+This patch contains a driver for a 1-Wire bus over UART. The driver
+utilizes the UART interface via the Serial Device Bus to create the
+1-Wire timing patterns.
+
+Changes in v3:
+
+- improve baud-rate configuration: use specific limits for 1-Wire
+  reset, touch-0 and touch-1 operation, compute in nanoseconds.
+- remove unused header atomic.h
+- use function instead of macro to compute bit-time from baud-rate
+- switch to b4 util to publish patch: missing recipients
+
+Changes in v2:
+
+- add documentation for dt-binding
+- allow onewire as serial child node
+- support different baud-rates: The driver requests a baud-rate (9600
+  for reset and 115200 for write/read) and tries to adapt the
+  transmitted byte according to the actual baud-rate returned from
+  serdev.
+- fix locking problem for serdev-receive and w1-master reset/touch: The
+  received byte is now protected with a mutex - instead of the atomic,
+  which was used before due to the concurrent store and load.
+- explicit error in serdev-receive: Receiving more than one byte results
+  in an error, since the w1-uart driver is the only writer, it writes a
+  single-byte and should receive a single byte.
+- fix variable names, errno-returns, wrong define CONFIG_OF
+- fix log flooding
+- fix driver remove (error-path for rxtx-function)
+
+Krzysztof, thank your very much for your feedback!
+
+It was tested on a "Raspberry Pi 3 Model B+" with a DS18B20 and on a
+"Variscite DART-6UL" with a DS18S20 temperature sensor.
+
+Content:
+- Patch 1: device tree binding 1-Wire
+- Patch 2: allow onewire as serial child node
+- Patch 3: driver and documentation
+
+The patch was created against the w1 subsytem tree (branch w1-next):
+  Link: https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux-w1.git/
+
+The checkpatch.pl script reported the following error - which I am not
+sure how to fix:
+  WARNING: added, moved or deleted file(s), does MAINTAINERS need
+  updating?
+
+The technical details for 1-Wire over UART are in the document:
+  Link: https://www.analog.com/en/technical-articles/using-a-uart-to-implement-a-1wire-bus-master.html
+
+  In short, the UART peripheral must support full-duplex and operate in
+open-drain mode. The timing patterns are generated by a specific
+combination of baud-rate and transmitted byte, which corresponds to a
+1-Wire read bit, write bit or reset pulse.
+
+For instance the timing pattern for a 1-Wire reset and presence detect
+uses the baud-rate 9600, i.e. 104.2 us per bit. The transmitted byte
+0xf0 over UART (least significant bit first, start-bit low) sets the
+reset low time for 1-Wire to 521 us. A present 1-Wire device changes the
+received byte by pulling the line low, which is used by the driver to
+evaluate the result of the 1-Wire operation.
+
+Similar for a 1-Wire read bit or write bit, which uses the baud-rate
+115200, i.e. 8.7 us per bit. The transmitted byte 0x00 is used for a
+Write-0 operation and the byte 0xff for Read-0, Read-1 and Write-1.
+
+Hope the driver is helpful.
+
+Thanks,
+Christoph
+
+Christoph Winklhofer (3):
+  dt-bindings: w1: UART 1-Wire bus
+  dt-bindings: serial: allow onewire as child node
+  w1: add UART w1 bus driver
+
+ .../devicetree/bindings/serial/serial.yaml    |   2 +-
+ .../devicetree/bindings/w1/w1-uart.yaml       |  44 +++
+ Documentation/w1/masters/index.rst            |   1 +
+ Documentation/w1/masters/w1-uart.rst          |  53 +++
+ drivers/w1/masters/Kconfig                    |  10 +
+ drivers/w1/masters/Makefile                   |   1 +
+ drivers/w1/masters/w1-uart.c                  | 307 ++++++++++++++++++
+ 7 files changed, 417 insertions(+), 1 deletion(-)
+ create mode 100644 Documentation/devicetree/bindings/w1/w1-uart.yaml
+ create mode 100644 Documentation/w1/masters/w1-uart.rst
+ create mode 100644 drivers/w1/masters/w1-uart.c
+
+--
+2.43.0
+
+base-commit: efc19c44aa442197ddcbb157c6ca54a56eba8c4e
 ---
- arch/powerpc/platforms/pseries/lparcfg.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Christoph Winklhofer (3):
+      dt-bindings: w1: UART 1-Wire bus
+      dt-bindings: serial: allow onewire as child node
+      w1: add UART w1 bus driver
 
-diff --git a/arch/powerpc/platforms/pseries/lparcfg.c b/arch/powerpc/platforms/pseries/lparcfg.c
-index 1c151d77e74b..ff02ade17a75 100644
---- a/arch/powerpc/platforms/pseries/lparcfg.c
-+++ b/arch/powerpc/platforms/pseries/lparcfg.c
-@@ -357,8 +357,8 @@ static int read_dt_lpar_name(struct seq_file *m)
- 
- static void read_lpar_name(struct seq_file *m)
- {
--	if (read_rtas_lpar_name(m) && read_dt_lpar_name(m))
--		pr_err_once("Error can't get the LPAR name");
-+	if (read_rtas_lpar_name(m))
-+		read_dt_lpar_name(m);
- }
- 
- #define SPLPAR_MAXLENGTH 1026*(sizeof(char))
-
+ .../devicetree/bindings/serial/serial.yaml         |   2 +-
+ Documentation/devicetree/bindings/w1/w1-uart.yaml  |  44 +++
+ Documentation/w1/masters/index.rst                 |   1 +
+ Documentation/w1/masters/w1-uart.rst               |  54 ++++
+ drivers/w1/masters/Kconfig                         |  10 +
+ drivers/w1/masters/Makefile                        |   1 +
+ drivers/w1/masters/w1-uart.c                       | 350 +++++++++++++++++++++
+ 7 files changed, 461 insertions(+), 1 deletion(-)
 ---
-base-commit: 44a1aad2fe6c10bfe0589d8047057b10a4c18a19
-change-id: 20231212-lparcfg-updates-ef15437c6570
+base-commit: efc19c44aa442197ddcbb157c6ca54a56eba8c4e
+change-id: 20240104-w1-uart-ee8685a15a50
 
 Best regards,
 -- 
-Nathan Lynch <nathanl@linux.ibm.com>
+Christoph Winklhofer <cj.winklhofer@gmail.com>
 
