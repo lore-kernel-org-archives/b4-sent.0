@@ -1,11 +1,10 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 12 Jan 2024 17:40:16 +0100
-Subject: [PATCH v5 2/8] dt-bindings: adc: axi-adc: update bindings for
- backend framework
+Date: Fri, 12 Jan 2024 17:40:17 +0100
+Subject: [PATCH v5 3/8] driver: core: allow modifying device_links flags
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240112-iio-backend-v5-2-bdecad041ab4@analog.com>
+Message-Id: <20240112-iio-backend-v5-3-bdecad041ab4@analog.com>
 References: <20240112-iio-backend-v5-0-bdecad041ab4@analog.com>
 In-Reply-To: <20240112-iio-backend-v5-0-bdecad041ab4@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
@@ -19,63 +18,58 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Frank Rowand <frowand.list@gmail.com>, 
  Olivier Moysan <olivier.moysan@foss.st.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705077624; l=1658;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705077624; l=1762;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=DYj0q1l5M0LArXZVCHvtHZ4FXXxJPHISrp7kseIEWW0=;
- b=1UEVuO7VmFrTlMSuWaIxqdgLP5303J8bpuKXBAiDON9jsJtMw1yWlEHZjZxjRL4Ale1xx36xr
- 0ZZE2aKVMzFBPQxTO4W59/1qnQjzkSJ8e7/7X6gJdK5ebzrQ1890dlF
+ bh=NLZHAx7QEa2fUUjKTtfo6RESv2OQO0JG++qc/yxWC4M=;
+ b=CdHkNa09HRJ9A/cdFWtfO1CwgAf2mwqm7enEyDx/k4YrFh8LAWb/u7wjzch7bk+21bk4ruuLM
+ mz+i8/NGCj1DcUo/2OHMferCnI1muElWYjJj5Pj5lorpNHK8FeGLJ/z
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-'adi,adc-dev' is now deprecated and must not be used anymore. Hence,
-also remove it from being required.
+If a device_link is previously created (eg: via
+fw_devlink_create_devlink()) before the supplier + consumer are both
+present and bound to their respective drivers, there's no way to set
+DL_FLAG_AUTOREMOVE_CONSUMER anymore while one can still set
+DL_FLAG_AUTOREMOVE_SUPPLIER. Hence, rework the flags checks to allow
+for DL_FLAG_AUTOREMOVE_CONSUMER in the same way
+DL_FLAG_AUTOREMOVE_SUPPLIER is done.
 
-The reason why it's being deprecated is because the axi-adc CORE is now
-an IIO service provider hardware (IIO backends) for consumers to make use
-of. Before, the logic with 'adi,adc-dev' was the opposite (it was kind
-of consumer referencing other nodes/devices) and that proved to be wrong
-and to not scale.
-
-Now, IIO consumers of this hardware are expected to reference it using the
-io-backends property. Hence, the new '#io-backend-cells' is being added
-so the device is easily identified as a provider.
+While at it, make sure that we are never left with
+DL_FLAG_AUTOPROBE_CONSUMER set together with one of
+DL_FLAG_AUTOREMOVE_CONSUMER or DL_FLAG_AUTOREMOVE_SUPPLIER.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ drivers/base/core.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml b/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml
-index 9996dd93f84b..dc7b14546afb 100644
---- a/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml
-+++ b/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml
-@@ -39,12 +39,15 @@ properties:
-     $ref: /schemas/types.yaml#/definitions/phandle
-     description:
-       A reference to a the actual ADC to which this FPGA ADC interfaces to.
-+    deprecated: true
+diff --git a/drivers/base/core.c b/drivers/base/core.c
+index 67ba592afc77..fdbb5abc75d5 100644
+--- a/drivers/base/core.c
++++ b/drivers/base/core.c
+@@ -807,11 +807,15 @@ struct device_link *device_link_add(struct device *consumer,
+ 		 * update the existing link to stay around longer.
+ 		 */
+ 		if (flags & DL_FLAG_AUTOREMOVE_SUPPLIER) {
+-			if (link->flags & DL_FLAG_AUTOREMOVE_CONSUMER) {
+-				link->flags &= ~DL_FLAG_AUTOREMOVE_CONSUMER;
+-				link->flags |= DL_FLAG_AUTOREMOVE_SUPPLIER;
+-			}
+-		} else if (!(flags & DL_FLAG_AUTOREMOVE_CONSUMER)) {
++			link->flags &= ~DL_FLAG_AUTOREMOVE_CONSUMER;
++			link->flags &= ~DL_FLAG_AUTOPROBE_CONSUMER;
++			link->flags |= DL_FLAG_AUTOREMOVE_SUPPLIER;
 +
-+  '#io-backends-cells'
-+    const: 0
- 
- required:
-   - compatible
-   - dmas
-   - reg
--  - adi,adc-dev
- 
- additionalProperties: false
- 
-@@ -55,7 +58,5 @@ examples:
-         reg = <0x44a00000 0x10000>;
-         dmas = <&rx_dma 0>;
-         dma-names = "rx";
--
--        adi,adc-dev = <&spi_adc>;
-     };
- ...
++		} else if (flags & DL_FLAG_AUTOREMOVE_CONSUMER) {
++			link->flags &= ~DL_FLAG_AUTOREMOVE_SUPPLIER;
++			link->flags &= ~DL_FLAG_AUTOPROBE_CONSUMER;
++			link->flags |= DL_FLAG_AUTOREMOVE_CONSUMER;
++		} else {
+ 			link->flags &= ~(DL_FLAG_AUTOREMOVE_CONSUMER |
+ 					 DL_FLAG_AUTOREMOVE_SUPPLIER);
+ 		}
 
 -- 
 2.43.0
