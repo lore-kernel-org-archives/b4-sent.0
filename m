@@ -1,104 +1,81 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Mon, 15 Jan 2024 17:48:37 +0800
-Subject: [PATCH v5] arm64: dts: qcom: qcm6490-idp: Add definition for three
- LEDs
+From: Emil Velikov <emil.l.velikov@gmail.com>
+Subject: [PATCH BlueZ 00/10] Autotools papercuts, linker GC, symlink
+ dbus-org.bluez.obex.service
+Date: Tue, 16 Jan 2024 13:51:54 +0000
+Message-Id: <20240116-autofoo-v1-0-626f6b54bd06@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240115-lpg-v5-1-3c56f77f9cec@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAHX/pGUC/1WO3wqCMBxGXyV23WK/bS7pqveIiLk/OlCnm41Cf
- PemEeHlge8cvhlFE5yJ6HKYUTDJRef7DMXxgFQj+9pgpzMjSigDCgVuhxpzKbVmZ14CSJSXQzD
- WvbbK7Z7ZBt/hqQlG/l0Agkflu0drdMSJYsBMSQ22qpQo5HV8OuV6dcqTNdm4OPnw3n4ltob3F
- xLLAW6orogS2hZ2F1hPJP6zOAGgX4tnS3FCOKFClKLaW8uyfAB9zWyOEQEAAA==
-To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Hui Liu <quic_huliu@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705312129; l=1982;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=kbl/RWkKCwiC9v8FHJS+qQTVX4k0SVTLaRWOhdD+XYo=;
- b=MmaOYHX12oex5H21exM2lmlZ4WrwfDdHYzPHMkIFWMZ1AxXDFqLJij+2eCSpU4ch55er29s/g
- vqBq9BNnFCHCEAUOtlyLRS4z8evAdZzlIb06UWqF1W7sBA1IAbH+sSv
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+X-B4-Tracking: v=1; b=H4sIAPqJpmUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDQ0Mz3cTSkvy0/HzdlCSjtFSjZHMDS1NDJaDqgqLUtMwKsEnRsbW1AOo
+ 5nHxZAAAA
+To: linux-bluetooth@vger.kernel.org
+Cc: Emil Velikov <emil.velikov@collabora.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413116; l=2083;
+ i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
+ bh=qMVrXkmg4Fgyp38JOJtFMNb6rJOsPj4pytAyiNylZ1o=;
+ b=aPKfZIFRlWYuJQ804uFLlrxAfw6vtk+x4XgsaCJpxgCpJSlGb+6hrynUdQRU5ebgKvqj9f077
+ MOcg01vDz7ODWjwOKYgjEkahKYylR2XZBx6nH+b4gKxlF3mE8zJCtsK
+X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
+ pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
+X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add definition for three LEDs to make sure they can
-be enabled base on QCOM LPG LED driver.
+Hello everyone,
 
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
----
-Changes in v5:
-- Rephrased commit text, replaced qcs6490-idp to qcm6490-idp.
-- Removed the unnecessary full.
-- Link to v4: https://lore.kernel.org/r/20240112-lpg-v4-1-c4004026686b@quicinc.com
+While looking at our bluez package for the SteamDeck a handful of
+paper cuts stood out. Here we tackle the build related ones - a couple
+more series will be incoming shortly.
 
-Changes in v4:
-- Removed "label" definition and added "function" definition.
-- Link to v3: https://lore.kernel.org/r/20231215-lpg-v3-1-4e2db0c6df5f@quicinc.com
+In a gist we have the following:
+ - remove manual tracking of .services.in, DEPENDENCIES
+ - remove unused variables
+ - polish PKG_CHECK_MODULES handling
+ - enable linker garbage collection
+ - create a symlink to dbus-org.bluez.obex.service
 
-Changes in v3:
-- Rephrased commit text and updated the nodes to qcm6490-idp board file.
-- Link to v2: https://lore.kernel.org/all/20231110-qcom_leds-v2-1-3cad1fbbc65a@quicinc.com/
+The last change is slightly out of topic here, although since there's
+a high chance of merge conflicts, I've added it here. Let me know if
+you'd like it send out as separate series.
 
-Changes in v2:
-- Rephrased commit text and updated the nodes to board file.
-- Link to v1: https://lore.kernel.org/r/20231108-qcom_leds-v1-1-c3e1c8572cb0@quicinc.com
----
- arch/arm64/boot/dts/qcom/qcm6490-idp.dts | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+This is my first time diving into bluez, so any comments and input is
+greatly appreciated.
 
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-index 37c91fdf3ab9..8268fad505e7 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-@@ -5,6 +5,7 @@
- 
- /dts-v1/;
- 
-+#include <dt-bindings/leds/common.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- #include "sc7280.dtsi"
- #include "pm7325.dtsi"
-@@ -414,6 +415,28 @@ vreg_bob_3p296: bob {
- 	};
- };
- 
-+&pm8350c_pwm {
-+	function = LED_FUNCTION_STATUS;
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
-+
-+	led@1 {
-+		reg = <1>;
-+		color = <LED_COLOR_ID_RED>;
-+	};
-+
-+	led@2 {
-+		reg = <2>;
-+		color = <LED_COLOR_ID_GREEN>;
-+	};
-+
-+	led@3 {
-+		reg = <3>;
-+		color = <LED_COLOR_ID_BLUE>;
-+	};
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
+Thanks
+Emil
 
 ---
-base-commit: 17cb8a20bde66a520a2ca7aad1063e1ce7382240
-change-id: 20231215-lpg-4aadd374811a
+Emil Velikov (10):
+      build: remove unused AM_CONDITIONAL
+      build: tweak PKG_CHECK_MODULES calls
+      build: require libudev 196, circa 2012
+      build: remove dummy {conf,state}{dir,_DATA}
+      build: remove unused variable builtin_nodist
+      build: remove .service files from DEPENDENCIES lists
+      build: remove explicit DEPENDENCIES handling
+      build: manage .service.in files via configure.ac
+      build: enable gc/dead code removal
+      build: install dbus-org.bluez.obex.service symlink
+
+ Makefile.am                       | 31 ++--------------
+ Makefile.mesh                     |  7 +---
+ Makefile.obexd                    | 10 ++++--
+ Makefile.tools                    |  6 ----
+ acinclude.m4                      |  2 ++
+ configure.ac                      | 75 ++++++++++++---------------------------
+ mesh/bluetooth-mesh.service.in    |  2 +-
+ monitor/hwdb.c                    |  2 +-
+ obexd/src/obex.service.in         |  2 +-
+ src/bluetooth.service.in          |  2 +-
+ src/oui.c                         |  2 +-
+ tools/bluetooth-logger.service.in |  2 +-
+ 12 files changed, 43 insertions(+), 100 deletions(-)
+---
+base-commit: 770ad5614e7e8074133e6f563495ce4822f63fe4
+change-id: 20240116-autofoo-db2fe2c70951
 
 Best regards,
 -- 
-Hui Liu <quic_huliu@quicinc.com>
+Emil Velikov <emil.l.velikov@gmail.com>
 
