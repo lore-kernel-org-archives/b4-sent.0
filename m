@@ -1,21 +1,20 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 16 Jan 2024 14:00:43 +0000
-Subject: [PATCH BlueZ 18/20] obexd: const obex_transport_driver instances
- and API
+Date: Tue, 16 Jan 2024 14:00:44 +0000
+Subject: [PATCH BlueZ 19/20] obexd: const annotate misc immutable data
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240116-const-v1-18-17c87978f40b@gmail.com>
+Message-Id: <20240116-const-v1-19-17c87978f40b@gmail.com>
 References: <20240116-const-v1-0-17c87978f40b@gmail.com>
 In-Reply-To: <20240116-const-v1-0-17c87978f40b@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413636; l=5127;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413636; l=3937;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=JDoUhBi2XiJb/UMjdc14J4bi0Pzc2uyYvi1v/YGGtyk=;
- b=2h9Nl51z4y31plLNxA9+pBsKij7tQV4om4ytOX1ZzbgyGjktrKRZ/81gi7imQBXp53r/rqGmr
- qVOsISJYekPCnRrA2pONBADY3hfu0WmmEPD5BXlDC+1zB1jT+jsvkUV
+ bh=LrDZdJSOkuXg0aaks0vIhPZwBeRbl04SybrYFVckFXg=;
+ b=OUeSwrfDljmljB/eO09WAXjnvynxultMG2EumZa87b/P/KGASR+i3PHVEx+aWJScKZHtVxPs0
+ q3cHc5NWn0ZDMg6x5xSGZg1R1Tbsosir7IRxgaoQX2ytqXNK9LM/X4h
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
@@ -24,156 +23,128 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 From: Emil Velikov <emil.velikov@collabora.com>
 
 ---
- obexd/plugins/bluetooth.c |  2 +-
- obexd/src/obex.c          |  4 ++--
- obexd/src/server.c        |  8 ++++----
- obexd/src/server.h        |  2 +-
- obexd/src/transport.c     | 14 +++++++-------
- obexd/src/transport.h     |  6 +++---
- 6 files changed, 18 insertions(+), 18 deletions(-)
+ obexd/client/manager.c          | 6 +++---
+ obexd/client/map.c              | 4 ++--
+ obexd/client/mns.c              | 4 ++--
+ obexd/plugins/phonebook-ebook.c | 2 +-
+ obexd/src/main.c                | 2 +-
+ obexd/src/obex.c                | 2 +-
+ 6 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/obexd/plugins/bluetooth.c b/obexd/plugins/bluetooth.c
-index bcf6e1998..51afdc9d0 100644
---- a/obexd/plugins/bluetooth.c
-+++ b/obexd/plugins/bluetooth.c
-@@ -416,7 +416,7 @@ static int bluetooth_getsockname(GIOChannel *io, char **name)
- 	return 0;
+diff --git a/obexd/client/manager.c b/obexd/client/manager.c
+index 75f1bfb04..ad1fbb04a 100644
+--- a/obexd/client/manager.c
++++ b/obexd/client/manager.c
+@@ -241,7 +241,7 @@ static const GDBusMethodTable client_methods[] = {
+ 
+ static DBusConnection *conn = NULL;
+ 
+-static struct obc_module {
++static const struct obc_module {
+ 	const char *name;
+ 	int (*init) (void);
+ 	void (*exit) (void);
+@@ -258,7 +258,7 @@ static struct obc_module {
+ int client_manager_init(void)
+ {
+ 	DBusError derr;
+-	struct obc_module *module;
++	const struct obc_module *module;
+ 
+ 	dbus_error_init(&derr);
+ 
+@@ -289,7 +289,7 @@ int client_manager_init(void)
+ 
+ void client_manager_exit(void)
+ {
+-	struct obc_module *module;
++	const struct obc_module *module;
+ 
+ 	if (conn == NULL)
+ 		return;
+diff --git a/obexd/client/map.c b/obexd/client/map.c
+index 74828cddb..513dcaf14 100644
+--- a/obexd/client/map.c
++++ b/obexd/client/map.c
+@@ -1060,7 +1060,7 @@ static void parse_protected(struct map_msg *msg, const char *value)
+ 						MAP_MSG_INTERFACE, "Protected");
  }
  
--static struct obex_transport_driver driver = {
-+static const struct obex_transport_driver driver = {
- 	.name = "bluetooth",
- 	.start = bluetooth_start,
- 	.getpeername = bluetooth_getpeername,
+-static struct map_msg_parser {
++static const struct map_msg_parser {
+ 	const char *name;
+ 	void (*func) (struct map_msg *msg, const char *value);
+ } msg_parsers[] = {
+@@ -1120,7 +1120,7 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
+ 								&msg->path);
+ 
+ 	for (i = 0, key = names[i]; key; key = names[++i]) {
+-		struct map_msg_parser *parser;
++		const struct map_msg_parser *parser;
+ 
+ 		for (parser = msg_parsers; parser && parser->name; parser++) {
+ 			if (strcasecmp(key, parser->name) == 0) {
+diff --git a/obexd/client/mns.c b/obexd/client/mns.c
+index 702cf0367..c7f86afdc 100644
+--- a/obexd/client/mns.c
++++ b/obexd/client/mns.c
+@@ -233,7 +233,7 @@ static void parse_event_report_priority(struct map_event *event,
+ 	event->priority = g_strdup(value);
+ }
+ 
+-static struct map_event_report_parser {
++static const struct map_event_report_parser {
+ 	const char *name;
+ 	void (*func) (struct map_event *event, const char *value);
+ } event_report_parsers[] = {
+@@ -262,7 +262,7 @@ static void event_report_element(GMarkupParseContext *ctxt,
+ 		return;
+ 
+ 	for (i = 0, key = names[i]; key; key = names[++i]) {
+-		struct map_event_report_parser *parser;
++		const struct map_event_report_parser *parser;
+ 
+ 		for (parser = event_report_parsers; parser && parser->name;
+ 								parser++) {
+diff --git a/obexd/plugins/phonebook-ebook.c b/obexd/plugins/phonebook-ebook.c
+index 29ec9d213..e509dd29a 100644
+--- a/obexd/plugins/phonebook-ebook.c
++++ b/obexd/plugins/phonebook-ebook.c
+@@ -55,7 +55,7 @@ struct query_context {
+ 	gboolean canceled;
+ };
+ 
+-static char *attribute_mask[] = {
++static const char *attribute_mask[] = {
+ /* 0 */		"VERSION",
+ 		"FN",
+ 		"N",
+diff --git a/obexd/src/main.c b/obexd/src/main.c
+index d950883f0..151574afa 100644
+--- a/obexd/src/main.c
++++ b/obexd/src/main.c
+@@ -138,7 +138,7 @@ static gboolean parse_debug(const char *key, const char *value,
+ 	return TRUE;
+ }
+ 
+-static GOptionEntry options[] = {
++static const GOptionEntry options[] = {
+ 	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
+ 				G_OPTION_ARG_CALLBACK, parse_debug,
+ 				"Enable debug information output", "DEBUG" },
 diff --git a/obexd/src/obex.c b/obexd/src/obex.c
-index 4bf5ad124..526861f40 100644
+index 526861f40..98d6245a4 100644
 --- a/obexd/src/obex.c
 +++ b/obexd/src/obex.c
-@@ -1085,7 +1085,7 @@ ssize_t obex_get_non_header_data(struct obex_session *os,
+@@ -55,7 +55,7 @@ struct auth_header {
+ } __attribute__ ((packed));
  
- int obex_getpeername(struct obex_session *os, char **name)
- {
--	struct obex_transport_driver *transport = os->server->transport;
-+	const struct obex_transport_driver *transport = os->server->transport;
- 
- 	if (transport == NULL || transport->getpeername == NULL)
- 		return -ENOTSUP;
-@@ -1095,7 +1095,7 @@ int obex_getpeername(struct obex_session *os, char **name)
- 
- int obex_getsockname(struct obex_session *os, char **name)
- {
--	struct obex_transport_driver *transport = os->server->transport;
-+	const struct obex_transport_driver *transport = os->server->transport;
- 
- 	if (transport == NULL || transport->getsockname == NULL)
- 		return -ENOTSUP;
-diff --git a/obexd/src/server.c b/obexd/src/server.c
-index eef149272..0dca728d2 100644
---- a/obexd/src/server.c
-+++ b/obexd/src/server.c
-@@ -34,12 +34,12 @@
- 
- static GSList *servers = NULL;
- 
--static void init_server(uint16_t service, GSList *transports)
-+static void init_server(uint16_t service, const GSList *transports)
- {
--	GSList *l;
-+	const GSList *l;
- 
- 	for (l = transports; l; l = l->next) {
--		struct obex_transport_driver *transport = l->data;
-+		const struct obex_transport_driver *transport = l->data;
- 		struct obex_server *server;
- 		int err;
- 
-@@ -66,7 +66,7 @@ static void init_server(uint16_t service, GSList *transports)
- int obex_server_init(void)
- {
- 	GSList *drivers;
--	GSList *transports;
-+	const GSList *transports;
- 	GSList *l;
- 
- 	drivers = obex_service_driver_list(0);
-diff --git a/obexd/src/server.h b/obexd/src/server.h
-index c31236ec0..ec063ae2e 100644
---- a/obexd/src/server.h
-+++ b/obexd/src/server.h
-@@ -10,7 +10,7 @@
-  */
- 
- struct obex_server {
--	struct obex_transport_driver *transport;
-+	const struct obex_transport_driver *transport;
- 	void *transport_data;
- 	GSList *drivers;
- };
-diff --git a/obexd/src/transport.c b/obexd/src/transport.c
-index 4b5895e5d..234a0e004 100644
---- a/obexd/src/transport.c
-+++ b/obexd/src/transport.c
-@@ -27,13 +27,13 @@
- 
- static GSList *drivers = NULL;
- 
--static struct obex_transport_driver *obex_transport_driver_find(
-+static const struct obex_transport_driver *obex_transport_driver_find(
- 							const char *name)
- {
--	GSList *l;
-+	const GSList *l;
- 
- 	for (l = drivers; l; l = l->next) {
--		struct obex_transport_driver *driver = l->data;
-+		const struct obex_transport_driver *driver = l->data;
- 
- 		if (g_strcmp0(name, driver->name) == 0)
- 			return driver;
-@@ -42,12 +42,12 @@ static struct obex_transport_driver *obex_transport_driver_find(
- 	return NULL;
- }
- 
--GSList *obex_transport_driver_list(void)
-+const GSList *obex_transport_driver_list(void)
- {
- 	return drivers;
- }
- 
--int obex_transport_driver_register(struct obex_transport_driver *driver)
-+int obex_transport_driver_register(const struct obex_transport_driver *driver)
- {
- 	if (!driver) {
- 		error("Invalid driver");
-@@ -62,12 +62,12 @@ int obex_transport_driver_register(struct obex_transport_driver *driver)
- 
- 	DBG("driver %p transport %s registered", driver, driver->name);
- 
--	drivers = g_slist_prepend(drivers, driver);
-+	drivers = g_slist_prepend(drivers, (gpointer)driver);
- 
- 	return 0;
- }
- 
--void obex_transport_driver_unregister(struct obex_transport_driver *driver)
-+void obex_transport_driver_unregister(const struct obex_transport_driver *driver)
- {
- 	if (!g_slist_find(drivers, driver)) {
- 		error("Unable to unregister: No such driver %p", driver);
-diff --git a/obexd/src/transport.h b/obexd/src/transport.h
-index 3a16b7620..fe79432cf 100644
---- a/obexd/src/transport.h
-+++ b/obexd/src/transport.h
-@@ -17,6 +17,6 @@ struct obex_transport_driver {
- 	void (*stop) (void *data);
- };
- 
--int obex_transport_driver_register(struct obex_transport_driver *driver);
--void obex_transport_driver_unregister(struct obex_transport_driver *driver);
--GSList *obex_transport_driver_list(void);
-+int obex_transport_driver_register(const struct obex_transport_driver *driver);
-+void obex_transport_driver_unregister(const struct obex_transport_driver *driver);
-+const GSList *obex_transport_driver_list(void);
+ /* Possible commands */
+-static struct {
++static const struct {
+ 	int cmd;
+ 	const char *name;
+ } obex_command[] = {
 
 -- 
 2.43.0
