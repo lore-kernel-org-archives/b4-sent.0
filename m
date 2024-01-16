@@ -1,109 +1,71 @@
-From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 16 Jan 2024 14:00:45 +0000
-Subject: [PATCH BlueZ 20/20] obexd: const annotate obex_plugin_desc
- entrypoint
+From: Nathan Lynch <nathanl@linux.ibm.com>
+Date: Tue, 16 Jan 2024 08:09:25 -0600
+Subject: [PATCH] seq_buf: make DECLARE_SEQ_BUF() usable
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240116-const-v1-20-17c87978f40b@gmail.com>
-References: <20240116-const-v1-0-17c87978f40b@gmail.com>
-In-Reply-To: <20240116-const-v1-0-17c87978f40b@gmail.com>
-To: linux-bluetooth@vger.kernel.org
-Cc: Emil Velikov <emil.velikov@collabora.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240116-declare-seq-buf-fix-v1-1-915db4692f32@linux.ibm.com>
+X-B4-Tracking: v=1; b=H4sIABSOpmUC/x2MSwqAMBDFriKzdqCt4u8q4sLWpw6InxZFEO9uc
+ ZlA8lCAFwRqkoc8LgmyrRF0mpCb+3UCyxCZjDK50trwALf0HhxwsD1HHuXmulKZLVGUtXUUy90
+ j6v/adu/7ASG0Mc1lAAAA
+To: "Steven Rostedt (Google)" <rostedt@goodmis.org>, 
+ Kees Cook <keescook@chromium.org>
+Cc: linux-kernel@vger.kernel.org, Nathan Lynch <nathanl@linux.ibm.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413636; l=2465;
- i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=NqOjgJzWeyVBPk28dTgOSntse3r5l3o0yfOgLtILLQY=;
- b=xeyoPUXasnGeNeZ/P9F3naSPrGJAwtxNp0n5k37lCwevB+fJIkRYGYrNf6xkaWYCH+YeBf+u3
- sPqffyCUj1yBqKGbUAK+Z0lQEwRHpFBUrhqKc5LJMIgKJXIdFfqO4ic
-X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
- pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
-X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705414172; l=1460;
+ i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
+ bh=PDfnqK8MoD62TWn0JxiINKlWua/4QKsMFHUjf8S4QK8=;
+ b=eWY/a5vMbGPcD8FCX6fA+B9jBCt4bD6+x6sOb6OUJ3z+QllNTc0jX2mvpktKNuyyowH9aUyQf
+ n2a6Z9L3agPAbh4ONpXhTSYRoowvGZPqb1QzlG1dB0K5BgQmhXJ+HUC
+X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
+ pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
+X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Emil Velikov <emil.velikov@collabora.com>
+Using the address operator on the array doesn't work:
 
+./include/linux/seq_buf.h:27:27: error: initialization of ‘char *’
+  from incompatible pointer type ‘char (*)[128]’
+  [-Werror=incompatible-pointer-types]
+   27 |                 .buffer = &__ ## NAME ## _buffer,       \
+      |                           ^
+
+Apart from fixing that, we can improve DECLARE_SEQ_BUF() by using a
+compound literal to define the buffer array without attaching a name
+to it. This makes the macro a single statement, allowing constructs
+such as:
+
+  static DECLARE_SEQ_BUF(my_seq_buf, MYSB_SIZE);
+
+to work as intended.
+
+Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
+Fixes: dcc4e5728eea ("seq_buf: Introduce DECLARE_SEQ_BUF and seq_buf_str()")
 ---
- obexd/src/genbuiltin | 4 ++--
- obexd/src/plugin.c   | 8 ++++----
- obexd/src/plugin.h   | 4 ++--
- 3 files changed, 8 insertions(+), 8 deletions(-)
+ include/linux/seq_buf.h | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/obexd/src/genbuiltin b/obexd/src/genbuiltin
-index 39f773527..e60b5189a 100755
---- a/obexd/src/genbuiltin
-+++ b/obexd/src/genbuiltin
-@@ -2,11 +2,11 @@
- 
- for i in $*
- do
--	echo "extern struct obex_plugin_desc __obex_builtin_$i;"
-+	echo "extern const struct obex_plugin_desc __obex_builtin_$i;"
- done
- 
- echo
--echo "static struct obex_plugin_desc *__obex_builtin[] = {"
-+echo "static const struct obex_plugin_desc *__obex_builtin[] = {"
- 
- for i in $*
- do
-diff --git a/obexd/src/plugin.c b/obexd/src/plugin.c
-index 0df9d5258..a3eb24753 100644
---- a/obexd/src/plugin.c
-+++ b/obexd/src/plugin.c
-@@ -38,10 +38,10 @@ static GSList *plugins = NULL;
- 
- struct obex_plugin {
- 	void *handle;
--	struct obex_plugin_desc *desc;
-+	const struct obex_plugin_desc *desc;
+diff --git a/include/linux/seq_buf.h b/include/linux/seq_buf.h
+index 5fb1f12c33f9..c44f4b47b945 100644
+--- a/include/linux/seq_buf.h
++++ b/include/linux/seq_buf.h
+@@ -22,9 +22,8 @@ struct seq_buf {
  };
  
--static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
-+static gboolean add_plugin(void *handle, const struct obex_plugin_desc *desc)
- {
- 	struct obex_plugin *plugin;
- 
-@@ -66,7 +66,7 @@ static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
- 	return TRUE;
- }
- 
--static gboolean check_plugin(struct obex_plugin_desc *desc,
-+static gboolean check_plugin(const struct obex_plugin_desc *desc,
- 				char **patterns, char **excludes)
- {
- 	if (excludes) {
-@@ -132,7 +132,7 @@ gboolean plugin_init(const char *pattern, const char *exclude)
+ #define DECLARE_SEQ_BUF(NAME, SIZE)			\
+-	char __ ## NAME ## _buffer[SIZE] = "";		\
+ 	struct seq_buf NAME = {				\
+-		.buffer = &__ ## NAME ## _buffer,	\
++		.buffer = (char[SIZE]) { 0 },		\
+ 		.size = SIZE,				\
  	}
  
- 	while ((file = g_dir_read_name(dir)) != NULL) {
--		struct obex_plugin_desc *desc;
-+		const struct obex_plugin_desc *desc;
- 		void *handle;
- 		char *filename;
- 
-diff --git a/obexd/src/plugin.h b/obexd/src/plugin.h
-index 703878460..a91746cbc 100644
---- a/obexd/src/plugin.h
-+++ b/obexd/src/plugin.h
-@@ -16,14 +16,14 @@ struct obex_plugin_desc {
- 
- #ifdef OBEX_PLUGIN_BUILTIN
- #define OBEX_PLUGIN_DEFINE(name, init, exit) \
--		struct obex_plugin_desc __obex_builtin_ ## name = { \
-+		const struct obex_plugin_desc __obex_builtin_ ## name = { \
- 			#name, init, exit \
- 		};
- #else
- #define OBEX_PLUGIN_DEFINE(name,init,exit) \
- 		extern struct obex_plugin_desc obex_plugin_desc \
- 				__attribute__ ((visibility("default"))); \
--		struct obex_plugin_desc obex_plugin_desc = { \
-+		const struct obex_plugin_desc obex_plugin_desc = { \
- 			#name, init, exit \
- 		};
- #endif
 
+---
+base-commit: 70d201a40823acba23899342d62bc2644051ad2e
+change-id: 20240112-declare-seq-buf-fix-9803b7e679bc
+
+Best regards,
 -- 
-2.43.0
+Nathan Lynch <nathanl@linux.ibm.com>
 
