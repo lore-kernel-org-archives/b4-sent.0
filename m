@@ -1,20 +1,21 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 16 Jan 2024 14:00:29 +0000
-Subject: [PATCH BlueZ 04/20] monitor: const annotate misc arrays
+Date: Tue, 16 Jan 2024 14:00:30 +0000
+Subject: [PATCH BlueZ 05/20] monitor: const annotate
+ intel_version_tlv_desc::type_str and API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240116-const-v1-4-17c87978f40b@gmail.com>
+Message-Id: <20240116-const-v1-5-17c87978f40b@gmail.com>
 References: <20240116-const-v1-0-17c87978f40b@gmail.com>
 In-Reply-To: <20240116-const-v1-0-17c87978f40b@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413636; l=3310;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413636; l=3446;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=sDFz/h5HNC2kVyVsavc6FYhQwHcER0nnd3cc13qPQdk=;
- b=p+E599P8FUnPy1mWk/ocsd4lxhjB07GHNOyenW456WJYuZdwCMm8xAzwmuhjJTh7zyfaPDT8w
- zPuFMJDhn5fDgurnm4qC1eUio9V67HyWPRFrqNM4kOp0co5Uv6KauTA
+ bh=wahNKDM8iDeiZs6EV1R7VsClaT+QYMSeKeI21SRP6Aw=;
+ b=Gdy8Fb4gEVdZRo4gvD5rfT/5wHjL+tFQXVs8a5soi0m05zIDj/c71TZAkIjwMmFZzSZ4VmXld
+ Llp1vuZnqopC+ulU8e/VkD5vQ8moTkPyDVbGG+TXmDB+C6J9ZRrucwB
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
@@ -23,128 +24,112 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 From: Emil Velikov <emil.velikov@collabora.com>
 
 ---
- monitor/att.c    | 8 ++++----
- monitor/avctp.c  | 2 +-
- monitor/intel.c  | 2 +-
- monitor/l2cap.c  | 2 +-
- monitor/rfcomm.c | 2 +-
- monitor/sdp.c    | 4 ++--
- 6 files changed, 10 insertions(+), 10 deletions(-)
+ monitor/intel.c | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
 
-diff --git a/monitor/att.c b/monitor/att.c
-index d016e58df..ac0d881fd 100644
---- a/monitor/att.c
-+++ b/monitor/att.c
-@@ -2581,7 +2581,7 @@ static void media_state_notify(const struct l2cap_frame *frame)
- 	print_media_state(frame);
- }
- 
--struct media_cp_opcode {
-+static const struct media_cp_opcode {
- 	uint8_t opcode;
- 	const char *opcode_str;
- } media_cp_opcode_table[] = {
-@@ -2739,7 +2739,7 @@ static void content_control_id_read(const struct l2cap_frame *frame)
- 
- static const struct pa_sync_state_decoder {
- 	uint8_t code;
--	char *value;
-+	const char *value;
- } pa_sync_state_decoders[] = {
- 	{ 0x00, "Not synchronized to PA" },
- 	{ 0x01, "SyncInfo Request" },
-@@ -2750,7 +2750,7 @@ static const struct pa_sync_state_decoder {
- 
- static const struct cp_pa_sync_state_decoder {
- 	uint8_t code;
--	char *value;
-+	const char *value;
- } cp_pa_sync_state_decoders[] = {
- 	{ 0x00, "Do not synchronize to PA" },
- 	{ 0x01, "Synchronize to PA - PAST available" },
-@@ -2759,7 +2759,7 @@ static const struct cp_pa_sync_state_decoder {
- 
- static const struct big_enc_decoder {
- 	uint8_t code;
--	char *value;
-+	const char *value;
- } big_enc_decoders[] = {
- 	{ 0x00, "Not encrypted" },
- 	{ 0x01, "Broadcast_Code required" },
-diff --git a/monitor/avctp.c b/monitor/avctp.c
-index fb2628282..c59e93b20 100644
---- a/monitor/avctp.c
-+++ b/monitor/avctp.c
-@@ -1802,7 +1802,7 @@ response:
- }
- 
- 
--static struct {
-+static const struct {
- 	const char *str;
- 	bool reserved;
- } features_table[] = {
 diff --git a/monitor/intel.c b/monitor/intel.c
-index 0191987d4..1b2414290 100644
+index 1b2414290..0de864d8a 100644
 --- a/monitor/intel.c
 +++ b/monitor/intel.c
-@@ -1798,7 +1798,7 @@ static const struct vendor_evt vendor_prefix_evt_table[] = {
- 	{ }
+@@ -171,25 +171,25 @@ struct intel_version_tlv {
  };
  
--const uint8_t intel_vendor_prefix[] = {0x87, 0x80};
-+static const uint8_t intel_vendor_prefix[] = {0x87, 0x80};
- #define INTEL_VENDOR_PREFIX_SIZE sizeof(intel_vendor_prefix)
- 
- /*
-diff --git a/monitor/l2cap.c b/monitor/l2cap.c
-index 8f3d8e65b..dff183bd0 100644
---- a/monitor/l2cap.c
-+++ b/monitor/l2cap.c
-@@ -718,7 +718,7 @@ static void print_config_result(uint16_t result)
- 	print_field("Result: %s (0x%4.4x)", str, le16_to_cpu(result));
+ static void print_version_tlv_u32(const struct intel_version_tlv *tlv,
+-				  char *type_str)
++				  const char *type_str)
+ {
+ 	print_field("%s(%u): 0x%8.8x", type_str, tlv->type, get_le32(tlv->val));
  }
  
--static struct {
-+static const struct {
+ static void print_version_tlv_u16(const struct intel_version_tlv *tlv,
+-				  char *type_str)
++				  const char *type_str)
+ {
+ 	print_field("%s(%u): 0x%4.4x", type_str, tlv->type, get_le16(tlv->val));
+ }
+ 
+ static void print_version_tlv_u8(const struct intel_version_tlv *tlv,
+-				 char *type_str)
++				 const char *type_str)
+ {
+ 	print_field("%s(%u): 0x%2.2x", type_str, tlv->type, get_u8(tlv->val));
+ }
+ 
+ static void print_version_tlv_enabled(const struct intel_version_tlv *tlv,
+-				      char *type_str)
++				      const char *type_str)
+ {
+ 	print_field("%s(%u): %s(%u)", type_str, tlv->type,
+ 					tlv->val[0] ? "Enabled" : "Disabled",
+@@ -197,7 +197,7 @@ static void print_version_tlv_enabled(const struct intel_version_tlv *tlv,
+ }
+ 
+ static void print_version_tlv_img_type(const struct intel_version_tlv *tlv,
+-				       char *type_str)
++				       const char *type_str)
+ {
+ 	const char *str;
+ 
+@@ -217,34 +217,34 @@ static void print_version_tlv_img_type(const struct intel_version_tlv *tlv,
+ }
+ 
+ static void print_version_tlv_timestamp(const struct intel_version_tlv *tlv,
+-					char *type_str)
++					const char *type_str)
+ {
+ 	print_field("%s(%u): %u-%u", type_str, tlv->type,
+ 				tlv->val[1], tlv->val[0]);
+ }
+ 
+ static void print_version_tlv_min_fw(const struct intel_version_tlv *tlv,
+-				     char *type_str)
++				     const char *type_str)
+ {
+ 	print_field("%s(%u): %u-%u.%u", type_str, tlv->type,
+ 				tlv->val[0], tlv->val[1], 2000 + tlv->val[2]);
+ }
+ 
+ static void print_version_tlv_otp_bdaddr(const struct intel_version_tlv *tlv,
+-					 char *type_str)
++					 const char *type_str)
+ {
+ 	packet_print_addr(type_str, tlv->val, 0x00);
+ }
+ 
+ static void print_version_tlv_unknown(const struct intel_version_tlv *tlv,
+-				      char *type_str)
++				      const char *type_str)
+ {
+ 	print_field("%s(%u): ", type_str, tlv->type);
+ 	packet_hexdump(tlv->val, tlv->len);
+ }
+ 
+ static void print_version_tlv_mfg(const struct intel_version_tlv *tlv,
+-					 char *type_str)
++					 const char *type_str)
+ {
+ 	uint16_t mfg_id = get_le16(tlv->val);
+ 
+@@ -254,8 +254,8 @@ static void print_version_tlv_mfg(const struct intel_version_tlv *tlv,
+ 
+ static const struct intel_version_tlv_desc {
  	uint8_t type;
- 	uint8_t len;
- 	const char *str;
-diff --git a/monitor/rfcomm.c b/monitor/rfcomm.c
-index 02300a8b5..a855152c6 100644
---- a/monitor/rfcomm.c
-+++ b/monitor/rfcomm.c
-@@ -32,7 +32,7 @@
- #include "sdp.h"
- #include "rfcomm.h"
+-	char *type_str;
+-	void (*func)(const struct intel_version_tlv *tlv, char *type_str);
++	const char *type_str;
++	void (*func)(const struct intel_version_tlv *tlv, const char *type_str);
+ } intel_version_tlv_table[] = {
+ 	{ 16, "CNVi TOP", print_version_tlv_u32 },
+ 	{ 17, "CNVr TOP", print_version_tlv_u32 },
+@@ -365,7 +365,7 @@ static void read_version_rsp(uint16_t index, const void *data, uint8_t size)
  
--static char *cr_str[] = {
-+static const char *cr_str[] = {
- 	"RSP",
- 	"CMD"
- };
-diff --git a/monitor/sdp.c b/monitor/sdp.c
-index daf9a9da8..2c69dc83b 100644
---- a/monitor/sdp.c
-+++ b/monitor/sdp.c
-@@ -167,7 +167,7 @@ static struct {
- 	{ }
- };
+ static void read_version_cmd(uint16_t index, const void *data, uint8_t size)
+ {
+-	char *str;
++	const char *str;
+ 	uint8_t type;
  
--static struct {
-+static const struct {
- 	uint8_t index;
- 	uint8_t bits;
- 	uint8_t size;
-@@ -322,7 +322,7 @@ static uint32_t get_bytes(const uint8_t *data, uint32_t size)
- 	return 0;
- }
- 
--static struct {
-+static const struct {
- 	uint16_t id;
- 	const char *str;
- } attribute_table[] = {
+ 	/* This is the legacy read version command format and no further action
 
 -- 
 2.43.0
