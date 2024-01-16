@@ -1,21 +1,20 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 16 Jan 2024 14:18:58 +0000
-Subject: [PATCH BlueZ 6/8] bluetoothd: remove debug support for external
- plugins
+Date: Tue, 16 Jan 2024 14:18:59 +0000
+Subject: [PATCH BlueZ 7/8] bluetoothd: don't export internal API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240116-rm-ext-plugins-v1-6-62990fb07369@gmail.com>
+Message-Id: <20240116-rm-ext-plugins-v1-7-62990fb07369@gmail.com>
 References: <20240116-rm-ext-plugins-v1-0-62990fb07369@gmail.com>
 In-Reply-To: <20240116-rm-ext-plugins-v1-0-62990fb07369@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705414735; l=2192;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705414735; l=1432;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=fafLoCDAizTJJNOrgtnDZy+R8cR/ymoouOueLgEdSPU=;
- b=uXHogyiuOm10zo8UiUFx8oN1FqYNC6ia1emcchVEdm1fKJydj8B+h3KSqW0DAqPpGY2OIX+iz
- ujo+fbHT9UFD6H21Z91hRgpwDHZhcZWwqvYIC5aKwu3bTBGbm5cL70r
+ bh=U5NIyzd+tGCF6EHhbw0tLLdXoVXk3Dye+U0qia+JOu0=;
+ b=o8nMbPxFFidp1At3vvsR198xYOmPY5IXSPve88wvXLaP0h98s/bXrMjLtl5lygPNb2tQsW/kO
+ TiN1eE5NS2MBOASDJQtntpvaSXSTAnaBdArXQnmQSogYvWJaDfc97W3
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
@@ -23,85 +22,59 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Emil Velikov <emil.velikov@collabora.com>
 
-External plugins are gone, drop the associated debug support code.
+With the final external plugin gone, we can keep the API internal.
 ---
- src/log.c    | 10 +++-------
- src/log.h    |  3 +--
- src/plugin.c |  2 --
- src/plugin.h |  2 --
- 4 files changed, 4 insertions(+), 13 deletions(-)
+ Makefile.am       |  3 ---
+ src/bluetooth.ver | 20 --------------------
+ 2 files changed, 23 deletions(-)
 
-diff --git a/src/log.c b/src/log.c
-index 0155a6bba..db855d2b1 100644
---- a/src/log.c
-+++ b/src/log.c
-@@ -138,15 +138,11 @@ static gboolean is_enabled(struct btd_debug_desc *desc)
- 	return 0;
- }
+diff --git a/Makefile.am b/Makefile.am
+index 4db3a2953..c421f53c4 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -291,7 +291,6 @@ pkglibexec_PROGRAMS += src/bluetoothd
  
--void __btd_enable_debug(struct btd_debug_desc *start,
--					struct btd_debug_desc *stop)
-+void __btd_enable_debug(void)
- {
- 	struct btd_debug_desc *desc;
+ src_bluetoothd_SOURCES = $(builtin_sources) \
+ 			$(attrib_sources) $(btio_sources) \
+-			src/bluetooth.ver \
+ 			src/main.c src/log.h src/log.c \
+ 			src/backtrace.h src/backtrace.c \
+ 			src/rfkill.c src/btd.h src/sdpd.h \
+@@ -323,8 +322,6 @@ src_bluetoothd_LDADD = lib/libbluetooth-internal.la \
+ 			src/libshared-glib.la \
+ 			$(BACKTRACE_LIBS) $(GLIB_LIBS) $(DBUS_LIBS) -ldl -lrt \
+ 			$(builtin_ldadd)
+-src_bluetoothd_LDFLAGS = $(AM_LDFLAGS) -Wl,--export-dynamic \
+-				-Wl,--version-script=$(srcdir)/src/bluetooth.ver
  
--	if (start == NULL || stop == NULL)
--		return;
--
--	for (desc = start; desc < stop; desc++) {
-+	for (desc = __start___debug; desc < __stop___debug; desc++) {
- 		if (is_enabled(desc))
- 			desc->flags |= BTD_DEBUG_FLAG_PRINT;
- 	}
-@@ -167,7 +163,7 @@ void __btd_log_init(const char *debug, int detach)
- 	if (debug != NULL)
- 		enabled = g_strsplit_set(debug, ":, ", 0);
- 
--	__btd_enable_debug(__start___debug, __stop___debug);
-+	__btd_enable_debug();
- 
- 	bt_log_open();
- 
-diff --git a/src/log.h b/src/log.h
-index 1ed742a0d..303fb36df 100644
---- a/src/log.h
-+++ b/src/log.h
-@@ -36,8 +36,7 @@ struct btd_debug_desc {
- 	unsigned int flags;
- } __attribute__((aligned(8)));
- 
--void __btd_enable_debug(struct btd_debug_desc *start,
--					struct btd_debug_desc *stop);
-+void __btd_enable_debug(void);
- 
- /**
-  * DBG:
-diff --git a/src/plugin.c b/src/plugin.c
-index 1631f201c..e3eb12c0c 100644
---- a/src/plugin.c
-+++ b/src/plugin.c
-@@ -62,8 +62,6 @@ static void add_plugin(struct bluetooth_plugin_desc *desc)
- 	plugin->active = FALSE;
- 	plugin->desc = desc;
- 
--	__btd_enable_debug(desc->debug_start, desc->debug_stop);
--
- 	plugins = g_slist_insert_sorted(plugins, plugin, compare_priority);
- }
- 
-diff --git a/src/plugin.h b/src/plugin.h
-index 7ff55e796..7a2d07b3d 100644
---- a/src/plugin.h
-+++ b/src/plugin.h
-@@ -17,8 +17,6 @@ struct bluetooth_plugin_desc {
- 	int priority;
- 	int (*init) (void);
- 	void (*exit) (void);
--	void *debug_start;
--	void *debug_stop;
- };
- 
- #define BLUETOOTH_PLUGIN_DEFINE(name, version, priority, init, exit) \
+ src_bluetoothd_DEPENDENCIES = lib/libbluetooth-internal.la \
+ 				gdbus/libgdbus-internal.la \
+diff --git a/src/bluetooth.ver b/src/bluetooth.ver
+deleted file mode 100644
+index a96fda2a1..000000000
+--- a/src/bluetooth.ver
++++ /dev/null
+@@ -1,20 +0,0 @@
+-{
+-	global:
+-		btd_*;
+-		g_dbus_*;
+-		info;
+-		error;
+-		debug;
+-		baswap;
+-		ba2str;
+-		/* Don't break LLVM sanitizers */
+-		__asan*;
+-		__dfsan*;
+-		__lsan*;
+-		__msan*;
+-		__sanitizer*;
+-		__tsan*;
+-		__ubsan*;
+-	local:
+-		*;
+-};
 
 -- 
 2.43.0
