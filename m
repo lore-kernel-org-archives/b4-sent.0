@@ -1,20 +1,21 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 16 Jan 2024 14:00:26 +0000
-Subject: [PATCH BlueZ 01/20] src: const annotate the bluetooth plugin API
+Date: Tue, 16 Jan 2024 14:00:27 +0000
+Subject: [PATCH BlueZ 02/20] monitor: const annotate util_ltv_debugger
+ instances and API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240116-const-v1-1-17c87978f40b@gmail.com>
+Message-Id: <20240116-const-v1-2-17c87978f40b@gmail.com>
 References: <20240116-const-v1-0-17c87978f40b@gmail.com>
 In-Reply-To: <20240116-const-v1-0-17c87978f40b@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413636; l=3210;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413636; l=2252;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=I/Oyu/RLwK0OSGqSTjaoDbqWB2lkqBZyCxJ1p08rwK0=;
- b=B4d7cr/nEAueGQRAzNE6jXDNbg/BF+MsrQJuV3PGUMU58kDpixDvokem2nLIHF1Mcshsz2RN0
- m5a2Pe0JHSuCGMXYZtL9lxOfOlTEmcCfzumhnXPLpcyHUdgLWp+/8ls
+ bh=SWETOT2uVy6nUDBhnJWLVd9iTSKcoM2gRJYy59LqmtQ=;
+ b=LSW+gQOehX9oFttXX2MOvyPWVh81sCxYC31oTPd+wg3hT0QDevNUgrrtgAbIOlLsZDVSm6NCK
+ 7BsgwcMBXFCDTKXIR0rHHqGyN5vHq0yCvUV1y9dLjxmFQARNa4QH/Yn
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
@@ -22,101 +23,68 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Emil Velikov <emil.velikov@collabora.com>
 
-The data was never mutable, so there's no API/ABI breakage here.
 ---
- src/genbuiltin | 4 ++--
- src/log.c      | 2 +-
- src/plugin.c   | 6 +++---
- src/plugin.h   | 6 +++---
- 4 files changed, 9 insertions(+), 9 deletions(-)
+ monitor/att.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/src/genbuiltin b/src/genbuiltin
-index 8b6f04761..010e4ed2f 100755
---- a/src/genbuiltin
-+++ b/src/genbuiltin
-@@ -2,11 +2,11 @@
- 
- for i in $*
- do
--	echo "extern struct bluetooth_plugin_desc __bluetooth_builtin_$i;"
-+	echo "extern const struct bluetooth_plugin_desc __bluetooth_builtin_$i;"
- done
- 
- echo
--echo "static struct bluetooth_plugin_desc *__bluetooth_builtin[] = {"
-+echo "static const struct bluetooth_plugin_desc *__bluetooth_builtin[] = {"
- 
- for i in $*
- do
-diff --git a/src/log.c b/src/log.c
-index 0155a6bba..ca8ae2d0e 100644
---- a/src/log.c
-+++ b/src/log.c
-@@ -123,7 +123,7 @@ extern struct btd_debug_desc __stop___debug[];
- 
- static char **enabled = NULL;
- 
--static gboolean is_enabled(struct btd_debug_desc *desc)
-+static gboolean is_enabled(const struct btd_debug_desc *desc)
- {
- 	int i;
- 
-diff --git a/src/plugin.c b/src/plugin.c
-index 80990f8c3..69c4138f0 100644
---- a/src/plugin.c
-+++ b/src/plugin.c
-@@ -31,7 +31,7 @@ static GSList *plugins = NULL;
- struct bluetooth_plugin {
- 	void *handle;
- 	gboolean active;
--	struct bluetooth_plugin_desc *desc;
-+	const struct bluetooth_plugin_desc *desc;
- };
- 
- static int compare_priority(gconstpointer a, gconstpointer b)
-@@ -42,7 +42,7 @@ static int compare_priority(gconstpointer a, gconstpointer b)
- 	return plugin2->desc->priority - plugin1->desc->priority;
+diff --git a/monitor/att.c b/monitor/att.c
+index 9db273223..51a5a759c 100644
+--- a/monitor/att.c
++++ b/monitor/att.c
+@@ -683,7 +683,7 @@ static void print_ltv(const char *str, void *user_data)
  }
  
--static gboolean add_plugin(void *handle, struct bluetooth_plugin_desc *desc)
-+static gboolean add_plugin(void *handle, const struct bluetooth_plugin_desc *desc)
+ static bool print_ase_lv(const struct l2cap_frame *frame, const char *label,
+-			struct util_ltv_debugger *decoder, size_t decoder_len)
++			const struct util_ltv_debugger *decoder, size_t decoder_len)
  {
- 	struct bluetooth_plugin *plugin;
+ 	struct bt_hci_lv_data *lv;
  
-@@ -141,7 +141,7 @@ gboolean plugin_init(const char *enable, const char *disable)
- 		goto start;
+@@ -705,7 +705,7 @@ static bool print_ase_lv(const struct l2cap_frame *frame, const char *label,
+ }
  
- 	while ((file = g_dir_read_name(dir)) != NULL) {
--		struct bluetooth_plugin_desc *desc;
-+		const struct bluetooth_plugin_desc *desc;
- 		void *handle;
- 		char *filename;
+ static bool print_ase_cc(const struct l2cap_frame *frame, const char *label,
+-			struct util_ltv_debugger *decoder, size_t decoder_len)
++			const struct util_ltv_debugger *decoder, size_t decoder_len)
+ {
+ 	return print_ase_lv(frame, label, decoder, decoder_len);
+ }
+@@ -813,7 +813,7 @@ done:
+ 		print_hex_field("    Data", frame.data, frame.size);
+ }
  
-diff --git a/src/plugin.h b/src/plugin.h
-index a5f92a557..dcf54a5bf 100644
---- a/src/plugin.h
-+++ b/src/plugin.h
-@@ -23,7 +23,7 @@ struct bluetooth_plugin_desc {
+-struct util_ltv_debugger ase_metadata_table[] = {
++static const struct util_ltv_debugger ase_metadata_table[] = {
+ 	UTIL_LTV_DEBUG(0x01, ase_debug_preferred_context),
+ 	UTIL_LTV_DEBUG(0x02, ase_debug_context),
+ 	UTIL_LTV_DEBUG(0x03, ase_debug_program_info),
+@@ -994,7 +994,7 @@ done:
+ 		print_hex_field("    Data", frame.data, frame.size);
+ }
  
- #ifdef BLUETOOTH_PLUGIN_BUILTIN
- #define BLUETOOTH_PLUGIN_DEFINE(name, version, priority, init, exit) \
--		struct bluetooth_plugin_desc __bluetooth_builtin_ ## name = { \
-+		const struct bluetooth_plugin_desc __bluetooth_builtin_ ## name = { \
- 			#name, version, priority, init, exit \
- 		};
- #else
-@@ -32,9 +32,9 @@ struct bluetooth_plugin_desc {
- 				__attribute__ ((weak, visibility("hidden"))); \
- 		extern struct btd_debug_desc __stop___debug[] \
- 				__attribute__ ((weak, visibility("hidden"))); \
--		extern struct bluetooth_plugin_desc bluetooth_plugin_desc \
-+		extern const struct bluetooth_plugin_desc bluetooth_plugin_desc \
- 				__attribute__ ((visibility("default"))); \
--		struct bluetooth_plugin_desc bluetooth_plugin_desc = { \
-+		const struct bluetooth_plugin_desc bluetooth_plugin_desc = { \
- 			#name, version, priority, init, exit, \
- 			__start___debug, __stop___debug \
- 		};
+-struct util_ltv_debugger pac_cap_table[] = {
++static const struct util_ltv_debugger pac_cap_table[] = {
+ 	UTIL_LTV_DEBUG(0x01, pac_decode_freq),
+ 	UTIL_LTV_DEBUG(0x02, pac_decode_duration),
+ 	UTIL_LTV_DEBUG(0x03, pac_decode_channels),
+@@ -1336,7 +1336,7 @@ done:
+ 		print_hex_field("    Data", frame.data, frame.size);
+ }
+ 
+-struct util_ltv_debugger ase_cc_table[] = {
++static const struct util_ltv_debugger ase_cc_table[] = {
+ 	UTIL_LTV_DEBUG(0x01, ase_debug_freq),
+ 	UTIL_LTV_DEBUG(0x02, ase_debug_duration),
+ 	UTIL_LTV_DEBUG(0x03, ase_debug_location),
+@@ -2769,7 +2769,7 @@ static const struct big_enc_decoder {
+ 
+ static bool print_subgroup_lv(const struct l2cap_frame *frame,
+ 				const char *label,
+-				struct util_ltv_debugger *debugger,
++				const struct util_ltv_debugger *debugger,
+ 				size_t debugger_len)
+ {
+ 	struct bt_hci_lv_data *lv;
 
 -- 
 2.43.0
