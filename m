@@ -1,21 +1,21 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 16 Jan 2024 14:00:41 +0000
-Subject: [PATCH BlueZ 16/20] obexd: const obex_mime_type_driver instances
- and API
+Date: Tue, 16 Jan 2024 14:00:42 +0000
+Subject: [PATCH BlueZ 17/20] obexd: const obex_service_driver instances and
+ API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240116-const-v1-16-17c87978f40b@gmail.com>
+Message-Id: <20240116-const-v1-17-17c87978f40b@gmail.com>
 References: <20240116-const-v1-0-17c87978f40b@gmail.com>
 In-Reply-To: <20240116-const-v1-0-17c87978f40b@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413636; l=11209;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413636; l=9315;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=SKIZuOUAgBaKwtIir1DXq91Qao7Mu//a+v8uSmhQCl8=;
- b=mZ4y9YbsB8+qtNzU1j+6wPV4649X3hdExMtlrgsbYOtpJwkG0+e8x6XXmU7jqQ25bLQi4wEeS
- +cQE8ldcSt9B1JIaAdS4GN9uap0ypk84GMWWThHTZZr4rYojphdAy8G
+ bh=PLJ5Voc0l/2l/ZQxlBtjyCuSLocbfz1q4Ph0208Vyz0=;
+ b=YhPEyfLP2GbmdSEVORIMVCnzP4Iwf/iAA8ZKSCko8DHpG1+u/Ybzf+em2HmevlddcV5dbWAWE
+ VE13HVAL1exBrhBC7iw+AKF9d4r5TT5KtNNgNH6wTVU4Lx0fNsez+HE
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
@@ -25,307 +25,265 @@ From: Emil Velikov <emil.velikov@collabora.com>
 
 ---
  obexd/client/mns.c            |  2 +-
- obexd/plugins/filesystem.c    |  8 ++++----
+ obexd/plugins/bluetooth.c     |  4 ++--
+ obexd/plugins/ftp.c           |  2 +-
  obexd/plugins/irmc.c          |  2 +-
- obexd/plugins/mas.c           | 16 ++++++++--------
- obexd/plugins/pbap.c          |  6 +++---
+ obexd/plugins/mas.c           |  2 +-
+ obexd/plugins/opp.c           |  2 +-
+ obexd/plugins/pbap.c          |  2 +-
  obexd/plugins/pcsuite.c       |  2 +-
  obexd/plugins/syncevolution.c |  2 +-
- obexd/src/mimetype.c          | 14 +++++++-------
- obexd/src/mimetype.h          |  6 +++---
  obexd/src/obex-priv.h         |  2 +-
- 10 files changed, 30 insertions(+), 30 deletions(-)
+ obexd/src/server.c            |  2 +-
+ obexd/src/service.c           | 20 ++++++++++----------
+ obexd/src/service.h           |  6 +++---
+ 13 files changed, 25 insertions(+), 25 deletions(-)
 
 diff --git a/obexd/client/mns.c b/obexd/client/mns.c
-index e52505642..3b2ae1076 100644
+index 3b2ae1076..702cf0367 100644
 --- a/obexd/client/mns.c
 +++ b/obexd/client/mns.c
-@@ -356,7 +356,7 @@ static struct obex_service_driver mns = {
- 	.disconnect = mns_disconnect,
- };
- 
--static struct obex_mime_type_driver mime_event_report = {
-+static const struct obex_mime_type_driver mime_event_report = {
- 	.target = MNS_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-bt/MAP-event-report",
-diff --git a/obexd/plugins/filesystem.c b/obexd/plugins/filesystem.c
-index 09bff8ad0..f52927541 100644
---- a/obexd/plugins/filesystem.c
-+++ b/obexd/plugins/filesystem.c
-@@ -642,7 +642,7 @@ done:
- 	return err;
+@@ -346,7 +346,7 @@ static ssize_t event_report_write(void *obj, const void *buf, size_t count)
+ 	return count;
  }
  
--static struct obex_mime_type_driver file = {
-+static const struct obex_mime_type_driver file = {
- 	.open = filesystem_open,
- 	.close = filesystem_close,
- 	.read = filesystem_read,
-@@ -652,7 +652,7 @@ static struct obex_mime_type_driver file = {
- 	.copy = filesystem_copy,
- };
+-static struct obex_service_driver mns = {
++static const struct obex_service_driver mns = {
+ 	.name = "Message Notification server",
+ 	.service = OBEX_MNS,
+ 	.target = MNS_TARGET,
+diff --git a/obexd/plugins/bluetooth.c b/obexd/plugins/bluetooth.c
+index d232d3fd5..bcf6e1998 100644
+--- a/obexd/plugins/bluetooth.c
++++ b/obexd/plugins/bluetooth.c
+@@ -41,7 +41,7 @@
  
--static struct obex_mime_type_driver capability = {
-+static const struct obex_mime_type_driver capability = {
- 	.target = FTP_TARGET,
- 	.target_size = FTP_TARGET_SIZE,
- 	.mimetype = "x-obex/capability",
-@@ -661,7 +661,7 @@ static struct obex_mime_type_driver capability = {
- 	.read = capability_read,
+ struct bluetooth_profile {
+ 	struct obex_server *server;
+-	struct obex_service_driver *driver;
++	const struct obex_service_driver *driver;
+ 	char *uuid;
+ 	char *path;
  };
+@@ -355,7 +355,7 @@ static void *bluetooth_start(struct obex_server *server, int *err)
+ 	const GSList *l;
  
--static struct obex_mime_type_driver folder = {
-+static const struct obex_mime_type_driver folder = {
- 	.target = FTP_TARGET,
- 	.target_size = FTP_TARGET_SIZE,
- 	.mimetype = "x-obex/folder-listing",
-@@ -670,7 +670,7 @@ static struct obex_mime_type_driver folder = {
- 	.read = folder_read,
- };
+ 	for (l = server->drivers; l; l = l->next) {
+-		struct obex_service_driver *driver = l->data;
++		const struct obex_service_driver *driver = l->data;
+ 		struct bluetooth_profile *profile;
+ 		const char *uuid;
  
--static struct obex_mime_type_driver pcsuite = {
-+static const struct obex_mime_type_driver pcsuite = {
+diff --git a/obexd/plugins/ftp.c b/obexd/plugins/ftp.c
+index 4b04bab06..874fe2b8b 100644
+--- a/obexd/plugins/ftp.c
++++ b/obexd/plugins/ftp.c
+@@ -494,7 +494,7 @@ static void ftp_reset(struct obex_session *os, void *user_data)
+ 	manager_emit_transfer_completed(ftp->transfer);
+ }
+ 
+-static struct obex_service_driver ftp = {
++static const struct obex_service_driver ftp = {
+ 	.name = "File Transfer server",
+ 	.service = OBEX_FTP,
  	.target = FTP_TARGET,
- 	.target_size = FTP_TARGET_SIZE,
- 	.who = PCSUITE_WHO,
 diff --git a/obexd/plugins/irmc.c b/obexd/plugins/irmc.c
-index cd143e7a3..e85cf70a1 100644
+index e85cf70a1..cab97b620 100644
 --- a/obexd/plugins/irmc.c
 +++ b/obexd/plugins/irmc.c
-@@ -419,7 +419,7 @@ static ssize_t irmc_read(void *object, void *buf, size_t count)
- 	return len;
- }
+@@ -427,7 +427,7 @@ static const struct obex_mime_type_driver irmc_driver = {
+ 	.read = irmc_read,
+ };
  
--static struct obex_mime_type_driver irmc_driver = {
-+static const struct obex_mime_type_driver irmc_driver = {
+-static struct obex_service_driver irmc = {
++static const struct obex_service_driver irmc = {
+ 	.name = "IRMC Sync server",
+ 	.service = OBEX_IRMC,
  	.target = IRMC_TARGET,
- 	.target_size = IRMC_TARGET_SIZE,
- 	.open = irmc_open,
 diff --git a/obexd/plugins/mas.c b/obexd/plugins/mas.c
-index 5d00bc563..f0eaf6d82 100644
+index f0eaf6d82..10b972d65 100644
 --- a/obexd/plugins/mas.c
 +++ b/obexd/plugins/mas.c
-@@ -793,7 +793,7 @@ static struct obex_service_driver mas = {
- 	.disconnect = mas_disconnect,
- };
+@@ -781,7 +781,7 @@ static void *notification_registration_open(const char *name, int oflag,
+ 	return mas;
+ }
  
--static struct obex_mime_type_driver mime_map = {
-+static const struct obex_mime_type_driver mime_map = {
+-static struct obex_service_driver mas = {
++static const struct obex_service_driver mas = {
+ 	.name = "Message Access server",
+ 	.service = OBEX_MAS,
  	.target = MAS_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = NULL,
-@@ -803,7 +803,7 @@ static struct obex_mime_type_driver mime_map = {
- 	.write = any_write,
- };
+diff --git a/obexd/plugins/opp.c b/obexd/plugins/opp.c
+index 860161303..777f5f8ed 100644
+--- a/obexd/plugins/opp.c
++++ b/obexd/plugins/opp.c
+@@ -155,7 +155,7 @@ static void opp_reset(struct obex_session *os, void *user_data)
+ 	manager_emit_transfer_completed(user_data);
+ }
  
--static struct obex_mime_type_driver mime_message = {
-+static const struct obex_mime_type_driver mime_message = {
- 	.target = MAS_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-bt/message",
-@@ -813,7 +813,7 @@ static struct obex_mime_type_driver mime_message = {
- 	.write = any_write,
- };
- 
--static struct obex_mime_type_driver mime_folder_listing = {
-+static const struct obex_mime_type_driver mime_folder_listing = {
- 	.target = MAS_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-obex/folder-listing",
-@@ -824,7 +824,7 @@ static struct obex_mime_type_driver mime_folder_listing = {
- 	.write = any_write,
- };
- 
--static struct obex_mime_type_driver mime_msg_listing = {
-+static const struct obex_mime_type_driver mime_msg_listing = {
- 	.target = MAS_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-bt/MAP-msg-listing",
-@@ -835,7 +835,7 @@ static struct obex_mime_type_driver mime_msg_listing = {
- 	.write = any_write,
- };
- 
--static struct obex_mime_type_driver mime_notification_registration = {
-+static const struct obex_mime_type_driver mime_notification_registration = {
- 	.target = MAS_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-bt/MAP-NotificationRegistration",
-@@ -845,7 +845,7 @@ static struct obex_mime_type_driver mime_notification_registration = {
- 	.write = any_write,
- };
- 
--static struct obex_mime_type_driver mime_message_status = {
-+static const struct obex_mime_type_driver mime_message_status = {
- 	.target = MAS_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-bt/messageStatus",
-@@ -855,7 +855,7 @@ static struct obex_mime_type_driver mime_message_status = {
- 	.write = any_write,
- };
- 
--static struct obex_mime_type_driver mime_message_update = {
-+static const struct obex_mime_type_driver mime_message_update = {
- 	.target = MAS_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-bt/MAP-messageUpdate",
-@@ -865,7 +865,7 @@ static struct obex_mime_type_driver mime_message_update = {
- 	.write = any_write,
- };
- 
--static struct obex_mime_type_driver *map_drivers[] = {
-+static const struct obex_mime_type_driver *map_drivers[] = {
- 	&mime_map,
- 	&mime_message,
- 	&mime_folder_listing,
+-static struct obex_service_driver driver = {
++static const struct obex_service_driver driver = {
+ 	.name = "Object Push server",
+ 	.service = OBEX_OPP,
+ 	.connect = opp_connect,
 diff --git a/obexd/plugins/pbap.c b/obexd/plugins/pbap.c
-index ab5236316..b363c673b 100644
+index b363c673b..4175f9de8 100644
 --- a/obexd/plugins/pbap.c
 +++ b/obexd/plugins/pbap.c
-@@ -929,7 +929,7 @@ static ssize_t vobject_vcard_read(void *object, void *buf, size_t count)
- 	return string_read(obj->buffer, buf, count);
+@@ -634,7 +634,7 @@ static int pbap_chkput(struct obex_session *os, void *user_data)
+ 	return -EBADR;
  }
  
--static struct obex_mime_type_driver mime_pull = {
-+static const struct obex_mime_type_driver mime_pull = {
+-static struct obex_service_driver pbap = {
++static const struct obex_service_driver pbap = {
+ 	.name = "Phonebook Access server",
+ 	.service = OBEX_PBAP,
  	.target = PBAP_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-bt/phonebook",
-@@ -939,7 +939,7 @@ static struct obex_mime_type_driver mime_pull = {
- 	.get_next_header = vobject_pull_get_next_header,
- };
- 
--static struct obex_mime_type_driver mime_list = {
-+static const struct obex_mime_type_driver mime_list = {
- 	.target = PBAP_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-bt/vcard-listing",
-@@ -949,7 +949,7 @@ static struct obex_mime_type_driver mime_list = {
- 	.get_next_header = vobject_list_get_next_header,
- };
- 
--static struct obex_mime_type_driver mime_vcard = {
-+static const struct obex_mime_type_driver mime_vcard = {
- 	.target = PBAP_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "x-bt/vcard",
 diff --git a/obexd/plugins/pcsuite.c b/obexd/plugins/pcsuite.c
-index f5a9d9ae8..d4a0394af 100644
+index d4a0394af..752074c08 100644
 --- a/obexd/plugins/pcsuite.c
 +++ b/obexd/plugins/pcsuite.c
-@@ -467,7 +467,7 @@ static int backup_flush(void *object)
- 	return 0;
+@@ -231,7 +231,7 @@ static void pcsuite_disconnect(struct obex_session *os, void *user_data)
+ 	g_free(pcsuite);
  }
  
--static struct obex_mime_type_driver backup = {
-+static const struct obex_mime_type_driver backup = {
- 	.target = FTP_TARGET,
- 	.target_size = TARGET_SIZE,
- 	.mimetype = "application/vnd.nokia-backup",
+-static struct obex_service_driver pcsuite = {
++static const struct obex_service_driver pcsuite = {
+ 	.name = "Nokia OBEX PC Suite Services",
+ 	.service = OBEX_PCSUITE,
+ 	.channel = PCSUITE_CHANNEL,
 diff --git a/obexd/plugins/syncevolution.c b/obexd/plugins/syncevolution.c
-index 88744f28a..f0387b986 100644
+index f0387b986..ae3dc48c4 100644
 --- a/obexd/plugins/syncevolution.c
 +++ b/obexd/plugins/syncevolution.c
-@@ -427,7 +427,7 @@ static ssize_t synce_write(void *object, const void *buf, size_t count)
- 	return -EAGAIN;
- }
+@@ -436,7 +436,7 @@ static const struct obex_mime_type_driver synce_driver = {
+ 	.write = synce_write,
+ };
  
--static struct obex_mime_type_driver synce_driver = {
-+static const struct obex_mime_type_driver synce_driver = {
- 	.target = SYNCML_TARGET,
- 	.target_size = SYNCML_TARGET_SIZE,
- 	.open = synce_open,
-diff --git a/obexd/src/mimetype.c b/obexd/src/mimetype.c
-index cf6e15dc6..462d4ba2f 100644
---- a/obexd/src/mimetype.c
-+++ b/obexd/src/mimetype.c
-@@ -104,7 +104,7 @@ int obex_object_set_io_watch(void *object, obex_object_io_func func,
- 	return 0;
- }
+-static struct obex_service_driver synce = {
++static const struct obex_service_driver synce = {
+ 	.name = "OBEX server for SyncML, using SyncEvolution",
+ 	.service = OBEX_SYNCEVOLUTION,
+ 	.channel = SYNCEVOLUTION_CHANNEL,
+diff --git a/obexd/src/obex-priv.h b/obexd/src/obex-priv.h
+index 994144678..d2c62a596 100644
+--- a/obexd/src/obex-priv.h
++++ b/obexd/src/obex-priv.h
+@@ -33,7 +33,7 @@ struct obex_session {
+ 	void *object;
+ 	gboolean aborted;
+ 	int err;
+-	struct obex_service_driver *service;
++	const struct obex_service_driver *service;
+ 	void *service_data;
+ 	struct obex_server *server;
+ 	gboolean checked;
+diff --git a/obexd/src/server.c b/obexd/src/server.c
+index a8fc45092..eef149272 100644
+--- a/obexd/src/server.c
++++ b/obexd/src/server.c
+@@ -82,7 +82,7 @@ int obex_server_init(void)
+ 	}
  
--static struct obex_mime_type_driver *find_driver(const uint8_t *target,
-+static const struct obex_mime_type_driver *find_driver(const uint8_t *target,
- 				unsigned int target_size,
- 				const char *mimetype, const uint8_t *who,
- 				unsigned int who_size)
-@@ -112,7 +112,7 @@ static struct obex_mime_type_driver *find_driver(const uint8_t *target,
+ 	for (l = drivers; l; l = l->next) {
+-		struct obex_service_driver *driver = l->data;
++		const struct obex_service_driver *driver = l->data;
+ 
+ 		init_server(driver->service, transports);
+ 	}
+diff --git a/obexd/src/service.c b/obexd/src/service.c
+index 0f4e420e8..332d61939 100644
+--- a/obexd/src/service.c
++++ b/obexd/src/service.c
+@@ -26,14 +26,14 @@
+ 
+ static GSList *drivers = NULL;
+ 
+-struct obex_service_driver *obex_service_driver_find(GSList *drivers,
++const struct obex_service_driver *obex_service_driver_find(GSList *drivers,
+ 			const uint8_t *target, unsigned int target_size,
+ 			const uint8_t *who, unsigned int who_size)
+ {
  	GSList *l;
  
  	for (l = drivers; l; l = l->next) {
--		struct obex_mime_type_driver *driver = l->data;
-+		const struct obex_mime_type_driver *driver = l->data;
+-		struct obex_service_driver *driver = l->data;
++		const struct obex_service_driver *driver = l->data;
  
- 		if (memncmp0(target, target_size, driver->target, driver->target_size))
- 			continue;
-@@ -134,12 +134,12 @@ static struct obex_mime_type_driver *find_driver(const uint8_t *target,
+ 		/* who is optional, so only check for it if not NULL */
+ 		if (who != NULL && memncmp0(who, who_size, driver->who,
+@@ -57,10 +57,10 @@ GSList *obex_service_driver_list(uint16_t services)
+ 		return drivers;
+ 
+ 	for (l = drivers; l && services; l = l->next) {
+-		struct obex_service_driver *driver = l->data;
++		const struct obex_service_driver *driver = l->data;
+ 
+ 		if (driver->service & services) {
+-			list = g_slist_append(list, driver);
++			list = g_slist_append(list, (gpointer)driver);
+ 			services &= ~driver->service;
+ 		}
+ 	}
+@@ -68,12 +68,12 @@ GSList *obex_service_driver_list(uint16_t services)
+ 	return list;
+ }
+ 
+-static struct obex_service_driver *find_driver(uint16_t service)
++static const struct obex_service_driver *find_driver(uint16_t service)
+ {
+ 	GSList *l;
+ 
+ 	for (l = drivers; l; l = l->next) {
+-		struct obex_service_driver *driver = l->data;
++		const struct obex_service_driver *driver = l->data;
+ 
+ 		if (driver->service == service)
+ 			return driver;
+@@ -82,7 +82,7 @@ static struct obex_service_driver *find_driver(uint16_t service)
  	return NULL;
  }
  
--struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
-+const struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
- 				unsigned int target_size,
- 				const char *mimetype, const uint8_t *who,
- 				unsigned int who_size)
- {
--	struct obex_mime_type_driver *driver;
-+	const struct obex_mime_type_driver *driver;
- 
- 	driver = find_driver(target, target_size, mimetype, who, who_size);
- 	if (driver == NULL) {
-@@ -162,7 +162,7 @@ struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
- 	return driver;
- }
- 
--int obex_mime_type_driver_register(struct obex_mime_type_driver *driver)
-+int obex_mime_type_driver_register(const struct obex_mime_type_driver *driver)
+-int obex_service_driver_register(struct obex_service_driver *driver)
++int obex_service_driver_register(const struct obex_service_driver *driver)
  {
  	if (!driver) {
  		error("Invalid driver");
-@@ -178,12 +178,12 @@ int obex_mime_type_driver_register(struct obex_mime_type_driver *driver)
+@@ -99,14 +99,14 @@ int obex_service_driver_register(struct obex_service_driver *driver)
  
- 	DBG("driver %p mimetype %s registered", driver, driver->mimetype);
- 
--	drivers = g_slist_append(drivers, driver);
-+	drivers = g_slist_append(drivers, (gpointer)driver);
+ 	/* Drivers that support who has priority */
+ 	if (driver->who)
+-		drivers = g_slist_prepend(drivers, driver);
++		drivers = g_slist_prepend(drivers, (gpointer)driver);
+ 	else
+-		drivers = g_slist_append(drivers, driver);
++		drivers = g_slist_append(drivers, (gpointer)driver);
  
  	return 0;
  }
  
--void obex_mime_type_driver_unregister(struct obex_mime_type_driver *driver)
-+void obex_mime_type_driver_unregister(const struct obex_mime_type_driver *driver)
+-void obex_service_driver_unregister(struct obex_service_driver *driver)
++void obex_service_driver_unregister(const struct obex_service_driver *driver)
  {
  	if (!g_slist_find(drivers, driver)) {
  		error("Unable to unregister: No such driver %p", driver);
-diff --git a/obexd/src/mimetype.h b/obexd/src/mimetype.h
-index 55ddded08..35346bb46 100644
---- a/obexd/src/mimetype.h
-+++ b/obexd/src/mimetype.h
-@@ -30,9 +30,9 @@ struct obex_mime_type_driver {
- 	int (*remove) (const char *name);
+diff --git a/obexd/src/service.h b/obexd/src/service.h
+index e3aee3bf3..8d9f70558 100644
+--- a/obexd/src/service.h
++++ b/obexd/src/service.h
+@@ -32,9 +32,9 @@ struct obex_service_driver {
+ 	void (*reset) (struct obex_session *os, void *user_data);
  };
  
--int obex_mime_type_driver_register(struct obex_mime_type_driver *driver);
--void obex_mime_type_driver_unregister(struct obex_mime_type_driver *driver);
--struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
-+int obex_mime_type_driver_register(const struct obex_mime_type_driver *driver);
-+void obex_mime_type_driver_unregister(const struct obex_mime_type_driver *driver);
-+const struct obex_mime_type_driver *obex_mime_type_driver_find(const uint8_t *target,
- 				unsigned int target_size,
- 				const char *mimetype, const uint8_t *who,
- 				unsigned int who_size);
-diff --git a/obexd/src/obex-priv.h b/obexd/src/obex-priv.h
-index db409e7e4..994144678 100644
---- a/obexd/src/obex-priv.h
-+++ b/obexd/src/obex-priv.h
-@@ -38,7 +38,7 @@ struct obex_session {
- 	struct obex_server *server;
- 	gboolean checked;
- 	GObex *obex;
--	struct obex_mime_type_driver *driver;
-+	const struct obex_mime_type_driver *driver;
- 	gboolean headers_sent;
- };
- 
+-int obex_service_driver_register(struct obex_service_driver *driver);
+-void obex_service_driver_unregister(struct obex_service_driver *driver);
++int obex_service_driver_register(const struct obex_service_driver *driver);
++void obex_service_driver_unregister(const struct obex_service_driver *driver);
+ GSList *obex_service_driver_list(uint16_t services);
+-struct obex_service_driver *obex_service_driver_find(GSList *drivers,
++const struct obex_service_driver *obex_service_driver_find(GSList *drivers,
+ 			const uint8_t *target, unsigned int target_size,
+ 			const uint8_t *who, unsigned int who_size);
 
 -- 
 2.43.0
