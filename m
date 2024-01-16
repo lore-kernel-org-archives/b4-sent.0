@@ -1,71 +1,86 @@
-From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Tue, 16 Jan 2024 08:09:25 -0600
-Subject: [PATCH] seq_buf: make DECLARE_SEQ_BUF() usable
+From: Emil Velikov <emil.l.velikov@gmail.com>
+Subject: [PATCH BlueZ 0/8] Remove support for external plugins
+Date: Tue, 16 Jan 2024 14:18:52 +0000
+Message-Id: <20240116-rm-ext-plugins-v1-0-62990fb07369@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240116-declare-seq-buf-fix-v1-1-915db4692f32@linux.ibm.com>
-X-B4-Tracking: v=1; b=H4sIABSOpmUC/x2MSwqAMBDFriKzdqCt4u8q4sLWpw6InxZFEO9uc
- ZlA8lCAFwRqkoc8LgmyrRF0mpCb+3UCyxCZjDK50trwALf0HhxwsD1HHuXmulKZLVGUtXUUy90
- j6v/adu/7ASG0Mc1lAAAA
-To: "Steven Rostedt (Google)" <rostedt@goodmis.org>, 
- Kees Cook <keescook@chromium.org>
-Cc: linux-kernel@vger.kernel.org, Nathan Lynch <nathanl@linux.ibm.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAEyQpmUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDQ0Mz3aJc3dSKEt2CnNL0zLxi3aREgyQLU6NEE0ujJCWgpoKi1LTMCrC
+ B0bG1tQC/918jYAAAAA==
+To: linux-bluetooth@vger.kernel.org
+Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705414172; l=1460;
- i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=PDfnqK8MoD62TWn0JxiINKlWua/4QKsMFHUjf8S4QK8=;
- b=eWY/a5vMbGPcD8FCX6fA+B9jBCt4bD6+x6sOb6OUJ3z+QllNTc0jX2mvpktKNuyyowH9aUyQf
- n2a6Z9L3agPAbh4ONpXhTSYRoowvGZPqb1QzlG1dB0K5BgQmhXJ+HUC
-X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
- pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
-X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705414735; l=2389;
+ i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
+ bh=ValMNeEzjaNVUq4zPdszRdqH2BBxxy2vm66NjDlh+I0=;
+ b=XlxDf4fSBhWxhLEnpU3xJWnwkKGV+JzVZkh2mHVudXEAmepXHZr9q/KBKe9OLwi33Jp3Sujhj
+ oDF1sfXtJCUBGOSDCEXUVsagukpsxpSr0SDIhY8UJ15pFp5V5ZQ+9ET
+X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
+ pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
+X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Using the address operator on the array doesn't work:
+Greetings one and all,
 
-./include/linux/seq_buf.h:27:27: error: initialization of ‘char *’
-  from incompatible pointer type ‘char (*)[128]’
-  [-Werror=incompatible-pointer-types]
-   27 |                 .buffer = &__ ## NAME ## _buffer,       \
-      |                           ^
+In this series, we prune support for external plugins and cleanup the
+associated code. The inspiration here is multiple-fold:
+ - the plugins are under linked - generally a bad idea
+ - the plugins use undefined, unscoped, unversioned internal API
+ - the main daemons expose their internal API increasing their size
 
-Apart from fixing that, we can improve DECLARE_SEQ_BUF() by using a
-compound literal to define the buffer array without attaching a name
-to it. This makes the macro a single statement, allowing constructs
-such as:
+So this series:
+ - bluetoothd: removes the "dummy" external plugin
+ - bluetoothd: converts the sixaxis plugin to builtin
+ - bluetoothd, obexd: removes support for external plugins
+ - bluetoothd, obexd: cleans the exported symbols by the daemons
+ - android: (bonus) export only the required HMI plugin entrypoint
 
-  static DECLARE_SEQ_BUF(my_seq_buf, MYSB_SIZE);
+Please note:
+ - expect minor conflicts wrt my earlier patches - happy to respin
+ - there _might_ be third-party external plugins, that my distro search
+   have missed
 
-to work as intended.
+This concludes the paper cut patches. Expect some more around config
+file handling in the upcoming days :-)
 
-Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
-Fixes: dcc4e5728eea ("seq_buf: Introduce DECLARE_SEQ_BUF and seq_buf_str()")
----
- include/linux/seq_buf.h | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
-
-diff --git a/include/linux/seq_buf.h b/include/linux/seq_buf.h
-index 5fb1f12c33f9..c44f4b47b945 100644
---- a/include/linux/seq_buf.h
-+++ b/include/linux/seq_buf.h
-@@ -22,9 +22,8 @@ struct seq_buf {
- };
- 
- #define DECLARE_SEQ_BUF(NAME, SIZE)			\
--	char __ ## NAME ## _buffer[SIZE] = "";		\
- 	struct seq_buf NAME = {				\
--		.buffer = &__ ## NAME ## _buffer,	\
-+		.buffer = (char[SIZE]) { 0 },		\
- 		.size = SIZE,				\
- 	}
- 
+Thanks
+Emil
 
 ---
-base-commit: 70d201a40823acba23899342d62bc2644051ad2e
-change-id: 20240112-declare-seq-buf-fix-9803b7e679bc
+Emil Velikov (8):
+      obexd: remove support for external plugins
+      build: don't export internal obexd API
+      plugins: remove external-dummy
+      plugins: convert external sixaxis plugin to builtin
+      bluetoothd: remove support for external plugins
+      bluetoothd: remove debug support for external plugins
+      bluetoothd: don't export internal API
+      android: export only (android) entrypoint from the modules
+
+ Makefile.am              | 21 +-------------
+ Makefile.obexd           |  8 ++----
+ Makefile.plugins         |  8 ++----
+ android/Makefile.am      |  3 ++
+ android/hal-audio.c      |  1 +
+ android/hal-bluetooth.c  |  1 +
+ android/hal-sco.c        |  1 +
+ obexd/src/obexd.h        |  2 +-
+ obexd/src/plugin.c       | 73 ++++-------------------------------------------
+ obexd/src/plugin.h       |  9 ------
+ plugins/external-dummy.c | 28 ------------------
+ src/bluetooth.ver        | 20 -------------
+ src/btd.h                |  2 +-
+ src/log.c                | 10 ++-----
+ src/log.h                |  3 +-
+ src/plugin.c             | 74 ++++--------------------------------------------
+ src/plugin.h             | 16 -----------
+ 17 files changed, 30 insertions(+), 250 deletions(-)
+---
+base-commit: 770ad5614e7e8074133e6f563495ce4822f63fe4
+change-id: 20240116-rm-ext-plugins-ba0b852a492b
 
 Best regards,
 -- 
-Nathan Lynch <nathanl@linux.ibm.com>
+Emil Velikov <emil.l.velikov@gmail.com>
 
