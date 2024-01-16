@@ -1,20 +1,21 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 16 Jan 2024 13:52:03 +0000
-Subject: [PATCH BlueZ 09/10] build: enable gc/dead code removal
+Date: Tue, 16 Jan 2024 13:52:04 +0000
+Subject: [PATCH BlueZ 10/10] build: install dbus-org.bluez.obex.service
+ symlink
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240116-autofoo-v1-9-626f6b54bd06@gmail.com>
+Message-Id: <20240116-autofoo-v1-10-626f6b54bd06@gmail.com>
 References: <20240116-autofoo-v1-0-626f6b54bd06@gmail.com>
 In-Reply-To: <20240116-autofoo-v1-0-626f6b54bd06@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413116; l=776;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705413116; l=1158;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=tXVcdUfXETqQpcM+wIkv5sahEbGpnPS14+ukiFkfzcc=;
- b=YJpXGBb1WaXwi5eDQsIi0UBhNBBbCzabSiP2A+Ct6xRvyDikxhZReDeIqGsTqS3CZMg822lFX
- hzIFEZpe69ZBwYlIena8ier+Ae0HsGw5DkNWFGE3L+rUCBKisSKUy+G
+ bh=fbR9nv2+W1T7EdTJDnrPWv8eu5ZYYznbyAyGjdmqMMc=;
+ b=lntGRy6vfw67/RdyRn1wKOmw5nySnByTOkfOJaLCbTRo4gN+JWUSU6NuaI4j3n8Tnb8BkPHeT
+ +K8fPKrZ3NgAtdzq5O18S9R0GPvQImUsVDZ/ACYA5LenKGiZcCRy69f
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
@@ -22,29 +23,39 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Emil Velikov <emil.velikov@collabora.com>
 
-Currently, there's plenty of unused code in most binaries. Enable
--fdata/function-sections, which allows the linker garbage collection to
-do its job.
+obex.service has an alias(dbus-org.bluez.obex.service) which is created
+as it's enabled. At the same time, the dbus service references the alias
+itself.
 
-On a maintainer build, this reduces the (unstriped) binaries from 117 to
-114MiB.
+Thus the dbus socket activation can happen, only when the service is
+already enabled/running... Which defeats the whole purpose.
+
+Create/install the respective symlink/alias, so that any user looking
+for the dbus will start it.
+
+Note: we need a hook here instead of LN_S to create the in-tree file,
+since `install' aggressively dereferences it.
 ---
- acinclude.m4 | 2 ++
- 1 file changed, 2 insertions(+)
+ Makefile.obexd | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/acinclude.m4 b/acinclude.m4
-index c5d6de7b3..4b73a5bfc 100644
---- a/acinclude.m4
-+++ b/acinclude.m4
-@@ -134,6 +134,8 @@ AC_DEFUN([MISC_FLAGS], [
- 		misc_cflags="$misc_cflags --coverage"
- 		misc_ldflags="$misc_ldflags --coverage"
- 	fi
-+	misc_cflags="$misc_cflags -ffunction-sections -fdata-sections"
-+	misc_ldflags="$misc_ldflags -Wl,--gc-sections"
- 	AC_SUBST([MISC_CFLAGS], $misc_cflags)
- 	AC_SUBST([MISC_LDFLAGS], $misc_ldflags)
- ])
+diff --git a/Makefile.obexd b/Makefile.obexd
+index c2b5c6d7a..363295d0e 100644
+--- a/Makefile.obexd
++++ b/Makefile.obexd
+@@ -3,6 +3,12 @@ if SYSTEMD
+ systemduserunitdir = $(SYSTEMD_USERUNITDIR)
+ systemduserunit_DATA = obexd/src/obex.service
+ 
++install-data-hook:
++	$(LN_S) -f obex.service $(DESTDIR)$(SYSTEMD_USERUNITDIR)/dbus-org.bluez.obex.service
++
++uninstall-hook:
++	rm -f $(DESTDIR)$(SYSTEMD_USERUNITDIR)/dbus-org.bluez.obex.service
++
+ dbussessionbusdir = $(DBUS_SESSIONBUSDIR)
+ dbussessionbus_DATA = obexd/src/org.bluez.obex.service
+ endif
 
 -- 
 2.43.0
