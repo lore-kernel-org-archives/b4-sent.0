@@ -1,20 +1,21 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 16 Jan 2024 14:18:59 +0000
-Subject: [PATCH BlueZ 7/8] bluetoothd: don't export internal API
+Date: Tue, 16 Jan 2024 14:19:00 +0000
+Subject: [PATCH BlueZ 8/8] android: export only (android) entrypoint from
+ the modules
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240116-rm-ext-plugins-v1-7-62990fb07369@gmail.com>
+Message-Id: <20240116-rm-ext-plugins-v1-8-62990fb07369@gmail.com>
 References: <20240116-rm-ext-plugins-v1-0-62990fb07369@gmail.com>
 In-Reply-To: <20240116-rm-ext-plugins-v1-0-62990fb07369@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705414735; l=1432;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705414735; l=3016;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=U5NIyzd+tGCF6EHhbw0tLLdXoVXk3Dye+U0qia+JOu0=;
- b=o8nMbPxFFidp1At3vvsR198xYOmPY5IXSPve88wvXLaP0h98s/bXrMjLtl5lygPNb2tQsW/kO
- TiN1eE5NS2MBOASDJQtntpvaSXSTAnaBdArXQnmQSogYvWJaDfc97W3
+ bh=A9wt+5pbCxd+p0NIbARFNH3H5ujiQXTs0z8giNMkb3Y=;
+ b=Q7HFiJKysnEzEqBfz62XULQw232U+TBobuXu2XRRDcmuxXrZN4Ah8y4Br7aNaVKEOwf2rmZ/V
+ qjq7zG1NgwjDonv9tD6FejaTAE1a6VvvxHZXUrN6bRdBK23/XQvWCEg
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
@@ -22,59 +23,79 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Emil Velikov <emil.velikov@collabora.com>
 
-With the final external plugin gone, we can keep the API internal.
+The android specific modules, have a designated HMI entrypoint. Hide
+everything else with -fvisibility=hidden.
 ---
- Makefile.am       |  3 ---
- src/bluetooth.ver | 20 --------------------
- 2 files changed, 23 deletions(-)
+ android/Makefile.am     | 3 +++
+ android/hal-audio.c     | 1 +
+ android/hal-bluetooth.c | 1 +
+ android/hal-sco.c       | 1 +
+ 4 files changed, 6 insertions(+)
 
-diff --git a/Makefile.am b/Makefile.am
-index 4db3a2953..c421f53c4 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -291,7 +291,6 @@ pkglibexec_PROGRAMS += src/bluetoothd
+diff --git a/android/Makefile.am b/android/Makefile.am
+index 309910147..e3756e89c 100644
+--- a/android/Makefile.am
++++ b/android/Makefile.am
+@@ -96,6 +96,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
+ 					android/hal-log.h \
+ 					android/hal-ipc.h android/hal-ipc.c \
+ 					android/hal-utils.h android/hal-utils.c
++android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
+ android_bluetooth_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android
+ android_bluetooth_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
+ 					-no-undefined
+@@ -195,6 +196,7 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
+ 					android/hardware/audio_effect.h \
+ 					android/hardware/hardware.h \
+ 					android/system/audio.h
++android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
+ android_audio_a2dp_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android \
+ 					$(SBC_CFLAGS)
+ android_audio_a2dp_default_la_LIBADD = $(SBC_LIBS) -lrt
+@@ -212,6 +214,7 @@ android_audio_sco_default_la_SOURCES = android/hal-log.h \
+ 					android/audio_utils/resampler.c \
+ 					android/audio_utils/resampler.h \
+ 					android/system/audio.h
++android_audio_sco_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
+ android_audio_sco_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android
+ android_audio_sco_default_la_LIBADD = $(SPEEXDSP_LIBS) -lrt
+ android_audio_sco_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
+diff --git a/android/hal-audio.c b/android/hal-audio.c
+index d37d6098c..f3d9b40a6 100644
+--- a/android/hal-audio.c
++++ b/android/hal-audio.c
+@@ -1618,6 +1618,7 @@ static struct hw_module_methods_t hal_module_methods = {
+ 	.open = audio_open,
+ };
  
- src_bluetoothd_SOURCES = $(builtin_sources) \
- 			$(attrib_sources) $(btio_sources) \
--			src/bluetooth.ver \
- 			src/main.c src/log.h src/log.c \
- 			src/backtrace.h src/backtrace.c \
- 			src/rfkill.c src/btd.h src/sdpd.h \
-@@ -323,8 +322,6 @@ src_bluetoothd_LDADD = lib/libbluetooth-internal.la \
- 			src/libshared-glib.la \
- 			$(BACKTRACE_LIBS) $(GLIB_LIBS) $(DBUS_LIBS) -ldl -lrt \
- 			$(builtin_ldadd)
--src_bluetoothd_LDFLAGS = $(AM_LDFLAGS) -Wl,--export-dynamic \
--				-Wl,--version-script=$(srcdir)/src/bluetooth.ver
++__attribute__ ((visibility("default")))
+ struct audio_module HAL_MODULE_INFO_SYM = {
+ 	.common = {
+ 		.tag = HARDWARE_MODULE_TAG,
+diff --git a/android/hal-bluetooth.c b/android/hal-bluetooth.c
+index d4442e620..7d1e5ac63 100644
+--- a/android/hal-bluetooth.c
++++ b/android/hal-bluetooth.c
+@@ -1117,6 +1117,7 @@ static struct hw_module_methods_t bluetooth_module_methods = {
+ 	.open = open_bluetooth,
+ };
  
- src_bluetoothd_DEPENDENCIES = lib/libbluetooth-internal.la \
- 				gdbus/libgdbus-internal.la \
-diff --git a/src/bluetooth.ver b/src/bluetooth.ver
-deleted file mode 100644
-index a96fda2a1..000000000
---- a/src/bluetooth.ver
-+++ /dev/null
-@@ -1,20 +0,0 @@
--{
--	global:
--		btd_*;
--		g_dbus_*;
--		info;
--		error;
--		debug;
--		baswap;
--		ba2str;
--		/* Don't break LLVM sanitizers */
--		__asan*;
--		__dfsan*;
--		__lsan*;
--		__msan*;
--		__sanitizer*;
--		__tsan*;
--		__ubsan*;
--	local:
--		*;
--};
++__attribute__ ((visibility("default")))
+ struct hw_module_t HAL_MODULE_INFO_SYM = {
+ 	.tag = HARDWARE_MODULE_TAG,
+ 	.version_major = 1,
+diff --git a/android/hal-sco.c b/android/hal-sco.c
+index d7c08a68b..3d66ad357 100644
+--- a/android/hal-sco.c
++++ b/android/hal-sco.c
+@@ -1507,6 +1507,7 @@ static struct hw_module_methods_t hal_module_methods = {
+ 	.open = sco_open,
+ };
+ 
++__attribute__ ((visibility("default")))
+ struct audio_module HAL_MODULE_INFO_SYM = {
+ 	.common = {
+ 		.tag = HARDWARE_MODULE_TAG,
 
 -- 
 2.43.0
