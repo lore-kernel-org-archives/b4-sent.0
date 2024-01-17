@@ -1,102 +1,73 @@
-From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 16 Jan 2024 14:19:00 +0000
-Subject: [PATCH BlueZ 8/8] android: export only (android) entrypoint from
- the modules
+From: Janne Grunau <j@jannau.net>
+Subject: [PATCH RFC 0/6] video: Add UTF-8 support for UEFI applications
+Date: Wed, 17 Jan 2024 23:24:26 +0100
+Message-Id: <20240117-vidconsole-utf8-uefi-v1-0-539f7ce74fb9@jannau.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240116-rm-ext-plugins-v1-8-62990fb07369@gmail.com>
-References: <20240116-rm-ext-plugins-v1-0-62990fb07369@gmail.com>
-In-Reply-To: <20240116-rm-ext-plugins-v1-0-62990fb07369@gmail.com>
-To: linux-bluetooth@vger.kernel.org
-Cc: Emil Velikov <emil.velikov@collabora.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705414735; l=3016;
- i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=A9wt+5pbCxd+p0NIbARFNH3H5ujiQXTs0z8giNMkb3Y=;
- b=Q7HFiJKysnEzEqBfz62XULQw232U+TBobuXu2XRRDcmuxXrZN4Ah8y4Br7aNaVKEOwf2rmZ/V
- qjq7zG1NgwjDonv9tD6FejaTAE1a6VvvxHZXUrN6bRdBK23/XQvWCEg
-X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
- pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
-X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
+X-B4-Tracking: v=1; b=H4sIAJpTqGUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDQ0Nz3bLMlOT8vOL8nFTd0pI0C93S1LRM3bREI+Mkk8RkM9MUMyWg1oI
+ ioGgF2NhopSA3Z6XY2loAfOYismsAAAA=
+To: Anatolij Gustschin <agust@denx.de>, 
+ Heinrich Schuchardt <xypron.glpk@gmx.de>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Cc: Simon Glass <sjg@chromium.org>, Andre Przywara <andre.przywara@arm.com>, 
+ u-boot@lists.denx.de, Janne Grunau <j@jannau.net>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2134; i=j@jannau.net;
+ h=from:subject:message-id; bh=bYs9JwwfQHhYw3Uf6djy7mdwpLM54wPS1sbv4CA1fVo=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtQVwfM51K/Pnqu2XX5Rq6Ho5tmu7o4aJ5dH+clWn2ER9
+ Vr+cb5ZRykLgxgXg6yYIkuS9ssOhtU1ijG1D8Jg5rAygQxh4OIUgIl8XM/wm8Vqc3UY86mDrv98
+ 2D8FZkxY7N1RVef31+tnXnHiwvX/1jP8Ygrh5rlWV5HX87tSV6B2o5B4ayZrbR/TysX6YZKTQt4
+ xAQA=
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Emil Velikov <emil.velikov@collabora.com>
+Andre submitted 2 years ago DM_VIDEO improvements for UEFI applications
+using UEFI's EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL but did not follow with
+suggested changes. This series takes care of the UTF-8 support which
+required to draw symbol and box drawing characters used by UEFI
+applications like grub2 and sd-boot correctly.
 
-The android specific modules, have a designated HMI entrypoint. Hide
-everything else with -fvisibility=hidden.
+Compared to Andre's version this version has the following changes:
+- use and extend existing conversion functions from lib/charset.c
+- convert first to UTF-32 to support the truetype console as well
+- conversion is conditional on CONFIG_EFI_LOADER
+- use escape sequences in tests as proposed by Heinrich
+
+Link: https://lore.kernel.org/u-boot/20220110005638.21599-1-andre.przywara@arm.com/
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- android/Makefile.am     | 3 +++
- android/hal-audio.c     | 1 +
- android/hal-bluetooth.c | 1 +
- android/hal-sco.c       | 1 +
- 4 files changed, 6 insertions(+)
+Andre Przywara (2):
+      efi_selftest: Add international characters test
+      efi_selftest: Add box drawing character selftest
 
-diff --git a/android/Makefile.am b/android/Makefile.am
-index 309910147..e3756e89c 100644
---- a/android/Makefile.am
-+++ b/android/Makefile.am
-@@ -96,6 +96,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
- 					android/hal-log.h \
- 					android/hal-ipc.h android/hal-ipc.c \
- 					android/hal-utils.h android/hal-utils.c
-+android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
- android_bluetooth_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android
- android_bluetooth_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
- 					-no-undefined
-@@ -195,6 +196,7 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
- 					android/hardware/audio_effect.h \
- 					android/hardware/hardware.h \
- 					android/system/audio.h
-+android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
- android_audio_a2dp_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android \
- 					$(SBC_CFLAGS)
- android_audio_a2dp_default_la_LIBADD = $(SBC_LIBS) -lrt
-@@ -212,6 +214,7 @@ android_audio_sco_default_la_SOURCES = android/hal-log.h \
- 					android/audio_utils/resampler.c \
- 					android/audio_utils/resampler.h \
- 					android/system/audio.h
-+android_audio_sco_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
- android_audio_sco_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android
- android_audio_sco_default_la_LIBADD = $(SPEEXDSP_LIBS) -lrt
- android_audio_sco_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
-diff --git a/android/hal-audio.c b/android/hal-audio.c
-index d37d6098c..f3d9b40a6 100644
---- a/android/hal-audio.c
-+++ b/android/hal-audio.c
-@@ -1618,6 +1618,7 @@ static struct hw_module_methods_t hal_module_methods = {
- 	.open = audio_open,
- };
- 
-+__attribute__ ((visibility("default")))
- struct audio_module HAL_MODULE_INFO_SYM = {
- 	.common = {
- 		.tag = HARDWARE_MODULE_TAG,
-diff --git a/android/hal-bluetooth.c b/android/hal-bluetooth.c
-index d4442e620..7d1e5ac63 100644
---- a/android/hal-bluetooth.c
-+++ b/android/hal-bluetooth.c
-@@ -1117,6 +1117,7 @@ static struct hw_module_methods_t bluetooth_module_methods = {
- 	.open = open_bluetooth,
- };
- 
-+__attribute__ ((visibility("default")))
- struct hw_module_t HAL_MODULE_INFO_SYM = {
- 	.tag = HARDWARE_MODULE_TAG,
- 	.version_major = 1,
-diff --git a/android/hal-sco.c b/android/hal-sco.c
-index d7c08a68b..3d66ad357 100644
---- a/android/hal-sco.c
-+++ b/android/hal-sco.c
-@@ -1507,6 +1507,7 @@ static struct hw_module_methods_t hal_module_methods = {
- 	.open = sco_open,
- };
- 
-+__attribute__ ((visibility("default")))
- struct audio_module HAL_MODULE_INFO_SYM = {
- 	.common = {
- 		.tag = HARDWARE_MODULE_TAG,
+Janne Grunau (4):
+      lib: charset: Fix utf8_to_utf32_stream() return value doc string
+      video: console: Parse UTF-8 character sequences
+      lib/charset: Map cp437 low chars (0x01 - 0x1f) from unicode
+      efi_selftest: Add symbol character selftest
 
+ drivers/video/console_normal.c             |  6 +++--
+ drivers/video/console_rotate.c             | 16 +++++++++-----
+ drivers/video/console_truetype.c           |  8 +++----
+ drivers/video/vidconsole-uclass.c          | 18 ++++++++++-----
+ drivers/video/vidconsole_internal.h        | 15 +++++++++++++
+ include/charset.h                          |  4 ++--
+ include/cp1250.h                           | 12 ++++++++--
+ include/cp437.h                            | 12 ++++++++--
+ include/video_console.h                    | 10 +++++----
+ lib/charset.c                              |  9 +++++---
+ lib/efi_loader/efi_unicode_collation.c     |  2 +-
+ lib/efi_selftest/efi_selftest_textoutput.c | 35 ++++++++++++++++++++++++++++++
+ 12 files changed, 116 insertions(+), 31 deletions(-)
+---
+base-commit: 866ca972d6c3cabeaf6dbac431e8e08bb30b3c8e
+change-id: 20240117-vidconsole-utf8-uefi-fa23b4ac65d6
+
+Best regards,
 -- 
-2.43.0
+Janne Grunau <j@jannau.net>
 
