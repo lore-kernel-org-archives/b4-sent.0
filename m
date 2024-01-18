@@ -1,224 +1,96 @@
-From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Thu, 18 Jan 2024 11:21:22 +0300
-Subject: [PATCH v7 39/39] dma: cirrus: remove platform code
+From: Nathan Lynch <nathanl@linux.ibm.com>
+Subject: [PATCH RFC 0/5] dump_stack: Allow runtime updates of the hardware
+ description
+Date: Thu, 18 Jan 2024 09:25:11 -0600
+Message-Id: <20240118-update-dump-stack-arch-str-v1-0-5c0f98d017b5@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240118-ep93xx-v7-39-d953846ae771@maquefel.me>
-References: <20240118-ep93xx-v7-0-d953846ae771@maquefel.me>
-In-Reply-To: <20240118-ep93xx-v7-0-d953846ae771@maquefel.me>
-To: Vinod Koul <vkoul@kernel.org>, 
- Nikita Shubin <nikita.shubin@maquefel.me>, 
- Alexander Sverdlin <alexander.sverdlin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, dmaengine@vger.kernel.org, 
- Arnd Bergmann <arnd@arndb.de>
-X-Mailer: b4 0.13-dev-e3e53
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705566176; l=6035;
- i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=+yka+X+eKgqo9oTZdvdU7l3LYkjbt/uZxdAkM2+WkI8=;
- b=HzkxEG4zHMIBrSahZa3fa3xysomny3RAZoP9/clSFqjvHLTenc3MeZGD3qS+JIEo/G002ODIGQvd
- ezHJAZiRC1ci55ZmY877tnxj4d017JS8OeO8re6Mku/gTBQOOs29
-X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
- pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
-X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
+X-B4-Tracking: v=1; b=H4sIANdCqWUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDQ0ND3dKClMSSVN2U0twC3eKSxORs3cSi5Awgs0jXPM3AwsIgxcg4zdh
+ ACWhAQVFqWmYF2PBopSA3Z6XY2loA6bwz0HEAAAA=
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.ibm.com>, 
+ "Naveen N. Rao" <naveen.n.rao@linux.ibm.com>, 
+ Brian King <brking@linux.ibm.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ John Ogness <john.ogness@linutronix.de>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Petr Mladek <pmladek@suse.com>, 
+ Sergey Senozhatsky <senozhatsky@chromium.org>, 
+ Steven Rostedt <rostedt@goodmis.org>
+Cc: linux-kernel@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+ Nathan Lynch <nathanl@linux.ibm.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705591541; l=2778;
+ i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
+ bh=ZrNZI/+KtaqDAeKBFPjQTAb311LBOoljbtl1LqlVqgU=;
+ b=vrcF1cNPIm2O4+bieSkcw1uoqBBdSqf4JkN+kVqZt0fSLkeqYShpMyznUhC+rjw1sJEeTCg3r
+ HvE7JadRlXGBBcZSgBWO/h+xHLaE9TtJfvuE3gqdy++muQ22sED6j1/
+X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
+ pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
+X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove DMA platform header, from now on we use device tree for DMA
-clients.
+When the kernel emits a stack trace, typically it includes a hardware
+description string, e.g.
 
-Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
+  Kernel panic - not syncing: sysrq triggered crash
+  CPU: 6 PID: 46433 Comm: bash Tainted: G        W          6.7.0-rc2+ #83
+> Hardware name: IBM,9040-MR9 POWER9 (architected) 0x4e2102 0xf000005 of:IBM,FW950.01 (VM950_047) hv:phyp pSeries
+  Call Trace:
+   dump_stack_lvl+0xc4/0x170 (unreliable)
+   panic+0x39c/0x584
+   sysrq_handle_crash+0x80/0xe0
+   __handle_sysrq+0x208/0x4bc
+   [...]
+
+This string is a statically allocated buffer populated during boot by
+arch code calling dump_stack_set_arch_desc(). For most platforms this
+is sufficient.
+
+But the string may become inaccurate on the IBM PowerVM platform due
+to live migration between machine models and firmware versions. Stack
+dumps emitted after a migration reflect the machine on which the
+kernel booted, not necessarily the machine on which it is currently
+running. This is potentially confusing for anyone investigating
+kernel issues on the platform.
+
+To address this, this series introduces a new function that safely
+updates the hardware description string and updates the powerpc
+pseries platform code to call it after a migration. The series also
+includes changes addressing minor latent issues identified during the
+implementation.
+
+Platforms which do not need the new functionality remain unchanged.
+
+For this initial version at least, the powerpc/pseries part includes
+some "self-test" code that 1. verifies that reconstructing the
+hardware description string late in boot matches the one that was
+built earlier, and 2. fully exercises the update path before any
+migrations occur. This could be dropped or made configurable in the
+future.
+
+Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
 ---
- drivers/dma/ep93xx_dma.c                 |  48 ++++++++++++++-
- include/linux/platform_data/dma-ep93xx.h | 100 -------------------------------
- 2 files changed, 46 insertions(+), 102 deletions(-)
+Nathan Lynch (5):
+      dump_stack: Make arch description buffer __ro_after_init
+      dump_stack: Allow update of arch description string at runtime
+      powerpc/prom: Add CPU info to hardware description string later
+      powerpc/pseries: Prepare pseries_add_hw_description() for runtime use
+      powerpc/pseries: Update hardware description string after migration
 
-diff --git a/drivers/dma/ep93xx_dma.c b/drivers/dma/ep93xx_dma.c
-index a214680a837d..5c35ffc340d3 100644
---- a/drivers/dma/ep93xx_dma.c
-+++ b/drivers/dma/ep93xx_dma.c
-@@ -17,6 +17,7 @@
- #include <linux/clk.h>
- #include <linux/init.h>
- #include <linux/interrupt.h>
-+#include <linux/dma-mapping.h>
- #include <linux/dmaengine.h>
- #include <linux/module.h>
- #include <linux/mod_devicetable.h>
-@@ -25,8 +26,6 @@
- #include <linux/platform_device.h>
- #include <linux/slab.h>
- 
--#include <linux/platform_data/dma-ep93xx.h>
--
- #include "dmaengine.h"
- 
- /* M2P registers */
-@@ -106,6 +105,26 @@
- #define DMA_MAX_CHAN_BYTES		0xffff
- #define DMA_MAX_CHAN_DESCRIPTORS	32
- 
-+/*
-+ * M2P channels.
-+ *
-+ * Note that these values are also directly used for setting the PPALLOC
-+ * register.
-+ */
-+#define EP93XX_DMA_I2S1			0
-+#define EP93XX_DMA_I2S2			1
-+#define EP93XX_DMA_AAC1			2
-+#define EP93XX_DMA_AAC2			3
-+#define EP93XX_DMA_AAC3			4
-+#define EP93XX_DMA_I2S3			5
-+#define EP93XX_DMA_UART1		6
-+#define EP93XX_DMA_UART2		7
-+#define EP93XX_DMA_UART3		8
-+#define EP93XX_DMA_IRDA			9
-+/* M2M channels */
-+#define EP93XX_DMA_SSP			10
-+#define EP93XX_DMA_IDE			11
-+
- enum ep93xx_dma_type {
- 	M2P_DMA,
- 	M2M_DMA,
-@@ -242,6 +261,31 @@ static struct ep93xx_dma_chan *to_ep93xx_dma_chan(struct dma_chan *chan)
- 	return container_of(chan, struct ep93xx_dma_chan, chan);
- }
- 
-+static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
-+{
-+	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
-+		return true;
-+
-+	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
-+}
-+
-+/*
-+ * ep93xx_dma_chan_direction - returns direction the channel can be used
-+ *
-+ * This function can be used in filter functions to find out whether the
-+ * channel supports given DMA direction. Only M2P channels have such
-+ * limitation, for M2M channels the direction is configurable.
-+ */
-+static inline enum dma_transfer_direction
-+ep93xx_dma_chan_direction(struct dma_chan *chan)
-+{
-+	if (!ep93xx_dma_chan_is_m2p(chan))
-+		return DMA_TRANS_NONE;
-+
-+	/* even channels are for TX, odd for RX */
-+	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
-+}
-+
- /**
-  * ep93xx_dma_set_active - set new active descriptor chain
-  * @edmac: channel
-diff --git a/include/linux/platform_data/dma-ep93xx.h b/include/linux/platform_data/dma-ep93xx.h
-deleted file mode 100644
-index 9ec5cdd5a1eb..000000000000
---- a/include/linux/platform_data/dma-ep93xx.h
-+++ /dev/null
-@@ -1,100 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0 */
--#ifndef __ASM_ARCH_DMA_H
--#define __ASM_ARCH_DMA_H
--
--#include <linux/types.h>
--#include <linux/device.h>
--#include <linux/dmaengine.h>
--#include <linux/dma-mapping.h>
--#include <linux/property.h>
--#include <linux/string.h>
--
--/*
-- * M2P channels.
-- *
-- * Note that these values are also directly used for setting the PPALLOC
-- * register.
-- */
--#define EP93XX_DMA_I2S1		0
--#define EP93XX_DMA_I2S2		1
--#define EP93XX_DMA_AAC1		2
--#define EP93XX_DMA_AAC2		3
--#define EP93XX_DMA_AAC3		4
--#define EP93XX_DMA_I2S3		5
--#define EP93XX_DMA_UART1	6
--#define EP93XX_DMA_UART2	7
--#define EP93XX_DMA_UART3	8
--#define EP93XX_DMA_IRDA		9
--/* M2M channels */
--#define EP93XX_DMA_SSP		10
--#define EP93XX_DMA_IDE		11
--
--/**
-- * struct ep93xx_dma_data - configuration data for the EP93xx dmaengine
-- * @port: peripheral which is requesting the channel
-- * @direction: TX/RX channel
-- * @name: optional name for the channel, this is displayed in /proc/interrupts
-- *
-- * This information is passed as private channel parameter in a filter
-- * function. Note that this is only needed for slave/cyclic channels.  For
-- * memcpy channels %NULL data should be passed.
-- */
--struct ep93xx_dma_data {
--	int				port;
--	enum dma_transfer_direction	direction;
--	const char			*name;
--};
--
--/**
-- * struct ep93xx_dma_chan_data - platform specific data for a DMA channel
-- * @name: name of the channel, used for getting the right clock for the channel
-- * @base: mapped registers
-- * @irq: interrupt number used by this channel
-- */
--struct ep93xx_dma_chan_data {
--	const char			*name;
--	void __iomem			*base;
--	int				irq;
--};
--
--/**
-- * struct ep93xx_dma_platform_data - platform data for the dmaengine driver
-- * @channels: array of channels which are passed to the driver
-- * @num_channels: number of channels in the array
-- *
-- * This structure is passed to the DMA engine driver via platform data. For
-- * M2P channels, contract is that even channels are for TX and odd for RX.
-- * There is no requirement for the M2M channels.
-- */
--struct ep93xx_dma_platform_data {
--	struct ep93xx_dma_chan_data	*channels;
--	size_t				num_channels;
--};
--
--static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
--{
--	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
--		return true;
--
--	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
--}
--
--/**
-- * ep93xx_dma_chan_direction - returns direction the channel can be used
-- * @chan: channel
-- *
-- * This function can be used in filter functions to find out whether the
-- * channel supports given DMA direction. Only M2P channels have such
-- * limitation, for M2M channels the direction is configurable.
-- */
--static inline enum dma_transfer_direction
--ep93xx_dma_chan_direction(struct dma_chan *chan)
--{
--	if (!ep93xx_dma_chan_is_m2p(chan))
--		return DMA_TRANS_NONE;
--
--	/* even channels are for TX, odd for RX */
--	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
--}
--
--#endif /* __ASM_ARCH_DMA_H */
+ arch/powerpc/kernel/prom.c                | 12 +++--
+ arch/powerpc/platforms/pseries/mobility.c |  5 ++
+ arch/powerpc/platforms/pseries/pseries.h  |  1 +
+ arch/powerpc/platforms/pseries/setup.c    | 80 +++++++++++++++++++++++++++++--
+ include/linux/printk.h                    |  5 ++
+ lib/dump_stack.c                          | 57 ++++++++++++++++++++--
+ 6 files changed, 146 insertions(+), 14 deletions(-)
+---
+base-commit: 44a1aad2fe6c10bfe0589d8047057b10a4c18a19
+change-id: 20240111-update-dump-stack-arch-str-7f0880d23f30
 
+Best regards,
 -- 
-2.41.0
+Nathan Lynch <nathanl@linux.ibm.com>
 
