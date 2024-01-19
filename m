@@ -1,87 +1,73 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Fri, 19 Jan 2024 19:44:30 +0800
-Subject: [PATCH 3/3] net: hifemac: register MDIO bus device for subnode
+Date: Fri, 19 Jan 2024 20:49:17 +0800
+Subject: [PATCH] reset: reset-hisilicon: also handle #reset-cells = <2>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240119-net-v1-3-d1feb8e16ac6@outlook.com>
-References: <20240119-net-v1-0-d1feb8e16ac6@outlook.com>
-In-Reply-To: <20240119-net-v1-0-d1feb8e16ac6@outlook.com>
-To: Joe Hershberger <joe.hershberger@ni.com>, 
- Ramon Fried <rfried.dev@gmail.com>
-Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+Message-Id: <20240119-rst-v1-1-894c88985f5a@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAMxvqmUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDQ0NL3aLiEl2DpGQLA0vzJAsT80QloMqCotS0zAqwKdGxtbUAsn+tFFU
+ AAAA=
+To: u-boot@lists.denx.de
+Cc: Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705664668; l=1700;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705668557; l=1371;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=NCJcSa/cOcfklo9ByKOIk+8yiytHK/pmWUU7P4ZbEz8=;
- b=rND95nDtP/9KqbaXnMyNzdr5maqnmP/r5Ct482hfEGeJQBM1OCC6U8S7H0TN9KJjp2u+oiQ7c
- VUD2q2vTjSSBsjJvaWqFHCViM8mHbZgtlR4IW+XqJsGL2JciIfD6jUp
+ bh=xdBog517xIp3ODBZpffzQFiYeYTTPeK84K24y7OXYd4=;
+ b=CDLD3UbrtRppheSP7oKn3pv3H6J5Ce/xmkzn4jKRK1N0Fragon/JyuwysHPmPiREo067cEDg0
+ cXViLvoqxblCO3XHWLorgzF3/WFID6v+59d1UQlcEUuYujPUoERTY5m
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-register internal MDIO bus device if it is a subnode.
+It's also valid to have #reset-cells = <2> while the third arg defaults
+to ASSERT_SET.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/net/hifemac.c | 28 ++++++++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+ drivers/reset/reset-hisilicon.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/net/hifemac.c b/drivers/net/hifemac.c
-index 1088f3eca3..39c0233b62 100644
---- a/drivers/net/hifemac.c
-+++ b/drivers/net/hifemac.c
-@@ -15,6 +15,7 @@
- #include <wait_bit.h>
- #include <asm/io.h>
- #include <dm/device_compat.h>
-+#include <dm/lists.h>
- #include <linux/delay.h>
- #include <linux/kernel.h>
- 
-@@ -337,6 +338,8 @@ int hisi_femac_of_to_plat(struct udevice *dev)
+diff --git a/drivers/reset/reset-hisilicon.c b/drivers/reset/reset-hisilicon.c
+index 8152cec227..85e02b296b 100644
+--- a/drivers/reset/reset-hisilicon.c
++++ b/drivers/reset/reset-hisilicon.c
+@@ -49,7 +49,18 @@ static int hisi_reset_assert(struct reset_ctl *rst)
+ static int hisi_reset_of_xlate(struct reset_ctl *rst,
+ 			       struct ofnode_phandle_args *args)
  {
- 	int ret, i;
- 	struct hisi_femac_priv *priv = dev_get_priv(dev);
-+	ofnode mdio_node;
-+	bool mdio_registered = false;
- 	static const char * const clk_strs[] = {
- 		[CLK_MAC] = "mac",
- 		[CLK_BUS] = "bus",
-@@ -388,6 +391,31 @@ int hisi_femac_of_to_plat(struct udevice *dev)
- 						     MAC_RESET_DELAY_PROPERTY,
- 						     MAC_RESET_ASSERT_PERIOD);
- 
-+	/* Create MDIO bus */
-+	ofnode_for_each_subnode(mdio_node, dev_ofnode(dev)) {
-+		const char *subnode_name = ofnode_get_name(mdio_node);
-+		struct udevice *mdiodev;
+-	if (args->args_count != 3) {
++	unsigned long polarity;
 +
-+		// Skip subnodes not starting with "mdio"
-+		if (strncmp(subnode_name, "mdio", 4))
-+			continue;
-+
-+		ret = device_bind_driver_to_node(dev, "hisi-femac-mdio",
-+						 subnode_name, mdio_node, &mdiodev);
-+		if (ret) {
-+			dev_err(dev, "Failed to register MDIO bus device %d\n", ret);
-+			return log_msg_ret("net", ret);
-+		}
-+
-+		mdio_registered = true;
++	switch (args->args_count) {
++	case 2:
++		polarity = ASSERT_SET;
 +		break;
-+	}
 +
-+	if (!mdio_registered) {
-+		dev_err(dev, "No MDIO subnode is found!\n");
-+		return log_msg_ret("mdio", -ENODATA);
-+	}
++	case 3:
++		polarity = args->args[2];
++		break;
 +
++	default:
+ 		debug("Invalid args_count: %d\n", args->args_count);
+ 		return -EINVAL;
+ 	}
+@@ -57,7 +68,7 @@ static int hisi_reset_of_xlate(struct reset_ctl *rst,
+ 	/* Use .data field as register offset and .id field as bit shift */
+ 	rst->data = args->args[0];
+ 	rst->id = args->args[1];
+-	rst->polarity = args->args[2];
++	rst->polarity = polarity;
+ 
  	return 0;
  }
- 
 
+---
+base-commit: f7cca7ccc5117eaafcc2bde91ad1bed6fee7cfc3
+change-id: 20240119-rst-0bc8097b847a
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
