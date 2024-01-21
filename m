@@ -1,112 +1,54 @@
-From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Sat, 20 Jan 2024 00:45:23 -0800
-Subject: [PATCH] ARM: dts: qcom: msm8960: expressatt: Add gpio-keys
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH v2 0/4] net: hifemac: a few cleanups
+Date: Mon, 22 Jan 2024 05:02:03 +0800
+Message-Id: <20240122-net-v2-0-78a368896f62@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240120-expressatt-gpio-keys-v1-1-4da7e37440b1@gmail.com>
-X-B4-Tracking: v=1; b=H4sIACKIq2UC/x2MWwqAIBAAryL73YLak64SfYRttQQWrkQR3j3pc
- 2BmXhAKTAK9eiHQxcKHz2AKBW6b/ErIc2aw2lbaWI10n4FEphhxPfnAnR5B17i608vcmpIgp1l
- Z+P63w5jSBwpOfn9mAAAA
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAEyGrWUC/1WMQQ7CIBBFr9LMWgyDlaor72G6oHRqJyoYQKJpu
+ LvYncv3899bIFJginBqFgiUObJ3FdSmATsbdyXBY2VQUrUS8SgcJdEps1O62xMNLdTnM9DE77V
+ y6SvPHJMPnzWa8bf++xmFFCNONBwItbH67F/p7v1ta/0D+lLKF2ommeSYAAAA
+To: Joe Hershberger <joe.hershberger@ni.com>, 
+ Ramon Fried <rfried.dev@gmail.com>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705740324; l=2136;
- i=guptarud@gmail.com; s=20240120; h=from:subject:message-id;
- bh=T+B5s38HvE5wvfTx+enY1qi1SBEpEVBTYASUCLQBqwU=;
- b=5UsFmbupML19LrX80fkEWOLZlRS9ScDP+D8wWQsRQdb5oi45aWI0aU0X8kJPWiAA2zsSUDwt8
- JJWsV1VM4FBCOU6k8dRT6Emu/ieTQkcfTXdNy7HOfdTvgUn6zzY5diW
-X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
- pk=RGmug3GRHS4XYTXDcT2VrlTGXlEF2gY4L9/swGIU1ko=
-X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240120 with auth_id=114
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705870930; l=968;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=rfTkZjUuZSdNKh1rlWNItJX6G5H9yB1K6D6UzoYxBC8=;
+ b=vfjcjhsui3wt8ON0YId3zYCv34pQo2QkrQUdJoRs8Zwy6OmIc+opgqpVpvUAM+XDTT79eVBrk
+ n16W9sldqSZDjBHVPwP05rKek4qPUDeEB9Lfv4ga1ElojqOxyGL1MVU
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds volume up, volume down, and home keys to expressatt
+Fix the use of log_msg_ret() and add dev_xxx() for error reporting.
 
-Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
+Register mdio subnode as a mdio bus device for hifemac.
+
+Implement ops needed by `net stats`
+
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Adds volume up, volume down, and home keys to expressatt.
-
-Applies on top of 5c903b859aaced384c0cd01d515f3e43a115fd9e
----
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 40 ++++++++++++++++++++++
- 1 file changed, 40 insertions(+)
-
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-index 1a5116336ff0..47e0e26ad9f0 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-@@ -4,6 +4,9 @@
- 
- #include "qcom-msm8960.dtsi"
- #include "pm8921.dtsi"
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
-+#include <dt-bindings/input/gpio-keys.h>
- 
- / {
- 	model = "Samsung Galaxy Express SGH-I437";
-@@ -19,6 +22,36 @@ aliases {
- 	chosen {
- 		stdout-path = "serial0:115200n8";
- 	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&gpio_keys_pin_a>;
-+
-+		key-home {
-+			label = "Home";
-+			gpios = <&msmgpio 40 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <5>;
-+			linux,code = <KEY_HOMEPAGE>;
-+			wakeup-event-action = <EV_ACT_ASSERTED>;
-+			wakeup-source;
-+		};
-+
-+		key-volume-up {
-+			label = "Volume Up";
-+			gpios = <&msmgpio 50 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <5>;
-+			linux,code = <KEY_VOLUMEUP>;
-+		};
-+
-+		key-volume-down {
-+			label = "Volume Down";
-+			gpios = <&msmgpio 81 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <5>;
-+			linux,code = <KEY_VOLUMEDOWN>;
-+		};
-+	};
- };
- 
- &gsbi5 {
-@@ -83,6 +116,13 @@ clk-pins {
- 			bias-disable;
- 		};
- 	};
-+
-+	gpio_keys_pin_a: gpio-keys-active-state {
-+		pins = "gpio40", "gpio50", "gpio81";
-+		function = "gpio";
-+		drive-strength = <8>;
-+		bias-disable;
-+	};
- };
- 
- &pm8921 {
+Changes in v2:
+- hisi-femac: add statistics related operations
+- Link to v1: https://lore.kernel.org/r/20240119-net-v1-0-d1feb8e16ac6@outlook.com
 
 ---
-base-commit: 9d64bf433c53cab2f48a3fff7a1f2a696bc5229a
-change-id: 20240120-expressatt-gpio-keys-c6c580fd713e
+Yang Xiwen (4):
+      net: hifemac_mdio: use log_msg_ret() correctly, report error by dev_err()
+      net: hifemac: fix log reporting
+      net: hifemac: register MDIO bus device for subnode
+      net: hifemac: implement `net stats` needed ops
+
+ drivers/net/hifemac.c      | 225 +++++++++++++++++++++++++++++++++++++--------
+ drivers/net/hifemac_mdio.c |  11 ++-
+ 2 files changed, 196 insertions(+), 40 deletions(-)
+---
+base-commit: f7cca7ccc5117eaafcc2bde91ad1bed6fee7cfc3
+change-id: 20240119-net-72a32675eeb4
 
 Best regards,
 -- 
-Rudraksha Gupta <guptarud@gmail.com>
+Yang Xiwen <forbidden405@outlook.com>
 
