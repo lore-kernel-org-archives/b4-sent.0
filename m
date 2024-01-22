@@ -1,14 +1,13 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Subject: [PATCH net-next v3 0/7] MT7530 DSA Subdriver Improvements Act I
-Date: Mon, 22 Jan 2024 08:35:51 +0300
-Message-Id: <20240122-for-netnext-mt7530-improvements-1-v3-0-042401f2b279@arinc9.com>
+Date: Mon, 22 Jan 2024 08:35:52 +0300
+Subject: [PATCH net-next v3 1/7] net: dsa: mt7530: always trap frames to
+ active CPU port on MT7530
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIALf+rWUC/3WNQQ7CIBREr2JYS8P/0NK68h7GRa2/lsRCA0hqm
- t5dZOPK3Uwmb97GAnlDgZ0OG/OUTDDO5iKPBzZMvX0QN/fcGQpUAhD46Dy3FC2tkc9R11JwMy/
- eJZrJxsCBN0rJWnXjTeua5Z/F02jW4riwjPIvy655mUyIzr+LPEHZs0cCQAsoUdQVNk0LXT7tv
- bFD9bL981xiVw1uLicJfyCiFtmudAVCYwf/wX3fP64TAoj8AAAA
+Message-Id: <20240122-for-netnext-mt7530-improvements-1-v3-1-042401f2b279@arinc9.com>
+References: <20240122-for-netnext-mt7530-improvements-1-v3-0-042401f2b279@arinc9.com>
+In-Reply-To: <20240122-for-netnext-mt7530-improvements-1-v3-0-042401f2b279@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, 
  Landen Chao <Landen.Chao@mediatek.com>, DENG Qingfang <dqfext@gmail.com>, 
  Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
@@ -25,98 +24,134 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705901755; l=3455;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705901755; l=4314;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=eTYY+evS04ACta4sLOnbAMToYxY7CybRXgNbJ7leYNw=;
- b=17GHcU05i+tBO3+FtLXH7FLTko8AoULh6yvzNTCWphY/pvp9Fd6q9hsjeqHR1Xz5bHD0JlxG4
- uXo5JR8k6j/ACr1ZhmojnGwA0y3n98w8mFm4JqMkj0vIDy3/Oyl1KbC
+ bh=OahuM/i2rvjHeE74Gk7po9F6EBBznn5IwSvSniGSaV0=;
+ b=Tdp4jqS5p+QOFq8gzefgBM65crsiy194Phw6aAQVLvMNPC2qLMjNXHRYGMeSIs66WwnOrc0YK
+ KoKmm10jNroBRbt3dDStrqDwLZQ3izsAPTX+dvPz1aKJnhYJNVNrne+
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello!
+On the MT7530 switch, the CPU_PORT field indicates which CPU port to trap
+frames to, regardless of the affinity of the inbound user port.
 
-This patch series simplifies the MT7530 DSA subdriver and improves the
-logic of the support for MT7530, MT7531, and the switch on the MT7988 SoC.
+When multiple CPU ports are in use, if the DSA conduit interface is down,
+trapped frames won't be passed to the conduit interface.
 
-I have done a simple ping test to confirm basic communication on all switch
-ports on MCM and standalone MT7530, and MT7531 switch with this patch
-series applied.
+To make trapping frames work including this case, implement
+ds->ops->conduit_state_change() on this subdriver and set the CPU_PORT
+field to the numerically smallest CPU port whose conduit interface is up.
+Introduce the active_cpu_ports field to store the information of the active
+CPU ports. Correct the macros, CPU_PORT is bits 4 through 6 of the
+register.
 
-MT7621 Unielec, MCM MT7530:
+Add a comment to explain frame trapping for this switch.
 
-rgmii-only-gmac0-mt7621-unielec-u7621-06-16m.dtb
-gmac0-and-gmac1-mt7621-unielec-u7621-06-16m.dtb
+Currently, the driver doesn't support the use of multiple CPU ports so this
+is not necessarily a bug fix.
 
-tftpboot 0x80008000 mips-uzImage.bin; tftpboot 0x83000000 mips-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootm 0x80008000 0x83000000 0x83f00000
-
-MT7622 Bananapi, MT7531:
-
-gmac0-and-gmac1-mt7622-bananapi-bpi-r64.dtb
-
-tftpboot 0x40000000 arm64-Image; tftpboot 0x45000000 arm64-rootfs.cpio.uboot; tftpboot 0x4a000000 $dtb; booti 0x40000000 0x45000000 0x4a000000
-
-MT7623 Bananapi, standalone MT7530:
-
-rgmii-only-gmac0-mt7623n-bananapi-bpi-r2.dtb
-gmac0-and-gmac1-mt7623n-bananapi-bpi-r2.dtb
-
-tftpboot 0x80008000 arm-zImage; tftpboot 0x83000000 arm-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootz 0x80008000 0x83000000 0x83f00000
-
-This patch series is the continuation of the patch series linked below.
-
-https://lore.kernel.org/r/20230522121532.86610-1-arinc.unal@arinc9.com
-
+Suggested-by: Vladimir Oltean <olteanv@gmail.com>
+Suggested-by: Russell King (Oracle) <linux@armlinux.org.uk>
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
-Changes in v3:
-- Update the patches with the latest received trailers.
-- Patch 1
-  - Declare the longest variable assignment first.
-  - Improve the patch log and the comment on the code.
-  - Don't do type cast for __ffs. Implicit type promotion takes place.
-- Patch 4
-  - Put more relevant information on the comments on the code.
-  - Follow the 'commit <12+ chars of sha1> ("<title line>")' style on the
-    patch log to satisfy checkpatch errors.
-- Patch 6
-  - Change the patch log to explain the change better.
-- Link to v2: https://lore.kernel.org/r/20231227044347.107291-1-arinc.unal@arinc9.com
+ drivers/net/dsa/mt7530.c | 35 +++++++++++++++++++++++++++++++----
+ drivers/net/dsa/mt7530.h |  6 ++++--
+ 2 files changed, 35 insertions(+), 6 deletions(-)
 
-Changes in v2:
-- Shorten the patch series, include only 7 patches.
-- Add the reviewed-by tags given.
-- Patch 1
-  - Change variable ordering of mt753x_conduit_state_change().
-  - Define the mask variable and store BIT(cpu_dp->index) on it.
-  - Disable CPU_EN if priv->active_cpu_ports is 0.
-- Patch 5
-  - On the patch log, take the irrelevant information about the
-    mt7530_setup_port5() call from mt7530_setup() out.
-- Patch 6
-  - Change the patch log to reflect correct information.
-- Link to v1: https://lore.kernel.org/r/20231118123205.266819-1-arinc.unal@arinc9.com
+diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
+index 391c4dbdff42..761c4804449a 100644
+--- a/drivers/net/dsa/mt7530.c
++++ b/drivers/net/dsa/mt7530.c
+@@ -1035,10 +1035,6 @@ mt753x_cpu_port_enable(struct dsa_switch *ds, int port)
+ 	mt7530_set(priv, MT7530_MFC, BC_FFP(BIT(port)) | UNM_FFP(BIT(port)) |
+ 		   UNU_FFP(BIT(port)));
+ 
+-	/* Set CPU port number */
+-	if (priv->id == ID_MT7530 || priv->id == ID_MT7621)
+-		mt7530_rmw(priv, MT7530_MFC, CPU_MASK, CPU_EN | CPU_PORT(port));
+-
+ 	/* Add the CPU port to the CPU port bitmap for MT7531 and the switch on
+ 	 * the MT7988 SoC. Trapped frames will be forwarded to the CPU port that
+ 	 * is affine to the inbound user port.
+@@ -3075,6 +3071,36 @@ static int mt753x_set_mac_eee(struct dsa_switch *ds, int port,
+ 	return 0;
+ }
+ 
++static void
++mt753x_conduit_state_change(struct dsa_switch *ds,
++			    const struct net_device *conduit,
++			    bool operational)
++{
++	struct dsa_port *cpu_dp = conduit->dsa_ptr;
++	struct mt7530_priv *priv = ds->priv;
++	int val = 0;
++	u8 mask;
++
++	/* Set the CPU port to trap frames to for MT7530. Trapped frames will be
++	 * forwarded to the numerically smallest CPU port whose conduit
++	 * interface is up.
++	 */
++	if (priv->id != ID_MT7530 && priv->id != ID_MT7621)
++		return;
++
++	mask = BIT(cpu_dp->index);
++
++	if (operational)
++		priv->active_cpu_ports |= mask;
++	else
++		priv->active_cpu_ports &= ~mask;
++
++	if (priv->active_cpu_ports)
++		val = CPU_EN | CPU_PORT(__ffs(priv->active_cpu_ports));
++
++	mt7530_rmw(priv, MT7530_MFC, CPU_EN | CPU_PORT_MASK, val);
++}
++
+ static int mt7988_pad_setup(struct dsa_switch *ds, phy_interface_t interface)
+ {
+ 	return 0;
+@@ -3130,6 +3156,7 @@ const struct dsa_switch_ops mt7530_switch_ops = {
+ 	.phylink_mac_link_up	= mt753x_phylink_mac_link_up,
+ 	.get_mac_eee		= mt753x_get_mac_eee,
+ 	.set_mac_eee		= mt753x_set_mac_eee,
++	.conduit_state_change	= mt753x_conduit_state_change,
+ };
+ EXPORT_SYMBOL_GPL(mt7530_switch_ops);
+ 
+diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
+index 17e42d30fff4..ebfb3a7acfcd 100644
+--- a/drivers/net/dsa/mt7530.h
++++ b/drivers/net/dsa/mt7530.h
+@@ -41,8 +41,8 @@ enum mt753x_id {
+ #define  UNU_FFP(x)			(((x) & 0xff) << 8)
+ #define  UNU_FFP_MASK			UNU_FFP(~0)
+ #define  CPU_EN				BIT(7)
+-#define  CPU_PORT(x)			((x) << 4)
+-#define  CPU_MASK			(0xf << 4)
++#define  CPU_PORT_MASK			GENMASK(6, 4)
++#define  CPU_PORT(x)			FIELD_PREP(CPU_PORT_MASK, x)
+ #define  MIRROR_EN			BIT(3)
+ #define  MIRROR_PORT(x)			((x) & 0x7)
+ #define  MIRROR_MASK			0x7
+@@ -760,6 +760,7 @@ struct mt753x_info {
+  * @irq_domain:		IRQ domain of the switch irq_chip
+  * @irq_enable:		IRQ enable bits, synced to SYS_INT_EN
+  * @create_sgmii:	Pointer to function creating SGMII PCS instance(s)
++ * @active_cpu_ports:	Holding the active CPU ports
+  */
+ struct mt7530_priv {
+ 	struct device		*dev;
+@@ -786,6 +787,7 @@ struct mt7530_priv {
+ 	struct irq_domain *irq_domain;
+ 	u32 irq_enable;
+ 	int (*create_sgmii)(struct mt7530_priv *priv, bool dual_sgmii);
++	u8 active_cpu_ports;
+ };
+ 
+ struct mt7530_hw_vlan_entry {
 
----
-Arınç ÜNAL (7):
-      net: dsa: mt7530: always trap frames to active CPU port on MT7530
-      net: dsa: mt7530: use p5_interface_select as data type for p5_intf_sel
-      net: dsa: mt7530: store port 5 SGMII capability of MT7531
-      net: dsa: mt7530: improve comments regarding switch ports
-      net: dsa: mt7530: improve code path for setting up port 5
-      net: dsa: mt7530: do not set priv->p5_interface on mt7530_setup_port5()
-      net: dsa: mt7530: do not run mt7530_setup_port5() if port 5 is disabled
-
- drivers/net/dsa/mt7530-mdio.c |   7 +--
- drivers/net/dsa/mt7530.c      | 135 +++++++++++++++++++++++-------------------
- drivers/net/dsa/mt7530.h      |  16 +++--
- 3 files changed, 87 insertions(+), 71 deletions(-)
----
-base-commit: 736b5545d39ca59d4332a60e56cc8a1a5e264a8e
-change-id: 20240121-for-netnext-mt7530-improvements-1-6443549fb775
-
-Best regards,
 -- 
-Arınç ÜNAL <arinc.unal@arinc9.com>
+2.40.1
 
