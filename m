@@ -1,93 +1,114 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Mon, 22 Jan 2024 08:35:58 +0300
-Subject: [PATCH net-next v3 7/7] net: dsa: mt7530: do not run
- mt7530_setup_port5() if port 5 is disabled
+From: Hui Liu <quic_huliu@quicinc.com>
+Date: Mon, 22 Jan 2024 14:43:24 +0800
+Subject: [PATCH v6] arm64: dts: qcom: qcm6490-idp: Add definition for three
+ LEDs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240122-for-netnext-mt7530-improvements-1-v3-7-042401f2b279@arinc9.com>
-References: <20240122-for-netnext-mt7530-improvements-1-v3-0-042401f2b279@arinc9.com>
-In-Reply-To: <20240122-for-netnext-mt7530-improvements-1-v3-0-042401f2b279@arinc9.com>
-To: Daniel Golle <daniel@makrotopia.org>, 
- Landen Chao <Landen.Chao@mediatek.com>, DENG Qingfang <dqfext@gmail.com>, 
- Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
- Florian Fainelli <f.fainelli@gmail.com>, 
- Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Russell King <linux@armlinux.org.uk>
-Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com, 
- Bartel Eerdekens <bartel.eerdekens@constell8.be>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705901755; l=1954;
- i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=CX1ZTLft5JNnPSpvgA9ppPM0W5zZnVzbF5jhuxeYZts=;
- b=m7xRK80HiKn4Yf5gYVKbcOAJuPiW2ZQjrweTiy/ng47qxoKCiENascUa+CONss3MADnR3scXe
- bi2arpEKxnkDpyM3moD6BJkZxd+h2xHCHl22YVS7vuxFGjITKlV6wVM
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240122-lpg-v6-1-219737cf5beb@quicinc.com>
+X-B4-Tracking: v=1; b=H4sIAIwOrmUC/2WOzU7DMBAGX6XyuUZe/6XlxHsghJz1OrHUJq1dL
+ FCUd8cJVCXi+Ek7szOxTClSZs+7iSUqMcdxqMPudwx7N3TEo6+bSSEVSDD8dOm4ds571egDgGP
+ 18pIoxM/V8vpWd0jjmd/6RO7BAgh+xfH8fiKfeZEcuELnIbQtWuNerh8R44BP9WRR9jHfxvS1d
+ hW1iLcJRVWBJulbgdYHEzaCJaLoO6UFgPyhdKVQC6GFtPZg2/+U+Uv9/jJrrLGhacIRCbfUPM/
+ f4giaEkcBAAA=
+To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Hui Liu <quic_huliu@quicinc.com>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705905864; l=2220;
+ i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
+ bh=n8xSHABdt74JEuBzHLY4lYbQGqDaAeo36uTk0NjptXM=;
+ b=wTFFnqsHbmf742D/Tk8UBK4kYpSU/L6zoS1MROwEWFyqlYR6qVPBWNWUW7G4QbS2h5T1ra/Tg
+ HsC3P6C/DzoCzhq/xfwBkNuCxRRPU2QMgMe+zELya+sidiZeDOvxW3S
+X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
+ pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
+X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There's no need to run all the code on mt7530_setup_port5() if port 5 is
-disabled. The only case for calling mt7530_setup_port5() from
-mt7530_setup() is when PHY muxing is enabled. That is because port 5 is not
-defined as a port on the devicetree, therefore, it cannot be controlled by
-phylink.
+Add definition for three LEDs to make sure they can
+be enabled base on QCOM LPG LED driver.
 
-Because of this, run mt7530_setup_port5() if priv->p5_intf_sel is
-P5_INTF_SEL_PHY_P0 or P5_INTF_SEL_PHY_P4. Remove the P5_DISABLED case from
-mt7530_setup_port5().
-
-Stop initialising the interface variable as the remaining cases will always
-call mt7530_setup_port5() with it initialised.
-
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
-Reviewed-by: Vladimir Oltean <olteanv@gmail.com>
+Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
 ---
- drivers/net/dsa/mt7530.c | 9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+Changes in v6:
+- Updated the seperate LEDs nodes to multi-led setting.
+- Link to v5: https://lore.kernel.org/r/20240115-lpg-v5-1-3c56f77f9cec@quicinc.com
 
-diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 5394d8c6a40e..cd7673ecea51 100644
---- a/drivers/net/dsa/mt7530.c
-+++ b/drivers/net/dsa/mt7530.c
-@@ -942,9 +942,6 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
- 		/* MT7530_P5_MODE_GMAC: P5 -> External phy or 2nd GMAC */
- 		val &= ~MHWTRAP_P5_DIS;
- 		break;
--	case P5_DISABLED:
--		interface = PHY_INTERFACE_MODE_NA;
--		break;
- 	default:
- 		dev_err(ds->dev, "Unsupported p5_intf_sel %d\n",
- 			priv->p5_intf_sel);
-@@ -2313,8 +2310,6 @@ mt7530_setup(struct dsa_switch *ds)
- 		 * Set priv->p5_intf_sel to the appropriate value if PHY muxing
- 		 * is detected.
- 		 */
--		interface = PHY_INTERFACE_MODE_NA;
--
- 		for_each_child_of_node(dn, mac_np) {
- 			if (!of_device_is_compatible(mac_np,
- 						     "mediatek,eth-mac"))
-@@ -2346,7 +2341,9 @@ mt7530_setup(struct dsa_switch *ds)
- 			break;
- 		}
- 
--		mt7530_setup_port5(ds, interface);
-+		if (priv->p5_intf_sel == P5_INTF_SEL_PHY_P0 ||
-+		    priv->p5_intf_sel == P5_INTF_SEL_PHY_P4)
-+			mt7530_setup_port5(ds, interface);
- 	}
- 
- #ifdef CONFIG_GPIOLIB
+Changes in v5:
+- Rephrased commit text, replaced qcs6490-idp to qcm6490-idp.
+- Removed the unnecessary full.
+- Link to v4: https://lore.kernel.org/r/20240112-lpg-v4-1-c4004026686b@quicinc.com
 
+Changes in v4:
+- Removed "label" definition and added "function" definition.
+- Link to v3: https://lore.kernel.org/r/20231215-lpg-v3-1-4e2db0c6df5f@quicinc.com
+
+Changes in v3:
+- Rephrased commit text and updated the nodes to qcm6490-idp board file.
+- Link to v2: https://lore.kernel.org/all/20231110-qcom_leds-v2-1-3cad1fbbc65a@quicinc.com/
+
+Changes in v2:
+- Rephrased commit text and updated the nodes to board file.
+- Link to v1: https://lore.kernel.org/r/20231108-qcom_leds-v1-1-c3e1c8572cb0@quicinc.com
+---
+ arch/arm64/boot/dts/qcom/qcm6490-idp.dts | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
+index 37c91fdf3ab9..c9e7ddcbd259 100644
+--- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
++++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
+@@ -5,6 +5,7 @@
+ 
+ /dts-v1/;
+ 
++#include <dt-bindings/leds/common.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+ #include "sc7280.dtsi"
+ #include "pm7325.dtsi"
+@@ -414,6 +415,33 @@ vreg_bob_3p296: bob {
+ 	};
+ };
+ 
++&pm8350c_pwm {
++	status = "okay";
++
++	multi-led {
++		color = <LED_COLOR_ID_RGB>;
++		function = LED_FUNCTION_STATUS;
++
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		led@1 {
++			reg = <1>;
++			color = <LED_COLOR_ID_RED>;
++		};
++
++		led@2 {
++			reg = <2>;
++			color = <LED_COLOR_ID_GREEN>;
++		};
++
++		led@3 {
++			reg = <3>;
++			color = <LED_COLOR_ID_BLUE>;
++		};
++	};
++};
++
+ &qupv3_id_0 {
+ 	status = "okay";
+ };
+
+---
+base-commit: 17cb8a20bde66a520a2ca7aad1063e1ce7382240
+change-id: 20231215-lpg-4aadd374811a
+
+Best regards,
 -- 
-2.40.1
+Hui Liu <quic_huliu@quicinc.com>
 
