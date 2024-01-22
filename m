@@ -1,80 +1,231 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Mon, 22 Jan 2024 22:33:20 +0800
-Subject: [PATCH v3 1/5] net: hifemac_mdio: use log_msg_ret() correctly,
- report error by dev_err()
+Date: Mon, 22 Jan 2024 22:33:21 +0800
+Subject: [PATCH v3 2/5] net: hifemac: fix log reporting
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240122-net-v3-1-f1e80564725b@outlook.com>
+Message-Id: <20240122-net-v3-2-f1e80564725b@outlook.com>
 References: <20240122-net-v3-0-f1e80564725b@outlook.com>
 In-Reply-To: <20240122-net-v3-0-f1e80564725b@outlook.com>
 To: Joe Hershberger <joe.hershberger@ni.com>, 
  Ramon Fried <rfried.dev@gmail.com>
 Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705934004; l=1755;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705934004; l=6569;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=hQDPCsolPbXnTnIjMDCaSwJsmF0AaJNRipJEFZgsKnM=;
- b=6mc0ozN9x91P278dghQxAg1ckXpaRzX9opyD7/kuKyTB/NfmQul9j/4uvo7ZJv9G8ADV6pA4a
- WA/XTvvND5HAisAsRZeJQYLbWsM1XWUcMoEnFYIQ5Q/hOLNs++wS7br
+ bh=5cyUg5mF3yyXwrX1AvQvJQpfQ3oNcmSAKW0TIb3hMNo=;
+ b=rqDWHjn6Y21cKrIi0JafNnANBBEA/JNYWAlTZ1EqacysYhwRcwyEv9VuaoF+iwaFMLuZvU+TK
+ 9rerlWNqz3QCb7oqwk8sbwqUq+R2EuxtTYg6en08kGPRugZaY+5IizF
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The initial commit used log_msg_ret() wrongly. Fix that by moving error
-report to a separate dev_err() call and shrink the first argument of
-log_msg_ret() to no more than 4 chars.
+shrink the first argument of log_msg_ret(), add dev_xxx() functions for
+error reporting.
 
-Fixes: 6b5c8d98e204 ("net: add hifemac_mdio MDIO bus driver for HiSilicon platform")
+Fixes: 9d8f78a2a79f7 ("net: add hifemac Ethernet driver for HiSilicon platform")
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/net/hifemac_mdio.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ drivers/net/hifemac.c | 110 +++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 73 insertions(+), 37 deletions(-)
 
-diff --git a/drivers/net/hifemac_mdio.c b/drivers/net/hifemac_mdio.c
-index 343c5f3a38..0b59d06091 100644
---- a/drivers/net/hifemac_mdio.c
-+++ b/drivers/net/hifemac_mdio.c
-@@ -8,6 +8,7 @@
- #include <dm.h>
- #include <clk.h>
- #include <miiphy.h>
-+#include <dm/device_compat.h>
- #include <linux/io.h>
- #include <linux/iopoll.h>
+diff --git a/drivers/net/hifemac.c b/drivers/net/hifemac.c
+index b61a29e636..1088f3eca3 100644
+--- a/drivers/net/hifemac.c
++++ b/drivers/net/hifemac.c
+@@ -245,8 +245,10 @@ static int hisi_femac_start(struct udevice *dev)
+ 	hisi_femac_rx_refill(priv);
  
-@@ -74,7 +75,8 @@ static int hisi_femac_mdio_of_to_plat(struct udevice *dev)
- 	data->membase = dev_remap_addr(dev);
- 	if (IS_ERR(data->membase)) {
- 		ret = PTR_ERR(data->membase);
--		return log_msg_ret("Failed to remap base addr", ret);
-+		dev_err(dev, "Failed to remap base addr %d\n", ret);
-+		return log_msg_ret("mdio", ret);
+ 	ret = phy_startup(priv->phy);
+-	if (ret)
+-		return log_msg_ret("Failed to startup phy", ret);
++	if (ret) {
++		dev_err(dev, "Failed to startup phy: %d\n", ret);
++		return log_msg_ret("phy", ret);
++	}
+ 
+ 	if (!priv->phy->link) {
+ 		debug("%s: link down\n", __func__);
+@@ -281,8 +283,10 @@ static int hisi_femac_send(struct udevice *dev, void *packet, int length)
+ 
+ 	// wait until FIFO is empty
+ 	ret = wait_for_bit_le32(priv->glb_base + GLB_IRQ_RAW, IRQ_INT_TX_PER_PACKET, true, 50, false);
+-	if (ret == -ETIMEDOUT)
+-		return log_msg_ret("FIFO timeout", ret);
++	if (ret == -ETIMEDOUT) {
++		dev_err(dev, "FIFO timeout\n");
++		return log_msg_ret("net", ret);
++	}
+ 
+ 	return 0;
+ }
+@@ -340,35 +344,45 @@ int hisi_femac_of_to_plat(struct udevice *dev)
+ 	};
+ 
+ 	priv->port_base = dev_remap_addr_name(dev, "port");
+-	if (IS_ERR(priv->port_base))
+-		return log_msg_ret("Failed to remap port address space", PTR_ERR(priv->port_base));
++	if (!priv->port_base) {
++		dev_err(dev, "Failed to remap port address space\n");
++		return log_msg_ret("net", -EINVAL);
++	}
+ 
+ 	priv->glb_base = dev_remap_addr_name(dev, "glb");
+-	if (IS_ERR(priv->glb_base))
+-		return log_msg_ret("Failed to remap global address space", PTR_ERR(priv->glb_base));
++	if (IS_ERR(priv->glb_base)) {
++		dev_err(dev, "Failed to remap global address space\n");
++		return log_msg_ret("net", -EINVAL);
++	}
+ 
+ 	for (i = 0; i < ARRAY_SIZE(clk_strs); i++) {
+ 		priv->clks[i] = devm_clk_get(dev, clk_strs[i]);
+ 		if (IS_ERR(priv->clks[i])) {
+ 			dev_err(dev, "Error getting clock %s\n", clk_strs[i]);
+-			return log_msg_ret("Failed to get clocks", PTR_ERR(priv->clks[i]));
++			return log_msg_ret("clk", PTR_ERR(priv->clks[i]));
+ 		}
  	}
  
- 	// clk is optional
-@@ -89,8 +91,10 @@ static int hisi_femac_mdio_probe(struct udevice *dev)
- 	int ret;
+ 	priv->mac_rst = devm_reset_control_get(dev, "mac");
+-	if (IS_ERR(priv->mac_rst))
+-		return log_msg_ret("Failed to get MAC reset", PTR_ERR(priv->mac_rst));
++	if (IS_ERR(priv->mac_rst)) {
++		dev_err(dev, "Failed to get MAC reset %ld\n", PTR_ERR(priv->mac_rst));
++		return log_msg_ret("rst", PTR_ERR(priv->mac_rst));
++	}
  
- 	ret = clk_prepare_enable(data->clk);
--	if (ret)
--		return log_msg_ret("Failed to enable clk", ret);
-+	if (ret) {
-+		dev_err(dev, "Failed to enable clock: %d\n", ret);
+ 	priv->phy_rst = devm_reset_control_get(dev, "phy");
+-	if (IS_ERR(priv->phy_rst))
+-		return log_msg_ret("Failed to get PHY reset", PTR_ERR(priv->phy_rst));
++	if (IS_ERR(priv->phy_rst)) {
++		dev_err(dev, "Failed to get PHY reset %ld\n", PTR_ERR(priv->phy_rst));
++		return log_msg_ret("rst", PTR_ERR(priv->phy_rst));
++	}
+ 
+ 	ret = dev_read_u32_array(dev,
+ 				 PHY_RESET_DELAYS_PROPERTY,
+ 				 priv->phy_reset_delays,
+ 				 DELAYS_NUM);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to get PHY reset delays", ret);
++	if (ret < 0) {
++		dev_err(dev, "Failed to get PHY reset delays %d\n", ret);
++		return log_msg_ret("rst", ret);
++	}
+ 
+ 	priv->mac_reset_delay = dev_read_u32_default(dev,
+ 						     MAC_RESET_DELAY_PROPERTY,
+@@ -385,32 +399,44 @@ static int hisi_femac_phy_reset(struct hisi_femac_priv *priv)
+ 
+ 	// Disable MAC clk before phy reset
+ 	ret = clk_disable(priv->clks[CLK_MAC]);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to disable MAC clock", ret);
++	if (ret < 0) {
++		pr_err("%s: Failed to disable MAC clock %d\n", __func__, ret);
++		return log_msg_ret("clk", ret);
++	}
+ 	ret = clk_disable(priv->clks[CLK_BUS]);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to disable bus clock", ret);
++	if (ret < 0) {
++		pr_err("%s: Failed to disable bus clock %d\n", __func__, ret);
++		return log_msg_ret("clk", ret);
++	}
+ 
+ 	udelay(delays[PRE_DELAY]);
+ 
+ 	ret = reset_assert(rst);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to assert reset", ret);
++	if (ret < 0) {
++		pr_err("%s: Failed to assert reset %d\n", __func__, ret);
++		return log_msg_ret("rst", ret);
++	}
+ 
+ 	udelay(delays[PULSE]);
+ 
+ 	ret = reset_deassert(rst);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to deassert reset", ret);
++	if (ret < 0) {
++		pr_err("%s: Failed to deassert reset %d\n", __func__, ret);
++		return log_msg_ret("rst", ret);
++	}
+ 
+ 	udelay(delays[POST_DELAY]);
+ 
+ 	ret = clk_enable(priv->clks[CLK_MAC]);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to enable MAC clock", ret);
++	if (ret < 0) {
++		pr_err("%s: Failed to enable MAC clock %d\n", __func__, ret);
++		return log_msg_ret("clk", ret);
++	}
+ 	ret = clk_enable(priv->clks[CLK_BUS]);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to enable MAC bus clock", ret);
++	if (ret < 0) {
++		pr_err("%s: Failed to enable MAC bus clock %d\n", __func__, ret);
 +		return log_msg_ret("clk", ret);
 +	}
  
  	return 0;
  }
-@@ -112,5 +116,6 @@ U_BOOT_DRIVER(hisi_femac_mdio_driver) = {
- 	.of_to_plat = hisi_femac_mdio_of_to_plat,
- 	.probe = hisi_femac_mdio_probe,
- 	.ops = &hisi_femac_mdio_ops,
-+	.plat_auto = sizeof(struct mdio_perdev_priv),
- 	.priv_auto = sizeof(struct hisi_femac_mdio_data),
- };
+@@ -423,30 +449,40 @@ int hisi_femac_probe(struct udevice *dev)
+ 	// Enable clocks
+ 	for (i = 0; i < CLK_NUM; i++) {
+ 		ret = clk_prepare_enable(priv->clks[i]);
+-		if (ret < 0)
+-			return log_msg_ret("Failed to enable clks", ret);
++		if (ret < 0) {
++			dev_err(dev, "Failed to enable clk %d: %d\n", i, ret);
++			return log_msg_ret("clk", ret);
++		}
+ 	}
+ 
+ 	// Reset MAC
+ 	ret = reset_assert(priv->mac_rst);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to assert MAC reset", ret);
++	if (ret < 0) {
++		dev_err(dev, "Failed to assert MAC reset: %d\n", ret);
++		return log_msg_ret("net", ret);
++	}
+ 
+ 	udelay(priv->mac_reset_delay);
+ 
+ 	ret = reset_deassert(priv->mac_rst);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to deassert MAC reset", ret);
++	if (ret < 0) {
++		dev_err(dev, "Failed to deassert MAC reset: %d\n", ret);
++		return log_msg_ret("net", ret);
++	}
+ 
+ 	// Reset PHY
+ 	ret = hisi_femac_phy_reset(priv);
+-	if (ret < 0)
+-		return log_msg_ret("Failed to reset phy", ret);
++	if (ret < 0) {
++		dev_err(dev, "Failed to reset PHY: %d\n", ret);
++		return log_msg_ret("net", ret);
++	}
+ 
+ 	// Connect to PHY
+ 	priv->phy = dm_eth_phy_connect(dev);
+-	if (!priv->phy)
+-		return log_msg_ret("Failed to connect to phy", -EINVAL);
++	if (!priv->phy) {
++		dev_err(dev, "Failed to connect to phy\n");
++		return log_msg_ret("phy", -EINVAL);
++	}
+ 
+ 	hisi_femac_port_init(priv);
+ 	return 0;
 
 -- 
 2.43.0
