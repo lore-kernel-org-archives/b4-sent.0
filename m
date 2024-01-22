@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Mon, 22 Jan 2024 08:35:57 +0300
-Subject: [PATCH net-next v3 6/7] net: dsa: mt7530: do not set
- priv->p5_interface on mt7530_setup_port5()
+Date: Mon, 22 Jan 2024 08:35:58 +0300
+Subject: [PATCH net-next v3 7/7] net: dsa: mt7530: do not run
+ mt7530_setup_port5() if port 5 is disabled
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240122-for-netnext-mt7530-improvements-1-v3-6-042401f2b279@arinc9.com>
+Message-Id: <20240122-for-netnext-mt7530-improvements-1-v3-7-042401f2b279@arinc9.com>
 References: <20240122-for-netnext-mt7530-improvements-1-v3-0-042401f2b279@arinc9.com>
 In-Reply-To: <20240122-for-netnext-mt7530-improvements-1-v3-0-042401f2b279@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, 
@@ -24,48 +24,69 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705901755; l=1273;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705901755; l=1954;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=pshHxjZuMebpMx/Gh2fbwscWV4LBFxm7gD/pRSkDjUU=;
- b=3QO+m8i9+Ps4LZGshnpqcBCo9aNWs7CYTLbXp9XfvHkLogRSHjRTuKQahhjiOlLAM+EezZlll
- M7WXEkoq3q3AJBtDqaVD4ZqTNnAsgH2y6/N04iZ6+sNliD5XWQrHn3Z
+ bh=CX1ZTLft5JNnPSpvgA9ppPM0W5zZnVzbF5jhuxeYZts=;
+ b=m7xRK80HiKn4Yf5gYVKbcOAJuPiW2ZQjrweTiy/ng47qxoKCiENascUa+CONss3MADnR3scXe
+ bi2arpEKxnkDpyM3moD6BJkZxd+h2xHCHl22YVS7vuxFGjITKlV6wVM
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Running mt7530_setup_port5() from mt7530_setup() used to handle all cases
-of configuring port 5, including phylink.
+There's no need to run all the code on mt7530_setup_port5() if port 5 is
+disabled. The only case for calling mt7530_setup_port5() from
+mt7530_setup() is when PHY muxing is enabled. That is because port 5 is not
+defined as a port on the devicetree, therefore, it cannot be controlled by
+phylink.
 
-Setting priv->p5_interface under mt7530_setup_port5() makes sure that
-mt7530_setup_port5() from mt753x_phylink_mac_config() won't run.
+Because of this, run mt7530_setup_port5() if priv->p5_intf_sel is
+P5_INTF_SEL_PHY_P0 or P5_INTF_SEL_PHY_P4. Remove the P5_DISABLED case from
+mt7530_setup_port5().
 
-The commit ("net: dsa: mt7530: improve code path for setting up port 5")
-makes so that mt7530_setup_port5() from mt7530_setup() runs only on
-non-phylink cases.
-
-Get rid of unnecessarily setting priv->p5_interface under
-mt7530_setup_port5() as port 5 phylink configuration will be done by
-running mt7530_setup_port5() from mt753x_phylink_mac_config() now.
+Stop initialising the interface variable as the remaining cases will always
+call mt7530_setup_port5() with it initialised.
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Reviewed-by: Vladimir Oltean <olteanv@gmail.com>
 ---
- drivers/net/dsa/mt7530.c | 2 --
- 1 file changed, 2 deletions(-)
+ drivers/net/dsa/mt7530.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 33c15f10de34..5394d8c6a40e 100644
+index 5394d8c6a40e..cd7673ecea51 100644
 --- a/drivers/net/dsa/mt7530.c
 +++ b/drivers/net/dsa/mt7530.c
-@@ -978,8 +978,6 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
- 	dev_dbg(ds->dev, "Setup P5, HWTRAP=0x%x, intf_sel=%s, phy-mode=%s\n",
- 		val, p5_intf_modes(priv->p5_intf_sel), phy_modes(interface));
- 
--	priv->p5_interface = interface;
+@@ -942,9 +942,6 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
+ 		/* MT7530_P5_MODE_GMAC: P5 -> External phy or 2nd GMAC */
+ 		val &= ~MHWTRAP_P5_DIS;
+ 		break;
+-	case P5_DISABLED:
+-		interface = PHY_INTERFACE_MODE_NA;
+-		break;
+ 	default:
+ 		dev_err(ds->dev, "Unsupported p5_intf_sel %d\n",
+ 			priv->p5_intf_sel);
+@@ -2313,8 +2310,6 @@ mt7530_setup(struct dsa_switch *ds)
+ 		 * Set priv->p5_intf_sel to the appropriate value if PHY muxing
+ 		 * is detected.
+ 		 */
+-		interface = PHY_INTERFACE_MODE_NA;
 -
- unlock_exit:
- 	mutex_unlock(&priv->reg_mutex);
- }
+ 		for_each_child_of_node(dn, mac_np) {
+ 			if (!of_device_is_compatible(mac_np,
+ 						     "mediatek,eth-mac"))
+@@ -2346,7 +2341,9 @@ mt7530_setup(struct dsa_switch *ds)
+ 			break;
+ 		}
+ 
+-		mt7530_setup_port5(ds, interface);
++		if (priv->p5_intf_sel == P5_INTF_SEL_PHY_P0 ||
++		    priv->p5_intf_sel == P5_INTF_SEL_PHY_P4)
++			mt7530_setup_port5(ds, interface);
+ 	}
+ 
+ #ifdef CONFIG_GPIOLIB
 
 -- 
 2.40.1
