@@ -1,61 +1,59 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Mon, 22 Jan 2024 15:15:41 +0100
-Subject: [PATCH] iio: commom: st_sensors: ensure proper DMA alignment
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH v3 0/5] net: hifemac: a few cleanups
+Date: Mon, 22 Jan 2024 22:33:19 +0800
+Message-Id: <20240122-net-v3-0-f1e80564725b@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240122-dev_dma_safety_stm-v1-1-3a021614cbfb@analog.com>
-X-B4-Tracking: v=1; b=H4sIAIx4rmUC/x3MTQqAIBBA4avErBPUQqGrRIjoWLPoByeikO6et
- PwW7xVgzIQMQ1Mg40VM+1ah2gbC4rcZBcVq0FL3UmktIl4urt6xT3g+js9VBCuVMbZLPQao4ZE
- x0f1Px+l9P0UNhMdkAAAA
-To: linux-iio@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, Denis Ciocca <denis.ciocca@st.com>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705932947; l=1249;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=9nc0+XuBHPSAJAnQqlzH9FoKWs6rxhh6XjIELsbUJ8k=;
- b=XkTCa2kD81PCT+5L9/nqtyL6c8/7wjsk3pgUGHQbVGGLvtudi/0zBwePsZ3f2i8S3xWvnh9jg
- LZTeCBTwsMjDJ5ecxSwGTVSZz0/NmxwaKL3OU5jUqEB+DLsLSyvM7RE
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAK98rmUC/1WMwQ6CMBAFf4Xs2Rq6xVI8+R/GQymLNGprWmw0h
+ H+34EWO8/JmJogULEU4FhMESjZa7zKIXQFm0O5KzHaZAUusSs4b5mhkNWqBsj4QtRXk5zNQb99
+ r5XzJPNg4+vBZo4kv69ZPnJWs4z21irjURp78a7x7f9sb/4ClkPDPQvxZmK1aaSGVamQvcWvN8
+ /wFLb1XZ84AAAA=
+To: Joe Hershberger <joe.hershberger@ni.com>, 
+ Ramon Fried <rfried.dev@gmail.com>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705934004; l=1219;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=t8eOdm8eaQWLmDlJrYsiVJeZtCWqqiz2sfmyGJzGwCE=;
+ b=qdYz47FMgb1P5V0vE3zEmPFxFZwcUvFqNasSNFQbJHE22i9ouHT7no25DPH0eX5scloRV0RY9
+ PVpN2ew7ZlYCOGvN61Ww9ZZZ6I0xQcFrT7mOR5tdeaC0PWzUFZSQFfW
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Aligning the buffer to the L1 cache is not sufficient in some platforms
-as they might have larger cacheline sizes for caches after L1 and thus,
-we can't guarantee DMA safety.
+- Fix the use of log_msg_ret() and add dev_xxx() for error reporting.
+- Register mdio subnode as a mdio bus device for hifemac.
+- Implement ops needed by `net stats`
+- Make functions static.
 
-That was the whole reason to introduce IIO_DMA_MINALIGN in [1]. Do the same
-for st_sensors common buffer.
-
-[1]: https://lore.kernel.org/linux-iio/20220508175712.647246-2-jic23@kernel.org/
-
-Fixes: e031d5f558f1 ("iio:st_sensors: remove buffer allocation at each buffer enable")
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- include/linux/iio/common/st_sensors.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v3:
+- hisi-femac: add missing `static` to avoid polluting global namespace.
+- Link to v2: https://lore.kernel.org/r/20240122-net-v2-0-78a368896f62@outlook.com
 
-diff --git a/include/linux/iio/common/st_sensors.h b/include/linux/iio/common/st_sensors.h
-index 607c3a89a647..a02652cf4862 100644
---- a/include/linux/iio/common/st_sensors.h
-+++ b/include/linux/iio/common/st_sensors.h
-@@ -258,7 +258,7 @@ struct st_sensor_data {
- 	bool hw_irq_trigger;
- 	s64 hw_timestamp;
- 
--	char buffer_data[ST_SENSORS_MAX_BUFFER_SIZE] ____cacheline_aligned;
-+	char buffer_data[ST_SENSORS_MAX_BUFFER_SIZE] __aligned(IIO_DMA_MINALIGN);
- 
- 	struct mutex odr_lock;
- };
+Changes in v2:
+- hisi-femac: add statistics related operations
+- Link to v1: https://lore.kernel.org/r/20240119-net-v1-0-d1feb8e16ac6@outlook.com
 
 ---
-base-commit: f9c0358aadcba16d04d139a5412b413eeee87afe
-change-id: 20240122-dev_dma_safety_stm-c7016673f4ec
---
+Yang Xiwen (5):
+      net: hifemac_mdio: use log_msg_ret() correctly, report error by dev_err()
+      net: hifemac: fix log reporting
+      net: hifemac: register MDIO bus device for subnode
+      net: hifemac: implement `net stats` needed ops
+      net: hifemac: make some functions static
 
-Thanks!
-- Nuno Sá
+ drivers/net/hifemac.c      | 229 +++++++++++++++++++++++++++++++++++++--------
+ drivers/net/hifemac_mdio.c |  11 ++-
+ 2 files changed, 198 insertions(+), 42 deletions(-)
+---
+base-commit: f7cca7ccc5117eaafcc2bde91ad1bed6fee7cfc3
+change-id: 20240119-net-72a32675eeb4
+
+Best regards,
+-- 
+Yang Xiwen <forbidden405@outlook.com>
 
