@@ -1,114 +1,61 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Mon, 22 Jan 2024 14:43:24 +0800
-Subject: [PATCH v6] arm64: dts: qcom: qcm6490-idp: Add definition for three
- LEDs
+From: Nuno Sa <nuno.sa@analog.com>
+Date: Mon, 22 Jan 2024 15:15:41 +0100
+Subject: [PATCH] iio: commom: st_sensors: ensure proper DMA alignment
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240122-lpg-v6-1-219737cf5beb@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAIwOrmUC/2WOzU7DMBAGX6XyuUZe/6XlxHsghJz1OrHUJq1dL
- FCUd8cJVCXi+Ek7szOxTClSZs+7iSUqMcdxqMPudwx7N3TEo6+bSSEVSDD8dOm4ds571egDgGP
- 18pIoxM/V8vpWd0jjmd/6RO7BAgh+xfH8fiKfeZEcuELnIbQtWuNerh8R44BP9WRR9jHfxvS1d
- hW1iLcJRVWBJulbgdYHEzaCJaLoO6UFgPyhdKVQC6GFtPZg2/+U+Uv9/jJrrLGhacIRCbfUPM/
- f4giaEkcBAAA=
-To: Andy Gross <agross@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Hui Liu <quic_huliu@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705905864; l=2220;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=n8xSHABdt74JEuBzHLY4lYbQGqDaAeo36uTk0NjptXM=;
- b=wTFFnqsHbmf742D/Tk8UBK4kYpSU/L6zoS1MROwEWFyqlYR6qVPBWNWUW7G4QbS2h5T1ra/Tg
- HsC3P6C/DzoCzhq/xfwBkNuCxRRPU2QMgMe+zELya+sidiZeDOvxW3S
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240122-dev_dma_safety_stm-v1-1-3a021614cbfb@analog.com>
+X-B4-Tracking: v=1; b=H4sIAIx4rmUC/x3MTQqAIBBA4avErBPUQqGrRIjoWLPoByeikO6et
+ PwW7xVgzIQMQ1Mg40VM+1ah2gbC4rcZBcVq0FL3UmktIl4urt6xT3g+js9VBCuVMbZLPQao4ZE
+ x0f1Px+l9P0UNhMdkAAAA
+To: linux-iio@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, Denis Ciocca <denis.ciocca@st.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705932947; l=1249;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=9nc0+XuBHPSAJAnQqlzH9FoKWs6rxhh6XjIELsbUJ8k=;
+ b=XkTCa2kD81PCT+5L9/nqtyL6c8/7wjsk3pgUGHQbVGGLvtudi/0zBwePsZ3f2i8S3xWvnh9jg
+ LZTeCBTwsMjDJ5ecxSwGTVSZz0/NmxwaKL3OU5jUqEB+DLsLSyvM7RE
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add definition for three LEDs to make sure they can
-be enabled base on QCOM LPG LED driver.
+Aligning the buffer to the L1 cache is not sufficient in some platforms
+as they might have larger cacheline sizes for caches after L1 and thus,
+we can't guarantee DMA safety.
 
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
+That was the whole reason to introduce IIO_DMA_MINALIGN in [1]. Do the same
+for st_sensors common buffer.
+
+[1]: https://lore.kernel.org/linux-iio/20220508175712.647246-2-jic23@kernel.org/
+
+Fixes: e031d5f558f1 ("iio:st_sensors: remove buffer allocation at each buffer enable")
+Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
-Changes in v6:
-- Updated the seperate LEDs nodes to multi-led setting.
-- Link to v5: https://lore.kernel.org/r/20240115-lpg-v5-1-3c56f77f9cec@quicinc.com
+ include/linux/iio/common/st_sensors.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Changes in v5:
-- Rephrased commit text, replaced qcs6490-idp to qcm6490-idp.
-- Removed the unnecessary full.
-- Link to v4: https://lore.kernel.org/r/20240112-lpg-v4-1-c4004026686b@quicinc.com
-
-Changes in v4:
-- Removed "label" definition and added "function" definition.
-- Link to v3: https://lore.kernel.org/r/20231215-lpg-v3-1-4e2db0c6df5f@quicinc.com
-
-Changes in v3:
-- Rephrased commit text and updated the nodes to qcm6490-idp board file.
-- Link to v2: https://lore.kernel.org/all/20231110-qcom_leds-v2-1-3cad1fbbc65a@quicinc.com/
-
-Changes in v2:
-- Rephrased commit text and updated the nodes to board file.
-- Link to v1: https://lore.kernel.org/r/20231108-qcom_leds-v1-1-c3e1c8572cb0@quicinc.com
----
- arch/arm64/boot/dts/qcom/qcm6490-idp.dts | 28 ++++++++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-index 37c91fdf3ab9..c9e7ddcbd259 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-@@ -5,6 +5,7 @@
+diff --git a/include/linux/iio/common/st_sensors.h b/include/linux/iio/common/st_sensors.h
+index 607c3a89a647..a02652cf4862 100644
+--- a/include/linux/iio/common/st_sensors.h
++++ b/include/linux/iio/common/st_sensors.h
+@@ -258,7 +258,7 @@ struct st_sensor_data {
+ 	bool hw_irq_trigger;
+ 	s64 hw_timestamp;
  
- /dts-v1/;
+-	char buffer_data[ST_SENSORS_MAX_BUFFER_SIZE] ____cacheline_aligned;
++	char buffer_data[ST_SENSORS_MAX_BUFFER_SIZE] __aligned(IIO_DMA_MINALIGN);
  
-+#include <dt-bindings/leds/common.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- #include "sc7280.dtsi"
- #include "pm7325.dtsi"
-@@ -414,6 +415,33 @@ vreg_bob_3p296: bob {
- 	};
- };
- 
-+&pm8350c_pwm {
-+	status = "okay";
-+
-+	multi-led {
-+		color = <LED_COLOR_ID_RGB>;
-+		function = LED_FUNCTION_STATUS;
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		led@1 {
-+			reg = <1>;
-+			color = <LED_COLOR_ID_RED>;
-+		};
-+
-+		led@2 {
-+			reg = <2>;
-+			color = <LED_COLOR_ID_GREEN>;
-+		};
-+
-+		led@3 {
-+			reg = <3>;
-+			color = <LED_COLOR_ID_BLUE>;
-+		};
-+	};
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
+ 	struct mutex odr_lock;
  };
 
 ---
-base-commit: 17cb8a20bde66a520a2ca7aad1063e1ce7382240
-change-id: 20231215-lpg-4aadd374811a
+base-commit: f9c0358aadcba16d04d139a5412b413eeee87afe
+change-id: 20240122-dev_dma_safety_stm-c7016673f4ec
+--
 
-Best regards,
--- 
-Hui Liu <quic_huliu@quicinc.com>
+Thanks!
+- Nuno Sá
 
