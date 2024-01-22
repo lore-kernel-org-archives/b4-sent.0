@@ -1,154 +1,122 @@
-From: Yang Xiwen <forbidden405@outlook.com>
-Date: Mon, 22 Jan 2024 05:02:07 +0800
-Subject: [PATCH v2 4/4] net: hifemac: implement `net stats` needed ops
+From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Subject: [PATCH net-next v3 0/7] MT7530 DSA Subdriver Improvements Act I
+Date: Mon, 22 Jan 2024 08:35:51 +0300
+Message-Id: <20240122-for-netnext-mt7530-improvements-1-v3-0-042401f2b279@arinc9.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240122-net-v2-4-78a368896f62@outlook.com>
-References: <20240122-net-v2-0-78a368896f62@outlook.com>
-In-Reply-To: <20240122-net-v2-0-78a368896f62@outlook.com>
-To: Joe Hershberger <joe.hershberger@ni.com>, 
- Ramon Fried <rfried.dev@gmail.com>
-Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIALf+rWUC/3WNQQ7CIBREr2JYS8P/0NK68h7GRa2/lsRCA0hqm
+ t5dZOPK3Uwmb97GAnlDgZ0OG/OUTDDO5iKPBzZMvX0QN/fcGQpUAhD46Dy3FC2tkc9R11JwMy/
+ eJZrJxsCBN0rJWnXjTeua5Z/F02jW4riwjPIvy655mUyIzr+LPEHZs0cCQAsoUdQVNk0LXT7tv
+ bFD9bL981xiVw1uLicJfyCiFtmudAVCYwf/wX3fP64TAoj8AAAA
+To: Daniel Golle <daniel@makrotopia.org>, 
+ Landen Chao <Landen.Chao@mediatek.com>, DENG Qingfang <dqfext@gmail.com>, 
+ Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Florian Fainelli <f.fainelli@gmail.com>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com, 
+ Bartel Eerdekens <bartel.eerdekens@constell8.be>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, 
+ =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705870930; l=4411;
- i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=PWSJQpQzzsBqIpI4NTZc2hndLbZlKCxXE42lOYMvhRk=;
- b=9ZU94XWeu/OfoIAS9JftzYbZKEfpuAbY9alI8b0MamDDf+lcfMnAJJzNXxBuhUvxknCnzG5dc
- uFEtQ+ms29gCe97DEvWmq6X8xgsdIWdyjqX8Rq3ZrZmd7nHsqkTT0ID
-X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
- pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
-X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705901755; l=3455;
+ i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
+ bh=eTYY+evS04ACta4sLOnbAMToYxY7CybRXgNbJ7leYNw=;
+ b=17GHcU05i+tBO3+FtLXH7FLTko8AoULh6yvzNTCWphY/pvp9Fd6q9hsjeqHR1Xz5bHD0JlxG4
+ uXo5JR8k6j/ACr1ZhmojnGwA0y3n98w8mFm4JqMkj0vIDy3/Oyl1KbC
+X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
+ pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
+X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-3 operations needed by `net stats` are implemented. New `net stats`
-output some useful info.
+Hello!
 
-Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
+This patch series simplifies the MT7530 DSA subdriver and improves the
+logic of the support for MT7530, MT7531, and the switch on the MT7988 SoC.
+
+I have done a simple ping test to confirm basic communication on all switch
+ports on MCM and standalone MT7530, and MT7531 switch with this patch
+series applied.
+
+MT7621 Unielec, MCM MT7530:
+
+rgmii-only-gmac0-mt7621-unielec-u7621-06-16m.dtb
+gmac0-and-gmac1-mt7621-unielec-u7621-06-16m.dtb
+
+tftpboot 0x80008000 mips-uzImage.bin; tftpboot 0x83000000 mips-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootm 0x80008000 0x83000000 0x83f00000
+
+MT7622 Bananapi, MT7531:
+
+gmac0-and-gmac1-mt7622-bananapi-bpi-r64.dtb
+
+tftpboot 0x40000000 arm64-Image; tftpboot 0x45000000 arm64-rootfs.cpio.uboot; tftpboot 0x4a000000 $dtb; booti 0x40000000 0x45000000 0x4a000000
+
+MT7623 Bananapi, standalone MT7530:
+
+rgmii-only-gmac0-mt7623n-bananapi-bpi-r2.dtb
+gmac0-and-gmac1-mt7623n-bananapi-bpi-r2.dtb
+
+tftpboot 0x80008000 arm-zImage; tftpboot 0x83000000 arm-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootz 0x80008000 0x83000000 0x83f00000
+
+This patch series is the continuation of the patch series linked below.
+
+https://lore.kernel.org/r/20230522121532.86610-1-arinc.unal@arinc9.com
+
+Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/hifemac.c | 87 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 87 insertions(+)
+Changes in v3:
+- Update the patches with the latest received trailers.
+- Patch 1
+  - Declare the longest variable assignment first.
+  - Improve the patch log and the comment on the code.
+  - Don't do type cast for __ffs. Implicit type promotion takes place.
+- Patch 4
+  - Put more relevant information on the comments on the code.
+  - Follow the 'commit <12+ chars of sha1> ("<title line>")' style on the
+    patch log to satisfy checkpatch errors.
+- Patch 6
+  - Change the patch log to explain the change better.
+- Link to v2: https://lore.kernel.org/r/20231227044347.107291-1-arinc.unal@arinc9.com
 
-diff --git a/drivers/net/hifemac.c b/drivers/net/hifemac.c
-index 39c0233b62..24108bee4b 100644
---- a/drivers/net/hifemac.c
-+++ b/drivers/net/hifemac.c
-@@ -16,6 +16,8 @@
- #include <asm/io.h>
- #include <dm/device_compat.h>
- #include <dm/lists.h>
-+#include <linux/bitfield.h>
-+#include <linux/ethtool.h>
- #include <linux/delay.h>
- #include <linux/kernel.h>
- 
-@@ -125,6 +127,57 @@ struct hisi_femac_priv {
- 	u32 link_status;
- };
- 
-+struct hisi_femac_stat_entry {
-+	const char *name;
-+	u32 offset;
-+	u32 mask;
-+};
-+
-+/* please refer to the datasheet for the description of these entries */
-+const struct hisi_femac_stat_entry hisi_femac_stats_table[] = {
-+	{ "rxsof_cnt",		0x584,	GENMASK(31, 28) },
-+	{ "rxeof_cnt",		0x584,	GENMASK(27, 24) },
-+	{ "rxcrcok_cnt",	0x584,	GENMASK(23, 20) },
-+	{ "rxcrcbad_cnt",	0x584,	GENMASK(19, 16) },
-+	{ "txsof_cnt",		0x584,	GENMASK(15, 12) },
-+	{ "txeof_cnt",		0x584,	GENMASK(11, 8) },
-+	{ "txcrcok_cnt",	0x584,	GENMASK(7, 4) },
-+	{ "txcrcbad_cnt",	0x584,	GENMASK(3, 0) },
-+	{ "pkts_cpu",		0x5a0,	GENMASK(15, 0) },
-+	{ "addr_cpu",		0x5a4,	GENMASK(15, 0) },
-+	{ "pkts_port",		0x5a8,	GENMASK(15, 0) },
-+	{ "pkts_cpu2tx",	0x5ac,	GENMASK(15, 0) },
-+	{ "rxdvrise",		0x600,	GENMASK(31, 0) },
-+	{ "ifinoctets",		0x604,	GENMASK(31, 0) },
-+	{ "octets_rx",		0x608,	GENMASK(31, 0) },
-+	{ "local_mac_match",	0x60c,	GENMASK(31, 0) },
-+	{ "pkts",		0x610,	GENMASK(31, 0) },
-+	{ "broadcastpkts",	0x614,	GENMASK(31, 0) },
-+	{ "multicastpkts",	0x618,	GENMASK(31, 0) },
-+	{ "ifinucastpkts",	0x61c,	GENMASK(31, 0) },
-+	{ "ifinerrors",		0x620,	GENMASK(31, 0) },
-+	{ "crcerr",		0x624,	GENMASK(31, 0) },
-+	{ "abnormalsizepkts",	0x628,	GENMASK(31, 0) },
-+	{ "dot3alignmenterr",	0x62c,	GENMASK(31, 0) },
-+	{ "dot3pause",		0x630,	GENMASK(31, 0) },
-+	{ "dropevents",		0x634,	GENMASK(31, 0) },
-+	{ "flux_frame_cnt",	0x638,	GENMASK(31, 0) },
-+	{ "flux_drop_cnt",	0x63c,	GENMASK(31, 0) },
-+	{ "mac_not2cpu_pkts",	0x64c,	GENMASK(31, 0) },
-+	{ "pkts_tx",		0x780,	GENMASK(31, 0) },
-+	{ "broadcastpkts_tx",	0x784,	GENMASK(31, 0) },
-+	{ "multicastpkts_tx",	0x788,	GENMASK(31, 0) },
-+	{ "ifoutucastpkts_tx",	0x78c,	GENMASK(31, 0) },
-+	{ "octets_tx",		0x790,	GENMASK(31, 0) },
-+	{ "dot3pause",		0x794,	GENMASK(31, 0) },
-+	{ "retry_times_tx",	0x798,	GENMASK(31, 0) },
-+	{ "collisions",		0x79c,	GENMASK(31, 0) },
-+	{ "dot3latecol",	0x7a0,	GENMASK(31, 0) },
-+	{ "dot3colok",		0x7a4,	GENMASK(31, 0) },
-+	{ "dot3excessivecol",	0x7a8,	GENMASK(31, 0) },
-+	{ "dot3colcnt",		0x7ac,	GENMASK(31, 0) },
-+};
-+
- static void hisi_femac_irq_enable(struct hisi_femac_priv *priv, int irqs)
- {
- 	u32 val;
-@@ -334,6 +387,37 @@ static void hisi_femac_stop(struct udevice *dev)
- 	writel(SOFT_RESET_ALL, priv->glb_base + GLB_SOFT_RESET);
- }
- 
-+static int hisi_femac_get_sset_count(struct udevice *dev)
-+{
-+	return ARRAY_SIZE(hisi_femac_stats_table);
-+}
-+
-+static void hisi_femac_get_strings(struct udevice *dev, u8 *data)
-+{
-+	int i;
-+
-+	for (i = 0; i < ARRAY_SIZE(hisi_femac_stats_table); i++)
-+		strcpy(data + i * ETH_GSTRING_LEN, hisi_femac_stats_table[i].name);
-+}
-+
-+/* Non-constant mask variant of FIELD_GET/FIELD_PREP */
-+#define field_get(_mask, _reg) (((_reg) & (_mask)) >> (ffs(_mask) - 1))
-+
-+static void hisi_femac_get_stats(struct udevice *dev, u64 *data)
-+{
-+	int i;
-+	u32 mask, reg;
-+	struct hisi_femac_priv *priv = dev_get_priv(dev);
-+	void __iomem *port_base = priv->port_base;
-+
-+	for (i = 0; i < ARRAY_SIZE(hisi_femac_stats_table); i++) {
-+		mask = hisi_femac_stats_table[i].mask;
-+		reg = readl(port_base + hisi_femac_stats_table[i].offset);
-+
-+		data[i] = field_get(mask, reg);
-+	}
-+}
-+
- int hisi_femac_of_to_plat(struct udevice *dev)
- {
- 	int ret, i;
-@@ -523,6 +607,9 @@ static const struct eth_ops hisi_femac_ops = {
- 	.free_pkt	= hisi_femac_free_pkt,
- 	.stop		= hisi_femac_stop,
- 	.write_hwaddr	= hisi_femac_set_hw_mac_addr,
-+	.get_sset_count	= hisi_femac_get_sset_count,
-+	.get_strings	= hisi_femac_get_strings,
-+	.get_stats	= hisi_femac_get_stats,
- };
- 
- static const struct udevice_id hisi_femac_ids[] = {
+Changes in v2:
+- Shorten the patch series, include only 7 patches.
+- Add the reviewed-by tags given.
+- Patch 1
+  - Change variable ordering of mt753x_conduit_state_change().
+  - Define the mask variable and store BIT(cpu_dp->index) on it.
+  - Disable CPU_EN if priv->active_cpu_ports is 0.
+- Patch 5
+  - On the patch log, take the irrelevant information about the
+    mt7530_setup_port5() call from mt7530_setup() out.
+- Patch 6
+  - Change the patch log to reflect correct information.
+- Link to v1: https://lore.kernel.org/r/20231118123205.266819-1-arinc.unal@arinc9.com
 
+---
+Arınç ÜNAL (7):
+      net: dsa: mt7530: always trap frames to active CPU port on MT7530
+      net: dsa: mt7530: use p5_interface_select as data type for p5_intf_sel
+      net: dsa: mt7530: store port 5 SGMII capability of MT7531
+      net: dsa: mt7530: improve comments regarding switch ports
+      net: dsa: mt7530: improve code path for setting up port 5
+      net: dsa: mt7530: do not set priv->p5_interface on mt7530_setup_port5()
+      net: dsa: mt7530: do not run mt7530_setup_port5() if port 5 is disabled
+
+ drivers/net/dsa/mt7530-mdio.c |   7 +--
+ drivers/net/dsa/mt7530.c      | 135 +++++++++++++++++++++++-------------------
+ drivers/net/dsa/mt7530.h      |  16 +++--
+ 3 files changed, 87 insertions(+), 71 deletions(-)
+---
+base-commit: 736b5545d39ca59d4332a60e56cc8a1a5e264a8e
+change-id: 20240121-for-netnext-mt7530-improvements-1-6443549fb775
+
+Best regards,
 -- 
-2.43.0
+Arınç ÜNAL <arinc.unal@arinc9.com>
 
