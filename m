@@ -1,10 +1,10 @@
 From: Fenglin Wu <quic_fenglinw@quicinc.com>
-Date: Tue, 23 Jan 2024 16:49:24 +0800
-Subject: [PATCH v2 1/2] arm64: dts: qcom: sm8650-mtp: add PM8010 regulators
+Date: Tue, 23 Jan 2024 16:49:25 +0800
+Subject: [PATCH v2 2/2] arm64: dts: qcom: sm8650-qrd: add PM8010 regulators
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240123-sm8650_pm8010_support-v2-1-52f517b20a1d@quicinc.com>
+Message-Id: <20240123-sm8650_pm8010_support-v2-2-52f517b20a1d@quicinc.com>
 References: <20240123-sm8650_pm8010_support-v2-0-52f517b20a1d@quicinc.com>
 In-Reply-To: <20240123-sm8650_pm8010_support-v2-0-52f517b20a1d@quicinc.com>
 To: kernel@quicinc.com, Bjorn Andersson <andersson@kernel.org>, 
@@ -16,29 +16,30 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  Fenglin Wu <quic_fenglinw@quicinc.com>, 
  Neil Armstrong <neil.armstrong@linaro.org>
 X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1705999765; l=4167;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1705999765; l=4238;
  i=quic_fenglinw@quicinc.com; s=20230725; h=from:subject:message-id;
- bh=wnrLBlakA+25sff7egCXfN/0ljBwsmb5q7P8MR4LEuo=;
- b=qNxpZlF/38+tu3RtLE78VSN/UW8ppSFANxcW5ywqw0JvOm26sSiM2/l5yqiw2qzuSciijZNTs
- C8bWSUV8l01Bne/QM40UX/sWWu1IXsXEANJ8L4lytjNsrJj5DibPvvT
+ bh=IwF9qLfR2pA/CEp0VfIpGzDt44C9lS05rb9dAr8fPT8=;
+ b=n6xp2sxc+fI3l6sIb6iEJ9Ahsw6kKPVXlS63xd74g1/NNDYPpBJDpEj9WWNnC5zI7rpE+/YrO
+ gzRCJjHURRPDbjf4JE8PH55DphiMLoZCAFzV2lreJ8y7Um/eCpE+lhJ
 X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
  pk=hleIDz3Unk1zeiwwOnZUjoQVMMelRancDFXg927lNjI=
 X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20230725 with auth_id=68
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add PM8010 regulator device nodes for sm8650-mtp board.
+Add PM8010 regulator device nodes for sm8650-qrd board.
 
 Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
+Tested-by: Neil Armstrong <neil.armstrong@linaro.org> # on SM8650-QRD
 Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
- arch/arm64/boot/dts/qcom/sm8650-mtp.dts | 118 ++++++++++++++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8650-qrd.dts | 118 ++++++++++++++++++++++++++++++++
  1 file changed, 118 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8650-mtp.dts b/arch/arm64/boot/dts/qcom/sm8650-mtp.dts
-index 9d916edb1c73..3791971efee6 100644
---- a/arch/arm64/boot/dts/qcom/sm8650-mtp.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8650-mtp.dts
-@@ -428,6 +428,124 @@ vreg_l3i_1p2: ldo3 {
+diff --git a/arch/arm64/boot/dts/qcom/sm8650-qrd.dts b/arch/arm64/boot/dts/qcom/sm8650-qrd.dts
+index 592a67a47c78..361894fa201a 100644
+--- a/arch/arm64/boot/dts/qcom/sm8650-qrd.dts
++++ b/arch/arm64/boot/dts/qcom/sm8650-qrd.dts
+@@ -436,6 +436,124 @@ vreg_l3i_1p2: ldo3 {
  						   RPMH_REGULATOR_MODE_HPM>;
  		};
  	};
