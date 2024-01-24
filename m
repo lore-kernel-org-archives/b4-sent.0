@@ -1,49 +1,55 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Wed, 24 Jan 2024 23:43:56 +0000
-Subject: [PATCH BlueZ 2/9] Return at least the title attribute from
- player_list_metadata()
+Date: Wed, 24 Jan 2024 23:43:57 +0000
+Subject: [PATCH BlueZ 3/9] adapter: Remove experimental flag for PowerState
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240124-disto-patches-v1-2-97e0eb5625a3@gmail.com>
+Message-Id: <20240124-disto-patches-v1-3-97e0eb5625a3@gmail.com>
 References: <20240124-disto-patches-v1-0-97e0eb5625a3@gmail.com>
 In-Reply-To: <20240124-disto-patches-v1-0-97e0eb5625a3@gmail.com>
 To: linux-bluetooth@vger.kernel.org
-Cc: Sam Lantinga <slouken@libsdl.org>
+Cc: Bastien Nocera <hadess@hadess.net>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706139864; l=669;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706139864; l=1246;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=bHLjtE0BG3PUYg6Jf5Zv16cafv879d0HdvZOTdHzrz4=;
- b=qEzrX0iEvgFW8dbFzlXNy1TkJfsjRtbIJ9hNER84Bn597DR7apDT71vdoiNQF50Hg7Dn44kND
- 9e8w8jrrjsMDpMdcVXUnkImkznHH1x2ZmkhX9YrEg9mLnD6C74v1Kl4
+ bh=907K+oAngYC7pmuFcmxrsqecEUrqtrXyAL7kN0F3kdw=;
+ b=XREYpy9XVrkc9ztO1iDu7W7roH81XDwAZEzP5H4+sYxmg27eu07AxvZ91uBpEX1CF+Dsht2Va
+ IRUaDlHE7tcDhiTNEpOr5G60lT0wZGTi6QP0BCoGEsN38hddUW4W7h2
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sam Lantinga <slouken@libsdl.org>
+From: Bastien Nocera <hadess@hadess.net>
 
-This fixes Bluetooth AVRCP certification test AVRCP/TG/MDI/BV-04-C,
-which requires a valid response from the get_element_attributes command.
+Now that the feature has been tested, that the API is deemed adequate
+and the reliability sufficient.
+
+[Emil Velikov]
+The feature has landed in Sept 2022, with inclinations that "we might
+switch it to stable in the next release", back in Nov 2022.
+
+Today - a bit over 1 year later -  various distributions (Fedora, Gentoo
+and by extension their derivatives) are carrying this patch. I think we
+can say we're reasonably stable and can merge it upstream.
 ---
- profiles/audio/avrcp.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ src/adapter.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/profiles/audio/avrcp.c b/profiles/audio/avrcp.c
-index 439fa27a9..36ce01a14 100644
---- a/profiles/audio/avrcp.c
-+++ b/profiles/audio/avrcp.c
-@@ -1210,6 +1210,10 @@ static GList *player_list_metadata(struct avrcp_player *player)
- 					GUINT_TO_POINTER(str_to_metadata(key)));
- 	}
- 
-+	if (attrs == NULL)
-+		return g_list_prepend(NULL,
-+				GUINT_TO_POINTER(AVRCP_MEDIA_ATTRIBUTE_TITLE));
-+
- 	return attrs;
- }
- 
+diff --git a/src/adapter.c b/src/adapter.c
+index 4c6b8f40f..31ccaf54b 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -3956,8 +3956,7 @@ static const GDBusPropertyTable adapter_properties[] = {
+ 	{ "Alias", "s", property_get_alias, property_set_alias },
+ 	{ "Class", "u", property_get_class },
+ 	{ "Powered", "b", property_get_powered, property_set_powered },
+-	{ "PowerState", "s", property_get_power_state, NULL, NULL,
+-			     G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
++	{ "PowerState", "s", property_get_power_state },
+ 	{ "Discoverable", "b", property_get_discoverable,
+ 					property_set_discoverable },
+ 	{ "DiscoverableTimeout", "u", property_get_discoverable_timeout,
 
 -- 
 2.43.0
