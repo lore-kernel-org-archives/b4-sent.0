@@ -1,102 +1,71 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Wed, 24 Jan 2024 16:08:04 +0000
-Subject: [PATCH BlueZ v2 8/8] android: export only (android) entrypoint
- from the modules
+Subject: [PATCH BlueZ v2 0/6] Autotools papercuts, linker GC, symlink
+ dbus-org.bluez.obex.service
+Date: Wed, 24 Jan 2024 16:20:05 +0000
+Message-Id: <20240124-autofoo-v2-0-a210f20aa2f7@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240124-rm-ext-plugins-v2-8-5244906f05ff@gmail.com>
-References: <20240124-rm-ext-plugins-v2-0-5244906f05ff@gmail.com>
-In-Reply-To: <20240124-rm-ext-plugins-v2-0-5244906f05ff@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALU4sWUC/2XMyw6CMBCF4Vchs7amnUCNrnwPwqJXmEQY0yLRk
+ L67la3L/+Tk2yGHRCHDrdkhhY0y8VIDTw24ySxjEORrA0pspVJamNfKkVl4izGgu8hrp6C+nyl
+ Eeh9SP9SeKK+cPge8qd/6b2xKSKFRR2271nqp7+Ns6HF2PMNQSvkCsebg6Z4AAAA=
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706112482; l=3016;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706113208; l=1641;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=A9wt+5pbCxd+p0NIbARFNH3H5ujiQXTs0z8giNMkb3Y=;
- b=ITc6p1jQLAbmwB2EdKW21hAv0n7dm3IlquDg+W6O8B6aBYEVagJ5p6E/Y/MxpKWc6rlk3Q0/q
- KSRSV2MsDQsDeQ7eo5aFr5aHtq5y9TW4RgChpQmpVLZSIqVSTQbzAjx
+ bh=5WUSuXRnSfJ9iHmo+afEdRZ3dZUoO2iqL708lpDPlpw=;
+ b=EfFd90IVDc5vXag36Q3nz+MwbvB0XUBlQyWExPaI3ICA3bl3PDMESgWueFhHPvvGxhuQeMLSM
+ rtcGVj477biC2pBtSNr0vjkpsm8HBTJmYZIMj40iRdpF8yGJofoAu8p
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Emil Velikov <emil.velikov@collabora.com>
+Hello everyone,
 
-The android specific modules, have a designated HMI entrypoint. Hide
-everything else with -fvisibility=hidden.
+Here is v2 of the autotoo papercuts.
+
+Changes in this revision:
+ - dropped already merged patches - thanks o/
+ - drop "build: remove dummy {conf,state}{dir,_DATA}" patch
+
+The latter patch was causing some unexpected and unrelated issues with
+the CI. At a glance I couldn't quite track down why, it removes some
+dead code and reproducing the CI is a time sink ... So I caved in :-P
+
+Link to the original v1 cover letter and patches can be found below.
+
+Thanks
+Emil
+
+- Link to v1: https://lore.kernel.org/r/20240116-autofoo-v1-0-626f6b54bd06@gmail.com
+
 ---
- android/Makefile.am     | 3 +++
- android/hal-audio.c     | 1 +
- android/hal-bluetooth.c | 1 +
- android/hal-sco.c       | 1 +
- 4 files changed, 6 insertions(+)
+Emil Velikov (6):
+      build: remove unused variable builtin_nodist
+      build: remove .service files from DEPENDENCIES lists
+      build: remove explicit DEPENDENCIES handling
+      build: manage .service.in files via configure.ac
+      build: enable gc/dead code removal
+      build: install dbus-org.bluez.obex.service symlink
 
-diff --git a/android/Makefile.am b/android/Makefile.am
-index 309910147..e3756e89c 100644
---- a/android/Makefile.am
-+++ b/android/Makefile.am
-@@ -96,6 +96,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
- 					android/hal-log.h \
- 					android/hal-ipc.h android/hal-ipc.c \
- 					android/hal-utils.h android/hal-utils.c
-+android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
- android_bluetooth_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android
- android_bluetooth_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
- 					-no-undefined
-@@ -195,6 +196,7 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
- 					android/hardware/audio_effect.h \
- 					android/hardware/hardware.h \
- 					android/system/audio.h
-+android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
- android_audio_a2dp_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android \
- 					$(SBC_CFLAGS)
- android_audio_a2dp_default_la_LIBADD = $(SBC_LIBS) -lrt
-@@ -212,6 +214,7 @@ android_audio_sco_default_la_SOURCES = android/hal-log.h \
- 					android/audio_utils/resampler.c \
- 					android/audio_utils/resampler.h \
- 					android/system/audio.h
-+android_audio_sco_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
- android_audio_sco_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android
- android_audio_sco_default_la_LIBADD = $(SPEEXDSP_LIBS) -lrt
- android_audio_sco_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
-diff --git a/android/hal-audio.c b/android/hal-audio.c
-index d37d6098c..f3d9b40a6 100644
---- a/android/hal-audio.c
-+++ b/android/hal-audio.c
-@@ -1618,6 +1618,7 @@ static struct hw_module_methods_t hal_module_methods = {
- 	.open = audio_open,
- };
- 
-+__attribute__ ((visibility("default")))
- struct audio_module HAL_MODULE_INFO_SYM = {
- 	.common = {
- 		.tag = HARDWARE_MODULE_TAG,
-diff --git a/android/hal-bluetooth.c b/android/hal-bluetooth.c
-index d4442e620..7d1e5ac63 100644
---- a/android/hal-bluetooth.c
-+++ b/android/hal-bluetooth.c
-@@ -1117,6 +1117,7 @@ static struct hw_module_methods_t bluetooth_module_methods = {
- 	.open = open_bluetooth,
- };
- 
-+__attribute__ ((visibility("default")))
- struct hw_module_t HAL_MODULE_INFO_SYM = {
- 	.tag = HARDWARE_MODULE_TAG,
- 	.version_major = 1,
-diff --git a/android/hal-sco.c b/android/hal-sco.c
-index d7c08a68b..3d66ad357 100644
---- a/android/hal-sco.c
-+++ b/android/hal-sco.c
-@@ -1507,6 +1507,7 @@ static struct hw_module_methods_t hal_module_methods = {
- 	.open = sco_open,
- };
- 
-+__attribute__ ((visibility("default")))
- struct audio_module HAL_MODULE_INFO_SYM = {
- 	.common = {
- 		.tag = HARDWARE_MODULE_TAG,
+ Makefile.am                       | 25 +++----------------------
+ Makefile.mesh                     |  7 +------
+ Makefile.obexd                    | 10 ++++++++--
+ Makefile.tools                    |  6 ------
+ acinclude.m4                      |  2 ++
+ configure.ac                      | 11 ++++++++++-
+ mesh/bluetooth-mesh.service.in    |  2 +-
+ obexd/src/obex.service.in         |  2 +-
+ src/bluetooth.service.in          |  2 +-
+ tools/bluetooth-logger.service.in |  2 +-
+ 10 files changed, 28 insertions(+), 41 deletions(-)
+---
+base-commit: a9d1f6f6a625607de6c3f5b7a40a3aac5f36c02b
+change-id: 20240116-autofoo-db2fe2c70951
 
+Best regards,
 -- 
-2.43.0
+Emil Velikov <emil.l.velikov@gmail.com>
 
