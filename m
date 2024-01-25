@@ -1,10 +1,10 @@
 From: Fenglin Wu <quic_fenglinw@quicinc.com>
-Date: Thu, 25 Jan 2024 17:31:15 +0800
-Subject: [PATCH v3 1/2] arm64: dts: qcom: sm8650-mtp: add PM8010 regulators
+Date: Thu, 25 Jan 2024 17:31:16 +0800
+Subject: [PATCH v3 2/2] arm64: dts: qcom: sm8650-qrd: add PM8010 regulators
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240125-sm8650_pm8010_support-v3-1-2f291242a7c4@quicinc.com>
+Message-Id: <20240125-sm8650_pm8010_support-v3-2-2f291242a7c4@quicinc.com>
 References: <20240125-sm8650_pm8010_support-v3-0-2f291242a7c4@quicinc.com>
 In-Reply-To: <20240125-sm8650_pm8010_support-v3-0-2f291242a7c4@quicinc.com>
 To: kernel@quicinc.com, Bjorn Andersson <andersson@kernel.org>, 
@@ -17,26 +17,26 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
 X-Mailer: b4 0.13-dev-83828
 X-Developer-Signature: v=1; a=ed25519-sha256; t=1706175079; l=4668;
  i=quic_fenglinw@quicinc.com; s=20230725; h=from:subject:message-id;
- bh=c1WJiXPJ0FmZO+G5zACGQZ8vU6QTDG8MoQZgyJvjK9g=;
- b=u8fWwSYwGIWZiOwTIA1dNjQZNz7RBxfNP22PEDYVC5SEKPiiXiHurcB5w4IWkS6yQZu4rvGOz
- jaxiITblE8yATWtDy9EdAsiD/hDO/Fqw98vnJkLEU9lsiW73vFtl265
+ bh=tB1NmHqD8nUjJXF8aywAhtmMrcFxquNbzFe/xKtf690=;
+ b=oPOr5MqkKEKxzvCt/RvCLa7xz2dVi2lNZBFFwbJ6xREv8ywm0D29FUjNAvlxlo44Exy6nms8P
+ MQeYiw5UzSkCjxT2d0J2W3zOq1yRQkJq1aLW99KUh51J43M7hrrIDFO
 X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
  pk=hleIDz3Unk1zeiwwOnZUjoQVMMelRancDFXg927lNjI=
 X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20230725 with auth_id=68
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add PM8010 regulator device nodes for sm8650-mtp board.
+Add PM8010 regulator device nodes for sm8650-qrd board.
 
 Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
- arch/arm64/boot/dts/qcom/sm8650-mtp.dts | 132 ++++++++++++++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8650-qrd.dts | 132 ++++++++++++++++++++++++++++++++
  1 file changed, 132 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8650-mtp.dts b/arch/arm64/boot/dts/qcom/sm8650-mtp.dts
-index 9d916edb1c73..e440c28e5e9f 100644
---- a/arch/arm64/boot/dts/qcom/sm8650-mtp.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8650-mtp.dts
-@@ -428,6 +428,138 @@ vreg_l3i_1p2: ldo3 {
+diff --git a/arch/arm64/boot/dts/qcom/sm8650-qrd.dts b/arch/arm64/boot/dts/qcom/sm8650-qrd.dts
+index 592a67a47c78..294fb3f37af1 100644
+--- a/arch/arm64/boot/dts/qcom/sm8650-qrd.dts
++++ b/arch/arm64/boot/dts/qcom/sm8650-qrd.dts
+@@ -436,6 +436,138 @@ vreg_l3i_1p2: ldo3 {
  						   RPMH_REGULATOR_MODE_HPM>;
  		};
  	};
