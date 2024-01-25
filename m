@@ -1,102 +1,60 @@
-From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Thu, 25 Jan 2024 00:07:33 +0000
-Subject: [PATCH BlueZ v3 8/8] android: export only (android) entrypoint
- from the modules
+From: Fenglin Wu <quic_fenglinw@quicinc.com>
+Subject: [PATCH v3 0/2] Add PM8010 regulators for sm8650 boards.
+Date: Thu, 25 Jan 2024 17:31:14 +0800
+Message-Id: <20240125-sm8650_pm8010_support-v3-0-2f291242a7c4@quicinc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240125-rm-ext-plugins-v3-8-d141f7870bb6@gmail.com>
-References: <20240125-rm-ext-plugins-v3-0-d141f7870bb6@gmail.com>
-In-Reply-To: <20240125-rm-ext-plugins-v3-0-d141f7870bb6@gmail.com>
-To: linux-bluetooth@vger.kernel.org
-Cc: Emil Velikov <emil.velikov@collabora.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706141247; l=3016;
- i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=A9wt+5pbCxd+p0NIbARFNH3H5ujiQXTs0z8giNMkb3Y=;
- b=/aEvjGs3MbYixjLOan9wWHGqwyPZWWCZK59mBHKklNkQ5PYGLAlkoCB4NKv7P+fayVcjuXLYp
- PAWOS9I/kbvBH54JomfS9UfDqU1y7LBVAgRtWiLL4eDfiWL/x3R/AXH
-X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
- pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
-X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
+X-B4-Tracking: v=1; b=H4sIAGIqsmUC/43NQQ6CMBCF4auQrq2ZDowQV97DGIJtkVkAtYVGQ
+ 7i7hZ0rXf4vmW8WEaxnG8Q5W4S3kQOPQ4r8kAndNcPDSjapBQIWoDCXoa9OBLXrK1BQh9m50U+
+ yJNBADWlDRqRb523Lr9293lJ3HKbRv/c3UW3rLzEqCdJYjYiFobKAy3NmzYM+6rEXmxnxLweTQ
+ 9iSKu8IjTLfzrquH4ohnNkEAQAA
+To: kernel@quicinc.com, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, quic_collinsd@quicinc.com, 
+ Fenglin Wu <quic_fenglinw@quicinc.com>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706175079; l=1205;
+ i=quic_fenglinw@quicinc.com; s=20230725; h=from:subject:message-id;
+ bh=HyKIL7MR0TT3sSkhF/hxv6Xzw9uF1jLRyVnGFnT9B4c=;
+ b=MwaMrUsVDw8ZqP/STnoorwurZg9Rk9jDEX2VTUFbuKxodgE7PyVveBgbJclfsKgqubHwPiOTl
+ j3onBIhMblrDi+SPMNNn2HsHIZsFRxCHeIsiRizg5QYJhUHHwSrAOuN
+X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
+ pk=hleIDz3Unk1zeiwwOnZUjoQVMMelRancDFXg927lNjI=
+X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20230725 with auth_id=68
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Emil Velikov <emil.velikov@collabora.com>
+Add PM8010 RPMh regulators for sm8650-mtp and sm8650-qrd boards.
 
-The android specific modules, have a designated HMI entrypoint. Hide
-everything else with -fvisibility=hidden.
+Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
- android/Makefile.am     | 3 +++
- android/hal-audio.c     | 1 +
- android/hal-bluetooth.c | 1 +
- android/hal-sco.c       | 1 +
- 4 files changed, 6 insertions(+)
+Changes in v3:
+- Split vdd-l6-l7 supply for regulator-6, and split vdd-l5-l6 for regulator-7,
+  as vdd-[5-7]-supply is defined in the driver seperately.
+- Add regulator-allow-set-load and regulator-allowed-modes for LDO1/LDO2
+  as they are the only LDOs support mode transition in PM8010.
+- Link to v2: https://lore.kernel.org/r/20240123-sm8650_pm8010_support-v2-0-52f517b20a1d@quicinc.com
 
-diff --git a/android/Makefile.am b/android/Makefile.am
-index 309910147..e3756e89c 100644
---- a/android/Makefile.am
-+++ b/android/Makefile.am
-@@ -96,6 +96,7 @@ android_bluetooth_default_la_SOURCES = android/hal.h android/hal-bluetooth.c \
- 					android/hal-log.h \
- 					android/hal-ipc.h android/hal-ipc.c \
- 					android/hal-utils.h android/hal-utils.c
-+android_bluetooth_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
- android_bluetooth_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android
- android_bluetooth_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
- 					-no-undefined
-@@ -195,6 +196,7 @@ android_audio_a2dp_default_la_SOURCES = android/audio-msg.h \
- 					android/hardware/audio_effect.h \
- 					android/hardware/hardware.h \
- 					android/system/audio.h
-+android_audio_a2dp_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
- android_audio_a2dp_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android \
- 					$(SBC_CFLAGS)
- android_audio_a2dp_default_la_LIBADD = $(SBC_LIBS) -lrt
-@@ -212,6 +214,7 @@ android_audio_sco_default_la_SOURCES = android/hal-log.h \
- 					android/audio_utils/resampler.c \
- 					android/audio_utils/resampler.h \
- 					android/system/audio.h
-+android_audio_sco_default_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
- android_audio_sco_default_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/android
- android_audio_sco_default_la_LIBADD = $(SPEEXDSP_LIBS) -lrt
- android_audio_sco_default_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
-diff --git a/android/hal-audio.c b/android/hal-audio.c
-index d37d6098c..f3d9b40a6 100644
---- a/android/hal-audio.c
-+++ b/android/hal-audio.c
-@@ -1618,6 +1618,7 @@ static struct hw_module_methods_t hal_module_methods = {
- 	.open = audio_open,
- };
- 
-+__attribute__ ((visibility("default")))
- struct audio_module HAL_MODULE_INFO_SYM = {
- 	.common = {
- 		.tag = HARDWARE_MODULE_TAG,
-diff --git a/android/hal-bluetooth.c b/android/hal-bluetooth.c
-index d4442e620..7d1e5ac63 100644
---- a/android/hal-bluetooth.c
-+++ b/android/hal-bluetooth.c
-@@ -1117,6 +1117,7 @@ static struct hw_module_methods_t bluetooth_module_methods = {
- 	.open = open_bluetooth,
- };
- 
-+__attribute__ ((visibility("default")))
- struct hw_module_t HAL_MODULE_INFO_SYM = {
- 	.tag = HARDWARE_MODULE_TAG,
- 	.version_major = 1,
-diff --git a/android/hal-sco.c b/android/hal-sco.c
-index d7c08a68b..3d66ad357 100644
---- a/android/hal-sco.c
-+++ b/android/hal-sco.c
-@@ -1507,6 +1507,7 @@ static struct hw_module_methods_t hal_module_methods = {
- 	.open = sco_open,
- };
- 
-+__attribute__ ((visibility("default")))
- struct audio_module HAL_MODULE_INFO_SYM = {
- 	.common = {
- 		.tag = HARDWARE_MODULE_TAG,
+Changes in v2:
+- Added Reviewed-by/Tested-by trailers
+- Link to v1: https://lore.kernel.org/r/20240123-sm8650_pm8010_support-v1-0-dec2224d5740@quicinc.com
 
+---
+Fenglin Wu (2):
+      arm64: dts: qcom: sm8650-mtp: add PM8010 regulators
+      arm64: dts: qcom: sm8650-qrd: add PM8010 regulators
+
+ arch/arm64/boot/dts/qcom/sm8650-mtp.dts | 132 ++++++++++++++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8650-qrd.dts | 132 ++++++++++++++++++++++++++++++++
+ 2 files changed, 264 insertions(+)
+---
+base-commit: 6613476e225e090cc9aad49be7fa504e290dd33d
+change-id: 20240123-sm8650_pm8010_support-750c05a5cd5d
+
+Best regards,
 -- 
-2.43.0
+Fenglin Wu <quic_fenglinw@quicinc.com>
 
