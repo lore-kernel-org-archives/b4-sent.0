@@ -1,72 +1,84 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Subject: [PATCH BlueZ v3 0/8] Remove support for external plugins
-Date: Thu, 25 Jan 2024 00:07:25 +0000
-Message-Id: <20240125-rm-ext-plugins-v3-0-d141f7870bb6@gmail.com>
+Date: Thu, 25 Jan 2024 00:07:26 +0000
+Subject: [PATCH BlueZ v3 1/8] configure, README: introduce
+ --enable-external-plugins
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAD2msWUC/3XMSw6CMBSF4a2Qjq25XEq1jtyHcdBiCzfhlRYbD
- GHvFkYkxuE5yfcvLFhPNrBbtjBvIwUa+jSKU8aqRve15fRKmyGggDyX3HfczhMf23dNfeBGg7m
- WqIVCwxIavXU078HHM+2GwjT4z96P+fb+TcWcA5eoFDgDl0Kqe91pas/V0LEtFfHAUfxwTLxEI
- RRIB6VzR76u6xfgaueE6wAAAA==
+Message-Id: <20240125-rm-ext-plugins-v3-1-d141f7870bb6@gmail.com>
+References: <20240125-rm-ext-plugins-v3-0-d141f7870bb6@gmail.com>
+In-Reply-To: <20240125-rm-ext-plugins-v3-0-d141f7870bb6@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706141247; l=1630;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706141247; l=2129;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=YPAuJR/p/8YBl67ki2/Jzj4r23FKOVbW0WP58ypVgAA=;
- b=HNArrLqxiC3iZPqkNKtXD9jGm1G0gvmackOIqOhzPqx/Jh3BHX0d+th3YagonYzGTfx8PSuGC
- K1hCQIhfwJNCt8+4x0bUabDVqb2hGvAx7JNaJ9ljYlqYh47vbFhkMiQ
+ bh=e1EdDSyciHHAaX9NsOJkW3suqFVoEXcg0Cnn7chU+j0=;
+ b=ArEUScUswXs1Jus2LYZ/6mJV+xYFIIB+RTKcI7RvIw8Q5PeY08L3U/7Lzzq1xAX4tniFMSytA
+ YdLYfnQ56IODVG764Q5VTO6lO0PZpJkS3B61zbIdLO6bLMhugXhDuhF
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello everyone,
+From: Emil Velikov <emil.velikov@collabora.com>
 
-Here's v3 fixing a small bug with the previous patches, which was
-tripping the CI.
+As the README chunk says, disabled by default, since they rely on
+internal API/ABI and can break at any point.
 
-Link to the previous revision can be found below.
-
-Thanks
-Emil
-
-- Link to v2: https://lore.kernel.org/r/20240124-rm-ext-plugins-v2-0-5244906f05ff@gmail.com
-
+Instead everyone affected should work and upstream their plugin into the
+bluez project.
 ---
-Emil Velikov (8):
-      configure, README: introduce --enable-external-plugins
-      obexd: factor out external plugin support
-      bluetoothd: remove external-dummy plugin
-      bluetoothd: convert external sixaxis plugin to builtin
-      bluetoothd: factor out external plugin support
-      bluetoothd: don't export internal API
-      bluetoothd: change plugin loading alike obexd
-      android: export only (android) entrypoint from the modules
+ README       | 13 +++++++++++++
+ configure.ac | 10 ++++++++++
+ 2 files changed, 23 insertions(+)
 
- Makefile.am              |  17 ++----
- Makefile.obexd           |   2 +
- Makefile.plugins         |   8 +--
- README                   |  13 +++++
- android/Makefile.am      |   3 +
- android/hal-audio.c      |   1 +
- android/hal-bluetooth.c  |   1 +
- android/hal-sco.c        |   1 +
- configure.ac             |  10 ++++
- obexd/src/obexd.h        |   2 +-
- obexd/src/plugin.c       |  93 +++++++++++++++++++++----------
- obexd/src/plugin.h       |   4 ++
- plugins/external-dummy.c |  28 ----------
- src/btd.h                |   2 +-
- src/plugin.c             | 140 +++++++++++++++++++++++++++++------------------
- src/plugin.h             |  16 ++++++
- 16 files changed, 209 insertions(+), 132 deletions(-)
----
-base-commit: a9d1f6f6a625607de6c3f5b7a40a3aac5f36c02b
-change-id: 20240116-rm-ext-plugins-ba0b852a492b
+diff --git a/README b/README
+index 7de7045a8..6c0777046 100644
+--- a/README
++++ b/README
+@@ -249,6 +249,19 @@ For a working system, certain configuration options need to be enabled:
+ 		systems. The behavior of the deprecated tools may be unstable
+ 		or simply don't work anymore.
+ 
++	--enable-external-plugins
++
++		Enable support for external plugins
++
++		By default external plugins for bluetoothd and obexd are not
++		supported and thus disabled.
++
++		External plugins require access to internal, undocumented and
++		unversioned API in said daemons. As such they can break at any
++		time. If you have such plugins, enable this option and work
++		actively with the community to make said plugin part of the
++		upstream bluez project.
++
+ 	--enable-nfc
+ 
+ 		This option enable NFC pairing support.
+diff --git a/configure.ac b/configure.ac
+index cab5da581..5e353a1d6 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -364,6 +364,16 @@ AC_ARG_ENABLE(deprecated, AS_HELP_STRING([--enable-deprecated],
+ 					[enable_deprecated=${enableval}])
+ AM_CONDITIONAL(DEPRECATED, test "${enable_deprecated}" = "yes")
+ 
++AC_ARG_ENABLE(external-plugsin, AS_HELP_STRING([--enable-external-plugins],
++			[enable support for external plugins]),
++					[enable_external_plugins=${enableval}])
++AM_CONDITIONAL(EXTERNAL_PLUGINS, test "${enable_external_plugins}" = "yes")
++if (test "${enable_external_plugins}" = "yes"); then
++	AC_DEFINE(EXTERNAL_PLUGINS, 1, [Define if external plugin support is required])
++else
++	AC_DEFINE(EXTERNAL_PLUGINS, 0, [Define if external plugin support is required])
++fi
++
+ AC_ARG_ENABLE(sixaxis, AS_HELP_STRING([--enable-sixaxis],
+ 		[enable sixaxis plugin]), [enable_sixaxis=${enableval}])
+ AM_CONDITIONAL(SIXAXIS, test "${enable_sixaxis}" = "yes" &&
 
-Best regards,
 -- 
-Emil Velikov <emil.l.velikov@gmail.com>
+2.43.0
 
