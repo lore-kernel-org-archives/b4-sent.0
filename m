@@ -1,70 +1,142 @@
-From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Fri, 26 Jan 2024 14:43:51 +0000
-Subject: [PATCH 2/2] make: install/uninstall tools symlinks to kmod
+From: Christoph Winklhofer <cj.winklhofer@gmail.com>
+Subject: [PATCH v5 0/3] w1: add UART w1 bus driver
+Date: Fri, 26 Jan 2024 16:42:02 +0100
+Message-Id: <20240126-w1-uart-v5-0-1d82bfdc2ae9@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240126-master-v1-2-6257d039a30a@gmail.com>
-References: <20240126-master-v1-0-6257d039a30a@gmail.com>
-In-Reply-To: <20240126-master-v1-0-6257d039a30a@gmail.com>
-To: linux-modules@vger.kernel.org
-Cc: Emil Velikov <emil.velikov@collabora.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706280230; l=1402;
- i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=N6QdxuIRatl9gn+qNQ/NgGZ033RgojWqbfTqQeySBZI=;
- b=9YYI/y3zGT94hO2jfDdxyFiWlQf//iiBC1y14zCRLRWd7eog/qpW5Y17kwKa1E9AHWtMUKkuE
- cCHRtFNsLCHCu2nmC0o96Dms78VVujln/I5K8fjnUxfIhd5oDcd7Wr/
-X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
- pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
-X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
+X-B4-Tracking: v=1; b=H4sIAMrSs2UC/02OzQ6CMBAGX8X07JLtH1RPvofxUHCRqlBTEDSEd
+ 7eQqBz28CU7kxlZS8FRy/abkQXqXet8E4feblhR2eZC4M5xM4FCIUcFA4enDR0QmdRoy7XVyOL
+ 3I1DpXovpeIq7DL6Grgpkv7zkIh6iQpMohToFDsU1GVxzu1e+pHC41Nbdk8LXs7BybefDeynr5
+ az9RuhfRC8BIXZkuJO5oCxdKeaIXq259M+pyGUlcZkZa3JJa26apg/1cHhQFwEAAA==
+To: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Rob Herring <robh+dt@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
+ Christoph Winklhofer <cj.winklhofer@gmail.com>, 
+ Rob Herring <robh@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-serial@vger.kernel.org, linux-doc@vger.kernel.org
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706283756; l=4786;
+ i=cj.winklhofer@gmail.com; s=20240104; h=from:subject:message-id;
+ bh=Y3Z8LYJk8ojW2lKAiG+yhwYm9jBbV1csLki0ZOFKhMU=;
+ b=R7jPweL5XSb8Z6yp5Suh+YaLtVSrdR/qZScd1ek+b7zMEqmM4CViPNz9//ExzoN4cS/V1iWGN
+ p22SMvhB6kFBdh3lKRlb1aK20ei243q+aWJr1N5gDMfxQrWPaE+ys/d
+X-Developer-Key: i=cj.winklhofer@gmail.com; a=ed25519;
+ pk=lgjGjOt7hFKJT9UXhgUyrdthxvZ7DJ5F1U/7d9qdAsk=
+X-Endpoint-Received: by B4 Relay for cj.winklhofer@gmail.com/20240104 with auth_id=111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Emil Velikov <emil.velikov@collabora.com>
+Hello!
 
-Currently we create symlinks like modprobe (pointing to kmod), during
-the normal `make` build. Although those were never installed.
+This patch contains a driver for a 1-Wire bus over UART. The driver
+utilizes the UART interface via the Serial Device Bus to create the
+1-Wire timing patterns.
 
-Add a few lines in the install-exec-hook, to ensure they're present at
-`make install` time. Thus one can actually use those without additional
-changes. As an added bonus, distributions can drop the similar hunk from
-their packaging.
+Changes in v5:
+- dt-binding: allow child object for onewire and use prefix -bps for
+  baud rate configuration.
+- use type u8 for a byte, instead of unsigned char
+- use constants (NSEC_PER_SEC, BITS_PER_BYTE)
+- make delay computation from packet time more coherent
+- Link to v4: https://lore.kernel.org/r/20240106-w1-uart-v4-0-7fe1378a8b3e@gmail.com
+Thanks Jiri, Krzysztof and Rob for the review.
 
-Signed-off-by: Emil Velikov <emil.velikov@collabora.com>
+Changes in v4:
+- rework baud-rate configuration: also check max bit-time, support higher
+  baud-rates by adding a delay to complete 1-Wire cycle.
+- dt-binding w1-uart: specify baud-rates for 1-Wire operations
+- Link to v3: https://lore.kernel.org/r/20240105-w1-uart-v3-0-8687093b2e76@gmail.com
+
+Changes in v3:
+- improve baud-rate configuration: use specific limits for 1-Wire
+  reset, touch-0 and touch-1 operation, compute in nanoseconds.
+- remove unused header atomic.h
+- use function instead of macro to compute bit-time from baud-rate
+- switch to b4 util to publish patch: missing recipients
+- Link to v2: https://lore.kernel.org/lkml/20231223100408.44056-1-cj.winklhofer@gmail.com
+
+Changes in v2:
+- add documentation for dt-binding
+- allow onewire as serial child node
+- support different baud-rates: The driver requests a baud-rate (9600
+  for reset and 115200 for write/read) and tries to adapt the
+  transmitted byte according to the actual baud-rate returned from
+  serdev.
+- fix locking problem for serdev-receive and w1-master reset/touch: The
+  received byte is now protected with a mutex - instead of the atomic,
+  which was used before due to the concurrent store and load.
+- explicit error in serdev-receive: Receiving more than one byte results
+  in an error, since the w1-uart driver is the only writer, it writes a
+  single-byte and should receive a single byte.
+- fix variable names, errno-returns, wrong define CONFIG_OF
+- fix log flooding
+- fix driver remove (error-path for rxtx-function)
+- Link to v1: https://lore.kernel.org/all/20231217122004.42795-1-cj.winklhofer@gmail.com
+Krzysztof, thank your very much for your feedback!
+
+It was tested on a "Raspberry Pi 3 Model B+" with a DS18B20 and on a
+"Variscite DART-6UL" with a DS18S20 temperature sensor.
+
+Content:
+- Patch 1: device tree binding 1-Wire
+- Patch 2: allow onewire as serial child node
+- Patch 3: driver and documentation
+
+The patch was created against the w1 subsytem tree (branch w1-next):
+  Link: https://git.kernel.org/pub/scm/linux/kernel/git/krzk/linux-w1.git/
+
+The checkpatch.pl script reported the following error - which I am not
+sure how to fix:
+  WARNING: added, moved or deleted file(s), does MAINTAINERS need
+  updating?
+
+The technical details for 1-Wire over UART are in the document:
+  Link: https://www.analog.com/en/technical-articles/using-a-uart-to-implement-a-1wire-bus-master.html
+
+  In short, the UART peripheral must support full-duplex and operate in
+open-drain mode. The timing patterns are generated by a specific
+combination of baud-rate and transmitted byte, which corresponds to a
+1-Wire read bit, write bit or reset pulse.
+
+For instance the timing pattern for a 1-Wire reset and presence detect
+uses the baud-rate 9600, i.e. 104.2 us per bit. The transmitted byte
+0xf0 over UART (least significant bit first, start-bit low) sets the
+reset low time for 1-Wire to 521 us. A present 1-Wire device changes the
+received byte by pulling the line low, which is used by the driver to
+evaluate the result of the 1-Wire operation.
+
+Similar for a 1-Wire read bit or write bit, which uses the baud-rate
+115200, i.e. 8.7 us per bit. The transmitted byte 0x00 is used for a
+Write-0 operation and the byte 0xff for Read-0, Read-1 and Write-1.
+
+Hope the driver is helpful.
+
+Thanks,
+Christoph
+
 ---
-Out of curiosity: are there any plans about releasing v32? I'm
-interested in the recent /usr/lib/modules (module_directory) patches.
+Christoph Winklhofer (3):
+      dt-bindings: w1: UART 1-Wire bus
+      dt-bindings: serial: allow onewire as child node
+      w1: add UART w1 bus driver
 
-Thanks o/
+ .../devicetree/bindings/serial/serial.yaml         |   2 +-
+ Documentation/devicetree/bindings/w1/w1-uart.yaml  |  60 +++
+ Documentation/w1/masters/index.rst                 |   1 +
+ Documentation/w1/masters/w1-uart.rst               |  54 +++
+ drivers/w1/masters/Kconfig                         |  10 +
+ drivers/w1/masters/Makefile                        |   1 +
+ drivers/w1/masters/w1-uart.c                       | 402 +++++++++++++++++++++
+ 7 files changed, 529 insertions(+), 1 deletion(-)
 ---
- Makefile.am | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+base-commit: 6613476e225e090cc9aad49be7fa504e290dd33d
+change-id: 20240104-w1-uart-ee8685a15a50
 
-diff --git a/Makefile.am b/Makefile.am
-index 4062d81..a22d1b1 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -111,9 +111,19 @@ install-exec-hook:
- 		ln -sf $$so_img_rel_target_prefix$(rootlibdir)/$$so_img_name $(DESTDIR)$(libdir)/libkmod.so && \
- 		mv $(DESTDIR)$(libdir)/libkmod.so.* $(DESTDIR)$(rootlibdir); \
- 	fi
-+if BUILD_TOOLS
-+	for tool in insmod lsmod rmmod depmod modprobe modinfo; do \
-+		$(LN_S) $(bindir)/kmod $(DESTDIR)$(bindir)/$$tool; \
-+	done
-+endif
- 
- uninstall-hook:
- 	rm -f $(DESTDIR)$(rootlibdir)/libkmod.so*
-+if BUILD_TOOLS
-+	for tool in insmod lsmod rmmod depmod modprobe modinfo; do \
-+		rm -f $(DESTDIR)$(bindir)/$$tool; \
-+	done
-+endif
- 
- if BUILD_TOOLS
- bin_PROGRAMS = tools/kmod
-
+Best regards,
 -- 
-2.43.0
+Christoph Winklhofer <cj.winklhofer@gmail.com>
 
