@@ -1,20 +1,20 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Fri, 26 Jan 2024 14:43:50 +0000
-Subject: [PATCH 1/2] configure: tweak the module_directory help string
+Date: Fri, 26 Jan 2024 14:43:51 +0000
+Subject: [PATCH 2/2] make: install/uninstall tools symlinks to kmod
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240126-master-v1-1-6257d039a30a@gmail.com>
+Message-Id: <20240126-master-v1-2-6257d039a30a@gmail.com>
 References: <20240126-master-v1-0-6257d039a30a@gmail.com>
 In-Reply-To: <20240126-master-v1-0-6257d039a30a@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706280230; l=981;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706280230; l=1402;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=odADJmMZHmCPpeUZVqD+kpI2Vt0oc+W3kHqA6aS9tIY=;
- b=AUcT2Of6cwHxxOx17QvN93TZCuSf+he/xRj0n3Qx5IYkq00JgFeKhRlmtOLzPoUJPxcu5rohS
- dBY/mzpSSSzBka4yGK8799Q4nadMspw9Hz+DIByk1zSvHYeY4xLcM3x
+ bh=N6QdxuIRatl9gn+qNQ/NgGZ033RgojWqbfTqQeySBZI=;
+ b=9YYI/y3zGT94hO2jfDdxyFiWlQf//iiBC1y14zCRLRWd7eog/qpW5Y17kwKa1E9AHWtMUKkuE
+ cCHRtFNsLCHCu2nmC0o96Dms78VVujln/I5K8fjnUxfIhd5oDcd7Wr/
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
@@ -22,27 +22,48 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Emil Velikov <emil.velikov@collabora.com>
 
-Drop the somewhat misleading ${prefix}/lib/modules and explicitly
-mention what's the default.
+Currently we create symlinks like modprobe (pointing to kmod), during
+the normal `make` build. Although those were never installed.
+
+Add a few lines in the install-exec-hook, to ensure they're present at
+`make install` time. Thus one can actually use those without additional
+changes. As an added bonus, distributions can drop the similar hunk from
+their packaging.
 
 Signed-off-by: Emil Velikov <emil.velikov@collabora.com>
 ---
- configure.ac | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Out of curiosity: are there any plans about releasing v32? I'm
+interested in the recent /usr/lib/modules (module_directory) patches.
 
-diff --git a/configure.ac b/configure.ac
-index de01e08..ab0b303 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -93,7 +93,7 @@ AC_SUBST([rootlibdir], [$with_rootlibdir])
+Thanks o/
+---
+ Makefile.am | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/Makefile.am b/Makefile.am
+index 4062d81..a22d1b1 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -111,9 +111,19 @@ install-exec-hook:
+ 		ln -sf $$so_img_rel_target_prefix$(rootlibdir)/$$so_img_name $(DESTDIR)$(libdir)/libkmod.so && \
+ 		mv $(DESTDIR)$(libdir)/libkmod.so.* $(DESTDIR)$(rootlibdir); \
+ 	fi
++if BUILD_TOOLS
++	for tool in insmod lsmod rmmod depmod modprobe modinfo; do \
++		$(LN_S) $(bindir)/kmod $(DESTDIR)$(bindir)/$$tool; \
++	done
++endif
  
- # Ideally this would be $prefix/lib/modules but default to /lib/modules for compatibility with earlier versions
- AC_ARG_WITH([module_directory],
--        AS_HELP_STRING([--with-module-directory=DIR], [directory in which to look for kernel modules - typically '/lib/modules' or '${prefix}/lib/modules']),
-+        AS_HELP_STRING([--with-module-directory=DIR], [directory in which to look for kernel modules @<:@default=/lib/modules@:>@]),
-         [], [with_module_directory=/lib/modules])
- AC_SUBST([module_directory], [$with_module_directory])
+ uninstall-hook:
+ 	rm -f $(DESTDIR)$(rootlibdir)/libkmod.so*
++if BUILD_TOOLS
++	for tool in insmod lsmod rmmod depmod modprobe modinfo; do \
++		rm -f $(DESTDIR)$(bindir)/$$tool; \
++	done
++endif
  
+ if BUILD_TOOLS
+ bin_PROGRAMS = tools/kmod
 
 -- 
 2.43.0
