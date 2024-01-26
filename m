@@ -1,54 +1,49 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Subject: [PATCH 0/2] Polish module_directory help string, install symlinks
-Date: Fri, 26 Jan 2024 14:43:49 +0000
-Message-Id: <20240126-master-v1-0-6257d039a30a@gmail.com>
+Date: Fri, 26 Jan 2024 14:43:50 +0000
+Subject: [PATCH 1/2] configure: tweak the module_directory help string
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACXFs2UC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDQyMz3dzE4pLUIl3TpEQjC7MkI7PU1BQloOKCotS0zAqwQdGxtbUAqZF
- WblgAAAA=
+Message-Id: <20240126-master-v1-1-6257d039a30a@gmail.com>
+References: <20240126-master-v1-0-6257d039a30a@gmail.com>
+In-Reply-To: <20240126-master-v1-0-6257d039a30a@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706280230; l=807;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706280230; l=981;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=Mwkjxdv6ZeI3RiGnQHQaNJvZizkxUrEbM4PzHrmVAGg=;
- b=owKXjQXevkD2k1BGeCmO+DPuJb+42URVekX0+uJqqAGxlaTkGo661qCftIJaRPj57Fbr07FD7
- hhY0BmaCUZ/DBUpVWRfoRGUUUZyedan1RNwvsKNrFMRC5vMPR2AqINq
+ bh=odADJmMZHmCPpeUZVqD+kpI2Vt0oc+W3kHqA6aS9tIY=;
+ b=AUcT2Of6cwHxxOx17QvN93TZCuSf+he/xRj0n3Qx5IYkq00JgFeKhRlmtOLzPoUJPxcu5rohS
+ dBY/mzpSSSzBka4yGK8799Q4nadMspw9Hz+DIByk1zSvHYeY4xLcM3x
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello all,
+From: Emil Velikov <emil.velikov@collabora.com>
 
-I've noticed the recent module_directory work and I'm super hyped to see
-it released. Are there any plans for v32?
+Drop the somewhat misleading ${prefix}/lib/modules and explicitly
+mention what's the default.
 
-This tiny series has two patches:
- - tweaks the help string for the module_directory toggle
- - installs the insmod, rmmod, lsmod ... symlinks
-
-The above should be fairly straightforward, but if there's any questions
-or concerns do let me know.
-
-Thanks
-Emil
-
+Signed-off-by: Emil Velikov <emil.velikov@collabora.com>
 ---
-Emil Velikov (2):
-      configure: tweak the module_directory help string
-      make: install/uninstall tools symlinks to kmod
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- Makefile.am  | 10 ++++++++++
- configure.ac |  2 +-
- 2 files changed, 11 insertions(+), 1 deletion(-)
----
-base-commit: 48b0c75f79f86140314b9656d3d855a515e18a73
-change-id: 20240126-master-5ba286b26eed
+diff --git a/configure.ac b/configure.ac
+index de01e08..ab0b303 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -93,7 +93,7 @@ AC_SUBST([rootlibdir], [$with_rootlibdir])
+ 
+ # Ideally this would be $prefix/lib/modules but default to /lib/modules for compatibility with earlier versions
+ AC_ARG_WITH([module_directory],
+-        AS_HELP_STRING([--with-module-directory=DIR], [directory in which to look for kernel modules - typically '/lib/modules' or '${prefix}/lib/modules']),
++        AS_HELP_STRING([--with-module-directory=DIR], [directory in which to look for kernel modules @<:@default=/lib/modules@:>@]),
+         [], [with_module_directory=/lib/modules])
+ AC_SUBST([module_directory], [$with_module_directory])
+ 
 
-Best regards,
 -- 
-Emil Velikov <emil.l.velikov@gmail.com>
+2.43.0
 
