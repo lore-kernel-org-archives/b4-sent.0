@@ -1,14 +1,13 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Subject: [PATCH net-next v2 0/7] MT7530 DSA Subdriver Improvements Act II
-Date: Tue, 30 Jan 2024 18:20:46 +0300
-Message-Id: <20240130-for-netnext-mt7530-improvements-2-v2-0-ba06f5dd9eb0@arinc9.com>
+Date: Tue, 30 Jan 2024 18:20:47 +0300
+Subject: [PATCH net-next v2 1/7] net: dsa: mt7530: empty default case on
+ mt7530_setup_port5()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAM4TuWUC/yWNyw6CMBREf4XctZf0xcuV/2FYAF6kiW1JWwmG8
- O/WupvJ5Mw5IJDXFOBaHOBp00E7m4q4FDAtg30S6kfqIJhQjAuOs/NoKVraI5rYVJKhNqt3Gxm
- yMaDAUc1K1jUfVVtB+lk9zXrPjjskFH8s9GlZdIjOf7J843n/e7jkTFSiK1smG44cB6/tVL7t8
- Lrl2JWTM9Cf5/kFtSUfRcIAAAA=
+Message-Id: <20240130-for-netnext-mt7530-improvements-2-v2-1-ba06f5dd9eb0@arinc9.com>
+References: <20240130-for-netnext-mt7530-improvements-2-v2-0-ba06f5dd9eb0@arinc9.com>
+In-Reply-To: <20240130-for-netnext-mt7530-improvements-2-v2-0-ba06f5dd9eb0@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
  Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
  Florian Fainelli <f.fainelli@gmail.com>, 
@@ -24,83 +23,65 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706628054; l=2695;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706628054; l=1561;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=LGaZ3YTJBfQ0lG0YcC/NrSyyzu8IUICWtPtIKqoiP3Q=;
- b=soUoCM9RUYqLpUSzNO6lqpgNpfqmqya/NbkPWl1MK6QH7ak+HzZWqpZSeJgHq3RlCvMIo7lr1
- j3B7IBb1T0ZC2LfVcKaKKaijupISylgykgjzqG1/m9ccuzWbVT1QuBx
+ bh=4iqmJSREOOSr69rzXZ9fMqbTsIjeBdURHVNrmhTA6EI=;
+ b=6SujO2PrKIZgF+6wBWfUvWWCIcvIYk1f93FV3BO1DcIVK8WneKIuOqxnJS4qGAesMcayw3uei
+ QVbA59r7qlBAGwZBjxrI/9IPvZ3M32jROVmYtJ1/Rd9L4qf5C2ho7zl
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello!
+There're two code paths for setting up port 5:
 
-This is the second patch series with the goal of simplifying the MT7530 DSA
-subdriver and improving support for MT7530, MT7531, and the switch on the
-MT7988 SoC.
+mt7530_setup()
+-> mt7530_setup_port5()
 
-I have done a simple ping test to confirm basic communication on all switch
-ports on MCM and standalone MT7530, and MT7531 switch with this patch
-series applied.
+mt753x_phylink_mac_config()
+-> mt753x_mac_config()
+   -> mt7530_mac_config()
+      -> mt7530_setup_port5()
 
-MT7621 Unielec, MCM MT7530:
+On the first code path, priv->p5_intf_sel is either set to
+P5_INTF_SEL_PHY_P0 or P5_INTF_SEL_PHY_P4 when mt7530_setup_port5() is run.
 
-rgmii-only-gmac0-mt7621-unielec-u7621-06-16m.dtb
-gmac0-and-gmac1-mt7621-unielec-u7621-06-16m.dtb
+On the second code path, priv->p5_intf_sel is set to P5_INTF_SEL_GMAC5 when
+mt7530_setup_port5() is run.
 
-tftpboot 0x80008000 mips-uzImage.bin; tftpboot 0x83000000 mips-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootm 0x80008000 0x83000000 0x83f00000
-
-MT7622 Bananapi, MT7531:
-
-gmac0-and-gmac1-mt7622-bananapi-bpi-r64.dtb
-
-tftpboot 0x40000000 arm64-Image; tftpboot 0x45000000 arm64-rootfs.cpio.uboot; tftpboot 0x4a000000 $dtb; booti 0x40000000 0x45000000 0x4a000000
-
-MT7623 Bananapi, standalone MT7530:
-
-rgmii-only-gmac0-mt7623n-bananapi-bpi-r2.dtb
-gmac0-and-gmac1-mt7623n-bananapi-bpi-r2.dtb
-
-tftpboot 0x80008000 arm-zImage; tftpboot 0x83000000 arm-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootz 0x80008000 0x83000000 0x83f00000
-
-This patch series is the continuation of the patch series linked below.
-
-https://lore.kernel.org/r/20230522121532.86610-1-arinc.unal@arinc9.com
+Empty the default case which will never run but is needed nonetheless to
+handle all the remaining enumeration values.
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Reviewed-by: Vladimir Oltean <olteanv@gmail.com>
 ---
-Changes in v2:
-- Update the patches with the latest received trailers.
-- Remove 'net: dsa: mt7530: move enabling port 6 to mt7530_setup_port6()'
-  which was patch 5. I will bring a more appropriate change with a later
-  patch series.
-- Patch 5
-  - Set P6_INTF_MODE(0) and explain why on the patch log.
-- Patch 6
-  - Mention the MT7988 document and explain more on the patch log.
-- Patch 7
-  - Explain more on the patch log.
-- Link to v1: https://lore.kernel.org/r/20240113102529.80371-1-arinc.unal@arinc9.com
+ drivers/net/dsa/mt7530.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
----
-Arınç ÜNAL (7):
-      net: dsa: mt7530: empty default case on mt7530_setup_port5()
-      net: dsa: mt7530: call port 6 setup from mt7530_mac_config()
-      net: dsa: mt7530: remove pad_setup function pointer
-      net: dsa: mt7530: move XTAL check to mt7530_setup()
-      net: dsa: mt7530: simplify mt7530_setup_port6() and change to void
-      net: dsa: mt7530: correct port capabilities of MT7988
-      net: dsa: mt7530: do not clear config->supported_interfaces
+diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
+index 68be38ae66e0..330e22abc076 100644
+--- a/drivers/net/dsa/mt7530.c
++++ b/drivers/net/dsa/mt7530.c
+@@ -943,9 +943,7 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
+ 		val &= ~MHWTRAP_P5_DIS;
+ 		break;
+ 	default:
+-		dev_err(ds->dev, "Unsupported p5_intf_sel %d\n",
+-			priv->p5_intf_sel);
+-		goto unlock_exit;
++		break;
+ 	}
+ 
+ 	/* Setup RGMII settings */
+@@ -975,7 +973,6 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
+ 	dev_dbg(ds->dev, "Setup P5, HWTRAP=0x%x, intf_sel=%s, phy-mode=%s\n",
+ 		val, p5_intf_modes(priv->p5_intf_sel), phy_modes(interface));
+ 
+-unlock_exit:
+ 	mutex_unlock(&priv->reg_mutex);
+ }
+ 
 
- drivers/net/dsa/mt7530.c | 154 +++++++++++++++++------------------------------
- drivers/net/dsa/mt7530.h |   3 -
- 2 files changed, 54 insertions(+), 103 deletions(-)
----
-base-commit: 4acf4e62cd572b0c806035046b3698f5585ab821
-change-id: 20240121-for-netnext-mt7530-improvements-2-b4f43661b485
-
-Best regards,
 -- 
-Arınç ÜNAL <arinc.unal@arinc9.com>
+2.40.1
 
