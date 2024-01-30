@@ -1,94 +1,120 @@
-From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Mon, 29 Jan 2024 18:43:07 -0800
-Subject: [PATCH 2/2] ARM: dts: qcom: msm8960: expressatt: Add mXT224S
- touchscreen
+From: Michel Lind <michel@michel-slm.name>
+Date: Tue, 30 Jan 2024 04:14:31 -0600
+Subject: [PATCH] Fix building on x86_64 with binutils 2.41
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240129-expressatt_mxt224s_touchscreen-v1-2-fb8552e1c32c@gmail.com>
-References: <20240129-expressatt_mxt224s_touchscreen-v1-0-fb8552e1c32c@gmail.com>
-In-Reply-To: <20240129-expressatt_mxt224s_touchscreen-v1-0-fb8552e1c32c@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706582586; l=1620;
- i=guptarud@gmail.com; s=20240120; h=from:subject:message-id;
- bh=4Gi3ILnitkF34hh7B1r4k2VP7IMCG7Hjj/6AwpaU750=;
- b=glGc0tlN1FYtvPmVUQWslsCsjE5EMGR/UNEHeqUB2jpo5OOSQO5qq9wIE5HbwMCkwH2BzXEJs
- H7KAFnIl4ahC7MfYyk65Voe0WfqTNP70P9KSDCsySRwDT6Coc1/JoRf
-X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
- pk=RGmug3GRHS4XYTXDcT2VrlTGXlEF2gY4L9/swGIU1ko=
-X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240120 with auth_id=114
+Message-Id: <20240130-fix-binutils-2-41-v1-1-99ee0fcfb5ce@michel-slm.name>
+X-B4-Tracking: v=1; b=H4sIAAbMuGUC/x2MSQqAMAwAv1JyNtANBb8iHlqNGpAqjYog/t3ic
+ WBmHhDKTAKteiDTxcJbKmAqBcMS0kzIY2Gw2nptnMaJb4yczoNXQYveYFN7G6KLNVEDpdszFel
+ /dv37fthRuOBjAAAA
+To: kexec@lists.infradead.org
+Cc: Michel Lind <salimma@fedoraproject.org>, 
+ Michel Lind <michel@michel-slm.name>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2666;
+ i=michel@michel-slm.name; h=from:subject:message-id;
+ bh=nOBIxomCd1NB/6X96cPgNNfdPJVIUS3lPhJ2O2YpA2Y=;
+ b=owGbwMvMwCXWrTRXv+YMyyfG02pJDKk7znC+9whM9a5eyJgefDpPZq6L2qeuIzd2pOtyOfw+s
+ ORbW8LcjlIWBjEuBlkxRZbYc3p1c6xl/l82PXgdZg4rE8gQBi5OAZjIY0+GfwZ3me5eMbn3yumC
+ BePtIInHWWXLb0gFtaVGcawy+LHFsZKR4btbh3I0Y2gjy4+5Hkd8Oe/Pbbjgm1Cimsax6CjDzxk
+ bOAA=
+X-Developer-Key: i=michel@michel-slm.name; a=openpgp;
+ fpr=5DCE2E7E9C3B1CFFD335C1D78B229D2F7CCC04F2
+X-Endpoint-Received: by B4 Relay for michel@michel-slm.name/default with auth_id=119
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add mXT224S touchscreen
+From: Michel Lind <salimma@fedoraproject.org>
 
-Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
+Newer versions of the GNU assembler (observed with binutils 2.41) will
+complain about the ".arch i386" in files assembled with "as --64",
+with the message "Error: 64bit mode not supported on 'i386'".
+
+Fix by moving ".arch i386" below the relevant ".code32" directive, so
+that the assembler is no longer expecting 64-bit instructions to be used
+by the time that the ".arch i386" directive is encountered.
+
+Based on similar iPXE fix:
+https://github.com/ipxe/ipxe/commit/6ca597eee
+
+Signed-off-by: Michel Lind <michel@michel-slm.name>
 ---
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 31 +++++++++++++++++++++-
- 1 file changed, 30 insertions(+), 1 deletion(-)
+ purgatory/arch/i386/entry32-16-debug.S | 2 +-
+ purgatory/arch/i386/entry32-16.S       | 2 +-
+ purgatory/arch/i386/entry32.S          | 2 +-
+ purgatory/arch/i386/setup-x86.S        | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-index 47e0e26ad9f0..af6cc6393d74 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-@@ -85,6 +85,27 @@ &gsbi1_spi {
- 	status = "okay";
- };
+diff --git a/purgatory/arch/i386/entry32-16-debug.S b/purgatory/arch/i386/entry32-16-debug.S
+index 5167944..12e1164 100644
+--- a/purgatory/arch/i386/entry32-16-debug.S
++++ b/purgatory/arch/i386/entry32-16-debug.S
+@@ -25,10 +25,10 @@
+ 	.globl entry16_debug_pre32
+ 	.globl entry16_debug_first32
+ 	.globl entry16_debug_old_first32
+-	.arch i386
+ 	.balign 16
+ entry16_debug:
+ 	.code32
++	.arch i386
+ 	/* Compute where I am running at (assumes esp valid) */
+ 	call	1f
+ 1:	popl	%ebx
+diff --git a/purgatory/arch/i386/entry32-16.S b/purgatory/arch/i386/entry32-16.S
+index c051aab..eace095 100644
+--- a/purgatory/arch/i386/entry32-16.S
++++ b/purgatory/arch/i386/entry32-16.S
+@@ -20,10 +20,10 @@
+ #undef i386	
+ 	.text
+ 	.globl entry16, entry16_regs
+-	.arch i386
+ 	.balign 16
+ entry16:
+ 	.code32
++	.arch i386
+ 	/* Compute where I am running at (assumes esp valid) */
+ 	call	1f
+ 1:	popl	%ebx
+diff --git a/purgatory/arch/i386/entry32.S b/purgatory/arch/i386/entry32.S
+index f7a494f..8ce9e31 100644
+--- a/purgatory/arch/i386/entry32.S
++++ b/purgatory/arch/i386/entry32.S
+@@ -20,10 +20,10 @@
+ #undef i386
  
-+&gsbi3 {
-+	qcom,mode = <GSBI_PROT_I2C>;
-+	status = "okay";
-+};
-+
-+&gsbi3_i2c {
-+	status = "okay";
-+
-+	// Atmel mXT224S touchscreen
-+	touchscreen@4a {
-+		compatible = "atmel,maxtouch";
-+		reg = <0x4a>;
-+		interrupt-parent = <&msmgpio>;
-+		interrupts = <11 IRQ_TYPE_EDGE_FALLING>;
-+		vdda-supply = <&pm8921_lvs6>;
-+		vdd-supply = <&pm8921_l17>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&touchscreen>;
-+	};
-+};
-+
- &msmgpio {
- 	spi1_default: spi1-default-state {
- 		mosi-pins {
-@@ -123,6 +144,14 @@ gpio_keys_pin_a: gpio-keys-active-state {
- 		drive-strength = <8>;
- 		bias-disable;
- 	};
-+
-+	touchscreen: touchscreen-int-state {
-+		pins = "gpio11";
-+		function = "gpio";
-+		output-enable;
-+		bias-disable;
-+		drive-strength = <2>;
-+	};
- };
+ 	.text
+-	.arch	i386
+ 	.globl entry32, entry32_regs
+ entry32:
+ 	.code32
++	.arch	i386
  
- &pm8921 {
-@@ -285,7 +314,7 @@ pm8921_l16: l16 {
- 		};
+ 	/* Setup a gdt that should that is generally usefully */
+ 	lgdt	%cs:gdt
+diff --git a/purgatory/arch/i386/setup-x86.S b/purgatory/arch/i386/setup-x86.S
+index 201bb2c..a212eed 100644
+--- a/purgatory/arch/i386/setup-x86.S
++++ b/purgatory/arch/i386/setup-x86.S
+@@ -21,10 +21,10 @@
+ #undef i386
  
- 		pm8921_l17: l17 {
--			regulator-min-microvolt = <1800000>;
-+			regulator-min-microvolt = <3300000>;
- 			regulator-max-microvolt = <3300000>;
- 			bias-pull-down;
- 		};
+ 	.text
+-	.arch	i386
+ 	.globl purgatory_start
+ purgatory_start:
+ 	.code32
++	.arch	i386
+ 
+ 	/* Load a gdt so I know what the segment registers are */
+ 	lgdt	%cs:gdt
 
+---
+base-commit: 94fbe64fb22d61726ca0c0996987574b6c783c19
+change-id: 20240130-fix-binutils-2-41-7642ab3b6ee7
+
+Best regards,
 -- 
-2.43.0
+Michel Lind <michel@michel-slm.name>
 
