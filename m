@@ -1,120 +1,106 @@
-From: Michel Lind <michel@michel-slm.name>
-Date: Tue, 30 Jan 2024 04:14:31 -0600
-Subject: [PATCH] Fix building on x86_64 with binutils 2.41
+From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Subject: [PATCH net-next v2 0/7] MT7530 DSA Subdriver Improvements Act II
+Date: Tue, 30 Jan 2024 18:20:46 +0300
+Message-Id: <20240130-for-netnext-mt7530-improvements-2-v2-0-ba06f5dd9eb0@arinc9.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240130-fix-binutils-2-41-v1-1-99ee0fcfb5ce@michel-slm.name>
-X-B4-Tracking: v=1; b=H4sIAAbMuGUC/x2MSQqAMAwAv1JyNtANBb8iHlqNGpAqjYog/t3ic
- WBmHhDKTAKteiDTxcJbKmAqBcMS0kzIY2Gw2nptnMaJb4yczoNXQYveYFN7G6KLNVEDpdszFel
- /dv37fthRuOBjAAAA
-To: kexec@lists.infradead.org
-Cc: Michel Lind <salimma@fedoraproject.org>, 
- Michel Lind <michel@michel-slm.name>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2666;
- i=michel@michel-slm.name; h=from:subject:message-id;
- bh=nOBIxomCd1NB/6X96cPgNNfdPJVIUS3lPhJ2O2YpA2Y=;
- b=owGbwMvMwCXWrTRXv+YMyyfG02pJDKk7znC+9whM9a5eyJgefDpPZq6L2qeuIzd2pOtyOfw+s
- ORbW8LcjlIWBjEuBlkxRZbYc3p1c6xl/l82PXgdZg4rE8gQBi5OAZjIY0+GfwZ3me5eMbn3yumC
- BePtIInHWWXLb0gFtaVGcawy+LHFsZKR4btbh3I0Y2gjy4+5Hkd8Oe/Pbbjgm1Cimsax6CjDzxk
- bOAA=
-X-Developer-Key: i=michel@michel-slm.name; a=openpgp;
- fpr=5DCE2E7E9C3B1CFFD335C1D78B229D2F7CCC04F2
-X-Endpoint-Received: by B4 Relay for michel@michel-slm.name/default with auth_id=119
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAM4TuWUC/yWNyw6CMBREf4XctZf0xcuV/2FYAF6kiW1JWwmG8
+ O/WupvJ5Mw5IJDXFOBaHOBp00E7m4q4FDAtg30S6kfqIJhQjAuOs/NoKVraI5rYVJKhNqt3Gxm
+ yMaDAUc1K1jUfVVtB+lk9zXrPjjskFH8s9GlZdIjOf7J843n/e7jkTFSiK1smG44cB6/tVL7t8
+ Lrl2JWTM9Cf5/kFtSUfRcIAAAA=
+To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
+ Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Florian Fainelli <f.fainelli@gmail.com>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com, 
+ Bartel Eerdekens <bartel.eerdekens@constell8.be>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, 
+ =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706628054; l=2695;
+ i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
+ bh=LGaZ3YTJBfQ0lG0YcC/NrSyyzu8IUICWtPtIKqoiP3Q=;
+ b=soUoCM9RUYqLpUSzNO6lqpgNpfqmqya/NbkPWl1MK6QH7ak+HzZWqpZSeJgHq3RlCvMIo7lr1
+ j3B7IBb1T0ZC2LfVcKaKKaijupISylgykgjzqG1/m9ccuzWbVT1QuBx
+X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
+ pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
+X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Michel Lind <salimma@fedoraproject.org>
+Hello!
 
-Newer versions of the GNU assembler (observed with binutils 2.41) will
-complain about the ".arch i386" in files assembled with "as --64",
-with the message "Error: 64bit mode not supported on 'i386'".
+This is the second patch series with the goal of simplifying the MT7530 DSA
+subdriver and improving support for MT7530, MT7531, and the switch on the
+MT7988 SoC.
 
-Fix by moving ".arch i386" below the relevant ".code32" directive, so
-that the assembler is no longer expecting 64-bit instructions to be used
-by the time that the ".arch i386" directive is encountered.
+I have done a simple ping test to confirm basic communication on all switch
+ports on MCM and standalone MT7530, and MT7531 switch with this patch
+series applied.
 
-Based on similar iPXE fix:
-https://github.com/ipxe/ipxe/commit/6ca597eee
+MT7621 Unielec, MCM MT7530:
 
-Signed-off-by: Michel Lind <michel@michel-slm.name>
+rgmii-only-gmac0-mt7621-unielec-u7621-06-16m.dtb
+gmac0-and-gmac1-mt7621-unielec-u7621-06-16m.dtb
+
+tftpboot 0x80008000 mips-uzImage.bin; tftpboot 0x83000000 mips-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootm 0x80008000 0x83000000 0x83f00000
+
+MT7622 Bananapi, MT7531:
+
+gmac0-and-gmac1-mt7622-bananapi-bpi-r64.dtb
+
+tftpboot 0x40000000 arm64-Image; tftpboot 0x45000000 arm64-rootfs.cpio.uboot; tftpboot 0x4a000000 $dtb; booti 0x40000000 0x45000000 0x4a000000
+
+MT7623 Bananapi, standalone MT7530:
+
+rgmii-only-gmac0-mt7623n-bananapi-bpi-r2.dtb
+gmac0-and-gmac1-mt7623n-bananapi-bpi-r2.dtb
+
+tftpboot 0x80008000 arm-zImage; tftpboot 0x83000000 arm-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootz 0x80008000 0x83000000 0x83f00000
+
+This patch series is the continuation of the patch series linked below.
+
+https://lore.kernel.org/r/20230522121532.86610-1-arinc.unal@arinc9.com
+
+Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- purgatory/arch/i386/entry32-16-debug.S | 2 +-
- purgatory/arch/i386/entry32-16.S       | 2 +-
- purgatory/arch/i386/entry32.S          | 2 +-
- purgatory/arch/i386/setup-x86.S        | 2 +-
- 4 files changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/purgatory/arch/i386/entry32-16-debug.S b/purgatory/arch/i386/entry32-16-debug.S
-index 5167944..12e1164 100644
---- a/purgatory/arch/i386/entry32-16-debug.S
-+++ b/purgatory/arch/i386/entry32-16-debug.S
-@@ -25,10 +25,10 @@
- 	.globl entry16_debug_pre32
- 	.globl entry16_debug_first32
- 	.globl entry16_debug_old_first32
--	.arch i386
- 	.balign 16
- entry16_debug:
- 	.code32
-+	.arch i386
- 	/* Compute where I am running at (assumes esp valid) */
- 	call	1f
- 1:	popl	%ebx
-diff --git a/purgatory/arch/i386/entry32-16.S b/purgatory/arch/i386/entry32-16.S
-index c051aab..eace095 100644
---- a/purgatory/arch/i386/entry32-16.S
-+++ b/purgatory/arch/i386/entry32-16.S
-@@ -20,10 +20,10 @@
- #undef i386	
- 	.text
- 	.globl entry16, entry16_regs
--	.arch i386
- 	.balign 16
- entry16:
- 	.code32
-+	.arch i386
- 	/* Compute where I am running at (assumes esp valid) */
- 	call	1f
- 1:	popl	%ebx
-diff --git a/purgatory/arch/i386/entry32.S b/purgatory/arch/i386/entry32.S
-index f7a494f..8ce9e31 100644
---- a/purgatory/arch/i386/entry32.S
-+++ b/purgatory/arch/i386/entry32.S
-@@ -20,10 +20,10 @@
- #undef i386
- 
- 	.text
--	.arch	i386
- 	.globl entry32, entry32_regs
- entry32:
- 	.code32
-+	.arch	i386
- 
- 	/* Setup a gdt that should that is generally usefully */
- 	lgdt	%cs:gdt
-diff --git a/purgatory/arch/i386/setup-x86.S b/purgatory/arch/i386/setup-x86.S
-index 201bb2c..a212eed 100644
---- a/purgatory/arch/i386/setup-x86.S
-+++ b/purgatory/arch/i386/setup-x86.S
-@@ -21,10 +21,10 @@
- #undef i386
- 
- 	.text
--	.arch	i386
- 	.globl purgatory_start
- purgatory_start:
- 	.code32
-+	.arch	i386
- 
- 	/* Load a gdt so I know what the segment registers are */
- 	lgdt	%cs:gdt
+Changes in v2:
+- Update the patches with the latest received trailers.
+- Remove 'net: dsa: mt7530: move enabling port 6 to mt7530_setup_port6()'
+  which was patch 5. I will bring a more appropriate change with a later
+  patch series.
+- Patch 5
+  - Set P6_INTF_MODE(0) and explain why on the patch log.
+- Patch 6
+  - Mention the MT7988 document and explain more on the patch log.
+- Patch 7
+  - Explain more on the patch log.
+- Link to v1: https://lore.kernel.org/r/20240113102529.80371-1-arinc.unal@arinc9.com
 
 ---
-base-commit: 94fbe64fb22d61726ca0c0996987574b6c783c19
-change-id: 20240130-fix-binutils-2-41-7642ab3b6ee7
+Arınç ÜNAL (7):
+      net: dsa: mt7530: empty default case on mt7530_setup_port5()
+      net: dsa: mt7530: call port 6 setup from mt7530_mac_config()
+      net: dsa: mt7530: remove pad_setup function pointer
+      net: dsa: mt7530: move XTAL check to mt7530_setup()
+      net: dsa: mt7530: simplify mt7530_setup_port6() and change to void
+      net: dsa: mt7530: correct port capabilities of MT7988
+      net: dsa: mt7530: do not clear config->supported_interfaces
+
+ drivers/net/dsa/mt7530.c | 154 +++++++++++++++++------------------------------
+ drivers/net/dsa/mt7530.h |   3 -
+ 2 files changed, 54 insertions(+), 103 deletions(-)
+---
+base-commit: 4acf4e62cd572b0c806035046b3698f5585ab821
+change-id: 20240121-for-netnext-mt7530-improvements-2-b4f43661b485
 
 Best regards,
 -- 
-Michel Lind <michel@michel-slm.name>
+Arınç ÜNAL <arinc.unal@arinc9.com>
 
