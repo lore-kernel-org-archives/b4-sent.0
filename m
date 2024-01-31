@@ -1,10 +1,11 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Wed, 31 Jan 2024 01:04:46 -0800
-Subject: [PATCH v2 1/2] ARM: dts: qcom: msm8960: Add gsbi3 node
+Date: Wed, 31 Jan 2024 01:04:47 -0800
+Subject: [PATCH v2 2/2] ARM: dts: qcom: msm8960: expressatt: Add mXT224S
+ touchscreen
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240131-expressatt_mxt224s_touchscreen-v2-1-4463ae0414b5@gmail.com>
+Message-Id: <20240131-expressatt_mxt224s_touchscreen-v2-2-4463ae0414b5@gmail.com>
 References: <20240131-expressatt_mxt224s_touchscreen-v2-0-4463ae0414b5@gmail.com>
 In-Reply-To: <20240131-expressatt_mxt224s_touchscreen-v2-0-4463ae0414b5@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -14,89 +15,79 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706691886; l=2107;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706691886; l=1620;
  i=guptarud@gmail.com; s=20240120; h=from:subject:message-id;
- bh=G6XPs19Hk+i3uuDKqNqjvb4ePyJrYWEvOCZGE4iK36g=;
- b=01IhAm1m43JwSoG5qVDfjpK8EYKpRI+iitc0eh5r8bOoHY63CcTmbb+icdnyO8w6DpwEG2+9h
- MKJA/e9ZOBMC/McxNWDd0JY00M+xsKWcXn+e7C9iU3zQYOWdu2t+XwZ
+ bh=4Gi3ILnitkF34hh7B1r4k2VP7IMCG7Hjj/6AwpaU750=;
+ b=aToJeq7bdKkloeO+pbha6Cimk77XwMqWEyri7P45ecOMZaHTkdN4Cy1Gcpli+x+loyRp/LVf6
+ SNTmxUSdiqZDmTcl8lGZNOvhSgthxCwy1F5lkuFNrb/xQprQc/fsi0B
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=RGmug3GRHS4XYTXDcT2VrlTGXlEF2gY4L9/swGIU1ko=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240120 with auth_id=114
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Copy gsbi3 node from qcom-apq8064.dtsi and set appropriate properties
+Add mXT224S touchscreen
 
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- arch/arm/boot/dts/qcom/qcom-msm8960-pins.dtsi | 21 ++++++++++++++++++++
- arch/arm/boot/dts/qcom/qcom-msm8960.dtsi      | 28 +++++++++++++++++++++++++++
- 2 files changed, 49 insertions(+)
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 31 +++++++++++++++++++++-
+ 1 file changed, 30 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-pins.dtsi b/arch/arm/boot/dts/qcom/qcom-msm8960-pins.dtsi
-new file mode 100644
-index 000000000000..4fa982771288
---- /dev/null
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960-pins.dtsi
-@@ -0,0 +1,21 @@
-+// SPDX-License-Identifier: GPL-2.0-only
+diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+index 47e0e26ad9f0..af6cc6393d74 100644
+--- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
++++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+@@ -85,6 +85,27 @@ &gsbi1_spi {
+ 	status = "okay";
+ };
+ 
++&gsbi3 {
++	qcom,mode = <GSBI_PROT_I2C>;
++	status = "okay";
++};
 +
-+&msmgpio {
-+	i2c3_default_state: i2c3-default-state {
-+		i2c3-pins {
-+			pins = "gpio16", "gpio17";
-+			function = "gsbi3";
-+			drive-strength = <8>;
-+			bias-disable;
-+		};
-+	};
++&gsbi3_i2c {
++	status = "okay";
 +
-+	i2c3_sleep_state: i2c3-sleep-state {
-+		i2c3-pins {
-+			pins = "gpio16", "gpio17";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-bus-hold;
-+		};
++	// Atmel mXT224S touchscreen
++	touchscreen@4a {
++		compatible = "atmel,maxtouch";
++		reg = <0x4a>;
++		interrupt-parent = <&msmgpio>;
++		interrupts = <11 IRQ_TYPE_EDGE_FALLING>;
++		vdda-supply = <&pm8921_lvs6>;
++		vdd-supply = <&pm8921_l17>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&touchscreen>;
 +	};
 +};
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-index f420740e068e..93365298c5ae 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-@@ -359,5 +359,33 @@ usb_hs1_phy: phy {
- 				};
- 			};
- 		};
 +
-+		gsbi3: gsbi@16200000 {
-+			compatible = "qcom,gsbi-v1.0.0";
-+			reg = <0x16200000 0x100>;
-+			ranges;
-+			cell-index = <3>;
-+			clocks = <&gcc GSBI3_H_CLK>;
-+			clock-names = "iface";
-+			#address-cells = <1>;
-+			#size-cells = <1>;
-+			status = "disabled";
-+
-+			gsbi3_i2c: i2c@16280000 {
-+				compatible = "qcom,i2c-qup-v1.1.1";
-+				reg = <0x16280000 0x1000>;
-+				pinctrl-0 = <&i2c3_default_state>;
-+				pinctrl-1 = <&i2c3_sleep_state>;
-+				pinctrl-names = "default", "sleep";
-+				interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH>;
-+				clocks = <&gcc GSBI3_QUP_CLK>,
-+					 <&gcc GSBI3_H_CLK>;
-+				clock-names = "core", "iface";
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+				status = "disabled";
-+			};
-+		};
+ &msmgpio {
+ 	spi1_default: spi1-default-state {
+ 		mosi-pins {
+@@ -123,6 +144,14 @@ gpio_keys_pin_a: gpio-keys-active-state {
+ 		drive-strength = <8>;
+ 		bias-disable;
  	};
++
++	touchscreen: touchscreen-int-state {
++		pins = "gpio11";
++		function = "gpio";
++		output-enable;
++		bias-disable;
++		drive-strength = <2>;
++	};
  };
-+#include "qcom-msm8960-pins.dtsi"
+ 
+ &pm8921 {
+@@ -285,7 +314,7 @@ pm8921_l16: l16 {
+ 		};
+ 
+ 		pm8921_l17: l17 {
+-			regulator-min-microvolt = <1800000>;
++			regulator-min-microvolt = <3300000>;
+ 			regulator-max-microvolt = <3300000>;
+ 			bias-pull-down;
+ 		};
 
 -- 
 2.43.0
