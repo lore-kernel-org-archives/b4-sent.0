@@ -1,10 +1,10 @@
 From: Valentin Obst <kernel@valentinobst.de>
-Date: Wed, 31 Jan 2024 21:23:26 +0100
-Subject: [PATCH v3 04/12] rust: kernel: add srctree-relative doclinks
+Date: Wed, 31 Jan 2024 21:23:27 +0100
+Subject: [PATCH v3 05/12] rust: str: use `NUL` instead of 0 in doc comments
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240131-doc-fixes-v3-v3-4-0c8af94ed7de@valentinobst.de>
+Message-Id: <20240131-doc-fixes-v3-v3-5-0c8af94ed7de@valentinobst.de>
 References: <20240131-doc-fixes-v3-v3-0-0c8af94ed7de@valentinobst.de>
 In-Reply-To: <20240131-doc-fixes-v3-v3-0-0c8af94ed7de@valentinobst.de>
 To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
@@ -18,54 +18,47 @@ Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org,
  Valentin Obst <kernel@valentinobst.de>, Trevor Gross <tmgross@umich.edu>, 
  Martin Rodriguez Reboredo <yakoyoku@gmail.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706732646; l=1495;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706732646; l=1199;
  i=kernel@valentinobst.de; s=20240131; h=from:subject:message-id;
- bh=kLgaqmllmKNEoPT8KkSdoCC7kj+DdGrDcoL6QfU76KA=;
- b=7S3b+DjY5YBQva6+YSgVQsa22uB6Rj3uPyuLUNr8VssbgZuwJb/abEN7dWypql8P+MEF2keoc
- weVwL3OLTgqDx5AquVTxmPWwyq1xxyVqvm6sbHhS8rgqT9XMEwXLPWG
+ bh=t90awkZOfJrNEj9Nqg9r3N76iP/cmOjmkwvkrtyw/9I=;
+ b=hqfaaXwqKw/qal+VSCs0YjOz+bA68/qcnK/d1pbkLbyCibjtbc31Gxbrt1UfSfIgjGoTLjxY6
+ rJEeLkBTy2EDgEhqxS22yuDkLgnRAuGmCvQBc6KePEKQf5KT1v9gKbu
 X-Developer-Key: i=kernel@valentinobst.de; a=ed25519;
  pk=3s7U8y0mqkaiurgHSQQTYWOo2tw5HgzCg5vnJVfw37Y=
 X-Endpoint-Received: by B4 Relay for kernel@valentinobst.de/20240131 with auth_id=124
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert existing references to C header files to make use of
-Commit bc2e7d5c298a ("rust: support `srctree`-relative links").
+Throughout the module, bytes with the value zero are referred to as
+`NUL` bytes. Adapt the only two outliers.
 
 Signed-off-by: Valentin Obst <kernel@valentinobst.de>
 Reviewed-by: Trevor Gross <tmgross@umich.edu>
 Reviewed-by: Martin Rodriguez Reboredo <yakoyoku@gmail.com>
 Reviewed-by: Alice Ryhl <aliceryhl@google.com>
 ---
- rust/kernel/lib.rs          | 2 +-
- rust/kernel/sync/condvar.rs | 2 ++
- 2 files changed, 3 insertions(+), 1 deletion(-)
+ rust/kernel/str.rs | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/rust/kernel/lib.rs b/rust/kernel/lib.rs
-index b89ecf4e97a0..74581c958a6c 100644
---- a/rust/kernel/lib.rs
-+++ b/rust/kernel/lib.rs
-@@ -78,7 +78,7 @@ pub trait Module: Sized + Sync {
+diff --git a/rust/kernel/str.rs b/rust/kernel/str.rs
+index 0a8569594fc3..843ffeec9b3e 100644
+--- a/rust/kernel/str.rs
++++ b/rust/kernel/str.rs
+@@ -149,13 +149,13 @@ pub const fn as_char_ptr(&self) -> *const core::ffi::c_char {
+         self.0.as_ptr() as _
+     }
  
- /// Equivalent to `THIS_MODULE` in the C API.
- ///
--/// C header: `include/linux/export.h`
-+/// C header: [`include/linux/export.h`](srctree/include/linux/export.h)
- pub struct ThisModule(*mut bindings::module);
+-    /// Convert the string to a byte slice without the trailing 0 byte.
++    /// Convert the string to a byte slice without the trailing `NUL` byte.
+     #[inline]
+     pub fn as_bytes(&self) -> &[u8] {
+         &self.0[..self.len()]
+     }
  
- // SAFETY: `THIS_MODULE` may be used from all threads within a module.
-diff --git a/rust/kernel/sync/condvar.rs b/rust/kernel/sync/condvar.rs
-index 9f1d83589beb..fa1794972aa0 100644
---- a/rust/kernel/sync/condvar.rs
-+++ b/rust/kernel/sync/condvar.rs
-@@ -87,6 +87,8 @@ pub struct CondVar {
- 
-     /// A condvar needs to be pinned because it contains a [`struct list_head`] that is
-     /// self-referential, so it cannot be safely moved once it is initialised.
-+    ///
-+    /// [`struct list_head`]: srctree/include/linux/types.h
-     #[pin]
-     _pin: PhantomPinned,
- }
+-    /// Convert the string to a byte slice containing the trailing 0 byte.
++    /// Convert the string to a byte slice containing the trailing `NUL` byte.
+     #[inline]
+     pub const fn as_bytes_with_nul(&self) -> &[u8] {
+         &self.0
 
 -- 
 2.43.0
