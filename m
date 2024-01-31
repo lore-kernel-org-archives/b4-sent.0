@@ -1,10 +1,10 @@
 From: Valentin Obst <kernel@valentinobst.de>
-Date: Wed, 31 Jan 2024 21:23:33 +0100
-Subject: [PATCH v3 11/12] rust: kernel: remove unneeded doclink targets
+Date: Wed, 31 Jan 2024 21:23:34 +0100
+Subject: [PATCH v3 12/12] rust: locked_by: shorten doclink preview
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240131-doc-fixes-v3-v3-11-0c8af94ed7de@valentinobst.de>
+Message-Id: <20240131-doc-fixes-v3-v3-12-0c8af94ed7de@valentinobst.de>
 References: <20240131-doc-fixes-v3-v3-0-0c8af94ed7de@valentinobst.de>
 In-Reply-To: <20240131-doc-fixes-v3-v3-0-0c8af94ed7de@valentinobst.de>
 To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
@@ -18,81 +18,51 @@ Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org,
  Valentin Obst <kernel@valentinobst.de>, Trevor Gross <tmgross@umich.edu>, 
  Martin Rodriguez Reboredo <yakoyoku@gmail.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706732646; l=2616;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706732646; l=1666;
  i=kernel@valentinobst.de; s=20240131; h=from:subject:message-id;
- bh=BwWMsMRSeC1kKnnmhQv6fYuKaj3M32UFlVEb1WuNzkc=;
- b=wGvATBsFaAo4TY5WjEUO/KspVCL0ZjLBOnY1oLObO9aK45Ya/Q4PX1qIKBNDOAs/Gdt0eTaX4
- wkWoULzhHoiBhoqQzhNokpuv3kiGrC+SwHm+BrqDtAZihlX+0ppEWpR
+ bh=sqg0B5Wr1bFP5Krb6u5ZgMS6Wtgf+9jYvaOmeO5jfXs=;
+ b=lQBqbaRJYx0+ptyykohvXQroXhFbdrLF8+38IIQ+Mrgzdcc4iQGLoNEXfOVgcOP4WxwiMVtZ7
+ lHRemgJ/QGwD5JvssVna2L6r4kIbhLvEGdxnqRbd19Zmt64CVD0tjKM
 X-Developer-Key: i=kernel@valentinobst.de; a=ed25519;
  pk=3s7U8y0mqkaiurgHSQQTYWOo2tw5HgzCg5vnJVfw37Y=
 X-Endpoint-Received: by B4 Relay for kernel@valentinobst.de/20240131 with auth_id=124
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove explicit targets for doclinks in cases where rustdoc can
-determine the correct target by itself. The goal is to reduce unneeded
-verbosity in the source code.
+Increases readability by removing `super::` from the link preview
+text.
 
 Signed-off-by: Valentin Obst <kernel@valentinobst.de>
 Reviewed-by: Trevor Gross <tmgross@umich.edu>
 Reviewed-by: Martin Rodriguez Reboredo <yakoyoku@gmail.com>
 Reviewed-by: Alice Ryhl <aliceryhl@google.com>
 ---
- rust/kernel/workqueue.rs | 10 ----------
- 1 file changed, 10 deletions(-)
+ rust/kernel/sync/locked_by.rs | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/rust/kernel/workqueue.rs b/rust/kernel/workqueue.rs
-index ed3af3491b47..73d6fa544ca6 100644
---- a/rust/kernel/workqueue.rs
-+++ b/rust/kernel/workqueue.rs
-@@ -426,13 +426,10 @@ pub unsafe fn raw_get(ptr: *const Self) -> *mut bindings::work_struct {
- /// The [`OFFSET`] constant must be the offset of a field in `Self` of type [`Work<T, ID>`]. The
- /// methods on this trait must have exactly the behavior that the definitions given below have.
+diff --git a/rust/kernel/sync/locked_by.rs b/rust/kernel/sync/locked_by.rs
+index b17ee5cd98f3..babc731bd5f6 100644
+--- a/rust/kernel/sync/locked_by.rs
++++ b/rust/kernel/sync/locked_by.rs
+@@ -9,14 +9,17 @@
+ /// Allows access to some data to be serialised by a lock that does not wrap it.
  ///
--/// [`Work<T, ID>`]: Work
- /// [`impl_has_work!`]: crate::impl_has_work
- /// [`OFFSET`]: HasWork::OFFSET
- pub unsafe trait HasWork<T, const ID: u64 = 0> {
-     /// The offset of the [`Work<T, ID>`] field.
--    ///
--    /// [`Work<T, ID>`]: Work
-     const OFFSET: usize;
- 
-     /// Returns the offset of the [`Work<T, ID>`] field.
-@@ -440,7 +437,6 @@ pub unsafe trait HasWork<T, const ID: u64 = 0> {
-     /// This method exists because the [`OFFSET`] constant cannot be accessed if the type is not
-     /// [`Sized`].
-     ///
--    /// [`Work<T, ID>`]: Work
-     /// [`OFFSET`]: HasWork::OFFSET
-     #[inline]
-     fn get_work_offset(&self) -> usize {
-@@ -452,8 +448,6 @@ fn get_work_offset(&self) -> usize {
-     /// # Safety
-     ///
-     /// The provided pointer must point at a valid struct of type `Self`.
--    ///
--    /// [`Work<T, ID>`]: Work
-     #[inline]
-     unsafe fn raw_get_work(ptr: *mut Self) -> *mut Work<T, ID> {
-         // SAFETY: The caller promises that the pointer is valid.
-@@ -465,8 +459,6 @@ unsafe fn raw_get_work(ptr: *mut Self) -> *mut Work<T, ID> {
-     /// # Safety
-     ///
-     /// The pointer must point at a [`Work<T, ID>`] field in a struct of type `Self`.
--    ///
--    /// [`Work<T, ID>`]: Work
-     #[inline]
-     unsafe fn work_container_of(ptr: *mut Work<T, ID>) -> *mut Self
-     where
-@@ -495,8 +487,6 @@ unsafe fn work_container_of(ptr: *mut Work<T, ID>) -> *mut Self
- ///     impl HasWork<MyStruct, 17> for MyStruct { self.work_field }
- /// }
- /// ```
--///
--/// [`HasWork<T, ID>`]: HasWork
- #[macro_export]
- macro_rules! impl_has_work {
-     ($(impl$(<$($implarg:ident),*>)?
+ /// In most cases, data protected by a lock is wrapped by the appropriate lock type, e.g.,
+-/// [`super::Mutex`] or [`super::SpinLock`]. [`LockedBy`] is meant for cases when this is not
+-/// possible. For example, if a container has a lock and some data in the contained elements needs
++/// [`Mutex`] or [`SpinLock`]. [`LockedBy`] is meant for cases when this is not possible.
++/// For example, if a container has a lock and some data in the contained elements needs
+ /// to be protected by the same lock.
+ ///
+ /// [`LockedBy`] wraps the data in lieu of another locking primitive, and only allows access to it
+ /// when the caller shows evidence that the 'external' lock is locked. It panics if the evidence
+ /// refers to the wrong instance of the lock.
+ ///
++/// [`Mutex`]: super::Mutex
++/// [`SpinLock`]: super::SpinLock
++///
+ /// # Examples
+ ///
+ /// The following is an example for illustrative purposes: `InnerDirectory::bytes_used` is an
 
 -- 
 2.43.0
