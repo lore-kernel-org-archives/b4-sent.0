@@ -1,69 +1,47 @@
-From: Valentin Obst <kernel@valentinobst.de>
-Date: Wed, 31 Jan 2024 21:23:34 +0100
-Subject: [PATCH v3 12/12] rust: locked_by: shorten doclink preview
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH 0/3] usb: ehci-generic: setup a bulk of phy when possible
+Date: Thu, 01 Feb 2024 21:16:07 +0800
+Message-Id: <20240201-ehci-v1-0-bb506cb0f64d@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240131-doc-fixes-v3-v3-12-0c8af94ed7de@valentinobst.de>
-References: <20240131-doc-fixes-v3-v3-0-0c8af94ed7de@valentinobst.de>
-In-Reply-To: <20240131-doc-fixes-v3-v3-0-0c8af94ed7de@valentinobst.de>
-To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Wedson Almeida Filho <wedsonaf@gmail.com>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <benno.lossin@proton.me>, 
- Andreas Hindborg <a.hindborg@samsung.com>, 
- Alice Ryhl <aliceryhl@google.com>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Valentin Obst <kernel@valentinobst.de>, Trevor Gross <tmgross@umich.edu>, 
- Martin Rodriguez Reboredo <yakoyoku@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJeZu2UC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDIwND3dSM5Exds2TjxETzFEtzS2MjJaDSgqLUtMwKsDHRsbW1AGJ0p4p
+ WAAAA
+To: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>, 
+ Marek Vasut <marex@denx.de>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706732646; l=1666;
- i=kernel@valentinobst.de; s=20240131; h=from:subject:message-id;
- bh=sqg0B5Wr1bFP5Krb6u5ZgMS6Wtgf+9jYvaOmeO5jfXs=;
- b=lQBqbaRJYx0+ptyykohvXQroXhFbdrLF8+38IIQ+Mrgzdcc4iQGLoNEXfOVgcOP4WxwiMVtZ7
- lHRemgJ/QGwD5JvssVna2L6r4kIbhLvEGdxnqRbd19Zmt64CVD0tjKM
-X-Developer-Key: i=kernel@valentinobst.de; a=ed25519;
- pk=3s7U8y0mqkaiurgHSQQTYWOo2tw5HgzCg5vnJVfw37Y=
-X-Endpoint-Received: by B4 Relay for kernel@valentinobst.de/20240131 with auth_id=124
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706793368; l=837;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=QMfwBw1MGvgmX+baE1mQW7yqLnFCwlhOHl1tI9+cRFg=;
+ b=AcptH8CJIHYl6WPhhwqTXaRNTKyPseQaeOnOYgZ81rpcLuozTj6WD/+UYkZahlWe5zhqP4iiD
+ 1ePLJJACsQqBeRf9X1IWv15iUEcDiDsKtAVgIxZ9CnqGZVl1eCmE6cI
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Increases readability by removing `super::` from the link preview
-text.
+one USB controller can have multiple ports specified in dts, all of them
+should be setup to make use of all possible ports.
 
-Signed-off-by: Valentin Obst <kernel@valentinobst.de>
-Reviewed-by: Trevor Gross <tmgross@umich.edu>
-Reviewed-by: Martin Rodriguez Reboredo <yakoyoku@gmail.com>
-Reviewed-by: Alice Ryhl <aliceryhl@google.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- rust/kernel/sync/locked_by.rs | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+Yang Xiwen (3):
+      phy: add generic_setup(shutdown)_phy_bulk()
+      test: phy: test generic_setup(shutdown)_phy_bulk()
+      usb: ehci: Make usage of generic_{setup,shutdown}_phy_bulk() helpers
 
-diff --git a/rust/kernel/sync/locked_by.rs b/rust/kernel/sync/locked_by.rs
-index b17ee5cd98f3..babc731bd5f6 100644
---- a/rust/kernel/sync/locked_by.rs
-+++ b/rust/kernel/sync/locked_by.rs
-@@ -9,14 +9,17 @@
- /// Allows access to some data to be serialised by a lock that does not wrap it.
- ///
- /// In most cases, data protected by a lock is wrapped by the appropriate lock type, e.g.,
--/// [`super::Mutex`] or [`super::SpinLock`]. [`LockedBy`] is meant for cases when this is not
--/// possible. For example, if a container has a lock and some data in the contained elements needs
-+/// [`Mutex`] or [`SpinLock`]. [`LockedBy`] is meant for cases when this is not possible.
-+/// For example, if a container has a lock and some data in the contained elements needs
- /// to be protected by the same lock.
- ///
- /// [`LockedBy`] wraps the data in lieu of another locking primitive, and only allows access to it
- /// when the caller shows evidence that the 'external' lock is locked. It panics if the evidence
- /// refers to the wrong instance of the lock.
- ///
-+/// [`Mutex`]: super::Mutex
-+/// [`SpinLock`]: super::SpinLock
-+///
- /// # Examples
- ///
- /// The following is an example for illustrative purposes: `InnerDirectory::bytes_used` is an
+ drivers/phy/phy-uclass.c        | 33 +++++++++++++++++++++++++++++++++
+ drivers/usb/host/ehci-generic.c |  8 ++++----
+ include/generic-phy.h           | 29 +++++++++++++++++++++++++++++
+ test/dm/phy.c                   |  4 ++++
+ 4 files changed, 70 insertions(+), 4 deletions(-)
+---
+base-commit: b6d8969bcb94321dfed1399f2eaa8768ba42caaa
+change-id: 20240201-ehci-6c3aa7d97932
 
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
