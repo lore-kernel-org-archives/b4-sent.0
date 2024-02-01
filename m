@@ -1,76 +1,49 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Thu, 01 Feb 2024 21:16:10 +0800
-Subject: [PATCH 3/3] usb: ehci: Make usage of
- generic_{setup,shutdown}_phy_bulk() helpers
+Subject: [PATCH v2 0/3] mmc: hi6220-dwmmc: handle resets and clocks
+Date: Thu, 01 Feb 2024 22:05:41 +0800
+Message-Id: <20240201-mmc-v2-0-9f09dc1335fd@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240201-ehci-v1-3-bb506cb0f64d@outlook.com>
-References: <20240201-ehci-v1-0-bb506cb0f64d@outlook.com>
-In-Reply-To: <20240201-ehci-v1-0-bb506cb0f64d@outlook.com>
-To: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>, 
- Marek Vasut <marex@denx.de>
+X-B4-Tracking: v=1; b=H4sIADWlu2UC/1WMQQ7CIBBFr9LMWgwgrcGV9zBdtONgJ0oxUImm4
+ e5idy7fz39vhUSRKcGpWSFS5sRhrqB3DeA0zDcSfK0MWmojlbLCexQW3dEdTNviaKA+n5Ecv7f
+ Kpa88cVpC/GzRrH7rv5+VUGIg6kaNrrNSn8NreYRw32Pw0JdSvrej8EeYAAAA
+To: Peng Fan <peng.fan@nxp.com>, Jaehoon Chung <jh80.chung@samsung.com>
 Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706793368; l=1440;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706796342; l=893;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=/ZXy+/JFQl5w+CVuHs0t22RB2/75bzpwupaCW19x1fw=;
- b=Iv8VGxaupk4iwAULRgGA7nLp5taCGqg1xuXWaTArAlAtZAXS3N803yplPcpIuToZdXURuOFh/
- XAD4Y5rGVVRBOMu7VZgcaDZJ8IECcpjNLSXTC/h0DgzKp240rOTcc1f
+ bh=qoO1GWUwglkouL30KLVHZpQKTUw3WzxauJY+ZHGAzaU=;
+ b=dOufC9sn2B03Ug7hXCoPaP0mz906uzVmCPGsmToWPXgXbHB0pj30R/78iZdwBgRcEw8bnmwq0
+ f79IaQDY2cZBd0t7TMDUZPfmB1RwCRXTkZtMUYDFaLMjto+4ug32/FR
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace generic_setup_phy() and generic_shutdown_phy() by respectively
-generic_setup_phy_bulk() and generic_shutdown_phy_bulk().
+Also allow setup fifoth_val in driver
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/usb/host/ehci-generic.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Changes in v2:
+- dw-mmc: proceed if data busy found
+- hi6220-dw-mmc: add fifoth_val setup, separate hi3798mv200 data
+- Link to v1: https://lore.kernel.org/r/20240119-mmc-v1-1-aee6b2cf6902@outlook.com
 
-diff --git a/drivers/usb/host/ehci-generic.c b/drivers/usb/host/ehci-generic.c
-index 936e30438d..e109d84d73 100644
---- a/drivers/usb/host/ehci-generic.c
-+++ b/drivers/usb/host/ehci-generic.c
-@@ -25,7 +25,7 @@ struct generic_ehci {
- 	struct ehci_ctrl ctrl;
- 	struct clk_bulk clocks;
- 	struct reset_ctl_bulk resets;
--	struct phy phy;
-+	struct phy_bulk phys;
- 	struct udevice *vbus_supply;
- };
- 
-@@ -95,7 +95,7 @@ static int ehci_usb_probe(struct udevice *dev)
- 	if (err)
- 		goto reset_err;
- 
--	err = generic_setup_phy(dev, &priv->phy, 0);
-+	err = generic_setup_phy_bulk(dev, &priv->phys);
- 	if (err)
- 		goto regulator_err;
- 
-@@ -110,7 +110,7 @@ static int ehci_usb_probe(struct udevice *dev)
- 	return 0;
- 
- phy_err:
--	ret = generic_shutdown_phy(&priv->phy);
-+	ret = generic_shutdown_phy_bulk(&priv->phys);
- 	if (ret)
- 		dev_err(dev, "failed to shutdown usb phy (ret=%d)\n", ret);
- 
-@@ -140,7 +140,7 @@ static int ehci_usb_remove(struct udevice *dev)
- 	if (ret)
- 		return ret;
- 
--	ret = generic_shutdown_phy(&priv->phy);
-+	ret = generic_shutdown_phy_bulk(&priv->phys);
- 	if (ret)
- 		return ret;
- 
+---
+Yang Xiwen (3):
+      mmc: hi6220-dwmmc: handle clocks and resets if CONFIG_CLK and CONFIG_DM_RESET enabled
+      mmc: dw_mmc: Don't return error if data busy timeout
+      mmc: hi6220_dw_mmc: add fifoth_val to private data and set it in .probe
 
+ drivers/mmc/dw_mmc.c        |  4 +--
+ drivers/mmc/hi6220_dw_mmc.c | 72 +++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 72 insertions(+), 4 deletions(-)
+---
+base-commit: f7cca7ccc5117eaafcc2bde91ad1bed6fee7cfc3
+change-id: 20240119-mmc-9cf7f3455cb4
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
