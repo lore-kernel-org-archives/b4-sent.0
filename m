@@ -1,80 +1,112 @@
-From: Bjorn Andersson <quic_bjorande@quicinc.com>
-Date: Thu, 01 Feb 2024 13:31:19 -0800
-Subject: [PATCH] arm64: defconfig: Enable Qualcomm interconnect providers
+From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Subject: [PATCH net-next v3 0/7] MT7530 DSA Subdriver Improvements Act II
+Date: Fri, 02 Feb 2024 12:19:06 +0300
+Message-Id: <20240202-for-netnext-mt7530-improvements-2-v3-0-63d5adae99ca@arinc9.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240201-enable-icc-8250-2290-v1-1-8ded02750521@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAKYNvGUC/x2MSQqAMAwAvyI5G4ih4vIV8dAlakCqtCCC+HeLx
- xmYeSBLUskwVg8kuTTrEQs0dQV+s3EV1FAYmNgQU4MSrduL9R57bgmZB0JnFtsF37khCJT0TLL
- o/W+n+X0/dim61WYAAAA=
-To: Catalin Marinas <catalin.marinas@arm.com>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Will Deacon <will@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, Bjorn Andersson <quic_bjorande@quicinc.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAIqzvGUC/4WOyw6CMBREf8V07SV9UB6u/A/josBFmkhL2tpgC
+ P9urRtduZvJ5MzMRjw6jZ6cDhtxGLXX1iQjjgfST8rcEPSQPOGUl5RxBqN1YDAYXAPMoZaCgp4
+ XZyPOaIIHDl05lqKqWFc2kqSexeGo17xxIQmFN0uuKZm0D9Y983hkOf/sMMEol7wtGipqBgyU0
+ 6YvHkbdz1m2RW/n3BH5F5fO/P8XOVDoFK1GOQwtdvSnct/3F0YuEvsVAQAA
+To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
+ Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Florian Fainelli <f.fainelli@gmail.com>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com, 
+ Bartel Eerdekens <bartel.eerdekens@constell8.be>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, 
+ =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1606;
- i=quic_bjorande@quicinc.com; h=from:subject:message-id;
- bh=PrRvWI3v6LUZy5gGPJMmYHZxgRkosEui53nfZHHVYmI=;
- b=owEBgwJ8/ZANAwAIAQsfOT8Nma3FAcsmYgBlvA2xeaQWX56SHdES03wVrRhZc5n1qzqikkpUs
- 3iffg/eBJaJAkkEAAEIADMWIQQF3gPMXzXqTwlm1SULHzk/DZmtxQUCZbwNsRUcYW5kZXJzc29u
- QGtlcm5lbC5vcmcACgkQCx85Pw2ZrcXURBAAp2ZEzZ5VHTUvPh2jGmshtNoJ3rw3667luu9Wa7O
- +zTrJzuPVMYydm7VBER85Vvz2NSgXfE4M3syN8q4856+zE81uXPERay+k9J/7NTCyZpWLdvWYT+
- y9O0EpDD3hRPYagegaM0kj3saPdlPwIP/pMiwkG0gwcwWceSdxbLu0aSIumtNSwLkeJfWm9iFbN
- mvBvbtnNg50DmZ1IH0LFv0uNJ5h3Btb9gWD+ceuvD0BpQ8ivkggeXN74faBQteo4/VGrYqKFVKU
- BQNu7dQKtsKGAKw8VAriuqbRds/2fQTJbofvuMYoZA4eOeObgVKytdazSZmWfMrHIaQ58ei2WqJ
- I/JBxirh5Xf5daHQHseUSdljmdjF38naBdAgBtTG2/jA5T3eJjsDXkL5tiru9j/K+RHm1p00L29
- weMqHbyBtPrngyzUCu2jAZOhM8aJ4ByZu1LVyWYykMy+PUC31N0jq/kHLMXFIRGA50W47zMaI2N
- Zx3WH8eL9pxWag2AmJy3exSm0Jcbs3EYlz7TZDoVI3A36KSmAkBVSnhe1nd9llOocQ8hTdp3igs
- HgqkaqO9uXaKi2Uze3EgOB4evzb6FUXiVBZ8BB32sGmuwhsnO49WM4IP8gdTDntR1YDJalAGmRU
- F7UTvz0iCJqNPSCKaKu4QmwlBL2xQ71ia7Af6tfUV0RA=
-X-Developer-Key: i=quic_bjorande@quicinc.com; a=openpgp;
- fpr=05DE03CC5F35EA4F0966D5250B1F393F0D99ADC5
-X-Endpoint-Received: by B4 Relay for quic_bjorande@quicinc.com/default with auth_id=118
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706865569; l=2936;
+ i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
+ bh=xE7EaY+SaLysKQoYh+sK179THKxjITu9cCGTNetAMsE=;
+ b=JV8ZrWmbGIpnTvgNTtvg3p3kzLL5SUHQd8O9lRAeQNyXPg1sWhIXmlYwg3DSLhfVQKD8OIosM
+ kHj7L+uTIWyCUcg4d29vb3TG9fjjdE4Vnuhr117r0dDfRVfS/kNcv72
+X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
+ pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
+X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With interconnect providers built as modules Qualcomm SM8250 and QCM2290
-platforms launches init without /dev/console being backed by the debug
-UART.
+Hello!
 
-Build there drivers into the kernel, to make sure the dependencies for
-the UART driver are available and thereby give userspace access to the
-UART without having to re-open the console, once the deferred UART
-driver has probed.
+This is the second patch series with the goal of simplifying the MT7530 DSA
+subdriver and improving support for MT7530, MT7531, and the switch on the
+MT7988 SoC.
 
-Signed-off-by: Bjorn Andersson <quic_bjorande@quicinc.com>
+I have done a simple ping test to confirm basic communication on all switch
+ports on MCM and standalone MT7530, and MT7531 switch with this patch
+series applied.
+
+MT7621 Unielec, MCM MT7530:
+
+rgmii-only-gmac0-mt7621-unielec-u7621-06-16m.dtb
+gmac0-and-gmac1-mt7621-unielec-u7621-06-16m.dtb
+
+tftpboot 0x80008000 mips-uzImage.bin; tftpboot 0x83000000 mips-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootm 0x80008000 0x83000000 0x83f00000
+
+MT7622 Bananapi, MT7531:
+
+gmac0-and-gmac1-mt7622-bananapi-bpi-r64.dtb
+
+tftpboot 0x40000000 arm64-Image; tftpboot 0x45000000 arm64-rootfs.cpio.uboot; tftpboot 0x4a000000 $dtb; booti 0x40000000 0x45000000 0x4a000000
+
+MT7623 Bananapi, standalone MT7530:
+
+rgmii-only-gmac0-mt7623n-bananapi-bpi-r2.dtb
+gmac0-and-gmac1-mt7623n-bananapi-bpi-r2.dtb
+
+tftpboot 0x80008000 arm-zImage; tftpboot 0x83000000 arm-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootz 0x80008000 0x83000000 0x83f00000
+
+This patch series is the continuation of the patch series linked below.
+
+https://lore.kernel.org/r/20230522121532.86610-1-arinc.unal@arinc9.com
+
+Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- arch/arm64/configs/defconfig | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Changes in v3:
+- Update the patches with the latest received trailers.
+- Patch 5
+  - Disable TRGMII clocks for all cases.
+- Link to v2: https://lore.kernel.org/r/20240130-for-netnext-mt7530-improvements-2-v2-0-ba06f5dd9eb0@arinc9.com
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index e6cf3e5d63c3..0463db563215 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -1550,7 +1550,7 @@ CONFIG_INTERCONNECT_QCOM=y
- CONFIG_INTERCONNECT_QCOM_MSM8916=m
- CONFIG_INTERCONNECT_QCOM_MSM8996=m
- CONFIG_INTERCONNECT_QCOM_OSM_L3=m
--CONFIG_INTERCONNECT_QCOM_QCM2290=m
-+CONFIG_INTERCONNECT_QCOM_QCM2290=y
- CONFIG_INTERCONNECT_QCOM_QCS404=m
- CONFIG_INTERCONNECT_QCOM_SA8775P=y
- CONFIG_INTERCONNECT_QCOM_SC7180=y
-@@ -1560,7 +1560,7 @@ CONFIG_INTERCONNECT_QCOM_SC8280XP=y
- CONFIG_INTERCONNECT_QCOM_SDM845=y
- CONFIG_INTERCONNECT_QCOM_SDX75=y
- CONFIG_INTERCONNECT_QCOM_SM8150=m
--CONFIG_INTERCONNECT_QCOM_SM8250=m
-+CONFIG_INTERCONNECT_QCOM_SM8250=y
- CONFIG_INTERCONNECT_QCOM_SM8350=m
- CONFIG_INTERCONNECT_QCOM_SM8450=y
- CONFIG_INTERCONNECT_QCOM_SM8550=y
+Changes in v2:
+- Update the patches with the latest received trailers.
+- Remove 'net: dsa: mt7530: move enabling port 6 to mt7530_setup_port6()'
+  which was patch 5. I will bring a more appropriate change with a later
+  patch series.
+- Patch 5
+  - Set P6_INTF_MODE(0) and explain why on the patch log.
+- Patch 6
+  - Mention the MT7988 document and explain more on the patch log.
+- Patch 7
+  - Explain more on the patch log.
+- Link to v1: https://lore.kernel.org/r/20240113102529.80371-1-arinc.unal@arinc9.com
 
 ---
-base-commit: 06f658aadff0e483ee4f807b0b46c9e5cba62bfa
-change-id: 20240201-enable-icc-8250-2290-b4fa7dc7b9de
+Arınç ÜNAL (7):
+      net: dsa: mt7530: empty default case on mt7530_setup_port5()
+      net: dsa: mt7530: call port 6 setup from mt7530_mac_config()
+      net: dsa: mt7530: remove pad_setup function pointer
+      net: dsa: mt7530: move XTAL check to mt7530_setup()
+      net: dsa: mt7530: simplify mt7530_setup_port6() and change to void
+      net: dsa: mt7530: correct port capabilities of MT7988
+      net: dsa: mt7530: do not clear config->supported_interfaces
+
+ drivers/net/dsa/mt7530.c | 152 +++++++++++++++++------------------------------
+ drivers/net/dsa/mt7530.h |   3 -
+ 2 files changed, 53 insertions(+), 102 deletions(-)
+---
+base-commit: 4acf4e62cd572b0c806035046b3698f5585ab821
+change-id: 20240121-for-netnext-mt7530-improvements-2-b4f43661b485
 
 Best regards,
 -- 
-Bjorn Andersson <quic_bjorande@quicinc.com>
+Arınç ÜNAL <arinc.unal@arinc9.com>
 
