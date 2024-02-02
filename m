@@ -1,67 +1,68 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Fri, 02 Feb 2024 12:19:13 +0300
-Subject: [PATCH net-next v3 7/7] net: dsa: mt7530: do not clear
- config->supported_interfaces
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH 0/2] fix DT overlays when device links are released
+Date: Fri, 02 Feb 2024 13:18:15 +0100
+Message-Id: <20240202-fix-device-links-overlays-v1-0-f9fd1404c8e2@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240202-for-netnext-mt7530-improvements-2-v3-7-63d5adae99ca@arinc9.com>
-References: <20240202-for-netnext-mt7530-improvements-2-v3-0-63d5adae99ca@arinc9.com>
-In-Reply-To: <20240202-for-netnext-mt7530-improvements-2-v3-0-63d5adae99ca@arinc9.com>
-To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
- Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
- Florian Fainelli <f.fainelli@gmail.com>, 
- Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Russell King <linux@armlinux.org.uk>
-Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com, 
- Bartel Eerdekens <bartel.eerdekens@constell8.be>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706865569; l=1237;
- i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=O2Jc3kMGKF7p2IMR4BSUcjDORbDflRydvglEQ/7DqIY=;
- b=oz1Jb+hTkQBq+zHBfH5lPDglY2+5P/R0xXWcb/3ehsxh63f1fIu/v/CVfc5jNziMq+IR/xQEe
- TAGfppGixF8A3Xdq7Zr8sCu9n7Yz5Rgl2SRFrlH3BIAVgvJgGlv3qtv
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
+X-B4-Tracking: v=1; b=H4sIAIfdvGUC/42NQQ6CMBBFr0Jm7Zi2IAmuvIdhMZQBJmJrWtNIS
+ O9u5QQu38//7+8QOQhHuFY7BE4SxbsC+lSBXcjNjDIWBqNMo7SpcZIPjqVoGVdxj4g+cVhpi3h
+ pjGFV16S6Acr+FbiUD/e9L7xIfPuwHVdJ/9J/rEmjxo6bqSVLNLT2Ro5WP5+tf0Kfc/4CNYu1E
+ cMAAAA=
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Frank Rowand <frowand.list@gmail.com>, Rob Herring <robh+dt@kernel.org>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Daniel Scally <djrscally@gmail.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, Len Brown <lenb@kernel.org>
+Cc: linux-acpi@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706876300; l=1394;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=qaZRRanp9ZLnLiYxNViu6c8e7LEdLYpVq+TyVdfsOAc=;
+ b=lX31h/u07E3I6PjCqxD/6Q1IoZFzkQvco9yw5skg5t6FgawTdPYE3Bogp/xhHn/ZUmz2IzLRS
+ WyTeA9lP/pfAxNLs/sQJKmuG7cI2P5gfIxzD0gA2Lw1SdjpUjE0XLwO
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There's no need to clear the config->supported_interfaces bitmap before
-reporting the supported interfaces as all bits in the bitmap will already
-be initialized to zero when the phylink_config structure is allocated. The
-"config" pointer points to &dp->phylink_config, and "dp" is allocated by
-dsa_port_touch() with kzalloc(), so all its fields are filled with zeroes.
+Link to RFC:
+ * https://lore.kernel.org/lkml/20240123-fix-device-links-overlays-v1-1-9e4f6acaab6c@analog.com/
 
-There's no code that would change the bitmap beforehand. Remove it.
+Changes since RFC:
+ * Use a dedicated workqueue to remove devlinks;
+ * Flush the devlink workqueue before checking the of_node refcount
+   value.
 
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
-Acked-by: Daniel Golle <daniel@makrotopia.org>
-Reviewed-by: Vladimir Oltean <olteanv@gmail.com>
+The following series is the result of the discussion I had with Rafael.
+To sum up the fundamental issue, device links drop their refcounts
+asynchronously and that means that the of_node refcount associated with
+the device will also be dropped asynchronously. Now, in
+__of_changeset_entry_destroy(), the assumption is that the node refcount
+must be 1 and that cannot be guaranteed given the above.
+
+I'm pasting again the link of the first time I exposed the issue where
+one can see the resulps (big splat) of failing DT assumption:
+
+https://lore.kernel.org/linux-devicetree/20230511151047.1779841-1-nuno.sa@analog.com/
+
 ---
- drivers/net/dsa/mt7530.c | 2 --
- 1 file changed, 2 deletions(-)
+Nuno Sa (2):
+      driver: core: add dedicated workqueue for devlink removal
+      of: dynamic: flush devlinks workqueue before destroying the changeset
 
-diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 4ca7ba94788e..aed1ea6815ee 100644
---- a/drivers/net/dsa/mt7530.c
-+++ b/drivers/net/dsa/mt7530.c
-@@ -2573,8 +2573,6 @@ static void mt7531_mac_port_get_caps(struct dsa_switch *ds, int port,
- static void mt7988_mac_port_get_caps(struct dsa_switch *ds, int port,
- 				     struct phylink_config *config)
- {
--	phy_interface_zero(config->supported_interfaces);
--
- 	switch (port) {
- 	/* Ports which are connected to switch PHYs. There is no MII pinout. */
- 	case 0 ... 3:
+ drivers/base/core.c    | 33 +++++++++++++++++++++++++++++----
+ drivers/of/dynamic.c   |  8 ++++++++
+ include/linux/fwnode.h |  1 +
+ 3 files changed, 38 insertions(+), 4 deletions(-)
+---
+base-commit: 6613476e225e090cc9aad49be7fa504e290dd33d
+change-id: 20240123-fix-device-links-overlays-5422e033a09b
+--
 
--- 
-2.40.1
+Thanks!
+- Nuno Sá
 
