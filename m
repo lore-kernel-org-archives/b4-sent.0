@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Fri, 02 Feb 2024 12:19:12 +0300
-Subject: [PATCH net-next v3 6/7] net: dsa: mt7530: correct port
- capabilities of MT7988
+Date: Fri, 02 Feb 2024 12:19:13 +0300
+Subject: [PATCH net-next v3 7/7] net: dsa: mt7530: do not clear
+ config->supported_interfaces
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240202-for-netnext-mt7530-improvements-2-v3-6-63d5adae99ca@arinc9.com>
+Message-Id: <20240202-for-netnext-mt7530-improvements-2-v3-7-63d5adae99ca@arinc9.com>
 References: <20240202-for-netnext-mt7530-improvements-2-v3-0-63d5adae99ca@arinc9.com>
 In-Reply-To: <20240202-for-netnext-mt7530-improvements-2-v3-0-63d5adae99ca@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -23,44 +23,44 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1706865569; l=1134;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1706865569; l=1237;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=C+eRNzRMDtIba7vQLCEXXq4gYtY07Q6DrrKE/vhW8K8=;
- b=lNLVoRsMxDJZyiW6dmWXjSwLM7Gjg30vtnnsuEDfzBR2RLoRy8mx3yKz0TAFr0rzRug4RBdz7
- WydiIk7K0/ODghokoz9QPeZrSgr2vxqcF/DAd88ZwytJRfuxJtcLfcO
+ bh=O2Jc3kMGKF7p2IMR4BSUcjDORbDflRydvglEQ/7DqIY=;
+ b=oz1Jb+hTkQBq+zHBfH5lPDglY2+5P/R0xXWcb/3ehsxh63f1fIu/v/CVfc5jNziMq+IR/xQEe
+ TAGfppGixF8A3Xdq7Zr8sCu9n7Yz5Rgl2SRFrlH3BIAVgvJgGlv3qtv
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the switch on the MT7988 SoC, as shown in Block Diagram 8.1.1.3 on page
-125 of "MT7988A Wi-Fi 7 Generation Router Platform: Datasheet (Open
-Version) v0.1", there are only 4 PHYs. That's port 0 to 3. Set the case for
-ports which connect to switch PHYs to '0 ... 3'.
+There's no need to clear the config->supported_interfaces bitmap before
+reporting the supported interfaces as all bits in the bitmap will already
+be initialized to zero when the phylink_config structure is allocated. The
+"config" pointer points to &dp->phylink_config, and "dp" is allocated by
+dsa_port_touch() with kzalloc(), so all its fields are filled with zeroes.
 
-Port 4 and 5 are not used at all in this design.
+There's no code that would change the bitmap beforehand. Remove it.
 
-Link: https://wiki.banana-pi.org/Banana_Pi_BPI-R4#Documents [1]
+Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 Acked-by: Daniel Golle <daniel@makrotopia.org>
 Reviewed-by: Vladimir Oltean <olteanv@gmail.com>
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/net/dsa/mt7530.c | 2 --
+ 1 file changed, 2 deletions(-)
 
 diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index e1fdef5766fb..4ca7ba94788e 100644
+index 4ca7ba94788e..aed1ea6815ee 100644
 --- a/drivers/net/dsa/mt7530.c
 +++ b/drivers/net/dsa/mt7530.c
-@@ -2577,7 +2577,7 @@ static void mt7988_mac_port_get_caps(struct dsa_switch *ds, int port,
- 
+@@ -2573,8 +2573,6 @@ static void mt7531_mac_port_get_caps(struct dsa_switch *ds, int port,
+ static void mt7988_mac_port_get_caps(struct dsa_switch *ds, int port,
+ 				     struct phylink_config *config)
+ {
+-	phy_interface_zero(config->supported_interfaces);
+-
  	switch (port) {
  	/* Ports which are connected to switch PHYs. There is no MII pinout. */
--	case 0 ... 4:
-+	case 0 ... 3:
- 		__set_bit(PHY_INTERFACE_MODE_INTERNAL,
- 			  config->supported_interfaces);
- 		break;
+ 	case 0 ... 3:
 
 -- 
 2.40.1
