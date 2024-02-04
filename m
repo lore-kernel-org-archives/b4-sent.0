@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Sun, 04 Feb 2024 19:34:21 +0300
-Subject: [PATCH net-next v4 3/7] net: dsa: mt7530: simplify
- mt7530_pad_clk_setup()
+Date: Sun, 04 Feb 2024 19:34:22 +0300
+Subject: [PATCH net-next v4 4/7] net: dsa: mt7530: call port 6 setup from
+ mt7530_mac_config()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240204-for-netnext-mt7530-improvements-2-v4-3-02bf0abaadb8@arinc9.com>
+Message-Id: <20240204-for-netnext-mt7530-improvements-2-v4-4-02bf0abaadb8@arinc9.com>
 References: <20240204-for-netnext-mt7530-improvements-2-v4-0-02bf0abaadb8@arinc9.com>
 In-Reply-To: <20240204-for-netnext-mt7530-improvements-2-v4-0-02bf0abaadb8@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -24,149 +24,92 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>, 
  "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707064489; l=4954;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707064489; l=2654;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=9/J2GD71ZKdoYnfGtT2kaa92CIVclpnfm7Vnc7HsKpg=;
- b=ZVKzvpto9gb+0jhVVuEjsboUy0hB8B7l/tQy/WqE31KW22plC1Papds/RD+GCCiTVAw0mUPAH
- 3VndNirdV+nAEJMEfkN0Pv817lQ2lbl8pRBn6R4QyBYeOnL1+i3vYwa
+ bh=1hpZjAIapmRbOQsfxIUO58Y9kVJXnb7j8qJPy2E+m/0=;
+ b=KHb2QUE4Hhz8YMEq0xZjyf+Oc+A45D3UsjybeXA537nc0jvbGMe2d2naSMjf3XoFDdD/1LQKB
+ KAkJWugqAk1AMvSlKBf834UtyfBGuN0XIWeTtnQNLbG57lpcTOGRfHs
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This code is from before this driver was converted to phylink API. Phylink
-deals with the unsupported interface cases before mt7530_pad_clk_setup() is
-run. Therefore, the default case would never run. However, it must be
-defined nonetheless to handle all the remaining enumeration values, the
-phy-modes.
+mt7530_pad_clk_setup() is called if port 6 is enabled. It used to do more
+things than setting up port 6. That part was moved to more appropriate
+locations, mt7530_setup() and mt7530_pll_setup().
 
-Switch to if statement for RGMII and return which simplifies the code and
-saves an indent.
+Now that all it does is set up port 6, rename it to mt7530_setup_port6(),
+and move it to a more appropriate location, under mt7530_mac_config().
 
-Set P6_INTF_MODE, which is the three least significant bits of the
-MT7530_P6ECR register, to 0 for RGMII even though it will already be 0
-after reset. This is to keep supporting dynamic reconfiguration of the port
-in the case the interface changes from TRGMII to RGMII.
+Change mt7530_setup_port6() to void as there're no error cases.
 
-Disable the TRGMII clocks for all cases. They will be enabled if TRGMII is
-being used.
+Leave an empty mt7530_pad_clk_setup() to satisfy the pad_setup function
+pointer.
 
-Read XTAL after checking for RGMII as it's only needed for the TRGMII
-interface mode.
+This is the code path for setting up the ports before:
 
-Reviewed-by: Daniel Golle <daniel@makrotopia.org>
+dsa_switch_ops :: phylink_mac_config() -> mt753x_phylink_mac_config()
+-> mt753x_mac_config()
+   -> mt753x_info :: mac_port_config() -> mt7530_mac_config()
+      -> mt7530_setup_port5()
+-> mt753x_pad_setup()
+   -> mt753x_info :: pad_setup() -> mt7530_pad_clk_setup()
+
+This is after:
+
+dsa_switch_ops :: phylink_mac_config() -> mt753x_phylink_mac_config()
+-> mt753x_mac_config()
+   -> mt753x_info :: mac_port_config() -> mt7530_mac_config()
+      -> mt7530_setup_port5()
+      -> mt7530_setup_port6()
+
+Reviewed-by: Vladimir Oltean <olteanv@gmail.com>
 Reviewed-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530.c | 91 +++++++++++++++++++++---------------------------
- 1 file changed, 40 insertions(+), 51 deletions(-)
+ drivers/net/dsa/mt7530.c | 17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 8b8469eba863..82e90da1e52b 100644
+index 82e90da1e52b..18842c759b63 100644
 --- a/drivers/net/dsa/mt7530.c
 +++ b/drivers/net/dsa/mt7530.c
-@@ -418,64 +418,53 @@ static int
- mt7530_pad_clk_setup(struct dsa_switch *ds, phy_interface_t interface)
+@@ -414,8 +414,8 @@ mt753x_preferred_default_local_cpu_port(struct dsa_switch *ds)
+ }
+ 
+ /* Setup port 6 interface mode and TRGMII TX circuit */
+-static int
+-mt7530_pad_clk_setup(struct dsa_switch *ds, phy_interface_t interface)
++static void
++mt7530_setup_port6(struct dsa_switch *ds, phy_interface_t interface)
  {
  	struct mt7530_priv *priv = ds->priv;
--	u32 ncpo1, ssc_delta, trgint, xtal;
-+	u32 ncpo1, ssc_delta, xtal;
+ 	u32 ncpo1, ssc_delta, xtal;
+@@ -465,7 +465,11 @@ mt7530_pad_clk_setup(struct dsa_switch *ds, phy_interface_t interface)
  
--	xtal = mt7530_read(priv, MT7530_MHWTRAP) & HWTRAP_XTAL_MASK;
-+	/* Disable the MT7530 TRGMII clocks */
-+	core_clear(priv, CORE_TRGMII_GSW_CLK_CG, REG_TRGMIICK_EN);
+ 	/* Enable the MT7530 TRGMII clocks */
+ 	core_set(priv, CORE_TRGMII_GSW_CLK_CG, REG_TRGMIICK_EN);
++}
  
--	switch (interface) {
--	case PHY_INTERFACE_MODE_RGMII:
--		trgint = 0;
--		break;
--	case PHY_INTERFACE_MODE_TRGMII:
--		trgint = 1;
--		if (xtal == HWTRAP_XTAL_25MHZ)
--			ssc_delta = 0x57;
--		else
--			ssc_delta = 0x87;
--		if (priv->id == ID_MT7621) {
--			/* PLL frequency: 125MHz: 1.0GBit */
--			if (xtal == HWTRAP_XTAL_40MHZ)
--				ncpo1 = 0x0640;
--			if (xtal == HWTRAP_XTAL_25MHZ)
--				ncpo1 = 0x0a00;
--		} else { /* PLL frequency: 250MHz: 2.0Gbit */
--			if (xtal == HWTRAP_XTAL_40MHZ)
--				ncpo1 = 0x0c80;
--			if (xtal == HWTRAP_XTAL_25MHZ)
--				ncpo1 = 0x1400;
--		}
--		break;
--	default:
--		dev_err(priv->dev, "xMII interface %d not supported\n",
--			interface);
--		return -EINVAL;
-+	if (interface == PHY_INTERFACE_MODE_RGMII) {
-+		mt7530_rmw(priv, MT7530_P6ECR, P6_INTF_MODE_MASK,
-+			   P6_INTF_MODE(0));
-+		return;
- 	}
++static int
++mt7530_pad_clk_setup(struct dsa_switch *ds, phy_interface_t interface)
++{
+ 	return 0;
+ }
  
--	mt7530_rmw(priv, MT7530_P6ECR, P6_INTF_MODE_MASK,
--		   P6_INTF_MODE(trgint));
-+	mt7530_rmw(priv, MT7530_P6ECR, P6_INTF_MODE_MASK, P6_INTF_MODE(1));
+@@ -2613,11 +2617,10 @@ mt7530_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
+ {
+ 	struct mt7530_priv *priv = ds->priv;
  
--	if (trgint) {
--		/* Disable the MT7530 TRGMII clocks */
--		core_clear(priv, CORE_TRGMII_GSW_CLK_CG, REG_TRGMIICK_EN);
-+	xtal = mt7530_read(priv, MT7530_MHWTRAP) & HWTRAP_XTAL_MASK;
- 
--		/* Setup the MT7530 TRGMII Tx Clock */
--		core_write(priv, CORE_PLL_GROUP5, RG_LCDDS_PCW_NCPO1(ncpo1));
--		core_write(priv, CORE_PLL_GROUP6, RG_LCDDS_PCW_NCPO0(0));
--		core_write(priv, CORE_PLL_GROUP10, RG_LCDDS_SSC_DELTA(ssc_delta));
--		core_write(priv, CORE_PLL_GROUP11, RG_LCDDS_SSC_DELTA1(ssc_delta));
--		core_write(priv, CORE_PLL_GROUP4,
--			   RG_SYSPLL_DDSFBK_EN | RG_SYSPLL_BIAS_EN |
--			   RG_SYSPLL_BIAS_LPF_EN);
--		core_write(priv, CORE_PLL_GROUP2,
--			   RG_SYSPLL_EN_NORMAL | RG_SYSPLL_VODEN |
--			   RG_SYSPLL_POSDIV(1));
--		core_write(priv, CORE_PLL_GROUP7,
--			   RG_LCDDS_PCW_NCPO_CHG | RG_LCCDS_C(3) |
--			   RG_LCDDS_PWDB | RG_LCDDS_ISO_EN);
-+	if (xtal == HWTRAP_XTAL_25MHZ)
-+		ssc_delta = 0x57;
-+	else
-+		ssc_delta = 0x87;
- 
--		/* Enable the MT7530 TRGMII clocks */
--		core_set(priv, CORE_TRGMII_GSW_CLK_CG, REG_TRGMIICK_EN);
--	}
-+	if (priv->id == ID_MT7621) {
-+		/* PLL frequency: 125MHz: 1.0GBit */
-+		if (xtal == HWTRAP_XTAL_40MHZ)
-+			ncpo1 = 0x0640;
-+		if (xtal == HWTRAP_XTAL_25MHZ)
-+			ncpo1 = 0x0a00;
-+	} else { /* PLL frequency: 250MHz: 2.0Gbit */
-+		if (xtal == HWTRAP_XTAL_40MHZ)
-+			ncpo1 = 0x0c80;
-+		if (xtal == HWTRAP_XTAL_25MHZ)
-+			ncpo1 = 0x1400;
-+	}
-+
-+	/* Setup the MT7530 TRGMII Tx Clock */
-+	core_write(priv, CORE_PLL_GROUP5, RG_LCDDS_PCW_NCPO1(ncpo1));
-+	core_write(priv, CORE_PLL_GROUP6, RG_LCDDS_PCW_NCPO0(0));
-+	core_write(priv, CORE_PLL_GROUP10, RG_LCDDS_SSC_DELTA(ssc_delta));
-+	core_write(priv, CORE_PLL_GROUP11, RG_LCDDS_SSC_DELTA1(ssc_delta));
-+	core_write(priv, CORE_PLL_GROUP4, RG_SYSPLL_DDSFBK_EN |
-+		   RG_SYSPLL_BIAS_EN | RG_SYSPLL_BIAS_LPF_EN);
-+	core_write(priv, CORE_PLL_GROUP2, RG_SYSPLL_EN_NORMAL |
-+		   RG_SYSPLL_VODEN | RG_SYSPLL_POSDIV(1));
-+	core_write(priv, CORE_PLL_GROUP7, RG_LCDDS_PCW_NCPO_CHG |
-+		   RG_LCCDS_C(3) | RG_LCDDS_PWDB | RG_LCDDS_ISO_EN);
-+
-+	/* Enable the MT7530 TRGMII clocks */
-+	core_set(priv, CORE_TRGMII_GSW_CLK_CG, REG_TRGMIICK_EN);
+-	/* Only need to setup port5. */
+-	if (port != 5)
+-		return 0;
+-
+-	mt7530_setup_port5(priv->ds, interface);
++	if (port == 5) {
++		mt7530_setup_port5(priv->ds, interface);
++	else if (port == 6)
++		mt7530_setup_port6(priv->ds, interface);
  
  	return 0;
  }
