@@ -1,75 +1,67 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Mon, 05 Feb 2024 13:09:33 +0100
-Subject: [PATCH v2 2/2] of: dynamic: flush devlinks workqueue before
- destroying the changeset
+Date: Mon, 05 Feb 2024 16:58:14 +0100
+Subject: [PATCH] counter: fix privdata alignment
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240205-fix-device-links-overlays-v2-2-5344f8c79d57@analog.com>
-References: <20240205-fix-device-links-overlays-v2-0-5344f8c79d57@analog.com>
-In-Reply-To: <20240205-fix-device-links-overlays-v2-0-5344f8c79d57@analog.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Frank Rowand <frowand.list@gmail.com>, Rob Herring <robh+dt@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Daniel Scally <djrscally@gmail.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, Len Brown <lenb@kernel.org>
-Cc: linux-acpi@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240205-counter-align-fix-v1-1-4821ced960ab@analog.com>
+X-B4-Tracking: v=1; b=H4sIAJYFwWUC/x2MQQqAIBAAvxJ7bsEsCfpKdLBabSE0tCII/97Sc
+ QZmXsiUmDIM1QuJbs4cg0BTV7BsNnhCXoVBK90prQwu8QonJbQ7+4COH2ydpdnNptfWgXRHItH
+ /c5xK+QAL+cZwYwAAAA==
+To: linux-iio@vger.kernel.org
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>, 
+ William Breathitt Gray <william.gray@linaro.org>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707134972; l=1506;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707148694; l=1491;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=YDuksPxVzpgUXsXtMiptrKAHNtqa9E4wT61h67KKExU=;
- b=+pR9xIxPkbxkT8MxATu4NfCBUJ+zzK6rP+cyMoqKYeDDvSxTJi8Gd3uvMlCO1CEC8rqyBMLCI
- WWMLTeb8A1LDHRH9Rh6EZ0RqMEszqHesQn9jA8kbQP8zEix/vgTjyD3
+ bh=JL+X9g5gr6vuqR5+sLDCtbqSByJMt51WufOmdlrZIjQ=;
+ b=M4MdFlfCwoupYtvp/5nltEXUhtZHeVJwQrX0B+cfrKVKkXMrs10ywLLdB8q5vo3+FhV5Z//ks
+ yS3T5yn4aDCBg7U3E+qKYy30Gm2TPz2R2gU9au9VPprFq9pKtLuwcz0
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Device links will drop their supplier + consumer refcounts
-asynchronously. That means that the refcount of the of_node attached to
-these devices will also be dropped asynchronously and so we cannot
-guarantee the DT overlay assumption that the of_node refcount must be 1 in
-__of_changeset_entry_destroy().
+Aligning to the L1 cache does guarantee the same alignment as kmallocing
+an object [1]. Furthermore, in some platforms, that alignment is not
+sufficient for DMA safety (in case someone wants to have a DMA safe
+buffer in privdata) [2].
 
-Given the above, call the new fwnode_links_flush_queue() helper to flush
-the devlink workqueue so we can be sure that all links are dropped before
-doing the proper checks.
+Sometime ago, we had the same fixes in IIO.
 
+[1]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/base/devres.c#n35
+[2]: https://lore.kernel.org/linux-iio/20220508175712.647246-2-jic23@kernel.org/
+
+Fixes: c18e2760308e ("counter: Provide alternative counter registration functions")
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/of/dynamic.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+William, if you prefer, we can do something like in IIO and add a
+specific COUNTER_DMA_MINALIGN define
+---
+ drivers/counter/counter-core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/of/dynamic.c b/drivers/of/dynamic.c
-index 3bf27052832f..b7153c72c9c9 100644
---- a/drivers/of/dynamic.c
-+++ b/drivers/of/dynamic.c
-@@ -14,6 +14,7 @@
- #include <linux/slab.h>
- #include <linux/string.h>
- #include <linux/proc_fs.h>
-+#include <linux/fwnode.h>
+diff --git a/drivers/counter/counter-core.c b/drivers/counter/counter-core.c
+index 09c77afb33ca..073bf6b67a57 100644
+--- a/drivers/counter/counter-core.c
++++ b/drivers/counter/counter-core.c
+@@ -34,7 +34,7 @@ struct counter_device_allochelper {
+ 	 * This is cache line aligned to ensure private data behaves like if it
+ 	 * were kmalloced separately.
+ 	 */
+-	unsigned long privdata[] ____cacheline_aligned;
++	unsigned long privdata[] __aligned(ARCH_DMA_MINALIGN);
+ };
  
- #include "of_private.h"
- 
-@@ -518,6 +519,13 @@ EXPORT_SYMBOL(of_changeset_create_node);
- 
- static void __of_changeset_entry_destroy(struct of_changeset_entry *ce)
- {
-+	/*
-+	 * device links drop their device references (and hence their of_node
-+	 * references) asynchronously on a dedicated workqueue. Hence we need
-+	 * to flush it to make sure everything is done before doing the below
-+	 * checks.
-+	 */
-+	fwnode_links_flush_queue();
- 	if (ce->action == OF_RECONFIG_ATTACH_NODE &&
- 	    of_node_check_flag(ce->np, OF_OVERLAY)) {
- 		if (kref_read(&ce->np->kobj.kref) > 1) {
+ static void counter_device_release(struct device *dev)
 
--- 
-2.43.0
+---
+base-commit: 6613476e225e090cc9aad49be7fa504e290dd33d
+change-id: 20240205-counter-align-fix-3faebfb572af
+--
+
+Thanks!
+- Nuno Sá
 
