@@ -1,67 +1,128 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Mon, 05 Feb 2024 16:58:14 +0100
-Subject: [PATCH] counter: fix privdata alignment
+From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Subject: [PATCH net-next v5 0/7] MT7530 DSA Subdriver Improvements Act II
+Date: Tue, 06 Feb 2024 01:08:01 +0300
+Message-Id: <20240206-for-netnext-mt7530-improvements-2-v5-0-d7d92a185cb1@arinc9.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240205-counter-align-fix-v1-1-4821ced960ab@analog.com>
-X-B4-Tracking: v=1; b=H4sIAJYFwWUC/x2MQQqAIBAAvxJ7bsEsCfpKdLBabSE0tCII/97Sc
- QZmXsiUmDIM1QuJbs4cg0BTV7BsNnhCXoVBK90prQwu8QonJbQ7+4COH2ydpdnNptfWgXRHItH
- /c5xK+QAL+cZwYwAAAA==
-To: linux-iio@vger.kernel.org
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>, 
- William Breathitt Gray <william.gray@linaro.org>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707148694; l=1491;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=JL+X9g5gr6vuqR5+sLDCtbqSByJMt51WufOmdlrZIjQ=;
- b=M4MdFlfCwoupYtvp/5nltEXUhtZHeVJwQrX0B+cfrKVKkXMrs10ywLLdB8q5vo3+FhV5Z//ks
- yS3T5yn4aDCBg7U3E+qKYy30Gm2TPz2R2gU9au9VPprFq9pKtLuwcz0
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+X-B4-Tracking: v=1; b=H4sIAEFcwWUC/43OTW7DIBAF4KtErDsWv46dVe8RZQFmaJBqiICiV
+ JHvXkoXTZVFs0GMRu97cyMZk8dMDrsbSVh99jG0Qb3syHLW4Q3B2zYTTrmkjDNwMUHAEvBaYC1
+ 7JSj49ZJixRVDycDBSCfFODIjJ0Wac0no/LV3HEmLwneWnNrm7HOJ6bOXV9b3Pz1MMMoVn4eJi
+ j0DBjr5sAwfQb+/9u88LHHtRuV3uXbM//dVDhSMpqNT1s5o6AMpfsn2PEOKRo7CKm01zvOiH0h
+ 5T8pnSNlIyo2j2mhtzfSH3LbtC79DbtO7AQAA
+To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
+ Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Florian Fainelli <f.fainelli@gmail.com>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com, 
+ Bartel Eerdekens <bartel.eerdekens@constell8.be>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, 
+ =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>, 
+ "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707170890; l=3529;
+ i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
+ bh=A+6R9ZDS9UjRyWJgxuvz/fapj4AM3nXOKkH2EGth9G0=;
+ b=lMad3J70PLiCdiP2RqMA7W8I4o6zA0ejht2u6w5ckUlGJy2YN1gQn4f5EwDCdQphg/ouy3+dp
+ BWUoF08vFkSBD7U/W9T3fZ5Zd+bPGbdXnK/FCfXthlaTVPPhRXSkQzm
+X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
+ pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
+X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Aligning to the L1 cache does guarantee the same alignment as kmallocing
-an object [1]. Furthermore, in some platforms, that alignment is not
-sufficient for DMA safety (in case someone wants to have a DMA safe
-buffer in privdata) [2].
+Hello!
 
-Sometime ago, we had the same fixes in IIO.
+This is the second patch series with the goal of simplifying the MT7530 DSA
+subdriver and improving support for MT7530, MT7531, and the switch on the
+MT7988 SoC.
 
-[1]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/base/devres.c#n35
-[2]: https://lore.kernel.org/linux-iio/20220508175712.647246-2-jic23@kernel.org/
+I have done a simple ping test to confirm basic communication on all switch
+ports on MCM and standalone MT7530, and MT7531 switch with this patch
+series applied.
 
-Fixes: c18e2760308e ("counter: Provide alternative counter registration functions")
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+MT7621 Unielec, MCM MT7530:
+
+rgmii-only-gmac0-mt7621-unielec-u7621-06-16m.dtb
+gmac0-and-gmac1-mt7621-unielec-u7621-06-16m.dtb
+
+tftpboot 0x80008000 mips-uzImage.bin; tftpboot 0x83000000 mips-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootm 0x80008000 0x83000000 0x83f00000
+
+MT7622 Bananapi, MT7531:
+
+gmac0-and-gmac1-mt7622-bananapi-bpi-r64.dtb
+
+tftpboot 0x40000000 arm64-Image; tftpboot 0x45000000 arm64-rootfs.cpio.uboot; tftpboot 0x4a000000 $dtb; booti 0x40000000 0x45000000 0x4a000000
+
+MT7623 Bananapi, standalone MT7530:
+
+rgmii-only-gmac0-mt7623n-bananapi-bpi-r2.dtb
+gmac0-and-gmac1-mt7623n-bananapi-bpi-r2.dtb
+
+tftpboot 0x80008000 arm-zImage; tftpboot 0x83000000 arm-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootz 0x80008000 0x83000000 0x83f00000
+
+This patch series is the continuation of the patch series linked below.
+
+https://lore.kernel.org/r/20230522121532.86610-1-arinc.unal@arinc9.com
+
+Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
-William, if you prefer, we can do something like in IIO and add a
-specific COUNTER_DMA_MINALIGN define
+Changes in v5:
+- Update the patches with the latest received trailers.
+- Patch 3
+  - Replace "return;" with "return 0;".
+- Patch 4
+  - Remove the stray brace.
+- Link to v4: https://lore.kernel.org/r/20240204-for-netnext-mt7530-improvements-2-v4-0-02bf0abaadb8@arinc9.com
+
+Changes in v4:
+- Update the patches with the latest received trailers.
+- Leave no error returns on mt7530_pad_clk_setup() before renaming it to
+  mt7530_setup_port6() and moving it to under mt7530_mac_config().
+- Link to v3: https://lore.kernel.org/r/20240202-for-netnext-mt7530-improvements-2-v3-0-63d5adae99ca@arinc9.com
+
+Changes in v3:
+- Update the patches with the latest received trailers.
+- Patch 5
+  - Disable TRGMII clocks for all cases.
+- Link to v2: https://lore.kernel.org/r/20240130-for-netnext-mt7530-improvements-2-v2-0-ba06f5dd9eb0@arinc9.com
+
+Changes in v2:
+- Update the patches with the latest received trailers.
+- Remove 'net: dsa: mt7530: move enabling port 6 to mt7530_setup_port6()'
+  which was patch 5. I will bring a more appropriate change with a later
+  patch series.
+- Patch 5
+  - Set P6_INTF_MODE(0) and explain why on the patch log.
+- Patch 6
+  - Mention the MT7988 document and explain more on the patch log.
+- Patch 7
+  - Explain more on the patch log.
+- Link to v1: https://lore.kernel.org/r/20240113102529.80371-1-arinc.unal@arinc9.com
+
 ---
- drivers/counter/counter-core.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Arınç ÜNAL (7):
+      net: dsa: mt7530: empty default case on mt7530_setup_port5()
+      net: dsa: mt7530: move XTAL check to mt7530_setup()
+      net: dsa: mt7530: simplify mt7530_pad_clk_setup()
+      net: dsa: mt7530: call port 6 setup from mt7530_mac_config()
+      net: dsa: mt7530: remove pad_setup function pointer
+      net: dsa: mt7530: correct port capabilities of MT7988
+      net: dsa: mt7530: do not clear config->supported_interfaces
 
-diff --git a/drivers/counter/counter-core.c b/drivers/counter/counter-core.c
-index 09c77afb33ca..073bf6b67a57 100644
---- a/drivers/counter/counter-core.c
-+++ b/drivers/counter/counter-core.c
-@@ -34,7 +34,7 @@ struct counter_device_allochelper {
- 	 * This is cache line aligned to ensure private data behaves like if it
- 	 * were kmalloced separately.
- 	 */
--	unsigned long privdata[] ____cacheline_aligned;
-+	unsigned long privdata[] __aligned(ARCH_DMA_MINALIGN);
- };
- 
- static void counter_device_release(struct device *dev)
-
+ drivers/net/dsa/mt7530.c | 152 +++++++++++++++++------------------------------
+ drivers/net/dsa/mt7530.h |   3 -
+ 2 files changed, 53 insertions(+), 102 deletions(-)
 ---
-base-commit: 6613476e225e090cc9aad49be7fa504e290dd33d
-change-id: 20240205-counter-align-fix-3faebfb572af
---
+base-commit: 4acf4e62cd572b0c806035046b3698f5585ab821
+change-id: 20240121-for-netnext-mt7530-improvements-2-b4f43661b485
 
-Thanks!
-- Nuno Sá
+Best regards,
+-- 
+Arınç ÜNAL <arinc.unal@arinc9.com>
 
