@@ -1,69 +1,120 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Tue, 06 Feb 2024 01:08:08 +0300
-Subject: [PATCH net-next v5 7/7] net: dsa: mt7530: do not clear
- config->supported_interfaces
+From: Hui Liu <quic_huliu@quicinc.com>
+Date: Tue, 06 Feb 2024 10:21:13 +0800
+Subject: [PATCH] arm64: dts: qcom: qcm6490-idp: Add configurations for
+ gpio-keys
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240206-for-netnext-mt7530-improvements-2-v5-7-d7d92a185cb1@arinc9.com>
-References: <20240206-for-netnext-mt7530-improvements-2-v5-0-d7d92a185cb1@arinc9.com>
-In-Reply-To: <20240206-for-netnext-mt7530-improvements-2-v5-0-d7d92a185cb1@arinc9.com>
-To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
- Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
- Florian Fainelli <f.fainelli@gmail.com>, 
- Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Russell King <linux@armlinux.org.uk>
-Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com, 
- Bartel Eerdekens <bartel.eerdekens@constell8.be>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>, 
- "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707170890; l=1302;
- i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=gvaXZPxx1roTT4+mw5MzgfJe6pP7pdjnL2vUf+qUSy4=;
- b=2y+1C1w+kG/Rf4v/HYdsGB4n39PCvJsb8Gne5yNMqbYUhOaICYtGyNsOfsOo6l6HlCir4zV5U
- yiQaMMZrhx5BcESuWP7ftnYrOlNH+JGo6VngDtfH5l0woB3SE10tidx
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240206-gpio-keys-v1-1-7683799daf8d@quicinc.com>
+X-B4-Tracking: v=1; b=H4sIAJmXwWUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDIwMz3fSCzHzd7NTKYl1DY4ukpBQLUwMjSwsloPqCotS0zAqwWdGxtbU
+ AgwS/EVsAAAA=
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Hui Liu <quic_huliu@quicinc.com>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707186079; l=2004;
+ i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
+ bh=lvOnmsAUNOMzpmFklkrkm1uAXyOcYWnM0tUChPIUfy4=;
+ b=Mr7rYRZPB2Z85vFiulk2wuzYyyb/Tj0QCPYNqaSSMGR6qa2Wn3Kma7VIyJPvdKMc1oo0w+K3P
+ IjPWXhabhOACyXRNwElY+0BUl5XCANQZEbwPARiKNujBkQERcMtKbaT
+X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
+ pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
+X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There's no need to clear the config->supported_interfaces bitmap before
-reporting the supported interfaces as all bits in the bitmap will already
-be initialized to zero when the phylink_config structure is allocated. The
-"config" pointer points to &dp->phylink_config, and "dp" is allocated by
-dsa_port_touch() with kzalloc(), so all its fields are filled with zeroes.
+Add configurations for gpio-keys to enable pon_key and pon_resin
+key.
 
-There's no code that would change the bitmap beforehand. Remove it.
-
-Acked-by: Daniel Golle <daniel@makrotopia.org>
-Reviewed-by: Vladimir Oltean <olteanv@gmail.com>
-Reviewed-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
 ---
- drivers/net/dsa/mt7530.c | 2 --
- 1 file changed, 2 deletions(-)
+ arch/arm64/boot/dts/qcom/qcm6490-idp.dts | 43 ++++++++++++++++++++++++++++++++
+ 1 file changed, 43 insertions(+)
 
-diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 4ca7ba94788e..aed1ea6815ee 100644
---- a/drivers/net/dsa/mt7530.c
-+++ b/drivers/net/dsa/mt7530.c
-@@ -2573,8 +2573,6 @@ static void mt7531_mac_port_get_caps(struct dsa_switch *ds, int port,
- static void mt7988_mac_port_get_caps(struct dsa_switch *ds, int port,
- 				     struct phylink_config *config)
- {
--	phy_interface_zero(config->supported_interfaces);
--
- 	switch (port) {
- 	/* Ports which are connected to switch PHYs. There is no MII pinout. */
- 	case 0 ... 3:
+diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
+index acf145d1d97c..4199ebf667af 100644
+--- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
++++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
+@@ -9,6 +9,7 @@
+ #define PM7250B_SID 8
+ #define PM7250B_SID1 9
+ 
++#include <dt-bindings/input/linux-event-codes.h>
+ #include <dt-bindings/leds/common.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+ #include "sc7280.dtsi"
+@@ -39,6 +40,24 @@ chosen {
+ 		stdout-path = "serial0:115200n8";
+ 	};
+ 
++	gpio-keys {
++		compatible = "gpio-keys";
++		label = "gpio-keys";
++
++		pinctrl-names = "default";
++		pinctrl-0 = <&key_vol_up_default>;
++
++		key-volume-up {
++			label = "volume_up";
++			gpios = <&pm7325_gpios 6 GPIO_ACTIVE_LOW>;
++			linux,input-type = <1>;
++			linux,code = <KEY_VOLUMEUP>;
++			wakeup-source;
++			debounce-interval = <15>;
++			linux,can-disable;
++		};
++	};
++
+ 	reserved-memory {
+ 		xbl_mem: xbl@80700000 {
+ 			reg = <0x0 0x80700000 0x0 0x100000>;
+@@ -421,6 +440,17 @@ vreg_bob_3p296: bob {
+ 	};
+ };
+ 
++&pm7325_gpios {
++	key_vol_up_default: key-vol-up-state {
++		pins = "gpio6";
++		function = "normal";
++		input-enable;
++		bias-pull-up;
++		power-source = <0>;
++		qcom,drive-strength = <3>;
++	};
++};
++
+ &pm8350c_pwm {
+ 	status = "okay";
+ 
+@@ -448,6 +478,19 @@ led@3 {
+ 	};
+ };
+ 
++&pmk8350_pon {
++	status = "okay";
++};
++
++&pon_pwrkey {
++	status = "okay";
++};
++
++&pon_resin {
++	linux,code = <KEY_VOLUMEDOWN>;
++	status = "okay";
++};
++
+ &qupv3_id_0 {
+ 	status = "okay";
+ };
 
+---
+base-commit: 23e11d0318521e8693459b0e4d23aec614b3b68b
+change-id: 20240206-gpio-keys-138bbd850298
+
+Best regards,
 -- 
-2.40.1
+Hui Liu <quic_huliu@quicinc.com>
 
