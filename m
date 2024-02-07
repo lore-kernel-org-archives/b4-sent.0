@@ -1,57 +1,55 @@
-From: Taylor Jackson <taylor.a.jackson@me.com>
-Date: Tue, 06 Feb 2024 15:17:52 +0000
-Subject: [PATCH] fs/mnt_idmapping.c: Return -EINVAL when no map is written
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH v2 0/3] usb: ehci-generic: setup a bulk of phy when
+ possible
+Date: Thu, 08 Feb 2024 01:19:19 +0800
+Message-Id: <20240208-ehci-v2-0-6bf084b7ffac@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240206-mnt-idmap-inval-v1-1-68bfabb97533@me.com>
-X-B4-Tracking: v=1; b=H4sIAJ9NwmUC/x2MWwqAIBAAryL7neCjIrpK9CG51kKaaEgQ3j3pc
- wZmXsiYCDPM7IWEhTJdoYHsGGyHCTtyso1BCdULJUbuw92UN5FTKObkcrLa6MFN2lloVUzo6Pm
- Py1rrBxyJvE5hAAAA
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Seth Forshee <sforshee@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Taylor Jackson <taylor.a.jackson@me.com>
+X-B4-Tracking: v=1; b=H4sIAJe7w2UC/13MSw7CIBSF4a00dyzmQitNHbkP0wGvyo1aGqhE0
+ 7B3sUOH/8nJt0FykVyCc7NBdJkShbmGODRgvJpvjpGtDQJFhwI5c94Qk6ZVqrdDP7QC6nWJbqL
+ 3zlzH2p7SGuJnVzP/rX9A5gyZ1ieURuMkO3sJr/URwv1owhPGUsoXcRjmYpoAAAA=
+To: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>, 
+ Marek Vasut <marex@denx.de>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707232700; l=891;
- i=taylor.a.jackson@me.com; s=20240206; h=from:subject:message-id;
- bh=2l2Nt8j5OYHJJurGGPNUw+7blMKm2R2dG9Yx/CViUyI=;
- b=KmXGWKD8500obyfmmDYWwluHofdz3w2KdArnaAT553VlbvcAPHEfkuirTLne5vUdfSQ0ybnv2
- 5NsuDm3y269DxhGLXuFEhejM8RpOD4hmSb8MQKXBpti7AhwVCzH3aIW
-X-Developer-Key: i=taylor.a.jackson@me.com; a=ed25519;
- pk=NO7ntQpjIG1IGTO7F8OnLJDKSHUakhrhAli+PL72OLA=
-X-Endpoint-Received: by B4 Relay for taylor.a.jackson@me.com/20240206 with auth_id=127
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707326360; l=1101;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=/fS0bsXE9PBV5gTFm3ibliWw9oyVb2Wx4OmS5rN/YT4=;
+ b=vkj11UBLtpollvoGwe7fsoKrlcNdwAm/D4KHcUbUMUH7ZHdRGe68avgsiqcqH4ln+jOnZhxyv
+ RA2nxF45+PqA1FUfljNsMIUSpqUyucXI5Z10Gwc16bGj4acpa2tBi4A
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This change will return an "invalid argument" error code when a map is
-not provided when attempting to remap files using the id mapped mount
-command, rather than returning nothing.
+one USB controller can have multiple ports specified in dts, all of them
+should be setup to make use of all possible ports.
 
-Signed-off-by: Taylor Jackson <taylor.a.jackson@me.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- fs/mnt_idmapping.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/mnt_idmapping.c b/fs/mnt_idmapping.c
-index 64c5205e2b5e..3c60f1eaca61 100644
---- a/fs/mnt_idmapping.c
-+++ b/fs/mnt_idmapping.c
-@@ -214,7 +214,7 @@ static int copy_mnt_idmap(struct uid_gid_map *map_from,
- 	 * anything at all.
- 	 */
- 	if (nr_extents == 0)
--		return 0;
-+		return -EINVAL;
- 
- 	/*
- 	 * Here we know that nr_extents is greater than zero which means
+Changes in v2:
+- Rewrite generic_phy_setup_bulk(): Actually v1 is doing things
+  completely wrong. This series should work and it's tested on a real
+  machine.
+- Link to v1: https://lore.kernel.org/r/20240201-ehci-v1-0-bb506cb0f64d@outlook.com
 
 ---
-base-commit: 54be6c6c5ae8e0d93a6c4641cb7528eb0b6ba478
-change-id: 20240206-mnt-idmap-inval-18d3a35f83fd
+Yang Xiwen (3):
+      phy: add generic_setup(shutdown)_phy_bulk()
+      test: phy: test generic_setup(shutdown)_phy_bulk()
+      usb: ehci: Make usage of generic_{setup,shutdown}_phy_bulk() helpers
+
+ drivers/phy/phy-uclass.c        | 41 +++++++++++++++++++++++++++++++++++++++++
+ drivers/usb/host/ehci-generic.c |  8 ++++----
+ include/generic-phy.h           | 29 +++++++++++++++++++++++++++++
+ test/dm/phy.c                   |  4 ++++
+ 4 files changed, 78 insertions(+), 4 deletions(-)
+---
+base-commit: b6d8969bcb94321dfed1399f2eaa8768ba42caaa
+change-id: 20240201-ehci-6c3aa7d97932
 
 Best regards,
 -- 
-Taylor Jackson <taylor.a.jackson@me.com>
+Yang Xiwen <forbidden405@outlook.com>
 
