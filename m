@@ -1,13 +1,13 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Subject: [PATCH netnext 0/8] MT7530 DSA Subdriver Improvements Act III
-Date: Thu, 08 Feb 2024 08:51:28 +0300
-Message-Id: <20240208-for-netnext-mt7530-improvements-3-v1-0-d7c1cfd502ca@arinc9.com>
+Date: Thu, 08 Feb 2024 08:51:29 +0300
+Subject: [PATCH netnext 1/8] net: dsa: mt7530: remove .mac_port_config for
+ MT7988 and make it optional
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAOFrxGUC/y2NywrCMBAAf6Xs2YW8pOqviIeQbnQP2ZRNKIXSf
- zeIxznMzAGNlKnBYzpAaePGVQbYywTpE+VNyMtgcMYFY73FXBWFutDesfT56g1yWbVuVEh6Q4/
- xFlO4LyHPycHorEqZ99/jCX8VXuf5BUHoZvJ8AAAA
+Message-Id: <20240208-for-netnext-mt7530-improvements-3-v1-1-d7c1cfd502ca@arinc9.com>
+References: <20240208-for-netnext-mt7530-improvements-3-v1-0-d7c1cfd502ca@arinc9.com>
+In-Reply-To: <20240208-for-netnext-mt7530-improvements-3-v1-0-d7c1cfd502ca@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
  Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
  Florian Fainelli <f.fainelli@gmail.com>, 
@@ -23,70 +23,89 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707371489; l=2294;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707371489; l=2593;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=I2UVkBodmGXTC+p0Zlh/FVxtZDkiUUj9lE/paljIZ4w=;
- b=gq8GQghr0FGsPzjbmq9kPreygfY7mL8WiuYJbQrwOEuogZBn/bTXHNUUorfkvS7eFAu+kWIP/
- 67NXsEcSVHSA/CX13VqxyEx1+G4HAGa0wU9MdkVsEHSexcJwFBqHgg5
+ bh=zsBRS25Kdr7LfGGSqrR3mLbX7RMd9/oxSXqAjEC3Jr8=;
+ b=scfRkqj8CuopVukYSeB9ymHb53Jg2osgY8Y2QJfuBsWoGPc/41KTDdsg6ZJ44rfTIPVtIHB4d
+ BqyD+O0i/VzB2jRlNcIIliDtBy6mqitanizfe4lDIE1fXrtmrmqRhok
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello!
+For the switch on the MT7988 SoC, the mac_port_config member for ID_MT7988
+in mt753x_table is not needed as the interfaces of all MACs are already
+handled on mt7988_mac_port_get_caps().
 
-This is the third patch series with the goal of simplifying the MT7530 DSA
-subdriver and improving support for MT7530, MT7531, and the switch on the
-MT7988 SoC.
+Therefore, remove the mac_port_config member from ID_MT7988 in
+mt753x_table. Before calling priv->info->mac_port_config(), if there's no
+mac_port_config member in mt753x_table, exit mt753x_mac_config()
+successfully.
 
-I have done a simple ping test to confirm basic communication on all switch
-ports on MCM and standalone MT7530, and MT7531 switch with this patch
-series applied.
+Remove calling priv->info->mac_port_config() from the sanity check as the
+sanity check requires a pointer to a mac_port_config function to be
+non-NULL. This will fail for MT7988 as mac_port_config won't be a member of
+its info table.
 
-MT7621 Unielec, MCM MT7530:
-
-rgmii-only-gmac0-mt7621-unielec-u7621-06-16m.dtb
-gmac0-and-gmac1-mt7621-unielec-u7621-06-16m.dtb
-
-tftpboot 0x80008000 mips-uzImage.bin; tftpboot 0x83000000 mips-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootm 0x80008000 0x83000000 0x83f00000
-
-MT7622 Bananapi, MT7531:
-
-gmac0-and-gmac1-mt7622-bananapi-bpi-r64.dtb
-
-tftpboot 0x40000000 arm64-Image; tftpboot 0x45000000 arm64-rootfs.cpio.uboot; tftpboot 0x4a000000 $dtb; booti 0x40000000 0x45000000 0x4a000000
-
-MT7623 Bananapi, standalone MT7530:
-
-rgmii-only-gmac0-mt7623n-bananapi-bpi-r2.dtb
-gmac0-and-gmac1-mt7623n-bananapi-bpi-r2.dtb
-
-tftpboot 0x80008000 arm-zImage; tftpboot 0x83000000 arm-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootz 0x80008000 0x83000000 0x83f00000
-
-This patch series is the continuation of the patch series linked below.
-
-https://lore.kernel.org/r/20230522121532.86610-1-arinc.unal@arinc9.com
-
+Co-developed-by: Daniel Golle <daniel@makrotopia.org>
+Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Reviewed-by: Vladimir Oltean <olteanv@gmail.com>
 ---
-Arınç ÜNAL (8):
-      net: dsa: mt7530: remove .mac_port_config for MT7988 and make it optional
-      net: dsa: mt7530: set interrupt register only for MT7530
-      net: dsa: mt7530: do not use SW_PHY_RST to reset MT7531 switch
-      net: dsa: mt7530: get rid of useless error returns on phylink code path
-      net: dsa: mt7530: get rid of priv->info->cpu_port_config()
-      net: dsa: mt7530: get rid of mt753x_mac_config()
-      net: dsa: mt7530: put initialising PCS devices code back to original order
-      net: dsa: mt7530: simplify link operations and force link down on all ports
+ drivers/net/dsa/mt7530.c | 18 ++++--------------
+ 1 file changed, 4 insertions(+), 14 deletions(-)
 
- drivers/net/dsa/mt7530.c | 259 ++++++++---------------------------------------
- drivers/net/dsa/mt7530.h |  19 +---
- 2 files changed, 47 insertions(+), 231 deletions(-)
----
-base-commit: b6b614558ed5b2ca50edacc0f2fbf5f52158c86c
-change-id: 20240131-for-netnext-mt7530-improvements-3-a8ac49d4f7c2
+diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
+index 03d966fa67b2..94d4b2c87799 100644
+--- a/drivers/net/dsa/mt7530.c
++++ b/drivers/net/dsa/mt7530.c
+@@ -2655,17 +2655,6 @@ static bool mt753x_is_mac_port(u32 port)
+ 	return (port == 5 || port == 6);
+ }
+ 
+-static int
+-mt7988_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
+-		  phy_interface_t interface)
+-{
+-	if (dsa_is_cpu_port(ds, port) &&
+-	    interface == PHY_INTERFACE_MODE_INTERNAL)
+-		return 0;
+-
+-	return -EINVAL;
+-}
+-
+ static int
+ mt7531_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
+ 		  phy_interface_t interface)
+@@ -2706,6 +2695,9 @@ mt753x_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
+ {
+ 	struct mt7530_priv *priv = ds->priv;
+ 
++	if (!priv->info->mac_port_config)
++		return 0;
++
+ 	return priv->info->mac_port_config(ds, port, mode, state->interface);
+ }
+ 
+@@ -3169,7 +3161,6 @@ const struct mt753x_info mt753x_table[] = {
+ 		.phy_write_c45 = mt7531_ind_c45_phy_write,
+ 		.cpu_port_config = mt7988_cpu_port_config,
+ 		.mac_port_get_caps = mt7988_mac_port_get_caps,
+-		.mac_port_config = mt7988_mac_config,
+ 	},
+ };
+ EXPORT_SYMBOL_GPL(mt753x_table);
+@@ -3197,8 +3188,7 @@ mt7530_probe_common(struct mt7530_priv *priv)
+ 	 * properly.
+ 	 */
+ 	if (!priv->info->sw_setup || !priv->info->phy_read_c22 ||
+-	    !priv->info->phy_write_c22 || !priv->info->mac_port_get_caps ||
+-	    !priv->info->mac_port_config)
++	    !priv->info->phy_write_c22 || !priv->info->mac_port_get_caps)
+ 		return -EINVAL;
+ 
+ 	priv->id = priv->info->id;
 
-Best regards,
 -- 
-Arınç ÜNAL <arinc.unal@arinc9.com>
+2.40.1
 
