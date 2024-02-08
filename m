@@ -1,66 +1,92 @@
-From: Taylor Jackson <taylor.a.jackson@me.com>
-Date: Thu, 08 Feb 2024 03:02:54 +0000
-Subject: [PATCH v2] fs/mnt_idmapping.c: Return -EINVAL when no map is
- written
+From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Subject: [PATCH netnext 0/8] MT7530 DSA Subdriver Improvements Act III
+Date: Thu, 08 Feb 2024 08:51:28 +0300
+Message-Id: <20240208-for-netnext-mt7530-improvements-3-v1-0-d7c1cfd502ca@arinc9.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240208-mnt-idmap-inval-v2-1-58ef26d194e0@me.com>
-X-B4-Tracking: v=1; b=H4sIAF5ExGUC/3WNyw7CIBQFf6W5azE8bMWu/A/TBRSwNxFooCGah
- n8Xu3c5k5w5O2Sb0GYYux2SLZgxhgb81MG8qPC0BE1j4JRfKKcD8WFryquVYCjqRZg0QoneSeE
- MtNWarMP3UXxMjRfMW0yf46Cwn/3fKowwMkjtlNa3ay/E3dvzHD1MtdYvwx1MZKsAAAA=
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Seth Forshee <sforshee@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Taylor Jackson <taylor.a.jackson@me.com>
+X-B4-Tracking: v=1; b=H4sIAOFrxGUC/y2NywrCMBAAf6Xs2YW8pOqviIeQbnQP2ZRNKIXSf
+ zeIxznMzAGNlKnBYzpAaePGVQbYywTpE+VNyMtgcMYFY73FXBWFutDesfT56g1yWbVuVEh6Q4/
+ xFlO4LyHPycHorEqZ99/jCX8VXuf5BUHoZvJ8AAAA
+To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
+ Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Florian Fainelli <f.fainelli@gmail.com>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com, 
+ Bartel Eerdekens <bartel.eerdekens@constell8.be>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, 
+ =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707361379; l=1297;
- i=taylor.a.jackson@me.com; s=20240206; h=from:subject:message-id;
- bh=y6gRCATQD4BQ+HtUr3Y6tmpmjhF1EH0eWIIzJbmFHZw=;
- b=xgJWSv9ONnVT6GLyCRj6fBt71hj75Q+dupY5rzp8TyN5h3llr5WNNsvfSWm0VOyXJP1K/yq6o
- 323miYF4kyXCKxCPSsqNNvQBBGURN9XwnlJuC4SIqzgv2/LTWvpqcjR
-X-Developer-Key: i=taylor.a.jackson@me.com; a=ed25519;
- pk=NO7ntQpjIG1IGTO7F8OnLJDKSHUakhrhAli+PL72OLA=
-X-Endpoint-Received: by B4 Relay for taylor.a.jackson@me.com/20240206 with auth_id=127
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707371489; l=2294;
+ i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
+ bh=I2UVkBodmGXTC+p0Zlh/FVxtZDkiUUj9lE/paljIZ4w=;
+ b=gq8GQghr0FGsPzjbmq9kPreygfY7mL8WiuYJbQrwOEuogZBn/bTXHNUUorfkvS7eFAu+kWIP/
+ 67NXsEcSVHSA/CX13VqxyEx1+G4HAGa0wU9MdkVsEHSexcJwFBqHgg5
+X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
+ pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
+X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, it is possible to create an idmapped mount using a user
-namespace without any mappings. However, this yields an idmapped
-mount that doesn't actually map the ids. With the following change,
-it will no longer be possible to create an idmapped mount when using
-a user namespace with no mappings, and will instead return EINVAL,
-an “invalid argument” error code.
+Hello!
 
-Reviewed-by: Christian Brauner <brauner@kernel.org>
-Signed-off-by: Taylor Jackson <taylor.a.jackson@me.com>
----
-Changes in v2:
-- Updated commit message based on feedback 
-- Link to v1: https://lore.kernel.org/r/20240206-mnt-idmap-inval-v1-1-68bfabb97533@me.com
----
- fs/mnt_idmapping.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+This is the third patch series with the goal of simplifying the MT7530 DSA
+subdriver and improving support for MT7530, MT7531, and the switch on the
+MT7988 SoC.
 
-diff --git a/fs/mnt_idmapping.c b/fs/mnt_idmapping.c
-index 64c5205e2b5e..3c60f1eaca61 100644
---- a/fs/mnt_idmapping.c
-+++ b/fs/mnt_idmapping.c
-@@ -214,7 +214,7 @@ static int copy_mnt_idmap(struct uid_gid_map *map_from,
- 	 * anything at all.
- 	 */
- 	if (nr_extents == 0)
--		return 0;
-+		return -EINVAL;
- 
- 	/*
- 	 * Here we know that nr_extents is greater than zero which means
+I have done a simple ping test to confirm basic communication on all switch
+ports on MCM and standalone MT7530, and MT7531 switch with this patch
+series applied.
 
+MT7621 Unielec, MCM MT7530:
+
+rgmii-only-gmac0-mt7621-unielec-u7621-06-16m.dtb
+gmac0-and-gmac1-mt7621-unielec-u7621-06-16m.dtb
+
+tftpboot 0x80008000 mips-uzImage.bin; tftpboot 0x83000000 mips-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootm 0x80008000 0x83000000 0x83f00000
+
+MT7622 Bananapi, MT7531:
+
+gmac0-and-gmac1-mt7622-bananapi-bpi-r64.dtb
+
+tftpboot 0x40000000 arm64-Image; tftpboot 0x45000000 arm64-rootfs.cpio.uboot; tftpboot 0x4a000000 $dtb; booti 0x40000000 0x45000000 0x4a000000
+
+MT7623 Bananapi, standalone MT7530:
+
+rgmii-only-gmac0-mt7623n-bananapi-bpi-r2.dtb
+gmac0-and-gmac1-mt7623n-bananapi-bpi-r2.dtb
+
+tftpboot 0x80008000 arm-zImage; tftpboot 0x83000000 arm-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootz 0x80008000 0x83000000 0x83f00000
+
+This patch series is the continuation of the patch series linked below.
+
+https://lore.kernel.org/r/20230522121532.86610-1-arinc.unal@arinc9.com
+
+Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
-base-commit: 54be6c6c5ae8e0d93a6c4641cb7528eb0b6ba478
-change-id: 20240206-mnt-idmap-inval-18d3a35f83fd
+Arınç ÜNAL (8):
+      net: dsa: mt7530: remove .mac_port_config for MT7988 and make it optional
+      net: dsa: mt7530: set interrupt register only for MT7530
+      net: dsa: mt7530: do not use SW_PHY_RST to reset MT7531 switch
+      net: dsa: mt7530: get rid of useless error returns on phylink code path
+      net: dsa: mt7530: get rid of priv->info->cpu_port_config()
+      net: dsa: mt7530: get rid of mt753x_mac_config()
+      net: dsa: mt7530: put initialising PCS devices code back to original order
+      net: dsa: mt7530: simplify link operations and force link down on all ports
+
+ drivers/net/dsa/mt7530.c | 259 ++++++++---------------------------------------
+ drivers/net/dsa/mt7530.h |  19 +---
+ 2 files changed, 47 insertions(+), 231 deletions(-)
+---
+base-commit: b6b614558ed5b2ca50edacc0f2fbf5f52158c86c
+change-id: 20240131-for-netnext-mt7530-improvements-3-a8ac49d4f7c2
 
 Best regards,
 -- 
-Taylor Jackson <taylor.a.jackson@me.com>
+Arınç ÜNAL <arinc.unal@arinc9.com>
 
