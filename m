@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Thu, 08 Feb 2024 08:51:34 +0300
-Subject: [PATCH netnext 6/8] net: dsa: mt7530: get rid of
- mt753x_mac_config()
+Date: Thu, 08 Feb 2024 08:51:35 +0300
+Subject: [PATCH netnext 7/8] net: dsa: mt7530: put initialising PCS devices
+ code back to original order
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240208-for-netnext-mt7530-improvements-3-v1-6-d7c1cfd502ca@arinc9.com>
+Message-Id: <20240208-for-netnext-mt7530-improvements-3-v1-7-d7c1cfd502ca@arinc9.com>
 References: <20240208-for-netnext-mt7530-improvements-3-v1-0-d7c1cfd502ca@arinc9.com>
 In-Reply-To: <20240208-for-netnext-mt7530-improvements-3-v1-0-d7c1cfd502ca@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -23,57 +23,65 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707371489; l=1494;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707371489; l=1570;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=8u7euwYTcc58UJEZ934iSyhrRKaOIduS6lOdsKOd2oQ=;
- b=4kXZwrGfjQOP/O9zg/NSniCnR4s8JpB6Wq32o9H3OeS/SQbaUVeLD1kCRlsgJBEeBsabQ6bAE
- 4nvyQ4j5XXyBTtoQDmIykCTp5YlEDVAD1MYjb83pgx6d2n6a0RFzb1G
+ bh=/2CkKGukm0R4V69WhBvbbIMKcr0CwYye/LAy2VcbSV0=;
+ b=cgYWWkSZCAhdXnX66ltsxkY85bNLVeKuY+rvkDi7qWt0AaUJl007QE1+K/VOCDyRWB+gn74zR
+ AWtK+mJWyxICShfCxhlkB4+HkAyHCmc7TQzDaC61rogpfRYrm6NcEoh
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There is no need for a separate function to call
-priv->info->mac_port_config(). Call it from mt753x_phylink_mac_config()
-instead and remove mt753x_mac_config().
+The commit fae463084032 ("net: dsa: mt753x: fix pcs conversion regression")
+fixes regression caused by cpu_port_config manually calling phylink
+operations. cpu_port_config was deemed useless and was removed. Therefore,
+put initialising PCS devices code back to its original order.
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530.c | 14 ++------------
- 1 file changed, 2 insertions(+), 12 deletions(-)
+ drivers/net/dsa/mt7530.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
 diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 80b65f064310..e353c03dd1db 100644
+index e353c03dd1db..5c8ad41ce8cd 100644
 --- a/drivers/net/dsa/mt7530.c
 +++ b/drivers/net/dsa/mt7530.c
-@@ -2634,16 +2634,6 @@ mt7531_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
- 	}
- }
- 
--static void
--mt753x_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
--		  const struct phylink_link_state *state)
--{
--	struct mt7530_priv *priv = ds->priv;
--
--	if (priv->info->mac_port_config)
--		priv->info->mac_port_config(ds, port, mode, state->interface);
--}
--
- static struct phylink_pcs *
- mt753x_phylink_mac_select_pcs(struct dsa_switch *ds, int port,
- 			      phy_interface_t interface)
-@@ -2669,8 +2659,8 @@ mt753x_phylink_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
+@@ -2812,17 +2812,9 @@ static int
+ mt753x_setup(struct dsa_switch *ds)
+ {
  	struct mt7530_priv *priv = ds->priv;
- 	u32 mcr_cur, mcr_new;
+-	int i, ret;
+-
+-	/* Initialise the PCS devices */
+-	for (i = 0; i < priv->ds->num_ports; i++) {
+-		priv->pcs[i].pcs.ops = priv->info->pcs_ops;
+-		priv->pcs[i].pcs.neg_mode = true;
+-		priv->pcs[i].priv = priv;
+-		priv->pcs[i].port = i;
+-	}
++	int ret = priv->info->sw_setup(ds);
++	int i;
  
--	if (port == 5 || port == 6)
--		mt753x_mac_config(ds, port, mode, state);
-+	if ((port == 5 || port == 6) && priv->info->mac_port_config)
-+		priv->info->mac_port_config(ds, port, mode, state->interface);
+-	ret = priv->info->sw_setup(ds);
+ 	if (ret)
+ 		return ret;
  
- 	mcr_cur = mt7530_read(priv, MT7530_PMCR_P(port));
- 	mcr_new = mcr_cur;
+@@ -2834,6 +2826,14 @@ mt753x_setup(struct dsa_switch *ds)
+ 	if (ret && priv->irq)
+ 		mt7530_free_irq_common(priv);
+ 
++	/* Initialise the PCS devices */
++	for (i = 0; i < priv->ds->num_ports; i++) {
++		priv->pcs[i].pcs.ops = priv->info->pcs_ops;
++		priv->pcs[i].pcs.neg_mode = true;
++		priv->pcs[i].priv = priv;
++		priv->pcs[i].port = i;
++	}
++
+ 	if (priv->create_sgmii) {
+ 		ret = priv->create_sgmii(priv);
+ 		if (ret && priv->irq)
 
 -- 
 2.40.1
