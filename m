@@ -1,91 +1,75 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Mon, 12 Feb 2024 10:07:05 +0100
-Subject: [PATCH] iio: core: make use of DIV_ROUND_CLOSEST_ULL()
+From: Mathys-Gasnier <mathys35.gasnier@gmail.com>
+Date: Mon, 12 Feb 2024 15:13:22 +0100
+Subject: [PATCH v2] rust: locks: Add `get_mut` method to `Lock`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240212-iio-improve-define-dont-build-v1-1-875883bb9565@analog.com>
-X-B4-Tracking: v=1; b=H4sIALjfyWUC/x2MwQqDMBAFf0X23IU1qLT9ldJDazbtgzaRRIMg/
- ruLp2FgmI2KZmihe7NR1oqCFE3aS0Pj9xU/yvDm5MR14lrHQGL8p5yqsteAaEhx5veCn+dRws0
- HkSFce7LHlC1Zz//jue8Hr4+lwG8AAAA=
-To: linux-iio@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707728827; l=2450;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=X35iqJ6K0K5h9XuwhHfccmLQcWPxcL0Z/bKnPGFfk3Q=;
- b=Lao/omFK+SboBcAVxAka5TRnnXTewPknOU8xDcscluVsKtB+67cxFE+204IZEJ6rMu/A/bLNo
- xOgp9q9Fb36C4XGpoVKprrJUKvC2HUIG4GSBbYRzXkYUhK9BV/B/kKD
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240212-rust-locks-get-mut-v2-1-5ccd34c2b70b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIEnymUC/22NQQ6CMBBFr0Jm7ZhOqUFdeQ/DgpQBJgI1bWk0h
+ LtbcevyveS/v0JgLxzgWqzgOUkQN2fQhwLs0Mw9o7SZQSttFNEZ/RIijs4+AvYccVoiWqNVpUl
+ RWzWQh0/Pnbz26L3OPEiIzr/3j0Rf+8tpdfmXS4SElssTdbZs2VS3fmpkPFo3Qb1t2wc70JFNt
+ AAAAA==
+To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Wedson Almeida Filho <wedsonaf@gmail.com>, 
+ Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <benno.lossin@proton.me>, 
+ Andreas Hindborg <a.hindborg@samsung.com>, 
+ Alice Ryhl <aliceryhl@google.com>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Martin Rodriguez Reboredo <yakoyoku@gmail.com>, 
+ Mathys-Gasnier <mathys35.gasnier@gmail.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707747202; l=1549;
+ i=mathys35.gasnier@gmail.com; s=20240118; h=from:subject:message-id;
+ bh=4WHIEGc6TIVbfvh7PeNOQmNjpDZmYDavVMoHaIlodHI=;
+ b=q7QD3UdUQRQXztcJOdSgVPNrRpVwVF4EV+NxuHzQ0fNNhCQfFLrtc7vL1HeBf97d+i2Pm7BTo
+ b6bOFj/3Ch8DHtpCfnUFM/cB2BPCMOXl2I+OUl/daVwpCYgt/NeZfrO
+X-Developer-Key: i=mathys35.gasnier@gmail.com; a=ed25519;
+ pk=C5tqKAA3Ua7li5s3a+q2aDelT2j98/yjGg2nEVGArXE=
+X-Endpoint-Received: by B4 Relay for mathys35.gasnier@gmail.com/20240118 with auth_id=129
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Instead of open code DIV_ROUND_CLOSEST_ULL(), let's use it.
+Having a mutable reference guarantees that no other threads have
+access to the lock, so we can take advantage of that to grant callers
+access to the protected data without the the cost of acquiring and
+releasing the locks. Since the lifetime of the data is tied to the
+mutable reference, the borrow checker guarantees that the usage is safe.
 
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+Reviewed-by: Martin Rodriguez Reboredo <yakoyoku@gmail.com>
+Signed-off-by: Mathys-Gasnier <mathys35.gasnier@gmail.com>
 ---
-1) For some reason IIO_G_TO_M_S_2() does do not a closest division. Not
-   sure if there's a reason for it or just something that was forgotten.
-   Anyways, I left it as it was before.
-
-2) This conversion could actually be required. In some experiments with
-   it (in a series I'm working on), I actually realized with
-   IIO_RAD_TO_DEGREE() that  we could have a 64bit division in 32bits
-   archs. I'm still not treating it as a fix as no one ever complained.
-   Jonathan, let me know if you want me to send a follow up email (or v2)
-   with a proper tag.
+Changes in v2:
+- Improved doc comment. 
+- Link to v1: https://lore.kernel.org/r/20240209-rust-locks-get-mut-v1-1-ce351fc3de47@gmail.com
 ---
- include/linux/iio/iio.h | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ rust/kernel/sync/lock.rs | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/include/linux/iio/iio.h b/include/linux/iio/iio.h
-index e370a7bb3300..3ebf9fe97f0e 100644
---- a/include/linux/iio/iio.h
-+++ b/include/linux/iio/iio.h
-@@ -10,6 +10,7 @@
- #include <linux/device.h>
- #include <linux/cdev.h>
- #include <linux/cleanup.h>
-+#include <linux/math.h>
- #include <linux/slab.h>
- #include <linux/iio/types.h>
- /* IIO TODO LIST */
-@@ -799,8 +800,8 @@ int iio_str_to_fixpoint(const char *str, int fract_mult, int *integer,
-  *
-  * Returns the given value converted from degree to rad
-  */
--#define IIO_DEGREE_TO_RAD(deg) (((deg) * 314159ULL + 9000000ULL) / 18000000ULL)
--
-+#define IIO_DEGREE_TO_RAD(deg) \
-+	DIV_ROUND_CLOSEST_ULL((deg) * 314159ULL, 18000000)
- /**
-  * IIO_RAD_TO_DEGREE() - Convert rad to degree
-  * @rad: A value in rad
-@@ -808,7 +809,7 @@ int iio_str_to_fixpoint(const char *str, int fract_mult, int *integer,
-  * Returns the given value converted from rad to degree
-  */
- #define IIO_RAD_TO_DEGREE(rad) \
--	(((rad) * 18000000ULL + 314159ULL / 2) / 314159ULL)
-+	DIV_ROUND_CLOSEST_ULL((rad) * 18000000ULL + 314159)
+diff --git a/rust/kernel/sync/lock.rs b/rust/kernel/sync/lock.rs
+index f12a684bc957..d15af6625d01 100644
+--- a/rust/kernel/sync/lock.rs
++++ b/rust/kernel/sync/lock.rs
+@@ -121,6 +121,13 @@ pub fn lock(&self) -> Guard<'_, T, B> {
+         // SAFETY: The lock was just acquired.
+         unsafe { Guard::new(self, state) }
+     }
++
++    /// Gets the data contained in the lock
++    /// Having a mutable reference to the lock guarantees that no other threads have access to the lock.
++    /// Making it safe to get a mutable reference to the lock content.
++    pub fn get_mut(&mut self) -> &mut T {
++        self.data.get_mut()
++    }
+ }
  
- /**
-  * IIO_G_TO_M_S_2() - Convert g to meter / second**2
-@@ -824,6 +825,6 @@ int iio_str_to_fixpoint(const char *str, int fract_mult, int *integer,
-  *
-  * Returns the given value converted from meter / second**2 to g
-  */
--#define IIO_M_S_2_TO_G(ms2) (((ms2) * 100000ULL + 980665ULL / 2) / 980665ULL)
-+#define IIO_M_S_2_TO_G(ms2) DIV_ROUND_CLOSEST_ULL((ms2) * 100000ULL, 980665)
- 
- #endif /* _INDUSTRIAL_IO_H_ */
+ /// A lock guard.
 
 ---
-base-commit: bd2f1ed8873d4bbb2798151bbe28c86565251cfb
-change-id: 20240212-iio-improve-define-dont-build-c0f9df006f85
---
+base-commit: 711cbfc717650532624ca9f56fbaf191bed56e67
+change-id: 20240118-rust-locks-get-mut-c42072101d7a
 
-Thanks!
-- Nuno Sá
+Best regards,
+-- 
+Mathys-Gasnier <mathys35.gasnier@gmail.com>
 
