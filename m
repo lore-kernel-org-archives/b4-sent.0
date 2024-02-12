@@ -1,104 +1,87 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 12 Feb 2024 17:23:03 +0000
-Subject: [PATCH kmod 02/13] libkmod: keep gzFile gzf local to load_zlib()
+Date: Mon, 12 Feb 2024 17:23:04 +0000
+Subject: [PATCH kmod 03/13] libkmod: remove kmod_file::{zstd,xz}_used flags
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240212-decompression-fixes-v1-2-06f92ad07985@gmail.com>
+Message-Id: <20240212-decompression-fixes-v1-3-06f92ad07985@gmail.com>
 References: <20240212-decompression-fixes-v1-0-06f92ad07985@gmail.com>
 In-Reply-To: <20240212-decompression-fixes-v1-0-06f92ad07985@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707758583; l=2092;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707758583; l=1540;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=dynpgl/ahQS0pC4J5FA730cbtaNUmwCDCWyHTxZtfko=;
- b=OnaUsbxYZ1j1uQmSCFipwGIFtNN8dmD0R7GfYhZHCJ6r1O5/r7Ky9N25ElRq+TF9mpNveY4dr
- yjzTTMwWFB4CPJeIKLtf5C+Kac7WAC5GaD+20bc0kU5EXgOGd02rQ9q
+ bh=Og0Ag/13F9A4cnAYBK+i+58A4Qix9B4oLZpytfwcabE=;
+ b=aqf5N4FQGPUJAkW7v1M065AjQGCZxzI5UInNS0o3k8GazeKKfCR1OKQNJtmvKH6MCNDNBKR6K
+ obDFm5x/S3+CxA9y7o9AY+DIA7ZDyuuIVZ9t12G1IGf5Ist8bvXzdWi
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There is no need to keep the root gzFile context open for the whole
-duration. Once we've copied the decompressed module to file->memory we
-can close the handle.
+These are used to protect a free(file->memory), within their respective
+unload functions. Where the sole caller of the unload function already
+does a NULL check prior.
+
+Even so, free(NULL) is guaranteed to be safe by the standard.
 
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- libkmod/libkmod-file.c | 18 +++++++-----------
- 1 file changed, 7 insertions(+), 11 deletions(-)
+ libkmod/libkmod-file.c | 12 ------------
+ 1 file changed, 12 deletions(-)
 
 diff --git a/libkmod/libkmod-file.c b/libkmod/libkmod-file.c
-index b97062b..9a014ea 100644
+index 9a014ea..abd4723 100644
 --- a/libkmod/libkmod-file.c
 +++ b/libkmod/libkmod-file.c
-@@ -53,9 +53,6 @@ struct kmod_file {
- #endif
- #ifdef ENABLE_XZ
- 	bool xz_used;
+@@ -48,12 +48,6 @@ struct file_ops {
+ };
+ 
+ struct kmod_file {
+-#ifdef ENABLE_ZSTD
+-	bool zstd_used;
 -#endif
--#ifdef ENABLE_ZLIB
--	gzFile gzf;
- #endif
+-#ifdef ENABLE_XZ
+-	bool xz_used;
+-#endif
  	int fd;
  	enum kmod_file_compression_type compression;
-@@ -317,6 +314,7 @@ static int load_zlib(struct kmod_file *file)
- 	int err = 0;
- 	off_t did = 0, total = 0;
- 	_cleanup_free_ unsigned char *p = NULL;
-+	gzFile gzf;
- 	int gzfd;
+ 	off_t size;
+@@ -176,7 +170,6 @@ static int load_zstd(struct kmod_file *file)
  
- 	errno = 0;
-@@ -324,8 +322,8 @@ static int load_zlib(struct kmod_file *file)
- 	if (gzfd < 0)
- 		return -errno;
- 
--	file->gzf = gzdopen(gzfd, "rb"); /* takes ownership of the fd */
--	if (file->gzf == NULL) {
-+	gzf = gzdopen(gzfd, "rb"); /* takes ownership of the fd */
-+	if (gzf == NULL) {
- 		close(gzfd);
- 		return -errno;
- 	}
-@@ -343,12 +341,12 @@ static int load_zlib(struct kmod_file *file)
- 			p = tmp;
- 		}
- 
--		r = gzread(file->gzf, p + did, total - did);
-+		r = gzread(gzf, p + did, total - did);
- 		if (r == 0)
- 			break;
- 		else if (r < 0) {
- 			int gzerr;
--			const char *gz_errmsg = gzerror(file->gzf, &gzerr);
-+			const char *gz_errmsg = gzerror(gzf, &gzerr);
- 
- 			ERR(file->ctx, "gzip: %s\n", gz_errmsg);
- 
-@@ -362,19 +360,17 @@ static int load_zlib(struct kmod_file *file)
- 	file->memory = p;
- 	file->size = did;
- 	p = NULL;
-+	gzclose(gzf);
+ 	ZSTD_freeDStream(dstr);
+ 	free((void *)zst_inb.src);
+-	file->zstd_used = true;
+ 	file->memory = zst_outb.dst;
+ 	file->size = zst_outb.pos;
  	return 0;
+@@ -190,8 +183,6 @@ out:
  
- error:
--	gzclose(file->gzf); /* closes the gzfd */
-+	gzclose(gzf); /* closes the gzfd */
- 	return err;
- }
- 
- static void unload_zlib(struct kmod_file *file)
+ static void unload_zstd(struct kmod_file *file)
  {
--	if (file->gzf == NULL)
+-	if (!file->zstd_used)
 -		return;
  	free(file->memory);
--	gzclose(file->gzf);
  }
  
- static const char magic_zlib[] = {0x1f, 0x8b};
+@@ -269,7 +260,6 @@ static int xz_uncompress(lzma_stream *strm, struct kmod_file *file)
+ 			goto out;
+ 		}
+ 	}
+-	file->xz_used = true;
+ 	file->memory = p;
+ 	file->size = total;
+ 	return 0;
+@@ -299,8 +289,6 @@ static int load_xz(struct kmod_file *file)
+ 
+ static void unload_xz(struct kmod_file *file)
+ {
+-	if (!file->xz_used)
+-		return;
+ 	free(file->memory);
+ }
+ 
 
 -- 
 2.43.0
