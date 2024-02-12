@@ -1,20 +1,21 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 12 Feb 2024 20:02:41 +0000
-Subject: [PATCH BlueZ v2 05/10] obex: remove unused syncevolution plugin
+Date: Mon, 12 Feb 2024 20:02:42 +0000
+Subject: [PATCH BlueZ v2 06/10] obex: remove unused mas/messages-tracker
+ impl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240212-disto-patches-v2-5-8bab1bd08f4d@gmail.com>
+Message-Id: <20240212-disto-patches-v2-6-8bab1bd08f4d@gmail.com>
 References: <20240212-disto-patches-v2-0-8bab1bd08f4d@gmail.com>
 In-Reply-To: <20240212-disto-patches-v2-0-8bab1bd08f4d@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 Cc: Emil Velikov <emil.velikov@collabora.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707768157; l=13112;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707768157; l=8063;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=3jSLi5/GJDSS3GOWoTxgwGDBznwfplAZJG6CthgZjic=;
- b=zP0KBr6vEzEx2QcOgRH9puORchf6Ndq9VSbO9U+3UlVbnbGeDjyp/TtYd2DJy3/Zscl0B/CGG
- ZzhFhKcf3cLDIQXGd7nuPd/L62MzY7CPF22gLjyt8V5WyaNSaainOZv
+ bh=jQe/lFTSKdtDkClg+0iy9yWYeYhpYU0PJHv9DcVITWQ=;
+ b=VbaKv+6AZWguoH7BK8zbABAzVz3UT16yRx9lx87/NbVK5OHGK3OxAWUAdOzvmCb/Ts+GeYIoG
+ uv2iRINUukhBXZJ3vitE+rsU7Kk1MBb2HK6NvEzgYqyIQ4rUTIuHkyQ
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
@@ -22,32 +23,28 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Emil Velikov <emil.velikov@collabora.com>
 
-Based on my git log archaeology, the plugin was never built despite
-receiving multiple updates across the years. It's possible that the git
-history is lost when (if?) obexd code was imported.
+Currently we have a "dummy" and a "tracker" implementation. The latter
+was seemingly never wired into the build... Unless the git history was
+rewritten and details were lost.
 
-The file isn't in the official tarball, so end users cannot enable if
-even if they wanted to. So let's remove the dead/unused plugin.
-
-There is some existing infra around OBEX_SYNCEVOLUTION which can be
-checked/removed as follow-up.
+Remove the file - it's not shipped in the tarball, so even if anyone
+want to use it they cannot.
 ---
- obexd/plugins/syncevolution.c | 470 ------------------------------------------
- 1 file changed, 470 deletions(-)
+ obexd/plugins/messages-tracker.c | 332 ---------------------------------------
+ 1 file changed, 332 deletions(-)
 
-diff --git a/obexd/plugins/syncevolution.c b/obexd/plugins/syncevolution.c
+diff --git a/obexd/plugins/messages-tracker.c b/obexd/plugins/messages-tracker.c
 deleted file mode 100644
-index ae3dc48c4..000000000
---- a/obexd/plugins/syncevolution.c
+index 4ce9f221d..000000000
+--- a/obexd/plugins/messages-tracker.c
 +++ /dev/null
-@@ -1,470 +0,0 @@
+@@ -1,332 +0,0 @@
 -// SPDX-License-Identifier: GPL-2.0-or-later
 -/*
 - *
 - *  OBEX Server
 - *
-- *  Copyright (C) 2007-2010  Intel Corporation
-- *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
+- *  Copyright (C) 2010-2011  Nokia Corporation
 - *
 - *
 - */
@@ -56,461 +53,324 @@ index ae3dc48c4..000000000
 -#include <config.h>
 -#endif
 -
--#include <string.h>
--#include <stdio.h>
 -#include <errno.h>
--#include <sys/types.h>
--
 -#include <glib.h>
--#include <dbus/dbus.h>
+-#include <string.h>
 -
--#include "lib/bluetooth.h"
+-#include "messages.h"
 -
--#include "gdbus/gdbus.h"
--
--#include "btio/btio.h"
--#include "obexd/src/plugin.h"
--#include "obexd/src/obex.h"
--#include "obexd/src/service.h"
--#include "obexd/src/mimetype.h"
--#include "obexd/src/log.h"
--#include "obexd/src/manager.h"
--#include "obexd/src/obexd.h"
--#include "filesystem.h"
--
--#define SYNCML_TARGET_SIZE 11
--
--static const uint8_t SYNCML_TARGET[SYNCML_TARGET_SIZE] = {
--			0x53, 0x59, 0x4E, 0x43, 0x4D, 0x4C, 0x2D, 0x53,
--			0x59, 0x4E, 0x43 };
--
--#define SYNCEVOLUTION_CHANNEL  19
--
--#define SYNCEVOLUTION_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\
--<record>								\
-- <attribute id=\"0x0001\">						\
--    <sequence>								\
--      <uuid value=\"00000002-0000-1000-8000-0002ee000002\"/>		\
--    </sequence>							\
-- </attribute>								\
--									\
-- <attribute id=\"0x0004\">						\
--    <sequence>								\
--      <sequence>							\
--        <uuid value=\"0x0100\"/>					\
--      </sequence>							\
--      <sequence>							\
--        <uuid value=\"0x0003\"/>					\
--        <uint8 value=\"%u\" name=\"channel\"/>				\
--      </sequence>							\
--      <sequence>							\
--        <uuid value=\"0x0008\"/>					\
--      </sequence>							\
--    </sequence>							\
-- </attribute>								\
--									\
-- <attribute id=\"0x0100\">						\
--    <text value=\"%s\" name=\"name\"/>					\
-- </attribute>								\
--</record>"
--
--#define SYNCE_BUS_NAME	"org.syncevolution"
--#define SYNCE_PATH	"/org/syncevolution/Server"
--#define SYNCE_SERVER_INTERFACE	"org.syncevolution.Server"
--#define SYNCE_CONN_INTERFACE	"org.syncevolution.Connection"
--
--struct synce_context {
--	struct obex_session *os;
--	DBusConnection *dbus_conn;
--	char *conn_obj;
--	unsigned int reply_watch;
--	unsigned int abort_watch;
--	GString *buffer;
--	int lasterr;
--	char *id;
+-struct message_folder {
+-	char *name;
+-	GSList *subfolders;
+-	char *query;
 -};
 -
--static void append_dict_entry(DBusMessageIter *dict, const char *key,
--							int type, void *val)
+-struct session {
+-	char *cwd;
+-	struct message_folder *folder;
+-	char *name;
+-	uint16_t max;
+-	uint16_t offset;
+-	void *user_data;
+-	void (*folder_list_cb)(void *session, int err, uint16_t size,
+-					const char *name, void *user_data);
+-};
+-
+-static struct message_folder *folder_tree = NULL;
+-
+-static struct message_folder *get_folder(const char *folder)
 -{
--	DBusMessageIter entry;
+-	GSList *folders = folder_tree->subfolders;
+-	struct message_folder *last = NULL;
+-	char **path;
+-	int i;
 -
--	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
--							NULL, &entry);
--	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
--	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &val);
--	dbus_message_iter_close_container(dict, &entry);
--}
+-	if (g_strcmp0(folder, "/") == 0)
+-		return folder_tree;
 -
--static gboolean reply_signal(DBusConnection *conn, DBusMessage *msg,
--								void *data)
--{
--	struct synce_context *context = data;
--	const char *path = dbus_message_get_path(msg);
--	DBusMessageIter iter, array_iter;
--	char *value;
--	int length;
+-	path = g_strsplit(folder, "/", 0);
 -
--	if (strcmp(context->conn_obj, path) != 0) {
--		obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
--		context->lasterr = -EPERM;
--		return FALSE;
+-	for (i = 1; path[i] != NULL; i++) {
+-		gboolean match_found = FALSE;
+-		GSList *l;
+-
+-		for (l = folders; l != NULL; l = g_slist_next(l)) {
+-			struct message_folder *folder = l->data;
+-
+-			if (g_strcmp0(folder->name, path[i]) == 0) {
+-				match_found = TRUE;
+-				last = l->data;
+-				folders = folder->subfolders;
+-				break;
+-			}
+-		}
+-
+-		if (!match_found) {
+-			g_strfreev(path);
+-			return NULL;
+-		}
 -	}
 -
--	dbus_message_iter_init(msg, &iter);
+-	g_strfreev(path);
 -
--	dbus_message_iter_recurse(&iter, &array_iter);
--	dbus_message_iter_get_fixed_array(&array_iter, &value, &length);
--
--	context->buffer = g_string_new_len(value, length);
--	obex_object_set_io_flags(context, G_IO_IN, 0);
--	context->lasterr = 0;
--
--	return TRUE;
+-	return last;
 -}
 -
--static gboolean abort_signal(DBusConnection *conn, DBusMessage *msg,
--								void *data)
+-static struct message_folder *create_folder(const char *name, const char *query)
 -{
--	struct synce_context *context = data;
+-	struct message_folder *folder = g_new0(struct message_folder, 1);
 -
--	obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
--	context->lasterr = -EPERM;
+-	folder->name = g_strdup(name);
+-	folder->query = g_strdup(query);
 -
--	return TRUE;
+-	return folder;
 -}
 -
--static void connect_cb(DBusPendingCall *call, void *user_data)
+-static void destroy_folder_tree(void *root)
 -{
--	struct synce_context *context = user_data;
--	DBusConnection *conn;
--	DBusMessage *reply;
--	DBusError err;
--	char *path;
+-	struct message_folder *folder = root;
+-	GSList *tmp, *next;
 -
--	conn = context->dbus_conn;
+-	if (folder == NULL)
+-		return;
 -
--	reply = dbus_pending_call_steal_reply(call);
+-	g_free(folder->name);
+-	g_free(folder->query);
 -
--	dbus_error_init(&err);
--	if (dbus_message_get_args(reply, &err, DBUS_TYPE_OBJECT_PATH, &path,
--						DBUS_TYPE_INVALID) == FALSE) {
--		error("%s", err.message);
--		dbus_error_free(&err);
--		goto failed;
+-	tmp = folder->subfolders;
+-	while (tmp != NULL) {
+-		next = g_slist_next(tmp);
+-		destroy_folder_tree(tmp->data);
+-		tmp = next;
 -	}
 -
--	DBG("Got conn object %s from syncevolution", path);
--	context->conn_obj = g_strdup(path);
--
--	context->reply_watch = g_dbus_add_signal_watch(conn, NULL, path,
--						SYNCE_CONN_INTERFACE, "Reply",
--						reply_signal, context, NULL);
--
--	context->abort_watch = g_dbus_add_signal_watch(conn, NULL, path,
--						SYNCE_CONN_INTERFACE, "Abort",
--						abort_signal, context, NULL);
--
--	dbus_message_unref(reply);
--
--	return;
--
--failed:
--	obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
--	context->lasterr = -EPERM;
+-	g_slist_free(folder->subfolders);
+-	g_free(folder);
 -}
 -
--static void process_cb(DBusPendingCall *call, void *user_data)
+-static void create_folder_tree(void)
 -{
--	struct synce_context *context = user_data;
--	DBusMessage *reply;
--	DBusError derr;
+-	struct message_folder *parent, *child;
 -
--	reply = dbus_pending_call_steal_reply(call);
--	dbus_error_init(&derr);
--	if (dbus_set_error_from_message(&derr, reply)) {
--		error("process_cb(): syncevolution replied with an error:"
--					" %s, %s", derr.name, derr.message);
--		dbus_error_free(&derr);
+-	folder_tree = create_folder("/", "FILTER (!BOUND(?msg))");
 -
--		obex_object_set_io_flags(context, G_IO_ERR, -EPERM);
--		context->lasterr = -EPERM;
--		goto done;
--	}
+-	parent = create_folder("telecom", "FILTER (!BOUND(?msg))");
+-	folder_tree->subfolders = g_slist_append(folder_tree->subfolders,
+-								parent);
 -
--	obex_object_set_io_flags(context, G_IO_OUT, 0);
--	context->lasterr = 0;
+-	child = create_folder("msg", "FILTER (!BOUND(?msg))");
+-	parent->subfolders = g_slist_append(parent->subfolders, child);
 -
--done:
--	dbus_message_unref(reply);
+-	parent = child;
+-
+-	child = create_folder("inbox", "?msg nmo:isSent \"false\" ; "
+-				"nmo:isDeleted \"false\" ; "
+-				"nmo:isDraft \"false\". ");
+-	parent->subfolders = g_slist_append(parent->subfolders, child);
+-
+-	child = create_folder("sent", "?msg nmo:isDeleted \"false\" ; "
+-				"nmo:isSent \"true\" . ");
+-	parent->subfolders = g_slist_append(parent->subfolders, child);
+-
+-	child = create_folder("deleted", "?msg nmo:isDeleted \"true\" . ");
+-	parent->subfolders = g_slist_append(parent->subfolders, child);
 -}
 -
--static void *synce_connect(struct obex_session *os, int *err)
+-int messages_init(void)
 -{
--	DBusConnection *conn;
--	struct synce_context *context;
--	char *address;
+-	create_folder_tree();
 -
--	manager_register_session(os);
--
--	conn = manager_dbus_get_connection();
--	if (!conn)
--		goto failed;
--
--	context = g_new0(struct synce_context, 1);
--	context->dbus_conn = conn;
--	context->lasterr = -EAGAIN;
--	context->os = os;
--
--	if (obex_getpeername(os, &address) == 0) {
--		context->id = g_strdup_printf("%s+%d", address,
--							SYNCEVOLUTION_CHANNEL);
--		g_free(address);
--	}
--
--	if (err)
--		*err = 0;
--
--	return context;
--
--failed:
--	if (err)
--		*err = -EPERM;
--
--	return NULL;
--}
--
--static int synce_put(struct obex_session *os, void *user_data)
--{
 -	return 0;
 -}
 -
--static int synce_get(struct obex_session *os, void *user_data)
+-void messages_exit(void)
 -{
--	return obex_get_stream_start(os, NULL);
+-	destroy_folder_tree(folder_tree);
 -}
 -
--static void close_cb(DBusPendingCall *call, void *user_data)
+-int messages_connect(void **s)
 -{
--	DBusMessage *reply;
--	DBusError derr;
+-	struct session *session = g_new0(struct session, 1);
 -
--	reply = dbus_pending_call_steal_reply(call);
--	dbus_error_init(&derr);
--	if (dbus_set_error_from_message(&derr, reply)) {
--		error("close_cb(): syncevolution replied with an error:"
--					" %s, %s", derr.name, derr.message);
--		dbus_error_free(&derr);
--	}
+-	session->cwd = g_strdup("/");
+-	session->folder = folder_tree;
 -
--	dbus_message_unref(reply);
--}
+-	*s = session;
 -
--static void synce_disconnect(struct obex_session *os, void *user_data)
--{
--	struct synce_context *context = user_data;
--
--	g_free(context);
--}
--
--static void *synce_open(const char *name, int oflag, mode_t mode,
--				void *user_data, size_t *size, int *err)
--{
--	struct synce_context *context = user_data;
--
--	if (err)
--		*err = context ? 0 : -EFAULT;
--
--	return user_data;
--}
--
--static int synce_close(void *object)
--{
--	struct synce_context *context = object;
--	DBusMessage *msg;
--	const char *error;
--	gboolean normal;
--	DBusPendingCall *call;
--
--	if (!context->conn_obj)
--		goto done;
--
--	msg = dbus_message_new_method_call(SYNCE_BUS_NAME, context->conn_obj,
--						SYNCE_CONN_INTERFACE, "Close");
--	if (!msg)
--		goto failed;
--
--	normal = TRUE;
--	error = "none";
--	dbus_message_append_args(msg, DBUS_TYPE_BOOLEAN, &normal,
--				DBUS_TYPE_STRING, &error, DBUS_TYPE_INVALID);
--
--	g_dbus_send_message_with_reply(context->dbus_conn, msg, &call, -1);
--	dbus_pending_call_set_notify(call, close_cb, NULL, NULL);
--	dbus_message_unref(msg);
--	dbus_pending_call_unref(call);
--
--failed:
--	g_dbus_remove_watch(context->dbus_conn, context->reply_watch);
--	context->reply_watch = 0;
--	g_dbus_remove_watch(context->dbus_conn, context->abort_watch);
--	context->abort_watch = 0;
--
--	g_free(context->conn_obj);
--	context->conn_obj = NULL;
--
--done:
--	dbus_connection_unref(context->dbus_conn);
--	g_free(context);
 -	return 0;
 -}
 -
--static ssize_t synce_read(void *object, void *buf, size_t count)
+-void messages_disconnect(void *s)
 -{
--	struct synce_context *context = object;
--	DBusConnection *conn;
--	char transport[36], transport_description[24];
--	const char *session;
--	DBusMessage *msg;
--	DBusMessageIter iter, dict;
--	gboolean authenticate;
--	DBusPendingCall *call;
+-	struct session *session = s;
 -
--	if (context->buffer)
--		return string_read(context->buffer, buf, count);
+-	g_free(session->cwd);
+-	g_free(session);
+-}
 -
--	conn = manager_dbus_get_connection();
--	if (conn == NULL)
--		return -EPERM;
+-int messages_set_notification_registration(void *session,
+-		void (*send_event)(void *session,
+-			const struct messages_event *event, void *user_data),
+-		void *user_data)
+-{
+-	return -ENOSYS;
+-}
 -
--	msg = dbus_message_new_method_call(SYNCE_BUS_NAME, SYNCE_PATH,
--				SYNCE_SERVER_INTERFACE, "Connect");
--	if (!msg)
--		return -EPERM;
+-int messages_set_folder(void *s, const char *name, gboolean cdup)
+-{
+-	struct session *session = s;
+-	char *newrel = NULL;
+-	char *newabs;
+-	char *tmp;
 -
--	dbus_message_iter_init_append(msg, &iter);
--	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
--		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
--		DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_STRING_AS_STRING
--		DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+-	if (name && (strchr(name, '/') || strcmp(name, "..") == 0))
+-		return -EBADR;
 -
--	append_dict_entry(&dict, "id", DBUS_TYPE_STRING, context->id);
+-	if (cdup) {
+-		if (session->cwd[0] == 0)
+-			return -ENOENT;
 -
--	snprintf(transport, sizeof(transport), "%s.obexd", OBEXD_SERVICE);
--	append_dict_entry(&dict, "transport", DBUS_TYPE_STRING, transport);
+-		newrel = g_path_get_dirname(session->cwd);
 -
--	snprintf(transport_description, sizeof(transport_description),
--						"version %s", VERSION);
--	append_dict_entry(&dict, "transport_description", DBUS_TYPE_STRING,
--							transport_description);
--
--	dbus_message_iter_close_container(&iter, &dict);
--
--	authenticate = FALSE;
--	session = "";
--	dbus_message_append_args(msg, DBUS_TYPE_BOOLEAN, &authenticate,
--			DBUS_TYPE_STRING, &session, DBUS_TYPE_INVALID);
--
--	if (!g_dbus_send_message_with_reply(conn, msg, &call, -1)) {
--		error("D-Bus call to %s failed.", SYNCE_SERVER_INTERFACE);
--		dbus_message_unref(msg);
--		return -EPERM;
+-		/* We use empty string for indication of the root directory */
+-		if (newrel[0] == '.' && newrel[1] == 0)
+-			newrel[0] = 0;
 -	}
 -
--	dbus_pending_call_set_notify(call, connect_cb, context, NULL);
+-	tmp = newrel;
+-	if (!cdup && (!name || name[0] == 0))
+-		newrel = g_strdup("");
+-	else
+-		newrel = g_build_filename(newrel ? newrel : session->cwd, name,
+-									NULL);
+-	g_free(tmp);
 -
--	dbus_pending_call_unref(call);
--	dbus_message_unref(msg);
+-	if (newrel[0] != '/')
+-		newabs = g_build_filename("/", newrel, NULL);
+-	else
+-		newabs = g_strdup(newrel);
 -
--	return -EAGAIN;
--}
+-	session->folder = get_folder(newabs);
+-	if (session->folder == NULL) {
+-		g_free(newrel);
+-		g_free(newabs);
 -
--static ssize_t synce_write(void *object, const void *buf, size_t count)
--{
--	struct synce_context *context = object;
--	DBusMessage *msg;
--	DBusMessageIter iter, array_iter;
--	DBusPendingCall *call;
--	const char *type = obex_get_type(context->os);
--
--	if (context->lasterr == 0)
--		return count;
--
--	if (!context->conn_obj)
--		return -EFAULT;
--
--	msg = dbus_message_new_method_call(SYNCE_BUS_NAME, context->conn_obj,
--					SYNCE_CONN_INTERFACE, "Process");
--	if (!msg)
--		return -EFAULT;
--
--	dbus_message_iter_init_append(msg, &iter);
--	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
--				DBUS_TYPE_BYTE_AS_STRING, &array_iter);
--
--	dbus_message_iter_append_fixed_array(&array_iter, DBUS_TYPE_BYTE,
--						&buf, count);
--	dbus_message_iter_close_container(&iter, &array_iter);
--
--	dbus_message_append_args(msg, DBUS_TYPE_STRING, &type,
--						DBUS_TYPE_INVALID);
--
--	if (!g_dbus_send_message_with_reply(context->dbus_conn, msg,
--								&call, -1)) {
--		error("D-Bus call to %s failed.", SYNCE_CONN_INTERFACE);
--		dbus_message_unref(msg);
--		return -EPERM;
+-		return -ENOENT;
 -	}
 -
--	dbus_pending_call_set_notify(call, process_cb, context, NULL);
+-	g_free(newrel);
+-	g_free(session->cwd);
+-	session->cwd = newabs;
 -
--	dbus_message_unref(msg);
--	dbus_pending_call_unref(call);
--
--	return -EAGAIN;
+-	return 0;
 -}
 -
--static const struct obex_mime_type_driver synce_driver = {
--	.target = SYNCML_TARGET,
--	.target_size = SYNCML_TARGET_SIZE,
--	.open = synce_open,
--	.close = synce_close,
--	.read = synce_read,
--	.write = synce_write,
--};
--
--static const struct obex_service_driver synce = {
--	.name = "OBEX server for SyncML, using SyncEvolution",
--	.service = OBEX_SYNCEVOLUTION,
--	.channel = SYNCEVOLUTION_CHANNEL,
--	.secure = TRUE,
--	.record = SYNCEVOLUTION_RECORD,
--	.target = SYNCML_TARGET,
--	.target_size = SYNCML_TARGET_SIZE,
--	.get = synce_get,
--	.put = synce_put,
--	.connect = synce_connect,
--	.disconnect = synce_disconnect,
--};
--
--static int synce_init(void)
+-static gboolean async_get_folder_listing(void *s)
 -{
--	int err;
+-	struct session *session = s;
+-	gboolean count = FALSE;
+-	int folder_count = 0;
+-	char *path = NULL;
+-	struct message_folder *folder;
+-	GSList *dir;
 -
--	err = obex_mime_type_driver_register(&synce_driver);
--	if (err < 0)
--		return err;
+-	if (session->name && strchr(session->name, '/') != NULL)
+-		goto done;
 -
--	return obex_service_driver_register(&synce);
+-	path = g_build_filename(session->cwd, session->name, NULL);
+-
+-	if (path == NULL || strlen(path) == 0)
+-		goto done;
+-
+-	folder = get_folder(path);
+-
+-	if (folder == NULL)
+-		goto done;
+-
+-	if (session->max == 0) {
+-		session->max = 0xffff;
+-		session->offset = 0;
+-		count = TRUE;
+-	}
+-
+-	for (dir = folder->subfolders; dir &&
+-				(folder_count - session->offset) < session->max;
+-				folder_count++, dir = g_slist_next(dir)) {
+-		struct message_folder *dir_data = dir->data;
+-
+-		if (count == FALSE && session->offset <= folder_count)
+-			session->folder_list_cb(session, -EAGAIN, 0,
+-					dir_data->name, session->user_data);
+-	}
+-
+- done:
+-	session->folder_list_cb(session, 0, folder_count, NULL,
+-							session->user_data);
+-
+-	g_free(path);
+-	g_free(session->name);
+-
+-	return FALSE;
 -}
 -
--static void synce_exit(void)
+-int messages_get_folder_listing(void *s, const char *name,
+-					uint16_t max, uint16_t offset,
+-					messages_folder_listing_cb callback,
+-					void *user_data)
 -{
--	obex_service_driver_unregister(&synce);
--	obex_mime_type_driver_unregister(&synce_driver);
+-	struct session *session = s;
+-	session->name = g_strdup(name);
+-	session->max = max;
+-	session->offset = offset;
+-	session->folder_list_cb = callback;
+-	session->user_data = user_data;
+-
+-	g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, async_get_folder_listing,
+-						session, NULL);
+-
+-	return 0;
 -}
 -
--OBEX_PLUGIN_DEFINE(syncevolution, synce_init, synce_exit)
+-int messages_get_messages_listing(void *session, const char *name,
+-				uint16_t max, uint16_t offset,
+-				uint8_t subject_len,
+-				const struct messages_filter *filter,
+-				messages_get_messages_listing_cb callback,
+-				void *user_data)
+-{
+-	return -ENOSYS;
+-}
+-
+-int messages_get_message(void *session, const char *handle,
+-				unsigned long flags,
+-				messages_get_message_cb callback,
+-				void *user_data)
+-{
+-	return -ENOSYS;
+-}
+-
+-int messages_update_inbox(void *session, messages_status_cb callback,
+-							void *user_data)
+-{
+-	return -ENOSYS;
+-}
+-
+-int messages_set_read(void *session, const char *handle, uint8_t value,
+-				messages_status_cb callback, void *user_data)
+-{
+-	return -ENOSYS;
+-}
+-
+-int messages_set_delete(void *session, const char *handle, uint8_t value,
+-					messages_status_cb callback,
+-					void *user_data)
+-{
+-	return -ENOSYS;
+-}
+-
+-void messages_abort(void *session)
+-{
+-}
 
 -- 
 2.43.0
