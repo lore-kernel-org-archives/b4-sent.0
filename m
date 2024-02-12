@@ -1,82 +1,72 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 12 Feb 2024 20:02:44 +0000
-Subject: [PATCH BlueZ v2 08/10] build: ship all config files with
- --enable-datafiles
+Date: Mon, 12 Feb 2024 20:02:45 +0000
+Subject: [PATCH BlueZ v2 09/10] obex: Use GLib helper function to
+ manipulate paths
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240212-disto-patches-v2-8-8bab1bd08f4d@gmail.com>
+Message-Id: <20240212-disto-patches-v2-9-8bab1bd08f4d@gmail.com>
 References: <20240212-disto-patches-v2-0-8bab1bd08f4d@gmail.com>
 In-Reply-To: <20240212-disto-patches-v2-0-8bab1bd08f4d@gmail.com>
 To: linux-bluetooth@vger.kernel.org
-Cc: Emil Velikov <emil.velikov@collabora.com>
+Cc: Bastien Nocera <hadess@hadess.net>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707768157; l=1705;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707768157; l=1584;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=ukSb4msDR5fjqRG8A0bYJ7QVffGjcQu3Z3Tc8kb10CQ=;
- b=xK9CkzK5fzFcBBf720C/4yHCdPEbAhMR5/IPP7H4Utn9Q6IxtCEuQdWid5wFzg/1UgK7/n5nW
- erVHcLvEa7xDpk2ornXWv57kq853YKNOtRfvzMBeU1DNOQM2GP9fqBe
+ bh=GCUo/Nwzng2MpKTdvtQwQRt2p4nwTwzY0gaSQk+Xr7Y=;
+ b=RRoKj0QjKCRqD8xfnN2FNs9AmfqfPFWy3NGEAPoYb6kR9t3DnLMdKUnhKvXrkYoKTz7Ee4YDh
+ oCs3Rd8L+1SCgjpDZsqTWrUAYOxxG+cjQZVsJyJRhV9dvB9NwvH4wrK
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Emil Velikov <emil.velikov@collabora.com>
+From: Bastien Nocera <hadess@hadess.net>
 
-Currently we ship only the dbus/systemd policy files and omit the other
-four - /etc/bluetooth/{main,mesh-main,input,network}.conf.
+Instead of trying to do it by hand. This also makes sure that
+relative paths aren't used by the agent.
 
-Outside of those files, there is no documentation what the defaults are
-and the other possible options. A number of distributions (Arch, Gentoo,
-Fedora) have opted to manually copy those into the package. Alas this
-does not scale and leaves other distros at disadvantage, in a sense.
+[Emil Velikov]
+Originally this patch was posted in 2013, but deferred since bluez was
+planning to move away from glib. Presently there's no obvious action
+towards that goal, so I think we can safely land this.
 
-Note: we need a custom install target to ensure confdir and statedir
-have the correct permissions.
+As mentioned by the author, current code allows for relative paths and
+considering that obexd service runs without meaningful sandboxing and on
+some distributions it is ran as root, we should plug the whole before
+anyone (ab)uses it.
 ---
-Some distributions do toggle some of the default values, by patching the
-source tree. Future patches will add support for more maintainable
-configuration handling akin to `man sysctl.d`.
----
- Makefile.am   | 8 +++++++-
- Makefile.mesh | 1 +
- 2 files changed, 8 insertions(+), 1 deletion(-)
+ obexd/src/manager.c | 15 +++++----------
+ 1 file changed, 5 insertions(+), 10 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index 2b1b9acdf..2cbfed2db 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -31,11 +31,17 @@ AM_LDFLAGS = $(MISC_LDFLAGS)
- confdir = $(sysconfdir)/bluetooth
- statedir = $(localstatedir)/lib/bluetooth
+diff --git a/obexd/src/manager.c b/obexd/src/manager.c
+index 73fd6b9af..cc1de7ae2 100644
+--- a/obexd/src/manager.c
++++ b/obexd/src/manager.c
+@@ -644,18 +644,13 @@ static void agent_reply(DBusPendingCall *call, void *user_data)
+ 				DBUS_TYPE_STRING, &name,
+ 				DBUS_TYPE_INVALID)) {
+ 		/* Splits folder and name */
+-		const char *slash = strrchr(name, '/');
++		gboolean is_relative = !g_path_is_absolute(name);
+ 		DBG("Agent replied with %s", name);
+-		if (!slash) {
+-			agent->new_name = g_strdup(name);
++		agent->new_name = g_path_get_basename(name);
++		if (is_relative)
+ 			agent->new_folder = NULL;
+-		} else {
+-			if (strlen(slash) == 1)
+-				agent->new_name = NULL;
+-			else
+-				agent->new_name = g_strdup(slash + 1);
+-			agent->new_folder = g_strndup(name, slash - name);
+-		}
++		else
++			agent->new_folder = g_path_get_dirname(name);
+ 	}
  
-+install-data-hook:
-+	install -dm555 $(DESTDIR)$(confdir)
-+	install -dm700 $(DESTDIR)$(statedir)
-+
- if DATAFILES
- dbusdir = $(DBUS_CONFDIR)/dbus-1/system.d
- dbus_DATA = src/bluetooth.conf
- 
--conf_DATA =
-+conf_DATA = src/main.conf
-+conf_DATA += profiles/input/input.conf
-+conf_DATA += profiles/network/network.conf
- state_DATA =
- endif
- 
-diff --git a/Makefile.mesh b/Makefile.mesh
-index ea50383d2..e4c9fa6a3 100644
---- a/Makefile.mesh
-+++ b/Makefile.mesh
-@@ -3,6 +3,7 @@ if MESH
- 
- if DATAFILES
- dbus_DATA += mesh/bluetooth-mesh.conf
-+conf_DATA += mesh/mesh-main.conf
- endif
- 
- if SYSTEMD
+ 	dbus_message_unref(reply);
 
 -- 
 2.43.0
