@@ -1,91 +1,104 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 12 Feb 2024 17:23:02 +0000
-Subject: [PATCH kmod 01/13] libkmod: use a dup()'d fd for zlib
+Date: Mon, 12 Feb 2024 17:23:03 +0000
+Subject: [PATCH kmod 02/13] libkmod: keep gzFile gzf local to load_zlib()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240212-decompression-fixes-v1-1-06f92ad07985@gmail.com>
+Message-Id: <20240212-decompression-fixes-v1-2-06f92ad07985@gmail.com>
 References: <20240212-decompression-fixes-v1-0-06f92ad07985@gmail.com>
 In-Reply-To: <20240212-decompression-fixes-v1-0-06f92ad07985@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707758583; l=1845;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707758583; l=2092;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=snuU8CYNYYFir4PHCqEikR5PrKmafS0jh0cCrGpEUuM=;
- b=A/1wI8pVP1bQlACvosmS2wNa1xBBVLNlKwBUCiOpgOtLSjrsJz8Nr6LUXy8LzXPKGfyCybfd1
- 8iki4PVtcToDyhlELSQlynjr6lOEQoDlR47N2zPai316QqMjLV25iXJ
+ bh=dynpgl/ahQS0pC4J5FA730cbtaNUmwCDCWyHTxZtfko=;
+ b=OnaUsbxYZ1j1uQmSCFipwGIFtNN8dmD0R7GfYhZHCJ6r1O5/r7Ky9N25ElRq+TF9mpNveY4dr
+ yjzTTMwWFB4CPJeIKLtf5C+Kac7WAC5GaD+20bc0kU5EXgOGd02rQ9q
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The gzdopen() API used, takes ownership of the fd. To make that more
-explicit we clear it (-1) as applicable.
-
-Yet again, kmod has explicit API to return the fd to the user - which
-currently is used solely when uncompressed, so we're safe.
-
-Regardless - simply duplicate the fd locally and use that with zlib.
+There is no need to keep the root gzFile context open for the whole
+duration. Once we've copied the decompressed module to file->memory we
+can close the handle.
 
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- libkmod/libkmod-file.c | 19 ++++++++++++-------
- 1 file changed, 12 insertions(+), 7 deletions(-)
+ libkmod/libkmod-file.c | 18 +++++++-----------
+ 1 file changed, 7 insertions(+), 11 deletions(-)
 
 diff --git a/libkmod/libkmod-file.c b/libkmod/libkmod-file.c
-index b138e7e..b97062b 100644
+index b97062b..9a014ea 100644
 --- a/libkmod/libkmod-file.c
 +++ b/libkmod/libkmod-file.c
-@@ -317,12 +317,18 @@ static int load_zlib(struct kmod_file *file)
+@@ -53,9 +53,6 @@ struct kmod_file {
+ #endif
+ #ifdef ENABLE_XZ
+ 	bool xz_used;
+-#endif
+-#ifdef ENABLE_ZLIB
+-	gzFile gzf;
+ #endif
+ 	int fd;
+ 	enum kmod_file_compression_type compression;
+@@ -317,6 +314,7 @@ static int load_zlib(struct kmod_file *file)
  	int err = 0;
  	off_t did = 0, total = 0;
  	_cleanup_free_ unsigned char *p = NULL;
-+	int gzfd;
++	gzFile gzf;
+ 	int gzfd;
  
  	errno = 0;
--	file->gzf = gzdopen(file->fd, "rb");
--	if (file->gzf == NULL)
-+	gzfd = fcntl(file->fd, F_DUPFD_CLOEXEC, 3);
-+	if (gzfd < 0)
-+		return -errno;
-+
-+	file->gzf = gzdopen(gzfd, "rb"); /* takes ownership of the fd */
-+	if (file->gzf == NULL) {
-+		close(gzfd);
+@@ -324,8 +322,8 @@ static int load_zlib(struct kmod_file *file)
+ 	if (gzfd < 0)
  		return -errno;
--	file->fd = -1; /* now owned by gzf due gzdopen() */
-+	}
  
- 	for (;;) {
- 		int r;
-@@ -359,7 +365,7 @@ static int load_zlib(struct kmod_file *file)
+-	file->gzf = gzdopen(gzfd, "rb"); /* takes ownership of the fd */
+-	if (file->gzf == NULL) {
++	gzf = gzdopen(gzfd, "rb"); /* takes ownership of the fd */
++	if (gzf == NULL) {
+ 		close(gzfd);
+ 		return -errno;
+ 	}
+@@ -343,12 +341,12 @@ static int load_zlib(struct kmod_file *file)
+ 			p = tmp;
+ 		}
+ 
+-		r = gzread(file->gzf, p + did, total - did);
++		r = gzread(gzf, p + did, total - did);
+ 		if (r == 0)
+ 			break;
+ 		else if (r < 0) {
+ 			int gzerr;
+-			const char *gz_errmsg = gzerror(file->gzf, &gzerr);
++			const char *gz_errmsg = gzerror(gzf, &gzerr);
+ 
+ 			ERR(file->ctx, "gzip: %s\n", gz_errmsg);
+ 
+@@ -362,19 +360,17 @@ static int load_zlib(struct kmod_file *file)
+ 	file->memory = p;
+ 	file->size = did;
+ 	p = NULL;
++	gzclose(gzf);
  	return 0;
  
  error:
--	gzclose(file->gzf);
-+	gzclose(file->gzf); /* closes the gzfd */
+-	gzclose(file->gzf); /* closes the gzfd */
++	gzclose(gzf); /* closes the gzfd */
  	return err;
  }
  
-@@ -368,7 +374,7 @@ static void unload_zlib(struct kmod_file *file)
- 	if (file->gzf == NULL)
- 		return;
+ static void unload_zlib(struct kmod_file *file)
+ {
+-	if (file->gzf == NULL)
+-		return;
  	free(file->memory);
--	gzclose(file->gzf); /* closes file->fd */
-+	gzclose(file->gzf);
+-	gzclose(file->gzf);
  }
  
  static const char magic_zlib[] = {0x1f, 0x8b};
-@@ -535,7 +541,6 @@ void kmod_file_unref(struct kmod_file *file)
- 	if (file->memory)
- 		file->ops->unload(file);
- 
--	if (file->fd >= 0)
--		close(file->fd);
-+	close(file->fd);
- 	free(file);
- }
 
 -- 
 2.43.0
