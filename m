@@ -1,72 +1,92 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 12 Feb 2024 20:02:45 +0000
-Subject: [PATCH BlueZ v2 09/10] obex: Use GLib helper function to
- manipulate paths
+Date: Mon, 12 Feb 2024 20:02:46 +0000
+Subject: [PATCH BlueZ v2 10/10] Allow using obexd without systemd in the
+ user session
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240212-disto-patches-v2-9-8bab1bd08f4d@gmail.com>
+Message-Id: <20240212-disto-patches-v2-10-8bab1bd08f4d@gmail.com>
 References: <20240212-disto-patches-v2-0-8bab1bd08f4d@gmail.com>
 In-Reply-To: <20240212-disto-patches-v2-0-8bab1bd08f4d@gmail.com>
 To: linux-bluetooth@vger.kernel.org
-Cc: Bastien Nocera <hadess@hadess.net>
+Cc: Giovanni Campagna <gcampagna-cNUdlRotFMnNLxjTenLetw@public.gmane.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707768157; l=1584;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707768157; l=2136;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=GCUo/Nwzng2MpKTdvtQwQRt2p4nwTwzY0gaSQk+Xr7Y=;
- b=RRoKj0QjKCRqD8xfnN2FNs9AmfqfPFWy3NGEAPoYb6kR9t3DnLMdKUnhKvXrkYoKTz7Ee4YDh
- oCs3Rd8L+1SCgjpDZsqTWrUAYOxxG+cjQZVsJyJRhV9dvB9NwvH4wrK
+ bh=qcOLWrp/zFE+VyNJF7l0mQSwvOHD0sHm7hQeD6mJ4p0=;
+ b=rYipQQQoYBBKWJFCC4K7udhkanjCpN2+07thPENzUcgBhRU5BUTR/5vfKrY1ar12U8rlU3nhq
+ z6nLK6nxg1eBkKbfhKMUWhe+JJOP/fGUr426X5ynFZJBomzeWigKJaD
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Bastien Nocera <hadess@hadess.net>
+From: Giovanni Campagna <gcampagna-cNUdlRotFMnNLxjTenLetw@public.gmane.org>
 
-Instead of trying to do it by hand. This also makes sure that
-relative paths aren't used by the agent.
+Not all sessions run systemd --user and in some cases one may be missing
+systemd all together.
+
+Provide the correct path instead of /bin/false, allowing dbus to start
+the service in such cases.
+
+DBUS implementations can ignore the Exec line all together when run in
+systemd aware mode - at least the OG dbus does that. So ultimately this
+change is a no-op for the systemd --user case.
+
+On my system, this is literally the only non-system service which uses
+/bin/false.
 
 [Emil Velikov]
-Originally this patch was posted in 2013, but deferred since bluez was
-planning to move away from glib. Presently there's no obvious action
-towards that goal, so I think we can safely land this.
-
-As mentioned by the author, current code allows for relative paths and
-considering that obexd service runs without meaningful sandboxing and on
-some distributions it is ran as root, we should plug the whole before
-anyone (ab)uses it.
+Port to AC_CONFIG_FILES() .in files handling. Reword commit message.
 ---
- obexd/src/manager.c | 15 +++++----------
- 1 file changed, 5 insertions(+), 10 deletions(-)
+ Makefile.obexd                                                  | 4 +---
+ configure.ac                                                    | 1 +
+ obexd/src/{org.bluez.obex.service => org.bluez.obex.service.in} | 2 +-
+ 3 files changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/obexd/src/manager.c b/obexd/src/manager.c
-index 73fd6b9af..cc1de7ae2 100644
---- a/obexd/src/manager.c
-+++ b/obexd/src/manager.c
-@@ -644,18 +644,13 @@ static void agent_reply(DBusPendingCall *call, void *user_data)
- 				DBUS_TYPE_STRING, &name,
- 				DBUS_TYPE_INVALID)) {
- 		/* Splits folder and name */
--		const char *slash = strrchr(name, '/');
-+		gboolean is_relative = !g_path_is_absolute(name);
- 		DBG("Agent replied with %s", name);
--		if (!slash) {
--			agent->new_name = g_strdup(name);
-+		agent->new_name = g_path_get_basename(name);
-+		if (is_relative)
- 			agent->new_folder = NULL;
--		} else {
--			if (strlen(slash) == 1)
--				agent->new_name = NULL;
--			else
--				agent->new_name = g_strdup(slash + 1);
--			agent->new_folder = g_strndup(name, slash - name);
--		}
-+		else
-+			agent->new_folder = g_path_get_dirname(name);
- 	}
+diff --git a/Makefile.obexd b/Makefile.obexd
+index 1d37a1bd4..d88708e66 100644
+--- a/Makefile.obexd
++++ b/Makefile.obexd
+@@ -8,12 +8,10 @@ install-data-hook:
  
- 	dbus_message_unref(reply);
+ uninstall-hook:
+ 	rm -f $(DESTDIR)$(SYSTEMD_USERUNITDIR)/dbus-org.bluez.obex.service
++endif
+ 
+ dbussessionbusdir = $(DBUS_SESSIONBUSDIR)
+ dbussessionbus_DATA = obexd/src/org.bluez.obex.service
+-endif
+-
+-EXTRA_DIST += obexd/src/org.bluez.obex.service
+ 
+ if OBEX
+ 
+diff --git a/configure.ac b/configure.ac
+index 387db8c7d..c66991a3d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -457,6 +457,7 @@ AC_CONFIG_FILES(
+ 	mesh/bluetooth-meshd.rst
+ 	mesh/bluetooth-mesh.service
+ 	obexd/src/obex.service
++	obexd/src/org.bluez.obex.service
+ 	src/bluetoothd.rst
+ 	src/bluetooth.service
+ 	tools/bluetooth-logger.service
+diff --git a/obexd/src/org.bluez.obex.service b/obexd/src/org.bluez.obex.service.in
+similarity index 69%
+rename from obexd/src/org.bluez.obex.service
+rename to obexd/src/org.bluez.obex.service.in
+index a53808884..14c16d3e3 100644
+--- a/obexd/src/org.bluez.obex.service
++++ b/obexd/src/org.bluez.obex.service.in
+@@ -1,4 +1,4 @@
+ [D-BUS Service]
+ Name=org.bluez.obex
+-Exec=/bin/false
++Exec=@exec_prefix@/bluetooth/obexd
+ SystemdService=dbus-org.bluez.obex.service
 
 -- 
 2.43.0
