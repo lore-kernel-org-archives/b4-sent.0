@@ -1,120 +1,74 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 12 Feb 2024 17:23:11 +0000
-Subject: [PATCH kmod 10/13] libkmod: tidy-up kmod_file_open()
+Date: Mon, 12 Feb 2024 17:23:12 +0000
+Subject: [PATCH kmod 11/13] libkmod: move load_reg() further up
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240212-decompression-fixes-v1-10-06f92ad07985@gmail.com>
+Message-Id: <20240212-decompression-fixes-v1-11-06f92ad07985@gmail.com>
 References: <20240212-decompression-fixes-v1-0-06f92ad07985@gmail.com>
 In-Reply-To: <20240212-decompression-fixes-v1-0-06f92ad07985@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707758583; l=2378;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707758583; l=1695;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=UfzSecSP8vIYsHmd21SFJIic/SxgSObW4SMoY5ZZ5mI=;
- b=Gh/abScOoWeSs/fl6sH1LlQ+em0F5Pa5ZcmJMSceZ/nUmxJtEHe2B0HizqB1/Uh2wukLUt2Lh
- x7AwKrpVhUKBFQ/7P/bBNO25hPnZDM58kXESBA3oGaNMEHo3UCyWLkq
+ bh=s7DGIk3v5vJZUPUJq4qUIG5k2dwH6qeNbl7Ccp04tdM=;
+ b=r+xUgnwpNFv2pLM9zfu/g+v/Ncb451QKQmLwLfooiRmjkaiKwgrO8YpIpoo1nNwAZGpC8KHlN
+ 3Ax90X3qGebDHBMoyGar0BjA3ntxKXFtVlwhzoSzZWsQQJKuY4R32ze
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This commit cleans up the indentation and the error path of the
-function. It bears no functional changes.
+We're about to reference it in comp_types with next commit.
 
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- libkmod/libkmod-file.c | 60 +++++++++++++++++++++-----------------------------
- 1 file changed, 25 insertions(+), 35 deletions(-)
+ libkmod/libkmod-file.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
 diff --git a/libkmod/libkmod-file.c b/libkmod/libkmod-file.c
-index 5b88d6c..c4893fd 100644
+index c4893fd..db775a6 100644
 --- a/libkmod/libkmod-file.c
 +++ b/libkmod/libkmod-file.c
-@@ -410,41 +410,40 @@ struct kmod_file *kmod_file_open(const struct kmod_ctx *ctx,
+@@ -358,18 +358,6 @@ static int load_zlib(struct kmod_file *file)
+ 
+ static const char magic_zlib[] = {0x1f, 0x8b};
+ 
+-static const struct comp_type {
+-	size_t magic_size;
+-	enum kmod_file_compression_type compression;
+-	const char *magic_bytes;
+-	int (*load)(struct kmod_file *file);
+-} comp_types[] = {
+-	{sizeof(magic_zstd),	KMOD_FILE_COMPRESSION_ZSTD, magic_zstd, load_zstd},
+-	{sizeof(magic_xz),	KMOD_FILE_COMPRESSION_XZ, magic_xz, load_xz},
+-	{sizeof(magic_zlib),	KMOD_FILE_COMPRESSION_ZLIB, magic_zlib, load_zlib},
+-	{0,			KMOD_FILE_COMPRESSION_NONE, NULL, NULL}
+-};
+-
+ static int load_reg(struct kmod_file *file)
  {
- 	struct kmod_file *file = calloc(1, sizeof(struct kmod_file));
- 	const struct comp_type *itr;
--	int err = 0;
-+	char buf[7];
-+	ssize_t sz;
- 
- 	if (file == NULL)
- 		return NULL;
- 
- 	file->fd = open(filename, O_RDONLY|O_CLOEXEC);
- 	if (file->fd < 0) {
--		err = -errno;
--		goto error;
-+		free(file);
-+		return NULL;
- 	}
- 
--	{
--		char buf[7];
--		ssize_t sz;
--
--		assert_cc(sizeof(magic_zstd) < sizeof(buf));
--		assert_cc(sizeof(magic_xz) < sizeof(buf));
--		assert_cc(sizeof(magic_zlib) < sizeof(buf));
--
--		sz = read_str_safe(file->fd, buf, sizeof(buf));
--		lseek(file->fd, 0, SEEK_SET);
--		if (sz != (sizeof(buf) - 1)) {
--			if (sz < 0)
--				err = sz;
--			else
--				err = -EINVAL;
--			goto error;
--		}
-+	assert_cc(sizeof(magic_zstd) < sizeof(buf));
-+	assert_cc(sizeof(magic_xz) < sizeof(buf));
-+	assert_cc(sizeof(magic_zlib) < sizeof(buf));
- 
--		for (itr = comp_types; itr->load != NULL; itr++) {
--			if (memcmp(buf, itr->magic_bytes, itr->magic_size) == 0) {
--				file->load = itr->load;
--				file->compression = itr->compression;
--				break;
--			}
-+	sz = read_str_safe(file->fd, buf, sizeof(buf));
-+	lseek(file->fd, 0, SEEK_SET);
-+	if (sz != (sizeof(buf) - 1)) {
-+		if (sz < 0)
-+			errno = -sz;
-+		else
-+			errno = EINVAL;
-+
-+		close(file->fd);
-+		free(file);
-+		return NULL;
-+	}
-+
-+	for (itr = comp_types; itr->load != NULL; itr++) {
-+		if (memcmp(buf, itr->magic_bytes, itr->magic_size) == 0) {
-+			file->load = itr->load;
-+			file->compression = itr->compression;
-+			break;
- 		}
- 	}
- 
-@@ -455,15 +454,6 @@ struct kmod_file *kmod_file_open(const struct kmod_ctx *ctx,
- 
- 	file->ctx = ctx;
- 
--error:
--	if (err < 0) {
--		if (file->fd >= 0)
--			close(file->fd);
--		free(file);
--		errno = -err;
--		return NULL;
--	}
--
- 	return file;
+ 	struct stat st;
+@@ -388,6 +376,18 @@ static int load_reg(struct kmod_file *file)
+ 	return 0;
  }
  
++static const struct comp_type {
++	size_t magic_size;
++	enum kmod_file_compression_type compression;
++	const char *magic_bytes;
++	int (*load)(struct kmod_file *file);
++} comp_types[] = {
++	{sizeof(magic_zstd),	KMOD_FILE_COMPRESSION_ZSTD, magic_zstd, load_zstd},
++	{sizeof(magic_xz),	KMOD_FILE_COMPRESSION_XZ, magic_xz, load_xz},
++	{sizeof(magic_zlib),	KMOD_FILE_COMPRESSION_ZLIB, magic_zlib, load_zlib},
++	{0,			KMOD_FILE_COMPRESSION_NONE, NULL, NULL}
++};
++
+ struct kmod_elf *kmod_file_get_elf(struct kmod_file *file)
+ {
+ 	int err;
 
 -- 
 2.43.0
