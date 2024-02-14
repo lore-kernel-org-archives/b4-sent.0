@@ -1,62 +1,61 @@
-From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Wed, 14 Feb 2024 22:01:27 +0000
-Subject: [PATCH BlueZ 4/4] build: simplify coverage handling
+From: Zachary Goldstein <zachary.goldstein@concurrent-rt.com>
+Date: Wed, 14 Feb 2024 17:21:54 -0500
+Subject: [PATCH] arm64: ls1046ardb: Replace XGMII with 10GBASE-R phy mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240214-hook-fixup-v1-4-0e158ffea140@gmail.com>
-References: <20240214-hook-fixup-v1-0-0e158ffea140@gmail.com>
-In-Reply-To: <20240214-hook-fixup-v1-0-0e158ffea140@gmail.com>
-To: linux-bluetooth@vger.kernel.org
-Cc: Emil Velikov <emil.l.velikov@gmail.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707948093; l=1002;
- i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=ESy0gP0YuVBpkapzmcgkbeJQ/DjxQ37O4UDqJ+8xAZc=;
- b=dEsw1YM+JtmX/r12Xky6gnaUXB/m7NAH4937n9pxQnTOdfDoLV+C1KBKOVldEbbazABA5Y6kO
- oyz8+2Mm9MTDwlHe0WJ8743GiO+12pPDboqvHlkR2wtO0hpUl2c25lX
-X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
- pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
-X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
+Message-Id: <20240214-ls1046-dts-use-10gbase-r-v1-1-8c2d68547393@concurrent-rt.com>
+X-B4-Tracking: v=1; b=H4sIAAE9zWUC/x2MQQqDMBAAvyJ77sJuiIH0K+IhrZt0oVjJWhHEv
+ xs8DXOYOcCkqhg8uwOqbGr6m5vwo4P3J81FUKfm4Mh5cuzxa0w+4LQa/k2QqbxSY0USipFzCn2
+ O0PKlStb9Xg/jeV6yi7OvagAAAA==
+To: Shawn Guo <shawnguo@kernel.org>, Madalin Bucur <madalin.bucur@nxp.com>, 
+ Li Yang <leoyang.li@nxp.com>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ Zachary Goldstein <zachary.goldstein@concurrent-rt.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707949330; l=1035;
+ i=zachary.goldstein@concurrent-rt.com; s=20230809; h=from:subject:message-id;
+ bh=BGRIPx+hnBEVvcJ92A45ST1Vx+ijHTH7otOABNKiaNE=;
+ b=cnJjLYsULO9fgq8vCh9rD+0wuwb3Lt2hZFgIo9bcbpGw2f8YVDH07WSZL9LCktQlciB1AD9P7
+ cU7g9eKBOCODnYsM5p+LfRiwjSZ2jE5iP2/N7RZAjkgqZx0LJiboJjh
+X-Developer-Key: i=zachary.goldstein@concurrent-rt.com; a=ed25519;
+ pk=GLF18lQ96tRolyWMpDtJzDQ9bi7+1+rMHript5TFdSg=
+X-Endpoint-Received: by B4 Relay for zachary.goldstein@concurrent-rt.com/20230809 with auth_id=74
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
+The AQR107 family does not support XGMII, but USXGMII and
+10GBASE-R instead. Since ce64c1f77a9d ("net: phy: aquantia: add USXGMII
+support and warn if XGMII mode is set") the kernel warns about XGMII
+being used. The LS1046A SoC does not support USXGMII, so use 10GBASE-R
+instead.
+
+Signed-off-by: Zachary Goldstein <zachary.goldstein@concurrent-rt.com>
 ---
- Makefile.am | 10 ++--------
- 1 file changed, 2 insertions(+), 8 deletions(-)
+ arch/arm64/boot/dts/freescale/fsl-ls1046a-rdb.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index b0845e707..08eb32852 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -793,8 +793,8 @@ ell/ell.h: Makefile
- maintainer-clean-local:
- 	-rm -rf ell
+diff --git a/arch/arm64/boot/dts/freescale/fsl-ls1046a-rdb.dts b/arch/arm64/boot/dts/freescale/fsl-ls1046a-rdb.dts
+index 07f6cc6e354a..d2066f733dc5 100644
+--- a/arch/arm64/boot/dts/freescale/fsl-ls1046a-rdb.dts
++++ b/arch/arm64/boot/dts/freescale/fsl-ls1046a-rdb.dts
+@@ -149,7 +149,7 @@ ethernet@ea000 {
  
--if COVERAGE
- clean-coverage:
-+if COVERAGE
- 	@lcov --directory $(top_builddir) --zerocounters
- 	$(RM) -r coverage $(top_builddir)/coverage.info
+ 	ethernet@f0000 { /* 10GEC1 */
+ 		phy-handle = <&aqr106_phy>;
+-		phy-connection-type = "xgmii";
++		phy-connection-type = "10gbase-r";
+ 	};
  
-@@ -803,15 +803,9 @@ coverage: check
- 				--output-file $(top_builddir)/coverage.info
- 	$(AM_V_at)$(MKDIR_P) coverage
- 	@genhtml -o coverage/ $(top_builddir)/coverage.info
-+endif
- 
- clean-local: clean-coverage
- 	-find $(top_builddir) -name "*.gcno" -delete
- 	-find $(top_builddir) -name "*.gcda" -delete
- 	$(RM) -r lib/bluetooth
--
--else
--clean-local:
--	-find $(top_builddir) -name "*.gcno" -delete
--	-find $(top_builddir) -name "*.gcda" -delete
--	$(RM) -r lib/bluetooth
--endif
+ 	ethernet@f2000 { /* 10GEC2 */
 
--- 
-2.43.1
+---
+2.40.1
+base-commit: 841c35169323cd833294798e58b9bf63fa4fa1de
 
