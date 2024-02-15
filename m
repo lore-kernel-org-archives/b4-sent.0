@@ -1,69 +1,53 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Thu, 15 Feb 2024 23:09:11 +0800
-Subject: [PATCH] clk: set initial best mux parent to current parent when
- determining rate
+Subject: [PATCH 0/3] mmc: add hi3798mv200 specific extensions of DWMMC
+Date: Fri, 16 Feb 2024 01:46:41 +0800
+Message-Id: <20240216-b4-mmc-hi3798mv200-v1-0-7d46db845ae6@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240215-mux-v1-1-ebb2fba31d49@outlook.com>
-X-B4-Tracking: v=1; b=H4sIABYpzmUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDI0NT3dzSCl2zlCSLJGNzQxNTSwMloMqCotS0zAqwKdGxtbUALxNcR1U
- AAAA=
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>
-Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yang Xiwen <forbidden405@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAFOzmUC/x3MPQqAMAxA4atIZgNpVPy5ijhom2qGqrQggnh3i
+ +M3vPdAkqiSYCgeiHJp0mPPMGUBdpv3VVBdNjBxTYYNLjWGYHHTqu27cDERzk1bkThvmC3k8Iz
+ i9f6n4/S+HxbAM4FkAAAA
+To: Ulf Hansson <ulf.hansson@linaro.org>, 
+ Jaehoon Chung <jh80.chung@samsung.com>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Igor Opaniuk <igor.opaniuk@linaro.org>, 
+ tianshuliang <tianshuliang@hisilicon.com>, David Yang <mmyangfl@gmail.com>, 
+ linux-kernel@vger.kernel.org, linux-mmc@vger.kernel.org, 
+ devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708009751; l=1451;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708019203; l=1049;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=fggch9mxMQ8SzPlFXnQcVvzDJCD3ro+vLZXoDYu1RGE=;
- b=wxjkbfTu/rBP44OMka17mBI8BMrBoao1MdhKtAdERg9Fwk4DSHxtLiTFHjXE1Uzk37ksKfWK6
- Vqg0qaYsmCACkojwPFrwYG6rvVm8oPv0ZySlUoc58fjg8jpb2yMSbLX
+ bh=3SmWmcck5G21RkHFmC4DweIdttsir78RJ8t2utgkGNQ=;
+ b=iDJmQqTXs95Iec5RYgBkbeSZNLygTPRYG7YrVtIPzwwKnTycoUIsL5xoH+f3o+MFsRz0AY/z3
+ hPEFez78WuhDTV2TNtdCfyP+ZoRA1tu2zw+hH8asPLXEDBC5PvPIlWu
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Originally, the initial clock rate is hardcoded to 0, this can lead to
-some problem when setting a very small rate with CLK_MUX_ROUND_NEAREST.
-
-For example, if the lowest possible rate privided by the mux is 1000Hz,
-setting a rate below 500Hz will fail, because no clock can provide a
-better rate than the non-existant 0. But it should succeed with 1000Hz
-being set.
-
-Setting the initial best parent to current parent could solve this bug
-very well.
+it's modified from hi3798cv200 driver, but quite a lot of code gets
+rewritten because of the hardware differences. Actually cv200 DWMMC core
+is called HIMCIV200 while mv200 DWMMC core is called HIMCIV300 in
+downstream.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-This is actually a v2 of [1], but seems too simple to have a unittest.
-It's tested in a mmc host driver.
+Yang Xiwen (3):
+      mmc: dw_mmc: add support for hi3798mv200
+      dt-bindings: mmc: dw-mshc-hi3798cv200: convert to YAML
+      dt-bindings: mmc: dw-mshc-hi3798cv200: rename to dw-mshc-histb
 
-[1]: https://lore.kernel.org/linux-clk/20230421-clk-v3-1-9ff79e7e7fed@outlook.com/
----
- drivers/clk/clk.c | 4 ++++
- 1 file changed, 4 insertions(+)
-
-diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
-index 2253c154a824..d98cebd7ff03 100644
---- a/drivers/clk/clk.c
-+++ b/drivers/clk/clk.c
-@@ -649,6 +649,10 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
- 
- 	/* find the parent that can provide the fastest rate <= rate */
- 	num_parents = core->num_parents;
-+	if (core->parent) {
-+		best_parent = core->parent;
-+		best = clk_core_get_rate_nolock(best_parent);
-+	}
- 	for (i = 0; i < num_parents; i++) {
- 		unsigned long parent_rate;
- 
-
+ .../bindings/mmc/hi3798cv200-dw-mshc.txt           |  40 ----
+ .../devicetree/bindings/mmc/histb-dw-mshc.yaml     | 130 +++++++++++
+ drivers/mmc/host/Kconfig                           |   9 +
+ drivers/mmc/host/Makefile                          |   1 +
+ drivers/mmc/host/dw_mmc-hi3798mv200.c              | 238 +++++++++++++++++++++
+ 5 files changed, 378 insertions(+), 40 deletions(-)
 ---
 base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
-change-id: 20240215-mux-6db8b3714590
+change-id: 20240121-b4-mmc-hi3798mv200-a5730edf122c
 
 Best regards,
 -- 
