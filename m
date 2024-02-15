@@ -1,52 +1,94 @@
-From: Miko Larsson <mikoxyzzz@gmail.com>
-Date: Thu, 15 Feb 2024 11:25:22 +0100
-Subject: [PATCH] utest/trace-utest: add missing include
+From: Yang Xiwen <forbidden405@outlook.com>
+Date: Thu, 15 Feb 2024 19:03:38 +0800
+Subject: [PATCH] mmc: host: replace 1st argument to struct device * for
+ mmc_of_parse_clk_phase()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240215-utest-fixes-v1-1-3cb7a281506d@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJHmzWUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDI0NT3dKS1OIS3bTMitRi3eQU05TkZONUC1PjJCWgjoKiVLAEUEN0bG0
- tAKdiTghdAAAA
-To: linux-trace-devel@vger.kernel.org
-Cc: Miko Larsson <mikoxyzzz@gmail.com>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707992726; l=729;
- i=mikoxyzzz@gmail.com; s=20240215; h=from:subject:message-id;
- bh=lRozkW2e+TwWY75PUiA6Ncrh0TqaO6YhzOmkHh7ZB6c=;
- b=3/Ej+t8RZLB+o+JKLMpMFM2iortKNbYah9XWTWd1CiJwTMkzqH5zYV1NHt/zCReS14+kC/xo/
- fipzNnVrxYrAfRl1QYLS8v51dqRnx4hSnNzrk/cyNF5PvmBlu6Nlm0e
-X-Developer-Key: i=mikoxyzzz@gmail.com; a=ed25519;
- pk=1WO6EuQa9ZdBA5vCl3bQNjIb6FdQDoTriJmTDrF5mFw=
-X-Endpoint-Received: by B4 Relay for mikoxyzzz@gmail.com/20240215 with auth_id=130
+Message-Id: <20240215-mmc_phase-v1-1-f27644ee13e4@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAInvzWUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDI0NT3dzc5PiCjMTiVF0js1QLU1NDQyML0xQloPqCotS0zAqwWdGxtbU
+ A1mWPUlsAAAA=
+To: Ulf Hansson <ulf.hansson@linaro.org>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>, 
+ Adrian Hunter <adrian.hunter@intel.com>, Joel Stanley <joel@jms.id.au>
+Cc: linux-mmc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-aspeed@lists.ozlabs.org, openbmc@lists.ozlabs.org, 
+ linux-arm-kernel@lists.infradead.org, Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1707995023; l=2554;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=E8eEoUOznWoG1XHCuFnDDwgMO4G3lT0ppUfJJ7smvRQ=;
+ b=L5KCIMmpyT/8YxYu5mHnK+ltMpGOyE3LWJytG6jl/UKpRQXxOmnVMJ5QsFQMj8EAw44T65kRA
+ 8xuTe6TaDO5At8ix6sd4Zmcy94iE3yft9C1kkFFb3tLRJawGvXxwWzL
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fixes FTBFS with clang >=15
+Parsing dt usaully happens very early, sometimes even bofore struct
+mmc_host is allocated (e.g. dw_mci_probe() and dw_mci_parse_dt() in
+dw_mmc.c). Looking at the source of mmc_of_parse_clk_phase(), it's
+actually not mandatory to have a initialized mmc_host first, instead we
+can pass struct device * to it directly.
 
-Fixes: 58cbc1b2a84e ("libtraceevent: Add unit test framework for library commands")
-Signed-off-by: Miko Larsson <mikoxyzzz@gmail.com>
+Also fix the only current user (sdhci-of-aspeed.c).
+
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- utest/trace-utest.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/mmc/core/host.c            | 4 +---
+ drivers/mmc/host/sdhci-of-aspeed.c | 2 +-
+ include/linux/mmc/host.h           | 2 +-
+ 3 files changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/utest/trace-utest.c b/utest/trace-utest.c
-index 1403c86..a26e42e 100644
---- a/utest/trace-utest.c
-+++ b/utest/trace-utest.c
-@@ -6,6 +6,7 @@
-  *   Copyright (C) 2021, VMware, Steven Rostedt <rostedt@goodmis.org>
-  *
-  */
-+#include <libgen.h>
- #include <stdio.h>
- #include <unistd.h>
- #include <getopt.h>
+diff --git a/drivers/mmc/core/host.c b/drivers/mmc/core/host.c
+index cf396e8f34e9..8b2844ac5dc5 100644
+--- a/drivers/mmc/core/host.c
++++ b/drivers/mmc/core/host.c
+@@ -234,10 +234,8 @@ static void mmc_of_parse_timing_phase(struct device *dev, const char *prop,
+ }
+ 
+ void
+-mmc_of_parse_clk_phase(struct mmc_host *host, struct mmc_clk_phase_map *map)
++mmc_of_parse_clk_phase(struct device *dev, struct mmc_clk_phase_map *map)
+ {
+-	struct device *dev = host->parent;
+-
+ 	mmc_of_parse_timing_phase(dev, "clk-phase-legacy",
+ 				  &map->phase[MMC_TIMING_LEGACY]);
+ 	mmc_of_parse_timing_phase(dev, "clk-phase-mmc-hs",
+diff --git a/drivers/mmc/host/sdhci-of-aspeed.c b/drivers/mmc/host/sdhci-of-aspeed.c
+index 42d54532cabe..430c1f90037b 100644
+--- a/drivers/mmc/host/sdhci-of-aspeed.c
++++ b/drivers/mmc/host/sdhci-of-aspeed.c
+@@ -435,7 +435,7 @@ static int aspeed_sdhci_probe(struct platform_device *pdev)
+ 		goto err_sdhci_add;
+ 
+ 	if (dev->phase_desc)
+-		mmc_of_parse_clk_phase(host->mmc, &dev->phase_map);
++		mmc_of_parse_clk_phase(&pdev->dev, &dev->phase_map);
+ 
+ 	ret = sdhci_add_host(host);
+ 	if (ret)
+diff --git a/include/linux/mmc/host.h b/include/linux/mmc/host.h
+index 2f445c651742..5894bf912f7b 100644
+--- a/include/linux/mmc/host.h
++++ b/include/linux/mmc/host.h
+@@ -539,7 +539,7 @@ struct mmc_host *devm_mmc_alloc_host(struct device *dev, int extra);
+ int mmc_add_host(struct mmc_host *);
+ void mmc_remove_host(struct mmc_host *);
+ void mmc_free_host(struct mmc_host *);
+-void mmc_of_parse_clk_phase(struct mmc_host *host,
++void mmc_of_parse_clk_phase(struct device *dev,
+ 			    struct mmc_clk_phase_map *map);
+ int mmc_of_parse(struct mmc_host *host);
+ int mmc_of_parse_voltage(struct mmc_host *host, u32 *mask);
 
 ---
-base-commit: 6f6d5802f31992e7527a4c32b43a32fda6bf6bdf
-change-id: 20240215-utest-fixes-cd5dcc3e853b
+base-commit: 9d64bf433c53cab2f48a3fff7a1f2a696bc5229a
+change-id: 20240215-mmc_phase-26e85511285d
 
 Best regards,
 -- 
-Miko Larsson <mikoxyzzz@gmail.com>
+Yang Xiwen <forbidden405@outlook.com>
 
