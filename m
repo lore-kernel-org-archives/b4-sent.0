@@ -1,10 +1,10 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Fri, 16 Feb 2024 07:48:54 +0800
-Subject: [PATCH 2/6] net: hisi_femac: remove unused compatible strings
+Date: Fri, 16 Feb 2024 07:48:55 +0800
+Subject: [PATCH 3/6] dt-bindings: net: remove outdated hisilicon-femac
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240216-net-v1-2-e0ad972cda99@outlook.com>
+Message-Id: <20240216-net-v1-3-e0ad972cda99@outlook.com>
 References: <20240216-net-v1-0-e0ad972cda99@outlook.com>
 In-Reply-To: <20240216-net-v1-0-e0ad972cda99@outlook.com>
 To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
@@ -19,37 +19,71 @@ To: Yisen Zhuang <yisen.zhuang@huawei.com>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708040932; l=848;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708040932; l=2291;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=Q6RobEliCYMOixlSWarXH2F6cDTqzSpO8SvRil35ZCg=;
- b=ic/0aLLq/JZF1P0XEK/8iZ7k8+22sry3xHwtc9XbBn5LCQaRENK+l+qF4NuHlLn3JUOfAjl80
- hhleIxNJVIkCJWBxDEHq/spq3dyp/PNQ7jhZX4WliE331rdd0VTU2CA
+ bh=/LRpcFbOMPfKKUiQJIHRI4Rc7KX5XmWz3V8ZUehXBd8=;
+ b=+iIZXH+TBsZ0TpNpIKvi2QCLLprQXK65wZF6Z9kiv5kV4SKJdhRYMipMC3GxD/9L11qwrOHc8
+ mja+oNKt4cRDIesBekKRdlJQS4juaDM58pPIanNHL/76wWLjEEkNg7n
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These compatible strings are not found in any mainline dts, remove them.
+The user documented(Hi3516) is not found in current kernel anymore.
+Remove this binding entirely due to recent driver changes.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/net/ethernet/hisilicon/hisi_femac.c | 3 ---
- 1 file changed, 3 deletions(-)
+ .../devicetree/bindings/net/hisilicon-femac.txt    | 41 ----------------------
+ 1 file changed, 41 deletions(-)
 
-diff --git a/drivers/net/ethernet/hisilicon/hisi_femac.c b/drivers/net/ethernet/hisilicon/hisi_femac.c
-index d72160efff9a..6dabc62a00b7 100644
---- a/drivers/net/ethernet/hisilicon/hisi_femac.c
-+++ b/drivers/net/ethernet/hisilicon/hisi_femac.c
-@@ -990,9 +990,6 @@ static int hisi_femac_drv_resume(struct platform_device *pdev)
- #endif
- 
- static const struct of_device_id hisi_femac_match[] = {
--	{.compatible = "hisilicon,hisi-femac-v1",},
--	{.compatible = "hisilicon,hisi-femac-v2",},
--	{.compatible = "hisilicon,hi3516cv300-femac",},
- 	{.compatible = "hisilicon,hi3798mv200-femac",},
- 	{},
- };
+diff --git a/Documentation/devicetree/bindings/net/hisilicon-femac.txt b/Documentation/devicetree/bindings/net/hisilicon-femac.txt
+deleted file mode 100644
+index 5f96976f3cea..000000000000
+--- a/Documentation/devicetree/bindings/net/hisilicon-femac.txt
++++ /dev/null
+@@ -1,41 +0,0 @@
+-Hisilicon Fast Ethernet MAC controller
+-
+-Required properties:
+-- compatible: should contain one of the following version strings:
+-	* "hisilicon,hisi-femac-v1"
+-	* "hisilicon,hisi-femac-v2"
+-	and the soc string "hisilicon,hi3516cv300-femac".
+-- reg: specifies base physical address(s) and size of the device registers.
+-  The first region is the MAC core register base and size.
+-  The second region is the global MAC control register.
+-- interrupts: should contain the MAC interrupt.
+-- clocks: A phandle to the MAC main clock.
+-- resets: should contain the phandle to the MAC reset signal(required) and
+-	the PHY reset signal(optional).
+-- reset-names: should contain the reset signal name "mac"(required)
+-	and "phy"(optional).
+-- phy-mode: see ethernet.txt [1].
+-- phy-handle: see ethernet.txt [1].
+-- hisilicon,phy-reset-delays-us: triplet of delays if PHY reset signal given.
+-	The 1st cell is reset pre-delay in micro seconds.
+-	The 2nd cell is reset pulse in micro seconds.
+-	The 3rd cell is reset post-delay in micro seconds.
+-
+-The MAC address will be determined using the optional properties
+-defined in ethernet.txt[1].
+-
+-[1] Documentation/devicetree/bindings/net/ethernet.txt
+-
+-Example:
+-	hisi_femac: ethernet@10090000 {
+-		compatible = "hisilicon,hi3516cv300-femac","hisilicon,hisi-femac-v2";
+-		reg = <0x10090000 0x1000>,<0x10091300 0x200>;
+-		interrupts = <12>;
+-		clocks = <&crg HI3518EV200_ETH_CLK>;
+-		resets = <&crg 0xec 0>,<&crg 0xec 3>;
+-		reset-names = "mac","phy";
+-		mac-address = [00 00 00 00 00 00];
+-		phy-mode = "mii";
+-		phy-handle = <&phy0>;
+-		hisilicon,phy-reset-delays-us = <10000 20000 20000>;
+-	};
 
 -- 
 2.43.0
