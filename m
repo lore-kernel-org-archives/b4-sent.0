@@ -1,92 +1,69 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Thu, 15 Feb 2024 19:03:38 +0800
-Subject: [PATCH] mmc: host: replace 1st argument to struct device * for
- mmc_of_parse_clk_phase()
+Date: Thu, 15 Feb 2024 23:09:11 +0800
+Subject: [PATCH] clk: set initial best mux parent to current parent when
+ determining rate
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240215-mmc_phase-v1-1-f27644ee13e4@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAInvzWUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDI0NT3dzc5PiCjMTiVF0js1QLU1NDQyML0xQloPqCotS0zAqwWdGxtbU
- A1mWPUlsAAAA=
-To: Ulf Hansson <ulf.hansson@linaro.org>, 
- Andrew Jeffery <andrew@codeconstruct.com.au>, 
- Adrian Hunter <adrian.hunter@intel.com>, Joel Stanley <joel@jms.id.au>
-Cc: linux-mmc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-aspeed@lists.ozlabs.org, openbmc@lists.ozlabs.org, 
- linux-arm-kernel@lists.infradead.org, Yang Xiwen <forbidden405@outlook.com>
+Message-Id: <20240215-mux-v1-1-ebb2fba31d49@outlook.com>
+X-B4-Tracking: v=1; b=H4sIABYpzmUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDI0NT3dzSCl2zlCSLJGNzQxNTSwMloMqCotS0zAqwKdGxtbUALxNcR1U
+ AAAA=
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1707995023; l=2554;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708009751; l=1451;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=E8eEoUOznWoG1XHCuFnDDwgMO4G3lT0ppUfJJ7smvRQ=;
- b=L5KCIMmpyT/8YxYu5mHnK+ltMpGOyE3LWJytG6jl/UKpRQXxOmnVMJ5QsFQMj8EAw44T65kRA
- 8xuTe6TaDO5At8ix6sd4Zmcy94iE3yft9C1kkFFb3tLRJawGvXxwWzL
+ bh=fggch9mxMQ8SzPlFXnQcVvzDJCD3ro+vLZXoDYu1RGE=;
+ b=wxjkbfTu/rBP44OMka17mBI8BMrBoao1MdhKtAdERg9Fwk4DSHxtLiTFHjXE1Uzk37ksKfWK6
+ Vqg0qaYsmCACkojwPFrwYG6rvVm8oPv0ZySlUoc58fjg8jpb2yMSbLX
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Parsing dt usaully happens very early, sometimes even bofore struct
-mmc_host is allocated (e.g. dw_mci_probe() and dw_mci_parse_dt() in
-dw_mmc.c). Looking at the source of mmc_of_parse_clk_phase(), it's
-actually not mandatory to have a initialized mmc_host first, instead we
-can pass struct device * to it directly.
+Originally, the initial clock rate is hardcoded to 0, this can lead to
+some problem when setting a very small rate with CLK_MUX_ROUND_NEAREST.
 
-Also fix the only current user (sdhci-of-aspeed.c).
+For example, if the lowest possible rate privided by the mux is 1000Hz,
+setting a rate below 500Hz will fail, because no clock can provide a
+better rate than the non-existant 0. But it should succeed with 1000Hz
+being set.
+
+Setting the initial best parent to current parent could solve this bug
+very well.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/mmc/core/host.c            | 4 +---
- drivers/mmc/host/sdhci-of-aspeed.c | 2 +-
- include/linux/mmc/host.h           | 2 +-
- 3 files changed, 3 insertions(+), 5 deletions(-)
+This is actually a v2 of [1], but seems too simple to have a unittest.
+It's tested in a mmc host driver.
 
-diff --git a/drivers/mmc/core/host.c b/drivers/mmc/core/host.c
-index cf396e8f34e9..8b2844ac5dc5 100644
---- a/drivers/mmc/core/host.c
-+++ b/drivers/mmc/core/host.c
-@@ -234,10 +234,8 @@ static void mmc_of_parse_timing_phase(struct device *dev, const char *prop,
- }
+[1]: https://lore.kernel.org/linux-clk/20230421-clk-v3-1-9ff79e7e7fed@outlook.com/
+---
+ drivers/clk/clk.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
+index 2253c154a824..d98cebd7ff03 100644
+--- a/drivers/clk/clk.c
++++ b/drivers/clk/clk.c
+@@ -649,6 +649,10 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
  
- void
--mmc_of_parse_clk_phase(struct mmc_host *host, struct mmc_clk_phase_map *map)
-+mmc_of_parse_clk_phase(struct device *dev, struct mmc_clk_phase_map *map)
- {
--	struct device *dev = host->parent;
--
- 	mmc_of_parse_timing_phase(dev, "clk-phase-legacy",
- 				  &map->phase[MMC_TIMING_LEGACY]);
- 	mmc_of_parse_timing_phase(dev, "clk-phase-mmc-hs",
-diff --git a/drivers/mmc/host/sdhci-of-aspeed.c b/drivers/mmc/host/sdhci-of-aspeed.c
-index 42d54532cabe..430c1f90037b 100644
---- a/drivers/mmc/host/sdhci-of-aspeed.c
-+++ b/drivers/mmc/host/sdhci-of-aspeed.c
-@@ -435,7 +435,7 @@ static int aspeed_sdhci_probe(struct platform_device *pdev)
- 		goto err_sdhci_add;
+ 	/* find the parent that can provide the fastest rate <= rate */
+ 	num_parents = core->num_parents;
++	if (core->parent) {
++		best_parent = core->parent;
++		best = clk_core_get_rate_nolock(best_parent);
++	}
+ 	for (i = 0; i < num_parents; i++) {
+ 		unsigned long parent_rate;
  
- 	if (dev->phase_desc)
--		mmc_of_parse_clk_phase(host->mmc, &dev->phase_map);
-+		mmc_of_parse_clk_phase(&pdev->dev, &dev->phase_map);
- 
- 	ret = sdhci_add_host(host);
- 	if (ret)
-diff --git a/include/linux/mmc/host.h b/include/linux/mmc/host.h
-index 2f445c651742..5894bf912f7b 100644
---- a/include/linux/mmc/host.h
-+++ b/include/linux/mmc/host.h
-@@ -539,7 +539,7 @@ struct mmc_host *devm_mmc_alloc_host(struct device *dev, int extra);
- int mmc_add_host(struct mmc_host *);
- void mmc_remove_host(struct mmc_host *);
- void mmc_free_host(struct mmc_host *);
--void mmc_of_parse_clk_phase(struct mmc_host *host,
-+void mmc_of_parse_clk_phase(struct device *dev,
- 			    struct mmc_clk_phase_map *map);
- int mmc_of_parse(struct mmc_host *host);
- int mmc_of_parse_voltage(struct mmc_host *host, u32 *mask);
 
 ---
-base-commit: 9d64bf433c53cab2f48a3fff7a1f2a696bc5229a
-change-id: 20240215-mmc_phase-26e85511285d
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240215-mux-6db8b3714590
 
 Best regards,
 -- 
