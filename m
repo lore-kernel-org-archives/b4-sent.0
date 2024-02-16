@@ -1,61 +1,49 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Fri, 16 Feb 2024 23:11:09 +0000
-Subject: [PATCH BlueZ v2 05/10] build: simplify coverage handling
+Date: Fri, 16 Feb 2024 23:11:10 +0000
+Subject: [PATCH BlueZ v2 06/10] build: drop explicit -fPIC from obexd
+ CFLAGS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240216-hook-fixup-v2-5-a6b192d1a6ad@gmail.com>
+Message-Id: <20240216-hook-fixup-v2-6-a6b192d1a6ad@gmail.com>
 References: <20240216-hook-fixup-v2-0-a6b192d1a6ad@gmail.com>
 In-Reply-To: <20240216-hook-fixup-v2-0-a6b192d1a6ad@gmail.com>
 To: linux-bluetooth@vger.kernel.org
-Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708125068; l=1002;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708125068; l=777;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=F7HjqEFBfzVfrOcOwzbG4BM6hzjjRaT6Ip2Olxc4hyo=;
- b=c72IAGHa37cqH7M2VSCdaRImQqKk8qNj2JMssAafC7dD0yy5p5pbfHE0hKaaG9HwmDPlzfLgi
- WrV7URNzSNFB1HVZfnal/4EZdAl7JiLZ8iHfKzdtxrIKxvoQaYt0s9k
+ bh=RWIlAJI/f0bffjXcuxiy9osevTreZ+4pUs/NPwBF2tA=;
+ b=Q7XgNCkkxFOJ7c+3UFQmzJduYnXLnGLmxVvhtPRhndRPtTVw0GFrYBUJIBV302Tf+ZKJLdavi
+ hGm3G6GV0YiCy4ViuvukEbJeTIc5BhQlxn7GmWgqdjgIGFRw47WCjWk
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
----
- Makefile.am | 10 ++--------
- 1 file changed, 2 insertions(+), 8 deletions(-)
+The option is handled by the global --enable-pic. Drop the local
+explicit argument.
 
-diff --git a/Makefile.am b/Makefile.am
-index 2d43493aa..94df43869 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -787,8 +787,8 @@ ell/ell.h: Makefile
- maintainer-clean-local:
- 	-rm -rf ell
+With that we can drop the standalone CFLAGS.
+
+Aside: the -D_FILE_OFFSET_BITS=64 also seems off - we should either be
+setting it globally or not at all... Something for another rainy day.
+---
+ Makefile.obexd | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/Makefile.obexd b/Makefile.obexd
+index e8e4a6144..01aa3a9c7 100644
+--- a/Makefile.obexd
++++ b/Makefile.obexd
+@@ -104,8 +104,6 @@ obexd_src_obexd_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) \
+ 				-D_FILE_OFFSET_BITS=64 \
+ 				-I$(builddir)/lib -I$(builddir)/obexd/src
  
--if COVERAGE
- clean-coverage:
-+if COVERAGE
- 	@lcov --directory $(top_builddir) --zerocounters
- 	$(RM) -r coverage $(top_builddir)/coverage.info
- 
-@@ -797,15 +797,9 @@ coverage: check
- 				--output-file $(top_builddir)/coverage.info
- 	$(AM_V_at)$(MKDIR_P) coverage
- 	@genhtml -o coverage/ $(top_builddir)/coverage.info
-+endif
- 
- clean-local: clean-coverage
- 	-find $(top_builddir) -name "*.gcno" -delete
- 	-find $(top_builddir) -name "*.gcda" -delete
- 	$(RM) -r lib/bluetooth
+-obexd_src_obexd_CFLAGS = $(AM_CFLAGS) -fPIC
 -
--else
--clean-local:
--	-find $(top_builddir) -name "*.gcno" -delete
--	-find $(top_builddir) -name "*.gcda" -delete
--	$(RM) -r lib/bluetooth
--endif
+ else
+ obexd-add-service-symlink:
+ obexd-remove-service-symlink:
 
 -- 
 2.43.1
