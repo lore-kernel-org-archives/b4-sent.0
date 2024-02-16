@@ -1,126 +1,70 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Fri, 16 Feb 2024 18:02:05 +0800
-Subject: [PATCH v2 6/6] dt-bindings: net: hisilicon-femac-mdio: convert to
- YAML
+Subject: [PATCH v2 0/4] mmc: add hi3798mv200 specific extensions of DWMMC
+Date: Fri, 16 Feb 2024 18:37:58 +0800
+Message-Id: <20240216-b4-mmc-hi3798mv200-v2-0-010d63e6a1d5@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240216-net-v2-6-89bd4b7065c2@outlook.com>
-References: <20240216-net-v2-0-89bd4b7065c2@outlook.com>
-In-Reply-To: <20240216-net-v2-0-89bd4b7065c2@outlook.com>
-To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
- Salil Mehta <salil.mehta@huawei.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAY7z2UC/22Nyw6CMBBFf8XM2jHtUB668j8MC2iLTLTUtNhoC
+ P9uxa3Lc5J77gLRBrYRTrsFgk0c2U8ZaL8DPXbT1SKbzECClJAksVfonMaRi/rYuERCYFfWhbB
+ mkEQa8vAR7MCvLXppM48cZx/e20eSX/vLkaz+5ZJEgbVRlekbVXa2OvvnfPf+dtDeQbuu6wel1
+ ClqtgAAAA==
+To: Ulf Hansson <ulf.hansson@linaro.org>, 
+ Jaehoon Chung <jh80.chung@samsung.com>, Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, Yang Xiwen <forbidden405@foxmail.com>, 
- Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Igor Opaniuk <igor.opaniuk@linaro.org>, 
+ tianshuliang <tianshuliang@hisilicon.com>, David Yang <mmyangfl@gmail.com>, 
+ linux-kernel@vger.kernel.org, linux-mmc@vger.kernel.org, 
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708077720; l=2430;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708079892; l=1790;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=iR9T/nPDOpVW3CABLZDGaiOeC7P5ZbMOoE+OAc1rwbA=;
- b=dlWdIEfs9sbKqrT0xpD5XZbZFy5CAi4go7n+kDnxJBVH/rZDSM6sNxQaxhy+QZ06XM1bL5lfX
- tqjAGdcktdVCBLmjvNKEzWTdMaLBYlJgN4l2j+ON/zqHoP5I7E4sbo5
+ bh=9w2bI+hdTEUkHwmJZgqnNrTm3dF8JO/74q7G3Kshnzg=;
+ b=GVrFnTkcI2ByMKXvsctj030QF9pOAZcH1VUk/BLXeBrS/jKXbM2IJzv8YHTt6Q+PNh5oH4MYT
+ zh4EJIa0HHBCk5BmMP1L1yDacgy6TQK6dnyRUkiswHr5UAdADAao5i5
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Also mark the clock optional
+it's modified from hi3798cv200 driver, but quite a lot of code gets
+rewritten because of the hardware differences. Actually cv200 DWMMC core
+is called HIMCIV200 while mv200 DWMMC core is called HIMCIV300 in
+downstream.
+
+Pending on:
+[PATCH] mmc: host: replace 1st argument to struct device * for mmc_of_parse_clk_phase():
+	https://lore.kernel.org/all/20240215-mmc_phase-v1-1-f27644ee13e4@outlook.com/
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- .../bindings/net/hisilicon,hisi-femac-mdio.yaml    | 48 ++++++++++++++++++++++
- .../bindings/net/hisilicon-femac-mdio.txt          | 22 ----------
- 2 files changed, 48 insertions(+), 22 deletions(-)
+Changes in v2:
+- dw_mmc-hi3798mv200: use dev_err_probe() helper - Suggested by Krzysztof Kozlowski.
+- dw_mmc-hi3798mv200: add missing err=0;
+- dw_mmc-hi3798c(m)v200: remove unused MODULE_ALIAS() - Suggested by Krzysztof Kozlowski.
+- binding: rename the binding, a lot of tweaks suggested by Krzysztof Kozlowski.
+- Link to v1: https://lore.kernel.org/r/20240216-b4-mmc-hi3798mv200-v1-0-7d46db845ae6@outlook.com
 
-diff --git a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
-new file mode 100644
-index 000000000000..1c85e6e7f8f6
---- /dev/null
-+++ b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
-@@ -0,0 +1,48 @@
-+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/net/hisilicon,hisi-femac-mdio.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: HiSilicon FEMAC MDIO bus
-+
-+maintainers:
-+  - Yang Xiwen <forbidden405@formail.com>
-+
-+allOf:
-+  - $ref: mdio.yaml#
-+
-+properties:
-+  "#address-cells":
-+    const: 1
-+
-+  "#size-cells":
-+    const: 0
-+
-+  compatible:
-+    const: hisilicon,hisi-femac-mdio
-+
-+  reg:
-+    maxItems: 1
-+
-+  clocks:
-+    maxItems: 1
-+
-+required:
-+  - compatible
-+  - reg
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    mdio@10091100 {
-+        compatible = "hisilicon,hisi-femac-mdio";
-+        reg = <0x10091100 0x20>;
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+
-+        phy@1 {
-+            reg = <1>;
-+        };
-+    };
-diff --git a/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt b/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt
-deleted file mode 100644
-index 23a39a309d17..000000000000
---- a/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt
-+++ /dev/null
-@@ -1,22 +0,0 @@
--Hisilicon Fast Ethernet MDIO Controller interface
--
--Required properties:
--- compatible: should be "hisilicon,hisi-femac-mdio".
--- reg: address and length of the register set for the device.
--- clocks: A phandle to the reference clock for this device.
--
--- PHY subnode: inherits from phy binding [1]
--[1] Documentation/devicetree/bindings/net/phy.txt
--
--Example:
--mdio: mdio@10091100 {
--	compatible = "hisilicon,hisi-femac-mdio";
--	reg = <0x10091100 0x10>;
--	clocks = <&crg HI3516CV300_MDIO_CLK>;
--	#address-cells = <1>;
--	#size-cells = <0>;
--
--	phy0: phy@1 {
--		reg = <1>;
--	};
--};
+---
+Yang Xiwen (4):
+      mmc: dw_mmc-hi3798cv200: remove MODULE_ALIAS()
+      mmc: dw_mmc: add support for hi3798mv200
+      dt-bindings: mmc: dw-mshc-hi3798cv200: convert to YAML
+      dt-bindings: mmc: hisilicon,hi3798cv200-dw-mshc: rename to hisilicon,hi3798-dw-mshc
 
+ .../bindings/mmc/hi3798cv200-dw-mshc.txt           |  40 ----
+ .../bindings/mmc/hisilicon,hi3798-dw-mshc.yaml     |  92 ++++++++
+ drivers/mmc/host/Kconfig                           |   9 +
+ drivers/mmc/host/Makefile                          |   1 +
+ drivers/mmc/host/dw_mmc-hi3798cv200.c              |   1 -
+ drivers/mmc/host/dw_mmc-hi3798mv200.c              | 235 +++++++++++++++++++++
+ 6 files changed, 337 insertions(+), 41 deletions(-)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240121-b4-mmc-hi3798mv200-a5730edf122c
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
