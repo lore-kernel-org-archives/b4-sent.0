@@ -1,91 +1,52 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Fri, 16 Feb 2024 23:11:05 +0000
-Subject: [PATCH BlueZ v2 01/10] build: rework {install-data,uninstall}-hook
+Date: Fri, 16 Feb 2024 23:11:06 +0000
+Subject: [PATCH BlueZ v2 02/10] build: install obexd (dbus,systemd}
+ services as needed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240216-hook-fixup-v2-1-a6b192d1a6ad@gmail.com>
+Message-Id: <20240216-hook-fixup-v2-2-a6b192d1a6ad@gmail.com>
 References: <20240216-hook-fixup-v2-0-a6b192d1a6ad@gmail.com>
 In-Reply-To: <20240216-hook-fixup-v2-0-a6b192d1a6ad@gmail.com>
 To: linux-bluetooth@vger.kernel.org
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708125068; l=1944;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708125068; l=708;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=2q2yJxfalsDM6IrAcp4cLj0XyQOzx84+xaZIWSPUpFo=;
- b=KIs0MYGpSZVZxqgp91M5Co68Xw66l/7yynsCkaB+9ik+QIZ6FafSLMQODc9deDgDUxvFX8XH2
- WOU3MgISlLZBIVLbg1FTDd12pjI47lCdi2wRWKFurEoPgAJ8s3767Gs
+ bh=ydMrW4KQq1RxtsNE5Z3GD8gOdVpX/eInfAQOzvCNhPM=;
+ b=IrYvb1KVOghrustydreRo3bmyf2og6elMhJBTvp+Y0TbzI7qTGuQPiB0b1hSXzDQHXXSxnBXQ
+ K2QeywgpuavAtAGEmgRUGM7CedeeoFoKeaQl+LP4GwYSBJfYVcujLMP
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently autoconfigure throws a useful error, about a duplicate
-install-data-hook.
+Currently we ship the service files, even when built with
+--disable-obex.
 
-Address that by making the two target specific and pulling them as
-dependencies.
-
-We have to create empty ones otherwise dependency tracking and
-resolution will fail.
+Move the "if OBEX" guard few lines further up.
 ---
- Makefile.am    |  5 ++++-
- Makefile.obexd | 10 ++++++++--
- 2 files changed, 12 insertions(+), 3 deletions(-)
+ Makefile.obexd | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index 5207c172b..450e931c6 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -31,7 +31,7 @@ AM_LDFLAGS = $(MISC_LDFLAGS)
- confdir = $(sysconfdir)/bluetooth
- statedir = $(localstatedir)/lib/bluetooth
- 
--install-data-hook:
-+bluetoothd-fix-permissions:
- 	install -dm555 $(DESTDIR)$(confdir)
- 	install -dm700 $(DESTDIR)$(statedir)
- 
-@@ -422,6 +422,9 @@ include Makefile.obexd
- include android/Makefile.am
- include Makefile.mesh
- 
-+install-data-hook: bluetoothd-fix-permissions obexd-add-service-symlink
-+uninstall-hook: obexd-remove-service-symlink
-+
- if HID2HCI
- rulesdir = $(UDEV_DIR)/rules.d
- 
 diff --git a/Makefile.obexd b/Makefile.obexd
-index 81456544d..0e8bc6de7 100644
+index 0e8bc6de7..e8e4a6144 100644
 --- a/Makefile.obexd
 +++ b/Makefile.obexd
-@@ -3,11 +3,14 @@ if SYSTEMD
+@@ -1,4 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0
++if OBEX
++
+ if SYSTEMD
  systemduserunitdir = $(SYSTEMD_USERUNITDIR)
  systemduserunit_DATA = obexd/src/obex.service
- 
--install-data-hook:
-+obexd-add-service-symlink:
- 	$(LN_S) -f obex.service $(DESTDIR)$(SYSTEMD_USERUNITDIR)/dbus-org.bluez.obex.service
- 
--uninstall-hook:
-+obexd-remove-service-symlink:
- 	rm -f $(DESTDIR)$(SYSTEMD_USERUNITDIR)/dbus-org.bluez.obex.service
-+else
-+obexd-add-service-symlink:
-+obexd-remove-service-symlink:
- endif
- 
+@@ -16,7 +18,6 @@ endif
  dbussessionbusdir = $(DBUS_SESSIONBUSDIR)
-@@ -102,6 +105,9 @@ obexd_src_obexd_CPPFLAGS = $(AM_CPPFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS) \
+ dbussessionbus_DATA = obexd/src/org.bluez.obex.service
  
- obexd_src_obexd_CFLAGS = $(AM_CFLAGS) -fPIC
+-if OBEX
  
-+else
-+obexd-add-service-symlink:
-+obexd-remove-service-symlink:
- endif
+ obex_plugindir = $(libdir)/obex/plugins
  
- obexd_src_obexd_SHORTNAME = obexd
 
 -- 
 2.43.1
