@@ -1,13 +1,14 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Fri, 16 Feb 2024 07:48:58 +0800
-Subject: [PATCH 6/6] dt-bindings: net: hisilicon-femac-mdio: make clock
- optional
+Subject: [PATCH v2 0/6] net: hisi-femac: add support for Hi3798MV200,
+ remove unmaintained compatibles
+Date: Fri, 16 Feb 2024 18:01:59 +0800
+Message-Id: <20240216-net-v2-0-89bd4b7065c2@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240216-net-v1-6-e0ad972cda99@outlook.com>
-References: <20240216-net-v1-0-e0ad972cda99@outlook.com>
-In-Reply-To: <20240216-net-v1-0-e0ad972cda99@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAJcyz2UC/1WMQQ7CIBBFr9LMWsxAGiuuvIfpgsDUTtSOASSah
+ ruL3bl8P/+9FRJFpgSnboVIhRPL0sDsOvCzW66kODQGg6ZHow9qoaysM3gkPfgeJ2jPZ6SJ31v
+ lMjaeOWWJny1a9G/994tWqAhdsIPxwVl7lle+i9z2Xh4w1lq/1dQLkpgAAAA=
 To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
  Salil Mehta <salil.mehta@huawei.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
@@ -20,37 +21,48 @@ To: Yisen Zhuang <yisen.zhuang@huawei.com>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708040932; l=878;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708077720; l=1447;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=F5kHPrADx5NPlmJ1rkhSxa9z6ULOnV4wfItxfOuEBlU=;
- b=6HbzsNnWkAYAwbHHS3hcLyUnHF83hhbSg5L2TOq54PaHAnk9Ka1K2HjwZiA7DlrEZPmXrP4v7
- jwdNlMUA7JtCEQ1ky6bp7ra5L0oVS5+wgJ8w07CFJ6/fkTIprmD+tCa
+ bh=4csa7aTSDQipjQQRAGTCioYnRiR1XMs3x6cVhQ5/Ans=;
+ b=b2egZ3PgqKEpipPpPARcNfiNidRYvOIV4ankzyZlv7kGLkClHpB2yRACkfh8rt1OUht43KKF6
+ dnmswJm420OCX0eWmdU3AZ4JtbaZ4T/m34LcE1h7nMisoWFlN29ErWU
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The clock is optional.
-
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v2:
+- replace email.
+- hisi-femac: s/BUS/MACIF (Andrew Lunn)
+- hisi-femac: add "hisilicon,hisi-femac" compatible since the driver
+  seems generic enough for various SoCs
+- hisi-femac-mdio: convert binding to YAML (Krzysztof Kozlowski)
+- rewrite commit logs (Krzysztof Kozlowski)
+- Link to v1: https://lore.kernel.org/r/20240216-net-v1-0-e0ad972cda99@outlook.com
 
-diff --git a/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt b/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt
-index 23a39a309d17..cd37f43abd45 100644
---- a/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt
-+++ b/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt
-@@ -3,6 +3,8 @@ Hisilicon Fast Ethernet MDIO Controller interface
- Required properties:
- - compatible: should be "hisilicon,hisi-femac-mdio".
- - reg: address and length of the register set for the device.
-+
-+Optional properties:
- - clocks: A phandle to the reference clock for this device.
- 
- - PHY subnode: inherits from phy binding [1]
+---
+Yang Xiwen (6):
+      net: hisilicon: add support for hisi_femac core on Hi3798MV200
+      net: hisi_femac: remove unused compatible strings
+      dt-bindings: net: remove outdated hisilicon-femac
+      dt-bindings: net: add hisilicon,hisi-femac
+      net: mdio: hisi-femac: make clock optional
+      dt-bindings: net: hisilicon-femac-mdio: convert to YAML
 
+ .../bindings/net/hisilicon,hisi-femac-mdio.yaml    |  48 +++++++++
+ .../bindings/net/hisilicon,hisi-femac.yaml         | 117 +++++++++++++++++++++
+ .../bindings/net/hisilicon-femac-mdio.txt          |  22 ----
+ .../devicetree/bindings/net/hisilicon-femac.txt    |  41 --------
+ drivers/net/ethernet/hisilicon/hisi_femac.c        |  94 ++++++++++++-----
+ drivers/net/mdio/mdio-hisi-femac.c                 |   2 +-
+ 6 files changed, 235 insertions(+), 89 deletions(-)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240216-net-9a208e17c40f
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
