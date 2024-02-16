@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Fri, 16 Feb 2024 14:05:30 +0300
-Subject: [PATCH net-next v2 2/8] net: dsa: mt7530: set interrupt register
- only for MT7530
+Date: Fri, 16 Feb 2024 14:05:31 +0300
+Subject: [PATCH net-next v2 3/8] net: dsa: mt7530: do not use SW_PHY_RST to
+ reset MT7531 switch
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240216-for-netnext-mt7530-improvements-3-v2-2-094cae3ff23b@arinc9.com>
+Message-Id: <20240216-for-netnext-mt7530-improvements-3-v2-3-094cae3ff23b@arinc9.com>
 References: <20240216-for-netnext-mt7530-improvements-3-v2-0-094cae3ff23b@arinc9.com>
 In-Reply-To: <20240216-for-netnext-mt7530-improvements-3-v2-0-094cae3ff23b@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -23,39 +23,49 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708081540; l=921;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708081540; l=1298;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=JV5lkSoAmKAO6vEQKKvFpHOlOFc0GQ6XMI05UOpapU0=;
- b=6sLS2Fy8GCQ4bmQBQV4SoJUoEQEDgsCOSuj01R+oOJZUOGxZdZTvsIczW36eKnIEd4CoKj+lD
- oXbDfaix77lBWRZS5Q4hzgZjQTvsUOlHXgUf2Y19WjieBgQHN4HM4Xp
+ bh=ecurYkRWOTqqGU2AKHni4Fzup3XR61+gzZ3STlqM5Z4=;
+ b=fEWM74MriRVDSMV+6+deRf2A3cu97D6P21qRqy0TPnGl++e++WtH/c3X2a+JfqJ/BSw+2GTJm
+ avzMhem9AbqCFQ5L/8bWGjAU7HZJ+aT0WpmyIJnwgpA6Q1ZcnsppKl/
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Setting this register related to interrupts is only needed for the MT7530
-switch. Make an exclusive check to ensure this.
+According to the document MT7531 Reference Manual for Development Board
+v1.0, the SW_PHY_RST bit on the SYS_CTRL register doesn't exist for
+MT7531. This is likely why forcing link down on all ports is necessary for
+MT7531.
+
+Therefore, do not set SW_PHY_RST on mt7531_setup().
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
-Acked-by: Daniel Golle <daniel@makrotopia.org>
-Tested-by: Daniel Golle <daniel@makrotopia.org>
 ---
- drivers/net/dsa/mt7530.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/net/dsa/mt7530.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 94d4b2c87799..5cfd303b773f 100644
+index 5cfd303b773f..296711fd5c43 100644
 --- a/drivers/net/dsa/mt7530.c
 +++ b/drivers/net/dsa/mt7530.c
-@@ -2055,7 +2055,7 @@ mt7530_setup_irq(struct mt7530_priv *priv)
- 	}
+@@ -2451,14 +2451,12 @@ mt7531_setup(struct dsa_switch *ds)
+ 	val = mt7530_read(priv, MT7531_TOP_SIG_SR);
+ 	priv->p5_sgmii = !!(val & PAD_DUAL_SGMII_EN);
  
- 	/* This register must be set for MT7530 to properly fire interrupts */
--	if (priv->id != ID_MT7531)
-+	if (priv->id == ID_MT7530 || priv->id == ID_MT7621)
- 		mt7530_set(priv, MT7530_TOP_SIG_CTRL, TOP_SIG_CTRL_NORMAL);
+-	/* all MACs must be forced link-down before sw reset */
++	/* Force link down on all ports before internal reset */
+ 	for (i = 0; i < MT7530_NUM_PORTS; i++)
+ 		mt7530_write(priv, MT7530_PMCR_P(i), MT7531_FORCE_LNK);
  
- 	ret = request_threaded_irq(priv->irq, NULL, mt7530_irq_thread_fn,
+ 	/* Reset the switch through internal reset */
+-	mt7530_write(priv, MT7530_SYS_CTRL,
+-		     SYS_CTRL_PHY_RST | SYS_CTRL_SW_RST |
+-		     SYS_CTRL_REG_RST);
++	mt7530_write(priv, MT7530_SYS_CTRL, SYS_CTRL_SW_RST | SYS_CTRL_REG_RST);
+ 
+ 	if (!priv->p5_sgmii) {
+ 		mt7531_pll_setup(priv);
 
 -- 
 2.40.1
