@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Fri, 16 Feb 2024 14:05:29 +0300
-Subject: [PATCH net-next v2 1/8] net: dsa: mt7530: remove .mac_port_config
- for MT7988 and make it optional
+Date: Fri, 16 Feb 2024 14:05:30 +0300
+Subject: [PATCH net-next v2 2/8] net: dsa: mt7530: set interrupt register
+ only for MT7530
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240216-for-netnext-mt7530-improvements-3-v2-1-094cae3ff23b@arinc9.com>
+Message-Id: <20240216-for-netnext-mt7530-improvements-3-v2-2-094cae3ff23b@arinc9.com>
 References: <20240216-for-netnext-mt7530-improvements-3-v2-0-094cae3ff23b@arinc9.com>
 In-Reply-To: <20240216-for-netnext-mt7530-improvements-3-v2-0-094cae3ff23b@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -23,88 +23,39 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708081540; l=2593;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708081540; l=921;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=zsBRS25Kdr7LfGGSqrR3mLbX7RMd9/oxSXqAjEC3Jr8=;
- b=vF2L9NK6OyRK16reEhB75WUImHKGciv3O6Y0W0oNc9o4O4TlHjL/V3WziVoOr3V3Iqdudmz9O
- 77xXUCAaJHuBL3WS62LLUYJecjLZPR4LucIcn8MqGHWsVRyvIAZS5pf
+ bh=JV5lkSoAmKAO6vEQKKvFpHOlOFc0GQ6XMI05UOpapU0=;
+ b=6sLS2Fy8GCQ4bmQBQV4SoJUoEQEDgsCOSuj01R+oOJZUOGxZdZTvsIczW36eKnIEd4CoKj+lD
+ oXbDfaix77lBWRZS5Q4hzgZjQTvsUOlHXgUf2Y19WjieBgQHN4HM4Xp
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For the switch on the MT7988 SoC, the mac_port_config member for ID_MT7988
-in mt753x_table is not needed as the interfaces of all MACs are already
-handled on mt7988_mac_port_get_caps().
+Setting this register related to interrupts is only needed for the MT7530
+switch. Make an exclusive check to ensure this.
 
-Therefore, remove the mac_port_config member from ID_MT7988 in
-mt753x_table. Before calling priv->info->mac_port_config(), if there's no
-mac_port_config member in mt753x_table, exit mt753x_mac_config()
-successfully.
-
-Remove calling priv->info->mac_port_config() from the sanity check as the
-sanity check requires a pointer to a mac_port_config function to be
-non-NULL. This will fail for MT7988 as mac_port_config won't be a member of
-its info table.
-
-Co-developed-by: Daniel Golle <daniel@makrotopia.org>
-Signed-off-by: Daniel Golle <daniel@makrotopia.org>
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
-Reviewed-by: Vladimir Oltean <olteanv@gmail.com>
+Acked-by: Daniel Golle <daniel@makrotopia.org>
+Tested-by: Daniel Golle <daniel@makrotopia.org>
 ---
- drivers/net/dsa/mt7530.c | 18 ++++--------------
- 1 file changed, 4 insertions(+), 14 deletions(-)
+ drivers/net/dsa/mt7530.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 03d966fa67b2..94d4b2c87799 100644
+index 94d4b2c87799..5cfd303b773f 100644
 --- a/drivers/net/dsa/mt7530.c
 +++ b/drivers/net/dsa/mt7530.c
-@@ -2655,17 +2655,6 @@ static bool mt753x_is_mac_port(u32 port)
- 	return (port == 5 || port == 6);
- }
+@@ -2055,7 +2055,7 @@ mt7530_setup_irq(struct mt7530_priv *priv)
+ 	}
  
--static int
--mt7988_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
--		  phy_interface_t interface)
--{
--	if (dsa_is_cpu_port(ds, port) &&
--	    interface == PHY_INTERFACE_MODE_INTERNAL)
--		return 0;
--
--	return -EINVAL;
--}
--
- static int
- mt7531_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
- 		  phy_interface_t interface)
-@@ -2706,6 +2695,9 @@ mt753x_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
- {
- 	struct mt7530_priv *priv = ds->priv;
+ 	/* This register must be set for MT7530 to properly fire interrupts */
+-	if (priv->id != ID_MT7531)
++	if (priv->id == ID_MT7530 || priv->id == ID_MT7621)
+ 		mt7530_set(priv, MT7530_TOP_SIG_CTRL, TOP_SIG_CTRL_NORMAL);
  
-+	if (!priv->info->mac_port_config)
-+		return 0;
-+
- 	return priv->info->mac_port_config(ds, port, mode, state->interface);
- }
- 
-@@ -3169,7 +3161,6 @@ const struct mt753x_info mt753x_table[] = {
- 		.phy_write_c45 = mt7531_ind_c45_phy_write,
- 		.cpu_port_config = mt7988_cpu_port_config,
- 		.mac_port_get_caps = mt7988_mac_port_get_caps,
--		.mac_port_config = mt7988_mac_config,
- 	},
- };
- EXPORT_SYMBOL_GPL(mt753x_table);
-@@ -3197,8 +3188,7 @@ mt7530_probe_common(struct mt7530_priv *priv)
- 	 * properly.
- 	 */
- 	if (!priv->info->sw_setup || !priv->info->phy_read_c22 ||
--	    !priv->info->phy_write_c22 || !priv->info->mac_port_get_caps ||
--	    !priv->info->mac_port_config)
-+	    !priv->info->phy_write_c22 || !priv->info->mac_port_get_caps)
- 		return -EINVAL;
- 
- 	priv->id = priv->info->id;
+ 	ret = request_threaded_irq(priv->irq, NULL, mt7530_irq_thread_fn,
 
 -- 
 2.40.1
