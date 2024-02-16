@@ -1,171 +1,60 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Fri, 16 Feb 2024 14:05:36 +0300
-Subject: [PATCH net-next v2 8/8] net: dsa: mt7530: simplify link operations
- and force link down on all ports
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH RFC 0/4] clk: hisilicon: add support for Hi3798MV200
+Date: Fri, 16 Feb 2024 19:37:50 +0800
+Message-Id: <20240216-clk-mv200-v1-0-a29ace29e636@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240216-for-netnext-mt7530-improvements-3-v2-8-094cae3ff23b@arinc9.com>
-References: <20240216-for-netnext-mt7530-improvements-3-v2-0-094cae3ff23b@arinc9.com>
-In-Reply-To: <20240216-for-netnext-mt7530-improvements-3-v2-0-094cae3ff23b@arinc9.com>
-To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
- Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
- Florian Fainelli <f.fainelli@gmail.com>, 
- Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Russell King <linux@armlinux.org.uk>
-Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com, 
- Bartel Eerdekens <bartel.eerdekens@constell8.be>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAA5Jz2UC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDI0Mz3eScbN3cMiMDA93kZIvkxFRjS7PUVAMloPqCotS0zAqwWdFKQW7
+ OSrG1tQBqPn+cYAAAAA==
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: David Yang <mmyangfl@gmail.com>, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708081540; l=5194;
- i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=3PnEpSD/b9sLXrH/ouiQE55BJAdoplXfAHA3Ch+TLls=;
- b=mSaVHEzCy4ejGcjX96SnPb/qltroYfKxJok9jX4XC6EEKUgprqU+eyIwYXvYzGj3FGdeQTMiz
- RZCb+leeyYiAYQTbPcfrjcTZTQSfLKSqIKcXmsLArrQw1X2bfF2KpZu
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708083473; l=1516;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=xQgenU1RuH/1sl6zVXoRINQqPjQc+AObioNdVhirHEo=;
+ b=97nMuwfwFk2N77rE/E+Z7xVKb7FuduTDlsPB/TDm/akUScmHkujGzAXrn8iw7+wSwLWbtovKE
+ od9wqcKgyCICPE5pxHE76StiuaspaYhWRMxG4x5xUGGuKp0E+BzuDy1
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, the link operations for switch MACs are scattered across
-port_enable, port_disable, phylink_mac_config, phylink_mac_link_up, and
-phylink_mac_link_down.
+This SoC is similar to Hi3798CV200 with a few more clocks in CRG module.
 
-port_enable and port_disable clears the link settings. Move that to
-mt7530_setup() and mt7531_setup_common() which set up the switches. This
-way, the link settings are cleared on all ports at setup, and then only
-once with phylink_mac_link_down() when a link goes down.
+Note this driver is still ongoing, many clocks are not registered in the
+driver now. Feedback is welcomed, especially from HiSilicon people.
 
-Enable force mode at setup to apply the force part of the link settings.
-This ensures that only active ports will have their link up.
-
-Now that the bit for setting the port on force mode is done on
-mt7530_setup() and mt7531_setup_common(), get rid of PMCR_FORCE_MODE_ID()
-which helped determine which bit to use for the switch model.
-
-The "MT7621 Giga Switch Programming Guide v0.3", "MT7531 Reference Manual
-for Development Board v1.0", and "MT7988A Wi-Fi 7 Generation Router
-Platform: Datasheet (Open Version) v0.1" documents show that these bits are
-enabled at reset:
-
-PMCR_IFG_XMIT(1) (not part of PMCR_LINK_SETTINGS_MASK)
-PMCR_MAC_MODE (not part of PMCR_LINK_SETTINGS_MASK)
-PMCR_TX_EN
-PMCR_RX_EN
-PMCR_BACKOFF_EN (not part of PMCR_LINK_SETTINGS_MASK)
-PMCR_BACKPR_EN (not part of PMCR_LINK_SETTINGS_MASK)
-PMCR_TX_FC_EN
-PMCR_RX_FC_EN
-
-These bits also don't exist on the MT7530_PMCR_P(6) register of the switch
-on the MT7988 SoC:
-
-PMCR_IFG_XMIT()
-PMCR_MAC_MODE
-PMCR_BACKOFF_EN
-PMCR_BACKPR_EN
-
-Remove the setting of the bits not part of PMCR_LINK_SETTINGS_MASK on
-phylink_mac_config as they're already set.
-
-Suggested-by: Vladimir Oltean <olteanv@gmail.com>
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/net/dsa/mt7530.c | 26 +++++++++++++-------------
- drivers/net/dsa/mt7530.h |  2 --
- 2 files changed, 13 insertions(+), 15 deletions(-)
+Yang Xiwen (4):
+      dt-binding: clock: histb-clock: Add missing common clock and Hi3798MV200 specific clock definition
+      clk: hisilicon: add CRG driver for Hi3798MV200 SoC
+      dt-binding: clock: merge all hisilicon clock bindings to hisilicon,clock-reset-generator
+      dt-binding: clock: hisilicon,clock-reset-controller: add Hi3798MV200 SoC support
 
-diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 5c8ad41ce8cd..1ae11b180d54 100644
---- a/drivers/net/dsa/mt7530.c
-+++ b/drivers/net/dsa/mt7530.c
-@@ -1018,7 +1018,6 @@ mt7530_port_enable(struct dsa_switch *ds, int port,
- 	priv->ports[port].enable = true;
- 	mt7530_rmw(priv, MT7530_PCR_P(port), PCR_MATRIX_MASK,
- 		   priv->ports[port].pm);
--	mt7530_clear(priv, MT7530_PMCR_P(port), PMCR_LINK_SETTINGS_MASK);
- 
- 	mutex_unlock(&priv->reg_mutex);
- 
-@@ -1038,7 +1037,6 @@ mt7530_port_disable(struct dsa_switch *ds, int port)
- 	priv->ports[port].enable = false;
- 	mt7530_rmw(priv, MT7530_PCR_P(port), PCR_MATRIX_MASK,
- 		   PCR_MATRIX_CLR);
--	mt7530_clear(priv, MT7530_PMCR_P(port), PMCR_LINK_SETTINGS_MASK);
- 
- 	mutex_unlock(&priv->reg_mutex);
- }
-@@ -2257,6 +2255,12 @@ mt7530_setup(struct dsa_switch *ds)
- 	mt7530_mib_reset(ds);
- 
- 	for (i = 0; i < MT7530_NUM_PORTS; i++) {
-+		/* Clear link settings and enable force mode to force link down
-+		 * on all ports until they're enabled later.
-+		 */
-+		mt7530_rmw(priv, MT7530_PMCR_P(i), PMCR_LINK_SETTINGS_MASK |
-+			   PMCR_FORCE_MODE, PMCR_FORCE_MODE);
-+
- 		/* Disable forwarding by default on all ports */
- 		mt7530_rmw(priv, MT7530_PCR_P(i), PCR_MATRIX_MASK,
- 			   PCR_MATRIX_CLR);
-@@ -2359,6 +2363,12 @@ mt7531_setup_common(struct dsa_switch *ds)
- 		     UNU_FFP_MASK);
- 
- 	for (i = 0; i < MT7530_NUM_PORTS; i++) {
-+		/* Clear link settings and enable force mode to force link down
-+		 * on all ports until they're enabled later.
-+		 */
-+		mt7530_rmw(priv, MT7530_PMCR_P(i), PMCR_LINK_SETTINGS_MASK |
-+			   MT7531_FORCE_MODE, MT7531_FORCE_MODE);
-+
- 		/* Disable forwarding by default on all ports */
- 		mt7530_rmw(priv, MT7530_PCR_P(i), PCR_MATRIX_MASK,
- 			   PCR_MATRIX_CLR);
-@@ -2657,23 +2667,13 @@ mt753x_phylink_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
- 			  const struct phylink_link_state *state)
- {
- 	struct mt7530_priv *priv = ds->priv;
--	u32 mcr_cur, mcr_new;
- 
- 	if ((port == 5 || port == 6) && priv->info->mac_port_config)
- 		priv->info->mac_port_config(ds, port, mode, state->interface);
- 
--	mcr_cur = mt7530_read(priv, MT7530_PMCR_P(port));
--	mcr_new = mcr_cur;
--	mcr_new &= ~PMCR_LINK_SETTINGS_MASK;
--	mcr_new |= PMCR_IFG_XMIT(1) | PMCR_MAC_MODE | PMCR_BACKOFF_EN |
--		   PMCR_BACKPR_EN | PMCR_FORCE_MODE_ID(priv->id);
--
- 	/* Are we connected to external phy */
- 	if (port == 5 && dsa_is_user_port(ds, 5))
--		mcr_new |= PMCR_EXT_PHY;
--
--	if (mcr_new != mcr_cur)
--		mt7530_write(priv, MT7530_PMCR_P(port), mcr_new);
-+		mt7530_set(priv, MT7530_PMCR_P(port), PMCR_EXT_PHY);
- }
- 
- static void mt753x_phylink_mac_link_down(struct dsa_switch *ds, int port,
-diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
-index 8a8144868eaa..a71166e0a7fc 100644
---- a/drivers/net/dsa/mt7530.h
-+++ b/drivers/net/dsa/mt7530.h
-@@ -304,8 +304,6 @@ enum mt7530_vlan_port_acc_frm {
- 					 MT7531_FORCE_DPX | \
- 					 MT7531_FORCE_RX_FC | \
- 					 MT7531_FORCE_TX_FC)
--#define  PMCR_FORCE_MODE_ID(id)		((((id) == ID_MT7531) || ((id) == ID_MT7988)) ?	\
--					 MT7531_FORCE_MODE : PMCR_FORCE_MODE)
- #define  PMCR_LINK_SETTINGS_MASK	(PMCR_TX_EN | PMCR_FORCE_SPEED_1000 | \
- 					 PMCR_RX_EN | PMCR_FORCE_SPEED_100 | \
- 					 PMCR_TX_FC_EN | PMCR_RX_FC_EN | \
+ .../devicetree/bindings/clock/hi3660-clock.txt     |  47 ---
+ .../devicetree/bindings/clock/hi3670-clock.txt     |  43 ---
+ .../devicetree/bindings/clock/hi6220-clock.txt     |  52 ---
+ .../devicetree/bindings/clock/hisi-crg.txt         |  50 ---
+ .../clock/hisilicon,clock-reset-generator.yaml     | 175 +++++++++
+ .../clock/hisilicon,hi3559av100-clock.yaml         |  59 ---
+ drivers/clk/hisilicon/Kconfig                      |   8 +
+ drivers/clk/hisilicon/Makefile                     |   1 +
+ drivers/clk/hisilicon/crg-hi3798mv200.c            | 428 +++++++++++++++++++++
+ include/dt-bindings/clock/histb-clock.h            |  21 +
+ 10 files changed, 633 insertions(+), 251 deletions(-)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240216-clk-mv200-cc8cae396ee0
 
+Best regards,
 -- 
-2.40.1
+Yang Xiwen <forbidden405@outlook.com>
 
