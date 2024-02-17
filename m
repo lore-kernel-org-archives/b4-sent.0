@@ -1,93 +1,76 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Sat, 17 Feb 2024 21:00:57 +0800
-Subject: [PATCH v4 4/4] dt-bindings: mmc: hisilicon,hi3798cv200-dw-mshc:
- rename to hisilicon,hi3798-dw-mshc
+Subject: [PATCH RFC v2 0/4] phy: hisi-inno-phy: add support for
+ hi3798mv200-usb2-phy
+Date: Sat, 17 Feb 2024 22:02:44 +0800
+Message-Id: <20240217-inno-phy-v2-0-3bf7e87b0e9e@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240217-b4-mmc-hi3798mv200-v4-4-0fdd9bd48532@outlook.com>
-References: <20240217-b4-mmc-hi3798mv200-v4-0-0fdd9bd48532@outlook.com>
-In-Reply-To: <20240217-b4-mmc-hi3798mv200-v4-0-0fdd9bd48532@outlook.com>
-To: Ulf Hansson <ulf.hansson@linaro.org>, 
- Jaehoon Chung <jh80.chung@samsung.com>, Rob Herring <robh+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAIS80GUC/2WMQQ6CMBBFr0JmbU07IKgrExMP4NawaKGVCdohL
+ RIJ4e42bF2+/1/eAtEGshHO2QLBThSJfQLcZdB02j+toDYxoMRCoioFec9i6GahsT1W6EpTFQa
+ SPgTr6LulHnC/XaFOY0dx5DBv+Ult139pUkIKpc1JoZOHPHcX/owv5n7f8BvqdV1/XYibgKcAA
+ AA=
+To: Vinod Koul <vkoul@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Igor Opaniuk <igor.opaniuk@linaro.org>, 
- tianshuliang <tianshuliang@hisilicon.com>, David Yang <mmyangfl@gmail.com>, 
- linux-kernel@vger.kernel.org, linux-mmc@vger.kernel.org, 
- devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
+ Conor Dooley <conor+dt@kernel.org>, 
+ Jiancheng Xue <xuejiancheng@hisilicon.com>, 
+ Shawn Guo <shawn.guo@linaro.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-phy@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Kishon Vijay Abraham I <kishon@ti.com>, 
+ David Yang <mmyangfl@gmail.com>, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708174876; l=1929;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708178566; l=1863;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=UhNvYRHLXQw+Q46M6kTVm5H9HZIII379G5nTtWehYUE=;
- b=f+IL42Ls385Vj/Qf19jgGJe7gzOt6DV1rUWoN9fUDz4F1kvCeQ0aB5taB+NkzftWKGR8IoLaQ
- qaGDiAx5knCAm7Fx5kZhEk95FMFTHPgDK7UFVIoULaWGdzuHbvUIcWz
+ bh=HB/UpB50BILuiF8CCfmMOQJkOn4bkGggnUNO1Au7/nE=;
+ b=9VtvWJ4V8m6j4mczC2xd3BTH2B4ji+ttMI83t6mBEq3+QIfY/Z3xZyGrhV1q081YTkor8OFur
+ RHlXOYnBjoGAmx9h+rnXOm3h7dPDjMMla2G0IUHmN9F61Y4Fb5cJIGK
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add binding and an extra property for Hi3798MV200 DWMMC specific extension.
+This should be considered a dirty hack. The proper solution would be
+extracting write_reg logic to a separate regmap driver. Leaving only
+"write BIT(2) to address 0x6" to the PHY driver.
+
+The initial commit is already doing things wrong. The following patches
+adding hi3798mv100 support is also very confusing. The name of the
+enumeration "PHY_TYPE_x" is very misleading as if it's the phy which is
+different across SoCs. But actually it's the bus (i.e. how to write to a
+given address) which is different, not the PHY.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- .../bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+Changes in v2:
+- rewrite commit msg to show why hisilicon,hi3798mv100-usb2-phy is added
+  during YAML convertion.
+- split required: to multiple line
+- add allOf to wrap if:
+- remove perictrl wrapper and the second phy in the example
+- tested the binding both for mv200 and cv200 dts. fix some silly
+  errors.
+Above all are suggested by Krzysztof
+- use reset_control_array_* APIs to ensure all resets are controlled
+- Link to v1: https://lore.kernel.org/r/20240216-inno-phy-v1-0-1ab912f0533f@outlook.com
 
-diff --git a/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml b/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-index f3dc973cb490..d635bf3a5596 100644
---- a/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-+++ b/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-@@ -4,7 +4,7 @@
- $id: http://devicetree.org/schemas/mmc/hisilicon,hi3798cv200-dw-mshc.yaml#
- $schema: http://devicetree.org/meta-schemas/core.yaml#
- 
--title: Hisilicon Hi3798CV200 SoC specific extensions to the Synopsys DWMMC controller
-+title: Hisilicon HiSTB SoCs specific extensions to the Synopsys DWMMC controller
- 
- maintainers:
-   - Yang Xiwen <forbidden405@outlook.com>
-@@ -13,6 +13,7 @@ properties:
-   compatible:
-     enum:
-       - hisilicon,hi3798cv200-dw-mshc
-+      - hisilicon,hi3798mv200-dw-mshc
- 
-   reg:
-     maxItems: 1
-@@ -34,6 +35,12 @@ properties:
-       - const: ciu-sample
-       - const: ciu-drive
- 
-+  hisilicon,sap-dll-reg:
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+    description:
-+      A phandle points to the sample delay-locked-loop(DLL)
-+      syscon node, used for tuning.
-+
- required:
-   - compatible
-   - reg
-@@ -44,6 +51,18 @@ required:
- allOf:
-   - $ref: synopsys-dw-mshc-common.yaml#
- 
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: hisilicon,hi3798mv200-dw-mshc
-+    then:
-+      required:
-+        - hisilicon,sap-dll-reg
-+    else:
-+      properties:
-+        hisilicon,sap-dll-reg: false
-+
- unevaluatedProperties: false
- 
- examples:
+---
+Yang Xiwen (4):
+      dt-bindings: phy: hisi-inno-usb2: convert to YAML
+      phy: hisilicon: hisi-inno-phy: enable clocks for every ports
+      phy: hisilicon: hisi-inno-phy: add support for Hi3798MV200 INNO PHY
+      dt-bindings: phy: hisi-inno-usb2: add compatible of hisilicon,hi3798mv200-usb2-phy
 
+ .../bindings/phy/hisilicon,inno-usb2-phy.yaml      | 123 +++++++++++++++++++++
+ .../devicetree/bindings/phy/phy-hisi-inno-usb2.txt |  71 ------------
+ drivers/phy/hisilicon/phy-hisi-inno-usb2.c         |  69 +++++++-----
+ 3 files changed, 165 insertions(+), 98 deletions(-)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240216-inno-phy-a2d872f6b74b
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
