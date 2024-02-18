@@ -1,12 +1,14 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Sun, 18 Feb 2024 17:40:31 +0800
-Subject: [PATCH 2/2] arm64: dts: hi3798cv200: add cache info
+Subject: [PATCH v2 0/3] arm64: dts: hi3798cv200: fix GICR size, add cache
+ info, maintenance irq and GICH, GICV spaces
+Date: Sun, 18 Feb 2024 20:02:49 +0800
+Message-Id: <20240218-cache-v2-0-1fd919e2bd3e@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240218-cache-v1-2-2c0a8a4472e7@outlook.com>
-References: <20240218-cache-v1-0-2c0a8a4472e7@outlook.com>
-In-Reply-To: <20240218-cache-v1-0-2c0a8a4472e7@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAOnx0WUC/13MQQ7CIBCF4as0sxYDEyzElfcwXeA4FaKWBirRN
+ Nxd7NLl//LyrZA5Bc5w7FZIXEIOcWqBuw7Iu+nGIlxbA0rUEpUV5MizUIrsZTSHvieE9p0Tj+G
+ 9OeehtQ95iemzsUX91n+hKCEFknTWaW2QzSm+lkeM9z3FJwy11i/5JAW5nAAAAA==
 To: Wei Xu <xuwei5@hisilicon.com>, Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -15,110 +17,59 @@ To: Wei Xu <xuwei5@hisilicon.com>, Rob Herring <robh+dt@kernel.org>,
 Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708249233; l=2811;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708257770; l=1715;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=7KtnkY7Pm5plqx77OK2FVNdCRnse/+VsWvkr9ingato=;
- b=JgA/U1XbhkecOKg3NeY5nWpK5pQs6KzWIhJQ7X5xYdZ3SEesjg9+XYCBOp0+LuD/DF19H6XYU
- Vv1JSbzdVzpDkyQ+MyZfC9+r5HMNAtIuLJYhviNxsTYQACEzr1IuWHB
+ bh=y/WIW5qNdPD+SYYlidFaKT5euCg8gHN9F20TR9It0Y4=;
+ b=MaCi7riRn97ZX+LWscA01GTgPBnN1DBFlMZ5vlzWXAPis+uMoVXi78fazwJp8jeT1nYohx/Ew
+ buTXhOraUuhAJJjWYS5Uo7UbArdaGzmBYZYpnXKr+gJyV1YHkocPJdZ
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-During boot, the kernel complains:
+They are tested on a hi3798mv200 board in fact. Though the 2 SoCs are
+highly similar and the CPU should be the same. Still, Tested-by are
+welcomed.
 
-[    0.044029] cacheinfo: Unable to detect cache hierarchy for CPU 0
+The patchset fixes some warnings reported by the kernel during boot.
 
-So add L1/L2 cache info to the dts according to the datasheet. (32KiB L1
-i-cache + 32 KiB L1 d-cache + 512 KiB L2 unified cache)
+The cache size info is from Processor_Datasheet_v2XX.pdf [1], Section
+2.2.1 Master Processor.
 
-With this patch, the line above is gone and the following info is added
-to the output of `lscpu`:
+The cache line size and the set-associative info are from Cortex-A53
+Documentation [2]. Dts for other SoCs are also a good reference.
 
-Caches (sum of all):
-  L1d:                   128 KiB (4 instances)
-  L1i:                   128 KiB (4 instances)
-  L2:                    512 KiB (1 instance)
+From the doc, we know L1 i-cache is 4-way assoc, L1 d-cache is 2-way
+assoc and L2 cache is 16-way assoc. Fill the dts props accordingly.
 
-Fixes: 2f20182ed670 ("arm64: dts: hisilicon: add dts files for hi3798cv200-poplar board")
+Also, to use KVM's VGIC code, we need to add GICH, GICV and maintenance
+IRQ to the dts. They are added with verification.
+
+Dear maintainers, maybe consider Cc to stable too?
+
+[1]: https://github.com/96boards/documentation/blob/master/enterprise/poplar/hardware-docs/Processor_Datasheet_v2XX.pdf
+[2]: https://developer.arm.com/documentation/ddi0500/j/Level-1-Memory-System
+
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- arch/arm64/boot/dts/hisilicon/hi3798cv200.dtsi | 37 ++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+Changes in v2:
+- arm64: dts: hi3798cv200: add GICH, GICV register spces and
+  maintainance IRQ.
+- Link to v1: https://lore.kernel.org/r/20240218-cache-v1-0-2c0a8a4472e7@outlook.com
 
-diff --git a/arch/arm64/boot/dts/hisilicon/hi3798cv200.dtsi b/arch/arm64/boot/dts/hisilicon/hi3798cv200.dtsi
-index d01023401d7e..33ded6b97f61 100644
---- a/arch/arm64/boot/dts/hisilicon/hi3798cv200.dtsi
-+++ b/arch/arm64/boot/dts/hisilicon/hi3798cv200.dtsi
-@@ -31,6 +31,13 @@ cpu@0 {
- 			device_type = "cpu";
- 			reg = <0x0 0x0>;
- 			enable-method = "psci";
-+			d-cache-size = <0x8000>; /* 32 KiB */
-+			d-cache-line-size = <64>;
-+			d-cache-sets = <128>;
-+			i-cache-size = <0x8000>; /* 32 KiB */
-+			i-cache-line-size = <64>;
-+			i-cache-sets = <256>;
-+			next-level-cache = <&L2_0>;
- 		};
- 
- 		cpu@1 {
-@@ -38,6 +45,13 @@ cpu@1 {
- 			device_type = "cpu";
- 			reg = <0x0 0x1>;
- 			enable-method = "psci";
-+			d-cache-size = <0x8000>; /* 32 KiB */
-+			d-cache-line-size = <64>;
-+			d-cache-sets = <128>;
-+			i-cache-size = <0x8000>; /* 32 KiB */
-+			i-cache-line-size = <64>;
-+			i-cache-sets = <256>;
-+			next-level-cache = <&L2_0>;
- 		};
- 
- 		cpu@2 {
-@@ -45,6 +59,13 @@ cpu@2 {
- 			device_type = "cpu";
- 			reg = <0x0 0x2>;
- 			enable-method = "psci";
-+			d-cache-size = <0x8000>; /* 32 KiB */
-+			d-cache-line-size = <64>;
-+			d-cache-sets = <128>;
-+			i-cache-size = <0x8000>; /* 32 KiB */
-+			i-cache-line-size = <64>;
-+			i-cache-sets = <256>;
-+			next-level-cache = <&L2_0>;
- 		};
- 
- 		cpu@3 {
-@@ -52,9 +73,25 @@ cpu@3 {
- 			device_type = "cpu";
- 			reg = <0x0 0x3>;
- 			enable-method = "psci";
-+			d-cache-size = <0x8000>; /* 32 KiB */
-+			d-cache-line-size = <64>;
-+			d-cache-sets = <128>;
-+			i-cache-size = <0x8000>; /* 32 KiB */
-+			i-cache-line-size = <64>;
-+			i-cache-sets = <256>;
-+			next-level-cache = <&L2_0>;
- 		};
- 	};
- 
-+	L2_0: l2-cache0 {
-+		compatible = "cache";
-+		cache-unified;
-+		cache-size = <0x80000>; /* 512 KiB */
-+		cache-line-size = <64>;
-+		cache-sets = <512>;
-+		cache-level = <2>;
-+	};
-+
- 	gic: interrupt-controller@f1001000 {
- 		compatible = "arm,gic-400";
- 		reg = <0x0 0xf1001000 0x0 0x1000>,  /* GICD */
+---
+Yang Xiwen (3):
+      arm64: dts: hi3798cv200: fix the size of GICR
+      arm64: dts: hi3798cv200: add GICH, GICV register space and irq
+      arm64: dts: hi3798cv200: add cache info
 
+ arch/arm64/boot/dts/hisilicon/hi3798cv200.dtsi | 43 +++++++++++++++++++++++++-
+ 1 file changed, 42 insertions(+), 1 deletion(-)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240218-cache-11c8bf7566c2
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
