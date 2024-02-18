@@ -1,131 +1,64 @@
-From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Sat, 17 Feb 2024 16:01:26 +0000
-Subject: [PATCH kmod] man: silence autoconf warnings
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH 0/2] arm64: dts: hi3798cv200: fix GICR size, add cache info
+Date: Sun, 18 Feb 2024 17:40:29 +0800
+Message-Id: <20240218-cache-v1-0-2c0a8a4472e7@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240217-autoconf-manpage-warns-v1-1-e1570cfc286e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAFXY0GUC/x2MywqAIBAAf0X2nKASBf1KdNhsrT20hvaC6N+Tj
- sMw80CmxJShUw8kOjlzlAK2UuAXlJk0T4XBGVcbZ1uNxx59lKBXlA2LvzBJ1oZoNAEb1/oAJd4
- SBb7/cT+87wdX+00xaAAAAA==
-To: linux-modules@vger.kernel.org
-Cc: Emil Velikov <emil.l.velikov@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAI3Q0WUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDI0ML3eTE5IxUXUPDZIukNHNTM7NkIyWg2oKi1LTMCrA50bG1tQC79Mk
+ MVwAAAA==
+To: Wei Xu <xuwei5@hisilicon.com>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Jiancheng Xue <xuejiancheng@hisilicon.com>, Alex Elder <elder@linaro.org>, 
+ Peter Griffin <peter.griffin@linaro.org>
+Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708185688; l=3746;
- i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=+yfi/genz56uVITFQM5UuX+HEhtsNJ5sllriAqv0t2M=;
- b=69qVvghz704GS9SitTQ2SOo1wyBueqpX7F/Kiqp6k1c4oU7W6JdTVzi0/ZH4rDBI9g1Ilsu+z
- hg7KDc9xQ89CqUm7qIdxTt1EoesbpLjJ2Q5p9d+reSNrw7wtMYaBJOx
-X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
- pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
-X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708249233; l=1327;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=Y2yL2MQNl7y8iBg/28LLbPzlCYDMItit1WDiqTg7AR8=;
+ b=EzwalVvQRDgmdAMHbQNlXT2iUSev7lM7NJ4H5zbxJQZQ6mLZu7IRNbdTgROodx4If5ifkW/Md
+ +xhp0tJPbCaA4ajzfD5jG9+NTZnpZ+53fA3+S/6SrAMxiORlxl7NucD
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently we have a pattern rule, which effective states that two output
-files are produced - %.5 and %.8. Although that's not the case in
-practise, since each input xml will be generated to a single manual
-page.
+They are tested on a hi3798mv200 board in fact. Though the 2 SoCs are
+highly similar and the CPU should be the same. Still, Tested-by are
+welcomed.
 
-Add the manpage section as part of the xml filename and tweak the
-pattern (match) rule, accordingly.
+The patchset fixes some warnings reported by the kernel during boot.
 
-Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
+The cache size info is from Processor_Datasheet_v2XX.pdf [1], Section
+2.2.1 Master Processor.
+
+The cache line size and the set-associative info are from Cortex-A53
+Documentation [2]. Dts for other SoCs are also a good reference.
+
+From the doc, we know L1 i-cache is 4-way assoc, L1 d-cache is 2-way
+assoc and L2 cache is 16-way assoc. Fill the dts props accordingly.
+
+Dear maintainers, maybe consider Cc to stable too?
+
+[1]: https://github.com/96boards/documentation/blob/master/enterprise/poplar/hardware-docs/Processor_Datasheet_v2XX.pdf
+[2]: https://developer.arm.com/documentation/ddi0500/j/Level-1-Memory-System
+
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Noticed, while wondering if I should add sanitizer support to the
-autoconf build.
+Yang Xiwen (2):
+      arm64: dts: hi3798cv200: Fix the size of GICR
+      arm64: dts: hi3798cv200: add cache info
 
-A few, random questions:
- - are there any objections to adding sanitizers support?
- - would a meson.build be acceptable? Giving us sanitizers, coverage,
-   scan-build, etc out of the box
- - writing xml is fiddly, would people be OK if we convert them to
-   scdoc? here are some examples of the raw file [1] vs the man [2]
-
-[1] https://gitlab.alpinelinux.org/alpine/apk-tools/-/raw/master/doc/apk-add.8.scd?ref_type=heads
-[2] https://man.archlinux.org/man/extra/apk-tools/apk-add.8.en
+ arch/arm64/boot/dts/hisilicon/hi3798cv200.dtsi | 39 +++++++++++++++++++++++++-
+ 1 file changed, 38 insertions(+), 1 deletion(-)
 ---
- man/Makefile.am                            | 11 +++++++++--
- man/{depmod.xml => depmod.8.xml}           |  0
- man/{depmod.d.xml => depmod.d.5.xml}       |  0
- man/{insmod.xml => insmod.8.xml}           |  0
- man/{kmod.xml => kmod.8.xml}               |  0
- man/{modinfo.xml => modinfo.8.xml}         |  0
- man/{modprobe.xml => modprobe.8.xml}       |  0
- man/{modprobe.d.xml => modprobe.d.5.xml}   |  0
- man/{modules.dep.xml => modules.dep.5.xml} |  0
- man/{rmmod.xml => rmmod.8.xml}             |  0
- 10 files changed, 9 insertions(+), 2 deletions(-)
-
-diff --git a/man/Makefile.am b/man/Makefile.am
-index f550091..d62ff21 100644
---- a/man/Makefile.am
-+++ b/man/Makefile.am
-@@ -13,10 +13,10 @@ dist_man_MANS = $(MAN5) $(MAN8) $(MAN_STUB)
- modules.dep.bin.5: modules.dep.5
- endif
- 
--EXTRA_DIST = $(MAN5:%.5=%.xml) $(MAN8:%.8=%.xml)
-+EXTRA_DIST = $(MAN5:%.5=%.5.xml) $(MAN8:%.8=%.8.xml)
- CLEANFILES = $(dist_man_MANS)
- 
--%.5 %.8: %.xml
-+define generate_manpage
- 	$(AM_V_XSLT)if [ '$(distconfdir)' != '/lib' ] ; then \
- 		sed -e 's|@DISTCONFDIR@|$(distconfdir)|g' $< ; \
- 	else \
-@@ -29,3 +29,10 @@ CLEANFILES = $(dist_man_MANS)
- 		--stringparam man.output.quietly 1 \
- 		--param funcsynopsis.style "'ansi'" \
- 		http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl -
-+endef
-+
-+%.5: %.5.xml
-+	$(generate_manpage)
-+
-+%.8: %.8.xml
-+	$(generate_manpage)
-diff --git a/man/depmod.xml b/man/depmod.8.xml
-similarity index 100%
-rename from man/depmod.xml
-rename to man/depmod.8.xml
-diff --git a/man/depmod.d.xml b/man/depmod.d.5.xml
-similarity index 100%
-rename from man/depmod.d.xml
-rename to man/depmod.d.5.xml
-diff --git a/man/insmod.xml b/man/insmod.8.xml
-similarity index 100%
-rename from man/insmod.xml
-rename to man/insmod.8.xml
-diff --git a/man/kmod.xml b/man/kmod.8.xml
-similarity index 100%
-rename from man/kmod.xml
-rename to man/kmod.8.xml
-diff --git a/man/modinfo.xml b/man/modinfo.8.xml
-similarity index 100%
-rename from man/modinfo.xml
-rename to man/modinfo.8.xml
-diff --git a/man/modprobe.xml b/man/modprobe.8.xml
-similarity index 100%
-rename from man/modprobe.xml
-rename to man/modprobe.8.xml
-diff --git a/man/modprobe.d.xml b/man/modprobe.d.5.xml
-similarity index 100%
-rename from man/modprobe.d.xml
-rename to man/modprobe.d.5.xml
-diff --git a/man/modules.dep.xml b/man/modules.dep.5.xml
-similarity index 100%
-rename from man/modules.dep.xml
-rename to man/modules.dep.5.xml
-diff --git a/man/rmmod.xml b/man/rmmod.8.xml
-similarity index 100%
-rename from man/rmmod.xml
-rename to man/rmmod.8.xml
-
----
-base-commit: b29704cd448aaa455dba4e656fc0f0d3c686df3f
-change-id: 20240217-autoconf-manpage-warns-0eeb0fa627cf
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240218-cache-11c8bf7566c2
 
 Best regards,
 -- 
-Emil Velikov <emil.l.velikov@gmail.com>
+Yang Xiwen <forbidden405@outlook.com>
 
