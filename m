@@ -1,96 +1,76 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Tue, 20 Feb 2024 03:34:16 +0800
-Subject: [PATCH v5 5/5] dt-bindings: mmc: hisilicon,hi3798cv200-dw-mshc:
- add Hi3798MV200 binding
+Subject: [PATCH net-next v3 0/6] net: hisi-femac: add support for
+ Hi3798MV200, remove unmaintained compatibles
+Date: Tue, 20 Feb 2024 03:57:35 +0800
+Message-Id: <20240220-net-v3-0-b68e5b75e765@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240220-b4-mmc-hi3798mv200-v5-5-f506c55f8e43@outlook.com>
-References: <20240220-b4-mmc-hi3798mv200-v5-0-f506c55f8e43@outlook.com>
-In-Reply-To: <20240220-b4-mmc-hi3798mv200-v5-0-f506c55f8e43@outlook.com>
-To: Ulf Hansson <ulf.hansson@linaro.org>, 
- Jaehoon Chung <jh80.chung@samsung.com>, Rob Herring <robh+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAK+y02UC/22MwQ7CIBAFf6XZsxhYa1s8+R/GA4WtJSoYiqSm6
+ b+L3Jp4fJk3s8BEwdIEp2qBQMlO1rs8DrsK9KjcjZg1eQNyrDmKhjmKTCrkHYlW13yA/HwFGux
+ cKhf4HRzNEa6ZjHaKPnxKPonCN6UkGGfElZEtaqOkPPt3fHh/32v/LIWEfyzMVid7U/ctb44at
+ 9a6rl+JlDGj2AAAAA==
+To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
+ Salil Mehta <salil.mehta@huawei.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Igor Opaniuk <igor.opaniuk@linaro.org>, 
- tianshuliang <tianshuliang@hisilicon.com>, David Yang <mmyangfl@gmail.com>, 
- linux-kernel@vger.kernel.org, linux-mmc@vger.kernel.org, 
+ Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708371252; l=2176;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708372656; l=1754;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=81ECSc1YzJgi6TVlBpCQAnGtw6DZilzIAOBsgMBQcb8=;
- b=++/uUq9V+SUxuC4pFVSCQq7u5QQ8lqaMQLhj6KrnmbC5zg5Gq4/WCOeMsEnVVwzhCQhd7ACzU
- xDAtwZQT/DSC2DeFWIUgBQDnK1axjUOGbyidAcWbImgSQIFXcYBNw7A
+ bh=l6lMfvTk7CFPjhzUlulstlIJN8SObLPyb4ZjLiD1XlI=;
+ b=fqSRDr03JWvB1/KlVujOqSKV65CXq15sxpgv7TgX9NJQp+SpzImaPyPjgTs1Pb8Z3cgMMWNch
+ p0NhfQxp3xmDfcr0OscchnD7tzCnpufT3HK+dKfqEURI1yrVaTypG/2
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add binding and an extra property for Hi3798MV200 DWMMC specific extension.
-
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- .../mmc/hisilicon,hi3798cv200-dw-mshc.yaml         | 24 +++++++++++++++++++++-
- 1 file changed, 23 insertions(+), 1 deletion(-)
+Changes in v3:
+- rearrange patches to fix bot error. (Rob Herring)
+- rewrite commit logs (Andrew Lunn)
+- use clk_bulk_ APIs (Andrew Lunn)
+- fix uninitialization use of ret (assign to -ENODEV before goto) (Simon Horman)
+- Link to v2: https://lore.kernel.org/r/20240216-net-v2-0-89bd4b7065c2@outlook.com
 
-diff --git a/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml b/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-index f3dc973cb490..41c9b22523e7 100644
---- a/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-+++ b/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-@@ -4,7 +4,7 @@
- $id: http://devicetree.org/schemas/mmc/hisilicon,hi3798cv200-dw-mshc.yaml#
- $schema: http://devicetree.org/meta-schemas/core.yaml#
- 
--title: Hisilicon Hi3798CV200 SoC specific extensions to the Synopsys DWMMC controller
-+title: Hisilicon HiSTB SoCs specific extensions to the Synopsys DWMMC controller
- 
- maintainers:
-   - Yang Xiwen <forbidden405@outlook.com>
-@@ -13,6 +13,7 @@ properties:
-   compatible:
-     enum:
-       - hisilicon,hi3798cv200-dw-mshc
-+      - hisilicon,hi3798mv200-dw-mshc
- 
-   reg:
-     maxItems: 1
-@@ -34,6 +35,15 @@ properties:
-       - const: ciu-sample
-       - const: ciu-drive
- 
-+  hisilicon,sap-dll-reg:
-+    $ref: /schemas/types.yaml#/definitions/phandle-array
-+    description: |
-+      DWMMC core on Hi3798MV2x SoCs has a delay-locked-loop(DLL) attached to card data input path.
-+      It is integrated into CRG core on the SoC and has to be controlled during tuning.
-+    items:
-+      - description: A phandle pointed to the CRG syscon node
-+      - description: Sample DLL register offset in CRG address space
-+
- required:
-   - compatible
-   - reg
-@@ -44,6 +54,18 @@ required:
- allOf:
-   - $ref: synopsys-dw-mshc-common.yaml#
- 
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: hisilicon,hi3798mv200-dw-mshc
-+    then:
-+      required:
-+        - hisilicon,sap-dll-reg
-+    else:
-+      properties:
-+        hisilicon,sap-dll-reg: false
-+
- unevaluatedProperties: false
- 
- examples:
+Changes in v2:
+- replace email.
+- hisi-femac: s/BUS/MACIF (Andrew Lunn)
+- hisi-femac: add "hisilicon,hisi-femac" compatible since the driver
+  seems generic enough for various SoCs
+- hisi-femac-mdio: convert binding to YAML (Krzysztof Kozlowski)
+- rewrite commit logs (Krzysztof Kozlowski)
+- Link to v1: https://lore.kernel.org/r/20240216-net-v1-0-e0ad972cda99@outlook.com
 
+---
+Yang Xiwen (6):
+      net: mdio: hisi-femac: make clock optional
+      dt-bindings: net: hisilicon-femac-mdio: convert to YAML
+      net: hisilicon: add support for hisi_femac core on Hi3798MV200
+      net: hisi_femac: remove unused compatible strings
+      dt-bindings: net: remove outdated hisilicon-femac
+      dt-bindings: net: add hisilicon,hisi-femac
+
+ .../bindings/net/hisilicon,hisi-femac-mdio.yaml    |  48 +++++++++
+ .../bindings/net/hisilicon,hisi-femac.yaml         | 117 +++++++++++++++++++++
+ .../bindings/net/hisilicon-femac-mdio.txt          |  22 ----
+ .../devicetree/bindings/net/hisilicon-femac.txt    |  41 --------
+ drivers/net/ethernet/hisilicon/hisi_femac.c        |  81 ++++++++++----
+ drivers/net/mdio/mdio-hisi-femac.c                 |   2 +-
+ 6 files changed, 228 insertions(+), 83 deletions(-)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240216-net-9a208e17c40f
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
