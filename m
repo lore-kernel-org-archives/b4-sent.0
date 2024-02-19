@@ -1,15 +1,12 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Subject: [PATCH net-next v3 0/6] net: hisi-femac: add support for
- Hi3798MV200, remove unmaintained compatibles
-Date: Tue, 20 Feb 2024 03:57:35 +0800
-Message-Id: <20240220-net-v3-0-b68e5b75e765@outlook.com>
+Date: Tue, 20 Feb 2024 03:57:36 +0800
+Subject: [PATCH net-next v3 1/6] net: mdio: hisi-femac: make clock optional
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAK+y02UC/22MwQ7CIBAFf6XZsxhYa1s8+R/GA4WtJSoYiqSm6
- b+L3Jp4fJk3s8BEwdIEp2qBQMlO1rs8DrsK9KjcjZg1eQNyrDmKhjmKTCrkHYlW13yA/HwFGux
- cKhf4HRzNEa6ZjHaKPnxKPonCN6UkGGfElZEtaqOkPPt3fHh/32v/LIWEfyzMVid7U/ctb44at
- 9a6rl+JlDGj2AAAAA==
+Message-Id: <20240220-net-v3-1-b68e5b75e765@outlook.com>
+References: <20240220-net-v3-0-b68e5b75e765@outlook.com>
+In-Reply-To: <20240220-net-v3-0-b68e5b75e765@outlook.com>
 To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
  Salil Mehta <salil.mehta@huawei.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
@@ -22,55 +19,37 @@ To: Yisen Zhuang <yisen.zhuang@huawei.com>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708372656; l=1754;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708372656; l=720;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=l6lMfvTk7CFPjhzUlulstlIJN8SObLPyb4ZjLiD1XlI=;
- b=fqSRDr03JWvB1/KlVujOqSKV65CXq15sxpgv7TgX9NJQp+SpzImaPyPjgTs1Pb8Z3cgMMWNch
- p0NhfQxp3xmDfcr0OscchnD7tzCnpufT3HK+dKfqEURI1yrVaTypG/2
+ bh=RxVNNMcUcOL8zwGYeNVp22tshMMwMwhDPBBRMx/bOA4=;
+ b=QWnp8vXIvEWNQsFkYpybTyS4CueV5P2ocmQp+rpM8gO/MOJ7eUrbcJ7WOKB/E6zOZoJRTGhvC
+ k7ZhNuV9xxjAdXlEfVk9tD3gFbUtvtZSwi27S8xqJ2cgUP0CKSYT57b
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+The clocks are optional.
+
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Changes in v3:
-- rearrange patches to fix bot error. (Rob Herring)
-- rewrite commit logs (Andrew Lunn)
-- use clk_bulk_ APIs (Andrew Lunn)
-- fix uninitialization use of ret (assign to -ENODEV before goto) (Simon Horman)
-- Link to v2: https://lore.kernel.org/r/20240216-net-v2-0-89bd4b7065c2@outlook.com
+ drivers/net/mdio/mdio-hisi-femac.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Changes in v2:
-- replace email.
-- hisi-femac: s/BUS/MACIF (Andrew Lunn)
-- hisi-femac: add "hisilicon,hisi-femac" compatible since the driver
-  seems generic enough for various SoCs
-- hisi-femac-mdio: convert binding to YAML (Krzysztof Kozlowski)
-- rewrite commit logs (Krzysztof Kozlowski)
-- Link to v1: https://lore.kernel.org/r/20240216-net-v1-0-e0ad972cda99@outlook.com
+diff --git a/drivers/net/mdio/mdio-hisi-femac.c b/drivers/net/mdio/mdio-hisi-femac.c
+index 6703f626ee83..a2620b200381 100644
+--- a/drivers/net/mdio/mdio-hisi-femac.c
++++ b/drivers/net/mdio/mdio-hisi-femac.c
+@@ -93,7 +93,7 @@ static int hisi_femac_mdio_probe(struct platform_device *pdev)
+ 		goto err_out_free_mdiobus;
+ 	}
+ 
+-	data->clk = devm_clk_get(&pdev->dev, NULL);
++	data->clk = devm_clk_get_optional(&pdev->dev, NULL);
+ 	if (IS_ERR(data->clk)) {
+ 		ret = PTR_ERR(data->clk);
+ 		goto err_out_free_mdiobus;
 
----
-Yang Xiwen (6):
-      net: mdio: hisi-femac: make clock optional
-      dt-bindings: net: hisilicon-femac-mdio: convert to YAML
-      net: hisilicon: add support for hisi_femac core on Hi3798MV200
-      net: hisi_femac: remove unused compatible strings
-      dt-bindings: net: remove outdated hisilicon-femac
-      dt-bindings: net: add hisilicon,hisi-femac
-
- .../bindings/net/hisilicon,hisi-femac-mdio.yaml    |  48 +++++++++
- .../bindings/net/hisilicon,hisi-femac.yaml         | 117 +++++++++++++++++++++
- .../bindings/net/hisilicon-femac-mdio.txt          |  22 ----
- .../devicetree/bindings/net/hisilicon-femac.txt    |  41 --------
- drivers/net/ethernet/hisilicon/hisi_femac.c        |  81 ++++++++++----
- drivers/net/mdio/mdio-hisi-femac.c                 |   2 +-
- 6 files changed, 228 insertions(+), 83 deletions(-)
----
-base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
-change-id: 20240216-net-9a208e17c40f
-
-Best regards,
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+2.43.0
 
