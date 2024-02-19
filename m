@@ -1,54 +1,82 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Subject: [PATCH v2 0/2] watchdog: sp805: add reset control support
-Date: Tue, 20 Feb 2024 02:14:24 +0800
-Message-Id: <20240220-hisi-wdt-v2-0-63edc4965b4c@outlook.com>
+Date: Tue, 20 Feb 2024 02:14:25 +0800
+Subject: [PATCH v2 1/2] watchdog: sp805_wdt: deassert the reset if
+ available
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAICa02UC/22MSw7CIBQAr9K8tRhA20pX3sN0wU9L1D4DiJqGu
- /vs2uVMJrNA8jH4BEOzQPQlpIAzgdw0YCc9XzwLjhgkl3suRc8mStjLZbYzrVS90F2rBFD+iP4
- c3uvqNBJTmDF+1nMRP/tnUgTjzDqjnLPaqO5wxGe+IV63Fu8w1lq/k5lSPqIAAAA=
+Message-Id: <20240220-hisi-wdt-v2-1-63edc4965b4c@outlook.com>
+References: <20240220-hisi-wdt-v2-0-63edc4965b4c@outlook.com>
+In-Reply-To: <20240220-hisi-wdt-v2-0-63edc4965b4c@outlook.com>
 To: Wim Van Sebroeck <wim@linux-watchdog.org>, 
  Guenter Roeck <linux@roeck-us.net>, Philipp Zabel <p.zabel@pengutronix.de>, 
  Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
  Conor Dooley <conor+dt@kernel.org>, Viresh Kumar <vireshk@kernel.org>
 Cc: linux-watchdog@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708366465; l=825;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708366465; l=1680;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=3p90HdXjRYqaF/dwaJSI6JIUSflQuajrLtO/CzXAHow=;
- b=NY9tsSJ4I1KQNgp+4GHYAc0+8hARqMhSN/cqcCnZLV6CXiW8r+zNewLjP58YJ0cUqEk40u7cD
- Con8Y6VpnijAo3L23KyUzMSeGccNOoyrvkinvy/mlYNpfGz63CNGWh9
+ bh=Ni3PL21dVfacX58NyroZjoZbD5lmIJt2JGNnhuDX6xI=;
+ b=PrBA7WqGLAiZ5soLMgAGUcPHe80L3qvrMa1YCgw+lIjiZRPgunPC/QJ1gC7Uhjf+LEotU467B
+ PvLM+7GxjLJBrZn9tW4NIuMFS0RPOBYdCLLihFM3kfBALus2ZLCjFfr
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Deassert the reset if it's available.
+According to the datasheet, the core has an WDOGRESn input signal that
+needs to be deasserted before being operational. Implement it in the
+driver.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Changes in v2:
-- commit log: dt-binding->dt-bindings (Krzysztof Kozlowski)
-- binding: remove "|", join two lines. (Krzysztof Kozlowski)
-- Link to v1: https://lore.kernel.org/r/20240217-hisi-wdt-v1-0-cdb9ddcab968@outlook.com
+ drivers/watchdog/sp805_wdt.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
----
-Yang Xiwen (2):
-      watchdog: sp805_wdt: deassert the reset if available
-      dt-bindings: watchdog: arm,sp805: document the reset signal
+diff --git a/drivers/watchdog/sp805_wdt.c b/drivers/watchdog/sp805_wdt.c
+index 2756ed54ca3d..b4bcfdeb39e6 100644
+--- a/drivers/watchdog/sp805_wdt.c
++++ b/drivers/watchdog/sp805_wdt.c
+@@ -25,6 +25,7 @@
+ #include <linux/moduleparam.h>
+ #include <linux/pm.h>
+ #include <linux/property.h>
++#include <linux/reset.h>
+ #include <linux/slab.h>
+ #include <linux/spinlock.h>
+ #include <linux/types.h>
+@@ -59,6 +60,7 @@
+  * @lock: spin lock protecting dev structure and io access
+  * @base: base address of wdt
+  * @clk: (optional) clock structure of wdt
++ * @rst: (optional) reset control signal of wdt
+  * @rate: (optional) clock rate when provided via properties
+  * @adev: amba device structure of wdt
+  * @status: current status of wdt
+@@ -69,6 +71,7 @@ struct sp805_wdt {
+ 	spinlock_t			lock;
+ 	void __iomem			*base;
+ 	struct clk			*clk;
++	struct reset_control		*rst;
+ 	u64				rate;
+ 	struct amba_device		*adev;
+ 	unsigned int			load_val;
+@@ -264,6 +267,12 @@ sp805_wdt_probe(struct amba_device *adev, const struct amba_id *id)
+ 		return -ENODEV;
+ 	}
+ 
++	wdt->rst = devm_reset_control_get_optional(&adev->dev, NULL);
++	if (IS_ERR(wdt->rst))
++		return dev_err_probe(&adev->dev, PTR_ERR(wdt->rst), "Can not get reset\n");
++
++	reset_control_deassert(wdt->rst);
++
+ 	wdt->adev = adev;
+ 	wdt->wdd.info = &wdt_info;
+ 	wdt->wdd.ops = &wdt_ops;
 
- Documentation/devicetree/bindings/watchdog/arm,sp805.yaml | 5 +++++
- drivers/watchdog/sp805_wdt.c                              | 9 +++++++++
- 2 files changed, 14 insertions(+)
----
-base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
-change-id: 20240217-hisi-wdt-3b52971a6591
-
-Best regards,
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+2.43.0
 
