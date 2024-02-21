@@ -1,101 +1,65 @@
-From: Yang Xiwen <forbidden405@outlook.com>
-Date: Wed, 21 Feb 2024 20:45:07 +0800
-Subject: [PATCH v6 5/5] dt-bindings: mmc: hisilicon,hi3798cv200-dw-mshc:
- add Hi3798MV200 binding
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH 0/5] iio: move IIO to the cleanup.h magic
+Date: Wed, 21 Feb 2024 14:26:51 +0100
+Message-Id: <20240221-iio-use-cleanup-magic-v1-0-f9c292666f26@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240221-b4-mmc-hi3798mv200-v6-5-bc41bf6a9769@outlook.com>
-References: <20240221-b4-mmc-hi3798mv200-v6-0-bc41bf6a9769@outlook.com>
-In-Reply-To: <20240221-b4-mmc-hi3798mv200-v6-0-bc41bf6a9769@outlook.com>
-To: Ulf Hansson <ulf.hansson@linaro.org>, 
- Jaehoon Chung <jh80.chung@samsung.com>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, Adrian Hunter <adrian.hunter@intel.com>, 
- Andrew Jeffery <andrew@codeconstruct.com.au>, Joel Stanley <joel@jms.id.au>
-Cc: Igor Opaniuk <igor.opaniuk@linaro.org>, 
- tianshuliang <tianshuliang@hisilicon.com>, David Yang <mmyangfl@gmail.com>, 
- linux-kernel@vger.kernel.org, linux-mmc@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-aspeed@lists.ozlabs.org, 
- openbmc@lists.ozlabs.org, linux-arm-kernel@lists.infradead.org, 
- Yang Xiwen <forbidden405@outlook.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708519512; l=2243;
- i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=MbI2PnDc478+pXDtiAiOl4Pgtl4uv4VM2qKM2Aj02Fo=;
- b=GHMbA+ui0CZj/9PA7UQN3DitGiodD7rPMA/G2T+/6k889MCtJfDNBOILA23c67nIXdiMtFMi1
- ZGxs43UDR1XBsZqvNwDSQhf3xL/qcNTIDouoxGrfuDym3cYcwLcCepn
-X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
- pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
-X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIABv61WUC/x3MQQqAIBBA0avErBvQIYS6SrQwG2ugNJQikO6et
+ HyL/wtkTsIZhqZA4luyxFCh2wbcZsPKKEs1kKJOkTYoEvHKjG5nG64TD7uKQ+q9M8ZY3dEMtT0
+ Te3n+7zi97wdLImL0ZwAAAA==
+To: linux-iio@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, Nuno Sa <nuno.sa@analog.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708522015; l=1716;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=biPceoEZ/pR8Xvp5/lPe0+nInLOTnUmJdiVykHTBK1w=;
+ b=AUaQQPhJDVV4uNENBLF+EKn+PL4QP1S428oUWvtL458297kN79a0df7Udu8l3Cz60OM1fsoM+
+ EpPGSQMElCSAkBtul2u4Zv9sV8CI42wpoDs6gOyUp3SNFKzW9EkpBM/
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add binding and an extra property for Hi3798MV200 DWMMC specific extension.
+This series moves the main IIO core files to the new cleanup.h
+macros for acquiring and automatically releasing mutexes. This results (in
+some cases) in way simpler code paths.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
+I think the overall result is fairly neat (mainly in inkern.c).
+
+One thing to mention is in the iio_event_getfd() function. We might be
+changing the return code. Before we directly returned the error code
+returned by mutex_lock_interruptible(). Now we return -EINTR. And this
+is something visible by userspace so it might mean an ABI breakage.
+
+Having said the above, looking at the mutex_lock_interruptible() docs it
+seems we either return 0 or -EINTR. Not sure if that is really truth
+(but it does makes sense). On top of that, I would also say it's very
+unlikely for someone to be relying on an error code return by a locking
+function but who knows... Anyways, this is something worth mentioning.
+
+Next goal is to convert the code under iio/buffer/
+
 ---
- .../mmc/hisilicon,hi3798cv200-dw-mshc.yaml         | 24 +++++++++++++++++++++-
- 1 file changed, 23 insertions(+), 1 deletion(-)
+Nuno Sa (5):
+      iio: core: move to cleanup.h magic
+      iio: events: move to the cleanup.h magic
+      iio: trigger: move to the cleanup.h magic
+      iio: buffer: iio: core: move to the cleanup.h magic
+      iio: inkern: move to the cleanup.h magic
 
-diff --git a/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml b/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-index f3dc973cb490..41c9b22523e7 100644
---- a/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-+++ b/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-@@ -4,7 +4,7 @@
- $id: http://devicetree.org/schemas/mmc/hisilicon,hi3798cv200-dw-mshc.yaml#
- $schema: http://devicetree.org/meta-schemas/core.yaml#
- 
--title: Hisilicon Hi3798CV200 SoC specific extensions to the Synopsys DWMMC controller
-+title: Hisilicon HiSTB SoCs specific extensions to the Synopsys DWMMC controller
- 
- maintainers:
-   - Yang Xiwen <forbidden405@outlook.com>
-@@ -13,6 +13,7 @@ properties:
-   compatible:
-     enum:
-       - hisilicon,hi3798cv200-dw-mshc
-+      - hisilicon,hi3798mv200-dw-mshc
- 
-   reg:
-     maxItems: 1
-@@ -34,6 +35,15 @@ properties:
-       - const: ciu-sample
-       - const: ciu-drive
- 
-+  hisilicon,sap-dll-reg:
-+    $ref: /schemas/types.yaml#/definitions/phandle-array
-+    description: |
-+      DWMMC core on Hi3798MV2x SoCs has a delay-locked-loop(DLL) attached to card data input path.
-+      It is integrated into CRG core on the SoC and has to be controlled during tuning.
-+    items:
-+      - description: A phandle pointed to the CRG syscon node
-+      - description: Sample DLL register offset in CRG address space
-+
- required:
-   - compatible
-   - reg
-@@ -44,6 +54,18 @@ required:
- allOf:
-   - $ref: synopsys-dw-mshc-common.yaml#
- 
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: hisilicon,hi3798mv200-dw-mshc
-+    then:
-+      required:
-+        - hisilicon,sap-dll-reg
-+    else:
-+      properties:
-+        hisilicon,sap-dll-reg: false
-+
- unevaluatedProperties: false
- 
- examples:
+ drivers/iio/industrialio-buffer.c  | 105 +++++++----------
+ drivers/iio/industrialio-core.c    |  52 ++++-----
+ drivers/iio/industrialio-event.c   |  42 +++----
+ drivers/iio/industrialio-trigger.c |  64 +++++------
+ drivers/iio/inkern.c               | 224 ++++++++++++-------------------------
+ 5 files changed, 172 insertions(+), 315 deletions(-)
+---
+base-commit: bd2f1ed8873d4bbb2798151bbe28c86565251cfb
+change-id: 20240216-iio-use-cleanup-magic-29fc666a142b
+--
 
--- 
-2.43.0
+Thanks!
+- Nuno Sá
 
