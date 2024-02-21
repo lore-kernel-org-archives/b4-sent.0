@@ -1,10 +1,10 @@
 From: "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>
-Date: Wed, 21 Feb 2024 15:24:50 -0600
-Subject: [PATCH v2 19/25] fs: add vfs_remove_fscaps()
+Date: Wed, 21 Feb 2024 15:24:51 -0600
+Subject: [PATCH v2 20/25] ovl: add fscaps handlers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240221-idmap-fscap-refactor-v2-19-3039364623bd@kernel.org>
+Message-Id: <20240221-idmap-fscap-refactor-v2-20-3039364623bd@kernel.org>
 References: <20240221-idmap-fscap-refactor-v2-0-3039364623bd@kernel.org>
 In-Reply-To: <20240221-idmap-fscap-refactor-v2-0-3039364623bd@kernel.org>
 To: Christian Brauner <brauner@kernel.org>, 
@@ -25,137 +25,169 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  selinux@vger.kernel.org, linux-integrity@vger.kernel.org, 
  linux-doc@vger.kernel.org, linux-unionfs@vger.kernel.org
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3779; i=sforshee@kernel.org;
- h=from:subject:message-id; bh=a3ugvMhATksPxV+a7Wcb3fojtkXnejQOJKEmfG2Au6A=;
- b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBl1mopgDVenhi3VLPaPvFwxM95tqNAaxCLXvBKa+2y
- 76GFlFmJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZdZqKQAKCRBTA5mu5fQxyQftB/
- 0eV/oZCodcvmT2NzrSTKkvLIWCpVU5YGKGFugW3HG3lJRUuGtO+t+A3RwZKzOSWbtk1CkbGAetJWXa
- aqqprqjsUstKaAApbpfZoZ+eK6TN/rCUWHcGfXJrwsSbxogu7GRc2n0qYaSlu+qA3xEzF8z6c/Ddpr
- k/Dc7FVT0eukTELGcPFhqthrQZQwUPUa27SB4BCSgNW5nS3MQFGNmL3komWpIDaUw1t7zzjePB3Q8p
- Sd6mViD54RmlcUD/RuxaNacNOjFHyQ0gXUwF/iAQuoi0uwi4vkFeECAIEt6niPSkeZ/0OqmUxINUBZ
- jM1eqVetaMefnRdsKXRtEreKVXPamw
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4817; i=sforshee@kernel.org;
+ h=from:subject:message-id; bh=ttWdljGV2VOOVlmLs8ch4F+B9OPu/3AJrV4l738gSBE=;
+ b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBl1moqr1C0o66vju1JEhWEhxdjP9MjLsg75RZLdJMz
+ EGbaqxmJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZdZqKgAKCRBTA5mu5fQxyasXB/
+ 0ck2MmFB/6xo9OUk9n0uU1WV1hFMVoAQcMtqmhIQz/2o92A+LSQK3qhijWqisOM+8FwP0mq2qJxzMN
+ vIR8aLOcS0thGDP0hfR39KgwnIBaHRd/nB/r7IdYiRO+hJmxzhiWNUp1IIYYbAlGvxeD7YKcQaPI6w
+ ujDpQ/1BRMFLG/aUZlWxGKGWcvTaun5znDQgPzJy2O4WmnYgB0YdN+3H+qKej3XIqL5cxd9tpymr8a
+ HVtkrcMynShyHq7SIhQ1Hshd+ebeNCgKfG4XE3neYdZrCQjNHAcwys74zaZ8osEiqTuT5wf1p4sORt
+ V1GcnFZzEQHrTdJSCnsZ7y7llnM8zr
 X-Developer-Key: i=sforshee@kernel.org; a=openpgp;
  fpr=2ABCA7498D83E1D32D51D3B5AB4800A62DB9F73A
 X-Endpoint-Received: by B4 Relay for sforshee@kernel.org/default with auth_id=103
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Provide a type-safe interface for removing filesystem capabilities and a
-generic implementation suitable for most filesystems. Also add an
-internal interface, vfs_remove_fscaps_nosec(), which is called with the
-inode lock held and skips security checks for later use from the
-capability code.
+Add handlers which read fs caps from the lower or upper filesystem and
+write/remove fs caps to the upper filesystem, performing copy-up as
+necessary.
+
+While fscaps only really make sense on regular files, the general policy
+is to allow most xattr namespaces on all different inode types, so
+fscaps handlers are installed in the inode operations for all types of
+inodes.
 
 Signed-off-by: Seth Forshee (DigitalOcean) <sforshee@kernel.org>
 ---
- fs/xattr.c         | 81 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  2 ++
- 2 files changed, 83 insertions(+)
+ fs/overlayfs/dir.c       |  2 ++
+ fs/overlayfs/inode.c     | 72 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/overlayfs/overlayfs.h |  5 ++++
+ 3 files changed, 79 insertions(+)
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 96de43928a51..8b0f7384cbc9 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -324,6 +324,87 @@ int vfs_set_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
+diff --git a/fs/overlayfs/dir.c b/fs/overlayfs/dir.c
+index 0f8b4a719237..4ff360fe10c9 100644
+--- a/fs/overlayfs/dir.c
++++ b/fs/overlayfs/dir.c
+@@ -1307,6 +1307,8 @@ const struct inode_operations ovl_dir_inode_operations = {
+ 	.get_inode_acl	= ovl_get_inode_acl,
+ 	.get_acl	= ovl_get_acl,
+ 	.set_acl	= ovl_set_acl,
++	.get_fscaps	= ovl_get_fscaps,
++	.set_fscaps	= ovl_set_fscaps,
+ 	.update_time	= ovl_update_time,
+ 	.fileattr_get	= ovl_fileattr_get,
+ 	.fileattr_set	= ovl_fileattr_set,
+diff --git a/fs/overlayfs/inode.c b/fs/overlayfs/inode.c
+index c63b31a460be..7a8978ea6fe1 100644
+--- a/fs/overlayfs/inode.c
++++ b/fs/overlayfs/inode.c
+@@ -568,6 +568,72 @@ int ovl_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
  }
- EXPORT_SYMBOL(vfs_set_fscaps);
+ #endif
  
-+static int generic_remove_fscaps(struct mnt_idmap *idmap, struct dentry *dentry)
++int ovl_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
++		   struct vfs_caps *caps)
 +{
-+	return __vfs_removexattr(idmap, dentry, XATTR_NAME_CAPS);
++	int err;
++	const struct cred *old_cred;
++	struct path realpath;
++
++	ovl_path_real(dentry, &realpath);
++	old_cred = ovl_override_creds(dentry->d_sb);
++	err = vfs_get_fscaps(mnt_idmap(realpath.mnt), realpath.dentry, caps);
++	revert_creds(old_cred);
++	return err;
 +}
 +
-+/**
-+ * vfs_remove_fscaps_nosec - remove filesystem capabilities without
-+ *                           security checks
-+ * @idmap: idmap of the mount the inode was found from
-+ * @dentry: the dentry from which to remove filesystem capabilities
-+ *
-+ * This function removes any filesystem capabilities from the specified
-+ * dentry. Does not perform any security checks, and callers must hold the
-+ * inode lock.
-+ *
-+ * Return: 0 on success, a negative errno on error.
-+ */
-+int vfs_remove_fscaps_nosec(struct mnt_idmap *idmap, struct dentry *dentry)
++int ovl_set_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
++		   const struct vfs_caps *caps, int setxattr_flags)
 +{
-+	struct inode *inode = dentry->d_inode;
-+	int error;
++	int err;
++	struct ovl_fs *ofs = OVL_FS(dentry->d_sb);
++	struct dentry *upperdentry = ovl_dentry_upper(dentry);
++	struct dentry *realdentry = upperdentry ?: ovl_dentry_lower(dentry);
++	const struct cred *old_cred;
 +
-+	if (inode->i_op->set_fscaps)
-+		error =  inode->i_op->set_fscaps(idmap, dentry, NULL,
-+						 XATTR_REPLACE);
++	/*
++	 * If the fscaps are to be remove from a lower file, check that they
++	 * exist before copying up.
++	 */
++	if (!caps && !upperdentry) {
++		struct path realpath;
++		struct vfs_caps lower_caps;
++
++		ovl_path_lower(dentry, &realpath);
++		old_cred = ovl_override_creds(dentry->d_sb);
++		err = vfs_get_fscaps(mnt_idmap(realpath.mnt), realdentry,
++				     &lower_caps);
++		revert_creds(old_cred);
++		if (err)
++			goto out;
++	}
++
++	err = ovl_want_write(dentry);
++	if (err)
++		goto out;
++
++	err = ovl_copy_up(dentry);
++	if (err)
++		goto out_drop_write;
++	upperdentry = ovl_dentry_upper(dentry);
++
++	old_cred = ovl_override_creds(dentry->d_sb);
++	if (!caps)
++		err = vfs_remove_fscaps(ovl_upper_mnt_idmap(ofs), upperdentry);
 +	else
-+		error = generic_remove_fscaps(idmap, dentry);
++		err = vfs_set_fscaps(ovl_upper_mnt_idmap(ofs), upperdentry,
++				     caps, setxattr_flags);
++	revert_creds(old_cred);
 +
-+	return error;
++	/* copy c/mtime */
++	ovl_copyattr(d_inode(dentry));
++
++out_drop_write:
++	ovl_drop_write(dentry);
++out:
++	return err;
 +}
 +
-+/**
-+ * vfs_remove_fscaps - remove filesystem capabilities
-+ * @idmap: idmap of the mount the inode was found from
-+ * @dentry: the dentry from which to remove filesystem capabilities
-+ *
-+ * This function removes any filesystem capabilities from the specified
-+ * dentry.
-+ *
-+ * Return: 0 on success, a negative errno on error.
-+ */
-+int vfs_remove_fscaps(struct mnt_idmap *idmap, struct dentry *dentry)
-+{
-+	struct inode *inode = dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
-+	int error;
-+
-+retry_deleg:
-+	inode_lock(inode);
-+
-+	error = xattr_permission(idmap, inode, XATTR_NAME_CAPS, MAY_WRITE);
-+	if (error)
-+		goto out_inode_unlock;
-+
-+	error = security_inode_remove_fscaps(idmap, dentry);
-+	if (error)
-+		goto out_inode_unlock;
-+
-+	error = try_break_deleg(inode, &delegated_inode);
-+	if (error)
-+		goto out_inode_unlock;
-+
-+	error = vfs_remove_fscaps_nosec(idmap, dentry);
-+	if (!error) {
-+		fsnotify_xattr(dentry);
-+		evm_inode_post_remove_fscaps(dentry);
-+	}
-+
-+out_inode_unlock:
-+	inode_unlock(inode);
-+
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
-+
-+	return error;
-+}
-+EXPORT_SYMBOL(vfs_remove_fscaps);
-+
- int
- __vfs_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	       struct inode *inode, const char *name, const void *value,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 4f5d7ed44644..c07427d2fc71 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2122,6 +2122,8 @@ extern int vfs_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
- 			  struct vfs_caps *caps);
- extern int vfs_set_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
- 			  const struct vfs_caps *caps, int setxattr_flags);
-+extern int vfs_remove_fscaps_nosec(struct mnt_idmap *idmap, struct dentry *dentry);
-+extern int vfs_remove_fscaps(struct mnt_idmap *idmap, struct dentry *dentry);
+ int ovl_update_time(struct inode *inode, int flags)
+ {
+ 	if (flags & S_ATIME) {
+@@ -747,6 +813,8 @@ static const struct inode_operations ovl_file_inode_operations = {
+ 	.get_inode_acl	= ovl_get_inode_acl,
+ 	.get_acl	= ovl_get_acl,
+ 	.set_acl	= ovl_set_acl,
++	.get_fscaps	= ovl_get_fscaps,
++	.set_fscaps	= ovl_set_fscaps,
+ 	.update_time	= ovl_update_time,
+ 	.fiemap		= ovl_fiemap,
+ 	.fileattr_get	= ovl_fileattr_get,
+@@ -758,6 +826,8 @@ static const struct inode_operations ovl_symlink_inode_operations = {
+ 	.get_link	= ovl_get_link,
+ 	.getattr	= ovl_getattr,
+ 	.listxattr	= ovl_listxattr,
++	.get_fscaps	= ovl_get_fscaps,
++	.set_fscaps	= ovl_set_fscaps,
+ 	.update_time	= ovl_update_time,
+ };
  
- /**
-  * enum freeze_holder - holder of the freeze
+@@ -769,6 +839,8 @@ static const struct inode_operations ovl_special_inode_operations = {
+ 	.get_inode_acl	= ovl_get_inode_acl,
+ 	.get_acl	= ovl_get_acl,
+ 	.set_acl	= ovl_set_acl,
++	.get_fscaps	= ovl_get_fscaps,
++	.set_fscaps	= ovl_set_fscaps,
+ 	.update_time	= ovl_update_time,
+ };
+ 
+diff --git a/fs/overlayfs/overlayfs.h b/fs/overlayfs/overlayfs.h
+index ee949f3e7c77..4f948749ee02 100644
+--- a/fs/overlayfs/overlayfs.h
++++ b/fs/overlayfs/overlayfs.h
+@@ -781,6 +781,11 @@ static inline struct posix_acl *ovl_get_acl_path(const struct path *path,
+ }
+ #endif
+ 
++int ovl_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
++		   struct vfs_caps *caps);
++int ovl_set_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
++		   const struct vfs_caps *caps, int setxattr_flags);
++
+ int ovl_update_time(struct inode *inode, int flags);
+ bool ovl_is_private_xattr(struct super_block *sb, const char *name);
+ 
 
 -- 
 2.43.0
