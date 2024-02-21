@@ -1,10 +1,11 @@
 From: Janne Grunau <j@jannau.net>
-Date: Wed, 21 Feb 2024 08:25:05 +0100
-Subject: [PATCH 5/6] usb: kbd: support Apple Magic Keyboards (2021)
+Date: Wed, 21 Feb 2024 08:25:06 +0100
+Subject: [PATCH 6/6] usb: kbd: Add probe quirk for Apple and Keychron
+ keyboards
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240221-asahi-keyboards-v1-5-814b2e741790@jannau.net>
+Message-Id: <20240221-asahi-keyboards-v1-6-814b2e741790@jannau.net>
 References: <20240221-asahi-keyboards-v1-0-814b2e741790@jannau.net>
 In-Reply-To: <20240221-asahi-keyboards-v1-0-814b2e741790@jannau.net>
 To: Bin Meng <bmeng.cn@gmail.com>, Marek Vasut <marex@denx.de>, 
@@ -12,215 +13,85 @@ To: Bin Meng <bmeng.cn@gmail.com>, Marek Vasut <marex@denx.de>,
 Cc: u-boot@lists.denx.de, asahi@lists.linux.dev, 
  Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7070; i=j@jannau.net;
- h=from:subject:message-id; bh=no2H0NIDufr9XGDsuavjhG5Xm1XJhYYJogXcYh4XRsg=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtSrS6NmFk+ePLnJ4a+FTFRl96Na3W72R38cdtxxTmLTr
- uQLYurrKGVhEONikBVTZEnSftnBsLpGMab2QRjMHFYmkCEMXJwCMJH1Rxn+2f5/v2e1t2jAipmp
- F5SFlPcvUT6+2uq69m6Tqo0lX9bnVDP800xK6EmIC9ENtgw88n6XXOHRmY/1Lt5Zm+PxYF+LQJg
- nKwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2536; i=j@jannau.net;
+ h=from:subject:message-id; bh=3y8349yV2wtUe41ovy+jezKbAFHoTDxLrAQuuV9nDGw=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtSrS6OmyH2veiK4vNPh20Fu129K4cwBK/dJ705mOyIf/
+ 3VxeaB1RykLgxgXg6yYIkuS9ssOhtU1ijG1D8Jg5rAygQxh4OIUgIlMcWNkeN23YHuGxfecadMk
+ r0znjHyfqvIg/+O61rKKGQ/nNLNzWTMynPr5Tnn9Mu0Dhw/typpU8bi05NOKrVd65/anMHJJ+nk
+ m8gEA
 X-Developer-Key: i=j@jannau.net; a=openpgp;
  fpr=8B336A6BE4E5695E89B8532B81E806F586338419
 X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Apple USB keyboards (Magic Keyboard from 2021 (product id 0x029c)) carry
-the HID keyboard boot protocol on the second interface descriptor.
-Probe via vendor and product IDs since the class/subclass/protocol match
-uses the first interface descriptor.
-Probe the two first interface descriptors for the HID keyboard boot
-protocol.
-
-USB configuration descriptor for reference:
-
-| Bus 003 Device 002: ID 05ac:029c Apple, Inc. Magic Keyboard
-| Device Descriptor:
-|   bLength                18
-|   bDescriptorType         1
-|   bcdUSB               2.00
-|   bDeviceClass            0 [unknown]
-|   bDeviceSubClass         0 [unknown]
-|   bDeviceProtocol         0
-|   bMaxPacketSize0        64
-|   idVendor           0x05ac Apple, Inc.
-|   idProduct          0x029c Magic Keyboard
-|   bcdDevice            3.90
-|   iManufacturer           1 Apple Inc.
-|   iProduct                2 Magic Keyboard
-|   iSerial                 3 ...
-|   bNumConfigurations      1
-|   Configuration Descriptor:
-|     bLength                 9
-|     bDescriptorType         2
-|     wTotalLength       0x003b
-|     bNumInterfaces          2
-|     bConfigurationValue     1
-|     iConfiguration          4 Keyboard
-|     bmAttributes         0xa0
-|       (Bus Powered)
-|       Remote Wakeup
-|     MaxPower              500mA
-|     Interface Descriptor:
-|       bLength                 9
-|       bDescriptorType         4
-|       bInterfaceNumber        0
-|       bAlternateSetting       0
-|       bNumEndpoints           1
-|       bInterfaceClass         3 Human Interface Device
-|       bInterfaceSubClass      0 [unknown]
-|       bInterfaceProtocol      0
-|       iInterface              5 Device Management
-|         HID Device Descriptor:
-|           bLength                 9
-|           bDescriptorType        33
-|           bcdHID               1.10
-|           bCountryCode            0 Not supported
-|           bNumDescriptors         1
-|           bDescriptorType        34 Report
-|           wDescriptorLength      83
-|           Report Descriptors:
-|             ** UNAVAILABLE **
-|       Endpoint Descriptor:
-|         bLength                 7
-|         bDescriptorType         5
-|         bEndpointAddress     0x81  EP 1 IN
-|         bmAttributes            3
-|           Transfer Type            Interrupt
-|           Synch Type               None
-|           Usage Type               Data
-|         wMaxPacketSize     0x0010  1x 16 bytes
-|         bInterval               8
-|     Interface Descriptor:
-|       bLength                 9
-|       bDescriptorType         4
-|       bInterfaceNumber        1
-|       bAlternateSetting       0
-|       bNumEndpoints           1
-|       bInterfaceClass         3 Human Interface Device
-|       bInterfaceSubClass      1 Boot Interface Subclass
-|       bInterfaceProtocol      1 Keyboard
-|       iInterface              6 Keyboard / Boot
-|         HID Device Descriptor:
-|           bLength                 9
-|           bDescriptorType        33
-|           bcdHID               1.10
-|           bCountryCode           13 International (ISO)
-|           bNumDescriptors         1
-|           bDescriptorType        34 Report
-|           wDescriptorLength     207
-|           Report Descriptors:
-|             ** UNAVAILABLE **
-|       Endpoint Descriptor:
-|         bLength                 7
-|         bDescriptorType         5
-|         bEndpointAddress     0x82  EP 2 IN
-|         bmAttributes            3
-|           Transfer Type            Interrupt
-|           Synch Type               None
-|           Usage Type               Data
-|         wMaxPacketSize     0x0010  1x 16 bytes
-|         bInterval               8
+Those keyboards do not return the current device state. Polling will
+timeout unless there are key presses. This is not a problem during
+operation but the inital device state query during probing will fail.
+Skip this step in usb_kbd_probe_dev() to make these devices useable.
+Not all Apple keyboards behave like this. A keyboard with USB
+vendor/product ID 05ac:0221 is reported to work with the current code.
+Unfortunately some Keychron keyboards "re-use" Apple's vendor ID and
+show the same behavior (Keychron C2, 05ac:024f for example).
 
 Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- common/usb_kbd.c | 39 +++++++++++++++++++++++++++++++++++----
- 1 file changed, 35 insertions(+), 4 deletions(-)
+ common/usb_kbd.c | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
 diff --git a/common/usb_kbd.c b/common/usb_kbd.c
-index 774d3555d9..7aa803eb4e 100644
+index 7aa803eb4e..b0012ce7ad 100644
 --- a/common/usb_kbd.c
 +++ b/common/usb_kbd.c
-@@ -23,6 +23,14 @@
+@@ -31,6 +31,10 @@
+ #define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_FINGERPRINT_2021	0x029a
+ #define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_NUMPAD_2021		0x029f
  
- #include <usb.h>
- 
-+/*
-+ * USB vendor and product IDs used for quirks.
-+ */
-+#define USB_VENDOR_ID_APPLE	0x05ac
-+#define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_2021			0x029c
-+#define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_FINGERPRINT_2021	0x029a
-+#define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_NUMPAD_2021		0x029f
++#define USB_VENDOR_ID_KEYCHRON	0x3434
++
++#define USB_HID_QUIRK_POLL_NO_REPORT_IDLE	(1 << 0)
 +
  /*
   * If overwrite_console returns 1, the stdin, stderr and stdout
   * are switched to the serial port, else the settings in the
-@@ -106,6 +114,8 @@ struct usb_kbd_pdata {
- 	unsigned long	last_report;
- 	struct int_queue *intq;
- 
-+	uint32_t	ifnum;
-+
- 	uint32_t	repeat_delay;
- 
- 	uint32_t	usb_in_pointer;
-@@ -159,8 +169,8 @@ static void usb_kbd_put_queue(struct usb_kbd_pdata *data, u8 c)
-  */
- static void usb_kbd_setled(struct usb_device *dev)
- {
--	struct usb_interface *iface = &dev->config.if_desc[0];
- 	struct usb_kbd_pdata *data = dev->privptr;
-+	struct usb_interface *iface = &dev->config.if_desc[data->ifnum];
- 	ALLOC_ALIGN_BUFFER(uint32_t, leds, 1, USB_DMA_MINALIGN);
- 
- 	*leds = data->flags & USB_KBD_LEDMASK;
-@@ -374,7 +384,7 @@ static inline void usb_kbd_poll_for_event(struct usb_device *dev)
- #if defined(CONFIG_SYS_USB_EVENT_POLL_VIA_CONTROL_EP)
+@@ -483,6 +487,7 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
  	struct usb_interface *iface;
- 	struct usb_kbd_pdata *data = dev->privptr;
--	iface = &dev->config.if_desc[0];
-+	iface = &dev->config.if_desc[data->ifnum];
- 	usb_get_report(dev, iface->desc.bInterfaceNumber,
- 		       1, 0, data->new, USB_KBD_BOOT_REPORT_SIZE);
- 	if (memcmp(data->old, data->new, USB_KBD_BOOT_REPORT_SIZE)) {
-@@ -528,6 +538,8 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 	data->new = memalign(USB_DMA_MINALIGN,
- 		roundup(USB_KBD_BOOT_REPORT_SIZE, USB_DMA_MINALIGN));
+ 	struct usb_endpoint_descriptor *ep;
+ 	struct usb_kbd_pdata *data;
++	unsigned int quirks = 0;
+ 	int epNum;
+ 	int i;
  
-+	data->ifnum = ifnum;
-+
- 	/* Insert private data into USB device structure */
- 	dev->privptr = data;
+@@ -525,6 +530,15 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
  
-@@ -580,11 +592,18 @@ static int probe_usb_keyboard(struct usb_device *dev)
- {
- 	char *stdinname;
- 	struct stdio_dev usb_kbd_dev;
-+	unsigned int ifnum;
-+	unsigned int max_ifnum = min((unsigned int)USB_MAX_ACTIVE_INTERFACES,
-+				     (unsigned int)dev->config.no_of_if);
- 	int error;
+ 	debug("USB KBD: found interrupt EP: 0x%x\n", ep->bEndpointAddress);
  
- 	/* Try probing the keyboard */
--	if (usb_kbd_probe_dev(dev, 0) != 1)
--		return -ENOENT;
-+	for (ifnum = 0; ifnum < max_ifnum; ifnum++) {
-+		if (usb_kbd_probe_dev(dev, ifnum) == 1)
-+			break;
++	switch (dev->descriptor.idVendor) {
++	case USB_VENDOR_ID_APPLE:
++	case USB_VENDOR_ID_KEYCHRON:
++		quirks |= USB_HID_QUIRK_POLL_NO_REPORT_IDLE;
++		break;
++	default:
++		break;
 +	}
-+	if (ifnum >= max_ifnum)
-+		 return -ENOENT;
++
+ 	data = malloc(sizeof(struct usb_kbd_pdata));
+ 	if (!data) {
+ 		printf("USB KBD: Error allocating private data\n");
+@@ -565,6 +579,14 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
+ 	usb_set_idle(dev, iface->desc.bInterfaceNumber, 0, 0);
+ #endif
  
- 	/* Register the keyboard */
- 	debug("USB KBD: register.\n");
-@@ -750,6 +769,18 @@ static const struct usb_device_id kbd_id_table[] = {
- 		.bInterfaceSubClass = USB_SUB_HID_BOOT,
- 		.bInterfaceProtocol = USB_PROT_HID_KEYBOARD,
- 	},
-+	{
-+		USB_DEVICE(USB_VENDOR_ID_APPLE,
-+			   USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_2021),
-+	},
-+	{
-+		USB_DEVICE(USB_VENDOR_ID_APPLE,
-+			   USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_FINGERPRINT_2021),
-+	},
-+	{
-+		USB_DEVICE(USB_VENDOR_ID_APPLE,
-+			   USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_NUMPAD_2021),
-+	},
- 	{ }		/* Terminating entry */
- };
- 
++	/*
++	 * Apple and Keychron keyboards do not report the device state. Reports
++	 * are only returned during key presses.
++	 */
++	if (quirks & USB_HID_QUIRK_POLL_NO_REPORT_IDLE) {
++		debug("USB KBD: quirk: skip testing device state\n");
++		return 1;
++	}
+ 	debug("USB KBD: enable interrupt pipe...\n");
+ #ifdef CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE
+ 	data->intq = create_int_queue(dev, data->intpipe, 1,
 
 -- 
 2.43.2
