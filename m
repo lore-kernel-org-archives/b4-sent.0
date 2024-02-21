@@ -1,10 +1,10 @@
 From: "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>
-Date: Wed, 21 Feb 2024 15:24:35 -0600
-Subject: [PATCH v2 04/25] capability: rename cpu_vfs_cap_data to vfs_caps
+Date: Wed, 21 Feb 2024 15:24:36 -0600
+Subject: [PATCH v2 05/25] capability: use vfsuid_t for vfs_caps rootids
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240221-idmap-fscap-refactor-v2-4-3039364623bd@kernel.org>
+Message-Id: <20240221-idmap-fscap-refactor-v2-5-3039364623bd@kernel.org>
 References: <20240221-idmap-fscap-refactor-v2-0-3039364623bd@kernel.org>
 In-Reply-To: <20240221-idmap-fscap-refactor-v2-0-3039364623bd@kernel.org>
 To: Christian Brauner <brauner@kernel.org>, 
@@ -25,116 +25,96 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  selinux@vger.kernel.org, linux-integrity@vger.kernel.org, 
  linux-doc@vger.kernel.org, linux-unionfs@vger.kernel.org
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3545; i=sforshee@kernel.org;
- h=from:subject:message-id; bh=Y5Y30p4SCfTGfQg8oU5oIf6A+JB4LZOuEG/nIXEuQzs=;
- b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBl1mobLp7u/pdNjeacbXMjbSmEjyV6rMwMwivWNU01
- Kh0BkwWJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZdZqGwAKCRBTA5mu5fQxyY9qB/
- 9zUYtdKwx4X8HLo4wnjsbAIGYaWULalOUkaxXnOKjI5Cs4QTHrFSqLwolWhCcuwuJCqxufBU3HxTnc
- mxPuO1+61LNNhi/pCD44c/qRrZUVVTkRAtKBczWgUu6i3XXeeqJLm6XeipSXmdG8cXmXYG8Z187Qbq
- F5NubGadgplNl+QZZZQxAr5Ejyxm7NmVVnTwEBMdlEobRDFUGTFx2dSAaIon/Yk9iw58upAsiDc80O
- IxJbm6qPqST7KMcaLpBxCduVum8Kw1Ljhi2YFVnvMFzw1j5/byvyaLLhuW5jFhzBU4PIXJo3y89Kng
- MOIi8lpcWkKwus9TggxdTwSRIABNLw
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2813; i=sforshee@kernel.org;
+ h=from:subject:message-id; bh=YMHnxXBEI/P1sDB6/aXu4KjyTt4t2HZBNesMC/3zNhs=;
+ b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBl1moc9PlzOKO/Kyx+lBa/M3xomZ3GPJVZxjtiE7L2
+ DuW0zcKJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZdZqHAAKCRBTA5mu5fQxyWfCB/
+ 43YTrTvfhVuOT0q1B/D6FhejPBxQNkO/BnYQ3ZrnKJbTbp44bZUF5mGs5jcP2xDdmAjW4CEnAhSy9M
+ pSzcb+7UKv6auwA0B0Y6Bd0Rabx/8z/3pnoUYWlLrgXWJluVZbFhrZmEhI0nSpdP/a3wwqdkBRl7xn
+ ATu5t0uCHGnbdr9CRQvE2DGGQiB0rHgAD6mxoWAPQpW+fKMiBNbPOwu7YKPvaynD5JTZ6EvlTiSlrf
+ whTtvzTnkpe2dGqZVxeEsNQ35AkJQgMEAYwSro7u4f2w9R/b5hO7M8WOg8/KkOoZBzahTBqYE+QJg2
+ KzNOWFT6FYRXRuHJ01Uf7V739eWk+C
 X-Developer-Key: i=sforshee@kernel.org; a=openpgp;
  fpr=2ABCA7498D83E1D32D51D3B5AB4800A62DB9F73A
 X-Endpoint-Received: by B4 Relay for sforshee@kernel.org/default with auth_id=103
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vfs_caps is a more generic name which is better suited to the broader
-use this struct will see in subsequent commits.
+The rootid is a kuid_t, but it contains an id which maped into a mount
+idmapping, so it is really a vfsuid. This is confusing and creates
+potential for misuse of the value, so change it to vfsuid_t.
 
-Reviewed-by: Christian Brauner <brauner@kernel.org>
 Acked-by: Paul Moore <paul@paul-moore.com>
 Signed-off-by: Seth Forshee (DigitalOcean) <sforshee@kernel.org>
 ---
- include/linux/capability.h | 4 ++--
- kernel/auditsc.c           | 4 ++--
- security/commoncap.c       | 8 ++++----
- 3 files changed, 8 insertions(+), 8 deletions(-)
+ include/linux/capability.h | 3 ++-
+ kernel/auditsc.c           | 5 +++--
+ security/commoncap.c       | 2 +-
+ 3 files changed, 6 insertions(+), 4 deletions(-)
 
 diff --git a/include/linux/capability.h b/include/linux/capability.h
-index 0c356a517991..c24477e660fc 100644
+index c24477e660fc..eb46d346bbbc 100644
 --- a/include/linux/capability.h
 +++ b/include/linux/capability.h
-@@ -24,7 +24,7 @@ extern int file_caps_enabled;
- typedef struct { u64 val; } kernel_cap_t;
+@@ -16,6 +16,7 @@
+ #include <uapi/linux/capability.h>
+ #include <linux/uidgid.h>
+ #include <linux/bits.h>
++#include <linux/vfsid.h>
  
+ #define _KERNEL_CAPABILITY_VERSION _LINUX_CAPABILITY_VERSION_3
+ 
+@@ -26,7 +27,7 @@ typedef struct { u64 val; } kernel_cap_t;
  /* same as vfs_ns_cap_data but in cpu endian and always filled completely */
--struct cpu_vfs_cap_data {
-+struct vfs_caps {
+ struct vfs_caps {
  	__u32 magic_etc;
- 	kuid_t rootid;
+-	kuid_t rootid;
++	vfsuid_t rootid;
  	kernel_cap_t permitted;
-@@ -211,7 +211,7 @@ static inline bool checkpoint_restore_ns_capable(struct user_namespace *ns)
- /* audit system wants to get cap info from files as well */
- int get_vfs_caps_from_disk(struct mnt_idmap *idmap,
- 			   const struct dentry *dentry,
--			   struct cpu_vfs_cap_data *cpu_caps);
-+			   struct vfs_caps *cpu_caps);
- 
- int cap_convert_nscap(struct mnt_idmap *idmap, struct dentry *dentry,
- 		      const void **ivalue, size_t size);
+ 	kernel_cap_t inheritable;
+ };
 diff --git a/kernel/auditsc.c b/kernel/auditsc.c
-index 6f0d6fb6523f..783d0bf69ca5 100644
+index 783d0bf69ca5..65691450b080 100644
 --- a/kernel/auditsc.c
 +++ b/kernel/auditsc.c
-@@ -2247,7 +2247,7 @@ void __audit_getname(struct filename *name)
- static inline int audit_copy_fcaps(struct audit_names *name,
- 				   const struct dentry *dentry)
- {
--	struct cpu_vfs_cap_data caps;
-+	struct vfs_caps caps;
- 	int rc;
+@@ -65,6 +65,7 @@
+ #include <uapi/linux/netfilter/nf_tables.h>
+ #include <uapi/linux/openat2.h> // struct open_how
+ #include <uapi/linux/fanotify.h>
++#include <linux/mnt_idmapping.h>
  
- 	if (!dentry)
-@@ -2800,7 +2800,7 @@ int __audit_log_bprm_fcaps(struct linux_binprm *bprm,
- {
- 	struct audit_aux_data_bprm_fcaps *ax;
- 	struct audit_context *context = audit_context();
--	struct cpu_vfs_cap_data vcaps;
-+	struct vfs_caps vcaps;
+ #include "audit.h"
  
- 	ax = kmalloc(sizeof(*ax), GFP_KERNEL);
- 	if (!ax)
+@@ -2260,7 +2261,7 @@ static inline int audit_copy_fcaps(struct audit_names *name,
+ 	name->fcap.permitted = caps.permitted;
+ 	name->fcap.inheritable = caps.inheritable;
+ 	name->fcap.fE = !!(caps.magic_etc & VFS_CAP_FLAGS_EFFECTIVE);
+-	name->fcap.rootid = caps.rootid;
++	name->fcap.rootid = AS_KUIDT(caps.rootid);
+ 	name->fcap_ver = (caps.magic_etc & VFS_CAP_REVISION_MASK) >>
+ 				VFS_CAP_REVISION_SHIFT;
+ 
+@@ -2816,7 +2817,7 @@ int __audit_log_bprm_fcaps(struct linux_binprm *bprm,
+ 	ax->fcap.permitted = vcaps.permitted;
+ 	ax->fcap.inheritable = vcaps.inheritable;
+ 	ax->fcap.fE = !!(vcaps.magic_etc & VFS_CAP_FLAGS_EFFECTIVE);
+-	ax->fcap.rootid = vcaps.rootid;
++	ax->fcap.rootid = AS_KUIDT(vcaps.rootid);
+ 	ax->fcap_ver = (vcaps.magic_etc & VFS_CAP_REVISION_MASK) >> VFS_CAP_REVISION_SHIFT;
+ 
+ 	ax->old_pcap.permitted   = old->cap_permitted;
 diff --git a/security/commoncap.c b/security/commoncap.c
-index 162d96b3a676..7cda247dc7e9 100644
+index 7cda247dc7e9..a0b5c9740759 100644
 --- a/security/commoncap.c
 +++ b/security/commoncap.c
-@@ -584,7 +584,7 @@ int cap_convert_nscap(struct mnt_idmap *idmap, struct dentry *dentry,
-  * Calculate the new process capability sets from the capability sets attached
-  * to a file.
-  */
--static inline int bprm_caps_from_vfs_caps(struct cpu_vfs_cap_data *caps,
-+static inline int bprm_caps_from_vfs_caps(struct vfs_caps *caps,
- 					  struct linux_binprm *bprm,
- 					  bool *effective,
- 					  bool *has_fcap)
-@@ -635,7 +635,7 @@ static inline int bprm_caps_from_vfs_caps(struct cpu_vfs_cap_data *caps,
-  */
- int get_vfs_caps_from_disk(struct mnt_idmap *idmap,
- 			   const struct dentry *dentry,
--			   struct cpu_vfs_cap_data *cpu_caps)
-+			   struct vfs_caps *cpu_caps)
- {
- 	struct inode *inode = d_backing_inode(dentry);
- 	__u32 magic_etc;
-@@ -646,7 +646,7 @@ int get_vfs_caps_from_disk(struct mnt_idmap *idmap,
- 	vfsuid_t rootvfsuid;
- 	struct user_namespace *fs_ns;
+@@ -711,7 +711,7 @@ int get_vfs_caps_from_disk(struct mnt_idmap *idmap,
+ 	cpu_caps->permitted.val &= CAP_VALID_MASK;
+ 	cpu_caps->inheritable.val &= CAP_VALID_MASK;
  
--	memset(cpu_caps, 0, sizeof(struct cpu_vfs_cap_data));
-+	memset(cpu_caps, 0, sizeof(struct vfs_caps));
+-	cpu_caps->rootid = vfsuid_into_kuid(rootvfsuid);
++	cpu_caps->rootid = rootvfsuid;
  
- 	if (!inode)
- 		return -ENODATA;
-@@ -725,7 +725,7 @@ static int get_file_caps(struct linux_binprm *bprm, const struct file *file,
- 			 bool *effective, bool *has_fcap)
- {
- 	int rc = 0;
--	struct cpu_vfs_cap_data vcaps;
-+	struct vfs_caps vcaps;
- 
- 	cap_clear(bprm->cred->cap_permitted);
- 
+ 	return 0;
+ }
 
 -- 
 2.43.0
