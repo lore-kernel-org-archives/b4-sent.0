@@ -1,98 +1,59 @@
-From: Janne Grunau <j@jannau.net>
-Date: Wed, 21 Feb 2024 08:25:06 +0100
-Subject: [PATCH 6/6] usb: kbd: Add probe quirk for Apple and Keychron
- keyboards
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH v3 0/2] watchdog: sp805: add reset control support
+Date: Wed, 21 Feb 2024 19:56:40 +0800
+Message-Id: <20240221-hisi-wdt-v3-0-9642613dc2e6@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240221-asahi-keyboards-v1-6-814b2e741790@jannau.net>
-References: <20240221-asahi-keyboards-v1-0-814b2e741790@jannau.net>
-In-Reply-To: <20240221-asahi-keyboards-v1-0-814b2e741790@jannau.net>
-To: Bin Meng <bmeng.cn@gmail.com>, Marek Vasut <marex@denx.de>, 
- Tom Rini <trini@konsulko.com>
-Cc: u-boot@lists.denx.de, asahi@lists.linux.dev, 
- Janne Grunau <j@jannau.net>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2536; i=j@jannau.net;
- h=from:subject:message-id; bh=3y8349yV2wtUe41ovy+jezKbAFHoTDxLrAQuuV9nDGw=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtSrS6OmyH2veiK4vNPh20Fu129K4cwBK/dJ705mOyIf/
- 3VxeaB1RykLgxgXg6yYIkuS9ssOhtU1ijG1D8Jg5rAygQxh4OIUgIlMcWNkeN23YHuGxfecadMk
- r0znjHyfqvIg/+O61rKKGQ/nNLNzWTMynPr5Tnn9Mu0Dhw/typpU8bi05NOKrVd65/anMHJJ+nk
- m8gEA
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
+X-B4-Tracking: v=1; b=H4sIAPjk1WUC/22Myw6CMBBFf4XM2pp2gGJd+R/GBX0ojUpNwaoh/
+ XcHVpi4PDf3nAkGF70bYF9MEF3ygw89QbkpwHRtf3HMW2JAjhVH0bCOLuxlR1bqGlUjWlkrAXR
+ /RHf27yV1PBHTcQzxs5STmNc/kSQYZ8ZqZa1ptZK7Q3iOtxCuWxPuMGcSrlTkKxVJlaWzplKy1
+ pX5VXPOX5MVvqLdAAAA
+To: Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Philipp Zabel <p.zabel@pengutronix.de>, 
+ Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Viresh Kumar <vireshk@kernel.org>
+Cc: linux-watchdog@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708516604; l=1002;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=cVP9oDcFqMe3HIWN3U9hzMH6sEfnqnfkj+cc6SDEDc4=;
+ b=OF1L8JvpFPNieb8IzziAiUU/l2TgBSIHHY+WX5+VPGsxwuQ2zJ3cXaqgEPm4geb0nX4u3ynVi
+ fvcIG6wx3DsBTZvCcsahf5yDbT2cOVcM3vy/2s2uhVx+JEZZbpepCnb
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Those keyboards do not return the current device state. Polling will
-timeout unless there are key presses. This is not a problem during
-operation but the inital device state query during probing will fail.
-Skip this step in usb_kbd_probe_dev() to make these devices useable.
-Not all Apple keyboards behave like this. A keyboard with USB
-vendor/product ID 05ac:0221 is reported to work with the current code.
-Unfortunately some Keychron keyboards "re-use" Apple's vendor ID and
-show the same behavior (Keychron C2, 05ac:024f for example).
+Deassert the reset if it's available.
 
-Signed-off-by: Janne Grunau <j@jannau.net>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- common/usb_kbd.c | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+Changes in v3:
+- move reset to local variable, get reset exclusively (Philipp Zabel)
+- Link to v2: https://lore.kernel.org/r/20240220-hisi-wdt-v2-0-63edc4965b4c@outlook.com
 
-diff --git a/common/usb_kbd.c b/common/usb_kbd.c
-index 7aa803eb4e..b0012ce7ad 100644
---- a/common/usb_kbd.c
-+++ b/common/usb_kbd.c
-@@ -31,6 +31,10 @@
- #define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_FINGERPRINT_2021	0x029a
- #define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_NUMPAD_2021		0x029f
- 
-+#define USB_VENDOR_ID_KEYCHRON	0x3434
-+
-+#define USB_HID_QUIRK_POLL_NO_REPORT_IDLE	(1 << 0)
-+
- /*
-  * If overwrite_console returns 1, the stdin, stderr and stdout
-  * are switched to the serial port, else the settings in the
-@@ -483,6 +487,7 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 	struct usb_interface *iface;
- 	struct usb_endpoint_descriptor *ep;
- 	struct usb_kbd_pdata *data;
-+	unsigned int quirks = 0;
- 	int epNum;
- 	int i;
- 
-@@ -525,6 +530,15 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 
- 	debug("USB KBD: found interrupt EP: 0x%x\n", ep->bEndpointAddress);
- 
-+	switch (dev->descriptor.idVendor) {
-+	case USB_VENDOR_ID_APPLE:
-+	case USB_VENDOR_ID_KEYCHRON:
-+		quirks |= USB_HID_QUIRK_POLL_NO_REPORT_IDLE;
-+		break;
-+	default:
-+		break;
-+	}
-+
- 	data = malloc(sizeof(struct usb_kbd_pdata));
- 	if (!data) {
- 		printf("USB KBD: Error allocating private data\n");
-@@ -565,6 +579,14 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 	usb_set_idle(dev, iface->desc.bInterfaceNumber, 0, 0);
- #endif
- 
-+	/*
-+	 * Apple and Keychron keyboards do not report the device state. Reports
-+	 * are only returned during key presses.
-+	 */
-+	if (quirks & USB_HID_QUIRK_POLL_NO_REPORT_IDLE) {
-+		debug("USB KBD: quirk: skip testing device state\n");
-+		return 1;
-+	}
- 	debug("USB KBD: enable interrupt pipe...\n");
- #ifdef CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE
- 	data->intq = create_int_queue(dev, data->intpipe, 1,
+Changes in v2:
+- commit log: dt-binding->dt-bindings (Krzysztof Kozlowski)
+- binding: remove "|", join two lines. (Krzysztof Kozlowski)
+- Link to v1: https://lore.kernel.org/r/20240217-hisi-wdt-v1-0-cdb9ddcab968@outlook.com
 
+---
+Yang Xiwen (2):
+      watchdog: sp805_wdt: deassert the reset if available
+      dt-bindings: watchdog: arm,sp805: document the reset signal
+
+ Documentation/devicetree/bindings/watchdog/arm,sp805.yaml | 5 +++++
+ drivers/watchdog/sp805_wdt.c                              | 8 ++++++++
+ 2 files changed, 13 insertions(+)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240217-hisi-wdt-3b52971a6591
+
+Best regards,
 -- 
-2.43.2
+Yang Xiwen <forbidden405@outlook.com>
 
