@@ -1,10 +1,10 @@
 From: "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>
-Date: Wed, 21 Feb 2024 15:24:42 -0600
-Subject: [PATCH v2 11/25] security: add hooks for set/get/remove of fscaps
+Date: Wed, 21 Feb 2024 15:24:43 -0600
+Subject: [PATCH v2 12/25] selinux: add hooks for fscaps operations
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240221-idmap-fscap-refactor-v2-11-3039364623bd@kernel.org>
+Message-Id: <20240221-idmap-fscap-refactor-v2-12-3039364623bd@kernel.org>
 References: <20240221-idmap-fscap-refactor-v2-0-3039364623bd@kernel.org>
 In-Reply-To: <20240221-idmap-fscap-refactor-v2-0-3039364623bd@kernel.org>
 To: Christian Brauner <brauner@kernel.org>, 
@@ -25,181 +25,72 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  selinux@vger.kernel.org, linux-integrity@vger.kernel.org, 
  linux-doc@vger.kernel.org, linux-unionfs@vger.kernel.org
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6068; i=sforshee@kernel.org;
- h=from:subject:message-id; bh=bU1CcTjoAErUmCcImLT8MBeG6twr7o4CKTQE5qVrAgQ=;
- b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBl1moiOmBWOkW3C2D6watYerA1n6u6GpH/leMlBqw7
- WLNKqEiJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZdZqIgAKCRBTA5mu5fQxyX4hB/
- 4gHtUbOV115lPuC//xfy9D4S1XJ5dcZzKpX27IoQgRAB8iadS9qTPZMY9JzN+fEAEJjKFFAFM94cF0
- rLytBPDiTKSoKBhm83DGIfLJyy9gdXXFGXFzmy5MzY4VkuLjCzBltyOieqCT8M64K49wiTDIWCrTku
- mf3oZbjkX8CKEyWzC5OjK08smBtBMLPrNQbDTlb5J2i75XOVmI2yrPuZMCJojB8IN39jKaJ8UX3Hjc
- HElICYbTk+WAYh9ZuZUpzzyo7IEH0c3YjbR8PLFH7Xg0ZTT5jPH6Ccksrf7oNmjUcAAUf7e/S7Xd7K
- vW7wHQVxNqrw0G7gjCWEoB0nJW9wrt
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2028; i=sforshee@kernel.org;
+ h=from:subject:message-id; bh=pUWNt9mRsWKZJ1yXibvTabhp6NyYRplMYf4ol2PV1qs=;
+ b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBl1mojvJhyZw9emud3TEu0eTTg0ZvRpxQbx/wYTlv3
+ 1foWLWqJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCZdZqIwAKCRBTA5mu5fQxyUwiB/
+ 94Hwww+Nvwr2i0mm92V1m/muLDxNZ3ichSgSbVTXRmFnGLWiqqjMZl3IjV8bIU9kY0uE4x7zfEpBpX
+ rTcdD3t9JeMPtm8WcBoFclqIlyRYkgBIkPLFiY2Vb+GmlW/HPp0p7gXrkdXLnqRb2JLOEGjY3ReRrm
+ gx2B15blpH1tEHAitlNwTMg6Wlt+MkUqvPIXsiYP4hseEFG3GRmrmtLK8VDfPFmy0HO4MkayGhMzDS
+ piT9CYjbYEIlnSpJFWwC7agQMDtzoUNqlU4zRIOSjOTGd+/O8lHnI0mqolxe+jhCS0DXiQ3StnEUTj
+ AJXJqyr0z/OYbUCf//HFYSGghhbxur
 X-Developer-Key: i=sforshee@kernel.org; a=openpgp;
  fpr=2ABCA7498D83E1D32D51D3B5AB4800A62DB9F73A
 X-Endpoint-Received: by B4 Relay for sforshee@kernel.org/default with auth_id=103
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In preparation for moving fscaps out of the xattr code paths, add new
-security hooks. These hooks are largely needed because common kernel
-code will pass around struct vfs_caps pointers, which EVM will need to
-convert to raw xattr data for verification and updates of its hashes.
+Add hooks for set/get/remove fscaps operations which perform the same
+checks as the xattr hooks would have done for XATTR_NAME_CAPS.
 
 Signed-off-by: Seth Forshee (DigitalOcean) <sforshee@kernel.org>
 ---
- include/linux/lsm_hook_defs.h |  7 +++++
- include/linux/security.h      | 33 +++++++++++++++++++++
- security/security.c           | 69 +++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 109 insertions(+)
+ security/selinux/hooks.c | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
 
-diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
-index 76458b6d53da..7b3c23f9e4a5 100644
---- a/include/linux/lsm_hook_defs.h
-+++ b/include/linux/lsm_hook_defs.h
-@@ -152,6 +152,13 @@ LSM_HOOK(int, 0, inode_get_acl, struct mnt_idmap *idmap,
- 	 struct dentry *dentry, const char *acl_name)
- LSM_HOOK(int, 0, inode_remove_acl, struct mnt_idmap *idmap,
- 	 struct dentry *dentry, const char *acl_name)
-+LSM_HOOK(int, 0, inode_set_fscaps, struct mnt_idmap *idmap,
-+	 struct dentry *dentry, const struct vfs_caps *caps, int flags);
-+LSM_HOOK(void, LSM_RET_VOID, inode_post_set_fscaps, struct mnt_idmap *idmap,
-+	 struct dentry *dentry, const struct vfs_caps *caps, int flags);
-+LSM_HOOK(int, 0, inode_get_fscaps, struct mnt_idmap *idmap, struct dentry *dentry);
-+LSM_HOOK(int, 0, inode_remove_fscaps, struct mnt_idmap *idmap,
-+	 struct dentry *dentry);
- LSM_HOOK(int, 0, inode_need_killpriv, struct dentry *dentry)
- LSM_HOOK(int, 0, inode_killpriv, struct mnt_idmap *idmap,
- 	 struct dentry *dentry)
-diff --git a/include/linux/security.h b/include/linux/security.h
-index d0eb20f90b26..40be548e5e12 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -378,6 +378,13 @@ int security_inode_getxattr(struct dentry *dentry, const char *name);
- int security_inode_listxattr(struct dentry *dentry);
- int security_inode_removexattr(struct mnt_idmap *idmap,
- 			       struct dentry *dentry, const char *name);
-+int security_inode_set_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
-+			      const struct vfs_caps *caps, int flags);
-+void security_inode_post_set_fscaps(struct mnt_idmap *idmap,
-+				    struct dentry *dentry,
-+				    const struct vfs_caps *caps, int flags);
-+int security_inode_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry);
-+int security_inode_remove_fscaps(struct mnt_idmap *idmap, struct dentry *dentry);
- int security_inode_need_killpriv(struct dentry *dentry);
- int security_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry);
- int security_inode_getsecurity(struct mnt_idmap *idmap,
-@@ -935,6 +942,32 @@ static inline int security_inode_removexattr(struct mnt_idmap *idmap,
- 	return cap_inode_removexattr(idmap, dentry, name);
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index a6bf90ace84c..da129a387b34 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -3367,6 +3367,29 @@ static int selinux_inode_removexattr(struct mnt_idmap *idmap,
+ 	return -EACCES;
  }
  
-+static inline int security_inode_set_fscaps(struct mnt_idmap *idmap,
-+					    struct dentry *dentry,
-+					    const struct vfs_caps *caps,
-+					    int flags)
-+{
-+	return 0;
-+}
-+static void security_inode_post_set_fscaps(struct mnt_idmap *idmap,
-+					   struct dentry *dentry,
-+					   const struct vfs_caps *caps,
-+					   int flags)
-+{
-+}
-+
-+static int security_inode_get_fscaps(struct mnt_idmap *idmap,
-+				     struct dentry *dentry)
-+{
-+	return 0;
-+}
-+
-+static int security_inode_remove_fscaps(struct mnt_idmap *idmap,
-+					struct dentry *dentry)
-+{
-+	return 0;
-+}
-+
- static inline int security_inode_need_killpriv(struct dentry *dentry)
- {
- 	return cap_inode_need_killpriv(dentry);
-diff --git a/security/security.c b/security/security.c
-index 3aaad75c9ce8..0d210da9862c 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -2351,6 +2351,75 @@ int security_inode_remove_acl(struct mnt_idmap *idmap,
- 	return evm_inode_remove_acl(idmap, dentry, acl_name);
- }
- 
-+/**
-+ * security_inode_set_fscaps() - Check if setting fscaps is allowed
-+ * @idmap: idmap of the mount
-+ * @dentry: file
-+ * @caps: fscaps to be written
-+ * @flags: flags for setxattr
-+ *
-+ * Check permission before setting the file capabilities given in @vfs_caps.
-+ *
-+ * Return: Returns 0 if permission is granted.
-+ */
-+int security_inode_set_fscaps(struct mnt_idmap *idmap, struct dentry *dentry,
-+			      const struct vfs_caps *caps, int flags)
-+{
-+	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
-+		return 0;
-+	return call_int_hook(inode_set_fscaps, 0, idmap, dentry, caps, flags);
-+}
-+
-+/**
-+ * security_inode_post_set_fscaps() - Update the inode after setting fscaps
-+ * @idmap: idmap of the mount
-+ * @dentry: file
-+ * @caps: fscaps to be written
-+ * @flags: flags for setxattr
-+ *
-+ * Update inode security field after successfully setting fscaps.
-+ *
-+ */
-+void security_inode_post_set_fscaps(struct mnt_idmap *idmap,
++static int selinux_inode_set_fscaps(struct mnt_idmap *idmap,
 +				    struct dentry *dentry,
 +				    const struct vfs_caps *caps, int flags)
 +{
-+	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
-+		return;
-+	call_void_hook(inode_post_set_fscaps, idmap, dentry, caps, flags);
++	return dentry_has_perm(current_cred(), dentry, FILE__SETATTR);
 +}
 +
-+/**
-+ * security_inode_get_fscaps() - Check if reading fscaps is allowed
-+ * @dentry: file
-+ *
-+ * Check permission before getting fscaps.
-+ *
-+ * Return: Returns 0 if permission is granted.
-+ */
-+int security_inode_get_fscaps(struct mnt_idmap *idmap, struct dentry *dentry)
++static int selinux_inode_get_fscaps(struct mnt_idmap *idmap,
++				    struct dentry *dentry)
 +{
-+	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
-+		return 0;
-+	return call_int_hook(inode_get_fscaps, 0, idmap, dentry);
++	return dentry_has_perm(current_cred(), dentry, FILE__GETATTR);
 +}
 +
-+/**
-+ * security_inode_remove_fscaps() - Check if removing fscaps is allowed
-+ * @idmap: idmap of the mount
-+ * @dentry: file
-+ *
-+ * Check permission before removing fscaps.
-+ *
-+ * Return: Returns 0 if permission is granted.
-+ */
-+int security_inode_remove_fscaps(struct mnt_idmap *idmap, struct dentry *dentry)
++static int selinux_inode_remove_fscaps(struct mnt_idmap *idmap,
++				       struct dentry *dentry)
 +{
-+	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
-+		return 0;
-+	return call_int_hook(inode_remove_fscaps, 0, idmap, dentry);
++	int rc = cap_inode_removexattr(idmap, dentry, XATTR_NAME_CAPS);
++	if (rc)
++		return rc;
++
++	return dentry_has_perm(current_cred(), dentry, FILE__SETATTR);
 +}
 +
- /**
-  * security_inode_post_setxattr() - Update the inode after a setxattr operation
-  * @dentry: file
+ static int selinux_path_notify(const struct path *path, u64 mask,
+ 						unsigned int obj_type)
+ {
+@@ -7165,6 +7188,9 @@ static struct security_hook_list selinux_hooks[] __ro_after_init = {
+ 	LSM_HOOK_INIT(inode_set_acl, selinux_inode_set_acl),
+ 	LSM_HOOK_INIT(inode_get_acl, selinux_inode_get_acl),
+ 	LSM_HOOK_INIT(inode_remove_acl, selinux_inode_remove_acl),
++	LSM_HOOK_INIT(inode_set_fscaps, selinux_inode_set_fscaps),
++	LSM_HOOK_INIT(inode_get_fscaps, selinux_inode_get_fscaps),
++	LSM_HOOK_INIT(inode_remove_fscaps, selinux_inode_remove_fscaps),
+ 	LSM_HOOK_INIT(inode_getsecurity, selinux_inode_getsecurity),
+ 	LSM_HOOK_INIT(inode_setsecurity, selinux_inode_setsecurity),
+ 	LSM_HOOK_INIT(inode_listsecurity, selinux_inode_listsecurity),
 
 -- 
 2.43.0
