@@ -1,95 +1,93 @@
-From: Mathys-Gasnier <mathys35.gasnier@gmail.com>
-Date: Thu, 22 Feb 2024 17:26:44 +0100
-Subject: [PATCH v3] rust: locks: Add `get_mut` method to `Lock`
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH v4 0/7] clk: hisilicon: add support for Hi3798MV200
+Date: Fri, 23 Feb 2024 03:40:10 +0800
+Message-Id: <20240223-clk-mv200-v4-0-3e37e501d407@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240222-rust-locks-get-mut-v3-1-d38a6f4bde3d@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMN112UC/23NQQ6CMBCF4auQrh3TGUqqrryHcQFDgUagpgWiI
- dzdghsWLP+XzDezCMZbE8QtmYU3kw3W9THSUyK4yfvagC1jC5KkJOIF/BgGaB2/AtRmgG4cgBV
- JTSix1LmIh29vKvvZ0MczdmPD4Px3+zHhuv45ktcjbkJAYJNmWHFaGqXvdZfb9syuEys30Y5AO
- iQoEhlzmSqmQstiTyzL8gNvQQPR9wAAAA==
-To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Wedson Almeida Filho <wedsonaf@gmail.com>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <benno.lossin@proton.me>, 
- Andreas Hindborg <a.hindborg@samsung.com>, 
- Alice Ryhl <aliceryhl@google.com>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mathys-Gasnier <mathys35.gasnier@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABqj12UC/23MTQ6CMBCG4auQrq0ZplDAlfcwLkodpOGnpsVGQ
+ 7i7hRVGl99knndmnpwhz07JzBwF440d48gOCdOtGu/EzS1uhoAZYCq57js+BATgWpdakagkEbD
+ 4/3DUmNfWulzjbo2frHtv6ZCu13+VkHLgCiulCSuSQp7tc+qt7Y7aDmztBNzbYm8x2rookTKqp
+ WyKXyt2FnFvRbSNgKLK6xxEWn7bZVk+buBEsBwBAAA=
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: David Yang <mmyangfl@gmail.com>, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yang Xiwen <forbidden405@outlook.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708619203; l=2400;
- i=mathys35.gasnier@gmail.com; s=20240118; h=from:subject:message-id;
- bh=ky/U3Y/MfgLzPcLAna8JPEAOaEfDevCIfhcVRsmkGug=;
- b=+QNhsp6z7HFvXcgU9rqBsgzmYXhbx8BMMQKZVVl3iF27daLZJUjw+acCHkIHotOIKO9yiW8qw
- t1cr1passtyA4d6GfP0rDl+TbeGP4C0ecOarsbaGF95e1sfZ2j6smYK
-X-Developer-Key: i=mathys35.gasnier@gmail.com; a=ed25519;
- pk=C5tqKAA3Ua7li5s3a+q2aDelT2j98/yjGg2nEVGArXE=
-X-Endpoint-Received: by B4 Relay for mathys35.gasnier@gmail.com/20240118 with auth_id=129
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708630834; l=3178;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=aEJwhXImnZlG7CDsaIYX4SI0jp1bWvk6d41It98Jybs=;
+ b=YqA4nNJSTfz8MeqQJgmJun8HZaAauoycAGFJWjwwixURnZVnFlg2+MRVianFBm/fcLTPkf6lp
+ HbcUiBhCC9pCi8cLOgmwKIH80zVuMFLF365iowbQg2Upp7eAls+Rzn4
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Having a mutable reference guarantees that no other threads have
-access to the lock, so we can take advantage of that to grant callers
-access to the protected data without the the cost of acquiring and
-releasing the locks. Since the lifetime of the data is tied to the
-mutable reference, the borrow checker guarantees that the usage is safe.
+This SoC is similar to Hi3798CV200 with a few more clocks in CRG module.
 
-Signed-off-by: Mathys-Gasnier <mathys35.gasnier@gmail.com>
+Note this driver is still ongoing, many clocks are not registered in the
+driver now. Feedback is welcomed, especially from HiSilicon people.
+
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
+Changes in v4:
+- dt-bindings: hisi-crg: add reg and #reset-cells to required, add reset-controller to required for cv200
+- dt-bindings: hisi-crg: do not add "simple-mfd" and "syscon" for hi3519 (Krzysztof Kozlowski)
+- dt-bindings: hi3798mv200: replace spaces with tabs (Krzysztof Kozlowski)
+- dt-bindings: s/DTS/DT_BINDINGS_CLOCK (Krzysztof Kozlowski)
+- Link to v3: https://lore.kernel.org/r/20240222-clk-mv200-v3-0-f30795b50318@outlook.com
+
 Changes in v3:
-- Changing the function to take a `Pin<&mut self>` instead of a `&mut self`
-- Removed reviewed-by's since big changes were made. Please take another
-  look.
-- Link to v2: https://lore.kernel.org/r/20240212-rust-locks-get-mut-v2-1-5ccd34c2b70b@gmail.com
+- remove RFC (Krzysztof Kozlowski)
+- rearrange patches so dt-binding comes before drivers (Krzysztof Kozlowski)
+- dt-bindings: Remove lots of properties
+- dt-bindings: stop merging all hisi-clock bindings, only convert hisi-crg.txt for now.
+- dt-bindings: remove hisilicon,hisi-sdmmc-dll subnode (Rob Herring, Krzysztof Kozlowski)
+- split histb-clock.h into two files, deprecate this header file
+- fix all users (hi3798cv200.dtsi and hi3798cv200 CRG driver)
+- hi3798mv200-crg: add a few missing clocks
+- Link to v2: https://lore.kernel.org/r/20240217-clk-mv200-v2-0-b782e4eb66f7@outlook.com
 
 Changes in v2:
-- Improved doc comment. 
-- Link to v1: https://lore.kernel.org/r/20240209-rust-locks-get-mut-v1-1-ce351fc3de47@gmail.com
----
- rust/kernel/sync/lock.rs | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
-
-diff --git a/rust/kernel/sync/lock.rs b/rust/kernel/sync/lock.rs
-index f12a684bc957..0c8faf36d654 100644
---- a/rust/kernel/sync/lock.rs
-+++ b/rust/kernel/sync/lock.rs
-@@ -7,7 +7,11 @@
- 
- use super::LockClassKey;
- use crate::{bindings, init::PinInit, pin_init, str::CStr, types::Opaque, types::ScopeGuard};
--use core::{cell::UnsafeCell, marker::PhantomData, marker::PhantomPinned};
-+use core::{
-+    cell::UnsafeCell,
-+    marker::{PhantomData, PhantomPinned},
-+    pin::Pin,
-+};
- use macros::pin_data;
- 
- pub mod mutex;
-@@ -121,6 +125,16 @@ pub fn lock(&self) -> Guard<'_, T, B> {
-         // SAFETY: The lock was just acquired.
-         unsafe { Guard::new(self, state) }
-     }
-+
-+    /// Gets the data contained in the lock
-+    /// Having a mutable reference to the lock guarantees that no other threads have access to the lock.
-+    /// Making it safe to get a mutable reference to the lock content.
-+    pub fn get_mut(self: Pin<&mut Self>) -> &mut T {
-+        // SAFETY: Since the data is not pinned (No structural pinning for data).
-+        // It is safe to get a mutable reference to the data and we never move the state.
-+        let lock = unsafe { self.get_unchecked_mut() };
-+        lock.data.get_mut()
-+    }
- }
- 
- /// A lock guard.
+- s/dt-binding/dt-bindings in commit logs: (Krzysztof Kozlowski)
+- fix bot error by adding "hisilicon,hisi-sdmmc-dll" to syscon.yaml (Rob Herring)
+- hi3798mv200-crg: assign fixed rate parents to some gates
+- hi3798mv200-crg: s/ETH/FEMAC, add GMAC ctrl clock
+- Link to v1: https://lore.kernel.org/r/20240216-clk-mv200-v1-0-a29ace29e636@outlook.com
 
 ---
-base-commit: 711cbfc717650532624ca9f56fbaf191bed56e67
-change-id: 20240118-rust-locks-get-mut-c42072101d7a
+Yang Xiwen (7):
+      dt-bindings: clock: convert hisi-crg.txt to YAML
+      dt-bindings: clock: histb-clock: split into two header files
+      arm64: dts: hisilicon: fix include path
+      clk: hisilicon: fix include path for crg-hi3798cv200
+      dt-bindings: clock: hisilicon,clock-reset-controller: add Hi3798MV200 SoC
+      dt-bindings: clock: hisilicon: add clock definitions for Hi3798MV200
+      clk: hisilicon: add CRG driver for Hi3798MV200 SoC
+
+ .../devicetree/bindings/clock/hisi-crg.txt         |  50 ---
+ .../bindings/clock/hisilicon,hisi-crg.yaml         |  76 ++++
+ arch/arm64/boot/dts/hisilicon/hi3798cv200.dtsi     |   3 +-
+ drivers/clk/hisilicon/Kconfig                      |   8 +
+ drivers/clk/hisilicon/Makefile                     |   1 +
+ drivers/clk/hisilicon/crg-hi3798cv200.c            |   3 +-
+ drivers/clk/hisilicon/crg-hi3798mv200.c            | 462 +++++++++++++++++++++
+ .../dt-bindings/clock/hisilicon,hi3798cv200-crg.h  |  62 +++
+ .../clock/hisilicon,hi3798cv200-sysctrl.h          |  17 +
+ .../dt-bindings/clock/hisilicon,hi3798mv200-crg.h  | 150 +++++++
+ .../clock/hisilicon,hi3798mv200-sysctrl.h          |  21 +
+ include/dt-bindings/clock/histb-clock.h            |  70 +---
+ 12 files changed, 810 insertions(+), 113 deletions(-)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240216-clk-mv200-cc8cae396ee0
 
 Best regards,
 -- 
-Mathys-Gasnier <mathys35.gasnier@gmail.com>
+Yang Xiwen <forbidden405@outlook.com>
 
