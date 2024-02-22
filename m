@@ -1,56 +1,51 @@
-From: Itaru Kitayama <itaru.kitayama@linux.dev>
-Date: Thu, 22 Feb 2024 08:38:37 +0900
-Subject: [PATCH] Build guest_memfd_test also on arm64.
+From: Miko Larsson <mikoxyzzz@gmail.com>
+Subject: [PATCH v2 0/3] utest: fix build with musl + clang >=15
+Date: Thu, 22 Feb 2024 11:12:43 +0100
+Message-Id: <20240222-utest-fixes-v2-0-ba9cd06b41d3@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240222-memfd-v1-1-7d39680286f1@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAHyJ1mUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDIyMj3dzU3LQUXXMjC9M0S1Mzk2TDVCWg2oKi1LTMCrA50bG1tQD+NlG
- VVwAAAA==
-To: Paolo Bonzini <pbonzini@redhat.com>, Shuah Khan <shuah@kernel.org>
-Cc: kvm@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Itaru Kitayama <itaru.kitayama@fujitsu.com>
+X-B4-Tracking: v=1; b=H4sIABse12UC/22MQQ6CMBBFr0JmbU07UC2uvIdhAXSESYSatjYa0
+ rtbWbt8/+e9DQJ5pgCXagNPiQO7tQAeKhjnfp1IsC0MKLGRqLR4RQpR3PlNQZi2rpUeCFEPUIy
+ np/0owq0rPHOIzn/2eFK/9X8nKSEFNqezsUa3lvA6LT0/jqNboMs5fwFWCOQfpgAAAA==
+To: linux-trace-devel@vger.kernel.org
+Cc: Miko Larsson <mikoxyzzz@gmail.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708558724; l=1061;
- i=itaru.kitayama@linux.dev; s=20231030; h=from:subject:message-id;
- bh=lA7PzCZQ2lseoAA2i+RxO+8QEPr2soICHGzThVxFsV4=;
- b=5n1duozIxzxnBCXUW296kFTXX6lgv5V+XSAWRZRDLr6XvGcTjdyoHjOFdcVTWctswvlhZ8LNu
- L084E6chHO/Dr2DVGeC4UFBmQ/xSZcvmsNde3tZ3UnwmBdJOh/g0p/q
-X-Developer-Key: i=itaru.kitayama@linux.dev; a=ed25519;
- pk=4yYhz2CbKL7F2qR5IzP7QvqM9B6c+dfWJRHWez+rMDw=
-X-Endpoint-Received: by B4 Relay for itaru.kitayama@linux.dev/20231030 with auth_id=92
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708596765; l=901;
+ i=mikoxyzzz@gmail.com; s=20240215; h=from:subject:message-id;
+ bh=pf9GRBXf0zWEkISsxP/DHBNGtJ+jdtSV4tq+qMI8LGM=;
+ b=SX0huGv671lRd1WtwcVr+j4+yIYmxOJ0fqSRb681X5sDzzl3GsD71Uf67TY3axSMZkvmVCaBZ
+ 51TWAOyLy9gBJqBwlnOaOwxxy139O0ZfdpvslbBk65DCsEJI4+YVFGG
+X-Developer-Key: i=mikoxyzzz@gmail.com; a=ed25519;
+ pk=1WO6EuQa9ZdBA5vCl3bQNjIb6FdQDoTriJmTDrF5mFw=
+X-Endpoint-Received: by B4 Relay for mikoxyzzz@gmail.com/20240215 with auth_id=130
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+Clang 15 onwards defaults to -Werror=implicit-function-declaration
+which, combined with musl not declaring all the stuff we need without
+the missing includes and defines, breaks the utest build. This series
+fixes thus by simply adding the missing stuff.
 
+Signed-off-by: Miko Larsson <mikoxyzzz@gmail.com>
+---
+Changes in v2:
+- Better commit descriptions, messages
+- Link to v1: https://lore.kernel.org/r/20240215-utest-fixes-v1-0-24678d859de2@gmail.com
 
 ---
-on arm64 KVM_CAP_GUEST_MEMDF capability is not enabled, but
-guest_memfd_test can build on arm64, let's build it on arm64 as well.
+Miko Larsson (3):
+      utest/tracefs-utest: include linux/limits.h
+      utest/tracefs-utest: define _LARGEFILE64_SOURCE
+      utest/trace-utest: include libgen.h
 
-Signed-off-by: Itaru Kitayama <itaru.kitayama@fujitsu.com>
+ utest/trace-utest.c   | 1 +
+ utest/tracefs-utest.c | 4 ++++
+ 2 files changed, 5 insertions(+)
 ---
- tools/testing/selftests/kvm/Makefile | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/tools/testing/selftests/kvm/Makefile b/tools/testing/selftests/kvm/Makefile
-index 492e937fab00..8a4f8afb81ca 100644
---- a/tools/testing/selftests/kvm/Makefile
-+++ b/tools/testing/selftests/kvm/Makefile
-@@ -158,6 +158,7 @@ TEST_GEN_PROGS_aarch64 += access_tracking_perf_test
- TEST_GEN_PROGS_aarch64 += demand_paging_test
- TEST_GEN_PROGS_aarch64 += dirty_log_test
- TEST_GEN_PROGS_aarch64 += dirty_log_perf_test
-+TEST_GEN_PROGS_aarch64 += guest_memfd_test
- TEST_GEN_PROGS_aarch64 += guest_print_test
- TEST_GEN_PROGS_aarch64 += get-reg-list
- TEST_GEN_PROGS_aarch64 += kvm_create_max_vcpus
-
----
-base-commit: 39133352cbed6626956d38ed72012f49b0421e7b
-change-id: 20240222-memfd-7285f9564c1e
+base-commit: 5f27b7f3fb7d88b29522baf3883cc0e2e28b1af0
+change-id: 20240215-utest-fixes-893315be225b
 
 Best regards,
 -- 
-Itaru Kitayama <itaru.kitayama@linux.dev>
+Miko Larsson <mikoxyzzz@gmail.com>
 
