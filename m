@@ -1,123 +1,89 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Fri, 23 Feb 2024 19:18:06 +0800
-Subject: [PATCH v2] arm64: dts: qcom: qcm6490-idp: enable pwrkey and
- volume-up/down function
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH net-next v5 0/7] net: hisi-femac: add support for
+ Hi3798MV200, remove unmaintained compatibles
+Date: Fri, 23 Feb 2024 21:28:15 +0800
+Message-Id: <20240223-net-v5-0-43b22d39c013@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240223-gpio-keys-v2-1-19f48b3d8762@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAO5+2GUC/23MQQ7CIBCF4as0sxYDVFtw5T1MFy1M24kRKiixa
- bi72LXL/+Xl2yBiIIxwqTYImCiSdyXkoQIz925CRrY0SC5PXPKGTQt5dsc1MlGrYbDqzKVWUP5
- LwJE+u3XrSs8UXz6sO53Eb/2nJMEEaxtVt1rbflT2+nyTIWeOxj+gyzl/AbdBbyGkAAAA
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAG+d2GUC/23OTQ6CMBAF4KuYrq0Zhv5QV97DuChl0EalBpBgC
+ He3wAaiy5c338sMrKHaU8OOu4HV1PnGhyoGud8xd7PVlbgvYmYIKAATxStqubEIGSXaCShZvHz
+ VVPp+Xjmz6aCivmWX2Nx804b6M893ydxvlrqEAyewhdHoCmvMKbzbRwj3gwvPeaHDPwqjykxei
+ FyDkg5/VbpSCItKo8pVRjLXkrSSv0qsFS5KTB+SVVlp0hIMbNU4jl9E8i9QRAEAAA==
+To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
+ Salil Mehta <salil.mehta@huawei.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Hui Liu <quic_huliu@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708687117; l=2151;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=uxn7urf55wldvs+MTDmzxYHE9lWSCWgorQZPNSBSB4Q=;
- b=gFwfI20rOvMU+88wBhjVvCNwQwZr+PNJ5pJs+3SVsZpZJBYjmgkcPnn+WzZ1ym208s046PcXO
- HN2QoWGkSEkDzkFnRj2GQIpR340qTwpsJkYp9L3kJ0NE+rVE21fPiBP
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+ Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708694896; l=2386;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=8DzLgimkymdwxe/dgxIFcpGgsnFMVLS8xgcZ/cKHlA0=;
+ b=FY1uLXGvPGQH6mhEYG7UftN41nXckDIFRjZaWfO2cVFD45mih3KdAAhxbqNJaCm5hhnov0qCN
+ iokPH60OCTFANhtIoY/prVwwMtMyfiFHSW228W4qgeU5i94yCNpQGD1
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add configurations to enable pwrkey, volume-up and volume-down function.
-
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
+Changes in v5:
+- hisi-femac-mdio: remove clock completely (Krzysztof Kozlowski)
+- dt-bindings: mdio: apply comments from Krzysztof Kozlowski
+
+Changes in v4:
+- edit commit log to show why mdio bus clk is optional (Krzysztof Kozlowski)
+- add clk_bulk_disable_unprepare() during error path (Maxime Chevallier)
+- remove of_node_put() (Simon Horman)
+- remove histb-clock.h header in binding example as it's goign to be deprecated.
+- rearrange patches so binding comes before driver
+- Link to v3: https://lore.kernel.org/r/20240220-net-v3-0-b68e5b75e765@outlook.com
+
+Changes in v3:
+- rearrange patches to fix bot error. (Rob Herring)
+- rewrite commit logs (Andrew Lunn)
+- use clk_bulk_ APIs (Andrew Lunn)
+- fix uninitialization use of ret (assign to -ENODEV before goto) (Simon Horman)
+- Link to v2: https://lore.kernel.org/r/20240216-net-v2-0-89bd4b7065c2@outlook.com
+
 Changes in v2:
-- Update the commit description.
-- Link to v1: https://lore.kernel.org/r/20240206-gpio-keys-v1-1-7683799daf8d@quicinc.com
----
- arch/arm64/boot/dts/qcom/qcm6490-idp.dts | 43 ++++++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-index acf145d1d97c..4199ebf667af 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-@@ -9,6 +9,7 @@
- #define PM7250B_SID 8
- #define PM7250B_SID1 9
- 
-+#include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/leds/common.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- #include "sc7280.dtsi"
-@@ -39,6 +40,24 @@ chosen {
- 		stdout-path = "serial0:115200n8";
- 	};
- 
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		label = "gpio-keys";
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&key_vol_up_default>;
-+
-+		key-volume-up {
-+			label = "volume_up";
-+			gpios = <&pm7325_gpios 6 GPIO_ACTIVE_LOW>;
-+			linux,input-type = <1>;
-+			linux,code = <KEY_VOLUMEUP>;
-+			wakeup-source;
-+			debounce-interval = <15>;
-+			linux,can-disable;
-+		};
-+	};
-+
- 	reserved-memory {
- 		xbl_mem: xbl@80700000 {
- 			reg = <0x0 0x80700000 0x0 0x100000>;
-@@ -421,6 +440,17 @@ vreg_bob_3p296: bob {
- 	};
- };
- 
-+&pm7325_gpios {
-+	key_vol_up_default: key-vol-up-state {
-+		pins = "gpio6";
-+		function = "normal";
-+		input-enable;
-+		bias-pull-up;
-+		power-source = <0>;
-+		qcom,drive-strength = <3>;
-+	};
-+};
-+
- &pm8350c_pwm {
- 	status = "okay";
- 
-@@ -448,6 +478,19 @@ led@3 {
- 	};
- };
- 
-+&pmk8350_pon {
-+	status = "okay";
-+};
-+
-+&pon_pwrkey {
-+	status = "okay";
-+};
-+
-+&pon_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+	status = "okay";
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
+- replace email.
+- hisi-femac: s/BUS/MACIF (Andrew Lunn)
+- hisi-femac: add "hisilicon,hisi-femac" compatible since the driver
+  seems generic enough for various SoCs
+- hisi-femac-mdio: convert binding to YAML (Krzysztof Kozlowski)
+- rewrite commit logs (Krzysztof Kozlowski)
+- Link to v1: https://lore.kernel.org/r/20240216-net-v1-0-e0ad972cda99@outlook.com
 
 ---
-base-commit: 23e11d0318521e8693459b0e4d23aec614b3b68b
-change-id: 20240206-gpio-keys-138bbd850298
+Yang Xiwen (7):
+      dt-bindings: net: hisilicon-femac-mdio: convert to YAML
+      dt-bindings: net: hisilicon,hisi-femac-mdio: remove clocks
+      net: mdio: hisi-femac: remove clock
+      dt-bindings: net: remove outdated hisilicon-femac
+      dt-bindings: net: add hisilicon,hisi-femac
+      net: hisilicon: add support for hisi_femac core on Hi3798MV200
+      net: hisi_femac: remove unused compatible strings
+
+ .../bindings/net/hisilicon,hisi-femac-mdio.yaml    |  39 +++++++
+ .../bindings/net/hisilicon,hisi-femac.yaml         | 116 +++++++++++++++++++++
+ .../bindings/net/hisilicon-femac-mdio.txt          |  22 ----
+ .../devicetree/bindings/net/hisilicon-femac.txt    |  41 --------
+ drivers/net/ethernet/hisilicon/hisi_femac.c        |  78 +++++++++++---
+ drivers/net/mdio/mdio-hisi-femac.c                 |  18 +---
+ 6 files changed, 217 insertions(+), 97 deletions(-)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240216-net-9a208e17c40f
 
 Best regards,
 -- 
-Hui Liu <quic_huliu@quicinc.com>
+Yang Xiwen <forbidden405@outlook.com>
 
