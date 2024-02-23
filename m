@@ -1,52 +1,68 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Sat, 24 Feb 2024 01:17:50 +0800
-Subject: [PATCH 2/2] usb: dwc3: of-simple: Add compatible for hi3798mv200
- DWC3 controller
+Date: Sat, 24 Feb 2024 01:18:52 +0800
+Subject: [PATCH RESEND] clk: set initial best mux parent to current parent
+ when determining rate
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240224-dwc3-v1-2-7ffb2e2baa73@outlook.com>
-References: <20240224-dwc3-v1-0-7ffb2e2baa73@outlook.com>
-In-Reply-To: <20240224-dwc3-v1-0-7ffb2e2baa73@outlook.com>
-To: Thinh Nguyen <Thinh.Nguyen@synopsys.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, Yang Xiwen <forbidden405@foxmail.com>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
+Message-Id: <20240224-mux-v1-1-608cc704ef43@outlook.com>
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708708670; l=809;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708708732; l=1451;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=CsDB1ujYdciRCCnGm2g0rfxKORwEFR6rPwogWA69oCs=;
- b=kcoh+3OR2yb6Nda5qLA0fxQS1yg/KkgJopIiTZA9dyseQ3jAdY9OS150JxrtO5PGYvCJVh8PM
- wHTXeFJgFoZBNcKqFyUxan0nOs1qU67GVQjo2ooc6Bn3y90cbwKsR2a
+ bh=fggch9mxMQ8SzPlFXnQcVvzDJCD3ro+vLZXoDYu1RGE=;
+ b=WdFzW2xYhaZML01H7Wn3y7hOtv/t49Ffr8hwuamJTDM1SyPptIImRnP9E/eEQE/s1XsHe1wfJ
+ I2CNZM08YmmCIAk+hVTmfKzxwd98Rl8RXD3aRxo0wP4bLDZ+v0hboHu
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi3798MV200 uses dwc3 controller with a few more clocks and a dedicated
-resets. Use of_simple driver for it.
+Originally, the initial clock rate is hardcoded to 0, this can lead to
+some problem when setting a very small rate with CLK_MUX_ROUND_NEAREST.
+
+For example, if the lowest possible rate privided by the mux is 1000Hz,
+setting a rate below 500Hz will fail, because no clock can provide a
+better rate than the non-existant 0. But it should succeed with 1000Hz
+being set.
+
+Setting the initial best parent to current parent could solve this bug
+very well.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/usb/dwc3/dwc3-of-simple.c | 1 +
- 1 file changed, 1 insertion(+)
+This is actually a v2 of [1], but seems too simple to have a unittest.
+It's tested in a mmc host driver.
 
-diff --git a/drivers/usb/dwc3/dwc3-of-simple.c b/drivers/usb/dwc3/dwc3-of-simple.c
-index d1539fc9eabd..158acae08af5 100644
---- a/drivers/usb/dwc3/dwc3-of-simple.c
-+++ b/drivers/usb/dwc3/dwc3-of-simple.c
-@@ -173,6 +173,7 @@ static const struct of_device_id of_dwc3_simple_match[] = {
- 	{ .compatible = "sprd,sc9860-dwc3" },
- 	{ .compatible = "allwinner,sun50i-h6-dwc3" },
- 	{ .compatible = "hisilicon,hi3670-dwc3" },
-+	{ .compatible = "hisilicon,hi3798mv200-dwc3" },
- 	{ .compatible = "intel,keembay-dwc3" },
- 	{ /* Sentinel */ }
- };
+[1]: https://lore.kernel.org/linux-clk/20230421-clk-v3-1-9ff79e7e7fed@outlook.com/
+---
+ drivers/clk/clk.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
+diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
+index 2253c154a824..d98cebd7ff03 100644
+--- a/drivers/clk/clk.c
++++ b/drivers/clk/clk.c
+@@ -649,6 +649,10 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
+ 
+ 	/* find the parent that can provide the fastest rate <= rate */
+ 	num_parents = core->num_parents;
++	if (core->parent) {
++		best_parent = core->parent;
++		best = clk_core_get_rate_nolock(best_parent);
++	}
+ 	for (i = 0; i < num_parents; i++) {
+ 		unsigned long parent_rate;
+ 
+
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240215-mux-6db8b3714590
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
