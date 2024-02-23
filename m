@@ -1,138 +1,48 @@
-From: Nathan Lynch <nathanl@linux.ibm.com>
-Date: Thu, 22 Feb 2024 16:19:14 -0600
-Subject: [PATCH] powerpc/rtas: use correct function name for resetting TCE
- tables
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH 0/2] simple-pm-bus: deassert resets if possible
+Date: Fri, 23 Feb 2024 11:49:45 +0800
+Message-Id: <20240223-b4-bus-v1-0-2803c3ac4673@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240222-rtas-fix-ibm-reset-pe-dma-window-v1-1-7aaf235ac63c@linux.ibm.com>
-X-B4-Tracking: v=1; b=H4sIAGHI12UC/x2NQQrCUAwFr1Ky9kF/qCheRVx8TdQs+luSYoXSu
- xtcDgwzG4W6adCl28j1Y2FTSyiHjh7v2l4Kk2TinoeemeFLDTztC7uPcA1dMCtkrFitybTiNBx
- Fyjn1Uigzs2vq/8X1tu8/aDe7LnIAAAA=
-To: Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>, 
- "Aneesh Kumar K.V" <aneesh.kumar@kernel.org>, 
- "Naveen N. Rao" <naveen.n.rao@linux.ibm.com>
-Cc: linuxppc-dev@lists.ozlabs.org, Nathan Lynch <nathanl@linux.ibm.com>, 
- Gaurav Batra <gbatra@linux.ibm.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708640360; l=4584;
- i=nathanl@linux.ibm.com; s=20230817; h=from:subject:message-id;
- bh=BfV+jHCvDs2FuYu/IFjfmREm6RrDgEy35K5MlxEWdgI=;
- b=L7H7lySU0gQuGBEXKqo0Q/wPikh41NbCXKvuCXN33+k+f3PgFytQMTxe2ZgPCy3knnJWZoe1M
- j0Xm7VqmHWuC6tH4TlZZSyRG1smRl2+1W63DLMePalLWYfzZMbtAoFC
-X-Developer-Key: i=nathanl@linux.ibm.com; a=ed25519;
- pk=jPDF44RvT+9DGFOH3NGoIu1xN9dF+82pjdpnKjXfoJ0=
-X-Endpoint-Received: by B4 Relay for nathanl@linux.ibm.com/20230817 with auth_id=78
+X-B4-Tracking: v=1; b=H4sIANkV2GUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDIyNj3SQT3aTSYt0U02SzNHPTRCNTw0QloOKCotS0zAqwQdGxtbUAock
+ 28lgAAAA=
+To: Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Geert Uytterhoeven <geert+renesas@glider.be>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708660187; l=658;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=FABj5PqTYhnM786LMrFtQ0eBls3CUT1p0QbNHPCEQCs=;
+ b=lAjMgm0upwe5GNEV4wO9MDqjNe+0Gto1rn6DLXSaTmlZoFGjD2+RXTGbL9uwWw6+3sir5+WNP
+ tQQ29dl5Rw1AQ8/E5UGsm02f5c26NWy06kxgA0nYOhW9ArEmiBAfR67
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PAPR spec spells the function name as
+simple power-managed buses can also have resets. Get and deassert them
+if possible.
 
-  "ibm,reset-pe-dma-windows"
-
-but in practice firmware uses the singular form:
-
-  "ibm,reset-pe-dma-window"
-
-in the device tree. Since we have the wrong spelling in the RTAS
-function table, reverse lookups (token -> name) fail and warn:
-
-  unexpected failed lookup for token 86
-  WARNING: CPU: 1 PID: 545 at arch/powerpc/kernel/rtas.c:659 __do_enter_rtas_trace+0x2a4/0x2b4
-  CPU: 1 PID: 545 Comm: systemd-udevd Not tainted 6.8.0-rc4 #30
-  Hardware name: IBM,9105-22A POWER10 (raw) 0x800200 0xf000006 of:IBM,FW1060.00 (NL1060_028) hv:phyp pSeries
-  NIP [c0000000000417f0] __do_enter_rtas_trace+0x2a4/0x2b4
-  LR [c0000000000417ec] __do_enter_rtas_trace+0x2a0/0x2b4
-  Call Trace:
-   __do_enter_rtas_trace+0x2a0/0x2b4 (unreliable)
-   rtas_call+0x1f8/0x3e0
-   enable_ddw.constprop.0+0x4d0/0xc84
-   dma_iommu_dma_supported+0xe8/0x24c
-   dma_set_mask+0x5c/0xd8
-   mlx5_pci_init.constprop.0+0xf0/0x46c [mlx5_core]
-   probe_one+0xfc/0x32c [mlx5_core]
-   local_pci_probe+0x68/0x12c
-   pci_call_probe+0x68/0x1ec
-   pci_device_probe+0xbc/0x1a8
-   really_probe+0x104/0x570
-   __driver_probe_device+0xb8/0x224
-   driver_probe_device+0x54/0x130
-   __driver_attach+0x158/0x2b0
-   bus_for_each_dev+0xa8/0x120
-   driver_attach+0x34/0x48
-   bus_add_driver+0x174/0x304
-   driver_register+0x8c/0x1c4
-   __pci_register_driver+0x68/0x7c
-   mlx5_init+0xb8/0x118 [mlx5_core]
-   do_one_initcall+0x60/0x388
-   do_init_module+0x7c/0x2a4
-   init_module_from_file+0xb4/0x108
-   idempotent_init_module+0x184/0x34c
-   sys_finit_module+0x90/0x114
-
-And oopses are possible when lockdep is enabled or the RTAS
-tracepoints are active, since those paths dereference the result of
-the lookup.
-
-Use the correct spelling to match firmware's behavior, adjusting the
-related constants to match.
-
-Signed-off-by: Nathan Lynch <nathanl@linux.ibm.com>
-Reported-by: Gaurav Batra <gbatra@linux.ibm.com>
-Fixes: 8252b88294d2 ("powerpc/rtas: improve function information lookups")
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- arch/powerpc/include/asm/rtas.h | 4 ++--
- arch/powerpc/kernel/rtas.c      | 9 +++++++--
- 2 files changed, 9 insertions(+), 4 deletions(-)
+Yang Xiwen (2):
+      dt-bindings: simple-pm-bus: Add optional resets
+      drivers: bus: simple-pm-bus: Get and deassert resets exclusively
 
-diff --git a/arch/powerpc/include/asm/rtas.h b/arch/powerpc/include/asm/rtas.h
-index 9bb2210c8d44..065ffd1b2f8a 100644
---- a/arch/powerpc/include/asm/rtas.h
-+++ b/arch/powerpc/include/asm/rtas.h
-@@ -69,7 +69,7 @@ enum rtas_function_index {
- 	RTAS_FNIDX__IBM_READ_SLOT_RESET_STATE,
- 	RTAS_FNIDX__IBM_READ_SLOT_RESET_STATE2,
- 	RTAS_FNIDX__IBM_REMOVE_PE_DMA_WINDOW,
--	RTAS_FNIDX__IBM_RESET_PE_DMA_WINDOWS,
-+	RTAS_FNIDX__IBM_RESET_PE_DMA_WINDOW,
- 	RTAS_FNIDX__IBM_SCAN_LOG_DUMP,
- 	RTAS_FNIDX__IBM_SET_DYNAMIC_INDICATOR,
- 	RTAS_FNIDX__IBM_SET_EEH_OPTION,
-@@ -164,7 +164,7 @@ typedef struct {
- #define RTAS_FN_IBM_READ_SLOT_RESET_STATE         rtas_fn_handle(RTAS_FNIDX__IBM_READ_SLOT_RESET_STATE)
- #define RTAS_FN_IBM_READ_SLOT_RESET_STATE2        rtas_fn_handle(RTAS_FNIDX__IBM_READ_SLOT_RESET_STATE2)
- #define RTAS_FN_IBM_REMOVE_PE_DMA_WINDOW          rtas_fn_handle(RTAS_FNIDX__IBM_REMOVE_PE_DMA_WINDOW)
--#define RTAS_FN_IBM_RESET_PE_DMA_WINDOWS          rtas_fn_handle(RTAS_FNIDX__IBM_RESET_PE_DMA_WINDOWS)
-+#define RTAS_FN_IBM_RESET_PE_DMA_WINDOW           rtas_fn_handle(RTAS_FNIDX__IBM_RESET_PE_DMA_WINDOW)
- #define RTAS_FN_IBM_SCAN_LOG_DUMP                 rtas_fn_handle(RTAS_FNIDX__IBM_SCAN_LOG_DUMP)
- #define RTAS_FN_IBM_SET_DYNAMIC_INDICATOR         rtas_fn_handle(RTAS_FNIDX__IBM_SET_DYNAMIC_INDICATOR)
- #define RTAS_FN_IBM_SET_EEH_OPTION                rtas_fn_handle(RTAS_FNIDX__IBM_SET_EEH_OPTION)
-diff --git a/arch/powerpc/kernel/rtas.c b/arch/powerpc/kernel/rtas.c
-index 7e793b503e29..8064d9c3de86 100644
---- a/arch/powerpc/kernel/rtas.c
-+++ b/arch/powerpc/kernel/rtas.c
-@@ -375,8 +375,13 @@ static struct rtas_function rtas_function_table[] __ro_after_init = {
- 	[RTAS_FNIDX__IBM_REMOVE_PE_DMA_WINDOW] = {
- 		.name = "ibm,remove-pe-dma-window",
- 	},
--	[RTAS_FNIDX__IBM_RESET_PE_DMA_WINDOWS] = {
--		.name = "ibm,reset-pe-dma-windows",
-+	[RTAS_FNIDX__IBM_RESET_PE_DMA_WINDOW] = {
-+		/*
-+		 * Note: PAPR+ v2.13 7.3.31.4.1 spells this as
-+		 * "ibm,reset-pe-dma-windows" (plural), but RTAS
-+		 * implementations use the singular form in practice.
-+		 */
-+		.name = "ibm,reset-pe-dma-window",
- 	},
- 	[RTAS_FNIDX__IBM_SCAN_LOG_DUMP] = {
- 		.name = "ibm,scan-log-dump",
-
+ Documentation/devicetree/bindings/bus/simple-pm-bus.yaml |  7 +++++--
+ drivers/bus/simple-pm-bus.c                              | 14 +++++++++++++-
+ 2 files changed, 18 insertions(+), 3 deletions(-)
 ---
-base-commit: b22ea627225b53ec7ce25c19d6df9fa8217d1643
-change-id: 20240222-rtas-fix-ibm-reset-pe-dma-window-745dd1824011
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240223-b4-bus-d5c6f75a251a
 
 Best regards,
 -- 
-Nathan Lynch <nathanl@linux.ibm.com>
+Yang Xiwen <forbidden405@outlook.com>
 
