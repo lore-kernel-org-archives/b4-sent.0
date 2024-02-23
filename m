@@ -1,11 +1,11 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Fri, 23 Feb 2024 21:28:16 +0800
-Subject: [PATCH net-next v5 1/7] dt-bindings: net: hisilicon-femac-mdio:
- convert to YAML
+Date: Fri, 23 Feb 2024 21:28:17 +0800
+Subject: [PATCH net-next v5 2/7] dt-bindings: net:
+ hisilicon,hisi-femac-mdio: remove clocks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240223-net-v5-1-43b22d39c013@outlook.com>
+Message-Id: <20240223-net-v5-2-43b22d39c013@outlook.com>
 References: <20240223-net-v5-0-43b22d39c013@outlook.com>
 In-Reply-To: <20240223-net-v5-0-43b22d39c013@outlook.com>
 To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
@@ -20,103 +20,50 @@ To: Yisen Zhuang <yisen.zhuang@huawei.com>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708694896; l=2450;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708694896; l=1050;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=J7K5LXcWUGxtur5Z9g90nuEgkuP8UoU2HOmGiUfxnWU=;
- b=2elWyDB1l81ckj1MUDjHGcaDAVl57/FpK4J2WPJV+HGVNM+eRIrd0UocZ1tRhzxdz0MTtyQAH
- 19C09bN1BtMANsFGeJZiwfqOt3p2aQIEJw6hnS15ftrFBsgq2KiV+Eu
+ bh=WNDjoyByLxxs8bx1Sb+vpJXUIZZVY7VH/gcmrFa/1O0=;
+ b=T+lHIqiFV8xSDm+DEj4YrnNc7Fw0mujhLx7dvbgq4044z4hs+wh3c2n96QQ33hqr7MfKPP+FZ
+ LeOYo3y+456CW94jNl6PmGsPSs5FARGaJW7jCNJB/OtlCnp/BZmqgko
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-convert the old text binding to modern YAML based binding. No semantic
-change.
+This integrated MDIO bus does have a dedicated clock. Remove it. The old
+binding is wrong.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- .../bindings/net/hisilicon,hisi-femac-mdio.yaml    | 44 ++++++++++++++++++++++
- .../bindings/net/hisilicon-femac-mdio.txt          | 22 -----------
- 2 files changed, 44 insertions(+), 22 deletions(-)
+ Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml | 5 -----
+ 1 file changed, 5 deletions(-)
 
 diff --git a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
-new file mode 100644
-index 000000000000..36def9d5eecd
---- /dev/null
+index 36def9d5eecd..dea1bcc27381 100644
+--- a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
 +++ b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
-@@ -0,0 +1,44 @@
-+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/net/hisilicon,hisi-femac-mdio.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: HiSilicon FEMAC MDIO bus
-+
-+maintainers:
-+  - Yang Xiwen <forbidden405@formail.com>
-+
-+allOf:
-+  - $ref: mdio.yaml#
-+
-+properties:
-+  compatible:
-+    const: hisilicon,hisi-femac-mdio
-+
-+  reg:
-+    maxItems: 1
-+
-+  clocks:
-+    maxItems: 1
-+
-+required:
-+  - compatible
-+  - reg
-+  - clocks
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    mdio@10091100 {
-+        compatible = "hisilicon,hisi-femac-mdio";
-+        reg = <0x10091100 0x20>;
-+        clocks = <&clk_mdio>;
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+
-+        phy@1 {
-+            reg = <1>;
-+        };
-+    };
-diff --git a/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt b/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt
-deleted file mode 100644
-index 23a39a309d17..000000000000
---- a/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt
-+++ /dev/null
-@@ -1,22 +0,0 @@
--Hisilicon Fast Ethernet MDIO Controller interface
+@@ -19,13 +19,9 @@ properties:
+   reg:
+     maxItems: 1
+ 
+-  clocks:
+-    maxItems: 1
 -
--Required properties:
--- compatible: should be "hisilicon,hisi-femac-mdio".
--- reg: address and length of the register set for the device.
--- clocks: A phandle to the reference clock for this device.
--
--- PHY subnode: inherits from phy binding [1]
--[1] Documentation/devicetree/bindings/net/phy.txt
--
--Example:
--mdio: mdio@10091100 {
--	compatible = "hisilicon,hisi-femac-mdio";
--	reg = <0x10091100 0x10>;
--	clocks = <&crg HI3516CV300_MDIO_CLK>;
--	#address-cells = <1>;
--	#size-cells = <0>;
--
--	phy0: phy@1 {
--		reg = <1>;
--	};
--};
+ required:
+   - compatible
+   - reg
+-  - clocks
+ 
+ unevaluatedProperties: false
+ 
+@@ -34,7 +30,6 @@ examples:
+     mdio@10091100 {
+         compatible = "hisilicon,hisi-femac-mdio";
+         reg = <0x10091100 0x20>;
+-        clocks = <&clk_mdio>;
+         #address-cells = <1>;
+         #size-cells = <0>;
+ 
 
 -- 
 2.43.0
