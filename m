@@ -1,13 +1,12 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Subject: [PATCH 0/2] usb: dwc3: add glue driver for Hi3798MV200
-Date: Sat, 24 Feb 2024 01:17:48 +0800
-Message-Id: <20240224-dwc3-v1-0-7ffb2e2baa73@outlook.com>
+Date: Sat, 24 Feb 2024 01:17:49 +0800
+Subject: [PATCH 1/2] dt-bindings: usb: add hisilicon,hi3798mv200-dwc3
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIADzT2GUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDI0Nz3ZTyZGNdM0tzCyOLJBMLg8REJaDSgqLUtMwKsDHRsbW1AOQg0ip
- WAAAA
+Message-Id: <20240224-dwc3-v1-1-7ffb2e2baa73@outlook.com>
+References: <20240224-dwc3-v1-0-7ffb2e2baa73@outlook.com>
+In-Reply-To: <20240224-dwc3-v1-0-7ffb2e2baa73@outlook.com>
 To: Thinh Nguyen <Thinh.Nguyen@synopsys.com>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Rob Herring <robh+dt@kernel.org>, 
@@ -16,38 +15,130 @@ To: Thinh Nguyen <Thinh.Nguyen@synopsys.com>,
 Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708708670; l=874;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708708670; l=3418;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=yAqE4Gklx+CS9b43iJDoKMxjk5QyMnffq2TCExLKUk8=;
- b=L/FFhJMRyX2yxgyBw/IzR4EWYcSESiHMGfckFR27oIqWZL2j763k/uZXLFLA/1ei4SiT7MC97
- zT471j/+NPMB2WVcMPCt4PgkUqPBJwdn7DLr52+L3+dadQX+MXT8WZR
+ bh=9rvmNBv3Zah3IzddwZbZZSDtAcRKW+fEa/VQRxUOm4Q=;
+ b=8Dm4hLdraiulGflzrU3rl1gEYtOktMQJHdPIsBeyoR/te/pnHcrgJ/JaddJYf0N4qRKVuf7Jf
+ hDU+0XGE7lSAV4Wfo/W4X/gjOZ6Cwz5+DIYvvCaaYJrB33xvOHL5E22
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi3798MV200 uses DWC3 with a few more clocks and a dedicated reset.
-
-Note xhci-histb.c can also be used. But since it's DWC3 in fact, trying
-to support it with the help of DWC3 framework seems a better solution.
-
-Hi3798CV200 can also try to migrate to this driver too. Thus we can
-remove xhci-histb.c in the future.
+Document the DWC3 controller used by Hi3798MV200.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Yang Xiwen (2):
-      dt-bindings: usb: add hisilicon,hi3798mv200-dwc3
-      usb: dwc3: of-simple: Add compatible for hi3798mv200 DWC3 controller
-
  .../bindings/usb/hisilicon,hi3798mv200-dwc3.yaml   | 100 +++++++++++++++++++++
- drivers/usb/dwc3/dwc3-of-simple.c                  |   1 +
- 2 files changed, 101 insertions(+)
----
-base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
-change-id: 20240217-dwc3-697828b480aa
+ 1 file changed, 100 insertions(+)
 
-Best regards,
+diff --git a/Documentation/devicetree/bindings/usb/hisilicon,hi3798mv200-dwc3.yaml b/Documentation/devicetree/bindings/usb/hisilicon,hi3798mv200-dwc3.yaml
+new file mode 100644
+index 000000000000..0884d1ba6723
+--- /dev/null
++++ b/Documentation/devicetree/bindings/usb/hisilicon,hi3798mv200-dwc3.yaml
+@@ -0,0 +1,100 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/usb/hisilicon,hi3798mv200-dwc3.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: HiSilicon Hi3798MV200 DWC3 USB SoC controller
++
++maintainers:
++  - Yang Xiwen <forbidden405@foxmail.com>
++
++properties:
++  compatible:
++    const: hisilicon,hi3798mv200-dwc3
++
++  '#address-cells':
++    const: 1
++
++  '#size-cells':
++    const: 1
++
++  ranges: true
++
++  clocks:
++    items:
++      - description: Controller bus clock
++      - description: Controller suspend clock
++      - description: Controller reference clock
++      - description: Controller gm clock
++      - description: Controller gs clock
++      - description: Controller utmi clock
++      - description: Controller pipe clock
++
++  clock-names:
++    items:
++      - const: bus
++      - const: suspend
++      - const: ref
++      - const: gm
++      - const: gs
++      - const: utmi
++      - const: pipe
++
++  resets:
++    maxItems: 1
++
++  reset-names:
++    const: soft
++
++patternProperties:
++  '^usb@[0-9a-z]+$':
++    $ref: snps,dwc3.yaml#
++
++additionalProperties: false
++
++required:
++  - compatible
++  - '#address-cells'
++  - '#size-cells'
++  - ranges
++  - clocks
++  - clock-names
++  - resets
++  - reset-names
++
++examples:
++  - |
++    #include <dt-bindings/clock/histb-clock.h>
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++
++    usb@98a0000 {
++            compatible = "hisilicon,hi3798mv200-dwc3";
++            #address-cells = <1>;
++            #size-cells = <1>;
++            ranges;
++            clocks = <&crg HISTB_USB3_BUS_CLK>,
++                     <&crg HISTB_USB3_SUSPEND_CLK>,
++                     <&crg HISTB_USB3_REF_CLK>,
++                     <&crg HISTB_USB3_GM_CLK>,
++                     <&crg HISTB_USB3_GS_CLK>,
++                     <&crg HISTB_USB3_UTMI_CLK>,
++                     <&crg HISTB_USB3_PIPE_CLK>;
++            clock-names = "bus", "suspend", "ref", "gm", "gs", "utmi", "pipe";
++            resets = <&crg 0xb0 12>;
++            reset-names = "soft";
++
++            usb@98a0000 {
++                    compatible = "snps,dwc3";
++                    reg = <0x98a0000 0x10000>;
++                    interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
++                    clocks = <&crg HISTB_USB3_BUS_CLK>,
++                             <&crg HISTB_USB3_SUSPEND_CLK>,
++                             <&crg HISTB_USB3_REF_CLK>;
++                    clock-names = "bus_early", "suspend", "ref";
++                    phys = <&usb2_phy1_port2>, <&combphy0 0>;
++                    phy-names = "usb2-phy", "usb3-phy";
++                    maximum-speed = "super-speed";
++                    dr_mode = "host";
++            };
++    };
+
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+2.43.0
 
