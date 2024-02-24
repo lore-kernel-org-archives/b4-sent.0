@@ -1,13 +1,13 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Subject: [PATCH RFC 0/2] clk: hisilicon: add support for PLL
-Date: Sun, 25 Feb 2024 00:56:08 +0800
-Message-Id: <20240225-pll-v1-0-fad6511479c6@outlook.com>
+Date: Sun, 25 Feb 2024 00:56:09 +0800
+Subject: [PATCH RFC 1/2] clk: hisilicon: rename hi3519 PLL registration
+ function
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKgf2mUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDIyNT3YKcHF0jM1NjM3PzZNNUwxQloMqCotS0zAqwKdFKQW7OSrG1tQD
- OUuxAWgAAAA==
+Message-Id: <20240225-pll-v1-1-fad6511479c6@outlook.com>
+References: <20240225-pll-v1-0-fad6511479c6@outlook.com>
+In-Reply-To: <20240225-pll-v1-0-fad6511479c6@outlook.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>
 Cc: David Yang <mmyangfl@gmail.com>, 
@@ -16,39 +16,48 @@ Cc: David Yang <mmyangfl@gmail.com>,
  linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708793775; l=863;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708793775; l=1253;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=qtrP800EKdOTmakNAoNosODy8gqESCOm/APUkVSRbhY=;
- b=VWJx7sn+15PK7vXf+ej8Tpz2unugzwQue+YKYT03SMOkuuerrVwyZG8WJLBnAciOPt5OL6Gl5
- AU9RANsVZYJASYwKbIKwjuzsTBxnyTqY1qcsYQ9BTMbKnxBS6NeIyjA
+ bh=RjDdWKwpGyzyVB1dZKcx8ShQs0qG7CAnl7kkoTOnoFc=;
+ b=QlwkUL5n+D2xcLQWoH0d8vCOTVanik7rxPAd2tCP7zr67tXHaUwqziZ5IYv4k0T+7Ac0VN/OM
+ +Ga6WfGfqWmAaZQ6NxFn6zHRMCAR1RHP2JR+SidKbtQ2MGxW+gmZqd1
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-HiSilicon PLLs are used by various SoCs to provide variable clocks for
-various system on the SoC.
-
-Hi3559 has implemented their own PLL driver. Also fix name duplication
-because of that.
+Hi3559 clock drivers implemented their own PLL driver. Unfortunately
+our generic PLL driver will use a same name. So add a prefix "_" to
+avoid that.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Yang Xiwen (2):
-      clk: hisilicon: rename hi3519 PLL registration function
-      clk: hisilicon: add support for PLL
+ drivers/clk/hisilicon/clk-hi3559a.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- drivers/clk/hisilicon/Makefile      |   2 +-
- drivers/clk/hisilicon/clk-hi3559a.c |   4 +-
- drivers/clk/hisilicon/clk-pll.c     | 171 ++++++++++++++++++++++++++++++++++++
- drivers/clk/hisilicon/clk.c         |  24 +++++
- drivers/clk/hisilicon/clk.h         |  12 +++
- 5 files changed, 210 insertions(+), 3 deletions(-)
----
-base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
-change-id: 20240225-pll-2653677c5e1d
+diff --git a/drivers/clk/hisilicon/clk-hi3559a.c b/drivers/clk/hisilicon/clk-hi3559a.c
+index ff4ca0edce06..77fa4203a428 100644
+--- a/drivers/clk/hisilicon/clk-hi3559a.c
++++ b/drivers/clk/hisilicon/clk-hi3559a.c
+@@ -452,7 +452,7 @@ static const struct clk_ops hisi_clk_pll_ops = {
+ 	.recalc_rate = clk_pll_recalc_rate,
+ };
+ 
+-static void hisi_clk_register_pll(struct hi3559av100_pll_clock *clks,
++static void _hisi_clk_register_pll(struct hi3559av100_pll_clock *clks,
+ 			   int nums, struct hisi_clock_data *data, struct device *dev)
+ {
+ 	void __iomem *base = data->base;
+@@ -517,7 +517,7 @@ static struct hisi_clock_data *hi3559av100_clk_register(
+ 	if (ret)
+ 		return ERR_PTR(ret);
+ 
+-	hisi_clk_register_pll(hi3559av100_pll_clks,
++	_hisi_clk_register_pll(hi3559av100_pll_clks,
+ 			      ARRAY_SIZE(hi3559av100_pll_clks), clk_data, &pdev->dev);
+ 
+ 	ret = hisi_clk_register_mux(hi3559av100_mux_clks_crg,
 
-Best regards,
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+2.43.0
 
