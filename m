@@ -1,13 +1,14 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Sat, 24 Feb 2024 05:43:13 +0800
-Subject: [PATCH v2 2/2] usb: dwc3: of-simple: Add compatible for
- hi3798mv200 DWC3 controller
+Subject: [PATCH v3 0/2] usb: dwc3: add glue driver for Hi3798MV200
+Date: Sat, 24 Feb 2024 20:10:17 +0800
+Message-Id: <20240224-dwc3-v3-0-2535fcee7f08@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240224-dwc3-v2-2-8e4fcd757175@outlook.com>
-References: <20240224-dwc3-v2-0-8e4fcd757175@outlook.com>
-In-Reply-To: <20240224-dwc3-v2-0-8e4fcd757175@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAKnc2WUC/22MQQ7CIBQFr9KwFgO/VNCV9zAuKP1YohYDFTUNd
+ 5dWNyYu5+XNTCRicBjJrppIwOSi80OBelUR0+vhhNR1hQkwEAy4pN3D1HSzlQpUKxTTmpTrLaB
+ 1zyVzOBbuXRx9eC3VxOf1GwDxCSROGZXWtoDQai3rvb+PF+/Pa+OvZE4k+KdB0RQKazrZSC6bX
+ y3n/AYMHU4B0QAAAA==
 To: Thinh Nguyen <Thinh.Nguyen@synopsys.com>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Rob Herring <robh+dt@kernel.org>, 
@@ -16,37 +17,54 @@ To: Thinh Nguyen <Thinh.Nguyen@synopsys.com>,
 Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708724592; l=809;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708776618; l=1490;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=CsDB1ujYdciRCCnGm2g0rfxKORwEFR6rPwogWA69oCs=;
- b=KkKHeuyBlpvQfJvXcl1xGd95Gd6boVNpwtooXy/M1MormomR7w53c6GZkvmN48t1alclr7B73
- bw3agINaGzkBq1DUqv68Eq1RJ+15RdleLVe9rBI4JL4uf8Wuix8qZgx
+ bh=wLy4fhXT7uKWi4ko1krpJhqxlUi/4wpBJplpCsyj4Pw=;
+ b=76z/w4AgfyzzSxqjXPJB/F4CFpVUb0GttCQbTToPlTo3FDPmDXwf8UehaAtwn2Q1pq9FTrubu
+ ME5knGb4xDDBYSWp8nhrkclCSO6jm3fU+5KeT/fYorLnehplOkLiSRd
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi3798MV200 uses dwc3 controller with a few more clocks and a dedicated
-resets. Use of_simple driver for it.
+Hi3798MV200 uses DWC3 with a few more clocks and a dedicated reset.
+
+Note xhci-histb.c can also be used. But since it's DWC3 in fact, trying
+to support it with the help of DWC3 framework seems a better solution.
+
+Hi3798CV200 can also try to migrate to this driver too. Thus we can
+remove xhci-histb.c in the future.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/usb/dwc3/dwc3-of-simple.c | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v3:
+- binding: remove example address
+- binding: remove reg (Krzysztof)
+- binding: rearrange required (Krzysztof)
+- binding: put additionalProperties after required (Krzysztof)
+- binding: indent properly (Krzysztof)
+- Link to v2: https://lore.kernel.org/r/20240224-dwc3-v2-0-8e4fcd757175@outlook.com
 
-diff --git a/drivers/usb/dwc3/dwc3-of-simple.c b/drivers/usb/dwc3/dwc3-of-simple.c
-index d1539fc9eabd..158acae08af5 100644
---- a/drivers/usb/dwc3/dwc3-of-simple.c
-+++ b/drivers/usb/dwc3/dwc3-of-simple.c
-@@ -173,6 +173,7 @@ static const struct of_device_id of_dwc3_simple_match[] = {
- 	{ .compatible = "sprd,sc9860-dwc3" },
- 	{ .compatible = "allwinner,sun50i-h6-dwc3" },
- 	{ .compatible = "hisilicon,hi3670-dwc3" },
-+	{ .compatible = "hisilicon,hi3798mv200-dwc3" },
- 	{ .compatible = "intel,keembay-dwc3" },
- 	{ /* Sentinel */ }
- };
+Changes in v2:
+- remove histb-clock.h as it's deprecated.
+- fix bot error (Rob Herring)
+- add a dummy reg property to make simple-bus parent node happy.
+  (duplicate with subnode, not used in driver)
+- Link to v1: https://lore.kernel.org/r/20240224-dwc3-v1-0-7ffb2e2baa73@outlook.com
 
+---
+Yang Xiwen (2):
+      dt-bindings: usb: add hisilicon,hi3798mv200-dwc3
+      usb: dwc3: of-simple: Add compatible for hi3798mv200 DWC3 controller
+
+ .../bindings/usb/hisilicon,hi3798mv200-dwc3.yaml   | 99 ++++++++++++++++++++++
+ drivers/usb/dwc3/dwc3-of-simple.c                  |  1 +
+ 2 files changed, 100 insertions(+)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240217-dwc3-697828b480aa
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
