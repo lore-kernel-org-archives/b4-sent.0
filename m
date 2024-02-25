@@ -1,72 +1,70 @@
-From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 24 Feb 2024 18:42:28 +0100
-Subject: [PATCH v2 7/7] sparc32: Fix section mismatch in leon_pci_grpci
+From: Yang Xiwen <forbidden405@outlook.com>
+Date: Sun, 25 Feb 2024 08:38:33 +0800
+Subject: [PATCH RESEND] serial: pl01x: set baudrate when probing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240224-sam-fix-sparc32-all-builds-v2-7-1f186603c5c4@ravnborg.org>
-References: <20240224-sam-fix-sparc32-all-builds-v2-0-1f186603c5c4@ravnborg.org>
-In-Reply-To: <20240224-sam-fix-sparc32-all-builds-v2-0-1f186603c5c4@ravnborg.org>
-To: "Maciej W. Rozycki" <macro@orcam.me.uk>, sparclinux@vger.kernel.org, 
- Andreas Larsson <andreas@gaisler.com>, Randy Dunlap <rdunlap@infradead.org>
-Cc: Miquel Raynal <miquel.raynal@bootlin.com>, 
- linux-parport@lists.infradead.org, "David S. Miller" <davem@davemloft.net>, 
- Arnd Bergmann <arnd@arndb.de>, linux-kernel@vger.kernel.org, 
- Sam Ravnborg <sam@ravnborg.org>
+Message-Id: <20240225-b4-pl011-v1-1-2686496c1a17@outlook.com>
+To: u-boot@lists.denx.de, Tom Rini <trini@konsulko.com>, 
+ Lukasz Majewski <lukma@denx.de>
+Cc: Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708796545; l=1706;
- i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=sp1d/B24jZbQZh3/vvpsecjIEsONMYKjjInm+P7c4rg=;
- b=g6ryIctXAY8ERVSP7byE0Sv/rPNTxni/bFVxqgeeV0JsbhZM6eDayu5hVR10CVQe98O1Q1FHWAAM
- /aIXJuA6B9nUPGrWcgHnnmW73F4QqXtQDcNHs5JOfJ8Z60bsp0Ek
-X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
- pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
-X-Endpoint-Received: by B4 Relay for sam@ravnborg.org/20230107 with auth_id=22
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708821513; l=1471;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=wFtp8JoYVTLrWd010MWe1rn493w7ENxVoxhvFpDp7q4=;
+ b=mwg1kme2Jf0rKcyD0nWu9RqFoZOcw6JZjDRrZdKP1EaqOTJGuQeq3ljfDarZSq/1qBsBKAHJd
+ gU3LTYFIXs+DRCczgB04wlQOLdHzn80X4HbY0UiJkRClbWeU3bukLYg
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Passing a datastructre marked _initconst to platform_driver_register()
-is wrong. Drop the __initconst notation.
+It is found that when DM is enabled, only generic init function is
+called in .probe(). Baudrate is never honored. Add a function call
+to .setbrg() when probing so that we can update the baudrate of the
+serial device.
 
-This fixes the following warnings:
-
-WARNING: modpost: vmlinux: section mismatch in reference: grpci1_of_driver+0x30 (section: .data) -> grpci1_of_match (section: .init.rodata)
-WARNING: modpost: vmlinux: section mismatch in reference: grpci2_of_driver+0x30 (section: .data) -> grpci2_of_match (section: .init.rodata)
-
-Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Andreas Larsson <andreas@gaisler.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- arch/sparc/kernel/leon_pci_grpci1.c | 2 +-
- arch/sparc/kernel/leon_pci_grpci2.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ drivers/serial/serial_pl01x.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/arch/sparc/kernel/leon_pci_grpci1.c b/arch/sparc/kernel/leon_pci_grpci1.c
-index 8700a0e3b0df..b2b639bee068 100644
---- a/arch/sparc/kernel/leon_pci_grpci1.c
-+++ b/arch/sparc/kernel/leon_pci_grpci1.c
-@@ -697,7 +697,7 @@ static int grpci1_of_probe(struct platform_device *ofdev)
- 	return err;
+diff --git a/drivers/serial/serial_pl01x.c b/drivers/serial/serial_pl01x.c
+index 428a4d210de5..57bbcaf3b619 100644
+--- a/drivers/serial/serial_pl01x.c
++++ b/drivers/serial/serial_pl01x.c
+@@ -290,6 +290,7 @@ int pl01x_serial_probe(struct udevice *dev)
+ {
+ 	struct pl01x_serial_plat *plat = dev_get_plat(dev);
+ 	struct pl01x_priv *priv = dev_get_priv(dev);
++	int ret;
+ 
+ #if CONFIG_IS_ENABLED(OF_PLATDATA)
+ 	struct dtd_serial_pl01x *dtplat = &plat->dtplat;
+@@ -301,10 +302,14 @@ int pl01x_serial_probe(struct udevice *dev)
+ #endif
+ 	priv->type = plat->type;
+ 
+-	if (!plat->skip_init)
+-		return pl01x_generic_serial_init(priv->regs, priv->type);
+-	else
++	if (!plat->skip_init) {
++		ret = pl01x_generic_serial_init(priv->regs, priv->type);
++		if (!ret)
++			return ret;
++		return pl01x_serial_setbrg(dev, gd->baudrate);
++	} else {
+ 		return 0;
++	}
  }
  
--static const struct of_device_id grpci1_of_match[] __initconst = {
-+static const struct of_device_id grpci1_of_match[] = {
- 	{
- 	 .name = "GAISLER_PCIFBRG",
- 	 },
-diff --git a/arch/sparc/kernel/leon_pci_grpci2.c b/arch/sparc/kernel/leon_pci_grpci2.c
-index 282b49d496ea..9f662340b5b2 100644
---- a/arch/sparc/kernel/leon_pci_grpci2.c
-+++ b/arch/sparc/kernel/leon_pci_grpci2.c
-@@ -889,7 +889,7 @@ static int grpci2_of_probe(struct platform_device *ofdev)
- 	return err;
- }
- 
--static const struct of_device_id grpci2_of_match[] __initconst = {
-+static const struct of_device_id grpci2_of_match[] = {
- 	{
- 	 .name = "GAISLER_GRPCI2",
- 	 },
+ int pl01x_serial_getc(struct udevice *dev)
 
+---
+base-commit: f7cca7ccc5117eaafcc2bde91ad1bed6fee7cfc3
+change-id: 20240123-b4-pl011-ee9575ff2a38
+
+Best regards,
 -- 
-2.34.1
+Yang Xiwen <forbidden405@outlook.com>
 
