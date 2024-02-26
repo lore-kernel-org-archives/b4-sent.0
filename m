@@ -1,10 +1,11 @@
 From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Mon, 26 Feb 2024 10:30:22 +0300
-Subject: [PATCH v8 26/38] ASoC: dt-bindings: ep93xx: Document DMA support
+Date: Mon, 26 Feb 2024 10:30:23 +0300
+Subject: [PATCH v8 27/38] ASoC: dt-bindings: ep93xx: Document Audio Port
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240226-ep93xx-v8-26-3136dca7238f@maquefel.me>
+Message-Id: <20240226-ep93xx-v8-27-3136dca7238f@maquefel.me>
 References: <20240226-ep93xx-v8-0-3136dca7238f@maquefel.me>
 In-Reply-To: <20240226-ep93xx-v8-0-3136dca7238f@maquefel.me>
 To: Hartley Sweeten <hsweeten@visionengravers.com>, 
@@ -18,55 +19,39 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-sound@vger.kernel.org,
  Arnd Bergmann <arnd@arndb.de>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.13-dev-e3e53
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1708932678; l=1224;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1708932678; l=848;
  i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=wr/vd6cvCnFly70ysS4iWWMOpIK2XGwrRTm9djXX73Y=;
- b=Q5glPHoBBy//ZwGJrHweue3vaqootESNOHE6NDfA1BjcfAdOJmJugL3+MPrMFKDx8L42dZe61Zaf
- gh9r8LbWDNNTpSGo+y2SDnXX419cm058Am3/dZvjZ/EEwCZd6tE3
+ bh=0LgX6xJfVzU1kIBxobRUjsHWxEbHLzVzD6pHlBy8Ioo=;
+ b=U1lC2bs9+0/I5vF/qIOo0do9Kh6YKmsipTUByix7465MEJvmXAMwpgEEp7WPRtu/7Ifk1cjXaENb
+ QnzPBZurAiSmBeHyFWFzS7WvW3M5KO3JHXJKgrmfmDznCZWvDFaY
 X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document DMA support in binding document.
+Document Audio Graph Port support in binding document.
 
 Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Reviewed-by: Mark Brown <broonie@kernel.org>
 Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
 ---
- .../devicetree/bindings/sound/cirrus,ep9301-i2s.yaml         | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ Documentation/devicetree/bindings/sound/cirrus,ep9301-i2s.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/Documentation/devicetree/bindings/sound/cirrus,ep9301-i2s.yaml b/Documentation/devicetree/bindings/sound/cirrus,ep9301-i2s.yaml
-index 453d493c941f..36a320ddf534 100644
+index 36a320ddf534..4693e85aed37 100644
 --- a/Documentation/devicetree/bindings/sound/cirrus,ep9301-i2s.yaml
 +++ b/Documentation/devicetree/bindings/sound/cirrus,ep9301-i2s.yaml
-@@ -40,6 +40,16 @@ properties:
-       - const: sclk
-       - const: lrclk
+@@ -50,6 +50,10 @@ properties:
+       - const: tx
+       - const: rx
  
-+  dmas:
-+    items:
-+      - description: out DMA channel
-+      - description: in DMA channel
-+
-+  dma-names:
-+    items:
-+      - const: tx
-+      - const: rx
++  port:
++    $ref: audio-graph-port.yaml#
++    unevaluatedProperties: false
 +
  required:
    - compatible
    - '#sound-dai-cells'
-@@ -61,6 +71,8 @@ examples:
-                  <&syscon 30>,
-                  <&syscon 31>;
-         clock-names = "mclk", "sclk", "lrclk";
-+        dmas = <&dma0 0 1>, <&dma0 0 2>;
-+        dma-names = "tx", "rx";
-     };
- 
- ...
 
 -- 
 2.41.0
