@@ -1,106 +1,91 @@
-From: Bjorn Andersson <quic_bjorande@quicinc.com>
-Date: Mon, 26 Feb 2024 17:49:57 -0800
-Subject: [PATCH] pmdomain: qcom: rpmhpd: Fix enabled_corner aggregation
+From: Emil Velikov <emil.l.velikov@gmail.com>
+Date: Tue, 27 Feb 2024 13:18:24 +0000
+Subject: [PATCH b4] b4: add shell completion via python-shtab
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240226-rpmhpd-enable-corner-fix-v1-1-68c004cec48c@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAMQ/3WUC/x2MwQqDMBAFf0X27EIMbWz9FfEQ40tdaGPYgBTEf
- zd4nIGZgwpUUGhoDlLsUmRLFbq2obD69AHLUpmssQ9jrWPNvzUvjOTnLzhsmqAc5c/hCdNH9PP
- 75ajmWVH1vR6n87wAZf/r0WoAAAA=
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, 
- Ulf Hansson <ulf.hansson@linaro.org>, Stephen Boyd <swboyd@chromium.org>, 
- Johan Hovold <johan+linaro@kernel.org>, 
- Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Johan Hovold <johan@kernel.org>, 
- stable@vger.kernel.org, Bjorn Andersson <quic_bjorande@quicinc.com>
+Message-Id: <20240227-shell-completion-v1-1-a809aad38589@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAB/h3WUC/x2MWwqAIBAAryL7nbAtZdBVog+rNRfsgUYE0t2TP
+ gdmJkPiKJygVxki35Lk2AvUlYLZ231lLUthIKQGiTqdPIeg52M7A19F1mjQmhpdOxFCyc7ITp5
+ /OcDUwPi+Hy7jPQhmAAAA
+To: tools@kernel.org
+Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
+ Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3004;
- i=quic_bjorande@quicinc.com; h=from:subject:message-id;
- bh=8TOgtVhYO01rdpfAVMwK9WI6pflXIuB4DQQcEbm8Zmw=;
- b=owEBgwJ8/ZANAwAIAQsfOT8Nma3FAcsmYgBl3T/r3KXQprzkHna4SseXUKD0ooMTxVhZKDW9m
- mWQ0+8CJmiJAkkEAAEIADMWIQQF3gPMXzXqTwlm1SULHzk/DZmtxQUCZd0/6xUcYW5kZXJzc29u
- QGtlcm5lbC5vcmcACgkQCx85Pw2ZrcUW4w//YlZS5dc2FBsqrTddOHzidbibnEQwzDs1tWPmyqH
- jKcngixr+2OP4XYmR/HEBprSaEe/UXls884Ema6ucg5EQtpOIrMqfxWHEptQljfkVwuhHxiav5y
- hR9pSDgBfIkmZYnlp+AI8VM+pQyqQB3nTZ0mgu1YTxtEIomgOZ8ifzTXMPvSrtWtU0pEXDpzE8y
- amaeZShoEQMs238EpgfWhbFTKWqPlUKCdVmjyjIZ/TAnE4haRDpKnCInDvpGaTXJSeK+X1cdzAu
- Iduu4QSFutGx/mTaLJF3I4UqWzUrFmEy/apAtGhOGnpNTkrAjR/euygJQY9OREp0OEvM+FEfjzj
- yn0Xi/zNqMBnEzn5vd7340NM6wSq6oHBJp9dmzLyIAimCcN9A5z769c8SZ+hacWXEZlNqdizJ34
- Wv8iaWi/Rkzc7XUG/Tlx+jtdEqS1313uA1f3HPDfr3VtQ+mN4t7Ex3z4qLFKaslXbunA4AEBLK9
- INzGCitwuDBUSh2NtR0fu5ZOAiQCb7g+gIMON1aDQcD39lbnwfX8rMxYv9zNYZvtnr7z4NbUkAF
- 0G/5IeNCRrIoQ42hHlRhVCkG5WnjZRGZbgLEIxHyxLHVUnNPXs+bCCftycKzr4BIUDfIK9W4TGz
- /ltQREquxuqJMmPH8tYwmHjE2s2CdDyeBQHzWutRavxA=
-X-Developer-Key: i=quic_bjorande@quicinc.com; a=openpgp;
- fpr=05DE03CC5F35EA4F0966D5250B1F393F0D99ADC5
-X-Endpoint-Received: by B4 Relay for quic_bjorande@quicinc.com/default with auth_id=118
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709039913; l=2158;
+ i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
+ bh=CZHevH6zQcPRVFGHM0zkcHJpbvNxZHRFOZXpBUnO+vw=;
+ b=1QQkzeCBzm6AwBqumeejW0db4T7lZbXQKBguM5iTA8gVXI1i4LDm3EpxBXOcVumHXfCnhGwVp
+ zsdem2mBtWpCffQxV+FclVamcbCXrny+hWs2Ypk7WAkzKxztseG9ZZi
+X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
+ pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
+X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 'e3e56c050ab6 ("soc: qcom: rpmhpd: Make power_on actually enable
-the domain")' aimed to make sure that a power-domain that is being
-enabled without any particular performance-state requested will at least
-turn the rail on, to avoid filling DeviceTree with otherwise unnecessary
-required-opps properties.
+The python-shtab module allows for static shell completion files,
+whereas others like python-argcomplete, execute the underlying tool for
+ever suggestion.
 
-But in the event that aggregation happens on a disabled power-domain, with
-an enabled peer without performance-state, both the local and peer
-corner are 0. The peer's enabled_corner is not considered, with the
-result that the underlying (shared) resource is disabled.
+Currently it supports bash, zsh and tcsh - maintainer is open to patches
+supporting fish.
 
-One case where this can be observed is when the display stack keeps mmcx
-enabled (but without a particular performance-state vote) in order to
-access registers and sync_state happens in the rpmhpd driver. As mmcx_ao
-is flushed the state of the peer (mmcx) is not considered and mmcx_ao
-ends up turning off "mmcx.lvl" underneath mmcx. This has been observed
-several times, but has been painted over in DeviceTree by adding an
-explicit vote for the lowest non-disabled performance-state.
+In addition, the action completion (aka is the argument is a folder,
+file, git sha, etc) is non-existing, but even as-is the completions are
+quite useful.
 
-Fixes: e3e56c050ab6 ("soc: qcom: rpmhpd: Make power_on actually enable the domain")
-Reported-by: Johan Hovold <johan@kernel.org>
-Closes: https://lore.kernel.org/linux-arm-msm/ZdMwZa98L23mu3u6@hovoldconsulting.com/
-Cc:  <stable@vger.kernel.org>
-Signed-off-by: Bjorn Andersson <quic_bjorande@quicinc.com>
+To generate/install the zsh completion use:
+ - ./b4.sh --print-completion zsh > _b4
+ - mv _b4 /usr/share/zsh/site-functions/_b4
+
+For more details, see the website https://github.com/iterative/shtab
+
+Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
-This issue is the root cause of a display regression on SC8280XP boards,
-resulting in the system often resetting during boot. It was exposed by
-the refactoring of the DisplayPort driver in v6.8-rc1.
----
- drivers/pmdomain/qcom/rpmhpd.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+As with any tool, having shell completion is a must both to improve
+productivity and improve ramp-up for noobies.
 
-diff --git a/drivers/pmdomain/qcom/rpmhpd.c b/drivers/pmdomain/qcom/rpmhpd.c
-index 3078896b1300..47df910645f6 100644
---- a/drivers/pmdomain/qcom/rpmhpd.c
-+++ b/drivers/pmdomain/qcom/rpmhpd.c
-@@ -692,6 +692,7 @@ static int rpmhpd_aggregate_corner(struct rpmhpd *pd, unsigned int corner)
- 	unsigned int active_corner, sleep_corner;
- 	unsigned int this_active_corner = 0, this_sleep_corner = 0;
- 	unsigned int peer_active_corner = 0, peer_sleep_corner = 0;
-+	unsigned int peer_enabled_corner;
+Initially I started off writing zsh completion by hand, although the
+100+ options quickly made me reconsider my life choices :-D
+
+Instead we can use python-shtab, which:
+ - is an amazing starting point
+ - requires effectively zero maintenance by the b4 team
+
+I have been using the zsh completion for a few weeks now and it works
+fine. From a quick test the bash completion is also quite decent.
+
+If needed, the generated files can be checked into the git repo and
+expanded on. Even though personally I don't think that's a great idea.
+
+Happy to do so, of course - let me know either way.
+---
+ src/b4/command.py | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/b4/command.py b/src/b4/command.py
+index be0f033..10cb4d0 100644
+--- a/src/b4/command.py
++++ b/src/b4/command.py
+@@ -363,6 +363,13 @@ def setup_parser() -> argparse.ArgumentParser:
+                           help='Submit the token received via verification email')
+     sp_send.set_defaults(func=cmd_send)
  
- 	if (pd->state_synced) {
- 		to_active_sleep(pd, corner, &this_active_corner, &this_sleep_corner);
-@@ -701,9 +702,11 @@ static int rpmhpd_aggregate_corner(struct rpmhpd *pd, unsigned int corner)
- 		this_sleep_corner = pd->level_count - 1;
- 	}
++    try:
++        import shtab
++
++        shtab.add_argument_to(parser, ["-s", "--print-completion"])
++    except ImportError:
++        pass
++
+     return parser
  
--	if (peer && peer->enabled)
--		to_active_sleep(peer, peer->corner, &peer_active_corner,
-+	if (peer && peer->enabled) {
-+		peer_enabled_corner = max(peer->corner, peer->enable_corner);
-+		to_active_sleep(peer, peer_enabled_corner, &peer_active_corner,
- 				&peer_sleep_corner);
-+	}
- 
- 	active_corner = max(this_active_corner, peer_active_corner);
  
 
 ---
-base-commit: b401b621758e46812da61fa58a67c3fd8d91de0d
-change-id: 20240226-rpmhpd-enable-corner-fix-c5e07fe7b986
+base-commit: 7f3284906e67f138eae82271a6c3bde1ebb30791
+change-id: 20240227-shell-completion-060a610f5b20
 
 Best regards,
 -- 
-Bjorn Andersson <quic_bjorande@quicinc.com>
+Emil Velikov <emil.l.velikov@gmail.com>
 
