@@ -1,120 +1,77 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Wed, 28 Feb 2024 17:56:42 +0800
-Subject: [PATCH RESEND v2] arm64: dts: qcom: qcm6490-idp: enable pwrkey and
- volume-up/down function
+From: Yang Xiwen <forbidden405@outlook.com>
+Date: Wed, 28 Feb 2024 18:57:52 +0800
+Subject: [PATCH v2] serial: pl01x: set baudrate when probing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240228-gpio-keys-v2-1-3beb60225abe@quicinc.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Hui Liu <quic_huliu@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709114240; l=2151;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=uxn7urf55wldvs+MTDmzxYHE9lWSCWgorQZPNSBSB4Q=;
- b=7Da8as+oy3m1yGMGfVVIbVkvXvAEUqwESMBAZ8FKdwg/rPLTR/zEubfFlBhbBEQzVD9qyJOG/
- iXN3z9sCd3pCNpSg8xSlHYEKKIDKWxw+nfeL1I6MbryL/HosjE0gpGp
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+Message-Id: <20240228-b4-pl011-v2-1-92129ba2e23a@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAK8R32UC/23MQQ7CIBCF4as0sxbDUBDtynuYLmg7WGItDVSia
+ bi72LXL/+Xl2yBScBShqTYIlFx0fi4hDhX0o5nvxNxQGgQXkqOoWSfZMnFERnRRWlkrTH2Gcl8
+ CWffeqVtbenRx9eGzywl/6x8kIUNmO6VPAzcapb361zp5/zj2/gltzvkLgRpTSaIAAAA=
+To: u-boot@lists.denx.de, Tom Rini <trini@konsulko.com>, 
+ Lukasz Majewski <lukma@denx.de>
+Cc: Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709117872; l=1620;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=SF9Ay5KAqk/WshEdgSQMu8Q+ALCWAg7OLJOzuEFI0Hg=;
+ b=7frSEL61EkT4Zz8Nee7Azzk7gawOkSW6mvlIQ2J4yrz/hcSBy8i0ldwitKx8zLUn6WAVc/J3X
+ t1jkuevRTq1BKA2mZ9tfMV+JMc3kpnilYA7ZRowwr8LXbSW2uHFnWHq
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add configurations to enable pwrkey, volume-up and volume-down function.
+It is found that when DM is enabled, only generic init function is
+called in .probe(). Baudrate is never honored. Add a function call
+to .setbrg() when probing so that we can update the baudrate of the
+serial device.
 
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
 Changes in v2:
-- Update the commit description.
-- Link to v1: https://lore.kernel.org/r/20240206-gpio-keys-v1-1-7683799daf8d@quicinc.com
+- reverse if statement (Dan Carpenter)
+- Link to v1: https://lore.kernel.org/r/20240123-b4-pl011-v1-1-fb576d0a714f@outlook.com
 ---
- arch/arm64/boot/dts/qcom/qcm6490-idp.dts | 43 ++++++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+ drivers/serial/serial_pl01x.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-index acf145d1d97c..4199ebf667af 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-@@ -9,6 +9,7 @@
- #define PM7250B_SID 8
- #define PM7250B_SID1 9
+diff --git a/drivers/serial/serial_pl01x.c b/drivers/serial/serial_pl01x.c
+index 428a4d210de5..f04c21e08264 100644
+--- a/drivers/serial/serial_pl01x.c
++++ b/drivers/serial/serial_pl01x.c
+@@ -290,6 +290,7 @@ int pl01x_serial_probe(struct udevice *dev)
+ {
+ 	struct pl01x_serial_plat *plat = dev_get_plat(dev);
+ 	struct pl01x_priv *priv = dev_get_priv(dev);
++	int ret;
  
-+#include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/leds/common.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- #include "sc7280.dtsi"
-@@ -39,6 +40,24 @@ chosen {
- 		stdout-path = "serial0:115200n8";
- 	};
+ #if CONFIG_IS_ENABLED(OF_PLATDATA)
+ 	struct dtd_serial_pl01x *dtplat = &plat->dtplat;
+@@ -301,10 +302,14 @@ int pl01x_serial_probe(struct udevice *dev)
+ #endif
+ 	priv->type = plat->type;
  
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		label = "gpio-keys";
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&key_vol_up_default>;
-+
-+		key-volume-up {
-+			label = "volume_up";
-+			gpios = <&pm7325_gpios 6 GPIO_ACTIVE_LOW>;
-+			linux,input-type = <1>;
-+			linux,code = <KEY_VOLUMEUP>;
-+			wakeup-source;
-+			debounce-interval = <15>;
-+			linux,can-disable;
-+		};
-+	};
-+
- 	reserved-memory {
- 		xbl_mem: xbl@80700000 {
- 			reg = <0x0 0x80700000 0x0 0x100000>;
-@@ -421,6 +440,17 @@ vreg_bob_3p296: bob {
- 	};
- };
+-	if (!plat->skip_init)
+-		return pl01x_generic_serial_init(priv->regs, priv->type);
+-	else
++	if (!plat->skip_init) {
++		ret = pl01x_generic_serial_init(priv->regs, priv->type);
++		if (ret)
++			return ret;
++		return pl01x_serial_setbrg(dev, gd->baudrate);
++	} else {
+ 		return 0;
++	}
+ }
  
-+&pm7325_gpios {
-+	key_vol_up_default: key-vol-up-state {
-+		pins = "gpio6";
-+		function = "normal";
-+		input-enable;
-+		bias-pull-up;
-+		power-source = <0>;
-+		qcom,drive-strength = <3>;
-+	};
-+};
-+
- &pm8350c_pwm {
- 	status = "okay";
- 
-@@ -448,6 +478,19 @@ led@3 {
- 	};
- };
- 
-+&pmk8350_pon {
-+	status = "okay";
-+};
-+
-+&pon_pwrkey {
-+	status = "okay";
-+};
-+
-+&pon_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+	status = "okay";
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
+ int pl01x_serial_getc(struct udevice *dev)
 
 ---
-base-commit: 23e11d0318521e8693459b0e4d23aec614b3b68b
-change-id: 20240206-gpio-keys-138bbd850298
+base-commit: f7cca7ccc5117eaafcc2bde91ad1bed6fee7cfc3
+change-id: 20240123-b4-pl011-ee9575ff2a38
 
 Best regards,
 -- 
-Hui Liu <quic_huliu@quicinc.com>
+Yang Xiwen <forbidden405@outlook.com>
 
