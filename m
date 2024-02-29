@@ -1,15 +1,13 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Subject: [PATCH v7 0/5] mmc: add hi3798mv200 specific extensions of DWMMC
-Date: Thu, 29 Feb 2024 09:36:18 +0800
-Message-Id: <20240229-b4-mmc-hi3798mv200-v7-0-10c03f316285@outlook.com>
+Date: Thu, 29 Feb 2024 09:36:19 +0800
+Subject: [PATCH v7 1/5] mmc: host: mmc_of_parse_clk_phase(): Pass struct
+ device * instead of mmc_host *
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJLf32UC/4XRS07EMAwG4KuMsiYodhynZcU9EIs2DxpBJ6gdI
- tCodycdNkWtNMvfkj/b8lXMYUphFk+nq5hCSXPK5xrsw0m4oTu/BZl8zQIVkgIE2ZMcRyeHpG3
- bjAWVkp2xWgUfAdGJ2vg5hZi+b+jLa81Dmi95+rnNKLBW/zgEPuIKSCWtJ/Z9Q6YL/Jy/Lh85v
- z+6PIoVLHgfwYooUJ514A682SN6i9hDRFckgiEmsNyS3SN0H6F1k+h923tqjMY9YjYIqkPErJs
- Yxc6Y2ATSe4S3yOGfClekdwR95K6tB/1HlmX5BeEHM1kPAgAA
+Message-Id: <20240229-b4-mmc-hi3798mv200-v7-1-10c03f316285@outlook.com>
+References: <20240229-b4-mmc-hi3798mv200-v7-0-10c03f316285@outlook.com>
+In-Reply-To: <20240229-b4-mmc-hi3798mv200-v7-0-10c03f316285@outlook.com>
 To: Ulf Hansson <ulf.hansson@linaro.org>, 
  Jaehoon Chung <jh80.chung@samsung.com>, Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
@@ -20,82 +18,78 @@ Cc: Igor Opaniuk <igor.opaniuk@linaro.org>,
  linux-kernel@vger.kernel.org, linux-mmc@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-aspeed@lists.ozlabs.org, 
  openbmc@lists.ozlabs.org, linux-arm-kernel@lists.infradead.org, 
- Yang Xiwen <forbidden405@outlook.com>, Paul Menzel <pmenzel@molgen.mpg.de>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ Yang Xiwen <forbidden405@outlook.com>, Paul Menzel <pmenzel@molgen.mpg.de>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709170614; l=3128;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709170614; l=2509;
  i=forbidden405@outlook.com; s=20240228; h=from:subject:message-id;
- bh=DbESgbLm8iXZ1xAIRzvPJVCUiiqIdNKZWaT+1vVOvZ0=;
- b=lqJUGZQRau+vHK8zzfG0TQhZLe44ISqDiBVhDKit2Z7lPJv2XYc1hzqzRZs3Sl3dKFjfCV0AH
- GbgNgWa0197D8TwR67DQTdMBcMSbYcKtgLGGRTvSOOwNH86bhNe27/E
+ bh=JGOc4wQUSQd78IPQsA2tfrngj58AF1LgtdpM/cwsBoQ=;
+ b=UVqVEYvRkoStMPjWxXuTEvzYTOUu7ddzRxFdip+h1ByO1Lh/wnpwRKTzYHt0P28BTnNQp+I4P
+ n0y12Yz5P4NAAvWU9ov7tXym7NsiWsqVYUyaE1QKyGF0JLrPccJdHg3
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=KAWv6ZzFsT54MGllOczJgFiWB+DuayEmyn24iiVVThU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20240228 with auth_id=136
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-it's modified from hi3798cv200 driver, but quite a lot of code gets
-rewritten because of the hardware differences. Actually cv200 DWMMC core
-is called HIMCIV200 while mv200 DWMMC core is called HIMCIV300 in
-downstream.
+Parsing dt usually happens very early, sometimes even before struct
+mmc_host is allocated (e.g. dw_mci_probe() and dw_mci_parse_dt() in
+dw_mmc.c). Looking at the source of mmc_of_parse_clk_phase(), it's
+actually not mandatory to have an initialized mmc_host first, instead we
+can pass struct device * to it directly.
 
+Also fix the only current user (sdhci-of-aspeed.c).
+
+Reviewed-by: Paul Menzel <pmenzel@molgen.mpg.de>
+Acked-by: Andrew Jeffery <andrew@codeconstruct.com.au>
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Changes in v7:
-- driver: simplify tuning logic (Ulf Hansson)
-- bindings: fix patch order (Ulf Hansson)
-- Link to v6: https://lore.kernel.org/r/20240221-b4-mmc-hi3798mv200-v6-0-bc41bf6a9769@outlook.com
+ drivers/mmc/core/host.c            | 4 +---
+ drivers/mmc/host/sdhci-of-aspeed.c | 2 +-
+ include/linux/mmc/host.h           | 2 +-
+ 3 files changed, 3 insertions(+), 5 deletions(-)
 
-Changes in v6:
-- apply the comments to the first patch, add their trailers
-- Link to v5: https://lore.kernel.org/r/20240220-b4-mmc-hi3798mv200-v5-0-f506c55f8e43@outlook.com
+diff --git a/drivers/mmc/core/host.c b/drivers/mmc/core/host.c
+index cf396e8f34e9..8b2844ac5dc5 100644
+--- a/drivers/mmc/core/host.c
++++ b/drivers/mmc/core/host.c
+@@ -234,10 +234,8 @@ static void mmc_of_parse_timing_phase(struct device *dev, const char *prop,
+ }
+ 
+ void
+-mmc_of_parse_clk_phase(struct mmc_host *host, struct mmc_clk_phase_map *map)
++mmc_of_parse_clk_phase(struct device *dev, struct mmc_clk_phase_map *map)
+ {
+-	struct device *dev = host->parent;
+-
+ 	mmc_of_parse_timing_phase(dev, "clk-phase-legacy",
+ 				  &map->phase[MMC_TIMING_LEGACY]);
+ 	mmc_of_parse_timing_phase(dev, "clk-phase-mmc-hs",
+diff --git a/drivers/mmc/host/sdhci-of-aspeed.c b/drivers/mmc/host/sdhci-of-aspeed.c
+index 42d54532cabe..430c1f90037b 100644
+--- a/drivers/mmc/host/sdhci-of-aspeed.c
++++ b/drivers/mmc/host/sdhci-of-aspeed.c
+@@ -435,7 +435,7 @@ static int aspeed_sdhci_probe(struct platform_device *pdev)
+ 		goto err_sdhci_add;
+ 
+ 	if (dev->phase_desc)
+-		mmc_of_parse_clk_phase(host->mmc, &dev->phase_map);
++		mmc_of_parse_clk_phase(&pdev->dev, &dev->phase_map);
+ 
+ 	ret = sdhci_add_host(host);
+ 	if (ret)
+diff --git a/include/linux/mmc/host.h b/include/linux/mmc/host.h
+index 2f445c651742..5894bf912f7b 100644
+--- a/include/linux/mmc/host.h
++++ b/include/linux/mmc/host.h
+@@ -539,7 +539,7 @@ struct mmc_host *devm_mmc_alloc_host(struct device *dev, int extra);
+ int mmc_add_host(struct mmc_host *);
+ void mmc_remove_host(struct mmc_host *);
+ void mmc_free_host(struct mmc_host *);
+-void mmc_of_parse_clk_phase(struct mmc_host *host,
++void mmc_of_parse_clk_phase(struct device *dev,
+ 			    struct mmc_clk_phase_map *map);
+ int mmc_of_parse(struct mmc_host *host);
+ int mmc_of_parse_voltage(struct mmc_host *host, u32 *mask);
 
-Changes in v5:
-- pick the dependant patch: https://lore.kernel.org/all/20240215-mmc_phase-v1-1-f27644ee13e4@outlook.com/
-  to fix the bot build error.
-- edit the semantic meaning of hisilicon,sap-dll-reg property (Rob Herring)
-  The suggestion is from the CRG driver side:
-  https://lore.kernel.org/all/20240218205741.GA1561527-robh@kernel.org/
-- Link to v4: https://lore.kernel.org/r/20240217-b4-mmc-hi3798mv200-v4-0-0fdd9bd48532@outlook.com
-
-Changes in v4:
-- rename dw_mmc-hi3798 back to hi3798cv200 - Suggested by Krzysztof Kozlowski.
-- add r-bs to patch 1 and 2 - Reviewed by Krzysztof Kozlowski.
-- Link to v3: https://lore.kernel.org/r/20240217-b4-mmc-hi3798mv200-v3-0-f15464176947@outlook.com
-
-Changes in v3:
-- dw_mmc-hi3798: fix bot error (Rob Herring)
-- Link to v2: https://lore.kernel.org/r/20240216-b4-mmc-hi3798mv200-v2-0-010d63e6a1d5@outlook.com
-
-Changes in v2:
-- dw_mmc-hi3798mv200: use dev_err_probe() helper - Suggested by Krzysztof Kozlowski.
-- dw_mmc-hi3798mv200: add missing err=0;
-- dw_mmc-hi3798c(m)v200: remove unused MODULE_ALIAS() - Suggested by Krzysztof Kozlowski.
-- binding: rename the binding, a lot of tweaks suggested by Krzysztof Kozlowski.
-- Link to v1: https://lore.kernel.org/r/20240216-b4-mmc-hi3798mv200-v1-0-7d46db845ae6@outlook.com
-
----
-Yang Xiwen (5):
-      mmc: host: mmc_of_parse_clk_phase(): Pass struct device * instead of mmc_host *
-      mmc: dw_mmc-hi3798cv200: remove MODULE_ALIAS()
-      dt-bindings: mmc: dw-mshc-hi3798cv200: convert to YAML
-      dt-bindings: mmc: hisilicon,hi3798cv200-dw-mshc: add Hi3798MV200 binding
-      mmc: dw_mmc: add support for hi3798mv200
-
- .../bindings/mmc/hi3798cv200-dw-mshc.txt           |  40 ----
- .../mmc/hisilicon,hi3798cv200-dw-mshc.yaml         |  97 ++++++++
- drivers/mmc/core/host.c                            |   4 +-
- drivers/mmc/host/Kconfig                           |   9 +
- drivers/mmc/host/Makefile                          |   1 +
- drivers/mmc/host/dw_mmc-hi3798cv200.c              |   1 -
- drivers/mmc/host/dw_mmc-hi3798mv200.c              | 251 +++++++++++++++++++++
- drivers/mmc/host/sdhci-of-aspeed.c                 |   2 +-
- include/linux/mmc/host.h                           |   2 +-
- 9 files changed, 361 insertions(+), 46 deletions(-)
----
-base-commit: d206a76d7d2726f3b096037f2079ce0bd3ba329b
-change-id: 20240121-b4-mmc-hi3798mv200-a5730edf122c
-
-Best regards,
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+2.43.0
 
