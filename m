@@ -1,11 +1,11 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Thu, 29 Feb 2024 09:36:21 +0800
-Subject: [PATCH v7 3/5] dt-bindings: mmc: dw-mshc-hi3798cv200: convert to
- YAML
+Date: Thu, 29 Feb 2024 09:36:22 +0800
+Subject: [PATCH v7 4/5] dt-bindings: mmc: hisilicon,hi3798cv200-dw-mshc:
+ add Hi3798MV200 binding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240229-b4-mmc-hi3798mv200-v7-3-10c03f316285@outlook.com>
+Message-Id: <20240229-b4-mmc-hi3798mv200-v7-4-10c03f316285@outlook.com>
 References: <20240229-b4-mmc-hi3798mv200-v7-0-10c03f316285@outlook.com>
 In-Reply-To: <20240229-b4-mmc-hi3798mv200-v7-0-10c03f316285@outlook.com>
 To: Ulf Hansson <ulf.hansson@linaro.org>, 
@@ -21,153 +21,80 @@ Cc: Igor Opaniuk <igor.opaniuk@linaro.org>,
  Yang Xiwen <forbidden405@outlook.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709170614; l=4709;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709170614; l=2243;
  i=forbidden405@outlook.com; s=20240228; h=from:subject:message-id;
- bh=z5/cBD8zJzGgT2WFAWSZ2rRYPe9PGIgRVLWNL1lYtXo=;
- b=rrz0p4sOIrPNdi1gVfnAyczCSjjccKIOPM/v2Yyb5PUYvEd3TPkyAtFBFTRgEn3Zwn/rFDB/e
- EBC4BW3ON6VA9BQ8beQAiDIwAF+tBxcYmafgpcR73ft2y85RS+TDR34
+ bh=MbI2PnDc478+pXDtiAiOl4Pgtl4uv4VM2qKM2Aj02Fo=;
+ b=8zSp4dLLsDBu30sAz/NTxlB/j/tOeb07F14PeolScfGgeJO2MHdeiGNbbq4uVBZeQWd1iWSEu
+ LvL8wvkizJzAcrQvO4XM/jg2oVl3LX8Gusoka+2JcwSgwse57ffHy+a
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=KAWv6ZzFsT54MGllOczJgFiWB+DuayEmyn24iiVVThU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20240228 with auth_id=136
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-convert the legacy txt binding to modern YAML and rename to
-hisilicon,hi3798cv200-dw-mshc.yaml. No semantic change.
+Add binding and an extra property for Hi3798MV200 DWMMC specific extension.
 
 Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- .../bindings/mmc/hi3798cv200-dw-mshc.txt           | 40 ------------
- .../mmc/hisilicon,hi3798cv200-dw-mshc.yaml         | 75 ++++++++++++++++++++++
- 2 files changed, 75 insertions(+), 40 deletions(-)
+ .../mmc/hisilicon,hi3798cv200-dw-mshc.yaml         | 24 +++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/mmc/hi3798cv200-dw-mshc.txt b/Documentation/devicetree/bindings/mmc/hi3798cv200-dw-mshc.txt
-deleted file mode 100644
-index a0693b7145f2..000000000000
---- a/Documentation/devicetree/bindings/mmc/hi3798cv200-dw-mshc.txt
-+++ /dev/null
-@@ -1,40 +0,0 @@
--* Hisilicon Hi3798CV200 specific extensions to the Synopsys Designware Mobile
--  Storage Host Controller
--
--Read synopsys-dw-mshc.txt for more details
--
--The Synopsys designware mobile storage host controller is used to interface
--a SoC with storage medium such as eMMC or SD/MMC cards. This file documents
--differences between the core Synopsys dw mshc controller properties described
--by synopsys-dw-mshc.txt and the properties used by the Hisilicon Hi3798CV200
--specific extensions to the Synopsys Designware Mobile Storage Host Controller.
--
--Required Properties:
--- compatible: Should contain "hisilicon,hi3798cv200-dw-mshc".
--- clocks: A list of phandle + clock-specifier pairs for the clocks listed
--  in clock-names.
--- clock-names: Should contain the following:
--	"ciu" - The ciu clock described in synopsys-dw-mshc.txt.
--	"biu" - The biu clock described in synopsys-dw-mshc.txt.
--	"ciu-sample" - Hi3798CV200 extended phase clock for ciu sampling.
--	"ciu-drive"  - Hi3798CV200 extended phase clock for ciu driving.
--
--Example:
--
--	emmc: mmc@9830000 {
--		compatible = "hisilicon,hi3798cv200-dw-mshc";
--		reg = <0x9830000 0x10000>;
--		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
--		clocks = <&crg HISTB_MMC_CIU_CLK>,
--			 <&crg HISTB_MMC_BIU_CLK>,
--			 <&crg HISTB_MMC_SAMPLE_CLK>,
--			 <&crg HISTB_MMC_DRV_CLK>;
--		clock-names = "ciu", "biu", "ciu-sample", "ciu-drive";
--		fifo-depth = <256>;
--		clock-frequency = <200000000>;
--		cap-mmc-highspeed;
--		mmc-ddr-1_8v;
--		mmc-hs200-1_8v;
--		non-removable;
--		bus-width = <8>;
--	};
 diff --git a/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml b/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-new file mode 100644
-index 000000000000..f3dc973cb490
---- /dev/null
+index f3dc973cb490..41c9b22523e7 100644
+--- a/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
 +++ b/Documentation/devicetree/bindings/mmc/hisilicon,hi3798cv200-dw-mshc.yaml
-@@ -0,0 +1,75 @@
-+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/mmc/hisilicon,hi3798cv200-dw-mshc.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Hisilicon Hi3798CV200 SoC specific extensions to the Synopsys DWMMC controller
-+
-+maintainers:
-+  - Yang Xiwen <forbidden405@outlook.com>
-+
-+properties:
-+  compatible:
-+    enum:
-+      - hisilicon,hi3798cv200-dw-mshc
-+
-+  reg:
-+    maxItems: 1
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  clocks:
+@@ -4,7 +4,7 @@
+ $id: http://devicetree.org/schemas/mmc/hisilicon,hi3798cv200-dw-mshc.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
+ 
+-title: Hisilicon Hi3798CV200 SoC specific extensions to the Synopsys DWMMC controller
++title: Hisilicon HiSTB SoCs specific extensions to the Synopsys DWMMC controller
+ 
+ maintainers:
+   - Yang Xiwen <forbidden405@outlook.com>
+@@ -13,6 +13,7 @@ properties:
+   compatible:
+     enum:
+       - hisilicon,hi3798cv200-dw-mshc
++      - hisilicon,hi3798mv200-dw-mshc
+ 
+   reg:
+     maxItems: 1
+@@ -34,6 +35,15 @@ properties:
+       - const: ciu-sample
+       - const: ciu-drive
+ 
++  hisilicon,sap-dll-reg:
++    $ref: /schemas/types.yaml#/definitions/phandle-array
++    description: |
++      DWMMC core on Hi3798MV2x SoCs has a delay-locked-loop(DLL) attached to card data input path.
++      It is integrated into CRG core on the SoC and has to be controlled during tuning.
 +    items:
-+      - description: bus interface unit clock
-+      - description: card interface unit clock
-+      - description: card input sample phase clock
-+      - description: controller output drive phase clock
++      - description: A phandle pointed to the CRG syscon node
++      - description: Sample DLL register offset in CRG address space
 +
-+  clock-names:
-+    items:
-+      - const: ciu
-+      - const: biu
-+      - const: ciu-sample
-+      - const: ciu-drive
+ required:
+   - compatible
+   - reg
+@@ -44,6 +54,18 @@ required:
+ allOf:
+   - $ref: synopsys-dw-mshc-common.yaml#
+ 
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: hisilicon,hi3798mv200-dw-mshc
++    then:
++      required:
++        - hisilicon,sap-dll-reg
++    else:
++      properties:
++        hisilicon,sap-dll-reg: false
 +
-+required:
-+  - compatible
-+  - reg
-+  - interrupts
-+  - clocks
-+  - clock-names
-+
-+allOf:
-+  - $ref: synopsys-dw-mshc-common.yaml#
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/clock/histb-clock.h>
-+    #include <dt-bindings/interrupt-controller/arm-gic.h>
-+
-+    mmc@9830000 {
-+        compatible = "hisilicon,hi3798cv200-dw-mshc";
-+        reg = <0x9830000 0x10000>;
-+        interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
-+        clocks = <&crg HISTB_MMC_CIU_CLK>,
-+                 <&crg HISTB_MMC_BIU_CLK>,
-+                 <&crg HISTB_MMC_SAMPLE_CLK>,
-+                 <&crg HISTB_MMC_DRV_CLK>;
-+        clock-names = "ciu", "biu", "ciu-sample", "ciu-drive";
-+        resets = <&crg 0xa0 4>;
-+        reset-names = "reset";
-+        pinctrl-names = "default";
-+        pinctrl-0 = <&emmc_pins_1 &emmc_pins_2
-+                     &emmc_pins_3 &emmc_pins_4>;
-+        fifo-depth = <256>;
-+        clock-frequency = <200000000>;
-+        cap-mmc-highspeed;
-+        mmc-ddr-1_8v;
-+        mmc-hs200-1_8v;
-+        non-removable;
-+        bus-width = <8>;
-+    };
+ unevaluatedProperties: false
+ 
+ examples:
 
 -- 
 2.43.0
