@@ -1,61 +1,130 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 01 Mar 2024 18:14:52 +0100
-Subject: [PATCH v3 3/3] iio: temperature: ltc2983: support vdd regulator
+From: Mathys-Gasnier <mathys35.gasnier@gmail.com>
+Date: Fri, 01 Mar 2024 18:33:23 +0100
+Subject: [PATCH v5] rust: locks: Add `get_mut` method to `Lock`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240301-ltc2983-misc-improv-v3-3-c09516ac0efc@analog.com>
-References: <20240301-ltc2983-misc-improv-v3-0-c09516ac0efc@analog.com>
-In-Reply-To: <20240301-ltc2983-misc-improv-v3-0-c09516ac0efc@analog.com>
-To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, Nuno Sa <nuno.sa@analog.com>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709313291; l=908;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=2oUoUw4KkUIEscan+R7Gf4fDzMGadWsp8HmTiYX2GY8=;
- b=21Pd1s7jXIJSXO9pTvA5u5zM5BJEidLumUPfRe/q/BNROYoy6DMxN3avsGLLoW1izPTcdL3Qw
- +chTKG6yU7oBPc1HpwoteCkAzUr1tGP6nCeLApHIk0DMDZIT2ZM2mlm
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Message-Id: <20240301-rust-locks-get-mut-v5-1-c5131dbbd3c4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGIR4mUC/23NQQ6CMBCF4auYrq3pTItFV97DuCjTARsFTItEY
+ 7i7VTfEsPxfMt+8ROIYOIn96iUijyGFvstRrFeCzq5rWAafW6BCowBKGe9pkNeeLkk2PMj2Pkg
+ yqCyCAm+dyIe3yHV4fNHjKfc5pKGPz++PET7rj0O1W+JGkCCJdQE1ac/GHprWheuG+lZ8uBFnB
+ OAigZkoiLw2hJVV1T+hZwQuEzoTXpduW5vKs/b/hJkT20XCZAKNq+rCWmVdOSemaXoDEqxKv30
+ BAAA=
+To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Wedson Almeida Filho <wedsonaf@gmail.com>, 
+ Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <benno.lossin@proton.me>, 
+ Andreas Hindborg <a.hindborg@samsung.com>, 
+ Alice Ryhl <aliceryhl@google.com>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Martin Rodriguez Reboredo <yakoyoku@gmail.com>, 
+ Mathys-Gasnier <mathys35.gasnier@gmail.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709314408; l=3361;
+ i=mathys35.gasnier@gmail.com; s=20240118; h=from:subject:message-id;
+ bh=YgqZEuEg7qPEU8LNGXge52fKNIIVVzwOHPlT4tjNiao=;
+ b=L+sGaDcR7Vjd5mjM+tfqElKX2By5PtqYuLSS2MnvAbyQwx6h3pfgD5m/D0VbWzmKEhmdgVaU8
+ gTFLD+1PsWVCUM/0nezEu0MMtJPvv60XtMhOs7USiOCY7eJd7RPfLpx
+X-Developer-Key: i=mathys35.gasnier@gmail.com; a=ed25519;
+ pk=C5tqKAA3Ua7li5s3a+q2aDelT2j98/yjGg2nEVGArXE=
+X-Endpoint-Received: by B4 Relay for mathys35.gasnier@gmail.com/20240118 with auth_id=129
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the power supply regulator.
+Having a mutable reference guarantees that no other threads have
+access to the lock, so we can take advantage of that to grant callers
+access to the protected data without the cost of acquiring and
+releasing the locks. Since the lifetime of the data is tied to the
+mutable reference, the borrow checker guarantees that the usage is safe.
 
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+Reviewed-by: Martin Rodriguez Reboredo <yakoyoku@gmail.com>
+Reviewed-by: Alice Ryhl <aliceryhl@google.com>
+Reviewed-by: Boqun Feng <boqun.feng@gmail.com>
+Signed-off-by: Mathys-Gasnier <mathys35.gasnier@gmail.com>
 ---
- drivers/iio/temperature/ltc2983.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Changes in v5:
+- Adding example
+- Link to v4: https://lore.kernel.org/r/20240226-rust-locks-get-mut-v4-1-24abf57707a8@gmail.com
 
-diff --git a/drivers/iio/temperature/ltc2983.c b/drivers/iio/temperature/ltc2983.c
-index 592887097117..9fb547417536 100644
---- a/drivers/iio/temperature/ltc2983.c
-+++ b/drivers/iio/temperature/ltc2983.c
-@@ -18,6 +18,7 @@
- #include <linux/module.h>
- #include <linux/property.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <linux/spi/spi.h>
+Changes in v4:
+- Improved documentation
+- Link to v3: https://lore.kernel.org/r/20240222-rust-locks-get-mut-v3-1-d38a6f4bde3d@gmail.com
+
+Changes in v3:
+- Changing the function to take a `Pin<&mut self>` instead of a `&mut self`
+- Removed reviewed-by's since big changes were made. Please take another
+  look.
+- Link to v2: https://lore.kernel.org/r/20240212-rust-locks-get-mut-v2-1-5ccd34c2b70b@gmail.com
+
+Changes in v2:
+- Improved doc comment. 
+- Link to v1: https://lore.kernel.org/r/20240209-rust-locks-get-mut-v1-1-ce351fc3de47@gmail.com
+---
+ rust/kernel/sync/lock.rs | 38 +++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/rust/kernel/sync/lock.rs b/rust/kernel/sync/lock.rs
+index f12a684bc957..345ca7be9d9f 100644
+--- a/rust/kernel/sync/lock.rs
++++ b/rust/kernel/sync/lock.rs
+@@ -7,7 +7,11 @@
  
- #include <asm/byteorder.h>
-@@ -1581,6 +1582,10 @@ static int ltc2983_probe(struct spi_device *spi)
- 	if (ret)
- 		return ret;
+ use super::LockClassKey;
+ use crate::{bindings, init::PinInit, pin_init, str::CStr, types::Opaque, types::ScopeGuard};
+-use core::{cell::UnsafeCell, marker::PhantomData, marker::PhantomPinned};
++use core::{
++    cell::UnsafeCell,
++    marker::{PhantomData, PhantomPinned},
++    pin::Pin,
++};
+ use macros::pin_data;
  
-+	ret = devm_regulator_get_enable(&spi->dev, "vdd");
-+	if (ret)
-+		return ret;
+ pub mod mutex;
+@@ -121,6 +125,38 @@ pub fn lock(&self) -> Guard<'_, T, B> {
+         // SAFETY: The lock was just acquired.
+         unsafe { Guard::new(self, state) }
+     }
 +
- 	gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
- 	if (IS_ERR(gpio))
- 		return PTR_ERR(gpio);
++    /// Gets the data contained in the lock.
++    ///
++    /// Having a mutable reference to the lock guarantees that no other threads have access to the
++    /// lock. And because `data` is not structurally pinned, it is safe to get a mutable reference
++    /// to the lock content.
++    ///
++    /// # Example
++    ///
++    /// Using `get_mut` with a mutex.
++    ///
++    /// ```
++    /// use kernel::sync::Mutex;
++    ///
++    /// struct Example {
++    ///     a: u32,
++    ///     b: u32,
++    /// }
++    ///
++    /// fn example(m: Pin<&mut Mutex<Example>>) {
++    ///     // Calling from Mutex to avoid conflict with Pin::get_mut().
++    ///     let mut data = Mutex::get_mut(m);
++    ///     data.a += 10;
++    ///     data.b += 20;
++    /// }
++    /// ```
++    pub fn get_mut(self: Pin<&mut Self>) -> &mut T {
++        // SAFETY: The lock will only be used to get a reference to the data, therefore self won't
++        // get moved.
++        let lock = unsafe { self.get_unchecked_mut() };
++        lock.data.get_mut()
++    }
+ }
+ 
+ /// A lock guard.
 
+---
+base-commit: 711cbfc717650532624ca9f56fbaf191bed56e67
+change-id: 20240118-rust-locks-get-mut-c42072101d7a
+
+Best regards,
 -- 
-2.43.2
+Mathys-Gasnier <mathys35.gasnier@gmail.com>
 
