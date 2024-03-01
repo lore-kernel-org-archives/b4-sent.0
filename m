@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Fri, 01 Mar 2024 12:43:03 +0200
-Subject: [PATCH net-next v3 7/9] net: dsa: mt7530: put initialising PCS
- devices code back to original order
+Date: Fri, 01 Mar 2024 12:43:04 +0200
+Subject: [PATCH net-next v3 8/9] net: dsa: mt7530: sort link settings ops
+ and force link down on all ports
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240301-for-netnext-mt7530-improvements-3-v3-7-449f4f166454@arinc9.com>
+Message-Id: <20240301-for-netnext-mt7530-improvements-3-v3-8-449f4f166454@arinc9.com>
 References: <20240301-for-netnext-mt7530-improvements-3-v3-0-449f4f166454@arinc9.com>
 In-Reply-To: <20240301-for-netnext-mt7530-improvements-3-v3-0-449f4f166454@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -23,65 +23,76 @@ Cc: mithat.guner@xeront.com, erkin.bozoglu@xeront.com,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709289776; l=1570;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709289776; l=2434;
  i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=/2CkKGukm0R4V69WhBvbbIMKcr0CwYye/LAy2VcbSV0=;
- b=jhj5rpVeLTk6pp6nZ74IqJOF62xtP/gZRjxzV6gmsJ/mCB/nP34kSs028tQQ0/2WrX6tvkMGJ
- ykUTxIRPKOhARn1bax3sYOsUZQsHfG6i6H4204OyFLMD8QH9wvCic4L
+ bh=Lk4340C7GwrRpdUGlGvETd3f0JsF8UjRCdCF02XBua4=;
+ b=UFudaq/QD+WxDRhDFOF14id6HYvCGEsmKQCDhlW4fp3Ns3/BchHbNue0R2ECqZJDdK0eCfeVT
+ zR5NRb3Y2HeCfkGFSPZDRnPbva00Cun3Ki9O89cEU4ZvtTVlM/aEDBu
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The commit fae463084032 ("net: dsa: mt753x: fix pcs conversion regression")
-fixes regression caused by cpu_port_config manually calling phylink
-operations. cpu_port_config was deemed useless and was removed. Therefore,
-put initialising PCS devices code back to its original order.
+port_enable and port_disable clears the link settings. Move that to
+mt7530_setup() and mt7531_setup_common() which set up the switches. This
+way, the link settings are cleared on all ports at setup, and then only
+once with phylink_mac_link_down() when a link goes down.
 
+Enable force mode at setup to apply the force part of the link settings.
+This ensures that disabled ports will have their link down.
+
+Suggested-by: Vladimir Oltean <olteanv@gmail.com>
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ drivers/net/dsa/mt7530.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index e353c03dd1db..5c8ad41ce8cd 100644
+index 5c8ad41ce8cd..91d927bb49f7 100644
 --- a/drivers/net/dsa/mt7530.c
 +++ b/drivers/net/dsa/mt7530.c
-@@ -2812,17 +2812,9 @@ static int
- mt753x_setup(struct dsa_switch *ds)
- {
- 	struct mt7530_priv *priv = ds->priv;
--	int i, ret;
--
--	/* Initialise the PCS devices */
--	for (i = 0; i < priv->ds->num_ports; i++) {
--		priv->pcs[i].pcs.ops = priv->info->pcs_ops;
--		priv->pcs[i].pcs.neg_mode = true;
--		priv->pcs[i].priv = priv;
--		priv->pcs[i].port = i;
--	}
-+	int ret = priv->info->sw_setup(ds);
-+	int i;
+@@ -1018,7 +1018,6 @@ mt7530_port_enable(struct dsa_switch *ds, int port,
+ 	priv->ports[port].enable = true;
+ 	mt7530_rmw(priv, MT7530_PCR_P(port), PCR_MATRIX_MASK,
+ 		   priv->ports[port].pm);
+-	mt7530_clear(priv, MT7530_PMCR_P(port), PMCR_LINK_SETTINGS_MASK);
  
--	ret = priv->info->sw_setup(ds);
- 	if (ret)
- 		return ret;
+ 	mutex_unlock(&priv->reg_mutex);
  
-@@ -2834,6 +2826,14 @@ mt753x_setup(struct dsa_switch *ds)
- 	if (ret && priv->irq)
- 		mt7530_free_irq_common(priv);
+@@ -1038,7 +1037,6 @@ mt7530_port_disable(struct dsa_switch *ds, int port)
+ 	priv->ports[port].enable = false;
+ 	mt7530_rmw(priv, MT7530_PCR_P(port), PCR_MATRIX_MASK,
+ 		   PCR_MATRIX_CLR);
+-	mt7530_clear(priv, MT7530_PMCR_P(port), PMCR_LINK_SETTINGS_MASK);
  
-+	/* Initialise the PCS devices */
-+	for (i = 0; i < priv->ds->num_ports; i++) {
-+		priv->pcs[i].pcs.ops = priv->info->pcs_ops;
-+		priv->pcs[i].pcs.neg_mode = true;
-+		priv->pcs[i].priv = priv;
-+		priv->pcs[i].port = i;
-+	}
+ 	mutex_unlock(&priv->reg_mutex);
+ }
+@@ -2257,6 +2255,12 @@ mt7530_setup(struct dsa_switch *ds)
+ 	mt7530_mib_reset(ds);
+ 
+ 	for (i = 0; i < MT7530_NUM_PORTS; i++) {
++		/* Clear link settings and enable force mode to force link down
++		 * on all ports until they're enabled later.
++		 */
++		mt7530_rmw(priv, MT7530_PMCR_P(i), PMCR_LINK_SETTINGS_MASK |
++			   PMCR_FORCE_MODE, PMCR_FORCE_MODE);
 +
- 	if (priv->create_sgmii) {
- 		ret = priv->create_sgmii(priv);
- 		if (ret && priv->irq)
+ 		/* Disable forwarding by default on all ports */
+ 		mt7530_rmw(priv, MT7530_PCR_P(i), PCR_MATRIX_MASK,
+ 			   PCR_MATRIX_CLR);
+@@ -2359,6 +2363,12 @@ mt7531_setup_common(struct dsa_switch *ds)
+ 		     UNU_FFP_MASK);
+ 
+ 	for (i = 0; i < MT7530_NUM_PORTS; i++) {
++		/* Clear link settings and enable force mode to force link down
++		 * on all ports until they're enabled later.
++		 */
++		mt7530_rmw(priv, MT7530_PMCR_P(i), PMCR_LINK_SETTINGS_MASK |
++			   MT7531_FORCE_MODE, MT7531_FORCE_MODE);
++
+ 		/* Disable forwarding by default on all ports */
+ 		mt7530_rmw(priv, MT7530_PCR_P(i), PCR_MATRIX_MASK,
+ 			   PCR_MATRIX_CLR);
 
 -- 
 2.40.1
