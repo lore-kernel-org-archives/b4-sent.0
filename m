@@ -1,130 +1,139 @@
-From: Mathys-Gasnier <mathys35.gasnier@gmail.com>
-Date: Fri, 01 Mar 2024 18:33:23 +0100
-Subject: [PATCH v5] rust: locks: Add `get_mut` method to `Lock`
+From: Hui Liu <quic_huliu@quicinc.com>
+Date: Mon, 04 Mar 2024 15:09:34 +0800
+Subject: [PATCH v4] arm64: dts: qcom: qcm6490-idp: enable PMIC Volume and
+ Power buttons
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240301-rust-locks-get-mut-v5-1-c5131dbbd3c4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAGIR4mUC/23NQQ6CMBCF4auYrq3pTItFV97DuCjTARsFTItEY
- 7i7VTfEsPxfMt+8ROIYOIn96iUijyGFvstRrFeCzq5rWAafW6BCowBKGe9pkNeeLkk2PMj2Pkg
- yqCyCAm+dyIe3yHV4fNHjKfc5pKGPz++PET7rj0O1W+JGkCCJdQE1ac/GHprWheuG+lZ8uBFnB
- OAigZkoiLw2hJVV1T+hZwQuEzoTXpduW5vKs/b/hJkT20XCZAKNq+rCWmVdOSemaXoDEqxKv30
- BAAA=
-To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Wedson Almeida Filho <wedsonaf@gmail.com>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <benno.lossin@proton.me>, 
- Andreas Hindborg <a.hindborg@samsung.com>, 
- Alice Ryhl <aliceryhl@google.com>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Martin Rodriguez Reboredo <yakoyoku@gmail.com>, 
- Mathys-Gasnier <mathys35.gasnier@gmail.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709314408; l=3361;
- i=mathys35.gasnier@gmail.com; s=20240118; h=from:subject:message-id;
- bh=YgqZEuEg7qPEU8LNGXge52fKNIIVVzwOHPlT4tjNiao=;
- b=L+sGaDcR7Vjd5mjM+tfqElKX2By5PtqYuLSS2MnvAbyQwx6h3pfgD5m/D0VbWzmKEhmdgVaU8
- gTFLD+1PsWVCUM/0nezEu0MMtJPvv60XtMhOs7USiOCY7eJd7RPfLpx
-X-Developer-Key: i=mathys35.gasnier@gmail.com; a=ed25519;
- pk=C5tqKAA3Ua7li5s3a+q2aDelT2j98/yjGg2nEVGArXE=
-X-Endpoint-Received: by B4 Relay for mathys35.gasnier@gmail.com/20240118 with auth_id=129
+Message-Id: <20240304-gpio-keys-v4-1-03604d778c86@quicinc.com>
+X-B4-Tracking: v=1; b=H4sIAK9z5WUC/23MTQ6CMBCG4auYrq3pH21x5T2MC2gLTIwUW20kh
+ Ltb2IjR5TeZ551QdAFcRMfdhIJLEMH3eYj9Dpmu6luHweaNGGGCMCJxO4DHVzdGTLmua6sLwkq
+ N8v8QXAOvtXW+5N1BfPgwrulEl+u/SqKYYiU1V2Vpq0bb0/0JBnpzMP6Glk5iG8v41rJsadkIX
+ XOrlWS/ln8sJ3RrebamklJYp5UqzLed5/kNFxAXDxwBAAA=
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Hui Liu <quic_huliu@quicinc.com>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709536186; l=2848;
+ i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
+ bh=DmuCpd4eRqEEUGUcUCiLEb7DRgH2P8prW7W/cQOxkwE=;
+ b=ihk9653yGVvrrofzSCIhnexlgDvC2L7KUxE6BEDvt1b0oR6rWZCL9f2uoOElF52DUDwDZEz+8
+ 0i6TwHzZVrTAIe4GKO6UKcwrnD7+T3uB/Km6BZtjs/pio/KVpbPRkl4
+X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
+ pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
+X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Having a mutable reference guarantees that no other threads have
-access to the lock, so we can take advantage of that to grant callers
-access to the protected data without the cost of acquiring and
-releasing the locks. Since the lifetime of the data is tied to the
-mutable reference, the borrow checker guarantees that the usage is safe.
+The Volume Down & Power buttons are controlled by the PMIC via
+the PON hardware, and the Volume Up is connected to a PMIC gpio.
 
-Reviewed-by: Martin Rodriguez Reboredo <yakoyoku@gmail.com>
-Reviewed-by: Alice Ryhl <aliceryhl@google.com>
-Reviewed-by: Boqun Feng <boqun.feng@gmail.com>
-Signed-off-by: Mathys-Gasnier <mathys35.gasnier@gmail.com>
+Enable the necessary hardware and setup the GPIO state for the
+Volume Up gpio key.
+
+Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
 ---
-Changes in v5:
-- Adding example
-- Link to v4: https://lore.kernel.org/r/20240226-rust-locks-get-mut-v4-1-24abf57707a8@gmail.com
-
 Changes in v4:
-- Improved documentation
-- Link to v3: https://lore.kernel.org/r/20240222-rust-locks-get-mut-v3-1-d38a6f4bde3d@gmail.com
+- Switch the order of "pinctrl-0" and "pinctrl-names".
+- Update "volume_up" to "Volume_up".
+- Remove "linux,input-type", because the default value is 1(EV_KEY).
+- Link to v3: https://lore.kernel.org/r/20240301-gpio-keys-v3-1-ca664de8775c@quicinc.com
 
 Changes in v3:
-- Changing the function to take a `Pin<&mut self>` instead of a `&mut self`
-- Removed reviewed-by's since big changes were made. Please take another
-  look.
-- Link to v2: https://lore.kernel.org/r/20240212-rust-locks-get-mut-v2-1-5ccd34c2b70b@gmail.com
+- Update the commit more concise and explicit.
+- remove "power-source" property and update the numeric value to defined
+name for "qcom,drive-strength".
+- Link to v2: https://lore.kernel.org/r/20240223-gpio-keys-v2-1-19f48b3d8762@quicinc.com
 
 Changes in v2:
-- Improved doc comment. 
-- Link to v1: https://lore.kernel.org/r/20240209-rust-locks-get-mut-v1-1-ce351fc3de47@gmail.com
+- Update the commit description.
+- Link to v1: https://lore.kernel.org/r/20240206-gpio-keys-v1-1-7683799daf8d@quicinc.com
 ---
- rust/kernel/sync/lock.rs | 38 +++++++++++++++++++++++++++++++++++++-
- 1 file changed, 37 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/qcom/qcm6490-idp.dts | 41 ++++++++++++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
 
-diff --git a/rust/kernel/sync/lock.rs b/rust/kernel/sync/lock.rs
-index f12a684bc957..345ca7be9d9f 100644
---- a/rust/kernel/sync/lock.rs
-+++ b/rust/kernel/sync/lock.rs
-@@ -7,7 +7,11 @@
+diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
+index acf145d1d97c..12e162613ed0 100644
+--- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
++++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
+@@ -9,7 +9,9 @@
+ #define PM7250B_SID 8
+ #define PM7250B_SID1 9
  
- use super::LockClassKey;
- use crate::{bindings, init::PinInit, pin_init, str::CStr, types::Opaque, types::ScopeGuard};
--use core::{cell::UnsafeCell, marker::PhantomData, marker::PhantomPinned};
-+use core::{
-+    cell::UnsafeCell,
-+    marker::{PhantomData, PhantomPinned},
-+    pin::Pin,
-+};
- use macros::pin_data;
++#include <dt-bindings/input/linux-event-codes.h>
+ #include <dt-bindings/leds/common.h>
++#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+ #include "sc7280.dtsi"
+ #include "pm7250b.dtsi"
+@@ -39,6 +41,22 @@ chosen {
+ 		stdout-path = "serial0:115200n8";
+ 	};
  
- pub mod mutex;
-@@ -121,6 +125,38 @@ pub fn lock(&self) -> Guard<'_, T, B> {
-         // SAFETY: The lock was just acquired.
-         unsafe { Guard::new(self, state) }
-     }
++	gpio-keys {
++		compatible = "gpio-keys";
 +
-+    /// Gets the data contained in the lock.
-+    ///
-+    /// Having a mutable reference to the lock guarantees that no other threads have access to the
-+    /// lock. And because `data` is not structurally pinned, it is safe to get a mutable reference
-+    /// to the lock content.
-+    ///
-+    /// # Example
-+    ///
-+    /// Using `get_mut` with a mutex.
-+    ///
-+    /// ```
-+    /// use kernel::sync::Mutex;
-+    ///
-+    /// struct Example {
-+    ///     a: u32,
-+    ///     b: u32,
-+    /// }
-+    ///
-+    /// fn example(m: Pin<&mut Mutex<Example>>) {
-+    ///     // Calling from Mutex to avoid conflict with Pin::get_mut().
-+    ///     let mut data = Mutex::get_mut(m);
-+    ///     data.a += 10;
-+    ///     data.b += 20;
-+    /// }
-+    /// ```
-+    pub fn get_mut(self: Pin<&mut Self>) -> &mut T {
-+        // SAFETY: The lock will only be used to get a reference to the data, therefore self won't
-+        // get moved.
-+        let lock = unsafe { self.get_unchecked_mut() };
-+        lock.data.get_mut()
-+    }
- }
++		pinctrl-0 = <&key_vol_up_default>;
++		pinctrl-names = "default";
++
++		key-volume-up {
++			label = "Volume_up";
++			gpios = <&pm7325_gpios 6 GPIO_ACTIVE_LOW>;
++			linux,code = <KEY_VOLUMEUP>;
++			wakeup-source;
++			debounce-interval = <15>;
++			linux,can-disable;
++		};
++	};
++
+ 	reserved-memory {
+ 		xbl_mem: xbl@80700000 {
+ 			reg = <0x0 0x80700000 0x0 0x100000>;
+@@ -421,6 +439,16 @@ vreg_bob_3p296: bob {
+ 	};
+ };
  
- /// A lock guard.
++&pm7325_gpios {
++	key_vol_up_default: key-vol-up-state {
++		pins = "gpio6";
++		function = "normal";
++		input-enable;
++		bias-pull-up;
++		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
++	};
++};
++
+ &pm8350c_pwm {
+ 	status = "okay";
+ 
+@@ -448,6 +476,19 @@ led@3 {
+ 	};
+ };
+ 
++&pmk8350_pon {
++	status = "okay";
++};
++
++&pon_pwrkey {
++	status = "okay";
++};
++
++&pon_resin {
++	linux,code = <KEY_VOLUMEDOWN>;
++	status = "okay";
++};
++
+ &qupv3_id_0 {
+ 	status = "okay";
+ };
 
 ---
-base-commit: 711cbfc717650532624ca9f56fbaf191bed56e67
-change-id: 20240118-rust-locks-get-mut-c42072101d7a
+base-commit: 23e11d0318521e8693459b0e4d23aec614b3b68b
+change-id: 20240206-gpio-keys-138bbd850298
 
 Best regards,
 -- 
-Mathys-Gasnier <mathys35.gasnier@gmail.com>
+Hui Liu <quic_huliu@quicinc.com>
 
