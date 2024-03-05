@@ -1,194 +1,111 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Tue, 05 Mar 2024 10:19:50 +0800
-Subject: [PATCH v4 5/5] phy: hisilicon: hisi-inno-phy: add support for
- Hi3798MV200 INNO PHY
+Subject: [PATCH net-next v8 0/9] net: hisi-femac: add support for
+ Hi3798MV200, remove unmaintained compatibles
+Date: Tue, 05 Mar 2024 15:51:09 +0800
+Message-Id: <20240305-net-v8-0-166aaeea2107@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240305-inno-phy-v4-5-a03204c9cf1c@outlook.com>
-References: <20240305-inno-phy-v4-0-a03204c9cf1c@outlook.com>
-In-Reply-To: <20240305-inno-phy-v4-0-a03204c9cf1c@outlook.com>
-To: Vinod Koul <vkoul@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAO3O5mUC/23OTU7EMAwF4KuMsqbIcf5ZcQ80izZxmQhoUNupB
+ o16d9JmQUdhaT1/z76zicZIE3s53dlIS5xiGvJgn07MX9rhnZoY8swQUAJy3Qw0N65FsMSNl9C
+ zvPk9Uh9ve8sb2xYGus3snJNLnOY0/uz1C9/zh6aFN9AQtMEZ9KF17jVd58+UPp59+tobFvxHY
+ VbWdUF2BrTyWCtxUAhFiaw6bUl1RpHRqlbyqLAouX1Irba9Ez04qJU6KlGUykqKDjEI54GLWum
+ jskXprHQwNoignPW8VuZPCeBFme2WsiiUM0EG+ajWdf0F8mrwd+YBAAA=
+To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
+ Salil Mehta <salil.mehta@huawei.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
  Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Jiancheng Xue <xuejiancheng@hisilicon.com>, 
- Shawn Guo <shawn.guo@linaro.org>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-phy@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Kishon Vijay Abraham I <kishon@ti.com>, 
- David Yang <mmyangfl@gmail.com>, Yang Xiwen <forbidden405@outlook.com>
+ Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709605195; l=5083;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709625070; l=3362;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=hpWZOa3GUm+yktbgJ6FbaHA5gwAHZdlfsvDn+nR5IsE=;
- b=+qlj9H6AzcRViTrVE/rR0YLSUPKB4v0WqydB/LFfz2sNY2E2mZuHuEQ1tqHyI8EN570QJDPdr
- nJtS/tsHjFZBRuQVZ5fywvp+rsmUAyEGSPezBkDg1F1rYdeHjiOK5uP
+ bh=LFNIOfkegJnCP0scLIaYXcJC1OdZyxYPTASiv2DQEnU=;
+ b=OIoCiihOooTHqeLzR80GsvBLxaIHvbwecEUurwhEPN6INbXAd4Z+XfSTl3VYtdkD2r/6cCDHX
+ kSTupnXZTvlA1GeZMWr3Rj5y64pgAls5FjHbHd9edhPDmBFiFyqzs37
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Direct MMIO resgiter access is used by Hi3798MV200. For other models,
-of_iomap() returns NULL due to insufficient length. So they are
-unaffected.
-
-Also Hi3798MV200 INNO PHY has an extra reset required to be deasserted,
-switch to reset_control_bulk_() APIs for that.
-
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/phy/hisilicon/phy-hisi-inno-usb2.c | 66 ++++++++++++++++++------------
- 1 file changed, 40 insertions(+), 26 deletions(-)
+Changes in v8:
+- remove MODULE_ALIAS: rewrite commit msg (Krzysztof Kozlowski)
+- driver: use only SoC compatibles (Krzysztof Kozlowski)
+- Link to v7: https://lore.kernel.org/r/20240301-net-v7-0-45823597d4d4@outlook.com
 
-diff --git a/drivers/phy/hisilicon/phy-hisi-inno-usb2.c b/drivers/phy/hisilicon/phy-hisi-inno-usb2.c
-index b7e740eb4752..a759823b5b1e 100644
---- a/drivers/phy/hisilicon/phy-hisi-inno-usb2.c
-+++ b/drivers/phy/hisilicon/phy-hisi-inno-usb2.c
-@@ -10,6 +10,7 @@
- #include <linux/io.h>
- #include <linux/module.h>
- #include <linux/of.h>
-+#include <linux/of_address.h>
- #include <linux/phy/phy.h>
- #include <linux/platform_device.h>
- #include <linux/reset.h>
-@@ -24,6 +25,7 @@
- 
- #define PHY_TYPE_0	0
- #define PHY_TYPE_1	1
-+#define PHY_TYPE_MMIO	2
- 
- #define PHY_TEST_DATA		GENMASK(7, 0)
- #define PHY_TEST_ADDR_OFFSET	8
-@@ -43,6 +45,7 @@
- #define PHY_CLK_ENABLE		BIT(2)
- 
- struct hisi_inno_phy_port {
-+	void __iomem *base;
- 	struct reset_control *utmi_rst;
- 	struct hisi_inno_phy_priv *priv;
- };
-@@ -50,7 +53,7 @@ struct hisi_inno_phy_port {
- struct hisi_inno_phy_priv {
- 	void __iomem *mmio;
- 	struct clk *ref_clk;
--	struct reset_control *por_rst;
-+	struct reset_control *rsts;
- 	unsigned int type;
- 	struct hisi_inno_phy_port ports[INNO_PHY_PORT_NUM];
- };
-@@ -62,26 +65,31 @@ static void hisi_inno_phy_write_reg(struct hisi_inno_phy_priv *priv,
- 	u32 val;
- 	u32 value;
- 
--	if (priv->type == PHY_TYPE_0)
--		val = (data & PHY_TEST_DATA) |
--		      ((addr << PHY_TEST_ADDR_OFFSET) & PHY0_TEST_ADDR) |
--		      ((port << PHY0_TEST_PORT_OFFSET) & PHY0_TEST_PORT) |
--		      PHY0_TEST_WREN | PHY0_TEST_RST;
--	else
--		val = (data & PHY_TEST_DATA) |
--		      ((addr << PHY_TEST_ADDR_OFFSET) & PHY1_TEST_ADDR) |
--		      ((port << PHY1_TEST_PORT_OFFSET) & PHY1_TEST_PORT) |
--		      PHY1_TEST_WREN | PHY1_TEST_RST;
--	writel(val, reg);
--
--	value = val;
--	if (priv->type == PHY_TYPE_0)
--		value |= PHY0_TEST_CLK;
--	else
--		value |= PHY1_TEST_CLK;
--	writel(value, reg);
--
--	writel(val, reg);
-+	if (priv->ports[port].base)
-+		/* FIXME: fill stride in priv */
-+		writel(data, (u32 *)priv->ports[port].base + addr);
-+	else {
-+		if (priv->type == PHY_TYPE_0)
-+			val = (data & PHY_TEST_DATA) |
-+			      ((addr << PHY_TEST_ADDR_OFFSET) & PHY0_TEST_ADDR) |
-+			      ((port << PHY0_TEST_PORT_OFFSET) & PHY0_TEST_PORT) |
-+			      PHY0_TEST_WREN | PHY0_TEST_RST;
-+		else
-+			val = (data & PHY_TEST_DATA) |
-+			      ((addr << PHY_TEST_ADDR_OFFSET) & PHY1_TEST_ADDR) |
-+			      ((port << PHY1_TEST_PORT_OFFSET) & PHY1_TEST_PORT) |
-+			      PHY1_TEST_WREN | PHY1_TEST_RST;
-+		writel(val, reg);
-+
-+		value = val;
-+		if (priv->type == PHY_TYPE_0)
-+			value |= PHY0_TEST_CLK;
-+		else
-+			value |= PHY1_TEST_CLK;
-+		writel(value, reg);
-+
-+		writel(val, reg);
-+	}
- }
- 
- static void hisi_inno_phy_setup(struct hisi_inno_phy_priv *priv)
-@@ -104,7 +112,7 @@ static int hisi_inno_phy_init(struct phy *phy)
- 		return ret;
- 	udelay(REF_CLK_STABLE_TIME);
- 
--	reset_control_deassert(priv->por_rst);
-+	reset_control_deassert(priv->rsts);
- 	udelay(POR_RST_COMPLETE_TIME);
- 
- 	/* Set up phy registers */
-@@ -122,7 +130,7 @@ static int hisi_inno_phy_exit(struct phy *phy)
- 	struct hisi_inno_phy_priv *priv = port->priv;
- 
- 	reset_control_assert(port->utmi_rst);
--	reset_control_assert(priv->por_rst);
-+	reset_control_assert(priv->rsts);
- 	clk_disable_unprepare(priv->ref_clk);
- 
- 	return 0;
-@@ -158,15 +166,16 @@ static int hisi_inno_phy_probe(struct platform_device *pdev)
- 	if (IS_ERR(priv->ref_clk))
- 		return PTR_ERR(priv->ref_clk);
- 
--	priv->por_rst = devm_reset_control_get_exclusive(dev, NULL);
--	if (IS_ERR(priv->por_rst))
--		return PTR_ERR(priv->por_rst);
-+	priv->rsts = devm_reset_control_array_get(dev, false, false);
-+	if (IS_ERR(priv->rsts))
-+		return PTR_ERR(priv->rsts);
- 
- 	priv->type = (uintptr_t) of_device_get_match_data(dev);
- 
- 	for_each_child_of_node(np, child) {
- 		struct reset_control *rst;
- 		struct phy *phy;
-+		void __iomem *base;
- 
- 		rst = of_reset_control_get_exclusive(child, NULL);
- 		if (IS_ERR(rst)) {
-@@ -174,7 +183,10 @@ static int hisi_inno_phy_probe(struct platform_device *pdev)
- 			return PTR_ERR(rst);
- 		}
- 
-+		base = of_iomap(child, 0);
-+
- 		priv->ports[i].utmi_rst = rst;
-+		priv->ports[i].base = base;
- 		priv->ports[i].priv = priv;
- 
- 		phy = devm_phy_create(dev, child, &hisi_inno_phy_ops);
-@@ -205,6 +217,8 @@ static const struct of_device_id hisi_inno_phy_of_match[] = {
- 	  .data = (void *) PHY_TYPE_0 },
- 	{ .compatible = "hisilicon,hi3798mv100-usb2-phy",
- 	  .data = (void *) PHY_TYPE_1 },
-+	{ .compatible = "hisilicon,hi3798mv200-usb2-phy",
-+	  .data = (void *) PHY_TYPE_MMIO },
- 	{ },
- };
- MODULE_DEVICE_TABLE(of, hisi_inno_phy_of_match);
+Changes in v7:
+- dt-bindings: squash a bunch of patches to YAML conversion (Krzysztof Kozlowski)
+- dt-bindings: drop phy-mode->phy-connection-type conversion (Andrew Lunnm, Krzysztof Kozlowski)
+- driver: drop SoC compatibles
+- misc: some minor clean ups
+- driver: remove MODULE_ALIAS()
+- Link to v6: https://lore.kernel.org/r/20240228-net-v6-0-6d78d3d598c1@outlook.com
 
+Changes in v6:
+- add missing "not" in commit logs (Andrew)
+- rework binding changes, split it into several commits (Krzysztof Kozlowski)
+- Link to v5: https://lore.kernel.org/r/20240223-net-v5-0-43b22d39c013@outlook.com
+
+Changes in v5:
+- hisi-femac-mdio: remove clock completely (Krzysztof Kozlowski)
+- dt-bindings: mdio: apply comments from Krzysztof Kozlowski
+
+Changes in v4:
+- edit commit log to show why mdio bus clk is optional (Krzysztof Kozlowski)
+- add clk_bulk_disable_unprepare() during error path (Maxime Chevallier)
+- remove of_node_put() (Simon Horman)
+- remove histb-clock.h header in binding example as it's goign to be deprecated.
+- rearrange patches so binding comes before driver
+- Link to v3: https://lore.kernel.org/r/20240220-net-v3-0-b68e5b75e765@outlook.com
+
+Changes in v3:
+- rearrange patches to fix bot error. (Rob Herring)
+- rewrite commit logs (Andrew Lunn)
+- use clk_bulk_ APIs (Andrew Lunn)
+- fix uninitialization use of ret (assign to -ENODEV before goto) (Simon Horman)
+- Link to v2: https://lore.kernel.org/r/20240216-net-v2-0-89bd4b7065c2@outlook.com
+
+Changes in v2:
+- replace email.
+- hisi-femac: s/BUS/MACIF (Andrew Lunn)
+- hisi-femac: add "hisilicon,hisi-femac" compatible since the driver
+  seems generic enough for various SoCs
+- hisi-femac-mdio: convert binding to YAML (Krzysztof Kozlowski)
+- rewrite commit logs (Krzysztof Kozlowski)
+- Link to v1: https://lore.kernel.org/r/20240216-net-v1-0-e0ad972cda99@outlook.com
+
+---
+Yang Xiwen (9):
+      dt-bindings: net: hisilicon-femac-mdio: convert to YAML
+      dt-bindings: net: hisilicon,hisi-femac-mdio: remove clocks
+      net: mdio: hisi-femac: remove clock
+      dt-bindings: net: convert hisi-femac.txt to YAML
+      dt-bindings: net: hisi-femac: add mandatory MDIO bus subnode
+      dt-bindings: net: hisi-femac: add binding for Hi3798MV200 FEMAC core
+      net: hisi_femac: remove unused compatible strings
+      net: hisi_femac: add support for hisi_femac core on Hi3798MV200
+      net: hisi_femac: remove unneeded MODULE_ALIAS()
+
+ .../bindings/net/hisilicon,hisi-femac-mdio.yaml    |  39 +++++++
+ .../bindings/net/hisilicon,hisi-femac.yaml         | 120 +++++++++++++++++++++
+ .../bindings/net/hisilicon-femac-mdio.txt          |  22 ----
+ .../devicetree/bindings/net/hisilicon-femac.txt    |  41 -------
+ drivers/net/ethernet/hisilicon/hisi_femac.c        |  77 ++++++++++---
+ drivers/net/mdio/mdio-hisi-femac.c                 |  18 +---
+ 6 files changed, 220 insertions(+), 97 deletions(-)
+---
+base-commit: 90d35da658da8cff0d4ecbb5113f5fac9d00eb72
+change-id: 20240216-net-9a208e17c40f
+
+Best regards,
 -- 
-2.43.0
+Yang Xiwen <forbidden405@outlook.com>
 
