@@ -1,11 +1,11 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Tue, 05 Mar 2024 15:51:14 +0800
-Subject: [PATCH net-next v8 5/9] dt-bindings: net: hisi-femac: add
- mandatory MDIO bus subnode
+Date: Tue, 05 Mar 2024 15:51:15 +0800
+Subject: [PATCH net-next v8 6/9] dt-bindings: net: hisi-femac: add binding
+ for Hi3798MV200 FEMAC core
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240305-net-v8-5-166aaeea2107@outlook.com>
+Message-Id: <20240305-net-v8-6-166aaeea2107@outlook.com>
 References: <20240305-net-v8-0-166aaeea2107@outlook.com>
 In-Reply-To: <20240305-net-v8-0-166aaeea2107@outlook.com>
 To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
@@ -18,92 +18,38 @@ To: Yisen Zhuang <yisen.zhuang@huawei.com>,
  Heiner Kallweit <hkallweit1@gmail.com>, 
  Russell King <linux@armlinux.org.uk>
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709625070; l=2313;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709625070; l=785;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=S6obhoBKcsATY4ri5n0BubHFcd7WZY9xaY4+Ts8DAWM=;
- b=slQY/8XIF3Ek9MZs/Xbnyg3WHsVOtruFWskH0YxEQvGj0R5Ay7isYcUAFiGhPU0SpPY7svZmm
- eMsI1UC5fv5AmxsePl1JfvpD8OmlakH4tjAXUgkNIubTl+rJ3VLhWDw
+ bh=oXZR+lwkSXsM/Qjr88QbgRS9lNfkCukHdVr29JA1ajo=;
+ b=itcoDlV36tm20BWjf6gNCXqr5a/EwpHWRe9U6NEoM3heTV4jVsE2/xYuSJdjKLdVwoCAAziuC
+ 2v7rlQJvjBCBsTybsyTlUvayc42I/YXv3ivj56LRXaIRyndawqolbAt
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FEMAC core always has an integrated MDIO bus mapped in its address
-space. Add required properties '#address-cells', 'size-cells', 'ranges'
-and MDIO bus subnode.
+HiSilicon FEMAC core is also found on Hi3798MV200 SoC. Document it in
+binding.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- .../bindings/net/hisilicon,hisi-femac.yaml         | 30 ++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+ Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml
-index ba207f2c9ae4..ff6b090ed34e 100644
+index ff6b090ed34e..4f51c5ec90b3 100644
 --- a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml
 +++ b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml
-@@ -24,6 +24,15 @@ properties:
-       - description: The first region is the MAC core register base and size.
-       - description: The second region is the global MAC control register.
+@@ -17,6 +17,7 @@ properties:
+     items:
+       - enum:
+           - hisilicon,hi3516cv300-femac
++          - hisilicon,hi3798mv200-femac
+       - const: hisilicon,hisi-femac
  
-+  ranges:
-+    maxItems: 1
-+
-+  '#address-cells':
-+    const: 1
-+
-+  '#size-cells':
-+    const: 1
-+
-   interrupts:
-     maxItems: 1
- 
-@@ -59,9 +68,16 @@ properties:
-       - description: reset pulse for PHY
-       - description: post-reset delay for PHY
- 
-+patternProperties:
-+  'mdio@[0-9a-f]+':
-+    $ref: hisilicon,hisi-femac-mdio.yaml#
-+
- required:
-   - compatible
-   - reg
-+  - ranges
-+  - '#address-cells'
-+  - '#size-cells'
-   - interrupts
-   - clocks
-   - resets
-@@ -77,6 +93,9 @@ examples:
-     ethernet@10090000 {
-         compatible = "hisilicon,hi3516cv300-femac", "hisilicon,hisi-femac";
-         reg = <0x10090000 0x1000>, <0x10091300 0x200>;
-+        ranges = <0x0 0x10090000 0x10000>;
-+        #address-cells = <1>;
-+        #size-cells = <1>;
-         interrupts = <12>;
-         clocks = <&clk_femac>, <&clk_femacif>, <&clk_fephy>;
-         clock-names = "mac", "macif", "phy";
-@@ -86,4 +105,15 @@ examples:
-         phy-mode = "mii";
-         phy-handle = <&fephy>;
-         hisilicon,phy-reset-delays-us = <10000 20000 20000>;
-+
-+        mdio@1100 {
-+            compatible = "hisilicon,hisi-femac-mdio";
-+            reg = <0x1100 0x20>;
-+            #address-cells = <1>;
-+            #size-cells = <0>;
-+
-+            phy@1 {
-+                reg = <1>;
-+            };
-+        };
-     };
+   reg:
 
 -- 
 2.43.0
