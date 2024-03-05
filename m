@@ -1,139 +1,88 @@
-From: Hui Liu <quic_huliu@quicinc.com>
-Date: Mon, 04 Mar 2024 15:09:34 +0800
-Subject: [PATCH v4] arm64: dts: qcom: qcm6490-idp: enable PMIC Volume and
- Power buttons
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH v4 0/5] phy: hisi-inno-phy: add support for
+ hi3798mv200-usb2-phy
+Date: Tue, 05 Mar 2024 10:19:45 +0800
+Message-Id: <20240305-inno-phy-v4-0-a03204c9cf1c@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240304-gpio-keys-v4-1-03604d778c86@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAK9z5WUC/23MTQ6CMBCG4auYrq3pH21x5T2MC2gLTIwUW20kh
- Ltb2IjR5TeZ551QdAFcRMfdhIJLEMH3eYj9Dpmu6luHweaNGGGCMCJxO4DHVzdGTLmua6sLwkq
- N8v8QXAOvtXW+5N1BfPgwrulEl+u/SqKYYiU1V2Vpq0bb0/0JBnpzMP6Glk5iG8v41rJsadkIX
- XOrlWS/ln8sJ3RrebamklJYp5UqzLed5/kNFxAXDxwBAAA=
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAEGB5mUC/23MQQ7CIBCF4asY1mJgwEJdeQ/jorRgiQoNVGLT9
+ O7SrjC6fJP5/hlFHayO6LSbUdDJRutdHny/Q23fuJvGtssbAQFOgFbYOufx0E+4gU4KMJUSXKH
+ 8PgRt7HtLXa559zaOPkxbOdH1+ieSKCaYNqqmYMiRMXP2r/Hh/f3Q+idaMwlKKgoKmTJlhJZCE
+ V3rX8oKCqSgLFNZs7YzsmJM8W+6LMsHym4NAxgBAAA=
+To: Vinod Koul <vkoul@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Hui Liu <quic_huliu@quicinc.com>
-X-Mailer: b4 0.13-dev-83828
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709536186; l=2848;
- i=quic_huliu@quicinc.com; s=20230823; h=from:subject:message-id;
- bh=DmuCpd4eRqEEUGUcUCiLEb7DRgH2P8prW7W/cQOxkwE=;
- b=ihk9653yGVvrrofzSCIhnexlgDvC2L7KUxE6BEDvt1b0oR6rWZCL9f2uoOElF52DUDwDZEz+8
- 0i6TwHzZVrTAIe4GKO6UKcwrnD7+T3uB/Km6BZtjs/pio/KVpbPRkl4
-X-Developer-Key: i=quic_huliu@quicinc.com; a=ed25519;
- pk=1z+A50UnTuKe/FdQv2c0W3ajDsJOYddwIHo2iivhTTA=
-X-Endpoint-Received: by B4 Relay for quic_huliu@quicinc.com/20230823 with auth_id=80
+ Conor Dooley <conor+dt@kernel.org>, 
+ Jiancheng Xue <xuejiancheng@hisilicon.com>, 
+ Shawn Guo <shawn.guo@linaro.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-phy@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Kishon Vijay Abraham I <kishon@ti.com>, 
+ David Yang <mmyangfl@gmail.com>, Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709605195; l=2411;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=OjEyTLXhFc+NhOgfRwXQxvPYuk8lc7ZeewXgBolvWEE=;
+ b=L1PzroKfL3Lrklu5Bbd5wFX9r9Oln+xKJJB9OLCWiUKOMVvyE0zmNJHRM880u54UfyPSXfw/0
+ gioCHDnUnmLB1gSXXwhLXVh7SeaFDmgy08Ixh93KJY/Uuos2SWCHwPh
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Volume Down & Power buttons are controlled by the PMIC via
-the PON hardware, and the Volume Up is connected to a PMIC gpio.
+This should be considered a hack. The proper solution would be
+extracting write_reg logic to a separate regmap driver. Leaving only
+"write BIT(2) to address 0x6" to the PHY driver.
 
-Enable the necessary hardware and setup the GPIO state for the
-Volume Up gpio key.
+A proper fix should be implemented later.
 
-Signed-off-by: Hui Liu <quic_huliu@quicinc.com>
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
 Changes in v4:
-- Switch the order of "pinctrl-0" and "pinctrl-names".
-- Update "volume_up" to "Volume_up".
-- Remove "linux,input-type", because the default value is 1(EV_KEY).
-- Link to v3: https://lore.kernel.org/r/20240301-gpio-keys-v3-1-ca664de8775c@quicinc.com
+- remove reference to histb-clock.h
+- remove fallback compatible as it has no use.
+- remove phy_type (belongs to host controller)
+- fix bot error (Rob Herring)
+- split YAML convertion into two commits, the other add mv100 compatible (Krzysztof Kozlowski)
+- Link to v3: https://lore.kernel.org/r/20240220-inno-phy-v3-0-893cdf8633b4@outlook.com
 
 Changes in v3:
-- Update the commit more concise and explicit.
-- remove "power-source" property and update the numeric value to defined
-name for "qcom,drive-strength".
-- Link to v2: https://lore.kernel.org/r/20240223-gpio-keys-v2-1-19f48b3d8762@quicinc.com
+- address a few binding issue mistakenly missing in v2 (Krzysztof Kozlowski)
+  - add msg about hi3798mv100 being added to compatible list
+  - remove minItems for compatible
+  - remove | for reg:
+- fix existing dts (hi3798cv200.dtsi) due to binding change.
+- Link to v2: https://lore.kernel.org/r/20240217-inno-phy-v2-0-3bf7e87b0e9e@outlook.com
 
 Changes in v2:
-- Update the commit description.
-- Link to v1: https://lore.kernel.org/r/20240206-gpio-keys-v1-1-7683799daf8d@quicinc.com
----
- arch/arm64/boot/dts/qcom/qcm6490-idp.dts | 41 ++++++++++++++++++++++++++++++++
- 1 file changed, 41 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-index acf145d1d97c..12e162613ed0 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-@@ -9,7 +9,9 @@
- #define PM7250B_SID 8
- #define PM7250B_SID1 9
- 
-+#include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/leds/common.h>
-+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- #include "sc7280.dtsi"
- #include "pm7250b.dtsi"
-@@ -39,6 +41,22 @@ chosen {
- 		stdout-path = "serial0:115200n8";
- 	};
- 
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		pinctrl-0 = <&key_vol_up_default>;
-+		pinctrl-names = "default";
-+
-+		key-volume-up {
-+			label = "Volume_up";
-+			gpios = <&pm7325_gpios 6 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_VOLUMEUP>;
-+			wakeup-source;
-+			debounce-interval = <15>;
-+			linux,can-disable;
-+		};
-+	};
-+
- 	reserved-memory {
- 		xbl_mem: xbl@80700000 {
- 			reg = <0x0 0x80700000 0x0 0x100000>;
-@@ -421,6 +439,16 @@ vreg_bob_3p296: bob {
- 	};
- };
- 
-+&pm7325_gpios {
-+	key_vol_up_default: key-vol-up-state {
-+		pins = "gpio6";
-+		function = "normal";
-+		input-enable;
-+		bias-pull-up;
-+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
-+	};
-+};
-+
- &pm8350c_pwm {
- 	status = "okay";
- 
-@@ -448,6 +476,19 @@ led@3 {
- 	};
- };
- 
-+&pmk8350_pon {
-+	status = "okay";
-+};
-+
-+&pon_pwrkey {
-+	status = "okay";
-+};
-+
-+&pon_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+	status = "okay";
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
+- rewrite commit msg to show why hisilicon,hi3798mv100-usb2-phy is added during YAML convertion.
+- split required: to multiple line
+- add allOf to wrap if:
+- remove perictrl wrapper and the second phy in the example
+- tested the binding both for mv200 and cv200 dts. fix some silly errors.
+- remove Pengcheng Li from To:
+Above all are suggested by Krzysztof
+- use reset_control_array_* APIs to ensure all resets are controlled
+- Link to v1: https://lore.kernel.org/r/20240216-inno-phy-v1-0-1ab912f0533f@outlook.com
 
 ---
-base-commit: 23e11d0318521e8693459b0e4d23aec614b3b68b
-change-id: 20240206-gpio-keys-138bbd850298
+Yang Xiwen (5):
+      phy: hisilicon: hisi-inno-phy: enable clocks for every ports
+      dt-bindings: phy: hisi-inno-usb2: convert to YAML
+      dt-bindings: phy: hisilicon,inno-usb2-phy: add support for Hi3798MV100 INNO PHY
+      dt-bindings: phy: hisi-inno-usb2: add compatible of hisilicon,hi3798mv200-usb2-phy
+      phy: hisilicon: hisi-inno-phy: add support for Hi3798MV200 INNO PHY
+
+ .../bindings/phy/hisilicon,inno-usb2-phy.yaml      | 119 +++++++++++++++++++++
+ .../devicetree/bindings/phy/phy-hisi-inno-usb2.txt |  71 ------------
+ drivers/phy/hisilicon/phy-hisi-inno-usb2.c         |  70 +++++++-----
+ 3 files changed, 162 insertions(+), 98 deletions(-)
+---
+base-commit: 8d3dea210042f54b952b481838c1e7dfc4ec751d
+change-id: 20240216-inno-phy-a2d872f6b74b
 
 Best regards,
 -- 
-Hui Liu <quic_huliu@quicinc.com>
+Yang Xiwen <forbidden405@outlook.com>
 
