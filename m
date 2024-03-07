@@ -1,83 +1,114 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Thu, 07 Mar 2024 10:03:50 +0800
-Subject: [PATCH v3] clk: set initial best mux parent to current parent with
- CLK_MUX_ROUND_CLOSEST
+Subject: [PATCH net-next v9 0/9] net: hisi-femac: add support for
+ Hi3798MV200, remove unmaintained compatibles
+Date: Thu, 07 Mar 2024 19:34:46 +0800
+Message-Id: <20240307-net-v9-0-6e0cf3e6584d@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240307-mux-v3-1-0885fc1ab2c9@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAIUg6WUC/1WM0Q6CIBhGX8Vx3d/gBy276j1aFyCQrJQGymzOd
- w/tonl5vn3nzCSa4Ewkl2ImwSQXne8z8ENBmlb2DwNOZyZIUVBkJXTjBJVWZ8VPTJQ1Jfn5Dsa
- 6aavc7plbFwcfPls0sXXd+4kBA6MUWiU506K++nF4ef88Nr4jayHh3+K0+lkIFGqUpZWiYlbj3
- lqW5QsHS1sRzgAAAA==
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>
-Cc: Maxime Ripard <mripard@kernel.org>, linux-clk@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAFam6WUC/23PS07EMAwG4KuMsqbIcd6suAdikSYuEwENaks1a
+ NS7k2kWdBSWlv39tq9spinRzJ5OVzbRmuaUx1K4hxMLZz++UZdiqRkCSkCuu5GWznkES9wECQM
+ rk18TDemyp7yw28BIl4W9ls45zUuefvb4le/9u6SVd9AR+OgMhuide87fy0fO748hf+4JK/6js
+ Cjr+ih7A1oFbJU4KISqRFG9tqR6o8ho1Sp5VFiVvF1IXtvBiQEctEodlahKFSVFjxiFC8BFq/R
+ R2ap0UToaG0VUzgbeKvOnBPCqzG2XsiiUM1FG2Sp7VKoqWxTX2vvyHHIw92rbtl8M/5kTHAIAA
+ A==
+To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
+ Salil Mehta <salil.mehta@huawei.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709777030; l=1992;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709811287; l=3539;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=+mzOqRRpetTLywKtq+naXweDz2ih9wEm/mCbtZc7rOw=;
- b=q+iZF6EtDER3d5gAVZq04xD7GVCQQOVDTZPRm4F+aCBXhuLGOt+Y78TQ2fuynzckogHnLL6vD
- XzZ5kgSoK0xCpTlzgt55ANodTR7HaH4eNJg3XL7hLANVkNYw5P2M0Cp
+ bh=srvNJpqSk/taaFXpsEyk9citjjpIL0QxkmUKGM2SEtY=;
+ b=c5qZyE/AL5bUtZKngDHzVgMHS5Wk5EzX5+U45i8CKwUAu5gbRIA5/DgKhh5NdFA9Z+nT1mf+s
+ 54hmkjr0Z7AAkUaCepZhU/5nDIeCLw7luLAmX1YH63JnL4nO+XxBi+j
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Originally, the initial clock rate is hardcoded to 0, this can lead to
-some problem when setting a very small rate with CLK_MUX_ROUND_CLOSEST.
-
-For example, if the lowest possible rate provided by the mux is 1000Hz,
-setting a rate below 500Hz will fail, because no clock can provide a
-better rate than the non-existant 0Hz. But it should succeed with 1000Hz
-being set.
-
-Setting the initial best parent to current parent could solve this bug.
-
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-This is actually a v2 of [1]. It's tested in a mmc host driver.
+Changes in v9:
+- binding: remove generic fallback compatible as it's not used in driver
+- Link to v8: https://lore.kernel.org/r/20240305-net-v8-0-166aaeea2107@outlook.com
 
-[1]: https://lore.kernel.org/linux-clk/20230421-clk-v3-1-9ff79e7e7fed@outlook.com/
----
+Changes in v8:
+- remove MODULE_ALIAS: rewrite commit msg (Krzysztof Kozlowski)
+- driver: use only SoC compatibles (Krzysztof Kozlowski)
+- Link to v7: https://lore.kernel.org/r/20240301-net-v7-0-45823597d4d4@outlook.com
+
+Changes in v7:
+- dt-bindings: squash a bunch of patches to YAML conversion (Krzysztof Kozlowski)
+- dt-bindings: drop phy-mode->phy-connection-type conversion (Andrew Lunnm, Krzysztof Kozlowski)
+- driver: drop SoC compatibles
+- misc: some minor clean ups
+- driver: remove MODULE_ALIAS()
+- Link to v6: https://lore.kernel.org/r/20240228-net-v6-0-6d78d3d598c1@outlook.com
+
+Changes in v6:
+- add missing "not" in commit logs (Andrew)
+- rework binding changes, split it into several commits (Krzysztof Kozlowski)
+- Link to v5: https://lore.kernel.org/r/20240223-net-v5-0-43b22d39c013@outlook.com
+
+Changes in v5:
+- hisi-femac-mdio: remove clock completely (Krzysztof Kozlowski)
+- dt-bindings: mdio: apply comments from Krzysztof Kozlowski
+
+Changes in v4:
+- edit commit log to show why mdio bus clk is optional (Krzysztof Kozlowski)
+- add clk_bulk_disable_unprepare() during error path (Maxime Chevallier)
+- remove of_node_put() (Simon Horman)
+- remove histb-clock.h header in binding example as it's goign to be deprecated.
+- rearrange patches so binding comes before driver
+- Link to v3: https://lore.kernel.org/r/20240220-net-v3-0-b68e5b75e765@outlook.com
+
 Changes in v3:
-- remove the fix for clk_test.c
-- limit the fix to CLK_MUX_ROUND_CLOSEST
-- Link to v2: https://lore.kernel.org/r/20240306-mux-v2-0-92a5fa461fd2@outlook.com
+- rearrange patches to fix bot error. (Rob Herring)
+- rewrite commit logs (Andrew Lunn)
+- use clk_bulk_ APIs (Andrew Lunn)
+- fix uninitialization use of ret (assign to -ENODEV before goto) (Simon Horman)
+- Link to v2: https://lore.kernel.org/r/20240216-net-v2-0-89bd4b7065c2@outlook.com
 
 Changes in v2:
-- cover letter: remove statements about unittest
-- add fix for clk_test.c
-- s/privide/provide
-- Cc Maxime
-All suggested by Stephan Boyd
-- Link to v1: https://lore.kernel.org/r/20240215-mux-v1-1-ebb2fba31d49@outlook.com
+- replace email.
+- hisi-femac: s/BUS/MACIF (Andrew Lunn)
+- hisi-femac: add "hisilicon,hisi-femac" compatible since the driver
+  seems generic enough for various SoCs
+- hisi-femac-mdio: convert binding to YAML (Krzysztof Kozlowski)
+- rewrite commit logs (Krzysztof Kozlowski)
+- Link to v1: https://lore.kernel.org/r/20240216-net-v1-0-e0ad972cda99@outlook.com
+
 ---
- drivers/clk/clk.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Yang Xiwen (9):
+      dt-bindings: net: hisilicon-femac-mdio: convert to YAML
+      dt-bindings: net: hisilicon,hisi-femac-mdio: remove clocks
+      net: mdio: hisi-femac: remove clock
+      dt-bindings: net: convert hisi-femac.txt to YAML
+      dt-bindings: net: hisi-femac: add mandatory MDIO bus subnode
+      dt-bindings: net: hisi-femac: add binding for Hi3798MV200 FEMAC core
+      net: hisi_femac: remove unused compatible strings
+      net: hisi_femac: add support for hisi_femac core on Hi3798MV200
+      net: hisi_femac: remove unneeded MODULE_ALIAS()
 
-diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
-index 2253c154a824..74dd61f7269f 100644
---- a/drivers/clk/clk.c
-+++ b/drivers/clk/clk.c
-@@ -647,6 +647,12 @@ int clk_mux_determine_rate_flags(struct clk_hw *hw,
- 	if (core->flags & CLK_SET_RATE_NO_REPARENT)
- 		return clk_core_determine_rate_no_reparent(hw, req);
- 
-+	/* if MUX_ROUND_CLOSEST is set, set the initial best parent to current parent */
-+	if (flags & CLK_MUX_ROUND_CLOSEST) {
-+		best_parent = core->parent;
-+		best = clk_core_get_rate_nolock(core);
-+	}
-+
- 	/* find the parent that can provide the fastest rate <= rate */
- 	num_parents = core->num_parents;
- 	for (i = 0; i < num_parents; i++) {
-
+ .../bindings/net/hisilicon,hisi-femac-mdio.yaml    |  39 +++++++
+ .../bindings/net/hisilicon,hisi-femac.yaml         | 118 +++++++++++++++++++++
+ .../bindings/net/hisilicon-femac-mdio.txt          |  22 ----
+ .../devicetree/bindings/net/hisilicon-femac.txt    |  41 -------
+ drivers/net/ethernet/hisilicon/hisi_femac.c        |  77 +++++++++++---
+ drivers/net/mdio/mdio-hisi-femac.c                 |  18 +---
+ 6 files changed, 218 insertions(+), 97 deletions(-)
 ---
 base-commit: 90d35da658da8cff0d4ecbb5113f5fac9d00eb72
-change-id: 20240215-mux-6db8b3714590
+change-id: 20240216-net-9a208e17c40f
 
 Best regards,
 -- 
