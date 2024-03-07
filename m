@@ -1,11 +1,10 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Thu, 07 Mar 2024 19:34:48 +0800
-Subject: [PATCH net-next v9 2/9] dt-bindings: net:
- hisilicon,hisi-femac-mdio: remove clocks
+Date: Thu, 07 Mar 2024 19:34:49 +0800
+Subject: [PATCH net-next v9 3/9] net: mdio: hisi-femac: remove clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240307-net-v9-2-6e0cf3e6584d@outlook.com>
+Message-Id: <20240307-net-v9-3-6e0cf3e6584d@outlook.com>
 References: <20240307-net-v9-0-6e0cf3e6584d@outlook.com>
 In-Reply-To: <20240307-net-v9-0-6e0cf3e6584d@outlook.com>
 To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
@@ -18,53 +17,83 @@ To: Yisen Zhuang <yisen.zhuang@huawei.com>,
  Heiner Kallweit <hkallweit1@gmail.com>, 
  Russell King <linux@armlinux.org.uk>
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709811287; l=1118;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709811287; l=1802;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=zFRj07D287wM/dCKue4SsEqnuuC7qPQ9ydZbNJ2lxsQ=;
- b=+iZ7saWYkk7PHCMwIj2k9K+iHDcqAgrSFLzPLIoK9KP6YQE8VRjNQxWs7huG3CKRWC1LKU24F
- 8+EQScfMDYNCHlqh1adhv0N4r4dlbZsIZ6EZMMDoyeyfzbEZsXkrVnc
+ bh=kdWAr70dNlF5sryokQxZlrJGOk8Z9nw7ekwi0I/9miA=;
+ b=4jG54x7jbw0SvOi73HBsijYpAPLI5aJg0+aivTN+E2BwqWAmb9+9EI/8ESyHdgvineOb53dR8
+ TCTFa4NfbJZDMHqCFQMazmqRdJgxe9RmCLsMoVg7No64HCQLtKgTXU+
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This integrated MDIO bus does not have a dedicated clock. Remove it. The
-old binding is wrong.
+This integrated MDIO bus does not have a dedicated clock, remove it.
 
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml | 5 -----
- 1 file changed, 5 deletions(-)
+ drivers/net/mdio/mdio-hisi-femac.c | 18 +-----------------
+ 1 file changed, 1 insertion(+), 17 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
-index 36def9d5eecd..dea1bcc27381 100644
---- a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
-+++ b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
-@@ -19,13 +19,9 @@ properties:
-   reg:
-     maxItems: 1
+diff --git a/drivers/net/mdio/mdio-hisi-femac.c b/drivers/net/mdio/mdio-hisi-femac.c
+index 6703f626ee83..faf4688eb1ab 100644
+--- a/drivers/net/mdio/mdio-hisi-femac.c
++++ b/drivers/net/mdio/mdio-hisi-femac.c
+@@ -5,7 +5,6 @@
+  * Copyright (c) 2016 HiSilicon Technologies Co., Ltd.
+  */
  
--  clocks:
--    maxItems: 1
+-#include <linux/clk.h>
+ #include <linux/iopoll.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+@@ -21,7 +20,6 @@
+ #define BIT_WR_DATA_OFFSET	16
+ 
+ struct hisi_femac_mdio_data {
+-	struct clk *clk;
+ 	void __iomem *membase;
+ };
+ 
+@@ -93,26 +91,14 @@ static int hisi_femac_mdio_probe(struct platform_device *pdev)
+ 		goto err_out_free_mdiobus;
+ 	}
+ 
+-	data->clk = devm_clk_get(&pdev->dev, NULL);
+-	if (IS_ERR(data->clk)) {
+-		ret = PTR_ERR(data->clk);
+-		goto err_out_free_mdiobus;
+-	}
 -
- required:
-   - compatible
-   - reg
--  - clocks
+-	ret = clk_prepare_enable(data->clk);
+-	if (ret)
+-		goto err_out_free_mdiobus;
+-
+ 	ret = of_mdiobus_register(bus, np);
+ 	if (ret)
+-		goto err_out_disable_clk;
++		goto err_out_free_mdiobus;
  
- unevaluatedProperties: false
+ 	platform_set_drvdata(pdev, bus);
  
-@@ -34,7 +30,6 @@ examples:
-     mdio@10091100 {
-         compatible = "hisilicon,hisi-femac-mdio";
-         reg = <0x10091100 0x20>;
--        clocks = <&clk_mdio>;
-         #address-cells = <1>;
-         #size-cells = <0>;
+ 	return 0;
+ 
+-err_out_disable_clk:
+-	clk_disable_unprepare(data->clk);
+ err_out_free_mdiobus:
+ 	mdiobus_free(bus);
+ 	return ret;
+@@ -121,10 +107,8 @@ static int hisi_femac_mdio_probe(struct platform_device *pdev)
+ static void hisi_femac_mdio_remove(struct platform_device *pdev)
+ {
+ 	struct mii_bus *bus = platform_get_drvdata(pdev);
+-	struct hisi_femac_mdio_data *data = bus->priv;
+ 
+ 	mdiobus_unregister(bus);
+-	clk_disable_unprepare(data->clk);
+ 	mdiobus_free(bus);
+ }
  
 
 -- 
