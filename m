@@ -1,11 +1,11 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Fri, 08 Mar 2024 16:39:48 +0800
-Subject: [PATCH net-next v10 6/8] dt-bindings: net: hisi-femac: add binding
- for Hi3798MV200 FEMAC core
+Date: Fri, 08 Mar 2024 16:39:49 +0800
+Subject: [PATCH net-next v10 7/8] net: hisi_femac: remove unused compatible
+ strings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240308-net-v10-6-3684df40897e@outlook.com>
+Message-Id: <20240308-net-v10-7-3684df40897e@outlook.com>
 References: <20240308-net-v10-0-3684df40897e@outlook.com>
 In-Reply-To: <20240308-net-v10-0-3684df40897e@outlook.com>
 To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
@@ -20,44 +20,39 @@ To: Yisen Zhuang <yisen.zhuang@huawei.com>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709887184; l=1017;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709887184; l=937;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=UOldq5CRtsm/LbzVGbDAknoLyxLVr+a/RNgHhOeLLzY=;
- b=UjLXcDkC1iGFxi4r1mMdTBtvkykYwtbSeS3izlFvAwHbVZVcNHy9Ytu+vGzY+PRDPV8xlTyEn
- Eni2Eu0RJFpAO/Wuqel4d92H1pW0z83RdLmqmmF+4pOr9ysOIsBI19t
+ bh=aaQRrOl6ezTfgk2jYZxmgPEEzwU/YKquwXnutXaPBpI=;
+ b=JVDMemOPx6deqODCs4vDjbyLOyfKBWlYFEEXCCqofDUeEfK1FdAi+8scQNRH+a4+s2yZYwoc1
+ QMgE1Xe2UhPCph6bY/ii33Ivq0SCQpu01e5Q2dRm1YyMaFaCRlBfwNO
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-HiSilicon FEMAC core is also found on Hi3798MV200 SoC. Document it in
-binding. While at it, make "hisilicon,hi3516cv200-femac" as the fallback
-compatible.
+It's hard to get the version number for each FEMAC core and it's unknown
+how the version can be used. Remove them until it's really needed.
+
+While at it, remove fallback compatibles and only use SoC compatible.
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ drivers/net/ethernet/hisilicon/hisi_femac.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml
-index 5cd2331668bc..cee10d263d0b 100644
---- a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml
-+++ b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml
-@@ -14,8 +14,12 @@ allOf:
+diff --git a/drivers/net/ethernet/hisilicon/hisi_femac.c b/drivers/net/ethernet/hisilicon/hisi_femac.c
+index 2406263c9dd3..9bf4beba7987 100644
+--- a/drivers/net/ethernet/hisilicon/hisi_femac.c
++++ b/drivers/net/ethernet/hisilicon/hisi_femac.c
+@@ -945,8 +945,6 @@ static int hisi_femac_drv_resume(struct platform_device *pdev)
+ #endif
  
- properties:
-   compatible:
--    enum:
--      - hisilicon,hi3516cv300-femac
-+    oneOf:
-+      - items:
-+          - enum:
-+              - hisilicon,hi3798mv200-femac
-+          - const: hisilicon,hi3516cv300-femac
-+      - const: hisilicon,hi3516cv300-femac
- 
-   reg:
-     items:
+ static const struct of_device_id hisi_femac_match[] = {
+-	{.compatible = "hisilicon,hisi-femac-v1",},
+-	{.compatible = "hisilicon,hisi-femac-v2",},
+ 	{.compatible = "hisilicon,hi3516cv300-femac",},
+ 	{},
+ };
 
 -- 
 2.43.0
