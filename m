@@ -1,11 +1,11 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Fri, 08 Mar 2024 16:39:47 +0800
-Subject: [PATCH net-next v10 5/8] dt-bindings: net: hisi-femac: add
- mandatory MDIO bus subnode
+Date: Fri, 08 Mar 2024 16:39:48 +0800
+Subject: [PATCH net-next v10 6/8] dt-bindings: net: hisi-femac: add binding
+ for Hi3798MV200 FEMAC core
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240308-net-v10-5-3684df40897e@outlook.com>
+Message-Id: <20240308-net-v10-6-3684df40897e@outlook.com>
 References: <20240308-net-v10-0-3684df40897e@outlook.com>
 In-Reply-To: <20240308-net-v10-0-3684df40897e@outlook.com>
 To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
@@ -18,92 +18,46 @@ To: Yisen Zhuang <yisen.zhuang@huawei.com>,
  Heiner Kallweit <hkallweit1@gmail.com>, 
  Russell King <linux@armlinux.org.uk>
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709887184; l=2289;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709887184; l=1017;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=4fkGrr79J0kJPETyUJ+upr3jatyv9l4bbxNa0d6pOpo=;
- b=EhuknQz1y81X0Cf6TpUbJgN8zxZd+XplAMExrSaQmLcjRif3OwdEle+mxocGIt0HHNzT0N4Uc
- XN9xEnEb+j5BkIt8S1TBmnjQYSJB9HrMW8y385mY0nID+VWFPWXGDX/
+ bh=UOldq5CRtsm/LbzVGbDAknoLyxLVr+a/RNgHhOeLLzY=;
+ b=UjLXcDkC1iGFxi4r1mMdTBtvkykYwtbSeS3izlFvAwHbVZVcNHy9Ytu+vGzY+PRDPV8xlTyEn
+ Eni2Eu0RJFpAO/Wuqel4d92H1pW0z83RdLmqmmF+4pOr9ysOIsBI19t
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FEMAC core always has an integrated MDIO bus mapped in its address
-space. Add required properties '#address-cells', 'size-cells', 'ranges'
-and MDIO bus subnode.
+HiSilicon FEMAC core is also found on Hi3798MV200 SoC. Document it in
+binding. While at it, make "hisilicon,hi3516cv200-femac" as the fallback
+compatible.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- .../bindings/net/hisilicon,hisi-femac.yaml         | 30 ++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+ Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml
-index 3344d3bfefb8..5cd2331668bc 100644
+index 5cd2331668bc..cee10d263d0b 100644
 --- a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml
 +++ b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac.yaml
-@@ -22,6 +22,15 @@ properties:
-       - description: The first region is the MAC core register base and size.
-       - description: The second region is the global MAC control register.
+@@ -14,8 +14,12 @@ allOf:
  
-+  ranges:
-+    maxItems: 1
-+
-+  '#address-cells':
-+    const: 1
-+
-+  '#size-cells':
-+    const: 1
-+
-   interrupts:
-     maxItems: 1
+ properties:
+   compatible:
+-    enum:
+-      - hisilicon,hi3516cv300-femac
++    oneOf:
++      - items:
++          - enum:
++              - hisilicon,hi3798mv200-femac
++          - const: hisilicon,hi3516cv300-femac
++      - const: hisilicon,hi3516cv300-femac
  
-@@ -57,9 +66,16 @@ properties:
-       - description: reset pulse for PHY
-       - description: post-reset delay for PHY
- 
-+patternProperties:
-+  'mdio@[0-9a-f]+':
-+    $ref: hisilicon,hisi-femac-mdio.yaml#
-+
- required:
-   - compatible
-   - reg
-+  - ranges
-+  - '#address-cells'
-+  - '#size-cells'
-   - interrupts
-   - clocks
-   - resets
-@@ -75,6 +91,9 @@ examples:
-     ethernet@10090000 {
-         compatible = "hisilicon,hi3516cv300-femac";
-         reg = <0x10090000 0x1000>, <0x10091300 0x200>;
-+        ranges = <0x0 0x10090000 0x10000>;
-+        #address-cells = <1>;
-+        #size-cells = <1>;
-         interrupts = <12>;
-         clocks = <&clk_femac>, <&clk_femacif>, <&clk_fephy>;
-         clock-names = "mac", "macif", "phy";
-@@ -84,4 +103,15 @@ examples:
-         phy-mode = "mii";
-         phy-handle = <&fephy>;
-         hisilicon,phy-reset-delays-us = <10000 20000 20000>;
-+
-+        mdio@1100 {
-+            compatible = "hisilicon,hisi-femac-mdio";
-+            reg = <0x1100 0x20>;
-+            #address-cells = <1>;
-+            #size-cells = <0>;
-+
-+            phy@1 {
-+                reg = <1>;
-+            };
-+        };
-     };
+   reg:
+     items:
 
 -- 
 2.43.0
