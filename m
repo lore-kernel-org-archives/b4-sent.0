@@ -1,17 +1,13 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Subject: [PATCH net-next v11 0/9] net: hisi-femac: add support for
- Hi3798MV200, remove unmaintained compatibles
-Date: Sat, 09 Mar 2024 20:26:22 +0800
-Message-Id: <20240309-net-v11-0-eb99b76e4a21@outlook.com>
+Date: Sat, 09 Mar 2024 20:26:23 +0800
+Subject: [PATCH net-next v11 1/9] dt-bindings: net: hisilicon-femac-mdio:
+ convert to YAML
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAG5V7GUC/23PS07EMAwG4KuMsqbIcd6z4h6IRZq4TAW0qC3Vo
- FHvTtogkVFYxvb3x76xmaaeZnY+3dhEaz/345AenD+cWLj44ZWaPqYCQ0AJyHUz0NI4j2CJmyC
- hY2nyc6Kuvx4xz2wfGOi6sJfUufTzMk7fR/7Kj/5d0sobaAh8dAZD9M49jV/L+zi+PYbx40hY8
- R+FSVnXRtka0CpgrUShELISSbXakmqNIqNVrWSpMCu5b0he286JDhzUSpVKZKWSkqJFjMIF4KJ
- WulQ2K52UjsZGEZWzgdfK/CkBPCuz/6UsCuVMlFHWypZKZWWT4lp7n45DDqZWrlQmK7dvSBA6Q
- VpZGWvFoWS/h3FITugEOgnWGbp327b9AMfI/Y6LAgAA
+Message-Id: <20240309-net-v11-1-eb99b76e4a21@outlook.com>
+References: <20240309-net-v11-0-eb99b76e4a21@outlook.com>
+In-Reply-To: <20240309-net-v11-0-eb99b76e4a21@outlook.com>
 To: Yisen Zhuang <yisen.zhuang@huawei.com>, 
  Salil Mehta <salil.mehta@huawei.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
@@ -25,102 +21,105 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  devicetree@vger.kernel.org, Yang Xiwen <forbidden405@outlook.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1709987182; l=4008;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1709987182; l=2517;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=Ug/jD5YobYvsdYpf7Z3VXJhD6BXa6oRpdNYEA22u7fE=;
- b=4O+hFbv68XAQY3zAKuyEW55H7UZ45cVYF+2xJvX9I7YTw41d/4a/mDbdEvCIgdt1XXrmm2/ti
- JCLTtwL6hZUDocRnZSX4QiHDPvGvmByiURxAd+1Y0yzJRSEFEDDMF9E
+ bh=stv+a/mRLJaLswc2WeXjirfjJSRDl5txIs38K87wIhs=;
+ b=gcQC6s+n06y/+mv1mNh2BrkMEe7l2s5JN065KVb42ZiTw6KKBgar7F4E2yzYPwvZgpMo3h2ox
+ Hz65pGecKvODqgvw2HcXTlAx/bU0mTNl/BF5bWAKkHdf5RE/vSJANN/
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+convert the old text binding to modern YAML based binding. No semantic
+change.
+
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
-Changes in v11:
-- driver: repick the patch adding mv200 support, which is a stupid mistake (Krzysztof Kozlowski)
-- Link to v10: https://lore.kernel.org/r/20240308-net-v10-0-3684df40897e@outlook.com
+ .../bindings/net/hisilicon,hisi-femac-mdio.yaml    | 44 ++++++++++++++++++++++
+ .../bindings/net/hisilicon-femac-mdio.txt          | 22 -----------
+ 2 files changed, 44 insertions(+), 22 deletions(-)
 
-Changes in v10:
-- binding: make hi3516cv300 the fallback compatible (Krzysztof Kozlowski)
-- driver: drop mv200 match string (Krzysztof Kozlowski)
-- commit msg: remove #conflicts
-- Link to v9: https://lore.kernel.org/r/20240307-net-v9-0-6e0cf3e6584d@outlook.com
+diff --git a/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
+new file mode 100644
+index 000000000000..36def9d5eecd
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/hisilicon,hisi-femac-mdio.yaml
+@@ -0,0 +1,44 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/hisilicon,hisi-femac-mdio.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: HiSilicon FEMAC MDIO bus
++
++maintainers:
++  - Yang Xiwen <forbidden405@formail.com>
++
++allOf:
++  - $ref: mdio.yaml#
++
++properties:
++  compatible:
++    const: hisilicon,hisi-femac-mdio
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++  - clocks
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    mdio@10091100 {
++        compatible = "hisilicon,hisi-femac-mdio";
++        reg = <0x10091100 0x20>;
++        clocks = <&clk_mdio>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        phy@1 {
++            reg = <1>;
++        };
++    };
+diff --git a/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt b/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt
+deleted file mode 100644
+index 23a39a309d17..000000000000
+--- a/Documentation/devicetree/bindings/net/hisilicon-femac-mdio.txt
++++ /dev/null
+@@ -1,22 +0,0 @@
+-Hisilicon Fast Ethernet MDIO Controller interface
+-
+-Required properties:
+-- compatible: should be "hisilicon,hisi-femac-mdio".
+-- reg: address and length of the register set for the device.
+-- clocks: A phandle to the reference clock for this device.
+-
+-- PHY subnode: inherits from phy binding [1]
+-[1] Documentation/devicetree/bindings/net/phy.txt
+-
+-Example:
+-mdio: mdio@10091100 {
+-	compatible = "hisilicon,hisi-femac-mdio";
+-	reg = <0x10091100 0x10>;
+-	clocks = <&crg HI3516CV300_MDIO_CLK>;
+-	#address-cells = <1>;
+-	#size-cells = <0>;
+-
+-	phy0: phy@1 {
+-		reg = <1>;
+-	};
+-};
 
-Changes in v9:
-- binding: remove generic fallback compatible as it's not used in driver
-- Link to v8: https://lore.kernel.org/r/20240305-net-v8-0-166aaeea2107@outlook.com
-
-Changes in v8:
-- remove MODULE_ALIAS: rewrite commit msg (Krzysztof Kozlowski)
-- driver: use only SoC compatibles (Krzysztof Kozlowski)
-- Link to v7: https://lore.kernel.org/r/20240301-net-v7-0-45823597d4d4@outlook.com
-
-Changes in v7:
-- dt-bindings: squash a bunch of patches to YAML conversion (Krzysztof Kozlowski)
-- dt-bindings: drop phy-mode->phy-connection-type conversion (Andrew Lunnm, Krzysztof Kozlowski)
-- driver: drop SoC compatibles
-- misc: some minor clean ups
-- driver: remove MODULE_ALIAS()
-- Link to v6: https://lore.kernel.org/r/20240228-net-v6-0-6d78d3d598c1@outlook.com
-
-Changes in v6:
-- add missing "not" in commit logs (Andrew)
-- rework binding changes, split it into several commits (Krzysztof Kozlowski)
-- Link to v5: https://lore.kernel.org/r/20240223-net-v5-0-43b22d39c013@outlook.com
-
-Changes in v5:
-- hisi-femac-mdio: remove clock completely (Krzysztof Kozlowski)
-- dt-bindings: mdio: apply comments from Krzysztof Kozlowski
-
-Changes in v4:
-- edit commit log to show why mdio bus clk is optional (Krzysztof Kozlowski)
-- add clk_bulk_disable_unprepare() during error path (Maxime Chevallier)
-- remove of_node_put() (Simon Horman)
-- remove histb-clock.h header in binding example as it's goign to be deprecated.
-- rearrange patches so binding comes before driver
-- Link to v3: https://lore.kernel.org/r/20240220-net-v3-0-b68e5b75e765@outlook.com
-
-Changes in v3:
-- rearrange patches to fix bot error. (Rob Herring)
-- rewrite commit logs (Andrew Lunn)
-- use clk_bulk_ APIs (Andrew Lunn)
-- fix uninitialization use of ret (assign to -ENODEV before goto) (Simon Horman)
-- Link to v2: https://lore.kernel.org/r/20240216-net-v2-0-89bd4b7065c2@outlook.com
-
-Changes in v2:
-- replace email.
-- hisi-femac: s/BUS/MACIF (Andrew Lunn)
-- hisi-femac: add "hisilicon,hisi-femac" compatible since the driver
-  seems generic enough for various SoCs
-- hisi-femac-mdio: convert binding to YAML (Krzysztof Kozlowski)
-- rewrite commit logs (Krzysztof Kozlowski)
-- Link to v1: https://lore.kernel.org/r/20240216-net-v1-0-e0ad972cda99@outlook.com
-
----
-Yang Xiwen (9):
-      dt-bindings: net: hisilicon-femac-mdio: convert to YAML
-      dt-bindings: net: hisilicon,hisi-femac-mdio: remove clocks
-      net: mdio: hisi-femac: remove clock
-      dt-bindings: net: convert hisi-femac.txt to YAML
-      dt-bindings: net: hisi-femac: add mandatory MDIO bus subnode
-      dt-bindings: net: hisi-femac: add binding for Hi3798MV200 FEMAC core
-      net: hisi_femac: remove unused compatible strings
-      net: hisi_femac: add support for hisi_femac core on Hi3798MV200
-      net: hisi_femac: remove unneeded MODULE_ALIAS()
-
- .../bindings/net/hisilicon,hisi-femac-mdio.yaml    |  39 +++++++
- .../bindings/net/hisilicon,hisi-femac.yaml         | 121 +++++++++++++++++++++
- .../bindings/net/hisilicon-femac-mdio.txt          |  22 ----
- .../devicetree/bindings/net/hisilicon-femac.txt    |  41 -------
- drivers/net/ethernet/hisilicon/hisi_femac.c        |  76 ++++++++++---
- drivers/net/mdio/mdio-hisi-femac.c                 |  18 +--
- 6 files changed, 220 insertions(+), 97 deletions(-)
----
-base-commit: 90d35da658da8cff0d4ecbb5113f5fac9d00eb72
-change-id: 20240216-net-9a208e17c40f
-
-Best regards,
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+2.43.0
 
