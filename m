@@ -1,164 +1,97 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Mon, 11 Mar 2024 14:46:39 +0300
-Subject: [PATCH net 2/2] net: dsa: mt7530: fix handling of all link-local
- frames
+From: Janne Grunau <j@jannau.net>
+Date: Mon, 11 Mar 2024 23:53:17 +0100
+Subject: [PATCH] spi: Restore delays for non-GPIO chip select
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240311-b4-for-net-mt7530-fix-link-local-vlan-v1-2-d67e6cc31af2@arinc9.com>
-References: <20240311-b4-for-net-mt7530-fix-link-local-vlan-v1-0-d67e6cc31af2@arinc9.com>
-In-Reply-To: <20240311-b4-for-net-mt7530-fix-link-local-vlan-v1-0-d67e6cc31af2@arinc9.com>
-To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
- Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
- Florian Fainelli <f.fainelli@gmail.com>, 
- Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: =?utf-8?q?Alvin_=C5=A0ipraga?= <ALSI@bang-olufsen.dk>, 
- Frank Wunderlich <frank-w@public-files.de>, 
- Bartel Eerdekens <bartel.eerdekens@constell8.be>, mithat.guner@xeront.com, 
- erkin.bozoglu@xeront.com, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1710157606; l=5904;
- i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=06wtkRcKC0XkT4RTzWINCxtbmCk4a1kVzz8en6OpGhQ=;
- b=YpdBCEKc6t6qo/kW5T35bWuzlCeO67KX6/tMQfWJ6gZO844d4aeoWBAMe+Tc8Kx+G8nDMr0RJ
- yrMGRbQoOh6BByvvtsKwl0kBmQDNtQK9ycAQ6B6rp3vFrKLsCayTz75
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240311-spi-cs-delays-regression-v1-1-0075020a90b2@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAFyL72UC/x3MQQqDQAxG4atI1gZmtCD2KuJCZv5oQKwkIIp49
+ 067fIvv3eQwhdO7uslwqOtnKxHritIybTNYc2lqQvMKbYzsu3Jyzliny9kwG/yHWHLXhl5SgAg
+ VvhtEz/96GJ/nC/j50RJqAAAA
+To: Mark Brown <broonie@kernel.org>, 
+ Amit Kumar Mahapatra <amit.kumar-mahapatra@amd.com>
+Cc: linux-spi@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ asahi@lists.linux.dev, regressions@lists.linux.dev, 
+ Janne Grunau <j@jannau.net>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2363; i=j@jannau.net;
+ h=from:subject:message-id; bh=wRDHwpl4qwb+1xQqHZ8GOwHiYZo9FyBukC2YvocLxcw=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtT33cnaglMK9z3v/5Ym+9av/Lh+ZOKhvpkPEnPUTv9Y3
+ WD/Nsmxo5SFQYyLQVZMkSVJ+2UHw+oaxZjaB2Ewc1iZQIYwcHEKwETK9jMyPH+/Y1rw509F7TK7
+ T/GczXKfLBL79yDLk0TrGUv770x8zsTwT3mqVBW36BrJytNsylktK66xHPS5pqdsN3FpxSL+WJP
+ T/AA=
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, the MT753X switches treat frames with :01-0D and :0F MAC DAs as
-regular multicast frames, therefore flooding them to user ports.
+SPI controller with integrated chip select handling still need to adhere
+to SPI device's CS setup, hold and inactive delays. For controller
+without set_cs_timing spi core shall handle the delays to avoid
+duplicated delay handling in each controller driver.
+Fixes a regression for the out of tree SPI controller and SPI HID
+transport on Apple M1/M1 Pro/Max notebooks.
 
-On page 205, section "8.6.3 Frame filtering" of the active standard, IEEE
-Std 802.1Q™-2022, it is stated that frames with 01:80:C2:00:00:00-0F as MAC
-DA must only be propagated to C-VLAN and MAC Bridge components. That means
-VLAN-aware and VLAN-unaware bridges. On the switch designs with CPU ports,
-these frames are supposed to be processed by the CPU (software). So we make
-the switch only forward them to the CPU port. And if received from a CPU
-port, forward to a single port. The software is responsible of making the
-switch conform to the latter by setting a single port as destination port
-on the special tag.
-
-This switch intellectual property cannot conform to this part of the
-standard fully. Whilst the REV_UN frame tag covers the remaining :04-0D and
-:0F MAC DAs, it also includes :22-FF which the scope of propagation is not
-supposed to be restricted for these MAC DAs.
-
-Set frames with :01-03 MAC DAs to be trapped to the CPU port(s). Add a
-comment for the remaining MAC DAs.
-
-Note that the ingress port must have a PVID assigned to it for the switch
-to forward untagged frames. A PVID is set by default on VLAN-aware and
-VLAN-unaware ports. However, when the network interface that pertains to
-the ingress port is attached to a vlan_filtering enabled bridge, the user
-can remove the PVID assignment from it which would prevent the link-local
-frames from being trapped to the CPU port. I am yet to see a way to forward
-link-local frames while preventing other untagged frames from being
-forwarded too.
-
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Fixes: 4d8ff6b0991d ("spi: Add multi-cs memories support in SPI core")
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- drivers/net/dsa/mt7530.c | 37 +++++++++++++++++++++++++++++++++----
- drivers/net/dsa/mt7530.h | 13 +++++++++++++
- 2 files changed, 46 insertions(+), 4 deletions(-)
+#regzbot ^introduced 4d8ff6b0991d5e86b17b235fc46ec62e9195cb9
+---
+ drivers/spi/spi.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index beef5bc38b88..eddb4cb5ce65 100644
---- a/drivers/net/dsa/mt7530.c
-+++ b/drivers/net/dsa/mt7530.c
-@@ -998,6 +998,21 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
- 	mutex_unlock(&priv->reg_mutex);
- }
+diff --git a/drivers/spi/spi.c b/drivers/spi/spi.c
+index f2170f4b5077..71be2ba8402f 100644
+--- a/drivers/spi/spi.c
++++ b/drivers/spi/spi.c
+@@ -1042,10 +1042,14 @@ static void spi_set_cs(struct spi_device *spi, bool enable, bool force)
+ 	if (spi->mode & SPI_CS_HIGH)
+ 		enable = !enable;
  
-+/* On page 205, section "8.6.3 Frame filtering" of the active standard, IEEE Std
-+ * 802.1Q™-2022, it is stated that frames with 01:80:C2:00:00:00-0F as MAC DA
-+ * must only be propagated to C-VLAN and MAC Bridge components. That means
-+ * VLAN-aware and VLAN-unaware bridges. On the switch designs with CPU ports,
-+ * these frames are supposed to be processed by the CPU (software). So we make
-+ * the switch only forward them to the CPU port. And if received from a CPU
-+ * port, forward to a single port. The software is responsible of making the
-+ * switch conform to the latter by setting a single port as destination port on
-+ * the special tag.
-+ *
-+ * This switch intellectual property cannot conform to this part of the standard
-+ * fully. Whilst the REV_UN frame tag covers the remaining :04-0D and :0F MAC
-+ * DAs, it also includes :22-FF which the scope of propagation is not supposed
-+ * to be restricted for these MAC DAs.
-+ */
- static void
- mt753x_trap_frames(struct mt7530_priv *priv)
- {
-@@ -1012,13 +1027,27 @@ mt753x_trap_frames(struct mt7530_priv *priv)
- 		   MT753X_BPDU_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
- 		   MT753X_BPDU_CPU_ONLY);
- 
--	/* Trap LLDP frames with :0E MAC DA to the CPU port(s) and egress them
--	 * VLAN-untagged.
-+	/* Trap frames with :01 and :02 MAC DAs to the CPU port(s) and egress
-+	 * them VLAN-untagged.
+-	if (spi_is_csgpiod(spi)) {
+-		if (!spi->controller->set_cs_timing && !activate)
+-			spi_delay_exec(&spi->cs_hold, NULL);
++	/*
++	 * Handle chip select delays for GPIO based CS or controllers without
++	 * programmable chip select timing.
 +	 */
-+	mt7530_rmw(priv, MT753X_RGAC1, MT753X_R02_EG_TAG_MASK |
-+		   MT753X_R02_PORT_FW_MASK | MT753X_R01_EG_TAG_MASK |
-+		   MT753X_R01_PORT_FW_MASK,
-+		   MT753X_R02_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
-+		   MT753X_R02_PORT_FW(MT753X_BPDU_CPU_ONLY) |
-+		   MT753X_R01_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
-+		   MT753X_BPDU_CPU_ONLY);
++	if ((spi_is_csgpiod(spi) || !spi->controller->set_cs_timing) && !activate)
++		spi_delay_exec(&spi->cs_hold, NULL);
+ 
++	if (spi_is_csgpiod(spi)) {
+ 		if (!(spi->mode & SPI_NO_CS)) {
+ 			/*
+ 			 * Historically ACPI has no means of the GPIO polarity and
+@@ -1079,16 +1083,16 @@ static void spi_set_cs(struct spi_device *spi, bool enable, bool force)
+ 		if ((spi->controller->flags & SPI_CONTROLLER_GPIO_SS) &&
+ 		    spi->controller->set_cs)
+ 			spi->controller->set_cs(spi, !enable);
+-
+-		if (!spi->controller->set_cs_timing) {
+-			if (activate)
+-				spi_delay_exec(&spi->cs_setup, NULL);
+-			else
+-				spi_delay_exec(&spi->cs_inactive, NULL);
+-		}
+ 	} else if (spi->controller->set_cs) {
+ 		spi->controller->set_cs(spi, !enable);
+ 	}
 +
-+	/* Trap frames with :03 and :0E MAC DAs to the CPU port(s) and egress
-+	 * them VLAN-untagged.
- 	 */
- 	mt7530_rmw(priv, MT753X_RGAC2, MT753X_R0E_EG_TAG_MASK |
--		   MT753X_R0E_PORT_FW_MASK,
-+		   MT753X_R0E_PORT_FW_MASK | MT753X_R03_EG_TAG_MASK |
-+		   MT753X_R03_PORT_FW_MASK,
- 		   MT753X_R0E_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
--		   MT753X_R0E_PORT_FW(MT753X_BPDU_CPU_ONLY));
-+		   MT753X_R0E_PORT_FW(MT753X_BPDU_CPU_ONLY) |
-+		   MT753X_R03_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
-+		   MT753X_BPDU_CPU_ONLY);
++	if (spi_is_csgpiod(spi) || !spi->controller->set_cs_timing) {
++		if (activate)
++			spi_delay_exec(&spi->cs_setup, NULL);
++		else
++			spi_delay_exec(&spi->cs_inactive, NULL);
++	}
  }
  
- static int
-diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
-index cef2af3f24d5..75bc9043c8c0 100644
---- a/drivers/net/dsa/mt7530.h
-+++ b/drivers/net/dsa/mt7530.h
-@@ -73,12 +73,25 @@ enum mt753x_id {
- #define  MT753X_BPDU_EG_TAG(x)		FIELD_PREP(MT753X_BPDU_EG_TAG_MASK, x)
- #define  MT753X_BPDU_PORT_FW_MASK	GENMASK(2, 0)
- 
-+/* Register for :01 and :02 MAC DA frame control */
-+#define MT753X_RGAC1			0x28
-+#define  MT753X_R02_EG_TAG_MASK		GENMASK(24, 22)
-+#define  MT753X_R02_EG_TAG(x)		FIELD_PREP(MT753X_R02_EG_TAG_MASK, x)
-+#define  MT753X_R02_PORT_FW_MASK	GENMASK(18, 16)
-+#define  MT753X_R02_PORT_FW(x)		FIELD_PREP(MT753X_R02_PORT_FW_MASK, x)
-+#define  MT753X_R01_EG_TAG_MASK		GENMASK(8, 6)
-+#define  MT753X_R01_EG_TAG(x)		FIELD_PREP(MT753X_R01_EG_TAG_MASK, x)
-+#define  MT753X_R01_PORT_FW_MASK	GENMASK(2, 0)
-+
- /* Register for :03 and :0E MAC DA frame control */
- #define MT753X_RGAC2			0x2c
- #define  MT753X_R0E_EG_TAG_MASK		GENMASK(24, 22)
- #define  MT753X_R0E_EG_TAG(x)		FIELD_PREP(MT753X_R0E_EG_TAG_MASK, x)
- #define  MT753X_R0E_PORT_FW_MASK	GENMASK(18, 16)
- #define  MT753X_R0E_PORT_FW(x)		FIELD_PREP(MT753X_R0E_PORT_FW_MASK, x)
-+#define  MT753X_R03_EG_TAG_MASK		GENMASK(8, 6)
-+#define  MT753X_R03_EG_TAG(x)		FIELD_PREP(MT753X_R03_EG_TAG_MASK, x)
-+#define  MT753X_R03_PORT_FW_MASK	GENMASK(2, 0)
- 
- enum mt753x_bpdu_port_fw {
- 	MT753X_BPDU_FOLLOW_MFC,
+ #ifdef CONFIG_HAS_DMA
 
+---
+base-commit: e8f897f4afef0031fe618a8e94127a0934896aba
+change-id: 20240311-spi-cs-delays-regression-fd7309fc0eff
+
+Best regards,
 -- 
-2.40.1
+Janne Grunau <j@jannau.net>
 
