@@ -1,97 +1,68 @@
-From: Janne Grunau <j@jannau.net>
-Date: Mon, 11 Mar 2024 23:53:17 +0100
-Subject: [PATCH] spi: Restore delays for non-GPIO chip select
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH 0/4] Baisc devicetree support for Amlogic A4 and A5
+Date: Tue, 12 Mar 2024 17:18:56 +0800
+Message-Id: <20240312-basic_dt-v1-0-7f11df3a0896@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240311-spi-cs-delays-regression-v1-1-0075020a90b2@jannau.net>
-X-B4-Tracking: v=1; b=H4sIAFyL72UC/x3MQQqDQAxG4atI1gZmtCD2KuJCZv5oQKwkIIp49
- 067fIvv3eQwhdO7uslwqOtnKxHritIybTNYc2lqQvMKbYzsu3Jyzliny9kwG/yHWHLXhl5SgAg
- VvhtEz/96GJ/nC/j50RJqAAAA
-To: Mark Brown <broonie@kernel.org>, 
- Amit Kumar Mahapatra <amit.kumar-mahapatra@amd.com>
-Cc: linux-spi@vger.kernel.org, linux-kernel@vger.kernel.org, 
- asahi@lists.linux.dev, regressions@lists.linux.dev, 
- Janne Grunau <j@jannau.net>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2363; i=j@jannau.net;
- h=from:subject:message-id; bh=wRDHwpl4qwb+1xQqHZ8GOwHiYZo9FyBukC2YvocLxcw=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtT33cnaglMK9z3v/5Ym+9av/Lh+ZOKhvpkPEnPUTv9Y3
- WD/Nsmxo5SFQYyLQVZMkSVJ+2UHw+oaxZjaB2Ewc1iZQIYwcHEKwETK9jMyPH+/Y1rw509F7TK7
- T/GczXKfLBL79yDLk0TrGUv770x8zsTwT3mqVBW36BrJytNsylktK66xHPS5pqdsN3FpxSL+WJP
- T/AA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
+X-B4-Tracking: v=1; b=H4sIAAAe8GUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDY0Mj3aTE4szk+JQSXUPTVBNzUyPTRBNDYyWg8oKi1LTMCrBR0bG1tQD
+ 9l7CDWgAAAA==
+To: Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1710235139; l=1498;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=ONSKZevXZXWm3KM1dZDImJLLhqOmgtyms2pTuZbvaa4=;
+ b=NtWxuy6gf1pgFYthLf35jwwWmhxqf3Rc0BnrsfAJOvKu/qcXl2lPXRnWSoHgfOP4hVqqZLIwJ
+ orWfLOsqpzKC9niMb7l9jtB6dB6XMBEZMH1dA7m6nxhmeTZ78cpXxDF
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SPI controller with integrated chip select handling still need to adhere
-to SPI device's CS setup, hold and inactive delays. For controller
-without set_cs_timing spi core shall handle the delays to avoid
-duplicated delay handling in each controller driver.
-Fixes a regression for the out of tree SPI controller and SPI HID
-transport on Apple M1/M1 Pro/Max notebooks.
+Amlogic A4 and A5 are application processors designed for smart audio
+and IoT applications.
 
-Fixes: 4d8ff6b0991d ("spi: Add multi-cs memories support in SPI core")
-Signed-off-by: Janne Grunau <j@jannau.net>
----
-#regzbot ^introduced 4d8ff6b0991d5e86b17b235fc46ec62e9195cb9
----
- drivers/spi/spi.c | 24 ++++++++++++++----------
- 1 file changed, 14 insertions(+), 10 deletions(-)
+Add the new A4 SoC/board device tree bindings.
 
-diff --git a/drivers/spi/spi.c b/drivers/spi/spi.c
-index f2170f4b5077..71be2ba8402f 100644
---- a/drivers/spi/spi.c
-+++ b/drivers/spi/spi.c
-@@ -1042,10 +1042,14 @@ static void spi_set_cs(struct spi_device *spi, bool enable, bool force)
- 	if (spi->mode & SPI_CS_HIGH)
- 		enable = !enable;
- 
--	if (spi_is_csgpiod(spi)) {
--		if (!spi->controller->set_cs_timing && !activate)
--			spi_delay_exec(&spi->cs_hold, NULL);
-+	/*
-+	 * Handle chip select delays for GPIO based CS or controllers without
-+	 * programmable chip select timing.
-+	 */
-+	if ((spi_is_csgpiod(spi) || !spi->controller->set_cs_timing) && !activate)
-+		spi_delay_exec(&spi->cs_hold, NULL);
- 
-+	if (spi_is_csgpiod(spi)) {
- 		if (!(spi->mode & SPI_NO_CS)) {
- 			/*
- 			 * Historically ACPI has no means of the GPIO polarity and
-@@ -1079,16 +1083,16 @@ static void spi_set_cs(struct spi_device *spi, bool enable, bool force)
- 		if ((spi->controller->flags & SPI_CONTROLLER_GPIO_SS) &&
- 		    spi->controller->set_cs)
- 			spi->controller->set_cs(spi, !enable);
--
--		if (!spi->controller->set_cs_timing) {
--			if (activate)
--				spi_delay_exec(&spi->cs_setup, NULL);
--			else
--				spi_delay_exec(&spi->cs_inactive, NULL);
--		}
- 	} else if (spi->controller->set_cs) {
- 		spi->controller->set_cs(spi, !enable);
- 	}
-+
-+	if (spi_is_csgpiod(spi) || !spi->controller->set_cs_timing) {
-+		if (activate)
-+			spi_delay_exec(&spi->cs_setup, NULL);
-+		else
-+			spi_delay_exec(&spi->cs_inactive, NULL);
-+	}
- }
- 
- #ifdef CONFIG_HAS_DMA
+Add the new A5 SoC/board device tree bindings.
 
+Add basic support for the A4 based Amlogic AV400 board, which describes
+the following components: CPU, GIC, IRQ, Timer and UART. These are capable of
+booting up into the serial console.
+
+Add basic support for the A5 based Amlogic AV400 board, which describes
+the following components: CPU, GIC, IRQ, Timer and UART. These are capable of
+booting up into the serial console.
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-base-commit: e8f897f4afef0031fe618a8e94127a0934896aba
-change-id: 20240311-spi-cs-delays-regression-fd7309fc0eff
+Xianwei Zhao (4):
+      dt-bindings: arm: amlogic: add A4 support
+      dt-bindings: arm: amlogic: add A5 support
+      arm64: dts: add support for A4 based Amlogic BA400
+      arm64: dts: add support for A5 based Amlogic AV400
+
+ Documentation/devicetree/bindings/arm/amlogic.yaml | 15 ++++
+ arch/arm64/boot/dts/amlogic/Makefile               |  2 +
+ .../boot/dts/amlogic/amlogic-a4-a113l2-ba400.dts   | 43 ++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        | 99 ++++++++++++++++++++++
+ .../boot/dts/amlogic/amlogic-a5-a113x2-av400.dts   | 43 ++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        | 94 ++++++++++++++++++++
+ 6 files changed, 296 insertions(+)
+---
+base-commit: 7092cfae086f0bc235baca413d0bd904f182670c
+change-id: 20240312-basic_dt-15e47525a413
 
 Best regards,
 -- 
-Janne Grunau <j@jannau.net>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
