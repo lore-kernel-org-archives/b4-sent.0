@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 14 Mar 2024 20:20:43 +0100
-Subject: [PATCH 3/4] appletalk: Remove the now superfluous sentinel
- elements from ctl_table array
+Date: Thu, 14 Mar 2024 20:20:44 +0100
+Subject: [PATCH 4/4] ax.25: Remove the now superfluous sentinel elements
+ from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240314-jag-sysctl_remset_net-v1-3-aa26b44d29d9@samsung.com>
+Message-Id: <20240314-jag-sysctl_remset_net-v1-4-aa26b44d29d9@samsung.com>
 References: <20240314-jag-sysctl_remset_net-v1-0-aa26b44d29d9@samsung.com>
 In-Reply-To: <20240314-jag-sysctl_remset_net-v1-0-aa26b44d29d9@samsung.com>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -46,17 +46,18 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=954; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=XDIcCkZ78Jc0dTs1FMG4vIEa4qRq4WIrQqvTanRSSyI=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBl804YVY9Xw0++owa6LWglh5nII93WQz6ecjWxh
- SYP9NB91rKJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZfNOGAAKCRC6l81St5ZB
- TwAQC/0eqOCO1aPDMvrYgZcVtIBZQCNypI3Swj50+jfK2k7oWETTpG5ZOYvRAmucIsDOCDxPZso
- 2JI1/CJerPS2MbD/gMYYgsmpGOfoRKo4jjsw8f+nlf/Zdgal6rjIXC1AXFYPJnX5JLYzWnVvZTt
- Oe1zmPOpSnrVZJevKI1L9do1c/SyKOpzAF5BEJXhFfjMyZsDQbqsj5rzLz2X814cru40+oRHbZb
- HdHsKqZM40d9vt587+0Fubzwl0EksSraSmhQRrqslPKFbl9YIW3gYPVMt9LpQDKINVWlNmJ1HwW
- oc1LpAy/gHYMcPzeS8UUcr2qGtmGrgpYT9L0q3Q6Fd0c6nPUgffV8d5AFqOWLgv3zFuAuyNGfTD
- 6f7E+M6jTRzVOJdFR1WTVSr0iLmOjjkHaPtwjB5dw++OQV20WbgV4+mL0gOfa9CCkOac8QZCZK7
- tQLPVV9Bm/YDEyRxuqB0nf3GQ13SZpAmd11JqndFWYe3B6vPj7oGDB7PjkMTsGytXQFDs=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1667;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=ejJiyRhNOC9Xg5jx2v5IBc5vVgg4IABN6nfDRl2m3bQ=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBl804YOT/y4oh7cSp7OlPw2zS5Tl/S3d+XSL1dZ
+ qcQXL+fOt2JAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZfNOGAAKCRC6l81St5ZB
+ T7kQC/wK2/wTeTZeTM0MnPlpRdOOBc8cyUMgjDVKpxvMyRI8yAICvkYuT5X3I/JIAiSTlnoPRNs
+ T8czt4a9El8kn3rzJrUnWqslVgijCjQNu75mhVIl5h2Hx0DeyF7xXzvxP9a7qpRBsrxGFsJOzlr
+ xIV+BECnckb1ymuqG9Nx5TcTYFUef2eHx6R1NahoOJ2eaJkT8NbMr+4d+IxeEVNv1KCngJcTLhn
+ j2ODJJt9OJ/W5k8gAyqvJZWLCnlIAPZIYzhOEGBu3D7BYhmVa/L2Ea74K76U054rZeBIbg4Xt5R
+ IKEbNBeLmErLYVin2F8ZzAgSWEbtolh545+BB7/t6fTEkwctvzvj3d5+JqxdaTvb2lKfRReRxEJ
+ h7dTo0Ikttkj4V+cjftwKAmFSNVE4NYWhCGfwn1M+onp2ZzZzdn79m3lY7nJW4z4KsIXo+z5ghP
+ LzdpG1ie5IRBI09mzaVoxDs4mkjlmc8NlDUaMqjjP1vM1VYLgMKXI9Jn1NE4Y1Ws1QRok=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -68,25 +69,41 @@ reduce the overall build time size of the kernel and run time memory
 bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel from atalk_table ctl_table array.
+When we remove the sentinel from ax25_param_table a buffer overflow
+shows its ugly head. The sentinel's data element used to be changed when
+CONFIG_AX25_DAMA_SLAVE was not defined. This did not have any adverse
+effects as we still stopped on the sentinel because of its null
+procname. But now that we do not have the sentinel element, we are
+careful to check ax25_param_table's size.
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- net/appletalk/sysctl_net_atalk.c | 1 -
- 1 file changed, 1 deletion(-)
+ net/ax25/sysctl_net_ax25.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/net/appletalk/sysctl_net_atalk.c b/net/appletalk/sysctl_net_atalk.c
-index d945b7c0176d..7aebfe903242 100644
---- a/net/appletalk/sysctl_net_atalk.c
-+++ b/net/appletalk/sysctl_net_atalk.c
-@@ -40,7 +40,6 @@ static struct ctl_table atalk_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_jiffies,
+diff --git a/net/ax25/sysctl_net_ax25.c b/net/ax25/sysctl_net_ax25.c
+index db66e11e7fe8..2ee375a6a69c 100644
+--- a/net/ax25/sysctl_net_ax25.c
++++ b/net/ax25/sysctl_net_ax25.c
+@@ -141,8 +141,7 @@ static const struct ctl_table ax25_param_table[] = {
+ 		.extra2		= &max_ds_timeout
  	},
--	{ },
+ #endif
+-
+-	{ }	/* that's all, folks! */
++/* that's all, folks! */
  };
  
- static struct ctl_table_header *atalk_table_header;
+ int ax25_register_dev_sysctl(ax25_dev *ax25_dev)
+@@ -155,7 +154,7 @@ int ax25_register_dev_sysctl(ax25_dev *ax25_dev)
+ 	if (!table)
+ 		return -ENOMEM;
+ 
+-	for (k = 0; k < AX25_MAX_VALUES; k++)
++	for (k = 0; k < AX25_MAX_VALUES && k < ARRAY_SIZE(ax25_param_table); k++)
+ 		table[k].data = &ax25_dev->values[k];
+ 
+ 	snprintf(path, sizeof(path), "net/ax25/%s", ax25_dev->dev->name);
 
 -- 
 2.43.0
