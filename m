@@ -1,100 +1,57 @@
 From: Janne Grunau <j@jannau.net>
-Date: Sun, 17 Mar 2024 12:07:08 +0100
-Subject: [PATCH v2 6/6] usb: kbd: Add probe quirk for Apple and Keychron
- keyboards
+Subject: [PATCH 0/4] configs: apple: Switch to standard boot + small
+ adjustments
+Date: Sun, 17 Mar 2024 15:54:46 +0100
+Message-Id: <20240317-apple_config-v1-0-1b862bc140a9@jannau.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240317-asahi-keyboards-v2-6-d3f4b8384f68@jannau.net>
-References: <20240317-asahi-keyboards-v2-0-d3f4b8384f68@jannau.net>
-In-Reply-To: <20240317-asahi-keyboards-v2-0-d3f4b8384f68@jannau.net>
-To: Bin Meng <bmeng.cn@gmail.com>, Marek Vasut <marex@denx.de>, 
- Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>, 
- Joe Hershberger <joe.hershberger@ni.com>
-Cc: u-boot@lists.denx.de, asahi@lists.linux.dev, 
- Janne Grunau <j@jannau.net>
+X-B4-Tracking: v=1; b=H4sIADYE92UC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDY0Nz3cSCgpzU+OT8vLTMdF1LC8O05BRLAyOLJEsloJaCotS0zAqwcdG
+ xtbUAFJllBl4AAAA=
+To: Mark Kettenis <kettenis@openbsd.org>, Tom Rini <trini@konsulko.com>
+Cc: Simon Glass <sjg@chromium.org>, u-boot@lists.denx.de, 
+ asahi@lists.linux.dev, Janne Grunau <j@jannau.net>, 
+ Hector Martin <marcan@marcan.st>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2616; i=j@jannau.net;
- h=from:subject:message-id; bh=3QwUEWP3L6KlsCns2lL89QxfbDuChlSL5HehKX5qToc=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtRv5+5pt7Pe+dFwRc5z80x+jsZjHfsP/s/pqy9VSeV/2
- Dln2t+kjlIWBjEuBlkxRZYk7ZcdDKtrFGNqH4TBzGFlAhnCwMUpABPxl2b4w8nuM19sh4RHH7NB
- YCLnCmXpG34uCb3dBcEfDv0NPMG0l+F/af5CHv6SiNklKnyp13+fPb95odRLv3d23dcuLaptlqt
- nAgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1019; i=j@jannau.net;
+ h=from:subject:message-id; bh=GHsx6X1WIlFwSlzUjkLM+TSgi9zdmDPgNrNQSgJxM0Y=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtTvLOZX0ycU5D7YXNAWGLI8uXtyh8dxuW2bts758+hx6
+ Z8N3yZ5dJSyMIhxMciKKbIkab/sYFhdoxhT+yAMZg4rE8gQBi5OAZiIziFGhtUlu45+4EmNTfr3
+ f6/qC6/iZXaSu5bW8C6d/ZZz3xrhJ+sZfjFf223xqXYSU4//vey4xnuPHffK9iyKXFlpwbf+jLf
+ AJQ4A
 X-Developer-Key: i=j@jannau.net; a=openpgp;
  fpr=8B336A6BE4E5695E89B8532B81E806F586338419
 X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Those keyboards do not return the current device state. Polling will
-timeout unless there are key presses. This is not a problem during
-operation but the inital device state query during probing will fail.
-Skip this step in usb_kbd_probe_dev() to make these devices useable.
-Not all Apple keyboards behave like this. A keyboard with USB
-vendor/product ID 05ac:0221 is reported to work with the current code.
-Unfortunately some Keychron keyboards "re-use" Apple's vendor ID and
-show the same behavior (Keychron C2, 05ac:024f for example).
+This series contains a few misc config changes for Apple silicon
+systems:
+- switch from the deprecated distro boot scripts to standard boot
+- allows EFI console resizing based on the video console size
+- enables 16x32 bitmap fonts as Apple devices come with high DPI
+  displays
+- enables 64-bit LBA addressing for USB storage devices larger than 2TB
 
-Reviewed-by: Marek Vasut <marex@denx.de>
 Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- common/usb_kbd.c | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+Hector Martin (1):
+      apple_m1_defconfig: Turn on CONFIG_SYS_64BIT_LBA
 
-diff --git a/common/usb_kbd.c b/common/usb_kbd.c
-index 8cc3345075..43c7668671 100644
---- a/common/usb_kbd.c
-+++ b/common/usb_kbd.c
-@@ -31,6 +31,10 @@
- #define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_FINGERPRINT_2021	0x029a
- #define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_NUMPAD_2021		0x029f
- 
-+#define USB_VENDOR_ID_KEYCHRON	0x3434
-+
-+#define USB_HID_QUIRK_POLL_NO_REPORT_IDLE	(1 << 0)
-+
- /*
-  * If overwrite_console returns 1, the stdin, stderr and stdout
-  * are switched to the serial port, else the settings in the
-@@ -474,6 +478,7 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 	struct usb_interface *iface;
- 	struct usb_endpoint_descriptor *ep;
- 	struct usb_kbd_pdata *data;
-+	unsigned int quirks = 0;
- 	int epNum;
- 
- 	if (dev->descriptor.bNumConfigurations != 1)
-@@ -506,6 +511,15 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 
- 	debug("USB KBD: found interrupt EP: 0x%x\n", ep->bEndpointAddress);
- 
-+	switch (dev->descriptor.idVendor) {
-+	case USB_VENDOR_ID_APPLE:
-+	case USB_VENDOR_ID_KEYCHRON:
-+		quirks |= USB_HID_QUIRK_POLL_NO_REPORT_IDLE;
-+		break;
-+	default:
-+		break;
-+	}
-+
- 	data = malloc(sizeof(struct usb_kbd_pdata));
- 	if (!data) {
- 		printf("USB KBD: Error allocating private data\n");
-@@ -546,6 +560,14 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 	usb_set_idle(dev, iface->desc.bInterfaceNumber, 0, 0);
- #endif
- 
-+	/*
-+	 * Apple and Keychron keyboards do not report the device state. Reports
-+	 * are only returned during key presses.
-+	 */
-+	if (quirks & USB_HID_QUIRK_POLL_NO_REPORT_IDLE) {
-+		debug("USB KBD: quirk: skip testing device state\n");
-+		return 1;
-+	}
- 	debug("USB KBD: enable interrupt pipe...\n");
- #ifdef CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE
- 	data->intq = create_int_queue(dev, data->intpipe, 1,
+Janne Grunau (3):
+      configs: apple: Use "vidconsole,serial" as stdout/stderr
+      configs: apple: Enable CMD_SELECT_FONT and FONT_16X32
+      arm: apple: Switch to standard boot
 
+ arch/arm/Kconfig           |  2 +-
+ configs/apple_m1_defconfig |  3 +++
+ include/configs/apple.h    | 24 ++++--------------------
+ 3 files changed, 8 insertions(+), 21 deletions(-)
+---
+base-commit: f3c979dd0053c082d2df170446923e7ce5edbc2d
+change-id: 20240317-apple_config-981fcd9028b9
+
+Best regards,
 -- 
-2.44.0
+Janne Grunau <j@jannau.net>
 
