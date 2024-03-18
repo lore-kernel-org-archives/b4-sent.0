@@ -1,82 +1,63 @@
-From: Janne Grunau <j@jannau.net>
-Date: Sun, 17 Mar 2024 15:54:50 +0100
-Subject: [PATCH 4/4] arm: apple: Switch to standard boot
+From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Subject: [PATCH 0/3] Fix EEE support for MT7531 and MT7988 SoC switch
+Date: Mon, 18 Mar 2024 10:46:22 +0300
+Message-Id: <20240318-for-net-mt7530-fix-eee-for-mt7531-mt7988-v1-0-3f17226344e8@arinc9.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240317-apple_config-v1-4-1b862bc140a9@jannau.net>
-References: <20240317-apple_config-v1-0-1b862bc140a9@jannau.net>
-In-Reply-To: <20240317-apple_config-v1-0-1b862bc140a9@jannau.net>
-To: Mark Kettenis <kettenis@openbsd.org>, Tom Rini <trini@konsulko.com>
-Cc: Simon Glass <sjg@chromium.org>, u-boot@lists.denx.de, 
- asahi@lists.linux.dev, Janne Grunau <j@jannau.net>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1402; i=j@jannau.net;
- h=from:subject:message-id; bh=crjeE1IUF+rCa9w41oK3inDEucGXM4uquwiVSADZxhc=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtTvLBZ8rklbnTjUW/wP/JPO5/6z+ma4TOHMM09ffwjY+
- 1Ws5v/njlIWBjEuBlkxRZYk7ZcdDKtrFGNqH4TBzGFlAhnCwMUpABN5LsjwT/PXdOdjFjrccdYl
- T64oHb/76I7xg8jeJt4TVq2bllz+ycXI0MiuumGxecDBWxwSVufSmC/n3w6q0VJfJ37S5mmDQKo
- 6EwA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAE7x92UC/x2NQQqDMBREryJ/7YfEGJL2KtKFxIn+RWNJpBTEu
+ zdmNbzHMHNSQRYUenYnZXylyJ4q6L6jsM1pBctSmQY1jMpox3HPnHDw+3DWKI7yYwBNN6XveHj
+ Psw12tCYEBU917pNRy+1qel3XH2pcu9x6AAAA
+To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
+ Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Florian Fainelli <f.fainelli@gmail.com>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ =?utf-8?q?Ren=C3=A9_van_Dorst?= <opensource@vdorst.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ SkyLake Huang <SkyLake.Huang@mediatek.com>, 
+ Heiner Kallweit <hkallweit1@gmail.com>
+Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>, 
+ mithat.guner@xeront.com, erkin.bozoglu@xeront.com, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, 
+ =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1710748010; l=899;
+ i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
+ bh=0IileY4KTERKAEQx1LyPEiRlXaWXwOgaikBtQNDncX8=;
+ b=MvoN53hH2wrfbvyDLe2J5XZFtp6mqVf4l86LIsFblVBKfoyUfPbX/amdemD8asCtN6EGZKuEz
+ u42E5pne4MiDXlAfYr/fO4zn5HkWlZDvIGDC85H9eXfauPMi8AW1P5J
+X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
+ pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
+X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use standard boot instead of the distro boot scripts.
+Hi.
 
-Signed-off-by: Janne Grunau <j@jannau.net>
+This patch series fixes EEE support for MT7531 and the switch on the MT7988
+SoC. EEE did not work on MT7531 on most boards before this, it is unclear
+what's the status on MT7988 SoC switch as I don't have the hardware.
+
+Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- arch/arm/Kconfig        |  2 +-
- include/configs/apple.h | 20 ++------------------
- 2 files changed, 3 insertions(+), 19 deletions(-)
+Arınç ÜNAL (3):
+      net: dsa: mt7530: fix enabling EEE on MT7531 switch on all boards
+      net: dsa: mt7530: fix disabling EEE on failure on MT7531 and MT7988
+      net: phy: mediatek-ge: do not disable EEE advertisement
 
-diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
-index 01d6556c42..ad89abde41 100644
---- a/arch/arm/Kconfig
-+++ b/arch/arm/Kconfig
-@@ -1034,7 +1034,7 @@ config ARCH_APPLE
- 	select USB
- 	imply CMD_DM
- 	imply CMD_GPT
--	imply DISTRO_DEFAULTS
-+	imply BOOTSTD_DEFAULTS
- 	imply OF_HAS_PRIOR_STAGE
- 
- config ARCH_OWL
-diff --git a/include/configs/apple.h b/include/configs/apple.h
-index a70440b3ad..1e08b11448 100644
---- a/include/configs/apple.h
-+++ b/include/configs/apple.h
-@@ -9,26 +9,10 @@
- 	"stdout=vidconsole,serial\0" \
- 	"stderr=vidconsole,serial\0"
- 
--#if IS_ENABLED(CONFIG_CMD_NVME)
--	#define BOOT_TARGET_NVME(func) func(NVME, nvme, 0)
--#else
--	#define BOOT_TARGET_NVME(func)
--#endif
--
--#if IS_ENABLED(CONFIG_CMD_USB)
--	#define BOOT_TARGET_USB(func) func(USB, usb, 0)
--#else
--	#define BOOT_TARGET_USB(func)
--#endif
--
--#define BOOT_TARGET_DEVICES(func) \
--	BOOT_TARGET_NVME(func) \
--	BOOT_TARGET_USB(func)
--
--#include <config_distro_bootcmd.h>
-+#define BOOT_TARGETS	"nvme usb"
- 
- #define CFG_EXTRA_ENV_SETTINGS \
- 	ENV_DEVICE_SETTINGS \
--	BOOTENV
-+	"boot_targets=" BOOT_TARGETS "\0"
- 
- #endif
+ drivers/net/dsa/mt7530.c      | 7 +++++++
+ drivers/net/dsa/mt7530.h      | 7 ++++++-
+ drivers/net/phy/mediatek-ge.c | 3 ---
+ 3 files changed, 13 insertions(+), 4 deletions(-)
+---
+base-commit: ea80e3ed09ab2c2b75724faf5484721753e92c31
+change-id: 20240317-for-net-mt7530-fix-eee-for-mt7531-mt7988-a5c5453cc0e8
 
+Best regards,
 -- 
-2.44.0
+Arınç ÜNAL <arinc.unal@arinc9.com>
 
