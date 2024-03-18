@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Mon, 18 Mar 2024 10:46:24 +0300
-Subject: [PATCH 2/3] net: dsa: mt7530: fix disabling EEE on failure on
- MT7531 and MT7988
+Date: Mon, 18 Mar 2024 10:46:25 +0300
+Subject: [PATCH 3/3] net: phy: mediatek-ge: do not disable EEE
+ advertisement
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240318-for-net-mt7530-fix-eee-for-mt7531-mt7988-v1-2-3f17226344e8@arinc9.com>
+Message-Id: <20240318-for-net-mt7530-fix-eee-for-mt7531-mt7988-v1-3-3f17226344e8@arinc9.com>
 References: <20240318-for-net-mt7530-fix-eee-for-mt7531-mt7988-v1-0-3f17226344e8@arinc9.com>
 In-Reply-To: <20240318-for-net-mt7530-fix-eee-for-mt7531-mt7988-v1-0-3f17226344e8@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -26,58 +26,44 @@ Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1710748010; l=1925;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1710748010; l=1173;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=DsZ4XshfmuCrCshjsgaop6WdjUbPqTHmbY230mILEL4=;
- b=ZS2k0DqfL9loUCm/WH/G9QtdGPn4jxGPZw06+JXJaEZak6hQGeq8Eo2REkCgRqRRkLXD1yaJo
- PcRkQSXM9Q6Az5i1Ibchy0fQ6e6xoBAq81gevdHjvamgoEvGlL5+Gp2
+ bh=5X/oaW7mTS2TiAUhw0sZVt3FkSCBq14+if6oX62AfQ4=;
+ b=+MNXFbgyZ7XWlbB+caj20Ex4VdOFh3bRWNk+7DxEulDTftFo/dQMZlnVMPgDMgzfE7zV31TEr
+ 3C0SXiZRhwiArszbs0GX8DiM1j4yZODltXA+UTuvosvV+CjFhIJGXcI
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MT7531_FORCE_EEE1G and MT7531_FORCE_EEE100 bits let the
-PMCR_FORCE_EEE1G and PMCR_FORCE_EEE100 bits determine the 1G/100 EEE
-abilities of the MAC. If MT7531_FORCE_EEE1G and MT7531_FORCE_EEE100 are
-unset, the abilities are left to be determined by PHY auto polling.
+There's no need to disable Energy-Efficient Ethernet (EEE) advertisement on
+the MT7530 and MT7531 switch PHYs. EEE works fine on MT7530 and MT7531
+switch PHYs. Remove the code where EEE advertisement is disabled.
 
-The commit 40b5d2f15c09 ("net: dsa: mt7530: Add support for EEE features")
-made it so that the PMCR_FORCE_EEE1G and PMCR_FORCE_EEE100 bits are set on
-mt753x_phylink_mac_link_up(). But it did not set the MT7531_FORCE_EEE1G and
-MT7531_FORCE_EEE100 bits. Because of this, EEE will be enabled on the
-switch MACs by polling the PHY, regardless of the result of phy_init_eee().
+This is a bugfix because there's a possible race condition where the
+mediatek-ge driver would kick in after the MT7530 DSA subdriver which would
+have EEE disabled until manually enabled.
 
-Define these bits and add them to MT7531_FORCE_MODE which is being used by
-the subdriver. With this, EEE will be prevented from being enabled on the
-switch MACs when phy_init_eee() fails.
-
-Fixes: 40b5d2f15c09 ("net: dsa: mt7530: Add support for EEE features")
+Fixes: e40d2cca0189 ("net: phy: add MediaTek Gigabit Ethernet PHY driver")
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530.h | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ drivers/net/phy/mediatek-ge.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
-index 509ed5362236..5b99aeca34b4 100644
---- a/drivers/net/dsa/mt7530.h
-+++ b/drivers/net/dsa/mt7530.h
-@@ -299,11 +299,15 @@ enum mt7530_vlan_port_acc_frm {
- #define  MT7531_FORCE_DPX		BIT(29)
- #define  MT7531_FORCE_RX_FC		BIT(28)
- #define  MT7531_FORCE_TX_FC		BIT(27)
-+#define  MT7531_FORCE_EEE100		BIT(26)
-+#define  MT7531_FORCE_EEE1G		BIT(25)
- #define  MT7531_FORCE_MODE		(MT7531_FORCE_LNK | \
- 					 MT7531_FORCE_SPD | \
- 					 MT7531_FORCE_DPX | \
- 					 MT7531_FORCE_RX_FC | \
--					 MT7531_FORCE_TX_FC)
-+					 MT7531_FORCE_TX_FC | \
-+					 MT7531_FORCE_EEE100 | \
-+					 MT7531_FORCE_EEE1G)
- #define  PMCR_LINK_SETTINGS_MASK	(PMCR_TX_EN | PMCR_FORCE_SPEED_1000 | \
- 					 PMCR_RX_EN | PMCR_FORCE_SPEED_100 | \
- 					 PMCR_TX_FC_EN | PMCR_RX_FC_EN | \
+diff --git a/drivers/net/phy/mediatek-ge.c b/drivers/net/phy/mediatek-ge.c
+index a493ae01b267..54ea64a37ab3 100644
+--- a/drivers/net/phy/mediatek-ge.c
++++ b/drivers/net/phy/mediatek-ge.c
+@@ -23,9 +23,6 @@ static int mtk_gephy_write_page(struct phy_device *phydev, int page)
+ 
+ static void mtk_gephy_config_init(struct phy_device *phydev)
+ {
+-	/* Disable EEE */
+-	phy_write_mmd(phydev, MDIO_MMD_AN, MDIO_AN_EEE_ADV, 0);
+-
+ 	/* Enable HW auto downshift */
+ 	phy_modify_paged(phydev, MTK_PHY_PAGE_EXTENDED, 0x14, 0, BIT(4));
+ 
 
 -- 
 2.40.1
