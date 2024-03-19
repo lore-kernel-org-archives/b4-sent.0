@@ -1,24 +1,26 @@
 From: Foo Barski <mricon@gmail.com>
-Date: Tue, 19 Mar 2024 10:20:17 -0400
-Subject: [PATCH v4] Change release name for testing
+Date: Tue, 19 Mar 2024 11:58:13 -0400
+Subject: [PATCH v7] Change release name for testing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v4-1-e95692e9106d@gmail.com>
-X-B4-Tracking: v=1; b=H4sIACCf+WUC/73QwW7DIAwG4FepOM9VSOjS7tT3mHYwYIilBCIga
- asq7z7aXfYEkXz5LVv+5KfIlJiy+Do8RaKVM8dQg/o4CDNg8ARsaxZt06qmkxcoA2eohZCXmRK
- MMXjQCYMZIOBEdQAL3HgcYYq5gKFUkMP4gJLY+7qh0QbKGVyKE9xIAwU7Rw4FenU6o2rRWfspq
- mBO5Pj+1n3/1FxPl5geb+wqX919XKsECbZHd7ENWkl0HTksdxeXYLHUjx1j8uIlXNsdVW1Vua4
- O9MYpOqmrn5DHo4nTn6Xb0dJVC2mtrZRnZZz8b9m27Rdw4+ixaAIAAA==
+Message-Id: <20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v7-1-893f19fb97fc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABS2+WUC/73QwW7CMAwG4FeZcp5Rk6Yt2Yn3mHZwGqdEahOUh
+ AJCvPsMu0w8QCVffsuWP/kuCuVARXx93EWmNZSQIofh80OMR4wTQXCchWqUblppoB5DAS6Ecj5
+ RhjnFCWzGOB4h4kI8gBUuYZ5hSaXCSLliiPMNag7TxBsWXaRSwOe0wIUsUHSnFGKFQXd71Aq9c
+ 71gwSmTD9eX7vuHM5+uKd9e2FU+u9u4VgkS3IDeuAadJDrMIZ6vPp2jw8of26U8iadwVRuqFKt
+ 8ywPD6DV1+jAtGObdmJY/S7uhpWULWWudlHs9evlu0Rta9NNiut4oMrLp3bul29DSsaXv1N4qG
+ jrVDu+WfkNLzxZDqnGtb8gg/bc8Ho9fip5CRQwEAAA=
 To: test@lists.linux.dev
-Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Cc: =?utf-8?q?Fak=C3=A9_Nam=C3=A9?= <mricon@kernel.org>, 
+ Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 X-Mailer: b4 0.14-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1332; i=mricon@gmail.com;
- h=from:subject:message-id; bh=16N6DQG6vj0LeiDcAXvzc3zE9QtegchSglfXozus0I0=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGFJ/zlf6OyPylVl/sZlLX6E8W5CKGFtsy1ppw3kaGnutn
- Hw/rJnVUcrCIMbFICumyFK2L3ZTUOFDD7n0HlOYOaxMIEMYuDgFYCIKExkZVmT29tiHBbPWTvxl
- k2hz54o/i/TNlfc5o3x0QhYzs1zVYfjvu8PtZ0d2tP/+EBchtp6sZbPvxN0MWsJ47qhnq8IK/iJ
- 2AA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1896; i=mricon@gmail.com;
+ h=from:subject:message-id; bh=6F7lmmrMiud0ZDiG14ef6txBfil8FENJ/U+MEZ0MaE8=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGFJ/bhOT7XoR/vhTO0tRTVCM4+qOb1czGmd0Ri05E39DS
+ /OtZCVbRykLgxgXg6yYIkvZvthNQYUPPeTSe0xh5rAygQxh4OIUgIkwxzP8j/rgF1+um7mi86zQ
+ /cpHfw0ljSfeU9XZJrnSIOm37qQXAQz/jOXXPbZse7B449dp56MEOiV5S1ZP7ZM4cy20+cfXQzX
+ CbAA=
 X-Developer-Key: i=mricon@gmail.com; a=openpgp;
  fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
 X-Endpoint-Received: by B4 Relay for mricon@gmail.com/default with auth_id=141
@@ -28,6 +30,15 @@ I just need a commit to test things.
 
 Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 ---
+Changes in v7:
+- Link to v6: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v6-1-9e20d3f0e9ae@gmail.com
+
+Changes in v6:
+- Link to v5: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v5-1-6528b2e75237@gmail.com
+
+Changes in v5:
+- Link to v4: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v4-1-e95692e9106d@gmail.com
+
 Changes in v4:
 - Link to v3: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v3-1-ebbbd1184cf1@gmail.com
 
