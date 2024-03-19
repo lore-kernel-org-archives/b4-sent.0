@@ -1,201 +1,64 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Mon, 18 Mar 2024 16:39:30 +0300
-Subject: [PATCH] net: dsa: mt7530: prevent possible incorrect XTAL
- frequency selection
+From: Foo Barski <mricon@gmail.com>
+Date: Tue, 19 Mar 2024 10:20:17 -0400
+Subject: [PATCH v4] Change release name for testing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240318-b4-for-stable-v1-1-d9f75dd87ca4@arinc9.com>
-X-B4-Tracking: v=1; b=H4sIABFE+GUC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDY0ML3SQT3bT8It3iksSknFTdNBMLs2TLtDSLFAszJaCegqLUtMwKsHn
- RsbW1AExk0TNfAAAA
-To: stable@vger.kernel.org
-Cc: Justin Swartz <justin.swartz@risingedge.co.za>, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>, 
- "David S. Miller" <davem@davemloft.net>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1710769174; l=6427;
- i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=WuUKsOISNYNRmSQO453So/WUAWV1DIg4mODUcnPMRvc=;
- b=aQhzO4HsikPAOaS1kYCxsz7Oafd6HgJLAQmdVmpoSC02Jm2GOE8RxM9BSltuUckPckkfeLRER
- Bua4zLgCCmdDJEikgo/Yirlh/QX989VPyBr90mveQlQvbrsnMDgUukP
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v4-1-e95692e9106d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACCf+WUC/73QwW7DIAwG4FepOM9VSOjS7tT3mHYwYIilBCIga
+ asq7z7aXfYEkXz5LVv+5KfIlJiy+Do8RaKVM8dQg/o4CDNg8ARsaxZt06qmkxcoA2eohZCXmRK
+ MMXjQCYMZIOBEdQAL3HgcYYq5gKFUkMP4gJLY+7qh0QbKGVyKE9xIAwU7Rw4FenU6o2rRWfspq
+ mBO5Pj+1n3/1FxPl5geb+wqX919XKsECbZHd7ENWkl0HTksdxeXYLHUjx1j8uIlXNsdVW1Vua4
+ O9MYpOqmrn5DHo4nTn6Xb0dJVC2mtrZRnZZz8b9m27Rdw4+ixaAIAAA==
+To: test@lists.linux.dev
+Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+X-Mailer: b4 0.14-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1332; i=mricon@gmail.com;
+ h=from:subject:message-id; bh=16N6DQG6vj0LeiDcAXvzc3zE9QtegchSglfXozus0I0=;
+ b=owGbwMvMwCW27YjM47CUmTmMp9WSGFJ/zlf6OyPylVl/sZlLX6E8W5CKGFtsy1ppw3kaGnutn
+ Hw/rJnVUcrCIMbFICumyFK2L3ZTUOFDD7n0HlOYOaxMIEMYuDgFYCIKExkZVmT29tiHBbPWTvxl
+ k2hz54o/i/TNlfc5o3x0QhYzs1zVYfjvu8PtZ0d2tP/+EBchtp6sZbPvxN0MWsJ47qhnq8IK/iJ
+ 2AA==
+X-Developer-Key: i=mricon@gmail.com; a=openpgp;
+ fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
+X-Endpoint-Received: by B4 Relay for mricon@gmail.com/default with auth_id=141
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-commit f490c492e946d8ffbe65ad4efc66de3c5ede30a4 upstream.
+I just need a commit to test things.
 
-On MT7530, the HT_XTAL_FSEL field of the HWTRAP register stores a 2-bit
-value that represents the frequency of the crystal oscillator connected to
-the switch IC. The field is populated by the state of the ESW_P4_LED_0 and
-ESW_P4_LED_0 pins, which is done right after reset is deasserted.
-
-  ESW_P4_LED_0    ESW_P3_LED_0    Frequency
-  -----------------------------------------
-  0               0               Reserved
-  0               1               20MHz
-  1               0               40MHz
-  1               1               25MHz
-
-On MT7531, the XTAL25 bit of the STRAP register stores this. The LAN0LED0
-pin is used to populate the bit. 25MHz when the pin is high, 40MHz when
-it's low.
-
-These pins are also used with LEDs, therefore, their state can be set to
-something other than the bootstrapping configuration. For example, a link
-may be established on port 3 before the DSA subdriver takes control of the
-switch which would set ESW_P3_LED_0 to high.
-
-Currently on mt7530_setup() and mt7531_setup(), 1000 - 1100 usec delay is
-described between reset assertion and deassertion. Some switch ICs in real
-life conditions cannot always have these pins set back to the bootstrapping
-configuration before reset deassertion in this amount of delay. This causes
-wrong crystal frequency to be selected which puts the switch in a
-nonfunctional state after reset deassertion.
-
-The tests below are conducted on an MT7530 with a 40MHz crystal oscillator
-by Justin Swartz.
-
-With a cable from an active peer connected to port 3 before reset, an
-incorrect crystal frequency (0b11 = 25MHz) is selected:
-
-                      [1]                  [3]     [5]
-                      :                    :       :
-              _____________________________         __________________
-ESW_P4_LED_0                               |_______|
-              _____________________________
-ESW_P3_LED_0                               |__________________________
-
-                       :                  : :     :
-                       :                  : [4]...:
-                       :                  :
-                       [2]................:
-
-[1] Reset is asserted.
-[2] Period of 1000 - 1100 usec.
-[3] Reset is deasserted.
-[4] Period of 315 usec. HWTRAP register is populated with incorrect
-    XTAL frequency.
-[5] Signals reflect the bootstrapped configuration.
-
-Increase the delay between reset_control_assert() and
-reset_control_deassert(), and gpiod_set_value_cansleep(priv->reset, 0) and
-gpiod_set_value_cansleep(priv->reset, 1) to 5000 - 5100 usec. This amount
-ensures a higher possibility that the switch IC will have these pins back
-to the bootstrapping configuration before reset deassertion.
-
-With a cable from an active peer connected to port 3 before reset, the
-correct crystal frequency (0b10 = 40MHz) is selected:
-
-                      [1]        [2-1]     [3]     [5]
-                      :          :         :       :
-              _____________________________         __________________
-ESW_P4_LED_0                               |_______|
-              ___________________           _______
-ESW_P3_LED_0                     |_________|       |__________________
-
-                       :          :       : :     :
-                       :          [2-2]...: [4]...:
-                       [2]................:
-
-[1] Reset is asserted.
-[2] Period of 5000 - 5100 usec.
-[2-1] ESW_P3_LED_0 goes low.
-[2-2] Remaining period of 5000 - 5100 usec.
-[3] Reset is deasserted.
-[4] Period of 310 usec. HWTRAP register is populated with bootstrapped
-    XTAL frequency.
-[5] Signals reflect the bootstrapped configuration.
-
-ESW_P3_LED_0 low period before reset deassertion:
-
-              5000 usec
-            - 5100 usec
-    TEST     RESET HOLD
-       #         (usec)
-  ---------------------
-       1           5410
-       2           5440
-       3           4375
-       4           5490
-       5           5475
-       6           4335
-       7           4370
-       8           5435
-       9           4205
-      10           4335
-      11           3750
-      12           3170
-      13           4395
-      14           4375
-      15           3515
-      16           4335
-      17           4220
-      18           4175
-      19           4175
-      20           4350
-
-     Min           3170
-     Max           5490
-
-  Median       4342.500
-     Avg       4466.500
-
-Fixes: b8f126a8d543 ("net-next: dsa: add dsa support for Mediatek MT7530 switch")
-Fixes: c288575f7810 ("net: dsa: mt7530: Add the support of MT7531 switch")
-Co-developed-by: Justin Swartz <justin.swartz@risingedge.co.za>
-Signed-off-by: Justin Swartz <justin.swartz@risingedge.co.za>
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
-Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
 ---
-Hi.
+Changes in v4:
+- Link to v3: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v3-1-ebbbd1184cf1@gmail.com
 
-I've adjusted the patch to suit stable trees by removing the last paragraph
-on the patch log. This is an important patch that should be backported to
-stable releases. Please apply to 6.8, 6.7, 6.6, 6.1, and 5.15 stable trees.
+Changes in v3:
+- Link to v2: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v2-1-f3bad7cf4e54@gmail.com
+
+Changes in v2:
+- Link to v1: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v1-1-d7af9d0ad1ee@linuxfoundation.org
 ---
- drivers/net/dsa/mt7530.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 3c1f657593a8..9c9a592c053e 100644
---- a/drivers/net/dsa/mt7530.c
-+++ b/drivers/net/dsa/mt7530.c
-@@ -2243,11 +2243,11 @@ mt7530_setup(struct dsa_switch *ds)
- 	 */
- 	if (priv->mcm) {
- 		reset_control_assert(priv->rstc);
--		usleep_range(1000, 1100);
-+		usleep_range(5000, 5100);
- 		reset_control_deassert(priv->rstc);
- 	} else {
- 		gpiod_set_value_cansleep(priv->reset, 0);
--		usleep_range(1000, 1100);
-+		usleep_range(5000, 5100);
- 		gpiod_set_value_cansleep(priv->reset, 1);
- 	}
+diff --git a/Makefile b/Makefile
+index 6fe2ae1a6d92..a9337857096a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -3,7 +3,7 @@ VERSION = 6
+ PATCHLEVEL = 8
+ SUBLEVEL = 0
+ EXTRAVERSION =
+-NAME = Hurr durr I'ma ninja sloth
++NAME = Testing Web Endpoint
  
-@@ -2449,11 +2449,11 @@ mt7531_setup(struct dsa_switch *ds)
- 	 */
- 	if (priv->mcm) {
- 		reset_control_assert(priv->rstc);
--		usleep_range(1000, 1100);
-+		usleep_range(5000, 5100);
- 		reset_control_deassert(priv->rstc);
- 	} else {
- 		gpiod_set_value_cansleep(priv->reset, 0);
--		usleep_range(1000, 1100);
-+		usleep_range(5000, 5100);
- 		gpiod_set_value_cansleep(priv->reset, 1);
- 	}
- 
+ # *DOCUMENTATION*
+ # To see a list of typical targets execute "make help"
 
 ---
-base-commit: e8f897f4afef0031fe618a8e94127a0934896aba
-change-id: 20240318-b4-for-stable-f486c9ff8d86
+base-commit: b3603fcb79b1036acae10602bffc4855a4b9af80
+change-id: 20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-7458a42afdd6
 
 Best regards,
 -- 
-Arınç ÜNAL <arinc.unal@arinc9.com>
+Foo Barski <mricon@gmail.com>
 
