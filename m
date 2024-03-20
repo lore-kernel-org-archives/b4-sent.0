@@ -1,154 +1,110 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 20 Mar 2024 17:44:17 +0800
-Subject: [PATCH v2 5/5] arm64: dts: add support for A5 based Amlogic AV400
+From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Date: Wed, 20 Mar 2024 23:45:30 +0300
+Subject: [PATCH net] net: dsa: mt7530: fix improper frames on all 25MHz and
+ 40MHz XTAL MT7530
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240320-basic_dt-v2-5-681ecfb23baf@amlogic.com>
-References: <20240320-basic_dt-v2-0-681ecfb23baf@amlogic.com>
-In-Reply-To: <20240320-basic_dt-v2-0-681ecfb23baf@amlogic.com>
-To: Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-serial@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1710927866; l=3326;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=+nsr1cR06XPF08fHlBRi3tq1y5+nQcWz9Xnyv8VVsTI=;
- b=HvreiFnqqra1y7Ctrg1oBcSke/nvJmtjWISD1xdTUiBDGTSNh2uPLW5pnc0YEeCN3hQ4WWTVt
- RstQOG8wSwFDfeqSRxzg2T06J5C2uch2NFVKoju7o6ND8c98ZzmC+qc
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240320-for-net-mt7530-fix-25mhz-xtal-with-direct-phy-access-v1-1-d92f605f1160@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIAOlK+2UC/x2NQQrCMBBFr1Jm7YeYGgSvIi5CMpoBm5Zk0Grp3
+ R3cfHiL/95GnZtwp8uwUeOXdJmrwfEwUCqxPhiSjck7f3Kjd7jPDZUVk57DaCgrfJjKF6vGJ96
+ iBVkaJ8VSPogpce9gHyPnEJwNmXppbMd/9kpmo9u+/wAysgF6iwAAAA==
+To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
+ Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Florian Fainelli <f.fainelli@gmail.com>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Landen Chao <Landen.Chao@mediatek.com>
+Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>, 
+ mithat.guner@xeront.com, erkin.bozoglu@xeront.com, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, 
+ =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1710967529; l=2945;
+ i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
+ bh=IUAz2iG3lPTlOnHitW8WZ64dit6oJNL3iK9bUDlrZFc=;
+ b=9MtA/Y9vEntM4ULwpnIWKrfqRMckl0Wp+4r/3tLyQSs8Vp/HogUBUCCrb6G8Bmi+gvgL+E48f
+ eNL7rncPs4HDH+51dumgEwZZhzuvjTqevdlI0Ad8n0q7H08iJY9JB0M
+X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
+ pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
+X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Amlogic A5 is an application processor designed for smart audio
-and IoT applications.
+The MT7530 switch after reset initialises with a core clock frequency that
+works with a 25MHz XTAL connected to it. For 40MHz XTAL, the core clock
+frequency must be set to 500MHz.
 
-Add basic support for the A5 based Amlogic AV400 board, which describes
-the following components: CPU, GIC, IRQ, Timer and UART.
-These are capable of booting up into the serial console.
+The mt7530_pll_setup() function is responsible of setting the core clock
+frequency. Currently, it runs on MT7530 with 25MHz and 40MHz XTAL. This
+causes MT7530 switch with 25MHz XTAL to egress and ingress frames
+improperly.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Introduce a check to run it only on MT7530 with 40MHz XTAL.
+
+The core clock frequency is set by writing to a switch PHY's register.
+Access to the PHY's register is done via the MDIO bus the switch is also
+on. Therefore, it works only when the switch makes switch PHYs listen on
+the MDIO bus the switch is on. This is controlled either by the state of
+the ESW_P1_LED_1 pin after reset deassertion or modifying bit 5 of the
+modifiable trap register.
+
+When ESW_P1_LED_1 is pulled high, PHY indirect access is used. That means
+accessing PHY registers via the PHY indirect access control register of the
+switch.
+
+When ESW_P1_LED_1 is pulled low, PHY direct access is used. That means
+accessing PHY registers via the MDIO bus the switch is on.
+
+For MT7530 switch with 40MHz XTAL on a board with ESW_P1_LED_1 pulled high,
+the core clock frequency won't be set to 500MHz, causing the switch to
+egress and ingress frames improperly.
+
+Run mt7530_pll_setup() after PHY direct access is set on the modifiable
+trap register.
+
+With these two changes, all MT7530 switches with 25MHz and 40MHz, and
+P1_LED_1 pulled high or low, will egress and ingress frames properly.
+
+Link: https://github.com/BPI-SINOVOIP/BPI-R2-bsp/blob/4a5dd143f2172ec97a2872fa29c7c4cd520f45b5/linux-mt/drivers/net/ethernet/mediatek/gsw_mt7623.c#L1039
+Fixes: b8f126a8d543 ("net-next: dsa: add dsa support for Mediatek MT7530 switch")
+Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- arch/arm64/boot/dts/amlogic/Makefile               |  1 +
- .../boot/dts/amlogic/amlogic-a5-a113x2-av400.dts   | 42 ++++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        | 40 +++++++++++++++++++++
- 3 files changed, 83 insertions(+)
+ drivers/net/dsa/mt7530.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/Makefile b/arch/arm64/boot/dts/amlogic/Makefile
-index 9a50ec11bb8d..154c9efb26e4 100644
---- a/arch/arm64/boot/dts/amlogic/Makefile
-+++ b/arch/arm64/boot/dts/amlogic/Makefile
-@@ -1,5 +1,6 @@
- # SPDX-License-Identifier: GPL-2.0
- dtb-$(CONFIG_ARCH_MESON) += amlogic-a4-a113l2-ba400.dtb
-+dtb-$(CONFIG_ARCH_MESON) += amlogic-a5-a113x2-av400.dtb
- dtb-$(CONFIG_ARCH_MESON) += amlogic-c3-c302x-aw409.dtb
- dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-an400.dtb
- dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4.dtb
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5-a113x2-av400.dts b/arch/arm64/boot/dts/amlogic/amlogic-a5-a113x2-av400.dts
-new file mode 100644
-index 000000000000..2f5f5ea74bc9
---- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5-a113x2-av400.dts
-@@ -0,0 +1,42 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Copyright (c) 2024 Amlogic, Inc. All rights reserved.
-+ */
+diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
+index 6986f538a4d0..c856a13bc2f1 100644
+--- a/drivers/net/dsa/mt7530.c
++++ b/drivers/net/dsa/mt7530.c
+@@ -2232,8 +2232,6 @@ mt7530_setup(struct dsa_switch *ds)
+ 		     SYS_CTRL_PHY_RST | SYS_CTRL_SW_RST |
+ 		     SYS_CTRL_REG_RST);
+ 
+-	mt7530_pll_setup(priv);
+-
+ 	/* Lower Tx driving for TRGMII path */
+ 	for (i = 0; i < NUM_TRGMII_CTRL; i++)
+ 		mt7530_write(priv, MT7530_TRGMII_TD_ODT(i),
+@@ -2249,6 +2247,9 @@ mt7530_setup(struct dsa_switch *ds)
+ 	val |= MHWTRAP_MANUAL;
+ 	mt7530_write(priv, MT7530_MHWTRAP, val);
+ 
++	if ((val & HWTRAP_XTAL_MASK) == HWTRAP_XTAL_40MHZ)
++		mt7530_pll_setup(priv);
 +
-+/dts-v1/;
-+
-+#include "amlogic-a5.dtsi"
-+
-+/ {
-+	model = "Amlogic A113X2 av400 Development Board";
-+	compatible = "amlogic,av400","amlogic,a5";
-+	interrupt-parent = <&gic>;
-+	#address-cells = <2>;
-+	#size-cells = <2>;
-+
-+	aliases {
-+		serial0 = &uart_b;
-+	};
-+
-+	memory@0 {
-+		device_type = "memory";
-+		reg = <0x0 0x0 0x0 0x40000000>;
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		/* 10 MiB reserved for ARM Trusted Firmware */
-+		secmon_reserved: secmon@5000000 {
-+			compatible = "shared-dma-pool";
-+			reg = <0x0 0x05000000 0x0 0xa00000>;
-+			no-map;
-+		};
-+	};
-+};
-+
-+&uart_b {
-+	status = "okay";
-+};
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-new file mode 100644
-index 000000000000..43f68a7da2f7
---- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-@@ -0,0 +1,40 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Copyright (c) 2024 Amlogic, Inc. All rights reserved.
-+ */
-+
-+#include "amlogic-a4-common.dtsi"
-+/ {
-+	cpus {
-+		#address-cells = <2>;
-+		#size-cells = <0>;
-+
-+		cpu0: cpu@0 {
-+			device_type = "cpu";
-+			compatible = "arm,cortex-a55";
-+			reg = <0x0 0x0>;
-+			enable-method = "psci";
-+		};
-+
-+		cpu1: cpu@100 {
-+			device_type = "cpu";
-+			compatible = "arm,cortex-a55";
-+			reg = <0x0 0x100>;
-+			enable-method = "psci";
-+		};
-+
-+		cpu2: cpu@200 {
-+			device_type = "cpu";
-+			compatible = "arm,cortex-a55";
-+			reg = <0x0 0x200>;
-+			enable-method = "psci";
-+		};
-+
-+		cpu3: cpu@300 {
-+			device_type = "cpu";
-+			compatible = "arm,cortex-a55";
-+			reg = <0x0 0x300>;
-+			enable-method = "psci";
-+		};
-+	};
-+};
+ 	mt753x_trap_frames(priv);
+ 
+ 	/* Enable and reset MIB counters */
 
+---
+base-commit: 9c6a59543a3965071d65b0f9ea43aa396ce2ed14
+change-id: 20240320-for-net-mt7530-fix-25mhz-xtal-with-direct-phy-access-e2aaed550ed5
+
+Best regards,
 -- 
-2.37.1
+Arınç ÜNAL <arinc.unal@arinc9.com>
 
