@@ -1,75 +1,85 @@
-From: Foo Barski <mricon@gmail.com>
-Date: Tue, 19 Mar 2024 11:58:13 -0400
-Subject: [PATCH v7] Change release name for testing
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v2 0/5] Baisc devicetree support for Amlogic A4 and A5
+Date: Wed, 20 Mar 2024 17:44:12 +0800
+Message-Id: <20240320-basic_dt-v2-0-681ecfb23baf@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v7-1-893f19fb97fc@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABS2+WUC/73QwW7CMAwG4FeZcp5Rk6Yt2Yn3mHZwGqdEahOUh
- AJCvPsMu0w8QCVffsuWP/kuCuVARXx93EWmNZSQIofh80OMR4wTQXCchWqUblppoB5DAS6Ecj5
- RhjnFCWzGOB4h4kI8gBUuYZ5hSaXCSLliiPMNag7TxBsWXaRSwOe0wIUsUHSnFGKFQXd71Aq9c
- 71gwSmTD9eX7vuHM5+uKd9e2FU+u9u4VgkS3IDeuAadJDrMIZ6vPp2jw8of26U8iadwVRuqFKt
- 8ywPD6DV1+jAtGObdmJY/S7uhpWULWWudlHs9evlu0Rta9NNiut4oMrLp3bul29DSsaXv1N4qG
- jrVDu+WfkNLzxZDqnGtb8gg/bc8Ho9fip5CRQwEAAA=
-To: test@lists.linux.dev
-Cc: =?utf-8?q?Fak=C3=A9_Nam=C3=A9?= <mricon@kernel.org>, 
- Konstantin Ryabitsev <konstantin@linuxfoundation.org>
-X-Mailer: b4 0.14-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1896; i=mricon@gmail.com;
- h=from:subject:message-id; bh=6F7lmmrMiud0ZDiG14ef6txBfil8FENJ/U+MEZ0MaE8=;
- b=owGbwMvMwCW27YjM47CUmTmMp9WSGFJ/bhOT7XoR/vhTO0tRTVCM4+qOb1czGmd0Ri05E39DS
- /OtZCVbRykLgxgXg6yYIkvZvthNQYUPPeTSe0xh5rAygQxh4OIUgIkwxzP8j/rgF1+um7mi86zQ
- /cpHfw0ljSfeU9XZJrnSIOm37qQXAQz/jOXXPbZse7B449dp56MEOiV5S1ZP7ZM4cy20+cfXQzX
- CbAA=
-X-Developer-Key: i=mricon@gmail.com; a=openpgp;
- fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
-X-Endpoint-Received: by B4 Relay for mricon@gmail.com/default with auth_id=141
+X-B4-Tracking: v=1; b=H4sIAOyv+mUC/23MSwrCMBSF4a2UOzaSmyZWO3IfUiTm0V6wjSQlK
+ CV7N3bs8D8cvg2Si+QS9M0G0WVKFJYa4tCAmfQyOka2NgguJG9RsIdOZO52Zaic7JRQWmIL9f6
+ KztN7p25D7YnSGuJnlzP+1j9IRsZZ5xGtbzU/X05XPT/DSOZowgxDKeULHOVI+qIAAAA=
+To: Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-serial@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1710927866; l=2117;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=57GTWlJ10xHsfYL6870kURGURrNt5JlLAOfaQw5P9Mw=;
+ b=jK6abUosSrr17IwEhUIrG13N7aYIqvBJbqHa/G/LMGiennQnD2whXlY0q+l/D6h/ZnyOdLZ5Y
+ pNQOW88O1UfBKE2djyM09f5JDJ3fXPmBlJvlqA9saYln1HnkZzV7BBn
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-I just need a commit to test things.
+Amlogic A4 and A5 are application processors designed for smart audio
+and IoT applications.
 
-Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Add the new A4 SoC/board device tree bindings.
+
+Add the new A5 SoC/board device tree bindings.
+
+Add A4 UART compatible line for documentation.
+
+Add basic support for the A4 based Amlogic AV400 board, which describes
+the following components: CPU, GIC, IRQ, Timer and UART. These are capable of
+booting up into the serial console.
+
+Add basic support for the A5 based Amlogic AV400 board, which describes
+the following components: CPU, GIC, IRQ, Timer and UART. These are capable of
+booting up into the serial console.
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v7:
-- Link to v6: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v6-1-9e20d3f0e9ae@gmail.com
-
-Changes in v6:
-- Link to v5: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v5-1-6528b2e75237@gmail.com
-
-Changes in v5:
-- Link to v4: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v4-1-e95692e9106d@gmail.com
-
-Changes in v4:
-- Link to v3: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v3-1-ebbbd1184cf1@gmail.com
-
-Changes in v3:
-- Link to v2: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v2-1-f3bad7cf4e54@gmail.com
-
 Changes in v2:
-- Link to v1: https://lore.kernel.org/r/20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-v1-1-d7af9d0ad1ee@linuxfoundation.org
----
- Makefile | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/Makefile b/Makefile
-index 6fe2ae1a6d92..a9337857096a 100644
---- a/Makefile
-+++ b/Makefile
-@@ -3,7 +3,7 @@ VERSION = 6
- PATCHLEVEL = 8
- SUBLEVEL = 0
- EXTRAVERSION =
--NAME = Hurr durr I'ma ninja sloth
-+NAME = Testing Web Endpoint
- 
- # *DOCUMENTATION*
- # To see a list of typical targets execute "make help"
+- Delete bindings for uncommitted boards.
+- Add A4 UART compatible line for documentation.
+- Use common dtsi for a4 and a5.
+- Fix psci version 1.0, and fix some formats.
+- Modify secmon reserved memory size 10M(actual using).
+- Link to v1: https://lore.kernel.org/r/20240312-basic_dt-v1-0-7f11df3a0896@amlogic.com
 
 ---
-base-commit: b3603fcb79b1036acae10602bffc4855a4b9af80
-change-id: 20240319-this-is-a-super-long-branch-name-that-will-most-certainly-trigger-badness-from-web-endpoint-7458a42afdd6
+Xianwei Zhao (5):
+      dt-bindings: arm: amlogic: add A4 support
+      dt-bindings: arm: amlogic: add A5 support
+      dt-bindings: serial: amlogic,meson-uart: Add compatible string for A4
+      arm64: dts: add support for A4 based Amlogic BA400
+      arm64: dts: add support for A5 based Amlogic AV400
+
+ Documentation/devicetree/bindings/arm/amlogic.yaml | 12 ++++
+ .../bindings/serial/amlogic,meson-uart.yaml        |  4 +-
+ arch/arm64/boot/dts/amlogic/Makefile               |  2 +
+ .../boot/dts/amlogic/amlogic-a4-a113l2-ba400.dts   | 42 ++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi | 66 ++++++++++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        | 40 +++++++++++++
+ .../boot/dts/amlogic/amlogic-a5-a113x2-av400.dts   | 42 ++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        | 40 +++++++++++++
+ 8 files changed, 247 insertions(+), 1 deletion(-)
+---
+base-commit: 7092cfae086f0bc235baca413d0bd904f182670c
+change-id: 20240312-basic_dt-15e47525a413
 
 Best regards,
 -- 
-Foo Barski <mricon@gmail.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
