@@ -1,101 +1,64 @@
-From: Janne Grunau <j@jannau.net>
-Date: Fri, 22 Mar 2024 08:47:09 +0100
-Subject: [PATCH v3 6/6] usb: kbd: Add probe quirk for Apple and Keychron
- keyboards
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Date: Mon, 25 Mar 2024 19:05:09 +0100
+Subject: [PATCH] regulator: tps65132: Add of_match table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240322-asahi-keyboards-v3-6-3106dd4c4e19@jannau.net>
-References: <20240322-asahi-keyboards-v3-0-3106dd4c4e19@jannau.net>
-In-Reply-To: <20240322-asahi-keyboards-v3-0-3106dd4c4e19@jannau.net>
-To: Bin Meng <bmeng.cn@gmail.com>, Marek Vasut <marex@denx.de>, 
- Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>, 
- Joe Hershberger <joe.hershberger@ni.com>
-Cc: u-boot@lists.denx.de, asahi@lists.linux.dev, 
- Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2657; i=j@jannau.net;
- h=from:subject:message-id; bh=bgC5VMp6aw6U5Uhn14jI61Gw7z5YE8JE2SujySRwwJE=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhtS/5i1aaTURbQt9l8j7GcpkLAuZxvorW+Dnlv16Nmvyt
- 7WHZcd3lLIwiHExyIopsiRpv+xgWF2jGFP7IAxmDisTyBAGLk4BmIjxJob/EbWB1zbcZM4xWM6l
- PDFgS8aWyX+3fGQ8wdzxIsTbRGN/JCND2wrPpN1p15QF6jTZpHV+cbdu2zMpL2qOxirh16ynX/3
- kAwA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240325-of_tps65132-v1-1-86a5f7ef4ede@apitzsch.eu>
+X-B4-Tracking: v=1; b=H4sIANS8AWYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDYyMT3fy0+JKCYjNTQ2MjXTMLY0vzRNNEy2RzIyWgjoKi1LTMCrBp0bG
+ 1tQA1zrrTXQAAAA==
+To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>
+Cc: linux-kernel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1711389916; l=1264;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=Y23B5v2pnT5ytkfuGZwM57ZFxcbAa4hFV6lYc2Evsoo=;
+ b=FGBKARqa/RCXMwGNRqo61P/XH/+1MAcptJw6JzImB7Xdoaz8tiLaQzKI+eVlCfbcvuFjjVfMw
+ KT5ItZH7RTzA2KhytGWXHlJlJymGVDFGdGsy2ONsHVXVr6ZOXcnhIrW
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Those keyboards do not return the current device state. Polling will
-timeout unless there are key presses. This is not a problem during
-operation but the initial device state query during probing will fail.
-Skip this step in usb_kbd_probe_dev() to make these devices useable.
-Not all Apple keyboards behave like this. A keyboard with USB
-vendor/product ID 05ac:0221 is reported to work with the current code.
-Unfortunately some Keychron keyboards "re-use" Apple's vendor ID and
-show the same behavior (Keychron C2, 05ac:024f for example).
+Add of_match table for "ti,tps65132" compatible string.
+This fixes automatic driver loading when using device-tree,
+and if built as a module like major linux distributions do.
 
-Reviewed-by: Marek Vasut <marex@denx.de>
-Reviewed-by: Neal Gompa <neal@gompa.dev>
-Signed-off-by: Janne Grunau <j@jannau.net>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- common/usb_kbd.c | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+ drivers/regulator/tps65132-regulator.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/common/usb_kbd.c b/common/usb_kbd.c
-index b2361bbf18..820f591fc5 100644
---- a/common/usb_kbd.c
-+++ b/common/usb_kbd.c
-@@ -31,6 +31,10 @@
- #define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_FINGERPRINT_2021	0x029a
- #define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_NUMPAD_2021		0x029f
+diff --git a/drivers/regulator/tps65132-regulator.c b/drivers/regulator/tps65132-regulator.c
+index a06f5f2d7932..9c2f0dd42613 100644
+--- a/drivers/regulator/tps65132-regulator.c
++++ b/drivers/regulator/tps65132-regulator.c
+@@ -267,10 +267,17 @@ static const struct i2c_device_id tps65132_id[] = {
+ };
+ MODULE_DEVICE_TABLE(i2c, tps65132_id);
  
-+#define USB_VENDOR_ID_KEYCHRON	0x3434
++static const struct of_device_id __maybe_unused tps65132_of_match[] = {
++	{ .compatible = "ti,tps65132" },
++	{},
++};
++MODULE_DEVICE_TABLE(of, tps65132_of_match);
 +
-+#define USB_HID_QUIRK_POLL_NO_REPORT_IDLE	BIT(0)
-+
- /*
-  * If overwrite_console returns 1, the stdin, stderr and stdout
-  * are switched to the serial port, else the settings in the
-@@ -474,6 +478,7 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 	struct usb_interface *iface;
- 	struct usb_endpoint_descriptor *ep;
- 	struct usb_kbd_pdata *data;
-+	unsigned int quirks = 0;
- 	int epNum;
- 
- 	if (dev->descriptor.bNumConfigurations != 1)
-@@ -506,6 +511,15 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 
- 	debug("USB KBD: found interrupt EP: 0x%x\n", ep->bEndpointAddress);
- 
-+	switch (dev->descriptor.idVendor) {
-+	case USB_VENDOR_ID_APPLE:
-+	case USB_VENDOR_ID_KEYCHRON:
-+		quirks |= USB_HID_QUIRK_POLL_NO_REPORT_IDLE;
-+		break;
-+	default:
-+		break;
-+	}
-+
- 	data = malloc(sizeof(struct usb_kbd_pdata));
- 	if (!data) {
- 		printf("USB KBD: Error allocating private data\n");
-@@ -546,6 +560,14 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
- 	usb_set_idle(dev, iface->desc.bInterfaceNumber, 0, 0);
- #endif
- 
-+	/*
-+	 * Apple and Keychron keyboards do not report the device state. Reports
-+	 * are only returned during key presses.
-+	 */
-+	if (quirks & USB_HID_QUIRK_POLL_NO_REPORT_IDLE) {
-+		debug("USB KBD: quirk: skip testing device state\n");
-+		return 1;
-+	}
- 	debug("USB KBD: enable interrupt pipe...\n");
- #ifdef CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE
- 	data->intq = create_int_queue(dev, data->intpipe, 1,
+ static struct i2c_driver tps65132_i2c_driver = {
+ 	.driver = {
+ 		.name = "tps65132",
+ 		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
++		.of_match_table = of_match_ptr(tps65132_of_match),
+ 	},
+ 	.probe = tps65132_probe,
+ 	.id_table = tps65132_id,
 
+---
+base-commit: 1fdad13606e104ff103ca19d2d660830cb36d43e
+change-id: 20240324-of_tps65132-68397a5a9c72
+
+Best regards,
 -- 
-2.44.0
+André Apitzsch <git@apitzsch.eu>
 
