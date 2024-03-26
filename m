@@ -1,62 +1,48 @@
-From: Folker Schwesinger <dev@folker-schwesinger.de>
-Date: Tue, 26 Mar 2024 19:54:37 +0100
-Subject: [PATCH 3/3] arm64: dts: rockchip: Remove enable-strobe-pulldown
- for NanoPi4 boards
+From: Taylor Jackson <tjackson9431@gmail.com>
+Subject: [PATCH 0/2] Patches to update xfs test "generic/645" for
+ mount_setattr
+Date: Tue, 26 Mar 2024 20:33:50 +0000
+Message-Id: <20240326-mount-setattr-test-v1-0-c061b040d0f7@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240326-rk-default-enable-strobe-pulldown-v1-3-f410c71605c0@folker-schwesinger.de>
-References: <20240326-rk-default-enable-strobe-pulldown-v1-0-f410c71605c0@folker-schwesinger.de>
-In-Reply-To: <20240326-rk-default-enable-strobe-pulldown-v1-0-f410c71605c0@folker-schwesinger.de>
-To: Vinod Koul <vkoul@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>, Chris Ruehl <chris.ruehl@gtsys.com.hk>, 
- Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Christopher Obbard <chris.obbard@collabora.com>, 
- Alban Browaeys <alban.browaeys@gmail.com>, 
- Doug Anderson <dianders@chromium.org>, 
- Brian Norris <briannorris@chromium.org>, 
- Jensen Huang <jensenhuang@friendlyarm.com>, linux-phy@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Folker Schwesinger <dev@folker-schwesinger.de>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=724;
- i=dev@folker-schwesinger.de; h=from:subject:message-id;
- bh=fmO1sP9nAwWwIfDKXcaV6YI0IH/hcl1UfJExvs0KGtI=;
- b=owGbwMvMwCXG5FBoZNu1u5bxtFoSQxqz1KSLdfclJe/cdDUz+/2kl+1vlNncrZtWMwXdsI2zz
- Obt51PvKGVhEONikBVTZGHNy9jCnFm+1Lrr52uYOaxMIEMYuDgFYCJlxowMUxteL/2zjlHg1162
- 50fY9v/3D+Q+G9j4zG9K5kYTttqjXowMV2buML48c6NI60+fT5tf/Q9o/dhVHZW/LE7hbpPWpuD
- v7AA=
-X-Developer-Key: i=dev@folker-schwesinger.de; a=openpgp;
- fpr=056E68B4036977A53B8AF9EB024071323D8ABB7D
-X-Endpoint-Received: by B4 Relay for dev@folker-schwesinger.de/default with auth_id=144
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAC4xA2YC/x3MQQqDQAxA0atI1gZiHKr2KuJisGmbhWOZxCKId
+ 3dw+Rb/H2CSVQye1QFZ/mq6poKmrmD+xvQR1FcxMHGglh+4rFtyNPHontHFHAcaAoeO5p4JSvj
+ L8tb9no7TeV4bHpMcZAAAAA==
+To: fstests@vger.kernel.org
+Cc: Christian Brauner <brauner@kernel.org>, 
+ Seth Forshee <sforshee@kernel.org>, Taylor Jackson <tjackson9431@gmail.com>, 
+ kernel test robot <oliver.sang@intel.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1711485236; l=835;
+ i=tjackson9431@gmail.com; s=20240206; h=from:subject:message-id;
+ bh=PMxWRHdvu3D8YQkMSw7UxQB8NcT07jaMLKw5AW6qsVA=;
+ b=SPKYaSZcsgzRgXMpio/t7r2Pt5e/Q9GmtvFAxgnKm1oF0dbjXgDG2E7hxm5y8p9FM4ljF0IM7
+ mSdgNikKDEVDmJw9z5jjM/FmgPFtCj+B3aQ0l+kjXSEekAdp2gSH2Ce
+X-Developer-Key: i=tjackson9431@gmail.com; a=ed25519;
+ pk=NO7ntQpjIG1IGTO7F8OnLJDKSHUakhrhAli+PL72OLA=
+X-Endpoint-Received: by B4 Relay for tjackson9431@gmail.com/20240206 with auth_id=145
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Rockchip eMMC PHY driver enables the internal strobe pulldown by
-default. So, remove the enable-strobe-pulldown property from the
-NanoPi4 series boards DTS.
+The following patches fix the "generic/645" xfs test which was 
+affected by the mount_setattr change in kernel commit dacfd001eaf2 
+(“fs/mnt_idmapping.c: Return -EINVAL when no map is written”). 
 
-Signed-off-by: Folker Schwesinger <dev@folker-schwesinger.de>
+Reported-by: kernel test robot <oliver.sang@intel.com>
+Closes: https://lore.kernel.org/oe-lkp/202402191416.17ec9160-oliver.sang@intel.com
+Signed-off-by: Taylor Jackson <tjackson9431@gmail.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi | 1 -
- 1 file changed, 1 deletion(-)
+Taylor Jackson (2):
+      vfs/idmapped_mounts.c: Incorrect array index for nested user ns
+      vfs/idmapped_mounts.c: Change mount_setattr expected output
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi b/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi
-index b7f1e47978a6..38af91b9e756 100644
---- a/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi
-@@ -168,7 +168,6 @@ &cpu_l3 {
- };
- 
- &emmc_phy {
--	rockchip,enable-strobe-pulldown;
- 	status = "okay";
- };
- 
+ src/vfs/idmapped-mounts.c | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
+---
+base-commit: 9b6df9a01ac8ee3f28a2a24d71e45792e21b6d48
+change-id: 20240326-mount-setattr-test-90942470c820
 
+Best regards,
 -- 
-2.44.0
+Taylor Jackson <tjackson9431@gmail.com>
 
