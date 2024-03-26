@@ -1,14 +1,12 @@
 From: Folker Schwesinger <dev@folker-schwesinger.de>
-Subject: [PATCH 0/3] phy: rockchip: emmc: Enable internal strobe pull-down
- by default
-Date: Tue, 26 Mar 2024 19:54:34 +0100
-Message-Id: <20240326-rk-default-enable-strobe-pulldown-v1-0-f410c71605c0@folker-schwesinger.de>
+Date: Tue, 26 Mar 2024 19:54:35 +0100
+Subject: [PATCH 1/3] phy: rockchip: emmc: Enable pulldown for strobe line
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOsZA2YC/x3NTQqDMBBA4avIrB3QRKX0KsVFfiY6NCQy0bYg3
- r3B5bd574RCwlTg2Zwg9OHCOVX0bQNuNWkhZF8NqlNDp9WE8kZPwRxxR0rGRsKyS7aE2xGjz9+
- EWo+Te7jQ2yFA7WxCgX/34zVf1x+9MGmIcwAAAA==
+Message-Id: <20240326-rk-default-enable-strobe-pulldown-v1-1-f410c71605c0@folker-schwesinger.de>
+References: <20240326-rk-default-enable-strobe-pulldown-v1-0-f410c71605c0@folker-schwesinger.de>
+In-Reply-To: <20240326-rk-default-enable-strobe-pulldown-v1-0-f410c71605c0@folker-schwesinger.de>
 To: Vinod Koul <vkoul@kernel.org>, 
  Kishon Vijay Abraham I <kishon@kernel.org>, 
  Heiko Stuebner <heiko@sntech.de>, Chris Ruehl <chris.ruehl@gtsys.com.hk>, 
@@ -24,57 +22,62 @@ Cc: Christopher Obbard <chris.obbard@collabora.com>,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Folker Schwesinger <dev@folker-schwesinger.de>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1969;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2253;
  i=dev@folker-schwesinger.de; h=from:subject:message-id;
- bh=E43foxj+UySf1m9AXwAy4EcKz2179uEogLNPhzYtuqU=;
- b=owGbwMvMwCXG5FBoZNu1u5bxtFoSQxqzVPcG4XrhRdxbmas+173ql3lw5G3uxq5OPd6sDzq9m
- U3MsX86SlkYxLgYZMUUWVjzMrYwZ5Yvte76+RpmDisTyBAGLk4BmMgeNoY/nM+WhP5tVnq2wjs6
- kPnsU9EmyWUTV69YUBTcenfrjbKcfoZ/RmG52hezVCr2HS/90XD65CTtk8kWC3YYC4SuPKa2tfc
- NJwA=
+ bh=vn1WaogVqkovnF++lKXXa6btFkOAZlcxkgTSF4vHKKI=;
+ b=owGbwMvMwCXG5FBoZNu1u5bxtFoSQxqz1ESGm1xxESWPdL0nBP77tEF529PKYs66r0ez70y8w
+ 2eS2Tm5o5SFQYyLQVZMkYU1L2MLc2b5Uuuun69h5rAygQ3h4hSAibCEMfwVOiHs8frNmQnzo1mu
+ GdVGya19sFMoZ+G78y36Xp3W6h5fGRnaD1XFVlhoO08onHh787XvZ+ad11Ko0L/3/tkVv8uFT66
+ zAQA=
 X-Developer-Key: i=dev@folker-schwesinger.de; a=openpgp;
  fpr=056E68B4036977A53B8AF9EB024071323D8ABB7D
 X-Endpoint-Received: by B4 Relay for dev@folker-schwesinger.de/default with auth_id=144
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Various RK3399 boards, including the Rock Pi 4 series, the NanoPi 4
-series and possibly others showed instabilities with some eMMC modules
-when operating in HS400 mode [1]. Later, a missing pull-down resistor on
-the eMMC strobe line was identified as the root cause of these
-instabilities [2].
+Restore the behavior of the Rockchip kernel that undconditionally
+enables the internal strobe pulldown.
+As the DT property rockchip,enable-strobe-pulldown is obsolete now,
+replace it with a property to disable the internal pulldown.
 
-This series changes the Rockchip eMMC PHY driver to enable the
-internal pull-down for the strobe line by default, effectively
-restoring the behavior of the vendor kernel [3].
-Addressing the problem in the driver avoids fix-ups in individual
-board DTs.
+This fixes I/O errors observed on various Rock Pi 4 and NanoPi4 series
+boards with some eMMC modules. Other boards may also be affected.
 
-As this change makes the optional DT property enable-strobe-pulldown
-obsolete, it is replaced by a new property disable-strobe-pulldown,
-that, when used, allows to disable the internal pull-down.
+An example of these errors is as follows:
 
-While at it, the enable-strobe-pulldown property was removed from the
-NanoPi4 series DTS (which was the only user of the property in the kernel).
+[  290.060817] mmc1: running CQE recovery
+[  290.061337] blk_update_request: I/O error, dev mmcblk1, sector 1411072 op 0x1:(WRITE) flags 0x800 phys_seg 36 prio class 0
+[  290.061370] EXT4-fs warning (device mmcblk1p1): ext4_end_bio:348: I/O error 10 writing to inode 29547 starting block 176466)
+[  290.061484] Buffer I/O error on device mmcblk1p1, logical block 172288
 
-[1]: https://lore.kernel.org/all/20230705144255.115299-1-chris.obbard@collabora.com/
-[2]: https://lore.kernel.org/all/20220822074139.3810-1-jensenhuang@friendlyarm.com/
-[3]: https://github.com/rockchip-linux/kernel/blob/develop-4.4/drivers/phy/rockchip/phy-rockchip-emmc.c#L310
-
+Fixes: 8b5c2b45b8f0 ("phy: rockchip: set pulldown for strobe line in dts")
 Signed-off-by: Folker Schwesinger <dev@folker-schwesinger.de>
 ---
-Folker Schwesinger (3):
-      phy: rockchip: emmc: Enable pulldown for strobe line
-      devicetree: phy: rockchip-emmc: Document changed strobe-pulldown property
-      arm64: dts: rockchip: Remove enable-strobe-pulldown for NanoPi4 boards
+ drivers/phy/rockchip/phy-rockchip-emmc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
- Documentation/devicetree/bindings/phy/rockchip-emmc-phy.txt | 4 ++--
- arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi            | 1 -
- drivers/phy/rockchip/phy-rockchip-emmc.c                    | 6 +++---
- 3 files changed, 5 insertions(+), 6 deletions(-)
----
-base-commit: 4cece764965020c22cff7665b18a012006359095
-change-id: 20240326-rk-default-enable-strobe-pulldown-3356c8cf1b4f
+diff --git a/drivers/phy/rockchip/phy-rockchip-emmc.c b/drivers/phy/rockchip/phy-rockchip-emmc.c
+index 20023f6eb994..6e637f3e1b19 100644
+--- a/drivers/phy/rockchip/phy-rockchip-emmc.c
++++ b/drivers/phy/rockchip/phy-rockchip-emmc.c
+@@ -376,14 +376,14 @@ static int rockchip_emmc_phy_probe(struct platform_device *pdev)
+ 	rk_phy->reg_offset = reg_offset;
+ 	rk_phy->reg_base = grf;
+ 	rk_phy->drive_impedance = PHYCTRL_DR_50OHM;
+-	rk_phy->enable_strobe_pulldown = PHYCTRL_REN_STRB_DISABLE;
++	rk_phy->enable_strobe_pulldown = PHYCTRL_REN_STRB_ENABLE;
+ 	rk_phy->output_tapdelay_select = PHYCTRL_OTAPDLYSEL_DEFAULT;
+ 
+ 	if (!of_property_read_u32(dev->of_node, "drive-impedance-ohm", &val))
+ 		rk_phy->drive_impedance = convert_drive_impedance_ohm(pdev, val);
+ 
+-	if (of_property_read_bool(dev->of_node, "rockchip,enable-strobe-pulldown"))
+-		rk_phy->enable_strobe_pulldown = PHYCTRL_REN_STRB_ENABLE;
++	if (of_property_read_bool(dev->of_node, "rockchip,disable-strobe-pulldown"))
++		rk_phy->enable_strobe_pulldown = PHYCTRL_REN_STRB_DISABLE;
+ 
+ 	if (!of_property_read_u32(dev->of_node, "rockchip,output-tapdelay-select", &val)) {
+ 		if (val <= PHYCTRL_OTAPDLYSEL_MAXVALUE)
 
-Best regards,
 -- 
-Folker Schwesinger <dev@folker-schwesinger.de>
+2.44.0
 
