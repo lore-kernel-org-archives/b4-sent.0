@@ -1,224 +1,80 @@
-From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Tue, 26 Mar 2024 12:19:05 +0300
-Subject: [PATCH v9 38/38] dma: cirrus: remove platform code
+From: Folker Schwesinger <dev@folker-schwesinger.de>
+Subject: [PATCH 0/3] phy: rockchip: emmc: Enable internal strobe pull-down
+ by default
+Date: Tue, 26 Mar 2024 19:54:34 +0100
+Message-Id: <20240326-rk-default-enable-strobe-pulldown-v1-0-f410c71605c0@folker-schwesinger.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240326-ep93xx-v9-38-156e2ae5dfc8@maquefel.me>
-References: <20240326-ep93xx-v9-0-156e2ae5dfc8@maquefel.me>
-In-Reply-To: <20240326-ep93xx-v9-0-156e2ae5dfc8@maquefel.me>
+X-B4-Tracking: v=1; b=H4sIAOsZA2YC/x3NTQqDMBBA4avIrB3QRKX0KsVFfiY6NCQy0bYg3
+ r3B5bd574RCwlTg2Zwg9OHCOVX0bQNuNWkhZF8NqlNDp9WE8kZPwRxxR0rGRsKyS7aE2xGjz9+
+ EWo+Te7jQ2yFA7WxCgX/34zVf1x+9MGmIcwAAAA==
 To: Vinod Koul <vkoul@kernel.org>, 
- Nikita Shubin <nikita.shubin@maquefel.me>, 
- Alexander Sverdlin <alexander.sverdlin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, dmaengine@vger.kernel.org, 
- Arnd Bergmann <arnd@arndb.de>
-X-Mailer: b4 0.13-dev-e3e53
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1711444837; l=6035;
- i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=LpDpPnQaMVc75NrbIxm1GYnB+EUmm7A6TigIqr6iCtI=;
- b=546mvn5m7ddd1NnrKWRqRKP0GSuk9+lLTC4mZp3+R5owyRjRrloS3gjre0ICf1Ag6S+ZPmIf/xPz
- /EJbUmDJAdBDYepemiy+4iNQT0gRvcZjsMhFTP2d74yevjsHh4eU
-X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
- pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
-X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
+ Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>, Chris Ruehl <chris.ruehl@gtsys.com.hk>, 
+ Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Christopher Obbard <chris.obbard@collabora.com>, 
+ Alban Browaeys <alban.browaeys@gmail.com>, 
+ Doug Anderson <dianders@chromium.org>, 
+ Brian Norris <briannorris@chromium.org>, 
+ Jensen Huang <jensenhuang@friendlyarm.com>, linux-phy@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Folker Schwesinger <dev@folker-schwesinger.de>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1969;
+ i=dev@folker-schwesinger.de; h=from:subject:message-id;
+ bh=E43foxj+UySf1m9AXwAy4EcKz2179uEogLNPhzYtuqU=;
+ b=owGbwMvMwCXG5FBoZNu1u5bxtFoSQxqzVPcG4XrhRdxbmas+173ql3lw5G3uxq5OPd6sDzq9m
+ U3MsX86SlkYxLgYZMUUWVjzMrYwZ5Yvte76+RpmDisTyBAGLk4BmMgeNoY/nM+WhP5tVnq2wjs6
+ kPnsU9EmyWUTV69YUBTcenfrjbKcfoZ/RmG52hezVCr2HS/90XD65CTtk8kWC3YYC4SuPKa2tfc
+ NJwA=
+X-Developer-Key: i=dev@folker-schwesinger.de; a=openpgp;
+ fpr=056E68B4036977A53B8AF9EB024071323D8ABB7D
+X-Endpoint-Received: by B4 Relay for dev@folker-schwesinger.de/default with auth_id=144
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove DMA platform header, from now on we use device tree for DMA
-clients.
+Various RK3399 boards, including the Rock Pi 4 series, the NanoPi 4
+series and possibly others showed instabilities with some eMMC modules
+when operating in HS400 mode [1]. Later, a missing pull-down resistor on
+the eMMC strobe line was identified as the root cause of these
+instabilities [2].
 
-Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
+This series changes the Rockchip eMMC PHY driver to enable the
+internal pull-down for the strobe line by default, effectively
+restoring the behavior of the vendor kernel [3].
+Addressing the problem in the driver avoids fix-ups in individual
+board DTs.
+
+As this change makes the optional DT property enable-strobe-pulldown
+obsolete, it is replaced by a new property disable-strobe-pulldown,
+that, when used, allows to disable the internal pull-down.
+
+While at it, the enable-strobe-pulldown property was removed from the
+NanoPi4 series DTS (which was the only user of the property in the kernel).
+
+[1]: https://lore.kernel.org/all/20230705144255.115299-1-chris.obbard@collabora.com/
+[2]: https://lore.kernel.org/all/20220822074139.3810-1-jensenhuang@friendlyarm.com/
+[3]: https://github.com/rockchip-linux/kernel/blob/develop-4.4/drivers/phy/rockchip/phy-rockchip-emmc.c#L310
+
+Signed-off-by: Folker Schwesinger <dev@folker-schwesinger.de>
 ---
- drivers/dma/ep93xx_dma.c                 |  48 ++++++++++++++-
- include/linux/platform_data/dma-ep93xx.h | 100 -------------------------------
- 2 files changed, 46 insertions(+), 102 deletions(-)
+Folker Schwesinger (3):
+      phy: rockchip: emmc: Enable pulldown for strobe line
+      devicetree: phy: rockchip-emmc: Document changed strobe-pulldown property
+      arm64: dts: rockchip: Remove enable-strobe-pulldown for NanoPi4 boards
 
-diff --git a/drivers/dma/ep93xx_dma.c b/drivers/dma/ep93xx_dma.c
-index 17c8e2badee2..43c4241af7f5 100644
---- a/drivers/dma/ep93xx_dma.c
-+++ b/drivers/dma/ep93xx_dma.c
-@@ -17,6 +17,7 @@
- #include <linux/clk.h>
- #include <linux/init.h>
- #include <linux/interrupt.h>
-+#include <linux/dma-mapping.h>
- #include <linux/dmaengine.h>
- #include <linux/module.h>
- #include <linux/mod_devicetable.h>
-@@ -25,8 +26,6 @@
- #include <linux/platform_device.h>
- #include <linux/slab.h>
- 
--#include <linux/platform_data/dma-ep93xx.h>
--
- #include "dmaengine.h"
- 
- /* M2P registers */
-@@ -106,6 +105,26 @@
- #define DMA_MAX_CHAN_BYTES		0xffff
- #define DMA_MAX_CHAN_DESCRIPTORS	32
- 
-+/*
-+ * M2P channels.
-+ *
-+ * Note that these values are also directly used for setting the PPALLOC
-+ * register.
-+ */
-+#define EP93XX_DMA_I2S1			0
-+#define EP93XX_DMA_I2S2			1
-+#define EP93XX_DMA_AAC1			2
-+#define EP93XX_DMA_AAC2			3
-+#define EP93XX_DMA_AAC3			4
-+#define EP93XX_DMA_I2S3			5
-+#define EP93XX_DMA_UART1		6
-+#define EP93XX_DMA_UART2		7
-+#define EP93XX_DMA_UART3		8
-+#define EP93XX_DMA_IRDA			9
-+/* M2M channels */
-+#define EP93XX_DMA_SSP			10
-+#define EP93XX_DMA_IDE			11
-+
- enum ep93xx_dma_type {
- 	M2P_DMA,
- 	M2M_DMA,
-@@ -242,6 +261,31 @@ static struct ep93xx_dma_chan *to_ep93xx_dma_chan(struct dma_chan *chan)
- 	return container_of(chan, struct ep93xx_dma_chan, chan);
- }
- 
-+static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
-+{
-+	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
-+		return true;
-+
-+	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
-+}
-+
-+/*
-+ * ep93xx_dma_chan_direction - returns direction the channel can be used
-+ *
-+ * This function can be used in filter functions to find out whether the
-+ * channel supports given DMA direction. Only M2P channels have such
-+ * limitation, for M2M channels the direction is configurable.
-+ */
-+static inline enum dma_transfer_direction
-+ep93xx_dma_chan_direction(struct dma_chan *chan)
-+{
-+	if (!ep93xx_dma_chan_is_m2p(chan))
-+		return DMA_TRANS_NONE;
-+
-+	/* even channels are for TX, odd for RX */
-+	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
-+}
-+
- /**
-  * ep93xx_dma_set_active - set new active descriptor chain
-  * @edmac: channel
-diff --git a/include/linux/platform_data/dma-ep93xx.h b/include/linux/platform_data/dma-ep93xx.h
-deleted file mode 100644
-index 9ec5cdd5a1eb..000000000000
---- a/include/linux/platform_data/dma-ep93xx.h
-+++ /dev/null
-@@ -1,100 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0 */
--#ifndef __ASM_ARCH_DMA_H
--#define __ASM_ARCH_DMA_H
--
--#include <linux/types.h>
--#include <linux/device.h>
--#include <linux/dmaengine.h>
--#include <linux/dma-mapping.h>
--#include <linux/property.h>
--#include <linux/string.h>
--
--/*
-- * M2P channels.
-- *
-- * Note that these values are also directly used for setting the PPALLOC
-- * register.
-- */
--#define EP93XX_DMA_I2S1		0
--#define EP93XX_DMA_I2S2		1
--#define EP93XX_DMA_AAC1		2
--#define EP93XX_DMA_AAC2		3
--#define EP93XX_DMA_AAC3		4
--#define EP93XX_DMA_I2S3		5
--#define EP93XX_DMA_UART1	6
--#define EP93XX_DMA_UART2	7
--#define EP93XX_DMA_UART3	8
--#define EP93XX_DMA_IRDA		9
--/* M2M channels */
--#define EP93XX_DMA_SSP		10
--#define EP93XX_DMA_IDE		11
--
--/**
-- * struct ep93xx_dma_data - configuration data for the EP93xx dmaengine
-- * @port: peripheral which is requesting the channel
-- * @direction: TX/RX channel
-- * @name: optional name for the channel, this is displayed in /proc/interrupts
-- *
-- * This information is passed as private channel parameter in a filter
-- * function. Note that this is only needed for slave/cyclic channels.  For
-- * memcpy channels %NULL data should be passed.
-- */
--struct ep93xx_dma_data {
--	int				port;
--	enum dma_transfer_direction	direction;
--	const char			*name;
--};
--
--/**
-- * struct ep93xx_dma_chan_data - platform specific data for a DMA channel
-- * @name: name of the channel, used for getting the right clock for the channel
-- * @base: mapped registers
-- * @irq: interrupt number used by this channel
-- */
--struct ep93xx_dma_chan_data {
--	const char			*name;
--	void __iomem			*base;
--	int				irq;
--};
--
--/**
-- * struct ep93xx_dma_platform_data - platform data for the dmaengine driver
-- * @channels: array of channels which are passed to the driver
-- * @num_channels: number of channels in the array
-- *
-- * This structure is passed to the DMA engine driver via platform data. For
-- * M2P channels, contract is that even channels are for TX and odd for RX.
-- * There is no requirement for the M2M channels.
-- */
--struct ep93xx_dma_platform_data {
--	struct ep93xx_dma_chan_data	*channels;
--	size_t				num_channels;
--};
--
--static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
--{
--	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
--		return true;
--
--	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
--}
--
--/**
-- * ep93xx_dma_chan_direction - returns direction the channel can be used
-- * @chan: channel
-- *
-- * This function can be used in filter functions to find out whether the
-- * channel supports given DMA direction. Only M2P channels have such
-- * limitation, for M2M channels the direction is configurable.
-- */
--static inline enum dma_transfer_direction
--ep93xx_dma_chan_direction(struct dma_chan *chan)
--{
--	if (!ep93xx_dma_chan_is_m2p(chan))
--		return DMA_TRANS_NONE;
--
--	/* even channels are for TX, odd for RX */
--	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
--}
--
--#endif /* __ASM_ARCH_DMA_H */
+ Documentation/devicetree/bindings/phy/rockchip-emmc-phy.txt | 4 ++--
+ arch/arm64/boot/dts/rockchip/rk3399-nanopi4.dtsi            | 1 -
+ drivers/phy/rockchip/phy-rockchip-emmc.c                    | 6 +++---
+ 3 files changed, 5 insertions(+), 6 deletions(-)
+---
+base-commit: 4cece764965020c22cff7665b18a012006359095
+change-id: 20240326-rk-default-enable-strobe-pulldown-3356c8cf1b4f
 
+Best regards,
 -- 
-2.41.0
+Folker Schwesinger <dev@folker-schwesinger.de>
 
