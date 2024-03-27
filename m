@@ -1,67 +1,86 @@
-From: Taylor Jackson <tjackson9431@gmail.com>
-Date: Tue, 26 Mar 2024 20:33:52 +0000
-Subject: [PATCH 2/2] vfs/idmapped_mounts.c: Change mount_setattr expected
- output
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Subject: [PATCH v6 0/3] Add support for Loongson-1 NAND
+Date: Wed, 27 Mar 2024 18:43:58 +0800
+Message-Id: <20240327-loongson1-nand-v6-0-7f9311cef020@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240326-mount-setattr-test-v1-2-c061b040d0f7@gmail.com>
-References: <20240326-mount-setattr-test-v1-0-c061b040d0f7@gmail.com>
-In-Reply-To: <20240326-mount-setattr-test-v1-0-c061b040d0f7@gmail.com>
-To: fstests@vger.kernel.org
-Cc: Christian Brauner <brauner@kernel.org>, 
- Seth Forshee <sforshee@kernel.org>, Taylor Jackson <tjackson9431@gmail.com>, 
- kernel test robot <oliver.sang@intel.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1711485236; l=1608;
- i=tjackson9431@gmail.com; s=20240206; h=from:subject:message-id;
- bh=2hauqK72ItpVFiPIDTfm1+0Ak2rYzw7tFM3DP+H91uU=;
- b=sV5+jr4uCvsdK+uySs+MkAtagvqhBfdDtpJAWq8BurlIHYhWzLvNwre8oLUPmkW3mtZzTsQ4f
- CsZDldH5ELMBoO1nKCet2/npXcUL8+l38Icj2mQk9G99mR8xHpDw0gw
-X-Developer-Key: i=tjackson9431@gmail.com; a=ed25519;
- pk=NO7ntQpjIG1IGTO7F8OnLJDKSHUakhrhAli+PL72OLA=
-X-Endpoint-Received: by B4 Relay for tjackson9431@gmail.com/20240206 with auth_id=145
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAG74A2YC/zWNyw7CIBBFf6WZtUN4VLCu/A/jgpSBElswoMbY9
+ N9FEzc3OYt7zgqVSqQKx26FQs9YY04N9K6DcbIpEEbXGCSXPVdC45xzCjUngckmh8NBSeOMIe4
+ 1tNOtkI+vn/B8aexLXvA+FbJ/jeD7trKXQjEzcIMCrxQercXe3+IpLDbObMwLbNsHP9fsmqAAA
+ AA=
+To: Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
+ Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-mips@vger.kernel.org, devicetree@vger.kernel.org, 
+ Keguang Zhang <keguang.zhang@gmail.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1711536289; l=2068;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=5LDshXlu0PfiuyoM4qYt8E3ozT2zpeM2FAiCZBLBCNs=;
+ b=3RTvOkvFiswtfYQcWbIvcSER2itdIL0AeQVtEs/e5MrHwNDzLk5E+H6/2S30psHNXdtb6+jed
+ pv25qL0eBUqAmGtwVhy5+Sj4Dx+dqMpuibTVWD+W7vTe++nIoskh5DK
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In kernel commit dacfd001eaf2 (“fs/mnt_idmapping.c: Return -EINVAL
-when no map is written”), the behavior of mount_setattr changed to
-return EINVAL when attempting to create an idmapped mount when using
-a user namespace with no mappings. The following commit updates the test
-to expect no mount to be created in that case. And since no mount is created,
-this commit also removes the check for overflow IDs because it does not make
-sense to check for overflow IDs for a mount that was not created.
+Add the driver and dt-binding document for Loongson-1 NAND.
+And modify nand_read_subpage() to allow subpage read by a single operation.
 
-Signed-off-by: Taylor Jackson <tjackson9431@gmail.com>
+Changes in v6:
+- Amend Kconfig
+- Add the dt-binding document
+- Modify nand_read_subpage() to allow subpage read by a single operation
+- Add DT support for driver
+- Use DT data instead of platform data
+- Remove MAX_ID_SIZE
+- Remove case NAND_OP_CMD_INSTR in ls1x_nand_set_controller()
+- Move ECC configuration to ls1x_nand_attach_chip()
+- Rename variable "nand" to "ls1x"
+- Rename variable "nc" to "nfc"
+- Some minor fixes
+- Link to v5: https://lore.kernel.org/all/20210520224213.7907-1-keguang.zhang@gmail.com
+
+Changes in v5:
+- Update the driver to fit the raw NAND framework.
+- Implement exec_op() instead of legacy cmdfunc().
+- Use dma_request_chan() instead of dma_request_channel().
+- Some minor fixes and cleanups.
+
+Changes in v4:
+- Retrieve the controller from nand_hw_control.
+
+Changes in v3:
+- Replace __raw_readl/__raw_writel with readl/writel.
+- Split ls1x_nand into two structures:
+ls1x_nand_chip and ls1x_nand_controller.
+
+Changes in v2:
+- Modify the dependency in Kconfig due to the changes of DMA module.
+
+Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- src/vfs/idmapped-mounts.c | 7 +------
- 1 file changed, 1 insertion(+), 6 deletions(-)
+Keguang Zhang (3):
+      dt-bindings: mtd: Add Loongson-1 NAND Controller
+      mtd: rawnand: Enable monolithic read when reading subpages
+      mtd: rawnand: Add Loongson-1 NAND Controller driver
 
-diff --git a/src/vfs/idmapped-mounts.c b/src/vfs/idmapped-mounts.c
-index 34052ca3..f4dfc3f3 100644
---- a/src/vfs/idmapped-mounts.c
-+++ b/src/vfs/idmapped-mounts.c
-@@ -6667,7 +6667,7 @@ static int nested_userns(const struct vfstest_info *info)
- 	}
- 
- 	if (sys_mount_setattr(fd_open_tree_level4, "", AT_EMPTY_PATH,
--			      &attr_level4, sizeof(attr_level4))) {
-+			      &attr_level4, sizeof(attr_level4)) != -1 || errno != EINVAL) {
- 		log_stderr("failure: sys_mount_setattr");
- 		goto out;
- 	}
-@@ -6706,11 +6706,6 @@ static int nested_userns(const struct vfstest_info *info)
- 			log_stderr("failure: check ownership %s", file);
- 			goto out;
- 		}
--
--		if (!expected_uid_gid(fd_open_tree_level4, file, 0, info->t_overflowuid, info->t_overflowgid)) {
--			log_stderr("failure: check ownership %s", file);
--			goto out;
--		}
- 	}
- 
- 	/* Verify that ownership looks correct for callers in the first userns. */
+ .../devicetree/bindings/mtd/loongson,ls1x-nfc.yaml |  66 ++
+ drivers/mtd/nand/raw/Kconfig                       |   7 +
+ drivers/mtd/nand/raw/Makefile                      |   1 +
+ drivers/mtd/nand/raw/loongson1_nand.c              | 748 +++++++++++++++++++++
+ drivers/mtd/nand/raw/nand_base.c                   |   5 +-
+ include/linux/mtd/rawnand.h                        |   5 +
+ 6 files changed, 830 insertions(+), 2 deletions(-)
+---
+base-commit: 084c8e315db34b59d38d06e684b1a0dd07d30287
+change-id: 20240316-loongson1-nand-98327d77e0f6
 
+Best regards,
 -- 
-2.34.1
+Keguang Zhang <keguang.zhang@gmail.com>
 
