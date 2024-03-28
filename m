@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 28 Mar 2024 16:44:05 +0100
-Subject: [PATCH v3 04/10] timekeeping: Remove the now superfluous sentinel
+Date: Thu, 28 Mar 2024 16:44:06 +0100
+Subject: [PATCH v3 05/10] seccomp: Remove the now superfluous sentinel
  elements from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-4-285d273912fe@samsung.com>
+Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-5-285d273912fe@samsung.com>
 References: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 In-Reply-To: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, josh@joshtriplett.org, 
@@ -38,18 +38,18 @@ Cc: linux-kernel@vger.kernel.org, kexec@lists.infradead.org,
  linux-fsdevel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
  bpf@vger.kernel.org, Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=864; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=lyDve8Ip2KotGee+CC44snEs+zn3osht1uA6DiUuFwM=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkEvKQgW+speYF787yYEHJDVSSH0tynerp
- 0z73pdqmzw2W4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBLAAoJELqXzVK3
- lkFPUf0L/2YxDsRniEfrTN5jngDVulSOxiSB4qlNJo3EzgiFbMwGXq7qj0iTqrS6bzM/zQHQelM
- z6gGiMM/+yQqVBtt6i2wdHtGwRnjt/nOKL92syZf1XmUfb+DsmS3DsDC7HkhkySpWOEQLXPlh/Y
- vUKou/EVCej3uXWn3Sl9vZCixhu8HctQUpDljEkp3s/xydB+H6sl4c2TLRxDTAPYYbNP9MxMRxK
- LkPyLkmy7JCPkBw7vwDDId4ex2xU1aj5niZoIT3wH1FjULTg62tRugiLtaGtuoiqklfXBw7gc7q
- 53t3OF7HpFn26CSo5aJ3mgJZ97lfhYYtS2ji1qpRV9QdPw8k1cgbwYjnMeZvLRecFt7EabhMVOg
- +mi6NtJgoTt0zZjsuM8IeSGvTk96fszBpJuSQMJeUv+k0PnWx3KTP0gZl6nQNSt0eTxRFAYy67P
- 5Ugy64D77ah5RGxSUFzdEH9ayB60lVGT8bjRQn/Ix3kzI07osOgMD3M7f6SBTzAbLj7ghOBbLo6
- Ww=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=933; i=j.granados@samsung.com;
+ h=from:subject:message-id; bh=a55RZNGRyCcB6UX1xGlETtlXB9b6LmLpywnhMBEQ5pU=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkEsh4Mgom4fbM//0WTCWMwTNRwVc+hUKT
+ bWZpFJoow2pAokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBLAAoJELqXzVK3
+ lkFPn+UL/3RnBt3ZmbhogGz7i5z9kb5DzhirswdhfPwdZKJcT+COv1HuJLrH3qwxMuZZTmz1PA7
+ mIeYXNNDG1/pPSZJJ6LgIp7SX+zGrTIF/9dTN/LZWZ14CvacGSErEAPf+4BI3dk5s0wQ4oPPkwx
+ wEDzqfAv6Qi8Sx2/8PNIdVIkayEp0VCoR7oYAEH9EPhp2z+mvAo/IIsWE++pFR5w60EZ2yhUXzt
+ PbrUIE55/dlkiEkv0uHHNJgBS6IB/a94tRe5C50He/6nfRvpRLt+yNlY+/xQms4LwBseWOtm9Q/
+ qStfIDZCT9L9++Ccz4RnqTxPW/+O3DTkc/jenpOYzZdcwsm1rXMh8/6l6h7iEktJA0G2EWfRhR5
+ o8Xijj9xK4Z/KTTbtkK9HL7BU555npI0wKswG5B9vAAUIDkC194D9+/XYYLZGUyrwYPF3bQmlLP
+ yp+QgLvZs8R5uVRGCsWxhRdttwnfxF2iqNNE3cMVLgOFTkb3p8c5Efs8fHOvcvBHFPm1cJdfPw7
+ kY=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -61,25 +61,26 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel element from time_sysctl
+Remove sentinel element from seccomp_sysctl_table.
 
+Acked-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- kernel/time/timer.c | 1 -
+ kernel/seccomp.c | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/kernel/time/timer.c b/kernel/time/timer.c
-index dee29f1f5b75..9d107f4b506c 100644
---- a/kernel/time/timer.c
-+++ b/kernel/time/timer.c
-@@ -312,7 +312,6 @@ static struct ctl_table timer_sysctl[] = {
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_ONE,
+diff --git a/kernel/seccomp.c b/kernel/seccomp.c
+index aca7b437882e..7ed72723fb8a 100644
+--- a/kernel/seccomp.c
++++ b/kernel/seccomp.c
+@@ -2445,7 +2445,6 @@ static struct ctl_table seccomp_sysctl_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= seccomp_actions_logged_handler,
  	},
--	{}
+-	{ }
  };
  
- static int __init timer_sysctl_init(void)
+ static int __init seccomp_sysctl_init(void)
 
 -- 
 2.43.0
