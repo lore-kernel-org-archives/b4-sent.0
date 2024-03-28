@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 28 Mar 2024 16:44:10 +0100
-Subject: [PATCH v3 09/10] delayacct: Remove the now superfluous sentinel
- elements from ctl_table array
+Date: Thu, 28 Mar 2024 16:44:11 +0100
+Subject: [PATCH v3 10/10] bpf: Remove the now superfluous sentinel elements
+ from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-9-285d273912fe@samsung.com>
+Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-10-285d273912fe@samsung.com>
 References: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 In-Reply-To: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, josh@joshtriplett.org, 
@@ -38,18 +38,18 @@ Cc: linux-kernel@vger.kernel.org, kexec@lists.infradead.org,
  linux-fsdevel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
  bpf@vger.kernel.org, Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=901; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=i6rZdV8sO6keniVz/tdr/tgncwQ879+rgbNywApATf4=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkE6p4PaxshghascUKUubW96pCKfCYMXWK
- /aBSiIGgBYe9IkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBOAAoJELqXzVK3
- lkFPT5QL/jFMK8C8aAUdHmCMTOc9tNhM631bX9/8b8lUvEasqWg0CLuygFHjzAxdGGUi6f2nMno
- kUA+T74QXcgNWEfjN8VdVP/NO4Hz21SVA+aCZP0vFbtKHAWBkHmYwmnWX0fPlkGMJCrUunVQyKT
- /67OzmNJMzHHhjA/5fn7WKriT/aSjVsfwMvG4vmTR6pFuRckh3PfzYN490bT09jtp1LM5eUpmG8
- v+ea5g4zkwWid2odf83OnRVh4vdoUz5SuApM5ocoFDK7fQ6gmTKXpn9+d22D/KNKyXUPTutUE6b
- B+0o078nrfEIiOgvo4renClDzc1apR/G+d1RNpqmV8CYDBGy1C/udE8mtdW8dL14nv07BW4TQ75
- 7DrHQJXonF56KDikz3C/7owWHYyRwwWaSoa3lP3hankVdZGw4kpt1l5d4Zc7t/LBDUip5/4gAew
- VC1fPxiZoxYHw1Y5wWleWrZgF2lyeO69C7f9SD9OUdRUvMTemIC3m7QuHy3ZmGO6//TXewH9oV6
- tI=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=940; i=j.granados@samsung.com;
+ h=from:subject:message-id; bh=EHedMAAx8mJbivlU9QHUO7qJGc32TBFT3ByM4xDoG9I=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkE408xMhw90vhF81FOWcLfCE8LWhQfflT
+ 61/EIF6yCrZ3okBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBOAAoJELqXzVK3
+ lkFPfZQL/3zdbAgEIU2dcwe2erodBotsa3e1HOBR1lR9Kv1mef/Eai0SkALWcSc5dDfORlh8Bpq
+ PH8ootjUW/DunAVLKXTQn4VMu6CLt820UZOwAAUShG8wiPlD4fPaiCI3bJT2Gmei+/UblaMVCdT
+ 7zSXlcmiXsNQpLq8wzHqy1pX7aghk8yJqVPHjwRh/RQdcVvFeabeB6ftt/HC5jB4xRGKOC2oRuT
+ t1YyA9E3vlnRld0l3Uz4poLLs6b+/Hl1CYRdcR90Vamvfh2vrhHNkhSZalYTcUe6Zt35Kda6JmY
+ h+Bn9Q93xvC9r8Ehl48JR/4OnKrelkTK5nibpYdaTr+qdGNmJMIlGTaIfwjxFPnT9wQwxHgSore
+ qY5gbsjMkHcpBf/cSrodl7fYS+2m8r1N6uxoFO+qx6jK8BEHEkPUSly2nhgOStdKvBxcMqJo15Y
+ /UHtNHyB50pyHMxZlSDGfg/qGcL5XYwLqrGyHpObIk+F5IXwU2yUuRmWXIZcFjiMMdWAeEM4C85
+ rE=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -61,25 +61,26 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel element from kern_delayacct_table
+Remove sentinel element from bpf_syscall_table.
 
+Acked-by: Andrii Nakryiko <andrii@kernel.org>
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- kernel/delayacct.c | 1 -
+ kernel/bpf/syscall.c | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/kernel/delayacct.c b/kernel/delayacct.c
-index 6f0c358e73d8..e039b0f99a0b 100644
---- a/kernel/delayacct.c
-+++ b/kernel/delayacct.c
-@@ -74,7 +74,6 @@ static struct ctl_table kern_delayacct_table[] = {
- 		.extra1         = SYSCTL_ZERO,
- 		.extra2         = SYSCTL_ONE,
+diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c
+index ae2ff73bde7e..c7e805087b06 100644
+--- a/kernel/bpf/syscall.c
++++ b/kernel/bpf/syscall.c
+@@ -5979,7 +5979,6 @@ static struct ctl_table bpf_syscall_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= bpf_stats_handler,
  	},
 -	{ }
  };
  
- static __init int kernel_delayacct_sysctls_init(void)
+ static int __init bpf_syscall_sysctl_init(void)
 
 -- 
 2.43.0
