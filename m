@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 28 Mar 2024 16:44:09 +0100
-Subject: [PATCH v3 08/10] kprobes: Remove the now superfluous sentinel
+Date: Thu, 28 Mar 2024 16:44:10 +0100
+Subject: [PATCH v3 09/10] delayacct: Remove the now superfluous sentinel
  elements from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-8-285d273912fe@samsung.com>
+Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-9-285d273912fe@samsung.com>
 References: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 In-Reply-To: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, josh@joshtriplett.org, 
@@ -38,18 +38,18 @@ Cc: linux-kernel@vger.kernel.org, kexec@lists.infradead.org,
  linux-fsdevel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
  bpf@vger.kernel.org, Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=918; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=W9k8f49EwG/feirGtDw1FHGcG6plJdUzpOL5hpVCueM=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkE0ZcrBDVAp4O3SfOrgyc8WUlGwe1ykjS
- ABM/79ogIBhtIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBNAAoJELqXzVK3
- lkFPIp4L/2jEVev1Ry+FHuhUOpPE5D5ElBE2orb/y33yGm7mtGXFzKAMW8bq+PtlQw5Pu4SBw3g
- ujwQmB3s4n3ZRJ2YfYwPdHaPKJNFYvJbf24y9Aa58BDtW92sRNapggll7sLkDoWHaUehAMmC3ht
- LV89vSfFhng6Bzrz/MoTAtl8qyy1IM1RF7ASwOu1Q1jgEgyMw5/xpYlDksNUd/HP3GEjOl27I/U
- IfF77tqPAX4oGhcI5ZI8l/2Js13SrNFOspXDoD3ctfuVJQ8mD5E4+uUrSaWyIqlMOMVCzvcSM8L
- 7kkRm8s1XoX/pwKolO2w0dr2q3M5Wzm7L/ycTsrKH0sAqSS5DAXZ3aFwUmg0Xbs25N7LMsVNQ4/
- l1BPYwsVLL7928+A+Ly/vfxMheOUkkSS5fiMY7kMh1cdoU4JqjjruiM0SeFQFjXwmSl7mVBt2GV
- /b/2YR1FuOR2ptrzCF46iDCBOkpZZ4CyiuHZE1kNBenIZZDgZgZQ5alrbrswjTB0PEIzApN/2I4
- BQ=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=901; i=j.granados@samsung.com;
+ h=from:subject:message-id; bh=i6rZdV8sO6keniVz/tdr/tgncwQ879+rgbNywApATf4=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkE6p4PaxshghascUKUubW96pCKfCYMXWK
+ /aBSiIGgBYe9IkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBOAAoJELqXzVK3
+ lkFPT5QL/jFMK8C8aAUdHmCMTOc9tNhM631bX9/8b8lUvEasqWg0CLuygFHjzAxdGGUi6f2nMno
+ kUA+T74QXcgNWEfjN8VdVP/NO4Hz21SVA+aCZP0vFbtKHAWBkHmYwmnWX0fPlkGMJCrUunVQyKT
+ /67OzmNJMzHHhjA/5fn7WKriT/aSjVsfwMvG4vmTR6pFuRckh3PfzYN490bT09jtp1LM5eUpmG8
+ v+ea5g4zkwWid2odf83OnRVh4vdoUz5SuApM5ocoFDK7fQ6gmTKXpn9+d22D/KNKyXUPTutUE6b
+ B+0o078nrfEIiOgvo4renClDzc1apR/G+d1RNpqmV8CYDBGy1C/udE8mtdW8dL14nv07BW4TQ75
+ 7DrHQJXonF56KDikz3C/7owWHYyRwwWaSoa3lP3hankVdZGw4kpt1l5d4Zc7t/LBDUip5/4gAew
+ VC1fPxiZoxYHw1Y5wWleWrZgF2lyeO69C7f9SD9OUdRUvMTemIC3m7QuHy3ZmGO6//TXewH9oV6
+ tI=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -61,26 +61,25 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel element from kprobe_sysclts
+Remove sentinel element from kern_delayacct_table
 
-Acked-by: "Masami Hiramatsu (Google)" <mhiramat@kernel.org>
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- kernel/kprobes.c | 1 -
+ kernel/delayacct.c | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/kernel/kprobes.c b/kernel/kprobes.c
-index 9d9095e81792..85af0e05a38f 100644
---- a/kernel/kprobes.c
-+++ b/kernel/kprobes.c
-@@ -968,7 +968,6 @@ static struct ctl_table kprobe_sysctls[] = {
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_ONE,
+diff --git a/kernel/delayacct.c b/kernel/delayacct.c
+index 6f0c358e73d8..e039b0f99a0b 100644
+--- a/kernel/delayacct.c
++++ b/kernel/delayacct.c
+@@ -74,7 +74,6 @@ static struct ctl_table kern_delayacct_table[] = {
+ 		.extra1         = SYSCTL_ZERO,
+ 		.extra2         = SYSCTL_ONE,
  	},
--	{}
+-	{ }
  };
  
- static void __init kprobe_sysctls_init(void)
+ static __init int kernel_delayacct_sysctls_init(void)
 
 -- 
 2.43.0
