@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 28 Mar 2024 16:44:08 +0100
-Subject: [PATCH v3 07/10] printk: Remove the now superfluous sentinel
+Date: Thu, 28 Mar 2024 16:44:09 +0100
+Subject: [PATCH v3 08/10] kprobes: Remove the now superfluous sentinel
  elements from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-7-285d273912fe@samsung.com>
+Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-8-285d273912fe@samsung.com>
 References: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 In-Reply-To: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, josh@joshtriplett.org, 
@@ -39,17 +39,17 @@ Cc: linux-kernel@vger.kernel.org, kexec@lists.infradead.org,
  bpf@vger.kernel.org, Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
 X-Developer-Signature: v=1; a=openpgp-sha256; l=918; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=dEvSs5Sk09Mr38w6TQjFck2BDsVi8Y4KzQNb8dQHQ2k=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkE1nrrtIzi/mbTRBEt4ncdh/MX4YK+/zN
- V1PrbBTKAfDkokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBNAAoJELqXzVK3
- lkFPNWsL/3Vy959WXECEg0VHaMhwRrdeyk3YtyYiGM7YxZsqt43CPCmlwvOEGQSSNRe1pS5OSMs
- as4xeTTv4VMjZ8J2nmraoc0S/8dF5jnJUIt36P+mLuUuANd4o6Vj5TtZACS2XscOBqTR1cAn5fW
- fMOpEQ1Qibjc3TKzJa4nWCI1s2sQZdd5pmM6Z6bTS6xkoEC0M+mOj3xt/S+8Xt4QCjBqSZsXkMR
- 7Er9xP7PA6naseg7YghqEaY5h/1ELMr+jA+csTHCkKXTtwzySlij4bwqhgZQz1iLXfik70NXeeQ
- Stj2pa/YCAGbF9OIHb6NTcbeiwGBweGC2BsLkn9+pE0Gh+OmOfGbkApG5e9Ugcf8deJxVCBIPGN
- pJXIl3EVZHAKah/Gw2pcPZJsStYJ23zXwRNG5yc8db2L2ivpaMfUlVk8Hj8MN/nJ47F8MFJVlp0
- VMmcsLlYqBx/9NDO/CcWbF6+c2zvD5PSszPypQOR7kOGo6DboCX7ux3FMIrrDqgjTGoEtK6hqh5
- +4=
+ h=from:subject:message-id; bh=W9k8f49EwG/feirGtDw1FHGcG6plJdUzpOL5hpVCueM=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkE0ZcrBDVAp4O3SfOrgyc8WUlGwe1ykjS
+ ABM/79ogIBhtIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBNAAoJELqXzVK3
+ lkFPIp4L/2jEVev1Ry+FHuhUOpPE5D5ElBE2orb/y33yGm7mtGXFzKAMW8bq+PtlQw5Pu4SBw3g
+ ujwQmB3s4n3ZRJ2YfYwPdHaPKJNFYvJbf24y9Aa58BDtW92sRNapggll7sLkDoWHaUehAMmC3ht
+ LV89vSfFhng6Bzrz/MoTAtl8qyy1IM1RF7ASwOu1Q1jgEgyMw5/xpYlDksNUd/HP3GEjOl27I/U
+ IfF77tqPAX4oGhcI5ZI8l/2Js13SrNFOspXDoD3ctfuVJQ8mD5E4+uUrSaWyIqlMOMVCzvcSM8L
+ 7kkRm8s1XoX/pwKolO2w0dr2q3M5Wzm7L/ycTsrKH0sAqSS5DAXZ3aFwUmg0Xbs25N7LMsVNQ4/
+ l1BPYwsVLL7928+A+Ly/vfxMheOUkkSS5fiMY7kMh1cdoU4JqjjruiM0SeFQFjXwmSl7mVBt2GV
+ /b/2YR1FuOR2ptrzCF46iDCBOkpZZ4CyiuHZE1kNBenIZZDgZgZQ5alrbrswjTB0PEIzApN/2I4
+ BQ=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -61,26 +61,26 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-rm sentinel element from printk_sysctls
+Remove sentinel element from kprobe_sysclts
 
-Reviewed-by: Petr Mladek <pmladek@suse.com>
+Acked-by: "Masami Hiramatsu (Google)" <mhiramat@kernel.org>
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- kernel/printk/sysctl.c | 1 -
+ kernel/kprobes.c | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/kernel/printk/sysctl.c b/kernel/printk/sysctl.c
-index c228343eeb97..3e47dedce9e5 100644
---- a/kernel/printk/sysctl.c
-+++ b/kernel/printk/sysctl.c
-@@ -76,7 +76,6 @@ static struct ctl_table printk_sysctls[] = {
+diff --git a/kernel/kprobes.c b/kernel/kprobes.c
+index 9d9095e81792..85af0e05a38f 100644
+--- a/kernel/kprobes.c
++++ b/kernel/kprobes.c
+@@ -968,7 +968,6 @@ static struct ctl_table kprobe_sysctls[] = {
  		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_TWO,
+ 		.extra2		= SYSCTL_ONE,
  	},
 -	{}
  };
  
- void __init printk_sysctl_init(void)
+ static void __init kprobe_sysctls_init(void)
 
 -- 
 2.43.0
