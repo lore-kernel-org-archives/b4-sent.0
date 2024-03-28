@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 28 Mar 2024 16:44:04 +0100
-Subject: [PATCH v3 03/10] ftrace: Remove the now superfluous sentinel
+Date: Thu, 28 Mar 2024 16:44:05 +0100
+Subject: [PATCH v3 04/10] timekeeping: Remove the now superfluous sentinel
  elements from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-3-285d273912fe@samsung.com>
+Message-Id: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-4-285d273912fe@samsung.com>
 References: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 In-Reply-To: <20240328-jag-sysctl_remove_empty_elem_kernel-v3-0-285d273912fe@samsung.com>
 To: Luis Chamberlain <mcgrof@kernel.org>, josh@joshtriplett.org, 
@@ -38,19 +38,18 @@ Cc: linux-kernel@vger.kernel.org, kexec@lists.infradead.org,
  linux-fsdevel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
  bpf@vger.kernel.org, Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1508;
- i=j.granados@samsung.com; h=from:subject:message-id;
- bh=1araE0kn/61sWG3kWH8OhE3BK5Hy2HOuryBQQ689H28=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkEpW98gjG1D2aFsgWF2O5xiJynGheSz82
- sXxRtohHqsNOIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBKAAoJELqXzVK3
- lkFPCzUL/0SG+3ODZAcC8VOhC+0GoOi4kE7faOWvyEi+zuJjGTMcwSwNf4IntNxUSlKxLruqmu/
- sXS4rISd6LajFHPlALx1lSwYZelfgle5kubkTKxbxuV4A4EpjxsYLKDFRoFS9tmt60X7MzNuPrv
- 2ARWH2eTismjVuHNYgaovyHiC3/nZ7Eq0vltmN6f9/mtI49KNhKAy6wgXicwxtfN5J5aRPKDmKF
- +Crd6eRk4VyjwwB2aR2w++kmDsP6Cjnha4ho87e4AWqV/7W9HLnSNaPkAilDaK+ZwdYvCX/6rhb
- nSA1+bIMwy8cuyKK461nhWqG3gxm1jyfzvwyM3bhD6Z4yl22JmRQg2TxIPM6rEulBpeOGoNfhm8
- 60+H0uxestVapnhLqg3gSUklk+b5Qv4YsJ9XowjlmPrCMKeLBtb6t8Wxpm+72Jba9Nba9Gyx7wB
- 6nHOXmVGMy7L5w1LCv/2Im1SpQ9JngLB+Gni4XCGVVQhaq/cxpd2dV7EQKFfhCDOo17ZGL+oWK6
- +0=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=864; i=j.granados@samsung.com;
+ h=from:subject:message-id; bh=lyDve8Ip2KotGee+CC44snEs+zn3osht1uA6DiUuFwM=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFkEvKQgW+speYF787yYEHJDVSSH0tynerp
+ 0z73pdqmzw2W4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZBLAAoJELqXzVK3
+ lkFPUf0L/2YxDsRniEfrTN5jngDVulSOxiSB4qlNJo3EzgiFbMwGXq7qj0iTqrS6bzM/zQHQelM
+ z6gGiMM/+yQqVBtt6i2wdHtGwRnjt/nOKL92syZf1XmUfb+DsmS3DsDC7HkhkySpWOEQLXPlh/Y
+ vUKou/EVCej3uXWn3Sl9vZCixhu8HctQUpDljEkp3s/xydB+H6sl4c2TLRxDTAPYYbNP9MxMRxK
+ LkPyLkmy7JCPkBw7vwDDId4ex2xU1aj5niZoIT3wH1FjULTg62tRugiLtaGtuoiqklfXBw7gc7q
+ 53t3OF7HpFn26CSo5aJ3mgJZ97lfhYYtS2ji1qpRV9QdPw8k1cgbwYjnMeZvLRecFt7EabhMVOg
+ +mi6NtJgoTt0zZjsuM8IeSGvTk96fszBpJuSQMJeUv+k0PnWx3KTP0gZl6nQNSt0eTxRFAYy67P
+ 5Ugy64D77ah5RGxSUFzdEH9ayB60lVGT8bjRQn/Ix3kzI07osOgMD3M7f6SBTzAbLj7ghOBbLo6
+ Ww=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -62,40 +61,25 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel elements from ftrace_sysctls and user_event_sysctls
+Remove sentinel element from time_sysctl
 
-Acked-by: "Masami Hiramatsu (Google)" <mhiramat@kernel.org>
-Acked-by: "Steven Rostedt (Google)" <rostedt@goodmis.org>
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- kernel/trace/ftrace.c            | 1 -
- kernel/trace/trace_events_user.c | 1 -
- 2 files changed, 2 deletions(-)
+ kernel/time/timer.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/kernel/trace/ftrace.c b/kernel/trace/ftrace.c
-index da1710499698..6cec53aa45a6 100644
---- a/kernel/trace/ftrace.c
-+++ b/kernel/trace/ftrace.c
-@@ -8270,7 +8270,6 @@ static struct ctl_table ftrace_sysctls[] = {
- 		.mode           = 0644,
- 		.proc_handler   = ftrace_enable_sysctl,
+diff --git a/kernel/time/timer.c b/kernel/time/timer.c
+index dee29f1f5b75..9d107f4b506c 100644
+--- a/kernel/time/timer.c
++++ b/kernel/time/timer.c
+@@ -312,7 +312,6 @@ static struct ctl_table timer_sysctl[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 		.extra2		= SYSCTL_ONE,
  	},
 -	{}
  };
  
- static int __init ftrace_sysctl_init(void)
-diff --git a/kernel/trace/trace_events_user.c b/kernel/trace/trace_events_user.c
-index 70d428c394b6..304ceed9fd7d 100644
---- a/kernel/trace/trace_events_user.c
-+++ b/kernel/trace/trace_events_user.c
-@@ -2833,7 +2833,6 @@ static struct ctl_table user_event_sysctls[] = {
- 		.mode		= 0644,
- 		.proc_handler	= set_max_user_events_sysctl,
- 	},
--	{}
- };
- 
- static int __init trace_events_user_init(void)
+ static int __init timer_sysctl_init(void)
 
 -- 
 2.43.0
