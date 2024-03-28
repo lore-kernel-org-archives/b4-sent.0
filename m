@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 28 Mar 2024 16:57:51 +0100
-Subject: [PATCH 4/7] initrd: Remove the now superfluous sentinel element
- from ctl_table array
+Date: Thu, 28 Mar 2024 16:57:52 +0100
+Subject: [PATCH 5/7] ipc: Remove the now superfluous sentinel element from
+ ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240328-jag-sysctl_remset_misc-v1-4-47c1463b3af2@samsung.com>
+Message-Id: <20240328-jag-sysctl_remset_misc-v1-5-47c1463b3af2@samsung.com>
 References: <20240328-jag-sysctl_remset_misc-v1-0-47c1463b3af2@samsung.com>
 In-Reply-To: <20240328-jag-sysctl_remset_misc-v1-0-47c1463b3af2@samsung.com>
 To: Andrew Morton <akpm@linux-foundation.org>, 
@@ -30,18 +30,19 @@ Cc: Luis Chamberlain <mcgrof@kernel.org>, linux-mm@kvack.org,
  linux-arm-kernel@lists.infradead.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=936; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=dgUaKeQvY6Yod09xLYXFtRCigrPjq/BXAkqZRZrGl5Y=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFk8XUCfilPNsCftny+5XBz8vuxkpLL6JS7
- SCj0hqJr2zVAokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZPFAAoJELqXzVK3
- lkFPpf4L+wRgtVGVBHjTE3dn5OJC+qANHV6TvS+aBE93+XlWcxZos/8ML4JUmXrCqyDX+EjaEmt
- Bl1MIWQAVqLXLuV7NDHWaNzl/KaCn7lS4MToV9Ele72KR+KWBLrnjQ/I+5IQf/JDUlRkkrcBNbS
- 552foz839UfCmsc3qOa6OcB6/xYB/gBK5DxflSgUd+Ziu6Ae7iaojNn+RGbv1ZDklEFh/f8/jpD
- UqCAWxXD2JyYCZsEEpmsCmkOQB8efRr99QTCROusfn8mUMush1Bxod1cPFXq4Fekw4ycYERCYdk
- T7vpnaafd/mbKKROVnW0INiF64qLruVon1sVyPP7Jz/t2QGRfmb6SFLwTjQweUjiOxn0HPXQchy
- EIundt+krY0mkCcBVyKC6gb5Uo5ccOPPvzY1kjXyAJhmVlp7vjnoX3aUdTxwrpov1YY2pPjzf8J
- YpUSnaTsAtN6NIWpJsNhma0X8Fa3853Wn+ZChtFx+TOxMj9f6Srzl8C2TOGe/baq643G4sE5nC6
- EY=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1263;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=JOrcDebyPdeQyVF1o8hVyIGZcNOEUHOhqgwA2b/7KxA=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYFk8WY7+nF4T/aynBPi+a0SWAqJw+C58bGs
+ dIDFmbETTURK4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmBZPFAAoJELqXzVK3
+ lkFPtKYMAIWyicivuHYgLcu7kcoKi4dh5VzhBVmU1d1+zzEnR2f4BqPMWMLwExZKwt0v0rPf/iU
+ VZqwFLCJUE4M6vX+VueRURT03H99gHyLgGMHwe5rlh/JUKiqlLQVzwaWCGrg4BG8jkIQgCXfv84
+ gAArkvSzOc8a35wOKAMKVRINK7w4fuDO5JFG7WGw90+v5WSY50dXGOmigPWIbA7P+EsriFvVDlf
+ N7UHpuSG0nytDxusQM71WHX2MxSQ+RTJgscogj75JzJehbmXTDZMtP/iGBTDfeaBRx0b7ETHJfh
+ 0a0bG+JnXuG4kxqxIV9k8fY5uQ94V09mvexhYMDSoOwKKWEHkwf7t26SYW4VgFtIFSEUyemvxmZ
+ tf3YlaL8wMsdBYj/4fwIlc1m9N3DOPv57ze5SEt8ileyVjKISuOlfRioVbFCF+fqVHKqi9zScRs
+ kqPhFL/gsIIeNp2Qv4tfJFyeHcFT20yhcmYz5E1RFipwOOD9XwQG8aCNvTZOZ00zy2zfSAJ8yU5
+ s0=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -53,25 +54,38 @@ reduce the overall build time size of the kernel and run time memory
 bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel from kern_do_mounts_initrd_table.
+Remove the sentinels from ipc_sysctls and mq_sysctls
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- init/do_mounts_initrd.c | 1 -
- 1 file changed, 1 deletion(-)
+ ipc/ipc_sysctl.c | 1 -
+ ipc/mq_sysctl.c  | 1 -
+ 2 files changed, 2 deletions(-)
 
-diff --git a/init/do_mounts_initrd.c b/init/do_mounts_initrd.c
-index 425f4bcf4b77..22c7f41ff642 100644
---- a/init/do_mounts_initrd.c
-+++ b/init/do_mounts_initrd.c
-@@ -29,7 +29,6 @@ static struct ctl_table kern_do_mounts_initrd_table[] = {
- 		.mode           = 0644,
- 		.proc_handler   = proc_dointvec,
+diff --git a/ipc/ipc_sysctl.c b/ipc/ipc_sysctl.c
+index 45cb1dabce29..0867535af96f 100644
+--- a/ipc/ipc_sysctl.c
++++ b/ipc/ipc_sysctl.c
+@@ -178,7 +178,6 @@ static struct ctl_table ipc_sysctls[] = {
+ 		.extra2		= SYSCTL_INT_MAX,
  	},
--	{ }
+ #endif
+-	{}
  };
  
- static __init int kernel_do_mounts_initrd_sysctls_init(void)
+ static struct ctl_table_set *set_lookup(struct ctl_table_root *root)
+diff --git a/ipc/mq_sysctl.c b/ipc/mq_sysctl.c
+index 21fba3a6edaf..22ec532c7fa1 100644
+--- a/ipc/mq_sysctl.c
++++ b/ipc/mq_sysctl.c
+@@ -64,7 +64,6 @@ static struct ctl_table mq_sysctls[] = {
+ 		.extra1		= &msg_maxsize_limit_min,
+ 		.extra2		= &msg_maxsize_limit_max,
+ 	},
+-	{}
+ };
+ 
+ static struct ctl_table_set *set_lookup(struct ctl_table_root *root)
 
 -- 
 2.43.0
