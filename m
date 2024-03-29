@@ -1,70 +1,94 @@
-From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Date: Fri, 29 Mar 2024 17:17:15 +0800
-Subject: [PATCH 3/3] arm64: dts: amlogic: add reset controller for Amlogic
- T7 SoC
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Subject: [PATCH v7 0/2] Add support for Loongson1 APB DMA
+Date: Fri, 29 Mar 2024 19:26:56 +0800
+Message-Id: <20240329-loongson1-dma-v7-0-37db58608de5@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240329-t7-reset-v1-3-4c6e2e68359e@amlogic.com>
-References: <20240329-t7-reset-v1-0-4c6e2e68359e@amlogic.com>
-In-Reply-To: <20240329-t7-reset-v1-0-4c6e2e68359e@amlogic.com>
-To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAIClBmYC/12Oyw6CMBQFf8V07SV9QKGu/A/DopZLaQRqWiQq4
+ d8tLIxxOYszcxYSMTiM5HRYSMDZRefHBOXxQEynR4vgmsSEUy4Y4xR670cb/cigGTQwKXSLRUm
+ rqyJpcw/Yuufuu9SJ2+AHmLqA+muhileMM1WIrOC5pBUwuKF9pFj23pJnO2jXZ8YPm7FzcfLht
+ R+c5ebdLDkVTP59mSVQULRBboQxqfIjqtd1/QCOc4A+7AAAAA==
+To: Keguang Zhang <keguang.zhang@gmail.com>, Vinod Koul <vkoul@kernel.org>, 
+ Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Zelong Dong <zelong.dong@amlogic.com>, 
- Kelvin Zhang <kelvin.zhang@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1711703853; l=1108;
- i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=nQ6i4onLrotYFoJPFCF0uK2+BCj3hGBC1C42Lz/v9h4=;
- b=Jaw99hNZQkkHxQBjC35M3u7xduE2mi1d6p+mbAr75eUopJQwluSwKkTVhFrdm2MgKnxJglndn
- fc86fr2K0poCv4GnbrE3ablxTtxcKSl1DfbTwZmXw38Wpr62LNNX5tb
-X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
- pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
-X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
+ Conor Dooley <conor+dt@kernel.org>, Huacai Chen <chenhuacai@kernel.org>
+Cc: linux-mips@vger.kernel.org, dmaengine@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1711711676; l=2386;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=pB9M95X+mXq7mLeBjyS+gbUvkiSUn2UFn0TswCd0KdU=;
+ b=fmvKGnrYZtLwAB8SPn36qCHcowVqWJ110I6MjqN4/qCkPrpXsomsDoPZfb60T9iPbrzHQV34u
+ 46ub50gRDCfBEJNfRtmCbaHqK2yFVOq6VpDZLD2/niLBdanVa6gjwnZ
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Zelong Dong <zelong.dong@amlogic.com>
+Add the driver and dt-binding document for Loongson1 APB DMA.
 
-Add the reset controller device of Amlogic T7 SoC family
+Changes in v7:
+- Change the comptible to 'loongson,ls1*-apbdma' (suggested by Huacai Chen)
+- Update the title and description part accordingly
+- Rename the file to loongson,ls1b-apbdma.yaml
+- Add a compatible string for LS1A
+- Delete minItems of 'interrupts'
+- Change patterns of 'interrupt-names' to const
+- Rename the file to loongson1-apb-dma.c to keep the consistency
+- Update Kconfig and Makefile accordingly
+- Link to v6: https://lore.kernel.org/r/20240316-loongson1-dma-v6-0-90de2c3cc928@gmail.com
 
-Signed-off-by: Zelong Dong <zelong.dong@amlogic.com>
-Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
+Changes in v6:
+- Change the compatible to the fallback
+- Implement .device_prep_dma_cyclic for Loongson1 sound driver,
+- as well as .device_pause and .device_resume.
+- Set the limitation LS1X_DMA_MAX_DESC and put all descriptors
+- into one page to save memory
+- Move dma_pool_zalloc() into ls1x_dma_alloc_desc()
+- Drop dma_slave_config structure
+- Use .remove_new instead of .remove
+- Use KBUILD_MODNAME for the driver name
+- Improve the debug information
+- Some minor fixes
+- 
+Changes in v5:
+- Add the dt-binding document
+- Add DT support
+- Use DT information instead of platform data
+- Use chan_id of struct dma_chan instead of own id
+- Use of_dma_xlate_by_chan_id() instead of ls1x_dma_filter()
+- Update the author information to my official name
+- 
+Changes in v4:
+- Use dma_slave_map to find the proper channel.
+- Explicitly call devm_request_irq() and tasklet_kill().
+- Fix namespace issue.
+- Some minor fixes and cleanups.
+- 
+Changes in v3:
+- Rename ls1x_dma_filter_fn to ls1x_dma_filter.
+- 
+Changes in v2:
+- Change the config from 'DMA_LOONGSON1' to 'LOONGSON1_DMA',
+- and rearrange it in alphabetical order in Kconfig and Makefile.
+- Fix comment style.
+
 ---
- arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi | 7 +++++++
- 1 file changed, 7 insertions(+)
+Keguang Zhang (2):
+      dt-bindings: dma: Add Loongson-1 APB DMA
+      dmaengine: Loongson1: Add Loongson-1 APB DMA driver
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-index 5248bdf824ea..e94bb85b5292 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-@@ -5,6 +5,7 @@
- 
- #include <dt-bindings/interrupt-controller/arm-gic.h>
- #include <dt-bindings/power/amlogic,t7-pwrc.h>
-+#include <dt-bindings/reset/amlogic,t7-reset.h>
- 
- / {
- 	interrupt-parent = <&gic>;
-@@ -149,6 +150,12 @@ apb4: bus@fe000000 {
- 			#size-cells = <2>;
- 			ranges = <0x0 0x0 0x0 0xfe000000 0x0 0x480000>;
- 
-+			reset: reset-controller@2000 {
-+				compatible = "amlogic,t7-reset";
-+				reg = <0x0 0x2000 0x0 0x98>;
-+				#reset-cells = <1>;
-+			};
-+
- 			watchdog@2100 {
- 				compatible = "amlogic,t7-wdt";
- 				reg = <0x0 0x2100 0x0 0x10>;
+ .../bindings/dma/loongson,ls1b-apbdma.yaml         |  65 ++
+ drivers/dma/Kconfig                                |   9 +
+ drivers/dma/Makefile                               |   1 +
+ drivers/dma/loongson1-apb-dma.c                    | 665 +++++++++++++++++++++
+ 4 files changed, 740 insertions(+)
+---
+base-commit: a6bd6c9333397f5a0e2667d4d82fef8c970108f2
+change-id: 20231120-loongson1-dma-163afe5708b9
 
+Best regards,
 -- 
-2.37.1
+Keguang Zhang <keguang.zhang@gmail.com>
 
