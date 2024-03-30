@@ -1,51 +1,146 @@
 From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 30 Mar 2024 10:57:44 +0100
-Subject: [PATCH 08/10] sparc64: Fix prototype warning for sched_clock
+Date: Sat, 30 Mar 2024 10:57:45 +0100
+Subject: [PATCH 09/10] sparc64: Fix number of online CPUs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240330-sparc64-warnings-v1-8-37201023ee2f@ravnborg.org>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240330-sparc64-warnings-v1-9-37201023ee2f@ravnborg.org>
 References: <20240330-sparc64-warnings-v1-0-37201023ee2f@ravnborg.org>
 In-Reply-To: <20240330-sparc64-warnings-v1-0-37201023ee2f@ravnborg.org>
 To: Andreas Larsson <andreas@gaisler.com>, 
  "David S. Miller" <davem@davemloft.net>, sparclinux@vger.kernel.org
 Cc: Nick Bowler <nbowler@draconx.ca>, linux-kernel@vger.kernel.org, 
- Arnd Bergmann <arnd@arndb.de>, Sam Ravnborg <sam@ravnborg.org>
+ Arnd Bergmann <arnd@arndb.de>, Atish Patra <atish.patra@oracle.com>, 
+ Sam Ravnborg <sam@ravnborg.org>, stable@vger.kernel.org, 
+ Bob Picco <bob.picco@oracle.com>, Vijay Kumar <vijay.ac.kumar@oracle.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1711792675; l=793;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1711792675; l=4552;
  i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=LqRShLF2pPHi8lE2rdN92NEyqocrs1j4uVYYbMfSLj4=;
- b=PMlAy600lZhsdddNHFih9ANgCUb2ySEAKULe4KxaXQj8cNuE9rH8bUgekUv0O74HWlQK3QFI8FQT
- 6K32pHisBTZybIa4zA2VFCw4AylacJr627XuYudCqRPoXxaNfq7O
+ bh=dn/Iq8dROBgEtbrmvGqdZDKLIQGxfIlMZA5xlo5LiLk=;
+ b=Mm0tyHZeXe/t+CUAz0TIDK29Bnh9pWuLw9N9PngOUrSliPSuEf3HaRhoErcq25a4YyE9mnLixJng
+ DR+0exWWCpJJ9L0PynCkfmAWNCYEio9DUJVIyayOkKqpOy3h29V7
 X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
  pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
 X-Endpoint-Received: by B4 Relay for sam@ravnborg.org/20230107 with auth_id=22
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix the following warning:
-arch/sparc/kernel/time_64.c:880:20: warning: no previous prototype for ‘sched_clock’
+Nick Bowler reported:
+    When using newer kernels on my Ultra 60 with dual 450MHz UltraSPARC-II
+    CPUs, I noticed that only CPU 0 comes up, while older kernels (including
+    4.7) are working fine with both CPUs.
 
-Add the missing include to pick up the prototype.
+      I bisected the failure to this commit:
+
+      9b2f753ec23710aa32c0d837d2499db92fe9115b is the first bad commit
+      commit 9b2f753ec23710aa32c0d837d2499db92fe9115b
+      Author: Atish Patra <atish.patra@oracle.com>
+      Date:   Thu Sep 15 14:54:40 2016 -0600
+
+      sparc64: Fix cpu_possible_mask if nr_cpus is set
+
+    This is a small change that reverts very easily on top of 5.18: there is
+    just one trivial conflict.  Once reverted, both CPUs work again.
+
+    Maybe this is related to the fact that the CPUs on this system are
+    numbered CPU0 and CPU2 (there is no CPU1)?
+
+The current code that adjust cpu_possible based on nr_cpu_ids do not
+take into account that CPU's may not come one after each other.
+Move the chech to the function that setup the cpu_possible mask
+so there is no need to adjust it later.
 
 Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
+Fixes: 9b2f753ec237 ("sparc64: Fix cpu_possible_mask if nr_cpus is set")
+Reported-by: Nick Bowler <nbowler@draconx.ca>
+Tested-by: Nick Bowler <nbowler@draconx.ca>
+Link: https://lore.kernel.org/sparclinux/20201009161924.c8f031c079dd852941307870@gmx.de/
+Link: https://lore.kernel.org/all/CADyTPEwt=ZNams+1bpMB1F9w_vUdPsGCt92DBQxxq_VtaLoTdw@mail.gmail.com/
+Cc: <stable@vger.kernel.org> # v4.8+
 Cc: Andreas Larsson <andreas@gaisler.com>
 Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Atish Patra <atish.patra@oracle.com>
+Cc: Bob Picco <bob.picco@oracle.com>
+Cc: Vijay Kumar <vijay.ac.kumar@oracle.com>
+Cc: David S. Miller <davem@davemloft.net>
 ---
- arch/sparc/kernel/time_64.c | 1 +
- 1 file changed, 1 insertion(+)
+ arch/sparc/include/asm/smp_64.h |  2 --
+ arch/sparc/kernel/prom_64.c     |  4 +++-
+ arch/sparc/kernel/setup_64.c    |  1 -
+ arch/sparc/kernel/smp_64.c      | 14 --------------
+ 4 files changed, 3 insertions(+), 18 deletions(-)
 
-diff --git a/arch/sparc/kernel/time_64.c b/arch/sparc/kernel/time_64.c
-index 89fb05f90609..60f1c8cc5363 100644
---- a/arch/sparc/kernel/time_64.c
-+++ b/arch/sparc/kernel/time_64.c
-@@ -33,6 +33,7 @@
- #include <linux/clockchips.h>
- #include <linux/clocksource.h>
- #include <linux/platform_device.h>
-+#include <linux/sched/clock.h>
- #include <linux/ftrace.h>
+diff --git a/arch/sparc/include/asm/smp_64.h b/arch/sparc/include/asm/smp_64.h
+index 505b6700805d..0964fede0b2c 100644
+--- a/arch/sparc/include/asm/smp_64.h
++++ b/arch/sparc/include/asm/smp_64.h
+@@ -47,7 +47,6 @@ void arch_send_call_function_ipi_mask(const struct cpumask *mask);
+ int hard_smp_processor_id(void);
+ #define raw_smp_processor_id() (current_thread_info()->cpu)
  
- #include <asm/oplib.h>
+-void smp_fill_in_cpu_possible_map(void);
+ void smp_fill_in_sib_core_maps(void);
+ void __noreturn cpu_play_dead(void);
+ 
+@@ -77,7 +76,6 @@ void __cpu_die(unsigned int cpu);
+ #define smp_fill_in_sib_core_maps() do { } while (0)
+ #define smp_fetch_global_regs() do { } while (0)
+ #define smp_fetch_global_pmu() do { } while (0)
+-#define smp_fill_in_cpu_possible_map() do { } while (0)
+ #define smp_init_cpu_poke() do { } while (0)
+ #define scheduler_poke() do { } while (0)
+ 
+diff --git a/arch/sparc/kernel/prom_64.c b/arch/sparc/kernel/prom_64.c
+index 998aa693d491..ba82884cb92a 100644
+--- a/arch/sparc/kernel/prom_64.c
++++ b/arch/sparc/kernel/prom_64.c
+@@ -483,7 +483,9 @@ static void *record_one_cpu(struct device_node *dp, int cpuid, int arg)
+ 	ncpus_probed++;
+ #ifdef CONFIG_SMP
+ 	set_cpu_present(cpuid, true);
+-	set_cpu_possible(cpuid, true);
++
++	if (num_possible_cpus() < nr_cpu_ids)
++		set_cpu_possible(cpuid, true);
+ #endif
+ 	return NULL;
+ }
+diff --git a/arch/sparc/kernel/setup_64.c b/arch/sparc/kernel/setup_64.c
+index 1d519f18d2b2..63615f5c99b4 100644
+--- a/arch/sparc/kernel/setup_64.c
++++ b/arch/sparc/kernel/setup_64.c
+@@ -671,7 +671,6 @@ void __init setup_arch(char **cmdline_p)
+ 
+ 	paging_init();
+ 	init_sparc64_elf_hwcap();
+-	smp_fill_in_cpu_possible_map();
+ 	/*
+ 	 * Once the OF device tree and MDESC have been setup and nr_cpus has
+ 	 * been parsed, we know the list of possible cpus.  Therefore we can
+diff --git a/arch/sparc/kernel/smp_64.c b/arch/sparc/kernel/smp_64.c
+index f3969a3600db..e50c38eba2b8 100644
+--- a/arch/sparc/kernel/smp_64.c
++++ b/arch/sparc/kernel/smp_64.c
+@@ -1220,20 +1220,6 @@ void __init smp_setup_processor_id(void)
+ 		xcall_deliver_impl = hypervisor_xcall_deliver;
+ }
+ 
+-void __init smp_fill_in_cpu_possible_map(void)
+-{
+-	int possible_cpus = num_possible_cpus();
+-	int i;
+-
+-	if (possible_cpus > nr_cpu_ids)
+-		possible_cpus = nr_cpu_ids;
+-
+-	for (i = 0; i < possible_cpus; i++)
+-		set_cpu_possible(i, true);
+-	for (; i < NR_CPUS; i++)
+-		set_cpu_possible(i, false);
+-}
+-
+ void smp_fill_in_sib_core_maps(void)
+ {
+ 	unsigned int i;
 
 -- 
 2.34.1
