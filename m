@@ -1,146 +1,83 @@
 From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 30 Mar 2024 10:57:45 +0100
-Subject: [PATCH 09/10] sparc64: Fix number of online CPUs
+Date: Sat, 30 Mar 2024 10:57:46 +0100
+Subject: [PATCH 10/10] sparc64: Fix prototype warnings for vdso
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240330-sparc64-warnings-v1-9-37201023ee2f@ravnborg.org>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240330-sparc64-warnings-v1-10-37201023ee2f@ravnborg.org>
 References: <20240330-sparc64-warnings-v1-0-37201023ee2f@ravnborg.org>
 In-Reply-To: <20240330-sparc64-warnings-v1-0-37201023ee2f@ravnborg.org>
 To: Andreas Larsson <andreas@gaisler.com>, 
  "David S. Miller" <davem@davemloft.net>, sparclinux@vger.kernel.org
 Cc: Nick Bowler <nbowler@draconx.ca>, linux-kernel@vger.kernel.org, 
- Arnd Bergmann <arnd@arndb.de>, Atish Patra <atish.patra@oracle.com>, 
- Sam Ravnborg <sam@ravnborg.org>, stable@vger.kernel.org, 
- Bob Picco <bob.picco@oracle.com>, Vijay Kumar <vijay.ac.kumar@oracle.com>
+ Arnd Bergmann <arnd@arndb.de>, Sam Ravnborg <sam@ravnborg.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1711792675; l=4552;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1711792675; l=2638;
  i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=dn/Iq8dROBgEtbrmvGqdZDKLIQGxfIlMZA5xlo5LiLk=;
- b=Mm0tyHZeXe/t+CUAz0TIDK29Bnh9pWuLw9N9PngOUrSliPSuEf3HaRhoErcq25a4YyE9mnLixJng
- DR+0exWWCpJJ9L0PynCkfmAWNCYEio9DUJVIyayOkKqpOy3h29V7
+ bh=R3MJg/E/GhMxnu0wstTitJ5mJt9vPs+kNGIj3nVyBSg=;
+ b=4VEx0rmCrYuq7fkcXCME2F2VaTvqyGizSK4moRhBlf1ov0rAPRrYYeczpL2dZngQSGnIn9AKOHKW
+ VHWtcmrbCPy4hZGFW+ksDOU06O+Ax51RL6YmSQBF7KdC78OA3ryF
 X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
  pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
 X-Endpoint-Received: by B4 Relay for sam@ravnborg.org/20230107 with auth_id=22
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Nick Bowler reported:
-    When using newer kernels on my Ultra 60 with dual 450MHz UltraSPARC-II
-    CPUs, I noticed that only CPU 0 comes up, while older kernels (including
-    4.7) are working fine with both CPUs.
+Fix the following warnings:
+arch/sparc/vdso/vclock_gettime.c:254:1: error: no previous prototype for ‘__vdso_clock_gettime’
+arch/sparc/vdso/vclock_gettime.c:282:1: error: no previous prototype for ‘__vdso_clock_gettime_stick’
+arch/sparc/vdso/vclock_gettime.c:307:1: error: no previous prototype for ‘__vdso_gettimeofday’
+arch/sparc/vdso/vclock_gettime.c:343:1: error: no previous prototype for ‘__vdso_gettimeofday_stick’
+arch/sparc/vdso/vdso32/../vclock_gettime.c:254:1: error: no previous prototype for ‘__vdso_clock_gettime’
+arch/sparc/vdso/vdso32/../vclock_gettime.c:282:1: error: no previous prototype for ‘__vdso_clock_gettime_stick’
+arch/sparc/vdso/vdso32/../vclock_gettime.c:307:1: error: no previous prototype for ‘__vdso_gettimeofday’
+arch/sparc/vdso/vdso32/../vclock_gettime.c:343:1: error: no previous prototype for ‘__vdso_gettimeofday_stick’
 
-      I bisected the failure to this commit:
-
-      9b2f753ec23710aa32c0d837d2499db92fe9115b is the first bad commit
-      commit 9b2f753ec23710aa32c0d837d2499db92fe9115b
-      Author: Atish Patra <atish.patra@oracle.com>
-      Date:   Thu Sep 15 14:54:40 2016 -0600
-
-      sparc64: Fix cpu_possible_mask if nr_cpus is set
-
-    This is a small change that reverts very easily on top of 5.18: there is
-    just one trivial conflict.  Once reverted, both CPUs work again.
-
-    Maybe this is related to the fact that the CPUs on this system are
-    numbered CPU0 and CPU2 (there is no CPU1)?
-
-The current code that adjust cpu_possible based on nr_cpu_ids do not
-take into account that CPU's may not come one after each other.
-Move the chech to the function that setup the cpu_possible mask
-so there is no need to adjust it later.
+The warnings were fixed by adding the proper prototypes to asm/vdso.h.
+The better fix would be to convert sparc to be y2038 compliant so the
+generic variant of vdso.h could be used.
 
 Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
-Fixes: 9b2f753ec237 ("sparc64: Fix cpu_possible_mask if nr_cpus is set")
-Reported-by: Nick Bowler <nbowler@draconx.ca>
-Tested-by: Nick Bowler <nbowler@draconx.ca>
-Link: https://lore.kernel.org/sparclinux/20201009161924.c8f031c079dd852941307870@gmx.de/
-Link: https://lore.kernel.org/all/CADyTPEwt=ZNams+1bpMB1F9w_vUdPsGCt92DBQxxq_VtaLoTdw@mail.gmail.com/
-Cc: <stable@vger.kernel.org> # v4.8+
 Cc: Andreas Larsson <andreas@gaisler.com>
 Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Atish Patra <atish.patra@oracle.com>
-Cc: Bob Picco <bob.picco@oracle.com>
-Cc: Vijay Kumar <vijay.ac.kumar@oracle.com>
-Cc: David S. Miller <davem@davemloft.net>
+Cc: Arnd Bergmann <arnd@arndb.de>
 ---
- arch/sparc/include/asm/smp_64.h |  2 --
- arch/sparc/kernel/prom_64.c     |  4 +++-
- arch/sparc/kernel/setup_64.c    |  1 -
- arch/sparc/kernel/smp_64.c      | 14 --------------
- 4 files changed, 3 insertions(+), 18 deletions(-)
+ arch/sparc/include/asm/vdso.h    | 10 ++++++++++
+ arch/sparc/vdso/vclock_gettime.c |  1 +
+ 2 files changed, 11 insertions(+)
 
-diff --git a/arch/sparc/include/asm/smp_64.h b/arch/sparc/include/asm/smp_64.h
-index 505b6700805d..0964fede0b2c 100644
---- a/arch/sparc/include/asm/smp_64.h
-+++ b/arch/sparc/include/asm/smp_64.h
-@@ -47,7 +47,6 @@ void arch_send_call_function_ipi_mask(const struct cpumask *mask);
- int hard_smp_processor_id(void);
- #define raw_smp_processor_id() (current_thread_info()->cpu)
+diff --git a/arch/sparc/include/asm/vdso.h b/arch/sparc/include/asm/vdso.h
+index 59e79d35cd73..af630cad185c 100644
+--- a/arch/sparc/include/asm/vdso.h
++++ b/arch/sparc/include/asm/vdso.h
+@@ -5,6 +5,16 @@
+ #ifndef _ASM_SPARC_VDSO_H
+ #define _ASM_SPARC_VDSO_H
  
--void smp_fill_in_cpu_possible_map(void);
- void smp_fill_in_sib_core_maps(void);
- void __noreturn cpu_play_dead(void);
- 
-@@ -77,7 +76,6 @@ void __cpu_die(unsigned int cpu);
- #define smp_fill_in_sib_core_maps() do { } while (0)
- #define smp_fetch_global_regs() do { } while (0)
- #define smp_fetch_global_pmu() do { } while (0)
--#define smp_fill_in_cpu_possible_map() do { } while (0)
- #define smp_init_cpu_poke() do { } while (0)
- #define scheduler_poke() do { } while (0)
- 
-diff --git a/arch/sparc/kernel/prom_64.c b/arch/sparc/kernel/prom_64.c
-index 998aa693d491..ba82884cb92a 100644
---- a/arch/sparc/kernel/prom_64.c
-+++ b/arch/sparc/kernel/prom_64.c
-@@ -483,7 +483,9 @@ static void *record_one_cpu(struct device_node *dp, int cpuid, int arg)
- 	ncpus_probed++;
- #ifdef CONFIG_SMP
- 	set_cpu_present(cpuid, true);
--	set_cpu_possible(cpuid, true);
++#include <linux/linkage.h>
++#include <linux/time.h>
++#include <linux/time_types.h>
++#include <linux/types.h>
 +
-+	if (num_possible_cpus() < nr_cpu_ids)
-+		set_cpu_possible(cpuid, true);
- #endif
- 	return NULL;
- }
-diff --git a/arch/sparc/kernel/setup_64.c b/arch/sparc/kernel/setup_64.c
-index 1d519f18d2b2..63615f5c99b4 100644
---- a/arch/sparc/kernel/setup_64.c
-+++ b/arch/sparc/kernel/setup_64.c
-@@ -671,7 +671,6 @@ void __init setup_arch(char **cmdline_p)
++notrace int __vdso_clock_gettime(clockid_t clock, struct __kernel_old_timespec *ts);
++notrace int __vdso_clock_gettime_stick(clockid_t clock, struct __kernel_old_timespec *ts);
++notrace int __vdso_gettimeofday(struct __kernel_old_timeval *tv, struct timezone *tz);
++notrace int __vdso_gettimeofday_stick(struct __kernel_old_timeval *tv, struct timezone *tz);
++
+ struct vdso_image {
+ 	void *data;
+ 	unsigned long size;   /* Always a multiple of PAGE_SIZE */
+diff --git a/arch/sparc/vdso/vclock_gettime.c b/arch/sparc/vdso/vclock_gettime.c
+index e794edde6755..a3f85d9cea52 100644
+--- a/arch/sparc/vdso/vclock_gettime.c
++++ b/arch/sparc/vdso/vclock_gettime.c
+@@ -19,6 +19,7 @@
+ #include <asm/unistd.h>
+ #include <asm/timex.h>
+ #include <asm/clocksource.h>
++#include <asm/vdso.h>
+ #include <asm/vvar.h>
  
- 	paging_init();
- 	init_sparc64_elf_hwcap();
--	smp_fill_in_cpu_possible_map();
- 	/*
- 	 * Once the OF device tree and MDESC have been setup and nr_cpus has
- 	 * been parsed, we know the list of possible cpus.  Therefore we can
-diff --git a/arch/sparc/kernel/smp_64.c b/arch/sparc/kernel/smp_64.c
-index f3969a3600db..e50c38eba2b8 100644
---- a/arch/sparc/kernel/smp_64.c
-+++ b/arch/sparc/kernel/smp_64.c
-@@ -1220,20 +1220,6 @@ void __init smp_setup_processor_id(void)
- 		xcall_deliver_impl = hypervisor_xcall_deliver;
- }
- 
--void __init smp_fill_in_cpu_possible_map(void)
--{
--	int possible_cpus = num_possible_cpus();
--	int i;
--
--	if (possible_cpus > nr_cpu_ids)
--		possible_cpus = nr_cpu_ids;
--
--	for (i = 0; i < possible_cpus; i++)
--		set_cpu_possible(i, true);
--	for (; i < NR_CPUS; i++)
--		set_cpu_possible(i, false);
--}
--
- void smp_fill_in_sib_core_maps(void)
- {
- 	unsigned int i;
+ #ifdef	CONFIG_SPARC64
 
 -- 
 2.34.1
