@@ -1,84 +1,55 @@
-From: Sam Ravnborg <sam@ravnborg.org>
-Date: Sat, 30 Mar 2024 10:57:46 +0100
-Subject: [PATCH 10/10] sparc64: Fix prototype warnings for vdso
+From: Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
+Subject: [PATCH v3 0/2] Samsung Galaxy Z Fold5 initial support
+Date: Sun, 31 Mar 2024 12:56:38 +0200
+Message-Id: <20240331-samsung-galaxy-zfold5-q5q-v3-0-17ae8d0a9fba@yahoo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240330-sparc64-warnings-v1-10-37201023ee2f@ravnborg.org>
-References: <20240330-sparc64-warnings-v1-0-37201023ee2f@ravnborg.org>
-In-Reply-To: <20240330-sparc64-warnings-v1-0-37201023ee2f@ravnborg.org>
-To: Andreas Larsson <andreas@gaisler.com>, 
- "David S. Miller" <davem@davemloft.net>, sparclinux@vger.kernel.org
-Cc: Nick Bowler <nbowler@draconx.ca>, linux-kernel@vger.kernel.org, 
- Arnd Bergmann <arnd@arndb.de>, Sam Ravnborg <sam@ravnborg.org>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1711792675; l=2638;
- i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=R3MJg/E/GhMxnu0wstTitJ5mJt9vPs+kNGIj3nVyBSg=;
- b=4VEx0rmCrYuq7fkcXCME2F2VaTvqyGizSK4moRhBlf1ov0rAPRrYYeczpL2dZngQSGnIn9AKOHKW
- VHWtcmrbCPy4hZGFW+ksDOU06O+Ax51RL6YmSQBF7KdC78OA3ryF
-X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
- pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
-X-Endpoint-Received: by B4 Relay for sam@ravnborg.org/20230107 with auth_id=22
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAGZBCWYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDY2ND3eLE3OLSvHTd9MScxIpK3aq0/JwUU91C00LdVOM0YxOLNDMTc1N
+ zJaD+gqLUtMwKsNnRsbW1ABNhBOJrAAAA
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1711882599; l=884;
+ i=serdeliuk@yahoo.com; s=20240326; h=from:subject:message-id;
+ bh=3JA8zXWvxduJPtSIA4N0SAo+czSCUXl4wrmxDz54JAg=;
+ b=aDq6wusCtpMghuggUJWzAmv91MkJfuMGcoau1D3E95KEyBKJtJ9oK6lw6cLQ4OZDBtiQdC54p
+ iWgCy20wZV4BQxlAEf220eEyC68d7ITJVC67iRmpLT1zdSFwa5aMIP5
+X-Developer-Key: i=serdeliuk@yahoo.com; a=ed25519;
+ pk=aWyveUE11qfDOOlRIFayXukrNn39BvZ9k9uq94dAsgY=
+X-Endpoint-Received: by B4 Relay for serdeliuk@yahoo.com/20240326 with auth_id=147
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix the following warnings:
-arch/sparc/vdso/vclock_gettime.c:254:1: error: no previous prototype for ‘__vdso_clock_gettime’
-arch/sparc/vdso/vclock_gettime.c:282:1: error: no previous prototype for ‘__vdso_clock_gettime_stick’
-arch/sparc/vdso/vclock_gettime.c:307:1: error: no previous prototype for ‘__vdso_gettimeofday’
-arch/sparc/vdso/vclock_gettime.c:343:1: error: no previous prototype for ‘__vdso_gettimeofday_stick’
-arch/sparc/vdso/vdso32/../vclock_gettime.c:254:1: error: no previous prototype for ‘__vdso_clock_gettime’
-arch/sparc/vdso/vdso32/../vclock_gettime.c:282:1: error: no previous prototype for ‘__vdso_clock_gettime_stick’
-arch/sparc/vdso/vdso32/../vclock_gettime.c:307:1: error: no previous prototype for ‘__vdso_gettimeofday’
-arch/sparc/vdso/vdso32/../vclock_gettime.c:343:1: error: no previous prototype for ‘__vdso_gettimeofday_stick’
+This documents and add intial dts support for Samsung Galaxy Z Fold5 (samsung,q5q)
+which is a foldable phone by Samsung based on the sm8550 SoC.
 
-The warnings were fixed by adding the proper prototypes to asm/vdso.h.
-The better fix would be to convert sparc to be y2038 compliant so the
-generic variant of vdso.h could be used.
+Currently working features:
+- Framebuffer
+- UFS
+- i2c
+- Buttons
 
-Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
-Cc: Andreas Larsson <andreas@gaisler.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Arnd Bergmann <arnd@arndb.de>
+Signed-off-by: Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
 ---
- arch/sparc/include/asm/vdso.h    | 10 ++++++++++
- arch/sparc/vdso/vclock_gettime.c |  1 +
- 2 files changed, 11 insertions(+)
+Alexandru Marc Serdeliuc (2):
+      dt-bindings: arm: qcom: Document the Samsung Galaxy Z Fold5
+      arm64: dts: qcom: sm8550: Add support for Samsung Galaxy Z Fold5
 
-diff --git a/arch/sparc/include/asm/vdso.h b/arch/sparc/include/asm/vdso.h
-index 59e79d35cd73..af630cad185c 100644
---- a/arch/sparc/include/asm/vdso.h
-+++ b/arch/sparc/include/asm/vdso.h
-@@ -5,6 +5,16 @@
- #ifndef _ASM_SPARC_VDSO_H
- #define _ASM_SPARC_VDSO_H
- 
-+#include <linux/linkage.h>
-+#include <linux/time.h>
-+#include <linux/time_types.h>
-+#include <linux/types.h>
-+
-+notrace int __vdso_clock_gettime(clockid_t clock, struct __kernel_old_timespec *ts);
-+notrace int __vdso_clock_gettime_stick(clockid_t clock, struct __kernel_old_timespec *ts);
-+notrace int __vdso_gettimeofday(struct __kernel_old_timeval *tv, struct timezone *tz);
-+notrace int __vdso_gettimeofday_stick(struct __kernel_old_timeval *tv, struct timezone *tz);
-+
- struct vdso_image {
- 	void *data;
- 	unsigned long size;   /* Always a multiple of PAGE_SIZE */
-diff --git a/arch/sparc/vdso/vclock_gettime.c b/arch/sparc/vdso/vclock_gettime.c
-index e794edde6755..a3f85d9cea52 100644
---- a/arch/sparc/vdso/vclock_gettime.c
-+++ b/arch/sparc/vdso/vclock_gettime.c
-@@ -19,6 +19,7 @@
- #include <asm/unistd.h>
- #include <asm/timex.h>
- #include <asm/clocksource.h>
-+#include <asm/vdso.h>
- #include <asm/vvar.h>
- 
- #ifdef	CONFIG_SPARC64
+ Documentation/devicetree/bindings/arm/qcom.yaml |   1 +
+ arch/arm64/boot/dts/qcom/Makefile               |   1 +
+ arch/arm64/boot/dts/qcom/sm8550-samsung-q5q.dts | 582 ++++++++++++++++++++++++
+ 3 files changed, 584 insertions(+)
+---
+base-commit: 4cece764965020c22cff7665b18a012006359095
+change-id: 20240331-samsung-galaxy-zfold5-q5q-e3f348f64757
 
+Best regards,
 -- 
-2.34.1
+Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
 
