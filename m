@@ -1,13 +1,12 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Subject: [PATCH 0/6] Add support for AD411x
-Date: Mon, 01 Apr 2024 18:32:18 +0300
-Message-Id: <20240401-ad4111-v1-0-34618a9cc502@analog.com>
+Date: Mon, 01 Apr 2024 18:32:19 +0300
+Subject: [PATCH 1/6] dt-bindings: adc: ad7173: add support for ad411x
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIPTCmYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDY0Mj3cQUE0NDQ13z1NQkY5PUJJNE0zQloOKCotS0zAqwQdGxtbUApX1
- /H1gAAAA=
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240401-ad4111-v1-1-34618a9cc502@analog.com>
+References: <20240401-ad4111-v1-0-34618a9cc502@analog.com>
+In-Reply-To: <20240401-ad4111-v1-0-34618a9cc502@analog.com>
 To: Ceclan Dumitru <dumitru.ceclan@analog.com>
 Cc: Lars-Peter Clausen <lars@metafoo.de>, 
  Michael Hennerich <Michael.Hennerich@analog.com>, 
@@ -17,59 +16,130 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Dumitru Ceclan <mitrutzceclan@gmail.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1711985550; l=2067;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1711985550; l=4017;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=10B9kij4RJ8Moszjff2kF8cKqehkeXTDRYV4vE4emTg=;
- b=XLN9Nt8v7bv1mWjyDAWDeyL+7eBHCtShfmeS9aiFjAAWhNLQnF8WvA3P84LoqGXId7oimiFXZ
- njaVyz3tn1JC8NxVW9DB6cuu1ZuAS2yhvJA9QrY4mondxwUlXGQn1ip
+ bh=ZyRClsyDd6RKV/PtoHfGxoOfXDbJoSHfK85MVhx0ze8=;
+ b=OVfXhcFTgH9CYNC7fhmMZbavK94vVtJeh+VDoQk2nZ9ZKe93KmREz9IS2PvDGUG6wrpoXP4TU
+ tS58/VzjVh1AsCfd01MdgrIYEuNU+n4kbO4agDA4qQqmCt6T01rMm+d
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds support for the Analog Devices AD4111, AD4112,
- AD4114, AD4115, AD4116 within the existing AD7173 driver.
+Add support for: AD4111, AD4112, AD4114, AD4115, AD4116.
 
-  The AD411X family encompasses a series of low power, low noise, 24-bit,
-sigma-delta analog-to-digital converters that offer a versatile range of
-specifications. They integrate an analog front end suitable for processing
-fully differential/single-ended and bipolar voltage inputs.
+AD411x family ADCs support a VCOM pin, dedicated for single-ended usage.
+AD4111/AD4112 support current channels, usage is implemented by
+ specifying channel reg values bigger than 15.
 
-- All ADCs have inputs with a precision voltage divider with a division
-ratio of 10.
-- AD4116 has 5 low level inputs without a voltage divider.
-- AD4111 and AD4112 support current inputs (0 mA to 20 mA) using a 50ohm
-shunt resistor.
-
-Datasheets:
-https://www.analog.com/media/en/technical-documentation/data-sheets/AD4111.pdf
-https://www.analog.com/media/en/technical-documentation/data-sheets/AD4112.pdf
-https://www.analog.com/media/en/technical-documentation/data-sheets/AD4114.pdf
-https://www.analog.com/media/en/technical-documentation/data-sheets/AD4115.pdf
-https://www.analog.com/media/en/technical-documentation/data-sheets/AD4116.pdf
-
-This series depends on patch:
-(iio: adc: ad7173: Use device_for_each_child_node_scoped() to simplify error paths.)
-https://lore.kernel.org/all/20240330190849.1321065-6-jic23@kernel.org
-
-Signed-off-by: Dumitru Ceclan <mitrutzceclan@gmail.com>
+Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
 ---
-Dumitru Ceclan (6):
-      dt-bindings: adc: ad7173: add support for ad411x
-      iio: adc: ad7173: fix buffers enablement for ad7176-2
-      iio: adc: ad7173: refactor channel configuration parsing
-      iio: adc: ad7173: refactor ain and vref selection
-      iio: adc: ad7173: Remove index from temp channel
-      iio: adc: ad7173: Add support for AD411x devices
+ .../devicetree/bindings/iio/adc/adi,ad7173.yaml    | 59 +++++++++++++++++++++-
+ 1 file changed, 57 insertions(+), 2 deletions(-)
 
- .../devicetree/bindings/iio/adc/adi,ad7173.yaml    |  59 +++-
- drivers/iio/adc/ad7173.c                           | 318 ++++++++++++++++++---
- 2 files changed, 331 insertions(+), 46 deletions(-)
----
-base-commit: 5ab61121a34759eb2418977f0b3589b7edc57776
-change-id: 20240312-ad4111-7eeb34eb4a5f
+diff --git a/Documentation/devicetree/bindings/iio/adc/adi,ad7173.yaml b/Documentation/devicetree/bindings/iio/adc/adi,ad7173.yaml
+index ea6cfcd0aff4..bba2de0a52f3 100644
+--- a/Documentation/devicetree/bindings/iio/adc/adi,ad7173.yaml
++++ b/Documentation/devicetree/bindings/iio/adc/adi,ad7173.yaml
+@@ -19,7 +19,18 @@ description: |
+   primarily for measurement of signals close to DC but also delivers
+   outstanding performance with input bandwidths out to ~10kHz.
+ 
++  Analog Devices AD411x ADC's:
++  The AD411X family encompasses a series of low power, low noise, 24-bit,
++  sigma-delta analog-to-digital converters that offer a versatile range of
++  specifications. They integrate an analog front end suitable for processing
++  fully differential/single-ended and bipolar voltage inputs.
++
+   Datasheets for supported chips:
++    https://www.analog.com/media/en/technical-documentation/data-sheets/AD4111.pdf
++    https://www.analog.com/media/en/technical-documentation/data-sheets/AD4112.pdf
++    https://www.analog.com/media/en/technical-documentation/data-sheets/AD4114.pdf
++    https://www.analog.com/media/en/technical-documentation/data-sheets/AD4115.pdf
++    https://www.analog.com/media/en/technical-documentation/data-sheets/AD4116.pdf
+     https://www.analog.com/media/en/technical-documentation/data-sheets/AD7172-2.pdf
+     https://www.analog.com/media/en/technical-documentation/data-sheets/AD7172-4.pdf
+     https://www.analog.com/media/en/technical-documentation/data-sheets/AD7173-8.pdf
+@@ -31,6 +42,11 @@ description: |
+ properties:
+   compatible:
+     enum:
++      - adi,ad4111
++      - adi,ad4112
++      - adi,ad4114
++      - adi,ad4115
++      - adi,ad4116
+       - adi,ad7172-2
+       - adi,ad7172-4
+       - adi,ad7173-8
+@@ -125,10 +141,19 @@ patternProperties:
+ 
+     properties:
+       reg:
++        description:
++          Reg values 16-19 are only permitted for ad4111/ad4112 current channels.
+         minimum: 0
+-        maximum: 15
++        maximum: 19
+ 
+       diff-channels:
++        description:
++          For using current channels specify only the positive channel.
++            (IIN2+, IIN2−) -> diff-channels = <2 0>
++
++          Family AD411x supports a dedicated VCOM voltage input.
++          To select it set the second channel to 16.
++            (VIN2, VCOM) -> diff-channels = <2 16>
+         items:
+           minimum: 0
+           maximum: 31
+@@ -166,7 +191,6 @@ allOf:
+   - $ref: /schemas/spi/spi-peripheral-props.yaml#
+ 
+   # Only ad7172-4, ad7173-8 and ad7175-8 support vref2
+-  # Other models have [0-3] channel registers
+   - if:
+       properties:
+         compatible:
+@@ -187,6 +211,37 @@ allOf:
+                 - vref
+                 - refout-avss
+                 - avdd
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - adi,ad4114
++              - adi,ad4115
++              - adi,ad4116
++              - adi,ad7173-8
++              - adi,ad7175-8
++    then:
++      patternProperties:
++        "^channel@[0-9a-f]$":
++          properties:
++            reg:
++              maximum: 15
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - adi,ad7172-2
++              - adi,ad7175-2
++              - adi,ad7176-2
++              - adi,ad7177-2
++    then:
++      patternProperties:
++        "^channel@[0-9a-f]$":
++          properties:
+             reg:
+               maximum: 3
+ 
 
-Best regards,
 -- 
-Dumitru Ceclan <dumitru.ceclan@analog.com>
+2.43.0
 
