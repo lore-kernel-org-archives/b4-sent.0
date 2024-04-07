@@ -1,657 +1,519 @@
-From: Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
-Date: Sun, 07 Apr 2024 07:38:14 +0200
-Subject: [PATCH v4 2/2] arm64: dts: qcom: sm8550: Add support for Samsung
- Galaxy Z Fold5
+From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Date: Sun, 07 Apr 2024 21:11:11 +0300
+Subject: [PATCH net] net: dsa: mt7530: trap link-local frames regardless of
+ ST Port State
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240407-samsung-galaxy-zfold5-q5q-v4-2-8b67b1813653@yahoo.com>
-References: <20240407-samsung-galaxy-zfold5-q5q-v4-0-8b67b1813653@yahoo.com>
-In-Reply-To: <20240407-samsung-galaxy-zfold5-q5q-v4-0-8b67b1813653@yahoo.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240407-b4-for-net-mt7530-fix-link-local-when-stp-discarding-v1-1-b4b20ac93457@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIAL7hEmYC/x2NQQ7CIBQFr9L8tS+hFFvjVYwLhN/2R4QGiJo0v
+ bvE5SxmZqfCWbjQtdsp81uKpNigP3XkVhsXhvjGpJU2yqgeD4M5ZUSueNXpPCjM8kWQ+ERIzgZ
+ 8Vo4odYOX4mz2EheMrK3hgS/jZKmlt8zN+m9v1FJ0P44fNwIjJIsAAAA=
+To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
+ Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Florian Fainelli <f.fainelli@gmail.com>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>, 
+ mithat.guner@xeront.com, erkin.bozoglu@xeront.com, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, 
+ =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1712468293; l=17073;
- i=serdeliuk@yahoo.com; s=20240326; h=from:subject:message-id;
- bh=CZGndGkICFRpWogWNzISn+cAfKht2ANsBsu7/1kY7+8=;
- b=EZ01Z/TCe9qaxv7Eu4OeuVIwOcfS1dqv8LoB7I7ZuqEB7QBbZWuddpV7pTjnDMkvOHON0B+xa
- rHLIwpeKFeAD8NmyYnmjPd7h5Bwo5FBWHcPaiyI7OA+5/EXAbgvUdqt
-X-Developer-Key: i=serdeliuk@yahoo.com; a=ed25519;
- pk=aWyveUE11qfDOOlRIFayXukrNn39BvZ9k9uq94dAsgY=
-X-Endpoint-Received: by B4 Relay for serdeliuk@yahoo.com/20240326 with auth_id=147
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1712513497; l=25358;
+ i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
+ bh=HkHsmgHn7WJ2yviXCM6gQkQGKw7s2grLJMPqxVTH3kg=;
+ b=2pLAnipqyiSzcLc06Gdbtf3K/UJKeDJAR5BGZb6fUCjmwFqfCnTInz1t34jfOUjiqEzV22m9t
+ tQ82IvQIlDlAnVsl57W7ys0cRB3Zu7VCozWOKJqrTA0xiYFRoXwnYHA
+X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
+ pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
+X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for Samsung Galaxy Z Fold5 (q5q) foldable phone based on sm8550
+In Clause 5 of IEEE Std 802-2014, two sublayers of the data link layer
+(DLL) of the Open Systems Interconnection basic reference model (OSI/RM)
+are described; the medium access control (MAC) and logical link control
+(LLC) sublayers. The MAC sublayer is the one facing the physical layer.
 
-Currently working features:
-- Framebuffer
-- UFS
-- i2c
-- Buttons
+In 8.2 of IEEE Std 802.1Q-2022, the Bridge architecture is described. A
+Bridge component comprises a MAC Relay Entity for interconnecting the Ports
+of the Bridge, at least two Ports, and higher layer entities with at least
+a Spanning Tree Protocol Entity included.
 
-Signed-off-by: Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
+Each Bridge Port also functions as an end station and shall provide the MAC
+Service to an LLC Entity. Each instance of the MAC Service is provided to a
+distinct LLC Entity that supports protocol identification, multiplexing,
+and demultiplexing, for protocol data unit (PDU) transmission and reception
+by one or more higher layer entities.
+
+It is described in 8.13.9 of IEEE Std 802.1Q-2022 that in a Bridge, the LLC
+Entity associated with each Bridge Port is modeled as being directly
+connected to the attached Local Area Network (LAN).
+
+On the switch with CPU port architecture, CPU port functions as Management
+Port, and the Management Port functionality is provided by software which
+functions as an end station. Software is connected to an IEEE 802 LAN that
+is wholly contained within the system that incorporates the Bridge.
+Software provides access to the LLC Entity associated with each Bridge Port
+by the value of the source port field on the special tag on the frame
+received by software.
+
+We call frames that carry control information to determine the active
+topology and current extent of each Virtual Local Area Network (VLAN),
+i.e., spanning tree or Shortest Path Bridging (SPB) and Multiple VLAN
+Registration Protocol Data Units (MVRPDUs), and frames from other link
+constrained protocols, such as Extensible Authentication Protocol over LAN
+(EAPOL) and Link Layer Discovery Protocol (LLDP), link-local frames. They
+are not forwarded by a Bridge. Permanently configured entries in the
+filtering database (FDB) ensure that such frames are discarded by the
+Forwarding Process. In 8.6.3 of IEEE Std 802.1Q-2022, this is described in
+detail:
+
+Each of the reserved MAC addresses specified in Table 8-1
+(01-80-C2-00-00-[00,01,02,03,04,05,06,07,08,09,0A,0B,0C,0D,0E,0F]) shall be
+permanently configured in the FDB in C-VLAN components and ERs.
+
+Each of the reserved MAC addresses specified in Table 8-2
+(01-80-C2-00-00-[01,02,03,04,05,06,07,08,09,0A,0E]) shall be permanently
+configured in the FDB in S-VLAN components.
+
+Each of the reserved MAC addresses specified in Table 8-3
+(01-80-C2-00-00-[01,02,04,0E]) shall be permanently configured in the FDB
+in TPMR components.
+
+The FDB entries for reserved MAC addresses shall specify filtering for all
+Bridge Ports and all VIDs. Management shall not provide the capability to
+modify or remove entries for reserved MAC addresses.
+
+The addresses in Table 8-1, Table 8-2, and Table 8-3 determine the scope of
+propagation of PDUs within a Bridged Network, as follows:
+
+  The Nearest Bridge group address (01-80-C2-00-00-0E) is an address that
+  no conformant Two-Port MAC Relay (TPMR) component, Service VLAN (S-VLAN)
+  component, Customer VLAN (C-VLAN) component, or MAC Bridge can forward.
+  PDUs transmitted using this destination address, or any other addresses
+  that appear in Table 8-1, Table 8-2, and Table 8-3
+  (01-80-C2-00-00-[00,01,02,03,04,05,06,07,08,09,0A,0B,0C,0D,0E,0F]), can
+  therefore travel no further than those stations that can be reached via a
+  single individual LAN from the originating station.
+
+  The Nearest non-TPMR Bridge group address (01-80-C2-00-00-03), is an
+  address that no conformant S-VLAN component, C-VLAN component, or MAC
+  Bridge can forward; however, this address is relayed by a TPMR component.
+  PDUs using this destination address, or any of the other addresses that
+  appear in both Table 8-1 and Table 8-2 but not in Table 8-3
+  (01-80-C2-00-00-[00,03,05,06,07,08,09,0A,0B,0C,0D,0F]), will be relayed
+  by any TPMRs but will propagate no further than the nearest S-VLAN
+  component, C-VLAN component, or MAC Bridge.
+
+  The Nearest Customer Bridge group address (01-80-C2-00-00-00) is an
+  address that no conformant C-VLAN component, MAC Bridge can forward;
+  however, it is relayed by TPMR components and S-VLAN components. PDUs
+  using this destination address, or any of the other addresses that appear
+  in Table 8-1 but not in either Table 8-2 or Table 8-3
+  (01-80-C2-00-00-[00,0B,0C,0D,0F]), will be relayed by TPMR components and
+  S-VLAN components but will propagate no further than the nearest C-VLAN
+  component or MAC Bridge.
+
+Because the LLC Entity associated with each Bridge Port is provided via CPU
+port, we must not filter these frames but forward them to CPU port.
+
+In a Bridge, the transmission Port is majorly decided by ingress and egress
+rules, FDB, and spanning tree Port State functions of the Forwarding
+Process. For link-local frames, only CPU port should be designated as
+destination port in the FDB, and the other functions of the Forwarding
+Process must not interfere with the decision of the transmission Port. We
+call this process trapping frames to CPU port.
+
+Therefore, on the switch with CPU port architecture, link-local frames must
+be trapped to CPU port, and certain link-local frames received by a Port of
+a Bridge comprising a TPMR component or an S-VLAN component must be
+excluded from it.
+
+A Bridge of the switch with CPU architecture cannot comprise a non-Two-Port
+MAC Relay (TPMR) component as TPMR component is only supposed to support a
+subset of the functionality of a MAC Bridge. A Bridge comprising two ports
+(Management Port doesn't count) of this architecture will either function
+as a standard MAC Bridge or a standard VLAN Bridge.
+
+Therefore, a Bridge of this architecture can only comprise S-VLAN
+components, C-VLAN components, or MAC Bridge components. Since there's no
+TPMR component, we don't need to relay PDUs using the destination addresses
+specified on the Nearest non-TPMR section, and the proportion of the
+Nearest Customer Bridge section where they must be relayed by TPMR
+components.
+
+One option to trap link-local frames to CPU port is to add static FDB
+entries with CPU port designated as destination port. However, because that
+Independent VLAN Learning (IVL) is being used on every VID, each entry only
+applies to a single VLAN Identifier (VID). For a Bridge comprising a MAC
+Bridge component or a C-VLAN component, there would have to be 16 times
+4096 entries. This switch intellectual property can only hold a maximum of
+2048 entries. Using this option, there also isn't a mechanism to prevent
+link-local frames from being discarded when the spanning tree Port State of
+the reception Port is discarding.
+
+The remaining option is to utilise the BPC, RGAC1, RGAC2, RGAC3, and RGAC4
+registers. Whilst this applies to every VID, it doesn't contain all of the
+reserved MAC addresses without affecting the remaining Standard Group MAC
+Addresses. The REV_UN frame tag utilised using the RGAC4 register covers
+the remaining 01-80-C2-00-00-[04,05,06,07,08,09,0A,0B,0C,0D,0F] destination
+addresses. It also includes the 01-80-C2-00-00-22 to 01-80-C2-00-00-FF
+destination addresses which may be relayed by MAC Bridges or VLAN Bridges.
+The latter option provides better but not complete conformance.
+
+This switch intellectual property also does not provide a mechanism to trap
+link-local frames with specific destination addresses to CPU port by
+Bridge, to conform to the filtering rules for the distinct Bridge
+components.
+
+Therefore, regardless of the type of the Bridge component, link-local
+frames with these destination addresses will be trapped to CPU port:
+
+01-80-C2-00-00-[00,01,02,03,0E]
+
+In a Bridge comprising a MAC Bridge component or a C-VLAN component:
+
+  Link-local frames with these destination addresses won't be trapped to
+  CPU port which won't conform to IEEE Std 802.1Q-2022:
+
+  01-80-C2-00-00-[04,05,06,07,08,09,0A,0B,0C,0D,0F]
+
+In a Bridge comprising an S-VLAN component:
+
+  Link-local frames with these destination addresses will be trapped to CPU
+  port which won't conform to IEEE Std 802.1Q-2022:
+
+  01-80-C2-00-00-00
+
+  Link-local frames with these destination addresses won't be trapped to
+  CPU port which won't conform to IEEE Std 802.1Q-2022:
+
+  01-80-C2-00-00-[04,05,06,07,08,09,0A]
+
+Currently on this switch intellectual property, if the spanning tree Port
+State of the reception Port is discarding, link-local frames will be
+discarded.
+
+To trap link-local frames regardless of the spanning tree Port State, make
+the switch regard them as BPDU. This switch intellectual property only lets
+the frames regarded as BPDU bypass the spanning tree Port State function of
+the Forwarding Process.
+
+With this change, the only remaining interference left is the ingress
+rules. When the reception Port has no PVID assigned on software,
+VLAN-untagged frames won't be allowed in. There doesn't seem to be a
+mechanism on the switch intellectual property to have link-local frames
+bypass this function of the Forwarding Process.
+
+Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile               |   1 +
- arch/arm64/boot/dts/qcom/sm8550-samsung-q5q.dts | 593 ++++++++++++++++++++++++
- 2 files changed, 594 insertions(+)
+ drivers/net/dsa/mt7530.c | 229 ++++++++++++++++++++++++++++++++++++++++-------
+ drivers/net/dsa/mt7530.h |   5 ++
+ 2 files changed, 200 insertions(+), 34 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 7d40ec5e7d21..a7503fd35b6c 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -241,6 +241,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8450-sony-xperia-nagara-pdx224.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-mtp.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-qrd.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-samsung-q5q.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8650-mtp.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8650-qrd.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-crd.dtb
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-samsung-q5q.dts b/arch/arm64/boot/dts/qcom/sm8550-samsung-q5q.dts
-new file mode 100644
-index 000000000000..4654ae1364ba
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/sm8550-samsung-q5q.dts
-@@ -0,0 +1,593 @@
-+// SPDX-License-cdsp_memIdentifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2024, Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
-+ * Copyright (c) 2024, David Wronek <david@mainlining.org>
-+ * Copyright (c) 2022, Linaro Limited
-+ */
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
-+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-+#include "sm8550.dtsi"
-+#include "pm8550.dtsi"
-+#include "pm8550vs.dtsi"
-+#include "pmk8550.dtsi"
-+
-+/delete-node/ &adspslpi_mem;
-+/delete-node/ &cdsp_mem;
-+/delete-node/ &mpss_dsm_mem;
-+/delete-node/ &mpss_mem;
-+/delete-node/ &rmtfs_mem;
-+
-+/ {
-+	model = "Samsung Galaxy Z Fold5";
-+	compatible = "samsung,q5q", "qcom,sm8550";
-+	chassis-type = "handset";
-+
-+	aliases {
-+		serial0 = &uart7;
-+	};
-+
-+	chosen {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		framebuffer: framebuffer@b8000000 {
-+			compatible = "simple-framebuffer";
-+			reg = <0x0 0xb8000000 0x0 0x2b00000>;
-+			width = <2176>;
-+			height = <1812>;
-+			stride = <(2176 * 4)>;
-+			format = "a8r8g8b8";
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-0 = <&volume_up_n>;
-+		pinctrl-names = "default";
-+
-+		key-volume-up {
-+			label = "Volume Up";
-+			linux,code = <KEY_VOLUMEUP>;
-+			gpios = <&pm8550_gpios 6 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <15>;
-+			linux,can-disable;
-+			wakeup-source;
-+		};
-+	};
-+
-+	vph_pwr: vph-pwr-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vph_pwr";
-+		regulator-min-microvolt = <3700000>;
-+		regulator-max-microvolt = <3700000>;
-+		regulator-always-on;
-+		regulator-boot-on;
-+	};
-+
-+	reserved-memory {
-+		adspslpi_mem: adspslpi@9ea00000 {
-+			reg = <0x0 0x9ea00000 0x0 0x59b4000>;
-+			no-map;
-+		};
-+
-+		cdsp_mem: cdsp-region@9c900000 {
-+			reg = <0 0x9c900000 0 0x2000000>;
-+			no-map;
-+		};
-+
-+		mpss_dsm_mem: mpss-dsm@d4d00000 {
-+			reg = <0x0 0xd4d00000 0x0 0x3300000>;
-+			no-map;
-+		};
-+
-+		mpss_mem: mpss@8b400000 {
-+			reg = <0x0 0x8b400000 0x0 0xfc00000>;
-+			no-map;
-+		};
-+
-+		rmtfs_mem: rmtfs-region@d4a80000 {
-+			reg = <0x0 0xd4a80000 0x0 0x280000>;
-+			no-map;
-+		};
-+
-+		/*
-+		 * The bootloader will only keep display hardware enabled
-+		 * if this memory region is named exactly 'splash_region'
-+		 */
-+		splash_region@b8000000 {
-+			reg = <0x0 0xb8000000 0x0 0x2b00000>;
-+			no-map;
-+		};
-+	};
-+};
-+
-+&apps_rsc {
-+	regulators-0 {
-+		compatible = "qcom,pm8550-rpmh-regulators";
-+		qcom,pmic-id = "b";
-+
-+		vreg_bob1: bob1 {
-+			regulator-name = "vreg_bob1";
-+			regulator-min-microvolt = <3296000>;
-+			regulator-max-microvolt = <3960000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_bob2: bob2 {
-+			regulator-name = "vreg_bob2";
-+			regulator-min-microvolt = <2720000>;
-+			regulator-max-microvolt = <3960000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l1b_1p8: ldo1 {
-+			regulator-name = "vreg_l1b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l2b_3p0: ldo2 {
-+			regulator-name = "vreg_l2b_3p0";
-+			regulator-min-microvolt = <3008000>;
-+			regulator-max-microvolt = <3008000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l5b_3p1: ldo5 {
-+			regulator-name = "vreg_l5b_3p1";
-+			regulator-min-microvolt = <3104000>;
-+			regulator-max-microvolt = <3104000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l6b_1p8: ldo6 {
-+			regulator-name = "vreg_l6b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3008000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l7b_1p8: ldo7 {
-+			regulator-name = "vreg_l7b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3008000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l8b_1p8: ldo8 {
-+			regulator-name = "vreg_l8b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3008000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l9b_2p9: ldo9 {
-+			regulator-name = "vreg_l9b_2p9";
-+			regulator-min-microvolt = <2960000>;
-+			regulator-max-microvolt = <3008000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l11b_1p2: ldo11 {
-+			regulator-name = "vreg_l11b_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1504000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l12b_1p8: ldo12 {
-+			regulator-name = "vreg_l12b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l13b_3p0: ldo13 {
-+			regulator-name = "vreg_l13b_3p0";
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l14b_3p2: ldo14 {
-+			regulator-name = "vreg_l14b_3p2";
-+			regulator-min-microvolt = <3200000>;
-+			regulator-max-microvolt = <3200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l15b_1p8: ldo15 {
-+			regulator-name = "vreg_l15b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-allow-set-load;
-+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-+						   RPMH_REGULATOR_MODE_HPM>;
-+			regulator-always-on;
-+		};
-+
-+		vreg_l16b_2p8: ldo16 {
-+			regulator-name = "vreg_l16b_2p8";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l17b_2p5: ldo17 {
-+			regulator-name = "vreg_l17b_2p5";
-+			regulator-min-microvolt = <2504000>;
-+			regulator-max-microvolt = <2504000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-1 {
-+		compatible = "qcom,pm8550vs-rpmh-regulators";
-+		qcom,pmic-id = "c";
-+
-+		vreg_l3c_0p91: ldo3 {
-+			regulator-name = "vreg_l3c_0p9";
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <912000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-2 {
-+		compatible = "qcom,pm8550vs-rpmh-regulators";
-+		qcom,pmic-id = "d";
-+
-+		vreg_l1d_0p88: ldo1 {
-+			regulator-name = "vreg_l1d_0p88";
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <920000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-3 {
-+		compatible = "qcom,pm8550vs-rpmh-regulators";
-+		qcom,pmic-id = "e";
-+
-+		vreg_s4e_0p9: smps4 {
-+			regulator-name = "vreg_s4e_0p9";
-+			regulator-min-microvolt = <904000>;
-+			regulator-max-microvolt = <984000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_s5e_1p1: smps5 {
-+			regulator-name = "vreg_s5e_1p1";
-+			regulator-min-microvolt = <1080000>;
-+			regulator-max-microvolt = <1120000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l1e_0p88: ldo1 {
-+			regulator-name = "vreg_l1e_0p88";
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <880000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l2e_0p9: ldo2 {
-+			regulator-name = "vreg_l2e_0p9";
-+			regulator-min-microvolt = <904000>;
-+			regulator-max-microvolt = <970000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3e_1p2: ldo3 {
-+			regulator-name = "vreg_l3e_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-4 {
-+		compatible = "qcom,pm8550ve-rpmh-regulators";
-+		qcom,pmic-id = "f";
-+
-+		vreg_s4f_0p5: smps4 {
-+			regulator-name = "vreg_s4f_0p5";
-+			regulator-min-microvolt = <500000>;
-+			regulator-max-microvolt = <700000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l1f_0p9: ldo1 {
-+			regulator-name = "vreg_l1f_0p9";
-+			regulator-min-microvolt = <912000>;
-+			regulator-max-microvolt = <912000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l2f_0p88: ldo2 {
-+			regulator-name = "vreg_l2f_0p88";
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <912000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3f_0p91: ldo3 {
-+			regulator-name = "vreg_l3f_0p91";
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <912000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-5 {
-+		compatible = "qcom,pm8550vs-rpmh-regulators";
-+		qcom,pmic-id = "g";
-+
-+		vreg_s1g_1p2: smps1 {
-+			regulator-name = "vreg_s1g_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1300000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_s2g_0p8: smps2 {
-+			regulator-name = "vreg_s2g_0p8";
-+			regulator-min-microvolt = <800000>;
-+			regulator-max-microvolt = <1000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_s3g_0p7: smps3 {
-+			regulator-name = "vreg_s3g_0p7";
-+			regulator-min-microvolt = <300000>;
-+			regulator-max-microvolt = <1004000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_s4g_1p3: smps4 {
-+			regulator-name = "vreg_s4g_1p3";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1352000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_s5g_0p8: smps5 {
-+			regulator-name = "vreg_s5g_0p8";
-+			regulator-min-microvolt = <500000>;
-+			regulator-max-microvolt = <1004000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_s6g_1p8: smps6 {
-+			regulator-name = "vreg_s6g_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <2000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l1g_1p2: ldo1 {
-+			regulator-name = "vreg_l1g_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l2g_1p2: ldo2 {
-+			regulator-name = "vreg_l2g_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3g_1p2: ldo3 {
-+			regulator-name = "vreg_l3g_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-6 {
-+		compatible = "qcom,pm8010-rpmh-regulators";
-+		qcom,pmic-id = "m";
-+
-+		vreg_l1m_1p056: ldo1 {
-+			regulator-name = "vreg_l1m_1p056";
-+			regulator-min-microvolt = <1056000>;
-+			regulator-max-microvolt = <1056000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l2m_1p056: ldo2 {
-+			regulator-name = "vreg_l2m_1p056";
-+			regulator-min-microvolt = <1056000>;
-+			regulator-max-microvolt = <1056000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3m_2p8: ldo3 {
-+			regulator-name = "vreg_l3m_2p8";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l4m_2p8: ldo4 {
-+			regulator-name = "vreg_l4m_2p8";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l5m_1p8: ldo5 {
-+			regulator-name = "vreg_l5m_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l6m_1p8: ldo6 {
-+			regulator-name = "vreg_l6m_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l7m_2p9: ldo7 {
-+			regulator-name = "vreg_l7m_2p9";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2904000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-7 {
-+		compatible = "qcom,pm8010-rpmh-regulators";
-+		qcom,pmic-id = "n";
-+
-+		vreg_l1n_1p1: ldo1 {
-+			regulator-name = "vreg_l1n_1p1";
-+			regulator-min-microvolt = <1104000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l2n_1p1: ldo2 {
-+			regulator-name = "vreg_l2n_1p1";
-+			regulator-min-microvolt = <1104000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3n_2p8: ldo3 {
-+			regulator-name = "vreg_l3n_2p8";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <3000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l4n_2p8: ldo4 {
-+			regulator-name = "vreg_l4n_2p8";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <3300000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l5n_1p8: ldo5 {
-+			regulator-name = "vreg_l5n_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l6n_3p3: ldo6 {
-+			regulator-name = "vreg_l6n_3p3";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <3304000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l7n_2p96: ldo7 {
-+			regulator-name = "vreg_l7n_2p96";
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2960000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+};
-+
-+&dispcc {
-+	status = "disabled";
-+};
-+
-+&i2c_master_hub_0 {
-+	status = "okay";
-+};
-+
-+&pcie0 {
-+	wake-gpios = <&tlmm 96 GPIO_ACTIVE_HIGH>;
-+	perst-gpios = <&tlmm 94 GPIO_ACTIVE_LOW>;
-+	pinctrl-0 = <&pcie0_default_state>;
-+	pinctrl-names = "default";
-+	status = "okay";
-+};
-+
-+&pcie0_phy {
-+	vdda-phy-supply = <&vreg_l1e_0p88>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
-+	status = "okay";
-+};
-+
-+&pm8550_gpios {
-+	volume_up_n: volume-up-n-state {
-+		pins = "gpio6";
-+		function = "normal";
-+		power-source = <1>;
-+		bias-pull-up;
-+		input-enable;
-+	};
-+};
-+
-+&pon_pwrkey {
-+	status = "okay";
-+};
-+
-+&pon_resin {
-+	status = "okay";
-+	linux,code = <KEY_VOLUMEDOWN>;
-+};
-+
-+&qupv3_id_0 {
-+	status = "okay";
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/sm8550/adsp.mdt",
-+			"qcom/sm8550/adsp_dtb.mdt";
-+	status = "okay";
-+};
-+
-+&remoteproc_cdsp {
-+	firmware-name = "qcom/sm8550/cdsp.mdt",
-+			"qcom/sm8550/cdsp_dtb.mdt";
-+	status = "okay";
-+};
-+
-+&remoteproc_mpss {
-+	firmware-name = "qcom/sm8550/modem.mdt",
-+			"qcom/sm8550/modem_dtb.mdt";
-+	status = "okay";
-+};
-+
-+&sleep_clk {
-+	clock-frequency = <32000>;
-+};
-+
-+&tlmm {
-+	gpio-reserved-ranges = <36 4>, <50 2>;
-+};
-+
-+&ufs_mem_hc {
-+	reset-gpios = <&tlmm 210 GPIO_ACTIVE_LOW>;
-+	vcc-supply = <&vreg_l17b_2p5>;
-+	vcc-max-microamp = <1300000>;
-+	vccq-supply = <&vreg_l1g_1p2>;
-+	vccq-max-microamp = <1200000>;
-+	vdd-hba-supply = <&vreg_l3g_1p2>;
-+	status = "okay";
-+};
-+
-+&ufs_mem_phy {
-+	vdda-phy-supply = <&vreg_l1d_0p88>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
-+	status = "okay";
-+};
-+
-+&xo_board {
-+	clock-frequency = <76800000>;
-+};
+diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
+index 1035820c2377..254501f63731 100644
+--- a/drivers/net/dsa/mt7530.c
++++ b/drivers/net/dsa/mt7530.c
+@@ -950,20 +950,173 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
+ 	mutex_unlock(&priv->reg_mutex);
+ }
+ 
+-/* On page 205, section "8.6.3 Frame filtering" of the active standard, IEEE Std
+- * 802.1Q™-2022, it is stated that frames with 01:80:C2:00:00:00-0F as MAC DA
+- * must only be propagated to C-VLAN and MAC Bridge components. That means
+- * VLAN-aware and VLAN-unaware bridges. On the switch designs with CPU ports,
+- * these frames are supposed to be processed by the CPU (software). So we make
+- * the switch only forward them to the CPU port. And if received from a CPU
+- * port, forward to a single port. The software is responsible of making the
+- * switch conform to the latter by setting a single port as destination port on
+- * the special tag.
++/* In Clause 5 of IEEE Std 802-2014, two sublayers of the data link layer (DLL)
++ * of the Open Systems Interconnection basic reference model (OSI/RM) are
++ * described; the medium access control (MAC) and logical link control (LLC)
++ * sublayers. The MAC sublayer is the one facing the physical layer.
+  *
+- * This switch intellectual property cannot conform to this part of the standard
+- * fully. Whilst the REV_UN frame tag covers the remaining :04-0D and :0F MAC
+- * DAs, it also includes :22-FF which the scope of propagation is not supposed
+- * to be restricted for these MAC DAs.
++ * In 8.2 of IEEE Std 802.1Q-2022, the Bridge architecture is described. A
++ * Bridge component comprises a MAC Relay Entity for interconnecting the Ports
++ * of the Bridge, at least two Ports, and higher layer entities with at least a
++ * Spanning Tree Protocol Entity included.
++ *
++ * Each Bridge Port also functions as an end station and shall provide the MAC
++ * Service to an LLC Entity. Each instance of the MAC Service is provided to a
++ * distinct LLC Entity that supports protocol identification, multiplexing, and
++ * demultiplexing, for protocol data unit (PDU) transmission and reception by
++ * one or more higher layer entities.
++ *
++ * It is described in 8.13.9 of IEEE Std 802.1Q-2022 that in a Bridge, the LLC
++ * Entity associated with each Bridge Port is modeled as being directly
++ * connected to the attached Local Area Network (LAN).
++ *
++ * On the switch with CPU port architecture, CPU port functions as Management
++ * Port, and the Management Port functionality is provided by software which
++ * functions as an end station. Software is connected to an IEEE 802 LAN that is
++ * wholly contained within the system that incorporates the Bridge. Software
++ * provides access to the LLC Entity associated with each Bridge Port by the
++ * value of the source port field on the special tag on the frame received by
++ * software.
++ *
++ * We call frames that carry control information to determine the active
++ * topology and current extent of each Virtual Local Area Network (VLAN), i.e.,
++ * spanning tree or Shortest Path Bridging (SPB) and Multiple VLAN Registration
++ * Protocol Data Units (MVRPDUs), and frames from other link constrained
++ * protocols, such as Extensible Authentication Protocol over LAN (EAPOL) and
++ * Link Layer Discovery Protocol (LLDP), link-local frames. They are not
++ * forwarded by a Bridge. Permanently configured entries in the filtering
++ * database (FDB) ensure that such frames are discarded by the Forwarding
++ * Process. In 8.6.3 of IEEE Std 802.1Q-2022, this is described in detail:
++ *
++ * Each of the reserved MAC addresses specified in Table 8-1
++ * (01-80-C2-00-00-[00,01,02,03,04,05,06,07,08,09,0A,0B,0C,0D,0E,0F]) shall be
++ * permanently configured in the FDB in C-VLAN components and ERs.
++ *
++ * Each of the reserved MAC addresses specified in Table 8-2
++ * (01-80-C2-00-00-[01,02,03,04,05,06,07,08,09,0A,0E]) shall be permanently
++ * configured in the FDB in S-VLAN components.
++ *
++ * Each of the reserved MAC addresses specified in Table 8-3
++ * (01-80-C2-00-00-[01,02,04,0E]) shall be permanently configured in the FDB in
++ * TPMR components.
++ *
++ * The FDB entries for reserved MAC addresses shall specify filtering for all
++ * Bridge Ports and all VIDs. Management shall not provide the capability to
++ * modify or remove entries for reserved MAC addresses.
++ *
++ * The addresses in Table 8-1, Table 8-2, and Table 8-3 determine the scope of
++ * propagation of PDUs within a Bridged Network, as follows:
++ *
++ *   The Nearest Bridge group address (01-80-C2-00-00-0E) is an address that no
++ *   conformant Two-Port MAC Relay (TPMR) component, Service VLAN (S-VLAN)
++ *   component, Customer VLAN (C-VLAN) component, or MAC Bridge can forward.
++ *   PDUs transmitted using this destination address, or any other addresses
++ *   that appear in Table 8-1, Table 8-2, and Table 8-3
++ *   (01-80-C2-00-00-[00,01,02,03,04,05,06,07,08,09,0A,0B,0C,0D,0E,0F]), can
++ *   therefore travel no further than those stations that can be reached via a
++ *   single individual LAN from the originating station.
++ *
++ *   The Nearest non-TPMR Bridge group address (01-80-C2-00-00-03), is an
++ *   address that no conformant S-VLAN component, C-VLAN component, or MAC
++ *   Bridge can forward; however, this address is relayed by a TPMR component.
++ *   PDUs using this destination address, or any of the other addresses that
++ *   appear in both Table 8-1 and Table 8-2 but not in Table 8-3
++ *   (01-80-C2-00-00-[00,03,05,06,07,08,09,0A,0B,0C,0D,0F]), will be relayed by
++ *   any TPMRs but will propagate no further than the nearest S-VLAN component,
++ *   C-VLAN component, or MAC Bridge.
++ *
++ *   The Nearest Customer Bridge group address (01-80-C2-00-00-00) is an address
++ *   that no conformant C-VLAN component, MAC Bridge can forward; however, it is
++ *   relayed by TPMR components and S-VLAN components. PDUs using this
++ *   destination address, or any of the other addresses that appear in Table 8-1
++ *   but not in either Table 8-2 or Table 8-3 (01-80-C2-00-00-[00,0B,0C,0D,0F]),
++ *   will be relayed by TPMR components and S-VLAN components but will propagate
++ *   no further than the nearest C-VLAN component or MAC Bridge.
++ *
++ * Because the LLC Entity associated with each Bridge Port is provided via CPU
++ * port, we must not filter these frames but forward them to CPU port.
++ *
++ * In a Bridge, the transmission Port is majorly decided by ingress and egress
++ * rules, FDB, and spanning tree Port State functions of the Forwarding Process.
++ * For link-local frames, only CPU port should be designated as destination port
++ * in the FDB, and the other functions of the Forwarding Process must not
++ * interfere with the decision of the transmission Port. We call this process
++ * trapping frames to CPU port.
++ *
++ * Therefore, on the switch with CPU port architecture, link-local frames must
++ * be trapped to CPU port, and certain link-local frames received by a Port of a
++ * Bridge comprising a TPMR component or an S-VLAN component must be excluded
++ * from it.
++ *
++ * A Bridge of the switch with CPU architecture cannot comprise a non-Two-Port
++ * MAC Relay (TPMR) component as TPMR component is only supposed to support a
++ * subset of the functionality of a MAC Bridge. A Bridge comprising two ports
++ * (Management Port doesn't count) of this architecture will either function as
++ * a standard MAC Bridge or a standard VLAN Bridge.
++ *
++ * Therefore, a Bridge of this architecture can only comprise S-VLAN components,
++ * C-VLAN components, or MAC Bridge components. Since there's no TPMR component,
++ * we don't need to relay PDUs using the destination addresses specified on the
++ * Nearest non-TPMR section, and the proportion of the Nearest Customer Bridge
++ * section where they must be relayed by TPMR components.
++ *
++ * One option to trap link-local frames to CPU port is to add static FDB entries
++ * with CPU port designated as destination port. However, because that
++ * Independent VLAN Learning (IVL) is being used on every VID, each entry only
++ * applies to a single VLAN Identifier (VID). For a Bridge comprising a MAC
++ * Bridge component or a C-VLAN component, there would have to be 16 times 4096
++ * entries. This switch intellectual property can only hold a maximum of 2048
++ * entries. Using this option, there also isn't a mechanism to prevent
++ * link-local frames from being discarded when the spanning tree Port State of
++ * the reception Port is discarding.
++ *
++ * The remaining option is to utilise the BPC, RGAC1, RGAC2, RGAC3, and RGAC4
++ * registers. Whilst this applies to every VID, it doesn't contain all of the
++ * reserved MAC addresses without affecting the remaining Standard Group MAC
++ * Addresses. The REV_UN frame tag utilised using the RGAC4 register covers the
++ * remaining 01-80-C2-00-00-[04,05,06,07,08,09,0A,0B,0C,0D,0F] destination
++ * addresses. It also includes the 01-80-C2-00-00-22 to 01-80-C2-00-00-FF
++ * destination addresses which may be relayed by MAC Bridges or VLAN Bridges.
++ * The latter option provides better but not complete conformance.
++ *
++ * This switch intellectual property also does not provide a mechanism to trap
++ * link-local frames with specific destination addresses to CPU port by Bridge,
++ * to conform to the filtering rules for the distinct Bridge components.
++ *
++ * Therefore, regardless of the type of the Bridge component, link-local frames
++ * with these destination addresses will be trapped to CPU port:
++ *
++ * 01-80-C2-00-00-[00,01,02,03,0E]
++ *
++ * In a Bridge comprising a MAC Bridge component or a C-VLAN component:
++ *
++ *   Link-local frames with these destination addresses won't be trapped to CPU
++ *   port which won't conform to IEEE Std 802.1Q-2022:
++ *
++ *   01-80-C2-00-00-[04,05,06,07,08,09,0A,0B,0C,0D,0F]
++ *
++ * In a Bridge comprising an S-VLAN component:
++ *
++ *   Link-local frames with these destination addresses will be trapped to CPU
++ *   port which won't conform to IEEE Std 802.1Q-2022:
++ *
++ *   01-80-C2-00-00-00
++ *
++ *   Link-local frames with these destination addresses won't be trapped to CPU
++ *   port which won't conform to IEEE Std 802.1Q-2022:
++ *
++ *   01-80-C2-00-00-[04,05,06,07,08,09,0A]
++ *
++ * To trap link-local frames to CPU port as conformant as this switch
++ * intellectual property can allow, link-local frames are made to be regarded as
++ * BPDU. This is because this switch intellectual property only lets the frames
++ * regarded as BPDU bypass the spanning tree Port State function of the
++ * Forwarding Process.
++ *
++ * The only remaining interference left is the ingress rules. When the reception
++ * Port has no PVID assigned on software, VLAN-untagged frames won't be allowed
++ * in. There doesn't seem to be a mechanism on the switch intellectual property
++ * to have link-local frames bypass this function of the Forwarding Process.
+  */
+ static void
+ mt753x_trap_frames(struct mt7530_priv *priv)
+@@ -971,35 +1124,43 @@ mt753x_trap_frames(struct mt7530_priv *priv)
+ 	/* Trap 802.1X PAE frames and BPDUs to the CPU port(s) and egress them
+ 	 * VLAN-untagged.
+ 	 */
+-	mt7530_rmw(priv, MT753X_BPC, MT753X_PAE_EG_TAG_MASK |
+-		   MT753X_PAE_PORT_FW_MASK | MT753X_BPDU_EG_TAG_MASK |
+-		   MT753X_BPDU_PORT_FW_MASK,
+-		   MT753X_PAE_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
+-		   MT753X_PAE_PORT_FW(MT753X_BPDU_CPU_ONLY) |
+-		   MT753X_BPDU_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
+-		   MT753X_BPDU_CPU_ONLY);
++	mt7530_rmw(priv, MT753X_BPC,
++		   MT753X_PAE_BPDU_FR | MT753X_PAE_EG_TAG_MASK |
++			   MT753X_PAE_PORT_FW_MASK | MT753X_BPDU_EG_TAG_MASK |
++			   MT753X_BPDU_PORT_FW_MASK,
++		   MT753X_PAE_BPDU_FR |
++			   MT753X_PAE_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
++			   MT753X_PAE_PORT_FW(MT753X_BPDU_CPU_ONLY) |
++			   MT753X_BPDU_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
++			   MT753X_BPDU_CPU_ONLY);
+ 
+ 	/* Trap frames with :01 and :02 MAC DAs to the CPU port(s) and egress
+ 	 * them VLAN-untagged.
+ 	 */
+-	mt7530_rmw(priv, MT753X_RGAC1, MT753X_R02_EG_TAG_MASK |
+-		   MT753X_R02_PORT_FW_MASK | MT753X_R01_EG_TAG_MASK |
+-		   MT753X_R01_PORT_FW_MASK,
+-		   MT753X_R02_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
+-		   MT753X_R02_PORT_FW(MT753X_BPDU_CPU_ONLY) |
+-		   MT753X_R01_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
+-		   MT753X_BPDU_CPU_ONLY);
++	mt7530_rmw(priv, MT753X_RGAC1,
++		   MT753X_R02_BPDU_FR | MT753X_R02_EG_TAG_MASK |
++			   MT753X_R02_PORT_FW_MASK | MT753X_R01_BPDU_FR |
++			   MT753X_R01_EG_TAG_MASK | MT753X_R01_PORT_FW_MASK,
++		   MT753X_R02_BPDU_FR |
++			   MT753X_R02_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
++			   MT753X_R02_PORT_FW(MT753X_BPDU_CPU_ONLY) |
++			   MT753X_R01_BPDU_FR |
++			   MT753X_R01_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
++			   MT753X_BPDU_CPU_ONLY);
+ 
+ 	/* Trap frames with :03 and :0E MAC DAs to the CPU port(s) and egress
+ 	 * them VLAN-untagged.
+ 	 */
+-	mt7530_rmw(priv, MT753X_RGAC2, MT753X_R0E_EG_TAG_MASK |
+-		   MT753X_R0E_PORT_FW_MASK | MT753X_R03_EG_TAG_MASK |
+-		   MT753X_R03_PORT_FW_MASK,
+-		   MT753X_R0E_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
+-		   MT753X_R0E_PORT_FW(MT753X_BPDU_CPU_ONLY) |
+-		   MT753X_R03_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
+-		   MT753X_BPDU_CPU_ONLY);
++	mt7530_rmw(priv, MT753X_RGAC2,
++		   MT753X_R0E_BPDU_FR | MT753X_R0E_EG_TAG_MASK |
++			   MT753X_R0E_PORT_FW_MASK | MT753X_R03_BPDU_FR |
++			   MT753X_R03_EG_TAG_MASK | MT753X_R03_PORT_FW_MASK,
++		   MT753X_R0E_BPDU_FR |
++			   MT753X_R0E_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
++			   MT753X_R0E_PORT_FW(MT753X_BPDU_CPU_ONLY) |
++			   MT753X_R03_BPDU_FR |
++			   MT753X_R03_EG_TAG(MT7530_VLAN_EG_UNTAGGED) |
++			   MT753X_BPDU_CPU_ONLY);
+ }
+ 
+ static void
+diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
+index d17b318e6ee4..2deffe741484 100644
+--- a/drivers/net/dsa/mt7530.h
++++ b/drivers/net/dsa/mt7530.h
+@@ -65,6 +65,7 @@ enum mt753x_id {
+ 
+ /* Registers for BPDU and PAE frame control*/
+ #define MT753X_BPC			0x24
++#define  MT753X_PAE_BPDU_FR		BIT(25)
+ #define  MT753X_PAE_EG_TAG_MASK		GENMASK(24, 22)
+ #define  MT753X_PAE_EG_TAG(x)		FIELD_PREP(MT753X_PAE_EG_TAG_MASK, x)
+ #define  MT753X_PAE_PORT_FW_MASK	GENMASK(18, 16)
+@@ -75,20 +76,24 @@ enum mt753x_id {
+ 
+ /* Register for :01 and :02 MAC DA frame control */
+ #define MT753X_RGAC1			0x28
++#define  MT753X_R02_BPDU_FR		BIT(25)
+ #define  MT753X_R02_EG_TAG_MASK		GENMASK(24, 22)
+ #define  MT753X_R02_EG_TAG(x)		FIELD_PREP(MT753X_R02_EG_TAG_MASK, x)
+ #define  MT753X_R02_PORT_FW_MASK	GENMASK(18, 16)
+ #define  MT753X_R02_PORT_FW(x)		FIELD_PREP(MT753X_R02_PORT_FW_MASK, x)
++#define  MT753X_R01_BPDU_FR		BIT(9)
+ #define  MT753X_R01_EG_TAG_MASK		GENMASK(8, 6)
+ #define  MT753X_R01_EG_TAG(x)		FIELD_PREP(MT753X_R01_EG_TAG_MASK, x)
+ #define  MT753X_R01_PORT_FW_MASK	GENMASK(2, 0)
+ 
+ /* Register for :03 and :0E MAC DA frame control */
+ #define MT753X_RGAC2			0x2c
++#define  MT753X_R0E_BPDU_FR		BIT(25)
+ #define  MT753X_R0E_EG_TAG_MASK		GENMASK(24, 22)
+ #define  MT753X_R0E_EG_TAG(x)		FIELD_PREP(MT753X_R0E_EG_TAG_MASK, x)
+ #define  MT753X_R0E_PORT_FW_MASK	GENMASK(18, 16)
+ #define  MT753X_R0E_PORT_FW(x)		FIELD_PREP(MT753X_R0E_PORT_FW_MASK, x)
++#define  MT753X_R03_BPDU_FR		BIT(9)
+ #define  MT753X_R03_EG_TAG_MASK		GENMASK(8, 6)
+ #define  MT753X_R03_EG_TAG(x)		FIELD_PREP(MT753X_R03_EG_TAG_MASK, x)
+ #define  MT753X_R03_PORT_FW_MASK	GENMASK(2, 0)
 
+---
+base-commit: 365af7ace014ef3fc6f5d0a373c96cc7193db4ce
+change-id: 20240401-b4-for-net-mt7530-fix-link-local-when-stp-discarding-6e2a4e3e867a
+
+Best regards,
 -- 
-2.34.1
+Arınç ÜNAL <arinc.unal@arinc9.com>
 
