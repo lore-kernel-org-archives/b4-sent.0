@@ -1,107 +1,99 @@
-From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Thu, 11 Apr 2024 00:24:19 +0100
-Subject: [PATCH] kbuild/x86: Use $(KBUILD_AFLAGS) in Kbuild's version of
- $(as-instr)
+From: Fenglin Wu <quic_fenglinw@quicinc.com>
+Subject: [PATCH v9 0/4] Add support for vibrator in multiple PMICs
+Date: Thu, 11 Apr 2024 16:30:56 +0800
+Message-Id: <20240411-pm8xxx-vibrator-new-design-v9-0-7bf56cb92b28@quicinc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240411-as-instr-opt-wrussq-v1-1-99b1a1a99f93@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKIfF2YC/x3MwQ6CMAyA4VchPdtkjEWIr2I8lFGhBwa2Q00I7
- +7w+B3+fwdjFTa4VTsov8VkSQX1pYI4URoZZSgG73xwoXZIhpIsKy5rxo9uZi8MHcem5ebqXYB
- SrspP+f6v90dxT8bYK6U4na+ZLLPCcfwA/OQD3n4AAAA=
-To: Borislav Petkov <bp@alien8.de>, 
- Dave Hansen <dave.hansen@linux.intel.com>, Ingo Molnar <mingo@redhat.com>, 
- "H. Peter Anvin" <hpa@zytor.com>, Masahiro Yamada <masahiroy@kernel.org>, 
- Thomas Gleixner <tglx@linutronix.de>, x86@kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-kbuild@vger.kernel.org, 
- Dmitry Safonov <0x7f454c46@gmail.com>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1712791479; l=3696;
- i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=+llTpAM1iXzBXWQE4E3YCDwpY226FU9sEdHRM+0QVpA=;
- b=8Y1dDthNatE9Xo7kK5BBVgBX5fExnKyrSVxyAhLa+w7TzV95A+BV7gNVUNoKRliO6m+acwj3rYt4
- kenCR8tzAX9gMGMTbmRDQllZ2+0SgDhz3Kcz3A1eOdUDCXljlqae
-X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
- pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
-X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
+X-B4-Tracking: v=1; b=H4sIAMGfF2YC/33NwRKCIBDG8VdxOLcNohZ26j0aD4Cr7kE0KKJxe
+ PfI7h3/38z+dmMeHaFnl2JjDgN5WmyO9lAwMyk7IlCfmwkual4JCessY4wQSDv1WBxYfEGPnkY
+ L2MiyVH3TolQsA6vDgeKO37rcE/l88d5/Bfldf2zNy39skMDhNAgtNa90bc7X+5MMWXM0y8y6l
+ NIHkF7MX8YAAAA=
+To: kernel@quicinc.com, Andy Gross <agross@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-input@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Fenglin Wu <quic_fenglinw@quicinc.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1712824325; l=2742;
+ i=quic_fenglinw@quicinc.com; s=20240327; h=from:subject:message-id;
+ bh=kNslZwOV3XuxhTTrri2kOLx2C0i3TRLUbLC5t/3fJag=;
+ b=2dQIoJ04TjfpOwLWNiOsikzGaOEQ5hG77y2zor95vsY7p9XzVxjbJPcNm4Ra1XQS1kZXv/SNz
+ 4EXJpCJmibpB8kSgsbJIy0E7DUe5l5ZCwA/YHuvocG6QglstEknmiN3
+X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
+ pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
+X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20240327 with auth_id=146
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-At Arista some products use compatible 32-bit userspace running on x86.
-As a part of disto build for ia32 it also compiles the 64-bit kernel.
-While the toolchain for the kernel build is yet the same, with 64-bit gcc:
-> / @Bru-na-Boinne% file /usr/bin/gcc-11
-> /usr/bin/gcc-11: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=6571ad50d8f12eece053f1bac7a95a2c767f32c9, for GNU/Linux 3.2.0, stripped
+Add SW support for the vibrator module inside PMI632, PM7250B, PM7325B, PM7550BA.
+It is very similar to the vibrator module inside PM8916 which is supported in
+pm8xxx-vib driver but just the drive amplitude is controlled with 2 registers,
+and the register base offset in each PMIC is different.
 
-It seems that gcc is being smart and detects that it's running in
-a 32-bit container (personality flag? 32-bit mmap base? something else
-inherited post-exec?  haven't yet figured it out) and by default tries
-to build 32-bit binaries.
+Changes in v9:
+  1. Add a preceding change to correct VIB_MAX_LEVELS calculation
+  2. Address review comments from Konrad
+     Link to v8: https://lore.kernel.org/r/20240401-pm8xxx-vibrator-new-design-v8-0-6f2b8b03b4c7@quicinc.com
 
-That results in a failing toolchain check:
-> / @Bru-na-Boinne% printf "%b\n" "wrussq %rax, (%rbx)" | /usr/bin/gcc-11 -Wa,--fatal-warnings -c -x assembler-with-cpp -o /dev/null -
-> <stdin>: Assembler messages:
-> <stdin>:1: Error: `wrussq' is only supported in 64-bit mode
+Changes in v8:
+  1. Remove hw_type, and still keep the register info in match data
+  2. Update to use register offset in pm8xxx_regs, and the base address
+     defined in DT for SPMI vibrator will be added in register access
+  3. Update voltage output range for SPMI vibrator which has 2 bytes drive
+     registers
 
-Which passes when -m64 is directly specify for the build check:
-> / @Bru-na-Boinne% printf "%b\n" "wrussq %rax, (%rbx)" | /usr/bin/gcc-11 -m64 -Wa,--fatal-warnings -c -x assembler-with-cpp -o /dev/null -
-> / @Bru-na-Boinne% echo $?
-> 0
+Changes in v7:
+  1. Fix a typo: SSBL_VIB_DRV_REG --> SSBI_VIB_DRV_REG
+  2. Move the hw_type switch case in pm8xxx_vib_set() to the refactoring
+     change.
 
-As a result, kbuild produces different value for CONFIG_AS_WRUSS
-for native 64-bit containers and ia32 containers with 64-bit gcc,
-which produces different kernels with enabled/disabled
-CONFIG_X86_USER_SHADOW_STACK.
+Changes in v6:
+  1. Add "qcom,pmi632-vib" as a standalone compatible string.
 
-arch/x86/Makefile already properly defines KBUILD_AFLAGS += -m64,
-which is luckly already available at the point of toolchain check
-in arch/x86/Kconfig.assembler
+Changes in v5:
+  1. Drop "qcom,spmi-vib-gen2" generic compatible string as requested
+     and use device specific compatible strings only.
 
-By hacking around Kbuild variable the following way:
-> --- a/scripts/Kconfig.include
-> +++ b/scripts/Kconfig.include
-> @@ -13,7 +13,8 @@ left_paren  := (
->
->  # $(if-success,<command>,<then>,<else>)
->  # Return <then> if <command> exits with 0, <else> otherwise.
-> -if-success = $(shell,{ $(1); } >/dev/null 2>&1 && echo "$(2)" || echo "$(3)")
-> +if-success = $(shell,echo '$(1)' 1>&2;{ $(1); } >/dev/null 2>&1 && echo "$(2)" || echo "$(3)")
+Changes in v4:
+  1. Update to use the combination of the HW type and register offset
+     as the constant match data, the register base address defined in
+     'reg' property will be added when accessing SPMI registers using
+     regmap APIs.
+  2. Remove 'qcom,spmi-vib-gen1' generic compatible string.
 
-I got the following output for the toolchain check, before:
-> linux @Bru-na-Boinne% make ARCH=x86_64 oldconfig V=1 2>&1 | grep wrus
-> printf "%b\n" "wrussq %rax,(%rbx)" | gcc  -c -x assembler-with-cpp -o /dev/null -
+Changes in v3:
+  1. Refactor the driver to support different type of the vibrators with
+    better flexibility by introducing the HW type with corresponding
+    register fields definitions.
+  2. Add 'qcom,spmi-vib-gen1' and 'qcom,spmi-vib-gen2' compatible
+    strings, and add PMI632, PM7250B, PM7325B, PM7550BA as compatbile as
+    spmi-vib-gen2.
 
-and after:
-> linux @Bru-na-Boinne% make ARCH=x86_64 oldconfig V=1 2>&1 | grep wrus
-> printf "%b\n" "wrussq %rax,(%rbx)" | gcc -D__ASSEMBLY__ -fno-PIE -m64 -c -x assembler-with-cpp -o /dev/null -
+Changes in v2:
+  Remove the "pm7550ba-vib" compatible string as it's compatible with pm7325b.
 
-Which seems appropriate to me.
-This also reflects the existing definition in scripts/Makefile.compiler
-for $(as-instr) that already has $(KBUILD_AFLAGS).
-
-Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
+Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
- scripts/Kconfig.include | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Fenglin Wu (4):
+      input: pm8xxx-vibrator: correct VIB_MAX_LEVELS calculation
+      input: pm8xxx-vibrator: refactor to support new SPMI vibrator
+      dt-bindings: input: qcom,pm8xxx-vib: add new SPMI vibrator module
+      input: pm8xxx-vibrator: add new SPMI vibrator support
 
-diff --git a/scripts/Kconfig.include b/scripts/Kconfig.include
-index 3ee8ecfb8c04..d8574c1faf2d 100644
---- a/scripts/Kconfig.include
-+++ b/scripts/Kconfig.include
-@@ -33,7 +33,7 @@ ld-option = $(success,$(LD) -v $(1))
- 
- # $(as-instr,<instr>)
- # Return y if the assembler supports <instr>, n otherwise
--as-instr = $(success,printf "%b\n" "$(1)" | $(CC) $(CLANG_FLAGS) -Wa$(comma)--fatal-warnings -c -x assembler-with-cpp -o /dev/null -)
-+as-instr = $(success,printf "%b\n" "$(1)" | $(CC) $(CLANG_FLAGS) $(KBUILD_AFLAGS) -Wa$(comma)--fatal-warnings -c -x assembler-with-cpp -o /dev/null -)
- 
- # check if $(CC) and $(LD) exist
- $(error-if,$(failure,command -v $(CC)),C compiler '$(CC)' not found)
-
+ .../devicetree/bindings/input/qcom,pm8xxx-vib.yaml | 16 +++-
+ drivers/input/misc/pm8xxx-vibrator.c               | 92 ++++++++++++++++------
+ 2 files changed, 82 insertions(+), 26 deletions(-)
 ---
-base-commit: 2c71fdf02a95b3dd425b42f28fd47fb2b1d22702
-change-id: 20240410-as-instr-opt-wrussq-48ec37e36204
+base-commit: 650cda2ce25f08e8fae391b3ba6be27e7296c6a5
+change-id: 20240328-pm8xxx-vibrator-new-design-e5811ad59e8a
 
 Best regards,
 -- 
-Dmitry Safonov <0x7f454c46@gmail.com>
+Fenglin Wu <quic_fenglinw@quicinc.com>
 
