@@ -1,596 +1,347 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 12 Apr 2024 15:36:17 +0200
-Subject: [PATCH v3 10/10] iio: dac: support the ad9739a RF DAC
+From: Joel Granados <j.granados@samsung.com>
+Subject: [PATCH v3 0/4] sysctl: Remove sentinel elements from networking
+Date: Fri, 12 Apr 2024 16:48:28 +0200
+Message-Id: <20240412-jag-sysctl_remset_net-v3-0-11187d13c211@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240412-iio-backend-axi-dac-v3-10-3e9d4c5201fb@analog.com>
-References: <20240412-iio-backend-axi-dac-v3-0-3e9d4c5201fb@analog.com>
-In-Reply-To: <20240412-iio-backend-axi-dac-v3-0-3e9d4c5201fb@analog.com>
-To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
-Cc: Dragos Bogdan <dragos.bogdan@analog.com>, 
- Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Olivier Moysan <olivier.moysan@foss.st.com>, Nuno Sa <nuno.sa@analog.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1712928968; l=17533;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=w1OzoSXuWRgnkr+GE1oizuZi6FF3usglRrX5OtduLLU=;
- b=bCjDpJ7vA2tmBakEoxMAjjuUAMqpPYMNOOlbyqoCs7DWndEQw5fOd+BusCBOncGWo888tS5LK
- TY2TC6wTD1LA2CJEISuwV4uGdxVZh7kpDqFP7uUMc/fktTKf8WG1jHx
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+X-B4-Tracking: v=1; b=H4sIALxJGWYC/3XOwQ6CMAwG4FcxOzvDyiTOk+9hDClswIwMs85FQ
+ nh3B4mJHjj+bf6vnRgZbw2x825i3kRLdnAp5Psdqzt0reFWp8wgA5nlQvA7tpxGqsOj9KYnE0p
+ nAtdpiQJVrouKpe7Tm8a+V/d6S7mzFAY/rmeiWKZfUW6IUfCMI0JRSalBaXUh7Onl2kM99GwxI
+ /w4cNpyIDlHqFWDWqUXm39nnucPjqWGCwQBAAA=
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Alexander Aring <alex.aring@gmail.com>, 
+ Stefan Schmidt <stefan@datenfreihafen.org>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, David Ahern <dsahern@kernel.org>, 
+ Steffen Klassert <steffen.klassert@secunet.com>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>, Ralf Baechle <ralf@linux-mips.org>, 
+ Remi Denis-Courmont <courmisch@gmail.com>, 
+ Allison Henderson <allison.henderson@oracle.com>, 
+ David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>, 
+ Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+ Xin Long <lucien.xin@gmail.com>, Wenjia Zhang <wenjia@linux.ibm.com>, 
+ Jan Karcher <jaka@linux.ibm.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
+ Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
+ Trond Myklebust <trond.myklebust@hammerspace.com>, 
+ Anna Schumaker <anna@kernel.org>, Chuck Lever <chuck.lever@oracle.com>, 
+ Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>, 
+ Olga Kornievskaia <kolga@netapp.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, Jon Maloy <jmaloy@redhat.com>, 
+ Ying Xue <ying.xue@windriver.com>, Martin Schiller <ms@dev.tdt.de>, 
+ Pablo Neira Ayuso <pablo@netfilter.org>, 
+ Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, 
+ Roopa Prabhu <roopa@nvidia.com>, Nikolay Aleksandrov <razor@blackwall.org>, 
+ Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, 
+ Joerg Reuter <jreuter@yaina.de>, Luis Chamberlain <mcgrof@kernel.org>, 
+ Kees Cook <keescook@chromium.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.linux.dev, 
+ linux-hams@vger.kernel.org, linux-rdma@vger.kernel.org, 
+ rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, 
+ linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org, 
+ linux-nfs@vger.kernel.org, tipc-discussion@lists.sourceforge.net, 
+ linux-x25@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+ coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
+ Joel Granados <j.granados@samsung.com>
+X-Mailer: b4 0.13-dev-2d940
+X-Developer-Signature: v=1; a=openpgp-sha256; l=14214;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=6KlysJphj/5nVI7PiR6WvL3StnTrvp6Re1g4EGdtiiE=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYZScnuxp6x5Wtd5zUitbWfodIiwUiW/eyb6
+ trN6Jmrhpa5DIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmGUnJAAoJELqXzVK3
+ lkFPCB8MAJegGOtT3AsmetDrRT/ciPmctaYa5j95UDIge+HH1yZ02UXe35a+g6qCPmk07PbpT3H
+ dr5z8beec3Q5eAB7oWkcj+pTeUmugkAkgeD+hpbb3R4smsiXhSEKGhYlCJMYSc3tQV0WXNv5jxb
+ gUgHSwh4neFY9XbLZSXmMgxXd9856qBva/CNjyf9EWm1qVYHS9arQsqiqtFv3JvWJl5XNBNnBY9
+ BN4ktADRCaWSqvzFSRWkNCt84FN1FirBV16lJRWoF+Zgli4n3L+AWWCllsdw2lopCN1Itc8Ftfg
+ HRA8/UR7qzk9edeUBM1BSZ0eJIdHFMGv5Z+d0xIMw460V9mS1nlKrNCWrb6W3LuIEexw8UgbclJ
+ Gckwl08KgRnyC7iekDp/s/ZRndHVtrD9cYFzyJF6rqbUkmaZchO8CtgZ5xYuStZU+wYIANTLXyF
+ 6PsiuJueDveuOSTChSxshfMhiGR39VdBzoAnRV1i9ORnf9CaV2n0AP4D5iTxvsUCVuOd7c11Zj7
+ Dk=
+X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The AD9739A is a 14-bit, 2.5 GSPS high performance RF DACs that are capable
-of synthesizing wideband signals from DC up to 3 GHz.
+What?
+These commits remove the sentinel element (last empty element) from the
+sysctl arrays of all the files under the "net/" directory that register
+a sysctl array. The merging of the preparation patches [4] to mainline
+allows us to just remove sentinel elements without changing behavior.
+This is safe because the sysctl registration code (register_sysctl() and
+friends) use the array size in addition to checking for a sentinel [1].
 
-A dual-port, source synchronous, LVDS interface simplifies the digital
-interface with existing FGPA/ASIC technology. On-chip controllers are used
-to manage external and internal clock domain variations over temperature to
-ensure reliable data transfer from the host to the DAC core.
+Why?
+By removing the sysctl sentinel elements we avoid kernel bloat as
+ctl_table arrays get moved out of kernel/sysctl.c into their own
+respective subsystems. This move was started long ago to avoid merge
+conflicts; the sentinel removal bit came after Mathew Wilcox suggested
+it to avoid bloating the kernel by one element as arrays moved out. This
+patchset will reduce the overall build time size of the kernel and run
+time memory bloat by about ~64 bytes per declared ctl_table array (more
+info here [5]).
 
-Co-developed-by: Dragos Bogdan <dragos.bogdan@analog.com>
-Signed-off-by: Dragos Bogdan <dragos.bogdan@analog.com>
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+When are we done?
+There are 4 patchest (25 commits [2]) that are still outstanding to
+completely remove the sentinels: files under "net/" (this patchset),
+files under "kernel/" dir, misc dirs (files under mm/ security/ and
+others) and the final set that removes the unneeded check for ->procname
+== NULL.
+
+Testing:
+* Ran sysctl selftests (./tools/testing/selftests/sysctl/sysctl.sh)
+* Ran this through 0-day with no errors or warnings
+
+Savings in vmlinux:
+  A total of 64 bytes per sentinel is saved after removal; I measured in
+  x86_64 to give an idea of the aggregated savings. The actual savings
+  will depend on individual kernel configuration.
+    * bloat-o-meter
+        - The "yesall" config saves 3976 bytes (bloat-o-meter output [6])
+        - A reduced config [3] saves 1263 bytes (bloat-o-meter output [7])
+
+Savings in allocated memory:
+  None in this set but will occur when the superfluous allocations are
+  removed from proc_sysctl.c. I include it here for context. The
+  estimated savings during boot for config [3] are 6272 bytes. See [8]
+  for how to measure it.
+
+Comments/feedback greatly appreciated
+
+Changes in v3:
+- Reworkded ax.25
+  - Added a BUILD_BUG_ON for the ax.25 commit
+  - Added a CONFIG_AX25_DAMA_SLAVE guard where needed
+- Link to v2: https://lore.kernel.org/r/20240328-jag-sysctl_remset_net-v2-0-52c9fad9a1af@samsung.com
+
+Changes in v2:
+- Rebased to v6.9-rc1
+- Removed unneeded comment from sysctl_net_ax25.c
+- Link to v1: https://lore.kernel.org/r/20240314-jag-sysctl_remset_net-v1-0-aa26b44d29d9@samsung.com
+
+Best
+Joel
+
+[1] https://lore.kernel.org/all/20230809105006.1198165-1-j.granados@samsung.com/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/joel.granados/linux.git/tag/?h=sysctl_remove_empty_elem_v5
+[3] https://gist.github.com/Joelgranados/feaca7af5537156ca9b73aeaec093171
+[4] https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+
+[5]
+Links Related to the ctl_table sentinel removal:
+* Good summaries from Luis:
+  https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+  https://lore.kernel.org/all/ZMFizKFkVxUFtSqa@bombadil.infradead.org/
+* Patches adjusting sysctl register calls:
+  https://lore.kernel.org/all/20230302204612.782387-1-mcgrof@kernel.org/
+  https://lore.kernel.org/all/20230302202826.776286-1-mcgrof@kernel.org/
+* Discussions about expectations and approach
+  https://lore.kernel.org/all/20230321130908.6972-1-frank.li@vivo.com
+  https://lore.kernel.org/all/20220220060626.15885-1-tangmeng@uniontech.com
+
+[6]
+add/remove: 0/1 grow/shrink: 2/67 up/down: 76/-4052 (-3976)
+Function                                     old     new   delta
+llc_sysctl_init                              306     377     +71
+nf_log_net_init                              866     871      +5
+sysctl_core_net_init                         375     366      -9
+lowpan_frags_init_net                        618     598     -20
+ip_vs_control_net_init_sysctl               2446    2422     -24
+sysctl_route_net_init                        521     493     -28
+__addrconf_sysctl_register                   678     650     -28
+xfrm_sysctl_init                             405     374     -31
+mpls_net_init                                367     334     -33
+sctp_sysctl_net_register                     386     346     -40
+__ip_vs_lblcr_init                           546     501     -45
+__ip_vs_lblc_init                            546     501     -45
+neigh_sysctl_register                       1011     958     -53
+mpls_dev_sysctl_register                     475     419     -56
+ipv6_route_sysctl_init                       450     394     -56
+xs_tunables_table                            448     384     -64
+xr_tunables_table                            448     384     -64
+xfrm_table                                   320     256     -64
+xfrm6_policy_table                           128      64     -64
+xfrm4_policy_table                           128      64     -64
+x25_table                                    448     384     -64
+vs_vars                                     1984    1920     -64
+unix_table                                   128      64     -64
+tipc_table                                   448     384     -64
+svcrdma_parm_table                           832     768     -64
+smc_table                                    512     448     -64
+sctp_table                                   256     192     -64
+sctp_net_table                              2304    2240     -64
+rxrpc_sysctl_table                           704     640     -64
+rose_table                                   704     640     -64
+rds_tcp_sysctl_table                         192     128     -64
+rds_sysctl_rds_table                         384     320     -64
+rds_ib_sysctl_table                          384     320     -64
+phonet_table                                 128      64     -64
+nr_table                                     832     768     -64
+nf_log_sysctl_table                          768     704     -64
+nf_log_sysctl_ftable                         128      64     -64
+nf_ct_sysctl_table                          3200    3136     -64
+nf_ct_netfilter_table                        128      64     -64
+nf_ct_frag6_sysctl_table                     256     192     -64
+netns_core_table                             320     256     -64
+net_core_table                              2176    2112     -64
+neigh_sysctl_template                       1416    1352     -64
+mptcp_sysctl_table                           576     512     -64
+mpls_dev_table                               128      64     -64
+lowpan_frags_ns_ctl_table                    256     192     -64
+lowpan_frags_ctl_table                       128      64     -64
+llc_station_table                             64       -     -64
+llc2_timeout_table                           320     256     -64
+ipv6_table_template                         1344    1280     -64
+ipv6_route_table_template                    768     704     -64
+ipv6_rotable                                 320     256     -64
+ipv6_icmp_table_template                     448     384     -64
+ipv4_table                                  1024     960     -64
+ipv4_route_table                             832     768     -64
+ipv4_route_netns_table                       320     256     -64
+ipv4_net_table                              7552    7488     -64
+ip6_frags_ns_ctl_table                       256     192     -64
+ip6_frags_ctl_table                          128      64     -64
+ip4_frags_ns_ctl_table                       320     256     -64
+ip4_frags_ctl_table                          128      64     -64
+devinet_sysctl                              2184    2120     -64
+debug_table                                  384     320     -64
+dccp_default_table                           576     512     -64
+ctl_forward_entry                            128      64     -64
+brnf_table                                   448     384     -64
+ax25_param_table                             960     896     -64
+atalk_table                                  320     256     -64
+addrconf_sysctl                             3904    3840     -64
+vs_vars_table                                256     128    -128
+Total: Before=440631035, After=440627059, chg -0.00%
+
+[7]
+add/remove: 0/0 grow/shrink: 1/22 up/down: 8/-1263 (-1255)
+Function                                     old     new   delta
+sysctl_route_net_init                        189     197      +8
+__addrconf_sysctl_register                   306     294     -12
+ipv6_route_sysctl_init                       201     185     -16
+neigh_sysctl_register                        385     366     -19
+unix_table                                   128      64     -64
+netns_core_table                             256     192     -64
+net_core_table                              1664    1600     -64
+neigh_sysctl_template                       1416    1352     -64
+ipv6_table_template                         1344    1280     -64
+ipv6_route_table_template                    768     704     -64
+ipv6_rotable                                 192     128     -64
+ipv6_icmp_table_template                     448     384     -64
+ipv4_table                                   768     704     -64
+ipv4_route_table                             832     768     -64
+ipv4_route_netns_table                       320     256     -64
+ipv4_net_table                              7040    6976     -64
+ip6_frags_ns_ctl_table                       256     192     -64
+ip6_frags_ctl_table                          128      64     -64
+ip4_frags_ns_ctl_table                       320     256     -64
+ip4_frags_ctl_table                          128      64     -64
+devinet_sysctl                              2184    2120     -64
+ctl_forward_entry                            128      64     -64
+addrconf_sysctl                             3392    3328     -64
+Total: Before=8523801, After=8522546, chg -0.01%
+
+[8]
+To measure the in memory savings apply this on top of this patchset.
+
+"
+diff --git i/fs/proc/proc_sysctl.c w/fs/proc/proc_sysctl.c
+index 37cde0efee57..896c498600e8 100644
+--- i/fs/proc/proc_sysctl.c
++++ w/fs/proc/proc_sysctl.c
+@@ -966,6 +966,7 @@ static struct ctl_dir *new_dir(struct ctl_table_set *set,
+        table[0].procname = new_name;
+        table[0].mode = S_IFDIR|S_IRUGO|S_IXUGO;
+        init_header(&new->header, set->dir.header.root, set, node, table, 1);
++       printk("%ld sysctl saved mem kzalloc\n", sizeof(struct ctl_table));
+
+        return new;
+ }
+@@ -1189,6 +1190,7 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, s>
+                link_name += len;
+                link++;
+        }
++       printk("%ld sysctl saved mem kzalloc\n", sizeof(struct ctl_table));
+        init_header(links, dir->header.root, dir->header.set, node, link_table,
+                    head->ctl_table_size);
+        links->nreg = nr_entries;
+"
+and then run the following bash script in the kernel:
+
+accum=0
+for n in $(dmesg | grep kzalloc | awk '{print $3}') ; do
+    accum=$(calc "$accum + $n")
+done
+echo $accum
+
+Signed-off-by: Joel Granados <j.granados@samsung.com>
+
+--
+
 ---
- Documentation/ABI/testing/sysfs-bus-iio-ad9739a |  19 +
- MAINTAINERS                                     |   1 +
- drivers/iio/dac/Kconfig                         |  16 +
- drivers/iio/dac/Makefile                        |   1 +
- drivers/iio/dac/ad9739a.c                       | 463 ++++++++++++++++++++++++
- 5 files changed, 500 insertions(+)
+---
+Joel Granados (4):
+      networking: Remove the now superfluous sentinel elements from ctl_table array
+      netfilter: Remove the now superfluous sentinel elements from ctl_table array
+      appletalk: Remove the now superfluous sentinel elements from ctl_table array
+      ax.25: Remove the now superfluous sentinel elements from ctl_table array
 
-diff --git a/Documentation/ABI/testing/sysfs-bus-iio-ad9739a b/Documentation/ABI/testing/sysfs-bus-iio-ad9739a
-new file mode 100644
-index 0000000000000..ed59299e6f8d9
---- /dev/null
-+++ b/Documentation/ABI/testing/sysfs-bus-iio-ad9739a
-@@ -0,0 +1,19 @@
-+What:		/sys/bus/iio/devices/iio:deviceX/out_voltageY_operating_mode
-+KernelVersion:	6.9
-+Contact:	linux-iio@vger.kernel.org
-+Description:
-+		DAC operating mode. One of the following modes can be selected:
-+
-+		* normal: This is DAC normal mode.
-+		* mixed-mode: In this mode the output is effectively chopped at
-+			      the DAC sample rate. This has the effect of
-+			      reducing the power of the fundamental signal while
-+			      increasing the power of the images centered around
-+			      the DAC sample rate, thus improving the output
-+			      power of these images.
-+
-+What:		/sys/bus/iio/devices/iio:deviceX/out_voltageY_operating_mode_available
-+KernelVersion:	6.9
-+Contact:	linux-iio@vger.kernel.org
-+Description:
-+		Available operating modes.
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 505f28dc6da68..8ad79cf705524 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1241,6 +1241,7 @@ L:	linux-iio@vger.kernel.org
- S:	Supported
- W:	https://ez.analog.com/linux-software-drivers
- F:	Documentation/devicetree/bindings/iio/dac/adi,ad9739a.yaml
-+F:	drivers/iio/dac/ad9739a.c
- 
- ANALOG DEVICES INC ADA4250 DRIVER
- M:	Antoniu Miclaus <antoniu.miclaus@analog.com>
-diff --git a/drivers/iio/dac/Kconfig b/drivers/iio/dac/Kconfig
-index 7c0a8caa9a343..3c2bf620f00fb 100644
---- a/drivers/iio/dac/Kconfig
-+++ b/drivers/iio/dac/Kconfig
-@@ -131,6 +131,22 @@ config AD5624R_SPI
- 	  Say yes here to build support for Analog Devices AD5624R, AD5644R and
- 	  AD5664R converters (DAC). This driver uses the common SPI interface.
- 
-+config AD9739A
-+	tristate "Analog Devices AD9739A RF DAC spi driver"
-+	depends on SPI || COMPILE_TEST
-+	select REGMAP_SPI
-+	select IIO_BACKEND
-+	help
-+	  Say yes here to build support for Analog Devices AD9739A Digital-to
-+	  Analog Converter.
-+
-+	  The driver requires the assistance of the AXI DAC IP core to operate,
-+	  since SPI is used for configuration only, while data has to be
-+	  streamed into memory via DMA.
-+
-+	  To compile this driver as a module, choose M here: the module will be
-+	  called ad9739a.
-+
- config ADI_AXI_DAC
- 	tristate "Analog Devices Generic AXI DAC IP core driver"
- 	select IIO_BUFFER
-diff --git a/drivers/iio/dac/Makefile b/drivers/iio/dac/Makefile
-index 6bcaa65434b24..8432a81a19dc2 100644
---- a/drivers/iio/dac/Makefile
-+++ b/drivers/iio/dac/Makefile
-@@ -29,6 +29,7 @@ obj-$(CONFIG_AD5696_I2C) += ad5696-i2c.o
- obj-$(CONFIG_AD7293) += ad7293.o
- obj-$(CONFIG_AD7303) += ad7303.o
- obj-$(CONFIG_AD8801) += ad8801.o
-+obj-$(CONFIG_AD9739A) += ad9739a.o
- obj-$(CONFIG_ADI_AXI_DAC) += adi-axi-dac.o
- obj-$(CONFIG_CIO_DAC) += cio-dac.o
- obj-$(CONFIG_DPOT_DAC) += dpot-dac.o
-diff --git a/drivers/iio/dac/ad9739a.c b/drivers/iio/dac/ad9739a.c
-new file mode 100644
-index 0000000000000..247b7388cdb23
---- /dev/null
-+++ b/drivers/iio/dac/ad9739a.c
-@@ -0,0 +1,463 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Analog Devices AD9739a SPI DAC driver
-+ *
-+ * Copyright 2015-2024 Analog Devices Inc.
-+ */
-+#include <linux/bitfield.h>
-+#include <linux/bits.h>
-+#include <linux/clk.h>
-+#include <linux/delay.h>
-+#include <linux/device.h>
-+#include <linux/err.h>
-+#include <linux/errno.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/minmax.h>
-+#include <linux/module.h>
-+#include <linux/mod_devicetable.h>
-+#include <linux/property.h>
-+#include <linux/regmap.h>
-+#include <linux/spi/spi.h>
-+#include <linux/units.h>
-+
-+#include <linux/iio/backend.h>
-+#include <linux/iio/iio.h>
-+#include <linux/iio/types.h>
-+
-+#define AD9739A_REG_MODE		0
-+#define   AD9739A_RESET_MASK		BIT(5)
-+#define AD9739A_REG_FSC_1		0x06
-+#define AD9739A_REG_FSC_2		0x07
-+#define   AD9739A_FSC_MSB		GENMASK(1, 0)
-+#define AD9739A_REG_DEC_CNT		0x8
-+#define   AD9739A_NORMAL_MODE		0
-+#define   AD9739A_MIXED_MODE		2
-+#define   AD9739A_DAC_DEC		GENMASK(1, 0)
-+#define AD9739A_REG_LVDS_REC_CNT1	0x10
-+#define   AD9739A_RCVR_LOOP_EN_MASK	GENMASK(1, 0)
-+#define AD9739A_REG_LVDS_REC_CNT4	0x13
-+#define   AD9739A_FINE_DEL_SKW_MASK	GENMASK(3, 0)
-+#define AD9739A_REG_LVDS_REC_STAT9	0x21
-+#define   AD9739A_RCVR_TRACK_AND_LOCK	(BIT(3) | BIT(0))
-+#define AD9739A_REG_CROSS_CNT1		0x22
-+#define AD9739A_REG_CROSS_CNT2		0x23
-+#define AD9739A_REG_PHS_DET		0x24
-+#define AD9739A_REG_MU_DUTY		0x25
-+#define AD9739A_REG_MU_CNT1		0x26
-+#define   AD9739A_MU_EN_MASK		BIT(0)
-+#define AD9739A_REG_MU_CNT2		0x27
-+#define AD9739A_REG_MU_CNT3		0x28
-+#define AD9739A_REG_MU_CNT4		0x29
-+#define   AD9739A_MU_CNT4_DEFAULT	0xcb
-+#define AD9739A_REG_MU_STAT1		0x2A
-+#define   AD9739A_MU_LOCK_MASK		BIT(0)
-+#define AD9739A_REG_ANA_CNT_1		0x32
-+#define AD9739A_REG_ID			0x35
-+
-+#define AD9739A_ID			0x24
-+#define AD9739A_REG_IS_RESERVED(reg)	\
-+	((reg) == 0x5 || (reg) == 0x9 || (reg) == 0x0E || (reg) == 0x0D || \
-+	 (reg) == 0x2B || (reg) == 0x2C || (reg) == 0x34)
-+
-+#define AD9739A_FSC_MIN		8700
-+#define AD9739A_FSC_MAX		31700
-+#define AD9739A_FSC_RANGE	(AD9739A_FSC_MAX - AD9739A_FSC_MIN + 1)
-+
-+#define AD9739A_MIN_DAC_CLK	(1600 * MEGA)
-+#define AD9739A_MAX_DAC_CLK	(2500 * MEGA)
-+#define AD9739A_DAC_CLK_RANGE	(AD9739A_MAX_DAC_CLK - AD9739A_MIN_DAC_CLK + 1)
-+/* as recommended by the datasheet */
-+#define AD9739A_LOCK_N_TRIES	3
-+
-+struct ad9739a_state {
-+	struct iio_backend *back;
-+	struct regmap *regmap;
-+	unsigned long sample_rate;
-+};
-+
-+static int ad9739a_oper_mode_get(struct iio_dev *indio_dev,
-+				 const struct iio_chan_spec *chan)
-+{
-+	struct ad9739a_state *st = iio_priv(indio_dev);
-+	u32 mode;
-+	int ret;
-+
-+	ret = regmap_read(st->regmap, AD9739A_REG_DEC_CNT, &mode);
-+	if (ret)
-+		return ret;
-+
-+	mode = FIELD_GET(AD9739A_DAC_DEC, mode);
-+	/* sanity check we get valid values from the HW */
-+	if (mode != AD9739A_NORMAL_MODE && mode != AD9739A_MIXED_MODE)
-+		return -EIO;
-+	if (!mode)
-+		return AD9739A_NORMAL_MODE;
-+
-+	/*
-+	 * We get 2 from the device but for IIO modes, that means 1. Hence the
-+	 * minus 1.
-+	 */
-+	return AD9739A_MIXED_MODE - 1;
-+}
-+
-+static int ad9739a_oper_mode_set(struct iio_dev *indio_dev,
-+				 const struct iio_chan_spec *chan, u32 mode)
-+{
-+	struct ad9739a_state *st = iio_priv(indio_dev);
-+
-+	/*
-+	 * On the IIO interface we have 0 and 1 for mode. But for mixed_mode, we
-+	 * need to write 2 in the device. That's what the below check is about.
-+	 */
-+	if (mode == AD9739A_MIXED_MODE - 1)
-+		mode = AD9739A_MIXED_MODE;
-+
-+	return regmap_update_bits(st->regmap, AD9739A_REG_DEC_CNT,
-+				  AD9739A_DAC_DEC, mode);
-+}
-+
-+static int ad9739a_read_raw(struct iio_dev *indio_dev,
-+			    struct iio_chan_spec const *chan,
-+			    int *val, int *val2, long mask)
-+{
-+	struct ad9739a_state *st = iio_priv(indio_dev);
-+
-+	switch (mask) {
-+	case IIO_CHAN_INFO_SAMP_FREQ:
-+		*val = st->sample_rate;
-+		*val2 = 0;
-+		return IIO_VAL_INT_64;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int ad9739a_buffer_preenable(struct iio_dev *indio_dev)
-+{
-+	struct ad9739a_state *st = iio_priv(indio_dev);
-+
-+	return iio_backend_data_source_set(st->back, 0, IIO_BACKEND_EXTERNAL);
-+}
-+
-+static int ad9739a_buffer_postdisable(struct iio_dev *indio_dev)
-+{
-+	struct ad9739a_state *st = iio_priv(indio_dev);
-+
-+	return iio_backend_data_source_set(st->back, 0,
-+					   IIO_BACKEND_INTERNAL_CONTINUOS_WAVE);
-+}
-+
-+static bool ad9739a_reg_accessible(struct device *dev, unsigned int reg)
-+{
-+	if (AD9739A_REG_IS_RESERVED(reg))
-+		return false;
-+	if (reg > AD9739A_REG_MU_STAT1 && reg < AD9739A_REG_ANA_CNT_1)
-+		return false;
-+
-+	return true;
-+}
-+
-+static int ad9739a_reset(struct device *dev, const struct ad9739a_state *st)
-+{
-+	struct gpio_desc *gpio;
-+	int ret;
-+
-+	gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
-+	if (IS_ERR(gpio))
-+		return PTR_ERR(gpio);
-+	if (gpio) {
-+		/* minimum pulse width of 40ns */
-+		ndelay(40);
-+		gpiod_set_value_cansleep(gpio, 0);
-+		return 0;
-+	}
-+
-+	/* bring all registers to their default state */
-+	ret = regmap_set_bits(st->regmap, AD9739A_REG_MODE, AD9739A_RESET_MASK);
-+	if (ret)
-+		return ret;
-+
-+	ndelay(40);
-+
-+	return regmap_clear_bits(st->regmap, AD9739A_REG_MODE,
-+				 AD9739A_RESET_MASK);
-+}
-+
-+/*
-+ * Recommended values (as per datasheet) for the dac clk common mode voltage
-+ * and Mu controller. Look at table 29.
-+ */
-+static const struct reg_sequence ad9739a_clk_mu_ctrl[] = {
-+	/* DAC clk common mode voltage */
-+	{ AD9739A_REG_CROSS_CNT1, 0x0f },
-+	{ AD9739A_REG_CROSS_CNT2, 0x0f },
-+	/* Mu controller configuration */
-+	{ AD9739A_REG_PHS_DET, 0x30 },
-+	{ AD9739A_REG_MU_DUTY, 0x80 },
-+	{ AD9739A_REG_MU_CNT2, 0x44 },
-+	{ AD9739A_REG_MU_CNT3, 0x6c },
-+};
-+
-+static int ad9739a_init(struct device *dev, const struct ad9739a_state *st)
-+{
-+	unsigned int i = 0, lock, fsc;
-+	u32 fsc_raw;
-+	int ret;
-+
-+	ret = regmap_multi_reg_write(st->regmap, ad9739a_clk_mu_ctrl,
-+				     ARRAY_SIZE(ad9739a_clk_mu_ctrl));
-+	if (ret)
-+		return ret;
-+
-+	/*
-+	 * Try to get the Mu lock. Repeat the below steps AD9739A_LOCK_N_TRIES
-+	 * (as specified by the datasheet) until we get the lock.
-+	 */
-+	do {
-+		ret = regmap_write(st->regmap, AD9739A_REG_MU_CNT4,
-+				   AD9739A_MU_CNT4_DEFAULT);
-+		if (ret)
-+			return ret;
-+
-+		/* Enable the Mu controller search and track mode. */
-+		ret = regmap_set_bits(st->regmap, AD9739A_REG_MU_CNT1,
-+				      AD9739A_MU_EN_MASK);
-+		if (ret)
-+			return ret;
-+
-+		/* Ensure the DLL loop is locked */
-+		ret = regmap_read_poll_timeout(st->regmap, AD9739A_REG_MU_STAT1,
-+					       lock, lock & AD9739A_MU_LOCK_MASK,
-+					       0, 1000);
-+		if (ret && ret != -ETIMEDOUT)
-+			return ret;
-+	} while (ret && ++i < AD9739A_LOCK_N_TRIES);
-+
-+	if (i == AD9739A_LOCK_N_TRIES)
-+		return dev_err_probe(dev, ret, "Mu lock timeout\n");
-+
-+	/* Receiver tracking and lock. Same deal as the Mu controller */
-+	i = 0;
-+	do {
-+		ret = regmap_update_bits(st->regmap, AD9739A_REG_LVDS_REC_CNT4,
-+					 AD9739A_FINE_DEL_SKW_MASK,
-+					 FIELD_PREP(AD9739A_FINE_DEL_SKW_MASK, 2));
-+		if (ret)
-+			return ret;
-+
-+		/* Disable the receiver and the loop. */
-+		ret = regmap_write(st->regmap, AD9739A_REG_LVDS_REC_CNT1, 0);
-+		if (ret)
-+			return ret;
-+
-+		/*
-+		 * Re-enable the loop so it falls out of lock and begins the
-+		 * search/track routine again.
-+		 */
-+		ret = regmap_set_bits(st->regmap, AD9739A_REG_LVDS_REC_CNT1,
-+				      AD9739A_RCVR_LOOP_EN_MASK);
-+		if (ret)
-+			return ret;
-+
-+		/* Ensure the DLL loop is locked */
-+		ret = regmap_read_poll_timeout(st->regmap,
-+					       AD9739A_REG_LVDS_REC_STAT9, lock,
-+					       lock == AD9739A_RCVR_TRACK_AND_LOCK,
-+					       0, 1000);
-+		if (ret && ret != -ETIMEDOUT)
-+			return ret;
-+	} while (ret && ++i < AD9739A_LOCK_N_TRIES);
-+
-+	if (i == AD9739A_LOCK_N_TRIES)
-+		return dev_err_probe(dev, ret, "Receiver lock timeout\n");
-+
-+	ret = device_property_read_u32(dev, "adi,full-scale-microamp", &fsc);
-+	if (ret && ret == -EINVAL)
-+		return 0;
-+	if (ret)
-+		return ret;
-+	if (!in_range(fsc, AD9739A_FSC_MIN, AD9739A_FSC_RANGE))
-+		return dev_err_probe(dev, -EINVAL,
-+				     "Invalid full scale current(%u) [%u %u]\n",
-+				     fsc, AD9739A_FSC_MIN, AD9739A_FSC_MAX);
-+	/*
-+	 * IOUTFS is given by
-+	 *	Ioutfs = 0.0226 * FSC + 8.58
-+	 * and is given in mA. Hence we'll have to multiply by 10 * MILLI in
-+	 * order to get rid of the fractional.
-+	 */
-+	fsc_raw = DIV_ROUND_CLOSEST(fsc * 10 - 85800, 226);
-+
-+	ret = regmap_write(st->regmap, AD9739A_REG_FSC_1, fsc_raw & 0xff);
-+	if (ret)
-+		return ret;
-+
-+	return regmap_update_bits(st->regmap, AD9739A_REG_FSC_2,
-+				  AD9739A_FSC_MSB, fsc_raw >> 8);
-+}
-+
-+static const char * const ad9739a_modes_avail[] = { "normal", "mixed-mode" };
-+
-+static const struct iio_enum ad9739a_modes = {
-+	.items = ad9739a_modes_avail,
-+	.num_items = ARRAY_SIZE(ad9739a_modes_avail),
-+	.get = ad9739a_oper_mode_get,
-+	.set = ad9739a_oper_mode_set,
-+};
-+
-+static const struct iio_chan_spec_ext_info ad9739a_ext_info[] = {
-+	IIO_ENUM_AVAILABLE("operating_mode", IIO_SEPARATE, &ad9739a_modes),
-+	IIO_ENUM("operating_mode", IIO_SEPARATE, &ad9739a_modes),
-+	{ }
-+};
-+
-+/*
-+ * The reason for having two different channels is because we have, in reality,
-+ * two sources of data:
-+ *   ALTVOLTAGE: It's a Continuous Wave that's internally generated by the
-+ *               backend device.
-+ *   VOLTAGE: It's the typical data we can have in a DAC device and the source
-+ *            of it has nothing to do with the backend. The backend will only
-+ *            forward it into our data interface to be sent out.
-+ */
-+static struct iio_chan_spec ad9739a_channels[] = {
-+	{
-+		.type = IIO_ALTVOLTAGE,
-+		.indexed = 1,
-+		.output = 1,
-+		.scan_index = -1,
-+	},
-+	{
-+		.type = IIO_VOLTAGE,
-+		.indexed = 1,
-+		.info_mask_shared_by_all = BIT(IIO_CHAN_INFO_SAMP_FREQ),
-+		.output = 1,
-+		.ext_info = ad9739a_ext_info,
-+		.scan_type = {
-+			.sign = 's',
-+			.storagebits = 16,
-+			.realbits = 16,
-+		},
-+	}
-+};
-+
-+static const struct iio_info ad9739a_info = {
-+	.read_raw = ad9739a_read_raw,
-+};
-+
-+static const struct iio_buffer_setup_ops ad9739a_buffer_setup_ops = {
-+	.preenable = &ad9739a_buffer_preenable,
-+	.postdisable = &ad9739a_buffer_postdisable,
-+};
-+
-+static const struct regmap_config ad9739a_regmap_config = {
-+	.reg_bits = 8,
-+	.val_bits = 8,
-+	.readable_reg = ad9739a_reg_accessible,
-+	.writeable_reg = ad9739a_reg_accessible,
-+	.max_register = AD9739A_REG_ID,
-+};
-+
-+static int ad9739a_probe(struct spi_device *spi)
-+{
-+	struct device *dev = &spi->dev;
-+	struct iio_dev *indio_dev;
-+	struct ad9739a_state *st;
-+	unsigned int id;
-+	struct clk *clk;
-+	int ret;
-+
-+	indio_dev = devm_iio_device_alloc(dev, sizeof(*st));
-+	if (!indio_dev)
-+		return -ENOMEM;
-+
-+	st = iio_priv(indio_dev);
-+
-+	clk = devm_clk_get_enabled(dev, NULL);
-+	if (IS_ERR(clk))
-+		return dev_err_probe(dev, PTR_ERR(clk), "Could not get clkin\n");
-+
-+	st->sample_rate = clk_get_rate(clk);
-+	if (!in_range(st->sample_rate, AD9739A_MIN_DAC_CLK,
-+		      AD9739A_DAC_CLK_RANGE))
-+		return dev_err_probe(dev, -EINVAL,
-+				     "Invalid dac clk range(%lu) [%lu %lu]\n",
-+				     st->sample_rate, AD9739A_MIN_DAC_CLK,
-+				     AD9739A_MAX_DAC_CLK);
-+
-+	st->regmap = devm_regmap_init_spi(spi, &ad9739a_regmap_config);
-+	if (IS_ERR(st->regmap))
-+		return PTR_ERR(st->regmap);
-+
-+	ret = regmap_read(st->regmap, AD9739A_REG_ID, &id);
-+	if (ret)
-+		return ret;
-+
-+	if (id != AD9739A_ID)
-+		dev_warn(dev, "Unrecognized CHIP_ID 0x%X", id);
-+
-+	ret = ad9739a_reset(dev, st);
-+	if (ret)
-+		return ret;
-+
-+	ret = ad9739a_init(dev, st);
-+	if (ret)
-+		return ret;
-+
-+	st->back = devm_iio_backend_get(dev, NULL);
-+	if (IS_ERR(st->back))
-+		return PTR_ERR(st->back);
-+
-+	ret = devm_iio_backend_request_buffer(dev, st->back, indio_dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = iio_backend_extend_chan_spec(indio_dev, st->back,
-+					   &ad9739a_channels[0]);
-+	if (ret)
-+		return ret;
-+
-+	ret = iio_backend_set_sampling_freq(st->back, 0, st->sample_rate);
-+	if (ret)
-+		return ret;
-+
-+	ret = devm_iio_backend_enable(dev, st->back);
-+	if (ret)
-+		return ret;
-+
-+	indio_dev->name = "ad9739a";
-+	indio_dev->info = &ad9739a_info;
-+	indio_dev->channels = ad9739a_channels;
-+	indio_dev->num_channels = ARRAY_SIZE(ad9739a_channels);
-+	indio_dev->setup_ops = &ad9739a_buffer_setup_ops;
-+
-+	return devm_iio_device_register(&spi->dev, indio_dev);
-+}
-+
-+static const struct of_device_id ad9739a_of_match[] = {
-+	{ .compatible = "adi,ad9739a" },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, ad9739a_of_match);
-+
-+static const struct spi_device_id ad9739a_id[] = {
-+	{"ad9739a"},
-+	{}
-+};
-+MODULE_DEVICE_TABLE(spi, ad9739a_id);
-+
-+static struct spi_driver ad9739a_driver = {
-+	.driver = {
-+		.name = "ad9739a",
-+		.of_match_table = ad9739a_of_match,
-+	},
-+	.probe = ad9739a_probe,
-+	.id_table = ad9739a_id,
-+};
-+module_spi_driver(ad9739a_driver);
-+
-+MODULE_AUTHOR("Dragos Bogdan <dragos.bogdan@analog.com>");
-+MODULE_AUTHOR("Nuno Sa <nuno.sa@analog.com>");
-+MODULE_DESCRIPTION("Analog Devices AD9739 DAC");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS(IIO_BACKEND);
+ include/net/ax25.h                      | 2 ++
+ net/appletalk/sysctl_net_atalk.c        | 1 -
+ net/ax25/ax25_dev.c                     | 3 +++
+ net/ax25/ax25_ds_timer.c                | 4 ++++
+ net/ax25/sysctl_net_ax25.c              | 3 +--
+ net/bridge/br_netfilter_hooks.c         | 1 -
+ net/core/neighbour.c                    | 5 +----
+ net/core/sysctl_net_core.c              | 9 ++++-----
+ net/dccp/sysctl.c                       | 2 --
+ net/ieee802154/6lowpan/reassembly.c     | 6 +-----
+ net/ipv4/devinet.c                      | 5 ++---
+ net/ipv4/ip_fragment.c                  | 2 --
+ net/ipv4/route.c                        | 8 ++------
+ net/ipv4/sysctl_net_ipv4.c              | 7 +++----
+ net/ipv4/xfrm4_policy.c                 | 1 -
+ net/ipv6/addrconf.c                     | 5 +----
+ net/ipv6/icmp.c                         | 1 -
+ net/ipv6/netfilter/nf_conntrack_reasm.c | 1 -
+ net/ipv6/reassembly.c                   | 2 --
+ net/ipv6/route.c                        | 5 -----
+ net/ipv6/sysctl_net_ipv6.c              | 4 +---
+ net/ipv6/xfrm6_policy.c                 | 1 -
+ net/llc/sysctl_net_llc.c                | 8 ++------
+ net/mpls/af_mpls.c                      | 3 +--
+ net/mptcp/ctrl.c                        | 1 -
+ net/netfilter/ipvs/ip_vs_ctl.c          | 5 +----
+ net/netfilter/ipvs/ip_vs_lblc.c         | 5 +----
+ net/netfilter/ipvs/ip_vs_lblcr.c        | 5 +----
+ net/netfilter/nf_conntrack_standalone.c | 6 +-----
+ net/netfilter/nf_log.c                  | 3 +--
+ net/netrom/sysctl_net_netrom.c          | 1 -
+ net/phonet/sysctl.c                     | 1 -
+ net/rds/ib_sysctl.c                     | 1 -
+ net/rds/sysctl.c                        | 1 -
+ net/rds/tcp.c                           | 1 -
+ net/rose/sysctl_net_rose.c              | 1 -
+ net/rxrpc/sysctl.c                      | 1 -
+ net/sctp/sysctl.c                       | 6 +-----
+ net/smc/smc_sysctl.c                    | 1 -
+ net/sunrpc/sysctl.c                     | 1 -
+ net/sunrpc/xprtrdma/svc_rdma.c          | 1 -
+ net/sunrpc/xprtrdma/transport.c         | 1 -
+ net/sunrpc/xprtsock.c                   | 1 -
+ net/tipc/sysctl.c                       | 1 -
+ net/unix/sysctl_net_unix.c              | 1 -
+ net/x25/sysctl_net_x25.c                | 1 -
+ net/xfrm/xfrm_sysctl.c                  | 5 +----
+ 47 files changed, 35 insertions(+), 105 deletions(-)
+---
+base-commit: 4cece764965020c22cff7665b18a012006359095
+change-id: 20240311-jag-sysctl_remset_net-d403a1a93d6b
 
+Best regards,
 -- 
-2.44.0
+Joel Granados <j.granados@samsung.com>
 
