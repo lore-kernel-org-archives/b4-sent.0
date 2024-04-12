@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Fri, 12 Apr 2024 16:48:31 +0200
-Subject: [PATCH v3 3/4] appletalk: Remove the now superfluous sentinel
- elements from ctl_table array
+Date: Fri, 12 Apr 2024 16:48:32 +0200
+Subject: [PATCH v3 4/4] ax.25: Remove the now superfluous sentinel elements
+ from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240412-jag-sysctl_remset_net-v3-3-11187d13c211@samsung.com>
+Message-Id: <20240412-jag-sysctl_remset_net-v3-4-11187d13c211@samsung.com>
 References: <20240412-jag-sysctl_remset_net-v3-0-11187d13c211@samsung.com>
 In-Reply-To: <20240412-jag-sysctl_remset_net-v3-0-11187d13c211@samsung.com>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -46,18 +46,19 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=954; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=XDIcCkZ78Jc0dTs1FMG4vIEa4qRq4WIrQqvTanRSSyI=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYZScsPYrpPiMEhQtTWZeyDzwGKKkqrNx1Y5
- blH40PV/tbg0okBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmGUnLAAoJELqXzVK3
- lkFPYU0L+wdiNX0+Oq9km4WCDWgZjYmZPl2GKaZZ/YhkEiKhU0DCpHyVq+kR+z84jZe1Qun6y3X
- 1BLWRgjdk8yz8v1hNZPrfIKBEANTRfx6/bb9H1DXKnmGYvj0JTpCSkRQnLEOhwNXcL7LoYWozWH
- zISe3iPA0j7a5t2s7UJBp2zfDLzZuui9ldhlvQpXIYF4o/jvJMV+IcMvziaASUq/SGlGoxjv6/A
- iIfVcVM7URaA4472C8F5y8TAheOaNI6kQqEonolMTsZnr/safBo9YWvKuHAx3iitOgvDKLKAkaI
- FrIFG4n7l2p81s2oUoDZr4Q2Mx5ubOrh/bxJWK9TzkxtsPiHw3OqoviwjQ72k0HWkPw4DqIIc4k
- P7IQFbSkwQxS1Csj2vtNJDqcIwxOBA7OS78s91U3QG1+4i51wohjEl86pul3m+aWCcJaML6bonM
- ZmImGHv4gHL19ZjdepmJPNbiIQnFNIK+zGd1VKwRaXFAbZOxa4zqhiYsNqE5LjrPPUr+BNzb6w7
- BY=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3615;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=CsYowwLbkJaYf30UOT/yoW/0LONY7umz9p0pFyf5n0w=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYZScxgWqGgs+HWHWKs1qufcsukehfTFkxB4
+ qfcLlXm7S21V4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmGUnMAAoJELqXzVK3
+ lkFPyIYMAJKeHHeh4RoOTaX1NdP5ohrHbpZVGSiik49E67/0ZPgzvWovZ7wB4Imi076PjZu4bKj
+ AW6SArlLiGXRpxRP8lsFLWi8JSxw7/cpw1LABPA/4GMJBEMdOuJidHVg/2HsRjoALLBpHgvp+pZ
+ /xtrYavCFZ/+FRq1c4aO6NIIP/2rYJGT9vtCr4ec4V822hrgs9adA5JapsW4m0D7E8a1G72iOA5
+ 4aD6ApucM/2+2VmxWx3sz2eg+rkXJBOOdNjqm6UdJDdVw3qz3ZPl6odHuM5WcF+2lPxLEbSGF9c
+ k86yuwPNW3t7Vdka4VYc0CdWp2tS9Flt6z00h0vuHHCz6t8jDPvIAGRrRVNIMtKXOaPxaFt7V/P
+ 9v/LxFQlQeLS4cAqXZtkUrbXUIe5gV5p0/EwN7393eVg16kZpbMJL31ogZ37+42SheKZa2PFu6W
+ ljhF0aXKJhFf7Bt6kP53Fo8OSAj7QMj7JQitj2FIDPZhD+rd20eL9WJNB0Q+bG98xOExHQQV4t8
+ Kc=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -69,25 +70,97 @@ reduce the overall build time size of the kernel and run time memory
 bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove sentinel from atalk_table ctl_table array.
+Avoid a buffer overflow when traversing the ctl_table by ensuring that
+AX25_MAX_VALUES is the same as the size of ax25_param_table. This is
+done with a BUILD_BUG_ON where ax25_param_table is defined and a
+CONFIG_AX25_DAMA_SLAVE guard in the unnamed enum definition as well as
+in the ax25_dev_device_up and ax25_ds_set_timer functions.
+
+The overflow happened when the sentinel was removed from
+ax25_param_table. The sentinel's data element was changed when
+CONFIG_AX25_DAMA_SLAVE was undefined. This had no adverse effects as it
+still stopped on the sentinel's null procname but needed to be addressed
+once the sentinel was removed.
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- net/appletalk/sysctl_net_atalk.c | 1 -
- 1 file changed, 1 deletion(-)
+ include/net/ax25.h         | 2 ++
+ net/ax25/ax25_dev.c        | 3 +++
+ net/ax25/ax25_ds_timer.c   | 4 ++++
+ net/ax25/sysctl_net_ax25.c | 3 +--
+ 4 files changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/net/appletalk/sysctl_net_atalk.c b/net/appletalk/sysctl_net_atalk.c
-index d945b7c0176d..7aebfe903242 100644
---- a/net/appletalk/sysctl_net_atalk.c
-+++ b/net/appletalk/sysctl_net_atalk.c
-@@ -40,7 +40,6 @@ static struct ctl_table atalk_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_jiffies,
- 	},
--	{ },
+diff --git a/include/net/ax25.h b/include/net/ax25.h
+index 0d939e5aee4e..eb9cee8252c8 100644
+--- a/include/net/ax25.h
++++ b/include/net/ax25.h
+@@ -139,7 +139,9 @@ enum {
+ 	AX25_VALUES_N2,		/* Default N2 value */
+ 	AX25_VALUES_PACLEN,	/* AX.25 MTU */
+ 	AX25_VALUES_PROTOCOL,	/* Std AX.25, DAMA Slave, DAMA Master */
++#ifdef CONFIG_AX25_DAMA_SLAVE
+ 	AX25_VALUES_DS_TIMEOUT,	/* DAMA Slave timeout */
++#endif
+ 	AX25_MAX_VALUES		/* THIS MUST REMAIN THE LAST ENTRY OF THIS LIST */
  };
  
- static struct ctl_table_header *atalk_table_header;
+diff --git a/net/ax25/ax25_dev.c b/net/ax25/ax25_dev.c
+index c5462486dbca..af547e185a94 100644
+--- a/net/ax25/ax25_dev.c
++++ b/net/ax25/ax25_dev.c
+@@ -78,7 +78,10 @@ void ax25_dev_device_up(struct net_device *dev)
+ 	ax25_dev->values[AX25_VALUES_N2]        = AX25_DEF_N2;
+ 	ax25_dev->values[AX25_VALUES_PACLEN]	= AX25_DEF_PACLEN;
+ 	ax25_dev->values[AX25_VALUES_PROTOCOL]  = AX25_DEF_PROTOCOL;
++
++#ifdef CONFIG_AX25_DAMA_SLAVE
+ 	ax25_dev->values[AX25_VALUES_DS_TIMEOUT]= AX25_DEF_DS_TIMEOUT;
++#endif
+ 
+ #if defined(CONFIG_AX25_DAMA_SLAVE) || defined(CONFIG_AX25_DAMA_MASTER)
+ 	ax25_ds_setup_timer(ax25_dev);
+diff --git a/net/ax25/ax25_ds_timer.c b/net/ax25/ax25_ds_timer.c
+index c4f8adbf8144..8f385d2a7628 100644
+--- a/net/ax25/ax25_ds_timer.c
++++ b/net/ax25/ax25_ds_timer.c
+@@ -49,12 +49,16 @@ void ax25_ds_del_timer(ax25_dev *ax25_dev)
+ 
+ void ax25_ds_set_timer(ax25_dev *ax25_dev)
+ {
++#ifdef CONFIG_AX25_DAMA_SLAVE
+ 	if (ax25_dev == NULL)		/* paranoia */
+ 		return;
+ 
+ 	ax25_dev->dama.slave_timeout =
+ 		msecs_to_jiffies(ax25_dev->values[AX25_VALUES_DS_TIMEOUT]) / 10;
+ 	mod_timer(&ax25_dev->dama.slave_timer, jiffies + HZ);
++#else
++	return;
++#endif
+ }
+ 
+ /*
+diff --git a/net/ax25/sysctl_net_ax25.c b/net/ax25/sysctl_net_ax25.c
+index db66e11e7fe8..fb9966926e90 100644
+--- a/net/ax25/sysctl_net_ax25.c
++++ b/net/ax25/sysctl_net_ax25.c
+@@ -141,8 +141,6 @@ static const struct ctl_table ax25_param_table[] = {
+ 		.extra2		= &max_ds_timeout
+ 	},
+ #endif
+-
+-	{ }	/* that's all, folks! */
+ };
+ 
+ int ax25_register_dev_sysctl(ax25_dev *ax25_dev)
+@@ -155,6 +153,7 @@ int ax25_register_dev_sysctl(ax25_dev *ax25_dev)
+ 	if (!table)
+ 		return -ENOMEM;
+ 
++	BUILD_BUG_ON(AX25_MAX_VALUES != ARRAY_SIZE(ax25_param_table));
+ 	for (k = 0; k < AX25_MAX_VALUES; k++)
+ 		table[k].data = &ax25_dev->values[k];
+ 
 
 -- 
 2.43.0
