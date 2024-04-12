@@ -1,10 +1,11 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 12 Apr 2024 15:36:10 +0200
-Subject: [PATCH v3 03/10] iio: buffer-dma: Enable buffer write support
+Date: Fri, 12 Apr 2024 15:36:11 +0200
+Subject: [PATCH v3 04/10] iio: buffer-dmaengine: Support specifying buffer
+ direction
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240412-iio-backend-axi-dac-v3-3-3e9d4c5201fb@analog.com>
+Message-Id: <20240412-iio-backend-axi-dac-v3-4-3e9d4c5201fb@analog.com>
 References: <20240412-iio-backend-axi-dac-v3-0-3e9d4c5201fb@analog.com>
 In-Reply-To: <20240412-iio-backend-axi-dac-v3-0-3e9d4c5201fb@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
@@ -18,11 +19,11 @@ Cc: Dragos Bogdan <dragos.bogdan@analog.com>,
  Paul Cercueil <paul@crapouillou.net>, 
  Alexandru Ardelean <ardeleanalex@gmail.com>, Nuno Sa <nuno.sa@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1712928968; l=6617;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1712928968; l=5579;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=HNz1+Oa54iZqJr0EjXAbVJLHf2GP0+mJ7gS7atMZQrU=;
- b=+bi4KigcblZ5FlKCahSZVaYEmvhn7Tk2eewDMQgq/3oo5DLzskCFkak03c5yxEUAjfdPmbt7m
- vtRLaS4rDhbDqhZ2MW+boJ+VpG535TqZ7X4I3U1cvdRkwb9/pe3qOgB
+ bh=u23I6KLSCcrBhm4fnCuOy4udHamrKg4Ga64h2+KE9cI=;
+ b=o4ov9FQs7q4blM0s0tSG0ebtZnLZq7Tcphk+YhIKrGDMwKIJrorVL4jzsC4/a2J/anbbA8//o
+ fdJ8JqEFyCVCJUeC+IadVKM4B5L6NVhtVS/FfTnBmwJ3BdGHfo7rYlh
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
@@ -30,188 +31,152 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Paul Cercueil <paul@crapouillou.net>
 
-Adding write support to the buffer-dma code is easy - the write()
-function basically needs to do the exact same thing as the read()
-function: dequeue a block, read or write the data, enqueue the block
-when entirely processed.
+Update the devm_iio_dmaengine_buffer_setup() function to support
+specifying the buffer direction.
 
-Therefore, the iio_buffer_dma_read() and the new iio_buffer_dma_write()
-now both call a function iio_buffer_dma_io(), which will perform this
-task.
-
-Note that we preemptively reset block->bytes_used to the buffer's size
-in iio_dma_buffer_request_update(), as in the future the
-iio_dma_buffer_enqueue() function won't reset it.
+Update the iio_dmaengine_buffer_submit() function to handle input
+buffers as well as output buffers.
 
 Signed-off-by: Paul Cercueil <paul@crapouillou.net>
 Reviewed-by: Alexandru Ardelean <ardeleanalex@gmail.com>
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/buffer/industrialio-buffer-dma.c | 89 +++++++++++++++++++++++-----
- include/linux/iio/buffer-dma.h               |  2 +
- 2 files changed, 75 insertions(+), 16 deletions(-)
+ drivers/iio/buffer/industrialio-buffer-dmaengine.c | 41 +++++++++++++++-------
+ include/linux/iio/buffer-dmaengine.h               | 25 +++++++++----
+ 2 files changed, 47 insertions(+), 19 deletions(-)
 
-diff --git a/drivers/iio/buffer/industrialio-buffer-dma.c b/drivers/iio/buffer/industrialio-buffer-dma.c
-index 404f9867bdc57..13b1a858969e9 100644
---- a/drivers/iio/buffer/industrialio-buffer-dma.c
-+++ b/drivers/iio/buffer/industrialio-buffer-dma.c
-@@ -195,6 +195,18 @@ static void _iio_dma_buffer_block_done(struct iio_dma_buffer_block *block)
- 		block->state = IIO_BLOCK_STATE_DONE;
- }
+diff --git a/drivers/iio/buffer/industrialio-buffer-dmaengine.c b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
+index df05d66afff9..051e1758e020 100644
+--- a/drivers/iio/buffer/industrialio-buffer-dmaengine.c
++++ b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
+@@ -64,14 +64,25 @@ static int iio_dmaengine_buffer_submit_block(struct iio_dma_buffer_queue *queue,
+ 	struct dmaengine_buffer *dmaengine_buffer =
+ 		iio_buffer_to_dmaengine_buffer(&queue->buffer);
+ 	struct dma_async_tx_descriptor *desc;
++	enum dma_transfer_direction dma_dir;
++	size_t max_size;
+ 	dma_cookie_t cookie;
  
-+static void iio_dma_buffer_queue_wake(struct iio_dma_buffer_queue *queue)
-+{
-+	__poll_t flags;
+-	block->bytes_used = min(block->size, dmaengine_buffer->max_size);
+-	block->bytes_used = round_down(block->bytes_used,
+-			dmaengine_buffer->align);
++	max_size = min(block->size, dmaengine_buffer->max_size);
++	max_size = round_down(max_size, dmaengine_buffer->align);
 +
-+	if (queue->buffer.direction == IIO_BUFFER_DIRECTION_IN)
-+		flags = EPOLLIN | EPOLLRDNORM;
-+	else
-+		flags = EPOLLOUT | EPOLLWRNORM;
++	if (queue->buffer.direction == IIO_BUFFER_DIRECTION_IN) {
++		block->bytes_used = max_size;
++		dma_dir = DMA_DEV_TO_MEM;
++	} else {
++		dma_dir = DMA_MEM_TO_DEV;
++	}
 +
-+	wake_up_interruptible_poll(&queue->buffer.pollq, flags);
-+}
-+
- /**
-  * iio_dma_buffer_block_done() - Indicate that a block has been completed
-  * @block: The completed block
-@@ -212,7 +224,7 @@ void iio_dma_buffer_block_done(struct iio_dma_buffer_block *block)
- 	spin_unlock_irqrestore(&queue->list_lock, flags);
++	if (!block->bytes_used || block->bytes_used > max_size)
++		return -EINVAL;
  
- 	iio_buffer_block_put_atomic(block);
--	wake_up_interruptible_poll(&queue->buffer.pollq, EPOLLIN | EPOLLRDNORM);
-+	iio_dma_buffer_queue_wake(queue);
+ 	desc = dmaengine_prep_slave_single(dmaengine_buffer->chan,
+-		block->phys_addr, block->bytes_used, DMA_DEV_TO_MEM,
++		block->phys_addr, block->bytes_used, dma_dir,
+ 		DMA_PREP_INTERRUPT);
+ 	if (!desc)
+ 		return -ENOMEM;
+@@ -229,9 +240,10 @@ void iio_dmaengine_buffer_free(struct iio_buffer *buffer)
  }
- EXPORT_SYMBOL_GPL(iio_dma_buffer_block_done);
+ EXPORT_SYMBOL_NS_GPL(iio_dmaengine_buffer_free, IIO_DMAENGINE_BUFFER);
  
-@@ -241,7 +253,7 @@ void iio_dma_buffer_block_list_abort(struct iio_dma_buffer_queue *queue,
- 	}
- 	spin_unlock_irqrestore(&queue->list_lock, flags);
- 
--	wake_up_interruptible_poll(&queue->buffer.pollq, EPOLLIN | EPOLLRDNORM);
-+	iio_dma_buffer_queue_wake(queue);
- }
- EXPORT_SYMBOL_GPL(iio_dma_buffer_block_list_abort);
- 
-@@ -335,8 +347,24 @@ int iio_dma_buffer_request_update(struct iio_buffer *buffer)
- 			queue->fileio.blocks[i] = block;
- 		}
- 
--		block->state = IIO_BLOCK_STATE_QUEUED;
--		list_add_tail(&block->head, &queue->incoming);
-+		/*
-+		 * block->bytes_used may have been modified previously, e.g. by
-+		 * iio_dma_buffer_block_list_abort(). Reset it here to the
-+		 * block's so that iio_dma_buffer_io() will work.
-+		 */
-+		block->bytes_used = block->size;
-+
-+		/*
-+		 * If it's an input buffer, mark the block as queued, and
-+		 * iio_dma_buffer_enable() will submit it. Otherwise mark it as
-+		 * done, which means it's ready to be dequeued.
-+		 */
-+		if (queue->buffer.direction == IIO_BUFFER_DIRECTION_IN) {
-+			block->state = IIO_BLOCK_STATE_QUEUED;
-+			list_add_tail(&block->head, &queue->incoming);
-+		} else {
-+			block->state = IIO_BLOCK_STATE_DONE;
-+		}
- 	}
- 
- out_unlock:
-@@ -488,20 +516,12 @@ static struct iio_dma_buffer_block *iio_dma_buffer_dequeue(
- 	return block;
- }
- 
--/**
-- * iio_dma_buffer_read() - DMA buffer read callback
-- * @buffer: Buffer to read form
-- * @n: Number of bytes to read
-- * @user_buffer: Userspace buffer to copy the data to
-- *
-- * Should be used as the read callback for iio_buffer_access_ops
-- * struct for DMA buffers.
-- */
--int iio_dma_buffer_read(struct iio_buffer *buffer, size_t n,
--	char __user *user_buffer)
-+static int iio_dma_buffer_io(struct iio_buffer *buffer, size_t n,
-+			     char __user *user_buffer, bool is_from_user)
+-struct iio_buffer *iio_dmaengine_buffer_setup(struct device *dev,
+-					      struct iio_dev *indio_dev,
+-					      const char *channel)
++struct iio_buffer *iio_dmaengine_buffer_setup_ext(struct device *dev,
++						  struct iio_dev *indio_dev,
++						  const char *channel,
++						  enum iio_buffer_direction dir)
  {
- 	struct iio_dma_buffer_queue *queue = iio_buffer_to_queue(buffer);
- 	struct iio_dma_buffer_block *block;
-+	void *addr;
+ 	struct iio_buffer *buffer;
  	int ret;
+@@ -242,6 +254,8 @@ struct iio_buffer *iio_dmaengine_buffer_setup(struct device *dev,
  
- 	if (n < buffer->bytes_per_datum)
-@@ -524,8 +544,13 @@ int iio_dma_buffer_read(struct iio_buffer *buffer, size_t n,
- 	n = rounddown(n, buffer->bytes_per_datum);
- 	if (n > block->bytes_used - queue->fileio.pos)
- 		n = block->bytes_used - queue->fileio.pos;
-+	addr = block->vaddr + queue->fileio.pos;
+ 	indio_dev->modes |= INDIO_BUFFER_HARDWARE;
  
--	if (copy_to_user(user_buffer, block->vaddr + queue->fileio.pos, n)) {
-+	if (is_from_user)
-+		ret = copy_from_user(addr, user_buffer, n);
-+	else
-+		ret = copy_to_user(user_buffer, addr, n);
-+	if (ret) {
- 		ret = -EFAULT;
- 		goto out_unlock;
- 	}
-@@ -544,8 +569,40 @@ int iio_dma_buffer_read(struct iio_buffer *buffer, size_t n,
++	buffer->direction = dir;
++
+ 	ret = iio_device_attach_buffer(indio_dev, buffer);
+ 	if (ret) {
+ 		iio_dmaengine_buffer_free(buffer);
+@@ -250,7 +264,7 @@ struct iio_buffer *iio_dmaengine_buffer_setup(struct device *dev,
  
- 	return ret;
+ 	return buffer;
  }
-+
-+/**
-+ * iio_dma_buffer_read() - DMA buffer read callback
-+ * @buffer: Buffer to read form
-+ * @n: Number of bytes to read
-+ * @user_buffer: Userspace buffer to copy the data to
-+ *
-+ * Should be used as the read callback for iio_buffer_access_ops
-+ * struct for DMA buffers.
-+ */
-+int iio_dma_buffer_read(struct iio_buffer *buffer, size_t n,
-+			char __user *user_buffer)
-+{
-+	return iio_dma_buffer_io(buffer, n, user_buffer, false);
-+}
- EXPORT_SYMBOL_GPL(iio_dma_buffer_read);
+-EXPORT_SYMBOL_NS_GPL(iio_dmaengine_buffer_setup, IIO_DMAENGINE_BUFFER);
++EXPORT_SYMBOL_NS_GPL(iio_dmaengine_buffer_setup_ext, IIO_DMAENGINE_BUFFER);
  
-+/**
-+ * iio_dma_buffer_write() - DMA buffer write callback
-+ * @buffer: Buffer to read form
-+ * @n: Number of bytes to read
-+ * @user_buffer: Userspace buffer to copy the data from
-+ *
-+ * Should be used as the write callback for iio_buffer_access_ops
-+ * struct for DMA buffers.
-+ */
-+int iio_dma_buffer_write(struct iio_buffer *buffer, size_t n,
-+			 const char __user *user_buffer)
-+{
-+	return iio_dma_buffer_io(buffer, n,
-+				 (__force __user char *)user_buffer, true);
-+}
-+EXPORT_SYMBOL_GPL(iio_dma_buffer_write);
+ static void __devm_iio_dmaengine_buffer_free(void *buffer)
+ {
+@@ -268,20 +282,21 @@ static void __devm_iio_dmaengine_buffer_free(void *buffer)
+  * It also appends the INDIO_BUFFER_HARDWARE mode to the supported modes of the
+  * IIO device.
+  */
+-int devm_iio_dmaengine_buffer_setup(struct device *dev,
+-				    struct iio_dev *indio_dev,
+-				    const char *channel)
++int devm_iio_dmaengine_buffer_setup_ext(struct device *dev,
++					struct iio_dev *indio_dev,
++					const char *channel,
++					enum iio_buffer_direction dir)
+ {
+ 	struct iio_buffer *buffer;
+ 
+-	buffer = iio_dmaengine_buffer_setup(dev, indio_dev, channel);
++	buffer = iio_dmaengine_buffer_setup_ext(dev, indio_dev, channel, dir);
+ 	if (IS_ERR(buffer))
+ 		return PTR_ERR(buffer);
+ 
+ 	return devm_add_action_or_reset(dev, __devm_iio_dmaengine_buffer_free,
+ 					buffer);
+ }
+-EXPORT_SYMBOL_NS_GPL(devm_iio_dmaengine_buffer_setup, IIO_DMAENGINE_BUFFER);
++EXPORT_SYMBOL_NS_GPL(devm_iio_dmaengine_buffer_setup_ext, IIO_DMAENGINE_BUFFER);
+ 
+ MODULE_AUTHOR("Lars-Peter Clausen <lars@metafoo.de>");
+ MODULE_DESCRIPTION("DMA buffer for the IIO framework");
+diff --git a/include/linux/iio/buffer-dmaengine.h b/include/linux/iio/buffer-dmaengine.h
+index acb60f9a3fff..81d9a19aeb91 100644
+--- a/include/linux/iio/buffer-dmaengine.h
++++ b/include/linux/iio/buffer-dmaengine.h
+@@ -7,15 +7,28 @@
+ #ifndef __IIO_DMAENGINE_H__
+ #define __IIO_DMAENGINE_H__
+ 
++#include <linux/iio/buffer.h>
 +
- /**
-  * iio_dma_buffer_usage() - DMA buffer data_available and
-  * space_available callback
-diff --git a/include/linux/iio/buffer-dma.h b/include/linux/iio/buffer-dma.h
-index 52a838ec0e575..6e27e47077d56 100644
---- a/include/linux/iio/buffer-dma.h
-+++ b/include/linux/iio/buffer-dma.h
-@@ -132,6 +132,8 @@ int iio_dma_buffer_disable(struct iio_buffer *buffer,
- 	struct iio_dev *indio_dev);
- int iio_dma_buffer_read(struct iio_buffer *buffer, size_t n,
- 	char __user *user_buffer);
-+int iio_dma_buffer_write(struct iio_buffer *buffer, size_t n,
-+			 const char __user *user_buffer);
- size_t iio_dma_buffer_usage(struct iio_buffer *buffer);
- int iio_dma_buffer_set_bytes_per_datum(struct iio_buffer *buffer, size_t bpd);
- int iio_dma_buffer_set_length(struct iio_buffer *buffer, unsigned int length);
+ struct iio_dev;
+ struct device;
+ 
+ void iio_dmaengine_buffer_free(struct iio_buffer *buffer);
+-struct iio_buffer *iio_dmaengine_buffer_setup(struct device *dev,
+-					      struct iio_dev *indio_dev,
+-					      const char *channel);
+-int devm_iio_dmaengine_buffer_setup(struct device *dev,
+-				    struct iio_dev *indio_dev,
+-				    const char *channel);
++struct iio_buffer *iio_dmaengine_buffer_setup_ext(struct device *dev,
++						  struct iio_dev *indio_dev,
++						  const char *channel,
++						  enum iio_buffer_direction dir);
++
++#define iio_dmaengine_buffer_setup(dev, indio_dev, channel)	\
++	iio_dmaengine_buffer_setup_ext(dev, indio_dev, channel,	\
++				       IIO_BUFFER_DIRECTION_IN)
++
++int devm_iio_dmaengine_buffer_setup_ext(struct device *dev,
++					struct iio_dev *indio_dev,
++					const char *channel,
++					enum iio_buffer_direction dir);
++
++#define devm_iio_dmaengine_buffer_setup(dev, indio_dev, channel)	\
++	devm_iio_dmaengine_buffer_setup_ext(dev, indio_dev, channel,	\
++					    IIO_BUFFER_DIRECTION_IN)
+ 
+ #endif
 
 -- 
 2.44.0
