@@ -1,10 +1,10 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 12 Apr 2024 15:36:12 +0200
-Subject: [PATCH v3 05/10] iio: buffer-dmaengine: Enable write support
+Date: Fri, 12 Apr 2024 15:36:13 +0200
+Subject: [PATCH v3 06/10] dt-bindings: iio: dac: add docs for AXI DAC IP
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240412-iio-backend-axi-dac-v3-5-3e9d4c5201fb@analog.com>
+Message-Id: <20240412-iio-backend-axi-dac-v3-6-3e9d4c5201fb@analog.com>
 References: <20240412-iio-backend-axi-dac-v3-0-3e9d4c5201fb@analog.com>
 In-Reply-To: <20240412-iio-backend-axi-dac-v3-0-3e9d4c5201fb@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
@@ -14,52 +14,114 @@ Cc: Dragos Bogdan <dragos.bogdan@analog.com>,
  Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Olivier Moysan <olivier.moysan@foss.st.com>, 
- Paul Cercueil <paul@crapouillou.net>, 
- Alexandru Ardelean <ardeleanalex@gmail.com>, Nuno Sa <nuno.sa@analog.com>
+ Olivier Moysan <olivier.moysan@foss.st.com>, Nuno Sa <nuno.sa@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1712928968; l=1350;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1712928968; l=2630;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=hXi2S9a5+uGRDuzr8SCbjBuocFR5uBxzW+WmAaRiTGE=;
- b=Hho+1y4yMOhp7Uvnab8mYWZeIid+YIkJAJtngeXmY5D23rkRjSaScfQR+JPDdQ+yHzpU9iT3B
- EzlFjO0XcG7Dl+SZayB/O3AeRDPbZlEx6k8oq7OapPX163z5RtsfxY8
+ bh=FdMLzMkvL57/YP8OzEvNAFMyt7a4ot7qTYl6WFcDWew=;
+ b=JVtSOyq6VBhjei69BfsSWCgcLi2HfcacKM0A5r8MfKRzlZ0lZAjudxQAKwjWhlQOObhe0pm8e
+ E+YF/l2b3vDAcHzpkEjbWvyo0tknpiq2dL/3IfQJAKwXrE2BajZCzkV
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Paul Cercueil <paul@crapouillou.net>
+This adds the bindings documentation for the Analog Devices AXI DAC IP
+core.
 
-Use the iio_dma_buffer_write() and iio_dma_buffer_space_available()
-functions provided by the buffer-dma core, to enable write support in
-the buffer-dmaengine code.
-
-Signed-off-by: Paul Cercueil <paul@crapouillou.net>
-Reviewed-by: Alexandru Ardelean <ardeleanalex@gmail.com>
+Reviewed-by: Rob Herring <robh@kernel.org>
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/buffer/industrialio-buffer-dmaengine.c | 2 ++
- 1 file changed, 2 insertions(+)
+ .../devicetree/bindings/iio/dac/adi,axi-dac.yaml   | 62 ++++++++++++++++++++++
+ MAINTAINERS                                        |  7 +++
+ 2 files changed, 69 insertions(+)
 
-diff --git a/drivers/iio/buffer/industrialio-buffer-dmaengine.c b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-index 051e1758e020..e5492572b248 100644
---- a/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-+++ b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-@@ -123,12 +123,14 @@ static void iio_dmaengine_buffer_release(struct iio_buffer *buf)
+diff --git a/Documentation/devicetree/bindings/iio/dac/adi,axi-dac.yaml b/Documentation/devicetree/bindings/iio/dac/adi,axi-dac.yaml
+new file mode 100644
+index 000000000000..a55e9bfc66d7
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/dac/adi,axi-dac.yaml
+@@ -0,0 +1,62 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/dac/adi,axi-dac.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Analog Devices AXI DAC IP core
++
++maintainers:
++  - Nuno Sa <nuno.sa@analog.com>
++
++description: |
++  Analog Devices Generic AXI DAC IP core for interfacing a DAC device
++  with a high speed serial (JESD204B/C) or source synchronous parallel
++  interface (LVDS/CMOS).
++  Usually, some other interface type (i.e SPI) is used as a control
++  interface for the actual DAC, while this IP core will interface
++  to the data-lines of the DAC and handle the streaming of data from
++  memory via DMA into the DAC.
++
++  https://wiki.analog.com/resources/fpga/docs/axi_dac_ip
++
++properties:
++  compatible:
++    enum:
++      - adi,axi-dac-9.1.b
++
++  reg:
++    maxItems: 1
++
++  dmas:
++    maxItems: 1
++
++  dma-names:
++    items:
++      - const: tx
++
++  clocks:
++    maxItems: 1
++
++  '#io-backend-cells':
++    const: 0
++
++required:
++  - compatible
++  - dmas
++  - reg
++  - clocks
++
++additionalProperties: false
++
++examples:
++  - |
++    dac@44a00000 {
++        compatible = "adi,axi-dac-9.1.b";
++        reg = <0x44a00000 0x10000>;
++        dmas = <&tx_dma 0>;
++        dma-names = "tx";
++        #io-backend-cells = <0>;
++        clocks = <&axi_clk>;
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index a7287cf44869..2137eb452376 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1399,6 +1399,13 @@ F:	sound/soc/codecs/adav*
+ F:	sound/soc/codecs/sigmadsp.*
+ F:	sound/soc/codecs/ssm*
  
- static const struct iio_buffer_access_funcs iio_dmaengine_buffer_ops = {
- 	.read = iio_dma_buffer_read,
-+	.write = iio_dma_buffer_write,
- 	.set_bytes_per_datum = iio_dma_buffer_set_bytes_per_datum,
- 	.set_length = iio_dma_buffer_set_length,
- 	.request_update = iio_dma_buffer_request_update,
- 	.enable = iio_dma_buffer_enable,
- 	.disable = iio_dma_buffer_disable,
- 	.data_available = iio_dma_buffer_usage,
-+	.space_available = iio_dma_buffer_usage,
- 	.release = iio_dmaengine_buffer_release,
- 
- 	.modes = INDIO_BUFFER_HARDWARE,
++ANALOG DEVICES INC AXI DAC DRIVER
++M:	Nuno Sa <nuno.sa@analog.com>
++L:	linux-iio@vger.kernel.org
++S:	Supported
++W:	https://ez.analog.com/linux-software-drivers
++F:	Documentation/devicetree/bindings/iio/dac/adi,axi-dac.yaml
++
+ ANALOG DEVICES INC DMA DRIVERS
+ M:	Lars-Peter Clausen <lars@metafoo.de>
+ S:	Supported
 
 -- 
 2.44.0
