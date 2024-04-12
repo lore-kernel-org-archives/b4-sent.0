@@ -1,77 +1,105 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 12 Apr 2024 16:42:30 +0800
-Subject: [PATCH v2] arm64: dts: meson: fix S4 power-controller node
+From: Fenglin Wu <quic_fenglinw@quicinc.com>
+Subject: [PATCH v10 0/4] Add support for vibrator in multiple PMICs
+Date: Fri, 12 Apr 2024 20:36:24 +0800
+Message-Id: <20240412-pm8xxx-vibrator-new-design-v10-0-0ec0ad133866@quicinc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240412-fix-secpwr-s4-v2-1-3802fd936d77@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAPXzGGYC/3WMQQ6CMBBFr0Jm7Zi2qSKuvIdh0ZQpTCKUdEzVk
- N7dyt7l+/nvbSCUmASuzQaJMgvHpYI5NOAnt4yEPFQGo4xVVl0w8BuF/PpKKBZd14XQndWgHEF
- 11kT1sPfufeWJ5RnTZ89n/Vv/lbJGjUo71xK1xp/Mzc2POLI/+jhDX0r5AkNlCI+sAAAA
-To: Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAMgqGWYC/33NPRLCIBQE4KtkqMUB8kesvIdjAeQleYUkgiJOJ
+ neXxEablLsz++1MPDgET07ZTBwE9DjaFDg7ZMQMyvZAsU0FEUwULBeSTjcZY6QBtVOP0VELL9q
+ Cx95SKCXnqi0bkIokYHLQYdz0yzXlAX1avLezINf2yxaM77FBUkarTmipWa4LU5/vTzRozdGMN
+ 7LCofnB+D7WJKzWXVkZ3Qgt5D+2LMsHlfGQjxQBAAA=
+To: kernel@quicinc.com, Andy Gross <agross@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Rob Herring <robh+dt@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1712911352; l=1368;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=oKEf8J5zEQ5VRP4drtkFgH9o2pd0Lw+wi/tMBGddobo=;
- b=g58n8V9t/QOY/0zH12yHIGuXoV1zedqzQpBb4TpKujUbaYz9w6Iv3V+0IJTaDWu4CybnE7KPy
- U0mZWlwsjwxBksQosAldqYNI8h4o8x1+ufJ+NDJhg+Mhz7pmacs70Z5
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+ Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-input@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Fenglin Wu <quic_fenglinw@quicinc.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1712925404; l=3007;
+ i=quic_fenglinw@quicinc.com; s=20240327; h=from:subject:message-id;
+ bh=uVRPkLUxeBeImJcfochb9CYj4hSQ+3CFeTdiRt6pTwE=;
+ b=3dgECVg3VxSnfiFMIJQ37rIrQuj5BeG0VyJXrmba1yHgjbZ3tFN0W0WUqz+vH7ymBbraGcj+d
+ yiMwMwWyBGzANJTDLrgAxLmBYPgdzwbtnFsKBtmPYwwdJR4mdtyiZP6
+X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
+ pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
+X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20240327 with auth_id=146
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The power-controller module works well by adding its parent
-node secure-monitor.
+Add SW support for the vibrator module inside PMI632, PM7250B, PM7325B, PM7550BA.
+It is very similar to the vibrator module inside PM8916 which is supported in
+pm8xxx-vib driver but just the drive amplitude is controlled with 2 registers,
+and the register base offset in each PMIC is different.
 
-Fixes: 085f7a298a14 ("arm64: dts: add support for S4 power domain controller")
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
----
+Changes in v10:
+  1. Add Fixes tag
+  2. Update SSBI vibrator to use DT 'reg' value
+  3. Add drv_in_step flag for programming vibrator level in steps
+     Link to v9: https://lore.kernel.org/r/20240411-pm8xxx-vibrator-new-design-v9-0-7bf56cb92b28@quicinc.com
+
+Changes in v9:
+  1. Add a preceding change to correct VIB_MAX_LEVELS calculation
+  2. Address review comments from Konrad
+     Link to v8: https://lore.kernel.org/r/20240401-pm8xxx-vibrator-new-design-v8-0-6f2b8b03b4c7@quicinc.com
+
+Changes in v8:
+  1. Remove hw_type, and still keep the register info in match data
+  2. Update to use register offset in pm8xxx_regs, and the base address
+     defined in DT for SPMI vibrator will be added in register access
+  3. Update voltage output range for SPMI vibrator which has 2 bytes drive
+     registers
+
+Changes in v7:
+  1. Fix a typo: SSBL_VIB_DRV_REG --> SSBI_VIB_DRV_REG
+  2. Move the hw_type switch case in pm8xxx_vib_set() to the refactoring
+     change.
+
+Changes in v6:
+  1. Add "qcom,pmi632-vib" as a standalone compatible string.
+
+Changes in v5:
+  1. Drop "qcom,spmi-vib-gen2" generic compatible string as requested
+     and use device specific compatible strings only.
+
+Changes in v4:
+  1. Update to use the combination of the HW type and register offset
+     as the constant match data, the register base address defined in
+     'reg' property will be added when accessing SPMI registers using
+     regmap APIs.
+  2. Remove 'qcom,spmi-vib-gen1' generic compatible string.
+
+Changes in v3:
+  1. Refactor the driver to support different type of the vibrators with
+    better flexibility by introducing the HW type with corresponding
+    register fields definitions.
+  2. Add 'qcom,spmi-vib-gen1' and 'qcom,spmi-vib-gen2' compatible
+    strings, and add PMI632, PM7250B, PM7325B, PM7550BA as compatbile as
+    spmi-vib-gen2.
+
 Changes in v2:
-- Add fixes tags in commit message.
-- Add firmware node to adapt documentation.
-- Link to v1: https://lore.kernel.org/r/20240408-fix-secpwr-s4-v1-1-01aa7ee72c52@amlogic.com
----
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+  Remove the "pm7550ba-vib" compatible string as it's compatible with pm7325b.
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-index ce90b35686a2..10896f9df682 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-@@ -65,10 +65,15 @@ xtal: xtal-clk {
- 		#clock-cells = <0>;
- 	};
- 
--	pwrc: power-controller {
--		compatible = "amlogic,meson-s4-pwrc";
--		#power-domain-cells = <1>;
--		status = "okay";
-+	firmware {
-+		sm: secure-monitor {
-+			compatible = "amlogic,meson-gxbb-sm";
-+
-+			pwrc: power-controller {
-+				compatible = "amlogic,meson-s4-pwrc";
-+				#power-domain-cells = <1>;
-+			};
-+		};
- 	};
- 
- 	soc {
-
+Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
-base-commit: 4cece764965020c22cff7665b18a012006359095
-change-id: 20240408-fix-secpwr-s4-a99ff960d0ae
+Fenglin Wu (4):
+      input: pm8xxx-vibrator: correct VIB_MAX_LEVELS calculation
+      input: pm8xxx-vibrator: refactor to support new SPMI vibrator
+      dt-bindings: input: qcom,pm8xxx-vib: add new SPMI vibrator module
+      input: pm8xxx-vibrator: add new SPMI vibrator support
+
+ .../devicetree/bindings/input/qcom,pm8xxx-vib.yaml | 16 +++-
+ drivers/input/misc/pm8xxx-vibrator.c               | 95 ++++++++++++++++------
+ 2 files changed, 84 insertions(+), 27 deletions(-)
+---
+base-commit: 650cda2ce25f08e8fae391b3ba6be27e7296c6a5
+change-id: 20240328-pm8xxx-vibrator-new-design-e5811ad59e8a
 
 Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+Fenglin Wu <quic_fenglinw@quicinc.com>
 
