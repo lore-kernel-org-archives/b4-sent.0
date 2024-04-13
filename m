@@ -1,167 +1,51 @@
-From: Joel Granados <j.granados@samsung.com>
-Date: Fri, 12 Apr 2024 16:48:32 +0200
-Subject: [PATCH v3 4/4] ax.25: Remove the now superfluous sentinel elements
- from ctl_table array
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Subject: [PATCH net 0/4] selftests/net/tcp_ao: A bunch of fixes for TCP-AO
+ selftests
+Date: Sat, 13 Apr 2024 02:42:51 +0100
+Message-Id: <20240413-tcp-ao-selftests-fixes-v1-0-f9c41c96949d@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240412-jag-sysctl_remset_net-v3-4-11187d13c211@samsung.com>
-References: <20240412-jag-sysctl_remset_net-v3-0-11187d13c211@samsung.com>
-In-Reply-To: <20240412-jag-sysctl_remset_net-v3-0-11187d13c211@samsung.com>
+X-B4-Tracking: v=1; b=H4sIABvjGWYC/x2M0QqCQBBFf0XmuQE1i+hXoofZ2Wsu1Co7SwTiv
+ zf6eM7l3JUMJcHo3qxU8E2W5uzQnRrSSfILnKIz9W0/tEN35qoLy8yG91hh1XhMPxhLFI3Xi4Z
+ bEPJ4KTgGbx+UUenpMoiBQ5Gs0/75EasotG1/KEN2noYAAAA=
 To: "David S. Miller" <davem@davemloft.net>, 
  Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Alexander Aring <alex.aring@gmail.com>, 
- Stefan Schmidt <stefan@datenfreihafen.org>, 
- Miquel Raynal <miquel.raynal@bootlin.com>, David Ahern <dsahern@kernel.org>, 
- Steffen Klassert <steffen.klassert@secunet.com>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
- Geliang Tang <geliang@kernel.org>, Ralf Baechle <ralf@linux-mips.org>, 
- Remi Denis-Courmont <courmisch@gmail.com>, 
- Allison Henderson <allison.henderson@oracle.com>, 
- David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>, 
- Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
- Xin Long <lucien.xin@gmail.com>, Wenjia Zhang <wenjia@linux.ibm.com>, 
- Jan Karcher <jaka@linux.ibm.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
- Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
- Trond Myklebust <trond.myklebust@hammerspace.com>, 
- Anna Schumaker <anna@kernel.org>, Chuck Lever <chuck.lever@oracle.com>, 
- Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>, 
- Olga Kornievskaia <kolga@netapp.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, Jon Maloy <jmaloy@redhat.com>, 
- Ying Xue <ying.xue@windriver.com>, Martin Schiller <ms@dev.tdt.de>, 
- Pablo Neira Ayuso <pablo@netfilter.org>, 
- Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, 
- Roopa Prabhu <roopa@nvidia.com>, Nikolay Aleksandrov <razor@blackwall.org>, 
- Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, 
- Joerg Reuter <jreuter@yaina.de>, Luis Chamberlain <mcgrof@kernel.org>, 
- Kees Cook <keescook@chromium.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.linux.dev, 
- linux-hams@vger.kernel.org, linux-rdma@vger.kernel.org, 
- rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, 
- linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org, 
- linux-nfs@vger.kernel.org, tipc-discussion@lists.sourceforge.net, 
- linux-x25@vger.kernel.org, netfilter-devel@vger.kernel.org, 
- coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
- Joel Granados <j.granados@samsung.com>
-X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3615;
- i=j.granados@samsung.com; h=from:subject:message-id;
- bh=CsYowwLbkJaYf30UOT/yoW/0LONY7umz9p0pFyf5n0w=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYZScxgWqGgs+HWHWKs1qufcsukehfTFkxB4
- qfcLlXm7S21V4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmGUnMAAoJELqXzVK3
- lkFPyIYMAJKeHHeh4RoOTaX1NdP5ohrHbpZVGSiik49E67/0ZPgzvWovZ7wB4Imi076PjZu4bKj
- AW6SArlLiGXRpxRP8lsFLWi8JSxw7/cpw1LABPA/4GMJBEMdOuJidHVg/2HsRjoALLBpHgvp+pZ
- /xtrYavCFZ/+FRq1c4aO6NIIP/2rYJGT9vtCr4ec4V822hrgs9adA5JapsW4m0D7E8a1G72iOA5
- 4aD6ApucM/2+2VmxWx3sz2eg+rkXJBOOdNjqm6UdJDdVw3qz3ZPl6odHuM5WcF+2lPxLEbSGF9c
- k86yuwPNW3t7Vdka4VYc0CdWp2tS9Flt6z00h0vuHHCz6t8jDPvIAGRrRVNIMtKXOaPxaFt7V/P
- 9v/LxFQlQeLS4cAqXZtkUrbXUIe5gV5p0/EwN7393eVg16kZpbMJL31ogZ37+42SheKZa2PFu6W
- ljhF0aXKJhFf7Bt6kP53Fo8OSAj7QMj7JQitj2FIDPZhD+rd20eL9WJNB0Q+bG98xOExHQQV4t8
- Kc=
-X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
+ Paolo Abeni <pabeni@redhat.com>, Shuah Khan <shuah@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dmitry Safonov <0x7f454c46@gmail.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1712972582; l=913;
+ i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
+ bh=KHPrFD1YMMjtcQAp8KwZm5roaOz4QkN4zvujtINqzO8=;
+ b=g4UdatSWnniIGkEvTKc/9CPb83Xp944jIoxZpzLz9t1htXBnI3Aw6tuhEKco7FkzxCITkkCkOSFX
+ jed5RYawCjbpGTDx15YXqwSBIGA97j352IR06NXZUMCi5/8jz2Ef
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This commit comes at the tail end of a greater effort to remove the
-empty elements at the end of the ctl_table arrays (sentinels) which will
-reduce the overall build time size of the kernel and run time memory
-bloat by ~64 bytes per sentinel (further information Link :
-https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
+Started as addressing the flakiness issues in rst_ipv*, that affect
+netdev dashboard.
 
-Avoid a buffer overflow when traversing the ctl_table by ensuring that
-AX25_MAX_VALUES is the same as the size of ax25_param_table. This is
-done with a BUILD_BUG_ON where ax25_param_table is defined and a
-CONFIG_AX25_DAMA_SLAVE guard in the unnamed enum definition as well as
-in the ax25_dev_device_up and ax25_ds_set_timer functions.
-
-The overflow happened when the sentinel was removed from
-ax25_param_table. The sentinel's data element was changed when
-CONFIG_AX25_DAMA_SLAVE was undefined. This had no adverse effects as it
-still stopped on the sentinel's null procname but needed to be addressed
-once the sentinel was removed.
-
-Signed-off-by: Joel Granados <j.granados@samsung.com>
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- include/net/ax25.h         | 2 ++
- net/ax25/ax25_dev.c        | 3 +++
- net/ax25/ax25_ds_timer.c   | 4 ++++
- net/ax25/sysctl_net_ax25.c | 3 +--
- 4 files changed, 10 insertions(+), 2 deletions(-)
+Dmitry Safonov (4):
+      selftests/tcp_ao: Make RST tests less flaky
+      selftests/tcp_ao: Zero-init tcp_ao_info_opt
+      selftests/tcp_ao: Fix fscanf() call for format-security
+      selftests/tcp_ao: Printing fixes to confirm with format-security
 
-diff --git a/include/net/ax25.h b/include/net/ax25.h
-index 0d939e5aee4e..eb9cee8252c8 100644
---- a/include/net/ax25.h
-+++ b/include/net/ax25.h
-@@ -139,7 +139,9 @@ enum {
- 	AX25_VALUES_N2,		/* Default N2 value */
- 	AX25_VALUES_PACLEN,	/* AX.25 MTU */
- 	AX25_VALUES_PROTOCOL,	/* Std AX.25, DAMA Slave, DAMA Master */
-+#ifdef CONFIG_AX25_DAMA_SLAVE
- 	AX25_VALUES_DS_TIMEOUT,	/* DAMA Slave timeout */
-+#endif
- 	AX25_MAX_VALUES		/* THIS MUST REMAIN THE LAST ENTRY OF THIS LIST */
- };
- 
-diff --git a/net/ax25/ax25_dev.c b/net/ax25/ax25_dev.c
-index c5462486dbca..af547e185a94 100644
---- a/net/ax25/ax25_dev.c
-+++ b/net/ax25/ax25_dev.c
-@@ -78,7 +78,10 @@ void ax25_dev_device_up(struct net_device *dev)
- 	ax25_dev->values[AX25_VALUES_N2]        = AX25_DEF_N2;
- 	ax25_dev->values[AX25_VALUES_PACLEN]	= AX25_DEF_PACLEN;
- 	ax25_dev->values[AX25_VALUES_PROTOCOL]  = AX25_DEF_PROTOCOL;
-+
-+#ifdef CONFIG_AX25_DAMA_SLAVE
- 	ax25_dev->values[AX25_VALUES_DS_TIMEOUT]= AX25_DEF_DS_TIMEOUT;
-+#endif
- 
- #if defined(CONFIG_AX25_DAMA_SLAVE) || defined(CONFIG_AX25_DAMA_MASTER)
- 	ax25_ds_setup_timer(ax25_dev);
-diff --git a/net/ax25/ax25_ds_timer.c b/net/ax25/ax25_ds_timer.c
-index c4f8adbf8144..8f385d2a7628 100644
---- a/net/ax25/ax25_ds_timer.c
-+++ b/net/ax25/ax25_ds_timer.c
-@@ -49,12 +49,16 @@ void ax25_ds_del_timer(ax25_dev *ax25_dev)
- 
- void ax25_ds_set_timer(ax25_dev *ax25_dev)
- {
-+#ifdef CONFIG_AX25_DAMA_SLAVE
- 	if (ax25_dev == NULL)		/* paranoia */
- 		return;
- 
- 	ax25_dev->dama.slave_timeout =
- 		msecs_to_jiffies(ax25_dev->values[AX25_VALUES_DS_TIMEOUT]) / 10;
- 	mod_timer(&ax25_dev->dama.slave_timer, jiffies + HZ);
-+#else
-+	return;
-+#endif
- }
- 
- /*
-diff --git a/net/ax25/sysctl_net_ax25.c b/net/ax25/sysctl_net_ax25.c
-index db66e11e7fe8..fb9966926e90 100644
---- a/net/ax25/sysctl_net_ax25.c
-+++ b/net/ax25/sysctl_net_ax25.c
-@@ -141,8 +141,6 @@ static const struct ctl_table ax25_param_table[] = {
- 		.extra2		= &max_ds_timeout
- 	},
- #endif
--
--	{ }	/* that's all, folks! */
- };
- 
- int ax25_register_dev_sysctl(ax25_dev *ax25_dev)
-@@ -155,6 +153,7 @@ int ax25_register_dev_sysctl(ax25_dev *ax25_dev)
- 	if (!table)
- 		return -ENOMEM;
- 
-+	BUILD_BUG_ON(AX25_MAX_VALUES != ARRAY_SIZE(ax25_param_table));
- 	for (k = 0; k < AX25_MAX_VALUES; k++)
- 		table[k].data = &ax25_dev->values[k];
- 
+ tools/testing/selftests/net/tcp_ao/lib/proc.c      |  2 +-
+ tools/testing/selftests/net/tcp_ao/lib/setup.c     | 12 +++++------
+ tools/testing/selftests/net/tcp_ao/rst.c           | 23 ++++++++++++----------
+ .../selftests/net/tcp_ao/setsockopt-closed.c       |  2 +-
+ 4 files changed, 21 insertions(+), 18 deletions(-)
+---
+base-commit: 8f2c057754b25075aa3da132cd4fd4478cdab854
+change-id: 20240413-tcp-ao-selftests-fixes-adacd65cb8ba
 
+Best regards,
 -- 
-2.43.0
+Dmitry Safonov <0x7f454c46@gmail.com>
 
