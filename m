@@ -1,11 +1,10 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Sun, 14 Apr 2024 01:08:19 +0300
-Subject: [PATCH net-next 1/2] net: dsa: mt7530-mdio: read PHY address of
- switch from device tree
+Date: Sun, 14 Apr 2024 01:08:20 +0300
+Subject: [PATCH net-next 2/2] net: dsa: mt7530: simplify core operations
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240414-b4-for-netnext-mt7530-phy-addr-from-dt-and-simplify-core-ops-v1-1-b08936df2770@arinc9.com>
+Message-Id: <20240414-b4-for-netnext-mt7530-phy-addr-from-dt-and-simplify-core-ops-v1-2-b08936df2770@arinc9.com>
 References: <20240414-b4-for-netnext-mt7530-phy-addr-from-dt-and-simplify-core-ops-v1-0-b08936df2770@arinc9.com>
 In-Reply-To: <20240414-b4-for-netnext-mt7530-phy-addr-from-dt-and-simplify-core-ops-v1-0-b08936df2770@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -22,245 +21,193 @@ Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713046128; l=8258;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713046128; l=5138;
  i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=zwxOswsQL7H9vODnMG784SHjdTp3S/aW/2AhHkZRQzU=;
- b=hEZ0ycuktBVIJy1+ukxsY7zdwX8YJoYyTjWQVK9zaxSSd5OWelrrRJpjKH+ItPOJuOhr3CPNg
- ygGi2okAXgZDSpj/MqP0NJjoSyq5Ss6Dipufxj14ZO8uEhIkkOzQu8X
+ bh=o4RCzhO0kgaRNXzb5/selbFyHUCLAME8PrfFOQLNkbw=;
+ b=YgnI3He1W+EzOP8bvrmuaBZ3xJ8neD+fuPbDkiAXdS2V8tarzTVqicDpGkmMpeKkn17HZMNGA
+ tU++ojNrcp6AQgGw4+x9fsRpWpe1x7Th2yod930BouoLjfCGnb0sS1K
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Read the PHY address the switch listens on from the reg property of the
-switch node on the device tree. This change brings support for MT7530
-switches on boards with such bootstrapping configuration where the switch
-listens on a different PHY address than the hardcoded PHY address on the
-driver, 31.
-
-As described on the "MT7621 Programming Guide v0.4" document, the MT7530
-switch and its PHYs can be configured to listen on the range of 7-12,
-15-20, 23-28, and 31 and 0-4 PHY addresses.
-
-There are operations where the switch PHY registers are used. For the PHY
-address of the control PHY, transform the MT753X_CTRL_PHY_ADDR constant
-into a macro and use it. The PHY address for the control PHY is 0 when the
-switch listens on 31. In any other case, it is one greater than the PHY
-address the switch listens on.
+The core_rmw() function calls core_read_mmd_indirect() to read the
+requested register, and then calls core_write_mmd_indirect() to write the
+requested value to the register. Because Clause 22 is used to access Clause
+45 registers, some operations on core_write_mmd_indirect() are
+unnecessarily run. Get rid of core_read_mmd_indirect() and
+core_write_mmd_indirect(), and run only the necessary operations on
+core_write() and core_rmw().
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530-mdio.c | 28 ++++++++++++++--------------
- drivers/net/dsa/mt7530.c      | 35 ++++++++++++++++++++++-------------
- drivers/net/dsa/mt7530.h      |  4 +++-
- 3 files changed, 39 insertions(+), 28 deletions(-)
+ drivers/net/dsa/mt7530.c | 108 +++++++++++++++++++----------------------------
+ 1 file changed, 43 insertions(+), 65 deletions(-)
 
-diff --git a/drivers/net/dsa/mt7530-mdio.c b/drivers/net/dsa/mt7530-mdio.c
-index fa3ee85a99c1..599b28c8a340 100644
---- a/drivers/net/dsa/mt7530-mdio.c
-+++ b/drivers/net/dsa/mt7530-mdio.c
-@@ -18,7 +18,8 @@
- static int
- mt7530_regmap_write(void *context, unsigned int reg, unsigned int val)
- {
--	struct mii_bus *bus = context;
-+	struct mt7530_priv *priv = context;
-+	struct mii_bus *bus = priv->bus;
- 	u16 page, r, lo, hi;
- 	int ret;
- 
-@@ -27,36 +28,35 @@ mt7530_regmap_write(void *context, unsigned int reg, unsigned int val)
- 	lo = val & 0xffff;
- 	hi = val >> 16;
- 
--	/* MT7530 uses 31 as the pseudo port */
--	ret = bus->write(bus, 0x1f, 0x1f, page);
-+	ret = bus->write(bus, priv->phy_addr, 0x1f, page);
- 	if (ret < 0)
- 		return ret;
- 
--	ret = bus->write(bus, 0x1f, r,  lo);
-+	ret = bus->write(bus, priv->phy_addr, r, lo);
- 	if (ret < 0)
- 		return ret;
- 
--	ret = bus->write(bus, 0x1f, 0x10, hi);
-+	ret = bus->write(bus, priv->phy_addr, 0x10, hi);
- 	return ret;
- }
- 
- static int
- mt7530_regmap_read(void *context, unsigned int reg, unsigned int *val)
- {
--	struct mii_bus *bus = context;
-+	struct mt7530_priv *priv = context;
-+	struct mii_bus *bus = priv->bus;
- 	u16 page, r, lo, hi;
- 	int ret;
- 
- 	page = (reg >> 6) & 0x3ff;
- 	r = (reg >> 2) & 0xf;
- 
--	/* MT7530 uses 31 as the pseudo port */
--	ret = bus->write(bus, 0x1f, 0x1f, page);
-+	ret = bus->write(bus, priv->phy_addr, 0x1f, page);
- 	if (ret < 0)
- 		return ret;
- 
--	lo = bus->read(bus, 0x1f, r);
--	hi = bus->read(bus, 0x1f, 0x10);
-+	lo = bus->read(bus, priv->phy_addr, r);
-+	hi = bus->read(bus, priv->phy_addr, 0x10);
- 
- 	*val = (hi << 16) | (lo & 0xffff);
- 
-@@ -107,8 +107,7 @@ mt7531_create_sgmii(struct mt7530_priv *priv)
- 		mt7531_pcs_config[i]->unlock = mt7530_mdio_regmap_unlock;
- 		mt7531_pcs_config[i]->lock_arg = &priv->bus->mdio_lock;
- 
--		regmap = devm_regmap_init(priv->dev,
--					  &mt7530_regmap_bus, priv->bus,
-+		regmap = devm_regmap_init(priv->dev, &mt7530_regmap_bus, priv,
- 					  mt7531_pcs_config[i]);
- 		if (IS_ERR(regmap)) {
- 			ret = PTR_ERR(regmap);
-@@ -153,6 +152,7 @@ mt7530_probe(struct mdio_device *mdiodev)
- 
- 	priv->bus = mdiodev->bus;
- 	priv->dev = &mdiodev->dev;
-+	priv->phy_addr = mdiodev->addr;
- 
- 	ret = mt7530_probe_common(priv);
- 	if (ret)
-@@ -203,8 +203,8 @@ mt7530_probe(struct mdio_device *mdiodev)
- 	regmap_config->reg_stride = 4;
- 	regmap_config->max_register = MT7530_CREV;
- 	regmap_config->disable_locking = true;
--	priv->regmap = devm_regmap_init(priv->dev, &mt7530_regmap_bus,
--					priv->bus, regmap_config);
-+	priv->regmap = devm_regmap_init(priv->dev, &mt7530_regmap_bus, priv,
-+					regmap_config);
- 	if (IS_ERR(priv->regmap))
- 		return PTR_ERR(priv->regmap);
- 
 diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index c0d0bce0b594..fefa6dd151fa 100644
+index fefa6dd151fa..2650eacf87a7 100644
 --- a/drivers/net/dsa/mt7530.c
 +++ b/drivers/net/dsa/mt7530.c
-@@ -86,22 +86,26 @@ core_read_mmd_indirect(struct mt7530_priv *priv, int prtad, int devad)
- 	int value, ret;
- 
- 	/* Write the desired MMD Devad */
--	ret = bus->write(bus, 0, MII_MMD_CTRL, devad);
-+	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
-+			 MII_MMD_CTRL, devad);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Write the desired MMD register address */
--	ret = bus->write(bus, 0, MII_MMD_DATA, prtad);
-+	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
-+			 MII_MMD_DATA, prtad);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Select the Function : DATA with no post increment */
--	ret = bus->write(bus, 0, MII_MMD_CTRL, (devad | MII_MMD_CTRL_NOINCR));
-+	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
-+			 MII_MMD_CTRL, devad | MII_MMD_CTRL_NOINCR);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Read the content of the MMD's selected register */
--	value = bus->read(bus, 0, MII_MMD_DATA);
-+	value = bus->read(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
-+			  MII_MMD_DATA);
- 
- 	return value;
- err:
-@@ -118,22 +122,26 @@ core_write_mmd_indirect(struct mt7530_priv *priv, int prtad,
- 	int ret;
- 
- 	/* Write the desired MMD Devad */
--	ret = bus->write(bus, 0, MII_MMD_CTRL, devad);
-+	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
-+			 MII_MMD_CTRL, devad);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Write the desired MMD register address */
--	ret = bus->write(bus, 0, MII_MMD_DATA, prtad);
-+	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
-+			 MII_MMD_DATA, prtad);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Select the Function : DATA with no post increment */
--	ret = bus->write(bus, 0, MII_MMD_CTRL, (devad | MII_MMD_CTRL_NOINCR));
-+	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
-+			 MII_MMD_CTRL, devad | MII_MMD_CTRL_NOINCR);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Write the data into MMD's selected register */
--	ret = bus->write(bus, 0, MII_MMD_DATA, data);
-+	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
-+			 MII_MMD_DATA, data);
- err:
- 	if (ret < 0)
- 		dev_err(&bus->dev,
-@@ -2671,16 +2679,17 @@ mt7531_setup(struct dsa_switch *ds)
- 	 * phy_[read,write]_mmd_indirect is called, we provide our own
- 	 * mt7531_ind_mmd_phy_[read,write] to complete this function.
- 	 */
--	val = mt7531_ind_c45_phy_read(priv, MT753X_CTRL_PHY_ADDR,
-+	val = mt7531_ind_c45_phy_read(priv,
-+				      MT753X_CTRL_PHY_ADDR(priv->phy_addr),
- 				      MDIO_MMD_VEND2, CORE_PLL_GROUP4);
- 	val |= MT7531_RG_SYSPLL_DMY2 | MT7531_PHY_PLL_BYPASS_MODE;
- 	val &= ~MT7531_PHY_PLL_OFF;
--	mt7531_ind_c45_phy_write(priv, MT753X_CTRL_PHY_ADDR, MDIO_MMD_VEND2,
--				 CORE_PLL_GROUP4, val);
-+	mt7531_ind_c45_phy_write(priv, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
-+				 MDIO_MMD_VEND2, CORE_PLL_GROUP4, val);
- 
- 	/* Disable EEE advertisement on the switch PHYs. */
--	for (i = MT753X_CTRL_PHY_ADDR;
--	     i < MT753X_CTRL_PHY_ADDR + MT7530_NUM_PHYS; i++) {
-+	for (i = MT753X_CTRL_PHY_ADDR(priv->phy_addr);
-+	     i < MT753X_CTRL_PHY_ADDR(priv->phy_addr) + MT7530_NUM_PHYS; i++) {
- 		mt7531_ind_c45_phy_write(priv, i, MDIO_MMD_AN, MDIO_AN_EEE_ADV,
- 					 0);
- 	}
-diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
-index 585db03c0548..76adc9d21bcf 100644
---- a/drivers/net/dsa/mt7530.h
-+++ b/drivers/net/dsa/mt7530.h
-@@ -625,7 +625,7 @@ enum mt7531_clk_skew {
- #define  MT7531_PHY_PLL_OFF		BIT(5)
- #define  MT7531_PHY_PLL_BYPASS_MODE	BIT(4)
- 
--#define MT753X_CTRL_PHY_ADDR		0
-+#define MT753X_CTRL_PHY_ADDR(phy_addr)	(phy_addr == 0x1f ? 0 : phy_addr + 1)
- 
- #define CORE_PLL_GROUP5			0x404
- #define  RG_LCDDS_PCW_NCPO1(x)		((x) & 0xffff)
-@@ -774,6 +774,7 @@ struct mt753x_info {
-  * @irq_enable:		IRQ enable bits, synced to SYS_INT_EN
-  * @create_sgmii:	Pointer to function creating SGMII PCS instance(s)
-  * @active_cpu_ports:	Holding the active CPU ports
-+ * @phy_addr:		Holding the PHY address the switch listens on
-  */
- struct mt7530_priv {
- 	struct device		*dev;
-@@ -800,6 +801,7 @@ struct mt7530_priv {
- 	u32 irq_enable;
- 	int (*create_sgmii)(struct mt7530_priv *priv);
- 	u8 active_cpu_ports;
-+	int phy_addr;
+@@ -74,116 +74,94 @@ static const struct mt7530_mib_desc mt7530_mib[] = {
+ 	MIB_DESC(1, 0xb8, "RxArlDrop"),
  };
  
- struct mt7530_hw_vlan_entry {
+-/* Since phy_device has not yet been created and
+- * phy_{read,write}_mmd_indirect is not available, we provide our own
+- * core_{read,write}_mmd_indirect with core_{clear,write,set} wrappers
+- * to complete this function.
+- */
+-static int
+-core_read_mmd_indirect(struct mt7530_priv *priv, int prtad, int devad)
++static void
++mt7530_mutex_lock(struct mt7530_priv *priv)
++{
++	if (priv->bus)
++		mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
++}
++
++static void
++mt7530_mutex_unlock(struct mt7530_priv *priv)
++{
++	if (priv->bus)
++		mutex_unlock(&priv->bus->mdio_lock);
++}
++
++static void
++core_write(struct mt7530_priv *priv, u32 reg, u32 val)
+ {
+ 	struct mii_bus *bus = priv->bus;
+-	int value, ret;
++	int ret;
++
++	mt7530_mutex_lock(priv);
+ 
+ 	/* Write the desired MMD Devad */
+ 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
+-			 MII_MMD_CTRL, devad);
++			 MII_MMD_CTRL, MDIO_MMD_VEND2);
+ 	if (ret < 0)
+ 		goto err;
+ 
+ 	/* Write the desired MMD register address */
+ 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
+-			 MII_MMD_DATA, prtad);
++			 MII_MMD_DATA, reg);
+ 	if (ret < 0)
+ 		goto err;
+ 
+ 	/* Select the Function : DATA with no post increment */
+ 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
+-			 MII_MMD_CTRL, devad | MII_MMD_CTRL_NOINCR);
++			 MII_MMD_CTRL, MDIO_MMD_VEND2 | MII_MMD_CTRL_NOINCR);
+ 	if (ret < 0)
+ 		goto err;
+ 
+-	/* Read the content of the MMD's selected register */
+-	value = bus->read(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
+-			  MII_MMD_DATA);
+-
+-	return value;
++	/* Write the data into MMD's selected register */
++	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
++			 MII_MMD_DATA, val);
+ err:
+-	dev_err(&bus->dev,  "failed to read mmd register\n");
++	if (ret < 0)
++		dev_err(&bus->dev, "failed to write mmd register\n");
+ 
+-	return ret;
++	mt7530_mutex_unlock(priv);
+ }
+ 
+-static int
+-core_write_mmd_indirect(struct mt7530_priv *priv, int prtad,
+-			int devad, u32 data)
++static void
++core_rmw(struct mt7530_priv *priv, u32 reg, u32 mask, u32 set)
+ {
+ 	struct mii_bus *bus = priv->bus;
++	u32 val;
+ 	int ret;
+ 
++	mt7530_mutex_lock(priv);
++
+ 	/* Write the desired MMD Devad */
+ 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
+-			 MII_MMD_CTRL, devad);
++			 MII_MMD_CTRL, MDIO_MMD_VEND2);
+ 	if (ret < 0)
+ 		goto err;
+ 
+ 	/* Write the desired MMD register address */
+ 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
+-			 MII_MMD_DATA, prtad);
++			 MII_MMD_DATA, reg);
+ 	if (ret < 0)
+ 		goto err;
+ 
+ 	/* Select the Function : DATA with no post increment */
+ 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
+-			 MII_MMD_CTRL, devad | MII_MMD_CTRL_NOINCR);
++			 MII_MMD_CTRL, MDIO_MMD_VEND2 | MII_MMD_CTRL_NOINCR);
+ 	if (ret < 0)
+ 		goto err;
+ 
++	/* Read the content of the MMD's selected register */
++	val = bus->read(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
++			MII_MMD_DATA);
++	val &= ~mask;
++	val |= set;
+ 	/* Write the data into MMD's selected register */
+ 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->phy_addr),
+-			 MII_MMD_DATA, data);
++			 MII_MMD_DATA, val);
+ err:
+ 	if (ret < 0)
+-		dev_err(&bus->dev,
+-			"failed to write mmd register\n");
+-	return ret;
+-}
+-
+-static void
+-mt7530_mutex_lock(struct mt7530_priv *priv)
+-{
+-	if (priv->bus)
+-		mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
+-}
+-
+-static void
+-mt7530_mutex_unlock(struct mt7530_priv *priv)
+-{
+-	if (priv->bus)
+-		mutex_unlock(&priv->bus->mdio_lock);
+-}
+-
+-static void
+-core_write(struct mt7530_priv *priv, u32 reg, u32 val)
+-{
+-	mt7530_mutex_lock(priv);
+-
+-	core_write_mmd_indirect(priv, reg, MDIO_MMD_VEND2, val);
+-
+-	mt7530_mutex_unlock(priv);
+-}
+-
+-static void
+-core_rmw(struct mt7530_priv *priv, u32 reg, u32 mask, u32 set)
+-{
+-	u32 val;
+-
+-	mt7530_mutex_lock(priv);
+-
+-	val = core_read_mmd_indirect(priv, reg, MDIO_MMD_VEND2);
+-	val &= ~mask;
+-	val |= set;
+-	core_write_mmd_indirect(priv, reg, MDIO_MMD_VEND2, val);
++		dev_err(&bus->dev, "failed to write mmd register\n");
+ 
+ 	mt7530_mutex_unlock(priv);
+ }
 
 -- 
 2.40.1
