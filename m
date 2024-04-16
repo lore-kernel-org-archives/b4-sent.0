@@ -1,57 +1,109 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Sun, 14 Apr 2024 20:01:24 +0300
-Subject: [PATCH 4/4] ARM: dts: BCM5301X: remove earlycon on ASUS RT-AC3100
- and ASUS RT-AC88U
+From: Fenglin Wu <quic_fenglinw@quicinc.com>
+Subject: [PATCH v11 0/3] Add support for vibrator in multiple PMICs
+Date: Tue, 16 Apr 2024 10:44:31 +0800
+Message-Id: <20240416-pm8xxx-vibrator-new-design-v11-0-7b1c951e1515@quicinc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240414-for-soc-asus-rt-ac3100-improvements-v1-4-0e40caf1a70a@arinc9.com>
-References: <20240414-for-soc-asus-rt-ac3100-improvements-v1-0-0e40caf1a70a@arinc9.com>
-In-Reply-To: <20240414-for-soc-asus-rt-ac3100-improvements-v1-0-0e40caf1a70a@arinc9.com>
-To: Florian Fainelli <florian.fainelli@broadcom.com>, 
- Hauke Mehrtens <hauke@hauke-m.de>, 
- =?utf-8?q?Rafa=C5=82_Mi=C5=82ecki?= <zajec5@gmail.com>, 
- Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713114081; l=782;
- i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=bi+4TJMCgd5mWbrKWAfCvlVW6KiexBBfcJK3dSc81ko=;
- b=GTKiQLdAfsoaTgGBusvq1BOGZYVRgaLQz3N7CUuH4ORpJJK5s1CxVllSQTlQP2ITzw95wiZwT
- ZdXZ+FP8nnWD6wEUK4XPgCU+AWnIJ2h5k8fdFrMHIqX7InHLHKniYpX
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAA/mHWYC/33NzW7CMBAE4FdBPuNq1/lh01PfA/VgOxvYA06ww
+ aRCefcaeqFCynFGmm/uKnEUTupzc1eRsyQZQwmI243yRxsOrKUvhTJgaqgM6elE8zzrLC7ayxh
+ 14JvuOckhaG4I0fZNx2RVAabIg8xPff9d8lFSWfw8zzI92j+2BlxjM2nQ7WAcOahc7Xdf56t4C
+ f7Djyf1gHP3guE61hVs54am9a4zztA7hvCqmVUNoXDAHmyPVUVt+59bluUXEFqF1WMBAAA=
+To: kernel@quicinc.com, Andy Gross <agross@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-input@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Fenglin Wu <quic_fenglinw@quicinc.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.13-dev-83828
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713235479; l=3163;
+ i=quic_fenglinw@quicinc.com; s=20240327; h=from:subject:message-id;
+ bh=RreoZmN1edYuN7I01FSs8Hp2zCBxe6Smv38jWjREaV4=;
+ b=r23ue46tPssBOUx14QG0XF32Hf9unfHC7pg1hOPjY7KUqpeHsmHFbrdyn64EKSa9ssVbFo4wV
+ JE9r7L1hkutBzK6sMG3eioWiNOxlFthbORu0oyiuvW4ly2jwHDnPXrs
+X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
+ pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
+X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20240327 with auth_id=146
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove the earlycon boot argument. As Krzysztof pointed out, earlycon is
-for debugging, not regular mainline usage.
+Add SW support for the vibrator module inside PMI632, PM7250B, PM7325B, PM7550BA.
+It is very similar to the vibrator module inside PM8916 which is supported in
+pm8xxx-vib driver but just the drive amplitude is controlled with 2 registers,
+and the register base offset in each PMIC is different.
 
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Changes in v11:
+  1. Drop the 1st patch since it has been applied
+  2. Update to address review comments
+     Link to v10: https://lore.kernel.org/r/20240412-pm8xxx-vibrator-new-design-v10-0-0ec0ad133866@quicinc.com
+
+Changes in v10:
+  1. Add Fixes tag
+  2. Update SSBI vibrator to use DT 'reg' value
+  3. Add drv_in_step flag for programming vibrator level in steps
+     Link to v9: https://lore.kernel.org/r/20240411-pm8xxx-vibrator-new-design-v9-0-7bf56cb92b28@quicinc.com
+
+Changes in v9:
+  1. Add a preceding change to correct VIB_MAX_LEVELS calculation
+  2. Address review comments from Konrad
+     Link to v8: https://lore.kernel.org/r/20240401-pm8xxx-vibrator-new-design-v8-0-6f2b8b03b4c7@quicinc.com
+
+Changes in v8:
+  1. Remove hw_type, and still keep the register info in match data
+  2. Update to use register offset in pm8xxx_regs, and the base address
+     defined in DT for SPMI vibrator will be added in register access
+  3. Update voltage output range for SPMI vibrator which has 2 bytes drive
+     registers
+
+Changes in v7:
+  1. Fix a typo: SSBL_VIB_DRV_REG --> SSBI_VIB_DRV_REG
+  2. Move the hw_type switch case in pm8xxx_vib_set() to the refactoring
+     change.
+
+Changes in v6:
+  1. Add "qcom,pmi632-vib" as a standalone compatible string.
+
+Changes in v5:
+  1. Drop "qcom,spmi-vib-gen2" generic compatible string as requested
+     and use device specific compatible strings only.
+
+Changes in v4:
+  1. Update to use the combination of the HW type and register offset
+     as the constant match data, the register base address defined in
+     'reg' property will be added when accessing SPMI registers using
+     regmap APIs.
+  2. Remove 'qcom,spmi-vib-gen1' generic compatible string.
+
+Changes in v3:
+  1. Refactor the driver to support different type of the vibrators with
+    better flexibility by introducing the HW type with corresponding
+    register fields definitions.
+  2. Add 'qcom,spmi-vib-gen1' and 'qcom,spmi-vib-gen2' compatible
+    strings, and add PMI632, PM7250B, PM7325B, PM7550BA as compatbile as
+    spmi-vib-gen2.
+
+Changes in v2:
+  Remove the "pm7550ba-vib" compatible string as it's compatible with pm7325b.
+
+Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
- arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi | 4 ----
- 1 file changed, 4 deletions(-)
+Fenglin Wu (3):
+      input: pm8xxx-vibrator: refactor to support new SPMI vibrator
+      dt-bindings: input: qcom,pm8xxx-vib: add new SPMI vibrator module
+      input: pm8xxx-vibrator: add new SPMI vibrator support
 
-diff --git a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi
-index 84d583168d81..9c7efb1c44f1 100644
---- a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi
-+++ b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi
-@@ -9,10 +9,6 @@
- #include <dt-bindings/leds/common.h>
- 
- / {
--	chosen {
--		bootargs = "earlycon";
--	};
--
- 	memory@0 {
- 		device_type = "memory";
- 		reg = <0x00000000 0x08000000>,
+ .../devicetree/bindings/input/qcom,pm8xxx-vib.yaml | 16 +++-
+ drivers/input/misc/pm8xxx-vibrator.c               | 93 ++++++++++++++++------
+ 2 files changed, 80 insertions(+), 29 deletions(-)
+---
+base-commit: 48c0687a322d54ac7e7a685c0b6db78d78f593af
+change-id: 20240328-pm8xxx-vibrator-new-design-e5811ad59e8a
 
+Best regards,
 -- 
-2.40.1
+Fenglin Wu <quic_fenglinw@quicinc.com>
 
