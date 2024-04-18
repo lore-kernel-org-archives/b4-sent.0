@@ -1,216 +1,67 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Thu, 18 Apr 2024 08:35:31 +0300
-Subject: [PATCH net-next v3 2/2] net: dsa: mt7530: simplify core operations
+From: Janne Grunau <j@jannau.net>
+Subject: [PATCH v2 0/5] configs: apple: Switch to standard boot + small
+ adjustments
+Date: Thu, 18 Apr 2024 21:00:24 +0200
+Message-Id: <20240418-apple_config-v2-0-7e5c6b9a9db3@jannau.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240418-b4-for-netnext-mt7530-phy-addr-from-dt-and-simplify-core-ops-v3-2-3b5fb249b004@arinc9.com>
-References: <20240418-b4-for-netnext-mt7530-phy-addr-from-dt-and-simplify-core-ops-v3-0-3b5fb249b004@arinc9.com>
-In-Reply-To: <20240418-b4-for-netnext-mt7530-phy-addr-from-dt-and-simplify-core-ops-v3-0-3b5fb249b004@arinc9.com>
-To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
- Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
- Florian Fainelli <f.fainelli@gmail.com>, 
- Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>, 
- mithat.guner@xeront.com, erkin.bozoglu@xeront.com, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAMhtIWYC/3XMQQ7CIBCF4as0sxYD2Ghx1XuYxgAd2jEGCNRG0
+ 3B3sXuX/0vet0HGRJjh2myQcKVMwdeQhwbsrP2EjMbaILls+UlcmI7xiXcbvKOJqU44OyouO6O
+ gXmJCR++duw21Z8pLSJ9dX8Vv/QOtgnEmTHeWxoqWa9U/tPf6dfS4wFBK+QIaqNVNqQAAAA==
+To: Mark Kettenis <kettenis@openbsd.org>, Tom Rini <trini@konsulko.com>
+Cc: Simon Glass <sjg@chromium.org>, u-boot@lists.denx.de, 
+ asahi@lists.linux.dev, Janne Grunau <j@jannau.net>, 
+ Hector Martin <marcan@marcan.st>, Neal Gompa <neal@gompa.dev>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713418557; l=5288;
- i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=RfxBs9B/Fzk1WIAA5xUIZTQ+V+ktyyYHJt9YOc1yp+I=;
- b=dFkp7dg6Fmu/X4S2jOM8Wgr7VwzNvV5gigwatwe+feI/JLc9njbeCYjrB0iAM+DTliAKLC3p5
- jwE4oIm69u6Bp678YRTPK0hSCBngfz/fjvNuoi08YLXYKPPWq4sLxGH
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1331; i=j@jannau.net;
+ h=from:subject:message-id; bh=wszhNZ4MU9ddNHRZ14s0fd0fyOXux/wMrPcWH5LuASo=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhjTF3NPdi/s+Tp3ip9P+1DI5a0PW+fa3czZtVSk49cziq
+ 4nwbuf4jlIWBjEuBlkxRZYk7ZcdDKtrFGNqH4TBzGFlAhnCwMUpABPR/8bIMCd0p0CaYGmD2zdJ
+ HjH2N6eZrwvUZl2bNq+k7L2okbDxeYb/MReaj1b7zt54LvJ/XXcw/xem5T/ezb83fV5fu3qe5lc
+ eXgA=
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The core_rmw() function calls core_read_mmd_indirect() to read the
-requested register, and then calls core_write_mmd_indirect() to write the
-requested value to the register. Because Clause 22 is used to access Clause
-45 registers, some operations on core_write_mmd_indirect() are
-unnecessarily run. Get rid of core_read_mmd_indirect() and
-core_write_mmd_indirect(), and run only the necessary operations on
-core_write() and core_rmw().
+This series contains a few misc config changes for Apple silicon
+systems:
+- switch from the deprecated distro boot scripts to standard boot
+- allows EFI console resizing based on the video console size
+- enables 16x32 bitmap fonts as Apple devices come with high DPI
+  displays
+- enables 64-bit LBA addressing
 
-Reviewed-by: Daniel Golle <daniel@makrotopia.org>
-Tested-by: Daniel Golle <daniel@makrotopia.org>
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- drivers/net/dsa/mt7530.c | 108 +++++++++++++++++++----------------------------
- 1 file changed, 43 insertions(+), 65 deletions(-)
+Changes in v2:
+- added Reviewed-by: tags
+- switched to BOOTSTD_FULL to enable efi_bootmgr and make interactive
+  use easier
+- override BOOTCOMMAND to not list the bootflows
+- rebased onto v2024.04
+- Link to v1: https://lore.kernel.org/r/20240317-apple_config-v1-0-1b862bc140a9@jannau.net
 
-diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 64b1f6320b9a..e0cb194019f8 100644
---- a/drivers/net/dsa/mt7530.c
-+++ b/drivers/net/dsa/mt7530.c
-@@ -74,116 +74,94 @@ static const struct mt7530_mib_desc mt7530_mib[] = {
- 	MIB_DESC(1, 0xb8, "RxArlDrop"),
- };
- 
--/* Since phy_device has not yet been created and
-- * phy_{read,write}_mmd_indirect is not available, we provide our own
-- * core_{read,write}_mmd_indirect with core_{clear,write,set} wrappers
-- * to complete this function.
-- */
--static int
--core_read_mmd_indirect(struct mt7530_priv *priv, int prtad, int devad)
-+static void
-+mt7530_mutex_lock(struct mt7530_priv *priv)
-+{
-+	if (priv->bus)
-+		mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
-+}
-+
-+static void
-+mt7530_mutex_unlock(struct mt7530_priv *priv)
-+{
-+	if (priv->bus)
-+		mutex_unlock(&priv->bus->mdio_lock);
-+}
-+
-+static void
-+core_write(struct mt7530_priv *priv, u32 reg, u32 val)
- {
- 	struct mii_bus *bus = priv->bus;
--	int value, ret;
-+	int ret;
-+
-+	mt7530_mutex_lock(priv);
- 
- 	/* Write the desired MMD Devad */
- 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
--			 MII_MMD_CTRL, devad);
-+			 MII_MMD_CTRL, MDIO_MMD_VEND2);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Write the desired MMD register address */
- 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
--			 MII_MMD_DATA, prtad);
-+			 MII_MMD_DATA, reg);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Select the Function : DATA with no post increment */
- 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
--			 MII_MMD_CTRL, devad | MII_MMD_CTRL_NOINCR);
-+			 MII_MMD_CTRL, MDIO_MMD_VEND2 | MII_MMD_CTRL_NOINCR);
- 	if (ret < 0)
- 		goto err;
- 
--	/* Read the content of the MMD's selected register */
--	value = bus->read(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
--			  MII_MMD_DATA);
--
--	return value;
-+	/* Write the data into MMD's selected register */
-+	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
-+			 MII_MMD_DATA, val);
- err:
--	dev_err(&bus->dev,  "failed to read mmd register\n");
-+	if (ret < 0)
-+		dev_err(&bus->dev, "failed to write mmd register\n");
- 
--	return ret;
-+	mt7530_mutex_unlock(priv);
- }
- 
--static int
--core_write_mmd_indirect(struct mt7530_priv *priv, int prtad,
--			int devad, u32 data)
-+static void
-+core_rmw(struct mt7530_priv *priv, u32 reg, u32 mask, u32 set)
- {
- 	struct mii_bus *bus = priv->bus;
-+	u32 val;
- 	int ret;
- 
-+	mt7530_mutex_lock(priv);
-+
- 	/* Write the desired MMD Devad */
- 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
--			 MII_MMD_CTRL, devad);
-+			 MII_MMD_CTRL, MDIO_MMD_VEND2);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Write the desired MMD register address */
- 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
--			 MII_MMD_DATA, prtad);
-+			 MII_MMD_DATA, reg);
- 	if (ret < 0)
- 		goto err;
- 
- 	/* Select the Function : DATA with no post increment */
- 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
--			 MII_MMD_CTRL, devad | MII_MMD_CTRL_NOINCR);
-+			 MII_MMD_CTRL, MDIO_MMD_VEND2 | MII_MMD_CTRL_NOINCR);
- 	if (ret < 0)
- 		goto err;
- 
-+	/* Read the content of the MMD's selected register */
-+	val = bus->read(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
-+			MII_MMD_DATA);
-+	val &= ~mask;
-+	val |= set;
- 	/* Write the data into MMD's selected register */
- 	ret = bus->write(bus, MT753X_CTRL_PHY_ADDR(priv->mdiodev->addr),
--			 MII_MMD_DATA, data);
-+			 MII_MMD_DATA, val);
- err:
- 	if (ret < 0)
--		dev_err(&bus->dev,
--			"failed to write mmd register\n");
--	return ret;
--}
--
--static void
--mt7530_mutex_lock(struct mt7530_priv *priv)
--{
--	if (priv->bus)
--		mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
--}
--
--static void
--mt7530_mutex_unlock(struct mt7530_priv *priv)
--{
--	if (priv->bus)
--		mutex_unlock(&priv->bus->mdio_lock);
--}
--
--static void
--core_write(struct mt7530_priv *priv, u32 reg, u32 val)
--{
--	mt7530_mutex_lock(priv);
--
--	core_write_mmd_indirect(priv, reg, MDIO_MMD_VEND2, val);
--
--	mt7530_mutex_unlock(priv);
--}
--
--static void
--core_rmw(struct mt7530_priv *priv, u32 reg, u32 mask, u32 set)
--{
--	u32 val;
--
--	mt7530_mutex_lock(priv);
--
--	val = core_read_mmd_indirect(priv, reg, MDIO_MMD_VEND2);
--	val &= ~mask;
--	val |= set;
--	core_write_mmd_indirect(priv, reg, MDIO_MMD_VEND2, val);
-+		dev_err(&bus->dev, "failed to write mmd register\n");
- 
- 	mt7530_mutex_unlock(priv);
- }
+---
+Hector Martin (1):
+      apple_m1_defconfig: Turn on CONFIG_SYS_64BIT_LBA
 
+Janne Grunau (4):
+      configs: apple: Use "vidconsole,serial" as stdout/stderr
+      configs: apple: Enable CMD_SELECT_FONT and FONT_16X32
+      arm: apple: Switch to standard boot
+      arm: apple: Do not list bootflows on boot
+
+ arch/arm/Kconfig           |  2 +-
+ configs/apple_m1_defconfig |  4 ++++
+ include/configs/apple.h    | 24 ++++--------------------
+ 3 files changed, 9 insertions(+), 21 deletions(-)
+---
+base-commit: 25049ad560826f7dc1c4740883b0016014a59789
+change-id: 20240317-apple_config-981fcd9028b9
+
+Best regards,
 -- 
-2.40.1
+Janne Grunau <j@jannau.net>
 
