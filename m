@@ -1,226 +1,95 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Fri, 19 Apr 2024 10:22:51 +0300
-Subject: [PATCH v2 4/4] ARM: dts: BCM5301X: Add DT for ASUS RT-AC5300
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH v4 00/10] iio: dac: support IIO backends on the output
+ direction
+Date: Fri, 19 Apr 2024 10:25:33 +0200
+Message-Id: <20240419-iio-backend-axi-dac-v4-0-5ca45b4de294@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240419-for-soc-asus-rt-ac3200-ac5300-v2-4-f95ff50c2a4d@arinc9.com>
-References: <20240419-for-soc-asus-rt-ac3200-ac5300-v2-0-f95ff50c2a4d@arinc9.com>
-In-Reply-To: <20240419-for-soc-asus-rt-ac3200-ac5300-v2-0-f95ff50c2a4d@arinc9.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
- Hauke Mehrtens <hauke@hauke-m.de>, Rafal Milecki <zajec5@gmail.com>, 
- Florian Fainelli <florian.fainelli@broadcom.com>, 
- Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>
-Cc: Tom Brautaset <tbrautaset@gmail.com>, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIAH0qImYC/32NQQ6CMBBFr0Jm7ZjSVhJceQ/DYmgHmKgtaQ3BE
+ O5u5QAu30v++xtkTsIZrtUGiRfJEkMBe6rATRRGRvGFQSttla01ikTsyT04eKRV0JPD3jQteUe
+ 2IQVlOSceZD2q967wJPkd0+c4WczP/u8tBhUabr11F63qob9RoGcczy6+oNv3/QsJjeE2twAAA
+ A==
+To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
+Cc: Dragos Bogdan <dragos.bogdan@analog.com>, 
+ Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Olivier Moysan <olivier.moysan@foss.st.com>, Nuno Sa <nuno.sa@analog.com>, 
+ Paul Cercueil <paul@crapouillou.net>, 
+ Alexandru Ardelean <ardeleanalex@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713511368; l=4382;
- i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=Hh1hFLSkYeym2L6Ley0dgoK9f6xM572VDJkCcZTPEBo=;
- b=7FuoBIJgppNlyc5ai7U1smffD/Ml0jmn+kkuuh2OdZBOVuiqsRWjWac5TV+8Ih2XUqK1h/aNN
- DALNUT9o3XEAflkHEJcvth5mluZx3RIpOKM5rVrfaxQUSw4k9sbZpQp
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713515134; l=2355;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=6Jc63Ty3AclW4Qt3X4Q3sXMZP6yZwhBtynEVSVLwiZo=;
+ b=btC7zoHobyKtlNXdb77uQliTZs2BXBv2Fv5mSzJu9UQBdqwV00mwAoA9STXrQQDyhU4l6mI1+
+ n7xxElW+5nLCEggR1im35BrVMtY8b0aSVfu8vq4k1fChNx/MsD+PzaB
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the device tree for ASUS RT-AC5300 which is an AC5300 router featuring
-5 Ethernet ports over the integrated Broadcom switch.
+Hi Jonathan,
 
-Hardware info:
-* Processor: Broadcom BCM4709C0 dual-core @ 1.4 GHz
-* Switch: BCM53012 in BCM4709C0
-* DDR3 RAM: 512 MB
-* Flash: 128 MB
-* 2.4GHz: BCM4366 4x4 single chip 802.11b/g/n SoC
-* 5GHz: BCM4366 4x4 two chips 802.11a/n/ac SoC
-* Ports: 4 LAN Ports, 1 WAN Port
+Here it goes v4. Added default value for full scale current and
+corrected the minimum value.
 
-Co-developed-by: Tom Brautaset <tbrautaset@gmail.com>
-Signed-off-by: Tom Brautaset <tbrautaset@gmail.com>
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Full log:
+
+v1:
+ * https://lore.kernel.org/all/20240328-iio-backend-axi-dac-v1-0-afc808b3fde3@analog.com
+
+v2:
+ * https://lore.kernel.org/all/20240405-iio-backend-axi-dac-v2-0-293bab7d5552@analog.com 
+
+v3:
+ * https://lore.kernel.org/r/20240412-iio-backend-axi-dac-v3-0-3e9d4c5201fb@analog.com 
+
+v4:
+ * Patch 7:
+   - Added default value for full scale current;
+   - Corrected the minimum value for full scale current.
+ * Patch 10:
+   - Corrected the minimum value for full scale current. 
+
 ---
- arch/arm/boot/dts/broadcom/Makefile                |   1 +
- .../boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts  | 156 +++++++++++++++++++++
- 2 files changed, 157 insertions(+)
+Nuno Sa (6):
+      iio: buffer-dma: add iio_dmaengine_buffer_setup()
+      dt-bindings: iio: dac: add docs for AXI DAC IP
+      dt-bindings: iio: dac: add docs for AD9739A
+      iio: backend: add new functionality
+      iio: dac: add support for AXI DAC IP core
+      iio: dac: support the ad9739a RF DAC
 
-diff --git a/arch/arm/boot/dts/broadcom/Makefile b/arch/arm/boot/dts/broadcom/Makefile
-index c61fca514775..5881bcc95eba 100644
---- a/arch/arm/boot/dts/broadcom/Makefile
-+++ b/arch/arm/boot/dts/broadcom/Makefile
-@@ -72,6 +72,7 @@ dtb-$(CONFIG_ARCH_BCM_5301X) += \
- 	bcm4709-netgear-r8000.dtb \
- 	bcm4709-tplink-archer-c9-v1.dtb \
- 	bcm47094-asus-rt-ac3100.dtb \
-+	bcm47094-asus-rt-ac5300.dtb \
- 	bcm47094-asus-rt-ac88u.dtb \
- 	bcm47094-dlink-dir-885l.dtb \
- 	bcm47094-dlink-dir-890l.dtb \
-diff --git a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts
-new file mode 100644
-index 000000000000..b75154a9710d
---- /dev/null
-+++ b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts
-@@ -0,0 +1,156 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-+/*
-+ * Author: Tom Brautaset <tbrautaset@gmail.com>
-+ */
-+
-+/dts-v1/;
-+
-+#include "bcm47094.dtsi"
-+#include "bcm5301x-nand-cs0-bch8.dtsi"
-+
-+#include <dt-bindings/leds/common.h>
-+
-+/ {
-+	compatible = "asus,rt-ac5300", "brcm,bcm47094", "brcm,bcm4708";
-+	model = "ASUS RT-AC5300";
-+
-+	memory@0 {
-+		device_type = "memory";
-+		reg = <0x00000000 0x08000000>,
-+		      <0x88000000 0x18000000>;
-+	};
-+
-+	nvram@1c080000 {
-+		compatible = "brcm,nvram";
-+		reg = <0x1c080000 0x00180000>;
-+
-+		et1macaddr: et1macaddr {
-+			#nvmem-cell-cells = <1>;
-+		};
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+
-+		led-lan {
-+			color = <LED_COLOR_ID_WHITE>;
-+			function = LED_FUNCTION_LAN;
-+			gpios = <&chipcommon 21 GPIO_ACTIVE_LOW>;
-+		};
-+
-+		led-power {
-+			color = <LED_COLOR_ID_WHITE>;
-+			function = LED_FUNCTION_POWER;
-+			gpios = <&chipcommon 3 GPIO_ACTIVE_LOW>;
-+			linux,default-trigger = "default-on";
-+		};
-+
-+		led-wan-red {
-+			color = <LED_COLOR_ID_RED>;
-+			function = LED_FUNCTION_WAN;
-+			gpios = <&chipcommon 5 GPIO_ACTIVE_HIGH>;
-+		};
-+
-+		led-wps {
-+			color = <LED_COLOR_ID_WHITE>;
-+			function = LED_FUNCTION_WPS;
-+			gpios = <&chipcommon 19 GPIO_ACTIVE_LOW>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		button-reset {
-+			label = "Reset";
-+			linux,code = <KEY_RESTART>;
-+			gpios = <&chipcommon 11 GPIO_ACTIVE_LOW>;
-+		};
-+
-+		button-wifi {
-+			label = "Wi-Fi";
-+			linux,code = <KEY_RFKILL>;
-+			gpios = <&chipcommon 20 GPIO_ACTIVE_LOW>;
-+		};
-+
-+		button-wps {
-+			label = "WPS";
-+			linux,code = <KEY_WPS_BUTTON>;
-+			gpios = <&chipcommon 18 GPIO_ACTIVE_LOW>;
-+		};
-+	};
-+};
-+
-+&usb2 {
-+	vcc-gpio = <&chipcommon 9 GPIO_ACTIVE_HIGH>;
-+};
-+
-+&usb3_phy {
-+	status = "okay";
-+};
-+
-+&gmac0 {
-+	nvmem-cells = <&et1macaddr 0>;
-+	nvmem-cell-names = "mac-address";
-+};
-+
-+&gmac1 {
-+	nvmem-cells = <&et1macaddr 1>;
-+	nvmem-cell-names = "mac-address";
-+};
-+
-+&gmac2 {
-+	nvmem-cells = <&et1macaddr 2>;
-+	nvmem-cell-names = "mac-address";
-+};
-+
-+&srab {
-+	status = "okay";
-+
-+	ports {
-+		port@0 {
-+			label = "lan4";
-+		};
-+
-+		port@1 {
-+			label = "lan3";
-+		};
-+
-+		port@2 {
-+			label = "lan2";
-+		};
-+
-+		port@3 {
-+			label = "lan1";
-+		};
-+
-+		port@4 {
-+			label = "wan";
-+		};
-+	};
-+};
-+
-+&nandcs {
-+	partitions {
-+		compatible = "fixed-partitions";
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+
-+		partition@0 {
-+			label = "boot";
-+			reg = <0x00000000 0x00080000>;
-+			read-only;
-+		};
-+
-+		partition@80000 {
-+			label = "nvram";
-+			reg = <0x00080000 0x00180000>;
-+		};
-+
-+		partition@200000 {
-+			label = "firmware";
-+			reg = <0x00200000 0x07e00000>;
-+			compatible = "brcm,trx";
-+		};
-+	};
-+};
+Paul Cercueil (4):
+      iio: buffer-dma: Rename iio_dma_buffer_data_available()
+      iio: buffer-dma: Enable buffer write support
+      iio: buffer-dmaengine: Support specifying buffer direction
+      iio: buffer-dmaengine: Enable write support
 
--- 
-2.40.1
+ Documentation/ABI/testing/sysfs-bus-iio-ad9739a    |  19 +
+ .../devicetree/bindings/iio/dac/adi,ad9739a.yaml   |  95 +++
+ .../devicetree/bindings/iio/dac/adi,axi-dac.yaml   |  62 ++
+ MAINTAINERS                                        |  17 +
+ drivers/iio/adc/adi-axi-adc.c                      |  16 +-
+ drivers/iio/buffer/industrialio-buffer-dma.c       | 100 +++-
+ drivers/iio/buffer/industrialio-buffer-dmaengine.c |  83 +--
+ drivers/iio/dac/Kconfig                            |  37 ++
+ drivers/iio/dac/Makefile                           |   2 +
+ drivers/iio/dac/ad9739a.c                          | 463 +++++++++++++++
+ drivers/iio/dac/adi-axi-dac.c                      | 635 +++++++++++++++++++++
+ drivers/iio/industrialio-backend.c                 | 179 ++++++
+ include/linux/iio/backend.h                        |  49 ++
+ include/linux/iio/buffer-dma.h                     |   4 +-
+ include/linux/iio/buffer-dmaengine.h               |  24 +-
+ 15 files changed, 1706 insertions(+), 79 deletions(-)
+---
+base-commit: aabc0aa90c927a03d509d0b592720d9897894ce4
+change-id: 20240412-iio-backend-axi-dac-b369adca46a0
+--
+
+Thanks!
+- Nuno Sá
 
