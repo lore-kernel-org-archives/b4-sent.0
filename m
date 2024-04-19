@@ -1,10 +1,10 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 19 Apr 2024 17:36:46 +0200
-Subject: [PATCH 3/8] dt-bindings: adc: axi-adc: add clocks property
+Date: Fri, 19 Apr 2024 17:36:47 +0200
+Subject: [PATCH 4/8] iio: adc: axi-adc: make sure AXI clock is enabled
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240419-ad9467-new-features-v1-3-3e7628ff6d5e@analog.com>
+Message-Id: <20240419-ad9467-new-features-v1-4-3e7628ff6d5e@analog.com>
 References: <20240419-ad9467-new-features-v1-0-3e7628ff6d5e@analog.com>
 In-Reply-To: <20240419-ad9467-new-features-v1-0-3e7628ff6d5e@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
@@ -17,54 +17,47 @@ Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>,
  Conor Dooley <conor+dt@kernel.org>, 
  Olivier Moysan <olivier.moysan@foss.st.com>, Nuno Sa <nuno.sa@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713541010; l=1048;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713541010; l=1075;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=ZntCSlHgOIAf1gqisnjrXuzKRZVpUr7uIRrPEaUInis=;
- b=HJBmv5brfYl/udSe+tJNa4T7w9PlMfU2vjNLhq6bstQ7ivb98lNF82DJyakUMqIx0+ruqr9p/
- WLZEwd5JWahAPaQUKzPGm4HIAQ3H7lwNiIpXpRCmuZrPAj1LIRYCH20
+ bh=vcTpXfTnayLjDiRZnxJ+F5aPNAy5eajFubKg0Cjp4PM=;
+ b=DJqz9cqAlXa2S8X6UlnFqgxQpwj+itH3404Ns1gnu3EjcUw0EhCiJKm9YwHY82rX9ZEvp/9R7
+ Mjva1Fe/xVeBDo064MiyI6ztaWaeeY9F5RsUuyOFwWyFcXGzYed56zd
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a required clock property as we can't access the device registers if
-the AXI bus clock is not properly enabled.
+We can only access the IP core registers if the bus clock is enabled. As
+such we need to get and enable it and not rely on anyone else to do it.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml | 5 +++++
+ drivers/iio/adc/adi-axi-adc.c | 5 +++++
  1 file changed, 5 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml b/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml
-index 3d49d21ad33df..e1f450b80db27 100644
---- a/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml
-+++ b/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml
-@@ -28,6 +28,9 @@ properties:
-   reg:
-     maxItems: 1
+diff --git a/drivers/iio/adc/adi-axi-adc.c b/drivers/iio/adc/adi-axi-adc.c
+index a543b91124b07..e3b2158829416 100644
+--- a/drivers/iio/adc/adi-axi-adc.c
++++ b/drivers/iio/adc/adi-axi-adc.c
+@@ -175,6 +175,7 @@ static int adi_axi_adc_probe(struct platform_device *pdev)
+ 	struct adi_axi_adc_state *st;
+ 	void __iomem *base;
+ 	unsigned int ver;
++	struct clk *clk;
+ 	int ret;
  
-+  clocks:
-+    maxItems: 1
+ 	st = devm_kzalloc(&pdev->dev, sizeof(*st), GFP_KERNEL);
+@@ -195,6 +196,10 @@ static int adi_axi_adc_probe(struct platform_device *pdev)
+ 	if (!expected_ver)
+ 		return -ENODEV;
+ 
++	clk = devm_clk_get_enabled(&pdev->dev, NULL);
++	if (IS_ERR(clk))
++		return PTR_ERR(clk);
 +
-   dmas:
-     maxItems: 1
- 
-@@ -48,6 +51,7 @@ required:
-   - compatible
-   - dmas
-   - reg
-+  - clocks
- 
- additionalProperties: false
- 
-@@ -58,6 +62,7 @@ examples:
-         reg = <0x44a00000 0x10000>;
-         dmas = <&rx_dma 0>;
-         dma-names = "rx";
-+        clocks = <&axi_clk>;
-         #io-backend-cells = <0>;
-     };
- ...
+ 	/*
+ 	 * Force disable the core. Up to the frontend to enable us. And we can
+ 	 * still read/write registers...
 
 -- 
 2.44.0
