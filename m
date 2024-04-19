@@ -1,11 +1,10 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 19 Apr 2024 17:36:45 +0200
-Subject: [PATCH 2/8] iio: adc: adi-axi-adc: only error out in major version
- mismatch
+Date: Fri, 19 Apr 2024 17:36:46 +0200
+Subject: [PATCH 3/8] dt-bindings: adc: axi-adc: add clocks property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240419-ad9467-new-features-v1-2-3e7628ff6d5e@analog.com>
+Message-Id: <20240419-ad9467-new-features-v1-3-3e7628ff6d5e@analog.com>
 References: <20240419-ad9467-new-features-v1-0-3e7628ff6d5e@analog.com>
 In-Reply-To: <20240419-ad9467-new-features-v1-0-3e7628ff6d5e@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
@@ -18,45 +17,54 @@ Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>,
  Conor Dooley <conor+dt@kernel.org>, 
  Olivier Moysan <olivier.moysan@foss.st.com>, Nuno Sa <nuno.sa@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713541010; l=1320;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713541010; l=1048;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=PKeKv+/FjVf4CBXkS3IXNv+HfrXrDFDeJP+4Q7Z6xTk=;
- b=BFlPAe3M5OBgFWkkaWq/O6gsfGa0Vd1GEBUfwRCXcvzaGJ+FegFvmtfP1dTDZkZfHI3pR2ABp
- MTCRXzhpKF3AveS9Ijc58ZBmReShPeIV05HubsvboArxiYkuHx3A0nA
+ bh=ZntCSlHgOIAf1gqisnjrXuzKRZVpUr7uIRrPEaUInis=;
+ b=HJBmv5brfYl/udSe+tJNa4T7w9PlMfU2vjNLhq6bstQ7ivb98lNF82DJyakUMqIx0+ruqr9p/
+ WLZEwd5JWahAPaQUKzPGm4HIAQ3H7lwNiIpXpRCmuZrPAj1LIRYCH20
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The IP core only has breaking changes when there major version changes.
-Hence, only match the major number. This is also in line with the other
-core ADI has upstream. The current check for erroring out
-'expected_version > current_version"' is then wrong as we could just
-increase the core major with breaking changes and that would go
-unnoticed.
+Add a required clock property as we can't access the device registers if
+the AXI bus clock is not properly enabled.
 
-Fixes: ef04070692a2 ("iio: adc: adi-axi-adc: add support for AXI ADC IP core")
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/adc/adi-axi-adc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/iio/adc/adi-axi-adc.c b/drivers/iio/adc/adi-axi-adc.c
-index 4156639b3c8bd..a543b91124b07 100644
---- a/drivers/iio/adc/adi-axi-adc.c
-+++ b/drivers/iio/adc/adi-axi-adc.c
-@@ -207,9 +207,9 @@ static int adi_axi_adc_probe(struct platform_device *pdev)
- 	if (ret)
- 		return ret;
+diff --git a/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml b/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml
+index 3d49d21ad33df..e1f450b80db27 100644
+--- a/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml
++++ b/Documentation/devicetree/bindings/iio/adc/adi,axi-adc.yaml
+@@ -28,6 +28,9 @@ properties:
+   reg:
+     maxItems: 1
  
--	if (*expected_ver > ver) {
-+	if (ADI_AXI_PCORE_VER_MAJOR(ver) != ADI_AXI_PCORE_VER_MAJOR(*expected_ver)) {
- 		dev_err(&pdev->dev,
--			"IP core version is too old. Expected %d.%.2d.%c, Reported %d.%.2d.%c\n",
-+			"Major version mismatch. Expected %d.%.2d.%c, Reported %d.%.2d.%c\n",
- 			ADI_AXI_PCORE_VER_MAJOR(*expected_ver),
- 			ADI_AXI_PCORE_VER_MINOR(*expected_ver),
- 			ADI_AXI_PCORE_VER_PATCH(*expected_ver),
++  clocks:
++    maxItems: 1
++
+   dmas:
+     maxItems: 1
+ 
+@@ -48,6 +51,7 @@ required:
+   - compatible
+   - dmas
+   - reg
++  - clocks
+ 
+ additionalProperties: false
+ 
+@@ -58,6 +62,7 @@ examples:
+         reg = <0x44a00000 0x10000>;
+         dmas = <&rx_dma 0>;
+         dma-names = "rx";
++        clocks = <&axi_clk>;
+         #io-backend-cells = <0>;
+     };
+ ...
 
 -- 
 2.44.0
