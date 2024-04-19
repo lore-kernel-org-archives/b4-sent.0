@@ -1,11 +1,10 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 19 Apr 2024 10:25:37 +0200
-Subject: [PATCH v4 04/10] iio: buffer-dmaengine: Support specifying buffer
- direction
+Date: Fri, 19 Apr 2024 10:25:38 +0200
+Subject: [PATCH v4 05/10] iio: buffer-dmaengine: Enable write support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240419-iio-backend-axi-dac-v4-4-5ca45b4de294@analog.com>
+Message-Id: <20240419-iio-backend-axi-dac-v4-5-5ca45b4de294@analog.com>
 References: <20240419-iio-backend-axi-dac-v4-0-5ca45b4de294@analog.com>
 In-Reply-To: <20240419-iio-backend-axi-dac-v4-0-5ca45b4de294@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
@@ -19,11 +18,11 @@ Cc: Dragos Bogdan <dragos.bogdan@analog.com>,
  Paul Cercueil <paul@crapouillou.net>, 
  Alexandru Ardelean <ardeleanalex@gmail.com>, Nuno Sa <nuno.sa@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713515134; l=5579;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713515134; l=1350;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=u23I6KLSCcrBhm4fnCuOy4udHamrKg4Ga64h2+KE9cI=;
- b=x4GnbGszJM4BngRXaOWF3R2YmYGWhjWeGO+ilRLFaYNQtMcn+TlrwFFvdKkEPo/jj+pQUds8M
- WPTHwfzCv+dCsd4moAnvdoLF+BiEsCk+GU8Z1Gmv24p9uw4mtBVEB21
+ bh=hXi2S9a5+uGRDuzr8SCbjBuocFR5uBxzW+WmAaRiTGE=;
+ b=1HjaJfeTFqtcxwQg6Ke89Msmv6kZWU6mZmkQcZqjYDR5GXWK+C0pEztEeiu2izjhETLtxKdXc
+ kaLfHvesyVgAM9/jBLC2CldwjAvLvABXP8Z1QAXvb7fMErdjGtvQdk2
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
@@ -31,152 +30,36 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Paul Cercueil <paul@crapouillou.net>
 
-Update the devm_iio_dmaengine_buffer_setup() function to support
-specifying the buffer direction.
-
-Update the iio_dmaengine_buffer_submit() function to handle input
-buffers as well as output buffers.
+Use the iio_dma_buffer_write() and iio_dma_buffer_space_available()
+functions provided by the buffer-dma core, to enable write support in
+the buffer-dmaengine code.
 
 Signed-off-by: Paul Cercueil <paul@crapouillou.net>
 Reviewed-by: Alexandru Ardelean <ardeleanalex@gmail.com>
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/buffer/industrialio-buffer-dmaengine.c | 41 +++++++++++++++-------
- include/linux/iio/buffer-dmaengine.h               | 25 +++++++++----
- 2 files changed, 47 insertions(+), 19 deletions(-)
+ drivers/iio/buffer/industrialio-buffer-dmaengine.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/drivers/iio/buffer/industrialio-buffer-dmaengine.c b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-index df05d66afff9..051e1758e020 100644
+index 051e1758e020..e5492572b248 100644
 --- a/drivers/iio/buffer/industrialio-buffer-dmaengine.c
 +++ b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-@@ -64,14 +64,25 @@ static int iio_dmaengine_buffer_submit_block(struct iio_dma_buffer_queue *queue,
- 	struct dmaengine_buffer *dmaengine_buffer =
- 		iio_buffer_to_dmaengine_buffer(&queue->buffer);
- 	struct dma_async_tx_descriptor *desc;
-+	enum dma_transfer_direction dma_dir;
-+	size_t max_size;
- 	dma_cookie_t cookie;
+@@ -123,12 +123,14 @@ static void iio_dmaengine_buffer_release(struct iio_buffer *buf)
  
--	block->bytes_used = min(block->size, dmaengine_buffer->max_size);
--	block->bytes_used = round_down(block->bytes_used,
--			dmaengine_buffer->align);
-+	max_size = min(block->size, dmaengine_buffer->max_size);
-+	max_size = round_down(max_size, dmaengine_buffer->align);
-+
-+	if (queue->buffer.direction == IIO_BUFFER_DIRECTION_IN) {
-+		block->bytes_used = max_size;
-+		dma_dir = DMA_DEV_TO_MEM;
-+	} else {
-+		dma_dir = DMA_MEM_TO_DEV;
-+	}
-+
-+	if (!block->bytes_used || block->bytes_used > max_size)
-+		return -EINVAL;
+ static const struct iio_buffer_access_funcs iio_dmaengine_buffer_ops = {
+ 	.read = iio_dma_buffer_read,
++	.write = iio_dma_buffer_write,
+ 	.set_bytes_per_datum = iio_dma_buffer_set_bytes_per_datum,
+ 	.set_length = iio_dma_buffer_set_length,
+ 	.request_update = iio_dma_buffer_request_update,
+ 	.enable = iio_dma_buffer_enable,
+ 	.disable = iio_dma_buffer_disable,
+ 	.data_available = iio_dma_buffer_usage,
++	.space_available = iio_dma_buffer_usage,
+ 	.release = iio_dmaengine_buffer_release,
  
- 	desc = dmaengine_prep_slave_single(dmaengine_buffer->chan,
--		block->phys_addr, block->bytes_used, DMA_DEV_TO_MEM,
-+		block->phys_addr, block->bytes_used, dma_dir,
- 		DMA_PREP_INTERRUPT);
- 	if (!desc)
- 		return -ENOMEM;
-@@ -229,9 +240,10 @@ void iio_dmaengine_buffer_free(struct iio_buffer *buffer)
- }
- EXPORT_SYMBOL_NS_GPL(iio_dmaengine_buffer_free, IIO_DMAENGINE_BUFFER);
- 
--struct iio_buffer *iio_dmaengine_buffer_setup(struct device *dev,
--					      struct iio_dev *indio_dev,
--					      const char *channel)
-+struct iio_buffer *iio_dmaengine_buffer_setup_ext(struct device *dev,
-+						  struct iio_dev *indio_dev,
-+						  const char *channel,
-+						  enum iio_buffer_direction dir)
- {
- 	struct iio_buffer *buffer;
- 	int ret;
-@@ -242,6 +254,8 @@ struct iio_buffer *iio_dmaengine_buffer_setup(struct device *dev,
- 
- 	indio_dev->modes |= INDIO_BUFFER_HARDWARE;
- 
-+	buffer->direction = dir;
-+
- 	ret = iio_device_attach_buffer(indio_dev, buffer);
- 	if (ret) {
- 		iio_dmaengine_buffer_free(buffer);
-@@ -250,7 +264,7 @@ struct iio_buffer *iio_dmaengine_buffer_setup(struct device *dev,
- 
- 	return buffer;
- }
--EXPORT_SYMBOL_NS_GPL(iio_dmaengine_buffer_setup, IIO_DMAENGINE_BUFFER);
-+EXPORT_SYMBOL_NS_GPL(iio_dmaengine_buffer_setup_ext, IIO_DMAENGINE_BUFFER);
- 
- static void __devm_iio_dmaengine_buffer_free(void *buffer)
- {
-@@ -268,20 +282,21 @@ static void __devm_iio_dmaengine_buffer_free(void *buffer)
-  * It also appends the INDIO_BUFFER_HARDWARE mode to the supported modes of the
-  * IIO device.
-  */
--int devm_iio_dmaengine_buffer_setup(struct device *dev,
--				    struct iio_dev *indio_dev,
--				    const char *channel)
-+int devm_iio_dmaengine_buffer_setup_ext(struct device *dev,
-+					struct iio_dev *indio_dev,
-+					const char *channel,
-+					enum iio_buffer_direction dir)
- {
- 	struct iio_buffer *buffer;
- 
--	buffer = iio_dmaengine_buffer_setup(dev, indio_dev, channel);
-+	buffer = iio_dmaengine_buffer_setup_ext(dev, indio_dev, channel, dir);
- 	if (IS_ERR(buffer))
- 		return PTR_ERR(buffer);
- 
- 	return devm_add_action_or_reset(dev, __devm_iio_dmaengine_buffer_free,
- 					buffer);
- }
--EXPORT_SYMBOL_NS_GPL(devm_iio_dmaengine_buffer_setup, IIO_DMAENGINE_BUFFER);
-+EXPORT_SYMBOL_NS_GPL(devm_iio_dmaengine_buffer_setup_ext, IIO_DMAENGINE_BUFFER);
- 
- MODULE_AUTHOR("Lars-Peter Clausen <lars@metafoo.de>");
- MODULE_DESCRIPTION("DMA buffer for the IIO framework");
-diff --git a/include/linux/iio/buffer-dmaengine.h b/include/linux/iio/buffer-dmaengine.h
-index acb60f9a3fff..81d9a19aeb91 100644
---- a/include/linux/iio/buffer-dmaengine.h
-+++ b/include/linux/iio/buffer-dmaengine.h
-@@ -7,15 +7,28 @@
- #ifndef __IIO_DMAENGINE_H__
- #define __IIO_DMAENGINE_H__
- 
-+#include <linux/iio/buffer.h>
-+
- struct iio_dev;
- struct device;
- 
- void iio_dmaengine_buffer_free(struct iio_buffer *buffer);
--struct iio_buffer *iio_dmaengine_buffer_setup(struct device *dev,
--					      struct iio_dev *indio_dev,
--					      const char *channel);
--int devm_iio_dmaengine_buffer_setup(struct device *dev,
--				    struct iio_dev *indio_dev,
--				    const char *channel);
-+struct iio_buffer *iio_dmaengine_buffer_setup_ext(struct device *dev,
-+						  struct iio_dev *indio_dev,
-+						  const char *channel,
-+						  enum iio_buffer_direction dir);
-+
-+#define iio_dmaengine_buffer_setup(dev, indio_dev, channel)	\
-+	iio_dmaengine_buffer_setup_ext(dev, indio_dev, channel,	\
-+				       IIO_BUFFER_DIRECTION_IN)
-+
-+int devm_iio_dmaengine_buffer_setup_ext(struct device *dev,
-+					struct iio_dev *indio_dev,
-+					const char *channel,
-+					enum iio_buffer_direction dir);
-+
-+#define devm_iio_dmaengine_buffer_setup(dev, indio_dev, channel)	\
-+	devm_iio_dmaengine_buffer_setup_ext(dev, indio_dev, channel,	\
-+					    IIO_BUFFER_DIRECTION_IN)
- 
- #endif
+ 	.modes = INDIO_BUFFER_HARDWARE,
 
 -- 
 2.44.0
