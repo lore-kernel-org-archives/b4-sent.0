@@ -1,124 +1,60 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Sat, 20 Apr 2024 13:51:53 +0300
-Subject: [PATCH 2/2] net: dsa: mt7530: fix enabling EEE on MT7531 switch on
- all boards
+Subject: [PATCH 0/4] Please apply these MT7530 DSA subdriver patches to 6.1
+Date: Sat, 20 Apr 2024 18:59:49 +0300
+Message-Id: <20240420-for-stable-6-1-backports-v1-0-0c50ca4324ea@arinc9.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240420-for-stable-6-8-backports-v1-2-4dafb598aa3b@arinc9.com>
-References: <20240420-for-stable-6-8-backports-v1-0-4dafb598aa3b@arinc9.com>
-In-Reply-To: <20240420-for-stable-6-8-backports-v1-0-4dafb598aa3b@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIAHXmI2YC/x3MQQqDMBBA0avIrB2IaaqNV5EuYjrWwWJkJogg3
+ t3Q5Vv8f4KSMCn01QlCOyuntaCpK4hzWL+E/CkGa6wzzhqckqDmMP4IW2xwDHHZkmTFp4v+4W3
+ XvjoPJd+EJj7+6+F9XTeL+m67agAAAA==
 To: stable@vger.kernel.org
 Cc: Daniel Golle <daniel@makrotopia.org>, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>, 
+ "Russell King (Oracle)" <linux@armlinux.org.uk>, 
+ Vladimir Oltean <olteanv@gmail.com>, 
+ "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>, 
  Florian Fainelli <florian.fainelli@broadcom.com>, 
+ "David S. Miller" <davem@davemloft.net>, Paolo Abeni <pabeni@redhat.com>, 
  Jakub Kicinski <kuba@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713610341; l=4462;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713628810; l=1085;
  i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=RXxjHzTzor5KNAlr0g5sE80ldWBo5whIIxavYREOg98=;
- b=u0IL4uBAHPmvP7tD6Pq/OB6J0yWtIX6HOW7NHq78tbDF/vF73l7HVMM5OJmAhDiJsdKbj36Up
- KGm51wSouPPD4TOwayc59JyHv1MBMBQuIip73eLY2R5XPcgSGiXyaaN
+ bh=/ed9nH5y17K10P4P954SKyt1HWbeQ6IpmCrsuHQLQyU=;
+ b=WRUPxDNFQaGV6hONFMqLFp9O3RYgthoAXxRcy8GTTy1nyFvb4zuuCfpFUM9wv18tu87zkNkpI
+ JG8bxp7is9dCTLJDM6J7DOTQaTAOW7jc9p1U3GnResKp2Kbd9AcsdxJ
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-[ Upstream commit 06dfcd4098cfdc4d4577d94793a4f9125386da8b ]
+Hello.
 
-The commit 40b5d2f15c09 ("net: dsa: mt7530: Add support for EEE features")
-brought EEE support but did not enable EEE on MT7531 switch MACs. EEE is
-enabled on MT7531 switch MACs by pulling the LAN2LED0 pin low on the board
-(bootstrapping), unsetting the EEE_DIS bit on the trap register, or setting
-the internal EEE switch bit on the CORE_PLL_GROUP4 register. Thanks to
-SkyLake Huang (黃啟澤) from MediaTek for providing information on the
-internal EEE switch bit.
+These are the remaining bugfix patches for the MT7530 DSA subdriver.
+They didn't apply as is to the 6.1 stable tree so I have submitted the
+adjusted versions in this thread. Please apply them in the order
+they were submitted.
 
-There are existing boards that were not designed to pull the pin low.
-Because of that, the EEE status currently depends on the board design.
-
-The EEE_DIS bit on the trap pertains to the LAN2LED0 pin which is usually
-used to control an LED. Once the bit is unset, the pin will be low. That
-will make the active low LED turn on. The pin is controlled by the switch
-PHY. It seems that the PHY controls the pin in the way that it inverts the
-pin state. That means depending on the wiring of the LED connected to
-LAN2LED0 on the board, the LED may be on without an active link.
-
-To not cause this unwanted behaviour whilst enabling EEE on all boards, set
-the internal EEE switch bit on the CORE_PLL_GROUP4 register.
-
-My testing on MT7531 shows a certain amount of traffic loss when EEE is
-enabled. That said, I haven't come across a board that enables EEE. So
-enable EEE on the switch MACs but disable EEE advertisement on the switch
-PHYs. This way, we don't change the behaviour of the majority of the boards
-that have this switch. The mediatek-ge PHY driver already disables EEE
-advertisement on the switch PHYs but my testing shows that it is somehow
-enabled afterwards. Disabling EEE advertisement before the PHY driver
-initialises keeps it off.
-
-With this change, EEE can now be enabled using ethtool.
-
-Fixes: 40b5d2f15c09 ("net: dsa: mt7530: Add support for EEE features")
-Reviewed-by: Florian Fainelli <florian.fainelli@broadcom.com>
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
-Tested-by: Daniel Golle <daniel@makrotopia.org>
-Reviewed-by: Daniel Golle <daniel@makrotopia.org>
-Link: https://lore.kernel.org/r/20240408-for-net-mt7530-fix-eee-for-mt7531-mt7988-v3-1-84fdef1f008b@arinc9.com
-Signed-off-by: Jakub Kicinski <kuba@kernel.org>
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530.c | 17 ++++++++++++-----
- drivers/net/dsa/mt7530.h |  1 +
- 2 files changed, 13 insertions(+), 5 deletions(-)
+Arınç ÜNAL (3):
+      net: dsa: mt7530: set all CPU ports in MT7531_CPU_PMAP
+      net: dsa: mt7530: fix improper frames on all 25MHz and 40MHz XTAL MT7530
+      net: dsa: mt7530: fix enabling EEE on MT7531 switch on all boards
 
-diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index a9ee6336759c..554fe4240eb5 100644
---- a/drivers/net/dsa/mt7530.c
-+++ b/drivers/net/dsa/mt7530.c
-@@ -2704,18 +2704,25 @@ mt7531_setup(struct dsa_switch *ds)
- 	priv->p5_interface = PHY_INTERFACE_MODE_NA;
- 	priv->p6_interface = PHY_INTERFACE_MODE_NA;
- 
--	/* Enable PHY core PLL, since phy_device has not yet been created
--	 * provided for phy_[read,write]_mmd_indirect is called, we provide
--	 * our own mt7531_ind_mmd_phy_[read,write] to complete this
--	 * function.
-+	/* Enable Energy-Efficient Ethernet (EEE) and PHY core PLL, since
-+	 * phy_device has not yet been created provided for
-+	 * phy_[read,write]_mmd_indirect is called, we provide our own
-+	 * mt7531_ind_mmd_phy_[read,write] to complete this function.
- 	 */
- 	val = mt7531_ind_c45_phy_read(priv, MT753X_CTRL_PHY_ADDR,
- 				      MDIO_MMD_VEND2, CORE_PLL_GROUP4);
--	val |= MT7531_PHY_PLL_BYPASS_MODE;
-+	val |= MT7531_RG_SYSPLL_DMY2 | MT7531_PHY_PLL_BYPASS_MODE;
- 	val &= ~MT7531_PHY_PLL_OFF;
- 	mt7531_ind_c45_phy_write(priv, MT753X_CTRL_PHY_ADDR, MDIO_MMD_VEND2,
- 				 CORE_PLL_GROUP4, val);
- 
-+	/* Disable EEE advertisement on the switch PHYs. */
-+	for (i = MT753X_CTRL_PHY_ADDR;
-+	     i < MT753X_CTRL_PHY_ADDR + MT7530_NUM_PHYS; i++) {
-+		mt7531_ind_c45_phy_write(priv, i, MDIO_MMD_AN, MDIO_AN_EEE_ADV,
-+					 0);
-+	}
-+
- 	mt7531_setup_common(ds);
- 
- 	/* Setup VLAN ID 0 for VLAN-unaware bridges */
-diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
-index ddefeb69afda..5e3e8427d88d 100644
---- a/drivers/net/dsa/mt7530.h
-+++ b/drivers/net/dsa/mt7530.h
-@@ -630,6 +630,7 @@ enum mt7531_clk_skew {
- #define  RG_SYSPLL_DDSFBK_EN		BIT(12)
- #define  RG_SYSPLL_BIAS_EN		BIT(11)
- #define  RG_SYSPLL_BIAS_LPF_EN		BIT(10)
-+#define  MT7531_RG_SYSPLL_DMY2		BIT(6)
- #define  MT7531_PHY_PLL_OFF		BIT(5)
- #define  MT7531_PHY_PLL_BYPASS_MODE	BIT(4)
- 
+Vladimir Oltean (1):
+      net: dsa: introduce preferred_default_local_cpu_port and use on MT7530
 
+ drivers/net/dsa/mt7530.c | 52 ++++++++++++++++++++++++++++++++++--------------
+ drivers/net/dsa/mt7530.h |  2 ++
+ include/net/dsa.h        |  8 ++++++++
+ net/dsa/dsa2.c           | 24 +++++++++++++++++++++-
+ 4 files changed, 70 insertions(+), 16 deletions(-)
+---
+base-commit: 6741e066ec7633450d3186946035c1f80c4226b8
+change-id: 20240420-for-stable-6-1-backports-54c939276879
+
+Best regards,
 -- 
-2.40.1
+Arınç ÜNAL <arinc.unal@arinc9.com>
 
