@@ -1,14 +1,13 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Subject: [PATCH net-next v2 00/15] MT7530 DSA Subdriver Improvements Act IV
-Date: Mon, 22 Apr 2024 10:15:07 +0300
-Message-Id: <20240422-for-netnext-mt7530-improvements-4-v2-0-a75157ba76ad@arinc9.com>
+Date: Mon, 22 Apr 2024 10:15:08 +0300
+Subject: [PATCH net-next v2 01/15] net: dsa: mt7530: disable EEE abilities
+ on failure on MT7531 and MT7988
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAHwOJmYC/42NQQ7CIBBFr2Jm7RigYK0r72G6qDC1LIAGCKlpe
- neRE7h8efn/7ZAoWkpwP+0Qqdhkg68gzifQy+TfhNZUBsGEZJ1gOIeInrKnLaPLveoYWrfGUMi
- RzwklDkp2zHDFNFNQf9ZIs91a4wl1ir8tjNUsNuUQPy1eePOtI/nwR6dwZHg1NyX01A8vbh5Tt
- F4PFx0cjMdxfAFOhyVM3QAAAA==
+Message-Id: <20240422-for-netnext-mt7530-improvements-4-v2-1-a75157ba76ad@arinc9.com>
+References: <20240422-for-netnext-mt7530-improvements-4-v2-0-a75157ba76ad@arinc9.com>
+In-Reply-To: <20240422-for-netnext-mt7530-improvements-4-v2-0-a75157ba76ad@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
  Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
  Florian Fainelli <f.fainelli@gmail.com>, 
@@ -24,84 +23,98 @@ Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713770127; l=3014;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713770127; l=3406;
  i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=OkQem37UFkm+naBU6dOLCvGqJr0v/6B1zyDYyO/59Io=;
- b=9MmaS+fFq5bOkJ1WUPtdfyBhuq3bf+4Xwjsx33H3ewedjTSL+QdFU//91gtd2cT7lZPMlAJly
- XbC+Z2uDbVYB0KFu3N2a+U5tvrSrQ+zw4Mg4Ysqp4F+fKyfABIHQa5X
+ bh=1dA5Tqo1oiLbTJdCrnbheqEyfiDY3WFrwARn+Ftc72o=;
+ b=VtnuvYkOYN+vEkQPGT+08Dj8e91SfG1jvR2MB7fvYI4pfbzc+KCifP2+OI09UraHx7ga76W0i
+ BmPeae9oPLBBPCT+uxq7/ZYsXjP47z7C5SjOZDfqp7Be7WI3T9ZJQpq
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello!
+The MT7531_FORCE_EEE1G and MT7531_FORCE_EEE100 bits let the
+PMCR_FORCE_EEE1G and PMCR_FORCE_EEE100 bits determine the 1G/100 EEE
+abilities of the MAC. If MT7531_FORCE_EEE1G and MT7531_FORCE_EEE100 are
+unset, the abilities are left to be determined by PHY auto polling.
 
-This is the forth patch series with the goal of simplifying the MT7530 DSA
-subdriver and improving support for MT7530, MT7531, and the switch on the
-MT7988 SoC.
+The commit 40b5d2f15c09 ("net: dsa: mt7530: Add support for EEE features")
+made it so that the PMCR_FORCE_EEE1G and PMCR_FORCE_EEE100 bits are set on
+mt753x_phylink_mac_link_up(). But it did not set the MT7531_FORCE_EEE1G and
+MT7531_FORCE_EEE100 bits. Because of this, the EEE abilities will be
+determined by PHY auto polling, regardless of the result of phy_init_eee().
 
-I have done a simple ping test to confirm basic communication on all switch
-ports on MCM and standalone MT7530, and MT7531 switch with this patch
-series applied.
+Define these bits and add them to the MT7531_FORCE_MODE mask which is set
+in mt7531_setup_common(). With this, there won't be any EEE abilities set
+when phy_init_eee() returns a negative value.
 
-MT7621 Unielec, MCM MT7530:
+Thanks to Russell for explaining when phy_init_eee() could return a
+negative value below.
 
-rgmii-only-gmac0-mt7621-unielec-u7621-06-16m.dtb
-gmac0-and-gmac1-mt7621-unielec-u7621-06-16m.dtb
+Looking at phy_init_eee(), it could return a negative value when:
 
-tftpboot 0x80008000 mips-uzImage.bin; tftpboot 0x83000000 mips-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootm 0x80008000 0x83000000 0x83f00000
+1. phydev->drv is NULL
+2. if genphy_c45_eee_is_active() returns negative
+3. if genphy_c45_eee_is_active() returns zero, it returns -EPROTONOSUPPORT
+4. if phy_set_bits_mmd() fails (e.g. communication error with the PHY)
 
-MT7622 Bananapi, MT7531:
+If we then look at genphy_c45_eee_is_active(), then:
 
-gmac0-and-gmac1-mt7622-bananapi-bpi-r64.dtb
+genphy_c45_read_eee_adv() and genphy_c45_read_eee_lpa() propagate their
+non-zero return values, otherwise this function returns zero or positive
+integer.
 
-tftpboot 0x40000000 arm64-Image; tftpboot 0x45000000 arm64-rootfs.cpio.uboot; tftpboot 0x4a000000 $dtb; booti 0x40000000 0x45000000 0x4a000000
+If we then look at genphy_c45_read_eee_adv(), then a failure of
+phy_read_mmd() would cause a negative value to be returned.
 
-MT7623 Bananapi, standalone MT7530:
+Looking at genphy_c45_read_eee_lpa(), the same is true.
 
-rgmii-only-gmac0-mt7623n-bananapi-bpi-r2.dtb
-gmac0-and-gmac1-mt7623n-bananapi-bpi-r2.dtb
+So, it can be summarised as:
 
-tftpboot 0x80008000 arm-zImage; tftpboot 0x83000000 arm-rootfs.cpio.uboot; tftpboot 0x83f00000 $dtb; bootz 0x80008000 0x83000000 0x83f00000
+- phydev->drv is NULL
+- there is a communication error accessing the PHY
+- EEE is not active
 
-This patch series finalises the patch series linked below.
+otherwise, it returns zero on success.
 
-https://lore.kernel.org/r/20230522121532.86610-1-arinc.unal@arinc9.com
+If one wishes to determine whether an error occurred vs EEE not being
+supported through negotiation for the negotiated speed, if it returns
+-EPROTONOSUPPORT in the latter case. Other error codes mean either the
+driver has been unloaded or communication error.
+
+In conclusion, determining the EEE abilities by PHY auto polling shouldn't
+result in having any EEE abilities enabled, when one of the last two
+situations in the summary happens. And it seems that if phydev->drv is
+NULL, there would be bigger problems with the device than a broken link. So
+this is not a bugfix.
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
-Changes in v2:
-- Add two new patches to the end.
-- Patch 13
-  - Add the missing patch log.
-- Link to v1: https://lore.kernel.org/r/20240419-for-netnext-mt7530-improvements-4-v1-0-6d852ca79b1d@arinc9.com
+ drivers/net/dsa/mt7530.h | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
----
-Arınç ÜNAL (15):
-      net: dsa: mt7530: disable EEE abilities on failure on MT7531 and MT7988
-      net: dsa: mt7530: refactor MT7530_PMCR_P()
-      net: dsa: mt7530: rename p5_intf_sel and use only for MT7530 switch
-      net: dsa: mt7530: rename mt753x_bpdu_port_fw enum to mt753x_to_cpu_fw
-      net: dsa: mt7530: refactor MT7530_MFC and MT7531_CFC, add MT7531_QRY_FFP
-      net: dsa: mt7530: refactor MT7530_HWTRAP and MT7530_MHWTRAP
-      net: dsa: mt7530: move MT753X_MTRAP operations for MT7530
-      net: dsa: mt7530: return mt7530_setup_mdio & mt7531_setup_common on error
-      net: dsa: mt7530: define MAC speed capabilities per switch model
-      net: dsa: mt7530: get rid of function sanity check
-      net: dsa: mt7530: refactor MT7530_PMEEECR_P()
-      net: dsa: mt7530: get rid of mac_port_validate member of mt753x_info
-      net: dsa: mt7530: use priv->ds->num_ports instead of MT7530_NUM_PORTS
-      net: dsa: mt7530: do not pass port variable to mt7531_rgmii_setup()
-      net: dsa: mt7530: explain exposing MDIO bus of MT7531AE better
+diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
+index 94932c3dbde9..f7c5355c1642 100644
+--- a/drivers/net/dsa/mt7530.h
++++ b/drivers/net/dsa/mt7530.h
+@@ -328,11 +328,15 @@ enum mt7530_vlan_port_acc_frm {
+ #define  MT7531_FORCE_DPX		BIT(29)
+ #define  MT7531_FORCE_RX_FC		BIT(28)
+ #define  MT7531_FORCE_TX_FC		BIT(27)
++#define  MT7531_FORCE_EEE100		BIT(26)
++#define  MT7531_FORCE_EEE1G		BIT(25)
+ #define  MT7531_FORCE_MODE		(MT7531_FORCE_LNK | \
+ 					 MT7531_FORCE_SPD | \
+ 					 MT7531_FORCE_DPX | \
+ 					 MT7531_FORCE_RX_FC | \
+-					 MT7531_FORCE_TX_FC)
++					 MT7531_FORCE_TX_FC | \
++					 MT7531_FORCE_EEE100 | \
++					 MT7531_FORCE_EEE1G)
+ #define  PMCR_LINK_SETTINGS_MASK	(PMCR_TX_EN | PMCR_FORCE_SPEED_1000 | \
+ 					 PMCR_RX_EN | PMCR_FORCE_SPEED_100 | \
+ 					 PMCR_TX_FC_EN | PMCR_RX_FC_EN | \
 
- drivers/net/dsa/mt7530.c | 294 +++++++++++++++++++++++------------------------
- drivers/net/dsa/mt7530.h | 289 ++++++++++++++++++++++++----------------------
- 2 files changed, 297 insertions(+), 286 deletions(-)
----
-base-commit: e1bc03d8372ac081810c2956cd244ed9899f9a02
-change-id: 20240320-for-netnext-mt7530-improvements-4-95430d150c05
-
-Best regards,
 -- 
-Arınç ÜNAL <arinc.unal@arinc9.com>
+2.40.1
 
