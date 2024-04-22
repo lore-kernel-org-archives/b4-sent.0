@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Mon, 22 Apr 2024 10:15:13 +0300
-Subject: [PATCH net-next v2 06/15] net: dsa: mt7530: refactor MT7530_HWTRAP
- and MT7530_MHWTRAP
+Date: Mon, 22 Apr 2024 10:15:14 +0300
+Subject: [PATCH net-next v2 07/15] net: dsa: mt7530: move MT753X_MTRAP
+ operations for MT7530
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240422-for-netnext-mt7530-improvements-4-v2-6-a75157ba76ad@arinc9.com>
+Message-Id: <20240422-for-netnext-mt7530-improvements-4-v2-7-a75157ba76ad@arinc9.com>
 References: <20240422-for-netnext-mt7530-improvements-4-v2-0-a75157ba76ad@arinc9.com>
 In-Reply-To: <20240422-for-netnext-mt7530-improvements-4-v2-0-a75157ba76ad@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -23,270 +23,126 @@ Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713770127; l=8925;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713770127; l=3575;
  i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=FPSpZup53zPjkFOg+U7o3cVfgrTHkOJAlg6L4h+GBKE=;
- b=1LGQ8Y9tUvLWUDo3ctq3Iw85XokynDBebbR2YMxDQ1xMAiama1PC3E4KXT8Wt/EEhtOiEKdDa
- 2Qf+sDSFUj5Bz6jn3ITHyoQFHmVR5MOOOn4Pwg4DC2NhR2TEiddN/DI
+ bh=00K+c7w7ciHtR3cg/Vn4V9kvHhcXqDMvGRmHgFwDD6g=;
+ b=iAFOJTEc2IUg4VptNYrkdDzK0KVfHzl0nrENTzHB8iCUFHLNebhthKeg5Z+6OC0LCdPu7JSCk
+ rk2or1CHHFGBgISZslZ4GGPnV+O1AEghI6aKNwLMmme+il+Vl1C0c2L
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MT7530_HWTRAP and MT7530_MHWTRAP registers are on MT7530 and MT7531.
-It's called hardware trap on MT7530, software trap on MT7531. That's
-because some bits of the trap on MT7530 cannot be modified by software
-whilst all bits of the trap on MT7531 can. Rename the definitions for them
-to MT753X_TRAP and MT753X_MTRAP. Add MT7530 and MT7531 prefixes to the
-definitions specific to the switch model.
+On MT7530, the media-independent interfaces of port 5 and 6 are controlled
+by the MT7530_P5_DIS and MT7530_P6_DIS bits of the hardware trap. Deal with
+these bits only when the relevant port is being enabled or disabled. This
+ensures that these ports will be disabled when they are not in use.
 
-Remove the extra parentheses from MT7530_XTAL_40MHZ and MT7530_XTAL_20MHZ.
+Do not set MT7530_CHG_TRAP on mt7530_setup_port5() as that's already being
+done on mt7530_setup().
 
-Rename MHWTRAP_PHY0_SEL, MHWTRAP_MANUAL, and MHWTRAP_PHY_ACCESS to be on
-par with the "MT7621 Giga Switch Programming Guide v0.3" document.
+Instead of globally setting MT7530_P5_MAC_SEL, clear it, then set it only
+on the appropriate case.
 
-Make an enumaration for the XTAL frequency. Set the data type of the xtal
-variable on mt7531_pll_setup() to it.
+If PHY muxing is detected, clear MT7530_P5_DIS before calling
+mt7530_setup_port5().
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530.c | 59 ++++++++++++++++++++++++------------------------
- drivers/net/dsa/mt7530.h | 50 ++++++++++++++++++++--------------------
- 2 files changed, 54 insertions(+), 55 deletions(-)
+ drivers/net/dsa/mt7530.c | 38 +++++++++++++++++++++++++++-----------
+ 1 file changed, 27 insertions(+), 11 deletions(-)
 
 diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
-index 39c47499036b..606516206fb9 100644
+index 606516206fb9..83436723cb16 100644
 --- a/drivers/net/dsa/mt7530.c
 +++ b/drivers/net/dsa/mt7530.c
-@@ -417,23 +417,23 @@ mt7530_setup_port6(struct dsa_switch *ds, phy_interface_t interface)
+@@ -880,8 +880,7 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
  
- 	mt7530_rmw(priv, MT7530_P6ECR, P6_INTF_MODE_MASK, P6_INTF_MODE(1));
+ 	val = mt7530_read(priv, MT753X_MTRAP);
  
--	xtal = mt7530_read(priv, MT7530_MHWTRAP) & HWTRAP_XTAL_MASK;
-+	xtal = mt7530_read(priv, MT753X_MTRAP) & MT7530_XTAL_MASK;
- 
--	if (xtal == HWTRAP_XTAL_25MHZ)
-+	if (xtal == MT7530_XTAL_25MHZ)
- 		ssc_delta = 0x57;
- 	else
- 		ssc_delta = 0x87;
- 
- 	if (priv->id == ID_MT7621) {
- 		/* PLL frequency: 125MHz: 1.0GBit */
--		if (xtal == HWTRAP_XTAL_40MHZ)
-+		if (xtal == MT7530_XTAL_40MHZ)
- 			ncpo1 = 0x0640;
--		if (xtal == HWTRAP_XTAL_25MHZ)
-+		if (xtal == MT7530_XTAL_25MHZ)
- 			ncpo1 = 0x0a00;
- 	} else { /* PLL frequency: 250MHz: 2.0Gbit */
--		if (xtal == HWTRAP_XTAL_40MHZ)
-+		if (xtal == MT7530_XTAL_40MHZ)
- 			ncpo1 = 0x0c80;
--		if (xtal == HWTRAP_XTAL_25MHZ)
-+		if (xtal == MT7530_XTAL_25MHZ)
- 			ncpo1 = 0x1400;
- 	}
- 
-@@ -456,19 +456,20 @@ mt7530_setup_port6(struct dsa_switch *ds, phy_interface_t interface)
- static void
- mt7531_pll_setup(struct mt7530_priv *priv)
- {
-+	enum mt7531_xtal_fsel xtal;
- 	u32 top_sig;
- 	u32 hwstrap;
--	u32 xtal;
- 	u32 val;
- 
- 	val = mt7530_read(priv, MT7531_CREV);
- 	top_sig = mt7530_read(priv, MT7531_TOP_SIG_SR);
--	hwstrap = mt7530_read(priv, MT7531_HWTRAP);
-+	hwstrap = mt7530_read(priv, MT753X_TRAP);
- 	if ((val & CHIP_REV_M) > 0)
--		xtal = (top_sig & PAD_MCM_SMI_EN) ? HWTRAP_XTAL_FSEL_40MHZ :
--						    HWTRAP_XTAL_FSEL_25MHZ;
-+		xtal = (top_sig & PAD_MCM_SMI_EN) ? MT7531_XTAL_FSEL_40MHZ :
-+						    MT7531_XTAL_FSEL_25MHZ;
- 	else
--		xtal = hwstrap & HWTRAP_XTAL_FSEL_MASK;
-+		xtal = (hwstrap & MT7531_XTAL25) ? MT7531_XTAL_FSEL_25MHZ :
-+						   MT7531_XTAL_FSEL_40MHZ;
- 
- 	/* Step 1 : Disable MT7531 COREPLL */
- 	val = mt7530_read(priv, MT7531_PLLGP_EN);
-@@ -497,13 +498,13 @@ mt7531_pll_setup(struct mt7530_priv *priv)
- 	usleep_range(25, 35);
- 
- 	switch (xtal) {
--	case HWTRAP_XTAL_FSEL_25MHZ:
-+	case MT7531_XTAL_FSEL_25MHZ:
- 		val = mt7530_read(priv, MT7531_PLLGP_CR0);
- 		val &= ~RG_COREPLL_SDM_PCW_M;
- 		val |= 0x140000 << RG_COREPLL_SDM_PCW_S;
- 		mt7530_write(priv, MT7531_PLLGP_CR0, val);
- 		break;
--	case HWTRAP_XTAL_FSEL_40MHZ:
-+	case MT7531_XTAL_FSEL_40MHZ:
- 		val = mt7530_read(priv, MT7531_PLLGP_CR0);
- 		val &= ~RG_COREPLL_SDM_PCW_M;
- 		val |= 0x190000 << RG_COREPLL_SDM_PCW_S;
-@@ -877,20 +878,20 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
- 
- 	mutex_lock(&priv->reg_mutex);
- 
--	val = mt7530_read(priv, MT7530_MHWTRAP);
-+	val = mt7530_read(priv, MT753X_MTRAP);
- 
--	val |= MHWTRAP_MANUAL | MHWTRAP_P5_MAC_SEL | MHWTRAP_P5_DIS;
--	val &= ~MHWTRAP_P5_RGMII_MODE & ~MHWTRAP_PHY0_SEL;
-+	val |= MT7530_CHG_TRAP | MT7530_P5_MAC_SEL | MT7530_P5_DIS;
-+	val &= ~MT7530_P5_RGMII_MODE & ~MT7530_P5_PHY0_SEL;
+-	val |= MT7530_CHG_TRAP | MT7530_P5_MAC_SEL | MT7530_P5_DIS;
+-	val &= ~MT7530_P5_RGMII_MODE & ~MT7530_P5_PHY0_SEL;
++	val &= ~MT7530_P5_PHY0_SEL & ~MT7530_P5_MAC_SEL & ~MT7530_P5_RGMII_MODE;
  
  	switch (priv->p5_mode) {
  	/* MUX_PHY_P0: P0 -> P5 -> SoC MAC */
- 	case MUX_PHY_P0:
--		val |= MHWTRAP_PHY0_SEL;
-+		val |= MT7530_P5_PHY0_SEL;
- 		fallthrough;
+@@ -891,15 +890,13 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
  
  	/* MUX_PHY_P4: P4 -> P5 -> SoC MAC */
  	case MUX_PHY_P4:
--		val &= ~MHWTRAP_P5_MAC_SEL & ~MHWTRAP_P5_DIS;
-+		val &= ~MT7530_P5_MAC_SEL & ~MT7530_P5_DIS;
- 
+-		val &= ~MT7530_P5_MAC_SEL & ~MT7530_P5_DIS;
+-
  		/* Setup the MAC by default for the cpu port */
  		mt7530_write(priv, MT753X_PMCR_P(5), 0x56300);
-@@ -898,13 +899,13 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
+ 		break;
  
  	/* GMAC5: P5 -> SoC MAC or external PHY */
  	default:
--		val &= ~MHWTRAP_P5_DIS;
-+		val &= ~MT7530_P5_DIS;
+-		val &= ~MT7530_P5_DIS;
++		val |= MT7530_P5_MAC_SEL;
  		break;
  	}
  
- 	/* Setup RGMII settings */
- 	if (phy_interface_mode_is_rgmii(interface)) {
--		val |= MHWTRAP_P5_RGMII_MODE;
-+		val |= MT7530_P5_RGMII_MODE;
+@@ -1193,6 +1190,14 @@ mt7530_port_enable(struct dsa_switch *ds, int port,
  
- 		/* P5 RGMII RX Clock Control: delay setting for 1000M */
- 		mt7530_write(priv, MT7530_P5RGMIIRXCR, CSR_RGMII_EDGE_ALIGN);
-@@ -924,7 +925,7 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
- 			     P5_IO_CLK_DRV(1) | P5_IO_DATA_DRV(1));
- 	}
+ 	mutex_unlock(&priv->reg_mutex);
  
--	mt7530_write(priv, MT7530_MHWTRAP, val);
-+	mt7530_write(priv, MT753X_MTRAP, val);
++	if (priv->id != ID_MT7530 && priv->id != ID_MT7621)
++		return 0;
++
++	if (port == 5)
++		mt7530_clear(priv, MT753X_MTRAP, MT7530_P5_DIS);
++	else if (port == 6)
++		mt7530_clear(priv, MT753X_MTRAP, MT7530_P6_DIS);
++
+ 	return 0;
+ }
  
- 	dev_dbg(ds->dev, "Setup P5, HWTRAP=0x%x, mode=%s, phy-mode=%s\n", val,
- 		mt7530_p5_mode_str(priv->p5_mode), phy_modes(interface));
-@@ -2365,7 +2366,7 @@ mt7530_setup(struct dsa_switch *ds)
- 	}
+@@ -1211,6 +1216,14 @@ mt7530_port_disable(struct dsa_switch *ds, int port)
+ 		   PCR_MATRIX_CLR);
  
- 	/* Waiting for MT7530 got to stable */
--	INIT_MT7530_DUMMY_POLL(&p, priv, MT7530_HWTRAP);
-+	INIT_MT7530_DUMMY_POLL(&p, priv, MT753X_TRAP);
- 	ret = readx_poll_timeout(_mt7530_read, &p, val, val != 0,
- 				 20, 1000000);
- 	if (ret < 0) {
-@@ -2380,7 +2381,7 @@ mt7530_setup(struct dsa_switch *ds)
- 		return -ENODEV;
- 	}
+ 	mutex_unlock(&priv->reg_mutex);
++
++	if (priv->id != ID_MT7530 && priv->id != ID_MT7621)
++		return;
++
++	if (port == 5)
++		mt7530_set(priv, MT753X_MTRAP, MT7530_P5_DIS);
++	else if (port == 6)
++		mt7530_set(priv, MT753X_MTRAP, MT7530_P6_DIS);
+ }
  
--	if ((val & HWTRAP_XTAL_MASK) == HWTRAP_XTAL_20MHZ) {
-+	if ((val & MT7530_XTAL_MASK) == MT7530_XTAL_20MHZ) {
- 		dev_err(priv->dev,
- 			"MT7530 with a 20MHz XTAL is not supported!\n");
- 		return -EINVAL;
-@@ -2401,12 +2402,12 @@ mt7530_setup(struct dsa_switch *ds)
+ static int
+@@ -2401,11 +2414,11 @@ mt7530_setup(struct dsa_switch *ds)
+ 		mt7530_rmw(priv, MT7530_TRGMII_RD(i),
  			   RD_TAP_MASK, RD_TAP(16));
  
- 	/* Enable port 6 */
--	val = mt7530_read(priv, MT7530_MHWTRAP);
--	val &= ~MHWTRAP_P6_DIS & ~MHWTRAP_PHY_ACCESS;
--	val |= MHWTRAP_MANUAL;
--	mt7530_write(priv, MT7530_MHWTRAP, val);
-+	val = mt7530_read(priv, MT753X_MTRAP);
-+	val &= ~MT7530_P6_DIS & ~MT7530_PHY_INDIRECT_ACCESS;
-+	val |= MT7530_CHG_TRAP;
-+	mt7530_write(priv, MT753X_MTRAP, val);
+-	/* Enable port 6 */
+-	val = mt7530_read(priv, MT753X_MTRAP);
+-	val &= ~MT7530_P6_DIS & ~MT7530_PHY_INDIRECT_ACCESS;
+-	val |= MT7530_CHG_TRAP;
+-	mt7530_write(priv, MT753X_MTRAP, val);
++	/* Allow modifying the trap and directly access PHY registers via the
++	 * MDIO bus the switch is on.
++	 */
++	mt7530_rmw(priv, MT753X_MTRAP, MT7530_CHG_TRAP |
++		   MT7530_PHY_INDIRECT_ACCESS, MT7530_CHG_TRAP);
  
--	if ((val & HWTRAP_XTAL_MASK) == HWTRAP_XTAL_40MHZ)
-+	if ((val & MT7530_XTAL_MASK) == MT7530_XTAL_40MHZ)
+ 	if ((val & MT7530_XTAL_MASK) == MT7530_XTAL_40MHZ)
  		mt7530_pll_setup(priv);
+@@ -2488,8 +2501,11 @@ mt7530_setup(struct dsa_switch *ds)
+ 			break;
+ 		}
  
- 	mt753x_trap_frames(priv);
-@@ -2586,7 +2587,7 @@ mt7531_setup(struct dsa_switch *ds)
+-		if (priv->p5_mode == MUX_PHY_P0 || priv->p5_mode == MUX_PHY_P4)
++		if (priv->p5_mode == MUX_PHY_P0 ||
++		    priv->p5_mode == MUX_PHY_P4) {
++			mt7530_clear(priv, MT753X_MTRAP, MT7530_P5_DIS);
+ 			mt7530_setup_port5(ds, interface);
++		}
  	}
  
- 	/* Waiting for MT7530 got to stable */
--	INIT_MT7530_DUMMY_POLL(&p, priv, MT7530_HWTRAP);
-+	INIT_MT7530_DUMMY_POLL(&p, priv, MT753X_TRAP);
- 	ret = readx_poll_timeout(_mt7530_read, &p, val, val != 0,
- 				 20, 1000000);
- 	if (ret < 0) {
-diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
-index c6ef20b7bbdd..1f3aeccc77be 100644
---- a/drivers/net/dsa/mt7530.h
-+++ b/drivers/net/dsa/mt7530.h
-@@ -495,32 +495,30 @@ enum mt7531_clk_skew {
- 	MT7531_CLK_SKEW_REVERSE = 3,
- };
- 
--/* Register for hw trap status */
--#define MT7530_HWTRAP			0x7800
--#define  HWTRAP_XTAL_MASK		(BIT(10) | BIT(9))
--#define  HWTRAP_XTAL_25MHZ		(BIT(10) | BIT(9))
--#define  HWTRAP_XTAL_40MHZ		(BIT(10))
--#define  HWTRAP_XTAL_20MHZ		(BIT(9))
--
--#define MT7531_HWTRAP			0x7800
--#define  HWTRAP_XTAL_FSEL_MASK		BIT(7)
--#define  HWTRAP_XTAL_FSEL_25MHZ		BIT(7)
--#define  HWTRAP_XTAL_FSEL_40MHZ		0
--/* Unique fields of (M)HWSTRAP for MT7531 */
--#define  XTAL_FSEL_S			7
--#define  XTAL_FSEL_M			BIT(7)
--#define  PHY_EN				BIT(6)
--#define  CHG_STRAP			BIT(8)
--
--/* Register for hw trap modification */
--#define MT7530_MHWTRAP			0x7804
--#define  MHWTRAP_PHY0_SEL		BIT(20)
--#define  MHWTRAP_MANUAL			BIT(16)
--#define  MHWTRAP_P5_MAC_SEL		BIT(13)
--#define  MHWTRAP_P6_DIS			BIT(8)
--#define  MHWTRAP_P5_RGMII_MODE		BIT(7)
--#define  MHWTRAP_P5_DIS			BIT(6)
--#define  MHWTRAP_PHY_ACCESS		BIT(5)
-+/* Register for trap status */
-+#define MT753X_TRAP			0x7800
-+#define  MT7530_XTAL_MASK		(BIT(10) | BIT(9))
-+#define  MT7530_XTAL_25MHZ		(BIT(10) | BIT(9))
-+#define  MT7530_XTAL_40MHZ		BIT(10)
-+#define  MT7530_XTAL_20MHZ		BIT(9)
-+#define  MT7531_XTAL25			BIT(7)
-+
-+/* Register for trap modification */
-+#define MT753X_MTRAP			0x7804
-+#define  MT7530_P5_PHY0_SEL		BIT(20)
-+#define  MT7530_CHG_TRAP		BIT(16)
-+#define  MT7530_P5_MAC_SEL		BIT(13)
-+#define  MT7530_P6_DIS			BIT(8)
-+#define  MT7530_P5_RGMII_MODE		BIT(7)
-+#define  MT7530_P5_DIS			BIT(6)
-+#define  MT7530_PHY_INDIRECT_ACCESS	BIT(5)
-+#define  MT7531_CHG_STRAP		BIT(8)
-+#define  MT7531_PHY_EN			BIT(6)
-+
-+enum mt7531_xtal_fsel {
-+	MT7531_XTAL_FSEL_25MHZ,
-+	MT7531_XTAL_FSEL_40MHZ,
-+};
- 
- /* Register for TOP signal control */
- #define MT7530_TOP_SIG_CTRL		0x7808
+ #ifdef CONFIG_GPIOLIB
 
 -- 
 2.40.1
