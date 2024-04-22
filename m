@@ -1,13 +1,12 @@
 From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Subject: [PATCH v2 0/3] Add support for Amlogic T7 reset controller
-Date: Mon, 22 Apr 2024 19:11:42 +0800
-Message-Id: <20240422-t7-reset-v2-0-cb82271d3296@amlogic.com>
+Date: Mon, 22 Apr 2024 19:11:43 +0800
+Subject: [PATCH v2 1/3] dt-bindings: reset: Add Amlogic T7 reset controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAO5FJmYC/23MQQ7CIBCF4as0sxZDASl15T1MF0iHdhJbDDRE0
- 3B3sWuX/8vLt0PCSJjg2uwQMVOisNYQpwbcbNcJGY21QXChuBQ92zoWMeHGvOnQSKW9HR9Q76+
- Int4HdR9qz5S2ED+HnNvf+gfJLeNMOY0CtZGXHm92eYaJ3NmFBYZSyhdgXGSeogAAAA==
+Message-Id: <20240422-t7-reset-v2-1-cb82271d3296@amlogic.com>
+References: <20240422-t7-reset-v2-0-cb82271d3296@amlogic.com>
+In-Reply-To: <20240422-t7-reset-v2-0-cb82271d3296@amlogic.com>
 To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -19,43 +18,39 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Zelong Dong <zelong.dong@amlogic.com>, 
  Kelvin Zhang <kelvin.zhang@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713784331; l=1114;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713784331; l=942;
  i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=60Nj6Eui0n3N0tnpm8vqfyc7ou3dQzK95LfY94ljJ2Q=;
- b=/gYjYSk1vpwpkjfjMUbBti+TUQEAmVkAzsRF+ybxSZczfGfjPre9hMD1+0lbyMdq48VlAUv76
- e1nzmYjH+6PBDZqJxUF9CDf4k45OZe3hoGe/2cujuahY92nBy7spKPX
+ bh=CyHJlDrpjIAL79VP7HKiQbjHBUBNChERmthFTOisS7k=;
+ b=No+L3Aq5VEv4hqOixwhyza7FgSRJ0OGNj0kF4mf0d14MAeHGUGA8GyfSxN0wnQE4etPev/vEx
+ DugVtyb6BUtBHREtlEd+d4JICkCSHNL7yqFZ3tdyyzszIH+hd0f7qXG
 X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
  pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
 X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a new compatible and device node for Amlogic T7 reset controller.
-And modify the driver accordingly.
+From: Zelong Dong <zelong.dong@amlogic.com>
+
+Add a new compatible for Amlogic T7 reset controller.
 
 Signed-off-by: Zelong Dong <zelong.dong@amlogic.com>
 Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
 ---
-Changes in v2:
-- Drop the compatible comment in dt-binding.
-- Move t7-reset.h to arch/arm64/boot/dts/amlogic.
-- Link to v1: https://lore.kernel.org/r/20240329-t7-reset-v1-0-4c6e2e68359e@amlogic.com
+ Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
----
-Zelong Dong (3):
-      dt-bindings: reset: Add Amlogic T7 reset controller
-      reset: reset-meson: Add support for Amlogic T7 SoC reset controller
-      arm64: dts: amlogic: Add Amlogic T7 reset controller
+diff --git a/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml b/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml
+index f0c6c0df0ce3..695ef38a7bb3 100644
+--- a/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml
++++ b/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml
+@@ -19,6 +19,7 @@ properties:
+       - amlogic,meson-a1-reset # Reset Controller on A1 and compatible SoCs
+       - amlogic,meson-s4-reset # Reset Controller on S4 and compatible SoCs
+       - amlogic,c3-reset # Reset Controller on C3 and compatible SoCs
++      - amlogic,t7-reset
+ 
+   reg:
+     maxItems: 1
 
- .../bindings/reset/amlogic,meson-reset.yaml        |   1 +
- arch/arm64/boot/dts/amlogic/amlogic-t7-reset.h     | 197 +++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        |   7 +
- drivers/reset/reset-meson.c                        |   6 +
- 4 files changed, 211 insertions(+)
----
-base-commit: f529a6d274b3b8c75899e949649d231298f30a32
-change-id: 20240329-t7-reset-f87e8346fadb
-
-Best regards,
 -- 
-Kelvin Zhang <kelvin.zhang@amlogic.com>
+2.37.1
 
