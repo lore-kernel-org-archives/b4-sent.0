@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Mon, 22 Apr 2024 10:15:08 +0300
-Subject: [PATCH net-next v2 01/15] net: dsa: mt7530: disable EEE abilities
- on failure on MT7531 and MT7988
+Date: Mon, 22 Apr 2024 10:15:09 +0300
+Subject: [PATCH net-next v2 02/15] net: dsa: mt7530: refactor
+ MT7530_PMCR_P()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240422-for-netnext-mt7530-improvements-4-v2-1-a75157ba76ad@arinc9.com>
+Message-Id: <20240422-for-netnext-mt7530-improvements-4-v2-2-a75157ba76ad@arinc9.com>
 References: <20240422-for-netnext-mt7530-improvements-4-v2-0-a75157ba76ad@arinc9.com>
 In-Reply-To: <20240422-for-netnext-mt7530-improvements-4-v2-0-a75157ba76ad@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -23,97 +23,212 @@ Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713770127; l=3406;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713770127; l=8131;
  i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=1dA5Tqo1oiLbTJdCrnbheqEyfiDY3WFrwARn+Ftc72o=;
- b=VtnuvYkOYN+vEkQPGT+08Dj8e91SfG1jvR2MB7fvYI4pfbzc+KCifP2+OI09UraHx7ga76W0i
- BmPeae9oPLBBPCT+uxq7/ZYsXjP47z7C5SjOZDfqp7Be7WI3T9ZJQpq
+ bh=/1XZ9JHfm5La3LRYYeIf/gk5qAEW+OcTIz4EqNWbcpk=;
+ b=3cTDiw7wFTU9MyINjZ7KczWsN7WxLCHVtYcBFglC1N+OY9sLXzUF2M6gaEq/hhNlexPMcBF+o
+ PxzvH1ndBZbCecYrqmsuySJqt3teR8Uy1Oitzal+MNh0Jnn7J6FkF/X
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MT7531_FORCE_EEE1G and MT7531_FORCE_EEE100 bits let the
-PMCR_FORCE_EEE1G and PMCR_FORCE_EEE100 bits determine the 1G/100 EEE
-abilities of the MAC. If MT7531_FORCE_EEE1G and MT7531_FORCE_EEE100 are
-unset, the abilities are left to be determined by PHY auto polling.
+The MT7530_PMCR_P() registers are on MT7530, MT7531, and the switch on the
+MT7988 SoC. Rename the definition for them to MT753X_PMCR_P(). Bit 15 is
+for MT7530 only. Add MT7530 prefix to the definition for bit 15.
 
-The commit 40b5d2f15c09 ("net: dsa: mt7530: Add support for EEE features")
-made it so that the PMCR_FORCE_EEE1G and PMCR_FORCE_EEE100 bits are set on
-mt753x_phylink_mac_link_up(). But it did not set the MT7531_FORCE_EEE1G and
-MT7531_FORCE_EEE100 bits. Because of this, the EEE abilities will be
-determined by PHY auto polling, regardless of the result of phy_init_eee().
+Use GENMASK and FIELD_PREP for PMCR_IFG_XMIT().
 
-Define these bits and add them to the MT7531_FORCE_MODE mask which is set
-in mt7531_setup_common(). With this, there won't be any EEE abilities set
-when phy_init_eee() returns a negative value.
+Rename PMCR_TX_EN and PMCR_RX_EN to PMCR_MAC_TX_EN and PMCR_MAC_TX_EN to
+follow the naming on the "MT7621 Giga Switch Programming Guide v0.3",
+"MT7531 Reference Manual for Development Board v1.0", and "MT7988A Wi-Fi 7
+Generation Router Platform: Datasheet (Open Version) v0.1" documents.
 
-Thanks to Russell for explaining when phy_init_eee() could return a
-negative value below.
+These documents show that PMCR_RX_FC_EN is at bit 5. Correct this along
+with renaming it to PMCR_FORCE_RX_FC_EN, and the same for PMCR_TX_FC_EN.
 
-Looking at phy_init_eee(), it could return a negative value when:
+Remove PMCR_SPEED_MASK which doesn't have a use.
 
-1. phydev->drv is NULL
-2. if genphy_c45_eee_is_active() returns negative
-3. if genphy_c45_eee_is_active() returns zero, it returns -EPROTONOSUPPORT
-4. if phy_set_bits_mmd() fails (e.g. communication error with the PHY)
-
-If we then look at genphy_c45_eee_is_active(), then:
-
-genphy_c45_read_eee_adv() and genphy_c45_read_eee_lpa() propagate their
-non-zero return values, otherwise this function returns zero or positive
-integer.
-
-If we then look at genphy_c45_read_eee_adv(), then a failure of
-phy_read_mmd() would cause a negative value to be returned.
-
-Looking at genphy_c45_read_eee_lpa(), the same is true.
-
-So, it can be summarised as:
-
-- phydev->drv is NULL
-- there is a communication error accessing the PHY
-- EEE is not active
-
-otherwise, it returns zero on success.
-
-If one wishes to determine whether an error occurred vs EEE not being
-supported through negotiation for the negotiated speed, if it returns
--EPROTONOSUPPORT in the latter case. Other error codes mean either the
-driver has been unloaded or communication error.
-
-In conclusion, determining the EEE abilities by PHY auto polling shouldn't
-result in having any EEE abilities enabled, when one of the last two
-situations in the summary happens. And it seems that if phydev->drv is
-NULL, there would be bigger problems with the device than a broken link. So
-this is not a bugfix.
+Rename the force mode definitions for MT7531 to FORCE_MODE. Add MASK at the
+end for the mask that includes all force mode definitions.
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530.h | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ drivers/net/dsa/mt7530.c | 24 ++++++++++----------
+ drivers/net/dsa/mt7530.h | 58 +++++++++++++++++++++++++-----------------------
+ 2 files changed, 42 insertions(+), 40 deletions(-)
 
+diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
+index 04795ef8ebd7..8dee9cee1104 100644
+--- a/drivers/net/dsa/mt7530.c
++++ b/drivers/net/dsa/mt7530.c
+@@ -896,7 +896,7 @@ static void mt7530_setup_port5(struct dsa_switch *ds, phy_interface_t interface)
+ 		val &= ~MHWTRAP_P5_MAC_SEL & ~MHWTRAP_P5_DIS;
+ 
+ 		/* Setup the MAC by default for the cpu port */
+-		mt7530_write(priv, MT7530_PMCR_P(5), 0x56300);
++		mt7530_write(priv, MT753X_PMCR_P(5), 0x56300);
+ 		break;
+ 	case P5_INTF_SEL_GMAC5:
+ 		/* MT7530_P5_MODE_GMAC: P5 -> External phy or 2nd GMAC */
+@@ -2444,8 +2444,8 @@ mt7530_setup(struct dsa_switch *ds)
+ 		/* Clear link settings and enable force mode to force link down
+ 		 * on all ports until they're enabled later.
+ 		 */
+-		mt7530_rmw(priv, MT7530_PMCR_P(i), PMCR_LINK_SETTINGS_MASK |
+-			   PMCR_FORCE_MODE, PMCR_FORCE_MODE);
++		mt7530_rmw(priv, MT753X_PMCR_P(i), PMCR_LINK_SETTINGS_MASK |
++			   MT7530_FORCE_MODE, MT7530_FORCE_MODE);
+ 
+ 		/* Disable forwarding by default on all ports */
+ 		mt7530_rmw(priv, MT7530_PCR_P(i), PCR_MATRIX_MASK,
+@@ -2555,8 +2555,8 @@ mt7531_setup_common(struct dsa_switch *ds)
+ 		/* Clear link settings and enable force mode to force link down
+ 		 * on all ports until they're enabled later.
+ 		 */
+-		mt7530_rmw(priv, MT7530_PMCR_P(i), PMCR_LINK_SETTINGS_MASK |
+-			   MT7531_FORCE_MODE, MT7531_FORCE_MODE);
++		mt7530_rmw(priv, MT753X_PMCR_P(i), PMCR_LINK_SETTINGS_MASK |
++			   MT7531_FORCE_MODE_MASK, MT7531_FORCE_MODE_MASK);
+ 
+ 		/* Disable forwarding by default on all ports */
+ 		mt7530_rmw(priv, MT7530_PCR_P(i), PCR_MATRIX_MASK,
+@@ -2639,7 +2639,7 @@ mt7531_setup(struct dsa_switch *ds)
+ 
+ 	/* Force link down on all ports before internal reset */
+ 	for (i = 0; i < MT7530_NUM_PORTS; i++)
+-		mt7530_write(priv, MT7530_PMCR_P(i), MT7531_FORCE_LNK);
++		mt7530_write(priv, MT753X_PMCR_P(i), MT7531_FORCE_MODE_LNK);
+ 
+ 	/* Reset the switch through internal reset */
+ 	mt7530_write(priv, MT7530_SYS_CTRL, SYS_CTRL_SW_RST | SYS_CTRL_REG_RST);
+@@ -2881,7 +2881,7 @@ mt753x_phylink_mac_config(struct phylink_config *config, unsigned int mode,
+ 
+ 	/* Are we connected to external phy */
+ 	if (port == 5 && dsa_is_user_port(ds, 5))
+-		mt7530_set(priv, MT7530_PMCR_P(port), PMCR_EXT_PHY);
++		mt7530_set(priv, MT753X_PMCR_P(port), PMCR_EXT_PHY);
+ }
+ 
+ static void mt753x_phylink_mac_link_down(struct phylink_config *config,
+@@ -2891,7 +2891,7 @@ static void mt753x_phylink_mac_link_down(struct phylink_config *config,
+ 	struct dsa_port *dp = dsa_phylink_to_port(config);
+ 	struct mt7530_priv *priv = dp->ds->priv;
+ 
+-	mt7530_clear(priv, MT7530_PMCR_P(dp->index), PMCR_LINK_SETTINGS_MASK);
++	mt7530_clear(priv, MT753X_PMCR_P(dp->index), PMCR_LINK_SETTINGS_MASK);
+ }
+ 
+ static void mt753x_phylink_mac_link_up(struct phylink_config *config,
+@@ -2905,7 +2905,7 @@ static void mt753x_phylink_mac_link_up(struct phylink_config *config,
+ 	struct mt7530_priv *priv = dp->ds->priv;
+ 	u32 mcr;
+ 
+-	mcr = PMCR_RX_EN | PMCR_TX_EN | PMCR_FORCE_LNK;
++	mcr = PMCR_MAC_RX_EN | PMCR_MAC_TX_EN | PMCR_FORCE_LNK;
+ 
+ 	switch (speed) {
+ 	case SPEED_1000:
+@@ -2920,9 +2920,9 @@ static void mt753x_phylink_mac_link_up(struct phylink_config *config,
+ 	if (duplex == DUPLEX_FULL) {
+ 		mcr |= PMCR_FORCE_FDX;
+ 		if (tx_pause)
+-			mcr |= PMCR_TX_FC_EN;
++			mcr |= PMCR_FORCE_TX_FC_EN;
+ 		if (rx_pause)
+-			mcr |= PMCR_RX_FC_EN;
++			mcr |= PMCR_FORCE_RX_FC_EN;
+ 	}
+ 
+ 	if (mode == MLO_AN_PHY && phydev && phy_init_eee(phydev, false) >= 0) {
+@@ -2937,7 +2937,7 @@ static void mt753x_phylink_mac_link_up(struct phylink_config *config,
+ 		}
+ 	}
+ 
+-	mt7530_set(priv, MT7530_PMCR_P(dp->index), mcr);
++	mt7530_set(priv, MT753X_PMCR_P(dp->index), mcr);
+ }
+ 
+ static void mt753x_phylink_get_caps(struct dsa_switch *ds, int port,
 diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
-index 94932c3dbde9..f7c5355c1642 100644
+index f7c5355c1642..7d7abb67202f 100644
 --- a/drivers/net/dsa/mt7530.h
 +++ b/drivers/net/dsa/mt7530.h
-@@ -328,11 +328,15 @@ enum mt7530_vlan_port_acc_frm {
- #define  MT7531_FORCE_DPX		BIT(29)
- #define  MT7531_FORCE_RX_FC		BIT(28)
- #define  MT7531_FORCE_TX_FC		BIT(27)
-+#define  MT7531_FORCE_EEE100		BIT(26)
-+#define  MT7531_FORCE_EEE1G		BIT(25)
- #define  MT7531_FORCE_MODE		(MT7531_FORCE_LNK | \
- 					 MT7531_FORCE_SPD | \
- 					 MT7531_FORCE_DPX | \
- 					 MT7531_FORCE_RX_FC | \
--					 MT7531_FORCE_TX_FC)
-+					 MT7531_FORCE_TX_FC | \
-+					 MT7531_FORCE_EEE100 | \
-+					 MT7531_FORCE_EEE1G)
- #define  PMCR_LINK_SETTINGS_MASK	(PMCR_TX_EN | PMCR_FORCE_SPEED_1000 | \
- 					 PMCR_RX_EN | PMCR_FORCE_SPEED_100 | \
- 					 PMCR_TX_FC_EN | PMCR_RX_FC_EN | \
+@@ -304,44 +304,46 @@ enum mt7530_vlan_port_acc_frm {
+ #define  G0_PORT_VID_DEF		G0_PORT_VID(0)
+ 
+ /* Register for port MAC control register */
+-#define MT7530_PMCR_P(x)		(0x3000 + ((x) * 0x100))
+-#define  PMCR_IFG_XMIT(x)		(((x) & 0x3) << 18)
++#define MT753X_PMCR_P(x)		(0x3000 + ((x) * 0x100))
++#define  PMCR_IFG_XMIT_MASK		GENMASK(19, 18)
++#define  PMCR_IFG_XMIT(x)		FIELD_PREP(PMCR_IFG_XMIT_MASK, x)
+ #define  PMCR_EXT_PHY			BIT(17)
+ #define  PMCR_MAC_MODE			BIT(16)
+-#define  PMCR_FORCE_MODE		BIT(15)
+-#define  PMCR_TX_EN			BIT(14)
+-#define  PMCR_RX_EN			BIT(13)
++#define  MT7530_FORCE_MODE		BIT(15)
++#define  PMCR_MAC_TX_EN			BIT(14)
++#define  PMCR_MAC_RX_EN			BIT(13)
+ #define  PMCR_BACKOFF_EN		BIT(9)
+ #define  PMCR_BACKPR_EN			BIT(8)
+ #define  PMCR_FORCE_EEE1G		BIT(7)
+ #define  PMCR_FORCE_EEE100		BIT(6)
+-#define  PMCR_TX_FC_EN			BIT(5)
+-#define  PMCR_RX_FC_EN			BIT(4)
++#define  PMCR_FORCE_RX_FC_EN		BIT(5)
++#define  PMCR_FORCE_TX_FC_EN		BIT(4)
+ #define  PMCR_FORCE_SPEED_1000		BIT(3)
+ #define  PMCR_FORCE_SPEED_100		BIT(2)
+ #define  PMCR_FORCE_FDX			BIT(1)
+ #define  PMCR_FORCE_LNK			BIT(0)
+-#define  PMCR_SPEED_MASK		(PMCR_FORCE_SPEED_100 | \
+-					 PMCR_FORCE_SPEED_1000)
+-#define  MT7531_FORCE_LNK		BIT(31)
+-#define  MT7531_FORCE_SPD		BIT(30)
+-#define  MT7531_FORCE_DPX		BIT(29)
+-#define  MT7531_FORCE_RX_FC		BIT(28)
+-#define  MT7531_FORCE_TX_FC		BIT(27)
+-#define  MT7531_FORCE_EEE100		BIT(26)
+-#define  MT7531_FORCE_EEE1G		BIT(25)
+-#define  MT7531_FORCE_MODE		(MT7531_FORCE_LNK | \
+-					 MT7531_FORCE_SPD | \
+-					 MT7531_FORCE_DPX | \
+-					 MT7531_FORCE_RX_FC | \
+-					 MT7531_FORCE_TX_FC | \
+-					 MT7531_FORCE_EEE100 | \
+-					 MT7531_FORCE_EEE1G)
+-#define  PMCR_LINK_SETTINGS_MASK	(PMCR_TX_EN | PMCR_FORCE_SPEED_1000 | \
+-					 PMCR_RX_EN | PMCR_FORCE_SPEED_100 | \
+-					 PMCR_TX_FC_EN | PMCR_RX_FC_EN | \
+-					 PMCR_FORCE_FDX | PMCR_FORCE_LNK | \
+-					 PMCR_FORCE_EEE1G | PMCR_FORCE_EEE100)
++#define  MT7531_FORCE_MODE_LNK		BIT(31)
++#define  MT7531_FORCE_MODE_SPD		BIT(30)
++#define  MT7531_FORCE_MODE_DPX		BIT(29)
++#define  MT7531_FORCE_MODE_RX_FC	BIT(28)
++#define  MT7531_FORCE_MODE_TX_FC	BIT(27)
++#define  MT7531_FORCE_MODE_EEE100	BIT(26)
++#define  MT7531_FORCE_MODE_EEE1G	BIT(25)
++#define  MT7531_FORCE_MODE_MASK		(MT7531_FORCE_MODE_LNK | \
++					 MT7531_FORCE_MODE_SPD | \
++					 MT7531_FORCE_MODE_DPX | \
++					 MT7531_FORCE_MODE_RX_FC | \
++					 MT7531_FORCE_MODE_TX_FC | \
++					 MT7531_FORCE_MODE_EEE100 | \
++					 MT7531_FORCE_MODE_EEE1G)
++#define  PMCR_LINK_SETTINGS_MASK	(PMCR_MAC_TX_EN | PMCR_MAC_RX_EN | \
++					 PMCR_FORCE_EEE1G | \
++					 PMCR_FORCE_EEE100 | \
++					 PMCR_FORCE_RX_FC_EN | \
++					 PMCR_FORCE_TX_FC_EN | \
++					 PMCR_FORCE_SPEED_1000 | \
++					 PMCR_FORCE_SPEED_100 | \
++					 PMCR_FORCE_FDX | PMCR_FORCE_LNK)
+ 
+ #define MT7530_PMEEECR_P(x)		(0x3004 + (x) * 0x100)
+ #define  WAKEUP_TIME_1000(x)		(((x) & 0xFF) << 24)
 
 -- 
 2.40.1
