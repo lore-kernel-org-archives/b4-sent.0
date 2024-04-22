@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Mon, 22 Apr 2024 10:15:19 +0300
-Subject: [PATCH net-next v2 12/15] net: dsa: mt7530: get rid of
- mac_port_validate member of mt753x_info
+Date: Mon, 22 Apr 2024 10:15:20 +0300
+Subject: [PATCH net-next v2 13/15] net: dsa: mt7530: use
+ priv->ds->num_ports instead of MT7530_NUM_PORTS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240422-for-netnext-mt7530-improvements-4-v2-12-a75157ba76ad@arinc9.com>
+Message-Id: <20240422-for-netnext-mt7530-improvements-4-v2-13-a75157ba76ad@arinc9.com>
 References: <20240422-for-netnext-mt7530-improvements-4-v2-0-a75157ba76ad@arinc9.com>
 In-Reply-To: <20240422-for-netnext-mt7530-improvements-4-v2-0-a75157ba76ad@arinc9.com>
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
@@ -23,57 +23,66 @@ Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713770127; l=1895;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713770127; l=2051;
  i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=eQVxi9XpKVjFwy7G/fq5LbkX2JyuVqKa+YvcokozwTs=;
- b=GgpCu/Y1Z9ir60LhRY9KQrTo4YU8dcdz5TAEg6d1AtWSTPBmF2HFUtGt8VLQ4EH5FL+8o1UVO
- YEf/r6ytza4BZ+zDswwMeepMid3wYdwg9dfqG8+ydAhoONXgB2awpwl
+ bh=LO57rTtyBbOCREdPUpi6qHUsoyqRRLXYGv733cnzF7I=;
+ b=qqzctkZQES8NF5LlMYDv98BTmFXbTZaEoakWJoA2/kDTUoi9+aBTltYqJHlK1JsL0us/ZvI7Q
+ +CO9tadFy7qCeAsJ9tbPawfjSyWV1IroyQul4j0q174vvcq7p9mKQjL
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The mac_port_validate member of the mt753x_info structure is not being
-used, remove it. Improve the member description section in the process.
+Use priv->ds->num_ports on all for loops which configure the switch
+registers. In the future, the value of MT7530_NUM_PORTS will depend on
+priv->id. Therefore, this change prepares the subdriver for a simpler
+implementation.
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
- drivers/net/dsa/mt7530.h | 10 +++-------
- 1 file changed, 3 insertions(+), 7 deletions(-)
+ drivers/net/dsa/mt7530.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/net/dsa/mt7530.h b/drivers/net/dsa/mt7530.h
-index 6a6ef34b48c4..2ea4e24628c6 100644
---- a/drivers/net/dsa/mt7530.h
-+++ b/drivers/net/dsa/mt7530.h
-@@ -743,15 +743,14 @@ struct mt753x_pcs {
+diff --git a/drivers/net/dsa/mt7530.c b/drivers/net/dsa/mt7530.c
+index 5e69ff0a4b24..55954a165a15 100644
+--- a/drivers/net/dsa/mt7530.c
++++ b/drivers/net/dsa/mt7530.c
+@@ -1411,7 +1411,7 @@ mt7530_port_set_vlan_unaware(struct dsa_switch *ds, int port)
+ 	mt7530_rmw(priv, MT7530_PPBV1_P(port), G0_PORT_VID_MASK,
+ 		   G0_PORT_VID_DEF);
  
- /* struct mt753x_info -	This is the main data structure for holding the specific
-  *			part for each supported device
-+ * @id:			Holding the identifier to a switch model
-+ * @pcs_ops:		Holding the pointer to the MAC PCS operations structure
-  * @sw_setup:		Holding the handler to a device initialization
-  * @phy_read_c22:	Holding the way reading PHY port using C22
-  * @phy_write_c22:	Holding the way writing PHY port using C22
-  * @phy_read_c45:	Holding the way reading PHY port using C45
-  * @phy_write_c45:	Holding the way writing PHY port using C45
-- * @phy_mode_supported:	Check if the PHY type is being supported on a certain
-- *			port
-- * @mac_port_validate:	Holding the way to set addition validate type for a
-- *			certan MAC port
-+ * @mac_port_get_caps:	Holding the handler that provides MAC capabilities
-  * @mac_port_config:	Holding the way setting up the PHY attribute to a
-  *			certain MAC port
-  */
-@@ -770,9 +769,6 @@ struct mt753x_info {
- 			     int regnum, u16 val);
- 	void (*mac_port_get_caps)(struct dsa_switch *ds, int port,
- 				  struct phylink_config *config);
--	void (*mac_port_validate)(struct dsa_switch *ds, int port,
--				  phy_interface_t interface,
--				  unsigned long *supported);
- 	void (*mac_port_config)(struct dsa_switch *ds, int port,
- 				unsigned int mode,
- 				phy_interface_t interface);
+-	for (i = 0; i < MT7530_NUM_PORTS; i++) {
++	for (i = 0; i < priv->ds->num_ports; i++) {
+ 		if (dsa_is_user_port(ds, i) &&
+ 		    dsa_port_is_vlan_filtering(dsa_to_port(ds, i))) {
+ 			all_user_ports_removed = false;
+@@ -2428,7 +2428,7 @@ mt7530_setup(struct dsa_switch *ds)
+ 	/* Enable and reset MIB counters */
+ 	mt7530_mib_reset(ds);
+ 
+-	for (i = 0; i < MT7530_NUM_PORTS; i++) {
++	for (i = 0; i < priv->ds->num_ports; i++) {
+ 		/* Clear link settings and enable force mode to force link down
+ 		 * on all ports until they're enabled later.
+ 		 */
+@@ -2539,7 +2539,7 @@ mt7531_setup_common(struct dsa_switch *ds)
+ 	mt7530_clear(priv, MT753X_MFC, BC_FFP_MASK | UNM_FFP_MASK |
+ 		     UNU_FFP_MASK);
+ 
+-	for (i = 0; i < MT7530_NUM_PORTS; i++) {
++	for (i = 0; i < priv->ds->num_ports; i++) {
+ 		/* Clear link settings and enable force mode to force link down
+ 		 * on all ports until they're enabled later.
+ 		 */
+@@ -2626,7 +2626,7 @@ mt7531_setup(struct dsa_switch *ds)
+ 	priv->p5_sgmii = !!(val & PAD_DUAL_SGMII_EN);
+ 
+ 	/* Force link down on all ports before internal reset */
+-	for (i = 0; i < MT7530_NUM_PORTS; i++)
++	for (i = 0; i < priv->ds->num_ports; i++)
+ 		mt7530_write(priv, MT753X_PMCR_P(i), MT7531_FORCE_MODE_LNK);
+ 
+ 	/* Reset the switch through internal reset */
 
 -- 
 2.40.1
