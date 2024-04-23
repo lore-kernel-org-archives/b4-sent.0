@@ -1,10 +1,10 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Tue, 23 Apr 2024 12:50:47 +0300
-Subject: [PATCH v3 3/5] ARM: dts: BCM5301X: Add DT for ASUS RT-AC3200
+Date: Tue, 23 Apr 2024 12:50:48 +0300
+Subject: [PATCH v3 4/5] ARM: dts: BCM5301X: Add DT for ASUS RT-AC5300
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-3-23d33cfafe7a@arinc9.com>
+Message-Id: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-4-23d33cfafe7a@arinc9.com>
 References: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-0-23d33cfafe7a@arinc9.com>
 In-Reply-To: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-0-23d33cfafe7a@arinc9.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -16,26 +16,26 @@ Cc: Tom Brautaset <tbrautaset@gmail.com>, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713865858; l=4241;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713865858; l=4382;
  i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=rzvkGU8XYLFoJJLUOwkBJjuiHr53mnc39d+oLj0VaB8=;
- b=yVyNDxioUjfJOYcBXOy2mKFHErFQ4rTCTHIynhHmmls0VRE3UDq4IkfGsYsfcOB8qufib1dvd
- Egf2mpgcjTVDvlFew5hjnf1vSXm4pu/9l+mPNGSBCt0vXiWc9PmwxKn
+ bh=P5yJlg4wjk2VTZLTm+4BjnQv6HiOdlE4FvT7F0PL3pw=;
+ b=Sqe0IqL3rOc5pQHur9LFA7gCu7+/FNZzyvXHvCvNwvcup82i1DAERrYhbLOfQ+jsrk+WydIJV
+ /6Vlsj8F4b+BD0ASrlJK5iqIT+lUYYIVAzMkxPU91KTm9N7rKYU0+DR
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the device tree for ASUS RT-AC3200 which is an AC3200 router featuring
+Add the device tree for ASUS RT-AC5300 which is an AC5300 router featuring
 5 Ethernet ports over the integrated Broadcom switch.
 
 Hardware info:
-* Processor: Broadcom BCM4709A0 dual-core @ 1.0 GHz
-* Switch: BCM53012 in BCM4709A0
-* DDR3 RAM: 256 MB
+* Processor: Broadcom BCM4709C0 dual-core @ 1.4 GHz
+* Switch: BCM53012 in BCM4709C0
+* DDR3 RAM: 512 MB
 * Flash: 128 MB
-* 2.4GHz: BCM43602 3x3 single chip 802.11b/g/n SoC
-* 5GHz: BCM43602 3x3 two chips 802.11a/n/ac SoC
+* 2.4GHz: BCM4366 4x4 single chip 802.11b/g/n SoC
+* 5GHz: BCM4366 4x4 two chips 802.11a/n/ac SoC
 * Ports: 4 LAN Ports, 1 WAN Port
 
 Co-developed-by: Tom Brautaset <tbrautaset@gmail.com>
@@ -43,27 +43,27 @@ Signed-off-by: Tom Brautaset <tbrautaset@gmail.com>
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
  arch/arm/boot/dts/broadcom/Makefile                |   1 +
- .../boot/dts/broadcom/bcm4709-asus-rt-ac3200.dts   | 150 +++++++++++++++++++++
- 2 files changed, 151 insertions(+)
+ .../boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts  | 156 +++++++++++++++++++++
+ 2 files changed, 157 insertions(+)
 
 diff --git a/arch/arm/boot/dts/broadcom/Makefile b/arch/arm/boot/dts/broadcom/Makefile
-index 7099d9560033..c61fca514775 100644
+index c61fca514775..5881bcc95eba 100644
 --- a/arch/arm/boot/dts/broadcom/Makefile
 +++ b/arch/arm/boot/dts/broadcom/Makefile
-@@ -64,6 +64,7 @@ dtb-$(CONFIG_ARCH_BCM_5301X) += \
- 	bcm47081-luxul-xap-1410.dtb \
- 	bcm47081-luxul-xwr-1200.dtb \
- 	bcm47081-tplink-archer-c5-v2.dtb \
-+	bcm4709-asus-rt-ac3200.dtb \
- 	bcm4709-asus-rt-ac87u.dtb \
- 	bcm4709-buffalo-wxr-1900dhp.dtb \
- 	bcm4709-linksys-ea9200.dtb \
-diff --git a/arch/arm/boot/dts/broadcom/bcm4709-asus-rt-ac3200.dts b/arch/arm/boot/dts/broadcom/bcm4709-asus-rt-ac3200.dts
+@@ -72,6 +72,7 @@ dtb-$(CONFIG_ARCH_BCM_5301X) += \
+ 	bcm4709-netgear-r8000.dtb \
+ 	bcm4709-tplink-archer-c9-v1.dtb \
+ 	bcm47094-asus-rt-ac3100.dtb \
++	bcm47094-asus-rt-ac5300.dtb \
+ 	bcm47094-asus-rt-ac88u.dtb \
+ 	bcm47094-dlink-dir-885l.dtb \
+ 	bcm47094-dlink-dir-890l.dtb \
+diff --git a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts
 new file mode 100644
-index 000000000000..53cb0c58f6d0
+index 000000000000..6c666dc7ad23
 --- /dev/null
-+++ b/arch/arm/boot/dts/broadcom/bcm4709-asus-rt-ac3200.dts
-@@ -0,0 +1,150 @@
++++ b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts
+@@ -0,0 +1,156 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 +/*
 + * Author: Tom Brautaset <tbrautaset@gmail.com>
@@ -71,18 +71,18 @@ index 000000000000..53cb0c58f6d0
 +
 +/dts-v1/;
 +
-+#include "bcm4709.dtsi"
++#include "bcm47094.dtsi"
 +#include "bcm5301x-nand-cs0-bch8.dtsi"
 +
 +#include <dt-bindings/leds/common.h>
 +
 +/ {
-+	compatible = "asus,rt-ac3200", "brcm,bcm4709", "brcm,bcm4708";
-+	model = "ASUS RT-AC3200";
++	compatible = "asus,rt-ac5300", "brcm,bcm47094", "brcm,bcm4708";
++	model = "ASUS RT-AC5300";
 +
 +	memory@0 {
 +		reg = <0x00000000 0x08000000>,
-+		      <0x88000000 0x08000000>;
++		      <0x88000000 0x18000000>;
 +		device_type = "memory";
 +	};
 +
@@ -90,7 +90,7 @@ index 000000000000..53cb0c58f6d0
 +		compatible = "brcm,nvram";
 +		reg = <0x1c080000 0x00180000>;
 +
-+		et0macaddr: et0macaddr {
++		et1macaddr: et1macaddr {
 +			#nvmem-cell-cells = <1>;
 +		};
 +	};
@@ -107,18 +107,24 @@ index 000000000000..53cb0c58f6d0
 +		button-wifi {
 +			label = "Wi-Fi";
 +			linux,code = <KEY_RFKILL>;
-+			gpios = <&chipcommon 4 GPIO_ACTIVE_LOW>;
++			gpios = <&chipcommon 20 GPIO_ACTIVE_LOW>;
 +		};
 +
 +		button-wps {
 +			label = "WPS";
 +			linux,code = <KEY_WPS_BUTTON>;
-+			gpios = <&chipcommon 7 GPIO_ACTIVE_LOW>;
++			gpios = <&chipcommon 18 GPIO_ACTIVE_LOW>;
 +		};
 +	};
 +
 +	leds {
 +		compatible = "gpio-leds";
++
++		led-lan {
++			color = <LED_COLOR_ID_WHITE>;
++			function = LED_FUNCTION_LAN;
++			gpios = <&chipcommon 21 GPIO_ACTIVE_LOW>;
++		};
 +
 +		led-power {
 +			color = <LED_COLOR_ID_WHITE>;
@@ -136,23 +142,23 @@ index 000000000000..53cb0c58f6d0
 +		led-wps {
 +			color = <LED_COLOR_ID_WHITE>;
 +			function = LED_FUNCTION_WPS;
-+			gpios = <&chipcommon 14 GPIO_ACTIVE_LOW>;
++			gpios = <&chipcommon 19 GPIO_ACTIVE_LOW>;
 +		};
 +	};
 +};
 +
 +&gmac0 {
-+	nvmem-cells = <&et0macaddr 0>;
++	nvmem-cells = <&et1macaddr 0>;
 +	nvmem-cell-names = "mac-address";
 +};
 +
 +&gmac1 {
-+	nvmem-cells = <&et0macaddr 1>;
++	nvmem-cells = <&et1macaddr 1>;
 +	nvmem-cell-names = "mac-address";
 +};
 +
 +&gmac2 {
-+	nvmem-cells = <&et0macaddr 2>;
++	nvmem-cells = <&et1macaddr 2>;
 +	nvmem-cell-names = "mac-address";
 +};
 +
@@ -186,11 +192,11 @@ index 000000000000..53cb0c58f6d0
 +
 +	ports {
 +		port@0 {
-+			label = "wan";
++			label = "lan4";
 +		};
 +
 +		port@1 {
-+			label = "lan1";
++			label = "lan3";
 +		};
 +
 +		port@2 {
@@ -198,11 +204,11 @@ index 000000000000..53cb0c58f6d0
 +		};
 +
 +		port@3 {
-+			label = "lan3";
++			label = "lan1";
 +		};
 +
 +		port@4 {
-+			label = "lan4";
++			label = "wan";
 +		};
 +	};
 +};
