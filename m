@@ -1,15 +1,13 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Subject: [PATCH v3 0/5] Document ASUS RT-AC3200 and ASUS RT-AC5300 and add
- device trees
-Date: Tue, 23 Apr 2024 12:50:44 +0300
-Message-Id: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-0-23d33cfafe7a@arinc9.com>
+Date: Tue, 23 Apr 2024 12:50:45 +0300
+Subject: [PATCH v3 1/5] dt-bindings: arm: bcm: add bindings for ASUS
+ RT-AC3200
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAHSEJ2YC/4XNsQ7CIBDG8VcxzJ45KNTi5HsYB3oFy2AxUImm6
- btLGwedOn353/C7iSUbvU3stJtYtNknH4YS1X7HqDfDzYLvSjOBQqLEBlyIkAKBSc8EcQRDlUA
- so6oyqqutI0FSH1tWjEe0zr9W/3It3fs0hvhe32W+XL8ylxty5oDAeUMaW2Nrq84m+oH0gcKdL
- XQWv5ze4kThnFbOKSRhZPfHzfP8AXFbRjwaAQAA
+Message-Id: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-1-23d33cfafe7a@arinc9.com>
+References: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-0-23d33cfafe7a@arinc9.com>
+In-Reply-To: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-0-23d33cfafe7a@arinc9.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
  Hauke Mehrtens <hauke@hauke-m.de>, Rafal Milecki <zajec5@gmail.com>, 
@@ -20,67 +18,37 @@ Cc: Tom Brautaset <tbrautaset@gmail.com>, devicetree@vger.kernel.org,
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>, 
  Krzysztof Kozlowski <krzk@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713865858; l=2295;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713865858; l=835;
  i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=FQLt1hmXPP3cDkvy4rTvlY0mMo/XhlZ354mwI3by6iM=;
- b=qMdw1MUc3Tww2iXeIs464rNvG05CzXQzzZhWOaRk5Z6RaRjyuPZMdIWfOSsX9zQnfrtgh6GSp
- Pc6+aAB53vfA14d6V+9kO2Fps6t46d9OGKpOk3YewVhmrbw3EybzSTX
+ bh=j6C9XYG4vLVN+NzaIcMBXdgQq43KpkgAe4BMdqdb8ws=;
+ b=4lpXT3JtgHo8WW9dJStKgQ72i4VdH+Pnh8JAzHn23gA0zLUNFd+Qr/F0bi7hgDQA1jMxzhlhp
+ BlkLDxbR8H/D91gx7jG1BolX5QO0T8XLM1gLW+Qczej3mlUQzJSAnsA
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello.
+Add ASUS RT-AC3200 under BCM4709 based boards.
 
-This patch series documents the compatible strings for ASUS RT-AC3200 and
-ASUS RT-AC5300, and adds the device trees for them. The last patch makes
-the device tree files for ASUS RT-AC3100 and ASUS RT-AC88U conform to the
-Devicetree Sources (DTS) Coding Style.
-
+Acked-by: Krzysztof Kozlowski <krzk@kernel.org>
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
 ---
-Changes in v3:
-- Add a new patch to the end.
-- Patch 3
-  - Reorder the nodes and properties to conform to the Devicetree Sources
-    (DTS) Coding Style.
-- Patch 4
-  - Same as above.
-- Link to v2: https://lore.kernel.org/r/20240419-for-soc-asus-rt-ac3200-ac5300-v2-0-f95ff50c2a4d@arinc9.com
+ Documentation/devicetree/bindings/arm/bcm/brcm,bcm4708.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-Changes in v2:
-- Patch 3
-  - Remove the chosen node as earlycon is not for mainline use, and the
-    stdout-path property which should be used instead of bootargs =
-    "console=" is already described in bcm4708.dtsi with the same value.
-  - Remove MAC address assignment to switch ports. To explain why shortly,
-    on the switch with CPU port architecture, the LLC Entity associated
-    with each port can be accessed without a distinct MAC address assigned
-    to each port. Therefore, it is unnecessary.
-- Patch 4
-  - Same as above.
-- Link to v1: https://lore.kernel.org/r/20240414-for-soc-asus-rt-ac3200-ac5300-v1-0-118c90bae6e5@arinc9.com
+diff --git a/Documentation/devicetree/bindings/arm/bcm/brcm,bcm4708.yaml b/Documentation/devicetree/bindings/arm/bcm/brcm,bcm4708.yaml
+index 4cc4e6754681..215bef740aca 100644
+--- a/Documentation/devicetree/bindings/arm/bcm/brcm,bcm4708.yaml
++++ b/Documentation/devicetree/bindings/arm/bcm/brcm,bcm4708.yaml
+@@ -53,6 +53,7 @@ properties:
+       - description: BCM4709 based boards
+         items:
+           - enum:
++              - asus,rt-ac3200
+               - asus,rt-ac87u
+               - buffalo,wxr-1900dhp
+               - linksys,ea9200
 
----
-Arınç ÜNAL (5):
-      dt-bindings: arm: bcm: add bindings for ASUS RT-AC3200
-      dt-bindings: arm: bcm: add bindings for ASUS RT-AC5300
-      ARM: dts: BCM5301X: Add DT for ASUS RT-AC3200
-      ARM: dts: BCM5301X: Add DT for ASUS RT-AC5300
-      ARM: dts: BCM5301X: Conform to DTS Coding Style on ASUS RT-AC3100 & AC88U
-
- .../devicetree/bindings/arm/bcm/brcm,bcm4708.yaml  |   2 +
- arch/arm/boot/dts/broadcom/Makefile                |   2 +
- .../boot/dts/broadcom/bcm4709-asus-rt-ac3200.dts   | 150 ++++++++++++++++++++
- .../boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi |  92 ++++++------
- .../boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts  | 156 +++++++++++++++++++++
- .../boot/dts/broadcom/bcm47094-asus-rt-ac88u.dts   |  69 +++++----
- 6 files changed, 390 insertions(+), 81 deletions(-)
----
-base-commit: dd5c56cd065e6f7ac5f87b939e8a3c499a62d463
-change-id: 20240408-for-soc-asus-rt-ac3200-ac5300-5d6efc2c497b
-
-Best regards,
 -- 
-Arınç ÜNAL <arinc.unal@arinc9.com>
+2.40.1
 
