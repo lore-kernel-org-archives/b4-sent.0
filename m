@@ -1,271 +1,68 @@
-From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Tue, 23 Apr 2024 12:50:49 +0300
-Subject: [PATCH v3 5/5] ARM: dts: BCM5301X: Conform to DTS Coding Style on
- ASUS RT-AC3100 & AC88U
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH v2 0/4] dev_printk: add dev_errp_probe() helper
+Date: Tue, 23 Apr 2024 17:20:29 +0200
+Message-Id: <20240423-dev-add_dev_errp_probe-v2-0-12f43c5d8b0d@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-5-23d33cfafe7a@arinc9.com>
-References: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-0-23d33cfafe7a@arinc9.com>
-In-Reply-To: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-0-23d33cfafe7a@arinc9.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
- Hauke Mehrtens <hauke@hauke-m.de>, Rafal Milecki <zajec5@gmail.com>, 
- Florian Fainelli <florian.fainelli@broadcom.com>, 
- Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>
-Cc: Tom Brautaset <tbrautaset@gmail.com>, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIAL3RJ2YC/x2MQQqAIBAAvxJ7TjAzgr4SIdZutReVFSIQ/550G
+ uYwUyCTMGVYugJCD2eOoYnpOzhuHy5SjM3BaGO1NaNCepRHdI2ORJJLEndSA6K20zye1k/Q4iR
+ 08vuP163WDyo3lnloAAAA
+To: Petr Mladek <pmladek@suse.com>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Chris Down <chris@chrisdown.name>, John Ogness <john.ogness@linutronix.de>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>, 
+ Olivier Moysan <olivier.moysan@foss.st.com>, 
+ Andi Shyti <andi.shyti@kernel.org>, Jyoti Bhayana <jbhayana@google.com>
+Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ Nuno Sa <nuno.sa@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713865858; l=5167;
- i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=7L5W/7z1WpF8NCI8e+TnYZn6sscmCDy3pZyH1HtB4TY=;
- b=4cWPEzSSJNXKt801p2f2aFZ9J2U7DbqJ4jQ8ThzSDmM9xJDRIqCbAwmOM0n2jKuiLGogoEkL7
- f2X06SHj9LLCKUxF+booXR8f0cfre9vQuL/W7a6fF8aEuW51Rqovoe8
-X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713885641; l=1190;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=OyvbrdsdOf2HxYi0DXyL+Wx579OMeT8jr9c640c8pY4=;
+ b=41tRg6ufy5pwxxCdDpPaKGvcgOMYRhybemdpQjZ2/Fd1w219f0pYfxPZNYkVdRLz/hQG2fDR5
+ SWNbzCJuCvYCvKJVNHX+MCFghLuwPPD0itHC517e+02X/5N33+emX0k
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Reorder the nodes and properties to conform to the Devicetree Sources (DTS)
-Coding Style.
+Hi,
 
-Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+Here it goes the second version of this. Main difference is the
+introduction of dev_err_cast_probe(). Full log:
+
+v1:
+ * https://lore.kernel.org/all/20240404-dev-add_dev_errp_probe-v1-0-d18e3eb7ec3f@analog.com/
+
+v2:
+ * Patch 1:
+   - Renamed dev_errp_probe() -> dev_err_ptr_probe();
+   - Added dev_err_cast_probe().
+ * Patch 2:
+   - Make use of dev_err_cast_probe();
+   - Also use dev_err_ptr_probe() in __ltc2983_custom_sensor_new().  
+ * Patch 3:
+   - Use dev_err_cast_probe().
+
 ---
- .../boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi | 92 +++++++++++-----------
- .../boot/dts/broadcom/bcm47094-asus-rt-ac88u.dts   | 69 ++++++++--------
- 2 files changed, 80 insertions(+), 81 deletions(-)
+Nuno Sa (4):
+      dev_printk: add new dev_err_probe() helpers
+      iio: temperature: ltc2983: convert to dev_err_probe()
+      iio: backend: make use of dev_err_cast_probe()
+      iio: common: scmi_iio: convert to dev_err_probe()
 
-diff --git a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi
-index 9c7efb1c44f1..2cfaaabc7a6a 100644
---- a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi
-+++ b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac3100.dtsi
-@@ -10,9 +10,9 @@
- 
- / {
- 	memory@0 {
--		device_type = "memory";
- 		reg = <0x00000000 0x08000000>,
- 		      <0x88000000 0x18000000>;
-+		device_type = "memory";
- 	};
- 
- 	nvram@1c080000 {
-@@ -20,6 +20,34 @@ nvram@1c080000 {
- 		reg = <0x1c080000 0x00180000>;
- 	};
- 
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		button-led {
-+			label = "Backlight";
-+			linux,code = <KEY_BRIGHTNESS_ZERO>;
-+			gpios = <&chipcommon 4 GPIO_ACTIVE_LOW>;
-+		};
-+
-+		button-reset {
-+			label = "Reset";
-+			linux,code = <KEY_RESTART>;
-+			gpios = <&chipcommon 11 GPIO_ACTIVE_LOW>;
-+		};
-+
-+		button-wifi {
-+			label = "Wi-Fi";
-+			linux,code = <KEY_RFKILL>;
-+			gpios = <&chipcommon 18 GPIO_ACTIVE_LOW>;
-+		};
-+
-+		button-wps {
-+			label = "WPS";
-+			linux,code = <KEY_WPS_BUTTON>;
-+			gpios = <&chipcommon 20 GPIO_ACTIVE_LOW>;
-+		};
-+	};
-+
- 	leds {
- 		compatible = "gpio-leds";
- 
-@@ -66,32 +94,29 @@ led-wps {
- 			gpios = <&chipcommon 19 GPIO_ACTIVE_LOW>;
- 		};
- 	};
-+};
- 
--	gpio-keys {
--		compatible = "gpio-keys";
--
--		button-led {
--			label = "Backlight";
--			linux,code = <KEY_BRIGHTNESS_ZERO>;
--			gpios = <&chipcommon 4 GPIO_ACTIVE_LOW>;
--		};
-+&nandcs {
-+	partitions {
-+		compatible = "fixed-partitions";
-+		#address-cells = <1>;
-+		#size-cells = <1>;
- 
--		button-reset {
--			label = "Reset";
--			linux,code = <KEY_RESTART>;
--			gpios = <&chipcommon 11 GPIO_ACTIVE_LOW>;
-+		partition@0 {
-+			reg = <0x00000000 0x00080000>;
-+			label = "boot";
-+			read-only;
- 		};
- 
--		button-wifi {
--			label = "Wi-Fi";
--			linux,code = <KEY_RFKILL>;
--			gpios = <&chipcommon 18 GPIO_ACTIVE_LOW>;
-+		partition@80000 {
-+			reg = <0x00080000 0x00180000>;
-+			label = "nvram";
- 		};
- 
--		button-wps {
--			label = "WPS";
--			linux,code = <KEY_WPS_BUTTON>;
--			gpios = <&chipcommon 20 GPIO_ACTIVE_LOW>;
-+		partition@200000 {
-+			compatible = "brcm,trx";
-+			reg = <0x00200000 0x07e00000>;
-+			label = "firmware";
- 		};
- 	};
- };
-@@ -141,28 +166,3 @@ &usb2 {
- &usb3_phy {
- 	status = "okay";
- };
--
--&nandcs {
--	partitions {
--		compatible = "fixed-partitions";
--		#address-cells = <1>;
--		#size-cells = <1>;
--
--		partition@0 {
--			label = "boot";
--			reg = <0x00000000 0x00080000>;
--			read-only;
--		};
--
--		partition@80000 {
--			label = "nvram";
--			reg = <0x00080000 0x00180000>;
--		};
--
--		partition@200000 {
--			label = "firmware";
--			reg = <0x00200000 0x07e00000>;
--			compatible = "brcm,trx";
--		};
--	};
--};
-diff --git a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac88u.dts b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac88u.dts
-index c78f0c7b137d..a197f447fd97 100644
---- a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac88u.dts
-+++ b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac88u.dts
-@@ -19,13 +19,34 @@ et1macaddr: et1macaddr {
- 
- 	switch {
- 		compatible = "realtek,rtl8365mb";
--		/* 7 = MDIO (has input reads), 6 = MDC (clock, output only) */
- 		mdc-gpios = <&chipcommon 6 GPIO_ACTIVE_HIGH>;
- 		mdio-gpios = <&chipcommon 7 GPIO_ACTIVE_HIGH>;
- 		reset-gpios = <&chipcommon 10 GPIO_ACTIVE_LOW>;
- 		realtek,disable-leds;
- 		dsa,member = <1 0>;
- 
-+		mdio {
-+			compatible = "realtek,smi-mdio";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			ethphy0: ethernet-phy@0 {
-+				reg = <0>;
-+			};
-+
-+			ethphy1: ethernet-phy@1 {
-+				reg = <1>;
-+			};
-+
-+			ethphy2: ethernet-phy@2 {
-+				reg = <2>;
-+			};
-+
-+			ethphy3: ethernet-phy@3 {
-+				reg = <3>;
-+			};
-+		};
-+
- 		ports {
- 			#address-cells = <1>;
- 			#size-cells = <0>;
-@@ -69,29 +90,21 @@ fixed-link {
- 				};
- 			};
- 		};
-+	};
-+};
- 
--		mdio {
--			compatible = "realtek,smi-mdio";
--			#address-cells = <1>;
--			#size-cells = <0>;
--
--			ethphy0: ethernet-phy@0 {
--				reg = <0>;
--			};
--
--			ethphy1: ethernet-phy@1 {
--				reg = <1>;
--			};
-+&gmac0 {
-+	status = "disabled";
-+};
- 
--			ethphy2: ethernet-phy@2 {
--				reg = <2>;
--			};
-+&gmac1 {
-+	nvmem-cells = <&et1macaddr 0>;
-+	nvmem-cell-names = "mac-address";
-+};
- 
--			ethphy3: ethernet-phy@3 {
--				reg = <3>;
--			};
--		};
--	};
-+&gmac2 {
-+	nvmem-cells = <&et1macaddr 1>;
-+	nvmem-cell-names = "mac-address";
- };
- 
- &srab {
-@@ -112,17 +125,3 @@ fixed-link {
- 		};
- 	};
- };
--
--&gmac0 {
--	status = "disabled";
--};
--
--&gmac1 {
--	nvmem-cells = <&et1macaddr 0>;
--	nvmem-cell-names = "mac-address";
--};
--
--&gmac2 {
--	nvmem-cells = <&et1macaddr 1>;
--	nvmem-cell-names = "mac-address";
--};
+ drivers/iio/common/scmi_sensors/scmi_iio.c |  45 ++---
+ drivers/iio/industrialio-backend.c         |   8 +-
+ drivers/iio/temperature/ltc2983.c          | 282 +++++++++++++----------------
+ include/linux/dev_printk.h                 |   9 +
+ 4 files changed, 158 insertions(+), 186 deletions(-)
+---
+base-commit: a59668a9397e7245b26e9be85d23f242ff757ae8
+change-id: 20240423-dev-add_dev_errp_probe-1dd04573f4a5
+--
 
--- 
-2.40.1
+Thanks!
+- Nuno Sá
 
