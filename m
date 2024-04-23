@@ -1,11 +1,11 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Tue, 23 Apr 2024 12:50:45 +0300
-Subject: [PATCH v3 1/5] dt-bindings: arm: bcm: add bindings for ASUS
- RT-AC3200
+Date: Tue, 23 Apr 2024 12:50:46 +0300
+Subject: [PATCH v3 2/5] dt-bindings: arm: bcm: add bindings for ASUS
+ RT-AC5300
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-1-23d33cfafe7a@arinc9.com>
+Message-Id: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-2-23d33cfafe7a@arinc9.com>
 References: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-0-23d33cfafe7a@arinc9.com>
 In-Reply-To: <20240423-for-soc-asus-rt-ac3200-ac5300-v3-0-23d33cfafe7a@arinc9.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,17 +18,17 @@ Cc: Tom Brautaset <tbrautaset@gmail.com>, devicetree@vger.kernel.org,
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>, 
  Krzysztof Kozlowski <krzk@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713865858; l=835;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713865858; l=820;
  i=arinc.unal@arinc9.com; s=arinc9-Xeront; h=from:subject:message-id;
- bh=j6C9XYG4vLVN+NzaIcMBXdgQq43KpkgAe4BMdqdb8ws=;
- b=4lpXT3JtgHo8WW9dJStKgQ72i4VdH+Pnh8JAzHn23gA0zLUNFd+Qr/F0bi7hgDQA1jMxzhlhp
- BlkLDxbR8H/D91gx7jG1BolX5QO0T8XLM1gLW+Qczej3mlUQzJSAnsA
+ bh=bR3OtlLxsoLW4OgOTwPQgCaooezqCeVMoRpFlbGyxMw=;
+ b=sZPI9h9sXXvsKJQNzYSAKsug3RZfz3KggVOvyq+m6a/+7Vd0fOL1c/GIPTxShzMus2Ervcq+F
+ PsjcdxDIddzBbAaTjrGn9+pqRtJ1zbxYHeGXoiKdV1AizhCqgan7exg
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
  pk=z49tLn29CyiL4uwBTrqH9HO1Wu3sZIuRp4DaLZvtP9M=
 X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-Xeront with auth_id=137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add ASUS RT-AC3200 under BCM4709 based boards.
+Add ASUS RT-AC5300 under BCM47094 based boards.
 
 Acked-by: Krzysztof Kozlowski <krzk@kernel.org>
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
@@ -37,17 +37,17 @@ Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/Documentation/devicetree/bindings/arm/bcm/brcm,bcm4708.yaml b/Documentation/devicetree/bindings/arm/bcm/brcm,bcm4708.yaml
-index 4cc4e6754681..215bef740aca 100644
+index 215bef740aca..d925e7a3b5ef 100644
 --- a/Documentation/devicetree/bindings/arm/bcm/brcm,bcm4708.yaml
 +++ b/Documentation/devicetree/bindings/arm/bcm/brcm,bcm4708.yaml
-@@ -53,6 +53,7 @@ properties:
-       - description: BCM4709 based boards
+@@ -68,6 +68,7 @@ properties:
          items:
            - enum:
-+              - asus,rt-ac3200
-               - asus,rt-ac87u
-               - buffalo,wxr-1900dhp
-               - linksys,ea9200
+               - asus,rt-ac3100
++              - asus,rt-ac5300
+               - asus,rt-ac88u
+               - dlink,dir-885l
+               - dlink,dir-890l
 
 -- 
 2.40.1
