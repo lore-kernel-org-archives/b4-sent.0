@@ -1,10 +1,10 @@
 From: Xilin Wu <wuxilin123@gmail.com>
-Date: Wed, 24 Apr 2024 23:29:10 +0800
-Subject: [PATCH 05/10] arm64: dts: qcom: pmk8550: Add PWM controller
+Date: Wed, 24 Apr 2024 23:29:11 +0800
+Subject: [PATCH 06/10] arm64: dts: qcom: sm8550: Add UART15
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240424-ayn-odin2-initial-v1-5-e0aa05c991fd@gmail.com>
+Message-Id: <20240424-ayn-odin2-initial-v1-6-e0aa05c991fd@gmail.com>
 References: <20240424-ayn-odin2-initial-v1-0-e0aa05c991fd@gmail.com>
 In-Reply-To: <20240424-ayn-odin2-initial-v1-0-e0aa05c991fd@gmail.com>
 To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>, 
@@ -23,44 +23,64 @@ Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
  linux-arm-msm@vger.kernel.org, Xilin Wu <wuxilin123@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713972563; l=805;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1713972563; l=1572;
  i=wuxilin123@gmail.com; s=20240424; h=from:subject:message-id;
- bh=UJJkbMFALeVJntjJ0F6Zy3BxeVdQ8NMCNMFJYC7Boyk=;
- b=CxOiSooLXVMHGp39j8/B3jelCeqziYdEj46802PdgC+psrDtPoDZNIW6D7J2ub0wVyd5OYEUV
- APrmVMQwclPD0ASCtCxD40Y4LrcBZeQAkA1iUSRraJ92DVQL/c3QGGk
+ bh=OFzbypiVPytW4zM7r7H6VNiMNFxsnAj0i8lBbxZUWk8=;
+ b=tQq4dufCVktTutlbsclvej4fOdX/xDLlbF43Jmj8yh8O2UYPrLVmE/j5VMRLoF9xN9P9u7ToH
+ 8xN5wY7sFBaCOU/0mIlgdQJD5X1zB0GGgNJcIwMJgMmy2rfyknDtryu
 X-Developer-Key: i=wuxilin123@gmail.com; a=ed25519;
  pk=vPnxeJnlD/PfEbyQPZzaay5ezxI/lMrke7qXy31lSM8=
 X-Endpoint-Received: by B4 Relay for wuxilin123@gmail.com/20240424 with auth_id=157
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the PWM function to the pmk8550 dtsi, which is usually used
-to control PWM backlight on platforms using this PMIC.
+Add uart15 node for UART bus present on sm8550 SoC.
 
+Signed-off-by: Molly Sophia <mollysophia379@gmail.com>
 Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/pmk8550.dtsi | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ arch/arm64/boot/dts/qcom/sm8550.dtsi | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/pmk8550.dtsi b/arch/arm64/boot/dts/qcom/pmk8550.dtsi
-index c7ac9b2eaacf..8d43fbb85263 100644
---- a/arch/arm64/boot/dts/qcom/pmk8550.dtsi
-+++ b/arch/arm64/boot/dts/qcom/pmk8550.dtsi
-@@ -73,5 +73,15 @@ pmk8550_gpios: gpio@8800 {
- 			interrupt-controller;
- 			#interrupt-cells = <2>;
+diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+index bc5aeb05ffc3..b8bbe88e770f 100644
+--- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+@@ -1122,6 +1122,20 @@ spi15: spi@89c000 {
+ 				#size-cells = <0>;
+ 				status = "disabled";
+ 			};
++
++			uart15: serial@89c000 {
++				compatible = "qcom,geni-uart";
++				reg = <0 0x89c000 0 0x4000>;
++				clock-names = "se";
++				clocks = <&gcc GCC_QUPV3_WRAP2_S7_CLK>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&qup_uart15_default>;
++				interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH>;
++				interconnects = <&clk_virt MASTER_QUP_CORE_2 0 &clk_virt SLAVE_QUP_CORE_2 0>,
++						<&gem_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_QUP_2 0>;
++				interconnect-names = "qup-core", "qup-config";
++				status = "disabled";
++			};
  		};
+ 
+ 		i2c_master_hub_0: geniqup@9c0000 {
+@@ -3856,6 +3870,14 @@ qup_uart14_cts_rts: qup-uart14-cts-rts-state {
+ 				bias-pull-down;
+ 			};
+ 
++			qup_uart15_default: qup-uart15-default-state {
++				/* TX, RX */
++				pins = "gpio74", "gpio75";
++				function = "qup2_se7";
++				drive-strength = <2>;
++				bias-pull-up;
++			};
 +
-+		pmk8550_pwm: pwm {
-+			compatible = "qcom,pmk8550-pwm";
-+
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			#pwm-cells = <2>;
-+
-+			status = "disabled";
-+		};
- 	};
- };
+ 			sdc2_sleep: sdc2-sleep-state {
+ 				clk-pins {
+ 					pins = "sdc2_clk";
 
 -- 
 2.44.0
