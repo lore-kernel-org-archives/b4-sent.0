@@ -1,10 +1,11 @@
 From: =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
-Date: Wed, 24 Apr 2024 20:42:36 +0200
-Subject: [PATCH v10 09/12] dt-bindings: marvell: Document PXA1908 SoC
+Date: Wed, 24 Apr 2024 20:42:37 +0200
+Subject: [PATCH v10 10/12] arm64: Kconfig.platforms: Add config for Marvell
+ PXA1908 platform
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240424-pxa1908-lkml-v10-9-36cdfb5841f9@skole.hr>
+Message-Id: <20240424-pxa1908-lkml-v10-10-36cdfb5841f9@skole.hr>
 References: <20240424-pxa1908-lkml-v10-0-36cdfb5841f9@skole.hr>
 In-Reply-To: <20240424-pxa1908-lkml-v10-0-36cdfb5841f9@skole.hr>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -22,53 +23,54 @@ Cc: phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht,
  Karel Balej <balejk@matfyz.cz>, David Wronek <david@mainlining.org>, 
  linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ linux-arm-kernel@lists.infradead.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=890;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=855;
  i=duje.mihanovic@skole.hr; h=from:subject:message-id;
- bh=+wdJL/Vtg+IC9uzo2i9e96b+dkkyPr63PvOur5KT8gc=;
- b=owEBbQKS/ZANAwAIAZoRnrBCLZbhAcsmYgBmKVKVIBYsEytUyJd8oGqAJAOqjbQngyPWzrdYK
- 7HGB2hqFqWJAjMEAAEIAB0WIQRT351NnD/hEPs2LXiaEZ6wQi2W4QUCZilSlQAKCRCaEZ6wQi2W
- 4USaD/wLLRbFPuTWEtYuyS5px4fRWghtgdvUbmHh0SjsuF5PL7R95OhGodO9nJQquwTcYHAwZwP
- 5fLe40LbmCrOIquAF3I3vUcr3JnQIAiHAg/Scn1UkjBT1GlCQK4/NifXF8s9qEd6OZjyNhTvtS1
- HSpDuL7E2VTKSOKDDa9H42yHvK57U5/jLxE/q/kp5vXjTXWs6x0p6Hds2qR+fs7QnVJ09T7wszg
- SDIssc8btUJcppyPDS9mhVh53nCFRZbO0GgRaG2VWnFlHUvGp3gODcdlH1P2D7SN9x/dHf0Sji4
- vXbqRU6A8d7cVhBshStPGkeLknJXkpfUh/23gZJUJh68lCy2nWxiYP9DMLE7c1tfAFu0E5dtGuQ
- rQ7o9s+egoo6J+cLHBA+nuvTXMoZCQuey4FTaoIpi7Wn1QJP5lxxfc+VdhTH44oCVDx6ppP0LNQ
- D09I1axki7uYB93o6wQ6IvUGJItfbV92EOHUMB5b0PYoOjScyeWmuDQN3iAs8I1eHG+Kosa8qvg
- fqIQapFwT72KQAhi+S1uJNsHTayN/ZNLwb1dKFH/ANpg7sHtRw8cEvsvykwDyV76nh1DMwC9fM5
- BAUO9NRSilRLPIXZvttvXP+zV7uE6c2KuQJzZAyDSwSPFlyN6c2kTmzNuIiviDrtZ3Rn67eYtLB
- W+u8pOhSkSzSK1w==
+ bh=rBtIaMX/S+mXR29Z1GK6jtLfsrLvd3qrx2yb5nOvyjo=;
+ b=owEBbQKS/ZANAwAIAZoRnrBCLZbhAcsmYgBmKVKVNt92SFDaPgTEWzHx72+qUm3NYr8Z9zD8o
+ 8yQBGJGx6iJAjMEAAEIAB0WIQRT351NnD/hEPs2LXiaEZ6wQi2W4QUCZilSlQAKCRCaEZ6wQi2W
+ 4ZctD/oDQ5OlhApU7EoZW19q2bjbafF+P/NCUzFD+2S2yom+WEQK1WpfZ1dj0KG7cbuhxc3hE+2
+ lYY439xTg9snFnmDEQZ09IeEJh+uJpMO1xWRSWHeFK5w2FqGauqewnCTaZZIOkPyA96qf+C2OF5
+ 3YQl3CAweeeTnoRTzNuF7FnoCc7gedZoN2nEGoC5NF9puhypeLf0Y0rb9HHawO8Lf5X1JIVe8uU
+ Hi2xSp3rjCQN+VCP4fAwXT61+NQ0H86MFEJVThhNw0qq2u/Gs8OkSKNh+KK0vNvAKtJo98q6G4I
+ Oo8dfrs7wiIRD0PXUUgGXnMdeN1JKN9ko4lLfNJksHJBTDP6vlQRIAI4laggQylOKff0nhZMDVq
+ CTpDWg8FBlcmSOk+BobS1BeD3tg6U52xMl+hWFruwm/VMYps7ELVCFK63Luln6ilCXt5Eip28at
+ QFwpEUro9CuBP8ZjSXGIXUlOK9mSM3D5tUtB3oQp2W60rBxnPlTaZWD1utNRfOHQq8RE0TEblBO
+ u6VkNNmKyj636CcLXzZz1r0XM4cRMUP7giLxMdHQkaQPOWU8M486z/nc7lASivLSk0Z8kLQjjdl
+ qU7+sjWZzRuoWPWL9W5cAf5zjJ27wBypYREME8k3XnlpfuPXXG0p2IP9r4AVkzFOD9PrSb3cqhp
+ flToYKOCMTXfUmA==
 X-Developer-Key: i=duje.mihanovic@skole.hr; a=openpgp;
  fpr=53DF9D4D9C3FE110FB362D789A119EB0422D96E1
 X-Endpoint-Received: by B4 Relay for duje.mihanovic@skole.hr/default with auth_id=112
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add dt binding for the Marvell PXA1908 SoC.
+Add ARCH_MMP configuration option for Marvell PXA1908 SoC.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Duje Mihanović <duje.mihanovic@skole.hr>
 ---
- Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml | 5 +++++
- 1 file changed, 5 insertions(+)
+ arch/arm64/Kconfig.platforms | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml b/Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml
-index 4c43eaf3632e..f73bb8ec3a1a 100644
---- a/Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml
-+++ b/Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml
-@@ -35,6 +35,11 @@ properties:
-           - enum:
-               - dell,wyse-ariel
-           - const: marvell,mmp3
-+      - description: PXA1908 based boards
-+        items:
-+          - enum:
-+              - samsung,coreprimevelte
-+          - const: marvell,pxa1908
+diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
+index 24335565bad5..d71b0b6e75aa 100644
+--- a/arch/arm64/Kconfig.platforms
++++ b/arch/arm64/Kconfig.platforms
+@@ -168,6 +168,14 @@ config ARCH_MESON
+ 	  This enables support for the arm64 based Amlogic SoCs
+ 	  such as the s905, S905X/D, S912, A113X/D or S905X/D2
  
- additionalProperties: true
- 
++config ARCH_MMP
++	bool "Marvell MMP SoC Family"
++	select PINCTRL
++	select PINCTRL_SINGLE
++	help
++	  This enables support for Marvell MMP SoC family, currently
++	  supporting PXA1908 aka IAP140.
++
+ config ARCH_MVEBU
+ 	bool "Marvell EBU SoC Family"
+ 	select ARMADA_AP806_SYSCON
 
 -- 
 2.44.0
