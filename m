@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Fri, 26 Apr 2024 12:46:54 +0200
-Subject: [PATCH v5 2/8] net: ipv{6,4}: Remove the now superfluous sentinel
+Date: Fri, 26 Apr 2024 12:46:55 +0200
+Subject: [PATCH v5 3/8] net: rds: Remove the now superfluous sentinel
  elements from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240426-jag-sysctl_remset_net-v5-2-e3b12f6111a6@samsung.com>
+Message-Id: <20240426-jag-sysctl_remset_net-v5-3-e3b12f6111a6@samsung.com>
 References: <20240426-jag-sysctl_remset_net-v5-0-e3b12f6111a6@samsung.com>
 In-Reply-To: <20240426-jag-sysctl_remset_net-v5-0-e3b12f6111a6@samsung.com>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -46,19 +46,19 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=11538;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1604;
  i=j.granados@samsung.com; h=from:subject:message-id;
- bh=Shd3cYlWDDlfJ+MUEEcOjdltlTrPApiIrE2eV8K/mNk=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYrhimDk1Sweob5Z7DzXCNtL6wrKB1zd1DvU
- crAaWDv3q8ucYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmK4YpAAoJELqXzVK3
- lkFPQcAMAIswMWxqOlcCEcmVE5dVXp4OmeKVGXO/c6iyvSHoOpZroI3aHyL3+1RGjsdQ2z0hSkc
- UD6HhcPIUlew0hKwQLNaNpTXo2vwRV2U1lS1oYmmmj+DqXemFhlvuJyDYZrc9JQ9tZgVoIdx5Ze
- e1Ox4YSlrcsdlIkKpr39/vHJNPjZf0jdVKUVyY68nTnUD+FRvhxJI/RIgsdtWziemBPEZoYINWr
- q08znC0NF5ua9XVQ+BSrGFLdibsvRVB1WIKzZSrmukAFpy+IJjRmto5P0g57NQw57kIdmSfu6kx
- HsO/38thHzp1+koT/2OhuHTFhDcM8IB/8nIoEbHZLkre2r0220dBcFuVqFgYlZCRQvt2gZppPdz
- NGa7HvjgNJZI7lJ+kKoVPnnVPgNMYoa0UMBov3JNP1RQngF/9XVHcXcyoEsAfZ/xoYZ6Um9FHp8
- zGMghqlQ4VkHcFFunbqk+UMjQfvSlDkIg9xf0qX8qxGu7Oq2dIwz2B4zZnwee3JBfDAmb97nqM5
- iU=
+ bh=Yhw5Yxzxk2wGoyQtTfioNjf4XA/aQJR8HoqakSkFmW8=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYrhilhsDLKMciOakZ2hp+OF9Gcz8PYw79X5
+ 2enJ+JxfEEqeIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmK4YpAAoJELqXzVK3
+ lkFPkfwL/Ai+Yo+GmKvgTo+Umr4alxLieJctsBpAOAdVaHgF75wTSgdW3xdYq69M3kxafgvUUmH
+ FwnSiNd/Aro4onzDt8NlrzX3kpInHsv3kXiDRDDNDrC4Vc+aS2Ne8vTuKy4U5o/CX9j+LAff7qH
+ H3yeRFXZikV04jEmRG8i6fo9p0gKrBEhpANzcb2DjtzXzZ3XH58k9fEYXmnBYtTFv5CLOF4QQV5
+ VMD3WmZU5ydWNVnLZmAfsfqs+gAUvJBwoTjgn9qoeP64T1FSMYOIyk93QUWIFwc79qiNNMot677
+ MANECcoUwPtZqVGLDom62wBNi+i98/TYbxKJD4mvEYzXKZ3ResSvNPoRwOp3DVB6lacwExbz/xe
+ iCj6kwdmEG04UFyW7P+J1rcJgHZ1Y0GdWJtoIZLtcnd2LIrFl781UKZaGUiQfTlfk1Q44S/iikk
+ tlYuokWms1BEMwASp/t4FBi8LJ5b/Gnq5xlD6gn5lsGjW/cRNHQm5DFU5x9jxRl48wkyqVS/WJ5
+ 4M=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -71,331 +71,50 @@ memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
 * Remove sentinel element from ctl_table structs.
-* Remove the zeroing out of an array element (to make it look like a
-  sentinel) in sysctl_route_net_init And ipv6_route_sysctl_init.
-  This is not longer needed and is safe after commit c899710fe7f9
-  ("networking: Update to register_net_sysctl_sz") added the array size
-  to the ctl_table registration.
-* Remove extra sentinel element in the declaration of devinet_vars.
-* Removed the "-1" in __devinet_sysctl_register, sysctl_route_net_init,
-  ipv6_sysctl_net_init and ipv4_sysctl_init_net that adjusted for having
-  an extra empty element when looping over ctl_table arrays
-* Replace the for loop stop condition in __addrconf_sysctl_register that
-  tests for procname == NULL with one that depends on array size
-* Removing the unprivileged user check in ipv6_route_sysctl_init is
-  safe as it is replaced by calling ipv6_route_sysctl_table_size;
-  introduced in commit c899710fe7f9 ("networking: Update to
-  register_net_sysctl_sz")
-* Use a table_size variable to keep the value of ARRAY_SIZE
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- net/ipv4/devinet.c         | 5 ++---
- net/ipv4/ip_fragment.c     | 2 --
- net/ipv4/route.c           | 8 ++------
- net/ipv4/sysctl_net_ipv4.c | 7 +++----
- net/ipv4/xfrm4_policy.c    | 1 -
- net/ipv6/addrconf.c        | 8 +++-----
- net/ipv6/icmp.c            | 1 -
- net/ipv6/reassembly.c      | 2 --
- net/ipv6/route.c           | 5 -----
- net/ipv6/sysctl_net_ipv6.c | 8 +++-----
- net/ipv6/xfrm6_policy.c    | 1 -
- 11 files changed, 13 insertions(+), 35 deletions(-)
+ net/rds/ib_sysctl.c | 1 -
+ net/rds/sysctl.c    | 1 -
+ net/rds/tcp.c       | 1 -
+ 3 files changed, 3 deletions(-)
 
-diff --git a/net/ipv4/devinet.c b/net/ipv4/devinet.c
-index 7a437f0d4190..6195cc5be1fc 100644
---- a/net/ipv4/devinet.c
-+++ b/net/ipv4/devinet.c
-@@ -2515,7 +2515,7 @@ static int ipv4_doint_and_flush(struct ctl_table *ctl, int write,
- 
- static struct devinet_sysctl_table {
- 	struct ctl_table_header *sysctl_header;
--	struct ctl_table devinet_vars[__IPV4_DEVCONF_MAX];
-+	struct ctl_table devinet_vars[IPV4_DEVCONF_MAX];
- } devinet_sysctl = {
- 	.devinet_vars = {
- 		DEVINET_SYSCTL_COMPLEX_ENTRY(FORWARDING, "forwarding",
-@@ -2578,7 +2578,7 @@ static int __devinet_sysctl_register(struct net *net, char *dev_name,
- 	if (!t)
- 		goto out;
- 
--	for (i = 0; i < ARRAY_SIZE(t->devinet_vars) - 1; i++) {
-+	for (i = 0; i < ARRAY_SIZE(t->devinet_vars); i++) {
- 		t->devinet_vars[i].data += (char *)p - (char *)&ipv4_devconf;
- 		t->devinet_vars[i].extra1 = p;
- 		t->devinet_vars[i].extra2 = net;
-@@ -2652,7 +2652,6 @@ static struct ctl_table ctl_forward_entry[] = {
- 		.extra1		= &ipv4_devconf,
- 		.extra2		= &init_net,
- 	},
--	{ },
- };
- #endif
- 
-diff --git a/net/ipv4/ip_fragment.c b/net/ipv4/ip_fragment.c
-index a4941f53b523..e308779ed77b 100644
---- a/net/ipv4/ip_fragment.c
-+++ b/net/ipv4/ip_fragment.c
-@@ -580,7 +580,6 @@ static struct ctl_table ip4_frags_ns_ctl_table[] = {
- 		.proc_handler	= proc_dointvec_minmax,
- 		.extra1		= &dist_min,
- 	},
--	{ }
- };
- 
- /* secret interval has been deprecated */
-@@ -593,7 +592,6 @@ static struct ctl_table ip4_frags_ctl_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_jiffies,
- 	},
--	{ }
- };
- 
- static int __net_init ip4_frags_ns_ctl_register(struct net *net)
-diff --git a/net/ipv4/route.c b/net/ipv4/route.c
-index c8f76f56dc16..deecfc0e5a91 100644
---- a/net/ipv4/route.c
-+++ b/net/ipv4/route.c
-@@ -3509,7 +3509,6 @@ static struct ctl_table ipv4_route_table[] = {
+diff --git a/net/rds/ib_sysctl.c b/net/rds/ib_sysctl.c
+index e4e41b3afce7..2af678e71e3c 100644
+--- a/net/rds/ib_sysctl.c
++++ b/net/rds/ib_sysctl.c
+@@ -103,7 +103,6 @@ static struct ctl_table rds_ib_sysctl_table[] = {
  		.mode		= 0644,
  		.proc_handler	= proc_dointvec,
  	},
 -	{ }
  };
  
- static const char ipv4_route_flush_procname[] = "flush";
-@@ -3543,7 +3542,6 @@ static struct ctl_table ipv4_route_netns_table[] = {
- 		.mode       = 0644,
- 		.proc_handler   = proc_dointvec,
- 	},
--	{ },
- };
- 
- static __net_init int sysctl_route_net_init(struct net *net)
-@@ -3561,16 +3559,14 @@ static __net_init int sysctl_route_net_init(struct net *net)
- 
- 		/* Don't export non-whitelisted sysctls to unprivileged users */
- 		if (net->user_ns != &init_user_ns) {
--			if (tbl[0].procname != ipv4_route_flush_procname) {
--				tbl[0].procname = NULL;
-+			if (tbl[0].procname != ipv4_route_flush_procname)
- 				table_size = 0;
--			}
- 		}
- 
- 		/* Update the variables to point into the current struct net
- 		 * except for the first element flush
- 		 */
--		for (i = 1; i < ARRAY_SIZE(ipv4_route_netns_table) - 1; i++)
-+		for (i = 1; i < table_size; i++)
- 			tbl[i].data += (void *)net - (void *)&init_net;
- 	}
- 	tbl[0].extra1 = net;
-diff --git a/net/ipv4/sysctl_net_ipv4.c b/net/ipv4/sysctl_net_ipv4.c
-index 7e4f16a7dcc1..8b12bf195004 100644
---- a/net/ipv4/sysctl_net_ipv4.c
-+++ b/net/ipv4/sysctl_net_ipv4.c
-@@ -575,7 +575,6 @@ static struct ctl_table ipv4_table[] = {
- 		.extra1		= &sysctl_fib_sync_mem_min,
- 		.extra2		= &sysctl_fib_sync_mem_max,
- 	},
--	{ }
- };
- 
- static struct ctl_table ipv4_net_table[] = {
-@@ -1502,11 +1501,11 @@ static struct ctl_table ipv4_net_table[] = {
- 		.proc_handler	= proc_dou8vec_minmax,
- 		.extra1		= SYSCTL_ONE,
- 	},
--	{ }
- };
- 
- static __net_init int ipv4_sysctl_init_net(struct net *net)
- {
-+	size_t table_size = ARRAY_SIZE(ipv4_net_table);
- 	struct ctl_table *table;
- 
- 	table = ipv4_net_table;
-@@ -1517,7 +1516,7 @@ static __net_init int ipv4_sysctl_init_net(struct net *net)
- 		if (!table)
- 			goto err_alloc;
- 
--		for (i = 0; i < ARRAY_SIZE(ipv4_net_table) - 1; i++) {
-+		for (i = 0; i < table_size; i++) {
- 			if (table[i].data) {
- 				/* Update the variables to point into
- 				 * the current struct net
-@@ -1533,7 +1532,7 @@ static __net_init int ipv4_sysctl_init_net(struct net *net)
- 	}
- 
- 	net->ipv4.ipv4_hdr = register_net_sysctl_sz(net, "net/ipv4", table,
--						    ARRAY_SIZE(ipv4_net_table));
-+						    table_size);
- 	if (!net->ipv4.ipv4_hdr)
- 		goto err_reg;
- 
-diff --git a/net/ipv4/xfrm4_policy.c b/net/ipv4/xfrm4_policy.c
-index c33bca2c3841..4c74fec034c5 100644
---- a/net/ipv4/xfrm4_policy.c
-+++ b/net/ipv4/xfrm4_policy.c
-@@ -152,7 +152,6 @@ static struct ctl_table xfrm4_policy_table[] = {
+ void rds_ib_sysctl_exit(void)
+diff --git a/net/rds/sysctl.c b/net/rds/sysctl.c
+index e381bbcd9cc1..025f518a4349 100644
+--- a/net/rds/sysctl.c
++++ b/net/rds/sysctl.c
+@@ -89,7 +89,6 @@ static struct ctl_table rds_sysctl_rds_table[] = {
  		.mode           = 0644,
  		.proc_handler   = proc_dointvec,
  	},
 -	{ }
  };
  
- static __net_init int xfrm4_net_sysctl_init(struct net *net)
-diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
-index 247bd4d8ee45..6e7e8c4f1ab6 100644
---- a/net/ipv6/addrconf.c
-+++ b/net/ipv6/addrconf.c
-@@ -7181,14 +7181,12 @@ static const struct ctl_table addrconf_sysctl[] = {
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_TWO,
- 	},
--	{
--		/* sentinel */
--	}
- };
- 
- static int __addrconf_sysctl_register(struct net *net, char *dev_name,
- 		struct inet6_dev *idev, struct ipv6_devconf *p)
- {
-+	size_t table_size = ARRAY_SIZE(addrconf_sysctl);
- 	int i, ifindex;
- 	struct ctl_table *table;
- 	char path[sizeof("net/ipv6/conf/") + IFNAMSIZ];
-@@ -7197,7 +7195,7 @@ static int __addrconf_sysctl_register(struct net *net, char *dev_name,
- 	if (!table)
- 		goto out;
- 
--	for (i = 0; table[i].data; i++) {
-+	for (i = 0; i < table_size; i++) {
- 		table[i].data += (char *)p - (char *)&ipv6_devconf;
- 		/* If one of these is already set, then it is not safe to
- 		 * overwrite either of them: this makes proc_dointvec_minmax
-@@ -7212,7 +7210,7 @@ static int __addrconf_sysctl_register(struct net *net, char *dev_name,
- 	snprintf(path, sizeof(path), "net/ipv6/conf/%s", dev_name);
- 
- 	p->sysctl_header = register_net_sysctl_sz(net, path, table,
--						  ARRAY_SIZE(addrconf_sysctl));
-+						  table_size);
- 	if (!p->sysctl_header)
- 		goto free;
- 
-diff --git a/net/ipv6/icmp.c b/net/ipv6/icmp.c
-index 1635da07285f..91cbf8e8009f 100644
---- a/net/ipv6/icmp.c
-+++ b/net/ipv6/icmp.c
-@@ -1206,7 +1206,6 @@ static struct ctl_table ipv6_icmp_table_template[] = {
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_ONE,
- 	},
--	{ },
- };
- 
- struct ctl_table * __net_init ipv6_icmp_sysctl_init(struct net *net)
-diff --git a/net/ipv6/reassembly.c b/net/ipv6/reassembly.c
-index acb4f119e11f..afb343cb77ac 100644
---- a/net/ipv6/reassembly.c
-+++ b/net/ipv6/reassembly.c
-@@ -436,7 +436,6 @@ static struct ctl_table ip6_frags_ns_ctl_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_jiffies,
+ void rds_sysctl_exit(void)
+diff --git a/net/rds/tcp.c b/net/rds/tcp.c
+index 2dba7505b414..d8111ac83bb6 100644
+--- a/net/rds/tcp.c
++++ b/net/rds/tcp.c
+@@ -86,7 +86,6 @@ static struct ctl_table rds_tcp_sysctl_table[] = {
+ 		.proc_handler   = rds_tcp_skbuf_handler,
+ 		.extra1		= &rds_tcp_min_rcvbuf,
  	},
 -	{ }
  };
  
- /* secret interval has been deprecated */
-@@ -449,7 +448,6 @@ static struct ctl_table ip6_frags_ctl_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_jiffies,
- 	},
--	{ }
- };
- 
- static int __net_init ip6_frags_ns_sysctl_register(struct net *net)
-diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index 1f4b935a0e57..b49137c3031b 100644
---- a/net/ipv6/route.c
-+++ b/net/ipv6/route.c
-@@ -6428,7 +6428,6 @@ static struct ctl_table ipv6_route_table_template[] = {
- 		.extra1		=	SYSCTL_ZERO,
- 		.extra2		=	SYSCTL_ONE,
- 	},
--	{ }
- };
- 
- struct ctl_table * __net_init ipv6_route_sysctl_init(struct net *net)
-@@ -6452,10 +6451,6 @@ struct ctl_table * __net_init ipv6_route_sysctl_init(struct net *net)
- 		table[8].data = &net->ipv6.sysctl.ip6_rt_min_advmss;
- 		table[9].data = &net->ipv6.sysctl.ip6_rt_gc_min_interval;
- 		table[10].data = &net->ipv6.sysctl.skip_notify_on_dev_down;
--
--		/* Don't export sysctls to unprivileged users */
--		if (net->user_ns != &init_user_ns)
--			table[1].procname = NULL;
- 	}
- 
- 	return table;
-diff --git a/net/ipv6/sysctl_net_ipv6.c b/net/ipv6/sysctl_net_ipv6.c
-index 888676163e90..b8cbad351802 100644
---- a/net/ipv6/sysctl_net_ipv6.c
-+++ b/net/ipv6/sysctl_net_ipv6.c
-@@ -213,7 +213,6 @@ static struct ctl_table ipv6_table_template[] = {
- 		.proc_handler	= proc_doulongvec_minmax,
- 		.extra2		= &ioam6_id_wide_max,
- 	},
--	{ }
- };
- 
- static struct ctl_table ipv6_rotable[] = {
-@@ -248,11 +247,11 @@ static struct ctl_table ipv6_rotable[] = {
- 		.proc_handler	= proc_dointvec,
- 	},
- #endif /* CONFIG_NETLABEL */
--	{ }
- };
- 
- static int __net_init ipv6_sysctl_net_init(struct net *net)
- {
-+	size_t table_size = ARRAY_SIZE(ipv6_table_template);
- 	struct ctl_table *ipv6_table;
- 	struct ctl_table *ipv6_route_table;
- 	struct ctl_table *ipv6_icmp_table;
-@@ -264,7 +263,7 @@ static int __net_init ipv6_sysctl_net_init(struct net *net)
- 	if (!ipv6_table)
- 		goto out;
- 	/* Update the variables to point into the current struct net */
--	for (i = 0; i < ARRAY_SIZE(ipv6_table_template) - 1; i++)
-+	for (i = 0; i < table_size; i++)
- 		ipv6_table[i].data += (void *)net - (void *)&init_net;
- 
- 	ipv6_route_table = ipv6_route_sysctl_init(net);
-@@ -276,8 +275,7 @@ static int __net_init ipv6_sysctl_net_init(struct net *net)
- 		goto out_ipv6_route_table;
- 
- 	net->ipv6.sysctl.hdr = register_net_sysctl_sz(net, "net/ipv6",
--						      ipv6_table,
--						      ARRAY_SIZE(ipv6_table_template));
-+						      ipv6_table, table_size);
- 	if (!net->ipv6.sysctl.hdr)
- 		goto out_ipv6_icmp_table;
- 
-diff --git a/net/ipv6/xfrm6_policy.c b/net/ipv6/xfrm6_policy.c
-index 42fb6996b077..499b5f5c19fc 100644
---- a/net/ipv6/xfrm6_policy.c
-+++ b/net/ipv6/xfrm6_policy.c
-@@ -184,7 +184,6 @@ static struct ctl_table xfrm6_policy_table[] = {
- 		.mode		= 0644,
- 		.proc_handler   = proc_dointvec,
- 	},
--	{ }
- };
- 
- static int __net_init xfrm6_net_sysctl_init(struct net *net)
+ u32 rds_tcp_write_seq(struct rds_tcp_connection *tc)
 
 -- 
 2.43.0
