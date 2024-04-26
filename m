@@ -1,10 +1,10 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 26 Apr 2024 17:42:13 +0200
-Subject: [PATCH v2 4/7] iio: adc: axi-adc: make sure AXI clock is enabled
+Date: Fri, 26 Apr 2024 17:42:14 +0200
+Subject: [PATCH v2 5/7] iio: adc: adi-axi-adc: remove regmap max register
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240426-ad9467-new-features-v2-4-6361fc3ba1cc@analog.com>
+Message-Id: <20240426-ad9467-new-features-v2-5-6361fc3ba1cc@analog.com>
 References: <20240426-ad9467-new-features-v2-0-6361fc3ba1cc@analog.com>
 In-Reply-To: <20240426-ad9467-new-features-v2-0-6361fc3ba1cc@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org
@@ -17,52 +17,38 @@ Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>,
  Conor Dooley <conor+dt@kernel.org>, 
  Olivier Moysan <olivier.moysan@foss.st.com>, Nuno Sa <nuno.sa@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1714146147; l=1318;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1714146147; l=813;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=wD4frVePbFQZ5GZZY+496L8YqjIUAosy1WOB2P0XRHA=;
- b=+ecaEiuo3EuEcqcy+s8TO3a9lqzk+HTfyD+VE2WgEpF5kn3+ev0LlrZ5+c2HjWucKesGdp7pt
- amki9w4q6+OCzkuH13f/dWxH3eTP+NRbl7Zf2YWZ9xiYDM9wwP1Vzc1
+ bh=xe0te39dghx3xVo9c0/ZGbv9/Txz1Y4hTt1+Fm8A5ns=;
+ b=o5c0uXvGTGdhYwqp3weFdoAh7f9XAy9ZmUqGbq55yd79pfk2fzAhzvHRPkGwXUMDE3D9be53L
+ CBRg8gZkR2TDGM3i+nD1zs5TfaTe9YN874soCidkODy6JyGtff3ONNt
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We can only access the IP core registers if the bus clock is enabled. As
-such we need to get and enable it and not rely on anyone else to do it.
+In one of the following patches, we'll have some new functionality that
+requires reads/writes on registers bigger than 0x8000. Hence, as this is
+an highly flexible core, don't bother in setting 'max_register' and
+remove it from regmap_config.
 
-Note this clock is a very fundamental one that is typically enabled
-pretty early during boot. Independently of that, we should really rely on
-it to be enabled.
-
-Fixes: ef04070692a2 ("iio: adc: adi-axi-adc: add support for AXI ADC IP core")
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/adc/adi-axi-adc.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/iio/adc/adi-axi-adc.c | 1 -
+ 1 file changed, 1 deletion(-)
 
 diff --git a/drivers/iio/adc/adi-axi-adc.c b/drivers/iio/adc/adi-axi-adc.c
-index a543b91124b0..e3b215882941 100644
+index e3b215882941..b312369b7366 100644
 --- a/drivers/iio/adc/adi-axi-adc.c
 +++ b/drivers/iio/adc/adi-axi-adc.c
-@@ -175,6 +175,7 @@ static int adi_axi_adc_probe(struct platform_device *pdev)
- 	struct adi_axi_adc_state *st;
- 	void __iomem *base;
- 	unsigned int ver;
-+	struct clk *clk;
- 	int ret;
+@@ -156,7 +156,6 @@ static const struct regmap_config axi_adc_regmap_config = {
+ 	.val_bits = 32,
+ 	.reg_bits = 32,
+ 	.reg_stride = 4,
+-	.max_register = 0x0800,
+ };
  
- 	st = devm_kzalloc(&pdev->dev, sizeof(*st), GFP_KERNEL);
-@@ -195,6 +196,10 @@ static int adi_axi_adc_probe(struct platform_device *pdev)
- 	if (!expected_ver)
- 		return -ENODEV;
- 
-+	clk = devm_clk_get_enabled(&pdev->dev, NULL);
-+	if (IS_ERR(clk))
-+		return PTR_ERR(clk);
-+
- 	/*
- 	 * Force disable the core. Up to the frontend to enable us. And we can
- 	 * still read/write registers...
+ static const struct iio_backend_ops adi_axi_adc_generic = {
 
 -- 
 2.44.0
