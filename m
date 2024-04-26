@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Fri, 26 Apr 2024 12:46:56 +0200
-Subject: [PATCH v5 4/8] net: sunrpc: Remove the now superfluous sentinel
- elements from ctl_table array
+Date: Fri, 26 Apr 2024 12:46:57 +0200
+Subject: [PATCH v5 5/8] net: Remove ctl_table sentinel elements from
+ several networking subsystems
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240426-jag-sysctl_remset_net-v5-4-e3b12f6111a6@samsung.com>
+Message-Id: <20240426-jag-sysctl_remset_net-v5-5-e3b12f6111a6@samsung.com>
 References: <20240426-jag-sysctl_remset_net-v5-0-e3b12f6111a6@samsung.com>
 In-Reply-To: <20240426-jag-sysctl_remset_net-v5-0-e3b12f6111a6@samsung.com>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -46,19 +46,19 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2011;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7509;
  i=j.granados@samsung.com; h=from:subject:message-id;
- bh=+biVqN1iqVbz7GiRtsWHsBFe0+suBXyB5W6axoxTyHM=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYrhirRMJ3CpA96PxSH/s+88A5K1qjt01MiI
- OdVzv3F59SIhokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmK4YqAAoJELqXzVK3
- lkFPeBML/R1KAtXk0L7PJ+GM7bKprya/ElnHKKTyPDEWLIGgc8++pjbuN3QvnNIWMLFoNqI54cj
- +0ywDpiAdqlLoswTj97wi7irvzwwl1XP+dYMWprB1/yWOOjktGi3Mym1OIHbi0rd5f1cAQWWhAA
- p6i84g658xcvt1YsL5lx0HowrgreKrM8zxwYZexCnz9H+ql/YlGbjLcdwI0xG5ex/EzCpSsiFG0
- KWyYaIM2JNqkQGwnhouFdgC9BVT6y9qnCymEq39NOZ9HWw/gcPi54D782W04l4agToMa7xWfgfQ
- zgYImVRMwI4s2onUMK/skx2N2KymvrPyPcnaV05fAfTkG9bU/uScsKlxrot5pq1XPvL9YkH2amd
- xoNDXazHt/6w/HpmLFquSGOIJhRNZhh6ujG297cdAI4ohYRmRJtFzdAwDbvy3DCH7mM9na+JwSc
- Vf1aTrIsBxnGs5+AHrs7poKpMKu00sjzfCgVFAUGUdDfaH9P7ugQrhM/kqofI8FnTYXo7hcmhO8
- IU=
+ bh=ECJVmDZTABLmCLI3IvBjvSf32Movt48DJVWRJRYYOH8=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYrhiql7S6kKE2G3ICFDQaZ+9LtVfFtRHW7/
+ MzEzHLiYiTX2IkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmK4YqAAoJELqXzVK3
+ lkFPPdoL/3i4qlgimmYoLLp1AnkLLP+/jPZbcfd6GZ7UUVxajap9ogymYWg07/JwMTzzaI4V2uh
+ j3VU030STUYTo0rzOB9GhTXr0P/PqShDcdAfkdqBdb9nZ0lcK+PyK+K0ESThoLlQulXES2zVrYU
+ ew+w5Q0MThpdIQIshSG0xFRtddjLZLtjg6WDL8yrLz/SoMAWRpkiIDAKseXRl8nBr/77k+aeBOV
+ 69Zh/CFTtTUFElaVG3ZGHW6Qco39IfYXuTJC6EV6zT4966mHxFSRqcKhAP3RZOKbDaa1W6I2wOd
+ RL0YL/XAXgaDbs3RAXKAqVJozp8DNE1dj3HnwRA69vlwNA4w/shzjiv6Da+dXsinbYoka7aiOYW
+ /7Y4GGqRhp9fT+wfaHJt1xz0mCSqAWv4WUhHhjQ1MvLwDPB6HUbO/ebX4iH5C0S1JU9k3jXHcTS
+ E+7oVDxMrb7KBuM0PXRxCFJ8hWGM6wVluyfRZRVn42vXF6LtpFxHD30V/fyC4SAksNxhb3/nkM6
+ GI=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -70,64 +70,222 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
+To avoid lots of small commits, this commit brings together network
+changes from (as they appear in MAINTAINERS) LLC, MPTCP, NETROM NETWORK
+LAYER, PHONET PROTOCOL, ROSE NETWORK LAYER, RXRPC SOCKETS, SCTP
+PROTOCOL, SHARED MEMORY COMMUNICATIONS (SMC), TIPC NETWORK LAYER and
+NETWORKING [IPSEC]
+
 * Remove sentinel element from ctl_table structs.
+* Replace empty array registration with the register_net_sysctl_sz call
+  in llc_sysctl_init
+* Replace the for loop stop condition that tests for procname == NULL
+  with one that depends on array size in sctp_sysctl_net_register
+* Remove instances where an array element is zeroed out to make it look
+  like a sentinel in xfrm_sysctl_init. This is not longer needed and is
+  safe after commit c899710fe7f9 ("networking: Update to
+  register_net_sysctl_sz") added the array size to the ctl_table
+  registration
+* Use a table_size variable to keep the value of ARRAY_SIZE
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- net/sunrpc/sysctl.c             | 1 -
- net/sunrpc/xprtrdma/svc_rdma.c  | 1 -
- net/sunrpc/xprtrdma/transport.c | 1 -
- net/sunrpc/xprtsock.c           | 1 -
- 4 files changed, 4 deletions(-)
+ net/llc/sysctl_net_llc.c       |  8 ++------
+ net/mptcp/ctrl.c               |  1 -
+ net/netrom/sysctl_net_netrom.c |  1 -
+ net/phonet/sysctl.c            |  1 -
+ net/rose/sysctl_net_rose.c     |  1 -
+ net/rxrpc/sysctl.c             |  1 -
+ net/sctp/sysctl.c              | 10 +++-------
+ net/smc/smc_sysctl.c           |  1 -
+ net/tipc/sysctl.c              |  1 -
+ net/xfrm/xfrm_sysctl.c         |  5 +----
+ 10 files changed, 6 insertions(+), 24 deletions(-)
 
-diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
-index 93941ab12549..5f3170a1c9bb 100644
---- a/net/sunrpc/sysctl.c
-+++ b/net/sunrpc/sysctl.c
-@@ -160,7 +160,6 @@ static struct ctl_table debug_table[] = {
- 		.mode		= 0444,
- 		.proc_handler	= proc_do_xprt,
+diff --git a/net/llc/sysctl_net_llc.c b/net/llc/sysctl_net_llc.c
+index 8443a6d841b0..72e101135f8c 100644
+--- a/net/llc/sysctl_net_llc.c
++++ b/net/llc/sysctl_net_llc.c
+@@ -44,11 +44,6 @@ static struct ctl_table llc2_timeout_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler   = proc_dointvec_jiffies,
+ 	},
+-	{ },
+-};
+-
+-static struct ctl_table llc_station_table[] = {
+-	{ },
+ };
+ 
+ static struct ctl_table_header *llc2_timeout_header;
+@@ -56,8 +51,9 @@ static struct ctl_table_header *llc_station_header;
+ 
+ int __init llc_sysctl_init(void)
+ {
++	struct ctl_table empty[1] = {};
+ 	llc2_timeout_header = register_net_sysctl(&init_net, "net/llc/llc2/timeout", llc2_timeout_table);
+-	llc_station_header = register_net_sysctl(&init_net, "net/llc/station", llc_station_table);
++	llc_station_header = register_net_sysctl_sz(&init_net, "net/llc/station", empty, 0);
+ 
+ 	if (!llc2_timeout_header || !llc_station_header) {
+ 		llc_sysctl_exit();
+diff --git a/net/mptcp/ctrl.c b/net/mptcp/ctrl.c
+index 13fe0748dde8..8bf7c26a0878 100644
+--- a/net/mptcp/ctrl.c
++++ b/net/mptcp/ctrl.c
+@@ -156,7 +156,6 @@ static struct ctl_table mptcp_sysctl_table[] = {
+ 		.mode = 0644,
+ 		.proc_handler = proc_dointvec_jiffies,
+ 	},
+-	{}
+ };
+ 
+ static int mptcp_pernet_new_table(struct net *net, struct mptcp_pernet *pernet)
+diff --git a/net/netrom/sysctl_net_netrom.c b/net/netrom/sysctl_net_netrom.c
+index 79fb2d3f477b..7dc0fa628f2e 100644
+--- a/net/netrom/sysctl_net_netrom.c
++++ b/net/netrom/sysctl_net_netrom.c
+@@ -140,7 +140,6 @@ static struct ctl_table nr_table[] = {
+ 		.extra1		= &min_reset,
+ 		.extra2		= &max_reset
  	},
 -	{ }
  };
  
- void
-diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-index f86970733eb0..474f7a98fe9e 100644
---- a/net/sunrpc/xprtrdma/svc_rdma.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma.c
-@@ -209,7 +209,6 @@ static struct ctl_table svcrdma_parm_table[] = {
- 		.extra1		= &zero,
- 		.extra2		= &zero,
+ int __init nr_register_sysctl(void)
+diff --git a/net/phonet/sysctl.c b/net/phonet/sysctl.c
+index 0d0bf41381c2..82fc22467a09 100644
+--- a/net/phonet/sysctl.c
++++ b/net/phonet/sysctl.c
+@@ -81,7 +81,6 @@ static struct ctl_table phonet_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_local_port_range,
  	},
--	{ },
+-	{ }
  };
  
- static void svc_rdma_proc_cleanup(void)
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 29b0562d62e7..9a8ce5df83ca 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -137,7 +137,6 @@ static struct ctl_table xr_tunables_table[] = {
+ int __init phonet_sysctl_init(void)
+diff --git a/net/rose/sysctl_net_rose.c b/net/rose/sysctl_net_rose.c
+index d391d7758f52..d801315b7083 100644
+--- a/net/rose/sysctl_net_rose.c
++++ b/net/rose/sysctl_net_rose.c
+@@ -112,7 +112,6 @@ static struct ctl_table rose_table[] = {
+ 		.extra1		= &min_window,
+ 		.extra2		= &max_window
+ 	},
+-	{ }
+ };
+ 
+ void __init rose_register_sysctl(void)
+diff --git a/net/rxrpc/sysctl.c b/net/rxrpc/sysctl.c
+index c9bedd0e2d86..9bf9a1f6e4cb 100644
+--- a/net/rxrpc/sysctl.c
++++ b/net/rxrpc/sysctl.c
+@@ -127,7 +127,6 @@ static struct ctl_table rxrpc_sysctl_table[] = {
+ 		.extra1		= (void *)SYSCTL_ONE,
+ 		.extra2		= (void *)&four,
+ 	},
+-	{ }
+ };
+ 
+ int __init rxrpc_sysctl_init(void)
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index f65d6f92afcb..c00087e01351 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -80,8 +80,6 @@ static struct ctl_table sctp_table[] = {
  		.mode		= 0644,
  		.proc_handler	= proc_dointvec,
  	},
--	{ },
+-
+-	{ /* sentinel */ }
  };
  
- #endif
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index bb9b747d58a1..f62f7b65455b 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -160,7 +160,6 @@ static struct ctl_table xs_tunables_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_jiffies,
+ /* The following index defines are used in sctp_sysctl_net_register().
+@@ -384,8 +382,6 @@ static struct ctl_table sctp_net_table[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 		.extra2		= &pf_expose_max,
  	},
--	{ },
+-
+-	{ /* sentinel */ }
  };
  
- /*
+ static int proc_sctp_do_hmac_alg(struct ctl_table *ctl, int write,
+@@ -597,6 +593,7 @@ static int proc_sctp_do_probe_interval(struct ctl_table *ctl, int write,
+ 
+ int sctp_sysctl_net_register(struct net *net)
+ {
++	size_t table_size = ARRAY_SIZE(sctp_net_table);
+ 	struct ctl_table *table;
+ 	int i;
+ 
+@@ -604,7 +601,7 @@ int sctp_sysctl_net_register(struct net *net)
+ 	if (!table)
+ 		return -ENOMEM;
+ 
+-	for (i = 0; table[i].data; i++)
++	for (i = 0; i < table_size; i++)
+ 		table[i].data += (char *)(&net->sctp) - (char *)&init_net.sctp;
+ 
+ 	table[SCTP_RTO_MIN_IDX].extra2 = &net->sctp.rto_max;
+@@ -613,8 +610,7 @@ int sctp_sysctl_net_register(struct net *net)
+ 	table[SCTP_PS_RETRANS_IDX].extra1 = &net->sctp.pf_retrans;
+ 
+ 	net->sctp.sysctl_header = register_net_sysctl_sz(net, "net/sctp",
+-							 table,
+-							 ARRAY_SIZE(sctp_net_table));
++							 table, table_size);
+ 	if (net->sctp.sysctl_header == NULL) {
+ 		kfree(table);
+ 		return -ENOMEM;
+diff --git a/net/smc/smc_sysctl.c b/net/smc/smc_sysctl.c
+index a5946d1b9d60..bd0b7e2f8824 100644
+--- a/net/smc/smc_sysctl.c
++++ b/net/smc/smc_sysctl.c
+@@ -90,7 +90,6 @@ static struct ctl_table smc_table[] = {
+ 		.extra1		= &conns_per_lgr_min,
+ 		.extra2		= &conns_per_lgr_max,
+ 	},
+-	{  }
+ };
+ 
+ int __net_init smc_sysctl_net_init(struct net *net)
+diff --git a/net/tipc/sysctl.c b/net/tipc/sysctl.c
+index 9fb65c988f7f..30d2e06e3d8c 100644
+--- a/net/tipc/sysctl.c
++++ b/net/tipc/sysctl.c
+@@ -91,7 +91,6 @@ static struct ctl_table tipc_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_doulongvec_minmax,
+ 	},
+-	{}
+ };
+ 
+ int tipc_register_sysctl(void)
+diff --git a/net/xfrm/xfrm_sysctl.c b/net/xfrm/xfrm_sysctl.c
+index 7fdeafc838a7..b0f542805e6e 100644
+--- a/net/xfrm/xfrm_sysctl.c
++++ b/net/xfrm/xfrm_sysctl.c
+@@ -38,7 +38,6 @@ static struct ctl_table xfrm_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec
+ 	},
+-	{}
+ };
+ 
+ int __net_init xfrm_sysctl_init(struct net *net)
+@@ -57,10 +56,8 @@ int __net_init xfrm_sysctl_init(struct net *net)
+ 	table[3].data = &net->xfrm.sysctl_acq_expires;
+ 
+ 	/* Don't export sysctls to unprivileged users */
+-	if (net->user_ns != &init_user_ns) {
+-		table[0].procname = NULL;
++	if (net->user_ns != &init_user_ns)
+ 		table_size = 0;
+-	}
+ 
+ 	net->xfrm.sysctl_hdr = register_net_sysctl_sz(net, "net/core", table,
+ 						      table_size);
 
 -- 
 2.43.0
