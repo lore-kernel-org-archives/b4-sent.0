@@ -1,13 +1,15 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 25 Apr 2024 14:03:06 +0200
-Subject: [PATCH v4 8/8] ax.25: x.25: Remove the now superfluous sentinel
- elements from ctl_table array
+Subject: [PATCH v5 0/8] sysctl: Remove sentinel elements from networking
+Date: Fri, 26 Apr 2024 12:46:52 +0200
+Message-Id: <20240426-jag-sysctl_remset_net-v5-0-e3b12f6111a6@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240425-jag-sysctl_remset_net-v4-8-9e82f985777d@samsung.com>
-References: <20240425-jag-sysctl_remset_net-v4-0-9e82f985777d@samsung.com>
-In-Reply-To: <20240425-jag-sysctl_remset_net-v4-0-9e82f985777d@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAByGK2YC/3XO0W7CMAwF0F9BeV6m2klpwxP/MSEUErcErS2Ku
+ wqE+u8zSNNAqI/X1j32TTHlRKw2q5vKNCVOQy+h/FipcPR9SzpFyQoLtIUB0Cffar5yGL/3mTq
+ mcd/TqKMsPXhn4vqgpHvO1KTLw/3aST4mHod8fZyZ4D79E+2COIEutPe4Plgb0UW3Zd/xT99+h
+ qFTd3PCJwfrJQfFKTG4xkcnLzbvjvl3LOCSY8QBgLqKYAICvDv2ycFyybHiOKqxcXVZVVV8deZ
+ 5/gWe9zholAEAAA==
 To: "David S. Miller" <davem@davemloft.net>, 
  Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
  Paolo Abeni <pabeni@redhat.com>, Alexander Aring <alex.aring@gmail.com>, 
@@ -46,135 +48,321 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3995;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=15372;
  i=j.granados@samsung.com; h=from:subject:message-id;
- bh=NZnJW6XWgopf75vh1g8TgFTlOj8qaKFukPEjDf1p53c=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYqRphNUhwxu2kexo/hYhmJ491ahYV7cLFwq
- w7VYyxuqYw7eokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmKkaYAAoJELqXzVK3
- lkFP/g4L/Rw4jFAj8rRf+PUjXY8X6e94Tuaw6P4lDE+mlm7nTxevertGEyJPmkNLQDVRzXXjZ6x
- DIDWA6v0PSTnMQotoOGKoGWYNg5JfbvP4TLw874hFMnI6G9rxnbeOzwh1L7Ks+lwv48hoZ7danV
- hTUguAsJyW5uxY0s53pEEm7tZzUXkO2aHOldg2oqKyXaGeRsmif7sWTkdwww31zTzWRXWJ+dZpG
- nIxdmPJRJOjhU8L7Jw0NppJvjTdKjdCf3BqjlQfbwKqpU+pb6BJSSFJeOzMsAGpMbFOqqYyijt9
- QHjSF8II19VF3jrxsRhb3ZGFHIY0v64VhBPZv3IeFm7cqaV7aSkSazJl8PLjCZCDQ0y24sR0Dpp
- Jl9tM99YG88VpBPncqPYzTrXWVwHs01y9eyV9iyTJozFFLoEAYvGC0Dvl8rnbNpTG5bD+T0eF6Z
- Eh162u2q2KdMYqraFWbaHk5T5OblKsB7S33tJM5YpdSKXmqW0g3RieYS9ac3pL7TWz4rwfyDdY6
- 8Y=
+ bh=Ujfwmb38vw/9jILLQSNWJNhDLmQ5flC7i/2B1oV+Evc=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYrhiiGfniMtSRD8T1elI3CM9RbA5T8iTqi6
+ KlJ7a0iPQFF3okBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmK4YoAAoJELqXzVK3
+ lkFPpSkL/3bh+sRgLALSz8KqulMNeN28PsD2tSl+Y36R9B3aPbDyHYe2KfpuGDNXo8CIQZk/Z8z
+ 8vUX2IVBQYysRwQyQ3hCEkKSxpmVx/L5dzN9xvysOYPVMfqACrhrTqD6NxoIvCFzTyPMgZlAUFA
+ KJgPOVyie9XkzlifPOFr4fGYVgh4w1+lAgartOBWg4XNCRkfg8Fl2wF2rpOda+SmJXe4v5WKirG
+ cK3z5z7P+Ryk31mR/C44PHFy9p5vul9IioQZGWQniYDQ3W6eT1A439vbAd7B+6rXzfgBI2dEANM
+ VW/s+mXSpQGMEElE2QEdlA2PAvSi5wYDLFxVQUSj2Xb6F3/3skdm2YCXH+GCfeFPzex5F1+r81Y
+ IrRiimMwYkGZ2Payukc5vjoDgVZLjI3jVZx6g7nbqJ1+c4tbRGxDuoaI3Tu2IiJ7sRZfQQw0SKp
+ OnYnRyUkt10rO6UJuyqeq5jGj/KrkOTaVQsDaloXSQneWM1Wy6BM9Haj6f1Bjyhw7WjHMSFfbE6
+ lQ=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This commit comes at the tail end of a greater effort to remove the
-empty elements at the end of the ctl_table arrays (sentinels) which will
-reduce the overall build time size of the kernel and run time memory
-bloat by ~64 bytes per sentinel (further information Link :
-https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
+What?
+These commits remove the sentinel element (last empty element) from the
+sysctl arrays of all the files under the "net/" directory that register
+a sysctl array. The merging of the preparation patches [4] to mainline
+allows us to just remove sentinel elements without changing behavior.
+This is safe because the sysctl registration code (register_sysctl() and
+friends) use the array size in addition to checking for a sentinel [1].
 
-Avoid a buffer overflow when traversing the ctl_table by ensuring that
-AX25_MAX_VALUES is the same as the size of ax25_param_table. This is
-done with a BUILD_BUG_ON where ax25_param_table is defined and a
-CONFIG_AX25_DAMA_SLAVE guard in the unnamed enum definition as well as
-in the ax25_dev_device_up and ax25_ds_set_timer functions.
+Why?
+By removing the sysctl sentinel elements we avoid kernel bloat as
+ctl_table arrays get moved out of kernel/sysctl.c into their own
+respective subsystems. This move was started long ago to avoid merge
+conflicts; the sentinel removal bit came after Mathew Wilcox suggested
+it to avoid bloating the kernel by one element as arrays moved out. This
+patchset will reduce the overall build time size of the kernel and run
+time memory bloat by about ~64 bytes per declared ctl_table array (more
+info here [5]).
 
-The overflow happened when the sentinel was removed from
-ax25_param_table. The sentinel's data element was changed when
-CONFIG_AX25_DAMA_SLAVE was undefined. This had no adverse effects as it
-still stopped on the sentinel's null procname but needed to be addressed
-once the sentinel was removed.
+When are we done?
+There are 4 patchest (25 commits [2]) that are still outstanding to
+completely remove the sentinels: files under "net/" (this patchset),
+files under "kernel/" dir, misc dirs (files under mm/ security/ and
+others) and the final set that removes the unneeded check for ->procname
+== NULL.
+
+Testing:
+* Ran sysctl selftests (./tools/testing/selftests/sysctl/sysctl.sh)
+* Ran this through 0-day with no errors or warnings
+
+Savings in vmlinux:
+  A total of 64 bytes per sentinel is saved after removal; I measured in
+  x86_64 to give an idea of the aggregated savings. The actual savings
+  will depend on individual kernel configuration.
+    * bloat-o-meter
+        - The "yesall" config saves 3976 bytes (bloat-o-meter output [6])
+        - A reduced config [3] saves 1263 bytes (bloat-o-meter output [7])
+
+Savings in allocated memory:
+  None in this set but will occur when the superfluous allocations are
+  removed from proc_sysctl.c. I include it here for context. The
+  estimated savings during boot for config [3] are 6272 bytes. See [8]
+  for how to measure it.
+
+Comments/feedback greatly appreciated
+
+Changes in v5:
+- Added net files with additional variable to my test .config so the
+  typo can be caught next time.
+- Fixed typo tabel_size -> table_size
+- Link to v4: https://lore.kernel.org/r/20240425-jag-sysctl_remset_net-v4-0-9e82f985777d@samsung.com
+
+Changes in v4:
+- Keep reverse xmas tree order when introducing new variables
+- Use a table_size variable to keep the value of ARRAY_SIZE
+- Separated the original "networking: Remove the now superfluous
+  sentinel elements from ctl_table arra" into smaller commits to ease
+  review
+- Merged x.25 and ax.25 commits together.
+- Removed any SOB from the commits that were changed
+- Link to v3: https://lore.kernel.org/r/20240412-jag-sysctl_remset_net-v3-0-11187d13c211@samsung.com
+
+Changes in v3:
+- Reworkded ax.25
+  - Added a BUILD_BUG_ON for the ax.25 commit
+  - Added a CONFIG_AX25_DAMA_SLAVE guard where needed
+- Link to v2: https://lore.kernel.org/r/20240328-jag-sysctl_remset_net-v2-0-52c9fad9a1af@samsung.com
+
+Changes in v2:
+- Rebased to v6.9-rc1
+- Removed unneeded comment from sysctl_net_ax25.c
+- Link to v1: https://lore.kernel.org/r/20240314-jag-sysctl_remset_net-v1-0-aa26b44d29d9@samsung.com
+
+Best
+Joel
+
+[1] https://lore.kernel.org/all/20230809105006.1198165-1-j.granados@samsung.com/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/joel.granados/linux.git/tag/?h=sysctl_remove_empty_elem_v5
+[3] https://gist.github.com/Joelgranados/feaca7af5537156ca9b73aeaec093171
+[4] https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+
+[5]
+Links Related to the ctl_table sentinel removal:
+* Good summaries from Luis:
+  https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+  https://lore.kernel.org/all/ZMFizKFkVxUFtSqa@bombadil.infradead.org/
+* Patches adjusting sysctl register calls:
+  https://lore.kernel.org/all/20230302204612.782387-1-mcgrof@kernel.org/
+  https://lore.kernel.org/all/20230302202826.776286-1-mcgrof@kernel.org/
+* Discussions about expectations and approach
+  https://lore.kernel.org/all/20230321130908.6972-1-frank.li@vivo.com
+  https://lore.kernel.org/all/20220220060626.15885-1-tangmeng@uniontech.com
+
+[6]
+add/remove: 0/1 grow/shrink: 2/67 up/down: 76/-4052 (-3976)
+Function                                     old     new   delta
+llc_sysctl_init                              306     377     +71
+nf_log_net_init                              866     871      +5
+sysctl_core_net_init                         375     366      -9
+lowpan_frags_init_net                        618     598     -20
+ip_vs_control_net_init_sysctl               2446    2422     -24
+sysctl_route_net_init                        521     493     -28
+__addrconf_sysctl_register                   678     650     -28
+xfrm_sysctl_init                             405     374     -31
+mpls_net_init                                367     334     -33
+sctp_sysctl_net_register                     386     346     -40
+__ip_vs_lblcr_init                           546     501     -45
+__ip_vs_lblc_init                            546     501     -45
+neigh_sysctl_register                       1011     958     -53
+mpls_dev_sysctl_register                     475     419     -56
+ipv6_route_sysctl_init                       450     394     -56
+xs_tunables_table                            448     384     -64
+xr_tunables_table                            448     384     -64
+xfrm_table                                   320     256     -64
+xfrm6_policy_table                           128      64     -64
+xfrm4_policy_table                           128      64     -64
+x25_table                                    448     384     -64
+vs_vars                                     1984    1920     -64
+unix_table                                   128      64     -64
+tipc_table                                   448     384     -64
+svcrdma_parm_table                           832     768     -64
+smc_table                                    512     448     -64
+sctp_table                                   256     192     -64
+sctp_net_table                              2304    2240     -64
+rxrpc_sysctl_table                           704     640     -64
+rose_table                                   704     640     -64
+rds_tcp_sysctl_table                         192     128     -64
+rds_sysctl_rds_table                         384     320     -64
+rds_ib_sysctl_table                          384     320     -64
+phonet_table                                 128      64     -64
+nr_table                                     832     768     -64
+nf_log_sysctl_table                          768     704     -64
+nf_log_sysctl_ftable                         128      64     -64
+nf_ct_sysctl_table                          3200    3136     -64
+nf_ct_netfilter_table                        128      64     -64
+nf_ct_frag6_sysctl_table                     256     192     -64
+netns_core_table                             320     256     -64
+net_core_table                              2176    2112     -64
+neigh_sysctl_template                       1416    1352     -64
+mptcp_sysctl_table                           576     512     -64
+mpls_dev_table                               128      64     -64
+lowpan_frags_ns_ctl_table                    256     192     -64
+lowpan_frags_ctl_table                       128      64     -64
+llc_station_table                             64       -     -64
+llc2_timeout_table                           320     256     -64
+ipv6_table_template                         1344    1280     -64
+ipv6_route_table_template                    768     704     -64
+ipv6_rotable                                 320     256     -64
+ipv6_icmp_table_template                     448     384     -64
+ipv4_table                                  1024     960     -64
+ipv4_route_table                             832     768     -64
+ipv4_route_netns_table                       320     256     -64
+ipv4_net_table                              7552    7488     -64
+ip6_frags_ns_ctl_table                       256     192     -64
+ip6_frags_ctl_table                          128      64     -64
+ip4_frags_ns_ctl_table                       320     256     -64
+ip4_frags_ctl_table                          128      64     -64
+devinet_sysctl                              2184    2120     -64
+debug_table                                  384     320     -64
+dccp_default_table                           576     512     -64
+ctl_forward_entry                            128      64     -64
+brnf_table                                   448     384     -64
+ax25_param_table                             960     896     -64
+atalk_table                                  320     256     -64
+addrconf_sysctl                             3904    3840     -64
+vs_vars_table                                256     128    -128
+Total: Before=440631035, After=440627059, chg -0.00%
+
+[7]
+add/remove: 0/0 grow/shrink: 1/22 up/down: 8/-1263 (-1255)
+Function                                     old     new   delta
+sysctl_route_net_init                        189     197      +8
+__addrconf_sysctl_register                   306     294     -12
+ipv6_route_sysctl_init                       201     185     -16
+neigh_sysctl_register                        385     366     -19
+unix_table                                   128      64     -64
+netns_core_table                             256     192     -64
+net_core_table                              1664    1600     -64
+neigh_sysctl_template                       1416    1352     -64
+ipv6_table_template                         1344    1280     -64
+ipv6_route_table_template                    768     704     -64
+ipv6_rotable                                 192     128     -64
+ipv6_icmp_table_template                     448     384     -64
+ipv4_table                                   768     704     -64
+ipv4_route_table                             832     768     -64
+ipv4_route_netns_table                       320     256     -64
+ipv4_net_table                              7040    6976     -64
+ip6_frags_ns_ctl_table                       256     192     -64
+ip6_frags_ctl_table                          128      64     -64
+ip4_frags_ns_ctl_table                       320     256     -64
+ip4_frags_ctl_table                          128      64     -64
+devinet_sysctl                              2184    2120     -64
+ctl_forward_entry                            128      64     -64
+addrconf_sysctl                             3392    3328     -64
+Total: Before=8523801, After=8522546, chg -0.01%
+
+[8]
+To measure the in memory savings apply this on top of this patchset.
+
+"
+diff --git i/fs/proc/proc_sysctl.c w/fs/proc/proc_sysctl.c
+index 37cde0efee57..896c498600e8 100644
+--- i/fs/proc/proc_sysctl.c
++++ w/fs/proc/proc_sysctl.c
+@@ -966,6 +966,7 @@ static struct ctl_dir *new_dir(struct ctl_table_set *set,
+        table[0].procname = new_name;
+        table[0].mode = S_IFDIR|S_IRUGO|S_IXUGO;
+        init_header(&new->header, set->dir.header.root, set, node, table, 1);
++       printk("%ld sysctl saved mem kzalloc\n", sizeof(struct ctl_table));
+
+        return new;
+ }
+@@ -1189,6 +1190,7 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, s>
+                link_name += len;
+                link++;
+        }
++       printk("%ld sysctl saved mem kzalloc\n", sizeof(struct ctl_table));
+        init_header(links, dir->header.root, dir->header.set, node, link_table,
+                    head->ctl_table_size);
+        links->nreg = nr_entries;
+"
+and then run the following bash script in the kernel:
+
+accum=0
+for n in $(dmesg | grep kzalloc | awk '{print $3}') ; do
+    accum=$(calc "$accum + $n")
+done
+echo $accum
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
+
+--
+
 ---
- include/net/ax25.h         | 2 ++
- net/ax25/ax25_dev.c        | 3 +++
- net/ax25/ax25_ds_timer.c   | 4 ++++
- net/ax25/sysctl_net_ax25.c | 3 +--
- net/x25/sysctl_net_x25.c   | 1 -
- 5 files changed, 10 insertions(+), 3 deletions(-)
+---
+Joel Granados (8):
+      net: Remove the now superfluous sentinel elements from ctl_table array
+      net: ipv{6,4}: Remove the now superfluous sentinel elements from ctl_table array
+      net: rds: Remove the now superfluous sentinel elements from ctl_table array
+      net: sunrpc: Remove the now superfluous sentinel elements from ctl_table array
+      net: Remove ctl_table sentinel elements from several networking subsystems
+      netfilter: Remove the now superfluous sentinel elements from ctl_table array
+      appletalk: Remove the now superfluous sentinel elements from ctl_table array
+      ax.25: x.25: Remove the now superfluous sentinel elements from ctl_table array
 
-diff --git a/include/net/ax25.h b/include/net/ax25.h
-index 0d939e5aee4e..eb9cee8252c8 100644
---- a/include/net/ax25.h
-+++ b/include/net/ax25.h
-@@ -139,7 +139,9 @@ enum {
- 	AX25_VALUES_N2,		/* Default N2 value */
- 	AX25_VALUES_PACLEN,	/* AX.25 MTU */
- 	AX25_VALUES_PROTOCOL,	/* Std AX.25, DAMA Slave, DAMA Master */
-+#ifdef CONFIG_AX25_DAMA_SLAVE
- 	AX25_VALUES_DS_TIMEOUT,	/* DAMA Slave timeout */
-+#endif
- 	AX25_MAX_VALUES		/* THIS MUST REMAIN THE LAST ENTRY OF THIS LIST */
- };
- 
-diff --git a/net/ax25/ax25_dev.c b/net/ax25/ax25_dev.c
-index c5462486dbca..af547e185a94 100644
---- a/net/ax25/ax25_dev.c
-+++ b/net/ax25/ax25_dev.c
-@@ -78,7 +78,10 @@ void ax25_dev_device_up(struct net_device *dev)
- 	ax25_dev->values[AX25_VALUES_N2]        = AX25_DEF_N2;
- 	ax25_dev->values[AX25_VALUES_PACLEN]	= AX25_DEF_PACLEN;
- 	ax25_dev->values[AX25_VALUES_PROTOCOL]  = AX25_DEF_PROTOCOL;
-+
-+#ifdef CONFIG_AX25_DAMA_SLAVE
- 	ax25_dev->values[AX25_VALUES_DS_TIMEOUT]= AX25_DEF_DS_TIMEOUT;
-+#endif
- 
- #if defined(CONFIG_AX25_DAMA_SLAVE) || defined(CONFIG_AX25_DAMA_MASTER)
- 	ax25_ds_setup_timer(ax25_dev);
-diff --git a/net/ax25/ax25_ds_timer.c b/net/ax25/ax25_ds_timer.c
-index c4f8adbf8144..8f385d2a7628 100644
---- a/net/ax25/ax25_ds_timer.c
-+++ b/net/ax25/ax25_ds_timer.c
-@@ -49,12 +49,16 @@ void ax25_ds_del_timer(ax25_dev *ax25_dev)
- 
- void ax25_ds_set_timer(ax25_dev *ax25_dev)
- {
-+#ifdef CONFIG_AX25_DAMA_SLAVE
- 	if (ax25_dev == NULL)		/* paranoia */
- 		return;
- 
- 	ax25_dev->dama.slave_timeout =
- 		msecs_to_jiffies(ax25_dev->values[AX25_VALUES_DS_TIMEOUT]) / 10;
- 	mod_timer(&ax25_dev->dama.slave_timer, jiffies + HZ);
-+#else
-+	return;
-+#endif
- }
- 
- /*
-diff --git a/net/ax25/sysctl_net_ax25.c b/net/ax25/sysctl_net_ax25.c
-index db66e11e7fe8..4e593d36d311 100644
---- a/net/ax25/sysctl_net_ax25.c
-+++ b/net/ax25/sysctl_net_ax25.c
-@@ -141,8 +141,6 @@ static const struct ctl_table ax25_param_table[] = {
- 		.extra2		= &max_ds_timeout
- 	},
- #endif
--
--	{ }	/* that's all, folks! */
- };
- 
- int ax25_register_dev_sysctl(ax25_dev *ax25_dev)
-@@ -155,6 +153,7 @@ int ax25_register_dev_sysctl(ax25_dev *ax25_dev)
- 	if (!table)
- 		return -ENOMEM;
- 
-+	BUILD_BUG_ON(ARRAY_SIZE(ax25_param_table) != AX25_MAX_VALUES);
- 	for (k = 0; k < AX25_MAX_VALUES; k++)
- 		table[k].data = &ax25_dev->values[k];
- 
-diff --git a/net/x25/sysctl_net_x25.c b/net/x25/sysctl_net_x25.c
-index e9802afa43d0..643f50874dfe 100644
---- a/net/x25/sysctl_net_x25.c
-+++ b/net/x25/sysctl_net_x25.c
-@@ -71,7 +71,6 @@ static struct ctl_table x25_table[] = {
- 		.mode = 	0644,
- 		.proc_handler = proc_dointvec,
- 	},
--	{ },
- };
- 
- int __init x25_register_sysctl(void)
+ include/net/ax25.h                      |  2 ++
+ net/appletalk/sysctl_net_atalk.c        |  1 -
+ net/ax25/ax25_dev.c                     |  3 +++
+ net/ax25/ax25_ds_timer.c                |  4 ++++
+ net/ax25/sysctl_net_ax25.c              |  3 +--
+ net/bridge/br_netfilter_hooks.c         |  1 -
+ net/core/neighbour.c                    |  5 +----
+ net/core/sysctl_net_core.c              | 12 +++++-------
+ net/dccp/sysctl.c                       |  2 --
+ net/ieee802154/6lowpan/reassembly.c     |  6 +-----
+ net/ipv4/devinet.c                      |  5 ++---
+ net/ipv4/ip_fragment.c                  |  2 --
+ net/ipv4/route.c                        |  8 ++------
+ net/ipv4/sysctl_net_ipv4.c              |  7 +++----
+ net/ipv4/xfrm4_policy.c                 |  1 -
+ net/ipv6/addrconf.c                     |  8 +++-----
+ net/ipv6/icmp.c                         |  1 -
+ net/ipv6/netfilter/nf_conntrack_reasm.c |  1 -
+ net/ipv6/reassembly.c                   |  2 --
+ net/ipv6/route.c                        |  5 -----
+ net/ipv6/sysctl_net_ipv6.c              |  8 +++-----
+ net/ipv6/xfrm6_policy.c                 |  1 -
+ net/llc/sysctl_net_llc.c                |  8 ++------
+ net/mpls/af_mpls.c                      | 12 ++++++------
+ net/mptcp/ctrl.c                        |  1 -
+ net/netfilter/ipvs/ip_vs_ctl.c          |  5 +----
+ net/netfilter/ipvs/ip_vs_lblc.c         |  5 +----
+ net/netfilter/ipvs/ip_vs_lblcr.c        |  5 +----
+ net/netfilter/nf_conntrack_standalone.c |  6 +-----
+ net/netfilter/nf_log.c                  |  3 +--
+ net/netrom/sysctl_net_netrom.c          |  1 -
+ net/phonet/sysctl.c                     |  1 -
+ net/rds/ib_sysctl.c                     |  1 -
+ net/rds/sysctl.c                        |  1 -
+ net/rds/tcp.c                           |  1 -
+ net/rose/sysctl_net_rose.c              |  1 -
+ net/rxrpc/sysctl.c                      |  1 -
+ net/sctp/sysctl.c                       | 10 +++-------
+ net/smc/smc_sysctl.c                    |  1 -
+ net/sunrpc/sysctl.c                     |  1 -
+ net/sunrpc/xprtrdma/svc_rdma.c          |  1 -
+ net/sunrpc/xprtrdma/transport.c         |  1 -
+ net/sunrpc/xprtsock.c                   |  1 -
+ net/tipc/sysctl.c                       |  1 -
+ net/unix/sysctl_net_unix.c              |  1 -
+ net/x25/sysctl_net_x25.c                |  1 -
+ net/xfrm/xfrm_sysctl.c                  |  5 +----
+ 47 files changed, 47 insertions(+), 116 deletions(-)
+---
+base-commit: 4cece764965020c22cff7665b18a012006359095
+change-id: 20240311-jag-sysctl_remset_net-d403a1a93d6b
 
+Best regards,
 -- 
-2.43.0
+Joel Granados <j.granados@samsung.com>
 
