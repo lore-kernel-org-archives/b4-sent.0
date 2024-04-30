@@ -1,14 +1,15 @@
 From: =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
-Date: Mon, 29 Apr 2024 12:46:43 +0300
-Subject: [PATCH net-next] net: dsa: mt7530: detect PHY muxing when PHY is
- defined on switch MDIO bus
+Date: Tue, 30 Apr 2024 08:01:33 +0300
+Subject: [PATCH net-next v2] net: dsa: mt7530: detect PHY muxing when PHY
+ is defined on switch MDIO bus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240429-b4-for-netnext-mt7530-use-switch-mdio-bus-for-phy-muxing-v1-1-1f775983e155@arinc9.com>
-X-B4-Tracking: v=1; b=H4sIAIJsL2YC/x3NQQ6DIBCF4auYWXcSRNDaq5guqo4yC8AAtjTGu
- 5e6/JOX7x0QKTBFeFQHBHpzZO9K1LcKJvNyKyHPpUEKqYSSPY4KFx/QUXKUE9rU6UbgHgnjh9N
- k0M7scdzjNdvMF+2e2a2o761s+6arJ62h8FughfN1PUDh8O/B8zx/gMKG6ZQAAAA=
+Message-Id: <20240430-b4-for-netnext-mt7530-use-switch-mdio-bus-for-phy-muxing-v2-1-9104d886d0db@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIACx7MGYC/6WOSw6DMBBDr1LNulNBIHy66j0qFhAGmAUJSgIFI
+ e7eNFeovLJsPfsER5bJwfN2gqWNHRsdjLjfQE2tHgm5Dx5EIvIkFzV2OQ7Goiavafc4+1JmCa6
+ O0H3Yqwnnng12q4u1ZTpwXnfWI8qqEEWdlamSEgJ+sTTwHqffEHD440ETkomdN/aIn7Y05v/Pb
+ ykGDWUp6yqjVMpXa1mr+qHMDM11XV8dryM7CwEAAA==
 To: Daniel Golle <daniel@makrotopia.org>, DENG Qingfang <dqfext@gmail.com>, 
  Sean Wang <sean.wang@mediatek.com>, Andrew Lunn <andrew@lunn.ch>, 
  Florian Fainelli <f.fainelli@gmail.com>, 
@@ -23,22 +24,22 @@ Cc: Bartel Eerdekens <bartel.eerdekens@constell8.be>,
  linux-mediatek@lists.infradead.org, 
  =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1714384017; l=1737;
- i=arinc.unal@arinc9.com; s=arinc9-patatt; h=from:subject:message-id;
- bh=aV0b87E50oYhQ0oa+qVZ0uBYjOG8eoZT/UzGqSKMX+s=;
- b=Nq09mU0p4YPp/xi2o2FjpG+iFQnXvtEU3rSX2+/m1lN0qfURodE/M/xzNPYmVb0YMAjA29jt+
- mrN3+nAmij2A4jISevUV4uDaSgAoMYbC1kaiDm0ucx49S8SbqUYx8X2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1714453297; l=1949;
+ i=arinc.unal@arinc9.com; s=arinc9-PC; h=from:subject:message-id;
+ bh=c3IRARdnxa6x5otHszH4xrnla2RxJAal1114ej/d2wE=;
+ b=FL4WEHh4zYu1gBE7wbaN+X2OMCOIMJVsYBkXurHM0IC3CnI6XfpKE1V5QLUSXby75WZfvQ0se
+ lrMQos/eOAaCNbkyxUkmwb3opbC915iywMECA0lv/g0IAo6snRYzMae
 X-Developer-Key: i=arinc.unal@arinc9.com; a=ed25519;
- pk=VmvgMWwm73yVIrlyJYvGtnXkQJy9CvbaeEqPQO9Z4kA=
-X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-patatt with auth_id=115
+ pk=Bd1s2kQtNfZAWyeLHg39jaWBDqt8Ud1WJXLFh7gxl20=
+X-Endpoint-Received: by B4 Relay for arinc.unal@arinc9.com/arinc9-PC with auth_id=158
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Currently, the MT7530 DSA subdriver configures the MT7530 switch to provide
 direct access to switch PHYs, meaning, the switch PHYs listen on the MDIO
 bus the switch listens on. The PHY muxing feature makes use of this.
 
-This is problematic as the PHY may be probed before the switch is
-initialised, in which case attaching the PHY will fail.
+This is problematic as the PHY may be attached before the switch is
+initialised, in which case, the PHY will fail to be attached.
 
 Since commit 91374ba537bd ("net: dsa: mt7530: support OF-based registration
 of switch MDIO bus"), we can describe the switch PHYs on the MDIO bus of
@@ -47,9 +48,13 @@ the PHY is defined on the MDIO bus of the switch on the device tree.
 
 When the PHY is described this way, the switch will be initialised first,
 then the switch MDIO bus will be registered. Only after these steps, the
-PHY will be probed.
+PHY will be attached.
 
 Signed-off-by: Arınç ÜNAL <arinc.unal@arinc9.com>
+---
+Changes in v2:
+- Address the terminology on the patch log.
+- Link to v1: https://lore.kernel.org/r/20240429-b4-for-netnext-mt7530-use-switch-mdio-bus-for-phy-muxing-v1-1-1f775983e155@arinc9.com
 ---
  drivers/net/dsa/mt7530.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
