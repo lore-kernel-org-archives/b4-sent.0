@@ -1,857 +1,401 @@
-From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Tue, 30 Apr 2024 19:11:12 +0800
-Subject: [PATCH v7 3/3] mtd: rawnand: Add Loongson-1 NAND Controller driver
+From: Joel Granados <j.granados@samsung.com>
+Subject: [PATCH net-next v6 0/8] sysctl: Remove sentinel elements from
+ networking
+Date: Wed, 01 May 2024 11:29:24 +0200
+Message-Id: <20240501-jag-sysctl_remset_net-v6-0-370b702b6b4a@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240430-loongson1-nand-v7-3-60787c314fa4@gmail.com>
-References: <20240430-loongson1-nand-v7-0-60787c314fa4@gmail.com>
-In-Reply-To: <20240430-loongson1-nand-v7-0-60787c314fa4@gmail.com>
-To: Miquel Raynal <miquel.raynal@bootlin.com>, 
- Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
- Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-mips@vger.kernel.org, devicetree@vger.kernel.org, 
- Keguang Zhang <keguang.zhang@gmail.com>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1714475491; l=23506;
- i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=Pj2lE4qTrYmpHR+aTnNrgi1a+WH7HfnG2Gsddi4X528=;
- b=2hkCMX2U/FEEx4eXV3SQN+JUNVlFRVSdqhtTYrzTV5xBxQtHzr/bPzEFANaomqKlR0Pbz61qO
- yopO4AaiuiBAaaFZk7nLj2QT1c2qDi0ia9sQyrZaFTEbuN6RWvx7/x+
-X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
- pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
-X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
+X-B4-Tracking: v=1; b=H4sIAHULMmYC/3XO3WqEMBAF4FdZct0UZ/Kj2au+RylLNKObUrWYV
+ HZZfPdOpVCLeDmcmW/OQySaIiVxPj3ERHNMcRx4sE8n0Vz90JGMgWeBBepCAch338l0T03+uEz
+ UJ8qXgbIMHHrwTgVbC779nKiNt9V9FT8LA92yeOPkGlMep/v6cIY1/7X1gT2DLKT3aGutA7rgX
+ pLv09fQPTdjv5ozbhysjhxkx2DjWh8cl233jvpzNOCRo9gBgKoMoBoE2Dt646A5cjQ7jipsXWX
+ Ksgx7x2wde+QYdkjVgK3lWt7+d5Zl+QZSV2YR5gEAAA==
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Alexander Aring <alex.aring@gmail.com>, 
+ Stefan Schmidt <stefan@datenfreihafen.org>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, David Ahern <dsahern@kernel.org>, 
+ Steffen Klassert <steffen.klassert@secunet.com>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>, Ralf Baechle <ralf@linux-mips.org>, 
+ Remi Denis-Courmont <courmisch@gmail.com>, 
+ Allison Henderson <allison.henderson@oracle.com>, 
+ David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>, 
+ Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+ Xin Long <lucien.xin@gmail.com>, Wenjia Zhang <wenjia@linux.ibm.com>, 
+ Jan Karcher <jaka@linux.ibm.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
+ Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
+ Trond Myklebust <trond.myklebust@hammerspace.com>, 
+ Anna Schumaker <anna@kernel.org>, Chuck Lever <chuck.lever@oracle.com>, 
+ Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>, 
+ Olga Kornievskaia <kolga@netapp.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, Jon Maloy <jmaloy@redhat.com>, 
+ Ying Xue <ying.xue@windriver.com>, Martin Schiller <ms@dev.tdt.de>, 
+ Pablo Neira Ayuso <pablo@netfilter.org>, 
+ Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, 
+ Roopa Prabhu <roopa@nvidia.com>, Nikolay Aleksandrov <razor@blackwall.org>, 
+ Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, 
+ Joerg Reuter <jreuter@yaina.de>, Luis Chamberlain <mcgrof@kernel.org>, 
+ Kees Cook <keescook@chromium.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.linux.dev, 
+ linux-hams@vger.kernel.org, linux-rdma@vger.kernel.org, 
+ rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, 
+ linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org, 
+ linux-nfs@vger.kernel.org, tipc-discussion@lists.sourceforge.net, 
+ linux-x25@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+ coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
+ Joel Granados <j.granados@samsung.com>
+X-Mailer: b4 0.13-dev-2d940
+X-Developer-Signature: v=1; a=openpgp-sha256; l=16255;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=Ex95kiaNjDMI8AmLp4Ar2dajO1Rh4yJWTrLmopWKeYk=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYyC5rzgGzYYniA6SrIUBpx2xHAvTry3olsf
+ Wfn7GEbR7HWxYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmMguaAAoJELqXzVK3
+ lkFPsWAMAI9T5jTMI27oz0wvNz1D23W9kQXS2RO6sp3hRRdvDHA4rIQ9AgBHF8ScWGI9tGGPBot
+ D2Y7/mqU1fNhFu2nxlxiDC0KNKDduXrGakmNfdXdCJ7/4mNl07LYOdWl/XSSOp0AJT99mcVbwpb
+ 4P1F9Ot3d81A6NuOijNGkSj0zYNeDQPquGfvZ0Y146myxafru5VE5ygye1d3g3LWdSNEYgGkTZ3
+ xCM05PUlaMLXVKcS01m6FP1RfXD4ycJWPFYhNFa/Mp3qs8JHYkFLoNCtYmfhNcM3CDXqnz1SVoi
+ M+IcqGgbVZrNT+DK69xcb/sDmq+4EWwg5UhH0SNzIXENlfyIZnyJ7bcKnwH/kU09gRuWXib9+I2
+ pvuCPWu9/PHQkiWog8nofDO6I83YQK1ZOTLC3MufkKz53nHtIl9UJF5F2EOakhPImsYmDy1FZ43
+ +b4C6kndWlvvqQZ+pZO+zRr5vUWeGfNUx4wZ3WQmGXuyBJZbUOrJvZ9kV6A5Itjhn1QstdFvmF5
+ 7M=
+X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds NAND Controller driver for Loongson-1 SoCs.
+What?
+These commits remove the sentinel element (last empty element) from the
+sysctl arrays of all the files under the "net/" directory that register
+a sysctl array. The merging of the preparation patches [4] to mainline
+allows us to just remove sentinel elements without changing behavior.
+This is safe because the sysctl registration code (register_sysctl() and
+friends) use the array size in addition to checking for a sentinel [1].
 
-Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
----
-Changes in v7:
-- Rename the dependency to LOONGSON1_APB_DMA
+Why?
+By removing the sysctl sentinel elements we avoid kernel bloat as
+ctl_table arrays get moved out of kernel/sysctl.c into their own
+respective subsystems. This move was started long ago to avoid merge
+conflicts; the sentinel removal bit came after Mathew Wilcox suggested
+it to avoid bloating the kernel by one element as arrays moved out. This
+patchset will reduce the overall build time size of the kernel and run
+time memory bloat by about ~64 bytes per declared ctl_table array (more
+info here [5]).
+
+When are we done?
+There are 4 patchest (25 commits [2]) that are still outstanding to
+completely remove the sentinels: files under "net/" (this patchset),
+files under "kernel/" dir, misc dirs (files under mm/ security/ and
+others) and the final set that removes the unneeded check for ->procname
+== NULL.
+
+Testing:
+* Ran sysctl selftests (./tools/testing/selftests/sysctl/sysctl.sh)
+* Ran this through 0-day with no errors or warnings
+
+Savings in vmlinux:
+  A total of 64 bytes per sentinel is saved after removal; I measured in
+  x86_64 to give an idea of the aggregated savings. The actual savings
+  will depend on individual kernel configuration.
+    * bloat-o-meter
+        - The "yesall" config saves 3976 bytes (bloat-o-meter output [6])
+        - A reduced config [3] saves 1263 bytes (bloat-o-meter output [7])
+
+Savings in allocated memory:
+  None in this set but will occur when the superfluous allocations are
+  removed from proc_sysctl.c. I include it here for context. The
+  estimated savings during boot for config [3] are 6272 bytes. See [8]
+  for how to measure it.
+
+Comments/feedback greatly appreciated
 
 Changes in v6:
-- Amend Kconfig
-- Add DT support
-- Use DT data instead of platform data
-- Remove MAX_ID_SIZE
-- Remove case NAND_OP_CMD_INSTR in ls1x_nand_set_controller()
-- Move ECC configuration to ls1x_nand_attach_chip()
-- Rename variable "nand" to "ls1x"
-- Rename variable "nc" to "nfc"
-- Some minor fixes
-- Link to v5: https://lore.kernel.org/all/20210520224213.7907-1-keguang.zhang@gmail.com
+- Rebased onto net-next/main.
+- Besides re-running my cocci scripts, I ran a new find script [9].
+  Found 0 hits in net/
+- Moved "i" variable declaraction out of for() in sysctl_core_net_init
+- Removed forgotten sentinel in mpls_table
+- Removed CONFIG_AX25_DAMA_SLAVE guard from net/ax25/ax25_ds_timer.c. It
+  is not needed because that file is compiled only when
+  CONFIG_AX25_DAMA_SLAVE is set.
+- When traversing smc_table, stop on ARRAY_SIZE instead of ARRAY_SIZE-1.
+- Link to v5: https://lore.kernel.org/r/20240426-jag-sysctl_remset_net-v5-0-e3b12f6111a6@samsung.com
 
 Changes in v5:
-- Update the driver to fit the raw NAND framework.
-- Implement exec_op() instead of legacy cmdfunc().
-- Use dma_request_chan() instead of dma_request_channel().
-- Some minor fixes and cleanups.
+- Added net files with additional variable to my test .config so the
+  typo can be caught next time.
+- Fixed typo tabel_size -> table_size
+- Link to v4: https://lore.kernel.org/r/20240425-jag-sysctl_remset_net-v4-0-9e82f985777d@samsung.com
 
 Changes in v4:
-- Retrieve the controller from nand_hw_control.
+- Keep reverse xmas tree order when introducing new variables
+- Use a table_size variable to keep the value of ARRAY_SIZE
+- Separated the original "networking: Remove the now superfluous
+  sentinel elements from ctl_table arra" into smaller commits to ease
+  review
+- Merged x.25 and ax.25 commits together.
+- Removed any SOB from the commits that were changed
+- Link to v3: https://lore.kernel.org/r/20240412-jag-sysctl_remset_net-v3-0-11187d13c211@samsung.com
 
 Changes in v3:
-- Replace __raw_readl/__raw_writel with readl/writel.
-- Split ls1x_nand into two structures:
-ls1x_nand_chip and ls1x_nand_controller.
+- Reworkded ax.25
+  - Added a BUILD_BUG_ON for the ax.25 commit
+  - Added a CONFIG_AX25_DAMA_SLAVE guard where needed
+- Link to v2: https://lore.kernel.org/r/20240328-jag-sysctl_remset_net-v2-0-52c9fad9a1af@samsung.com
 
 Changes in v2:
-- Modify the dependency in Kconfig due to the changes of DMA module.
+- Rebased to v6.9-rc1
+- Removed unneeded comment from sysctl_net_ax25.c
+- Link to v1: https://lore.kernel.org/r/20240314-jag-sysctl_remset_net-v1-0-aa26b44d29d9@samsung.com
+
+Best
+Joel
+
+[1] https://lore.kernel.org/all/20230809105006.1198165-1-j.granados@samsung.com/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/joel.granados/linux.git/tag/?h=sysctl_remove_empty_elem_v5
+[3] https://gist.github.com/Joelgranados/feaca7af5537156ca9b73aeaec093171
+[4] https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+
+[5]
+Links Related to the ctl_table sentinel removal:
+* Good summaries from Luis:
+  https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/
+  https://lore.kernel.org/all/ZMFizKFkVxUFtSqa@bombadil.infradead.org/
+* Patches adjusting sysctl register calls:
+  https://lore.kernel.org/all/20230302204612.782387-1-mcgrof@kernel.org/
+  https://lore.kernel.org/all/20230302202826.776286-1-mcgrof@kernel.org/
+* Discussions about expectations and approach
+  https://lore.kernel.org/all/20230321130908.6972-1-frank.li@vivo.com
+  https://lore.kernel.org/all/20220220060626.15885-1-tangmeng@uniontech.com
+
+[6]
+add/remove: 0/1 grow/shrink: 2/67 up/down: 76/-4052 (-3976)
+Function                                     old     new   delta
+llc_sysctl_init                              306     377     +71
+nf_log_net_init                              866     871      +5
+sysctl_core_net_init                         375     366      -9
+lowpan_frags_init_net                        618     598     -20
+ip_vs_control_net_init_sysctl               2446    2422     -24
+sysctl_route_net_init                        521     493     -28
+__addrconf_sysctl_register                   678     650     -28
+xfrm_sysctl_init                             405     374     -31
+mpls_net_init                                367     334     -33
+sctp_sysctl_net_register                     386     346     -40
+__ip_vs_lblcr_init                           546     501     -45
+__ip_vs_lblc_init                            546     501     -45
+neigh_sysctl_register                       1011     958     -53
+mpls_dev_sysctl_register                     475     419     -56
+ipv6_route_sysctl_init                       450     394     -56
+xs_tunables_table                            448     384     -64
+xr_tunables_table                            448     384     -64
+xfrm_table                                   320     256     -64
+xfrm6_policy_table                           128      64     -64
+xfrm4_policy_table                           128      64     -64
+x25_table                                    448     384     -64
+vs_vars                                     1984    1920     -64
+unix_table                                   128      64     -64
+tipc_table                                   448     384     -64
+svcrdma_parm_table                           832     768     -64
+smc_table                                    512     448     -64
+sctp_table                                   256     192     -64
+sctp_net_table                              2304    2240     -64
+rxrpc_sysctl_table                           704     640     -64
+rose_table                                   704     640     -64
+rds_tcp_sysctl_table                         192     128     -64
+rds_sysctl_rds_table                         384     320     -64
+rds_ib_sysctl_table                          384     320     -64
+phonet_table                                 128      64     -64
+nr_table                                     832     768     -64
+nf_log_sysctl_table                          768     704     -64
+nf_log_sysctl_ftable                         128      64     -64
+nf_ct_sysctl_table                          3200    3136     -64
+nf_ct_netfilter_table                        128      64     -64
+nf_ct_frag6_sysctl_table                     256     192     -64
+netns_core_table                             320     256     -64
+net_core_table                              2176    2112     -64
+neigh_sysctl_template                       1416    1352     -64
+mptcp_sysctl_table                           576     512     -64
+mpls_dev_table                               128      64     -64
+lowpan_frags_ns_ctl_table                    256     192     -64
+lowpan_frags_ctl_table                       128      64     -64
+llc_station_table                             64       -     -64
+llc2_timeout_table                           320     256     -64
+ipv6_table_template                         1344    1280     -64
+ipv6_route_table_template                    768     704     -64
+ipv6_rotable                                 320     256     -64
+ipv6_icmp_table_template                     448     384     -64
+ipv4_table                                  1024     960     -64
+ipv4_route_table                             832     768     -64
+ipv4_route_netns_table                       320     256     -64
+ipv4_net_table                              7552    7488     -64
+ip6_frags_ns_ctl_table                       256     192     -64
+ip6_frags_ctl_table                          128      64     -64
+ip4_frags_ns_ctl_table                       320     256     -64
+ip4_frags_ctl_table                          128      64     -64
+devinet_sysctl                              2184    2120     -64
+debug_table                                  384     320     -64
+dccp_default_table                           576     512     -64
+ctl_forward_entry                            128      64     -64
+brnf_table                                   448     384     -64
+ax25_param_table                             960     896     -64
+atalk_table                                  320     256     -64
+addrconf_sysctl                             3904    3840     -64
+vs_vars_table                                256     128    -128
+Total: Before=440631035, After=440627059, chg -0.00%
+
+[7]
+add/remove: 0/0 grow/shrink: 1/22 up/down: 8/-1263 (-1255)
+Function                                     old     new   delta
+sysctl_route_net_init                        189     197      +8
+__addrconf_sysctl_register                   306     294     -12
+ipv6_route_sysctl_init                       201     185     -16
+neigh_sysctl_register                        385     366     -19
+unix_table                                   128      64     -64
+netns_core_table                             256     192     -64
+net_core_table                              1664    1600     -64
+neigh_sysctl_template                       1416    1352     -64
+ipv6_table_template                         1344    1280     -64
+ipv6_route_table_template                    768     704     -64
+ipv6_rotable                                 192     128     -64
+ipv6_icmp_table_template                     448     384     -64
+ipv4_table                                   768     704     -64
+ipv4_route_table                             832     768     -64
+ipv4_route_netns_table                       320     256     -64
+ipv4_net_table                              7040    6976     -64
+ip6_frags_ns_ctl_table                       256     192     -64
+ip6_frags_ctl_table                          128      64     -64
+ip4_frags_ns_ctl_table                       320     256     -64
+ip4_frags_ctl_table                          128      64     -64
+devinet_sysctl                              2184    2120     -64
+ctl_forward_entry                            128      64     -64
+addrconf_sysctl                             3392    3328     -64
+Total: Before=8523801, After=8522546, chg -0.01%
+
+[8]
+To measure the in memory savings apply this on top of this patchset.
+
+"
+diff --git i/fs/proc/proc_sysctl.c w/fs/proc/proc_sysctl.c
+index 37cde0efee57..896c498600e8 100644
+--- i/fs/proc/proc_sysctl.c
++++ w/fs/proc/proc_sysctl.c
+@@ -966,6 +966,7 @@ static struct ctl_dir *new_dir(struct ctl_table_set *set,
+        table[0].procname = new_name;
+        table[0].mode = S_IFDIR|S_IRUGO|S_IXUGO;
+        init_header(&new->header, set->dir.header.root, set, node, table, 1);
++       printk("%ld sysctl saved mem kzalloc\n", sizeof(struct ctl_table));
+
+        return new;
+ }
+@@ -1189,6 +1190,7 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, s>
+                link_name += len;
+                link++;
+        }
++       printk("%ld sysctl saved mem kzalloc\n", sizeof(struct ctl_table));
+        init_header(links, dir->header.root, dir->header.set, node, link_table,
+                    head->ctl_table_size);
+        links->nreg = nr_entries;
+"
+and then run the following bash script in the kernel:
+
+```
+	accum=0
+	for n in $(dmesg | grep kzalloc | awk '{print $3}') ; do
+	    accum=$(calc "$accum + $n")
+	done
+	echo $accum
+```
+
+[9]
+```
+	#!/usr/bin/gawk -f
+
+	BEGINFILE {
+	  RS=","
+	  has_struct = 0
+	}
+
+	/(static )?(const )?struct ctl_table/ {
+	  has_struct = 1
+	}
+
+	has_struct && /^(\n)?[\t ]*{(\n)*[\t ]*}/ {
+	  print "Filename : " FILENAME ", Record Number : " FNR
+	}
+```
+
+Signed-off-by: Joel Granados <j.granados@samsung.com>
+
+--
+
 ---
- drivers/mtd/nand/raw/Kconfig          |   7 +
- drivers/mtd/nand/raw/Makefile         |   1 +
- drivers/mtd/nand/raw/loongson1_nand.c | 748 ++++++++++++++++++++++++++++++++++
- 3 files changed, 756 insertions(+)
+---
+Joel Granados (8):
+      net: Remove the now superfluous sentinel elements from ctl_table array
+      net: ipv{6,4}: Remove the now superfluous sentinel elements from ctl_table array
+      net: rds: Remove the now superfluous sentinel elements from ctl_table array
+      net: sunrpc: Remove the now superfluous sentinel elements from ctl_table array
+      net: Remove ctl_table sentinel elements from several networking subsystems
+      netfilter: Remove the now superfluous sentinel elements from ctl_table array
+      appletalk: Remove the now superfluous sentinel elements from ctl_table array
+      ax.25: x.25: Remove the now superfluous sentinel elements from ctl_table array
 
-diff --git a/drivers/mtd/nand/raw/Kconfig b/drivers/mtd/nand/raw/Kconfig
-index cbf8ae85e1ae..822bb7a2cea9 100644
---- a/drivers/mtd/nand/raw/Kconfig
-+++ b/drivers/mtd/nand/raw/Kconfig
-@@ -449,6 +449,13 @@ config MTD_NAND_RENESAS
- 	  Enables support for the NAND controller found on Renesas R-Car
- 	  Gen3 and RZ/N1 SoC families.
- 
-+config MTD_NAND_LOONGSON1
-+	tristate "Loongson1 NAND controller"
-+	depends on LOONGSON1_APB_DMA || COMPILE_TEST
-+	select REGMAP_MMIO
-+	help
-+	  Enables support for NAND controller on Loongson1 SoCs.
-+
- comment "Misc"
- 
- config MTD_SM_COMMON
-diff --git a/drivers/mtd/nand/raw/Makefile b/drivers/mtd/nand/raw/Makefile
-index 25120a4afada..b3c65cab819c 100644
---- a/drivers/mtd/nand/raw/Makefile
-+++ b/drivers/mtd/nand/raw/Makefile
-@@ -57,6 +57,7 @@ obj-$(CONFIG_MTD_NAND_INTEL_LGM)	+= intel-nand-controller.o
- obj-$(CONFIG_MTD_NAND_ROCKCHIP)		+= rockchip-nand-controller.o
- obj-$(CONFIG_MTD_NAND_PL35X)		+= pl35x-nand-controller.o
- obj-$(CONFIG_MTD_NAND_RENESAS)		+= renesas-nand-controller.o
-+obj-$(CONFIG_MTD_NAND_LOONGSON1)	+= loongson1_nand.o
- 
- nand-objs := nand_base.o nand_legacy.o nand_bbt.o nand_timings.o nand_ids.o
- nand-objs += nand_onfi.o
-diff --git a/drivers/mtd/nand/raw/loongson1_nand.c b/drivers/mtd/nand/raw/loongson1_nand.c
-new file mode 100644
-index 000000000000..d0f66a81ba0b
---- /dev/null
-+++ b/drivers/mtd/nand/raw/loongson1_nand.c
-@@ -0,0 +1,748 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * NAND Controller Driver for Loongson-1 SoC
-+ *
-+ * Copyright (C) 2015-2024 Keguang Zhang <keguang.zhang@gmail.com>
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/module.h>
-+#include <linux/dmaengine.h>
-+#include <linux/dma-mapping.h>
-+#include <linux/iopoll.h>
-+#include <linux/mtd/mtd.h>
-+#include <linux/mtd/rawnand.h>
-+#include <linux/of.h>
-+#include <linux/platform_device.h>
-+#include <linux/regmap.h>
-+#include <linux/sizes.h>
-+
-+/* Loongson-1 NAND Controller Registers */
-+#define NAND_CMD		0x0
-+#define NAND_ADDR1		0x4
-+#define NAND_ADDR2		0x8
-+#define NAND_TIMING		0xc
-+#define NAND_IDL		0x10
-+#define NAND_IDH_STATUS		0x14
-+#define NAND_PARAM		0x18
-+#define NAND_OP_NUM		0x1c
-+#define MAX_DUMP_REGS		0x20
-+
-+#define NAND_DMA_ADDR		0x40
-+
-+/* NAND Command Register Bits */
-+#define OP_DONE			BIT(10)
-+#define OP_SPARE		BIT(9)
-+#define OP_MAIN			BIT(8)
-+#define CMD_STATUS		BIT(7)
-+#define CMD_RESET		BIT(6)
-+#define CMD_READID		BIT(5)
-+#define BLOCKS_ERASE		BIT(4)
-+#define CMD_ERASE		BIT(3)
-+#define CMD_WRITE		BIT(2)
-+#define CMD_READ		BIT(1)
-+#define CMD_VALID		BIT(0)
-+
-+#define MAX_ADDR_CYC		5U
-+
-+#define WAIT_CYCLE_MASK		GENMASK(7, 0)
-+#define HOLD_CYCLE_MASK		GENMASK(15, 8)
-+#define CELL_SIZE_MASK		GENMASK(11, 8)
-+
-+#define BITS_PER_WORD		(4 * BITS_PER_BYTE)
-+
-+/* macros for registers read/write */
-+#define nand_readl(nfc, off)		\
-+	readl((nfc)->reg_base + (off))
-+
-+#define nand_writel(nfc, off, val)	\
-+	writel((val), (nfc)->reg_base + (off))
-+
-+struct ls1x_nfc_data {
-+	unsigned int status_field;
-+	unsigned int op_scope_field;
-+	unsigned int hold_cycle;
-+	unsigned int wait_cycle;
-+	void (*parse_address)(struct nand_chip *chip, const u8 *addrs,
-+			      unsigned int naddrs, int cmd);
-+};
-+
-+struct ls1x_nfc {
-+	void __iomem *reg_base;
-+	struct regmap *regmap;
-+	const struct ls1x_nfc_data *data;
-+	__le32 addr1_reg;
-+	__le32 addr2_reg;
-+
-+	char *buf;
-+	unsigned int len;
-+	unsigned int rdy_timeout;
-+
-+	/* DMA Engine stuff */
-+	struct dma_chan *dma_chan;
-+	dma_cookie_t dma_cookie;
-+	struct completion dma_complete;
-+};
-+
-+struct ls1x_nand {
-+	struct device *dev;
-+	struct nand_chip chip;
-+	struct nand_controller controller;
-+	struct ls1x_nfc nfc;
-+};
-+
-+static const struct regmap_config ls1x_nand_regmap_config = {
-+	.reg_bits = 32,
-+	.val_bits = 32,
-+	.reg_stride = 4,
-+};
-+
-+static inline void ls1b_nand_parse_address(struct nand_chip *chip,
-+					   const u8 *addrs,
-+					   unsigned int naddrs, int cmd)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	unsigned int page_shift = chip->page_shift + 1;
-+	int i;
-+
-+	nfc->addr1_reg = 0;
-+	nfc->addr2_reg = 0;
-+
-+	if (cmd == CMD_ERASE) {
-+		page_shift = chip->page_shift;
-+
-+		for (i = 0; i < min(MAX_ADDR_CYC - 2, naddrs); i++)
-+			nfc->addr1_reg |=
-+			    (u32)addrs[i] << (page_shift + BITS_PER_BYTE * i);
-+		if (i == MAX_ADDR_CYC - 2)
-+			nfc->addr2_reg |=
-+			    (u32)addrs[i] >> (BITS_PER_WORD - page_shift -
-+					      BITS_PER_BYTE * (i - 1));
-+
-+		return;
-+	}
-+
-+	for (i = 0; i < min(2U, naddrs); i++)
-+		nfc->addr1_reg |= (u32)addrs[i] << BITS_PER_BYTE * i;
-+	for (i = 2; i < min(MAX_ADDR_CYC, naddrs); i++)
-+		nfc->addr1_reg |=
-+		    (u32)addrs[i] << (page_shift + BITS_PER_BYTE * (i - 2));
-+	if (i == MAX_ADDR_CYC)
-+		nfc->addr2_reg |=
-+		    (u32)addrs[i] >> (BITS_PER_WORD - page_shift -
-+				      BITS_PER_BYTE * (i - 1));
-+}
-+
-+static inline void ls1c_nand_parse_address(struct nand_chip *chip,
-+					   const u8 *addrs,
-+					   unsigned int naddrs, int cmd)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	int i;
-+
-+	nfc->addr1_reg = 0;
-+	nfc->addr2_reg = 0;
-+
-+	if (cmd == CMD_ERASE) {
-+		for (i = 0; i < min(MAX_ADDR_CYC, naddrs); i++)
-+			nfc->addr2_reg |= (u32)addrs[i] << BITS_PER_BYTE * i;
-+
-+		return;
-+	}
-+
-+	for (i = 0; i < min(MAX_ADDR_CYC, naddrs); i++) {
-+		if (i < 2)
-+			nfc->addr1_reg |= (u32)addrs[i] << BITS_PER_BYTE * i;
-+		else
-+			nfc->addr2_reg |=
-+			    (u32)addrs[i] << BITS_PER_BYTE * (i - 2);
-+	}
-+}
-+
-+static int ls1x_nand_set_controller(struct nand_chip *chip,
-+				    const struct nand_subop *subop, int cmd)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	unsigned int op_id;
-+
-+	nfc->buf = NULL;
-+	nfc->len = 0;
-+	nfc->rdy_timeout = 0;
-+
-+	for (op_id = 0; op_id < subop->ninstrs; op_id++) {
-+		const struct nand_op_instr *instr = &subop->instrs[op_id];
-+		unsigned int offset, naddrs;
-+		const u8 *addrs;
-+
-+		switch (instr->type) {
-+		case NAND_OP_ADDR_INSTR:
-+			offset = nand_subop_get_addr_start_off(subop, op_id);
-+			naddrs = nand_subop_get_num_addr_cyc(subop, op_id);
-+			addrs = &instr->ctx.addr.addrs[offset];
-+
-+			nfc->data->parse_address(chip, addrs, naddrs, cmd);
-+			/* set NAND address */
-+			nand_writel(nfc, NAND_ADDR1, nfc->addr1_reg);
-+			nand_writel(nfc, NAND_ADDR2, nfc->addr2_reg);
-+			break;
-+		case NAND_OP_DATA_IN_INSTR:
-+		case NAND_OP_DATA_OUT_INSTR:
-+			offset = nand_subop_get_data_start_off(subop, op_id);
-+			nfc->len = nand_subop_get_data_len(subop, op_id);
-+			if (instr->type == NAND_OP_DATA_IN_INSTR)
-+				nfc->buf =
-+				    (void *)instr->ctx.data.buf.in + offset;
-+			else if (instr->type == NAND_OP_DATA_OUT_INSTR)
-+				nfc->buf =
-+				    (void *)instr->ctx.data.buf.out + offset;
-+
-+			if (cmd & (CMD_READID | CMD_STATUS))
-+				break;
-+
-+			if (!IS_ALIGNED((u32)nfc->buf, chip->buf_align)) {
-+				dev_err(ls1x->dev,
-+					"nfc->buf %px is not aligned!\n",
-+					nfc->buf);
-+				return -EOPNOTSUPP;
-+			} else if (!IS_ALIGNED(nfc->len, chip->buf_align)) {
-+				dev_err(ls1x->dev,
-+					"nfc->len %u is not aligned!\n",
-+					nfc->len);
-+				return -EOPNOTSUPP;
-+			}
-+
-+			/* set NAND data length */
-+			nand_writel(nfc, NAND_OP_NUM, nfc->len);
-+
-+			if (nfc->data->op_scope_field) {
-+				int op_scope = nfc->len << ffs(nfc->data->op_scope_field);
-+
-+				regmap_update_bits(nfc->regmap, NAND_PARAM,
-+						   nfc->data->op_scope_field,
-+						   op_scope);
-+			}
-+
-+			break;
-+		case NAND_OP_WAITRDY_INSTR:
-+			nfc->rdy_timeout = instr->ctx.waitrdy.timeout_ms;
-+			break;
-+		default:
-+			break;
-+		}
-+	}
-+
-+	/* set NAND erase block count */
-+	if (cmd & CMD_ERASE)
-+		nand_writel(nfc, NAND_OP_NUM, 1);
-+	/* set NAND operation region */
-+	if (nfc->buf && nfc->len)
-+		cmd |= OP_SPARE | OP_MAIN;
-+
-+	/* set NAND command */
-+	nand_writel(nfc, NAND_CMD, cmd);
-+	/* Trigger operation */
-+	regmap_write_bits(nfc->regmap, NAND_CMD, CMD_VALID, CMD_VALID);
-+
-+	return 0;
-+}
-+
-+static void ls1x_nand_dma_callback(void *data)
-+{
-+	struct ls1x_nand *ls1x = (struct ls1x_nand *)data;
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	enum dma_status status;
-+
-+	status = dmaengine_tx_status(nfc->dma_chan, nfc->dma_cookie, NULL);
-+	if (likely(status == DMA_COMPLETE))
-+		dev_dbg(ls1x->dev, "DMA complete with cookie=%d\n",
-+			nfc->dma_cookie);
-+	else
-+		dev_err(ls1x->dev, "DMA error with cookie=%d\n",
-+			nfc->dma_cookie);
-+
-+	complete(&nfc->dma_complete);
-+}
-+
-+static int ls1x_nand_dma_transfer(struct ls1x_nand *ls1x, bool is_write)
-+{
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	struct dma_chan *chan = nfc->dma_chan;
-+	struct dma_async_tx_descriptor *desc;
-+	enum dma_data_direction data_dir =
-+	    is_write ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
-+	enum dma_transfer_direction xfer_dir =
-+	    is_write ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
-+	dma_addr_t dma_addr;
-+	int ret;
-+
-+	dma_addr = dma_map_single(chan->device->dev, nfc->buf, nfc->len,
-+				  data_dir);
-+	if (dma_mapping_error(chan->device->dev, dma_addr)) {
-+		dev_err(ls1x->dev, "failed to map DMA buffer!\n");
-+		return -ENXIO;
-+	}
-+
-+	desc = dmaengine_prep_slave_single(chan, dma_addr, nfc->len, xfer_dir,
-+					   DMA_PREP_INTERRUPT);
-+	if (!desc) {
-+		dev_err(ls1x->dev, "failed to prepare DMA descriptor!\n");
-+		ret = PTR_ERR(desc);
-+		goto err;
-+	}
-+	desc->callback = ls1x_nand_dma_callback;
-+	desc->callback_param = ls1x;
-+
-+	nfc->dma_cookie = dmaengine_submit(desc);
-+	ret = dma_submit_error(nfc->dma_cookie);
-+	if (ret) {
-+		dev_err(ls1x->dev, "failed to submit DMA descriptor!\n");
-+		goto err;
-+	}
-+
-+	dev_dbg(ls1x->dev, "issue DMA with cookie=%d\n", nfc->dma_cookie);
-+	dma_async_issue_pending(chan);
-+
-+	ret = wait_for_completion_timeout(&nfc->dma_complete,
-+					  msecs_to_jiffies(nfc->rdy_timeout));
-+	if (ret <= 0) {
-+		dev_err(ls1x->dev, "DMA timeout!%u\n", nfc->rdy_timeout);
-+		dmaengine_terminate_all(chan);
-+		ret = -EIO;
-+	}
-+	ret = 0;
-+err:
-+	dma_unmap_single(chan->device->dev, dma_addr, nfc->len, data_dir);
-+
-+	return ret;
-+}
-+
-+static inline int ls1x_nand_wait_for_op_done(struct ls1x_nfc *nfc)
-+{
-+	unsigned int val;
-+	int ret = 0;
-+
-+	/* Wait for operation done */
-+	if (nfc->rdy_timeout)
-+		ret = regmap_read_poll_timeout(nfc->regmap, NAND_CMD, val,
-+					       val & OP_DONE, 0,
-+					       nfc->rdy_timeout * 1000);
-+
-+	return ret;
-+}
-+
-+static int ls1x_nand_reset_exec(struct nand_chip *chip,
-+				const struct nand_subop *subop)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	int ret;
-+
-+	ls1x_nand_set_controller(chip, subop, CMD_RESET);
-+
-+	ret = ls1x_nand_wait_for_op_done(nfc);
-+	if (ret)
-+		dev_err(ls1x->dev, "CMD_RESET failed! %d\n", ret);
-+
-+	return ret;
-+}
-+
-+static int ls1x_nand_read_id_exec(struct nand_chip *chip,
-+				  const struct nand_subop *subop)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	long long idl = 0;
-+	int i, ret;
-+
-+	ls1x_nand_set_controller(chip, subop, CMD_READID);
-+
-+	ret = ls1x_nand_wait_for_op_done(nfc);
-+	if (ret) {
-+		dev_err(ls1x->dev, "CMD_READID failed! %d\n", ret);
-+		print_hex_dump_debug("REG: ", DUMP_PREFIX_OFFSET, 16, 4,
-+				     nfc->reg_base, MAX_DUMP_REGS, false);
-+		return ret;
-+	}
-+
-+	idl = __be32_to_cpu(nand_readl(nfc, NAND_IDL));
-+	memset(nfc->buf, 0x0, nfc->len);
-+
-+	for (i = 0; i < nfc->len; i++) {
-+		if (i > 0)
-+			nfc->buf[i] = (char)(idl >> (i - 1) * BITS_PER_BYTE);
-+		else
-+			nfc->buf[i] = (char)nand_readl(nfc, NAND_IDH_STATUS);
-+	}
-+
-+	return ret;
-+}
-+
-+static int ls1x_nand_erase_exec(struct nand_chip *chip,
-+				const struct nand_subop *subop)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	int ret;
-+
-+	ls1x_nand_set_controller(chip, subop, CMD_ERASE);
-+
-+	ret = ls1x_nand_wait_for_op_done(nfc);
-+	if (ret) {
-+		dev_err(ls1x->dev, "CMD_ERASE failed! %d\n", ret);
-+		print_hex_dump_debug("REG: ", DUMP_PREFIX_OFFSET, 16, 4,
-+				     nfc->reg_base, MAX_DUMP_REGS, false);
-+	}
-+
-+	return ret;
-+}
-+
-+static int ls1x_nand_read_exec(struct nand_chip *chip,
-+			       const struct nand_subop *subop)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	bool is_write = false;
-+	int ret;
-+
-+	ls1x_nand_set_controller(chip, subop, CMD_READ);
-+
-+	ret = ls1x_nand_dma_transfer(ls1x, is_write);
-+	if (ret)
-+		return ret;
-+
-+	ret = ls1x_nand_wait_for_op_done(nfc);
-+	if (ret) {
-+		dev_err(ls1x->dev, "CMD_READ failed! %d\n", ret);
-+		print_hex_dump_debug("REG: ", DUMP_PREFIX_OFFSET, 16, 4,
-+				     nfc->reg_base, MAX_DUMP_REGS, false);
-+	}
-+
-+	return ret;
-+}
-+
-+static int ls1x_nand_write_exec(struct nand_chip *chip,
-+				const struct nand_subop *subop)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	bool is_write = true;
-+	int ret;
-+
-+	ls1x_nand_set_controller(chip, subop, CMD_WRITE);
-+
-+	ret = ls1x_nand_dma_transfer(ls1x, is_write);
-+	if (ret)
-+		return ret;
-+
-+	ret = ls1x_nand_wait_for_op_done(nfc);
-+	if (ret) {
-+		dev_err(ls1x->dev, "CMD_WRITE failed! %d\n", ret);
-+		print_hex_dump_debug("REG: ", DUMP_PREFIX_OFFSET, 16, 4,
-+				     nfc->reg_base, MAX_DUMP_REGS, false);
-+	}
-+
-+	return ret;
-+}
-+
-+static int ls1x_nand_read_status_exec(struct nand_chip *chip,
-+				      const struct nand_subop *subop)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	int val, ret;
-+
-+	ls1x_nand_set_controller(chip, subop, CMD_STATUS);
-+
-+	ret = ls1x_nand_wait_for_op_done(nfc);
-+	if (ret) {
-+		dev_err(ls1x->dev, "CMD_STATUS failed! %d\n", ret);
-+		return ret;
-+	}
-+
-+	val = nand_readl(nfc, NAND_IDH_STATUS) & ~nfc->data->status_field;
-+	nfc->buf[0] = val << ffs(nfc->data->status_field);
-+
-+	return ret;
-+}
-+
-+static const struct nand_op_parser ls1x_nand_op_parser = NAND_OP_PARSER(
-+	NAND_OP_PARSER_PATTERN(
-+		ls1x_nand_reset_exec,
-+		NAND_OP_PARSER_PAT_CMD_ELEM(false),
-+		NAND_OP_PARSER_PAT_WAITRDY_ELEM(false)),
-+	NAND_OP_PARSER_PATTERN(
-+		ls1x_nand_read_id_exec,
-+		NAND_OP_PARSER_PAT_CMD_ELEM(false),
-+		NAND_OP_PARSER_PAT_ADDR_ELEM(false, MAX_ADDR_CYC),
-+		NAND_OP_PARSER_PAT_DATA_IN_ELEM(false, 8)),
-+	NAND_OP_PARSER_PATTERN(
-+		ls1x_nand_erase_exec,
-+		NAND_OP_PARSER_PAT_CMD_ELEM(false),
-+		NAND_OP_PARSER_PAT_ADDR_ELEM(false, MAX_ADDR_CYC),
-+		NAND_OP_PARSER_PAT_CMD_ELEM(false),
-+		NAND_OP_PARSER_PAT_WAITRDY_ELEM(false)),
-+	NAND_OP_PARSER_PATTERN(
-+		ls1x_nand_read_exec,
-+		NAND_OP_PARSER_PAT_CMD_ELEM(false),
-+		NAND_OP_PARSER_PAT_ADDR_ELEM(false, MAX_ADDR_CYC),
-+		NAND_OP_PARSER_PAT_CMD_ELEM(false),
-+		NAND_OP_PARSER_PAT_WAITRDY_ELEM(true),
-+		NAND_OP_PARSER_PAT_DATA_IN_ELEM(false, 0)),
-+	NAND_OP_PARSER_PATTERN(
-+		ls1x_nand_write_exec,
-+		NAND_OP_PARSER_PAT_CMD_ELEM(false),
-+		NAND_OP_PARSER_PAT_ADDR_ELEM(false, MAX_ADDR_CYC),
-+		NAND_OP_PARSER_PAT_DATA_OUT_ELEM(false, 0),
-+		NAND_OP_PARSER_PAT_CMD_ELEM(false),
-+		NAND_OP_PARSER_PAT_WAITRDY_ELEM(true)),
-+	NAND_OP_PARSER_PATTERN(
-+		ls1x_nand_read_status_exec,
-+		NAND_OP_PARSER_PAT_CMD_ELEM(false),
-+		NAND_OP_PARSER_PAT_DATA_IN_ELEM(false, 1)),
-+	);
-+
-+static int ls1x_nand_exec_op(struct nand_chip *chip,
-+			     const struct nand_operation *op, bool check_only)
-+{
-+	return nand_op_parser_exec_op(chip, &ls1x_nand_op_parser, op,
-+				      check_only);
-+}
-+
-+static int ls1x_nand_attach_chip(struct nand_chip *chip)
-+{
-+	struct ls1x_nand *ls1x = nand_get_controller_data(chip);
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	u64 chipsize = nanddev_target_size(&chip->base);
-+	int cell_size = 0;
-+
-+	switch (chipsize) {
-+	case SZ_128M:
-+		cell_size = 0x0;
-+		break;
-+	case SZ_256M:
-+		cell_size = 0x1;
-+		break;
-+	case SZ_512M:
-+		cell_size = 0x2;
-+		break;
-+	case SZ_1G:
-+		cell_size = 0x3;
-+		break;
-+	case SZ_2G:
-+		cell_size = 0x4;
-+		break;
-+	case SZ_4G:
-+		cell_size = 0x5;
-+		break;
-+	case (SZ_2G * SZ_4G):	/* 8G */
-+		cell_size = 0x6;
-+		break;
-+	case (SZ_4G * SZ_4G):	/* 16G */
-+		cell_size = 0x7;
-+		break;
-+	default:
-+		dev_err(ls1x->dev, "unsupported chip size: %llu MB\n",
-+			chipsize);
-+		break;
-+	}
-+
-+	/* Set cell size */
-+	regmap_update_bits(nfc->regmap, NAND_PARAM, CELL_SIZE_MASK,
-+			   FIELD_PREP(CELL_SIZE_MASK, cell_size));
-+
-+	regmap_update_bits(nfc->regmap, NAND_TIMING, HOLD_CYCLE_MASK,
-+			   FIELD_PREP(HOLD_CYCLE_MASK, nfc->data->hold_cycle));
-+	regmap_update_bits(nfc->regmap, NAND_TIMING, WAIT_CYCLE_MASK,
-+			   FIELD_PREP(WAIT_CYCLE_MASK, nfc->data->wait_cycle));
-+
-+	chip->ecc.read_page_raw = nand_monolithic_read_page_raw;
-+	chip->ecc.write_page_raw = nand_monolithic_write_page_raw;
-+	chip->options |= NAND_MONOLITHIC_READ;
-+
-+	return 0;
-+}
-+
-+static const struct nand_controller_ops ls1x_nfc_ops = {
-+	.exec_op = ls1x_nand_exec_op,
-+	.attach_chip = ls1x_nand_attach_chip,
-+};
-+
-+static void ls1x_nand_controller_cleanup(struct ls1x_nand *ls1x)
-+{
-+	if (ls1x->nfc.dma_chan)
-+		dma_release_channel(ls1x->nfc.dma_chan);
-+}
-+
-+static int ls1x_nand_controller_init(struct ls1x_nand *ls1x,
-+				     struct platform_device *pdev)
-+{
-+	struct ls1x_nfc *nfc = &ls1x->nfc;
-+	struct dma_slave_config cfg;
-+	int ret;
-+
-+	nfc->reg_base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(nfc->reg_base))
-+		return PTR_ERR(nfc->reg_base);
-+
-+	nfc->regmap = devm_regmap_init_mmio(ls1x->dev, nfc->reg_base,
-+					    &ls1x_nand_regmap_config);
-+	if (IS_ERR(nfc->regmap))
-+		return dev_err_probe(ls1x->dev, PTR_ERR(nfc->regmap),
-+				     "failed to init regmap\n");
-+
-+	nfc->dma_chan = dma_request_chan(ls1x->dev, "rxtx");
-+	if (IS_ERR(nfc->dma_chan))
-+		return dev_err_probe(ls1x->dev, PTR_ERR(nfc->dma_chan),
-+				     "failed to request DMA channel\n");
-+	dev_info(ls1x->dev, "got %s for %s access\n",
-+		 dma_chan_name(nfc->dma_chan), dev_name(ls1x->dev));
-+
-+	cfg.src_addr = CPHYSADDR(nfc->reg_base + NAND_DMA_ADDR);
-+	cfg.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-+	cfg.dst_addr = CPHYSADDR(nfc->reg_base + NAND_DMA_ADDR);
-+	cfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
-+
-+	ret = dmaengine_slave_config(nfc->dma_chan, &cfg);
-+	if (ret) {
-+		dev_err(ls1x->dev, "failed to config DMA channel\n");
-+		dma_release_channel(nfc->dma_chan);
-+		return ret;
-+	}
-+
-+	init_completion(&nfc->dma_complete);
-+
-+	return 0;
-+}
-+
-+static int ls1x_nand_chip_init(struct ls1x_nand *ls1x)
-+{
-+	int nchips = of_get_child_count(ls1x->dev->of_node);
-+	struct device_node *chip_np;
-+	struct nand_chip *chip = &ls1x->chip;
-+	struct mtd_info *mtd = nand_to_mtd(chip);
-+	int ret = 0;
-+
-+	if (nchips != 1)
-+		return dev_err_probe(ls1x->dev, -EINVAL,
-+				     "Currently one NAND chip supported\n");
-+
-+	chip_np = of_get_next_child(ls1x->dev->of_node, NULL);
-+	if (!chip_np)
-+		return dev_err_probe(ls1x->dev, -ENODEV,
-+				     "failed to get child node for NAND chip\n");
-+
-+	chip->controller = &ls1x->controller;
-+	chip->options = NAND_NO_SUBPAGE_WRITE | NAND_USES_DMA | NAND_BROKEN_XD;
-+	chip->buf_align = 4;
-+	nand_set_controller_data(chip, ls1x);
-+	nand_set_flash_node(chip, chip_np);
-+
-+	mtd->dev.parent = ls1x->dev;
-+	mtd->name = "ls1x-nand";
-+	mtd->owner = THIS_MODULE;
-+
-+	ret = nand_scan(chip, 1);
-+	if (ret) {
-+		of_node_put(chip_np);
-+		return ret;
-+	}
-+
-+	ret = mtd_device_register(mtd, NULL, 0);
-+	if (ret) {
-+		dev_err(ls1x->dev, "failed to register MTD device! %d\n", ret);
-+		nand_cleanup(chip);
-+		of_node_put(chip_np);
-+	}
-+
-+	return ret;
-+}
-+
-+static int ls1x_nand_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	const struct ls1x_nfc_data *data;
-+	struct ls1x_nand *ls1x;
-+	int ret;
-+
-+	data = of_device_get_match_data(&pdev->dev);
-+	if (!data)
-+		return -ENODEV;
-+
-+	ls1x = devm_kzalloc(dev, sizeof(*ls1x), GFP_KERNEL);
-+	if (!ls1x)
-+		return -ENOMEM;
-+
-+	ls1x->nfc.data = data;
-+	ls1x->dev = dev;
-+	ls1x->controller.ops = &ls1x_nfc_ops;
-+	nand_controller_init(&ls1x->controller);
-+
-+	ret = ls1x_nand_controller_init(ls1x, pdev);
-+	if (ret)
-+		return ret;
-+
-+	ret = ls1x_nand_chip_init(ls1x);
-+	if (ret)
-+		goto err;
-+
-+	platform_set_drvdata(pdev, ls1x);
-+
-+	return 0;
-+err:
-+	ls1x_nand_controller_cleanup(ls1x);
-+	return ret;
-+}
-+
-+static int ls1x_nand_remove(struct platform_device *pdev)
-+{
-+	struct ls1x_nand *ls1x = platform_get_drvdata(pdev);
-+	struct nand_chip *chip = &ls1x->chip;
-+	int ret;
-+
-+	ret = mtd_device_unregister(nand_to_mtd(chip));
-+	WARN_ON(ret);
-+	nand_cleanup(chip);
-+	ls1x_nand_controller_cleanup(ls1x);
-+
-+	return 0;
-+}
-+
-+static const struct ls1x_nfc_data ls1b_nfc_data = {
-+	.status_field = GENMASK(15, 8),
-+	.hold_cycle = 0x2,
-+	.wait_cycle = 0xc,
-+	.parse_address = ls1b_nand_parse_address,
-+};
-+
-+static const struct ls1x_nfc_data ls1c_nfc_data = {
-+	.status_field = GENMASK(23, 16),
-+	.op_scope_field = GENMASK(29, 16),
-+	.hold_cycle = 0x2,
-+	.wait_cycle = 0xc,
-+	.parse_address = ls1c_nand_parse_address,
-+};
-+
-+static const struct of_device_id ls1x_nfc_match[] = {
-+	{ .compatible = "loongson,ls1b-nfc", .data = &ls1b_nfc_data },
-+	{ .compatible = "loongson,ls1c-nfc", .data = &ls1c_nfc_data },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, ls1x_nfc_match);
-+
-+static struct platform_driver ls1x_nand_driver = {
-+	.probe	= ls1x_nand_probe,
-+	.remove	= ls1x_nand_remove,
-+	.driver	= {
-+		.name	= KBUILD_MODNAME,
-+		.of_match_table = ls1x_nfc_match,
-+	},
-+};
-+
-+module_platform_driver(ls1x_nand_driver);
-+
-+MODULE_AUTHOR("Keguang Zhang <keguang.zhang@gmail.com>");
-+MODULE_DESCRIPTION("Loongson-1 NAND Controller driver");
-+MODULE_LICENSE("GPL");
+ include/net/ax25.h                      |  2 ++
+ net/appletalk/sysctl_net_atalk.c        |  1 -
+ net/ax25/ax25_dev.c                     |  3 +++
+ net/ax25/ax25_ds_timer.c                |  1 +
+ net/ax25/sysctl_net_ax25.c              |  3 +--
+ net/bridge/br_netfilter_hooks.c         |  1 -
+ net/core/neighbour.c                    |  5 +----
+ net/core/sysctl_net_core.c              | 13 ++++++-------
+ net/dccp/sysctl.c                       |  2 --
+ net/ieee802154/6lowpan/reassembly.c     |  6 +-----
+ net/ipv4/devinet.c                      |  5 ++---
+ net/ipv4/ip_fragment.c                  |  2 --
+ net/ipv4/route.c                        |  8 ++------
+ net/ipv4/sysctl_net_ipv4.c              |  7 +++----
+ net/ipv4/xfrm4_policy.c                 |  1 -
+ net/ipv6/addrconf.c                     |  8 +++-----
+ net/ipv6/icmp.c                         |  1 -
+ net/ipv6/netfilter/nf_conntrack_reasm.c |  1 -
+ net/ipv6/reassembly.c                   |  2 --
+ net/ipv6/route.c                        |  5 -----
+ net/ipv6/sysctl_net_ipv6.c              |  8 +++-----
+ net/ipv6/xfrm6_policy.c                 |  1 -
+ net/llc/sysctl_net_llc.c                |  8 ++------
+ net/mpls/af_mpls.c                      | 13 ++++++-------
+ net/mptcp/ctrl.c                        |  1 -
+ net/netfilter/ipvs/ip_vs_ctl.c          |  5 +----
+ net/netfilter/ipvs/ip_vs_lblc.c         |  5 +----
+ net/netfilter/ipvs/ip_vs_lblcr.c        |  5 +----
+ net/netfilter/nf_conntrack_standalone.c |  6 +-----
+ net/netfilter/nf_log.c                  |  3 +--
+ net/netrom/sysctl_net_netrom.c          |  1 -
+ net/phonet/sysctl.c                     |  1 -
+ net/rds/ib_sysctl.c                     |  1 -
+ net/rds/sysctl.c                        |  1 -
+ net/rds/tcp.c                           |  1 -
+ net/rose/sysctl_net_rose.c              |  1 -
+ net/rxrpc/sysctl.c                      |  1 -
+ net/sctp/sysctl.c                       | 10 +++-------
+ net/smc/smc_sysctl.c                    |  6 +++---
+ net/sunrpc/sysctl.c                     |  1 -
+ net/sunrpc/xprtrdma/svc_rdma.c          |  1 -
+ net/sunrpc/xprtrdma/transport.c         |  1 -
+ net/sunrpc/xprtsock.c                   |  1 -
+ net/tipc/sysctl.c                       |  1 -
+ net/unix/sysctl_net_unix.c              |  1 -
+ net/x25/sysctl_net_x25.c                |  1 -
+ net/xfrm/xfrm_sysctl.c                  |  5 +----
+ 47 files changed, 48 insertions(+), 119 deletions(-)
+---
+base-commit: c2e6a872bde9912f1a7579639c5ca3adf1003916
+change-id: 20240311-jag-sysctl_remset_net-d403a1a93d6b
 
+Best regards,
 -- 
-2.40.1
+Joel Granados <j.granados@samsung.com>
 
