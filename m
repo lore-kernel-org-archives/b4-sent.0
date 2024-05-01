@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Wed, 01 May 2024 11:29:27 +0200
-Subject: [PATCH net-next v6 3/8] net: rds: Remove the now superfluous
+Date: Wed, 01 May 2024 11:29:28 +0200
+Subject: [PATCH net-next v6 4/8] net: sunrpc: Remove the now superfluous
  sentinel elements from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240501-jag-sysctl_remset_net-v6-3-370b702b6b4a@samsung.com>
+Message-Id: <20240501-jag-sysctl_remset_net-v6-4-370b702b6b4a@samsung.com>
 References: <20240501-jag-sysctl_remset_net-v6-0-370b702b6b4a@samsung.com>
 In-Reply-To: <20240501-jag-sysctl_remset_net-v6-0-370b702b6b4a@samsung.com>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -46,19 +46,19 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  coreteam@netfilter.org, bridge@lists.linux.dev, lvs-devel@vger.kernel.org, 
  Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-2d940
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1604;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2011;
  i=j.granados@samsung.com; h=from:subject:message-id;
- bh=Yhw5Yxzxk2wGoyQtTfioNjf4XA/aQJR8HoqakSkFmW8=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYyC5vaKKwcVsjyo5fyyzaGv4yzNPxedXx6I
- 0oz4J2bF3f16YkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmMgubAAoJELqXzVK3
- lkFPAt8L/RvcZo67sV9/SAsIlFKCyMM+qMXV+vDZgycTjvVIA+SfdOd5Dt/cE8sPk2Vbd5m1zV0
- 1bTYSIIzndwnYwNr0po+EDDom4Kh8mphlq63AcozIb3FtAE9gEijzxANbPT0uiZQiBdyGHfgd5L
- jUd9CESOohGjmih6u85i0nF0hV0zXXj4dyzliDaDl8C+vSQN5cHGJ3+wZn4J5SDRXGYrE7PGny8
- mpjgul+wUgIeWT+bmFhWlNgqlLFKEYCkRqXpa0KZRZmofIpFb05+j3enq7MzPkMkqjW7L7v/Oa0
- AHljkixYmiTw5qZOAz65zYrlPzu208TMOGpezXGMfAawyJc/HYbCL8AS/qZp8bwZCgrmeCcKeQ0
- VFBYUqpLr8VVDFTqEQA0YUb4s00REm2N6VViy20fU5WeR9chhD9M0JzPhaLi92OFmRKxY2g7HXs
- DWgQyhIZiES63sd2awdgqnweGvfHVA5sKmTulKSRHZjPttFiCIZTnmjBBO/sSry0ePsrsmzRot6
- aY=
+ bh=+biVqN1iqVbz7GiRtsWHsBFe0+suBXyB5W6axoxTyHM=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGYyC5yGmmDYRr5sMIjbo3uBUCExLw1KDhLZt
+ 7ylu5K3lfYK9okBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmMgucAAoJELqXzVK3
+ lkFPDwIMAJLK8iV22sXiMTObsnfViwrXfOA/84JBvWU7BzczJ7iY9vPnRJaPC0rXZZEFnDAQ9Xz
+ 0HfPtkpDc9lYxn9Ss24kO6x2oXjtEAjtVs+TxmVP/mtQPao6VBk7aO+9EMYbXnhh/pHd7osYq7v
+ k6lXgqunQcpxI16yGuxtjPDG5pTlvNcE0mKXGHhd+DKqxoAVESErG43zRHlgPIkTHTN0063znEU
+ zbOLuom94FkPf1YpnU47bP+oAa+pG4eYr6b00cWXu8aSZsUMdTy8qpTWlIOa2A9NwJ3t9YeT5lq
+ yslhl3fcvGxmxx9nTBuaQ7RQ2NUhOJtm7j8QVmccRbS7wOCyyKDI0pPd/2rXK927RUVSmDgkT6x
+ FwNDrfiBStJt/vioem2OdP0vIUaKCDdaqJCaSk84OM/wkfVy9rD2FfMxL6OqdVu4VRkpL039/EQ
+ g8jB2BsX3I0zlGoZ4hRIA1HEOzAieWt5QK1NypFKi0NwbWebl9CRDHohpAmhTr1PqRp4fbxXWo5
+ Wo=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -74,47 +74,60 @@ https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- net/rds/ib_sysctl.c | 1 -
- net/rds/sysctl.c    | 1 -
- net/rds/tcp.c       | 1 -
- 3 files changed, 3 deletions(-)
+ net/sunrpc/sysctl.c             | 1 -
+ net/sunrpc/xprtrdma/svc_rdma.c  | 1 -
+ net/sunrpc/xprtrdma/transport.c | 1 -
+ net/sunrpc/xprtsock.c           | 1 -
+ 4 files changed, 4 deletions(-)
 
-diff --git a/net/rds/ib_sysctl.c b/net/rds/ib_sysctl.c
-index e4e41b3afce7..2af678e71e3c 100644
---- a/net/rds/ib_sysctl.c
-+++ b/net/rds/ib_sysctl.c
-@@ -103,7 +103,6 @@ static struct ctl_table rds_ib_sysctl_table[] = {
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index 93941ab12549..5f3170a1c9bb 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -160,7 +160,6 @@ static struct ctl_table debug_table[] = {
+ 		.mode		= 0444,
+ 		.proc_handler	= proc_do_xprt,
+ 	},
+-	{ }
+ };
+ 
+ void
+diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+index f86970733eb0..474f7a98fe9e 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma.c
++++ b/net/sunrpc/xprtrdma/svc_rdma.c
+@@ -209,7 +209,6 @@ static struct ctl_table svcrdma_parm_table[] = {
+ 		.extra1		= &zero,
+ 		.extra2		= &zero,
+ 	},
+-	{ },
+ };
+ 
+ static void svc_rdma_proc_cleanup(void)
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 29b0562d62e7..9a8ce5df83ca 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -137,7 +137,6 @@ static struct ctl_table xr_tunables_table[] = {
  		.mode		= 0644,
  		.proc_handler	= proc_dointvec,
  	},
--	{ }
+-	{ },
  };
  
- void rds_ib_sysctl_exit(void)
-diff --git a/net/rds/sysctl.c b/net/rds/sysctl.c
-index e381bbcd9cc1..025f518a4349 100644
---- a/net/rds/sysctl.c
-+++ b/net/rds/sysctl.c
-@@ -89,7 +89,6 @@ static struct ctl_table rds_sysctl_rds_table[] = {
- 		.mode           = 0644,
- 		.proc_handler   = proc_dointvec,
+ #endif
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index bb9b747d58a1..f62f7b65455b 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -160,7 +160,6 @@ static struct ctl_table xs_tunables_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec_jiffies,
  	},
--	{ }
+-	{ },
  };
  
- void rds_sysctl_exit(void)
-diff --git a/net/rds/tcp.c b/net/rds/tcp.c
-index 2dba7505b414..d8111ac83bb6 100644
---- a/net/rds/tcp.c
-+++ b/net/rds/tcp.c
-@@ -86,7 +86,6 @@ static struct ctl_table rds_tcp_sysctl_table[] = {
- 		.proc_handler   = rds_tcp_skbuf_handler,
- 		.extra1		= &rds_tcp_min_rcvbuf,
- 	},
--	{ }
- };
- 
- u32 rds_tcp_write_seq(struct rds_tcp_connection *tc)
+ /*
 
 -- 
 2.43.0
