@@ -1,76 +1,54 @@
 From: Sven Peter <sven@svenpeter.dev>
-Subject: [PATCH v2 0/3] Bluetooth: hci_bcm4377 fixes
-Date: Wed, 15 May 2024 18:15:01 +0000
-Message-Id: <20240515-btfix-msgid-v2-0-bb06b9ecb6d1@svenpeter.dev>
+Date: Wed, 15 May 2024 18:15:02 +0000
+Subject: [PATCH v2 1/3] Bluetooth: hci_bcm4377: Use correct unit for
+ timeouts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKX7RGYC/22MQQ7CIBBFr9LM2jGAVcSV9zBdgEzbWUgbIETTc
- Hexa5fv/7y3QaLIlODWbRCpcOIlNFCHDp6zDRMh+8aghOrFWSp0eeQ3vtLEHr2+CGWs9kZqaMY
- aqZ177TE0njnlJX72eJG/9X+nSBRonXTenK5Wj/09FQorZYpHTwWGWusXkPK1faoAAAA=
+Message-Id: <20240515-btfix-msgid-v2-1-bb06b9ecb6d1@svenpeter.dev>
+References: <20240515-btfix-msgid-v2-0-bb06b9ecb6d1@svenpeter.dev>
+In-Reply-To: <20240515-btfix-msgid-v2-0-bb06b9ecb6d1@svenpeter.dev>
 To: Hector Martin <marcan@marcan.st>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
  Marcel Holtmann <marcel@holtmann.org>, 
  Luiz Augusto von Dentz <luiz.dentz@gmail.com>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sven Peter <sven@svenpeter.dev>, stable@vger.kernel.org, 
- Neal Gompa <neal@gompa.dev>
+ Sven Peter <sven@svenpeter.dev>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1715796911; l=1561;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1715796911; l=839;
  i=sven@svenpeter.dev; s=20240512; h=from:subject:message-id;
- bh=PGURJy5MHlm6XUXszUKhFzRvUcIs8Hj8iEYpUECP0Y0=;
- b=rWKwkEblh6RdLBuKAhQAswaTPpV6aL8Wlnu8pLb0phkNIIfvgOLdAMCME/FjRPa1SgQyUa4Vu
- txh3IgfhG9KCoQ9FpGoeKnyAJ6Htc4DOcOoVEJvVsMLLMP30Ve5yNKd
+ bh=7gQn02PYjfQWipM5wmSh7cRXbC3rcrKdfUfT0gxlvsA=;
+ b=5vuT3iBepkv/NY4S5torbyPLDbQY84+ans4BusJj/uJoM6EIqY5izWUCJv/R9gWadUKYhg+sU
+ pnvq3oniF36ArujjWEGXIvjbZukR6B/RB7+8A1jxROyY4DQpNkQcJra
 X-Developer-Key: i=sven@svenpeter.dev; a=ed25519;
  pk=jIiCK29HFM4fFOT2YTiA6N+4N7W+xZYQDGiO0E37bNU=
 X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/20240512 with auth_id=159
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+BCM4377_TIMEOUT is always used to wait for completitions and their API
+expects a timeout in jiffies instead of msecs.
 
-There are just two minor fixes from Hector that we've been carrying downstream
-for a while now. One increases the timeout while waiting for the firmware to
-boot which is optional for the controller already supported upstream but
-required for a newer 4388 board for which we'll also submit support soon.
-It also fixes the units for the timeouts which is why I've already included it
-here. The other one fixes a call to bitmap_release_region where we only wanted
-to release a single bit but are actually releasing much more.
-
-Best,
-
-Sven
-
-To: Hector Martin <marcan@marcan.st>
-To: Alyssa Rosenzweig <alyssa@rosenzweig.io>
-To: Marcel Holtmann <marcel@holtmann.org>
-To: Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: asahi@lists.linux.dev
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: linux-bluetooth@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+Fixes: 8a06127602de ("Bluetooth: hci_bcm4377: Add new driver for BCM4377 PCIe boards")
 Signed-off-by: Sven Peter <sven@svenpeter.dev>
-
-Changes in v2:
-- split the timeout commit into two
-- collect Neal's tag
-- Link to v1: https://lore.kernel.org/r/20240512-btfix-msgid-v1-0-ab1bd938a7f4@svenpeter.dev
-
 ---
-Hector Martin (2):
-      Bluetooth: hci_bcm4377: Increase boot timeout
-      Bluetooth: hci_bcm4377: Fix msgid release
+ drivers/bluetooth/hci_bcm4377.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Sven Peter (1):
-      Bluetooth: hci_bcm4377: Use correct unit for timeouts
+diff --git a/drivers/bluetooth/hci_bcm4377.c b/drivers/bluetooth/hci_bcm4377.c
+index 9a7243d5db71..caf9b64c8111 100644
+--- a/drivers/bluetooth/hci_bcm4377.c
++++ b/drivers/bluetooth/hci_bcm4377.c
+@@ -32,7 +32,7 @@ enum bcm4377_chip {
+ #define BCM4378_DEVICE_ID 0x5f69
+ #define BCM4387_DEVICE_ID 0x5f71
+ 
+-#define BCM4377_TIMEOUT 1000
++#define BCM4377_TIMEOUT msecs_to_jiffies(1000)
+ 
+ /*
+  * These devices only support DMA transactions inside a 32bit window
 
- drivers/bluetooth/hci_bcm4377.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
----
-base-commit: cf87f46fd34d6c19283d9625a7822f20d90b64a4
-change-id: 20240512-btfix-msgid-d76029a7d917
-
-Best regards,
 -- 
-Sven Peter <sven@svenpeter.dev>
+2.34.1
 
