@@ -1,50 +1,53 @@
-From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Tue, 21 May 2024 11:45:41 +0300
-Subject: [PATCH 3/3] iio: adc: ad7173: Remove index from temp channel
+From: Joel Selvaraj <joelselvaraj.oss@gmail.com>
+Subject: [PATCH 0/2] novatek-nvt-ts: add support for NT36672A touchscreen
+Date: Tue, 21 May 2024 07:09:44 -0500
+Message-Id: <20240521-nvt-ts-devicetree-regulator-support-v1-0-8d766c639dca@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240521-ad7173-fixes-v1-3-8161cc7f3ad1@analog.com>
-References: <20240521-ad7173-fixes-v1-0-8161cc7f3ad1@analog.com>
-In-Reply-To: <20240521-ad7173-fixes-v1-0-8161cc7f3ad1@analog.com>
-To: Lars-Peter Clausen <lars@metafoo.de>, 
- Jonathan Cameron <jic23@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dumitru Ceclan <dumitru.ceclan@analog.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1716281184; l=851;
- i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=qHzAb3Lr8QOhPoRlBg0Itkn9NRPMWDsCz2unbRqp8RE=;
- b=zxXiZsq7aw1ZMWgq02220Luc3U7UtU/mZVkZapTEiP+gmlZk+oA/AvL2vULuakdmQeil2AEGB
- glgGrhonwrwAKUgtuRVvx0+bB1OgM1EzTT3cTkGAKHvLv37iFmmxK6H
-X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
- pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
-X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
+X-B4-Tracking: v=1; b=H4sIAAiPTGYC/x2NwQqDMBAFf0X23AUj1mp/pfSQxqddKEnYjVIQ/
+ 72hx4Fh5iCDCozuzUGKXUxSrOAuDYW3jytY5srUtV3fXt3IcS9cjOfqBhQFWLFuH1+Ssm05Jy3
+ sw4R+et1G7waqpaxY5Pu/PJ7n+QNYFuZEdQAAAA==
+To: Hans de Goede <hdegoede@redhat.com>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Joel Selvaraj <joelselvaraj.oss@gmail.com>
+X-Mailer: b4 0.14-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1716293427; l=1155;
+ i=joelselvaraj.oss@gmail.com; s=20240420; h=from:subject:message-id;
+ bh=f2GQ0va2lsLTO8nlzPzR6f1yERxb6qBUyy6szVB7sAM=;
+ b=RwjnyeMqeGDD586cQXkEIsoybnrUaiCO8HAys+wB2ry3yzDHXQjh8LXhO3b3RTvs2fuPPGF4w
+ XNDDR+VcijjD6awjhM6ZJsneWQ62X3ZMHBccN8iPQVlpoHccYsX2p3i
+X-Developer-Key: i=joelselvaraj.oss@gmail.com; a=ed25519;
+ pk=qT4gsuVtlPE0Dpr+tQA/Fumm7wzVP6qfeVaY+6pX04s=
+X-Endpoint-Received: by B4 Relay for joelselvaraj.oss@gmail.com/20240420 with auth_id=165
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Temperature channel is unique per device, index is not needed.
-This is breaking userspace: Include fixes tag to be released within the
-same rc cycle.
+Extend the novatek touchscreen driver to support NT36672A chip which
+is found in phones like Xiaomi Poco F1 [1]. Added devicetree support for
+the driver and used i2c chip data to handle the variation in chip id and
+wake type. Also added vcc and iovcc regulators which are used to power
+the touchscreen hardware.
 
-Fixes: 8eb903272f75 ("iio: adc: ad7173: add AD7173 driver")
-Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts?h=v6.9
+
+Signed-off-by: Joel Selvaraj <joelselvaraj.oss@gmail.com>
 ---
- drivers/iio/adc/ad7173.c | 1 -
- 1 file changed, 1 deletion(-)
+Joel Selvaraj (2):
+      dt-bindings: input: document Novatek NVT touchscreen controller
+      Input: novatek-nvt-ts: add support for NT36672A touchscreen
 
-diff --git a/drivers/iio/adc/ad7173.c b/drivers/iio/adc/ad7173.c
-index 58620be41ef5..eb512878c30e 100644
---- a/drivers/iio/adc/ad7173.c
-+++ b/drivers/iio/adc/ad7173.c
-@@ -815,7 +815,6 @@ static const struct iio_chan_spec ad7173_channel_template = {
- 
- static const struct iio_chan_spec ad7173_temp_iio_channel_template = {
- 	.type = IIO_TEMP,
--	.indexed = 1,
- 	.channel = AD7173_AIN_TEMP_POS,
- 	.channel2 = AD7173_AIN_TEMP_NEG,
- 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
+ .../bindings/input/touchscreen/novatek,nvt-ts.yaml | 62 +++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ drivers/input/touchscreen/novatek-nvt-ts.c         | 78 ++++++++++++++++++++--
+ 3 files changed, 135 insertions(+), 6 deletions(-)
+---
+base-commit: 6578aac6a270bd6deb9f9319b991dd430de263dd
+change-id: 20240518-nvt-ts-devicetree-regulator-support-ac9e49b78a16
 
+Best regards,
 -- 
-2.43.0
+Joel Selvaraj <joelselvaraj.oss@gmail.com>
 
