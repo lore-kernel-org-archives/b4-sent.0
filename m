@@ -1,84 +1,51 @@
-From: Joel Selvaraj <joelselvaraj.oss@gmail.com>
-Date: Tue, 21 May 2024 09:02:58 -0500
-Subject: [PATCH 2/2] Input: edt-ft5x06 - add support for FocalTech FT5452
- and FT8719
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH v2 0/2] iio: adc: ad9467: use DMA safe buffer for spi
+Date: Wed, 22 May 2024 14:54:04 +0200
+Message-Id: <20240522-dev-ad9467-dma-v2-0-a37bec463632@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240521-add-support-ft5452-and-ft8719-touchscreen-v1-2-2a648ac7176b@gmail.com>
-References: <20240521-add-support-ft5452-and-ft8719-touchscreen-v1-0-2a648ac7176b@gmail.com>
-In-Reply-To: <20240521-add-support-ft5452-and-ft8719-touchscreen-v1-0-2a648ac7176b@gmail.com>
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Joel Selvaraj <joelselvaraj.oss@gmail.com>
-X-Mailer: b4 0.14-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1716300186; l=2353;
- i=joelselvaraj.oss@gmail.com; s=20240420; h=from:subject:message-id;
- bh=nQ1HQkXEqDosRHt1dsb4w1mHu9DuJ+dY0jyixkP33Sg=;
- b=LHJ7zHKBvISv0qDMgtXQbhmmXEHNomIwmkjkw7JBM9rzrCbY9vOch4bBlQXVuDcL8WYJAm5Mi
- oCm9etvk9BPDPIMxoWd71ZEci7+JHmUPDpUweg8BcI3D1LHWp3LaxsG
-X-Developer-Key: i=joelselvaraj.oss@gmail.com; a=ed25519;
- pk=qT4gsuVtlPE0Dpr+tQA/Fumm7wzVP6qfeVaY+6pX04s=
-X-Endpoint-Received: by B4 Relay for joelselvaraj.oss@gmail.com/20240420 with auth_id=165
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAOzqTWYC/3XMQQ7CIBCF4as0s3YMQ2mrrryH6QJhaEksGDBE0
+ /TuYvcu/5e8b4XMyXOGS7NC4uKzj6GGPDRgZh0mRm9rgxRSiU70aLmgtmfVD2gXjS2RctbKwZC
+ Denomdv69g7ex9uzzK6bP7hf6rX+pQkjInWnprnrFJ3fVQT/idDRxgXHbti/9de8IrQAAAA==
+To: linux-iio@vger.kernel.org
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1716382445; l=700;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=kHj/TPFy35RtWhBWLYKooLoEmYZNgnP3Fqp7BjpqzfA=;
+ b=bLdWrJIze+rV2cn+D5fGS1FdipIVf5NjI+TG1XhUXLOwxUfC0GzYpqGf46Y2jJWPUQZqaX4rf
+ mNfMyqgY4pxA2LRnDpfnvQz1iLzYayNh+qzgrGFJ1Sn+i8nyVHwTo/1
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver is compatible with FocalTech FT5452 and FT8719 touchscreens
-too. FT5452 supports up to 5 touch points. FT8719 supports up to 10 touch
-points. Add compatible data for both of them.
+Added a new patch to "fix" the annoying tabs alignment on struct
+members. 
 
-Signed-off-by: Joel Selvaraj <joelselvaraj.oss@gmail.com>
 ---
- drivers/input/touchscreen/edt-ft5x06.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+Changes in v2:
+- Patch 1
+  * Don't use safe buffers for reads (uses spi_write_then_read()).
+- Patch 1
+  * New patch.
+- Link to v1: https://lore.kernel.org/r/20240506-dev-ad9467-dma-v1-1-e5c31b464e8f@analog.com
 
-diff --git a/drivers/input/touchscreen/edt-ft5x06.c b/drivers/input/touchscreen/edt-ft5x06.c
-index 2a1db11344766..06ec0f2e18ae3 100644
---- a/drivers/input/touchscreen/edt-ft5x06.c
-+++ b/drivers/input/touchscreen/edt-ft5x06.c
-@@ -1462,6 +1462,10 @@ static const struct edt_i2c_chip_data edt_ft5x06_data = {
- 	.max_support_points = 5,
- };
- 
-+static const struct edt_i2c_chip_data edt_ft5452_data = {
-+	.max_support_points = 5,
-+};
-+
- static const struct edt_i2c_chip_data edt_ft5506_data = {
- 	.max_support_points = 10,
- };
-@@ -1470,12 +1474,18 @@ static const struct edt_i2c_chip_data edt_ft6236_data = {
- 	.max_support_points = 2,
- };
- 
-+static const struct edt_i2c_chip_data edt_ft8719_data = {
-+	.max_support_points = 10,
-+};
-+
- static const struct i2c_device_id edt_ft5x06_ts_id[] = {
- 	{ .name = "edt-ft5x06", .driver_data = (long)&edt_ft5x06_data },
- 	{ .name = "edt-ft5506", .driver_data = (long)&edt_ft5506_data },
- 	{ .name = "ev-ft5726", .driver_data = (long)&edt_ft5506_data },
-+	{ .name = "ft5452", .driver_data = (long)&edt_ft5452_data },
- 	/* Note no edt- prefix for compatibility with the ft6236.c driver */
- 	{ .name = "ft6236", .driver_data = (long)&edt_ft6236_data },
-+	{ .name = "ft8719", .driver_data = (long)&edt_ft8719_data },
- 	{ /* sentinel */ }
- };
- MODULE_DEVICE_TABLE(i2c, edt_ft5x06_ts_id);
-@@ -1486,8 +1496,10 @@ static const struct of_device_id edt_ft5x06_of_match[] = {
- 	{ .compatible = "edt,edt-ft5406", .data = &edt_ft5x06_data },
- 	{ .compatible = "edt,edt-ft5506", .data = &edt_ft5506_data },
- 	{ .compatible = "evervision,ev-ft5726", .data = &edt_ft5506_data },
-+	{ .compatible = "focaltech,ft5452", .data = &edt_ft5452_data },
- 	/* Note focaltech vendor prefix for compatibility with ft6236.c */
- 	{ .compatible = "focaltech,ft6236", .data = &edt_ft6236_data },
-+	{ .compatible = "focaltech,ft8719", .data = &edt_ft8719_data },
- 	{ /* sentinel */ }
- };
- MODULE_DEVICE_TABLE(of, edt_ft5x06_of_match);
+---
+Nuno Sa (2):
+      iio: adc: ad9467: use DMA safe buffer for spi
+      iio: adc: ad9467: change struct members padding
 
--- 
-2.45.1
+ drivers/iio/adc/ad9467.c | 103 +++++++++++++++++++++++------------------------
+ 1 file changed, 50 insertions(+), 53 deletions(-)
+---
+base-commit: 5e3c5871138da700796587aa5f096d39135f9d36
+change-id: 20240506-dev-ad9467-dma-3114fdd27c1f
+--
+
+Thanks!
+- Nuno Sá
 
