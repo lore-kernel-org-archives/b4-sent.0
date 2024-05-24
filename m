@@ -1,11 +1,11 @@
 From: Joel Selvaraj <joelselvaraj.oss@gmail.com>
-Date: Fri, 24 May 2024 09:39:18 -0500
-Subject: [PATCH v2 1/3] Input: novatek-nvt-ts: replace generic i2c device
- id with specific IC variant
+Date: Fri, 24 May 2024 09:39:19 -0500
+Subject: [PATCH v2 2/3] dt-bindings: input: document Novatek NVT
+ touchscreen controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240524-nvt-ts-devicetree-regulator-support-v2-1-b74947038c44@gmail.com>
+Message-Id: <20240524-nvt-ts-devicetree-regulator-support-v2-2-b74947038c44@gmail.com>
 References: <20240524-nvt-ts-devicetree-regulator-support-v2-0-b74947038c44@gmail.com>
 In-Reply-To: <20240524-nvt-ts-devicetree-regulator-support-v2-0-b74947038c44@gmail.com>
 To: Hans de Goede <hdegoede@redhat.com>, 
@@ -17,51 +17,108 @@ Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
  Joel Selvaraj <joelselvaraj.oss@gmail.com>
 X-Mailer: b4 0.14-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1716561588; l=1393;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1716561588; l=2807;
  i=joelselvaraj.oss@gmail.com; s=20240420; h=from:subject:message-id;
- bh=o9JSDCGAeFyywH+QabP9V+yumWYX1UdF0t0fi0getJU=;
- b=+OHGaB9WLCWxuEeAT06cejRG59IV/cz0Vfn5cBW7XM9N5BLLtADdbu3SlSTg8/7LJHtJssDAJ
- lujx96/TNl1ApdmyOspcU4XlxT0qo/HB70ckz2PcY1BzGCLk9SlfNlK
+ bh=Y6dkGY1AKwCQh1ciYwF2DiXPtYGhHE52a60bkhbIlpc=;
+ b=YJD1TuFL0D65mNKAyem1JMSxF062NJeL2lFevzqLNvapmkGwEpGn6W+EksRgr26odzQCIas0Z
+ ARnVuVCHoCHAQSjHxcO1EKB+XS9z9dysNdHYAWfB8a2InIhr0Ja1/na
 X-Developer-Key: i=joelselvaraj.oss@gmail.com; a=ed25519;
  pk=qT4gsuVtlPE0Dpr+tQA/Fumm7wzVP6qfeVaY+6pX04s=
 X-Endpoint-Received: by B4 Relay for joelselvaraj.oss@gmail.com/20240420 with auth_id=165
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is done in preparation to introduce other variants of the Novatek NVT
-touchscreen controller that can be supported by the driver.
+Document the Novatek NVT touchscreen controller present in devices like
+the Xiaomi Poco F1 [1]. Also, include the devictree binding file in the
+MAINTAINERS file.
+
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts?h=v6.9
 
 Signed-off-by: Joel Selvaraj <joelselvaraj.oss@gmail.com>
 ---
- drivers/input/touchscreen/novatek-nvt-ts.c       | 2 +-
- drivers/platform/x86/x86-android-tablets/other.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ .../bindings/input/touchscreen/novatek,nvt-ts.yaml | 62 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 2 files changed, 63 insertions(+)
 
-diff --git a/drivers/input/touchscreen/novatek-nvt-ts.c b/drivers/input/touchscreen/novatek-nvt-ts.c
-index 1a797e410a3fa..224fd112b25a9 100644
---- a/drivers/input/touchscreen/novatek-nvt-ts.c
-+++ b/drivers/input/touchscreen/novatek-nvt-ts.c
-@@ -278,7 +278,7 @@ static int nvt_ts_probe(struct i2c_client *client)
- }
+diff --git a/Documentation/devicetree/bindings/input/touchscreen/novatek,nvt-ts.yaml b/Documentation/devicetree/bindings/input/touchscreen/novatek,nvt-ts.yaml
+new file mode 100644
+index 0000000000000..c47b4de9d58e7
+--- /dev/null
++++ b/Documentation/devicetree/bindings/input/touchscreen/novatek,nvt-ts.yaml
+@@ -0,0 +1,62 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/input/touchscreen/novatek,nvt-ts.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Novatek NVT Touchscreen Controller
++
++maintainers:
++  - Hans de Goede <hdegoede@redhat.com>
++
++allOf:
++  - $ref: touchscreen.yaml#
++
++properties:
++  compatible:
++    enum:
++      - novatek,nt11205-ts
++      - novatek,nt36672a-ts
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  reset-gpios:
++    maxItems: 1
++
++  vcc-supply: true
++  iovcc-supply: true
++
++required:
++  - compatible
++  - reg
++  - interrupts
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++        touchscreen@1 {
++          compatible = "novatek,nt36672a-ts";
++          reg = <0x01>;
++          interrupts-extended = <&tlmm 31 IRQ_TYPE_EDGE_RISING>;
++          reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
++          vcc-supply = <&vreg_l22a_2p85>;
++          iovcc-supply = <&vreg_l14a_1p8>;
++          pinctrl-0 = <&ts_int_default &ts_reset_default>;
++          pinctrl-1 = <&ts_int_sleep &ts_reset_sleep>;
++          pinctrl-names = "default", "sleep";
++          touchscreen-size-x = <1080>;
++          touchscreen-size-y = <2246>;
++        };
++    };
++
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 90754a451bcfc..e1f744992b15f 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -15942,6 +15942,7 @@ NOVATEK NVT-TS I2C TOUCHSCREEN DRIVER
+ M:	Hans de Goede <hdegoede@redhat.com>
+ L:	linux-input@vger.kernel.org
+ S:	Maintained
++F:	Documentation/devicetree/bindings/input/touchscreen/novatek,nvt-ts.yaml
+ F:	drivers/input/touchscreen/novatek-nvt-ts.c
  
- static const struct i2c_device_id nvt_ts_i2c_id[] = {
--	{ "NVT-ts" },
-+	{ "NT11205-ts" },
- 	{ }
- };
- MODULE_DEVICE_TABLE(i2c, nvt_ts_i2c_id);
-diff --git a/drivers/platform/x86/x86-android-tablets/other.c b/drivers/platform/x86/x86-android-tablets/other.c
-index eb0e55c69dfed..5ecee6e66fb4d 100644
---- a/drivers/platform/x86/x86-android-tablets/other.c
-+++ b/drivers/platform/x86/x86-android-tablets/other.c
-@@ -40,7 +40,7 @@ static const struct x86_i2c_client_info acer_b1_750_i2c_clients[] __initconst =
- 	{
- 		/* Novatek NVT-ts touchscreen */
- 		.board_info = {
--			.type = "NVT-ts",
-+			.type = "NT11205-ts",
- 			.addr = 0x34,
- 			.dev_name = "NVT-ts",
- 		},
+ NSDEPS
 
 -- 
 2.45.1
