@@ -1,10 +1,10 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Mon, 27 May 2024 18:19:51 +0300
-Subject: [PATCH v2 3/5] iio: adc: ad7173: Remove index from temp channel
+Date: Mon, 27 May 2024 18:19:52 +0300
+Subject: [PATCH v2 4/5] iio: adc: ad7173: Clear append status bit
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240527-ad7173-fixes-v2-3-8501b66adb1f@analog.com>
+Message-Id: <20240527-ad7173-fixes-v2-4-8501b66adb1f@analog.com>
 References: <20240527-ad7173-fixes-v2-0-8501b66adb1f@analog.com>
 In-Reply-To: <20240527-ad7173-fixes-v2-0-8501b66adb1f@analog.com>
 To: Lars-Peter Clausen <lars@metafoo.de>, 
@@ -12,38 +12,39 @@ To: Lars-Peter Clausen <lars@metafoo.de>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Dumitru Ceclan <dumitru.ceclan@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1716823214; l=851;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1716823214; l=1000;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=qHzAb3Lr8QOhPoRlBg0Itkn9NRPMWDsCz2unbRqp8RE=;
- b=m3a5lXaIuY0O7Uj3Tmt/3OKUjtu4tmQPul5KaV3j+ZXB5YLLGDyRzOt0+Hz39iI2piR38CwkH
- 56VwciTgcX7CemA0yuFV8O/swPwe8NrwzwFH0E5Hlq2nImv2OiCWoYD
+ bh=3Lih309+QmE+/CCcvFgIQ2n+1Fi+3MwieGtcQTnVs2U=;
+ b=rkyQI3J/iTkzHVDAvv+RknEc66IoqXsONEJQUo/RgjWt3qq4jKv58P3m3YfQV59D6IFlE7VkS
+ bDsxFrLnNTIB2LxSDoRYNkIPMOJhJvsnLYesmESFEr458lsW9Q+Qozp
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Temperature channel is unique per device, index is not needed.
-This is breaking userspace: Include fixes tag to be released within the
-same rc cycle.
+The previous value of the append status bit was not cleared before
+setting the new value. This caused the bit to remain set after enabling
+buffered mode for multiple channels and not permit further buffered
+reads from a single channel after the fact.
 
 Fixes: 8eb903272f75 ("iio: adc: ad7173: add AD7173 driver")
 Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
 ---
- drivers/iio/adc/ad7173.c | 1 -
- 1 file changed, 1 deletion(-)
+ drivers/iio/adc/ad7173.c | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/drivers/iio/adc/ad7173.c b/drivers/iio/adc/ad7173.c
-index 58620be41ef5..eb512878c30e 100644
+index eb512878c30e..e66a137a76be 100644
 --- a/drivers/iio/adc/ad7173.c
 +++ b/drivers/iio/adc/ad7173.c
-@@ -815,7 +815,6 @@ static const struct iio_chan_spec ad7173_channel_template = {
+@@ -543,6 +543,7 @@ static int ad7173_append_status(struct ad_sigma_delta *sd, bool append)
+ 	unsigned int interface_mode = st->interface_mode;
+ 	int ret;
  
- static const struct iio_chan_spec ad7173_temp_iio_channel_template = {
- 	.type = IIO_TEMP,
--	.indexed = 1,
- 	.channel = AD7173_AIN_TEMP_POS,
- 	.channel2 = AD7173_AIN_TEMP_NEG,
- 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
++	interface_mode &= ~AD7173_INTERFACE_DATA_STAT;
+ 	interface_mode |= AD7173_INTERFACE_DATA_STAT_EN(append);
+ 	ret = ad_sd_write_reg(&st->sd, AD7173_REG_INTERFACE_MODE, 2, interface_mode);
+ 	if (ret)
 
 -- 
 2.43.0
