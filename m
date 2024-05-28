@@ -1,69 +1,66 @@
-From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Mon, 27 May 2024 20:02:39 +0300
-Subject: [PATCH v3 6/6] iio: adc: ad7173: Reduce device info struct size
+From: Nikita Shubin <n.shubin@yadro.com>
+Subject: [PATCH v2 0/3] dmaengine: ioatdma: Fix mem leakage series
+Date: Tue, 28 May 2024 09:09:22 +0300
+Message-Id: <20240528-ioatdma-fixes-v2-0-a9f2fbe26ab1@yadro.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240527-ad4111-v3-6-7e9eddbbd3eb@analog.com>
-References: <20240527-ad4111-v3-0-7e9eddbbd3eb@analog.com>
-In-Reply-To: <20240527-ad4111-v3-0-7e9eddbbd3eb@analog.com>
-To: Ceclan Dumitru <dumitru.ceclan@analog.com>
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dumitru Ceclan <mitrutzceclan@gmail.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIABJ1VWYC/3WNMQ6DMAxFr4I8NxVEIKBT71ExOI5TPEAqB6Eix
+ N0b2Du+9/X0d0iswgkexQ7KqySJcwZ7K4BGnN9sxGcGW9q6bGxtJOLiJzRBvpwMdoHIY+9820N
+ uHCY2TnGm8awmTAvrOXyUryLb15B5lLRE3a7ftTrtv4u1MqVxbdeEKrRIRM8NvcY7xQmG4zh+i
+ CioVsMAAAA=
+To: Vinod Koul <vkoul@kernel.org>, Dave Jiang <dave.jiang@intel.com>, 
+ Logan Gunthorpe <logang@deltatee.com>
+Cc: Andy Shevchenko <andy.shevchenko@gmail.com>, 
+ Nikita Shubin <nikita.shubin@maquefel.me>, dmaengine@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux@yadro.com, 
+ Nikita Shubin <n.shubin@yadro.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1716829358; l=1076;
- i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=i/3qfPHmc9/fJMS7GphA3tYcltv4y8f3THcKw3nnHnI=;
- b=oSmM/iCHqtU2Fbgfsws2MdnrTzKs8xA2r7xrX1RGY/f4pWMUgc3baXJjLPh76lfEP9jLgyv+Q
- wZCFDZRWSVDDFqbaVPfUz/FVnu+aTuBc8FU1MnaNEvsVH16Mdyk/qMU
-X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
- pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
-X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1716876563; l=1143;
+ i=n.shubin@yadro.com; s=20230718; h=from:subject:message-id;
+ bh=yL9QuRyCclHUhhy3AcGDuaeU09XaZ3aXaTF2FrRGqEQ=;
+ b=K4gvr1A5/gyMVLHQfIfsxddXfjDgycKJo70pdAg85txaURyEa+qlUCFPsS5oPFoUE7Sg1sKc6lG8
+ rm8wd6zPD+hBhf85i+hCRkyQERBYdLmxp7yd95vJWjTCJIIqhNon
+X-Developer-Key: i=n.shubin@yadro.com; a=ed25519;
+ pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
+X-Endpoint-Received: by B4 Relay for n.shubin@yadro.com/20230718 with auth_id=161
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Reduce the size used by the device info struct by packing the bool
- fields within the same byte. This reduces the struct size from 52 bytes
- to 44 bytes.
+Started with observing leakage in patch 3, investigating revealed much
+more problems in probing error path.
 
-Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
+Andy you are always welcome to review if you have a spare time.
+
+Thank you Andy and Markus for your comments.
+
+Signed-off-by: Nikita Shubin <n.shubin@yadro.com>
 ---
- drivers/iio/adc/ad7173.c | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+Changes in v2:
+- dmaengine: ioatdma: Fix error path in ioat3_dma_probe():
+  Markus:
+    - fix typo
 
-diff --git a/drivers/iio/adc/ad7173.c b/drivers/iio/adc/ad7173.c
-index 328685ce25e0..e8357a21d513 100644
---- a/drivers/iio/adc/ad7173.c
-+++ b/drivers/iio/adc/ad7173.c
-@@ -179,15 +179,15 @@ struct ad7173_device_info {
- 	unsigned int clock;
- 	unsigned int id;
- 	char *name;
--	bool has_current_inputs;
--	bool has_vcom_input;
--	bool has_temp;
-+	bool has_current_inputs		:1;
-+	bool has_vcom_input		:1;
-+	bool has_temp			:1;
- 	/* ((AVDD1 − AVSS)/5) */
--	bool has_common_input;
--	bool has_input_buf;
--	bool has_int_ref;
--	bool has_ref2;
--	bool higher_gpio_bits;
-+	bool has_common_input		:1;
-+	bool has_input_buf		:1;
-+	bool has_int_ref		:1;
-+	bool has_ref2			:1;
-+	bool higher_gpio_bits		:1;
- 	u8 num_gpios;
- };
- 
+- dmaengine: ioatdma: Fix kmemleak in ioat_pci_probe()
+  Andy:
+    - s/int/unsigned int/
+    - fix spelling errors
+    - trimmed kmemleak reports
 
+- Link to v1: https://lore.kernel.org/r/20240524-ioatdma-fixes-v1-0-b785f1f7accc@yadro.com
+
+---
+Nikita Shubin (3):
+      dmaengine: ioatdma: Fix leaking on version mismatch
+      dmaengine: ioatdma: Fix error path in ioat3_dma_probe()
+      dmaengine: ioatdma: Fix kmemleak in ioat_pci_probe()
+
+ drivers/dma/ioat/init.c | 54 ++++++++++++++++++++++++++-----------------------
+ 1 file changed, 29 insertions(+), 25 deletions(-)
+---
+base-commit: 6d69b6c12fce479fde7bc06f686212451688a102
+change-id: 20240524-ioatdma-fixes-a8fccda9bd79
+
+Best regards,
 -- 
-2.43.0
+Nikita Shubin <n.shubin@yadro.com>
 
