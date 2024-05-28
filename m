@@ -1,10 +1,11 @@
 From: Nikita Shubin <n.shubin@yadro.com>
-Date: Tue, 28 May 2024 09:09:23 +0300
-Subject: [PATCH v2 1/3] dmaengine: ioatdma: Fix leaking on version mismatch
+Date: Tue, 28 May 2024 09:09:24 +0300
+Subject: [PATCH v2 2/3] dmaengine: ioatdma: Fix error path in
+ ioat3_dma_probe()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240528-ioatdma-fixes-v2-1-a9f2fbe26ab1@yadro.com>
+Message-Id: <20240528-ioatdma-fixes-v2-2-a9f2fbe26ab1@yadro.com>
 References: <20240528-ioatdma-fixes-v2-0-a9f2fbe26ab1@yadro.com>
 In-Reply-To: <20240528-ioatdma-fixes-v2-0-a9f2fbe26ab1@yadro.com>
 To: Vinod Koul <vkoul@kernel.org>, Dave Jiang <dave.jiang@intel.com>, 
@@ -14,69 +15,94 @@ Cc: Andy Shevchenko <andy.shevchenko@gmail.com>,
  linux-kernel@vger.kernel.org, linux@yadro.com, 
  Nikita Shubin <n.shubin@yadro.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1716876563; l=1829;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1716876563; l=2344;
  i=n.shubin@yadro.com; s=20230718; h=from:subject:message-id;
- bh=ASVt6+nzAUVivKjUfhTrAzVsAPEzKEYVziXwIRDAuFU=;
- b=vpo6veO0EiOXKv0hYhTJJNEvRbRU1sbfQMuG2vWjy3lqgJHqU2tqnTVFSN2z+ubGZBVJX9qAa3xx
- v7zI2MRnCM0apPH/L8dPZb4icGLoAUz5mBQ0Q4nL3QtIGKaDJ/Yy
+ bh=ndoUzkFelZyO92hJgOMyePUbXfzsIUrSz43B8VvnQSw=;
+ b=wPSkPuxu2pQ/S9Wnfb/LNOSGOhJ/T6XgcFUSUkg+ERcfklrp/fTuxSQ2uetgygBmRXOPVY0/dI5J
+ LdjVOBlmBqYjmezsWEvpefml+CHqRjgOmAPfvUvxxcW0msPMgAed
 X-Developer-Key: i=n.shubin@yadro.com; a=ed25519;
  pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
 X-Endpoint-Received: by B4 Relay for n.shubin@yadro.com/20230718 with auth_id=161
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix leaking ioatdma_device if I/OAT version is less than IOAT_VER_3_0.
+Make sure we are disabling interrupts and destroying DMA pool if
+pcie_capability_read/write_word() call failed.
 
-Fixes: bf453a0a18b2 ("dmaengine: ioat: Support in-use unbind")
+Fixes: 511deae0261c ("dmaengine: ioatdma: disable relaxed ordering for ioatdma")
 Signed-off-by: Nikita Shubin <n.shubin@yadro.com>
 ---
- drivers/dma/ioat/init.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+ drivers/dma/ioat/init.c | 33 +++++++++++++++------------------
+ 1 file changed, 15 insertions(+), 18 deletions(-)
 
 diff --git a/drivers/dma/ioat/init.c b/drivers/dma/ioat/init.c
-index 9c364e92cb82..e76e507ae898 100644
+index e76e507ae898..26964b7c8cf1 100644
 --- a/drivers/dma/ioat/init.c
 +++ b/drivers/dma/ioat/init.c
-@@ -1350,6 +1350,7 @@ static int ioat_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
- 	void __iomem * const *iomap;
- 	struct device *dev = &pdev->dev;
- 	struct ioatdma_device *device;
-+	u8 version;
- 	int err;
+@@ -534,18 +534,6 @@ static int ioat_probe(struct ioatdma_device *ioat_dma)
+ 	return err;
+ }
  
- 	err = pcim_enable_device(pdev);
-@@ -1363,6 +1364,10 @@ static int ioat_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
- 	if (!iomap)
- 		return -ENOMEM;
+-static int ioat_register(struct ioatdma_device *ioat_dma)
+-{
+-	int err = dma_async_device_register(&ioat_dma->dma_dev);
+-
+-	if (err) {
+-		ioat_disable_interrupts(ioat_dma);
+-		dma_pool_destroy(ioat_dma->completion_pool);
+-	}
+-
+-	return err;
+-}
+-
+ static void ioat_dma_remove(struct ioatdma_device *ioat_dma)
+ {
+ 	struct dma_device *dma = &ioat_dma->dma_dev;
+@@ -1181,9 +1169,9 @@ static int ioat3_dma_probe(struct ioatdma_device *ioat_dma, int dca)
+ 		       ioat_chan->reg_base + IOAT_DCACTRL_OFFSET);
+ 	}
  
-+	version = readb(iomap[IOAT_MMIO_BAR] + IOAT_VER_OFFSET);
-+	if (version < IOAT_VER_3_0)
-+		return -ENODEV;
-+
- 	err = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+-	err = ioat_register(ioat_dma);
++	err = dma_async_device_register(&ioat_dma->dma_dev);
  	if (err)
- 		return err;
-@@ -1373,16 +1378,14 @@ static int ioat_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
- 	pci_set_master(pdev);
- 	pci_set_drvdata(pdev, device);
+-		return err;
++		goto err_disable_interrupts;
  
--	device->version = readb(device->reg_base + IOAT_VER_OFFSET);
-+	device->version = version;
- 	if (device->version >= IOAT_VER_3_4)
- 		ioat_dca_enabled = 0;
--	if (device->version >= IOAT_VER_3_0) {
--		if (is_skx_ioat(pdev))
--			device->version = IOAT_VER_3_2;
--		err = ioat3_dma_probe(device, ioat_dca_enabled);
--	} else
--		return -ENODEV;
+ 	ioat_kobject_add(ioat_dma, &ioat_ktype);
  
-+	if (is_skx_ioat(pdev))
-+		device->version = IOAT_VER_3_2;
+@@ -1192,20 +1180,29 @@ static int ioat3_dma_probe(struct ioatdma_device *ioat_dma, int dca)
+ 
+ 	/* disable relaxed ordering */
+ 	err = pcie_capability_read_word(pdev, PCI_EXP_DEVCTL, &val16);
+-	if (err)
+-		return pcibios_err_to_errno(err);
++	if (err) {
++		err = pcibios_err_to_errno(err);
++		goto err_disable_interrupts;
++	}
+ 
+ 	/* clear relaxed ordering enable */
+ 	val16 &= ~PCI_EXP_DEVCTL_RELAX_EN;
+ 	err = pcie_capability_write_word(pdev, PCI_EXP_DEVCTL, val16);
+-	if (err)
+-		return pcibios_err_to_errno(err);
++	if (err) {
++		err = pcibios_err_to_errno(err);
++		goto err_disable_interrupts;
++	}
+ 
+ 	if (ioat_dma->cap & IOAT_CAP_DPS)
+ 		writeb(ioat_pending_level + 1,
+ 		       ioat_dma->reg_base + IOAT_PREFETCH_LIMIT_OFFSET);
+ 
+ 	return 0;
 +
-+	err = ioat3_dma_probe(device, ioat_dca_enabled);
- 	if (err) {
- 		dev_err(dev, "Intel(R) I/OAT DMA Engine init failed\n");
- 		return -ENODEV;
++err_disable_interrupts:
++	ioat_disable_interrupts(ioat_dma);
++	dma_pool_destroy(ioat_dma->completion_pool);
++	return err;
+ }
+ 
+ static void ioat_shutdown(struct pci_dev *pdev)
 
 -- 
 2.43.2
