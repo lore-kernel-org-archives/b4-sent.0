@@ -1,270 +1,135 @@
-From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Date: Wed, 29 May 2024 18:00:57 +0800
-Subject: [PATCH v6 2/2] arm64: dts: amlogic: Add Amlogic S4 PWM
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Date: Wed, 29 May 2024 18:29:32 +0100
+Subject: [PATCH net] net/tcp: Don't consider TCP_CLOSE in
+ TCP_AO_ESTABLISHED
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240529-s4-pwm-v6-2-270f63049f20@amlogic.com>
-References: <20240529-s4-pwm-v6-0-270f63049f20@amlogic.com>
-In-Reply-To: <20240529-s4-pwm-v6-0-270f63049f20@amlogic.com>
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pwm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Kelvin Zhang <kelvin.zhang@amlogic.com>, 
- Junyi Zhao <junyi.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1716976876; l=5081;
- i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=RZgRRkkZrEuNbz37RVEud8NVXA4UvtxkJIzerJ/86lo=;
- b=xA9Jcfkz9OaK0o7FzoBlFuR9bh3RN4pR/Q7QCDMFd+LQG5R6Di11LrtXUIh6+alLiioBi3N5M
- u1/h7PU97Z/BJvN2un2gzkOJuTMbb+eEkOLl5G+UZEmMKJbqQYsUfOD
-X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
- pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
-X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
+Message-Id: <20240529-tcp_ao-sk_state-v1-1-d69b5d323c52@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPtlV2YC/x2M0QrCMAwAf2Xk2UBbugf9FZGR1uiC2I0kDGHs3
+ 60+3sHdDsYqbHAZdlDexGRpHeJpgDpTezLKvTOkkHIY0xm9rhMtaK/JnJwxc0mxhDyGEKFXq/J
+ DPv/jFRo73LosZIxFqdX5N3uTOSscxxdTVVH3fwAAAA==
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, David Ahern <dsahern@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Dmitry Safonov <0x7f454c46@gmail.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717003790; l=4011;
+ i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
+ bh=41vTCdrciFlE2ucowln/i/qvIHlsHBhkFQcAUL+bxDc=;
+ b=wiHAeqOo3CwmYpFYkuuD0qstxMwV/2lWmg1Q7gCER+fRAP/qC5KJHm1nMJzg+0gZmDrBtBZxUciS
+ pf81NF2oDAMFJ+nbMLEU7mnDq2zw9Cvvrw1C7Yu2d6+KVgpdQRJp
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Junyi Zhao <junyi.zhao@amlogic.com>
+TCP_CLOSE may or may not have current/rnext keys and should not be
+considered "established". The fast-path for TCP_CLOSE is
+SKB_DROP_REASON_TCP_CLOSE. This is what tcp_rcv_state_process() does
+anyways. Add an early drop path to not spend any time verifying
+segment signatures for sockets in TCP_CLOSE state.
 
-Add device nodes for PWM_AB, PWM_CD, PWM_EF, PWM_GH and PWM_IJ
-along with GPIO PIN configs of each channel.
-
-Signed-off-by: Junyi Zhao <junyi.zhao@amlogic.com>
-Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
+Cc: stable@vger.kernel.org # v6.7
+Fixes: 0a3a809089eb ("net/tcp: Verify inbound TCP-AO signed segments")
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi | 207 ++++++++++++++++++++++++++++++
- 1 file changed, 207 insertions(+)
+ include/net/tcp_ao.h |  7 ++++---
+ net/ipv4/tcp_ao.c    | 13 +++++++++----
+ 2 files changed, 13 insertions(+), 7 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-index 10896f9df682..98f554577bae 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-@@ -312,6 +312,168 @@ mux {
- 					};
- 				};
+diff --git a/include/net/tcp_ao.h b/include/net/tcp_ao.h
+index 471e177362b4..5d8e9ed2c005 100644
+--- a/include/net/tcp_ao.h
++++ b/include/net/tcp_ao.h
+@@ -86,7 +86,8 @@ static inline int tcp_ao_sizeof_key(const struct tcp_ao_key *key)
+ struct tcp_ao_info {
+ 	/* List of tcp_ao_key's */
+ 	struct hlist_head	head;
+-	/* current_key and rnext_key aren't maintained on listen sockets.
++	/* current_key and rnext_key are maintained on sockets
++	 * in TCP_AO_ESTABLISHED states.
+ 	 * Their purpose is to cache keys on established connections,
+ 	 * saving needless lookups. Never dereference any of them from
+ 	 * listen sockets.
+@@ -201,9 +202,9 @@ struct tcp6_ao_context {
+ };
  
-+				pwm_a_pins1: pwm-a-pins1 {
-+					mux {
-+						groups = "pwm_a_d";
-+						function = "pwm_a";
-+					};
-+				};
-+
-+				pwm_a_pins2: pwm-a-pins2 {
-+					mux {
-+						groups = "pwm_a_x";
-+						function = "pwm_a";
-+					};
-+				};
-+
-+				pwm_a_pins: pwm-a-pins {
-+					mux {
-+						groups = "pwm_a_d";
-+						function = "pwm_a";
-+					};
-+				};
-+
-+				pwm_b_pins1: pwm-b-pins1 {
-+					mux {
-+						groups = "pwm_b_d";
-+						function = "pwm_b";
-+					};
-+				};
-+
-+				pwm_b_pins2: pwm-b-pins2 {
-+					mux {
-+						groups = "pwm_b_x";
-+						function = "pwm_b";
-+					};
-+				};
-+
-+				pwm_c_pins1: pwm-c-pins1 {
-+					mux {
-+						groups = "pwm_c_d";
-+						function = "pwm_c";
-+					};
-+				};
-+
-+				pwm_c_pins2: pwm-c-pins2 {
-+					mux {
-+						groups = "pwm_c_x";
-+						function = "pwm_c";
-+					};
-+				};
-+
-+				pwm_d_pins1: pwm-d-pins1 {
-+					mux {
-+						groups = "pwm_d_d";
-+						function = "pwm_d";
-+					};
-+				};
-+
-+				pwm_d_pins2: pwm-d-pins2 {
-+					mux {
-+						groups = "pwm_d_h";
-+						function = "pwm_d";
-+					};
-+				};
-+
-+				pwm_e_pins1: pwm-e-pins1 {
-+					mux {
-+						groups = "pwm_e_x";
-+						function = "pwm_e";
-+						drive-strength-microamp = <500>;
-+					};
-+				};
-+
-+				pwm_e_pins2: pwm-e-pins2 {
-+					mux {
-+						groups = "pwm_e_z";
-+						function = "pwm_e";
-+					};
-+				};
-+
-+				pwm_f_pins1: pwm-f-pins1 {
-+					mux {
-+						groups = "pwm_f_x";
-+						function = "pwm_f";
-+					};
-+				};
-+
-+				pwm_f_pins2: pwm-f-pins2 {
-+					mux {
-+						groups = "pwm_f_z";
-+						function = "pwm_f";
-+					};
-+				};
-+
-+				pwm_g_pins1: pwm-g-pins1 {
-+					mux {
-+						groups = "pwm_g_d";
-+						function = "pwm_g";
-+					};
-+				};
-+
-+				pwm_g_pins2: pwm-g-pins2 {
-+					mux {
-+						groups = "pwm_g_z";
-+						function = "pwm_g";
-+					};
-+				};
-+
-+				pwm_h_pins: pwm-h-pins {
-+					mux {
-+						groups = "pwm_h";
-+						function = "pwm_h";
-+					};
-+				};
-+
-+				pwm_i_pins1: pwm-i-pins1 {
-+					mux {
-+						groups = "pwm_i_d";
-+						function = "pwm_i";
-+					};
-+				};
-+
-+				pwm_i_pins2: pwm-i-pins2 {
-+					mux {
-+						groups = "pwm_i_h";
-+						function = "pwm_i";
-+					};
-+				};
-+
-+				pwm_j_pins: pwm-j-pins {
-+					mux {
-+						groups = "pwm_j";
-+						function = "pwm_j";
-+					};
-+				};
-+
-+				pwm_a_hiz_pins: pwm-a-hiz-pins {
-+					mux {
-+						groups = "pwm_a_hiz";
-+						function = "pwm_a_hiz";
-+					};
-+				};
-+
-+				pwm_b_hiz_pins: pwm-b-hiz-pins {
-+					mux {
-+						groups = "pwm_b_hiz";
-+						function = "pwm_b_hiz";
-+					};
-+				};
-+
-+				pwm_c_hiz_pins: pwm-c-hiz-pins {
-+					mux {
-+						groups = "pwm_c_hiz";
-+						function = "pwm_b_hiz";
-+					};
-+				};
-+
-+				pwm_g_hiz_pins: pwm-g-hiz-pins {
-+					mux {
-+						groups = "pwm_g_hiz";
-+						function = "pwm_g_hiz";
-+					};
-+				};
-+
- 				spicc0_pins_x: spicc0-pins_x {
- 					mux {
- 						groups = "spi_a_mosi_x",
-@@ -399,6 +561,51 @@ spicc0: spi@50000 {
- 				status = "disabled";
- 			};
+ struct tcp_sigpool;
++/* Established states are fast-path and there always is current_key/rnext_key */
+ #define TCP_AO_ESTABLISHED (TCPF_ESTABLISHED | TCPF_FIN_WAIT1 | TCPF_FIN_WAIT2 | \
+-			    TCPF_CLOSE | TCPF_CLOSE_WAIT | \
+-			    TCPF_LAST_ACK | TCPF_CLOSING)
++			    TCPF_CLOSE_WAIT | TCPF_LAST_ACK | TCPF_CLOSING)
  
-+			pwm_ab: pwm@58000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x58000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_A>,
-+						<&clkc_periphs CLKID_PWM_B>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
+ int tcp_ao_transmit_skb(struct sock *sk, struct sk_buff *skb,
+ 			struct tcp_ao_key *key, struct tcphdr *th,
+diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
+index 781b67a52571..37c42b63ff99 100644
+--- a/net/ipv4/tcp_ao.c
++++ b/net/ipv4/tcp_ao.c
+@@ -933,6 +933,7 @@ tcp_inbound_ao_hash(struct sock *sk, const struct sk_buff *skb,
+ 	struct tcp_ao_key *key;
+ 	__be32 sisn, disn;
+ 	u8 *traffic_key;
++	int state;
+ 	u32 sne = 0;
+ 
+ 	info = rcu_dereference(tcp_sk(sk)->ao_info);
+@@ -948,8 +949,9 @@ tcp_inbound_ao_hash(struct sock *sk, const struct sk_buff *skb,
+ 		disn = 0;
+ 	}
+ 
++	state = READ_ONCE(sk->sk_state);
+ 	/* Fast-path */
+-	if (likely((1 << sk->sk_state) & TCP_AO_ESTABLISHED)) {
++	if (likely((1 << state) & TCP_AO_ESTABLISHED)) {
+ 		enum skb_drop_reason err;
+ 		struct tcp_ao_key *current_key;
+ 
+@@ -988,6 +990,9 @@ tcp_inbound_ao_hash(struct sock *sk, const struct sk_buff *skb,
+ 		return SKB_NOT_DROPPED_YET;
+ 	}
+ 
++	if (unlikely(state == TCP_CLOSE))
++		return SKB_DROP_REASON_TCP_CLOSE;
 +
-+			pwm_cd: pwm@5a000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x5a000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_C>,
-+						<&clkc_periphs CLKID_PWM_D>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
-+			pwm_ef: pwm@5c000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x5c000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_E>,
-+						<&clkc_periphs CLKID_PWM_F>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
-+			pwm_gh: pwm@5e000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x5e000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_G>,
-+						<&clkc_periphs CLKID_PWM_H>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
-+			pwm_ij: pwm@60000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x60000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_I>,
-+						<&clkc_periphs CLKID_PWM_J>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
- 			i2c0: i2c@66000 {
- 				compatible = "amlogic,meson-axg-i2c";
- 				reg = <0x0 0x66000 0x0 0x20>;
+ 	/* Lookup key based on peer address and keyid.
+ 	 * current_key and rnext_key must not be used on tcp listen
+ 	 * sockets as otherwise:
+@@ -1001,7 +1006,7 @@ tcp_inbound_ao_hash(struct sock *sk, const struct sk_buff *skb,
+ 	if (th->syn && !th->ack)
+ 		goto verify_hash;
+ 
+-	if ((1 << sk->sk_state) & (TCPF_LISTEN | TCPF_NEW_SYN_RECV)) {
++	if ((1 << state) & (TCPF_LISTEN | TCPF_NEW_SYN_RECV)) {
+ 		/* Make the initial syn the likely case here */
+ 		if (unlikely(req)) {
+ 			sne = tcp_ao_compute_sne(0, tcp_rsk(req)->rcv_isn,
+@@ -1018,14 +1023,14 @@ tcp_inbound_ao_hash(struct sock *sk, const struct sk_buff *skb,
+ 			/* no way to figure out initial sisn/disn - drop */
+ 			return SKB_DROP_REASON_TCP_FLAGS;
+ 		}
+-	} else if ((1 << sk->sk_state) & (TCPF_SYN_SENT | TCPF_SYN_RECV)) {
++	} else if ((1 << state) & (TCPF_SYN_SENT | TCPF_SYN_RECV)) {
+ 		disn = info->lisn;
+ 		if (th->syn || th->rst)
+ 			sisn = th->seq;
+ 		else
+ 			sisn = info->risn;
+ 	} else {
+-		WARN_ONCE(1, "TCP-AO: Unexpected sk_state %d", sk->sk_state);
++		WARN_ONCE(1, "TCP-AO: Unexpected sk_state %d", state);
+ 		return SKB_DROP_REASON_TCP_AOFAILURE;
+ 	}
+ verify_hash:
 
+---
+base-commit: e0cce98fe279b64f4a7d81b7f5c3a23d80b92fbc
+change-id: 20240529-tcp_ao-sk_state-4eb21b045001
+
+Best regards,
 -- 
-2.37.1
+Dmitry Safonov <0x7f454c46@gmail.com>
 
