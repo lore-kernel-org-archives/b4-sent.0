@@ -1,14 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v2 0/3] Power: A4: add power domain driver
-Date: Wed, 29 May 2024 11:10:32 +0800
-Message-Id: <20240529-a4_secpowerdomain-v2-0-47502fc0eaf3@amlogic.com>
+Date: Wed, 29 May 2024 11:10:33 +0800
+Subject: [PATCH v2 1/3] dt-bindings: power: add Amlogic A4 power domains
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKicVmYC/32NQQ7CIBBFr9LMWgwg1bYr72EaQ2HaTiLQgKmah
- ruLPYDL95L//gYJI2GCrtog4kqJgi8gDxWYWfsJGdnCILlUvJYN0+qe0CzhhdEGp8mzGgfO67N
- q2hOHslsijvTem7e+8EzpGeJnv1jFz/6rrYJxJnVrL3ZsByGbq3aPMJE5muCgzzl/AZKJC2S0A
- AAA
+Message-Id: <20240529-a4_secpowerdomain-v2-1-47502fc0eaf3@amlogic.com>
+References: <20240529-a4_secpowerdomain-v2-0-47502fc0eaf3@amlogic.com>
+In-Reply-To: <20240529-a4_secpowerdomain-v2-0-47502fc0eaf3@amlogic.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -20,41 +18,66 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-pm@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1716952234; l=1048;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1716952234; l=1814;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=IgTEkVYd46Ru6As3hGpXvTy9hURuoQjJ4M75ryPeIBQ=;
- b=NG8/Fqi40DTnl0o5BZrocIxFVchLkBPLoaxBqkwU1c+QmRw1GofHLrZpide+starD0xgZ4tj8
- Zw/S3CC56lyAm7+MtKdIyrDDYx5Z2i6Gxtjne3EEM8NHZ1PdjdFaSsW
+ bh=nfoMiDo//9rMUrKLRoJnW/ImrBs0OKdTcKzaSwdwK/A=;
+ b=EtJ0yNZ3A1Spomz+78Y0P6EEhnhU5/ot/KOLV8zTv/nUvVE9+/visaaV8Uw1+3LuqMh4xMzoX
+ zh4d9vRrKuaCkc3UUDj6u8OH7gQlkEjf4Nkzc9l1I0F36kMD4rpnqBg
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add power controller driver support for Amlogic A4 SoC.
+Add devicetree binding document and related header file for
+Amlogic A4 secure power domains.
 
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v2:
-- dts: Move power-controller node to be a child of secure-monitor.
-- dts: Include power head file.
-- Link to v1: https://lore.kernel.org/r/20240528-a4_secpowerdomain-v1-0-2a9d7df9b128@amlogic.com
+ .../bindings/power/amlogic,meson-sec-pwrc.yaml      |  1 +
+ include/dt-bindings/power/amlogic,a4-pwrc.h         | 21 +++++++++++++++++++++
+ 2 files changed, 22 insertions(+)
 
----
-Xianwei Zhao (3):
-      dt-bindings: power: add Amlogic A4 power domains
-      pmdomain: amlogic: Add support for A4 power domains controller
-      arm64: dts: amlogic: a4: add power domain controller node
+diff --git a/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml b/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml
+index dab3d92bc273..59915f9d4860 100644
+--- a/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml
++++ b/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml
+@@ -20,6 +20,7 @@ properties:
+     enum:
+       - amlogic,meson-a1-pwrc
+       - amlogic,meson-s4-pwrc
++      - amlogic,a4-pwrc
+       - amlogic,c3-pwrc
+       - amlogic,t7-pwrc
+ 
+diff --git a/include/dt-bindings/power/amlogic,a4-pwrc.h b/include/dt-bindings/power/amlogic,a4-pwrc.h
+new file mode 100644
+index 000000000000..bd2f9c558d22
+--- /dev/null
++++ b/include/dt-bindings/power/amlogic,a4-pwrc.h
+@@ -0,0 +1,21 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
++/*
++ * Copyright (C) 2024 Amlogic, Inc. All rights reserved
++ */
++#ifndef _DT_BINDINGS_AMLOGIC_A4_POWER_H
++#define _DT_BINDINGS_AMLOGIC_A4_POWER_H
++
++#define PWRC_A4_AUDIO_ID				0
++#define PWRC_A4_SDIOA_ID				1
++#define PWRC_A4_EMMC_ID					2
++#define PWRC_A4_USB_COMB_ID				3
++#define PWRC_A4_ETH_ID					4
++#define PWRC_A4_VOUT_ID					5
++#define PWRC_A4_AUDIO_PDM_ID				6
++#define PWRC_A4_DMC_ID					7
++#define PWRC_A4_SYS_WRAP_ID				8
++#define PWRC_A4_AO_I2C_S_ID				9
++#define PWRC_A4_AO_UART_ID				10
++#define PWRC_A4_AO_IR_ID				11
++
++#endif
 
- .../bindings/power/amlogic,meson-sec-pwrc.yaml     |  1 +
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        | 10 ++++++++
- drivers/pmdomain/amlogic/meson-secure-pwrc.c       | 28 ++++++++++++++++++++++
- include/dt-bindings/power/amlogic,a4-pwrc.h        | 21 ++++++++++++++++
- 4 files changed, 60 insertions(+)
----
-base-commit: 456f4f5e6e6d3a2228501068a37ce13fe0b333d4
-change-id: 20240528-a4_secpowerdomain-5eb005648930
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
