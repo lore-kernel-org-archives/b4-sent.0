@@ -1,10 +1,10 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Thu, 30 May 2024 15:07:50 +0300
-Subject: [PATCH v3 2/5] iio: adc: ad7173: Add ad7173_device_info names
+Date: Thu, 30 May 2024 15:07:51 +0300
+Subject: [PATCH v3 3/5] iio: adc: ad7173: Remove index from temp channel
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240530-ad7173-fixes-v3-2-b85f33079e18@analog.com>
+Message-Id: <20240530-ad7173-fixes-v3-3-b85f33079e18@analog.com>
 References: <20240530-ad7173-fixes-v3-0-b85f33079e18@analog.com>
 In-Reply-To: <20240530-ad7173-fixes-v3-0-b85f33079e18@analog.com>
 To: Lars-Peter Clausen <lars@metafoo.de>, 
@@ -13,53 +13,38 @@ Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org,
  Dumitru Ceclan <mitrutzceclan@gmail.com>, 
  Dumitru Ceclan <dumitru.ceclan@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717070881; l=1300;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717070881; l=851;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=jyW8M3kG3uqXuCNPYLLJGiYuxqeZCfGKeCCNwqrSJqE=;
- b=4ER/UoEn/wZkI/mak5zAphUNqZ5UqOLKaguF+1NemNuXpdxwqAYvU7JqWghs5G4GC1++u9dYk
- QcklpdWm3gDCBALYdzKaYyoU2WcJ5jcZdZ03thUV592FTTXKtZ/1XUo
+ bh=qHzAb3Lr8QOhPoRlBg0Itkn9NRPMWDsCz2unbRqp8RE=;
+ b=/16b4nMtXcLOu4ow4Fo36AISvbGQFYNZfcH6Ew8bLJc677ALZIM/4O0JxSjII5wclXnV8aT2m
+ nWG7G+MZxNRCAuXDy3y7k7xXZJy0ST3XJcydCTvt7PkOv1o7cfGWCwC
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add missing names from the device info struct for 3 models to ensure
-consistency with the rest of the models.
+Temperature channel is unique per device, index is not needed.
+This is breaking userspace: Include fixes tag to be released within the
+same rc cycle.
 
 Fixes: 8eb903272f75 ("iio: adc: ad7173: add AD7173 driver")
 Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
 ---
- drivers/iio/adc/ad7173.c | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/iio/adc/ad7173.c | 1 -
+ 1 file changed, 1 deletion(-)
 
 diff --git a/drivers/iio/adc/ad7173.c b/drivers/iio/adc/ad7173.c
-index 850574437bda..58620be41ef5 100644
+index 58620be41ef5..eb512878c30e 100644
 --- a/drivers/iio/adc/ad7173.c
 +++ b/drivers/iio/adc/ad7173.c
-@@ -220,6 +220,7 @@ static const struct ad7173_device_info ad7173_device_info[] = {
- 		.num_sinc5_data_rates = ARRAY_SIZE(ad7173_sinc5_data_rates),
- 	},
- 	[ID_AD7172_4] = {
-+		.name = "ad7172-4",
- 		.id = AD7172_4_ID,
- 		.num_inputs = 9,
- 		.num_channels = 8,
-@@ -262,6 +263,7 @@ static const struct ad7173_device_info ad7173_device_info[] = {
- 		.num_sinc5_data_rates = ARRAY_SIZE(ad7175_sinc5_data_rates),
- 	},
- 	[ID_AD7175_8] = {
-+		.name = "ad7175-8",
- 		.id = AD7175_8_ID,
- 		.num_inputs = 17,
- 		.num_channels = 16,
-@@ -290,6 +292,7 @@ static const struct ad7173_device_info ad7173_device_info[] = {
- 		.num_sinc5_data_rates = ARRAY_SIZE(ad7175_sinc5_data_rates),
- 	},
- 	[ID_AD7177_2] = {
-+		.name = "ad7177-2",
- 		.id = AD7177_ID,
- 		.num_inputs = 5,
- 		.num_channels = 4,
+@@ -815,7 +815,6 @@ static const struct iio_chan_spec ad7173_channel_template = {
+ 
+ static const struct iio_chan_spec ad7173_temp_iio_channel_template = {
+ 	.type = IIO_TEMP,
+-	.indexed = 1,
+ 	.channel = AD7173_AIN_TEMP_POS,
+ 	.channel2 = AD7173_AIN_TEMP_NEG,
+ 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
 
 -- 
 2.43.0
