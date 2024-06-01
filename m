@@ -1,16 +1,13 @@
 From: Joel Selvaraj <joelselvaraj.oss@gmail.com>
-Subject: [PATCH v5 0/3] novatek-nvt-ts: add support for NT36672A
- touchscreen
-Date: Sat, 01 Jun 2024 15:44:42 -0500
-Message-Id: <20240601-nvt-ts-devicetree-regulator-support-v5-0-aa9bf986347d@gmail.com>
+Date: Sat, 01 Jun 2024 15:44:43 -0500
+Subject: [PATCH v5 1/3] Input: novatek-nvt-ts: replace generic i2c device
+ id with specific IC variant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIADqIW2YC/43PTW4CMQwF4KugrJsqyZj8sOIeiEVw3CESzIySE
- FGhuXsDqgS0m1k+y/qefWOZUqTMNqsbS1RjjuPQwvpjxfDoh554DC0zJRSItbR8qIWXzEPbRSq
- JiCfqLydfxsTzZZrGVLhHR+AOxnqpWZOmRF/x+mjZ7Vs+xtzWvx+lVd6nv76Si/wqueA2GK1Rd
- y6g3/ZnH0+fOJ7Z3a/q1YRlpmrmwYADIzqLAH/N7tXUy8yumd5bG6RADO7fnfA0tVj4OzSTBAp
- pADTg253zPP8AuTroZdIBAAA=
+Message-Id: <20240601-nvt-ts-devicetree-regulator-support-v5-1-aa9bf986347d@gmail.com>
+References: <20240601-nvt-ts-devicetree-regulator-support-v5-0-aa9bf986347d@gmail.com>
+In-Reply-To: <20240601-nvt-ts-devicetree-regulator-support-v5-0-aa9bf986347d@gmail.com>
 To: Hans de Goede <hdegoede@redhat.com>, 
  Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,65 +15,54 @@ To: Hans de Goede <hdegoede@redhat.com>,
  =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
 Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
- Joel Selvaraj <joelselvaraj.oss@gmail.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ Joel Selvaraj <joelselvaraj.oss@gmail.com>
 X-Mailer: b4 0.14-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717274685; l=2348;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717274685; l=1393;
  i=joelselvaraj.oss@gmail.com; s=20240420; h=from:subject:message-id;
- bh=ucyVFpd6nuxP73wDf/4LvLL/dnRjiWP1Eo2RxRQIs34=;
- b=OM1UQVsBzxv1skZr/cVdzZl9c5R6Wef2ecEp4VLFfMEnYjV9yH7BtV3rE052YLaSSArUGSpk9
- 0pTEESVpoBDAR1971CKYG9j0rR7L+UBNwuhPLNb/jKRq7a8H2k7/Ijg
+ bh=JfGOWdU2w8+0k5JiDiNeJehgANFUozza/8JZOnq70YQ=;
+ b=RF68DnY9NAlhv/3eRIIiQTLqp2vGwHaWhW6rQSz6FZcrgANIEfaDL136UHZH8ALXmENfCpb9C
+ tVbXnRDvYreDh+ukz5XmxdO0DfstB3trq81smg5BYOm3RxY/vCbjnM7
 X-Developer-Key: i=joelselvaraj.oss@gmail.com; a=ed25519;
  pk=qT4gsuVtlPE0Dpr+tQA/Fumm7wzVP6qfeVaY+6pX04s=
 X-Endpoint-Received: by B4 Relay for joelselvaraj.oss@gmail.com/20240420 with auth_id=165
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extend the novatek touchscreen driver to support NT36672A chip which
-is found in phones like qcom/sdm845-xiaomi-beryllium-tianma.dts.
-Added devicetree support for the driver and used i2c chip data to handle
-the variation in chip id and wake type. Also added vcc and iovcc
-regulators which are used to power the touchscreen hardware.
+This is done in preparation to introduce other variants of the Novatek NVT
+touchscreen controller that can be supported by the driver.
 
 Signed-off-by: Joel Selvaraj <joelselvaraj.oss@gmail.com>
 ---
-Changes in v5:
-- Made the chip data a local variable as it is only used during probe.
-- Handle the regulator disable correctly for all exit paths in probe.
-- Link to v4: https://lore.kernel.org/r/20240601-nvt-ts-devicetree-regulator-support-v4-0-e0c0174464c4@gmail.com
+ drivers/input/touchscreen/novatek-nvt-ts.c       | 2 +-
+ drivers/platform/x86/x86-android-tablets/other.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Changes in v4:
-- Use lowercase i2c device id as suggested by Hans de Goede.
-- Disable the regulators after nvt_ts_read_data during probe.
-- Link to v3: https://lore.kernel.org/r/20240526-nvt-ts-devicetree-regulator-support-v3-0-aa88d10ccd9a@gmail.com
+diff --git a/drivers/input/touchscreen/novatek-nvt-ts.c b/drivers/input/touchscreen/novatek-nvt-ts.c
+index 1a797e410a3fa..9bee3a0c122fb 100644
+--- a/drivers/input/touchscreen/novatek-nvt-ts.c
++++ b/drivers/input/touchscreen/novatek-nvt-ts.c
+@@ -278,7 +278,7 @@ static int nvt_ts_probe(struct i2c_client *client)
+ }
+ 
+ static const struct i2c_device_id nvt_ts_i2c_id[] = {
+-	{ "NVT-ts" },
++	{ "nt11205-ts" },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(i2c, nvt_ts_i2c_id);
+diff --git a/drivers/platform/x86/x86-android-tablets/other.c b/drivers/platform/x86/x86-android-tablets/other.c
+index eb0e55c69dfed..129273df0fdeb 100644
+--- a/drivers/platform/x86/x86-android-tablets/other.c
++++ b/drivers/platform/x86/x86-android-tablets/other.c
+@@ -40,7 +40,7 @@ static const struct x86_i2c_client_info acer_b1_750_i2c_clients[] __initconst =
+ 	{
+ 		/* Novatek NVT-ts touchscreen */
+ 		.board_info = {
+-			.type = "NVT-ts",
++			.type = "nt11205-ts",
+ 			.addr = 0x34,
+ 			.dev_name = "NVT-ts",
+ 		},
 
-Changes in v3:
-- Fix indentation in the binding as suggested by Krzysztof Kozlowski.
-- Picked up Krzysztof Kozlowski's Reviewed-by tag for the binding.
-- Link to v2: https://lore.kernel.org/r/20240524-nvt-ts-devicetree-regulator-support-v2-0-b74947038c44@gmail.com
-
-Changes in v2:
-- The generic i2c device id is now replaced with the correct IC variant
-  provided by Hans de Goede
-- Updated the bindings to reflect the latest changes and also incorporated
-  the suggestions provided by Krzysztof Kozlowski
-- Link to v1: https://lore.kernel.org/r/20240521-nvt-ts-devicetree-regulator-support-v1-0-8d766c639dca@gmail.com
-
----
-Joel Selvaraj (3):
-      Input: novatek-nvt-ts: replace generic i2c device id with specific IC variant
-      dt-bindings: input: document Novatek NVT touchscreen controller
-      Input: novatek-nvt-ts: add support for NT36672A touchscreen
-
- .../bindings/input/touchscreen/novatek,nvt-ts.yaml | 62 ++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- drivers/input/touchscreen/novatek-nvt-ts.c         | 67 ++++++++++++++++++++--
- drivers/platform/x86/x86-android-tablets/other.c   |  2 +-
- 4 files changed, 125 insertions(+), 7 deletions(-)
----
-base-commit: 6578aac6a270bd6deb9f9319b991dd430de263dd
-change-id: 20240518-nvt-ts-devicetree-regulator-support-ac9e49b78a16
-
-Best regards,
 -- 
-Joel Selvaraj <joelselvaraj.oss@gmail.com>
+2.45.1
 
