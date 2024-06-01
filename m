@@ -1,11 +1,11 @@
 From: Joel Selvaraj <joelselvaraj.oss@gmail.com>
-Date: Sat, 01 Jun 2024 15:44:43 -0500
-Subject: [PATCH v5 1/3] Input: novatek-nvt-ts: replace generic i2c device
- id with specific IC variant
+Date: Sat, 01 Jun 2024 15:44:44 -0500
+Subject: [PATCH v5 2/3] dt-bindings: input: document Novatek NVT
+ touchscreen controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240601-nvt-ts-devicetree-regulator-support-v5-1-aa9bf986347d@gmail.com>
+Message-Id: <20240601-nvt-ts-devicetree-regulator-support-v5-2-aa9bf986347d@gmail.com>
 References: <20240601-nvt-ts-devicetree-regulator-support-v5-0-aa9bf986347d@gmail.com>
 In-Reply-To: <20240601-nvt-ts-devicetree-regulator-support-v5-0-aa9bf986347d@gmail.com>
 To: Hans de Goede <hdegoede@redhat.com>, 
@@ -15,53 +15,110 @@ To: Hans de Goede <hdegoede@redhat.com>,
  =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
 Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
- Joel Selvaraj <joelselvaraj.oss@gmail.com>
+ Joel Selvaraj <joelselvaraj.oss@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717274685; l=1393;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717274685; l=2767;
  i=joelselvaraj.oss@gmail.com; s=20240420; h=from:subject:message-id;
- bh=JfGOWdU2w8+0k5JiDiNeJehgANFUozza/8JZOnq70YQ=;
- b=RF68DnY9NAlhv/3eRIIiQTLqp2vGwHaWhW6rQSz6FZcrgANIEfaDL136UHZH8ALXmENfCpb9C
- tVbXnRDvYreDh+ukz5XmxdO0DfstB3trq81smg5BYOm3RxY/vCbjnM7
+ bh=l1XN86Z3ZftRDCgivV8HiV5DOjOZR8yQT8aQnuoq5qg=;
+ b=rR78IIkvzX4UaPvHXPvxo6HlFeoTvClH2tPdxRO2pajCRQdmn85j6zjOElsYZjzvEPNIzHFSP
+ PCO24OCcoSBBTPDQAtkxCAzBByz0oFvq0/01bVt4Vz8I1c55S3OGQHK
 X-Developer-Key: i=joelselvaraj.oss@gmail.com; a=ed25519;
  pk=qT4gsuVtlPE0Dpr+tQA/Fumm7wzVP6qfeVaY+6pX04s=
 X-Endpoint-Received: by B4 Relay for joelselvaraj.oss@gmail.com/20240420 with auth_id=165
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is done in preparation to introduce other variants of the Novatek NVT
-touchscreen controller that can be supported by the driver.
+Document the Novatek NVT touchscreen controller present in devices like
+qcom/sdm845-xiaomi-beryllium-tianma.dts. Also, include the devictree
+binding file in the MAINTAINERS file.
 
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Joel Selvaraj <joelselvaraj.oss@gmail.com>
 ---
- drivers/input/touchscreen/novatek-nvt-ts.c       | 2 +-
- drivers/platform/x86/x86-android-tablets/other.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ .../bindings/input/touchscreen/novatek,nvt-ts.yaml | 62 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 2 files changed, 63 insertions(+)
 
-diff --git a/drivers/input/touchscreen/novatek-nvt-ts.c b/drivers/input/touchscreen/novatek-nvt-ts.c
-index 1a797e410a3fa..9bee3a0c122fb 100644
---- a/drivers/input/touchscreen/novatek-nvt-ts.c
-+++ b/drivers/input/touchscreen/novatek-nvt-ts.c
-@@ -278,7 +278,7 @@ static int nvt_ts_probe(struct i2c_client *client)
- }
+diff --git a/Documentation/devicetree/bindings/input/touchscreen/novatek,nvt-ts.yaml b/Documentation/devicetree/bindings/input/touchscreen/novatek,nvt-ts.yaml
+new file mode 100644
+index 0000000000000..bd6a60486d1f1
+--- /dev/null
++++ b/Documentation/devicetree/bindings/input/touchscreen/novatek,nvt-ts.yaml
+@@ -0,0 +1,62 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/input/touchscreen/novatek,nvt-ts.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Novatek NVT Touchscreen Controller
++
++maintainers:
++  - Hans de Goede <hdegoede@redhat.com>
++
++allOf:
++  - $ref: touchscreen.yaml#
++
++properties:
++  compatible:
++    enum:
++      - novatek,nt11205-ts
++      - novatek,nt36672a-ts
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  reset-gpios:
++    maxItems: 1
++
++  vcc-supply: true
++  iovcc-supply: true
++
++required:
++  - compatible
++  - reg
++  - interrupts
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++        touchscreen@1 {
++            compatible = "novatek,nt36672a-ts";
++            reg = <0x01>;
++            interrupts-extended = <&tlmm 31 IRQ_TYPE_EDGE_RISING>;
++            reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
++            vcc-supply = <&vreg_l22a_2p85>;
++            iovcc-supply = <&vreg_l14a_1p8>;
++            pinctrl-0 = <&ts_int_default &ts_reset_default>;
++            pinctrl-1 = <&ts_int_sleep &ts_reset_sleep>;
++            pinctrl-names = "default", "sleep";
++            touchscreen-size-x = <1080>;
++            touchscreen-size-y = <2246>;
++        };
++    };
++
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 90754a451bcfc..e1f744992b15f 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -15942,6 +15942,7 @@ NOVATEK NVT-TS I2C TOUCHSCREEN DRIVER
+ M:	Hans de Goede <hdegoede@redhat.com>
+ L:	linux-input@vger.kernel.org
+ S:	Maintained
++F:	Documentation/devicetree/bindings/input/touchscreen/novatek,nvt-ts.yaml
+ F:	drivers/input/touchscreen/novatek-nvt-ts.c
  
- static const struct i2c_device_id nvt_ts_i2c_id[] = {
--	{ "NVT-ts" },
-+	{ "nt11205-ts" },
- 	{ }
- };
- MODULE_DEVICE_TABLE(i2c, nvt_ts_i2c_id);
-diff --git a/drivers/platform/x86/x86-android-tablets/other.c b/drivers/platform/x86/x86-android-tablets/other.c
-index eb0e55c69dfed..129273df0fdeb 100644
---- a/drivers/platform/x86/x86-android-tablets/other.c
-+++ b/drivers/platform/x86/x86-android-tablets/other.c
-@@ -40,7 +40,7 @@ static const struct x86_i2c_client_info acer_b1_750_i2c_clients[] __initconst =
- 	{
- 		/* Novatek NVT-ts touchscreen */
- 		.board_info = {
--			.type = "NVT-ts",
-+			.type = "nt11205-ts",
- 			.addr = 0x34,
- 			.dev_name = "NVT-ts",
- 		},
+ NSDEPS
 
 -- 
 2.45.1
