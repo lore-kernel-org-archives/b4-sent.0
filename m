@@ -1,114 +1,76 @@
-From: Sam Ravnborg <sam@ravnborg.org>
-Date: Fri, 31 May 2024 22:37:46 +0200
-Subject: [PATCH 2/2] drm/bridge: Drop drm_bridge_chain_mode_fixup
+From: Joel Selvaraj <joelselvaraj.oss@gmail.com>
+Subject: [PATCH v4 0/3] novatek-nvt-ts: add support for NT36672A
+ touchscreen
+Date: Sat, 01 Jun 2024 10:30:17 -0500
+Message-Id: <20240601-nvt-ts-devicetree-regulator-support-v4-0-e0c0174464c4@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240531-bridge_chain_mode-v1-2-8b49e36c5dd3@ravnborg.org>
-References: <20240531-bridge_chain_mode-v1-0-8b49e36c5dd3@ravnborg.org>
-In-Reply-To: <20240531-bridge_chain_mode-v1-0-8b49e36c5dd3@ravnborg.org>
-To: dri-devel@lists.freedesktop.org, 
- Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>
-Cc: Sam Ravnborg <sam@ravnborg.org>, Maxime Ripard <mripard@kernel.org>, 
- Laurent Pinchart <laurent.pinchart+renesas@ideasonboard.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Thomas Zimmermann <tzimmermann@suse.de>, David Airlie <airlied@linux.ie>, 
- Daniel Vetter <daniel@ffwll.ch>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717187865; l=2934;
- i=sam@ravnborg.org; s=20230107; h=from:subject:message-id;
- bh=xm7f++qnfzJgiUWk6f8lnMbUPrsPBwFJAzI7MRE8MMU=;
- b=CYV+punnp4i5EnYOF7WM7p5Tr4giEsg9rQzS+q54fSTqfQKj23xN+cQ8ABZfaxDnbquEbl+6FoCW
- 5FR+KJ7MAX4qOtndDEElXMeSxZvkijk2u4hK5hiv1rVSiF1eblpM
-X-Developer-Key: i=sam@ravnborg.org; a=ed25519;
- pk=R0+pqV7BRYOAeOIGkyOrSNke7arx5y3LkEuNi37YEyU=
-X-Endpoint-Received: by B4 Relay for sam@ravnborg.org/20230107 with auth_id=22
+X-B4-Tracking: v=1; b=H4sIAIk+W2YC/43OQQ7CIBAF0KsY1o4BihRceQ/jAoexkmjbABKN6
+ d1F40JddfknP+/PgyWKgRLbLB4sUgkpDH0NarlgeHJ9RxB8zUxyqfhaGOhLhpzA1y5SjkQQqbu
+ eXR4ipOs4DjGDQ0vKHlrjhGZVGiMdw+29stvXfAqp1u/v0SJe148vxSy/COBgfKs16sZ6dNvu4
+ sJ5hcOFvfwiv001z5TVPLTKqpY3BpX6N5tvU88zm2o6Z4wXHNHbnz+naXoCVIju4X4BAAA=
+To: Hans de Goede <hdegoede@redhat.com>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
+Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
+ Joel Selvaraj <joelselvaraj.oss@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.14-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717255824; l=2072;
+ i=joelselvaraj.oss@gmail.com; s=20240420; h=from:subject:message-id;
+ bh=n8FgRSqS/0SH93OR/rSR5u3qt1CP4ZpLuUxyPWB99QQ=;
+ b=3AMsyFGEo6VG5DEWahrUosuEQQpoCSe3tGbUVCSBQkn5X5r0mynSkXUb0mQ2BFYeZybdiKpAP
+ W9Q34YsH6tkBQbQndqobUTg7k11XAwVb9vGKea+6UwE5iGDqvGSmrlc
+X-Developer-Key: i=joelselvaraj.oss@gmail.com; a=ed25519;
+ pk=qT4gsuVtlPE0Dpr+tQA/Fumm7wzVP6qfeVaY+6pX04s=
+X-Endpoint-Received: by B4 Relay for joelselvaraj.oss@gmail.com/20240420 with auth_id=165
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There are no users left of drm_bridge_chain_mode_fixup() and we
-do not want to have this function available, so drop it.
+Extend the novatek touchscreen driver to support NT36672A chip which
+is found in phones like qcom/sdm845-xiaomi-beryllium-tianma.dts.
+Added devicetree support for the driver and used i2c chip data to handle
+the variation in chip id and wake type. Also added vcc and iovcc
+regulators which are used to power the touchscreen hardware.
 
-Signed-off-by: Sam Ravnborg <sam@ravnborg.org>
-Reviewed-by: Maxime Ripard <mripard@kernel.org>
-Reviewed-by: Laurent Pinchart <laurent.pinchart+renesas@ideasonboard.com>
-Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-Cc: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
-Cc: Maxime Ripard <mripard@kernel.org>
-Cc: Thomas Zimmermann <tzimmermann@suse.de>
-Cc: David Airlie <airlied@linux.ie>
-Cc: Daniel Vetter <daniel@ffwll.ch>
+Signed-off-by: Joel Selvaraj <joelselvaraj.oss@gmail.com>
 ---
- drivers/gpu/drm/drm_bridge.c | 37 -------------------------------------
- include/drm/drm_bridge.h     |  3 ---
- 2 files changed, 40 deletions(-)
+Changes in v4:
+- Use lowercase i2c device id as suggested by Hans de Goede.
+- Disable the regulators after nvt_ts_read_data during probe.
+- Link to v3: https://lore.kernel.org/r/20240526-nvt-ts-devicetree-regulator-support-v3-0-aa88d10ccd9a@gmail.com
 
-diff --git a/drivers/gpu/drm/drm_bridge.c b/drivers/gpu/drm/drm_bridge.c
-index 584d109330ab..d44f055dbe3e 100644
---- a/drivers/gpu/drm/drm_bridge.c
-+++ b/drivers/gpu/drm/drm_bridge.c
-@@ -467,43 +467,6 @@ void drm_bridge_detach(struct drm_bridge *bridge)
-  *   needed, in order to gradually transition to the new model.
-  */
- 
--/**
-- * drm_bridge_chain_mode_fixup - fixup proposed mode for all bridges in the
-- *				 encoder chain
-- * @bridge: bridge control structure
-- * @mode: desired mode to be set for the bridge
-- * @adjusted_mode: updated mode that works for this bridge
-- *
-- * Calls &drm_bridge_funcs.mode_fixup for all the bridges in the
-- * encoder chain, starting from the first bridge to the last.
-- *
-- * Note: the bridge passed should be the one closest to the encoder
-- *
-- * RETURNS:
-- * true on success, false on failure
-- */
--bool drm_bridge_chain_mode_fixup(struct drm_bridge *bridge,
--				 const struct drm_display_mode *mode,
--				 struct drm_display_mode *adjusted_mode)
--{
--	struct drm_encoder *encoder;
--
--	if (!bridge)
--		return true;
--
--	encoder = bridge->encoder;
--	list_for_each_entry_from(bridge, &encoder->bridge_chain, chain_node) {
--		if (!bridge->funcs->mode_fixup)
--			continue;
--
--		if (!bridge->funcs->mode_fixup(bridge, mode, adjusted_mode))
--			return false;
--	}
--
--	return true;
--}
--EXPORT_SYMBOL(drm_bridge_chain_mode_fixup);
--
- /**
-  * drm_bridge_chain_mode_valid - validate the mode against all bridges in the
-  *				 encoder chain.
-diff --git a/include/drm/drm_bridge.h b/include/drm/drm_bridge.h
-index 4baca0d9107b..5cf41f92d1f0 100644
---- a/include/drm/drm_bridge.h
-+++ b/include/drm/drm_bridge.h
-@@ -855,9 +855,6 @@ drm_bridge_chain_get_first_bridge(struct drm_encoder *encoder)
- #define drm_for_each_bridge_in_chain(encoder, bridge)			\
- 	list_for_each_entry(bridge, &(encoder)->bridge_chain, chain_node)
- 
--bool drm_bridge_chain_mode_fixup(struct drm_bridge *bridge,
--				 const struct drm_display_mode *mode,
--				 struct drm_display_mode *adjusted_mode);
- enum drm_mode_status
- drm_bridge_chain_mode_valid(struct drm_bridge *bridge,
- 			    const struct drm_display_info *info,
+Changes in v3:
+- Fix indentation in the binding as suggested by Krzysztof Kozlowski.
+- Picked up Krzysztof Kozlowski's Reviewed-by tag for the binding.
+- Link to v2: https://lore.kernel.org/r/20240524-nvt-ts-devicetree-regulator-support-v2-0-b74947038c44@gmail.com
 
+Changes in v2:
+- The generic i2c device id is now replaced with the correct IC variant
+  provided by Hans de Goede
+- Updated the bindings to reflect the latest changes and also incorporated
+  the suggestions provided by Krzysztof Kozlowski
+- Link to v1: https://lore.kernel.org/r/20240521-nvt-ts-devicetree-regulator-support-v1-0-8d766c639dca@gmail.com
+
+---
+Joel Selvaraj (3):
+      Input: novatek-nvt-ts: replace generic i2c device id with specific IC variant
+      dt-bindings: input: document Novatek NVT touchscreen controller
+      Input: novatek-nvt-ts: add support for NT36672A touchscreen
+
+ .../bindings/input/touchscreen/novatek,nvt-ts.yaml | 62 +++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ drivers/input/touchscreen/novatek-nvt-ts.c         | 70 ++++++++++++++++++++--
+ drivers/platform/x86/x86-android-tablets/other.c   |  2 +-
+ 4 files changed, 128 insertions(+), 7 deletions(-)
+---
+base-commit: 6578aac6a270bd6deb9f9319b991dd430de263dd
+change-id: 20240518-nvt-ts-devicetree-regulator-support-ac9e49b78a16
+
+Best regards,
 -- 
-2.34.1
+Joel Selvaraj <joelselvaraj.oss@gmail.com>
 
