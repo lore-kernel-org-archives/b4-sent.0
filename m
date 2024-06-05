@@ -1,135 +1,74 @@
-From: =?utf-8?q?Noralf_Tr=C3=B8nnes?= <noralf@tronnes.org>
-Date: Tue, 04 Jun 2024 15:20:32 +0200
-Subject: [PATCH v4 5/5] drm/tiny: panel-mipi-dbi: Support the pixel format
- property
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Subject: [PATCH net-next v2 0/6] net/tcp: TCP-AO and TCP-MD5 tracepoints
+Date: Wed, 05 Jun 2024 03:20:01 +0100
+Message-Id: <20240605-tcp_ao-tracepoints-v2-0-e91e161282ef@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240604-panel-mipi-dbi-rgb666-v4-5-d7c2bcb9b78d@tronnes.org>
-References: <20240604-panel-mipi-dbi-rgb666-v4-0-d7c2bcb9b78d@tronnes.org>
-In-Reply-To: <20240604-panel-mipi-dbi-rgb666-v4-0-d7c2bcb9b78d@tronnes.org>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <quic_jesszhan@quicinc.com>, Sam Ravnborg <sam@ravnborg.org>, 
- David Airlie <airlied@gmail.com>, Daniel Vetter <daniel@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, David Lechner <david@lechnology.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Kamlesh Gurudasani <kamlesh.gurudasani@gmail.com>, 
- Tommaso Merciai <tommaso.merciai@amarulasolutions.com>, 
- =?utf-8?q?Noralf_Tr=C3=B8nnes?= <noralf@tronnes.org>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717507238; l=2983;
- i=noralf@tronnes.org; s=20221122; h=from:subject:message-id;
- bh=NSd8WCcz3mEyAmd3gnS4mEuzeD9kKvKEnfrPdQSMiME=;
- b=QvW48LB0GjDH9HPC/0Wul41Y4uUWFArhOzcr2VcGbC9AKxHRLwJohaihMp/Uj0HpB3kw71GIh
- b+h1Tzn7380CdwyT3RcIDhiVoGjvR+At1vUxRDodcKEtokdw7R/1GiT
-X-Developer-Key: i=noralf@tronnes.org; a=ed25519;
- pk=0o9is4iddvvlrY3yON5SVtAbgPnVs0LfQsjfqR2Hvz8=
-X-Endpoint-Received: by B4 Relay for noralf@tronnes.org/20221122 with auth_id=8
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAFHLX2YC/12OwQqDMBBEf0X23G2TqAg99T+KlDVuag4mkgSxi
+ P/eGOilx2GY92aHyMFyhHu1Q+DVRutdDupSgZ7IvRntmDMooRrR1hKTXl7kMQXSvHjrUkRDimX
+ D0ohxhDxcAhu7FegTHCd0vCXoczNQZBwCOT2d0F93m8m6cznZmHz4lDerLPsiVqo5xfgnXiUKl
+ K2p5dCZWlD3oJAJdNV+hv44ji81NbuC3wAAAA==
+To: Eric Dumazet <edumazet@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, David Ahern <dsahern@kernel.org>, 
+ Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: Mohammad Nassiri <mnassiri@ciena.com>, Simon Horman <horms@kernel.org>, 
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Dmitry Safonov <0x7f454c46@gmail.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717554029; l=1682;
+ i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
+ bh=08b//uzEqLqk0Nl2SSIOHmj2RvoFoSkpZUV6ZyaQgQY=;
+ b=udDy88sE7uRWWaTJ4YsZBsDtpsCY2MWcWS33lc++xo+jeEiE4cCGOkwYZUnFrEZaR9TvdCDN9TXr
+ 16ekEXZLCdDL19+LuYWiuXoXItVyhUUo6sBV3bGBA+GvGXA0r9nM
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for these pixel format property values:
-- r5g6b5, RGB565
-- b6x2g6x2r6x2, BGR666
-
-BGR666 is presented to userspace as RGB888. The 2 LSB in each color
-are discarded by the controller. The pixel is sent on the wire using
-8 bits per word (little endian) so the controller sees it as BGR.
-
-RGB565 is the default if the property is not present.
-
-Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
-Signed-off-by: Noralf Trønnes <noralf@tronnes.org>
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- drivers/gpu/drm/tiny/panel-mipi-dbi.c | 55 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 54 insertions(+), 1 deletion(-)
+Changes in v2:
+- Fix the build with CONFIG_IPV6=m (Eric Dumazet)
+- Move unused keyid/rnext/maclen later in the series to the patch
+  that uses them (Simon Horman)
+- Reworked tcp_ao selftest lib to allow async tracing non-tcp events
+  (was working on a stress-test that needs trace_kfree_skb() event,
+   not in this series).
+- Separated selftest changes from kernel, as they now have a couple
+  of unrelated to tracepoints changes
+- Wrote a few lines of Documentation/
+- Link to v1: https://lore.kernel.org/r/20240224-tcp-ao-tracepoints-v1-0-15f31b7f30a7@arista.com
 
-diff --git a/drivers/gpu/drm/tiny/panel-mipi-dbi.c b/drivers/gpu/drm/tiny/panel-mipi-dbi.c
-index f80a141fcf36..f3aa2abce314 100644
---- a/drivers/gpu/drm/tiny/panel-mipi-dbi.c
-+++ b/drivers/gpu/drm/tiny/panel-mipi-dbi.c
-@@ -26,6 +26,49 @@
- 
- #include <video/mipi_display.h>
- 
-+struct panel_mipi_dbi_format {
-+	const char *name;
-+	u32 fourcc;
-+	unsigned int bpp;
-+};
-+
-+static const struct panel_mipi_dbi_format panel_mipi_dbi_formats[] = {
-+	{ "r5g6b5", DRM_FORMAT_RGB565, 16 },
-+	{ "b6x2g6x2r6x2", DRM_FORMAT_RGB888, 24 },
-+};
-+
-+static int panel_mipi_dbi_get_format(struct device *dev, u32 *formats, unsigned int *bpp)
-+{
-+	const char *format_name;
-+	unsigned int i;
-+	int ret;
-+
-+	formats[1] = DRM_FORMAT_XRGB8888;
-+
-+	ret = device_property_read_string(dev, "format", &format_name);
-+	if (ret) {
-+		/* Old Device Trees don't have this property */
-+		formats[0] = DRM_FORMAT_RGB565;
-+		*bpp = 16;
-+		return 0;
-+	}
-+
-+	for (i = 0; i < ARRAY_SIZE(panel_mipi_dbi_formats); i++) {
-+		const struct panel_mipi_dbi_format *format = &panel_mipi_dbi_formats[i];
-+
-+		if (strcmp(format_name, format->name))
-+			continue;
-+
-+		formats[0] = format->fourcc;
-+		*bpp = format->bpp;
-+		return 0;
-+	}
-+
-+	dev_err(dev, "Pixel format is not supported: '%s'\n", format_name);
-+
-+	return -EINVAL;
-+}
-+
- static const u8 panel_mipi_dbi_magic[15] = { 'M', 'I', 'P', 'I', ' ', 'D', 'B', 'I',
- 					     0, 0, 0, 0, 0, 0, 0 };
- 
-@@ -276,6 +319,9 @@ static int panel_mipi_dbi_spi_probe(struct spi_device *spi)
- 	struct drm_device *drm;
- 	struct mipi_dbi *dbi;
- 	struct gpio_desc *dc;
-+	unsigned int bpp;
-+	size_t buf_size;
-+	u32 formats[2];
- 	int ret;
- 
- 	dbidev = devm_drm_dev_alloc(dev, &panel_mipi_dbi_driver, struct mipi_dbi_dev, drm);
-@@ -323,7 +369,14 @@ static int panel_mipi_dbi_spi_probe(struct spi_device *spi)
- 	if (IS_ERR(dbidev->driver_private))
- 		return PTR_ERR(dbidev->driver_private);
- 
--	ret = mipi_dbi_dev_init(dbidev, &panel_mipi_dbi_pipe_funcs, &mode, 0);
-+	ret = panel_mipi_dbi_get_format(dev, formats, &bpp);
-+	if (ret)
-+		return ret;
-+
-+	buf_size = DIV_ROUND_UP(mode.hdisplay * mode.vdisplay * bpp, 8);
-+	ret = mipi_dbi_dev_init_with_formats(dbidev, &panel_mipi_dbi_pipe_funcs,
-+					     formats, ARRAY_SIZE(formats),
-+					     &mode, 0, buf_size);
- 	if (ret)
- 		return ret;
- 
+---
+Dmitry Safonov (6):
+      net/tcp: Use static_branch_tcp_{md5,ao} to drop ifdefs
+      net/tcp: Add a helper tcp_ao_hdr_maclen()
+      net/tcp: Move tcp_inbound_hash() from headers
+      net/tcp: Add tcp-md5 and tcp-ao tracepoints
+      net/tcp: Remove tcp_hash_fail()
+      Documentation/tcp-ao: Add a few lines on tracepoints
 
+ Documentation/networking/tcp_ao.rst |   9 +
+ include/net/tcp.h                   |  79 +--------
+ include/net/tcp_ao.h                |  42 +----
+ include/trace/events/tcp.h          | 317 ++++++++++++++++++++++++++++++++++++
+ net/ipv4/tcp.c                      |  87 ++++++++--
+ net/ipv4/tcp_ao.c                   |  24 +--
+ net/ipv4/tcp_input.c                |   8 +-
+ net/ipv4/tcp_ipv4.c                 |   8 +-
+ net/ipv4/tcp_output.c               |   2 +
+ 9 files changed, 434 insertions(+), 142 deletions(-)
+---
+base-commit: a6ba5125f10bd7307e775e585ad21a8f7eda1b59
+change-id: 20240531-tcp_ao-tracepoints-fa2e14e1f0dd
+
+Best regards,
 -- 
-2.45.1
+Dmitry Safonov <0x7f454c46@gmail.com>
 
