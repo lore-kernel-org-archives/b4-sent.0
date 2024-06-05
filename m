@@ -1,14 +1,13 @@
 From: Dmitry Safonov <0x7f454c46@gmail.com>
-Subject: [PATCH net-next v2 0/6] net/tcp: TCP-AO and TCP-MD5 tracepoints
-Date: Wed, 05 Jun 2024 03:20:01 +0100
-Message-Id: <20240605-tcp_ao-tracepoints-v2-0-e91e161282ef@gmail.com>
+Date: Wed, 05 Jun 2024 03:20:02 +0100
+Subject: [PATCH net-next v2 1/6] net/tcp: Use static_branch_tcp_{md5,ao} to
+ drop ifdefs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFHLX2YC/12OwQqDMBBEf0X23G2TqAg99T+KlDVuag4mkgSxi
- P/eGOilx2GY92aHyMFyhHu1Q+DVRutdDupSgZ7IvRntmDMooRrR1hKTXl7kMQXSvHjrUkRDimX
- D0ohxhDxcAhu7FegTHCd0vCXoczNQZBwCOT2d0F93m8m6cznZmHz4lDerLPsiVqo5xfgnXiUKl
- K2p5dCZWlD3oJAJdNV+hv44ji81NbuC3wAAAA==
+Message-Id: <20240605-tcp_ao-tracepoints-v2-1-e91e161282ef@gmail.com>
+References: <20240605-tcp_ao-tracepoints-v2-0-e91e161282ef@gmail.com>
+In-Reply-To: <20240605-tcp_ao-tracepoints-v2-0-e91e161282ef@gmail.com>
 To: Eric Dumazet <edumazet@google.com>, 
  "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
  Paolo Abeni <pabeni@redhat.com>, David Ahern <dsahern@kernel.org>, 
@@ -21,54 +20,94 @@ Cc: Mohammad Nassiri <mnassiri@ciena.com>, Simon Horman <horms@kernel.org>,
  linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  Dmitry Safonov <0x7f454c46@gmail.com>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717554029; l=1682;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717554029; l=2385;
  i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=08b//uzEqLqk0Nl2SSIOHmj2RvoFoSkpZUV6ZyaQgQY=;
- b=udDy88sE7uRWWaTJ4YsZBsDtpsCY2MWcWS33lc++xo+jeEiE4cCGOkwYZUnFrEZaR9TvdCDN9TXr
- 16ekEXZLCdDL19+LuYWiuXoXItVyhUUo6sBV3bGBA+GvGXA0r9nM
+ bh=vprIUxoXS6O+nQsZYJ0TnN8AY1IxVix3tPSqfwEiZ4I=;
+ b=vKqtpyxvZrc7sKLEyhxdDFQVM+OvC7W9pmwXl9I+h5yYG9H4K8nOFcJf4eG4CPPWPJUjb22sbl2L
+ r/7fpIdMBtXDXjHKSj60A4AvgZtm6FrU5cpHi7h+DqBsCtSeg51M
 X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
  pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
 X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+It's possible to clean-up some ifdefs by hiding that
+tcp_{md5,ao}_needed static branch is defined and compiled only
+under related configs, since commit 4c8530dc7d7d ("net/tcp: Only produce
+AO/MD5 logs if there are any keys").
+
 Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
-Changes in v2:
-- Fix the build with CONFIG_IPV6=m (Eric Dumazet)
-- Move unused keyid/rnext/maclen later in the series to the patch
-  that uses them (Simon Horman)
-- Reworked tcp_ao selftest lib to allow async tracing non-tcp events
-  (was working on a stress-test that needs trace_kfree_skb() event,
-   not in this series).
-- Separated selftest changes from kernel, as they now have a couple
-  of unrelated to tracepoints changes
-- Wrote a few lines of Documentation/
-- Link to v1: https://lore.kernel.org/r/20240224-tcp-ao-tracepoints-v1-0-15f31b7f30a7@arista.com
+ include/net/tcp.h   | 14 ++++----------
+ net/ipv4/tcp_ipv4.c |  8 ++------
+ 2 files changed, 6 insertions(+), 16 deletions(-)
 
----
-Dmitry Safonov (6):
-      net/tcp: Use static_branch_tcp_{md5,ao} to drop ifdefs
-      net/tcp: Add a helper tcp_ao_hdr_maclen()
-      net/tcp: Move tcp_inbound_hash() from headers
-      net/tcp: Add tcp-md5 and tcp-ao tracepoints
-      net/tcp: Remove tcp_hash_fail()
-      Documentation/tcp-ao: Add a few lines on tracepoints
+diff --git a/include/net/tcp.h b/include/net/tcp.h
+index 08c3b99501cf..f6dd035e0fa9 100644
+--- a/include/net/tcp.h
++++ b/include/net/tcp.h
+@@ -2386,21 +2386,15 @@ static inline void tcp_get_current_key(const struct sock *sk,
+ 
+ static inline bool tcp_key_is_md5(const struct tcp_key *key)
+ {
+-#ifdef CONFIG_TCP_MD5SIG
+-	if (static_branch_unlikely(&tcp_md5_needed.key) &&
+-	    key->type == TCP_KEY_MD5)
+-		return true;
+-#endif
++	if (static_branch_tcp_md5())
++		return key->type == TCP_KEY_MD5;
+ 	return false;
+ }
+ 
+ static inline bool tcp_key_is_ao(const struct tcp_key *key)
+ {
+-#ifdef CONFIG_TCP_AO
+-	if (static_branch_unlikely(&tcp_ao_needed.key) &&
+-	    key->type == TCP_KEY_AO)
+-		return true;
+-#endif
++	if (static_branch_tcp_ao())
++		return key->type == TCP_KEY_AO;
+ 	return false;
+ }
+ 
+diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
+index 04044605cadf..59c252b90b55 100644
+--- a/net/ipv4/tcp_ipv4.c
++++ b/net/ipv4/tcp_ipv4.c
+@@ -1052,12 +1052,10 @@ static void tcp_v4_timewait_ack(struct sock *sk, struct sk_buff *skb)
+ #else
+ 	if (0) {
+ #endif
+-#ifdef CONFIG_TCP_MD5SIG
+-	} else if (static_branch_unlikely(&tcp_md5_needed.key)) {
++	} else if (static_branch_tcp_md5()) {
+ 		key.md5_key = tcp_twsk_md5_key(tcptw);
+ 		if (key.md5_key)
+ 			key.type = TCP_KEY_MD5;
+-#endif
+ 	}
+ 
+ 	tcp_v4_send_ack(sk, skb,
+@@ -1126,8 +1124,7 @@ static void tcp_v4_reqsk_send_ack(const struct sock *sk, struct sk_buff *skb,
+ #else
+ 	if (0) {
+ #endif
+-#ifdef CONFIG_TCP_MD5SIG
+-	} else if (static_branch_unlikely(&tcp_md5_needed.key)) {
++	} else if (static_branch_tcp_md5()) {
+ 		const union tcp_md5_addr *addr;
+ 		int l3index;
+ 
+@@ -1136,7 +1133,6 @@ static void tcp_v4_reqsk_send_ack(const struct sock *sk, struct sk_buff *skb,
+ 		key.md5_key = tcp_md5_do_lookup(sk, l3index, addr, AF_INET);
+ 		if (key.md5_key)
+ 			key.type = TCP_KEY_MD5;
+-#endif
+ 	}
+ 
+ 	tcp_v4_send_ack(sk, skb, seq,
 
- Documentation/networking/tcp_ao.rst |   9 +
- include/net/tcp.h                   |  79 +--------
- include/net/tcp_ao.h                |  42 +----
- include/trace/events/tcp.h          | 317 ++++++++++++++++++++++++++++++++++++
- net/ipv4/tcp.c                      |  87 ++++++++--
- net/ipv4/tcp_ao.c                   |  24 +--
- net/ipv4/tcp_input.c                |   8 +-
- net/ipv4/tcp_ipv4.c                 |   8 +-
- net/ipv4/tcp_output.c               |   2 +
- 9 files changed, 434 insertions(+), 142 deletions(-)
----
-base-commit: a6ba5125f10bd7307e775e585ad21a8f7eda1b59
-change-id: 20240531-tcp_ao-tracepoints-fa2e14e1f0dd
-
-Best regards,
 -- 
-Dmitry Safonov <0x7f454c46@gmail.com>
+2.42.0
 
