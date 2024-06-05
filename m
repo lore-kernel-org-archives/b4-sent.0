@@ -1,61 +1,71 @@
-From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Wed, 05 Jun 2024 03:20:07 +0100
-Subject: [PATCH net-next v2 6/6] Documentation/tcp-ao: Add a few lines on
- tracepoints
+From: Kelvin Zhang <kelvin.zhang@amlogic.com>
+Subject: [PATCH v7 0/2] Add support for Amlogic S4 PWM
+Date: Wed, 05 Jun 2024 10:44:54 +0800
+Message-Id: <20240605-s4-pwm-v7-0-e822b271d7b0@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240605-tcp_ao-tracepoints-v2-6-e91e161282ef@gmail.com>
-References: <20240605-tcp_ao-tracepoints-v2-0-e91e161282ef@gmail.com>
-In-Reply-To: <20240605-tcp_ao-tracepoints-v2-0-e91e161282ef@gmail.com>
-To: Eric Dumazet <edumazet@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, David Ahern <dsahern@kernel.org>, 
- Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Jonathan Corbet <corbet@lwn.net>
-Cc: Mohammad Nassiri <mnassiri@ciena.com>, Simon Horman <horms@kernel.org>, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Dmitry Safonov <0x7f454c46@gmail.com>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717554029; l=1312;
- i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=YTvLVmZiUq3+/gRlZqmFldpsbcd2Jw9oBAFB4f9XdXg=;
- b=RsSaCGXsj/jPHoR99Jtp1W5cn2z9hTlKuGseFZRWBrjpDHbnkYvmAQoTdQ2gab432wl0lJZpXbKq
- 3bSuBg/UAW6PgkFv7AsJgMTpHAzCkqnU6C12t8cCkJU8XnmmkoHp
-X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
- pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
-X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
+X-B4-Tracking: v=1; b=H4sIACfRX2YC/2XNTQ7CIBCG4as0rMVMp5SKK+9hXBAYWhL7EzBV0
+ /Tu0i6qsctvwvMysUjBU2TnbGKBRh9936VRHTJmGt3VxL1NmyGgAIGCR8GHZ8vRVqDUSRpNxNL
+ jIZDzrzV0vaXd+Pjow3vtjmK57hKj4MCJEMk5K8DCRbf3vvbmaPqWLZGx/MIS8w2WCYJRuSudL
+ tDYPZS/UG1QJogVOFmAUA7/fpzn+QNi2SjkEAEAAA==
+To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pwm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Kelvin Zhang <kelvin.zhang@amlogic.com>, 
+ Junyi Zhao <junyi.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717555496; l=1446;
+ i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
+ bh=cLv+hU1PT81IObLXKDBLkjzJCQUWh86T/crgT79hhdQ=;
+ b=wMU0AqOpojggxkgYVyGOUVH5wqws3gXc/InRdro0/5QWNYeapYskxyO7vDK8TdYFIDz8lxoLx
+ /y4sXyNIrCXA+75/yXMzNRFBFodb0WC5XuzjZj7sbi+ABfEtmyLxcxL
+X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
+ pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
+X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
+Add support for Amlogic S4 PWM, including the driver and DTS.
+
+Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
 ---
- Documentation/networking/tcp_ao.rst | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Changes in v7:
+- Put devm_add_action_or_reset() into the for loop.
+- Remove the error handling of meson_pwm_init_channels_s4().
+- Remove the repeated device node 'pwm-a-pins'.
+- Some minor fixes and improvements.
+- Link to v6: https://lore.kernel.org/r/20240529-s4-pwm-v6-0-270f63049f20@amlogic.com
 
-diff --git a/Documentation/networking/tcp_ao.rst b/Documentation/networking/tcp_ao.rst
-index 8a58321acce7..e96e62d1dab3 100644
---- a/Documentation/networking/tcp_ao.rst
-+++ b/Documentation/networking/tcp_ao.rst
-@@ -337,6 +337,15 @@ TCP-AO per-socket counters are also duplicated with per-netns counters,
- exposed with SNMP. Those are ``TCPAOGood``, ``TCPAOBad``, ``TCPAOKeyNotFound``,
- ``TCPAORequired`` and ``TCPAODroppedIcmps``.
- 
-+For monitoring purposes, there are following TCP-AO trace events:
-+``tcp_hash_bad_header``, ``tcp_hash_ao_required``, ``tcp_ao_handshake_failure``,
-+``tcp_ao_wrong_maclen``, ``tcp_ao_wrong_maclen``, ``tcp_ao_key_not_found``,
-+``tcp_ao_rnext_request``, ``tcp_ao_synack_no_key``, ``tcp_ao_snd_sne_update``,
-+``tcp_ao_rcv_sne_update``. It's possible to separately enable any of them and
-+one can filter them by net-namespace, 4-tuple, family, L3 index, and TCP header
-+flags. If a segment has a TCP-AO header, the filters may also include
-+keyid, rnext, and maclen. SNE updates include the rolled-over numbers.
-+
- RFC 5925 very permissively specifies how TCP port matching can be done for
- MKTs::
- 
+Changes in v6:
+- Rename 'pwm_meson_s4_data' to 'pwm_s4_data'.
+- Rename 'meson_pwm_init_channels_meson_s4' to 'meson_pwm_init_channels_s4'.
+- Adjust the order of the device nodes according to their unit addresses.
+- Some minor improvements.
+- Link to v5: https://lore.kernel.org/r/20240521-s4-pwm-v5-0-0c91f5fa32cd@amlogic.com
 
+Changes in v5:
+- Add devm_add_action_or_reset for free clk when unloading.
+- Replace the underscores of node name with dashes.
+- Link to v4: https://lore.kernel.org/r/20240424-s4-pwm-v4-0-ee22effd40d0@amlogic.com
+
+---
+Junyi Zhao (2):
+      pwm: meson: Add support for Amlogic S4 PWM
+      arm64: dts: amlogic: Add Amlogic S4 PWM
+
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi | 199 ++++++++++++++++++++++++++++++
+ drivers/pwm/pwm-meson.c                   |  36 ++++++
+ 2 files changed, 235 insertions(+)
+---
+base-commit: 9d99040b1bc8dbf385a8aa535e9efcdf94466e19
+change-id: 20240424-s4-pwm-2d709986caee
+
+Best regards,
 -- 
-2.42.0
+Kelvin Zhang <kelvin.zhang@amlogic.com>
 
