@@ -1,14 +1,12 @@
 From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Subject: [PATCH v7 0/2] Add support for Amlogic S4 PWM
-Date: Wed, 05 Jun 2024 10:44:54 +0800
-Message-Id: <20240605-s4-pwm-v7-0-e822b271d7b0@amlogic.com>
+Date: Wed, 05 Jun 2024 10:44:55 +0800
+Subject: [PATCH v7 1/2] pwm: meson: Add support for Amlogic S4 PWM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACfRX2YC/2XNTQ7CIBCG4as0rMVMp5SKK+9hXBAYWhL7EzBV0
- /Tu0i6qsctvwvMysUjBU2TnbGKBRh9936VRHTJmGt3VxL1NmyGgAIGCR8GHZ8vRVqDUSRpNxNL
- jIZDzrzV0vaXd+Pjow3vtjmK57hKj4MCJEMk5K8DCRbf3vvbmaPqWLZGx/MIS8w2WCYJRuSudL
- tDYPZS/UG1QJogVOFmAUA7/fpzn+QNi2SjkEAEAAA==
+Message-Id: <20240605-s4-pwm-v7-1-e822b271d7b0@amlogic.com>
+References: <20240605-s4-pwm-v7-0-e822b271d7b0@amlogic.com>
+In-Reply-To: <20240605-s4-pwm-v7-0-e822b271d7b0@amlogic.com>
 To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
  Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
@@ -20,52 +18,88 @@ Cc: linux-pwm@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  devicetree@vger.kernel.org, Kelvin Zhang <kelvin.zhang@amlogic.com>, 
  Junyi Zhao <junyi.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717555496; l=1446;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717555496; l=2138;
  i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=cLv+hU1PT81IObLXKDBLkjzJCQUWh86T/crgT79hhdQ=;
- b=wMU0AqOpojggxkgYVyGOUVH5wqws3gXc/InRdro0/5QWNYeapYskxyO7vDK8TdYFIDz8lxoLx
- /y4sXyNIrCXA+75/yXMzNRFBFodb0WC5XuzjZj7sbi+ABfEtmyLxcxL
+ bh=PY1LLIlUoEaOvFEAiK0IUMl1TtUUL9kMLCoeJzffQ8s=;
+ b=O3AHvuK3WmFNKLuTbYCYnQMWZjsI0xJhfK2Quo47JUGzgeNTjg8IqB5it1K0WOKPzh02VbzRs
+ hyqZvrUF/TKCkHYHVAOnh1FYFmY/jadIYbIsTEeNXUFvQV8HZfz/wUi
 X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
  pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
 X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for Amlogic S4 PWM, including the driver and DTS.
+From: Junyi Zhao <junyi.zhao@amlogic.com>
 
+Add support for Amlogic S4 PWM.
+
+Signed-off-by: Junyi Zhao <junyi.zhao@amlogic.com>
 Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
 ---
-Changes in v7:
-- Put devm_add_action_or_reset() into the for loop.
-- Remove the error handling of meson_pwm_init_channels_s4().
-- Remove the repeated device node 'pwm-a-pins'.
-- Some minor fixes and improvements.
-- Link to v6: https://lore.kernel.org/r/20240529-s4-pwm-v6-0-270f63049f20@amlogic.com
+ drivers/pwm/pwm-meson.c | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
 
-Changes in v6:
-- Rename 'pwm_meson_s4_data' to 'pwm_s4_data'.
-- Rename 'meson_pwm_init_channels_meson_s4' to 'meson_pwm_init_channels_s4'.
-- Adjust the order of the device nodes according to their unit addresses.
-- Some minor improvements.
-- Link to v5: https://lore.kernel.org/r/20240521-s4-pwm-v5-0-0c91f5fa32cd@amlogic.com
+diff --git a/drivers/pwm/pwm-meson.c b/drivers/pwm/pwm-meson.c
+index b2f97dfb01bb..4f01847525b2 100644
+--- a/drivers/pwm/pwm-meson.c
++++ b/drivers/pwm/pwm-meson.c
+@@ -460,6 +460,34 @@ static int meson_pwm_init_channels_meson8b_v2(struct pwm_chip *chip)
+ 	return meson_pwm_init_clocks_meson8b(chip, mux_parent_data);
+ }
+ 
++static void meson_pwm_s4_put_clk(void *data)
++{
++	struct clk *clk = data;
++
++	clk_put(clk);
++}
++
++static int meson_pwm_init_channels_s4(struct pwm_chip *chip)
++{
++	struct device *dev = pwmchip_parent(chip);
++	struct device_node *np = dev->of_node;
++	struct meson_pwm *meson = to_meson_pwm(chip);
++	int i, ret;
++
++	for (i = 0; i < MESON_NUM_PWMS; i++) {
++		meson->channels[i].clk = of_clk_get(np, i);
++		if (IS_ERR(meson->channels[i].clk)) {
++			ret = PTR_ERR(meson->channels[i].clk);
++			dev_err_probe(dev, ret, "Failed to get clk\n");
++			return ret;
++		}
++		devm_add_action_or_reset(dev, meson_pwm_s4_put_clk,
++					 meson->channels[i].clk);
++	}
++
++	return 0;
++}
++
+ static const struct meson_pwm_data pwm_meson8b_data = {
+ 	.parent_names = { "xtal", NULL, "fclk_div4", "fclk_div3" },
+ 	.channels_init = meson_pwm_init_channels_meson8b_legacy,
+@@ -498,6 +526,10 @@ static const struct meson_pwm_data pwm_meson8_v2_data = {
+ 	.channels_init = meson_pwm_init_channels_meson8b_v2,
+ };
+ 
++static const struct meson_pwm_data pwm_s4_data = {
++	.channels_init = meson_pwm_init_channels_s4,
++};
++
+ static const struct of_device_id meson_pwm_matches[] = {
+ 	{
+ 		.compatible = "amlogic,meson8-pwm-v2",
+@@ -536,6 +568,10 @@ static const struct of_device_id meson_pwm_matches[] = {
+ 		.compatible = "amlogic,meson-g12a-ao-pwm-cd",
+ 		.data = &pwm_g12a_ao_cd_data
+ 	},
++	{
++		.compatible = "amlogic,meson-s4-pwm",
++		.data = &pwm_s4_data
++	},
+ 	{},
+ };
+ MODULE_DEVICE_TABLE(of, meson_pwm_matches);
 
-Changes in v5:
-- Add devm_add_action_or_reset for free clk when unloading.
-- Replace the underscores of node name with dashes.
-- Link to v4: https://lore.kernel.org/r/20240424-s4-pwm-v4-0-ee22effd40d0@amlogic.com
-
----
-Junyi Zhao (2):
-      pwm: meson: Add support for Amlogic S4 PWM
-      arm64: dts: amlogic: Add Amlogic S4 PWM
-
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi | 199 ++++++++++++++++++++++++++++++
- drivers/pwm/pwm-meson.c                   |  36 ++++++
- 2 files changed, 235 insertions(+)
----
-base-commit: 9d99040b1bc8dbf385a8aa535e9efcdf94466e19
-change-id: 20240424-s4-pwm-2d709986caee
-
-Best regards,
 -- 
-Kelvin Zhang <kelvin.zhang@amlogic.com>
+2.37.1
 
