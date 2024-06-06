@@ -1,262 +1,79 @@
-From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Date: Wed, 05 Jun 2024 10:44:56 +0800
-Subject: [PATCH v7 2/2] arm64: dts: amlogic: Add Amlogic S4 PWM
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Subject: [PATCH net-next v3 0/6] net/tcp: TCP-AO and TCP-MD5 tracepoints
+Date: Thu, 06 Jun 2024 01:58:17 +0100
+Message-Id: <20240606-tcp_ao-tracepoints-v3-0-13621988c09f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240605-s4-pwm-v7-2-e822b271d7b0@amlogic.com>
-References: <20240605-s4-pwm-v7-0-e822b271d7b0@amlogic.com>
-In-Reply-To: <20240605-s4-pwm-v7-0-e822b271d7b0@amlogic.com>
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@pengutronix.de>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pwm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Kelvin Zhang <kelvin.zhang@amlogic.com>, 
- Junyi Zhao <junyi.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717555496; l=4918;
- i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=IOVTUcHNUX3vbRXiLL96K2G4xrbHGVHRPhA7LupksYg=;
- b=4mI0mnFa16nSUyGIwKZLWj9HCy5F5bnnM4Pk6lY556JvNmPQTMDsdEM7zFknOT3eR5FxI6ufW
- KGLEAXC7MWuBa2q13I1n3GOW+ONoIiwqqvS/pUcrwptxEQI+rYXD6Wa
-X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
- pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
-X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
+X-B4-Tracking: v=1; b=H4sIAKoJYWYC/22OwWrDMBBEfyXo3G21aztpesp/lFDW8ioWNJKRh
+ EgI/vfKKqVQehyGeW8eKkl0ktTb7qGiFJdc8DV0TztlZvYXATfVrEhTr4cOIZvlgwPkyEaW4Hx
+ OYJkEe0Grp0nV4RLFuluDvisvGbzcsjrXZuQkMEb2Zt6gP93LlZ3flrNLOcR7e1Ow7ZuYqN/E8
+ EdcEDTgYDscD7bTfDhxrAR+NuHafIV+GXs9/He+UGXIEQX3SK8k9nSpbz6/Eeu6fgFqpbuNIgE
+ AAA==
+To: Eric Dumazet <edumazet@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, David Ahern <dsahern@kernel.org>, 
+ Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: Mohammad Nassiri <mnassiri@ciena.com>, Simon Horman <horms@kernel.org>, 
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Dmitry Safonov <0x7f454c46@gmail.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717635508; l=1866;
+ i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
+ bh=bcGRgEvEo62X/MLxlgNLFRIy+S5DmEwSGkybq/yerHo=;
+ b=sz9JlhZh10+BL8KGtQIEgSt9PbtbS3WiNVSbOjSb0K4eFnKvKIDkNpd74mFdySFe3vyCOqcsQE6w
+ 9htUSe5dCXdRKDh7tAmTS5t9vdh0K0mOARs2FqUy7YdGMr0bF8Mp
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Junyi Zhao <junyi.zhao@amlogic.com>
-
-Add device nodes for PWM_AB, PWM_CD, PWM_EF, PWM_GH and PWM_IJ
-along with GPIO PIN configs of each channel.
-
-Signed-off-by: Junyi Zhao <junyi.zhao@amlogic.com>
-Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi | 199 ++++++++++++++++++++++++++++++
- 1 file changed, 199 insertions(+)
+Changes in v3:
+- Unexported tcp_inbound_ao_hash() and made static (Eric Dumazet)
+- Link to v2: https://lore.kernel.org/r/20240605-tcp_ao-tracepoints-v2-0-e91e161282ef@gmail.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-index 10896f9df682..b686eacb9662 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-@@ -312,6 +312,160 @@ mux {
- 					};
- 				};
- 
-+				pwm_a_pins1: pwm-a-pins1 {
-+					mux {
-+						groups = "pwm_a_d";
-+						function = "pwm_a";
-+					};
-+				};
-+
-+				pwm_a_pins2: pwm-a-pins2 {
-+					mux {
-+						groups = "pwm_a_x";
-+						function = "pwm_a";
-+					};
-+				};
-+
-+				pwm_b_pins1: pwm-b-pins1 {
-+					mux {
-+						groups = "pwm_b_d";
-+						function = "pwm_b";
-+					};
-+				};
-+
-+				pwm_b_pins2: pwm-b-pins2 {
-+					mux {
-+						groups = "pwm_b_x";
-+						function = "pwm_b";
-+					};
-+				};
-+
-+				pwm_c_pins1: pwm-c-pins1 {
-+					mux {
-+						groups = "pwm_c_d";
-+						function = "pwm_c";
-+					};
-+				};
-+
-+				pwm_c_pins2: pwm-c-pins2 {
-+					mux {
-+						groups = "pwm_c_x";
-+						function = "pwm_c";
-+					};
-+				};
-+
-+				pwm_d_pins1: pwm-d-pins1 {
-+					mux {
-+						groups = "pwm_d_d";
-+						function = "pwm_d";
-+					};
-+				};
-+
-+				pwm_d_pins2: pwm-d-pins2 {
-+					mux {
-+						groups = "pwm_d_h";
-+						function = "pwm_d";
-+					};
-+				};
-+
-+				pwm_e_pins1: pwm-e-pins1 {
-+					mux {
-+						groups = "pwm_e_x";
-+						function = "pwm_e";
-+					};
-+				};
-+
-+				pwm_e_pins2: pwm-e-pins2 {
-+					mux {
-+						groups = "pwm_e_z";
-+						function = "pwm_e";
-+					};
-+				};
-+
-+				pwm_f_pins1: pwm-f-pins1 {
-+					mux {
-+						groups = "pwm_f_x";
-+						function = "pwm_f";
-+					};
-+				};
-+
-+				pwm_f_pins2: pwm-f-pins2 {
-+					mux {
-+						groups = "pwm_f_z";
-+						function = "pwm_f";
-+					};
-+				};
-+
-+				pwm_g_pins1: pwm-g-pins1 {
-+					mux {
-+						groups = "pwm_g_d";
-+						function = "pwm_g";
-+					};
-+				};
-+
-+				pwm_g_pins2: pwm-g-pins2 {
-+					mux {
-+						groups = "pwm_g_z";
-+						function = "pwm_g";
-+					};
-+				};
-+
-+				pwm_h_pins: pwm-h-pins {
-+					mux {
-+						groups = "pwm_h";
-+						function = "pwm_h";
-+					};
-+				};
-+
-+				pwm_i_pins1: pwm-i-pins1 {
-+					mux {
-+						groups = "pwm_i_d";
-+						function = "pwm_i";
-+					};
-+				};
-+
-+				pwm_i_pins2: pwm-i-pins2 {
-+					mux {
-+						groups = "pwm_i_h";
-+						function = "pwm_i";
-+					};
-+				};
-+
-+				pwm_j_pins: pwm-j-pins {
-+					mux {
-+						groups = "pwm_j";
-+						function = "pwm_j";
-+					};
-+				};
-+
-+				pwm_a_hiz_pins: pwm-a-hiz-pins {
-+					mux {
-+						groups = "pwm_a_hiz";
-+						function = "pwm_a_hiz";
-+					};
-+				};
-+
-+				pwm_b_hiz_pins: pwm-b-hiz-pins {
-+					mux {
-+						groups = "pwm_b_hiz";
-+						function = "pwm_b_hiz";
-+					};
-+				};
-+
-+				pwm_c_hiz_pins: pwm-c-hiz-pins {
-+					mux {
-+						groups = "pwm_c_hiz";
-+						function = "pwm_c_hiz";
-+					};
-+				};
-+
-+				pwm_g_hiz_pins: pwm-g-hiz-pins {
-+					mux {
-+						groups = "pwm_g_hiz";
-+						function = "pwm_g_hiz";
-+					};
-+				};
-+
- 				spicc0_pins_x: spicc0-pins_x {
- 					mux {
- 						groups = "spi_a_mosi_x",
-@@ -399,6 +553,51 @@ spicc0: spi@50000 {
- 				status = "disabled";
- 			};
- 
-+			pwm_ab: pwm@58000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x58000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_A>,
-+					 <&clkc_periphs CLKID_PWM_B>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
-+			pwm_cd: pwm@5a000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x5a000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_C>,
-+					 <&clkc_periphs CLKID_PWM_D>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
-+			pwm_ef: pwm@5c000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x5c000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_E>,
-+					 <&clkc_periphs CLKID_PWM_F>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
-+			pwm_gh: pwm@5e000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x5e000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_G>,
-+					 <&clkc_periphs CLKID_PWM_H>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
-+			pwm_ij: pwm@60000 {
-+				compatible = "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x60000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_I>,
-+					 <&clkc_periphs CLKID_PWM_J>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
- 			i2c0: i2c@66000 {
- 				compatible = "amlogic,meson-axg-i2c";
- 				reg = <0x0 0x66000 0x0 0x20>;
+Changes in v2:
+- Fix the build with CONFIG_IPV6=m (Eric Dumazet)
+- Move unused keyid/rnext/maclen later in the series to the patch
+  that uses them (Simon Horman)
+- Reworked tcp_ao selftest lib to allow async tracing non-tcp events
+  (was working on a stress-test that needs trace_kfree_skb() event,
+   not in this series).
+- Separated selftest changes from kernel, as they now have a couple
+  of unrelated to tracepoints changes
+- Wrote a few lines of Documentation/
+- Link to v1: https://lore.kernel.org/r/20240224-tcp-ao-tracepoints-v1-0-15f31b7f30a7@arista.com
 
+---
+Dmitry Safonov (6):
+      net/tcp: Use static_branch_tcp_{md5,ao} to drop ifdefs
+      net/tcp: Add a helper tcp_ao_hdr_maclen()
+      net/tcp: Move tcp_inbound_hash() from headers
+      net/tcp: Add tcp-md5 and tcp-ao tracepoints
+      net/tcp: Remove tcp_hash_fail()
+      Documentation/tcp-ao: Add a few lines on tracepoints
+
+ Documentation/networking/tcp_ao.rst |   9 +
+ include/net/tcp.h                   |  92 +----------
+ include/net/tcp_ao.h                |  42 +----
+ include/trace/events/tcp.h          | 317 ++++++++++++++++++++++++++++++++++++
+ net/ipv4/tcp.c                      |  90 ++++++++--
+ net/ipv4/tcp_ao.c                   |  24 +--
+ net/ipv4/tcp_input.c                |   8 +-
+ net/ipv4/tcp_ipv4.c                 |   8 +-
+ net/ipv4/tcp_output.c               |   2 +
+ 9 files changed, 435 insertions(+), 157 deletions(-)
+---
+base-commit: d223d1947dadec37d2bb5efbda9fc34c03b9a784
+change-id: 20240531-tcp_ao-tracepoints-fa2e14e1f0dd
+
+Best regards,
 -- 
-2.37.1
+Dmitry Safonov <0x7f454c46@gmail.com>
 
