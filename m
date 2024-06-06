@@ -1,315 +1,342 @@
-From: Fenglin Wu <quic_fenglinw@quicinc.com>
-Date: Thu, 06 Jun 2024 22:36:15 +0800
-Subject: [PATCH v3] leds: flash: leds-qcom-flash: limit LED current based
- on thermal condition
+From: Dumitru Ceclan <dumitru.ceclan@analog.com>
+Subject: [PATCH v6 0/9] Add support for AD411x
+Date: Thu, 06 Jun 2024 19:07:39 +0300
+Message-Id: <20240606-ad4111-v6-0-573981fb3e2e@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240606-qcom_flash_thermal_derating-v3-1-fa426776868e@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAF7JYWYC/33NSwqDMBCA4auUrJuSxEdsV71HKRKT0QxorImVF
- vHujUKh3cis/oH5ZiYBPEIgl8NMPEwYsHcxkuOBaKtcAxRNbCKYSFnGJB1035V1q4ItRwu+U21
- pwKsRXUNFzipeJ1pmUpMoPDzU+Nr02z22xTD2/r09m/i6/brnXXfiNI7JIC8gM5Lr6/BEjU6f4
- hFZ5Un8aDzZ10TUIOWKScOgKpJ/bVmWD++ol6oWAQAA
-To: kernel@quicinc.com, linux-arm-msm@vger.kernel.org, 
- Pavel Machek <pavel@ucw.cz>, Lee Jones <lee@kernel.org>
-Cc: linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org, 
- David Collins <quic_collinsd@quicinc.com>, 
- Subbaraman Narayanamurthy <quic_subbaram@quicinc.com>, 
- Fenglin Wu <quic_fenglinw@quicinc.com>
+X-B4-Tracking: v=1; b=H4sIAMveYWYC/2XPTU7DMBCG4atUXmPksWfsmhX3QCz8M2ktQYISF
+ IGq3J1pEUlRlp/l55V9UROPjSf1dLiokec2taGX4R8OqpxTf2LdqmxljUXjwOpUEQB0YM4OOWO
+ iTsnlj5G79nULvbzKPrfpcxi/b90Zrqe/CTTwl5hBG+3QwzHFUsjY59Snt+H0WIZ3dW3MdnMEu
+ DorzsbMPhFxl2nn3J2zYXVOXODIteZcHeedwzvntneiOI/eBGegGAo7R5vzxq2OxEX5G2GNqYT
+ jP7csyw85SIbdfQEAAA==
+To: Ceclan Dumitru <dumitru.ceclan@analog.com>
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dumitru Ceclan <mitrutzceclan@gmail.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
+ Nuno Sa <nuno.sa@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717684579; l=9512;
- i=quic_fenglinw@quicinc.com; s=20240327; h=from:subject:message-id;
- bh=P531IQymhBnENfovGdmHl6NdnzEbocY5fbBmjL2TIwc=;
- b=yT/xyG7L/3Uh9vixfusHvZIJxbdRRkx0q9hf4F5lqTEHy47hhiTnvGkz+FKx9qxgrC27u2Uov
- OL4Anca5D5nBJlnGulOJ84sesQnQDGQ6+IRlaJS5D/FskzNokNpZKUq
-X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
- pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
-X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20240327 with auth_id=146
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717690059; l=12662;
+ i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
+ bh=1r+Lg3EaW/EA9GRrV1L4tob+zJJvB4sD8rYnBPfbJCo=;
+ b=tLLJLOSGAw/yOgiFL3TdiWKt7rjz1JEKQ+I928ssHMyRwNi2iVkOfBl7lHY0rCk598nfxPp3h
+ wGlifRIAKcGBusNJDeJOKPIDPYq8Wlj7lIIEYZJh8zn4A27ysKkeA2C
+X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
+ pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
+X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The flash module has status bits to indicate different thermal
-conditions which are called as OTSTx. For each OTSTx status,
-there is a recommended total flash current for all channels to
-prevent the flash module entering into higher thermal level.
-For example, the total flash current should be limited to 1000mA/500mA
-respectively when the HW reaches the OTST1/OTST2 thermal level.
+This patch series adds support for the Analog Devices AD4111, AD4112,
+ AD4114, AD4115, AD4116 within the existing AD7173 driver.
 
-Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
+  The AD411X family encompasses a series of low power, low noise, 24-bit,
+sigma-delta analog-to-digital converters that offer a versatile range of
+specifications. They integrate an analog front end suitable for processing
+fully differential/single-ended and bipolar voltage inputs.
+
+Particularities of the models:
+- All ADCs have inputs with a precision voltage divider with a division
+ratio of 10.
+- AD4116 has 5 low level inputs without a voltage divider.
+- AD4111 and AD4112 support current inputs (0 mA to 20 mA) using a 50ohm
+shunt resistor.
+
+Discussions from this patch series have concluded with:
+-Datasheets mention single-ended and pseudo differential capabilities by
+ the means of connecting the negative input of a differential pair (IN-)
+ to a constant voltage supply and letting the positive input fluctuate.
+ This is not a special operating mode, it is a capability of the
+ differential channels to also measure such signals.
+
+-Single-ended and pseudo differential do not need any specific
+ configuration and cannot be differentiated from differential usage by
+ the driver side =>
+	offer adi,channel-type attribute to flag the usage of the channel
+
+-VINCOM is described as a dedicated pin for single-ended channels but as
+ seen in AD4116, it is a normal input connected to the cross-point
+ multiplexer (VIN10, VINCOM (single-ended or differential pair)).
+ This does not mean full functionality in any configuration:
+ AD4111:"If any two voltage inputs are paired in a configuration other
+ than what is described in this data sheet, the accuracy of the device
+ cannot be guaranteed".
+
+-ADCIN15 input pin from AD4116 is specified as the dedicated pin for
+ pseudo-differential but from the datasheet it results that this pin is
+ also able to measure single-ended and fully differential channels
+ ("ADCIN11, ADCIN15. (pseudo differential or differential pair)";
+  "An example is to connect the ADCIN15 pin externally to the AVSS
+   pin in a single-ended configuration")
+
+ As such, detecting the type of usage of a channel is not possible and
+will be the responsibility of the user to specify.
+ If the user has connected a non 0V (in regards to AVSS) supply to
+the negative input pin of a channel in a pseudo differential
+configuration, the offset of the measurement from AVSS will not be known
+from the driver and will need to be measured by other means.
+
+Datasheets:
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4111.pdf
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4112.pdf
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4114.pdf
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4115.pdf
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4116.pdf
+
+This series depends on patches:
+(iio: adc: ad7173: Use device_for_each_child_node_scoped() to simplify error paths.)
+https://lore.kernel.org/all/20240330190849.1321065-6-jic23@kernel.org
+(dt-bindings: iio: adc: Add single-channel property)
+https://lore.kernel.org/linux-iio/20240514120222.56488-5-alisa.roman@analog.com/
+
+And patch series:
+(AD7173 fixes)
+https://lore.kernel.org/all/20240521-ad7173-fixes-v1-0-8161cc7f3ad1@analog.com/
+
+Signed-off-by: Dumitru Ceclan <mitrutzceclan@gmail.com>
 ---
+Changes in v6:
+dt-bindings: iio: adc: Add common-mode-channel property
+- pick up rb tag
+
+dt-bindings: adc: ad7173: add support for ad411x
+- use ref flag instead of type: boolean
+- document (AVDD-AVSS)/5 as a power supply monitoring option
+
+iio: adc: ad_sigma_delta: add disable_one callback
+iio: adc: ad7173: refactor channel configuration parsing
+iio: adc: ad7173: refactor ain and vref selection
+<no changes>
+
+iio: adc: ad7173: add support for special inputs
+- rename (AVDD-AVSS)/5 from common input to pow_mon
+- restrict (AVDD-AVSS)/5 to only be correctly paired as
+  (AVDD-AVSS)/5+ 0 to ain0 (AVSS-AVDD)/5- to ain1
+
+iio: adc: ad7173: refactor device info structs
+- add space before '}' in device tables
+
+iio: adc: ad7173: document sampling frequency behaviour
+<no changes>
+
+iio: adc: ad7173: Add support for AD411x devices
+- fix typo
+- drop current channels enum
+- describe channel inputs array with comments
+- check for vincom input support when setting special_input
+- use fwnode_property_read_u32 instead of array for single value reads
+- drop remnant of previous version is_current_chan value setting
+- set ain value directly for current channels
+- add space before '}' in device tables
+
+- Link to v5: https://lore.kernel.org/r/20240603-ad4111-v5-0-9a9c54d9ac78@analog.com
+
+Changes in v5:
+dt-bindings: iio: adc: Add common-mode-channel property
+- create patch
+
+dt-bindings: adc: ad7173: add support for ad411x
+- remove "adi" from common-mode-channel property
+
+iio: adc: ad_sigma_delta: add disable_one callback
+- create patch
+
+iio: adc: ad7173: refactor channel configuration parsing
+<no changes>
+
+iio: adc: ad7173: refactor ain and vref selection
+- change function header to send ain[0] and ain[1] as two arguments
+- drop loop
+- drop reviewed-by tag
+
+iio: adc: ad7173: add support for special inputs
+- unroll the loop in the ain validation function
+- drop reviewed-by tag
+
+iio: adc: ad7173: refactor device info structs
+<no changes>
+
+iio: adc: ad7173: document sampling frequency behaviour
+- create patch
+
+iio: adc: ad7173: Add support for AD411x devices
+- rename VINCOM define from wildcard to specific models
+- sampling frequency comment: "to" -> "for"
+- don't set ain[1] for a second time in channel_parse, set
+  chan->channel2 value directly if the channel is a current channel
+- revert white space change in channel config parse
+- unroll the loop in the ain validation function
+- use new common-mode-channel property name
+- remove sampling frequency comment as included in a previous patch
+
+- Link to v4: https://lore.kernel.org/r/20240531-ad4111-v4-0-64607301c057@analog.com
+
+Changes in v4:
+dt-bindings: adc: ad7173: add support for ad411x
+- remove "adi,channel-type"
+- add "adi,common-mode-input" and "adi,current-channel" to use
+  single-channel with both single-ended/pseudo-differential and current
+  channels
+- add restrictions to patternProperties channel to restrict presence of
+  both diff-channels and single-channel
+   and
+  both "adi,current-channel" and "adi,common-mode-input"
+- update diff-channels description
+- update commit message to current state of the binding
+- add a second example to exemplify single-ended and current channels
+
+iio: adc: ad7173: refactor channel configuration parsing
+- picked up reviewed-by tag
+
+iio: adc: ad7173: refactor ain and vref selection
+- Moved reference error message from validate_reference() to
+  ad7173_get_ref_voltage_milli()
+- Changed from dev_err_probe to dev_err as function can be reached from
+  non probe paths
+- added AD7173_NO_AINS_PER_CHANNEL to remove ambiguity when using the
+  size of the ain array
+
+iio: adc: ad7173: add support for special inputs
+- picked up reviewed-by tag
+
+iio: adc: ad7173: refactor device info structs
+- create patch
+
+iio: adc: ad7173: Add support for AD411x devices
+- separate chip id defines for ad411<1,2,4>
+- fix device_info typos: voltage, VINCOM
+- rename num_voltage_inputs and num_voltage_inputs_with_divider to *_voltage_in*
+- subtract ch->cfg.bipolar directly
+- change to const ain argument in *_validate_current_ain()
+- change parsing to new dt structure for current and single-ended channels
+- drop adi,channel-type
+- refactor device info structs as the previous patch
+
+iio: adc: ad7173: Reduce device info struct size
+- remove patch as suggested by David Lechner as it would increase binary
+  size more than the savings done in RAM
+
+- Link to v3: https://lore.kernel.org/r/20240527-ad4111-v3-0-7e9eddbbd3eb@analog.com
+
 Changes in v3:
-- Fix coding style issues to address review comments in v2.
-- Link to v2: https://lore.kernel.org/r/20240513-qcom_flash_thermal_derating-v2-1-e41a07d0eb83@quicinc.com
+
+iio: adc: ad7173: fix buffers enablement for ad7176-2
+iio: adc: ad7173: Add ad7173_device_info names
+iio: adc: ad7173: Remove index from temp channel
+- Remove patches, send in separate series
+
+dt-bindings: adc: ad7173: add support for ad411x
+- fix VINCOM typo
+- switch current channel definition to use single-channel
+- remove pseudo-differential from adi,channel-type, specify that
+  single-ended will be used for that case as well
+- remove diff-channels from required, already defined in adc.yaml
+- update constraints to not permit single-channel for models without
+  current inputs
+
+iio: adc: ad7173: refactor channel configuration parsing
+- remove blank line from commit message
+
+iio: adc: ad7173: refactor ain and vref selection
+- remove blank space from commit message
+
+iio: adc: ad7173: add support for special inputs
+<no changes>
+
+iio: adc: ad7173: Add support for AD411x devices
+- remove pseudo diff channel type
+- change current channels dt parsing to single-channel
+- change module description from wild-card to "and similar"
+- add comment to document HW behavior when multiple channels are enabled
+  in buffered reading mode
+
+iio: adc: ad7173: Reduce device info struct size
+<no changes>
+
+- Link to v2: https://lore.kernel.org/r/20240514-ad4111-v2-0-29be6a55efb5@analog.com
 
 Changes in v2:
-- Update thermal threshold level 2 register definition for mvflash_4ch_regs.
-    Mvflash_4ch module thermal threshold level 2 configuration register
-    offset is 0x78, not succeeding from thermal threshold level 1 register 0x7a.
-    Hence it is not appropriate to use REG_FIELD_ID to define thermal threshold
-    register fileds like mvflash_3ch. Update to use REG_FIELD instead.
-- Link to v1: https://lore.kernel.org/r/20240509-qcom_flash_thermal_derating-v1-1-1d5e68e5d71c@quicinc.com
----
- drivers/leds/flash/leds-qcom-flash.c | 163 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 162 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/leds/flash/leds-qcom-flash.c b/drivers/leds/flash/leds-qcom-flash.c
-index 7c99a3039171..aa22686fafe0 100644
---- a/drivers/leds/flash/leds-qcom-flash.c
-+++ b/drivers/leds/flash/leds-qcom-flash.c
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0-only
- /*
-- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
-+ * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
-  */
- 
- #include <linux/bitfield.h>
-@@ -14,6 +14,9 @@
- #include <media/v4l2-flash-led-class.h>
- 
- /* registers definitions */
-+#define FLASH_REVISION_REG		0x00
-+#define FLASH_4CH_REVISION_V0P1		0x01
-+
- #define FLASH_TYPE_REG			0x04
- #define FLASH_TYPE_VAL			0x18
- 
-@@ -73,6 +76,16 @@
- 
- #define UA_PER_MA			1000
- 
-+/* thermal threshold constants */
-+#define OTST_3CH_MIN_VAL		3
-+#define OTST1_4CH_MIN_VAL		0
-+#define OTST1_4CH_V0P1_MIN_VAL		3
-+#define OTST2_4CH_MIN_VAL		0
-+
-+#define OTST1_MAX_CURRENT_MA		1000
-+#define OTST2_MAX_CURRENT_MA		500
-+#define OTST3_MAX_CURRENT_MA		200
-+
- enum hw_type {
- 	QCOM_MVFLASH_3CH,
- 	QCOM_MVFLASH_4CH,
-@@ -98,6 +111,9 @@ enum {
- 	REG_IRESOLUTION,
- 	REG_CHAN_STROBE,
- 	REG_CHAN_EN,
-+	REG_THERM_THRSH1,
-+	REG_THERM_THRSH2,
-+	REG_THERM_THRSH3,
- 	REG_MAX_COUNT,
- };
- 
-@@ -111,6 +127,9 @@ static struct reg_field mvflash_3ch_regs[REG_MAX_COUNT] = {
- 	REG_FIELD(0x47, 0, 5),                  /* iresolution	*/
- 	REG_FIELD_ID(0x49, 0, 2, 3, 1),         /* chan_strobe	*/
- 	REG_FIELD(0x4c, 0, 2),                  /* chan_en	*/
-+	REG_FIELD(0x56, 0, 2),			/* therm_thrsh1 */
-+	REG_FIELD(0x57, 0, 2),			/* therm_thrsh2 */
-+	REG_FIELD(0x58, 0, 2),			/* therm_thrsh3 */
- };
- 
- static struct reg_field mvflash_4ch_regs[REG_MAX_COUNT] = {
-@@ -123,6 +142,8 @@ static struct reg_field mvflash_4ch_regs[REG_MAX_COUNT] = {
- 	REG_FIELD(0x49, 0, 3),			/* iresolution	*/
- 	REG_FIELD_ID(0x4a, 0, 6, 4, 1),		/* chan_strobe	*/
- 	REG_FIELD(0x4e, 0, 3),			/* chan_en	*/
-+	REG_FIELD(0x7a, 0, 2),			/* therm_thrsh1 */
-+	REG_FIELD(0x78, 0, 2),			/* therm_thrsh2 */
- };
- 
- struct qcom_flash_data {
-@@ -130,9 +151,11 @@ struct qcom_flash_data {
- 	struct regmap_field     *r_fields[REG_MAX_COUNT];
- 	struct mutex		lock;
- 	enum hw_type		hw_type;
-+	u32			total_ma;
- 	u8			leds_count;
- 	u8			max_channels;
- 	u8			chan_en_bits;
-+	u8			revision;
- };
- 
- struct qcom_flash_led {
-@@ -143,6 +166,7 @@ struct qcom_flash_led {
- 	u32				max_timeout_ms;
- 	u32				flash_current_ma;
- 	u32				flash_timeout_ms;
-+	u32				current_in_use_ma;
- 	u8				*chan_id;
- 	u8				chan_count;
- 	bool				enabled;
-@@ -172,6 +196,127 @@ static int set_flash_module_en(struct qcom_flash_led *led, bool en)
- 	return rc;
- }
- 
-+static int update_allowed_flash_current(struct qcom_flash_led *led, u32 *current_ma, bool strobe)
-+{
-+	struct qcom_flash_data *flash_data = led->flash_data;
-+	u32 therm_ma, avail_ma, thrsh[3], min_thrsh, sts;
-+	int rc = 0;
-+
-+	mutex_lock(&flash_data->lock);
-+	/*
-+	 * Put previously allocated current into allowed budget in either of these two cases:
-+	 * 1) LED is disabled;
-+	 * 2) LED is enabled repeatedly
-+	 */
-+	if (!strobe || led->current_in_use_ma != 0) {
-+		if (flash_data->total_ma >= led->current_in_use_ma)
-+			flash_data->total_ma -= led->current_in_use_ma;
-+		else
-+			flash_data->total_ma = 0;
-+
-+		led->current_in_use_ma = 0;
-+		if (!strobe)
-+			goto unlock;
-+	}
-+
-+	/*
-+	 * Cache the default thermal threshold settings, and set them to the lowest levels before
-+	 * reading over-temp real time status. If over-temp has been triggered at the lowest
-+	 * threshold, it's very likely that it would be triggered at a higher (default) threshold
-+	 * when more flash current is requested. Prevent device from triggering over-temp condition
-+	 * by limiting the flash current for the new request.
-+	 */
-+	rc = regmap_field_read(flash_data->r_fields[REG_THERM_THRSH1], &thrsh[0]);
-+	if (rc < 0)
-+		goto unlock;
-+
-+	rc = regmap_field_read(flash_data->r_fields[REG_THERM_THRSH2], &thrsh[1]);
-+	if (rc < 0)
-+		goto unlock;
-+
-+	if (flash_data->hw_type == QCOM_MVFLASH_3CH) {
-+		rc = regmap_field_read(flash_data->r_fields[REG_THERM_THRSH3], &thrsh[2]);
-+		if (rc < 0)
-+			goto unlock;
-+	}
-+
-+	min_thrsh = OTST_3CH_MIN_VAL;
-+	if (flash_data->hw_type == QCOM_MVFLASH_4CH)
-+		min_thrsh = (flash_data->revision == FLASH_4CH_REVISION_V0P1) ?
-+			OTST1_4CH_V0P1_MIN_VAL : OTST1_4CH_MIN_VAL;
-+
-+	rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH1], min_thrsh);
-+	if (rc < 0)
-+		goto unlock;
-+
-+	if (flash_data->hw_type == QCOM_MVFLASH_4CH)
-+		min_thrsh = OTST2_4CH_MIN_VAL;
-+
-+	/*
-+	 * The default thermal threshold settings have been updated hence
-+	 * restore them if any fault happens starting from here.
-+	 */
-+	rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH2], min_thrsh);
-+	if (rc < 0)
-+		goto restore;
-+
-+	if (flash_data->hw_type == QCOM_MVFLASH_3CH) {
-+		rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH3], min_thrsh);
-+		if (rc < 0)
-+			goto restore;
-+	}
-+
-+	/* Read thermal level status to get corresponding derating flash current */
-+	rc = regmap_field_read(flash_data->r_fields[REG_STATUS2], &sts);
-+	if (rc)
-+		goto restore;
-+
-+	therm_ma = FLASH_TOTAL_CURRENT_MAX_UA / 1000;
-+	if (flash_data->hw_type == QCOM_MVFLASH_3CH) {
-+		if (sts & FLASH_STS_3CH_OTST3)
-+			therm_ma = OTST3_MAX_CURRENT_MA;
-+		else if (sts & FLASH_STS_3CH_OTST2)
-+			therm_ma = OTST2_MAX_CURRENT_MA;
-+		else if (sts & FLASH_STS_3CH_OTST1)
-+			therm_ma = OTST1_MAX_CURRENT_MA;
-+	} else {
-+		if (sts & FLASH_STS_4CH_OTST2)
-+			therm_ma = OTST2_MAX_CURRENT_MA;
-+		else if (sts & FLASH_STS_4CH_OTST1)
-+			therm_ma = OTST1_MAX_CURRENT_MA;
-+	}
-+
-+	/* Calculate the allowed flash current for the request */
-+	if (therm_ma <= flash_data->total_ma)
-+		avail_ma = 0;
-+	else
-+		avail_ma = therm_ma - flash_data->total_ma;
-+
-+	*current_ma = min_t(u32, *current_ma, avail_ma);
-+	led->current_in_use_ma = *current_ma;
-+	flash_data->total_ma += led->current_in_use_ma;
-+
-+	dev_dbg(led->flash.led_cdev.dev, "allowed flash current: %dmA, total current: %dmA\n",
-+					led->current_in_use_ma, flash_data->total_ma);
-+
-+restore:
-+	/* Restore to default thermal threshold settings */
-+	rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH1], thrsh[0]);
-+	if (rc < 0)
-+		goto unlock;
-+
-+	rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH2], thrsh[1]);
-+	if (rc < 0)
-+		goto unlock;
-+
-+	if (flash_data->hw_type == QCOM_MVFLASH_3CH)
-+		rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH3], thrsh[2]);
-+
-+unlock:
-+	mutex_unlock(&flash_data->lock);
-+	return rc;
-+}
-+
- static int set_flash_current(struct qcom_flash_led *led, u32 current_ma, enum led_mode mode)
- {
- 	struct qcom_flash_data *flash_data = led->flash_data;
-@@ -313,6 +458,10 @@ static int qcom_flash_strobe_set(struct led_classdev_flash *fled_cdev, bool stat
- 	if (rc)
- 		return rc;
- 
-+	rc = update_allowed_flash_current(led, &led->flash_current_ma, state);
-+	if (rc < 0)
-+		return rc;
-+
- 	rc = set_flash_current(led, led->flash_current_ma, FLASH_MODE);
- 	if (rc)
- 		return rc;
-@@ -429,6 +578,10 @@ static int qcom_flash_led_brightness_set(struct led_classdev *led_cdev,
- 	if (rc)
- 		return rc;
- 
-+	rc = update_allowed_flash_current(led, &current_ma, enable);
-+	if (rc < 0)
-+		return rc;
-+
- 	rc = set_flash_current(led, current_ma, TORCH_MODE);
- 	if (rc)
- 		return rc;
-@@ -703,6 +856,14 @@ static int qcom_flash_led_probe(struct platform_device *pdev)
- 		flash_data->hw_type = QCOM_MVFLASH_4CH;
- 		flash_data->max_channels = 4;
- 		regs = mvflash_4ch_regs;
-+
-+		rc = regmap_read(regmap, reg_base + FLASH_REVISION_REG, &val);
-+		if (rc < 0) {
-+			dev_err(dev, "Failed to read flash LED module revision, rc=%d\n", rc);
-+			return rc;
-+		}
-+
-+		flash_data->revision = val;
- 	} else {
- 		dev_err(dev, "flash LED subtype %#x is not yet supported\n", val);
- 		return -ENODEV;
+dt-bindings: adc: ad7173: add support for ad411x
+- Add constraint for missing avdd2-supply on ad411x
+- Change support for current channels to selecting the actual
+   diff-channels input values and activating the
+   adi,current-channel property
+- Add constraint for adi,current-channel
+- Add adi,channel-type to be able to differentiante in the driver
+   between single-ended, pseudo-differential and differential channels.
+- Update diff-channels description to decribe inputs beside the AINs
+
+iio: adc: ad7173: fix buffers enablement for ad7176-2
+- Specify ".has_input_buf = false" for AD7176-2
+- Drop fixes tag, specify that configuration bits are read only
+
+iio: adc: ad7173: refactor channel configuration parsing
+- Add Link and Suggested-by in commit message
+
+iio: adc: ad7173: refactor ain and vref selection
+- Improve commit message to express commit purpose
+- Refactor line wrappings due to reduced indent
+- Change AINs check to a loop
+
+iio: adc: ad7173: add support for special inputs
+- Create patch
+
+iio: adc: ad7173: Add ad7173_device_info names
+- Create patch
+
+iio: adc: ad7173: Remove index from temp channel
+- Justify in commit message userspace breakage
+- Remove index from the correct channel template
+
+iio: adc: ad7173: Add support for AD411x devices
+- Add missing validation for VCOM and inputs with voltage divider
+- Add missing validation for AD4116 low level inputs
+- Add missing ad7173_device_info names
+- Add support for setting differential flag depending on the channel type
+- Change current channel validation to use actual pin values
+- Combine multiple chipID reg values in a single define
+		(AD7173_AD4111_AD4112_AD4114_ID)
+- Rename num_inputs and num_inputs_with_divider to include voltage
+- Add comment to specify that num_voltage_inputs_with_divider does not
+   include the VCOM pin.
+- Change break to direct returns where possible in switch cases
+- Add fix for ad411x gpio's
+
+iio: adc: ad7173: Reduce device info struct size
+- Create patch
+
+- Link to v1: https://lore.kernel.org/r/20240401-ad4111-v1-0-34618a9cc502@analog.com
 
 ---
-base-commit: ca66b10a11da3c445c9c0ca1184f549bbe9061f2
-change-id: 20240507-qcom_flash_thermal_derating-260b1f3c757c
+Dumitru Ceclan (9):
+      dt-bindings: iio: adc: Add common-mode-channel property
+      dt-bindings: adc: ad7173: add support for ad411x
+      iio: adc: ad_sigma_delta: add disable_one callback
+      iio: adc: ad7173: refactor channel configuration parsing
+      iio: adc: ad7173: refactor ain and vref selection
+      iio: adc: ad7173: add support for special inputs
+      iio: adc: ad7173: refactor device info structs
+      iio: adc: ad7173: document sampling frequency behaviour
+      iio: adc: ad7173: Add support for AD411x devices
+
+ Documentation/devicetree/bindings/iio/adc/adc.yaml |  11 +
+ .../devicetree/bindings/iio/adc/adi,ad7173.yaml    | 194 +++++-
+ drivers/iio/adc/ad7124.c                           |  14 +-
+ drivers/iio/adc/ad7173.c                           | 688 +++++++++++++++------
+ drivers/iio/adc/ad_sigma_delta.c                   |   6 +
+ include/linux/iio/adc/ad_sigma_delta.h             |  14 +
+ 6 files changed, 731 insertions(+), 196 deletions(-)
+---
+base-commit: 02b664413a44903ef349bb70a3f1842cbcee9616
+change-id: 20240312-ad4111-7eeb34eb4a5f
 
 Best regards,
 -- 
-Fenglin Wu <quic_fenglinw@quicinc.com>
+Dumitru Ceclan <dumitru.ceclan@analog.com>
 
