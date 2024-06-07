@@ -1,311 +1,368 @@
-From: =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
-Date: Fri, 07 Jun 2024 14:20:41 +0200
-Subject: [PATCH] drivers: rtc: Add driver for SD2405AL.
+From: Dumitru Ceclan <dumitru.ceclan@analog.com>
+Subject: [PATCH v7 0/9] Add support for AD411x
+Date: Fri, 07 Jun 2024 17:53:06 +0300
+Message-Id: <20240607-ad4111-v7-0-97e3855900a0@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240607-rtc-sd2405al-v1-1-535971e7a866@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABj7YmYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDMwNz3aKSZN3iFCDHNDFHN9HA0sTc2Nw82dw4RQmopaAoNS2zAmxcdGx
- tLQAkhCUBXgAAAA==
-To: Alexandre Belloni <alexandre.belloni@bootlin.com>
-Cc: linux-kernel@vger.kernel.org, linux-rtc@vger.kernel.org, 
- =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIANIeY2YC/2XP3UrEMBCG4VtZcmwlk5lJGo+8D/EgP9PdgLbSS
+ lGW3rvZFdtKD7+Q5yW5qknGIpN6Ol3VKHOZytDX4R5OKl1Cf5am5LqV0YY0gmlCJgBonEhEkki
+ BO1Uvf4zSla976OW17kuZPofx+96d4Xb6myANf4kZGt0gWWiDT4m1eQ59eBvOj2l4V7fGbDbHQ
+ Ksz1RkfxQZm6SIfHO6ccavD6px4yTnGjBIPjnYOt3dSdZasdqghaXYHx5uzGlfH1fn6N6bsQ3L
+ twdm9s6uz1bFD30IXUYz8c8uy/ABVxkgltQEAAA==
+To: Ceclan Dumitru <dumitru.ceclan@analog.com>
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dumitru Ceclan <mitrutzceclan@gmail.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, Nuno Sa <nuno.sa@analog.com>, 
+ Jonathan Cameron <Jonathan.Cameron@huawei.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717762854; l=8656;
- i=gomba007@gmail.com; s=20230706; h=from:subject:message-id;
- bh=o55Vp0mMCEzpw/fLJzQQKvJN8c5V9EiKu+siRTYRlmU=;
- b=9ehydTPKxYu6pmN23RlaoZdAHUK9vz83IGqJ6+Qk5AnvtxrZS0Lw+PE4ZN61aTiLnwQwj7mC2
- NCUlfFbWiU9BqUGaKAKtFWCxwdGVmgebhFTRmU2xvAENzDgolYs0RAO
-X-Developer-Key: i=gomba007@gmail.com; a=ed25519;
- pk=iY9MjPCbud82ULS2PQJIq3QwjKyP/Sg730I6T2M8Y5U=
-X-Endpoint-Received: by B4 Relay for gomba007@gmail.com/20230706 with auth_id=60
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717771987; l=13864;
+ i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
+ bh=83zHWi92SBjDz/P+0SCuD811l/yPQ6k70TAj8jAU0dM=;
+ b=XVLet9vdUpiQFuM0y1051rr3QFgPxzLUyH1KnhCkWd0xO1FzswFvIWP7IkRuiBqppOkD4GLqO
+ A5AGrNZkGs+BFCOwzQpKw+QCq8hKymS3xab8t63cQDIeZJm/4Z9Mo3f
+X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
+ pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
+X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the DFRobot SD2405AL I2C RTC Module.
+This patch series adds support for the Analog Devices AD4111, AD4112,
+ AD4114, AD4115, AD4116 within the existing AD7173 driver.
 
-Datasheet:
-	https://image.dfrobot.com/image/data/TOY0021/SD2405AL%20datasheet%20(Angelo%20v0.1).pdf
+  The AD411X family encompasses a series of low power, low noise, 24-bit,
+sigma-delta analog-to-digital converters that offer a versatile range of
+specifications. They integrate an analog front end suitable for processing
+fully differential/single-ended and bipolar voltage inputs.
 
-Product:
-	https://www.dfrobot.com/product-1600.html
+Particularities of the models:
+- All ADCs have inputs with a precision voltage divider with a division
+ratio of 10.
+- AD4116 has 5 low level inputs without a voltage divider.
+- AD4111 and AD4112 support current inputs (0 mA to 20 mA) using a 50ohm
+shunt resistor.
 
-To instantiate (assuming device is connected to I2C-1)
-as root:
-	echo sd2405al 0x32 > /sys/bus/i2c/devices/i2c-1/new_device
-as user:
-	echo 'sd2405al 0x32' | sudo tee /sys/class/i2c-adapter/i2c-1/new_device
+Discussions from this patch series have concluded with:
+-Datasheets mention single-ended and pseudo differential capabilities by
+ the means of connecting the negative input of a differential pair (IN-)
+ to a constant voltage supply and letting the positive input fluctuate.
+ This is not a special operating mode, it is a capability of the
+ differential channels to also measure such signals.
 
-The driver is tested with:
-	+ hwclock
-	+ tools/testing/selftests/rtc/setdate
-	+ tools/testing/selftests/rtc/rtctest
+-Single-ended and pseudo differential do not need any specific
+ configuration and cannot be differentiated from differential usage by
+ the driver side =>
+	offer adi,channel-type attribute to flag the usage of the channel
 
-Signed-off-by: Tóth János <gomba007@gmail.com>
+-VINCOM is described as a dedicated pin for single-ended channels but as
+ seen in AD4116, it is a normal input connected to the cross-point
+ multiplexer (VIN10, VINCOM (single-ended or differential pair)).
+ This does not mean full functionality in any configuration:
+ AD4111:"If any two voltage inputs are paired in a configuration other
+ than what is described in this data sheet, the accuracy of the device
+ cannot be guaranteed".
+
+-ADCIN15 input pin from AD4116 is specified as the dedicated pin for
+ pseudo-differential but from the datasheet it results that this pin is
+ also able to measure single-ended and fully differential channels
+ ("ADCIN11, ADCIN15. (pseudo differential or differential pair)";
+  "An example is to connect the ADCIN15 pin externally to the AVSS
+   pin in a single-ended configuration")
+
+ As such, detecting the type of usage of a channel is not possible and
+will be the responsibility of the user to specify.
+ If the user has connected a non 0V (in regards to AVSS) supply to
+the negative input pin of a channel in a pseudo differential
+configuration, the offset of the measurement from AVSS will not be known
+from the driver and will need to be measured by other means.
+
+Datasheets:
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4111.pdf
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4112.pdf
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4114.pdf
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4115.pdf
+https://www.analog.com/media/en/technical-documentation/data-sheets/AD4116.pdf
+
+This series depends on patches:
+(iio: adc: ad7173: Use device_for_each_child_node_scoped() to simplify error paths.)
+https://lore.kernel.org/all/20240330190849.1321065-6-jic23@kernel.org
+(dt-bindings: iio: adc: Add single-channel property)
+https://lore.kernel.org/linux-iio/20240514120222.56488-5-alisa.roman@analog.com/
+
+And patch series:
+(AD7173 fixes)
+https://lore.kernel.org/all/20240521-ad7173-fixes-v1-0-8161cc7f3ad1@analog.com/
+
+Signed-off-by: Dumitru Ceclan <mitrutzceclan@gmail.com>
 ---
- MAINTAINERS                |   6 ++
- drivers/rtc/Kconfig        |  10 +++
- drivers/rtc/Makefile       |   1 +
- drivers/rtc/rtc-sd2405al.c | 195 +++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 212 insertions(+)
+Changes in v7:
+dt-bindings: iio: adc: Add common-mode-channel property
+dt-bindings: adc: ad7173: add support for ad411x
+- pick up rb tag
+iio: adc: ad_sigma_delta: add disable_one callback
+- pick up rb tag
+iio: adc: ad7173: refactor channel configuration parsing
+iio: adc: ad7173: refactor ain and vref selection
+- revert back to error message in validate_reference()
+iio: adc: ad7173: add support for special inputs
+- drop setting device_info flags to false
+iio: adc: ad7173: refactor device info structs
+- pick up rb tag
+- remove set flags to false from device_info structs
+iio: adc: ad7173: document sampling frequency behaviour
+- pick up rb tag
+iio: adc: ad7173: Add support for AD411x devices
+- drop setting device_info flags to false
+- give better error message for VINCOM input validation for models that
+  do not support it (this cannot be solved by checking ain == VINCOM
+  at the start of the function because the value 0x10 is valid for models
+  AD7173-8 and AD7175-8: AIN16)
+- move VINCOM mismatch check at the end; stop checking for VINCOM
+  support as already checked before
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 8754ac2c259d..c78587811433 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -6337,6 +6337,12 @@ F:	include/net/devlink.h
- F:	include/uapi/linux/devlink.h
- F:	net/devlink/
- 
-+DFROBOT SD2405AL RTC DRIVER
-+M:	Tóth János <gomba007@gmail.com>
-+L:	linux-rtc@vger.kernel.org
-+S:	Maintained
-+F:	drivers/rtc/rtc-sd2405al.c
-+
- DH ELECTRONICS IMX6 DHCOM/DHCOR BOARD SUPPORT
- M:	Christoph Niedermaier <cniedermaier@dh-electronics.com>
- L:	kernel@dh-electronics.com
-diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index 2a95b05982ad..15f1c0ba5759 100644
---- a/drivers/rtc/Kconfig
-+++ b/drivers/rtc/Kconfig
-@@ -743,6 +743,16 @@ config RTC_DRV_S5M
- 	  This driver can also be built as a module. If so, the module
- 	  will be called rtc-s5m.
- 
-+config RTC_DRV_SD2405AL
-+	tristate "DFRobot SD2405AL"
-+	select REGMAP_I2C
-+	help
-+	  If you say yes here you will get support for the
-+	  DFRobot SD2405AL I2C RTC Module.
-+
-+	  This driver can also be built as a module. If so, the module
-+	  will be called rtc-sd2405al.
-+
- config RTC_DRV_SD3078
- 	tristate "ZXW Shenzhen whwave SD3078"
- 	select REGMAP_I2C
-diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
-index 3004e372f25f..3d19feba1e1c 100644
---- a/drivers/rtc/Makefile
-+++ b/drivers/rtc/Makefile
-@@ -162,6 +162,7 @@ obj-$(CONFIG_RTC_DRV_S3C)	+= rtc-s3c.o
- obj-$(CONFIG_RTC_DRV_S5M)	+= rtc-s5m.o
- obj-$(CONFIG_RTC_DRV_SA1100)	+= rtc-sa1100.o
- obj-$(CONFIG_RTC_DRV_SC27XX)	+= rtc-sc27xx.o
-+obj-$(CONFIG_RTC_DRV_SD2405AL)	+= rtc-sd2405al.o
- obj-$(CONFIG_RTC_DRV_SD3078)   += rtc-sd3078.o
- obj-$(CONFIG_RTC_DRV_SH)	+= rtc-sh.o
- obj-$(CONFIG_RTC_DRV_SNVS)	+= rtc-snvs.o
-diff --git a/drivers/rtc/rtc-sd2405al.c b/drivers/rtc/rtc-sd2405al.c
-new file mode 100644
-index 000000000000..3250c4616aa3
---- /dev/null
-+++ b/drivers/rtc/rtc-sd2405al.c
-@@ -0,0 +1,195 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * RTC driver for the SD2405AL Real-Time Clock
-+ *
-+ * Datasheet:
-+ * https://image.dfrobot.com/image/data/TOY0021/SD2405AL%20datasheet%20(Angelo%20v0.1).pdf
-+ *
-+ * Copyright (C) 2024 Tóth János <gomba007@gmail.com>
-+ * Copyright (C) 2018 Zoro Li <long17.cool@163.com>
-+ */
-+
-+#include <linux/bcd.h>
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/regmap.h>
-+#include <linux/rtc.h>
-+
-+#define SD2405AL_REG_T_SEC	0x00
-+#define SD2405AL_REG_T_MIN	0x01
-+#define SD2405AL_REG_T_HOUR	0x02
-+#define SD2405AL_REG_T_WEEK	0x03
-+#define SD2405AL_REG_T_DAY	0x04
-+#define SD2405AL_REG_T_MON	0x05
-+#define SD2405AL_REG_T_YEAR	0x06
-+
-+#define SD2405AL_REG_A_SEC	0x07
-+#define SD2405AL_REG_A_MIN	0x08
-+#define SD2405AL_REG_A_HOUR	0x09
-+#define SD2405AL_REG_A_WEEK	0x0A
-+#define SD2405AL_REG_A_DAY	0x0B
-+#define SD2405AL_REG_A_MON	0x0C
-+#define SD2405AL_REG_A_YEAR	0x0D
-+#define SD2405AL_REG_A_EN	0x0E
-+
-+#define SD2405AL_REG_CTR1	0x0F
-+#define SD2405AL_REG_CTR2	0x10
-+#define SD2405AL_REG_CTR3	0x11
-+#define SD2405AL_REG_TTF	0x12
-+#define SD2405AL_REG_CTR	0x13	/* count down register */
-+
-+#define SD2405AL_REG_M_START	0x14	/* general RAM start */
-+#define SD2405AL_REG_M_END	0x1F	/* general RAM end */
-+
-+#define SD2405AL_NUM_T_REGS	(SD2405AL_REG_T_YEAR - SD2405AL_REG_T_SEC + 1)
-+
-+#define SD2405AL_BIT_24H	0x80
-+#define SD2405AL_BIT_12H_PM	0x20
-+
-+struct sd2405al {
-+	struct rtc_device	*rtc;
-+	struct regmap		*regmap;
-+};
-+
-+static int sd2405al_read_time(struct device *dev, struct rtc_time *time)
-+{
-+	u8 hour;
-+	u8 data[SD2405AL_NUM_T_REGS] = { 0 };
-+	struct i2c_client *client = to_i2c_client(dev);
-+	struct sd2405al *sd2405al = i2c_get_clientdata(client);
-+	int ret;
-+
-+	ret = regmap_bulk_read(sd2405al->regmap, SD2405AL_REG_T_SEC, data,
-+			       SD2405AL_NUM_T_REGS);
-+	if (ret < 0) {
-+		printk(KBUILD_MODNAME ": reading failed: %d\n", ret);
-+		return ret;
-+	}
-+
-+	time->tm_sec = bcd2bin(data[SD2405AL_REG_T_SEC] & 0x7F);
-+	time->tm_min = bcd2bin(data[SD2405AL_REG_T_MIN] & 0x7F);
-+
-+	hour = data[SD2405AL_REG_T_HOUR];
-+	if (hour & SD2405AL_BIT_24H)
-+		time->tm_hour = bcd2bin(hour & 0x3F);
-+	else
-+		if (hour & SD2405AL_BIT_12H_PM)
-+			time->tm_hour = bcd2bin(hour & 0x1F) + 12;
-+		else /* 12 hour mode, AM */
-+			time->tm_hour = bcd2bin(hour & 0x1F);
-+
-+	time->tm_mday = bcd2bin(data[SD2405AL_REG_T_DAY] & 0x3F);
-+	time->tm_wday = data[SD2405AL_REG_T_WEEK] & 0x07;
-+	time->tm_mon = bcd2bin(data[SD2405AL_REG_T_MON] & 0x1F) - 1;
-+	time->tm_year = bcd2bin(data[SD2405AL_REG_T_YEAR]) + 100;
-+
-+	return 0;
-+}
-+
-+static int sd2405al_set_time(struct device *dev, struct rtc_time *time)
-+{
-+	u8 data[SD2405AL_NUM_T_REGS];
-+	struct i2c_client *client = to_i2c_client(dev);
-+	struct sd2405al *sd2405al = i2c_get_clientdata(client);
-+	int ret;
-+
-+	data[SD2405AL_REG_T_SEC] = bin2bcd(time->tm_sec);
-+	data[SD2405AL_REG_T_MIN] = bin2bcd(time->tm_min);
-+	data[SD2405AL_REG_T_HOUR] = bin2bcd(time->tm_hour) | SD2405AL_BIT_24H;
-+	data[SD2405AL_REG_T_DAY] = bin2bcd(time->tm_mday);
-+	data[SD2405AL_REG_T_WEEK] = time->tm_wday & 0x07;
-+	data[SD2405AL_REG_T_MON] = bin2bcd(time->tm_mon) + 1;
-+	data[SD2405AL_REG_T_YEAR] = bin2bcd(time->tm_year - 100);
-+
-+	ret = regmap_bulk_write(sd2405al->regmap, SD2405AL_REG_T_SEC, data,
-+				SD2405AL_NUM_T_REGS);
-+	if (ret < 0) {
-+		printk(KBUILD_MODNAME ": writing failed: %d\n", ret);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct rtc_class_ops sd2405al_rtc_ops = {
-+	.read_time = sd2405al_read_time,
-+	.set_time = sd2405al_set_time,
-+};
-+
-+static const struct regmap_config sd2405al_regmap_conf = {
-+	.reg_bits = 8,
-+	.val_bits = 8,
-+	.max_register = SD2405AL_REG_M_END,
-+};
-+
-+static int sd2405al_probe(struct i2c_client *client)
-+{
-+	struct sd2405al *sd2405al;
-+	int func;
-+	int ret;
-+
-+	func = i2c_check_functionality(client->adapter, I2C_FUNC_I2C);
-+	if (!func) {
-+		printk(KBUILD_MODNAME ": invalid adapter\n");
-+		return -ENODEV;
-+	}
-+
-+	sd2405al = devm_kzalloc(&client->dev, sizeof(*sd2405al), GFP_KERNEL);
-+	if (!sd2405al) {
-+		printk(KBUILD_MODNAME ": unable to allocate memory\n");
-+		return -ENOMEM;
-+	}
-+
-+	sd2405al->regmap = devm_regmap_init_i2c(client, &sd2405al_regmap_conf);
-+	if (IS_ERR(sd2405al->regmap)) {
-+		printk(KBUILD_MODNAME ": unable to allocate regmap\n");
-+		return PTR_ERR(sd2405al->regmap);
-+	}
-+
-+	i2c_set_clientdata(client, sd2405al);
-+
-+	sd2405al->rtc = devm_rtc_allocate_device(&client->dev);
-+	if (IS_ERR(sd2405al->rtc)) {
-+		printk(KBUILD_MODNAME ": unable to allocate device\n");
-+		return PTR_ERR(sd2405al->rtc);
-+	}
-+
-+	sd2405al->rtc->ops = &sd2405al_rtc_ops;
-+	sd2405al->rtc->range_min = RTC_TIMESTAMP_BEGIN_2000;
-+	sd2405al->rtc->range_max = RTC_TIMESTAMP_END_2099;
-+
-+	ret = devm_rtc_register_device(sd2405al->rtc);
-+	if (ret < 0) {
-+		printk(KBUILD_MODNAME ": unable to register device: %d\n", ret);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct i2c_device_id sd2405al_id[] = {
-+	{ "sd2405al", 0 },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(i2c, sd2405al_id);
-+
-+static const __maybe_unused struct of_device_id sd2405al_of_match[] = {
-+	{ .compatible = "dfrobot,sd2405al" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, sd2405al_of_match);
-+
-+static struct i2c_driver sd2405al_driver = {
-+	.driver = {
-+		.name = "sd2405al",
-+		.of_match_table = of_match_ptr(sd2405al_of_match),
-+	},
-+	.probe = sd2405al_probe,
-+	.id_table = sd2405al_id,
-+};
-+
-+module_i2c_driver(sd2405al_driver);
-+
-+MODULE_AUTHOR("Tóth János");
-+MODULE_LICENSE("GPL");
-+MODULE_DESCRIPTION("SD2405AL RTC driver");
+- Link to v6: https://lore.kernel.org/r/20240606-ad4111-v6-0-573981fb3e2e@analog.com
+
+Changes in v6:
+dt-bindings: iio: adc: Add common-mode-channel property
+- pick up rb tag
+
+dt-bindings: adc: ad7173: add support for ad411x
+- use ref flag instead of type: boolean
+- document (AVDD-AVSS)/5 as a power supply monitoring option
+
+iio: adc: ad_sigma_delta: add disable_one callback
+iio: adc: ad7173: refactor channel configuration parsing
+iio: adc: ad7173: refactor ain and vref selection
+<no changes>
+
+iio: adc: ad7173: add support for special inputs
+- rename (AVDD-AVSS)/5 from common input to pow_mon
+- restrict (AVDD-AVSS)/5 to only be correctly paired as
+  (AVDD-AVSS)/5+ 0 to ain0 (AVSS-AVDD)/5- to ain1
+
+iio: adc: ad7173: refactor device info structs
+- add space before '}' in device tables
+
+iio: adc: ad7173: document sampling frequency behaviour
+<no changes>
+
+iio: adc: ad7173: Add support for AD411x devices
+- fix typo
+- drop current channels enum
+- describe channel inputs array with comments
+- check for vincom input support when setting special_input
+- use fwnode_property_read_u32 instead of array for single value reads
+- drop remnant of previous version is_current_chan value setting
+- set ain value directly for current channels
+- add space before '}' in device tables
+
+- Link to v5: https://lore.kernel.org/r/20240603-ad4111-v5-0-9a9c54d9ac78@analog.com
+
+Changes in v5:
+dt-bindings: iio: adc: Add common-mode-channel property
+- create patch
+
+dt-bindings: adc: ad7173: add support for ad411x
+- remove "adi" from common-mode-channel property
+
+iio: adc: ad_sigma_delta: add disable_one callback
+- create patch
+
+iio: adc: ad7173: refactor channel configuration parsing
+<no changes>
+
+iio: adc: ad7173: refactor ain and vref selection
+- change function header to send ain[0] and ain[1] as two arguments
+- drop loop
+- drop reviewed-by tag
+
+iio: adc: ad7173: add support for special inputs
+- unroll the loop in the ain validation function
+- drop reviewed-by tag
+
+iio: adc: ad7173: refactor device info structs
+<no changes>
+
+iio: adc: ad7173: document sampling frequency behaviour
+- create patch
+
+iio: adc: ad7173: Add support for AD411x devices
+- rename VINCOM define from wildcard to specific models
+- sampling frequency comment: "to" -> "for"
+- don't set ain[1] for a second time in channel_parse, set
+  chan->channel2 value directly if the channel is a current channel
+- revert white space change in channel config parse
+- unroll the loop in the ain validation function
+- use new common-mode-channel property name
+- remove sampling frequency comment as included in a previous patch
+
+- Link to v4: https://lore.kernel.org/r/20240531-ad4111-v4-0-64607301c057@analog.com
+
+Changes in v4:
+dt-bindings: adc: ad7173: add support for ad411x
+- remove "adi,channel-type"
+- add "adi,common-mode-input" and "adi,current-channel" to use
+  single-channel with both single-ended/pseudo-differential and current
+  channels
+- add restrictions to patternProperties channel to restrict presence of
+  both diff-channels and single-channel
+   and
+  both "adi,current-channel" and "adi,common-mode-input"
+- update diff-channels description
+- update commit message to current state of the binding
+- add a second example to exemplify single-ended and current channels
+
+iio: adc: ad7173: refactor channel configuration parsing
+- picked up reviewed-by tag
+
+iio: adc: ad7173: refactor ain and vref selection
+- Moved reference error message from validate_reference() to
+  ad7173_get_ref_voltage_milli()
+- Changed from dev_err_probe to dev_err as function can be reached from
+  non probe paths
+- added AD7173_NO_AINS_PER_CHANNEL to remove ambiguity when using the
+  size of the ain array
+
+iio: adc: ad7173: add support for special inputs
+- picked up reviewed-by tag
+
+iio: adc: ad7173: refactor device info structs
+- create patch
+
+iio: adc: ad7173: Add support for AD411x devices
+- separate chip id defines for ad411<1,2,4>
+- fix device_info typos: voltage, VINCOM
+- rename num_voltage_inputs and num_voltage_inputs_with_divider to *_voltage_in*
+- subtract ch->cfg.bipolar directly
+- change to const ain argument in *_validate_current_ain()
+- change parsing to new dt structure for current and single-ended channels
+- drop adi,channel-type
+- refactor device info structs as the previous patch
+
+iio: adc: ad7173: Reduce device info struct size
+- remove patch as suggested by David Lechner as it would increase binary
+  size more than the savings done in RAM
+
+- Link to v3: https://lore.kernel.org/r/20240527-ad4111-v3-0-7e9eddbbd3eb@analog.com
+
+Changes in v3:
+
+iio: adc: ad7173: fix buffers enablement for ad7176-2
+iio: adc: ad7173: Add ad7173_device_info names
+iio: adc: ad7173: Remove index from temp channel
+- Remove patches, send in separate series
+
+dt-bindings: adc: ad7173: add support for ad411x
+- fix VINCOM typo
+- switch current channel definition to use single-channel
+- remove pseudo-differential from adi,channel-type, specify that
+  single-ended will be used for that case as well
+- remove diff-channels from required, already defined in adc.yaml
+- update constraints to not permit single-channel for models without
+  current inputs
+
+iio: adc: ad7173: refactor channel configuration parsing
+- remove blank line from commit message
+
+iio: adc: ad7173: refactor ain and vref selection
+- remove blank space from commit message
+
+iio: adc: ad7173: add support for special inputs
+<no changes>
+
+iio: adc: ad7173: Add support for AD411x devices
+- remove pseudo diff channel type
+- change current channels dt parsing to single-channel
+- change module description from wild-card to "and similar"
+- add comment to document HW behavior when multiple channels are enabled
+  in buffered reading mode
+
+iio: adc: ad7173: Reduce device info struct size
+<no changes>
+
+- Link to v2: https://lore.kernel.org/r/20240514-ad4111-v2-0-29be6a55efb5@analog.com
+
+Changes in v2:
+
+dt-bindings: adc: ad7173: add support for ad411x
+- Add constraint for missing avdd2-supply on ad411x
+- Change support for current channels to selecting the actual
+   diff-channels input values and activating the
+   adi,current-channel property
+- Add constraint for adi,current-channel
+- Add adi,channel-type to be able to differentiante in the driver
+   between single-ended, pseudo-differential and differential channels.
+- Update diff-channels description to decribe inputs beside the AINs
+
+iio: adc: ad7173: fix buffers enablement for ad7176-2
+- Specify ".has_input_buf = false" for AD7176-2
+- Drop fixes tag, specify that configuration bits are read only
+
+iio: adc: ad7173: refactor channel configuration parsing
+- Add Link and Suggested-by in commit message
+
+iio: adc: ad7173: refactor ain and vref selection
+- Improve commit message to express commit purpose
+- Refactor line wrappings due to reduced indent
+- Change AINs check to a loop
+
+iio: adc: ad7173: add support for special inputs
+- Create patch
+
+iio: adc: ad7173: Add ad7173_device_info names
+- Create patch
+
+iio: adc: ad7173: Remove index from temp channel
+- Justify in commit message userspace breakage
+- Remove index from the correct channel template
+
+iio: adc: ad7173: Add support for AD411x devices
+- Add missing validation for VCOM and inputs with voltage divider
+- Add missing validation for AD4116 low level inputs
+- Add missing ad7173_device_info names
+- Add support for setting differential flag depending on the channel type
+- Change current channel validation to use actual pin values
+- Combine multiple chipID reg values in a single define
+		(AD7173_AD4111_AD4112_AD4114_ID)
+- Rename num_inputs and num_inputs_with_divider to include voltage
+- Add comment to specify that num_voltage_inputs_with_divider does not
+   include the VCOM pin.
+- Change break to direct returns where possible in switch cases
+- Add fix for ad411x gpio's
+
+iio: adc: ad7173: Reduce device info struct size
+- Create patch
+
+- Link to v1: https://lore.kernel.org/r/20240401-ad4111-v1-0-34618a9cc502@analog.com
 
 ---
-base-commit: c3f38fa61af77b49866b006939479069cd451173
-change-id: 20240607-rtc-sd2405al-a0947377c73d
+Dumitru Ceclan (9):
+      dt-bindings: iio: adc: Add common-mode-channel property
+      dt-bindings: adc: ad7173: add support for ad411x
+      iio: adc: ad_sigma_delta: add disable_one callback
+      iio: adc: ad7173: refactor channel configuration parsing
+      iio: adc: ad7173: refactor ain and vref selection
+      iio: adc: ad7173: add support for special inputs
+      iio: adc: ad7173: refactor device info structs
+      iio: adc: ad7173: document sampling frequency behaviour
+      iio: adc: ad7173: Add support for AD411x devices
+
+ Documentation/devicetree/bindings/iio/adc/adc.yaml |  11 +
+ .../devicetree/bindings/iio/adc/adi,ad7173.yaml    | 194 +++++-
+ drivers/iio/adc/ad7124.c                           |  14 +-
+ drivers/iio/adc/ad7173.c                           | 674 +++++++++++++++------
+ drivers/iio/adc/ad_sigma_delta.c                   |   6 +
+ include/linux/iio/adc/ad_sigma_delta.h             |  14 +
+ 6 files changed, 719 insertions(+), 194 deletions(-)
+---
+base-commit: 02b664413a44903ef349bb70a3f1842cbcee9616
+change-id: 20240312-ad4111-7eeb34eb4a5f
 
 Best regards,
 -- 
-Tóth János <gomba007@gmail.com>
+Dumitru Ceclan <dumitru.ceclan@analog.com>
 
