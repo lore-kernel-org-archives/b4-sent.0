@@ -1,61 +1,102 @@
-From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Fri, 07 Jun 2024 00:26:00 +0100
-Subject: [PATCH net-next v4 6/6] Documentation/tcp-ao: Add a few lines on
- tracepoints
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Subject: [PATCH v8 0/2] Add support for Loongson1 APB DMA
+Date: Fri, 07 Jun 2024 20:12:22 +0800
+Message-Id: <20240607-loongson1-dma-v8-0-f9992d257250@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240607-tcp_ao-tracepoints-v4-6-88dc245c1f39@gmail.com>
-References: <20240607-tcp_ao-tracepoints-v4-0-88dc245c1f39@gmail.com>
-In-Reply-To: <20240607-tcp_ao-tracepoints-v4-0-88dc245c1f39@gmail.com>
-To: Eric Dumazet <edumazet@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, David Ahern <dsahern@kernel.org>, 
- Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Jonathan Corbet <corbet@lwn.net>
-Cc: Mohammad Nassiri <mnassiri@ciena.com>, Simon Horman <horms@kernel.org>, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Dmitry Safonov <0x7f454c46@gmail.com>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1717716372; l=1312;
- i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=YTvLVmZiUq3+/gRlZqmFldpsbcd2Jw9oBAFB4f9XdXg=;
- b=yBoZ3XI+U9N6yjIg9OPIw3XAbfb8H+9R7O49RdavjZgRFul6opVKoRDnbgKXoKGQovgFtKxRwu+n
- /JokHbbvCr7fWvjB6R2vjraI3PWvVf5wugCuxEAWZ2bR5C3ZQDss
-X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
- pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
-X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
+X-B4-Tracking: v=1; b=H4sIACb5YmYC/12OzY7CIBRGX8WwntvwIxRczXsYFxRuWzK2TEAbt
+ em7D7iYNC6/xTnfWUnGFDCT02ElCZeQQ5zL0F8H4kY7DwjBl0045YIxTuEa4zzkODPwkwWmhO1
+ RtlR3hhTmN2EfHm/f+VJ2n+IEtzGh/bdQwzXjzEjRSH5UVAODHxzu5ax51cvvYbLh2rg4VeMY8
+ i2m5ztwUdVbLUcqmPpoWRRQMNQjd8K58rIT1Zal3dHcfNJtoUXrO6lLk0e5p7dt+wNv2zmPKgE
+ AAA==
+To: Keguang Zhang <keguang.zhang@gmail.com>, Vinod Koul <vkoul@kernel.org>, 
+ Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: linux-mips@vger.kernel.org, dmaengine@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Jiaxun Yang <jiaxun.yang@flygoat.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1717762386; l=2538;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=gF5n+zRaU3uzxOxtiMM2LdGmFoHvX4eM2/oevn8fkbA=;
+ b=jhRwfB+vpFFBOmYUzSKsBu7OoBFlD0dWV9a6WDqY9cVvwsGut+NtK4HH/lnWannivrsr60YEF
+ EEilt2pYzBFBsDacigUIn5g+pbjy1zwbxhOtweHvvZLG6VWJcV4NRUu
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
+Add the driver and dt-binding document for Loongson1 APB DMA.
+
+Changes in v8:
+- Change 'interrupts' property to an items list
+- Link to v7: https://lore.kernel.org/r/20240329-loongson1-dma-v7-0-37db58608de5@gmail.com
+
+Changes in v7:
+- Change the comptible to 'loongson,ls1*-apbdma' (suggested by Huacai Chen)
+- Update the title and description part accordingly
+- Rename the file to loongson,ls1b-apbdma.yaml
+- Add a compatible string for LS1A
+- Delete minItems of 'interrupts'
+- Change patterns of 'interrupt-names' to const
+- Rename the file to loongson1-apb-dma.c to keep the consistency
+- Update Kconfig and Makefile accordingly
+- Link to v6: https://lore.kernel.org/r/20240316-loongson1-dma-v6-0-90de2c3cc928@gmail.com
+
+Changes in v6:
+- Change the compatible to the fallback
+- Implement .device_prep_dma_cyclic for Loongson1 sound driver,
+- as well as .device_pause and .device_resume.
+- Set the limitation LS1X_DMA_MAX_DESC and put all descriptors
+- into one page to save memory
+- Move dma_pool_zalloc() into ls1x_dma_alloc_desc()
+- Drop dma_slave_config structure
+- Use .remove_new instead of .remove
+- Use KBUILD_MODNAME for the driver name
+- Improve the debug information
+- Some minor fixes
+
+Changes in v5:
+- Add the dt-binding document
+- Add DT support
+- Use DT information instead of platform data
+- Use chan_id of struct dma_chan instead of own id
+- Use of_dma_xlate_by_chan_id() instead of ls1x_dma_filter()
+- Update the author information to my official name
+
+Changes in v4:
+- Use dma_slave_map to find the proper channel.
+- Explicitly call devm_request_irq() and tasklet_kill().
+- Fix namespace issue.
+- Some minor fixes and cleanups.
+
+Changes in v3:
+- Rename ls1x_dma_filter_fn to ls1x_dma_filter.
+
+Changes in v2:
+- Change the config from 'DMA_LOONGSON1' to 'LOONGSON1_DMA',
+- and rearrange it in alphabetical order in Kconfig and Makefile.
+- Fix comment style.
+
 ---
- Documentation/networking/tcp_ao.rst | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Keguang Zhang (2):
+      dt-bindings: dma: Add Loongson-1 APB DMA
+      dmaengine: Loongson1: Add Loongson-1 APB DMA driver
 
-diff --git a/Documentation/networking/tcp_ao.rst b/Documentation/networking/tcp_ao.rst
-index 8a58321acce7..e96e62d1dab3 100644
---- a/Documentation/networking/tcp_ao.rst
-+++ b/Documentation/networking/tcp_ao.rst
-@@ -337,6 +337,15 @@ TCP-AO per-socket counters are also duplicated with per-netns counters,
- exposed with SNMP. Those are ``TCPAOGood``, ``TCPAOBad``, ``TCPAOKeyNotFound``,
- ``TCPAORequired`` and ``TCPAODroppedIcmps``.
- 
-+For monitoring purposes, there are following TCP-AO trace events:
-+``tcp_hash_bad_header``, ``tcp_hash_ao_required``, ``tcp_ao_handshake_failure``,
-+``tcp_ao_wrong_maclen``, ``tcp_ao_wrong_maclen``, ``tcp_ao_key_not_found``,
-+``tcp_ao_rnext_request``, ``tcp_ao_synack_no_key``, ``tcp_ao_snd_sne_update``,
-+``tcp_ao_rcv_sne_update``. It's possible to separately enable any of them and
-+one can filter them by net-namespace, 4-tuple, family, L3 index, and TCP header
-+flags. If a segment has a TCP-AO header, the filters may also include
-+keyid, rnext, and maclen. SNE updates include the rolled-over numbers.
-+
- RFC 5925 very permissively specifies how TCP port matching can be done for
- MKTs::
- 
+ .../bindings/dma/loongson,ls1b-apbdma.yaml         |  67 +++
+ drivers/dma/Kconfig                                |   9 +
+ drivers/dma/Makefile                               |   1 +
+ drivers/dma/loongson1-apb-dma.c                    | 665 +++++++++++++++++++++
+ 4 files changed, 742 insertions(+)
+---
+base-commit: d35b2284e966c0bef3e2182a5c5ea02177dd32e4
+change-id: 20231120-loongson1-dma-163afe5708b9
 
+Best regards,
 -- 
-2.42.0
+Keguang Zhang <keguang.zhang@gmail.com>
 
