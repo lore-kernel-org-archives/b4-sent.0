@@ -1,52 +1,57 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 11 Jun 2024 16:05:09 +0100
-Subject: [PATCH kmod 09/20] man: couple of grammar/language fixes
+Date: Tue, 11 Jun 2024 16:05:10 +0100
+Subject: [PATCH kmod 10/20] man: stop removing DISTCONFDIR lines
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240611-man-v1-9-bd6864d49639@gmail.com>
+Message-Id: <20240611-man-v1-10-bd6864d49639@gmail.com>
 References: <20240611-man-v1-0-bd6864d49639@gmail.com>
 In-Reply-To: <20240611-man-v1-0-bd6864d49639@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718118301; l=1047;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718118301; l=1089;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=i/S1VKUvrWzewIKxOnrx/yc1sFJXe+b7jnwP8i5BgJg=;
- b=hYjAjjydFSVKF9alkxRx4+pYhTYi7Wg9rj7wT3CgEh6ygQQoUTRfH406ViqcSDzdKuAQBzyNv
- avLOCPtY/a2ANeTqO0wV3ZuBse/XK9258dxdv5/m+4X29o3tTmdLetr
+ bh=MRlljoUHYBNK6Z6N5RhRZTe/uBXRrwuRR7bbc0V2Tww=;
+ b=jDYIVtlDROU2qm86wbM3x7+bMQdV8LcSZLozo7IibTiM6EI0bqgBydT9umRPZIfjkZiZnSjUf
+ 06rDjaipQJ5DztjhbfYZqKEAaMxSnObwvWEN3yiLG20oFRTm0bc1VP0
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+Presently when DISTCONFDIR is identical to /lib we remove the whole
+line, since the man pages already have an /lib instance.
+
+At the same time, there are in-text DISTCONFDIR entries, and removing
+the whole line outright breaks the documentation.
+
+Drop the removal line - worst case scenario we get a duplicate entry in
+the synopsis.
+
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- man/modprobe.8.scd | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ man/Makefile.am | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/man/modprobe.8.scd b/man/modprobe.8.scd
-index 9594798..b47908b 100644
---- a/man/modprobe.8.scd
-+++ b/man/modprobe.8.scd
-@@ -101,7 +101,7 @@ database.
- 	Naturally, this check is there for your protection, so using this option
- 	is dangerous unless you know what you're doing.
+diff --git a/man/Makefile.am b/man/Makefile.am
+index 0285fdd..25135e9 100644
+--- a/man/Makefile.am
++++ b/man/Makefile.am
+@@ -14,11 +14,8 @@ EXTRA_DIST = $(MAN5:%.5=%.5.scd) $(MAN8:%.8=%.8.scd)
+ CLEANFILES = $(dist_man_MANS)
  
--	This applies any modules inserted: both the module (or alias) on the
-+	This applies to any modules inserted: both the module (or alias) on the
- 	command line and any modules on which it depends.
- 
- *-f*, *--force*
-@@ -112,7 +112,7 @@ database.
- 	know what you are doing.
- 
- 	This applies to any modules inserted: both the module (or alias) on the
--	command line and any modules it on which it depends.
-+	command line and any modules on which it depends.
- 
- *-i*, *--ignore-install*, *--ignore-remove*
- 	This option causes *modprobe* to ignore *install* and *remove* commands
+ define generate_manpage
+-	$(AM_V_SCDOC)if [ '$(distconfdir)' != '/lib' ] ; then \
+-		sed -e 's|@DISTCONFDIR@|$(distconfdir)|g' $< ; \
+-	else \
+-		sed -e '/@DISTCONFDIR@/d' $< ; \
+-	fi | \
++	$(AM_V_SCDOC)cat $< | \
++	sed -e 's|@DISTCONFDIR@|$(distconfdir)|g' | \
+ 	sed -e 's|@MODULE_DIRECTORY@|$(module_directory)|g' | \
+ 	$(SCDOC) > $@
+ endef
 
 -- 
 2.45.0
