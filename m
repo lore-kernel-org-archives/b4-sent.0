@@ -1,104 +1,101 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 11 Jun 2024 16:05:07 +0100
-Subject: [PATCH kmod 07/20] man: misc punctuation fixes
+Date: Tue, 11 Jun 2024 16:05:08 +0100
+Subject: [PATCH kmod 08/20] man: some options take an argument, mention
+ that
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240611-man-v1-7-bd6864d49639@gmail.com>
+Message-Id: <20240611-man-v1-8-bd6864d49639@gmail.com>
 References: <20240611-man-v1-0-bd6864d49639@gmail.com>
 In-Reply-To: <20240611-man-v1-0-bd6864d49639@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718118301; l=2203;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718118301; l=3010;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=O4mu2lAXXNBJUE43RRJdu3Q2copKlkDtEMzQhh1mrMU=;
- b=bf27jvIz4dFXaGJTtn3WmEq7Zgtaa13pPfUuJXq51d7ys1Hhj/hkNjTTUpgK7iFsvLOXn/XBc
- 2L+zcwx2TYDBXrH6R9KTuA0wVDkBXsY5J2W7afxNZkQhqB+ASDSavUF
+ bh=ujIDwGUQV0FOmUpTbz7QEpgmiqJ/HE3dkWV2TNVcd/Y=;
+ b=ZxbtX+lbUqtIULQ/Cq8wTcj19J34F/PJt1NxsI/SqhMNsFbSIhC5lAhMLEwfawBX4TCn8LLe4
+ RcXN2fRQ3dvBudkctvV5FOgY5wdW2EQut1CaiE9CTq3m5+8ElEOH8ZS
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some commas and a full stop was missing ;-)
+For example modinfo -F requires the field name, although the
+documentation was missing the "field".
+
+Similarly modprobe has omissions, so let's fix those as well.
 
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- man/depmod.d.5.scd | 2 +-
- man/kmod.8.scd     | 4 ++--
- man/lsmod.8.scd    | 2 +-
- man/modprobe.8.scd | 2 +-
- man/rmmod.8.scd    | 2 +-
- 5 files changed, 6 insertions(+), 6 deletions(-)
+There are two different styles across the man pages:
+ -s, --short foo
+ -s foo, --short foo
 
-diff --git a/man/depmod.d.5.scd b/man/depmod.d.5.scd
-index 4e05b93..9cf99d5 100644
---- a/man/depmod.d.5.scd
-+++ b/man/depmod.d.5.scd
-@@ -73,7 +73,7 @@ exclude _excludedir_
- 	This specifies the trailing directories that will be excluded during the
- 	search for kernel modules.
+A proposal to resolve these comes with a later patch in this series.
+---
+ man/depmod.8.scd   | 2 +-
+ man/modinfo.8.scd  | 4 ++--
+ man/modprobe.8.scd | 6 +++---
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/man/depmod.8.scd b/man/depmod.8.scd
+index 80cc48d..7a2e84b 100644
+--- a/man/depmod.8.scd
++++ b/man/depmod.8.scd
+@@ -72,7 +72,7 @@ rather than the current kernel version (as returned by *uname -r*).
+ 	assumption can break especially when additionally updated third party
+ 	drivers are not correctly installed or were built incorrectly.
  
--	The _excludedir_ is the trailing directory to exclude
-+	The _excludedir_ is the trailing directory to exclude.
+-*-E*, *--symvers*
++*-E*, *--symvers* _Module.symvers_
+ 	When combined with the *-e* option, this reports any symbol versions
+ 	supplied by modules that do not match with the symbol versions provided
+ 	by the kernel in its _Module.symvers_. This option is mutually
+diff --git a/man/modinfo.8.scd b/man/modinfo.8.scd
+index 75267bc..9545257 100644
+--- a/man/modinfo.8.scd
++++ b/man/modinfo.8.scd
+@@ -31,8 +31,8 @@ architecture.
+ *-V*, *--version*
+ 	Print the *modinfo* version.
  
- # COPYRIGHT
- 
-diff --git a/man/kmod.8.scd b/man/kmod.8.scd
-index 7bef863..2007a2d 100644
---- a/man/kmod.8.scd
-+++ b/man/kmod.8.scd
-@@ -15,10 +15,10 @@ Linux Kernel modules. Most users will only run it using its other names.
- 
- # OPTIONS
- 
--*-V --version*
-+*-V*, *--version*
- 	Show the program version and exit.
- 
--*-h --help*
-+*-h*, *--help*
- 	Show the help message.
- 
- # COMMANDS
-diff --git a/man/lsmod.8.scd b/man/lsmod.8.scd
-index 7195cba..eb2f2e8 100644
---- a/man/lsmod.8.scd
-+++ b/man/lsmod.8.scd
-@@ -19,7 +19,7 @@ Maintained by Jon Masters and others.
- 
- # SEE ALSO
- 
--*insmod*(8), *modprobe*(8), *modinfo*(8) *depmod*(8)
-+*insmod*(8), *modprobe*(8), *modinfo*(8), *depmod*(8)
- 
- # AUTHORS
- 
+-*-F*, *--field*
+-	Only print this field value, one per line. This is most useful for
++*-F* _field_, *--field* _field_
++	Only print this _field_ value, one per line. This is most useful for
+ 	scripts. Field names are case-insensitive. Common fields (which may not
+ 	be in every module) include author, description, license, parm, depends,
+ 	and alias. There are often multiple parm, alias and depends fields. The
 diff --git a/man/modprobe.8.scd b/man/modprobe.8.scd
-index aac3a74..f4ce0be 100644
+index f4ce0be..9594798 100644
 --- a/man/modprobe.8.scd
 +++ b/man/modprobe.8.scd
-@@ -202,7 +202,7 @@ Maintained by Jon Masters and others.
+@@ -55,7 +55,7 @@ database.
+ 	configuration files (if any) to module names as well. It is usually used
+ 	by *udev*(7).
  
- # SEE ALSO
+-*-C*, *--config*
++*-C* _directory_, *--config* _directory_
+ 	This option overrides the default configuration directory
+ 	(/etc/modprobe.d).
  
--*modprobe.d*(5), *insmod*(8), *rmmod*(8), *lsmod*(8), *modinfo*(8) *depmod*(8)
-+*modprobe.d*(5), *insmod*(8), *rmmod*(8), *lsmod*(8), *modinfo*(8), *depmod*(8)
+@@ -151,14 +151,14 @@ database.
+ 	require it. Your distribution kernel may not have been built to support
+ 	removal of modules at all.
  
- # AUTHORS
+-*-w*, *--wait=*TIMEOUT_MSEC
++*-w* _TIMEOUT_MSEC_, *--wait* _TIMEOUT_MSEC_
+ 	This option causes *modprobe -r *to continue trying to remove a module
+ 	if it fails due to the module being busy, i.e. its refcount is not 0 at
+ 	the time the call is made. Modprobe tries to remove the module with an
+ 	incremental sleep time between each tentative up until the maximum wait
+ 	time in milliseconds passed in this option.
  
-diff --git a/man/rmmod.8.scd b/man/rmmod.8.scd
-index 7813448..e1f656f 100644
---- a/man/rmmod.8.scd
-+++ b/man/rmmod.8.scd
-@@ -39,7 +39,7 @@ Maintained by Jon Masters and others.
- 
- # SEE ALSO
- 
--*modprobe*(8), *insmod*(8), *lsmod*(8), *modinfo*(8) *depmod*(8)
-+*modprobe*(8), *insmod*(8), *lsmod*(8), *modinfo*(8), *depmod*(8)
- 
- # AUTHORS
+-*-S*, *--set-version*
++*-S* _version_, *--set-version* _version_
+ 	Set the kernel version, rather than using *uname*(2) to decide on the
+ 	kernel version (which dictates where to find the modules).
  
 
 -- 
