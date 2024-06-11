@@ -1,110 +1,2124 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Tue, 11 Jun 2024 16:05:03 +0100
-Subject: [PATCH kmod 03/20] man: build the scdoc based man pages
+Date: Tue, 11 Jun 2024 16:05:04 +0100
+Subject: [PATCH kmod 04/20] man: remove no longer used XML files
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240611-man-v1-3-bd6864d49639@gmail.com>
+Message-Id: <20240611-man-v1-4-bd6864d49639@gmail.com>
 References: <20240611-man-v1-0-bd6864d49639@gmail.com>
 In-Reply-To: <20240611-man-v1-0-bd6864d49639@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718118301; l=2553;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718118301; l=78136;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=dl1+/dNbs/jvTy3ZNqBX6ojBIXb0bXg0KM+9qRR65Go=;
- b=4ZqlwLgzt57gf07nKUiCplQWZHXc+cXWwHxTbFJA7pTmO9EmXRWt+R7SW+UwUP1IVVhhQs30s
- LNzhaz0xKykB8+g2ZwgnsVpAeQ7+kHr+wZE7+kTvpF+DL+jDBOJRLGp
+ bh=oX7xb+rAXg7K4IjY0UZneA6eTjRPIMXvRYT/r4tSzU8=;
+ b=aHOJVtl+Nt9lvf7uePVPD3MlHl1FVQ5EHIti6PyBtGb/lBO1K1Or8Lg4OxUiKUvXxy+qgkf9Z
+ 1A98z5OPRDZAWo/EVwrOb4f5ojLTRBZQ+dXSwS8733h1peA5uBLf3NK
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Note that scdoc does not handle natively handle the dummy
-modules.dep.bin.5 entry, so we need to create one manually.
-
-Not a big deal, since it's single static line anyway.
-
-Also: pkg-config --variable=scdoc scdoc, produces the full executable
-and path, although for now we stick with the AC_PATH_PROG approach.
-
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- configure.ac          |  2 +-
- man/Makefile.am       | 24 ++++++++----------------
- man/modules.dep.bin.5 |  1 +
- 3 files changed, 10 insertions(+), 17 deletions(-)
+ man/depmod.8.xml      | 343 -------------------------------
+ man/depmod.d.5.xml    | 164 ---------------
+ man/insmod.8.xml      |  87 --------
+ man/kmod.8.xml        | 120 -----------
+ man/lsmod.8.xml       |  73 -------
+ man/modinfo.8.xml     | 201 -------------------
+ man/modprobe.8.xml    | 544 --------------------------------------------------
+ man/modprobe.d.5.xml  | 265 ------------------------
+ man/modules.dep.5.xml |  80 --------
+ man/rmmod.8.xml       | 148 --------------
+ 10 files changed, 2025 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index 9527aa2..dcf7479 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -32,7 +32,7 @@ AC_PROG_SED
- AC_PROG_MKDIR_P
- AC_PROG_LN_S
- PKG_PROG_PKG_CONFIG
--AC_PATH_PROG([XSLTPROC], [xsltproc])
-+AC_PATH_PROG([SCDOC], [scdoc])
- 
- AC_PROG_CC_C99
- 
-diff --git a/man/Makefile.am b/man/Makefile.am
-index d62ff21..0285fdd 100644
---- a/man/Makefile.am
-+++ b/man/Makefile.am
-@@ -2,37 +2,29 @@ MAN5 = depmod.d.5 modprobe.d.5 modules.dep.5
- MAN8 = kmod.8 depmod.8 insmod.8 lsmod.8 rmmod.8 modprobe.8 modinfo.8
- MAN_STUB = modules.dep.bin.5
- 
--AM_V_XSLT = $(AM_V_XSLT_$(V))
--AM_V_XSLT_ = $(AM_V_XSLT_$(AM_DEFAULT_VERBOSITY))
--AM_V_XSLT_0 = @echo "  XSLT    " $@;
+diff --git a/man/depmod.8.xml b/man/depmod.8.xml
+deleted file mode 100644
+index fce2a4a..0000000
+--- a/man/depmod.8.xml
++++ /dev/null
+@@ -1,343 +0,0 @@
+-<?xml version='1.0'?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+-        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="depmod">
+-  <refentryinfo>
+-    <title>depmod</title>
+-    <productname>kmod</productname>
 -
--XSLT = $(if $(XSLTPROC), $(XSLTPROC), xsltproc)
-+AM_V_SCDOC = $(AM_V_SCDOC_$(V))
-+AM_V_SCDOC_ = $(AM_V_SCDOR_$(AM_DEFAULT_VERBOSITY))
-+AM_V_SCDOC_0 = @echo "  SCDOC    " $@;
- 
- if BUILD_TOOLS
- dist_man_MANS = $(MAN5) $(MAN8) $(MAN_STUB)
--modules.dep.bin.5: modules.dep.5
- endif
- 
--EXTRA_DIST = $(MAN5:%.5=%.5.xml) $(MAN8:%.8=%.8.xml)
-+EXTRA_DIST = $(MAN5:%.5=%.5.scd) $(MAN8:%.8=%.8.scd)
- CLEANFILES = $(dist_man_MANS)
- 
- define generate_manpage
--	$(AM_V_XSLT)if [ '$(distconfdir)' != '/lib' ] ; then \
-+	$(AM_V_SCDOC)if [ '$(distconfdir)' != '/lib' ] ; then \
- 		sed -e 's|@DISTCONFDIR@|$(distconfdir)|g' $< ; \
- 	else \
- 		sed -e '/@DISTCONFDIR@/d' $< ; \
- 	fi | \
- 	sed -e 's|@MODULE_DIRECTORY@|$(module_directory)|g' | \
--	$(XSLT) \
--		-o $@ \
--		--nonet \
--		--stringparam man.output.quietly 1 \
--		--param funcsynopsis.style "'ansi'" \
--		http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl -
-+	$(SCDOC) > $@
- endef
- 
--%.5: %.5.xml
-+%.5: %.5.scd
- 	$(generate_manpage)
- 
--%.8: %.8.xml
-+%.8: %.8.scd
- 	$(generate_manpage)
-diff --git a/man/modules.dep.bin.5 b/man/modules.dep.bin.5
-new file mode 100644
-index 0000000..795636b
---- /dev/null
-+++ b/man/modules.dep.bin.5
-@@ -0,0 +1 @@
-+.so modules.dep.5
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Jon</firstname>
+-        <surname>Masters</surname>
+-        <email>jcm@jonmasters.org</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Robby</firstname>
+-        <surname>Workman</surname>
+-        <email>rworkman@slackware.com</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-  <refmeta>
+-    <refentrytitle>depmod</refentrytitle>
+-    <manvolnum>8</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>depmod</refname>
+-    <refpurpose>
+-      Generate <filename>modules.dep</filename> and map files.
+-    </refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <cmdsynopsis>
+-      <command>depmod</command>
+-      <arg><option>-b <replaceable>basedir</replaceable></option></arg>
+-      <arg><option>-o <replaceable>outdir</replaceable></option></arg>
+-      <arg><option>-e</option></arg>
+-      <arg><option>-E <replaceable>Module.symvers</replaceable></option></arg>
+-      <arg><option>-F <replaceable>System.map</replaceable></option></arg>
+-      <arg><option>-n</option></arg>
+-      <arg><option>-v</option></arg>
+-      <arg><option>-A</option></arg>
+-      <arg><option>-P <replaceable>prefix</replaceable></option></arg>
+-      <arg><option>-w</option></arg>
+-      <arg><option><replaceable>version</replaceable></option></arg>
+-    </cmdsynopsis>
+-
+-    <cmdsynopsis>
+-      <command>depmod</command>
+-      <arg><option>-e</option></arg>
+-      <arg><option>-E <replaceable>Module.symvers</replaceable></option></arg>
+-      <arg><option>-F <replaceable>System.map</replaceable></option></arg>
+-      <arg><option>-n</option></arg>
+-      <arg><option>-v</option></arg>
+-      <arg><option>-P <replaceable>prefix</replaceable></option></arg>
+-      <arg><option>-w</option></arg>
+-      <arg><option><replaceable>version</replaceable></option></arg>
+-      <arg rep='repeat'><option><replaceable>filename</replaceable></option></arg>
+-    </cmdsynopsis>
+-  </refsynopsisdiv>
+-
+-  <refsect1><title>DESCRIPTION</title>
+-    <para>
+-      Linux kernel modules can provide services (called "symbols") for other
+-      modules to use (using one of the EXPORT_SYMBOL variants in the code).  If
+-      a second module uses this symbol, that second module clearly depends on
+-      the first module.  These dependencies can get quite complex.
+-    </para>
+-    <para> <command>depmod</command> creates a list of module dependencies by
+-      reading each module under
+-      <filename>@MODULE_DIRECTORY@/</filename><replaceable>version</replaceable> and
+-      determining what symbols it exports and what symbols it needs.  By
+-      default, this list is written to <filename>modules.dep</filename>, and a
+-      binary hashed version named <filename>modules.dep.bin</filename>, in the
+-      same directory.  If filenames are given on the command line, only those
+-      modules are examined (which is rarely useful unless all modules are
+-      listed).  <command>depmod</command> also creates a list of symbols
+-      provided by modules in the file named
+-      <filename>modules.symbols</filename> and its binary hashed version,
+-      <filename>modules.symbols.bin</filename>.  Finally,
+-      <command>depmod</command> will output a file named
+-      <filename>modules.devname</filename> if modules supply special device
+-      names (devname) that should be populated in /dev on boot (by a utility
+-      such as systemd-tmpfiles).
+-    </para>
+-    <para> If a <replaceable>version</replaceable> is provided, then that kernel
+-      version's module directory is used rather than the current kernel version
+-      (as returned by <command>uname -r</command>).
+-    </para>
+-  </refsect1>
+-  <refsect1><title>OPTIONS</title>
+-    <variablelist>
+-      <varlistentry>
+-        <term>
+-          <option>-a</option>
+-        </term>
+-        <term>
+-          <option>--all</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Probe all modules. This option is enabled by default if no
+-            file names are given in the command-line.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-A</option>
+-        </term>
+-        <term>
+-          <option>--quick</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            This option scans to see if any modules are newer than the
+-            <filename>modules.dep</filename> file before any work is done:
+-            if not, it silently exits rather than regenerating the files.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-b <replaceable>basedir</replaceable></option>
+-        </term>
+-        <term>
+-          <option>--basedir <replaceable>basedir</replaceable></option>
+-        </term>
+-        <listitem>
+-          <para>
+-            If your modules are not currently in the (normal) directory
+-            <filename>@MODULE_DIRECTORY@/</filename><replaceable>version</replaceable>,
+-            but in a staging area, you can specify a
+-            <replaceable>basedir</replaceable> which is prepended to the
+-            directory name.  This <replaceable>basedir</replaceable> is
+-            stripped from the resulting <filename>modules.dep</filename> file,
+-            so it is ready to be moved into the normal location. Use this
+-            option if you are a distribution vendor who needs to pre-generate
+-            the meta-data files rather than running depmod again later.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-o <replaceable>outdir</replaceable></option>
+-        </term>
+-        <term>
+-          <option>--outdir <replaceable>outdir</replaceable></option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Set the output directory where depmod will store any generated file.
+-            <replaceable>outdir</replaceable> serves as a root to that location,
+-            similar to how <replaceable>basedir</replaceable> is used. Also this
+-            setting takes precedence and if used together with
+-            <replaceable>basedir</replaceable> it will result in the input being
+-            that directory, but the output being the one set by
+-            <replaceable>outdir</replaceable>.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-C</option>
+-        </term>
+-        <term>
+-          <option>--config <replaceable>file or directory</replaceable></option>
+-        </term>
+-        <listitem>
+-          <para>
+-            This option overrides the default configuration directory at
+-            <filename>/etc/depmod.d/</filename>.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-e</option>
+-        </term>
+-        <term>
+-          <option>--errsyms</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            When combined with the <option>-F</option> option, this reports any
+-            symbols which a module needs which are not supplied by other
+-            modules or the kernel.  Normally, any symbols not provided by
+-            modules are assumed to be provided by the kernel (which should be
+-            true in a perfect world), but this assumption can break especially
+-            when additionally updated third party drivers are not correctly
+-            installed or were built incorrectly.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-E</option>
+-        </term>
+-        <term>
+-          <option>--symvers</option>
+-        </term>
+-          <listitem>
+-            <para>
+-              When combined with the <option>-e</option> option, this
+-              reports any symbol versions supplied by modules that do
+-              not match with the symbol versions provided by the
+-              kernel in its <filename>Module.symvers</filename>.
+-              This option is mutually incompatible with <option>-F</option>.
+-            </para>
+-          </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-F</option>
+-        </term>
+-        <term>
+-          <option>--filesyms <replaceable>System.map</replaceable></option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Supplied with the <filename>System.map</filename> produced when the
+-            kernel was built, this allows the <option>-e</option> option to
+-            report unresolved symbols.  This option is mutually incompatible
+-            with <option>-E</option>.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-h</option>
+-        </term>
+-        <term>
+-          <option>--help</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Print the help message and exit.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-n</option>
+-        </term>
+-        <term>
+-          <option>--show</option>
+-        </term>
+-        <term>
+-          <option>--dry-run</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            This sends the resulting modules.dep and the various map files to
+-            standard output rather than writing them into the module directory.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-P</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Some architectures prefix symbols with an extraneous character.
+-            This specifies a prefix character (for example '_') to ignore.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-v</option>
+-        </term>
+-        <term>
+-          <option>--verbose</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            In verbose mode, <command>depmod</command> will print (to stdout)
+-            all the symbols each module depends on and the module's file name
+-            which provides that symbol.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-V</option>
+-        </term>
+-        <term>
+-          <option>--version</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Show version of program and exit. See below for caveats when
+-            run on older kernels.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-w</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Warn on duplicate dependencies, aliases, symbol versions, etc.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-    </variablelist>
+-  </refsect1>
+-
+-  <refsect1><title>COPYRIGHT</title>
+-    <para>
+-      This manual page originally Copyright 2002, Rusty Russell,
+-      IBM Corporation. Portions Copyright Jon Masters, and others.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>SEE ALSO</title>
+-    <para>
+-      <citerefentry>
+-        <refentrytitle>depmod.d</refentrytitle><manvolnum>5</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modules.dep</refentrytitle><manvolnum>5</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
+diff --git a/man/depmod.d.5.xml b/man/depmod.d.5.xml
+deleted file mode 100644
+index b07e6a2..0000000
+--- a/man/depmod.d.5.xml
++++ /dev/null
+@@ -1,164 +0,0 @@
+-<?xml version="1.0"?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN" "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="depmod.d">
+-  <refentryinfo>
+-    <title>depmod.d</title>
+-    <productname>kmod</productname>
+-
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Jon</firstname>
+-        <surname>Masters</surname>
+-        <email>jcm@jonmasters.org</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Robby</firstname>
+-        <surname>Workman</surname>
+-        <email>rworkman@slackware.com</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-  <refmeta>
+-    <refentrytitle>depmod.d</refentrytitle>
+-    <manvolnum>5</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>depmod.d</refname>
+-    <refpurpose>Configuration directory for depmod</refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <para><filename>/lib/depmod.d/*.conf</filename></para>
+-    <para><filename>@DISTCONFDIR@/depmod.d/*.conf</filename></para>
+-    <para><filename>/usr/local/lib/depmod.d/*.conf</filename></para>
+-    <para><filename>/run/depmod.d/*.conf</filename></para>
+-    <para><filename>/etc/depmod.d/*.conf</filename></para>
+-  </refsynopsisdiv>
+-
+-  <refsect1><title>DESCRIPTION</title>
+-    <para>The order in which modules are processed by the
+-      <command>depmod</command> command can be altered on a global or
+-      per-module basis. This is typically useful in cases where built-in
+-      kernel modules are complemented by custom built versions of the
+-      same and the user wishes to affect the priority of processing in
+-      order to override the module version supplied by the kernel.
+-    </para>
+-    <para>
+-      The format of files under <filename>depmod.d</filename> is simple: one
+-      command per line, with blank lines and lines starting with '#'
+-      ignored (useful for adding comments).  A '\' at the end of a line
+-      causes it to continue on the next line, which makes the files a
+-      bit neater.
+-    </para>
+-  </refsect1>
+-  <refsect1>
+-    <title>COMMANDS</title>
+-    <variablelist>
+-      <varlistentry>
+-        <term>search <replaceable>subdirectory...</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            This allows you to specify the order in which @MODULE_DIRECTORY@
+-            (or other configured module location) subdirectories will
+-            be processed by <command>depmod</command>. Directories are
+-            listed in order, with the highest priority given to the
+-            first listed directory and the lowest priority given to the last
+-            directory listed. The special keyword <command>built-in</command> 
+-            refers to the standard module directories installed by the kernel.
+-            Another special keyword <command>external</command> refers to the
+-            list of external directories, defined by the
+-            <command>external</command> command.
+-          </para>
+-          <para>
+-            By default, depmod will give a higher priority to 
+-            a directory with the name <command>updates</command>
+-            using this built-in search string: "updates built-in"
+-            but more complex arrangements are possible and are
+-            used in several popular distributions.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>override <replaceable>modulename</replaceable> <replaceable>kernelversion</replaceable> <replaceable>modulesubdirectory</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            This command allows you to override which version of a
+-            specific module will be used when more than one module
+-            sharing the same name is processed by the
+-            <command>depmod</command> command. It is possible to
+-            specify one kernel or all kernels using the * wildcard.
+-            <replaceable>modulesubdirectory</replaceable> is the
+-            name of the subdirectory under @MODULE_DIRECTORY@ (or other
+-            module location) where the target module is installed.
+-          </para>
+-          <para>
+-            For example, it is possible to override the priority of
+-            an updated test module called <command>kmod</command> by
+-            specifying the following command: "override kmod * extra".
+-            This will ensure that any matching module name installed
+-            under the <command>extra</command> subdirectory within
+-            @MODULE_DIRECTORY@ (or other module location) will take priority
+-            over any likenamed module already provided by the kernel.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>external <replaceable>kernelversion</replaceable>
+-        <replaceable>absolutemodulesdirectory...</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            This specifies a list of directories, which will be checked
+-            according to the priorities in the <command>search</command>
+-            command. The order matters also, the first directory has the higher
+-            priority.
+-          </para>
+-          <para>
+-            The <replaceable>kernelversion</replaceable> is a POSIX regular
+-            expression or * wildcard, like in the <command>override</command>.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>exclude <replaceable>excludedir</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            This specifies the trailing directories that will be excluded
+-            during the search for kernel modules.
+-          </para>
+-          <para>
+-	    The <replaceable>excludedir</replaceable> is the trailing directory
+-	    to exclude
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-    </variablelist>
+-  </refsect1>
+-
+-  <refsect1><title>COPYRIGHT</title>
+-    <para>
+-      This manual page Copyright 2006-2010, Jon Masters, Red Hat, Inc.
+-    </para>
+-  </refsect1>
+-  <refsect1><title>SEE ALSO</title>
+-    <para>
+-      <citerefentry>
+-        <refentrytitle>depmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
+diff --git a/man/insmod.8.xml b/man/insmod.8.xml
+deleted file mode 100644
+index 3ebdccd..0000000
+--- a/man/insmod.8.xml
++++ /dev/null
+@@ -1,87 +0,0 @@
+-<?xml version='1.0'?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+-        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="insmod">
+-  <refentryinfo>
+-    <title>insmod</title>
+-    <productname>kmod</productname>
+-
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Jon</firstname>
+-        <surname>Masters</surname>
+-        <email>jcm@jonmasters.org</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-  <refmeta>
+-    <refentrytitle>insmod</refentrytitle>
+-    <manvolnum>8</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>insmod</refname>
+-    <refpurpose>
+-      Simple program to insert a module into the Linux Kernel
+-    </refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <cmdsynopsis>
+-      <command>insmod</command>
+-      <arg><replaceable>filename</replaceable></arg>
+-      <arg rep='repeat'><replaceable>module options</replaceable></arg>
+-    </cmdsynopsis>
+-  </refsynopsisdiv>
+-
+-  <refsect1><title>DESCRIPTION</title>
+-    <para>
+-      <command>insmod</command> is a trivial program to insert a module into
+-      the kernel. Most users will want to use
+-      <citerefentry><refentrytitle>modprobe</refentrytitle>
+-        <manvolnum>8</manvolnum> </citerefentry> instead, which is more clever
+-      and can handle module dependencies.
+-    </para>
+-    <para>
+-      Only the most general of error messages are reported: as the work of
+-      trying to link the module is now done inside the kernel, the
+-      <command>dmesg</command> usually gives more information about errors.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>COPYRIGHT</title>
+-    <para>
+-      This manual page originally Copyright 2002, Rusty Russell, IBM
+-      Corporation. Maintained by Jon Masters and others.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>SEE ALSO</title>
+-    <para>
+-      <citerefentry>
+-        <refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>rmmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>lsmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modinfo</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-      <citerefentry>
+-        <refentrytitle>depmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
+diff --git a/man/kmod.8.xml b/man/kmod.8.xml
+deleted file mode 100644
+index 0706ad5..0000000
+--- a/man/kmod.8.xml
++++ /dev/null
+@@ -1,120 +0,0 @@
+-<?xml version='1.0'?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+-        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="kmod">
+-  <refentryinfo>
+-    <title>kmod</title>
+-    <productname>kmod</productname>
+-
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-  <refmeta>
+-    <refentrytitle>kmod</refentrytitle>
+-    <manvolnum>8</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>kmod</refname>
+-    <refpurpose>Program to manage Linux Kernel modules</refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <cmdsynopsis>
+-      <command>kmod</command>
+-      <arg rep='repeat'><option>OPTIONS</option></arg>
+-      <arg><replaceable>COMMAND</replaceable></arg>
+-      <arg rep='repeat'><option>COMMAND_OPTIONS</option></arg>
+-    </cmdsynopsis>
+-  </refsynopsisdiv>
+-
+-  <refsect1><title>DESCRIPTION</title>
+-    <para>
+-      <command>kmod</command> is a multi-call binary which implements the
+-      programs used to control Linux Kernel modules.  Most users will only
+-      run it using its other names.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>OPTIONS</title>
+-    <variablelist>
+-      <varlistentry>
+-        <term><option>-V</option> <option>--version</option>
+-        </term>
+-        <listitem>
+-          <para>Show the program version and exit.</para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term><option>-h</option> <option>--help</option>
+-        </term>
+-        <listitem>
+-          <para>Show the help message.</para>
+-        </listitem>
+-      </varlistentry>
+-    </variablelist>
+-  </refsect1>
+-
+-  <refsect1><title>COMMANDS</title>
+-    <variablelist>
+-      <varlistentry>
+-        <term><command>help</command></term>
+-        <listitem>
+-          <para>Show the help message.</para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term><command>list</command></term>
+-        <listitem>
+-          <para>List the currently loaded modules.</para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term><command>static-nodes</command></term>
+-        <listitem>
+-          <para>Output the static device nodes information provided by
+-           the modules of the currently running kernel version.</para>
+-        </listitem>
+-      </varlistentry>
+-    </variablelist>
+-  </refsect1>
+-
+-  <refsect1>
+-    <title>COPYRIGHT</title>
+-    <para>
+-      This manual page originally Copyright 2014, Marco d'Itri.
+-      Maintained by Lucas De Marchi and others.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>SEE ALSO</title>
+-    <para>
+-      <citerefentry>
+-        <refentrytitle>lsmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>rmmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>insmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modinfo</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>depmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
+diff --git a/man/lsmod.8.xml b/man/lsmod.8.xml
+deleted file mode 100644
+index 588f228..0000000
+--- a/man/lsmod.8.xml
++++ /dev/null
+@@ -1,73 +0,0 @@
+-<?xml version='1.0'?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+-        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="lsmod">
+-  <refentryinfo>
+-    <title>lsmod</title>
+-    <productname>kmod</productname>
+-
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Jon</firstname>
+-        <surname>Masters</surname>
+-        <email>jcm@jonmasters.org</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-  <refmeta>
+-    <refentrytitle>lsmod</refentrytitle>
+-    <manvolnum>8</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>lsmod</refname>
+-    <refpurpose>Show the status of modules in the Linux Kernel</refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <cmdsynopsis>
+-      <command>lsmod</command>
+-    </cmdsynopsis>
+-  </refsynopsisdiv>
+-
+-  <refsect1><title>DESCRIPTION</title>
+-    <para>
+-      <command>lsmod</command> is a trivial program which nicely formats the
+-      contents of the <filename>/proc/modules</filename>, showing what kernel
+-      modules are currently loaded.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>COPYRIGHT</title>
+-    <para>
+-      This manual page originally Copyright 2002, Rusty Russell, IBM
+-      Corporation. Maintained by Jon Masters and others.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>SEE ALSO</title>
+-    <para>
+-      <citerefentry>
+-        <refentrytitle>insmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modinfo</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-      <citerefentry>
+-        <refentrytitle>depmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
+diff --git a/man/modinfo.8.xml b/man/modinfo.8.xml
+deleted file mode 100644
+index b6c4d60..0000000
+--- a/man/modinfo.8.xml
++++ /dev/null
+@@ -1,201 +0,0 @@
+-<?xml version='1.0'?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+-        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="modinfo">
+-  <refentryinfo>
+-    <title>modinfo</title>
+-    <productname>kmod</productname>
+-
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Jon</firstname>
+-        <surname>Masters</surname>
+-        <email>jcm@jonmasters.org</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-  <refmeta>
+-    <refentrytitle>modinfo</refentrytitle>
+-    <manvolnum>8</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>modinfo</refname>
+-    <refpurpose>Show information about a Linux Kernel module</refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <cmdsynopsis>
+-      <command>modinfo</command>
+-      <arg><option>-0</option></arg>
+-      <arg><option>-F <replaceable>field</replaceable></option></arg>
+-      <arg><option>-k <replaceable>kernel</replaceable></option></arg>
+-      <arg rep='repeat'>modulename|filename</arg>
+-    </cmdsynopsis>
+-    <cmdsynopsis>
+-      <command>modinfo -V</command>
+-    </cmdsynopsis>
+-    <cmdsynopsis>
+-      <command>modinfo -h</command>
+-    </cmdsynopsis>
+-  </refsynopsisdiv>
+-
+-  <refsect1><title>DESCRIPTION</title>
+-    <para>
+-      <command>modinfo</command> extracts information from the Linux Kernel
+-      modules given on the command line.  If the module name is not a filename,
+-      then the
+-      <filename>@MODULE_DIRECTORY@/</filename><replaceable>version</replaceable>
+-      directory is searched, as is also done by
+-      <citerefentry><refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum></citerefentry>
+-      when loading kernel modules.
+-    </para>
+-    <para>
+-      <command>modinfo</command> by default lists each attribute of the module
+-      in form <replaceable>fieldname</replaceable> :
+-      <replaceable>value</replaceable>, for easy reading.  The filename is
+-      listed the same way (although it's not really an attribute).
+-    </para>
+-    <para>
+-      This version of <command>modinfo</command> can understand modules of any
+-      Linux Kernel architecture.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>OPTIONS</title>
+-    <variablelist>
+-      <varlistentry>
+-        <term>
+-          <option>-V</option>
+-        </term>
+-        <term>
+-          <option>--version</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Print the modinfo version.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-F</option>
+-        </term>
+-        <term>
+-          <option>--field</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Only print this field value, one per line.  This is most useful for
+-            scripts.  Field names are case-insensitive.  Common fields (which
+-            may not be in every module) include <literal>author</literal>,
+-            <literal>description</literal>, <literal>license</literal>,
+-            <literal>parm</literal>, <literal>depends</literal>, and
+-            <literal>alias</literal>.  There are often multiple
+-            <literal>parm</literal>, <literal>alias</literal> and
+-            <literal>depends</literal> fields.  The special field
+-            <literal>filename</literal> lists the filename of the module.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-b <replaceable>basedir</replaceable></option>
+-        </term>
+-        <term>
+-          <option>--basedir <replaceable>basedir</replaceable></option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Root directory for modules, <filename>/</filename> by default.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-k <replaceable>kernel</replaceable></option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Provide information about a kernel other than the running one. This
+-            is particularly useful for distributions needing to extract
+-            information from a newly installed (but not yet running) set of
+-            kernel modules. For example, you wish to find which firmware files
+-            are needed by various modules in a new kernel for which you must
+-            make an initrd/initramfs image prior to booting.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-0</option>
+-        </term>
+-        <term>
+-          <option>--null</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Use the ASCII zero character to separate field values, instead of a
+-            new line.  This is useful for scripts, since a new line can
+-            theoretically appear inside a field.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-a</option>
+-          <option>--author</option>
+-        </term>
+-        <term>
+-          <option>-d</option>
+-          <option>--description</option>
+-        </term>
+-        <term>
+-          <option>-l</option>
+-          <option>--license</option>
+-        </term>
+-        <term>
+-          <option>-p</option>
+-          <option>--parameters</option>
+-        </term>
+-        <term>
+-          <option>-n</option>
+-          <option>--filename</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            These are shortcuts for the <option>--field</option> flag's
+-            <literal>author</literal>, <literal>description</literal>,
+-            <literal>license</literal>, <literal>parm</literal> and
+-            <literal>filename</literal> arguments, to ease the transition
+-            from the old modutils <command>modinfo</command>.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-    </variablelist>
+-  </refsect1>
+-
+-  <refsect1><title>COPYRIGHT</title>
+-    <para>
+-      This manual page originally Copyright 2003, Rusty Russell, IBM
+-      Corporation. Maintained by Jon Masters and others.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>SEE ALSO</title>
+-    <para>
+-      <citerefentry>
+-        <refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
+diff --git a/man/modprobe.8.xml b/man/modprobe.8.xml
+deleted file mode 100644
+index 4d1fd59..0000000
+--- a/man/modprobe.8.xml
++++ /dev/null
+@@ -1,544 +0,0 @@
+-<?xml version='1.0'?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+-        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="modprobe">
+-  <refentryinfo>
+-    <title>modprobe</title>
+-    <productname>kmod</productname>
+-
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Jon</firstname>
+-        <surname>Masters</surname>
+-        <email>jcm@jonmasters.org</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Robby</firstname>
+-        <surname>Workman</surname>
+-        <email>rworkman@slackware.com</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-  <refmeta>
+-    <refentrytitle>modprobe</refentrytitle>
+-    <manvolnum>8</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>modprobe</refname>
+-    <refpurpose>Add and remove modules from the Linux Kernel</refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <cmdsynopsis>
+-      <command>modprobe</command>
+-      <arg><option>-v</option></arg>
+-      <arg><option>-V</option></arg>
+-      <arg><option>-C <replaceable>config-file</replaceable></option></arg>
+-      <arg><option>-n</option></arg>
+-      <arg><option>-i</option></arg>
+-      <arg><option>-q</option></arg>
+-      <arg><option>-b</option></arg>
+-      <arg><replaceable>modulename</replaceable></arg>
+-      <arg rep='repeat'><option><replaceable>module parameters</replaceable></option></arg>
+-    </cmdsynopsis>
+-    <cmdsynopsis>
+-      <command>modprobe</command>
+-      <arg>-r</arg>
+-      <arg><option>-v</option></arg>
+-      <arg><option>-n</option></arg>
+-      <arg><option>-i</option></arg>
+-      <arg rep='repeat'><option><replaceable>modulename</replaceable></option></arg>
+-    </cmdsynopsis>
+-    <cmdsynopsis>
+-      <command>modprobe</command>
+-      <arg>-c</arg>
+-    </cmdsynopsis>
+-    <cmdsynopsis>
+-      <command>modprobe</command>
+-      <arg>--dump-modversions</arg> <arg><replaceable>filename</replaceable></arg>
+-    </cmdsynopsis>
+-  </refsynopsisdiv>
+-  <refsect1>
+-    <title>Description</title>
+-
+-    <para>
+-      <command>modprobe</command> intelligently adds or removes a
+-      module from the Linux kernel: note that for convenience, there
+-      is no difference between _ and - in module names (automatic
+-      underscore conversion is performed).
+-      <command>modprobe</command> looks in the module directory
+-      <filename>@MODULE_DIRECTORY@/`uname -r`</filename> for all
+-      the modules and other files, except for the optional
+-      configuration files in the
+-      <filename>/etc/modprobe.d</filename> directory
+-      (see <citerefentry>
+-        <refentrytitle>modprobe.d</refentrytitle><manvolnum>5</manvolnum>
+-      </citerefentry>). <command>modprobe</command> will also use module
+-      options specified on the kernel command line in the form of
+-      &lt;module&gt;.&lt;option&gt; and blacklists in the form of
+-      modprobe.blacklist=&lt;module&gt;.
+-    </para>
+-    <para>
+-      Note that unlike in 2.4 series Linux kernels (which are not supported
+-      by this tool) this version of <command>modprobe</command> does not
+-      do anything to the module itself: the work of resolving symbols
+-      and understanding parameters is done inside the kernel.  So
+-      module failure is sometimes accompanied by a kernel message: see
+-      <citerefentry>
+-        <refentrytitle>dmesg</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>.
+-    </para>
+-    <para>
+-      <command>modprobe</command> expects an up-to-date
+-      <filename>modules.dep.bin</filename> file as generated
+-      by the corresponding <command>depmod</command> utility shipped
+-      along with <command>modprobe</command> (see
+-      <citerefentry><refentrytitle>depmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>).  This file lists what other modules each
+-      module needs (if any), and <command>modprobe</command> uses this
+-      to add or remove these dependencies automatically.
+-    </para>
+-    <para>
+-      If any arguments are given after the
+-      <replaceable>modulename</replaceable>, they are passed to the
+-      kernel (in addition to any options listed in the configuration
+-      file).
+-    </para>
+-    <para>
+-      When loading modules, <replaceable>modulename</replaceable> can also
+-      be a path to the module. If the path is relative, it must
+-      explicitly start with "./". Note that this may fail when using a
+-      path to a module with dependencies not matching the installed depmod
+-      database.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>OPTIONS</title>
+-    <variablelist>
+-      <varlistentry>
+-        <term>
+-          <option>-a</option>
+-        </term>
+-        <term>
+-          <option>--all</option>
+-        </term>
+-        <listitem>
+-          <para>Insert all module names on the command line.</para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-b</option>
+-        </term>
+-        <term>
+-          <option>--use-blacklist</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            This option causes <command>modprobe</command> to apply the
+-            <command>blacklist</command> commands in the configuration files
+-            (if any) to module names as well.  It is usually used by
+-            <citerefentry>
+-              <refentrytitle>udev</refentrytitle><manvolnum>7</manvolnum>
+-            </citerefentry>.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-C</option>
+-        </term>
+-        <term>
+-          <option>--config</option>
+-        </term>
+-        <listitem>
+-          <para>This option overrides the default configuration directory
+-            (<filename>/etc/modprobe.d</filename>).
+-          </para>
+-          <para>
+-            This option is passed through <command>install</command>
+-            or <command>remove</command> commands to other
+-            <command>modprobe</command> commands in the
+-            MODPROBE_OPTIONS environment variable.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-c</option>
+-        </term>
+-        <term>
+-          <option>--showconfig</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Dump out the effective configuration from the config directory and
+-            exit.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>--dump-modversions</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Print out a list of module versioning information required by a
+-            module. This option is commonly used by distributions in order to
+-            package up a Linux kernel module using module versioning deps.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-d</option>
+-        </term>
+-        <term>
+-          <option>--dirname</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Root directory for modules, <filename>/</filename> by default.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>--first-time</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Normally, <command>modprobe</command> will succeed (and do
+-            nothing) if told to insert a module which is already
+-            present or to remove a module which isn't present.  This is
+-            ideal for simple scripts; however, more complicated scripts often
+-            want to know whether <command>modprobe</command> really
+-            did something: this option makes modprobe fail in the
+-            case that it actually didn't do anything.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>--force-vermagic</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Every module contains a small string containing important
+-            information, such as the kernel and compiler versions.  If a module
+-            fails to load and the kernel complains that the "version magic"
+-            doesn't match, you can use this option to remove it.  Naturally,
+-            this check is there for your protection, so using this option is
+-            dangerous unless you know what you're doing.
+-          </para>
+-          <para>
+-            This applies to any modules inserted: both the module (or alias) on
+-            the command line and any modules on which it depends.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>--force-modversion</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            When modules are compiled with CONFIG_MODVERSIONS set, a section
+-            detailing the versions of every interfaced used by (or supplied by)
+-            the module is created.  If a module fails to load and the kernel
+-            complains that the module disagrees about a version of some
+-            interface, you can use "--force-modversion" to remove the version
+-            information altogether.  Naturally, this check is there for your
+-            protection, so using this option is dangerous unless you know what
+-            you're doing.
+-          </para>
+-          <para>
+-            This applies any modules inserted: both the module (or alias) on
+-            the command line and any modules on which it depends.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-f</option>
+-        </term>
+-        <term>
+-          <option>--force</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Try to strip any versioning information from the module which might
+-            otherwise stop it from loading: this is the same as using both
+-            <option>--force-vermagic</option> and
+-            <option>--force-modversion</option>.  Naturally, these checks are
+-            there for your protection, so using this option is dangerous unless
+-            you know what you are doing.
+-          </para>
+-          <para>
+-            This applies to any modules inserted: both the module (or alias) on
+-            the command line and any modules it on which it depends.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-i</option>
+-        </term>
+-        <term>
+-          <option>--ignore-install</option>
+-        </term>
+-        <term>
+-          <option>--ignore-remove</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            This option causes <command>modprobe</command> to ignore
+-            <command>install</command> and <command>remove</command> commands
+-            in the configuration file (if any) for the module specified on the
+-            command line (any dependent modules are still subject to commands
+-            set for them in the configuration file). Both
+-            <command>install</command> and <command>remove</command> commands
+-            will currently be ignored when this option is used regardless of
+-            whether the request was more specifically made with only one or
+-            other (and not both) of <option>--ignore-install</option> or
+-            <option>--ignore-remove</option>.  See <citerefentry>
+-              <refentrytitle>modprobe.d</refentrytitle><manvolnum>5</manvolnum>
+-            </citerefentry>.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-n</option>
+-        </term>
+-        <term>
+-          <option>--dry-run</option>
+-        </term>
+-        <term>
+-          <option>--show</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            This option does everything but actually insert or delete the
+-            modules (or run the install or remove commands).  Combined with
+-            <option>-v</option>, it is useful for debugging problems. For
+-            historical reasons both <option>--dry-run</option> and
+-            <option>--show</option> actually mean the same thing and are
+-            interchangeable.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-q</option>
+-        </term>
+-        <term>
+-          <option>--quiet</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            With this flag, <command>modprobe</command> won't print an error
+-            message if you try to remove or insert a module it can't find (and
+-            isn't an alias or
+-            <command>install</command>/<command>remove</command> command).
+-            However, it will still return with a non-zero exit status. The
+-            kernel uses this to opportunistically probe for modules which might
+-            exist using request_module.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-R</option>
+-        </term>
+-        <term>
+-          <option>--resolve-alias</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Print all module names matching an alias. This can be useful for
+-            debugging module alias problems.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-r</option>
+-        </term>
+-        <term>
+-          <option>--remove</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            This option causes <command>modprobe</command> to remove rather
+-            than insert a module.  If the modules it depends on are also
+-            unused, <command>modprobe</command> will try to remove them too.
+-            Unlike insertion, more than one module can be specified on the
+-            command line (it does not make sense to specify module parameters
+-            when removing modules).
+-          </para>
+-          <para>
+-            There is usually no reason to remove modules, but some buggy
+-            modules require it.  Your distribution kernel may not have been
+-            built to support removal of modules at all.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-w</option>
+-        </term>
+-        <term>
+-        <option>--wait=</option>TIMEOUT_MSEC
+-        </term>
+-        <listitem>
+-          <para>
+-            This option causes <command>modprobe -r</command> to continue trying to
+-            remove a module if it fails due to the module being busy, i.e. its refcount
+-            is not 0 at the time the call is made. Modprobe tries to remove the module
+-            with an incremental sleep time between each tentative up until the maximum
+-            wait time in milliseconds passed in this option.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-S</option>
+-        </term>
+-        <term>
+-          <option>--set-version</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Set the kernel version, rather than using
+-            <citerefentry><refentrytitle>uname</refentrytitle><manvolnum>2</manvolnum></citerefentry>
+-            to decide on the kernel version (which dictates where to find the
+-            modules).
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>--show-depends</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            List the dependencies of a module (or alias), including the module
+-            itself.  This produces a (possibly empty) set of module filenames,
+-            one per line, each starting with "insmod" and is typically used by
+-            distributions to determine which modules to include when generating
+-            initrd/initramfs images.  <command>Install</command> commands which
+-            apply are shown prefixed by "install".  It does not run any of the
+-            install commands.  Note that
+-            <citerefentry><refentrytitle>modinfo</refentrytitle><manvolnum>8</manvolnum></citerefentry>
+-            can be used to extract dependencies of a module from the module
+-            itself, but knows nothing of aliases or install commands.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-s</option>
+-        </term>
+-        <term>
+-          <option>--syslog</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            This option causes any error messages to go through the syslog
+-            mechanism (as LOG_DAEMON with level LOG_NOTICE) rather than to
+-            standard error.  This is also automatically enabled when stderr is
+-            unavailable.
+-          </para>
+-          <para>
+-            This option is passed through <command>install</command> or
+-            <command>remove</command> commands to other
+-            <command>modprobe</command> commands in the MODPROBE_OPTIONS
+-            environment variable.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-V</option>
+-        </term>
+-        <term>
+-          <option>--version</option>
+-        </term>
+-        <listitem>
+-          <para>Show version of program and exit.</para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-v</option>
+-        </term>
+-        <term>
+-          <option>--verbose</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Print messages about what the program is doing.  Usually
+-            <command>modprobe</command> only prints messages if something goes
+-            wrong.
+-          </para>
+-          <para>
+-            This option is passed through <command>install</command> or
+-            <command>remove</command> commands to other
+-            <command>modprobe</command> commands in the MODPROBE_OPTIONS
+-            environment variable.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-    </variablelist>
+-  </refsect1>
+-
+-  <refsect1><title>ENVIRONMENT</title>
+-    <para>
+-      The MODPROBE_OPTIONS environment variable can also be used to pass
+-      arguments to <command>modprobe</command>.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>COPYRIGHT</title>
+-    <para>
+-      This manual page originally Copyright 2002, Rusty Russell, IBM
+-      Corporation. Maintained by Jon Masters and others.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1>
+-    <title>SEE ALSO</title>
+-    <para>
+-      <citerefentry>
+-        <refentrytitle>modprobe.d</refentrytitle><manvolnum>5</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>insmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>rmmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>lsmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modinfo</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-      <citerefentry>
+-        <refentrytitle>depmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
+diff --git a/man/modprobe.d.5.xml b/man/modprobe.d.5.xml
+deleted file mode 100644
+index cc90da6..0000000
+--- a/man/modprobe.d.5.xml
++++ /dev/null
+@@ -1,265 +0,0 @@
+-<?xml version="1.0"?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN" "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="modprobe.d">
+-  <refentryinfo>
+-    <title>modprobe.d</title>
+-    <productname>kmod</productname>
+-
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Jon</firstname>
+-        <surname>Masters</surname>
+-        <email>jcm@jonmasters.org</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Robby</firstname>
+-        <surname>Workman</surname>
+-        <email>rworkman@slackware.com</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-
+-  <refmeta>
+-    <refentrytitle>modprobe.d</refentrytitle>
+-    <manvolnum>5</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>modprobe.d</refname>
+-    <refpurpose>Configuration directory for modprobe</refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <para><filename>/lib/modprobe.d/*.conf</filename></para>
+-    <para><filename>@DISTCONFDIR@/modprobe.d/*.conf</filename></para>
+-    <para><filename>/usr/local/lib/modprobe.d/*.conf</filename></para>
+-    <para><filename>/run/modprobe.d/*.conf</filename></para>
+-    <para><filename>/etc/modprobe.d/*.conf</filename></para>
+-  </refsynopsisdiv>
+-
+-  <refsect1><title>DESCRIPTION</title>
+-    <para>Because the <command>modprobe</command> command can add or
+-      remove more than one module, due to modules having dependencies,
+-      we need a method of specifying what options are to be used with
+-      those modules.  All files underneath the
+-      <filename>/etc/modprobe.d</filename> directory which end with the
+-      <filename>.conf</filename> extension specify those options as
+-      required.  They can also be used to create convenient aliases:
+-      alternate names for a module, or they can override the normal
+-      <command>modprobe</command> behavior altogether for those with
+-      special requirements (such as inserting more than one module).
+-    </para>
+-    <para>
+-      Note that module and alias names (like other module names) can
+-      have - or _ in them: both are interchangeable throughout all the
+-      module commands as underscore conversion happens automatically.
+-    </para>
+-    <para>
+-      The format of files under <filename>modprobe.d</filename> is
+-      simple: one command per line, with blank lines and lines starting
+-      with '#' ignored (useful for adding comments).  A '\' at the end
+-      of a line causes it to continue on the next line, which makes the
+-      file a bit neater.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>COMMANDS</title>
+-    <variablelist>
+-      <varlistentry>
+-        <term>alias <replaceable>wildcard</replaceable> <replaceable>modulename</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            This allows you to give alternate names for a module.  For example:
+-            "alias my-mod really_long_modulename" means you can use "modprobe
+-            my-mod" instead of "modprobe really_long_modulename".  You can also
+-            use shell-style wildcards, so "alias my-mod*
+-            really_long_modulename" means that "modprobe my-mod-something" has
+-            the same effect.  You can't have aliases to other aliases (that way
+-            lies madness), but aliases can have options, which will be added to
+-            any other options.
+-          </para>
+-          <para>
+-            Note that modules can also contain their own aliases, which you can
+-            see using <command>modinfo</command>.  These aliases are used as a
+-            last resort (ie. if there is no real module,
+-            <command>install</command>, <command>remove</command>, or
+-            <command>alias</command> command in the configuration).
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>blacklist <replaceable>modulename</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            Modules can contain their own aliases: usually these are aliases
+-            describing the devices they support, such as "pci:123...".  These
+-            "internal" aliases can be overridden by normal "alias" keywords,
+-            but there are cases where two or more modules both support the same
+-            devices, or a module invalidly claims to support a device that it
+-            does not: the <command>blacklist</command> keyword indicates that
+-            all of that particular module's internal aliases are to be ignored.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>install <replaceable>modulename</replaceable> <replaceable>command...</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            This command instructs <command>modprobe</command> to run your
+-            command instead of inserting the module in the kernel as normal.
+-            The command can be any shell command: this allows you to do any
+-            kind of complex processing you might wish.  For example, if the
+-            module "fred" works better with the module "barney" already
+-            installed (but it doesn't depend on it, so
+-            <command>modprobe</command> won't automatically load it), you could
+-            say "install fred /sbin/modprobe barney; /sbin/modprobe
+-            --ignore-install fred", which would do what you wanted.  Note the
+-            <option>--ignore-install</option>, which stops the second
+-            <command>modprobe</command> from running the same
+-            <command>install</command> command again.  See also
+-            <command>remove</command> below.  </para> <para>The long term
+-            future of this command as a solution to the problem of providing
+-            additional module dependencies is not assured and it is intended to
+-            replace this command with a warning about its eventual removal or
+-            deprecation at some point in a future release. Its use complicates
+-            the automated determination of module dependencies by distribution
+-            utilities, such as mkinitrd (because these now need to somehow
+-            interpret what the <command>install</command> commands might be
+-            doing.  In a perfect world, modules would provide all dependency
+-            information without the use of this command and work is underway to
+-            implement soft dependency support within the Linux kernel.  </para>
+-          <para> If you use the string "$CMDLINE_OPTS" in the command, it will
+-            be replaced by any options specified on the modprobe command line.
+-            This can be useful because users expect "modprobe fred opt=1" to
+-            pass the "opt=1" arg to the module, even if there's an install
+-            command in the configuration file.  So our above example becomes
+-            "install fred /sbin/modprobe barney; /sbin/modprobe
+-            --ignore-install fred $CMDLINE_OPTS"
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>options <replaceable>modulename</replaceable> <replaceable>option...</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            This command allows you to add options to the module
+-            <replaceable>modulename</replaceable> (which might be an
+-            alias) every time it is inserted into the kernel: whether
+-            directly (using <command>modprobe </command>
+-            <replaceable>modulename</replaceable>) or because the
+-            module being inserted depends on this module.
+-          </para>
+-          <para>
+-            All options are added together: they can come from an
+-            <command>option</command> for the module itself, for an
+-            alias, and on the command line.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>remove <replaceable>modulename</replaceable> <replaceable>command...</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            This is similar to the <command>install</command> command
+-            above, except it is invoked when "modprobe -r" is run.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>softdep <replaceable>modulename</replaceable> pre: <replaceable>modules...</replaceable> post: <replaceable>modules...</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            The <command>softdep</command> command allows you to specify soft,
+-            or optional, module dependencies. <replaceable>modulename</replaceable>
+-            can be used without these optional modules installed, but usually with
+-            some features missing. For example, a driver for a storage HBA might
+-            require another module be loaded in order to use management features.
+-          </para>
+-          <para>
+-            pre-deps and post-deps modules are lists of names and/or aliases of other
+-            modules that modprobe will attempt to install (or remove) in order
+-            before and after the main module given in the
+-            <replaceable>modulename</replaceable> argument.
+-          </para>
+-          <para>
+-            Example: Assume "softdep c pre: a b post: d e" is provided in the
+-            configuration. Running "modprobe c" is now equivalent to
+-            "modprobe a b c d e" without the softdep.
+-            Flags such as --use-blacklist are applied to all the specified
+-            modules, while module parameters only apply to module c.
+-          </para>
+-          <para>
+-            Note: if there are <command>install</command> or
+-            <command>remove</command> commands with the same
+-            <replaceable>modulename</replaceable> argument,
+-            <command>softdep</command> takes precedence.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>weakdep <replaceable>modulename</replaceable> <replaceable>modules...</replaceable>
+-        </term>
+-        <listitem>
+-          <para>
+-            The <command>weakdep</command> command allows you to specify weak module
+-            dependencies. Those are similar to pre softdep, with the
+-            difference that userspace doesn't attempt to load that
+-            dependency before the specified module. Instead the kernel
+-            may request one or multiple of them during module probe,
+-            depending on the hardware it's binding to. The purpose of
+-            weak module is to allow a driver to specify that a certain
+-            dependency may be needed, so it should be present in the
+-            filesystem (e.g. in initramfs) when that module is probed.
+-          </para>
+-	  <para>
+-            Example: Assume "weakdep c a b". A program creating an
+-            initramfs knows it should add a, b, and c to the filesystem
+-            since a and b may be required/desired at runtime. When c is
+-            loaded and is being probed, it may issue calls to
+-            request_module() causing a or b to also be loaded.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-    </variablelist>
+-  </refsect1>
+-  <refsect1><title>COMPATIBILITY</title>
+-    <para>
+-      A future version of kmod will come with a strong warning to avoid use of
+-      the <command>install</command> as explained above.  This will happen once
+-      support for soft dependencies in the kernel is complete.  That support
+-      will complement the existing softdep support within this utility by
+-      providing such dependencies directly within the modules.
+-    </para>
+-  </refsect1>
+-  <refsect1><title>COPYRIGHT</title>
+-    <para>
+-      This manual page originally Copyright 2004, Rusty Russell, IBM
+-      Corporation. Maintained by Jon Masters and others.
+-    </para>
+-  </refsect1>
+-  <refsect1><title>SEE ALSO</title>
+-    <para><citerefentry>
+-        <refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modules.dep</refentrytitle><manvolnum>5</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
+diff --git a/man/modules.dep.5.xml b/man/modules.dep.5.xml
+deleted file mode 100644
+index 8ef6d8b..0000000
+--- a/man/modules.dep.5.xml
++++ /dev/null
+@@ -1,80 +0,0 @@
+-<?xml version="1.0"?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN" "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="modules.dep">
+-  <refentryinfo>
+-    <title>modules.dep</title>
+-    <productname>kmod</productname>
+-
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Jon</firstname>
+-        <surname>Masters</surname>
+-        <email>jcm@jonmasters.org</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-  <refmeta>
+-    <refentrytitle>modules.dep</refentrytitle>
+-    <manvolnum>5</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>modules.dep</refname>
+-    <refname>modules.dep.bin</refname>
+-    <refpurpose>Module dependency information</refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <para><filename>@MODULE_DIRECTORY@/modules.dep</filename></para>
+-    <para><filename>@MODULE_DIRECTORY@/modules.dep.bin</filename></para>
+-  </refsynopsisdiv>
+-
+-  <refsect1><title>DESCRIPTION</title>
+-    <para>
+-      <filename>modules.dep.bin</filename> is a binary file generated by
+-      <command>depmod</command> listing the dependencies for
+-      every module in the directories under
+-      <filename>@MODULE_DIRECTORY@/</filename><replaceable>version</replaceable>.
+-      It is used by kmod tools such as <command>modprobe</command> and
+-      libkmod.
+-    </para>
+-    <para>
+-      Its text counterpart is located in the same directory with the name
+-      <filename>modules.dep</filename>. The text version is maintained only
+-      for easy of reading by humans and is in no way used by any kmod tool.
+-    </para>
+-    <para>
+-      These files are not intended for editing or use by any additional
+-      utilities as their format is subject to change in the future. You should
+-      use the
+-      <citerefentry><refentrytitle>modinfo</refentrytitle><manvolnum>8</manvolnum></citerefentry>
+-      command to obtain information about modules in a future proof and
+-      compatible fashion rather than touching these files.
+-    </para>
+-  </refsect1>
+-  <refsect1><title>COPYRIGHT</title>
+-    <para>
+-      This manual page originally Copyright 2002, Rusty Russell, IBM
+-      Corporation. Maintained by Jon Masters and others.
+-    </para>
+-  </refsect1>
+-  <refsect1><title>SEE ALSO</title>
+-    <para>
+-      <citerefentry>
+-        <refentrytitle>depmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
+diff --git a/man/rmmod.8.xml b/man/rmmod.8.xml
+deleted file mode 100644
+index 67bcbed..0000000
+--- a/man/rmmod.8.xml
++++ /dev/null
+@@ -1,148 +0,0 @@
+-<?xml version='1.0'?>
+-<!--*-nxml-*-->
+-<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+-        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+-<refentry id="rmmod">
+-  <refentryinfo>
+-    <title>rmmod</title>
+-    <productname>kmod</productname>
+-
+-    <authorgroup>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Jon</firstname>
+-        <surname>Masters</surname>
+-        <email>jcm@jonmasters.org</email>
+-      </author>
+-      <author>
+-        <contrib>Developer</contrib>
+-        <firstname>Lucas</firstname>
+-        <surname>De Marchi</surname>
+-        <email>lucas.de.marchi@gmail.com</email>
+-      </author>
+-    </authorgroup>
+-  </refentryinfo>
+-
+-  <refmeta>
+-    <refentrytitle>rmmod</refentrytitle>
+-    <manvolnum>8</manvolnum>
+-  </refmeta>
+-
+-  <refnamediv>
+-    <refname>rmmod</refname>
+-    <refpurpose>
+-      Simple program to remove a module from the Linux Kernel
+-    </refpurpose>
+-  </refnamediv>
+-
+-  <refsynopsisdiv>
+-    <cmdsynopsis>
+-      <command>rmmod</command>
+-      <arg><option>-f</option></arg>
+-      <arg><option>-s</option></arg>
+-      <arg><option>-v</option></arg>
+-      <arg><replaceable>modulename</replaceable></arg>
+-    </cmdsynopsis>
+-  </refsynopsisdiv>
+-
+-  <refsect1><title>DESCRIPTION</title>
+-    <para>
+-      <command>rmmod</command> is a trivial program to remove a module (when
+-      module unloading support is provided) from the kernel.  Most users will
+-      want to use
+-      <citerefentry>
+-        <refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry> with the <option>-r</option> option instead
+-      since it removes unused dependent modules as well.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>OPTIONS</title>
+-    <variablelist>
+-      <varlistentry>
+-        <term>
+-          <option>-v</option>
+-        </term>
+-        <term>
+-          <option>--verbose</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Print messages about what the program is doing.
+-            Usually <command>rmmod</command> prints messages
+-            only if something goes wrong.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-f</option>
+-        </term>
+-        <term>
+-          <option>--force</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            This option can be extremely dangerous: it has no effect unless
+-            CONFIG_MODULE_FORCE_UNLOAD was set when the kernel was compiled.
+-            With this option, you can remove modules which are being used, or
+-            which are not designed to be removed, or have been marked as unsafe
+-            (see <citerefentry>
+-              <refentrytitle>lsmod</refentrytitle><manvolnum>8</manvolnum>
+-            </citerefentry>).
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term>
+-          <option>-s</option>
+-        </term>
+-        <term>
+-          <option>--syslog</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Send errors to syslog instead of standard error.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-      <varlistentry>
+-        <term><option>-V</option> <option>--version</option>
+-        </term>
+-        <listitem>
+-          <para>
+-            Show version of program and exit.
+-          </para>
+-        </listitem>
+-      </varlistentry>
+-    </variablelist>
+-  </refsect1>
+-
+-  <refsect1>
+-    <title>COPYRIGHT</title>
+-    <para>
+-      This manual page originally Copyright 2002, Rusty Russell, IBM
+-      Corporation. Maintained by Jon Masters and others.
+-    </para>
+-  </refsect1>
+-
+-  <refsect1><title>SEE ALSO</title>
+-    <para>
+-      <citerefentry>
+-        <refentrytitle>modprobe</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>insmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>lsmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>,
+-      <citerefentry>
+-        <refentrytitle>modinfo</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-      <citerefentry>
+-        <refentrytitle>depmod</refentrytitle><manvolnum>8</manvolnum>
+-      </citerefentry>
+-    </para>
+-  </refsect1>
+-</refentry>
 
 -- 
 2.45.0
