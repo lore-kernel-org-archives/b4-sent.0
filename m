@@ -1,15 +1,12 @@
 From: Keguang Zhang <keguang.zhang@gmail.com>
-Subject: [PATCH v9 0/2] Add support for Loongson1 APB DMA
-Date: Thu, 13 Jun 2024 19:48:06 +0800
-Message-Id: <20240613-loongson1-dma-v9-0-6181f2c7dece@gmail.com>
+Date: Thu, 13 Jun 2024 19:48:07 +0800
+Subject: [PATCH v9 1/2] dt-bindings: dma: Add Loongson-1 APB DMA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHbcamYC/12Oy07DMBBFf6XyGkfjcf1ixX8gFm48SSyaGNklA
- qr8O3YXEGV5F+fcc2eFcqTCnk93lmmNJaalDvd0Yv3kl5F4DHUzBJRCIPBrSstY0iJ4mD0XWvq
- BlAF7cawyH5mG+PXwvb7VPeQ089uUyf9ZwKEVKJySncKzBssFf6fxs551P+3yZZx9vHZ9mptxi
- uWW8vcjcNXN2yxnkEIfWlbNgTsIhL3s+/qyE7WW1exodEfaVFqacFG2NgVSR9r+0xrMkbaVHpx
- zGFAZVLCnt237BX4MalxoAQAA
+Message-Id: <20240613-loongson1-dma-v9-1-6181f2c7dece@gmail.com>
+References: <20240613-loongson1-dma-v9-0-6181f2c7dece@gmail.com>
+In-Reply-To: <20240613-loongson1-dma-v9-0-6181f2c7dece@gmail.com>
 To: Keguang Zhang <keguang.zhang@gmail.com>, Vinod Koul <vkoul@kernel.org>, 
  Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
@@ -20,26 +17,27 @@ Cc: linux-mips@vger.kernel.org, dmaengine@vger.kernel.org,
  Conor Dooley <conor.dooley@microchip.com>, 
  Jiaxun Yang <jiaxun.yang@flygoat.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718279399; l=2719;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718279399; l=2830;
  i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=HwivC1YSyiPpQ5PwufJY8pxz6NX1ZCCTtPty8vus00c=;
- b=d0BjInj6FisyYPLtdiANsNixRagpX8lGqMJQCHH+96dGLwb3mFSSR7vPIKXovo7K6hRhP1y8c
- kaSOXPA+GndDe9P/kUlhGU7G0QUx/YG0D7DiHhLFp9xNvZme6mGSMYr
+ bh=VMRWdh/PCclHrwoAYaQVWsjCcphB3QpZQvLeWMebljU=;
+ b=gVcArp33eBjNU3lrIGNmCLbNiRFTOaR+A53ZRC2mMm4QS1dKOc0phBTHgKmad+6GoBJbmYbSK
+ GfRBF+EIASVBi4mLl4O5C1B4IyZceHLWBNl8DIV+D7VImqHbx2p1z+A
 X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
  pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
 X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the driver and dt-binding document for Loongson1 APB DMA.
+Add devicetree binding document for Loongson-1 APB DMA.
 
+Reviewed-by: Conor Dooley <conor.dooley@microchip.com>
+Reviewed-by: Jiaxun Yang <jiaxun.yang@flygoat.com>
+Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
 Changes in v9:
-- Fix all the errors and warnings when building with W=1 and C=1
-- Link to v8: https://lore.kernel.org/r/20240607-loongson1-dma-v8-0-f9992d257250@gmail.com
+- None
 
 Changes in v8:
 - Change 'interrupts' property to an items list
-- Link to v7: https://lore.kernel.org/r/20240329-loongson1-dma-v7-0-37db58608de5@gmail.com
 
 Changes in v7:
 - Change the comptible to 'loongson,ls1*-apbdma' (suggested by Huacai Chen)
@@ -48,60 +46,91 @@ Changes in v7:
 - Add a compatible string for LS1A
 - Delete minItems of 'interrupts'
 - Change patterns of 'interrupt-names' to const
-- Rename the file to loongson1-apb-dma.c to keep the consistency
-- Update Kconfig and Makefile accordingly
-- Link to v6: https://lore.kernel.org/r/20240316-loongson1-dma-v6-0-90de2c3cc928@gmail.com
 
 Changes in v6:
 - Change the compatible to the fallback
-- Implement .device_prep_dma_cyclic for Loongson1 sound driver,
-- as well as .device_pause and .device_resume.
-- Set the limitation LS1X_DMA_MAX_DESC and put all descriptors
-- into one page to save memory
-- Move dma_pool_zalloc() into ls1x_dma_alloc_desc()
-- Drop dma_slave_config structure
-- Use .remove_new instead of .remove
-- Use KBUILD_MODNAME for the driver name
-- Improve the debug information
 - Some minor fixes
 
 Changes in v5:
-- Add the dt-binding document
-- Add DT support
-- Use DT information instead of platform data
-- Use chan_id of struct dma_chan instead of own id
-- Use of_dma_xlate_by_chan_id() instead of ls1x_dma_filter()
-- Update the author information to my official name
-
-Changes in v4:
-- Use dma_slave_map to find the proper channel.
-- Explicitly call devm_request_irq() and tasklet_kill().
-- Fix namespace issue.
-- Some minor fixes and cleanups.
-
-Changes in v3:
-- Rename ls1x_dma_filter_fn to ls1x_dma_filter.
-
-Changes in v2:
-- Change the config from 'DMA_LOONGSON1' to 'LOONGSON1_DMA',
-- and rearrange it in alphabetical order in Kconfig and Makefile.
-- Fix comment style.
-
+- A newly added patch
 ---
-Keguang Zhang (2):
-      dt-bindings: dma: Add Loongson-1 APB DMA
-      dmaengine: Loongson1: Add Loongson-1 APB DMA driver
+ .../bindings/dma/loongson,ls1b-apbdma.yaml         | 67 ++++++++++++++++++++++
+ 1 file changed, 67 insertions(+)
 
- .../bindings/dma/loongson,ls1b-apbdma.yaml         |  67 +++
- drivers/dma/Kconfig                                |   9 +
- drivers/dma/Makefile                               |   1 +
- drivers/dma/loongson1-apb-dma.c                    | 665 +++++++++++++++++++++
- 4 files changed, 742 insertions(+)
----
-base-commit: d35b2284e966c0bef3e2182a5c5ea02177dd32e4
-change-id: 20231120-loongson1-dma-163afe5708b9
+diff --git a/Documentation/devicetree/bindings/dma/loongson,ls1b-apbdma.yaml b/Documentation/devicetree/bindings/dma/loongson,ls1b-apbdma.yaml
+new file mode 100644
+index 000000000000..192c85c1199d
+--- /dev/null
++++ b/Documentation/devicetree/bindings/dma/loongson,ls1b-apbdma.yaml
+@@ -0,0 +1,67 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/dma/loongson,ls1b-apbdma.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Loongson-1 APB DMA Controller
++
++maintainers:
++  - Keguang Zhang <keguang.zhang@gmail.com>
++
++description:
++  Loongson-1 APB DMA controller provides 3 independent channels for
++  peripherals such as NAND, audio playback and capture.
++
++properties:
++  compatible:
++    oneOf:
++      - const: loongson,ls1b-apbdma
++      - items:
++          - enum:
++              - loongson,ls1a-apbdma
++              - loongson,ls1c-apbdma
++          - const: loongson,ls1b-apbdma
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    items:
++      - description: NAND interrupt
++      - description: Audio playback interrupt
++      - description: Audio capture interrupt
++
++  interrupt-names:
++    items:
++      - const: ch0
++      - const: ch1
++      - const: ch2
++
++  '#dma-cells':
++    const: 1
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - interrupt-names
++  - '#dma-cells'
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++    dma-controller@1fd01160 {
++        compatible = "loongson,ls1b-apbdma";
++        reg = <0x1fd01160 0x4>;
++
++        interrupt-parent = <&intc0>;
++        interrupts = <13 IRQ_TYPE_EDGE_RISING>,
++                     <14 IRQ_TYPE_EDGE_RISING>,
++                     <15 IRQ_TYPE_EDGE_RISING>;
++        interrupt-names = "ch0", "ch1", "ch2";
++
++        #dma-cells = <1>;
++    };
 
-Best regards,
 -- 
-Keguang Zhang <keguang.zhang@gmail.com>
+2.43.0
 
