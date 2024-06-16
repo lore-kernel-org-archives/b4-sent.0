@@ -1,10 +1,11 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Date: Sun, 16 Jun 2024 16:29:12 +0800
-Subject: [PATCH 02/13] drm/mediatek: Add OVL compatible name for MT8195
+Date: Sun, 16 Jun 2024 16:29:13 +0800
+Subject: [PATCH 03/13] drm/mediatek: Add missing plane settings when async
+ update
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240616-mediatek-drm-next-v1-2-7e8f9cf785d8@mediatek.com>
+Message-Id: <20240616-mediatek-drm-next-v1-3-7e8f9cf785d8@mediatek.com>
 References: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
 In-Reply-To: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
 To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
@@ -18,39 +19,41 @@ Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Hsiao Chien Sung <shawn.sung@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=1050;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=1082;
  i=shawn.sung@mediatek.com; s=20240616; h=from:subject:message-id;
- bh=BgdlkkD28fU8kVaiXpAjJEsbIm8CSiJsfkQTGRrkbL8=;
- b=EwafnihtQo1NceoMulPvwo+G3mrLHtE3FpAhX/nodSUl+rH3kr3UHBTnd2O4spc5zZHP4HpVh
- nZpiY49XaxJAwmU+24gkfIOA0MU9S0VkvSNAzw0hB3HrI+9gv37T3SC
+ bh=ADiZlSVJT5s2sH18XbsNK2Wsb8sGtAwURKhvCjHjtzc=;
+ b=FVT/WCynaSSn97vJO73+EtVbiFHnpQke6j5kOKH+9CSpaY+pf3TzcrWiqOmEJYs+/GibTLH26
+ PI8uVoDJsH9DfpE3reZyu3mXz7V5UXp64qRrbfhMf+MYlS5Y6DFcOsc
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=lq1w8BuWDINX+4JHjGHhhbAU5ICP+cL9VCj7wn+cEDA=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240616 with auth_id=172
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add OVL compatible name for MT8195.
-Without this commit, DRM won't work after modifying the device tree.
+Fix an issue that plane coordinate was not saved when
+calling async update.
+
+Fixes: 920fffcc8912 ("drm/mediatek: update cursors by using async atomic update")
 
 Reviewed-by: CK Hu <ck.hu@mediatek.com>
 Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
 ---
- drivers/gpu/drm/mediatek/mtk_drm_drv.c | 2 ++
+ drivers/gpu/drm/mediatek/mtk_plane.c | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_drm_drv.c b/drivers/gpu/drm/mediatek/mtk_drm_drv.c
-index b5f605751b0a..8e047043202b 100644
---- a/drivers/gpu/drm/mediatek/mtk_drm_drv.c
-+++ b/drivers/gpu/drm/mediatek/mtk_drm_drv.c
-@@ -743,6 +743,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
- 	  .data = (void *)MTK_DISP_OVL },
- 	{ .compatible = "mediatek,mt8192-disp-ovl",
- 	  .data = (void *)MTK_DISP_OVL },
-+	{ .compatible = "mediatek,mt8195-disp-ovl",
-+	  .data = (void *)MTK_DISP_OVL },
- 	{ .compatible = "mediatek,mt8183-disp-ovl-2l",
- 	  .data = (void *)MTK_DISP_OVL_2L },
- 	{ .compatible = "mediatek,mt8192-disp-ovl-2l",
+diff --git a/drivers/gpu/drm/mediatek/mtk_plane.c b/drivers/gpu/drm/mediatek/mtk_plane.c
+index 4625deb21d40..a74b26d35985 100644
+--- a/drivers/gpu/drm/mediatek/mtk_plane.c
++++ b/drivers/gpu/drm/mediatek/mtk_plane.c
+@@ -227,6 +227,8 @@ static void mtk_plane_atomic_async_update(struct drm_plane *plane,
+ 	plane->state->src_y = new_state->src_y;
+ 	plane->state->src_h = new_state->src_h;
+ 	plane->state->src_w = new_state->src_w;
++	plane->state->dst.x1 = new_state->dst.x1;
++	plane->state->dst.y1 = new_state->dst.y1;
+ 
+ 	mtk_plane_update_new_state(new_state, new_plane_state);
+ 	swap(plane->state->fb, new_state->fb);
 
 -- 
 Git-146)
