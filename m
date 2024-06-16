@@ -1,10 +1,10 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Date: Sun, 16 Jun 2024 16:29:11 +0800
-Subject: [PATCH 01/13] soc: mediatek: Disable 9-bit alpha in ETHDR
+Date: Sun, 16 Jun 2024 16:29:12 +0800
+Subject: [PATCH 02/13] drm/mediatek: Add OVL compatible name for MT8195
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240616-mediatek-drm-next-v1-1-7e8f9cf785d8@mediatek.com>
+Message-Id: <20240616-mediatek-drm-next-v1-2-7e8f9cf785d8@mediatek.com>
 References: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
 In-Reply-To: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
 To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
@@ -18,61 +18,39 @@ Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Hsiao Chien Sung <shawn.sung@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=2103;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=1050;
  i=shawn.sung@mediatek.com; s=20240616; h=from:subject:message-id;
- bh=AhpL6mafGPf92ATlXUF9GJd5xSZP0P96bzGL4snlDgc=;
- b=wItu85Eor8vZDTd2CEgLbljnmpGnci2Gj9uQnt0nUPAZYN+tofn1d7wu0+uu4ryK64HWsaHAM
- 7xOuKPpTiFkCxlEy11K8dLZRwBcUGjA6kbqDe+Fh9CG9L6KWA6cHKaw
+ bh=BgdlkkD28fU8kVaiXpAjJEsbIm8CSiJsfkQTGRrkbL8=;
+ b=EwafnihtQo1NceoMulPvwo+G3mrLHtE3FpAhX/nodSUl+rH3kr3UHBTnd2O4spc5zZHP4HpVh
+ nZpiY49XaxJAwmU+24gkfIOA0MU9S0VkvSNAzw0hB3HrI+9gv37T3SC
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=lq1w8BuWDINX+4JHjGHhhbAU5ICP+cL9VCj7wn+cEDA=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240616 with auth_id=172
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When 9-bit alpha is enabled, its value will be converted from 0-255 to
-0-256 (255 = not defined). This is designed for special HDR related
-calculation, which should be disabled by default, otherwise, alpha
-blending will not work correctly.
+Add OVL compatible name for MT8195.
+Without this commit, DRM won't work after modifying the device tree.
 
+Reviewed-by: CK Hu <ck.hu@mediatek.com>
 Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
 ---
- drivers/gpu/drm/mediatek/mtk_ethdr.c | 3 +--
- drivers/soc/mediatek/mtk-mmsys.c     | 1 +
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/mediatek/mtk_drm_drv.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_ethdr.c b/drivers/gpu/drm/mediatek/mtk_ethdr.c
-index 156c6ff547e8..d7d16482c947 100644
---- a/drivers/gpu/drm/mediatek/mtk_ethdr.c
-+++ b/drivers/gpu/drm/mediatek/mtk_ethdr.c
-@@ -50,7 +50,6 @@
- 
- #define MIXER_INX_MODE_BYPASS			0
- #define MIXER_INX_MODE_EVEN_EXTEND		1
--#define DEFAULT_9BIT_ALPHA			0x100
- #define	MIXER_ALPHA_AEN				BIT(8)
- #define	MIXER_ALPHA				0xff
- #define ETHDR_CLK_NUM				13
-@@ -169,7 +168,7 @@ void mtk_ethdr_layer_config(struct device *dev, unsigned int idx,
- 		alpha_con = MIXER_ALPHA_AEN | MIXER_ALPHA;
- 
- 	mtk_mmsys_mixer_in_config(priv->mmsys_dev, idx + 1, alpha_con ? false : true,
--				  DEFAULT_9BIT_ALPHA,
-+				  MIXER_ALPHA,
- 				  pending->x & 1 ? MIXER_INX_MODE_EVEN_EXTEND :
- 				  MIXER_INX_MODE_BYPASS, align_width / 2 - 1, cmdq_pkt);
- 
-diff --git a/drivers/soc/mediatek/mtk-mmsys.c b/drivers/soc/mediatek/mtk-mmsys.c
-index f370f4ec4b88..938240714e54 100644
---- a/drivers/soc/mediatek/mtk-mmsys.c
-+++ b/drivers/soc/mediatek/mtk-mmsys.c
-@@ -236,6 +236,7 @@ void mtk_mmsys_mixer_in_config(struct device *dev, int idx, bool alpha_sel, u16
- 
- 	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_MIXER_IN1_ALPHA + (idx - 1) * 4, ~0,
- 			      alpha << 16 | alpha, cmdq_pkt);
-+	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_HDR_TOP_CFG, BIT(15 + idx), 0, cmdq_pkt);
- 	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_HDR_TOP_CFG, BIT(19 + idx),
- 			      alpha_sel << (19 + idx), cmdq_pkt);
- 	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_MIXER_IN1_PAD + (idx - 1) * 4,
+diff --git a/drivers/gpu/drm/mediatek/mtk_drm_drv.c b/drivers/gpu/drm/mediatek/mtk_drm_drv.c
+index b5f605751b0a..8e047043202b 100644
+--- a/drivers/gpu/drm/mediatek/mtk_drm_drv.c
++++ b/drivers/gpu/drm/mediatek/mtk_drm_drv.c
+@@ -743,6 +743,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
+ 	  .data = (void *)MTK_DISP_OVL },
+ 	{ .compatible = "mediatek,mt8192-disp-ovl",
+ 	  .data = (void *)MTK_DISP_OVL },
++	{ .compatible = "mediatek,mt8195-disp-ovl",
++	  .data = (void *)MTK_DISP_OVL },
+ 	{ .compatible = "mediatek,mt8183-disp-ovl-2l",
+ 	  .data = (void *)MTK_DISP_OVL_2L },
+ 	{ .compatible = "mediatek,mt8192-disp-ovl-2l",
 
 -- 
 Git-146)
