@@ -1,14 +1,12 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Subject: [PATCH 00/13] Fix the errors of MediaTek display driver found by
- IGT
-Date: Sun, 16 Jun 2024 16:29:10 +0800
-Message-Id: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
+Date: Sun, 16 Jun 2024 16:29:11 +0800
+Subject: [PATCH 01/13] soc: mediatek: Disable 9-bit alpha in ETHDR
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFaibmYC/x3MTQqAIBBA4avIrBtQ+4G6SrSwnGoILTQiEO+et
- PwW7yWIFJgiDCJBoIcjn75AVQKW3fiNkG0xaKkb2akWHVk2Nx1og0NP743GdlLNddOvuobSXYF
- Wfv/nOOX8ASDqfQljAAAA
+Message-Id: <20240616-mediatek-drm-next-v1-1-7e8f9cf785d8@mediatek.com>
+References: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
+In-Reply-To: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
 To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
  Philipp Zabel <p.zabel@pengutronix.de>, David Airlie <airlied@gmail.com>, 
  Daniel Vetter <daniel@ffwll.ch>, Matthias Brugger <matthias.bgg@gmail.com>, 
@@ -20,49 +18,62 @@ Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Hsiao Chien Sung <shawn.sung@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=1639;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=2103;
  i=shawn.sung@mediatek.com; s=20240616; h=from:subject:message-id;
- bh=r10waYEMGAymNOh3QIyIV85JK6+0pN1kGYW3MVMVAVg=;
- b=tingLMnjsTKtbIyzbXebc3jnQb0ioiL1lqGVFCw4e0VaknTStBGtN+rZoSzvDVFJUrNJ/nvBW
- txWOmGBNVd5AWc8Num1/KDshCYgGD3L1Kwcf8Ys7mnaoMpLEmfUC+Sz
+ bh=AhpL6mafGPf92ATlXUF9GJd5xSZP0P96bzGL4snlDgc=;
+ b=wItu85Eor8vZDTd2CEgLbljnmpGnci2Gj9uQnt0nUPAZYN+tofn1d7wu0+uu4ryK64HWsaHAM
+ 7xOuKPpTiFkCxlEy11K8dLZRwBcUGjA6kbqDe+Fh9CG9L6KWA6cHKaw
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=lq1w8BuWDINX+4JHjGHhhbAU5ICP+cL9VCj7wn+cEDA=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240616 with auth_id=172
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series fixes the errors of MediaTek display driver found by IGT.
+When 9-bit alpha is enabled, its value will be converted from 0-255 to
+0-256 (255 = not defined). This is designed for special HDR related
+calculation, which should be disabled by default, otherwise, alpha
+blending will not work correctly.
 
+Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
 ---
-Hsiao Chien Sung (13):
-      soc: mediatek: Disable 9-bit alpha in ETHDR
-      drm/mediatek: Add OVL compatible name for MT8195
-      drm/mediatek: Add missing plane settings when async update
-      drm/mediatek: Add DRM_MODE_ROTATE_0 to rotation property
-      drm/mediatek: Set DRM mode configs accordingly
-      drm/mediatek: Turn off the layers with zero width or height
-      drm/mediatek: Support more 10bit formats in OVL
-      drm/mediatek: Support RGBA8888 and RGBX8888 in OVL on MT8195
-      drm/mediatek: Fix XRGB setting error in OVL
-      drm/mediatek: Fix XRGB setting error in Mixer
-      drm/mediatek: Add new color format MACROs in OVL
-      drm/mediatek: Support DRM plane alpha in OVL
-      drm/mediatek: Support DRM plane alpha in Mixer
+ drivers/gpu/drm/mediatek/mtk_ethdr.c | 3 +--
+ drivers/soc/mediatek/mtk-mmsys.c     | 1 +
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
- drivers/gpu/drm/mediatek/mtk_ddp_comp.h         |  6 +-
- drivers/gpu/drm/mediatek/mtk_disp_ovl.c         | 85 +++++++++++++++++--------
- drivers/gpu/drm/mediatek/mtk_disp_ovl_adaptor.c |  2 +-
- drivers/gpu/drm/mediatek/mtk_drm_drv.c          | 24 +++++++
- drivers/gpu/drm/mediatek/mtk_drm_drv.h          |  4 ++
- drivers/gpu/drm/mediatek/mtk_ethdr.c            | 26 ++++++--
- drivers/gpu/drm/mediatek/mtk_plane.c            |  4 +-
- drivers/soc/mediatek/mtk-mmsys.c                |  1 +
- 8 files changed, 118 insertions(+), 34 deletions(-)
----
-base-commit: 62fe4b067581d480e863191305f108bebffbc0e9
-change-id: 20240615-mediatek-drm-next-ad601b349f23
+diff --git a/drivers/gpu/drm/mediatek/mtk_ethdr.c b/drivers/gpu/drm/mediatek/mtk_ethdr.c
+index 156c6ff547e8..d7d16482c947 100644
+--- a/drivers/gpu/drm/mediatek/mtk_ethdr.c
++++ b/drivers/gpu/drm/mediatek/mtk_ethdr.c
+@@ -50,7 +50,6 @@
+ 
+ #define MIXER_INX_MODE_BYPASS			0
+ #define MIXER_INX_MODE_EVEN_EXTEND		1
+-#define DEFAULT_9BIT_ALPHA			0x100
+ #define	MIXER_ALPHA_AEN				BIT(8)
+ #define	MIXER_ALPHA				0xff
+ #define ETHDR_CLK_NUM				13
+@@ -169,7 +168,7 @@ void mtk_ethdr_layer_config(struct device *dev, unsigned int idx,
+ 		alpha_con = MIXER_ALPHA_AEN | MIXER_ALPHA;
+ 
+ 	mtk_mmsys_mixer_in_config(priv->mmsys_dev, idx + 1, alpha_con ? false : true,
+-				  DEFAULT_9BIT_ALPHA,
++				  MIXER_ALPHA,
+ 				  pending->x & 1 ? MIXER_INX_MODE_EVEN_EXTEND :
+ 				  MIXER_INX_MODE_BYPASS, align_width / 2 - 1, cmdq_pkt);
+ 
+diff --git a/drivers/soc/mediatek/mtk-mmsys.c b/drivers/soc/mediatek/mtk-mmsys.c
+index f370f4ec4b88..938240714e54 100644
+--- a/drivers/soc/mediatek/mtk-mmsys.c
++++ b/drivers/soc/mediatek/mtk-mmsys.c
+@@ -236,6 +236,7 @@ void mtk_mmsys_mixer_in_config(struct device *dev, int idx, bool alpha_sel, u16
+ 
+ 	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_MIXER_IN1_ALPHA + (idx - 1) * 4, ~0,
+ 			      alpha << 16 | alpha, cmdq_pkt);
++	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_HDR_TOP_CFG, BIT(15 + idx), 0, cmdq_pkt);
+ 	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_HDR_TOP_CFG, BIT(19 + idx),
+ 			      alpha_sel << (19 + idx), cmdq_pkt);
+ 	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_MIXER_IN1_PAD + (idx - 1) * 4,
 
-Best regards,
 -- 
-Hsiao Chien Sung <shawn.sung@mediatek.com>
+Git-146)
 
