@@ -1,10 +1,10 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Date: Sun, 16 Jun 2024 16:29:19 +0800
-Subject: [PATCH 09/13] drm/mediatek: Fix XRGB setting error in OVL
+Date: Sun, 16 Jun 2024 16:29:20 +0800
+Subject: [PATCH 10/13] drm/mediatek: Fix XRGB setting error in Mixer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240616-mediatek-drm-next-v1-9-7e8f9cf785d8@mediatek.com>
+Message-Id: <20240616-mediatek-drm-next-v1-10-7e8f9cf785d8@mediatek.com>
 References: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
 In-Reply-To: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
 To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
@@ -18,72 +18,57 @@ Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Hsiao Chien Sung <shawn.sung@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=2836;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=1741;
  i=shawn.sung@mediatek.com; s=20240616; h=from:subject:message-id;
- bh=vVW9D7krUv/QeI7mKMXg4dCoJYZZZHxYjH8XtvTllws=;
- b=QoL51j2R0DiY+OHpy49e3QAW6LGgdoVCPECx4xnWLYMZrD3YfeTfIC47sGwymgVf4ZbeyXm38
- Fq2J9Sfl+eXBwiwskTMoIlnl52iizChvE30QSBSkFtxhw2+0cG/HEO3
+ bh=bei5ueFJptA1ljKKIIOgwM3dwE+BvlsqMVvH9AZqfZQ=;
+ b=5S1/9HBuMooxzvxMIzc7wYMGIbaJRlwdOqUH/E47s5q/auxCzzN+JqjCk79W6ybMuaKvDqajc
+ 34dWaT4vuAZDwLuVk1P4baXDUoWffmNZBOcKoSDPkt9vqj36IHsykr8
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=lq1w8BuWDINX+4JHjGHhhbAU5ICP+cL9VCj7wn+cEDA=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240616 with auth_id=172
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CONST_BLD must be enabled for XRGB formats although the alpha channel
-can be ignored, or OVL will still read the value from memory.
-This error only affects CRC generation.
+Although the alpha channel in XRGB formats can be ignored, ALPHA_CON
+must be configured accordingly when using XRGB formats or it will still
+affects CRC generation.
 
-Fixes: 119f5173628a ("drm/mediatek: Add DRM Driver for Mediatek SoC MT8173.")
+Fixes: d886c0009bd0 ("drm/mediatek: Add ETHDR support for MT8195")
 Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
+Reviewed-by: CK Hu <ck.hu@mediatek.com>
 ---
- drivers/gpu/drm/mediatek/mtk_disp_ovl.c | 14 ++++++++++++--
- 1 file changed, 12 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/mediatek/mtk_ethdr.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
-index 738244a6164e..615b75919d1b 100644
---- a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
-+++ b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
-@@ -38,6 +38,7 @@
- #define DISP_REG_OVL_PITCH_MSB(n)		(0x0040 + 0x20 * (n))
- #define OVL_PITCH_MSB_2ND_SUBBUF			BIT(16)
- #define DISP_REG_OVL_PITCH(n)			(0x0044 + 0x20 * (n))
-+#define OVL_CONST_BLEND					BIT(28)
- #define DISP_REG_OVL_RDMA_CTRL(n)		(0x00c0 + 0x20 * (n))
- #define DISP_REG_OVL_RDMA_GMC(n)		(0x00c8 + 0x20 * (n))
- #define DISP_REG_OVL_ADDR_MT2701		0x0040
-@@ -428,6 +429,7 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
- 	unsigned int fmt = pending->format;
- 	unsigned int offset = (pending->y << 16) | pending->x;
- 	unsigned int src_size = (pending->height << 16) | pending->width;
-+	unsigned int ignore_pixel_alpha = 0;
- 	unsigned int con;
- 	bool is_afbc = pending->modifier != DRM_FORMAT_MOD_LINEAR;
- 	union overlay_pitch {
-@@ -449,6 +451,14 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
+diff --git a/drivers/gpu/drm/mediatek/mtk_ethdr.c b/drivers/gpu/drm/mediatek/mtk_ethdr.c
+index b5484a286060..a302b12aae3f 100644
+--- a/drivers/gpu/drm/mediatek/mtk_ethdr.c
++++ b/drivers/gpu/drm/mediatek/mtk_ethdr.c
+@@ -153,6 +153,7 @@ void mtk_ethdr_layer_config(struct device *dev, unsigned int idx,
+ 	unsigned int offset = (pending->x & 1) << 31 | pending->y << 16 | pending->x;
+ 	unsigned int align_width = ALIGN_DOWN(pending->width, 2);
+ 	unsigned int alpha_con = 0;
++	bool replace_src_a = false;
+ 
+ 	dev_dbg(dev, "%s+ idx:%d", __func__, idx);
+ 
+@@ -172,8 +173,15 @@ void mtk_ethdr_layer_config(struct device *dev, unsigned int idx,
  	if (state->base.fb && state->base.fb->format->has_alpha)
- 		con |= OVL_CON_AEN | OVL_CON_ALPHA;
+ 		alpha_con = MIXER_ALPHA_AEN | MIXER_ALPHA;
  
-+	/* CONST_BLD must be enabled for XRGB formats although the alpha channel
-+	 * can be ignored, or OVL will still read the value from memory.
-+	 * For RGB888 related formats, whether CONST_BLD is enabled or not won't
-+	 * affect the result. Therefore we use !has_alpha as the condition.
-+	 */
-+	if (state->base.fb && !state->base.fb->format->has_alpha)
-+		ignore_pixel_alpha = OVL_CONST_BLEND;
+-	mtk_mmsys_mixer_in_config(priv->mmsys_dev, idx + 1, alpha_con ? false : true,
+-				  MIXER_ALPHA,
++	if (state->base.fb && !state->base.fb->format->has_alpha) {
++		/*
++		 * Mixer doesn't support CONST_BLD mode,
++		 * use a trick to make the output equivalent
++		 */
++		replace_src_a = true;
++	}
 +
- 	if (pending->rotation & DRM_MODE_REFLECT_Y) {
- 		con |= OVL_CON_VIRT_FLIP;
- 		addr += (pending->height - 1) * pending->pitch;
-@@ -464,8 +474,8 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
++	mtk_mmsys_mixer_in_config(priv->mmsys_dev, idx + 1, replace_src_a, MIXER_ALPHA,
+ 				  pending->x & 1 ? MIXER_INX_MODE_EVEN_EXTEND :
+ 				  MIXER_INX_MODE_BYPASS, align_width / 2 - 1, cmdq_pkt);
  
- 	mtk_ddp_write_relaxed(cmdq_pkt, con, &ovl->cmdq_reg, ovl->regs,
- 			      DISP_REG_OVL_CON(idx));
--	mtk_ddp_write_relaxed(cmdq_pkt, overlay_pitch.split_pitch.lsb, &ovl->cmdq_reg, ovl->regs,
--			      DISP_REG_OVL_PITCH(idx));
-+	mtk_ddp_write_relaxed(cmdq_pkt, overlay_pitch.split_pitch.lsb | ignore_pixel_alpha,
-+			      &ovl->cmdq_reg, ovl->regs, DISP_REG_OVL_PITCH(idx));
- 	mtk_ddp_write_relaxed(cmdq_pkt, src_size, &ovl->cmdq_reg, ovl->regs,
- 			      DISP_REG_OVL_SRC_SIZE(idx));
- 	mtk_ddp_write_relaxed(cmdq_pkt, offset, &ovl->cmdq_reg, ovl->regs,
 
 -- 
 Git-146)
