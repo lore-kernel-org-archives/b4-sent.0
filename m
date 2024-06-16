@@ -1,11 +1,10 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Date: Sun, 16 Jun 2024 16:29:16 +0800
-Subject: [PATCH 06/13] drm/mediatek: Turn off the layers with zero width or
- height
+Date: Sun, 16 Jun 2024 16:29:17 +0800
+Subject: [PATCH 07/13] drm/mediatek: Support more 10bit formats in OVL
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240616-mediatek-drm-next-v1-6-7e8f9cf785d8@mediatek.com>
+Message-Id: <20240616-mediatek-drm-next-v1-7-7e8f9cf785d8@mediatek.com>
 References: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
 In-Reply-To: <20240616-mediatek-drm-next-v1-0-7e8f9cf785d8@mediatek.com>
 To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
@@ -19,61 +18,106 @@ Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Hsiao Chien Sung <shawn.sung@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=2110;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718526553; l=3047;
  i=shawn.sung@mediatek.com; s=20240616; h=from:subject:message-id;
- bh=dqX2wm5YHxb4PcQ3tQ95rP0OPaABSh/HZP+kCxZYb/s=;
- b=rBv9L1sZHl5v2QITha1QsonEGs+CHt/5LjEOmGGhA4zq4fd/T5Fg2s86fr6o3Z8CqfcowF5og
- L1lA6ShbPNCAVdkfnsbWbj5wJKWF+2uVdMbzAyhEAeIYjg5FRruVtj7
+ bh=0F3dL7Hk+/JpF+cj2ZIa5qK/8av3/IUZtyCgaJlJ8KQ=;
+ b=FUqaJrmj6lkySmFvxKaKCE6fXMSboJr8o/XVh2za02gVuo8S8oPd7q8zz5LoOhBTxMTx1U88M
+ ZwLQEFkA7hmBoGKzWamTs+rRa44xpQfvExfxVjt2R8WCL4JQlXrexPB
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=lq1w8BuWDINX+4JHjGHhhbAU5ICP+cL9VCj7wn+cEDA=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240616 with auth_id=172
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We found that IGT (Intel GPU Tool) will try to commit layers with
-zero width or height and lead to undefined behaviors in hardware.
-Disable the layers in such a situation.
+Support more 10bit formats in OVL.
 
-Fixes: 453c3364632a ("drm/mediatek: Add ovl_adaptor support for MT8195")
-Fixes: d886c0009bd0 ("drm/mediatek: Add ETHDR support for MT8195")
 Reviewed-by: CK Hu <ck.hu@mediatek.com>
 Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
 ---
- drivers/gpu/drm/mediatek/mtk_disp_ovl_adaptor.c | 2 +-
- drivers/gpu/drm/mediatek/mtk_ethdr.c            | 7 ++++++-
- 2 files changed, 7 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/mediatek/mtk_disp_ovl.c | 32 +++++++++++++++++++++++++++++---
+ 1 file changed, 29 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_disp_ovl_adaptor.c b/drivers/gpu/drm/mediatek/mtk_disp_ovl_adaptor.c
-index 02dd7dcdfedb..2b62d6475918 100644
---- a/drivers/gpu/drm/mediatek/mtk_disp_ovl_adaptor.c
-+++ b/drivers/gpu/drm/mediatek/mtk_disp_ovl_adaptor.c
-@@ -158,7 +158,7 @@ void mtk_ovl_adaptor_layer_config(struct device *dev, unsigned int idx,
- 	merge = ovl_adaptor->ovl_adaptor_comp[OVL_ADAPTOR_MERGE0 + idx];
- 	ethdr = ovl_adaptor->ovl_adaptor_comp[OVL_ADAPTOR_ETHDR0];
+diff --git a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
+index 862ab683ed1b..d970cdce06bc 100644
+--- a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
++++ b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
+@@ -71,6 +71,22 @@
+ #define	OVL_CON_VIRT_FLIP	BIT(9)
+ #define	OVL_CON_HORZ_FLIP	BIT(10)
  
--	if (!pending->enable) {
-+	if (!pending->enable || !pending->width || !pending->height) {
- 		mtk_merge_stop_cmdq(merge, cmdq_pkt);
- 		mtk_mdp_rdma_stop(rdma_l, cmdq_pkt);
- 		mtk_mdp_rdma_stop(rdma_r, cmdq_pkt);
-diff --git a/drivers/gpu/drm/mediatek/mtk_ethdr.c b/drivers/gpu/drm/mediatek/mtk_ethdr.c
-index d7d16482c947..b5484a286060 100644
---- a/drivers/gpu/drm/mediatek/mtk_ethdr.c
-+++ b/drivers/gpu/drm/mediatek/mtk_ethdr.c
-@@ -159,7 +159,12 @@ void mtk_ethdr_layer_config(struct device *dev, unsigned int idx,
- 	if (idx >= 4)
- 		return;
++static inline bool is_10bit_rgb(u32 fmt)
++{
++	switch (fmt) {
++	case DRM_FORMAT_XRGB2101010:
++	case DRM_FORMAT_ARGB2101010:
++	case DRM_FORMAT_RGBX1010102:
++	case DRM_FORMAT_RGBA1010102:
++	case DRM_FORMAT_XBGR2101010:
++	case DRM_FORMAT_ABGR2101010:
++	case DRM_FORMAT_BGRX1010102:
++	case DRM_FORMAT_BGRA1010102:
++		return true;
++	}
++	return false;
++}
++
+ static const u32 mt8173_formats[] = {
+ 	DRM_FORMAT_XRGB8888,
+ 	DRM_FORMAT_ARGB8888,
+@@ -88,12 +104,18 @@ static const u32 mt8173_formats[] = {
+ static const u32 mt8195_formats[] = {
+ 	DRM_FORMAT_XRGB8888,
+ 	DRM_FORMAT_ARGB8888,
++	DRM_FORMAT_XRGB2101010,
+ 	DRM_FORMAT_ARGB2101010,
+ 	DRM_FORMAT_BGRX8888,
+ 	DRM_FORMAT_BGRA8888,
++	DRM_FORMAT_BGRX1010102,
+ 	DRM_FORMAT_BGRA1010102,
+ 	DRM_FORMAT_ABGR8888,
+ 	DRM_FORMAT_XBGR8888,
++	DRM_FORMAT_XBGR2101010,
++	DRM_FORMAT_ABGR2101010,
++	DRM_FORMAT_RGBX1010102,
++	DRM_FORMAT_RGBA1010102,
+ 	DRM_FORMAT_RGB888,
+ 	DRM_FORMAT_BGR888,
+ 	DRM_FORMAT_RGB565,
+@@ -253,9 +275,7 @@ static void mtk_ovl_set_bit_depth(struct device *dev, int idx, u32 format,
+ 	reg = readl(ovl->regs + DISP_REG_OVL_CLRFMT_EXT);
+ 	reg &= ~OVL_CON_CLRFMT_BIT_DEPTH_MASK(idx);
  
--	if (!pending->enable) {
-+	if (!pending->enable || !pending->width || !pending->height) {
-+		/*
-+		 * instead of disabling layer with MIX_SRC_CON directly
-+		 * set the size to 0 to avoid screen shift due to mixer
-+		 * mode switch (hardware behavior)
-+		 */
- 		mtk_ddp_write(cmdq_pkt, 0, &mixer->cmdq_base, mixer->regs, MIX_L_SRC_SIZE(idx));
- 		return;
- 	}
+-	if (format == DRM_FORMAT_RGBA1010102 ||
+-	    format == DRM_FORMAT_BGRA1010102 ||
+-	    format == DRM_FORMAT_ARGB2101010)
++	if (is_10bit_rgb(format))
+ 		bit_depth = OVL_CON_CLRFMT_10_BIT;
+ 
+ 	reg |= OVL_CON_CLRFMT_BIT_DEPTH(bit_depth, idx);
+@@ -368,17 +388,23 @@ static unsigned int ovl_fmt_convert(struct mtk_disp_ovl *ovl, unsigned int fmt)
+ 		return OVL_CON_CLRFMT_RGB888(ovl) | OVL_CON_BYTE_SWAP;
+ 	case DRM_FORMAT_RGBX8888:
+ 	case DRM_FORMAT_RGBA8888:
++	case DRM_FORMAT_RGBX1010102:
++	case DRM_FORMAT_RGBA1010102:
+ 		return OVL_CON_CLRFMT_ARGB8888;
+ 	case DRM_FORMAT_BGRX8888:
+ 	case DRM_FORMAT_BGRA8888:
++	case DRM_FORMAT_BGRX1010102:
+ 	case DRM_FORMAT_BGRA1010102:
+ 		return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_BYTE_SWAP;
+ 	case DRM_FORMAT_XRGB8888:
+ 	case DRM_FORMAT_ARGB8888:
++	case DRM_FORMAT_XRGB2101010:
+ 	case DRM_FORMAT_ARGB2101010:
+ 		return OVL_CON_CLRFMT_RGBA8888;
+ 	case DRM_FORMAT_XBGR8888:
+ 	case DRM_FORMAT_ABGR8888:
++	case DRM_FORMAT_XBGR2101010:
++	case DRM_FORMAT_ABGR2101010:
+ 		return OVL_CON_CLRFMT_RGBA8888 | OVL_CON_BYTE_SWAP;
+ 	case DRM_FORMAT_UYVY:
+ 		return OVL_CON_CLRFMT_UYVY | OVL_CON_MTX_YUV_TO_RGB;
 
 -- 
 Git-146)
