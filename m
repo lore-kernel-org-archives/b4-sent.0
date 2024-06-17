@@ -1,224 +1,55 @@
-From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Mon, 17 Jun 2024 12:37:12 +0300
-Subject: [PATCH v10 38/38] dmaengine: cirrus: remove platform code
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH v2 0/3] ARM: dts: qcom: msm8926-motorola-peregrine: Update
+ device tree of Motorola Moto G 4G (2013)
+Date: Mon, 17 Jun 2024 23:22:26 +0200
+Message-Id: <20240617-peregrine-v2-0-c8835d2da7af@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240617-ep93xx-v10-38-662e640ed811@maquefel.me>
-References: <20240617-ep93xx-v10-0-662e640ed811@maquefel.me>
-In-Reply-To: <20240617-ep93xx-v10-0-662e640ed811@maquefel.me>
-To: Vinod Koul <vkoul@kernel.org>, 
- Nikita Shubin <nikita.shubin@maquefel.me>, 
- Alexander Sverdlin <alexander.sverdlin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, dmaengine@vger.kernel.org, 
- Arnd Bergmann <arnd@arndb.de>
-X-Mailer: b4 0.13-dev-e3e53
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718617100; l=6035;
- i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=gcVvzgliElNyoUeXsoUh8/tTM1CO0hurjz+xqTW1O7o=;
- b=weQ8E5DbI6cgQuaTgkOZMdX+CYDNMSQMp/0AXXzTKz0P9GTlIDu8ZB7addXXhlODVsAulejMqyfM
- 6cQBwZMLBJt5wcUDRgsPfw7vYQF15wQcJ5EzCuopq0a0NgZ7bU/0
-X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
- pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
-X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIABKpcGYC/23MwQ6CMBCE4Vche7aGbWhjPPkehkMtI91LaVogK
+ uHdrZw9/pPJt1FBFhS6NhtlrFJkijX0qSEfXByhZKhNutVda9mqhIwxS4Sy8AbaPtjAU/2njKe
+ 8Duve1w5S5im/D3rl3/pPWVmxupiBOwd2zO7mksyf4sMZC/X7vn8ByCK5NKQAAAA=
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ ~postmarketos/upstreaming@lists.sr.ht, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718659400; l=871;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=gxguENUktsJsPjFaq8UcvbJuvvei3DvrYMOWcTOkAw8=;
+ b=r9wdA5EbSuCzt6TOOpC+UdYY6D094zXNEqld0DfTqtYhkVbD0sevSl4Hl0VgRDEAYR2x1ki9J
+ WXXD2LOhk/0DrTFcYwBUXMERrD+u6y4Q/KyNz2gG9n1Vym5RCVRJBv9
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove DMA platform header, from now on we use device tree for DMA
-clients.
+Add accelerometer, magnetometer, regulator and temperature sensor alert
+interrupt and update framebuffer supplies.
 
-Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/dma/ep93xx_dma.c                 |  48 ++++++++++++++-
- include/linux/platform_data/dma-ep93xx.h | 100 -------------------------------
- 2 files changed, 46 insertions(+), 102 deletions(-)
+Changes in v2:
+- Split commit into three commits
+- Link to v1: https://lore.kernel.org/r/20240616-peregrine-v1-1-85d14ae1a11a@apitzsch.eu
 
-diff --git a/drivers/dma/ep93xx_dma.c b/drivers/dma/ep93xx_dma.c
-index 17c8e2badee2..43c4241af7f5 100644
---- a/drivers/dma/ep93xx_dma.c
-+++ b/drivers/dma/ep93xx_dma.c
-@@ -17,6 +17,7 @@
- #include <linux/clk.h>
- #include <linux/init.h>
- #include <linux/interrupt.h>
-+#include <linux/dma-mapping.h>
- #include <linux/dmaengine.h>
- #include <linux/module.h>
- #include <linux/mod_devicetable.h>
-@@ -25,8 +26,6 @@
- #include <linux/platform_device.h>
- #include <linux/slab.h>
- 
--#include <linux/platform_data/dma-ep93xx.h>
--
- #include "dmaengine.h"
- 
- /* M2P registers */
-@@ -106,6 +105,26 @@
- #define DMA_MAX_CHAN_BYTES		0xffff
- #define DMA_MAX_CHAN_DESCRIPTORS	32
- 
-+/*
-+ * M2P channels.
-+ *
-+ * Note that these values are also directly used for setting the PPALLOC
-+ * register.
-+ */
-+#define EP93XX_DMA_I2S1			0
-+#define EP93XX_DMA_I2S2			1
-+#define EP93XX_DMA_AAC1			2
-+#define EP93XX_DMA_AAC2			3
-+#define EP93XX_DMA_AAC3			4
-+#define EP93XX_DMA_I2S3			5
-+#define EP93XX_DMA_UART1		6
-+#define EP93XX_DMA_UART2		7
-+#define EP93XX_DMA_UART3		8
-+#define EP93XX_DMA_IRDA			9
-+/* M2M channels */
-+#define EP93XX_DMA_SSP			10
-+#define EP93XX_DMA_IDE			11
-+
- enum ep93xx_dma_type {
- 	M2P_DMA,
- 	M2M_DMA,
-@@ -242,6 +261,31 @@ static struct ep93xx_dma_chan *to_ep93xx_dma_chan(struct dma_chan *chan)
- 	return container_of(chan, struct ep93xx_dma_chan, chan);
- }
- 
-+static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
-+{
-+	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
-+		return true;
-+
-+	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
-+}
-+
-+/*
-+ * ep93xx_dma_chan_direction - returns direction the channel can be used
-+ *
-+ * This function can be used in filter functions to find out whether the
-+ * channel supports given DMA direction. Only M2P channels have such
-+ * limitation, for M2M channels the direction is configurable.
-+ */
-+static inline enum dma_transfer_direction
-+ep93xx_dma_chan_direction(struct dma_chan *chan)
-+{
-+	if (!ep93xx_dma_chan_is_m2p(chan))
-+		return DMA_TRANS_NONE;
-+
-+	/* even channels are for TX, odd for RX */
-+	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
-+}
-+
- /**
-  * ep93xx_dma_set_active - set new active descriptor chain
-  * @edmac: channel
-diff --git a/include/linux/platform_data/dma-ep93xx.h b/include/linux/platform_data/dma-ep93xx.h
-deleted file mode 100644
-index 9ec5cdd5a1eb..000000000000
---- a/include/linux/platform_data/dma-ep93xx.h
-+++ /dev/null
-@@ -1,100 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0 */
--#ifndef __ASM_ARCH_DMA_H
--#define __ASM_ARCH_DMA_H
--
--#include <linux/types.h>
--#include <linux/device.h>
--#include <linux/dmaengine.h>
--#include <linux/dma-mapping.h>
--#include <linux/property.h>
--#include <linux/string.h>
--
--/*
-- * M2P channels.
-- *
-- * Note that these values are also directly used for setting the PPALLOC
-- * register.
-- */
--#define EP93XX_DMA_I2S1		0
--#define EP93XX_DMA_I2S2		1
--#define EP93XX_DMA_AAC1		2
--#define EP93XX_DMA_AAC2		3
--#define EP93XX_DMA_AAC3		4
--#define EP93XX_DMA_I2S3		5
--#define EP93XX_DMA_UART1	6
--#define EP93XX_DMA_UART2	7
--#define EP93XX_DMA_UART3	8
--#define EP93XX_DMA_IRDA		9
--/* M2M channels */
--#define EP93XX_DMA_SSP		10
--#define EP93XX_DMA_IDE		11
--
--/**
-- * struct ep93xx_dma_data - configuration data for the EP93xx dmaengine
-- * @port: peripheral which is requesting the channel
-- * @direction: TX/RX channel
-- * @name: optional name for the channel, this is displayed in /proc/interrupts
-- *
-- * This information is passed as private channel parameter in a filter
-- * function. Note that this is only needed for slave/cyclic channels.  For
-- * memcpy channels %NULL data should be passed.
-- */
--struct ep93xx_dma_data {
--	int				port;
--	enum dma_transfer_direction	direction;
--	const char			*name;
--};
--
--/**
-- * struct ep93xx_dma_chan_data - platform specific data for a DMA channel
-- * @name: name of the channel, used for getting the right clock for the channel
-- * @base: mapped registers
-- * @irq: interrupt number used by this channel
-- */
--struct ep93xx_dma_chan_data {
--	const char			*name;
--	void __iomem			*base;
--	int				irq;
--};
--
--/**
-- * struct ep93xx_dma_platform_data - platform data for the dmaengine driver
-- * @channels: array of channels which are passed to the driver
-- * @num_channels: number of channels in the array
-- *
-- * This structure is passed to the DMA engine driver via platform data. For
-- * M2P channels, contract is that even channels are for TX and odd for RX.
-- * There is no requirement for the M2M channels.
-- */
--struct ep93xx_dma_platform_data {
--	struct ep93xx_dma_chan_data	*channels;
--	size_t				num_channels;
--};
--
--static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
--{
--	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
--		return true;
--
--	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
--}
--
--/**
-- * ep93xx_dma_chan_direction - returns direction the channel can be used
-- * @chan: channel
-- *
-- * This function can be used in filter functions to find out whether the
-- * channel supports given DMA direction. Only M2P channels have such
-- * limitation, for M2M channels the direction is configurable.
-- */
--static inline enum dma_transfer_direction
--ep93xx_dma_chan_direction(struct dma_chan *chan)
--{
--	if (!ep93xx_dma_chan_is_m2p(chan))
--		return DMA_TRANS_NONE;
--
--	/* even channels are for TX, odd for RX */
--	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
--}
--
--#endif /* __ASM_ARCH_DMA_H */
+---
+André Apitzsch (3):
+      ARM: dts: qcom: msm8926-motorola-peregrine: Add accelerometer, magnetometer, regulator
+      ARM: dts: qcom: msm8926-motorola-peregrine: Update temperature sensor
+      ARM: dts: qcom: msm8926-motorola-peregrine: Add framebuffer supplies
 
+ .../dts/qcom/qcom-msm8926-motorola-peregrine.dts   | 121 +++++++++++++++++++++
+ 1 file changed, 121 insertions(+)
+---
+base-commit: c71189547381bb5f176c6b22a9edc3414f1837b9
+change-id: 20240616-peregrine-6ec5e26b15ec
+
+Best regards,
 -- 
-2.43.2
+André Apitzsch <git@apitzsch.eu>
 
