@@ -1,56 +1,52 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Date: Thu, 20 Jun 2024 00:50:24 +0800
-Subject: [PATCH] soc: mediatek: Disable 9-bit alpha in ETHDR
+Subject: [PATCH 0/5] Support alpha blending in MTK display driver
+Date: Thu, 20 Jun 2024 01:27:05 +0800
+Message-Id: <20240620-blend-v1-0-72670072ca20@mediatek.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240620-9bit_alpha-v1-1-13c69daaf29f@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIAFAMc2YC/0XM7QrCIBiG4VMZ/k7QuZnuVGKEr742qX3kbAzGz
- j1rQT/vB55rIzPGgDNpio1EXMIcxiEHPxXEdma4IQ0uNylZWTHJNdUQ0tU8ps5QoT2A1sZaASQ
- fpog+rF/s0h4d8fnKZjrGP9kUP7CmPbpgEt6piz0dcE3UOMk4iEr7UjSL+NBgZqR27PuQmkKWH
- itg8lwr7irFUEnBNRes9pwpQPAeLENN2n1/AwQtdJzhAAAA
-To: Matthias Brugger <matthias.bgg@gmail.com>, 
+X-B4-Tracking: v=1; b=H4sIAOoUc2YC/02OywqDMBBFf0Vm3cAk0Rj9leIij0kbWrVNrAjiv
+ zfUTZfncjmcHTKlSBn6aodEa8xxngrwSwXubqYbsegLg0BRoxLI7JMmzzoU0khsnA0tlO8rUYj
+ bz3MdTk70/hTdco5gTSbm5nGMS18pEai2qNpGc19rJK0k73gRBo7akg3BOqQO/jP66ozgDRvJR
+ 7PQg/k0som2hRmvkFtZd0HIfpUwHMcX91ar6NwAAAA=
+To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, David Airlie <airlied@gmail.com>, 
+ Daniel Vetter <daniel@ffwll.ch>, Matthias Brugger <matthias.bgg@gmail.com>, 
  AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- Hsiao Chien Sung <shawn.sung@mediatek.com>
+Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ Hsiao Chien Sung <shawn.sung@mediatek.com>, CK Hu <ck.hu@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718815828; l=2248;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718818030; l=1980;
  i=shawn.sung@mediatek.com; s=20240616; h=from:subject:message-id;
- bh=iFWhQ/l8OT7lINIvtBNo7lMXyTigd+l7pk0Z9HnOTR8=;
- b=5fOrKi33gu2tz5LCPRmVxBETuDsDJ7q3F5v5c8dLfS73sIguoLBp6/9YqHdMFi6FzFcejXbCC
- py8wLZrEWqyAHrhF/yJ5vjYhCP+35tbSnq4QcNMXtfbjYJPMCVir82X
+ bh=ffa9QQcOJtyAVtiNDqxJ1WmYeHKO0blFbInuddhMTh8=;
+ b=Em29vUs75c5lfJAEUFMC1hTlqcCcSmdGQzeYIvo6/AGBCkZ8m4TWer36zaThJfIeZeITw0f32
+ v0Vfbb67LuDADyMxoePAZ3AVo1rlmHkOhPrxcUign/xyHGac4mrdNMa
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=lq1w8BuWDINX+4JHjGHhhbAU5ICP+cL9VCj7wn+cEDA=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240616 with auth_id=172
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When 9-bit alpha is enabled, its value will be converted from 0-255 to
-0-256 (255 = not defined). This is designed for special HDR related
-calculation, which should be disabled by default, otherwise, alpha
-blending will not work correctly.
+Support "Pre-multiplied" and "None" blend mode on MediaTek's chips by
+adding correct blend mode property when the planes init.
+Before this patch, only the "Coverage" mode (default) is supported.
 
 Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
 ---
- drivers/soc/mediatek/mtk-mmsys.c | 1 +
- 1 file changed, 1 insertion(+)
+Hsiao Chien Sung (5):
+      drm/mediatek: Support "None" blending in OVL
+      drm/mediatek: Support "None" blending in Mixer
+      drm/mediatek: Support "Pre-multiplied" blending in OVL
+      drm/mediatek: Support "Pre-multiplied" blending in Mixer
+      drm/mediatek: Support alpha blending in display driver
 
-diff --git a/drivers/soc/mediatek/mtk-mmsys.c b/drivers/soc/mediatek/mtk-mmsys.c
-index f370f4ec4b88..938240714e54 100644
---- a/drivers/soc/mediatek/mtk-mmsys.c
-+++ b/drivers/soc/mediatek/mtk-mmsys.c
-@@ -236,6 +236,7 @@ void mtk_mmsys_mixer_in_config(struct device *dev, int idx, bool alpha_sel, u16
- 
- 	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_MIXER_IN1_ALPHA + (idx - 1) * 4, ~0,
- 			      alpha << 16 | alpha, cmdq_pkt);
-+	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_HDR_TOP_CFG, BIT(15 + idx), 0, cmdq_pkt);
- 	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_HDR_TOP_CFG, BIT(19 + idx),
- 			      alpha_sel << (19 + idx), cmdq_pkt);
- 	mtk_mmsys_update_bits(mmsys, MT8195_VDO1_MIXER_IN1_PAD + (idx - 1) * 4,
-
+ drivers/gpu/drm/mediatek/mtk_disp_ovl.c | 36 +++++++++++++++++++++++++--------
+ drivers/gpu/drm/mediatek/mtk_ethdr.c    | 14 ++++++++++---
+ drivers/gpu/drm/mediatek/mtk_plane.c    | 11 ++++++++++
+ 3 files changed, 50 insertions(+), 11 deletions(-)
 ---
 base-commit: 62fe4b067581d480e863191305f108bebffbc0e9
-change-id: 20240619-9bit_alpha-39fbb99acc3b
+change-id: 20240620-blend-9023a305cbf7
 prerequisite-change-id: 20240615-mediatek-drm-next-ad601b349f23:v3
 prerequisite-patch-id: fdd0efbeca41c69c6fa93a5e49a2f16b3d2e8ef7
 prerequisite-patch-id: 24bfda7b207bf9698ab88c7233d9168187aa54bb
