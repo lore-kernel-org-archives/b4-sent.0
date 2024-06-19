@@ -1,10 +1,10 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Date: Wed, 19 Jun 2024 22:30:53 +0800
-Subject: [PATCH v2 12/14] drm/mediatek: Support DRM plane alpha in OVL
+Date: Wed, 19 Jun 2024 22:30:54 +0800
+Subject: [PATCH v2 13/14] drm/mediatek: Support DRM plane alpha in Mixer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240619-mediatek-drm-next-v2-12-abf68f46f8d2@mediatek.com>
+Message-Id: <20240619-mediatek-drm-next-v2-13-abf68f46f8d2@mediatek.com>
 References: <20240619-mediatek-drm-next-v2-0-abf68f46f8d2@mediatek.com>
 In-Reply-To: <20240619-mediatek-drm-next-v2-0-abf68f46f8d2@mediatek.com>
 To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
@@ -18,11 +18,11 @@ Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Hsiao Chien Sung <shawn.sung@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718807531; l=1074;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718807531; l=984;
  i=shawn.sung@mediatek.com; s=20240616; h=from:subject:message-id;
- bh=A1tCyNili9ONVchgKYjd+o0ng6Y8jo6rrmL1JAOqRUE=;
- b=rnRBBesRm9lrD0ENLA6aPqPsEUWcRgvzTppHIxL520esIcoOx43LOqcoP3OpMUIS4DG1zkvNQ
- oG/KM2onM+1AeTIJYBt2+umWJhT9AypTPKce2GGgN/shhjiC+8ZdNyA
+ bh=wRuukHEj6ar3MzrXsZ6wMBC1YWkwtR1Cd5NiPWkH4fQ=;
+ b=mXffXrDFXrHd8s/MoUIUUbt/P7yp7KbzAnh4zOUemxlxHfiBroL5wHk35yF0/DMHdRIAWLfR2
+ d4oOEUBWMpeA2jzbQDTSaw/jhwFjI+xMSQDX1+voFSDc/N3erHWWKGS
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=lq1w8BuWDINX+4JHjGHhhbAU5ICP+cL9VCj7wn+cEDA=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240616 with auth_id=172
@@ -34,26 +34,26 @@ Reviewed-by: CK Hu <ck.hu@mediatek.com>
 Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
 ---
- drivers/gpu/drm/mediatek/mtk_disp_ovl.c | 6 ++++--
+ drivers/gpu/drm/mediatek/mtk_ethdr.c | 6 ++++--
  1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
-index 33b58da15ba4..f358dbfed5e3 100644
---- a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
-+++ b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
-@@ -450,8 +450,10 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
+diff --git a/drivers/gpu/drm/mediatek/mtk_ethdr.c b/drivers/gpu/drm/mediatek/mtk_ethdr.c
+index bf5826b7e776..36021cb8df62 100644
+--- a/drivers/gpu/drm/mediatek/mtk_ethdr.c
++++ b/drivers/gpu/drm/mediatek/mtk_ethdr.c
+@@ -170,8 +170,10 @@ void mtk_ethdr_layer_config(struct device *dev, unsigned int idx,
+ 		return;
  	}
  
- 	con = ovl_fmt_convert(ovl, fmt);
 -	if (state->base.fb && state->base.fb->format->has_alpha)
--		con |= OVL_CON_AEN | OVL_CON_ALPHA;
+-		alpha_con = MIXER_ALPHA_AEN | MIXER_ALPHA;
 +	if (state->base.fb) {
-+		con |= OVL_CON_AEN;
-+		con |= state->base.alpha & OVL_CON_ALPHA;
++		alpha_con |= MIXER_ALPHA_AEN;
++		alpha_con |= state->base.alpha & MIXER_ALPHA;
 +	}
  
- 	/* CONST_BLD must be enabled for XRGB formats although the alpha channel
- 	 * can be ignored, or OVL will still read the value from memory.
+ 	if (state->base.fb && !state->base.fb->format->has_alpha) {
+ 		/*
 
 -- 
 Git-146)
