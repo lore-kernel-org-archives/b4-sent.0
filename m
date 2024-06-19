@@ -1,78 +1,67 @@
-From: =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
-Date: Tue, 18 Jun 2024 14:08:23 +0200
-Subject: [PATCH RESEND v10 12/12] MAINTAINERS: add myself as Marvell
- PXA1908 maintainer
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Date: Wed, 19 Jun 2024 01:29:04 +0100
+Subject: [PATCH net] net/tcp_ao: Don't leak ao_info on error-path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240618-pxa1908-lkml-v10-12-754e5ece9078@skole.hr>
-References: <20240618-pxa1908-lkml-v10-0-754e5ece9078@skole.hr>
-In-Reply-To: <20240618-pxa1908-lkml-v10-0-754e5ece9078@skole.hr>
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Linus Walleij <linus.walleij@linaro.org>, 
- Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, Tony Lindgren <tony@atomide.com>, 
- Haojian Zhuang <haojian.zhuang@linaro.org>, 
- =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>, 
- Lubomir Rintel <lkundrak@v3.sk>, Catalin Marinas <catalin.marinas@arm.com>, 
- Will Deacon <will@kernel.org>, Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>, Rob Herring <robh@kernel.org>, 
- Kees Cook <kees@kernel.org>
-Cc: phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- Karel Balej <balejk@matfyz.cz>, David Wronek <david@mainlining.org>, 
- linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=906;
- i=duje.mihanovic@skole.hr; h=from:subject:message-id;
- bh=60K3FrnypIaQAvLz7O5bioEXx//y4S3+gFksHisDh74=;
- b=owEBbQKS/ZANAwAIAZoRnrBCLZbhAcsmYgBmcXjSOS2p/8rQZm7yByMQ4Nd1bGlAhS7uPLxlC
- EYrHx1yZ/WJAjMEAAEIAB0WIQRT351NnD/hEPs2LXiaEZ6wQi2W4QUCZnF40gAKCRCaEZ6wQi2W
- 4SReD/0R+w8r1SQk27VkYmuF17pC3bOJfVr3ndxV4wp9r/gwPZkmNhSb3DioagOAqfkwsydp/6/
- asykAUecEIC5PFjwlwybZt5cKG6ivRGymWe6/zJSRznLNqrAlde39TfsBVsseaqBk9ACvRzr0Qt
- aikYJ+/ih9dTTooNlMwZZfpkK9pqa0htORPEXED5lsum20iGhZG5crI4QEKa2vaD2AAaMT3rfNH
- XbwXb5dWgYgYTfXcq+qFJ44T3tzdiuPsCAP43qjNSqvNNOfloEaCWm0shSLWIygbI9TAGChrre3
- x4qv6CpDEoX0cy6CTQ3ryolx5sB80VPnfhnC4u1dlhpzH3uQ9bv8UDQ6eVxyPgiuZLGy2Iz9ATb
- cwU2J5fjSYZwq9XOTP6t/e+MmAdaxHZN7OIRtNi2bowpcn2NxTg4McekOoJb0i0KYSAdiuOPqP0
- QGi5/msfk4GuAPTDBBF62/+LvA5LMzEoNETRVDzlWFkHFAhoy59Rx/KGcsWJBwWW0Oia+49nMXV
- fr4VxRq7hWzJgxiz9M0S4/NyZIzFyMlyIKAG9yR5kyqgUWUE8I8az+FTD861xkavzzIDCMm8C6k
- 302wJb7EUMzdqWMej10EGXp53jGSbEFjRrQu/KYg/F03DXy4CrbFwFethYGNkbxX47Xxos9ABC0
- TQge00coxSI+qYA==
-X-Developer-Key: i=duje.mihanovic@skole.hr; a=openpgp;
- fpr=53DF9D4D9C3FE110FB362D789A119EB0422D96E1
-X-Endpoint-Received: by B4 Relay for duje.mihanovic@skole.hr/default with auth_id=112
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240619-tcp-ao-required-leak-v1-1-6408f3c94247@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAE8mcmYC/x2MwQrCMBAFf6Xs2YU2hkr9FfGwSZ52UdO6qSKU/
+ rvR4wzMrFRgikLHZiXDW4tOuUK3ayiOkq9gTZXJtc63fTfwEmeWiQ3PlxoS3yE3di54GUKfDn5
+ PNZ0NF/38tyfKWOhcZZACDiY5jr/jQ8oCo237Aq/AsvqEAAAA
+To: Eric Dumazet <edumazet@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Dmitry Safonov <0x7f454c46@gmail.com>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718756966; l=1410;
+ i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
+ bh=U4ffmt+DUWeDhoiFE1PxHHKXEhF2E1etRzuFRWJAYks=;
+ b=1nlpQ5rZM2edyZFchlRIuzQ9Kxs50YnffEPqyXXW0fnMWL2amUUou8Zbpd/ttsVw6enM+fHirgyV
+ D/3Y/FMXBZgTP1rF8zQA46MTVXb1xaWWq1mug9ccyAvR7vO0wPfF
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add myself as the maintainer for Marvell PXA1908 SoC support.
+It seems I introduced it together with TCP_AO_CMDF_AO_REQUIRED, on
+version 5 [1] of TCP-AO patches. Quite frustrative that having all these
+selftests that I've written, running kmemtest & kcov was always in todo.
 
-Signed-off-by: Duje Mihanović <duje.mihanovic@skole.hr>
+[1]: https://lore.kernel.org/netdev/20230215183335.800122-5-dima@arista.com/
+
+Reported-by: Jakub Kicinski <kuba@kernel.org>
+Closes: https://lore.kernel.org/netdev/20240617072451.1403e1d2@kernel.org/
+Fixes: 0aadc73995d0 ("net/tcp: Prevent TCP-MD5 with TCP-AO being set")
+Cc: stable@vger.kernel.org
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- MAINTAINERS | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ net/ipv4/tcp_ao.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index ebf03f5f0619..5d48ac9801df 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2370,6 +2370,15 @@ F:	drivers/irqchip/irq-mvebu-*
- F:	drivers/pinctrl/mvebu/
- F:	drivers/rtc/rtc-armada38x.c
+diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
+index 37c42b63ff99..09c0fa6756b7 100644
+--- a/net/ipv4/tcp_ao.c
++++ b/net/ipv4/tcp_ao.c
+@@ -1968,8 +1968,10 @@ static int tcp_ao_info_cmd(struct sock *sk, unsigned short int family,
+ 		first = true;
+ 	}
  
-+ARM/Marvell PXA1908 SOC support
-+M:	Duje Mihanović <duje.mihanovic@skole.hr>
-+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
-+S:	Maintained
-+T:	git https://gitlab.com/LegoLivesMatter/linux
-+F:	arch/arm64/boot/dts/marvell/pxa1908*
-+F:	drivers/clk/mmp/clk-pxa1908*.c
-+F:	include/dt-bindings/clock/marvell,pxa1908.h
-+
- ARM/Mediatek RTC DRIVER
- M:	Eddie Huang <eddie.huang@mediatek.com>
- M:	Sean Wang <sean.wang@mediatek.com>
+-	if (cmd.ao_required && tcp_ao_required_verify(sk))
+-		return -EKEYREJECTED;
++	if (cmd.ao_required && tcp_ao_required_verify(sk)) {
++		err = -EKEYREJECTED;
++		goto out;
++	}
+ 
+ 	/* For sockets in TCP_CLOSED it's possible set keys that aren't
+ 	 * matching the future peer (address/port/VRF/etc),
 
+---
+base-commit: 92e5605a199efbaee59fb19e15d6cc2103a04ec2
+change-id: 20240619-tcp-ao-required-leak-22b4a9b6d743
+
+Best regards,
 -- 
-2.45.2
+Dmitry Safonov <0x7f454c46@gmail.com>
 
