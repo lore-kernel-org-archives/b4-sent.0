@@ -1,10 +1,10 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Date: Thu, 20 Jun 2024 01:27:06 +0800
-Subject: [PATCH 1/5] drm/mediatek: Support "None" blending in OVL
+Date: Thu, 20 Jun 2024 01:27:07 +0800
+Subject: [PATCH 2/5] drm/mediatek: Support "None" blending in Mixer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240620-blend-v1-1-72670072ca20@mediatek.com>
+Message-Id: <20240620-blend-v1-2-72670072ca20@mediatek.com>
 References: <20240620-blend-v1-0-72670072ca20@mediatek.com>
 In-Reply-To: <20240620-blend-v1-0-72670072ca20@mediatek.com>
 To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
@@ -13,13 +13,13 @@ To: Chun-Kuang Hu <chunkuang.hu@kernel.org>,
  AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org, 
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- Hsiao Chien Sung <shawn.sung@mediatek.com>, CK Hu <ck.hu@mediatek.com>
+ Hsiao Chien Sung <shawn.sung@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718818030; l=1454;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718818030; l=2177;
  i=shawn.sung@mediatek.com; s=20240616; h=from:subject:message-id;
- bh=rtWSUov4PpFb4hd8Tt3oJveJfjjyY029CEOcPjNOX6c=;
- b=KpJUZeS7WEff+MEihA4MdIy0tY9hjb36UjuTGYAVOGH4tGwjeZ7PvX9T2RQh9WvxFAcPEPxOE
- 4ztaAk9cHA2AwkAaKKCB54EtlLjv9UUQ3Whapw0cgfuK2rSBXYHc9Bl
+ bh=Qozngh9H3WmkloftvXdtunQipRtPsqe5newy6O92Wn0=;
+ b=onITXPFDRbXvFOUQC6q/s0ZYmrTMNr/VTBfUMFTM8PVjvt3LEXLMJVJ1tQvXAYnnrP614Ft2U
+ SW7HRNJeZHSBskThxsR8JQiuhTvHA/Oib/BjprnnG6EPZq3+7D8XJlz
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=lq1w8BuWDINX+4JHjGHhhbAU5ICP+cL9VCj7wn+cEDA=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240616 with auth_id=172
@@ -27,34 +27,56 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Support "None" alpha blending mode on MediaTek's chips.
 
-Reviewed-by: CK Hu <ck.hu@mediatek.com>
 Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
 ---
- drivers/gpu/drm/mediatek/mtk_disp_ovl.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ drivers/gpu/drm/mediatek/mtk_ethdr.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
-index 4b370bc0746d..ad9228fc4dd9 100644
---- a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
-+++ b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
-@@ -439,6 +439,7 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
- 	unsigned int fmt = pending->format;
- 	unsigned int offset = (pending->y << 16) | pending->x;
- 	unsigned int src_size = (pending->height << 16) | pending->width;
-+	unsigned int blend_mode = state->base.pixel_blend_mode;
- 	unsigned int ignore_pixel_alpha = 0;
- 	unsigned int con;
- 	bool is_afbc = pending->modifier != DRM_FORMAT_MOD_LINEAR;
-@@ -468,7 +469,8 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
- 	 * For RGB888 related formats, whether CONST_BLD is enabled or not won't
- 	 * affect the result. Therefore we use !has_alpha as the condition.
- 	 */
--	if (state->base.fb && !state->base.fb->format->has_alpha)
-+	if ((state->base.fb && !state->base.fb->format->has_alpha) ||
-+	    blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
- 		ignore_pixel_alpha = OVL_CONST_BLEND;
+diff --git a/drivers/gpu/drm/mediatek/mtk_ethdr.c b/drivers/gpu/drm/mediatek/mtk_ethdr.c
+index 36021cb8df62..48b714994492 100644
+--- a/drivers/gpu/drm/mediatek/mtk_ethdr.c
++++ b/drivers/gpu/drm/mediatek/mtk_ethdr.c
+@@ -3,6 +3,7 @@
+  * Copyright (c) 2021 MediaTek Inc.
+  */
  
- 	if (pending->rotation & DRM_MODE_REFLECT_Y) {
++#include <drm/drm_blend.h>
+ #include <drm/drm_fourcc.h>
+ #include <drm/drm_framebuffer.h>
+ #include <linux/clk.h>
+@@ -35,6 +36,7 @@
+ #define MIX_SRC_L0_EN				BIT(0)
+ #define MIX_L_SRC_CON(n)		(0x28 + 0x18 * (n))
+ #define NON_PREMULTI_SOURCE			(2 << 12)
++#define PREMULTI_SOURCE				(3 << 12)
+ #define MIX_L_SRC_SIZE(n)		(0x30 + 0x18 * (n))
+ #define MIX_L_SRC_OFFSET(n)		(0x34 + 0x18 * (n))
+ #define MIX_FUNC_DCM0			0x120
+@@ -175,7 +177,13 @@ void mtk_ethdr_layer_config(struct device *dev, unsigned int idx,
+ 		alpha_con |= state->base.alpha & MIXER_ALPHA;
+ 	}
+ 
+-	if (state->base.fb && !state->base.fb->format->has_alpha) {
++	if (state->base.pixel_blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
++		alpha_con |= PREMULTI_SOURCE;
++	else
++		alpha_con |= NON_PREMULTI_SOURCE;
++
++	if ((state->base.fb && !state->base.fb->format->has_alpha) ||
++	    state->base.pixel_blend_mode == DRM_MODE_BLEND_PIXEL_NONE) {
+ 		/*
+ 		 * Mixer doesn't support CONST_BLD mode,
+ 		 * use a trick to make the output equivalent
+@@ -191,8 +199,7 @@ void mtk_ethdr_layer_config(struct device *dev, unsigned int idx,
+ 	mtk_ddp_write(cmdq_pkt, pending->height << 16 | align_width, &mixer->cmdq_base,
+ 		      mixer->regs, MIX_L_SRC_SIZE(idx));
+ 	mtk_ddp_write(cmdq_pkt, offset, &mixer->cmdq_base, mixer->regs, MIX_L_SRC_OFFSET(idx));
+-	mtk_ddp_write_mask(cmdq_pkt, alpha_con, &mixer->cmdq_base, mixer->regs, MIX_L_SRC_CON(idx),
+-			   0x1ff);
++	mtk_ddp_write(cmdq_pkt, alpha_con, &mixer->cmdq_base, mixer->regs, MIX_L_SRC_CON(idx));
+ 	mtk_ddp_write_mask(cmdq_pkt, BIT(idx), &mixer->cmdq_base, mixer->regs, MIX_SRC_CON,
+ 			   BIT(idx));
+ }
 
 -- 
 Git-146)
