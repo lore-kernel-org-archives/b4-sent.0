@@ -1,10 +1,10 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Date: Wed, 19 Jun 2024 22:30:43 +0800
-Subject: [PATCH v2 02/14] drm/mediatek: Disable 9-bit alpha in ETHDR
+Date: Wed, 19 Jun 2024 22:30:44 +0800
+Subject: [PATCH v2 03/14] drm/mediatek: Fix XRGB setting error in OVL
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240619-mediatek-drm-next-v2-2-abf68f46f8d2@mediatek.com>
+Message-Id: <20240619-mediatek-drm-next-v2-3-abf68f46f8d2@mediatek.com>
 References: <20240619-mediatek-drm-next-v2-0-abf68f46f8d2@mediatek.com>
 In-Reply-To: <20240619-mediatek-drm-next-v2-0-abf68f46f8d2@mediatek.com>
 To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
@@ -18,50 +18,74 @@ Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  Hsiao Chien Sung <shawn.sung@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718807531; l=1465;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718807531; l=2960;
  i=shawn.sung@mediatek.com; s=20240616; h=from:subject:message-id;
- bh=6fbUX6KRvCRN0DJcJEcVUjxpKT4VpT1Y9qernMaYSKY=;
- b=rAjWRftMXK7ta3qYwsbvYnPDZglASvzGpDwQeQXLRflRp641iLxiTpYr355ls8TTAKEmmQQOi
- HUcBl+QvWPICO6GFX5hgSHOQYglYtF6BCNYAltDFsfJv+eHhahwnzPi
+ bh=tCYJPhSGMKi5TJvgnmhbxfJqIw69++3CeCs9woVV0N0=;
+ b=pUAHlvinKKjzgS181sqboo/x/W3xdQvnPjuGlVgWHaQXIl3b1l0MFVjYkBQ6dEIXlYUTsumct
+ Ru7FgzaieZ1Bc2NNdp5Pd2WieXj/v2PR5ncTSQk7LYc0HllQe+cc1as
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=lq1w8BuWDINX+4JHjGHhhbAU5ICP+cL9VCj7wn+cEDA=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240616 with auth_id=172
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When 9-bit alpha is enabled, its value will be converted from 0-255 to
-0-256 (255 = not defined). This is designed for special HDR related
-calculation, which should be disabled by default, otherwise, alpha
-blending will not work correctly.
+CONST_BLD must be enabled for XRGB formats although the alpha channel
+can be ignored, or OVL will still read the value from memory.
+This error only affects CRC generation.
 
 Fixes: 119f5173628a ("drm/mediatek: Add DRM Driver for Mediatek SoC MT8173.")
-Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Reviewed-by: CK Hu <ck.hu@mediatek.com>
+Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
 ---
- drivers/gpu/drm/mediatek/mtk_ethdr.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/gpu/drm/mediatek/mtk_disp_ovl.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_ethdr.c b/drivers/gpu/drm/mediatek/mtk_ethdr.c
-index 156c6ff547e8..d7d16482c947 100644
---- a/drivers/gpu/drm/mediatek/mtk_ethdr.c
-+++ b/drivers/gpu/drm/mediatek/mtk_ethdr.c
-@@ -50,7 +50,6 @@
+diff --git a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
+index b552a02d7eae..bd00e5e85deb 100644
+--- a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
++++ b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
+@@ -38,6 +38,7 @@
+ #define DISP_REG_OVL_PITCH_MSB(n)		(0x0040 + 0x20 * (n))
+ #define OVL_PITCH_MSB_2ND_SUBBUF			BIT(16)
+ #define DISP_REG_OVL_PITCH(n)			(0x0044 + 0x20 * (n))
++#define OVL_CONST_BLEND					BIT(28)
+ #define DISP_REG_OVL_RDMA_CTRL(n)		(0x00c0 + 0x20 * (n))
+ #define DISP_REG_OVL_RDMA_GMC(n)		(0x00c8 + 0x20 * (n))
+ #define DISP_REG_OVL_ADDR_MT2701		0x0040
+@@ -407,6 +408,7 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
+ 	unsigned int fmt = pending->format;
+ 	unsigned int offset = (pending->y << 16) | pending->x;
+ 	unsigned int src_size = (pending->height << 16) | pending->width;
++	unsigned int ignore_pixel_alpha = 0;
+ 	unsigned int con;
+ 	bool is_afbc = pending->modifier != DRM_FORMAT_MOD_LINEAR;
+ 	union overlay_pitch {
+@@ -428,6 +430,14 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
+ 	if (state->base.fb && state->base.fb->format->has_alpha)
+ 		con |= OVL_CON_AEN | OVL_CON_ALPHA;
  
- #define MIXER_INX_MODE_BYPASS			0
- #define MIXER_INX_MODE_EVEN_EXTEND		1
--#define DEFAULT_9BIT_ALPHA			0x100
- #define	MIXER_ALPHA_AEN				BIT(8)
- #define	MIXER_ALPHA				0xff
- #define ETHDR_CLK_NUM				13
-@@ -169,7 +168,7 @@ void mtk_ethdr_layer_config(struct device *dev, unsigned int idx,
- 		alpha_con = MIXER_ALPHA_AEN | MIXER_ALPHA;
++	/* CONST_BLD must be enabled for XRGB formats although the alpha channel
++	 * can be ignored, or OVL will still read the value from memory.
++	 * For RGB888 related formats, whether CONST_BLD is enabled or not won't
++	 * affect the result. Therefore we use !has_alpha as the condition.
++	 */
++	if (state->base.fb && !state->base.fb->format->has_alpha)
++		ignore_pixel_alpha = OVL_CONST_BLEND;
++
+ 	if (pending->rotation & DRM_MODE_REFLECT_Y) {
+ 		con |= OVL_CON_VIRT_FLIP;
+ 		addr += (pending->height - 1) * pending->pitch;
+@@ -443,8 +453,8 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
  
- 	mtk_mmsys_mixer_in_config(priv->mmsys_dev, idx + 1, alpha_con ? false : true,
--				  DEFAULT_9BIT_ALPHA,
-+				  MIXER_ALPHA,
- 				  pending->x & 1 ? MIXER_INX_MODE_EVEN_EXTEND :
- 				  MIXER_INX_MODE_BYPASS, align_width / 2 - 1, cmdq_pkt);
- 
+ 	mtk_ddp_write_relaxed(cmdq_pkt, con, &ovl->cmdq_reg, ovl->regs,
+ 			      DISP_REG_OVL_CON(idx));
+-	mtk_ddp_write_relaxed(cmdq_pkt, overlay_pitch.split_pitch.lsb, &ovl->cmdq_reg, ovl->regs,
+-			      DISP_REG_OVL_PITCH(idx));
++	mtk_ddp_write_relaxed(cmdq_pkt, overlay_pitch.split_pitch.lsb | ignore_pixel_alpha,
++			      &ovl->cmdq_reg, ovl->regs, DISP_REG_OVL_PITCH(idx));
+ 	mtk_ddp_write_relaxed(cmdq_pkt, src_size, &ovl->cmdq_reg, ovl->regs,
+ 			      DISP_REG_OVL_SRC_SIZE(idx));
+ 	mtk_ddp_write_relaxed(cmdq_pkt, offset, &ovl->cmdq_reg, ovl->regs,
 
 -- 
 Git-146)
