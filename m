@@ -1,425 +1,130 @@
-From: =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
-Date: Thu, 20 Jun 2024 11:55:36 +0200
-Subject: [PATCH v3] drivers: rtc: Add driver for SD2405AL.
+From: Koakuma <koachan@protonmail.com>
+Date: Thu, 20 Jun 2024 22:56:00 +0700
+Subject: [PATCH] sparc/build: Make all compiler flags also clang-compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240620-rtc-sd2405al-v3-1-65d5bb01af50@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJf8c2YC/3WMSwqDMBQAryJZNyUfY5queo/SxTN51YCakkhoE
- e/e6EoKXc7AzEISRo+JXKuFRMw++TAVkKeK2B6mDql3hYlgomYN0zTOliZXQMFAgZlaS62tlo6
- U5BXx6d/77v4o3Ps0h/jZ75lv9s8oc8qpkspojhouTXPrRvDD2YaRbKMsDjE3P7EosTQtgjCtE
- 6CO8bquX3C4PDrlAAAA
-To: Alexandre Belloni <alexandre.belloni@bootlin.com>
-Cc: linux-kernel@vger.kernel.org, linux-rtc@vger.kernel.org, 
- csokas.bence@prolan.hu, 
- =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718877338; l=11801;
- i=gomba007@gmail.com; s=20230706; h=from:subject:message-id;
- bh=WaSHtEfp4pn7YOjmryD6OwWJ119wxHQ5/uL7sp0vgkk=;
- b=5Yweh59HzNskv1LSt0mIPJD7eTov8tE/BOoXJveG6TA760aZ2OCD+f/LDlHft4fqsBECoHhtJ
- aB+/S8oPznaCgzaevwI+Yd49tCYrewNuWI47RV8HUBt0VcWx/QZnnHf
-X-Developer-Key: i=gomba007@gmail.com; a=ed25519;
- pk=iY9MjPCbud82ULS2PQJIq3QwjKyP/Sg730I6T2M8Y5U=
-X-Endpoint-Received: by B4 Relay for gomba007@gmail.com/20230706 with auth_id=60
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240620-sparc-cflags-v1-1-bba7d0ff7d42@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAA9RdGYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDMyMD3eKCxKJk3eS0nMT0Yt1U8zSjlKSkFJMkyxQloJaCotS0zAqwcdG
+ xtbUA5qLBpV4AAAA=
+To: "David S. Miller" <davem@davemloft.net>, 
+ Andreas Larsson <andreas@gaisler.com>, 
+ Nathan Chancellor <nathan@kernel.org>, 
+ Nick Desaulniers <ndesaulniers@google.com>, 
+ Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>, 
+ glaubitz@physik.fu-berlin.de
+Cc: sparclinux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ llvm@lists.linux.dev, Koakuma <koachan@protonmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718899135; l=4329;
+ i=koachan@protonmail.com; s=20240620; h=from:subject:message-id;
+ bh=TPTX/hXnvGP/7Q/0XONtbbKGd6MWmhWh/U9alDskK+Y=;
+ b=lh38GZIlN9C76lksV8Ck1O5eb0K5JSJr87+5/LTH1ly8d2aesSmDXIyPPuZubaHwQx4txD/2i
+ V2CnGn0gKQnCyMM56PYtjZ0z2keC5F7xp5LyBJQ5E3rmZffWNPuf8jl
+X-Developer-Key: i=koachan@protonmail.com; a=ed25519;
+ pk=UA59FS3yiAA1cnAAUZ1rehTmr6skh95PgkNRBLcoKCg=
+X-Endpoint-Received: by B4 Relay for koachan@protonmail.com/20240620 with auth_id=174
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the DFRobot SD2405AL I2C RTC Module.
+Remove flags not supported by clang and make sure that all the flags
+used are portable between clang and GCC.
 
-Datasheet:
-	https://image.dfrobot.com/image/data/TOY0021/SD2405AL%20datasheet%20(Angelo%20v0.1).pdf
+The reasoning for removing the -fcall-used* ones is as follows:
 
-Product:
-	https://www.dfrobot.com/product-1600.html
+In the (normal) 32-bit ABI, %g5 and %g7 is normally reserved, and in
+the 64-bit ABI, %g7 is the reserved one.
+Linux turns them into volatile registers by the way of -fcall-used-*,
+but on the other hand, omitting the flags shouldn't be harmful;
+compilers will now simply refuse to touch them, and any assembly
+code that happens to touch them would still work like usual (because
+Linux' conventions already treats them as volatile anyway).
 
-To instantiate (assuming device is connected to I2C-1)
-as root:
-	echo sd2405al 0x32 > /sys/bus/i2c/devices/i2c-1/new_device
-as user:
-	echo 'sd2405al 0x32' | sudo tee /sys/class/i2c-adapter/i2c-1/new_device
-
-The driver is tested with:
-	+ hwclock
-	+ tools/testing/selftests/rtc/setdate
-	+ tools/testing/selftests/rtc/rtctest
-
-Signed-off-by: Tóth János <gomba007@gmail.com>
+Signed-off-by: Koakuma <koachan@protonmail.com>
 ---
-Changes in v3:
-- #define-s of registers are reworked.
-- Minor revisions based on the reviewer's suggestions.
-- Link to v2: https://lore.kernel.org/r/20240619-rtc-sd2405al-v2-1-39bea29bd2a5@gmail.com
+Hello~
 
-Changes in v2:
-- Refactored based on reviewer's suggestions.
-- I couldn't get the I2C IRQ to work on Raspberry Pi 4, so alarm is
-  skipped.
-- Link to v1: https://lore.kernel.org/r/20240607-rtc-sd2405al-v1-1-535971e7a866@gmail.com
+This changes the CFLAGS for building the SPARC kernel so that it can be
+built with clang, as a follow up from the discussion in this thread:
+
+https://lore.kernel.org/lkml/JAYB7uS-EdLABTR4iWZdtFOVa5MvlKosIrD_cKTzgeozCOGRM7lhxeLigFB1g3exX445I_W5VKB-tAzl2_G1zCVJRQjp67ODfsSqiZWOZ9o=@protonmail.com/T/#u
+
+The changes are removal of various `-fcall-used-*` flags, and changing
+`-mv8plus` to `-mcpu=v9`:
+
+- `-fcall-used-*` flags should be safe to remove; the compiler will
+  stop using the registers specified as temporaries, but it is a safe
+  change wrt. the ABI. Assembly code can still use those registers
+  as needed.
+  It does bring a theoretical possible slowdown due to the compiler
+  having less registers to work with, but in practice - in my case,
+  at least - it seems to not make any difference with daily usage.
+
+- More trivial is to change `-mv8plus` -> `-mcpu=v9`.
+  This should be safe too since the kernel seems to require a V9
+  processor to run anyway, so I'm changing the flag to one that is
+  portable between GCC and clang.
+
+Also, as stated in the thread, building with these changes still result
+in a working kernel, at least for Sun T5120 and qemu virtual machines.
+
+On the LLVM side, the effort for building Linux/SPARC is tracked here:
+https://github.com/llvm/llvm-project/issues/40792
 ---
- MAINTAINERS                |   6 +
- drivers/rtc/Kconfig        |  10 ++
- drivers/rtc/Makefile       |   1 +
- drivers/rtc/rtc-sd2405al.c | 296 +++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 313 insertions(+)
+ arch/sparc/Makefile      | 4 ++--
+ arch/sparc/vdso/Makefile | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 8754ac2c259d..c78587811433 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -6337,6 +6337,12 @@ F:	include/net/devlink.h
- F:	include/uapi/linux/devlink.h
- F:	net/devlink/
+diff --git a/arch/sparc/Makefile b/arch/sparc/Makefile
+index 757451c3ea1d..7318a8b452c3 100644
+--- a/arch/sparc/Makefile
++++ b/arch/sparc/Makefile
+@@ -29,7 +29,7 @@ UTS_MACHINE    := sparc
+ # versions of gcc.  Some gcc versions won't pass -Av8 to binutils when you
+ # give -mcpu=v8.  This silently worked with older bintutils versions but
+ # does not any more.
+-KBUILD_CFLAGS  += -m32 -mcpu=v8 -pipe -mno-fpu -fcall-used-g5 -fcall-used-g7
++KBUILD_CFLAGS  += -m32 -mcpu=v8 -pipe -mno-fpu
+ KBUILD_CFLAGS  += -Wa,-Av8
  
-+DFROBOT SD2405AL RTC DRIVER
-+M:	Tóth János <gomba007@gmail.com>
-+L:	linux-rtc@vger.kernel.org
-+S:	Maintained
-+F:	drivers/rtc/rtc-sd2405al.c
-+
- DH ELECTRONICS IMX6 DHCOM/DHCOR BOARD SUPPORT
- M:	Christoph Niedermaier <cniedermaier@dh-electronics.com>
- L:	kernel@dh-electronics.com
-diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index 2a95b05982ad..15f1c0ba5759 100644
---- a/drivers/rtc/Kconfig
-+++ b/drivers/rtc/Kconfig
-@@ -743,6 +743,16 @@ config RTC_DRV_S5M
- 	  This driver can also be built as a module. If so, the module
- 	  will be called rtc-s5m.
+ KBUILD_AFLAGS  += -m32 -Wa,-Av8
+@@ -45,7 +45,7 @@ export BITS   := 64
+ UTS_MACHINE   := sparc64
  
-+config RTC_DRV_SD2405AL
-+	tristate "DFRobot SD2405AL"
-+	select REGMAP_I2C
-+	help
-+	  If you say yes here you will get support for the
-+	  DFRobot SD2405AL I2C RTC Module.
-+
-+	  This driver can also be built as a module. If so, the module
-+	  will be called rtc-sd2405al.
-+
- config RTC_DRV_SD3078
- 	tristate "ZXW Shenzhen whwave SD3078"
- 	select REGMAP_I2C
-diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
-index 3004e372f25f..3d19feba1e1c 100644
---- a/drivers/rtc/Makefile
-+++ b/drivers/rtc/Makefile
-@@ -162,6 +162,7 @@ obj-$(CONFIG_RTC_DRV_S3C)	+= rtc-s3c.o
- obj-$(CONFIG_RTC_DRV_S5M)	+= rtc-s5m.o
- obj-$(CONFIG_RTC_DRV_SA1100)	+= rtc-sa1100.o
- obj-$(CONFIG_RTC_DRV_SC27XX)	+= rtc-sc27xx.o
-+obj-$(CONFIG_RTC_DRV_SD2405AL)	+= rtc-sd2405al.o
- obj-$(CONFIG_RTC_DRV_SD3078)   += rtc-sd3078.o
- obj-$(CONFIG_RTC_DRV_SH)	+= rtc-sh.o
- obj-$(CONFIG_RTC_DRV_SNVS)	+= rtc-snvs.o
-diff --git a/drivers/rtc/rtc-sd2405al.c b/drivers/rtc/rtc-sd2405al.c
-new file mode 100644
-index 000000000000..e3ebef06c953
---- /dev/null
-+++ b/drivers/rtc/rtc-sd2405al.c
-@@ -0,0 +1,296 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * RTC driver for the SD2405AL Real-Time Clock
-+ *
-+ * Datasheet:
-+ * https://image.dfrobot.com/image/data/TOY0021/SD2405AL%20datasheet%20(Angelo%20v0.1).pdf
-+ *
-+ * Copyright (C) 2024 Tóth János <gomba007@gmail.com>
-+ * Copyright (C) 2018 Zoro Li <long17.cool@163.com> (rtc-sd3078.c)
-+ * Copyright (C) 2005 James Chapman (rtc-ds1307.c)
-+ */
-+
-+#include <linux/bcd.h>
-+#include <linux/i2c.h>
-+#include <linux/regmap.h>
-+#include <linux/rtc.h>
-+
-+/* Real time clock registers */
-+#define SD2405AL_REG_T_SEC	0x00
-+#define SD2405AL_REG_T_MIN	0x01
-+#define SD2405AL_REG_T_HOUR	0x02
-+#	define SD2405AL_BIT_12H_PM	BIT(5)
-+#	define SD2405AL_BIT_24H		BIT(7)
-+#define SD2405AL_REG_T_WEEK	0x03
-+#define SD2405AL_REG_T_DAY	0x04
-+#define SD2405AL_REG_T_MON	0x05
-+#define SD2405AL_REG_T_YEAR	0x06
-+
-+#define SD2405AL_NUM_T_REGS	(SD2405AL_REG_T_YEAR - SD2405AL_REG_T_SEC + 1)
-+
-+/* Control registers */
-+#define SD2405AL_REG_CTR1	0x0F
-+#	define SD2405AL_BIT_WRTC2	BIT(2)
-+#	define SD2405AL_BIT_WRTC3	BIT(6)
-+#define SD2405AL_REG_CTR2	0x10
-+#	define SD2405AL_BIT_WRTC1	BIT(7)
-+#define SD2405AL_REG_CTR3	0x11
-+#define SD2405AL_REG_TTF	0x12
-+#define SD2405AL_REG_CNTDWN	0x13
-+
-+/* General RAM */
-+#define SD2405AL_REG_M_START	0x14
-+#define SD2405AL_REG_M_END	0x1F
-+
-+struct sd2405al {
-+	struct device		*dev;
-+	struct rtc_device	*rtc;
-+	struct regmap		*regmap;
-+};
-+
-+static int sd2405al_setup(struct sd2405al *sd2405al)
-+{
-+	unsigned int val;
-+	int ret;
-+
-+	/* order of writes is important */
-+	val = SD2405AL_BIT_WRTC1;
-+	/*
-+	 * CTR2.IM = 0, single event alarm
-+	 * CTR2.S{1,0} = 0, disable INT pin
-+	 * CTR2.FOBAT = 0, interrupt enabled during battery backup mode
-+	 * CTR2.INTDE = 0, countdown interrupt disabled
-+	 * CTR2.INTAE = 0, alarm interrupt disabled
-+	 * CTR2.INTFE = 0, frequency interrupt disabled
-+	 */
-+	ret = regmap_write(sd2405al->regmap, SD2405AL_REG_CTR2, val);
-+	if (ret < 0) {
-+		dev_err(sd2405al->dev, "write failed: %d\n", ret);
-+		return ret;
-+	}
-+
-+	val = SD2405AL_BIT_WRTC2 | SD2405AL_BIT_WRTC3;
-+	/*
-+	 * CTR1.INTAF = 0, clear alarm interrupt flag
-+	 * CTR2.INTDF = 0, clear countdown interrupt flag
-+	 */
-+	ret = regmap_write(sd2405al->regmap, SD2405AL_REG_CTR1, val);
-+	if (ret < 0) {
-+		dev_err(sd2405al->dev, "write failed: %d\n", ret);
-+		return ret;
-+	}
-+
-+	val = 0;
-+	/*
-+	 * CRT3.ARTS = 0, disable auto reset of interrupt flags
-+	 * CTR3.TDS{1,0} = 0, unused, since countdown interrupt is disabled
-+	 * CTR3.FS{3,2,1,0} = 0, unused since frequency interrupt is disabled
-+	 */
-+	ret = regmap_write(sd2405al->regmap, SD2405AL_REG_CTR3, val);
-+	if (ret < 0) {
-+		dev_err(sd2405al->dev, "write failed: %d\n", ret);
-+		return ret;
-+	}
-+
-+	dev_dbg(sd2405al->dev, "setup done\n");
-+
-+	return 0;
-+}
-+
-+static int sd2405al_check_state(struct sd2405al *sd2405al)
-+{
-+	u8 data[2] = { 0 };
-+	int state;
-+	int ret;
-+
-+	ret = regmap_bulk_read(sd2405al->regmap, SD2405AL_REG_CTR1, data, 2);
-+	if (ret < 0) {
-+		dev_err(sd2405al->dev, "read failed: %d\n", ret);
-+		return ret;
-+	}
-+
-+	/* CRT1 */
-+	state = (data[0] & (SD2405AL_BIT_WRTC2 | SD2405AL_BIT_WRTC3)) != 0;
-+
-+	/* CTR2 */
-+	state &= (data[1] & SD2405AL_BIT_WRTC1) != 0;
-+
-+	return state;
-+}
-+
-+static int sd2405al_read_time(struct device *dev, struct rtc_time *time)
-+{
-+	u8 hour;
-+	u8 data[SD2405AL_NUM_T_REGS] = { 0 };
-+	struct sd2405al *sd2405al = dev_get_drvdata(dev);
-+	int ret;
-+
-+	ret = sd2405al_check_state(sd2405al);
-+	if (ret == 0) {
-+		dev_err(sd2405al->dev, "invalid device state\n");
-+		return -EINVAL;
-+	} else if (ret < 0) {
-+		return ret;
-+	} else {
-+		dev_dbg(sd2405al->dev, "device state is valid\n");
-+	}
-+
-+	ret = regmap_bulk_read(sd2405al->regmap, SD2405AL_REG_T_SEC, data,
-+			       SD2405AL_NUM_T_REGS);
-+	if (ret < 0) {
-+		dev_err(sd2405al->dev, "read failed: %d\n", ret);
-+		return ret;
-+	}
-+
-+	time->tm_sec = bcd2bin(data[SD2405AL_REG_T_SEC] & 0x7F);
-+	time->tm_min = bcd2bin(data[SD2405AL_REG_T_MIN] & 0x7F);
-+
-+	hour = data[SD2405AL_REG_T_HOUR];
-+	if (hour & SD2405AL_BIT_24H)
-+		time->tm_hour = bcd2bin(hour & 0x3F);
-+	else
-+		if (hour & SD2405AL_BIT_12H_PM)
-+			time->tm_hour = bcd2bin(hour & 0x1F) + 12;
-+		else /* 12 hour mode, AM */
-+			time->tm_hour = bcd2bin(hour & 0x1F);
-+
-+	time->tm_mday = bcd2bin(data[SD2405AL_REG_T_DAY] & 0x3F);
-+	time->tm_wday = data[SD2405AL_REG_T_WEEK] & 0x07;
-+	time->tm_mon = bcd2bin(data[SD2405AL_REG_T_MON] & 0x1F) - 1;
-+	time->tm_year = bcd2bin(data[SD2405AL_REG_T_YEAR]) + 100;
-+
-+	dev_dbg(sd2405al->dev, "read time: %d-%02d-%02d %02d:%02d:%02d\n",
-+			       time->tm_year, time->tm_mon, time->tm_mday,
-+			       time->tm_hour, time->tm_min, time->tm_sec);
-+
-+	return 0;
-+}
-+
-+static int sd2405al_set_time(struct device *dev, struct rtc_time *time)
-+{
-+	u8 data[SD2405AL_NUM_T_REGS];
-+	struct sd2405al *sd2405al = dev_get_drvdata(dev);
-+	int ret;
-+
-+	ret = sd2405al_check_state(sd2405al);
-+	if (ret == 0) {
-+		dev_err(sd2405al->dev, "device is not writable\n");
-+		return -EINVAL;
-+	} else if (ret < 0) {
-+		return ret;
-+	} else {
-+		dev_dbg(sd2405al->dev, "device is writable\n");
-+	}
-+
-+	data[SD2405AL_REG_T_SEC] = bin2bcd(time->tm_sec);
-+	data[SD2405AL_REG_T_MIN] = bin2bcd(time->tm_min);
-+	data[SD2405AL_REG_T_HOUR] = bin2bcd(time->tm_hour) | SD2405AL_BIT_24H;
-+	data[SD2405AL_REG_T_DAY] = bin2bcd(time->tm_mday);
-+	data[SD2405AL_REG_T_WEEK] = time->tm_wday & 0x07;
-+	data[SD2405AL_REG_T_MON] = bin2bcd(time->tm_mon) + 1;
-+	data[SD2405AL_REG_T_YEAR] = bin2bcd(time->tm_year - 100);
-+
-+	ret = regmap_bulk_write(sd2405al->regmap, SD2405AL_REG_T_SEC, data,
-+				SD2405AL_NUM_T_REGS);
-+	if (ret < 0) {
-+		dev_err(sd2405al->dev, "write failed: %d\n", ret);
-+		return ret;
-+	}
-+
-+	dev_dbg(sd2405al->dev, "set time: %d-%02d-%02d %02d:%02d:%02d\n",
-+			       time->tm_year, time->tm_mon, time->tm_mday,
-+			       time->tm_hour, time->tm_min, time->tm_sec);
-+
-+	return 0;
-+}
-+
-+static const struct rtc_class_ops sd2405al_rtc_ops = {
-+	.read_time = sd2405al_read_time,
-+	.set_time = sd2405al_set_time,
-+};
-+
-+static const struct regmap_config sd2405al_regmap_conf = {
-+	.reg_bits = 8,
-+	.val_bits = 8,
-+	.max_register = SD2405AL_REG_M_END,
-+};
-+
-+static int sd2405al_probe(struct i2c_client *client)
-+{
-+	struct sd2405al *sd2405al;
-+	int func;
-+	int ret;
-+
-+	func = i2c_check_functionality(client->adapter, I2C_FUNC_I2C);
-+	if (!func) {
-+		dev_err(&client->dev, "invalid adapter\n");
-+		return -ENODEV;
-+	}
-+
-+	sd2405al = devm_kzalloc(&client->dev, sizeof(*sd2405al), GFP_KERNEL);
-+	if (!sd2405al) {
-+		dev_err(&client->dev, "unable to allocate memory\n");
-+		return -ENOMEM;
-+	}
-+
-+	sd2405al->dev = &client->dev;
-+
-+	sd2405al->regmap = devm_regmap_init_i2c(client, &sd2405al_regmap_conf);
-+	if (IS_ERR(sd2405al->regmap)) {
-+		dev_err(sd2405al->dev, "unable to allocate regmap\n");
-+		return PTR_ERR(sd2405al->regmap);
-+	}
-+
-+	ret = sd2405al_setup(sd2405al);
-+	if (ret < 0) {
-+		dev_err(sd2405al->dev, "unable to setup device\n");
-+		return ret;
-+	}
-+
-+	sd2405al->rtc = devm_rtc_allocate_device(&client->dev);
-+	if (IS_ERR(sd2405al->rtc)) {
-+		dev_err(sd2405al->dev, "unable to allocate device\n");
-+		return PTR_ERR(sd2405al->rtc);
-+	}
-+
-+	sd2405al->rtc->ops = &sd2405al_rtc_ops;
-+	sd2405al->rtc->range_min = RTC_TIMESTAMP_BEGIN_2000;
-+	sd2405al->rtc->range_max = RTC_TIMESTAMP_END_2099;
-+
-+	dev_set_drvdata(&client->dev, sd2405al);
-+
-+	ret = devm_rtc_register_device(sd2405al->rtc);
-+	if (ret < 0) {
-+		dev_err(sd2405al->dev, "unable to register device: %d\n", ret);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct i2c_device_id sd2405al_id[] = {
-+	{ "sd2405al", 0 },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(i2c, sd2405al_id);
-+
-+static const __maybe_unused struct of_device_id sd2405al_of_match[] = {
-+	{ .compatible = "dfrobot,sd2405al" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, sd2405al_of_match);
-+
-+static struct i2c_driver sd2405al_driver = {
-+	.driver = {
-+		.name = "sd2405al",
-+		.of_match_table = of_match_ptr(sd2405al_of_match),
-+	},
-+	.probe = sd2405al_probe,
-+	.id_table = sd2405al_id,
-+};
-+
-+module_i2c_driver(sd2405al_driver);
-+
-+MODULE_AUTHOR("Tóth János");
-+MODULE_LICENSE("GPL");
-+MODULE_DESCRIPTION("SD2405AL RTC driver");
+ KBUILD_CFLAGS += -m64 -pipe -mno-fpu -mcpu=ultrasparc -mcmodel=medlow
+-KBUILD_CFLAGS += -ffixed-g4 -ffixed-g5 -fcall-used-g7 -Wno-sign-compare
++KBUILD_CFLAGS += -ffixed-g4 -ffixed-g5 -Wno-sign-compare
+ KBUILD_CFLAGS += -Wa,--undeclared-regs
+ KBUILD_CFLAGS += $(call cc-option,-mtune=ultrasparc3)
+ KBUILD_AFLAGS += -m64 -mcpu=ultrasparc -Wa,--undeclared-regs
+diff --git a/arch/sparc/vdso/Makefile b/arch/sparc/vdso/Makefile
+index 243dbfc4609d..929140facabf 100644
+--- a/arch/sparc/vdso/Makefile
++++ b/arch/sparc/vdso/Makefile
+@@ -46,7 +46,7 @@ CFL := $(PROFILING) -mcmodel=medlow -fPIC -O2 -fasynchronous-unwind-tables -m64
+        -fno-omit-frame-pointer -foptimize-sibling-calls \
+        -DDISABLE_BRANCH_PROFILING -DBUILD_VDSO
+ 
+-SPARC_REG_CFLAGS = -ffixed-g4 -ffixed-g5 -fcall-used-g5 -fcall-used-g7
++SPARC_REG_CFLAGS = -ffixed-g4 -ffixed-g5
+ 
+ $(vobjs): KBUILD_CFLAGS := $(filter-out $(RANDSTRUCT_CFLAGS) $(GCC_PLUGINS_CFLAGS) $(SPARC_REG_CFLAGS),$(KBUILD_CFLAGS)) $(CFL)
+ 
+@@ -86,7 +86,7 @@ KBUILD_CFLAGS_32 += -fno-stack-protector
+ KBUILD_CFLAGS_32 += $(call cc-option, -foptimize-sibling-calls)
+ KBUILD_CFLAGS_32 += -fno-omit-frame-pointer
+ KBUILD_CFLAGS_32 += -DDISABLE_BRANCH_PROFILING
+-KBUILD_CFLAGS_32 += -mv8plus
++KBUILD_CFLAGS_32 += -mcpu=v9
+ $(obj)/vdso32.so.dbg: KBUILD_CFLAGS = $(KBUILD_CFLAGS_32)
+ 
+ $(obj)/vdso32.so.dbg: FORCE \
 
 ---
-base-commit: c3f38fa61af77b49866b006939479069cd451173
-change-id: 20240607-rtc-sd2405al-a0947377c73d
+base-commit: 92e5605a199efbaee59fb19e15d6cc2103a04ec2
+change-id: 20240620-sparc-cflags-e7f2dbbd4b9d
 
 Best regards,
 -- 
-Tóth János <gomba007@gmail.com>
+Koakuma <koachan@protonmail.com>
 
