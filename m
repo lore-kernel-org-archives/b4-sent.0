@@ -1,67 +1,81 @@
-From: Joel Granados <j.granados@samsung.com>
-Date: Thu, 20 Jun 2024 21:48:32 +0200
-Subject: [PATCH] kbuild: scripts/gdb: bring the "abspath" back
+From: George Chan <gchan9527@gmail.com>
+Subject: [PATCH 0/6] media: qcom: camss: Add sc7180 support
+Date: Fri, 21 Jun 2024 17:40:52 +0800
+Message-Id: <20240621-b4-sc7180-camss-v1-0-14937929f30e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240620-jag-fix_gdb_py_symlinks-v1-1-36a0f0217fbf@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAI+HdGYC/x2M0QqDMAwAf0XyvEINU5m/MkapJtZM7aSBoYj/b
- vHx4O4OUE7CCm1xQOK/qPxihvJRQD/6GNgIZQa0+LQ1WvP1wQyyuUCdW3en+zJLnNRgSS+yxE3
- lEXK9Js7afX5/zvMCD8QIh2kAAAA=
-To: Jan Kiszka <jan.kiszka@siemens.com>, 
- Kieran Bingham <kbingham@kernel.org>, 
- Masahiro Yamada <masahiroy@kernel.org>, 
- Douglas Anderson <dianders@chromium.org>
-Cc: linux-kernel@vger.kernel.org, Joel Granados <j.granados@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1168;
- i=j.granados@samsung.com; h=from:subject:message-id;
- bh=7bxRLJCekPbUSVVSEsWXoyZjnOy26Cg5VuTjO3pr+oE=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGZ0h57LponIbCQBtuQrDWoo00muw2dl46UfY
- lbQoIiRBEF2cYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmdIeeAAoJELqXzVK3
- lkFPNXsL+QH5ec584sP4USYWj0gOobplkUCoahv1IEkdH+Ickt99MPv4hjWhWf15yQ0FS2tlHsu
- C8d04+dFpneDHgf0QA5gdxYkNeeLGspljAX+RqwHeocx/Emvp+/v1/BxPELQkpWfcaWBjxyqt2z
- EmCdqTnRONrblxq0rZnEA9g+qDtwomMV5S16AULcNUG2H8Kb52fJNBauR2ddmRDDz8Lz7HjPWOQ
- mlGFCLoQaPkmMW+zBxvoa1pZ8YRMO9jqxMTchqFwML+7vWOa6Ffa0HjCpS0SA5Uw4J6O95/KbQ2
- wA1JYegCO7FlomsJKErRe2uxhr0KH080xk2AhC3syyMh8mZYOGu03MkB1SUTHZ7QxoBh49JJD1c
- YqISa7rhlaron+Vexeyxe5/XDqqhi+Lm1R6Yraf7qYY3zLUxiOqDnDdn7S49pRBsNfDmChwsmuZ
- Qdi7aXNBLXepGGdU6ltmLObwZhayozdQh+3xkmFJljYqxJmYu6nJHX4d5RamJQ2nftZQUYjFEg5
- rA=
-X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
+X-B4-Tracking: v=1; b=H4sIAKRKdWYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDMyND3SQT3eJkc0MLA93kxNziYt3klJRksyQzg0TLJBMloK6CotS0zAq
+ widGxtbUA0tGVeGEAAAA=
+To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, cros-qcom-dts-watchers@chromium.org, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>
+Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ George Chan <gchan9527@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1718962855; l=1917;
+ i=gchan9527@gmail.com; s=20240621; h=from:subject:message-id;
+ bh=ZVXJbWByUzIKTOC7VscBLLwylCglSs2J2Rvmr2V8T5A=;
+ b=BnsW7oejRFpwuGmmirMaAx9oEYiaBpv3Qz/M2DX4n3OI8yXFjAvAEpaiy89G07uhalR+jN7Gy
+ AaiYtcEU7BxBFzn//FTtSNerwZ79KNwxLH9n3Zcgy1FR9/ZUjzk6zkA
+X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
+ pk=Ac2fkTqgUBlj2sns9hRIWJTYhWHO1BsmHbdBb5UpUUY=
+X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20240621 with auth_id=176
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use the "abspath" call when symlinking the gdb python scripts in
-scripts/gdb/linux. This call is needed to avoid broken links when
-running the scripts_gdb target on a different build directory
-(O=builddir).
+SM7125 is the SoC found in the Xiaomi Redmi Note 9 Pro(joyeuse) cellphone.
+This series adds support to bring up the CSIPHY, CSID, VFE/RDI interfaces.
 
-Fixes: 659bbf7e1b08 ("kbuild: scripts/gdb: Replace missed $(srctree)/$(src) w/ $(src)")
-Signed-off-by: Joel Granados <j.granados@samsung.com>
+Since SM7125 is a low-speed variant of SC7180, SC7180 testers please
+take a look and have a test as well.
+
+sc7180 provides
+
+- 2 x VFE
+- 1 x VFE Lite
+- 2 x CSID
+- 1 x CSID Lite
+- 4 x CSI PHY
+
+The sc7180-camss binding should be comaptible with sdm845 yaml.
+I've copied a new yaml from sdm845-camss.yaml, strip all _src clk and leave
+original maintainer. If this is not desirable then i can add binding to
+existing sdm845 yaml instead.
+
+In addition, a bootable tree of sm7125/joyeuse is availble at:
+https://github.com/99degree/linux/tree/camss
+  
+
+Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- scripts/gdb/linux/Makefile | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+George Chan (6):
+      media: dt-bindings: media: camss: Add qcom,sc7180-camss binding
+      media: qcom: camss: Add CAMSS_SC7180 enum
+      media: qcom: camss: csiphy-3ph: Add Gen2 v1.2.2 two-phase MIPI CSI-2 DPHY init
+      media: qcom: camss: Add sc7180 support
+      media: qcom: camss: Add sc7180 resources
+      [RFT]arm64: dts: qcom: sc7180: Add support for camss subsys
 
-diff --git a/scripts/gdb/linux/Makefile b/scripts/gdb/linux/Makefile
-index fd1402c0a1a1..fcd32fcf3ae0 100644
---- a/scripts/gdb/linux/Makefile
-+++ b/scripts/gdb/linux/Makefile
-@@ -5,7 +5,7 @@ ifdef building_out_of_srctree
- symlinks := $(patsubst $(src)/%,%,$(wildcard $(src)/*.py))
- 
- quiet_cmd_symlink = SYMLINK $@
--      cmd_symlink = ln -fsn $(patsubst $(obj)/%,$(src)/%,$@) $@
-+      cmd_symlink = ln -fsn $(patsubst $(obj)/%,$(abspath $(src))/%,$@) $@
- 
- always-y += $(symlinks)
- $(addprefix $(obj)/, $(symlinks)): FORCE
-
+ .../bindings/media/qcom,sc7180-camss.yaml          | 324 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sc7180.dtsi               | 134 +++++++++
+ .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     | 120 ++++++++
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |   1 +
+ drivers/media/platform/qcom/camss/camss-vfe.c      |   3 +
+ drivers/media/platform/qcom/camss/camss-video.c    |   1 +
+ drivers/media/platform/qcom/camss/camss.c          | 218 +++++++++++++-
+ drivers/media/platform/qcom/camss/camss.h          |   1 +
+ 8 files changed, 801 insertions(+), 1 deletion(-)
 ---
-base-commit: 6ba59ff4227927d3a8530fc2973b80e94b54d58f
-change-id: 20240620-jag-fix_gdb_py_symlinks-21d9d0de75a2
+base-commit: 2102cb0d050d34d50b9642a3a50861787527e922
+change-id: 20240621-b4-sc7180-camss-cddc6b60a9b4
 
 Best regards,
 -- 
-Joel Granados <j.granados@samsung.com>
+George Chan <gchan9527@gmail.com>
 
