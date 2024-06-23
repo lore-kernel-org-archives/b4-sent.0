@@ -1,10 +1,10 @@
 From: George Chan <gchan9527@gmail.com>
-Date: Mon, 24 Jun 2024 07:22:42 +0800
-Subject: [PATCH v2 3/8] Add sc7180 support
+Date: Mon, 24 Jun 2024 07:22:43 +0800
+Subject: [PATCH v2 4/8] Add sc7180 resources
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240624-b4-sc7180-camss-v2-3-0dfecdc50073@gmail.com>
+Message-Id: <20240624-b4-sc7180-camss-v2-4-0dfecdc50073@gmail.com>
 References: <20240624-b4-sc7180-camss-v2-0-0dfecdc50073@gmail.com>
 In-Reply-To: <20240624-b4-sc7180-camss-v2-0-0dfecdc50073@gmail.com>
 To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
@@ -18,77 +18,271 @@ Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  George Chan <gchan9527@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719184973; l=2308;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719184974; l=5971;
  i=gchan9527@gmail.com; s=20240621; h=from:subject:message-id;
- bh=YnPxfplUpyI7adL5KPtpIXi5NQhvsVScDtSlkhPHhXI=;
- b=/I0M+vj7t9R6giw6FMrUFghs4X9YNXcj0LsjgRByu9J+GnalPu2StVVD8L/ZsoE5udfElUsVG
- QN/Ww/Gug2JB/X+ZxyS0S9TrHXWz6iq+yolczpEXeYHBRFE7/xxVH5X
+ bh=eYOdfLNfRsR/Y0mGhFjRJip/UgmhUUZf9hPbYPKEjak=;
+ b=i7ZRKHlI9DdJ5G+7EtxDj3+i4xLJDLUjdxubzGk6kl1k3SIPzbFhOwBddGUw7OyUr4Si/JzRh
+ jxkMDlBypHcBNSakfYm7FNv10p3EoFP/UdHKrd1oKirzNmMRIbMWn1J
 X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
  pk=Ac2fkTqgUBlj2sns9hRIWJTYhWHO1BsmHbdBb5UpUUY=
 X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20240621 with auth_id=176
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add in functional logic throughout the code to support the sc7180.
+This commit describes the hardware layout for the sc7180 for the
+following hardware blocks:
+
+- 2 x VFE
+- 1 x VFE Lite
+- 2 x CSID
+- 1 x CSID Lite
+- 4 x CSI PHY
 
 Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- drivers/media/platform/qcom/camss/camss-csiphy.c | 1 +
- drivers/media/platform/qcom/camss/camss-vfe.c    | 3 +++
- drivers/media/platform/qcom/camss/camss-video.c  | 1 +
- 3 files changed, 5 insertions(+)
+ drivers/media/platform/qcom/camss/camss.c | 216 ++++++++++++++++++++++++++++++
+ 1 file changed, 216 insertions(+)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.c b/drivers/media/platform/qcom/camss/camss-csiphy.c
-index 45b3a8e5dea4..1fb08b5ee01b 100644
---- a/drivers/media/platform/qcom/camss/camss-csiphy.c
-+++ b/drivers/media/platform/qcom/camss/camss-csiphy.c
-@@ -577,6 +577,7 @@ int msm_csiphy_subdev_init(struct camss *camss,
- 		csiphy->nformats = ARRAY_SIZE(csiphy_formats_8x96);
- 		break;
- 	case CAMSS_845:
-+	case CAMSS_7180:
- 	case CAMSS_8250:
- 	case CAMSS_8280XP:
- 		csiphy->formats = csiphy_formats_sdm845;
-diff --git a/drivers/media/platform/qcom/camss/camss-vfe.c b/drivers/media/platform/qcom/camss/camss-vfe.c
-index d875237cf244..05fa1adc1661 100644
---- a/drivers/media/platform/qcom/camss/camss-vfe.c
-+++ b/drivers/media/platform/qcom/camss/camss-vfe.c
-@@ -224,6 +224,7 @@ static u32 vfe_src_pad_code(struct vfe_line *line, u32 sink_code,
- 	case CAMSS_8x96:
- 	case CAMSS_660:
- 	case CAMSS_845:
-+	case CAMSS_7180:
- 	case CAMSS_8250:
- 	case CAMSS_8280XP:
- 		switch (sink_code) {
-@@ -1518,6 +1519,7 @@ int msm_vfe_subdev_init(struct camss *camss, struct vfe_device *vfe,
- 			}
- 			break;
- 		case CAMSS_845:
-+		case CAMSS_7180:
- 		case CAMSS_8250:
- 		case CAMSS_8280XP:
- 			l->formats = formats_rdi_845;
-@@ -1603,6 +1605,7 @@ static int vfe_bpl_align(struct vfe_device *vfe)
+diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
+index 1923615f0eea..86ba80c47188 100644
+--- a/drivers/media/platform/qcom/camss/camss.c
++++ b/drivers/media/platform/qcom/camss/camss.c
+@@ -713,6 +713,210 @@ static const struct camss_subdev_resources vfe_res_845[] = {
+ 	}
+ };
  
- 	switch (vfe->camss->res->version) {
- 	case CAMSS_845:
-+	case CAMSS_7180:
- 	case CAMSS_8250:
- 	case CAMSS_8280XP:
- 		ret = 16;
-diff --git a/drivers/media/platform/qcom/camss/camss-video.c b/drivers/media/platform/qcom/camss/camss-video.c
-index 54cd82f74115..5b7f3fba938c 100644
---- a/drivers/media/platform/qcom/camss/camss-video.c
-+++ b/drivers/media/platform/qcom/camss/camss-video.c
-@@ -1027,6 +1027,7 @@ int msm_video_register(struct camss_video *video, struct v4l2_device *v4l2_dev,
- 		}
- 		break;
- 	case CAMSS_845:
-+	case CAMSS_7180:
- 	case CAMSS_8250:
- 	case CAMSS_8280XP:
- 		video->formats = formats_rdi_845;
++static const struct camss_subdev_resources csiphy_res_7180[] = {
++	/* CSIPHY0 */
++	{
++		.regulators = {},
++		.clock = {
++			"csiphy0",
++			 "csiphy0_timer"
++		},
++		.clock_rate = {
++			{ 150000000, 270000000, 360000000 },
++			{ 300000000 },
++		},
++		.reg = { "csiphy0" },
++		.interrupt = { "csiphy0" },
++		.ops = &csiphy_ops_3ph_1_0
++	},
++	/* CSIPHY1 */
++	{
++		.regulators = {},
++		.clock = {
++			"csiphy1",
++			"csiphy1_timer"
++		},
++		.clock_rate = {
++			{ 150000000, 270000000, 360000000 },
++			{ 300000000 },
++		},
++		.reg = { "csiphy1" },
++		.interrupt = { "csiphy1" },
++		.ops = &csiphy_ops_3ph_1_0
++	},
++	/* CSIPHY2 */
++	{
++		.regulators = {},
++		.clock = {
++			"csiphy2",
++			"csiphy2_timer"
++		},
++		.clock_rate = {
++			{ 150000000, 270000000, 360000000 },
++			{ 300000000 },
++		},
++		.reg = { "csiphy2" },
++		.interrupt = { "csiphy2" },
++		.ops = &csiphy_ops_3ph_1_0
++	},
++	/* CSIPHY3 */
++	{
++		.regulators = {},
++		.clock = {
++			"csiphy3",
++			"csiphy3_timer"
++		},
++		.clock_rate = {
++			{ 150000000, 270000000, 360000000 },
++			{ 300000000 },
++		},
++		.reg = { "csiphy3" },
++		.interrupt = { "csiphy3" },
++		.ops = &csiphy_ops_3ph_1_0
++	}
++};
++
++static const struct camss_subdev_resources csid_res_7180[] = {
++	/* CSID0 */
++	{
++		.regulators = { "vdda-phy", "vdda-pll" },
++		.clock = {
++			"soc_ahb",
++			"vfe0",
++			"vfe0_cphy_rx",
++			"csi0"
++		},
++		.clock_rate = {
++			{ 0 },
++			{ 240000000, 360000000, 432000000, 600000000 },
++			{ 150000000, 270000000, 360000000 },
++			{ 150000000, 270000000, 360000000, 480000000 },
++		},
++		.reg = { "csid0" },
++		.interrupt = { "csid0" },
++		.ops = &csid_ops_gen2
++	},
++
++	/* CSID1 */
++	{
++		.regulators = { "vdda-phy", "vdda-pll" },
++		.clock = {
++			"soc_ahb",
++			"vfe1",
++			"vfe1_cphy_rx",
++			"csi1",
++		},
++		.clock_rate = {
++			{ 0 },
++			{ 240000000, 360000000, 432000000, 600000000 },
++			{ 150000000, 270000000, 360000000 },
++			{ 150000000, 270000000, 360000000, 480000000 },
++		},
++		.reg = { "csid1" },
++		.interrupt = { "csid1" },
++		.ops = &csid_ops_gen2
++	},
++
++	/* CSID2 */
++	{
++		.regulators = { "vdda-phy", "vdda-pll" },
++		.clock = {
++			"soc_ahb",
++			"vfe_lite",
++			"vfe_lite_cphy_rx",
++			"csi2",
++		},
++		.clock_rate = {
++			{ 0 },
++			{ 240000000, 360000000, 432000000, 600000000 },
++			{ 150000000, 270000000, 360000000 },
++			{ 150000000, 270000000, 360000000, 480000000 },
++		},
++		.reg = { "csid2" },
++		.interrupt = { "csid2" },
++		.is_lite = true,
++		.ops = &csid_ops_gen2
++	}
++};
++
++static const struct camss_subdev_resources vfe_res_7180[] = {
++	/* VFE0 */
++	{
++		.regulators = {},
++		.clock = {
++			"camnoc_axi",
++			"cpas_ahb",
++			"soc_ahb",
++			"vfe0",
++			"vfe0_axi",
++			"csi0",
++		},
++		.clock_rate = {
++			{ 0 },
++			{ 0 },
++			{ 0 },
++			{ 19200000, 240000000, 360000000, 432000000, 600000000 },
++			{ 0 },
++			{ 150000000, 270000000, 360000000, 480000000 },
++		},
++		.reg = { "vfe0" },
++		.interrupt = { "vfe0" },
++		.pd_name = "ife0",
++		.line_num = 4,
++		.has_pd = true,
++		.ops = &vfe_ops_170
++	},
++	/* VFE1 */
++	{
++		.regulators = {},
++		.clock = {
++			"camnoc_axi",
++			"cpas_ahb",
++			"soc_ahb",
++			"vfe1",
++			"vfe1_axi",
++			"csi1",
++		},
++		.clock_rate = {
++			{ 0 },
++			{ 0 },
++			{ 0 },
++			{ 19200000, 240000000, 360000000, 432000000, 600000000 },
++			{ 0 },
++			{ 150000000, 270000000, 360000000, 480000000 },
++		},
++		.reg = { "vfe1" },
++		.interrupt = { "vfe1" },
++		.pd_name = "ife1",
++		.line_num = 4,
++		.has_pd = true,
++		.ops = &vfe_ops_170
++	},
++	/* VFE-lite */
++	{
++		.regulators = {},
++		.clock = {
++			"camnoc_axi",
++			"cpas_ahb",
++			"soc_ahb",
++			"vfe_lite",
++			"csi2",
++		},
++		.clock_rate = {
++			{ 0 },
++			{ 0 },
++			{ 0 },
++			{ 19200000, 240000000, 360000000, 432000000, 600000000 },
++			{ 150000000, 270000000, 360000000, 480000000 },
++		},
++		.reg = { "vfe_lite" },
++		.interrupt = { "vfe_lite" },
++		.is_lite = true,
++		.line_num = 4,
++		.ops = &vfe_ops_170
++	}
++};
++
+ static const struct camss_subdev_resources csiphy_res_8250[] = {
+ 	/* CSIPHY0 */
+ 	{
+@@ -2105,6 +2309,17 @@ static const struct camss_resources sdm845_resources = {
+ 	.vfe_num = ARRAY_SIZE(vfe_res_845),
+ };
+ 
++static const struct camss_resources sc7180_resources = {
++	.version = CAMSS_7180,
++	.pd_name = "top",
++	.csiphy_res = csiphy_res_7180,
++	.csid_res = csid_res_7180,
++	.vfe_res = vfe_res_7180,
++	.csiphy_num = ARRAY_SIZE(csiphy_res_7180),
++	.csid_num = ARRAY_SIZE(csid_res_7180),
++	.vfe_num = ARRAY_SIZE(vfe_res_7180),
++};
++
+ static const struct camss_resources sm8250_resources = {
+ 	.version = CAMSS_8250,
+ 	.pd_name = "top",
+@@ -2137,6 +2352,7 @@ static const struct of_device_id camss_dt_match[] = {
+ 	{ .compatible = "qcom,msm8996-camss", .data = &msm8996_resources },
+ 	{ .compatible = "qcom,sdm660-camss", .data = &sdm660_resources },
+ 	{ .compatible = "qcom,sdm845-camss", .data = &sdm845_resources },
++	{ .compatible = "qcom,sc7180-camss", .data = &sc7180_resources },
+ 	{ .compatible = "qcom,sm8250-camss", .data = &sm8250_resources },
+ 	{ .compatible = "qcom,sc8280xp-camss", .data = &sc8280xp_resources },
+ 	{ }
 
 -- 
 2.34.1
