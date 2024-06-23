@@ -1,13 +1,13 @@
 From: George Chan <gchan9527@gmail.com>
-Date: Fri, 21 Jun 2024 17:40:58 +0800
-Subject: [PATCH RFT 6/6] arm64: dts: qcom: sc7180: Add support for camss
- subsys
+Subject: [PATCH v2 0/8] Add sc7180 camss subsys support
+Date: Mon, 24 Jun 2024 07:22:39 +0800
+Message-Id: <20240624-b4-sc7180-camss-v2-0-0dfecdc50073@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240621-b4-sc7180-camss-v1-6-14937929f30e@gmail.com>
-References: <20240621-b4-sc7180-camss-v1-0-14937929f30e@gmail.com>
-In-Reply-To: <20240621-b4-sc7180-camss-v1-0-14937929f30e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAD+ueGYC/3WNQQ6CMBBFr0Jm7Zi2NGBdeQ/Doh0KTCJgOoZoS
+ O9uZe/yveS/v4PExFHgWu2Q4sbC61LAnCqgyS9jRO4Lg1HGqsZoDBaFWn1RSH4WQep7akKjvAs
+ WyuqZ4sDvo3jvCk8srzV9joNN/+z/1qZRobaubp1xQ63ibZw9P860ztDlnL9m9ZX1rgAAAA==
 To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
  Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
  Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -19,176 +19,79 @@ Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  George Chan <gchan9527@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1718962855; l=4150;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719184973; l=2579;
  i=gchan9527@gmail.com; s=20240621; h=from:subject:message-id;
- bh=B8rhLES5xtNqCPArzEgX9w5nXV1pwjkOAbh2DRGd8HY=;
- b=P2glylTdS03cwFIQg4vYqmZQCnI2va7LPlU45e0jcpfBa3hgqbaEywoLDDqKmfKCqg7D+pnpg
- mhGmwOELNPLA4ShMM6oEpru5J/F7QDqc/VZj0md3oi/tJspGC24iV/8
+ bh=DhTilDr3SIjitHMdJcG3ZDB6dsKcEVqpxMzh5u/CJu4=;
+ b=d0e0eTFGCBdEmAlzwkVaV5EVF3iIUoGTcFxwLBM3ga77ZM9sLJ18B2N32eUL7OrxxfMBIxttB
+ 2G+5mhvy5w6CdRKn6kN5+TczlinA+so5/9BV8PZNW2SV9nFHR6BPhbk
 X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
  pk=Ac2fkTqgUBlj2sns9hRIWJTYhWHO1BsmHbdBb5UpUUY=
 X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20240621 with auth_id=176
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce camss subsys support to sc7180 family soc.
+SM7125 is the SoC found in the Xiaomi Redmi Note 9 Pro(joyeuse) cellphone.
+This series adds support to bring up the CSIPHY, CSID, VFE/RDI interfaces.
+
+Since SM7125 is a low-speed variant of SC7180, SC7180 testers please
+take a look and have a test as well.
+
+sc7180 provides
+
+- 2 x VFE
+- 1 x VFE Lite
+- 2 x CSID
+- 1 x CSID Lite
+- 4 x CSI PHY
+
+The sc7180-camss binding should be comaptible with sdm845 yaml.
+I've copied a new yaml from sdm845-camss.yaml, strip all _src clk and
+put new maintainer information. If this is not desirable then i can add binding to
+existing sdm845 yaml instead.
+
+In addition, a bootable tree of sm7125/joyeuse is availble at:
+https://github.com/99degree/linux/tree/camss
+  
 
 Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sc7180.dtsi | 134 +++++++++++++++++++++++++++++++++++
- 1 file changed, 134 insertions(+)
+Changes in v2:
+- Revised dt-binding as stated by krzk
+- Added dt-binding item power-domain-name as stated by Bryan
+- Combine patch #2 and #3 as stated by krzk and Bryan
+- Split eror-print log for clk name from patch #5 as suggested by Konrad
+- Reformat dt-node of camss as stated by krzk
+- Corrected phy init sequence for v1.2.2 as spot by Bryan
+- Added 3 more debug info for missing clk and low clk-rate issue.
+- Adding port info to ports sub-node
+- Adding required-opps node to dt
+- Link to v1: https://lore.kernel.org/r/20240621-b4-sc7180-camss-v1-0-14937929f30e@gmail.com
 
-diff --git a/arch/arm64/boot/dts/qcom/sc7180.dtsi b/arch/arm64/boot/dts/qcom/sc7180.dtsi
-index b5ebf8980325..6ed4caafbe98 100644
---- a/arch/arm64/boot/dts/qcom/sc7180.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sc7180.dtsi
-@@ -5,6 +5,7 @@
-  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
-  */
- 
-+#include <dt-bindings/clock/qcom,camcc-sc7180.h>
- #include <dt-bindings/clock/qcom,dispcc-sc7180.h>
- #include <dt-bindings/clock/qcom,gcc-sc7180.h>
- #include <dt-bindings/clock/qcom,gpucc-sc7180.h>
-@@ -3150,6 +3151,139 @@ camnoc_virt: interconnect@ac00000 {
- 			qcom,bcm-voters = <&apps_bcm_voter>;
- 		};
- 
-+		camss: camss@acb3000 {
-+			compatible = "qcom,sc7180-camss";
-+
-+			reg = <0 0x0acb3000 0 0x1000>,
-+				<0 0x0acba000 0 0x1000>,
-+				<0 0x0acc8000 0 0x1000>,
-+				<0 0x0ac65000 0 0x1000>,
-+				<0 0x0ac66000 0 0x1000>,
-+				<0 0x0ac67000 0 0x1000>,
-+				<0 0x0ac68000 0 0x1000>,
-+				<0 0x0acaf000 0 0x4000>,
-+				<0 0x0acb6000 0 0x4000>,
-+				<0 0x0acc4000 0 0x4000>;
-+			reg-names = "csid0",
-+				"csid1",
-+				"csid2",
-+				"csiphy0",
-+				"csiphy1",
-+				"csiphy2",
-+				"csiphy3",
-+				"vfe0",
-+				"vfe1",
-+				"vfe_lite";
-+
-+			interrupts = <GIC_SPI 464 IRQ_TYPE_EDGE_RISING>,
-+				<GIC_SPI 466 IRQ_TYPE_EDGE_RISING>,
-+				<GIC_SPI 473 IRQ_TYPE_EDGE_RISING>,
-+				<GIC_SPI 477 IRQ_TYPE_EDGE_RISING>,
-+				<GIC_SPI 478 IRQ_TYPE_EDGE_RISING>,
-+				<GIC_SPI 479 IRQ_TYPE_EDGE_RISING>,
-+				<GIC_SPI 448 IRQ_TYPE_EDGE_RISING>,
-+				<GIC_SPI 465 IRQ_TYPE_EDGE_RISING>,
-+				<GIC_SPI 467 IRQ_TYPE_EDGE_RISING>,
-+				<GIC_SPI 472 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "csid0",
-+				"csid1",
-+				"csid2",
-+				"csiphy0",
-+				"csiphy1",
-+				"csiphy2",
-+				"csiphy3",
-+				"vfe0",
-+				"vfe1",
-+				"vfe_lite";
-+
-+			power-domains = <&camcc IFE_0_GDSC>,
-+				<&camcc IFE_1_GDSC>,
-+				<&camcc TITAN_TOP_GDSC>;
-+
-+			power-domain-names = "ife0",
-+				"ife1",
-+				"top";
-+
-+			required-opps = <&rpmhpd_opp_low_svs>;
-+
-+			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
-+				<&camcc CAM_CC_CPAS_AHB_CLK>,
-+				<&camcc CAM_CC_IFE_0_CSID_CLK>,
-+				<&camcc CAM_CC_IFE_1_CSID_CLK>,
-+				<&camcc CAM_CC_IFE_LITE_CSID_CLK>,
-+				<&camcc CAM_CC_CSIPHY0_CLK>,
-+				<&camcc CAM_CC_CSI0PHYTIMER_CLK>,
-+				<&camcc CAM_CC_CSIPHY1_CLK>,
-+				<&camcc CAM_CC_CSI1PHYTIMER_CLK>,
-+				<&camcc CAM_CC_CSIPHY2_CLK>,
-+				<&camcc CAM_CC_CSI2PHYTIMER_CLK>,
-+				<&camcc CAM_CC_CSIPHY3_CLK>,
-+				<&camcc CAM_CC_CSI3PHYTIMER_CLK>,
-+				<&gcc GCC_CAMERA_AHB_CLK>,
-+				<&gcc GCC_CAMERA_HF_AXI_CLK>,
-+				<&camcc CAM_CC_SOC_AHB_CLK>,
-+				<&camcc CAM_CC_IFE_0_AXI_CLK>,
-+				<&camcc CAM_CC_IFE_0_CLK>,
-+				<&camcc CAM_CC_IFE_0_CPHY_RX_CLK>,
-+				<&camcc CAM_CC_IFE_1_AXI_CLK>,
-+				<&camcc CAM_CC_IFE_1_CLK>,
-+				<&camcc CAM_CC_IFE_1_CPHY_RX_CLK>,
-+				<&camcc CAM_CC_IFE_LITE_CLK>,
-+				<&camcc CAM_CC_IFE_LITE_CPHY_RX_CLK>;
-+
-+			clock-names = "camnoc_axi",
-+				"cpas_ahb",
-+				"csi0",
-+				"csi1",
-+				"csi2",
-+				"csiphy0",
-+				"csiphy0_timer",
-+				"csiphy1",
-+				"csiphy1_timer",
-+				"csiphy2",
-+				"csiphy2_timer",
-+				"csiphy3",
-+				"csiphy3_timer",
-+				"gcc_camera_ahb",
-+				"gcc_camera_axi",
-+				"soc_ahb",
-+				"vfe0_axi",
-+				"vfe0",
-+				"vfe0_cphy_rx",
-+				"vfe1_axi",
-+				"vfe1",
-+				"vfe1_cphy_rx",
-+				"vfe_lite",
-+				"vfe_lite_cphy_rx";
-+
-+			iommus = <&apps_smmu 0x820 0x0>,
-+				<&apps_smmu 0x840 0x0>,
-+				<&apps_smmu 0x860 0x0>;
-+
-+			status = "disabled";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+				};
-+
-+				port@2 {
-+					reg = <2>;
-+				};
-+
-+				port@3 {
-+					reg = <3>;
-+				};
-+			};
-+		};
-+
- 		camcc: clock-controller@ad00000 {
- 			compatible = "qcom,sc7180-camcc";
- 			reg = <0 0x0ad00000 0 0x10000>;
+---
+George Chan (8):
+      Add qcom,sc7180-camss
+      Add Gen2 v1.2.2 two-phase MIPI CSI-2 DPHY init
+      Add sc7180 support
+      Add sc7180 resources
+      Add debug log info to camss_enable_clocks function
+      Add debug log info to msm_csid_subdev_init function
+      Add debug log info to vfe block init and set clock rate
+      [RFT]Add support for sc7180 camss subsys
 
+ .../bindings/media/qcom,sc7180-camss.yaml          | 327 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sc7180.dtsi               | 135 +++++++++
+ drivers/media/platform/qcom/camss/camss-csid.c     |   4 +-
+ .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     | 135 +++++++++
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |   1 +
+ drivers/media/platform/qcom/camss/camss-vfe.c      |  10 +-
+ drivers/media/platform/qcom/camss/camss-video.c    |   1 +
+ drivers/media/platform/qcom/camss/camss.c          | 218 +++++++++++++-
+ drivers/media/platform/qcom/camss/camss.h          |   1 +
+ 9 files changed, 828 insertions(+), 4 deletions(-)
+---
+base-commit: 2102cb0d050d34d50b9642a3a50861787527e922
+change-id: 20240621-b4-sc7180-camss-cddc6b60a9b4
+
+Best regards,
 -- 
-2.34.1
+George Chan <gchan9527@gmail.com>
 
