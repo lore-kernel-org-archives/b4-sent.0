@@ -1,194 +1,453 @@
-From: George Chan <gchan9527@gmail.com>
-Date: Mon, 24 Jun 2024 07:22:47 +0800
-Subject: [PATCH RFT v2 8/8] Add support for sc7180 camss subsys
+From: =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
+Date: Mon, 24 Jun 2024 13:25:13 +0200
+Subject: [PATCH v4] drivers: rtc: Add driver for SD2405AL.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240624-b4-sc7180-camss-v2-8-0dfecdc50073@gmail.com>
-References: <20240624-b4-sc7180-camss-v2-0-0dfecdc50073@gmail.com>
-In-Reply-To: <20240624-b4-sc7180-camss-v2-0-0dfecdc50073@gmail.com>
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, cros-qcom-dts-watchers@chromium.org, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>
-Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- George Chan <gchan9527@gmail.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719184974; l=4445;
- i=gchan9527@gmail.com; s=20240621; h=from:subject:message-id;
- bh=X2+frU2LDNyw6wyGPbsG3VQnH0Ks5wg8+nWA/3AbbKA=;
- b=486ns1YCIRPWUKHR3RW3pjJAqPdpMC27AnFtZYpn533ry2RHOfDBoo7UwodTxw5nIxfR0JDm3
- 8VnWoIa2JyPAR6PFrTukoOKqon4zQ591tg5PI+noJbEkzZiNf5TTvuO
-X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
- pk=Ac2fkTqgUBlj2sns9hRIWJTYhWHO1BsmHbdBb5UpUUY=
-X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20240621 with auth_id=176
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240624-rtc-sd2405al-v4-1-2b2bc759f98f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJhXeWYC/3XMyQrDIBSF4VcJrmtxiFq76nuULq5DEiFD0SAtI
+ e9ek1UIdPkf+M6Cko/BJ3SvFhR9DilMY4n6UiHbwdh6HFxpxAiriSQKx9ni5EoI6DEQXSuulFX
+ coULe0Tfhs989X6W7kOYpfvf3TLf1z1GmmGLBhVbUK7hJ+WgHCP3VTgPajjI7YKpPmBXMtfHAt
+ HEMxBnzA2bkhHnBUjhhDKHQCHLE67r+AKHRVW0iAQAA
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>
+Cc: linux-kernel@vger.kernel.org, linux-rtc@vger.kernel.org, 
+ csokas.bence@prolan.hu, 
+ =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719228318; l=12741;
+ i=gomba007@gmail.com; s=20230706; h=from:subject:message-id;
+ bh=lY39a9Rg21EKsTFsds/Xw2qrf6x615sSPqU2Gawhd4M=;
+ b=1xWi764vOKHbbG1ybUf012+J5Bll/xVtx/v531RAjqb68/TLYMhsk/Z+hFRFZ/HVYaxkd2ygX
+ 2sOIX8XLv02DDB+6vi/4XwLpQfOSMz5Cd6uFVck9Qr54vSfFuwM5ev/
+X-Developer-Key: i=gomba007@gmail.com; a=ed25519;
+ pk=iY9MjPCbud82ULS2PQJIq3QwjKyP/Sg730I6T2M8Y5U=
+X-Endpoint-Received: by B4 Relay for gomba007@gmail.com/20230706 with auth_id=60
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce camss subsys support to sc7180 family soc.
+Add support for the DFRobot SD2405AL I2C RTC Module.
 
-Signed-off-by: George Chan <gchan9527@gmail.com>
+Datasheet:
+	https://image.dfrobot.com/image/data/TOY0021/SD2405AL%20datasheet%20(Angelo%20v0.1).pdf
+
+Product:
+	https://www.dfrobot.com/product-1600.html
+
+To instantiate (assuming device is connected to I2C-1)
+as root:
+	echo sd2405al 0x32 > /sys/bus/i2c/devices/i2c-1/new_device
+as user:
+	echo 'sd2405al 0x32' | sudo tee /sys/class/i2c-adapter/i2c-1/new_device
+
+The driver is tested with:
+	+ hwclock
+	+ tools/testing/selftests/rtc/setdate
+	+ tools/testing/selftests/rtc/rtctest
+
+Signed-off-by: Tóth János <gomba007@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sc7180.dtsi | 135 +++++++++++++++++++++++++++++++++++
- 1 file changed, 135 insertions(+)
+Changes in v4:
+- Implement more comprehensive data validation.
+- Inline some temporary variables.
+- Link to v3: https://lore.kernel.org/r/20240620-rtc-sd2405al-v3-1-65d5bb01af50@gmail.com
 
-diff --git a/arch/arm64/boot/dts/qcom/sc7180.dtsi b/arch/arm64/boot/dts/qcom/sc7180.dtsi
-index b5ebf8980325..c2180d52452c 100644
---- a/arch/arm64/boot/dts/qcom/sc7180.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sc7180.dtsi
-@@ -5,6 +5,7 @@
-  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
-  */
- 
-+#include <dt-bindings/clock/qcom,camcc-sc7180.h>
- #include <dt-bindings/clock/qcom,dispcc-sc7180.h>
- #include <dt-bindings/clock/qcom,gcc-sc7180.h>
- #include <dt-bindings/clock/qcom,gpucc-sc7180.h>
-@@ -3150,6 +3151,140 @@ camnoc_virt: interconnect@ac00000 {
- 			qcom,bcm-voters = <&apps_bcm_voter>;
- 		};
- 
-+		camss: camss@acb3000 {
-+			compatible = "qcom,sc7180-camss";
-+
-+			reg = <0 0xacb3000 0 0x1000>,
-+			      <0 0xacba000 0 0x1000>,
-+			      <0 0xacc8000 0 0x1000>,
-+			      <0 0xac65000 0 0x1000>,
-+			      <0 0xac66000 0 0x1000>,
-+			      <0 0xac67000 0 0x1000>,
-+			      <0 0xac68000 0 0x1000>,
-+			      <0 0xacaf000 0 0x4000>,
-+			      <0 0xacb6000 0 0x4000>,
-+			      <0 0xacc4000 0 0x4000>;
-+
-+			reg-names = "csid0",
-+				    "csid1",
-+				    "csid2",
-+				    "csiphy0",
-+				    "csiphy1",
-+				    "csiphy2",
-+				    "csiphy3",
-+				    "vfe0",
-+				    "vfe1",
-+				    "vfe_lite";
-+
-+			clocks = <&camcc CAM_CC_CAMNOC_AXI_CLK>,
-+				 <&camcc CAM_CC_CPAS_AHB_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CSID_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CSID_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_CSID_CLK>,
-+				 <&camcc CAM_CC_CSIPHY0_CLK>,
-+				 <&camcc CAM_CC_CSI0PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSIPHY1_CLK>,
-+				 <&camcc CAM_CC_CSI1PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSIPHY2_CLK>,
-+				 <&camcc CAM_CC_CSI2PHYTIMER_CLK>,
-+				 <&camcc CAM_CC_CSIPHY3_CLK>,
-+				 <&camcc CAM_CC_CSI3PHYTIMER_CLK>,
-+				 <&gcc GCC_CAMERA_AHB_CLK>,
-+				 <&gcc GCC_CAMERA_HF_AXI_CLK>,
-+				 <&camcc CAM_CC_SOC_AHB_CLK>,
-+				 <&camcc CAM_CC_IFE_0_AXI_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CLK>,
-+				 <&camcc CAM_CC_IFE_0_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_1_AXI_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CLK>,
-+				 <&camcc CAM_CC_IFE_1_CPHY_RX_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_CLK>,
-+				 <&camcc CAM_CC_IFE_LITE_CPHY_RX_CLK>;
-+
-+			clock-names = "camnoc_axi",
-+				      "cpas_ahb",
-+				      "csi0",
-+				      "csi1",
-+				      "csi2",
-+				      "csiphy0",
-+				      "csiphy0_timer",
-+				      "csiphy1",
-+				      "csiphy1_timer",
-+				      "csiphy2",
-+				      "csiphy2_timer",
-+				      "csiphy3",
-+				      "csiphy3_timer",
-+				      "gcc_camera_ahb",
-+				      "gcc_camera_axi",
-+				      "soc_ahb",
-+				      "vfe0_axi",
-+				      "vfe0",
-+				      "vfe0_cphy_rx",
-+				      "vfe1_axi",
-+				      "vfe1",
-+				      "vfe1_cphy_rx",
-+				      "vfe_lite",
-+				      "vfe_lite_cphy_rx";
-+
-+			interrupts = <GIC_SPI 464 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 466 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 473 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 477 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 479 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 467 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 472 IRQ_TYPE_LEVEL_HIGH>;
-+
-+			interrupt-names = "csid0",
-+					  "csid1",
-+					  "csid2",
-+					  "csiphy0",
-+					  "csiphy1",
-+					  "csiphy2",
-+					  "csiphy3",
-+					  "vfe0",
-+					  "vfe1",
-+					  "vfe_lite";
-+
-+			iommus = <&apps_smmu 0x820 0x0>,
-+				 <&apps_smmu 0x840 0x0>,
-+				 <&apps_smmu 0x860 0x0>;
-+
-+			power-domains = <&camcc IFE_0_GDSC>,
-+					<&camcc IFE_1_GDSC>,
-+					<&camcc TITAN_TOP_GDSC>;
-+
-+			power-domain-names = "ife0", "ife1", "top";
-+
-+			required-opps = <&rpmhpd_opp_low_svs>;
-+
-+			status = "disabled";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+				};
-+
-+				port@2 {
-+					reg = <2>;
-+				};
-+
-+				port@3 {
-+					reg = <3>;
-+				};
-+
-+			};
-+		};
-+
- 		camcc: clock-controller@ad00000 {
- 			compatible = "qcom,sc7180-camcc";
- 			reg = <0 0x0ad00000 0 0x10000>;
+Changes in v3:
+- #define-s of registers are reworked.
+- Minor revisions based on the reviewer's suggestions.
+- Link to v2: https://lore.kernel.org/r/20240619-rtc-sd2405al-v2-1-39bea29bd2a5@gmail.com
 
+Changes in v2:
+- Refactored based on reviewer's suggestions.
+- I couldn't get the I2C IRQ to work on Raspberry Pi 4, so alarm is
+  skipped.
+- Link to v1: https://lore.kernel.org/r/20240607-rtc-sd2405al-v1-1-535971e7a866@gmail.com
+---
+ MAINTAINERS                |   6 +
+ drivers/rtc/Kconfig        |  10 ++
+ drivers/rtc/Makefile       |   1 +
+ drivers/rtc/rtc-sd2405al.c | 319 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 336 insertions(+)
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 8754ac2c259d..c78587811433 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -6337,6 +6337,12 @@ F:	include/net/devlink.h
+ F:	include/uapi/linux/devlink.h
+ F:	net/devlink/
+ 
++DFROBOT SD2405AL RTC DRIVER
++M:	Tóth János <gomba007@gmail.com>
++L:	linux-rtc@vger.kernel.org
++S:	Maintained
++F:	drivers/rtc/rtc-sd2405al.c
++
+ DH ELECTRONICS IMX6 DHCOM/DHCOR BOARD SUPPORT
+ M:	Christoph Niedermaier <cniedermaier@dh-electronics.com>
+ L:	kernel@dh-electronics.com
+diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
+index 2a95b05982ad..15f1c0ba5759 100644
+--- a/drivers/rtc/Kconfig
++++ b/drivers/rtc/Kconfig
+@@ -743,6 +743,16 @@ config RTC_DRV_S5M
+ 	  This driver can also be built as a module. If so, the module
+ 	  will be called rtc-s5m.
+ 
++config RTC_DRV_SD2405AL
++	tristate "DFRobot SD2405AL"
++	select REGMAP_I2C
++	help
++	  If you say yes here you will get support for the
++	  DFRobot SD2405AL I2C RTC Module.
++
++	  This driver can also be built as a module. If so, the module
++	  will be called rtc-sd2405al.
++
+ config RTC_DRV_SD3078
+ 	tristate "ZXW Shenzhen whwave SD3078"
+ 	select REGMAP_I2C
+diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
+index 3004e372f25f..3d19feba1e1c 100644
+--- a/drivers/rtc/Makefile
++++ b/drivers/rtc/Makefile
+@@ -162,6 +162,7 @@ obj-$(CONFIG_RTC_DRV_S3C)	+= rtc-s3c.o
+ obj-$(CONFIG_RTC_DRV_S5M)	+= rtc-s5m.o
+ obj-$(CONFIG_RTC_DRV_SA1100)	+= rtc-sa1100.o
+ obj-$(CONFIG_RTC_DRV_SC27XX)	+= rtc-sc27xx.o
++obj-$(CONFIG_RTC_DRV_SD2405AL)	+= rtc-sd2405al.o
+ obj-$(CONFIG_RTC_DRV_SD3078)   += rtc-sd3078.o
+ obj-$(CONFIG_RTC_DRV_SH)	+= rtc-sh.o
+ obj-$(CONFIG_RTC_DRV_SNVS)	+= rtc-snvs.o
+diff --git a/drivers/rtc/rtc-sd2405al.c b/drivers/rtc/rtc-sd2405al.c
+new file mode 100644
+index 000000000000..5440cc1aed1d
+--- /dev/null
++++ b/drivers/rtc/rtc-sd2405al.c
+@@ -0,0 +1,319 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * RTC driver for the SD2405AL Real-Time Clock
++ *
++ * Datasheet:
++ * https://image.dfrobot.com/image/data/TOY0021/SD2405AL%20datasheet%20(Angelo%20v0.1).pdf
++ *
++ * Copyright (C) 2024 Tóth János <gomba007@gmail.com>
++ * Copyright (C) 2018 Zoro Li <long17.cool@163.com> (rtc-sd3078.c)
++ * Copyright (C) 2005 James Chapman (rtc-ds1307.c)
++ */
++
++#include <linux/bcd.h>
++#include <linux/i2c.h>
++#include <linux/regmap.h>
++#include <linux/rtc.h>
++
++/* Real time clock registers */
++#define SD2405AL_REG_T_SEC	0x00
++#define SD2405AL_REG_T_MIN	0x01
++#define SD2405AL_REG_T_HOUR	0x02
++#	define SD2405AL_BIT_12H_PM	BIT(5)
++#	define SD2405AL_BIT_24H		BIT(7)
++#define SD2405AL_REG_T_WEEK	0x03
++#define SD2405AL_REG_T_DAY	0x04
++#define SD2405AL_REG_T_MON	0x05
++#define SD2405AL_REG_T_YEAR	0x06
++
++#define SD2405AL_NUM_T_REGS	(SD2405AL_REG_T_YEAR - SD2405AL_REG_T_SEC + 1)
++
++/* Control registers */
++#define SD2405AL_REG_CTR1	0x0F
++#	define SD2405AL_BIT_WRTC2	BIT(2)
++#	define SD2405AL_BIT_WRTC3	BIT(6)
++#define SD2405AL_REG_CTR2	0x10
++#	define SD2405AL_BIT_WRTC1	BIT(7)
++#define SD2405AL_REG_CTR3	0x11
++#define SD2405AL_REG_TTF	0x12
++#define SD2405AL_REG_CNTDWN	0x13
++
++/* General RAM */
++#define SD2405AL_REG_M_START	0x14
++#define SD2405AL_REG_M_END	0x1F
++
++struct sd2405al {
++	struct device		*dev;
++	struct rtc_device	*rtc;
++	struct regmap		*regmap;
++};
++
++static int sd2405al_check_writable(struct sd2405al *sd2405al)
++{
++	u8 data[2] = { 0 };
++	int ret;
++
++	ret = regmap_bulk_read(sd2405al->regmap, SD2405AL_REG_CTR1, data, 2);
++	if (ret < 0) {
++		dev_err(sd2405al->dev, "read failed: %d\n", ret);
++		return ret;
++	}
++
++	return (data[0] & (SD2405AL_BIT_WRTC2 | SD2405AL_BIT_WRTC3)) != 0 &&
++	       (data[1] & SD2405AL_BIT_WRTC1) != 0;
++}
++
++static int sd2405al_setup(struct sd2405al *sd2405al)
++{
++	int ret;
++
++	/* order of writes is important */
++	/*
++	 * CTR2.WRTC1 = 1, device is writable
++	 * CTR2.IM = 0, single event alarm
++	 * CTR2.S{1,0} = 0, disable INT pin
++	 * CTR2.FOBAT = 0, interrupt enabled during battery backup mode
++	 * CTR2.INTDE = 0, countdown interrupt disabled
++	 * CTR2.INTAE = 0, alarm interrupt disabled
++	 * CTR2.INTFE = 0, frequency interrupt disabled
++	 */
++	ret = regmap_write(sd2405al->regmap, SD2405AL_REG_CTR2,
++			   SD2405AL_BIT_WRTC1);
++	if (ret < 0) {
++		dev_err(sd2405al->dev, "write failed: %d\n", ret);
++		return ret;
++	}
++
++	/*
++	 * CTR2.WRTC3 = 1, device is writable
++	 * CTR1.INTAF = 0, clear alarm interrupt flag
++	 * CTR2.INTDF = 0, clear countdown interrupt flag
++	 * CTR2.WRTC2 = 1, device is writable
++	 */
++	ret = regmap_write(sd2405al->regmap, SD2405AL_REG_CTR1,
++			   SD2405AL_BIT_WRTC2 | SD2405AL_BIT_WRTC3);
++	if (ret < 0) {
++		dev_err(sd2405al->dev, "write failed: %d\n", ret);
++		return ret;
++	}
++
++	/*
++	 * CRT3.ARTS = 0, disable auto reset of interrupt flags
++	 * CTR3.TDS{1,0} = 0, unused, since countdown interrupt is disabled
++	 * CTR3.FS{3,2,1,0} = 0, unused since frequency interrupt is disabled
++	 */
++	ret = regmap_write(sd2405al->regmap, SD2405AL_REG_CTR3, 0);
++	if (ret < 0) {
++		dev_err(sd2405al->dev, "write failed: %d\n", ret);
++		return ret;
++	}
++
++	ret = sd2405al_check_writable(sd2405al);
++	if (ret == 0) {
++		dev_err(sd2405al->dev, "device is not writable\n");
++		return -EINVAL;
++	} else if (ret < 0) {
++		return ret;
++	} else {
++		dev_dbg(sd2405al->dev, "device is writable\n");
++	}
++
++	return 0;
++}
++
++static int sd2405al_read_time(struct device *dev, struct rtc_time *time)
++{
++	u8 data[SD2405AL_NUM_T_REGS] = { 0 };
++	struct sd2405al *sd2405al = dev_get_drvdata(dev);
++	int ret;
++
++	ret = regmap_bulk_read(sd2405al->regmap, SD2405AL_REG_T_SEC, data,
++			       SD2405AL_NUM_T_REGS);
++	if (ret < 0) {
++		dev_err(sd2405al->dev, "read failed: %d\n", ret);
++		return ret;
++	}
++
++	if (data[SD2405AL_REG_T_SEC] & 0x80) {
++		dev_err(sd2405al->dev, "invalid second\n");
++		return -EINVAL;
++	}
++
++	if (data[SD2405AL_REG_T_MIN] & 0x80) {
++		dev_err(sd2405al->dev, "invalid minute\n");
++		return -EINVAL;
++	}
++
++	if (data[SD2405AL_REG_T_HOUR] & 0x40) {
++		dev_err(sd2405al->dev, "invalid hour\n");
++		return -EINVAL;
++	}
++
++	if (data[SD2405AL_REG_T_WEEK] & 0xF8) {
++		dev_err(sd2405al->dev, "invalid week\n");
++		return -EINVAL;
++	}
++
++	if (data[SD2405AL_REG_T_DAY] & 0xC0) {
++		dev_err(sd2405al->dev, "invalid day\n");
++		return -EINVAL;
++	}
++
++	if (data[SD2405AL_REG_T_MON] & 0xE0) {
++		dev_err(sd2405al->dev, "invalid month\n");
++		return -EINVAL;
++	}
++
++	time->tm_sec = bcd2bin(data[SD2405AL_REG_T_SEC] & 0x7F);
++	time->tm_min = bcd2bin(data[SD2405AL_REG_T_MIN] & 0x7F);
++
++	if (data[SD2405AL_REG_T_HOUR] & SD2405AL_BIT_24H)
++		time->tm_hour = bcd2bin(data[SD2405AL_REG_T_HOUR] & 0x3F);
++	else
++		if (data[SD2405AL_REG_T_HOUR] & SD2405AL_BIT_12H_PM)
++			time->tm_hour = bcd2bin(data[SD2405AL_REG_T_HOUR]
++						& 0x1F) + 12;
++		else /* 12 hour mode, AM */
++			time->tm_hour = bcd2bin(data[SD2405AL_REG_T_HOUR]
++						& 0x1F);
++
++	time->tm_wday = data[SD2405AL_REG_T_WEEK] & 0x07;
++	time->tm_mday = bcd2bin(data[SD2405AL_REG_T_DAY] & 0x3F);
++	time->tm_mon = bcd2bin(data[SD2405AL_REG_T_MON] & 0x1F) - 1;
++	time->tm_year = bcd2bin(data[SD2405AL_REG_T_YEAR]) + 100;
++
++	dev_dbg(sd2405al->dev, "read time: %d-%02d-%02d %02d:%02d:%02d\n",
++			       time->tm_year, time->tm_mon, time->tm_mday,
++			       time->tm_hour, time->tm_min, time->tm_sec);
++
++	return 0;
++}
++
++static int sd2405al_set_time(struct device *dev, struct rtc_time *time)
++{
++	u8 data[SD2405AL_NUM_T_REGS];
++	struct sd2405al *sd2405al = dev_get_drvdata(dev);
++	int ret;
++
++	ret = sd2405al_check_writable(sd2405al);
++	if (ret == 0) {
++		dev_err(sd2405al->dev, "device is not writable\n");
++		return -EINVAL;
++	} else if (ret < 0) {
++		return ret;
++	} else {
++		dev_dbg(sd2405al->dev, "device is writable\n");
++	}
++
++	data[SD2405AL_REG_T_SEC] = bin2bcd(time->tm_sec);
++	data[SD2405AL_REG_T_MIN] = bin2bcd(time->tm_min);
++	data[SD2405AL_REG_T_HOUR] = bin2bcd(time->tm_hour) | SD2405AL_BIT_24H;
++	data[SD2405AL_REG_T_DAY] = bin2bcd(time->tm_mday);
++	data[SD2405AL_REG_T_WEEK] = time->tm_wday & 0x07;
++	data[SD2405AL_REG_T_MON] = bin2bcd(time->tm_mon) + 1;
++	data[SD2405AL_REG_T_YEAR] = bin2bcd(time->tm_year - 100);
++
++	ret = regmap_bulk_write(sd2405al->regmap, SD2405AL_REG_T_SEC, data,
++				SD2405AL_NUM_T_REGS);
++	if (ret < 0) {
++		dev_err(sd2405al->dev, "write failed: %d\n", ret);
++		return ret;
++	}
++
++	dev_dbg(sd2405al->dev, "set time: %d-%02d-%02d %02d:%02d:%02d\n",
++			       time->tm_year, time->tm_mon, time->tm_mday,
++			       time->tm_hour, time->tm_min, time->tm_sec);
++
++	return 0;
++}
++
++static const struct rtc_class_ops sd2405al_rtc_ops = {
++	.read_time = sd2405al_read_time,
++	.set_time = sd2405al_set_time,
++};
++
++static const struct regmap_config sd2405al_regmap_conf = {
++	.reg_bits = 8,
++	.val_bits = 8,
++	.max_register = SD2405AL_REG_M_END,
++};
++
++static int sd2405al_probe(struct i2c_client *client)
++{
++	struct sd2405al *sd2405al;
++	int func;
++	int ret;
++
++	func = i2c_check_functionality(client->adapter, I2C_FUNC_I2C);
++	if (!func) {
++		dev_err(&client->dev, "invalid adapter\n");
++		return -ENODEV;
++	}
++
++	sd2405al = devm_kzalloc(&client->dev, sizeof(*sd2405al), GFP_KERNEL);
++	if (!sd2405al) {
++		dev_err(&client->dev, "unable to allocate memory\n");
++		return -ENOMEM;
++	}
++
++	sd2405al->dev = &client->dev;
++
++	sd2405al->regmap = devm_regmap_init_i2c(client, &sd2405al_regmap_conf);
++	if (IS_ERR(sd2405al->regmap)) {
++		dev_err(sd2405al->dev, "unable to allocate regmap\n");
++		return PTR_ERR(sd2405al->regmap);
++	}
++
++	ret = sd2405al_setup(sd2405al);
++	if (ret < 0) {
++		dev_err(sd2405al->dev, "unable to setup device\n");
++		return ret;
++	}
++
++	sd2405al->rtc = devm_rtc_allocate_device(&client->dev);
++	if (IS_ERR(sd2405al->rtc)) {
++		dev_err(sd2405al->dev, "unable to allocate device\n");
++		return PTR_ERR(sd2405al->rtc);
++	}
++
++	sd2405al->rtc->ops = &sd2405al_rtc_ops;
++	sd2405al->rtc->range_min = RTC_TIMESTAMP_BEGIN_2000;
++	sd2405al->rtc->range_max = RTC_TIMESTAMP_END_2099;
++
++	dev_set_drvdata(&client->dev, sd2405al);
++
++	ret = devm_rtc_register_device(sd2405al->rtc);
++	if (ret < 0) {
++		dev_err(sd2405al->dev, "unable to register device: %d\n", ret);
++		return ret;
++	}
++
++	return 0;
++}
++
++static const struct i2c_device_id sd2405al_id[] = {
++	{ "sd2405al", 0 },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(i2c, sd2405al_id);
++
++static const __maybe_unused struct of_device_id sd2405al_of_match[] = {
++	{ .compatible = "dfrobot,sd2405al" },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, sd2405al_of_match);
++
++static struct i2c_driver sd2405al_driver = {
++	.driver = {
++		.name = "sd2405al",
++		.of_match_table = of_match_ptr(sd2405al_of_match),
++	},
++	.probe = sd2405al_probe,
++	.id_table = sd2405al_id,
++};
++
++module_i2c_driver(sd2405al_driver);
++
++MODULE_AUTHOR("Tóth János");
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("SD2405AL RTC driver");
+
+---
+base-commit: c3f38fa61af77b49866b006939479069cd451173
+change-id: 20240607-rtc-sd2405al-a0947377c73d
+
+Best regards,
 -- 
-2.34.1
+Tóth János <gomba007@gmail.com>
 
