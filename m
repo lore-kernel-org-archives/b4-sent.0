@@ -1,11 +1,11 @@
 From: Luigi Leonardi <luigi.leonardi@outlook.com>
-Date: Wed, 26 Jun 2024 14:08:35 +0200
-Subject: [PATCH net-next v3 1/3] vsock: add support for SIOCOUTQ ioctl for
- all vsock socket types.
+Date: Wed, 26 Jun 2024 14:08:36 +0200
+Subject: [PATCH net-next v3 2/3] vsock/virtio: add SIOCOUTQ support for all
+ virtio based transports
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240626-ioctl_next-v3-1-63be5bf19a40@outlook.com>
+Message-Id: <20240626-ioctl_next-v3-2-63be5bf19a40@outlook.com>
 References: <20240626-ioctl_next-v3-0-63be5bf19a40@outlook.com>
 In-Reply-To: <20240626-ioctl_next-v3-0-63be5bf19a40@outlook.com>
 To: Stefano Garzarella <sgarzare@redhat.com>, 
@@ -17,145 +17,201 @@ To: Stefano Garzarella <sgarzare@redhat.com>,
  Xuan Zhuo <xuanzhuo@linux.alibaba.com>
 Cc: virtualization@lists.linux.dev, netdev@vger.kernel.org, 
  linux-kernel@vger.kernel.org, kvm@vger.kernel.org, 
- Luigi Leonardi <luigi.leonardi@outlook.com>, 
- Daan De Meyer <daan.j.demeyer@gmail.com>
+ Luigi Leonardi <luigi.leonardi@outlook.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719403717; l=3696;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719403717; l=6371;
  i=luigi.leonardi@outlook.com; s=20240626; h=from:subject:message-id;
- bh=XBc988xsxIc7ZI663M8AXQFntIOWVVx66o4JkV1CeRo=;
- b=s27ZRWrsGEs4wcLLVlRYz+AUXUZaj9wTRP3v7Pa7DLHqXA29iNZ4ZWw7fFVu6KPGHz0cd2lc8
- x18vpqqFMyvDIt/62Lc5LJolWtc88+UnKO2FOSOEYCKXO8qKCUxUYgd
+ bh=sI4aKzv65G8Vd6esvUjfpOdcZxrW87hFO3L+yINHGpI=;
+ b=MJgAWqdl5ujUmscMJMELnSlpGJy6V8fNgMjp8s4GaxTHDXY+3yYOEW3ILFijsBEwDC2rigKza
+ DbwuczPf0d/BzEWuW0Wz6oONwx/49gtUR6QmaXWW7aeLBI2GvApKe0g
 X-Developer-Key: i=luigi.leonardi@outlook.com; a=ed25519;
  pk=RYXD8JyCxGnx/izNc/6b3g3pgpohJMAI0LJ7ynxXzi8=
 X-Endpoint-Received: by B4 Relay for luigi.leonardi@outlook.com/20240626 with auth_id=177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for ioctl(s) for SOCK_STREAM SOCK_SEQPACKET and SOCK_DGRAM
-in AF_VSOCK.
-The only ioctl available is SIOCOUTQ/TIOCOUTQ, which returns the number
-of unsent bytes in the socket. This information is transport-specific
-and is delegated to them using a callback.
+Introduce support for stream_bytes_unsent and seqpacket_bytes_unsent
+ioctl for virtio_transport, vhost_vsock and vsock_loopback.
 
-Suggested-by: Daan De Meyer <daan.j.demeyer@gmail.com>
+For all transports the unsent bytes counter is incremented
+in virtio_transport_get_credit.
+
+In the virtio_transport (G2H) the counter is decremented each
+time the host notifies the guest that it consumed the skbuffs.
+In vhost-vsock (H2G) the counter is decremented after the skbuff
+is queued in the virtqueue.
+In vsock_loopback the counter is decremented after the skbuff is
+dequeued.
+
 Signed-off-by: Luigi Leonardi <luigi.leonardi@outlook.com>
 ---
- include/net/af_vsock.h   |  3 +++
- net/vmw_vsock/af_vsock.c | 60 +++++++++++++++++++++++++++++++++++++++++++++---
- 2 files changed, 60 insertions(+), 3 deletions(-)
+ drivers/vhost/vsock.c                   |  4 +++-
+ include/linux/virtio_vsock.h            |  7 +++++++
+ net/vmw_vsock/virtio_transport.c        |  4 +++-
+ net/vmw_vsock/virtio_transport_common.c | 35 +++++++++++++++++++++++++++++++++
+ net/vmw_vsock/vsock_loopback.c          |  7 +++++++
+ 5 files changed, 55 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/af_vsock.h b/include/net/af_vsock.h
-index 535701efc1e5..7b5375ae7827 100644
---- a/include/net/af_vsock.h
-+++ b/include/net/af_vsock.h
-@@ -169,6 +169,9 @@ struct vsock_transport {
- 	void (*notify_buffer_size)(struct vsock_sock *, u64 *);
- 	int (*notify_set_rcvlowat)(struct vsock_sock *vsk, int val);
+diff --git a/drivers/vhost/vsock.c b/drivers/vhost/vsock.c
+index ec20ecff85c7..dba8b3ea37bf 100644
+--- a/drivers/vhost/vsock.c
++++ b/drivers/vhost/vsock.c
+@@ -244,7 +244,7 @@ vhost_transport_do_send_pkt(struct vhost_vsock *vsock,
+ 					restart_tx = true;
+ 			}
  
-+	/* SIOCOUTQ ioctl */
-+	size_t (*unsent_bytes)(struct vsock_sock *vsk);
+-			consume_skb(skb);
++			virtio_transport_consume_skb_sent(skb, true);
+ 		}
+ 	} while(likely(!vhost_exceeds_weight(vq, ++pkts, total_len)));
+ 	if (added)
+@@ -451,6 +451,8 @@ static struct virtio_transport vhost_transport = {
+ 		.notify_buffer_size       = virtio_transport_notify_buffer_size,
+ 		.notify_set_rcvlowat      = virtio_transport_notify_set_rcvlowat,
+ 
++		.unsent_bytes             = virtio_transport_bytes_unsent,
 +
- 	/* Shutdown. */
- 	int (*shutdown)(struct vsock_sock *, int);
+ 		.read_skb = virtio_transport_read_skb,
+ 	},
  
-diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c
-index 4b040285aa78..d6140d73d122 100644
---- a/net/vmw_vsock/af_vsock.c
-+++ b/net/vmw_vsock/af_vsock.c
-@@ -112,6 +112,7 @@
- #include <net/sock.h>
- #include <net/af_vsock.h>
- #include <uapi/linux/vm_sockets.h>
-+#include <uapi/asm-generic/ioctls.h>
+diff --git a/include/linux/virtio_vsock.h b/include/linux/virtio_vsock.h
+index c82089dee0c8..e74c12878213 100644
+--- a/include/linux/virtio_vsock.h
++++ b/include/linux/virtio_vsock.h
+@@ -134,6 +134,8 @@ struct virtio_vsock_sock {
+ 	u32 peer_fwd_cnt;
+ 	u32 peer_buf_alloc;
  
- static int __vsock_bind(struct sock *sk, struct sockaddr_vm *addr);
- static void vsock_sk_destruct(struct sock *sk);
-@@ -1292,6 +1293,59 @@ int vsock_dgram_recvmsg(struct socket *sock, struct msghdr *msg,
++	size_t bytes_unsent;
++
+ 	/* Protected by rx_lock */
+ 	u32 fwd_cnt;
+ 	u32 last_fwd_cnt;
+@@ -193,6 +195,11 @@ s64 virtio_transport_stream_has_data(struct vsock_sock *vsk);
+ s64 virtio_transport_stream_has_space(struct vsock_sock *vsk);
+ u32 virtio_transport_seqpacket_has_data(struct vsock_sock *vsk);
+ 
++size_t virtio_transport_bytes_unsent(struct vsock_sock *vsk);
++
++void virtio_transport_consume_skb_sent(struct sk_buff *skb,
++				       bool consume);
++
+ int virtio_transport_do_socket_init(struct vsock_sock *vsk,
+ 				 struct vsock_sock *psk);
+ int
+diff --git a/net/vmw_vsock/virtio_transport.c b/net/vmw_vsock/virtio_transport.c
+index 43d405298857..fc62d2818c2c 100644
+--- a/net/vmw_vsock/virtio_transport.c
++++ b/net/vmw_vsock/virtio_transport.c
+@@ -311,7 +311,7 @@ static void virtio_transport_tx_work(struct work_struct *work)
+ 
+ 		virtqueue_disable_cb(vq);
+ 		while ((skb = virtqueue_get_buf(vq, &len)) != NULL) {
+-			consume_skb(skb);
++			virtio_transport_consume_skb_sent(skb, true);
+ 			added = true;
+ 		}
+ 	} while (!virtqueue_enable_cb(vq));
+@@ -540,6 +540,8 @@ static struct virtio_transport virtio_transport = {
+ 		.notify_buffer_size       = virtio_transport_notify_buffer_size,
+ 		.notify_set_rcvlowat      = virtio_transport_notify_set_rcvlowat,
+ 
++		.unsent_bytes             = virtio_transport_bytes_unsent,
++
+ 		.read_skb = virtio_transport_read_skb,
+ 	},
+ 
+diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c
+index 16ff976a86e3..3a7fa36f306b 100644
+--- a/net/vmw_vsock/virtio_transport_common.c
++++ b/net/vmw_vsock/virtio_transport_common.c
+@@ -463,6 +463,26 @@ void virtio_transport_inc_tx_pkt(struct virtio_vsock_sock *vvs, struct sk_buff *
  }
- EXPORT_SYMBOL_GPL(vsock_dgram_recvmsg);
+ EXPORT_SYMBOL_GPL(virtio_transport_inc_tx_pkt);
  
-+static int vsock_do_ioctl(struct socket *sock, unsigned int cmd,
-+			  int __user *arg)
++void virtio_transport_consume_skb_sent(struct sk_buff *skb, bool consume)
 +{
-+	struct sock *sk = sock->sk;
-+	struct vsock_sock *vsk;
-+	int retval;
++	struct sock *s = skb->sk;
 +
-+	vsk = vsock_sk(sk);
++	if (s && skb->len) {
++		struct vsock_sock *vs = vsock_sk(s);
++		struct virtio_vsock_sock *vvs;
 +
-+	switch (cmd) {
-+	case SIOCOUTQ: {
-+		size_t n_bytes;
++		vvs = vs->trans;
 +
-+		if (!vsk->transport || !vsk->transport->unsent_bytes) {
-+			retval = -EOPNOTSUPP;
-+			break;
-+		}
-+
-+		if (vsk->transport->unsent_bytes) {
-+			if (sock_type_connectible(sk->sk_type) && sk->sk_state == TCP_LISTEN) {
-+				retval = -EINVAL;
-+				break;
-+			}
-+
-+			n_bytes = vsk->transport->unsent_bytes(vsk);
-+			if (n_bytes < 0) {
-+				retval = n_bytes;
-+				break;
-+			}
-+
-+			retval = put_user(n_bytes, arg);
-+		}
-+		break;
-+	}
-+	default:
-+		retval = -ENOIOCTLCMD;
++		spin_lock_bh(&vvs->tx_lock);
++		vvs->bytes_unsent -= skb->len;
++		spin_unlock_bh(&vvs->tx_lock);
 +	}
 +
-+	return retval;
++	if (consume)
++		consume_skb(skb);
 +}
++EXPORT_SYMBOL_GPL(virtio_transport_consume_skb_sent);
 +
-+static int vsock_ioctl(struct socket *sock, unsigned int cmd,
-+		       unsigned long arg)
+ u32 virtio_transport_get_credit(struct virtio_vsock_sock *vvs, u32 credit)
+ {
+ 	u32 ret;
+@@ -475,6 +495,7 @@ u32 virtio_transport_get_credit(struct virtio_vsock_sock *vvs, u32 credit)
+ 	if (ret > credit)
+ 		ret = credit;
+ 	vvs->tx_cnt += ret;
++	vvs->bytes_unsent += ret;
+ 	spin_unlock_bh(&vvs->tx_lock);
+ 
+ 	return ret;
+@@ -488,6 +509,7 @@ void virtio_transport_put_credit(struct virtio_vsock_sock *vvs, u32 credit)
+ 
+ 	spin_lock_bh(&vvs->tx_lock);
+ 	vvs->tx_cnt -= credit;
++	vvs->bytes_unsent -= credit;
+ 	spin_unlock_bh(&vvs->tx_lock);
+ }
+ EXPORT_SYMBOL_GPL(virtio_transport_put_credit);
+@@ -1090,6 +1112,19 @@ void virtio_transport_destruct(struct vsock_sock *vsk)
+ }
+ EXPORT_SYMBOL_GPL(virtio_transport_destruct);
+ 
++size_t virtio_transport_bytes_unsent(struct vsock_sock *vsk)
 +{
-+	int ret;
++	struct virtio_vsock_sock *vvs = vsk->trans;
++	size_t ret;
 +
-+	lock_sock(sock->sk);
-+	ret = vsock_do_ioctl(sock, cmd, (int __user *)arg);
-+	release_sock(sock->sk);
++	spin_lock_bh(&vvs->tx_lock);
++	ret = vvs->bytes_unsent;
++	spin_unlock_bh(&vvs->tx_lock);
 +
 +	return ret;
 +}
++EXPORT_SYMBOL_GPL(virtio_transport_bytes_unsent);
 +
- static const struct proto_ops vsock_dgram_ops = {
- 	.family = PF_VSOCK,
- 	.owner = THIS_MODULE,
-@@ -1302,7 +1356,7 @@ static const struct proto_ops vsock_dgram_ops = {
- 	.accept = sock_no_accept,
- 	.getname = vsock_getname,
- 	.poll = vsock_poll,
--	.ioctl = sock_no_ioctl,
-+	.ioctl = vsock_ioctl,
- 	.listen = sock_no_listen,
- 	.shutdown = vsock_shutdown,
- 	.sendmsg = vsock_dgram_sendmsg,
-@@ -2286,7 +2340,7 @@ static const struct proto_ops vsock_stream_ops = {
- 	.accept = vsock_accept,
- 	.getname = vsock_getname,
- 	.poll = vsock_poll,
--	.ioctl = sock_no_ioctl,
-+	.ioctl = vsock_ioctl,
- 	.listen = vsock_listen,
- 	.shutdown = vsock_shutdown,
- 	.setsockopt = vsock_connectible_setsockopt,
-@@ -2308,7 +2362,7 @@ static const struct proto_ops vsock_seqpacket_ops = {
- 	.accept = vsock_accept,
- 	.getname = vsock_getname,
- 	.poll = vsock_poll,
--	.ioctl = sock_no_ioctl,
-+	.ioctl = vsock_ioctl,
- 	.listen = vsock_listen,
- 	.shutdown = vsock_shutdown,
- 	.setsockopt = vsock_connectible_setsockopt,
+ static int virtio_transport_reset(struct vsock_sock *vsk,
+ 				  struct sk_buff *skb)
+ {
+diff --git a/net/vmw_vsock/vsock_loopback.c b/net/vmw_vsock/vsock_loopback.c
+index 6dea6119f5b2..9098613561e3 100644
+--- a/net/vmw_vsock/vsock_loopback.c
++++ b/net/vmw_vsock/vsock_loopback.c
+@@ -98,6 +98,8 @@ static struct virtio_transport loopback_transport = {
+ 		.notify_buffer_size       = virtio_transport_notify_buffer_size,
+ 		.notify_set_rcvlowat      = virtio_transport_notify_set_rcvlowat,
+ 
++		.unsent_bytes             = virtio_transport_bytes_unsent,
++
+ 		.read_skb = virtio_transport_read_skb,
+ 	},
+ 
+@@ -123,6 +125,11 @@ static void vsock_loopback_work(struct work_struct *work)
+ 	spin_unlock_bh(&vsock->pkt_queue.lock);
+ 
+ 	while ((skb = __skb_dequeue(&pkts))) {
++		/* Decrement the bytes_sent counter without deallocating skb
++		 * It is freed by the receiver.
++		 */
++		virtio_transport_consume_skb_sent(skb, false);
++
+ 		virtio_transport_deliver_tap_pkt(skb);
+ 		virtio_transport_recv_pkt(&loopback_transport, skb);
+ 	}
 
 -- 
 2.45.2
