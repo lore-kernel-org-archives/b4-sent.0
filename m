@@ -1,10 +1,11 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 27 Jun 2024 19:47:51 +0800
-Subject: [PATCH 1/3] dt-bindings: power: add Amlogic A5 power domains
+Date: Thu, 27 Jun 2024 19:47:52 +0800
+Subject: [PATCH 2/3] pmdomain: amlogic: Add support for A5 power domains
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240627-a5_secpower-v1-1-1f47dde1270c@amlogic.com>
+Message-Id: <20240627-a5_secpower-v1-2-1f47dde1270c@amlogic.com>
 References: <20240627-a5_secpower-v1-0-1f47dde1270c@amlogic.com>
 In-Reply-To: <20240627-a5_secpower-v1-0-1f47dde1270c@amlogic.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,65 +19,83 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-pm@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
  Hongyu Chen <hongyu.chen1@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719488872; l=1760;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719488872; l=2530;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=Txc3iSqLPbJi5Rszcezcb/g0/wY8paHucg8OqrKhoA4=;
- b=zuduol9Qa4JxnPSke443YVNvHYmL2hfXZ5bF3i+i0yMOzt3NZdwSLoIOjJhdk35/+t7kbV7xr
- uOlQNcygpQUCvxGKP754w1v61IbP0+gK0mzC4SGWbFobhHoVATK5R76
+ bh=zWxLtelNKu19heqKs9wOyiplUpI+DyeIV7xOkfT+HwI=;
+ b=Q2fjW+FoiPk3SlMyEGT1KOBPCDtlv+iKtLDF1wDDMNTEdR1UsHTAvXROY6xZNm5ch7gAtubOt
+ ARKBdI22iOlC0SFpCvBkVGmqTg5pB0id21KF/i0mvBc3B9PmbWAxM+p
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add devicetree binding document and related header file for
-Amlogic A5 secure power domains.
+Add support for the A5 power controller, whose registers are
+in the secure domain and should be accessed via SMC.
 
 Signed-off-by: Hongyu Chen <hongyu.chen1@amlogic.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- .../bindings/power/amlogic,meson-sec-pwrc.yaml      |  1 +
- include/dt-bindings/power/amlogic,a5-pwrc.h         | 21 +++++++++++++++++++++
- 2 files changed, 22 insertions(+)
+ drivers/pmdomain/amlogic/meson-secure-pwrc.c | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml b/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml
-index 59915f9d4860..15d74138baa3 100644
---- a/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml
-+++ b/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml
-@@ -21,6 +21,7 @@ properties:
-       - amlogic,meson-a1-pwrc
-       - amlogic,meson-s4-pwrc
-       - amlogic,a4-pwrc
-+      - amlogic,a5-pwrc
-       - amlogic,c3-pwrc
-       - amlogic,t7-pwrc
+diff --git a/drivers/pmdomain/amlogic/meson-secure-pwrc.c b/drivers/pmdomain/amlogic/meson-secure-pwrc.c
+index df5567418226..f6729eea6b8c 100644
+--- a/drivers/pmdomain/amlogic/meson-secure-pwrc.c
++++ b/drivers/pmdomain/amlogic/meson-secure-pwrc.c
+@@ -15,6 +15,7 @@
+ #include <dt-bindings/power/meson-s4-power.h>
+ #include <dt-bindings/power/amlogic,t7-pwrc.h>
+ #include <dt-bindings/power/amlogic,a4-pwrc.h>
++#include <dt-bindings/power/amlogic,a5-pwrc.h>
+ #include <linux/arm-smccc.h>
+ #include <linux/firmware/meson/meson_sm.h>
+ #include <linux/module.h>
+@@ -155,6 +156,22 @@ static struct meson_secure_pwrc_domain_desc a4_pwrc_domains[] = {
+ 	SEC_PD(A4_AO_IR,	GENPD_FLAG_ALWAYS_ON),
+ };
  
-diff --git a/include/dt-bindings/power/amlogic,a5-pwrc.h b/include/dt-bindings/power/amlogic,a5-pwrc.h
-new file mode 100644
-index 000000000000..3a6f53eb959f
---- /dev/null
-+++ b/include/dt-bindings/power/amlogic,a5-pwrc.h
-@@ -0,0 +1,21 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
-+/*
-+ * Copyright (C) 2024 Amlogic, Inc. All rights reserved
-+ */
++static struct meson_secure_pwrc_domain_desc a5_pwrc_domains[] = {
++	SEC_PD(A5_NNA,		0),
++	SEC_PD(A5_AUDIO,	0),
++	SEC_PD(A5_SDIOA,	0),
++	SEC_PD(A5_EMMC,		0),
++	SEC_PD(A5_USB_COMB,	0),
++	SEC_PD(A5_ETH,		0),
++	SEC_PD(A5_RSA,		0),
++	SEC_PD(A5_AUDIO_PDM,	0),
++	/* DMC is for DDR PHY ana/dig and DMC, and should be always on */
++	SEC_PD(A5_DMC,		GENPD_FLAG_ALWAYS_ON),
++	/* WRAP is secure_top, a lot of modules are included, and should be always on */
++	SEC_PD(A5_SYS_WRAP,	GENPD_FLAG_ALWAYS_ON),
++	SEC_PD(A5_DSPA,		0),
++};
 +
-+#ifndef _DT_BINDINGS_AMLOGIC_A5_POWER_H
-+#define _DT_BINDINGS_AMLOGIC_A5_POWER_H
+ static struct meson_secure_pwrc_domain_desc c3_pwrc_domains[] = {
+ 	SEC_PD(C3_NNA,		0),
+ 	SEC_PD(C3_AUDIO,	0),
+@@ -335,6 +352,11 @@ static struct meson_secure_pwrc_domain_data amlogic_secure_a4_pwrc_data = {
+ 	.count = ARRAY_SIZE(a4_pwrc_domains),
+ };
+ 
++static struct meson_secure_pwrc_domain_data amlogic_secure_a5_pwrc_data = {
++	.domains = a5_pwrc_domains,
++	.count = ARRAY_SIZE(a5_pwrc_domains),
++};
 +
-+#define PWRC_A5_NNA_ID			0
-+#define PWRC_A5_AUDIO_ID		1
-+#define PWRC_A5_SDIOA_ID		2
-+#define PWRC_A5_EMMC_ID			3
-+#define PWRC_A5_USB_COMB_ID		4
-+#define PWRC_A5_ETH_ID			5
-+#define PWRC_A5_RSA_ID			6
-+#define PWRC_A5_AUDIO_PDM_ID		7
-+#define PWRC_A5_DMC_ID			8
-+#define PWRC_A5_SYS_WRAP_ID		9
-+#define PWRC_A5_DSPA_ID			10
-+
-+#endif
+ static struct meson_secure_pwrc_domain_data amlogic_secure_c3_pwrc_data = {
+ 	.domains = c3_pwrc_domains,
+ 	.count = ARRAY_SIZE(c3_pwrc_domains),
+@@ -359,6 +381,10 @@ static const struct of_device_id meson_secure_pwrc_match_table[] = {
+ 		.compatible = "amlogic,a4-pwrc",
+ 		.data = &amlogic_secure_a4_pwrc_data,
+ 	},
++	{
++		.compatible = "amlogic,a5-pwrc",
++		.data = &amlogic_secure_a5_pwrc_data,
++	},
+ 	{
+ 		.compatible = "amlogic,c3-pwrc",
+ 		.data = &amlogic_secure_c3_pwrc_data,
 
 -- 
 2.37.1
