@@ -1,69 +1,81 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 27 Jun 2024 19:47:53 +0800
-Subject: [PATCH 3/3] arm64: dts: amlogic: a5: add power domain controller
- node
+From: Xilin Wu <wuxilin123@gmail.com>
+Subject: [PATCH 0/2] Introduce ASUS Vivobook S 15
+Date: Fri, 28 Jun 2024 19:30:11 +0800
+Message-Id: <20240628-asus-vivobook-s15-v1-0-2a1e4571b8ab@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240627-a5_secpower-v1-3-1f47dde1270c@amlogic.com>
-References: <20240627-a5_secpower-v1-0-1f47dde1270c@amlogic.com>
-In-Reply-To: <20240627-a5_secpower-v1-0-1f47dde1270c@amlogic.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Jianxin Pan <jianxin.pan@amlogic.com>, Ulf Hansson <ulf.hansson@linaro.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-pm@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
- Hongyu Chen <hongyu.chen1@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719488872; l=952;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=a2Zu+uHx7AvPgs0U7XpBlBsH/P/9nCVcrhSWZWMj+mI=;
- b=QgBeyLD1Kac4MHjy5kyxtif4bCHe3DmeuihH4WAyneRpGvyo31dywxlvvHylqdPXeH7o/vv3N
- QBZtc7xUpsQAbNsGbVbH85wfd+4zPivbRtVm+3Ojs5fVy7LPkc+N2nM
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+X-B4-Tracking: v=1; b=H4sIAMOefmYC/x3MQQ5AMBBA0avIrE2iRZWriEUxmEhUOtFIxN01l
+ m/x/wNCgUmgyx4IFFnYHwkqz2Da3LES8pwMutBVYbRFJ5dg5OhH73cUVWOjXdU21pTKWEjdGWj
+ h+3/2w/t+vmqEiWMAAAA=
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Abel Vesa <abel.vesa@linaro.org>, 
+ Johan Hovold <johan+linaro@kernel.org>, Xilin Wu <wuxilin123@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719574221; l=1810;
+ i=wuxilin123@gmail.com; s=20240424; h=from:subject:message-id;
+ bh=SnoK7XdshzEQwvq+kBt0n1g2IoUbW1LSA0WpSE8grF8=;
+ b=TTxkSJn9k9bv9UPn73ineqV4So/coDMuxKSmdV0vQQPcrEVXym9fSKlzUrOGby9hlRXIZ6xnN
+ lXLDDNUmRQgAItMxIXoskxaAgKbJt6JsuV3Uvbsuah8E/u+PEk3XRR2
+X-Developer-Key: i=wuxilin123@gmail.com; a=ed25519;
+ pk=vPnxeJnlD/PfEbyQPZzaay5ezxI/lMrke7qXy31lSM8=
+X-Endpoint-Received: by B4 Relay for wuxilin123@gmail.com/20240424 with auth_id=157
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add power domain controller node for Amlogic A5 SoC.
+ASUS Vivobook S 15 is a laptop based on the Qualcomm Snapdragon X Elite
+SoC (X1E78100). This series adds initial support for the device.
 
-Signed-off-by: Hongyu Chen <hongyu.chen1@amlogic.com>
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Currently working features:
+
+- CPU frequency scaling up to 3.4GHz
+- NVMe storage on PCIe 6a (capable of Gen4x4, currently limited to Gen4x2)
+- Keyboard and touchpad
+- WCN7850 Wi-Fi
+- Two Type-C ports on the left side
+- internal eDP display
+- ADSP and CDSP remoteprocs
+
+Some features which can get working with out of tree patches:
+
+- GPU [1]
+- Bluetooth [2]
+
+Notably not working features:
+
+- Battery monitoring via battmgr
+- Orientation switching and altmode on the Type-C ports (USB4 retimer driver needed?)
+- Two USB Type-A ports on the right side (dwc3 multiport controller)
+- Front camera
+- SD card slot
+- HDMI connector (using a Parade PS186 DP 1.4 to HDMI 2.0 converter) 
+- USB4 and the retimer (Parade PS8830?)
+- Anything using the EC
+
+Dump of the ACPI tables could be found here: [3]
+
+[1] https://lore.kernel.org/all/20240623110753.141400-1-quic_akhilpo@quicinc.com/
+[2] https://git.codelinaro.org/abel.vesa/linux/-/commits/topic/b4/x1e80100-bt
+[3] https://github.com/aarch64-laptops/build/pull/103
+
+Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Xilin Wu (2):
+      dt-bindings: arm: qcom: Add ASUS Vivobook S 15
+      arm64: dts: qcom: Add device tree for ASUS Vivobook S 15
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-index 43f68a7da2f7..17a6316de891 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-@@ -4,6 +4,7 @@
-  */
- 
- #include "amlogic-a4-common.dtsi"
-+#include <dt-bindings/power/amlogic,a5-pwrc.h>
- / {
- 	cpus {
- 		#address-cells = <2>;
-@@ -37,4 +38,13 @@ cpu3: cpu@300 {
- 			enable-method = "psci";
- 		};
- 	};
-+
-+	sm: secure-monitor {
-+		compatible = "amlogic,meson-gxbb-sm";
-+
-+		pwrc: power-controller {
-+			compatible = "amlogic,a5-pwrc";
-+			#power-domain-cells = <1>;
-+		};
-+	};
- };
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
+ arch/arm64/boot/dts/qcom/Makefile                  | 515 ++++++++---------
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 613 +++++++++++++++++++++
+ 3 files changed, 872 insertions(+), 257 deletions(-)
+---
+base-commit: 642a16ca7994a50d7de85715996a8ce171a5bdfb
+change-id: 20240628-asus-vivobook-s15-72a497863168
 
+Best regards,
 -- 
-2.37.1
+Xilin Wu <wuxilin123@gmail.com>
 
