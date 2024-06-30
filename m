@@ -1,83 +1,93 @@
-From: Joel Granados <j.granados@samsung.com>
-Date: Fri, 28 Jun 2024 14:27:43 +0200
-Subject: [PATCH RFC 5/5] iommu/vt-d: Remove dev_iommu_priv_get call from
- domain_get_id_for_dev
+From: Xilin Wu <wuxilin123@gmail.com>
+Subject: [PATCH v3 0/2] Introduce ASUS Vivobook S 15
+Date: Sun, 30 Jun 2024 16:59:25 +0800
+Message-Id: <20240630-asus-vivobook-s15-v3-0-bce7ca4d9683@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240628-jag-revisit_cache_tag_assign-v1-5-a0c19063c983@samsung.com>
-References: <20240628-jag-revisit_cache_tag_assign-v1-0-a0c19063c983@samsung.com>
-In-Reply-To: <20240628-jag-revisit_cache_tag_assign-v1-0-a0c19063c983@samsung.com>
-To: David Woodhouse <dwmw2@infradead.org>, 
- Lu Baolu <baolu.lu@linux.intel.com>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>
-Cc: iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
- Joel Granados <j.granados@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1737;
- i=j.granados@samsung.com; h=from:subject:message-id;
- bh=bSKT5KATPjuI2PxohgEgtnVEXQsN8h24B4pOY9NhzjU=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGZ+rEF2V7Oo9xvBBkRnBcyi7uYIJn2E2BmRL
- zd6A97flRB21YkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmfqxBAAoJELqXzVK3
- lkFPc4sL/RP2u/N7pZpUkjwF9ibuOdDKPQq0mcziIN7z5zfCccwR8R5f28tiBqm36muQHDl3qVE
- b827WJyDMCL/DX2xxrJTBpjp5dK0mHykkG3RJ4RCV8FawkmJf7dZus7Knc80cToJNl+7baUGdFP
- 0iOflA4jFxAIOQRS03F4+gj6NLIwkskCHNi/WQFz+pbkia1uBdd3swWzbqIAygVmswB0blfRN6U
- rkOc0E3WRWU6dGBigInYECE2YF1z14kJwzScXiptlXUP/5jSi2f65k0iwlK1CV4pBVVNN/USNO5
- vemGoTl1yPL8RCHMoLShNtc4Z1unj6CK7zCn6QsanxX49UT0Gp2/yOxZDb0ZrDHLNzB0K1G9TBO
- YhntrSay+2lqRYzp2s+QIAkhKLkLWGdvCrxpnvMN4cx+E05EKMo5oug1tfRQ4ISCwz9Yh0R+Kkr
- epg/Nod559pIr+Um5Yx6eWnjR6msc473VzqHPXAilzwSkwnxds3QegrN+CospmIlMhmle9VBof4
- 8I=
-X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
+X-B4-Tracking: v=1; b=H4sIAG0egWYC/4WNwQ6CMBAFf4X07BraQimc/A/DocUCG4WarjYaw
+ r9bOHnS47xk5i2MXEBHrMkWFlxEQj8nkIeMdaOZBwd4ScxELopcCQ2GngQRo7feX4F4CZUwRV1
+ pJbnSLHn34Hp87c1zm3hEevjw3i8i39ZftcghB2G4K8qKW23saZgM3o6dn7b4P7MWnZV1L3uu1
+ JfZruv6AXym0OXsAAAA
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Abel Vesa <abel.vesa@linaro.org>, 
+ Johan Hovold <johan+linaro@kernel.org>, 
+ Elliot Berman <quic_eberman@quicinc.com>, Xilin Wu <wuxilin123@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719737967; l=2142;
+ i=wuxilin123@gmail.com; s=20240424; h=from:subject:message-id;
+ bh=ubd/LNdUMtaC79ActlqFB4RXyv5gk0dFugNatKOZ0lc=;
+ b=mjXYYhBhAvSnFdkC/xu3h2iXAxUt1jkkdnCu202fD7SdH7Ozr+FvOh+mE48htsyrq2cWVIW30
+ sc93YHtLs9CAVEOtrxx3mkcit7d+/iAI6CKXa9fFnOU6OoYlMxwPQkI
+X-Developer-Key: i=wuxilin123@gmail.com; a=ed25519;
+ pk=vPnxeJnlD/PfEbyQPZzaay5ezxI/lMrke7qXy31lSM8=
+X-Endpoint-Received: by B4 Relay for wuxilin123@gmail.com/20240424 with auth_id=157
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We don't need to run dev_iommu_priv_get as we already have the struct
-intel_iommu. Pass the intel_iommu instead of the device and rename the
-function to domain_id_for_iommu to express what it is really doing.
+ASUS Vivobook S 15 is a laptop based on the Qualcomm Snapdragon X Elite
+SoC (X1E78100). This series adds initial support for the device.
 
-Signed-off-by: Joel Granados <j.granados@samsung.com>
+Currently working features:
+
+- CPU frequency scaling up to 3.4GHz
+- NVMe storage on PCIe 6a (capable of Gen4x4, currently limited to Gen4x2)
+- Keyboard and touchpad
+- WCN7850 Wi-Fi
+- Two Type-C ports on the left side
+- internal eDP display
+- ADSP and CDSP remoteprocs
+
+Some features which can get working with out of tree patches:
+
+- GPU [1]
+- Bluetooth [2]
+
+Notably not working features:
+
+- Battery monitoring via battmgr
+- Orientation switching and altmode on the Type-C ports (USB4 retimer driver needed?)
+- Two USB Type-A ports on the right side (dwc3 multiport controller)
+- Front camera
+- SD card slot
+- HDMI connector (using a Parade PS186 DP 1.4 to HDMI 2.0 converter) 
+- USB4 and the retimer (Parade PS8830?)
+- Anything using the EC
+
+Dump of the ACPI tables could be found here: [3]
+
+[1] https://lore.kernel.org/all/20240623110753.141400-1-quic_akhilpo@quicinc.com/
+[2] https://git.codelinaro.org/abel.vesa/linux/-/commits/topic/b4/x1e80100-bt
+[3] https://github.com/aarch64-laptops/build/pull/103
+
+Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
 ---
- drivers/iommu/intel/cache.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+Changes in v3:
+- Add comment detailing pmic-glink connector mapping (Konrad)
+- Minor changes in dts (Konrad)
+- Link to v2: https://lore.kernel.org/r/20240628-asus-vivobook-s15-v1-0-92cb39f3f166@gmail.com
 
-diff --git a/drivers/iommu/intel/cache.c b/drivers/iommu/intel/cache.c
-index c630f4485a06..e55d700fcd29 100644
---- a/drivers/iommu/intel/cache.c
-+++ b/drivers/iommu/intel/cache.c
-@@ -147,11 +147,9 @@ static void __cache_tag_unassign_parent_domain(struct dmar_domain *domain,
- 		cache_tag_unassign_type(domain, tag_id, CACHE_TAG_NESTING_DEVTLB);
- }
- 
--static u16 domain_get_id_for_dev(struct dmar_domain *domain, struct device *dev)
-+static u16 domain_id_for_iommu(struct dmar_domain *domain,
-+			       struct intel_iommu *iommu)
- {
--	struct device_domain_info *info = dev_iommu_priv_get(dev);
--	struct intel_iommu *iommu = info->iommu;
--
- 	/*
- 	 * The driver assigns different domain IDs for all domains except
- 	 * the SVA type.
-@@ -178,7 +176,7 @@ int cache_tag_assign_domain(struct dmar_domain *domain,
- 		.pasid = pasid,
- 		.iommu = info->iommu,
- 		.dev = dev,
--		.domain_id = domain_get_id_for_dev(domain, dev),
-+		.domain_id = domain_id_for_iommu(domain, info->iommu),
- 	};
- 	int ret;
- 
-@@ -209,7 +207,7 @@ void cache_tag_unassign_domain(struct dmar_domain *domain,
- 		.pasid = pasid,
- 		.iommu = info->iommu,
- 		.dev = dev,
--		.domain_id = domain_get_id_for_dev(domain, dev)
-+		.domain_id = domain_id_for_iommu(domain, info->iommu)
- 	};
- 
- 	__cache_tag_unassign_domain(domain, &tag_id, info->ats_enabled);
+Changes in v2:
+- Fix accidentally changed Makefile
+- Link to v1: https://lore.kernel.org/r/20240628-asus-vivobook-s15-v1-0-2a1e4571b8ab@gmail.com
 
+---
+Xilin Wu (2):
+      dt-bindings: arm: qcom: Add ASUS Vivobook S 15
+      arm64: dts: qcom: Add device tree for ASUS Vivobook S 15
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 616 +++++++++++++++++++++
+ 3 files changed, 618 insertions(+)
+---
+base-commit: 642a16ca7994a50d7de85715996a8ce171a5bdfb
+change-id: 20240628-asus-vivobook-s15-72a497863168
+
+Best regards,
 -- 
-2.43.0
+Xilin Wu <wuxilin123@gmail.com>
 
