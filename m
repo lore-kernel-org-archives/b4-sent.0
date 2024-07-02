@@ -1,11 +1,10 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Tue, 02 Jul 2024 18:02:45 +0200
-Subject: [PATCH 13/20] iio: accel: stk8ba50: make use of
- iio_for_each_active_channel()
+Date: Tue, 02 Jul 2024 18:02:46 +0200
+Subject: [PATCH 14/20] iio: adc: ad7266: make use of iio_get_masklength()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240702-dev-iio-masklength-private-v1-13-98193bf536a6@analog.com>
+Message-Id: <20240702-dev-iio-masklength-private-v1-14-98193bf536a6@analog.com>
 References: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
 In-Reply-To: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
 To: linux-iio@vger.kernel.org, chrome-platform@lists.linux.dev, 
@@ -20,39 +19,38 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Alexandre Belloni <alexandre.belloni@bootlin.com>, 
  Claudiu Beznea <claudiu.beznea@tuxon.dev>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719936157; l=866;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719936157; l=824;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=TFHhQ83QqdJS9zWdzKNj08+dSBp1rdr6hB/g9TIyego=;
- b=vHiGPKXd69rf0HoQ0INFT45P7M/hmXLo0wVQ4CVhuTDIKz0/OPtTpUelGoQ5YexRkZHIpbO2c
- 3ZzhIyVx1UQBU3qUZQf0pojqjpQ5CeCmKRq2Aah3AUVM5WwC0Yayj7w
+ bh=+iJJW6/7I7TrYM1u+38IFCTTovEcPX4B9OrELlHsb2g=;
+ b=7l7oJaQgLVUbsFsJZpuh/oP4+s8aNKMFAN7qbsnmyXqXb2eNN2i7UbGgtUnd4IeCXab9ouPGq
+ SZ74x2ZsSvYCRuuQk6YpSeKtcNQz81jnLAy4vhEy2qwwXAOue7kJG3/
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use iio_for_each_active_channel() to iterate over active channels
-accessing '.masklength' so it can be annotated as __private when there are
-no more direct users of it.
+Use iio_get_masklength() to access '.masklength' so it can be annotated
+as __private when there are no more direct users of it.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/accel/stk8ba50.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/iio/adc/ad7266.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/iio/accel/stk8ba50.c b/drivers/iio/accel/stk8ba50.c
-index 6d3c7f444d21d..a32a77324e92d 100644
---- a/drivers/iio/accel/stk8ba50.c
-+++ b/drivers/iio/accel/stk8ba50.c
-@@ -330,8 +330,7 @@ static irqreturn_t stk8ba50_trigger_handler(int irq, void *p)
- 			goto err;
- 		}
- 	} else {
--		for_each_set_bit(bit, indio_dev->active_scan_mask,
--				 indio_dev->masklength) {
-+		iio_for_each_active_channel(indio_dev, bit) {
- 			ret = stk8ba50_read_accel(data,
- 						  stk8ba50_channel_table[bit]);
- 			if (ret < 0)
+diff --git a/drivers/iio/adc/ad7266.c b/drivers/iio/adc/ad7266.c
+index 874d2dc34f928..accb78d4c3086 100644
+--- a/drivers/iio/adc/ad7266.c
++++ b/drivers/iio/adc/ad7266.c
+@@ -123,7 +123,8 @@ static int ad7266_update_scan_mode(struct iio_dev *indio_dev,
+ 	const unsigned long *scan_mask)
+ {
+ 	struct ad7266_state *st = iio_priv(indio_dev);
+-	unsigned int nr = find_first_bit(scan_mask, indio_dev->masklength);
++	unsigned int nr = find_first_bit(scan_mask,
++					 iio_get_masklength(indio_dev));
+ 
+ 	ad7266_select_input(st, nr);
+ 
 
 -- 
 2.45.2
