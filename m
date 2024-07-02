@@ -1,11 +1,11 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Tue, 02 Jul 2024 18:02:44 +0200
-Subject: [PATCH 12/20] iio: accel: stk8312: make use of
+Date: Tue, 02 Jul 2024 18:02:45 +0200
+Subject: [PATCH 13/20] iio: accel: stk8ba50: make use of
  iio_for_each_active_channel()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240702-dev-iio-masklength-private-v1-12-98193bf536a6@analog.com>
+Message-Id: <20240702-dev-iio-masklength-private-v1-13-98193bf536a6@analog.com>
 References: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
 In-Reply-To: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
 To: linux-iio@vger.kernel.org, chrome-platform@lists.linux.dev, 
@@ -20,11 +20,11 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Alexandre Belloni <alexandre.belloni@bootlin.com>, 
  Claudiu Beznea <claudiu.beznea@tuxon.dev>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719936157; l=860;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719936157; l=866;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=sKvcghE5ThQXXY6IqazRh2jRyFRk4Gvhw2Dt6y9Vhp8=;
- b=kt0rMyqWMfymAI/q/Z0mnVnvXvK3GnHs++rHvCcBHM46WfZB++w555wevU7tgbbCqcgTdmB6j
- DpFqKVZfwP0AkzerK5hCIynsQ4wo/L0jH99Mjn/zsRlGOE0exxAh4Ko
+ bh=TFHhQ83QqdJS9zWdzKNj08+dSBp1rdr6hB/g9TIyego=;
+ b=vHiGPKXd69rf0HoQ0INFT45P7M/hmXLo0wVQ4CVhuTDIKz0/OPtTpUelGoQ5YexRkZHIpbO2c
+ 3ZzhIyVx1UQBU3qUZQf0pojqjpQ5CeCmKRq2Aah3AUVM5WwC0Yayj7w
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
@@ -36,23 +36,23 @@ no more direct users of it.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/accel/stk8312.c | 3 +--
+ drivers/iio/accel/stk8ba50.c | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/iio/accel/stk8312.c b/drivers/iio/accel/stk8312.c
-index b3534d5751b95..abead190254b5 100644
---- a/drivers/iio/accel/stk8312.c
-+++ b/drivers/iio/accel/stk8312.c
-@@ -448,8 +448,7 @@ static irqreturn_t stk8312_trigger_handler(int irq, void *p)
+diff --git a/drivers/iio/accel/stk8ba50.c b/drivers/iio/accel/stk8ba50.c
+index 6d3c7f444d21d..a32a77324e92d 100644
+--- a/drivers/iio/accel/stk8ba50.c
++++ b/drivers/iio/accel/stk8ba50.c
+@@ -330,8 +330,7 @@ static irqreturn_t stk8ba50_trigger_handler(int irq, void *p)
  			goto err;
  		}
  	} else {
 -		for_each_set_bit(bit, indio_dev->active_scan_mask,
 -				 indio_dev->masklength) {
 +		iio_for_each_active_channel(indio_dev, bit) {
- 			ret = stk8312_read_accel(data, bit);
- 			if (ret < 0) {
- 				mutex_unlock(&data->lock);
+ 			ret = stk8ba50_read_accel(data,
+ 						  stk8ba50_channel_table[bit]);
+ 			if (ret < 0)
 
 -- 
 2.45.2
