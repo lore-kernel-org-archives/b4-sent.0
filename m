@@ -1,11 +1,11 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Tue, 02 Jul 2024 18:02:41 +0200
-Subject: [PATCH 09/20] iio: accel: fxls8962af-core: make use of
+Date: Tue, 02 Jul 2024 18:02:42 +0200
+Subject: [PATCH 10/20] iio: accel: msa311: make use of
  iio_for_each_active_channel()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240702-dev-iio-masklength-private-v1-9-98193bf536a6@analog.com>
+Message-Id: <20240702-dev-iio-masklength-private-v1-10-98193bf536a6@analog.com>
 References: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
 In-Reply-To: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
 To: linux-iio@vger.kernel.org, chrome-platform@lists.linux.dev, 
@@ -20,39 +20,39 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Alexandre Belloni <alexandre.belloni@bootlin.com>, 
  Claudiu Beznea <claudiu.beznea@tuxon.dev>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719936156; l=913;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719936156; l=842;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=4mWpFN+edUepEAApNSzBRyHgoD70Vxqq6Y9OZGqmjrU=;
- b=Q5tLlYPDxHAbfMtvcRj971Vl0lxoxT3px4ZQXt19F8RlGGCkWemotJzujrMz5YE5MM54lGnKB
- JgnHzH/TqZuBQ0hxTLS1Ohr7dDn4xnXlVSx928Bol5OMxW2lV0tR0Cf
+ bh=mlp145cykZFgcq0ksMJ0dMmg1Uqt+N31aaJsB4Dxu1A=;
+ b=RKVvBr9oHa9ZYzfP7hszfF91tCbZHswMxdKBVlu19N9CRk3yM7Us+aLt5RvpjWY5oylhPI2U5
+ Q4H4Fy7vETTAd564DZvXYO/AfA1Si4c12ORmJ+On4w5TqjqX1htJQgN
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Use iio_for_each_active_channel() to iterate over active channels
-accessing '.masklength' so it can be annotated as __private when there
-are no more direct users of it.
+accessing '.masklength' so it can be annotated as __private when there are
+no more direct users of it.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/accel/fxls8962af-core.c | 3 +--
+ drivers/iio/accel/msa311.c | 3 +--
  1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/iio/accel/fxls8962af-core.c b/drivers/iio/accel/fxls8962af-core.c
-index 4fbc01bda62e4..7adb8937cb4b6 100644
---- a/drivers/iio/accel/fxls8962af-core.c
-+++ b/drivers/iio/accel/fxls8962af-core.c
-@@ -968,8 +968,7 @@ static int fxls8962af_fifo_flush(struct iio_dev *indio_dev)
- 		int j, bit;
+diff --git a/drivers/iio/accel/msa311.c b/drivers/iio/accel/msa311.c
+index b8ddbfd98f112..8861010256f2e 100644
+--- a/drivers/iio/accel/msa311.c
++++ b/drivers/iio/accel/msa311.c
+@@ -900,8 +900,7 @@ static irqreturn_t msa311_buffer_thread(int irq, void *p)
  
- 		j = 0;
--		for_each_set_bit(bit, indio_dev->active_scan_mask,
--				 indio_dev->masklength) {
-+		iio_for_each_active_channel(indio_dev, bit) {
- 			memcpy(&data->scan.channels[j++], &buffer[i * 3 + bit],
- 			       sizeof(data->scan.channels[0]));
- 		}
+ 	mutex_lock(&msa311->lock);
+ 
+-	for_each_set_bit(bit, indio_dev->active_scan_mask,
+-			 indio_dev->masklength) {
++	iio_for_each_active_channel(indio_dev, bit) {
+ 		chan = &msa311_channels[bit];
+ 
+ 		err = msa311_get_axis(msa311, chan, &axis);
 
 -- 
 2.45.2
