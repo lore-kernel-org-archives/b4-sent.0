@@ -1,11 +1,11 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Tue, 02 Jul 2024 18:02:37 +0200
-Subject: [PATCH 05/20] iio: accel: adx1372: make use of
- iio_get_masklength()
+Date: Tue, 02 Jul 2024 18:02:38 +0200
+Subject: [PATCH 06/20] iio: accel: bma180: make use of
+ iio_for_each_active_channel()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240702-dev-iio-masklength-private-v1-5-98193bf536a6@analog.com>
+Message-Id: <20240702-dev-iio-masklength-private-v1-6-98193bf536a6@analog.com>
 References: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
 In-Reply-To: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
 To: linux-iio@vger.kernel.org, chrome-platform@lists.linux.dev, 
@@ -20,37 +20,39 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Alexandre Belloni <alexandre.belloni@bootlin.com>, 
  Claudiu Beznea <claudiu.beznea@tuxon.dev>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719936156; l=915;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1719936156; l=852;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=2EHdpJoQbj+k3J/CWxWS22/x7Zsq5ayA38mR5vpDteM=;
- b=HqGJD3hvrnZvHwYeCHrVGiJTDHQ7E6p+zcjNhkmu9gmiIdn8ADUJohk+uNH00HrlnzDF3XAXL
- +0ew+gitwztA3oLuTgEsLnowhzmOXwPzxz0T+g+HI0QTHeOapeqk/uh
+ bh=cf8nH+C7ga2MXuJGs1LhW+Vpw2HhW0TtDxm5BRQV7AE=;
+ b=uqji2JCwXdfwSMPdRVcuAb/d2Dl34B6/KSFtjmrqUxMgkRWE3YlbPtvfqbNr5hbh197ihNyIa
+ +mYYUYZi9KLAkXqmYe/W6FDoDUOXPleO9cilkhT4a4DzC44FcRaDbeh
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use iio_get_masklength() to access '.masklength' so it can be annotated
-as __private when there are no more direct users of it.
+Use iio_for_each_active_channel() to iterate over active channels
+accessing '.masklength' so it can be annotated as __private when there are
+no more direct users of it.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/accel/adxl372.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/iio/accel/bma180.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/iio/accel/adxl372.c b/drivers/iio/accel/adxl372.c
-index c4193286eb05..ef8dd557877b 100644
---- a/drivers/iio/accel/adxl372.c
-+++ b/drivers/iio/accel/adxl372.c
-@@ -1050,7 +1050,7 @@ static int adxl372_buffer_postenable(struct iio_dev *indio_dev)
- 	st->fifo_format = adxl372_axis_lookup_table[i].fifo_format;
- 	st->fifo_axis_mask = adxl372_axis_lookup_table[i].bits;
- 	st->fifo_set_size = bitmap_weight(indio_dev->active_scan_mask,
--					  indio_dev->masklength);
-+					  iio_get_masklength(indio_dev));
+diff --git a/drivers/iio/accel/bma180.c b/drivers/iio/accel/bma180.c
+index 6581772cb0c46..2445a0f7bc2ba 100644
+--- a/drivers/iio/accel/bma180.c
++++ b/drivers/iio/accel/bma180.c
+@@ -876,8 +876,7 @@ static irqreturn_t bma180_trigger_handler(int irq, void *p)
  
- 	/* Configure the FIFO to store sets of impact event peak. */
- 	if (st->peak_fifo_mode_en) {
+ 	mutex_lock(&data->mutex);
+ 
+-	for_each_set_bit(bit, indio_dev->active_scan_mask,
+-			 indio_dev->masklength) {
++	iio_for_each_active_channel(indio_dev, bit) {
+ 		ret = bma180_get_data_reg(data, bit);
+ 		if (ret < 0) {
+ 			mutex_unlock(&data->mutex);
 
 -- 
 2.45.2
