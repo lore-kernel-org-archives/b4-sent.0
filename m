@@ -1,58 +1,96 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Tue, 02 Jul 2024 18:02:52 +0200
-Subject: [PATCH 20/20] iio: imu: adis16480: make use of
- iio_for_each_active_channel()
+From: Utsav Agarwal <utsav.agarwal@analog.com>
+Subject: [PATCH v5 0/3] adp5588-keys: Support for dedicated gpio operation
+Date: Wed, 03 Jul 2024 11:58:13 +0100
+Message-Id: <20240703-adp5588_gpio_support-v5-0-49fcead0d390@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240702-dev-iio-masklength-private-v1-20-98193bf536a6@analog.com>
-References: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
-In-Reply-To: <20240702-dev-iio-masklength-private-v1-0-98193bf536a6@analog.com>
-To: linux-iio@vger.kernel.org, chrome-platform@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, 
- Cosmin Tanislav <cosmin.tanislav@analog.com>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Benson Leung <bleung@chromium.org>, Guenter Roeck <groeck@chromium.org>, 
- Dmitry Rokosov <ddrokosov@sberdevices.ru>, 
- Nicolas Ferre <nicolas.ferre@microchip.com>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>, 
- Claudiu Beznea <claudiu.beznea@tuxon.dev>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1719936157; l=884;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=9JQj/jSVCDw6YceIOCpJXsyqqh4Yh0od5ovTl7zFZaw=;
- b=WbKDEozkTJlTjNGGrlbP8WBXQHbJ9MxM+I/TdvuUkOeC2Du4VJFmRNR/8xcAc92ZixIlu+VhD
- X8ML6nmxoN0BUGffY3qH5gMINA/SRS1OC/SWA7+oK2DFped747Yb4fc
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+X-B4-Tracking: v=1; b=H4sIAMUuhWYC/4WNQQ6DIBBFr2JmXRokQ6tdeY/GGBDUSVogYEkb4
+ 91LvUCX7yX//Q2SjWQT3KoNos2UyLsC8lTBuCg3W0amMAgukF95zZQJUjbNMAfyQ3qF4OPKLtJ
+ ooY2oVTtBmYZoJ3of2XtfeKG0+vg5XjL+7J9gRsYZotaKI0rb8k459fDzefRP6Pd9/wJQTla4u
+ QAAAA==
+To: Utsav Agarwal <utsav.agarwal@analog.com>, 
+ Michael Hennerich <michael.hennerich@analog.com>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Arturs Artamonovs <arturs.artamonovs@analog.com>, 
+ Vasileios Bimpikas <vasileios.bimpikas@analog.com>, 
+ Oliver Gaskell <oliver.gaskell@analog.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720004298; l=2339;
+ i=utsav.agarwal@analog.com; s=20240701; h=from:subject:message-id;
+ bh=ZKBZXqTb3GYcej9sBFGWNtjDUyV0Rn3CMeoWjdQoMDA=;
+ b=F5tQpXuKWFwC+womE91xcSEaMlAf2+LITtvgdoV2FfCwSH+UNmP1DrAbVZZpGx9lHkr8+ioKN
+ HZ+kRE5RfHnAIUoFTjct16dDojVUrrAb5whPZduEy9pRdP1N7DJe+M2
+X-Developer-Key: i=utsav.agarwal@analog.com; a=ed25519;
+ pk=mIG5Dmd3TO5rcICwTsixl2MoUcf/i2u+jYqifd7+fmI=
+X-Endpoint-Received: by B4 Relay for utsav.agarwal@analog.com/20240701 with auth_id=178
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use iio_for_each_active_channel() to iterate over active channels
-accessing '.masklength' so it can be annotated as __private when there are
-no more direct users of it.
+Current state of the driver for the ADP5588/87 only allows partial
+I/O to be used as GPIO. This support was previously present as a
+separate gpio driver, which was dropped with the commit
+5ddc896088b0 ("gpio: gpio-adp5588: drop the driver") since the
+functionality was deemed to have been merged with adp5588-keys.
 
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+This series of patches re-enables this support by allowing the driver to 
+relax the requirement for registering a keymap and enable pure GPIO 
+operation. 
+
+Changelog
+==========
+
+V2: 
+	-  Changed gpio_only from a local variable to a member of struct
+	adp5588_kpad
+	-  Removed condition from adp5588_probe() to skip adp5588_fw_parse() if 
+	gpio-only specified. adp558_fw_parse() now handles and returns
+	0 if gpio-only has been specified.
+	-  Added a check in adp5588_fw_parse() to make sure keypad 
+	properties(keypad,num-columns and keypad,num-rows) were not defined when 
+	gpio-only specified
+
+V3:
+	-  Moved device_property_present() for reading "gpio-only" into 
+	adp558_fw_parse()
+	-  Added print statements in case of error
+
+V4:
+	- Added dt-bindings patch
+
+Signed-off-by: Utsav Agarwal <utsav.agarwal@analog.com>
 ---
- drivers/iio/imu/adis16480.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+V5:
+	- Removed extra property "gpio-only", now pure gpio mode is
+	  detected via the adbsence of keypad specific properties.
+	- Added dependencies for keypad properties to preserve
+	  the original requirements in case a pure gpio mode is not
+	  being used.
+	- Added additional description for why the "interrupts" property
+	  was made optional
+	- Rebased current work based on https://lore.kernel.org/linux-input/ZoLt_qBCQS-tG8Ar@google.com/
+- Link to v4: https://lore.kernel.org/r/20240701-adp5588_gpio_support-v4-0-44bba0445e90@analog.com
 
-diff --git a/drivers/iio/imu/adis16480.c b/drivers/iio/imu/adis16480.c
-index 56ca5a09fbbfc..2f08268bd724a 100644
---- a/drivers/iio/imu/adis16480.c
-+++ b/drivers/iio/imu/adis16480.c
-@@ -1410,7 +1410,7 @@ static irqreturn_t adis16480_trigger_handler(int irq, void *p)
- 		goto irq_done;
- 	}
- 
--	for_each_set_bit(bit, indio_dev->active_scan_mask, indio_dev->masklength) {
-+	iio_for_each_active_channel(indio_dev, bit) {
- 		/*
- 		 * When burst mode is used, temperature is the first data
- 		 * channel in the sequence, but the temperature scan index
+---
+Dmitry Torokhov (1):
+      iInput: adp5588-keys - use guard notation when acquiring mutexes
 
+Utsav Agarwal (2):
+      Input: adp5588-keys - add support for pure gpio
+      dt-bindings: input: Update dtbinding for adp5588
+
+ .../devicetree/bindings/input/adi,adp5588.yaml     | 33 ++++++++--
+ drivers/input/keyboard/adp5588-keys.c              | 70 ++++++++++++----------
+ 2 files changed, 66 insertions(+), 37 deletions(-)
+---
+base-commit: 1c52cf5e79d30ac996f34b64284f2c317004d641
+change-id: 20240701-adp5588_gpio_support-65db2bd21a9f
+
+Best regards,
 -- 
-2.45.2
+Utsav Agarwal <utsav.agarwal@analog.com>
 
