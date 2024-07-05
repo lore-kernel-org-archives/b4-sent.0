@@ -1,55 +1,60 @@
 From: Yang Li <yang.li@amlogic.com>
-Date: Fri, 05 Jul 2024 19:13:27 +0800
-Subject: [PATCH 3/3] MAINTAINERS: Add an entry for Amlogic WCN power
- sequence
+Subject: [PATCH 0/4] Add support for Amlogic HCI UART
+Date: Fri, 05 Jul 2024 19:20:43 +0800
+Message-Id: <20240705-btaml-v1-0-7f1538f98cef@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240705-pwrseq-v1-3-31829b47fc72@amlogic.com>
-References: <20240705-pwrseq-v1-0-31829b47fc72@amlogic.com>
-In-Reply-To: <20240705-pwrseq-v1-0-31829b47fc72@amlogic.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@bgdev.pl>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-pm@vger.kernel.org, Yang Li <yang.li@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAAvXh2YC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDE0ML3aSSxNwc3TTLFPMkQ0tzI5PEJCWg2oKi1LTMCrA50bG1tQA2fFp
+ IVwAAAA==
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>
+Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, Yang Li <yang.li@amlogic.com>, 
+ Ye He <ye.he@amlogic.com>
 X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720178006; l=844;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720178456; l=1154;
  i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=2LQ5HRplZ2LlSPyzOYDNeeV7S6poY56OZ7f06ODqzXY=;
- b=PCOpuH5dGrWwfCdZFsAqjetcT/FPX1SeagmqXMJ1KkeEskEll8W9pctua+mg06NS6v906tdIe
- ZHNfuK9mBtKAWpdnStmTqHBzAOQcsh5Bw3Gr2cb8ti1WB8p1+NCLIvG
+ bh=ljo98Oix0zF4HtbxIYPVKXMO3zcHlaqIjHBPe9TuLUw=;
+ b=wVCKzjwrsOMYUCq8ga1twDNQUMMYDrVatd/xEz7R4znyMbF++ttuGYNqnZ85XWj298yrSuLEY
+ 2yR0llMi5+HDAp7a2s9Z6wUWVBWLVuhsLRU1IfBDsEWuXwBUgzVnG+c
 X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
  pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
 X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an entry for Amlogic WCN power sequence.
+Add support for Amlogic HCI UART, including dt-binding, Amlogic Bluetooth driver
+and enable HCIUART_AML in defconfig.
 
 Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- MAINTAINERS | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Yang Li (4):
+      dt-bindings: net: bluetooth: Add support for Amlogic Bluetooth
+      Bluetooth: hci_uart: Add support for Amlogic HCI UART
+      arm64: defconfig: Enable hci_uart for Amlogic Bluetooth
+      MAINTAINERS: Add an entry for Amlogic HCI UART
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index dcb37b635f2c..0773f7040341 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1174,6 +1174,14 @@ F:	Documentation/devicetree/bindings/perf/amlogic,g12-ddr-pmu.yaml
- F:	drivers/perf/amlogic/
- F:	include/soc/amlogic/
- 
-+AMLOGIC WCN POWER SEQUENCING
-+M:	Yang Li <yang.li@amlogic.com>
-+L:	linux-pm@vger.kernel.org
-+S:	Maintained
-+W:	http://www.amlogic.com
-+F:	Documentation/devicetree/bindings/power/amlogic,w1552-pwrseq.yaml
-+F:	drivers/power/sequencing/pwrseq-aml-wcn.c
-+
- AMPHENOL CHIPCAP 2 HUMIDITY-TEMPERATURE IIO DRIVER
- M:	Javier Carrasco <javier.carrasco.cruz@gmail.com>
- L:	linux-hwmon@vger.kernel.org
+ .../bindings/net/bluetooth/amlogic,w155s2-bt.yaml  |  62 ++
+ MAINTAINERS                                        |   8 +
+ arch/arm64/configs/defconfig                       |   1 +
+ drivers/bluetooth/Kconfig                          |  13 +
+ drivers/bluetooth/Makefile                         |   1 +
+ drivers/bluetooth/hci_aml.c                        | 749 +++++++++++++++++++++
+ drivers/bluetooth/hci_ldisc.c                      |   8 +-
+ drivers/bluetooth/hci_uart.h                       |   8 +-
+ 8 files changed, 847 insertions(+), 3 deletions(-)
+---
+base-commit: e3203b17771757fdcd259d6378673f1590e36694
+change-id: 20240418-btaml-f9d7b19724ab
 
+Best regards,
 -- 
-2.42.0
+Yang Li <yang.li@amlogic.com>
 
