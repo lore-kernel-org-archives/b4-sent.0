@@ -1,367 +1,311 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 05 Jul 2024 13:39:16 +0800
-Subject: [PATCH] arm64: dts: amlogic: enable some device nodes for S4
+From: Fenglin Wu <quic_fenglinw@quicinc.com>
+Date: Fri, 05 Jul 2024 15:55:01 +0800
+Subject: [PATCH RESEND v3] leds: flash: leds-qcom-flash: limit LED current
+ based on thermal condition
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240705-s4_node-v1-1-646ca7ac4f09@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAASHh2YC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDcwNT3WKT+Lz8lFRdC0NDg1RjIwuzZINkJaDqgqLUtMwKsEnRsbW1AFr
- upDBZAAAA
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720157957; l=8347;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=oOXiLAS6NgZVltA8CaP7tgFApq2iE/PP2b1hmtBEKsc=;
- b=ojBitIhspXSh/e49vFYC2RuSwK0zX/2weeZJP/9U/z9YgcT14mWW8A4uUqywE6nueYWq613rr
- zAdaIyEmOXDAt5YEu9EU52I19omzh7g4tsHL+wYFxNPTfsLFB5V4Qa2
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Message-Id: <20240705-qcom_flash_thermal_derating-v3-1-8e2e2783e3a6@quicinc.com>
+To: kernel@quicinc.com, linux-arm-msm@vger.kernel.org, 
+ Pavel Machek <pavel@ucw.cz>, Lee Jones <lee@kernel.org>
+Cc: linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ David Collins <quic_collinsd@quicinc.com>, 
+ Subbaraman Narayanamurthy <quic_subbaram@quicinc.com>, 
+ Fenglin Wu <quic_fenglinw@quicinc.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720166119; l=9512;
+ i=quic_fenglinw@quicinc.com; s=20240327; h=from:subject:message-id;
+ bh=P531IQymhBnENfovGdmHl6NdnzEbocY5fbBmjL2TIwc=;
+ b=tFmOEFtzD3YQp6tsVxXoLfWvMMLkqnUn5/f/3kRB+pEucuTOT1czf/Pc1bkagfqTDhPSHsnOy
+ 0cdX78/PoR/BWDLkupcI+MT0nsxvbqUm7JtEhyNEHdnSZnPiS2c3c+w
+X-Developer-Key: i=quic_fenglinw@quicinc.com; a=ed25519;
+ pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
+X-Endpoint-Received: by B4 Relay for quic_fenglinw@quicinc.com/20240327 with auth_id=146
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable some device nodes for AQ222 base S4, including
-SD, regulator and ethnernet node.
+The flash module has status bits to indicate different thermal
+conditions which are called as OTSTx. For each OTSTx status,
+there is a recommended total flash current for all channels to
+prevent the flash module entering into higher thermal level.
+For example, the total flash current should be limited to 1000mA/500mA
+respectively when the HW reaches the OTST1/OTST2 thermal level.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Fenglin Wu <quic_fenglinw@quicinc.com>
 ---
- .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     | 146 +++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 128 ++++++++++++++++++
- 2 files changed, 274 insertions(+)
+Changes in v3:
+- Fix coding style issues to address review comments in v2.
+- Link to v2: https://lore.kernel.org/r/20240513-qcom_flash_thermal_derating-v2-1-e41a07d0eb83@quicinc.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
-index 983caddc409c..2ab685d9bd1d 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
-@@ -34,6 +34,112 @@ secmon_reserved: secmon@5000000 {
- 			no-map;
- 		};
- 	};
+Changes in v2:
+- Update thermal threshold level 2 register definition for mvflash_4ch_regs.
+    Mvflash_4ch module thermal threshold level 2 configuration register
+    offset is 0x78, not succeeding from thermal threshold level 1 register 0x7a.
+    Hence it is not appropriate to use REG_FIELD_ID to define thermal threshold
+    register fileds like mvflash_3ch. Update to use REG_FIELD instead.
+- Link to v1: https://lore.kernel.org/r/20240509-qcom_flash_thermal_derating-v1-1-1d5e68e5d71c@quicinc.com
+---
+ drivers/leds/flash/leds-qcom-flash.c | 163 ++++++++++++++++++++++++++++++++++-
+ 1 file changed, 162 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/leds/flash/leds-qcom-flash.c b/drivers/leds/flash/leds-qcom-flash.c
+index 7c99a3039171..aa22686fafe0 100644
+--- a/drivers/leds/flash/leds-qcom-flash.c
++++ b/drivers/leds/flash/leds-qcom-flash.c
+@@ -1,6 +1,6 @@
+ // SPDX-License-Identifier: GPL-2.0-only
+ /*
+- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
++ * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+  */
+ 
+ #include <linux/bitfield.h>
+@@ -14,6 +14,9 @@
+ #include <media/v4l2-flash-led-class.h>
+ 
+ /* registers definitions */
++#define FLASH_REVISION_REG		0x00
++#define FLASH_4CH_REVISION_V0P1		0x01
 +
-+	sdio_32k: sdio-32k {
-+		compatible = "pwm-clock";
-+		#clock-cells = <0>;
-+		clock-frequency = <32768>;
-+		pwms = <&pwm_ef 0 30518 0>; /* PWM_E at 32.768KHz */
-+	};
+ #define FLASH_TYPE_REG			0x04
+ #define FLASH_TYPE_VAL			0x18
+ 
+@@ -73,6 +76,16 @@
+ 
+ #define UA_PER_MA			1000
+ 
++/* thermal threshold constants */
++#define OTST_3CH_MIN_VAL		3
++#define OTST1_4CH_MIN_VAL		0
++#define OTST1_4CH_V0P1_MIN_VAL		3
++#define OTST2_4CH_MIN_VAL		0
 +
-+	sdio_pwrseq: sdio-pwrseq {
-+		compatible = "mmc-pwrseq-simple";
-+		reset-gpios = <&gpio GPIOX_6 GPIO_ACTIVE_LOW>;
-+		clocks = <&sdio_32k>;
-+		clock-names = "ext_clock";
-+	};
++#define OTST1_MAX_CURRENT_MA		1000
++#define OTST2_MAX_CURRENT_MA		500
++#define OTST3_MAX_CURRENT_MA		200
 +
-+	main_12v: regulator-main-12v {
-+		compatible = "regulator-fixed";
-+		regulator-name = "12V";
-+		regulator-min-microvolt = <12000000>;
-+		regulator-max-microvolt = <12000000>;
-+		regulator-always-on;
-+	};
-+
-+	vddao_3v3: regulator-vddao-3v3 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VDDAO_3V3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&main_12v>;
-+		regulator-always-on;
-+	};
-+
-+	vddio_ao1v8: regulator-vddio-ao1v8 {
-+	       compatible = "regulator-fixed";
-+	       regulator-name = "VDDIO_AO1V8";
-+	       regulator-min-microvolt = <1800000>;
-+	       regulator-max-microvolt = <1800000>;
-+	       vin-supply = <&vddao_3v3>;
-+	       regulator-always-on;
-+	};
-+
-+	/* SY8120B1ABC DC/DC Regulator. */
-+	vddcpu: regulator-vddcpu {
-+		compatible = "pwm-regulator";
-+
-+		regulator-name = "VDDCPU";
-+		regulator-min-microvolt = <689000>;
-+		regulator-max-microvolt = <1049000>;
-+
-+		vin-supply = <&main_12v>;
-+
-+		pwms = <&pwm_ij 1 1500 0>;
-+		pwm-dutycycle-range = <100 0>;
-+
-+		regulator-boot-on;
-+		regulator-always-on;
-+		/* Voltage Duty-Cycle */
-+		voltage-table = <1049000 0>,
-+				<1039000 3>,
-+				<1029000 6>,
-+				<1019000 9>,
-+				<1009000 12>,
-+				<999000 14>,
-+				<989000 17>,
-+				<979000 20>,
-+				<969000 23>,
-+				<959000 26>,
-+				<949000 29>,
-+				<939000 31>,
-+				<929000 34>,
-+				<919000 37>,
-+				<909000 40>,
-+				<899000 43>,
-+				<889000 45>,
-+				<879000 48>,
-+				<869000 51>,
-+				<859000 54>,
-+				<849000 56>,
-+				<839000 59>,
-+				<829000 62>,
-+				<819000 65>,
-+				<809000 68>,
-+				<799000 70>,
-+				<789000 73>,
-+				<779000 76>,
-+				<769000 79>,
-+				<759000 81>,
-+				<749000 84>,
-+				<739000 87>,
-+				<729000 89>,
-+				<719000 92>,
-+				<709000 95>,
-+				<699000 98>,
-+				<689000 100>;
-+		status = "okay";
-+	};
-+};
-+
-+&pwm_ef {
-+	status = "okay";
-+	pinctrl-0 = <&pwm_e_pins1>;
-+	pinctrl-names = "default";
-+};
-+
-+&pwm_ij {
-+	status = "okay";
+ enum hw_type {
+ 	QCOM_MVFLASH_3CH,
+ 	QCOM_MVFLASH_4CH,
+@@ -98,6 +111,9 @@ enum {
+ 	REG_IRESOLUTION,
+ 	REG_CHAN_STROBE,
+ 	REG_CHAN_EN,
++	REG_THERM_THRSH1,
++	REG_THERM_THRSH2,
++	REG_THERM_THRSH3,
+ 	REG_MAX_COUNT,
  };
  
- &uart_b {
-@@ -46,6 +152,40 @@ &ir {
- 	pinctrl-names = "default";
+@@ -111,6 +127,9 @@ static struct reg_field mvflash_3ch_regs[REG_MAX_COUNT] = {
+ 	REG_FIELD(0x47, 0, 5),                  /* iresolution	*/
+ 	REG_FIELD_ID(0x49, 0, 2, 3, 1),         /* chan_strobe	*/
+ 	REG_FIELD(0x4c, 0, 2),                  /* chan_en	*/
++	REG_FIELD(0x56, 0, 2),			/* therm_thrsh1 */
++	REG_FIELD(0x57, 0, 2),			/* therm_thrsh2 */
++	REG_FIELD(0x58, 0, 2),			/* therm_thrsh3 */
  };
  
-+&sdio {
-+	pinctrl-0 = <&sdio_pins>;
-+	pinctrl-1 = <&sdio_clk_gate_pins>;
-+	pinctrl-names = "default", "clk-gate";
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	bus-width = <4>;
-+	cap-sd-highspeed;
-+	sd-uhs-sdr50;
-+	sd-uhs-sdr104;
-+	max-frequency = <200000000>;
-+	non-removable;
-+	disable-wp;
-+	no-sd;
-+	no-mmc;
-+	vmmc-supply = <&vddao_3v3>;
-+	vqmmc-supply = <&vddio_ao1v8>;
-+};
-+
-+&sd {
-+	status = "okay";
-+	pinctrl-0 = <&sdcard_pins>;
-+	pinctrl-1 = <&sdcard_clk_gate_pins>;
-+	pinctrl-names = "default", "clk-gate";
-+	bus-width = <4>;
-+	cap-sd-highspeed;
-+	max-frequency = <200000000>;
-+	disable-wp;
-+
-+	cd-gpios = <&gpio GPIOC_6 GPIO_ACTIVE_LOW>;
-+	vmmc-supply = <&vddao_3v3>;
-+	vqmmc-supply = <&vddao_3v3>;
-+};
-+
- &nand {
- 	status = "okay";
- 	#address-cells = <1>;
-@@ -90,3 +230,9 @@ &spicc0 {
- 	pinctrl-0 = <&spicc0_pins_x>;
- 	cs-gpios = <&gpio GPIOX_10 GPIO_ACTIVE_LOW>;
+ static struct reg_field mvflash_4ch_regs[REG_MAX_COUNT] = {
+@@ -123,6 +142,8 @@ static struct reg_field mvflash_4ch_regs[REG_MAX_COUNT] = {
+ 	REG_FIELD(0x49, 0, 3),			/* iresolution	*/
+ 	REG_FIELD_ID(0x4a, 0, 6, 4, 1),		/* chan_strobe	*/
+ 	REG_FIELD(0x4e, 0, 3),			/* chan_en	*/
++	REG_FIELD(0x7a, 0, 2),			/* therm_thrsh1 */
++	REG_FIELD(0x78, 0, 2),			/* therm_thrsh2 */
  };
-+
-+&ethmac {
-+	status = "okay";
-+	phy-handle = <&internal_ephy>;
-+	phy-mode = "rmii";
-+};
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-index b686eacb9662..c11c947fa18c 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-@@ -10,6 +10,7 @@
- #include <dt-bindings/clock/amlogic,s4-pll-clkc.h>
- #include <dt-bindings/clock/amlogic,s4-peripherals-clkc.h>
- #include <dt-bindings/power/meson-s4-power.h>
-+#include <dt-bindings/reset/amlogic,meson-s4-reset.h>
  
- / {
- 	cpus {
-@@ -466,6 +467,93 @@ mux {
- 					};
- 				};
- 
-+				sdcard_pins: sdcard-pins {
-+					mux {
-+						groups = "sdcard_d0_c",
-+							 "sdcard_d1_c",
-+							 "sdcard_d2_c",
-+							 "sdcard_d3_c",
-+							 "sdcard_clk_c",
-+							 "sdcard_cmd_c";
-+						function = "sdcard";
-+						bias-pull-up;
-+						drive-strength-microamp = <4000>;
-+					};
-+				};
-+
-+				sdcard_clk_gate_pins: sdcard-clk-gate-pins {
-+					mux {
-+						groups = "GPIOC_4";
-+						function = "gpio_periphs";
-+						bias-pull-down;
-+						drive-strength-microamp = <4000>;
-+					};
-+				};
-+
-+				emmc_pins: emmc-pins {
-+					mux-0 {
-+						groups = "emmc_nand_d0",
-+							 "emmc_nand_d1",
-+							 "emmc_nand_d2",
-+							 "emmc_nand_d3",
-+							 "emmc_nand_d4",
-+							 "emmc_nand_d5",
-+							 "emmc_nand_d6",
-+							 "emmc_nand_d7",
-+							 "emmc_cmd";
-+						function = "emmc";
-+						bias-pull-up;
-+						drive-strength-microamp = <4000>;
-+					};
-+					mux-1 {
-+						groups = "emmc_clk";
-+						function = "emmc";
-+						bias-pull-up;
-+						drive-strength-microamp = <4000>;
-+					};
-+				};
-+
-+				emmc_ds_pins: emmc-ds-pins {
-+					mux {
-+						groups = "emmc_nand_ds";
-+						function = "emmc";
-+						bias-pull-down;
-+						drive-strength-microamp = <4000>;
-+					};
-+				};
-+
-+				emmc_clk_gate_pins: emmc-clk-gate-pins {
-+					mux {
-+						groups = "GPIOB_8";
-+						function = "gpio_periphs";
-+						bias-pull-down;
-+						drive-strength-microamp = <4000>;
-+					};
-+				};
-+
-+				sdio_pins: sdio-pins {
-+					mux {
-+						groups = "sdio_d0",
-+							 "sdio_d1",
-+							 "sdio_d2",
-+							 "sdio_d3",
-+							 "sdio_clk",
-+							 "sdio_cmd";
-+						function = "sdio";
-+						bias-pull-up;
-+						drive-strength-microamp = <4000>;
-+					};
-+				};
-+
-+				sdio_clk_gate_pins: sdio-clk-gate-pins {
-+					mux {
-+						groups = "GPIOX_4";
-+						function = "gpio_periphs";
-+						bias-pull-down;
-+						drive-strength-microamp = <4000>;
-+					};
-+				};
-+
- 				spicc0_pins_x: spicc0-pins_x {
- 					mux {
- 						groups = "spi_a_mosi_x",
-@@ -712,5 +800,45 @@ mdio0: mdio {
- 				compatible = "snps,dwmac-mdio";
- 			};
- 		};
-+
-+		sdio: mmc@fe088000 {
-+			compatible = "amlogic,meson-axg-mmc";
-+			reg = <0x0 0xfe088000 0x0 0x800>;
-+			interrupts = <GIC_SPI 176 IRQ_TYPE_LEVEL_HIGH>;
-+			clocks = <&clkc_periphs CLKID_SDEMMC_A>,
-+				 <&xtal>,
-+				 <&clkc_pll CLKID_FCLK_DIV2>;
-+			clock-names = "core", "clkin0", "clkin1";
-+			resets = <&reset RESET_SD_EMMC_A>;
-+			cap-sdio-irq;
-+			keep-power-in-suspend;
-+			status = "disabled";
-+		};
-+
-+		sd: mmc@fe08a000 {
-+			compatible = "amlogic,meson-axg-mmc";
-+			reg = <0x0 0xfe08a000 0x0 0x800>;
-+			interrupts = <GIC_SPI 177 IRQ_TYPE_EDGE_RISING>;
-+			clocks = <&clkc_periphs CLKID_SDEMMC_B>,
-+				 <&clkc_periphs CLKID_SD_EMMC_B>,
-+				 <&clkc_pll CLKID_FCLK_DIV2>;
-+			clock-names = "core", "clkin0", "clkin1";
-+			resets = <&reset RESET_SD_EMMC_B>;
-+			status = "disabled";
-+		};
-+
-+		emmc: mmc@fe08c000 {
-+			compatible = "amlogic,meson-axg-mmc";
-+			reg = <0x0 0xfe08c000 0x0 0x800>;
-+			interrupts = <GIC_SPI 178 IRQ_TYPE_EDGE_RISING>;
-+			clocks = <&clkc_periphs CLKID_NAND>,
-+				 <&xtal>,
-+				 <&clkc_pll CLKID_FCLK_DIV2>;
-+			clock-names = "core", "clkin0", "clkin1";
-+			resets = <&reset RESET_NAND_EMMC>;
-+			no-sdio;
-+			no-sd;
-+			status = "disabled";
-+		};
- 	};
+ struct qcom_flash_data {
+@@ -130,9 +151,11 @@ struct qcom_flash_data {
+ 	struct regmap_field     *r_fields[REG_MAX_COUNT];
+ 	struct mutex		lock;
+ 	enum hw_type		hw_type;
++	u32			total_ma;
+ 	u8			leds_count;
+ 	u8			max_channels;
+ 	u8			chan_en_bits;
++	u8			revision;
  };
+ 
+ struct qcom_flash_led {
+@@ -143,6 +166,7 @@ struct qcom_flash_led {
+ 	u32				max_timeout_ms;
+ 	u32				flash_current_ma;
+ 	u32				flash_timeout_ms;
++	u32				current_in_use_ma;
+ 	u8				*chan_id;
+ 	u8				chan_count;
+ 	bool				enabled;
+@@ -172,6 +196,127 @@ static int set_flash_module_en(struct qcom_flash_led *led, bool en)
+ 	return rc;
+ }
+ 
++static int update_allowed_flash_current(struct qcom_flash_led *led, u32 *current_ma, bool strobe)
++{
++	struct qcom_flash_data *flash_data = led->flash_data;
++	u32 therm_ma, avail_ma, thrsh[3], min_thrsh, sts;
++	int rc = 0;
++
++	mutex_lock(&flash_data->lock);
++	/*
++	 * Put previously allocated current into allowed budget in either of these two cases:
++	 * 1) LED is disabled;
++	 * 2) LED is enabled repeatedly
++	 */
++	if (!strobe || led->current_in_use_ma != 0) {
++		if (flash_data->total_ma >= led->current_in_use_ma)
++			flash_data->total_ma -= led->current_in_use_ma;
++		else
++			flash_data->total_ma = 0;
++
++		led->current_in_use_ma = 0;
++		if (!strobe)
++			goto unlock;
++	}
++
++	/*
++	 * Cache the default thermal threshold settings, and set them to the lowest levels before
++	 * reading over-temp real time status. If over-temp has been triggered at the lowest
++	 * threshold, it's very likely that it would be triggered at a higher (default) threshold
++	 * when more flash current is requested. Prevent device from triggering over-temp condition
++	 * by limiting the flash current for the new request.
++	 */
++	rc = regmap_field_read(flash_data->r_fields[REG_THERM_THRSH1], &thrsh[0]);
++	if (rc < 0)
++		goto unlock;
++
++	rc = regmap_field_read(flash_data->r_fields[REG_THERM_THRSH2], &thrsh[1]);
++	if (rc < 0)
++		goto unlock;
++
++	if (flash_data->hw_type == QCOM_MVFLASH_3CH) {
++		rc = regmap_field_read(flash_data->r_fields[REG_THERM_THRSH3], &thrsh[2]);
++		if (rc < 0)
++			goto unlock;
++	}
++
++	min_thrsh = OTST_3CH_MIN_VAL;
++	if (flash_data->hw_type == QCOM_MVFLASH_4CH)
++		min_thrsh = (flash_data->revision == FLASH_4CH_REVISION_V0P1) ?
++			OTST1_4CH_V0P1_MIN_VAL : OTST1_4CH_MIN_VAL;
++
++	rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH1], min_thrsh);
++	if (rc < 0)
++		goto unlock;
++
++	if (flash_data->hw_type == QCOM_MVFLASH_4CH)
++		min_thrsh = OTST2_4CH_MIN_VAL;
++
++	/*
++	 * The default thermal threshold settings have been updated hence
++	 * restore them if any fault happens starting from here.
++	 */
++	rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH2], min_thrsh);
++	if (rc < 0)
++		goto restore;
++
++	if (flash_data->hw_type == QCOM_MVFLASH_3CH) {
++		rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH3], min_thrsh);
++		if (rc < 0)
++			goto restore;
++	}
++
++	/* Read thermal level status to get corresponding derating flash current */
++	rc = regmap_field_read(flash_data->r_fields[REG_STATUS2], &sts);
++	if (rc)
++		goto restore;
++
++	therm_ma = FLASH_TOTAL_CURRENT_MAX_UA / 1000;
++	if (flash_data->hw_type == QCOM_MVFLASH_3CH) {
++		if (sts & FLASH_STS_3CH_OTST3)
++			therm_ma = OTST3_MAX_CURRENT_MA;
++		else if (sts & FLASH_STS_3CH_OTST2)
++			therm_ma = OTST2_MAX_CURRENT_MA;
++		else if (sts & FLASH_STS_3CH_OTST1)
++			therm_ma = OTST1_MAX_CURRENT_MA;
++	} else {
++		if (sts & FLASH_STS_4CH_OTST2)
++			therm_ma = OTST2_MAX_CURRENT_MA;
++		else if (sts & FLASH_STS_4CH_OTST1)
++			therm_ma = OTST1_MAX_CURRENT_MA;
++	}
++
++	/* Calculate the allowed flash current for the request */
++	if (therm_ma <= flash_data->total_ma)
++		avail_ma = 0;
++	else
++		avail_ma = therm_ma - flash_data->total_ma;
++
++	*current_ma = min_t(u32, *current_ma, avail_ma);
++	led->current_in_use_ma = *current_ma;
++	flash_data->total_ma += led->current_in_use_ma;
++
++	dev_dbg(led->flash.led_cdev.dev, "allowed flash current: %dmA, total current: %dmA\n",
++					led->current_in_use_ma, flash_data->total_ma);
++
++restore:
++	/* Restore to default thermal threshold settings */
++	rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH1], thrsh[0]);
++	if (rc < 0)
++		goto unlock;
++
++	rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH2], thrsh[1]);
++	if (rc < 0)
++		goto unlock;
++
++	if (flash_data->hw_type == QCOM_MVFLASH_3CH)
++		rc = regmap_field_write(flash_data->r_fields[REG_THERM_THRSH3], thrsh[2]);
++
++unlock:
++	mutex_unlock(&flash_data->lock);
++	return rc;
++}
++
+ static int set_flash_current(struct qcom_flash_led *led, u32 current_ma, enum led_mode mode)
+ {
+ 	struct qcom_flash_data *flash_data = led->flash_data;
+@@ -313,6 +458,10 @@ static int qcom_flash_strobe_set(struct led_classdev_flash *fled_cdev, bool stat
+ 	if (rc)
+ 		return rc;
+ 
++	rc = update_allowed_flash_current(led, &led->flash_current_ma, state);
++	if (rc < 0)
++		return rc;
++
+ 	rc = set_flash_current(led, led->flash_current_ma, FLASH_MODE);
+ 	if (rc)
+ 		return rc;
+@@ -429,6 +578,10 @@ static int qcom_flash_led_brightness_set(struct led_classdev *led_cdev,
+ 	if (rc)
+ 		return rc;
+ 
++	rc = update_allowed_flash_current(led, &current_ma, enable);
++	if (rc < 0)
++		return rc;
++
+ 	rc = set_flash_current(led, current_ma, TORCH_MODE);
+ 	if (rc)
+ 		return rc;
+@@ -703,6 +856,14 @@ static int qcom_flash_led_probe(struct platform_device *pdev)
+ 		flash_data->hw_type = QCOM_MVFLASH_4CH;
+ 		flash_data->max_channels = 4;
+ 		regs = mvflash_4ch_regs;
++
++		rc = regmap_read(regmap, reg_base + FLASH_REVISION_REG, &val);
++		if (rc < 0) {
++			dev_err(dev, "Failed to read flash LED module revision, rc=%d\n", rc);
++			return rc;
++		}
++
++		flash_data->revision = val;
+ 	} else {
+ 		dev_err(dev, "flash LED subtype %#x is not yet supported\n", val);
+ 		return -ENODEV;
 
 ---
-base-commit: 338c92a5d1956f1841f84b86923087676d1d0cea
-change-id: 20240705-s4_node-8110e3286c0c
+base-commit: ca66b10a11da3c445c9c0ca1184f549bbe9061f2
+change-id: 20240507-qcom_flash_thermal_derating-260b1f3c757c
 
 Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+Fenglin Wu <quic_fenglinw@quicinc.com>
 
