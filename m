@@ -1,138 +1,154 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 05 Jul 2024 17:12:42 +0200
-Subject: [PATCH v2 4/4] spi: xcomm: fix coding style
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Date: Sun, 07 Jul 2024 22:31:59 +0200
+Subject: [PATCH v6] arm64: dts: qcom: msm8939-longcheer-l9100: Add rear
+ flash
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240705-dev-spi-xcomm-gpiochip-v2-4-b10842fc9636@analog.com>
-References: <20240705-dev-spi-xcomm-gpiochip-v2-0-b10842fc9636@analog.com>
-In-Reply-To: <20240705-dev-spi-xcomm-gpiochip-v2-0-b10842fc9636@analog.com>
-To: linux-spi@vger.kernel.org
-Cc: Mark Brown <broonie@kernel.org>, 
- Michael Hennerich <Michael.Hennerich@analog.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240707-sy7802-v6-1-ab03f17706d8@apitzsch.eu>
+X-B4-Tracking: v=1; b=H4sIAD77imYC/2XMy27CMBCF4VdBXteVZzy+seI9UBe2YzfeAIoh4
+ qK8ex0kAlWWZzTf/2A1DSVVtt082JDGUsvx0Ib+2rDY+8Nv4qVrm6FAEhIVrzdjBfJMIkedlVa
+ oWHs+DSmX6zO0/2m7L/V8HG7P7gjz9ZUwr8QIXPAuGPJBYvY+7/ypnO819t/pwubIiG9IAhaID
+ QJIC054Q2TXUL6hBlygnGFyMUI0Lhi3hvQJ9QKpQWOdcwRWJKHWUH1ApAWqGfoQXed0yF7/h9M
+ 0/QGc3YZEggEAAA==
+To: Pavel Machek <pavel@ucw.cz>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, 
+ Christophe JAILLET <christophe.jaillet@wanadoo.fr>, 
+ Trilok Soni <quic_tsoni@quicinc.com>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, Kees Cook <kees@kernel.org>
+Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ phone-devel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720192365; l=3472;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=ZgTAmJ7IiP/e7QA90qtxl89+pg3ESD6JiaVtHgJhCxY=;
- b=mmZyYgI6j028rWMPshdA/87V+jdmdoK9pGog9cUMJ7+yuiqzeYPF+aYCnH5vUqMFXU18G+fH+
- s19DqRRY0WXCByCDIqcx/BLBGRy01ORQGEt0MX89FwThPTXolUeQKsJ
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720384339; l=3739;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=PCHxsETnqMCOtnrhqJf1EyDZwF469Myb53EG0JzMbr8=;
+ b=OaGp88AZFpSA85IPzlVCL7cbjAQlkMynDDxeobpKmJ0lx+cfRR36y3siZkt1KFN/ZFdZ+Jcas
+ tT+f9DBoLAlBy24twlkMj0jWQf3GWqOKtcyoC1K1M2DhMML30NTa2Xg
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Just cosmetics. No functional change intended.
+The phone has a Silergy SY7802 flash LED controller.
 
-While at it, removed a couple of redundant else if() statements.
-
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/spi/spi-xcomm.c | 28 ++++++++++++++--------------
- 1 file changed, 14 insertions(+), 14 deletions(-)
+This series introduces a driver for the Silergy SY7802 charge pump used
+in the BQ Aquaris M5 and X5 smartphones.
 
-diff --git a/drivers/spi/spi-xcomm.c b/drivers/spi/spi-xcomm.c
-index 1cd7d2b9e11c9..846f00e23b717 100644
---- a/drivers/spi/spi-xcomm.c
-+++ b/drivers/spi/spi-xcomm.c
-@@ -36,12 +36,12 @@ struct spi_xcomm {
- 
- 	struct gpio_chip gc;
- 
--	uint16_t settings;
--	uint16_t chipselect;
-+	u16 settings;
-+	u16 chipselect;
- 
- 	unsigned int current_speed;
- 
--	uint8_t buf[63];
-+	u8 buf[63];
+The implementation is based on information extracted from downstream as
+the datasheet provided by a distributor of the hardware didn't include
+any information about the i2c register description.
+---
+Changes in v6:
+- Drop applied patches 1/3 and 2/3
+- Move #address-/size-cells to the end
+- Add R-b tag
+- Link to v5: https://lore.kernel.org/r/20240624-sy7802-v5-0-7abc9d96bfa6@apitzsch.eu
+
+Changes in v5:
+- Fix language in driver description comment
+- Unwrap function arguments
+- Remove unnecessary empty lines
+- Add Acked-by tag to second patch
+- Link to v4: https://lore.kernel.org/r/20240616-sy7802-v4-0-789994180e05@apitzsch.eu
+
+Changes in v4:
+- Use for_each_available_child_of_node_scoped() to simplify code
+- Use dev_err_probe() to be consistent with the other code in
+  sy7802_probe()
+- Split devm_add_action() into 2 devm_add_action_or_reset() to simplify
+  code and balance regulator_enable()
+- Link to v3: https://lore.kernel.org/r/20240612-sy7802-v3-0-1e9cc1c79b79@apitzsch.eu
+
+Changes in v3:
+- Add R-b tag to first patch
+- Extend driver commit message
+- Improve readability of defines by using BIT()
+- Rename some variables/parameters
+  * led_no -> led_id
+  * level -> brightness
+  * curr -> fled_{strobe,torch}_used_tmp
+  * mask -> {flash,torch}_mask
+  * i -> child_num
+- Restructure structs ("Place th big stuff at the top")
+- Declare 'child' on a separate line
+- Move multi-line assignments out of declaration block
+- Update warning/error messages and comments
+- Use gotos to handle error path
+- Use devm API to cleanup module's resources
+- Init mutex before LED class device is registered to avoid race
+  condition
+- Link to v2: https://lore.kernel.org/r/20240401-sy7802-v2-0-1138190a7448@apitzsch.eu
+
+Changes in v2:
+- bindings: remove unneeded allOf
+- bindings: example: move flash-led-controller under i2c node to fix
+  check error
+- Cc to phone-devel
+- Link to v1: https://lore.kernel.org/r/20240327-sy7802-v1-0-db74ab32faaf@apitzsch.eu
+---
+ .../boot/dts/qcom/msm8939-longcheer-l9100.dts      | 27 ++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts b/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
+index e3404c4455cf..b845da4fa23e 100644
+--- a/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
++++ b/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
+@@ -159,6 +159,26 @@ led@2 {
+ 			};
+ 		};
+ 	};
++
++	flash-led-controller@53 {
++		compatible = "silergy,sy7802";
++		reg = <0x53>;
++
++		enable-gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
++
++		pinctrl-0 = <&camera_rear_flash_default>;
++		pinctrl-names = "default";
++
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		led@0 {
++			reg = <0>;
++			function = LED_FUNCTION_FLASH;
++			color = <LED_COLOR_ID_WHITE>;
++			led-sources = <0>, <1>;
++		};
++	};
  };
  
- static void spi_xcomm_gpio_set_value(struct gpio_chip *chip,
-@@ -82,8 +82,8 @@ static int spi_xcomm_gpio_add(struct spi_xcomm *spi_xcomm)
+ &blsp_i2c3 {
+@@ -318,6 +338,13 @@ camera_front_flash_default: camera-front-flash-default-state {
+ 		bias-disable;
+ 	};
  
- static int spi_xcomm_sync_config(struct spi_xcomm *spi_xcomm, unsigned int len)
- {
--	uint16_t settings;
--	uint8_t *buf = spi_xcomm->buf;
-+	u16 settings;
-+	u8 *buf = spi_xcomm->buf;
- 
- 	settings = spi_xcomm->settings;
- 	settings |= len << SPI_XCOMM_SETTINGS_LEN_OFFSET;
-@@ -96,10 +96,10 @@ static int spi_xcomm_sync_config(struct spi_xcomm *spi_xcomm, unsigned int len)
- }
- 
- static void spi_xcomm_chipselect(struct spi_xcomm *spi_xcomm,
--	struct spi_device *spi, int is_active)
-+				 struct spi_device *spi, int is_active)
- {
- 	unsigned long cs = spi_get_chipselect(spi, 0);
--	uint16_t chipselect = spi_xcomm->chipselect;
-+	u16 chipselect = spi_xcomm->chipselect;
- 
- 	if (is_active)
- 		chipselect |= BIT(cs);
-@@ -110,7 +110,8 @@ static void spi_xcomm_chipselect(struct spi_xcomm *spi_xcomm,
- }
- 
- static int spi_xcomm_setup_transfer(struct spi_xcomm *spi_xcomm,
--	struct spi_device *spi, struct spi_transfer *t, unsigned int *settings)
-+				    struct spi_device *spi, struct spi_transfer *t,
-+				    unsigned int *settings)
- {
- 	if (t->len > 62)
- 		return -EINVAL;
-@@ -148,7 +149,7 @@ static int spi_xcomm_setup_transfer(struct spi_xcomm *spi_xcomm,
- }
- 
- static int spi_xcomm_txrx_bufs(struct spi_xcomm *spi_xcomm,
--	struct spi_device *spi, struct spi_transfer *t)
-+			       struct spi_device *spi, struct spi_transfer *t)
- {
- 	int ret;
- 
-@@ -159,13 +160,13 @@ static int spi_xcomm_txrx_bufs(struct spi_xcomm *spi_xcomm,
- 		ret = i2c_master_send(spi_xcomm->i2c, spi_xcomm->buf, t->len + 1);
- 		if (ret < 0)
- 			return ret;
--		else if (ret != t->len + 1)
-+		if (ret != t->len + 1)
- 			return -EIO;
- 	} else if (t->rx_buf) {
- 		ret = i2c_master_recv(spi_xcomm->i2c, t->rx_buf, t->len);
- 		if (ret < 0)
- 			return ret;
--		else if (ret != t->len)
-+		if (ret != t->len)
- 			return -EIO;
- 	}
- 
-@@ -173,12 +174,12 @@ static int spi_xcomm_txrx_bufs(struct spi_xcomm *spi_xcomm,
- }
- 
- static int spi_xcomm_transfer_one(struct spi_controller *host,
--	struct spi_message *msg)
-+				  struct spi_message *msg)
- {
- 	struct spi_xcomm *spi_xcomm = spi_controller_get_devdata(host);
- 	unsigned int settings = spi_xcomm->settings;
- 	struct spi_device *spi = msg->spi;
--	unsigned cs_change = 0;
-+	unsigned int cs_change = 0;
- 	struct spi_transfer *t;
- 	bool is_first = true;
- 	int status = 0;
-@@ -187,7 +188,6 @@ static int spi_xcomm_transfer_one(struct spi_controller *host,
- 	spi_xcomm_chipselect(spi_xcomm, spi, true);
- 
- 	list_for_each_entry(t, &msg->transfers, transfer_list) {
--
- 		if (!t->tx_buf && !t->rx_buf && t->len) {
- 			status = -EINVAL;
- 			break;
++	camera_rear_flash_default: camera-rear-flash-default-state {
++		pins = "gpio9", "gpio16", "gpio51";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
+ 	gpio_hall_sensor_default: gpio-hall-sensor-default-state {
+ 		pins = "gpio20";
+ 		function = "gpio";
 
+---
+base-commit: 0b58e108042b0ed28a71cd7edf5175999955b233
+change-id: 20240325-sy7802-f40fc6f56525
+
+Best regards,
 -- 
-2.45.2
+André Apitzsch <git@apitzsch.eu>
 
