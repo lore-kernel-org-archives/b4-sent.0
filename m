@@ -1,152 +1,249 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 08 Jul 2024 14:43:23 +0100
-Subject: [PATCH kmod v2 15/17] man: remove the "Maintained by" references
+Date: Mon, 08 Jul 2024 14:43:24 +0100
+Subject: [PATCH kmod v2 16/17] man: rework AUTHORS section
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240708-man-v2-15-a23df6ef871e@gmail.com>
+Message-Id: <20240708-man-v2-16-a23df6ef871e@gmail.com>
 References: <20240708-man-v2-0-a23df6ef871e@gmail.com>
 In-Reply-To: <20240708-man-v2-0-a23df6ef871e@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720446209; l=3766;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720446209; l=8323;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=oazsCu1x5cpTjLe811bZRP1oyu3WkDozVetIymM8AT0=;
- b=ThGjE1GWa8Iw/bD5WDDOlIsR5iHEjAp5Nz93qqh1qzn3n/9GOR80t2QkldWaB4fVlezYm3SKO
- 9KuqrYaX+9HC7dtFabdVUKH4J8+MBDb+vX8aunSVCRF98F83bLv0Dmn
+ bh=ie6KjBcte87GHOjasXb7TRphJJLk34KDZ1vef6yDI/s=;
+ b=dOZNmH8IhXHjjc0rfLqzN080F+FQzWVwA0Ez207C42ePMAX92dzGaTI1VBtHxpASrjXOBCcC1
+ RoGF320Rla0BkyMFMx7hhjdAsXJNhYWirxRuijGjBDqXOH3DrMZjSTd
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-At a glance through my system, around 2% of the man pages include such
-statement.
+Replace the partial listing with suggestion to check through git
+shortlog and git blame.
 
-Looking through git log, Jon has been active in a while and presumably
-have moved on.
-
-Most importantly the Copyright section isn't the best place to reference
-the maintainer/contact person.
+Explicitly spell out the current maintainer, alongside giving Jon
+attribution for the original project.
 
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
-Instead we can add a note in the authors section, pointing people to the
-ML/kernel.org/Github repo for when seeking contact.
+ man/depmod.8.scd      | 13 ++++++-------
+ man/depmod.d.5.scd    | 13 ++++++-------
+ man/insmod.8.scd      | 10 ++++++----
+ man/kmod.8.scd        | 13 +++++++++++--
+ man/lsmod.8.scd       | 10 ++++++----
+ man/modinfo.8.scd     | 10 ++++++----
+ man/modprobe.8.scd    | 13 ++++++-------
+ man/modprobe.d.5.scd  | 13 ++++++-------
+ man/modules.dep.5.scd | 10 ++++++----
+ man/rmmod.8.scd       | 10 ++++++----
+ 10 files changed, 65 insertions(+), 50 deletions(-)
 
-Also should probably s/Developer/Maintainer/ for Lucas, who's been
-keeping the project afloat the last few decades ;-)
-
-Lucas, what do you think?
----
- man/insmod.8.scd      | 1 -
- man/kmod.8.scd        | 3 +--
- man/lsmod.8.scd       | 1 -
- man/modinfo.8.scd     | 1 -
- man/modprobe.8.scd    | 1 -
- man/modprobe.d.5.scd  | 1 -
- man/modules.dep.5.scd | 1 -
- man/rmmod.8.scd       | 1 -
- 8 files changed, 1 insertion(+), 9 deletions(-)
-
+diff --git a/man/depmod.8.scd b/man/depmod.8.scd
+index 0252a72..76d4fa8 100644
+--- a/man/depmod.8.scd
++++ b/man/depmod.8.scd
+@@ -116,11 +116,10 @@ Portions Copyright Jon Masters, and others.
+ 
+ # AUTHORS
+ 
+-*Jon Masters* <jcm@jonmasters.org>
+-	Developer
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
+ 
+-*Robby Workman* <rworkman@slackware.com>
+-	Developer
+-
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
+diff --git a/man/depmod.d.5.scd b/man/depmod.d.5.scd
+index dc13ec7..ec1b032 100644
+--- a/man/depmod.d.5.scd
++++ b/man/depmod.d.5.scd
+@@ -103,11 +103,10 @@ This manual page Copyright 2006-2010, Jon Masters, Red Hat, Inc.
+ 
+ # AUTHORS
+ 
+-*Jon Masters* <jcm@jonmasters.org>
+-	Developer
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
+ 
+-*Robby Workman* <rworkman@slackware.com>
+-	Developer
+-
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
 diff --git a/man/insmod.8.scd b/man/insmod.8.scd
-index b6f8654..27d4409 100644
+index 27d4409..137830f 100644
 --- a/man/insmod.8.scd
 +++ b/man/insmod.8.scd
-@@ -21,7 +21,6 @@ information about errors.
- # COPYRIGHT
+@@ -28,8 +28,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
  
- This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
--Maintained by Jon Masters and others.
+ # AUTHORS
  
- # SEE ALSO
+-*Jon Masters* <jcm@jonmasters.org>
+-	Developer
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
  
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
 diff --git a/man/kmod.8.scd b/man/kmod.8.scd
-index 2007a2d..6bd9432 100644
+index 6bd9432..2294591 100644
 --- a/man/kmod.8.scd
 +++ b/man/kmod.8.scd
-@@ -35,8 +35,7 @@ Linux Kernel modules. Most users will only run it using its other names.
+@@ -43,5 +43,14 @@ This manual page originally Copyright 2014, Marco d'Itri.
  
- # COPYRIGHT
+ # AUTHOR
  
--This manual page originally Copyright 2014, Marco d'Itri. Maintained by Lucas De
--Marchi and others.
-+This manual page originally Copyright 2014, Marco d'Itri.
- 
- # SEE ALSO
- 
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*kmod* project was started by Lucas De Marchi as a drop-in replacement to
++module-init-tools that was maintained by Jon Masters, adding a library (libkmod)
++and additional features.
++
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
++
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
 diff --git a/man/lsmod.8.scd b/man/lsmod.8.scd
-index eb2f2e8..ded619e 100644
+index ded619e..d81cce2 100644
 --- a/man/lsmod.8.scd
 +++ b/man/lsmod.8.scd
-@@ -15,7 +15,6 @@ lsmod - Show the status of modules in the Linux Kernel
- # COPYRIGHT
+@@ -22,8 +22,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
  
- This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
--Maintained by Jon Masters and others.
+ # AUTHORS
  
- # SEE ALSO
+-*Jon Masters* <jcm@jonmasters.org>
+-	Developer
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
  
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
 diff --git a/man/modinfo.8.scd b/man/modinfo.8.scd
-index 9545257..d088c7e 100644
+index d088c7e..7511798 100644
 --- a/man/modinfo.8.scd
 +++ b/man/modinfo.8.scd
-@@ -63,7 +63,6 @@ architecture.
- # COPYRIGHT
+@@ -70,8 +70,10 @@ This manual page originally Copyright 2003, Rusty Russell, IBM Corporation.
  
- This manual page originally Copyright 2003, Rusty Russell, IBM Corporation.
--Maintained by Jon Masters and others.
+ # AUTHORS
  
- # SEE ALSO
+-*Jon Masters* <jcm@jonmasters.org>
+-	Developer
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
  
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
 diff --git a/man/modprobe.8.scd b/man/modprobe.8.scd
-index 30ccc21..67cbb1a 100644
+index 67cbb1a..85d47fa 100644
 --- a/man/modprobe.8.scd
 +++ b/man/modprobe.8.scd
-@@ -201,7 +201,6 @@ rules.
- # COPYRIGHT
+@@ -208,11 +208,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
  
- This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
--Maintained by Jon Masters and others.
+ # AUTHORS
  
- # SEE ALSO
+-*Jon Masters* <jcm@jonmasters.org>
+-	Developer
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
  
+-*Robby Workman* <rworkman@slackware.com>
+-	Developer
+-
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
 diff --git a/man/modprobe.d.5.scd b/man/modprobe.d.5.scd
-index b7b1942..246457b 100644
+index 246457b..e6e9c51 100644
 --- a/man/modprobe.d.5.scd
 +++ b/man/modprobe.d.5.scd
-@@ -167,7 +167,6 @@ directly within the modules.
- # COPYRIGHT
+@@ -174,11 +174,10 @@ This manual page originally Copyright 2004, Rusty Russell, IBM Corporation.
  
- This manual page originally Copyright 2004, Rusty Russell, IBM Corporation.
--Maintained by Jon Masters and others.
+ # AUTHORS
  
- # SEE ALSO
+-*Jon Masters* <jcm@jonmasters.org>
+-	Developer
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
  
+-*Robby Workman* <rworkman@slackware.com>
+-	Developer
+-
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
 diff --git a/man/modules.dep.5.scd b/man/modules.dep.5.scd
-index c4e7653..7723a16 100644
+index 7723a16..7c68ab9 100644
 --- a/man/modules.dep.5.scd
 +++ b/man/modules.dep.5.scd
-@@ -29,7 +29,6 @@ fashion rather than touching these files.
- # COPYRIGHT
+@@ -36,8 +36,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
  
- This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
--Maintained by Jon Masters and others.
+ # AUTHORS
  
- # SEE ALSO
+-*Jon Masters* <jcm@jonmasters.org>
+-	Developer
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
  
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
 diff --git a/man/rmmod.8.scd b/man/rmmod.8.scd
-index e1f656f..c4dcc3e 100644
+index c4dcc3e..cf55478 100644
 --- a/man/rmmod.8.scd
 +++ b/man/rmmod.8.scd
-@@ -35,7 +35,6 @@ is provided) from the kernel. Most users will want to use *modprobe*(8) with the
- # COPYRIGHT
+@@ -42,8 +42,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
  
- This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
--Maintained by Jon Masters and others.
+ # AUTHORS
  
- # SEE ALSO
+-*Jon Masters* <jcm@jonmasters.org>
+-	Developer
++Numerous contributions have come from the linux-modules mailing list
++<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
++itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
++authors for specific parts of the project.
  
+-*Lucas De Marchi* <lucas.de.marchi@gmail.com>
+-	Developer
++*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
++project.
 
 -- 
 2.45.2
