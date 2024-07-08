@@ -1,229 +1,121 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 08 Jul 2024 14:43:09 +0100
-Subject: [PATCH kmod v2 01/17] man: add some extra bold/italic annotations
+Date: Mon, 08 Jul 2024 14:43:10 +0100
+Subject: [PATCH kmod v2 02/17] man: white space fixes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240708-man-v2-1-a23df6ef871e@gmail.com>
+Message-Id: <20240708-man-v2-2-a23df6ef871e@gmail.com>
 References: <20240708-man-v2-0-a23df6ef871e@gmail.com>
 In-Reply-To: <20240708-man-v2-0-a23df6ef871e@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720446209; l=8950;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720446209; l=4925;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=V5iPrI6QXNubI5vuHbIuBAg+o8si/J1j7rX5731ZxA0=;
- b=BIU03eObp9rxpZcrR+NOjvyiryl7siNbQG6YtPsbxMneqG/CdTyTlWhgNk2ZgcwMrzyi+CxFo
- UHUxj6XmfSDAWaXy+I6RBwLmlquMiS3J8GNnQ12fjKHKKmZNk7OcUTz
+ bh=FIuRVlV349zm6qJg/6cU04JoJxGlyJsKYzKRe2M51/A=;
+ b=djL+v17757sgOhLq0cewdBxqCgEBSWgfo3VBXNS3uEORfeDNfiYCUUtK5aQ3woTPXS69yVDlW
+ UGfifsF0cHdB61RkY/DL7YOqXZ0rQGUsL9W6UNX5NrqA9UGOi23n/BA
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+These were present in the original xml files and I opted to keep them
+separate fix to make the transition/comparison easier.
+
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
-v2: add an extra depmod instance
+v2: drop unrelated bold annotation - move to previous patch
 ---
- man/depmod.8.scd      | 20 ++++++++++----------
- man/kmod.8.scd        |  2 +-
- man/modinfo.8.scd     |  8 ++++----
- man/modprobe.8.scd    | 12 ++++++------
- man/modules.dep.5.scd | 11 ++++++-----
- man/rmmod.8.scd       |  2 +-
- 6 files changed, 28 insertions(+), 27 deletions(-)
+ man/depmod.8.scd     | 2 +-
+ man/depmod.d.5.scd   | 2 +-
+ man/modprobe.8.scd   | 8 ++++----
+ man/modprobe.d.5.scd | 4 ++--
+ 4 files changed, 8 insertions(+), 8 deletions(-)
 
 diff --git a/man/depmod.8.scd b/man/depmod.8.scd
-index 0fe9128..34c1313 100644
+index 34c1313..80cc48d 100644
 --- a/man/depmod.8.scd
 +++ b/man/depmod.8.scd
-@@ -21,7 +21,7 @@ dependencies can get quite complex.
- 
- *depmod* creates a list of module dependencies by reading each module under
- @MODULE_DIRECTORY@/_version_ and determining what symbols it exports and what
--symbols it needs. By default, this list is written to modules.dep, and a binary
-+symbols it needs. By default, this list is written to *modules.dep*, and a binary
- hashed version named modules.dep.bin, in the same directory. If filenames are
- given on the command line, only those modules are examined (which is rarely
- useful unless all modules are listed). * depmod* also creates a list of symbols
-@@ -41,20 +41,20 @@ rather than the current kernel version (as returned by *uname -r*).
- 
- *-A*, *--quick*
- 	This option scans to see if any modules are newer than the
--	modules.dep file before any work is done: if not, it silently exits
-+	*modules.dep* file before any work is done: if not, it silently exits
- 	rather than regenerating the files.
- 
- *-b* _basedir_, *--basedir* _basedir_
- 	If your modules are not currently in the (normal) directory
- 	@MODULE_DIRECTORY@/_version_, but in a staging area, you can specify a
- 	_basedir_ which is prepended to the directory name. This _basedir_ is
--	stripped from the resulting modules.dep file, so it is ready to be moved
--	into the normal location. Use this option if you are a distribution
--	vendor who needs to pre-generate the meta-data files rather than running
--	depmod again later.
-+	stripped from the resulting *modules.dep* file, so it is ready to be
-+	moved into the normal location. Use this option if you are a
-+	distribution vendor who needs to pre-generate the meta-data files rather
-+	than running *depmod* again later.
+@@ -55,7 +55,7 @@ rather than the current kernel version (as returned by *uname -r*).
  
  *-o* _outdir_, *--outdir* _outdir_
--	Set the output directory where depmod will store any generated file.
-+	Set the output directory where *depmod* will store any generated file.
- 	_ outdir_ serves as a root to that location, similar to how _basedir_ is
+ 	Set the output directory where *depmod* will store any generated file.
+-	_ outdir_ serves as a root to that location, similar to how _basedir_ is
++	_outdir_ serves as a root to that location, similar to how _basedir_ is
  	used. Also this setting takes precedence and if used together with
  	_basedir_ it will result in the input being that directory, but the output
-@@ -75,11 +75,11 @@ rather than the current kernel version (as returned by *uname -r*).
- *-E*, *--symvers*
- 	When combined with the *-e* option, this reports any symbol versions
- 	supplied by modules that do not match with the symbol versions provided
--	by the kernel in its Module.symvers. This option is mutually
-+	by the kernel in its _Module.symvers_. This option is mutually
- 	incompatible with *-F*.
+ 	being the one set by _outdir_.
+diff --git a/man/depmod.d.5.scd b/man/depmod.d.5.scd
+index 9c42478..4e05b93 100644
+--- a/man/depmod.d.5.scd
++++ b/man/depmod.d.5.scd
+@@ -50,7 +50,7 @@ override _modulename_ _kernelversion_ _modulesubdirectory_
+ 	This command allows you to override which version of a specific module
+ 	will be used when more than one module sharing the same name is
+ 	processed by the *depmod* command. It is possible to specify one kernel
+-	or all kernels using the \* wildcard. _ modulesubdirectory_ is the name
++	or all kernels using the \* wildcard. _modulesubdirectory_ is the name
+ 	of the subdirectory under @MODULE_DIRECTORY@ (or other module location)
+ 	where the target module is installed.
  
- *-F*, *--filesyms* _System.map_
--	Supplied with the System.map produced when the kernel was built, this
-+	Supplied with the _System.map_ produced when the kernel was built, this
- 	allows the *-e* option to report unresolved symbols. This option is
- 	mutually incompatible with *-E*.
- 
-@@ -87,7 +87,7 @@ rather than the current kernel version (as returned by *uname -r*).
- 	Print the help message and exit.
- 
- *-n*, *--show*, *--dry-run*
--	This sends the resulting modules.dep and the various map files to
-+	This sends the resulting *modules.dep* and the various map files to
- 	standard output rather than writing them into the module directory.
- 
- *-P*
-diff --git a/man/kmod.8.scd b/man/kmod.8.scd
-index d292a13..7bef863 100644
---- a/man/kmod.8.scd
-+++ b/man/kmod.8.scd
-@@ -6,7 +6,7 @@ kmod - Program to manage Linux Kernel modules
+diff --git a/man/modprobe.8.scd b/man/modprobe.8.scd
+index 653fbd9..aac3a74 100644
+--- a/man/modprobe.8.scd
++++ b/man/modprobe.8.scd
+@@ -6,7 +6,7 @@ modprobe - Add and remove modules from the Linux Kernel
  
  # SYNOPSIS
  
--*kmod* [*OPTIONS*...] [_COMMAND_] [*COMMAND_OPTIONS*...]
-+*kmod* [*OPTIONS...*] [_COMMAND_] [*COMMAND_OPTIONS...*]
- 
- # DESCRIPTION
- 
-diff --git a/man/modinfo.8.scd b/man/modinfo.8.scd
-index fd945ce..75267bc 100644
---- a/man/modinfo.8.scd
-+++ b/man/modinfo.8.scd
-@@ -29,14 +29,14 @@ architecture.
- # OPTIONS
- 
- *-V*, *--version*
--	Print the modinfo version.
-+	Print the *modinfo* version.
- 
- *-F*, *--field*
- 	Only print this field value, one per line. This is most useful for
- 	scripts. Field names are case-insensitive. Common fields (which may not
- 	be in every module) include author, description, license, parm, depends,
- 	and alias. There are often multiple parm, alias and depends fields. The
--	special field filename lists the filename of the module.
-+	special _field_ filename lists the filename of the module.
- 
- *-b* _basedir_, *--basedir* _basedir_
- 	Root directory for modules, / by default.
-@@ -50,9 +50,9 @@ architecture.
- 	image prior to booting.
- 
- *-0*, *--null*
--	Use the ASCII zero character to separate field values, instead of a new
-+	Use the ASCII zero character to separate _field_ values, instead of a new
- 	line. This is useful for scripts, since a new line can theoretically
--	appear inside a field.
-+	appear inside a _field_.
- 
- *-a* *--author*, *-d* *--description*, *-l* *--license*, *-p* *--parameters*,
- *-n* *--filename*
-diff --git a/man/modprobe.8.scd b/man/modprobe.8.scd
-index f678654..653fbd9 100644
---- a/man/modprobe.8.scd
-+++ b/man/modprobe.8.scd
-@@ -9,11 +9,11 @@ modprobe - Add and remove modules from the Linux Kernel
- *modprobe* [*-v*] [*-V*] [*-C *_config-file_] [*-n*] [*-i*] [*-q*] [*-b*] [_modulename_]
+-*modprobe* [*-v*] [*-V*] [*-C *_config-file_] [*-n*] [*-i*] [*-q*] [*-b*] [_modulename_]
++*modprobe* [*-v*] [*-V*] [*-C* _config-file_] [*-n*] [*-i*] [*-q*] [*-b*] [_modulename_]
  \ \ \ \ \ \ \ \ \ \[_module parameters_...]
  
--*modprobe* [-r] [*-v*] [*-n*] [*-i*] [_modulename_...]
-+*modprobe* [*-r*] [*-v*] [*-n*] [*-i*] [_modulename_...]
+ *modprobe* [*-r*] [*-v*] [*-n*] [*-i*] [_modulename_...]
+@@ -19,10 +19,10 @@ modprobe - Add and remove modules from the Linux Kernel
  
--*modprobe* [-c]
-+*modprobe* [*-c*]
+ *modprobe* intelligently adds or removes a module from the Linux kernel: note
+ that for convenience, there is no difference between \_ and - in module names
+-(automatic underscore conversion is performed). * modprobe* looks in the module
++(automatic underscore conversion is performed). *modprobe* looks in the module
+ directory @DISTCONFDIR@/`uname -r` for all the modules and other files, except
+ for the optional configuration files in the /etc/modprobe.d directory (see
+-*modprobe.d*(5)). * modprobe* will also use module options specified on the
++*modprobe.d*(5)). *modprobe* will also use module options specified on the
+ kernel command line in the form of <module>.<option> and blacklists in the form
+ of modprobe.blacklist=<module>.
  
--*modprobe* [--dump-modversions] [_filename_]
-+*modprobe* [*--dump-modversions*] [_filename_]
+@@ -167,7 +167,7 @@ database.
+ 	itself. This produces a (possibly empty) set of module filenames, one
+ 	per line, each starting with "insmod" and is typically used by
+ 	distributions to determine which modules to include when generating
+-	initrd/initramfs images. * Install* commands which apply are shown
++	initrd/initramfs images. *Install* commands which apply are shown
+ 	prefixed by "install". It does not run any of the install commands. Note
+ 	that *modinfo*(8) can be used to extract dependencies of a module from the
+ 	module itself, but knows nothing of aliases or install commands.
+diff --git a/man/modprobe.d.5.scd b/man/modprobe.d.5.scd
+index 93b9522..2907175 100644
+--- a/man/modprobe.d.5.scd
++++ b/man/modprobe.d.5.scd
+@@ -94,7 +94,7 @@ install _modulename_ _command..._
+ options _modulename_ _option..._
+ 	This command allows you to add options to the module _modulename_ (which
+ 	might be an alias) every time it is inserted into the kernel: whether
+-	directly (using *modprobe* _ modulename_) or because the module being
++	directly (using *modprobe* _modulename_) or because the module being
+ 	inserted depends on this module.
  
- # DESCRIPTION
+ 	All options are added together: they can come from an *option* for the
+@@ -106,7 +106,7 @@ remove _modulename_ _command..._
  
-@@ -42,7 +42,7 @@ If any arguments are given after the _modulename_, they are passed to the kernel
- 
- When loading modules, _modulename_ can also be a path to the module. If the path
- is relative, it must explicitly start with "./". Note that this may fail when
--using a path to a module with dependencies not matching the installed depmod
-+using a path to a module with dependencies not matching the installed *depmod*
- database.
- 
- # OPTIONS
-@@ -78,7 +78,7 @@ database.
- 	module which is already present or to remove a module which isn't
- 	present. This is ideal for simple scripts; however, more complicated
- 	scripts often want to know whether *modprobe* really did something: this
--	option makes modprobe fail in the case that it actually didn't do
-+	option makes *modprobe* fail in the case that it actually didn't do
- 	anything.
- 
- *--force-vermagic*
-@@ -97,7 +97,7 @@ database.
- 	detailing the versions of every interfaced used by (or supplied by) the
- 	module is created. If a module fails to load and the kernel complains
- 	that the module disagrees about a version of some interface, you can use
--	"--force-modversion" to remove the version information altogether.
-+	*--force-modversion* to remove the version information altogether.
- 	Naturally, this check is there for your protection, so using this option
- 	is dangerous unless you know what you're doing.
- 
-diff --git a/man/modules.dep.5.scd b/man/modules.dep.5.scd
-index 34ffb83..c4e7653 100644
---- a/man/modules.dep.5.scd
-+++ b/man/modules.dep.5.scd
-@@ -12,13 +12,14 @@ modules.dep, modules.dep.bin - Module dependency information
- 
- # DESCRIPTION
- 
--modules.dep.bin is a binary file generated by *depmod* listing the dependencies
--for every module in the directories under @MODULE_DIRECTORY@/_version_. It is
--used by kmod tools such as *modprobe* and libkmod.
-+*modules.dep.bin* is a binary file generated by *depmod* listing the
-+dependencies for every module in the directories under
-+@MODULE_DIRECTORY@/_version_. It is used by *kmod* tools such as *modprobe* and
-+libkmod.
- 
- Its text counterpart is located in the same directory with the name
--modules.dep. The text version is maintained only for easy of reading by humans
--and is in no way used by any kmod tool.
-+*modules.dep*. The text version is maintained only for easy of reading by humans
-+and is in no way used by any *kmod* tool.
- 
- These files are not intended for editing or use by any additional utilities as
- their format is subject to change in the future. You should use the *modinfo*(8)
-diff --git a/man/rmmod.8.scd b/man/rmmod.8.scd
-index 72947a6..7813448 100644
---- a/man/rmmod.8.scd
-+++ b/man/rmmod.8.scd
-@@ -29,7 +29,7 @@ is provided) from the kernel. Most users will want to use *modprobe*(8) with the
- *-s*, *--syslog*
- 	Send errors to syslog instead of standard error.
- 
--*-V --version*
-+*-V*, *--version*
- 	Show version of program and exit.
- 
- # COPYRIGHT
+ softdep _modulename_ pre: _modules..._ post: _modules..._
+ 	The *softdep* command allows you to specify soft, or optional, module
+-	dependencies. _ modulename_ can be used without these optional modules
++	dependencies. _modulename_ can be used without these optional modules
+ 	installed, but usually with some features missing. For example, a driver
+ 	for a storage HBA might require another module be loaded in order to use
+ 	management features.
 
 -- 
 2.45.2
