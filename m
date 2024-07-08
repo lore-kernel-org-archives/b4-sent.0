@@ -1,249 +1,386 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 08 Jul 2024 14:43:24 +0100
-Subject: [PATCH kmod v2 16/17] man: rework AUTHORS section
+Date: Mon, 08 Jul 2024 14:43:25 +0100
+Subject: [PATCH kmod v2 17/17] man: list options one per line
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240708-man-v2-16-a23df6ef871e@gmail.com>
+Message-Id: <20240708-man-v2-17-a23df6ef871e@gmail.com>
 References: <20240708-man-v2-0-a23df6ef871e@gmail.com>
 In-Reply-To: <20240708-man-v2-0-a23df6ef871e@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720446209; l=8323;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720446209; l=12342;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=ie6KjBcte87GHOjasXb7TRphJJLk34KDZ1vef6yDI/s=;
- b=dOZNmH8IhXHjjc0rfLqzN080F+FQzWVwA0Ez207C42ePMAX92dzGaTI1VBtHxpASrjXOBCcC1
- RoGF320Rla0BkyMFMx7hhjdAsXJNhYWirxRuijGjBDqXOH3DrMZjSTd
+ bh=3AK8IvpvMM49FK8LdojAYRiarymQcUY5u5a8DlZX7TE=;
+ b=zOzugUfkiQD46LWfivSSjIolA4t9v2WiQLrOOLJ0aFJMLncsDcGczfHbkrkVGyhJ2EvuQ+nCE
+ xj5p7jvFSnNDjqAbK4TbnviSj2mgoE8xYBIdUDf1NnAw848MPezE8ro
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the partial listing with suggestion to check through git
-shortlog and git blame.
+Somewhat inspired by my selfish use of VIM as man pager. Namely, when
+there are multiple options on the same line, only the first one gets
+properly rendered.
 
-Explicitly spell out the current maintainer, alongside giving Jon
-attribution for the original project.
+A good bonus point is that very long instances, like modinfo's legacy
+"--author, --description ..." look a bit neater now.
+
+With this is also more consistently handle short/long options which take
+an argument.
 
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- man/depmod.8.scd      | 13 ++++++-------
- man/depmod.d.5.scd    | 13 ++++++-------
- man/insmod.8.scd      | 10 ++++++----
- man/kmod.8.scd        | 13 +++++++++++--
- man/lsmod.8.scd       | 10 ++++++----
- man/modinfo.8.scd     | 10 ++++++----
- man/modprobe.8.scd    | 13 ++++++-------
- man/modprobe.d.5.scd  | 13 ++++++-------
- man/modules.dep.5.scd | 10 ++++++----
- man/rmmod.8.scd       | 10 ++++++----
- 10 files changed, 65 insertions(+), 50 deletions(-)
+ man/depmod.8.scd   | 37 +++++++++++++++++++++++++------------
+ man/kmod.8.scd     |  6 ++++--
+ man/modinfo.8.scd  | 17 ++++++++++++-----
+ man/modprobe.8.scd | 50 ++++++++++++++++++++++++++++++++++----------------
+ man/rmmod.8.scd    | 12 ++++++++----
+ 5 files changed, 83 insertions(+), 39 deletions(-)
 
 diff --git a/man/depmod.8.scd b/man/depmod.8.scd
-index 0252a72..76d4fa8 100644
+index 76d4fa8..c061085 100644
 --- a/man/depmod.8.scd
 +++ b/man/depmod.8.scd
-@@ -116,11 +116,10 @@ Portions Copyright Jon Masters, and others.
+@@ -35,16 +35,19 @@ rather than the current kernel version (as returned by *uname -r*).
  
- # AUTHORS
+ # OPTIONS
  
--*Jon Masters* <jcm@jonmasters.org>
--	Developer
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
+-*-a*, *--all*
++*-a*
++*--all*
+ 	Probe all modules. This option is enabled by default if no file names
+ 	are given in the command-line.
  
--*Robby Workman* <rworkman@slackware.com>
--	Developer
--
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
-diff --git a/man/depmod.d.5.scd b/man/depmod.d.5.scd
-index dc13ec7..ec1b032 100644
---- a/man/depmod.d.5.scd
-+++ b/man/depmod.d.5.scd
-@@ -103,11 +103,10 @@ This manual page Copyright 2006-2010, Jon Masters, Red Hat, Inc.
+-*-A*, *--quick*
++*-A*
++*--quick*
+ 	This option scans to see if any modules are newer than the
+ 	*modules.dep* file before any work is done: if not, it silently exits
+ 	rather than regenerating the files.
  
- # AUTHORS
+-*-b* _basedir_, *--basedir* _basedir_
++*-b* _basedir_
++*--basedir* _basedir_
+ 	If your modules are not currently in the (normal) directory
+ 	@MODULE_DIRECTORY@/_version_, but in a staging area, you can specify a
+ 	_basedir_ which is prepended to the directory name. This _basedir_ is
+@@ -53,18 +56,21 @@ rather than the current kernel version (as returned by *uname -r*).
+ 	distribution vendor who needs to pre-generate the meta-data files rather
+ 	than running *depmod* again later.
  
--*Jon Masters* <jcm@jonmasters.org>
--	Developer
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
+-*-o* _outdir_, *--outdir* _outdir_
++*-o* _outdir_
++*--outdir* _outdir_
+ 	Set the output directory where *depmod* will store any generated file.
+ 	_outdir_ serves as a root to that location, similar to how _basedir_ is
+ 	used. Also this setting takes precedence and if used together with
+ 	_basedir_ it will result in the input being that directory, but the output
+ 	being the one set by _outdir_.
  
--*Robby Workman* <rworkman@slackware.com>
--	Developer
--
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
-diff --git a/man/insmod.8.scd b/man/insmod.8.scd
-index 27d4409..137830f 100644
---- a/man/insmod.8.scd
-+++ b/man/insmod.8.scd
-@@ -28,8 +28,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
+-*-C*, *--config* _file_ _or_ _directory_
++*-C*  _file_ _or_ _directory_
++*--config* _file_ _or_ _directory_
+ 	This option overrides the default configuration files. See
+ 	*depmod.d*(5).
  
- # AUTHORS
+-*-e*, *--errsyms*
++*-e*
++*--errsyms*
+ 	When combined with the *-F* option, this reports any symbols which a
+ 	module needs which are not supplied by other modules or the kernel.
+ 	Normally, any symbols not provided by modules are assumed to be provided
+@@ -72,21 +78,26 @@ rather than the current kernel version (as returned by *uname -r*).
+ 	assumption can break especially when additionally updated third party
+ 	drivers are not correctly installed or were built incorrectly.
  
--*Jon Masters* <jcm@jonmasters.org>
--	Developer
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
+-*-E*, *--symvers* _Module.symvers_
++*-E* _Module.symvers_
++*--symvers* _Module.symvers_
+ 	When combined with the *-e* option, this reports any symbol versions
+ 	supplied by modules that do not match with the symbol versions provided
+ 	by the kernel in its _Module.symvers_. This option is mutually
+ 	incompatible with *-F*.
  
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
+-*-F*, *--filesyms* _System.map_
++*-F* _System.map_
++*--filesyms* _System.map_
+ 	Supplied with the _System.map_ produced when the kernel was built, this
+ 	allows the *-e* option to report unresolved symbols. This option is
+ 	mutually incompatible with *-E*.
+ 
+-*-h*, *--help*
++*-h*
++*--help*
+ 	Print the help message and exit.
+ 
+-*-n*, *--show*, *--dry-run*
++*-n*
++*--show*
++*--dry-run*
+ 	This sends the resulting *modules.dep* and the various map files to
+ 	standard output rather than writing them into the module directory.
+ 
+@@ -94,11 +105,13 @@ rather than the current kernel version (as returned by *uname -r*).
+ 	Some architectures prefix symbols with an extraneous character. This
+ 	specifies a prefix character (for example '\_') to ignore.
+ 
+-*-v*, *--verbose*
++*-v*
++*--verbose*
+ 	In verbose mode, *depmod* will print (to stdout) all the symbols each
+ 	module depends on and the module's file name which provides that symbol.
+ 
+-*-V*, *--version*
++*-V*
++*--version*
+ 	Show version of program and exit. See below for caveats when run on
+ 	older kernels.
+ 
 diff --git a/man/kmod.8.scd b/man/kmod.8.scd
-index 6bd9432..2294591 100644
+index 2294591..d2039c6 100644
 --- a/man/kmod.8.scd
 +++ b/man/kmod.8.scd
-@@ -43,5 +43,14 @@ This manual page originally Copyright 2014, Marco d'Itri.
+@@ -15,10 +15,12 @@ Linux Kernel modules. Most users will only run it using its other names.
  
- # AUTHOR
+ # OPTIONS
  
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*kmod* project was started by Lucas De Marchi as a drop-in replacement to
-+module-init-tools that was maintained by Jon Masters, adding a library (libkmod)
-+and additional features.
-+
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
-+
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
-diff --git a/man/lsmod.8.scd b/man/lsmod.8.scd
-index ded619e..d81cce2 100644
---- a/man/lsmod.8.scd
-+++ b/man/lsmod.8.scd
-@@ -22,8 +22,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
+-*-V*, *--version*
++*-V*
++*--version*
+ 	Show the program version and exit.
  
- # AUTHORS
+-*-h*, *--help*
++*-h*
++*--help*
+ 	Show the help message.
  
--*Jon Masters* <jcm@jonmasters.org>
--	Developer
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
- 
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
+ # COMMANDS
 diff --git a/man/modinfo.8.scd b/man/modinfo.8.scd
-index d088c7e..7511798 100644
+index 7511798..dace58f 100644
 --- a/man/modinfo.8.scd
 +++ b/man/modinfo.8.scd
-@@ -70,8 +70,10 @@ This manual page originally Copyright 2003, Rusty Russell, IBM Corporation.
+@@ -28,17 +28,20 @@ architecture.
  
- # AUTHORS
+ # OPTIONS
  
--*Jon Masters* <jcm@jonmasters.org>
--	Developer
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
+-*-V*, *--version*
++*-V*
++*--version*
+ 	Print the *modinfo* version.
  
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
+-*-F* _field_, *--field* _field_
++*-F* _field_
++*--field* _field_
+ 	Only print this _field_ value, one per line. This is most useful for
+ 	scripts. Field names are case-insensitive. Common fields (which may not
+ 	be in every module) include author, description, license, parm, depends,
+ 	and alias. There are often multiple parm, alias and depends fields. The
+ 	special _field_ filename lists the filename of the module.
+ 
+-*-b* _basedir_, *--basedir* _basedir_
++*-b* _basedir_
++*--basedir* _basedir_
+ 	Root directory for modules, / by default.
+ 
+ *-k* _kernel_
+@@ -49,12 +52,16 @@ architecture.
+ 	modules in a new kernel for which you must make an initrd/initramfs
+ 	image prior to booting.
+ 
+-*-0*, *--null*
++*-0*
++*--null*
+ 	Use the ASCII zero character to separate _field_ values, instead of a new
+ 	line. This is useful for scripts, since a new line can theoretically
+ 	appear inside a _field_.
+ 
+-*-a* *--author*, *-d* *--description*, *-l* *--license*, *-p* *--parameters*,
++*-a* *--author*
++*-d* *--description*
++*-l* *--license*
++*-p* *--parameters*
+ *-n* *--filename*
+ 	These are shortcuts for the *--field* flag's author, description,
+ 	license, parm and filename arguments, to ease the transition from the
 diff --git a/man/modprobe.8.scd b/man/modprobe.8.scd
-index 67cbb1a..85d47fa 100644
+index 85d47fa..a6b57dc 100644
 --- a/man/modprobe.8.scd
 +++ b/man/modprobe.8.scd
-@@ -208,11 +208,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
+@@ -46,22 +46,26 @@ database.
  
- # AUTHORS
+ # OPTIONS
  
--*Jon Masters* <jcm@jonmasters.org>
--	Developer
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
+-*-a*, *--all*
++*-a*
++*--all*
+ 	Insert all module names on the command line.
  
--*Robby Workman* <rworkman@slackware.com>
--	Developer
--
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
-diff --git a/man/modprobe.d.5.scd b/man/modprobe.d.5.scd
-index 246457b..e6e9c51 100644
---- a/man/modprobe.d.5.scd
-+++ b/man/modprobe.d.5.scd
-@@ -174,11 +174,10 @@ This manual page originally Copyright 2004, Rusty Russell, IBM Corporation.
+-*-b*, *--use-blacklist*
++*-b*
++*--use-blacklist*
+ 	This option causes *modprobe* to apply the *blacklist* commands in the
+ 	configuration files (if any) to module names as well. It is usually used
+ 	by *udev*(7).
  
- # AUTHORS
+-*-C* _directory_, *--config* _directory_
++*-C* _directory_
++*--config* _directory_
+ 	This option overrides the default configuration directory. See
+ 	*modprobe.d*(5).
  
--*Jon Masters* <jcm@jonmasters.org>
--	Developer
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
+ 	This option is passed through *install* or *remove* commands to other
+ 	*modprobe* commands in the MODPROBE_OPTIONS environment variable.
  
--*Robby Workman* <rworkman@slackware.com>
--	Developer
--
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
-diff --git a/man/modules.dep.5.scd b/man/modules.dep.5.scd
-index 7723a16..7c68ab9 100644
---- a/man/modules.dep.5.scd
-+++ b/man/modules.dep.5.scd
-@@ -36,8 +36,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
+-*-c*, *--showconfig*
++*-c*
++*--showconfig*
+ 	Dump out the effective configuration from the config directory and exit.
  
- # AUTHORS
+ *--dump-modversions*
+@@ -69,7 +73,8 @@ database.
+ 	This option is commonly used by distributions in order to package up a
+ 	Linux kernel module using module versioning deps.
  
--*Jon Masters* <jcm@jonmasters.org>
--	Developer
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
+-*-d*, *--dirname*
++*-d*
++*--dirname*
+ 	Root directory for modules, / by default.
  
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
+ *--first-time*
+@@ -103,7 +108,8 @@ database.
+ 	This applies to any modules inserted: both the module (or alias) on the
+ 	command line and any modules on which it depends.
+ 
+-*-f*, *--force*
++*-f*
++*--force*
+ 	Try to strip any versioning information from the module which might
+ 	otherwise stop it from loading: this is the same as using both
+ 	*--force-vermagic* and *--force-modversion*. Naturally, these checks are
+@@ -113,7 +119,9 @@ database.
+ 	This applies to any modules inserted: both the module (or alias) on the
+ 	command line and any modules on which it depends.
+ 
+-*-i*, *--ignore-install*, *--ignore-remove*
++*-i*
++*--ignore-install*
++*--ignore-remove*
+ 	This option causes *modprobe* to ignore *install* and *remove* commands
+ 	in the configuration file (if any) for the module specified on the
+ 	command line (any dependent modules are still subject to commands set
+@@ -122,24 +130,29 @@ database.
+ 	the request was more specifically made with only one or other (and not
+ 	both) of *--ignore-install* or *--ignore-remove*. See *modprobe.d*(5).
+ 
+-*-n*, *--dry-run*, *--show*
++*-n*
++*--dry-run*
++*--show*
+ 	This option does everything but actually insert or delete the modules
+ 	(or run the install or remove commands). Combined with *-v*, it is
+ 	useful for debugging problems. For historical reasons both *--dry-run*
+ 	and *--show* actually mean the same thing and are interchangeable.
+ 
+-*-q*, *--quiet*
++*-q*
++*--quiet*
+ 	With this flag, *modprobe* won't print an error message if you try to
+ 	remove or insert a module it can't find (and isn't an alias or
+ 	*install*/*remove* command). However, it will still return with a non-zero
+ 	exit status. The kernel uses this to opportunistically probe for modules
+ 	which might exist using request_module.
+ 
+-*-R*, *--resolve-alias*
++*-R*
++*--resolve-alias*
+ 	Print all module names matching an alias. This can be useful for
+ 	debugging module alias problems.
+ 
+-*-r*, *--remove*
++***-r*
++*--remove*
+ 	This option causes *modprobe* to remove rather than insert a module. If
+ 	the modules it depends on are also unused, *modprobe* will try to remove
+ 	them too. Unlike insertion, more than one module can be specified on the
+@@ -150,14 +163,16 @@ database.
+ 	require it. Your distribution kernel may not have been built to support
+ 	removal of modules at all.
+ 
+-*-w* _TIMEOUT_MSEC_, *--wait* _TIMEOUT_MSEC_
++*-w* _TIMEOUT_MSEC_
++*--wait* _TIMEOUT_MSEC_
+ 	This option causes *modprobe -r *to continue trying to remove a module
+ 	if it fails due to the module being busy, i.e. its refcount is not 0 at
+ 	the time the call is made. Modprobe tries to remove the module with an
+ 	incremental sleep time between each tentative up until the maximum wait
+ 	time in milliseconds passed in this option.
+ 
+-*-S* _version_, *--set-version* _version_
++*-S* _version_
++*--set-version* _version_
+ 	Set the kernel version, rather than using *uname*(2) to decide on the
+ 	kernel version (which dictates where to find the modules).
+ 
+@@ -171,7 +186,8 @@ database.
+ 	that *modinfo*(8) can be used to extract dependencies of a module from the
+ 	module itself, but knows nothing of aliases or install commands.
+ 
+-*-s*, *--syslog*
++*-s*
++*--syslog*
+ 	This option causes any error messages to go through the syslog mechanism
+ 	(as LOG_DAEMON with level LOG_NOTICE) rather than to standard error.
+ 	This is also automatically enabled when stderr is unavailable.
+@@ -179,10 +195,12 @@ database.
+ 	This option is passed through *install* or *remove* commands to other
+ 	*modprobe* commands in the MODPROBE_OPTIONS environment variable.
+ 
+-*-V*, *--version*
++*-V*
++*--version*
+ 	Show version of program and exit.
+ 
+-*-v*, *--verbose*
++*-v*
++*--verbose*
+ 	Print messages about what the program is doing. Usually *modprobe* only
+ 	prints messages if something goes wrong.
+ 
 diff --git a/man/rmmod.8.scd b/man/rmmod.8.scd
-index c4dcc3e..cf55478 100644
+index cf55478..c53fe3d 100644
 --- a/man/rmmod.8.scd
 +++ b/man/rmmod.8.scd
-@@ -42,8 +42,10 @@ This manual page originally Copyright 2002, Rusty Russell, IBM Corporation.
+@@ -16,20 +16,24 @@ is provided) from the kernel. Most users will want to use *modprobe*(8) with the
  
- # AUTHORS
+ # OPTIONS
  
--*Jon Masters* <jcm@jonmasters.org>
--	Developer
-+Numerous contributions have come from the linux-modules mailing list
-+<linux-modules@vger.kernel.org> and Github. If you have a clone of kmod.git
-+itself, the output of *git-shortlog*(1) and *git-blame*(1) can show you the
-+authors for specific parts of the project.
+-*-v*, *--verbose*
++*-v*
++*--verbose*
+ 	Print messages about what the program is doing. Usually *rmmod* prints
+ 	messages only if something goes wrong.
  
--*Lucas De Marchi* <lucas.de.marchi@gmail.com>
--	Developer
-+*Lucas De Marchi* <lucas.de.marchi@gmail.com> is the current maintainer of the
-+project.
+-*-f*, *--force*
++*-f*
++*--force*
+ 	This option can be extremely dangerous: it has no effect unless
+ 	CONFIG_MODULE_FORCE_UNLOAD was set when the kernel was compiled. With
+ 	this option, you can remove modules which are being used, or which are
+ 	not designed to be removed, or have been marked as unsafe (see *lsmod*(8)).
+ 
+-*-s*, *--syslog*
++*-s*
++*--syslog*
+ 	Send errors to syslog instead of standard error.
+ 
+-*-V*, *--version*
++*-V*
++*--version*
+ 	Show version of program and exit.
+ 
+ # COPYRIGHT
 
 -- 
 2.45.2
