@@ -1,55 +1,72 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 08 Jul 2024 14:43:20 +0100
-Subject: [PATCH kmod v2 12/17] man: modprobe.d: factor out a CONFIGURATION
- FORMAT section
+Date: Mon, 08 Jul 2024 14:43:21 +0100
+Subject: [PATCH kmod v2 13/17] man: add few mentions about MODPROBE_OPTIONS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240708-man-v2-12-a23df6ef871e@gmail.com>
+Message-Id: <20240708-man-v2-13-a23df6ef871e@gmail.com>
 References: <20240708-man-v2-0-a23df6ef871e@gmail.com>
 In-Reply-To: <20240708-man-v2-0-a23df6ef871e@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720446209; l=1209;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720446209; l=1611;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=NiOhn7IMbJ4OSc6NZUJE+4c+XAAVRQTVxShgJHylHo4=;
- b=9YD5uK+5V72UztVpMETyIgDZY4jL8ArhdBZHxdkdYKcncl1XClzGoQhLWFE0Or6fDuNudfXwI
- R3LuMZ9K2I2AqWGCF9QSzYmzGj6rJWHYz39YCoxhzdEx49FOy7JoIId
+ bh=jvyZXK6JVrVR8ZmU5jRnoTu3XQfa8Wl/GSRQyRWVWKc=;
+ b=BH5eMfDAIX5QiKXKjOZljajYGxup435c1L2gM0lOLXB25S8fEaEL0ipRKjuQl13ahcxFqKBqw
+ AulAeksUD4RBjFvg83Afn5KEBrZ2vCsvua0AwEM+1Ncl+IYP2QCn4EN
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Keep the description neat and tidy.
+The environment variable may alter config file ordering, so mention it
+in the man page.
+
+In addition, highlight that the format is intentionally undocumented
+since the use by third parties is discouraged.
 
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- man/modprobe.d.5.scd | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+v2: tweak (5) wording, add details to (8)
+---
+ man/modprobe.8.scd   | 8 ++++++--
+ man/modprobe.d.5.scd | 3 +++
+ 2 files changed, 9 insertions(+), 2 deletions(-)
 
+diff --git a/man/modprobe.8.scd b/man/modprobe.8.scd
+index b47908b..321fa59 100644
+--- a/man/modprobe.8.scd
++++ b/man/modprobe.8.scd
+@@ -192,8 +192,12 @@ database.
+ 
+ # ENVIRONMENT
+ 
+-The MODPROBE_OPTIONS environment variable can also be used to pass arguments to
+-*modprobe*.
++The MODPROBE_OPTIONS environment variable can also be used to pass command line
++arguments to *modprobe*. The format is intentionally left undocumented, since
++the use by third-party tools and scripts is discouraged.
++
++The environment variable originates with the implementation of the install
++rules.
+ 
+ # COPYRIGHT
+ 
 diff --git a/man/modprobe.d.5.scd b/man/modprobe.d.5.scd
-index 2a6a789..823ba62 100644
+index 823ba62..b7b1942 100644
 --- a/man/modprobe.d.5.scd
 +++ b/man/modprobe.d.5.scd
-@@ -29,10 +29,13 @@ Note that module and alias names (like other module names) can have - or \_ in
- them: both are interchangeable throughout all the module commands as underscore
- conversion happens automatically.
+@@ -49,6 +49,9 @@ directory they reside in. Configuration files can either be completely replaced
+ priority) or partially replaced (by having a configuration file that is ordered
+ later).
  
--The format of files under modprobe.d is simple: one command per line, with blank
--lines and lines starting with '#' ignored (useful for adding comments). A '\\'
--at the end of a line causes it to continue on the next line, which makes the
--file a bit neater.
-+# CONFIGURATION FORMAT
++NOTE: The configuration directories may be altered via the MODPROBE_OPTIONS
++environment variable. See the ENVIRONMENT section in *modprobe*(8).
 +
-+The configuration files contain one command per line, with blank lines and lines
-+starting with '#' ignored (useful for adding comments). A '\\' at the end of a
-+line causes it to continue on the next line, which makes the files a bit neater.
-+
-+See the COMMANDS section below for more.
+ # COMMANDS
  
- # CONFIGURATION DIRECTORIES AND PRECEDENCE
- 
+ alias _wildcard_ _modulename_
 
 -- 
 2.45.2
