@@ -1,87 +1,57 @@
-From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Date: Wed, 10 Jul 2024 16:52:55 +0800
-Subject: [PATCH v3 5/5] drm/mediatek: Support alpha blending in display
- driver
+From: Pieterjan Camerlynck <pieterjanca@gmail.com>
+Subject: [PATCH v2 0/2] leds: leds-pca995x: Add support for NXP PCA9956B
+Date: Wed, 10 Jul 2024 16:32:40 +0200
+Message-Id: <20240710-pca995x-v2-0-8fafb6e4b7d5@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240710-alpha-blending-v3-5-289c187f9c6f@mediatek.com>
-References: <20240710-alpha-blending-v3-0-289c187f9c6f@mediatek.com>
-In-Reply-To: <20240710-alpha-blending-v3-0-289c187f9c6f@mediatek.com>
-To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, David Airlie <airlied@gmail.com>, 
- Daniel Vetter <daniel@ffwll.ch>, Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- Hsiao Chien Sung <shawn.sung@mediatek.corp-partner.google.com>, 
- CK Hu <ck.hu@mediatek.com>, Hsiao Chien Sung <shawn.sung@mediatek.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720601573; l=2210;
- i=shawn.sung@mediatek.com; s=20240710; h=from:subject:message-id;
- bh=NXMVY+5up48Xsv5+9pKY3kYmUYHXnlx5rItB6cJy0f4=;
- b=g2exBNCESLyv0OqJnjsb6aEiZ7/B0/C+zT6GweHyHS0nO0LEBQ6E0tfIYh3ix4JSSOu48bEH2
- rlbJA5vUiPpA+rpTx5lzAlHRI6UtPp/+0gK9zVNnmvBcw/enxuJI6jE
-X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
- pk=VRlGZ3diQkQtpDd8fCL9/mx+TpZStm08pg8UPaG1NGc=
-X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240710 with auth_id=184
+X-B4-Tracking: v=1; b=H4sIAIibjmYC/z3MQQrDIBCF4auEWdcy2hixq96jZGGNJgNNDFokJ
+ Xj32lC6/B+Pb4fkIrkE12aH6DIlCksNcWrATmYZHaOhNggULSrUbLVGa7mxQVnptfKde1io7zU
+ 6T9sh3fvaE6VXiO8Dzvy7/gyOfyNzhky2Erns8IKIt3E29DzbMENfSvkAr1tInZ4AAAA=
+To: Pavel Machek <pavel@ucw.cz>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Isai Gaspar <isaiezequiel.gaspar@nxp.com>, Marek Vasut <marex@denx.de>
+Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Pieterjan Camerlynck <pieterjanca@gmail.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720622068; l=1042;
+ i=pieterjanca@gmail.com; s=20240709; h=from:subject:message-id;
+ bh=HQPU+5jS7G7Dj8KsEuC+g6jBNrSexrUpV+05g1CQqTo=;
+ b=+7OE7Srtgo57fzZtzKrAvZxDoLui0UX7KXjIQnCXh1pkUl52uBwoU2xRri3g4xXm0Ee7J7pir
+ 7GH18tfGxjDDSA2OE+snIK9QgVcFUFm7nmNCBnR9/gIIPmy8cr4PzsO
+X-Developer-Key: i=pieterjanca@gmail.com; a=ed25519;
+ pk=gSAHfvqQjVhNa1MhUClqbt7d3S+fviKz6FdQVaWFRyM=
+X-Endpoint-Received: by B4 Relay for pieterjanca@gmail.com/20240709 with auth_id=182
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Support "Pre-multiplied" and "None" blend mode on MediaTek's chips by
-adding correct blend mode property when the planes init.
-Before this patch, only the "Coverage" mode (default) is supported.
+This series adds support for NXP PCA9956B to the pca995x driver. This
+chip is similar to the others but has 24 instead of 16 outputs and a
+slightly different register layout. Datasheet available at [1].
 
-For more information, there are three pixel blend modes in DRM driver:
-"None", "Pre-multiplied", and "Coverage".
+[1]: https://www.nxp.com/docs/en/data-sheet/PCA9956B.pdf
 
-To understand the difference between these modes, let's take a look at
-the following two approaches to do alpha blending:
-
-1. Straight:
-dst.RGB = src.RGB * src.A + dst.RGB * (1 - src.A)
-This is straightforward and easy to understand, when the source layer is
-compositing with the destination layer, it's alpha will affect the
-result. This is also known as "post-multiplied", or "Coverage" mode.
-
-2. Pre-multiplied:
-dst.RGB = src.RGB + dst.RGB * (1 - src.A)
-Since the source RGB have already multiplied its alpha, only destination
-RGB need to multiply it. This is the "Pre-multiplied" mode in DRM.
-
-For the "None" blend mode in DRM, it means the pixel alpha is ignored
-when compositing the layers, only the constant alpha for the composited
-layer will take effects.
-
-Reviewed-by: CK Hu <ck.hu@mediatek.com>
-Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
+Signed-off-by: Pieterjan Camerlynck <pieterjanca@gmail.com>
 ---
- drivers/gpu/drm/mediatek/mtk_plane.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+Changes in v2:
+- define seperate const struct pca995x_chipdef for each chip
+- remove chip enum
+- Link to v1: https://lore.kernel.org/r/20240710-pca995x-v1-0-545015603000@gmail.com
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_plane.c b/drivers/gpu/drm/mediatek/mtk_plane.c
-index 1723d4333f37..5bf757a3ef20 100644
---- a/drivers/gpu/drm/mediatek/mtk_plane.c
-+++ b/drivers/gpu/drm/mediatek/mtk_plane.c
-@@ -346,6 +346,17 @@ int mtk_plane_init(struct drm_device *dev, struct drm_plane *plane,
- 			DRM_INFO("Create rotation property failed\n");
- 	}
- 
-+	err = drm_plane_create_alpha_property(plane);
-+	if (err)
-+		DRM_ERROR("failed to create property: alpha\n");
-+
-+	err = drm_plane_create_blend_mode_property(plane,
-+						   BIT(DRM_MODE_BLEND_PREMULTI) |
-+						   BIT(DRM_MODE_BLEND_COVERAGE) |
-+						   BIT(DRM_MODE_BLEND_PIXEL_NONE));
-+	if (err)
-+		DRM_ERROR("failed to create property: blend_mode\n");
-+
- 	drm_plane_helper_add(plane, &mtk_plane_helper_funcs);
- 
- 	return 0;
+---
+Pieterjan Camerlynck (2):
+      dt-bindings: leds: pca995x: Add new nxp,pca9956b compatible
+      leds: leds-pca995x: Add support for NXP PCA9956B
 
+ .../devicetree/bindings/leds/nxp,pca995x.yaml      |  6 +-
+ drivers/leds/leds-pca995x.c                        | 82 ++++++++++++----------
+ 2 files changed, 50 insertions(+), 38 deletions(-)
+---
+base-commit: 82d01fe6ee52086035b201cfa1410a3b04384257
+change-id: 20240709-pca995x-d7c5f97f6ebc
+
+Best regards,
 -- 
-2.43.0
+Pieterjan Camerlynck <pieterjanca@gmail.com>
 
