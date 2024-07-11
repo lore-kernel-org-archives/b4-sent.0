@@ -1,14 +1,13 @@
 From: Pieterjan Camerlynck <pieterjanca@gmail.com>
-Subject: [PATCH v3 0/2] leds: leds-pca995x: Add support for NXP PCA9956B
-Date: Thu, 11 Jul 2024 09:52:21 +0200
-Message-Id: <20240711-pca995x-v3-0-a1bf1f3c3f5a@gmail.com>
+Date: Thu, 11 Jul 2024 09:52:22 +0200
+Subject: [PATCH v3 1/2] dt-bindings: leds: pca995x: Add new nxp,pca9956b
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIADWPj2YC/3WMwQ6CMBAFf4Xs2ZptodR68j+Mh1Ja2ESEtKbBE
- P7dQozx4nFe3swC0QVyEc7FAsElijQ+MpSHAmxvHp1j1GYGgaJChZpN1mgtZ9YqK71WvnaNhfy
- egvM076XrLXNP8TmG1x5OfFs/DY7fRuIMmawkclljiYiXbjB0P9pxgK2RxB9PZO/kjW9qVzWql
- b/euq5vxZgtetYAAAA=
+Message-Id: <20240711-pca995x-v3-1-a1bf1f3c3f5a@gmail.com>
+References: <20240711-pca995x-v3-0-a1bf1f3c3f5a@gmail.com>
+In-Reply-To: <20240711-pca995x-v3-0-a1bf1f3c3f5a@gmail.com>
 To: Pavel Machek <pavel@ucw.cz>, Lee Jones <lee@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -17,50 +16,55 @@ Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, Pieterjan Camerlynck <pieterjanca@gmail.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720684380; l=1336;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720684380; l=1529;
  i=pieterjanca@gmail.com; s=20240709; h=from:subject:message-id;
- bh=xTXN2dtxTf7A/9UJXOYSRARxg5U3uy73slffwuN6WTQ=;
- b=YWKHaXwn+jK7EvJ9LJLdgV6AIIjMe82U/vCV0MCyl4ermO4p1CpJwnfrCPXwgxAqkNI+74KmA
- oTzKwRHZbGnAo7aEmpIfKX0RkZDR1RS0qP63wuhs084eipEn9mLhbvg
+ bh=6vO+6FBkF83NNJD/iYLLMy7G/J0jk6c6K0j7e/z+Ghg=;
+ b=lcpfwozm+yHjGkn5w9DxH4qwh9/8K0HZqODFGYd3kJJDQ6YYUo+QrRGKEE6YZTMgl4emHxNgQ
+ 8oo4xUWMoLdA0M2ZuCNbg1kJD0jeUVvW5bo4ZdZbIv2iTeIOTLa4afM
 X-Developer-Key: i=pieterjanca@gmail.com; a=ed25519;
  pk=gSAHfvqQjVhNa1MhUClqbt7d3S+fviKz6FdQVaWFRyM=
 X-Endpoint-Received: by B4 Relay for pieterjanca@gmail.com/20240709 with auth_id=182
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds support for NXP PCA9956B to the pca995x driver. This
-chip is similar to the others but has 24 instead of 16 outputs and a
-slightly different register layout. Datasheet available at [1].
+Add nxp,pca9956b compatible, which has 24 instead of 16 outputs. Adjust
+the documentation for the difference.
 
-[1]: https://www.nxp.com/docs/en/data-sheet/PCA9956B.pdf
-
+Reviewed-by: Marek Vasut <marex@denx.de>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Pieterjan Camerlynck <pieterjanca@gmail.com>
 ---
-Changes in v3:
-- restore PCA995X_MAX_OUTPUTS and increase to 24
-- restore secondary for loop in pca995x_probe()
-- remove parenthesis around (chipdef->pwm_base)
-- Link to v2: https://lore.kernel.org/r/20240710-pca995x-v2-0-8fafb6e4b7d5@gmail.com
+ Documentation/devicetree/bindings/leds/nxp,pca995x.yaml | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-Thank you for the review Marek Vasut.
+diff --git a/Documentation/devicetree/bindings/leds/nxp,pca995x.yaml b/Documentation/devicetree/bindings/leds/nxp,pca995x.yaml
+index 654915c1f687..ab8c90cbadb5 100644
+--- a/Documentation/devicetree/bindings/leds/nxp,pca995x.yaml
++++ b/Documentation/devicetree/bindings/leds/nxp,pca995x.yaml
+@@ -11,19 +11,21 @@ maintainers:
+   - Marek Vasut <marex@denx.de>
+ 
+ description:
+-  The NXP PCA9952/PCA9955B are programmable LED controllers connected via I2C
+-  that can drive 16 separate lines. Each of them can be individually switched
++  The NXP PCA995x family are programmable LED controllers connected via I2C
++  that can drive separate lines. Each of them can be individually switched
+   on and off, and brightness can be controlled via individual PWM.
+ 
+   Datasheets are available at
+   https://www.nxp.com/docs/en/data-sheet/PCA9952_PCA9955.pdf
+   https://www.nxp.com/docs/en/data-sheet/PCA9955B.pdf
++  https://www.nxp.com/docs/en/data-sheet/PCA9956B.pdf
+ 
+ properties:
+   compatible:
+     enum:
+       - nxp,pca9952
+       - nxp,pca9955b
++      - nxp,pca9956b
+ 
+   reg:
+     maxItems: 1
 
-Changes in v2:
-- define seperate const struct pca995x_chipdef for each chip
-- remove chip enum
-- Link to v1: https://lore.kernel.org/r/20240710-pca995x-v1-0-545015603000@gmail.com
-
----
-Pieterjan Camerlynck (2):
-      dt-bindings: leds: pca995x: Add new nxp,pca9956b compatible
-      leds: leds-pca995x: Add support for NXP PCA9956B
-
- .../devicetree/bindings/leds/nxp,pca995x.yaml      |  6 ++-
- drivers/leds/leds-pca995x.c                        | 59 ++++++++++++++--------
- 2 files changed, 43 insertions(+), 22 deletions(-)
----
-base-commit: 82d01fe6ee52086035b201cfa1410a3b04384257
-change-id: 20240709-pca995x-d7c5f97f6ebc
-
-Best regards,
 -- 
-Pieterjan Camerlynck <pieterjanca@gmail.com>
+2.45.2
 
