@@ -1,13 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH 0/5] Add new Amlogic SoCs info defines.
-Date: Fri, 12 Jul 2024 14:54:45 +0800
-Message-Id: <20240712-soc_info-v1-0-05ba95929d5a@amlogic.com>
+Date: Fri, 12 Jul 2024 14:54:46 +0800
+Subject: [PATCH 1/5] soc: amlogic: meson-gx-socinfo: add new SoCs id
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIADbTkGYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDc0ND3eL85PjMvLR83RQDQ0sLsyTjlFQDSyWg8oKi1LTMCrBR0bG1tQD
- Ub+yRWgAAAA==
+Message-Id: <20240712-soc_info-v1-1-05ba95929d5a@amlogic.com>
+References: <20240712-soc_info-v1-0-05ba95929d5a@amlogic.com>
+In-Reply-To: <20240712-soc_info-v1-0-05ba95929d5a@amlogic.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
  Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
@@ -17,39 +16,52 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1720767287; l=938;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1720767287; l=1125;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=PvK+uz7Ai6tJ90bdUtIav76E5cwMtKsTobObKEyJQhk=;
- b=NmECD3n5GJMLXnwBCHt6/k7L51BVXiv4OchwVFfnVoJoGiaEYCLk71XPDxK+/TIduxCOZMyeR
- 8+FcVI9DInaAGOcpSUys66zVV0HlDCWD/is96VDFnU1DWoP029LI/hd
+ bh=nnMjotXuHyUIt8Kx/nCa5XJH4NAVjChyKcIYDRAZ0Ws=;
+ b=K2wHE0oUM7+bxhhudhE+NS3cqsySKqwMYTRXO3u1/826jSaFfDzabCLBVDD2ggy/RhSsImpVP
+ eUd8thcgohACM1bc6py1qK9wuxEz7fF/aezCnHlp9kaUm0E+YZsAAVQ
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add more Amlogic SoCs info defines, include S4, C3
-T7, A4, A5.
+Add new definition for Amlogi SoCs, include S4, C3, T7, A4, A5.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Xianwei Zhao (5):
-      soc: amlogic: meson-gx-socinfo: add new SoCs id
-      arm64: dts: amlogic: s4: add ao secure node
-      arm64: dts: amlogic: c3: add ao secure node
-      arm64: dts: amlogic: t7: add ao secure node
-      arm64: dts: amlogic: a4: add ao secure node
+ drivers/soc/amlogic/meson-gx-socinfo.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
- arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi |  6 ++++++
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi        |  5 +++++
- arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        |  6 ++++++
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi          |  6 ++++++
- drivers/soc/amlogic/meson-gx-socinfo.c             | 10 ++++++++++
- 5 files changed, 33 insertions(+)
----
-base-commit: db067bd17c0124228c31c5fdfa29ec65239e692a
-change-id: 20240711-soc_info-d01986b3de09
+diff --git a/drivers/soc/amlogic/meson-gx-socinfo.c b/drivers/soc/amlogic/meson-gx-socinfo.c
+index 8809a948201a..7549f1644e5e 100644
+--- a/drivers/soc/amlogic/meson-gx-socinfo.c
++++ b/drivers/soc/amlogic/meson-gx-socinfo.c
+@@ -41,6 +41,11 @@ static const struct meson_gx_soc_id {
+ 	{ "G12B", 0x29 },
+ 	{ "SM1", 0x2b },
+ 	{ "A1", 0x2c },
++	{ "T7", 0x36 },
++	{ "S4", 0x37 },
++	{ "A5", 0x3c },
++	{ "C3", 0x3d },
++	{ "A4", 0x40 },
+ };
+ 
+ static const struct meson_gx_package_id {
+@@ -76,6 +81,11 @@ static const struct meson_gx_package_id {
+ 	{ "S905X3", 0x2b, 0x10, 0x3f },
+ 	{ "S905D3", 0x2b, 0x30, 0x3f },
+ 	{ "A113L", 0x2c, 0x0, 0xf8 },
++	{ "S805X2", 0x37, 0x2, 0xf },
++	{ "C308L", 0x3d, 0x1, 0xf },
++	{ "A311D2", 0x36, 0x1, 0xf },
++	{ "A113X2", 0x3c, 0x1, 0xf },
++	{ "A113L2", 0x40, 0x1, 0xf },
+ };
+ 
+ static inline unsigned int socinfo_to_major(u32 socinfo)
 
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
