@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Mon, 15 Jul 2024 23:03:48 +0530
-Subject: [PATCH 06/14] PCI: endpoint: Assign PCI domain number for endpoint
- controllers
+Date: Mon, 15 Jul 2024 23:03:49 +0530
+Subject: [PATCH 07/14] PCI: qcom-ep: Modify 'global_irq' and 'perst_irq'
+ IRQ device names
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240715-pci-qcom-hotplug-v1-6-5f3765cc873a@linaro.org>
+Message-Id: <20240715-pci-qcom-hotplug-v1-7-5f3765cc873a@linaro.org>
 References: <20240715-pci-qcom-hotplug-v1-0-5f3765cc873a@linaro.org>
 In-Reply-To: <20240715-pci-qcom-hotplug-v1-0-5f3765cc873a@linaro.org>
 To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -20,74 +20,83 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2371;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2451;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=BECkU4Os6kOoCK6Qfv68t/qW5FxIjT+Q5kndhCEtOC8=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmlV15F+kcwS5+/FEQPBlLHWbPgXesdW/M72MTi
- jRCb9LZ6RqJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZpVdeQAKCRBVnxHm/pHO
- 9RpyCACSS3TlQfGlFVAKsoeJSe8dQG6CTaoBm5QHJxDiod8PIj9/kepgh3unKrlSjKH3NrHA8LW
- T3mT1GOAXHTeIculrZKZ2LCZSTWEWutKG/mDGXR3oNv2GC5E2EY5cF32Yrwd/RMWpHG0vuKkrpx
- yKjDMh3zTPOZDOzDIPe1F27RsgmoQVqgxdk9+DwrluZJjz9eXfKaWj76Axnupy6Nc1TPRFbhO53
- 6zbJvq121HlgtYIRoChhSY0o7vopBiQk74jL4WKtUgZzh336aWq2cUi9+7mjkNaB9zRIV13FAGZ
- jWFYl5ADIqCZIGgQKl6raghKvnk0G5DqL7/UB1lI+BkxYv7W
+ bh=33LLyDEX80bmAN/A+qSdjtZSe4gPt17zqqO4Z1H5mmE=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmlV15EQrMNyKxALsdRNoBTY/z/AVzKkjRrHma4
+ 3xjEDgshSmJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZpVdeQAKCRBVnxHm/pHO
+ 9eODB/wPgHyueppr1K0JAMEG3CfhRu6n14xNTdRybozcACX+zyEjiheQUSMARuL/wOxmbv5povU
+ rNPA6Ld41t3MBuBfdCPRi8/38Cqn/svXM4noQl8QemvoKIQZiARt0AI7w26BR5TNxiiwGekDkcH
+ jWCuzfYXUl7Y21ynbaYgszb/GRChQ0KrxnvUm8wqxvGtsFZNTlwJk+ZMssA+EYdEeOkiis+z1f9
+ R9BQy24XdLweWpQf39xzkAi4uO/k3UG2w8ih4PYVTFUeIBzd8PS0dhucRIfE0mZUUJSfcz6zBin
+ kR3/ziEOzJRDud5wUkWt9ltpLo/loEJy8MOBk+CuDM8UnWQw
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Right now, PCI endpoint subsystem doesn't assign PCI domain number for the
-PCI endpoint controllers. But this domain number could be useful to the EPC
-drivers to uniquely identify each controller based on the hardware instance
-when there are multiple ones present in an SoC (even multiple RC/EP).
+Currently, the IRQ device name for both of these IRQs doesn't have Qcom
+specific prefix and PCIe domain number. This causes 2 issues:
 
-So let's make use of the existing pci_bus_find_domain_nr() API to allocate
-domain numbers based on either Devicetree (linux,pci-domain) property or
-dynamic domain number allocation scheme.
+1. Pollutes the global IRQ namespace since 'global' is a common name.
+2. When more than one EP controller instance is present in the SoC, naming
+conflict will occur.
 
-It should be noted that the domain number allocated by this API will be
-based on both RC and EP controllers in a SoC. If the 'linux,pci-domain' DT
-property is present, then the domain number represents the actual hardware
-instance of the PCI endpoint controller. If not, then the domain number
-will be allocated based on the PCI EP/RC controller probe order.
+Hence, add 'qcom_pcie_ep_' prefix and PCIe domain number suffix to the IRQ
+names to uniquely identify the IRQs and also to fix the above mentioned
+issues.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/pci/endpoint/pci-epc-core.c | 1 +
- include/linux/pci-epc.h             | 2 ++
- 2 files changed, 3 insertions(+)
+ drivers/pci/controller/dwc/pcie-qcom-ep.c | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/pci/endpoint/pci-epc-core.c b/drivers/pci/endpoint/pci-epc-core.c
-index 84309dfe0c68..7e8bf4ac003a 100644
---- a/drivers/pci/endpoint/pci-epc-core.c
-+++ b/drivers/pci/endpoint/pci-epc-core.c
-@@ -899,6 +899,7 @@ __pci_epc_create(struct device *dev, const struct pci_epc_ops *ops,
- 	epc->dev.parent = dev;
- 	epc->dev.release = pci_epc_release;
- 	epc->ops = ops;
-+	epc->domain_nr = pci_bus_find_domain_nr(NULL, dev);
+diff --git a/drivers/pci/controller/dwc/pcie-qcom-ep.c b/drivers/pci/controller/dwc/pcie-qcom-ep.c
+index cda5d8fdc03b..a0847eef0645 100644
+--- a/drivers/pci/controller/dwc/pcie-qcom-ep.c
++++ b/drivers/pci/controller/dwc/pcie-qcom-ep.c
+@@ -711,8 +711,15 @@ static irqreturn_t qcom_pcie_ep_perst_irq_thread(int irq, void *data)
+ static int qcom_pcie_ep_enable_irq_resources(struct platform_device *pdev,
+ 					     struct qcom_pcie_ep *pcie_ep)
+ {
++	struct device *dev = pcie_ep->pci.dev;
++	char *name;
+ 	int ret;
  
- 	ret = dev_set_name(&epc->dev, "%s", dev_name(dev));
- 	if (ret)
-diff --git a/include/linux/pci-epc.h b/include/linux/pci-epc.h
-index 85bdf2adb760..8e3dcac55dcd 100644
---- a/include/linux/pci-epc.h
-+++ b/include/linux/pci-epc.h
-@@ -128,6 +128,7 @@ struct pci_epc_mem {
-  * @group: configfs group representing the PCI EPC device
-  * @lock: mutex to protect pci_epc ops
-  * @function_num_map: bitmap to manage physical function number
-+ * @domain_nr: PCI domain number of the endpoint controller
-  * @init_complete: flag to indicate whether the EPC initialization is complete
-  *                 or not
-  */
-@@ -145,6 +146,7 @@ struct pci_epc {
- 	/* mutex to protect against concurrent access of EP controller */
- 	struct mutex			lock;
- 	unsigned long			function_num_map;
-+	int				domain_nr;
- 	bool				init_complete;
- };
++	name = devm_kasprintf(dev, GFP_KERNEL, "qcom_pcie_ep_global_irq%d",
++			      pcie_ep->pci.ep.epc->domain_nr);
++	if (!name)
++		return -ENOMEM;
++
+ 	pcie_ep->global_irq = platform_get_irq_byname(pdev, "global");
+ 	if (pcie_ep->global_irq < 0)
+ 		return pcie_ep->global_irq;
+@@ -720,18 +727,23 @@ static int qcom_pcie_ep_enable_irq_resources(struct platform_device *pdev,
+ 	ret = devm_request_threaded_irq(&pdev->dev, pcie_ep->global_irq, NULL,
+ 					qcom_pcie_ep_global_irq_thread,
+ 					IRQF_ONESHOT,
+-					"global_irq", pcie_ep);
++					name, pcie_ep);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Failed to request Global IRQ\n");
+ 		return ret;
+ 	}
  
++	name = devm_kasprintf(dev, GFP_KERNEL, "qcom_pcie_ep_perst_irq%d",
++			      pcie_ep->pci.ep.epc->domain_nr);
++	if (!name)
++		return -ENOMEM;
++
+ 	pcie_ep->perst_irq = gpiod_to_irq(pcie_ep->reset);
+ 	irq_set_status_flags(pcie_ep->perst_irq, IRQ_NOAUTOEN);
+ 	ret = devm_request_threaded_irq(&pdev->dev, pcie_ep->perst_irq, NULL,
+ 					qcom_pcie_ep_perst_irq_thread,
+ 					IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+-					"perst_irq", pcie_ep);
++					name, pcie_ep);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "Failed to request PERST IRQ\n");
+ 		disable_irq(pcie_ep->global_irq);
 
 -- 
 2.25.1
