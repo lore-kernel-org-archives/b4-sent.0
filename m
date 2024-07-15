@@ -1,11 +1,10 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Mon, 15 Jul 2024 23:03:52 +0530
-Subject: [PATCH 10/14] arm64: dts: qcom: sa8775p: Add 'linux,pci-domain' to
- PCIe EP controller nodes
+Date: Mon, 15 Jul 2024 23:03:53 +0530
+Subject: [PATCH 11/14] dt-bindings: PCI: qcom: Add 'global' interrupt
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240715-pci-qcom-hotplug-v1-10-5f3765cc873a@linaro.org>
+Message-Id: <20240715-pci-qcom-hotplug-v1-11-5f3765cc873a@linaro.org>
 References: <20240715-pci-qcom-hotplug-v1-0-5f3765cc873a@linaro.org>
 In-Reply-To: <20240715-pci-qcom-hotplug-v1-0-5f3765cc873a@linaro.org>
 To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -20,53 +19,50 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1234;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1044;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=yEgvSXmb27DZa3gudFLW4zQMizODQlbDCoGJB1twpkY=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmlV16mrEo9NAV0hiS5F8uIuEUCRNSQ3KaNpcjJ
- xlqNZmego+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZpVdegAKCRBVnxHm/pHO
- 9a0UB/9rL1u5DYb4E5GiDOZUSXZC+9jk0Sxesl5D3WH2U2toRZncQIw6kUqORTEnnyoTGA/gYsr
- DpZJ3HVigPzTH4uJIwNDKBX+9/9CaaPfkfXbxMBhix1cI0dbX1NJ4QXSAkQhAsbk+qt+pZNBSMa
- 7oTrmIgYW0Ptw/LQ0pdXv5dYsg2JX20BMyYhl500pLJj8CPzihAb+7qgFgR5IgjuYdSW4H3OYkV
- yUt4wSE9GhhGCT3D9Clor1IvW0sPTeaVv8udq5s0QeX6zsREGU57pF1ozrWsXqVBgD9MpNsY0WZ
- OF2AcDFy4RofVwZ6G2h3zxK4W90JPVcMpqBOEC6vqbB5H2k4
+ bh=UnqChimHBG0jtzlN6KxFR0yebxEqg1erfRRq9qEP0p0=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmlV16tFqqZEEX+8rRK462V4QHEJFdB3yZtLtqp
+ DZlCdho5XqJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZpVdegAKCRBVnxHm/pHO
+ 9YmaB/4t/J9z9MOQ7NeByI3uw0LV5xTLZ9fAGG0TJvIPd+6+hy1g3lhpALJ9DWOosLvRy5uLg1S
+ e7gf4y/bVjkW2jgL/v1kdIlFp9szLQk0vUAPTKMHA1eTpMIy96ElBgtld9h6pfkOBZDjxZGbiOC
+ E1ifRqkZIQUPFMG3zKYw6TBuEb+rPMn9Px9IWLOMrBFtFS1dQuguHQFtowm14xEIFIgKXCG+Zod
+ ORgDqhAfyIeyR0LRltHwGpdHmKX1nEFax9DHVFFrevqQOrwMkrzuchSSUmHnVQ30zRQTL3EVz11
+ CxkZNlDLqvoUV8jj+IGGtMhyhy6zlGGIuVl8vVeY2Y62zD4C
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-'linux,pci-domain' property provides the PCI domain number for the PCI
-endpoint controllers in a SoC. If this property is not present, then an
-unstable (across boots) unique number will be assigned.
+Qcom PCIe RC controllers are capable of generating 'global' SPI interrupt
+to the host CPU. This interrupt can be used by the device driver to
+identify events such as PCIe link specific events, safety events, etc...
 
-Use this property to specify the domain number based on the actual hardware
-instance of the PCI endpoint controllers in SA8775P SoC.
+Hence, document it in the binding along with the existing MSI interrupts.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- arch/arm64/boot/dts/qcom/sa8775p.dtsi | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sa8775p.dtsi b/arch/arm64/boot/dts/qcom/sa8775p.dtsi
-index 23f1b2e5e624..198b39abde97 100644
---- a/arch/arm64/boot/dts/qcom/sa8775p.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sa8775p.dtsi
-@@ -4618,6 +4618,7 @@ pcie0_ep: pcie-ep@1c00000 {
- 		phy-names = "pciephy";
- 		max-link-speed = <3>; /* FIXME: Limiting the Gen speed due to stability issues */
- 		num-lanes = <2>;
-+		linux,pci-domain = <0>;
+diff --git a/Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml b/Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml
+index 0a39bbfcb28b..704c0f58eea5 100644
+--- a/Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml
++++ b/Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml
+@@ -21,11 +21,11 @@ properties:
  
- 		status = "disabled";
- 	};
-@@ -4775,6 +4776,7 @@ pcie1_ep: pcie-ep@1c10000 {
- 		phy-names = "pciephy";
- 		max-link-speed = <3>; /* FIXME: Limiting the Gen speed due to stability issues */
- 		num-lanes = <4>;
-+		linux,pci-domain = <1>;
+   interrupts:
+     minItems: 1
+-    maxItems: 8
++    maxItems: 9
  
- 		status = "disabled";
- 	};
+   interrupt-names:
+     minItems: 1
+-    maxItems: 8
++    maxItems: 9
+ 
+   iommu-map:
+     minItems: 1
 
 -- 
 2.25.1
