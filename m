@@ -1,63 +1,108 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Mon, 15 Jul 2024 16:59:24 +0800
-Subject: [PATCH v2 6/6] arm64: dts: amlogic: a4: add ao secure node
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH 00/14] PCI: qcom: Simulate PCIe hotplug using 'global'
+ interrupt
+Date: Mon, 15 Jul 2024 23:03:42 +0530
+Message-Id: <20240715-pci-qcom-hotplug-v1-0-5f3765cc873a@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240715-soc_info-v2-6-3836c8cc27a5@amlogic.com>
-References: <20240715-soc_info-v2-0-3836c8cc27a5@amlogic.com>
-In-Reply-To: <20240715-soc_info-v2-0-3836c8cc27a5@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+X-B4-Tracking: v=1; b=H4sIAHZdlWYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDc0NT3YLkTN3C5Pxc3Yz8koKc0nTdpOSUVMNkQ+MUS8M0JaC2gqLUtMw
+ KsJHRsbW1AGKo7+JiAAAA
+To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>
+Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721033959; l=1080;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=Zl2TiQJDwOdSpUPv3WU4sx37kiV4xoQ/BADR59alPhc=;
- b=Cm3hWH8krZDqMFl1wW+XfR7T/Tx/H31QC2TCprxjiutEEEBomQGa8QwM5fRhNlWkmcBJNkeUs
- 9F6aPdGGrvXC9asuqf6QQHqKJFfPtbxWYknlxwop5DIEhD/c+64nnW2
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3353;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=XTJGJcJtJ9q3xS6FcYJEn2b9I/JOzQleE68JYB3eyNE=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmlV13maAX8I4o+y3OFuBOPbkCeBTBFrFWJcdmH
+ pCZf5cw49uJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZpVddwAKCRBVnxHm/pHO
+ 9VBBB/9VPNho4Ta793DhxS1UooDi6ZUjbse7lJmJRXYOwNijJgHBEsmuQcIueZCya4U//MTX7T4
+ 5k61CKGFDsqrasalpiIpBHR5BtwBJwFAbGnaWPtgmQbKTjCs99gxvrY50/61PqzpbSmHAjPcorh
+ Y0PRyyq2YvavoV9eB2jFUAnUEoBhrfp4KAVud019B0myLYyt3ual7lzxk203gI/6kemiJ89lbTp
+ 6haTOpwL4irKh+dfz1AGWPBaEykSZtUmEwFF1jr2q170IBBsjQyq8qb42B8BaKmcWGpJEwKkaNU
+ INjP4BnirSOH+i0gxScZcoaiecnRSPdQ9lnoY0NI+k0C9d6J
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add node for board info registers, which allows getting SoC family and
-board revision.
+Hi,
 
-For example, with MESON_GX_SOCINFO config enabled we can get the
-following information for board with Amlogic A4 SoC:
-soc soc0: Amlogic A4 (A113L2) Revision 40:b (1:1) Detected.
+This series adds support to simulate PCIe hotplug using the Qcom specific
+'global' IRQ. Historically, Qcom PCIe RC controllers lack standard hotplug
+support. So when an endpoint is attached to the SoC, users have to rescan the
+bus manually to enumerate the device. But this can be avoided by simulating the
+PCIe hotplug using Qcom specific way.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Qcom PCIe RC controllers are capable of generating the 'global' SPI interrupt
+to the host CPUs. The device driver can use this event to identify events such
+as PCIe link specific events, safety events etc...
+
+One such event is the PCIe Link up event generated when an endpoint is detected
+on the bus and the Link is 'up'. This event can be used to simulate the PCIe
+hotplug in the Qcom SoCs.
+
+So add support for capturing the PCIe Link up event using the 'global' interrupt
+in the driver. Once the Link up event is received, the bus underneath the host
+bridge is scanned to enumerate PCIe endpoint devices, thus simulating hotplug.
+
+This series also has some cleanups to the Qcom PCIe EP controller driver for
+interrupt handling.
+
+Testing
+=======
+
+This series is tested on Qcom SM8450 based development board that has 2 SoCs
+connected over PCIe.
+
+- Mani
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Manivannan Sadhasivam (14):
+      PCI: qcom-ep: Drop the redundant masking of global IRQ events
+      PCI: qcom-ep: Reword the error message for receiving unknown global IRQ event
+      dt-bindings: PCI: pci-ep: Update Maintainers
+      dt-bindings: PCI: pci-ep: Document 'linux,pci-domain' property
+      dt-bindings: PCI: qcom-ep: Document "linux,pci-domain" property
+      PCI: endpoint: Assign PCI domain number for endpoint controllers
+      PCI: qcom-ep: Modify 'global_irq' and 'perst_irq' IRQ device names
+      ARM: dts: qcom: sdx55: Add 'linux,pci-domain' to PCIe EP controller node
+      ARM: dts: qcom: sdx65: Add 'linux,pci-domain' to PCIe EP controller node
+      arm64: dts: qcom: sa8775p: Add 'linux,pci-domain' to PCIe EP controller nodes
+      dt-bindings: PCI: qcom: Add 'global' interrupt
+      dt-bindings: PCI: qcom,pcie-sm8450: Add 'global' interrupt
+      PCI: qcom: Simulate PCIe hotplug using 'global' interrupt
+      arm64: dts: qcom: sm8450: Add 'global' interrupt to the PCIe RC node
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi
-index 496c3a2bcf25..54d7a2d56ef6 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi
-@@ -67,6 +67,14 @@ uart_b: serial@7a000 {
- 				clock-names = "xtal", "pclk", "baud";
- 				status = "disabled";
- 			};
-+
-+			sec_ao: ao-secure@10220 {
-+				compatible = "amlogic,a4-ao-secure",
-+					     "amlogic,meson-gx-ao-secure",
-+					     "syscon";
-+				reg = <0x0 0x10220 0x0 0x140>;
-+				amlogic,has-chip-id;
-+			};
- 		};
- 	};
- };
+ Documentation/devicetree/bindings/pci/pci-ep.yaml  | 14 +++++-
+ .../devicetree/bindings/pci/qcom,pcie-common.yaml  |  4 +-
+ .../devicetree/bindings/pci/qcom,pcie-ep.yaml      |  1 +
+ .../devicetree/bindings/pci/qcom,pcie-sm8450.yaml  | 10 ++--
+ arch/arm/boot/dts/qcom/qcom-sdx55.dtsi             |  1 +
+ arch/arm/boot/dts/qcom/qcom-sdx65.dtsi             |  1 +
+ arch/arm64/boot/dts/qcom/sa8775p.dtsi              |  2 +
+ arch/arm64/boot/dts/qcom/sm8450.dtsi               | 12 +++--
+ drivers/pci/controller/dwc/pcie-qcom-ep.c          | 21 +++++++--
+ drivers/pci/controller/dwc/pcie-qcom.c             | 55 ++++++++++++++++++++++
+ drivers/pci/endpoint/pci-epc-core.c                |  1 +
+ include/linux/pci-epc.h                            |  2 +
+ 12 files changed, 108 insertions(+), 16 deletions(-)
+---
+base-commit: 91e3b24eb7d297d9d99030800ed96944b8652eaf
+change-id: 20240715-pci-qcom-hotplug-bcde1c13d91f
 
+Best regards,
 -- 
-2.37.1
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
