@@ -1,10 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Wed, 17 Jul 2024 22:33:08 +0530
-Subject: [PATCH v2 03/13] dt-bindings: PCI: pci-ep: Update Maintainers
+Date: Wed, 17 Jul 2024 22:33:09 +0530
+Subject: [PATCH v2 04/13] dt-bindings: PCI: pci-ep: Document
+ 'linux,pci-domain' property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240717-pci-qcom-hotplug-v2-3-71d304b817f8@linaro.org>
+Message-Id: <20240717-pci-qcom-hotplug-v2-4-71d304b817f8@linaro.org>
 References: <20240717-pci-qcom-hotplug-v2-0-71d304b817f8@linaro.org>
 In-Reply-To: <20240717-pci-qcom-hotplug-v2-0-71d304b817f8@linaro.org>
 To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -19,44 +20,66 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=988;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2026;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=hjExGhGjQYtIRypMJXzdJurZJRAD466HOf0lMqV3fm8=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBml/lNfQg31fke8+7oE4tHhiVq2trkn1dGnRBUr
- XPgVijg6keJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZpf5TQAKCRBVnxHm/pHO
- 9au6B/wPjAG890Ex6xuP3e/ld/sG4k3HMnWw4SNgGuWBUlbG0HRtEstH87bHLLybXjXBhnxu8Ap
- lTfSu4AWyCuwvfW3nIsqqjSXL47MrsJxtj3V/h2l9EuGZc4P76S0/d+h+KXyjscab7Tiho2/ThA
- 5FgBVTmZ/In+XcxMSx94uKj3jxZX36OXPVJM69piD21ZkdCeU3NMrDfT9ELPh8LohvhycCKgaxE
- EjUoqvxZwZ9W0XMCIoPBxCV7DY8H9IKtkpE1mBH78ESyt9ifmUT5B0FWvbtIzTMqK+oV62C0QxJ
- dfazQj0E3ELoLFT8EODzryuYlc/XNzzuq7wkrkI+nn7zVU3K
+ bh=ZuN+bx8IKdLBF21t1VI/ja/rCNR5Gv+31UWAdkgegn8=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBml/lNOungbljczBVTQEbuVGUsSyBz514OTIUe1
+ XwRJf+2l0mJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZpf5TQAKCRBVnxHm/pHO
+ 9W4TB/4+mQi+zmPUNe4N+A+8BE58IM6mcrr1saFbdM8Fgvd2+J60vl8DNlvStJ3ur9oGHtscFmv
+ G6PqO/JxrE92lN2Ele/1qv4qaYEysMGDrMCuBhq2F1kpui1Pp/G9debqLKR0Mr9biZtF7/GZzjv
+ bRhIxErl2K8zifTUeRXkXC1oGUthAW3obCaDd0aqTd7jBFixvasyMhd0zbmeXxKR2mkaQCbdxOs
+ Tje3RIXecdZk4DuWtL+SevmREnYbMIFSF7OGOTAvbc571M67eq3bSPUNm6rF96ooNapgALrXDdY
+ IehQIrNMwRTmhQYH8Bhm8NP9rDoNEZnwoodxn4j12FhcjbJP
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Kishon's TI email ID is not active anymore, so use his korg ID. Also, since
-I've been maintaining the PCI endpoint framework, I'm willing to maintain
-the DT binding as well. So add myself as the Co-maintainer.
+'linux,pci-domain' property provides the PCI domain number for the PCI
+endpoint controllers in a SoC. If this property is not present, then an
+unstable (across boots) unique number will be assigned.
+
+Devicetrees can specify the domain number based on the actual hardware
+instance of the PCI endpoint controllers in the SoC.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- Documentation/devicetree/bindings/pci/pci-ep.yaml | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ Documentation/devicetree/bindings/pci/pci-ep.yaml       | 11 +++++++++++
+ Documentation/devicetree/bindings/pci/qcom,pcie-ep.yaml |  1 +
+ 2 files changed, 12 insertions(+)
 
 diff --git a/Documentation/devicetree/bindings/pci/pci-ep.yaml b/Documentation/devicetree/bindings/pci/pci-ep.yaml
-index d1eef4825207..0b5456ee21eb 100644
+index 0b5456ee21eb..f75000e3093d 100644
 --- a/Documentation/devicetree/bindings/pci/pci-ep.yaml
 +++ b/Documentation/devicetree/bindings/pci/pci-ep.yaml
-@@ -10,7 +10,8 @@ description: |
-   Common properties for PCI Endpoint Controller Nodes.
+@@ -42,6 +42,17 @@ properties:
+     default: 1
+     maximum: 16
  
- maintainers:
--  - Kishon Vijay Abraham I <kishon@ti.com>
-+  - Kishon Vijay Abraham I <kishon@kernel.org>
-+  - Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
++  linux,pci-domain:
++    description:
++      If present this property assigns a fixed PCI domain number to a PCI
++      Endpoint Controller, otherwise an unstable (across boots) unique number
++      will be assigned. It is required to either not set this property at all
++      or set it for all PCI endpoint controllers in the system, otherwise
++      potentially conflicting domain numbers may be assigned to endpoint
++      controllers. The domain number for each endpoint controller in the system
++      must be unique.
++    $ref: /schemas/types.yaml#/definitions/uint32
++
+ required:
+   - compatible
  
- properties:
-   $nodename:
+diff --git a/Documentation/devicetree/bindings/pci/qcom,pcie-ep.yaml b/Documentation/devicetree/bindings/pci/qcom,pcie-ep.yaml
+index 46802f7d9482..1226ee5d08d1 100644
+--- a/Documentation/devicetree/bindings/pci/qcom,pcie-ep.yaml
++++ b/Documentation/devicetree/bindings/pci/qcom,pcie-ep.yaml
+@@ -280,4 +280,5 @@ examples:
+         phy-names = "pciephy";
+         max-link-speed = <3>;
+         num-lanes = <2>;
++        linux,pci-domain = <0>;
+     };
 
 -- 
 2.25.1
