@@ -1,15 +1,12 @@
 From: Hsiao Chien Sung <shawn.sung@mediatek.com>
-Subject: [PATCH v4 0/5] Support alpha blending in MTK display driver
-Date: Wed, 17 Jul 2024 13:24:40 +0800
-Message-Id: <20240717-alpha-blending-v4-0-4b1c806c0749@mediatek.com>
+Date: Wed, 17 Jul 2024 13:24:41 +0800
+Subject: [PATCH v4 1/5] drm/mediatek: Support "None" blending in OVL
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJhVl2YC/33OQQ6CMBAF0KuYrq0ZBmjBlfcwLkoZoBELabHRG
- O5uhYWJIS7/JP/9eTFPzpBnx92LOQrGm8HGkO13THfKtsRNHTNDwAxkAlz1Y6d41ZOtjW05CIl
- lnksoRMpiqVKeeOWU1V2s2Xvfx+PoqDGPZeV8ibkzfhrccxkNyee6+gJhlXlIOHCJQgJI1Arhd
- KPaqImuBz3c2AcJ+C1uPBYwCnVW5ZCTKAtQG0L6X0ijgEWpk0I2pRbNjzDP8xsk0D81PwEAAA=
- =
+Message-Id: <20240717-alpha-blending-v4-1-4b1c806c0749@mediatek.com>
+References: <20240717-alpha-blending-v4-0-4b1c806c0749@mediatek.com>
+In-Reply-To: <20240717-alpha-blending-v4-0-4b1c806c0749@mediatek.com>
 To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
  Philipp Zabel <p.zabel@pengutronix.de>, David Airlie <airlied@gmail.com>, 
  Daniel Vetter <daniel@ffwll.ch>, Matthias Brugger <matthias.bgg@gmail.com>, 
@@ -19,52 +16,47 @@ Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org,
  Hsiao Chien Sung <shawn.sung@mediatek.corp-partner.google.com>, 
  CK Hu <ck.hu@mediatek.com>, Hsiao Chien Sung <shawn.sung@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721193884; l=1512;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721193884; l=1452;
  i=shawn.sung@mediatek.com; s=20240710; h=from:subject:message-id;
- bh=Vp7p44aMYOx+W/3oDa9KRPvAbAMMO3I7LRS7pOl1nxQ=;
- b=+A8fttIjotYhj8wUeKovyfjjqKhR+tv2ri5BcloeuhTVq31xjLyG3wh3H8ppI9q8gkU+M8u50
- U6OUuROaJmgAEsuPzXOHDTTy2Z54rv7ObsgnLk9nciTQ6u+5Db778DJ
+ bh=XPDvZ7xzyMMnOIwBspXj+lmld62ksCxAgrZn9GTIqIg=;
+ b=Wy9P+FVTGGbiW8DLQqinrUGhy4tek0KY1cjIauc/PX5eCpPsBFzUkqfUB0/w5gKKXXs7pEK33
+ u4iJbnYii6OCcFP5B+sCDyImznSS+DZVc5UtLSlMO9l5AKEG6OX1weL
 X-Developer-Key: i=shawn.sung@mediatek.com; a=ed25519;
  pk=VRlGZ3diQkQtpDd8fCL9/mx+TpZStm08pg8UPaG1NGc=
 X-Endpoint-Received: by B4 Relay for shawn.sung@mediatek.com/20240710 with auth_id=184
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Support "Pre-multiplied" and "None" blend mode on MediaTek's chips by
-adding correct blend mode property when the planes init.
-Before this patch, only the "Coverage" mode (default) is supported.
+Support "None" alpha blending mode on MediaTek's chips.
 
-Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.corp-partner.google.com>
+Reviewed-by: CK Hu <ck.hu@mediatek.com>
+Signed-off-by: Hsiao Chien Sung <shawn.sung@mediatek.com>
 ---
-Changes in v4:
-- Add more information to the commit message
-- Link to v3: https://lore.kernel.org/r/20240710-alpha-blending-v3-0-289c187f9c6f@mediatek.com
+ drivers/gpu/drm/mediatek/mtk_disp_ovl.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Changes in v3:
-- Remove the Change-Id
-- Link to v2: https://lore.kernel.org/r/20240710-alpha-blending-v2-0-d4b505e6980a@mediatek.com
+diff --git a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
+index 9d6d9fd8342e..add671c38613 100644
+--- a/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
++++ b/drivers/gpu/drm/mediatek/mtk_disp_ovl.c
+@@ -434,6 +434,7 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
+ 	unsigned int fmt = pending->format;
+ 	unsigned int offset = (pending->y << 16) | pending->x;
+ 	unsigned int src_size = (pending->height << 16) | pending->width;
++	unsigned int blend_mode = state->base.pixel_blend_mode;
+ 	unsigned int ignore_pixel_alpha = 0;
+ 	unsigned int con;
+ 	bool is_afbc = pending->modifier != DRM_FORMAT_MOD_LINEAR;
+@@ -463,7 +464,8 @@ void mtk_ovl_layer_config(struct device *dev, unsigned int idx,
+ 	 * For RGB888 related formats, whether CONST_BLD is enabled or not won't
+ 	 * affect the result. Therefore we use !has_alpha as the condition.
+ 	 */
+-	if (state->base.fb && !state->base.fb->format->has_alpha)
++	if ((state->base.fb && !state->base.fb->format->has_alpha) ||
++	    blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
+ 		ignore_pixel_alpha = OVL_CONST_BLEND;
+ 
+ 	if (pending->rotation & DRM_MODE_REFLECT_Y) {
 
-Changes in v2:
-- Remove unnecessary codes
-- Add more information to the commit message
-- Link to v1: https://lore.kernel.org/r/20240620-blend-v1-0-72670072ca20@mediatek.com
-
----
-Hsiao Chien Sung (5):
-      drm/mediatek: Support "None" blending in OVL
-      drm/mediatek: Support "None" blending in Mixer
-      drm/mediatek: Support "Pre-multiplied" blending in OVL
-      drm/mediatek: Support "Pre-multiplied" blending in Mixer
-      drm/mediatek: Support alpha blending in display driver
-
- drivers/gpu/drm/mediatek/mtk_disp_ovl.c | 36 +++++++++++++++++++++++++--------
- drivers/gpu/drm/mediatek/mtk_ethdr.c    | 13 +++++++++---
- drivers/gpu/drm/mediatek/mtk_plane.c    | 11 ++++++++++
- 3 files changed, 49 insertions(+), 11 deletions(-)
----
-base-commit: 8ad49a92cff4bab13eb2f2725243f5f31eff3f3b
-change-id: 20240710-alpha-blending-067295570863
-
-Best regards,
 -- 
-Hsiao Chien Sung <shawn.sung@mediatek.com>
+2.43.0
 
