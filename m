@@ -1,11 +1,10 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Thu, 18 Jul 2024 15:38:00 +0200
-Subject: [PATCH 14/22] iio: light: isl29125: make use of
- iio_for_each_active_channel()
+Date: Thu, 18 Jul 2024 15:38:01 +0200
+Subject: [PATCH 15/22] iio: light: si1145: use new '.masklength' accessors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240718-dev-iio-masklength-private2-v1-14-8e12cd042906@analog.com>
+Message-Id: <20240718-dev-iio-masklength-private2-v1-15-8e12cd042906@analog.com>
 References: <20240718-dev-iio-masklength-private2-v1-0-8e12cd042906@analog.com>
 In-Reply-To: <20240718-dev-iio-masklength-private2-v1-0-8e12cd042906@analog.com>
 To: linux-iio@vger.kernel.org
@@ -13,39 +12,52 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Lars-Peter Clausen <lars@metafoo.de>, Andreas Klinger <ak@it-klinger.de>, 
  Song Qiang <songqiang1304521@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721309903; l=899;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721309903; l=1394;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=44r1OBRTeVEJ/5KHZVThUvH1dW1shD4ej8y1KV3icWw=;
- b=3uR4X54aZ70UqR04TwiESV4WFPo/WoLMFnVDSgzhLJzHMYCMs1gQqO4QjKe1HvVgXICyXouTy
- WSm0Oas/rkKDEn6ViCoLXlQq/2lo27TK9TkcL4QAmCmHtlI2U/KOnN5
+ bh=ydCEkP8JsRVtoKR9bEq7QSVO3KXJv8WNwFnv2eEpBeY=;
+ b=gZ6IUQPm0/RNFe4OkVKzRf1jtalaFetYLzAUqhSgt7EOB8gDOEdPWgEnTdO+raWTHyqKzp8pr
+ e72dFK821ICCkLHVQj0FpYw962mT8CAa63j40Y2vxjthY6FmoN9f7SG
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use iio_for_each_active_channel() to iterate over active channels
-accessing '.masklength' so it can be annotated as __private when there are
-no more direct users of it.
+Make use of iio_get_masklength) and iio_for_each_active_channel() to
+access '.masklength' so it can be annotated as __private when there
+are no more direct users of it.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/light/isl29125.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/iio/light/si1145.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/iio/light/isl29125.c b/drivers/iio/light/isl29125.c
-index 59329546df58..b176bf4c884b 100644
---- a/drivers/iio/light/isl29125.c
-+++ b/drivers/iio/light/isl29125.c
-@@ -181,8 +181,7 @@ static irqreturn_t isl29125_trigger_handler(int irq, void *p)
- 	struct isl29125_data *data = iio_priv(indio_dev);
- 	int i, j = 0;
+diff --git a/drivers/iio/light/si1145.c b/drivers/iio/light/si1145.c
+index 77666b780a5c5..66abda021696a 100644
+--- a/drivers/iio/light/si1145.c
++++ b/drivers/iio/light/si1145.c
+@@ -465,11 +465,10 @@ static irqreturn_t si1145_trigger_handler(int irq, void *private)
+ 			goto done;
+ 	}
  
 -	for_each_set_bit(i, indio_dev->active_scan_mask,
 -		indio_dev->masklength) {
 +	iio_for_each_active_channel(indio_dev, i) {
- 		int ret = i2c_smbus_read_word_data(data->client,
- 			isl29125_regs[i].data);
- 		if (ret < 0)
+ 		int run = 1;
+ 
+-		while (i + run < indio_dev->masklength) {
++		while (i + run < iio_get_masklength(indio_dev)) {
+ 			if (!test_bit(i + run, indio_dev->active_scan_mask))
+ 				break;
+ 			if (indio_dev->channels[i + run].address !=
+@@ -514,7 +513,7 @@ static int si1145_set_chlist(struct iio_dev *indio_dev, unsigned long scan_mask)
+ 	if (data->scan_mask == scan_mask)
+ 		return 0;
+ 
+-	for_each_set_bit(i, &scan_mask, indio_dev->masklength) {
++	for_each_set_bit(i, &scan_mask, iio_get_masklength(indio_dev)) {
+ 		switch (indio_dev->channels[i].address) {
+ 		case SI1145_REG_ALSVIS_DATA:
+ 			reg |= SI1145_CHLIST_EN_ALSVIS;
 
 -- 
 2.45.2
