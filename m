@@ -1,140 +1,65 @@
-From: Cryolitia PukNgae <Cryolitia@gmail.com>
-Date: Thu, 18 Jul 2024 10:22:24 +0800
-Subject: [PATCH v4 2/2] hwmon: document: add gpd-fan
+From: Yang Li <yang.li@amlogic.com>
+Subject: [PATCH v2 0/3] Add support for Amlogic HCI UART
+Date: Thu, 18 Jul 2024 15:42:18 +0800
+Message-Id: <20240718-btaml-v2-0-1392b2e21183@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240718-gpd_fan-v4-2-116e5431a9fe@gmail.com>
-References: <20240718-gpd_fan-v4-0-116e5431a9fe@gmail.com>
-In-Reply-To: <20240718-gpd_fan-v4-0-116e5431a9fe@gmail.com>
-To: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
- Cryolitia PukNgae <Cryolitia@gmail.com>, Jonathan Corbet <corbet@lwn.net>
-Cc: linux-kernel@vger.kernel.org, linux-hwmon@vger.kernel.org, 
- linux-doc@vger.kernel.org, Celeste Liu <CoelacanthusHex@gmail.com>, 
- Yao Zi <ziyao@disroot.org>, 
- =?utf-8?q?Marcin_Str=C4=85gowski?= <marcin@stragowski.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2841; i=Cryolitia@gmail.com;
- h=from:subject:message-id; bh=w5ysSKMT+Erogd22vy685m5vnNbd3B3fdSDLl++agfw=;
- b=LS0tLS1CRUdJTiBQR1AgTUVTU0FHRS0tLS0tCgpvd0VCYlFHUy9wQU5Bd0FJQVQ1ZEYzTDhpb
- zdkQWNzbVlnQm1tSHhpRFl0SmswN3RiNXpxc0s4VlIrV3pRdzJqClFKQnFMeHAvMjdnaGd6a2Jl
- ZXlKQVRNRUFBRUlBQjBXSVFSME5XMHB5dmR3U0JGOENDWStYUmR5L0lxTzNRVUMKWnBoOFlnQUt
- DUkErWFJkeS9JcU8zVW45Q0FDVFR6bGRPMzBrVXpobHVLTzBYRnp1Z014Zit6OVlycWVsQllvcg
- pDUDQzZ2hNRTRKRGYvV1lEZ09BTVd1QmlVRHQ3OWJVb1B6NExoWHlTZGZHLzE3ZEg1VXN0L0xHR
- FJDMFJIU2RlCjAvNXQ4Y1dHcUduKzBKQk5VWjBielZNS29TNFhJSXY0U3JkZ08za0U0VU1RYkNQ
- dTYycW16aGxQVVlxZ1dlNlQKdjFpS1BwaXNMS2VqeUlLRE1Vd1l2dGpDdjBDZVBNSzQ4M04xUDl
- nRE5rWS9rOHVEY0d2b0JEdXlnUW9TdmFuZgorR0FmUFhDUExocEFvc29OaGtlUmI2aTVqU1NOMU
- FDNGxZZWdkUFYyYUdJeFZvZ2NxcmJwdHRaMlJOc1Z0VWRyCjIvN3UxZExrbU1vZWw0NDVSSmhPS
- E5rdng5SzgxY3hOMkNTbUFCbGp2aDFucExrdQo9VzdLeAotLS0tLUVORCBQR1AgTUVTU0FHRS0t
- LS0tCg==
-X-Developer-Key: i=Cryolitia@gmail.com; a=openpgp;
- fpr=1C3C6547538D7152310C0EEA84DD0C0130A54DF7
-X-Endpoint-Received: by B4 Relay for Cryolitia@gmail.com/default with auth_id=186
+X-B4-Tracking: v=1; b=H4sIAFrHmGYC/y3MQQ7CIBRF0a00fywGkAZw5D5MB0Ch/YktBhqia
+ di7WB3el5ezQ/YJfYZrt0PyBTPGtQU/deBms06e4NgaOOWCCqaI3czyIEGP0jItuTAW2veZfMD
+ X4dyH1jPmLab3wRb2XX+CpP1fKIxQIgPrLypo5Xy4tTVO6M4uLjDUWj+mDLEinAAAAA==
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>
+Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, Yang Li <yang.li@amlogic.com>, 
+ Ye He <ye.he@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721288574; l=1309;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=McKO7a2Y9X5UuWrJvOXo6XzO6tf+ZBq08Na/c5RO+zI=;
+ b=yaEHvInkvweHp4KULgQoWMx2FfK9VIzp24xUAWtkczpAXykd9ulVlbDUQyyItoTFFdlqpTF+R
+ 3LBUXfXOZtFBO1nMiiSc+rH13F9K6ssqRZO7fZnUFROqioIQsgUg1xr
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add GPD fan driver document
+Add support for Amlogic HCI UART, including dt-binding,
+and Amlogic Bluetooth driver.
 
-Signed-off-by: Cryolitia PukNgae <Cryolitia@gmail.com>
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- Documentation/hwmon/gpd-fan.rst | 63 +++++++++++++++++++++++++++++++++++++++++
- Documentation/hwmon/index.rst   |  1 +
- MAINTAINERS                     |  1 +
- 3 files changed, 65 insertions(+)
+Changes in v2:
+- Introduce a regulator for powering up the Bluetooth chip instead of power sequencing.
+- Use the GPIO Consumer API to manipulate the GPIO pins instead of the legacy API.
+- Minor fixes.
+- Link to v1: https://lore.kernel.org/r/20240705-btaml-v1-0-7f1538f98cef@amlogic.com
 
-diff --git a/Documentation/hwmon/gpd-fan.rst b/Documentation/hwmon/gpd-fan.rst
-new file mode 100644
-index 000000000000..68189cdc5b45
---- /dev/null
-+++ b/Documentation/hwmon/gpd-fan.rst
-@@ -0,0 +1,63 @@
-+.. SPDX-License-Identifier: GPL-2.0-or-later
-+
-+Kernel driver gpd-fan
-+=========================
-+
-+Author:
-+    - Cryolitia PukNgae <Cryolitia@gmail.com>
-+
-+Description
-+------------
-+
-+Handheld devices from Shenzhen GPD Technology Co., Ltd. provide fan readings and fan control through
-+their embedded controllers.
-+
-+Supported devices
-+-----------------
-+
-+Currently the driver supports the following handhelds:
-+
-+ - GPD Win Mini (7840U)
-+ - GPD Win Mini (8840U)
-+ - GPD Win Max 2
-+ - GPD Win Max 2 2023 (7840U)
-+ - GPD Win Max 2 2024 (8840U)
-+ - GPD Win 4 (6800U)
-+ - GPD Win 4 (7840U)
-+
-+Module parameters
-+-----------------
-+
-+gpd_fan_model
-+  Force specific which module quirk should be used.
-+  Use it like "gpd_fan_model=wm2".
-+
-+   - wm2
-+       - GPD Win 4 (7840U)
-+       - GPD Win Max 2 (6800U)
-+       - GPD Win Max 2 2023 (7840U)
-+       - GPD Win Max 2 2024 (8840U)
-+   - win4
-+       - GPD Win 4 (6800U)
-+   - win_mini
-+       - GPD Win Mini (7840U)
-+       - GPD Win Mini (8840U)
-+
-+Sysfs entries
-+-------------
-+
-+The following attributes are supported:
-+
-+fan1_input
-+  Read Only. Reads current fan RPM.
-+
-+pwm1_enable
-+  Read/Write. Enable manual fan control. Write "0" to disable control and run at
-+  full speed. Write "1" to set to manual, write "2" to let the EC control decide
-+  fan speed. Read this attribute to see current status.
-+
-+pwm1
-+  Read/Write. Read this attribute to see current duty cycle in the range [0-255].
-+  When pwm1_enable is set to "1" (manual) write any value in the range [0-255]
-+  to set fan speed.
-+
-diff --git a/Documentation/hwmon/index.rst b/Documentation/hwmon/index.rst
-index 913c11390a45..97add26f53b7 100644
---- a/Documentation/hwmon/index.rst
-+++ b/Documentation/hwmon/index.rst
-@@ -80,6 +80,7 @@ Hardware Monitoring Kernel Drivers
-    gigabyte_waterforce
-    gsc-hwmon
-    gl518sm
-+   gpd-fan
-    gxp-fan-ctrl
-    hih6130
-    hp-wmi-sensors
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 9ced72cec42b..5079b5bfe4b1 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -9376,6 +9376,7 @@ GPD FAN DRIVER
- M:	Cryolitia PukNgae <Cryolitia@gmail.com>
- L:	linux-hwmon@vger.kernel.org
- S:	Maintained
-+F:	Documentation/hwmon/gpd-fan.rst
- F:	drivers/hwmon/gpd-fan.c
- 
- GPD POCKET FAN DRIVER
+---
+Yang Li (3):
+      dt-bindings: net: bluetooth: Add support for Amlogic Bluetooth
+      Bluetooth: hci_uart: Add support for Amlogic HCI UART
+      MAINTAINERS: Add an entry for Amlogic HCI UART (M: Yang Li)
 
+ .../bindings/net/bluetooth/amlogic,w155s2-bt.yaml  |  66 ++
+ MAINTAINERS                                        |   7 +
+ drivers/bluetooth/Kconfig                          |  12 +
+ drivers/bluetooth/Makefile                         |   1 +
+ drivers/bluetooth/hci_aml.c                        | 772 +++++++++++++++++++++
+ drivers/bluetooth/hci_ldisc.c                      |   8 +-
+ drivers/bluetooth/hci_uart.h                       |   8 +-
+ 7 files changed, 871 insertions(+), 3 deletions(-)
+---
+base-commit: 54dd4796336de8ce5cbf344db837f9b8448ebcf8
+change-id: 20240418-btaml-f9d7b19724ab
+
+Best regards,
 -- 
-2.45.2
+Yang Li <yang.li@amlogic.com>
 
