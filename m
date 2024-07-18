@@ -1,87 +1,53 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Subject: [PATCH 00/22] iio: make masklength __private (round 2)
-Date: Thu, 18 Jul 2024 15:37:46 +0200
-Message-Id: <20240718-dev-iio-masklength-private2-v1-0-8e12cd042906@analog.com>
+Date: Thu, 18 Jul 2024 15:37:47 +0200
+Subject: [PATCH 01/22] iio: adc: cc10001_adc: make use of
+ iio_for_each_active_channel()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAKoamWYC/x3MQQqAIBAAwK/EnltQC6y+Eh0kV1sqCw0Jor8nH
- ecyDySKTAmG6oFImRMfoUDWFcyLCZ6QbTEooVqhpURLGZkP3E1aNwr+WvCMnM1FCmfb2b5xQut
- OQhnOSI7vfx+n9/0AX84PzW0AAAA=
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240718-dev-iio-masklength-private2-v1-1-8e12cd042906@analog.com>
+References: <20240718-dev-iio-masklength-private2-v1-0-8e12cd042906@analog.com>
+In-Reply-To: <20240718-dev-iio-masklength-private2-v1-0-8e12cd042906@analog.com>
 To: linux-iio@vger.kernel.org
 Cc: Jonathan Cameron <jic23@kernel.org>, 
  Lars-Peter Clausen <lars@metafoo.de>, Andreas Klinger <ak@it-klinger.de>, 
  Song Qiang <songqiang1304521@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721309903; l=3113;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721309903; l=890;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=8Uli0ChG4jZLPPsbSQ3WXP2ht09wW1DHRmGxM4Samzg=;
- b=cmILg206q4j7X+2olECakoOHFPVX8RRrsI9OejMsj1+KHl7qkF6qeu22+m8ZxTkNrE2qqjw3q
- B7XY/7xuo0tBDuUpEARKmVDUPzv1AI+9ii6sisI0fjG/vt5kPrhO1Yj
+ bh=7KQilIgM9x/pjjV8IpQ1xKu+V2/UHH1gFTIwZPtjpgg=;
+ b=fRsRXoEKF4YGid901q5e9xKkLzGZU67xeNH6uMS37BmezS6j0kxav4HD3+uCyY+mcWK8sNBm7
+ rfEyY1iu9/PAdUVvUm+mus23ZkZs+gzMkemRa3Fk8xcUW8uNgmwBxoC
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi Jonathan,
+Use iio_for_each_active_channel() to iterate over active channels
+accessing '.masklength' so it can be annotated as __private when there are
+no more direct users of it.
 
-Here it goes the second round about annotating .masklength as __private.
-
-Again, only compile tested for arm with allyesconfig.
-
+Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
-Nuno Sa (22):
-      iio: adc: cc10001_adc: make use of iio_for_each_active_channel()
-      iio: adc: dln2-adc: use new '.masklength' accessors
-      iio: adc: hx711: make use of iio_for_each_active_channel()
-      iio: dummy: iio_simple_dummy_buffer: use iio_for_each_active_channel()
-      iio: health: afe4403: make use of iio_for_each_active_channel()
-      iio: health: max30102: make use of iio_get_masklength()
-      iio: health: afe4404: make use of iio_for_each_active_channel()
-      iio: humidity: am2315: make use of iio_for_each_active_channel()
-      iio: imu: bmi160_core: make use of iio_for_each_active_channel()
-      iio: imu: bno055: make use of iio_get_masklength()
-      iio: imu: kmx61: make use of iio_for_each_active_channel()
-      iio: light: adjd_s311: make use of iio_for_each_active_channel()
-      iio: light: gp2ap020a00f: make use of iio_for_each_active_channel()
-      iio: light: isl29125: make use of iio_for_each_active_channel()
-      iio: light: si1145: use new '.masklength' accessors
-      iio: light: tcs3414: make use of iio_for_each_active_channel()
-      iio: light: tcs3472: make use of iio_for_each_active_channel()
-      iio: magnetometer: rm3100-core: make use of iio_get_masklength()
-      iio: pressure: dlhl60d: make use of iio_for_each_active_channel()
-      iio: proximity: hx9023s: make use of iio_for_each_active_channel()
-      iio: proximity: sx9500: make use of iio_for_each_active_channel()
-      iio: proximity: sx_common: make use of iio_for_each_active_channel()
+ drivers/iio/adc/cc10001_adc.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
- drivers/iio/adc/cc10001_adc.c               | 4 +---
- drivers/iio/adc/dln2-adc.c                  | 8 +++-----
- drivers/iio/adc/hx711.c                     | 5 +----
- drivers/iio/dummy/iio_simple_dummy_buffer.c | 2 +-
- drivers/iio/health/afe4403.c                | 3 +--
- drivers/iio/health/afe4404.c                | 3 +--
- drivers/iio/health/max30102.c               | 2 +-
- drivers/iio/humidity/am2315.c               | 3 +--
- drivers/iio/imu/bmi160/bmi160_core.c        | 3 +--
- drivers/iio/imu/bno055/bno055.c             | 2 +-
- drivers/iio/imu/kmx61.c                     | 3 +--
- drivers/iio/light/adjd_s311.c               | 3 +--
- drivers/iio/light/gp2ap020a00f.c            | 9 +++------
- drivers/iio/light/isl29125.c                | 3 +--
- drivers/iio/light/si1145.c                  | 7 +++----
- drivers/iio/light/tcs3414.c                 | 3 +--
- drivers/iio/light/tcs3472.c                 | 3 +--
- drivers/iio/magnetometer/rm3100-core.c      | 2 +-
- drivers/iio/pressure/dlhl60d.c              | 3 +--
- drivers/iio/proximity/hx9023s.c             | 4 ++--
- drivers/iio/proximity/sx9500.c              | 3 +--
- drivers/iio/proximity/sx_common.c           | 6 ++----
- 22 files changed, 30 insertions(+), 54 deletions(-)
----
-base-commit: 986da024b99a72e64f6bdb3f3f0e52af024b1f50
-change-id: 20240711-dev-iio-masklength-private2-cd8d93f07781
---
+diff --git a/drivers/iio/adc/cc10001_adc.c b/drivers/iio/adc/cc10001_adc.c
+index a432342348abe..2c51b90b71018 100644
+--- a/drivers/iio/adc/cc10001_adc.c
++++ b/drivers/iio/adc/cc10001_adc.c
+@@ -157,9 +157,7 @@ static irqreturn_t cc10001_adc_trigger_h(int irq, void *p)
+ 
+ 	i = 0;
+ 	sample_invalid = false;
+-	for_each_set_bit(scan_idx, indio_dev->active_scan_mask,
+-				  indio_dev->masklength) {
+-
++	iio_for_each_active_channel(indio_dev, scan_idx) {
+ 		channel = indio_dev->channels[scan_idx].channel;
+ 		cc10001_adc_start(adc_dev, channel);
+ 
 
-Thanks!
-- Nuno Sá
+-- 
+2.45.2
 
