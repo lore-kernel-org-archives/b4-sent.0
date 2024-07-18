@@ -1,71 +1,79 @@
-From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Wed, 17 Jul 2024 18:26:45 +0100
-Subject: [PATCH kmod] kmod: remove .alias config files for modprobe.d
+From: Cryolitia PukNgae <Cryolitia@gmail.com>
+Subject: [PATCH v4 0/2] hwmon: add GPD devices sensor driver
+Date: Thu, 18 Jul 2024 10:22:22 +0800
+Message-Id: <20240718-gpd_fan-v4-0-116e5431a9fe@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240717-rm-alias-v1-1-58874caf343a@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANT+l2YC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDcwML3aJc3cSczMRiXSMLCwND4zQLMxNTMyWg8oKi1LTMCrBR0bG1tQD
- XdGtoWgAAAA==
-To: linux-modules@vger.kernel.org
-Cc: Emil Velikov <emil.l.velikov@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAF58mGYC/3XMSwrCMBSF4a2UjI3k1dzWkfsQkaRJ2oB9kEhQS
+ vdu2olFcXgu9/tnFG3wNqJTMaNgk49+HPIQhwI1nRpai73JGzHCBAEqcTuZm1MDLsFxUjPeVJV
+ A+XsK1vnnVrpc8+58fIzhtYUTXa+/jUQxwVyQkhoDVBF5bnvl78dm7NHaSGzv4ONYdg40WKlrx
+ 6j+dvyP49lVBqzTlEmuYe+WZXkDP8DMAQ4BAAA=
+To: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
+ Cryolitia PukNgae <Cryolitia@gmail.com>, Jonathan Corbet <corbet@lwn.net>
+Cc: linux-kernel@vger.kernel.org, linux-hwmon@vger.kernel.org, 
+ linux-doc@vger.kernel.org, Celeste Liu <CoelacanthusHex@gmail.com>, 
+ Yao Zi <ziyao@disroot.org>, 
+ =?utf-8?q?Marcin_Str=C4=85gowski?= <marcin@stragowski.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721237206; l=1741;
- i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=Gsv85/xQy8/nNNOgyhIvZ2Q6IxoNKQXq5wJxYihYbJA=;
- b=YWSsLvS2T0+cHnj8pSrWDmqPWICL4+EP3HJBG3pD69ws+jwtDZua0GvaSttJB9TQnPkwqDJN0
- FvWcCpspCteCdZ1VmOjaJF7dtFJPzDBnlPW0xuJQf42DNYYU5HXsJ5L
-X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
- pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
-X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1481; i=Cryolitia@gmail.com;
+ h=from:subject:message-id; bh=LVaqsqmGIy9CINW58oVHBqj5bVtiVxWM9b/S4sE4Wpo=;
+ b=LS0tLS1CRUdJTiBQR1AgTUVTU0FHRS0tLS0tCgpvd0VCYlFHUy9wQU5Bd0FJQVQ1ZEYzTDhpb
+ zdkQWNzbVlnQm1tSHhnbGpjRlhLYnRNSzNOSWZjaHd0dzEyNmxZClF3MzVmRG5Rd1FaemZUdnY3
+ RmVKQVRNRUFBRUlBQjBXSVFSME5XMHB5dmR3U0JGOENDWStYUmR5L0lxTzNRVUMKWnBoOFlBQUt
+ DUkErWFJkeS9JcU8zZFpsQ0FDTDdWR1FXWjhaM054OXZFcHhpTlFtd290Y1ZBUFBuQ0lxZHlFNQ
+ pNc0tKNjdSSWZwNW1YbWNLaWREdWJveVQ3ckZUOEk5a04rd0lDWlJ6UFNLbnNHQUZNTUhCU0kwc
+ nFHdVM4QzZJCi94RnloWkpubzVhVmVBeUJPUEFYNHhobjVjOGhXV1RtVUo1WlNwMXM2N3RzRmpp
+ bitiZXJHdmpyMVdzVWtQOC8KZllXK2xpV3VyUk1NZlNMYVpHSVhvUVhtTzZPWnFNendaWTFGdHF
+ jSnIrbHZuSURidUFndjU0SjlUUXQ1THVZQgpVMytKNXk0clFYMUhINVNST2VnWk5zeGY2dVM2cl
+ pBRGdtNis0VXg4ajA5U2cyL2Iycm1Va2NERlB1a2ZUK2xKCkRGVm9nWDJuMlJuRmJBMDZ2RGdQa
+ UpXSHp2NHpPc3B3RnBZVmFUK0dnVHBGTkdlRgo9OTNCSAotLS0tLUVORCBQR1AgTUVTU0FHRS0t
+ LS0tCg==
+X-Developer-Key: i=Cryolitia@gmail.com; a=openpgp;
+ fpr=1C3C6547538D7152310C0EEA84DD0C0130A54DF7
+X-Endpoint-Received: by B4 Relay for Cryolitia@gmail.com/default with auth_id=186
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The use of .alias (alongside .conf) was added for compatibility with the
-original module-init-tools project and has been living in kmod ever
-since.
+Sensors driver for GPD Handhelds that expose fan reading and control via
+hwmon sysfs.
 
-In practise, all the linux distributions that I can see are using .conf
-files alone, as instructed by modprobe.d(5) and the only instance of an
-.alias file is the modules.alias as shipped in the kernel.
+Shenzhen GPD Technology Co., Ltd. manufactures a series of handheld
+devices. This driver implements these functions through x86 port-mapped IO.
+I have tested it on my device.
 
-The latter is already handled by other parts of the kmod project, so
-let's enforce what our documentation says.
-
-Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
----
-As suggested in https://lore.kernel.org/linux-modules/q6dutb2b5ztkuwjkq7a7ddnsbfneoq66bafaaxwppelepflcc5@us5n2ll5syja/T/#m84a542f8d4e2f4d31b2a7ee82aaf3d0bcf211aec
-
-I have tested this on my Arch box, alongside a normal make
-check/distcheck and it's working as expected. Other distributions have
-not been tested, although I don't anticipate any to be using .alias
-configuration files.
-
-The section in the README will be removed shortly via unrelated patch.
----
- libkmod/libkmod-config.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
-
-diff --git a/libkmod/libkmod-config.c b/libkmod/libkmod-config.c
-index a571b6b..fb28ed9 100644
---- a/libkmod/libkmod-config.c
-+++ b/libkmod/libkmod-config.c
-@@ -940,8 +940,7 @@ static bool conf_files_filter_out(struct kmod_ctx *ctx, DIR *d,
- 	if (fn[0] == '.')
- 		return true;
- 
--	if (len < 6 || (!streq(&fn[len - 5], ".conf")
--				&& !streq(&fn[len - 6], ".alias")))
-+	if (len < 6 || !streq(&fn[len - 5], ".conf"))
- 		return true;
- 
- 	fstatat(dirfd(d), fn, &st, 0);
+Tested-by: Marcin Strągowski <marcin@stragowski.com>
+Signed-off-by: Cryolitia PukNgae <Cryolitia@gmail.com>
 
 ---
-base-commit: fa715f8c8b78a09f47701ce1cf46e9b67a49b8d0
-change-id: 20240708-rm-alias-288013f86456
+Changes in v4:
+- Apply suggest by Krzysztof Kozlowski, thanks!
+- Link to v3: https://lore.kernel.org/r/20240717-gpd_fan-v3-0-8d7efb1263b7@gmail.com
+
+Changes in v3:
+- Re-arrange code, thanks to Krzysztof Kozlowski, Guenter Roeck, Yao Zi!
+- Link to v2: https://lore.kernel.org/r/20240717-gpd_fan-v2-0-f7b7e6b9f21b@gmail.com
+
+Changes in v2:
+- Improved documentation, thanks to Randy Dunlap!
+- Link to v1: https://lore.kernel.org/r/20240716-gpd_fan-v1-0-34051dd71a06@gmail.com
+
+---
+Cryolitia PukNgae (2):
+      hwmon: add GPD devices sensor driver
+      hwmon: document: add gpd-fan
+
+ Documentation/hwmon/gpd-fan.rst |  63 ++++
+ Documentation/hwmon/index.rst   |   1 +
+ MAINTAINERS                     |   7 +
+ drivers/hwmon/Kconfig           |  10 +
+ drivers/hwmon/Makefile          |   1 +
+ drivers/hwmon/gpd-fan.c         | 683 ++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 765 insertions(+)
+---
+base-commit: d67978318827d06f1c0fa4c31343a279e9df6fde
+change-id: 20240716-gpd_fan-57f30923c884
 
 Best regards,
 -- 
-Emil Velikov <emil.l.velikov@gmail.com>
+Cryolitia PukNgae <Cryolitia@gmail.com>
 
