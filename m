@@ -1,150 +1,87 @@
-From: "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
-Date: Thu, 18 Jul 2024 16:38:58 +0800
-Subject: [PATCH v2] mailbox: mtk-cmdq: Move devm_mbox_controller_register()
- after devm_pm_runtime_enable()
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH 00/22] iio: make masklength __private (round 2)
+Date: Thu, 18 Jul 2024 15:37:46 +0200
+Message-Id: <20240718-dev-iio-masklength-private2-v1-0-8e12cd042906@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240718-mtk-cmdq-fixup-v2-1-f6bb3c052a60@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIAKHUmGYC/yWMQQ6CMBBFr2Jm7ZC2QAFX3sOwQBhlwLbYItEQ7
- m7F5fs/760QyDMFOB1W8LRwYGcjqOMB2r6xd0LuIoMSKhOFLNHMI7ame+KN368JM5EWlc4FVfo
- KUZo8xWMPXurIPYfZ+c/eX+Rv/ae0TGUutNKJylUpUOLQBGdx6JMH27OhjpuZxqR1Bupt274Qh
- S42qQAAAA==
-To: Jassi Brar <jassisinghbrar@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- CK Hu <ck.hu@mediatek.com>
-Cc: Jassi Brar <jaswinder.singh@linaro.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- "Jason-JH.Lin" <jason-jh.lin@mediatek.com>, 
- Singo Chang <singo.chang@mediatek.com>, Nancy Lin <nancy.lin@mediatek.com>, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- Project_Global_Chrome_Upstream_Group@mediatek.com
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAKoamWYC/x3MQQqAIBAAwK/EnltQC6y+Eh0kV1sqCw0Jor8nH
+ ecyDySKTAmG6oFImRMfoUDWFcyLCZ6QbTEooVqhpURLGZkP3E1aNwr+WvCMnM1FCmfb2b5xQut
+ OQhnOSI7vfx+n9/0AX84PzW0AAAA=
+To: linux-iio@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, Andreas Klinger <ak@it-klinger.de>, 
+ Song Qiang <songqiang1304521@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721291968; l=4363;
- i=jason-jh.lin@mediatek.com; s=20240718; h=from:subject:message-id;
- bh=ygtphOut6HLHA8ydhy2hDmOMgR0COlbPJWasC/1Cw8I=;
- b=Ze2pqM8+jGwXQ+JzInd9tLbwpk0U8NnJOUu2mhDLnYXcTK9Iat2UjLUrVE3ZhkMSLzur2jUch
- fb7GXOkS/XeB8Kw3+dkHHWdN4XIn13qN8+l4YK18rZJKoXXYkRvhMVN
-X-Developer-Key: i=jason-jh.lin@mediatek.com; a=ed25519;
- pk=7Hn+BnFBlPrluT5ks5tKVWb3f7O/bMBs6qEemVJwqOo=
-X-Endpoint-Received: by B4 Relay for jason-jh.lin@mediatek.com/20240718 with auth_id=187
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721309903; l=3113;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=8Uli0ChG4jZLPPsbSQ3WXP2ht09wW1DHRmGxM4Samzg=;
+ b=cmILg206q4j7X+2olECakoOHFPVX8RRrsI9OejMsj1+KHl7qkF6qeu22+m8ZxTkNrE2qqjw3q
+ B7XY/7xuo0tBDuUpEARKmVDUPzv1AI+9ii6sisI0fjG/vt5kPrhO1Yj
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When mtk-cmdq unbinds, a WARN_ON message with condition
-pm_runtime_get_sync() < 0 occurs.
+Hi Jonathan,
 
-According to the call tracei below:
-  cmdq_mbox_shutdown
-  mbox_free_channel
-  mbox_controller_unregister
-  __devm_mbox_controller_unregister
-  ...
+Here it goes the second round about annotating .masklength as __private.
 
-The root cause can be deduced to be calling pm_runtime_get_sync() after
-calling pm_runtime_disable() as observed below:
-1. CMDQ driver uses devm_mbox_controller_register() in cmdq_probe()
-   to bind the cmdq device to the mbox_controller, so
-   devm_mbox_controller_unregister() will automatically unregister
-   the device bound to the mailbox controller when the device-managed
-   resource is removed. That means devm_mbox_controller_unregister()
-   and cmdq_mbox_shoutdown() will be called after cmdq_remove().
-2. CMDQ driver also uses devm_pm_runtime_enable() in cmdq_probe() after
-   devm_mbox_controller_register(), so that devm_pm_runtime_disable()
-   will be called after cmdq_remove(), but before
-   devm_mbox_controller_unregister().
-
-To fix this problem, cmdq_probe() needs to move
-devm_mbox_controller_register() after devm_pm_runtime_enable() to make
-devm_pm_runtime_disable() be called after
-devm_mbox_controller_unregister().
-
-Fixes: 623a6143a845 ("mailbox: mediatek: Add Mediatek CMDQ driver")
-Signed-off-by: Jason-JH.Lin <jason-jh.lin@mediatek.com>
----
-When mtk-cmdq unbinds, a WARN_ON message with condition
-pm_runtime_get_sync() < 0 occurs.
-
-According to the call tracei below:
-  cmdq_mbox_shutdown
-  mbox_free_channel
-  mbox_controller_unregister
-  __devm_mbox_controller_unregister
-  ...
-
-The root cause can be deduced to be calling pm_runtime_get_sync() after
-calling pm_runtime_disable() as observed below:
-1. CMDQ driver uses devm_mbox_controller_register() in cmdq_probe()
-   to bind the cmdq device to the mbox_controller, so
-   devm_mbox_controller_unregister() will automatically unregister
-   the device bound to the mailbox controller when the device-managed
-   resource is removed. That means devm_mbox_controller_unregister()
-   and cmdq_mbox_shoutdown() will be called after cmdq_remove().
-2. CMDQ driver also uses devm_pm_runtime_enable() in cmdq_probe() after
-   devm_mbox_controller_register(), so that devm_pm_runtime_disable()
-   will be called after cmdq_remove(), but before
-   devm_mbox_controller_unregister().
-
-To fix this problem, cmdq_probe() needs to move
-devm_mbox_controller_register() after devm_pm_runtime_enable() to make
-devm_pm_runtime_disable() be called after
-devm_mbox_controller_unregister().
-
-Change-Id: I4f0e68eac5186fe8041ea2f16c8e852d52d71cb0
----
-Changes in v2:
-- Change to move the calling sequence of devm_mbox_controller_register()
-  and devm_pm_runtime_enable().
-- Link to v1: https://lore.kernel.org/r/20240613150626.25280-1-jason-jh.lin@mediatek.com
----
- drivers/mailbox/mtk-cmdq-mailbox.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/mailbox/mtk-cmdq-mailbox.c b/drivers/mailbox/mtk-cmdq-mailbox.c
-index f1dfce9e27f5..002003c3970a 100644
---- a/drivers/mailbox/mtk-cmdq-mailbox.c
-+++ b/drivers/mailbox/mtk-cmdq-mailbox.c
-@@ -370,6 +370,8 @@ static void cmdq_remove(struct platform_device *pdev)
- {
- 	struct cmdq *cmdq = platform_get_drvdata(pdev);
- 
-+	devm_mbox_controller_unregister(&pdev->dev, &cmdq->mbox);
-+
- 	if (cmdq->pdata->sw_ddr_en)
- 		cmdq_sw_ddr_enable(cmdq, false);
- 
-@@ -689,12 +691,6 @@ static int cmdq_probe(struct platform_device *pdev)
- 		cmdq->mbox.chans[i].con_priv = (void *)&cmdq->thread[i];
- 	}
- 
--	err = devm_mbox_controller_register(dev, &cmdq->mbox);
--	if (err < 0) {
--		dev_err(dev, "failed to register mailbox: %d\n", err);
--		return err;
--	}
--
- 	platform_set_drvdata(pdev, cmdq);
- 
- 	WARN_ON(clk_bulk_prepare(cmdq->pdata->gce_num, cmdq->clocks));
-@@ -722,6 +718,12 @@ static int cmdq_probe(struct platform_device *pdev)
- 	pm_runtime_set_autosuspend_delay(dev, CMDQ_MBOX_AUTOSUSPEND_DELAY_MS);
- 	pm_runtime_use_autosuspend(dev);
- 
-+	err = devm_mbox_controller_register(dev, &cmdq->mbox);
-+	if (err < 0) {
-+		dev_err(dev, "failed to register mailbox: %d\n", err);
-+		return err;
-+	}
-+
- 	return 0;
- }
- 
+Again, only compile tested for arm with allyesconfig.
 
 ---
-base-commit: 797012914d2d031430268fe512af0ccd7d8e46ef
-change-id: 20240718-mtk-cmdq-fixup-40379650e96b
+Nuno Sa (22):
+      iio: adc: cc10001_adc: make use of iio_for_each_active_channel()
+      iio: adc: dln2-adc: use new '.masklength' accessors
+      iio: adc: hx711: make use of iio_for_each_active_channel()
+      iio: dummy: iio_simple_dummy_buffer: use iio_for_each_active_channel()
+      iio: health: afe4403: make use of iio_for_each_active_channel()
+      iio: health: max30102: make use of iio_get_masklength()
+      iio: health: afe4404: make use of iio_for_each_active_channel()
+      iio: humidity: am2315: make use of iio_for_each_active_channel()
+      iio: imu: bmi160_core: make use of iio_for_each_active_channel()
+      iio: imu: bno055: make use of iio_get_masklength()
+      iio: imu: kmx61: make use of iio_for_each_active_channel()
+      iio: light: adjd_s311: make use of iio_for_each_active_channel()
+      iio: light: gp2ap020a00f: make use of iio_for_each_active_channel()
+      iio: light: isl29125: make use of iio_for_each_active_channel()
+      iio: light: si1145: use new '.masklength' accessors
+      iio: light: tcs3414: make use of iio_for_each_active_channel()
+      iio: light: tcs3472: make use of iio_for_each_active_channel()
+      iio: magnetometer: rm3100-core: make use of iio_get_masklength()
+      iio: pressure: dlhl60d: make use of iio_for_each_active_channel()
+      iio: proximity: hx9023s: make use of iio_for_each_active_channel()
+      iio: proximity: sx9500: make use of iio_for_each_active_channel()
+      iio: proximity: sx_common: make use of iio_for_each_active_channel()
 
-Best regards,
--- 
-Jason-JH.Lin <jason-jh.lin@mediatek.com>
+ drivers/iio/adc/cc10001_adc.c               | 4 +---
+ drivers/iio/adc/dln2-adc.c                  | 8 +++-----
+ drivers/iio/adc/hx711.c                     | 5 +----
+ drivers/iio/dummy/iio_simple_dummy_buffer.c | 2 +-
+ drivers/iio/health/afe4403.c                | 3 +--
+ drivers/iio/health/afe4404.c                | 3 +--
+ drivers/iio/health/max30102.c               | 2 +-
+ drivers/iio/humidity/am2315.c               | 3 +--
+ drivers/iio/imu/bmi160/bmi160_core.c        | 3 +--
+ drivers/iio/imu/bno055/bno055.c             | 2 +-
+ drivers/iio/imu/kmx61.c                     | 3 +--
+ drivers/iio/light/adjd_s311.c               | 3 +--
+ drivers/iio/light/gp2ap020a00f.c            | 9 +++------
+ drivers/iio/light/isl29125.c                | 3 +--
+ drivers/iio/light/si1145.c                  | 7 +++----
+ drivers/iio/light/tcs3414.c                 | 3 +--
+ drivers/iio/light/tcs3472.c                 | 3 +--
+ drivers/iio/magnetometer/rm3100-core.c      | 2 +-
+ drivers/iio/pressure/dlhl60d.c              | 3 +--
+ drivers/iio/proximity/hx9023s.c             | 4 ++--
+ drivers/iio/proximity/sx9500.c              | 3 +--
+ drivers/iio/proximity/sx_common.c           | 6 ++----
+ 22 files changed, 30 insertions(+), 54 deletions(-)
+---
+base-commit: 986da024b99a72e64f6bdb3f3f0e52af024b1f50
+change-id: 20240711-dev-iio-masklength-private2-cd8d93f07781
+--
+
+Thanks!
+- Nuno Sá
 
