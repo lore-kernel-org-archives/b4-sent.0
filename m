@@ -1,73 +1,84 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Fri, 19 Jul 2024 17:12:41 +0100
-Subject: [PATCH kmod 1/3] libkmod: document
- KMOD_INDEX_MODULES_BUILTIN_ALIAS in kmod_dump_index()
+Date: Fri, 19 Jul 2024 17:12:42 +0100
+Subject: [PATCH kmod 2/3] libkmod: correctly tag
+ kmod_module_new_from_name_lookup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240719-abi-fixes-v1-1-1e6d99a2846b@gmail.com>
+Message-Id: <20240719-abi-fixes-v1-2-1e6d99a2846b@gmail.com>
 References: <20240719-abi-fixes-v1-0-1e6d99a2846b@gmail.com>
 In-Reply-To: <20240719-abi-fixes-v1-0-1e6d99a2846b@gmail.com>
 To: linux-modules@vger.kernel.org
 Cc: Marco d'Itri <md@linux.it>, Eugene Syromiatnikov <esyr@redhat.com>, 
  Josh Boyer <jwboyer@fedoraproject.org>, 
  Yauheni Kaliuta <ykaliuta@fedoraproject.org>, 
- Alexey Gladkov <gladkov.alexey@gmail.com>, 
  Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721405562; l=1746;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721405562; l=1620;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=8AhtTXAyZZ10eWdz87tQwKwm866stviAIl/eVpSKW9U=;
- b=DB495+JOHzWaoxN3xLGaBrchoWkB1mvIa7tfARaIdUPZBMCoX/bHAf3YOHOrohst9OfbFmlf0
- vgvXqYM92ryCI05jNUfGdBx6VF21rSpkzkeKlZzk5bbbfGyK665WZTc
+ bh=M4YnV9+hVYcdsO1S8HqSahF+HvXqm0LQJKAHn27gLdo=;
+ b=CWvNKRHtB3FB1a1Ns3kXWRUkuOZzV8crymOuKk7taaxD9SKalrBrpN117Ll3tDdj1Npu7nlHX
+ xauKNpyRmAqBrY/24bMrQr1xhG4LTH27jif7eKi4X9Ir+c4dQQ9ery5
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The extra enum was introduced a few years ago, although the (only)
-function using it did not have it's documentation updated.
+The symbol was introduced with v30, yet was erroneously added in the v5
+section. Move it to the correct place.
 
-The commit itself has caused an ABI break with kmod v27, since the
-KMOD_INDEX_MODULES_BUILTIN value has changed.
+In theory this might cause an issue - severity depends on how the
+runtime linker is setup. From a harmless warning (on stderr/stdout) to
+failure to load the library.
 
-A search through Google, Github and Arch packages have shown one user of
-kmod_dump_index() - the only API that uses the enum.
+In practise this shouldn't be a problem, since there are seemingly no
+external users of the API.
 
-In that case and all others, no projects referencing the changed enum
-were found. Although since recent and/or supported distros use kmod v27
-or later we've decided to only update the documentation.
-
-Cc: Alexey Gladkov <gladkov.alexey@gmail.com>
-Fixes: b866b21 ("Lookup aliases in the modules.builtin.modinfo")
+Fixes: 9becaae ("libkmod: Add lookup from module name")
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
-The project itself being https://github.com/falconindy/modtree which
-hasn't been updated in 12 years.
+I'm fairly confident this commit won't cause an issue, although auditing
+the whole internet is not possible in practise. In my search I checked
+through Google, Github and all Arch packages using libkmod, namely:
 
-The following distros/versions ship kmod v26 or older, where bunch of
-them are no longer supported.
+ - dracut
+ - igt-gpu-tools
+ - libblockdev
+ - ndctl
+ - open-scsi
+ - pciutils
+ - stress-ng
+ - systemd
 
- - RHEL 8 + community variants Alma/Amazon/CentOS/Rocky/Scientific
- - Alpine Linux 3.11
- - Debian 10 + derivatives
- - Ubuntu 18.04
+Another option is to make the symbol as internal, since it's used solely
+by modinfo which static links libkmod.
+
+...we could also leave things as-is.
 ---
- libkmod/libkmod.c | 1 +
- 1 file changed, 1 insertion(+)
+ libkmod/libkmod.sym | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/libkmod/libkmod.c b/libkmod/libkmod.c
-index 213b424..fecb8e7 100644
---- a/libkmod/libkmod.c
-+++ b/libkmod/libkmod.c
-@@ -971,6 +971,7 @@ KMOD_EXPORT void kmod_unload_resources(struct kmod_ctx *ctx)
-  * KMOD_INDEX_MODULES_DEP: index of module dependencies;
-  * KMOD_INDEX_MODULES_ALIAS: index of module aliases;
-  * KMOD_INDEX_MODULES_SYMBOL: index of symbol aliases;
-+ * KMOD_INDEX_MODULES_BUILTIN_ALIAS: index of builtin module aliases.
-  * KMOD_INDEX_MODULES_BUILTIN: index of builtin module.
-  * @fd: file descriptor to dump index to
-  *
+diff --git a/libkmod/libkmod.sym b/libkmod/libkmod.sym
+index 0d6d338..e71f488 100644
+--- a/libkmod/libkmod.sym
++++ b/libkmod/libkmod.sym
+@@ -31,7 +31,6 @@ global:
+ 	kmod_module_new_from_name;
+ 	kmod_module_new_from_path;
+ 	kmod_module_new_from_lookup;
+-	kmod_module_new_from_name_lookup;
+ 	kmod_module_new_from_loaded;
+ 	kmod_module_ref;
+ 	kmod_module_unref;
+@@ -94,3 +93,8 @@ LIBKMOD_22 {
+ global:
+ 	kmod_get_dirname;
+ } LIBKMOD_6;
++
++LIBKMOD_30 {
++global:
++	kmod_module_new_from_name_lookup;
++} LIBKMOD_22;
 
 -- 
 2.45.2
