@@ -1,61 +1,74 @@
-From: Nikita Shubin <n.shubin@yadro.com>
-Date: Fri, 19 Jul 2024 17:30:16 +0300
-Subject: [PATCH v2] workqueue: doc: Fix function name, remove markers
+From: Emil Velikov <emil.l.velikov@gmail.com>
+Subject: [PATCH kmod 0/3] libkmod: misc ABI changes
+Date: Fri, 19 Jul 2024 17:12:40 +0100
+Message-Id: <20240719-abi-fixes-v1-0-1e6d99a2846b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240719-fix_doc-v2-1-a5cbeb46e0cc@yadro.com>
-X-B4-Tracking: v=1; b=H4sIAHd4mmYC/2WMQQ7CIBBFr9LMWkyHEimuvIdpDIWpnYWlAUNsG
- u4uduvy/f/ydkgUmRJcmx0iZU4clgry1ICb7fIkwb4yyFaqVqMRE38ePjihyHktx8mYTkG110j
- 1Okr3ofLM6R3idoQz/tb/RkaBwnjUF+r60Zr+tlkfw9mFFwyllC/7FNp3ngAAAA==
-To: Tejun Heo <tj@kernel.org>, Lai Jiangshan <jiangshanlai@gmail.com>, 
- Jonathan Corbet <corbet@lwn.net>
-Cc: nikita.shubin@maquefel.me, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux@yadro.com, 
- Nikita Shubin <n.shubin@yadro.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721399417; l=1221;
- i=n.shubin@yadro.com; s=20230718; h=from:subject:message-id;
- bh=J54vi+EARiXY1qbZRDNxODuY2S1a3C8+8h3B7EsXh9E=;
- b=3zYY9q2uPCLsBhaWI1jbMjaRHDeT4Bbh0astcXoZ+T7SGfSAWvSKMXhN3YShfyYZfo9YtoIHL3BH
- 6oJnv1TLAyrLZyIJunvLThv2KCGVWoBUVx2ziTpD/VvytzlVx+S4
-X-Developer-Key: i=n.shubin@yadro.com; a=ed25519;
- pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
-X-Endpoint-Received: by B4 Relay for n.shubin@yadro.com/20230718 with auth_id=161
+X-B4-Tracking: v=1; b=H4sIAHiQmmYC/x3KQQqAIBBA0avIrBtQCYa6SrQwG2s2FgoRiHdva
+ Pn4v0HlIlxhNg0KP1Llygo3GIhnyAej7Grw1o+WHGHYBJO8XJEskQspbuwm0P8u/Afdl7X3D+K
+ l1KpbAAAA
+To: linux-modules@vger.kernel.org
+Cc: Marco d'Itri <md@linux.it>, Eugene Syromiatnikov <esyr@redhat.com>, 
+ Josh Boyer <jwboyer@fedoraproject.org>, 
+ Yauheni Kaliuta <ykaliuta@fedoraproject.org>, 
+ Alexey Gladkov <gladkov.alexey@gmail.com>, 
+ Emil Velikov <emil.l.velikov@gmail.com>, 
+ Jose Ignacio Tornos Martinez <jtornosm@redhat.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721405562; l=1640;
+ i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
+ bh=eV3qb5B+I1nDNQOkwqUHc7RO6Qbz3kjLk+d5HXT++yg=;
+ b=PcWb4wLN548NuD7u1acnOtM+vH3kD+FNTQilSOgqp1eVc1t82LZd+2NFjBL4IjTx1MRGE2gem
+ kDCe4SrrPAhAGti36MLLUVZAm45cjZzgeR/afLbXItBd3diq5kzBToI
+X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
+ pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
+X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-- s/alloc_ordered_queue()/alloc_ordered_workqueue()/
-- remove markers to convert it into a link.
+Hello all,
 
-Signed-off-by: Nikita Shubin <n.shubin@yadro.com>
----
-Changes in v2:
-Matthew Wilcox:
-- No problem removed `` markers
-- Link to v1: https://lore.kernel.org/r/20240719-fix_doc-v1-1-9d176e38ba98@yadro.com
----
- Documentation/core-api/workqueue.rst | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Recently I've noticed that new API was added into the incorrect section
+of the version script. Thus the resulting library had incorrectly tagged
+symbol(s) in the exports list.
 
-diff --git a/Documentation/core-api/workqueue.rst b/Documentation/core-api/workqueue.rst
-index bcc370c876be..16f861c9791e 100644
---- a/Documentation/core-api/workqueue.rst
-+++ b/Documentation/core-api/workqueue.rst
-@@ -260,7 +260,7 @@ Some users depend on strict execution ordering where only one work item
- is in flight at any given time and the work items are processed in
- queueing order. While the combination of ``@max_active`` of 1 and
- ``WQ_UNBOUND`` used to achieve this behavior, this is no longer the
--case. Use ``alloc_ordered_queue()`` instead.
-+case. Use alloc_ordered_workqueue() instead.
- 
- 
- Example Execution Scenarios
+As result I went ahead and checked for other ABI issues and I've noticed
+that v26 and v27 have some changes in enum kmod_index. Although on
+inspection neither of these should have caused issues in reality:
+
+ - v26 changes the _KMOD_INDEX_PAD from signed to unsigned, all other
+   enum values are identical
+ - v27 adds new enum, effectively changing the final (non-pad) enum
+   value. My search has found zero users of change and new enums, and
+   single (abandoned) user of the kmod_dump_index() API (which uses the
+   enum in the first place)
+
+The respective commits have additional details and reasoning.
+
+Personally I would recommend picking patch 2 across all distros and
+patch 3, if your distro is shipping kmod version from git.
+
+Cc-ing Debian, Fedora and RedHat maintainers - team, please forward this
+to any fellow maintainers I may have missed.
+
+Thanks in advance,
+
+To: linux-modules@vger.kernel.org
 
 ---
-base-commit: 080402007007ca1bed8bcb103625137a5c8446c6
-change-id: 20240719-fix_doc-4ecd72bf9934
+Emil Velikov (3):
+      libkmod: document KMOD_INDEX_MODULES_BUILTIN_ALIAS in kmod_dump_index()
+      libkmod: correctly tag kmod_module_new_from_name_lookup
+      libkmod: move new weak API to separate section
+
+ libkmod/libkmod.c   |  1 +
+ libkmod/libkmod.sym | 14 +++++++++++---
+ 2 files changed, 12 insertions(+), 3 deletions(-)
+---
+base-commit: fa715f8c8b78a09f47701ce1cf46e9b67a49b8d0
+change-id: 20240717-abi-fixes-70771afcbe19
 
 Best regards,
 -- 
-Nikita Shubin <n.shubin@yadro.com>
+Emil Velikov <emil.l.velikov@gmail.com>
 
