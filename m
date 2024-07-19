@@ -1,116 +1,69 @@
-From: "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
-Date: Thu, 18 Jul 2024 22:17:04 +0800
-Subject: [PATCH v3] mailbox: mtk-cmdq: Move devm_mbox_controller_register()
- after devm_pm_runtime_enable()
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v3 0/6] Add new Amlogic SoCs info defines.
+Date: Fri, 19 Jul 2024 16:08:08 +0800
+Message-Id: <20240719-soc_info-v3-0-020a3b687c0c@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240718-mtk-cmdq-fixup-v3-1-e3cbb75bb950@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIAN8jmWYC/23O3w6CIBgF8FdxXIfjj6B21Xu0LhAx0QADYzXnu
- 4d20da6POfb+e1bQFBeqwCO2QK8ijpoZ1OghwzIXtirgrpNGRBEClTiCpp5hNK0d9jp52OCBaJ
- lzRlSNW9AGk1epcMOni8p9zrMzr92P+Kt/VAcU8wQJzwnjFQIYjiI4Cwc+vym7cmoVotZjbl0B
- mxOJN/tnzciSULHm4ZKxIjg6EdY1/UNa5RY+esAAAA=
-To: Jassi Brar <jassisinghbrar@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- CK Hu <ck.hu@mediatek.com>
-Cc: Jassi Brar <jaswinder.singh@linaro.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- "Jason-JH.Lin" <jason-jh.lin@mediatek.com>, 
- Singo Chang <singo.chang@mediatek.com>, Nancy Lin <nancy.lin@mediatek.com>, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, 
- Project_Global_Chrome_Upstream_Group@mediatek.com
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721312235; l=3031;
- i=jason-jh.lin@mediatek.com; s=20240718; h=from:subject:message-id;
- bh=OFADgvXE3QyzUSfck3fA9qrQhD5Lvasr7wyTfx6OG4A=;
- b=6FSYmXDRSQheDTXmSlRWEShpwc9Bzr17pepSJ9sUgZUmdH6S4CdDDAapAQq9YQeCzDzg91/vl
- qcs9jRp7ZPRDbuscIGzljw/fUMu+iB9GNXBvlBZCS3ZsYEPYuO6ndc8
-X-Developer-Key: i=jason-jh.lin@mediatek.com; a=ed25519;
- pk=7Hn+BnFBlPrluT5ks5tKVWb3f7O/bMBs6qEemVJwqOo=
-X-Endpoint-Received: by B4 Relay for jason-jh.lin@mediatek.com/20240718 with auth_id=187
+X-B4-Tracking: v=1; b=H4sIAOgemmYC/1WM0QqCMBhGX0V23WL719R51XtExNym/pAuthiF+
+ O5NIbLL8/GdM5PoArpImmImwSWM6KcM4lAQM+ipdxRtZgIMTqzinEZvbjh1nlrGVV22wjqmSL4
+ /guvwtaUu18wDxqcP762c+Lp+I/CLJE4ZZbLVSipQVuqzHu++R3M0fiRrJsFelTsVsipqUZraG
+ Ki0/FeXZfkAoB1TKt0AAAA=
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721376490; l=1524;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=7LKVRVwmEVDYk3bjN/+0LigjRWWH8ffXzL4TdtBLFVA=;
+ b=03k0kiFTbLlRWeqcsAMnewiqN5jSFCs+tiUCSgsdoOTbPtJmGTZXV0El9DLJOgqfbKM9MGQQp
+ ULKorzEzZCuBze6G3TP98JjvNnVIe+9qKBT4r2qchDHIZfOkPpVE2Km
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When mtk-cmdq unbinds, a WARN_ON message with condition
-pm_runtime_get_sync() < 0 occurs.
+Add more Amlogic SoCs info defines, include S4, C3
+T7, A4, A5.
 
-According to the call tracei below:
-  cmdq_mbox_shutdown
-  mbox_free_channel
-  mbox_controller_unregister
-  __devm_mbox_controller_unregister
-  ...
-
-The root cause can be deduced to be calling pm_runtime_get_sync() after
-calling pm_runtime_disable() as observed below:
-1. CMDQ driver uses devm_mbox_controller_register() in cmdq_probe()
-   to bind the cmdq device to the mbox_controller, so
-   devm_mbox_controller_unregister() will automatically unregister
-   the device bound to the mailbox controller when the device-managed
-   resource is removed. That means devm_mbox_controller_unregister()
-   and cmdq_mbox_shoutdown() will be called after cmdq_remove().
-2. CMDQ driver also uses devm_pm_runtime_enable() in cmdq_probe() after
-   devm_mbox_controller_register(), so that devm_pm_runtime_disable()
-   will be called after cmdq_remove(), but before
-   devm_mbox_controller_unregister().
-
-To fix this problem, cmdq_probe() needs to move
-devm_mbox_controller_register() after devm_pm_runtime_enable() to make
-devm_pm_runtime_disable() be called after
-devm_mbox_controller_unregister().
-
-Fixes: 623a6143a845 ("mailbox: mediatek: Add Mediatek CMDQ driver")
-Signed-off-by: Jason-JH.Lin <jason-jh.lin@mediatek.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
 Changes in v3:
-- Remove redundant message in b4 cover letter.
-- Remove the change of cmdq_remove() in v1
-- Link to v2: https://lore.kernel.org/r/20240718-mtk-cmdq-fixup-v2-1-f6bb3c052a60@mediatek.com
+- dt-binding: Delete full stop for subject and modify description.
+- Link to v2: https://lore.kernel.org/r/20240715-soc_info-v2-0-3836c8cc27a5@amlogic.com
 
 Changes in v2:
-- Change to move the calling sequence of devm_mbox_controller_register()
-  and devm_pm_runtime_enable().
-- Link to v1: https://lore.kernel.org/r/20240613150626.25280-1-jason-jh.lin@mediatek.com
----
- drivers/mailbox/mtk-cmdq-mailbox.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/mailbox/mtk-cmdq-mailbox.c b/drivers/mailbox/mtk-cmdq-mailbox.c
-index f1dfce9e27f5..4bff73532085 100644
---- a/drivers/mailbox/mtk-cmdq-mailbox.c
-+++ b/drivers/mailbox/mtk-cmdq-mailbox.c
-@@ -689,12 +689,6 @@ static int cmdq_probe(struct platform_device *pdev)
- 		cmdq->mbox.chans[i].con_priv = (void *)&cmdq->thread[i];
- 	}
- 
--	err = devm_mbox_controller_register(dev, &cmdq->mbox);
--	if (err < 0) {
--		dev_err(dev, "failed to register mailbox: %d\n", err);
--		return err;
--	}
--
- 	platform_set_drvdata(pdev, cmdq);
- 
- 	WARN_ON(clk_bulk_prepare(cmdq->pdata->gce_num, cmdq->clocks));
-@@ -722,6 +716,12 @@ static int cmdq_probe(struct platform_device *pdev)
- 	pm_runtime_set_autosuspend_delay(dev, CMDQ_MBOX_AUTOSUSPEND_DELAY_MS);
- 	pm_runtime_use_autosuspend(dev);
- 
-+	err = devm_mbox_controller_register(dev, &cmdq->mbox);
-+	if (err < 0) {
-+		dev_err(dev, "failed to register mailbox: %d\n", err);
-+		return err;
-+	}
-+
- 	return 0;
- }
- 
+- Add S4,C3,T7,A4 ao-secure bindings.
+- Modify ao_secure node using fallback to meson-gx.
+- Link to v1: https://lore.kernel.org/r/20240712-soc_info-v1-0-05ba95929d5a@amlogic.com
 
 ---
-base-commit: 797012914d2d031430268fe512af0ccd7d8e46ef
-change-id: 20240718-mtk-cmdq-fixup-40379650e96b
+Xianwei Zhao (6):
+      dt-bindings: arm: amlogic: meson-gx-ao-secure: support more SoCs
+      soc: amlogic: meson-gx-socinfo: add new SoCs id
+      arm64: dts: amlogic: s4: add ao secure node
+      arm64: dts: amlogic: c3: add ao secure node
+      arm64: dts: amlogic: t7: add ao secure node
+      arm64: dts: amlogic: a4: add ao secure node
+
+ .../bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml | 16 ++++++++++++----
+ arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi       |  8 ++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi              |  7 +++++++
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi              |  8 ++++++++
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi                |  8 ++++++++
+ drivers/soc/amlogic/meson-gx-socinfo.c                   | 10 ++++++++++
+ 6 files changed, 53 insertions(+), 4 deletions(-)
+---
+base-commit: db067bd17c0124228c31c5fdfa29ec65239e692a
+change-id: 20240711-soc_info-d01986b3de09
 
 Best regards,
 -- 
-Jason-JH.Lin <jason-jh.lin@mediatek.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
