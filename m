@@ -1,63 +1,55 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 19 Jul 2024 16:08:14 +0800
-Subject: [PATCH v3 6/6] arm64: dts: amlogic: a4: add ao secure node
+From: Nikita Shubin <n.shubin@yadro.com>
+Date: Fri, 19 Jul 2024 17:17:38 +0300
+Subject: [PATCH] workqueue: doc: Fix function name
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240719-soc_info-v3-6-020a3b687c0c@amlogic.com>
-References: <20240719-soc_info-v3-0-020a3b687c0c@amlogic.com>
-In-Reply-To: <20240719-soc_info-v3-0-020a3b687c0c@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721376490; l=1080;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=Zl2TiQJDwOdSpUPv3WU4sx37kiV4xoQ/BADR59alPhc=;
- b=wBSeur+SAfT00QiwrwbLZOTSIXxAG7NltC82LZfXjKXJidhqBJYlznZHLPPm46UKO75KdMPV8
- 64fpcWa2Q/uCH9GkFYeeIoMKN+9U/7o2E37yA6TO5myILPXOUqMx8rV
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Message-Id: <20240719-fix_doc-v1-1-9d176e38ba98@yadro.com>
+X-B4-Tracking: v=1; b=H4sIAIF1mmYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDc0NL3bTMiviU/GRdk9TkFHOjpDRLS2MTJaDqgqJUoBTYpOjY2loAeap
+ 64VkAAAA=
+To: Tejun Heo <tj@kernel.org>, Lai Jiangshan <jiangshanlai@gmail.com>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: nikita.shubin@maquefel.me, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux@yadro.com, 
+ Nikita Shubin <n.shubin@yadro.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721398668; l=1021;
+ i=n.shubin@yadro.com; s=20230718; h=from:subject:message-id;
+ bh=6/ib8dGatUxNJG05zdhXdZ6AZtRqyM3pThPJjlGkNx4=;
+ b=cRAqQq5yIutUty/S5LFaNNALEemsa2GMaE7bcvIREB7a+QH+jWdV0HWSn1WcK8HJtofYCtPStjOf
+ pwbD37WFDYGkuWv43RJQHnqG8SQJ3rvz4JK2+m0QFSCME1jQTWW1
+X-Developer-Key: i=n.shubin@yadro.com; a=ed25519;
+ pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
+X-Endpoint-Received: by B4 Relay for n.shubin@yadro.com/20230718 with auth_id=161
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add node for board info registers, which allows getting SoC family and
-board revision.
+s/alloc_ordered_queue()/alloc_ordered_workqueue()/
 
-For example, with MESON_GX_SOCINFO config enabled we can get the
-following information for board with Amlogic A4 SoC:
-soc soc0: Amlogic A4 (A113L2) Revision 40:b (1:1) Detected.
-
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Nikita Shubin <n.shubin@yadro.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ Documentation/core-api/workqueue.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi
-index 496c3a2bcf25..54d7a2d56ef6 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4-common.dtsi
-@@ -67,6 +67,14 @@ uart_b: serial@7a000 {
- 				clock-names = "xtal", "pclk", "baud";
- 				status = "disabled";
- 			};
-+
-+			sec_ao: ao-secure@10220 {
-+				compatible = "amlogic,a4-ao-secure",
-+					     "amlogic,meson-gx-ao-secure",
-+					     "syscon";
-+				reg = <0x0 0x10220 0x0 0x140>;
-+				amlogic,has-chip-id;
-+			};
- 		};
- 	};
- };
+diff --git a/Documentation/core-api/workqueue.rst b/Documentation/core-api/workqueue.rst
+index bcc370c876be..f28d7a1ab4b1 100644
+--- a/Documentation/core-api/workqueue.rst
++++ b/Documentation/core-api/workqueue.rst
+@@ -260,7 +260,7 @@ Some users depend on strict execution ordering where only one work item
+ is in flight at any given time and the work items are processed in
+ queueing order. While the combination of ``@max_active`` of 1 and
+ ``WQ_UNBOUND`` used to achieve this behavior, this is no longer the
+-case. Use ``alloc_ordered_queue()`` instead.
++case. Use ``alloc_ordered_workqueue()`` instead.
+ 
+ 
+ Example Execution Scenarios
 
+---
+base-commit: 080402007007ca1bed8bcb103625137a5c8446c6
+change-id: 20240719-fix_doc-4ecd72bf9934
+
+Best regards,
 -- 
-2.37.1
+Nikita Shubin <n.shubin@yadro.com>
 
