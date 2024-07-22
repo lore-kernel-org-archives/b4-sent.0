@@ -1,76 +1,91 @@
-From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Fri, 19 Jul 2024 17:12:43 +0100
-Subject: [PATCH kmod 3/3] libkmod: move new weak API to separate section
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Date: Mon, 22 Jul 2024 22:05:01 +0200
+Subject: [PATCH] arm64: dts: qcom: msm8916-longcheer-l8910: Add rear flash
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240719-abi-fixes-v1-3-1e6d99a2846b@gmail.com>
-References: <20240719-abi-fixes-v1-0-1e6d99a2846b@gmail.com>
-In-Reply-To: <20240719-abi-fixes-v1-0-1e6d99a2846b@gmail.com>
-To: linux-modules@vger.kernel.org
-Cc: Marco d'Itri <md@linux.it>, Eugene Syromiatnikov <esyr@redhat.com>, 
- Josh Boyer <jwboyer@fedoraproject.org>, 
- Yauheni Kaliuta <ykaliuta@fedoraproject.org>, 
- Jose Ignacio Tornos Martinez <jtornosm@redhat.com>, 
- Emil Velikov <emil.l.velikov@gmail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240722-x5_sy7802-v1-1-b2ffeeaf8d2d@apitzsch.eu>
+X-B4-Tracking: v=1; b=H4sIAGy7nmYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDcyND3QrT+OJKcwsDI12DJHOTxERzc6NUg2QloPqCotS0zAqwWdGxtbU
+ Aad18LVsAAAA=
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?St=C3=A9phane_Martins?= <stemartins@proton.me>, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721405562; l=1334;
- i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=vGLxbr7hhKT9ywrDmQYwW4P0+rL1j1tEnx5Lr/UUei0=;
- b=HkChS8BpMWSSsXkfB88Of9BJ3gC2qimdMCLTgfjlqyPIHnrwE1GaU/SjNRxecEZUABX/Y2HTE
- k1drtkMMPJeC8heA5dbSw7qoJsPjIGAhOqS0BbBnvaReZ5moP7k4IFK
-X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
- pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
-X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721678722; l=1600;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=3z8QU4g8ZpdKw7PLxFkOzP4TidQn21XO47XtCji7QEQ=;
+ b=llK5B0kB3/LuUytgjFAglkv3f/qqys73Jtv2UyMzwpsZ+LHSuBFqEZp0SOZSHDZSzH9y2jaAu
+ gPoGY5YgEfODDo83LQ2VPCGhRqCGgszkjMoiEfpRhXmCGG4AtlSIrEq
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the new weak API, to a separate section in the version script. These
-will be exposed with the upcoming v33 release and not with v5 as the
-symbol tag implies.
+The phone has a Silergy SY7802 flash LED controller.
 
-Cc: Jose Ignacio Tornos Martinez <jtornosm@redhat.com>
-Fixes: 05828b4 ("libkmod: add weak dependecies")
-Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
+Tested-by: Stéphane Martins <stemartins@proton.me>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
-This might be a bit of nuisance for Debian which has a git packages in
-unstable.
+ .../boot/dts/qcom/msm8916-longcheer-l8910.dts      | 27 ++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
-@Marco I think you'd _really_ want this for unstable.
----
- libkmod/libkmod.sym | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
-
-diff --git a/libkmod/libkmod.sym b/libkmod/libkmod.sym
-index e71f488..0046300 100644
---- a/libkmod/libkmod.sym
-+++ b/libkmod/libkmod.sym
-@@ -21,7 +21,6 @@ global:
- 	kmod_config_get_aliases;
- 	kmod_config_get_options;
- 	kmod_config_get_softdeps;
--	kmod_config_get_weakdeps;
- 	kmod_config_iter_get_key;
- 	kmod_config_iter_get_value;
- 	kmod_config_iter_next;
-@@ -42,7 +41,6 @@ global:
- 
- 	kmod_module_get_dependencies;
- 	kmod_module_get_softdeps;
--	kmod_module_get_weakdeps;
- 	kmod_module_get_filtered_blacklist;
- 
- 	kmod_module_get_name;
-@@ -98,3 +96,9 @@ LIBKMOD_30 {
- global:
- 	kmod_module_new_from_name_lookup;
- } LIBKMOD_22;
+diff --git a/arch/arm64/boot/dts/qcom/msm8916-longcheer-l8910.dts b/arch/arm64/boot/dts/qcom/msm8916-longcheer-l8910.dts
+index 3b7fdb6797a9..2cc54eaf7202 100644
+--- a/arch/arm64/boot/dts/qcom/msm8916-longcheer-l8910.dts
++++ b/arch/arm64/boot/dts/qcom/msm8916-longcheer-l8910.dts
+@@ -125,6 +125,26 @@ led@2 {
+ 			};
+ 		};
+ 	};
 +
-+LIBKMOD_33 {
-+global:
-+	kmod_config_get_weakdeps;
-+	kmod_module_get_weakdeps;
-+} LIBKMOD_30;
++	flash-led-controller@53 {
++		compatible = "silergy,sy7802";
++		reg = <0x53>;
++
++		enable-gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
++
++		pinctrl-0 = <&camera_rear_flash_default>;
++		pinctrl-names = "default";
++
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		led@0 {
++			reg = <0>;
++			function = LED_FUNCTION_FLASH;
++			color = <LED_COLOR_ID_WHITE>;
++			led-sources = <0>, <1>;
++		};
++	};
+ };
+ 
+ &blsp_i2c3 {
+@@ -278,6 +298,13 @@ camera_front_flash_default: camera-front-flash-default-state {
+ 		bias-disable;
+ 	};
+ 
++	camera_rear_flash_default: camera-rear-flash-default-state {
++		pins = "gpio9", "gpio16", "gpio117";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
+ 	gpio_keys_default: gpio-keys-default-state {
+ 		pins = "gpio107";
+ 		function = "gpio";
 
+---
+base-commit: 933069701c1b507825b514317d4edd5d3fd9d417
+change-id: 20240721-x5_sy7802-0b74aa772e0c
+
+Best regards,
 -- 
-2.45.2
+André Apitzsch <git@apitzsch.eu>
 
