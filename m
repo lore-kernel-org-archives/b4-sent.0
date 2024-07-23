@@ -1,91 +1,64 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Mon, 22 Jul 2024 22:05:01 +0200
-Subject: [PATCH] arm64: dts: qcom: msm8916-longcheer-l8910: Add rear flash
+From: Joel Granados <j.granados@samsung.com>
+Date: Tue, 23 Jul 2024 11:24:10 +0200
+Subject: [PATCH b4] Forward the smtpserveroption to the local command
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240722-x5_sy7802-v1-1-b2ffeeaf8d2d@apitzsch.eu>
-X-B4-Tracking: v=1; b=H4sIAGy7nmYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDcyND3QrT+OJKcwsDI12DJHOTxERzc6NUg2QloPqCotS0zAqwWdGxtbU
- Aad18LVsAAAA=
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?St=C3=A9phane_Martins?= <stemartins@proton.me>, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721678722; l=1600;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=3z8QU4g8ZpdKw7PLxFkOzP4TidQn21XO47XtCji7QEQ=;
- b=llK5B0kB3/LuUytgjFAglkv3f/qqys73Jtv2UyMzwpsZ+LHSuBFqEZp0SOZSHDZSzH9y2jaAu
- gPoGY5YgEfODDo83LQ2VPCGhRqCGgszkjMoiEfpRhXmCGG4AtlSIrEq
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240723-master-v1-1-52a11f4a96c6@samsung.com>
+X-B4-Tracking: v=1; b=H4sIALl2n2YC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDcyNj3dzE4pLUIl1Tw9TUNLNkA4MkwxQloOKCotS0zAqwQdFKSSZKsbW
+ 1AI7rm+xcAAAA
+To: "Kernel.org Tools" <tools@kernel.org>
+Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
+ Joel Granados <j.granados@samsung.com>
+X-Mailer: b4 0.15-dev-02a2b
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1061;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=uG9WTIKIPuvqQDWXZefXFQZHYlIkkpS5tqQSEO+u3eY=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGafdryHrWbyfumkJMkFwvkJ9HjzM6PrL7VY+
+ CplRYRjTeeM34kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJmn3a8AAoJELqXzVK3
+ lkFPwjML/jBA/5apwQXJ/T3vW5ZUvV1F1n7ftH6w/07XixSQsST8S5mTnWNhCsmf90cCOIc9UHW
+ AawEYGr2cQKV2TcU/I4YF65ksv8kwi2VL6hoxk8mtWrIbHuCVlQiiZ8oTuLH8zSU37o9TcCb+VL
+ 1vb9dw4Te4EhIfkolWJm6fl7AUwuf6sVJuTUG13tChYEI/bulj6Y9QmpbEvU9jPFPGMyuRfElta
+ jsjhDUzvO1gRNtJBm3JVM2N7BDrZy4Y6P6mrghpIIFt4urJ6+RDu2xeDH12LANofUYuSeNZG426
+ MmF0fflNYyV2ZcDBd+rI6kxOKdFk92Mra203/yj8J9QiP+IiVuLA7sxC/kl0Q1qBizbCgktqmlK
+ nUBXHdLB7tdF0N3HBEpA74mZRt6XolrSbrvmCPRVs5OaqEDssHIW7N0fj+qhKA5d+z3q5PtMp0z
+ Iq70bS4q/gQyKIcK4Px7BuCo2jocypTwx8kXGpxWSlkj3rWggn3CCZ3C4JB51G7z4in8yy0yo97
+ JE=
+X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The phone has a Silergy SY7802 flash LED controller.
+Additional arguments to the smtp command are needed depending on the
+sendemail identity. Append the additional arguments in smtpserveroptions
+to the smtp command.
 
-Tested-by: Stéphane Martins <stemartins@proton.me>
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- .../boot/dts/qcom/msm8916-longcheer-l8910.dts      | 27 ++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+ src/b4/__init__.py | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/msm8916-longcheer-l8910.dts b/arch/arm64/boot/dts/qcom/msm8916-longcheer-l8910.dts
-index 3b7fdb6797a9..2cc54eaf7202 100644
---- a/arch/arm64/boot/dts/qcom/msm8916-longcheer-l8910.dts
-+++ b/arch/arm64/boot/dts/qcom/msm8916-longcheer-l8910.dts
-@@ -125,6 +125,26 @@ led@2 {
- 			};
- 		};
- 	};
-+
-+	flash-led-controller@53 {
-+		compatible = "silergy,sy7802";
-+		reg = <0x53>;
-+
-+		enable-gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
-+
-+		pinctrl-0 = <&camera_rear_flash_default>;
-+		pinctrl-names = "default";
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		led@0 {
-+			reg = <0>;
-+			function = LED_FUNCTION_FLASH;
-+			color = <LED_COLOR_ID_WHITE>;
-+			led-sources = <0>, <1>;
-+		};
-+	};
- };
+diff --git a/src/b4/__init__.py b/src/b4/__init__.py
+index ae15b83..2b1a058 100644
+--- a/src/b4/__init__.py
++++ b/src/b4/__init__.py
+@@ -3783,6 +3783,9 @@ def get_smtp(dryrun: bool = False) -> Tuple[Union[smtplib.SMTP, smtplib.SMTP_SSL
+                 envpair = email.utils.parseaddr(env_sender)
+             if envpair[1]:
+                 smtp += ['-f', envpair[1]]
++        server_option = sconfig.get('smtpserveroption', '')
++        if server_option:
++            smtp += [server_option]
+         logger.debug('sendmail command: %s', ' '.join(smtp))
+         return smtp, fromaddr
  
- &blsp_i2c3 {
-@@ -278,6 +298,13 @@ camera_front_flash_default: camera-front-flash-default-state {
- 		bias-disable;
- 	};
- 
-+	camera_rear_flash_default: camera-rear-flash-default-state {
-+		pins = "gpio9", "gpio16", "gpio117";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
- 	gpio_keys_default: gpio-keys-default-state {
- 		pins = "gpio107";
- 		function = "gpio";
 
 ---
-base-commit: 933069701c1b507825b514317d4edd5d3fd9d417
-change-id: 20240721-x5_sy7802-0b74aa772e0c
+base-commit: a95708143ab35fe035ce852b72b94e68bbcb4f58
+change-id: 20240723-master-51eef6c00b1d
 
 Best regards,
 -- 
-André Apitzsch <git@apitzsch.eu>
+Joel Granados <j.granados@samsung.com>
 
