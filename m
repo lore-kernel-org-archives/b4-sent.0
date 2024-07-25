@@ -1,114 +1,115 @@
-From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Thu, 25 Jul 2024 06:00:02 +0100
-Subject: [PATCH net] net/tcp: Disable TCP-AO static key after RCU grace
- period
+From: Petar Stoykov <pd.pstoykov@gmail.com>
+Subject: [PATCH v4 0/3] Add support for Sensirion SDP500
+Date: Thu, 25 Jul 2024 17:37:26 +0200
+Message-Id: <20240725-mainline_sdp500-v4-0-ea2f5b189958@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240725-tcp-ao-static-branch-rcu-v1-1-021d009beebf@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANHboWYC/y2MQQrCQAwAv1JyNtCuXSp+RTxkt9Hm4LYkqQilf
- 3crHmdgZgNjFTa4Nhsov8VkLhW6UwN5ovJklLEyhDb07RAiel6QZjQnl4xJqeQJNa94iTzykM7
- UUYSaL8oP+fzWNyjscK8ykfE/Oq4vMmeFff8CTXt6QIgAAAA=
-To: Eric Dumazet <edumazet@google.com>, 
- "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@kernel.org, 
- Dmitry Safonov <0x7f454c46@gmail.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721883612; l=3165;
- i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=2VxC9EwCda1UYyzjKL3hCQeLFDKGZqGsvoyebrKwuJg=;
- b=bRV/3thrTrwofrcdBVEl5EV6EzzBMzOKZsDjmC2skvB/XdH8yqyWETm4f8tlFYrEu2IZS6cri
- L1GgotweV6wAzubtbYLK4XbrVDgzHQ8GQRwgSy8nWnCIimTjZgb5cS7
-X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
- pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
-X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
+X-B4-Tracking: v=1; b=H4sIADZxomYC/3WNwQrCMBBEf6Xs2ciSRNp48j+kSE227UKblESCU
+ vLvxt49vmHmzQ6JIlOCa7NDpMyJg6+gTw3YefATCXaVQaLU2KIU68B+YU+P5LYLokBnxs5qY6T
+ soK62SCO/D+O9rzxzeoX4OQ6y+qX/XVmJKjQoUbdPRUS3qVaWsw0r9KWUL7d/ZH+uAAAA
+To: linux-iio@vger.kernel.org, Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: Petar Stoykov <pd.pstoykov@gmail.com>, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721921965; l=3607;
+ i=pd.pstoykov@gmail.com; s=20240702; h=from:subject:message-id;
+ bh=SpYr0L55Hz3FjEJofLqAKNn+BX8Kmuw3pOqP/1Yo8tU=;
+ b=lJYI+kAuPeQirrIkMHfHgC3Bort52h8+w01VwR/6FZudzusqFJLXyHqgpM/KgZBDrRL6pOXab
+ lZJJy3D6aiPCZJbCZjfC+9YAs0cHHW+jivfVSxtUZ0a1wtOc1pgQWFD
+X-Developer-Key: i=pd.pstoykov@gmail.com; a=ed25519;
+ pk=oxcGqcVV5O6wqlTh+39SbOwfbpD763i5x4TavUAHiCg=
+X-Endpoint-Received: by B4 Relay for pd.pstoykov@gmail.com/20240702 with auth_id=179
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The lifetime of TCP-AO static_key is the same as the last
-tcp_ao_info. On the socket destruction tcp_ao_info ceases to be
-with RCU grace period, while tcp-ao static branch is currently deferred
-destructed. The static key definition is
-: DEFINE_STATIC_KEY_DEFERRED_FALSE(tcp_ao_needed, HZ);
+This patch series introduces support for Sensirion SDP500 in the IIO
+subsystem. The series is split into three patches:
 
-which means that if RCU grace period is delayed by more than a second
-and tcp_ao_needed is in the process of disablement, other CPUs may
-yet see tcp_ao_info which atent dead, but soon-to-be.
-And that breaks the assumption of static_key_fast_inc_not_disabled().
+1. The first patch adds the device tree bindings.
+2. The second patch implements the device driver.
+3. The third patch updates the MAINTAINERS file.
 
-Happened on netdev test-bot[1], so not a theoretical issue:
+The driver is relatively simple. It provides a way to read the measured
+differential pressure directly in Pa, as the device has a fixed scale
+factor of 1/60. When an applications wants to read the pressure value,
+3 bytes are read from the device, 2 are data and 1 is CRC8. If the crc
+check passes, the raw value is made available.
 
-[] jump_label: Fatal kernel bug, unexpected op at tcp_inbound_hash+0x1a7/0x870 [ffffffffa8c4e9b7] (eb 50 0f 1f 44 != 66 90 0f 1f 00)) size:2 type:1
-[] ------------[ cut here ]------------
-[] kernel BUG at arch/x86/kernel/jump_label.c:73!
-[] Oops: invalid opcode: 0000 [#1] PREEMPT SMP KASAN NOPTI
-[] CPU: 3 PID: 243 Comm: kworker/3:3 Not tainted 6.10.0-virtme #1
-[] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.16.3-0-ga6ed6b701f0a-prebuilt.qemu.org 04/01/2014
-[] Workqueue: events jump_label_update_timeout
-[] RIP: 0010:__jump_label_patch+0x2f6/0x350
-...
-[] Call Trace:
-[]  <TASK>
-[]  arch_jump_label_transform_queue+0x6c/0x110
-[]  __jump_label_update+0xef/0x350
-[]  __static_key_slow_dec_cpuslocked.part.0+0x3c/0x60
-[]  jump_label_update_timeout+0x2c/0x40
-[]  process_one_work+0xe3b/0x1670
-[]  worker_thread+0x587/0xce0
-[]  kthread+0x28a/0x350
-[]  ret_from_fork+0x31/0x70
-[]  ret_from_fork_asm+0x1a/0x30
-[]  </TASK>
-[] Modules linked in: veth
-[] ---[ end trace 0000000000000000 ]---
-[] RIP: 0010:__jump_label_patch+0x2f6/0x350
+The initialization of the device just starts the measurement process.
 
-[1]: https://netdev-3.bots.linux.dev/vmksft-tcp-ao-dbg/results/696681/5-connect-deny-ipv6/stderr
+We have been using this device and driver in a product development for
+almost a year now. There the pressure is read every 25ms and is used in a
+control loop. We have not even seen crc errors. We are using the
+"linux-imx" repository and not the mainline one but I see no risky kernel
+functions in use so it should be fine here too.
 
-Cc: stable@kernel.org
-Fixes: 67fa83f7c86a ("net/tcp: Add static_key for TCP-AO")
-Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
----
----
- net/ipv4/tcp_ao.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+All feedback is appreciated! Thank you for taking the time to review this.
 
-diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
-index 85531437890c..5ce914d3e3db 100644
---- a/net/ipv4/tcp_ao.c
-+++ b/net/ipv4/tcp_ao.c
-@@ -267,6 +267,14 @@ static void tcp_ao_key_free_rcu(struct rcu_head *head)
- 	kfree_sensitive(key);
- }
- 
-+static void tcp_ao_info_free_rcu(struct rcu_head *head)
-+{
-+	struct tcp_ao_info *ao = container_of(head, struct tcp_ao_info, rcu);
-+
-+	kfree(ao);
-+	static_branch_slow_dec_deferred(&tcp_ao_needed);
-+}
-+
- void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
- {
- 	struct tcp_ao_info *ao;
-@@ -290,9 +298,7 @@ void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
- 			atomic_sub(tcp_ao_sizeof_key(key), &sk->sk_omem_alloc);
- 		call_rcu(&key->rcu, tcp_ao_key_free_rcu);
- 	}
--
--	kfree_rcu(ao, rcu);
--	static_branch_slow_dec_deferred(&tcp_ao_needed);
-+	call_rcu(&ao->rcu, tcp_ao_info_free_rcu);
- }
- 
- void tcp_ao_time_wait(struct tcp_timewait_sock *tcptw, struct tcp_sock *tp)
+Changelog
+v1->v2:
+	driver code:
+* Removed the use of wrapper functions for logging
+* Using built-in crc function instead of a custom one
+* Removed the use of a wrapper function for i2c send and receive data
+* Use get_unaligned_be16 instead of custom calculation
+* Removed error log if devm_iio_device_alloc fails
+* indio_dev->name set directly to "sdp500"
+* Updated error logging to use "dev_err_probe" in probe function
+* Added a sensor readout in the probe function (first one is always bad)
+* Used devm_iio_device_register instead of iio_device_register
+* Removed trailing comma in "sdp500_id" data
+* Deleted sdp500_remove after using devm_iio_device_register in probe
+	dt-bindings:
+* Fixed dt-bindings example wording
+* Added vdd-supply in dt-bindings example
+
+v2->v3:
+	driver code:
+* Added link to datasheet at the start of the driver code
+* Removed some unnecessary defines
+* Removed an unused argument of sdp500_start_measurement function
+* Renamed variable that holds the received CRC to "received_crc"
+* Switched to returning RAW and SCALE values instead of PROCESSED
+* Change logging to use data->dev instead of indio_dev->dev.parent
+* Removed unnecessary debug log of the read value from the sensor
+* Added vdd regulator handling
+* Added "sensirion,sdp510" as compatible
+* Removed the aligning of '=' in the sdp500_driver struct
+	dt-bindings:
+* Added "sensirion,sdp510" as possible compatible value in dt-bindings example
+
+Link to v3: https://lore.kernel.org/r/20240702-mainline_sdp500-v3-0-0902047b3eee@gmail.com
+v3->v4:
+	driver code:
+* include linux/mod_devicetable.h
+* limit all lines to 80 characters
+* fix C++ style comment
+	dt-bindings and MAINTAINERS:
+* fix filename
+
+Signed-off-by: Petar Stoykov <pd.pstoykov@gmail.com>
 
 ---
-base-commit: c33ffdb70cc6df4105160f991288e7d2567d7ffa
-change-id: 20240725-tcp-ao-static-branch-rcu-85ede7b3a1a5
+Petar Stoykov (3):
+      dt-bindings: iio: pressure: Add Sensirion SDP500
+      iio: pressure: Add driver for Sensirion SDP500
+      MAINTAINERS: Add Sensirion SDP500
+
+ .../bindings/iio/pressure/sensirion,sdp500.yaml    |  46 ++++++
+ MAINTAINERS                                        |   6 +
+ drivers/iio/pressure/Kconfig                       |   9 ++
+ drivers/iio/pressure/Makefile                      |   1 +
+ drivers/iio/pressure/sdp500.c                      | 157 +++++++++++++++++++++
+ 5 files changed, 219 insertions(+)
+---
+base-commit: ab27740f76654ed58dd32ac0ba0031c18a6dea3b
+change-id: 20240702-mainline_sdp500-0d9f8c499228
 
 Best regards,
 -- 
-Dmitry Safonov <0x7f454c46@gmail.com>
+Petar Stoykov <pd.pstoykov@gmail.com>
 
