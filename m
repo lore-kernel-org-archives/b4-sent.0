@@ -1,217 +1,100 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 26 Jul 2024 13:31:15 +0200
-Subject: [PATCH] iio: buffer-dma: Move exports into IIO_DMA_BUFFER
- namespace
+Date: Fri, 26 Jul 2024 14:07:33 +0200
+Subject: [PATCH] hwmon: ltc2947: move to firmware agnostic API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240726-dev-iio-dma-buf-mod-namespace-v1-1-8877cfe7f68e@analog.com>
-X-B4-Tracking: v=1; b=H4sIAAKJo2YC/x3MMQqEMBAF0KvI1A5ojK7rVcQia746RRJJUATx7
- hssX/NuSoiCRENxU8QpSYLPqMuC5s34FSw2m1SldPVRHVucLBLYOsO/Y2EXLHvjkHYzg1vVoNX
- 1t9e9pnzsEYtc7z9Oz/MHfQvUJm8AAAA=
-To: linux-iio@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>
+Message-Id: <20240726-dev-hwmon-ltc6947-fw-agnostic-v1-1-f7d6cab7d438@analog.com>
+X-B4-Tracking: v=1; b=H4sIAISRo2YC/x3MQQqAIBAAwK/Enlso06K+Eh1C11ooDY0Kwr8nH
+ ecyL0QKTBGG4oVAF0f2LqMuC9Dr7BZCNtkgKiGrTrRo6ML13r3D7dRtLzu0N86L8/FkjbqWfaO
+ IlDIK8nEEsvz8/zil9AE+AsT+bwAAAA==
+To: linux-hwmon@vger.kernel.org
+Cc: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721993475; l=7129;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721995652; l=2700;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=76KN45pWp9MF4JylEXizXpsfiEB/qHdPlOkyB2Qqqis=;
- b=Pm8ZzgBv5bDILllFgrdv2Xk+Kb9g8bktMZHTrYRhfqTWWcNTuByfZX27Arq2v/GZVaJYlmjRb
- Iin13ecRPgDDUPRCZH5VBSO/LSxL5Pr/wR+N69pmJFBzqBXA8cAh0jz
+ bh=eHEIw/BFCLR3h2Cjnfq7/AwNP2mxs1wE4zIYao0bqAM=;
+ b=h8f8UOeiF7FPrCtPK1LKztf2a9WF0sORR+X5LuPzTUw0QvrSFQ6uJ+cB5XM3XkwInxWiek9g3
+ l1WRgGeUWstA9zwOceF7g4YX56cK8+JO5X8jR9fodJ24NgLxGIAx+F8
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Avoid unnecessary pollution of the global symbol namespace and move
-global APIs into a specific namespace. Import that into the places that
-use them
+Use the device property APIs so the driver does not depend on OF to
+work.
+
+While at it, properly include mod_devicetable for struct of_device_id
+and fix some parameter alignment in the changed places.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/buffer/industrialio-buffer-dma.c       | 36 +++++++++++-----------
- drivers/iio/buffer/industrialio-buffer-dmaengine.c |  1 +
- 2 files changed, 19 insertions(+), 18 deletions(-)
+ drivers/hwmon/ltc2947-core.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/iio/buffer/industrialio-buffer-dma.c b/drivers/iio/buffer/industrialio-buffer-dma.c
-index 647f417a045e..dbde1443d6ed 100644
---- a/drivers/iio/buffer/industrialio-buffer-dma.c
-+++ b/drivers/iio/buffer/industrialio-buffer-dma.c
-@@ -248,7 +248,7 @@ void iio_dma_buffer_block_done(struct iio_dma_buffer_block *block)
- 	iio_dma_buffer_queue_wake(queue);
- 	dma_fence_end_signalling(cookie);
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_block_done);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_block_done, IIO_DMA_BUFFER);
+diff --git a/drivers/hwmon/ltc2947-core.c b/drivers/hwmon/ltc2947-core.c
+index d2ff6e700770d..244839167e51c 100644
+--- a/drivers/hwmon/ltc2947-core.c
++++ b/drivers/hwmon/ltc2947-core.c
+@@ -11,7 +11,8 @@
+ #include <linux/hwmon.h>
+ #include <linux/hwmon-sysfs.h>
+ #include <linux/module.h>
+-#include <linux/of.h>
++#include <linux/mod_devicetable.h>
++#include <linux/property.h>
+ #include <linux/regmap.h>
  
- /**
-  * iio_dma_buffer_block_list_abort() - Indicate that a list block has been
-@@ -287,7 +287,7 @@ void iio_dma_buffer_block_list_abort(struct iio_dma_buffer_queue *queue,
- 	iio_dma_buffer_queue_wake(queue);
- 	dma_fence_end_signalling(cookie);
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_block_list_abort);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_block_list_abort, IIO_DMA_BUFFER);
- 
- static bool iio_dma_block_reusable(struct iio_dma_buffer_block *block)
- {
-@@ -420,7 +420,7 @@ int iio_dma_buffer_request_update(struct iio_buffer *buffer)
- 
- 	return ret;
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_request_update);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_request_update, IIO_DMA_BUFFER);
- 
- static void iio_dma_buffer_fileio_free(struct iio_dma_buffer_queue *queue)
- {
-@@ -506,7 +506,7 @@ int iio_dma_buffer_enable(struct iio_buffer *buffer,
- 
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_enable);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_enable, IIO_DMA_BUFFER);
- 
- /**
-  * iio_dma_buffer_disable() - Disable DMA buffer
-@@ -530,7 +530,7 @@ int iio_dma_buffer_disable(struct iio_buffer *buffer,
- 
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_disable);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_disable, IIO_DMA_BUFFER);
- 
- static void iio_dma_buffer_enqueue(struct iio_dma_buffer_queue *queue,
- 	struct iio_dma_buffer_block *block)
-@@ -636,7 +636,7 @@ int iio_dma_buffer_read(struct iio_buffer *buffer, size_t n,
- {
- 	return iio_dma_buffer_io(buffer, n, user_buffer, false);
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_read);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_read, IIO_DMA_BUFFER);
- 
- /**
-  * iio_dma_buffer_write() - DMA buffer write callback
-@@ -653,7 +653,7 @@ int iio_dma_buffer_write(struct iio_buffer *buffer, size_t n,
- 	return iio_dma_buffer_io(buffer, n,
- 				 (__force __user char *)user_buffer, true);
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_write);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_write, IIO_DMA_BUFFER);
- 
- /**
-  * iio_dma_buffer_usage() - DMA buffer data_available and
-@@ -696,7 +696,7 @@ size_t iio_dma_buffer_usage(struct iio_buffer *buf)
- 
- 	return data_available;
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_usage);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_usage, IIO_DMA_BUFFER);
- 
- struct iio_dma_buffer_block *
- iio_dma_buffer_attach_dmabuf(struct iio_buffer *buffer,
-@@ -723,7 +723,7 @@ iio_dma_buffer_attach_dmabuf(struct iio_buffer *buffer,
- 
- 	return block;
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_attach_dmabuf);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_attach_dmabuf, IIO_DMA_BUFFER);
- 
- void iio_dma_buffer_detach_dmabuf(struct iio_buffer *buffer,
- 				  struct iio_dma_buffer_block *block)
-@@ -731,7 +731,7 @@ void iio_dma_buffer_detach_dmabuf(struct iio_buffer *buffer,
- 	block->state = IIO_BLOCK_STATE_DEAD;
- 	iio_buffer_block_put_atomic(block);
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_detach_dmabuf);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_detach_dmabuf, IIO_DMA_BUFFER);
- 
- static int iio_dma_can_enqueue_block(struct iio_dma_buffer_block *block)
- {
-@@ -784,7 +784,7 @@ int iio_dma_buffer_enqueue_dmabuf(struct iio_buffer *buffer,
- 
- 	return ret;
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_enqueue_dmabuf);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_enqueue_dmabuf, IIO_DMA_BUFFER);
- 
- void iio_dma_buffer_lock_queue(struct iio_buffer *buffer)
- {
-@@ -792,7 +792,7 @@ void iio_dma_buffer_lock_queue(struct iio_buffer *buffer)
- 
- 	mutex_lock(&queue->lock);
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_lock_queue);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_lock_queue, IIO_DMA_BUFFER);
- 
- void iio_dma_buffer_unlock_queue(struct iio_buffer *buffer)
- {
-@@ -800,7 +800,7 @@ void iio_dma_buffer_unlock_queue(struct iio_buffer *buffer)
- 
- 	mutex_unlock(&queue->lock);
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_unlock_queue);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_unlock_queue, IIO_DMA_BUFFER);
- 
- /**
-  * iio_dma_buffer_set_bytes_per_datum() - DMA buffer set_bytes_per_datum callback
-@@ -816,7 +816,7 @@ int iio_dma_buffer_set_bytes_per_datum(struct iio_buffer *buffer, size_t bpd)
- 
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_set_bytes_per_datum);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_set_bytes_per_datum, IIO_DMA_BUFFER);
- 
- /**
-  * iio_dma_buffer_set_length - DMA buffer set_length callback
-@@ -836,7 +836,7 @@ int iio_dma_buffer_set_length(struct iio_buffer *buffer, unsigned int length)
- 
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_set_length);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_set_length, IIO_DMA_BUFFER);
- 
- /**
-  * iio_dma_buffer_init() - Initialize DMA buffer queue
-@@ -864,7 +864,7 @@ int iio_dma_buffer_init(struct iio_dma_buffer_queue *queue,
- 
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_init);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_init, IIO_DMA_BUFFER);
- 
- /**
-  * iio_dma_buffer_exit() - Cleanup DMA buffer queue
-@@ -882,7 +882,7 @@ void iio_dma_buffer_exit(struct iio_dma_buffer_queue *queue)
- 
- 	mutex_unlock(&queue->lock);
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_exit);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_exit, IIO_DMA_BUFFER);
- 
- /**
-  * iio_dma_buffer_release() - Release final buffer resources
-@@ -896,7 +896,7 @@ void iio_dma_buffer_release(struct iio_dma_buffer_queue *queue)
- {
- 	mutex_destroy(&queue->lock);
- }
--EXPORT_SYMBOL_GPL(iio_dma_buffer_release);
-+EXPORT_SYMBOL_NS_GPL(iio_dma_buffer_release, IIO_DMA_BUFFER);
- 
- MODULE_AUTHOR("Lars-Peter Clausen <lars@metafoo.de>");
- MODULE_DESCRIPTION("DMA buffer for the IIO framework");
-diff --git a/drivers/iio/buffer/industrialio-buffer-dmaengine.c b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-index 12aa1412dfa0..a2246826c11e 100644
---- a/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-+++ b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-@@ -348,3 +348,4 @@ EXPORT_SYMBOL_NS_GPL(devm_iio_dmaengine_buffer_setup_ext, IIO_DMAENGINE_BUFFER);
- MODULE_AUTHOR("Lars-Peter Clausen <lars@metafoo.de>");
- MODULE_DESCRIPTION("DMA buffer for the IIO framework");
- MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS(IIO_DMA_BUFFER);
+ #include "ltc2947.h"
+@@ -1034,9 +1035,8 @@ static int ltc2947_setup(struct ltc2947_data *st)
+ 		/* 19.89E-6 * 10E9 */
+ 		st->lsb_energy = 19890;
+ 	}
+-	ret = of_property_read_u32_array(st->dev->of_node,
+-					 "adi,accumulator-ctl-pol", accum,
+-					  ARRAY_SIZE(accum));
++	ret = device_property_read_u32_array(st->dev, "adi,accumulator-ctl-pol",
++					     accum, ARRAY_SIZE(accum));
+ 	if (!ret) {
+ 		u32 accum_reg = LTC2947_ACCUM_POL_1(accum[0]) |
+ 				LTC2947_ACCUM_POL_2(accum[1]);
+@@ -1045,9 +1045,9 @@ static int ltc2947_setup(struct ltc2947_data *st)
+ 		if (ret)
+ 			return ret;
+ 	}
+-	ret = of_property_read_u32(st->dev->of_node,
+-				   "adi,accumulation-deadband-microamp",
+-				   &deadband);
++	ret = device_property_read_u32(st->dev,
++				       "adi,accumulation-deadband-microamp",
++				       &deadband);
+ 	if (!ret) {
+ 		/* the LSB is the same as the current, so 3mA */
+ 		ret = regmap_write(st->map, LTC2947_REG_ACCUM_DEADBAND,
+@@ -1056,7 +1056,7 @@ static int ltc2947_setup(struct ltc2947_data *st)
+ 			return ret;
+ 	}
+ 	/* check gpio cfg */
+-	ret = of_property_read_u32(st->dev->of_node, "adi,gpio-out-pol", &pol);
++	ret = device_property_read_u32(st->dev, "adi,gpio-out-pol", &pol);
+ 	if (!ret) {
+ 		/* setup GPIO as output */
+ 		u32 gpio_ctl = LTC2947_GPIO_EN(1) | LTC2947_GPIO_FAN_EN(1) |
+@@ -1067,8 +1067,8 @@ static int ltc2947_setup(struct ltc2947_data *st)
+ 		if (ret)
+ 			return ret;
+ 	}
+-	ret = of_property_read_u32_array(st->dev->of_node, "adi,gpio-in-accum",
+-					 accum, ARRAY_SIZE(accum));
++	ret = device_property_read_u32_array(st->dev, "adi,gpio-in-accum",
++					     accum, ARRAY_SIZE(accum));
+ 	if (!ret) {
+ 		/*
+ 		 * Setup the accum options. The gpioctl is already defined as
 
 ---
-base-commit: 472438c7e0e2261c6737a8321f46ef176eef1c8f
-change-id: 20240726-dev-iio-dma-buf-mod-namespace-523e54198484
+base-commit: 1ea3fd1eb9869fcdcbc9c68f9728bfc47b9503f1
+change-id: 20240726-dev-hwmon-ltc6947-fw-agnostic-c14935ee55d5
 --
 
 Thanks!
