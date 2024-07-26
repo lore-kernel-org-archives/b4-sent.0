@@ -1,74 +1,115 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Fri, 26 Jul 2024 17:17:53 +0800
-To: loongarch@lists.linux.dev, linux-efi@vger.kernel.org
-Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>, Huacai Chen <chenhuacai@kernel.org>, WANG Xuerui <kernel@xen0n.name>, Ard Biesheuvel <ardb@kernel.org>
-Subject: [PATCH] loongarch/reset: use general efi poweroff
-Message-Id: 4113cec4-4b4a-11ef-9897-937fbcdc8b5d@innull.com
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1434;
- i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=XDs3wdvu3+QYu/+for1RcDYAw7kto4GBLMR2VGI+QJ4=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmo5aEhzIJM0G8rZsR1UIC3sNm/MGdt3NT1aeFf
- c8TsarVlhSJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZqOWhAAKCRCwMePKe/7Z
- bqQoD/4qq6ob78WkErORRW3NXLffROp2/L38MynBBt+tXRVSwoLrzQNfaP/NEBhE3qAxlyupAT7
- X3kZ01peKpwnEibEPYhg6XTKkdREqanXvQKY1CaoLz0LOJ92g5l3d8mPKggCaN/RyjrN3pTDnIV
- o4cvMdZcaVuJ4y9LqXY2kSv9diTacx/NeaGnr09BhVZTYrD+kvfSO+jFU8e9/5Ug5kh2qiHOb7z
- k/7jyI3izMaUDeq9M6x/2M8NWTPrmvYFFxnEjttnPn9ohHXRr22cfjzKI0kaE/rwfWt/Mg3Hcqx
- fBoFOGOnuBYf+Sf9sHV/D6Ktmy2dS/dHBOfeiqz7vhEGBjWKpRzKZJiN2PVAsk1EXQTBLZBsvp5
- 8kvymfQLU6F4RzADaDL/VZlfrLtC3p0UNh2i13cP/EIN1Zc7vcFcAOFVTO/2UXc/DSKtM2Yw5PD
- 5D63Pdkc9qu0Dx6/jIPK3g07Zj72USdJDiR4+M74EfQNe2B+lNh97lq81PHnMgiBqYdN1cijayV
- 2Nfl/0fjquz7qYgHnpFQouLm8wNSnsx5xJkcY3HNg6DkKW8RTjRhfJ3U1VTFUsC/fUrpx+xCgWO
- sZOa4hoclrv7w7QpwEJpCd6FMA82xsKmRIHP/AYzj/4wMJ8bfkRlZnfUayjNgKuwgET23AMu6yr
- nVhd9SpgflHFKuw==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
-List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Subject: [PATCH v10 0/2] Add support for Loongson1 APB DMA
+Date: Fri, 26 Jul 2024 21:06:48 +0800
+Message-Id: <20240726-loongson1-dma-v10-0-31bf095a6fa6@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAGifo2YC/13OTU7DMBAF4KtUXuPIM67/WHEPxCK1J4lFEyO7R
+ ECVu+N0AZGXM9L33ruzQjlSYc+nO8u0xhLTUg8QTyfmp34ZicdQHwwFSgAU/JrSMpa0AA9zz0H
+ LfiBlhL04Vs1HpiF+PQJf3+o95DTz25Sp/0sRDi0gOCU7hWctLAf+TuNnLet+9sqXce7jtfNp3
+ hOnWG4pfz8WrnrP3VPOQoJutqyaC+5EIPTS+9pyCNq3rOag0bXaVC1NuChbNwVSrbb/WgvTalv
+ 14JzDgMqgEq12Bw2y1a5qDRYG9CaQp6Petu0XRxnnsacBAAA=
+To: Keguang Zhang <keguang.zhang@gmail.com>, Vinod Koul <vkoul@kernel.org>, 
+ Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: linux-mips@vger.kernel.org, dmaengine@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Jiaxun Yang <jiaxun.yang@flygoat.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721999250; l=3092;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=o2zx3o5hVHzdjVgk8ltvnYkXMU43duXbPFt5gvBbsu0=;
+ b=T6wAI6PvcFTCfefJZNNBmUR4tLx2a1DrXnbf/80aDFRgQIvyjh438gbtDn8sSvUFJ37/vpbLh
+ YNjMOHuEFnQA+xmq6Vkk0O1gZKsq/oO1u/u1DNwwQhGD0EdoiIHSRjF
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
+List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently efi_shutdown_init can register a general sys_off handler,
-efi_power_off, which will be called during do_kernel_power_off and shut
-the machine off via efi runtime services. So enable this by providing
-efi_poweroff_required, like arm and x86, and prevent directly calling
-efi.reset_system in machine_power_off.
+Add the driver and dt-binding document for Loongson1 APB DMA.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- arch/loongarch/kernel/efi.c   | 5 +++++
- arch/loongarch/kernel/reset.c | 3 ---
- 2 files changed, 5 insertions(+), 3 deletions(-)
+Changes in v10:
+- Implement the hwdescs by link list to eliminate the limitation of the desc number.
+- Add the prefix 'LS1X_' for all registers and their bits.
+- Drop the macros: chan_readl() and chan_writel().
+- Use %pad for printing a dma_addr_t type.
+- Some minor fixes.
+- Link to v9: https://lore.kernel.org/r/20240613-loongson1-dma-v9-0-6181f2c7dece@gmail.com
 
-diff --git a/arch/loongarch/kernel/efi.c b/arch/loongarch/kernel/efi.c
-index 000825406c1f..df57c2674758 100644
---- a/arch/loongarch/kernel/efi.c
-+++ b/arch/loongarch/kernel/efi.c
-@@ -73,6 +73,11 @@ struct screen_info screen_info __section(".data");
- EXPORT_SYMBOL_GPL(screen_info);
- #endif
- 
-+bool efi_poweroff_required(void)
-+{
-+	return efi_enabled(EFI_RUNTIME_SERVICES);
-+}
-+
- static void __init init_screen_info(void)
- {
- 	struct screen_info *si;
-diff --git a/arch/loongarch/kernel/reset.c b/arch/loongarch/kernel/reset.c
-index 1ef8c6383535..9c8156798e8d 100644
---- a/arch/loongarch/kernel/reset.c
-+++ b/arch/loongarch/kernel/reset.c
-@@ -48,9 +48,6 @@ void machine_power_off(void)
- 		enable_pci_wakeup();
- #endif
- 	do_kernel_power_off();
--#ifdef CONFIG_EFI
--	efi.reset_system(EFI_RESET_SHUTDOWN, EFI_SUCCESS, 0, NULL);
--#endif
- 
- 	while (true) {
- 		__arch_cpu_idle();
+Changes in v9:
+- Fix all the errors and warnings when building with W=1 and C=1
+- Link to v8: https://lore.kernel.org/r/20240607-loongson1-dma-v8-0-f9992d257250@gmail.com
+
+Changes in v8:
+- Change 'interrupts' property to an items list
+- Link to v7: https://lore.kernel.org/r/20240329-loongson1-dma-v7-0-37db58608de5@gmail.com
+
+Changes in v7:
+- Change the comptible to 'loongson,ls1*-apbdma' (suggested by Huacai Chen)
+- Update the title and description part accordingly
+- Rename the file to loongson,ls1b-apbdma.yaml
+- Add a compatible string for LS1A
+- Delete minItems of 'interrupts'
+- Change patterns of 'interrupt-names' to const
+- Rename the file to loongson1-apb-dma.c to keep the consistency
+- Update Kconfig and Makefile accordingly
+- Link to v6: https://lore.kernel.org/r/20240316-loongson1-dma-v6-0-90de2c3cc928@gmail.com
+
+Changes in v6:
+- Change the compatible to the fallback
+- Implement .device_prep_dma_cyclic for Loongson1 sound driver,
+  as well as .device_pause and .device_resume.
+- Set the limitation LS1X_DMA_MAX_DESC and put all descriptors
+  into one page to save memory
+- Move dma_pool_zalloc() into ls1x_dma_alloc_desc()
+- Drop dma_slave_config structure
+- Use .remove_new instead of .remove
+- Use KBUILD_MODNAME for the driver name
+- Improve the debug information
+- Some minor fixes
+
+Changes in v5:
+- Add the dt-binding document
+- Add DT support
+- Use DT information instead of platform data
+- Use chan_id of struct dma_chan instead of own id
+- Use of_dma_xlate_by_chan_id() instead of ls1x_dma_filter()
+- Update the author information to my official name
+
+Changes in v4:
+- Use dma_slave_map to find the proper channel.
+- Explicitly call devm_request_irq() and tasklet_kill().
+- Fix namespace issue.
+- Some minor fixes and cleanups.
+
+Changes in v3:
+- Rename ls1x_dma_filter_fn to ls1x_dma_filter.
+
+Changes in v2:
+- Change the config from 'DMA_LOONGSON1' to 'LOONGSON1_DMA',
+- and rearrange it in alphabetical order in Kconfig and Makefile.
+- Fix comment style.
+
+---
+Keguang Zhang (2):
+      dt-bindings: dma: Add Loongson-1 APB DMA
+      dmaengine: Loongson1: Add Loongson-1 APB DMA driver
+
+ .../bindings/dma/loongson,ls1b-apbdma.yaml         |  67 ++
+ drivers/dma/Kconfig                                |   9 +
+ drivers/dma/Makefile                               |   1 +
+ drivers/dma/loongson1-apb-dma.c                    | 675 +++++++++++++++++++++
+ 4 files changed, 752 insertions(+)
+---
+base-commit: 668d33c9ff922c4590c58754ab064aaf53c387dd
+change-id: 20231120-loongson1-dma-163afe5708b9
+
+Best regards,
 -- 
-2.39.2
+Keguang Zhang <keguang.zhang@gmail.com>
 
