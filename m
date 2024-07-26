@@ -1,11 +1,11 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 26 Jul 2024 10:23:03 +0200
-Subject: [PATCH 11/23] iio: adc: ti-adc084s021: make use of
- iio_for_each_active_channel()
+Date: Fri, 26 Jul 2024 10:23:04 +0200
+Subject: [PATCH 12/23] iio: adc: ti-ads1015: make use of
+ iio_get_masklength()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240726-dev-iio-masklength-private3-v1-11-82913fc0fb87@analog.com>
+Message-Id: <20240726-dev-iio-masklength-private3-v1-12-82913fc0fb87@analog.com>
 References: <20240726-dev-iio-masklength-private3-v1-0-82913fc0fb87@analog.com>
 In-Reply-To: <20240726-dev-iio-masklength-private3-v1-0-82913fc0fb87@analog.com>
 To: linux-iio@vger.kernel.org, linux-staging@lists.linux.dev
@@ -27,39 +27,37 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Benson Leung <bleung@chromium.org>, Guenter Roeck <groeck@chromium.org>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721982178; l=929;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721982178; l=817;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=pDmrdCKFwcJ+Q8/Qez1fqIpNvLhBZN1RCKpdGSXSeW8=;
- b=jXDGG3lYnq+qxjsUL1eRmtxRuz45PCumiCb1suSE7NNVTuUyrTBJ89inAB3uLkgAQpIWkkdGW
- DFLCbD7PhK6ADOI5S9Cke0sMXm4swWFQ9uRQLHHEIl6fI0OEPmQXk93
+ bh=ros0/KTpvpHjj+SLIUp8X2OMblmp93RuOlqoJiAk9Ig=;
+ b=EFOEra5KEDEFHNMAogNGWW6BAHZEP+AErylMLRgjYMLPvEtxCl20KZysf3uMt+w6KOvC2xT+Z
+ KjYzaiTPUYGC7DNU6n0QAT6ozK6qJJKYFnJSpPf5tt3qTiO9P6NUNeS
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use iio_for_each_active_channel() to iterate over active channels
-accessing '.masklength' so it can be annotated as __private when there are
-no more direct users of it.
+Use iio_get_masklength() to access '.masklength' so it can be annotated
+as __private when there are no more direct users of it.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/adc/ti-adc084s021.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/iio/adc/ti-ads1015.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/iio/adc/ti-adc084s021.c b/drivers/iio/adc/ti-adc084s021.c
-index 1f6e53832e06..4a07c6295a2b 100644
---- a/drivers/iio/adc/ti-adc084s021.c
-+++ b/drivers/iio/adc/ti-adc084s021.c
-@@ -166,8 +166,7 @@ static int adc084s021_buffer_preenable(struct iio_dev *indio_dev)
- 	int scan_index;
- 	int i = 0;
+diff --git a/drivers/iio/adc/ti-ads1015.c b/drivers/iio/adc/ti-ads1015.c
+index d3363d02f292..ca432c49eab1 100644
+--- a/drivers/iio/adc/ti-ads1015.c
++++ b/drivers/iio/adc/ti-ads1015.c
+@@ -456,7 +456,7 @@ static irqreturn_t ads1015_trigger_handler(int irq, void *p)
  
--	for_each_set_bit(scan_index, indio_dev->active_scan_mask,
--			 indio_dev->masklength) {
-+	iio_for_each_active_channel(indio_dev, scan_index) {
- 		const struct iio_chan_spec *channel =
- 			&indio_dev->channels[scan_index];
- 		adc->tx_buf[i++] = channel->channel << 3;
+ 	mutex_lock(&data->lock);
+ 	chan = find_first_bit(indio_dev->active_scan_mask,
+-			      indio_dev->masklength);
++			      iio_get_masklength(indio_dev));
+ 	ret = ads1015_get_adc_result(data, chan, &res);
+ 	if (ret < 0) {
+ 		mutex_unlock(&data->lock);
 
 -- 
 2.45.2
