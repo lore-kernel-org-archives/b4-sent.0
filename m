@@ -1,55 +1,64 @@
-From: Petar Stoykov <pd.pstoykov@gmail.com>
-Date: Thu, 25 Jul 2024 17:37:29 +0200
-Subject: [PATCH v4 3/3] MAINTAINERS: Add Sensirion SDP500
+From: Cryolitia PukNgae <Cryolitia@gmail.com>
+Date: Fri, 26 Jul 2024 09:21:14 +0800
+Subject: [PATCH] hwmon: document: fix typo in oxp-sensors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240725-mainline_sdp500-v4-3-ea2f5b189958@gmail.com>
-References: <20240725-mainline_sdp500-v4-0-ea2f5b189958@gmail.com>
-In-Reply-To: <20240725-mainline_sdp500-v4-0-ea2f5b189958@gmail.com>
-To: linux-iio@vger.kernel.org, Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski+dt@linaro.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Cc: Petar Stoykov <pd.pstoykov@gmail.com>, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721921965; l=814;
- i=pd.pstoykov@gmail.com; s=20240702; h=from:subject:message-id;
- bh=FLAhfhEw/kb4vXK4acn1ghnoUaHh0QtVdAQd8Si6n7c=;
- b=7xkmAXxsLkwjB25+M1dMumspAWOT0w4Bp+r4IJoF6imXvAJz+2ITqfoT4n42VhNPx2dQUiQwi
- iwOwy3PALbWC5KwMQKLo70ieNwZQJU1dOiJgLNFQZ4qijpAd4+CJGBm
-X-Developer-Key: i=pd.pstoykov@gmail.com; a=ed25519;
- pk=oxcGqcVV5O6wqlTh+39SbOwfbpD763i5x4TavUAHiCg=
-X-Endpoint-Received: by B4 Relay for pd.pstoykov@gmail.com/20240702 with auth_id=179
+Message-Id: <20240726-typo-v1-1-3ca3f07f93e9@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAn6omYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDcyMz3ZLKgnxdM0OzpCTzlCSDNDMLJaDSgqLUtMwKsDHRsbW1ADphpSF
+ WAAAA
+To: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, trivial@kernel.org, 
+ Cryolitia PukNgae <Cryolitia@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=819; i=Cryolitia@gmail.com;
+ h=from:subject:message-id; bh=RoowNEKAO63y2ZFmj969A6C2D0ZaS9bvHWQpvSGXH5I=;
+ b=LS0tLS1CRUdJTiBQR1AgTUVTU0FHRS0tLS0tCgpvd0VCYlFHUy9wQU5Bd0FJQVQ1ZEYzTDhpb
+ zdkQWNzbVlnQm1vdm9MQ1hCbk5xMU9hRFU5c3pTVlNaWGhFbmFBCkdiN3l5aXRkdkpHbVJhRkJ4
+ eWVKQVRNRUFBRUlBQjBXSVFSME5XMHB5dmR3U0JGOENDWStYUmR5L0lxTzNRVUMKWnFMNkN3QUt
+ DUkErWFJkeS9JcU8zU2puQi8wUlZHUElLSXd2bWZpUzJzblBHWmp1NFFyMmQrUmhDZnZ6R1ppZg
+ pJbzNPS2RWZlI2M2JmQlNlVGU1SG9KR2NweDhaWlRNb3JTT1NWU2NuWXdzbkNlcy85bVhmRFNhQ
+ mlWMXFVMy9hCml4TG5Tc3loaEpKL0dXUWxKZU9iOUZHNlFtd3AreU04OFRrR0JVZ1FsRlFiVjlF
+ cWh3bTVubFFBckxRaUFoZTEKM2RRWjlqRnIrcW5LbnY2Nm8vcURSUjByNHVraThmR01CQnNadVZ
+ NS09mMmNvVk5WaW5FZE1LR3ZuWWdtaHk1QQp3OE0rWkM4bjZLVjMrSkRFL0JERm4xbFk5L1U0Sn
+ gxMFV5c1RXa1BIK3JQTWhjN0xRWXVGV0l4MkI1cWN4WTlHCkpaeXhzNGFOOHBJb0I0dUVCRjF5d
+ mdLUU93ZXZUNXdOUDJlRDRnQ2VjMHJ4WCtIWAo9RU16UgotLS0tLUVORCBQR1AgTUVTU0FHRS0t
+ LS0tCg==
+X-Developer-Key: i=Cryolitia@gmail.com; a=openpgp;
+ fpr=1C3C6547538D7152310C0EEA84DD0C0130A54DF7
+X-Endpoint-Received: by B4 Relay for Cryolitia@gmail.com/default with auth_id=186
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add myself as a maintainer for Sensirion SDP500 pressure sensor driver
+RMP -> RPM
 
-Signed-off-by: Petar Stoykov <pd.pstoykov@gmail.com>
 ---
- MAINTAINERS | 6 ++++++
- 1 file changed, 6 insertions(+)
+Signed-off-by: Cryolitia PukNgae <Cryolitia@gmail.com>
+---
+ Documentation/hwmon/oxp-sensors.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 40c754b4c39c..fae39d65d676 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -19533,6 +19533,12 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/iio/chemical/sensirion,scd4x.yaml
- F:	drivers/iio/chemical/scd4x.c
+diff --git a/Documentation/hwmon/oxp-sensors.rst b/Documentation/hwmon/oxp-sensors.rst
+index 55b1ef61625e..50618f064379 100644
+--- a/Documentation/hwmon/oxp-sensors.rst
++++ b/Documentation/hwmon/oxp-sensors.rst
+@@ -52,7 +52,7 @@ Sysfs entries
+ The following attributes are supported:
  
-+SENSIRION SDP500 DIFFERENTIAL PRESSURE SENSOR DRIVER
-+M:	Petar Stoykov <petar.stoykov@prodrive-technologies.com>
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/iio/pressure/sensirion,sdp500.yaml
-+F:	drivers/iio/pressure/sdp500.c
-+
- SENSIRION SGP40 GAS SENSOR DRIVER
- M:	Andreas Klinger <ak@it-klinger.de>
- S:	Maintained
+ fan1_input
+-  Read Only. Reads current fan RMP.
++  Read Only. Reads current fan RPM.
+ 
+ pwm1_enable
+   Read Write. Enable manual fan control. Write "1" to set to manual, write "0"
 
+---
+base-commit: 73f3c33036904bada1b9b6476a883b1a966440cc
+change-id: 20240726-typo-616bb7db0f68
+
+Best regards,
 -- 
-2.39.2
+Cryolitia PukNgae <Cryolitia@gmail.com>
 
