@@ -1,102 +1,74 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 26 Jul 2024 14:07:33 +0200
-Subject: [PATCH] hwmon: ltc2947: move to firmware agnostic API
+From: Miao Wang <shankerwangmiao@gmail.com>
+Date: Fri, 26 Jul 2024 17:17:53 +0800
+To: loongarch@lists.linux.dev, linux-efi@vger.kernel.org
+Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>, Huacai Chen <chenhuacai@kernel.org>, WANG Xuerui <kernel@xen0n.name>, Ard Biesheuvel <ardb@kernel.org>
+Subject: [PATCH] loongarch/reset: use general efi poweroff
+Message-Id: 4113cec4-4b4a-11ef-9897-937fbcdc8b5d@innull.com
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1434;
+ i=shankerwangmiao@gmail.com; h=from:subject:message-id;
+ bh=XDs3wdvu3+QYu/+for1RcDYAw7kto4GBLMR2VGI+QJ4=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmo5aEhzIJM0G8rZsR1UIC3sNm/MGdt3NT1aeFf
+ c8TsarVlhSJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZqOWhAAKCRCwMePKe/7Z
+ bqQoD/4qq6ob78WkErORRW3NXLffROp2/L38MynBBt+tXRVSwoLrzQNfaP/NEBhE3qAxlyupAT7
+ X3kZ01peKpwnEibEPYhg6XTKkdREqanXvQKY1CaoLz0LOJ92g5l3d8mPKggCaN/RyjrN3pTDnIV
+ o4cvMdZcaVuJ4y9LqXY2kSv9diTacx/NeaGnr09BhVZTYrD+kvfSO+jFU8e9/5Ug5kh2qiHOb7z
+ k/7jyI3izMaUDeq9M6x/2M8NWTPrmvYFFxnEjttnPn9ohHXRr22cfjzKI0kaE/rwfWt/Mg3Hcqx
+ fBoFOGOnuBYf+Sf9sHV/D6Ktmy2dS/dHBOfeiqz7vhEGBjWKpRzKZJiN2PVAsk1EXQTBLZBsvp5
+ 8kvymfQLU6F4RzADaDL/VZlfrLtC3p0UNh2i13cP/EIN1Zc7vcFcAOFVTO/2UXc/DSKtM2Yw5PD
+ 5D63Pdkc9qu0Dx6/jIPK3g07Zj72USdJDiR4+M74EfQNe2B+lNh97lq81PHnMgiBqYdN1cijayV
+ 2Nfl/0fjquz7qYgHnpFQouLm8wNSnsx5xJkcY3HNg6DkKW8RTjRhfJ3U1VTFUsC/fUrpx+xCgWO
+ sZOa4hoclrv7w7QpwEJpCd6FMA82xsKmRIHP/AYzj/4wMJ8bfkRlZnfUayjNgKuwgET23AMu6yr
+ nVhd9SpgflHFKuw==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
+List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240726-dev-hwmon-ltc6947-fw-agnostic-v1-1-f7d6cab7d438@analog.com>
-X-B4-Tracking: v=1; b=H4sIAISRo2YC/x3MQQqAIBAAwK/Enlso06K+Eh1C11ooDY0Kwr8nH
- ecyL0QKTBGG4oVAF0f2LqMuC9Dr7BZCNtkgKiGrTrRo6ML13r3D7dRtLzu0N86L8/FkjbqWfaO
- IlDIK8nEEsvz8/zil9AE+AsT+bwAAAA==
-To: linux-hwmon@vger.kernel.org
-Cc: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721995652; l=2700;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=eHEIw/BFCLR3h2Cjnfq7/AwNP2mxs1wE4zIYao0bqAM=;
- b=h8f8UOeiF7FPrCtPK1LKztf2a9WF0sORR+X5LuPzTUw0QvrSFQ6uJ+cB5XM3XkwInxWiek9g3
- l1WRgGeUWstA9zwOceF7g4YX56cK8+JO5X8jR9fodJ24NgLxGIAx+F8
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
-List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
+Content-Transfer-Encoding: 7bit
 
-Use the device property APIs so the driver does not depend on OF to
-work.
+Currently efi_shutdown_init can register a general sys_off handler,
+efi_power_off, which will be called during do_kernel_power_off and shut
+the machine off via efi runtime services. So enable this by providing
+efi_poweroff_required, like arm and x86, and prevent directly calling
+efi.reset_system in machine_power_off.
 
-While at it, properly include mod_devicetable for struct of_device_id
-and fix some parameter alignment in the changed places.
-
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- drivers/hwmon/ltc2947-core.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ arch/loongarch/kernel/efi.c   | 5 +++++
+ arch/loongarch/kernel/reset.c | 3 ---
+ 2 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/hwmon/ltc2947-core.c b/drivers/hwmon/ltc2947-core.c
-index d2ff6e700770d..244839167e51c 100644
---- a/drivers/hwmon/ltc2947-core.c
-+++ b/drivers/hwmon/ltc2947-core.c
-@@ -11,7 +11,8 @@
- #include <linux/hwmon.h>
- #include <linux/hwmon-sysfs.h>
- #include <linux/module.h>
--#include <linux/of.h>
-+#include <linux/mod_devicetable.h>
-+#include <linux/property.h>
- #include <linux/regmap.h>
+diff --git a/arch/loongarch/kernel/efi.c b/arch/loongarch/kernel/efi.c
+index 000825406c1f..df57c2674758 100644
+--- a/arch/loongarch/kernel/efi.c
++++ b/arch/loongarch/kernel/efi.c
+@@ -73,6 +73,11 @@ struct screen_info screen_info __section(".data");
+ EXPORT_SYMBOL_GPL(screen_info);
+ #endif
  
- #include "ltc2947.h"
-@@ -1034,9 +1035,8 @@ static int ltc2947_setup(struct ltc2947_data *st)
- 		/* 19.89E-6 * 10E9 */
- 		st->lsb_energy = 19890;
- 	}
--	ret = of_property_read_u32_array(st->dev->of_node,
--					 "adi,accumulator-ctl-pol", accum,
--					  ARRAY_SIZE(accum));
-+	ret = device_property_read_u32_array(st->dev, "adi,accumulator-ctl-pol",
-+					     accum, ARRAY_SIZE(accum));
- 	if (!ret) {
- 		u32 accum_reg = LTC2947_ACCUM_POL_1(accum[0]) |
- 				LTC2947_ACCUM_POL_2(accum[1]);
-@@ -1045,9 +1045,9 @@ static int ltc2947_setup(struct ltc2947_data *st)
- 		if (ret)
- 			return ret;
- 	}
--	ret = of_property_read_u32(st->dev->of_node,
--				   "adi,accumulation-deadband-microamp",
--				   &deadband);
-+	ret = device_property_read_u32(st->dev,
-+				       "adi,accumulation-deadband-microamp",
-+				       &deadband);
- 	if (!ret) {
- 		/* the LSB is the same as the current, so 3mA */
- 		ret = regmap_write(st->map, LTC2947_REG_ACCUM_DEADBAND,
-@@ -1056,7 +1056,7 @@ static int ltc2947_setup(struct ltc2947_data *st)
- 			return ret;
- 	}
- 	/* check gpio cfg */
--	ret = of_property_read_u32(st->dev->of_node, "adi,gpio-out-pol", &pol);
-+	ret = device_property_read_u32(st->dev, "adi,gpio-out-pol", &pol);
- 	if (!ret) {
- 		/* setup GPIO as output */
- 		u32 gpio_ctl = LTC2947_GPIO_EN(1) | LTC2947_GPIO_FAN_EN(1) |
-@@ -1067,8 +1067,8 @@ static int ltc2947_setup(struct ltc2947_data *st)
- 		if (ret)
- 			return ret;
- 	}
--	ret = of_property_read_u32_array(st->dev->of_node, "adi,gpio-in-accum",
--					 accum, ARRAY_SIZE(accum));
-+	ret = device_property_read_u32_array(st->dev, "adi,gpio-in-accum",
-+					     accum, ARRAY_SIZE(accum));
- 	if (!ret) {
- 		/*
- 		 * Setup the accum options. The gpioctl is already defined as
-
----
-base-commit: 1ea3fd1eb9869fcdcbc9c68f9728bfc47b9503f1
-change-id: 20240726-dev-hwmon-ltc6947-fw-agnostic-c14935ee55d5
---
-
-Thanks!
-- Nuno Sá
++bool efi_poweroff_required(void)
++{
++	return efi_enabled(EFI_RUNTIME_SERVICES);
++}
++
+ static void __init init_screen_info(void)
+ {
+ 	struct screen_info *si;
+diff --git a/arch/loongarch/kernel/reset.c b/arch/loongarch/kernel/reset.c
+index 1ef8c6383535..9c8156798e8d 100644
+--- a/arch/loongarch/kernel/reset.c
++++ b/arch/loongarch/kernel/reset.c
+@@ -48,9 +48,6 @@ void machine_power_off(void)
+ 		enable_pci_wakeup();
+ #endif
+ 	do_kernel_power_off();
+-#ifdef CONFIG_EFI
+-	efi.reset_system(EFI_RESET_SHUTDOWN, EFI_SUCCESS, 0, NULL);
+-#endif
+ 
+ 	while (true) {
+ 		__arch_cpu_idle();
+-- 
+2.39.2
 
