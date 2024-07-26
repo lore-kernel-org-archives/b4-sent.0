@@ -1,11 +1,11 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 26 Jul 2024 10:22:58 +0200
-Subject: [PATCH 06/23] iio: adc: rockchip_saradc: make use of
+Date: Fri, 26 Jul 2024 10:22:59 +0200
+Subject: [PATCH 07/23] iio: adc: rtq6056: make use of
  iio_for_each_active_channel()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240726-dev-iio-masklength-private3-v1-6-82913fc0fb87@analog.com>
+Message-Id: <20240726-dev-iio-masklength-private3-v1-7-82913fc0fb87@analog.com>
 References: <20240726-dev-iio-masklength-private3-v1-0-82913fc0fb87@analog.com>
 In-Reply-To: <20240726-dev-iio-masklength-private3-v1-0-82913fc0fb87@analog.com>
 To: linux-iio@vger.kernel.org, linux-staging@lists.linux.dev
@@ -27,11 +27,11 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Benson Leung <bleung@chromium.org>, Guenter Roeck <groeck@chromium.org>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1721982177; l=888;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1721982177; l=858;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=CPgO/DJbybSsX9tw6RI8AmAF/l5lhTR2BFhQ3+DOBN4=;
- b=GslRyKXkKOLyJ9HqY5PxGnpcWyf9VjVwP1HcWdEyeOC1yI1DvgKx3NIOCi5F74r/vlPXvm5Mx
- j8vL1Eao0FgCN3tnnYPJHz1bTtWbGOSPQ8o/OOdHCS3ImkmPaj0Y0Qd
+ bh=knlH5er1Yg2N7YkeYPSV+hi3/osuANfnkU/1A8ZVm0o=;
+ b=cY8pNc37aUPu8/EBSFXkrJw4+uaxKK/uqMIFOeCukrXb0tR8pIhG0Zu7SZRe9uuPCDVEOOtcn
+ bPyoSwhTa98BeM8Atlz+0uJM0UB+ZpYt2mQISSSoVoMrlJ3MfDRKqfm
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
@@ -43,22 +43,22 @@ no more direct users of it.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/adc/rockchip_saradc.c | 2 +-
+ drivers/iio/adc/rtq6056.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/iio/adc/rockchip_saradc.c b/drivers/iio/adc/rockchip_saradc.c
-index bbe954a738c7..71f58e3a8307 100644
---- a/drivers/iio/adc/rockchip_saradc.c
-+++ b/drivers/iio/adc/rockchip_saradc.c
-@@ -370,7 +370,7 @@ static irqreturn_t rockchip_saradc_trigger_handler(int irq, void *p)
+diff --git a/drivers/iio/adc/rtq6056.c b/drivers/iio/adc/rtq6056.c
+index bcb129840908..45b1b81c9fdd 100644
+--- a/drivers/iio/adc/rtq6056.c
++++ b/drivers/iio/adc/rtq6056.c
+@@ -643,7 +643,7 @@ static irqreturn_t rtq6056_buffer_trigger_handler(int irq, void *p)
  
- 	mutex_lock(&info->lock);
+ 	pm_runtime_get_sync(dev);
  
--	for_each_set_bit(i, i_dev->active_scan_mask, i_dev->masklength) {
-+	iio_for_each_active_channel(i_dev, i) {
- 		const struct iio_chan_spec *chan = &i_dev->channels[i];
+-	for_each_set_bit(bit, indio_dev->active_scan_mask, indio_dev->masklength) {
++	iio_for_each_active_channel(indio_dev, bit) {
+ 		unsigned int addr = rtq6056_channels[bit].address;
  
- 		ret = rockchip_saradc_conversion(info, chan);
+ 		ret = regmap_read(priv->regmap, addr, &raw);
 
 -- 
 2.45.2
