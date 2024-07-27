@@ -1,36 +1,34 @@
 From: Andy Pan <i@andypan.me>
-Date: Sat, 27 Jul 2024 12:36:29 +0000
-Subject: [PATCH] epoll.7: clarify the event distribution under
+Date: Sat, 27 Jul 2024 14:52:17 +0000
+Subject: [PATCH v2] epoll.7: clarify the event distribution under
  edge-triggered mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240727-epoll-et-desc-v1-1-390bafc678b9@andypan.me>
-X-B4-Tracking: v=1; b=H4sIAMzppGYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDcyNz3dSC/Jwc3dQS3ZTU4mRdA5PURMtEU0uDNOMkJaCegqLUtMwKsHn
- RsbW1AAqhIdtfAAAA
+Message-Id: <20240727-epoll-et-desc-v2-1-c99b2ac66775@andypan.me>
+X-B4-Tracking: v=1; b=H4sIAKAJpWYC/3XMQQ6CMBCF4auQWTumFLTWlfcwLFqYyiTYNi0hE
+ sLdrexd/i953waZElOGe7VBooUzB19CniroR+NfhDyUBilkK5RUSDFME9KMA+UeRUtGm4sWrrF
+ QPjGR48/hPbvSI+c5pPXgl/q3/pOWGmtstLDG9Vd1s/ph/LBG489vgm7f9y9TuJ/6qwAAAA==
 To: Alejandro Colomar <alx@kernel.org>
-Cc: linux-man@vger.kernel.org, Andy Pan <i@andypan.me>
+Cc: linux-man@vger.kernel.org, linux-api@vger.kernel.org, 
+ Andy Pan <i@andypan.me>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722083815; l=3052;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722091946; l=3291;
  i=i@andypan.me; s=20240727; h=from:subject:message-id;
- bh=miESzhNwWV01ZEHKTDwf+XPrSXJ0aYIfNGjXrMdNlSg=;
- b=VsuknDyrQaPnnlZyYUfTjVrcNQ6S8fIm61t9Xlks/pSxd1pqm4dgd6Vv6hTd1g68YkEYBp60I
- rw9GYFAMnB0AYpaZzUwS9JWCT6mpqSSr3ZNIiovABfY5Oipv0bcfjF6
+ bh=FEZtoMXszoRwev9xfXPnAge3Rf7kCy6kqW7B5PqXjns=;
+ b=j/Y685MHW8wIn/bEqw0mx5x4u1yHIXnKRMFKoHIe6dDSxxjNI9fpwJPaS2K1dIjo0tLAHtOKZ
+ W7jUhB6Qlq0Cg/IzFhVenUAUXj6gvP6UiA5/RP8QinPZavJafjPyTIr
 X-Developer-Key: i=i@andypan.me; a=ed25519;
  pk=ZLGY5dzAGPy8bpSKbl9Jfyp/Ud0eac0BY5cKedQXMcw=
 X-Endpoint-Received: by B4 Relay for i@andypan.me/20240727 with auth_id=190
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-
-
----
 For the moment, the edge-triggered epoll generates an event for each
 receipt of a chunk of data, that is to say, epoll_wait() will return
 and tell us a monitored file descriptor is ready whenever there is a
 new activity on that FD since we were last informed about that FD.
 This is not a real _edge_ implementation for epoll, but it's been
-working this way for years and plenty of projects are relying on it. 
+working this way for years and plenty of projects are relying on it.
 
 There are several renowned open-source projects relying on this feature
 for notification function (with eventfd), such as nginx [1], netty [2],
@@ -62,6 +60,12 @@ of epoll ET for the backward compatibility in the man pages.
 [9]: https://github.com/libuv/libuv/pull/4400#issuecomment-2103232402
 
 Signed-off-by: Andy Pan <i@andypan.me>
+---
+I've added it to the commit description, please take a look again, thanks!
+---
+Changes in v2:
+- [PATCH v2] epoll.7: add git commit description
+- Link to v1: https://lore.kernel.org/r/20240727-epoll-et-desc-v1-1-390bafc678b9@andypan.me
 ---
  man/man7/epoll.7 | 1 +
  1 file changed, 1 insertion(+)
