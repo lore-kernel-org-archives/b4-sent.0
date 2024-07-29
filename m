@@ -1,93 +1,149 @@
-From: Andy Pan <i@andypan.me>
-Date: Sat, 27 Jul 2024 14:52:17 +0000
-Subject: [PATCH v2] epoll.7: clarify the event distribution under
- edge-triggered mode
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Date: Mon, 29 Jul 2024 23:23:04 +0200
+Subject: [PATCH RESEND v6] arm64: dts: qcom: msm8939-longcheer-l9100: Add
+ rear flash
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240727-epoll-et-desc-v2-1-c99b2ac66775@andypan.me>
-X-B4-Tracking: v=1; b=H4sIAKAJpWYC/3XMQQ6CMBCF4auQWTumFLTWlfcwLFqYyiTYNi0hE
- sLdrexd/i953waZElOGe7VBooUzB19CniroR+NfhDyUBilkK5RUSDFME9KMA+UeRUtGm4sWrrF
- QPjGR48/hPbvSI+c5pPXgl/q3/pOWGmtstLDG9Vd1s/ph/LBG489vgm7f9y9TuJ/6qwAAAA==
-To: Alejandro Colomar <alx@kernel.org>
-Cc: linux-man@vger.kernel.org, linux-api@vger.kernel.org, 
- Andy Pan <i@andypan.me>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240729-sy7802-v6-1-86bb9083e40b@apitzsch.eu>
+To: Pavel Machek <pavel@ucw.cz>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>, 
+ Christophe JAILLET <christophe.jaillet@wanadoo.fr>, 
+ Trilok Soni <quic_tsoni@quicinc.com>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, Kees Cook <kees@kernel.org>
+Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ phone-devel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722091946; l=3291;
- i=i@andypan.me; s=20240727; h=from:subject:message-id;
- bh=FEZtoMXszoRwev9xfXPnAge3Rf7kCy6kqW7B5PqXjns=;
- b=j/Y685MHW8wIn/bEqw0mx5x4u1yHIXnKRMFKoHIe6dDSxxjNI9fpwJPaS2K1dIjo0tLAHtOKZ
- W7jUhB6Qlq0Cg/IzFhVenUAUXj6gvP6UiA5/RP8QinPZavJafjPyTIr
-X-Developer-Key: i=i@andypan.me; a=ed25519;
- pk=ZLGY5dzAGPy8bpSKbl9Jfyp/Ud0eac0BY5cKedQXMcw=
-X-Endpoint-Received: by B4 Relay for i@andypan.me/20240727 with auth_id=190
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722288184; l=3739;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=PCHxsETnqMCOtnrhqJf1EyDZwF469Myb53EG0JzMbr8=;
+ b=R41Cn5ZKcw2KtJh8ebGpfkx53Ew/zWyK2YNsULcY/fu5FAXW8J1xss0PQq6fsocyHz6f22SRm
+ C1GF2/xvJwuBWbUHV2FMavpMU+x7Fxny+yIK5EXtoABuKtQfm69wCJ8
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For the moment, the edge-triggered epoll generates an event for each
-receipt of a chunk of data, that is to say, epoll_wait() will return
-and tell us a monitored file descriptor is ready whenever there is a
-new activity on that FD since we were last informed about that FD.
-This is not a real _edge_ implementation for epoll, but it's been
-working this way for years and plenty of projects are relying on it.
+The phone has a Silergy SY7802 flash LED controller.
 
-There are several renowned open-source projects relying on this feature
-for notification function (with eventfd), such as nginx [1], netty [2],
-tokio [3], libevent [4], ect. [5] These projects are widely used in today's
-Internet infrastructures. Thus, changing this behavior of epoll ET will
-fundamentally break them and cause a significant negative impact.
-Linux has changed it for pipe before [6], breaking some Android libraries,
-which had got "reverted" somehow. [7] [8]
-
-Nevertheless, the paragraph in the manual pages describing this
-characteristic of epoll ET seems ambiguous, I think a more explict
-sentence should be used to clarify it. We're improving the notification
-mechanism for libuv recently by exploiting this feature with eventfd,
-which brings us a significant performance boost. [9]
-
-Therefore, we (as well as the maintainers of nginx, netty, tokio, etc.)
-would have a sense of security to build an enhanced notification function
-based on this feature if there is a guarantee of retaining this implementation
-of epoll ET for the backward compatibility in the man pages.
-
-[1]: https://github.com/nginx/nginx/blob/efc6a217b92985a1ee211b6bb7337cd2f62deb90/src/event/modules/ngx_epoll_module.c#L386-L457
-[2]: https://github.com/netty/netty/pull/9192
-[3]: https://github.com/tokio-rs/mio/blob/309daae21ecb1d46203a7dbc0cf4c80310240cba/src/sys/unix/waker.rs#L111-L143
-[4]: https://github.com/libevent/libevent/blob/525f5d0a14c9c103be750f2ca175328c25505ea4/event.c#L2597-L2614
-[5]: https://github.com/libuv/libuv/pull/4400#issuecomment-2123798748
-[6]: https://lkml.iu.edu/hypermail/linux/kernel/2010.1/04363.html
-[7]: https://github.com/torvalds/linux/commit/3a34b13a88caeb2800ab44a4918f230041b37dd9
-[8]: https://github.com/torvalds/linux/commit/3b844826b6c6affa80755254da322b017358a2f4
-[9]: https://github.com/libuv/libuv/pull/4400#issuecomment-2103232402
-
-Signed-off-by: Andy Pan <i@andypan.me>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
-I've added it to the commit description, please take a look again, thanks!
+This series introduces a driver for the Silergy SY7802 charge pump used
+in the BQ Aquaris M5 and X5 smartphones.
+
+The implementation is based on information extracted from downstream as
+the datasheet provided by a distributor of the hardware didn't include
+any information about the i2c register description.
 ---
+Changes in v6:
+- Drop applied patches 1/3 and 2/3
+- Move #address-/size-cells to the end
+- Add R-b tag
+- Link to v5: https://lore.kernel.org/r/20240624-sy7802-v5-0-7abc9d96bfa6@apitzsch.eu
+
+Changes in v5:
+- Fix language in driver description comment
+- Unwrap function arguments
+- Remove unnecessary empty lines
+- Add Acked-by tag to second patch
+- Link to v4: https://lore.kernel.org/r/20240616-sy7802-v4-0-789994180e05@apitzsch.eu
+
+Changes in v4:
+- Use for_each_available_child_of_node_scoped() to simplify code
+- Use dev_err_probe() to be consistent with the other code in
+  sy7802_probe()
+- Split devm_add_action() into 2 devm_add_action_or_reset() to simplify
+  code and balance regulator_enable()
+- Link to v3: https://lore.kernel.org/r/20240612-sy7802-v3-0-1e9cc1c79b79@apitzsch.eu
+
+Changes in v3:
+- Add R-b tag to first patch
+- Extend driver commit message
+- Improve readability of defines by using BIT()
+- Rename some variables/parameters
+  * led_no -> led_id
+  * level -> brightness
+  * curr -> fled_{strobe,torch}_used_tmp
+  * mask -> {flash,torch}_mask
+  * i -> child_num
+- Restructure structs ("Place th big stuff at the top")
+- Declare 'child' on a separate line
+- Move multi-line assignments out of declaration block
+- Update warning/error messages and comments
+- Use gotos to handle error path
+- Use devm API to cleanup module's resources
+- Init mutex before LED class device is registered to avoid race
+  condition
+- Link to v2: https://lore.kernel.org/r/20240401-sy7802-v2-0-1138190a7448@apitzsch.eu
+
 Changes in v2:
-- [PATCH v2] epoll.7: add git commit description
-- Link to v1: https://lore.kernel.org/r/20240727-epoll-et-desc-v1-1-390bafc678b9@andypan.me
+- bindings: remove unneeded allOf
+- bindings: example: move flash-led-controller under i2c node to fix
+  check error
+- Cc to phone-devel
+- Link to v1: https://lore.kernel.org/r/20240327-sy7802-v1-0-db74ab32faaf@apitzsch.eu
 ---
- man/man7/epoll.7 | 1 +
- 1 file changed, 1 insertion(+)
+ .../boot/dts/qcom/msm8939-longcheer-l9100.dts      | 27 ++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
-diff --git a/man/man7/epoll.7 b/man/man7/epoll.7
-index 951500131..361d9db99 100644
---- a/man/man7/epoll.7
-+++ b/man/man7/epoll.7
-@@ -172,6 +172,7 @@ .SS Level-triggered and edge-triggered
- Since even with edge-triggered
- .BR epoll ,
- multiple events can be generated upon receipt of multiple chunks of data,
-+that is, an event will be generated upon each receipt of a chunk of data,
- the caller has the option to specify the
- .B EPOLLONESHOT
- flag, to tell
+diff --git a/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts b/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
+index e3404c4455cf..b845da4fa23e 100644
+--- a/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
++++ b/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
+@@ -159,6 +159,26 @@ led@2 {
+ 			};
+ 		};
+ 	};
++
++	flash-led-controller@53 {
++		compatible = "silergy,sy7802";
++		reg = <0x53>;
++
++		enable-gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
++
++		pinctrl-0 = <&camera_rear_flash_default>;
++		pinctrl-names = "default";
++
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		led@0 {
++			reg = <0>;
++			function = LED_FUNCTION_FLASH;
++			color = <LED_COLOR_ID_WHITE>;
++			led-sources = <0>, <1>;
++		};
++	};
+ };
+ 
+ &blsp_i2c3 {
+@@ -318,6 +338,13 @@ camera_front_flash_default: camera-front-flash-default-state {
+ 		bias-disable;
+ 	};
+ 
++	camera_rear_flash_default: camera-rear-flash-default-state {
++		pins = "gpio9", "gpio16", "gpio51";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
+ 	gpio_hall_sensor_default: gpio-hall-sensor-default-state {
+ 		pins = "gpio20";
+ 		function = "gpio";
 
 ---
-base-commit: cbc0a111e4dceea2037c51098de33e6bc8c16a5c
-change-id: 20240727-epoll-et-desc-04ea9a590f3b
+base-commit: 0b58e108042b0ed28a71cd7edf5175999955b233
+change-id: 20240325-sy7802-f40fc6f56525
 
 Best regards,
 -- 
-Andy Pan <i@andypan.me>
+André Apitzsch <git@apitzsch.eu>
 
