@@ -1,14 +1,13 @@
 From: Luigi Leonardi <luigi.leonardi@outlook.com>
-Subject: [PATCH net-next v4 0/2] vsock: avoid queuing on intermediate queue
- if possible
-Date: Tue, 30 Jul 2024 21:47:30 +0200
-Message-Id: <20240730-pinna-v4-0-5c9179164db5@outlook.com>
+Date: Tue, 30 Jul 2024 21:47:31 +0200
+Subject: [PATCH net-next v4 1/2] vsock/virtio: refactor
+ virtio_transport_send_pkt_work
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFNDqWYC/x3MQQqAIBBA0avIrBNMg6KrRAu1qWYziUoI4t2Tl
- g8+v0LCSJhgFRUivpTo4Y5pEOBvyxdKOrpBKz2p2SgZiNnKwy3ej25xyszQ2xDxpPJ/NmDMkrF
- k2Fv7AFfDA9NhAAAA
+Message-Id: <20240730-pinna-v4-1-5c9179164db5@outlook.com>
+References: <20240730-pinna-v4-0-5c9179164db5@outlook.com>
+In-Reply-To: <20240730-pinna-v4-0-5c9179164db5@outlook.com>
 To: Stefan Hajnoczi <stefanha@redhat.com>, 
  Stefano Garzarella <sgarzare@redhat.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
@@ -18,76 +17,171 @@ Cc: kvm@vger.kernel.org, virtualization@lists.linux.dev,
  Marco Pinna <marco.pinn95@gmail.com>, 
  Luigi Leonardi <luigi.leonardi@outlook.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722368854; l=2569;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722368854; l=4578;
  i=luigi.leonardi@outlook.com; s=20240730; h=from:subject:message-id;
- bh=IKREFN+TIgBJvxWjZQPVCllveoHa06J0Ilw0xt1IXRc=;
- b=JLjB6D8toKe+KFeGH5/NYUNYcRfuWf3KVdRaY3LMIcqogFwa98x6njOM9A/V7AHeLl+y5UqFP
- vaj/3m7yjV8Ctc+o5bhG7weCTO2dUzzEIb20h5xrDH8Ae+lJGJhrr80
+ bh=dteu3Blw+MRiUGi1vBnZUYUosVBG21vCipOvGurj8rI=;
+ b=NrQLEA9QfsrS7CfLZiI3Tulfrj9WRZ264Ln3z/5IiWBVKx0eKme1sRPS7A0bZ9S9GI0RqbNVE
+ baotP8yymUOBh+JMLMRpcOzzPbvJ/ZclPXeK2Y/XdIkyRRNy7Riwz7h
 X-Developer-Key: i=luigi.leonardi@outlook.com; a=ed25519;
  pk=rejHGgcyJQFeByIJsRIz/gA6pOPZJ1I2fpxoFD/jris=
 X-Endpoint-Received: by B4 Relay for luigi.leonardi@outlook.com/20240730 with auth_id=192
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series introduces an optimization for vsock/virtio to reduce latency
-and increase the throughput: When the guest sends a packet to the host,
-and the intermediate queue (send_pkt_queue) is empty, if there is enough
-space, the packet is put directly in the virtqueue.
+From: Marco Pinna <marco.pinn95@gmail.com>
 
-v3->v4
-While running experiments on fio with 64B payload, I realized that there
-was a mistake in my fio configuration, so I re-ran all the experiments
-and now the latency numbers are indeed lower with the patch applied.
-I also noticed that I was kicking the host without the lock.
+Preliminary patch to introduce an optimization to the
+enqueue system.
 
-- Fixed a configuration mistake on fio and re-ran all experiments.
-- Fio latency measurement using 64B payload.
-- virtio_transport_send_skb_fast_path sends kick with the tx_lock acquired
-- Addressed all minor style changes requested by maintainer.
-- Rebased on latest net-next
-- Link to v3: https://lore.kernel.org/r/20240711-pinna-v3-0-697d4164fe80@outlook.com
+All the code used to enqueue a packet into the virtqueue
+is removed from virtio_transport_send_pkt_work()
+and moved to the new virtio_transport_send_skb() function.
 
-v2->v3
-- Performed more experiments using iperf3 using multiple streams
-- Handling of reply packets removed from virtio_transport_send_skb,
-  as is needed just by the worker.
-- Removed atomic_inc/atomic_sub when queuing directly to the vq.
-- Introduced virtio_transport_send_skb_fast_path that handles the
-  steps for sending on the vq.
-- Fixed a missing mutex_unlock in error path.
-- Changed authorship of the second commit
-- Rebased on latest net-next
-
-v1->v2
-In this v2 I replaced a mutex_lock with a mutex_trylock because it was
-insidea RCU critical section. I also added a check on tx_run, so if the
-module is being removed the packet is not queued. I'd like to thank Stefano
-for reporting the tx_run issue.
-
-Applied all Stefano's suggestions:
-    - Minor code style changes
-    - Minor commit text rewrite
-Performed more experiments:
-     - Check if all the packets go directly to the vq (Matias' suggestion)
-     - Used iperf3 to see if there is any improvement in overall throughput
-      from guest to host
-     - Pinned the vhost process to a pCPU.
-     - Run fio using 512B payload
-Rebased on latest net-next
-
+Co-developed-by: Luigi Leonardi <luigi.leonardi@outlook.com>
+Signed-off-by: Luigi Leonardi <luigi.leonardi@outlook.com>
+Signed-off-by: Marco Pinna <marco.pinn95@gmail.com>
+Reviewed-by: Stefano Garzarella <sgarzare@redhat.com>
 ---
-Luigi Leonardi (1):
-      vsock/virtio: avoid queuing packets when intermediate queue is empty
+ net/vmw_vsock/virtio_transport.c | 105 ++++++++++++++++++++++-----------------
+ 1 file changed, 59 insertions(+), 46 deletions(-)
 
-Marco Pinna (1):
-      vsock/virtio: refactor virtio_transport_send_pkt_work
+diff --git a/net/vmw_vsock/virtio_transport.c b/net/vmw_vsock/virtio_transport.c
+index 64a07acfef12..f641e906f351 100644
+--- a/net/vmw_vsock/virtio_transport.c
++++ b/net/vmw_vsock/virtio_transport.c
+@@ -94,6 +94,63 @@ static u32 virtio_transport_get_local_cid(void)
+ 	return ret;
+ }
+ 
++/* Caller need to hold vsock->tx_lock on vq */
++static int virtio_transport_send_skb(struct sk_buff *skb, struct virtqueue *vq,
++				     struct virtio_vsock *vsock)
++{
++	int ret, in_sg = 0, out_sg = 0;
++	struct scatterlist **sgs;
++
++	sgs = vsock->out_sgs;
++	sg_init_one(sgs[out_sg], virtio_vsock_hdr(skb),
++		    sizeof(*virtio_vsock_hdr(skb)));
++	out_sg++;
++
++	if (!skb_is_nonlinear(skb)) {
++		if (skb->len > 0) {
++			sg_init_one(sgs[out_sg], skb->data, skb->len);
++			out_sg++;
++		}
++	} else {
++		struct skb_shared_info *si;
++		int i;
++
++		/* If skb is nonlinear, then its buffer must contain
++		 * only header and nothing more. Data is stored in
++		 * the fragged part.
++		 */
++		WARN_ON_ONCE(skb_headroom(skb) != sizeof(*virtio_vsock_hdr(skb)));
++
++		si = skb_shinfo(skb);
++
++		for (i = 0; i < si->nr_frags; i++) {
++			skb_frag_t *skb_frag = &si->frags[i];
++			void *va;
++
++			/* We will use 'page_to_virt()' for the userspace page
++			 * here, because virtio or dma-mapping layers will call
++			 * 'virt_to_phys()' later to fill the buffer descriptor.
++			 * We don't touch memory at "virtual" address of this page.
++			 */
++			va = page_to_virt(skb_frag_page(skb_frag));
++			sg_init_one(sgs[out_sg],
++				    va + skb_frag_off(skb_frag),
++				    skb_frag_size(skb_frag));
++			out_sg++;
++		}
++	}
++
++	ret = virtqueue_add_sgs(vq, sgs, out_sg, in_sg, skb, GFP_KERNEL);
++	/* Usually this means that there is no more space available in
++	 * the vq
++	 */
++	if (ret < 0)
++		return ret;
++
++	virtio_transport_deliver_tap_pkt(skb);
++	return 0;
++}
++
+ static void
+ virtio_transport_send_pkt_work(struct work_struct *work)
+ {
+@@ -111,66 +168,22 @@ virtio_transport_send_pkt_work(struct work_struct *work)
+ 	vq = vsock->vqs[VSOCK_VQ_TX];
+ 
+ 	for (;;) {
+-		int ret, in_sg = 0, out_sg = 0;
+-		struct scatterlist **sgs;
+ 		struct sk_buff *skb;
+ 		bool reply;
++		int ret;
+ 
+ 		skb = virtio_vsock_skb_dequeue(&vsock->send_pkt_queue);
+ 		if (!skb)
+ 			break;
+ 
+ 		reply = virtio_vsock_skb_reply(skb);
+-		sgs = vsock->out_sgs;
+-		sg_init_one(sgs[out_sg], virtio_vsock_hdr(skb),
+-			    sizeof(*virtio_vsock_hdr(skb)));
+-		out_sg++;
+-
+-		if (!skb_is_nonlinear(skb)) {
+-			if (skb->len > 0) {
+-				sg_init_one(sgs[out_sg], skb->data, skb->len);
+-				out_sg++;
+-			}
+-		} else {
+-			struct skb_shared_info *si;
+-			int i;
+-
+-			/* If skb is nonlinear, then its buffer must contain
+-			 * only header and nothing more. Data is stored in
+-			 * the fragged part.
+-			 */
+-			WARN_ON_ONCE(skb_headroom(skb) != sizeof(*virtio_vsock_hdr(skb)));
+-
+-			si = skb_shinfo(skb);
+ 
+-			for (i = 0; i < si->nr_frags; i++) {
+-				skb_frag_t *skb_frag = &si->frags[i];
+-				void *va;
+-
+-				/* We will use 'page_to_virt()' for the userspace page
+-				 * here, because virtio or dma-mapping layers will call
+-				 * 'virt_to_phys()' later to fill the buffer descriptor.
+-				 * We don't touch memory at "virtual" address of this page.
+-				 */
+-				va = page_to_virt(skb_frag_page(skb_frag));
+-				sg_init_one(sgs[out_sg],
+-					    va + skb_frag_off(skb_frag),
+-					    skb_frag_size(skb_frag));
+-				out_sg++;
+-			}
+-		}
+-
+-		ret = virtqueue_add_sgs(vq, sgs, out_sg, in_sg, skb, GFP_KERNEL);
+-		/* Usually this means that there is no more space available in
+-		 * the vq
+-		 */
++		ret = virtio_transport_send_skb(skb, vq, vsock);
+ 		if (ret < 0) {
+ 			virtio_vsock_skb_queue_head(&vsock->send_pkt_queue, skb);
+ 			break;
+ 		}
+ 
+-		virtio_transport_deliver_tap_pkt(skb);
+-
+ 		if (reply) {
+ 			struct virtqueue *rx_vq = vsock->vqs[VSOCK_VQ_RX];
+ 			int val;
 
- net/vmw_vsock/virtio_transport.c | 144 +++++++++++++++++++++++++--------------
- 1 file changed, 94 insertions(+), 50 deletions(-)
----
-base-commit: 1722389b0d863056d78287a120a1d6cadb8d4f7b
-change-id: 20240730-pinna-db8cc1b8b037
-
-Best regards,
 -- 
-Luigi Leonardi <luigi.leonardi@outlook.com>
+2.45.2
 
