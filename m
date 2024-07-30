@@ -1,175 +1,117 @@
 From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Tue, 30 Jul 2024 01:33:17 +0100
-Subject: [PATCH net v2] net/tcp: Disable TCP-AO static key after RCU grace
- period
+Subject: [PATCH net-next 0/7] net/selftests: TCP-AO selftests updates
+Date: Tue, 30 Jul 2024 03:12:14 +0100
+Message-Id: <20240730-tcp-ao-selftests-upd-6-12-v1-0-ffd4bf15d638@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240730-tcp-ao-static-branch-rcu-v2-1-33dc2b7adac8@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMw0qGYC/4WOwQ6CMBBEf4Xs2TVtlaCe/A/DYVsW2EQKaSvRE
- P7dQrx7nMm8mVkgchCOcCsWCDxLlNFnYQ4FuJ58xyhN1mCUOavKlJjchDRiTJTEoQ3kXY/BvfB
- ScsOVPZGmEjI+BW7lvVc/wHOCOpuWIv+grXWgmDhs6V5iGsNn/zHrnfk/OWvUqIxulLpaZtveu
- 4HkeXTjAPW6rl8eHCpc3gAAAA==
-To: Eric Dumazet <edumazet@google.com>, 
- "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAP5LqGYC/zWMQQrCMBAAv1L27GKaRAt+RTykycYu6LZkoxRK/
+ 24UPA7DzAZKhUnh0m1Q6M3KszToDx3EKcidkFNjsMZ6MziDNS4YZlR65EpaFV9LwjP2Fn1ydHJ
+ h8NllaP1SKPP6e19BqKLQWuHWzBiUcCxB4vR9/93xGVhg3z+pIXEblQAAAA==
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Shuah Khan <shuah@kernel.org>
+Cc: Mohammad Nassiri <mnassiri@ciena.com>, netdev@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Dmitry Safonov <0x7f454c46@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722299603; l=5565;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722305607; l=4552;
  i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=T/xIiJiV3VMWg9y5cdhZNse5ZjCE54Taq6FnVqtPOCo=;
- b=5XiHFfyrrmNlSprb0oUjxV75ZsnoBO+IKc18+QLpUHvyf4Zt9vS5qGvk3IvVSIs4bIQWDG5St
- AcjRFRr5oFcCJgTOHWLW7DAJ98ZSEhTRrx25t+jVvO22xi+8XRQP6wD
+ bh=eT7i2g1f0cqiBayr0fps7NZWteEXD2+sswiVQeadjT0=;
+ b=W8S01ZXd8hQdRgKdXK/TejkLDTeSThgq+hIMh9IPKnziRno0w9cYPY4pY4U4byFp3tRMz9+us
+ vbc/rEvyDRaCZt6zP49ico7JsdOU5n5ZD0C3GxLy4wd5EmP+04PnIIo
 X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
  pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
 X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The lifetime of TCP-AO static_key is the same as the last
-tcp_ao_info. On the socket destruction tcp_ao_info ceases to be
-with RCU grace period, while tcp-ao static branch is currently deferred
-destructed. The static key definition is
-: DEFINE_STATIC_KEY_DEFERRED_FALSE(tcp_ao_needed, HZ);
+First 4 patches are more-or-less cleanups/preparations.
 
-which means that if RCU grace period is delayed by more than a second
-and tcp_ao_needed is in the process of disablement, other CPUs may
-yet see tcp_ao_info which atent dead, but soon-to-be.
-And that breaks the assumption of static_key_fast_inc_not_disabled().
+Patch 5 was sent to me/contributed off-list by Mohammad, who wants 32-bit
+kernels to run TCP-AO.
 
-See the comment near the definition:
-> * The caller must make sure that the static key can't get disabled while
-> * in this function. It doesn't patch jump labels, only adds a user to
-> * an already enabled static key.
+Patch 6 is a workaround/fix for slow VMs. Albeit, I can't reproduce
+the issue, but I hope it will fix netdev flakes for connect-deny-*
+tests.
 
-Originally it was introduced in commit eb8c507296f6 ("jump_label:
-Prevent key->enabled int overflow"), which is needed for the atomic
-contexts, one of which would be the creation of a full socket from a
-request socket. In that atomic context, it's known by the presence
-of the key (md5/ao) that the static branch is already enabled.
-So, the ref counter for that static branch is just incremented
-instead of holding the proper mutex.
-static_key_fast_inc_not_disabled() is just a helper for such usage
-case. But it must not be used if the static branch could get disabled
-in parallel as it's not protected by jump_label_mutex and as a result,
-races with jump_label_update() implementation details.
+And the biggest change is adding TCP-AO tracepoints to selftests.
+I think it's a good addition by the following reasons:
+- The related tracepoints are now tested;
+- It allows tcp-ao selftests to raise expectations on the kernel
+  behavior - up from the syscalls exit statuses + net counters.
+- Provides tracepoints usage samples.
 
-Happened on netdev test-bot[1], so not a theoretical issue:
+As tracepoints are not a stable ABI, any kernel changes done to them
+will be reflected to the selftests, which also will allow users
+to see how to change their code. It's quite better than parsing dmesg
+(what BGP was doing pre-tracepoints, ugh).
 
-[] jump_label: Fatal kernel bug, unexpected op at tcp_inbound_hash+0x1a7/0x870 [ffffffffa8c4e9b7] (eb 50 0f 1f 44 != 66 90 0f 1f 00)) size:2 type:1
-[] ------------[ cut here ]------------
-[] kernel BUG at arch/x86/kernel/jump_label.c:73!
-[] Oops: invalid opcode: 0000 [#1] PREEMPT SMP KASAN NOPTI
-[] CPU: 3 PID: 243 Comm: kworker/3:3 Not tainted 6.10.0-virtme #1
-[] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.16.3-0-ga6ed6b701f0a-prebuilt.qemu.org 04/01/2014
-[] Workqueue: events jump_label_update_timeout
-[] RIP: 0010:__jump_label_patch+0x2f6/0x350
-...
-[] Call Trace:
-[]  <TASK>
-[]  arch_jump_label_transform_queue+0x6c/0x110
-[]  __jump_label_update+0xef/0x350
-[]  __static_key_slow_dec_cpuslocked.part.0+0x3c/0x60
-[]  jump_label_update_timeout+0x2c/0x40
-[]  process_one_work+0xe3b/0x1670
-[]  worker_thread+0x587/0xce0
-[]  kthread+0x28a/0x350
-[]  ret_from_fork+0x31/0x70
-[]  ret_from_fork_asm+0x1a/0x30
-[]  </TASK>
-[] Modules linked in: veth
-[] ---[ end trace 0000000000000000 ]---
-[] RIP: 0010:__jump_label_patch+0x2f6/0x350
+Somewhat arguably, the code parses trace_pipe, rather than uses
+libtraceevent (which any sane user should do). The reason behind that is
+the same as for rt-netlink macros instead of libmnl: I'm trying
+to minimize the library dependencies of the selftests. And the
+performance of formatting text in kernel and parsing it again in a test
+is not critical.
 
-[1]: https://netdev-3.bots.linux.dev/vmksft-tcp-ao-dbg/results/696681/5-connect-deny-ipv6/stderr
+Current output sample:
+> ok 73 Trace events matched expectations: 13 tcp_hash_md5_required[2] tcp_hash_md5_unexpected[4] tcp_hash_ao_required[3] tcp_ao_key_not_found[4]
 
-Cc: stable@kernel.org
-Fixes: 67fa83f7c86a ("net/tcp: Add static_key for TCP-AO")
+Previously, tracepoints selftests were part of kernel tcp tracepoints
+submission [1], but since then the code was quite changed:
+- Now generic tracing setup is in lib/ftrace.c, separate from
+  lib/ftrace-tcp.c which utilizes TCP trace points. This separation
+  allows future selftests to trace non-TCP events, i.e. to find out
+  an skb's drop reason, which was useful in the creation of TCP-CLOSE
+  stress-test (not in this patch set, but used in attempt to reproduce
+  the issue from [2]).
+- Another change is that in the previous submission the trace events
+  where used only to detect unexpected TCP-AO/TCP-MD5 events. In this
+  version the selftests will fail if an expected trace event didn't
+  appear.
+  Let's see how reliable this is on the netdev bot - it obviously passes
+  on my testing, but potentially may require a temporary XFAIL patch
+  if it misbehaves on a slow VM.
+
+[1] https://lore.kernel.org/lkml/20240224-tcp-ao-tracepoints-v1-0-15f31b7f30a7@arista.com/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/netdev/net.git/commit/?id=33700a0c9b56
+
 Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
-Changes in v2:
-- Use rcu_assign_pointer() in tcp_ao_destroy_sock()
-- Combined both ao_info and keys destruction in one RCU callback,
-  tcp_ao_info_free_rcu() (suggested-by Jakub)
-- Hopefully improved a bit the commit message
-- Link to v1: https://lore.kernel.org/r/20240725-tcp-ao-static-branch-rcu-v1-1-021d009beebf@gmail.com
----
- net/ipv4/tcp_ao.c | 45 ++++++++++++++++++++++++++++++++-------------
- 1 file changed, 32 insertions(+), 13 deletions(-)
+Dmitry Safonov (6):
+      selftests/net: Clean-up double assignment
+      selftests/net: Provide test_snprintf() helper
+      selftests/net: Be consistent in kconfig checks
+      selftests/net: Don't forget to close nsfd after switch_save_ns()
+      selftests/net: Synchronize client/server before counters checks
+      selftests/net: Add trace events matching to tcp_ao
 
-diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
-index 85531437890c..e2ea6b3570e2 100644
---- a/net/ipv4/tcp_ao.c
-+++ b/net/ipv4/tcp_ao.c
-@@ -267,32 +267,51 @@ static void tcp_ao_key_free_rcu(struct rcu_head *head)
- 	kfree_sensitive(key);
- }
- 
--void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
-+static void tcp_ao_info_free_rcu(struct rcu_head *head)
- {
--	struct tcp_ao_info *ao;
-+	struct tcp_ao_info *ao = container_of(head, struct tcp_ao_info, rcu);
- 	struct tcp_ao_key *key;
- 	struct hlist_node *n;
- 
-+	hlist_for_each_entry_safe(key, n, &ao->head, node) {
-+		hlist_del_rcu(&key->node);
-+		tcp_sigpool_release(key->tcp_sigpool_id);
-+		kfree_sensitive(key);
-+	}
-+	kfree(ao);
-+	static_branch_slow_dec_deferred(&tcp_ao_needed);
-+}
-+
-+static void tcp_ao_sk_omem_free(struct sock *sk, struct tcp_ao_info *ao)
-+{
-+	size_t total_ao_sk_mem = 0;
-+	struct tcp_ao_key *key;
-+	struct hlist_node *n;
-+
-+	hlist_for_each_entry_safe(key, n, &ao->head, node)
-+		total_ao_sk_mem += tcp_ao_sizeof_key(key);
-+
-+	atomic_sub(total_ao_sk_mem, &sk->sk_omem_alloc);
-+}
-+
-+void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
-+{
-+	struct tcp_ao_info *ao;
-+
- 	if (twsk) {
- 		ao = rcu_dereference_protected(tcp_twsk(sk)->ao_info, 1);
--		tcp_twsk(sk)->ao_info = NULL;
-+		rcu_assign_pointer(tcp_twsk(sk)->ao_info, NULL);
- 	} else {
- 		ao = rcu_dereference_protected(tcp_sk(sk)->ao_info, 1);
--		tcp_sk(sk)->ao_info = NULL;
-+		rcu_assign_pointer(tcp_sk(sk)->ao_info, NULL);
- 	}
- 
- 	if (!ao || !refcount_dec_and_test(&ao->refcnt))
- 		return;
- 
--	hlist_for_each_entry_safe(key, n, &ao->head, node) {
--		hlist_del_rcu(&key->node);
--		if (!twsk)
--			atomic_sub(tcp_ao_sizeof_key(key), &sk->sk_omem_alloc);
--		call_rcu(&key->rcu, tcp_ao_key_free_rcu);
--	}
--
--	kfree_rcu(ao, rcu);
--	static_branch_slow_dec_deferred(&tcp_ao_needed);
-+	if (!twsk)
-+		tcp_ao_sk_omem_free(sk, ao);
-+	call_rcu(&ao->rcu, tcp_ao_info_free_rcu);
- }
- 
- void tcp_ao_time_wait(struct tcp_timewait_sock *tcptw, struct tcp_sock *tp)
+Mohammad Nassiri (1):
+      selftests/tcp_ao: Fix printing format for uint64_t
 
+ tools/testing/selftests/net/tcp_ao/Makefile        |   3 +-
+ tools/testing/selftests/net/tcp_ao/bench-lookups.c |   2 +-
+ tools/testing/selftests/net/tcp_ao/config          |   1 +
+ tools/testing/selftests/net/tcp_ao/connect-deny.c  |  25 +-
+ tools/testing/selftests/net/tcp_ao/connect.c       |   6 +-
+ tools/testing/selftests/net/tcp_ao/icmps-discard.c |   2 +-
+ .../testing/selftests/net/tcp_ao/key-management.c  |  18 +-
+ tools/testing/selftests/net/tcp_ao/lib/aolib.h     | 173 ++++++-
+ .../testing/selftests/net/tcp_ao/lib/ftrace-tcp.c  | 549 +++++++++++++++++++++
+ tools/testing/selftests/net/tcp_ao/lib/ftrace.c    | 466 +++++++++++++++++
+ tools/testing/selftests/net/tcp_ao/lib/kconfig.c   |  31 +-
+ tools/testing/selftests/net/tcp_ao/lib/setup.c     |  15 +-
+ tools/testing/selftests/net/tcp_ao/lib/sock.c      |   1 -
+ tools/testing/selftests/net/tcp_ao/lib/utils.c     |  26 +
+ tools/testing/selftests/net/tcp_ao/restore.c       |  30 +-
+ tools/testing/selftests/net/tcp_ao/rst.c           |   2 +-
+ tools/testing/selftests/net/tcp_ao/self-connect.c  |  19 +-
+ tools/testing/selftests/net/tcp_ao/seq-ext.c       |  28 +-
+ .../selftests/net/tcp_ao/setsockopt-closed.c       |   6 +-
+ tools/testing/selftests/net/tcp_ao/unsigned-md5.c  |  35 +-
+ 20 files changed, 1374 insertions(+), 64 deletions(-)
 ---
-base-commit: 2accfdb7eff65f390c4308b0e9cb7c3fe48ad63c
-change-id: 20240725-tcp-ao-static-branch-rcu-85ede7b3a1a5
+base-commit: 1722389b0d863056d78287a120a1d6cadb8d4f7b
+change-id: 20240730-tcp-ao-selftests-upd-6-12-4d3e53a74f3f
 
 Best regards,
 -- 
