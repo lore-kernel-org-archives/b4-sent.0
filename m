@@ -1,11 +1,11 @@
 From: Luigi Leonardi <luigi.leonardi@outlook.com>
-Date: Tue, 30 Jul 2024 21:47:31 +0200
-Subject: [PATCH net-next v4 1/2] vsock/virtio: refactor
- virtio_transport_send_pkt_work
+Date: Tue, 30 Jul 2024 21:47:32 +0200
+Subject: [PATCH net-next v4 2/2] vsock/virtio: avoid queuing packets when
+ intermediate queue is empty
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240730-pinna-v4-1-5c9179164db5@outlook.com>
+Message-Id: <20240730-pinna-v4-2-5c9179164db5@outlook.com>
 References: <20240730-pinna-v4-0-5c9179164db5@outlook.com>
 In-Reply-To: <20240730-pinna-v4-0-5c9179164db5@outlook.com>
 To: Stefan Hajnoczi <stefanha@redhat.com>, 
@@ -17,170 +17,154 @@ Cc: kvm@vger.kernel.org, virtualization@lists.linux.dev,
  Marco Pinna <marco.pinn95@gmail.com>, 
  Luigi Leonardi <luigi.leonardi@outlook.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722368854; l=4578;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722368854; l=4306;
  i=luigi.leonardi@outlook.com; s=20240730; h=from:subject:message-id;
- bh=dteu3Blw+MRiUGi1vBnZUYUosVBG21vCipOvGurj8rI=;
- b=NrQLEA9QfsrS7CfLZiI3Tulfrj9WRZ264Ln3z/5IiWBVKx0eKme1sRPS7A0bZ9S9GI0RqbNVE
- baotP8yymUOBh+JMLMRpcOzzPbvJ/ZclPXeK2Y/XdIkyRRNy7Riwz7h
+ bh=gxGPFhruB/r9MuLoDFfpJxFjk4iZ5PBNCbtbWoujVr0=;
+ b=cgRt0jFaa7gqMYhJ0aY3ZM9aiaao5Hwe8nVF8K/iWvn3yvJWPjLAC9uquUeda9o9nC5DQN7Lb
+ TPuN0pTZs6uB9ss0MjvovgZ6fqkP4P6F7JyUhkDX9aIoxo0CnrK+Vdu
 X-Developer-Key: i=luigi.leonardi@outlook.com; a=ed25519;
  pk=rejHGgcyJQFeByIJsRIz/gA6pOPZJ1I2fpxoFD/jris=
 X-Endpoint-Received: by B4 Relay for luigi.leonardi@outlook.com/20240730 with auth_id=192
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Marco Pinna <marco.pinn95@gmail.com>
+When the driver needs to send new packets to the device, it always
+queues the new sk_buffs into an intermediate queue (send_pkt_queue)
+and schedules a worker (send_pkt_work) to then queue them into the
+virtqueue exposed to the device.
 
-Preliminary patch to introduce an optimization to the
-enqueue system.
+This increases the chance of batching, but also introduces a lot of
+latency into the communication. So we can optimize this path by
+adding a fast path to be taken when there is no element in the
+intermediate queue, there is space available in the virtqueue,
+and no other process that is sending packets (tx_lock held).
 
-All the code used to enqueue a packet into the virtqueue
-is removed from virtio_transport_send_pkt_work()
-and moved to the new virtio_transport_send_skb() function.
+The following benchmarks were run to check improvements in latency and
+throughput. The test bed is a host with Intel i7-10700KF CPU @ 3.80GHz
+and L1 guest running on QEMU/KVM with vhost process and all vCPUs
+pinned individually to pCPUs.
 
-Co-developed-by: Luigi Leonardi <luigi.leonardi@outlook.com>
-Signed-off-by: Luigi Leonardi <luigi.leonardi@outlook.com>
+- Latency
+   Tool: Fio version 3.37-56
+   Mode: pingpong (h-g-h)
+   Test runs: 50
+   Runtime-per-test: 50s
+   Type: SOCK_STREAM
+
+In the following fio benchmark (pingpong mode) the host sends
+a payload to the guest and waits for the same payload back.
+
+fio process pinned both inside the host and the guest system.
+
+Before: Linux 6.9.8
+
+Payload 64B:
+
+	1st perc.	overall		99th perc.
+Before	12.91		16.78		42.24		us
+After	9.77		13.57		39.17		us
+
+Payload 512B:
+
+	1st perc.	overall		99th perc.
+Before	13.35		17.35		41.52		us
+After	10.25		14.11		39.58		us
+
+Payload 4K:
+
+	1st perc.	overall		99th perc.
+Before	14.71		19.87		41.52		us
+After	10.51		14.96		40.81		us
+
+- Throughput
+   Tool: iperf-vsock
+
+The size represents the buffer length (-l) to read/write
+P represents the number of parallel streams
+
+P=1
+	4K	64K	128K
+Before	6.87	29.3	29.5 Gb/s
+After	10.5	39.4	39.9 Gb/s
+
+P=2
+	4K	64K	128K
+Before	10.5	32.8	33.2 Gb/s
+After	17.8	47.7	48.5 Gb/s
+
+P=4
+	4K	64K	128K
+Before	12.7	33.6	34.2 Gb/s
+After	16.9	48.1	50.5 Gb/s
+
+The performance improvement is related to this optimization,
+I used a ebpf kretprobe on virtio_transport_send_skb to check
+that each packet was sent directly to the virtqueue
+
+Co-developed-by: Marco Pinna <marco.pinn95@gmail.com>
 Signed-off-by: Marco Pinna <marco.pinn95@gmail.com>
-Reviewed-by: Stefano Garzarella <sgarzare@redhat.com>
+Signed-off-by: Luigi Leonardi <luigi.leonardi@outlook.com>
 ---
- net/vmw_vsock/virtio_transport.c | 105 ++++++++++++++++++++++-----------------
- 1 file changed, 59 insertions(+), 46 deletions(-)
+ net/vmw_vsock/virtio_transport.c | 39 +++++++++++++++++++++++++++++++++++----
+ 1 file changed, 35 insertions(+), 4 deletions(-)
 
 diff --git a/net/vmw_vsock/virtio_transport.c b/net/vmw_vsock/virtio_transport.c
-index 64a07acfef12..f641e906f351 100644
+index f641e906f351..f992f9a216f0 100644
 --- a/net/vmw_vsock/virtio_transport.c
 +++ b/net/vmw_vsock/virtio_transport.c
-@@ -94,6 +94,63 @@ static u32 virtio_transport_get_local_cid(void)
- 	return ret;
+@@ -208,6 +208,28 @@ virtio_transport_send_pkt_work(struct work_struct *work)
+ 		queue_work(virtio_vsock_workqueue, &vsock->rx_work);
  }
  
-+/* Caller need to hold vsock->tx_lock on vq */
-+static int virtio_transport_send_skb(struct sk_buff *skb, struct virtqueue *vq,
-+				     struct virtio_vsock *vsock)
++/* Caller need to hold RCU for vsock.
++ * Returns 0 if the packet is successfully put on the vq.
++ */
++static int virtio_transport_send_skb_fast_path(struct virtio_vsock *vsock, struct sk_buff *skb)
 +{
-+	int ret, in_sg = 0, out_sg = 0;
-+	struct scatterlist **sgs;
++	struct virtqueue *vq = vsock->vqs[VSOCK_VQ_TX];
++	int ret;
 +
-+	sgs = vsock->out_sgs;
-+	sg_init_one(sgs[out_sg], virtio_vsock_hdr(skb),
-+		    sizeof(*virtio_vsock_hdr(skb)));
-+	out_sg++;
++	/* Inside RCU, can't sleep! */
++	ret = mutex_trylock(&vsock->tx_lock);
++	if (unlikely(ret == 0))
++		return -EBUSY;
 +
-+	if (!skb_is_nonlinear(skb)) {
-+		if (skb->len > 0) {
-+			sg_init_one(sgs[out_sg], skb->data, skb->len);
-+			out_sg++;
-+		}
-+	} else {
-+		struct skb_shared_info *si;
-+		int i;
++	ret = virtio_transport_send_skb(skb, vq, vsock);
++	if (ret == 0)
++		virtqueue_kick(vq);
 +
-+		/* If skb is nonlinear, then its buffer must contain
-+		 * only header and nothing more. Data is stored in
-+		 * the fragged part.
-+		 */
-+		WARN_ON_ONCE(skb_headroom(skb) != sizeof(*virtio_vsock_hdr(skb)));
++	mutex_unlock(&vsock->tx_lock);
 +
-+		si = skb_shinfo(skb);
-+
-+		for (i = 0; i < si->nr_frags; i++) {
-+			skb_frag_t *skb_frag = &si->frags[i];
-+			void *va;
-+
-+			/* We will use 'page_to_virt()' for the userspace page
-+			 * here, because virtio or dma-mapping layers will call
-+			 * 'virt_to_phys()' later to fill the buffer descriptor.
-+			 * We don't touch memory at "virtual" address of this page.
-+			 */
-+			va = page_to_virt(skb_frag_page(skb_frag));
-+			sg_init_one(sgs[out_sg],
-+				    va + skb_frag_off(skb_frag),
-+				    skb_frag_size(skb_frag));
-+			out_sg++;
-+		}
-+	}
-+
-+	ret = virtqueue_add_sgs(vq, sgs, out_sg, in_sg, skb, GFP_KERNEL);
-+	/* Usually this means that there is no more space available in
-+	 * the vq
-+	 */
-+	if (ret < 0)
-+		return ret;
-+
-+	virtio_transport_deliver_tap_pkt(skb);
-+	return 0;
++	return ret;
 +}
 +
- static void
- virtio_transport_send_pkt_work(struct work_struct *work)
+ static int
+ virtio_transport_send_pkt(struct sk_buff *skb)
  {
-@@ -111,66 +168,22 @@ virtio_transport_send_pkt_work(struct work_struct *work)
- 	vq = vsock->vqs[VSOCK_VQ_TX];
+@@ -231,11 +253,20 @@ virtio_transport_send_pkt(struct sk_buff *skb)
+ 		goto out_rcu;
+ 	}
  
- 	for (;;) {
--		int ret, in_sg = 0, out_sg = 0;
--		struct scatterlist **sgs;
- 		struct sk_buff *skb;
- 		bool reply;
-+		int ret;
+-	if (virtio_vsock_skb_reply(skb))
+-		atomic_inc(&vsock->queued_replies);
++	/* If send_pkt_queue is empty, we can safely bypass this queue
++	 * because packet order is maintained and (try) to put the packet
++	 * on the virtqueue using virtio_transport_send_skb_fast_path.
++	 * If this fails we simply put the packet on the intermediate
++	 * queue and schedule the worker.
++	 */
++	if (!skb_queue_empty_lockless(&vsock->send_pkt_queue) ||
++	    virtio_transport_send_skb_fast_path(vsock, skb)) {
++		if (virtio_vsock_skb_reply(skb))
++			atomic_inc(&vsock->queued_replies);
  
- 		skb = virtio_vsock_skb_dequeue(&vsock->send_pkt_queue);
- 		if (!skb)
- 			break;
+-	virtio_vsock_skb_queue_tail(&vsock->send_pkt_queue, skb);
+-	queue_work(virtio_vsock_workqueue, &vsock->send_pkt_work);
++		virtio_vsock_skb_queue_tail(&vsock->send_pkt_queue, skb);
++		queue_work(virtio_vsock_workqueue, &vsock->send_pkt_work);
++	}
  
- 		reply = virtio_vsock_skb_reply(skb);
--		sgs = vsock->out_sgs;
--		sg_init_one(sgs[out_sg], virtio_vsock_hdr(skb),
--			    sizeof(*virtio_vsock_hdr(skb)));
--		out_sg++;
--
--		if (!skb_is_nonlinear(skb)) {
--			if (skb->len > 0) {
--				sg_init_one(sgs[out_sg], skb->data, skb->len);
--				out_sg++;
--			}
--		} else {
--			struct skb_shared_info *si;
--			int i;
--
--			/* If skb is nonlinear, then its buffer must contain
--			 * only header and nothing more. Data is stored in
--			 * the fragged part.
--			 */
--			WARN_ON_ONCE(skb_headroom(skb) != sizeof(*virtio_vsock_hdr(skb)));
--
--			si = skb_shinfo(skb);
- 
--			for (i = 0; i < si->nr_frags; i++) {
--				skb_frag_t *skb_frag = &si->frags[i];
--				void *va;
--
--				/* We will use 'page_to_virt()' for the userspace page
--				 * here, because virtio or dma-mapping layers will call
--				 * 'virt_to_phys()' later to fill the buffer descriptor.
--				 * We don't touch memory at "virtual" address of this page.
--				 */
--				va = page_to_virt(skb_frag_page(skb_frag));
--				sg_init_one(sgs[out_sg],
--					    va + skb_frag_off(skb_frag),
--					    skb_frag_size(skb_frag));
--				out_sg++;
--			}
--		}
--
--		ret = virtqueue_add_sgs(vq, sgs, out_sg, in_sg, skb, GFP_KERNEL);
--		/* Usually this means that there is no more space available in
--		 * the vq
--		 */
-+		ret = virtio_transport_send_skb(skb, vq, vsock);
- 		if (ret < 0) {
- 			virtio_vsock_skb_queue_head(&vsock->send_pkt_queue, skb);
- 			break;
- 		}
- 
--		virtio_transport_deliver_tap_pkt(skb);
--
- 		if (reply) {
- 			struct virtqueue *rx_vq = vsock->vqs[VSOCK_VQ_RX];
- 			int val;
+ out_rcu:
+ 	rcu_read_unlock();
 
 -- 
 2.45.2
