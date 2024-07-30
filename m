@@ -1,149 +1,177 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Mon, 29 Jul 2024 23:23:04 +0200
-Subject: [PATCH RESEND v6] arm64: dts: qcom: msm8939-longcheer-l9100: Add
- rear flash
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Date: Tue, 30 Jul 2024 01:33:17 +0100
+Subject: [PATCH net v2] net/tcp: Disable TCP-AO static key after RCU grace
+ period
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240729-sy7802-v6-1-86bb9083e40b@apitzsch.eu>
-To: Pavel Machek <pavel@ucw.cz>, Lee Jones <lee@kernel.org>, 
- Rob Herring <robh@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
- "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, 
- Christophe JAILLET <christophe.jaillet@wanadoo.fr>, 
- Trilok Soni <quic_tsoni@quicinc.com>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, Kees Cook <kees@kernel.org>
-Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- phone-devel@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722288184; l=3739;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=PCHxsETnqMCOtnrhqJf1EyDZwF469Myb53EG0JzMbr8=;
- b=R41Cn5ZKcw2KtJh8ebGpfkx53Ew/zWyK2YNsULcY/fu5FAXW8J1xss0PQq6fsocyHz6f22SRm
- C1GF2/xvJwuBWbUHV2FMavpMU+x7Fxny+yIK5EXtoABuKtQfm69wCJ8
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240730-tcp-ao-static-branch-rcu-v2-1-33dc2b7adac8@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMw0qGYC/4WOwQ6CMBBEf4Xs2TVtlaCe/A/DYVsW2EQKaSvRE
+ P7dQrx7nMm8mVkgchCOcCsWCDxLlNFnYQ4FuJ58xyhN1mCUOavKlJjchDRiTJTEoQ3kXY/BvfB
+ ScsOVPZGmEjI+BW7lvVc/wHOCOpuWIv+grXWgmDhs6V5iGsNn/zHrnfk/OWvUqIxulLpaZtveu
+ 4HkeXTjAPW6rl8eHCpc3gAAAA==
+To: Eric Dumazet <edumazet@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@kernel.org, 
+ Dmitry Safonov <0x7f454c46@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722299603; l=5565;
+ i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
+ bh=T/xIiJiV3VMWg9y5cdhZNse5ZjCE54Taq6FnVqtPOCo=;
+ b=5XiHFfyrrmNlSprb0oUjxV75ZsnoBO+IKc18+QLpUHvyf4Zt9vS5qGvk3IvVSIs4bIQWDG5St
+ AcjRFRr5oFcCJgTOHWLW7DAJ98ZSEhTRrx25t+jVvO22xi+8XRQP6wD
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The phone has a Silergy SY7802 flash LED controller.
+The lifetime of TCP-AO static_key is the same as the last
+tcp_ao_info. On the socket destruction tcp_ao_info ceases to be
+with RCU grace period, while tcp-ao static branch is currently deferred
+destructed. The static key definition is
+: DEFINE_STATIC_KEY_DEFERRED_FALSE(tcp_ao_needed, HZ);
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+which means that if RCU grace period is delayed by more than a second
+and tcp_ao_needed is in the process of disablement, other CPUs may
+yet see tcp_ao_info which atent dead, but soon-to-be.
+And that breaks the assumption of static_key_fast_inc_not_disabled().
+
+See the comment near the definition:
+> * The caller must make sure that the static key can't get disabled while
+> * in this function. It doesn't patch jump labels, only adds a user to
+> * an already enabled static key.
+
+Originally it was introduced in commit eb8c507296f6 ("jump_label:
+Prevent key->enabled int overflow"), which is needed for the atomic
+contexts, one of which would be the creation of a full socket from a
+request socket. In that atomic context, it's known by the presence
+of the key (md5/ao) that the static branch is already enabled.
+So, the ref counter for that static branch is just incremented
+instead of holding the proper mutex.
+static_key_fast_inc_not_disabled() is just a helper for such usage
+case. But it must not be used if the static branch could get disabled
+in parallel as it's not protected by jump_label_mutex and as a result,
+races with jump_label_update() implementation details.
+
+Happened on netdev test-bot[1], so not a theoretical issue:
+
+[] jump_label: Fatal kernel bug, unexpected op at tcp_inbound_hash+0x1a7/0x870 [ffffffffa8c4e9b7] (eb 50 0f 1f 44 != 66 90 0f 1f 00)) size:2 type:1
+[] ------------[ cut here ]------------
+[] kernel BUG at arch/x86/kernel/jump_label.c:73!
+[] Oops: invalid opcode: 0000 [#1] PREEMPT SMP KASAN NOPTI
+[] CPU: 3 PID: 243 Comm: kworker/3:3 Not tainted 6.10.0-virtme #1
+[] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.16.3-0-ga6ed6b701f0a-prebuilt.qemu.org 04/01/2014
+[] Workqueue: events jump_label_update_timeout
+[] RIP: 0010:__jump_label_patch+0x2f6/0x350
+...
+[] Call Trace:
+[]  <TASK>
+[]  arch_jump_label_transform_queue+0x6c/0x110
+[]  __jump_label_update+0xef/0x350
+[]  __static_key_slow_dec_cpuslocked.part.0+0x3c/0x60
+[]  jump_label_update_timeout+0x2c/0x40
+[]  process_one_work+0xe3b/0x1670
+[]  worker_thread+0x587/0xce0
+[]  kthread+0x28a/0x350
+[]  ret_from_fork+0x31/0x70
+[]  ret_from_fork_asm+0x1a/0x30
+[]  </TASK>
+[] Modules linked in: veth
+[] ---[ end trace 0000000000000000 ]---
+[] RIP: 0010:__jump_label_patch+0x2f6/0x350
+
+[1]: https://netdev-3.bots.linux.dev/vmksft-tcp-ao-dbg/results/696681/5-connect-deny-ipv6/stderr
+
+Cc: stable@kernel.org
+Fixes: 67fa83f7c86a ("net/tcp: Add static_key for TCP-AO")
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
-This series introduces a driver for the Silergy SY7802 charge pump used
-in the BQ Aquaris M5 and X5 smartphones.
-
-The implementation is based on information extracted from downstream as
-the datasheet provided by a distributor of the hardware didn't include
-any information about the i2c register description.
----
-Changes in v6:
-- Drop applied patches 1/3 and 2/3
-- Move #address-/size-cells to the end
-- Add R-b tag
-- Link to v5: https://lore.kernel.org/r/20240624-sy7802-v5-0-7abc9d96bfa6@apitzsch.eu
-
-Changes in v5:
-- Fix language in driver description comment
-- Unwrap function arguments
-- Remove unnecessary empty lines
-- Add Acked-by tag to second patch
-- Link to v4: https://lore.kernel.org/r/20240616-sy7802-v4-0-789994180e05@apitzsch.eu
-
-Changes in v4:
-- Use for_each_available_child_of_node_scoped() to simplify code
-- Use dev_err_probe() to be consistent with the other code in
-  sy7802_probe()
-- Split devm_add_action() into 2 devm_add_action_or_reset() to simplify
-  code and balance regulator_enable()
-- Link to v3: https://lore.kernel.org/r/20240612-sy7802-v3-0-1e9cc1c79b79@apitzsch.eu
-
-Changes in v3:
-- Add R-b tag to first patch
-- Extend driver commit message
-- Improve readability of defines by using BIT()
-- Rename some variables/parameters
-  * led_no -> led_id
-  * level -> brightness
-  * curr -> fled_{strobe,torch}_used_tmp
-  * mask -> {flash,torch}_mask
-  * i -> child_num
-- Restructure structs ("Place th big stuff at the top")
-- Declare 'child' on a separate line
-- Move multi-line assignments out of declaration block
-- Update warning/error messages and comments
-- Use gotos to handle error path
-- Use devm API to cleanup module's resources
-- Init mutex before LED class device is registered to avoid race
-  condition
-- Link to v2: https://lore.kernel.org/r/20240401-sy7802-v2-0-1138190a7448@apitzsch.eu
-
 Changes in v2:
-- bindings: remove unneeded allOf
-- bindings: example: move flash-led-controller under i2c node to fix
-  check error
-- Cc to phone-devel
-- Link to v1: https://lore.kernel.org/r/20240327-sy7802-v1-0-db74ab32faaf@apitzsch.eu
+- Use rcu_assign_pointer() in tcp_ao_destroy_sock()
+- Combined both ao_info and keys destruction in one RCU callback,
+  tcp_ao_info_free_rcu() (suggested-by Jakub)
+- Hopefully improved a bit the commit message
+- Link to v1: https://lore.kernel.org/r/20240725-tcp-ao-static-branch-rcu-v1-1-021d009beebf@gmail.com
 ---
- .../boot/dts/qcom/msm8939-longcheer-l9100.dts      | 27 ++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+ net/ipv4/tcp_ao.c | 45 ++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 32 insertions(+), 13 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts b/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
-index e3404c4455cf..b845da4fa23e 100644
---- a/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
-+++ b/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
-@@ -159,6 +159,26 @@ led@2 {
- 			};
- 		};
- 	};
-+
-+	flash-led-controller@53 {
-+		compatible = "silergy,sy7802";
-+		reg = <0x53>;
-+
-+		enable-gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
-+
-+		pinctrl-0 = <&camera_rear_flash_default>;
-+		pinctrl-names = "default";
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		led@0 {
-+			reg = <0>;
-+			function = LED_FUNCTION_FLASH;
-+			color = <LED_COLOR_ID_WHITE>;
-+			led-sources = <0>, <1>;
-+		};
-+	};
- };
+diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
+index 85531437890c..e2ea6b3570e2 100644
+--- a/net/ipv4/tcp_ao.c
++++ b/net/ipv4/tcp_ao.c
+@@ -267,32 +267,51 @@ static void tcp_ao_key_free_rcu(struct rcu_head *head)
+ 	kfree_sensitive(key);
+ }
  
- &blsp_i2c3 {
-@@ -318,6 +338,13 @@ camera_front_flash_default: camera-front-flash-default-state {
- 		bias-disable;
- 	};
+-void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
++static void tcp_ao_info_free_rcu(struct rcu_head *head)
+ {
+-	struct tcp_ao_info *ao;
++	struct tcp_ao_info *ao = container_of(head, struct tcp_ao_info, rcu);
+ 	struct tcp_ao_key *key;
+ 	struct hlist_node *n;
  
-+	camera_rear_flash_default: camera-rear-flash-default-state {
-+		pins = "gpio9", "gpio16", "gpio51";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
++	hlist_for_each_entry_safe(key, n, &ao->head, node) {
++		hlist_del_rcu(&key->node);
++		tcp_sigpool_release(key->tcp_sigpool_id);
++		kfree_sensitive(key);
++	}
++	kfree(ao);
++	static_branch_slow_dec_deferred(&tcp_ao_needed);
++}
 +
- 	gpio_hall_sensor_default: gpio-hall-sensor-default-state {
- 		pins = "gpio20";
- 		function = "gpio";
++static void tcp_ao_sk_omem_free(struct sock *sk, struct tcp_ao_info *ao)
++{
++	size_t total_ao_sk_mem = 0;
++	struct tcp_ao_key *key;
++	struct hlist_node *n;
++
++	hlist_for_each_entry_safe(key, n, &ao->head, node)
++		total_ao_sk_mem += tcp_ao_sizeof_key(key);
++
++	atomic_sub(total_ao_sk_mem, &sk->sk_omem_alloc);
++}
++
++void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
++{
++	struct tcp_ao_info *ao;
++
+ 	if (twsk) {
+ 		ao = rcu_dereference_protected(tcp_twsk(sk)->ao_info, 1);
+-		tcp_twsk(sk)->ao_info = NULL;
++		rcu_assign_pointer(tcp_twsk(sk)->ao_info, NULL);
+ 	} else {
+ 		ao = rcu_dereference_protected(tcp_sk(sk)->ao_info, 1);
+-		tcp_sk(sk)->ao_info = NULL;
++		rcu_assign_pointer(tcp_sk(sk)->ao_info, NULL);
+ 	}
+ 
+ 	if (!ao || !refcount_dec_and_test(&ao->refcnt))
+ 		return;
+ 
+-	hlist_for_each_entry_safe(key, n, &ao->head, node) {
+-		hlist_del_rcu(&key->node);
+-		if (!twsk)
+-			atomic_sub(tcp_ao_sizeof_key(key), &sk->sk_omem_alloc);
+-		call_rcu(&key->rcu, tcp_ao_key_free_rcu);
+-	}
+-
+-	kfree_rcu(ao, rcu);
+-	static_branch_slow_dec_deferred(&tcp_ao_needed);
++	if (!twsk)
++		tcp_ao_sk_omem_free(sk, ao);
++	call_rcu(&ao->rcu, tcp_ao_info_free_rcu);
+ }
+ 
+ void tcp_ao_time_wait(struct tcp_timewait_sock *tcptw, struct tcp_sock *tp)
 
 ---
-base-commit: 0b58e108042b0ed28a71cd7edf5175999955b233
-change-id: 20240325-sy7802-f40fc6f56525
+base-commit: 2accfdb7eff65f390c4308b0e9cb7c3fe48ad63c
+change-id: 20240725-tcp-ao-static-branch-rcu-85ede7b3a1a5
 
 Best regards,
 -- 
-André Apitzsch <git@apitzsch.eu>
+Dmitry Safonov <0x7f454c46@gmail.com>
 
