@@ -1,171 +1,136 @@
-From: Luigi Leonardi <luigi.leonardi@outlook.com>
-Date: Tue, 30 Jul 2024 21:47:32 +0200
-Subject: [PATCH net-next v4 2/2] vsock/virtio: avoid queuing packets when
- intermediate queue is empty
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH v3 00/13] PCI: qcom: Enumerate endpoints based on Link up
+ event in 'global_irq' interrupt
+Date: Wed, 31 Jul 2024 16:20:03 +0530
+Message-Id: <20240731-pci-qcom-hotplug-v3-0-a1426afdee3b@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240730-pinna-v4-2-5c9179164db5@outlook.com>
-References: <20240730-pinna-v4-0-5c9179164db5@outlook.com>
-In-Reply-To: <20240730-pinna-v4-0-5c9179164db5@outlook.com>
-To: Stefan Hajnoczi <stefanha@redhat.com>, 
- Stefano Garzarella <sgarzare@redhat.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: kvm@vger.kernel.org, virtualization@lists.linux.dev, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Marco Pinna <marco.pinn95@gmail.com>, 
- Luigi Leonardi <luigi.leonardi@outlook.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722368854; l=4306;
- i=luigi.leonardi@outlook.com; s=20240730; h=from:subject:message-id;
- bh=gxGPFhruB/r9MuLoDFfpJxFjk4iZ5PBNCbtbWoujVr0=;
- b=cgRt0jFaa7gqMYhJ0aY3ZM9aiaao5Hwe8nVF8K/iWvn3yvJWPjLAC9uquUeda9o9nC5DQN7Lb
- TPuN0pTZs6uB9ss0MjvovgZ6fqkP4P6F7JyUhkDX9aIoxo0CnrK+Vdu
-X-Developer-Key: i=luigi.leonardi@outlook.com; a=ed25519;
- pk=rejHGgcyJQFeByIJsRIz/gA6pOPZJ1I2fpxoFD/jris=
-X-Endpoint-Received: by B4 Relay for luigi.leonardi@outlook.com/20240730 with auth_id=192
+X-B4-Tracking: v=1; b=H4sIANsWqmYC/33NTQ6CMBCG4auQrq3ptGDRlfcwLqA/MAnS2mKjI
+ dzdwkoT4/L9knlmJtEENJGcipkEkzCiG3OIXUFU34ydoahzE854ySRU1Cukd+VutHeTHx4dbZU
+ 2oEDoI1iSz3wwFp8bebnm7jFOLry2DwnW9Q+WgDJaWSEPlVK1FM15wLEJbu9CR1Yt8U9B/hB4F
+ iRowcq2BmnrL2FZljcDtfCn8wAAAA==
+To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4411;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=EAZazIW0ecVgv+rOZil0RH9jYexC29jp0No/WKnprf0=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmqhbdAmqAJqOStLYtTZAKIpiye+giwhygrdEV2
+ Wvf1wZlP8CJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZqoW3QAKCRBVnxHm/pHO
+ 9StlB/97VGY1SIflUmdYKUjob72nuIbOyt/JCdDZiZ1S2sVUD4nvm8+Ginjz251eBZHdVgnpt0W
+ 6Kq1t9SUC9isTYJSOaZ2cwtbR/P63oh+E/k7LtvJee7iLDAthJuEvlXaYK9k07v/mSx/pkmr3lt
+ bvVQS2Pdu9RH6QNzZ2qXuaWM66bIZz9RsEE00scXZYkDGDAHQQSeaBitwh4cXybh4mc/+7e0dVn
+ QsKPB/BZYhj2gRdZAOTyfAiGwe2595zG6YYtJrBkXStOKZWyldvxK3NY5AaQ8qTGipPTz258o2q
+ qPMhwP5MeLd3AgVndzRQ280e4NKqoJx7or/sDTwxkql6JvKA
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the driver needs to send new packets to the device, it always
-queues the new sk_buffs into an intermediate queue (send_pkt_queue)
-and schedules a worker (send_pkt_work) to then queue them into the
-virtqueue exposed to the device.
+Hi,
 
-This increases the chance of batching, but also introduces a lot of
-latency into the communication. So we can optimize this path by
-adding a fast path to be taken when there is no element in the
-intermediate queue, there is space available in the virtqueue,
-and no other process that is sending packets (tx_lock held).
+This series adds support to enumerate the PCIe endpoint devices using the Qcom
+specific 'Link up' event in 'global' IRQ. Historically, Qcom PCIe RC controllers
+lacked standard hotplug support. So when an endpoint is attached to the SoC,
+users have to rescan the bus manually to enumerate the device. But this can be
+avoided by rescanning the bus upon receiving 'Link up' event.
 
-The following benchmarks were run to check improvements in latency and
-throughput. The test bed is a host with Intel i7-10700KF CPU @ 3.80GHz
-and L1 guest running on QEMU/KVM with vhost process and all vCPUs
-pinned individually to pCPUs.
+Qcom PCIe RC controllers are capable of generating the 'global' SPI interrupt
+to the host CPUs. The device driver can use this interrupt to identify events
+such as PCIe link specific events, safety events etc...
 
-- Latency
-   Tool: Fio version 3.37-56
-   Mode: pingpong (h-g-h)
-   Test runs: 50
-   Runtime-per-test: 50s
-   Type: SOCK_STREAM
+One such event is the PCIe Link up event generated when an endpoint is detected
+on the bus and the Link is 'up'. This event can be used to enumerate the
+endpoint devices.
 
-In the following fio benchmark (pingpong mode) the host sends
-a payload to the guest and waits for the same payload back.
+So add support for capturing the PCIe Link up event using the 'global' interrupt
+in the driver. Once the Link up event is received, the bus underneath the host
+bridge is scanned to enumerate PCIe endpoint devices.
 
-fio process pinned both inside the host and the guest system.
+This series also has some cleanups to the Qcom PCIe EP controller driver for
+interrupt handling.
 
-Before: Linux 6.9.8
+NOTE: During v2 review, there was a discussion about removing the devices when
+'Link Down' event is received. But this needs some more investigation, so I'm
+planning to add it later.
 
-Payload 64B:
+Testing
+=======
 
-	1st perc.	overall		99th perc.
-Before	12.91		16.78		42.24		us
-After	9.77		13.57		39.17		us
+This series is tested on Qcom SM8450 based development board that has 2 SoCs
+connected over PCIe.
 
-Payload 512B:
+Merging Strategy
+================
 
-	1st perc.	overall		99th perc.
-Before	13.35		17.35		41.52		us
-After	10.25		14.11		39.58		us
+I'm expecting the binding and PCI driver changes to go through PCI tree and DTS
+patches through Qcom tree.
 
-Payload 4K:
+- Mani
 
-	1st perc.	overall		99th perc.
-Before	14.71		19.87		41.52		us
-After	10.51		14.96		40.81		us
-
-- Throughput
-   Tool: iperf-vsock
-
-The size represents the buffer length (-l) to read/write
-P represents the number of parallel streams
-
-P=1
-	4K	64K	128K
-Before	6.87	29.3	29.5 Gb/s
-After	10.5	39.4	39.9 Gb/s
-
-P=2
-	4K	64K	128K
-Before	10.5	32.8	33.2 Gb/s
-After	17.8	47.7	48.5 Gb/s
-
-P=4
-	4K	64K	128K
-Before	12.7	33.6	34.2 Gb/s
-After	16.9	48.1	50.5 Gb/s
-
-The performance improvement is related to this optimization,
-I used a ebpf kretprobe on virtio_transport_send_skb to check
-that each packet was sent directly to the virtqueue
-
-Co-developed-by: Marco Pinna <marco.pinn95@gmail.com>
-Signed-off-by: Marco Pinna <marco.pinn95@gmail.com>
-Signed-off-by: Luigi Leonardi <luigi.leonardi@outlook.com>
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- net/vmw_vsock/virtio_transport.c | 39 +++++++++++++++++++++++++++++++++++----
- 1 file changed, 35 insertions(+), 4 deletions(-)
+Changes in v3:
+- Removed the usage of 'simulating hotplug' and just used 'Link up' as we are
+  not fully emulating the hotplug support
+- Fixed the build issue wtih CONFIG_PCI_DOMAINS_GENERIC
+- Moved the 'global' IRQ entry to last in the binding and also mentioned the ABI
+  break and its necessity in patch description.
+- Collected tags
+- Rebased on top of v6.11-rc1
+- Link to v2: https://lore.kernel.org/r/20240717-pci-qcom-hotplug-v2-0-71d304b817f8@linaro.org
 
-diff --git a/net/vmw_vsock/virtio_transport.c b/net/vmw_vsock/virtio_transport.c
-index f641e906f351..f992f9a216f0 100644
---- a/net/vmw_vsock/virtio_transport.c
-+++ b/net/vmw_vsock/virtio_transport.c
-@@ -208,6 +208,28 @@ virtio_transport_send_pkt_work(struct work_struct *work)
- 		queue_work(virtio_vsock_workqueue, &vsock->rx_work);
- }
- 
-+/* Caller need to hold RCU for vsock.
-+ * Returns 0 if the packet is successfully put on the vq.
-+ */
-+static int virtio_transport_send_skb_fast_path(struct virtio_vsock *vsock, struct sk_buff *skb)
-+{
-+	struct virtqueue *vq = vsock->vqs[VSOCK_VQ_TX];
-+	int ret;
-+
-+	/* Inside RCU, can't sleep! */
-+	ret = mutex_trylock(&vsock->tx_lock);
-+	if (unlikely(ret == 0))
-+		return -EBUSY;
-+
-+	ret = virtio_transport_send_skb(skb, vq, vsock);
-+	if (ret == 0)
-+		virtqueue_kick(vq);
-+
-+	mutex_unlock(&vsock->tx_lock);
-+
-+	return ret;
-+}
-+
- static int
- virtio_transport_send_pkt(struct sk_buff *skb)
- {
-@@ -231,11 +253,20 @@ virtio_transport_send_pkt(struct sk_buff *skb)
- 		goto out_rcu;
- 	}
- 
--	if (virtio_vsock_skb_reply(skb))
--		atomic_inc(&vsock->queued_replies);
-+	/* If send_pkt_queue is empty, we can safely bypass this queue
-+	 * because packet order is maintained and (try) to put the packet
-+	 * on the virtqueue using virtio_transport_send_skb_fast_path.
-+	 * If this fails we simply put the packet on the intermediate
-+	 * queue and schedule the worker.
-+	 */
-+	if (!skb_queue_empty_lockless(&vsock->send_pkt_queue) ||
-+	    virtio_transport_send_skb_fast_path(vsock, skb)) {
-+		if (virtio_vsock_skb_reply(skb))
-+			atomic_inc(&vsock->queued_replies);
- 
--	virtio_vsock_skb_queue_tail(&vsock->send_pkt_queue, skb);
--	queue_work(virtio_vsock_workqueue, &vsock->send_pkt_work);
-+		virtio_vsock_skb_queue_tail(&vsock->send_pkt_queue, skb);
-+		queue_work(virtio_vsock_workqueue, &vsock->send_pkt_work);
-+	}
- 
- out_rcu:
- 	rcu_read_unlock();
+Changes in v2:
+- Added CONFIG_PCI_DOMAINS_GENERIC guard for domain_nr
+- Switched to dev_WARN_ONCE() for unhandled interrupts
+- Squashed the 'linux,pci-domain' bindings patches into one
+- Link to v1: https://lore.kernel.org/r/20240715-pci-qcom-hotplug-v1-0-5f3765cc873a@linaro.org
 
+---
+Manivannan Sadhasivam (13):
+      PCI: qcom-ep: Drop the redundant masking of global IRQ events
+      PCI: qcom-ep: Reword the error message for receiving unknown global IRQ event
+      dt-bindings: PCI: pci-ep: Update Maintainers
+      dt-bindings: PCI: pci-ep: Document 'linux,pci-domain' property
+      PCI: endpoint: Assign PCI domain number for endpoint controllers
+      PCI: qcom-ep: Modify 'global_irq' and 'perst_irq' IRQ device names
+      ARM: dts: qcom: sdx55: Add 'linux,pci-domain' to PCIe EP controller node
+      ARM: dts: qcom: sdx65: Add 'linux,pci-domain' to PCIe EP controller node
+      arm64: dts: qcom: sa8775p: Add 'linux,pci-domain' to PCIe EP controller nodes
+      dt-bindings: PCI: qcom: Add 'global' interrupt
+      dt-bindings: PCI: qcom,pcie-sm8450: Add 'global' interrupt
+      PCI: qcom: Enumerate endpoints based on Link up event in 'global_irq' interrupt
+      arm64: dts: qcom: sm8450: Add 'global' interrupt to the PCIe RC node
+
+ Documentation/devicetree/bindings/pci/pci-ep.yaml  | 14 +++++-
+ .../devicetree/bindings/pci/qcom,pcie-common.yaml  |  4 +-
+ .../devicetree/bindings/pci/qcom,pcie-ep.yaml      |  1 +
+ .../devicetree/bindings/pci/qcom,pcie-sm8450.yaml  | 10 ++--
+ arch/arm/boot/dts/qcom/qcom-sdx55.dtsi             |  1 +
+ arch/arm/boot/dts/qcom/qcom-sdx65.dtsi             |  1 +
+ arch/arm64/boot/dts/qcom/sa8775p.dtsi              |  2 +
+ arch/arm64/boot/dts/qcom/sm8450.dtsi               | 12 +++--
+ drivers/pci/controller/dwc/pcie-qcom-ep.c          | 21 +++++++--
+ drivers/pci/controller/dwc/pcie-qcom.c             | 55 +++++++++++++++++++++-
+ drivers/pci/endpoint/pci-epc-core.c                | 14 ++++++
+ include/linux/pci-epc.h                            |  2 +
+ 12 files changed, 120 insertions(+), 17 deletions(-)
+---
+base-commit: 8400291e289ee6b2bf9779ff1c83a291501f017b
+change-id: 20240715-pci-qcom-hotplug-bcde1c13d91f
+
+Best regards,
 -- 
-2.45.2
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
