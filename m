@@ -1,96 +1,106 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Wed, 31 Jul 2024 16:20:16 +0530
-Subject: [PATCH v3 13/13] arm64: dts: qcom: sm8450: Add 'global' interrupt
- to the PCIe RC node
+From: Andy Pan <i@andypan.me>
+Date: Wed, 31 Jul 2024 15:17:31 +0000
+Subject: [PATCH v4] epoll.7: clarify the event distribution under
+ edge-triggered mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240731-pci-qcom-hotplug-v3-13-a1426afdee3b@linaro.org>
-References: <20240731-pci-qcom-hotplug-v3-0-a1426afdee3b@linaro.org>
-In-Reply-To: <20240731-pci-qcom-hotplug-v3-0-a1426afdee3b@linaro.org>
-To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2085;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=VT44obotCPUBbxvMUSiK7oaxSibx2Iio+dz6SHI7KhE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmqhblNzaaeYw8B23DDeqkEmh17nbj4nLf1+plB
- bbD5W/MaxCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZqoW5QAKCRBVnxHm/pHO
- 9edLB/wJfinRqT1ZaIEqmwdeCglsOvXrZYFwynjzpwkrwDnq/VJXpKxc1EYNUYndw2kJsnQnkjz
- MJy1k9utlvQI1HfHcGl3AjAL+iS0uVExZabdGUpQaKEFJCf1hr/UiiHh486UCOfE0wCJhni1TvP
- EuXNGESFIBsIcAf4XzYP3OfIIafC6g5fLA5r/6A322EVxMdCy+/kLv2gczMfVf/5ZyZQOGBiW9F
- nir8hA84oZdJsCf8xy50ulrMxrgwXDT3phbIQ2cbduZ1s3ltdLNosD2JIUuU4H/xwRcLh5ZxG3/
- WrTAx9Z1hH/oQQ2lIK73Bi73atywSQtqCQvEs0hvAS+0TUtk
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+Message-Id: <20240731-epoll-et-desc-v4-1-7eb819bdde0d@andypan.me>
+X-B4-Tracking: v=1; b=H4sIAIpVqmYC/33MSw6CMBSF4a2Qjq3pC0oduQ/j4La9SBMEQgmRE
+ PZuYeQjOjwn+f6FRBwCRnLKFjLgFGLo2jTUISOuhvaGNPi0iWBCMS00xb5rGooj9RgdZQrBQG5
+ YJS1Jph+wCo+9d7mmXYc4dsO85ye+vb9KE6ecSsMsVK7QpTVnaP3cQ3u8I9lSk/jLReLOGCvAF
+ YXW+ReXL1yyTy4TLwBKbrlTjPk3vq7rEwW7QXIpAQAA
+To: Alejandro Colomar <alx@kernel.org>
+Cc: linux-man@vger.kernel.org, linux-api@vger.kernel.org, 
+ "mtk.manpages" <mtk.manpages@gmail.com>, Andy Pan <panjf2000@gmail.com>, 
+ Andy Pan <i@andypan.me>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722439066; l=3951;
+ i=i@andypan.me; s=20240727; h=from:subject:message-id;
+ bh=cFFLz7HRfvtxuzSXKqH96ioljLSowE+zdO5R+VVbRbs=;
+ b=8dIKNl9Fz+j8+YB1kZkT6UtxXm1uS0nuPWtxb2L8I8+EGaK9IHtlmCRVzjV6oLGt4eU/z05dc
+ zAUoBlUsApCBk4+LapDqLZhPiGgpotz5GanxzRL5fx119jYfJhp7FBy
+X-Developer-Key: i=i@andypan.me; a=ed25519;
+ pk=ZLGY5dzAGPy8bpSKbl9Jfyp/Ud0eac0BY5cKedQXMcw=
+X-Endpoint-Received: by B4 Relay for i@andypan.me/20240727 with auth_id=190
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Qcom PCIe RC controllers are capable of generating 'global' SPI interrupt
-to the host CPUs. This interrupt can be used by the device driver to
-identify events such as PCIe link specific events, safety events, etc...
+For the moment, the edge-triggered epoll generates an event for each
+receipt of a chunk of data, that is to say, epoll_wait() will return
+and tell us a monitored file descriptor is ready whenever there is a
+new activity on that FD since we were last informed about that FD.
+This is not a real _edge_ implementation for epoll, but it's been
+working this way for years and plenty of projects are relying on it
+to eliminate the overhead of one system call of read(2) per wakeup event.
 
-Hence, add it to the PCIe RC node along with the existing MSI interrupts.
+There are several renowned open-source projects relying on this feature
+for notification function (with eventfd): register eventfd with EPOLLET
+and avoid calling read(2) on the eventfd when there is wakeup event (eventfd being written).
+Examples: nginx [1], netty [2], tokio [3], libevent [4], ect. [5]
+These projects are widely used in today's Internet infrastructures.
+Thus, changing this behavior of epoll ET will fundamentally break them
+and cause a significant negative impact.
+Linux has changed it for pipe before [6], breaking some Android libraries,
+which had got "reverted" somehow. [7] [8]
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Nevertheless, the paragraph in the manual pages describing this
+characteristic of epoll ET seems ambiguous, I think a more explict
+sentence should be used to clarify it. We're improving the notification
+mechanism for libuv recently by exploiting this feature with eventfd,
+which brings us a significant performance boost. [9]
+
+Therefore, we (as well as the maintainers of nginx, netty, tokio, etc.)
+would have a sense of security to build an enhanced notification function
+based on this feature if there is a guarantee of retaining this implementation
+of epoll ET for the backward compatibility in the man pages.
+
+[1]: https://github.com/nginx/nginx/blob/efc6a217b92985a1ee211b6bb7337cd2f62deb90/src/event/modules/ngx_epoll_module.c#L386-L457
+[2]: https://github.com/netty/netty/pull/9192
+[3]: https://github.com/tokio-rs/mio/blob/309daae21ecb1d46203a7dbc0cf4c80310240cba/src/sys/unix/waker.rs#L111-L143
+[4]: https://github.com/libevent/libevent/blob/525f5d0a14c9c103be750f2ca175328c25505ea4/event.c#L2597-L2614
+[5]: https://github.com/libuv/libuv/pull/4400#issuecomment-2123798748
+[6]: https://lkml.iu.edu/hypermail/linux/kernel/2010.1/04363.html
+[7]: https://github.com/torvalds/linux/commit/3a34b13a88caeb2800ab44a4918f230041b37dd9
+[8]: https://github.com/torvalds/linux/commit/3b844826b6c6affa80755254da322b017358a2f4
+[9]: https://github.com/libuv/libuv/pull/4400#issuecomment-2103232402
+
+Signed-off-by: Andy Pan <i@andypan.me>
 ---
- arch/arm64/boot/dts/qcom/sm8450.dtsi | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+Changes in v4:
+- Move the added sentence elsewhere to make more sense
+- Link to v3: https://lore.kernel.org/r/20240730-epoll-et-desc-v3-1-6aa81b1c400d@andypan.me
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8450.dtsi b/arch/arm64/boot/dts/qcom/sm8450.dtsi
-index 9bafb3b350ff..564b071eb77c 100644
---- a/arch/arm64/boot/dts/qcom/sm8450.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8450.dtsi
-@@ -1787,7 +1787,8 @@ pcie0: pcie@1c00000 {
- 				     <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 146 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>,
--				     <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
-+				     <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
- 			interrupt-names = "msi0",
- 					  "msi1",
- 					  "msi2",
-@@ -1795,7 +1796,8 @@ pcie0: pcie@1c00000 {
- 					  "msi4",
- 					  "msi5",
- 					  "msi6",
--					  "msi7";
-+					  "msi7",
-+					  "global";
- 			#interrupt-cells = <1>;
- 			interrupt-map-mask = <0 0 0 0x7>;
- 			interrupt-map = <0 0 0 1 &intc 0 0 0 149 IRQ_TYPE_LEVEL_HIGH>, /* int_a */
-@@ -1949,7 +1951,8 @@ pcie1: pcie@1c08000 {
- 				     <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 314 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 374 IRQ_TYPE_LEVEL_HIGH>,
--				     <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH>;
-+				     <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 306 IRQ_TYPE_LEVEL_HIGH>;
- 			interrupt-names = "msi0",
- 					  "msi1",
- 					  "msi2",
-@@ -1957,7 +1960,8 @@ pcie1: pcie@1c08000 {
- 					  "msi4",
- 					  "msi5",
- 					  "msi6",
--					  "msi7";
-+					  "msi7",
-+					  "global";
- 			#interrupt-cells = <1>;
- 			interrupt-map-mask = <0 0 0 0x7>;
- 			interrupt-map = <0 0 0 1 &intc 0 0 0 434 IRQ_TYPE_LEVEL_HIGH>, /* int_a */
+Changes in v3:
+- Updated the git commit description
+- Link to v2: https://lore.kernel.org/r/20240727-epoll-et-desc-v2-1-c99b2ac66775@andypan.me
 
+Changes in v2:
+- Added the git commit description based on feedback
+- Link to v1: https://lore.kernel.org/r/20240727-epoll-et-desc-v1-1-390bafc678b9@andypan.me
+---
+ man/man7/epoll.7 | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/man/man7/epoll.7 b/man/man7/epoll.7
+index 951500131..a7235971d 100644
+--- a/man/man7/epoll.7
++++ b/man/man7/epoll.7
+@@ -121,7 +121,8 @@ .SS Level-triggered and edge-triggered
+ meanwhile the remote peer might be expecting a response based on the
+ data it already sent.
+ The reason for this is that edge-triggered mode
+-delivers events only when changes occur on the monitored file descriptor.
++delivers events only when changes occur on the monitored file descriptor,
++that is, an event will only be generated upon each receipt of a chunk of data.
+ So, in step
+ .B 5
+ the caller might end up waiting for some data that is already present inside
+
+---
+base-commit: cbc0a111e4dceea2037c51098de33e6bc8c16a5c
+change-id: 20240727-epoll-et-desc-04ea9a590f3b
+
+Best regards,
 -- 
-2.25.1
+Andy Pan <i@andypan.me>
 
