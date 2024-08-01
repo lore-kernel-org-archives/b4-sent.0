@@ -1,182 +1,110 @@
-From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Thu, 01 Aug 2024 01:13:28 +0100
-Subject: [PATCH net v3] net/tcp: Disable TCP-AO static key after RCU grace
- period
+From: Andy Pan <i@andypan.me>
+Date: Thu, 01 Aug 2024 11:38:38 +0000
+Subject: [PATCH v5] epoll.7: clarify the event distribution under
+ edge-triggered mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240801-tcp-ao-static-branch-rcu-v3-1-3ca33048c22d@gmail.com>
-X-B4-Tracking: v=1; b=H4sIACfTqmYC/4WOyw6CMBBFf4V07Zg+JKAr/8O4mLYDNJFH2ko0h
- H+3NC5Y6fLezDl3FhbIOwrsUizM0+yCG4cU1KFgpsOhJXA2ZSa5PPFKlhDNBDhCiBidAe1xMB1
- 484S6JEuVViiwZAmfPDXuldU3NlBk91RqDPSFNmuPIZLfrjsX4ujf+Y9ZZOb/5CxAAJfCcn7WR
- Lq5tj26x9GMfV6b5U6k+A+RTCKlrJG6Qoum3ovWdf0AgM+DECcBAAA=
-To: Eric Dumazet <edumazet@google.com>, 
- "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@kernel.org, 
- Dmitry Safonov <0x7f454c46@gmail.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722471215; l=5851;
- i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=AMceMNy2bOf+JNzk9oevjAJDEUtxUX1MK9dm/anY1u4=;
- b=kqtCgkt2IquNX24sZjJGmqKySAXUg00QDnkAANxFWa2mXV8QWD4f9DrJTqN9+sB2gtgqtA6iX
- UMztOE7H2LND8Qbov+k+H0vtXsv5Cp8HBQ2NVQcK525gyKfxSH9vz1r
-X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
- pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
-X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
+Message-Id: <20240801-epoll-et-desc-v5-1-7fcb9260a3b2@andypan.me>
+X-B4-Tracking: v=1; b=H4sIAL1zq2YC/33MSwrCMBSF4a1IxkbyatI4ch/i4Ca51YC2JSnBI
+ t270ZFUdHgOfP+DZEwRM9lvHiRhiTkOfR3NdkP8Bfoz0hjqJoIJxYwwFMfheqU40YDZU6YQLDS
+ WddKRasaEXby/e8dT3ZeYpyHN73zhr/dXqXDKqbTMQee1aZ09QB/mEfrdDckrVcRfLir31joBX
+ mtjmi8uP7hkay4r1wAtd9wrxsIXV5+cr7mq3KBruXUh4Iovy/IETQ0URGgBAAA=
+To: Alejandro Colomar <alx@kernel.org>
+Cc: linux-man@vger.kernel.org, linux-api@vger.kernel.org, 
+ "mtk.manpages" <mtk.manpages@gmail.com>, Andy Pan <panjf2000@gmail.com>, 
+ Andy Pan <i@andypan.me>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722512318; l=4107;
+ i=i@andypan.me; s=20240727; h=from:subject:message-id;
+ bh=MQ5HY+djEcOUkyc3//Gy9QeWdH92Y0lvTNWhhNdHpuM=;
+ b=bj8+L7WKxSWuGv0Td3rKfSutq1+e1Pg+EkFv4fGFVYs/P3dm/NNq/+PjPsKZ6MB2pxflIN5fN
+ Xd3QbqMkE1gA6PNHNj5j8BB17ADGVusWEEDL1zQR8qCNvCRCvZ7sUJe
+X-Developer-Key: i=i@andypan.me; a=ed25519;
+ pk=ZLGY5dzAGPy8bpSKbl9Jfyp/Ud0eac0BY5cKedQXMcw=
+X-Endpoint-Received: by B4 Relay for i@andypan.me/20240727 with auth_id=190
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The lifetime of TCP-AO static_key is the same as the last
-tcp_ao_info. On the socket destruction tcp_ao_info ceases to be
-with RCU grace period, while tcp-ao static branch is currently deferred
-destructed. The static key definition is
-: DEFINE_STATIC_KEY_DEFERRED_FALSE(tcp_ao_needed, HZ);
+For the moment, the edge-triggered epoll generates an event for each
+receipt of a chunk of data, that is to say, epoll_wait() will return
+and tell us a monitored file descriptor is ready whenever there is a
+new activity on that FD since we were last informed about that FD.
+This is not a real _edge_ implementation for epoll, but it's been
+working this way for years and plenty of projects are relying on it
+to eliminate the overhead of one system call of read(2) per wakeup event.
 
-which means that if RCU grace period is delayed by more than a second
-and tcp_ao_needed is in the process of disablement, other CPUs may
-yet see tcp_ao_info which atent dead, but soon-to-be.
-And that breaks the assumption of static_key_fast_inc_not_disabled().
+There are several renowned open-source projects relying on this feature
+for notification function (with eventfd): register eventfd with EPOLLET
+and avoid calling read(2) on the eventfd when there is wakeup event (eventfd being written).
+Examples: nginx [1], netty [2], tokio [3], libevent [4], ect. [5]
+These projects are widely used in today's Internet infrastructures.
+Thus, changing this behavior of epoll ET will fundamentally break them
+and cause a significant negative impact.
+Linux has changed it for pipe before [6], breaking some Android libraries,
+which had got "reverted" somehow. [7] [8]
 
-See the comment near the definition:
-> * The caller must make sure that the static key can't get disabled while
-> * in this function. It doesn't patch jump labels, only adds a user to
-> * an already enabled static key.
+Nevertheless, the paragraph in the manual pages describing this
+characteristic of epoll ET seems ambiguous, I think a more explict
+sentence should be used to clarify it. We're improving the notification
+mechanism for libuv recently by exploiting this feature with eventfd,
+which brings us a significant performance boost. [9]
 
-Originally it was introduced in commit eb8c507296f6 ("jump_label:
-Prevent key->enabled int overflow"), which is needed for the atomic
-contexts, one of which would be the creation of a full socket from a
-request socket. In that atomic context, it's known by the presence
-of the key (md5/ao) that the static branch is already enabled.
-So, the ref counter for that static branch is just incremented
-instead of holding the proper mutex.
-static_key_fast_inc_not_disabled() is just a helper for such usage
-case. But it must not be used if the static branch could get disabled
-in parallel as it's not protected by jump_label_mutex and as a result,
-races with jump_label_update() implementation details.
+Therefore, we (as well as the maintainers of nginx, netty, tokio, etc.)
+would have a sense of security to build an enhanced notification function
+based on this feature if there is a guarantee of retaining this implementation
+of epoll ET for the backward compatibility in the man pages.
 
-Happened on netdev test-bot[1], so not a theoretical issue:
+[1]: https://github.com/nginx/nginx/blob/efc6a217b92985a1ee211b6bb7337cd2f62deb90/src/event/modules/ngx_epoll_module.c#L386-L457
+[2]: https://github.com/netty/netty/pull/9192
+[3]: https://github.com/tokio-rs/mio/blob/309daae21ecb1d46203a7dbc0cf4c80310240cba/src/sys/unix/waker.rs#L111-L143
+[4]: https://github.com/libevent/libevent/blob/525f5d0a14c9c103be750f2ca175328c25505ea4/event.c#L2597-L2614
+[5]: https://github.com/libuv/libuv/pull/4400#issuecomment-2123798748
+[6]: https://lkml.iu.edu/hypermail/linux/kernel/2010.1/04363.html
+[7]: https://github.com/torvalds/linux/commit/3a34b13a88caeb2800ab44a4918f230041b37dd9
+[8]: https://github.com/torvalds/linux/commit/3b844826b6c6affa80755254da322b017358a2f4
+[9]: https://github.com/libuv/libuv/pull/4400#issuecomment-2103232402
 
-[] jump_label: Fatal kernel bug, unexpected op at tcp_inbound_hash+0x1a7/0x870 [ffffffffa8c4e9b7] (eb 50 0f 1f 44 != 66 90 0f 1f 00)) size:2 type:1
-[] ------------[ cut here ]------------
-[] kernel BUG at arch/x86/kernel/jump_label.c:73!
-[] Oops: invalid opcode: 0000 [#1] PREEMPT SMP KASAN NOPTI
-[] CPU: 3 PID: 243 Comm: kworker/3:3 Not tainted 6.10.0-virtme #1
-[] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.16.3-0-ga6ed6b701f0a-prebuilt.qemu.org 04/01/2014
-[] Workqueue: events jump_label_update_timeout
-[] RIP: 0010:__jump_label_patch+0x2f6/0x350
-...
-[] Call Trace:
-[]  <TASK>
-[]  arch_jump_label_transform_queue+0x6c/0x110
-[]  __jump_label_update+0xef/0x350
-[]  __static_key_slow_dec_cpuslocked.part.0+0x3c/0x60
-[]  jump_label_update_timeout+0x2c/0x40
-[]  process_one_work+0xe3b/0x1670
-[]  worker_thread+0x587/0xce0
-[]  kthread+0x28a/0x350
-[]  ret_from_fork+0x31/0x70
-[]  ret_from_fork_asm+0x1a/0x30
-[]  </TASK>
-[] Modules linked in: veth
-[] ---[ end trace 0000000000000000 ]---
-[] RIP: 0010:__jump_label_patch+0x2f6/0x350
-
-[1]: https://netdev-3.bots.linux.dev/vmksft-tcp-ao-dbg/results/696681/5-connect-deny-ipv6/stderr
-
-Cc: stable@kernel.org
-Fixes: 67fa83f7c86a ("net/tcp: Add static_key for TCP-AO")
-Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
+Signed-off-by: Andy Pan <i@andypan.me>
 ---
+Changes in v5:
+- Update the sentence of clarifying the epoll ET
+- Link to v4: https://lore.kernel.org/r/20240731-epoll-et-desc-v4-1-7eb819bdde0d@andypan.me
+
+Changes in v4:
+- Move the added sentence elsewhere to make more sense
+- Link to v3: https://lore.kernel.org/r/20240730-epoll-et-desc-v3-1-6aa81b1c400d@andypan.me
+
 Changes in v3:
-- Use hlist_for_each_entry() instead of hlist_for_each_entry_safe() in
-  tcp_ao_sk_omem_free() (Jakub's suggestion)
-- While at it, use hlist_del() instead of hlist_del_rcu() in
-  tcp_ao_info_free_rcu()
-- Link to v2: https://lore.kernel.org/r/20240730-tcp-ao-static-branch-rcu-v2-1-33dc2b7adac8@gmail.com
+- Updated the git commit description
+- Link to v2: https://lore.kernel.org/r/20240727-epoll-et-desc-v2-1-c99b2ac66775@andypan.me
 
 Changes in v2:
-- Use rcu_assign_pointer() in tcp_ao_destroy_sock()
-- Combined both ao_info and keys destruction in one RCU callback,
-  tcp_ao_info_free_rcu() (suggested-by Jakub)
-- Hopefully improved a bit the commit message
-- Link to v1: https://lore.kernel.org/r/20240725-tcp-ao-static-branch-rcu-v1-1-021d009beebf@gmail.com
+- Added the git commit description based on feedback
+- Link to v1: https://lore.kernel.org/r/20240727-epoll-et-desc-v1-1-390bafc678b9@andypan.me
 ---
- net/ipv4/tcp_ao.c | 43 ++++++++++++++++++++++++++++++-------------
- 1 file changed, 30 insertions(+), 13 deletions(-)
+ man/man7/epoll.7 | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
-index 85531437890c..db6516092daf 100644
---- a/net/ipv4/tcp_ao.c
-+++ b/net/ipv4/tcp_ao.c
-@@ -267,32 +267,49 @@ static void tcp_ao_key_free_rcu(struct rcu_head *head)
- 	kfree_sensitive(key);
- }
- 
--void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
-+static void tcp_ao_info_free_rcu(struct rcu_head *head)
- {
--	struct tcp_ao_info *ao;
-+	struct tcp_ao_info *ao = container_of(head, struct tcp_ao_info, rcu);
- 	struct tcp_ao_key *key;
- 	struct hlist_node *n;
- 
-+	hlist_for_each_entry_safe(key, n, &ao->head, node) {
-+		hlist_del(&key->node);
-+		tcp_sigpool_release(key->tcp_sigpool_id);
-+		kfree_sensitive(key);
-+	}
-+	kfree(ao);
-+	static_branch_slow_dec_deferred(&tcp_ao_needed);
-+}
-+
-+static void tcp_ao_sk_omem_free(struct sock *sk, struct tcp_ao_info *ao)
-+{
-+	size_t total_ao_sk_mem = 0;
-+	struct tcp_ao_key *key;
-+
-+	hlist_for_each_entry(key,  &ao->head, node)
-+		total_ao_sk_mem += tcp_ao_sizeof_key(key);
-+	atomic_sub(total_ao_sk_mem, &sk->sk_omem_alloc);
-+}
-+
-+void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
-+{
-+	struct tcp_ao_info *ao;
-+
- 	if (twsk) {
- 		ao = rcu_dereference_protected(tcp_twsk(sk)->ao_info, 1);
--		tcp_twsk(sk)->ao_info = NULL;
-+		rcu_assign_pointer(tcp_twsk(sk)->ao_info, NULL);
- 	} else {
- 		ao = rcu_dereference_protected(tcp_sk(sk)->ao_info, 1);
--		tcp_sk(sk)->ao_info = NULL;
-+		rcu_assign_pointer(tcp_sk(sk)->ao_info, NULL);
- 	}
- 
- 	if (!ao || !refcount_dec_and_test(&ao->refcnt))
- 		return;
- 
--	hlist_for_each_entry_safe(key, n, &ao->head, node) {
--		hlist_del_rcu(&key->node);
--		if (!twsk)
--			atomic_sub(tcp_ao_sizeof_key(key), &sk->sk_omem_alloc);
--		call_rcu(&key->rcu, tcp_ao_key_free_rcu);
--	}
--
--	kfree_rcu(ao, rcu);
--	static_branch_slow_dec_deferred(&tcp_ao_needed);
-+	if (!twsk)
-+		tcp_ao_sk_omem_free(sk, ao);
-+	call_rcu(&ao->rcu, tcp_ao_info_free_rcu);
- }
- 
- void tcp_ao_time_wait(struct tcp_timewait_sock *tcptw, struct tcp_sock *tp)
+diff --git a/man/man7/epoll.7 b/man/man7/epoll.7
+index 951500131..86e5f8363 100644
+--- a/man/man7/epoll.7
++++ b/man/man7/epoll.7
+@@ -121,7 +121,8 @@ .SS Level-triggered and edge-triggered
+ meanwhile the remote peer might be expecting a response based on the
+ data it already sent.
+ The reason for this is that edge-triggered mode
+-delivers events only when changes occur on the monitored file descriptor.
++delivers events only when changes occur on the monitored file descriptor,
++that is, an event will be generated upon each receipt of a chunk of data.
+ So, in step
+ .B 5
+ the caller might end up waiting for some data that is already present inside
 
 ---
-base-commit: 21b136cc63d2a9ddd60d4699552b69c214b32964
-change-id: 20240725-tcp-ao-static-branch-rcu-85ede7b3a1a5
+base-commit: cbc0a111e4dceea2037c51098de33e6bc8c16a5c
+change-id: 20240727-epoll-et-desc-04ea9a590f3b
 
 Best regards,
 -- 
-Dmitry Safonov <0x7f454c46@gmail.com>
+Andy Pan <i@andypan.me>
 
