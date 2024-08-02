@@ -1,11 +1,11 @@
 From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Fri, 02 Aug 2024 10:23:27 +0100
-Subject: [PATCH net-next v2 3/7] selftests/net: Be consistent in kconfig
- checks
+Date: Fri, 02 Aug 2024 10:23:28 +0100
+Subject: [PATCH net-next v2 4/7] selftests/net: Don't forget to close nsfd
+ after switch_save_ns()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240802-tcp-ao-selftests-upd-6-12-v2-3-370c99358161@gmail.com>
+Message-Id: <20240802-tcp-ao-selftests-upd-6-12-v2-4-370c99358161@gmail.com>
 References: <20240802-tcp-ao-selftests-upd-6-12-v2-0-370c99358161@gmail.com>
 In-Reply-To: <20240802-tcp-ao-selftests-upd-6-12-v2-0-370c99358161@gmail.com>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -15,95 +15,71 @@ Cc: Mohammad Nassiri <mnassiri@ciena.com>, netdev@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Dmitry Safonov <0x7f454c46@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722590616; l=2700;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722590616; l=1650;
  i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=PdEStG299EXQfXQVBhomcx2f3Galb07Vq+9A5L4s+Lw=;
- b=1XjeHkUZqWS8AdUgZlRoybm3Jwtu7+jP3RlWu9h2hPALZHDlgjyyzKQNlfWdsoGheuJI2Qacz
- worCoOPStmRCufSnPJbzwWIIjo0paR8koO4fbYKY7YdpPRzp0HfjQCD
+ bh=BuZdUTS7934qcmF6bxHRsQ9gqgaVwYQtz+0zY8CtODc=;
+ b=/UhVrA6u50O7HIcqANF4pFBPnfhjptVTN6UnS3NMOfKTyBQPoX/hEfXC351byVkGn2KGlZN1L
+ 5Ks6kc/0eYdD8Mmv7DUI0S+Az6kYbdNFbqicTcMdvs+K70uxHf0Omr7
 X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
  pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
 X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Most of the functions in tcp-ao lib/ return negative errno or -1 in case
-of a failure. That creates inconsistencies in lib/kconfig, which saves
-what was the error code. As well as the uninitialized kconfig value is
--1, which also may be the result of a check.
+The switch_save_ns() helper suppose to help switching to another
+namespace for some action and to return back to original namespace.
 
-Define KCONFIG_UNKNOWN and save negative return code, rather than
-libc-style errno.
+The fd should be closed.
 
 Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- tools/testing/selftests/net/tcp_ao/lib/kconfig.c | 23 ++++++++++++-----------
- 1 file changed, 12 insertions(+), 11 deletions(-)
+ tools/testing/selftests/net/tcp_ao/lib/setup.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/tools/testing/selftests/net/tcp_ao/lib/kconfig.c b/tools/testing/selftests/net/tcp_ao/lib/kconfig.c
-index f279ffc3843b..3bf4a7e4b3c9 100644
---- a/tools/testing/selftests/net/tcp_ao/lib/kconfig.c
-+++ b/tools/testing/selftests/net/tcp_ao/lib/kconfig.c
-@@ -6,7 +6,7 @@
- #include "aolib.h"
- 
- struct kconfig_t {
--	int _errno;		/* the returned error if not supported */
-+	int _error;		/* negative errno if not supported */
- 	int (*check_kconfig)(int *error);
- };
- 
-@@ -62,7 +62,7 @@ static int has_tcp_ao(int *err)
- 	memcpy(&tmp.addr, &addr, sizeof(addr));
- 	*err = 0;
- 	if (setsockopt(sk, IPPROTO_TCP, TCP_AO_ADD_KEY, &tmp, sizeof(tmp)) < 0) {
--		*err = errno;
-+		*err = -errno;
- 		if (errno != ENOPROTOOPT)
- 			ret = -errno;
- 	}
-@@ -87,7 +87,7 @@ static int has_tcp_md5(int *err)
- 	 */
- 	*err = 0;
- 	if (test_set_md5(sk, addr_any, 0, -1, DEFAULT_TEST_PASSWORD)) {
--		*err = errno;
-+		*err = -errno;
- 		if (errno != ENOPROTOOPT && errno == ENOMEM) {
- 			test_print("setsockopt(TCP_MD5SIG_EXT): %m");
- 			ret = -errno;
-@@ -116,13 +116,14 @@ static int has_vrfs(int *err)
+diff --git a/tools/testing/selftests/net/tcp_ao/lib/setup.c b/tools/testing/selftests/net/tcp_ao/lib/setup.c
+index e408b9243b2c..4e6820e7cb86 100644
+--- a/tools/testing/selftests/net/tcp_ao/lib/setup.c
++++ b/tools/testing/selftests/net/tcp_ao/lib/setup.c
+@@ -142,6 +142,13 @@ int switch_save_ns(int new_ns)
  	return ret;
  }
  
-+#define KCONFIG_UNKNOWN			1
- static pthread_mutex_t kconfig_lock = PTHREAD_MUTEX_INITIALIZER;
- static struct kconfig_t kconfig[__KCONFIG_LAST__] = {
--	{ -1, has_net_ns },
--	{ -1, has_veth },
--	{ -1, has_tcp_ao },
--	{ -1, has_tcp_md5 },
--	{ -1, has_vrfs },
-+	{ KCONFIG_UNKNOWN, has_net_ns },
-+	{ KCONFIG_UNKNOWN, has_veth },
-+	{ KCONFIG_UNKNOWN, has_tcp_ao },
-+	{ KCONFIG_UNKNOWN, has_tcp_md5 },
-+	{ KCONFIG_UNKNOWN, has_vrfs },
- };
++void switch_close_ns(int fd)
++{
++	if (setns(fd, CLONE_NEWNET))
++		test_error("setns()");
++	close(fd);
++}
++
+ static int nsfd_outside	= -1;
+ static int nsfd_parent	= -1;
+ static int nsfd_child	= -1;
+@@ -296,7 +303,7 @@ static bool is_optmem_namespaced(void)
+ 		int old_ns = switch_save_ns(nsfd_child);
  
- const char *tests_skip_reason[__KCONFIG_LAST__] = {
-@@ -138,11 +139,11 @@ bool kernel_config_has(enum test_needs_kconfig k)
- 	bool ret;
- 
- 	pthread_mutex_lock(&kconfig_lock);
--	if (kconfig[k]._errno == -1) {
--		if (kconfig[k].check_kconfig(&kconfig[k]._errno))
-+	if (kconfig[k]._error == KCONFIG_UNKNOWN) {
-+		if (kconfig[k].check_kconfig(&kconfig[k]._error))
- 			test_error("Failed to initialize kconfig %u", k);
+ 		optmem_ns = !access(optmem_file, F_OK);
+-		switch_ns(old_ns);
++		switch_close_ns(old_ns);
  	}
--	ret = kconfig[k]._errno == 0;
-+	ret = kconfig[k]._error == 0;
- 	pthread_mutex_unlock(&kconfig_lock);
+ 	return !!optmem_ns;
+ }
+@@ -317,7 +324,7 @@ size_t test_get_optmem(void)
+ 		test_error("can't read from %s", optmem_file);
+ 	fclose(foptmem);
+ 	if (!is_optmem_namespaced())
+-		switch_ns(old_ns);
++		switch_close_ns(old_ns);
  	return ret;
  }
+ 
+@@ -339,7 +346,7 @@ static void __test_set_optmem(size_t new, size_t *old)
+ 		test_error("can't write %zu to %s", new, optmem_file);
+ 	fclose(foptmem);
+ 	if (!is_optmem_namespaced())
+-		switch_ns(old_ns);
++		switch_close_ns(old_ns);
+ }
+ 
+ static void test_revert_optmem(void)
 
 -- 
 2.42.2
