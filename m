@@ -1,14 +1,12 @@
 From: Dmitry Safonov <0x7f454c46@gmail.com>
-Subject: [PATCH net-next v2 0/7] net/selftests: TCP-AO selftests updates
-Date: Fri, 02 Aug 2024 10:23:24 +0100
-Message-Id: <20240802-tcp-ao-selftests-upd-6-12-v2-0-370c99358161@gmail.com>
+Date: Fri, 02 Aug 2024 10:23:25 +0100
+Subject: [PATCH net-next v2 1/7] selftests/net: Clean-up double assignment
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIylrGYC/42OQQqDMBREryJ/3d+qiVq66j2Ki5j8aEATSVKxi
- HdvFLrvchjem9kgkDcU4JFt4GkxwTibQnnJQA7C9oRGpQxlXvK8YTlGOaNwGGjUkUIM+J4V1li
- UyBWjiomGa6Yh8bMnbdbT/QJLES2tEdrUdCIQdl5YORzuX3ebhLEHOZgQnf+cp5bi5P/YXwrMU
- WvFO11Uqmb3Z5+E41W6Cdp937+0GgzB7AAAAA==
+Message-Id: <20240802-tcp-ao-selftests-upd-6-12-v2-1-370c99358161@gmail.com>
+References: <20240802-tcp-ao-selftests-upd-6-12-v2-0-370c99358161@gmail.com>
+In-Reply-To: <20240802-tcp-ao-selftests-upd-6-12-v2-0-370c99358161@gmail.com>
 To: "David S. Miller" <davem@davemloft.net>, 
  Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
  Paolo Abeni <pabeni@redhat.com>, Shuah Khan <shuah@kernel.org>
@@ -16,116 +14,39 @@ Cc: Mohammad Nassiri <mnassiri@ciena.com>, netdev@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Dmitry Safonov <0x7f454c46@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722590616; l=5091;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722590616; l=947;
  i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=dzjfyyKWWkhqqIhfp/nfZMd5h+7kqFl7gCK6K/qlQ34=;
- b=U+9VP/yk5wD3HFimmgiYofM6S5ROyuhHPL/Sit/H1iu2dGpgx8js2I3pHgIfUH6Z+8oa6qZT5
- SnqLgNS2czoAM4JRQQztbEPO3wqifEO18XDEaUfmwotVqXzo2xOYbdB
+ bh=CTRIdhA/fNrbMRjaJSddnxfQDObvWmFHJBusF1leQ7c=;
+ b=l+z5beHfW4GBJVPRLx8uw4bC1utKuI8Z3TOsBcK2nOmTx98ET5t+Fa3pwezCAA6womaBoEYsT
+ pjhEzqZsTKXAiYkh9IbApDIF7dBFD3EKzzSbCwbLF/ksNJtHnQnzrR0
 X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
  pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
 X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-First 4 patches are more-or-less cleanups/preparations.
+Correct copy'n'paste typo: the previous line already initialises get_all
+to 1.
 
-Patch 5 was sent to me/contributed off-list by Mohammad, who wants 32-bit
-kernels to run TCP-AO.
-
-Patch 6 is a workaround/fix for slow VMs. Albeit, I can't reproduce
-the issue, but I hope it will fix netdev flakes for connect-deny-*
-tests.
-
-And the biggest change is adding TCP-AO tracepoints to selftests.
-I think it's a good addition by the following reasons:
-- The related tracepoints are now tested;
-- It allows tcp-ao selftests to raise expectations on the kernel
-  behavior - up from the syscalls exit statuses + net counters.
-- Provides tracepoints usage samples.
-
-As tracepoints are not a stable ABI, any kernel changes done to them
-will be reflected to the selftests, which also will allow users
-to see how to change their code. It's quite better than parsing dmesg
-(what BGP was doing pre-tracepoints, ugh).
-
-Somewhat arguably, the code parses trace_pipe, rather than uses
-libtraceevent (which any sane user should do). The reason behind that is
-the same as for rt-netlink macros instead of libmnl: I'm trying
-to minimize the library dependencies of the selftests. And the
-performance of formatting text in kernel and parsing it again in a test
-is not critical.
-
-Current output sample:
-> ok 73 Trace events matched expectations: 13 tcp_hash_md5_required[2] tcp_hash_md5_unexpected[4] tcp_hash_ao_required[3] tcp_ao_key_not_found[4]
-
-Previously, tracepoints selftests were part of kernel tcp tracepoints
-submission [1], but since then the code was quite changed:
-- Now generic tracing setup is in lib/ftrace.c, separate from
-  lib/ftrace-tcp.c which utilizes TCP trace points. This separation
-  allows future selftests to trace non-TCP events, i.e. to find out
-  an skb's drop reason, which was useful in the creation of TCP-CLOSE
-  stress-test (not in this patch set, but used in attempt to reproduce
-  the issue from [2]).
-- Another change is that in the previous submission the trace events
-  where used only to detect unexpected TCP-AO/TCP-MD5 events. In this
-  version the selftests will fail if an expected trace event didn't
-  appear.
-  Let's see how reliable this is on the netdev bot - it obviously passes
-  on my testing, but potentially may require a temporary XFAIL patch
-  if it misbehaves on a slow VM.
-
-[1] https://lore.kernel.org/lkml/20240224-tcp-ao-tracepoints-v1-0-15f31b7f30a7@arista.com/
-[2] https://git.kernel.org/pub/scm/linux/kernel/git/netdev/net.git/commit/?id=33700a0c9b56
-
+Reported-by: Nassiri, Mohammad <mnassiri@ciena.com>
+Closes: https://lore.kernel.org/all/DM6PR04MB4202BC58A9FD5BDD24A16E8EC56F2@DM6PR04MB4202.namprd04.prod.outlook.com/
 Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
-Changes in v2:
-- Fixed two issues with parsing TCP-AO events: the socket state and TCP
-  segment flags. Hopefully, won't fail on netdev.
-- Reword patch 1 & 2 messages to be more informative and at some degree
-  formal (Paolo)
-- Since commit e33a02ed6a4f ("selftests: Add printf attribute to
-  kselftest prints") it's possible to use __printf instead of "raw" gcc
-  attribute - switch using that, as checkpatch suggests.
-- Link to v1: https://lore.kernel.org/r/20240730-tcp-ao-selftests-upd-6-12-v1-0-ffd4bf15d638@gmail.com
+ tools/testing/selftests/net/tcp_ao/lib/sock.c | 1 -
+ 1 file changed, 1 deletion(-)
 
----
-Dmitry Safonov (6):
-      selftests/net: Clean-up double assignment
-      selftests/net: Provide test_snprintf() helper
-      selftests/net: Be consistent in kconfig checks
-      selftests/net: Don't forget to close nsfd after switch_save_ns()
-      selftests/net: Synchronize client/server before counters checks
-      selftests/net: Add trace events matching to tcp_ao
+diff --git a/tools/testing/selftests/net/tcp_ao/lib/sock.c b/tools/testing/selftests/net/tcp_ao/lib/sock.c
+index 15aeb0963058..0ffda966c677 100644
+--- a/tools/testing/selftests/net/tcp_ao/lib/sock.c
++++ b/tools/testing/selftests/net/tcp_ao/lib/sock.c
+@@ -379,7 +379,6 @@ int test_get_tcp_ao_counters(int sk, struct tcp_ao_counters *out)
+ 
+ 	key_dump[0].nkeys = nr_keys;
+ 	key_dump[0].get_all = 1;
+-	key_dump[0].get_all = 1;
+ 	err = getsockopt(sk, IPPROTO_TCP, TCP_AO_GET_KEYS,
+ 			 key_dump, &key_dump_sz);
+ 	if (err) {
 
-Mohammad Nassiri (1):
-      selftests/tcp_ao: Fix printing format for uint64_t
-
- tools/testing/selftests/net/tcp_ao/Makefile        |   3 +-
- tools/testing/selftests/net/tcp_ao/bench-lookups.c |   2 +-
- tools/testing/selftests/net/tcp_ao/config          |   1 +
- tools/testing/selftests/net/tcp_ao/connect-deny.c  |  25 +-
- tools/testing/selftests/net/tcp_ao/connect.c       |   6 +-
- tools/testing/selftests/net/tcp_ao/icmps-discard.c |   2 +-
- .../testing/selftests/net/tcp_ao/key-management.c  |  18 +-
- tools/testing/selftests/net/tcp_ao/lib/aolib.h     | 176 ++++++-
- .../testing/selftests/net/tcp_ao/lib/ftrace-tcp.c  | 549 +++++++++++++++++++++
- tools/testing/selftests/net/tcp_ao/lib/ftrace.c    | 466 +++++++++++++++++
- tools/testing/selftests/net/tcp_ao/lib/kconfig.c   |  31 +-
- tools/testing/selftests/net/tcp_ao/lib/setup.c     |  15 +-
- tools/testing/selftests/net/tcp_ao/lib/sock.c      |   1 -
- tools/testing/selftests/net/tcp_ao/lib/utils.c     |  26 +
- tools/testing/selftests/net/tcp_ao/restore.c       |  30 +-
- tools/testing/selftests/net/tcp_ao/rst.c           |   2 +-
- tools/testing/selftests/net/tcp_ao/self-connect.c  |  19 +-
- tools/testing/selftests/net/tcp_ao/seq-ext.c       |  28 +-
- .../selftests/net/tcp_ao/setsockopt-closed.c       |   6 +-
- tools/testing/selftests/net/tcp_ao/unsigned-md5.c  |  35 +-
- 20 files changed, 1375 insertions(+), 66 deletions(-)
----
-base-commit: 3361a6eae59664ffae640ff7a838f5bd89c24461
-change-id: 20240730-tcp-ao-selftests-upd-6-12-4d3e53a74f3f
-
-Best regards,
 -- 
-Dmitry Safonov <0x7f454c46@gmail.com>
+2.42.2
 
