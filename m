@@ -1,110 +1,122 @@
-From: Andy Pan <i@andypan.me>
-Date: Thu, 01 Aug 2024 11:38:38 +0000
-Subject: [PATCH v5] epoll.7: clarify the event distribution under
- edge-triggered mode
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH v5 0/4] PCI: Allow D3Hot for PCI bridges in Devicetree
+ based platforms
+Date: Fri, 02 Aug 2024 11:24:59 +0530
+Message-Id: <20240802-pci-bridge-d3-v5-0-2426dd9e8e27@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240801-epoll-et-desc-v5-1-7fcb9260a3b2@andypan.me>
-X-B4-Tracking: v=1; b=H4sIAL1zq2YC/33MSwrCMBSF4a1IxkbyatI4ch/i4Ca51YC2JSnBI
- t270ZFUdHgOfP+DZEwRM9lvHiRhiTkOfR3NdkP8Bfoz0hjqJoIJxYwwFMfheqU40YDZU6YQLDS
- WddKRasaEXby/e8dT3ZeYpyHN73zhr/dXqXDKqbTMQee1aZ09QB/mEfrdDckrVcRfLir31joBX
- mtjmi8uP7hkay4r1wAtd9wrxsIXV5+cr7mq3KBruXUh4Iovy/IETQ0URGgBAAA=
-To: Alejandro Colomar <alx@kernel.org>
-Cc: linux-man@vger.kernel.org, linux-api@vger.kernel.org, 
- "mtk.manpages" <mtk.manpages@gmail.com>, Andy Pan <panjf2000@gmail.com>, 
- Andy Pan <i@andypan.me>
+X-B4-Tracking: v=1; b=H4sIALN0rGYC/x2MywqAIBAAf0X23IKsBtWvRAcfW+3FRCGC8N+Tj
+ sMw80LlIlxhUS8UvqXKlTqMg4JwunQwSuwMpMlqQxpzEPRFYjfRoJ6JybML1kzQm1x4l+f/rVt
+ rH7oVnQtfAAAA
+To: Bjorn Helgaas <bhelgaas@google.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-acpi@vger.kernel.org, lukas@wunner.de, 
+ mika.westerberg@linux.intel.com, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ Hsin-Yi Wang <hsinyi@chromium.org>, Bjorn Helgaas <helgaas@kernel.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722512318; l=4107;
- i=i@andypan.me; s=20240727; h=from:subject:message-id;
- bh=MQ5HY+djEcOUkyc3//Gy9QeWdH92Y0lvTNWhhNdHpuM=;
- b=bj8+L7WKxSWuGv0Td3rKfSutq1+e1Pg+EkFv4fGFVYs/P3dm/NNq/+PjPsKZ6MB2pxflIN5fN
- Xd3QbqMkE1gA6PNHNj5j8BB17ADGVusWEEDL1zQR8qCNvCRCvZ7sUJe
-X-Developer-Key: i=i@andypan.me; a=ed25519;
- pk=ZLGY5dzAGPy8bpSKbl9Jfyp/Ud0eac0BY5cKedQXMcw=
-X-Endpoint-Received: by B4 Relay for i@andypan.me/20240727 with auth_id=190
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3410;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=ukMBOMVf5/SQqEc9ERVW/jAC++xbTeCq9CS0IIw4Y+w=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmrHTCfSo/mfFS/bxOe2eefyfjz9u0G2yanEM6y
+ b7OClN0PvGJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZqx0wgAKCRBVnxHm/pHO
+ 9TDeB/9/SM6+JeQrrSF8L7RpM5SG+czu6Nqa/lDyoya3UHWXfH3GoynxyrD804Qri4+v18lyLnj
+ Ua5WXEN3k65ZEblnnDx1ozNT5xW6EX1GoZqdaHOteXknjvWyA1G7YZVhgBB4GzNHCDtAdCxS9sg
+ F1a94OxCo4WAuk2QWBLNKlltoSNubuRCgGUqDIBmCriPN9ew/bfGJ8q+eZH4sVJbIB2zHLFfhnx
+ 8vTfcd3yMQCecOeWHPm/AAjlpVgM0yJ4E2joqlXZ/x8dqU3HCBYBdQpuxwEZl/UFQMrTHlf04Ld
+ v0aJaiqwSNb2AGmKH8+XPcahfXEOycvtP4gh9uyNWmsrRmic
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For the moment, the edge-triggered epoll generates an event for each
-receipt of a chunk of data, that is to say, epoll_wait() will return
-and tell us a monitored file descriptor is ready whenever there is a
-new activity on that FD since we were last informed about that FD.
-This is not a real _edge_ implementation for epoll, but it's been
-working this way for years and plenty of projects are relying on it
-to eliminate the overhead of one system call of read(2) per wakeup event.
+Hi,
 
-There are several renowned open-source projects relying on this feature
-for notification function (with eventfd): register eventfd with EPOLLET
-and avoid calling read(2) on the eventfd when there is wakeup event (eventfd being written).
-Examples: nginx [1], netty [2], tokio [3], libevent [4], ect. [5]
-These projects are widely used in today's Internet infrastructures.
-Thus, changing this behavior of epoll ET will fundamentally break them
-and cause a significant negative impact.
-Linux has changed it for pipe before [6], breaking some Android libraries,
-which had got "reverted" somehow. [7] [8]
+This series allows D3Hot for PCI bridges in Devicetree based platforms.
+Even though most of the bridges in Devicetree platforms support D3Hot, PCI
+core will allow D3Hot only when one of the following conditions are met:
 
-Nevertheless, the paragraph in the manual pages describing this
-characteristic of epoll ET seems ambiguous, I think a more explict
-sentence should be used to clarify it. We're improving the notification
-mechanism for libuv recently by exploiting this feature with eventfd,
-which brings us a significant performance boost. [9]
+1. Platform is ACPI based
+2. Thunderbolt controller is used
+3. pcie_port_pm=force passed in cmdline
 
-Therefore, we (as well as the maintainers of nginx, netty, tokio, etc.)
-would have a sense of security to build an enhanced notification function
-based on this feature if there is a guarantee of retaining this implementation
-of epoll ET for the backward compatibility in the man pages.
+While options 1 and 2 do not apply to most of the DT based platforms,
+option 3 will make the life harder for distro maintainers.
 
-[1]: https://github.com/nginx/nginx/blob/efc6a217b92985a1ee211b6bb7337cd2f62deb90/src/event/modules/ngx_epoll_module.c#L386-L457
-[2]: https://github.com/netty/netty/pull/9192
-[3]: https://github.com/tokio-rs/mio/blob/309daae21ecb1d46203a7dbc0cf4c80310240cba/src/sys/unix/waker.rs#L111-L143
-[4]: https://github.com/libevent/libevent/blob/525f5d0a14c9c103be750f2ca175328c25505ea4/event.c#L2597-L2614
-[5]: https://github.com/libuv/libuv/pull/4400#issuecomment-2123798748
-[6]: https://lkml.iu.edu/hypermail/linux/kernel/2010.1/04363.html
-[7]: https://github.com/torvalds/linux/commit/3a34b13a88caeb2800ab44a4918f230041b37dd9
-[8]: https://github.com/torvalds/linux/commit/3b844826b6c6affa80755254da322b017358a2f4
-[9]: https://github.com/libuv/libuv/pull/4400#issuecomment-2103232402
+Initially, I tried to fix this issue by using a Devicetree property [1], but
+that was rejected by Bjorn and it was concluded that D3Hot should be allowed by
+default for all the Devicetree based platforms.
 
-Signed-off-by: Andy Pan <i@andypan.me>
----
+During the review of v3 series, Bjorn noted several shortcomings of the
+pci_bridge_d3_possible() API [2] and I tried to address them in this series as
+well.
+
+But please note that the patches 2 and 3 needs closer review from ACPI and x86
+folks since I've splitted the D3Hot and D3Cold handling based on my little
+understanding of the code.
+
+Testing
+=======
+
+This series is tested on SM8450 based development board on top of [3].
+
+- Mani
+
+[1] https://lore.kernel.org/linux-pci/20240214-pcie-qcom-bridge-v3-1-3a713bbc1fd7@linaro.org/
+[2] https://lore.kernel.org/linux-pci/20240305175107.GA539676@bhelgaas/
+[3] https://lore.kernel.org/linux-arm-msm/20240321-pcie-qcom-bridge-dts-v2-0-1eb790c53e43@linaro.org/
+
 Changes in v5:
-- Update the sentence of clarifying the epoll ET
-- Link to v4: https://lore.kernel.org/r/20240731-epoll-et-desc-v4-1-7eb819bdde0d@andypan.me
+- Rebased on top of v6.11-rc1
+- Fixed the function name in Kdoc of patch 3/4
+- Collected tags
+- Link to v4: https://lore.kernel.org/linux-pci/20240326-pci-bridge-d3-v4-0-f1dce1d1f648@linaro.org
 
 Changes in v4:
-- Move the added sentence elsewhere to make more sense
-- Link to v3: https://lore.kernel.org/r/20240730-epoll-et-desc-v3-1-6aa81b1c400d@andypan.me
+- Added pci_bridge_d3_possible() rework based on comments from Bjorn
+- Got rid of the DT property and allowed D3Hot by default on all DT platforms
 
 Changes in v3:
-- Updated the git commit description
-- Link to v2: https://lore.kernel.org/r/20240727-epoll-et-desc-v2-1-c99b2ac66775@andypan.me
+- Fixed kdoc, used of_property_present() and dev_of_node() (Lukas)
+- Link to v2: https://lore.kernel.org/r/20240214-pcie-qcom-bridge-v2-1-9dd6dbb1b817@linaro.org
 
 Changes in v2:
-- Added the git commit description based on feedback
-- Link to v1: https://lore.kernel.org/r/20240727-epoll-et-desc-v1-1-390bafc678b9@andypan.me
----
- man/man7/epoll.7 | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+- Switched to DT based approach as suggested by Lukas.
+- Link to v1: https://lore.kernel.org/r/20240202-pcie-qcom-bridge-v1-0-46d7789836c0@linaro.org
 
-diff --git a/man/man7/epoll.7 b/man/man7/epoll.7
-index 951500131..86e5f8363 100644
---- a/man/man7/epoll.7
-+++ b/man/man7/epoll.7
-@@ -121,7 +121,8 @@ .SS Level-triggered and edge-triggered
- meanwhile the remote peer might be expecting a response based on the
- data it already sent.
- The reason for this is that edge-triggered mode
--delivers events only when changes occur on the monitored file descriptor.
-+delivers events only when changes occur on the monitored file descriptor,
-+that is, an event will be generated upon each receipt of a chunk of data.
- So, in step
- .B 5
- the caller might end up waiting for some data that is already present inside
+To: Bjorn Helgaas <bhelgaas@google.com>
+To: Rafael J. Wysocki <rafael@kernel.org>
+To: Len Brown <lenb@kernel.org>
+Cc: linux-pci@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-acpi@vger.kernel.org
+Cc: lukas@wunner.de
+Cc: mika.westerberg@linux.intel.com
 
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
-base-commit: cbc0a111e4dceea2037c51098de33e6bc8c16a5c
-change-id: 20240727-epoll-et-desc-04ea9a590f3b
+Manivannan Sadhasivam (4):
+      PCI/portdrv: Make use of pci_dev::bridge_d3 for checking the D3 possibility
+      PCI: Rename pci_bridge_d3_possible() to pci_bridge_d3_allowed()
+      PCI: Decouple D3Hot and D3Cold handling for bridges
+      PCI: Allow PCI bridges to go to D3Hot on all Devicetree based platforms
+
+ drivers/pci/bus.c          |  2 +-
+ drivers/pci/pci-acpi.c     |  9 ++---
+ drivers/pci/pci-sysfs.c    |  2 +-
+ drivers/pci/pci.c          | 90 ++++++++++++++++++++++++++++++++--------------
+ drivers/pci/pci.h          | 12 ++++---
+ drivers/pci/pcie/portdrv.c | 16 ++++-----
+ drivers/pci/remove.c       |  2 +-
+ include/linux/pci.h        |  3 +-
+ 8 files changed, 89 insertions(+), 47 deletions(-)
+---
+base-commit: 705c1da8fa4816fb0159b5602fef1df5946a3ee2
+change-id: 20240320-pci-bridge-d3-092e2beac438
 
 Best regards,
 -- 
-Andy Pan <i@andypan.me>
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
