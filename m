@@ -1,14 +1,13 @@
 From: Yang Li <yang.li@amlogic.com>
-Subject: [PATCH v3 0/3] Add support for Amlogic HCI UART
-Date: Fri, 02 Aug 2024 17:39:46 +0800
-Message-Id: <20240802-btaml-v3-0-d8110bf9963f@amlogic.com>
+Date: Fri, 02 Aug 2024 17:39:47 +0800
+Subject: [PATCH v3 1/3] dt-bindings: net: bluetooth: Add support for
+ Amlogic Bluetooth
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGKprGYC/1WNQQ7CIBBFr9KwFsMMbQBX3sO4KBRaElsMNETT9
- O7Saowu38+8NwtJNnqbyKlaSLTZJx+mAvxQETO0U2+p7woTZFizGiTVczveqFOd0KAE1q0m5fY
- erfOPvXO5Fh58mkN87tkM2/ouCNZ8Chkoo8JBw6VT0lh3LmvovTmaMJKtkfHH+37OWDzgCjVaB
- JD831vX9QXt1AZl1AAAAA==
+Message-Id: <20240802-btaml-v3-1-d8110bf9963f@amlogic.com>
+References: <20240802-btaml-v3-0-d8110bf9963f@amlogic.com>
+In-Reply-To: <20240802-btaml-v3-0-d8110bf9963f@amlogic.com>
 To: Marcel Holtmann <marcel@holtmann.org>, 
  Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
@@ -18,55 +17,94 @@ To: Marcel Holtmann <marcel@holtmann.org>,
  Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>
 Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, Yang Li <yang.li@amlogic.com>, 
- Ye He <ye.he@amlogic.com>
+ linux-arm-kernel@lists.infradead.org, Yang Li <yang.li@amlogic.com>
 X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722591623; l=1589;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722591623; l=2151;
  i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=CWclPJ4pjk4LvCG6DZIT3d/BBZcJRSdZLLIzy3xSXx8=;
- b=x4vT1adzcphYX0rrutz0CZCP/dHB/HZkjXhHrk8E/y/uNjJi7MiMFh/ChVMNIpDuTz3UhJf2n
- mbxzV5P04axBWe33fisj9pxvwqNDQdjLEhcJyEb9YDhdNyWrcPNRjJ6
+ bh=jit1Vgrwmm8Xigd6jWG3AYnjzF/YLlq67lp25AQso5I=;
+ b=ZEK+MJkZmwHPV+HVoYUuAnMXbNQe8Jl4DSa+h1deIBEtfayDJAzEShJafcjwOrJ33ymOsCHgf
+ jXIcUUJZ4/pC45LxP3HJkXTQWG8Us3sGvzOEtzoUYl8bVandsr/RwxL
 X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
  pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
 X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for Amlogic HCI UART, including dt-binding,
-and Amlogic Bluetooth driver.
+Add binding document for Amlogic Bluetooth chipsets attached over UART.
 
 Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
-Changes in v3:
-- Updated the properties within the device tree binding file.
-- Remove the "antenna-number" property.
-- Performed code optimization for improved efficiency and readability.
-- Link to v2: https://lore.kernel.org/r/20240718-btaml-v2-0-1392b2e21183@amlogic.com
+ .../bindings/net/bluetooth/amlogic,w155s2-bt.yaml  | 62 ++++++++++++++++++++++
+ 1 file changed, 62 insertions(+)
 
-Changes in v2:
-- Introduce a regulator for powering up the Bluetooth chip instead of power sequencing.
-- Use the GPIO Consumer API to manipulate the GPIO pins instead of the legacy API.
-- Minor fixes.
-- Link to v1: https://lore.kernel.org/r/20240705-btaml-v1-0-7f1538f98cef@amlogic.com
+diff --git a/Documentation/devicetree/bindings/net/bluetooth/amlogic,w155s2-bt.yaml b/Documentation/devicetree/bindings/net/bluetooth/amlogic,w155s2-bt.yaml
+new file mode 100644
+index 000000000000..c0c4209cd687
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/bluetooth/amlogic,w155s2-bt.yaml
+@@ -0,0 +1,62 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++# Copyright (C) 2024 Amlogic, Inc. All rights reserved
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/bluetooth/amlogic,w155s2-bt.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Amlogic Bluetooth chips
++
++description:
++  The W155S2 is an Amlogic Bluetooth and Wi-Fi combo chip. It works on
++  the standard H4 protocol via a 4-wire UART interface, with baud rates
++  up to 4 Mbps.
++
++maintainers:
++  - Yang Li <yang.li@amlogic.com>
++
++properties:
++  compatible:
++    oneOf:
++      - const: amlogic,w155s2-bt
++      - items:
++          - enum:
++              - amlogic,w265s1-bt
++              - amlogic,w265p1-bt
++              - amlogic,w265s2-bt
++          - const: amlogic,w155s2-bt
++
++  clocks:
++    maxItems: 1
++    description: clock provided to the controller (32.768KHz)
++
++  enable-gpios:
++    maxItems: 1
++
++  vddio-supply:
++    description: VDD_IO supply regulator handle
++
++  firmware-name:
++    maxItems: 1
++    description: specify the path of firmware bin to load
++
++required:
++  - compatible
++  - enable-gpios
++  - vddio-supply
++  - clocks
++  - firmware-name
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    bluetooth {
++        compatible = "amlogic,w155s2-bt";
++        clocks = <&extclk>;
++        enable-gpios = <&gpio 17 GPIO_ACTIVE_HIGH>;
++        vddio-supply = <&wcn_3v3>;
++        firmware-name = "amlogic/aml_w155s2_bt_uart.bin";
++    };
++
 
----
-Yang Li (3):
-      dt-bindings: net: bluetooth: Add support for Amlogic Bluetooth
-      Bluetooth: hci_uart: Add support for Amlogic HCI UART
-      MAINTAINERS: Add an entry for Amlogic HCI UART (M: Yang Li)
-
- .../bindings/net/bluetooth/amlogic,w155s2-bt.yaml  |  62 ++
- MAINTAINERS                                        |   7 +
- drivers/bluetooth/Kconfig                          |  12 +
- drivers/bluetooth/Makefile                         |   1 +
- drivers/bluetooth/hci_aml.c                        | 756 +++++++++++++++++++++
- drivers/bluetooth/hci_ldisc.c                      |   8 +-
- drivers/bluetooth/hci_uart.h                       |   8 +-
- 7 files changed, 851 insertions(+), 3 deletions(-)
----
-base-commit: 2360f368524bb817b71bdd2efed53d0c3c3929ad
-change-id: 20240418-btaml-f9d7b19724ab
-
-Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+2.42.0
 
