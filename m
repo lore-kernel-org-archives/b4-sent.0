@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Fri, 02 Aug 2024 11:25:00 +0530
-Subject: [PATCH v5 1/4] PCI/portdrv: Make use of pci_dev::bridge_d3 for
- checking the D3 possibility
+Date: Fri, 02 Aug 2024 11:25:01 +0530
+Subject: [PATCH v5 2/4] PCI: Rename pci_bridge_d3_possible() to
+ pci_bridge_d3_allowed()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240802-pci-bridge-d3-v5-1-2426dd9e8e27@linaro.org>
+Message-Id: <20240802-pci-bridge-d3-v5-2-2426dd9e8e27@linaro.org>
 References: <20240802-pci-bridge-d3-v5-0-2426dd9e8e27@linaro.org>
 In-Reply-To: <20240802-pci-bridge-d3-v5-0-2426dd9e8e27@linaro.org>
 To: Bjorn Helgaas <bhelgaas@google.com>, 
@@ -14,43 +14,197 @@ Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-acpi@vger.kernel.org, lukas@wunner.de, 
  mika.westerberg@linux.intel.com, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Hsin-Yi Wang <hsinyi@chromium.org>
+ Bjorn Helgaas <helgaas@kernel.org>, Hsin-Yi Wang <hsinyi@chromium.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1613;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8312;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=yht1diuW60Yop5/MJv61ZmShJUebX/GlA7kDcmFMjJk=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmrHTC/WwYy2qeJjZ533ltqs4myHg2ephLfnjaa
- 88YaDf3/OaJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZqx0wgAKCRBVnxHm/pHO
- 9ajrCACDX9M1OQiUvAHCdt5y/BA9vHawznd1tH4hTb3nJK8n/6kNEfLMDhmwA8MSkNfE1c9v9lj
- ECeeyKSLzwztu4Fi1/mgf2sK1UZwHrhTz3aozN4Ll7G13WXkMBYTtKHniV+vZXpVX/BV25rZR8y
- saJbDjOS+H6g8iiydB32M1mvUN/bZLE48kWjT+FPw5sHKsOCVIAlY4WzcXNeUnuO6k6i0K4XaZx
- KiNj7YAr0GUinezr9e1e9zeJgzPry+a6FWPaZ6hY8vgOThxKPOvQRtt2U/MV0O/ibEVHYnEjG52
- jfv65jm1/C5VMXdRKjTSndaSQKRVp8UIcpA69FZiEA0bMaR1
+ bh=GHrE4/WAAdQZRtTkchDWpjeIs/pSQnBrSg7T9J3wJiQ=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmrHTCu6YnayPL+5a/XwseNd/yFsK4K2oSYiSj+
+ 41/m1Wj7reJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZqx0wgAKCRBVnxHm/pHO
+ 9WAOB/9MbWubQKHItHwS3BYSnjjKo27Bx6FMGf11h2VBR9EDdPCyC63ocW4PooEzMIrjj2rVGoN
+ abW5nzspKSZecn1wM3QYiQlmBcPL18dkPi2w1PbYCvt065ox9F9s7u5dSRVaa8P+5H+OGWMdJ3E
+ 6Ta90T2Tf7Tzxw1qCpCmxz3L5btbKLMq1Qh7+C7RM1wWb949E/xHLGdVf98AKd6C9vZNxaz+QaE
+ oKhhF0mvdLRDhAGCcks4VlwDEXITH5lbUKqGCpuTbd2c8H7/W5aILE/dXruq0fN6D5DolAXioKI
+ 4ChVXYQHE/u9vt5pl8K7ULRm+UTfoYDRBD8mwWkVYUG26Q6t
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-PCI core is already caching the value of pci_bridge_d3_possible() in
-pci_dev::bridge_d3 during pci_pm_init(). Since the value is not going to
-change, let's make use of the cached value.
+As per the 'PCI Bus Power Management Interface Specification' v1.2, all
+devices should support D3 states (both D3Hot and D3Cold). So the term
+'possible' doesn't make sense for the bridge devices, since D3 states
+should be possible as per the design. But due to various circumstances,
+D3 states might not be allowed for the bridges.
 
+In those cases, the API should be called 'pci_bridge_d3_allowed()' to
+reflect the actual behavior. So let's rename it.
+
+This also warrants renaming the variable 'bridge_d3' in 'struct pci_dev'
+to 'bridge_d3_allowed' for the reason cited above.
+
+No functional change.
+
+Reported-by: Bjorn Helgaas <helgaas@kernel.org>
+Closes: https://lore.kernel.org/linux-pci/20240305175107.GA539676@bhelgaas/
 Tested-by: Hsin-Yi Wang <hsinyi@chromium.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/pci/pcie/portdrv.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ drivers/pci/pci-acpi.c     |  8 ++++----
+ drivers/pci/pci.c          | 18 +++++++++---------
+ drivers/pci/pci.h          |  4 ++--
+ drivers/pci/pcie/portdrv.c | 14 +++++++-------
+ include/linux/pci.h        |  2 +-
+ 5 files changed, 23 insertions(+), 23 deletions(-)
 
+diff --git a/drivers/pci/pci-acpi.c b/drivers/pci/pci-acpi.c
+index 004575091596..0f260cdc4592 100644
+--- a/drivers/pci/pci-acpi.c
++++ b/drivers/pci/pci-acpi.c
+@@ -1429,12 +1429,12 @@ void pci_acpi_setup(struct device *dev, struct acpi_device *adev)
+ 
+ 	device_set_wakeup_capable(dev, true);
+ 	/*
+-	 * For bridges that can do D3 we enable wake automatically (as
+-	 * we do for the power management itself in that case). The
++	 * For bridges that are allowed to do D3, we enable wake automatically
++	 * (as we do for the power management itself in that case). The
+ 	 * reason is that the bridge may have additional methods such as
+ 	 * _DSW that need to be called.
+ 	 */
+-	if (pci_dev->bridge_d3)
++	if (pci_dev->bridge_d3_allowed)
+ 		device_wakeup_enable(dev);
+ 
+ 	acpi_pci_wakeup(pci_dev, false);
+@@ -1452,7 +1452,7 @@ void pci_acpi_cleanup(struct device *dev, struct acpi_device *adev)
+ 	pci_acpi_remove_pm_notifier(adev);
+ 	if (adev->wakeup.flags.valid) {
+ 		acpi_device_power_remove_dependent(adev, dev);
+-		if (pci_dev->bridge_d3)
++		if (pci_dev->bridge_d3_allowed)
+ 			device_wakeup_disable(dev);
+ 
+ 		device_set_wakeup_capable(dev, false);
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index e5f243dd4288..0edc4e448c2d 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -2967,13 +2967,13 @@ static const struct dmi_system_id bridge_d3_blacklist[] = {
+ };
+ 
+ /**
+- * pci_bridge_d3_possible - Is it possible to put the bridge into D3
++ * pci_bridge_d3_allowed - Is it allowed to put the bridge into D3
+  * @bridge: Bridge to check
+  *
+- * This function checks if it is possible to move the bridge to D3.
++ * This function checks if the bridge is allowed to move to D3.
+  * Currently we only allow D3 for recent enough PCIe ports and Thunderbolt.
+  */
+-bool pci_bridge_d3_possible(struct pci_dev *bridge)
++bool pci_bridge_d3_allowed(struct pci_dev *bridge)
+ {
+ 	if (!pci_is_pcie(bridge))
+ 		return false;
+@@ -3060,14 +3060,14 @@ void pci_bridge_d3_update(struct pci_dev *dev)
+ 	bool d3cold_ok = true;
+ 
+ 	bridge = pci_upstream_bridge(dev);
+-	if (!bridge || !pci_bridge_d3_possible(bridge))
++	if (!bridge || !pci_bridge_d3_allowed(bridge))
+ 		return;
+ 
+ 	/*
+ 	 * If D3 is currently allowed for the bridge, removing one of its
+ 	 * children won't change that.
+ 	 */
+-	if (remove && bridge->bridge_d3)
++	if (remove && bridge->bridge_d3_allowed)
+ 		return;
+ 
+ 	/*
+@@ -3087,12 +3087,12 @@ void pci_bridge_d3_update(struct pci_dev *dev)
+ 	 * so we need to go through all children to find out if one of them
+ 	 * continues to block D3.
+ 	 */
+-	if (d3cold_ok && !bridge->bridge_d3)
++	if (d3cold_ok && !bridge->bridge_d3_allowed)
+ 		pci_walk_bus(bridge->subordinate, pci_dev_check_d3cold,
+ 			     &d3cold_ok);
+ 
+-	if (bridge->bridge_d3 != d3cold_ok) {
+-		bridge->bridge_d3 = d3cold_ok;
++	if (bridge->bridge_d3_allowed != d3cold_ok) {
++		bridge->bridge_d3_allowed = d3cold_ok;
+ 		/* Propagate change to upstream bridges */
+ 		pci_bridge_d3_update(bridge);
+ 	}
+@@ -3167,7 +3167,7 @@ void pci_pm_init(struct pci_dev *dev)
+ 	dev->pm_cap = pm;
+ 	dev->d3hot_delay = PCI_PM_D3HOT_WAIT;
+ 	dev->d3cold_delay = PCI_PM_D3COLD_WAIT;
+-	dev->bridge_d3 = pci_bridge_d3_possible(dev);
++	dev->bridge_d3_allowed = pci_bridge_d3_allowed(dev);
+ 	dev->d3cold_allowed = true;
+ 
+ 	dev->d1_support = false;
+diff --git a/drivers/pci/pci.h b/drivers/pci/pci.h
+index 17fed1846847..53ca75639201 100644
+--- a/drivers/pci/pci.h
++++ b/drivers/pci/pci.h
+@@ -92,7 +92,7 @@ void pci_pm_init(struct pci_dev *dev);
+ void pci_ea_init(struct pci_dev *dev);
+ void pci_msi_init(struct pci_dev *dev);
+ void pci_msix_init(struct pci_dev *dev);
+-bool pci_bridge_d3_possible(struct pci_dev *dev);
++bool pci_bridge_d3_allowed(struct pci_dev *dev);
+ void pci_bridge_d3_update(struct pci_dev *dev);
+ int pci_bridge_wait_for_secondary_bus(struct pci_dev *dev, char *reset_type);
+ 
+@@ -113,7 +113,7 @@ static inline bool pci_power_manageable(struct pci_dev *pci_dev)
+ 	 * Currently we allow normal PCI devices and PCI bridges transition
+ 	 * into D3 if their bridge_d3 is set.
+ 	 */
+-	return !pci_has_subordinate(pci_dev) || pci_dev->bridge_d3;
++	return !pci_has_subordinate(pci_dev) || pci_dev->bridge_d3_allowed;
+ }
+ 
+ static inline bool pcie_downstream_port(const struct pci_dev *dev)
 diff --git a/drivers/pci/pcie/portdrv.c b/drivers/pci/pcie/portdrv.c
-index 14a4b89a3b83..1f02e5d7b2e9 100644
+index 1f02e5d7b2e9..8401a0f7b394 100644
 --- a/drivers/pci/pcie/portdrv.c
 +++ b/drivers/pci/pcie/portdrv.c
+@@ -632,7 +632,7 @@ __setup("pcie_ports=", pcie_port_setup);
+ #ifdef CONFIG_PM
+ static int pcie_port_runtime_suspend(struct device *dev)
+ {
+-	if (!to_pci_dev(dev)->bridge_d3)
++	if (!to_pci_dev(dev)->bridge_d3_allowed)
+ 		return -EBUSY;
+ 
+ 	return pcie_port_device_runtime_suspend(dev);
+@@ -641,11 +641,11 @@ static int pcie_port_runtime_suspend(struct device *dev)
+ static int pcie_port_runtime_idle(struct device *dev)
+ {
+ 	/*
+-	 * Assume the PCI core has set bridge_d3 whenever it thinks the port
+-	 * should be good to go to D3.  Everything else, including moving
++	 * Assume the PCI core has set bridge_d3_allowed whenever it thinks the
++	 * port should be good to go to D3.  Everything else, including moving
+ 	 * the port to D3, is handled by the PCI core.
+ 	 */
+-	return to_pci_dev(dev)->bridge_d3 ? 0 : -EBUSY;
++	return to_pci_dev(dev)->bridge_d3_allowed ? 0 : -EBUSY;
+ }
+ 
+ static const struct dev_pm_ops pcie_portdrv_pm_ops = {
 @@ -702,7 +702,7 @@ static int pcie_portdrv_probe(struct pci_dev *dev,
  	dev_pm_set_driver_flags(&dev->dev, DPM_FLAG_NO_DIRECT_COMPLETE |
  					   DPM_FLAG_SMART_SUSPEND);
  
--	if (pci_bridge_d3_possible(dev)) {
-+	if (dev->bridge_d3) {
+-	if (dev->bridge_d3) {
++	if (dev->bridge_d3_allowed) {
  		/*
  		 * Keep the port resumed 100ms to make sure things like
  		 * config space accesses from userspace (lspci) will not
@@ -58,8 +212,8 @@ index 14a4b89a3b83..1f02e5d7b2e9 100644
  
  static void pcie_portdrv_remove(struct pci_dev *dev)
  {
--	if (pci_bridge_d3_possible(dev)) {
-+	if (dev->bridge_d3) {
+-	if (dev->bridge_d3) {
++	if (dev->bridge_d3_allowed) {
  		pm_runtime_forbid(&dev->dev);
  		pm_runtime_get_noresume(&dev->dev);
  		pm_runtime_dont_use_autosuspend(&dev->dev);
@@ -67,11 +221,24 @@ index 14a4b89a3b83..1f02e5d7b2e9 100644
  
  static void pcie_portdrv_shutdown(struct pci_dev *dev)
  {
--	if (pci_bridge_d3_possible(dev)) {
-+	if (dev->bridge_d3) {
+-	if (dev->bridge_d3) {
++	if (dev->bridge_d3_allowed) {
  		pm_runtime_forbid(&dev->dev);
  		pm_runtime_get_noresume(&dev->dev);
  		pm_runtime_dont_use_autosuspend(&dev->dev);
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index 16493426a04f..2a48c88512e1 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -375,7 +375,7 @@ struct pci_dev {
+ 	unsigned int	d2_support:1;	/* Low power state D2 is supported */
+ 	unsigned int	no_d1d2:1;	/* D1 and D2 are forbidden */
+ 	unsigned int	no_d3cold:1;	/* D3cold is forbidden */
+-	unsigned int	bridge_d3:1;	/* Allow D3 for bridge */
++	unsigned int	bridge_d3_allowed:1;	/* Allow D3 for bridge */
+ 	unsigned int	d3cold_allowed:1;	/* D3cold is allowed by user */
+ 	unsigned int	mmio_always_on:1;	/* Disallow turning off io/mem
+ 						   decoding during BAR sizing */
 
 -- 
 2.25.1
