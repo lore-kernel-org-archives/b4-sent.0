@@ -1,74 +1,133 @@
-From: Janne Grunau <j@jannau.net>
-Date: Sat, 03 Aug 2024 21:52:55 +0200
-Subject: [PATCH] wifi: brcmfmac: cfg80211: Handle SSID based pmksa deletion
+From: Koakuma <koachan@protonmail.com>
+Date: Sun, 04 Aug 2024 10:39:49 +0700
+Subject: [PATCH] sparc/vdso: Add helper function for 64-bit right shift on
+ 32-bit target
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240803-brcmfmac_pmksa_del_ssid-v1-1-4e85f19135e1@jannau.net>
-X-B4-Tracking: v=1; b=H4sIAJaKrmYC/x3MQQqAIBBA0avErBOsKYiuEiGmYw1lhQMRRHdPW
- r7F/w8IJSaBvngg0cXCx55RlQW4xe4zKfbZUOu60Z1GNSUXQ7TOnHEVazxtRoS9QoctBcIWUUO
- uz0SB7/88jO/7AZiy8PppAAAA
-To: Arend van Spriel <arend.vanspriel@broadcom.com>, 
- Kalle Valo <kvalo@kernel.org>, Hector Martin <marcan@marcan.st>, 
- Linus Walleij <linus.walleij@linaro.org>
-Cc: linux-wireless@vger.kernel.org, brcm80211@lists.linux.dev, 
- brcm80211-dev-list.pdl@broadcom.com, linux-kernel@vger.kernel.org, 
- asahi@lists.linux.dev, stable@vger.kernel.org, Janne Grunau <j@jannau.net>
+Message-Id: <20240804-sparc-shr64-v1-1-25050968339a@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAT4rmYC/x3MMQqAMAxA0atIZgtpKUa8ijgUjZpFSwIilN7d4
+ viG/wsYq7DB1BVQfsTkvhp838F6putgJ1szBAwRyZOznHR1duoQXdgRE41jJEJoRVbe5f1v81L
+ rB4OsFpBdAAAA
+To: "David S. Miller" <davem@davemloft.net>, 
+ Andreas Larsson <andreas@gaisler.com>, Andy Lutomirski <luto@kernel.org>, 
+ Thomas Gleixner <tglx@linutronix.de>, 
+ Vincenzo Frascino <vincenzo.frascino@arm.com>, 
+ Nathan Chancellor <nathan@kernel.org>, 
+ Nick Desaulniers <ndesaulniers@google.com>, 
+ Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>
+Cc: sparclinux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ llvm@lists.linux.dev, Koakuma <koachan@protonmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1950; i=j@jannau.net;
- h=from:subject:message-id; bh=kwa63Uu8k2lWu1jh8mzzIZRococdlt5kl/m4MUAUTEw=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhrR1XfMEpu1b+fuSsfFsHu0AC7n/HqLvPkyYsUf8qoPE2
- WVB35WOd5SyMIhxMciKKbIkab/sYFhdoxhT+yAMZg4rE8gQBi5OAZjI3HmMDPcyXdbdTkgSbX8v
- +P1v2493CbJP93htlxD64/Ku96rAllBGhnYeTsmJeakhXxj4GP6WHDzR8etU5P9NPK1xZpKlydc
- 6mQE=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/default with auth_id=62
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722742843; l=3316;
+ i=koachan@protonmail.com; s=20240620; h=from:subject:message-id;
+ bh=5vLiK7ELLqD1RRIEMvqkT4bYtvygqFoGLfpouZxp/Ns=;
+ b=VGHa0DUmTa67NoKaZwaMHf2po7TjbodTym97uTjAmdtk/iY/OmPZTEI5cVbFiZWWBQBEJKWku
+ Jhid1FM83fRAZ8JbZbH+jGYt7MRV1DsT9z8K7DrQRITNzWjcW7eIzDb
+X-Developer-Key: i=koachan@protonmail.com; a=ed25519;
+ pk=UA59FS3yiAA1cnAAUZ1rehTmr6skh95PgkNRBLcoKCg=
+X-Endpoint-Received: by B4 Relay for koachan@protonmail.com/20240620 with auth_id=174
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-wpa_supplicant 2.11 sends since 1efdba5fdc2c ("Handle PMKSA flush in the
-driver for SAE/OWE offload cases") SSID based PMKSA del commands.
-brcmfmac is not prepared and tries to dereference the NULL bssid and
-pmkid pointers in cfg80211_pmksa. PMKID_V3 operations support SSID based
-updates so copy the SSID.
+Add helper function for 64-bit right shift on 32-bit target so that
+clang does not emit a runtime library call.
 
-Fixes: a96202acaea4 ("wifi: brcmfmac: cfg80211: Add support for PMKID_V3 operations")
-Cc: stable@vger.kernel.org
-Signed-off-by: Janne Grunau <j@jannau.net>
+Signed-off-by: Koakuma <koachan@protonmail.com>
 ---
- drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c | 13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
+Hi~
 
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-index 5fe0e671ecb3..826b768196e2 100644
---- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-+++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-@@ -4320,9 +4320,16 @@ brcmf_pmksa_v3_op(struct brcmf_if *ifp, struct cfg80211_pmksa *pmksa,
- 		/* Single PMK operation */
- 		pmk_op->count = cpu_to_le16(1);
- 		length += sizeof(struct brcmf_pmksa_v3);
--		memcpy(pmk_op->pmk[0].bssid, pmksa->bssid, ETH_ALEN);
--		memcpy(pmk_op->pmk[0].pmkid, pmksa->pmkid, WLAN_PMKID_LEN);
--		pmk_op->pmk[0].pmkid_len = WLAN_PMKID_LEN;
-+		if (pmksa->bssid)
-+			memcpy(pmk_op->pmk[0].bssid, pmksa->bssid, ETH_ALEN);
-+		if (pmksa->pmkid) {
-+			memcpy(pmk_op->pmk[0].pmkid, pmksa->pmkid, WLAN_PMKID_LEN);
-+			pmk_op->pmk[0].pmkid_len = WLAN_PMKID_LEN;
-+		}
-+		if (pmksa->ssid && pmksa->ssid_len) {
-+			memcpy(pmk_op->pmk[0].ssid.SSID, pmksa->ssid, pmksa->ssid_len);
-+			pmk_op->pmk[0].ssid.SSID_len = pmksa->ssid_len;
-+		}
- 		pmk_op->pmk[0].time_left = cpu_to_le32(alive ? BRCMF_PMKSA_NO_EXPIRY : 0);
- 	}
+This adds a small function to do 64-bit right shifts for use in vDSO
+code, needed so that clang does not emit a call to runtime library.
+---
+ arch/sparc/vdso/vclock_gettime.c |  8 ++++----
+ include/vdso/math64.h            | 28 ++++++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+), 4 deletions(-)
+
+diff --git a/arch/sparc/vdso/vclock_gettime.c b/arch/sparc/vdso/vclock_gettime.c
+index e794edde6755..c0251a632bdb 100644
+--- a/arch/sparc/vdso/vclock_gettime.c
++++ b/arch/sparc/vdso/vclock_gettime.c
+@@ -154,7 +154,7 @@ notrace static __always_inline int do_realtime(struct vvar_data *vvar,
+ 		ts->tv_sec = vvar->wall_time_sec;
+ 		ns = vvar->wall_time_snsec;
+ 		ns += vgetsns(vvar);
+-		ns >>= vvar->clock.shift;
++		ns = __shr64(ns, vvar->clock.shift);
+ 	} while (unlikely(vvar_read_retry(vvar, seq)));
  
+ 	ts->tv_sec += __iter_div_u64_rem(ns, NSEC_PER_SEC, &ns);
+@@ -174,7 +174,7 @@ notrace static __always_inline int do_realtime_stick(struct vvar_data *vvar,
+ 		ts->tv_sec = vvar->wall_time_sec;
+ 		ns = vvar->wall_time_snsec;
+ 		ns += vgetsns_stick(vvar);
+-		ns >>= vvar->clock.shift;
++		ns = __shr64(ns, vvar->clock.shift);
+ 	} while (unlikely(vvar_read_retry(vvar, seq)));
+ 
+ 	ts->tv_sec += __iter_div_u64_rem(ns, NSEC_PER_SEC, &ns);
+@@ -194,7 +194,7 @@ notrace static __always_inline int do_monotonic(struct vvar_data *vvar,
+ 		ts->tv_sec = vvar->monotonic_time_sec;
+ 		ns = vvar->monotonic_time_snsec;
+ 		ns += vgetsns(vvar);
+-		ns >>= vvar->clock.shift;
++		ns = __shr64(ns, vvar->clock.shift);
+ 	} while (unlikely(vvar_read_retry(vvar, seq)));
+ 
+ 	ts->tv_sec += __iter_div_u64_rem(ns, NSEC_PER_SEC, &ns);
+@@ -214,7 +214,7 @@ notrace static __always_inline int do_monotonic_stick(struct vvar_data *vvar,
+ 		ts->tv_sec = vvar->monotonic_time_sec;
+ 		ns = vvar->monotonic_time_snsec;
+ 		ns += vgetsns_stick(vvar);
+-		ns >>= vvar->clock.shift;
++		ns = __shr64(ns, vvar->clock.shift);
+ 	} while (unlikely(vvar_read_retry(vvar, seq)));
+ 
+ 	ts->tv_sec += __iter_div_u64_rem(ns, NSEC_PER_SEC, &ns);
+diff --git a/include/vdso/math64.h b/include/vdso/math64.h
+index 22ae212f8b28..771d84faa8d7 100644
+--- a/include/vdso/math64.h
++++ b/include/vdso/math64.h
+@@ -21,6 +21,34 @@ __iter_div_u64_rem(u64 dividend, u32 divisor, u64 *remainder)
+ 	return ret;
+ }
+ 
++#if BITS_PER_LONG == 32
++/* This is to prevent the compiler from emitting a call to __lshrdi3. */
++static __always_inline u64
++__shr64(u64 val, int amt)
++{
++	u32 mask = (1U << amt) - 1;
++	u32 lo = val;
++	u32 hi = val >> 32;
++	u32 mi;
++
++	if (amt >= 32)
++		return hi >> (amt - 32);
++
++
++	mi = (hi & mask) << (32 - amt);
++	hi >>= amt;
++	lo = (lo >> amt) | mi;
++
++	return ((u64) hi) << 32 | lo;
++}
++#else
++static __always_inline u64
++__shr64(u64 val, int amt)
++{
++	return val >> amt;
++}
++#endif /* BITS_PER_LONG == 32 */
++
+ #if defined(CONFIG_ARCH_SUPPORTS_INT128) && defined(__SIZEOF_INT128__)
+ 
+ #ifndef mul_u64_u32_add_u64_shr
 
 ---
-base-commit: 0c3836482481200ead7b416ca80c68a29cfdaabd
-change-id: 20240803-brcmfmac_pmksa_del_ssid-3c35efe35330
+base-commit: defaf1a2113a22b00dfa1abc0fd2014820eaf065
+change-id: 20240717-sparc-shr64-2f00a7884770
 
 Best regards,
 -- 
-Janne Grunau <j@jannau.net>
+Koakuma <koachan@protonmail.com>
 
