@@ -1,10 +1,11 @@
 From: Daniel Gomez <da.gomez@samsung.com>
-Date: Wed, 07 Aug 2024 01:09:25 +0200
-Subject: [PATCH 11/12] tty/vt: conmakehash requires linux/limits.h
+Date: Wed, 07 Aug 2024 01:09:26 +0200
+Subject: [PATCH 12/12] scripts/kallsyms: add compatibility support for
+ macos
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240807-macos-build-support-v1-11-4cd1ded85694@samsung.com>
+Message-Id: <20240807-macos-build-support-v1-12-4cd1ded85694@samsung.com>
 References: <20240807-macos-build-support-v1-0-4cd1ded85694@samsung.com>
 In-Reply-To: <20240807-macos-build-support-v1-0-4cd1ded85694@samsung.com>
 To: Masahiro Yamada <masahiroy@kernel.org>, 
@@ -39,56 +40,49 @@ Cc: linux-kernel@vger.kernel.org, linux-kbuild@vger.kernel.org,
  "Daniel Gomez (Samsung)" <d+samsung@kruces.com>, gost.dev@samsung.com, 
  Daniel Gomez <da.gomez@samsung.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722985800; l=1705;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722985800; l=1149;
  i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
- bh=GlY+ZLQcYSKSN3SyY915ZDHwX28gVnVDJorFIIf1+Jo=;
- b=TXC+qEwbi6LwhRfspoNf9uCJM5mS5rpVYHpZ3bnRG1KFrfzm+UI/apLoI43ShxbZHbpUUEVBL
- CkbYZiLdsfUA4G8wSWyMc3cIK3tGKT6BD0jGlYhjBBXl1eg0MflhqKS
+ bh=m407j60dxP91/ofe/fC4k8KKLnSnwDft1+cuKD+Nr3Q=;
+ b=9wVc3kFNW+eWlInTH68OVYW9lOTG64z9J8uGc06BNi0UKGSdgCWwd1pkJsrDb88EilcZAB+Hc
+ BJiETDqZxOnA90nq/6n8hSEX1pXA+98beHklgtsWgzrpZRnNCLjTyIj
 X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
  pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
 X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-macOS hosts do not provide the linux/limits.h header required for
-conmakehash. To address this, ensure that usr/include is included in
-the conmakehash HOSTCFLAGS. This will provide the necessary header for
-successful compilation on macOS.
+Commit 67bf347ba924 ("kbuild: remove PROVIDE() for kallsyms symbols")
+introduces the use of scripts/kallsyms with /dev/null as input to
+generate the kernel symbols file. This results in getline() returning
+ENOTTY as the errno value on macOS hosts. To handle this different
+behavior, add a specific #ifdef condition for macOS.
 
-Fixes error:
-HOSTCC  drivers/tty/vt/conmakehash - due to target missing
-  clang -Wp,-MMD,drivers/tty/vt/.conmakehash.d -Wall
--Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
--std=gnu11   -I ./scripts/include     -o drivers/tty/vt/conmakehash
-drivers/tty/vt/conmakehash.c
-drivers/tty/vt/conmakehash.c:15:10: fatal error: 'linux/
-   limits.h' file not found 15 | #include <linux/limits.h>    |
-   ^~~~~~~~~~~~~~~~
-1 error generated.
-make[5]: *** [scripts/Makefile.host:116: drivers/tty/vt/conmakehash]
-Error 1
-make[4]: *** [scripts/Makefile.build:485: drivers/tty/vt] Error 2
-make[3]: *** [scripts/Makefile.build:485: drivers/tty] Error 2
-make[2]: *** [scripts/Makefile.build:485: drivers] Error 2
-make[1]: *** [/Volumes/src/kernel/linux-next/Makefile:1925: .] Error 2
-make: *** [Makefile:224: __sub-make] Error 2
+Fixes:
++ scripts/kallsyms --base-relative /dev/null
+read_symbol: Inappropriate ioctl for device
+make[1]: *** [scripts/Makefile.vmlinux:34: vmlinux] Error 1
+make: *** [Makefile:1172: vmlinux] Error 2
 
 Signed-off-by: Daniel Gomez <da.gomez@samsung.com>
 ---
- drivers/tty/vt/Makefile | 1 +
- 1 file changed, 1 insertion(+)
+ scripts/kallsyms.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/drivers/tty/vt/Makefile b/drivers/tty/vt/Makefile
-index 2c8ce8b592ed..d266895357e5 100644
---- a/drivers/tty/vt/Makefile
-+++ b/drivers/tty/vt/Makefile
-@@ -13,6 +13,7 @@ obj-$(CONFIG_CONSOLE_TRANSLATIONS)	+= consolemap.o consolemap_deftbl.o
- clean-files := consolemap_deftbl.c defkeymap.c
- 
- hostprogs += conmakehash
-+HOSTCFLAGS_conmakehash.o = -I$(srctree)/usr/include
- 
- quiet_cmd_conmk = CONMK   $@
-       cmd_conmk = $(obj)/conmakehash $< > $@
+diff --git a/scripts/kallsyms.c b/scripts/kallsyms.c
+index 0ed873491bf5..cb200120a072 100644
+--- a/scripts/kallsyms.c
++++ b/scripts/kallsyms.c
+@@ -130,7 +130,11 @@ static struct sym_entry *read_symbol(FILE *in, char **buf, size_t *buf_len)
+ 	errno = 0;
+ 	readlen = getline(buf, buf_len, in);
+ 	if (readlen < 0) {
++#ifndef __APPLE__
+ 		if (errno) {
++#else
++		if (errno && errno != ENOTTY) {
++#endif
+ 			perror("read_symbol");
+ 			exit(EXIT_FAILURE);
+ 		}
 
 -- 
 Git-146)
