@@ -1,10 +1,10 @@
 From: Daniel Gomez <da.gomez@samsung.com>
-Date: Wed, 07 Aug 2024 01:09:24 +0200
-Subject: [PATCH 10/12] scripts/mod: add byteswap support
+Date: Wed, 07 Aug 2024 01:09:25 +0200
+Subject: [PATCH 11/12] tty/vt: conmakehash requires linux/limits.h
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240807-macos-build-support-v1-10-4cd1ded85694@samsung.com>
+Message-Id: <20240807-macos-build-support-v1-11-4cd1ded85694@samsung.com>
 References: <20240807-macos-build-support-v1-0-4cd1ded85694@samsung.com>
 In-Reply-To: <20240807-macos-build-support-v1-0-4cd1ded85694@samsung.com>
 To: Masahiro Yamada <masahiroy@kernel.org>, 
@@ -39,140 +39,56 @@ Cc: linux-kernel@vger.kernel.org, linux-kbuild@vger.kernel.org,
  "Daniel Gomez (Samsung)" <d+samsung@kruces.com>, gost.dev@samsung.com, 
  Daniel Gomez <da.gomez@samsung.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722985800; l=5000;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722985800; l=1705;
  i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
- bh=Qowyf7kXi1f6DRNle64eE+hm/m7HuihHCLdS1ou6yWA=;
- b=XP/CA3ITn/u6BrAjNNPHqWBAlVrrGINO1YjcxsqBUDayPo6aLVaS+rjtkAXOWZpLD9D5LKteD
- curVBFT06iiCK+55uBnnvP0sGKgQlV/aIMRgcPJ3CQmwNbgNCAfx2DS
+ bh=GlY+ZLQcYSKSN3SyY915ZDHwX28gVnVDJorFIIf1+Jo=;
+ b=TXC+qEwbi6LwhRfspoNf9uCJM5mS5rpVYHpZ3bnRG1KFrfzm+UI/apLoI43ShxbZHbpUUEVBL
+ CkbYZiLdsfUA4G8wSWyMc3cIK3tGKT6BD0jGlYhjBBXl1eg0MflhqKS
 X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
  pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
 X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-macOS hosts do not include byteswap.h header required for modpost
-objects. Add a copy of the string/byteswap.h from the GNU C Library
-(glibc), version glibc-2.40 into include/byteswap and update the modpost
-Makefile to include the library.
+macOS hosts do not provide the linux/limits.h header required for
+conmakehash. To address this, ensure that usr/include is included in
+the conmakehash HOSTCFLAGS. This will provide the necessary header for
+successful compilation on macOS.
 
-Remove the following headers from glibc:
-
-diff --git a/include/byteswap/byteswap.h b/include/byteswap/byteswap.h
-index 66efb8fc4327..d27dd5e4bc6a 100644
---- a/include/byteswap/byteswap.h
-+++ b/include/byteswap/byteswap.h
-@@ -19,11 +19,6 @@
- #ifndef _BYTESWAP_H
- #define _BYTESWAP_H    1
-
--#include <features.h>
--
--/* Get the machine specific, optimized definitions.  */
--#include <bits/byteswap.h>
--
-
- /* The following definitions must all be macros, otherwise some
-    of the possible optimizations are not possible.  */
-
-Fixes build error for macOS:
-
-$SUBARCH is [arm64]
-  HOSTCC  scripts/mod/modpost.o
-  HOSTCC  scripts/mod/sumversion.o
-  HOSTCC  scripts/mod/symsearch.o
-  HOSTCC  scripts/mod/file2alias.o
-In file included from scripts/mod/symsearch.c:8:
-scripts/mod/modpost.h:2:10: fatal error: 'byteswap.h' file not found
-         ^~~~~~~~~~~~
-In file included from scripts/mod/sumversion.c:11:
-scripts/mod/modpost.h:2:10: fatal error: 'byteswap.h' file not found
-         ^~~~~~~~~~~~
-In file included from scripts/mod/modpost.c:23:
-scripts/mod/modpost.h:2:10: fatal error: 'byteswap.h' file not found
-         ^~~~~~~~~~~~
+Fixes error:
+HOSTCC  drivers/tty/vt/conmakehash - due to target missing
+  clang -Wp,-MMD,drivers/tty/vt/.conmakehash.d -Wall
+-Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
+-std=gnu11   -I ./scripts/include     -o drivers/tty/vt/conmakehash
+drivers/tty/vt/conmakehash.c
+drivers/tty/vt/conmakehash.c:15:10: fatal error: 'linux/
+   limits.h' file not found 15 | #include <linux/limits.h>    |
+   ^~~~~~~~~~~~~~~~
 1 error generated.
-make[1]: *** [scripts/Makefile.host:133: scripts/mod/symsearch.o] Error 1
-make[1]: *** Waiting for unfinished jobs....
-1 error generated.
-In file included from scripts/mod/file2alias.c:15:
-scripts/mod/modpost.h:2:10: fatal error: 'byteswap.h' file not found
-         ^~~~~~~~~~~~
-make[1]: *** [scripts/Makefile.host:133: scripts/mod/sumversion.o] Error 1
-1 error generated.
-make[1]: *** [scripts/Makefile.host:133: scripts/mod/modpost.o] Error 1
-1 error generated.
-make[1]: *** [scripts/Makefile.host:133: scripts/mod/file2alias.o] Error 1
-make: *** [Makefile:1191: prepare0] Error 2
-error: Recipe `kernel-build` failed with exit code 2
-
-Fixes: bd78c9d71420 ("modpost: define TO_NATIVE() using bswap_*
-functions") build error for macOS.
+make[5]: *** [scripts/Makefile.host:116: drivers/tty/vt/conmakehash]
+Error 1
+make[4]: *** [scripts/Makefile.build:485: drivers/tty/vt] Error 2
+make[3]: *** [scripts/Makefile.build:485: drivers/tty] Error 2
+make[2]: *** [scripts/Makefile.build:485: drivers] Error 2
+make[1]: *** [/Volumes/src/kernel/linux-next/Makefile:1925: .] Error 2
+make: *** [Makefile:224: __sub-make] Error 2
 
 Signed-off-by: Daniel Gomez <da.gomez@samsung.com>
 ---
- include/byteswap/byteswap.h | 35 +++++++++++++++++++++++++++++++++++
- scripts/mod/Makefile        |  8 ++++----
- 2 files changed, 39 insertions(+), 4 deletions(-)
+ drivers/tty/vt/Makefile | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/include/byteswap/byteswap.h b/include/byteswap/byteswap.h
-new file mode 100644
-index 000000000000..d27dd5e4bc6a
---- /dev/null
-+++ b/include/byteswap/byteswap.h
-@@ -0,0 +1,35 @@
-+/* Swap byte order for 16, 32 and 64 bit values
-+   Copyright (C) 1997-2024 Free Software Foundation, Inc.
-+   This file is part of the GNU C Library.
-+
-+   The GNU C Library is free software; you can redistribute it and/or
-+   modify it under the terms of the GNU Lesser General Public
-+   License as published by the Free Software Foundation; either
-+   version 2.1 of the License, or (at your option) any later version.
-+
-+   The GNU C Library is distributed in the hope that it will be useful,
-+   but WITHOUT ANY WARRANTY; without even the implied warranty of
-+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+   Lesser General Public License for more details.
-+
-+   You should have received a copy of the GNU Lesser General Public
-+   License along with the GNU C Library; if not, see
-+   <https://www.gnu.org/licenses/>.  */
-+
-+#ifndef _BYTESWAP_H
-+#define _BYTESWAP_H	1
-+
-+
-+/* The following definitions must all be macros, otherwise some
-+   of the possible optimizations are not possible.  */
-+
-+/* Return a value with both bytes in the 16 bit argument swapped.  */
-+#define bswap_16(x) __bswap_16 (x)
-+
-+/* Return a value with all bytes in the 32 bit argument swapped.  */
-+#define bswap_32(x) __bswap_32 (x)
-+
-+/* Return a value with all bytes in the 64 bit argument swapped.  */
-+#define bswap_64(x) __bswap_64 (x)
-+
-+#endif /* byteswap.h */
-diff --git a/scripts/mod/Makefile b/scripts/mod/Makefile
-index 98b4cd8cc7e6..f398dcddef58 100644
---- a/scripts/mod/Makefile
-+++ b/scripts/mod/Makefile
-@@ -8,10 +8,10 @@ modpost-objs	:= modpost.o file2alias.o sumversion.o symsearch.o
+diff --git a/drivers/tty/vt/Makefile b/drivers/tty/vt/Makefile
+index 2c8ce8b592ed..d266895357e5 100644
+--- a/drivers/tty/vt/Makefile
++++ b/drivers/tty/vt/Makefile
+@@ -13,6 +13,7 @@ obj-$(CONFIG_CONSOLE_TRANSLATIONS)	+= consolemap.o consolemap_deftbl.o
+ clean-files := consolemap_deftbl.c defkeymap.c
  
- devicetable-offsets-file := devicetable-offsets.h
+ hostprogs += conmakehash
++HOSTCFLAGS_conmakehash.o = -I$(srctree)/usr/include
  
--HOSTCFLAGS_modpost.o = -I$(srctree)/include/elf
--HOSTCFLAGS_file2alias.o = -I$(srctree)/include/elf
--HOSTCFLAGS_sumversion.o = -I$(srctree)/include/elf
--HOSTCFLAGS_symsearch.o = -I$(srctree)/include/elf
-+HOSTCFLAGS_modpost.o = -I$(srctree)/include/elf -I$(srctree)/include/byteswap
-+HOSTCFLAGS_file2alias.o = -I$(srctree)/include/elf -I$(srctree)/include/byteswap
-+HOSTCFLAGS_sumversion.o = -I$(srctree)/include/elf -I$(srctree)/include/byteswap
-+HOSTCFLAGS_symsearch.o = -I$(srctree)/include/elf -I$(srctree)/include/byteswap
- HOSTCFLAGS_mk_elfconfig.o = -I$(srctree)/include/elf
- 
- $(obj)/$(devicetable-offsets-file): $(obj)/devicetable-offsets.s FORCE
+ quiet_cmd_conmk = CONMK   $@
+       cmd_conmk = $(obj)/conmakehash $< > $@
 
 -- 
 Git-146)
