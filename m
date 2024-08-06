@@ -1,11 +1,10 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Date: Tue, 06 Aug 2024 15:35:06 +0200
-Subject: [PATCH 1/2] iio: dac: adi-axi-dac: support debugfs
- direct_reg_access
+Date: Tue, 06 Aug 2024 15:35:07 +0200
+Subject: [PATCH 2/2] iio: dac: ad9739a: add backend debugfs interface
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240806-dev-backend-dac-direct-reg-access-v1-1-b84a6e8ee8a0@analog.com>
+Message-Id: <20240806-dev-backend-dac-direct-reg-access-v1-2-b84a6e8ee8a0@analog.com>
 References: <20240806-dev-backend-dac-direct-reg-access-v1-0-b84a6e8ee8a0@analog.com>
 In-Reply-To: <20240806-dev-backend-dac-direct-reg-access-v1-0-b84a6e8ee8a0@analog.com>
 To: linux-iio@vger.kernel.org
@@ -14,54 +13,43 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Jonathan Cameron <jic23@kernel.org>, 
  Dragos Bogdan <dragos.bogdan@analog.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722951306; l=1361;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722951306; l=880;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=70Psr3VQuqq94rjCoV8WjU8cuWr16U1+KQK+zWEHn9Q=;
- b=ie12noL1qXL6arhMwxrBoobBneNtNwBnKN+DjS9lTltlbrETvPkfDxfdlhTIRMH17epJ+PF5E
- MhQ57UpZhvaD+z9UYp/a36QAzezqyMBTLZ5EFKOwxWWXKgJv5t+ERi4
+ bh=2tJLx9S3feK5aLP/bucGasBHK5sb0LjFdbnPk10uUfM=;
+ b=1Xt2FwsLAKMhNBmQTfuH8OBmjzDVq/oNfTzyD24A55S4nHKWDODYFKG7A/MgG4gka7vBU+FRs
+ aQ4BJbvw+LiC9clKHAlhieSFb3Ng4iZt2z6TXuiSF5+2F+a2obwGnJA
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make it possible to read/write registers on the backend using the
-debugfs interface for it.
+Call iio_backend_debugfs_add() to add (if available) the backend debug
+interface.
 
 Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/iio/dac/adi-axi-dac.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/iio/dac/ad9739a.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/iio/dac/adi-axi-dac.c b/drivers/iio/dac/adi-axi-dac.c
-index 9655705b158b..0cb00f3bec04 100644
---- a/drivers/iio/dac/adi-axi-dac.c
-+++ b/drivers/iio/dac/adi-axi-dac.c
-@@ -507,6 +507,17 @@ static int axi_dac_set_sample_rate(struct iio_backend *back, unsigned int chan,
- 	return 0;
+diff --git a/drivers/iio/dac/ad9739a.c b/drivers/iio/dac/ad9739a.c
+index 799387f21b9f..615d1a196db3 100644
+--- a/drivers/iio/dac/ad9739a.c
++++ b/drivers/iio/dac/ad9739a.c
+@@ -431,7 +431,13 @@ static int ad9739a_probe(struct spi_device *spi)
+ 	indio_dev->num_channels = ARRAY_SIZE(ad9739a_channels);
+ 	indio_dev->setup_ops = &ad9739a_buffer_setup_ops;
+ 
+-	return devm_iio_device_register(&spi->dev, indio_dev);
++	ret = devm_iio_device_register(&spi->dev, indio_dev);
++	if (ret)
++		return ret;
++
++	iio_backend_debugfs_add(st->back, indio_dev);
++
++	return 0;
  }
  
-+static int axi_dac_reg_access(struct iio_backend *back, unsigned int reg,
-+			      unsigned int writeval, unsigned int *readval)
-+{
-+	struct axi_dac_state *st = iio_backend_get_priv(back);
-+
-+	if (readval)
-+		return regmap_read(st->regmap, reg, readval);
-+
-+	return regmap_write(st->regmap, reg, writeval);
-+}
-+
- static const struct iio_backend_ops axi_dac_generic_ops = {
- 	.enable = axi_dac_enable,
- 	.disable = axi_dac_disable,
-@@ -517,6 +528,7 @@ static const struct iio_backend_ops axi_dac_generic_ops = {
- 	.ext_info_get = axi_dac_ext_info_get,
- 	.data_source_set = axi_dac_data_source_set,
- 	.set_sample_rate = axi_dac_set_sample_rate,
-+	.debugfs_reg_access = iio_backend_debugfs_ptr(axi_dac_reg_access),
- };
- 
- static const struct iio_backend_info axi_dac_generic = {
+ static const struct of_device_id ad9739a_of_match[] = {
 
 -- 
 2.45.2
