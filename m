@@ -1,131 +1,57 @@
-From: Utsav Agarwal <utsav.agarwal@analog.com>
-Date: Tue, 06 Aug 2024 09:48:04 +0100
-Subject: [PATCH v9 3/3] dt-bindings: input: Update dtbinding for adp5588
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH 0/3] add some node for amlogic c3
+Date: Tue, 06 Aug 2024 18:27:13 +0800
+Message-Id: <20240806-c3_add_node-v1-0-c0de41341632@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240806-adp5588_gpio_support-v9-3-4d6118b6d653@analog.com>
-References: <20240806-adp5588_gpio_support-v9-0-4d6118b6d653@analog.com>
-In-Reply-To: <20240806-adp5588_gpio_support-v9-0-4d6118b6d653@analog.com>
-To: Utsav Agarwal <utsav.agarwal@analog.com>, 
- Michael Hennerich <michael.hennerich@analog.com>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAIH6sWYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDCwMz3WTj+MSUlPi8/JRUXRMjg0Rjc0tDizRDCyWgjoKi1LTMCrBp0bG
+ 1tQDCFNWhXQAAAA==
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Arturs Artamonovs <arturs.artamonovs@analog.com>, 
- Vasileios Bimpikas <vasileios.bimpikas@analog.com>, 
- Oliver Gaskell <oliver.gaskell@analog.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1722934106; l=2787;
- i=utsav.agarwal@analog.com; s=20240701; h=from:subject:message-id;
- bh=IDMT5Xee1oJ9GPx4m0/4wO3JYqcHE0m3oSwjk4wtz/Q=;
- b=1VJE7OxfyBh+HyB2sg8jCGAiaPX6IljGy32ThG2UCCSgwOUQ9DJdVWiS64yEjyUaQ1PN3ItWR
- M/7PbvE7P8bCWHc+iIrmLFeRpgnneDx3o+/vrid2ZPlKrw3sItod4ci
-X-Developer-Key: i=utsav.agarwal@analog.com; a=ed25519;
- pk=mIG5Dmd3TO5rcICwTsixl2MoUcf/i2u+jYqifd7+fmI=
-X-Endpoint-Received: by B4 Relay for utsav.agarwal@analog.com/20240701 with auth_id=178
+ Conor Dooley <conor+dt@kernel.org>, Chuan Liu <chuan.liu@amlogic.com>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1722940034; l=874;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=tnBvT/w43thSvlJ/YUxyz/XqxFCcr1JN1U9GgK3fKE8=;
+ b=kq/KGDII0tJHN+mDp2Tjv86DYLPfsOhBkzOjXGiwUXsyK5Xpb5CCfO6uXDYJJbwKFRfm4Npuf
+ PSQhgYpsd1wB2RaH68n0SqrnFVsFrUbwFMxNah4ftdxMnXtjTNmEgHT
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Updating dt bindings for adp5588. Since the device can now function in a
-purely gpio mode, the following keypad specific properties are now made
-optional:
-	- interrupts
-	- keypad,num-rows
-	- keypad,num-columns
-	- linux,keymap
+Add some node for board AW409 and support board C308l AW419.
 
-However the above properties are required to be specified when
-configuring the device as a keypad, dependencies have been added
-such that specifying either one would require the remaining as well.
-
-Note that interrupts are optional, but required when the device has
-either been configured in keypad mode or as an interrupt controller.
-
-Signed-off-by: Utsav Agarwal <utsav.agarwal@analog.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- .../devicetree/bindings/input/adi,adp5588.yaml     | 51 +++++++++++++++++++---
- 1 file changed, 45 insertions(+), 6 deletions(-)
+Xianwei Zhao (3):
+      dt-bindings: clock: fix C3 PLL input parameter
+      arm64: dts: amlogic: add some device nodes for C3
+      arm64: dts: amlogic: add C3 AW419 board
 
-diff --git a/Documentation/devicetree/bindings/input/adi,adp5588.yaml b/Documentation/devicetree/bindings/input/adi,adp5588.yaml
-index 26ea66834ae2..827d72ece54b 100644
---- a/Documentation/devicetree/bindings/input/adi,adp5588.yaml
-+++ b/Documentation/devicetree/bindings/input/adi,adp5588.yaml
-@@ -49,7 +49,12 @@ properties:
-   interrupt-controller:
-     description:
-       This property applies if either keypad,num-rows lower than 8 or
--      keypad,num-columns lower than 10.
-+      keypad,num-columns lower than 10. This property is optional if
-+      keypad,num-rows or keypad,num-columns are not specified since the
-+      device then acts as gpio only, during which interrupts may or may
-+      not be utilized. If specified however, interrupts must be also be
-+      provided as all interrupt communication is handled via a single
-+      interrupt line.
- 
-   '#interrupt-cells':
-     const: 2
-@@ -65,13 +70,30 @@ properties:
-     minItems: 1
-     maxItems: 2
- 
-+
-+dependencies:
-+  keypad,num-rows:
-+    - linux,keymap
-+    - keypad,num-columns
-+  keypad,num-columns:
-+    - linux,keymap
-+    - keypad,num-rows
-+  linux,keymap:
-+    - keypad,num-rows
-+    - keypad,num-columns
-+  interrupt-controller:
-+    - interrupts
-+
-+if:
-+  required:
-+    - linux,keymap
-+then:
-+  required:
-+    - interrupts
-+
- required:
-   - compatible
-   - reg
--  - interrupts
--  - keypad,num-rows
--  - keypad,num-columns
--  - linux,keymap
- 
- unevaluatedProperties: false
- 
-@@ -108,4 +130,21 @@ examples:
-             >;
-         };
-     };
--...
-+
-+  - |
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+    #include <dt-bindings/input/input.h>
-+    #include <dt-bindings/gpio/gpio.h>
-+    i2c {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+        gpio@34 {
-+            compatible = "adi,adp5588";
-+            reg = <0x34>;
-+
-+            #gpio-cells = <2>;
-+            gpio-controller;
-+        };
-+    };
-+
-+.
+ .../bindings/clock/amlogic,c3-pll-clkc.yaml        |   7 +-
+ arch/arm64/boot/dts/amlogic/Makefile               |   1 +
+ .../boot/dts/amlogic/amlogic-c3-c302x-aw409.dts    | 249 +++++++++++
+ .../boot/dts/amlogic/amlogic-c3-c308l-aw419.dts    | 278 ++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi        | 487 ++++++++++++++++++++-
+ 5 files changed, 1019 insertions(+), 3 deletions(-)
+---
+base-commit: 89933feccececf778cab56b1ec3d0916e9bbef3b
+change-id: 20240806-c3_add_node-420a37918f18
 
+Best regards,
 -- 
-2.34.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
