@@ -1,121 +1,104 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Thu, 08 Aug 2024 17:00:55 +0800
-Subject: [PATCH v3] ACPI: introduce acpi_arch_init
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Subject: [PATCH v8 0/2] Add support for Loongson-1 NAND
+Date: Thu, 08 Aug 2024 19:22:18 +0800
+Message-Id: <20240808-loongson1-nand-v8-0-c96dea418b41@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240808-intro-acpi-arch-init-v3-1-ba510859baff@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEaJtGYC/4XNQQrCMBAF0KuUWTvSTsRYV95DugjppB2wTUlCU
- ErubuwFXL4P//8dIgfhCPdmh8BZovi1Qp0asLNZJ0YZq4FaurS3VqOsKXg0dhM0wc7VktDZvne
- sFF9phFrdAjt5H7PPoXqWmHz4HC+ZfumfwUzYYU+qY1JGa+oe02LkdbZ+gaGU8gWP0skDuAAAA
- A==
-To: Hanjun Guo <guohanjun@huawei.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>, 
- Sunil V L <sunilvl@ventanamicro.com>, Sudeep Holla <sudeep.holla@arm.com>
-Cc: linux-acpi@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- Miao Wang <shankerwangmiao@gmail.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2560;
- i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=eKOgTF8VhVeyKx0G1xa3uOLgNoi2NBf8PN9xLUwoWag=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmtIoacnmHXtf/2yn3WwFHLaPfqaWJRBUEo9FMx
- oRyn4yL9QCJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZrSKGgAKCRCwMePKe/7Z
- bnXBD/9pCBlIeUwE6hPCimjF22yrOgvcpqPQdiTygNgjLR8kd0BrfMtvQoouGoEAZFv5xGGVnZV
- 2Y3dmmhvJP1l51duLAp+0buDO53GW1LKsKyKEptBjPwUglSuTzfHMG/AlH3Eh28FE+Wh1S1OR5y
- GRhhfVcUxat623ZmGuzAZBtwEZx2caAr6dC9l5W/VR1yOFHXhwoPjawoTBoU1CFawnVJfwWAzjL
- DXrnCBkaigLmgd70itGi9zJL4POJVge6cf8JjpfTrZXdXezPQCXQNAkIUoYl8vKPinh89Gu0qqC
- WH6oydsVNbp1SnUlHgijuxcZtfvh6vN1wP8iCmHRwRvR2rXq/lw/Z/vfwPy1BJCXwOMFQxXq2gt
- +1bYVHi6NJKBQEK0EiCp9qzxEMa0iaW3SbpXND+osw62DYzZSbmunq6Obf+zN9sbheQXDRsy+48
- y8aU8bIpQcxKW1A8mKPPUuC57Kc5r/ywhklp+nfJP9R4eNF6ij/D6cwKjw93Jk/RuehUau93uwh
- i2+i0ot9N1WHBCxHnglLXWC/AlPsu2RI2V9H/7+deGG6ZjjL5SoWEX8MUJNQQh8SXj/7CSDPmAQ
- T0zlH/aLkevO/hfC4JTb5h+fmHJvTf7Uf896qSt3wvwa3J7HPxvI+oQptRurUTlFXlVDzXpZ4TN
- iz9huz55A7n6bjg==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
+X-B4-Tracking: v=1; b=H4sIAGqqtGYC/2WOzWrDMBAGXyXo3DWrn2jtnvIeoQdhr2zRWCpSY
+ tIGv3vlkNLQXha+w8zOTRTOgYt43d1E5iWUkGId7ctO9JOLI0MY6hYKlUEtLZxSimNJUUJ0cYC
+ u1YoGIkZvRYU+MvtwvQuPb3X7nGY4T5ndj0bivl5llNQNdUgg4Z3HS/3VfG0fD+Pswqnp07z5p
+ lDOKX/e+xa7WR8piv6mLBYQyHdayp49KnwybSkL/eJG4z+cKm6RWuq1NN6ZZ3xd129Tf1ndKwE
+ AAA==
+To: Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-media@vger.kernel.org, 
+ Keguang Zhang <keguang.zhang@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1723116152; l=2926;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=nMJ5ipPoSCdCFITUI50B1DzMLqNTR5+6qqFehLh2juA=;
+ b=WB92qpooblzVPCarQF1A6FPBQnb0XnrAJ63g7qCkxT/suSwku8yX8VdaX8mMH9VODx+DbYpiq
+ Pb5ZboQF8kRCSSQIZ4JjCPwzhzr7BrZ9/cmJf+dTMtp2F0vzqZ0Eyu4
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To avoid arch-specific code in general ACPI initialization flow,
-we introduce a weak symbol acpi_arch_init. Currently, arm64 can
-utillize this to insert its specific flow. In the future,
-other architectures can also have chance to define their own
-arch-specific acpi initialization process if necessary.
+Add the driver and dt-binding document for Loongson-1 NAND.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
-Reviewed-by: Sunil V L <sunilvl@ventanamicro.com>
-Reviewed-by: Sudeep Holla <sudeep.holla@arm.com>
----
-Changes from v1
-- Change acpi_arch_init from a static inline stub to a weak function
-  according to Haijun Guo's advice
----
-Changes from v2:
-- Add __init attribute to the weak acpi_arch_init stub
-- Link to v2: https://lore.kernel.org/r/20240807-intro-acpi-arch-init-v2-1-9231e23a7721@gmail.com
----
- drivers/acpi/arm64/init.c | 2 +-
- drivers/acpi/bus.c        | 4 +++-
- include/linux/acpi.h      | 6 +-----
- 3 files changed, 5 insertions(+), 7 deletions(-)
+Changes in v8:
+- Add a description part.
+- Adjust the compatible because the match data for ls1c-nfc differs from ls1b-nfc.
+- Mark 'nand-use-soft-ecc-engine' and 'nand-ecc-algo' as mandatory.
+- Delete the superfluous blank lines.
+- Drop NAND_MONOLITHIC_READ and add support for real subpage read instead.
+- Simplify the logic of ls1b_nand_parse_address() and ls1c_nand_parse_address().
+- Split ls1x_nand_set_controller() into ls1x_nand_parse_instructions()
+  and ls1x_nand_trigger_op().
+- Implement ls1x_nand_op_cmd_mapping() to convert the opcodes instead of forcing them.
+- Add ls1x_nand_check_op().
+- Remove struct ls1x_nand after moving its members to struct ls1x_nfc.
+- Add the prefix 'LS1X_' for all registers and their bits.
+- Drop the macros: nand_readl() and nand_writel().
+- Some minor fixes and improvements.
+- Link to v7: https://lore.kernel.org/r/20240430-loongson1-nand-v7-0-60787c314fa4@gmail.com
 
-diff --git a/drivers/acpi/arm64/init.c b/drivers/acpi/arm64/init.c
-index d0c8aed90fd1..7a47d8095a7d 100644
---- a/drivers/acpi/arm64/init.c
-+++ b/drivers/acpi/arm64/init.c
-@@ -2,7 +2,7 @@
- #include <linux/acpi.h>
- #include "init.h"
- 
--void __init acpi_arm_init(void)
-+void __init acpi_arch_init(void)
- {
- 	if (IS_ENABLED(CONFIG_ACPI_AGDI))
- 		acpi_agdi_init();
-diff --git a/drivers/acpi/bus.c b/drivers/acpi/bus.c
-index 284bc2e03580..3b319b163d82 100644
---- a/drivers/acpi/bus.c
-+++ b/drivers/acpi/bus.c
-@@ -1431,6 +1431,8 @@ static int __init acpi_bus_init(void)
- struct kobject *acpi_kobj;
- EXPORT_SYMBOL_GPL(acpi_kobj);
- 
-+void __weak __init acpi_arch_init(void) { }
-+
- static int __init acpi_init(void)
- {
- 	int result;
-@@ -1458,7 +1460,7 @@ static int __init acpi_init(void)
- 	acpi_viot_early_init();
- 	acpi_hest_init();
- 	acpi_ghes_init();
--	acpi_arm_init();
-+	acpi_arch_init();
- 	acpi_scan_init();
- 	acpi_ec_init();
- 	acpi_debugfs_init();
-diff --git a/include/linux/acpi.h b/include/linux/acpi.h
-index 0687a442fec7..52862c377747 100644
---- a/include/linux/acpi.h
-+++ b/include/linux/acpi.h
-@@ -1523,11 +1523,7 @@ static inline int find_acpi_cpu_topology_hetero_id(unsigned int cpu)
- }
- #endif
- 
--#ifdef CONFIG_ARM64
--void acpi_arm_init(void);
--#else
--static inline void acpi_arm_init(void) { }
--#endif
-+void acpi_arch_init(void);
- 
- #ifdef CONFIG_ACPI_PCC
- void acpi_init_pcc(void);
+Changes in v7:
+- Rename the file to loongson,ls1b-nfc.yaml
+- Rename the Kconfig dependency to LOONGSON1_APB_DMA
+- Link to v6: https://lore.kernel.org/r/20240327-loongson1-nand-v6-0-7f9311cef020@gmail.com
 
+Changes in v6:
+- Amend Kconfig
+- Add the dt-binding document
+- Modify nand_read_subpage() to allow subpage read by a single operation
+- Add DT support for driver
+- Use DT data instead of platform data
+- Remove MAX_ID_SIZE
+- Remove case NAND_OP_CMD_INSTR in ls1x_nand_set_controller()
+- Move ECC configuration to ls1x_nand_attach_chip()
+- Rename variable "nand" to "ls1x"
+- Rename variable "nc" to "nfc"
+- Some minor fixes
+- Link to v5: https://lore.kernel.org/all/20210520224213.7907-1-keguang.zhang@gmail.com
+
+Changes in v5:
+- Update the driver to fit the raw NAND framework.
+- Implement exec_op() instead of legacy cmdfunc().
+- Use dma_request_chan() instead of dma_request_channel().
+- Some minor fixes and cleanups.
+
+Changes in v4:
+- Retrieve the controller from nand_hw_control.
+
+Changes in v3:
+- Replace __raw_readl/__raw_writel with readl/writel.
+- Split ls1x_nand into two structures:
+ls1x_nand_chip and ls1x_nand_controller.
+
+Changes in v2:
+- Modify the dependency in Kconfig due to the changes of DMA module.
+
+Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
-base-commit: d4560686726f7a357922f300fc81f5964be8df04
-change-id: 20240807-intro-acpi-arch-init-fc99fe33e62d
+Keguang Zhang (2):
+      dt-bindings: mtd: Add Loongson-1 NAND Controller
+      mtd: rawnand: Add Loongson-1 NAND Controller driver
+
+ .../devicetree/bindings/mtd/loongson,ls1b-nfc.yaml |  75 ++
+ drivers/mtd/nand/raw/Kconfig                       |   7 +
+ drivers/mtd/nand/raw/Makefile                      |   1 +
+ drivers/mtd/nand/raw/loongson1_nand.c              | 818 +++++++++++++++++++++
+ 4 files changed, 901 insertions(+)
+---
+base-commit: 222a3380f92b8791d4eeedf7cd750513ff428adf
+change-id: 20240316-loongson1-nand-98327d77e0f6
 
 Best regards,
 -- 
-Miao Wang <shankerwangmiao@gmail.com>
+Keguang Zhang <keguang.zhang@gmail.com>
 
