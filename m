@@ -1,133 +1,121 @@
-From: Koakuma <koachan@protonmail.com>
-Date: Thu, 08 Aug 2024 09:05:00 +0700
-Subject: [PATCH v2] sparc/vdso: Add helper function for 64-bit right shift
- on 32-bit target
+From: Miao Wang <shankerwangmiao@gmail.com>
+Date: Thu, 08 Aug 2024 17:00:55 +0800
+Subject: [PATCH v3] ACPI: introduce acpi_arch_init
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240808-sparc-shr64-v2-1-fd18f1b2cea9@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAMsntGYC/1XMQQ6CMBCF4auQWVszLYUWV97DsGhqkUmEkikhG
- tK7W3Hl8n/J+3ZIgSkkuFQ7cNgoUZxLqFMFfnTzIwi6lwaFSqORRqTFsRdp5FYLNSA6Y602BqE
- 8Fg4DvQ7t1pceKa2R3we+ye/6cyzqP2eTQgrVYINda+u6c9eF4xrnydHz7OMEfc75A6nfi5OrA
- AAA
-To: "David S. Miller" <davem@davemloft.net>, 
- Andreas Larsson <andreas@gaisler.com>, Andy Lutomirski <luto@kernel.org>, 
- Thomas Gleixner <tglx@linutronix.de>, 
- Vincenzo Frascino <vincenzo.frascino@arm.com>, 
- Nathan Chancellor <nathan@kernel.org>, 
- Nick Desaulniers <ndesaulniers@google.com>, 
- Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>
-Cc: sparclinux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- llvm@lists.linux.dev, Koakuma <koachan@protonmail.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1723082700; l=3512;
- i=koachan@protonmail.com; s=20240620; h=from:subject:message-id;
- bh=Si3c44/d6jXgPlqHAyYiaOjLlLDe1/nmaPBaKpcPsPo=;
- b=kN78zuvs/mL6hPLposgcU9M29S3E9kBq3BS+8FzltzlrdxSTJDNeaDNDLou81Sqo6m93sqG47
- MEVfcgCRTcJAQlIIHmzdXbKSV8zMnEkOycj+RuqbwOfStGRK4FjLCgw
-X-Developer-Key: i=koachan@protonmail.com; a=ed25519;
- pk=UA59FS3yiAA1cnAAUZ1rehTmr6skh95PgkNRBLcoKCg=
-X-Endpoint-Received: by B4 Relay for koachan@protonmail.com/20240620 with auth_id=174
+Message-Id: <20240808-intro-acpi-arch-init-v3-1-ba510859baff@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAEaJtGYC/4XNQQrCMBAF0KuUWTvSTsRYV95DugjppB2wTUlCU
+ ErubuwFXL4P//8dIgfhCPdmh8BZovi1Qp0asLNZJ0YZq4FaurS3VqOsKXg0dhM0wc7VktDZvne
+ sFF9phFrdAjt5H7PPoXqWmHz4HC+ZfumfwUzYYU+qY1JGa+oe02LkdbZ+gaGU8gWP0skDuAAAA
+ A==
+To: Hanjun Guo <guohanjun@huawei.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>, 
+ Sunil V L <sunilvl@ventanamicro.com>, Sudeep Holla <sudeep.holla@arm.com>
+Cc: linux-acpi@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ Miao Wang <shankerwangmiao@gmail.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2560;
+ i=shankerwangmiao@gmail.com; h=from:subject:message-id;
+ bh=eKOgTF8VhVeyKx0G1xa3uOLgNoi2NBf8PN9xLUwoWag=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmtIoacnmHXtf/2yn3WwFHLaPfqaWJRBUEo9FMx
+ oRyn4yL9QCJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZrSKGgAKCRCwMePKe/7Z
+ bnXBD/9pCBlIeUwE6hPCimjF22yrOgvcpqPQdiTygNgjLR8kd0BrfMtvQoouGoEAZFv5xGGVnZV
+ 2Y3dmmhvJP1l51duLAp+0buDO53GW1LKsKyKEptBjPwUglSuTzfHMG/AlH3Eh28FE+Wh1S1OR5y
+ GRhhfVcUxat623ZmGuzAZBtwEZx2caAr6dC9l5W/VR1yOFHXhwoPjawoTBoU1CFawnVJfwWAzjL
+ DXrnCBkaigLmgd70itGi9zJL4POJVge6cf8JjpfTrZXdXezPQCXQNAkIUoYl8vKPinh89Gu0qqC
+ WH6oydsVNbp1SnUlHgijuxcZtfvh6vN1wP8iCmHRwRvR2rXq/lw/Z/vfwPy1BJCXwOMFQxXq2gt
+ +1bYVHi6NJKBQEK0EiCp9qzxEMa0iaW3SbpXND+osw62DYzZSbmunq6Obf+zN9sbheQXDRsy+48
+ y8aU8bIpQcxKW1A8mKPPUuC57Kc5r/ywhklp+nfJP9R4eNF6ij/D6cwKjw93Jk/RuehUau93uwh
+ i2+i0ot9N1WHBCxHnglLXWC/AlPsu2RI2V9H/7+deGG6ZjjL5SoWEX8MUJNQQh8SXj/7CSDPmAQ
+ T0zlH/aLkevO/hfC4JTb5h+fmHJvTf7Uf896qSt3wvwa3J7HPxvI+oQptRurUTlFXlVDzXpZ4TN
+ iz9huz55A7n6bjg==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add helper function for 64-bit right shift on 32-bit target so that
-clang does not emit a runtime library call.
+To avoid arch-specific code in general ACPI initialization flow,
+we introduce a weak symbol acpi_arch_init. Currently, arm64 can
+utillize this to insert its specific flow. In the future,
+other architectures can also have chance to define their own
+arch-specific acpi initialization process if necessary.
 
-Signed-off-by: Koakuma <koachan@protonmail.com>
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+Reviewed-by: Sunil V L <sunilvl@ventanamicro.com>
+Reviewed-by: Sudeep Holla <sudeep.holla@arm.com>
 ---
-Hi~
+Changes from v1
+- Change acpi_arch_init from a static inline stub to a weak function
+  according to Haijun Guo's advice
+---
+Changes from v2:
+- Add __init attribute to the weak acpi_arch_init stub
+- Link to v2: https://lore.kernel.org/r/20240807-intro-acpi-arch-init-v2-1-9231e23a7721@gmail.com
+---
+ drivers/acpi/arm64/init.c | 2 +-
+ drivers/acpi/bus.c        | 4 +++-
+ include/linux/acpi.h      | 6 +-----
+ 3 files changed, 5 insertions(+), 7 deletions(-)
 
-This adds a small function to do 64-bit right shifts for use in vDSO
-code, needed so that clang does not emit a call to runtime library.
----
-Changes in v2:
-- Move __shr64 to sparc code since there are no other users of it.
-- Now that __shr64 is not in portable code, redo it in inline asm for simpler implementation & better performance.
-- Link to v1: https://lore.kernel.org/r/20240804-sparc-shr64-v1-1-25050968339a@protonmail.com
----
- arch/sparc/vdso/vclock_gettime.c | 28 ++++++++++++++++++++++++----
- 1 file changed, 24 insertions(+), 4 deletions(-)
-
-diff --git a/arch/sparc/vdso/vclock_gettime.c b/arch/sparc/vdso/vclock_gettime.c
-index e794edde6755..79607804ea1b 100644
---- a/arch/sparc/vdso/vclock_gettime.c
-+++ b/arch/sparc/vdso/vclock_gettime.c
-@@ -86,6 +86,11 @@ notrace static long vdso_fallback_gettimeofday(struct __kernel_old_timeval *tv,
- }
+diff --git a/drivers/acpi/arm64/init.c b/drivers/acpi/arm64/init.c
+index d0c8aed90fd1..7a47d8095a7d 100644
+--- a/drivers/acpi/arm64/init.c
++++ b/drivers/acpi/arm64/init.c
+@@ -2,7 +2,7 @@
+ #include <linux/acpi.h>
+ #include "init.h"
  
- #ifdef	CONFIG_SPARC64
-+notrace static __always_inline u64 __shr64(u64 val, int amt)
-+{
-+	return val >> amt;
-+}
-+
- notrace static __always_inline u64 vread_tick(void)
+-void __init acpi_arm_init(void)
++void __init acpi_arch_init(void)
  {
- 	u64	ret;
-@@ -102,6 +107,21 @@ notrace static __always_inline u64 vread_tick_stick(void)
- 	return ret;
- }
- #else
-+notrace static __always_inline u64 __shr64(u64 val, int amt)
-+{
-+	u64 ret;
+ 	if (IS_ENABLED(CONFIG_ACPI_AGDI))
+ 		acpi_agdi_init();
+diff --git a/drivers/acpi/bus.c b/drivers/acpi/bus.c
+index 284bc2e03580..3b319b163d82 100644
+--- a/drivers/acpi/bus.c
++++ b/drivers/acpi/bus.c
+@@ -1431,6 +1431,8 @@ static int __init acpi_bus_init(void)
+ struct kobject *acpi_kobj;
+ EXPORT_SYMBOL_GPL(acpi_kobj);
+ 
++void __weak __init acpi_arch_init(void) { }
 +
-+	__asm__ __volatile__("sllx %H1, 32, %%g1\n\t"
-+			     "srl %L1, 0, %L1\n\t"
-+			     "or %%g1, %L1, %%g1\n\t"
-+			     "srlx %%g1, %2, %L0\n\t"
-+			     "srlx %L0, 32, %H0"
-+			     : "=r" (ret)
-+			     : "r" (val), "r" (amt)
-+			     : "g1");
-+	return ret;
-+}
-+
- notrace static __always_inline u64 vread_tick(void)
+ static int __init acpi_init(void)
  {
- 	register unsigned long long ret asm("o4");
-@@ -154,7 +174,7 @@ notrace static __always_inline int do_realtime(struct vvar_data *vvar,
- 		ts->tv_sec = vvar->wall_time_sec;
- 		ns = vvar->wall_time_snsec;
- 		ns += vgetsns(vvar);
--		ns >>= vvar->clock.shift;
-+		ns = __shr64(ns, vvar->clock.shift);
- 	} while (unlikely(vvar_read_retry(vvar, seq)));
+ 	int result;
+@@ -1458,7 +1460,7 @@ static int __init acpi_init(void)
+ 	acpi_viot_early_init();
+ 	acpi_hest_init();
+ 	acpi_ghes_init();
+-	acpi_arm_init();
++	acpi_arch_init();
+ 	acpi_scan_init();
+ 	acpi_ec_init();
+ 	acpi_debugfs_init();
+diff --git a/include/linux/acpi.h b/include/linux/acpi.h
+index 0687a442fec7..52862c377747 100644
+--- a/include/linux/acpi.h
++++ b/include/linux/acpi.h
+@@ -1523,11 +1523,7 @@ static inline int find_acpi_cpu_topology_hetero_id(unsigned int cpu)
+ }
+ #endif
  
- 	ts->tv_sec += __iter_div_u64_rem(ns, NSEC_PER_SEC, &ns);
-@@ -174,7 +194,7 @@ notrace static __always_inline int do_realtime_stick(struct vvar_data *vvar,
- 		ts->tv_sec = vvar->wall_time_sec;
- 		ns = vvar->wall_time_snsec;
- 		ns += vgetsns_stick(vvar);
--		ns >>= vvar->clock.shift;
-+		ns = __shr64(ns, vvar->clock.shift);
- 	} while (unlikely(vvar_read_retry(vvar, seq)));
+-#ifdef CONFIG_ARM64
+-void acpi_arm_init(void);
+-#else
+-static inline void acpi_arm_init(void) { }
+-#endif
++void acpi_arch_init(void);
  
- 	ts->tv_sec += __iter_div_u64_rem(ns, NSEC_PER_SEC, &ns);
-@@ -194,7 +214,7 @@ notrace static __always_inline int do_monotonic(struct vvar_data *vvar,
- 		ts->tv_sec = vvar->monotonic_time_sec;
- 		ns = vvar->monotonic_time_snsec;
- 		ns += vgetsns(vvar);
--		ns >>= vvar->clock.shift;
-+		ns = __shr64(ns, vvar->clock.shift);
- 	} while (unlikely(vvar_read_retry(vvar, seq)));
- 
- 	ts->tv_sec += __iter_div_u64_rem(ns, NSEC_PER_SEC, &ns);
-@@ -214,7 +234,7 @@ notrace static __always_inline int do_monotonic_stick(struct vvar_data *vvar,
- 		ts->tv_sec = vvar->monotonic_time_sec;
- 		ns = vvar->monotonic_time_snsec;
- 		ns += vgetsns_stick(vvar);
--		ns >>= vvar->clock.shift;
-+		ns = __shr64(ns, vvar->clock.shift);
- 	} while (unlikely(vvar_read_retry(vvar, seq)));
- 
- 	ts->tv_sec += __iter_div_u64_rem(ns, NSEC_PER_SEC, &ns);
+ #ifdef CONFIG_ACPI_PCC
+ void acpi_init_pcc(void);
 
 ---
-base-commit: defaf1a2113a22b00dfa1abc0fd2014820eaf065
-change-id: 20240717-sparc-shr64-2f00a7884770
+base-commit: d4560686726f7a357922f300fc81f5964be8df04
+change-id: 20240807-intro-acpi-arch-init-fc99fe33e62d
 
 Best regards,
 -- 
-Koakuma <koachan@protonmail.com>
+Miao Wang <shankerwangmiao@gmail.com>
 
