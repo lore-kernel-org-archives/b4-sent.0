@@ -1,13 +1,12 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Subject: [PATCH v2 0/2] Add support for AD4113
-Date: Fri, 09 Aug 2024 13:33:23 +0300
-Message-Id: <20240809-ad4113-v2-0-2a70c101a1f4@analog.com>
+Date: Fri, 09 Aug 2024 13:33:24 +0300
+Subject: [PATCH v2 1/2] dt-bindings: adc: ad7173: add support for ad4113
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAHPwtWYC/zXMSw7CIBSF4a00dywGLlRaR+7DdEB5tCQKBgzRN
- OxdrHH4n5x8G2SbvM1w7jZItvjsY2iBhw70qsJiiTetASkKKrEnygjGOJmVOnHnxhFFD+38SNb
- 51w5dp9arz8+Y3rtb2Hf9EQOVf6IwQgkazgcnKWo5X1RQt7gcdbzDVGv9AHw25YydAAAA
+Message-Id: <20240809-ad4113-v2-1-2a70c101a1f4@analog.com>
+References: <20240809-ad4113-v2-0-2a70c101a1f4@analog.com>
+In-Reply-To: <20240809-ad4113-v2-0-2a70c101a1f4@analog.com>
 To: Lars-Peter Clausen <lars@metafoo.de>, 
  Michael Hennerich <Michael.Hennerich@analog.com>, 
  Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -17,62 +16,59 @@ Cc: mitrutzceclan@gmail.com, linux-iio@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Dumitru Ceclan <dumitru.ceclan@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1723199607; l=1716;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1723199607; l=1728;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=XLUn36JDfGVD+kFvEnQoA8EoeGkaGqnjyaOJ/Fu01Dw=;
- b=6Ck5QjXw9XixE3oQ2YRd1xmaxGStGwvGlpPHwvsTwGD68lDgJBUOZhrt074exXpG1iLp6QA8b
- FBpYdB2otawCaYbrdu+l8l4jZaW2xXDUbvtbTukEz+pnYlcg3ycMXZQ
+ bh=58eDH7pibCEzmuIPyXvksyLIJ8t1xe4uNHVYeY1xQaM=;
+ b=wREnjO6U0jdH6CQWmOFUXSOOFClg70AS/OBAiAJFVOX8Zilnop3z3Pm8nUFjt+sFbDohv/wlR
+ z7yayJcy0pWAEVNg1syRl++0YllObPQB72emCn5gn1r6kyAGMGp2HD+
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds support for the AD4113 ADC within the existing
-AD7173 driver.
+This commit adds bindings support for AD4113.
 
 The AD4113 is a low power, low noise, 16-bit, Σ-Δ analog-to-digital
 converter (ADC) that integrates an analog front end (AFE) for four
 fully differential or eight single-ended inputs.
 
-The part is not released yet and the documentation is not public.
-Register map is identical to AD4114 besides the lower width data
-register and the GPIO register.
-
-Particularities of this model:
-- 16 bit data register
-- no temperature sensor
-- no current inputs
-- input buffers
-- internal reference
-- external reference REF-/REF+
-- no second external reference REF2-/REF2+
-- no AVDD2 supply
-- 2 GPIO pins with config bits starting at a higher position in register
-- 8 VINx inputs with voltage divider
-- 16 channel registers and 8 setup registers
+Added ad4113 to the compatible list and the "avdd2-supply: false"
+restriction.
 
 Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
 ---
-Changes in v2:
-- correctly set realbits and storagebits to 16 in iio_chan_spec
-- describe bindings restrictions in commit message due to lack of
-  sufficient diff context
-- describe model differences better in cover letter
-- Link to v1: https://lore.kernel.org/r/20240807-ad4113-v1-0-2d338f702c7b@analog.com
+ Documentation/devicetree/bindings/iio/adc/adi,ad7173.yaml | 3 +++
+ 1 file changed, 3 insertions(+)
 
----
-Dumitru Ceclan (2):
-      dt-bindings: adc: ad7173: add support for ad4113
-      iio: adc: ad7173: add support for ad4113
+diff --git a/Documentation/devicetree/bindings/iio/adc/adi,ad7173.yaml b/Documentation/devicetree/bindings/iio/adc/adi,ad7173.yaml
+index 17c5d39cc2c1..ad15cf9bc2ff 100644
+--- a/Documentation/devicetree/bindings/iio/adc/adi,ad7173.yaml
++++ b/Documentation/devicetree/bindings/iio/adc/adi,ad7173.yaml
+@@ -28,6 +28,7 @@ description: |
+   Datasheets for supported chips:
+     https://www.analog.com/media/en/technical-documentation/data-sheets/AD4111.pdf
+     https://www.analog.com/media/en/technical-documentation/data-sheets/AD4112.pdf
++    <AD4113: not released yet>
+     https://www.analog.com/media/en/technical-documentation/data-sheets/AD4114.pdf
+     https://www.analog.com/media/en/technical-documentation/data-sheets/AD4115.pdf
+     https://www.analog.com/media/en/technical-documentation/data-sheets/AD4116.pdf
+@@ -44,6 +45,7 @@ properties:
+     enum:
+       - adi,ad4111
+       - adi,ad4112
++      - adi,ad4113
+       - adi,ad4114
+       - adi,ad4115
+       - adi,ad4116
+@@ -331,6 +333,7 @@ allOf:
+             enum:
+               - adi,ad4111
+               - adi,ad4112
++              - adi,ad4113
+               - adi,ad4114
+               - adi,ad4115
+               - adi,ad4116
 
- .../devicetree/bindings/iio/adc/adi,ad7173.yaml    |  3 ++
- drivers/iio/adc/ad7173.c                           | 36 +++++++++++++++++++++-
- 2 files changed, 38 insertions(+), 1 deletion(-)
----
-base-commit: 1c61e13d7dc9003662bd7fd6064dfea67e64b014
-change-id: 20240725-ad4113-baa63ff99245
-
-Best regards,
 -- 
-Dumitru Ceclan <dumitru.ceclan@analog.com>
+2.43.0
 
