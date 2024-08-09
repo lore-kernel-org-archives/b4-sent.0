@@ -1,60 +1,52 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Fri, 09 Aug 2024 13:42:26 +0800
-Subject: [PATCH v4 3/3] MAINTAINERS: Add an entry for Amlogic HCI UART (M:
- Yang Li)
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH 0/4] iio: imu: drop #ifdef around CONFIG_DEBUG_FS
+Date: Fri, 09 Aug 2024 11:17:05 +0200
+Message-Id: <20240809-dev-adis-debugfs-improv-v1-0-d3adb6996518@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240809-btaml-v4-3-376b284405a7@amlogic.com>
-References: <20240809-btaml-v4-0-376b284405a7@amlogic.com>
-In-Reply-To: <20240809-btaml-v4-0-376b284405a7@amlogic.com>
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>
-Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1723182152; l=782;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=JCpkGkVAbaLnnsN6aT/w92n7ppHeCAU2X3+VbVGUtEo=;
- b=td7yfEL1A8qhkcP1PB5s2Zbov3UoJtOsbKhS+8ODjNsIY/c6zHBc7lOv8ZYj/BDP9OTIVNAgl
- Ga9IMtEvmgYB4oc3ONkA1RUjtDhmj6//z5a+jgNCe1rVfS0EoNAjXSb
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAJHetWYC/x2MSQqAMAwAvyI5G4jF/SviQW1ac3ChwSKIf7d4m
+ znMPKAchBX67IHAUVSOPUmRZ7Cs0+4ZxSYHQ6akljq0HHGyognmyztF2c5wRGSipmq6uTK1gVS
+ fgZ3c/3kY3/cDhkHfHmkAAAA=
+To: linux-iio@vger.kernel.org
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, 
+ Dragos Bogdan <dragos.bogdan@analog.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1723195072; l=860;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=nM1XhDBT2YBFAoOcyi44cvXhc/mFm7v09j5HLSuGW40=;
+ b=JxszYtrjNT5amQMOEQmdVDKK7txdVB8/CHbVp5fbpXQ6c9Us9aCBjN+JDSAi+e633buajXk98
+ 5nqkgqx+pdYA1YxMcwieAJC4PZyCRRSM2RUfolJ5p5ia1vvlY3MtE98
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Amlogic Bluetooth entry to MAINTAINERS to clarify the maintainers
+Hi,
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+Small series to make the IMUs debugfs code a bit neater. As mentioned in
+the commit message, let's allow the compiler to drop any unused instead
+of guarding it with #ifdefs.
+
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+Nuno Sa (4):
+      iio: imu: adis16475: drop ifdef around CONFIG_DEBUG_FS
+      iio: imu: adis16480: drop ifdef around CONFIG_DEBUG_FS
+      iio: imu: adis16400: drop ifdef around CONFIG_DEBUG_FS
+      iio: imu: adis16460: drop ifdef around CONFIG_DEBUG_FS
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 0b73a6e2d78c..b106217933b2 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1149,6 +1149,13 @@ S:	Supported
- F:	arch/arm64/boot/dts/amd/amd-seattle-xgbe*.dtsi
- F:	drivers/net/ethernet/amd/xgbe/
- 
-+AMLOGIC BLUETOOTH DRIVER
-+M:	Yang Li <yang.li@amlogic.com>
-+L:	linux-bluetooth@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/bluetooth/amlogic,w155s2-bt.yaml
-+F:	drivers/bluetooth/hci_aml.c
-+
- AMLOGIC DDR PMU DRIVER
- M:	Jiucheng Xu <jiucheng.xu@amlogic.com>
- L:	linux-amlogic@lists.infradead.org
+ drivers/iio/imu/adis16400.c | 18 ++++--------------
+ drivers/iio/imu/adis16460.c | 18 ++++--------------
+ drivers/iio/imu/adis16475.c |  9 +++------
+ drivers/iio/imu/adis16480.c | 18 ++++--------------
+ 4 files changed, 15 insertions(+), 48 deletions(-)
+---
+base-commit: 7cad163c39cb642ed587d3eeb37a5637ee02740f
+change-id: 20240809-dev-adis-debugfs-improv-e007579b5262
+--
 
--- 
-2.42.0
+Thanks!
+- Nuno Sá
 
