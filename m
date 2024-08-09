@@ -1,145 +1,129 @@
-From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Fri, 09 Aug 2024 13:33:25 +0300
-Subject: [PATCH v2 2/2] iio: adc: ad7173: add support for ad4113
+From: Mitchell Levy <levymitchell0@gmail.com>
+Date: Fri, 09 Aug 2024 13:53:36 -0700
+Subject: [PATCH v2] x86/fpu: Avoid writing LBR bit to IA32_XSS unless
+ supported
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240809-ad4113-v2-2-2a70c101a1f4@analog.com>
-References: <20240809-ad4113-v2-0-2a70c101a1f4@analog.com>
-In-Reply-To: <20240809-ad4113-v2-0-2a70c101a1f4@analog.com>
-To: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: mitrutzceclan@gmail.com, linux-iio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dumitru Ceclan <dumitru.ceclan@analog.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1723199607; l=4113;
- i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=XNirFVk/IgAks7eJNE8bejsqAHhIlbFNHDBB4sRAHMA=;
- b=xP1OxyAi3LACR6xX59ytuCCBbvHT405z2WuQJV4HmLYM6yP6l+OK7bToljCSxKYAtTZepXWbL
- 8J9flSGgzExA2V4OP39/oc0ODkVyl6ARlm4b/dqMzCOd6i2fs5qmIfI
-X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
- pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
-X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240809-xsave-lbr-fix-v2-1-04296b387380@gmail.com>
+X-B4-Tracking: v=1; b=H4sIANCBtmYC/13MywrCMBCF4Vcps3Ykmd6CK99DuojptB3ojURCp
+ fTdjQU3Lv8D59shsBcOcMt28BwlyDKnoEsGbrBzzyhtaiBFhTKqxi3YyDg+PXayoaK2pK4qdFX
+ mkD6r5zSf3qNJPUh4Lf598lF/159k/qSoUaMlyo2qnMm5vveTlfHqlgma4zg+lA3cSqoAAAA=
+To: Thomas Gleixner <tglx@linutronix.de>, Ingo Molnar <mingo@redhat.com>, 
+ Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, 
+ x86@kernel.org, "H. Peter Anvin" <hpa@zytor.com>, 
+ Kan Liang <kan.liang@linux.intel.com>, 
+ "Peter Zijlstra (Intel)" <peterz@infradead.org>
+Cc: stable@vger.kernel.org, Borislav Petkov <bp@suse.de>, 
+ linux-kernel@vger.kernel.org, Dave Hansen <dave.hansen@intel.com>, 
+ Mitchell Levy <levymitchell0@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1723236831; l=3984;
+ i=levymitchell0@gmail.com; s=20240719; h=from:subject:message-id;
+ bh=1mvumyyfM+T6h2ewfJ+FZwUTLm/pkb+WrwYbpjJNIPk=;
+ b=MKEPIaOCzrdRRxZXjPrvsVQCyCYrjmhNdRoZ5IBNrvtBa9R7zjLkZKFdfjyCwqtKFdBJTU6cG
+ uk+8Qiof9MMB96E5vULi0J6PicG/NpE66lIiBc3YCHO68ctxl+PjOb7
+X-Developer-Key: i=levymitchell0@gmail.com; a=ed25519;
+ pk=n6kBmUnb+UNmjVkTnDwrLwTJAEKUfs2e8E+MFPZI93E=
+X-Endpoint-Received: by B4 Relay for levymitchell0@gmail.com/20240719 with auth_id=188
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This commit adds support for the AD4113 ADC.
-The AD4113 is a low power, low noise, 16-bit, Σ-Δ analog-to-digital
-converter (ADC) that integrates an analog front end (AFE) for four
-fully differential or eight single-ended inputs.
+When computing which xfeatures are available, make sure that LBR is only
+present if both LBR is supported in general, as well as by XSAVES.
 
-Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
+There are two distinct CPU features related to the use of XSAVES as it
+applies to LBR: whether LBR is itself supported (strictly speaking, I'm
+not sure that this is necessary to check though it's certainly a good
+sanity check), and whether XSAVES supports LBR (see sections 13.2 and
+13.5.12 of the Intel 64 and IA-32 Architectures Software Developer's
+Manual, Volume 1). Currently, the LBR subsystem correctly checks both
+(see intel_pmu_arch_lbr_init), however the xstate initialization
+subsystem does not.
+
+When calculating what value to place in the IA32_XSS MSR,
+xfeatures_mask_independent only checks whether LBR support is present,
+not whether XSAVES supports LBR. If XSAVES does not support LBR, this
+write causes #GP, leaving the state of IA32_XSS unchanged (i.e., set to
+zero, as its not written with other values, and its default value is
+zero out of RESET per section 13.3 of the arch manual).
+
+Then, the next time XRSTORS is used to restore supervisor state, it will
+fail with #GP (because the RFBM has zero for all supervisor features,
+which does not match the XCOMP_BV field). In particular,
+XFEATURE_MASK_FPSTATE includes supervisor features, so setting up the FPU
+will cause a #GP. This results in a call to fpu_reset_from_exception_fixup,
+which by the same process results in another #GP. Eventually this causes
+the kernel to run out of stack space and #DF.
+
+Fixes: f0dccc9da4c0 ("x86/fpu/xstate: Support dynamic supervisor feature for LBR")
+Cc: stable@vger.kernel.org
+
+Signed-off-by: Mitchell Levy <levymitchell0@gmail.com>
 ---
- drivers/iio/adc/ad7173.c | 36 +++++++++++++++++++++++++++++++++++-
- 1 file changed, 35 insertions(+), 1 deletion(-)
+Changes in v2:
+- Corrected Fixes tag (thanks tglx)
+- Properly check for XSAVES support of LBR (thanks tglx)
+- Link to v1: https://lore.kernel.org/r/20240808-xsave-lbr-fix-v1-1-a223806c83e7@gmail.com
+---
+ arch/x86/include/asm/fpu/types.h | 7 +++++++
+ arch/x86/kernel/fpu/xstate.c     | 3 +++
+ arch/x86/kernel/fpu/xstate.h     | 4 ++--
+ 3 files changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/iio/adc/ad7173.c b/drivers/iio/adc/ad7173.c
-index a854f2d30174..3ac09d326472 100644
---- a/drivers/iio/adc/ad7173.c
-+++ b/drivers/iio/adc/ad7173.c
-@@ -3,7 +3,7 @@
-  * AD717x and AD411x family SPI ADC driver
-  *
-  * Supported devices:
-- *  AD4111/AD4112/AD4114/AD4115/AD4116
-+ *  AD4111/AD4112/AD4113/AD4114/AD4115/AD4116
-  *  AD7172-2/AD7172-4/AD7173-8/AD7175-2
-  *  AD7175-8/AD7176-2/AD7177-2
-  *
-@@ -84,6 +84,7 @@
- #define AD4111_ID			AD7173_ID
- #define AD4112_ID			AD7173_ID
- #define AD4114_ID			AD7173_ID
-+#define AD4113_ID			0x31D0
- #define AD4116_ID			0x34d0
- #define AD4115_ID			0x38d0
- #define AD7175_8_ID			0x3cd0
-@@ -170,6 +171,7 @@ struct ad7173_device_info {
- 	bool has_temp;
- 	/* ((AVDD1 − AVSS)/5) */
- 	bool has_pow_supply_monitoring;
-+	bool data_reg_only_16bit;
- 	bool has_input_buf;
- 	bool has_int_ref;
- 	bool has_ref2;
-@@ -294,6 +296,24 @@ static const struct ad7173_device_info ad4112_device_info = {
- 	.num_sinc5_data_rates = ARRAY_SIZE(ad7173_sinc5_data_rates),
+diff --git a/arch/x86/include/asm/fpu/types.h b/arch/x86/include/asm/fpu/types.h
+index eb17f31b06d2..de16862bf230 100644
+--- a/arch/x86/include/asm/fpu/types.h
++++ b/arch/x86/include/asm/fpu/types.h
+@@ -591,6 +591,13 @@ struct fpu_state_config {
+ 	 * even without XSAVE support, i.e. legacy features FP + SSE
+ 	 */
+ 	u64 legacy_features;
++	/*
++	 * @independent_features:
++	 *
++	 * Features that are supported by XSAVES, but not managed as part of
++	 * the FPU core, such as LBR
++	 */
++	u64 independent_features;
  };
  
-+static const struct ad7173_device_info ad4113_device_info = {
-+	.name = "ad4113",
-+	.id = AD4113_ID,
-+	.num_voltage_in_div = 8,
-+	.num_channels = 16,
-+	.num_configs = 8,
-+	.num_voltage_in = 8,
-+	.num_gpios = 2,
-+	.data_reg_only_16bit = true,
-+	.higher_gpio_bits = true,
-+	.has_vincom_input = true,
-+	.has_input_buf = true,
-+	.has_int_ref = true,
-+	.clock = 2 * HZ_PER_MHZ,
-+	.sinc5_data_rates = ad7173_sinc5_data_rates,
-+	.num_sinc5_data_rates = ARRAY_SIZE(ad7173_sinc5_data_rates),
-+};
-+
- static const struct ad7173_device_info ad4114_device_info = {
- 	.name = "ad4114",
- 	.id = AD4114_ID,
-@@ -988,6 +1008,13 @@ static const struct iio_info ad7173_info = {
- 	.update_scan_mode = ad7173_update_scan_mode,
- };
- 
-+static const struct iio_scan_type ad4113_scan_type = {
-+	.sign = 'u',
-+	.realbits = 16,
-+	.storagebits = 16,
-+	.endianness = IIO_BE,
-+};
-+
- static const struct iio_chan_spec ad7173_channel_template = {
- 	.type = IIO_VOLTAGE,
- 	.indexed = 1,
-@@ -1229,6 +1256,8 @@ static int ad7173_fw_parse_channel_config(struct iio_dev *indio_dev)
- 		chan_st_priv->cfg.input_buf = st->info->has_input_buf;
- 		chan_st_priv->cfg.ref_sel = AD7173_SETUP_REF_SEL_INT_REF;
- 		st->adc_mode |= AD7173_ADC_MODE_REF_EN;
-+		if (st->info->data_reg_only_16bit)
-+			chan_arr[chan_index].scan_type = ad4113_scan_type;
- 
- 		chan_index++;
+ /* FPU state configuration information */
+diff --git a/arch/x86/kernel/fpu/xstate.c b/arch/x86/kernel/fpu/xstate.c
+index c5a026fee5e0..1339f8328db5 100644
+--- a/arch/x86/kernel/fpu/xstate.c
++++ b/arch/x86/kernel/fpu/xstate.c
+@@ -788,6 +788,9 @@ void __init fpu__init_system_xstate(unsigned int legacy_size)
+ 		goto out_disable;
  	}
-@@ -1309,6 +1338,9 @@ static int ad7173_fw_parse_channel_config(struct iio_dev *indio_dev)
- 			chan_st_priv->ain = AD7173_CH_ADDRESS(ain[0], ain[1]);
- 		}
  
-+		if (st->info->data_reg_only_16bit)
-+			chan_arr[chan_index].scan_type = ad4113_scan_type;
++	fpu_kernel_cfg.independent_features = fpu_kernel_cfg.max_features &
++					      XFEATURE_MASK_INDEPENDENT;
 +
- 		chan_index++;
- 	}
- 	return 0;
-@@ -1437,6 +1469,7 @@ static int ad7173_probe(struct spi_device *spi)
- static const struct of_device_id ad7173_of_match[] = {
- 	{ .compatible = "adi,ad4111",	.data = &ad4111_device_info },
- 	{ .compatible = "adi,ad4112",	.data = &ad4112_device_info },
-+	{ .compatible = "adi,ad4113",	.data = &ad4113_device_info },
- 	{ .compatible = "adi,ad4114",	.data = &ad4114_device_info },
- 	{ .compatible = "adi,ad4115",	.data = &ad4115_device_info },
- 	{ .compatible = "adi,ad4116",	.data = &ad4116_device_info },
-@@ -1454,6 +1487,7 @@ MODULE_DEVICE_TABLE(of, ad7173_of_match);
- static const struct spi_device_id ad7173_id_table[] = {
- 	{ "ad4111",   (kernel_ulong_t)&ad4111_device_info },
- 	{ "ad4112",   (kernel_ulong_t)&ad4112_device_info },
-+	{ "ad4113",   (kernel_ulong_t)&ad4113_device_info },
- 	{ "ad4114",   (kernel_ulong_t)&ad4114_device_info },
- 	{ "ad4115",   (kernel_ulong_t)&ad4115_device_info },
- 	{ "ad4116",   (kernel_ulong_t)&ad4116_device_info },
+ 	/*
+ 	 * Clear XSAVE features that are disabled in the normal CPUID.
+ 	 */
+diff --git a/arch/x86/kernel/fpu/xstate.h b/arch/x86/kernel/fpu/xstate.h
+index 2ee0b9c53dcc..afb404cd2059 100644
+--- a/arch/x86/kernel/fpu/xstate.h
++++ b/arch/x86/kernel/fpu/xstate.h
+@@ -62,9 +62,9 @@ static inline u64 xfeatures_mask_supervisor(void)
+ static inline u64 xfeatures_mask_independent(void)
+ {
+ 	if (!cpu_feature_enabled(X86_FEATURE_ARCH_LBR))
+-		return XFEATURE_MASK_INDEPENDENT & ~XFEATURE_MASK_LBR;
++		return fpu_kernel_cfg.independent_features & ~XFEATURE_MASK_LBR;
+ 
+-	return XFEATURE_MASK_INDEPENDENT;
++	return fpu_kernel_cfg.independent_features;
+ }
+ 
+ /* XSAVE/XRSTOR wrapper functions */
 
+---
+base-commit: de9c2c66ad8e787abec7c9d7eff4f8c3cdd28aed
+change-id: 20240807-xsave-lbr-fix-02d52f641653
+
+Best regards,
 -- 
-2.43.0
+Mitchell Levy <levymitchell0@gmail.com>
 
