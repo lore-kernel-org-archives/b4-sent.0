@@ -1,85 +1,79 @@
-From: Mitchell Levy <levymitchell0@gmail.com>
-Date: Thu, 08 Aug 2024 16:30:10 -0700
-Subject: [PATCH] x86/fpu: Avoid writing LBR bit to IA32_XSS unless
- supported
+From: Yang Li <yang.li@amlogic.com>
+Subject: [PATCH v4 0/3] Add support for Amlogic HCI UART
+Date: Fri, 09 Aug 2024 13:42:23 +0800
+Message-Id: <20240809-btaml-v4-0-376b284405a7@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240808-xsave-lbr-fix-v1-1-a223806c83e7@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAFVtWYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDCwNz3YrixLJU3ZykIt20zApdA6MUU6M0MxNDM1NjJaCegqJUoDDYvOj
- Y2loA3RILWF8AAAA=
-To: Thomas Gleixner <tglx@linutronix.de>, Ingo Molnar <mingo@redhat.com>, 
- Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, 
- x86@kernel.org, "H. Peter Anvin" <hpa@zytor.com>
-Cc: stable@vger.kernel.org, Borislav Petkov <bp@suse.de>, 
- linux-kernel@vger.kernel.org, Mitchell Levy <levymitchell0@gmail.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1723159817; l=2576;
- i=levymitchell0@gmail.com; s=20240719; h=from:subject:message-id;
- bh=aD/HH3dzvhy4muD2Cy5M+AM0El/r97xW+eGKYw26zH0=;
- b=8zO+Sr3nZNkO0VBtBSMe+DEVkhL/JnpFkIRgRz9xwiRA3wosgdPgOjDqT7Jax6ZpKs639xRMp
- aN2VKMIWN6UDdqZWgjibE8iMOvub2REaomBJsAf1tRvpBT4MRsZaxem
-X-Developer-Key: i=levymitchell0@gmail.com; a=ed25519;
- pk=n6kBmUnb+UNmjVkTnDwrLwTJAEKUfs2e8E+MFPZI93E=
-X-Endpoint-Received: by B4 Relay for levymitchell0@gmail.com/20240719 with auth_id=188
+X-B4-Tracking: v=1; b=H4sIAD+stWYC/2WNyw6CMBREf4V0bU3vbbGtK//DuKClhSYCBkijI
+ fy7BZ/R5UzmnJnI4PrgBrLPJtK7GIbQtSmITUZsXbSVo6FMmSBDwQQoasaiOVOvS2lASxSFIWl
+ 76Z0P19VzPKVch2Hs+tuqjbC0D4Nk+dMQgTIqPeRcea2s84fUdlWwW9s1ZHFE/OLezxETB1yjQ
+ YcAiv9z/MMphi+OJ65UAMx4rXf852+e5ztXixtvDAEAAA==
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>
+Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, Yang Li <yang.li@amlogic.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Ye He <ye.he@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1723182152; l=1806;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=1doFq/GnmGNBeEeQE2d1SwDuwG+592umTPSGO46ePAc=;
+ b=0q9QHXQQT+97DRCpC8JpU+3Hk1di8rDs6Me7TZ2w+4gHo9wNNFlY8IT+DNFYpcl08yRf1ruKq
+ 7PIGy+afjfhBVOZqjzbSyfXYQgkgWcuM8kgr2UsdqpfXmeZHP1NL/dn
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When computing which xfeatures are available, make sure that LBR is only
-present if both LBR is supported in general, as well as by XSAVES.
+Add support for Amlogic HCI UART, including dt-binding,
+and Amlogic Bluetooth driver.
 
-There are two distinct CPU features related to the use of XSAVES as it
-applies to LBR: whether LBR is itself supported (strictly speaking, I'm
-not sure that this is necessary to check though it's certainly a good
-sanity check), and whether XSAVES supports LBR (see sections 13.2 and
-13.5.12 of the Intel 64 and IA-32 Architectures Software Developer's
-Manual, Volume 1). Currently, the LBR subsystem correctly checks both
-(see intel_pmu_arch_lbr_init), however the xstate initialization
-subsystem does not.
-
-When calculating what value to place in the IA32_XSS MSR,
-xfeatures_mask_independent only checks whether LBR support is present,
-not whether XSAVES supports LBR. If XSAVES does not support LBR, this
-write causes #GP, leaving the state of IA32_XSS unchanged (i.e., set to
-zero, as its not written with other values, and its default value is
-zero out of RESET per section 13.3 of the arch manual).
-
-Then, the next time XRSTORS is used to restore supervisor state, it will
-fail with #GP (because the RFBM has zero for all supervisor features,
-which does not match the XCOMP_BV field). In particular,
-XFEATURE_MASK_FPSTATE includes supervisor features, so setting up the FPU
-will cause a #GP. This results in a call to fpu_reset_from_exception_fixup,
-which by the same process results in another #GP. Eventually this causes
-the kernel to run out of stack space and #DF.
-
-Fixes: d72c87018d00 ("x86/fpu/xstate: Move remaining xfeature helpers to core")
-Cc: stable@vger.kernel.org
-
-Signed-off-by: Mitchell Levy <levymitchell0@gmail.com>
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- arch/x86/kernel/fpu/xstate.h | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Changes in v4:
+- Modified the compatible list in the DT binding.
+- Reduced the boot delay from 350ms to 60ms.
+- Minor fixes.
+- Link to v3: https://lore.kernel.org/r/20240802-btaml-v3-0-d8110bf9963f@amlogic.com
 
-diff --git a/arch/x86/kernel/fpu/xstate.h b/arch/x86/kernel/fpu/xstate.h
-index 2ee0b9c53dcc..574d2c2ea227 100644
---- a/arch/x86/kernel/fpu/xstate.h
-+++ b/arch/x86/kernel/fpu/xstate.h
-@@ -61,7 +61,8 @@ static inline u64 xfeatures_mask_supervisor(void)
- 
- static inline u64 xfeatures_mask_independent(void)
- {
--	if (!cpu_feature_enabled(X86_FEATURE_ARCH_LBR))
-+	if (!cpu_feature_enabled(X86_FEATURE_ARCH_LBR) ||
-+	    (fpu_kernel_cfg.max_features & XFEATURE_MASK_LBR) != XFEATURE_MASK_LBR)
- 		return XFEATURE_MASK_INDEPENDENT & ~XFEATURE_MASK_LBR;
- 
- 	return XFEATURE_MASK_INDEPENDENT;
+Changes in v3:
+- Updated the properties within the device tree binding file.
+- Remove the "antenna-number" property.
+- Performed code optimization for improved efficiency and readability.
+- Link to v2: https://lore.kernel.org/r/20240718-btaml-v2-0-1392b2e21183@amlogic.com
+
+Changes in v2:
+- Introduce a regulator for powering up the Bluetooth chip instead of power sequencing.
+- Use the GPIO Consumer API to manipulate the GPIO pins instead of the legacy API.
+- Minor fixes.
+- Link to v1: https://lore.kernel.org/r/20240705-btaml-v1-0-7f1538f98cef@amlogic.com
 
 ---
-base-commit: de9c2c66ad8e787abec7c9d7eff4f8c3cdd28aed
-change-id: 20240807-xsave-lbr-fix-02d52f641653
+Yang Li (3):
+      dt-bindings: net: bluetooth: Add support for Amlogic Bluetooth
+      Bluetooth: hci_uart: Add support for Amlogic HCI UART
+      MAINTAINERS: Add an entry for Amlogic HCI UART (M: Yang Li)
+
+ .../bindings/net/bluetooth/amlogic,w155s2-bt.yaml  |  63 ++
+ MAINTAINERS                                        |   7 +
+ drivers/bluetooth/Kconfig                          |  12 +
+ drivers/bluetooth/Makefile                         |   1 +
+ drivers/bluetooth/hci_aml.c                        | 755 +++++++++++++++++++++
+ drivers/bluetooth/hci_ldisc.c                      |   8 +-
+ drivers/bluetooth/hci_uart.h                       |   8 +-
+ 7 files changed, 851 insertions(+), 3 deletions(-)
+---
+base-commit: bd0b4dae74b0f0ee9ea37818e1c132b56a26d6dd
+change-id: 20240418-btaml-f9d7b19724ab
 
 Best regards,
 -- 
-Mitchell Levy <levymitchell0@gmail.com>
+Yang Li <yang.li@amlogic.com>
 
