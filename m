@@ -1,76 +1,87 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Mon, 12 Aug 2024 13:30:37 +0800
-Subject: [PATCH] loongarch/dma: remove dma-direct.h
+From: Dumitru Ceclan <dumitru.ceclan@analog.com>
+Subject: [PATCH v3 0/3] Add support for AD4113
+Date: Mon, 12 Aug 2024 11:13:13 +0300
+Message-Id: <20240812-ad4113-v3-0-046e785dd253@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240812-clean-dma-direct-v1-1-cbe19c2b73f5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAPyduWYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDC0Mj3eSc1MQ83ZTcRN2UzKLU5BJdo9TUNOPkJINkSwtzJaC2gqLUtMw
- KsJHRsbW1AEdLvUBiAAAA
-To: Huacai Chen <chenhuacai@kernel.org>, WANG Xuerui <kernel@xen0n.name>, 
- Jianmin Lv <lvjianmin@loongson.cn>, 
- "Rafael J. Wysocki" <rafael.j.wysocki@intel.com>
-Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>, loongarch@lists.linux.dev, 
- Miao Wang <shankerwangmiao@gmail.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1430;
- i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=6+YGYrlc1s/mmh+MsuZbrcYqupZV/j2oMwcFLa6zqMk=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmuZ3+mRWGBIf0jdhKntVHYO875ENqpkMxjjRQf
- ZhfS45W8TKJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZrmd/gAKCRCwMePKe/7Z
- bsM+D/94iBrxkvEVKmvMN7GD819XS7krOrwW37ut6PkOAnwAzn2nT/fMJtSr4I5RLe7AGifGG1a
- LTHeN2QCtj+qRfYMKDek0IjBItXliuBRfjEsPteJ9ofWAdL+l6atIxArD+9ikm3BESTekK8a7Kx
- Fajfaz+vuC6B5yMJj4DDKvRhqbPTUp82zPCRh39Bh2QCvpmi32RZvaMulZvlWcRhClrsQUCZGsA
- vfTo2P6LNFfWVrBE3jYszBlpJUwre9aFFA1+6XL0Q0KDTzFNXjFv71psjR2yPQhUmyWI4NfOBqr
- r0Ls6sYeSVlmAqlC0XNQq+mFrbl0hQysiUnXfjo/sty6oxnvM+cYBpKV1mAaj333HbYccGA5fey
- Ma7Cp5LVleTKq/YxX1pYdtDr+WlmCM0SDPRDzbnEBrCcNoiKKly3bzQRY8ZDsMlyopRGzkIn5CO
- qNJ2Q9rAMSmXtDtvF3sVMnfkSGG05RSYrtN+K0cDabLBrsW/5emxkhQ+lThlrvU4f42HboZHkkR
- lppLCZbZk5v8xoTDINzwOhrfRxHQcPXjucdxjG7Fq/AsMmfv/XS08CNPuGoqDWjU1zMOfatBcy1
- xoOmzGmjDhR1TazL0E2Sq7mJJSXEZVVp4Hg4MKFDTmk9dTzoX5oeFd6hsoBBkwmIofMDgOFnID0
- VscBwHeEtRpiREA==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIABnEuWYC/1WMwQ7CIBAFf8VwFrMsVFpP/ofxsKXQkmgxYIim6
+ b9LazR6nJc3M7Fko7eJHTYTizb75MNYQG43zAw09pb7rjBDQAUaK06dEkLylmgvnWsaVBUr51u
+ 0zj/W0OlcePDpHuJz7WaxrO9EDfqTyIIDx07K2mlAo9sjjXQJ/c6EK1saGX+95uvh4pEGI0CQc
+ OrPm+f5BVsPcCvVAAAA
+To: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: mitrutzceclan@gmail.com, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dumitru Ceclan <dumitru.ceclan@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, Nuno Sa <nuno.sa@analog.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1723450395; l=1967;
+ i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
+ bh=l2cMsMW6WjSVkxY7LiRh1xYBXXYUhNx5oNMkZpw0QAc=;
+ b=Qqh+HVkYK5/X4HNJyiP/mC68JLfIhLLtXLvFwceSn08y87V6PWDUqBFIVj3GQcWCdZoZkfmsh
+ FlvUvCKSp/4Bf75fAjsV1tM5M0wH6AX1juyG6DVyPDGgNUJLipkgo93
+X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
+ pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
+X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-dma-direct.h is introduced in commit d4b6f1562a3c ("LoongArch:
-Add Non-Uniform Memory Access (NUMA) support"). In commit
-c78c43fe7d42 ("LoongArch: Use acpi_arch_dma_setup() and remove
-ARCH_HAS_PHYS_TO_DMA"), ARCH_HAS_PHYS_TO_DMA was deselected and
-the coresponding phys_to_dma and dma_to_phys functions were
-removed. However, the unused dma-direct.h was left behind,
-which is removed by this patch.
+This patch series adds support for the AD4113 ADC within the existing
+AD7173 driver.
 
-Fixes: c78c43fe7d42 ("LoongArch: Use acpi_arch_dma_setup() and remove ARCH_HAS_PHYS_TO_DMA")
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+The AD4113 is a low power, low noise, 16-bit, Σ-Δ analog-to-digital
+converter (ADC) that integrates an analog front end (AFE) for four
+fully differential or eight single-ended inputs.
+
+The part is not released yet and the documentation is not public.
+Register map is identical to AD4114 besides the lower width data
+register and the GPIO register.
+
+Particularities of this model:
+- 16 bit data register
+- no temperature sensor
+- no current inputs
+- input buffers
+- internal reference
+- external reference REF-/REF+
+- no second external reference REF2-/REF2+
+- no AVDD2 supply
+- 2 GPIO pins with config bits starting at a higher position in register
+- 8 VINx inputs with voltage divider
+- 16 channel registers and 8 setup registers
+
+Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
 ---
- arch/loongarch/include/asm/dma-direct.h | 11 -----------
- 1 file changed, 11 deletions(-)
+Changes in v3:
+- lowercase chip ID
+- add patch to correctly order chip IDs defines
+- picked up RB and ACK tags
+- Link to v2: https://lore.kernel.org/r/20240809-ad4113-v2-0-2a70c101a1f4@analog.com
 
-diff --git a/arch/loongarch/include/asm/dma-direct.h b/arch/loongarch/include/asm/dma-direct.h
-deleted file mode 100644
-index 75ccd808a2af..000000000000
---- a/arch/loongarch/include/asm/dma-direct.h
-+++ /dev/null
-@@ -1,11 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0 */
--/*
-- * Copyright (C) 2020-2022 Loongson Technology Corporation Limited
-- */
--#ifndef _LOONGARCH_DMA_DIRECT_H
--#define _LOONGARCH_DMA_DIRECT_H
--
--dma_addr_t phys_to_dma(struct device *dev, phys_addr_t paddr);
--phys_addr_t dma_to_phys(struct device *dev, dma_addr_t daddr);
--
--#endif /* _LOONGARCH_DMA_DIRECT_H */
+Changes in v2:
+- correctly set realbits and storagebits to 16 in iio_chan_spec
+- describe bindings restrictions in commit message due to lack of
+  sufficient diff context
+- describe model differences better in cover letter
+- Link to v1: https://lore.kernel.org/r/20240807-ad4113-v1-0-2d338f702c7b@analog.com
 
 ---
-base-commit: 7c626ce4bae1ac14f60076d00eafe71af30450ba
-change-id: 20240812-clean-dma-direct-2eef3cb0c987
+Dumitru Ceclan (3):
+      dt-bindings: adc: ad7173: add support for ad4113
+      iio: adc: ad7173: order chipID by value
+      iio: adc: ad7173: add support for ad4113
+
+ .../devicetree/bindings/iio/adc/adi,ad7173.yaml    |  3 ++
+ drivers/iio/adc/ad7173.c                           | 38 ++++++++++++++++++++--
+ 2 files changed, 39 insertions(+), 2 deletions(-)
+---
+base-commit: 1c61e13d7dc9003662bd7fd6064dfea67e64b014
+change-id: 20240725-ad4113-baa63ff99245
 
 Best regards,
 -- 
-Miao Wang <shankerwangmiao@gmail.com>
+Dumitru Ceclan <dumitru.ceclan@analog.com>
 
