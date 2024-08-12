@@ -1,84 +1,136 @@
-From: Christoph Lameter <cl@gentwo.org>
-Date: Mon, 12 Aug 2024 10:55:06 -0700
-Subject: [PATCH] Reenable NUMA policy support in the slab allocator
+From: Mitchell Levy <levymitchell0@gmail.com>
+Date: Mon, 12 Aug 2024 13:44:12 -0700
+Subject: [PATCH v3] x86/fpu: Avoid writing LBR bit to IA32_XSS unless
+ supported
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240812-numa_policy-v1-1-1732602b976c@gentwo.org>
-X-B4-Tracking: v=1; b=H4sIAHlMumYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDCwMz3bzS3MT4gvyczORKXVNDC4s0E5OkRIMUCyWgjoKi1LTMCrBp0bG
- 1tQCMAoOGXQAAAA==
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
- Johannes Weiner <hannes@cmpxchg.org>, Pekka Enberg <penberg@kernel.org>, 
- David Rientjes <rientjes@google.com>, Joonsoo Kim <iamjoonsoo.kim@lge.com>, 
- Andrew Morton <akpm@linux-foundation.org>, Vlastimil Babka <vbabka@suse.cz>, 
- Roman Gushchin <roman.gushchin@linux.dev>, 
- Hyeonggon Yoo <42.hyeyoo@gmail.com>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- Christoph Lameter <cl@gentwo.org>
-X-Mailer: b4 0.15-dev-37811
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1723485315; l=2030;
- i=cl@gentwo.org; s=20240811; h=from:subject:message-id;
- bh=oIsOUj+s52JxQUrLe0TMZXCQFfAgTyXqoXTDzKem1MA=;
- b=Z286VwSdQVPVNRMc582ozWP7NFSxGLmQwBaCtj9kzM80sRwA6XOkZDFrPl4wKma09vPviLxBh
- p5zaM/WaXQaCAi00LCfffQoEJ69rjA3c7EcHqnOIkayhvpRYMQaRcRQ
-X-Developer-Key: i=cl@gentwo.org; a=ed25519;
- pk=I7gqGwDi9drzCReFIuf2k9de1FI1BGibsshXI0DIvq8=
-X-Endpoint-Received: by B4 Relay for cl@gentwo.org/20240811 with auth_id=194
+Message-Id: <20240812-xsave-lbr-fix-v3-1-95bac1bf62f4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABt0umYC/13MSwqDMBSF4a3IHTcludEYO+o+SgdRrxrwRVKCR
+ dx7o1AQh+fA/63gyVny8EhWcBSst9MYh7wlUHVmbInZOm5AjinXPGeLN4FYXzrW2IVxrDNsVCp
+ UJiE2s6N4H97rHXdn/Wdy34MPYn//kr5IQTDBDKLUXFVaUv5sB2P7ezUNsEsBz3VxrTHWPMVCl
+ VLn0TjX27b9AHBVJ0zoAAAA
+To: Thomas Gleixner <tglx@linutronix.de>, Ingo Molnar <mingo@redhat.com>, 
+ Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, 
+ x86@kernel.org, "H. Peter Anvin" <hpa@zytor.com>, 
+ Kan Liang <kan.liang@linux.intel.com>, 
+ "Peter Zijlstra (Intel)" <peterz@infradead.org>
+Cc: stable@vger.kernel.org, Borislav Petkov <bp@suse.de>, 
+ linux-kernel@vger.kernel.org, Dave Hansen <dave.hansen@intel.com>, 
+ Mitchell Levy <levymitchell0@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1723495465; l=4192;
+ i=levymitchell0@gmail.com; s=20240719; h=from:subject:message-id;
+ bh=i5tp65kAIiAiTvD6yA8uEHepZr4IaPFeW2noteOUQGg=;
+ b=KToX4nI2I2kvW9yr7MGT24T06OvlKfh4N0ZJG+AnwBnr+maZwitB0KnohK4dRXoOuUs/SZhuR
+ wf7k71iNUQDDNv0/ZQgcQZs6hTHW1vMzIleBsndkcV/udfyWnvPO2qG
+X-Developer-Key: i=levymitchell0@gmail.com; a=ed25519;
+ pk=n6kBmUnb+UNmjVkTnDwrLwTJAEKUfs2e8E+MFPZI93E=
+X-Endpoint-Received: by B4 Relay for levymitchell0@gmail.com/20240719 with auth_id=188
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Revert commit 8014c46ad991f05b15ffbc0c6ae130bdf911187b
-("slub: use alloc_pages_node() in alloc_slab_page()").
+When computing which xfeatures are available, make sure that LBR is only
+present if both LBR is supported in general, as well as by XSAVES.
 
-The patch disabled the numa policy support in the slab allocator. It
-did not consider that alloc_pages() uses memory policies but
-alloc_pages_node() does not.
+There are two distinct CPU features related to the use of XSAVES as it
+applies to LBR: whether LBR is itself supported (strictly speaking, I'm
+not sure that this is necessary to check though it's certainly a good
+sanity check), and whether XSAVES supports LBR (see sections 13.2 and
+13.5.12 of the Intel 64 and IA-32 Architectures Software Developer's
+Manual, Volume 1). Currently, the LBR subsystem correctly checks both
+(see intel_pmu_arch_lbr_init), however the xstate initialization
+subsystem does not.
 
-As a result of this patch slab memory allocations are no longer spread via
-interleave policy across all available NUMA nodes on bootup. Instead
-all slab memory is allocated close to the boot processor. This leads to
-an imbalance of memory accesses on NUMA systems.
+When calculating what value to place in the IA32_XSS MSR,
+xfeatures_mask_independent only checks whether LBR support is present,
+not whether XSAVES supports LBR. If XSAVES does not support LBR, this
+write causes #GP, leaving the state of IA32_XSS unchanged (i.e., set to
+zero, as its not written with other values, and its default value is
+zero out of RESET per section 13.3 of the arch manual).
 
-Also applications using MPOL_INTERLEAVE as a memory policy will no longer
-spread slab allocations over all nodes in the interleave set but allocate
-memory locally. This may also result in unbalanced allocations
-on a single node if f.e. a certain process does the memory allocation on
-behalf of all the other processes.
+Then, the next time XRSTORS is used to restore supervisor state, it will
+fail with #GP (because the RFBM has zero for all supervisor features,
+which does not match the XCOMP_BV field). In particular,
+XFEATURE_MASK_FPSTATE includes supervisor features, so setting up the FPU
+will cause a #GP. This results in a call to fpu_reset_from_exception_fixup,
+which by the same process results in another #GP. Eventually this causes
+the kernel to run out of stack space and #DF.
 
-SLUB does not apply memory policies to individual object allocations.
-However, it relies on the page allocators support of memory policies
-through alloc_pages() to do the NUMA memory allocations on a per
-folio or page level. SLUB also applies memory policies when retrieving
-partial allocated slab pages from the partial list.
+Fixes: f0dccc9da4c0 ("x86/fpu/xstate: Support dynamic supervisor feature for LBR")
+Cc: stable@vger.kernel.org
 
-Signed-off-by: Christoph Lameter <cl@gentwo.org>
+Suggested-by: Thomas Gleixner <tglx@linutronix.de>
+
+Signed-off-by: Mitchell Levy <levymitchell0@gmail.com>
 ---
- mm/slub.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Changes in v3:
+- Use a proper Suggested-by: (thanks tglx)
+- Link to v2: https://lore.kernel.org/r/20240809-xsave-lbr-fix-v2-1-04296b387380@gmail.com
 
-diff --git a/mm/slub.c b/mm/slub.c
-index c9d8a2497fd6..4dea3c7df5ad 100644
---- a/mm/slub.c
-+++ b/mm/slub.c
-@@ -2318,7 +2318,11 @@ static inline struct slab *alloc_slab_page(gfp_t flags, int node,
- 	struct slab *slab;
- 	unsigned int order = oo_order(oo);
+Changes in v2:
+- Corrected Fixes tag (thanks tglx)
+- Properly check for XSAVES support of LBR (thanks tglx)
+- Link to v1: https://lore.kernel.org/r/20240808-xsave-lbr-fix-v1-1-a223806c83e7@gmail.com
+---
+ arch/x86/include/asm/fpu/types.h | 7 +++++++
+ arch/x86/kernel/fpu/xstate.c     | 3 +++
+ arch/x86/kernel/fpu/xstate.h     | 4 ++--
+ 3 files changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/arch/x86/include/asm/fpu/types.h b/arch/x86/include/asm/fpu/types.h
+index eb17f31b06d2..de16862bf230 100644
+--- a/arch/x86/include/asm/fpu/types.h
++++ b/arch/x86/include/asm/fpu/types.h
+@@ -591,6 +591,13 @@ struct fpu_state_config {
+ 	 * even without XSAVE support, i.e. legacy features FP + SSE
+ 	 */
+ 	u64 legacy_features;
++	/*
++	 * @independent_features:
++	 *
++	 * Features that are supported by XSAVES, but not managed as part of
++	 * the FPU core, such as LBR
++	 */
++	u64 independent_features;
+ };
  
--	folio = (struct folio *)alloc_pages_node(node, flags, order);
-+	if (node == NUMA_NO_NODE)
-+		folio = (struct folio *)alloc_pages(flags, order);
-+	else
-+		folio = (struct folio *)__alloc_pages_node(node, flags, order);
+ /* FPU state configuration information */
+diff --git a/arch/x86/kernel/fpu/xstate.c b/arch/x86/kernel/fpu/xstate.c
+index c5a026fee5e0..1339f8328db5 100644
+--- a/arch/x86/kernel/fpu/xstate.c
++++ b/arch/x86/kernel/fpu/xstate.c
+@@ -788,6 +788,9 @@ void __init fpu__init_system_xstate(unsigned int legacy_size)
+ 		goto out_disable;
+ 	}
+ 
++	fpu_kernel_cfg.independent_features = fpu_kernel_cfg.max_features &
++					      XFEATURE_MASK_INDEPENDENT;
 +
- 	if (!folio)
- 		return NULL;
+ 	/*
+ 	 * Clear XSAVE features that are disabled in the normal CPUID.
+ 	 */
+diff --git a/arch/x86/kernel/fpu/xstate.h b/arch/x86/kernel/fpu/xstate.h
+index 2ee0b9c53dcc..afb404cd2059 100644
+--- a/arch/x86/kernel/fpu/xstate.h
++++ b/arch/x86/kernel/fpu/xstate.h
+@@ -62,9 +62,9 @@ static inline u64 xfeatures_mask_supervisor(void)
+ static inline u64 xfeatures_mask_independent(void)
+ {
+ 	if (!cpu_feature_enabled(X86_FEATURE_ARCH_LBR))
+-		return XFEATURE_MASK_INDEPENDENT & ~XFEATURE_MASK_LBR;
++		return fpu_kernel_cfg.independent_features & ~XFEATURE_MASK_LBR;
  
+-	return XFEATURE_MASK_INDEPENDENT;
++	return fpu_kernel_cfg.independent_features;
+ }
+ 
+ /* XSAVE/XRSTOR wrapper functions */
 
 ---
-base-commit: d74da846046aeec9333e802f5918bd3261fb5509
-change-id: 20240806-numa_policy-5188f44ba0d8
+base-commit: de9c2c66ad8e787abec7c9d7eff4f8c3cdd28aed
+change-id: 20240807-xsave-lbr-fix-02d52f641653
 
 Best regards,
 -- 
-Christoph Lameter <cl@gentwo.org>
+Mitchell Levy <levymitchell0@gmail.com>
 
