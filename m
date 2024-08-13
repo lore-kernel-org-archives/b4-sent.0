@@ -1,98 +1,67 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Wed, 14 Aug 2024 00:39:56 +0800
-Subject: [PATCH v2] ACPI: PCI: check if the io space is page aligned
+Date: Wed, 14 Aug 2024 01:12:13 +0800
+Subject: [PATCH] mm: vmalloc: add optimization hint on page existence check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240814-check_pci_probe_res-v2-1-a03c8c9b498b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAFuMu2YC/22NwQqDMBBEf0X23BSzSpWe+h8iIcZVl1YTkhJaJ
- P/eVOitzOkNzJsdAnmmANdiB0+RA9stA54KMIveZhI8ZgYssS5bWQmzkLkrZ1g5bwdSnoLAhiq
- 6jFODA0JeOk8Tvw5r12deODytfx8nUX7bn6/+64tS5CASlU2LUg+3edX8OBu7Qp9S+gA+2jwqt
- gAAAA==
-To: Bjorn Helgaas <bhelgaas@google.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>
-Cc: linux-pci@vger.kernel.org, linux-acpi@vger.kernel.org, 
+Message-Id: <20240814-fix_vmap_unlikely-v1-1-cd7954775f12@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOyTu2YC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDC0MT3bTMiviy3MSC+NK8nMzs1JxKXSNLc+MUo+QkSwOTJCWgvoKiVKA
+ isJnRsbW1AH/FfypjAAAA
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Uladzislau Rezki <urezki@gmail.com>, Christoph Hellwig <hch@infradead.org>, 
+ Hariom Panthi <hariom1.p@samsung.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
  Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2305;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1127;
  i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=0ZF6Ci0GjEHWbF0h9iTGy8xDpgABqmqlKbAHXnzVJoM=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmu4xelt/qz9EDOzhpIjWxWhbApkRhd5AgosWCm
- qkMnNroN+mJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZruMXgAKCRCwMePKe/7Z
- bvLJEADA9XNjIMty4vKg9m7BU2OcV9c2MdfE/u9irh9gmrO1sdmMHZgOX1MP6B/GU1CkT3D3f5H
- G4zlWQjEw2M/syzvDMUyPnrwPBX7JG+ucX1oNDhPFXa16N+Nw7KMn6MGO1Fcis3AgmwKCCXNaOL
- vvv5Fk5G4AcBhqbIqe4xSv0iiYA9q6XkoDb5ssXGbV9PTdKDouWSvIkgOe4K1wwq0C6mTjjTgQO
- HIxd9aL7DJmgeF74x+R3ODhCGOhNLJW0rWuta2dHCZIA6bzJj1jYHLZKwxZoXeWrwT5qxnKW9BB
- dDt3gHk83p1lBsERi9EdSV80qirzx6YzkquUr/abM3++b+OcSJQ7H/u/8HoFM9RAaOSVen1Yx26
- GxYl++Lm7wVn5P4q7L7ouzTxU5P+eXLjmIyzNiapQqFQ21yYOlD5JQFF7kp0T1aqhJe+4cwl9fu
- wkSot6h0vb2xntW3DcsmUzJe5iWoslmPK2T6yNz3uyqg/Tnbmx5wefFZptEjHcX0L5W0BRaBZmj
- JFn/Qv5yKU6xS7s+D/tmDKEusaDbqTW5keXjK7DxgsKfgHuXSZd/ixhF/zui91Ojd6fh+HdlyYp
- 8EtrgvxqEWdGsonS0Oh3pS33cRlkFcPTR3C3Ao/ZPAjXeLHt3gavx+HDRdumtiDd8IVI4x93MfI
- PVbuMJY/P49rXUw==
+ bh=aKT10OS/EIu/f+l3Yr9+KAyeKsqSPbtIB3kaInDaHw8=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmu5Pu3nSA77waXX7mNuwFc+0VAxl78qImyULQr
+ uXa9ljONeOJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZruT7gAKCRCwMePKe/7Z
+ bnjMD/4xPtGTC99xAoo1V0wlI+UMEiaSAmgH/aqfr4Mzmt+XgAIRz5yHddKDAq2Dbc22YEH3Y3Z
+ UqKupngslY6Y4qlv6Ufozw2o7NmTI8dojgtLPIbPfBslKNQW28V7qqLCEN01tsYQm2SFFDq7Jo1
+ wG1WyGkMyMrflLEKVTONBBCelhFpyZq2cRmwqmVb6+wsm3oA47ueQFRupufsjM6UnpUWMJX0G7h
+ Q+CG+Be/JuRiu7YwkIl8H1HgSYzcQz6Djk+l6YUUSgeM72nFkLfoYqh29EXJI4FGiOFdvdMl8NB
+ 1XSDmkAxh4Ab3IeUg7fMkBqloVUWAGRUpOIslIV+INdzgzmsFldHmjK3eaXw/lY1JCqBOYHc8PE
+ ytCf6MopH/QfvvkIc4zcczvG3cRCOHLOVm3EnUt48JyqOLYM7mI1yl5WKpTNxKe0gF0SK56jjgZ
+ ign8iHfC5yeenD0FA7kqOoh7laVOHS4B4jDDU1LsNCaU/LuFwsUkG1+WC4IuPpTkVutPi2fYjBL
+ pstgO1VJ08V2U46aue7dv+yB/PAcWMwgM98SYKp+poQ9T/umAl0FetGEkuRJcb8dMkN3jYRgV81
+ YzdiC71umtNVsSis9HZBH5+U2p9PlC/VkWi1jTNLcS4IIRKskEkuFwbJ1CMrh7FAZ161XOblLx3
+ 5Ry2VNwZwvx5eaA==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the IO resource given by _CRS method is not page aligned, serious
-problems will happen because the mis-aligend address is passed down to
-pci_remap_iospace, then to vmap_page_range, and finally to
-vmap_pte_range, where the length bewteen addr and end is expected to be
-divisible by PAGE_SIZE, or the loop will overrun till the pfn_none check
-fails.
+In commit 21e516b913c1 ("mm: vmalloc: dump page owner info if page is
+already mapped"), a BUG_ON macro was changed into an if statement, where
+the compiler optimization hint introduced in the BUG_ON macro was removed
+along with this change. This patch adds back the hint.
 
+Fixes: 21e516b913c1 ("mm: vmalloc: dump page owner info if page is already mapped")
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
-Changes in v2:
-- Sorry for posting out the draft version in V1, fixed a silly compiling issue.
-- Link to v1: https://lore.kernel.org/r/20240814-check_pci_probe_res-v1-1-122ee07821ab@gmail.com
----
- drivers/acpi/pci_root.c | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+ mm/vmalloc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/acpi/pci_root.c b/drivers/acpi/pci_root.c
-index d0bfb3706801..706449e5f29b 100644
---- a/drivers/acpi/pci_root.c
-+++ b/drivers/acpi/pci_root.c
-@@ -858,7 +858,7 @@ static void acpi_pci_root_validate_resources(struct device *dev,
- 	}
- }
- 
--static void acpi_pci_root_remap_iospace(struct fwnode_handle *fwnode,
-+static void acpi_pci_root_remap_iospace(struct acpi_device *device,
- 			struct resource_entry *entry)
- {
- #ifdef PCI_IOBASE
-@@ -868,7 +868,15 @@ static void acpi_pci_root_remap_iospace(struct fwnode_handle *fwnode,
- 	resource_size_t length = resource_size(res);
- 	unsigned long port;
- 
--	if (pci_register_io_range(fwnode, cpu_addr, length))
-+	if (!PAGE_ALIGNED(cpu_addr) || !PAGE_ALIGNED(length) ||
-+		!PAGE_ALIGNED(pci_addr)) {
-+		dev_err(&device->dev,
-+			FW_BUG "I/O resource %pR or its offset %pa is not page aligned\n",
-+			res, &entry->offset);
-+		goto err;
-+	}
-+
-+	if (pci_register_io_range(&device->fwnode, cpu_addr, length))
- 		goto err;
- 
- 	port = pci_address_to_pio(cpu_addr);
-@@ -910,7 +918,7 @@ int acpi_pci_probe_root_resources(struct acpi_pci_root_info *info)
- 	else {
- 		resource_list_for_each_entry_safe(entry, tmp, list) {
- 			if (entry->res->flags & IORESOURCE_IO)
--				acpi_pci_root_remap_iospace(&device->fwnode,
-+				acpi_pci_root_remap_iospace(device,
- 						entry);
- 
- 			if (entry->res->flags & IORESOURCE_DISABLED)
+diff --git a/mm/vmalloc.c b/mm/vmalloc.c
+index 6b783baf12a1..5d031fc83f04 100644
+--- a/mm/vmalloc.c
++++ b/mm/vmalloc.c
+@@ -105,7 +105,7 @@ static int vmap_pte_range(pmd_t *pmd, unsigned long addr, unsigned long end,
+ 	if (!pte)
+ 		return -ENOMEM;
+ 	do {
+-		if (!pte_none(ptep_get(pte))) {
++		if (unlikely(!pte_none(ptep_get(pte)))) {
+ 			if (pfn_valid(pfn)) {
+ 				page = pfn_to_page(pfn);
+ 				dump_page(page, "remapping already mapped page");
 
 ---
 base-commit: 7c626ce4bae1ac14f60076d00eafe71af30450ba
-change-id: 20240813-check_pci_probe_res-27e3e6df72b2
+change-id: 20240814-fix_vmap_unlikely-2973d2cb904b
 
 Best regards,
 -- 
