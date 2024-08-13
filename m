@@ -1,127 +1,95 @@
-From: Utsav Agarwal <utsav.agarwal@analog.com>
-Date: Tue, 13 Aug 2024 10:51:33 +0100
-Subject: [PATCH v10 3/3] dt-bindings: input: pure gpio support for adp5588
+From: Miao Wang <shankerwangmiao@gmail.com>
+Date: Wed, 14 Aug 2024 00:24:20 +0800
+Subject: [PATCH] ACPI: PCI: check if the io space is page aligned
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240813-adp5588_gpio_support-v10-3-aab3c52cc8bf@analog.com>
-References: <20240813-adp5588_gpio_support-v10-0-aab3c52cc8bf@analog.com>
-In-Reply-To: <20240813-adp5588_gpio_support-v10-0-aab3c52cc8bf@analog.com>
-To: Utsav Agarwal <utsav.agarwal@analog.com>, 
- Michael Hennerich <michael.hennerich@analog.com>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Arturs Artamonovs <arturs.artamonovs@analog.com>, 
- Vasileios Bimpikas <vasileios.bimpikas@analog.com>, 
- Oliver Gaskell <oliver.gaskell@analog.com>, 
- Conor Dooley <conor.dooley@microchip.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1723542691; l=2851;
- i=utsav.agarwal@analog.com; s=20240701; h=from:subject:message-id;
- bh=zxni+ke8R259oDqwVVzRtBCB7/NKDEt1SGzAW3iTS44=;
- b=Mtcv0z5GVBIilTZ1VsOGVVpBQjyoAgGr65qSRlXeZsP1uKjf3W2oZ4asZJ2ApfW4i/xMWCET7
- JiVMRm+/BlJAczxPQJVboYO+QJbouyP2dopyej8vmk9hdwcFTGQJFj6
-X-Developer-Key: i=utsav.agarwal@analog.com; a=ed25519;
- pk=mIG5Dmd3TO5rcICwTsixl2MoUcf/i2u+jYqifd7+fmI=
-X-Endpoint-Received: by B4 Relay for utsav.agarwal@analog.com/20240701 with auth_id=178
+Message-Id: <20240814-check_pci_probe_res-v1-1-122ee07821ab@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALSIu2YC/x3M0QpAQBBG4VfRXNtiCHkVaWP9mBTbbElt3t3m8
+ rs4J1KACgL1WSTFLUGuM6HMM3L7dG4wsiQTF1wXXVkZt8Md1juxXq8ZVhEMt6jQLGvLM1MqvWK
+ V578O4/t+XtUqAGUAAAA=
+To: Bjorn Helgaas <bhelgaas@google.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>
+Cc: linux-pci@vger.kernel.org, linux-acpi@vger.kernel.org, 
+ Miao Wang <shankerwangmiao@gmail.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2104;
+ i=shankerwangmiao@gmail.com; h=from:subject:message-id;
+ bh=DWlqRiPe/fYjvNSchc34mMH7Q4Dr/qB1v12rnVJlSKs=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmu4jBfTWgmYDF3W+Yt0apBYRG6e7gwIu0EY6zA
+ 47PZgNAN+mJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZruIwQAKCRCwMePKe/7Z
+ bhowEADDH2kpqzTz4n37l0QOBIHDygNvWr9UJFn3DVnUaEp9kxAJ/5p5rc347ZwF+qYvcCFty1Z
+ yET9MdWuOHxgPoE+ujcPMqvANyfoSpD1ZmaMjmHr1kP7fi0iPraFWbwSkOBagx6Kj8xK8Cxd582
+ ZuvP3DK2keZ78PF4HZE7lZkOr+MjxAZ8lSL1TdkIRe2UsdRu0WA0/s+QN0ZsfUIwnRFiME+JHOJ
+ msH4Hqumm/rH0wt/jkiKa+LRuSHr4c+K9aB9LEvL3Pt832Yal/GYWWEuYjFGXqXuSGUgrKu+W32
+ UW+Ld860zXGsScoHrZmrQykHmhZcWKlUbBzcMlT0ul1giWXiWYgTp4yDrBgfyfRhR0sLIWha9l5
+ gN9fvEjPmoZCgnEp+8oc5ELNFGrFxFQOEiXUIb70IEfb1U5c0pB1I5sxkdj6e8mnmFblGgwcgJP
+ Lis1rJvtIdWZKVyFD6yCWO9ZD6d7plMUTphSCMEqaRcDLOvxgWQF+SSQB8sI95WrcYHZ3YLgclS
+ WlBszCfzc9bpJUxIYQR1jBLjKiIaDEnViBXYaU1+FKBf1DU+xdxWUzIFV3jpK3E6F9Dp4cO3vU5
+ yZ0HWYizm4+i6wcK5ndOz/j0B7HTPF/0x9OQfY7divv8+ePl2g/1JweBpDfYHX8/uAiBrNIIW8u
+ y8OJaxoNeu7CP0g==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adding software support for enabling the pure gpio capability of the
-device - which allows all I/O to be used as GPIO. Previously, I/O
-configuration was limited by software to partial GPIO support only.
+When the IO resource given by _CRS method is not page aligned, serious
+problems will happen because the mis-aligend address is passed down to
+pci_remap_iospace, then to vmap_page_range, and finally to
+vmap_pte_range, where the length bewteen addr and end is expected to be
+divisible by PAGE_SIZE, or the loop will overrun till the pfn_none check
+fails.
 
-When working in a pure gpio mode, the device does not require the
-certain properties and hence, the following are now made optional:
-	- interrupts
-	- keypad,num-rows
-	- keypad,num-columns
-	- linux,keymap
-
-However, note that the above are required to be specified when
-configuring the device as a keypad, for which dependencies have been added
-such that specifying either one requires the remaining as well.
-
-Also, note that interrupts are made optional, but required when the device
-has either been configured in keypad mode or as an interrupt controller.
-This has been done since they may not necessarily be used when leveraging
-the device purely for GPIO.
-
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
-Signed-off-by: Utsav Agarwal <utsav.agarwal@analog.com>
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- .../devicetree/bindings/input/adi,adp5588.yaml     | 40 ++++++++++++++++++----
- 1 file changed, 34 insertions(+), 6 deletions(-)
+ drivers/acpi/pci_root.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/input/adi,adp5588.yaml b/Documentation/devicetree/bindings/input/adi,adp5588.yaml
-index 26ea66834ae2..0721eef7139d 100644
---- a/Documentation/devicetree/bindings/input/adi,adp5588.yaml
-+++ b/Documentation/devicetree/bindings/input/adi,adp5588.yaml
-@@ -49,7 +49,10 @@ properties:
-   interrupt-controller:
-     description:
-       This property applies if either keypad,num-rows lower than 8 or
--      keypad,num-columns lower than 10.
-+      keypad,num-columns lower than 10. This property is optional if
-+      keypad,num-rows or keypad,num-columns are not specified as the
-+      device is then configured to be used purely for gpio during which
-+      interrupts may or may not be utilized.
+diff --git a/drivers/acpi/pci_root.c b/drivers/acpi/pci_root.c
+index d0bfb3706801..58fc64757bde 100644
+--- a/drivers/acpi/pci_root.c
++++ b/drivers/acpi/pci_root.c
+@@ -858,7 +858,7 @@ static void acpi_pci_root_validate_resources(struct device *dev,
+ 	}
+ }
  
-   '#interrupt-cells':
-     const: 2
-@@ -65,13 +68,23 @@ properties:
-     minItems: 1
-     maxItems: 2
+-static void acpi_pci_root_remap_iospace(struct fwnode_handle *fwnode,
++static void acpi_pci_root_remap_iospace(struct acpi_device *device,
+ 			struct resource_entry *entry)
+ {
+ #ifdef PCI_IOBASE
+@@ -868,7 +868,15 @@ static void acpi_pci_root_remap_iospace(struct fwnode_handle *fwnode,
+ 	resource_size_t length = resource_size(res);
+ 	unsigned long port;
  
-+dependencies:
-+  keypad,num-rows:
-+    - linux,keymap
-+    - keypad,num-columns
-+  keypad,num-columns:
-+    - linux,keymap
-+    - keypad,num-rows
-+  linux,keymap:
-+    - keypad,num-rows
-+    - keypad,num-columns
-+    - interrupts
-+  interrupt-controller:
-+    - interrupts
+-	if (pci_register_io_range(fwnode, cpu_addr, length))
++	if (!PAGE_ALIGNED(cpu_addr) || !PAGE_ALIGNED(length) ||
++		!PAGE_ALIGNED(pci_addr)) {
++		dev_err(device->dev,
++			FW_BUG "I/O resource %pR or its offset %pa is not page aligned\n",
++			res, &entry->offset);
++		goto err;
++	}
 +
- required:
-   - compatible
-   - reg
--  - interrupts
--  - keypad,num-rows
--  - keypad,num-columns
--  - linux,keymap
++	if (pci_register_io_range(&device->fwnode, cpu_addr, length))
+ 		goto err;
  
- unevaluatedProperties: false
+ 	port = pci_address_to_pio(cpu_addr);
+@@ -910,7 +918,7 @@ int acpi_pci_probe_root_resources(struct acpi_pci_root_info *info)
+ 	else {
+ 		resource_list_for_each_entry_safe(entry, tmp, list) {
+ 			if (entry->res->flags & IORESOURCE_IO)
+-				acpi_pci_root_remap_iospace(&device->fwnode,
++				acpi_pci_root_remap_iospace(device,
+ 						entry);
  
-@@ -108,4 +121,19 @@ examples:
-             >;
-         };
-     };
--...
-+
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+    i2c {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+        gpio@34 {
-+            compatible = "adi,adp5588";
-+            reg = <0x34>;
-+
-+            #gpio-cells = <2>;
-+            gpio-controller;
-+        };
-+    };
-+
-+.
+ 			if (entry->res->flags & IORESOURCE_DISABLED)
 
+---
+base-commit: 7c626ce4bae1ac14f60076d00eafe71af30450ba
+change-id: 20240813-check_pci_probe_res-27e3e6df72b2
+
+Best regards,
 -- 
-2.34.1
+Miao Wang <shankerwangmiao@gmail.com>
 
