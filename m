@@ -1,33 +1,34 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Wed, 14 Aug 2024 00:24:20 +0800
-Subject: [PATCH] ACPI: PCI: check if the io space is page aligned
+Date: Wed, 14 Aug 2024 00:39:56 +0800
+Subject: [PATCH v2] ACPI: PCI: check if the io space is page aligned
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240814-check_pci_probe_res-v1-1-122ee07821ab@gmail.com>
-X-B4-Tracking: v=1; b=H4sIALSIu2YC/x3M0QpAQBBG4VfRXNtiCHkVaWP9mBTbbElt3t3m8
- rs4J1KACgL1WSTFLUGuM6HMM3L7dG4wsiQTF1wXXVkZt8Md1juxXq8ZVhEMt6jQLGvLM1MqvWK
- V578O4/t+XtUqAGUAAAA=
+Message-Id: <20240814-check_pci_probe_res-v2-1-a03c8c9b498b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAFuMu2YC/22NwQqDMBBEf0X23BSzSpWe+h8iIcZVl1YTkhJaJ
+ P/eVOitzOkNzJsdAnmmANdiB0+RA9stA54KMIveZhI8ZgYssS5bWQmzkLkrZ1g5bwdSnoLAhiq
+ 6jFODA0JeOk8Tvw5r12deODytfx8nUX7bn6/+64tS5CASlU2LUg+3edX8OBu7Qp9S+gA+2jwqt
+ gAAAA==
 To: Bjorn Helgaas <bhelgaas@google.com>, 
  "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>
 Cc: linux-pci@vger.kernel.org, linux-acpi@vger.kernel.org, 
  Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2104;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2305;
  i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=DWlqRiPe/fYjvNSchc34mMH7Q4Dr/qB1v12rnVJlSKs=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmu4jBfTWgmYDF3W+Yt0apBYRG6e7gwIu0EY6zA
- 47PZgNAN+mJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZruIwQAKCRCwMePKe/7Z
- bhowEADDH2kpqzTz4n37l0QOBIHDygNvWr9UJFn3DVnUaEp9kxAJ/5p5rc347ZwF+qYvcCFty1Z
- yET9MdWuOHxgPoE+ujcPMqvANyfoSpD1ZmaMjmHr1kP7fi0iPraFWbwSkOBagx6Kj8xK8Cxd582
- ZuvP3DK2keZ78PF4HZE7lZkOr+MjxAZ8lSL1TdkIRe2UsdRu0WA0/s+QN0ZsfUIwnRFiME+JHOJ
- msH4Hqumm/rH0wt/jkiKa+LRuSHr4c+K9aB9LEvL3Pt832Yal/GYWWEuYjFGXqXuSGUgrKu+W32
- UW+Ld860zXGsScoHrZmrQykHmhZcWKlUbBzcMlT0ul1giWXiWYgTp4yDrBgfyfRhR0sLIWha9l5
- gN9fvEjPmoZCgnEp+8oc5ELNFGrFxFQOEiXUIb70IEfb1U5c0pB1I5sxkdj6e8mnmFblGgwcgJP
- Lis1rJvtIdWZKVyFD6yCWO9ZD6d7plMUTphSCMEqaRcDLOvxgWQF+SSQB8sI95WrcYHZ3YLgclS
- WlBszCfzc9bpJUxIYQR1jBLjKiIaDEnViBXYaU1+FKBf1DU+xdxWUzIFV3jpK3E6F9Dp4cO3vU5
- yZ0HWYizm4+i6wcK5ndOz/j0B7HTPF/0x9OQfY7divv8+ePl2g/1JweBpDfYHX8/uAiBrNIIW8u
- y8OJaxoNeu7CP0g==
+ bh=0ZF6Ci0GjEHWbF0h9iTGy8xDpgABqmqlKbAHXnzVJoM=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmu4xelt/qz9EDOzhpIjWxWhbApkRhd5AgosWCm
+ qkMnNroN+mJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZruMXgAKCRCwMePKe/7Z
+ bvLJEADA9XNjIMty4vKg9m7BU2OcV9c2MdfE/u9irh9gmrO1sdmMHZgOX1MP6B/GU1CkT3D3f5H
+ G4zlWQjEw2M/syzvDMUyPnrwPBX7JG+ucX1oNDhPFXa16N+Nw7KMn6MGO1Fcis3AgmwKCCXNaOL
+ vvv5Fk5G4AcBhqbIqe4xSv0iiYA9q6XkoDb5ssXGbV9PTdKDouWSvIkgOe4K1wwq0C6mTjjTgQO
+ HIxd9aL7DJmgeF74x+R3ODhCGOhNLJW0rWuta2dHCZIA6bzJj1jYHLZKwxZoXeWrwT5qxnKW9BB
+ dDt3gHk83p1lBsERi9EdSV80qirzx6YzkquUr/abM3++b+OcSJQ7H/u/8HoFM9RAaOSVen1Yx26
+ GxYl++Lm7wVn5P4q7L7ouzTxU5P+eXLjmIyzNiapQqFQ21yYOlD5JQFF7kp0T1aqhJe+4cwl9fu
+ wkSot6h0vb2xntW3DcsmUzJe5iWoslmPK2T6yNz3uyqg/Tnbmx5wefFZptEjHcX0L5W0BRaBZmj
+ JFn/Qv5yKU6xS7s+D/tmDKEusaDbqTW5keXjK7DxgsKfgHuXSZd/ixhF/zui91Ojd6fh+HdlyYp
+ 8EtrgvxqEWdGsonS0Oh3pS33cRlkFcPTR3C3Ao/ZPAjXeLHt3gavx+HDRdumtiDd8IVI4x93MfI
+ PVbuMJY/P49rXUw==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
@@ -42,11 +43,15 @@ fails.
 
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
+Changes in v2:
+- Sorry for posting out the draft version in V1, fixed a silly compiling issue.
+- Link to v1: https://lore.kernel.org/r/20240814-check_pci_probe_res-v1-1-122ee07821ab@gmail.com
+---
  drivers/acpi/pci_root.c | 14 +++++++++++---
  1 file changed, 11 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/acpi/pci_root.c b/drivers/acpi/pci_root.c
-index d0bfb3706801..58fc64757bde 100644
+index d0bfb3706801..706449e5f29b 100644
 --- a/drivers/acpi/pci_root.c
 +++ b/drivers/acpi/pci_root.c
 @@ -858,7 +858,7 @@ static void acpi_pci_root_validate_resources(struct device *dev,
@@ -65,7 +70,7 @@ index d0bfb3706801..58fc64757bde 100644
 -	if (pci_register_io_range(fwnode, cpu_addr, length))
 +	if (!PAGE_ALIGNED(cpu_addr) || !PAGE_ALIGNED(length) ||
 +		!PAGE_ALIGNED(pci_addr)) {
-+		dev_err(device->dev,
++		dev_err(&device->dev,
 +			FW_BUG "I/O resource %pR or its offset %pa is not page aligned\n",
 +			res, &entry->offset);
 +		goto err;
