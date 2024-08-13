@@ -1,171 +1,145 @@
-From: "Christoph Lameter (Ampere)" <cl@gentwo.org>
-Date: Tue, 13 Aug 2024 11:26:17 -0700
-Subject: [PATCH RFC] Avoid memory barrier in read_seqcount() through load
- acquire
+From: Utsav Agarwal <utsav.agarwal@analog.com>
+Subject: [PATCH v11 0/3] adp5588-keys: Support for dedicated gpio operation
+Date: Tue, 13 Aug 2024 21:07:16 +0100
+Message-Id: <20240813-adp5588_gpio_support-v11-0-9ea490d6c41d@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240813-seq_optimize-v1-1-84d57182e6a7@gentwo.org>
-X-B4-Tracking: v=1; b=H4sIAEilu2YC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDC0Nj3eLUwvj8gpLM3MyqVF0zi2QTCzNLs2RzSwsloJaCotS0zAqwcdG
- xtbUAbA2//14AAAA=
-To: Catalin Marinas <catalin.marinas@arm.com>, 
- Will Deacon <will@kernel.org>, Peter Zijlstra <peterz@infradead.org>, 
- Ingo Molnar <mingo@redhat.com>, Waiman Long <longman@redhat.com>, 
- Boqun Feng <boqun.feng@gmail.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-mm@kvack.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- "Christoph Lameter (Ampere)" <cl@gentwo.org>
-X-Mailer: b4 0.15-dev-37811
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1723573592; l=4580;
- i=cl@gentwo.org; s=20240811; h=from:subject:message-id;
- bh=3Nopmj43IyKUcz7M69aLBmi74hfW/6pSaf4yxvR7/js=;
- b=orwijZITJDz6E0KNga7pCM4Wi5DczM6Xc1j7fdfFedU1/4pZqMoo3LPIQ2AWagSJhdaNGyKoB
- Cce6zJOs4Y8B/NK8tdDYEhFbS+c7qm+ZZOFwalWJiYhiPkhn2rVgfn3
-X-Developer-Key: i=cl@gentwo.org; a=ed25519;
- pk=I7gqGwDi9drzCReFIuf2k9de1FI1BGibsshXI0DIvq8=
-X-Endpoint-Received: by B4 Relay for cl@gentwo.org/20240811 with auth_id=194
+X-B4-Tracking: v=1; b=H4sIAPS8u2YC/43QQWrDMBAF0KsEreuikWdkuaveo4SgkWRH0FrGT
+ k1K8N0rZ1MX1zTL/2HewL+JMQwxjOLlcBNDmOIYU5cDwNNBuLPt2lBEnwuhpEJZSSis74mMObV
+ 9TKfxs+/TcCk0eVbsFdi6Efm0H0ITr3f37ZjzOY6XNHzd30y4tP+AExayQGS2EpFCLV9tZ99T+
+ +zSh1jEidZKuaPQotSNC9ZLX/6h6LWCO4rOimNNBOgrQN4o1SNKlZVQYuAqsCW7VcwjismKksY
+ 15NEprzdK/aMYqXeUetnFawDD2msqNwrIFQN784LMjrVcOlLOGW5+OfM8fwMxfQbZYAIAAA==
+To: Utsav Agarwal <utsav.agarwal@analog.com>, 
+ Michael Hennerich <michael.hennerich@analog.com>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Arturs Artamonovs <arturs.artamonovs@analog.com>, 
+ Vasileios Bimpikas <vasileios.bimpikas@analog.com>, 
+ Oliver Gaskell <oliver.gaskell@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1723579648; l=4364;
+ i=utsav.agarwal@analog.com; s=20240701; h=from:subject:message-id;
+ bh=IHVCkzfRVwRcrgQI0uynjD8r+bXwAWdk1AbhMeu7VsY=;
+ b=XclfHEzU5JHAwyGfDjOjhwxwNPjbuVDLqk3ZcZVnUE9tc+vsGUOHEE6OuL2tPkfADU03z+BRJ
+ m6gMpKFtzkqCeIk/wsVZ2tSXuMaIpwJHfFN0zytrVr6JCR7noS3l+Tb
+X-Developer-Key: i=utsav.agarwal@analog.com; a=ed25519;
+ pk=mIG5Dmd3TO5rcICwTsixl2MoUcf/i2u+jYqifd7+fmI=
+X-Endpoint-Received: by B4 Relay for utsav.agarwal@analog.com/20240701 with auth_id=178
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some architectures support load acquire which can save us a memory
-barrier and save some cycles.
+Current state of the driver for the ADP5588/87 only allows partial
+I/O to be used as GPIO. This support was previously present as a
+separate gpio driver, which was dropped with the commit
+5ddc896088b0 ("gpio: gpio-adp5588: drop the driver") since the
+functionality was deemed to have been merged with adp5588-keys.
 
-A typical sequence
+This series of patches re-enables this support by allowing the driver to 
+relax the requirement for registering a keymap and enable pure GPIO 
+operation. 
 
-	do {
-		seq = read_seqcount_begin(&s);
-		<something>
-	} while (read_seqcount_retry(&s, seq);
-
-requires 13 cycles on ARM64 for an empty loop. Two read memory barriers are
-needed. One for each of the seqcount_* functions.
-
-We can replace the first read barrier with a load acquire of
-the seqcount which saves us one barrier.
-
-On ARM64 doing so reduces the cycle count from 13 to 8.
-
-Signed-off-by: Christoph Lameter (Ampere) <cl@gentwo.org>
+Signed-off-by: Utsav Agarwal <utsav.agarwal@analog.com>
 ---
- arch/Kconfig            |  5 +++++
- arch/arm64/Kconfig      |  1 +
- include/linux/seqlock.h | 41 +++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 47 insertions(+)
+Changelog
+==========
 
-diff --git a/arch/Kconfig b/arch/Kconfig
-index 975dd22a2dbd..3f8867110a57 100644
---- a/arch/Kconfig
-+++ b/arch/Kconfig
-@@ -1600,6 +1600,11 @@ config ARCH_HAS_KERNEL_FPU_SUPPORT
- 	  Architectures that select this option can run floating-point code in
- 	  the kernel, as described in Documentation/core-api/floating-point.rst.
- 
-+config ARCH_HAS_ACQUIRE_RELEASE
-+	bool
-+	help
-+	  Architectures that support acquire / release can avoid memory fences
-+
- source "kernel/gcov/Kconfig"
- 
- source "scripts/gcc-plugins/Kconfig"
-diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
-index a2f8ff354ca6..19e34fff145f 100644
---- a/arch/arm64/Kconfig
-+++ b/arch/arm64/Kconfig
-@@ -39,6 +39,7 @@ config ARM64
- 	select ARCH_HAS_PTE_DEVMAP
- 	select ARCH_HAS_PTE_SPECIAL
- 	select ARCH_HAS_HW_PTE_YOUNG
-+	select ARCH_HAS_ACQUIRE_RELEASE
- 	select ARCH_HAS_SETUP_DMA_OPS
- 	select ARCH_HAS_SET_DIRECT_MAP
- 	select ARCH_HAS_SET_MEMORY
-diff --git a/include/linux/seqlock.h b/include/linux/seqlock.h
-index d90d8ee29d81..353fcf32b800 100644
---- a/include/linux/seqlock.h
-+++ b/include/linux/seqlock.h
-@@ -176,6 +176,28 @@ __seqprop_##lockname##_sequence(const seqcount_##lockname##_t *s)	\
- 	return seq;							\
- }									\
- 									\
-+static __always_inline unsigned						\
-+__seqprop_##lockname##_sequence_acquire(const seqcount_##lockname##_t *s) \
-+{									\
-+	unsigned seq = smp_load_acquire(&s->seqcount.sequence);		\
-+									\
-+	if (!IS_ENABLED(CONFIG_PREEMPT_RT))				\
-+		return seq;						\
-+									\
-+	if (preemptible && unlikely(seq & 1)) {				\
-+		__SEQ_LOCK(lockbase##_lock(s->lock));			\
-+		__SEQ_LOCK(lockbase##_unlock(s->lock));			\
-+									\
-+		/*							\
-+		 * Re-read the sequence counter since the (possibly	\
-+		 * preempted) writer made progress.			\
-+		 */							\
-+		seq = smp_load_acquire(&s->seqcount.sequence);		\
-+	}								\
-+									\
-+	return seq;							\
-+}									\
-+									\
- static __always_inline bool						\
- __seqprop_##lockname##_preemptible(const seqcount_##lockname##_t *s)	\
- {									\
-@@ -211,6 +233,11 @@ static inline unsigned __seqprop_sequence(const seqcount_t *s)
- 	return READ_ONCE(s->sequence);
- }
- 
-+static inline unsigned __seqprop_sequence_acquire(const seqcount_t *s)
-+{
-+	return smp_load_acquire(&s->sequence);
-+}
-+
- static inline bool __seqprop_preemptible(const seqcount_t *s)
- {
- 	return false;
-@@ -259,6 +286,7 @@ SEQCOUNT_LOCKNAME(mutex,        struct mutex,    true,     mutex)
- #define seqprop_ptr(s)			__seqprop(s, ptr)(s)
- #define seqprop_const_ptr(s)		__seqprop(s, const_ptr)(s)
- #define seqprop_sequence(s)		__seqprop(s, sequence)(s)
-+#define seqprop_sequence_acquire(s)	__seqprop(s, sequence_acquire)(s)
- #define seqprop_preemptible(s)		__seqprop(s, preemptible)(s)
- #define seqprop_assert(s)		__seqprop(s, assert)(s)
- 
-@@ -293,6 +321,18 @@ SEQCOUNT_LOCKNAME(mutex,        struct mutex,    true,     mutex)
-  *
-  * Return: count to be passed to read_seqcount_retry()
-  */
-+#ifdef CONFIG_ARCH_HAS_ACQUIRE_RELEASE
-+#define raw_read_seqcount_begin(s)					\
-+({									\
-+	unsigned _seq;							\
-+									\
-+	while ((_seq = seqprop_sequence_acquire(s)) & 1)		\
-+		cpu_relax();						\
-+									\
-+	kcsan_atomic_next(KCSAN_SEQLOCK_REGION_MAX);			\
-+	_seq;								\
-+})
-+#else
- #define raw_read_seqcount_begin(s)					\
- ({									\
- 	unsigned _seq = __read_seqcount_begin(s);			\
-@@ -300,6 +340,7 @@ SEQCOUNT_LOCKNAME(mutex,        struct mutex,    true,     mutex)
- 	smp_rmb();							\
- 	_seq;								\
- })
-+#endif
- 
- /**
-  * read_seqcount_begin() - begin a seqcount_t read critical section
+Changes in v11:
+	- dtbinding: Restored accidently deleted characters in previous
+	  revision
+- Link to v10: https://lore.kernel.org/r/20240813-adp5588_gpio_support-v10-0-aab3c52cc8bf@analog.com
+
+Changes in v10:
+	- Corrected changelog ordering
+	- Changed dtbinding commit to clarify all changes are made in
+	  software. The commit message now also expands on what
+	  the desired pure gpio mode is
+	- Added acquired tags to commits
+	- dt-binding:
+		Removed multiple blank lines before the dependecies block
+	  	Removed excess headers included in dtbinding example
+	  	Removed constraint being repeated in free form text
+	  	Merged outlying dependency into a single block
+- Link to v9: https://lore.kernel.org/r/20240806-adp5588_gpio_support-v9-0-4d6118b6d653@analog.com
+
+Changes in v9:
+	- Added dt-binding dependency for interrupt-controller. Now if
+	  interrupt-controller is specified, interrupts must be
+	  provided.
+- Link to v8: https://lore.kernel.org/r/20240704-adp5588_gpio_support-v8-0-208cf5d4c2d6@analog.com
+
+Changes in v8:
+	- Fixed indentation in document example (removed extra spaces)
+- Link to v7: https://lore.kernel.org/r/20240704-adp5588_gpio_support-v7-0-e34eb7eba5ab@analog.com
+
+Changes in v7:
+	- Fixed commit subject for transported patch 
+	- Driver now does not setup gpio_irq_chip if 
+	  interrupt has not been provided
+	- Fixed indentation for dtbinding example
+- Link to v6: https://lore.kernel.org/r/20240704-adp5588_gpio_support-v6-0-cb65514d714b@analog.com
+
+Changes in v6:
+	- Restored functionality to register interrupts in GPIO
+	  mode(i.e, these are optional but not exclusive to keypad mode
+	  since even in pure gpio mode, they can be used as inputs via 
+	  gpio-keys)
+	- Updated dt-bindings such that each keypad property depends on
+	  the others. Interrupts, although optional are now required by 
+	  keypad mode but are not limited to it.
+- Link to v5: https://lore.kernel.org/r/20240703-adp5588_gpio_support-v5-0-49fcead0d390@analog.com
+
+V5:
+	- Removed extra property "gpio-only", now pure gpio mode is
+	  detected via the adbsence of keypad specific properties.
+	- Added dependencies for keypad properties to preserve
+	  the original requirements in case a pure gpio mode is not
+	  being used.
+	- Added additional description for why the "interrupts" property
+	  was made optional
+	- Rebased current work based on https://lore.kernel.org/linux-input/ZoLt_qBCQS-tG8Ar@google.com/
+- Link to v4: https://lore.kernel.org/r/20240701-adp5588_gpio_support-v4-0-44bba0445e90@analog.com
+
+V4:
+	- Added dt-bindings patch
+
+V3:
+	-  Moved device_property_present() for reading "gpio-only" into 
+	adp558_fw_parse()
+	-  Added print statements in case of error
+
+V2: 
+	-  Changed gpio_only from a local variable to a member of struct
+	adp5588_kpad
+	-  Removed condition from adp5588_probe() to skip adp5588_fw_parse() if 
+	gpio-only specified. adp558_fw_parse() now handles and returns
+	0 if gpio-only has been specified.
+	-  Added a check in adp5588_fw_parse() to make sure keypad 
+	properties(keypad,num-columns and keypad,num-rows) were not defined when 
+	gpio-only specified
 
 ---
-base-commit: 6b4aa469f04999c3f244515fa7491b4d093c5167
-change-id: 20240813-seq_optimize-68c48696c798
+
+---
+Dmitry Torokhov (1):
+      Input: adp5588-keys - use guard notation when acquiring mutexes
+
+Utsav Agarwal (2):
+      Input: adp5588-keys - add support for pure gpio
+      dt-bindings: input: pure gpio support for adp5588
+
+ .../devicetree/bindings/input/adi,adp5588.yaml     | 38 ++++++++--
+ drivers/input/keyboard/adp5588-keys.c              | 86 +++++++++++++---------
+ 2 files changed, 83 insertions(+), 41 deletions(-)
+---
+base-commit: 1c52cf5e79d30ac996f34b64284f2c317004d641
+change-id: 20240701-adp5588_gpio_support-65db2bd21a9f
 
 Best regards,
 -- 
-Christoph Lameter <cl@gentwo.org>
+Utsav Agarwal <utsav.agarwal@analog.com>
 
