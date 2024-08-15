@@ -1,85 +1,142 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Thu, 15 Aug 2024 10:46:58 +0530
-Subject: [PATCH v2 3/3] ufs: qcom: Add UFSHCD_QUIRK_BROKEN_LSDBS_CAP for
- SM8550 SoC
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Subject: [PATCH net-next v3 0/8] net/selftests: TCP-AO selftests updates
+Date: Thu, 15 Aug 2024 22:32:25 +0100
+Message-Id: <20240815-tcp-ao-selftests-upd-6-12-v3-0-7bd2e22bb81c@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240815-ufs-bug-fix-v2-3-b373afae888f@linaro.org>
-References: <20240815-ufs-bug-fix-v2-0-b373afae888f@linaro.org>
-In-Reply-To: <20240815-ufs-bug-fix-v2-0-b373afae888f@linaro.org>
-To: Alim Akhtar <alim.akhtar@samsung.com>, 
- Avri Altman <avri.altman@wdc.com>, Bart Van Assche <bvanassche@acm.org>, 
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>
-Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, Kyoungrul Kim <k831.kim@samsung.com>, 
- Amit Pundir <amit.pundir@linaro.org>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+X-B4-Tracking: v=1; b=H4sIAOlzvmYC/43OywrCMBAF0F8pWTuaR5+u/A9xkSYTG6hJSWJRp
+ P9uLIiuxOVwuefOg0QMFiPZFw8ScLbRepcPsSmIGqQ7I1idb8IpL2kjKCQ1gfQQcTQJY4pwnTT
+ UwDiUWmAlZFMaYUjuTwGNva32kThM4PCWyCknvYwIfZBODS/7ne0u0rpXc7Ax+XBfn5rZ2v9jf
+ 2ZAwRhd9oZVuhbt4ZzBcav8ZV2d+UdqKf8l8SyJhqquE1XLavYtLcvyBAKYSpk2AQAA
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Shuah Khan <shuah@kernel.org>
+Cc: Mohammad Nassiri <mnassiri@ciena.com>, netdev@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dmitry Safonov <0x7f454c46@gmail.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1997;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=86LYSca/QxWt1ChuWxvzEFW+WUoUlJ8CGwZ6Mkg+m0I=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmvY9KezBjEvKBHyC6JRqOSOXSyAJE3HpZf7pEI
- or6TZ3a8LOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZr2PSgAKCRBVnxHm/pHO
- 9VvKCACBCdKo6gmM1PLI+AHofj7KYljAd050Y3VIV1/+QgIwkMGg5fG+pGI6fG8cb66sZPdA5tX
- /lD78a+ijyD33Om5oBfxwOT286+/DZZ4aKfTeusnHQzcRfKJ1FTC4ra/tyHwckiARE6evITcmeS
- +zkez/V9zEy8iZi8BZ6GB9SKMYW+RcEVL9T9TGJSlcf3qoTwFh+7tynG0XOtaYUCJSPeMKTPE0C
- uPdc3Yoh9jx214LyenbxJSK3Vt2YWa2bLvKCnv9K4ra8Gl2VN/A9SJ1IePShCN6NFCkRgG4i38d
- rjbVNRbxmJfIO4jf6SvyzCVDB7Cr2imZqitPFWCt5HaG2qJ5
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1723757567; l=5573;
+ i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
+ bh=//WNbzYpYU+e2ln5VDiF2W/YrA6HlyMjUvhsSCGFMs8=;
+ b=WcN86bjnC908xnl0YKemHzlj5UiSYYu3NmhGQoaipWYAM06enzSuWaHj7dwzlo3yK+1m5bI+G
+ IELW8xMHJTHA1YB4sM/6cczcm/xz5bqZq5h9abfycp/0vQUnZN376St
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SM8550 SoC supports the UFSHCI 3.0 spec, but it reports a bogus value of
-1 in the reserved 'Legacy Queue & Single Doorbell Support (LSDBS)' field of
-the Controller Capabilities register. This field is supposed to read 0 as
-per the spec.
+First 3 patches are more-or-less cleanups/preparations.
 
-But starting with commit 0c60eb0cc320 ("scsi: ufs: core: Check LSDBS cap
-when !mcq"), ufshcd driver is now relying on the LSDBS field to decide when
-to use the legacy doorbell mode if MCQ is not supported. And this ends up
-breaking UFS on SM8550:
+Patches 4/5 are fixes for netns file descriptors leaks/open.
 
-ufshcd-qcom 1d84000.ufs: ufshcd_init: failed to initialize (legacy doorbell mode not supported)
-ufshcd-qcom 1d84000.ufs: error -EINVAL: Initialization failed with error -22
+Patch 6 was sent to me/contributed off-list by Mohammad, who wants 32-bit
+kernels to run TCP-AO.
 
-So use the UFSHCD_QUIRK_BROKEN_LSDBS_CAP quirk for SM8550 SoC so that the
-ufshcd driver could use legacy doorbell mode correctly.
+Patch 7 is a workaround/fix for slow VMs. Albeit, I can't reproduce
+the issue, but I hope it will fix netdev flakes for connect-deny-*
+tests.
 
-Fixes: 0c60eb0cc320 ("scsi: ufs: core: Check LSDBS cap when !mcq")
-Tested-by: Amit Pundir <amit.pundir@linaro.org>
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+And the biggest change is adding TCP-AO tracepoints to selftests.
+I think it's a good addition by the following reasons:
+- The related tracepoints are now tested;
+- It allows tcp-ao selftests to raise expectations on the kernel
+  behavior - up from the syscalls exit statuses + net counters.
+- Provides tracepoints usage samples.
+
+As tracepoints are not a stable ABI, any kernel changes done to them
+will be reflected to the selftests, which also will allow users
+to see how to change their code. It's quite better than parsing dmesg
+(what BGP was doing pre-tracepoints, ugh).
+
+Somewhat arguably, the code parses trace_pipe, rather than uses
+libtraceevent (which any sane user should do). The reason behind that is
+the same as for rt-netlink macros instead of libmnl: I'm trying
+to minimize the library dependencies of the selftests. And the
+performance of formatting text in kernel and parsing it again in a test
+is not critical.
+
+Current output sample:
+> ok 73 Trace events matched expectations: 13 tcp_hash_md5_required[2] tcp_hash_md5_unexpected[4] tcp_hash_ao_required[3] tcp_ao_key_not_found[4]
+
+Previously, tracepoints selftests were part of kernel tcp tracepoints
+submission [1], but since then the code was quite changed:
+- Now generic tracing setup is in lib/ftrace.c, separate from
+  lib/ftrace-tcp.c which utilizes TCP trace points. This separation
+  allows future selftests to trace non-TCP events, i.e. to find out
+  an skb's drop reason, which was useful in the creation of TCP-CLOSE
+  stress-test (not in this patch set, but used in attempt to reproduce
+  the issue from [2]).
+- Another change is that in the previous submission the trace events
+  where used only to detect unexpected TCP-AO/TCP-MD5 events. In this
+  version the selftests will fail if an expected trace event didn't
+  appear.
+  Let's see how reliable this is on the netdev bot - it obviously passes
+  on my testing, but potentially may require a temporary XFAIL patch
+  if it misbehaves on a slow VM.
+
+[1] https://lore.kernel.org/lkml/20240224-tcp-ao-tracepoints-v1-0-15f31b7f30a7@arista.com/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/netdev/net.git/commit/?id=33700a0c9b56
+
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- drivers/ufs/host/ufs-qcom.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Changes in v3:
+- Corrected the selftests printing of tcp header flags, parsed from
+  trace points
+- Fixed an issue with VRF kconfig checks (and tests)
+- Made check for unexpected trace events XFAIL, yet looking into the
+  reason behind the fail
+- Link to v2: https://lore.kernel.org/r/20240802-tcp-ao-selftests-upd-6-12-v2-0-370c99358161@gmail.com
 
-diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 810e637047d0..c87fdc849c62 100644
---- a/drivers/ufs/host/ufs-qcom.c
-+++ b/drivers/ufs/host/ufs-qcom.c
-@@ -857,6 +857,9 @@ static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
- 
- 	if (host->hw_ver.major > 0x3)
- 		hba->quirks |= UFSHCD_QUIRK_REINIT_AFTER_MAX_GEAR_SWITCH;
-+
-+	if (of_device_is_compatible(hba->dev->of_node, "qcom,sm8550-ufshc"))
-+		hba->quirks |= UFSHCD_QUIRK_BROKEN_LSDBS_CAP;
- }
- 
- static void ufs_qcom_set_phy_gear(struct ufs_qcom_host *host)
-@@ -1847,7 +1850,8 @@ static void ufs_qcom_remove(struct platform_device *pdev)
- }
- 
- static const struct of_device_id ufs_qcom_of_match[] __maybe_unused = {
--	{ .compatible = "qcom,ufshc"},
-+	{ .compatible = "qcom,ufshc" },
-+	{ .compatible = "qcom,sm8550-ufshc" },
- 	{},
- };
- MODULE_DEVICE_TABLE(of, ufs_qcom_of_match);
+Changes in v2:
+- Fixed two issues with parsing TCP-AO events: the socket state and TCP
+  segment flags. Hopefully, won't fail on netdev.
+- Reword patch 1 & 2 messages to be more informative and at some degree
+  formal (Paolo)
+- Since commit e33a02ed6a4f ("selftests: Add printf attribute to
+  kselftest prints") it's possible to use __printf instead of "raw" gcc
+  attribute - switch using that, as checkpatch suggests.
+- Link to v1: https://lore.kernel.org/r/20240730-tcp-ao-selftests-upd-6-12-v1-0-ffd4bf15d638@gmail.com
 
+---
+Dmitry Safonov (7):
+      selftests/net: Clean-up double assignment
+      selftests/net: Provide test_snprintf() helper
+      selftests/net: Be consistent in kconfig checks
+      selftests/net: Open /proc/thread-self in open_netns()
+      selftests/net: Don't forget to close nsfd after switch_save_ns()
+      selftests/net: Synchronize client/server before counters checks
+      selftests/net: Add trace events matching to tcp_ao
+
+Mohammad Nassiri (1):
+      selftests/tcp_ao: Fix printing format for uint64_t
+
+ tools/testing/selftests/net/tcp_ao/Makefile        |   3 +-
+ tools/testing/selftests/net/tcp_ao/bench-lookups.c |   2 +-
+ tools/testing/selftests/net/tcp_ao/config          |   1 +
+ tools/testing/selftests/net/tcp_ao/connect-deny.c  |  25 +-
+ tools/testing/selftests/net/tcp_ao/connect.c       |   6 +-
+ tools/testing/selftests/net/tcp_ao/icmps-discard.c |   2 +-
+ .../testing/selftests/net/tcp_ao/key-management.c  |  18 +-
+ tools/testing/selftests/net/tcp_ao/lib/aolib.h     | 176 ++++++-
+ .../testing/selftests/net/tcp_ao/lib/ftrace-tcp.c  | 549 +++++++++++++++++++++
+ tools/testing/selftests/net/tcp_ao/lib/ftrace.c    | 466 +++++++++++++++++
+ tools/testing/selftests/net/tcp_ao/lib/kconfig.c   |  31 +-
+ tools/testing/selftests/net/tcp_ao/lib/setup.c     |  17 +-
+ tools/testing/selftests/net/tcp_ao/lib/sock.c      |   1 -
+ tools/testing/selftests/net/tcp_ao/lib/utils.c     |  26 +
+ tools/testing/selftests/net/tcp_ao/restore.c       |  30 +-
+ tools/testing/selftests/net/tcp_ao/rst.c           |   2 +-
+ tools/testing/selftests/net/tcp_ao/self-connect.c  |  19 +-
+ tools/testing/selftests/net/tcp_ao/seq-ext.c       |  28 +-
+ .../selftests/net/tcp_ao/setsockopt-closed.c       |   6 +-
+ tools/testing/selftests/net/tcp_ao/unsigned-md5.c  |  35 +-
+ 20 files changed, 1376 insertions(+), 67 deletions(-)
+---
+base-commit: a9c60712d71ff07197b2982899b9db28ed548ded
+change-id: 20240730-tcp-ao-selftests-upd-6-12-4d3e53a74f3f
+
+Best regards,
 -- 
-2.25.1
+Dmitry Safonov <0x7f454c46@gmail.com>
 
