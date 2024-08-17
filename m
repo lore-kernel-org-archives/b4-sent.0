@@ -1,102 +1,72 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Sat, 17 Aug 2024 11:09:04 +0530
-Subject: [PATCH 2/2] PCI: tegra194: Move controller cleanups to
- pex_ep_event_pex_rst_deassert()
+From: =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
+Date: Sat, 17 Aug 2024 10:00:53 +0200
+Subject: [PATCH b4] Document patatt key selector
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240817-pci-qcom-ep-cleanup-v1-2-d6b958226559@linaro.org>
-References: <20240817-pci-qcom-ep-cleanup-v1-0-d6b958226559@linaro.org>
-In-Reply-To: <20240817-pci-qcom-ep-cleanup-v1-0-d6b958226559@linaro.org>
-To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, Vidya Sagar <vidyas@nvidia.com>
-Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Thierry Reding <treding@nvidia.com>, 
- linux-tegra@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240817-selector-doc-v1-1-7c5c824a4e9d@skole.hr>
+X-B4-Tracking: v=1; b=H4sIALVYwGYC/x3MQQqAIBBA0avErBNUjLSrRIvSsQZCQyMC8e5Jy
+ 7f4v0DGRJhh6gokfChTDA2i78Aea9iRkWsGyaXiWows44n2jom5aBkqboRWRg5eQ0uuhJ7efzf
+ DpmCp9QNRSBWzYgAAAA==
+To: "Kernel.org Tools" <tools@kernel.org>
+Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
+ =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3042;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=Gpj3bCNv2Ngi3Fb+SdoC72OTyVZAosVFWqztoxn1DI8=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmwDd5+Q7Oy8V76rsxPlmGh9rN2LDwu2fT+RggS
- mu4/0p+zU+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZsA3eQAKCRBVnxHm/pHO
- 9eKtB/4yI6toXqLRwhcYnBU0Fz5V1xWq8znAlFXkOW1w0/R+REcaQl1E8eO1HhYb2HBc5qEo75d
- lpNmdahVggWI+2fF1fPc1iPj8wUZWWqBjIUa0/WNt4AE1X7nTcH+k5K5JdIAjco3xKGGcxW6rLr
- 2GLILxw583kWRMP6eKd/hWuM/sR0Rb8oEkXjZqEN+7kjBxKb3cI+SqwyDIi9y1Wl+B3zPXuY4Cg
- xmPh0Kb50qkt+ZTgnVHKBhijZD8fQQ88UR8Nq9nHl7zFGga2VLDWdqjMQWaeWzLIoAa1XFThAeS
- NWDaRBIWpD/IvNTy4E9hlLMf4akRCjZWh7t2UFoq0bDwZu0w
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1791;
+ i=duje.mihanovic@skole.hr; s=20240706; h=from:subject:message-id;
+ bh=1wfqlisqcIHFWOChgds5FzvapQFDMUC8CZXJftubi1c=;
+ b=owGbwMvMwCW21nBykGv/WmbG02pJDGkHInZdv1LU1p2n/SX0yuF21lBG1g3KjouWMFiuPvGwX
+ rncuv9BRykLgxgXg6yYIkvuf8drvJ9Ftm7PXmYAM4eVCWQIAxenAEykp5Phv5vDyRvvZ/40/vtB
+ TSTx/rY9K79FGX9cxHtdTSisL0f5uj0jw+NfftyfhOKCvYWPvfupX2QvPLdhZ9waxvBN15aduLZ
+ YnwMA
+X-Developer-Key: i=duje.mihanovic@skole.hr; a=openpgp;
+ fpr=6DFF41D60DF314B5B76BA630AD319352458FAD03
+X-Endpoint-Received: by B4 Relay for duje.mihanovic@skole.hr/20240706 with auth_id=191
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, the endpoint cleanup function dw_pcie_ep_cleanup() and EPF
-deinit notify function pci_epc_deinit_notify() are called during the
-execution of pex_ep_event_pex_rst_assert() i.e., when the host has asserted
-PERST#. But quickly after this step, refclk will also be disabled by the
-host.
+This selector can be used to authorize multiple keys for one email
+address, but hasn't been documented anywhere as far as I can tell.
 
-All of the tegra194 endpoint SoCs supported as of now depend on the refclk
-from the host for keeping the controller operational. Due to this
-limitation, any access to the hardware registers in the absence of refclk
-will result in a whole endpoint crash. Unfortunately, most of the
-controller cleanups require accessing the hardware registers (like eDMA
-cleanup performed in dw_pcie_ep_cleanup(), etc...). So these cleanup
-functions can cause the crash in the endpoint SoC once host asserts PERST#.
-
-One way to address this issue is by generating the refclk in the endpoint
-itself and not depending on the host. But that is not always possible as
-some of the endpoint designs do require the endpoint to consume refclk from
-the host.
-
-So let's fix this crash by moving the controller cleanups to the start of
-the pex_ep_event_pex_rst_deassert() function. This function is called
-whenever the host has deasserted PERST# and it is guaranteed that the
-refclk would be active at this point. So at the start of this function
-(after enabling resources) the controller cleanup can be performed. Once
-finished, rest of the code execution for PERST# deassert can continue as
-usual.
-
-Cc: Thierry Reding <thierry.reding@gmail.com>
-Cc: Jonathan Hunter <jonathanh@nvidia.com>
-Cc: Vidya Sagar <vidyas@nvidia.com>
-Cc: linux-tegra@vger.kernel.org
-Fixes: 473b2cf9c4d1 ("PCI: endpoint: Introduce 'epc_deinit' event and notify the EPF drivers")
-Fixes: 570d7715eed8 ("PCI: dwc: ep: Introduce dw_pcie_ep_cleanup() API for drivers supporting PERST#")
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Link: https://lore.kernel.org/all/20240729-macaque-of-inspiring-recreation-9e5c4b@lemur/
+Signed-off-by: Duje Mihanović <duje.mihanovic@skole.hr>
 ---
- drivers/pci/controller/dwc/pcie-tegra194.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ docs/contributor/send.rst | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/drivers/pci/controller/dwc/pcie-tegra194.c b/drivers/pci/controller/dwc/pcie-tegra194.c
-index 4bf7b433417a..d68dd18ed43c 100644
---- a/drivers/pci/controller/dwc/pcie-tegra194.c
-+++ b/drivers/pci/controller/dwc/pcie-tegra194.c
-@@ -1709,9 +1709,6 @@ static void pex_ep_event_pex_rst_assert(struct tegra_pcie_dw *pcie)
- 	if (ret)
- 		dev_err(pcie->dev, "Failed to go Detect state: %d\n", ret);
+diff --git a/docs/contributor/send.rst b/docs/contributor/send.rst
+index a597ac5..54ed474 100644
+--- a/docs/contributor/send.rst
++++ b/docs/contributor/send.rst
+@@ -122,6 +122,23 @@ from the message::
  
--	pci_epc_deinit_notify(pcie->pci.ep.epc);
--	dw_pcie_ep_cleanup(&pcie->pci.ep);
--
- 	reset_control_assert(pcie->core_rst);
+ You should now be able to send patches via this web submission endpoint.
  
- 	tegra_pcie_disable_phy(pcie);
-@@ -1790,6 +1787,10 @@ static void pex_ep_event_pex_rst_deassert(struct tegra_pcie_dw *pcie)
- 		goto fail_phy;
- 	}
- 
-+	/* Perform cleanup that requires refclk */
-+	pci_epc_deinit_notify(pcie->pci.ep.epc);
-+	dw_pcie_ep_cleanup(&pcie->pci.ep);
++Changing your attestation key
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++If you change your attestation key without changing your email address (e.g.
++switch from a ``patatt`` generated key to a PGP key or change your PGP keys),
++your previous authorization will stop working. Trying to reauthorize will also
++result in an error as changing the attestation key is `currently unsupported
++<https://lore.kernel.org/tools/4608818.LvFx2qVVIh@radijator/T/#m9aa19999463864341ed8be929f470e5439513256>`_.
++Instead, you can change the key selector to something other than ``default``
++with the following setting::
 +
- 	/* Clear any stale interrupt statuses */
- 	appl_writel(pcie, 0xFFFFFFFF, APPL_INTR_STATUS_L0);
- 	appl_writel(pcie, 0xFFFFFFFF, APPL_INTR_STATUS_L1_0_0);
++    [patatt]
++       selector = something
++
++.. note::
++   The selector can be anything besides default or any previously used selector.
++   For example, you could use the creation date of your PGP key.
++
+ Using your own SMTP server
+ --------------------------
+ If there is a ``sendmail`` section in your git configuration, B4 tries
 
+---
+base-commit: 37811c93f50e70f325e45107a9a20ffc69f2f6dc
+change-id: 20240817-selector-doc-e409184925f8
+
+Best regards,
 -- 
-2.25.1
+Duje Mihanović <duje.mihanovic@skole.hr>
 
