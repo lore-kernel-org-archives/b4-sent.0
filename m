@@ -1,87 +1,72 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Fri, 16 Aug 2024 11:55:11 +0530
-Subject: [PATCH v3 2/2] ufs: qcom: Add UFSHCD_QUIRK_BROKEN_LSDBS_CAP for
- SM8550 SoC
+Subject: [PATCH 0/2] PCI: {qcom-ep/tegra194}: Move endpoint cleanups to
+ PERST# deassert handler
+Date: Sat, 17 Aug 2024 11:09:02 +0530
+Message-Id: <20240817-pci-qcom-ep-cleanup-v1-0-d6b958226559@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240816-ufs-bug-fix-v3-2-e6fe0e18e2a3@linaro.org>
-References: <20240816-ufs-bug-fix-v3-0-e6fe0e18e2a3@linaro.org>
-In-Reply-To: <20240816-ufs-bug-fix-v3-0-e6fe0e18e2a3@linaro.org>
-To: Alim Akhtar <alim.akhtar@samsung.com>, 
- Avri Altman <avri.altman@wdc.com>, Bart Van Assche <bvanassche@acm.org>, 
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>
-Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, Kyoungrul Kim <k831.kim@samsung.com>, 
- Amit Pundir <amit.pundir@linaro.org>, 
+X-B4-Tracking: v=1; b=H4sIAHY3wGYC/x3MQQqAIBBA0avErBtQMZSuEi1CpxooNaUIorsnL
+ d/i/wcKZaYCffNAposLx1Ah2wbcOoWFkH01KKG0sNJgcoyHiztSQrfRFM6ERgujO1LSWwO1TJl
+ mvv/rML7vB4Z5YAFlAAAA
+To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, Vidya Sagar <vidyas@nvidia.com>
+Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Thierry Reding <treding@nvidia.com>, 
+ linux-tegra@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2162;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1346;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=8PjwyrRDlmmjf4UdCJV0ALAaFI4EcPDr3ooZLdpnWiY=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmvvDHWeDACvtMQnNU4By972MH5qzCsZh0VjWPD
- vH6P/OQXiiJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZr7wxwAKCRBVnxHm/pHO
- 9cE8B/9IQhrAOhxrjCY15GSLwWU0aaa1k+sLEV2IJhN8OmrslZGRhjBeYqADFZvtQYJdnGUQshk
- RoaqVyWJb0Ao6GmxQvTyLrOpu3R2hoW6AVMcIyxBk3kerZ3sT5J9CHLnTjbrE8xxljU1SvR5v8q
- UCH/v7fC0ExO7uo2c++S2tIG0/UCOfn4B5nAdhOQjAlp9H4UbhmDmXiSe5o0FmxQlnfQO2ecVDQ
- Dd5lRZZK+OJG9fNdCY8H4IO4Uf9GKjbD+25rBg0QDEf46/+64kMpkDQsx9CGxk0tNeJEPSupDDM
- 8CDi3jL5WL6AwIjeMZAFecb0pILlbI2L0osfL1pr8Uti23AM
+ bh=L/27oyOVLbdmCNH9AknEU1c/3ghg8UF/LJ6ONoZ4cx4=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmwDd5oSWJNpFaLg/slHpFuZZnWAOUt1u//hPmY
+ mKDHR5xbhuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZsA3eQAKCRBVnxHm/pHO
+ 9d1sB/0WCIUlcJV87RKQ5qCtkHnD2ovZLEYil0rw3RCSmWyK//H4Tzkm9kMpbjxaISonGlWLOnm
+ ThYAn02ruelSxvKg7TJOHjpRgtJ6CzXGfSammhX3XpzUgTL3ABNUpUgInAS60cHyyp4J3w4bzp3
+ L+FWiGeX2mRVyt34Q1P7NgAiH8v2PGGYamFooJOYWTodSNEObHGoKZlZvrgaR9KrO9ODIox6Qm7
+ zfSPmFIoKAO3uqB8ZNjkCGl2OcB26VQA7fKpr/LTqJo/82aU84DvZaqFa2/0r2mvHdiLrZdMOp2
+ fMm/7p9QsGr5f3u2IhcFpTtLrxHqijs42qulAHGwT7e6B21a
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SM8550 SoC has the UFSHCI 4.0 compliant UFS controller and only supports
-legacy single doorbell mode without MCQ. But due to a hardware bug, it
-reports 1 in the 'Legacy Queue & Single Doorbell Support (LSDBS)' field of
-the Controller Capabilities register. This field is supposed to read as 0
-if legacy single doorbell mode is supported and 1 otherwise.
+Hi,
 
-Starting with commit 0c60eb0cc320 ("scsi: ufs: core: Check LSDBS cap when
-!mcq"), ufshcd driver is now relying on the LSDBS field to decide when to
-use the legacy doorbell mode if MCQ is not supported. And this ends up
-breaking UFS on SM8550:
+This series moves the call to endpoint cleanup functions (dw_pcie_ep_cleanup()
+pci_epc_deinit_notify()) to PERST# deassert handler in qcom-ep and tegra194
+drivers. It aims to fix a crash that is seen with Qcom endpoint SoCs when host
+asserts PERST# and the cleanup functions are called without refclk.
 
-ufshcd-qcom 1d84000.ufs: ufshcd_init: failed to initialize (legacy doorbell mode not supported)
-ufshcd-qcom 1d84000.ufs: error -EINVAL: Initialization failed with error -22
+During the review of v1 [1], Bjorn suggested fixing up tegra194 driver as well
+as both drivers share the same design and require refclk from host for
+operation.
 
-So use the UFSHCD_QUIRK_BROKEN_LSDBS_CAP quirk for SM8550 SoC so that the
-ufshcd driver could use legacy doorbell mode correctly.
+Testing
+=======
 
-Fixes: 0c60eb0cc320 ("scsi: ufs: core: Check LSDBS cap when !mcq")
-Tested-by: Amit Pundir <amit.pundir@linaro.org>
-Reviewed-by: Bart Van Assche <bvanassche@acm.org>
+The Qcom patch is tested on SM8450 development board. For tegra194, I'm
+expecting someone in the Cc list or the community will do the testing.
+
+[1] https://lore.kernel.org/linux-pci/20240815224717.GA53536@bhelgaas/
+
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/ufs/host/ufs-qcom.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Manivannan Sadhasivam (2):
+      PCI: qcom-ep: Move controller cleanups to qcom_pcie_perst_deassert()
+      PCI: tegra194: Move controller cleanups to pex_ep_event_pex_rst_deassert()
 
-diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 810e637047d0..c87fdc849c62 100644
---- a/drivers/ufs/host/ufs-qcom.c
-+++ b/drivers/ufs/host/ufs-qcom.c
-@@ -857,6 +857,9 @@ static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
- 
- 	if (host->hw_ver.major > 0x3)
- 		hba->quirks |= UFSHCD_QUIRK_REINIT_AFTER_MAX_GEAR_SWITCH;
-+
-+	if (of_device_is_compatible(hba->dev->of_node, "qcom,sm8550-ufshc"))
-+		hba->quirks |= UFSHCD_QUIRK_BROKEN_LSDBS_CAP;
- }
- 
- static void ufs_qcom_set_phy_gear(struct ufs_qcom_host *host)
-@@ -1847,7 +1850,8 @@ static void ufs_qcom_remove(struct platform_device *pdev)
- }
- 
- static const struct of_device_id ufs_qcom_of_match[] __maybe_unused = {
--	{ .compatible = "qcom,ufshc"},
-+	{ .compatible = "qcom,ufshc" },
-+	{ .compatible = "qcom,sm8550-ufshc" },
- 	{},
- };
- MODULE_DEVICE_TABLE(of, ufs_qcom_of_match);
+ drivers/pci/controller/dwc/pcie-qcom-ep.c  | 6 ++++--
+ drivers/pci/controller/dwc/pcie-tegra194.c | 7 ++++---
+ 2 files changed, 8 insertions(+), 5 deletions(-)
+---
+base-commit: 8400291e289ee6b2bf9779ff1c83a291501f017b
+change-id: 20240817-pci-qcom-ep-cleanup-740745e21d87
 
+Best regards,
 -- 
-2.25.1
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
