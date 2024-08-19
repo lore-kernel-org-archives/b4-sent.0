@@ -1,156 +1,198 @@
-From: "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
-Date: Mon, 19 Aug 2024 23:25:10 +0800
-Subject: [PATCH v2] drm/mediatek: Fix missing configuration flags in
- mtk_crtc_ddp_config()
+From: "Christoph Lameter (Ampere)" <cl@gentwo.org>
+Date: Mon, 19 Aug 2024 11:30:15 -0700
+Subject: [PATCH v2] Avoid memory barrier in read_seqcount() through load
+ acquire
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240819-drm-fixup-0819-v2-1-a03580ece3ec@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIANVjw2YC/0XMyw6CMBCF4Vchs3ZILxrAFe9hXDTtVAZtS1o0J
- oR3t2Hj8svJ+TcolJkKXJsNMn24cIoV6tSAnUx8ELKrBiXUWfRyQJcDev6+FzzoL5KU0523roN
- 6WjLV9Qje7tU+p4DrlMn8M53QUmgt+lYKOfQocTYlRZyn9sVxDOTYrPRsbQqw7z+bhOfSowAAA
- A==
-To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: Philipp Zabel <p.zabel@pengutronix.de>, 
- David Airlie <airlied@gmail.com>, Daniel Vetter <daniel@ffwll.ch>, 
- Singo Chang <singo.chang@mediatek.com>, Nancy Lin <nancy.lin@mediatek.com>, 
- Project_Global_Chrome_Upstream_Group@mediatek.com, 
- dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org, 
+Message-Id: <20240819-seq_optimize-v2-1-9d0da82b022f@gentwo.org>
+X-B4-Tracking: v=1; b=H4sIADaPw2YC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDIxMDC0Nj3eLUwvj8gpLM3MyqVF0zi2QTCzNLs2RzSwsloJaCotS0zAqwcdG
+ xtbUA0UUVFF4AAAA=
+To: Catalin Marinas <catalin.marinas@arm.com>, 
+ Will Deacon <will@kernel.org>, Peter Zijlstra <peterz@infradead.org>, 
+ Ingo Molnar <mingo@redhat.com>, Waiman Long <longman@redhat.com>, 
+ Boqun Feng <boqun.feng@gmail.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-mm@kvack.org, 
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1724081157; l=4198;
- i=jason-jh.lin@mediatek.com; s=20240718; h=from:subject:message-id;
- bh=Q8yNxL1V+8Fyf9/F6ibfR4vyzWQzF1gZGlRNpdyq+Wc=;
- b=mToiwGYxLF03l56+/AFJ9V9ANIGgrncpw7osIk6F0/74e0A7jXKT07UbGl+3ZLs4bpGWzcnTw
- ZnS/1DpPIMIAc4J5tkIajRWuoi2bqOL0I0z+8LJ8aLmLA4e0/T61qtA
-X-Developer-Key: i=jason-jh.lin@mediatek.com; a=ed25519;
- pk=7Hn+BnFBlPrluT5ks5tKVWb3f7O/bMBs6qEemVJwqOo=
-X-Endpoint-Received: by B4 Relay for jason-jh.lin@mediatek.com/20240718 with auth_id=187
+ linux-arch@vger.kernel.org, "Christoph Lameter (Ampere)" <cl@gentwo.org>
+X-Mailer: b4 0.15-dev-37811
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724092223; l=5831;
+ i=cl@gentwo.org; s=20240811; h=from:subject:message-id;
+ bh=33u86Z1NtTj5I1hzjsT/8J5bCWwIeort9/FFXzrHRO8=;
+ b=xjoqKpuJtKmVY/p7XqcrNDj6VvwsP/litDEErvD8DiwRs7UAnTdP/zYFWneATI5cWwAHPBQAe
+ ONJwSIhLrBvD2MOb674/6mx5xNjsJr7TwjTFsCE/PjBfuy4IL4vKzRA
+X-Developer-Key: i=cl@gentwo.org; a=ed25519;
+ pk=I7gqGwDi9drzCReFIuf2k9de1FI1BGibsshXI0DIvq8=
+X-Endpoint-Received: by B4 Relay for cl@gentwo.org/20240811 with auth_id=194
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In mtk_crtc_ddp_config(), mtk_crtc will use some configuration flags to
-generate instructions to cmdq_handle, such as:
-  state->pending_config
-  mtk_crtc->pending_planes
-  plane_state->pending.config
-  mtk_crtc->pending_async_planes
-  plane_state->pending.async_config
+Some architectures support load acquire which can save us a memory
+barrier and save some cycles.
 
-These configuration flags may be set to false when a GCE IRQ comes calling
-ddp_cmdq_cb(). This may result in missing prepare instructions,
-especially if mtk_crtc_update_config() with the flase need_vblank (no need
-to wait for vblank) cases.
+A typical sequence
 
-Therefore, the mtk_crtc->config_updating flag is set at the beginning of
-mtk_crtc_update_config() to ensure that these configuration flags won't be
-changed when the mtk_crtc_ddp_config() is preparing instructions.
-But somehow the ddp_cmdq_cb() didn't use the mtk_crtc->config_updating
-flag to prevent those pending config flags from being cleared.
+	do {
+		seq = read_seqcount_begin(&s);
+		<something>
+	} while (read_seqcount_retry(&s, seq);
 
-To avoid missing the configuration when generating the config instruction,
-the config_updating flag should be added into ddp_cmdq_cb() and be
-protected with spin_lock.
+requires 13 cycles on ARM64 for an empty loop. Two read memory
+barriers are needed. One for each of the seqcount_* functions.
 
-Fixes: 7f82d9c43879 ("drm/mediatek: Clear pending flag when cmdq packet is done")
-Signed-off-by: Jason-JH.Lin <jason-jh.lin@mediatek.com>
+We can replace the first read barrier with a load acquire of
+the seqcount which saves us one barrier.
+
+On ARM64 doing so reduces the cycle count from 13 to 8.
+
+This is a general improvement for the ARM64 architecture and not
+specific to a certain processor. The cycle count here was
+obtained on a Neoverse N1 (Ampere Altra).
+
+The ARM documentation states that load acquire is more effective
+than a load plus barrier. In general that tends to be true on all
+compute platforms that support both.
+
+See (as quoted by Linus Torvalds):
+   https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions
+
+ "Weaker ordering requirements that are imposed by Load-Acquire and
+  Store-Release instructions allow for micro-architectural
+  optimizations, which could reduce some of the performance impacts that
+  are otherwise imposed by an explicit memory barrier.
+
+  If the ordering requirement is satisfied using either a Load-Acquire
+  or Store-Release, then it would be preferable to use these
+  instructions instead of a DMB"
+
+Signed-off-by: Christoph Lameter (Ampere) <cl@gentwo.org>
 ---
-Change in v2:
-Add spin_lock protection for config_updating flag.
+V1->V2
+- Describe the benefit of load acquire vs barriers
+- Explain the CONFIG_ARCH_HAS_ACQUIRE_RELEASE option better
 ---
- drivers/gpu/drm/mediatek/mtk_crtc.c | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+ arch/Kconfig            |  8 ++++++++
+ arch/arm64/Kconfig      |  1 +
+ include/linux/seqlock.h | 41 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 50 insertions(+)
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_crtc.c b/drivers/gpu/drm/mediatek/mtk_crtc.c
-index 6f34f573e127..b752c0b46383 100644
---- a/drivers/gpu/drm/mediatek/mtk_crtc.c
-+++ b/drivers/gpu/drm/mediatek/mtk_crtc.c
-@@ -69,6 +69,8 @@ struct mtk_crtc {
- 	/* lock for display hardware access */
- 	struct mutex			hw_lock;
- 	bool				config_updating;
-+	/* lock for config_updating to cmd buffer */
-+	spinlock_t			config_lock;
- };
+diff --git a/arch/Kconfig b/arch/Kconfig
+index 975dd22a2dbd..3c270f496231 100644
+--- a/arch/Kconfig
++++ b/arch/Kconfig
+@@ -1600,6 +1600,14 @@ config ARCH_HAS_KERNEL_FPU_SUPPORT
+ 	  Architectures that select this option can run floating-point code in
+ 	  the kernel, as described in Documentation/core-api/floating-point.rst.
  
- struct mtk_crtc_state {
-@@ -107,10 +109,13 @@ static void mtk_crtc_finish_page_flip(struct mtk_crtc *mtk_crtc)
- static void mtk_drm_finish_page_flip(struct mtk_crtc *mtk_crtc)
++config ARCH_HAS_ACQUIRE_RELEASE
++	bool
++	help
++	  Setting ARCH_HAS_ACQUIRE_RELEASE indicates that the architecture
++	  supports load acquire and release. Typically these are more effective
++	  than memory barriers. Code will prefer the use of load acquire and
++	  store release over memory barriers if this option is enabled.
++
+ source "kernel/gcov/Kconfig"
+ 
+ source "scripts/gcc-plugins/Kconfig"
+diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
+index a2f8ff354ca6..19e34fff145f 100644
+--- a/arch/arm64/Kconfig
++++ b/arch/arm64/Kconfig
+@@ -39,6 +39,7 @@ config ARM64
+ 	select ARCH_HAS_PTE_DEVMAP
+ 	select ARCH_HAS_PTE_SPECIAL
+ 	select ARCH_HAS_HW_PTE_YOUNG
++	select ARCH_HAS_ACQUIRE_RELEASE
+ 	select ARCH_HAS_SETUP_DMA_OPS
+ 	select ARCH_HAS_SET_DIRECT_MAP
+ 	select ARCH_HAS_SET_MEMORY
+diff --git a/include/linux/seqlock.h b/include/linux/seqlock.h
+index d90d8ee29d81..353fcf32b800 100644
+--- a/include/linux/seqlock.h
++++ b/include/linux/seqlock.h
+@@ -176,6 +176,28 @@ __seqprop_##lockname##_sequence(const seqcount_##lockname##_t *s)	\
+ 	return seq;							\
+ }									\
+ 									\
++static __always_inline unsigned						\
++__seqprop_##lockname##_sequence_acquire(const seqcount_##lockname##_t *s) \
++{									\
++	unsigned seq = smp_load_acquire(&s->seqcount.sequence);		\
++									\
++	if (!IS_ENABLED(CONFIG_PREEMPT_RT))				\
++		return seq;						\
++									\
++	if (preemptible && unlikely(seq & 1)) {				\
++		__SEQ_LOCK(lockbase##_lock(s->lock));			\
++		__SEQ_LOCK(lockbase##_unlock(s->lock));			\
++									\
++		/*							\
++		 * Re-read the sequence counter since the (possibly	\
++		 * preempted) writer made progress.			\
++		 */							\
++		seq = smp_load_acquire(&s->seqcount.sequence);		\
++	}								\
++									\
++	return seq;							\
++}									\
++									\
+ static __always_inline bool						\
+ __seqprop_##lockname##_preemptible(const seqcount_##lockname##_t *s)	\
+ {									\
+@@ -211,6 +233,11 @@ static inline unsigned __seqprop_sequence(const seqcount_t *s)
+ 	return READ_ONCE(s->sequence);
+ }
+ 
++static inline unsigned __seqprop_sequence_acquire(const seqcount_t *s)
++{
++	return smp_load_acquire(&s->sequence);
++}
++
+ static inline bool __seqprop_preemptible(const seqcount_t *s)
  {
- 	drm_crtc_handle_vblank(&mtk_crtc->base);
-+
-+	spin_lock(&mtk_crtc->config_lock);
- 	if (!mtk_crtc->config_updating && mtk_crtc->pending_needs_vblank) {
- 		mtk_crtc_finish_page_flip(mtk_crtc);
- 		mtk_crtc->pending_needs_vblank = false;
- 	}
-+	spin_unlock(&mtk_crtc->config_lock);
- }
+ 	return false;
+@@ -259,6 +286,7 @@ SEQCOUNT_LOCKNAME(mutex,        struct mutex,    true,     mutex)
+ #define seqprop_ptr(s)			__seqprop(s, ptr)(s)
+ #define seqprop_const_ptr(s)		__seqprop(s, const_ptr)(s)
+ #define seqprop_sequence(s)		__seqprop(s, sequence)(s)
++#define seqprop_sequence_acquire(s)	__seqprop(s, sequence_acquire)(s)
+ #define seqprop_preemptible(s)		__seqprop(s, preemptible)(s)
+ #define seqprop_assert(s)		__seqprop(s, assert)(s)
  
- #if IS_REACHABLE(CONFIG_MTK_CMDQ)
-@@ -314,6 +319,13 @@ static void ddp_cmdq_cb(struct mbox_client *cl, void *mssg)
+@@ -293,6 +321,18 @@ SEQCOUNT_LOCKNAME(mutex,        struct mutex,    true,     mutex)
+  *
+  * Return: count to be passed to read_seqcount_retry()
+  */
++#ifdef CONFIG_ARCH_HAS_ACQUIRE_RELEASE
++#define raw_read_seqcount_begin(s)					\
++({									\
++	unsigned _seq;							\
++									\
++	while ((_seq = seqprop_sequence_acquire(s)) & 1)		\
++		cpu_relax();						\
++									\
++	kcsan_atomic_next(KCSAN_SEQLOCK_REGION_MAX);			\
++	_seq;								\
++})
++#else
+ #define raw_read_seqcount_begin(s)					\
+ ({									\
+ 	unsigned _seq = __read_seqcount_begin(s);			\
+@@ -300,6 +340,7 @@ SEQCOUNT_LOCKNAME(mutex,        struct mutex,    true,     mutex)
+ 	smp_rmb();							\
+ 	_seq;								\
+ })
++#endif
  
- 	state = to_mtk_crtc_state(mtk_crtc->base.state);
- 
-+	spin_lock(&mtk_crtc->config_lock);
-+
-+	if (mtk_crtc->config_updating) {
-+		spin_unlock(&mtk_crtc->config_lock);
-+		goto ddp_cmdq_cb_out;
-+	}
-+
- 	state->pending_config = false;
- 
- 	if (mtk_crtc->pending_planes) {
-@@ -340,6 +352,10 @@ static void ddp_cmdq_cb(struct mbox_client *cl, void *mssg)
- 		mtk_crtc->pending_async_planes = false;
- 	}
- 
-+	spin_unlock(&mtk_crtc->config_lock);
-+
-+ddp_cmdq_cb_out:
-+
- 	mtk_crtc->cmdq_vblank_cnt = 0;
- 	wake_up(&mtk_crtc->cb_blocking_queue);
- }
-@@ -571,7 +587,11 @@ static void mtk_crtc_update_config(struct mtk_crtc *mtk_crtc, bool needs_vblank)
- 	int i;
- 
- 	mutex_lock(&mtk_crtc->hw_lock);
-+
-+	spin_lock(&mtk_crtc->config_lock);
- 	mtk_crtc->config_updating = true;
-+	spin_unlock(&mtk_crtc->config_lock);
-+
- 	if (needs_vblank)
- 		mtk_crtc->pending_needs_vblank = true;
- 
-@@ -625,7 +645,10 @@ static void mtk_crtc_update_config(struct mtk_crtc *mtk_crtc, bool needs_vblank)
- 		mbox_client_txdone(mtk_crtc->cmdq_client.chan, 0);
- 	}
- #endif
-+	spin_lock(&mtk_crtc->config_lock);
- 	mtk_crtc->config_updating = false;
-+	spin_unlock(&mtk_crtc->config_lock);
-+
- 	mutex_unlock(&mtk_crtc->hw_lock);
- }
- 
-@@ -1068,6 +1091,7 @@ int mtk_crtc_create(struct drm_device *drm_dev, const unsigned int *path,
- 		drm_mode_crtc_set_gamma_size(&mtk_crtc->base, gamma_lut_size);
- 	drm_crtc_enable_color_mgmt(&mtk_crtc->base, 0, has_ctm, gamma_lut_size);
- 	mutex_init(&mtk_crtc->hw_lock);
-+	spin_lock_init(&mtk_crtc->config_lock);
- 
- #if IS_REACHABLE(CONFIG_MTK_CMDQ)
- 	i = priv->mbox_index++;
+ /**
+  * read_seqcount_begin() - begin a seqcount_t read critical section
 
 ---
-base-commit: 469f1bad3c1c6e268059f78c0eec7e9552b3894c
-change-id: 20240819-drm-fixup-0819-f51e2d37fcd7
+base-commit: b0da640826ba3b6506b4996a6b23a429235e6923
+change-id: 20240813-seq_optimize-68c48696c798
 
 Best regards,
 -- 
-Jason-JH.Lin <jason-jh.lin@mediatek.com>
+Christoph Lameter <cl@gentwo.org>
 
