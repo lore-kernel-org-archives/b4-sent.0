@@ -1,72 +1,156 @@
-From: =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
-Date: Sat, 17 Aug 2024 10:00:53 +0200
-Subject: [PATCH b4] Document patatt key selector
+From: "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
+Date: Mon, 19 Aug 2024 23:25:10 +0800
+Subject: [PATCH v2] drm/mediatek: Fix missing configuration flags in
+ mtk_crtc_ddp_config()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240817-selector-doc-v1-1-7c5c824a4e9d@skole.hr>
-X-B4-Tracking: v=1; b=H4sIALVYwGYC/x3MQQqAIBBA0avErBNUjLSrRIvSsQZCQyMC8e5Jy
- 7f4v0DGRJhh6gokfChTDA2i78Aea9iRkWsGyaXiWows44n2jom5aBkqboRWRg5eQ0uuhJ7efzf
- DpmCp9QNRSBWzYgAAAA==
-To: "Kernel.org Tools" <tools@kernel.org>
-Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
- =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1791;
- i=duje.mihanovic@skole.hr; s=20240706; h=from:subject:message-id;
- bh=1wfqlisqcIHFWOChgds5FzvapQFDMUC8CZXJftubi1c=;
- b=owGbwMvMwCW21nBykGv/WmbG02pJDGkHInZdv1LU1p2n/SX0yuF21lBG1g3KjouWMFiuPvGwX
- rncuv9BRykLgxgXg6yYIkvuf8drvJ9Ftm7PXmYAM4eVCWQIAxenAEykp5Phv5vDyRvvZ/40/vtB
- TSTx/rY9K79FGX9cxHtdTSisL0f5uj0jw+NfftyfhOKCvYWPvfupX2QvPLdhZ9waxvBN15aduLZ
- YnwMA
-X-Developer-Key: i=duje.mihanovic@skole.hr; a=openpgp;
- fpr=6DFF41D60DF314B5B76BA630AD319352458FAD03
-X-Endpoint-Received: by B4 Relay for duje.mihanovic@skole.hr/20240706 with auth_id=191
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240819-drm-fixup-0819-v2-1-a03580ece3ec@mediatek.com>
+X-B4-Tracking: v=1; b=H4sIANVjw2YC/0XMyw6CMBCF4Vchs3ZILxrAFe9hXDTtVAZtS1o0J
+ oR3t2Hj8svJ+TcolJkKXJsNMn24cIoV6tSAnUx8ELKrBiXUWfRyQJcDev6+FzzoL5KU0523roN
+ 6WjLV9Qje7tU+p4DrlMn8M53QUmgt+lYKOfQocTYlRZyn9sVxDOTYrPRsbQqw7z+bhOfSowAAA
+ A==
+To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Cc: Philipp Zabel <p.zabel@pengutronix.de>, 
+ David Airlie <airlied@gmail.com>, Daniel Vetter <daniel@ffwll.ch>, 
+ Singo Chang <singo.chang@mediatek.com>, Nancy Lin <nancy.lin@mediatek.com>, 
+ Project_Global_Chrome_Upstream_Group@mediatek.com, 
+ dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724081157; l=4198;
+ i=jason-jh.lin@mediatek.com; s=20240718; h=from:subject:message-id;
+ bh=Q8yNxL1V+8Fyf9/F6ibfR4vyzWQzF1gZGlRNpdyq+Wc=;
+ b=mToiwGYxLF03l56+/AFJ9V9ANIGgrncpw7osIk6F0/74e0A7jXKT07UbGl+3ZLs4bpGWzcnTw
+ ZnS/1DpPIMIAc4J5tkIajRWuoi2bqOL0I0z+8LJ8aLmLA4e0/T61qtA
+X-Developer-Key: i=jason-jh.lin@mediatek.com; a=ed25519;
+ pk=7Hn+BnFBlPrluT5ks5tKVWb3f7O/bMBs6qEemVJwqOo=
+X-Endpoint-Received: by B4 Relay for jason-jh.lin@mediatek.com/20240718 with auth_id=187
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This selector can be used to authorize multiple keys for one email
-address, but hasn't been documented anywhere as far as I can tell.
+In mtk_crtc_ddp_config(), mtk_crtc will use some configuration flags to
+generate instructions to cmdq_handle, such as:
+  state->pending_config
+  mtk_crtc->pending_planes
+  plane_state->pending.config
+  mtk_crtc->pending_async_planes
+  plane_state->pending.async_config
 
-Link: https://lore.kernel.org/all/20240729-macaque-of-inspiring-recreation-9e5c4b@lemur/
-Signed-off-by: Duje Mihanović <duje.mihanovic@skole.hr>
+These configuration flags may be set to false when a GCE IRQ comes calling
+ddp_cmdq_cb(). This may result in missing prepare instructions,
+especially if mtk_crtc_update_config() with the flase need_vblank (no need
+to wait for vblank) cases.
+
+Therefore, the mtk_crtc->config_updating flag is set at the beginning of
+mtk_crtc_update_config() to ensure that these configuration flags won't be
+changed when the mtk_crtc_ddp_config() is preparing instructions.
+But somehow the ddp_cmdq_cb() didn't use the mtk_crtc->config_updating
+flag to prevent those pending config flags from being cleared.
+
+To avoid missing the configuration when generating the config instruction,
+the config_updating flag should be added into ddp_cmdq_cb() and be
+protected with spin_lock.
+
+Fixes: 7f82d9c43879 ("drm/mediatek: Clear pending flag when cmdq packet is done")
+Signed-off-by: Jason-JH.Lin <jason-jh.lin@mediatek.com>
 ---
- docs/contributor/send.rst | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+Change in v2:
+Add spin_lock protection for config_updating flag.
+---
+ drivers/gpu/drm/mediatek/mtk_crtc.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
-diff --git a/docs/contributor/send.rst b/docs/contributor/send.rst
-index a597ac5..54ed474 100644
---- a/docs/contributor/send.rst
-+++ b/docs/contributor/send.rst
-@@ -122,6 +122,23 @@ from the message::
+diff --git a/drivers/gpu/drm/mediatek/mtk_crtc.c b/drivers/gpu/drm/mediatek/mtk_crtc.c
+index 6f34f573e127..b752c0b46383 100644
+--- a/drivers/gpu/drm/mediatek/mtk_crtc.c
++++ b/drivers/gpu/drm/mediatek/mtk_crtc.c
+@@ -69,6 +69,8 @@ struct mtk_crtc {
+ 	/* lock for display hardware access */
+ 	struct mutex			hw_lock;
+ 	bool				config_updating;
++	/* lock for config_updating to cmd buffer */
++	spinlock_t			config_lock;
+ };
  
- You should now be able to send patches via this web submission endpoint.
+ struct mtk_crtc_state {
+@@ -107,10 +109,13 @@ static void mtk_crtc_finish_page_flip(struct mtk_crtc *mtk_crtc)
+ static void mtk_drm_finish_page_flip(struct mtk_crtc *mtk_crtc)
+ {
+ 	drm_crtc_handle_vblank(&mtk_crtc->base);
++
++	spin_lock(&mtk_crtc->config_lock);
+ 	if (!mtk_crtc->config_updating && mtk_crtc->pending_needs_vblank) {
+ 		mtk_crtc_finish_page_flip(mtk_crtc);
+ 		mtk_crtc->pending_needs_vblank = false;
+ 	}
++	spin_unlock(&mtk_crtc->config_lock);
+ }
  
-+Changing your attestation key
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+If you change your attestation key without changing your email address (e.g.
-+switch from a ``patatt`` generated key to a PGP key or change your PGP keys),
-+your previous authorization will stop working. Trying to reauthorize will also
-+result in an error as changing the attestation key is `currently unsupported
-+<https://lore.kernel.org/tools/4608818.LvFx2qVVIh@radijator/T/#m9aa19999463864341ed8be929f470e5439513256>`_.
-+Instead, you can change the key selector to something other than ``default``
-+with the following setting::
+ #if IS_REACHABLE(CONFIG_MTK_CMDQ)
+@@ -314,6 +319,13 @@ static void ddp_cmdq_cb(struct mbox_client *cl, void *mssg)
+ 
+ 	state = to_mtk_crtc_state(mtk_crtc->base.state);
+ 
++	spin_lock(&mtk_crtc->config_lock);
 +
-+    [patatt]
-+       selector = something
++	if (mtk_crtc->config_updating) {
++		spin_unlock(&mtk_crtc->config_lock);
++		goto ddp_cmdq_cb_out;
++	}
 +
-+.. note::
-+   The selector can be anything besides default or any previously used selector.
-+   For example, you could use the creation date of your PGP key.
+ 	state->pending_config = false;
+ 
+ 	if (mtk_crtc->pending_planes) {
+@@ -340,6 +352,10 @@ static void ddp_cmdq_cb(struct mbox_client *cl, void *mssg)
+ 		mtk_crtc->pending_async_planes = false;
+ 	}
+ 
++	spin_unlock(&mtk_crtc->config_lock);
 +
- Using your own SMTP server
- --------------------------
- If there is a ``sendmail`` section in your git configuration, B4 tries
++ddp_cmdq_cb_out:
++
+ 	mtk_crtc->cmdq_vblank_cnt = 0;
+ 	wake_up(&mtk_crtc->cb_blocking_queue);
+ }
+@@ -571,7 +587,11 @@ static void mtk_crtc_update_config(struct mtk_crtc *mtk_crtc, bool needs_vblank)
+ 	int i;
+ 
+ 	mutex_lock(&mtk_crtc->hw_lock);
++
++	spin_lock(&mtk_crtc->config_lock);
+ 	mtk_crtc->config_updating = true;
++	spin_unlock(&mtk_crtc->config_lock);
++
+ 	if (needs_vblank)
+ 		mtk_crtc->pending_needs_vblank = true;
+ 
+@@ -625,7 +645,10 @@ static void mtk_crtc_update_config(struct mtk_crtc *mtk_crtc, bool needs_vblank)
+ 		mbox_client_txdone(mtk_crtc->cmdq_client.chan, 0);
+ 	}
+ #endif
++	spin_lock(&mtk_crtc->config_lock);
+ 	mtk_crtc->config_updating = false;
++	spin_unlock(&mtk_crtc->config_lock);
++
+ 	mutex_unlock(&mtk_crtc->hw_lock);
+ }
+ 
+@@ -1068,6 +1091,7 @@ int mtk_crtc_create(struct drm_device *drm_dev, const unsigned int *path,
+ 		drm_mode_crtc_set_gamma_size(&mtk_crtc->base, gamma_lut_size);
+ 	drm_crtc_enable_color_mgmt(&mtk_crtc->base, 0, has_ctm, gamma_lut_size);
+ 	mutex_init(&mtk_crtc->hw_lock);
++	spin_lock_init(&mtk_crtc->config_lock);
+ 
+ #if IS_REACHABLE(CONFIG_MTK_CMDQ)
+ 	i = priv->mbox_index++;
 
 ---
-base-commit: 37811c93f50e70f325e45107a9a20ffc69f2f6dc
-change-id: 20240817-selector-doc-e409184925f8
+base-commit: 469f1bad3c1c6e268059f78c0eec7e9552b3894c
+change-id: 20240819-drm-fixup-0819-f51e2d37fcd7
 
 Best regards,
 -- 
-Duje Mihanović <duje.mihanovic@skole.hr>
+Jason-JH.Lin <jason-jh.lin@mediatek.com>
 
