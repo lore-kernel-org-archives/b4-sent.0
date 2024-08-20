@@ -1,327 +1,55 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Tue, 20 Aug 2024 17:41:58 +0800
-Subject: [PATCH v2 3/3] arm64: dts: amlogic: add C3 AW419 board
+From: Manas <manas18244@iiitd.ac.in>
+Date: Tue, 20 Aug 2024 16:28:59 +0530
+Subject: [PATCH] Fix missing description in struct member for journal_s
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240820-c3_add_node-v2-3-8fd3f06b7bce@amlogic.com>
-References: <20240820-c3_add_node-v2-0-8fd3f06b7bce@amlogic.com>
-In-Reply-To: <20240820-c3_add_node-v2-0-8fd3f06b7bce@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chuan Liu <chuan.liu@amlogic.com>, 
- Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
- linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1724146916; l=7203;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=hqGlmZITY3vjqYdQYUfjkBeBJsm3J7SMxQSwSsreB9Y=;
- b=zUEJVfCGsbZZLIFehZRMhZhZ/UkOscntS36SVOxFBb8j8fTq9YGQBqcLH3KzfRibNB/SOart3
- SH4cBOQd99PBlkbA9DvRqAf9AcghFRGIh5z71pFngk0X7JbMyS+6EkX
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Message-Id: <20240820-journal_s-missing-description-fix-v1-1-578b218e646d@iiitd.ac.in>
+X-B4-Tracking: v=1; b=H4sIAPJ2xGYC/x2N0QrCMAxFf2Xk2UAXZBZ/RURmG2tEu5HoGJT9+
+ 4KP58K5p4GxChucuwbKi5hM1aE/dJCeYy2Mkp2BAh1DpICv6ad1fN8MP2ImtWBmSyrz1018yIp
+ 87ymmMOR4IvCfWdnnf+Ny3bYd+nV2xXMAAAA=
+To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>, 
+ Shuah Khan <skhan@linuxfoundation.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Manas <manas18244@iiitd.ac.in>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724151549; l=849;
+ i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
+ bh=w1+MRLpQlqWk+mrt0yJy8pQkb3cf8RgO7noQOxVKLCA=;
+ b=nWb0FIVRoU7+fyLBkHM9tXMnfqm6Flnn2gHKxXt0krC45Pm5HUIqkb9w/Dc/PB/96rkrQ8ukC
+ Xknx9ml/9kdAUdUZYkVn23a4SGYGVDZCfNXM7snM2cVA0QRXZqbO14A
+X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
+ pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
+X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Amlogic C3 C308L AW419 board. The corresponding binding
-has been applied, therefore, this series does not need to
-add a binding corresponding to the AW419 board.
+The struct member 'j_transaction_overhead_buffers' in 'journal_s' was
+commented with partial name. 'make htmldocs' warned about this.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Manas <manas18244@iiitd.ac.in>
 ---
- arch/arm64/boot/dts/amlogic/Makefile               |   1 +
- .../boot/dts/amlogic/amlogic-c3-c308l-aw419.dts    | 262 +++++++++++++++++++++
- 2 files changed, 263 insertions(+)
+ include/linux/jbd2.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/Makefile b/arch/arm64/boot/dts/amlogic/Makefile
-index 29417f04f886..2fbda8419c65 100644
---- a/arch/arm64/boot/dts/amlogic/Makefile
-+++ b/arch/arm64/boot/dts/amlogic/Makefile
-@@ -2,6 +2,7 @@
- dtb-$(CONFIG_ARCH_MESON) += amlogic-a4-a113l2-ba400.dtb
- dtb-$(CONFIG_ARCH_MESON) += amlogic-a5-a113x2-av400.dtb
- dtb-$(CONFIG_ARCH_MESON) += amlogic-c3-c302x-aw409.dtb
-+dtb-$(CONFIG_ARCH_MESON) += amlogic-c3-c308l-aw419.dtb
- dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-an400.dtb
- dtb-$(CONFIG_ARCH_MESON) += amlogic-t7-a311d2-khadas-vim4.dtb
- dtb-$(CONFIG_ARCH_MESON) += meson-a1-ad401.dtb
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts b/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts
-new file mode 100644
-index 000000000000..4477a2659e27
---- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts
-@@ -0,0 +1,262 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Copyright (c) 2024 Amlogic, Inc. All rights reserved.
-+ */
-+
-+/dts-v1/;
-+
-+#include "amlogic-c3.dtsi"
-+
-+/ {
-+	model = "Amlogic C308l aw419 Development Board";
-+	compatible = "amlogic,aw419", "amlogic,c3";
-+	interrupt-parent = <&gic>;
-+	#address-cells = <2>;
-+	#size-cells = <2>;
-+
-+	aliases {
-+		serial0 = &uart_b;
-+		spi0 = &spifc;
-+	};
-+
-+	memory@0 {
-+		device_type = "memory";
-+		reg = <0x0 0x0 0x0 0x80000000>;
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		/* 9 MiB reserved for ARM Trusted Firmware */
-+		secmon_reserved: secmon@7f00000 {
-+			compatible = "shared-dma-pool";
-+			reg = <0x0 0x07f00000 0x0 0x900000>;
-+			no-map;
-+		};
-+	};
-+
-+	main_12v: regulator-main-12v {
-+		compatible = "regulator-fixed";
-+		regulator-name = "12V";
-+		regulator-min-microvolt = <12000000>;
-+		regulator-max-microvolt = <12000000>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	vcc_5v: regulator-vcc-5v {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VCC5V";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		vin-supply = <&main_12v>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	vddq: regulator-vddq {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VDDQ";
-+		regulator-min-microvolt = <1200000>;
-+		regulator-max-microvolt = <1200000>;
-+		vin-supply = <&main_12v>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	vddao_3v3: regulator-vddao-3v3 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VDDAO3V3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&main_12v>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	vddao_1v8: regulator-vddao-1v8 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VDDAO1V8";
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+		vin-supply = <&vddao_3v3>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	ddr4_2v5: regulator-ddr4-2v5 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "DDR4_2V5";
-+		regulator-min-microvolt = <2500000>;
-+		regulator-max-microvolt = <2500000>;
-+		vin-supply = <&vddao_3v3>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	vcc_3v3: regulator-vcc-3v3 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VCC3V3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&vddao_3v3>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	vcc_1v8: regulator-vcc-1v8 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VCC1V8";
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+		vin-supply = <&vcc_3v3>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	vdd_1v8: regulator-vdd-1v8 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VDD1V8_BOOT";
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+		vin-supply = <&vcc_3v3>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	vddio_b: regulator-vddio-3v3-b {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VDDIO_B";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&vcc_3v3>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	sdcard: regulator-sdcard {
-+		compatible = "regulator-fixed";
-+		regulator-name = "SDCARD_POWER";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&vddao_3v3>;
-+		gpio = <&gpio GPIOA_4 GPIO_ACTIVE_LOW>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+};
-+
-+&uart_b {
-+	status = "okay";
-+};
-+
-+&nand {
-+	status = "okay";
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	pinctrl-0 = <&nand_pins>;
-+	pinctrl-names = "default";
-+
-+	nand@0 {
-+		reg = <0>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		nand-on-flash-bbt;
-+
-+		partition@0 {
-+			label = "boot";
-+			reg = <0x0 0x00200000>;
-+		};
-+		partition@200000 {
-+			label = "env";
-+			reg = <0x00200000 0x00400000>;
-+		};
-+		partition@600000 {
-+			label = "system";
-+			reg = <0x00600000 0x00a00000>;
-+		};
-+		partition@1000000 {
-+			label = "rootfs";
-+			reg = <0x01000000 0x03000000>;
-+		};
-+		partition@4000000 {
-+			label = "media";
-+			reg = <0x04000000 0x8000000>;
-+		};
-+	};
-+};
-+
-+&ethmac {
-+	status = "okay";
-+	phy-handle = <&internal_ephy>;
-+	phy-mode = "rmii";
-+};
-+
-+&spifc {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	pinctrl-0 = <&spifc_pins>;
-+	pinctrl-names = "default";
-+
-+	nand@0 {
-+		compatible = "spi-nand";
-+		reg = <0>;
-+		spi-max-frequency = <83000000>;
-+		spi-tx-bus-width = <4>;
-+		spi-rx-bus-width = <4>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		status = "disabled";
-+
-+		partitions {
-+			compatible = "fixed-partitions";
-+			#address-cells = <1>;
-+			#size-cells = <1>;
-+
-+			partition@0 {
-+				label = "boot";
-+				reg = <0 0x200000>;
-+			};
-+
-+			partition@200000 {
-+				label = "env";
-+				reg = <0x200000 0x400000>;
-+			};
-+
-+			partition@600000 {
-+				label = "system";
-+				reg = <0x600000 0xa00000>;
-+			};
-+
-+			partition@1000000 {
-+				label = "rootfs";
-+				reg = <0x1000000 0x3000000>;
-+			};
-+
-+			partition@4000000 {
-+				label = "data";
-+				reg = <0x4000000 0x8000000>;
-+			};
-+		};
-+	};
-+};
-+
-+&sd {
-+	status = "okay";
-+	pinctrl-0 = <&sdcard_pins>;
-+	pinctrl-1 = <&sdcard_clk_gate_pins>;
-+	pinctrl-names = "default","clk-gate";
-+
-+	bus-width = <4>;
-+	cap-sd-highspeed;
-+	max-frequency = <50000000>;
-+	disable-wp;
-+
-+	cd-gpios = <&gpio GPIOC_6 GPIO_ACTIVE_LOW>;
-+	vmmc-supply = <&sdcard>;
-+	vqmmc-supply = <&sdcard>;
-+};
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 5157d92b6f23..17662eae408f 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1086,7 +1086,7 @@ struct journal_s
+ 	int			j_revoke_records_per_block;
+ 
+ 	/**
+-	 * @j_transaction_overhead:
++	 * @j_transaction_overhead_buffers:
+ 	 *
+ 	 * Number of blocks each transaction needs for its own bookkeeping
+ 	 */
 
+---
+base-commit: 47ac09b91befbb6a235ab620c32af719f8208399
+change-id: 20240820-journal_s-missing-description-fix-eb128c06d872
+
+Best regards,
 -- 
-2.37.1
+Manas <manas18244@iiitd.ac.in>
 
