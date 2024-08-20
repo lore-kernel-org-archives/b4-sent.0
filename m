@@ -1,34 +1,34 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Tue, 20 Aug 2024 20:27:51 +0800
-Subject: [PATCH] Loongarch: adapt for the re-introduction of fstat and
+Date: Tue, 20 Aug 2024 22:12:38 +0800
+Subject: [PATCH v2] Loongarch: adapt for the re-introduction of fstat and
  newfstatat in 6.11
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240820-loong-fstat-v1-1-799b6627bb2f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMaLxGYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDCyMD3Zz8/Lx03bTiksQS3TRT8zSLpFQTC1NzUyWgjoKi1LTMCrBp0bG
- 1tQDKZlzCXQAAAA==
+Message-Id: <20240820-loong-fstat-v2-1-5a254fef05ce@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAFWkxGYC/23MQQrDIBRF0a2EP67FSIymo+6jZKCpmg+JFhVpC
+ e69NuMO74N3Dkgmoklw6w6IpmDC4FuwSwfLqrwzBJ+tgVE2UMko2ULwjtiUVSaWCyu1GSQXHNr
+ jFY3F96k95tYrphzi58RL/1v/O6UnPRHTpMeRCa2Zvbtd4XZdwg5zrfULAWOM6qYAAAA=
 To: libc-alpha@sourceware.org
 Cc: Adhemerval Zanella <adhemerval.zanella@linaro.org>, 
- Joseph Myers <joseph_myers@mentor.com>, b4-sent@lore.kernel.org, 
- Miao Wang <shankerwangmiao@gmail.com>
+ Joseph Myers <josmyers@redhat.com>, Xi Ruoyao <xry111@xry111.site>, 
+ b4-sent@lore.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3975;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4171;
  i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=Zh2HgNAub7JJgXNZvEVyMiCH7kcM0TCZA32I/YLUcVU=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmxIvQrF0sCtQZ6786vtlAdMgZC8Q1dxvMF48Yf
- Con4K+RBK2JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZsSL0AAKCRCwMePKe/7Z
- bpg9D/4++D5ORomXcx3yamGI7sDNtP8s+ccXHi4KZR6IGj5HsCYyc/lks4ARHKEmmh1pjyZ9lDc
- fW/NJOzMfLqzdnsPTFYENQePjXPRJuOpthqvHGlHvvgEHvcK9Ig/j2z0CP0scnwKERS3/utWU1Q
- FF4I3uoW282nwTiqfUaeb7hthm0mw3K2mxQr42C91KViFA4iR5T3boYpxwbUVqfG7r+GINIsjtH
- FA323pj2YdwUWSXH7fVlT7BAzA2IBQn67l+Ebk9zyu+h3bNcqNj1b3mGqbboghDqGy+hLgW4EoB
- p09m9AtEq1aywxzTWSTsI6vL565t7JWGKy10qyulrg3IUHd59GincCcVSDRC+GdcZZ4GYZ6+3CH
- f0sw1i1OOtzcOVugY90W/eAsvo3Z3BEldPsEHzRUR6BOvNabHKlgpjMtIafdqD+V7GcQJ1gczN3
- aV1TRrllUakmi+Nbz1GeeKcOTW7Q5IjFfbvrH/0FHV/lrK75+EeUkL3Xm7hXrwjS1fyN6GPp3aI
- 64ONOYwA6/AOGKwIY2v5X+o0zPeEIFfPq8Sqlls1MC3jhnzPKEHR5CWSHkaIaC7cqgenqnWJwzn
- dML+F/eK1QfCnYvjEEETEcvqEbVeMcOYnUbV4/w8C62K57icBU4Q9Sv2U3kj9FIX5GvMGN/JlLE
- QOCJo1m/hgdkRGA==
+ bh=kpBpskeB+zhbi3QKvMJEGkj6UsOKnNGyeEP+iG723W8=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmxKRaQUCGMGDVZO59hdBLEK2dXfNIW0sGndqrM
+ WtEW3qtHSqJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZsSkWgAKCRCwMePKe/7Z
+ bjjwD/0QuuaWd/ssVPJSRm1jndKe4xYOCPQq1JytoFRr4+F94XSprLPzVwCSSfeQlqma8/TIaRm
+ 5NsK+FG9aRlG6CcJ3i2hYfyPNEPq0IBYhKz/RLxHjF3VA8TLVBMUNj2n0huS1Jo2F7r9xUU3tLo
+ +cYVxVdOEU60lbu+AWWdosj7yuBtVq2nGMQbasZKfkvfD3M2QvlQ1hShPO8viwdkh0u+O+D2O6Q
+ hDvqgU5S1T6Q8I3RpmkDVHQl9sdDoME1YD9uHXpVwCSvP2otPkromJvi0FOtEIX1pnlSlFBLEv4
+ Jo4jTctAqilWeC5qy+rxS0f41/EaIl9/NpZsqf3t3U5s2N5jn274A4u6btiFqOJrYUmVxbnlojN
+ mP55vPzGqUvLXqJ403m0dYgjvXEKEMqKPWzQPc72v1KwZ9UIFi2XDFd4hjzqmqiQXILYx/9+Scl
+ K4LmHpLMfhrGpgT+fcS0EhZS9d0Wl5mo0etdH4boXOC9XqHDaEHp4+8Rq+N6Yj9g6DLny1Keq3P
+ rd9rcqNBuKj8QI0m81Hg65krwkK6U8/DGVHCxro8BGaLJ5cdampZZnFooEww7dWRj4f5NiiSEas
+ AacmVhaDL26lEWD/kEs0U0zSCLt9o60rggVn6Z2NkJGiPSv9wIbleW/IzArs2QMYCftL0tODKDS
+ ziu8FtAhFpz3h/g==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
@@ -38,7 +38,7 @@ In Linux 6.11, fstat and newfstatat are added back. We need to include
 this change in kernel-features.h to avoid producing libraries
 incompatible with previous linux versions with new headers.
 
-The defination of the two syscalls will be removed when the targeted
+The definition of the two syscalls will be removed when the targeted
 kernel version is below 6.11 in loongarch/sysdep.h.
 
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
@@ -48,35 +48,39 @@ Kernel 6.11 adds back fstat and newfstatat in commit 7697a0fe0154
 headers from 6.11, make update-syscall-lists will generate the following
 diffs:
 
-diff --git a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
-index 8bb82448a7..7e732256fd 100644
---- a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
-+++ b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
-@@ -59,6 +59,7 @@
- #define __NR_fsmount 432
- #define __NR_fsopen 430
- #define __NR_fspick 433
-+#define __NR_fstat 80
- #define __NR_fstatfs 44
- #define __NR_fsync 82
- #define __NR_ftruncate 46
-@@ -166,6 +167,7 @@
- #define __NR_munmap 215
- #define __NR_name_to_handle_at 264
- #define __NR_nanosleep 101
-+#define __NR_newfstatat 79
- #define __NR_nfsservctl 42
- #define __NR_open_by_handle_at 265
- #define __NR_open_tree 428
+> diff --git a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
+> index 8bb82448a7..7e732256fd 100644
+> --- a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
+> +++ b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
+> @@ -59,6 +59,7 @@
+>  #define __NR_fsmount 432
+>  #define __NR_fsopen 430
+>  #define __NR_fspick 433
+> +#define __NR_fstat 80
+>  #define __NR_fstatfs 44
+>  #define __NR_fsync 82
+>  #define __NR_ftruncate 46
+> @@ -166,6 +167,7 @@
+>  #define __NR_munmap 215
+>  #define __NR_name_to_handle_at 264
+>  #define __NR_nanosleep 101
+> +#define __NR_newfstatat 79
+>  #define __NR_nfsservctl 42
+>  #define __NR_open_by_handle_at 265
+>  #define __NR_open_tree 428
 
 With that changed, the compiled libraries will unexpectedly include
 calls to these two syscalls, and be incompatible with previous kernel
 versions.
 
-This patch addresses this issue by removing the two definations if the
+This patch addresses this issue by removing the two definitions if the
 targeted kernel version is below 6.11. I have tested this patch along
 with the change to arch-syscall.h with or without the configuration
 option --enable-kernel=6.11.
+---
+Changes in v2:
+- Improve commit message for better patch handling
+- Link to v1: https://sourceware.org/pipermail/libc-alpha/2024-August/159295.html
 ---
  .../unix/sysv/linux/loongarch/kernel-features.h    | 27 ++++++++++++++++++++++
  sysdeps/unix/sysv/linux/loongarch/sysdep.h         |  5 ++++
