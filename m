@@ -1,109 +1,102 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Subject: [PATCH v3 0/2] linux: fstat related changes in Linux 6.11
-Date: Wed, 21 Aug 2024 21:03:52 +0800
-Message-Id: <20240821-loong-fstat-v3-0-0df9bd4f7ca6@gmail.com>
+Date: Wed, 21 Aug 2024 21:03:53 +0800
+Subject: [PATCH v3 1/2] Loongarch: adapt for the re-introduction of fstat
+ and newfstatat in 6.11
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALjlxWYC/32MQQ6CMBAAv0L2bE1ZKUVP/sN4aHELmwA1LWk0h
- L9bOHkwHmeSmQUiBaYIl2KBQIkj+ynD6VBA25upI8GPzIASK9mgFIP3UydcnM0snNKusVQ1Siv
- IxTOQ49d+u90z9xxnH977PJWb/f1JpSiFPp9tXaO2Ft21Gw0Px9aPsH0S/mkxt8qgqhw5qVr6b
- td1/QBERylP4gAAAA==
+Message-Id: <20240821-loong-fstat-v3-1-0df9bd4f7ca6@gmail.com>
+References: <20240821-loong-fstat-v3-0-0df9bd4f7ca6@gmail.com>
+In-Reply-To: <20240821-loong-fstat-v3-0-0df9bd4f7ca6@gmail.com>
 To: libc-alpha@sourceware.org
 Cc: Adhemerval Zanella <adhemerval.zanella@linaro.org>, 
  Joseph Myers <josmyers@redhat.com>, Xi Ruoyao <xry111@xry111.site>, 
  b4-sent@lore.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2934;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2575;
  i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=BeO2X5dmY1fMRRf0drxnnmD7cyicgpOf9DlgP2gHRkE=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmxeW6Lr8WuH5fy3FGHS3wvTC8xpF09dsFrxlWt
- bZAKUDKGAeJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZsXlugAKCRCwMePKe/7Z
- brpCD/0TXXCa87TK+IrTieJYqc6weRw0nJ/9vAHRTG1WlSWCyNb7/r3g68ytmzDKD6+aIqRr364
- VV4DhkeiuImJn2xp1JIvuFnYI3ICXyGyCfzrbetCYuwAHIIPmtR0stJI90o35f0zQ87IwQO9eL4
- gKAAmrgG/PH8SsaxY/uem6huwzL2bHTSCEHaCqE08SGIjfNEF2uMAoigeeG4zilNz2MwjELLA98
- zWl7w62alM6uBXbeE/VdGW3n/CeA53R2XyP7qiyWtGB1r+Ql+cmi1Rs/jS7y5WOot5HhNknVaTH
- XZOk/ACHgtJr2BO+siYFbyvx1qMqTfWCl6CJj0d2jAzJWYayYdcnqfNZ76YOMNrJa9WJ+Dlt9lb
- 4tLDF4xdmGB8fSlu8TIrdROaNrl2sSn8XqeCIGiBKt5YLNFTZYtYGNfDCThK1wFGcJaeiJ72HdQ
- lBmloHfLYhw98vrTtCsM04fgKGHKBVCSwmPIWvJMWkkYm2tEZZwMp8K6D5O89H4SMPWw5Ncqrxd
- OUzr74nqvPcX/GQOiRZttrelr6IVb1z3eccLaun+Ydtce6b6KyFRDHrxOdQi42NNiCPOfGH7ZYb
- 4gc5s/eqdPB/a03+16tkQAc0VKZiMjqrcftucgwcjgN6b8jMGdgVRMLaEd9hXQF/34T4pRxKzQy
- gQn8Nz6V3kStZgQ==
+ bh=w0nF466oMcnJ5XJ+d/1ta4U1NbS6zy8ZLg8X1f0LRsY=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmxeW6qDhTKiMAyC3+fEHtRdCmrFVGSjgliEpbw
+ +Lx9RuYo2GJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZsXlugAKCRCwMePKe/7Z
+ bmQ7EAC43sjqJpH9HQwlidDUEQ5mc02EYxXBkK8v1bv2iGgZdhTu2ZHWrx/xj24df4PGLpsRDrh
+ 0GvrKOgkvy3bPf51gIUMimtr3iRXjUZxzC1nuPm7EUhT5ujukxmC3sjt64LYrVe5VTh9mQ17C2I
+ tRkLs60HwNNuxbed9YHeV9gysZNbePMM1sYIKZfQnsPuXclZAGqe9CpD+ta4kqq7QfDkhSrnFXK
+ 3UbcF9zfdHmR17HoEMTxt38GYrfu7AZ6xlBs8QFEtsOLljYzOeiIvf0kwXhvD9WmdjoJXYUX6cQ
+ tFSmYc6CUscb7qjJQRFdJJMciPuhUny/838cdeE73eAZ9+u9yz44/rr3bYyeYbQgbld/C+s7vpS
+ pQQyIB4xAvdXjOwzuXVedfofk7WXErOQuSnRv1EJZOY6iWJmyQrjZ8HjEAPQk9UTct3+TtkZUFB
+ DwAq5BnVpX7faGqDgrPrGZ0qXM9fyrqYpI9ril6Jx7/oa7jGqB0hZuQCTAhqq6r5pCu6i2ovvWz
+ 1hmQsGsYHsm827EDeA2xA4TQEmPy0McjXkudEwNOGp04BRrvdCGjmN3TelxgLV9waYeKJj1zNR7
+ uldeSRNVA9wRHPcWczsU/z8j4R4OnEKT1K8CfT+EPQ0e/UW8gj6Xc/aREs+PX8MoV6IF5BD1j2c
+ 88ZoxhLkjSE7oMg==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Kernel 6.11 adds back fstat and newfstatat in commit 7697a0fe0154
-("LoongArch: Define __ARCH_WANT_NEW_STAT in unistd.h") for loongarch.
-With kernel headers from 6.11, make update-syscall-lists will generate
-the following diffs:
+In Linux 6.11, fstat and newfstatat are added back. We need to include
+this change in kernel-features.h to avoid producing libraries
+incompatible with previous linux versions with new headers.
 
-> diff --git a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
-> index 8bb82448a7..7e732256fd 100644
-> --- a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
-> +++ b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
-> @@ -59,6 +59,7 @@
->  #define __NR_fsmount 432
->  #define __NR_fsopen 430
->  #define __NR_fspick 433
-> +#define __NR_fstat 80
->  #define __NR_fstatfs 44
->  #define __NR_fsync 82
->  #define __NR_ftruncate 46
-> @@ -166,6 +167,7 @@
->  #define __NR_munmap 215
->  #define __NR_name_to_handle_at 264
->  #define __NR_nanosleep 101
-> +#define __NR_newfstatat 79
->  #define __NR_nfsservctl 42
->  #define __NR_open_by_handle_at 265
->  #define __NR_open_tree 428
-
-With the changes, the compiled libraries will unexpectedly include
-calls to these two syscalls, and be incompatible withi the previous
-kernel versions.
-
-This series addresses this issue by removing the two definitions if the
-targeted kernel version is below 6.10.6. I have tested this patch
-along with the change to arch-syscall.h with or without the
-configuration option --enable-kernel=6.10.6.
-
-Kernel 6.11 also adds support for passing NULL to statx(fd, NULL,
-AT_EMPTY_PATH), which improves the performance. This series utilize this
-feature when statx is used to implement fstat, on some 32-bit platforms and
-on loongarch with targeting kernel version below 6.10.6.
+The definition of the two syscalls will be removed when the targeted
+kernel version is below 6.10.6 in loongarch/sysdep.h, since the feature
+has already been backported to 6.10.6 in the stable tree.
 
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
-Changes in v3:
-- Changed the starting version where fstat/newfstatat are supported to
-  6.10.6.
-- Add a new patch to this series, addressing the support of statx(fd,
-  NULL, AT_EMPTY_PATH).
-- Link to v2: https://sourceware.org/pipermail/libc-alpha/2024-August/159300.html
+ .../unix/sysv/linux/loongarch/kernel-features.h    | 27 ++++++++++++++++++++++
+ sysdeps/unix/sysv/linux/loongarch/sysdep.h         |  5 ++++
+ 2 files changed, 32 insertions(+)
 
-Changes in v2:
-- Improve commit message for better patch handling
-- Link to v1: https://sourceware.org/pipermail/libc-alpha/2024-August/159295.html
+diff --git a/sysdeps/unix/sysv/linux/loongarch/kernel-features.h b/sysdeps/unix/sysv/linux/loongarch/kernel-features.h
+new file mode 100644
+index 0000000000..8e2927c501
+--- /dev/null
++++ b/sysdeps/unix/sysv/linux/loongarch/kernel-features.h
+@@ -0,0 +1,27 @@
++/* Set flags signalling availability of kernel features based on given
++   kernel version number.  Loongarch version.
++   Copyright (C) 2024 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <https://www.gnu.org/licenses/>.  */
++
++#include_next <kernel-features.h>
++
++#define __ASSUME_LOONGARCH_NEWSTAT 1
++
++/* No support for fstat or newfstatat before 6.10.6.  */
++#if __LINUX_KERNEL_VERSION < 0x060a06
++# undef __ASSUME_LOONGARCH_NEWSTAT
++#endif
+diff --git a/sysdeps/unix/sysv/linux/loongarch/sysdep.h b/sysdeps/unix/sysv/linux/loongarch/sysdep.h
+index eb0ba790da..1fdf18197f 100644
+--- a/sysdeps/unix/sysv/linux/loongarch/sysdep.h
++++ b/sysdeps/unix/sysv/linux/loongarch/sysdep.h
+@@ -109,6 +109,11 @@
+ #undef SYS_ify
+ #define SYS_ify(syscall_name) __NR_##syscall_name
+ 
++#ifndef __ASSUME_LOONGARCH_NEWSTAT
++#undef __NR_fstat
++#undef __NR_newfstatat
++#endif
++
+ #ifndef __ASSEMBLER__
+ 
+ #define VDSO_NAME "LINUX_5.10"
 
----
-Miao Wang (2):
-      Loongarch: adapt for the re-introduction of fstat and newfstatat in 6.11
-      linux: Add linux statx(fd, NULL, AT_EMPTY_PATH) support
-
- sysdeps/unix/sysv/linux/fstatat64.c                |  9 +++-
- sysdeps/unix/sysv/linux/fxstat64.c                 |  4 +-
- sysdeps/unix/sysv/linux/kernel-features.h          |  5 ++
- .../unix/sysv/linux/loongarch/kernel-features.h    | 27 +++++++++++
- sysdeps/unix/sysv/linux/loongarch/sysdep.h         |  5 ++
- sysdeps/unix/sysv/linux/statx_empty_path.h         | 53 ++++++++++++++++++++++
- 6 files changed, 99 insertions(+), 4 deletions(-)
----
-base-commit: 2eee835eca960c9d4119279804214b7a1ed5d156
-change-id: 20240820-loong-fstat-f57f8be48575
-
-Best regards,
 -- 
-Miao Wang <shankerwangmiao@gmail.com>
+2.43.0
 
