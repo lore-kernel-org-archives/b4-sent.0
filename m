@@ -1,156 +1,159 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Thu, 22 Aug 2024 00:14:39 +0800
-Subject: [PATCH v2] linux: Add linux statx(fd, NULL, AT_EMPTY_PATH) support
+Date: Thu, 22 Aug 2024 00:15:34 +0800
+Subject: [PATCH v4] Loongarch: adapt for the re-introduction of fstat and
+ newfstatat in 6.11
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240822-statx-null-path-v2-1-ff74eddf1a21@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAG4SxmYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
- vPSU3UzU4B8JSMDIxMDCyND3eKSxJIK3bzSnBzdgsSSDF1TY8NkA3Nz06SkRBMloK6CotS0zAq
- widGxtbUAy/04iWEAAAA=
+Message-Id: <20240822-loong-fstat-v4-1-1c6c5f8d2437@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKUSxmYC/33M0Q6CIBiG4VtxHEcDBNGOuo/WASC/sqk0cKzmv
+ PfQI2utw+/bnndB0QZnI7oUCwo2uej8lAc/Fcj0auosdm3eiBHGSc0IHryfOgxxVjMGIaHWltd
+ CCpTFI1hwz712u+fduzj78NrjiW7v706imGLZNLqqmNSawbUblRvOxo9o6yT2x7JshWKCgwUij
+ P225dHST1tigkkLjW45SKOqo13X9Q2pK6GkHgEAAA==
 To: libc-alpha@sourceware.org
 Cc: Adhemerval Zanella <adhemerval.zanella@linaro.org>, 
  Joseph Myers <josmyers@redhat.com>, Xi Ruoyao <xry111@xry111.site>, 
  =?utf-8?q?W=C3=81NG_Xu=C4=9Bru=C3=AC?= <kernel@xen0n.name>, 
  b4-sent@lore.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4680;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4734;
  i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=ctnRlx3S3xQwUe8WF84yoJaLt7Txice/vv8m5L/Cvk4=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmxhJxkuDUe4Mn0P1QaDTuHxR7P4Hg/SfXlKvS0
- 9403yRgxyiJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZsYScQAKCRCwMePKe/7Z
- bsM5D/9EgibgPVWnF5KcdutqaCpCgcjVR5G0PAcWV9372o4Ey6lRlkgV+zbskImdbn+VXdAfFT+
- O2xHjtwCTGaD927brSUewO9bmLKpeZqxpwbIr+qx+AMwNo8BgoYrCIO8X98lS0hwtfZCavt90GH
- mV/LBb7DIXlUS//KOLEavIIbFw9ov4I9osmltjcnW0RD0BXBdQGRdgDtYyNHTmXxKEet8V3HcXo
- 6VSOOMjm1wTUMumD2zcizG2SS5Jru8XmSFmHS8GqOMw/tO5wqQXHX/peUabNcbJOc1ItnLUhnsg
- q40P0XyO530Fcz5ZQcP0PuFsP9M/ca3sczfzkxdzbq16a//u/k4nH6KBIdC7FbWAn4xODm+a/96
- Ll//ORUnIswH4Ig/O2sOdq7ALBRbzB+oHporugVxusX5ubyIv2m3rlGrsTbX+o6SwOJdkOomqVN
- 0ihemaclHwrZmGaaZLh5pw/Ep+G2vhk0SPMDT0Gt+ZH+yF+vJGeS3YmxEIQzS204UNAuTQWSXyu
- qzKgEXCtakC9+34wQTXLjptnWrki9OssumAaONYWFqGRmLo3Xp422m9pS+01cH+8RqaQxBBL2hS
- Q/FbNcyeby0QmupvqmWWiF2yqYqgcINhN5yTugLdMfgVvhG0GYL1ZP8/oWFcLfT8EFNokDsz1BY
- 4iU/IoB3AmDCK5A==
+ bh=JEMcCDuav2A7PyeIaifBvUx2xwQB3BsPqJEjDxa7oKo=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmxhKp8SEd8taxaX3+KrPNHlguTSizjUZz9KChz
+ kfYcVLBMd6JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZsYSqQAKCRCwMePKe/7Z
+ bp4ND/44ZmCP0eLb9qrvWhallf2tXyGBn4/32zTsezEPmVHpErH7N3yZYPmpZCMWzfZK2V4UGZP
+ 5F2E/MIok4cUcJ/HKAz241dsIKANL0F72H/wIDzoiryOAGPpyHy8bpJPKIRz1DHgkCzXZsAgfzx
+ x8hhY8/7rvgcl2ew1HDI0np5rv3XfdYYwtZVQXDjzEx4heXIUdwBV0u9dhIDArgIe3E2snhroUD
+ DICrGgDJ8r7cHczoQpR7/RXiXLG4JDckE7ClvlWWqP48vQdRGfSjz4LaOQHn+RkOKxBOUj/2UW5
+ lQthoQGoJwS1m2UrWMVCXGn6zmrsXE2E1pi9iyEmlrW35x2bMmXCPrLPWD1ByMBpRS4fdIi81Ve
+ sZqlO8aUVqE7FfDVHxwms6ap+dkEwWj/g4BeBZLa/HCFa4s+N6YPb1N9E9cpAs/Yqdu94tFugom
+ 3WJ27LrYIdtv2SsYCFi31kicTGveR2LswFMF+EBzDKc8+3mGaI0BMpGmH5iR0U74Urv1Vo9nvhJ
+ ZauwGESE2Yty84xcmlgvx3EYqQGo23HQFKTXYQOTVOyk0ooL6HXS7HDHMJco8ci2FlqA931BwjP
+ foBPtaCKOnRwIfO+8zWLn/lNKpt4t3IqEUBbzZqLCPouJkw7j/04nsvxlFPz4Hmqvn3u/iopbgQ
+ QOiKTXr95KOFaVw==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Linux supports passing NULL instead of an empty string as the second
-parameter when AT_EMPTY_PATH is set in the flags, starting from 6.11,
-which brings a performance gain since it is much more efficient to
-detect a NULL parameter than to detect an empty string in the kernel.
-We utilize this feature if statx is used for fstat, when glibc is
-compiled to target kernel versions afterwards, and dynamically probe
-the kernel support of it, when targeting previous versions.
+In Linux 6.11, fstat and newfstatat are added back. We need to include
+this change in kernel-features.h to avoid producing libraries
+incompatible with previous linux versions with new headers.
+
+The definition of the two syscalls will be removed when the targeted
+kernel version is below 6.10.6 in loongarch/sysdep.h, since the feature
+has already been backported to 6.10.6 in the stable tree.
 
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
-Kernel 6.11 adds support for passing NULL to statx(fd, NULL,
-AT_EMPTY_PATH), which improves the performance. This series utilize this
-feature when statx is used to implement fstat, on some 32-bit platforms
-and on loongarch with targeting kernel version below 6.10.6.
----
-Changes in v2:
-- Separate this patch out from the series.
-- Put the added __statx_empty_path() into internal-stat.h.
-- Minor fixes according as suggested by Ruoyao.
-- Link to v1: https://sourceware.org/pipermail/libc-alpha/2024-August/159333.html
----
- sysdeps/unix/sysv/linux/fstatat64.c       |  8 ++++++--
- sysdeps/unix/sysv/linux/fxstat64.c        |  3 +--
- sysdeps/unix/sysv/linux/internal-stat.h   | 31 +++++++++++++++++++++++++++++++
- sysdeps/unix/sysv/linux/kernel-features.h |  5 +++++
- 4 files changed, 43 insertions(+), 4 deletions(-)
+Kernel 6.11 adds back fstat and newfstatat in commit 7697a0fe0154
+("LoongArch: Define __ARCH_WANT_NEW_STAT in unistd.h") for loongarch.
+With kernel headers from 6.11, make update-syscall-lists will generate
+the following diffs:
 
-diff --git a/sysdeps/unix/sysv/linux/fstatat64.c b/sysdeps/unix/sysv/linux/fstatat64.c
-index da496177c9..b67a5f4469 100644
---- a/sysdeps/unix/sysv/linux/fstatat64.c
-+++ b/sysdeps/unix/sysv/linux/fstatat64.c
-@@ -47,8 +47,12 @@ fstatat64_time64_statx (int fd, const char *file, struct __stat64_t64 *buf,
-   /* 32-bit kABI with default 64-bit time_t, e.g. arc, riscv32.   Also
-      64-bit time_t support is done through statx syscall.  */
-   struct statx tmp;
--  int r = INTERNAL_SYSCALL_CALL (statx, fd, file, AT_NO_AUTOMOUNT | flag,
--				 STATX_BASIC_STATS, &tmp);
-+  flag |= AT_NO_AUTOMOUNT;
-+  int r;
-+  if ((flag & AT_EMPTY_PATH) && (file == NULL || *file == '\0'))
-+    r = __statx_empty_path (fd, flag, &tmp);
-+  else
-+    r = INTERNAL_SYSCALL_CALL (statx, fd, file, flag, STATX_BASIC_STATS, &tmp);
-   if (r != 0)
-     return r;
+> diff --git a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
+> index 8bb82448a7..7e732256fd 100644
+> --- a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
+> +++ b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
+> @@ -59,6 +59,7 @@
+>  #define __NR_fsmount 432
+>  #define __NR_fsopen 430
+>  #define __NR_fspick 433
+> +#define __NR_fstat 80
+>  #define __NR_fstatfs 44
+>  #define __NR_fsync 82
+>  #define __NR_ftruncate 46
+> @@ -166,6 +167,7 @@
+>  #define __NR_munmap 215
+>  #define __NR_name_to_handle_at 264
+>  #define __NR_nanosleep 101
+> +#define __NR_newfstatat 79
+>  #define __NR_nfsservctl 42
+>  #define __NR_open_by_handle_at 265
+>  #define __NR_open_tree 428
+
+With the changes, the compiled libraries will unexpectedly include
+calls to these two syscalls, and be incompatible withi the previous
+kernel versions.
+
+This patch addresses this issue by removing the two definitions if the
+targeted kernel version is below 6.10.6. I have tested this patch
+along with the change to arch-syscall.h with or without the
+configuration option --enable-kernel=6.10.6.
+---
+Changes in v4:
+- Separate the support of statx(fd, NULL, AT_EMPTY_PATH) away from this
+  series.
+- Link to v3: https://sourceware.org/pipermail/libc-alpha/2024-August/159331.html
+
+Changes in v3:
+- Changed the starting version where fstat/newfstatat are supported to
+  6.10.6.
+- Add a new patch to this series, addressing the support of statx(fd,
+  NULL, AT_EMPTY_PATH).
+- Link to v2: https://sourceware.org/pipermail/libc-alpha/2024-August/159300.html
+
+Changes in v2:
+- Improve commit message for better patch handling
+- Link to v1: https://sourceware.org/pipermail/libc-alpha/2024-August/159295.html
+---
+ .../unix/sysv/linux/loongarch/kernel-features.h    | 27 ++++++++++++++++++++++
+ sysdeps/unix/sysv/linux/loongarch/sysdep.h         |  5 ++++
+ 2 files changed, 32 insertions(+)
+
+diff --git a/sysdeps/unix/sysv/linux/loongarch/kernel-features.h b/sysdeps/unix/sysv/linux/loongarch/kernel-features.h
+new file mode 100644
+index 0000000000..8e2927c501
+--- /dev/null
++++ b/sysdeps/unix/sysv/linux/loongarch/kernel-features.h
+@@ -0,0 +1,27 @@
++/* Set flags signalling availability of kernel features based on given
++   kernel version number.  Loongarch version.
++   Copyright (C) 2024 Free Software Foundation, Inc.
++   This file is part of the GNU C Library.
++
++   The GNU C Library is free software; you can redistribute it and/or
++   modify it under the terms of the GNU Lesser General Public
++   License as published by the Free Software Foundation; either
++   version 2.1 of the License, or (at your option) any later version.
++
++   The GNU C Library is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   Lesser General Public License for more details.
++
++   You should have received a copy of the GNU Lesser General Public
++   License along with the GNU C Library; if not, see
++   <https://www.gnu.org/licenses/>.  */
++
++#include_next <kernel-features.h>
++
++#define __ASSUME_LOONGARCH_NEWSTAT 1
++
++/* No support for fstat or newfstatat before 6.10.6.  */
++#if __LINUX_KERNEL_VERSION < 0x060a06
++# undef __ASSUME_LOONGARCH_NEWSTAT
++#endif
+diff --git a/sysdeps/unix/sysv/linux/loongarch/sysdep.h b/sysdeps/unix/sysv/linux/loongarch/sysdep.h
+index eb0ba790da..1fdf18197f 100644
+--- a/sysdeps/unix/sysv/linux/loongarch/sysdep.h
++++ b/sysdeps/unix/sysv/linux/loongarch/sysdep.h
+@@ -109,6 +109,11 @@
+ #undef SYS_ify
+ #define SYS_ify(syscall_name) __NR_##syscall_name
  
-diff --git a/sysdeps/unix/sysv/linux/fxstat64.c b/sysdeps/unix/sysv/linux/fxstat64.c
-index 230374cb22..2ece683992 100644
---- a/sysdeps/unix/sysv/linux/fxstat64.c
-+++ b/sysdeps/unix/sysv/linux/fxstat64.c
-@@ -53,8 +53,7 @@ ___fxstat64 (int vers, int fd, struct stat64 *buf)
- # else
-   /* New 32-bit kABIs with only 64-bit time_t support, e.g. arc, riscv32.  */
-   struct statx tmp;
--  int r = INLINE_SYSCALL_CALL (statx, fd, "", AT_EMPTY_PATH,
--			       STATX_BASIC_STATS, &tmp);
-+  int r = __statx_empty_path (fd, 0, &tmp);
-   if (r == 0)
-     __cp_stat64_statx (buf, &tmp);
-   return r;
-diff --git a/sysdeps/unix/sysv/linux/internal-stat.h b/sysdeps/unix/sysv/linux/internal-stat.h
-index 9334059765..ee30cb1bd6 100644
---- a/sysdeps/unix/sysv/linux/internal-stat.h
-+++ b/sysdeps/unix/sysv/linux/internal-stat.h
-@@ -29,3 +29,34 @@
- #else
- # define FSTATAT_USE_STATX 0
- #endif
-+
-+#if FSTATAT_USE_STATX || XSTAT_IS_XSTAT64
-+
-+static inline int
-+__statx_empty_path (int fd, int flag, struct statx *buf)
-+{
-+  flag |= AT_EMPTY_PATH;
-+#ifdef __ASSUME_STATX_NULL_PATH
-+  return INTERNAL_SYSCALL_CALL (statx, fd, NULL, flag, STATX_BASIC_STATS, buf);
-+#else
-+  static int statx_null_path_supported = -1;
-+  int r;
-+  int supported = atomic_load_relaxed (&statx_null_path_supported);
-+  if (supported != 0)
-+    {
-+      r = INTERNAL_SYSCALL_CALL (statx, fd, NULL, flag, STATX_BASIC_STATS, buf);
-+      if (__glibc_likely (supported == 1))
-+	return r;
-+      if (r != -EFAULT)
-+	{
-+	  if (r == 0)
-+	    atomic_store_relaxed (&statx_null_path_supported, 1);
-+	  return r;
-+	}
-+      atomic_store_relaxed (&statx_null_path_supported, 0);
-+    }
-+  return INTERNAL_SYSCALL_CALL (statx, fd, "", flag, STATX_BASIC_STATS, buf);
++#ifndef __ASSUME_LOONGARCH_NEWSTAT
++#undef __NR_fstat
++#undef __NR_newfstatat
 +#endif
-+}
 +
-+#endif
-diff --git a/sysdeps/unix/sysv/linux/kernel-features.h b/sysdeps/unix/sysv/linux/kernel-features.h
-index a25cf07e9f..78aaf43a82 100644
---- a/sysdeps/unix/sysv/linux/kernel-features.h
-+++ b/sysdeps/unix/sysv/linux/kernel-features.h
-@@ -257,4 +257,9 @@
- # define __ASSUME_FCHMODAT2 0
- #endif
+ #ifndef __ASSEMBLER__
  
-+/* statx(fd, NULL, AT_EMPTY_PATH) was introduced in Linux 6.11. */
-+#if __LINUX_KERNEL_VERSION >= 0x060b00
-+# define __ASSUME_STATX_NULL_PATH 1
-+#endif
-+
- #endif /* kernel-features.h */
+ #define VDSO_NAME "LINUX_5.10"
 
 ---
 base-commit: 2eee835eca960c9d4119279804214b7a1ed5d156
-change-id: 20240821-statx-null-path-531c0775bba4
+change-id: 20240820-loong-fstat-f57f8be48575
 
 Best regards,
 -- 
