@@ -1,72 +1,228 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Sat, 24 Aug 2024 03:07:23 +0800
-Subject: [PATCH] sys_statx: support for statx(fd, NULL, AT_EMPTY_PATH)
+From: =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
+Subject: [PATCH v12 00/12] Initial Marvell PXA1908 support
+Date: Fri, 23 Aug 2024 22:54:35 +0200
+Message-Id: <20240823-pxa1908-lkml-v12-0-cc3ada51beb0@skole.hr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240824-statx-null-path-v1-1-8432bfb60a57@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAOrdyGYC/x3MQQqAIBBA0avErBswi4iuEi1MpxoQE7UQwrsnL
- d/i/xciBaYIc/NCoIcjX66iaxvQp3IHIZtqkEIOYpIDxqRSRndbi16lEyciPZIwqt801MoH2jn
- /x2Ut5QOt98ANYQAAAA==
-To: Julian Seward <jseward@acm.org>
-Cc: valgrind-developers@lists.sourceforge.net, b4-sent@lore.kernel.org, 
- Miao Wang <shankerwangmiao@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAv3yGYC/4XRy07DMBAF0F+pssbRPPzsiv9ALBzHpqaPVAlER
+ VX/HbdSaTALlh7p3LnynJspjjlOzXp1bsY45ykPh/JAelo1YeMPb1HkvgwaAmKwwOJ48ujAit1
+ 2vxPaMkTbe6mCaQo5jjHl0y3v5bW8N3n6GMavW/zM1+k9SP4OmlmAsFHaFDwbcO552g672G7G5
+ poz08MaMqjJgWs1MAoU/ed7bPe5tB3mHCqIS4iEAJJaQsXqPymXdU1VV5a6oWNresOdVFRZtbB
+ IlVXFetUrdGxiZFlZ/WMRECqri+0oRXAkISRbWXu3EvCPtcWm6I22Xjlp6r3uYSXUnV2xpDwAR
+ 8tBp/qXYYGpvm1pAoJ16FOnrMRUHxfxoQ3XtRGvu7HvOo5kjeOFvlwu32aJrV/DAgAA
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Linus Walleij <linus.walleij@linaro.org>, 
+ Rob Herring <robh+dt@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
+ Tony Lindgren <tony@atomide.com>, 
+ Haojian Zhuang <haojian.zhuang@linaro.org>, 
+ =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>, 
+ Lubomir Rintel <lkundrak@v3.sk>, Catalin Marinas <catalin.marinas@arm.com>, 
+ Will Deacon <will@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ Karel Balej <balejk@matfyz.cz>, David Wronek <david@mainlining.org>, 
+ linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1551;
- i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=J7RWbkj9h58k1btacYhFraRzpMs8KU2Xju5/16FagGo=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmyN3s7ssXoKLynwC8GljIU1Uu0T+TpWfVb4Ic4
- yCT0oby22qJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZsjd7AAKCRCwMePKe/7Z
- br94EACFSYXMWOrY5m+6uPgkkxh9qd2C7dTN3Vge5/tqZP5CyfFt+dmxWluAy8BO/0r6EfiKkgu
- KYLjInfqLL+CBQr+21mmyJ2l9WijjOer6x8Ylvxn/o4tR5CvKWpFLkJVaXC0/GyZZABpSTScoVu
- 70DaxdhevkCRVqZPSZ9NPTAH1V/Szxvub9u4zBMKR/7o+ETvsVPp5JzBttuXJcHFGFwLKVfUffn
- znVR+U2b+w6+r1zRhFAsOb5mZluJwysuBc2w+XXFelRBnSImqWQS6SFCvYbmWfhYPtI9ID9um/a
- byH5MqcaVJldA7JC4MRtqxXOpFUgFwNV/i7suJ5XnMw7Bc/dKXZqa09vhLFW/SA4j3LlEW38NCd
- FVgUmgkaF9KsDnl7QLwOS+sJj2xem6aXjL2JtA903O4HfxexOV6lsINdOEQkqVrhDjIFKzRAedc
- 7Z9P6zfmLkq7vJRWgphRi6YsLrcp5Z15Qh+j3O4zfO3/poTav7K48HdM4cyEzedcBXf18mHVNjf
- d/4YljjWsIeOZku/eVAjlY3LAzLLls43i2wrhPjXBaoxV3Rkjx3lHPKvTgaYraFNo2Vmx6pC8Jx
- GlE/1QvPhnOid0+pgd4r6RuieWLMmoC1tooz0gr3tgT1xuFt8QrbzUFXXERlZSUlmDRxJwipdzT
- jPlfwwsmuO6AQbQ==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8095;
+ i=duje.mihanovic@skole.hr; s=20240706; h=from:subject:message-id;
+ bh=n/WFQJS232AmDiJpqwhj2qPyACgFlnwvyXnFmTR1dnE=;
+ b=owGbwMvMwCW21nBykGv/WmbG02pJDGknvmtsmzFBImxv3cmjTysmzVpp903CNv/xCZ8YVenfO
+ 55bLbmf11HKwiDGxSArpsiS+9/xGu9nka3bs5cZwMxhZQIZwsDFKQAT+drN8ItpZcK9eRp99Ucu
+ TN9RJyQ3u+dL6o3tjzjlBF9WrP85e74lw1/Jfn/h/zvEKjWyTnisKGz60v2n1dL+Ik/6MZktk90
+ CZzMDAA==
+X-Developer-Key: i=duje.mihanovic@skole.hr; a=openpgp;
+ fpr=6DFF41D60DF314B5B76BA630AD319352458FAD03
+X-Endpoint-Received: by B4 Relay for duje.mihanovic@skole.hr/20240706 with auth_id=191
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-statx(fd, NULL, AT_EMPTY_PATH) is supported since Linux 6.11 and this
-patch addes the support to valgrind, so that it won't complain when
-NULL is used as |filename| and |flags| includes AT_EMPTY_PATH.
+Hello,
 
-Ref: commit 0ef625bba6fb ("vfs: support statx(..., NULL, AT_EMPTY_PATH, ...)")
+This series adds initial support for the Marvell PXA1908 SoC and
+"samsung,coreprimevelte", a smartphone using the SoC.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+USB works and the phone can boot a rootfs from an SD card, but there are
+some warnings in the dmesg:
+
+During SMP initialization:
+[    0.006519] CPU features: SANITY CHECK: Unexpected variation in SYS_CNTFRQ_EL0. Boot CPU: 0x000000018cba80, CPU1: 0x00000000000000
+[    0.006542] CPU features: Unsupported CPU feature variation detected.
+[    0.006589] CPU1: Booted secondary processor 0x0000000001 [0x410fd032]
+[    0.010710] Detected VIPT I-cache on CPU2
+[    0.010716] CPU features: SANITY CHECK: Unexpected variation in SYS_CNTFRQ_EL0. Boot CPU: 0x000000018cba80, CPU2: 0x00000000000000
+[    0.010758] CPU2: Booted secondary processor 0x0000000002 [0x410fd032]
+[    0.014849] Detected VIPT I-cache on CPU3
+[    0.014855] CPU features: SANITY CHECK: Unexpected variation in SYS_CNTFRQ_EL0. Boot CPU: 0x000000018cba80, CPU3: 0x00000000000000
+[    0.014895] CPU3: Booted secondary processor 0x0000000003 [0x410fd032]
+
+SMMU probing fails:
+[    0.101798] arm-smmu c0010000.iommu: probing hardware configuration...
+[    0.101809] arm-smmu c0010000.iommu: SMMUv1 with:
+[    0.101816] arm-smmu c0010000.iommu:         no translation support!
+
+A 3.14 based Marvell tree is available on GitHub
+acorn-marvell/brillo_pxa_kernel, and a Samsung one on GitHub
+CoderCharmander/g361f-kernel.
+
+Andreas Färber attempted to upstream support for this SoC in 2017:
+https://lore.kernel.org/lkml/20170222022929.10540-1-afaerber@suse.de/
+
+Signed-off-by: Duje Mihanović <duje.mihanovic@skole.hr>
+
+Changes in v12:
+- Rebase on v6.11-rc4
+- Fix schmitt properties in accordance with 78d8815031fb ("dt-bindings: pinctrl: pinctrl-single: fix schmitt related properties")
+- Drop a few redundant includes in clock drivers
+- Link to v11: https://lore.kernel.org/r/20240730-pxa1908-lkml-v11-0-21dbb3e28793@skole.hr
+
+Changes in v11:
+- Rebase on v6.11-rc1 (conflict with DTS Makefile), no changes
+- Link to v10: https://lore.kernel.org/r/20240424-pxa1908-lkml-v10-0-36cdfb5841f9@skole.hr
+
+Changes in v10:
+- Update trailers
+- Rebase on v6.9-rc5
+- Clock driver changes:
+  - Add a couple of forgotten clocks in APBC
+    - The clocks are thermal_clk, ipc_clk, ssp0_clk, ssp2_clk and swjtag
+    - The IDs and register offsets were already present, but I forgot to
+      actually register them
+  - Split each controller block into own file
+  - Drop unneeded -of in clock driver filenames
+  - Simplify struct pxa1908_clk_unit
+  - Convert to platform driver
+  - Add module metadata
+- DTS changes:
+  - Properly name pinctrl nodes
+  - Drop pinctrl #size-cells, #address-cells, ranges and #gpio-size-cells
+  - Fix pinctrl input-schmitt configuration
+- Link to v9: https://lore.kernel.org/20240402-pxa1908-lkml-v9-0-25a003e83c6f@skole.hr
+
+Changes in v9:
+- Update trailers and rebase on v6.9-rc2, no changes
+- Link to v8: https://lore.kernel.org/20240110-pxa1908-lkml-v8-0-fea768a59474@skole.hr
+
+Changes in v8:
+- Drop SSPA patch
+- Drop broken-cd from eMMC node
+- Specify S-Boot hardcoded initramfs location in device tree
+- Add ARM PMU node
+- Correct inverted modem memory base and size
+- Update trailers
+- Rebase on next-20240110
+- Link to v7: https://lore.kernel.org/20231102-pxa1908-lkml-v7-0-cabb1a0cb52b@skole.hr
+  and https://lore.kernel.org/20231102152033.5511-1-duje.mihanovic@skole.hr
+
+Changes in v7:
+- Suppress SND_MMP_SOC_SSPA on ARM64
+- Update trailers
+- Rebase on v6.6-rc7
+- Link to v6: https://lore.kernel.org/r/20231010-pxa1908-lkml-v6-0-b2fe09240cf8@skole.hr
+
+Changes in v6:
+- Address maintainer comments:
+  - Add "marvell,pxa1908-padconf" binding to pinctrl-single driver
+- Drop GPIO patch as it's been pulled
+- Update trailers
+- Rebase on v6.6-rc5
+- Link to v5: https://lore.kernel.org/r/20230812-pxa1908-lkml-v5-0-a5d51937ee34@skole.hr
+
+Changes in v5:
+- Address maintainer comments:
+  - Move *_NR_CLKS to clock driver from dt binding file
+- Allocate correct number of clocks for each block instead of blindly
+  allocating 50 for each
+- Link to v4: https://lore.kernel.org/r/20230807-pxa1908-lkml-v4-0-cb387d73b452@skole.hr
+
+Changes in v4:
+- Address maintainer comments:
+  - Relicense clock binding file to BSD-2
+- Add pinctrl-names to SD card node
+- Add vgic registers to GIC node
+- Rebase on v6.5-rc5
+- Link to v3: https://lore.kernel.org/r/20230804-pxa1908-lkml-v3-0-8e48fca37099@skole.hr
+
+Changes in v3:
+- Address maintainer comments:
+  - Drop GPIO dynamic allocation patch
+  - Move clock register offsets into driver (instead of bindings file)
+  - Add missing Tested-by trailer to u32_fract patch
+  - Move SoC binding to arm/mrvl/mrvl.yaml
+- Add serial0 alias and stdout-path to board dts to enable UART
+  debugging
+- Rebase on v6.5-rc4
+- Link to v2: https://lore.kernel.org/r/20230727162909.6031-1-duje.mihanovic@skole.hr
+
+Changes in v2:
+- Remove earlycon patch as it's been merged into tty-next
+- Address maintainer comments:
+  - Clarify GPIO regressions on older PXA platforms
+  - Add Fixes tag to commit disabling GPIO pinctrl calls for this SoC
+  - Add missing includes to clock driver
+  - Clock driver uses HZ_PER_MHZ, u32_fract and GENMASK
+  - Dual license clock bindings
+  - Change clock IDs to decimal
+  - Fix underscores in dt node names
+  - Move chosen node to top of board dts
+  - Clean up documentation
+  - Reorder commits
+  - Drop pxa,rev-id
+- Rename muic-i2c to i2c-muic
+- Reword some commits
+- Move framebuffer node to chosen
+- Add aliases for mmc nodes
+- Rebase on v6.5-rc3
+- Link to v1: https://lore.kernel.org/r/20230721210042.21535-1-duje.mihanovic@skole.hr
+
 ---
- coregrind/m_syswrap/syswrap-linux.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Andy Shevchenko (1):
+      clk: mmp: Switch to use struct u32_fract instead of custom one
 
-diff --git a/coregrind/m_syswrap/syswrap-linux.c b/coregrind/m_syswrap/syswrap-linux.c
-index 9f3c51c17..453385599 100644
---- a/coregrind/m_syswrap/syswrap-linux.c
-+++ b/coregrind/m_syswrap/syswrap-linux.c
-@@ -4209,8 +4209,12 @@ PRE(sys_statx)
-    // in which it passes NULL for both filename and buf, and then looks at the
-    // return value, so as to determine whether or not this syscall is supported.
-    Bool both_filename_and_buf_are_null = ARG2 == 0 && ARG5 == 0;
-+   Bool statx_null_path = (ARG2 == 0) && (ARG3 & VKI_AT_EMPTY_PATH);
-    if (!both_filename_and_buf_are_null) {
--      PRE_MEM_RASCIIZ( "statx(filename)", ARG2 );
-+      // Since Linux 6.11, the kernel allows passing a NULL filename when
-+      // the AT_EMPTY_PATH flag is set.
-+      if (!statx_null_path)
-+         PRE_MEM_RASCIIZ( "statx(filename)", ARG2 );
-       PRE_MEM_WRITE( "statx(buf)", ARG5, sizeof(struct vki_statx) );
-    }
- }
+Duje Mihanović (11):
+      dt-bindings: pinctrl: pinctrl-single: add marvell,pxa1908-padconf compatible
+      pinctrl: single: add marvell,pxa1908-padconf compatible
+      dt-bindings: clock: Add Marvell PXA1908 clock bindings
+      clk: mmp: Add Marvell PXA1908 APBC driver
+      clk: mmp: Add Marvell PXA1908 APBCP driver
+      clk: mmp: Add Marvell PXA1908 APMU driver
+      clk: mmp: Add Marvell PXA1908 MPMU driver
+      dt-bindings: marvell: Document PXA1908 SoC
+      arm64: Kconfig.platforms: Add config for Marvell PXA1908 platform
+      arm64: dts: Add DTS for Marvell PXA1908 and samsung,coreprimevelte
+      MAINTAINERS: add myself as Marvell PXA1908 maintainer
 
+ .../devicetree/bindings/arm/mrvl/mrvl.yaml         |   5 +
+ .../devicetree/bindings/clock/marvell,pxa1908.yaml |  48 +++
+ .../bindings/pinctrl/pinctrl-single.yaml           |   4 +
+ MAINTAINERS                                        |   9 +
+ arch/arm64/Kconfig.platforms                       |   8 +
+ arch/arm64/boot/dts/marvell/Makefile               |   3 +
+ .../dts/marvell/pxa1908-samsung-coreprimevelte.dts | 336 +++++++++++++++++++++
+ arch/arm64/boot/dts/marvell/pxa1908.dtsi           | 300 ++++++++++++++++++
+ drivers/clk/mmp/Makefile                           |   2 +-
+ drivers/clk/mmp/clk-frac.c                         |  57 ++--
+ drivers/clk/mmp/clk-of-mmp2.c                      |  26 +-
+ drivers/clk/mmp/clk-of-pxa168.c                    |   4 +-
+ drivers/clk/mmp/clk-of-pxa1928.c                   |   6 +-
+ drivers/clk/mmp/clk-of-pxa910.c                    |   4 +-
+ drivers/clk/mmp/clk-pxa1908-apbc.c                 | 130 ++++++++
+ drivers/clk/mmp/clk-pxa1908-apbcp.c                |  82 +++++
+ drivers/clk/mmp/clk-pxa1908-apmu.c                 | 121 ++++++++
+ drivers/clk/mmp/clk-pxa1908-mpmu.c                 | 112 +++++++
+ drivers/clk/mmp/clk.h                              |  10 +-
+ drivers/pinctrl/pinctrl-single.c                   |   1 +
+ include/dt-bindings/clock/marvell,pxa1908.h        |  88 ++++++
+ 21 files changed, 1299 insertions(+), 57 deletions(-)
 ---
-base-commit: 61e44a4aef8775b925a7a91f403ebd7f4f6670a4
-change-id: 20240824-statx-null-path-8eec6e0da3bc
+base-commit: 47ac09b91befbb6a235ab620c32af719f8208399
+change-id: 20230803-pxa1908-lkml-6830e8da45c7
 
 Best regards,
 -- 
-Miao Wang <shankerwangmiao@gmail.com>
+Duje Mihanović <duje.mihanovic@skole.hr>
 
