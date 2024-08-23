@@ -1,161 +1,69 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Thu, 22 Aug 2024 00:15:34 +0800
-Subject: [PATCH v4] Loongarch: adapt for the re-introduction of fstat and
- newfstatat in 6.11
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v3 0/3] add some node for amlogic c3
+Date: Fri, 23 Aug 2024 10:29:16 +0800
+Message-Id: <20240823-c3_add_node-v3-0-3648376037f4@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240822-loong-fstat-v4-1-1c6c5f8d2437@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKUSxmYC/33M0Q6CIBiG4VtxHEcDBNGOuo/WASC/sqk0cKzmv
- PfQI2utw+/bnndB0QZnI7oUCwo2uej8lAc/Fcj0auosdm3eiBHGSc0IHryfOgxxVjMGIaHWltd
- CCpTFI1hwz712u+fduzj78NrjiW7v706imGLZNLqqmNSawbUblRvOxo9o6yT2x7JshWKCgwUij
- P225dHST1tigkkLjW45SKOqo13X9Q2pK6GkHgEAAA==
-To: libc-alpha@sourceware.org
-Cc: Adhemerval Zanella <adhemerval.zanella@linaro.org>, 
- Joseph Myers <josmyers@redhat.com>, Xi Ruoyao <xry111@xry111.site>, 
- =?utf-8?q?W=C3=81NG_Xu=C4=9Bru=C3=AC?= <kernel@xen0n.name>, 
- b4-sent@lore.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4734;
- i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=JEMcCDuav2A7PyeIaifBvUx2xwQB3BsPqJEjDxa7oKo=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBmxhKp8SEd8taxaX3+KrPNHlguTSizjUZz9KChz
- kfYcVLBMd6JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZsYSqQAKCRCwMePKe/7Z
- bp4ND/44ZmCP0eLb9qrvWhallf2tXyGBn4/32zTsezEPmVHpErH7N3yZYPmpZCMWzfZK2V4UGZP
- 5F2E/MIok4cUcJ/HKAz241dsIKANL0F72H/wIDzoiryOAGPpyHy8bpJPKIRz1DHgkCzXZsAgfzx
- x8hhY8/7rvgcl2ew1HDI0np5rv3XfdYYwtZVQXDjzEx4heXIUdwBV0u9dhIDArgIe3E2snhroUD
- DICrGgDJ8r7cHczoQpR7/RXiXLG4JDckE7ClvlWWqP48vQdRGfSjz4LaOQHn+RkOKxBOUj/2UW5
- lQthoQGoJwS1m2UrWMVCXGn6zmrsXE2E1pi9iyEmlrW35x2bMmXCPrLPWD1ByMBpRS4fdIi81Ve
- sZqlO8aUVqE7FfDVHxwms6ap+dkEwWj/g4BeBZLa/HCFa4s+N6YPb1N9E9cpAs/Yqdu94tFugom
- 3WJ27LrYIdtv2SsYCFi31kicTGveR2LswFMF+EBzDKc8+3mGaI0BMpGmH5iR0U74Urv1Vo9nvhJ
- ZauwGESE2Yty84xcmlgvx3EYqQGo23HQFKTXYQOTVOyk0ooL6HXS7HDHMJco8ci2FlqA931BwjP
- foBPtaCKOnRwIfO+8zWLn/lNKpt4t3IqEUBbzZqLCPouJkw7j/04nsvxlFPz4Hmqvn3u/iopbgQ
- QOiKTXr95KOFaVw==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
+X-B4-Tracking: v=1; b=H4sIAP3zx2YC/23MSwqDMBSF4a1Ixk25eaBpR91HKRKTGw1UI0kJL
+ eLeGx1V6PAc+P6FJIweE7lWC4mYffJhKkOcKmIGPfVIvS2bcOASFNTUiFZb207BIpUctGguTDm
+ mSBFzROffe+3+KHvw6RXiZ49ntr3/O5lRoAYsSiYkqwW/6fEZem/OJoxkK2X+ozkcNS9aOSsc1
+ F3TGTzqdV2/WH4rQOYAAAA=
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chuan Liu <chuan.liu@amlogic.com>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724380157; l=1332;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=YS7E0HAr61srZxZYh8jsHirXK/krzpEqZNEfQ+EuQlw=;
+ b=rJ1KyhYO+6cuH76Vvojb68o3/JNzMHApeeDi7nPitNh/mOklbsz0OpsV++GEcrvtTIs36A1jz
+ J4dHiQjt7uXAiCCNUw56VBIMjgNSeCPwn4M9rsQFGpyiFkcaNUAzf6p
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In Linux 6.11, fstat and newfstatat are added back. We need to include
-this change in kernel-features.h to avoid producing libraries
-incompatible with previous linux versions with new headers.
+Add some node for board AW409 and support board C308l AW419.
 
-The definition of the two syscalls will be removed when the targeted
-kernel version is below 6.10.6 in loongarch/sysdep.h, since the feature
-has already been backported to 6.10.6 in the stable tree.
-
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Kernel 6.11 adds back fstat and newfstatat in commit 7697a0fe0154
-("LoongArch: Define __ARCH_WANT_NEW_STAT in unistd.h") for loongarch.
-With kernel headers from 6.11, make update-syscall-lists will generate
-the following diffs:
-
-> diff --git a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
-> index 8bb82448a7..7e732256fd 100644
-> --- a/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
-> +++ b/sysdeps/unix/sysv/linux/loongarch/arch-syscall.h
-> @@ -59,6 +59,7 @@
->  #define __NR_fsmount 432
->  #define __NR_fsopen 430
->  #define __NR_fspick 433
-> +#define __NR_fstat 80
->  #define __NR_fstatfs 44
->  #define __NR_fsync 82
->  #define __NR_ftruncate 46
-> @@ -166,6 +167,7 @@
->  #define __NR_munmap 215
->  #define __NR_name_to_handle_at 264
->  #define __NR_nanosleep 101
-> +#define __NR_newfstatat 79
->  #define __NR_nfsservctl 42
->  #define __NR_open_by_handle_at 265
->  #define __NR_open_tree 428
-
-With the changes, the compiled libraries will unexpectedly include
-calls to these two syscalls, and be incompatible withi the previous
-kernel versions.
-
-This patch addresses this issue by removing the two definitions if the
-targeted kernel version is below 6.10.6. I have tested this patch
-along with the change to arch-syscall.h with or without the
-configuration option --enable-kernel=6.10.6.
----
-Changes in v4:
-- Separate the support of statx(fd, NULL, AT_EMPTY_PATH) away from this
-  series.
-- Link to v3: https://sourceware.org/pipermail/libc-alpha/2024-August/159331.html
-
 Changes in v3:
-- Changed the starting version where fstat/newfstatat are supported to
-  6.10.6.
-- Add a new patch to this series, addressing the support of statx(fd,
-  NULL, AT_EMPTY_PATH).
-- Link to v2: https://sourceware.org/pipermail/libc-alpha/2024-August/159300.html
+- Change clkc_periphs node to the first.
+- Link to v2: https://lore.kernel.org/r/20240820-c3_add_node-v2-0-8fd3f06b7bce@amlogic.com
 
 Changes in v2:
-- Improve commit message for better patch handling
-- Link to v1: https://sourceware.org/pipermail/libc-alpha/2024-August/159295.html
----
- .../unix/sysv/linux/loongarch/kernel-features.h    | 27 ++++++++++++++++++++++
- sysdeps/unix/sysv/linux/loongarch/sysdep.h         |  5 ++++
- 2 files changed, 32 insertions(+)
-
-diff --git a/sysdeps/unix/sysv/linux/loongarch/kernel-features.h b/sysdeps/unix/sysv/linux/loongarch/kernel-features.h
-new file mode 100644
-index 0000000000..8e2927c501
---- /dev/null
-+++ b/sysdeps/unix/sysv/linux/loongarch/kernel-features.h
-@@ -0,0 +1,27 @@
-+/* Set flags signalling availability of kernel features based on given
-+   kernel version number.  Loongarch version.
-+   Copyright (C) 2024 Free Software Foundation, Inc.
-+   This file is part of the GNU C Library.
-+
-+   The GNU C Library is free software; you can redistribute it and/or
-+   modify it under the terms of the GNU Lesser General Public
-+   License as published by the Free Software Foundation; either
-+   version 2.1 of the License, or (at your option) any later version.
-+
-+   The GNU C Library is distributed in the hope that it will be useful,
-+   but WITHOUT ANY WARRANTY; without even the implied warranty of
-+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+   Lesser General Public License for more details.
-+
-+   You should have received a copy of the GNU Lesser General Public
-+   License along with the GNU C Library; if not, see
-+   <https://www.gnu.org/licenses/>.  */
-+
-+#include_next <kernel-features.h>
-+
-+#define __ASSUME_LOONGARCH_NEWSTAT 1
-+
-+/* No support for fstat or newfstatat before 6.10.6.  */
-+#if __LINUX_KERNEL_VERSION < 0x060a06
-+# undef __ASSUME_LOONGARCH_NEWSTAT
-+#endif
-diff --git a/sysdeps/unix/sysv/linux/loongarch/sysdep.h b/sysdeps/unix/sysv/linux/loongarch/sysdep.h
-index eb0ba790da..1fdf18197f 100644
---- a/sysdeps/unix/sysv/linux/loongarch/sysdep.h
-+++ b/sysdeps/unix/sysv/linux/loongarch/sysdep.h
-@@ -109,6 +109,11 @@
- #undef SYS_ify
- #define SYS_ify(syscall_name) __NR_##syscall_name
- 
-+#ifndef __ASSUME_LOONGARCH_NEWSTAT
-+#undef __NR_fstat
-+#undef __NR_newfstatat
-+#endif
-+
- #ifndef __ASSEMBLER__
- 
- #define VDSO_NAME "LINUX_5.10"
+- Delete unused sdio node in board level dts.
+- Add the description of modifying the binding in commit msg.
+- Add the reason why some node property fileds place at board level in commit msg.
+- Link to v1: https://lore.kernel.org/r/20240806-c3_add_node-v1-0-c0de41341632@amlogic.com
 
 ---
-base-commit: 2eee835eca960c9d4119279804214b7a1ed5d156
-change-id: 20240820-loong-fstat-f57f8be48575
+Xianwei Zhao (3):
+      dt-bindings: clock: fix C3 PLL input parameter
+      arm64: dts: amlogic: add some device nodes for C3
+      arm64: dts: amlogic: add C3 AW419 board
+
+ .../bindings/clock/amlogic,c3-pll-clkc.yaml        |   7 +-
+ arch/arm64/boot/dts/amlogic/Makefile               |   1 +
+ .../boot/dts/amlogic/amlogic-c3-c302x-aw409.dts    | 233 ++++++++++
+ .../boot/dts/amlogic/amlogic-c3-c308l-aw419.dts    | 262 +++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi        | 488 ++++++++++++++++++++-
+ 5 files changed, 988 insertions(+), 3 deletions(-)
+---
+base-commit: 7a5d2ce79d1fc8535a6f10e51011ae9671bd86e8
+change-id: 20240806-c3_add_node-420a37918f18
 
 Best regards,
 -- 
-Miao Wang <shankerwangmiao@gmail.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
