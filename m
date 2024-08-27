@@ -1,13 +1,12 @@
 From: Dikshita Agarwal <quic_dikshita@quicinc.com>
-Subject: [PATCH v3 00/29] Qualcomm iris video decoder driver
-Date: Tue, 27 Aug 2024 15:35:25 +0530
-Message-Id: <20240827-iris_v3-v3-0-c5fdbbe65e70@quicinc.com>
+Date: Tue, 27 Aug 2024 15:35:26 +0530
+Subject: [PATCH v3 01/29] dt-bindings: media: Add sm8550 dt schema
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOWkzWYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
- vPSU3UzU4B8JSMDIxMDCyNz3cyizOL4MmNdkyRjg1RLM0ODVPM0JaDqgqLUtMwKsEnRsbW1AOh
- V/gtZAAAA
+Message-Id: <20240827-iris_v3-v3-1-c5fdbbe65e70@quicinc.com>
+References: <20240827-iris_v3-v3-0-c5fdbbe65e70@quicinc.com>
+In-Reply-To: <20240827-iris_v3-v3-0-c5fdbbe65e70@quicinc.com>
 To: Vikash Garodia <quic_vgarodia@quicinc.com>, 
  Abhinav Kumar <quic_abhinavk@quicinc.com>, 
  Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -15,636 +14,195 @@ To: Vikash Garodia <quic_vgarodia@quicinc.com>,
  Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
 Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dikshita Agarwal <quic_dikshita@quicinc.com>, 
- Vedang Nagar <quic_vnagar@quicinc.com>
+ Dikshita Agarwal <quic_dikshita@quicinc.com>
 X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1724753190; l=23046;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724753190; l=5059;
  i=quic_dikshita@quicinc.com; s=20240826; h=from:subject:message-id;
- bh=B9gT5+IWI9RnpgWZ28NpoIq4XigLKDYfLa8semxQ1L0=;
- b=NPly0gi/qpJeCsgwaXgEuqFMO4TBaWRUZbb1LXdCHvEC4MK3OWTPGCKmABnx1cInIbBzHKzWH
- jg4BuQpQkdrC2FbpsaaFTDjrip5hSjc5HMMS7rMf63d+12e9X05+h89
+ bh=u2OAlPLCOO8H0BjK6ZnM9BZA1NpTDVrqxTLA9iybsPE=;
+ b=j8KAkO4eEKvPJOWuVfuZ0Xg1PSc0GrEigitEojwiBZ2X684/AuLkI99rn0TGgTIjvwYR8TyYY
+ c6pM3vKA/v6CzOauxXmk5RK5inWt3gNRXTM2GhGMlUlYdwVvSzWHThE
 X-Developer-Key: i=quic_dikshita@quicinc.com; a=ed25519;
  pk=+c7562uu1Y968VTv9z59ch2v3jmlO2Qv3uX7srN3LJY=
 X-Endpoint-Received: by B4 Relay for quic_dikshita@quicinc.com/20240826 with auth_id=199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce support for Qualcomm new video acceleration hardware i.e. IRIS, used
-for video stream decoding.
-
-Iris is a multi pipe based hardware that offloads video stream decoding from the
-application processor (AP). It supports H.264 decoding.  The AP communicates
-with hardware through a well defined protocol, called as host firmware interface
-(HFI), which provides fine-grained and asynchronous control over individual
-hardware features.
-
-This driver implements upgraded HFI gen2 to communicate with firmware. It
-supports SM8550 which is based out of HFI gen 2. It also supports SM8250 which
-is based out of HFI gen1.
-
-This driver comes with below capabilities:
-- V4L2 complaint video driver with M2M and STREAMING capability.
-- Supports H264 decoder.
-
-This driver comes with below features:
-- Centralized resource management.
-- Centralized management of core and instance states.
-- Defines platform specific capabilities and features. As a results, it provides
-  a single point of control to enable/disable a given feature depending on
-  specific platform capabilities.
-- Handles various video recommended sequences, like DRC, Drain, Seek, EOS.
-- Implements asynchronous communication with hardware to achieve better
-  experience in low latency usecases.
-- Output and capture planes are controlled independently. Thereby providing a
-  way to reconfigure individual plane.
-- Native hardware support of LAST flag which is mandatory to align with port
-  reconfiguration and DRAIN sequence as per V4L guidelines.
-
-Changes since v2:
-- introduced support for HFI gen1.
-- deprecated Encoder and HEVC, VP9 codecs.
-- removed custom vb2 mem ops and used standard framework instead.
-- added support for mmap streaming mode.
-- migrated all the buffer APIs to mem2mem helper functions.
-- registered iris buffer with vb2 framework.
-- migrated to clk_bulk, reset_bulk and icc_bulk APIs.
-- used pm_domain_attach/detach_list APIs.
-- migrated to read/writel and other available helpers for register access
-  instead of custom wrappers.
-- added documentation for various structures.
-- addressed many other review comments from v2.
-
-This series depends on [1] & [2]:
-
-[1]: https://patchwork.linuxtv.org/project/linux-media/list/?series=13341 -
-already applied in next-20240821 
-[2]: https://patchwork.kernel.org/project/linux-clk/patch
-/20240812134752.28031-1-quic_vnagar@quicinc.com/
-
-Note: A harmless onetime error log "Lucid PLL latch failed. Output may
-be unstable!" is seen during bootup. It doesn't impact any video usecase
-and is currently under discussion.
-
-Static tools like checkpatch, smatch, dt_binding_check, sparse and Coccinelle
-run successfully with this driver.
-
-The result of v4l2-compliance test on SM8550:
-
-v4l2-compliance 1.29.0-5239, 64 bits, 64-bit time_t
-v4l2-compliance SHA: a1ebb4dad512 2024-08-08 20:00:17
-
-Compliance test for iris_driver device /dev/video0:
-
-Driver Info:
-        Driver name      : iris_driver
-        Card type        : iris_decoder
-        Bus info         : platform:iris_icc
-        Driver version   : 6.11.0
-        Capabilities     : 0x84204000
-                Video Memory-to-Memory Multiplanar
-                Streaming
-                Extended Pix Format
-                Device Capabilities
-        Device Caps      : 0x04204000
-                Video Memory-to-Memory Multiplanar
-                Streaming
-                Extended Pix Format
-        Detected Stateful Decoder
-
-Required ioctls:
-        test VIDIOC_QUERYCAP: OK
-        test invalid ioctls: OK
-
-Allow for multiple opens:
-        test second /dev/video0 open: OK
-        test VIDIOC_QUERYCAP: OK
-        test VIDIOC_G/S_PRIORITY: OK
-                fail: ../utils/v4l2-compliance/v4l2-compliance.cpp(763): !ok
-        test for unlimited opens: FAIL
-
-Debug ioctls:
-        test VIDIOC_DBG_G/S_REGISTER: OK (Not Supported)
-        test VIDIOC_LOG_STATUS: OK (Not Supported)
-
-Input ioctls:
-        test VIDIOC_G/S_TUNER/ENUM_FREQ_BANDS: OK (Not Supported)
-        test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
-        test VIDIOC_S_HW_FREQ_SEEK: OK (Not Supported)
-        test VIDIOC_ENUMAUDIO: OK (Not Supported)
-        test VIDIOC_G/S/ENUMINPUT: OK (Not Supported)
-        test VIDIOC_G/S_AUDIO: OK (Not Supported)
-        Inputs: 0 Audio Inputs: 0 Tuners: 0
-
-Output ioctls:
-        test VIDIOC_G/S_MODULATOR: OK (Not Supported)
-        test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
-        test VIDIOC_ENUMAUDOUT: OK (Not Supported)
-        test VIDIOC_G/S/ENUMOUTPUT: OK (Not Supported)
-        test VIDIOC_G/S_AUDOUT: OK (Not Supported)
-        Outputs: 0 Audio Outputs: 0 Modulators: 0
-
-Input/Output configuration ioctls:
-        test VIDIOC_ENUM/G/S/QUERY_STD: OK (Not Supported)
-        test VIDIOC_ENUM/G/S/QUERY_DV_TIMINGS: OK (Not Supported)
-        test VIDIOC_DV_TIMINGS_CAP: OK (Not Supported)
-        test VIDIOC_G/S_EDID: OK (Not Supported)
-
-Control ioctls:
-        test VIDIOC_QUERY_EXT_CTRL/QUERYMENU: OK
-        test VIDIOC_QUERYCTRL: OK
-        test VIDIOC_G/S_CTRL: OK
-        test VIDIOC_G/S/TRY_EXT_CTRLS: OK
-        test VIDIOC_(UN)SUBSCRIBE_EVENT/DQEVENT: OK
-        test VIDIOC_G/S_JPEGCOMP: OK (Not Supported)
-        Standard Controls: 3 Private Controls: 0
-
-Format ioctls:
-        test VIDIOC_ENUM_FMT/FRAMESIZES/FRAMEINTERVALS: OK
-        test VIDIOC_G/S_PARM: OK (Not Supported)
-        test VIDIOC_G_FBUF: OK (Not Supported)
-        test VIDIOC_G_FMT: OK
-        test VIDIOC_TRY_FMT: OK
-        test VIDIOC_S_FMT: OK
-        test VIDIOC_G_SLICED_VBI_CAP: OK (Not Supported)
-        test Cropping: OK
-        test Composing: OK
-        test Scaling: OK (Not Supported)
-
-Codec ioctls:
-        test VIDIOC_(TRY_)ENCODER_CMD: OK (Not Supported)
-        test VIDIOC_G_ENC_INDEX: OK (Not Supported)
-        test VIDIOC_(TRY_)DECODER_CMD: OK
-
-Buffer ioctls:
-        test VIDIOC_REQBUFS/CREATE_BUFS/QUERYBUF: OK
-        test CREATE_BUFS maximum buffers: OK
-        test VIDIOC_REMOVE_BUFS: OK
-        test VIDIOC_EXPBUF: OK (Not Supported)
-        test Requests: OK (Not Supported)
-
-Total for iris_driver device /dev/video0: 47, Succeeded: 46, Failed: 1,
-Warnings: 0
-
-The result of v4l2-compliance test on SM8250:
-
-v4l2-compliance 1.29.0-5239, 64 bits, 64-bit time_t
-v4l2-compliance SHA: a1ebb4dad512 2024-08-08 20:00:17
-
-Compliance test for iris_driver device /dev/video0:
-
-Driver Info:
-        Driver name      : iris_driver
-        Card type        : iris_decoder
-        Bus info         : platform:iris_icc
-        Driver version   : 6.11.0
-        Capabilities     : 0x84204000
-                Video Memory-to-Memory Multiplanar
-                Streaming
-                Extended Pix Format
-                Device Capabilities
-        Device Caps      : 0x04204000
-                Video Memory-to-Memory Multiplanar
-                Streaming
-                Extended Pix Format
-        Detected Stateful Decoder
-
-Required ioctls:
-        test VIDIOC_QUERYCAP: OK
-        test invalid ioctls: OK
-
-Allow for multiple opens:
-        test second /dev/video0 open: OK
-        test VIDIOC_QUERYCAP: OK
-        test VIDIOC_G/S_PRIORITY: OK
-                fail: ../utils/v4l2-compliance/v4l2-compliance.cpp(763): !ok
-        test for unlimited opens: FAIL
-
-Debug ioctls:
-        test VIDIOC_DBG_G/S_REGISTER: OK (Not Supported)
-        test VIDIOC_LOG_STATUS: OK (Not Supported)
-
-Input ioctls:
-        test VIDIOC_G/S_TUNER/ENUM_FREQ_BANDS: OK (Not Supported)
-        test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
-        test VIDIOC_S_HW_FREQ_SEEK: OK (Not Supported)
-        test VIDIOC_ENUMAUDIO: OK (Not Supported)
-        test VIDIOC_G/S/ENUMINPUT: OK (Not Supported)
-        test VIDIOC_G/S_AUDIO: OK (Not Supported)
-        Inputs: 0 Audio Inputs: 0 Tuners: 0
-
-Output ioctls:
-        test VIDIOC_G/S_MODULATOR: OK (Not Supported)
-        test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
-        test VIDIOC_ENUMAUDOUT: OK (Not Supported)
-        test VIDIOC_G/S/ENUMOUTPUT: OK (Not Supported)
-        test VIDIOC_G/S_AUDOUT: OK (Not Supported)
-        Outputs: 0 Audio Outputs: 0 Modulators: 0
-
-Input/Output configuration ioctls:
-        test VIDIOC_ENUM/G/S/QUERY_STD: OK (Not Supported)
-        test VIDIOC_ENUM/G/S/QUERY_DV_TIMINGS: OK (Not Supported)
-        test VIDIOC_DV_TIMINGS_CAP: OK (Not Supported)
-        test VIDIOC_G/S_EDID: OK (Not Supported)
-
-Control ioctls:
-        test VIDIOC_QUERY_EXT_CTRL/QUERYMENU: OK
-        test VIDIOC_QUERYCTRL: OK
-        test VIDIOC_G/S_CTRL: OK
-        test VIDIOC_G/S/TRY_EXT_CTRLS: OK
-        test VIDIOC_(UN)SUBSCRIBE_EVENT/DQEVENT: OK
-        test VIDIOC_G/S_JPEGCOMP: OK (Not Supported)
-        Standard Controls: 2 Private Controls: 0
-
-Format ioctls:
-        test VIDIOC_ENUM_FMT/FRAMESIZES/FRAMEINTERVALS: OK
-        test VIDIOC_G/S_PARM: OK (Not Supported)
-        test VIDIOC_G_FBUF: OK (Not Supported)
-        test VIDIOC_G_FMT: OK
-        test VIDIOC_TRY_FMT: OK
-        test VIDIOC_S_FMT: OK
-        test VIDIOC_G_SLICED_VBI_CAP: OK (Not Supported)
-        test Cropping: OK
-        test Composing: OK
-        test Scaling: OK (Not Supported)
-
-Codec ioctls:
-        test VIDIOC_(TRY_)ENCODER_CMD: OK (Not Supported)
-        test VIDIOC_G_ENC_INDEX: OK (Not Supported)
-        test VIDIOC_(TRY_)DECODER_CMD: OK
-
-Buffer ioctls:
-        test VIDIOC_REQBUFS/CREATE_BUFS/QUERYBUF: OK
-        test CREATE_BUFS maximum buffers: OK
-        test VIDIOC_REMOVE_BUFS: OK
-        test VIDIOC_EXPBUF: OK (Not Supported)
-        test Requests: OK (Not Supported)
-
-Total for iris_driver device /dev/video0: 47, Succeeded: 46, Failed: 1,
-Warnings: 0
-
-Fluster score on SM8550:
-
-77/135 while testing JVT-AVC_V1 with GStreamer-H.264-V4L2-Gst1.0.JVT-AVC_V1.
-The failing tests are:
-- 52 test vectors failed due to interlaced clips: Interlaced decoding is 
-  not supported in iris driver.
-  Test Vectors:
-        cabac_mot_fld0_full
-        cabac_mot_mbaff0_full
-        cabac_mot_picaff0_full
-        CABREF3_Sand_D
-        CAFI1_SVA_C
-        CAMA1_Sony_C
-        CAMA1_TOSHIBA_B
-        cama1_vtc_c
-        cama2_vtc_b
-        CAMA3_Sand_E
-        cama3_vtc_b
-        CAMACI3_Sony_C
-        CAMANL1_TOSHIBA_B
-        CAMANL2_TOSHIBA_B
-        CAMANL3_Sand_E
-        CAMASL3_Sony_B
-        CAMP_MOT_MBAFF_L30
-        CAMP_MOT_MBAFF_L31
-        CANLMA2_Sony_C
-        CANLMA3_Sony_C
-        CAPA1_TOSHIBA_B
-        CAPAMA3_Sand_F
-        cavlc_mot_fld0_full_B
-        cavlc_mot_mbaff0_full_B
-        cavlc_mot_picaff0_full_B
-        CVCANLMA2_Sony_C
-        CVFI1_Sony_D
-        CVFI1_SVA_C
-        CVFI2_Sony_H
-        CVFI2_SVA_C
-        CVMA1_Sony_D
-        CVMA1_TOSHIBA_B
-        CVMANL1_TOSHIBA_B
-        CVMANL2_TOSHIBA_B
-        CVMAPAQP3_Sony_E
-        CVMAQP2_Sony_G
-        CVMAQP3_Sony_D
-        CVMP_MOT_FLD_L30_B
-        CVNLFI1_Sony_C
-        CVNLFI2_Sony_H
-        CVPA1_TOSHIBA_B
-        FI1_Sony_E
-        MR6_BT_B
-        MR7_BT_B
-        MR8_BT_B
-        MR9_BT_B
-        Sharp_MP_Field_1_B
-        Sharp_MP_Field_2_B
-        Sharp_MP_Field_3_B
-        Sharp_MP_PAFF_1r2
-        Sharp_MP_PAFF_2r
-        CVMP_MOT_FRM_L31_B
-- 3 test vectors failed due to unsupported bitstream.
-  num_slice_group_minus1 greater than zero is not supported by the hardware.
-  Test Vectors:
-        FM1_BT_B
-        FM1_FT_E
-        FM2_SVA_C
-- 2 test vectors failed because SP_SLICE type is not supported by the hardware.
-  Test Vectors:
-        SP1_BT_A
-        sp2_bt_b
-- 1 test vector failed due to unsupported profile:
-  V4L2_MPEG_VIDEO_H264_PROFILE_EXTENDED is being deprecated from sm8550
-  onwards due to hardware issues.
-  Test Vectors:
-        BA3_SVA_C
-
-23/69 while testing JVT-FR-EXT with GStreamer-H.264-V4L2-Gst1.0.JVT-AVC_V1.
-The failing tests are:
-- 21 test vectors failed due to interlaced clips: Interlaced decoding is
-  not supported in iris driver.
-  Test Vectors:
-        brcm_freh4
-        brcm_freh5
-        brcm_freh6
-        brcm_freh10
-        brcm_freh11
-        freh7_b
-        FREXT01_JVC_D
-        FREXT02_JVC_C
-        FRExt2_Panasonic_C
-        FRExt4_Panasonic_B
-        HCAFF1_HHI_B
-        HCAMFF1_HHI_B
-        HCHP3_HHI_A
-        HPCAFL_BRCM_C
-        HPCAFLNL_BRCM_C
-        HVLCFI0_Sony_B
-        HVLCMFF0_Sony_B
-        HVLCPFF0_Sony_B
-        HPCAMAPALQ_BRCM_B
-        HPCVFL_BRCM_A
-        HPCVFLNL_BRCM_A
-- 2 test vectors failed due to 10bit bitstream: 10bit decoding is not
-  supported in iris driver
-  Test Vectors:
-        FREH10-1
-        FREH10-2
-- 21 test vectors failed due to unsupported profile:
-  V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_422 is not supported by the hardware.
-  Test Vectors:
-        FREXT1_TANDBERG_A
-        FREXT2_TANDBERG_A
-        FREXT3_TANDBERG_A
-        Hi422FR1_SONY_A
-        Hi422FR2_SONY_A
-        Hi422FR3_SONY_A
-        Hi422FR4_SONY_A
-        Hi422FR6_SONY_A
-        Hi422FR7_SONY_A
-        Hi422FR8_SONY_A
-        Hi422FR9_SONY_A
-        Hi422FR10_SONY_A
-        Hi422FR11_SONY_A
-        Hi422FR12_SONY_A
-        Hi422FR13_SONY_A
-        Hi422FR14_SONY_A
-        Hi422FR15_SONY_A
-        Hi422FREXT16_SONY_A
-        Hi422FREXT17_SONY_A
-        Hi422FREXT18_SONY_A
-        Hi422FREXT19_SONY_A
-- 2 test vectors failed due to unsupported bitstream.
-  chroma_fmt_idc is equal to 0(monochrome) in the bitstream which is not
-  supported by the hardware.
-  Test Vectors:
-        HPCAMOLQ_BRCM_B
-        HPCVMOLQ_BRCM_B
-
-Fluster score on SM8250:
-
-78/135 while testing JVT-AVC_V1 with GStreamer-H.264-V4L2-Gst1.0.JVT-AVC_V1.
-The failing tests are:
-- 52 test vectors failed due to interlaced clips: Interlaced decoding is not
-  supported in iris driver.
-  Test Vectors:
-        cabac_mot_fld0_full
-        cabac_mot_mbaff0_full
-        cabac_mot_picaff0_full
-        CABREF3_Sand_D
-        CAFI1_SVA_C
-        CAMA1_Sony_C
-        CAMA1_TOSHIBA_B
-        cama1_vtc_c
-        cama2_vtc_b
-        CAMA3_Sand_E
-        cama3_vtc_b
-        CAMACI3_Sony_C
-        CAMANL1_TOSHIBA_B
-        CAMANL2_TOSHIBA_B
-        CAMANL3_Sand_E
-        CAMASL3_Sony_B
-        CAMP_MOT_MBAFF_L30
-        CAMP_MOT_MBAFF_L31
-        CANLMA2_Sony_C
-        CANLMA3_Sony_C
-        CAPA1_TOSHIBA_B
-        CAPAMA3_Sand_F
-        cavlc_mot_fld0_full_B
-        cavlc_mot_mbaff0_full_B
-        cavlc_mot_picaff0_full_B
-        CVCANLMA2_Sony_C
-        CVFI1_Sony_D
-        CVFI1_SVA_C
-        CVFI2_Sony_H
-        CVFI2_SVA_C
-        CVMA1_Sony_D
-        CVMA1_TOSHIBA_B
-        CVMANL1_TOSHIBA_B
-        CVMANL2_TOSHIBA_B
-        CVMAPAQP3_Sony_E
-        CVMAQP2_Sony_G
-        CVMAQP3_Sony_D
-        CVMP_MOT_FLD_L30_B
-        CVNLFI1_Sony_C
-        CVNLFI2_Sony_H
-        CVPA1_TOSHIBA_B
-        FI1_Sony_E
-        MR6_BT_B
-        MR7_BT_B
-        MR8_BT_B
-        MR9_BT_B
-        Sharp_MP_Field_1_B
-        Sharp_MP_Field_2_B
-        Sharp_MP_Field_3_B
-        Sharp_MP_PAFF_1r2
-        Sharp_MP_PAFF_2r
-        CVMP_MOT_FRM_L31_B
-- 3 test vectors failed due to unsupported bitstream.
-  num_slice_group_minus1 greater than zero is not supported by the hardware.
-  Test Vectors:
-        FM1_BT_B
-        FM1_FT_E
-        FM2_SVA_C
-- 2 test vectors failed because SP_SLICE type is not supported by the hardware.
-  Test Vectors:
-        SP1_BT_A
-        sp2_bt_b
-
-23/69 while testing JVT-FR-EXT with GStreamer-H.264-V4L2-Gst1.0.JVT-AVC_V1.
-The failing tests are:
-- 21 test vectors failed due to interlaced clips: Interlaced decoding is
-  not supported in iris driver.
-  Test Vectors:
-        brcm_freh4
-        brcm_freh5
-        brcm_freh6
-        brcm_freh10
-        brcm_freh11
-        freh7_b
-        FREXT01_JVC_D
-        FREXT02_JVC_C
-        FRExt2_Panasonic_C
-        FRExt4_Panasonic_B
-        HCAFF1_HHI_B
-        HCAMFF1_HHI_B
-        HCHP3_HHI_A
-        HPCAFL_BRCM_C
-        HPCAFLNL_BRCM_C
-        HVLCFI0_Sony_B
-        HVLCMFF0_Sony_B
-        HVLCPFF0_Sony_B
-        HPCAMAPALQ_BRCM_B
-        HPCVFL_BRCM_A
-        HPCVFLNL_BRCM_A
-- 2 test vectors failed due to 10bit bitstream: 10bit decoding is not
-  supported in iris driver
-  Test Vectors:
-        FREH10-1
-        FREH10-2
-- 21 test vectors failed due to unsupported profile:
-  V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_422 is not supported by the hardware.
-  Test Vectors:
-        FREXT1_TANDBERG_A
-        FREXT2_TANDBERG_A
-        FREXT3_TANDBERG_A
-        Hi422FR1_SONY_A
-        Hi422FR2_SONY_A
-        Hi422FR3_SONY_A
-        Hi422FR4_SONY_A
-        Hi422FR6_SONY_A
-        Hi422FR7_SONY_A
-        Hi422FR8_SONY_A
-        Hi422FR9_SONY_A
-        Hi422FR10_SONY_A
-        Hi422FR11_SONY_A
-        Hi422FR12_SONY_A
-        Hi422FR13_SONY_A
-        Hi422FR14_SONY_A
-        Hi422FR15_SONY_A
-        Hi422FREXT16_SONY_A
-        Hi422FREXT17_SONY_A
-        Hi422FREXT18_SONY_A
-        Hi422FREXT19_SONY_A
-- 2 test vectors failed due to unsupported bitstream.
-  chroma_fmt_idc is equal to 0(monochrome) in the bitstream which is not
-  supported by the hardware.
-  Test Vectors:
-        HPCAMOLQ_BRCM_B
-        HPCVMOLQ_BRCM_B
+Add a schema description for the iris video encoder/decoder
+on sm8550.
 
 Signed-off-by: Dikshita Agarwal <quic_dikshita@quicinc.com>
 ---
-Dikshita Agarwal (17):
-      dt-bindings: media: Add sm8550 dt schema
-      media: MAINTAINERS: Add Qualcomm Iris video accelerator driver
-      media: iris: add platform driver for iris video device
-      media: iris: initialize power resources
-      media: iris: implement iris v4l2 file ops
-      media: iris: introduce iris core state management with shared queues
-      media: iris: implement video firmware load/unload
-      media: iris: implement boot sequence of the firmware
-      media: iris: introduce Host firmware interface with necessary hooks
-      media: iris: implement power management
-      media: iris: implement reqbuf ioctl with vb2_queue_setup
-      media: iris: implement vb2 streaming ops
-      media: iris: allocate, initialize and queue internal buffers
-      media: iris: implement vb2 ops for buf_queue and firmware response
-      media: iris: add support for dynamic resolution change
-      media: iris: handle streamoff/on from client in dynamic resolution change
-      media: iris: add support for drain sequence
+ .../bindings/media/qcom,sm8550-iris.yaml           | 162 +++++++++++++++++++++
+ 1 file changed, 162 insertions(+)
 
-Vedang Nagar (12):
-      media: iris: implement s_fmt, g_fmt and try_fmt ioctls
-      media: iris: implement g_selection ioctl
-      media: iris: implement enum_fmt and enum_frameintervals ioctls
-      media: iris: implement subscribe_event and unsubscribe_event ioctls
-      media: iris: implement iris v4l2_ctrl_ops and prepare capabilities
-      media: iris: implement query_cap, query_ctrl and query_menu ioctls
-      media: iris: implement set properties to firmware during streamon
-      media: iris: subscribe parameters and properties to firmware for hfi_gen2
-      media: iris: add check whether the video session is supported or not
-      media: iris: implement power scaling for vpu2 and vpu3
-      media: iris: add allow checks for v4l2 ioctls
-      media: iris: add check to allow sub states transitions
+diff --git a/Documentation/devicetree/bindings/media/qcom,sm8550-iris.yaml b/Documentation/devicetree/bindings/media/qcom,sm8550-iris.yaml
+new file mode 100644
+index 000000000000..a7aa6a6190cf
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/qcom,sm8550-iris.yaml
+@@ -0,0 +1,162 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/qcom,sm8550-iris.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Qualcomm IRIS video encode and decode accelerators
++
++maintainers:
++  - Vikash Garodia <quic_vgarodia@quicinc.com>
++  - Dikshita Agarwal <quic_dikshita@quicinc.com>
++
++description: |
++  The Iris video processing unit is a video encode and decode accelerator
++  present on Qualcomm platforms.
++
++allOf:
++  - $ref: qcom,venus-common.yaml#
++
++properties:
++  compatible:
++    oneOf:
++      - enum:
++          - qcom,sm8550-iris
++
++  power-domains:
++    maxItems: 4
++
++  power-domain-names:
++    oneOf:
++      - items:
++          - const: venus
++          - const: vcodec0
++          - const: mxc
++          - const: mmcx
++
++  clocks:
++    maxItems: 3
++
++  clock-names:
++    items:
++      - const: iface
++      - const: core
++      - const: vcodec0_core
++
++  interconnects:
++    maxItems: 2
++
++  interconnect-names:
++    items:
++      - const: cpu-cfg
++      - const: video-mem
++
++  resets:
++    maxItems: 1
++
++  reset-names:
++    items:
++      - const: bus
++
++  iommus:
++    maxItems: 2
++
++  dma-coherent: true
++
++  operating-points-v2: true
++
++  opp-table:
++    type: object
++
++required:
++  - compatible
++  - power-domain-names
++  - interconnects
++  - interconnect-names
++  - resets
++  - reset-names
++  - iommus
++  - dma-coherent
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/clock/qcom,rpmh.h>
++    #include <dt-bindings/clock/qcom,sm8550-gcc.h>
++    #include <dt-bindings/clock/qcom,sm8450-videocc.h>
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/interconnect/qcom,icc.h>
++    #include <dt-bindings/interconnect/qcom,sm8550-rpmh.h>
++    #include <dt-bindings/power/qcom-rpmpd.h>
++    #include <dt-bindings/power/qcom,rpmhpd.h>
++
++    iris: video-codec@aa00000 {
++        compatible = "qcom,sm8550-iris";
++
++        reg = <0x0aa00000 0xf0000>;
++        interrupts = <GIC_SPI 174 IRQ_TYPE_LEVEL_HIGH>;
++
++        power-domains = <&videocc VIDEO_CC_MVS0C_GDSC>,
++                        <&videocc VIDEO_CC_MVS0_GDSC>,
++                        <&rpmhpd RPMHPD_MXC>,
++                        <&rpmhpd RPMHPD_MMCX>;
++        power-domain-names = "venus", "vcodec0", "mxc", "mmcx";
++
++        clocks = <&gcc GCC_VIDEO_AXI0_CLK>,
++                 <&videocc VIDEO_CC_MVS0C_CLK>,
++                 <&videocc VIDEO_CC_MVS0_CLK>;
++        clock-names = "iface", "core", "vcodec0_core";
++
++        interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ALWAYS
++                         &config_noc SLAVE_VENUS_CFG QCOM_ICC_TAG_ALWAYS>,
++                        <&mmss_noc MASTER_VIDEO QCOM_ICC_TAG_ALWAYS
++                         &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>;
++        interconnect-names = "cpu-cfg", "video-mem";
++
++        memory-region = <&video_mem>;
++
++        resets = <&gcc GCC_VIDEO_AXI0_CLK_ARES>;
++        reset-names = "bus";
++
++        iommus = <&apps_smmu 0x1940 0x0000>,
++                 <&apps_smmu 0x1947 0x0000>;
++        dma-coherent;
++
++        operating-points-v2 = <&iris_opp_table>;
++
++        iris_opp_table: opp-table {
++            compatible = "operating-points-v2";
++
++            opp-240000000 {
++                opp-hz = /bits/ 64 <240000000>;
++                required-opps = <&rpmhpd_opp_svs>,
++                                <&rpmhpd_opp_low_svs>;
++            };
++
++            opp-338000000 {
++                opp-hz = /bits/ 64 <338000000>;
++                required-opps = <&rpmhpd_opp_svs>,
++                                <&rpmhpd_opp_svs>;
++            };
++
++            opp-366000000 {
++                opp-hz = /bits/ 64 <366000000>;
++                required-opps = <&rpmhpd_opp_svs_l1>,
++                                <&rpmhpd_opp_svs_l1>;
++            };
++
++            opp-444000000 {
++                opp-hz = /bits/ 64 <444000000>;
++                required-opps = <&rpmhpd_opp_turbo>,
++                                <&rpmhpd_opp_turbo>;
++            };
++
++            opp-533333334 {
++                opp-hz = /bits/ 64 <533333334>;
++                required-opps = <&rpmhpd_opp_turbo_l1>,
++                                <&rpmhpd_opp_turbo_l1>;
++           };
++        };
++    };
++...
 
- .../bindings/media/qcom,sm8550-iris.yaml           |  162 ++++
- MAINTAINERS                                        |   11 +
- drivers/media/platform/qcom/Kconfig                |    1 +
- drivers/media/platform/qcom/Makefile               |    1 +
- drivers/media/platform/qcom/iris/Kconfig           |   13 +
- drivers/media/platform/qcom/iris/Makefile          |   27 +
- drivers/media/platform/qcom/iris/iris_buffer.c     |  599 ++++++++++++
- drivers/media/platform/qcom/iris/iris_buffer.h     |  117 +++
- drivers/media/platform/qcom/iris/iris_core.c       |   99 ++
- drivers/media/platform/qcom/iris/iris_core.h       |  107 +++
- drivers/media/platform/qcom/iris/iris_ctrls.c      |  296 ++++++
- drivers/media/platform/qcom/iris/iris_ctrls.h      |   22 +
- drivers/media/platform/qcom/iris/iris_firmware.c   |  151 +++
- drivers/media/platform/qcom/iris/iris_firmware.h   |   15 +
- drivers/media/platform/qcom/iris/iris_hfi_common.c |  222 +++++
- drivers/media/platform/qcom/iris/iris_hfi_common.h |  155 +++
- drivers/media/platform/qcom/iris/iris_hfi_gen1.h   |   16 +
- .../platform/qcom/iris/iris_hfi_gen1_command.c     |  834 ++++++++++++++++
- .../platform/qcom/iris/iris_hfi_gen1_defines.h     |  448 +++++++++
- .../platform/qcom/iris/iris_hfi_gen1_response.c    |  658 +++++++++++++
- drivers/media/platform/qcom/iris/iris_hfi_gen2.h   |   41 +
- .../platform/qcom/iris/iris_hfi_gen2_command.c     | 1003 ++++++++++++++++++++
- .../platform/qcom/iris/iris_hfi_gen2_defines.h     |  160 ++++
- .../platform/qcom/iris/iris_hfi_gen2_packet.c      |  328 +++++++
- .../platform/qcom/iris/iris_hfi_gen2_packet.h      |  125 +++
- .../platform/qcom/iris/iris_hfi_gen2_response.c    |  954 +++++++++++++++++++
- drivers/media/platform/qcom/iris/iris_hfi_queue.c  |  343 +++++++
- drivers/media/platform/qcom/iris/iris_hfi_queue.h  |  180 ++++
- drivers/media/platform/qcom/iris/iris_instance.h   |   73 ++
- .../platform/qcom/iris/iris_platform_common.h      |  195 ++++
- .../platform/qcom/iris/iris_platform_sm8250.c      |  175 ++++
- .../platform/qcom/iris/iris_platform_sm8550.c      |  310 ++++++
- drivers/media/platform/qcom/iris/iris_power.c      |  182 ++++
- drivers/media/platform/qcom/iris/iris_power.h      |   15 +
- drivers/media/platform/qcom/iris/iris_probe.c      |  257 +++++
- drivers/media/platform/qcom/iris/iris_resources.c  |  338 +++++++
- drivers/media/platform/qcom/iris/iris_resources.h  |   27 +
- drivers/media/platform/qcom/iris/iris_state.c      |  338 +++++++
- drivers/media/platform/qcom/iris/iris_state.h      |  153 +++
- drivers/media/platform/qcom/iris/iris_utils.c      |   96 ++
- drivers/media/platform/qcom/iris/iris_utils.h      |   50 +
- drivers/media/platform/qcom/iris/iris_vb2.c        |  353 +++++++
- drivers/media/platform/qcom/iris/iris_vb2.h        |   17 +
- drivers/media/platform/qcom/iris/iris_vdec.c       |  693 ++++++++++++++
- drivers/media/platform/qcom/iris/iris_vdec.h       |   25 +
- drivers/media/platform/qcom/iris/iris_vidc.c       |  706 ++++++++++++++
- drivers/media/platform/qcom/iris/iris_vidc.h       |   15 +
- drivers/media/platform/qcom/iris/iris_vpu2.c       |   39 +
- drivers/media/platform/qcom/iris/iris_vpu3.c       |  125 +++
- drivers/media/platform/qcom/iris/iris_vpu_buffer.c |  311 ++++++
- drivers/media/platform/qcom/iris/iris_vpu_buffer.h |   91 ++
- drivers/media/platform/qcom/iris/iris_vpu_common.c |  371 ++++++++
- drivers/media/platform/qcom/iris/iris_vpu_common.h |   28 +
- .../platform/qcom/iris/iris_vpu_register_defines.h |   17 +
- 54 files changed, 12088 insertions(+)
----
-base-commit: 31aaa7d95e09892c81df0d7c49ae85640fa4e202
-change-id: 20240827-iris_v3-4b30e9610e7f
-
-Best regards,
 -- 
-Dikshita Agarwal <quic_dikshita@quicinc.com>
+2.34.1
 
