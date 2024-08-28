@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Wed, 28 Aug 2024 21:16:19 +0530
-Subject: [PATCH v4 09/12] arm64: dts: qcom: sa8775p: Add 'linux,pci-domain'
- to PCIe EP controller nodes
+Date: Wed, 28 Aug 2024 21:16:20 +0530
+Subject: [PATCH v4 10/12] dt-bindings: PCI: qcom,pcie-sm8450: Add 'global'
+ interrupt
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240828-pci-qcom-hotplug-v4-9-263a385fbbcb@linaro.org>
+Message-Id: <20240828-pci-qcom-hotplug-v4-10-263a385fbbcb@linaro.org>
 References: <20240828-pci-qcom-hotplug-v4-0-263a385fbbcb@linaro.org>
 In-Reply-To: <20240828-pci-qcom-hotplug-v4-0-263a385fbbcb@linaro.org>
 To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -18,57 +18,92 @@ To: Lorenzo Pieralisi <lpieralisi@kernel.org>,
  Konrad Dybcio <konradybcio@kernel.org>
 Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1289;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2750;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=YKSy5vPklQvLJA99UbdPy4mFyoiPQChYvArhByAGkpA=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmz0ZMziJrsXic02yVCJv/8NFMTgDi+58XUKWXX
- KH3CGTMQB6JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZs9GTAAKCRBVnxHm/pHO
- 9VDsB/4sVDxMnvqbnlA73pjYq88mhGwkv1J3VCb9j/EKZHqMl10jBYx5MOYbJSW3y25GYwIxIMU
- qmjz9rqsQWRqRAkhyAkAqNhEEU8xyOdzIGO3gXHngFEVPCi2IgGpZUMDP3bMzDlUOML97HRuQHg
- kv5M/olxW+ZTsVkVca08HU8zmt7ggk7WUYgpnYRMCpfj0EVg0fspx9BD1yys1RfB+n+JqVqfuM8
- M5vzw0E7NHX82HgvT2k4RSBMTfrW4s6hJ2zFWbGm1diGiNdwqYvCUAqoI4LAw+52+zWlxKcSfL+
- Ko1Kqu+MadWR11YDjc04z8HXhrzlUEKHgsfwmeVFpEiOjZFz
+ bh=DyBVQRLO1Cvv6lhUcJR+pkpUwb9nrOEo4mxqLaOumRw=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmz0ZN73vihZy1iEXaEcTGQKkDZREqQZS/aQCIQ
+ Tp/HiXFbxiJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZs9GTQAKCRBVnxHm/pHO
+ 9f0+B/wK7H1XmDJUhCBbN/HOdnPxMEI0TodYU5qwzRf3wBq/v5DsKb0wHx7u5Rb4FogLmE+qbjI
+ nU77ZbDUQezrMrbsl4V3lbw6d/rG0n9cbTCvUOnD+8IGa2XsCe0YcfO7jGIl8kh1qZiDGOnF2l5
+ YJuOVQCwPabpmmjZNiQkiNxz9ZqRjquNgxOWb7uziTlelaMEyAf2HPvVJ7HpsklfoHB9UKAIIc7
+ PGZajtULee1PLbSn3M6FdsGnWLtYiPRQFR6r1dGnj0afaDRjCKf9AjZK45Se79yVqCnEN9MxOkx
+ EtB/ypOK7rC3vrpDjrb1Z0lDviYTaFxx73w5P0LVuqjrMKPL
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-'linux,pci-domain' property provides the PCI domain number for the PCI
-endpoint controllers in a SoC. If this property is not present, then an
-unstable (across boots) unique number will be assigned.
+Qcom PCIe RC controllers are capable of generating 'global' SPI interrupt
+to the host CPU. This interrupt can be used by the device driver to
+identify events such as PCIe link specific events, safety events, etc...
 
-Use this property to specify the domain number based on the actual hardware
-instance of the PCI endpoint controllers in SA8775P SoC.
+Hence, document it in the binding along with the existing MSI interrupts.
+Though adding a new interrupt will break the ABI, it is required to
+accurately describe the hardware.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- arch/arm64/boot/dts/qcom/sa8775p.dtsi | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml |  4 ++--
+ Documentation/devicetree/bindings/pci/qcom,pcie-sm8450.yaml | 10 ++++++----
+ 2 files changed, 8 insertions(+), 6 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sa8775p.dtsi b/arch/arm64/boot/dts/qcom/sa8775p.dtsi
-index 23f1b2e5e624..198b39abde97 100644
---- a/arch/arm64/boot/dts/qcom/sa8775p.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sa8775p.dtsi
-@@ -4618,6 +4618,7 @@ pcie0_ep: pcie-ep@1c00000 {
- 		phy-names = "pciephy";
- 		max-link-speed = <3>; /* FIXME: Limiting the Gen speed due to stability issues */
- 		num-lanes = <2>;
-+		linux,pci-domain = <0>;
+diff --git a/Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml b/Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml
+index 0a39bbfcb28b..704c0f58eea5 100644
+--- a/Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml
++++ b/Documentation/devicetree/bindings/pci/qcom,pcie-common.yaml
+@@ -21,11 +21,11 @@ properties:
  
- 		status = "disabled";
- 	};
-@@ -4775,6 +4776,7 @@ pcie1_ep: pcie-ep@1c10000 {
- 		phy-names = "pciephy";
- 		max-link-speed = <3>; /* FIXME: Limiting the Gen speed due to stability issues */
- 		num-lanes = <4>;
-+		linux,pci-domain = <1>;
+   interrupts:
+     minItems: 1
+-    maxItems: 8
++    maxItems: 9
  
- 		status = "disabled";
- 	};
+   interrupt-names:
+     minItems: 1
+-    maxItems: 8
++    maxItems: 9
+ 
+   iommu-map:
+     minItems: 1
+diff --git a/Documentation/devicetree/bindings/pci/qcom,pcie-sm8450.yaml b/Documentation/devicetree/bindings/pci/qcom,pcie-sm8450.yaml
+index d8c0afaa4b19..46bd59eefadb 100644
+--- a/Documentation/devicetree/bindings/pci/qcom,pcie-sm8450.yaml
++++ b/Documentation/devicetree/bindings/pci/qcom,pcie-sm8450.yaml
+@@ -55,8 +55,8 @@ properties:
+       - const: aggre1 # Aggre NoC PCIe1 AXI clock
+ 
+   interrupts:
+-    minItems: 8
+-    maxItems: 8
++    minItems: 9
++    maxItems: 9
+ 
+   interrupt-names:
+     items:
+@@ -68,6 +68,7 @@ properties:
+       - const: msi5
+       - const: msi6
+       - const: msi7
++      - const: global
+ 
+   operating-points-v2: true
+   opp-table:
+@@ -149,9 +150,10 @@ examples:
+                          <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>,
+                          <GIC_SPI 146 IRQ_TYPE_LEVEL_HIGH>,
+                          <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>,
+-                         <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
++                         <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>,
++                         <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
+             interrupt-names = "msi0", "msi1", "msi2", "msi3",
+-                              "msi4", "msi5", "msi6", "msi7";
++                              "msi4", "msi5", "msi6", "msi7", "global";
+             #interrupt-cells = <1>;
+             interrupt-map-mask = <0 0 0 0x7>;
+             interrupt-map = <0 0 0 1 &intc 0 0 0 149 IRQ_TYPE_LEVEL_HIGH>, /* int_a */
 
 -- 
 2.25.1
