@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Wed, 28 Aug 2024 21:16:11 +0530
-Subject: [PATCH v4 01/12] PCI: qcom-ep: Drop the redundant masking of
- global IRQ events
+Date: Wed, 28 Aug 2024 21:16:12 +0530
+Subject: [PATCH v4 02/12] PCI: qcom-ep: Reword the error message for
+ receiving unknown global IRQ event
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240828-pci-qcom-hotplug-v4-1-263a385fbbcb@linaro.org>
+Message-Id: <20240828-pci-qcom-hotplug-v4-2-263a385fbbcb@linaro.org>
 References: <20240828-pci-qcom-hotplug-v4-0-263a385fbbcb@linaro.org>
 In-Reply-To: <20240828-pci-qcom-hotplug-v4-0-263a385fbbcb@linaro.org>
 To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -21,50 +21,49 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
  Konrad Dybcio <konrad.dybcio@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1288;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1256;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=dIwxxT9MwJPav4RVeIZrg0i1F93yyMgBj6gEWSQjRyU=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmz0ZKTql9/9UmlcG+Npy4IRg4LA68vHTpVm2b0
- w8p9An1P6mJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZs9GSgAKCRBVnxHm/pHO
- 9b3mB/9sX+pg62jn7h5KxdyPMuPEU+Ut3hxhl94VOzC5toY93fuBpVtHvcMpMA5ZNa2cb19bMu7
- hu8fmadaUbbw5pZZsbcELIzNHLV43sKlxdW21EIWnVFBg1QCN2ri4S9zl+nKb7QdVyY3xPiTsHM
- Lf3K9p6wDZ+oR5Dlea+vnRrmF8tk3j0EUqYWoxMrzXNHNkw9+I/uMsuvTLQIp4W9mJoL38gR0Bq
- kSkdLDivlXUmnFhxHI+6n9qTHHuVhswjpl/+5DZe2kVcz/830JDPmL96x38aw2GE/mvdRYtHEXP
- RaPCocE5msPu6L9J+oUja0z7O2OSu2niy/ebgpRhccP3ZUJN
+ bh=B8RUdvVv9QEg4h2fDtSWIh3luhRVOKTDULQMHpO/Rk0=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBmz0ZLNt9QNPKv9NKAKbZ5eVVEDlJxVPTsCl4yZ
+ H4jVagxg8KJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZs9GSwAKCRBVnxHm/pHO
+ 9cEpB/4hP+YKCmtIoOu2Hobc2nRJn8ozN5UY9byuFg1YQ5A1UEpxS1qIj/AsDmQdV9VTq5uHzGM
+ 328jQY5jYgixBeIhqP4j1hMIWYRj1u/IsKn0n+dIuIU3dG6LE/YZ7nEKXToBSR72kQDRqO59alz
+ WzXQTeR8g87j1LgD4ZjW61UaFEEWMFrDZFHezITn8NV9Oy0lbwJRaV7QDzlVgpuIWPkP2a7Kzhl
+ dc2+VD7cLBgch/22b8vPvycHUyVl+UzorHJhFDRkSBx8eu7jpX78UD738y9xO7ESP5/Z9JwJNKC
+ ucR+cweFjvWOdffPpzPYLz3GBumFwjJcJEGsVOy2gwP8c/UG
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Once the events are disabled in PARF_INT_ALL_MASK register, only the
-enabled events will generate global IRQ. So there is no need to do the
-masking again in the IRQ handler, drop it.
+Current error message just prints the contents of PARF_INT_ALL_STATUS
+register as if like the IRQ event number. It could mislead the users.
+Reword it to make it clear that the error message is actually showing the
+interrupt status register to help debug spurious IRQ events.
 
-If there are any spurious IRQs getting generated, they will be reported
-using the existing dev_err() in the handler.
+While at it, let's also switch over to dev_WARN_ONCE() so that any IRQ
+storm won't flood the kernel log buffer.
 
 Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/pci/controller/dwc/pcie-qcom-ep.c | 2 --
- 1 file changed, 2 deletions(-)
+ drivers/pci/controller/dwc/pcie-qcom-ep.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/pci/controller/dwc/pcie-qcom-ep.c b/drivers/pci/controller/dwc/pcie-qcom-ep.c
-index 236229f66c80..972a90eba494 100644
+index 972a90eba494..0bb0a056dd8f 100644
 --- a/drivers/pci/controller/dwc/pcie-qcom-ep.c
 +++ b/drivers/pci/controller/dwc/pcie-qcom-ep.c
-@@ -647,11 +647,9 @@ static irqreturn_t qcom_pcie_ep_global_irq_thread(int irq, void *data)
- 	struct dw_pcie *pci = &pcie_ep->pci;
- 	struct device *dev = pci->dev;
- 	u32 status = readl_relaxed(pcie_ep->parf + PARF_INT_ALL_STATUS);
--	u32 mask = readl_relaxed(pcie_ep->parf + PARF_INT_ALL_MASK);
- 	u32 dstate, val;
+@@ -679,7 +679,8 @@ static irqreturn_t qcom_pcie_ep_global_irq_thread(int irq, void *data)
+ 		dw_pcie_ep_linkup(&pci->ep);
+ 		pcie_ep->link_status = QCOM_PCIE_EP_LINK_UP;
+ 	} else {
+-		dev_err(dev, "Received unknown event: %d\n", status);
++		dev_WARN_ONCE(dev, 1, "Received unknown event. INT_STATUS: 0x%08x\n",
++			      status);
+ 	}
  
- 	writel_relaxed(status, pcie_ep->parf + PARF_INT_ALL_CLEAR);
--	status &= mask;
- 
- 	if (FIELD_GET(PARF_INT_ALL_LINK_DOWN, status)) {
- 		dev_dbg(dev, "Received Linkdown event\n");
+ 	return IRQ_HANDLED;
 
 -- 
 2.25.1
