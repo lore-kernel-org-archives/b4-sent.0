@@ -1,10 +1,10 @@
 From: Oliver Gaskell <Oliver.Gaskell@analog.com>
-Date: Wed, 28 Aug 2024 11:02:16 +0100
-Subject: [PATCH 08/20] arm: dts: Support SC598-SOM-EZLITE
+Date: Wed, 28 Aug 2024 11:02:17 +0100
+Subject: [PATCH 09/20] dt-bindings: arm: Add SC5xx Series binding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240828-sc5xx-upstreaming-patches-v1-8-44d9adfdf327@analog.com>
+Message-Id: <20240828-sc5xx-upstreaming-patches-v1-9-44d9adfdf327@analog.com>
 References: <20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com>
 In-Reply-To: <20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -18,60 +18,89 @@ To: Tom Rini <trini@konsulko.com>,
 Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
  Oliver Gaskell <Oliver.Gaskell@analog.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1724839434; l=1575;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724839434; l=2267;
  i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
- bh=M0uaWSxA8CaZN3Qnd9WlPh2aWgwwkP6PgJ7fqjzQrik=;
- b=ewMxmLrxKL+kdkaWh936UipYSGLfr5vFstj9MQDAdtG9YoXin4iJzaZf/4snyPYmGL5u1Vqsq
- /Bneoh5gtFUCnxCJ438Mau9SWv+1GvXsMV+qTNkAh6Op273xW3UB6LB
+ bh=Hj1AL+UlGLUOoTKxqlpcMivfNb8PuSCat7zga3khJ1g=;
+ b=q/rpIT0nV5dgztV3HrJgvnsTYuOgf125BVTteSRVIRXeUMbXWRC0ynF3vKuXH0udM2BpK7SQu
+ MCJNr2AulLLBLgkm04gYbsw2YJTkQshnOp5Lj70PO1D17TIuTU5pFvC
 X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
  pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
 X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add minimal device tree for Analog Devices' SC598-SOM-EZLITE board.
+Add devicetree schema for Analog Devices SC5xx series SoCs.
 
-This patch depends on Patches 01 and 07, for sc5xx.dtsi and
-sc598-som.dtsi respectively.
-
-Co-developed-by: Greg Malysa <greg.malysa@timesys.com>
-Co-developed-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
 Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
- arch/arm/dts/Makefile             |  1 +
- arch/arm/dts/sc598-som-ezlite.dts | 13 +++++++++++++
- 2 files changed, 14 insertions(+)
+ MAINTAINERS                                     |  1 +
+ doc/device-tree-bindings/arm/adi/adi,sc5xx.yaml | 46 +++++++++++++++++++++++++
+ 2 files changed, 47 insertions(+)
 
-diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
-index 6b0a762bce..9395feeede 100644
---- a/arch/arm/dts/Makefile
-+++ b/arch/arm/dts/Makefile
-@@ -1282,6 +1282,7 @@ dtb-$(CONFIG_TARGET_SC589_EZKIT) += sc589-ezkit.dtb
- dtb-$(CONFIG_TARGET_SC594_SOM_EZKIT) += sc594-som-ezkit.dtb
- dtb-$(CONFIG_TARGET_SC594_SOM_EZLITE) += sc594-som-ezlite.dtb
- dtb-$(CONFIG_TARGET_SC598_SOM_EZKIT) += sc598-som-ezkit.dtb
-+dtb-$(CONFIG_TARGET_SC598_SOM_EZLITE) += sc598-som-ezlite.dtb
- 
- ifneq ($(CONFIG_TARGET_IMX8MP_RSB3720A1_4G)$(CONFIG_TARGET_IMX8MP_RSB3720A1_6G),)
- dtb-y += imx8mp-rsb3720-a1.dtb
-diff --git a/arch/arm/dts/sc598-som-ezlite.dts b/arch/arm/dts/sc598-som-ezlite.dts
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 0640d56991..c283e09901 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -607,6 +607,7 @@ T:	git https://github.com/analogdevicesinc/lnxdsp-u-boot
+ F:	arch/arm/dts/sc5*
+ F:	arch/arm/include/asm/arch-adi/
+ F:	arch/arm/mach-sc5xx/
++F:	doc/device-tree-bindings/arm/adi/adi,sc5xx.yaml
+ F:	drivers/clk/adi/
+ F:	drivers/serial/serial_adi_uart4.c
+ F:	drivers/timer/adi_sc5xx_timer.c
+diff --git a/doc/device-tree-bindings/arm/adi/adi,sc5xx.yaml b/doc/device-tree-bindings/arm/adi/adi,sc5xx.yaml
 new file mode 100644
-index 0000000000..fa23b30f86
+index 0000000000..2d08d75667
 --- /dev/null
-+++ b/arch/arm/dts/sc598-som-ezlite.dts
-@@ -0,0 +1,13 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * (C) Copyright 2024 - Analog Devices, Inc.
-+ */
++++ b/doc/device-tree-bindings/arm/adi/adi,sc5xx.yaml
+@@ -0,0 +1,46 @@
++# SPDX-License-Identifier: (GPL-2.0+)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/arm/adi/adi,sc5xx.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+/dts-v1/;
++title: Analog Devices SC5XX ARM-based SoCs
 +
-+#include "sc598-som.dtsi"
++maintainers:
++  - Vasileios Bimpikas <vasileios.bimpikas@analog.com>
++  - Utsav Agarwal <utsav.agarwal@analog.com>
++  - Arturs Artamonovs <arturs.artamonovs@analog.com>
 +
-+/ {
-+	model = "ADI SC598-SOM-EZLITE";
-+	compatible = "adi,sc598-som-ezlite", "adi,sc59x-64";
-+};
++properties:
++  $nodename:
++    const: '/'
++  compatible:
++    oneOf:
++      - description: SC57X Series Boards
++        items:
++          - const: adi,sc573-ezkit
++          - const: adi,sc57x
++
++      - description: SC58X Series Boards
++        items:
++          - enum:
++            - adi,sc584-ezkit
++            - adi,sc589-ezkit
++            - adi,sc589-mini
++          - const: adi,sc58x
++
++      - description: SC59X Series 32-bit Boards
++        items:
++          - enum:
++            - adi,sc594-som-ezkit
++            - adi,sc594-som-ezlite
++          - const: adi,sc59x
++
++      - description: SC59X Series 64-bit Boards
++        items:
++          - enum:
++            - adi,sc598-som-ezkit
++            - adi,sc598-som-ezlite
++          - const: adi,sc59x-64
++
++additionalProperties: true
+\ No newline at end of file
 
 -- 
 2.34.1
