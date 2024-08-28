@@ -1,10 +1,10 @@
 From: Oliver Gaskell <Oliver.Gaskell@analog.com>
-Date: Wed, 28 Aug 2024 11:02:23 +0100
-Subject: [PATCH 15/20] arm: SC594-SOM-EZKIT initial support
+Date: Wed, 28 Aug 2024 11:02:24 +0100
+Subject: [PATCH 16/20] arm: SC594-SOM-EZLITE initial support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240828-sc5xx-upstreaming-patches-v1-15-44d9adfdf327@analog.com>
+Message-Id: <20240828-sc5xx-upstreaming-patches-v1-16-44d9adfdf327@analog.com>
 References: <20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com>
 In-Reply-To: <20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -16,136 +16,63 @@ To: Tom Rini <trini@konsulko.com>,
  Arturs Artamonovs <arturs.artamonovs@analog.com>, 
  Rayagonda Kokatanur <rayagonda.kokatanur@broadcom.com>
 Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
- Oliver Gaskell <Oliver.Gaskell@analog.com>, 
- Trevor Woerner <twoerner@gmail.com>
+ Oliver Gaskell <Oliver.Gaskell@analog.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1724839434; l=7033;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724839434; l=4489;
  i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
- bh=sYuy/YkBdmEAedGkRekKyMOYGSQ3QF2AUcu8G7VvB6k=;
- b=IG1LFM92EasbFch4POp3LHiEdskHTvZWFH0IgW9NSqR3bk8YxfNIU40eBFvF2erpYvYvBHFz8
- Q22NU25zU7ZADKxwsolzDz2fuHIjfo2lHe4nGA26vfYQviAvAzKH2Ih
+ bh=uum9NeLtSBi9ikbtFFk0z++c3va2mX/FitLSal1N7RE=;
+ b=GAuFiRnXKIO61sYuzeNr4sRo0vATI6HiX+p5FTOFEClKQm6jdJhOOpIQKZ7vfmbI0ElBZQPQd
+ bFFtrrZt6e5C+E31G4/mwWPrZmT+giiv+fSN8D3YZ74aK7DNFDP+B6h
 X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
  pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
 X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds support for Analog Devices' SC594-SOM-EZKIT board. Includes:
-- SoC specific configs in mach-sc5xx/Kconfig
-- Memory Map for SPL
-- Necessary board-specific init functions
+Adds support for Analog Devices' SC594-SOM-EZLITE board. Includes:
+- Board specific configs in mach-sc5xx/Kconfig
 - Board-specific Kconfig and environment in board/adi/
-- Memory configuration
 
-Co-developed-by: Greg Malysa <greg.malysa@timesys.com>
-Co-developed-by: Trevor Woerner <twoerner@gmail.com>
-Co-developed-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
-Co-developed-by: Ian Roberts <ian.roberts@timesys.com>
 Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
- arch/arm/mach-sc5xx/Kconfig                   |  17 ++-
- arch/arm/mach-sc5xx/Makefile                  |   1 +
- arch/arm/mach-sc5xx/sc59x-spl.c               |  26 ++++
- board/adi/sc594-som-ezkit/Kconfig             | 181 ++++++++++++++++++++++++++
- board/adi/sc594-som-ezkit/sc594-som-ezkit.env |  13 ++
- include/configs/sc594-som.h                   |  19 +++
- 6 files changed, 256 insertions(+), 1 deletion(-)
+ arch/arm/mach-sc5xx/Kconfig                     |   6 +
+ board/adi/sc594-som-ezlite/Kconfig              | 181 ++++++++++++++++++++++++
+ board/adi/sc594-som-ezlite/sc594-som-ezlite.env |  13 ++
+ 3 files changed, 200 insertions(+)
 
 diff --git a/arch/arm/mach-sc5xx/Kconfig b/arch/arm/mach-sc5xx/Kconfig
-index b3a17036e7..fd7029974b 100644
+index fd7029974b..89bc60d6a5 100644
 --- a/arch/arm/mach-sc5xx/Kconfig
 +++ b/arch/arm/mach-sc5xx/Kconfig
-@@ -32,7 +32,7 @@ config SC59X
- 	bool "SC59x 32-bit series"
- 	select CPU_V7A
- 	select COMMON_CLK_ADI_SC594
--	select NOP_PHY
-+	select NOP_PHY if PHY
- 
- config SC59X_64
- 	bool "SC59x 64-bit series"
-@@ -46,6 +46,20 @@ config SC59X_64
- 
- endchoice
- 
-+if SC59X
-+
-+choice
-+	prompt "SC59x 32-bit board select"
-+
-+config TARGET_SC594_SOM_EZKIT
-+	bool
-+	prompt "SC594-SOM with SOMCRR-EZKIT"
-+	select ADI_CARRIER_SOMCRR_EZKIT
-+
-+endchoice
-+
-+endif
-+
- if SC59X_64
- 
+@@ -51,6 +51,11 @@ if SC59X
  choice
-@@ -506,5 +520,6 @@ config PINCTRL_ADI
+ 	prompt "SC59x 32-bit board select"
  
++config TARGET_SC594_SOM_EZLITE
++	bool
++	prompt "SC594-SOM with SOMCRR-EZLITE"
++	select ADI_CARRIER_SOMCRR_EZLITE
++
+ config TARGET_SC594_SOM_EZKIT
+ 	bool
+ 	prompt "SC594-SOM with SOMCRR-EZKIT"
+@@ -521,5 +526,6 @@ config PINCTRL_ADI
  source "board/adi/sc598-som-ezkit/Kconfig"
  source "board/adi/sc598-som-ezlite/Kconfig"
-+source "board/adi/sc594-som-ezkit/Kconfig"
+ source "board/adi/sc594-som-ezkit/Kconfig"
++source "board/adi/sc594-som-ezlite/Kconfig"
  
  endif
-diff --git a/arch/arm/mach-sc5xx/Makefile b/arch/arm/mach-sc5xx/Makefile
-index 0955c509a5..a8079b6120 100644
---- a/arch/arm/mach-sc5xx/Makefile
-+++ b/arch/arm/mach-sc5xx/Makefile
-@@ -13,6 +13,7 @@ obj-y += soc.o init/
- obj-$(CONFIG_SC57X) += sc57x.o
- obj-$(CONFIG_SC58X) += sc58x.o
- obj-$(CONFIG_SC59X) += sc59x.o
-+obj-$(CONFIG_SC59X) += sc59x-spl.o
- obj-$(CONFIG_SC59X_64) += sc59x_64.o
- obj-$(CONFIG_SC59X_64) += sc59x_64-spl.o
- 
-diff --git a/arch/arm/mach-sc5xx/sc59x-spl.c b/arch/arm/mach-sc5xx/sc59x-spl.c
+diff --git a/board/adi/sc594-som-ezlite/Kconfig b/board/adi/sc594-som-ezlite/Kconfig
 new file mode 100644
-index 0000000000..c8fc25fe7c
+index 0000000000..fb6a8235a1
 --- /dev/null
-+++ b/arch/arm/mach-sc5xx/sc59x-spl.c
-@@ -0,0 +1,26 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * (C) Copyright 2024 - Analog Devices, Inc.
-+ */
-+
-+#include <asm/arch-adi/sc5xx/spl.h>
-+
-+// Table 45-14 in sc594 HRM
-+const struct adi_boot_args adi_rom_boot_args[] = {
-+	// JTAG/no boot
-+	[0] = {0, 0, 0},
-+	// SPI master, used for qspi as well
-+	[1] = {0x60040000, 0x00040000, 0x20620247},
-+	// SPI slave
-+	[2] = {0, 0, 0x00000212},
-+	// UART slave
-+	[3] = {0, 0, 0x00000013},
-+	// Linkport slave
-+	[4] = {0, 0, 0x00000014},
-+	// OSPI master
-+	[5] = {0x60040000, 0, 0x00000008},
-+	// reserved, no boot
-+	[6] = {0, 0, 0},
-+	// reserved, also no boot
-+	[7] = {0, 0, 0}
-+};
-diff --git a/board/adi/sc594-som-ezkit/Kconfig b/board/adi/sc594-som-ezkit/Kconfig
-new file mode 100644
-index 0000000000..09e22141d4
---- /dev/null
-+++ b/board/adi/sc594-som-ezkit/Kconfig
++++ b/board/adi/sc594-som-ezlite/Kconfig
 @@ -0,0 +1,181 @@
 +# SPDX-License-Identifier: GPL-2.0-or-later
 +#
 +# (C) Copyright 2024 - Analog Devices, Inc.
 +
-+if TARGET_SC594_SOM_EZKIT
++if TARGET_SC594_SOM_EZLITE
 +
 +config SYS_VENDOR
 +	default "adi"
@@ -154,13 +81,13 @@ index 0000000000..09e22141d4
 +	default "ADSP-SC594-0.0"
 +
 +config SYS_BOARD
-+	default "sc594-som-ezkit"
++	default "sc594-som-ezlite"
 +
 +config SYS_CONFIG_NAME
 +	default "sc594-som"
 +
 +config DEFAULT_DEVICE_TREE
-+	default "sc594-som-ezkit"
++	default "sc594-som-ezlite"
 +
 +config SPL_MAX_SIZE
 +	default 0x30000 # 256KB
@@ -198,7 +125,7 @@ index 0000000000..09e22141d4
 +
 +config CUSTOM_SYS_INIT_SP_ADDR
 +	hex
-+	default 0xA003f000
++	default 0x8203f000
 +
 +config SYS_LOAD_ADDR
 +	hex
@@ -212,7 +139,7 @@ index 0000000000..09e22141d4
 +
 +config SPL_PAYLOAD_ARGS_ADDR
 +	hex
-+	default 0xA0000000
++	default 0x80000000
 +
 +config SPL_OF_LIBFDT_ASSUME_MASK
 +	hex
@@ -322,11 +249,11 @@ index 0000000000..09e22141d4
 +	default 1
 +
 +endif
-diff --git a/board/adi/sc594-som-ezkit/sc594-som-ezkit.env b/board/adi/sc594-som-ezkit/sc594-som-ezkit.env
+diff --git a/board/adi/sc594-som-ezlite/sc594-som-ezlite.env b/board/adi/sc594-som-ezlite/sc594-som-ezlite.env
 new file mode 100644
-index 0000000000..83d6b457a0
+index 0000000000..152e1f14fd
 --- /dev/null
-+++ b/board/adi/sc594-som-ezkit/sc594-som-ezkit.env
++++ b/board/adi/sc594-som-ezlite/sc594-som-ezlite.env
 @@ -0,0 +1,13 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later+ */
 +
@@ -340,32 +267,7 @@ index 0000000000..83d6b457a0
 +adi_image_offset=0x0120000
 +adi_rfs_offset=0x1020000
 +loadaddr=0xA2000000
-+jffs2file=adsp-sc5xx-__stringify(CONFIG_ADI_IMAGE)-adsp-sc594-som-ezkit.jffs2
-diff --git a/include/configs/sc594-som.h b/include/configs/sc594-som.h
-new file mode 100644
-index 0000000000..ba9b0cdb0c
---- /dev/null
-+++ b/include/configs/sc594-som.h
-@@ -0,0 +1,19 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later */
-+/*
-+ * (C) Copyright 2024 - Analog Devices, Inc.
-+ */
-+
-+#ifndef __CONFIG_SC594_SOM_H
-+#define __CONFIG_SC594_SOM_H
-+
-+/*
-+ * Memory Settings
-+ */
-+#define MEM_IS43TR16512BL
-+#define MEM_ISSI_8Gb_DDR3_800MHZ
-+#define MEM_DMC0
-+
-+#define CFG_SYS_SDRAM_BASE	0xA0000000
-+#define CFG_SYS_SDRAM_SIZE	0x20000000
-+
-+#endif
++jffs2file=adsp-sc5xx-__stringify(CONFIG_ADI_IMAGE)-adsp-sc594-som-ezlite.jffs2
 
 -- 
 2.34.1
