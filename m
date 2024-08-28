@@ -1,62 +1,125 @@
-From: =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
-Date: Wed, 28 Aug 2024 10:22:55 +0200
-Subject: [PATCH v5 2/2] dt-bindings: rtc: Add support for SD2405AL.
+From: Oliver Gaskell <Oliver.Gaskell@analog.com>
+Subject: [PATCH 00/20] arm: Initial support for Analog Devices SC5xx boards
+Date: Wed, 28 Aug 2024 11:02:08 +0100
+Message-Id: <20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240828-rtc-sd2405al-v5-2-9e3f8fa5ea6b@gmail.com>
-References: <20240828-rtc-sd2405al-v5-0-9e3f8fa5ea6b@gmail.com>
-In-Reply-To: <20240828-rtc-sd2405al-v5-0-9e3f8fa5ea6b@gmail.com>
-To: Alexandre Belloni <alexandre.belloni@bootlin.com>
-Cc: linux-kernel@vger.kernel.org, linux-rtc@vger.kernel.org, 
- csokas.bence@prolan.hu, 
- =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1724833402; l=1442;
- i=gomba007@gmail.com; s=20230706; h=from:subject:message-id;
- bh=qWxaAf/tRWvCysvtbxfKQdSTKlzQ/+oIz5nxFjiPb0k=;
- b=dVtCyoRsYzXhzwdFpP8gv2+0cTps49SIPVnIkiULfeZ+fdNLcf8PKk42qvnwuncl4H5lD+xVw
- X+OVkyBDiyHCwSJqKKbFPpI6GLjziqzdBgd3lUIn2g2Uj5rk17x1dlD
-X-Developer-Key: i=gomba007@gmail.com; a=ed25519;
- pk=iY9MjPCbud82ULS2PQJIq3QwjKyP/Sg730I6T2M8Y5U=
-X-Endpoint-Received: by B4 Relay for gomba007@gmail.com/20230706 with auth_id=60
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAKH1zmYC/x3MQQqEMAxA0atI1gZqUbReRVzETtQsrKVxhoJ4d
+ 8ss3+L/G5STsMJY3ZD4JypnKGjqCvxOYWOUTzFYY1sz2AbVdznjN+qVmA4JG0a6/M6K3rTDQm5
+ 1vSMofUy8Sv6/p/l5XprC1/5rAAAA
+To: Tom Rini <trini@konsulko.com>, 
+ Nathan Barrett-Morrison <nathan.morrison@timesys.com>, 
+ Greg Malysa <greg.malysa@timesys.com>, 
+ Ian Roberts <ian.roberts@timesys.com>, 
+ Vasileios Bimpikas <vasileios.bimpikas@analog.com>, 
+ Utsav Agarwal <utsav.agarwal@analog.com>, 
+ Arturs Artamonovs <arturs.artamonovs@analog.com>, 
+ Rayagonda Kokatanur <rayagonda.kokatanur@broadcom.com>
+Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
+ Oliver Gaskell <Oliver.Gaskell@analog.com>, 
+ Trevor Woerner <twoerner@gmail.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724839434; l=4844;
+ i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
+ bh=RrRosQ7LQ4UBnRipIUNFLD3i+WHKmXH6jYlumQxEnqE=;
+ b=RkEE7bFcphXifnDlk7P7dBVDdLGEFZaaY1PJNirKbC8raGqqPi0U+GghervSgvSSOE07YDqPW
+ Zwe6ZbY2ZmTA6ajy416p882PybaQl5FL+klcvg9+s1JqKJk9t7bME7h
+X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
+ pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
+X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the necessary documentation for SD2405AL.
+ADSP-SC5xx is a series of ARM-based DSPs.
+This comprises the armv7 based SC57x, SC58x and SC594 series, and the
+armv8 based SC598.
 
-Signed-off-by: Tóth János <gomba007@gmail.com>
+This patch series includes configurations, init code, and minimal DTs
+to enable Analog Devices' evaluation boards for these SoCs to boot
+through SPL and into U-Boot Proper, as well as devicetree schemas for
+the added DTs.
+
+This patch series depends on ("arm: Add Analog Devices SC5xx Machine
+Type") (https://lists.denx.de/pipermail/u-boot/2024-April/552043.html)
+
+Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
- Documentation/devicetree/bindings/rtc/trivial-rtc.yaml | 2 ++
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 2 files changed, 4 insertions(+)
+Oliver Gaskell (20):
+      arm: dts: Support SC573-EZKIT
+      arm: dts: Support SC584-EZKIT
+      arm: dts: Support SC589-MINI
+      arm: dts: Support SC589-EZKIT
+      arm: dts: Support SC594-SOM-EZKIT
+      arm: dts: Support SC594-SOM-EZLITE
+      arm: dts: Support SC598-SOM-EZKIT
+      arm: dts: Support SC598-SOM-EZLITE
+      dt-bindings: arm: Add SC5xx Series binding
+      dt-bindings: clock: Add SC5xx clock tree bindings
+      dt-bindings: timer: Add SC5xx Timer bindings
+      arm: mach-sc5xx: clean up Kconfig
+      arm: SC598-SOM-EZKIT initial support
+      arm: SC598-SOM-EZLITE initial support
+      arm: SC594-SOM-EZKIT initial support
+      arm: SC594-SOM-EZLITE initial support
+      arm: SC584-EZKIT initial support
+      arm: SC589-EZKIT initial support
+      arm: SC589-MINI initial support
+      arm: SC573-EZKIT initial support
 
-diff --git a/Documentation/devicetree/bindings/rtc/trivial-rtc.yaml b/Documentation/devicetree/bindings/rtc/trivial-rtc.yaml
-index fffd759c603f..dae594626b2e 100644
---- a/Documentation/devicetree/bindings/rtc/trivial-rtc.yaml
-+++ b/Documentation/devicetree/bindings/rtc/trivial-rtc.yaml
-@@ -38,6 +38,8 @@ properties:
-       - dallas,ds1672
-       # Extremely Accurate I²C RTC with Integrated Crystal and SRAM
-       - dallas,ds3232
-+      # SD2405AL Real-Time Clock
-+      - dfrobot,sd2405al
-       # EM Microelectronic EM3027 RTC
-       - emmicro,em3027
-       # I2C-BUS INTERFACE REAL TIME CLOCK MODULE
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index fbf47f0bacf1..eddc91129a2a 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -364,6 +364,8 @@ patternProperties:
-     description: Devantech, Ltd.
-   "^dfi,.*":
-     description: DFI Inc.
-+  "^dfrobot,.*":
-+    description: DFRobot Corporation
-   "^dh,.*":
-     description: DH electronics GmbH
-   "^difrnce,.*":
+ MAINTAINERS                                        |   7 +
+ arch/arm/Kconfig                                   |  14 ++
+ arch/arm/dts/Makefile                              |   9 +
+ arch/arm/dts/sc573-ezkit.dts                       |  13 ++
+ arch/arm/dts/sc57x.dtsi                            |  21 +++
+ arch/arm/dts/sc584-ezkit.dts                       |  13 ++
+ arch/arm/dts/sc589-ezkit.dts                       |  13 ++
+ arch/arm/dts/sc589-mini.dts                        |  13 ++
+ arch/arm/dts/sc58x.dtsi                            |  23 +++
+ arch/arm/dts/sc594-som-ezkit.dts                   |  13 ++
+ arch/arm/dts/sc594-som-ezlite.dts                  |  13 ++
+ arch/arm/dts/sc594-som.dtsi                        |  19 +++
+ arch/arm/dts/sc598-som-ezkit.dts                   |  13 ++
+ arch/arm/dts/sc598-som-ezlite.dts                  |  13 ++
+ arch/arm/dts/sc598-som.dtsi                        |  31 ++++
+ arch/arm/dts/sc5xx.dtsi                            |  54 ++++++
+ arch/arm/mach-sc5xx/Kconfig                        | 134 ++++++++++++---
+ arch/arm/mach-sc5xx/Makefile                       |   4 +
+ arch/arm/mach-sc5xx/sc57x-spl.c                    |  26 +++
+ arch/arm/mach-sc5xx/sc58x-spl.c                    |  26 +++
+ arch/arm/mach-sc5xx/sc59x-spl.c                    |  26 +++
+ arch/arm/mach-sc5xx/sc59x_64-spl.c                 |  26 +++
+ arch/arm/mach-sc5xx/sc59x_64.c                     |  25 +++
+ arch/arm/mach-sc5xx/soc.c                          |  44 +++++
+ board/adi/sc573-ezkit/Kconfig                      | 160 ++++++++++++++++++
+ board/adi/sc573-ezkit/sc573-ezkit.env              |  13 ++
+ board/adi/sc584-ezkit/Kconfig                      | 160 ++++++++++++++++++
+ board/adi/sc584-ezkit/sc584-ezkit.env              |  13 ++
+ board/adi/sc589-ezkit/Kconfig                      | 160 ++++++++++++++++++
+ board/adi/sc589-ezkit/sc589-ezkit.env              |  13 ++
+ board/adi/sc589-mini/Kconfig                       | 160 ++++++++++++++++++
+ board/adi/sc589-mini/sc589-mini.env                |  13 ++
+ board/adi/sc594-som-ezkit/Kconfig                  | 181 +++++++++++++++++++++
+ board/adi/sc594-som-ezkit/sc594-som-ezkit.env      |  13 ++
+ board/adi/sc594-som-ezlite/Kconfig                 | 181 +++++++++++++++++++++
+ board/adi/sc594-som-ezlite/sc594-som-ezlite.env    |  13 ++
+ board/adi/sc598-som-ezkit/Kconfig                  | 150 +++++++++++++++++
+ board/adi/sc598-som-ezkit/sc598-som-ezkit.env      |  13 ++
+ board/adi/sc598-som-ezlite/Kconfig                 | 150 +++++++++++++++++
+ board/adi/sc598-som-ezlite/sc598-som-ezlite.env    |  13 ++
+ doc/device-tree-bindings/arm/adi/adi,sc5xx.yaml    |  46 ++++++
+ .../clock/adi,sc5xx-clocks.yaml                    | 112 +++++++++++++
+ .../timer/adi,sc5xx-gptimer.yaml                   |  42 +++++
+ include/configs/sc573-ezkit.h                      |  18 ++
+ include/configs/sc584-ezkit.h                      |  18 ++
+ include/configs/sc589.h                            |  19 +++
+ include/configs/sc594-som.h                        |  19 +++
+ include/configs/sc598-som.h                        |  23 +++
+ 48 files changed, 2274 insertions(+), 22 deletions(-)
+---
+base-commit: 34377bc0b0dc446853c7831efaccef8b50c22841
+change-id: 20240821-sc5xx-upstreaming-patches-c048ba9f979a
 
+Best regards,
 -- 
-2.34.1
+Oliver Gaskell <Oliver.Gaskell@analog.com>
 
