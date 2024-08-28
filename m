@@ -1,10 +1,10 @@
 From: Oliver Gaskell <Oliver.Gaskell@analog.com>
-Date: Wed, 28 Aug 2024 11:02:26 +0100
-Subject: [PATCH 18/20] arm: SC589-EZKIT initial support
+Date: Wed, 28 Aug 2024 11:02:27 +0100
+Subject: [PATCH 19/20] arm: SC589-MINI initial support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240828-sc5xx-upstreaming-patches-v1-18-44d9adfdf327@analog.com>
+Message-Id: <20240828-sc5xx-upstreaming-patches-v1-19-44d9adfdf327@analog.com>
 References: <20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com>
 In-Reply-To: <20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -18,63 +18,61 @@ To: Tom Rini <trini@konsulko.com>,
 Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
  Oliver Gaskell <Oliver.Gaskell@analog.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1724839434; l=4678;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724839434; l=4077;
  i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
- bh=PniKGGy2zu80NYOm7W6CdbDm8trRTY9TELaraTtuZ8I=;
- b=rrWTwhU3uEnJ/QjvudgpsUjVdUKNzd4ZXtTAggIcuee+QuN3QYsAGIe4e7wppJPcV+w6d1YBT
- BonXd/khM/vBOZaIpiqJ3oRZFF7y6yadpAE+wK/nznX0smrSeyreIh6
+ bh=6hUWWNMcC/Nvvo+FLcw4kd59Dr+j6pxNIoipJAawBxY=;
+ b=sJvCx0HMepXt6FBJS6e0sUcO9JsTEwm9AVRxE7OudCEjjsmj08JSB2Dnrx+zyJQ7FWOB1PH8/
+ Gaa9s3ZzTXsAE3gqWFHs1frWmLI+au5Jf1XKaYJpYgi2mF3WYlPN52Q
 X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
  pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
 X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds support for Analog Devices' SC589-EZKIT board. Includes:
+Adds support for Analog Devices' SC589-MINI board. Includes:
 - Board specific configs in mach-sc5xx/Kconfig
 - Board-specific Kconfig and environment in board/adi/
-- Memory configuration
 
 Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
- arch/arm/mach-sc5xx/Kconfig           |   5 ++
- board/adi/sc589-ezkit/Kconfig         | 160 ++++++++++++++++++++++++++++++++++
- board/adi/sc589-ezkit/sc589-ezkit.env |  13 +++
- include/configs/sc589.h               |  19 ++++
- 4 files changed, 197 insertions(+)
+ arch/arm/mach-sc5xx/Kconfig         |   5 ++
+ board/adi/sc589-mini/Kconfig        | 160 ++++++++++++++++++++++++++++++++++++
+ board/adi/sc589-mini/sc589-mini.env |  13 +++
+ 3 files changed, 178 insertions(+)
 
 diff --git a/arch/arm/mach-sc5xx/Kconfig b/arch/arm/mach-sc5xx/Kconfig
-index c75262bee4..bbeb7c68b8 100644
+index bbeb7c68b8..d9cf38a3b5 100644
 --- a/arch/arm/mach-sc5xx/Kconfig
 +++ b/arch/arm/mach-sc5xx/Kconfig
 @@ -56,6 +56,10 @@ config TARGET_SC584_EZKIT
  	prompt "SC584-EZKIT"
  	select ADI_USE_DDR2
  
-+config TARGET_SC589_EZKIT
++config TARGET_SC589_MINI
 +	bool
-+	prompt "SC589-EZKIT"
++	prompt "SC589-MINI"
 +
- endchoice
- 
- endif
-@@ -541,6 +545,7 @@ source "board/adi/sc598-som-ezkit/Kconfig"
- source "board/adi/sc598-som-ezlite/Kconfig"
+ config TARGET_SC589_EZKIT
+ 	bool
+ 	prompt "SC589-EZKIT"
+@@ -546,6 +550,7 @@ source "board/adi/sc598-som-ezlite/Kconfig"
  source "board/adi/sc594-som-ezkit/Kconfig"
  source "board/adi/sc594-som-ezlite/Kconfig"
-+source "board/adi/sc589-ezkit/Kconfig"
+ source "board/adi/sc589-ezkit/Kconfig"
++source "board/adi/sc589-mini/Kconfig"
  source "board/adi/sc584-ezkit/Kconfig"
  
  endif
-diff --git a/board/adi/sc589-ezkit/Kconfig b/board/adi/sc589-ezkit/Kconfig
+diff --git a/board/adi/sc589-mini/Kconfig b/board/adi/sc589-mini/Kconfig
 new file mode 100644
-index 0000000000..a1ff59ef04
+index 0000000000..0bc981bd39
 --- /dev/null
-+++ b/board/adi/sc589-ezkit/Kconfig
++++ b/board/adi/sc589-mini/Kconfig
 @@ -0,0 +1,160 @@
 +# SPDX-License-Identifier: GPL-2.0-or-later
 +#
 +# (C) Copyright 2024 - Analog Devices, Inc.
 +
-+if TARGET_SC589_EZKIT
++if TARGET_SC589_MINI
 +
 +config SYS_VENDOR
 +	default "adi"
@@ -83,19 +81,19 @@ index 0000000000..a1ff59ef04
 +	default	"ADSP-SC589-0.1"
 +
 +config SYS_BOARD
-+	default "sc589-ezkit"
++	default "sc589-mini"
 +
 +config SYS_CONFIG_NAME
 +	default "sc589"
 +
 +config DEFAULT_DEVICE_TREE
-+	default "sc589-ezkit"
++	default "sc589-mini"
 +
 +config SPL_MAX_SIZE
 +	default 0x20000 # 128KB
 +
 +config ADI_IMAGE
-+	default "tiny"
++	default "minimal"
 +
 +config SPL_BSS_START_ADDR
 +	hex
@@ -147,7 +145,7 @@ index 0000000000..a1ff59ef04
 +	default 1
 +
 +config SF_DEFAULT_SPEED
-+	default 10000000
++	default 5000000
 +
 +# Clocks
 +
@@ -230,11 +228,11 @@ index 0000000000..a1ff59ef04
 +	default 1
 +
 +endif
-diff --git a/board/adi/sc589-ezkit/sc589-ezkit.env b/board/adi/sc589-ezkit/sc589-ezkit.env
+diff --git a/board/adi/sc589-mini/sc589-mini.env b/board/adi/sc589-mini/sc589-mini.env
 new file mode 100644
-index 0000000000..34b924992a
+index 0000000000..0f3f0bd28e
 --- /dev/null
-+++ b/board/adi/sc589-ezkit/sc589-ezkit.env
++++ b/board/adi/sc589-mini/sc589-mini.env
 @@ -0,0 +1,13 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later+ */
 +
@@ -246,34 +244,9 @@ index 0000000000..34b924992a
 +
 +adi_stage2_offset=0x20000
 +adi_image_offset=0xE0000
-+adi_rfs_offset=0x6E0000
++adi_rfs_offset=0x8E0000
 +loadaddr=0xC3000000
-+jffs2file=adsp-sc5xx-__stringify(CONFIG_ADI_IMAGE)-adsp-sc589-ezkit.jffs2
-diff --git a/include/configs/sc589.h b/include/configs/sc589.h
-new file mode 100644
-index 0000000000..137c80be8e
---- /dev/null
-+++ b/include/configs/sc589.h
-@@ -0,0 +1,19 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later */
-+/*
-+ * (C) Copyright 2024 - Analog Devices, Inc.
-+ */
-+
-+#ifndef __CONFIG_SC589_H
-+#define __CONFIG_SC589_H
-+
-+/*
-+ * Memory Settings
-+ */
-+#define MEM_MT41K128M16JT
-+#define MEM_DMC0
-+#define MEM_DMC1
-+
-+#define CFG_SYS_SDRAM_BASE	0xC2000000
-+#define CFG_SYS_SDRAM_SIZE	0xe000000
-+
-+#endif
++jffs2file=adsp-sc5xx-__stringify(CONFIG_ADI_IMAGE)-adsp-sc589-mini.jffs2
 
 -- 
 2.34.1
