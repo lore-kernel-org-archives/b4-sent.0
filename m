@@ -1,10 +1,10 @@
 From: Oliver Gaskell <Oliver.Gaskell@analog.com>
-Date: Wed, 28 Aug 2024 11:02:09 +0100
-Subject: [PATCH 01/20] arm: dts: Support SC573-EZKIT
+Date: Wed, 28 Aug 2024 11:02:10 +0100
+Subject: [PATCH 02/20] arm: dts: Support SC584-EZKIT
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240828-sc5xx-upstreaming-patches-v1-1-44d9adfdf327@analog.com>
+Message-Id: <20240828-sc5xx-upstreaming-patches-v1-2-44d9adfdf327@analog.com>
 References: <20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com>
 In-Reply-To: <20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -16,68 +16,51 @@ To: Tom Rini <trini@konsulko.com>,
  Arturs Artamonovs <arturs.artamonovs@analog.com>, 
  Rayagonda Kokatanur <rayagonda.kokatanur@broadcom.com>
 Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
- Oliver Gaskell <Oliver.Gaskell@analog.com>
+ Oliver Gaskell <Oliver.Gaskell@analog.com>, 
+ Trevor Woerner <twoerner@gmail.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1724839434; l=4193;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724839434; l=2242;
  i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
- bh=OVSg+BZV1AHkTE15V5hBb895rNTFv7VgbOq175IFpOE=;
- b=xMRO3AATlzZo3ZKGsCAmkZTgHUinRMPrcQ23TL9LEsIzTOkqlVpNcU5wsEOw89wvz7d6aLybe
- zsxugsbYK9fDBeEyDs36/xdvxZp5ZH0s6eYG7dlYRE4CFa3ssytiQgk
+ bh=EoyEUlZv09rvrO+SsveRQ7V0mANa/r8vHcsllKcx6Po=;
+ b=c1IgKImCz7G9JO3eERJ5NBEZSyyOER4gMn79VAJcoJhbt4w7yAPG0J3vX6EZX4lCaTfOM1zFQ
+ 81RsbAy6YZpByCbSNcapLTujgm8ycPxW1nGD6Hv2GGRut11FxYxHjrB
 X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
  pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
 X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds minimal device tree for Analog Devices' SC573-EZKIT board and
-common files for the SC57x/SC5xx family.
+Add minimal device tree for Analog Devices' SC584-EZKIT board, and
+common files for the SC58x family.
 
-This also adds all sc5* devicetrees to ARM SC5XX in MAINTAINERS, and
-adds the ADSP Linux mailing list as the list for ARM SC5XX.
+This patch depends on Patch 01, for sc5xx.dtsi.
 
 Co-developed-by: Greg Malysa <greg.malysa@timesys.com>
+Co-developed-by: Trevor Woerner <twoerner@gmail.com>
 Co-developed-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
 Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
- MAINTAINERS                  |  2 ++
- arch/arm/dts/Makefile        |  2 ++
- arch/arm/dts/sc573-ezkit.dts | 13 +++++++++++
- arch/arm/dts/sc57x.dtsi      | 21 +++++++++++++++++
- arch/arm/dts/sc5xx.dtsi      | 54 ++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 92 insertions(+)
+ arch/arm/dts/Makefile        |  1 +
+ arch/arm/dts/sc584-ezkit.dts | 13 +++++++++++++
+ arch/arm/dts/sc58x.dtsi      | 23 +++++++++++++++++++++++
+ 3 files changed, 37 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a6e47e8a21..0640d56991 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -601,8 +601,10 @@ M:	Ian Roberts <ian.roberts@timesys.com>
- M:	Vasileios Bimpikas <vasileios.bimpikas@analog.com>
- M:	Utsav Agarwal <utsav.agarwal@analog.com>
- M:	Arturs Artamonovs <arturs.artamonovs@analog.com>
-+L:	adsp-linux@analog.com
- S:	Supported
- T:	git https://github.com/analogdevicesinc/lnxdsp-u-boot
-+F:	arch/arm/dts/sc5*
- F:	arch/arm/include/asm/arch-adi/
- F:	arch/arm/mach-sc5xx/
- F:	drivers/clk/adi/
 diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
-index a4d95c8306..8fa56cc9f4 100644
+index 8fa56cc9f4..5b87c8972f 100644
 --- a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -1275,6 +1275,8 @@ dtb-$(CONFIG_TARGET_IMX8MM_CL_IOT_GATE_OPTEE) += imx8mm-cl-iot-gate-optee.dtb \
- 					imx8mm-cl-iot-gate-ied-tpm0.dtbo \
+@@ -1276,6 +1276,7 @@ dtb-$(CONFIG_TARGET_IMX8MM_CL_IOT_GATE_OPTEE) += imx8mm-cl-iot-gate-optee.dtb \
  					imx8mm-cl-iot-gate-ied-tpm1.dtbo
  
-+dtb-$(CONFIG_TARGET_SC573_EZKIT) += sc573-ezkit.dtb
-+
+ dtb-$(CONFIG_TARGET_SC573_EZKIT) += sc573-ezkit.dtb
++dtb-$(CONFIG_TARGET_SC584_EZKIT) += sc584-ezkit.dtb
+ 
  ifneq ($(CONFIG_TARGET_IMX8MP_RSB3720A1_4G)$(CONFIG_TARGET_IMX8MP_RSB3720A1_6G),)
  dtb-y += imx8mp-rsb3720-a1.dtb
- endif
-diff --git a/arch/arm/dts/sc573-ezkit.dts b/arch/arm/dts/sc573-ezkit.dts
+diff --git a/arch/arm/dts/sc584-ezkit.dts b/arch/arm/dts/sc584-ezkit.dts
 new file mode 100644
-index 0000000000..0dc2962618
+index 0000000000..4ec6bcfb65
 --- /dev/null
-+++ b/arch/arm/dts/sc573-ezkit.dts
++++ b/arch/arm/dts/sc584-ezkit.dts
 @@ -0,0 +1,13 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
@@ -86,18 +69,18 @@ index 0000000000..0dc2962618
 +
 +/dts-v1/;
 +
-+#include "sc57x.dtsi"
++#include "sc58x.dtsi"
 +
 +/ {
-+	model = "ADI SC573-EZKIT";
-+	compatible = "adi,sc573-ezkit", "adi,sc57x";
++	model = "ADI SC584-EZKIT";
++	compatible = "adi,sc584-ezkit", "adi,sc58x";
 +};
-diff --git a/arch/arm/dts/sc57x.dtsi b/arch/arm/dts/sc57x.dtsi
+diff --git a/arch/arm/dts/sc58x.dtsi b/arch/arm/dts/sc58x.dtsi
 new file mode 100644
-index 0000000000..ddfcae8d19
+index 0000000000..66145315ab
 --- /dev/null
-+++ b/arch/arm/dts/sc57x.dtsi
-@@ -0,0 +1,21 @@
++++ b/arch/arm/dts/sc58x.dtsi
+@@ -0,0 +1,23 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * (C) Copyright 2024 - Analog Devices, Inc.
@@ -117,67 +100,9 @@ index 0000000000..ddfcae8d19
 +};
 +
 +&timer0 {
-+	clocks = <&clk ADSP_SC57X_CLK_CGU0_SCLK0>;
-+};
-diff --git a/arch/arm/dts/sc5xx.dtsi b/arch/arm/dts/sc5xx.dtsi
-new file mode 100644
-index 0000000000..3f440dac29
---- /dev/null
-+++ b/arch/arm/dts/sc5xx.dtsi
-@@ -0,0 +1,54 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * (C) Copyright 2024 - Analog Devices, Inc.
-+ */
-+
-+#include <dt-bindings/interrupt-controller/arm-gic.h>
-+#include <dt-bindings/clock/adi-sc5xx-clock.h>
-+
-+/ {
-+	#address-cells = <1>;
-+	#size-cells = <1>;
-+
-+	clocks {
-+		sys_clkin0: sys_clkin0 {
-+			compatible = "fixed-clock";
-+			#clock-cells = <0>;
-+			clock-frequency = <25000000>;
-+			bootph-all;
-+		};
-+
-+		sys_clkin1: sys_clkin1 {
-+			compatible = "fixed-clock";
-+			#clock-cells = <0>;
-+			clock-frequency = <25000000>;
-+			bootph-all;
-+		};
-+	};
-+
-+	soc {
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		compatible = "simple-bus";
-+		device_type = "soc";
-+		ranges;
-+		bootph-all;
-+
-+		timer0: timer@31018000 {
-+			compatible = "adi,sc5xx-gptimer";
-+			reg = <0x31018004 0x100>,
-+			      <0x31018060 0x100>;
-+			status = "okay";
-+			bootph-all;
-+		};
-+
-+		clk: clocks@3108d000 {
-+			reg = <0x3108d000 0x1000>;
-+			#clock-cells = <1>;
-+			clocks = <&sys_clkin0>, <&sys_clkin1>;
-+			clock-names = "sys_clkin0", "sys_clkin1";
-+			status = "okay";
-+			bootph-all;
-+		};
-+	};
++	reg = <0x31001004 0x100>,
++	      <0x31001060 0x100>;
++	clocks = <&clk ADSP_SC58X_CLK_CGU0_SCLK0>;
 +};
 
 -- 
