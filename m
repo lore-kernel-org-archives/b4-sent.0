@@ -1,14 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v4 0/3] add some node for amlogic c3
-Date: Fri, 30 Aug 2024 13:26:07 +0800
-Message-Id: <20240830-c3_add_node-v4-0-b56c0511e9dc@amlogic.com>
+Date: Fri, 30 Aug 2024 13:26:08 +0800
+Subject: [PATCH v4 1/3] dt-bindings: clock: fix C3 PLL input parameter
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAO9X0WYC/23MSwrCMBSF4a2UjI3c5IYkOnIfIiXNow1oI6kUp
- XTvph216PAc+P6JDD5HP5BzNZHsxzjE1JchDhWxnelbT6Mrm3DgAjRIarE2ztV9cp4KDgbVien
- ANCnimX2I77V2vZXdxeGV8meNj2x5/3dGRoFacF4wFEwiv5jHPbXRHm16kKU08o3msNe8aB0cB
- pCNaqz/1bjVuNdYNEqhUUlAFcRez/P8BfntYJokAQAA
+Message-Id: <20240830-c3_add_node-v4-1-b56c0511e9dc@amlogic.com>
+References: <20240830-c3_add_node-v4-0-b56c0511e9dc@amlogic.com>
+In-Reply-To: <20240830-c3_add_node-v4-0-b56c0511e9dc@amlogic.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jerome Brunet <jbrunet@baylibre.com>, 
  Michael Turquette <mturquette@baylibre.com>, 
@@ -23,51 +21,67 @@ Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>,
  linux-arm-kernel@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1724995568; l=1482;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1724995568; l=2021;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=IUuuhUvQU5dAs9RfLllL5/UhHvsk0Yi/7MPZkoNINGU=;
- b=sLy0R/VKRQWb9D1RVwxovgKBbzbGnPv1YWx1+E11zczo1cNy8ZD6jpFK6l5WzoTjbI5OQygfm
- QAX524CQKMWA0RIYMr9i5PP5x2Bu9LYWa4nq91OfJi6wqYKNtQDAxGA
+ bh=WQR1UBxGONQHyor5r4Vdf/Olja7ABIla1YIY56QfC4k=;
+ b=8px0text+zQI58RVTiqzPiJZVkV8OcmuahfJ7ecX1bkgQS/cJUvDitRkKfKS4vHbikCn7tThL
+ 6CQ/UrHGzwlAEtGJwoNrcHK01Gix2f6ublNvP3K7YzYZEW0SOrD+5NQ
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add some node for board AW409 and support board C308l AW419.
+Add C3 PLL controller input clock parameters "fix".
 
+The clock named "fix" was initially implemented in PLL clock controller
+driver. However, some registers required secure zone access, so we moved
+it to the secure zone (BL31) and accessed it through SCMI. Since the PLL
+clock driver needs to use this clock, the "fix" clock is used as an input
+source. We updated the driver but forgot to modify the binding accordingly,
+so we are adding it here.
+
+It is an ABI break but on a new and immature platform. Noboby could really
+use that platform at this stage, so nothing is going to break on anyone
+really.
+
+Fixes: 0e6be855a96d ("dt-bindings: clock: add Amlogic C3 PLL clock controller")
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v4:
-- Adjust the format of commit message.
-- Link to v3: https://lore.kernel.org/r/20240823-c3_add_node-v3-0-3648376037f4@amlogic.com
+ Documentation/devicetree/bindings/clock/amlogic,c3-pll-clkc.yaml | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-Changes in v3:
-- Change clkc_periphs node to the first.
-- Link to v2: https://lore.kernel.org/r/20240820-c3_add_node-v2-0-8fd3f06b7bce@amlogic.com
+diff --git a/Documentation/devicetree/bindings/clock/amlogic,c3-pll-clkc.yaml b/Documentation/devicetree/bindings/clock/amlogic,c3-pll-clkc.yaml
+index 43de3c6fc1cf..700865cc9792 100644
+--- a/Documentation/devicetree/bindings/clock/amlogic,c3-pll-clkc.yaml
++++ b/Documentation/devicetree/bindings/clock/amlogic,c3-pll-clkc.yaml
+@@ -24,11 +24,13 @@ properties:
+     items:
+       - description: input top pll
+       - description: input mclk pll
++      - description: input fix pll
+ 
+   clock-names:
+     items:
+       - const: top
+       - const: mclk
++      - const: fix
+ 
+   "#clock-cells":
+     const: 1
+@@ -52,8 +54,9 @@ examples:
+             compatible = "amlogic,c3-pll-clkc";
+             reg = <0x0 0x8000 0x0 0x1a4>;
+             clocks = <&scmi_clk 2>,
+-                     <&scmi_clk 5>;
+-            clock-names = "top", "mclk";
++                     <&scmi_clk 5>,
++                     <&scmi_clk 12>;
++            clock-names = "top", "mclk", "fix";
+             #clock-cells = <1>;
+         };
+     };
 
-Changes in v2:
-- Delete unused sdio node in board level dts.
-- Add the description of modifying the binding in commit msg.
-- Add the reason why some node property fileds place at board level in commit msg.
-- Link to v1: https://lore.kernel.org/r/20240806-c3_add_node-v1-0-c0de41341632@amlogic.com
-
----
-Xianwei Zhao (3):
-      dt-bindings: clock: fix C3 PLL input parameter
-      arm64: dts: amlogic: add some device nodes for C3
-      arm64: dts: amlogic: add C3 AW419 board
-
- .../bindings/clock/amlogic,c3-pll-clkc.yaml        |   7 +-
- arch/arm64/boot/dts/amlogic/Makefile               |   1 +
- .../boot/dts/amlogic/amlogic-c3-c302x-aw409.dts    | 233 ++++++++++
- .../boot/dts/amlogic/amlogic-c3-c308l-aw419.dts    | 262 +++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi        | 488 ++++++++++++++++++++-
- 5 files changed, 988 insertions(+), 3 deletions(-)
----
-base-commit: 7a5d2ce79d1fc8535a6f10e51011ae9671bd86e8
-change-id: 20240806-c3_add_node-420a37918f18
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
