@@ -1,10 +1,10 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Mon, 02 Sep 2024 23:54:29 +0200
-Subject: [PATCH 02/13] media: i2c: imx214: Remove unneeded goto
+Date: Mon, 02 Sep 2024 23:54:30 +0200
+Subject: [PATCH 03/13] media: i2c: imx214: Simplify with dev_err_probe()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20240902-imx214-v1-2-c96cba989315@apitzsch.eu>
+Message-Id: <20240902-imx214-v1-3-c96cba989315@apitzsch.eu>
 References: <20240902-imx214-v1-0-c96cba989315@apitzsch.eu>
 In-Reply-To: <20240902-imx214-v1-0-c96cba989315@apitzsch.eu>
 To: Ricardo Ribalda <ribalda@kernel.org>, 
@@ -14,62 +14,128 @@ Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1725314079; l=1448;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1725314079; l=3828;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=+EHNoEmtv/1kZSlndhZbuM8zP4Ms4i21sRmxvjbE1m0=;
- b=ZBWn6rlG+hqBQ6iO8z8r6ViyjrgcD7I32Nv/fAYf650Jgm97RWiXVDiD8BP9SDO+CgNed82vK
- +tcfXo5dcMMBAhegkYuRBXndDvDt+1KTcMK3G3aLPLa3+PGzD9jp4w1
+ bh=gQb6ABvE7D9OIIvQC6eeLkEiGYSYlYhKFugiTcrk54I=;
+ b=CHlB9EoW0YTY/z/zjbcYbo9G5I5Oypzx6xukEVXJY0i6txasFpjDRfeaVhnUEiRgotZY9ZYbK
+ DOHqvJHvo2zDw6UMnJgQYDTJ8QPkKPskhns1VRu0qIm6MMp7y/QfonP
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Simplify the imx214_start_streaming() by removing unneeded goto
-statements, and the corresponding error label.
+Error handling in probe() can be a bit simpler with dev_err_probe().
 
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/media/i2c/imx214.c | 13 ++++---------
- 1 file changed, 4 insertions(+), 9 deletions(-)
+ drivers/media/i2c/imx214.c | 52 ++++++++++++++++++++--------------------------
+ 1 file changed, 22 insertions(+), 30 deletions(-)
 
 diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
-index 58f3c3f67e0d..283d4783c22e 100644
+index 283d4783c22e..ad2f1db6baeb 100644
 --- a/drivers/media/i2c/imx214.c
 +++ b/drivers/media/i2c/imx214.c
-@@ -776,7 +776,7 @@ static int imx214_start_streaming(struct imx214 *imx214)
- 	ret = imx214_write_table(imx214, mode_table_common);
- 	if (ret < 0) {
- 		dev_err(imx214->dev, "could not sent common table %d\n", ret);
--		goto error;
-+		return ret;
- 	}
+@@ -931,14 +931,12 @@ static int imx214_parse_fwnode(struct device *dev)
+ 	int ret;
  
- 	mode = v4l2_find_nearest_size(imx214_modes,
-@@ -785,22 +785,17 @@ static int imx214_start_streaming(struct imx214 *imx214)
- 	ret = imx214_write_table(imx214, mode->reg_table);
- 	if (ret < 0) {
- 		dev_err(imx214->dev, "could not sent mode table %d\n", ret);
--		goto error;
-+		return ret;
- 	}
- 	ret = __v4l2_ctrl_handler_setup(&imx214->ctrls);
- 	if (ret < 0) {
- 		dev_err(imx214->dev, "could not sync v4l2 controls\n");
--		goto error;
-+		return ret;
- 	}
- 	ret = regmap_write(imx214->regmap, IMX214_REG_MODE_SELECT, IMX214_MODE_STREAMING);
--	if (ret < 0) {
-+	if (ret < 0)
- 		dev_err(imx214->dev, "could not sent start table %d\n", ret);
--		goto error;
+ 	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(dev), NULL);
+-	if (!endpoint) {
+-		dev_err(dev, "endpoint node not found\n");
+-		return -EINVAL;
 -	}
--
--	return 0;
++	if (!endpoint)
++		return dev_err_probe(dev, -EINVAL, "endpoint node not found\n");
  
--error:
- 	return ret;
- }
+ 	ret = v4l2_fwnode_endpoint_alloc_parse(endpoint, &bus_cfg);
+ 	if (ret) {
+-		dev_err(dev, "parsing endpoint node failed\n");
++		dev_err_probe(dev, ret, "parsing endpoint node failed\n");
+ 		goto done;
+ 	}
+ 
+@@ -947,8 +945,9 @@ static int imx214_parse_fwnode(struct device *dev)
+ 			break;
+ 
+ 	if (i == bus_cfg.nr_of_link_frequencies) {
+-		dev_err(dev, "link-frequencies %d not supported, Please review your DT\n",
+-			IMX214_DEFAULT_LINK_FREQ);
++		dev_err_probe(dev, -EINVAL,
++			      "link-frequencies %d not supported, Please review your DT\n",
++			      IMX214_DEFAULT_LINK_FREQ);
+ 		ret = -EINVAL;
+ 		goto done;
+ 	}
+@@ -976,34 +975,27 @@ static int imx214_probe(struct i2c_client *client)
+ 	imx214->dev = dev;
+ 
+ 	imx214->xclk = devm_clk_get(dev, NULL);
+-	if (IS_ERR(imx214->xclk)) {
+-		dev_err(dev, "could not get xclk");
+-		return PTR_ERR(imx214->xclk);
+-	}
++	if (IS_ERR(imx214->xclk))
++		return dev_err_probe(dev, PTR_ERR(imx214->xclk),
++				     "failed to get xclk\n");
+ 
+ 	ret = clk_set_rate(imx214->xclk, IMX214_DEFAULT_CLK_FREQ);
+-	if (ret) {
+-		dev_err(dev, "could not set xclk frequency\n");
+-		return ret;
+-	}
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to set xclk frequency\n");
+ 
+ 	ret = imx214_get_regulators(dev, imx214);
+-	if (ret < 0) {
+-		dev_err(dev, "cannot get regulators\n");
+-		return ret;
+-	}
++	if (ret < 0)
++		return dev_err_probe(dev, ret, "failed to get regulators\n");
+ 
+ 	imx214->enable_gpio = devm_gpiod_get(dev, "enable", GPIOD_OUT_LOW);
+-	if (IS_ERR(imx214->enable_gpio)) {
+-		dev_err(dev, "cannot get enable gpio\n");
+-		return PTR_ERR(imx214->enable_gpio);
+-	}
++	if (IS_ERR(imx214->enable_gpio))
++		return dev_err_probe(dev, PTR_ERR(imx214->enable_gpio),
++				     "failed to get enable gpio\n");
+ 
+ 	imx214->regmap = devm_regmap_init_i2c(client, &sensor_regmap_config);
+-	if (IS_ERR(imx214->regmap)) {
+-		dev_err(dev, "regmap init failed\n");
+-		return PTR_ERR(imx214->regmap);
+-	}
++	if (IS_ERR(imx214->regmap))
++		return dev_err_probe(dev, PTR_ERR(imx214->regmap),
++				     "regmap init failed\n");
+ 
+ 	v4l2_i2c_subdev_init(&imx214->sd, client, &imx214_subdev_ops);
+ 	imx214->sd.internal_ops = &imx214_internal_ops;
+@@ -1029,20 +1021,20 @@ static int imx214_probe(struct i2c_client *client)
+ 
+ 	ret = media_entity_pads_init(&imx214->sd.entity, 1, &imx214->pad);
+ 	if (ret < 0) {
+-		dev_err(dev, "could not register media entity\n");
++		dev_err_probe(dev, ret, "failed to init entity pads\n");
+ 		goto free_ctrl;
+ 	}
+ 
+ 	imx214->sd.state_lock = imx214->ctrls.lock;
+ 	ret = v4l2_subdev_init_finalize(&imx214->sd);
+ 	if (ret < 0) {
+-		dev_err(dev, "subdev init error: %d\n", ret);
++		dev_err_probe(dev, ret, "subdev init error\n");
+ 		goto free_entity;
+ 	}
+ 
+ 	ret = v4l2_async_register_subdev_sensor(&imx214->sd);
+ 	if (ret < 0) {
+-		dev_err(dev, "could not register v4l2 device\n");
++		dev_err_probe(dev, ret, "failed to register sensor sub-device\n");
+ 		goto error_subdev_cleanup;
+ 	}
  
 
 -- 
