@@ -1,125 +1,64 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Mon, 02 Sep 2024 13:29:39 +0800
-Subject: [PATCH] arm64: dts: amlogic: c3: fix dtbcheck warning
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH 00/13] media: i2c: imx214: Miscellaneous cleanups and
+ improvements
+Date: Mon, 02 Sep 2024 23:54:27 +0200
+Message-Id: <20240902-imx214-v1-0-c96cba989315@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240902-fix_warning-v1-1-037029c584fc@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAEJN1WYC/x2MQQqAIBAAvyJ7TrA1xPpKRIitthcLhQrCvycdh
- 2HmhUKZqcAkXsh0ceEjNeg7AX53KZLkrTGgwkGNCmXgZ71dTpyiNN4GbTB4qzW04szU9H+bl1o
- /1gYeY10AAAA=
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- kernel test robot <lkp@intel.com>, Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1725254979; l=3537;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=3Plhy3KgHss93IzBZRmdUv/l5YYTAOs01NTzF3Jk9sU=;
- b=QAn+zi5Iwq0XYzO4SZDdR9VXLHnf+pXbKVAVhwHQzWrOcpmd15qb0eRPwUvzl4QKJkEMNKOGn
- UWeDZ3hvWTRCsSxy5sCcLPH1atZ5C/50llxtb0sXcFhaY+2iQUdAjAp
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIABM01mYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDC0ML3czcCiNDE10LYyMTcwuTZPOk1FQloOKCotS0zAqwQdGxtbUAjcG
+ iblgAAAA=
+To: Ricardo Ribalda <ribalda@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1725314079; l=1440;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=fkLGY4U5lk/Rad59LcWYJhIpX0ElWK9FM/qu8thACn4=;
+ b=E/Uhb4OXlg2lmNafSJOLnsbDj7RCoODhTb3s5BxODnAqUXPumwIW+Y+dbgrwiwHRTIBnozf5C
+ UnTyBygQ/96C+y/xVYJlBGSDhYUg+BK+fyPZhsLZaxVOnPWhKWWDzXr
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix warning when use W=1 to build dtb, as following error:
+This patch series is a collection of miscellaneous cleanups and
+improvements to the imx214 driver.
 
-arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi:65.7-76.4: Warning
-(unit_address_vs_reg): /sram: node has a reg or ranges property,
-but no unit name
+The series converts the driver to the CCI helpers and adds controls
+needed to make the driver work with libcamera.
 
-arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi:168.34-413.6: Warning
-(unit_address_vs_reg): /soc/bus@fe000000/pinctrl@4000: node has a
-unit name, but no reg or ranges property
+The changes are inspired by the imx219 driver.
 
-arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi:168.34-413.6: Warning
-(simple_bus_reg): /soc/bus@fe000000/pinctrl@4000: missing or empty
-reg/ranges property
-
-arch/arm64/boot/dts/amlogic/amlogic-c3-c302x-aw409.dts:205.9-245.4:
-Warning (avoid_unnecessary_addr_size): /soc/bus@fe000000/spi@56000
-/nand@0: unnecessary #address-cells/#size-cells without "ranges",
-"dma-ranges" or child "reg" property
-
-Fixes: d4bd8f3023b6 ("arm64: dts: amlogic: add C3 AW419 board")
-Fixes: 520b792e8317 ("arm64: dts: amlogic: add some device nodes for C3")
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/r/202409010005.A7tSzgEn-lkp@intel.com/
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
-Fix some warning when use W=1 to make dtb_check.
----
- arch/arm64/boot/dts/amlogic/amlogic-c3-c302x-aw409.dts |  2 --
- arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts |  2 --
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi            | 10 +++++-----
- 3 files changed, 5 insertions(+), 9 deletions(-)
+André Apitzsch (13):
+      media: i2c: imx214: Use subdev active state
+      media: i2c: imx214: Remove unneeded goto
+      media: i2c: imx214: Simplify with dev_err_probe()
+      media: i2c: imx214: Convert to CCI register access helpers
+      media: i2c: imx214: Replace register addresses with macros
+      media: i2c: imx214: Drop IMX214_REG_EXPOSURE from mode reg arrays
+      media: i2c: imx214: Use number of lanes from device tree
+      media: i2c: imx214: Add vblank and hblank controls
+      media: i2c: imx214: Extract format and crop settings
+      media: i2c: imx214: Implement vflip/hflip controls
+      media: i2c: imx214: Add analogue/digital gain control
+      media: i2c: imx214: Verify chip ID
+      media: i2c: imx214: Add test pattern control
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3-c302x-aw409.dts b/arch/arm64/boot/dts/amlogic/amlogic-c3-c302x-aw409.dts
-index b8d2037afc00..a6736ad2a648 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3-c302x-aw409.dts
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3-c302x-aw409.dts
-@@ -208,8 +208,6 @@ nand@0 {
- 		spi-max-frequency = <83000000>;
- 		spi-tx-bus-width = <4>;
- 		spi-rx-bus-width = <4>;
--		#address-cells = <1>;
--		#size-cells = <1>;
- 		status = "disabled";
- 
- 		partitions {
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts b/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts
-index 4477a2659e27..45f8631f9feb 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts
-@@ -208,8 +208,6 @@ nand@0 {
- 		spi-max-frequency = <83000000>;
- 		spi-tx-bus-width = <4>;
- 		spi-rx-bus-width = <4>;
--		#address-cells = <1>;
--		#size-cells = <1>;
- 		status = "disabled";
- 
- 		partitions {
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-index c0ce776ec463..d0cda759c25d 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-@@ -62,7 +62,7 @@ pwrc: power-controller {
- 		};
- 	};
- 
--	sram {
-+	sram@7f50e00 {
- 		compatible = "mmio-sram";
- 		reg = <0x0 0x07f50e00 0x0 0x100>;
- 		#address-cells = <1>;
-@@ -169,11 +169,11 @@ periphs_pinctrl: pinctrl@4000 {
- 				compatible = "amlogic,c3-periphs-pinctrl";
- 				#address-cells = <2>;
- 				#size-cells = <2>;
--				ranges;
-+				ranges = <0x0 0x0 0x0 0x4000 0x0 0x02de>;
- 
--				gpio: bank@4000 {
--					reg = <0x0 0x4000 0x0 0x004c>,
--					      <0x0 0x4100 0x0 0x01de>;
-+				gpio: bank@0 {
-+					reg = <0x0 0x0 0x0 0x004c>,
-+					      <0x0 0x100 0x0 0x01de>;
- 					reg-names = "mux", "gpio";
- 					gpio-controller;
- 					#gpio-cells = <2>;
-
+ drivers/media/i2c/Kconfig  |    1 +
+ drivers/media/i2c/imx214.c | 1313 +++++++++++++++++++++++++++-----------------
+ 2 files changed, 803 insertions(+), 511 deletions(-)
 ---
-base-commit: 1565ad6d5afc023cc4cc721513c9be28b902dee8
-change-id: 20240902-fix_warning-6c8f362fc833
+base-commit: b891f84dd1f93ef4a716f10a70da80db443db431
+change-id: 20240818-imx214-8324784c7bee
 
 Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+André Apitzsch <git@apitzsch.eu>
 
