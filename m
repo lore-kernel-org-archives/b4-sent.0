@@ -1,11 +1,10 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Wed, 04 Sep 2024 15:17:13 +0200
-Subject: [PATCH 2/6] iommu/vt-d: Remove the pasid present check in
- prq_event_thread
+Date: Wed, 04 Sep 2024 15:17:14 +0200
+Subject: [PATCH 3/6] iommu: kconfig: Move IOMMU_IOPF into INTEL_IOMMU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240904-jag-iopfv8-v1-2-e3549920adf3@samsung.com>
+Message-Id: <20240904-jag-iopfv8-v1-3-e3549920adf3@samsung.com>
 References: <20240904-jag-iopfv8-v1-0-e3549920adf3@samsung.com>
 In-Reply-To: <20240904-jag-iopfv8-v1-0-e3549920adf3@samsung.com>
 To: David Woodhouse <dwmw2@infradead.org>, 
@@ -14,65 +13,54 @@ To: David Woodhouse <dwmw2@infradead.org>,
  Jason Gunthorpe <jgg@ziepe.ca>, Kevin Tian <kevin.tian@intel.com>, 
  Klaus Jensen <its@irrelevant.dk>
 Cc: linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
- Joel Granados <j.granados@samsung.com>, Klaus Jensen <k.jensen@samsung.com>
+ Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.15-dev-00a43
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1351;
- i=j.granados@samsung.com; h=from:subject:message-id;
- bh=FD3UiP6NJxmTUYvjmWxZFWuSigYaHG1wzRA5qCg/pTc=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGbYXhC3rVks+YQxMld3lqz3PtEbzx3YP/0tv
- SlyGftf39WU5YkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJm2F4QAAoJELqXzVK3
- lkFPT/AL/Rh3zXdT5UQaqGGi3xhl12hEX+DL8xYzus7bNkXGZIArVREL9Ww4N4fULNqSIcCJ46y
- EJUdiCBblIo79ZpC+jI45GUI8KDkChndRmfyHuwEzJC7mCuoHuShJff4c2xVFsjE4858NTA5pnV
- hA+wxIXDBRYNOt0e+Br+BAmbiyVRQ5bN259pkoqZ0nG6fQ4f+iKXen1Dsc10gr8BV+3xgxDf/eX
- YmEIKUO/135r3JdqWkCp6ixA1eAwcEFqMcdYbLVhT/o6Fe1d0slIhx/1KILIMPXcSAQ2WtuFwSz
- zkpx+VHDG7IH2RMAn+Hsq/mbTgBWDUmGJ64K8GWGmbnx0IF/IKpTkvQdDYLC342KrfZFByeUmEG
- 6mBeA8HC/9L3n6/5E7iPlvItL/aWmYzHJKyjQokz2Ipxwqy5a0uGbqrQBVze9Q8axKTvclOZL1Q
- R+/islwVuLf4Wycl7PJQ0tDt1nZDninu9SQOJnLzF5qVDxbwZbqlmAZv5s4qoC9LBr0pJZYzC96
- Hs=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=998; i=j.granados@samsung.com;
+ h=from:subject:message-id; bh=A1IcN/yt0t1BbWgqjM2qPuJqNqel/ygqpz+aUMrV/hQ=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGbYXhESVKYlERtao5dlV515lqqcRZZFHelXY
+ IAhr15mwVk2UIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJm2F4RAAoJELqXzVK3
+ lkFPD3wL/1YW2YIlo7fV0fDqWc+PvCSoS1xKWR2aLxKPa/kZBuc/SrFovAUFt9jr8hh4cxKSjNW
+ fx4LcDnAKEEKx7dOM056DK9NypvbWuzHu4i7JAJV35O2Yew6c6OUWVyUEIe+VHHtj3Bj7Uy4imq
+ /VQ8+h3WwXUNX+CwGpOocOf1olwaf+xxTbkVxKIJYZ4yIZndzLzYFnk2KXeMFT5+CfixqqvYuGf
+ iEdCEpRYRw3A38/ONabQ/rkU/fiE6NmrlPkIX9MiPH7/vtyljjhEGflawkcfOug04hT497LTdJi
+ JjJXAFmwZera9G9nPjwN5NC/qhrd6W4bGAHBmOg9gMgSq+Y6Ldjys6uzcMyhzAvwJzWQXGVT6dc
+ 2st5xWJmxllTfpocVqvn5rQbHULshC5FDOX9YehAmzw7i5sQGFE+SkoNrButwGq5CuO6XMBqcad
+ du6YYUVoOGpA3LIslfWNxezI4PhA55bTdsLzfnTemHi0OZvtRNAPmzKTiB/yjH2Izro2Xi00Rd6
+ kA=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Klaus Jensen <k.jensen@samsung.com>
+Move IOMMU_IOPF from under INTEL_IOMMU_SVM into INTEL_IOMMU. This
+certifies that the core intel iommu utilizes the IOPF library
+functions, independent of the INTEL_IOMMU_SVM config.
 
-PASID is not strictly needed when handling a PRQ event; remove the check
-for the pasid present bit in the request. This change was not included
-in the creation of prq.c to emphasize the change in capability checks
-when handing PRQ events.
-
-Signed-off-by: Klaus Jensen <k.jensen@samsung.com>
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- drivers/iommu/intel/prq.c | 12 +++---------
- 1 file changed, 3 insertions(+), 9 deletions(-)
+ drivers/iommu/intel/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/iommu/intel/prq.c b/drivers/iommu/intel/prq.c
-index 3376f60082b5..5f2d01a9aa11 100644
---- a/drivers/iommu/intel/prq.c
-+++ b/drivers/iommu/intel/prq.c
-@@ -221,18 +221,12 @@ static irqreturn_t prq_event_thread(int irq, void *d)
- 		req = &iommu->prq[head / sizeof(*req)];
- 		address = (u64)req->addr << VTD_PAGE_SHIFT;
- 
--		if (unlikely(!req->pasid_present)) {
--			pr_err("IOMMU: %s: Page request without PASID\n",
--			       iommu->name);
--bad_req:
--			handle_bad_prq_event(iommu, req, QI_RESP_INVALID);
--			goto prq_advance;
--		}
--
- 		if (unlikely(!is_canonical_address(address))) {
- 			pr_err("IOMMU: %s: Address is not canonical\n",
- 			       iommu->name);
--			goto bad_req;
-+bad_req:
-+			handle_bad_prq_event(iommu, req, QI_RESP_INVALID);
-+			goto prq_advance;
- 		}
- 
- 		if (unlikely(req->pm_req && (req->rd_req | req->wr_req))) {
+diff --git a/drivers/iommu/intel/Kconfig b/drivers/iommu/intel/Kconfig
+index f52fb39c968e..2888671c9278 100644
+--- a/drivers/iommu/intel/Kconfig
++++ b/drivers/iommu/intel/Kconfig
+@@ -15,6 +15,7 @@ config INTEL_IOMMU
+ 	select DMA_OPS
+ 	select IOMMU_API
+ 	select IOMMU_IOVA
++	select IOMMU_IOPF
+ 	select IOMMUFD_DRIVER if IOMMUFD
+ 	select NEED_DMA_MAP_STATE
+ 	select DMAR_TABLE
+@@ -51,7 +52,6 @@ config INTEL_IOMMU_SVM
+ 	depends on X86_64
+ 	select MMU_NOTIFIER
+ 	select IOMMU_SVA
+-	select IOMMU_IOPF
+ 	help
+ 	  Shared Virtual Memory (SVM) provides a facility for devices
+ 	  to access DMA resources through process address space by
 
 -- 
 2.43.0
