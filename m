@@ -1,86 +1,242 @@
-From: Joel Granados <j.granados@samsung.com>
-Date: Wed, 04 Sep 2024 15:17:17 +0200
-Subject: [PATCH 6/6] iommu/vt-d: drop pasid requirement for prq
- initialization
+From: Mitchell Levy <levymitchell0@gmail.com>
+Date: Thu, 05 Sep 2024 16:13:57 -0700
+Subject: [PATCH RFC] rust: lockdep: Use Pin for all LockClassKey usages
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240904-jag-iopfv8-v1-6-e3549920adf3@samsung.com>
-References: <20240904-jag-iopfv8-v1-0-e3549920adf3@samsung.com>
-In-Reply-To: <20240904-jag-iopfv8-v1-0-e3549920adf3@samsung.com>
-To: David Woodhouse <dwmw2@infradead.org>, 
- Lu Baolu <baolu.lu@linux.intel.com>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- Jason Gunthorpe <jgg@ziepe.ca>, Kevin Tian <kevin.tian@intel.com>, 
- Klaus Jensen <its@irrelevant.dk>
-Cc: linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
- Joel Granados <j.granados@samsung.com>, Klaus Jensen <k.jensen@samsung.com>
-X-Mailer: b4 0.15-dev-00a43
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1454;
- i=j.granados@samsung.com; h=from:subject:message-id;
- bh=GQ979ruQ4vAANRiiIGnsASOC26gBsL07Le0pjm1OYPs=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGbYXhKOqYL08HTDL5U1FS6YKVJeseJUwf3VA
- Vyg9JiqiavFWYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJm2F4SAAoJELqXzVK3
- lkFPhwEMAJc0ezgHDa2U5drkdjhqFE9iQKVk3KUkm+9m70jbOA8N+95R9S36RYtpryTYFwjSTxS
- K3HNBVSj5Dfm1iz/uLNGPW71ImEuyoD+f9JveefAD8sN93nSlSykCrlFxmzKhVoM7rl9ZNJQ6Bq
- 6uIRRXA36olvwExRfh4pzkSA0IkNgj7ZRo690ffXGX7kY6BZkNHwTzWvrhswLPNUuL0UHCTi5LL
- D3O57Rq1BNiXC+/qUiYHKqmOdvHY9j7P1iYeXF1ZRqJG4G26BssP3kXmKkqP5bN0Isvk28PF16n
- F3QwHAW2KXPG+qOdm4JTI6/HZF+xBNjoJfq/sTkIKrJ5eo1NLMKacQA4SGqIR6YtEra0SlWb+w9
- IvzME5R8OQuzOvnYhsfW6Fzwm2COK9juCNiITfiDH11K2h60XZ+48dYiTrs0Lq2BQ9hxRyPzpUe
- vlwFzoPVwkBXhUnA9kmWOa8FcbpKyKJ/ZsOVlLhBz38EpWnBlm4779t0Ic0hvwiyUeckIp4wj94
- W8=
-X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
+Message-Id: <20240905-rust-lockdep-v1-1-d2c9c21aa8b2@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADQ72mYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDSwNT3aLS4hLdnPzk7JTUAt0U41RjA1Mjw2SLpEQloJaCotS0zAqwcdF
+ KQW7OSrG1tQAHLhiyYwAAAA==
+To: Andreas Hindborg <a.hindborg@samsung.com>, 
+ Boqun Feng <boqun.feng@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Alex Gaynor <alex.gaynor@gmail.com>, 
+ Wedson Almeida Filho <wedsonaf@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <benno.lossin@proton.me>, Alice Ryhl <aliceryhl@google.com>, 
+ Trevor Gross <tmgross@umich.edu>
+Cc: linux-block@vger.kernel.org, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Mitchell Levy <levymitchell0@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1725578037; l=8101;
+ i=levymitchell0@gmail.com; s=20240719; h=from:subject:message-id;
+ bh=ibFwe6n0BNfNZ/U63sEUCAUC6QMeYuYX5RG8MBqosow=;
+ b=N5SudSNW6s2JImEj1UoPFH/70ZNb+ss2Qu0wyjrQnglbtP0Q1bhft5J+3l9HCjCiRqkrsHQrb
+ edqLq/bHbyuAlkCSGroJbO/f9DDs1d99oyLuLVWvjaw/0W5LsOOFbrK
+X-Developer-Key: i=levymitchell0@gmail.com; a=ed25519;
+ pk=n6kBmUnb+UNmjVkTnDwrLwTJAEKUfs2e8E+MFPZI93E=
+X-Endpoint-Received: by B4 Relay for levymitchell0@gmail.com/20240719 with auth_id=188
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Klaus Jensen <k.jensen@samsung.com>
+The current LockClassKey API has soundness issues related to the use of
+dynamically allocated LockClassKeys. In particular, these keys can be
+used without being registered and don't have address stability.
 
-PASID support within the IOMMU is not required to enable the Page
-Request Queue, only the PRS capability.
+This fixes the issue by using Pin<&LockClassKey> and properly
+registering/deregistering the keys on init/drop.
 
-Signed-off-by: Klaus Jensen <k.jensen@samsung.com>
-Signed-off-by: Joel Granados <j.granados@samsung.com>
+Link: https://lore.kernel.org/rust-for-linux/20240815074519.2684107-1-nmi@metaspace.dk/
+Suggested-by: Benno Lossin <benno.lossin@proton.me>
+Suggested-by: Boqun Feng <boqun.feng@gmail.com>
+Signed-off-by: Mitchell Levy <levymitchell0@gmail.com>
 ---
- drivers/iommu/intel/iommu.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+This change is based on applying the linked patch to the top of
+rust-next.
 
-diff --git a/drivers/iommu/intel/iommu.c b/drivers/iommu/intel/iommu.c
-index 3d1c971eb9e5..9f3bbdbd6372 100644
---- a/drivers/iommu/intel/iommu.c
-+++ b/drivers/iommu/intel/iommu.c
-@@ -1487,10 +1487,8 @@ static void free_dmar_iommu(struct intel_iommu *iommu)
- 	/* free context mapping */
- 	free_context_table(iommu);
+I'm sending this as an RFC because I'm not sure that using
+Pin<&'static LockClassKey> is appropriate as the parameter for, e.g.,
+Work::new. This should preclude using dynamically allocated
+LockClassKeys here, which might not be desirable. Unfortunately, using
+Pin<&'a LockClassKey> creates other headaches as the compiler then
+requires that T and PinImpl<Self> be bounded by 'a, which also seems
+undesirable. I would be especially interested in feedback/ideas along
+these lines.
+---
+ rust/kernel/block/mq/gen_disk.rs |  2 +-
+ rust/kernel/sync.rs              | 30 +++++++++++++++++++++---------
+ rust/kernel/sync/condvar.rs      | 13 ++++++++-----
+ rust/kernel/sync/lock.rs         |  6 +++---
+ rust/kernel/workqueue.rs         |  6 +++---
+ 5 files changed, 36 insertions(+), 21 deletions(-)
+
+diff --git a/rust/kernel/block/mq/gen_disk.rs b/rust/kernel/block/mq/gen_disk.rs
+index 708125dce96a..706ac3c532d5 100644
+--- a/rust/kernel/block/mq/gen_disk.rs
++++ b/rust/kernel/block/mq/gen_disk.rs
+@@ -108,7 +108,7 @@ pub fn build<T: Operations>(
+                 tagset.raw_tag_set(),
+                 &mut lim,
+                 core::ptr::null_mut(),
+-                static_lock_class!().as_ptr(),
++                static_lock_class!().get_ref().as_ptr(),
+             )
+         })?;
  
--	if (pasid_supported(iommu)) {
--		if (ecap_prs(iommu->ecap))
--			intel_finish_prq(iommu);
--	}
-+	if (ecap_prs(iommu->ecap))
-+		intel_finish_prq(iommu);
+diff --git a/rust/kernel/sync.rs b/rust/kernel/sync.rs
+index 0ab20975a3b5..c46a296cbe6d 100644
+--- a/rust/kernel/sync.rs
++++ b/rust/kernel/sync.rs
+@@ -5,6 +5,8 @@
+ //! This module contains the kernel APIs related to synchronisation that have been ported or
+ //! wrapped for usage by Rust code in the kernel.
+ 
++use crate::pin_init;
++use crate::prelude::*;
+ use crate::types::Opaque;
+ 
+ mod arc;
+@@ -20,7 +22,11 @@
+ 
+ /// Represents a lockdep class. It's a wrapper around C's `lock_class_key`.
+ #[repr(transparent)]
+-pub struct LockClassKey(Opaque<bindings::lock_class_key>);
++#[pin_data(PinnedDrop)]
++pub struct LockClassKey {
++    #[pin]
++    inner: Opaque<bindings::lock_class_key>,
++}
+ 
+ // SAFETY: `bindings::lock_class_key` is designed to be used concurrently from multiple threads and
+ // provides its own synchronization.
+@@ -28,18 +34,22 @@ unsafe impl Sync for LockClassKey {}
+ 
+ impl LockClassKey {
+     /// Creates a new lock class key.
+-    pub const fn new() -> Self {
+-        Self(Opaque::uninit())
++    pub fn new_dynamic() -> impl PinInit<Self> {
++        pin_init!(Self {
++            // SAFETY: lockdep_register_key expects an uninitialized block of memory
++            inner <- Opaque::ffi_init(|slot| unsafe { bindings::lockdep_register_key(slot) })
++        })
+     }
+ 
+     pub(crate) fn as_ptr(&self) -> *mut bindings::lock_class_key {
+-        self.0.get()
++        self.inner.get()
+     }
  }
  
- /*
-@@ -2480,7 +2478,7 @@ static int __init init_dmars(void)
+-impl Default for LockClassKey {
+-    fn default() -> Self {
+-        Self::new()
++#[pinned_drop]
++impl PinnedDrop for LockClassKey {
++    fn drop(self: Pin<&mut Self>) {
++        unsafe { bindings::lockdep_unregister_key(self.as_ptr()) }
+     }
+ }
  
- 		iommu_flush_write_buffer(iommu);
+@@ -48,8 +58,10 @@ fn default() -> Self {
+ #[macro_export]
+ macro_rules! static_lock_class {
+     () => {{
+-        static CLASS: $crate::sync::LockClassKey = $crate::sync::LockClassKey::new();
+-        &CLASS
++        static CLASS: $crate::sync::LockClassKey = unsafe {
++            ::core::mem::MaybeUninit::uninit().assume_init()
++        };
++        $crate::prelude::Pin::static_ref(&CLASS)
+     }};
+ }
  
--		if (pasid_supported(iommu) && ecap_prs(iommu->ecap)) {
-+		if (ecap_prs(iommu->ecap)) {
- 			/*
- 			 * Call dmar_alloc_hwirq() with dmar_global_lock held,
- 			 * could cause possible lock race condition.
-@@ -2921,7 +2919,7 @@ static int intel_iommu_add(struct dmar_drhd_unit *dmaru)
- 	intel_iommu_init_qi(iommu);
- 	iommu_flush_write_buffer(iommu);
+diff --git a/rust/kernel/sync/condvar.rs b/rust/kernel/sync/condvar.rs
+index 2b306afbe56d..6c40b45e35cd 100644
+--- a/rust/kernel/sync/condvar.rs
++++ b/rust/kernel/sync/condvar.rs
+@@ -14,9 +14,12 @@
+     time::Jiffies,
+     types::Opaque,
+ };
+-use core::ffi::{c_int, c_long};
+-use core::marker::PhantomPinned;
+-use core::ptr;
++use core::{
++    ffi::{c_int, c_long},
++    marker::PhantomPinned,
++    pin::Pin,
++    ptr,
++};
+ use macros::pin_data;
  
--	if (pasid_supported(iommu) && ecap_prs(iommu->ecap)) {
-+	if (ecap_prs(iommu->ecap)) {
- 		ret = intel_enable_prq(iommu);
- 		if (ret)
- 			goto disable_iommu;
+ /// Creates a [`CondVar`] initialiser with the given name and a newly-created lock class.
+@@ -102,13 +105,13 @@ unsafe impl Sync for CondVar {}
+ 
+ impl CondVar {
+     /// Constructs a new condvar initialiser.
+-    pub fn new(name: &'static CStr, key: &'static LockClassKey) -> impl PinInit<Self> {
++    pub fn new(name: &'static CStr, key: Pin<&'static LockClassKey>) -> impl PinInit<Self> {
+         pin_init!(Self {
+             _pin: PhantomPinned,
+             // SAFETY: `slot` is valid while the closure is called and both `name` and `key` have
+             // static lifetimes so they live indefinitely.
+             wait_queue_head <- Opaque::ffi_init(|slot| unsafe {
+-                bindings::__init_waitqueue_head(slot, name.as_char_ptr(), key.as_ptr())
++                bindings::__init_waitqueue_head(slot, name.as_char_ptr(), key.get_ref().as_ptr())
+             }),
+         })
+     }
+diff --git a/rust/kernel/sync/lock.rs b/rust/kernel/sync/lock.rs
+index f6c34ca4d819..c6bdbb85a39c 100644
+--- a/rust/kernel/sync/lock.rs
++++ b/rust/kernel/sync/lock.rs
+@@ -7,7 +7,7 @@
+ 
+ use super::LockClassKey;
+ use crate::{init::PinInit, pin_init, str::CStr, types::Opaque, types::ScopeGuard};
+-use core::{cell::UnsafeCell, marker::PhantomData, marker::PhantomPinned};
++use core::{cell::UnsafeCell, marker::PhantomData, marker::PhantomPinned, pin::Pin};
+ use macros::pin_data;
+ 
+ pub mod mutex;
+@@ -106,14 +106,14 @@ unsafe impl<T: ?Sized + Send, B: Backend> Sync for Lock<T, B> {}
+ 
+ impl<T, B: Backend> Lock<T, B> {
+     /// Constructs a new lock initialiser.
+-    pub fn new(t: T, name: &'static CStr, key: &'static LockClassKey) -> impl PinInit<Self> {
++    pub fn new(t: T, name: &'static CStr, key: Pin<&'static LockClassKey>) -> impl PinInit<Self> {
+         pin_init!(Self {
+             data: UnsafeCell::new(t),
+             _pin: PhantomPinned,
+             // SAFETY: `slot` is valid while the closure is called and both `name` and `key` have
+             // static lifetimes so they live indefinitely.
+             state <- Opaque::ffi_init(|slot| unsafe {
+-                B::init(slot, name.as_char_ptr(), key.as_ptr())
++                B::init(slot, name.as_char_ptr(), key.get_ref().as_ptr())
+             }),
+         })
+     }
+diff --git a/rust/kernel/workqueue.rs b/rust/kernel/workqueue.rs
+index 553a5cba2adc..eefc2b7b578c 100644
+--- a/rust/kernel/workqueue.rs
++++ b/rust/kernel/workqueue.rs
+@@ -367,9 +367,9 @@ impl<T: ?Sized, const ID: u64> Work<T, ID> {
+     /// Creates a new instance of [`Work`].
+     #[inline]
+     #[allow(clippy::new_ret_no_self)]
+-    pub fn new(name: &'static CStr, key: &'static LockClassKey) -> impl PinInit<Self>
++    pub fn new(name: &'static CStr, key: Pin<&'static LockClassKey>) -> impl PinInit<Self>
+     where
+-        T: WorkItem<ID>,
++        T: WorkItem<ID>
+     {
+         pin_init!(Self {
+             work <- Opaque::ffi_init(|slot| {
+@@ -381,7 +381,7 @@ pub fn new(name: &'static CStr, key: &'static LockClassKey) -> impl PinInit<Self
+                         Some(T::Pointer::run),
+                         false,
+                         name.as_char_ptr(),
+-                        key.as_ptr(),
++                        key.get_ref().as_ptr(),
+                     )
+                 }
+             }),
 
+---
+base-commit: 8edf38a534a38e5d78470a98d43454e3b73e307c
+change-id: 20240905-rust-lockdep-d3e30521c8ba
+
+Best regards,
 -- 
-2.43.0
+Mitchell Levy <levymitchell0@gmail.com>
 
