@@ -1,11 +1,10 @@
 From: Daniel Gomez <da.gomez@samsung.com>
-Date: Fri, 06 Sep 2024 13:01:30 +0200
-Subject: [PATCH v2 3/8] drm/xe: xe_gen_wa_oob: fix
- program_invocation_short_name for macos
+Date: Fri, 06 Sep 2024 13:01:31 +0200
+Subject: [PATCH v2 4/8] arm64: nvhe: add bee-headers support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240906-macos-build-support-v2-3-06beff418848@samsung.com>
+Message-Id: <20240906-macos-build-support-v2-4-06beff418848@samsung.com>
 References: <20240906-macos-build-support-v2-0-06beff418848@samsung.com>
 In-Reply-To: <20240906-macos-build-support-v2-0-06beff418848@samsung.com>
 To: Masahiro Yamada <masahiroy@kernel.org>, 
@@ -40,62 +39,74 @@ Cc: linux-kernel@vger.kernel.org, linux-kbuild@vger.kernel.org,
  "Daniel Gomez (Samsung)" <d+samsung@kruces.com>, gost.dev@samsung.com, 
  Daniel Gomez <da.gomez@samsung.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1725620498; l=1428;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1725620498; l=2402;
  i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
- bh=x6LVlKYatdZUIjJiYp2s+9CbUoAxRcL8dRJGWqQIBj4=;
- b=BH4HpeG8hB04KMzAeLGkcCFK3N10hMq/U4+Vzh7fajdBsdql7CZEFfKmy7OI6MFwP2a4PKqq6
- h6W1X3yzs24B7Hn3G4bxlap2pj1Vdv/+pm0/KH5H8aSiskiYjxDyb27
+ bh=GBZv2DjLBaUWb0PDIN6CGSbBXyjcjj4bMncdBaf72Bg=;
+ b=yNvjUITe4cvXufxVrbYIve+SAb1jzGrq0iUGR/YAun7lLTKIwhk8EC7uDEMgN45dqdtRk38Jy
+ pDk3TLY/uhoBnN1Zcnbu2S82L1cVlw0uRFYjv554A/iIpET4qlSs/in
 X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
  pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
 X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use getprogname() [1] instead of program_invocation_short_name() [2]
-for macOS hosts.
+endian.h header is not provided by default in macOS. Use pkg-config with
+the new development package 'bee-headers' [1] to find the path where the
+headers are installed.
 
-[1]:
-https://www.gnu.org/software/gnulib/manual/html_node/
-program_005finvocation_005fshort_005fname.html
+[1] Bee Headers Project links:
+https://github.com/bee-headers/headers
+https://github.com/bee-headers/homebrew-bee-headers
 
-[2]:
-https://developer.apple.com/library/archive/documentation/System/
-Conceptual/ManPages_iPhoneOS/man3/getprogname.3.html
+It requires to install bee-headers Homebrew Tap:
 
-Fixes build error for macOS hosts:
-
-drivers/gpu/drm/xe/xe_gen_wa_oob.c:34:3: error: use of
-undeclared identifier 'program_invocation_short_name'    34 |
-program_invocation_short_name);       |                 ^ 1 error
-generated.
+  brew tap bee-headers/bee-headers
+  brew install bee-headers/bee-headers/bee-headers
 
 Signed-off-by: Daniel Gomez <da.gomez@samsung.com>
-Reviewed-by: Lucas De Marchi <lucas.demarchi@intel.com>
 ---
- drivers/gpu/drm/xe/xe_gen_wa_oob.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ arch/arm64/kernel/pi/Makefile     | 1 +
+ arch/arm64/kernel/vdso32/Makefile | 1 +
+ arch/arm64/kvm/hyp/nvhe/Makefile  | 3 ++-
+ 3 files changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/xe/xe_gen_wa_oob.c b/drivers/gpu/drm/xe/xe_gen_wa_oob.c
-index 904cf47925aa..0d933644d8a0 100644
---- a/drivers/gpu/drm/xe/xe_gen_wa_oob.c
-+++ b/drivers/gpu/drm/xe/xe_gen_wa_oob.c
-@@ -8,6 +8,7 @@
- #include <errno.h>
- #include <stdbool.h>
- #include <stdio.h>
-+#include <stdlib.h>
- #include <string.h>
+diff --git a/arch/arm64/kernel/pi/Makefile b/arch/arm64/kernel/pi/Makefile
+index 4d11a8c29181..259c9a45fba0 100644
+--- a/arch/arm64/kernel/pi/Makefile
++++ b/arch/arm64/kernel/pi/Makefile
+@@ -20,6 +20,7 @@ KBUILD_CFLAGS	:= $(filter-out $(CC_FLAGS_SCS), $(KBUILD_CFLAGS))
+ KBUILD_CFLAGS	:= $(filter-out $(CC_FLAGS_LTO), $(KBUILD_CFLAGS))
  
- #define HEADER \
-@@ -30,6 +31,9 @@
+ hostprogs	:= relacheck
++HOSTCFLAGS_relacheck.o = $(shell $(HOSTPKG_CONFIG) --cflags bee-headers 2> /dev/null)
  
- static void print_usage(FILE *f)
- {
-+#ifdef __APPLE__
-+	const char *program_invocation_short_name = getprogname();
-+#endif
- 	fprintf(f, "usage: %s <input-rule-file> <generated-c-source-file> <generated-c-header-file>\n",
- 		program_invocation_short_name);
- }
+ quiet_cmd_piobjcopy = $(quiet_cmd_objcopy)
+       cmd_piobjcopy = $(cmd_objcopy) && $(obj)/relacheck $(@) $(<)
+diff --git a/arch/arm64/kernel/vdso32/Makefile b/arch/arm64/kernel/vdso32/Makefile
+index 25a2cb6317f3..6cb8a04bd829 100644
+--- a/arch/arm64/kernel/vdso32/Makefile
++++ b/arch/arm64/kernel/vdso32/Makefile
+@@ -107,6 +107,7 @@ VDSO_LDFLAGS += --orphan-handling=$(CONFIG_LD_ORPHAN_WARN_LEVEL)
+ # $(hostprogs) with $(obj)
+ munge := ../../../arm/vdso/vdsomunge
+ hostprogs := $(munge)
++HOSTCFLAGS_$(munge).o = $(shell $(HOSTPKG_CONFIG) --cflags bee-headers 2> /dev/null)
+ 
+ c-obj-vdso := note.o
+ c-obj-vdso-gettimeofday := vgettimeofday.o
+diff --git a/arch/arm64/kvm/hyp/nvhe/Makefile b/arch/arm64/kvm/hyp/nvhe/Makefile
+index b43426a493df..d20a440b6964 100644
+--- a/arch/arm64/kvm/hyp/nvhe/Makefile
++++ b/arch/arm64/kvm/hyp/nvhe/Makefile
+@@ -15,7 +15,8 @@ ccflags-y += -fno-stack-protector	\
+ 	     $(DISABLE_STACKLEAK_PLUGIN)
+ 
+ hostprogs := gen-hyprel
+-HOST_EXTRACFLAGS += -I$(objtree)/include
++HOST_EXTRACFLAGS += -I$(objtree)/include \
++	$(shell $(HOSTPKG_CONFIG) --cflags bee-headers 2> /dev/null)
+ 
+ lib-objs := clear_page.o copy_page.o memcpy.o memset.o
+ lib-objs := $(addprefix ../../../lib/, $(lib-objs))
 
 -- 
 2.46.0
