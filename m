@@ -1,430 +1,150 @@
-From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Date: Fri, 06 Sep 2024 20:46:13 +0800
-Subject: [PATCH 2/2] arm64: dts: amlogic: Add Amlogic C3 PWM
+From: Christoph Lameter <cl@gentwo.org>
+Date: Fri, 06 Sep 2024 09:04:36 -0700
+Subject: [PATCH v2] SLUB: Add support for per object memory policies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240906-c3-pwm-v1-2-acaf17fad247@amlogic.com>
-References: <20240906-c3-pwm-v1-0-acaf17fad247@amlogic.com>
-In-Reply-To: <20240906-c3-pwm-v1-0-acaf17fad247@amlogic.com>
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, Kelvin Zhang <kelvin.zhang@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1725626786; l=8236;
- i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=zpCPu/y3GMnpSwM1eRSKg3vp+x4qEdbYa0rlZLB2lXQ=;
- b=Ze2QZNgsOWg9QqrGTnnOT3i2QdfB8bDCNHBtv2Tv1DtMJgxQuvZHS9DznJulTeD8GIP1bphAr
- tA+j2CNI8+tAleJtwKhxp6TMGi8xs/lKXrwGC4Qh20+6Th2M/Ort5rR
-X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
- pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
-X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
+Message-Id: <20240906-strict_numa-v2-1-f104e6de6d1e@gentwo.org>
+X-B4-Tracking: v=1; b=H4sIABMo22YC/22NsQ7CIBRFf6V5s5gCGlonjYujg5tpTKWP9g2CA
+ ayahn+XMDuee3PPXSCgJwywqxbwOFMgZzOIVQV66u2IjIbMIGqxqRveshA96Xizr0fPjN62dym
+ 5kL2AvHh6NPQptiucD5fjCbocTxSi89/yMfNS/tXNnHGGA2+NUI1WRu1HtPHt1s6P0KWUfoutD
+ nauAAAA
+To: Vlastimil Babka <vbabka@suse.cz>, Pekka Enberg <penberg@kernel.org>, 
+ David Rientjes <rientjes@google.com>, Joonsoo Kim <iamjoonsoo.kim@lge.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Roman Gushchin <roman.gushchin@linux.dev>, 
+ Hyeonggon Yoo <42.hyeyoo@gmail.com>, Yang Shi <shy828301@gmail.com>, 
+ Christoph Lameter <cl@linux.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Huang Shijie <shijie@os.amperecomputing.com>, 
+ "Christoph Lameter (Ampere)" <cl@gentwo.org>
+X-Mailer: b4 0.15-dev-37811
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1725638684; l=3924;
+ i=cl@gentwo.org; s=20240811; h=from:subject:message-id;
+ bh=9Z6f1byj/IKu+iwRNPojSYbVKnkUeb562+j3sxm2IM4=;
+ b=aEPyBeGGFT1QmjxLlIwTI8asDa6MXj9OiFp9VoP8MxGQhchv8AOVMDi6+CeRXuHB+YbVNZ3nc
+ kuYYoWZ1pbCAPlYn69h/iFNcpKfniy3fHkQv4mqFlUDhinkxrUbYiis
+X-Developer-Key: i=cl@gentwo.org; a=ed25519;
+ pk=I7gqGwDi9drzCReFIuf2k9de1FI1BGibsshXI0DIvq8=
+X-Endpoint-Received: by B4 Relay for cl@gentwo.org/20240811 with auth_id=194
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device nodes for PWM_AB, PWM_CD, PWM_EF, PWM_GH, PWM_IJ, PWM_KL
-and PWM_MN, along with the GPIO pin configurations for each channel.
+    The old SLAB allocator used to support memory policies on a per
+    allocation bases. In SLUB the memory policies are applied on a
+    per page frame / folio bases. Doing so avoids having to check memory
+    policies in critical code paths for kmalloc and friends.
 
-Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
+    This worked on general well on Intel/AMD/PowerPC because the
+    interconnect technology is mature and can minimize the latencies
+    through intelligent caching even if a small object is not
+    placed optimally.
+
+    However, on ARM we have an emergence of new NUMA interconnect
+    technology based more on embedded devices. Caching of remote content
+    can currently be ineffective using the standard building blocks / mesh
+    available on that platform. Such architectures benefit if each slab
+    object is individually placed according to memory policies
+    and other restrictions.
+
+    This patch adds another kernel parameter
+
+            slab_strict_numa
+
+    If that is set then a static branch is activated that will cause
+    the hotpaths of the allocator to evaluate the current memory
+    allocation policy. Each object will be properly placed by
+    paying the price of extra processing and SLUB will no longer
+    defer to the page allocator to apply memory policies at the
+    folio level.
+
+    This patch improves performance of memcached running
+    on Ampere Altra 2P system (ARM Neoverse N1 processor)
+    by 3.6% due to accurate placement of small kernel objects.
+
+Tested-by: Huang Shijie <shijie@os.amperecomputing.com>
+Signed-off-by: Christoph Lameter (Ampere) <cl@gentwo.org>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi | 364 ++++++++++++++++++++++++++++
- 1 file changed, 364 insertions(+)
+Changes in v2:
+- Fix various issues
+- Testing
+---
+ mm/slub.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-index d0cda759c25d..fd0e557eba06 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-@@ -410,6 +410,300 @@ mux {
- 						drive-strength-microamp = <4000>;
- 					};
- 				};
-+
-+				pwm_a_pins1: pwm-a-pins1 {
-+					mux {
-+						groups = "pwm_a";
-+						function = "pwm_a";
-+					};
-+				};
-+
-+				pwm_b_pins1: pwm-b-pins1 {
-+					mux {
-+						groups = "pwm_b";
-+						function = "pwm_b";
-+					};
-+				};
-+
-+				pwm_c_pins1: pwm-c-pins1 {
-+					mux {
-+						groups = "pwm_c";
-+						function = "pwm_c";
-+					};
-+				};
-+
-+				pwm_d_pins1: pwm-d-pins1 {
-+					mux {
-+						groups = "pwm_d";
-+						function = "pwm_d";
-+					};
-+				};
-+
-+				pwm_e_pins1: pwm-e-pins1 {
-+					mux {
-+						groups = "pwm_e";
-+						function = "pwm_e";
-+					};
-+				};
-+
-+				pwm_f_pins1: pwm-f-pins1 {
-+					mux {
-+						groups = "pwm_f";
-+						function = "pwm_f";
-+					};
-+				};
-+
-+				pwm_g_pins1: pwm-g-pins1 {
-+					mux {
-+						groups = "pwm_g_b";
-+						function = "pwm_g";
-+					};
-+				};
-+
-+				pwm_g_pins2: pwm-g-pins2 {
-+					mux {
-+						groups = "pwm_g_c";
-+						function = "pwm_g";
-+					};
-+				};
-+
-+				pwm_g_pins3: pwm-g-pins3 {
-+					mux {
-+						groups = "pwm_g_d";
-+						function = "pwm_g";
-+					};
-+				};
-+
-+				pwm_g_pins4: pwm-g-pins4 {
-+					mux {
-+						groups = "pwm_g_x0";
-+						function = "pwm_g";
-+					};
-+				};
-+
-+				pwm_g_pins5: pwm-g-pins5 {
-+					mux {
-+						groups = "pwm_g_x8";
-+						function = "pwm_g";
-+					};
-+				};
-+
-+				pwm_h_pins1: pwm-h-pins1 {
-+					mux {
-+						groups = "pwm_h_b";
-+						function = "pwm_h";
-+					};
-+				};
-+
-+				pwm_h_pins2: pwm-h-pins2 {
-+					mux {
-+						groups = "pwm_h_c";
-+						function = "pwm_h";
-+					};
-+				};
-+
-+				pwm_h_pins3: pwm-h-pins3 {
-+					mux {
-+						groups = "pwm_h_d";
-+						function = "pwm_h";
-+					};
-+				};
-+
-+				pwm_h_pins4: pwm-h-pins4 {
-+					mux {
-+						groups = "pwm_h_x1";
-+						function = "pwm_h";
-+					};
-+				};
-+
-+				pwm_h_pins5: pwm-h-pins5 {
-+					mux {
-+						groups = "pwm_h_x9";
-+						function = "pwm_h";
-+					};
-+				};
-+
-+				pwm_i_pins1: pwm-i-pins1 {
-+					mux {
-+						groups = "pwm_i_b";
-+						function = "pwm_i";
-+					};
-+				};
-+
-+				pwm_i_pins2: pwm-i-pins2 {
-+					mux {
-+						groups = "pwm_i_c";
-+						function = "pwm_i";
-+					};
-+				};
-+
-+				pwm_i_pins3: pwm-i-pins3 {
-+					mux {
-+						groups = "pwm_i_d";
-+						function = "pwm_i";
-+					};
-+				};
-+
-+				pwm_i_pins4: pwm-i-pins4 {
-+					mux {
-+						groups = "pwm_i_x2";
-+						function = "pwm_i";
-+					};
-+				};
-+
-+				pwm_i_pins5: pwm-i-pins5 {
-+					mux {
-+						groups = "pwm_i_x10";
-+						function = "pwm_i";
-+					};
-+				};
-+
-+				pwm_j_pins1: pwm-j-pins1 {
-+					mux {
-+						groups = "pwm_j_c";
-+						function = "pwm_j";
-+					};
-+				};
-+
-+				pwm_j_pins2: pwm-j-pins2 {
-+					mux {
-+						groups = "pwm_j_d";
-+						function = "pwm_j";
-+					};
-+				};
-+
-+				pwm_j_pins3: pwm-j-pins3 {
-+					mux {
-+						groups = "pwm_j_b";
-+						function = "pwm_j";
-+					};
-+				};
-+
-+				pwm_j_pins4: pwm-j-pins4 {
-+					mux {
-+						groups = "pwm_j_x3";
-+						function = "pwm_j";
-+					};
-+				};
-+
-+				pwm_j_pins5: pwm-j-pins5 {
-+					mux {
-+						groups = "pwm_j_x12";
-+						function = "pwm_j";
-+					};
-+				};
-+
-+				pwm_k_pins1: pwm-k-pins1 {
-+					mux {
-+						groups = "pwm_k_c";
-+						function = "pwm_k";
-+					};
-+				};
-+
-+				pwm_k_pins2: pwm-k-pins2 {
-+					mux {
-+						groups = "pwm_k_d";
-+						function = "pwm_k";
-+					};
-+				};
-+
-+				pwm_k_pins3: pwm-k-pins3 {
-+					mux {
-+						groups = "pwm_k_b";
-+						function = "pwm_k";
-+					};
-+				};
-+
-+				pwm_k_pins4: pwm-k-pins4 {
-+					mux {
-+						groups = "pwm_k_x4";
-+						function = "pwm_k";
-+					};
-+				};
-+
-+				pwm_k_pins5: pwm-k-pins5 {
-+					mux {
-+						groups = "pwm_k_x13";
-+						function = "pwm_k";
-+					};
-+				};
-+
-+				pwm_l_pins1: pwm-l-pins1 {
-+					mux {
-+						groups = "pwm_l_c";
-+						function = "pwm_l";
-+					};
-+				};
-+
-+				pwm_l_pins2: pwm-l-pins2 {
-+					mux {
-+						groups = "pwm_l_x";
-+						function = "pwm_l";
-+					};
-+				};
-+
-+				pwm_l_pins3: pwm-l-pins3 {
-+					mux {
-+						groups = "pwm_l_b";
-+						function = "pwm_l";
-+					};
-+				};
-+
-+				pwm_l_pins4: pwm-l-pins4 {
-+					mux {
-+						groups = "pwm_l_a";
-+						function = "pwm_l";
-+					};
-+				};
-+
-+				pwm_m_pins1: pwm-m-pins1 {
-+					mux {
-+						groups = "pwm_m_c";
-+						function = "pwm_m";
-+					};
-+				};
-+
-+				pwm_m_pins2: pwm-m-pins2 {
-+					mux {
-+						groups = "pwm_m_x";
-+						function = "pwm_m";
-+					};
-+				};
-+
-+				pwm_m_pins3: pwm-m-pins3 {
-+					mux {
-+						groups = "pwm_m_a";
-+						function = "pwm_m";
-+					};
-+				};
-+
-+				pwm_m_pins4: pwm-m-pins4 {
-+					mux {
-+						groups = "pwm_m_b";
-+						function = "pwm_m";
-+					};
-+				};
-+
-+				pwm_n_pins1: pwm-n-pins1 {
-+					mux {
-+						groups = "pwm_n_x";
-+						function = "pwm_n";
-+					};
-+				};
-+
-+				pwm_n_pins2: pwm-n-pins2 {
-+					mux {
-+						groups = "pwm_n_a";
-+						function = "pwm_n";
-+					};
-+				};
-+
-+				pwm_n_pins3: pwm-n-pins3 {
-+					mux {
-+						groups = "pwm_n_b";
-+						function = "pwm_n";
-+					};
-+				};
- 			};
+diff --git a/mm/slub.c b/mm/slub.c
+index a77f354f8325..2fa7c35e076a 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -218,6 +218,10 @@ DEFINE_STATIC_KEY_FALSE(slub_debug_enabled);
+ #endif
+ #endif		/* CONFIG_SLUB_DEBUG */
  
- 			gpio_intc: interrupt-controller@4080 {
-@@ -490,6 +784,16 @@ spicc1: spi@52000 {
- 				status = "disabled";
- 			};
++#ifdef CONFIG_NUMA
++DEFINE_STATIC_KEY_FALSE(strict_numa);
++#endif
++
+ /* Structure holding parameters for get_partial() call chain */
+ struct partial_context {
+ 	gfp_t flags;
+@@ -3865,6 +3869,28 @@ static __always_inline void *__slab_alloc_node(struct kmem_cache *s,
+ 	object = c->freelist;
+ 	slab = c->slab;
  
-+			pwm_mn: pwm@54000 {
-+				compatible = "amlogic,c3-pwm",
-+					     "amlogic,meson-s4-pwm";
-+				reg = <0x0 54000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_M>,
-+					 <&clkc_periphs CLKID_PWM_N>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
++#ifdef CONFIG_NUMA
++	if (static_branch_unlikely(&strict_numa) &&
++			node == NUMA_NO_NODE) {
 +
- 			spifc: spi@56000 {
- 				compatible = "amlogic,a1-spifc";
- 				reg = <0x0 0x56000 0x0 0x290>;
-@@ -499,6 +803,66 @@ spifc: spi@56000 {
- 				status = "disabled";
- 			};
++		struct mempolicy *mpol = current->mempolicy;
++
++		if (mpol) {
++			/*
++			 * Special BIND rule support. If existing slab
++			 * is in permitted set then do not redirect
++			 * to a particular node.
++			 * Otherwise we apply the memory policy to get
++			 * the node we need to allocate on.
++			 */
++			if (mpol->mode != MPOL_BIND || !slab ||
++					!node_isset(slab_nid(slab), mpol->nodes))
++
++				node = mempolicy_slab_node();
++		}
++	}
++#endif
++
+ 	if (!USE_LOCKLESS_FAST_PATH() ||
+ 	    unlikely(!object || !slab || !node_match(slab, node))) {
+ 		object = __slab_alloc(s, gfpflags, node, addr, c, orig_size);
+@@ -5527,6 +5553,22 @@ static int __init setup_slub_min_objects(char *str)
+ __setup("slab_min_objects=", setup_slub_min_objects);
+ __setup_param("slub_min_objects=", slub_min_objects, setup_slub_min_objects, 0);
  
-+			pwm_ab: pwm@58000 {
-+				compatible = "amlogic,c3-pwm",
-+					     "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x58000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_A>,
-+					 <&clkc_periphs CLKID_PWM_B>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
++#ifdef CONFIG_NUMA
++static int __init setup_slab_strict_numa(char *str)
++{
++	if (nr_node_ids > 1) {
++		static_branch_enable(&strict_numa);
++		printk(KERN_INFO "SLUB: Strict NUMA enabled.\n");
++	} else
++		printk(KERN_WARNING "slab_strict_numa parameter set on non NUMA system.\n");
 +
-+			pwm_cd: pwm@5a000 {
-+				compatible = "amlogic,c3-pwm",
-+					     "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x5a000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_C>,
-+					 <&clkc_periphs CLKID_PWM_D>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
++	return 1;
++}
 +
-+			pwm_ef: pwm@5c000 {
-+				compatible = "amlogic,c3-pwm",
-+					     "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x5c000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_E>,
-+					 <&clkc_periphs CLKID_PWM_F>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
++__setup("slab_strict_numa", setup_slab_strict_numa);
++#endif
 +
-+			pwm_gh: pwm@5e000 {
-+				compatible = "amlogic,c3-pwm",
-+					     "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x5e000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_G>,
-+					 <&clkc_periphs CLKID_PWM_H>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
 +
-+			pwm_ij: pwm@60000 {
-+				compatible = "amlogic,c3-pwm",
-+					     "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x60000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_I>,
-+					 <&clkc_periphs CLKID_PWM_J>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
-+			pwm_kl: pwm@62000 {
-+				compatible = "amlogic,c3-pwm",
-+					     "amlogic,meson-s4-pwm";
-+				reg = <0x0 0x62000 0x0 0x24>;
-+				clocks = <&clkc_periphs CLKID_PWM_K>,
-+					 <&clkc_periphs CLKID_PWM_L>;
-+				#pwm-cells = <3>;
-+				status = "disabled";
-+			};
-+
- 			i2c0: i2c@66000 {
- 				compatible = "amlogic,meson-axg-i2c";
- 				reg = <0x0 0x66000 0x0 0x24>;
+ #ifdef CONFIG_HARDENED_USERCOPY
+ /*
+  * Rejects incorrectly sized objects and objects that are to be copied
 
+---
+base-commit: b831f83e40a24f07c8dcba5be408d93beedc820f
+change-id: 20240819-strict_numa-fc59b33123a2
+
+Best regards,
 -- 
-2.37.1
+Christoph Lameter <cl@gentwo.org>
 
