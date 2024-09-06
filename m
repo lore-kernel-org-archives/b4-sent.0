@@ -1,11 +1,10 @@
 From: Daniel Gomez <da.gomez@samsung.com>
-Date: Fri, 06 Sep 2024 13:01:33 +0200
-Subject: [PATCH v2 6/8] selinux: do not include <linux/*.h> headers from
- host programs
+Date: Fri, 06 Sep 2024 13:01:34 +0200
+Subject: [PATCH v2 7/8] selinux: move genheaders to security/selinux/
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240906-macos-build-support-v2-6-06beff418848@samsung.com>
+Message-Id: <20240906-macos-build-support-v2-7-06beff418848@samsung.com>
 References: <20240906-macos-build-support-v2-0-06beff418848@samsung.com>
 In-Reply-To: <20240906-macos-build-support-v2-0-06beff418848@samsung.com>
 To: Masahiro Yamada <masahiroy@kernel.org>, 
@@ -40,11 +39,11 @@ Cc: linux-kernel@vger.kernel.org, linux-kbuild@vger.kernel.org,
  "Daniel Gomez (Samsung)" <d+samsung@kruces.com>, gost.dev@samsung.com, 
  Daniel Gomez <da.gomez@samsung.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1725620498; l=5564;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1725620498; l=3373;
  i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
- bh=RWFmHaQGmYDEzsOarge6k0aJ15scCJOPQC2IOBiil4U=;
- b=VoY8M4eX15rBfo1jaRrsV1vsZSumMCAVAjs+tpXO/29zqWL0w803725aHyGd0/FesBCmsyQkE
- pTyc4ai3R+lASS2ZgiReZQMsynGmm/16kMoFWRNqKgAjGUDOpOqYQPK
+ bh=g4JOSV4HqHDizgdp1dK7R63MzB9RpJwV09N6flHpMq4=;
+ b=oOIBFyDWmIhzLNfk0f2h+dEpxGUEWkknDwR03lHNhX0SplfqCIavTEk26syHTsKXggxUTu0MI
+ IQEl+ez/e6oBBpwWqLDY6C6/4Av2j0+dPziED7wGl02bPV2Os+pMbRe
 X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
  pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
 X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
@@ -52,162 +51,90 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Masahiro Yamada <masahiroy@kernel.org>
 
-Commit bfc5e3a6af39 ("selinux: use the kernel headers when building
-scripts/selinux") is not the right thing to do.
+This tool is only used in security/selinux/Makefile.
 
-It is clear from the warning in include/uapi/linux/types.h:
-
-  #ifndef __EXPORTED_HEADERS__
-  #warning "Attempt to use kernel headers from user space, see https://kernelnewbies.org/KernelHeaders"
-  #endif /* __EXPORTED_HEADERS__ */
-
-If you are inclined to define __EXPORTED_HEADERS__, you are likely doing
-wrong.
-
-Adding the comment:
-
-  /* NOTE: we really do want to use the kernel headers here */
-
-does not justify the hack in any way.
-
-Currently, <linux/*.h> headers are included for the following purposes:
-
- - <linux/capability.h> is included to check CAP_LAST_CAP
- - <linux/socket.h> in included to check PF_MAX
-
-We can skip these checks when building host programs, as they will
-be eventually tested when building the kernel space.
-
-I got rid of <linux/stddef.h> from initial_sid_to_string.h because
-it is likely that NULL is already defined. If you insist on making
-it self-contained, you can add the following:
-
-  #ifdef __KERNEL__
-  #include <linux/stddef.h>
-  #else
-  #include <stddef.h>
-  #endif
-
-scripts/selinux/mdp/mdp.c still includes <linux/kconfig.h>, which is
-also discouraged and should be fixed by a follow-up refactoring.
+There is no reason to keep it under scripts/.
 
 Signed-off-by: Masahiro Yamada <masahiroy@kernel.org>
 ---
- scripts/selinux/genheaders/Makefile              |  4 +---
- scripts/selinux/genheaders/genheaders.c          |  3 ---
- scripts/selinux/mdp/Makefile                     |  2 +-
- scripts/selinux/mdp/mdp.c                        |  4 ----
- security/selinux/include/classmap.h              | 19 ++++++++++++-------
- security/selinux/include/initial_sid_to_string.h |  2 --
- 6 files changed, 14 insertions(+), 20 deletions(-)
+ scripts/remove-stale-files                                    | 3 +++
+ scripts/selinux/Makefile                                      | 2 +-
+ scripts/selinux/genheaders/.gitignore                         | 2 --
+ scripts/selinux/genheaders/Makefile                           | 3 ---
+ security/selinux/.gitignore                                   | 1 +
+ security/selinux/Makefile                                     | 7 +++++--
+ {scripts/selinux/genheaders => security/selinux}/genheaders.c | 0
+ 7 files changed, 10 insertions(+), 8 deletions(-)
 
+diff --git a/scripts/remove-stale-files b/scripts/remove-stale-files
+index 8fc55a749ccc..6e39fa8540df 100755
+--- a/scripts/remove-stale-files
++++ b/scripts/remove-stale-files
+@@ -20,6 +20,9 @@ set -e
+ # yard. Stale files stay in this file for a while (for some release cycles?),
+ # then will be really dead and removed from the code base entirely.
+ 
++# moved to security/selinux/genheaders
++rm -f scripts/selinux/genheaders/genheaders
++
+ rm -f *.spec
+ 
+ rm -f lib/test_fortify.log
+diff --git a/scripts/selinux/Makefile b/scripts/selinux/Makefile
+index 59494e14989b..4b1308fa5732 100644
+--- a/scripts/selinux/Makefile
++++ b/scripts/selinux/Makefile
+@@ -1,2 +1,2 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+-subdir-y := mdp genheaders
++subdir-y := mdp
+diff --git a/scripts/selinux/genheaders/.gitignore b/scripts/selinux/genheaders/.gitignore
+deleted file mode 100644
+index 5fcadd307908..000000000000
+--- a/scripts/selinux/genheaders/.gitignore
++++ /dev/null
+@@ -1,2 +0,0 @@
+-# SPDX-License-Identifier: GPL-2.0-only
+-genheaders
 diff --git a/scripts/selinux/genheaders/Makefile b/scripts/selinux/genheaders/Makefile
-index 1faf7f07e8db..866f60e78882 100644
+deleted file mode 100644
+index 866f60e78882..000000000000
 --- a/scripts/selinux/genheaders/Makefile
-+++ b/scripts/selinux/genheaders/Makefile
-@@ -1,5 +1,3 @@
- # SPDX-License-Identifier: GPL-2.0
- hostprogs-always-y += genheaders
--HOST_EXTRACFLAGS += \
--	-I$(srctree)/include/uapi -I$(srctree)/include \
--	-I$(srctree)/security/selinux/include
++++ /dev/null
+@@ -1,3 +0,0 @@
+-# SPDX-License-Identifier: GPL-2.0
+-hostprogs-always-y += genheaders
+-HOST_EXTRACFLAGS += -I$(srctree)/security/selinux/include
+diff --git a/security/selinux/.gitignore b/security/selinux/.gitignore
+index 168fae13ca5a..01c0df8ab009 100644
+--- a/security/selinux/.gitignore
++++ b/security/selinux/.gitignore
+@@ -1,3 +1,4 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ av_permissions.h
+ flask.h
++/genheaders
+diff --git a/security/selinux/Makefile b/security/selinux/Makefile
+index c47519ed8156..86f0575f670d 100644
+--- a/security/selinux/Makefile
++++ b/security/selinux/Makefile
+@@ -36,7 +36,10 @@ quiet_cmd_genhdrs = GEN     $(addprefix $(obj)/,$(genhdrs))
+ # see the note above, replace the $targets and 'flask.h' rule with the lines
+ # below:
+ #  targets += $(genhdrs)
+-#  $(addprefix $(obj)/,$(genhdrs)) &: scripts/selinux/...
++#  $(addprefix $(obj)/,$(genhdrs)) &: $(obj)/genheaders FORCE
+ targets += flask.h
+-$(obj)/flask.h: scripts/selinux/genheaders/genheaders FORCE
++$(obj)/flask.h: $(obj)/genheaders FORCE
+ 	$(call if_changed,genhdrs)
++
++hostprogs := genheaders
 +HOST_EXTRACFLAGS += -I$(srctree)/security/selinux/include
-diff --git a/scripts/selinux/genheaders/genheaders.c b/scripts/selinux/genheaders/genheaders.c
-index 15520806889e..3834d7eb0af6 100644
---- a/scripts/selinux/genheaders/genheaders.c
-+++ b/scripts/selinux/genheaders/genheaders.c
-@@ -1,8 +1,5 @@
- // SPDX-License-Identifier: GPL-2.0
- 
--/* NOTE: we really do want to use the kernel headers here */
--#define __EXPORTED_HEADERS__
--
- #include <stdio.h>
- #include <stdlib.h>
- #include <unistd.h>
-diff --git a/scripts/selinux/mdp/Makefile b/scripts/selinux/mdp/Makefile
-index d61058ddd15c..673782e3212f 100644
---- a/scripts/selinux/mdp/Makefile
-+++ b/scripts/selinux/mdp/Makefile
-@@ -1,7 +1,7 @@
- # SPDX-License-Identifier: GPL-2.0
- hostprogs-always-y += mdp
- HOST_EXTRACFLAGS += \
--	-I$(srctree)/include/uapi -I$(srctree)/include \
-+	-I$(srctree)/include \
- 	-I$(srctree)/security/selinux/include -I$(objtree)/include
- 
- clean-files	:= policy.* file_contexts
-diff --git a/scripts/selinux/mdp/mdp.c b/scripts/selinux/mdp/mdp.c
-index 1415604c3d24..52365921c043 100644
---- a/scripts/selinux/mdp/mdp.c
-+++ b/scripts/selinux/mdp/mdp.c
-@@ -11,10 +11,6 @@
-  * Authors: Serge E. Hallyn <serue@us.ibm.com>
-  */
- 
--
--/* NOTE: we really do want to use the kernel headers here */
--#define __EXPORTED_HEADERS__
--
- #include <stdio.h>
- #include <stdlib.h>
- #include <unistd.h>
-diff --git a/security/selinux/include/classmap.h b/security/selinux/include/classmap.h
-index 7229c9bf6c27..518209e1beb0 100644
---- a/security/selinux/include/classmap.h
-+++ b/security/selinux/include/classmap.h
-@@ -1,8 +1,5 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- 
--#include <linux/capability.h>
--#include <linux/socket.h>
--
- #define COMMON_FILE_SOCK_PERMS                                            \
- 	"ioctl", "read", "write", "create", "getattr", "setattr", "lock", \
- 		"relabelfrom", "relabelto", "append", "map"
-@@ -36,10 +33,6 @@
- 	"mac_override", "mac_admin", "syslog", "wake_alarm", "block_suspend", \
- 		"audit_read", "perfmon", "bpf", "checkpoint_restore"
- 
--#if CAP_LAST_CAP > CAP_CHECKPOINT_RESTORE
--#error New capability defined, please update COMMON_CAP2_PERMS.
--#endif
--
- /*
-  * Note: The name for any socket class should be suffixed by "socket",
-  *	 and doesn't contain more than one substr of "socket".
-@@ -181,6 +174,18 @@ const struct security_class_mapping secclass_map[] = {
- 	{ NULL }
- };
- 
-+#ifdef __KERNEL__ /* avoid this check when building host programs */
-+
-+#include <linux/capability.h>
-+
-+#if CAP_LAST_CAP > CAP_CHECKPOINT_RESTORE
-+#error New capability defined, please update COMMON_CAP2_PERMS.
-+#endif
-+
-+#include <linux/socket.h>
-+
- #if PF_MAX > 46
- #error New address family defined, please update secclass_map.
- #endif
-+
-+#endif /* __KERNEL__ */
-diff --git a/security/selinux/include/initial_sid_to_string.h b/security/selinux/include/initial_sid_to_string.h
-index 99b353b2abb4..f683a78b21fd 100644
---- a/security/selinux/include/initial_sid_to_string.h
-+++ b/security/selinux/include/initial_sid_to_string.h
-@@ -1,7 +1,5 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- 
--#include <linux/stddef.h>
--
- static const char *const initial_sid_to_string[] = {
- 	NULL, /* zero placeholder, not used */
- 	"kernel", /* kernel / SECINITSID_KERNEL */
+diff --git a/scripts/selinux/genheaders/genheaders.c b/security/selinux/genheaders.c
+similarity index 100%
+rename from scripts/selinux/genheaders/genheaders.c
+rename to security/selinux/genheaders.c
 
 -- 
 2.46.0
