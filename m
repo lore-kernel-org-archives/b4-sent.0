@@ -1,224 +1,96 @@
-From: Nikita Shubin <nikita.shubin@maquefel.me>
-Date: Mon, 09 Sep 2024 11:11:03 +0300
-Subject: [PATCH v12 38/38] dmaengine: cirrus: remove platform code
+From: Chuan Liu <chuan.liu@amlogic.com>
+Subject: [PATCH v3 0/3] clk: meson: Fix an issue with inaccurate hifi_pll
+ frequency
+Date: Mon, 09 Sep 2024 18:08:55 +0800
+Message-Id: <20240909-fix_clk-v3-0-a6d8f6333c04@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240909-ep93xx-v12-38-e86ab2423d4b@maquefel.me>
-References: <20240909-ep93xx-v12-0-e86ab2423d4b@maquefel.me>
-In-Reply-To: <20240909-ep93xx-v12-0-e86ab2423d4b@maquefel.me>
-To: Vinod Koul <vkoul@kernel.org>, 
- Nikita Shubin <nikita.shubin@maquefel.me>, 
- Alexander Sverdlin <alexander.sverdlin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, dmaengine@vger.kernel.org
-X-Mailer: b4 0.13-dev-e3e53
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1725869532; l=6076;
- i=nikita.shubin@maquefel.me; s=20230718; h=from:subject:message-id;
- bh=qbQ0k1cwlr7iv0JKjGQW+rzyy6spZcOEIpiufkU6/UM=;
- b=/gN4YL9x6gkXMRxVkoaIoFopl5KLkK0/hrLvMoax6xoUBAuoaHzoI1GIb6fUOiYdDQWPHVSyw0R/
- uPui7c1EA/0qCu9jtaoWaXAbfKMuzi66iO8lPYHJFU7XgYv+2zMY
-X-Developer-Key: i=nikita.shubin@maquefel.me; a=ed25519;
- pk=vqf5YIUJ7BJv3EJFaNNxWZgGuMgDH6rwufTLflwU9ac=
-X-Endpoint-Received: by B4 Relay for nikita.shubin@maquefel.me/20230718 with auth_id=65
+X-B4-Tracking: v=1; b=H4sIADjJ3mYC/3WMQQrCMBBFr1KyNpJMS2JdeQ8RSdNJO9g2kkhQS
+ u9uWlBw4fLN/PdmFjEQRnYsZhYwUSQ/ZSh3BbO9mTrk1GZmIKAStai4o+fVDjeu1MFpIw00UrG
+ 8vgfMr610vmTuKT58eG3hJNfrp6G+jSS54FBrjU60GlCfzDj4juze+pGtlQR/TMimNmVdSWzAt
+ u7XXJblDTHE2i3aAAAA
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Chuan Liu <chuan.liu@amlogic.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1725876555; l=2168;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=C7UAKdScvu7TqeOxKRUYoZYp71CrNXj0fxW/6EE1p80=;
+ b=r9wUHlsoq+nN2A4qwXV3+SL+QBGKsPgq1dITS+PtSp9p0RSpqv12zxxoy3xJOqTi6JUlv6j19
+ abISxvo8WXbAgvtHG2Kc1n/BF7CodJCx2fpxzYaOaXsQOac3SIrYpkN
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove DMA platform header, from now on we use device tree for DMA
-clients.
+Some PLLS with fractional multipliers have fractional denominators with
+fixed values, instead of the previous "(1 << pll-> frc.width)".
 
-Acked-by: Vinod Koul <vkoul@kernel.org>
-Signed-off-by: Nikita Shubin <nikita.shubin@maquefel.me>
+The hifi_pll for both C3 and S4 supports a fractional multiplier and has
+a fixed fractional denominator of "100000".
+
+Here are the results of the C3-based command tests (already defined
+CLOCK_ALLOW_WRITE_DEBUGFS):
+* echo 491520000 > /sys/kernel/debug/clk/hifi_pll/clk_rate
+* cat /sys/kernel/debug/clk/hifi_pll/clk_rate
+491520000
+* echo 1 > /sys/kernel/debug/clk/hifi_pll/clk_prepare_enable
+* cat /sys/kernel/debug/meson-clk-msr/clks/hifi_pll_clk
+491515625       +/-15625Hz
+* devmem 0xfe008100 32
+0xD00304A3
+* devmem 0xfe008104 32
+0x00014820
+
+Based on the register information read above, it can be obtained:
+m = 0xA3 = 0d163;
+n = 0x1 = 0d1
+frac = 0x14820 = 0d84000
+od = 0x3 = 0d3
+
+hifi_pll calculates the output frequency:
+calc_rate = xtal_rate / n * (m + (frac / frac_max)) >> od;
+calc_rate = 24000000 / 1 * (163 + (84000 / 100000)) >> 3;
+calc_rate = 491520000
+
+clk_rate, msr_rate, and calc_rate all match.
+
+The test and calculation results of S4 are consistent with those of C3,
+which will not be repeated here.
+
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- drivers/dma/ep93xx_dma.c                 |  48 ++++++++++++++-
- include/linux/platform_data/dma-ep93xx.h | 100 -------------------------------
- 2 files changed, 46 insertions(+), 102 deletions(-)
+Changes in v3:
+- Drop the call to unlikely().
+- Link to v2: https://lore.kernel.org/r/20240906-fix_clk-v2-0-7a3941eb2cdf@amlogic.com
 
-diff --git a/drivers/dma/ep93xx_dma.c b/drivers/dma/ep93xx_dma.c
-index 17c8e2badee2..43c4241af7f5 100644
---- a/drivers/dma/ep93xx_dma.c
-+++ b/drivers/dma/ep93xx_dma.c
-@@ -17,6 +17,7 @@
- #include <linux/clk.h>
- #include <linux/init.h>
- #include <linux/interrupt.h>
-+#include <linux/dma-mapping.h>
- #include <linux/dmaengine.h>
- #include <linux/module.h>
- #include <linux/mod_devicetable.h>
-@@ -25,8 +26,6 @@
- #include <linux/platform_device.h>
- #include <linux/slab.h>
- 
--#include <linux/platform_data/dma-ep93xx.h>
--
- #include "dmaengine.h"
- 
- /* M2P registers */
-@@ -106,6 +105,26 @@
- #define DMA_MAX_CHAN_BYTES		0xffff
- #define DMA_MAX_CHAN_DESCRIPTORS	32
- 
-+/*
-+ * M2P channels.
-+ *
-+ * Note that these values are also directly used for setting the PPALLOC
-+ * register.
-+ */
-+#define EP93XX_DMA_I2S1			0
-+#define EP93XX_DMA_I2S2			1
-+#define EP93XX_DMA_AAC1			2
-+#define EP93XX_DMA_AAC2			3
-+#define EP93XX_DMA_AAC3			4
-+#define EP93XX_DMA_I2S3			5
-+#define EP93XX_DMA_UART1		6
-+#define EP93XX_DMA_UART2		7
-+#define EP93XX_DMA_UART3		8
-+#define EP93XX_DMA_IRDA			9
-+/* M2M channels */
-+#define EP93XX_DMA_SSP			10
-+#define EP93XX_DMA_IDE			11
-+
- enum ep93xx_dma_type {
- 	M2P_DMA,
- 	M2M_DMA,
-@@ -242,6 +261,31 @@ static struct ep93xx_dma_chan *to_ep93xx_dma_chan(struct dma_chan *chan)
- 	return container_of(chan, struct ep93xx_dma_chan, chan);
- }
- 
-+static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
-+{
-+	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
-+		return true;
-+
-+	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
-+}
-+
-+/*
-+ * ep93xx_dma_chan_direction - returns direction the channel can be used
-+ *
-+ * This function can be used in filter functions to find out whether the
-+ * channel supports given DMA direction. Only M2P channels have such
-+ * limitation, for M2M channels the direction is configurable.
-+ */
-+static inline enum dma_transfer_direction
-+ep93xx_dma_chan_direction(struct dma_chan *chan)
-+{
-+	if (!ep93xx_dma_chan_is_m2p(chan))
-+		return DMA_TRANS_NONE;
-+
-+	/* even channels are for TX, odd for RX */
-+	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
-+}
-+
- /**
-  * ep93xx_dma_set_active - set new active descriptor chain
-  * @edmac: channel
-diff --git a/include/linux/platform_data/dma-ep93xx.h b/include/linux/platform_data/dma-ep93xx.h
-deleted file mode 100644
-index 9ec5cdd5a1eb..000000000000
---- a/include/linux/platform_data/dma-ep93xx.h
-+++ /dev/null
-@@ -1,100 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0 */
--#ifndef __ASM_ARCH_DMA_H
--#define __ASM_ARCH_DMA_H
--
--#include <linux/types.h>
--#include <linux/device.h>
--#include <linux/dmaengine.h>
--#include <linux/dma-mapping.h>
--#include <linux/property.h>
--#include <linux/string.h>
--
--/*
-- * M2P channels.
-- *
-- * Note that these values are also directly used for setting the PPALLOC
-- * register.
-- */
--#define EP93XX_DMA_I2S1		0
--#define EP93XX_DMA_I2S2		1
--#define EP93XX_DMA_AAC1		2
--#define EP93XX_DMA_AAC2		3
--#define EP93XX_DMA_AAC3		4
--#define EP93XX_DMA_I2S3		5
--#define EP93XX_DMA_UART1	6
--#define EP93XX_DMA_UART2	7
--#define EP93XX_DMA_UART3	8
--#define EP93XX_DMA_IRDA		9
--/* M2M channels */
--#define EP93XX_DMA_SSP		10
--#define EP93XX_DMA_IDE		11
--
--/**
-- * struct ep93xx_dma_data - configuration data for the EP93xx dmaengine
-- * @port: peripheral which is requesting the channel
-- * @direction: TX/RX channel
-- * @name: optional name for the channel, this is displayed in /proc/interrupts
-- *
-- * This information is passed as private channel parameter in a filter
-- * function. Note that this is only needed for slave/cyclic channels.  For
-- * memcpy channels %NULL data should be passed.
-- */
--struct ep93xx_dma_data {
--	int				port;
--	enum dma_transfer_direction	direction;
--	const char			*name;
--};
--
--/**
-- * struct ep93xx_dma_chan_data - platform specific data for a DMA channel
-- * @name: name of the channel, used for getting the right clock for the channel
-- * @base: mapped registers
-- * @irq: interrupt number used by this channel
-- */
--struct ep93xx_dma_chan_data {
--	const char			*name;
--	void __iomem			*base;
--	int				irq;
--};
--
--/**
-- * struct ep93xx_dma_platform_data - platform data for the dmaengine driver
-- * @channels: array of channels which are passed to the driver
-- * @num_channels: number of channels in the array
-- *
-- * This structure is passed to the DMA engine driver via platform data. For
-- * M2P channels, contract is that even channels are for TX and odd for RX.
-- * There is no requirement for the M2M channels.
-- */
--struct ep93xx_dma_platform_data {
--	struct ep93xx_dma_chan_data	*channels;
--	size_t				num_channels;
--};
--
--static inline bool ep93xx_dma_chan_is_m2p(struct dma_chan *chan)
--{
--	if (device_is_compatible(chan->device->dev, "cirrus,ep9301-dma-m2p"))
--		return true;
--
--	return !strcmp(dev_name(chan->device->dev), "ep93xx-dma-m2p");
--}
--
--/**
-- * ep93xx_dma_chan_direction - returns direction the channel can be used
-- * @chan: channel
-- *
-- * This function can be used in filter functions to find out whether the
-- * channel supports given DMA direction. Only M2P channels have such
-- * limitation, for M2M channels the direction is configurable.
-- */
--static inline enum dma_transfer_direction
--ep93xx_dma_chan_direction(struct dma_chan *chan)
--{
--	if (!ep93xx_dma_chan_is_m2p(chan))
--		return DMA_TRANS_NONE;
--
--	/* even channels are for TX, odd for RX */
--	return (chan->chan_id % 2 == 0) ? DMA_MEM_TO_DEV : DMA_DEV_TO_MEM;
--}
--
--#endif /* __ASM_ARCH_DMA_H */
+Changes in v2:
+- Added frac_max to the pll parameter instead of flag.
+- frac_max is added to hifi_pll for C3 and S4.
+- Link to v1: https://lore.kernel.org/r/20240906-fix_clk-v1-0-2977ef0d72e7@amlogic.com
 
+---
+Chuan Liu (3):
+      clk: meson: Support PLL with fixed fractional denominators
+      clk: meson: c3: pll: fix frac maximum value for hifi_pll
+      clk: meson: s4: pll: fix frac maximum value for hifi_pll
+
+ drivers/clk/meson/c3-pll.c  | 1 +
+ drivers/clk/meson/clk-pll.c | 8 +++++---
+ drivers/clk/meson/clk-pll.h | 1 +
+ drivers/clk/meson/s4-pll.c  | 1 +
+ 4 files changed, 8 insertions(+), 3 deletions(-)
+---
+base-commit: 80344f4c1a1edec507a20adca476af84ea58cd4c
+change-id: 20240904-fix_clk-668f7a1a2b16
+
+Best regards,
 -- 
-2.43.2
+Chuan Liu <chuan.liu@amlogic.com>
 
