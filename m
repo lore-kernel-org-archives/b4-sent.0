@@ -1,70 +1,66 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Tue, 10 Sep 2024 13:53:44 +0800
-Subject: [PATCH] clk: Fix invalid execution of clk_set_rate
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v3 0/3] support for amlogic rtc
+Date: Tue, 10 Sep 2024 18:14:17 +0800
+Message-Id: <20240910-rtc-v3-0-1fa077a69a20@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240910-fix_clk-v1-1-111443baaeaa@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAOfe32YC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDS0MD3bTMivjknGxdc8Ok5BQjg6QUY+M0JaDqgqJUoBTYpOjY2loA901
- 2lVkAAAA=
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>
-Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1725947627; l=1619;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=3tAKqELYhIvRcXnUoRlXXLtvnJsBHNdrLYPkwEE/zJI=;
- b=MFbnaaVvkM7y7cG1rTenn+RlC/vW4QvIC4DEqGeAHtl2HMKuRduRtutjrLqkpcqhY9gey+F/U
- sIwGXwnw06jCuqfqCuVdTeyVvBQZwriPntFkUiKwZrH2I11yHy6aOz6
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+X-B4-Tracking: v=1; b=H4sIAPkb4GYC/1WMwQrCMBAFf6Xs2UiyMTb15H+Ih5ik7YJtJClBK
+ f130yJIj/N4MzMkH8knuFQzRJ8pURgLyEMFtjdj5xm5woAcT1yjZHGyTGBtnRYNGiGhPF/Rt/T
+ eKrd74Z7SFOJni2axrns/C8bZua251MIZ1PJqhmfoyB5tGGAtZPxbDf9ZWCyunFG1Ug/tmr21L
+ MsXGCJDoc4AAAA=
+To: Yiting Deng <yiting.deng@amlogic.com>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, linux-rtc@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1725963258; l=1443;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=Sobyjbsg00DCrwSWH1kDJBeyO+Pp/IjZIWpKWS5D8QU=;
+ b=ILLG7jZLh8LNWnmrhMqwMAvdN+HP2yahKKY/veJHkXQAAOKdiZJlBOS5SJMlyxBL9twv2+Ndj
+ dqTItQ3WhvgBrs2gKuB/VQnMdNCVPBiNXVGkEJrqfJ3bd65biYS47hh
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some clocks have rates that can be changed elsewhere, so add a flag
-CLK_GET_RATE_NOCACHE(such as scmi_clk) to these clocks to ensure that
-the real-time rate is obtained.
+Add rtc driver and bindigns for the amlogic A4(A113L2) and A5(A113X2) SoCs.
 
-When clk_set_rate is called, it is returned if the request to set rate
-is consistent with the current rate. Getting the current rate in
-clk_set_rate returns the rate stored in clk_core. CLK_GET_RATE_NOCACHE
-does not take effect here.
-
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Some clocks have rates that can be changed elsewhere, so add a flag
-CLK_GET_RATE_NOCACHE(such as scmi_clk) to these clocks to ensure that
-the real-time rate is obtained.
+Changes in v3:
+- Perfect the binding description and rename binding.
+- Using dev_err_probe function correctly, and modify commit message.
+- Change placement about MAINTAINERS.
+- Link to v2: https://lore.kernel.org/r/20240903-rtc-v2-0-05da5755b8d9@amlogic.com
 
-When clk_set_rate is called, it is returned if the request to set rate
-is consistent with the current rate. Getting the current rate in
-clk_set_rate returns the rate stored in clk_core. CLK_GET_RATE_NOCACHE
-does not take effect here.
----
- drivers/clk/clk.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
-index 285ed1ad8a37..79b453b82528 100644
---- a/drivers/clk/clk.c
-+++ b/drivers/clk/clk.c
-@@ -2536,7 +2536,7 @@ static int clk_core_set_rate_nolock(struct clk_core *core,
- 	rate = clk_core_req_round_rate_nolock(core, req_rate);
- 
- 	/* bail early if nothing to do */
--	if (rate == clk_core_get_rate_nolock(core))
-+	if (rate == clk_core_get_rate_recalc(core))
- 		return 0;
- 
- 	/* fail on a direct rate set of a protected provider */
+Changes in v2:
+- Modify bindings clock name and perfect the example.
+- Fix some bug in driver, and use dev_err_probe instead of dev_err in probe process.
+- Use RTC API to handle calibration.
+- Remove unused func and rename driver file name.
+- Link to v1: https://lore.kernel.org/r/20240823-rtc-v1-0-6f70381da283@amlogic.com
 
 ---
-base-commit: 2cd6543d82b9dc7b971b9b64f22ad34a1cae3076
-change-id: 20240910-fix_clk-71bcd20bd33f
+Yiting Deng (3):
+      dt-bindings: rtc: Add Amlogic A4 and A5 RTC
+      rtc: support for the Amlogic on-chip RTC
+      MAINTAINERS: Add an entry for Amlogic RTC driver
+
+ .../devicetree/bindings/rtc/amlogic,a4-rtc.yaml    |  63 +++
+ MAINTAINERS                                        |   8 +
+ drivers/rtc/Kconfig                                |  12 +
+ drivers/rtc/Makefile                               |   1 +
+ drivers/rtc/rtc-amlogic-a4.c                       | 473 +++++++++++++++++++++
+ 5 files changed, 557 insertions(+)
+---
+base-commit: 658b3fec5fc0ef3c016c4a7eedac1a5f3b8c0151
+change-id: 20240823-rtc-127cd8192a13
 
 Best regards,
 -- 
-Chuan Liu <chuan.liu@amlogic.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
