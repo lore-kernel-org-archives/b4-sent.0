@@ -1,15 +1,12 @@
 From: Oliver Gaskell <Oliver.Gaskell@analog.com>
-Subject: [PATCH v2 00/20] arm: Initial support for Analog Devices SC5xx
- boards
-Date: Thu, 12 Sep 2024 16:50:41 +0100
-Message-Id: <20240912-sc5xx-upstreaming-patches-v2-0-1185a80df79e@analog.com>
+Date: Thu, 12 Sep 2024 16:50:42 +0100
+Subject: [PATCH v2 01/20] arm: dts: Support SC573-EZKIT
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANEN42YC/32Nyw6CMBBFf8XM2jGl1kBd+R+GxdgHTCItaZFgC
- P9uJXHr8pzknrtCdoldhuthheRmzhxDAXk8gOkpdA7ZFgYppBKNrDCby7Lga8xTcjRw6HCkyfQ
- uoxGqeZD2utYEZT8m53nZ2/e2cM95ium9X83V1/6qzZ/qXKFApawm660/y/pGgZ6xO5k4QLtt2
- wdksIZ4wwAAAA==
+Message-Id: <20240912-sc5xx-upstreaming-patches-v2-1-1185a80df79e@analog.com>
+References: <20240912-sc5xx-upstreaming-patches-v2-0-1185a80df79e@analog.com>
+In-Reply-To: <20240912-sc5xx-upstreaming-patches-v2-0-1185a80df79e@analog.com>
 To: Tom Rini <trini@konsulko.com>, 
  Nathan Barrett-Morrison <nathan.morrison@timesys.com>, 
  Greg Malysa <greg.malysa@timesys.com>, 
@@ -19,121 +16,172 @@ To: Tom Rini <trini@konsulko.com>,
  Arturs Artamonovs <arturs.artamonovs@analog.com>, 
  Rayagonda Kokatanur <rayagonda.kokatanur@broadcom.com>
 Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
- Oliver Gaskell <Oliver.Gaskell@analog.com>, 
- Trevor Woerner <twoerner@gmail.com>
+ Oliver Gaskell <Oliver.Gaskell@analog.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1726156261; l=5381;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1726156261; l=4317;
  i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
- bh=Xj/meaRgDFyAmwkr6tu2q92rPXq/jjCcq2OgMAHdieI=;
- b=zSr+pzZOepbuousZeGSMnTvnY9b1DkqjW29BNqKAMsg87cI7fU/GslMoVWRGjMSR2e5NxiOKY
- n1MTW/0/vBaCNr2wI7zDozL3bxaUwwJO+K1rmJXSG1UYfEdzJw88smI
+ bh=r4aHTZBVZsVIuHKj//cUZ8TbZSM5wgSHOGA8oAUbiMs=;
+ b=vvApAYSjBxmM5VPOES236JkuWOC6tsf0i75zgYlOWdwOVaDyfQcvHxkg4UJ29Kpiw/NWTvp5T
+ sQG9885y4rZB0cSSIemXvIscLe1wn6jBewBMnca0C0TT5WB24tSqNSf
 X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
  pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
 X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ADSP-SC5xx is a series of ARM-based DSPs.
-This comprises the armv7 based SC57x, SC58x and SC594 series, and the
-armv8 based SC598.
+Adds minimal device tree for Analog Devices' SC573-EZKIT board and
+common files for the SC57x/SC5xx family.
 
-This patch series includes configurations, init code, and minimal DTs
-to enable Analog Devices' evaluation boards for these SoCs to boot
-through SPL and into U-Boot Proper, as well as devicetree schemas for
-the added DTs.
+This also adds all sc5* devicetrees to ARM SC5XX in MAINTAINERS, and
+adds the ADSP Linux mailing list as the list for ARM SC5XX.
 
-This patch series depends on ("arm: Add Analog Devices SC5xx Machine
-Type") (https://lists.denx.de/pipermail/u-boot/2024-April/552043.html)
-
+Co-developed-by: Greg Malysa <greg.malysa@timesys.com>
+Signed-off-by: Greg Malysa <greg.malysa@timesys.com>
+Co-developed-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
+Signed-off-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
 Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
-Changes in v2:
-- Reorganise Kconfig defaults into the root Kconfig, and
-  common/spl/Kconfig.
-- Sort Kconfig `select`s alphabetically
-- Clean up implementation of bss_clear to be not platform-dependent
-- Update adi_rom_boot_args for SC598-SOM to support RevC and newer of
-  the SoM.
-- Link to v1: https://lore.kernel.org/r/20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com
+ MAINTAINERS                  |  2 ++
+ arch/arm/dts/Makefile        |  2 ++
+ arch/arm/dts/sc573-ezkit.dts | 13 +++++++++++
+ arch/arm/dts/sc57x.dtsi      | 21 +++++++++++++++++
+ arch/arm/dts/sc5xx.dtsi      | 54 ++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 92 insertions(+)
 
----
-Oliver Gaskell (20):
-      arm: dts: Support SC573-EZKIT
-      arm: dts: Support SC584-EZKIT
-      arm: dts: Support SC589-MINI
-      arm: dts: Support SC589-EZKIT
-      arm: dts: Support SC594-SOM-EZKIT
-      arm: dts: Support SC594-SOM-EZLITE
-      arm: dts: Support SC598-SOM-EZKIT
-      arm: dts: Support SC598-SOM-EZLITE
-      dt-bindings: arm: Add SC5xx Series binding
-      dt-bindings: clock: Add SC5xx clock tree bindings
-      dt-bindings: timer: Add SC5xx Timer bindings
-      arm: mach-sc5xx: clean up Kconfig
-      arm: SC598-SOM-EZKIT initial support
-      arm: SC598-SOM-EZLITE initial support
-      arm: SC594-SOM-EZKIT initial support
-      arm: SC594-SOM-EZLITE initial support
-      arm: SC584-EZKIT initial support
-      arm: SC589-EZKIT initial support
-      arm: SC589-MINI initial support
-      arm: SC573-EZKIT initial support
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 2050ae24df..b172e1ea95 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -601,8 +601,10 @@ M:	Ian Roberts <ian.roberts@timesys.com>
+ M:	Vasileios Bimpikas <vasileios.bimpikas@analog.com>
+ M:	Utsav Agarwal <utsav.agarwal@analog.com>
+ M:	Arturs Artamonovs <arturs.artamonovs@analog.com>
++L:	adsp-linux@analog.com
+ S:	Supported
+ T:	git https://github.com/analogdevicesinc/lnxdsp-u-boot
++F:	arch/arm/dts/sc5*
+ F:	arch/arm/include/asm/arch-adi/
+ F:	arch/arm/mach-sc5xx/
+ F:	drivers/clk/adi/
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index 2d931c23fc..d2194908d9 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -1258,6 +1258,8 @@ dtb-$(CONFIG_TARGET_IMX8MM_CL_IOT_GATE_OPTEE) += imx8mm-cl-iot-gate-optee.dtb \
+ 					imx8mm-cl-iot-gate-ied-tpm0.dtbo \
+ 					imx8mm-cl-iot-gate-ied-tpm1.dtbo
+ 
++dtb-$(CONFIG_TARGET_SC573_EZKIT) += sc573-ezkit.dtb
++
+ ifneq ($(CONFIG_TARGET_IMX8MP_RSB3720A1_4G)$(CONFIG_TARGET_IMX8MP_RSB3720A1_6G),)
+ dtb-y += imx8mp-rsb3720-a1.dtb
+ endif
+diff --git a/arch/arm/dts/sc573-ezkit.dts b/arch/arm/dts/sc573-ezkit.dts
+new file mode 100644
+index 0000000000..0dc2962618
+--- /dev/null
++++ b/arch/arm/dts/sc573-ezkit.dts
+@@ -0,0 +1,13 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * (C) Copyright 2024 - Analog Devices, Inc.
++ */
++
++/dts-v1/;
++
++#include "sc57x.dtsi"
++
++/ {
++	model = "ADI SC573-EZKIT";
++	compatible = "adi,sc573-ezkit", "adi,sc57x";
++};
+diff --git a/arch/arm/dts/sc57x.dtsi b/arch/arm/dts/sc57x.dtsi
+new file mode 100644
+index 0000000000..ddfcae8d19
+--- /dev/null
++++ b/arch/arm/dts/sc57x.dtsi
+@@ -0,0 +1,21 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * (C) Copyright 2024 - Analog Devices, Inc.
++ */
++
++#include "sc5xx.dtsi"
++
++/ {
++	gic: interrupt-controller@310b2000 {
++		compatible = "arm,cortex-a5-gic";
++		#interrupt-cells = <3>;
++		#address-cells = <0>;
++		interrupt-controller;
++		reg = <0x310B2000 0x1000>,
++		      <0x310B4000 0x100>;
++	};
++};
++
++&timer0 {
++	clocks = <&clk ADSP_SC57X_CLK_CGU0_SCLK0>;
++};
+diff --git a/arch/arm/dts/sc5xx.dtsi b/arch/arm/dts/sc5xx.dtsi
+new file mode 100644
+index 0000000000..3f440dac29
+--- /dev/null
++++ b/arch/arm/dts/sc5xx.dtsi
+@@ -0,0 +1,54 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * (C) Copyright 2024 - Analog Devices, Inc.
++ */
++
++#include <dt-bindings/interrupt-controller/arm-gic.h>
++#include <dt-bindings/clock/adi-sc5xx-clock.h>
++
++/ {
++	#address-cells = <1>;
++	#size-cells = <1>;
++
++	clocks {
++		sys_clkin0: sys_clkin0 {
++			compatible = "fixed-clock";
++			#clock-cells = <0>;
++			clock-frequency = <25000000>;
++			bootph-all;
++		};
++
++		sys_clkin1: sys_clkin1 {
++			compatible = "fixed-clock";
++			#clock-cells = <0>;
++			clock-frequency = <25000000>;
++			bootph-all;
++		};
++	};
++
++	soc {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "simple-bus";
++		device_type = "soc";
++		ranges;
++		bootph-all;
++
++		timer0: timer@31018000 {
++			compatible = "adi,sc5xx-gptimer";
++			reg = <0x31018004 0x100>,
++			      <0x31018060 0x100>;
++			status = "okay";
++			bootph-all;
++		};
++
++		clk: clocks@3108d000 {
++			reg = <0x3108d000 0x1000>;
++			#clock-cells = <1>;
++			clocks = <&sys_clkin0>, <&sys_clkin1>;
++			clock-names = "sys_clkin0", "sys_clkin1";
++			status = "okay";
++			bootph-all;
++		};
++	};
++};
 
- Kconfig                                            |   8 +-
- MAINTAINERS                                        |   7 +
- arch/arm/Kconfig                                   |  14 ++
- arch/arm/dts/Makefile                              |   9 ++
- arch/arm/dts/sc573-ezkit.dts                       |  13 ++
- arch/arm/dts/sc57x.dtsi                            |  21 +++
- arch/arm/dts/sc584-ezkit.dts                       |  13 ++
- arch/arm/dts/sc589-ezkit.dts                       |  13 ++
- arch/arm/dts/sc589-mini.dts                        |  13 ++
- arch/arm/dts/sc58x.dtsi                            |  23 ++++
- arch/arm/dts/sc594-som-ezkit.dts                   |  13 ++
- arch/arm/dts/sc594-som-ezlite.dts                  |  13 ++
- arch/arm/dts/sc594-som.dtsi                        |  19 +++
- arch/arm/dts/sc598-som-ezkit.dts                   |  13 ++
- arch/arm/dts/sc598-som-ezlite.dts                  |  13 ++
- arch/arm/dts/sc598-som.dtsi                        |  31 +++++
- arch/arm/dts/sc5xx.dtsi                            |  54 ++++++++
- arch/arm/mach-sc5xx/Kconfig                        | 145 +++++++++++++++++----
- arch/arm/mach-sc5xx/Makefile                       |   4 +
- arch/arm/mach-sc5xx/sc57x-spl.c                    |  26 ++++
- arch/arm/mach-sc5xx/sc58x-spl.c                    |  26 ++++
- arch/arm/mach-sc5xx/sc59x-spl.c                    |  26 ++++
- arch/arm/mach-sc5xx/sc59x_64-spl.c                 |  26 ++++
- arch/arm/mach-sc5xx/sc59x_64.c                     |  25 ++++
- arch/arm/mach-sc5xx/soc.c                          |  36 +++++
- board/adi/sc573-ezkit/Kconfig                      | 116 +++++++++++++++++
- board/adi/sc573-ezkit/sc573-ezkit.env              |  13 ++
- board/adi/sc584-ezkit/Kconfig                      | 116 +++++++++++++++++
- board/adi/sc584-ezkit/sc584-ezkit.env              |  13 ++
- board/adi/sc589-ezkit/Kconfig                      | 116 +++++++++++++++++
- board/adi/sc589-ezkit/sc589-ezkit.env              |  13 ++
- board/adi/sc589-mini/Kconfig                       | 116 +++++++++++++++++
- board/adi/sc589-mini/sc589-mini.env                |  13 ++
- board/adi/sc594-som-ezkit/Kconfig                  | 133 +++++++++++++++++++
- board/adi/sc594-som-ezkit/sc594-som-ezkit.env      |  13 ++
- board/adi/sc594-som-ezlite/Kconfig                 | 133 +++++++++++++++++++
- board/adi/sc594-som-ezlite/sc594-som-ezlite.env    |  13 ++
- board/adi/sc598-som-ezkit/Kconfig                  | 100 ++++++++++++++
- board/adi/sc598-som-ezkit/sc598-som-ezkit.env      |  13 ++
- board/adi/sc598-som-ezlite/Kconfig                 | 100 ++++++++++++++
- board/adi/sc598-som-ezlite/sc598-som-ezlite.env    |  13 ++
- common/spl/Kconfig                                 |  17 ++-
- doc/device-tree-bindings/arm/adi/adi,sc5xx.yaml    |  46 +++++++
- .../clock/adi,sc5xx-clocks.yaml                    | 112 ++++++++++++++++
- .../timer/adi,sc5xx-gptimer.yaml                   |  42 ++++++
- include/configs/sc573-ezkit.h                      |  18 +++
- include/configs/sc584-ezkit.h                      |  18 +++
- include/configs/sc589.h                            |  19 +++
- include/configs/sc594-som.h                        |  19 +++
- include/configs/sc598-som.h                        |  23 ++++
- 50 files changed, 1923 insertions(+), 29 deletions(-)
----
-base-commit: 1312faac5f52d27cfb45dfe1a5a93a2944ca5c21
-change-id: 20240821-sc5xx-upstreaming-patches-c048ba9f979a
-
-Best regards,
 -- 
-Oliver Gaskell <Oliver.Gaskell@analog.com>
+2.34.1
 
