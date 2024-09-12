@@ -1,10 +1,10 @@
 From: Oliver Gaskell <Oliver.Gaskell@analog.com>
-Date: Thu, 12 Sep 2024 16:50:58 +0100
-Subject: [PATCH v2 17/20] arm: SC584-EZKIT initial support
+Date: Thu, 12 Sep 2024 16:50:59 +0100
+Subject: [PATCH v2 18/20] arm: SC589-EZKIT initial support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240912-sc5xx-upstreaming-patches-v2-17-1185a80df79e@analog.com>
+Message-Id: <20240912-sc5xx-upstreaming-patches-v2-18-1185a80df79e@analog.com>
 References: <20240912-sc5xx-upstreaming-patches-v2-0-1185a80df79e@analog.com>
 In-Reply-To: <20240912-sc5xx-upstreaming-patches-v2-0-1185a80df79e@analog.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -16,162 +16,96 @@ To: Tom Rini <trini@konsulko.com>,
  Arturs Artamonovs <arturs.artamonovs@analog.com>, 
  Rayagonda Kokatanur <rayagonda.kokatanur@broadcom.com>
 Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
- Oliver Gaskell <Oliver.Gaskell@analog.com>, 
- Trevor Woerner <twoerner@gmail.com>
+ Oliver Gaskell <Oliver.Gaskell@analog.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1726156261; l=7547;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1726156261; l=4560;
  i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
- bh=FFJKFXB50rfjhE/QQXRCI7br0EWGQKNXClra1BxgjvU=;
- b=4HRW4PVdcxcBLhtbTJDgwWf/+Tz6mMbEKZCAOxOWqDasRsUSszkYRTJ9WrKUw0Dt9ypY3OHXw
- XozVBeBAFDxBK4y6UilcRu18ORQJb43T1b7bm04s9cI7E60sNYoy+nt
+ bh=rd9JAxKkEO18wZbWqHA0JfnebuP17MfuWHqOTowwyu0=;
+ b=5I8rrQNcxpTvZzwFJ5T7p1Y/y0rROdmUe9jtWRCqbaKXSgAoru/RqwABEEIPmx5mi8H/iEDfz
+ IlQkmovXD8bAa8THULlUlBfii4RXVF/IPUffQC3ttRm1obpVfKWdXN1
 X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
  pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
 X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds support for Analog Devices' SC584-EZKIT board. Includes:
-- SoC specific configs in mach-sc5xx/Kconfig
-- Memory Map for SPL
-- SPL config options in common/spl/Kconfig
-- Necessary board-specific init functions
+Adds support for Analog Devices' SC589-EZKIT board. Includes:
+- Board specific configs in mach-sc5xx/Kconfig
 - Board-specific Kconfig and environment in board/adi/
 - Memory configuration
 
-Co-developed-by: Greg Malysa <greg.malysa@timesys.com>
-Signed-off-by: Greg Malysa <greg.malysa@timesys.com>
-Co-developed-by: Trevor Woerner <twoerner@gmail.com>
-Signed-off-by: Trevor Woerner <twoerner@gmail.com>
-Co-developed-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
-Signed-off-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
 Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
  Kconfig                               |   1 +
- arch/arm/mach-sc5xx/Kconfig           |  15 +++++
- arch/arm/mach-sc5xx/Makefile          |   1 +
- arch/arm/mach-sc5xx/sc58x-spl.c       |  26 ++++++++
- board/adi/sc584-ezkit/Kconfig         | 116 ++++++++++++++++++++++++++++++++++
- board/adi/sc584-ezkit/sc584-ezkit.env |  13 ++++
- common/spl/Kconfig                    |   3 +
- include/configs/sc584-ezkit.h         |  18 ++++++
- 8 files changed, 193 insertions(+)
+ arch/arm/mach-sc5xx/Kconfig           |   5 ++
+ board/adi/sc589-ezkit/Kconfig         | 116 ++++++++++++++++++++++++++++++++++
+ board/adi/sc589-ezkit/sc589-ezkit.env |  13 ++++
+ include/configs/sc589.h               |  19 ++++++
+ 5 files changed, 154 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index f797105751..2422b94e6d 100644
+index 2422b94e6d..bdae1b01d3 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -647,6 +647,7 @@ config TEXT_BASE
- 	default 0x42e00000 if SUNXI_MINIMUM_DRAM_MB >= 64
+@@ -648,6 +648,7 @@ config TEXT_BASE
  	default 0x96000000 if ARCH_SC5XX && SC59X_64
  	default 0xB2200000 if ARCH_SC5XX && SC59X
-+	default 0x89200000 if ARCH_SC5XX && TARGET_SC584_EZKIT
+ 	default 0x89200000 if ARCH_SC5XX && TARGET_SC584_EZKIT
++	default 0xC2200000 if ARCH_SC5XX && TARGET_SC589_EZKIT
  	hex "Text Base"
  	help
  	  The address in memory that U-Boot will be copied and executed from
 diff --git a/arch/arm/mach-sc5xx/Kconfig b/arch/arm/mach-sc5xx/Kconfig
-index b57c21cf16..ac2b669940 100644
+index ac2b669940..408b943fd6 100644
 --- a/arch/arm/mach-sc5xx/Kconfig
 +++ b/arch/arm/mach-sc5xx/Kconfig
-@@ -49,6 +49,20 @@ config SC59X_64
+@@ -59,6 +59,10 @@ config TARGET_SC584_EZKIT
+ 	prompt "SC584-EZKIT"
+ 	select ADI_USE_DDR2
  
++config TARGET_SC589_EZKIT
++	bool
++	prompt "SC589-EZKIT"
++
  endchoice
  
-+if SC58X
-+
-+choice
-+	prompt "SC58x board select"
-+
-+config TARGET_SC584_EZKIT
-+	bool
-+	prompt "SC584-EZKIT"
-+	select ADI_USE_DDR2
-+
-+endchoice
-+
-+endif
-+
- if SC59X
- 
- choice
-@@ -530,5 +544,6 @@ source "board/adi/sc598-som-ezkit/Kconfig"
+ endif
+@@ -544,6 +548,7 @@ source "board/adi/sc598-som-ezkit/Kconfig"
  source "board/adi/sc598-som-ezlite/Kconfig"
  source "board/adi/sc594-som-ezkit/Kconfig"
  source "board/adi/sc594-som-ezlite/Kconfig"
-+source "board/adi/sc584-ezkit/Kconfig"
++source "board/adi/sc589-ezkit/Kconfig"
+ source "board/adi/sc584-ezkit/Kconfig"
  
  endif
-diff --git a/arch/arm/mach-sc5xx/Makefile b/arch/arm/mach-sc5xx/Makefile
-index a8079b6120..9a00a430b4 100644
---- a/arch/arm/mach-sc5xx/Makefile
-+++ b/arch/arm/mach-sc5xx/Makefile
-@@ -12,6 +12,7 @@ obj-y += soc.o init/
- 
- obj-$(CONFIG_SC57X) += sc57x.o
- obj-$(CONFIG_SC58X) += sc58x.o
-+obj-$(CONFIG_SC58X) += sc58x-spl.o
- obj-$(CONFIG_SC59X) += sc59x.o
- obj-$(CONFIG_SC59X) += sc59x-spl.o
- obj-$(CONFIG_SC59X_64) += sc59x_64.o
-diff --git a/arch/arm/mach-sc5xx/sc58x-spl.c b/arch/arm/mach-sc5xx/sc58x-spl.c
+diff --git a/board/adi/sc589-ezkit/Kconfig b/board/adi/sc589-ezkit/Kconfig
 new file mode 100644
-index 0000000000..ae809f09e5
+index 0000000000..b5f555f3a2
 --- /dev/null
-+++ b/arch/arm/mach-sc5xx/sc58x-spl.c
-@@ -0,0 +1,26 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * (C) Copyright 2024 - Analog Devices, Inc.
-+ */
-+
-+#include <asm/arch-adi/sc5xx/spl.h>
-+
-+// Table 53-13 in SC58x HRM
-+const struct adi_boot_args adi_rom_boot_args[] = {
-+	// JTAG/no boot
-+	[0] = {0, 0, 0},
-+	// SPI master, used for qspi as well
-+	[1] = {0x60020000, 0x00040000, 0x00010207},
-+	// SPI slave
-+	[2] = {0, 0, 0x00000212},
-+	// reserved, no boot
-+	[3] = {0, 0, 0},
-+	// reserved, no boot
-+	[4] = {0, 0, 0},
-+	// reserved, also no boot
-+	[5] = {0, 0, 0},
-+	// Linkport slave
-+	[6] = {0, 0, 0x00000014},
-+	// UART slave
-+	[7] = {0, 0, 0x00000013},
-+};
-diff --git a/board/adi/sc584-ezkit/Kconfig b/board/adi/sc584-ezkit/Kconfig
-new file mode 100644
-index 0000000000..14c47f1d69
---- /dev/null
-+++ b/board/adi/sc584-ezkit/Kconfig
++++ b/board/adi/sc589-ezkit/Kconfig
 @@ -0,0 +1,116 @@
 +# SPDX-License-Identifier: GPL-2.0-or-later
 +#
 +# (C) Copyright 2024 - Analog Devices, Inc.
 +
-+if TARGET_SC584_EZKIT
++if TARGET_SC589_EZKIT
 +
 +config LDR_CPU
-+	default	"ADSP-SC584-0.1"
++	default	"ADSP-SC589-0.1"
 +
 +config SYS_BOARD
-+	default "sc584-ezkit"
++	default "sc589-ezkit"
 +
 +config SYS_CONFIG_NAME
-+	default "sc584-ezkit"
++	default "sc589"
 +
 +config DEFAULT_DEVICE_TREE
-+	default "sc584-ezkit"
++	default "sc589-ezkit"
 +
 +config ADI_IMAGE
 +	default "tiny"
 +
 +config CUSTOM_SYS_INIT_SP_ADDR
-+	default 0x8903f000
++	default 0xC203f000
 +
 +# SPI Flash
 +
@@ -182,7 +116,7 @@ index 0000000000..14c47f1d69
 +	default 1
 +
 +config SF_DEFAULT_SPEED
-+	default 5000000
++	default 10000000
 +
 +# Clocks
 +
@@ -205,7 +139,7 @@ index 0000000000..14c47f1d69
 +	default 2
 +
 +config CGU0_DCLK_DIV
-+	default 2
++	default 1
 +
 +config CGU0_OCLK_DIV
 +	default 3
@@ -265,11 +199,11 @@ index 0000000000..14c47f1d69
 +	default 1
 +
 +endif
-diff --git a/board/adi/sc584-ezkit/sc584-ezkit.env b/board/adi/sc584-ezkit/sc584-ezkit.env
+diff --git a/board/adi/sc589-ezkit/sc589-ezkit.env b/board/adi/sc589-ezkit/sc589-ezkit.env
 new file mode 100644
-index 0000000000..af9a9e01bc
+index 0000000000..34b924992a
 --- /dev/null
-+++ b/board/adi/sc584-ezkit/sc584-ezkit.env
++++ b/board/adi/sc589-ezkit/sc589-ezkit.env
 @@ -0,0 +1,13 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later+ */
 +
@@ -282,58 +216,31 @@ index 0000000000..af9a9e01bc
 +adi_stage2_offset=0x20000
 +adi_image_offset=0xE0000
 +adi_rfs_offset=0x6E0000
-+loadaddr=0x89300000
-+jffs2file=adsp-sc5xx-__stringify(CONFIG_ADI_IMAGE)-adsp-sc584-ezkit.jffs2
-diff --git a/common/spl/Kconfig b/common/spl/Kconfig
-index e723ff1996..a7378bea8f 100644
---- a/common/spl/Kconfig
-+++ b/common/spl/Kconfig
-@@ -87,6 +87,7 @@ config SPL_MAX_SIZE
- 	default 0x10000 if ASPEED_AST2600
- 	default 0x27000 if IMX8MM && SPL_TEXT_BASE = 0x7E1000
- 	default 0x30000 if ARCH_SC5XX && (SC59X_64 || SC59X)
-+	default 0x20000 if ARCH_SC5XX && SC58X
- 	default 0x0
- 	help
- 	  Maximum size of the SPL image (text, data, rodata, and linker lists
-@@ -124,6 +125,7 @@ config SPL_BSS_START_ADDR
- 	default 0x2ff80000 if ARCH_SUNXI && MACH_SUN9I
- 	default 0x1000 if ARCH_ZYNQMP
- 	default 0x200B0000 if ARCH_SC5XX && (SC59X_64 || SC59X)
-+	default 0x20080000 if ARCH_SC5XX && SC58X
- 
- choice
- 	prompt "Enforce SPL BSS limit"
-@@ -395,6 +397,7 @@ config SPL_STACK
- 	default 0x18000 if MACH_SUN9I
- 	default 0x8000 if ARCH_SUNXI
- 	default 0x200E4000 if ARCH_SC5XX && (SC59X_64 || SC59X)
-+	default 0x200B0000 if ARCH_SC5XX && SC58X
- 	help
- 	  Address of the start of the stack SPL will use before SDRAM is
- 	  initialized.
-diff --git a/include/configs/sc584-ezkit.h b/include/configs/sc584-ezkit.h
++loadaddr=0xC3000000
++jffs2file=adsp-sc5xx-__stringify(CONFIG_ADI_IMAGE)-adsp-sc589-ezkit.jffs2
+diff --git a/include/configs/sc589.h b/include/configs/sc589.h
 new file mode 100644
-index 0000000000..905836cc2c
+index 0000000000..137c80be8e
 --- /dev/null
-+++ b/include/configs/sc584-ezkit.h
-@@ -0,0 +1,18 @@
++++ b/include/configs/sc589.h
+@@ -0,0 +1,19 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/*
 + * (C) Copyright 2024 - Analog Devices, Inc.
 + */
 +
-+#ifndef __CONFIG_SC584_EZKIT_H
-+#define __CONFIG_SC584_EZKIT_H
++#ifndef __CONFIG_SC589_H
++#define __CONFIG_SC589_H
 +
 +/*
 + * Memory Settings
 + */
-+#define MEM_MT47H128M16RT
++#define MEM_MT41K128M16JT
 +#define MEM_DMC0
++#define MEM_DMC1
 +
-+#define CFG_SYS_SDRAM_BASE	0x89000000
-+#define CFG_SYS_SDRAM_SIZE	0x7000000
++#define CFG_SYS_SDRAM_BASE	0xC2000000
++#define CFG_SYS_SDRAM_SIZE	0xe000000
 +
 +#endif
 
