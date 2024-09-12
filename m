@@ -1,340 +1,135 @@
-From: Oliver Gaskell <Oliver.Gaskell@analog.com>
-Date: Thu, 12 Sep 2024 16:51:01 +0100
-Subject: [PATCH v2 20/20] arm: SC573-EZKIT initial support
+From: Arturs Artamonovs <arturs.artamonovs@analog.com>
+Subject: [PATCH 00/21] Adding support of ADI ARMv8 ADSP-SC598 SoC.
+Date: Thu, 12 Sep 2024 19:24:45 +0100
+Message-Id: <20240912-test-v1-0-458fa57c8ccf@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240912-sc5xx-upstreaming-patches-v2-20-1185a80df79e@analog.com>
-References: <20240912-sc5xx-upstreaming-patches-v2-0-1185a80df79e@analog.com>
-In-Reply-To: <20240912-sc5xx-upstreaming-patches-v2-0-1185a80df79e@analog.com>
-To: Tom Rini <trini@konsulko.com>, 
- Nathan Barrett-Morrison <nathan.morrison@timesys.com>, 
- Greg Malysa <greg.malysa@timesys.com>, 
- Ian Roberts <ian.roberts@timesys.com>, 
- Vasileios Bimpikas <vasileios.bimpikas@analog.com>, 
- Utsav Agarwal <utsav.agarwal@analog.com>, 
- Arturs Artamonovs <arturs.artamonovs@analog.com>, 
- Rayagonda Kokatanur <rayagonda.kokatanur@broadcom.com>
-Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
- Oliver Gaskell <Oliver.Gaskell@analog.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1726156261; l=7536;
- i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
- bh=qjQtLVVlQxUcOA2JnCboJVfD1xmRp3AG5KCmDv6yQCY=;
- b=S1p9uNYVa875U8gGmquSyWGq4Ws2ZjFGKPEfnVO7QJJmkoEbPvh6qBT22Tdd8cgCsSt/X1GD8
- SSzhntshOf7DM4NSFEaWDcSIeTnfXD9D1AY2oHwLmwT/Z90tq+cRYKB
-X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
- pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
-X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
+X-B4-Tracking: v=1; b=H4sIAO0x42YC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxMDSwNL3ZLU4hJdi9Rk0zRzs7RUsxQjJaDSgqLUtMwKsDHRsbW1ACfUB0l
+ WAAAA
+X-Change-ID: 20240909-test-8ec5f76fe6d2
+To: Catalin Marinas <catalin.marinas@arm.com>, 
+ Will Deacon <will@kernel.org>, Greg Malysa <greg.malysa@timesys.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Utsav Agarwal <Utsav.Agarwal@analog.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, Thomas Gleixner <tglx@linutronix.de>, 
+ Andi Shyti <andi.shyti@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Arnd Bergmann <arnd@arndb.de>, 
+ Olof Johansson <olof@lixom.net>, soc@kernel.org
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-clk@vger.kernel.org, 
+ linux-gpio@vger.kernel.org, linux-i2c@vger.kernel.org, 
+ linux-serial@vger.kernel.org, 
+ Arturs Artamonovs <arturs.artamonovs@analog.com>, adsp-linux@analog.com, 
+ Arturs Artamonovs <Arturs.Artamonovs@analog.com>, 
+ Nathan Barrett-Morrison <nathan.morrison@timesys.com>
+X-Mailer: b4 0.15-dev-7be4f
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1726165513; l=5160;
+ i=arturs.artamonovs@analog.com; s=20240909; h=from:subject:message-id;
+ bh=w0yUEeGO5zWa5Zok2P2rOyXgtDKvVgmOUJ+a/Az1hj4=;
+ b=zbt6V9124O55F0SjvPefnGSMeoqnQ6n0nQAX5r5d9ePtZmwiyfZElo/Gxg9IU9a3CrDXAI7ll
+ FFhs3bUdzCqBvTjA8ZWx3jPfHROQJaT88gsBroCxlNiuQ/0z7ZsVUF8
+X-Developer-Key: i=arturs.artamonovs@analog.com; a=ed25519;
+ pk=UXODIid/MrmBXvqkX4PeEfetDaNAw9xKMINHIc5oZCk=
+X-Endpoint-Received: by B4 Relay for arturs.artamonovs@analog.com/20240909 with auth_id=206
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds support for Analog Devices' SC573-EZKIT board. Includes:
-- SoC specific configs in mach-sc5xx/Kconfig
-- Memory Map for SPL
-- Necessary board-specific init functions
-- Board-specific Kconfig and environment in board/adi/
-- Memory configuration
+This set of patches based on ADI fork of Linux Kerenl that support family of ADSP-SC5xx
+SoC's and used by customers for some time . Patch series contains minimal set
+of changes to add ADSP-SC598 support to upstream kernel. This series include
+UART,I2C,IRQCHIP,RCU drivers and device-tree to be able boot on EV-SC598-SOM
+board into serial shell and able to reset the board. Current SOM board
+requires I2C expander to enable UART output.
 
-Co-developed-by: Greg Malysa <greg.malysa@timesys.com>
-Signed-off-by: Greg Malysa <greg.malysa@timesys.com>
-Co-developed-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
-Signed-off-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
-Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
+UART,I2C and PINCTRL drivers are based on old Blackfin drivers with
+ADSP-SC5xx related bug fixes and improvments.
+
+Signed-off-by: Arturs Artamonovs <arturs.artamonovs@analog.com>
 ---
- Kconfig                               |   1 +
- arch/arm/mach-sc5xx/Kconfig           |   9 +++
- arch/arm/mach-sc5xx/Makefile          |   1 +
- arch/arm/mach-sc5xx/sc57x-spl.c       |  26 ++++++++
- board/adi/sc573-ezkit/Kconfig         | 116 ++++++++++++++++++++++++++++++++++
- board/adi/sc573-ezkit/sc573-ezkit.env |  13 ++++
- common/spl/Kconfig                    |   4 +-
- include/configs/sc573-ezkit.h         |  18 ++++++
- 8 files changed, 187 insertions(+), 1 deletion(-)
+Arturs Artamonovs (21):
+      arm64: Add ADI ADSP-SC598 SoC
+      reset: Add driver for ADI ADSP-SC5xx reset controller
+      dt-bindigs: arm64: adi,sc598 bindings
+      dt-bindings: arm64: adi,sc598: Add ADSP-SC598 SoC bindings
+      clock:Add driver for ADI ADSP-SC5xx PLL
+      include: dt-binding: clock: add adi clock header file
+      clock: Add driver for ADI ADSP-SC5xx clock
+      dt-bindings: clock: adi,sc5xx-clocks: add bindings
+      gpio: add driver for ADI ADSP-SC5xx platform
+      dt-bindings: gpio: adi,adsp-port-gpio: add bindings
+      irqchip: Add irqchip for ADI ADSP-SC5xx platform
+      dt-bindings: irqchip: adi,adsp-pint: add binding
+      pinctrl: Add drivers for ADI ADSP-SC5xx platform
+      dt-bindings: pinctrl: adi,adsp-pinctrl: add bindings
+      i2c: Add driver for ADI ADSP-SC5xx platforms
+      dt-bindings: i2c: add i2c/twi driver documentation
+      serial: adi,uart: Add driver for ADI ADSP-SC5xx
+      dt-bindings: serial: adi,uart4: add adi,uart4 driver documentation
+      arm64: dts: adi: sc598: add device tree
+      arm64: defconfig: sc598 add minimal changes
+      MAINTAINERS: add adi sc5xx maintainers
 
-diff --git a/Kconfig b/Kconfig
-index 6853219dd5..709271ef0b 100644
---- a/Kconfig
-+++ b/Kconfig
-@@ -649,6 +649,7 @@ config TEXT_BASE
- 	default 0xB2200000 if ARCH_SC5XX && SC59X
- 	default 0x89200000 if ARCH_SC5XX && TARGET_SC584_EZKIT
- 	default 0xC2200000 if ARCH_SC5XX && (TARGET_SC589_EZKIT || TARGET_SC589_MINI)
-+	default 0x82200000 if ARCH_SC5XX && SC57X
- 	hex "Text Base"
- 	help
- 	  The address in memory that U-Boot will be copied and executed from
-diff --git a/arch/arm/mach-sc5xx/Kconfig b/arch/arm/mach-sc5xx/Kconfig
-index 6f8ea453b0..30444f04fc 100644
---- a/arch/arm/mach-sc5xx/Kconfig
-+++ b/arch/arm/mach-sc5xx/Kconfig
-@@ -25,6 +25,7 @@ config SC57X
- 	bool "SC57x series"
- 	select COMMON_CLK_ADI_SC57X
- 	select CPU_V7A
-+	select TARGET_SC573_EZKIT
- 
- config SC58X
- 	bool "SC58x series"
-@@ -49,6 +50,13 @@ config SC59X_64
- 
- endchoice
- 
-+if SC57X
-+
-+config TARGET_SC573_EZKIT
-+	bool "Support SC573-EZKIT"
-+
-+endif
-+
- if SC58X
- 
- choice
-@@ -555,5 +563,6 @@ source "board/adi/sc594-som-ezlite/Kconfig"
- source "board/adi/sc589-ezkit/Kconfig"
- source "board/adi/sc589-mini/Kconfig"
- source "board/adi/sc584-ezkit/Kconfig"
-+source "board/adi/sc573-ezkit/Kconfig"
- 
- endif
-diff --git a/arch/arm/mach-sc5xx/Makefile b/arch/arm/mach-sc5xx/Makefile
-index 9a00a430b4..cac768ba56 100644
---- a/arch/arm/mach-sc5xx/Makefile
-+++ b/arch/arm/mach-sc5xx/Makefile
-@@ -11,6 +11,7 @@
- obj-y += soc.o init/
- 
- obj-$(CONFIG_SC57X) += sc57x.o
-+obj-$(CONFIG_SC57X) += sc57x-spl.o
- obj-$(CONFIG_SC58X) += sc58x.o
- obj-$(CONFIG_SC58X) += sc58x-spl.o
- obj-$(CONFIG_SC59X) += sc59x.o
-diff --git a/arch/arm/mach-sc5xx/sc57x-spl.c b/arch/arm/mach-sc5xx/sc57x-spl.c
-new file mode 100644
-index 0000000000..28380b89b4
---- /dev/null
-+++ b/arch/arm/mach-sc5xx/sc57x-spl.c
-@@ -0,0 +1,26 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * (C) Copyright 2024 - Analog Devices, Inc.
-+ */
-+
-+#include <asm/arch-adi/sc5xx/spl.h>
-+
-+// Table 45-16 in SC573 HRM
-+const struct adi_boot_args adi_rom_boot_args[] = {
-+	// JTAG/no boot
-+	[0] = {0, 0, 0},
-+	// SPI master, used for qspi as well
-+	[1] = {0x60020000, 0x00040000, 0x00010207},
-+	// SPI slave
-+	[2] = {0, 0, 0x00000212},
-+	// UART slave
-+	[3] = {0, 0, 0x00000013},
-+	// Linkport slave
-+	[4] = {0, 0, 0x00000014},
-+	// reserved, no boot
-+	[5] = {0, 0, 0},
-+	// reserved, no boot
-+	[6] = {0, 0, 0},
-+	// reserved, also no boot
-+	[7] = {0, 0, 0}
-+};
-diff --git a/board/adi/sc573-ezkit/Kconfig b/board/adi/sc573-ezkit/Kconfig
-new file mode 100644
-index 0000000000..328563c129
---- /dev/null
-+++ b/board/adi/sc573-ezkit/Kconfig
-@@ -0,0 +1,116 @@
-+# SPDX-License-Identifier: GPL-2.0-or-later
-+#
-+# (C) Copyright 2024 - Analog Devices, Inc.
-+
-+if TARGET_SC573_EZKIT
-+
-+config SYS_BOARD
-+	default "sc573-ezkit"
-+
-+config SYS_CONFIG_NAME
-+	default "sc573-ezkit"
-+
-+config LDR_CPU
-+	default "ADSP-SC573-0.0"
-+
-+config DEFAULT_DEVICE_TREE
-+	default "sc573-ezkit"
-+
-+config ADI_IMAGE
-+	default "tiny"
-+
-+config CUSTOM_SYS_INIT_SP_ADDR
-+	default 0x8203f000
-+
-+# SPI Flash
-+
-+config SF_DEFAULT_BUS
-+	default 2
-+
-+config SF_DEFAULT_CS
-+	default 1
-+
-+config SF_DEFAULT_SPEED
-+	default 10000000
-+
-+# Clocks
-+
-+config CGU0_DF_DIV
-+	default 0
-+
-+config CGU0_VCO_MULT
-+	default 18
-+
-+config CGU0_CCLK_DIV
-+	default 1
-+
-+config CGU0_SCLK_DIV
-+	default 2
-+
-+config CGU0_SCLK0_DIV
-+	default 2
-+
-+config CGU0_SCLK1_DIV
-+	default 2
-+
-+config CGU0_DCLK_DIV
-+	default 2
-+
-+config CGU0_OCLK_DIV
-+	default 3
-+
-+config CGU1_VCO_MULT
-+	default 5
-+
-+config CGU1_DF_DIV
-+	default 0
-+
-+config CGU1_CCLK_DIV
-+	default 1
-+
-+config CGU1_SCLK_DIV
-+	default 2
-+
-+config CGU1_SCLK0_DIV
-+	default 2
-+
-+config CGU1_SCLK1_DIV
-+	default 2
-+
-+config CGU1_DCLK_DIV
-+	default 2
-+
-+config CGU1_OCLK_DIV
-+	default 3
-+
-+config CDU0_CLKO0
-+	default 1
-+
-+config CDU0_CLKO1
-+	default 1
-+
-+config CDU0_CLKO2
-+	default 1
-+
-+config CDU0_CLKO3
-+	default 1
-+
-+config CDU0_CLKO4
-+	default 1
-+
-+config CDU0_CLKO5
-+	default 1
-+
-+config CDU0_CLKO6
-+	default 1
-+
-+config CDU0_CLKO7
-+	default 5
-+
-+config CDU0_CLKO8
-+	default 1
-+
-+config CDU0_CLKO9
-+	default 1
-+
-+endif
-diff --git a/board/adi/sc573-ezkit/sc573-ezkit.env b/board/adi/sc573-ezkit/sc573-ezkit.env
-new file mode 100644
-index 0000000000..26f7b6cb79
---- /dev/null
-+++ b/board/adi/sc573-ezkit/sc573-ezkit.env
-@@ -0,0 +1,13 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later+ */
-+
-+/*
-+ * (C) Copyright 2024 - Analog Devices, Inc.
-+ */
-+
-+#include <env/adi/adi_boot.env>
-+
-+adi_stage2_offset=0x20000
-+adi_image_offset=0xE0000
-+adi_rfs_offset=0x6E0000
-+loadaddr=0x83000000
-+jffs2file=adsp-sc5xx-__stringify(CONFIG_ADI_IMAGE)-adsp-sc573-ezkit.jffs2
-diff --git a/common/spl/Kconfig b/common/spl/Kconfig
-index a7378bea8f..6dc0b6444c 100644
---- a/common/spl/Kconfig
-+++ b/common/spl/Kconfig
-@@ -87,7 +87,7 @@ config SPL_MAX_SIZE
- 	default 0x10000 if ASPEED_AST2600
- 	default 0x27000 if IMX8MM && SPL_TEXT_BASE = 0x7E1000
- 	default 0x30000 if ARCH_SC5XX && (SC59X_64 || SC59X)
--	default 0x20000 if ARCH_SC5XX && SC58X
-+	default 0x20000 if ARCH_SC5XX && (SC58X || SC57X)
- 	default 0x0
- 	help
- 	  Maximum size of the SPL image (text, data, rodata, and linker lists
-@@ -126,6 +126,7 @@ config SPL_BSS_START_ADDR
- 	default 0x1000 if ARCH_ZYNQMP
- 	default 0x200B0000 if ARCH_SC5XX && (SC59X_64 || SC59X)
- 	default 0x20080000 if ARCH_SC5XX && SC58X
-+	default 0x200A0000 if ARCH_SC5XX && SC57X
- 
- choice
- 	prompt "Enforce SPL BSS limit"
-@@ -398,6 +399,7 @@ config SPL_STACK
- 	default 0x8000 if ARCH_SUNXI
- 	default 0x200E4000 if ARCH_SC5XX && (SC59X_64 || SC59X)
- 	default 0x200B0000 if ARCH_SC5XX && SC58X
-+	default 0x200D0000 if ARCH_SC5XX && SC57X
- 	help
- 	  Address of the start of the stack SPL will use before SDRAM is
- 	  initialized.
-diff --git a/include/configs/sc573-ezkit.h b/include/configs/sc573-ezkit.h
-new file mode 100644
-index 0000000000..42e42f8150
---- /dev/null
-+++ b/include/configs/sc573-ezkit.h
-@@ -0,0 +1,18 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later */
-+/*
-+ * (C) Copyright 2024 - Analog Devices, Inc.
-+ */
-+
-+#ifndef __CONFIG_SC573_EZKIT_H
-+#define __CONFIG_SC573_EZKIT_H
-+
-+/*
-+ * Memory Settings
-+ */
-+#define MEM_MT41K128M16JT
-+#define MEM_DMC0
-+
-+#define CFG_SYS_SDRAM_BASE	0x82000000
-+#define CFG_SYS_SDRAM_SIZE	0xe000000
-+
-+#endif
+ .../devicetree/bindings/arm/analog/adi,sc5xx.yaml  |   24 +
+ .../bindings/clock/adi,sc5xx-clocks.yaml           |   65 ++
+ .../bindings/gpio/adi,adsp-port-gpio.yaml          |   69 ++
+ Documentation/devicetree/bindings/i2c/adi,twi.yaml |   71 ++
+ .../interrupt-controller/adi,adsp-pint.yaml        |   51 +
+ .../bindings/pinctrl/adi,adsp-pinctrl.yaml         |   83 ++
+ .../devicetree/bindings/serial/adi,uart.yaml       |   85 ++
+ .../bindings/soc/adi/adi,reset-controller.yaml     |   38 +
+ MAINTAINERS                                        |   22 +
+ arch/arm64/Kconfig.platforms                       |   13 +
+ arch/arm64/boot/dts/Makefile                       |    1 +
+ arch/arm64/boot/dts/adi/Makefile                   |    2 +
+ arch/arm64/boot/dts/adi/sc598-som-ezkit.dts        |   14 +
+ arch/arm64/boot/dts/adi/sc598-som.dtsi             |   58 ++
+ arch/arm64/boot/dts/adi/sc59x-64.dtsi              |  367 +++++++
+ arch/arm64/configs/defconfig                       |    6 +
+ drivers/clk/Kconfig                                |    9 +
+ drivers/clk/Makefile                               |    1 +
+ drivers/clk/adi/Makefile                           |    4 +
+ drivers/clk/adi/clk-adi-pll.c                      |  151 +++
+ drivers/clk/adi/clk-adi-sc598.c                    |  329 ++++++
+ drivers/clk/adi/clk.h                              |   99 ++
+ drivers/gpio/Kconfig                               |    8 +
+ drivers/gpio/Makefile                              |    1 +
+ drivers/gpio/gpio-adi-adsp-port.c                  |  145 +++
+ drivers/i2c/busses/Kconfig                         |   17 +
+ drivers/i2c/busses/Makefile                        |    1 +
+ drivers/i2c/busses/i2c-adi-twi.c                   |  940 ++++++++++++++++++
+ drivers/irqchip/Kconfig                            |    9 +
+ drivers/irqchip/Makefile                           |    2 +
+ drivers/irqchip/irq-adi-adsp.c                     |  310 ++++++
+ drivers/pinctrl/Kconfig                            |   12 +
+ drivers/pinctrl/Makefile                           |    1 +
+ drivers/pinctrl/pinctrl-adsp.c                     |  919 +++++++++++++++++
+ drivers/reset/Makefile                             |    1 +
+ drivers/soc/Makefile                               |    1 +
+ drivers/soc/adi/Makefile                           |    5 +
+ drivers/soc/adi/system.c                           |  257 +++++
+ drivers/tty/serial/Kconfig                         |   19 +-
+ drivers/tty/serial/Makefile                        |    1 +
+ drivers/tty/serial/adi_uart.c                      | 1045 ++++++++++++++++++++
+ include/dt-bindings/clock/adi-sc5xx-clock.h        |   93 ++
+ include/dt-bindings/pinctrl/adi-adsp.h             |   19 +
+ include/linux/soc/adi/adsp-gpio-port.h             |   85 ++
+ include/linux/soc/adi/cpu.h                        |  107 ++
+ include/linux/soc/adi/rcu.h                        |   55 ++
+ include/linux/soc/adi/sc59x.h                      |  147 +++
+ include/linux/soc/adi/system_config.h              |   65 ++
+ include/uapi/linux/serial_core.h                   |    3 +
+ 49 files changed, 5829 insertions(+), 1 deletion(-)
+---
+base-commit: da3ea35007d0af457a0afc87e84fddaebc4e0b63
+change-id: 20240909-test-8ec5f76fe6d2
 
+Best regards,
 -- 
-2.34.1
+Arturs Artamonovs <arturs.artamonovs@analog.com>
 
