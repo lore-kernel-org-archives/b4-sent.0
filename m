@@ -1,11 +1,11 @@
 From: Joel Granados <j.granados@samsung.com>
-Date: Fri, 13 Sep 2024 13:44:50 +0200
-Subject: [PATCH v2 4/5] iommufd: Enable PRI when doing the
- iommufd_hwpt_alloc
+Date: Fri, 13 Sep 2024 13:44:51 +0200
+Subject: [PATCH v2 5/5] iommu/vt-d: drop pasid requirement for prq
+ initialization
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240913-jag-iopfv8-v2-4-dea01c2343bc@samsung.com>
+Message-Id: <20240913-jag-iopfv8-v2-5-dea01c2343bc@samsung.com>
 References: <20240913-jag-iopfv8-v2-0-dea01c2343bc@samsung.com>
 In-Reply-To: <20240913-jag-iopfv8-v2-0-dea01c2343bc@samsung.com>
 To: David Woodhouse <dwmw2@infradead.org>, 
@@ -14,64 +14,72 @@ To: David Woodhouse <dwmw2@infradead.org>,
  Jason Gunthorpe <jgg@ziepe.ca>, Kevin Tian <kevin.tian@intel.com>, 
  Klaus Jensen <its@irrelevant.dk>
 Cc: linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
- Joel Granados <j.granados@samsung.com>
+ Joel Granados <j.granados@samsung.com>, Klaus Jensen <k.jensen@samsung.com>
 X-Mailer: b4 0.15-dev-00a43
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1694;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1454;
  i=j.granados@samsung.com; h=from:subject:message-id;
- bh=DxEbBmnkeSWlQ/5MEXCH0l7yNP6fyq/9U3DrRBtODeQ=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGbkJdN3nIyQtewYxO5dzLpub6VBCQvASt1vP
- lOAMWJPVRuvTYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJm5CXTAAoJELqXzVK3
- lkFPctcL+QHiIJxPNK8u2+QZbImwSx9KtOG1MIiyOjy1prL1mFeCx3hv6fyrYsZCBYZnVFQCnC5
- OKY6Ot6kNutAzzaHvu+wFxeGddX25+OJL9VRjwSPv4hRHGdK+ojK2etw+3/V1jdURYxBRyf37ew
- mkpmo1QTBDb2e8dqWUXQa9dliujivt92tXPIdiSPMFJz1pPZD0guvljBA3JdLEpKERGubE6EIhb
- PuWihQnMVVcaNtPhsjy/9XbRnklRtaMVoM+CSnchCXq+BSTczuwvYIvTdyxKOOvtFMKEGBK8w0/
- o6azqmqwvHDVuk6/DirH/w1kDqsGhbLHcjJNtQAfWhxZls/qwkAxE1jZPFnDxtXu6ikOo/aJwdC
- rSf5p/ppZd0uaiO116XZ9pWvVBfq++VcpqL1Fwbh9X5eLN1qGtNRsgBoY2HMVNw5D5ho3SpGgHI
- i+2OUylhqVMFDlzJyCXkP1l6udZe1MR5z/ppRBWeHhXAzTHb3d8KpsCQz/26dkyjMV+iEfmX0D7
- x8=
+ bh=GQ979ruQ4vAANRiiIGnsASOC26gBsL07Le0pjm1OYPs=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGbkJdSDbDHpYQc6xVbn9fVpO6eCYSpUK9GLI
+ mT3uAH1eI7JaokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJm5CXUAAoJELqXzVK3
+ lkFPSRoL/jDNsHyu6rk8NtWUxOEZDUDZI8W/LxsklCrAfGXhdevfW124gc/cIkMBbEYtCbEynMP
+ +ZMotsHFO1hEgp+Oiha5ma8cRVjdK+sq2BSE4TLUP9Kz0/4Wt8fEJbZ803ur0tRYqYdEeNc1hp1
+ io8W7KtZlCUuc19Y2UGZLJvqqa+Z9SMNebnwRqiBayNu/h3Hub62B942p2NCol7P0MkXqt5x8BI
+ KvLdDJUYkSd82IfQ5SedIurTIICvxlfNMO07CH0fYxel+a/fS36M4i+xLAT/7CnRkks+PEg3umv
+ qy0Lns+EXrol0jdJykO//wCbNcM0Olg2B0qiqwOrff/PUQfEbazxru4CJrIvv5VyidU5rBkeivG
+ fNQuljbsElRdiM2mrtf+5yy7P4eBHDYhVuBV7AEsQ5Rv9lmJcmb4W4zMq6Gv4QOyYs7uF7z23U9
+ 0/Tx/tykCCFxQ1cSUEneLyk/NhlvALPL2s1UaZuK8FP6i8TYiPZ1H19CvLOYTSHAqb6rsxE1D17
+ yw=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add IOMMU_HWPT_FAULT_ID_VALID as part of the valid flags when doing an
-iommufd_hwpt_alloc allowing the use of an iommu fault allocation
-(iommu_fault_alloc) with the IOMMU_HWPT_ALLOC ioctl.
+From: Klaus Jensen <k.jensen@samsung.com>
 
+PASID support within the IOMMU is not required to enable the Page
+Request Queue, only the PRS capability.
+
+Signed-off-by: Klaus Jensen <k.jensen@samsung.com>
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- drivers/iommu/intel/iommu.c          | 3 ++-
- drivers/iommu/iommufd/hw_pagetable.c | 3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+ drivers/iommu/intel/iommu.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/iommu/intel/iommu.c b/drivers/iommu/intel/iommu.c
-index 5acc52c62e8c..3d1c971eb9e5 100644
+index 3d1c971eb9e5..9f3bbdbd6372 100644
 --- a/drivers/iommu/intel/iommu.c
 +++ b/drivers/iommu/intel/iommu.c
-@@ -3718,7 +3718,8 @@ intel_iommu_domain_alloc_user(struct device *dev, u32 flags,
- 	}
+@@ -1487,10 +1487,8 @@ static void free_dmar_iommu(struct intel_iommu *iommu)
+ 	/* free context mapping */
+ 	free_context_table(iommu);
  
- 	if (flags &
--	    (~(IOMMU_HWPT_ALLOC_NEST_PARENT | IOMMU_HWPT_ALLOC_DIRTY_TRACKING)))
-+	    (~(IOMMU_HWPT_ALLOC_NEST_PARENT | IOMMU_HWPT_ALLOC_DIRTY_TRACKING
-+	       | IOMMU_HWPT_FAULT_ID_VALID)))
- 		return ERR_PTR(-EOPNOTSUPP);
- 	if (nested_parent && !nested_supported(iommu))
- 		return ERR_PTR(-EOPNOTSUPP);
-diff --git a/drivers/iommu/iommufd/hw_pagetable.c b/drivers/iommu/iommufd/hw_pagetable.c
-index aefde4443671..88074e459995 100644
---- a/drivers/iommu/iommufd/hw_pagetable.c
-+++ b/drivers/iommu/iommufd/hw_pagetable.c
-@@ -107,7 +107,8 @@ iommufd_hwpt_paging_alloc(struct iommufd_ctx *ictx, struct iommufd_ioas *ioas,
- 			  const struct iommu_user_data *user_data)
- {
- 	const u32 valid_flags = IOMMU_HWPT_ALLOC_NEST_PARENT |
--				IOMMU_HWPT_ALLOC_DIRTY_TRACKING;
-+				IOMMU_HWPT_ALLOC_DIRTY_TRACKING |
-+				IOMMU_HWPT_FAULT_ID_VALID;
- 	const struct iommu_ops *ops = dev_iommu_ops(idev->dev);
- 	struct iommufd_hwpt_paging *hwpt_paging;
- 	struct iommufd_hw_pagetable *hwpt;
+-	if (pasid_supported(iommu)) {
+-		if (ecap_prs(iommu->ecap))
+-			intel_finish_prq(iommu);
+-	}
++	if (ecap_prs(iommu->ecap))
++		intel_finish_prq(iommu);
+ }
+ 
+ /*
+@@ -2480,7 +2478,7 @@ static int __init init_dmars(void)
+ 
+ 		iommu_flush_write_buffer(iommu);
+ 
+-		if (pasid_supported(iommu) && ecap_prs(iommu->ecap)) {
++		if (ecap_prs(iommu->ecap)) {
+ 			/*
+ 			 * Call dmar_alloc_hwirq() with dmar_global_lock held,
+ 			 * could cause possible lock race condition.
+@@ -2921,7 +2919,7 @@ static int intel_iommu_add(struct dmar_drhd_unit *dmaru)
+ 	intel_iommu_init_qi(iommu);
+ 	iommu_flush_write_buffer(iommu);
+ 
+-	if (pasid_supported(iommu) && ecap_prs(iommu->ecap)) {
++	if (ecap_prs(iommu->ecap)) {
+ 		ret = intel_enable_prq(iommu);
+ 		if (ret)
+ 			goto disable_iommu;
 
 -- 
 2.43.0
