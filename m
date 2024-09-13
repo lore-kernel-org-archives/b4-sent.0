@@ -1,297 +1,198 @@
-From: "Christoph Lameter (Ampere)" <cl@gentwo.org>
-Date: Thu, 12 Sep 2024 15:44:08 -0700
-Subject: [PATCH v3] Avoid memory barrier in read_seqcount() through load
- acquire
+From: Joel Granados <j.granados@samsung.com>
+Subject: [PATCH v2 0/5] iommu: Enable user space IOPFs in non-PASID and
+ non-svm cases
+Date: Fri, 13 Sep 2024 13:44:46 +0200
+Message-Id: <20240913-jag-iopfv8-v2-0-dea01c2343bc@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240912-seq_optimize-v3-1-8ee25e04dffa@gentwo.org>
-X-B4-Tracking: v=1; b=H4sIALdu42YC/1XMyw6CMBCF4Vchs7amDARbV76HIQbbocxCii2pF
- 8K7W0lcuPxPcr4FIgWmCMdigUCJI/sxR7UrwAzd6EiwzQ0osZaqrESk+8VPM9/4TaJRplaNbsx
- BK8iXKVDPz407t7kHjrMPr01P+F1/kP6HEopSaCttp/AqEfuTo3F++L0PDtp1XT+ubb0MqQAAA
- A==
-To: Thomas Gleixner <tglx@linutronix.de>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Waiman Long <longman@redhat.com>, Boqun Feng <boqun.feng@gmail.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-mm@kvack.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-arch@vger.kernel.org, "Christoph Lameter (Ampere)" <cl@gentwo.org>
-X-Mailer: b4 0.15-dev-37811
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1726181060; l=10044;
- i=cl@gentwo.org; s=20240811; h=from:subject:message-id;
- bh=twHlnolUF54+RvSDVMLmtR5Su73uVeAgLsYk+Borf6U=;
- b=k97mMGYS69MnG5mKcJfc0vaBxyX3DPC5NQzKmzjEVfhZgRcKce8+kKyiWphbuR864mWRm1iVL
- K8OnoAP0EceDubpE9TYQxzxKuG2bsyvwWcpNjX2WyXW5BcLoi/fUkxr
-X-Developer-Key: i=cl@gentwo.org; a=ed25519;
- pk=I7gqGwDi9drzCReFIuf2k9de1FI1BGibsshXI0DIvq8=
-X-Endpoint-Received: by B4 Relay for cl@gentwo.org/20240811 with auth_id=194
+X-B4-Tracking: v=1; b=H4sIAK4l5GYC/23MSw7CIBSF4a00dywGbmkqjtyH6YCUR69JoQElm
+ oa9ix07/E9yvh2yTWQzXLsdki2UKYYWeOpgXnTwlpFpDchRcsUle2jPKG6uXJgYxtEZ5BLRQDt
+ syTp6H9h9ar1Qfsb0OewifutfpgjGme0HqRRybVx/y3rNr+DPc1xhqrV+ARfglSCmAAAA
+To: David Woodhouse <dwmw2@infradead.org>, 
+ Lu Baolu <baolu.lu@linux.intel.com>, Joerg Roedel <joro@8bytes.org>, 
+ Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
+ Jason Gunthorpe <jgg@ziepe.ca>, Kevin Tian <kevin.tian@intel.com>, 
+ Klaus Jensen <its@irrelevant.dk>
+Cc: linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
+ Joel Granados <j.granados@samsung.com>, Klaus Jensen <k.jensen@samsung.com>
+X-Mailer: b4 0.15-dev-00a43
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5895;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=5gCqffEEY+uJVOIxj4lpOmUetPSHP2Ivzv06iq0YMlQ=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGbkJdFU/EisRbOvZRbt26i+mdh7+r09RVV+/
+ WrC2tYQkPa0I4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJm5CXRAAoJELqXzVK3
+ lkFPoOIL/R/CtyadI9B7SrUOAfzagNFZns8T/Bj228nT899W8qfMMiD8HP6IjQQNJZQn9Xm7V3e
+ 2YMqTkmS6DQctaN5G4TC4De+a8p7wrFc1Wowwnv1G6cXShaxWULLoeKyRk4F/EjCagWS4/3pNne
+ HSUEU+zYcQMYVTIpvmG4kH/AZwfJg3M5GV3bHo7mdZfygJ8JGPmCKkThoriS7UeOPSApuj0Ykm2
+ W9GRoLYiQEAFfrLRmPkThJkXJAHxvNp1LGXfAV72O97UiMHqkxYxLi0HyacfErHul6AUV4dlIvt
+ T2vKxtNX6FNQTFcjFvxPjq7v7ORJl8RMgzVamcBMN7BBP6pFKn8QnZqNDAvB6r40RPYpB3Mbpiz
+ O9fjaMLqROxr4wOqHHcWFTQX4QHvbxwmG4W0r/bae6ToC2Seyysat2prqPccNENy2Zt4AbS48cb
+ +KYnjejxT0E0htHw6AYv/XOQKpHSVqvshCM+1GeMBbiTwA0NOLctx9NtBZ0+SC5QodctGn46Ue8
+ UY=
+X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some architectures support load acquire which can save us a memory
-barrier and save some cycles.
+This series makes use of iommufd_hwpt_replace_device to execute
+non-pasid/non-svm user space IOPFs. Our main motivation is to enable
+user-space driver driven device verification without SVM/PASID.
 
-A typical sequence
+What?
+  * Enable IO page fault handling in user space for a non-pasid, non-svm
+    and non-virtualised use case.
+  * Move IOMMU_IOPF configuration from INTEL_IOMMU_SVM into INTEL_IOMMU.
+  * Move all page request queue related logic to a new (prq.c) file.
+  * Remove PASID checks from PRQ event handling as well as PRQ
+    initialization.
+  * Allow execution of IOMMU_HWPT_ALLOC with a valid fault id
+    (IOMMU_HWPT_FAULT_ID_VALID)
+  * Insert a zero handle into the PASID array in dev->iommu_group when
+    replacing the old HWPT with an IOPF enabled HWPT.
 
-	do {
-		seq = read_seqcount_begin(&s);
-		<something>
-	} while (read_seqcount_retry(&s, seq);
+Why?
+  The PCI ATS Extended Capability allows peripheral devices to
+  participate in the caching of translations when operating under an
+  IOMMU. Further, the ATS Page Request Interface (PRI) Extension allows
+  devices to handle missing mappings. Currently, PRI is mainly used in
+  the context of Shared Virtual Addressing, requiring support for the
+  Process Address Space Identifier (PASID) capability, but other use
+  cases such as enabling user-space driver driven device verification
+  and reducing memory pinning exists. This patchest sets out to enable
+  these use cases.
 
-requires 13 cycles on ARM64 for an empty loop. Two read memory
-barriers are needed. One for each of the seqcount_* functions.
+Testing?
+  The non-svm IOPF interface is exercised by first initializing an IOPF
+  enabled IOAS and then reading the fault file descriptor. Pseudocode on
+  the iopf initializing and handling is in [3] and [4] (using libvfn).
 
-We can replace the first read barrier with a load acquire of
-the seqcount which saves us one barrier.
+  Supplementary repositories supporting this patchset:
+    1. A user space library libvfn [1] which is used for testing and
+       verification (see examples/iopf.c), and
+    2. Basic emulation of PCIe ATS/PRI and Intel VT-d PRQ in QEMU [2].
 
-On ARM64 doing so reduces the cycle count from 13 to 8.
+Changes in v2:
+  - Remove "nesting" from wording. This wording is left over from initial
+    versions that are now irrelevant.
+  - Dropped "iommu: init pasid array while doing domain_replace and iopf
+    is active" as the initialization of the pasid_array x-array happens
+    automatically when an iopf capable domain is replaced on a device.
+  - Corrected commit message in "iommu/vt-d: Separate page request queue
+    from SVM"
+  - Link to v1: https://lore.kernel.org/r/20240904-jag-iopfv8-v1-0-e3549920adf3@samsung.com
 
-This is a general improvement for the ARM64 architecture and not
-specific to a certain processor. The cycle count here was
-obtained on a Neoverse N1 (Ampere Altra).
+V1:
+  - This is the first version of the series after initial feedback from
+    the RFC [5].
 
-We can further optimize handling by using the cond_load_acquire logic
-which will give an ARM CPU a chance to enter some power saving mode
-while waiting for changes to a cacheline thereby avoiding busy loops
-and therefore saving power.
+Comments and feedback are greatly appreciated
+Best
 
-The ARM documentation states that load acquire is more effective
-than a load plus barrier. In general that tends to be true on all
-compute platforms that support both.
+Joel
 
-See (as quoted by Linus Torvalds):
-   https://developer.arm.com/documentation/102336/0100/Load-Acquire-and-Store-Release-instructions
+[1] https://github.com/SamsungDS/libvfn/tree/iommufd-fault-queue
+[2] https://gitlab.com/birkelund/qemu/-/tree/pcie-ats-pri
 
- "Weaker ordering requirements that are imposed by Load-Acquire and
-  Store-Release instructions allow for micro-architectural
-  optimizations, which could reduce some of the performance impacts that
-  are otherwise imposed by an explicit memory barrier.
+[3] Initializing
+```
+  int iopf_init(struct iommu_ioas *ioas, const char *bdf)
+  {
+      // open vfio device from bdf
+      int devfd = open('/dev/vfio/devices/VFIO_DEV', O_RDWR);
 
-  If the ordering requirement is satisfied using either a Load-Acquire
-  or Store-Release, then it would be preferable to use these
-  instructions instead of a DMB"
+      struct vfio_device_bind_iommufd bind = {
+          .argsz = sizeof(bind),
+          .flags = 0,
+          .iommufd = __iommufd,
+      };
+      ioctl(devfd, VFIO_DEVICE_BIND_IOMMUFD, &bind);
 
-The patch benefited significantly from the knowledge of the innards
-of the seqlock code by Thomas Gleixner.
+      struct iommu_ioas *ioas = ioas;
+      struct vfio_device_attach_iommufd_pt attach_data = {
+          .argsz = sizeof(attach_data),
+          .flags = 0,
+          .pt_id = ioas->id,
+      };
+      ioctl(devfd, VFIO_DEVICE_ATTACH_IOMMUFD_PT, &attach_data);
 
-Signed-off-by: Christoph Lameter (Ampere) <cl@gentwo.org>
+      struct iommu_fault_alloc fault = {
+          .size = sizeof(fault),
+          .flags = 0,
+      };
+      ioctl(__iommufd, IOMMU_FAULT_QUEUE_ALLOC, &fault);
+
+      struct iommu_hwpt_alloc fault_cmd = {
+          .size = sizeof(fault_cmd),
+          .flags = IOMMU_HWPT_FAULT_ID_VALID,
+          .dev_id = bind.out_devid,
+          .pt_id = ioas->id,
+          .data_len = 0,
+          .data_uptr = (uint64_t)NULL,
+          .fault_id = fault.out_fault_id,
+          .__reserved = 0,
+          };
+      ioctl(__iommufd, IOMMU_HWPT_ALLOC, &fault_cmd);
+
+      // This is a re-attach
+      struct vfio_device_attach_iommufd_pt attach = {
+          .argsz = sizeof(attach),
+          .flags = 0,
+          .pt_id = fault_cmd.out_hwpt_id
+      };
+      ioctl(dev_fd, VFIO_DEVICE_ATTACH_IOMMUFD_PT, &attach);
+  }
+```
+
+[4] Handling
+```
+  int handle_iopf(void *vaddr, int len, uint64_t iova) {
+    exec_command(CMD)
+
+    int iopf_fd = fault_cmd.fault_id;
+
+    struct iommu_hwpt_pgfault pgfault = {0};
+    if(read(iopf_fd, &pgfault, sizeof(pgfault)) == 0);
+      return; // no page fault
+
+    ret = iommu_map_vaddr(__iommmufd, vaddr, len, &iova)
+    struct iommu_hwpt_page_response pgfault_response = {
+      .cookie = pgfault.cookie,
+      .code = ret ? IOMMUFD_PAGE_RESP_SUCCESS : IOMMUFD_PAGE_RESP_INVALID,
+    };
+
+    write(iopf_fd, &pgfault_response, sizeof(pgfault_response));
+
+    return;
+  }
+```
+
+[5] https://lore.kernel.org/20240826-iopf-for-all-v1-0-59174e6a7528@samsung.com
+
+Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
-V1->V2
-- Describe the benefit of load acquire vs barriers
-- Explain the CONFIG_ARCH_HAS_ACQUIRE_RELEASE option better
----
-Changes in v3:
-- Support cond_load_acquire to give the processor a chance to do some
-  sort of power down until cacheline changes.
-- Better code by Thomas Gleixner
-- Link to v2: https://lore.kernel.org/r/20240819-seq_optimize-v2-1-9d0da82b022f@gentwo.org
----
- arch/Kconfig            |  8 +++++
- arch/arm64/Kconfig      |  1 +
- include/linux/seqlock.h | 85 ++++++++++++++++++++++++++++++++++++-------------
- 3 files changed, 71 insertions(+), 23 deletions(-)
+Joel Granados (3):
+      iommu/vt-d: Separate page request queue from SVM
+      iommu: kconfig: Move IOMMU_IOPF into INTEL_IOMMU
+      iommufd: Enable PRI when doing the iommufd_hwpt_alloc
 
-diff --git a/arch/Kconfig b/arch/Kconfig
-index 975dd22a2dbd..3c270f496231 100644
---- a/arch/Kconfig
-+++ b/arch/Kconfig
-@@ -1600,6 +1600,14 @@ config ARCH_HAS_KERNEL_FPU_SUPPORT
- 	  Architectures that select this option can run floating-point code in
- 	  the kernel, as described in Documentation/core-api/floating-point.rst.
- 
-+config ARCH_HAS_ACQUIRE_RELEASE
-+	bool
-+	help
-+	  Setting ARCH_HAS_ACQUIRE_RELEASE indicates that the architecture
-+	  supports load acquire and release. Typically these are more effective
-+	  than memory barriers. Code will prefer the use of load acquire and
-+	  store release over memory barriers if this option is enabled.
-+
- source "kernel/gcov/Kconfig"
- 
- source "scripts/gcc-plugins/Kconfig"
-diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
-index a2f8ff354ca6..19e34fff145f 100644
---- a/arch/arm64/Kconfig
-+++ b/arch/arm64/Kconfig
-@@ -39,6 +39,7 @@ config ARM64
- 	select ARCH_HAS_PTE_DEVMAP
- 	select ARCH_HAS_PTE_SPECIAL
- 	select ARCH_HAS_HW_PTE_YOUNG
-+	select ARCH_HAS_ACQUIRE_RELEASE
- 	select ARCH_HAS_SETUP_DMA_OPS
- 	select ARCH_HAS_SET_DIRECT_MAP
- 	select ARCH_HAS_SET_MEMORY
-diff --git a/include/linux/seqlock.h b/include/linux/seqlock.h
-index d90d8ee29d81..a3fe9ee8edef 100644
---- a/include/linux/seqlock.h
-+++ b/include/linux/seqlock.h
-@@ -23,6 +23,13 @@
- 
- #include <asm/processor.h>
- 
-+#ifdef CONFIG_ARCH_HAS_ACQUIRE_RELEASE
-+# define USE_LOAD_ACQUIRE	true
-+# define USE_COND_LOAD_ACQUIRE	!IS_ENABLED(CONFIG_PREEMPT_RT)
-+#else
-+# define USE_LOAD_ACQUIRE	false
-+# define USE_COND_LOAD_ACQUIRE	false
-+#endif
- /*
-  * The seqlock seqcount_t interface does not prescribe a precise sequence of
-  * read begin/retry/end. For readers, typically there is a call to
-@@ -132,6 +139,17 @@ static inline void seqcount_lockdep_reader_access(const seqcount_t *s)
- #define seqcount_rwlock_init(s, lock)		seqcount_LOCKNAME_init(s, lock, rwlock)
- #define seqcount_mutex_init(s, lock)		seqcount_LOCKNAME_init(s, lock, mutex)
- 
-+static __always_inline unsigned __seqprop_load_sequence(const seqcount_t *s, bool acquire)
-+{
-+	if (!acquire || !USE_LOAD_ACQUIRE)
-+		return READ_ONCE(s->sequence);
-+
-+	if (USE_COND_LOAD_ACQUIRE)
-+		return smp_cond_load_acquire((unsigned int *)&s->sequence, (s->sequence & 1) == 0);
-+
-+	return smp_load_acquire(&s->sequence);
-+}
-+
- /*
-  * SEQCOUNT_LOCKNAME()	- Instantiate seqcount_LOCKNAME_t and helpers
-  * seqprop_LOCKNAME_*()	- Property accessors for seqcount_LOCKNAME_t
-@@ -155,9 +173,10 @@ __seqprop_##lockname##_const_ptr(const seqcount_##lockname##_t *s)	\
- }									\
- 									\
- static __always_inline unsigned						\
--__seqprop_##lockname##_sequence(const seqcount_##lockname##_t *s)	\
-+__seqprop_##lockname##_sequence(const seqcount_##lockname##_t *s,	\
-+				bool acquire)				\
- {									\
--	unsigned seq = READ_ONCE(s->seqcount.sequence);			\
-+	unsigned seq = __seqprop_load_sequence(&s->seqcount, acquire);	\
- 									\
- 	if (!IS_ENABLED(CONFIG_PREEMPT_RT))				\
- 		return seq;						\
-@@ -170,7 +189,7 @@ __seqprop_##lockname##_sequence(const seqcount_##lockname##_t *s)	\
- 		 * Re-read the sequence counter since the (possibly	\
- 		 * preempted) writer made progress.			\
- 		 */							\
--		seq = READ_ONCE(s->seqcount.sequence);			\
-+		seq = __seqprop_load_sequence(&s->seqcount, acquire);	\
- 	}								\
- 									\
- 	return seq;							\
-@@ -206,9 +225,9 @@ static inline const seqcount_t *__seqprop_const_ptr(const seqcount_t *s)
- 	return s;
- }
- 
--static inline unsigned __seqprop_sequence(const seqcount_t *s)
-+static inline unsigned __seqprop_sequence(const seqcount_t *s, bool acquire)
- {
--	return READ_ONCE(s->sequence);
-+	return __seqprop_load_sequence(s, acquire);
- }
- 
- static inline bool __seqprop_preemptible(const seqcount_t *s)
-@@ -258,35 +277,53 @@ SEQCOUNT_LOCKNAME(mutex,        struct mutex,    true,     mutex)
- 
- #define seqprop_ptr(s)			__seqprop(s, ptr)(s)
- #define seqprop_const_ptr(s)		__seqprop(s, const_ptr)(s)
--#define seqprop_sequence(s)		__seqprop(s, sequence)(s)
-+#define seqprop_sequence(s, a)		__seqprop(s, sequence)(s, a)
- #define seqprop_preemptible(s)		__seqprop(s, preemptible)(s)
- #define seqprop_assert(s)		__seqprop(s, assert)(s)
- 
- /**
-- * __read_seqcount_begin() - begin a seqcount_t read section w/o barrier
-- * @s: Pointer to seqcount_t or any of the seqcount_LOCKNAME_t variants
-- *
-- * __read_seqcount_begin is like read_seqcount_begin, but has no smp_rmb()
-- * barrier. Callers should ensure that smp_rmb() or equivalent ordering is
-- * provided before actually loading any of the variables that are to be
-- * protected in this critical section.
-- *
-- * Use carefully, only in critical code, and comment how the barrier is
-- * provided.
-+ * read_seqcount_begin_cond_acquire() - begin a seqcount_t read section
-+ * @s:	     Pointer to seqcount_t or any of the seqcount_LOCKNAME_t variants
-+ * @acquire: If true, the read of the sequence count uses smp_load_acquire()
-+ *	     if the architecure provides and enabled it.
-  *
-  * Return: count to be passed to read_seqcount_retry()
-  */
--#define __read_seqcount_begin(s)					\
-+#define read_seqcount_begin_cond_acquire(s, acquire)			\
- ({									\
- 	unsigned __seq;							\
- 									\
--	while ((__seq = seqprop_sequence(s)) & 1)			\
--		cpu_relax();						\
-+	if (acquire && USE_COND_LOAD_ACQUIRE) {				\
-+		__seq = seqprop_sequence(s, acquire);			\
-+	} else {							\
-+		while ((__seq = seqprop_sequence(s, acquire)) & 1)	\
-+			cpu_relax();					\
-+	}								\
- 									\
- 	kcsan_atomic_next(KCSAN_SEQLOCK_REGION_MAX);			\
- 	__seq;								\
- })
- 
-+/**
-+ * __read_seqcount_begin() - begin a seqcount_t read section w/o barrier
-+ * @s: Pointer to seqcount_t or any of the seqcount_LOCKNAME_t variants
-+ *
-+ * __read_seqcount_begin is like read_seqcount_begin, but it neither
-+ * provides a smp_rmb() barrier nor does it use smp_load_acquire() on
-+ * architectures which provide it.
-+ *
-+ * Callers should ensure that smp_rmb() or equivalent ordering is provided
-+ * before actually loading any of the variables that are to be protected in
-+ * this critical section.
-+ *
-+ * Use carefully, only in critical code, and comment how the barrier is
-+ * provided.
-+ *
-+ * Return: count to be passed to read_seqcount_retry()
-+ */
-+#define __read_seqcount_begin(s)					\
-+	read_seqcount_begin_cond_acquire(s, false)
-+
- /**
-  * raw_read_seqcount_begin() - begin a seqcount_t read section w/o lockdep
-  * @s: Pointer to seqcount_t or any of the seqcount_LOCKNAME_t variants
-@@ -295,9 +332,10 @@ SEQCOUNT_LOCKNAME(mutex,        struct mutex,    true,     mutex)
-  */
- #define raw_read_seqcount_begin(s)					\
- ({									\
--	unsigned _seq = __read_seqcount_begin(s);			\
-+	unsigned _seq = read_seqcount_begin_cond_acquire(s, true);	\
- 									\
--	smp_rmb();							\
-+	if (!IS_ENABLED(CONFIG_ARCH_HAS_ACQUIRE_RELEASE))		\
-+		smp_rmb();						\
- 	_seq;								\
- })
- 
-@@ -326,9 +364,10 @@ SEQCOUNT_LOCKNAME(mutex,        struct mutex,    true,     mutex)
-  */
- #define raw_read_seqcount(s)						\
- ({									\
--	unsigned __seq = seqprop_sequence(s);				\
-+	unsigned __seq = seqprop_sequence(s, true);			\
- 									\
--	smp_rmb();							\
-+	if (!IS_ENABLED(CONFIG_ARCH_HAS_ACQUIRE_RELEASE))		\
-+		smp_rmb();						\
- 	kcsan_atomic_next(KCSAN_SEQLOCK_REGION_MAX);			\
- 	__seq;								\
- })
+Klaus Jensen (2):
+      iommu/vt-d: Remove the pasid present check in prq_event_thread
+      iommu/vt-d: drop pasid requirement for prq initialization
 
+ drivers/iommu/intel/Kconfig          |   2 +-
+ drivers/iommu/intel/Makefile         |   2 +-
+ drivers/iommu/intel/iommu.c          |  29 +--
+ drivers/iommu/intel/iommu.h          |  14 +-
+ drivers/iommu/intel/prq.c            | 404 +++++++++++++++++++++++++++++++++++
+ drivers/iommu/intel/svm.c            | 397 ----------------------------------
+ drivers/iommu/iommufd/hw_pagetable.c |   3 +-
+ 7 files changed, 425 insertions(+), 426 deletions(-)
 ---
-base-commit: 77f587896757708780a7e8792efe62939f25a5ab
-change-id: 20240813-seq_optimize-68c48696c798
+base-commit: 431c1646e1f86b949fa3685efc50b660a364c2b6
+change-id: 20240904-jag-iopfv8-1577fd20422d
 
 Best regards,
 -- 
-Christoph Lameter <cl@gentwo.org>
+Joel Granados <j.granados@samsung.com>
 
