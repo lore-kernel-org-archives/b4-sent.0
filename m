@@ -1,63 +1,74 @@
-From: Vedang Nagar <quic_vnagar@quicinc.com>
-Date: Tue, 17 Sep 2024 14:54:31 +0530
-Subject: [PATCH] arm64: dts: qcom: qcs6460-rb3gen2: enable venus node
+From: Manojkiran Eda <manojkiran.eda@gmail.com>
+Date: Tue, 17 Sep 2024 17:27:08 +0530
+Subject: [PATCH] arm: dts: aspeed: Enable PECI and LPC Snoop
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240917-venus_rb3_gen2-v1-1-8fea70733592@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAM5K6WYC/0XMWwqDMBCF4a3IPHdgnHhBt1JETBxtaBs1qVIQ9
- 95QC338D5xvhyDeSoA62cHLZoOdXIz0koC5dW4UtH1sYOKMqrTETdwaWq9VO4pjzImlKLknYYJ
- 4mr0M9v0Fr83ZXpY1uq9z/LN18kMVLuZZZBWheUzmjmZygx0DEqtqUKQ7rfN6S6E5jg8Ul7zks
- AAAAA==
-X-Change-ID: 20240917-venus_rb3_gen2-502e672d0e20
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Vedang Nagar <quic_vnagar@quicinc.com>
-X-Mailer: b4 0.15-dev-dedf8
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1726565071; l=1015;
- i=quic_vnagar@quicinc.com; s=20240917; h=from:subject:message-id;
- bh=ZOz1XrvGoup5DkTpUjnTAImnT63pIeOYTBQe0DKCiP4=;
- b=4CvhtO+l3KQXE/X5CjMCShcqBxg8W6nsJdtPKY22T4SZhGUtRDkxecxOX88BL8wbEicNPq8/S
- l2ELgUskF39DlugXTrKXvEFEeNn4MP9rvA2UGp2Jn3bDu1lt0FbLuKG
-X-Developer-Key: i=quic_vnagar@quicinc.com; a=ed25519;
- pk=GHqLT8NPue4v+CDHbZork8Ps39CBHq345GQKvCZ1glE=
-X-Endpoint-Received: by B4 Relay for quic_vnagar@quicinc.com/20240917 with auth_id=213
+Message-Id: <20240917-dts-aspeed-system1-peci-snoop-v1-1-b967fb3a6735@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJNu6WYC/x3MQQrDIBAF0KuEWXdAxWDbq5QuRH+SWVTFCaUl5
+ O6VLt/mHaToAqX7dFDHW1RqGbCXidIWywqWPEzOOG9uNnDelaM2ILN+dcfLckMS1lJr4+DmFMz
+ io7/ONI7Wscjn/z+e5/kDtxZUKG8AAAA=
+To: Ninad Palsule <ninad@linux.ibm.com>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>, openbmc@lists.ozlabs.org, 
+ Eddie James <eajames@linux.ibm.com>
+Cc: Manojkiran Eda <manojkiran.eda@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1726574241; l=1427;
+ i=manojkiran.eda@gmail.com; s=20240917; h=from:subject:message-id;
+ bh=/1nUIqnNZDWK/Gq0s2SEC3Nt9jxEcTyK93Dbo2tVeno=;
+ b=Mr1/kTJU6zcF2l+GCyb8NtyXvLOg64fP2VpzhFv8/8qfP+p8kmJzx3PlpqZFTkVzCFzoMEvSr
+ rYczmGitysQBXvsFFm29c0naO0q+2OgLnEt2TiyVCKVLE3Yv2xoNiD/
+X-Developer-Key: i=manojkiran.eda@gmail.com; a=ed25519;
+ pk=DhQ/NRPeyE1WOxUmafF9Oy8LLco0c8CCeTN+Ef6q6Ts=
+X-Endpoint-Received: by B4 Relay for manojkiran.eda@gmail.com/20240917 with auth_id=215
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the venus node on Qualcomm Rb3gen2 so that the
-video decoder will start working.
+This patch enables the PECI interface and configures the LPC Snoop for
+ports 0x80 and 0x81 in the ASPEED BMC for IBM System1.
 
-Signed-off-by: Vedang Nagar <quic_vnagar@quicinc.com>
+Signed-off-by: Manojkiran Eda <manojkiran.eda@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts | 4 ++++
- 1 file changed, 4 insertions(+)
+This patch enables PECI and LPC snoop functionality on the IBM System1
+BMC in the device tree.
 
-diff --git a/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts b/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts
-index 0d45662b8028bff475024cff37c33e01d2ee251b..d52a7e0a35bf941c66ccaa00425147781976b359 100644
---- a/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts
-+++ b/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts
-@@ -790,6 +790,10 @@ &ufs_mem_phy {
- 	status = "okay";
+The following changes have been made:
+
+1. Enabled the PECI controller (peci0) by marking its status to "okay".
+2. Enabled the LPC snoop engine, configuring snoop ports at 0x80 and
+   0x81.
+
+These changes are required to support PECI communication and LPC
+snooping for system monitoring and debugging purposes.
+---
+ arch/arm/boot/dts/aspeed/aspeed-bmc-ibm-system1.dts | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-ibm-system1.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-ibm-system1.dts
+index cb3063413d1f..738a86c787c0 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-ibm-system1.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-ibm-system1.dts
+@@ -464,6 +464,15 @@ &kcs3 {
+ 	aspeed,lpc-interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
  };
  
-+&venus {
++&peci0 {
 +	status = "okay";
 +};
 +
- &wifi {
- 	memory-region = <&wlan_fw_mem>;
- };
++&lpc_snoop {
++	status = "okay";
++	snoop-ports = <0x80>, <0x81>;
++};
++
+ &i2c0 {
+ 	status = "okay";
+ 
 
 ---
-base-commit: 3f52e32445a1f63b788bc8969b7dc2386a80a24d
-change-id: 20240917-venus_rb3_gen2-502e672d0e20
-prerequisite-change-id: 20240913-qcm6490-clock-configs-0239f30babb5:v1
-prerequisite-patch-id: faac726ebdf08240ab0913132beb2c620e52a98a
+base-commit: ca2478a7d974f38d29d27acb42a952c7f168916e
+change-id: 20240917-dts-aspeed-system1-peci-snoop-725c70f4a485
 
 Best regards,
 -- 
-Vedang Nagar <quic_vnagar@quicinc.com>
+Manojkiran Eda <manojkiran.eda@gmail.com>
 
