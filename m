@@ -1,13 +1,12 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Subject: [PATCH 0/3] Backport statx(..., NULL, AT_EMPTY_PATH, ...)
-Date: Wed, 18 Sep 2024 22:01:18 +0800
-Message-Id: <20240918-statx-stable-linux-6-10-y-v1-0-8364a071074f@gmail.com>
+Date: Wed, 18 Sep 2024 22:01:19 +0800
+Subject: [PATCH v6.10 1/3] fs: new helper vfs_empty_path()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAC7d6mYC/x2M0Q5EMBAAf0X22UrXieJXxIOr5TaRnrRIRfy78
- jLJPMyc4NkJe2iSExzv4uVvo1CagPn1dmKUITrkKi9UTRX6tV/Dw+/MOIvdApZICg8kbT5sdFF
- rU0HsF8ejhPfdwl5mpKC7rhtguFJ8cgAAAA==
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240918-statx-stable-linux-6-10-y-v1-1-8364a071074f@gmail.com>
+References: <20240918-statx-stable-linux-6-10-y-v1-0-8364a071074f@gmail.com>
+In-Reply-To: <20240918-statx-stable-linux-6-10-y-v1-0-8364a071074f@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, stable@vger.kernel.org
 Cc: Xi Ruoyao <xry111@xry111.site>, Mateusz Guzik <mjguzik@gmail.com>, 
  Christian Brauner <brauner@kernel.org>, 
@@ -21,57 +20,70 @@ Cc: Xi Ruoyao <xry111@xry111.site>, Mateusz Guzik <mjguzik@gmail.com>,
  Alice Ryhl <aliceryhl@google.com>, linux-fsdevel@vger.kernel.org, 
  stable@vger.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1261;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1160;
  i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=Gqo/olFf/TqaNzYStJ4h4iSgp/m9SF1eYLZDSlE6sec=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBm6t1K3ccq23E7ZBFaXcjel3XM1t9hHB7i4wcQW
- DHQaHvjZCeJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZurdSgAKCRCwMePKe/7Z
- bqqAD/9mFnhmtbaWcLZxM02VcGsraDoJF/L1Ix/DNiwMxjuGZCqdjDZLmzMSvDYwdMnXrGA48O7
- Jg5PJxqTecHodyF0sF8lAW2NRUkPHo/ABLRmkkDf9xvS3lV2RkW4hqBaXoCZGd9BHM7IZw4RUm9
- euiXHFQ6hjaKRlj4efAi5zf0O7yI4bgvo7tNsFE6j/WaITzZ03tb7Fq8YXaeMjVdlJuZhas5KgC
- BUGGrtm9lwkpXfseosEvDKfEr+oxl0DfGzXn7fcQ5bt9w4uQTlFzzjj9iFz7vmWmUJhxCQztX3v
- bcdOdWxRnzBDNeYrYOnGNn2vi+RjgPIUeZjuZob4cRo27N71yJwPBTVXWASglVNY5lcbxiuUtAk
- 0QGSEXsxlEWh1L0jD9k704StspBOnn1y9QXc02vzqns/8QTOzZHIs/VLRlmTANmicQ3P1YGAhlN
- LUG/gLinXqzcYbaExAl18TjEnomMVHoch9Wm8whPBaBSIMdOinZPHHp4H5de0VAngpI87HrqlEI
- oYNtgvLIycHzpS8F9zUswLPQSnzurQUd9OlBC1fbpLUDiP3GaUgbmVwidHU4khcyiTlgFqNQSg2
- MvcvF76G7xFmCCCXZK15MKeHqtNDBN12Y8pP9y/G6MRd2Tx/mOplubimhlKjamnYB3/I8+Y9ERa
- zxIikM6a1A0OXpA==
+ bh=UKi5cKkDYLorcoPNPh8VgxFKz/KyskePZcWRS3ghFg0=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBm6t1KULu5wqjoaobS1DoIbfuhiZbMceaA06Py/
+ Gx0USf7Sq+JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZurdSgAKCRCwMePKe/7Z
+ bgqID/9QaVYMKyEgINsB/9tIo+flZS42k3P9doDhzVYtrYYawV4PpZ7UI9+sS/5dmpNhyQ12t7n
+ bKtMoG1veL9VVHM4gq+A4RVkHQPE9yFzFcvzH6o/f3HamoCDC27t+eEnwpupVr5EKKJucIVYwtl
+ /baekLgBr81JQL/njKkiui/ruEYJcNTUD5EAce0blpxM6q3UBeZWFxntsV49ZmnHskUPrYt/lQp
+ CVeL+KggrPNvn74Z7H3gtZcjKDti22FyQDSVLUo3KR4AkxSfV1MBue57X0MMm1zt1O5lKEJdCXg
+ sGNbN8siqUpzYiIg8ImBeojk3tM7b17B0bR5WZ1BXsZA3SO6CpGeDRkg5KlxcK2NW1iZYcMMMBd
+ KFOcGLp4KEnXuEZxl0cDxBdTd/LgqIe74nWnTkU2mfXd/5M/DLU0xhpX99QbiMk02HHJKfDAIOw
+ 3Iz9vgd+wLiKpSWJvNQMhlSYQlYEudtSQU4AkVaqjGPD+xvkFhDKM7sf/iPsPrJmXVcb8uoYSXV
+ f9Axm37U8iDiI2sSOI4OHaPUtrBK3EnGLviN9ulrEu/i7ruyFnHr7E+yACyyVCVeokdfn5Duy5H
+ rPYAC8wt4rPRqzvUyLR0BnzZdJcb3H6rhgtLrbHS+PithR8rlxsE3p9gUMg7XdS8hDbs6p6RGJ1
+ ZmEWz//KPTxMvrg==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 0ef625bba6fb ("vfs: support statx(..., NULL, AT_EMPTY_PATH,
-...)") added support for passing in NULL when AT_EMPTY_PATH is given,
-improving performance when statx is used for fetching stat informantion
-from a given fd, which is especially important for 32-bit platforms.
-This commit also improved the performance when an empty string is given
-by short-circuiting the handling of such paths.
+From: Christian Brauner <brauner@kernel.org>
 
-This series is based on the commits in the Linus’ tree. Sligth
-modifications are applied to the context of the patches for cleanly
-applying.
+commit 1bc6d44 upstream.
 
-Tested-by: Xi Ruoyao <xry111@xry111.site>
+Make it possible to quickly check whether AT_EMPTY_PATH is valid.
+Note, after some discussion we decided to also allow NULL to be passed
+instead of requiring the empty string.
+
+Signed-off-by: Christian Brauner <brauner@kernel.org>
+
+Cc: <stable@vger.kernel.org> # 6.10.x
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+Tested-by: Xi Ruoyao <xry111@xry111.site>
 ---
-Christian Brauner (2):
-      fs: new helper vfs_empty_path()
-      stat: use vfs_empty_path() helper
+ include/linux/fs.h | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-Mateusz Guzik (1):
-      vfs: support statx(..., NULL, AT_EMPTY_PATH, ...)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5f07c1c377df..0e334aad85c5 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -3619,4 +3619,21 @@ extern int vfs_fadvise(struct file *file, loff_t offset, loff_t len,
+ extern int generic_fadvise(struct file *file, loff_t offset, loff_t len,
+ 			   int advice);
+ 
++static inline bool vfs_empty_path(int dfd, const char __user *path)
++{
++	char c;
++
++	if (dfd < 0)
++		return false;
++
++	/* We now allow NULL to be used for empty path. */
++	if (!path)
++		return true;
++
++	if (unlikely(get_user(c, path)))
++		return false;
++
++	return !c;
++}
++
+ #endif /* _LINUX_FS_H */
 
- fs/internal.h      |  14 ++++++
- fs/namespace.c     |  13 ------
- fs/stat.c          | 123 ++++++++++++++++++++++++++++++++++++-----------------
- include/linux/fs.h |  17 ++++++++
- 4 files changed, 116 insertions(+), 51 deletions(-)
----
-base-commit: 049be94099ea5ba8338526c5a4f4f404b9dcaf54
-change-id: 20240918-statx-stable-linux-6-10-y-17c3ec7497c8
-
-Best regards,
 -- 
-Miao Wang <shankerwangmiao@gmail.com>
+2.43.0
 
