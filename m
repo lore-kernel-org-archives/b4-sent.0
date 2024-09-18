@@ -1,10 +1,10 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Wed, 18 Sep 2024 22:10:38 +0800
-Subject: [PATCH v5.15-v5.10 2/4] fs: new helper vfs_empty_path()
+Date: Wed, 18 Sep 2024 22:10:39 +0800
+Subject: [PATCH v5.15-v5.10 3/4] stat: use vfs_empty_path() helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240918-statx-stable-linux-5-15-y-v1-2-5afb4401ddbe@gmail.com>
+Message-Id: <20240918-statx-stable-linux-5-15-y-v1-3-5afb4401ddbe@gmail.com>
 References: <20240918-statx-stable-linux-5-15-y-v1-0-5afb4401ddbe@gmail.com>
 In-Reply-To: <20240918-statx-stable-linux-5-15-y-v1-0-5afb4401ddbe@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, stable@vger.kernel.org
@@ -13,21 +13,21 @@ Cc: Xi Ruoyao <xry111@xry111.site>, Mateusz Guzik <mjguzik@gmail.com>,
  Alexander Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org, 
  stable@vger.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1116;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1082;
  i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=NNdeRdWR8oQ0NFsZXKcLndO0clVTPZKHtPgFAjQVi/A=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBm6t9opLBl8Es3PPOAB3sh2DYnhurwkAcr8xbwd
- t0+ZmqsmmmJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZurfaAAKCRCwMePKe/7Z
- bvZ/EACAsFifV4qsXKY44jmfyBeldyhGFRY5pwuMVHhdpCD6pudl286QKaFGcDxkhzx7XiDAF4m
- CxbYmME9OJ1WDbCcOWD4lIb3I/CIs7TO5MqfeChlVHE8Kusfegcj3TCJSVwOF3OWzNU7k7XhmpL
- NGNomlTBfjZfPFugUK88w66K6p64sHHs5XseQuLiIBcMg1X9NRbZ2ptYtNE/PSMflPZxOthJCua
- eRAr5bjrauavi7XFby692T4B3w7IhViG1fQLGU9lZBWLdVe47A/bH+gnc5eMVAofuDfsBS5OESD
- 4VVRMQgt34Ws7IpRzrLc4aIHjetYl3348QjFD701IAUXLo9CDB4J4Ft0XKSMmjCIG1CZWWjEOKI
- b0IUt3V3JYykbK6po+qieno6bGCKAYtuhvKPyi+EW8zlm6sw9rQJmVrvhBrvfnv6yPAfG7faXsv
- Wwmriw34HtjMNaH4PONAzS6DBEi5gHI43nzsMOWcA1dolPn0/8VmHB3ch70aQro0VQQypIL5wa/
- ToLyiobwgGQEkDZdw1017gnyp77Do0zPnNu3AXw+9LUfz+Md53cc4MrBhkwn9cTrFR2TqEoWcKV
- p7eZ/cykC79iVs0B/1EACEpAFiGyZgR51cbNPMSWdy0TYWM99M7SrNjfWlhP8/aHf6v7bTGhXay
- KnBkJZWU31EDtRg==
+ bh=bCFrxJOZ1JlvAjj2Q1DjyhrDQOgyZ9D8tBLlcgyrtKc=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBm6t9oR0f0W5q/TKDHi8vrrYol5brh4IWMqGm/o
+ CrztW+Vov+JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZurfaAAKCRCwMePKe/7Z
+ bjMoD/43wQkEksXRWesOQYsMnncO3tApr7WqjPjqHbkVdYflvX4RqGPyyLaxhy2WyD0s0y/2G/O
+ /1P6hAlr6ZK5u/g0aGB6iMmVAI6zxJS+nR+6GP2rd16VpVB1Te+0r++QPtMUg85OgNgYx+HUI5M
+ xshcVyMPmb+UXgbZ3FjkvZQ5q99aK7C2fEAHZ9XWvc+VIsO02yYVFDC7XShkwPea96oe9zzBTlJ
+ FRifgVefZ0ehZEI0nKzXost8c7xCs3wEHOFs5Kod+9OCdtrqnc9WkItPMME1pzXKWeF0t3cxx+/
+ qkS6k1j9+kEuzYt44X2wsvpwkb1CYoyjulmGKoqBEd8LsDrR/o85syu9fRvlD8YhbAqFIift/S5
+ BjOM88WQpdkrwyH5TTek7l9rb/AoqTH329CgkF+SLw4YFsvCOsoByzpQEQ1oGY9quajjiYk54Au
+ fNlTV1Kwn+aghE0qz96FLBDenXAUE8bhSfrJi7NAfki/DTsHjtNjc0iGv+HcyWQi88F9or5Y9GZ
+ Cmdi2pDZf4gAgE5/YpQIYLu7iyS1yuDlaaUkXMwPgVd+EPXynexZYkx90fmBkDkrWc4HNLRrfpc
+ sxMKvd70OZ0ZA/YX3KmNhC2GN0zce8TQemlDGW8EdA6/9xVD614cJcrqZIvqrv7CAn/1vOU2JvS
+ objHa336Dvmj1pA==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
@@ -35,11 +35,9 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Christian Brauner <brauner@kernel.org>
 
-commit 1bc6d44 upstream.
+commit 27a2d0c upstream.
 
-Make it possible to quickly check whether AT_EMPTY_PATH is valid.
-Note, after some discussion we decided to also allow NULL to be passed
-instead of requiring the empty string.
+Use the newly added helper for this.
 
 Signed-off-by: Christian Brauner <brauner@kernel.org>
 
@@ -47,35 +45,32 @@ Cc: <stable@vger.kernel.org> # 5.10.x-5.15.x
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 Tested-by: Xi Ruoyao <xry111@xry111.site>
 ---
- include/linux/fs.h | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+ fs/stat.c | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 27da89d0ed5a..6fe2ae89bba6 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3736,4 +3736,21 @@ static inline int inode_drain_writes(struct inode *inode)
- 	return filemap_write_and_wait(inode->i_mapping);
- }
+diff --git a/fs/stat.c b/fs/stat.c
+index 9669f3268286..b8faa3f4b046 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -246,16 +246,9 @@ int vfs_fstatat(int dfd, const char __user *filename,
+ 	 * If AT_EMPTY_PATH is set, we expect the common case to be that
+ 	 * empty path, and avoid doing all the extra pathname work.
+ 	 */
+-	if (dfd >= 0 && flags == AT_EMPTY_PATH) {
+-		char c;
++	if (flags == AT_EMPTY_PATH && vfs_empty_path(dfd, filename))
++		return vfs_fstat(dfd, stat);
  
-+static inline bool vfs_empty_path(int dfd, const char __user *path)
-+{
-+	char c;
-+
-+	if (dfd < 0)
-+		return false;
-+
-+	/* We now allow NULL to be used for empty path. */
-+	if (!path)
-+		return true;
-+
-+	if (unlikely(get_user(c, path)))
-+		return false;
-+
-+	return !c;
-+}
-+
- #endif /* _LINUX_FS_H */
+-		ret = get_user(c, filename);
+-		if (unlikely(ret))
+-			return ret;
+-
+-		if (likely(!c))
+-			return vfs_fstat(dfd, stat);
+-	}
+ 	return vfs_statx(dfd, filename, flags | AT_NO_AUTOMOUNT,
+ 			 stat, STATX_BASIC_STATS);
+ }
 
 -- 
 2.43.0
