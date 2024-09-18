@@ -1,13 +1,13 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Subject: [PATCH 0/4] Backport statx(..., NULL, AT_EMPTY_PATH, ...)
-Date: Wed, 18 Sep 2024 22:10:36 +0800
-Message-Id: <20240918-statx-stable-linux-5-15-y-v1-0-5afb4401ddbe@gmail.com>
+Date: Wed, 18 Sep 2024 22:10:37 +0800
+Subject: [PATCH v5.15-v5.10 1/4] vfs: mostly undo glibc turning 'fstat()'
+ into 'fstatat(AT_EMPTY_PATH)'
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAFzf6mYC/x2Myw5AMBBFf0VmbaRF4/ErYlEMJpGSFqmIf1c2J
- znJPfcGR5bJQR3dYOlkx6sJIuMI+lmbiZCH4JCKNBeVLNHtevcfu4VwYXN4VCgVXljpTGSq1MW
- QFxD6zdLI/v9u4FRJGH0U0D7PC/8LDll4AAAA
+Content-Transfer-Encoding: 7bit
+Message-Id: <20240918-statx-stable-linux-5-15-y-v1-1-5afb4401ddbe@gmail.com>
+References: <20240918-statx-stable-linux-5-15-y-v1-0-5afb4401ddbe@gmail.com>
+In-Reply-To: <20240918-statx-stable-linux-5-15-y-v1-0-5afb4401ddbe@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, stable@vger.kernel.org
 Cc: Xi Ruoyao <xry111@xry111.site>, Mateusz Guzik <mjguzik@gmail.com>, 
  Christian Brauner <brauner@kernel.org>, 
@@ -15,70 +15,102 @@ Cc: Xi Ruoyao <xry111@xry111.site>, Mateusz Guzik <mjguzik@gmail.com>,
  stable@vger.kernel.org, Miao Wang <shankerwangmiao@gmail.com>, 
  Linus Torvalds <torvalds@linux-foundation.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2178;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2834;
  i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=dkeHweZOsjkx3Ag5GOp8+zbO/oMVxglgz9oAsbZuWfw=;
- b=kA0DAAoBsDHjynv+2W4ByyZiAGbq32iiclsVGevsH3fdEUaojZ1rU7KBcrzo1/cYK142hpS/N
- YkCMwQAAQoAHRYhBESo9Y+A8kHGW57ME7Ax48p7/tluBQJm6t9oAAoJELAx48p7/tlu87gQANBX
- CdjnQ6MdfZkdWU82SRd8+3aRBEBWeQpcHyEmSxMxBWS/pXs21wtcl85ssdEtjpOnf8Ebfsz56R/
- VWbGkZFIsSpWJ42/34sAEBjK/g8wiZqNU1LSmyW9ZIq68P0qd6deZ4lTbAddNxIJLtugjEMw/9y
- LdevRi9NV66yNGF3saB/1poT0JjMuhA8kCiQiqrhfUEBnpgdaH3u4r08AwNWFXRyyIhtw9g4nOd
- J+bVssMyWn99MZ9kEfOgxxuxEjKR4j9MMcAWd2vIHVyCposnIneEOWVwDG26Fv2GRFwZE7AFEfZ
- D+MQui4jhJlXW04XcL2jC8mrThujD7DVxoWwCytqMAFXhpFNWV2a+hVPmLdjV9IuwSAVQ+g+P/A
- yjodgqh6fzEOrgwW3Ejm9SZEkTnztE0LoAP6uXLaPPxEJ8ze9t5iAru+32RElbfIhJqJz3XJ191
- /a1sgN9nlnHmf41EmybQ1EkRpzHrFJ2T4ob4wSTLUlWwewyGH97Swkl0J2fOSIr+e4VY6o3NmAC
- iA2SlvqYvtBHWYz2SMWJW52zrkB30LfAKslHWp5JG9rsaSDmDT4y//D+TA6lGUc3k9ha+mW3aje
- LnbwovzKdaMbwI1q1iJ4udI5yjYl/yPobc74u3l1jh34TvaZ1p+U2DHxW7yIGYhKE4nyMHoZE1g
- ZWRK+
+ bh=shkXBk+gnzTIPbC7R2tboulSE67SGBTGhMLzTghvzw8=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBm6t9oZdUD+fMtZyQknzM2S2xZgTNBVpkCHtZ+Q
+ fSp0U4g5NOJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZurfaAAKCRCwMePKe/7Z
+ bhyZD/9ArmkkoE+BhMIr5PdZk1Or/Jt3JiCI4dy/eyIMnFtlx1f2V7HTvzahJ8iQ/Lg/Twc8Mdp
+ 80zqxSJgmUgfStce539KCLS7CTNKfdSfZ/eJCxwbA1l+Pe04MXt/LdhDxciqRp+yksv/PSMsgoP
+ lf2VF2XOHjSinhIdyx5vd7FyLsHYSufgxV2S5+g3WLScx1mGWiqzR+gfzFAA+dDrkw/DtEYYzGQ
+ PwkyStOG+S3GLbHxOxiumeAYyM05jwLnA7EFTInEPlfUTrjjL3aA2ehbBE/yeqtRaiuh8X86vCT
+ zbOSJ745nS4LAiDF68uMu2VU1K/gn0scxmV7ON7qnzAPmomhsEaPictBlCyHpfjFILbITHlZTvb
+ Rxvgqys781+l2J8T+7e6P1CineXHfYQAkIJq0atq+MVlk7qvA5edeyoucyc0y4cRIQBBVrLOtH6
+ sJZq0A+k4jwHRy0+H889eDbDiUT5bm35W2jdoJ2PVF/z6gPEVngnUfx7avzPXJEXR0aZL8KQ5Qd
+ PSx0PpinuE99O4QAkeb10TMXNFz5mkexEiRgiR0r5eZ5+ChlBB5fdZZ9muxq4iT2vojUXr2IGn+
+ QJeNclB7Jcxh5BBxyXcRHG/0mRHl93Rdt68p1yZmSi9x3LskINSOSYSGEPhAEU2rPKH5UEbmBv/
+ GDlMb2VRDdh01ag==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 0ef625bba6fb ("vfs: support statx(..., NULL, AT_EMPTY_PATH,
-...)") added support for passing in NULL when AT_EMPTY_PATH is given,
-improving performance when statx is used for fetching stat informantion
-from a given fd, which is especially important for 32-bit platforms.
-This commit also improved the performance when an empty string is given
-by short-circuiting the handling of such paths.
+From: Linus Torvalds <torvalds@linux-foundation.org>
 
-This series is based on the commits in the Linus’ tree. Modifications
-are applied to vfs_statx_path(). In the original patch, vfs_statx_path()
-was created to warp around the call to vfs_getattr() after
-filename_lookup() in vfs_statx(). Since the coresponding code is
-different in 5.15 and 5.10, the content of vfs_statx_path() is modified
-to match this. The original patch also moved path_mounted() from
-namespace.c to internal.h, which is not applicable for 5.15 and 5.10
-since it has not been introduced before 6.5. The original patch also
-used CLASS(fd_raw, ) to convert a file descriptor number provided from
-the user space in to a struct and automatically release it afterwards.
-Since CLASS mechanism is only available since 6.1.79, obtaining and
-releasing fd struct is done manually. do_statx() was directly handling
-filename string instead of a struct filename * before 5.18, as a result
-short-circuiting is implemented in do_statx() instead of sys_statx,
-without the need of introducing do_statx_fd().
+commit 9013c51 upstream.
 
-Tested-by: Xi Ruoyao <xry111@xry111.site>
+Mateusz reports that glibc turns 'fstat()' calls into 'fstatat()', and
+that seems to have been going on for quite a long time due to glibc
+having tried to simplify its stat logic into just one point.
+
+This turns out to cause completely unnecessary overhead, where we then
+go off and allocate the kernel side pathname, and actually look up the
+empty path.  Sure, our path lookup is quite optimized, but it still
+causes a fair bit of allocation overhead and a couple of completely
+unnecessary rounds of lockref accesses etc.
+
+This is all hopefully getting fixed in user space, and there is a patch
+floating around for just having glibc use the native fstat() system
+call.  But even with the current situation we can at least improve on
+things by catching the situation and short-circuiting it.
+
+Note that this is still measurably slower than just a plain 'fstat()',
+since just checking that the filename is actually empty is somewhat
+expensive due to inevitable user space access overhead from the kernel
+(ie verifying pointers, and SMAP on x86).  But it's still quite a bit
+faster than actually looking up the path for real.
+
+To quote numers from Mateusz:
+ "Sapphire Rapids, will-it-scale, ops/s
+
+  stock fstat	5088199
+  patched fstat	7625244	(+49%)
+  real fstat	8540383	(+67% / +12%)"
+
+where that 'stock fstat' is the glibc translation of fstat into
+fstatat() with an empty path, the 'patched fstat' is with this short
+circuiting of the path lookup, and the 'real fstat' is the actual native
+fstat() system call with none of this overhead.
+
+Link: https://lore.kernel.org/lkml/20230903204858.lv7i3kqvw6eamhgz@f/
+Reported-by: Mateusz Guzik <mjguzik@gmail.com>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+
+Cc: <stable@vger.kernel.org> # 5.10.x-5.15.x
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+Tested-by: Xi Ruoyao <xry111@xry111.site>
 ---
-Christian Brauner (2):
-      fs: new helper vfs_empty_path()
-      stat: use vfs_empty_path() helper
+ fs/stat.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-Linus Torvalds (1):
-      vfs: mostly undo glibc turning 'fstat()' into 'fstatat(AT_EMPTY_PATH)'
+diff --git a/fs/stat.c b/fs/stat.c
+index 246d138ec066..9669f3268286 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -240,6 +240,22 @@ static int vfs_statx(int dfd, const char __user *filename, int flags,
+ int vfs_fstatat(int dfd, const char __user *filename,
+ 			      struct kstat *stat, int flags)
+ {
++	/*
++	 * Work around glibc turning fstat() into fstatat(AT_EMPTY_PATH)
++	 *
++	 * If AT_EMPTY_PATH is set, we expect the common case to be that
++	 * empty path, and avoid doing all the extra pathname work.
++	 */
++	if (dfd >= 0 && flags == AT_EMPTY_PATH) {
++		char c;
++
++		ret = get_user(c, filename);
++		if (unlikely(ret))
++			return ret;
++
++		if (likely(!c))
++			return vfs_fstat(dfd, stat);
++	}
+ 	return vfs_statx(dfd, filename, flags | AT_NO_AUTOMOUNT,
+ 			 stat, STATX_BASIC_STATS);
+ }
 
-Mateusz Guzik (1):
-      vfs: support statx(..., NULL, AT_EMPTY_PATH, ...)
-
- fs/stat.c          | 73 +++++++++++++++++++++++++++++++++++++++++++++---------
- include/linux/fs.h | 17 +++++++++++++
- 2 files changed, 78 insertions(+), 12 deletions(-)
----
-base-commit: 3a5928702e7120f83f703fd566082bfb59f1a57e
-change-id: 20240918-statx-stable-linux-5-15-y-9a30358a7d47
-
-Best regards,
 -- 
-Miao Wang <shankerwangmiao@gmail.com>
+2.43.0
 
