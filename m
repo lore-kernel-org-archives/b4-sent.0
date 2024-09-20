@@ -1,10 +1,10 @@
 From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Fri, 20 Sep 2024 16:16:14 +0800
-Subject: [PATCH 4/6] clk: meson: gxbb: Delete the spinlock from the MPLL
+Date: Fri, 20 Sep 2024 16:16:15 +0800
+Subject: [PATCH 5/6] clk: meson: g12a: Delete the spinlock from the MPLL
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240920-mpll_spinlock-v1-4-5249a9a7e2b7@amlogic.com>
+Message-Id: <20240920-mpll_spinlock-v1-5-5249a9a7e2b7@amlogic.com>
 References: <20240920-mpll_spinlock-v1-0-5249a9a7e2b7@amlogic.com>
 In-Reply-To: <20240920-mpll_spinlock-v1-0-5249a9a7e2b7@amlogic.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -16,11 +16,11 @@ Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Chuan Liu <chuan.liu@amlogic.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1726820173; l=1458;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1726820173; l=1559;
  i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=r/V4f8IDG1LGpMtumtpaJ0LFZXwZ5q/tzNNHh8H7+Ng=;
- b=NtifgucIpJ4Mvxn1mZSWmWBsWYiHyWJUsScY1EzaHpJAZqr8qLzhX8/r5U3bVyAU6Q7KgpmrE
- 5Qi+Dq7JQwADH+ieFl7XPqEZ9egM5mtM6IaxvziEggqp0Z8Gfgv2thW
+ bh=MZl3oPXVbFrreOWsDGIWEgWOlrCQLcqRIhkDzjt3Cc8=;
+ b=rP/mr0KX0CYpSvUBB4/ILbi/5tZMB85fblKCbF0E0b2repGNwdGARAflq4jCqraXN5U5FXntI
+ GPjaJ4vFjmqC1ljnYvzbDMZT3fLMLx8vU1fFX/HMF92Onx3NjkXe6O1
 X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
  pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
 X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
@@ -30,54 +30,54 @@ It is meaningless to define a spinlock in the struct meson_clk_mpll_data.
 
 Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- drivers/clk/meson/gxbb.c | 6 ------
+ drivers/clk/meson/g12a.c | 6 ------
  1 file changed, 6 deletions(-)
 
-diff --git a/drivers/clk/meson/gxbb.c b/drivers/clk/meson/gxbb.c
-index f071faad1ebb..262c318edbd5 100644
---- a/drivers/clk/meson/gxbb.c
-+++ b/drivers/clk/meson/gxbb.c
-@@ -19,8 +19,6 @@
+diff --git a/drivers/clk/meson/g12a.c b/drivers/clk/meson/g12a.c
+index 02dda57105b1..d3539fe9f7af 100644
+--- a/drivers/clk/meson/g12a.c
++++ b/drivers/clk/meson/g12a.c
+@@ -28,8 +28,6 @@
  
- #include <dt-bindings/clock/gxbb-clkc.h>
+ #include <dt-bindings/clock/g12a-clkc.h>
  
 -static DEFINE_SPINLOCK(meson_clk_lock);
 -
- static const struct pll_params_table gxbb_gp0_pll_params_table[] = {
- 	PLL_PARAMS(32, 1),
- 	PLL_PARAMS(33, 1),
-@@ -731,7 +729,6 @@ static struct clk_regmap gxbb_mpll0_div = {
- 			.shift   = 16,
- 			.width   = 9,
+ static struct clk_regmap g12a_fixed_pll_dco = {
+ 	.data = &(struct meson_clk_pll_data){
+ 		.en = {
+@@ -2225,7 +2223,6 @@ static struct clk_regmap g12a_mpll0_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
  		},
 -		.lock = &meson_clk_lock,
+ 		.init_regs = g12a_mpll0_init_regs,
+ 		.init_count = ARRAY_SIZE(g12a_mpll0_init_regs),
  	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll0_div",
-@@ -760,7 +757,6 @@ static struct clk_regmap gxl_mpll0_div = {
- 			.shift   = 16,
- 			.width   = 9,
+@@ -2279,7 +2276,6 @@ static struct clk_regmap g12a_mpll1_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
  		},
 -		.lock = &meson_clk_lock,
+ 		.init_regs = g12a_mpll1_init_regs,
+ 		.init_count = ARRAY_SIZE(g12a_mpll1_init_regs),
  	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll0_div",
-@@ -812,7 +808,6 @@ static struct clk_regmap gxbb_mpll1_div = {
- 			.shift   = 16,
- 			.width   = 9,
+@@ -2333,7 +2329,6 @@ static struct clk_regmap g12a_mpll2_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
  		},
 -		.lock = &meson_clk_lock,
+ 		.init_regs = g12a_mpll2_init_regs,
+ 		.init_count = ARRAY_SIZE(g12a_mpll2_init_regs),
  	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll1_div",
-@@ -855,7 +850,6 @@ static struct clk_regmap gxbb_mpll2_div = {
- 			.shift   = 16,
- 			.width   = 9,
+@@ -2387,7 +2382,6 @@ static struct clk_regmap g12a_mpll3_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
  		},
 -		.lock = &meson_clk_lock,
+ 		.init_regs = g12a_mpll3_init_regs,
+ 		.init_count = ARRAY_SIZE(g12a_mpll3_init_regs),
  	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll2_div",
 
 -- 
 2.42.0
