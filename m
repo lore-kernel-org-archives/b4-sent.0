@@ -1,10 +1,10 @@
 From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Fri, 20 Sep 2024 16:16:12 +0800
-Subject: [PATCH 2/6] clk: meson: axg: Delete the spinlock from the MPLL
+Date: Fri, 20 Sep 2024 16:16:13 +0800
+Subject: [PATCH 3/6] clk: meson: meson8b: Delete the spinlock from the MPLL
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240920-mpll_spinlock-v1-2-5249a9a7e2b7@amlogic.com>
+Message-Id: <20240920-mpll_spinlock-v1-3-5249a9a7e2b7@amlogic.com>
 References: <20240920-mpll_spinlock-v1-0-5249a9a7e2b7@amlogic.com>
 In-Reply-To: <20240920-mpll_spinlock-v1-0-5249a9a7e2b7@amlogic.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -16,11 +16,11 @@ Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Chuan Liu <chuan.liu@amlogic.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1726820173; l=1500;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1726820173; l=1042;
  i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=A66AwGhQ5KfvBGuX3+8YPfqlQmWjyAOHLmEF/9YfExU=;
- b=bC07qWlOnIwGnXk6bbO3cqsQy+tRulPBMDppiO6cLZkxQu92f1niJme+f0EGewC2yIcRM9eSX
- uoKBnEkizCdDJKW8+cYsx8Ay+NjiznMnc324fuKn0XBL08ySyMbrG3s
+ bh=N+7gK8ye2ZH8Sz8SGwh9nN4Tn81n4jpbYcpMlhBsfdw=;
+ b=dphtUdfobSoHJkXJrIcLyyGoAhtVltiI2V0nUCiZXjLIwlYlcis4LsTvsd/4d/Gg5DfGZ6PUO
+ OqjLr1Eei1QAyuIutGAG1gmYy2uTt1vpwQylU9mZVhHDYpYCp/cMf3Y
 X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
  pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
 X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
@@ -30,54 +30,37 @@ It is meaningless to define a spinlock in the struct meson_clk_mpll_data.
 
 Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- drivers/clk/meson/axg.c | 6 ------
- 1 file changed, 6 deletions(-)
+ drivers/clk/meson/meson8b.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-diff --git a/drivers/clk/meson/axg.c b/drivers/clk/meson/axg.c
-index 757c7a28c53d..1b08daf579b2 100644
---- a/drivers/clk/meson/axg.c
-+++ b/drivers/clk/meson/axg.c
-@@ -23,8 +23,6 @@
- 
- #include <dt-bindings/clock/axg-clkc.h>
- 
--static DEFINE_SPINLOCK(meson_clk_lock);
--
- static struct clk_regmap axg_fixed_pll_dco = {
- 	.data = &(struct meson_clk_pll_data){
- 		.en = {
-@@ -506,7 +504,6 @@ static struct clk_regmap axg_mpll0_div = {
- 			.shift   = 0,
- 			.width	 = 1,
+diff --git a/drivers/clk/meson/meson8b.c b/drivers/clk/meson/meson8b.c
+index b7417ac262d3..5011768c0f4e 100644
+--- a/drivers/clk/meson/meson8b.c
++++ b/drivers/clk/meson/meson8b.c
+@@ -492,7 +492,6 @@ static struct clk_regmap meson8b_mpll0_div = {
+ 			.shift   = 25,
+ 			.width   = 1,
  		},
 -		.lock = &meson_clk_lock,
- 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
  	},
  	.hw.init = &(struct clk_init_data){
-@@ -557,7 +554,6 @@ static struct clk_regmap axg_mpll1_div = {
- 			.shift   = 1,
- 			.width	 = 1,
+ 		.name = "mpll0_div",
+@@ -537,7 +536,6 @@ static struct clk_regmap meson8b_mpll1_div = {
+ 			.shift   = 16,
+ 			.width   = 9,
  		},
 -		.lock = &meson_clk_lock,
- 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
  	},
  	.hw.init = &(struct clk_init_data){
-@@ -613,7 +609,6 @@ static struct clk_regmap axg_mpll2_div = {
- 			.shift   = 2,
- 			.width	 = 1,
+ 		.name = "mpll1_div",
+@@ -582,7 +580,6 @@ static struct clk_regmap meson8b_mpll2_div = {
+ 			.shift   = 16,
+ 			.width   = 9,
  		},
 -		.lock = &meson_clk_lock,
- 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
  	},
  	.hw.init = &(struct clk_init_data){
-@@ -664,7 +659,6 @@ static struct clk_regmap axg_mpll3_div = {
- 			.shift   = 3,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
- 	},
- 	.hw.init = &(struct clk_init_data){
+ 		.name = "mpll2_div",
 
 -- 
 2.42.0
