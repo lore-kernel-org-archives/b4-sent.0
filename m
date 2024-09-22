@@ -1,118 +1,67 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Sun, 22 Sep 2024 21:17:37 +0100
-Subject: [PATCH 02/16] check_whence.py: ban link-to-a-link
+Date: Sun, 22 Sep 2024 21:17:38 +0100
+Subject: [PATCH 03/16] check_whence.py: LC_ALL=C sort -u the filelist
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240922-misc-fixes-v1-2-8c6e52997c94@gmail.com>
+Message-Id: <20240922-misc-fixes-v1-3-8c6e52997c94@gmail.com>
 References: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
 In-Reply-To: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
 To: linux-firmware@kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=4783;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=1563;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=fwZ5y6AcxnsoTmd7DtNEw+JSyG0gCAbE2uaB5KQoh94=;
- b=MH433sLyYbm87VhQrDa7W2GjgBq9rYRgIOpfdaunfFe2OZEt00eepBkjtOvOwUMrCTmcV/+Za
- KpBcKfnk5UHDIBhFVIVyFSMxIzn7JgN5mm3DL1tfhPkI2DBQMe091oH
+ bh=VnYRe1j4F10qAfma3aVuEsez52eYzjwTz1lMCI/GlrI=;
+ b=dgXxBTVSE5wmv4eFkh0sOKNJT49zKW1nIOFYbFbGUFjewq6fN4pXzuXOAwsrCEnPA9tgtJjSY
+ Nlbt0m2sU/cApIHiqUG348Dsq8FsjDtWFnyQYB9uX6aKlpiONzbh3OV
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Using link-to-a-link is a bad idea since it reduces legibility and any
-changes to the rook link also change the leaf. Where the latter may be
-undesired.
-
-We have a couple of instances in-tree, so fix them up and ban
+Sort the file list, to provide some sanity and make it easier to manage.
 
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- WHENCE          | 14 +++++++-------
- check_whence.py | 12 ++++++++++--
- 2 files changed, 17 insertions(+), 9 deletions(-)
+ check_whence.py | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/WHENCE b/WHENCE
-index 3897121a115e185cc36e782b33ef66e43d87d557..6af1a97e2672922f2a3a1fcf0306b158eae1b6f7 100644
---- a/WHENCE
-+++ b/WHENCE
-@@ -3686,7 +3686,7 @@ File: ath10k/WCN3990/hw1.0/qcm2290/wlanmdsp.mbn
- Version: WLAN.HL.3.3.7.c2-00931-QCAHLSWMTPLZ-1
- Link: ath10k/WCN3990/hw1.0/qrb4210/wlanmdsp.mbn -> ../qcm2290/wlanmdsp.mbn
- Link: qcom/qcm2290/wlanmdsp.mbn -> ../../ath10k/WCN3990/hw1.0/qcm2290/wlanmdsp.mbn
--Link: qcom/qrb4210/wlanmdsp.mbn -> ../../ath10k/WCN3990/hw1.0/qrb4210/wlanmdsp.mbn
-+Link: qcom/qrb4210/wlanmdsp.mbn -> ../../ath10k/WCN3990/hw1.0/qcm2290/wlanmdsp.mbn
- File: ath10k/WCN3990/hw1.0/qcm2290/firmware-5.bin
- Link: ath10k/WCN3990/hw1.0/qrb4210/firmware-5.bin -> ../qcm2290/firmware-5.bin
- 
-@@ -5214,11 +5214,11 @@ Link: nvidia/gp104/acr/bl.bin -> ../../gp102/acr/bl.bin
- Link: nvidia/gp104/acr/ucode_load.bin -> ../../gp102/acr/ucode_load.bin
- Link: nvidia/gp104/acr/ucode_unload.bin -> ../../gp102/acr/ucode_unload.bin
- Link: nvidia/gp104/acr/unload_bl.bin -> ../../gp102/acr/unload_bl.bin
--Link: nvidia/gp104/gr/fecs_bl.bin -> ../../gp102/gr/fecs_bl.bin
-+Link: nvidia/gp104/gr/fecs_bl.bin -> ../../gm200/gr/fecs_bl.bin
- File: nvidia/gp104/gr/fecs_data.bin
- File: nvidia/gp104/gr/fecs_inst.bin
- File: nvidia/gp104/gr/fecs_sig.bin
--Link: nvidia/gp104/gr/gpccs_bl.bin -> ../../gp102/gr/gpccs_bl.bin
-+Link: nvidia/gp104/gr/gpccs_bl.bin -> ../../gm200/gr/gpccs_bl.bin
- File: nvidia/gp104/gr/gpccs_data.bin
- File: nvidia/gp104/gr/gpccs_inst.bin
- File: nvidia/gp104/gr/gpccs_sig.bin
-@@ -5237,11 +5237,11 @@ Link: nvidia/gp106/acr/bl.bin -> ../../gp102/acr/bl.bin
- Link: nvidia/gp106/acr/ucode_load.bin -> ../../gp102/acr/ucode_load.bin
- Link: nvidia/gp106/acr/ucode_unload.bin -> ../../gp102/acr/ucode_unload.bin
- Link: nvidia/gp106/acr/unload_bl.bin -> ../../gp102/acr/unload_bl.bin
--Link: nvidia/gp106/gr/fecs_bl.bin -> ../../gp102/gr/fecs_bl.bin
-+Link: nvidia/gp106/gr/fecs_bl.bin -> ../../gm200/gr/fecs_bl.bin
- File: nvidia/gp106/gr/fecs_data.bin
- Link: nvidia/gp106/gr/fecs_inst.bin -> ../../gp102/gr/fecs_inst.bin
- File: nvidia/gp106/gr/fecs_sig.bin
--Link: nvidia/gp106/gr/gpccs_bl.bin -> ../../gp102/gr/gpccs_bl.bin
-+Link: nvidia/gp106/gr/gpccs_bl.bin -> ../../gm200/gr/gpccs_bl.bin
- File: nvidia/gp106/gr/gpccs_data.bin
- Link: nvidia/gp106/gr/gpccs_inst.bin -> ../../gp102/gr/gpccs_inst.bin
- File: nvidia/gp106/gr/gpccs_sig.bin
-@@ -5924,10 +5924,10 @@ File: netronome/flower/nic_AMDA0096.nffw
- File: netronome/flower/nic_AMDA0097.nffw
- File: netronome/flower/nic_AMDA0058.nffw
- Link: netronome/flower/nic_AMDA0081.nffw -> nic_AMDA0097.nffw
--Link: netronome/flower/nic_AMDA0081-0001_1x40.nffw -> nic_AMDA0081.nffw
-+Link: netronome/flower/nic_AMDA0081-0001_1x40.nffw -> nic_AMDA0097.nffw
- Link: netronome/flower/nic_AMDA0097-0001_2x40.nffw -> nic_AMDA0097.nffw
- Link: netronome/flower/nic_AMDA0099-0001_2x10.nffw -> nic_AMDA0099.nffw
--Link: netronome/flower/nic_AMDA0081-0001_4x10.nffw -> nic_AMDA0081.nffw
-+Link: netronome/flower/nic_AMDA0081-0001_4x10.nffw -> nic_AMDA0097.nffw
- Link: netronome/flower/nic_AMDA0097-0001_4x10_1x40.nffw -> nic_AMDA0097.nffw
- Link: netronome/flower/nic_AMDA0099-0001_2x25.nffw -> nic_AMDA0099.nffw
- Link: netronome/flower/nic_AMDA0096-0001_2x10.nffw -> nic_AMDA0096.nffw
 diff --git a/check_whence.py b/check_whence.py
-index c270ee6020083044645353235a94eee0b2497960..d7742f1ed951acab6efc89916c7f6621ba56881b 100755
+index d7742f1ed951acab6efc89916c7f6621ba56881b..dbbb68f7ab51b8db52c1d2334a6d4d20962bbef8 100755
 --- a/check_whence.py
 +++ b/check_whence.py
-@@ -115,12 +115,20 @@ def main():
-         sys.stderr.write("E: %s listed in WHENCE as Link, is in tree\n" % name)
-         ret = 1
- 
-+    invalid_targets = set(link[0] for link in links_list)
-+    for link, target in sorted(links_list):
-+        if target in invalid_targets:
-+            sys.stderr.write(
-+                "E: target %s of link %s is also a link\n" % (target, link)
-+            )
-+            ret = 1
-+
-     for name in sorted(list(known_files - git_files)):
-         sys.stderr.write("E: %s listed in WHENCE does not exist\n" % name)
-         ret = 1
- 
--    # A link can point to another link, or to a file...
--    valid_targets = set(link[0] for link in links_list) | git_files
-+    # A link can point to a file...
-+    valid_targets = set(git_files)
- 
-     # ... or to a directory
-     for target in set(valid_targets):
+@@ -73,23 +73,23 @@ def main():
+     whence_links = list(zip(*links_list))[0]
+     known_files = set(name for name in whence_list if not name.endswith("/")) | set(
+         [
+-            ".gitignore",
+             ".codespell.cfg",
++            ".gitignore",
+             ".gitlab-ci.yml",
+             ".pre-commit-config.yaml",
+-            "build_packages.py",
+-            "check_whence.py",
+-            "configure",
++            "Dockerfile",
+             "Makefile",
+             "README.md",
+-            "copy-firmware.sh",
+             "WHENCE",
+-            "Dockerfile",
++            "build_packages.py",
++            "check_whence.py",
++            "configure",
++            "contrib/process_linux_firmware.py",
+             "contrib/templates/debian.changelog",
+             "contrib/templates/debian.control",
+             "contrib/templates/debian.copyright",
+             "contrib/templates/rpm.spec",
+-            "contrib/process_linux_firmware.py",
++            "copy-firmware.sh",
+         ]
+     )
+     known_prefixes = set(name for name in whence_list if name.endswith("/"))
 
 -- 
 2.46.1
