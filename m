@@ -1,83 +1,69 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Subject: [PATCH 00/16] Range of copy-firmware/check_whence fixes
-Date: Sun, 22 Sep 2024 21:17:35 +0100
-Message-Id: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
+Date: Sun, 22 Sep 2024 21:17:36 +0100
+Subject: [PATCH 01/16] check_whence.py: use consistent naming
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGB78GYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDSyMj3dzM4mTdtMyK1GJdi0RD48TkZHPDREtjJaCGgqJUsARQfXRsbS0
- AfgqMlFwAAAA=
-X-Change-ID: 20240922-misc-fixes-8a13acc71a93
+Message-Id: <20240922-misc-fixes-v1-1-8c6e52997c94@gmail.com>
+References: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
+In-Reply-To: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
 To: linux-firmware@kernel.org
-Cc: Emil Velikov <emil.l.velikov@gmail.com>, 
- Juerg Haefliger <juerg.haefliger@canonical.com>
+Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=2460;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=1740;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=gPdYPmgOiCqykQi54mmzXCLSECkoPe2Mct1HGMY7WU0=;
- b=gM/CLabDVy/tQZ4l7zg+W3KyargnKZMfHqgqxNbT/Ltr4SScai8N+WnyNzbDCxPC/UQdLY26g
- p9Mm3P+bcNRC/q8M1R9KgYThbBntQ8ugxloi6IE9vux7biJz48Odxcp
+ bh=+wYedyIHQdeXvxtfLekWNvAK9v0wDJG46Op9Xb0SWes=;
+ b=nIER3NHzaei5Ph+ZN1MuShTyzgNS96zpiwOUqjAa8gxHe3rv/lhXxNS1TYr6kqpqralQ7riKu
+ TTixZZR/GlsAN+9jHGI+kzhApDSq9sc3Cawk07IgjzWIUVJ/65tYnP5
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello all,
+Namely: file(name) and sym(link) ... which were swapped in a few places.
+One of which by yours truly :facepalm:
 
-With the latest python 3.12 check_whence.py started throwing some
-warnings. The more I looked around, the more loose ends and bugs reared
-their (ugly) heads.
-
-In this series:
- - check_whence.py: sort the filenames, use consistent variable names
- - check_whence.py: fix links-to-links and band them
- - editorconfig: add the config and fix the yaml+sh indentation
- - copy-firmware.sh: factor out dedup fix broken ad-hoc symlink handling
- - copy-firmware.sh: remove the hacky argument injection
- - copy-firmware.sh: warn if the destination folder is NOT empty
- - copy-firmware.sh: call ./check_whence.py and remove the dead code
- - Dockerfile: remove unused packages... based on local testing
-
-I've tried to keep the rant to a minimum, thus some commit messages may
-seem sparse. Let me know and I would happily add a few extra words.
-
-As always, input is highly appreciated. Thanks o/
-
+Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
-Emil Velikov (16):
-      check_whence.py: use consistent naming
-      check_whence.py: ban link-to-a-link
-      check_whence.py: LC_ALL=C sort -u the filelist
-      check_whence.py: annotate replacement strings as raw
-      editorconfig: add initial config file
-      Style update yaml files
-      Flesh out deduplicate-firmware.sh script
-      Revert "copy-firmware: Support additional compressor options"
-      copy-firmware.sh: fixup indentation, consistently use test
-      copy-firmware.sh: add err() helper
-      copy-firmware.sh: warn if the destination folder is not empty
-      copy-firmware.sh: call ./check_whence.py before parsing the file
-      copy-firmware.sh: remove no longer reachable test -f
-      copy-firmware.sh: remove no longer reachable test -L
-      copy-firmware.sh: rename variables in symlink hanlding
-      Dockerfile: remove unused packages
+ check_whence.py | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
- .editorconfig           |  21 +++++++++
- .gitlab-ci.yml          |   2 +-
- .pre-commit-config.yaml |  38 ++++++++---------
- Dockerfile              |   5 +--
- Makefile                |   7 ++-
- WHENCE                  |  14 +++---
- check_whence.py         |  42 +++++++++++-------
- copy-firmware.sh        | 110 +++++++++++++-----------------------------------
- deduplicate-firmware.sh |  50 ++++++++++++++++++++++
- 9 files changed, 157 insertions(+), 132 deletions(-)
----
-base-commit: 6c88d9b8253b8ec6df701a551a56438ea2e5bacf
-change-id: 20240922-misc-fixes-8a13acc71a93
+diff --git a/check_whence.py b/check_whence.py
+index fd74a56a5c5a1fbbc989588626ba1d9bc072d602..c270ee6020083044645353235a94eee0b2497960 100755
+--- a/check_whence.py
++++ b/check_whence.py
+@@ -99,7 +99,7 @@ def main():
+         sys.stderr.write("E: %s listed in WHENCE as File, but is directory\n" % name)
+         ret = 1
+ 
+-    for name in set(fw for fw in whence_files if whence_files.count(fw) > 1):
++    for name in set(name for name in whence_files if whence_files.count(name) > 1):
+         sys.stderr.write("E: %s listed in WHENCE twice\n" % name)
+         ret = 1
+ 
+@@ -107,7 +107,7 @@ def main():
+         sys.stderr.write("E: %s listed in WHENCE twice\n" % name)
+         ret = 1
+ 
+-    for name in set(link for link in whence_files if os.path.islink(link)):
++    for name in set(file for file in whence_files if os.path.islink(file)):
+         sys.stderr.write("E: %s listed in WHENCE as File, but is a symlink\n" % name)
+         ret = 1
+ 
+@@ -131,10 +131,10 @@ def main():
+                 break
+             valid_targets.add(dirname)
+ 
+-    for name, target in sorted(links_list):
++    for link, target in sorted(links_list):
+         if target not in valid_targets:
+             sys.stderr.write(
+-                "E: target %s of link %s in WHENCE" " does not exist\n" % (target, name)
++                "E: target %s of link %s in WHENCE" " does not exist\n" % (target, link)
+             )
+             ret = 1
+ 
 
-Best regards,
 -- 
-Emil Velikov <emil.l.velikov@gmail.com>
+2.46.1
 
