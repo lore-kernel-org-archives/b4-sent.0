@@ -1,97 +1,62 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Sun, 22 Sep 2024 21:17:45 +0100
-Subject: [PATCH 10/16] copy-firmware.sh: add err() helper
+Date: Sun, 22 Sep 2024 21:17:46 +0100
+Subject: [PATCH 11/16] copy-firmware.sh: warn if the destination folder is
+ not empty
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240922-misc-fixes-v1-10-8c6e52997c94@gmail.com>
+Message-Id: <20240922-misc-fixes-v1-11-8c6e52997c94@gmail.com>
 References: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
 In-Reply-To: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
 To: linux-firmware@kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=2187;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=1132;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=EJ089N84vDRdbLAQhH8BQRLgcvQ7Br4Tp+pP9zwM87c=;
- b=dSQz5WRCq2SUhhkFcWy/Xb4ihMv9S9+y7oeySXT/f8oBL0rDX3MH1nIQ+EYKgYyK9IeHqaOHw
- FV3atA8aRcxA5H0B2yMMGAAYH2pT6PvLYVL+PMMQSZcMo3QLXoXCm5N
+ bh=FpS17/OqKat6PLGck0ZbQlIe9L7HVVTzBwCJ1Wi0jZE=;
+ b=PxnqTIJFf142W8cXglmcY+1+Mt9+rrnfD3xJWLel8G+e8W/I+3R3Nw+zsbtOkq3s+1g9nVZ83
+ h0G+yPofh65CgYyulC9sM1Yg7sXpmh8cmj/VLut5C9Qf3MZmwZj6C90
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+If the user provides their existing /usr/lib/firmware/ there is a high chance
+we'll overwrite existing files. That may or may not be what they wanted.
+
+Throw a warning about it.
+
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- copy-firmware.sh | 21 ++++++++++-----------
- 1 file changed, 10 insertions(+), 11 deletions(-)
+ copy-firmware.sh | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 diff --git a/copy-firmware.sh b/copy-firmware.sh
-index e46bb9926f86a813bc76f1da1604c1b7a4980848..f59d8403ab3f4c6928f6976069c134dfb98b1246 100755
+index f59d8403ab3f4c6928f6976069c134dfb98b1246..dc959cbad3be3e79a1174afd0ff68b8d6c0567a5 100755
 --- a/copy-firmware.sh
 +++ b/copy-firmware.sh
-@@ -10,6 +10,11 @@ prune=no
- compress=cat
- compext=
+@@ -15,6 +15,10 @@ err() {
+     exit 1
+ }
  
-+err() {
-+    echo "ERROR: $*"
-+    exit 1
++warn() {
++    echo "WARNING: $*"
 +}
 +
  while test $# -gt 0; do
      case $1 in
          -v | --verbose)
-@@ -25,8 +30,7 @@ while test $# -gt 0; do
- 
-         --xz)
-             if test "$compext" = ".zst"; then
--                echo "ERROR: cannot mix XZ and ZSTD compression"
--                exit 1
-+                err "cannot mix XZ and ZSTD compression"
-             fi
-             compress="xz --compress --quiet --stdout --check=crc32"
-             compext=".xz"
-@@ -35,8 +39,7 @@ while test $# -gt 0; do
- 
-         --zstd)
-             if test "$compext" = ".xz"; then
--                echo "ERROR: cannot mix XZ and ZSTD compression"
--                exit 1
-+                err "cannot mix XZ and ZSTD compression"
-             fi
-             # shellcheck disable=SC2209
-             compress="zstd --compress --quiet --stdout"
-@@ -46,8 +49,7 @@ while test $# -gt 0; do
- 
-         *)
-             if test "x$destdir" != "x"; then
--                echo "ERROR: unknown command-line options: $*"
--                exit 1
-+                err "unknown command-line options: $*"
-             fi
- 
-             destdir="$1"
-@@ -57,8 +59,7 @@ while test $# -gt 0; do
- done
- 
- if test -z "$destdir"; then
--    echo "ERROR: destination directory was not specified"
--    exit 1
-+    err "destination directory was not specified"
+@@ -62,6 +66,10 @@ if test -z "$destdir"; then
+     err "destination directory was not specified"
  fi
  
++if test -d "$destdir"; then
++    find "$destdir" -type d -empty >/dev/null && warn "destination folder is not empty."
++fi
++
  # shellcheck disable=SC2162 # file/folder name can include escaped symbols
-@@ -114,9 +115,7 @@ done
- 
- # Verify no broken symlinks
- if test "$(find "$destdir" -xtype l | wc -l)" -ne 0 ; then
--    echo "ERROR: Broken symlinks found:"
--    find "$destdir" -xtype l
--    exit 1
-+    err "Broken symlinks found:\n$(find "$destdir" -xtype l)"
- fi
- 
- exit 0
+ grep -E '^(RawFile|File):' WHENCE | sed -E -e 's/^(RawFile|File): */\1 /;s/"//g' | while read k f; do
+     test -f "$f" || continue
 
 -- 
 2.46.1
