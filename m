@@ -1,76 +1,98 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Sun, 22 Sep 2024 21:17:40 +0100
-Subject: [PATCH 05/16] editorconfig: add initial config file
+Date: Sun, 22 Sep 2024 21:17:41 +0100
+Subject: [PATCH 06/16] Style update yaml files
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240922-misc-fixes-v1-5-8c6e52997c94@gmail.com>
+Message-Id: <20240922-misc-fixes-v1-6-8c6e52997c94@gmail.com>
 References: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
 In-Reply-To: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
 To: linux-firmware@kernel.org
 Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=1450;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=2390;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=QOHlBI2CZfjGlafZozbvBaFvhuBf7UyiCXDnO8wkb8g=;
- b=MhqZ0jcrNFDzohKn1O1plhr9Z5LylZ2y28Ah98aG/yI/WAhALgByrm1lAZCgP6ADAv55JRVDA
- YHM6ld9vMPJDW6xaoZE9ISfKZp58ckY4mde7ZoJw2eRMHFQARa6KPSW
+ bh=D3r7VDxVgMX1puFG4ztKGYc90o6Oa/2niv3K/sqOewM=;
+ b=3dOEmjZYKNEPukdPIJ8rvTnegqR63Nq+Ift8fXbJ335of/UgsY4X/2W8pu6ZizSCGzQASKcLj
+ kPcZslIIbOUBIFBYyXpR2wz2f0WMvkjKJQz6MzIfsedL7+U/i2aCgqT
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It's a simple format supported by practically every supported platform or
-program out there.
-
-Add an initial configuration file, so we don't get notable style variations like
-the ones we have in-tree.
-
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- .editorconfig   | 21 +++++++++++++++++++++
- check_whence.py |  1 +
- 2 files changed, 22 insertions(+)
+ .gitlab-ci.yml          |  2 +-
+ .pre-commit-config.yaml | 38 +++++++++++++++++++-------------------
+ 2 files changed, 20 insertions(+), 20 deletions(-)
 
-diff --git a/.editorconfig b/.editorconfig
-new file mode 100644
-index 0000000000000000000000000000000000000000..2da3ba9694341dd4f1f5db9c3ad946ac96c5bdac
---- /dev/null
-+++ b/.editorconfig
-@@ -0,0 +1,21 @@
-+# To use this config on you editor, follow the instructions at:
-+# http://editorconfig.org
-+
-+root = true
-+
-+[*]
-+charset = utf-8
-+insert_final_newline = true
-+tab_width = 8
-+max_line_length = 80
-+
-+[Makefile]
-+indent_style = tab
-+
-+[*.{sh,py}]
-+indent_style = space
-+indent_size = 4
-+
-+[*.{yml,yaml}]
-+indent_style = space
-+indent_size = 2
-diff --git a/check_whence.py b/check_whence.py
-index 64dc133551a68aeb24dbf7f02f617ea3913477b2..afe97a76cf5ed609117d07387a19c2092fa00c6c 100755
---- a/check_whence.py
-+++ b/check_whence.py
-@@ -74,6 +74,7 @@ def main():
-     known_files = set(name for name in whence_list if not name.endswith("/")) | set(
-         [
-             ".codespell.cfg",
-+            ".editorconfig",
-             ".gitignore",
-             ".gitlab-ci.yml",
-             ".pre-commit-config.yaml",
+diff --git a/.gitlab-ci.yml b/.gitlab-ci.yml
+index ae96f7d859fc34ebc74c93a93993f623e05d78a2..e05ef3bb81c8f15049a3b068daac9fff35184d17 100644
+--- a/.gitlab-ci.yml
++++ b/.gitlab-ci.yml
+@@ -11,7 +11,7 @@ check-commits:
+   stage: test
+   image: registry.gitlab.com/kernel-firmware/linux-firmware
+   rules:
+-   - if: $CI_MERGE_REQUEST_ID
++    - if: $CI_MERGE_REQUEST_ID
+   script:
+     - ci-fairy check-commits --signed-off-by --textwidth=0
+ 
+diff --git a/.pre-commit-config.yaml b/.pre-commit-config.yaml
+index 7a49d063250e755b531059fe24b5a571d311005f..370a2970616bda3a340ebe523cd2ee2bb57759c1 100644
+--- a/.pre-commit-config.yaml
++++ b/.pre-commit-config.yaml
+@@ -1,30 +1,30 @@
+ default_stages: [commit]
+ repos:
+--   repo: https://github.com/pre-commit/pre-commit-hooks
++  - repo: https://github.com/pre-commit/pre-commit-hooks
+     rev: v4.0.1
+     hooks:
+-    -   id: check-executables-have-shebangs
+-    -   id: forbid-new-submodules
+-    -   id: check-yaml
+-    -   id: check-symlinks
+-    -   id: destroyed-symlinks
+--   repo: https://github.com/shellcheck-py/shellcheck-py
++      - id: check-executables-have-shebangs
++      - id: forbid-new-submodules
++      - id: check-yaml
++      - id: check-symlinks
++      - id: destroyed-symlinks
++  - repo: https://github.com/shellcheck-py/shellcheck-py
+     rev: v0.9.0.5
+     hooks:
+-    -   id: shellcheck
+--   repo: https://github.com/ambv/black
++      - id: shellcheck
++  - repo: https://github.com/ambv/black
+     rev: 22.6.0
+     hooks:
+-    - id: black
+--   repo: https://github.com/igorshubovych/markdownlint-cli
++      - id: black
++  - repo: https://github.com/igorshubovych/markdownlint-cli
+     rev: v0.33.0
+     hooks:
+-    - id: markdownlint
+-      args: ['--fix']
+--   repo: local
++      - id: markdownlint
++        args: ['--fix']
++  - repo: local
+     hooks:
+-    - id: check-whence
+-      name: Check whence
+-      files: 'WHENCE'
+-      language: script
+-      entry: ./check_whence.py
++      - id: check-whence
++        name: Check whence
++        files: 'WHENCE'
++        language: script
++        entry: ./check_whence.py
 
 -- 
 2.46.1
