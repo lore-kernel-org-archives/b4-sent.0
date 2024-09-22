@@ -1,65 +1,61 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Sun, 22 Sep 2024 21:17:43 +0100
-Subject: [PATCH 08/16] Revert "copy-firmware: Support additional compressor
- options"
+Date: Sun, 22 Sep 2024 21:17:44 +0100
+Subject: [PATCH 09/16] copy-firmware.sh: fixup indentation, consistently
+ use test
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240922-misc-fixes-v1-8-8c6e52997c94@gmail.com>
+Message-Id: <20240922-misc-fixes-v1-9-8c6e52997c94@gmail.com>
 References: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
 In-Reply-To: <20240922-misc-fixes-v1-0-8c6e52997c94@gmail.com>
 To: linux-firmware@kernel.org
-Cc: Juerg Haefliger <juerg.haefliger@canonical.com>, 
- Emil Velikov <emil.l.velikov@gmail.com>
+Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=1377;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727036271; l=1031;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=uKcSV4YdwVinyW5T4fyiK7n8r68VrubCm2yqPycfyws=;
- b=RqIF9CxL42ZSNoIrDqUlv3LPcGB7/BO/Pqvq0xEqQl8ubU49BbboYBQE595X4TIjuqmLY3Ydp
- 8MBWFK3tvp4BEtt6cSR6nve48KdpcOMhTm9ZQlrsA9Uv5mrtahyCknZ
+ bh=hy8iLu3uE3VAsqwRVOWbyYNgW2YyaPxQ9G4aBqD1ybc=;
+ b=6MyzOxYKcppAsry/AcXMLFGPKVGpSJw9/iFLSyZSoaiDKx5HWl3joi0ZnOzMX6AbmDkipx2Jq
+ dgPquYhZoqPA9hmy4n7ZZfHbH+GvaUELQWnW+PKNWnuCm7AUqCvvu5X
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This reverts commit 2bad80e7edd3c0f84718545d9338c8edfed16513.
-
-The commit effectively added accidental command injection, while it was aiming
-to control the compression flags.
-
-In practise you'd want to use ZSTD_CLEVEL and ZSTD_NBTHREADS for zstd as
-documented in man(1)zstd it allows for up-to level 19, which is fined since the
-kernel does not support higher levels.
-
-Arch, Alpine and likely other distributions have been using this since day one.
-
-The other compressors like xz have equivalent environment variables.
-
-Cc: Juerg Haefliger <juerg.haefliger@canonical.com>
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- copy-firmware.sh | 8 --------
- 1 file changed, 8 deletions(-)
+ copy-firmware.sh | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/copy-firmware.sh b/copy-firmware.sh
-index 344f478db74a7080b34c264645d6bcd9a80384a8..21ed20d5886fe71588b923914265f992cf5c29b0 100755
+index 21ed20d5886fe71588b923914265f992cf5c29b0..e46bb9926f86a813bc76f1da1604c1b7a4980848 100755
 --- a/copy-firmware.sh
 +++ b/copy-firmware.sh
-@@ -44,14 +44,6 @@ while test $# -gt 0; do
-             shift
-             ;;
+@@ -56,9 +56,9 @@ while test $# -gt 0; do
+     esac
+ done
  
--        -*)
--            if test "$compress" = "cat"; then
--                echo "ERROR: unknown command-line option: $1"
--                exit 1
--            fi
--            compress="$compress $1"
--            shift
--            ;;
-         *)
-             if test "x$destdir" != "x"; then
-                 echo "ERROR: unknown command-line options: $*"
+-if [ -z "$destdir" ]; then
+-	echo "ERROR: destination directory was not specified"
+-	exit 1
++if test -z "$destdir"; then
++    echo "ERROR: destination directory was not specified"
++    exit 1
+ fi
+ 
+ # shellcheck disable=SC2162 # file/folder name can include escaped symbols
+@@ -114,9 +114,9 @@ done
+ 
+ # Verify no broken symlinks
+ if test "$(find "$destdir" -xtype l | wc -l)" -ne 0 ; then
+-        echo "ERROR: Broken symlinks found:"
+-        find "$destdir" -xtype l
+-        exit 1
++    echo "ERROR: Broken symlinks found:"
++    find "$destdir" -xtype l
++    exit 1
+ fi
+ 
+ exit 0
 
 -- 
 2.46.1
