@@ -1,66 +1,69 @@
 From: Emil Velikov <emil.l.velikov@gmail.com>
-Date: Mon, 23 Sep 2024 14:09:36 +0100
-Subject: [PATCH v2 08/16] Revert "copy-firmware: Support additional
- compressor options"
+Date: Mon, 23 Sep 2024 14:09:37 +0100
+Subject: [PATCH v2 09/16] copy-firmware.sh: reset and consistently handle
+ destdir
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240923-misc-fixes-v2-8-397f23443628@gmail.com>
+Message-Id: <20240923-misc-fixes-v2-9-397f23443628@gmail.com>
 References: <20240923-misc-fixes-v2-0-397f23443628@gmail.com>
 In-Reply-To: <20240923-misc-fixes-v2-0-397f23443628@gmail.com>
 To: linux-firmware@kernel.org
-Cc: Juerg Haefliger <juerg.haefliger@canonical.com>, 
- Emil Velikov <emil.l.velikov@gmail.com>
+Cc: Emil Velikov <emil.l.velikov@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727096979; l=1362;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727096979; l=1306;
  i=emil.l.velikov@gmail.com; s=20230301; h=from:subject:message-id;
- bh=iRKIMyz4ufu7c2aKu9PXL7X97R+u9oj8I+WBz/xsAo8=;
- b=kYKHT9wIK3mpUebzgu4kNtInfEaQ54vmbiSLhmtXn3tNIuzNSSEPX/ws8SaRLo/El3vR6R/pk
- B5FfIMiLlTrAU3v810qhXFX20HUZEv2wrZgMjdt8DnaDDMna4+06wnD
+ bh=UVkupopnR361tFh5PRnEldcqkJUyBqzhIYg5b+Y+tiY=;
+ b=bEjMLniJQxAyhV0QjYZtRm9RDAN33D33wNA85AWF5npQ4+beAbqcDXoCpg4hb8H6hGprsM9ly
+ hhKmdooPRi3DfsXk7pm+aOk502NjW3Hk6RipRXlfVoUGyOjgad0/czj
 X-Developer-Key: i=emil.l.velikov@gmail.com; a=ed25519;
  pk=qeUTVTNyI3rcR2CfNNWsloTihgzmtbZo98GdxwZKCkY=
 X-Endpoint-Received: by B4 Relay for emil.l.velikov@gmail.com/20230301 with auth_id=35
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This reverts commit 2bad80e7edd3c0f84718545d9338c8edfed16513.
+Currently we don't reset/override the destdir variable, so we end up inheriting
+whatever the caller's environment has for it. While it may work, it's not
+particularly consistent (be that within the script or other tools) nor is it
+obvious.
 
-The commit effectively added accidental command injection, while it was aiming
-to control the compression flags.
+While in here, ensure we handle the variable with test -z/-n instead of varying
+other constructs.
 
-In practise you'd want to use ZSTD_CLEVEL and ZSTD_NBTHREADS for zstd. As
-documented in zstd(1) it allows for up-to level 19, which is fine since the
-kernel does not support higher levels.
-
-Arch, Alpine and likely other distributions have been using this approach
-since day one.
-
-The other compressors like xz have equivalent.
-
-Cc: Juerg Haefliger <juerg.haefliger@canonical.com>
 Signed-off-by: Emil Velikov <emil.l.velikov@gmail.com>
 ---
- copy-firmware.sh | 8 --------
- 1 file changed, 8 deletions(-)
+ copy-firmware.sh | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/copy-firmware.sh b/copy-firmware.sh
-index 344f478db74a7080b34c264645d6bcd9a80384a8..21ed20d5886fe71588b923914265f992cf5c29b0 100755
+index 21ed20d5886fe71588b923914265f992cf5c29b0..65a1b39b93293d1f876ea0cd2991e811247e9ecd 100755
 --- a/copy-firmware.sh
 +++ b/copy-firmware.sh
-@@ -44,14 +44,6 @@ while test $# -gt 0; do
-             shift
+@@ -9,6 +9,7 @@ prune=no
+ # shellcheck disable=SC2209
+ compress=cat
+ compext=
++destdir=
+ 
+ while test $# -gt 0; do
+     case $1 in
+@@ -45,7 +46,7 @@ while test $# -gt 0; do
              ;;
  
--        -*)
--            if test "$compress" = "cat"; then
--                echo "ERROR: unknown command-line option: $1"
--                exit 1
--            fi
--            compress="$compress $1"
--            shift
--            ;;
          *)
-             if test "x$destdir" != "x"; then
+-            if test "x$destdir" != "x"; then
++            if test -n "$destdir"; then
                  echo "ERROR: unknown command-line options: $*"
+                 exit 1
+             fi
+@@ -56,7 +57,7 @@ while test $# -gt 0; do
+     esac
+ done
+ 
+-if [ -z "$destdir" ]; then
++if test -z "$destdir"; then
+ 	echo "ERROR: destination directory was not specified"
+ 	exit 1
+ fi
 
 -- 
 2.46.1
