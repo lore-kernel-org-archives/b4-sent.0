@@ -1,11 +1,11 @@
 From: Oliver Gaskell <Oliver.Gaskell@analog.com>
-Date: Wed, 25 Sep 2024 13:25:16 +0100
-Subject: [PATCH v2 06/11] net: Add support for ADI SC5xx SoCs with DWC QoS
- ethernet
+Date: Wed, 25 Sep 2024 13:25:17 +0100
+Subject: [PATCH v2 07/11] watchdog: Add support for ADI SC5XX-family
+ watchdog peripheral
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240925-sc5xx-driver-series-v2-6-ad9287c25c08@analog.com>
+Message-Id: <20240925-sc5xx-driver-series-v2-7-ad9287c25c08@analog.com>
 References: <20240925-sc5xx-driver-series-v2-0-ad9287c25c08@analog.com>
 In-Reply-To: <20240925-sc5xx-driver-series-v2-0-ad9287c25c08@analog.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -24,222 +24,223 @@ Cc: u-boot@lists.denx.de, adsp-linux@analog.com,
  Oliver Gaskell <Oliver.Gaskell@analog.com>, 
  20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727267113; l=7132;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727267113; l=6077;
  i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
- bh=GyHP3JEspLCCCa0em6eaaDnWw7RPwKOUsI2lEJ44MGU=;
- b=uQYJoHhSugUo3jhytZRuzizZCJa+4hBnxAr946j4L9CaJWndmOWOJ0zB2etyEjoWfpNZ9Kwil
- r4WMVpdM4iuA1FwXoHcn+cGg1bxEg1yWtvYIQ6E7oAEZ5gP+TrOLxGd
+ bh=5aimifPFebHsCoxuExhYmfYUuiNXyJ1OL02UoESBDso=;
+ b=xIbwkHK6+/Er5oYPaHqrFEyvKMsSmVo2AEXksTLYmxMyX+gFXeQWJ/xcb0xesmrgKqbYf2SOv
+ b9sGrUh3h7oA5JCbRdB6T4FEpQ9T9jJEdfaGIFkCzsMzFzsgJdhac2G
 X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
  pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
 X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Greg Malysa <greg.malysa@timesys.com>
-
-The ADI SC598 includes a Designware QoS 5.20a IP block. This
-commit adds support for using the existing ethernet QoS driver
-with the SC598 SoC.
-
+Co-developed-by: Greg Malysa <greg.malysa@timesys.com>
+Signed-off-by: Greg Malysa <greg.malysa@timesys.com>
 Co-developed-by: Ian Roberts <ian.roberts@timesys.com>
 Signed-off-by: Ian Roberts <ian.roberts@timesys.com>
-Co-developed-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
-Signed-off-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
 Signed-off-by: Vasileios Bimpikas <vasileios.bimpikas@analog.com>
 Signed-off-by: Utsav Agarwal <utsav.agarwal@analog.com>
 Signed-off-by: Arturs Artamonovs <arturs.artamonovs@analog.com>
-Signed-off-by: Greg Malysa <greg.malysa@timesys.com>
+Signed-off-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
+Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
- MAINTAINERS                   |   1 +
- drivers/net/Kconfig           |   7 +++
- drivers/net/Makefile          |   1 +
- drivers/net/dwc_eth_qos.c     |   6 +++
- drivers/net/dwc_eth_qos.h     |   2 +
- drivers/net/dwc_eth_qos_adi.c | 102 ++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 119 insertions(+)
+ MAINTAINERS                |   1 +
+ drivers/watchdog/Kconfig   |   9 +++
+ drivers/watchdog/Makefile  |   1 +
+ drivers/watchdog/adi_wdt.c | 145 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 156 insertions(+)
 
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 101c0d6ed3..2eb3c79cc0 100644
+index 2eb3c79cc0..cbfcc97871 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -615,6 +615,7 @@ F:	drivers/clk/adi/
- F:	drivers/gpio/adp5588_gpio.c
- F:	drivers/gpio/gpio-adi-adsp.c
- F:	drivers/i2c/adi_i2c.c
-+F:	drivers/net/dwc_eth_qos_adi.c
- F:	drivers/pinctrl/pinctrl-adi-adsp.c
+@@ -620,6 +620,7 @@ F:	drivers/pinctrl/pinctrl-adi-adsp.c
  F:	drivers/serial/serial_adi_uart4.c
  F:	drivers/timer/adi_sc5xx_timer.c
-diff --git a/drivers/net/Kconfig b/drivers/net/Kconfig
-index 69ae7c0750..7a69433ad4 100644
---- a/drivers/net/Kconfig
-+++ b/drivers/net/Kconfig
-@@ -236,6 +236,13 @@ config DWC_ETH_QOS
- 	  Of Service) IP block. The IP supports many options for bus type,
- 	  clocking/reset structure, and feature list.
+ F:	drivers/usb/musb-new/sc5xx.c
++F:	drivers/watchdog/adi_wdt.c
+ F:	include/configs/sc5*
+ F:	include/env/adi/
  
-+config DWC_ETH_QOS_ADI
-+	bool "Synopsys DWC Ethernet QOS device support for ADI SC59x-64 parts"
-+	depends on DWC_ETH_QOS
+diff --git a/drivers/watchdog/Kconfig b/drivers/watchdog/Kconfig
+index 0c3e991331..4601a6f3b1 100644
+--- a/drivers/watchdog/Kconfig
++++ b/drivers/watchdog/Kconfig
+@@ -95,6 +95,15 @@ config WDT_APPLE
+ 	  The watchdog will perform a full SoC reset resulting in a
+ 	  reboot of the entire system.
+ 
++config WDT_ADI
++	bool "Analog Devices watchdog timer support"
++	select WDT
++	select SPL_WDT if SPL
++	depends on ARCH_SC5XX
 +	help
-+		The Synopsis Designware Ethernet QoS IP block with the specific
-+		configuration used in the ADI ADSP-SC59X 64 bit SoCs
++	  Enable this to support Watchdog Timer on ADI SC57X, SC58X, SC59X,
++	  and SC59X_64 processors
 +
- config DWC_ETH_QOS_IMX
- 	bool "Synopsys DWC Ethernet QOS device support for IMX"
- 	depends on DWC_ETH_QOS
-diff --git a/drivers/net/Makefile b/drivers/net/Makefile
-index 425dd721f9..b297dff9ca 100644
---- a/drivers/net/Makefile
-+++ b/drivers/net/Makefile
-@@ -19,6 +19,7 @@ obj-$(CONFIG_DM_ETH_PHY) += eth-phy-uclass.o
- obj-$(CONFIG_DRIVER_DM9000) += dm9000x.o
- obj-$(CONFIG_DSA_SANDBOX) += dsa_sandbox.o
- obj-$(CONFIG_DWC_ETH_QOS) += dwc_eth_qos.o
-+obj-$(CONFIG_DWC_ETH_QOS_ADI) += dwc_eth_qos_adi.o
- obj-$(CONFIG_DWC_ETH_QOS_IMX) += dwc_eth_qos_imx.o
- obj-$(CONFIG_DWC_ETH_QOS_ROCKCHIP) += dwc_eth_qos_rockchip.o
- obj-$(CONFIG_DWC_ETH_QOS_QCOM) += dwc_eth_qos_qcom.o
-diff --git a/drivers/net/dwc_eth_qos.c b/drivers/net/dwc_eth_qos.c
-index 43f0ec7637..0d9da40bb2 100644
---- a/drivers/net/dwc_eth_qos.c
-+++ b/drivers/net/dwc_eth_qos.c
-@@ -1566,6 +1566,12 @@ static const struct udevice_id eqos_ids[] = {
- 		.compatible = "starfive,jh7110-dwmac",
- 		.data = (ulong)&eqos_jh7110_config
- 	},
-+#endif
-+#if IS_ENABLED(CONFIG_DWC_ETH_QOS_ADI)
-+	{
-+		.compatible = "adi,sc59x-dwmac-eqos",
-+		.data = (ulong)&eqos_adi_config
-+	},
- #endif
- 	{ }
- };
-diff --git a/drivers/net/dwc_eth_qos.h b/drivers/net/dwc_eth_qos.h
-index a06390a698..b9c6791964 100644
---- a/drivers/net/dwc_eth_qos.h
-+++ b/drivers/net/dwc_eth_qos.h
-@@ -84,6 +84,7 @@ struct eqos_mac_regs {
- #define EQOS_MAC_MDIO_ADDRESS_CR_MASK			GENMASK(11, 8)
- #define EQOS_MAC_MDIO_ADDRESS_CR_100_150		1
- #define EQOS_MAC_MDIO_ADDRESS_CR_20_35			2
-+#define EQOS_MAC_MDIO_ADDRESS_CR_150_250		4
- #define EQOS_MAC_MDIO_ADDRESS_CR_250_300		5
- #define EQOS_MAC_MDIO_ADDRESS_SKAP			BIT(4)
- #define EQOS_MAC_MDIO_ADDRESS_GOC_MASK			GENMASK(3, 2)
-@@ -294,3 +295,4 @@ extern struct eqos_config eqos_qcom_config;
- extern struct eqos_config eqos_stm32mp13_config;
- extern struct eqos_config eqos_stm32mp15_config;
- extern struct eqos_config eqos_jh7110_config;
-+extern struct eqos_config eqos_adi_config;
-diff --git a/drivers/net/dwc_eth_qos_adi.c b/drivers/net/dwc_eth_qos_adi.c
+ config WDT_ARMADA_37XX
+ 	bool "Marvell Armada 37xx watchdog timer support"
+ 	depends on WDT && ARMADA_3700
+diff --git a/drivers/watchdog/Makefile b/drivers/watchdog/Makefile
+index 7b39adcf0f..7ad61b513c 100644
+--- a/drivers/watchdog/Makefile
++++ b/drivers/watchdog/Makefile
+@@ -50,3 +50,4 @@ obj-$(CONFIG_WDT_STM32MP) += stm32mp_wdt.o
+ obj-$(CONFIG_WDT_SUNXI) += sunxi_wdt.o
+ obj-$(CONFIG_WDT_TANGIER) += tangier_wdt.o
+ obj-$(CONFIG_WDT_XILINX) += xilinx_wwdt.o
++obj-$(CONFIG_WDT_ADI) += adi_wdt.o
+diff --git a/drivers/watchdog/adi_wdt.c b/drivers/watchdog/adi_wdt.c
 new file mode 100644
-index 0000000000..373e7c2505
+index 0000000000..67d17dc692
 --- /dev/null
-+++ b/drivers/net/dwc_eth_qos_adi.c
-@@ -0,0 +1,102 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/**
-+ * (C) Copyright 2024 - Analog Devices, Inc.
++++ b/drivers/watchdog/adi_wdt.c
+@@ -0,0 +1,145 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * (C) Copyright 2022 - Analog Devices, Inc.
 + *
 + * Written and/or maintained by Timesys Corporation
 + *
-+ * Author: Greg Malysa <greg.malysa@timesys.com>
-+ * Additional Contact: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
++ * Converted to driver model by Nathan Barrett-Morrison
++ *
++ * Contact: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
++ * Contact: Greg Malysa <greg.malysa@timesys.com>
++ *
++ * adi_wtd.c - driver for ADI on-chip watchdog
++ *
 + */
 +
 +#include <clk.h>
 +#include <dm.h>
-+#include <net.h>
-+#include <phy.h>
-+#include <reset.h>
-+#include <asm/io.h>
++#include <wdt.h>
++#include <linux/delay.h>
++#include <linux/ioport.h>
++#include <linux/io.h>
 +
-+#include <asm/arch-adi/sc5xx/sc5xx.h>
++#define WDOG_CTL  0x0
++#define WDOG_CNT  0x4
++#define WDOG_STAT 0x8
 +
-+#include "dwc_eth_qos.h"
++#define RCU_CTL   0x0
++#define RCU_STAT  0x4
 +
-+static int eqos_start_resets_adi(struct udevice *dev)
++#define SEC_GCTL  0x0
++#define SEC_FCTL  0x10
++#define SEC_SCTL0 0x800
++
++#define WDEN      0x0010
++#define WDDIS     0x0AD0
++
++struct adi_wdt_priv {
++	void __iomem *rcu_base;
++	void __iomem *sec_base;
++	void __iomem *wdt_base;
++	struct clk clock;
++};
++
++static int adi_wdt_reset(struct udevice *dev)
 +{
-+	struct eqos_priv *eqos = dev_get_priv(dev);
-+	u32 val;
++	struct adi_wdt_priv *priv = dev_get_priv(dev);
 +
-+	/*
-+	 * Settings need to latch with the DMA reset below. Currently only
-+	 * rgmii is supported but other phy interfaces may be supported in
-+	 * the future
-+	 */
-+	sc5xx_enable_rgmii();
-+
-+	val = readl(&eqos->dma_regs->mode);
-+	val |= EQOS_DMA_MODE_SWR;
-+	writel(val, &eqos->dma_regs->mode);
++	writel(0, priv->wdt_base + WDOG_STAT);
 +
 +	return 0;
 +}
 +
-+static int eqos_probe_resources_adi(struct udevice *dev)
++static int adi_wdt_start(struct udevice *dev, u64 timeout_ms, ulong flags)
 +{
-+	struct eqos_priv *eqos = dev_get_priv(dev);
-+	phy_interface_t interface;
++	struct adi_wdt_priv *priv = dev_get_priv(dev);
++	u32 sctl_val;
 +
-+	interface = eqos->config->interface(dev);
-+	if (interface == PHY_INTERFACE_MODE_NA) {
-+		pr_err("Invalid PHY interface\n");
-+		return -EINVAL;
++	/* Disable SYSCD_RESETb input and clear the RCU0 reset status */
++	writel(0xf, priv->rcu_base + RCU_STAT);
++	writel(0x0, priv->rcu_base + RCU_CTL);
++
++	/* reset the SEC controller */
++	writel(0x2, priv->sec_base + SEC_GCTL);
++	writel(0x2, priv->sec_base + SEC_FCTL);
++
++	udelay(50);
++
++	/* enable SEC fault event */
++	writel(0x1, priv->sec_base + SEC_GCTL);
++
++	/* ANOMALY 36100004 Spurious External Fault event occurs when FCTL
++	 * is re-programmed when currently active fault is not cleared
++	 */
++	writel(0xc0, priv->sec_base + SEC_FCTL);
++	writel(0xc1, priv->sec_base + SEC_FCTL);
++
++	/* enable SEC fault source for watchdog0 */
++	sctl_val = readl((priv->sec_base + SEC_SCTL0) + 3 * 8) | 0x6;
++	writel(sctl_val, (priv->sec_base + SEC_SCTL0) + 3 * 8);
++
++	/* Enable SYSCD_RESETb input */
++	writel(0x100, priv->rcu_base + RCU_CTL);
++
++	/* enable watchdog0 */
++	writel(WDDIS, priv->wdt_base + WDOG_CTL);
++
++	writel(timeout_ms / 1000 *
++	       (clk_get_rate(&priv->clock) / (IS_ENABLED(CONFIG_SC58X) ? 2 : 1)),
++	       priv->wdt_base + WDOG_CNT);
++
++	writel(0, priv->wdt_base + WDOG_STAT);
++	writel(WDEN, priv->wdt_base + WDOG_CTL);
++
++	return 0;
++}
++
++static int adi_wdt_probe(struct udevice *dev)
++{
++	struct adi_wdt_priv *priv = dev_get_priv(dev);
++	int ret;
++	struct resource res;
++
++	ret = dev_read_resource_byname(dev, "rcu", &res);
++	if (ret)
++		return ret;
++	priv->rcu_base = devm_ioremap(dev, res.start, resource_size(&res));
++
++	ret = dev_read_resource_byname(dev, "sec", &res);
++	if (ret)
++		return ret;
++	priv->sec_base = devm_ioremap(dev, res.start, resource_size(&res));
++
++	ret = dev_read_resource_byname(dev, "wdt", &res);
++	if (ret)
++		return ret;
++	priv->wdt_base = devm_ioremap(dev, res.start, resource_size(&res));
++
++	ret = clk_get_by_name(dev, "sclk0", &priv->clock);
++	if (ret < 0) {
++		printf("Can't get WDT clk: %d\n", ret);
++		return ret;
 +	}
 +
 +	return 0;
 +}
 +
-+/**
-+ * rgmii tx clock rate is set to 125 MHz regardless of phy mode, and
-+ * by default the internal clock is always connected to 125 MHz. According
-+ * to the HRM it is invalid for this clock to have any other speed, so
-+ * the hardware won't work anyway if this is wrong.
-+ */
-+static ulong eqos_get_tick_clk_rate_adi(struct udevice *dev)
-+{
-+	return 125 * 1000000;
-+}
-+
-+static int eqos_get_enetaddr_adi(struct udevice *dev)
-+{
-+	struct eth_pdata *pdata = dev_get_plat(dev);
-+
-+	return eth_env_get_enetaddr("ethaddr", pdata->enetaddr);
-+}
-+
-+static struct eqos_ops eqos_adi_ops = {
-+	.eqos_inval_desc = eqos_inval_desc_generic,
-+	.eqos_flush_desc = eqos_flush_desc_generic,
-+	.eqos_inval_buffer = eqos_inval_buffer_generic,
-+	.eqos_flush_buffer = eqos_flush_buffer_generic,
-+	.eqos_probe_resources = eqos_probe_resources_adi,
-+	.eqos_remove_resources = eqos_null_ops,
-+	.eqos_start_resets = eqos_start_resets_adi,
-+	.eqos_stop_resets = eqos_null_ops,
-+	.eqos_start_clks = eqos_null_ops,
-+	.eqos_stop_clks = eqos_null_ops,
-+	.eqos_calibrate_pads = eqos_null_ops,
-+	.eqos_disable_calibration = eqos_null_ops,
-+	.eqos_set_tx_clk_speed = eqos_null_ops,
-+	.eqos_get_enetaddr = eqos_get_enetaddr_adi,
-+	.eqos_get_tick_clk_rate = eqos_get_tick_clk_rate_adi,
++static const struct wdt_ops adi_wdt_ops = {
++	.start		= adi_wdt_start,
++	.reset		= adi_wdt_reset,
 +};
 +
-+// @todo read mdio_wait from device tree
-+// @todo read swr_wait from device tree
-+struct eqos_config __maybe_unused eqos_adi_config = {
-+	.reg_access_always_ok = true,
-+	.mdio_wait =  20,
-+	.swr_wait = 50,
-+	.config_mac = EQOS_MAC_RXQ_CTRL0_RXQ0EN_ENABLED_DCB,
-+	.config_mac_mdio = EQOS_MAC_MDIO_ADDRESS_CR_150_250,
-+	.axi_bus_width = EQOS_AXI_WIDTH_32,
-+	.interface = dev_read_phy_mode,
-+	.ops = &eqos_adi_ops,
++static const struct udevice_id adi_wdt_ids[] = {
++	{ .compatible = "adi,wdt" },
++	{}
++};
++
++U_BOOT_DRIVER(adi_wdt) = {
++	.name		= "adi_wdt",
++	.id		= UCLASS_WDT,
++	.of_match	= adi_wdt_ids,
++	.probe		= adi_wdt_probe,
++	.ops		= &adi_wdt_ops,
++	.priv_auto = sizeof(struct adi_wdt_priv),
++	.flags		= DM_FLAG_PRE_RELOC,
 +};
 
 -- 
