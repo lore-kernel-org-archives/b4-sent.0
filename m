@@ -1,207 +1,144 @@
-From: Daniel Gomez <da.gomez@samsung.com>
-Date: Wed, 25 Sep 2024 12:49:00 +0200
-Subject: [PATCH v3] drm/xe: xe_gen_wa_oob: replace
- program_invocation_short_name
+From: Oliver Gaskell <Oliver.Gaskell@analog.com>
+Subject: [PATCH v2 00/11] drivers: Driver support for ADI SC5xx SoCs
+Date: Wed, 25 Sep 2024 13:25:10 +0100
+Message-Id: <20240925-sc5xx-driver-series-v2-0-ad9287c25c08@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240925-macos-build-support-v3-1-233dda880e60@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAJzq82YC/33PwWrEIBQF0F8JrmvQaKIJpcx/lC6e+pKRTmKqS
- egwzL/XZCilULq8gufdeyMJo8dEuuJGIm4++TDlIJ4KYs8wDUi9y5lUrJJMM0VHsCFRs/qLo2m
- d5xAX2lpgTilwhiuSf84Re/95qK9vOZ99WkK8Hkc2vr/+722cMiqt4w6drptWnhKMaZ2G0oaR7
- OJW/Sgta/5WqqywxmDfS6611L+V+6NoxI81r14ebcmIKcGxuiuev3muqlbIkguutGCU53MJzj6
- G6+kd44SXMsThZV9uICHN/OiXrsC+lrWxTEBTS6EtGNTKoOGmBV4b1vfWNGAxd7l/AQmlimyJA
- QAA
-X-Change-ID: 20240807-macos-build-support-9ca0d77adb17
-To: Lucas De Marchi <lucas.demarchi@intel.com>, 
- =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Nathan Chancellor <nathan@kernel.org>, 
- Nick Desaulniers <ndesaulniers@google.com>, 
- Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>
-Cc: Masahiro Yamada <masahiroy@kernel.org>, intel-xe@lists.freedesktop.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- llvm@lists.linux.dev, Finn Behrens <me@kloenk.dev>, 
- "Daniel Gomez (Samsung)" <d+samsung@kruces.com>, gost.dev@samsung.com, 
- Nick Desaulniers <nick.desaulniers@gmail.com>, 
- Klaus Jensen <k.jensen@samsung.com>, Jeff Xie <xiehuan09@gmail.com>, 
- Barry Song <baohua@kernel.org>, Daniel Gomez <da.gomez@samsung.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727261354; l=7033;
- i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
- bh=4fIjzJpNMXdpRQVn4dyBriGnGibGkiKPfvdpbwf8+L8=;
- b=3lmM0CgemUBgtj+LNeOe3nV81XNjUyBIQ6h7vFtjr0IPrI7x/+3gaFSs6GoihsRKy+t7hZW9N
- Dl38e5SAEMfDkw70yOQ4cVUtZkVU6Imx/J9waPje2zLFewIi7Iw1usZ
-X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
- pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
-X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIACYB9GYC/0WOQW6DMBBFr4K87iDbgICsco8qi8GMjaUYiO0go
+ ih37yS06m6+Rv/99xSJoqckTsVTRNp88svMQX8Vwkw4OwI/chZa6lr2uoJkmn2HMfqNIhxlwB7
+ t0Jqm7wYjuLlGsn7/UL8vnG1cAuQpEv6zGtVo1XRVW6pa6g4UuEiuDHh9JDxnHyg9UmmW8AuMd
+ LuzXT6ogt8JP3Ys++Z1zDjc7mvKPBX87GDFbCY23BRIqOuxx9GOttLtGWe8Lu5vYMBEwHfw+VR
+ sb2CpJERTi8vr9QPA5NlEJQEAAA==
+To: Tom Rini <trini@konsulko.com>, 
+ Nathan Barrett-Morrison <nathan.morrison@timesys.com>, 
+ Greg Malysa <greg.malysa@timesys.com>, 
+ Ian Roberts <ian.roberts@timesys.com>, 
+ Vasileios Bimpikas <vasileios.bimpikas@analog.com>, 
+ Utsav Agarwal <utsav.agarwal@analog.com>, 
+ Arturs Artamonovs <arturs.artamonovs@analog.com>, 
+ Marek Vasut <marex@denx.de>, Heiko Schocher <hs@denx.de>, 
+ Joe Hershberger <joe.hershberger@ni.com>, 
+ Ramon Fried <rfried.dev@gmail.com>, Stefan Roese <sr@denx.de>, 
+ Jagan Teki <jagan@amarulasolutions.com>, Peng Fan <peng.fan@nxp.com>, 
+ Jaehoon Chung <jh80.chung@samsung.com>
+Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
+ Oliver Gaskell <Oliver.Gaskell@analog.com>, 
+ 20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com, 
+ Angelo Dureghello <angelo.dureghello@timesys.com>, 
+ Piotr Wojtaszczyk <piotr.wojtaszczyk@timesys.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727267113; l=5124;
+ i=Oliver.Gaskell@analog.com; s=20240821; h=from:subject:message-id;
+ bh=f7+xI368zirEAjhF2AIOC44NfErNwrLl4ZoIS0zKRJw=;
+ b=AVYUbF2WX5uolw5CSkfcomJAxlBZomJAR6+tBa15w+69Q7lGl507R7FH3E7sF2G/tsryO9Jqu
+ FSw4icw7rIhD+W7FsW7GNshKIELmo3FMUYK2cV2Ibwvc8l5UjLQ06eO
+X-Developer-Key: i=Oliver.Gaskell@analog.com; a=ed25519;
+ pk=Icq9TxwFJ6FePHS28YbBWMvtZpFWxpPQLhLA9cNvZ/Y=
+X-Endpoint-Received: by B4 Relay for Oliver.Gaskell@analog.com/20240821 with auth_id=197
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-program_invocation_short_name() may not be available in other systems.
-Instead, replace it with the argv[0] to pass the executable name and
-make it portable.
+This series adds all of the supported peripheral drivers for the sc5xx
+series of SoCs from Analog Devices and other drivers that are used by
+the evaluation kits, such as a GPIO expander used by the EZLITE carrier
+boards.
 
-Fixes build error when program_invocation_short_name is not available:
+This series is based on my earlier patch series:
+  "arm: Initial support for Analog Devices SC5xx boards"
+  20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com
+since both that series and this series modify MAINTAINERS.
 
-drivers/gpu/drm/xe/xe_gen_wa_oob.c:34:3: error: use of
-undeclared identifier 'program_invocation_short_name'    34 |
-program_invocation_short_name);       |                 ^ 1 error
-generated.
+Note that patches 05, 07 had Reviewed-by tags, but have had minor
+changes since v1 so these weren't kept.
 
-Suggested-by: Masahiro Yamada <masahiroy@kernel.org>
-Tested-by: Jeff Xie <xiehuan09@gmail.com>
-Signed-off-by: Daniel Gomez <da.gomez@samsung.com>
+Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
-This patch allows for building the Linux kernel for arm64 in macOS with
-LLVM.
-
-macOS does not provide certain headers that are available in a GNU/Linux
-distribution with development headers installed, usually provided by
-the GNU C Library (glibc) and/or other projects. These missing headers
-are needed as build dependencies. To address this, users need to provide
-these headers manually.
-
-To assist with provisioning and setting up the environment, the Bee
-Headers Project [1][2][3] provides the necessary headers, along with a
-pkg-config file to locate the include directory and an initialization
-script to configure the environment. However, this is optional and users
-can choose to set up their own environments and manually provide the
-required headers. In that case, the project can be used as a reference.
-
-Here’s a quick overview of the setup process using Bee Headers:
-
-Set up a case sensitive volume to fetch Linux and build:
-
-	diskutil apfs addVolume /dev/disk<N> "Case-sensitive APFS" linux
-	
-Install dependencies:
-
-	brew install coreutils findutils gnu-sed gnu-tar grep llvm make pkg-config
-	brew tap bee-headers/bee-headers
-	brew install bee-headers/bee-headers/bee-headers
-
-Initialize the environment with `bee-init` and run it in each new shell:
-
-	source bee-init
-	
-Start build:
-	make LLVM=1 defconfig
-	make LLVM=1 -j$(nproc)
-
-For more details and manual steps, refer to the README [4] of the Bee
-Headers project.
-
-[1] Project: https://github.com/bee-headers
-
-[2] Headers repository: https://github.com/bee-headers/headers.git
-
-[3] Homebrew Tap formula: https://github.com/bee-headers/homebrew-bee-headers.git
-
-[4] https://github.com/bee-headers/homebrew-bee-headers/blob/main/README.md
----
-Changes in v3:
-- Update drm/xe patch to replace program_invocation_short_name with
-argv[0] instead of using getprogname + ifdef as suggested by Masahiro.
-- Patch merged: "[PATCH v2 1/8] scripts: subarch.include: fix SUBARCH on
-macOS hosts".
-- "file2alias: fix uuid_t definitions for macos" patch is dropped. User
-requires to set up this in the build environment with something like:
-export HOSTCFLAGS="-D_UUID_T -D__GETHOSTUUID_H"
-- Drop documentation patch. Environment setup and headers should now be
-provided by the user. The project Bee Headers can be used to help with
-the steps and documentation.
-	- HOSTCFLAGS should be used to provide the missing headers as well as the
-above defines. Example using Bee Headers:
-export HOSTCFLAGS="$(pkg-config --cflags bee-headers) -D_UUID_T
--D__GETHOSTUUID_H"
-	- PATH needs to have all tools the kernel build system depends on.
-Something like this:
-	PATH="#{HOMEBREW_PREFIX}/opt/coreutils/libexec/gnubin:$PATH"
-	PATH="#{HOMEBREW_PREFIX}/opt/findutils/libexec/gnubin:$PATH"
-	PATH="#{HOMEBREW_PREFIX}/opt/gawk/libexec/gnubin:$PATH"
-	PATH="#{HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
-	PATH="#{HOMEBREW_PREFIX}/opt/gnu-tar/libexec/gnubin:$PATH"
-	PATH="#{HOMEBREW_PREFIX}/opt/grep/libexec/gnubin:$PATH"
-	PATH="#{HOMEBREW_PREFIX}/opt/make/libexec/gnubin:$PATH"
-	PATH="#{HOMEBREW_PREFIX}/opt/llvm/bin:$PATH"
-- Drop patches below as they've been replaced by a new 2nd version [8]:
-	selinux: move genheaders to security/selinux/
-	selinux: do not include <linux/*.h> headers from host programs
-[8] Subject: [PATCH v2 1/2] selinux: do not include <linux/*.h> headers from host programs
-https://lore.kernel.org/all/20240906172934.1317830-1-masahiroy@kernel.org/#t
-Note: This has been specified as dependency with b4 and message-id in
-the cover letter.
-- Link to v2: https://lore.kernel.org/r/20240906-macos-build-support-v2-0-06beff418848@samsung.com
-
 Changes in v2:
-- Add documentation and set this 'feature' as experimental.
-- Update cover letter.
-- Drop unnecessary changes. Patches removed:
-	- kbuild: add header_install dependency to scripts
-	- include: add endian.h support
-	- include: add elf.h support
-- Update Makefiles to find Bee Headers with pkg-config.
-- Update file2alias to solve uuid_t conflicts inside Makefile as
-suggested by Nicolas Schier.
-- Adapt xe_gen_wa_oob to solve getprogname()/
-program_invocation_short_name in runtime. as suggested by Lucas De
-Marchi.
-- Remove linux/version.h in accessibility/speakup as suggested by
-Masahiro Yamada.
-- Replace selinux patches with new Masahiro Yamada's patches:
-	Message-id: 20240809122007.1220219-1-masahiroy@kernel.org
-	Link: https://lore.kernel.org/all/20240809122007.1220219-1-masahiroy@kernel.org/
-- Replace tty/vt with new Masahiro Yamada's patch:
-	Message-id: 20240809160853.1269466-1-masahiroy@kernel.org
-	Link: https://lore.kernel.org/all/20240809160853.1269466-1-masahiroy@kernel.org/
-	(Already merged in the linux-next tag used)
-- Replace scripts/kallsyms patch with Masahiro Yamada's patch:
-	Message-id: 20240807181148.660157-1-masahiroy@kernel.org
-	Link: https://lore.kernel.org/all/20240807181148.660157-1-masahiroy@kernel.org/
-	(Already merged in the linux-next tag used)
-- Link to v1: https://lore.kernel.org/r/20240807-macos-build-support-v1-0-4cd1ded85694@samsung.com
----
- drivers/gpu/drm/xe/xe_gen_wa_oob.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/drivers/gpu/drm/xe/xe_gen_wa_oob.c b/drivers/gpu/drm/xe/xe_gen_wa_oob.c
-index 904cf47925aa1d5bc37983af83232d5e4697c49e..ed9183599e31cc9d76da3f22c9fb3884384a49bc 100644
---- a/drivers/gpu/drm/xe/xe_gen_wa_oob.c
-+++ b/drivers/gpu/drm/xe/xe_gen_wa_oob.c
-@@ -28,10 +28,10 @@
- 	"\n" \
- 	"#endif\n"
- 
--static void print_usage(FILE *f)
-+static void print_usage(FILE *f, const char *progname)
- {
- 	fprintf(f, "usage: %s <input-rule-file> <generated-c-source-file> <generated-c-header-file>\n",
--		program_invocation_short_name);
-+		progname);
- }
- 
- static void print_parse_error(const char *err_msg, const char *line,
-@@ -144,7 +144,7 @@ int main(int argc, const char *argv[])
- 
- 	if (argc < 3) {
- 		fprintf(stderr, "ERROR: wrong arguments\n");
--		print_usage(stderr);
-+		print_usage(stderr, argv[0]);
- 		return 1;
- 	}
- 
+- Address comments on adi_spi3.c
+- Clean up some whitespace errors
+- Modify Kconfigs to reflect changes to mach-sc5xx/Kconfig
+- Link to v1: https://lore.kernel.org/r/20240515215837.14028-1-greg.malysa@timesys.com
 
 ---
-base-commit: ef545bc03a65438cabe87beb1b9a15b0ffcb6ace
-change-id: 20240807-macos-build-support-9ca0d77adb17
-prerequisite-message-id: <20240906172934.1317830-1-masahiroy@kernel.org>
-prerequisite-patch-id: 5d49a803cc75a57174d16745222d1602809aeb96
-prerequisite-patch-id: b2da334443fa81626d742053ca5005074e9e1355
+Greg Malysa (2):
+      net: Add support for ADI SC5xx SoCs with DWC QoS ethernet
+      dma: Add driver for ADI SC5xx-family SoC MDMA functionality
+
+Nathan Barrett-Morrison (3):
+      gpio: Add support for ADI ADP5588 GPIO expander chips
+      usb: musb-new: Add support for Analog Devices SC5xx SoCs
+      remoteproc: Add in SHARC loading for ADI SC5XX-family processors
+
+Oliver Gaskell (6):
+      pinctrl: Add support for ADI SC5XX-family pinctrl
+      gpio: Add support for SC5XX-family processor GPIO driver
+      i2c: Add support for ADI SC5XX-family I2C peripheral
+      watchdog: Add support for ADI SC5XX-family watchdog peripheral
+      spi: Add support for ADI SC5XX-family processor SPI peripherals
+      mmc: Add support for ADI SC5XX-family processor SDHCI peripherals
+
+ MAINTAINERS                            |  11 +
+ drivers/dma/Kconfig                    |   7 +
+ drivers/dma/Makefile                   |   1 +
+ drivers/dma/adi_dma.c                  | 255 ++++++++++++
+ drivers/gpio/Kconfig                   |  17 +
+ drivers/gpio/Makefile                  |   2 +
+ drivers/gpio/adp5588_gpio.c            | 208 ++++++++++
+ drivers/gpio/gpio-adi-adsp.c           | 179 +++++++++
+ drivers/i2c/Kconfig                    |   7 +
+ drivers/i2c/Makefile                   |   1 +
+ drivers/i2c/adi_i2c.c                  | 395 +++++++++++++++++++
+ drivers/mmc/Kconfig                    |   9 +
+ drivers/mmc/Makefile                   |   1 +
+ drivers/mmc/adi_sdhci.c                | 154 ++++++++
+ drivers/net/Kconfig                    |   7 +
+ drivers/net/Makefile                   |   1 +
+ drivers/net/dwc_eth_qos.c              |   6 +
+ drivers/net/dwc_eth_qos.h              |   2 +
+ drivers/net/dwc_eth_qos_adi.c          | 102 +++++
+ drivers/pinctrl/Kconfig                |   8 +
+ drivers/pinctrl/Makefile               |   1 +
+ drivers/pinctrl/pinctrl-adi-adsp.c     | 156 ++++++++
+ drivers/remoteproc/Kconfig             |  11 +
+ drivers/remoteproc/Makefile            |   1 +
+ drivers/remoteproc/adi_sc5xx_rproc.c   | 276 +++++++++++++
+ drivers/spi/Kconfig                    |   7 +
+ drivers/spi/Makefile                   |   1 +
+ drivers/spi/adi_spi3.c                 | 690 +++++++++++++++++++++++++++++++++
+ drivers/usb/musb-new/Kconfig           |   7 +
+ drivers/usb/musb-new/Makefile          |   1 +
+ drivers/usb/musb-new/sc5xx.c           | 202 ++++++++++
+ drivers/watchdog/Kconfig               |   9 +
+ drivers/watchdog/Makefile              |   1 +
+ drivers/watchdog/adi_wdt.c             | 145 +++++++
+ include/dt-bindings/pinctrl/adi-adsp.h |  21 +
+ 35 files changed, 2902 insertions(+)
+---
+base-commit: 041bf69038e2957f38e2de4e5d77bdb3e2ccf8a8
+change-id: 20240923-sc5xx-driver-series-a9afb7c598bc
+prerequisite-message-id: 20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com
+prerequisite-patch-id: 63cec707680793ef2feeb5b782b1db19d49766ce
+prerequisite-patch-id: fbc3b9227e2dc550878d4e8d113b1ad81ee00028
+prerequisite-patch-id: 988919879c6440227124dc0bb4b24d22c9041d99
+prerequisite-patch-id: 469d6193e82a2f702e938004ad6ff7c22dfbab86
+prerequisite-patch-id: 184667bccb34335a943f5ba405bf2acd75b8c7f3
+prerequisite-patch-id: aad9a1786ecfe51a46034fc055c57bff62d2a653
+prerequisite-patch-id: 909e13e6d779858f6d862b703e7cbfe510cb3a16
+prerequisite-patch-id: 8101423151112c3876c88223ac9ab196aebb8912
+prerequisite-patch-id: 24787a90e7adadab2ae3aa2348ac9d5838c26cfe
+prerequisite-patch-id: 0564b8079526f2fe1d9f723c8c4a2471e3ec6e1c
+prerequisite-patch-id: 0ca62b4ff0cfd3bf5a10ac84f13d0ab261e737d1
+prerequisite-patch-id: f54e027ac323522349f24acbc4a946d8a3cdfaef
+prerequisite-patch-id: 6f85ade3b9119dba85b65da8a49c4a6345c6b3ba
+prerequisite-patch-id: 94e1c6fde429c63a6fa4f7b5aeab0df9a8a00d81
+prerequisite-patch-id: 3227e7bdc2614c377b6837a47ad1cde99791d794
+prerequisite-patch-id: f6a45739e56120f54170b924a3069b98d355d1c0
+prerequisite-patch-id: 10f9f40c697f22a33b83a8538e13bac642795851
+prerequisite-patch-id: 32d268fd6372bda3129cddd26da45d69291efc33
+prerequisite-patch-id: 7640097fdc5a25ec2ffdf0eddb22f3c452510390
+prerequisite-patch-id: e57e6a95ef319c12565a6469f230198259f0bf7d
 
 Best regards,
 -- 
-Daniel Gomez <da.gomez@samsung.com>
+Oliver Gaskell <Oliver.Gaskell@analog.com>
 
