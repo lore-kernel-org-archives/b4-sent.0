@@ -1,224 +1,312 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Wed, 25 Sep 2024 00:37:50 +0800
-Subject: [PATCH] io: statx, fstatat64: allow using NULL as path
+From: Chuan Liu <chuan.liu@amlogic.com>
+Date: Wed, 25 Sep 2024 18:08:28 +0800
+Subject: [PATCH v2] clk: meson: mpll: Delete a useless spinlock from the
+ MPLL
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240925-statx-null-path-user-v1-1-73e21e14c79e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAN3q8mYC/2XMSw6DIBSF4a0YxiXhIqi4lcYBj2sl8VVBY2Lce
- 6kOOujwP8n5DhJw8RhInR1kwc0HP40p4JER2+nxhdS71IQzLpjikoao407Hte/prGNH1wRQy6x
- AY1zLwZJ0nRds/X6xz+buBd9r0uM9/vA6u+iKwx8tc7CsLKUxWtSb/MJGB6R2GgYf0xERq1yi1
- apgVjkBoHipKiY4CFNqQCcdyII05/kBf8OtBukAAAA=
-To: libc-alpha@sourceware.org
-Cc: Florian Weimer <fweimer@redhat.com>, 
- Adhemerval Zanella <adhemerval.zanella@linaro.org>, 
- Joseph Myers <josmyers@redhat.com>, Xi Ruoyao <xry111@xry111.site>, 
- =?utf-8?q?W=C3=81NG_Xu=C4=9Bru=C3=AC?= <kernel@xen0n.name>, 
- Adhemerval Zanella Netto <adhemerval.zanella@linaro.org>, 
- b4-sent@lore.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
+Message-Id: <20240925-mpll_spinlock-v2-1-8f9b73588ec1@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIABvh82YC/13MSwrDIBSF4a2EO67FiJLaUfcRQlFjkkt9BC3SE
+ rL32tBRh/+B822QbUKb4dpskGzBjDHUYKcGzKLCbAmOtYFRxqlsL8Svzt3zisFF8yBcSy2E4Xw
+ aBdTPmuyEr8Prh9oL5mdM74Mv7Xf9SYz+SaUllAjGpZKqs0x3N+VdnNGcTfQw7Pv+AQaGveasA
+ AAA
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Chuan Liu <chuan.liu@amlogic.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7191;
- i=shankerwangmiao@gmail.com; h=from:subject:message-id;
- bh=h3S3eC5ZEzW/pE5HYrcOSy9IPK3IpKQv+BHq6FhjlSs=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBm8uribh0OwEoUAK5k7RmtGFcn17rMpvrrSV+31
- Ksex23VlzyJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCZvLq4gAKCRCwMePKe/7Z
- budcEAC21aZE0f1IsCmNQ00m4nCiGbvdy3htJJBYnJbp2YDjtE7qCeLBqvADkZ7auvP3GuXSoQn
- xTWkXi50eB/Si928VcMY88d3hcHimz9AVNWWpYgJ0IuSuSVNmnlEO5WbHUx6bTNAozGwYpqgDmK
- 608weJom0wfdBtxPykSUNJ3vEcgxdvZdsM2uz/1wgh+Nhazw924nFUTAv4dubD5zDm4jVWGIe+Q
- PftImkVlVEG9a2/8chUzDO/pBYuNtMbrqtTGV89c0Vtt+DnRq+ZmPs+IW8Eto1J+M9V2aJGJypM
- WPGYrs2A+R7xPlUdotMNOlYC1sVg75ECXNMPTLf0YpNU5GOZ7KoDblfWfCKLG9Kzyyhg0WKKaz1
- CA5T0GphEpuz0uT9WGRaRSflAphraaZBg7cmJ4odQgKDpW0W/bJ7dG63sSILIgIbqqvd31JRSra
- aJxEwp7JPZV8uNWrt1+AD8wdTYM6AjIvAPKOBQf5zWbeU7nZoTa4yymzVUJYx9CBRxSFgBO+NwL
- uQxDuAIztLw2VWJ3U13fidfK+7EoTcVI07GZVfGVyY7EZhl820nmNWC+mTxC3V942R3KX54Bnmx
- q2NfapyuirS+ndSwH0HtCC+sT9iRzPtyLX8xGscnf6AkHMPslW+vgUAE/BqOWMYpxEC5wQljWi6
- dL+R15T39YvhgTA==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/default with auth_id=189
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727258930; l=8347;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=ZyPnj+RyKrSajBhQmyfJU1szWyHwl1WcQqsqZnpTU7o=;
+ b=U/+tnxrfGff37ZUf7sYlp/cNh53Yt2f8WNnAnhJ4kn7XfzEjnQhjRRCLExzt4S4f2YPnJf5bH
+ NG1ejpqmzuEDkAaX4lW5Dd2Via7P1aOkswd4UDgyix31p4VpDTuFPsl
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since linux 6.11, fstatat and statx syscalls allow using NULL as path
-when AT_EMPTY_PATH is given. We also expose this to glibc users, and
-change path to an empty string when this is not supported by the kernel.
+The register corresponding to MPLL does not share the same register
+with other module drivers, so there is no concurrent access to the
+register with other modules drivers. The spinlock defined in struct
+meson_clk_mpll_data is no longer useful.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
-Since kernel 6.11, statx/fstatat(..., NULL, AT_EMPTH_PATH...) are
-supported for better performance by avoiding copying buffer data from
-userland. Since currently the declaration of statx and fstatat flags
-the path argument as nonull, it prevents users from utilizing this
-kernel feature. I can come up with the following possible solutions:
-
-1. Directly remove the nonull annotation on the path argument, and
-   pass the parameter given by the user as-is to the kernel, exposing
-   the kernel behavior. This would be confusing since on older kernels,
-   the user would receive EFAULT and need to handle this.
-
-2. Based on 1, but if the user provides NULL, the handling of EFAULT is
-   integrated in glibc, who implicitly change the parameter to an empty
-   string if EFAULT received.
-
-In either case, I think there is no need to introduce a new ABI version
-of statx() and fstatat(), since we are loosening the restriction on the
-given parameters, and executables linked with previous versions of statx
-and fstatat can still work after this change.
-
-This RFC patch contains changes for the solution 2 above.
+Changes in v2:
+- Squeeze into a patch.
+- Modifying commit Information.
+- Link to v1: https://lore.kernel.org/r/20240920-mpll_spinlock-v1-0-5249a9a7e2b7@amlogic.com
 ---
- io/bits/statx-generic.h             |  2 +-
- io/sys/stat.h                       | 10 +++++-----
- io/tst-statx.c                      |  6 ++++++
- sysdeps/mach/hurd/fstatat64.c       |  2 ++
- sysdeps/unix/sysv/linux/fstatat64.c | 12 ++++++++++++
- sysdeps/unix/sysv/linux/statx.c     |  7 ++++++-
- 6 files changed, 32 insertions(+), 7 deletions(-)
+ drivers/clk/meson/axg.c      |  6 ------
+ drivers/clk/meson/clk-mpll.c | 11 -----------
+ drivers/clk/meson/clk-mpll.h |  1 -
+ drivers/clk/meson/g12a.c     |  6 ------
+ drivers/clk/meson/gxbb.c     |  6 ------
+ drivers/clk/meson/meson8b.c  |  3 ---
+ drivers/clk/meson/s4-pll.c   |  6 ------
+ 7 files changed, 39 deletions(-)
 
-diff --git a/io/bits/statx-generic.h b/io/bits/statx-generic.h
-index 19c3565edc..c0e00c9d8b 100644
---- a/io/bits/statx-generic.h
-+++ b/io/bits/statx-generic.h
-@@ -62,6 +62,6 @@ __BEGIN_DECLS
- /* Fill *BUF with information about PATH in DIRFD.  */
- int statx (int __dirfd, const char *__restrict __path, int __flags,
-            unsigned int __mask, struct statx *__restrict __buf)
--  __THROW __nonnull ((2, 5));
-+  __THROW __nonnull ((5));
+diff --git a/drivers/clk/meson/axg.c b/drivers/clk/meson/axg.c
+index 757c7a28c53d..1b08daf579b2 100644
+--- a/drivers/clk/meson/axg.c
++++ b/drivers/clk/meson/axg.c
+@@ -23,8 +23,6 @@
  
- __END_DECLS
-diff --git a/io/sys/stat.h b/io/sys/stat.h
-index 3b4ba80132..7ea39b8755 100644
---- a/io/sys/stat.h
-+++ b/io/sys/stat.h
-@@ -263,14 +263,14 @@ extern int __REDIRECT_NTH (fstat64, (int __fd, struct stat64 *__buf),
- # ifndef __USE_FILE_OFFSET64
- extern int fstatat (int __fd, const char *__restrict __file,
- 		    struct stat *__restrict __buf, int __flag)
--     __THROW __nonnull ((2, 3));
-+     __THROW __nonnull ((3));
- # else
- #  ifdef __USE_TIME64_REDIRECTS
- #   ifdef __REDIRECT_NTH
- extern int __REDIRECT_NTH (fstatat, (int __fd, const char *__restrict __file,
- 				     struct stat *__restrict __buf,
- 				     int __flag),
--			   __fstatat64_time64) __nonnull ((2, 3));
-+			   __fstatat64_time64) __nonnull ((3));
- #   else
- #    define fstatat __fstatat64_time64
- #   endif
-@@ -279,7 +279,7 @@ extern int __REDIRECT_NTH (fstatat, (int __fd, const char *__restrict __file,
- extern int __REDIRECT_NTH (fstatat, (int __fd, const char *__restrict __file,
- 				     struct stat *__restrict __buf,
- 				     int __flag),
--			   fstatat64) __nonnull ((2, 3));
-+			   fstatat64) __nonnull ((3));
- #   else
- #    define fstatat fstatat64
- #   endif
-@@ -290,7 +290,7 @@ extern int __REDIRECT_NTH (fstatat, (int __fd, const char *__restrict __file,
- #  ifndef __USE_TIME64_REDIRECTS
- extern int fstatat64 (int __fd, const char *__restrict __file,
- 		      struct stat64 *__restrict __buf, int __flag)
--     __THROW __nonnull ((2, 3));
-+     __THROW __nonnull ((3));
- #  else
- #   ifdef __REDIRECT_NTH
- extern int __REDIRECT_NTH (fstatat64, (int __fd,
-@@ -298,7 +298,7 @@ extern int __REDIRECT_NTH (fstatat64, (int __fd,
- 				       struct stat64 *__restrict __buf,
- 				       int __flag),
- 			   __fstatat64_time64)
--     __nonnull ((2, 3));
-+     __nonnull ((3));
- #   else
- #    define fstatat64 __fstatat64_time64
- #   endif
-diff --git a/io/tst-statx.c b/io/tst-statx.c
-index 685924ae76..4b70999e96 100644
---- a/io/tst-statx.c
-+++ b/io/tst-statx.c
-@@ -74,6 +74,12 @@ both_implementations_tests (statx_function impl, const char *path, int fd)
-     TEST_COMPARE (buf.stx_size, 3);
-     TEST_COMPARE (buf.stx_ino, ino);
-   }
-+  {
-+    struct statx buf = { 0, };
-+    TEST_COMPARE (statx (fd, NULL, AT_EMPTY_PATH, STATX_BASIC_STATS, &buf), 0);
-+    TEST_COMPARE (buf.stx_size, 3);
-+    TEST_COMPARE (buf.stx_ino, ino);
-+  }
-   {
-     struct statx stx = { 0, };
-     TEST_COMPARE (statx (fd, "", AT_EMPTY_PATH, STATX_BASIC_STATS, &stx), 0);
-diff --git a/sysdeps/mach/hurd/fstatat64.c b/sysdeps/mach/hurd/fstatat64.c
-index 61b6593f3a..18dc9d2f08 100644
---- a/sysdeps/mach/hurd/fstatat64.c
-+++ b/sysdeps/mach/hurd/fstatat64.c
-@@ -45,6 +45,8 @@ __fstatat64_common (int fd, const char *filename, struct stat64 *buf, int at_fla
- int
- __fstatat64 (int fd, const char *filename, struct stat64 *buf, int at_flags)
- {
-+  if ((at_flags & AT_EMPTY_PATH) && filename == NULL)
-+    filename = "";
-   return __fstatat64_common (fd, filename, buf, at_flags, 0);
+ #include <dt-bindings/clock/axg-clkc.h>
+ 
+-static DEFINE_SPINLOCK(meson_clk_lock);
+-
+ static struct clk_regmap axg_fixed_pll_dco = {
+ 	.data = &(struct meson_clk_pll_data){
+ 		.en = {
+@@ -506,7 +504,6 @@ static struct clk_regmap axg_mpll0_div = {
+ 			.shift   = 0,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+@@ -557,7 +554,6 @@ static struct clk_regmap axg_mpll1_div = {
+ 			.shift   = 1,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+@@ -613,7 +609,6 @@ static struct clk_regmap axg_mpll2_div = {
+ 			.shift   = 2,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+@@ -664,7 +659,6 @@ static struct clk_regmap axg_mpll3_div = {
+ 			.shift   = 3,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+diff --git a/drivers/clk/meson/clk-mpll.c b/drivers/clk/meson/clk-mpll.c
+index f639d56f0fd3..aa9abd06ae65 100644
+--- a/drivers/clk/meson/clk-mpll.c
++++ b/drivers/clk/meson/clk-mpll.c
+@@ -112,26 +112,15 @@ static int mpll_set_rate(struct clk_hw *hw,
+ 	struct clk_regmap *clk = to_clk_regmap(hw);
+ 	struct meson_clk_mpll_data *mpll = meson_clk_mpll_data(clk);
+ 	unsigned int sdm, n2;
+-	unsigned long flags = 0;
+ 
+ 	params_from_rate(rate, parent_rate, &sdm, &n2, mpll->flags);
+ 
+-	if (mpll->lock)
+-		spin_lock_irqsave(mpll->lock, flags);
+-	else
+-		__acquire(mpll->lock);
+-
+ 	/* Set the fractional part */
+ 	meson_parm_write(clk->map, &mpll->sdm, sdm);
+ 
+ 	/* Set the integer divider part */
+ 	meson_parm_write(clk->map, &mpll->n2, n2);
+ 
+-	if (mpll->lock)
+-		spin_unlock_irqrestore(mpll->lock, flags);
+-	else
+-		__release(mpll->lock);
+-
+ 	return 0;
  }
- libc_hidden_def (__fstatat64)
-diff --git a/sysdeps/unix/sysv/linux/fstatat64.c b/sysdeps/unix/sysv/linux/fstatat64.c
-index 59b461cbcf..a9e3b85179 100644
---- a/sysdeps/unix/sysv/linux/fstatat64.c
-+++ b/sysdeps/unix/sysv/linux/fstatat64.c
-@@ -156,6 +156,10 @@ __fstatat64_time64 (int fd, const char *file, struct __stat64_t64 *buf,
- {
-   int r;
  
-+#ifndef __ASSUME_STATX_NULL_PATH
-+retry:
-+#endif
-+
- #if FSTATAT_USE_STATX
-   r = fstatat64_time64_statx (fd, file, buf, flag);
- # ifndef __ASSUME_STATX
-@@ -166,6 +170,14 @@ __fstatat64_time64 (int fd, const char *file, struct __stat64_t64 *buf,
-   r = fstatat64_time64_stat (fd, file, buf, flag);
- #endif
+diff --git a/drivers/clk/meson/clk-mpll.h b/drivers/clk/meson/clk-mpll.h
+index a991d568c43a..4ffd3aeef799 100644
+--- a/drivers/clk/meson/clk-mpll.h
++++ b/drivers/clk/meson/clk-mpll.h
+@@ -20,7 +20,6 @@ struct meson_clk_mpll_data {
+ 	struct parm misc;
+ 	const struct reg_sequence *init_regs;
+ 	unsigned int init_count;
+-	spinlock_t *lock;
+ 	u8 flags;
+ };
  
-+#ifndef __ASSUME_STATX_NULL_PATH
-+  if (file == NULL && (flag & AT_EMPTY_PATH) && r == -EFAULT)
-+    {
-+      file = "";
-+      goto retry;
-+    }
-+#endif
-+
-   return INTERNAL_SYSCALL_ERROR_P (r)
- 	 ? INLINE_SYSCALL_ERROR_RETURN_VALUE (-r)
- 	 : 0;
-diff --git a/sysdeps/unix/sysv/linux/statx.c b/sysdeps/unix/sysv/linux/statx.c
-index a6295a155d..9549614a6b 100644
---- a/sysdeps/unix/sysv/linux/statx.c
-+++ b/sysdeps/unix/sysv/linux/statx.c
-@@ -25,7 +25,12 @@ int
- statx (int fd, const char *path, int flags,
-        unsigned int mask, struct statx *buf)
- {
--  int ret = INLINE_SYSCALL_CALL (statx, fd, path, flags, mask, buf);
-+  int ret;
-+  ret = INLINE_SYSCALL_CALL (statx, fd, path, flags, mask, buf);
-+#ifndef __ASSUME_STATX_NULL_PATH
-+  if (path == NULL && (flags & AT_EMPTY_PATH) && errno == EFAULT)
-+    ret = INLINE_SYSCALL_CALL (statx, fd, "", flags, mask, buf);
-+#endif
- #ifdef __ASSUME_STATX
-   return ret;
- #else
+diff --git a/drivers/clk/meson/g12a.c b/drivers/clk/meson/g12a.c
+index 02dda57105b1..d3539fe9f7af 100644
+--- a/drivers/clk/meson/g12a.c
++++ b/drivers/clk/meson/g12a.c
+@@ -28,8 +28,6 @@
+ 
+ #include <dt-bindings/clock/g12a-clkc.h>
+ 
+-static DEFINE_SPINLOCK(meson_clk_lock);
+-
+ static struct clk_regmap g12a_fixed_pll_dco = {
+ 	.data = &(struct meson_clk_pll_data){
+ 		.en = {
+@@ -2225,7 +2223,6 @@ static struct clk_regmap g12a_mpll0_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.init_regs = g12a_mpll0_init_regs,
+ 		.init_count = ARRAY_SIZE(g12a_mpll0_init_regs),
+ 	},
+@@ -2279,7 +2276,6 @@ static struct clk_regmap g12a_mpll1_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.init_regs = g12a_mpll1_init_regs,
+ 		.init_count = ARRAY_SIZE(g12a_mpll1_init_regs),
+ 	},
+@@ -2333,7 +2329,6 @@ static struct clk_regmap g12a_mpll2_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.init_regs = g12a_mpll2_init_regs,
+ 		.init_count = ARRAY_SIZE(g12a_mpll2_init_regs),
+ 	},
+@@ -2387,7 +2382,6 @@ static struct clk_regmap g12a_mpll3_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.init_regs = g12a_mpll3_init_regs,
+ 		.init_count = ARRAY_SIZE(g12a_mpll3_init_regs),
+ 	},
+diff --git a/drivers/clk/meson/gxbb.c b/drivers/clk/meson/gxbb.c
+index f071faad1ebb..262c318edbd5 100644
+--- a/drivers/clk/meson/gxbb.c
++++ b/drivers/clk/meson/gxbb.c
+@@ -19,8 +19,6 @@
+ 
+ #include <dt-bindings/clock/gxbb-clkc.h>
+ 
+-static DEFINE_SPINLOCK(meson_clk_lock);
+-
+ static const struct pll_params_table gxbb_gp0_pll_params_table[] = {
+ 	PLL_PARAMS(32, 1),
+ 	PLL_PARAMS(33, 1),
+@@ -731,7 +729,6 @@ static struct clk_regmap gxbb_mpll0_div = {
+ 			.shift   = 16,
+ 			.width   = 9,
+ 		},
+-		.lock = &meson_clk_lock,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+ 		.name = "mpll0_div",
+@@ -760,7 +757,6 @@ static struct clk_regmap gxl_mpll0_div = {
+ 			.shift   = 16,
+ 			.width   = 9,
+ 		},
+-		.lock = &meson_clk_lock,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+ 		.name = "mpll0_div",
+@@ -812,7 +808,6 @@ static struct clk_regmap gxbb_mpll1_div = {
+ 			.shift   = 16,
+ 			.width   = 9,
+ 		},
+-		.lock = &meson_clk_lock,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+ 		.name = "mpll1_div",
+@@ -855,7 +850,6 @@ static struct clk_regmap gxbb_mpll2_div = {
+ 			.shift   = 16,
+ 			.width   = 9,
+ 		},
+-		.lock = &meson_clk_lock,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+ 		.name = "mpll2_div",
+diff --git a/drivers/clk/meson/meson8b.c b/drivers/clk/meson/meson8b.c
+index b7417ac262d3..5011768c0f4e 100644
+--- a/drivers/clk/meson/meson8b.c
++++ b/drivers/clk/meson/meson8b.c
+@@ -492,7 +492,6 @@ static struct clk_regmap meson8b_mpll0_div = {
+ 			.shift   = 25,
+ 			.width   = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+ 		.name = "mpll0_div",
+@@ -537,7 +536,6 @@ static struct clk_regmap meson8b_mpll1_div = {
+ 			.shift   = 16,
+ 			.width   = 9,
+ 		},
+-		.lock = &meson_clk_lock,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+ 		.name = "mpll1_div",
+@@ -582,7 +580,6 @@ static struct clk_regmap meson8b_mpll2_div = {
+ 			.shift   = 16,
+ 			.width   = 9,
+ 		},
+-		.lock = &meson_clk_lock,
+ 	},
+ 	.hw.init = &(struct clk_init_data){
+ 		.name = "mpll2_div",
+diff --git a/drivers/clk/meson/s4-pll.c b/drivers/clk/meson/s4-pll.c
+index 9697f6577e06..d8e621e79428 100644
+--- a/drivers/clk/meson/s4-pll.c
++++ b/drivers/clk/meson/s4-pll.c
+@@ -17,8 +17,6 @@
+ #include "meson-clkc-utils.h"
+ #include <dt-bindings/clock/amlogic,s4-pll-clkc.h>
+ 
+-static DEFINE_SPINLOCK(meson_clk_lock);
+-
+ /*
+  * These clock are a fixed value (fixed_pll is 2GHz) that is initialized by ROMcode.
+  * The chip was changed fixed pll for security reasons. Fixed PLL registers are not writable
+@@ -547,7 +545,6 @@ static struct clk_regmap s4_mpll0_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.init_regs = s4_mpll0_init_regs,
+ 		.init_count = ARRAY_SIZE(s4_mpll0_init_regs),
+ 	},
+@@ -601,7 +598,6 @@ static struct clk_regmap s4_mpll1_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.init_regs = s4_mpll1_init_regs,
+ 		.init_count = ARRAY_SIZE(s4_mpll1_init_regs),
+ 	},
+@@ -655,7 +651,6 @@ static struct clk_regmap s4_mpll2_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.init_regs = s4_mpll2_init_regs,
+ 		.init_count = ARRAY_SIZE(s4_mpll2_init_regs),
+ 	},
+@@ -709,7 +704,6 @@ static struct clk_regmap s4_mpll3_div = {
+ 			.shift   = 29,
+ 			.width	 = 1,
+ 		},
+-		.lock = &meson_clk_lock,
+ 		.init_regs = s4_mpll3_init_regs,
+ 		.init_count = ARRAY_SIZE(s4_mpll3_init_regs),
+ 	},
 
 ---
-base-commit: 2eee835eca960c9d4119279804214b7a1ed5d156
-change-id: 20240925-statx-null-path-user-c0c4ebbdf21c
-prerequisite-change-id: 20240821-statx-null-path-531c0775bba4:v5
-prerequisite-patch-id: cf313d4d0660fa972ce419167e3847722c3481d3
+base-commit: 0ef513560b53d499c824b77220c537eafe1df90d
+change-id: 20240918-mpll_spinlock-4b9b55c44fd5
 
 Best regards,
 -- 
-Miao Wang <shankerwangmiao@gmail.com>
+Chuan Liu <chuan.liu@amlogic.com>
 
