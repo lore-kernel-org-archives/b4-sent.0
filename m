@@ -1,312 +1,207 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Wed, 25 Sep 2024 18:08:28 +0800
-Subject: [PATCH v2] clk: meson: mpll: Delete a useless spinlock from the
- MPLL
+From: Daniel Gomez <da.gomez@samsung.com>
+Date: Wed, 25 Sep 2024 12:49:00 +0200
+Subject: [PATCH v3] drm/xe: xe_gen_wa_oob: replace
+ program_invocation_short_name
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240925-mpll_spinlock-v2-1-8f9b73588ec1@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIABvh82YC/13MSwrDIBSF4a2EO67FiJLaUfcRQlFjkkt9BC3SE
- rL32tBRh/+B822QbUKb4dpskGzBjDHUYKcGzKLCbAmOtYFRxqlsL8Svzt3zisFF8yBcSy2E4Xw
- aBdTPmuyEr8Prh9oL5mdM74Mv7Xf9SYz+SaUllAjGpZKqs0x3N+VdnNGcTfQw7Pv+AQaGveasA
- AAA
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727258930; l=8347;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=ZyPnj+RyKrSajBhQmyfJU1szWyHwl1WcQqsqZnpTU7o=;
- b=U/+tnxrfGff37ZUf7sYlp/cNh53Yt2f8WNnAnhJ4kn7XfzEjnQhjRRCLExzt4S4f2YPnJf5bH
- NG1ejpqmzuEDkAaX4lW5Dd2Via7P1aOkswd4UDgyix31p4VpDTuFPsl
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240925-macos-build-support-v3-1-233dda880e60@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAJzq82YC/33PwWrEIBQF0F8JrmvQaKIJpcx/lC6e+pKRTmKqS
+ egwzL/XZCilULq8gufdeyMJo8dEuuJGIm4++TDlIJ4KYs8wDUi9y5lUrJJMM0VHsCFRs/qLo2m
+ d5xAX2lpgTilwhiuSf84Re/95qK9vOZ99WkK8Hkc2vr/+722cMiqt4w6drptWnhKMaZ2G0oaR7
+ OJW/Sgta/5WqqywxmDfS6611L+V+6NoxI81r14ebcmIKcGxuiuev3muqlbIkguutGCU53MJzj6
+ G6+kd44SXMsThZV9uICHN/OiXrsC+lrWxTEBTS6EtGNTKoOGmBV4b1vfWNGAxd7l/AQmlimyJA
+ QAA
+X-Change-ID: 20240807-macos-build-support-9ca0d77adb17
+To: Lucas De Marchi <lucas.demarchi@intel.com>, 
+ =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
+ Rodrigo Vivi <rodrigo.vivi@intel.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Nathan Chancellor <nathan@kernel.org>, 
+ Nick Desaulniers <ndesaulniers@google.com>, 
+ Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>
+Cc: Masahiro Yamada <masahiroy@kernel.org>, intel-xe@lists.freedesktop.org, 
+ dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ llvm@lists.linux.dev, Finn Behrens <me@kloenk.dev>, 
+ "Daniel Gomez (Samsung)" <d+samsung@kruces.com>, gost.dev@samsung.com, 
+ Nick Desaulniers <nick.desaulniers@gmail.com>, 
+ Klaus Jensen <k.jensen@samsung.com>, Jeff Xie <xiehuan09@gmail.com>, 
+ Barry Song <baohua@kernel.org>, Daniel Gomez <da.gomez@samsung.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727261354; l=7033;
+ i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
+ bh=4fIjzJpNMXdpRQVn4dyBriGnGibGkiKPfvdpbwf8+L8=;
+ b=3lmM0CgemUBgtj+LNeOe3nV81XNjUyBIQ6h7vFtjr0IPrI7x/+3gaFSs6GoihsRKy+t7hZW9N
+ Dl38e5SAEMfDkw70yOQ4cVUtZkVU6Imx/J9waPje2zLFewIi7Iw1usZ
+X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
+ pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
+X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The register corresponding to MPLL does not share the same register
-with other module drivers, so there is no concurrent access to the
-register with other modules drivers. The spinlock defined in struct
-meson_clk_mpll_data is no longer useful.
+program_invocation_short_name() may not be available in other systems.
+Instead, replace it with the argv[0] to pass the executable name and
+make it portable.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Fixes build error when program_invocation_short_name is not available:
+
+drivers/gpu/drm/xe/xe_gen_wa_oob.c:34:3: error: use of
+undeclared identifier 'program_invocation_short_name'    34 |
+program_invocation_short_name);       |                 ^ 1 error
+generated.
+
+Suggested-by: Masahiro Yamada <masahiroy@kernel.org>
+Tested-by: Jeff Xie <xiehuan09@gmail.com>
+Signed-off-by: Daniel Gomez <da.gomez@samsung.com>
 ---
+This patch allows for building the Linux kernel for arm64 in macOS with
+LLVM.
+
+macOS does not provide certain headers that are available in a GNU/Linux
+distribution with development headers installed, usually provided by
+the GNU C Library (glibc) and/or other projects. These missing headers
+are needed as build dependencies. To address this, users need to provide
+these headers manually.
+
+To assist with provisioning and setting up the environment, the Bee
+Headers Project [1][2][3] provides the necessary headers, along with a
+pkg-config file to locate the include directory and an initialization
+script to configure the environment. However, this is optional and users
+can choose to set up their own environments and manually provide the
+required headers. In that case, the project can be used as a reference.
+
+Here’s a quick overview of the setup process using Bee Headers:
+
+Set up a case sensitive volume to fetch Linux and build:
+
+	diskutil apfs addVolume /dev/disk<N> "Case-sensitive APFS" linux
+	
+Install dependencies:
+
+	brew install coreutils findutils gnu-sed gnu-tar grep llvm make pkg-config
+	brew tap bee-headers/bee-headers
+	brew install bee-headers/bee-headers/bee-headers
+
+Initialize the environment with `bee-init` and run it in each new shell:
+
+	source bee-init
+	
+Start build:
+	make LLVM=1 defconfig
+	make LLVM=1 -j$(nproc)
+
+For more details and manual steps, refer to the README [4] of the Bee
+Headers project.
+
+[1] Project: https://github.com/bee-headers
+
+[2] Headers repository: https://github.com/bee-headers/headers.git
+
+[3] Homebrew Tap formula: https://github.com/bee-headers/homebrew-bee-headers.git
+
+[4] https://github.com/bee-headers/homebrew-bee-headers/blob/main/README.md
+---
+Changes in v3:
+- Update drm/xe patch to replace program_invocation_short_name with
+argv[0] instead of using getprogname + ifdef as suggested by Masahiro.
+- Patch merged: "[PATCH v2 1/8] scripts: subarch.include: fix SUBARCH on
+macOS hosts".
+- "file2alias: fix uuid_t definitions for macos" patch is dropped. User
+requires to set up this in the build environment with something like:
+export HOSTCFLAGS="-D_UUID_T -D__GETHOSTUUID_H"
+- Drop documentation patch. Environment setup and headers should now be
+provided by the user. The project Bee Headers can be used to help with
+the steps and documentation.
+	- HOSTCFLAGS should be used to provide the missing headers as well as the
+above defines. Example using Bee Headers:
+export HOSTCFLAGS="$(pkg-config --cflags bee-headers) -D_UUID_T
+-D__GETHOSTUUID_H"
+	- PATH needs to have all tools the kernel build system depends on.
+Something like this:
+	PATH="#{HOMEBREW_PREFIX}/opt/coreutils/libexec/gnubin:$PATH"
+	PATH="#{HOMEBREW_PREFIX}/opt/findutils/libexec/gnubin:$PATH"
+	PATH="#{HOMEBREW_PREFIX}/opt/gawk/libexec/gnubin:$PATH"
+	PATH="#{HOMEBREW_PREFIX}/opt/gnu-sed/libexec/gnubin:$PATH"
+	PATH="#{HOMEBREW_PREFIX}/opt/gnu-tar/libexec/gnubin:$PATH"
+	PATH="#{HOMEBREW_PREFIX}/opt/grep/libexec/gnubin:$PATH"
+	PATH="#{HOMEBREW_PREFIX}/opt/make/libexec/gnubin:$PATH"
+	PATH="#{HOMEBREW_PREFIX}/opt/llvm/bin:$PATH"
+- Drop patches below as they've been replaced by a new 2nd version [8]:
+	selinux: move genheaders to security/selinux/
+	selinux: do not include <linux/*.h> headers from host programs
+[8] Subject: [PATCH v2 1/2] selinux: do not include <linux/*.h> headers from host programs
+https://lore.kernel.org/all/20240906172934.1317830-1-masahiroy@kernel.org/#t
+Note: This has been specified as dependency with b4 and message-id in
+the cover letter.
+- Link to v2: https://lore.kernel.org/r/20240906-macos-build-support-v2-0-06beff418848@samsung.com
+
 Changes in v2:
-- Squeeze into a patch.
-- Modifying commit Information.
-- Link to v1: https://lore.kernel.org/r/20240920-mpll_spinlock-v1-0-5249a9a7e2b7@amlogic.com
+- Add documentation and set this 'feature' as experimental.
+- Update cover letter.
+- Drop unnecessary changes. Patches removed:
+	- kbuild: add header_install dependency to scripts
+	- include: add endian.h support
+	- include: add elf.h support
+- Update Makefiles to find Bee Headers with pkg-config.
+- Update file2alias to solve uuid_t conflicts inside Makefile as
+suggested by Nicolas Schier.
+- Adapt xe_gen_wa_oob to solve getprogname()/
+program_invocation_short_name in runtime. as suggested by Lucas De
+Marchi.
+- Remove linux/version.h in accessibility/speakup as suggested by
+Masahiro Yamada.
+- Replace selinux patches with new Masahiro Yamada's patches:
+	Message-id: 20240809122007.1220219-1-masahiroy@kernel.org
+	Link: https://lore.kernel.org/all/20240809122007.1220219-1-masahiroy@kernel.org/
+- Replace tty/vt with new Masahiro Yamada's patch:
+	Message-id: 20240809160853.1269466-1-masahiroy@kernel.org
+	Link: https://lore.kernel.org/all/20240809160853.1269466-1-masahiroy@kernel.org/
+	(Already merged in the linux-next tag used)
+- Replace scripts/kallsyms patch with Masahiro Yamada's patch:
+	Message-id: 20240807181148.660157-1-masahiroy@kernel.org
+	Link: https://lore.kernel.org/all/20240807181148.660157-1-masahiroy@kernel.org/
+	(Already merged in the linux-next tag used)
+- Link to v1: https://lore.kernel.org/r/20240807-macos-build-support-v1-0-4cd1ded85694@samsung.com
 ---
- drivers/clk/meson/axg.c      |  6 ------
- drivers/clk/meson/clk-mpll.c | 11 -----------
- drivers/clk/meson/clk-mpll.h |  1 -
- drivers/clk/meson/g12a.c     |  6 ------
- drivers/clk/meson/gxbb.c     |  6 ------
- drivers/clk/meson/meson8b.c  |  3 ---
- drivers/clk/meson/s4-pll.c   |  6 ------
- 7 files changed, 39 deletions(-)
+ drivers/gpu/drm/xe/xe_gen_wa_oob.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/clk/meson/axg.c b/drivers/clk/meson/axg.c
-index 757c7a28c53d..1b08daf579b2 100644
---- a/drivers/clk/meson/axg.c
-+++ b/drivers/clk/meson/axg.c
-@@ -23,8 +23,6 @@
+diff --git a/drivers/gpu/drm/xe/xe_gen_wa_oob.c b/drivers/gpu/drm/xe/xe_gen_wa_oob.c
+index 904cf47925aa1d5bc37983af83232d5e4697c49e..ed9183599e31cc9d76da3f22c9fb3884384a49bc 100644
+--- a/drivers/gpu/drm/xe/xe_gen_wa_oob.c
++++ b/drivers/gpu/drm/xe/xe_gen_wa_oob.c
+@@ -28,10 +28,10 @@
+ 	"\n" \
+ 	"#endif\n"
  
- #include <dt-bindings/clock/axg-clkc.h>
- 
--static DEFINE_SPINLOCK(meson_clk_lock);
--
- static struct clk_regmap axg_fixed_pll_dco = {
- 	.data = &(struct meson_clk_pll_data){
- 		.en = {
-@@ -506,7 +504,6 @@ static struct clk_regmap axg_mpll0_div = {
- 			.shift   = 0,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
- 	},
- 	.hw.init = &(struct clk_init_data){
-@@ -557,7 +554,6 @@ static struct clk_regmap axg_mpll1_div = {
- 			.shift   = 1,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
- 	},
- 	.hw.init = &(struct clk_init_data){
-@@ -613,7 +609,6 @@ static struct clk_regmap axg_mpll2_div = {
- 			.shift   = 2,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
- 	},
- 	.hw.init = &(struct clk_init_data){
-@@ -664,7 +659,6 @@ static struct clk_regmap axg_mpll3_div = {
- 			.shift   = 3,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.flags = CLK_MESON_MPLL_ROUND_CLOSEST,
- 	},
- 	.hw.init = &(struct clk_init_data){
-diff --git a/drivers/clk/meson/clk-mpll.c b/drivers/clk/meson/clk-mpll.c
-index f639d56f0fd3..aa9abd06ae65 100644
---- a/drivers/clk/meson/clk-mpll.c
-+++ b/drivers/clk/meson/clk-mpll.c
-@@ -112,26 +112,15 @@ static int mpll_set_rate(struct clk_hw *hw,
- 	struct clk_regmap *clk = to_clk_regmap(hw);
- 	struct meson_clk_mpll_data *mpll = meson_clk_mpll_data(clk);
- 	unsigned int sdm, n2;
--	unsigned long flags = 0;
- 
- 	params_from_rate(rate, parent_rate, &sdm, &n2, mpll->flags);
- 
--	if (mpll->lock)
--		spin_lock_irqsave(mpll->lock, flags);
--	else
--		__acquire(mpll->lock);
--
- 	/* Set the fractional part */
- 	meson_parm_write(clk->map, &mpll->sdm, sdm);
- 
- 	/* Set the integer divider part */
- 	meson_parm_write(clk->map, &mpll->n2, n2);
- 
--	if (mpll->lock)
--		spin_unlock_irqrestore(mpll->lock, flags);
--	else
--		__release(mpll->lock);
--
- 	return 0;
+-static void print_usage(FILE *f)
++static void print_usage(FILE *f, const char *progname)
+ {
+ 	fprintf(f, "usage: %s <input-rule-file> <generated-c-source-file> <generated-c-header-file>\n",
+-		program_invocation_short_name);
++		progname);
  }
  
-diff --git a/drivers/clk/meson/clk-mpll.h b/drivers/clk/meson/clk-mpll.h
-index a991d568c43a..4ffd3aeef799 100644
---- a/drivers/clk/meson/clk-mpll.h
-+++ b/drivers/clk/meson/clk-mpll.h
-@@ -20,7 +20,6 @@ struct meson_clk_mpll_data {
- 	struct parm misc;
- 	const struct reg_sequence *init_regs;
- 	unsigned int init_count;
--	spinlock_t *lock;
- 	u8 flags;
- };
+ static void print_parse_error(const char *err_msg, const char *line,
+@@ -144,7 +144,7 @@ int main(int argc, const char *argv[])
  
-diff --git a/drivers/clk/meson/g12a.c b/drivers/clk/meson/g12a.c
-index 02dda57105b1..d3539fe9f7af 100644
---- a/drivers/clk/meson/g12a.c
-+++ b/drivers/clk/meson/g12a.c
-@@ -28,8 +28,6 @@
+ 	if (argc < 3) {
+ 		fprintf(stderr, "ERROR: wrong arguments\n");
+-		print_usage(stderr);
++		print_usage(stderr, argv[0]);
+ 		return 1;
+ 	}
  
- #include <dt-bindings/clock/g12a-clkc.h>
- 
--static DEFINE_SPINLOCK(meson_clk_lock);
--
- static struct clk_regmap g12a_fixed_pll_dco = {
- 	.data = &(struct meson_clk_pll_data){
- 		.en = {
-@@ -2225,7 +2223,6 @@ static struct clk_regmap g12a_mpll0_div = {
- 			.shift   = 29,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.init_regs = g12a_mpll0_init_regs,
- 		.init_count = ARRAY_SIZE(g12a_mpll0_init_regs),
- 	},
-@@ -2279,7 +2276,6 @@ static struct clk_regmap g12a_mpll1_div = {
- 			.shift   = 29,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.init_regs = g12a_mpll1_init_regs,
- 		.init_count = ARRAY_SIZE(g12a_mpll1_init_regs),
- 	},
-@@ -2333,7 +2329,6 @@ static struct clk_regmap g12a_mpll2_div = {
- 			.shift   = 29,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.init_regs = g12a_mpll2_init_regs,
- 		.init_count = ARRAY_SIZE(g12a_mpll2_init_regs),
- 	},
-@@ -2387,7 +2382,6 @@ static struct clk_regmap g12a_mpll3_div = {
- 			.shift   = 29,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.init_regs = g12a_mpll3_init_regs,
- 		.init_count = ARRAY_SIZE(g12a_mpll3_init_regs),
- 	},
-diff --git a/drivers/clk/meson/gxbb.c b/drivers/clk/meson/gxbb.c
-index f071faad1ebb..262c318edbd5 100644
---- a/drivers/clk/meson/gxbb.c
-+++ b/drivers/clk/meson/gxbb.c
-@@ -19,8 +19,6 @@
- 
- #include <dt-bindings/clock/gxbb-clkc.h>
- 
--static DEFINE_SPINLOCK(meson_clk_lock);
--
- static const struct pll_params_table gxbb_gp0_pll_params_table[] = {
- 	PLL_PARAMS(32, 1),
- 	PLL_PARAMS(33, 1),
-@@ -731,7 +729,6 @@ static struct clk_regmap gxbb_mpll0_div = {
- 			.shift   = 16,
- 			.width   = 9,
- 		},
--		.lock = &meson_clk_lock,
- 	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll0_div",
-@@ -760,7 +757,6 @@ static struct clk_regmap gxl_mpll0_div = {
- 			.shift   = 16,
- 			.width   = 9,
- 		},
--		.lock = &meson_clk_lock,
- 	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll0_div",
-@@ -812,7 +808,6 @@ static struct clk_regmap gxbb_mpll1_div = {
- 			.shift   = 16,
- 			.width   = 9,
- 		},
--		.lock = &meson_clk_lock,
- 	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll1_div",
-@@ -855,7 +850,6 @@ static struct clk_regmap gxbb_mpll2_div = {
- 			.shift   = 16,
- 			.width   = 9,
- 		},
--		.lock = &meson_clk_lock,
- 	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll2_div",
-diff --git a/drivers/clk/meson/meson8b.c b/drivers/clk/meson/meson8b.c
-index b7417ac262d3..5011768c0f4e 100644
---- a/drivers/clk/meson/meson8b.c
-+++ b/drivers/clk/meson/meson8b.c
-@@ -492,7 +492,6 @@ static struct clk_regmap meson8b_mpll0_div = {
- 			.shift   = 25,
- 			.width   = 1,
- 		},
--		.lock = &meson_clk_lock,
- 	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll0_div",
-@@ -537,7 +536,6 @@ static struct clk_regmap meson8b_mpll1_div = {
- 			.shift   = 16,
- 			.width   = 9,
- 		},
--		.lock = &meson_clk_lock,
- 	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll1_div",
-@@ -582,7 +580,6 @@ static struct clk_regmap meson8b_mpll2_div = {
- 			.shift   = 16,
- 			.width   = 9,
- 		},
--		.lock = &meson_clk_lock,
- 	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "mpll2_div",
-diff --git a/drivers/clk/meson/s4-pll.c b/drivers/clk/meson/s4-pll.c
-index 9697f6577e06..d8e621e79428 100644
---- a/drivers/clk/meson/s4-pll.c
-+++ b/drivers/clk/meson/s4-pll.c
-@@ -17,8 +17,6 @@
- #include "meson-clkc-utils.h"
- #include <dt-bindings/clock/amlogic,s4-pll-clkc.h>
- 
--static DEFINE_SPINLOCK(meson_clk_lock);
--
- /*
-  * These clock are a fixed value (fixed_pll is 2GHz) that is initialized by ROMcode.
-  * The chip was changed fixed pll for security reasons. Fixed PLL registers are not writable
-@@ -547,7 +545,6 @@ static struct clk_regmap s4_mpll0_div = {
- 			.shift   = 29,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.init_regs = s4_mpll0_init_regs,
- 		.init_count = ARRAY_SIZE(s4_mpll0_init_regs),
- 	},
-@@ -601,7 +598,6 @@ static struct clk_regmap s4_mpll1_div = {
- 			.shift   = 29,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.init_regs = s4_mpll1_init_regs,
- 		.init_count = ARRAY_SIZE(s4_mpll1_init_regs),
- 	},
-@@ -655,7 +651,6 @@ static struct clk_regmap s4_mpll2_div = {
- 			.shift   = 29,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.init_regs = s4_mpll2_init_regs,
- 		.init_count = ARRAY_SIZE(s4_mpll2_init_regs),
- 	},
-@@ -709,7 +704,6 @@ static struct clk_regmap s4_mpll3_div = {
- 			.shift   = 29,
- 			.width	 = 1,
- 		},
--		.lock = &meson_clk_lock,
- 		.init_regs = s4_mpll3_init_regs,
- 		.init_count = ARRAY_SIZE(s4_mpll3_init_regs),
- 	},
 
 ---
-base-commit: 0ef513560b53d499c824b77220c537eafe1df90d
-change-id: 20240918-mpll_spinlock-4b9b55c44fd5
+base-commit: ef545bc03a65438cabe87beb1b9a15b0ffcb6ace
+change-id: 20240807-macos-build-support-9ca0d77adb17
+prerequisite-message-id: <20240906172934.1317830-1-masahiroy@kernel.org>
+prerequisite-patch-id: 5d49a803cc75a57174d16745222d1602809aeb96
+prerequisite-patch-id: b2da334443fa81626d742053ca5005074e9e1355
 
 Best regards,
 -- 
-Chuan Liu <chuan.liu@amlogic.com>
+Daniel Gomez <da.gomez@samsung.com>
 
