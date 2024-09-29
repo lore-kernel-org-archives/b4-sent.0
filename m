@@ -1,59 +1,78 @@
 From: Eric Long <i@hack3r.moe>
-Subject: [PATCH bpf-next 0/2] BPF static linker: fix failure when
- encountering duplicate extern functions
-Date: Sun, 29 Sep 2024 16:47:59 +0800
-Message-Id: <20240929-libbpf-dup-extern-funcs-v1-0-df15fbd6525b@hack3r.moe>
+Date: Sun, 29 Sep 2024 16:48:00 +0800
+Subject: [PATCH bpf-next 1/2] libbpf: do not resolve size on duplicate
+ FUNCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAD8U+WYC/x2MQQqEMAwAvyI5G7BBUPcr4sHaVAOSLa2KIP7d6
- nFgZi5IHIUT/IoLIh+S5K8ZTFnAtIw6M4rLDFRRXXXU4SrWBo9uD8jnxlHR7zolbBvjazs6MkS
- Q6xDZy/mde3gLzToM9/0A4zpswnMAAAA=
-X-Change-ID: 20240929-libbpf-dup-extern-funcs-871f4bad2122
+Message-Id: <20240929-libbpf-dup-extern-funcs-v1-1-df15fbd6525b@hack3r.moe>
+References: <20240929-libbpf-dup-extern-funcs-v1-0-df15fbd6525b@hack3r.moe>
+In-Reply-To: <20240929-libbpf-dup-extern-funcs-v1-0-df15fbd6525b@hack3r.moe>
 To: bpf@vger.kernel.org
 Cc: Andrii Nakryiko <andrii@kernel.org>, 
  Alexei Starovoitov <ast@kernel.org>, netdev@vger.kernel.org, 
  Eric Long <i@hack3r.moe>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1327; i=i@hack3r.moe;
- h=from:subject:message-id; bh=SY9yDh1j+sDu6ngzI+1uKP6IbvRduNrKEKOhmrxEIuo=;
- b=owGbwMvMwCUWYb/agfVY0D7G02pJDGk/RZzE6515jy8JWXfJ48X8E1/sQ99mTtWRVfy2qM6mI
- bRmf2tbRwkLgxgXg6yYIsuWw3/UEvS7Ny3hnlMOM4eVCWQIAxenAEwk/RUjwwW7qQrR+YdPXJfc
- OPvv1LmXUw6a+LksZYguL5P8zlZeU8Lw4/iGaZkpcw4fmZihk5wqeVXSqiGAlefqU/tELru6ReI
- 8AA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1893; i=i@hack3r.moe;
+ h=from:subject:message-id; bh=cVkc6Hjsq020lv+rt+oCh7q9xtjmEGtFpGZ2Rx2LwNU=;
+ b=owGbwMvMwCUWYb/agfVY0D7G02pJDGk/RZx3P4hjjK4QvqBjePHy6uavUz+94N/Szfdci11h+
+ v8JvnrfOkpZGMS4GGTFFFm2HP6jlqDfvWkJ95xymDmsTCBDGLg4BWAi2QIM/zMbfRoOy3Um+y13
+ +5gYFnbO3O+3VW+emeLigsvhOy9o3mf4n3L2wfHr8/Pd2+asO+tfquArXMXs/zvq7LMJ/xO6Q64
+ mcAMA
 X-Developer-Key: i=i@hack3r.moe; a=openpgp;
  fpr=3A7A1F5A7257780C45A9A147E1487564916D3DF5
 X-Endpoint-Received: by B4 Relay for i@hack3r.moe/default with auth_id=225
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, if `bpftool gen object` tries to link two objects that
-contains the same extern function prototype, libbpf will try to get
-their (non-existent) size by calling bpf__resolve_size like extern
-variables and fail with:
+FUNCs do not have sizes, thus currently btf__resolve_size will fail
+with -EINVAL. Add conditions so that we only update size when the BTF
+object is not function or function prototype.
 
-	libbpf: global 'whatever': failed to resolve size of underlying type: -22
-
-This should not be the case, and this series adds conditions to update
-size only when the BTF kind is not function.
-
-Fixes: a46349227cd8 ("libbpf: Add linker extern resolution support for functions and global variables")
 Signed-off-by: Eric Long <i@hack3r.moe>
 ---
-Eric Long (2):
-      libbpf: do not resolve size on duplicate FUNCs
-      selftests/bpf: make sure linking objects with duplicate extern functions doesn't fail
+ tools/lib/bpf/linker.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
 
- tools/lib/bpf/linker.c                             | 24 +++++++++++++---------
- tools/testing/selftests/bpf/Makefile               |  3 ++-
- .../selftests/bpf/prog_tests/dup_extern_funcs.c    |  9 ++++++++
- .../selftests/bpf/progs/dup_extern_funcs1.c        | 20 ++++++++++++++++++
- .../selftests/bpf/progs/dup_extern_funcs2.c        | 18 ++++++++++++++++
- 5 files changed, 63 insertions(+), 11 deletions(-)
----
-base-commit: 93eeaab4563cc7fc0309bc1c4d301139762bbd60
-change-id: 20240929-libbpf-dup-extern-funcs-871f4bad2122
+diff --git a/tools/lib/bpf/linker.c b/tools/lib/bpf/linker.c
+index 81dbbdd79a7c65a4b048b85e1dba99cb5f7cb56b..a2a7075038f898053b468a8256b93460edc29de6 100644
+--- a/tools/lib/bpf/linker.c
++++ b/tools/lib/bpf/linker.c
+@@ -2449,20 +2449,24 @@ static int linker_append_btf(struct bpf_linker *linker, struct src_obj *obj)
+ 			 * the same extern VARs/FUNCs.
+ 			 */
+ 			if (glob_sym && glob_sym->var_idx >= 0) {
++				const struct btf_type *t = btf__type_by_id(linker->btf, glob_sym->underlying_btf_id);
++				int kind = btf_kind(t);
+ 				__s64 sz;
+ 
+ 				dst_var = &dst_sec->sec_vars[glob_sym->var_idx];
+-				/* Because underlying BTF type might have
+-				 * changed, so might its size have changed, so
+-				 * re-calculate and update it in sec_var.
+-				 */
+-				sz = btf__resolve_size(linker->btf, glob_sym->underlying_btf_id);
+-				if (sz < 0) {
+-					pr_warn("global '%s': failed to resolve size of underlying type: %d\n",
+-						name, (int)sz);
+-					return -EINVAL;
++				if (kind != BTF_KIND_FUNC && kind != BTF_KIND_FUNC_PROTO) {
++					/* Because underlying BTF type might have
++					 * changed, so might its size have changed, so
++					 * re-calculate and update it in sec_var.
++					 */
++					sz = btf__resolve_size(linker->btf, glob_sym->underlying_btf_id);
++					if (sz < 0) {
++						pr_warn("global '%s': failed to resolve size of underlying type: %d\n",
++							name, (int)sz);
++						return -EINVAL;
++					}
++					dst_var->size = sz;
+ 				}
+-				dst_var->size = sz;
+ 				continue;
+ 			}
+ 
 
-Best regards,
 -- 
-Eric Long <i@hack3r.moe>
+2.46.2
 
