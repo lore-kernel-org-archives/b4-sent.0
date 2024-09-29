@@ -1,85 +1,88 @@
-From: Levi Zim <rsworktech@outlook.com>
-Date: Fri, 27 Sep 2024 14:52:29 +0800
-Subject: [PATCH] dup.2: Add ENOMEM to ERRORS
+From: Chuan Liu <chuan.liu@amlogic.com>
+Subject: [PATCH 0/2] clk: Fix issues related to CLK_IGNORE_UNUSED failures
+ and amlogic glitch free mux
+Date: Sun, 29 Sep 2024 14:10:04 +0800
+Message-Id: <20240929-fix_glitch_free-v1-0-22f9c36b7edf@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240927-dup2-v1-1-12ecc79167d5@outlook.com>
-X-B4-Tracking: v=1; b=H4sIACxW9mYC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDSyNz3ZTSAiNdcyPzVEsLs1RDSwMDJaDSgqLUtMwKsDHRsbW1ACQQ8Il
- WAAAA
-X-Change-ID: 20240927-dup2-727e986e1900
-To: linux-man@vger.kernel.org
-Cc: Linux API <linux-api@vger.kernel.org>, 
- Levi Zim <rsworktech@outlook.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1277;
- i=rsworktech@outlook.com; h=from:subject:message-id;
- bh=WlIAO1mmcIQbRV8l8FS+BAcsh1rqVPTGYW1EOb7BydQ=;
- b=owEBbQKS/ZANAwAIAW87mNQvxsnYAcsmYgBm9lZCu+Ky5T0AQ2EUB/Q8m+ikUppvTf5hC86fT
- GAVS9GjICCJAjMEAAEIAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCZvZWQgAKCRBvO5jUL8bJ
- 2COJD/0fLyAlWF+2IOOQeGVFF8Gn9EbRqiotZGkyQFbEAPbPPrpY6o704u7v22jXcLYfwwswF2s
- wZ5dJKIv67HYW57AOBBQNWhPSzygMHb4BD3BxfPFSy9nGsMHCKZ0l8oiYENa8zY4sh2j+iq6fjJ
- JQQyDlfSR5vn4BiZdcBnwJc+tqpRIWnKNWzu2ORgpQLGmM856G6f8tgWXg/dOYaLnBffKzXi8fF
- 230c9f6OU4Gg98ctngfvn9wsBdEMrCqLCYdn5frkybHk0MMwie0XvVlpgd9UNu8ixBz1ikGcqrU
- dFAO9sR/8L4rDE3axKl+uUcN4PXfM9hPe5RPkuMYHiF9YX/+KuyEsNjbN9CY+RyBRL5cKmmILHz
- sl3wo4SyxqSduTJw36ieGzWB4uUPX+YyJRVOfki0N4+kCTomlzEZ8HIHwf+Ts/7WG10SgPKBTk6
- nahzQlPkWNS3JiXRhad4WOYY2B30Gnqic4JbhsCNaWsYmdMzll9Dr5rOVNgkiniQbb1MqVtIeW2
- JmtOC7cGzhs7Hj5fgvO9T55LqSvfucSQKagnME8H0ROzcEaupt+qHJhPQJdHDQa7yv5SqXGVzEr
- mSOjgwa2W38hSPkTBlE2FMikatjQZISNzh3WKba6Mj4X7FSFauCTB+IBR4Stoi8+Tgy3CfDy+Di
- RWR0GmzKy2gTk1g==
-X-Developer-Key: i=rsworktech@outlook.com; a=openpgp;
- fpr=17AADD6726DDC58B8EE5881757670CCFA42CCF0A
-X-Endpoint-Received: by B4 Relay for rsworktech@outlook.com/default with auth_id=219
+X-B4-Tracking: v=1; b=H4sIADzv+GYC/x2MQQqAIBAAvxJ7TtCtg/aVCAlbdSEsNCII/550H
+ JiZFwplpgJT90KmmwsfqYHqO3BxTYEEb40BJY7SoBGeHxt2vly0PhMJNNJpbXBwg4JWnZma8h/
+ npdYP3BY0HWEAAAA=
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-amlogic@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ Chuan Liu <chuan.liu@amlogic.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727590225; l=2225;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=VuF+6B8clsCESzRY45mjWVDnp0roeP9EanMgzGgHiWE=;
+ b=uv2V//H+abP/S3Lw1qAz+VmyJFzrQupRRNbZVAZLVVbSOXL4PGoneT4nrv9LXoR4p9o9RDGqB
+ VeQpA48RrjADXJl+sHwiniuTizO/DMQ0PwSjqDVVZVEBJLoBCahwUM5
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-dup2 could return ENOMEM under extreme condition.
-For example, when sysctl fs.nr_open=2147483584, and RLIMIT_NOFILE is also
-2147483584. The following program fails with ENOMEM:
+If CLK_OPS_PARENT_ENABLE is configured for clock,
+clk_core_disable_unprepare() is called in clk_disable_unused_subtree().
+Even clocks that are configured with CLK_IGNORE_UNUSED are disabled,
+resulting in the failure of CLK_IGNORE_UNUSED.
 
-int main(){
-  int ret = dup2(0, 2000000000);
-  if (ret < 0) {
-    perror("dup2");
-    return 1;
-  }
-  return 0;
-}
+To ensure that amlogic glitch free mux can switch clock channels
+properly, add flag CLK_OPS_PARENT_ENABLE to glitch free mux. The issue
+that CLK_OPS_PARENT_ENABLE in CCF causes CLK_IGNORE_UNUSED to fail is
+also exposed.
 
-This ENOMEM comes from an allocation error here:
-https://elixir.bootlin.com/linux/v6.1/source/mm/util.c#L596
+glitch free mux channel switchover failure issue(Test vpu_clk on S4):
+step 1:
+$ cat /sys/kernel/debug/clk/vpu/clk_parent 
+vpu_0
+$ cat /sys/kernel/debug/clk/vpu_0/clk_rate 
+399999994
+$ cat /sys/kernel/debug/clk/vpu_1/clk_rate 
+666666656
+$ echo 1 > /sys/kernel/debug/clk/vpu/clk_prepare_enable 
+$ cat /sys/kernel/debug/meson-clk-msr/clks/cts_vpu_clk
+399987500       +/-12500Hz
 
-ENOMEM is already documented for open(2).
+step 2:
+$ echo 0 > /sys/kernel/debug/clk/vpu/clk_prepare_enable 
+$ echo 1 > /sys/kernel/debug/clk/vpu/clk_parent 
+$ cat /sys/kernel/debug/clk/vpu/clk_parent 
+vpu_1
+$ cat /sys/kernel/debug/clk/vpu/clk_rate 
+666666656
+$ echo 1 > /sys/kernel/debug/clk/vpu/clk_prepare_enable 
+$ cat /sys/kernel/debug/meson-clk-msr/clks/cts_vpu_clk
+0       +/-3125Hz
 
-Signed-off-by: Levi Zim <rsworktech@outlook.com>
+In step2, vpu_0 is disabled, and the vpu is not switched to vpu_1. At
+this time, the vpu is still connected to vpu_0 and vpu_0 is disabled at
+this time, resulting in the clk-measure not measuring the clock.
+
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
-While experimenting with fs.nr_open sysctl and RLIMIT_NOFILE,
-I noticed that dup(2) could return an undocumented errno ENOMEM.
-This patch add ENOMEM to ERRORS in dup.2.
----
- man/man2/dup.2 | 3 +++
- 1 file changed, 3 insertions(+)
+Chuan Liu (2):
+      clk: Fix the CLK_IGNORE_UNUSED failure issue
+      clk: meson: Fix glitch free mux related issues
 
-diff --git a/man/man2/dup.2 b/man/man2/dup.2
-index ee964a827ca062d90419c7d39f457de270d42ca3..719f0ae9e78165733cbe607bbf8a803a5d0943b4 100644
---- a/man/man2/dup.2
-+++ b/man/man2/dup.2
-@@ -197,6 +197,9 @@ .SH ERRORS
- .B RLIMIT_NOFILE
- in
- .BR getrlimit (2)).
-+.TP
-+.B ENOMEM
-+Insufficient kernel memory was available.
- .SH STANDARDS
- .TP
- .BR dup ()
-
+ drivers/clk/clk.c                  | 67 ++++++++++++++++++++++++++++++++++++--
+ drivers/clk/meson/a1-peripherals.c | 12 +++----
+ drivers/clk/meson/axg.c            | 16 +++++----
+ drivers/clk/meson/c3-peripherals.c |  6 ++--
+ drivers/clk/meson/g12a.c           | 18 ++++++----
+ drivers/clk/meson/gxbb.c           | 18 ++++++----
+ drivers/clk/meson/s4-peripherals.c | 32 +++++++++---------
+ 7 files changed, 122 insertions(+), 47 deletions(-)
 ---
-base-commit: 1e2d36deb2de1dbaf7084bb7dc3cb2c170cce852
-change-id: 20240927-dup2-727e986e1900
+base-commit: e736da1956cf0880a02ec5023f3487eea7611b5f
+change-id: 20240929-fix_glitch_free-290c88923c31
 
 Best regards,
 -- 
-Levi Zim <rsworktech@outlook.com>
+Chuan Liu <chuan.liu@amlogic.com>
 
