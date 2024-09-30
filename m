@@ -1,129 +1,53 @@
-From: Eric Long <i@hack3r.moe>
-Date: Sun, 29 Sep 2024 17:31:15 +0800
-Subject: [PATCH bpf-next v2 2/2] selftests/bpf: make sure linking objects
- with duplicate extern functions doesn't fail
+From: =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
+Date: Mon, 30 Sep 2024 10:57:40 +0200
+Subject: [PATCH] rtc: Makefile: Replace spaces with tab.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240929-libbpf-dup-extern-funcs-v2-2-0cc81de3f79f@hack3r.moe>
-References: <20240929-libbpf-dup-extern-funcs-v2-0-0cc81de3f79f@hack3r.moe>
-In-Reply-To: <20240929-libbpf-dup-extern-funcs-v2-0-0cc81de3f79f@hack3r.moe>
-To: bpf@vger.kernel.org
-Cc: Andrii Nakryiko <andrii@kernel.org>, 
- Alexei Starovoitov <ast@kernel.org>, netdev@vger.kernel.org, 
- Eric Long <i@hack3r.moe>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3770; i=i@hack3r.moe;
- h=from:subject:message-id; bh=Hww+IY99Jvgbtqt0tYLYI8/UdyT0Cd78O9SVglyM2YM=;
- b=owGbwMvMwCUWYb/agfVY0D7G02pJDGk/5VKnPdIy9koRPHK/2LZgprpRPB/vvSsr2LIk4oRay
- lL0b0l0lLIwiHExyIopsmw5/EctQb970xLuOeUwc1iZQIYwcHEKwERO72Zk+CH0WuWwFVtj+IqX
- jRcW8F2LuWr9JiRVdGfGwz2Skwv36TIyPK35xfsrnzliRrlOXOOcGjYPyZnr/xVGvE6zYf/+YKE
- CAwA=
-X-Developer-Key: i=i@hack3r.moe; a=openpgp;
- fpr=3A7A1F5A7257780C45A9A147E1487564916D3DF5
-X-Endpoint-Received: by B4 Relay for i@hack3r.moe/default with auth_id=225
+Content-Transfer-Encoding: 8bit
+Message-Id: <20240930-rtc-makefile-spaces-v1-1-e936e0a7b02a@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAANo+mYC/x2MSwqDQBAFryK9TsM4Bn9XCS6a8amNX6ZFAuLdM
+ 2RZFFU3GaLCqM1uirjUdN8S5K+MwiTbCNY+MXnn364pHMcz8CozBl3AdkiAsS+Rl1JBirqiVB4
+ x6e//+ume5wfBo0OTZQAAAA==
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>
+Cc: linux-rtc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727686660; l=913;
+ i=gomba007@gmail.com; s=20230706; h=from:subject:message-id;
+ bh=DO0jltegohA+gSXye9IARyoHoswXbGhgo3i6eJ4aPs0=;
+ b=KsjtGzLRud2lZZRAj3zioqjjGCyJo+4/bzT3bbaLEOXLKcM9aYyqNbGfBnKRAXmsoU2/g2uHX
+ b/y1EG6oNEoA31ZPgW6l15miaDYLqK1FVwJSEW4A84d21Q7Rvj/+io0
+X-Developer-Key: i=gomba007@gmail.com; a=ed25519;
+ pk=iY9MjPCbud82ULS2PQJIq3QwjKyP/Sg730I6T2M8Y5U=
+X-Endpoint-Received: by B4 Relay for gomba007@gmail.com/20230706 with auth_id=60
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Previously when multiple BPF object files referencing the same extern
-function (usually kfunc) are statically linked using `bpftool gen
-object`, libbpf tries to get the nonexistent size of BTF_KIND_FUNC_PROTO
-and fails. This test ensures it is fixed.
+Fix a style error.
 
-Signed-off-by: Eric Long <i@hack3r.moe>
+Signed-off-by: Tóth János <gomba007@gmail.com>
 ---
- tools/testing/selftests/bpf/Makefile                 |  3 ++-
- .../selftests/bpf/prog_tests/dup_extern_funcs.c      |  9 +++++++++
- .../testing/selftests/bpf/progs/dup_extern_funcs1.c  | 20 ++++++++++++++++++++
- .../testing/selftests/bpf/progs/dup_extern_funcs2.c  | 18 ++++++++++++++++++
- 4 files changed, 49 insertions(+), 1 deletion(-)
+ drivers/rtc/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/tools/testing/selftests/bpf/Makefile b/tools/testing/selftests/bpf/Makefile
-index e295e3df5ec6c3c21abe368038514cfb34b42f69..644c4dd6002c691a9cd94ef26ddf51f6dc84e2cc 100644
---- a/tools/testing/selftests/bpf/Makefile
-+++ b/tools/testing/selftests/bpf/Makefile
-@@ -496,7 +496,7 @@ SKEL_BLACKLIST := btf__% test_pinning_invalid.c test_sk_assign.c
- LINKED_SKELS := test_static_linked.skel.h linked_funcs.skel.h		\
- 		linked_vars.skel.h linked_maps.skel.h 			\
- 		test_subskeleton.skel.h test_subskeleton_lib.skel.h	\
--		test_usdt.skel.h
-+		test_usdt.skel.h dup_extern_funcs.skel.h
- 
- LSKELS := fentry_test.c fexit_test.c fexit_sleep.c atomics.c 		\
- 	trace_printk.c trace_vprintk.c map_ptr_kern.c 			\
-@@ -520,6 +520,7 @@ test_usdt.skel.h-deps := test_usdt.bpf.o test_usdt_multispec.bpf.o
- xsk_xdp_progs.skel.h-deps := xsk_xdp_progs.bpf.o
- xdp_hw_metadata.skel.h-deps := xdp_hw_metadata.bpf.o
- xdp_features.skel.h-deps := xdp_features.bpf.o
-+dup_extern_funcs.skel.h-deps := dup_extern_funcs1.bpf.o dup_extern_funcs2.bpf.o
- 
- LINKED_BPF_OBJS := $(foreach skel,$(LINKED_SKELS),$($(skel)-deps))
- LINKED_BPF_SRCS := $(patsubst %.bpf.o,%.c,$(LINKED_BPF_OBJS))
-diff --git a/tools/testing/selftests/bpf/prog_tests/dup_extern_funcs.c b/tools/testing/selftests/bpf/prog_tests/dup_extern_funcs.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..b26f855745b451f7f53e44b27d47a2f659ad1378
---- /dev/null
-+++ b/tools/testing/selftests/bpf/prog_tests/dup_extern_funcs.c
-@@ -0,0 +1,9 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include <test_progs.h>
-+#include "dup_extern_funcs.skel.h"
-+
-+void test_dup_extern_funcs(void)
-+{
-+	RUN_TESTS(dup_extern_funcs);
-+}
-diff --git a/tools/testing/selftests/bpf/progs/dup_extern_funcs1.c b/tools/testing/selftests/bpf/progs/dup_extern_funcs1.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..6850e01d1455c0a2da947ad6d5b1c5dab0187e00
---- /dev/null
-+++ b/tools/testing/selftests/bpf/progs/dup_extern_funcs1.c
-@@ -0,0 +1,20 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include "vmlinux.h"
-+#include <bpf/bpf_helpers.h>
-+#include <bpf/bpf_tracing.h>
-+
-+char _license[] SEC("license") = "GPL";
-+
-+void *bpf_cast_to_kern_ctx(void *obj) __ksym;
-+
-+SEC("tc")
-+int handler1(struct __sk_buff *skb)
-+{
-+	struct sk_buff *skb_kern = bpf_cast_to_kern_ctx(skb);
-+
-+	if (!skb_kern)
-+		return -1;
-+
-+	return 0;
-+}
-diff --git a/tools/testing/selftests/bpf/progs/dup_extern_funcs2.c b/tools/testing/selftests/bpf/progs/dup_extern_funcs2.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..66ba3620274497cc40f8dfbb8d98856d4eab707e
---- /dev/null
-+++ b/tools/testing/selftests/bpf/progs/dup_extern_funcs2.c
-@@ -0,0 +1,18 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include "vmlinux.h"
-+#include <bpf/bpf_helpers.h>
-+#include <bpf/bpf_tracing.h>
-+
-+void *bpf_cast_to_kern_ctx(void *obj) __ksym;
-+
-+SEC("xdp")
-+int handler2(struct xdp_md *xdp)
-+{
-+	struct xdp_buff *xdp_kern = bpf_cast_to_kern_ctx(xdp);
-+
-+	if (!xdp_kern)
-+		return -1;
-+
-+	return 0;
-+}
+diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
+index f62340ecc534..3deacb1ee71f 100644
+--- a/drivers/rtc/Makefile
++++ b/drivers/rtc/Makefile
+@@ -164,7 +164,7 @@ obj-$(CONFIG_RTC_DRV_S5M)	+= rtc-s5m.o
+ obj-$(CONFIG_RTC_DRV_SA1100)	+= rtc-sa1100.o
+ obj-$(CONFIG_RTC_DRV_SC27XX)	+= rtc-sc27xx.o
+ obj-$(CONFIG_RTC_DRV_SD2405AL)	+= rtc-sd2405al.o
+-obj-$(CONFIG_RTC_DRV_SD3078)   += rtc-sd3078.o
++obj-$(CONFIG_RTC_DRV_SD3078)	+= rtc-sd3078.o
+ obj-$(CONFIG_RTC_DRV_SH)	+= rtc-sh.o
+ obj-$(CONFIG_RTC_DRV_SNVS)	+= rtc-snvs.o
+ obj-$(CONFIG_RTC_DRV_SPEAR)	+= rtc-spear.o
 
+---
+base-commit: 9852d85ec9d492ebef56dc5f229416c925758edc
+change-id: 20240930-rtc-makefile-spaces-26e16a7ea387
+
+Best regards,
 -- 
-2.46.2
+Tóth János <gomba007@gmail.com>
 
