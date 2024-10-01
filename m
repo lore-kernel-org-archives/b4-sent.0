@@ -1,127 +1,100 @@
-From: Eric Long <i@hack3r.moe>
-Date: Tue, 01 Oct 2024 11:55:22 +0800
-Subject: [PATCH bpf-next v3 2/2] selftests/bpf: test linking with duplicate
- extern functions
+From: Mahadevan <quic_mahap@quicinc.com>
+Subject: [PATCH v3 0/5] Display enablement changes for Qualcomm SA8775P
+ platform
+Date: Tue, 01 Oct 2024 12:11:35 +0530
+Message-Id: <20241001-patchv3_1-v3-0-d23284f45977@quicinc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241001-libbpf-dup-extern-funcs-v3-2-42f7774efbf3@hack3r.moe>
-References: <20241001-libbpf-dup-extern-funcs-v3-0-42f7774efbf3@hack3r.moe>
-In-Reply-To: <20241001-libbpf-dup-extern-funcs-v3-0-42f7774efbf3@hack3r.moe>
-To: bpf@vger.kernel.org
-Cc: Andrii Nakryiko <andrii@kernel.org>, 
- Alexei Starovoitov <ast@kernel.org>, netdev@vger.kernel.org, 
- Eric Long <i@hack3r.moe>
+X-B4-Tracking: v=1; b=H4sIAJ+Z+2YC/03Myw6CMBCF4Vchs7ZkpgUEV76HMaSOg50FFwsSE
+ 8K7W125O19y8m8wS1SZ4ZRtEGXVWcchwR0y4OCHhxi9J4NFW2Dj0Ex+4bC6lkyFyDemsmikhvS
+ fonT6/rUu1+Qujr1ZQhT/V7AVEZI75tYiUlkbMs+Xctv74Kfzd+rAOY897PsH/jV1np0AAAA=
+X-Change-ID: 20240930-patchv3_1-600cbc1549e8
+To: Rob Clark <robdclark@gmail.com>, 
+ Abhinav Kumar <quic_abhinavk@quicinc.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@linaro.org>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Daniel Vetter <daniel@ffwll.ch>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Mahadevan <quic_mahap@quicinc.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@linaro.org>
+Cc: Kalyan Thota <quic_kalyant@quicinc.com>, 
+ Jayaprakash Madisetty <quic_jmadiset@quicinc.com>, 
+ linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3710; i=i@hack3r.moe;
- h=from:subject:message-id; bh=lBW/ZkssutZzZs0+icq0x4wdMAyMMqQZLN7YcP9oJJs=;
- b=owGbwMvMwCUWYb/agfVY0D7G02pJDGm/i9b8Wm/+2/V0QO/tHyEnru/S2vh//3HOt7NnfOCcc
- 07F0TWzraOUhUGMi0FWTJFly+E/agn63ZuWcM8ph5nDygQyhIGLUwAmwqTJ8FdUrfmGVK+7a2Xy
- 12XbTJ5Mc1jhMO+M1+bd79+0mF8wyeNlZFjdl/TAP6z4VIPkBwUXa58ZjzdEznWfd37DTpOZZve
- u7GUCAA==
-X-Developer-Key: i=i@hack3r.moe; a=openpgp;
- fpr=3A7A1F5A7257780C45A9A147E1487564916D3DF5
-X-Endpoint-Received: by B4 Relay for i@hack3r.moe/default with auth_id=225
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727764922; l=2620;
+ i=quic_mahap@quicinc.com; s=20241001; h=from:subject:message-id;
+ bh=RFBfeiQ3kImiTf9iCh1nA3uLTEXECoQ/rL+Pil+RxJ4=;
+ b=fKnZ5k6CWZ0PFBIPrYz4dqhEIPGH3wp8wZeAzyc0OGoAcdqef6TraNEIwSEfmKZwkFpmqMHzs
+ MZnQg9eND9eA7Bvp+uMIHt3HyFMvYwGE+Vz7VullWX2aU/kiEqTfgtx
+X-Developer-Key: i=quic_mahap@quicinc.com; a=ed25519;
+ pk=Xc9CA438o9mZKp4uZ8vZMclALnJ8XtlKn/n3Y42mMBI=
+X-Endpoint-Received: by B4 Relay for quic_mahap@quicinc.com/20241001 with auth_id=236
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Previously when multiple BPF object files referencing the same extern
-function (usually kfunc) are statically linked using `bpftool gen
-object`, libbpf tries to get the nonexistent size of BTF_KIND_FUNC_PROTO
-and fails. This test ensures it is fixed.
+This series introduces support to enable the Mobile Display Subsystem (MDSS)
+and Display Processing Unit (DPU) for the Qualcomm SA8775P target. It
+includes the addition of the hardware catalog, compatible string,
+relevant device tree changes, and their YAML bindings.
 
-Signed-off-by: Eric Long <i@hack3r.moe>
 ---
- tools/testing/selftests/bpf/Makefile                  |  3 ++-
- .../selftests/bpf/prog_tests/dup_extern_funcs.c       |  9 +++++++++
- tools/testing/selftests/bpf/progs/dup_extern_funcs1.c | 19 +++++++++++++++++++
- tools/testing/selftests/bpf/progs/dup_extern_funcs2.c | 17 +++++++++++++++++
- 4 files changed, 47 insertions(+), 1 deletion(-)
+In this series PATCH 5: "arm64: dts: qcom: sa8775p: add display dt nodes for MDSS0 and DPU"
+depends on the clock enablement change:
+https://lore.kernel.org/all/20240816-sa8775p-mm-v3-v1-0-77d53c3c0cef@quicinc.com/
 
-diff --git a/tools/testing/selftests/bpf/Makefile b/tools/testing/selftests/bpf/Makefile
-index e295e3df5ec6c3c21abe368038514cfb34b42f69..644c4dd6002c691a9cd94ef26ddf51f6dc84e2cc 100644
---- a/tools/testing/selftests/bpf/Makefile
-+++ b/tools/testing/selftests/bpf/Makefile
-@@ -496,7 +496,7 @@ SKEL_BLACKLIST := btf__% test_pinning_invalid.c test_sk_assign.c
- LINKED_SKELS := test_static_linked.skel.h linked_funcs.skel.h		\
- 		linked_vars.skel.h linked_maps.skel.h 			\
- 		test_subskeleton.skel.h test_subskeleton_lib.skel.h	\
--		test_usdt.skel.h
-+		test_usdt.skel.h dup_extern_funcs.skel.h
- 
- LSKELS := fentry_test.c fexit_test.c fexit_sleep.c atomics.c 		\
- 	trace_printk.c trace_vprintk.c map_ptr_kern.c 			\
-@@ -520,6 +520,7 @@ test_usdt.skel.h-deps := test_usdt.bpf.o test_usdt_multispec.bpf.o
- xsk_xdp_progs.skel.h-deps := xsk_xdp_progs.bpf.o
- xdp_hw_metadata.skel.h-deps := xdp_hw_metadata.bpf.o
- xdp_features.skel.h-deps := xdp_features.bpf.o
-+dup_extern_funcs.skel.h-deps := dup_extern_funcs1.bpf.o dup_extern_funcs2.bpf.o
- 
- LINKED_BPF_OBJS := $(foreach skel,$(LINKED_SKELS),$($(skel)-deps))
- LINKED_BPF_SRCS := $(patsubst %.bpf.o,%.c,$(LINKED_BPF_OBJS))
-diff --git a/tools/testing/selftests/bpf/prog_tests/dup_extern_funcs.c b/tools/testing/selftests/bpf/prog_tests/dup_extern_funcs.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..b26f855745b451f7f53e44b27d47a2f659ad1378
---- /dev/null
-+++ b/tools/testing/selftests/bpf/prog_tests/dup_extern_funcs.c
-@@ -0,0 +1,9 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include <test_progs.h>
-+#include "dup_extern_funcs.skel.h"
-+
-+void test_dup_extern_funcs(void)
-+{
-+	RUN_TESTS(dup_extern_funcs);
-+}
-diff --git a/tools/testing/selftests/bpf/progs/dup_extern_funcs1.c b/tools/testing/selftests/bpf/progs/dup_extern_funcs1.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..a5b6ea361c3d457d48bc562040f1ef946fadfc81
---- /dev/null
-+++ b/tools/testing/selftests/bpf/progs/dup_extern_funcs1.c
-@@ -0,0 +1,19 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include "vmlinux.h"
-+#include <bpf/bpf_helpers.h>
-+
-+char _license[] SEC("license") = "GPL";
-+
-+void *bpf_cast_to_kern_ctx(void *obj) __ksym;
-+
-+SEC("tc")
-+int handler1(struct __sk_buff *skb)
-+{
-+	struct sk_buff *skb_kern = bpf_cast_to_kern_ctx(skb);
-+
-+	if (!skb_kern)
-+		return -1;
-+
-+	return 0;
-+}
-diff --git a/tools/testing/selftests/bpf/progs/dup_extern_funcs2.c b/tools/testing/selftests/bpf/progs/dup_extern_funcs2.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..2f9f63dcc6ed2a35e82b55da54356502cfc95c9d
---- /dev/null
-+++ b/tools/testing/selftests/bpf/progs/dup_extern_funcs2.c
-@@ -0,0 +1,17 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include "vmlinux.h"
-+#include <bpf/bpf_helpers.h>
-+
-+void *bpf_cast_to_kern_ctx(void *obj) __ksym;
-+
-+SEC("xdp")
-+int handler2(struct xdp_md *xdp)
-+{
-+	struct xdp_buff *xdp_kern = bpf_cast_to_kern_ctx(xdp);
-+
-+	if (!xdp_kern)
-+		return -1;
-+
-+	return 0;
-+}
+---
 
+[v3]
+-Edited copyright for catalog changes. [Dmitry]
+-Fix dt_binding_check tool errors(update reg address as address-cells and
+ size-cells of root node one and maintain the same for child nodes of mdss,
+ added additionalProperties in schema).
+ [Rob, Bjorn, Krzysztof]
+-Add QCOM_ICC_TAG_ACTIVE_ONLY interconnect path tag to mdp0-mem and mdp1-mem
+ path in devicetree. [Dmitry]
+-Update commit subject and message for DT change. [Dmitry]
+-Remove interconnect path tags from dt bindings. (ref sm8450-mdss yaml)
+
+[v2]
+- Updated cover letter subject and message. [Dmitry]
+- Use fake DISPCC nodes to avoid clock dependencies in dt-bindings. [Dmitry]
+- Update bindings by fixing dt_binding_check tool errors (update includes in example),
+  adding proper spacing and indentation in the binding example, droping unused labels,
+  droping status disable, adding reset node. [Dmitry, Rob, Krzysztof]
+- Reorder compatible string of MDSS and DPU based on alphabetical order.[Dmitry]
+- add reg_bus_bw in msm_mdss_data. [Dmitry]
+- Fix indentation in the devicetree. [Dmitry]
+
+--
+2.34.1
+
+---
+Mahadevan (5):
+      dt-bindings: display/msm: Document MDSS on SA8775P
+      dt-bindings: display/msm: Document the DPU for SA8775P
+      drm/msm: mdss: Add SA8775P support
+      drm/msm/dpu: Add SA8775P support
+      arm64: dts: qcom: sa8775p: add display dt nodes for MDSS0 and DPU
+
+ .../bindings/display/msm/qcom,sa8775p-dpu.yaml     | 122 ++++++
+ .../bindings/display/msm/qcom,sa8775p-mdss.yaml    | 241 ++++++++++
+ arch/arm64/boot/dts/qcom/sa8775p.dtsi              |  89 ++++
+ .../drm/msm/disp/dpu1/catalog/dpu_8_4_sa8775p.h    | 485 +++++++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c     |   1 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h     |   1 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c            |   1 +
+ drivers/gpu/drm/msm/msm_mdss.c                     |  11 +
+ 8 files changed, 951 insertions(+)
+---
+base-commit: e390603cfa79c860ed35e073f5fe77805b067a8e
+change-id: 20240930-patchv3_1-600cbc1549e8
+
+Best regards,
 -- 
-2.46.2
+Mahadevan <quic_mahap@quicinc.com>
 
