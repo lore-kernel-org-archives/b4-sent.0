@@ -1,53 +1,70 @@
-From: =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
-Date: Mon, 30 Sep 2024 10:57:40 +0200
-Subject: [PATCH] rtc: Makefile: Replace spaces with tab.
+From: Eric Long <i@hack3r.moe>
+Subject: [PATCH bpf-next v3 0/2] BPF static linker: fix linking duplicate
+ extern functions
+Date: Tue, 01 Oct 2024 11:55:20 +0800
+Message-Id: <20241001-libbpf-dup-extern-funcs-v3-0-42f7774efbf3@hack3r.moe>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240930-rtc-makefile-spaces-v1-1-e936e0a7b02a@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAANo+mYC/x2MSwqDQBAFryK9TsM4Bn9XCS6a8amNX6ZFAuLdM
- 2RZFFU3GaLCqM1uirjUdN8S5K+MwiTbCNY+MXnn364pHMcz8CozBl3AdkiAsS+Rl1JBirqiVB4
- x6e//+ume5wfBo0OTZQAAAA==
-To: Alexandre Belloni <alexandre.belloni@bootlin.com>
-Cc: linux-rtc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727686660; l=913;
- i=gomba007@gmail.com; s=20230706; h=from:subject:message-id;
- bh=DO0jltegohA+gSXye9IARyoHoswXbGhgo3i6eJ4aPs0=;
- b=KsjtGzLRud2lZZRAj3zioqjjGCyJo+4/bzT3bbaLEOXLKcM9aYyqNbGfBnKRAXmsoU2/g2uHX
- b/y1EG6oNEoA31ZPgW6l15miaDYLqK1FVwJSEW4A84d21Q7Rvj/+io0
-X-Developer-Key: i=gomba007@gmail.com; a=ed25519;
- pk=iY9MjPCbud82ULS2PQJIq3QwjKyP/Sg730I6T2M8Y5U=
-X-Endpoint-Received: by B4 Relay for gomba007@gmail.com/20230706 with auth_id=60
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAKhy+2YC/43NQQ6CMBAF0KuYrh3TDiDgynsYF7SdSqMW0kKDI
+ dzd2p0rXf78+W9WFshbCuy0W5mnaIMdXArFfsdU37kbgdUpM+RY8hZbeFgpRwN6HoGWibwDMzs
+ VoKmFKWWnUSCytB49Gbtk+cI+C5fO2TU1vQ3T4F/5ZRS5/6lHARy0EZWR+lhhJc99p+6FPzwHy
+ mjEPyFMEFeqEZoKU7fmC9q27Q26m0ttEgEAAA==
+X-Change-ID: 20240929-libbpf-dup-extern-funcs-871f4bad2122
+To: bpf@vger.kernel.org
+Cc: Andrii Nakryiko <andrii@kernel.org>, 
+ Alexei Starovoitov <ast@kernel.org>, netdev@vger.kernel.org, 
+ Eric Long <i@hack3r.moe>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1680; i=i@hack3r.moe;
+ h=from:subject:message-id; bh=uchJyHZwSePmopkBZvOxuyt0es7TztoFkb8qVxM5/M0=;
+ b=owGbwMvMwCUWYb/agfVY0D7G02pJDGm/i9b46y1w2bPjsYmno7l69LzH6VeEOM1uRISFOx0LM
+ dinJ9fdUcrCIMbFICumyLLl8B+1BP3uTUu455TDzGFlAhnCwMUpABOpC2VkmJj6P/OzyI13RUXb
+ H5qrMPzkMP9eKjxVJkG5Tn7e6hWtUxgZLuubNeifkZofaBm+LWjrJHGOK4LzZh38sejMhMbXB0U
+ 2MAAA
+X-Developer-Key: i=i@hack3r.moe; a=openpgp;
+ fpr=3A7A1F5A7257780C45A9A147E1487564916D3DF5
+X-Endpoint-Received: by B4 Relay for i@hack3r.moe/default with auth_id=225
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix a style error.
+Currently, if `bpftool gen object` tries to link two objects that
+contains the same extern function prototype, libbpf will try to get
+their (non-existent) size by calling bpf__resolve_size like extern
+variables and fail with:
 
-Signed-off-by: Tóth János <gomba007@gmail.com>
+	libbpf: global 'whatever': failed to resolve size of underlying type: -22
+
+This should not be the case, and this series adds conditions to update
+size only when the BTF kind is not function.
+
+Fixes: a46349227cd8 ("libbpf: Add linker extern resolution support for functions and global variables")
+Signed-off-by: Eric Long <i@hack3r.moe>
 ---
- drivers/rtc/Makefile | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v3:
+- Simplifiy changes and shorten subjects, according to reviews.
+- Remove unused includes in selftests.
+- Link to v2: https://lore.kernel.org/r/20240929-libbpf-dup-extern-funcs-v2-0-0cc81de3f79f@hack3r.moe
 
-diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
-index f62340ecc534..3deacb1ee71f 100644
---- a/drivers/rtc/Makefile
-+++ b/drivers/rtc/Makefile
-@@ -164,7 +164,7 @@ obj-$(CONFIG_RTC_DRV_S5M)	+= rtc-s5m.o
- obj-$(CONFIG_RTC_DRV_SA1100)	+= rtc-sa1100.o
- obj-$(CONFIG_RTC_DRV_SC27XX)	+= rtc-sc27xx.o
- obj-$(CONFIG_RTC_DRV_SD2405AL)	+= rtc-sd2405al.o
--obj-$(CONFIG_RTC_DRV_SD3078)   += rtc-sd3078.o
-+obj-$(CONFIG_RTC_DRV_SD3078)	+= rtc-sd3078.o
- obj-$(CONFIG_RTC_DRV_SH)	+= rtc-sh.o
- obj-$(CONFIG_RTC_DRV_SNVS)	+= rtc-snvs.o
- obj-$(CONFIG_RTC_DRV_SPEAR)	+= rtc-spear.o
+Changes in v2:
+- Fix compile errors. Oops!
+- Link to v1: https://lore.kernel.org/r/20240929-libbpf-dup-extern-funcs-v1-0-df15fbd6525b@hack3r.moe
 
 ---
-base-commit: 9852d85ec9d492ebef56dc5f229416c925758edc
-change-id: 20240930-rtc-makefile-spaces-26e16a7ea387
+Eric Long (2):
+      libbpf: do not resolve size on duplicate FUNCs
+      selftests/bpf: test linking with duplicate extern functions
+
+ tools/lib/bpf/linker.c                                |  4 ++++
+ tools/testing/selftests/bpf/Makefile                  |  3 ++-
+ .../selftests/bpf/prog_tests/dup_extern_funcs.c       |  9 +++++++++
+ tools/testing/selftests/bpf/progs/dup_extern_funcs1.c | 19 +++++++++++++++++++
+ tools/testing/selftests/bpf/progs/dup_extern_funcs2.c | 17 +++++++++++++++++
+ 5 files changed, 51 insertions(+), 1 deletion(-)
+---
+base-commit: 93eeaab4563cc7fc0309bc1c4d301139762bbd60
+change-id: 20240929-libbpf-dup-extern-funcs-871f4bad2122
 
 Best regards,
 -- 
-Tóth János <gomba007@gmail.com>
+Eric Long <i@hack3r.moe>
 
