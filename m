@@ -1,11 +1,11 @@
 From: =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
-Date: Tue, 01 Oct 2024 16:37:39 +0200
-Subject: [PATCH v13 09/12] dt-bindings: marvell: Document PXA1908 SoC and
- samsung,coreprimevelte
+Date: Tue, 01 Oct 2024 16:37:40 +0200
+Subject: [PATCH v13 10/12] arm64: Kconfig.platforms: Add config for Marvell
+ PXA1908 platform
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20241001-pxa1908-lkml-v13-9-6b9a7f64f9ae@skole.hr>
+Message-Id: <20241001-pxa1908-lkml-v13-10-6b9a7f64f9ae@skole.hr>
 References: <20241001-pxa1908-lkml-v13-0-6b9a7f64f9ae@skole.hr>
 In-Reply-To: <20241001-pxa1908-lkml-v13-0-6b9a7f64f9ae@skole.hr>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -21,50 +21,46 @@ Cc: phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht,
  Karel Balej <balejk@matfyz.cz>, David Wronek <david@mainlining.org>, 
  linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ linux-arm-kernel@lists.infradead.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1205;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=911;
  i=duje.mihanovic@skole.hr; s=20240706; h=from:subject:message-id;
- bh=71xYAfb6GDdj2jBc0+t3fhKOc7lNsPx+oZvxskHEg/Y=;
- b=owGbwMvMwCW21nBykGv/WmbG02pJDGl/OCc9bFi3pipse4X74+bFJR/3ruxKNBafLVvlGOhRZ
- rvryIfujlIWBjEuBlkxRZbc/47XeD+LbN2evcwAZg4rE8gQBi5OAZhIbAYjw63bHkkG1g45W0R3
- cRpd/dG5aZNRd7PRjVOvHvfsyjkaIsrwz5bzn+wLzQsbTvbpc8yb4qb+tCZb4P2KX4vD/S36QiU
- j+QE=
+ bh=tQRucUNiycqO1XW8ycQFY99fu+HGVhgzKCsVcf8lGtE=;
+ b=owGbwMvMwCW21nBykGv/WmbG02pJDGl/OCeHN/r1HVB7uJiBv+Kb45Wt8zZsXK356rKbEsvCp
+ zdYRd56dJSyMIhxMciKKbLk/ne8xvtZZOv27GUGMHNYmUCGMHBxCsBE5I4wMsxuPtC1/8vHHdpq
+ S1O+FPDeqH7EL3W0Z9V9kR7PjRuV99xh+O+ydmbDDN6qGb495SUvvj/VWn/f45qNhm+Z9vNECQW
+ R14wA
 X-Developer-Key: i=duje.mihanovic@skole.hr; a=openpgp;
  fpr=6DFF41D60DF314B5B76BA630AD319352458FAD03
 X-Endpoint-Received: by B4 Relay for duje.mihanovic@skole.hr/20240706 with auth_id=191
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add dt bindings for the Marvell PXA1908 SoC and the Samsung Galaxy Core
-Prime VE LTE phone (model number SM-G361F) using the SoC.
+Add ARCH_MMP configuration option for Marvell PXA1908 SoC.
 
-The SoC comes with 4 Cortex-A53 cores clocked up to ~1.2GHz and a
-Vivante GC7000UL GPU. The phone also has a 4.5" 480x800 touchscreen, 8GB
-eMMC and 1GB of LPDDR3 RAM.
-
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Duje Mihanović <duje.mihanovic@skole.hr>
 ---
- Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml | 5 +++++
- 1 file changed, 5 insertions(+)
+ arch/arm64/Kconfig.platforms | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml b/Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml
-index 4c43eaf3632e4ec8e7d9aeac62f7204e2af4405a..f73bb8ec3a1a1b9594eb059b72d95dcbf8c87c6b 100644
---- a/Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml
-+++ b/Documentation/devicetree/bindings/arm/mrvl/mrvl.yaml
-@@ -35,6 +35,11 @@ properties:
-           - enum:
-               - dell,wyse-ariel
-           - const: marvell,mmp3
-+      - description: PXA1908 based boards
-+        items:
-+          - enum:
-+              - samsung,coreprimevelte
-+          - const: marvell,pxa1908
+diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
+index 6c6d11536b42ec6e878db8d355c17994c2500d7b..6cb21a27844718d8dfbdc49cc764a6ca39296484 100644
+--- a/arch/arm64/Kconfig.platforms
++++ b/arch/arm64/Kconfig.platforms
+@@ -175,6 +175,14 @@ config ARCH_MESON
+ 	  This enables support for the arm64 based Amlogic SoCs
+ 	  such as the s905, S905X/D, S912, A113X/D or S905X/D2
  
- additionalProperties: true
- 
++config ARCH_MMP
++	bool "Marvell MMP SoC Family"
++	select PINCTRL
++	select PINCTRL_SINGLE
++	help
++	  This enables support for Marvell MMP SoC family, currently
++	  supporting PXA1908 aka IAP140.
++
+ config ARCH_MVEBU
+ 	bool "Marvell EBU SoC Family"
+ 	select ARMADA_AP806_SYSCON
 
 -- 
 2.46.2
