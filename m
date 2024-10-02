@@ -1,11 +1,11 @@
 From: Eric Long <i@hack3r.moe>
-Date: Wed, 02 Oct 2024 14:25:06 +0800
-Subject: [PATCH bpf-next v4 1/2] libbpf: do not resolve size on duplicate
- FUNCs
+Date: Wed, 02 Oct 2024 14:25:07 +0800
+Subject: [PATCH bpf-next v4 2/2] selftests/bpf: test linking with duplicate
+ extern functions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241002-libbpf-dup-extern-funcs-v4-1-560eb460ff90@hack3r.moe>
+Message-Id: <20241002-libbpf-dup-extern-funcs-v4-2-560eb460ff90@hack3r.moe>
 References: <20241002-libbpf-dup-extern-funcs-v4-0-560eb460ff90@hack3r.moe>
 In-Reply-To: <20241002-libbpf-dup-extern-funcs-v4-0-560eb460ff90@hack3r.moe>
 To: bpf@vger.kernel.org
@@ -13,41 +13,76 @@ Cc: Andrii Nakryiko <andrii@kernel.org>,
  Alexei Starovoitov <ast@kernel.org>, netdev@vger.kernel.org, 
  Eric Long <i@hack3r.moe>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=961; i=i@hack3r.moe;
- h=from:subject:message-id; bh=GityEu5UW6xiYc03h/u6D/purlYEFBNe2K5e1StUi1s=;
- b=owGbwMvMwCUWYb/agfVY0D7G02pJDGl/nru0N187X/O127LB/qHvtrDw0IV7WHbk1N7YoTGT3
- 8zW/9GFjlIWBjEuBlkxRZYth/+oJeh3b1rCPaccZg4rE8gQBi5OAZjI9WZGhv53Fz46u+jWrmrX
- q4o4mH/3RaPSr+N+U3c+bbtjI1koZMTwP6rSdIOk9lXzXSu719RUBu7gkrxls3ViwZf76q8k7L8
- XMAEA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2354; i=i@hack3r.moe;
+ h=from:subject:message-id; bh=eZzHlRs/qzyTmhLjl1HP9TOQSbvTRsCUeiiuNq2bdvg=;
+ b=kA0DAAoWWD+rQAXGUr4ByyZiAGb850TI71YPK2BMRwLyO0afbgs8EE5nBLBdrC2+CLLgYBfZo
+ Ih1BAAWCgAdFiEEtMP8JmAvi7KkC5x3WD+rQAXGUr4FAmb850QACgkQWD+rQAXGUr5JigD9FHEU
+ HTOhPt1Ytjv+bQsvzADTfJoBgAADvkzRu5RP7eEBAJtugW6Mg1bqPPjiQetdDE+0pfaigQlQVIe
+ +jPILQ1IO
 X-Developer-Key: i=i@hack3r.moe; a=openpgp;
  fpr=3A7A1F5A7257780C45A9A147E1487564916D3DF5
 X-Endpoint-Received: by B4 Relay for i@hack3r.moe/default with auth_id=225
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FUNCs do not have sizes, thus currently btf__resolve_size will fail
-with -EINVAL. Add conditions so that we only update size when the BTF
-object is not function or function prototype.
+Previously when multiple BPF object files referencing the same extern
+function (usually kfunc) are statically linked using `bpftool gen
+object`, libbpf tries to get the nonexistent size of BTF_KIND_FUNC_PROTO
+and fails. This test ensures it is fixed.
 
 Signed-off-by: Eric Long <i@hack3r.moe>
 ---
- tools/lib/bpf/linker.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ tools/testing/selftests/bpf/progs/linked_funcs1.c | 8 ++++++++
+ tools/testing/selftests/bpf/progs/linked_funcs2.c | 8 ++++++++
+ 2 files changed, 16 insertions(+)
 
-diff --git a/tools/lib/bpf/linker.c b/tools/lib/bpf/linker.c
-index 81dbbdd79a7c65a4b048b85e1dba99cb5f7cb56b..f83c1c29982c3d9d7f6775cd98a6f3387a4e9c50 100644
---- a/tools/lib/bpf/linker.c
-+++ b/tools/lib/bpf/linker.c
-@@ -2451,6 +2451,10 @@ static int linker_append_btf(struct bpf_linker *linker, struct src_obj *obj)
- 			if (glob_sym && glob_sym->var_idx >= 0) {
- 				__s64 sz;
+diff --git a/tools/testing/selftests/bpf/progs/linked_funcs1.c b/tools/testing/selftests/bpf/progs/linked_funcs1.c
+index cc79dddac182c20da69a1a57fa39bc81004184f1..049a1f78de3f835e7658dde6f2d03161b6a5a07f 100644
+--- a/tools/testing/selftests/bpf/progs/linked_funcs1.c
++++ b/tools/testing/selftests/bpf/progs/linked_funcs1.c
+@@ -63,6 +63,8 @@ extern int set_output_val2(int x);
+ /* here we'll force set_output_ctx2() to be __hidden in the final obj file */
+ __hidden extern void set_output_ctx2(__u64 *ctx);
  
-+				/* FUNCs don't have size, nothing to update */
-+				if (btf_is_func(t))
-+					continue;
++void *bpf_cast_to_kern_ctx(void *obj) __ksym;
 +
- 				dst_var = &dst_sec->sec_vars[glob_sym->var_idx];
- 				/* Because underlying BTF type might have
- 				 * changed, so might its size have changed, so
+ SEC("?raw_tp/sys_enter")
+ int BPF_PROG(handler1, struct pt_regs *regs, long id)
+ {
+@@ -86,4 +88,10 @@ int BPF_PROG(handler1, struct pt_regs *regs, long id)
+ 	return 0;
+ }
+ 
++/* Generate BTF FUNC record and test linking with duplicate extern functions */
++void kfunc_gen1(void)
++{
++	bpf_cast_to_kern_ctx(0);
++}
++
+ char LICENSE[] SEC("license") = "GPL";
+diff --git a/tools/testing/selftests/bpf/progs/linked_funcs2.c b/tools/testing/selftests/bpf/progs/linked_funcs2.c
+index 942cc5526ddf02004bf82d1f72c74cfba6eaf486..96850759fd8d0074249bbf1f743aab08e20de0fc 100644
+--- a/tools/testing/selftests/bpf/progs/linked_funcs2.c
++++ b/tools/testing/selftests/bpf/progs/linked_funcs2.c
+@@ -63,6 +63,8 @@ extern int set_output_val1(int x);
+ /* here we'll force set_output_ctx1() to be __hidden in the final obj file */
+ __hidden extern void set_output_ctx1(__u64 *ctx);
+ 
++void *bpf_cast_to_kern_ctx(void *obj) __ksym;
++
+ SEC("?raw_tp/sys_enter")
+ int BPF_PROG(handler2, struct pt_regs *regs, long id)
+ {
+@@ -86,4 +88,10 @@ int BPF_PROG(handler2, struct pt_regs *regs, long id)
+ 	return 0;
+ }
+ 
++/* Generate BTF FUNC record and test linking with duplicate extern functions */
++void kfunc_gen2(void)
++{
++	bpf_cast_to_kern_ctx(0);
++}
++
+ char LICENSE[] SEC("license") = "GPL";
 
 -- 
 2.46.2
