@@ -1,11 +1,11 @@
 From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Thu, 03 Oct 2024 15:38:23 +0200
-Subject: [PATCH v2 2/3] dt-bindings: iio: imu: migrate InvenSense email to
- TDK group domain
+Date: Thu, 03 Oct 2024 15:38:24 +0200
+Subject: [PATCH v2 3/3] MAINTAINERS: iio: imu: add entry for InvenSense
+ MPU-6050 driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241003-invn-maintainers-email-update-v2-2-ca5a4928eb22@tdk.com>
+Message-Id: <20241003-invn-maintainers-email-update-v2-3-ca5a4928eb22@tdk.com>
 References: <20241003-invn-maintainers-email-update-v2-0-ca5a4928eb22@tdk.com>
 In-Reply-To: <20241003-invn-maintainers-email-update-v2-0-ca5a4928eb22@tdk.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -16,50 +16,43 @@ Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org,
  devicetree@vger.kernel.org, 
  Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727962711; l=1864;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727962711; l=954;
  i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=DybIVhKCi4bPulEQmXxcvm9H4ZEDHA0y5F0jLGpcXko=;
- b=sJTVx34ZVbPhBMBDh4+yZ/ghi/Z8diyRev8Gqb/xvJ81SlNJ1kMSVEBr2AGbVRgtbwzd9a4Dh
- EGQxeuXBvnxB4M1wg4kq5I7iguw3Sp/jAtyqQMoMAdcVcBKPtFnjjN1
+ bh=w9mTW2Po/F6sYjTvjGIGExFNOUZEA5q45EE+lyY0DjA=;
+ b=od162YpKu2Rq+3r0ZvuWNQ3hUOc6rbjejNcZnWJQmHhrDIlFv2UHxUKd3DQAPqZ+88jeZDrB1
+ VrgMXXZbqvOAFCHEpLF5Ws8Q+24kJMSWeyfc1nj+SMIgknJmFWnGwLE
 X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
  pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
 X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Migrate maintainer email to TDK domain.
+Add entry for inv_mpu6050 iio driver supporting InvenSense MPU-6xxx
+and ICM-206xxx devices.
 
 Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- Documentation/devicetree/bindings/iio/imu/invensense,icm42600.yaml | 2 +-
- Documentation/devicetree/bindings/iio/imu/invensense,mpu6050.yaml  | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ MAINTAINERS | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/iio/imu/invensense,icm42600.yaml b/Documentation/devicetree/bindings/iio/imu/invensense,icm42600.yaml
-index 3769f8e8e98cee3db61cc0138f485c488d55a63e..7e4492bbd0278a336587dc5ac04da7153453da29 100644
---- a/Documentation/devicetree/bindings/iio/imu/invensense,icm42600.yaml
-+++ b/Documentation/devicetree/bindings/iio/imu/invensense,icm42600.yaml
-@@ -7,7 +7,7 @@ $schema: http://devicetree.org/meta-schemas/core.yaml#
- title: InvenSense ICM-426xx Inertial Measurement Unit
+diff --git a/MAINTAINERS b/MAINTAINERS
+index b6b252b991a514e225df309485c708c2af547f57..fba699e27612997ed1465ae080632dbeb0639be5 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -11913,6 +11913,14 @@ S:	Maintained
+ F:	Documentation/devicetree/bindings/iio/gyroscope/invensense,mpu3050.yaml
+ F:	drivers/iio/gyro/mpu3050*
  
- maintainers:
--  - Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>
-+  - Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
- 
- description: |
-   6-axis MotionTracking device that combines a 3-axis gyroscope and a 3-axis
-diff --git a/Documentation/devicetree/bindings/iio/imu/invensense,mpu6050.yaml b/Documentation/devicetree/bindings/iio/imu/invensense,mpu6050.yaml
-index a8d30ef015faaca02a11af7def6e06057bde3909..f91954870a44c60cadc76b5bc3917ee6f23e30a2 100644
---- a/Documentation/devicetree/bindings/iio/imu/invensense,mpu6050.yaml
-+++ b/Documentation/devicetree/bindings/iio/imu/invensense,mpu6050.yaml
-@@ -7,7 +7,7 @@ $schema: http://devicetree.org/meta-schemas/core.yaml#
- title: InvenSense MPU-6050 Six-Axis (Gyro + Accelerometer) MEMS MotionTracking Device
- 
- maintainers:
--  - Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>
-+  - Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
- 
- description: |
-   These devices support both I2C and SPI bus interfaces.
++INVENSENSE MPU-6050 IMU DRIVER
++M:	Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
++L:	linux-iio@vger.kernel.org
++S:	Maintained
++W:	https://invensense.tdk.com/
++F:	Documentation/devicetree/bindings/iio/imu/invensense,mpu6050.yaml
++F:	drivers/iio/imu/inv_mpu6050/
++
+ IOC3 ETHERNET DRIVER
+ M:	Ralf Baechle <ralf@linux-mips.org>
+ L:	linux-mips@vger.kernel.org
 
 -- 
 2.46.2
