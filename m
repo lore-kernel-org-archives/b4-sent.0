@@ -1,59 +1,74 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Thu, 03 Oct 2024 15:38:24 +0200
-Subject: [PATCH v2 3/3] MAINTAINERS: iio: imu: add entry for InvenSense
- MPU-6050 driver
+From: Manas <manas18244@iiitd.ac.in>
+Date: Thu, 03 Oct 2024 21:31:06 +0530
+Subject: [PATCH] Fixes: null pointer dereference in pfnmap_lockdep_assert
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241003-invn-maintainers-email-update-v2-3-ca5a4928eb22@tdk.com>
-References: <20241003-invn-maintainers-email-update-v2-0-ca5a4928eb22@tdk.com>
-In-Reply-To: <20241003-invn-maintainers-email-update-v2-0-ca5a4928eb22@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
- devicetree@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1727962711; l=954;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=w9mTW2Po/F6sYjTvjGIGExFNOUZEA5q45EE+lyY0DjA=;
- b=od162YpKu2Rq+3r0ZvuWNQ3hUOc6rbjejNcZnWJQmHhrDIlFv2UHxUKd3DQAPqZ+88jeZDrB1
- VrgMXXZbqvOAFCHEpLF5Ws8Q+24kJMSWeyfc1nj+SMIgknJmFWnGwLE
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+Message-Id: <20241003-fix-null-deref-v1-1-0a45df9d016a@iiitd.ac.in>
+X-B4-Tracking: v=1; b=H4sIAMG//mYC/x2MSQqAMAwAvyI5G4itKPgV8eCSaKBUaVEKxb9bP
+ M7ATIbIQTnCUGUI/GjU0xdo6grWY/Y7o26FwZBpGyKLogn97RxuHFiwW2Qma3uW1UKJriI1/cN
+ xet8Pec9y02AAAAA=
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Peter Xu <peterx@redhat.com>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Anup Sharma <anupnewsmail@gmail.com>, linux-mm@kvack.org, 
+ linux-kernel@vger.kernel.org, 
+ syzbot+093d096417e7038a689b@syzkaller.appspotmail.com, 
+ Manas <manas18244@iiitd.ac.in>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1727971281; l=1475;
+ i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
+ bh=x08Dt4D4CnyqFeKnwiqo7wiyGAvva8Affj+d/SXsW+A=;
+ b=Cn/tYNqn5B45YcZhsFYQSPD2ldhhhYgc5XE7ctAhBQhf7vIsn/RfiuzQUe+wgjx4v745x3D2z
+ V5tBTMz6vKHBV2y4fcqeEqW0KI/UyEl3xFgDdg3DkuZcC0lzWWna4zG
+X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
+ pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
+X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add entry for inv_mpu6050 iio driver supporting InvenSense MPU-6xxx
-and ICM-206xxx devices.
+syzbot has pointed to a possible null pointer dereference in
+pfnmap_lockdep_assert. vm_file member of vm_area_struct is being
+dereferenced without any checks.
 
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+This fix returns if vm_file member in vm_area_struct is NULL.
+
+Reported-by: syzbot+093d096417e7038a689b@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=093d096417e7038a689b
 ---
- MAINTAINERS | 8 ++++++++
- 1 file changed, 8 insertions(+)
+This bug[1] triggers a general protection fault in follow_pfnmap_start
+function. An assertion pfnmap_lockdep_assert inside this function
+dereferences vm_file member of vm_area_struct. And panic gets triggered
+when vm_file is NULL.
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index b6b252b991a514e225df309485c708c2af547f57..fba699e27612997ed1465ae080632dbeb0639be5 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -11913,6 +11913,14 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/iio/gyroscope/invensense,mpu3050.yaml
- F:	drivers/iio/gyro/mpu3050*
- 
-+INVENSENSE MPU-6050 IMU DRIVER
-+M:	Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-+L:	linux-iio@vger.kernel.org
-+S:	Maintained
-+W:	https://invensense.tdk.com/
-+F:	Documentation/devicetree/bindings/iio/imu/invensense,mpu6050.yaml
-+F:	drivers/iio/imu/inv_mpu6050/
+This patch returns from the assertion pfnmap_lockdep_assert if vm_file
+is found to be NULL.
+
+[1] https://syzkaller.appspot.com/bug?extid=093d096417e7038a689b
+
+Signed-off-by: Manas <manas18244@iiitd.ac.in>
+---
+ mm/memory.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/mm/memory.c b/mm/memory.c
+index 2366578015ad..b152a95e543f 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -6346,6 +6346,9 @@ static inline void pfnmap_args_setup(struct follow_pfnmap_args *args,
+ static inline void pfnmap_lockdep_assert(struct vm_area_struct *vma)
+ {
+ #ifdef CONFIG_LOCKDEP
++	if (!vma->vm_file)
++		return;
 +
- IOC3 ETHERNET DRIVER
- M:	Ralf Baechle <ralf@linux-mips.org>
- L:	linux-mips@vger.kernel.org
+ 	struct address_space *mapping = vma->vm_file->f_mapping;
+ 
+ 	if (mapping)
 
+---
+base-commit: 9852d85ec9d492ebef56dc5f229416c925758edc
+change-id: 20241003-fix-null-deref-6bfa0337efc3
+
+Best regards,
 -- 
-2.46.2
+Manas <manas18244@iiitd.ac.in>
 
