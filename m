@@ -1,14 +1,13 @@
 From: Mitchell Levy <levymitchell0@gmail.com>
-Subject: [PATCH 0/2] rust: lockdep: Fix soundness issue affecting
- LockClassKeys
-Date: Fri, 04 Oct 2024 15:01:36 -0700
-Message-Id: <20241004-rust-lockdep-v1-0-e9a5c45721fc@gmail.com>
+Date: Fri, 04 Oct 2024 15:01:37 -0700
+Subject: [PATCH 1/2] rust: lockdep: Remove support for dynamically
+ allocated LockClassKeys
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMBlAGcC/3XMQQ6CMBCF4auQWTumLZKAK+9hWJTpCBOBkhYbD
- eHuVvYu/5e8b4PIQTjCtdggcJIofs6hTwXQYOeeUVxuMMpcVKMqDK+44ujp6XhBV3KpKqOp7iz
- kyxL4Ie+Du7e5B4mrD59DT/q3/oGSRo3OUENGW1t35tZPVsYz+Qnafd+/qun5vqgAAAA=
+Message-Id: <20241004-rust-lockdep-v1-1-e9a5c45721fc@gmail.com>
+References: <20241004-rust-lockdep-v1-0-e9a5c45721fc@gmail.com>
+In-Reply-To: <20241004-rust-lockdep-v1-0-e9a5c45721fc@gmail.com>
 To: Boqun Feng <boqun.feng@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
  Alex Gaynor <alex.gaynor@gmail.com>, 
  Wedson Almeida Filho <wedsonaf@gmail.com>, Gary Guo <gary@garyguo.net>, 
@@ -20,66 +19,79 @@ Cc: linux-block@vger.kernel.org, rust-for-linux@vger.kernel.org,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Mitchell Levy <levymitchell0@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728079319; l=2325;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728079319; l=1817;
  i=levymitchell0@gmail.com; s=20240719; h=from:subject:message-id;
- bh=yA8zi+D/kjXfBz7wwbF2jGW3GGImBGWDMebbbCkbJtk=;
- b=yz5wfUx3V0h0nT096o9DYbVaoFL3T8pflNc7g21tFsCTJnfM/kKGtgWLYSVQnxXTNAjq8L9Uv
- njm4iXSHk3bBh7tUymQ2ZfjzzviLMkJFU/H+29VLkmZkeDi7mJ6ihe6
+ bh=sPd80p5ID1e1fg5bg8nSOM9q7MeynA1KNnT/FYVqLZ0=;
+ b=+P16WMaS1TptJcNjuLo6USG7helplG+QSPK9e9AOKqDmUSTTXHLfIItjWKVGXWBqjWeXUpkTl
+ I/CNBV2TN7GC6h3bsOa85emNKu/4Fj9zFkR7uoxnP92z2fa+aWkvwhA
 X-Developer-Key: i=levymitchell0@gmail.com; a=ed25519;
  pk=n6kBmUnb+UNmjVkTnDwrLwTJAEKUfs2e8E+MFPZI93E=
 X-Endpoint-Received: by B4 Relay for levymitchell0@gmail.com/20240719 with auth_id=188
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series is aimed at fixing a soundness issue with how dynamically
-allocated LockClassKeys are handled. Currently, LockClassKeys can be
-used without being Pin'd, which can break lockdep since it relies on
-address stability. Similarly, these keys are not automatically
-(de)registered with lockdep.
+Currently, dynamically allocated LockCLassKeys can be used from the Rust
+side without having them registered. This is a soundness issue, so
+remove them.
 
-At the suggestion of Alice Ryhl, this series includes a patch for
--stable kernels that disables dynamically allocated keys. This prevents
-backported patches from using the unsound implementation.
-
-Currently, this series requires that all dynamically allocated
-LockClassKeys have a lifetime of 'static (i.e., they must be leaked
-after allocation). This is because Lock does not currently keep a
-reference to the LockClassKey, instead passing it to C via FFI. This
-causes a problem because the rust compiler would allow creating a
-'static Lock with a 'a LockClassKey (with 'a < 'static) while C would
-expect the LockClassKey to live as long as the lock. This problem
-represents an avenue for future work.
-
+Suggested-by: Alice Ryhl <aliceryhl@google.com>
+Link: https://lore.kernel.org/rust-for-linux/20240815074519.2684107-3-nmi@metaspace.dk/
+Cc: stable@vger.kernel.org
+Signed-off-by: Mitchell Levy <levymitchell0@gmail.com>
 ---
-Changes from RFC:
-- Split into two commits so that dynamically allocated LockClassKeys are
-removed from stable kernels. (Thanks Alice Ryhl)
-- Extract calls to C lockdep functions into helpers so things build
-properly when LOCKDEP=n. (Thanks Benno Lossin)
-- Remove extraneous `get_ref()` calls. (Thanks Benno Lossin)
-- Provide better documentation for `new_dynamic()`. (Thanks Benno
-Lossin)
-- Ran rustfmt to fix formatting and some extraneous changes. (Thanks
-Alice Ryhl and Benno Lossin)
-- Link to RFC: https://lore.kernel.org/r/20240905-rust-lockdep-v1-1-d2c9c21aa8b2@gmail.com
+ rust/kernel/lib.rs  |  2 +-
+ rust/kernel/sync.rs | 14 ++------------
+ 2 files changed, 3 insertions(+), 13 deletions(-)
 
----
-Mitchell Levy (2):
-      rust: lockdep: Remove support for dynamically allocated LockClassKeys
-      rust: lockdep: Use Pin for all LockClassKey usages
+diff --git a/rust/kernel/lib.rs b/rust/kernel/lib.rs
+index 22a3bfa5a9e9..b5f4b3ce6b48 100644
+--- a/rust/kernel/lib.rs
++++ b/rust/kernel/lib.rs
+@@ -44,8 +44,8 @@
+ pub mod page;
+ pub mod prelude;
+ pub mod print;
+-pub mod sizes;
+ pub mod rbtree;
++pub mod sizes;
+ mod static_assert;
+ #[doc(hidden)]
+ pub mod std_vendor;
+diff --git a/rust/kernel/sync.rs b/rust/kernel/sync.rs
+index 0ab20975a3b5..d270db9b9894 100644
+--- a/rust/kernel/sync.rs
++++ b/rust/kernel/sync.rs
+@@ -27,28 +27,18 @@
+ unsafe impl Sync for LockClassKey {}
+ 
+ impl LockClassKey {
+-    /// Creates a new lock class key.
+-    pub const fn new() -> Self {
+-        Self(Opaque::uninit())
+-    }
+-
+     pub(crate) fn as_ptr(&self) -> *mut bindings::lock_class_key {
+         self.0.get()
+     }
+ }
+ 
+-impl Default for LockClassKey {
+-    fn default() -> Self {
+-        Self::new()
+-    }
+-}
+-
+ /// Defines a new static lock class and returns a pointer to it.
+ #[doc(hidden)]
+ #[macro_export]
+ macro_rules! static_lock_class {
+     () => {{
+-        static CLASS: $crate::sync::LockClassKey = $crate::sync::LockClassKey::new();
++        static CLASS: $crate::sync::LockClassKey =
++            unsafe { ::core::mem::MaybeUninit::uninit().assume_init() };
+         &CLASS
+     }};
+ }
 
- rust/helpers/helpers.c      |  1 +
- rust/helpers/sync.c         | 13 +++++++++++++
- rust/kernel/lib.rs          |  2 +-
- rust/kernel/sync.rs         | 34 ++++++++++++++++++++++++----------
- rust/kernel/sync/condvar.rs | 11 +++++++----
- rust/kernel/sync/lock.rs    |  4 ++--
- rust/kernel/workqueue.rs    |  2 +-
- 7 files changed, 49 insertions(+), 18 deletions(-)
----
-base-commit: 9852d85ec9d492ebef56dc5f229416c925758edc
-change-id: 20240905-rust-lockdep-d3e30521c8ba
-
-Best regards,
 -- 
-Mitchell Levy <levymitchell0@gmail.com>
+2.34.1
 
