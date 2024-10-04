@@ -1,93 +1,85 @@
-From: Manas <manas18244@iiitd.ac.in>
-Date: Fri, 04 Oct 2024 23:12:16 +0530
-Subject: [PATCH v4] Fixes: null pointer dereference in
- pfnmap_lockdep_assert
+From: Mitchell Levy <levymitchell0@gmail.com>
+Subject: [PATCH 0/2] rust: lockdep: Fix soundness issue affecting
+ LockClassKeys
+Date: Fri, 04 Oct 2024 15:01:36 -0700
+Message-Id: <20241004-rust-lockdep-v1-0-e9a5c45721fc@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241004-fix-null-deref-v4-1-d0a8ec01ac85@iiitd.ac.in>
-X-B4-Tracking: v=1; b=H4sIAPcoAGcC/33MSwrCMBSF4a1Ixqbk1cp15D7EQZqHvVBSSWqol
- O7dtCOl6PA/cL6ZJBfRJXI+zCS6jAmHUEIdD8R0OtwdRVuaCCYUZ0xSjxMNz76n1kXnadN6zaQ
- 8OW8kKadHGXHawOutdIdpHOJr8zNf159U5pRTplVtPVjGG31BxNFW2lQYyIpl8QmoHSAKIKS2w
- ADAWL4H5H9AFsCDqqHlxkDtv4FlWd4ZavzqMAEAAA==
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Peter Xu <peterx@redhat.com>, Shuah Khan <skhan@linuxfoundation.org>, 
- Anup Sharma <anupnewsmail@gmail.com>, linux-mm@kvack.org, 
- linux-kernel@vger.kernel.org, 
- syzbot+093d096417e7038a689b@syzkaller.appspotmail.com, 
- Manas <manas18244@iiitd.ac.in>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728063737; l=2269;
- i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
- bh=I6Jr34YY5WytSnppfZbbp0DlHGTntvqBvZhYI28pyh8=;
- b=ME9HVvF5BLf+ljmXjMr9EboNjFIhb6RD+gVbB7g2RRx5amHDSoLOzjd2z8J/zMByP+poVufwN
- wdbqRHYDoPoD+JIj9naERulOdKx0/x45vCt8hXKnMzwqnZDLR/Z1MRA
-X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
- pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
-X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
+X-B4-Tracking: v=1; b=H4sIAMBlAGcC/3XMQQ6CMBCF4auQWTumLZKAK+9hWJTpCBOBkhYbD
+ eHuVvYu/5e8b4PIQTjCtdggcJIofs6hTwXQYOeeUVxuMMpcVKMqDK+44ujp6XhBV3KpKqOp7iz
+ kyxL4Ie+Du7e5B4mrD59DT/q3/oGSRo3OUENGW1t35tZPVsYz+Qnafd+/qun5vqgAAAA=
+To: Boqun Feng <boqun.feng@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Alex Gaynor <alex.gaynor@gmail.com>, 
+ Wedson Almeida Filho <wedsonaf@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <benno.lossin@proton.me>, Alice Ryhl <aliceryhl@google.com>, 
+ Trevor Gross <tmgross@umich.edu>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Andreas Hindborg <a.hindborg@kernel.org>
+Cc: linux-block@vger.kernel.org, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Mitchell Levy <levymitchell0@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728079319; l=2325;
+ i=levymitchell0@gmail.com; s=20240719; h=from:subject:message-id;
+ bh=yA8zi+D/kjXfBz7wwbF2jGW3GGImBGWDMebbbCkbJtk=;
+ b=yz5wfUx3V0h0nT096o9DYbVaoFL3T8pflNc7g21tFsCTJnfM/kKGtgWLYSVQnxXTNAjq8L9Uv
+ njm4iXSHk3bBh7tUymQ2ZfjzzviLMkJFU/H+29VLkmZkeDi7mJ6ihe6
+X-Developer-Key: i=levymitchell0@gmail.com; a=ed25519;
+ pk=n6kBmUnb+UNmjVkTnDwrLwTJAEKUfs2e8E+MFPZI93E=
+X-Endpoint-Received: by B4 Relay for levymitchell0@gmail.com/20240719 with auth_id=188
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-syzbot has pointed to a possible null pointer dereference in
-pfnmap_lockdep_assert. vm_file member of vm_area_struct is being
-dereferenced without any checks.
+This series is aimed at fixing a soundness issue with how dynamically
+allocated LockClassKeys are handled. Currently, LockClassKeys can be
+used without being Pin'd, which can break lockdep since it relies on
+address stability. Similarly, these keys are not automatically
+(de)registered with lockdep.
 
-This fix assigns mapping only if vm_file is not NULL.
+At the suggestion of Alice Ryhl, this series includes a patch for
+-stable kernels that disables dynamically allocated keys. This prevents
+backported patches from using the unsound implementation.
 
-Reported-by: syzbot+093d096417e7038a689b@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=093d096417e7038a689b
+Currently, this series requires that all dynamically allocated
+LockClassKeys have a lifetime of 'static (i.e., they must be leaked
+after allocation). This is because Lock does not currently keep a
+reference to the LockClassKey, instead passing it to C via FFI. This
+causes a problem because the rust compiler would allow creating a
+'static Lock with a 'a LockClassKey (with 'a < 'static) while C would
+expect the LockClassKey to live as long as the lock. This problem
+represents an avenue for future work.
+
 ---
-This bug[1] triggers a general protection fault in follow_pfnmap_start
-function. An assertion pfnmap_lockdep_assert inside this function
-dereferences vm_file member of vm_area_struct. And panic gets triggered
-when vm_file is NULL.
+Changes from RFC:
+- Split into two commits so that dynamically allocated LockClassKeys are
+removed from stable kernels. (Thanks Alice Ryhl)
+- Extract calls to C lockdep functions into helpers so things build
+properly when LOCKDEP=n. (Thanks Benno Lossin)
+- Remove extraneous `get_ref()` calls. (Thanks Benno Lossin)
+- Provide better documentation for `new_dynamic()`. (Thanks Benno
+Lossin)
+- Ran rustfmt to fix formatting and some extraneous changes. (Thanks
+Alice Ryhl and Benno Lossin)
+- Link to RFC: https://lore.kernel.org/r/20240905-rust-lockdep-v1-1-d2c9c21aa8b2@gmail.com
 
-This patch assigns mapping only if vm_file is not NULL.
-
-[1] https://syzkaller.appspot.com/bug?extid=093d096417e7038a689b
-
-Signed-off-by: Manas <manas18244@iiitd.ac.in>
 ---
-Changes in v4:
-- v4: simplify ternary conditional
-- Link to v3: https://lore.kernel.org/r/20241004-fix-null-deref-v3-1-f9459b1cc95f@iiitd.ac.in
+Mitchell Levy (2):
+      rust: lockdep: Remove support for dynamically allocated LockClassKeys
+      rust: lockdep: Use Pin for all LockClassKey usages
 
-Changes in v3:
-- v3: use assigned var instead of accessing member again 
-- Link to v2: https://lore.kernel.org/r/20241004-fix-null-deref-v2-1-23ad90999cd1@iiitd.ac.in
-
-Changes in v2:
-- v2: use ternary operator according to feedback
-- Link to v1: https://lore.kernel.org/r/20241003-fix-null-deref-v1-1-0a45df9d016a@iiitd.ac.in
----
- mm/memory.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
-
-diff --git a/mm/memory.c b/mm/memory.c
-index 2366578015ad..4e4d598496a8 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -6346,10 +6346,13 @@ static inline void pfnmap_args_setup(struct follow_pfnmap_args *args,
- static inline void pfnmap_lockdep_assert(struct vm_area_struct *vma)
- {
- #ifdef CONFIG_LOCKDEP
--	struct address_space *mapping = vma->vm_file->f_mapping;
-+	struct address_space *mapping = NULL;
-+
-+	if (vma->vm_file)
-+		mapping = vma->vm_file->f_mapping;
- 
- 	if (mapping)
--		lockdep_assert(lockdep_is_held(&vma->vm_file->f_mapping->i_mmap_rwsem) ||
-+		lockdep_assert(lockdep_is_held(&mapping->i_mmap_rwsem) ||
- 			       lockdep_is_held(&vma->vm_mm->mmap_lock));
- 	else
- 		lockdep_assert(lockdep_is_held(&vma->vm_mm->mmap_lock));
-
+ rust/helpers/helpers.c      |  1 +
+ rust/helpers/sync.c         | 13 +++++++++++++
+ rust/kernel/lib.rs          |  2 +-
+ rust/kernel/sync.rs         | 34 ++++++++++++++++++++++++----------
+ rust/kernel/sync/condvar.rs | 11 +++++++----
+ rust/kernel/sync/lock.rs    |  4 ++--
+ rust/kernel/workqueue.rs    |  2 +-
+ 7 files changed, 49 insertions(+), 18 deletions(-)
 ---
 base-commit: 9852d85ec9d492ebef56dc5f229416c925758edc
-change-id: 20241003-fix-null-deref-6bfa0337efc3
+change-id: 20240905-rust-lockdep-d3e30521c8ba
 
 Best regards,
 -- 
-Manas <manas18244@iiitd.ac.in>
+Mitchell Levy <levymitchell0@gmail.com>
 
