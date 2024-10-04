@@ -1,170 +1,93 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Fri, 04 Oct 2024 15:46:52 +0200
-Subject: [PATCH v2 3/3] Input: adp5588-keys: make use of dev_err_probe()
+From: Manas <manas18244@iiitd.ac.in>
+Date: Fri, 04 Oct 2024 23:12:16 +0530
+Subject: [PATCH v4] Fixes: null pointer dereference in
+ pfnmap_lockdep_assert
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241004-fix-adp5588-read-refactor-v2-3-275a093758ae@analog.com>
-References: <20241004-fix-adp5588-read-refactor-v2-0-275a093758ae@analog.com>
-In-Reply-To: <20241004-fix-adp5588-read-refactor-v2-0-275a093758ae@analog.com>
-To: Michael Hennerich <michael.hennerich@analog.com>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-input@vger.kernel.org
+Message-Id: <20241004-fix-null-deref-v4-1-d0a8ec01ac85@iiitd.ac.in>
+X-B4-Tracking: v=1; b=H4sIAPcoAGcC/33MSwrCMBSF4a1Ixqbk1cp15D7EQZqHvVBSSWqol
+ O7dtCOl6PA/cL6ZJBfRJXI+zCS6jAmHUEIdD8R0OtwdRVuaCCYUZ0xSjxMNz76n1kXnadN6zaQ
+ 8OW8kKadHGXHawOutdIdpHOJr8zNf159U5pRTplVtPVjGG31BxNFW2lQYyIpl8QmoHSAKIKS2w
+ ADAWL4H5H9AFsCDqqHlxkDtv4FlWd4ZavzqMAEAAA==
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Peter Xu <peterx@redhat.com>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Anup Sharma <anupnewsmail@gmail.com>, linux-mm@kvack.org, 
+ linux-kernel@vger.kernel.org, 
+ syzbot+093d096417e7038a689b@syzkaller.appspotmail.com, 
+ Manas <manas18244@iiitd.ac.in>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728049615; l=5144;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=gt3jhPKFLDsBuarU+NtzbRqk71V3bunZcxmUsG25ZIQ=;
- b=0zjhhTtwyPOawLFp+Or7GywbXi577wNF/msX2A0anWmqpASw+FALS8e+MEo/CLiqfnE2pjXSh
- yc7C14dMxcnAaqUXVZ28wYOlVixJmwkoUinMjBIx95RDVsrca8XX8ma
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728063737; l=2269;
+ i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
+ bh=I6Jr34YY5WytSnppfZbbp0DlHGTntvqBvZhYI28pyh8=;
+ b=ME9HVvF5BLf+ljmXjMr9EboNjFIhb6RD+gVbB7g2RRx5amHDSoLOzjd2z8J/zMByP+poVufwN
+ wdbqRHYDoPoD+JIj9naERulOdKx0/x45vCt8hXKnMzwqnZDLR/Z1MRA
+X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
+ pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
+X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Simplify the probe error path by using dev_err_probe().
+syzbot has pointed to a possible null pointer dereference in
+pfnmap_lockdep_assert. vm_file member of vm_area_struct is being
+dereferenced without any checks.
 
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+This fix assigns mapping only if vm_file is not NULL.
+
+Reported-by: syzbot+093d096417e7038a689b@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=093d096417e7038a689b
 ---
- drivers/input/keyboard/adp5588-keys.c | 70 +++++++++++++++--------------------
- 1 file changed, 29 insertions(+), 41 deletions(-)
+This bug[1] triggers a general protection fault in follow_pfnmap_start
+function. An assertion pfnmap_lockdep_assert inside this function
+dereferences vm_file member of vm_area_struct. And panic gets triggered
+when vm_file is NULL.
 
-diff --git a/drivers/input/keyboard/adp5588-keys.c b/drivers/input/keyboard/adp5588-keys.c
-index 0152e4fa088c..60a7cb040af7 100644
---- a/drivers/input/keyboard/adp5588-keys.c
-+++ b/drivers/input/keyboard/adp5588-keys.c
-@@ -439,10 +439,9 @@ static int adp5588_gpio_add(struct adp5588_kpad *kpad)
- 	kpad->gc.owner = THIS_MODULE;
- 
- 	if (device_property_present(dev, "interrupt-controller")) {
--		if (!kpad->client->irq) {
--			dev_err(dev, "Unable to serve as interrupt controller without interrupt");
--			return -EINVAL;
--		}
-+		if (!kpad->client->irq)
-+			return dev_err_probe(dev, -EINVAL,
-+					     "Unable to serve as interrupt controller without interrupt");
- 
- 		girq = &kpad->gc.irq;
- 		gpio_irq_chip_set_chip(girq, &adp5588_irq_chip);
-@@ -453,10 +452,8 @@ static int adp5588_gpio_add(struct adp5588_kpad *kpad)
- 	mutex_init(&kpad->gpio_lock);
- 
- 	error = devm_gpiochip_add_data(dev, &kpad->gc, kpad);
--	if (error) {
--		dev_err(dev, "gpiochip_add failed: %d\n", error);
--		return error;
--	}
-+	if (error)
-+		return dev_err_probe(dev, error, "gpiochip_add failed\n");
- 
- 	for (i = 0; i <= ADP5588_BANK(ADP5588_MAXGPIO); i++) {
- 		error = adp5588_read(kpad->client,
-@@ -680,21 +677,19 @@ static int adp5588_fw_parse(struct adp5588_kpad *kpad)
- 		return 0;
- 	}
- 
--	if (!client->irq) {
--		dev_err(&client->dev, "Keypad configured but no IRQ present\n");
--		return -EINVAL;
--	}
-+	if (!client->irq)
-+		return dev_err_probe(&client->dev, -EINVAL,
-+				     "Keypad configured but no IRQ present\n");
- 
- 	ret = matrix_keypad_parse_properties(&client->dev, &kpad->rows,
- 					     &kpad->cols);
- 	if (ret)
- 		return ret;
- 
--	if (kpad->rows > ADP5588_ROWS_MAX || kpad->cols > ADP5588_COLS_MAX) {
--		dev_err(&client->dev, "Invalid nr of rows(%u) or cols(%u)\n",
--			kpad->rows, kpad->cols);
--		return -EINVAL;
--	}
-+	if (kpad->rows > ADP5588_ROWS_MAX || kpad->cols > ADP5588_COLS_MAX)
-+		return dev_err_probe(&client->dev, -EINVAL,
-+				     "Invalid nr of rows(%u) or cols(%u)\n",
-+				     kpad->rows, kpad->cols);
- 
- 	ret = matrix_keypad_build_keymap(NULL, NULL, kpad->rows, kpad->cols,
- 					 kpad->keycode, kpad->input);
-@@ -714,11 +709,10 @@ static int adp5588_fw_parse(struct adp5588_kpad *kpad)
- 		return 0;
- 	}
- 
--	if (kpad->nkeys_unlock > ARRAY_SIZE(kpad->unlock_keys)) {
--		dev_err(&client->dev, "number of unlock keys(%d) > (%zu)\n",
--			kpad->nkeys_unlock, ARRAY_SIZE(kpad->unlock_keys));
--		return -EINVAL;
--	}
-+	if (kpad->nkeys_unlock > ARRAY_SIZE(kpad->unlock_keys))
-+		return dev_err_probe(&client->dev, -EINVAL,
-+				     "number of unlock keys(%d) > (%zu)\n",
-+				     kpad->nkeys_unlock, ARRAY_SIZE(kpad->unlock_keys));
- 
- 	ret = device_property_read_u32_array(&client->dev, "adi,unlock-keys",
- 					     kpad->unlock_keys,
-@@ -735,11 +729,10 @@ static int adp5588_fw_parse(struct adp5588_kpad *kpad)
- 		 * part of keypad matrix to be used and if a reliable way of
- 		 * using GPIs is found, this condition can be removed/lightened.
- 		 */
--		if (kpad->unlock_keys[i] >= kpad->cols * kpad->rows) {
--			dev_err(&client->dev, "Invalid unlock key(%d)\n",
--				kpad->unlock_keys[i]);
--			return -EINVAL;
--		}
-+		if (kpad->unlock_keys[i] >= kpad->cols * kpad->rows)
-+			return dev_err_probe(&client->dev, -EINVAL,
-+					     "Invalid unlock key(%d)\n",
-+					     kpad->unlock_keys[i]);
- 
- 		/*
- 		 * Firmware properties keys start from 0 but on the device they
-@@ -761,10 +754,9 @@ static int adp5588_probe(struct i2c_client *client)
- 	u8 id;
- 
- 	if (!i2c_check_functionality(client->adapter,
--				     I2C_FUNC_SMBUS_BYTE_DATA)) {
--		dev_err(&client->dev, "SMBUS Byte Data not Supported\n");
--		return -EIO;
--	}
-+				     I2C_FUNC_SMBUS_BYTE_DATA))
-+		return dev_err_probe(&client->dev, -EIO,
-+				     "SMBUS Byte Data not Supported\n");
- 
- 	kpad = devm_kzalloc(&client->dev, sizeof(*kpad), GFP_KERNEL);
- 	if (!kpad)
-@@ -814,11 +806,9 @@ static int adp5588_probe(struct i2c_client *client)
- 	input->id.version = revid;
- 
- 	error = input_register_device(input);
--	if (error) {
--		dev_err(&client->dev, "unable to register input device: %d\n",
--			error);
--		return error;
--	}
-+	if (error)
-+		return dev_err_probe(&client->dev, error,
-+				     "unable to register input device\n");
- 
- 	error = adp5588_setup(kpad);
- 	if (error)
-@@ -833,11 +823,9 @@ static int adp5588_probe(struct i2c_client *client)
- 						  adp5588_hard_irq, adp5588_thread_irq,
- 						  IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
- 						  client->dev.driver->name, kpad);
--		if (error) {
--			dev_err(&client->dev, "failed to request irq %d: %d\n",
--				client->irq, error);
--			return error;
--		}
-+		if (error)
-+			return dev_err_probe(&client->dev, error,
-+					     "failed to request irq %d\n", client->irq);
- 	}
- 
- 	dev_info(&client->dev, "Rev.%d controller\n", revid);
+This patch assigns mapping only if vm_file is not NULL.
 
+[1] https://syzkaller.appspot.com/bug?extid=093d096417e7038a689b
+
+Signed-off-by: Manas <manas18244@iiitd.ac.in>
+---
+Changes in v4:
+- v4: simplify ternary conditional
+- Link to v3: https://lore.kernel.org/r/20241004-fix-null-deref-v3-1-f9459b1cc95f@iiitd.ac.in
+
+Changes in v3:
+- v3: use assigned var instead of accessing member again 
+- Link to v2: https://lore.kernel.org/r/20241004-fix-null-deref-v2-1-23ad90999cd1@iiitd.ac.in
+
+Changes in v2:
+- v2: use ternary operator according to feedback
+- Link to v1: https://lore.kernel.org/r/20241003-fix-null-deref-v1-1-0a45df9d016a@iiitd.ac.in
+---
+ mm/memory.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/mm/memory.c b/mm/memory.c
+index 2366578015ad..4e4d598496a8 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -6346,10 +6346,13 @@ static inline void pfnmap_args_setup(struct follow_pfnmap_args *args,
+ static inline void pfnmap_lockdep_assert(struct vm_area_struct *vma)
+ {
+ #ifdef CONFIG_LOCKDEP
+-	struct address_space *mapping = vma->vm_file->f_mapping;
++	struct address_space *mapping = NULL;
++
++	if (vma->vm_file)
++		mapping = vma->vm_file->f_mapping;
+ 
+ 	if (mapping)
+-		lockdep_assert(lockdep_is_held(&vma->vm_file->f_mapping->i_mmap_rwsem) ||
++		lockdep_assert(lockdep_is_held(&mapping->i_mmap_rwsem) ||
+ 			       lockdep_is_held(&vma->vm_mm->mmap_lock));
+ 	else
+ 		lockdep_assert(lockdep_is_held(&vma->vm_mm->mmap_lock));
+
+---
+base-commit: 9852d85ec9d492ebef56dc5f229416c925758edc
+change-id: 20241003-fix-null-deref-6bfa0337efc3
+
+Best regards,
 -- 
-2.46.1
+Manas <manas18244@iiitd.ac.in>
 
