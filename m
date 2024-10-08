@@ -1,145 +1,103 @@
 From: Renjiang Han <quic_renjiang@quicinc.com>
-Date: Tue, 08 Oct 2024 16:46:34 +0530
-Subject: [PATCH 1/2] arm64: dts: qcom: add video DT for qcs615
+Date: Tue, 08 Oct 2024 16:46:35 +0530
+Subject: [PATCH 2/2] media: venus: core: add qcs615 DT compatible and
+ resource data
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241008-add_qcs615_video-v1-1-436ce07bfc63@quicinc.com>
+Message-Id: <20241008-add_qcs615_video-v1-2-436ce07bfc63@quicinc.com>
 References: <20241008-add_qcs615_video-v1-0-436ce07bfc63@quicinc.com>
 In-Reply-To: <20241008-add_qcs615_video-v1-0-436ce07bfc63@quicinc.com>
 To: Vikash Garodia <quic_vgarodia@quicinc.com>
 Cc: kernel@quicinc.com, Renjiang Han <quic_renjiang@quicinc.com>, 
  linux-arm-msm@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728386222; l=3460;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728386222; l=2818;
  i=quic_renjiang@quicinc.com; s=20241001; h=from:subject:message-id;
- bh=/Bx9teN1YmKVEZFAZmCAcYjiC5RdA6hKz5QrvyVujYA=;
- b=AKtNMAPx5tz1SYWSdXlpCt3fjK4AcYJdDTuyyKRTBP2ud0g9ZzkCMjtCdW7/edj6dNUvDZsNF
- zwlQRAD6H1iAKAX+xvvVEbDqyzK3OhyMfJh9WNc90HiwW3/G6U0r7WK
+ bh=Q1QnwhQAJxUdLqNUWY5OfIjtDJPFF3bmncn+F/o0I3w=;
+ b=UGUYGtdz5GtJdTQknjM76kY2aiYDm2kzYiE4VWQ2FIpDaYLv2vooBZa8aWysbgyhawB8HEa/8
+ n/1VWGGsy8EB+1ZgwxHlB3DSwUAVydTDvY7NcxrRLsr/vCvwwLJCru0
 X-Developer-Key: i=quic_renjiang@quicinc.com; a=ed25519;
  pk=8N59kMJUiVH++5QxJzTyHB/wh/kG5LxQ44j9zhUvZmw=
 X-Endpoint-Received: by B4 Relay for quic_renjiang@quicinc.com/20241001 with auth_id=235
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-1. add video DT in the qcs615.dtsi
-2. enable video codec in the qcs615-ride.dts
+add qcs615 DT compatible and resource data
 
-Change-Id: I80017997005878145a22fc8f38c0ffb653938aee
+Change-Id: I1a06f105f030cbf16f48a32f8c50c814f0dbde7a
 Signed-off-by: Renjiang Han <quic_renjiang@quicinc.com>
 ---
- arch/arm64/boot/dts/qcom/qcs615-ride.dts | 12 +++++
- arch/arm64/boot/dts/qcom/qcs615.dtsi     | 75 ++++++++++++++++++++++++++++++++
- 2 files changed, 87 insertions(+)
+ drivers/media/platform/qcom/venus/core.c | 50 ++++++++++++++++++++++++++++++++
+ 1 file changed, 50 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/qcs615-ride.dts b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-index 73a8213cbbea58715677855c71b5b94e6c534711..c54e01640d4e455b1f985a553b6c5a83be31090e 100644
---- a/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-+++ b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-@@ -262,6 +262,18 @@ &gcc {
- 		 <&sleep_clk>;
+diff --git a/drivers/media/platform/qcom/venus/core.c b/drivers/media/platform/qcom/venus/core.c
+index 84e95a46dfc9832981ac1c0c58e226a506896ade..15cd78279cb7487f5f1da4e5d617da7b4a481451 100644
+--- a/drivers/media/platform/qcom/venus/core.c
++++ b/drivers/media/platform/qcom/venus/core.c
+@@ -816,6 +816,55 @@ static const struct venus_resources sc7180_res = {
+ 	.fwname = "qcom/venus-5.4/venus.mbn",
  };
  
-+&venus {
-+	status = "okay";
-+
-+	video-decoder {
-+		status = "okay";
-+	};
-+
-+	video-encoder {
-+		status = "okay";
-+	};
++static const struct freq_tbl qcs615_freq_table[] = {
++	{ 0, 460000000 },
++	{ 0, 410000000 },
++	{ 0, 380000000 },
++	{ 0, 300000000 },
++	{ 0, 240000000 },
++	{ 0, 133333333 },
 +};
 +
- &i2c2 {
- 	clock-frequency = <400000>;
- 	pinctrl-0 = <&qup_i2c2_data_clk &ioexp_intr_active &ioexp_reset_active>;
-diff --git a/arch/arm64/boot/dts/qcom/qcs615.dtsi b/arch/arm64/boot/dts/qcom/qcs615.dtsi
-index 1379900f753eff64d17fb1fe106b6a859e7f1aa3..a28a53ac500241f589a45f419ee3cfb8b64bca8b 100644
---- a/arch/arm64/boot/dts/qcom/qcs615.dtsi
-+++ b/arch/arm64/boot/dts/qcom/qcs615.dtsi
-@@ -1525,6 +1525,81 @@ usb_dwc3: usb@4e00000 {
- 
- 		};
- 
-+		venus: video-codec@aa00000 {
-+			compatible = "qcom,qcs615-venus";
-+			reg = <0x0 0xaa00000 0x0 0x100000>;
-+			interrupts = <GIC_SPI 174 IRQ_TYPE_LEVEL_HIGH>;
++static const struct bw_tbl qcs615_bw_table_enc[] = {
++	{  972000,  951000, 0, 1434000, 0 },	/* 3840x2160@30 */
++	{  489600,  723000, 0,  973000, 0 },	/* 1920x1080@60 */
++	{  244800,  370000, 0,	495000, 0 },	/* 1920x1080@30 */
++};
 +
-+			clocks = <&videocc VIDEO_CC_VENUS_CTL_CORE_CLK>,
-+				 <&videocc VIDEO_CC_VENUS_AHB_CLK>,
-+				 <&videocc VIDEO_CC_VENUS_CTL_AXI_CLK>,
-+				 <&videocc VIDEO_CC_VCODEC0_CORE_CLK>,
-+				 <&videocc VIDEO_CC_VCODEC0_AXI_CLK>;
-+			clock-names = "core", "iface", "bus",
-+				"vcodec0_core", "vcodec0_bus";
++static const struct bw_tbl qcs615_bw_table_dec[] = {
++	{ 1036800, 1987000, 0, 2797000, 0 },	/* 4096x2160@30 */
++	{  489600, 1040000, 0, 1298000, 0 },	/* 1920x1080@60 */
++	{  244800,  530000, 0,  659000, 0 },	/* 1920x1080@30 */
++};
 +
-+			power-domains = <&videocc VENUS_GDSC>,
-+					<&videocc VCODEC0_GDSC>,
-+					<&rpmhpd RPMHPD_CX>;
-+			power-domain-names = "venus", "vcodec0", "cx";
++static const struct venus_resources qcs615_res = {
++	.freq_tbl = qcs615_freq_table,
++	.freq_tbl_size = ARRAY_SIZE(qcs615_freq_table),
++	.bw_tbl_enc = qcs615_bw_table_enc,
++	.bw_tbl_enc_size = ARRAY_SIZE(qcs615_bw_table_enc),
++	.bw_tbl_dec = qcs615_bw_table_dec,
++	.bw_tbl_dec_size = ARRAY_SIZE(qcs615_bw_table_dec),
++	.clks = {"core", "iface", "bus"},
++	.clks_num = 3,
++	.vcodec0_clks = {"vcodec0_core", "vcodec0_bus"},
++	.vcodec_clks_num = 2,
++	.vcodec_pmdomains = (const char *[]) { "venus", "vcodec0" },
++	.vcodec_pmdomains_num = 2,
++	.opp_pmdomain = (const char *[]) { "cx", NULL },
++	.vcodec_num = 1,
++	.hfi_version = HFI_VERSION_4XX,
++	.vpu_version = VPU_VERSION_AR50,
++	.vmem_id = VIDC_RESOURCE_NONE,
++	.vmem_size = 0,
++	.vmem_addr = 0,
++	.dma_mask = 0xe0000000 - 1,
++	.cp_start = 0,
++	.cp_size = 0x70800000,
++	.cp_nonpixel_start = 0x1000000,
++	.cp_nonpixel_size = 0x24800000,
++	.fwname = "qcom/venus-5.4/venus.mbn",
++};
 +
-+			operating-points-v2 = <&venus_opp_table>;
-+
-+			interconnects = <&mmss_noc MASTER_VIDEO_P0 0 &mc_virt SLAVE_EBI1 0>,
-+					<&gem_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_VENUS_CFG 0>;
-+			interconnect-names = "video-mem", "cpu-cfg";
-+
-+			iommus = <&apps_smmu 0xe40 0x20>,
-+				 <&apps_smmu 0xe44 0x20>;
-+
-+			memory-region = <&pil_video_mem>;
-+
-+			status = "disabled";
-+			video-decoder {
-+				compatible = "venus-decoder";
-+				status = "disabled";
-+			};
-+
-+			video-encoder {
-+				compatible = "venus-encoder";
-+				status = "disabled";
-+			};
-+
-+			venus_opp_table: opp-table {
-+				compatible = "operating-points-v2";
-+
-+				opp-133330000 {
-+					opp-hz = /bits/ 64 <133330000>;
-+					required-opps = <&rpmhpd_opp_low_svs>;
-+				};
-+
-+				opp-240000000 {
-+					opp-hz = /bits/ 64 <240000000>;
-+					required-opps = <&rpmhpd_opp_svs>;
-+				};
-+
-+				opp-300000000 {
-+					opp-hz = /bits/ 64 <300000000>;
-+					required-opps = <&rpmhpd_opp_svs_l1>;
-+				};
-+
-+				opp-380000000 {
-+					opp-hz = /bits/ 64 <380000000>;
-+					required-opps = <&rpmhpd_opp_nom>;
-+				};
-+
-+				opp-410000000 {
-+					opp-hz = /bits/ 64 <410000000>;
-+					required-opps = <&rpmhpd_opp_turbo>;
-+				};
-+
-+				opp-460000000 {
-+					opp-hz = /bits/ 64 <460000000>;
-+					required-opps = <&rpmhpd_opp_turbo_l1>;
-+				};
-+			};
-+		};
-+
- 		videocc: clock-controller@ab00000 {
- 			compatible = "qcom,qcs615-videocc";
- 			reg = <0 0xab00000 0 0x10000>;
+ static const struct freq_tbl sm8250_freq_table[] = {
+ 	{ 0, 444000000 },
+ 	{ 0, 366000000 },
+@@ -943,6 +992,7 @@ static const struct of_device_id venus_dt_match[] = {
+ 	{ .compatible = "qcom,sc7180-venus", .data = &sc7180_res, },
+ 	{ .compatible = "qcom,sc7280-venus", .data = &sc7280_res, },
+ 	{ .compatible = "qcom,sm8250-venus", .data = &sm8250_res, },
++	{ .compatible = "qcom,qcs615-venus", .data = &qcs615_res, },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, venus_dt_match);
 
 -- 
 2.34.1
