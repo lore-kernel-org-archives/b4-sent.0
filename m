@@ -1,72 +1,50 @@
-From: Caleb White <cdwhite3@pm.me>
-Date: Mon, 07 Oct 2024 22:12:32 -0500
-Subject: [PATCH v3 3/3] worktree: add test for path handling in linked
- worktrees
+From: Renjiang Han <quic_renjiang@quicinc.com>
+Subject: [PATCH 0/2] media: venus: enable venus support on qcs615
+Date: Tue, 08 Oct 2024 16:46:33 +0530
+Message-Id: <20241008-add_qcs615_video-v1-0-436ce07bfc63@quicinc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241007-wt_relative_paths-v3-3-622cf18c45eb@pm.me>
-References: <20241007-wt_relative_paths-v3-0-622cf18c45eb@pm.me>
-In-Reply-To: <20241007-wt_relative_paths-v3-0-622cf18c45eb@pm.me>
-To: git@vger.kernel.org
-Cc: Caleb White <cdwhite3@pm.me>, Eric Sunshine <sunshine@sunshineco.com>
+X-B4-Tracking: v=1; b=H4sIAJIUBWcC/x3MTQqAIBBA4avIrBM0U6KrRIQ5U82mH4UIxLsnL
+ b/FexkSRaYEg8gQ6eHE51GhGwFh98dGkrEaWtV2WqleesT5DslpOz+MdErUhpRbnAlkoWZXpJX
+ ffzlOpXy8HfYoYgAAAA==
+X-Change-ID: 20241008-add_qcs615_video-d13e06b63ce5
+To: Vikash Garodia <quic_vgarodia@quicinc.com>
+Cc: kernel@quicinc.com, Renjiang Han <quic_renjiang@quicinc.com>, 
+ linux-arm-msm@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1555; i=cdwhite3@pm.me;
- h=from:subject:message-id; bh=jVeMwSXz6V0Ws/FxdC9tKiKw+TrVE9J7E72QZFqsvs8=;
- b=owGbwMvMwCVmxF73kO8jewrjabUkhnSWxVp7CgqDDsxcWDfJavOX6bI1CQfvX1375p7Rgsv8n
- //+P9y2sKOUhUGMi0FWTJHlzdbvBeqpjzO4P5TPhpnDygQyhIGLUwAmsv0Bw/942frqfb9W5nnc
- cHkdsMZsfc26KIeVX3a85/+uKTZ1s/hTRoY/rX0N29qWnVn8ckXpFgnB4weSzi1WWj+PYWn4r2+
- CUz14AQ==
-X-Developer-Key: i=cdwhite3@pm.me; a=openpgp;
- fpr=99981A649E1CA829A335E77493EDE5A0C788BC38
-X-Endpoint-Received: by B4 Relay for cdwhite3@pm.me/default with auth_id=237
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728386222; l=837;
+ i=quic_renjiang@quicinc.com; s=20241001; h=from:subject:message-id;
+ bh=SriKfHfhoKdNS3/P6FDcBxmjpvDM1p0JnqL9IBCCw0Y=;
+ b=H9WCnPW5vLCUv4vXCtd3MGtznp73rC5phpIg+6N/Idwxqs51T1ekpZwvG85hcWxOcFWYM9bhw
+ b2FTg1F9IIFCM2fnjuFuj3pKAwu9vvHOvRUhJTjbkNtXnYTNV9QE6U1
+X-Developer-Key: i=quic_renjiang@quicinc.com; a=ed25519;
+ pk=8N59kMJUiVH++5QxJzTyHB/wh/kG5LxQ44j9zhUvZmw=
+X-Endpoint-Received: by B4 Relay for quic_renjiang@quicinc.com/20241001 with auth_id=235
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A failure scenario reported in an earlier patch series[1] that several
-`git worktree` subcommands failed or misbehaved when invoked from within
-linked worktrees that used relative paths.
+This series enables support for 4xx venus encode/decode on qcs615.
 
-This adds a test that executes a `worktree prune` command inside both an
-internally and an externally linked worktree and asserts that the other
-worktree was not pruned.
+This DT change is dependent on [1]dts
 
-[1]: https://lore.kernel.org/git/CAPig+cQXFy=xPVpoSq6Wq0pxMRCjS=WbkgdO+3LySPX=q0nPCw@mail.gmail.com/
+[1]
+https://lore.kernel.org/all/20240926-add_initial_support_for_qcs615-v3-0-e37617e91c62@quicinc.com/
 
-Reported-by: Eric Sunshine <sunshine@sunshineco.com>
-Signed-off-by: Caleb White <cdwhite3@pm.me>
+Signed-off-by: Renjiang Han <quic_renjiang@quicinc.com>
 ---
- t/t2401-worktree-prune.sh | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+Renjiang Han (2):
+      arm64: dts: qcom: add video DT for qcs615
+      media: venus: core: add qcs615 DT compatible and resource data
 
-diff --git a/t/t2401-worktree-prune.sh b/t/t2401-worktree-prune.sh
-index 71aa9bcd620f8a504fe628a2d7332d8b47fd4701..976d048e3efc74be9cd909ce76d552b3944d2e10 100755
---- a/t/t2401-worktree-prune.sh
-+++ b/t/t2401-worktree-prune.sh
-@@ -120,4 +120,23 @@ test_expect_success 'prune duplicate (main/linked)' '
- 	! test -d .git/worktrees/wt
- '
- 
-+test_expect_success 'not prune proper worktrees when run inside linked worktree' '
-+	test_when_finished rm -rf repo wt_ext &&
-+	git init repo &&
-+	(
-+	    cd repo &&
-+	    echo content >file &&
-+	    git add file &&
-+	    git commit -m msg &&
-+	    git worktree add ../wt_ext &&
-+	    git worktree add wt_int &&
-+	    cd wt_int &&
-+	    git worktree prune -v >out &&
-+	    test_must_be_empty out &&
-+	    cd ../../wt_ext &&
-+	    git worktree prune -v >out &&
-+	    test_must_be_empty out
-+	)
-+'
-+
- test_done
+ arch/arm64/boot/dts/qcom/qcs615-ride.dts | 12 +++++
+ arch/arm64/boot/dts/qcom/qcs615.dtsi     | 75 ++++++++++++++++++++++++++++++++
+ drivers/media/platform/qcom/venus/core.c | 50 +++++++++++++++++++++
+ 3 files changed, 137 insertions(+)
+---
+base-commit: 9e5393d83e3a5cae58bac6d511371b21a9117302
+change-id: 20241008-add_qcs615_video-d13e06b63ce5
 
+Best regards,
 -- 
-2.46.2
+Renjiang Han <quic_renjiang@quicinc.com>
 
