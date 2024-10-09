@@ -1,104 +1,208 @@
-From: Renjiang Han <quic_renjiang@quicinc.com>
-Date: Tue, 08 Oct 2024 16:46:35 +0530
-Subject: [PATCH 2/2] media: venus: core: add qcs615 DT compatible and
- resource data
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH v3 0/5] iommu: Enable user space IOPFs in non-PASID and
+ non-svm cases
+Date: Wed, 09 Oct 2024 09:28:08 +0200
+Message-Id: <20241009-jag-iopfv8-v3-0-bd4271df5b2b@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241008-add_qcs615_video-v1-2-436ce07bfc63@quicinc.com>
-References: <20241008-add_qcs615_video-v1-0-436ce07bfc63@quicinc.com>
-In-Reply-To: <20241008-add_qcs615_video-v1-0-436ce07bfc63@quicinc.com>
-To: Vikash Garodia <quic_vgarodia@quicinc.com>
-Cc: kernel@quicinc.com, Renjiang Han <quic_renjiang@quicinc.com>, 
- linux-arm-msm@vger.kernel.org
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728386222; l=2818;
- i=quic_renjiang@quicinc.com; s=20241001; h=from:subject:message-id;
- bh=Q1QnwhQAJxUdLqNUWY5OfIjtDJPFF3bmncn+F/o0I3w=;
- b=UGUYGtdz5GtJdTQknjM76kY2aiYDm2kzYiE4VWQ2FIpDaYLv2vooBZa8aWysbgyhawB8HEa/8
- n/1VWGGsy8EB+1ZgwxHlB3DSwUAVydTDvY7NcxrRLsr/vCvwwLJCru0
-X-Developer-Key: i=quic_renjiang@quicinc.com; a=ed25519;
- pk=8N59kMJUiVH++5QxJzTyHB/wh/kG5LxQ44j9zhUvZmw=
-X-Endpoint-Received: by B4 Relay for quic_renjiang@quicinc.com/20241001 with auth_id=235
+X-B4-Tracking: v=1; b=H4sIAIgwBmcC/23MQQ7CIBCF4as0rMUMA02tK+9hXCAMLSYtDSjRN
+ L27tCubuHwv+f6ZJYqeEjtXM4uUffJhLEMeKmZ6PXbEvS2bIaCCFhR/6I77MLl84qJuGmcRFKJ
+ lBUyRnH9vseut7N6nZ4ifrZ3F+v7NZMGBk6xV2yJo6+Ql6SG9xu5owsDWUMYfLOQOY8GWNAiDU
+ sm72eNlWb4bE9eL4wAAAA==
+To: David Woodhouse <dwmw2@infradead.org>, 
+ Lu Baolu <baolu.lu@linux.intel.com>, Joerg Roedel <joro@8bytes.org>, 
+ Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
+ Jason Gunthorpe <jgg@ziepe.ca>, Kevin Tian <kevin.tian@intel.com>, 
+ Klaus Jensen <its@irrelevant.dk>
+Cc: linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
+ Joel Granados <joel.granados@kernel.org>, 
+ Joel Granados <joel.granados@kernel.org>, 
+ Klaus Jensen <k.jensen@samsung.com>
+X-Mailer: b4 0.15-dev-00a43
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6148;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=e2RQ0yEJePuriXcYPICTyw+6zC1cWX7pdNTOj+y2Y58=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGcGMIuRohnjV0fdnj9+LEdUOwbAGkaItpdiT
+ AbEtkmqvBqdJYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnBjCLAAoJELqXzVK3
+ lkFPgQQMAJZvYyiW0SPtZekEOm3EjYD1QjETNVTxeiK0dszZD1Xm0AA0gbhwVTJi8rWgNibxNO0
+ 62WeSnkv0onkZlpUck3BSKyzZSzK0h5/SOe8btY4ExbbCm5qm4d4QNz0mjCWIBZbXwdAJHxENz4
+ 95yp7ypNx+liu0n2SSFfwf7rWT8/5CzVmq5id1mA41YrwREPCgI0IGarQvZjOkPGMJ7abNLNQ+r
+ MZec8eu5iQUiHlRfiy2eAyQ7X2yy/ncJownZ3qkqItywlVVcSg1IdkrNy0V2RSSUQY1t4YX0z8H
+ x8Zm708oJRmyF4OFsxjVsCSDYZ1brHTqKIwEVh3HRoIDOMrPhDyC10UpuPf9ciBl3H3loWxaBoe
+ 8rSlWpAxWy34k+EJO9j0UBgaiBoPOgywePQ4gKt5MFz4CYqOqHeO6TwUfn6ot+RUCyx5n9Z7KHb
+ kDMbxxd03qjPlnsTNx9JxMWLNFo2aovwL5yXztAtrhywjI78mWkgByK8PF3Ln12Am7rK23krDL3
+ lE=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-add qcs615 DT compatible and resource data
+This series makes use of iommufd_hwpt_replace_device to execute
+non-pasid/non-svm user space IOPFs. Our main motivation is to expand or
+facilitate user-space driver driven device verification by enabling IOPF
+without SVM/PASID.
 
-Change-Id: I1a06f105f030cbf16f48a32f8c50c814f0dbde7a
-Signed-off-by: Renjiang Han <quic_renjiang@quicinc.com>
+What?
+  * Enable IO page fault handling in user space for a non-pasid, non-svm
+    and non-virtualised use case.
+  * Move IOMMU_IOPF configuration from INTEL_IOMMU_SVM into INTEL_IOMMU.
+  * Move all page request queue related logic to a new (prq.c) file.
+  * Remove PASID checks from PRQ event handling as well as PRQ
+    initialization.
+  * Allow execution of IOMMU_HWPT_ALLOC with a valid fault id
+    (IOMMU_HWPT_FAULT_ID_VALID)
+
+Why?
+  The PCI ATS Extended Capability allows peripheral devices to
+  participate in the caching of translations when operating under an
+  IOMMU. Further, the ATS Page Request Interface (PRI) Extension allows
+  devices to handle missing mappings. Currently, PRI is mainly used in
+  the context of Shared Virtual Addressing, requiring support for the
+  Process Address Space Identifier (PASID) capability which is not
+  strictly necessary. Relaxing this requirement adds to the
+  possibilities available for user-space driver driver device
+  verification as well as for avoiding pinning.
+
+Testing?
+  The non-svm IOPF interface is exercised by first initializing an IOPF
+  enabled IOAS and then reading the fault file descriptor. Pseudocode on
+  the IOPF initializing and handling is in [3] and [4] (using libvfn).
+
+  Supplementary repositories supporting this patchset:
+    1. A user space library libvfn [1] which is used for testing and
+       verification (see examples/iopf.c), and
+    2. Basic emulation of PCIe ATS/PRI and Intel VT-d PRQ in QEMU [2].
+
+Changes in v3:
+- Adjust wording in cover letter
+- Include "_iommu_" in the prq Intel function names to be more in line
+  with functions in iommu.h file
+- Rebase on top of 6.12-rc2
+- Update my ID in e-mail, git author and my Signed-off-by.
+- Link to v2: https://lore.kernel.org/r/20240913-jag-iopfv8-v2-0-dea01c2343bc@samsung.com
+
+Changes in v2:
+  - Remove "nesting" from wording. This wording is left over from initial
+    versions that are now irrelevant.
+  - Dropped "iommu: init pasid array while doing domain_replace and iopf
+    is active" as the initialization of the pasid_array x-array happens
+    automatically when an iopf capable domain is replaced on a device.
+  - Corrected commit message in "iommu/vt-d: Separate page request queue
+    from SVM"
+  - Link to v1: https://lore.kernel.org/r/20240904-jag-iopfv8-v1-0-e3549920adf3@samsung.com
+
+V1:
+  - This is the first version of the series after initial feedback from
+    the RFC [5].
+
+Comments and feedback are greatly appreciated
+Best
+
+Joel
+
+[1] https://github.com/SamsungDS/libvfn/tree/iommufd-fault-queue
+[2] https://gitlab.com/birkelund/qemu/-/tree/pcie-ats-pri
+
+[3] Initializing
+```
+  int iopf_init(struct iommu_ioas *ioas, const char *bdf)
+  {
+      // open vfio device from bdf
+      int devfd = open('/dev/vfio/devices/VFIO_DEV', O_RDWR);
+
+      struct vfio_device_bind_iommufd bind = {
+          .argsz = sizeof(bind),
+          .flags = 0,
+          .iommufd = __iommufd,
+      };
+      ioctl(devfd, VFIO_DEVICE_BIND_IOMMUFD, &bind);
+
+      struct iommu_ioas *ioas = ioas;
+      struct vfio_device_attach_iommufd_pt attach_data = {
+          .argsz = sizeof(attach_data),
+          .flags = 0,
+          .pt_id = ioas->id,
+      };
+      ioctl(devfd, VFIO_DEVICE_ATTACH_IOMMUFD_PT, &attach_data);
+
+      struct iommu_fault_alloc fault = {
+          .size = sizeof(fault),
+          .flags = 0,
+      };
+      ioctl(__iommufd, IOMMU_FAULT_QUEUE_ALLOC, &fault);
+
+      struct iommu_hwpt_alloc fault_cmd = {
+          .size = sizeof(fault_cmd),
+          .flags = IOMMU_HWPT_FAULT_ID_VALID,
+          .dev_id = bind.out_devid,
+          .pt_id = ioas->id,
+          .data_len = 0,
+          .data_uptr = (uint64_t)NULL,
+          .fault_id = fault.out_fault_id,
+          .__reserved = 0,
+          };
+      ioctl(__iommufd, IOMMU_HWPT_ALLOC, &fault_cmd);
+
+      // This is a re-attach
+      struct vfio_device_attach_iommufd_pt attach = {
+          .argsz = sizeof(attach),
+          .flags = 0,
+          .pt_id = fault_cmd.out_hwpt_id
+      };
+      ioctl(dev_fd, VFIO_DEVICE_ATTACH_IOMMUFD_PT, &attach);
+  }
+```
+
+[4] Handling
+```
+  int handle_iopf(void *vaddr, int len, uint64_t iova) {
+    exec_command(CMD)
+
+    int iopf_fd = fault_cmd.fault_id;
+
+    struct iommu_hwpt_pgfault pgfault = {0};
+    if(read(iopf_fd, &pgfault, sizeof(pgfault)) == 0);
+      return; // no page fault
+
+    ret = iommu_map_vaddr(__iommmufd, vaddr, len, &iova)
+    struct iommu_hwpt_page_response pgfault_response = {
+      .cookie = pgfault.cookie,
+      .code = ret ? IOMMUFD_PAGE_RESP_SUCCESS : IOMMUFD_PAGE_RESP_INVALID,
+    };
+
+    write(iopf_fd, &pgfault_response, sizeof(pgfault_response));
+
+    return;
+  }
+```
+
+[5] https://lore.kernel.org/20240826-iopf-for-all-v1-0-59174e6a7528@samsung.com
+
+Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- drivers/media/platform/qcom/venus/core.c | 50 ++++++++++++++++++++++++++++++++
- 1 file changed, 50 insertions(+)
+Joel Granados (3):
+      iommu/vt-d: Separate page request queue from SVM
+      iommu: kconfig: Move IOMMU_IOPF into INTEL_IOMMU
+      iommufd: Enable PRI when doing the iommufd_hwpt_alloc
 
-diff --git a/drivers/media/platform/qcom/venus/core.c b/drivers/media/platform/qcom/venus/core.c
-index 84e95a46dfc9832981ac1c0c58e226a506896ade..15cd78279cb7487f5f1da4e5d617da7b4a481451 100644
---- a/drivers/media/platform/qcom/venus/core.c
-+++ b/drivers/media/platform/qcom/venus/core.c
-@@ -816,6 +816,55 @@ static const struct venus_resources sc7180_res = {
- 	.fwname = "qcom/venus-5.4/venus.mbn",
- };
- 
-+static const struct freq_tbl qcs615_freq_table[] = {
-+	{ 0, 460000000 },
-+	{ 0, 410000000 },
-+	{ 0, 380000000 },
-+	{ 0, 300000000 },
-+	{ 0, 240000000 },
-+	{ 0, 133333333 },
-+};
-+
-+static const struct bw_tbl qcs615_bw_table_enc[] = {
-+	{  972000,  951000, 0, 1434000, 0 },	/* 3840x2160@30 */
-+	{  489600,  723000, 0,  973000, 0 },	/* 1920x1080@60 */
-+	{  244800,  370000, 0,	495000, 0 },	/* 1920x1080@30 */
-+};
-+
-+static const struct bw_tbl qcs615_bw_table_dec[] = {
-+	{ 1036800, 1987000, 0, 2797000, 0 },	/* 4096x2160@30 */
-+	{  489600, 1040000, 0, 1298000, 0 },	/* 1920x1080@60 */
-+	{  244800,  530000, 0,  659000, 0 },	/* 1920x1080@30 */
-+};
-+
-+static const struct venus_resources qcs615_res = {
-+	.freq_tbl = qcs615_freq_table,
-+	.freq_tbl_size = ARRAY_SIZE(qcs615_freq_table),
-+	.bw_tbl_enc = qcs615_bw_table_enc,
-+	.bw_tbl_enc_size = ARRAY_SIZE(qcs615_bw_table_enc),
-+	.bw_tbl_dec = qcs615_bw_table_dec,
-+	.bw_tbl_dec_size = ARRAY_SIZE(qcs615_bw_table_dec),
-+	.clks = {"core", "iface", "bus"},
-+	.clks_num = 3,
-+	.vcodec0_clks = {"vcodec0_core", "vcodec0_bus"},
-+	.vcodec_clks_num = 2,
-+	.vcodec_pmdomains = (const char *[]) { "venus", "vcodec0" },
-+	.vcodec_pmdomains_num = 2,
-+	.opp_pmdomain = (const char *[]) { "cx", NULL },
-+	.vcodec_num = 1,
-+	.hfi_version = HFI_VERSION_4XX,
-+	.vpu_version = VPU_VERSION_AR50,
-+	.vmem_id = VIDC_RESOURCE_NONE,
-+	.vmem_size = 0,
-+	.vmem_addr = 0,
-+	.dma_mask = 0xe0000000 - 1,
-+	.cp_start = 0,
-+	.cp_size = 0x70800000,
-+	.cp_nonpixel_start = 0x1000000,
-+	.cp_nonpixel_size = 0x24800000,
-+	.fwname = "qcom/venus-5.4/venus.mbn",
-+};
-+
- static const struct freq_tbl sm8250_freq_table[] = {
- 	{ 0, 444000000 },
- 	{ 0, 366000000 },
-@@ -943,6 +992,7 @@ static const struct of_device_id venus_dt_match[] = {
- 	{ .compatible = "qcom,sc7180-venus", .data = &sc7180_res, },
- 	{ .compatible = "qcom,sc7280-venus", .data = &sc7280_res, },
- 	{ .compatible = "qcom,sm8250-venus", .data = &sm8250_res, },
-+	{ .compatible = "qcom,qcs615-venus", .data = &qcs615_res, },
- 	{ }
- };
- MODULE_DEVICE_TABLE(of, venus_dt_match);
+Klaus Jensen (2):
+      iommu/vt-d: Remove the pasid present check in prq_event_thread
+      iommu/vt-d: drop pasid requirement for prq initialization
 
+ drivers/iommu/intel/Kconfig          |   2 +-
+ drivers/iommu/intel/Makefile         |   2 +-
+ drivers/iommu/intel/iommu.c          |  31 ++-
+ drivers/iommu/intel/iommu.h          |  14 +-
+ drivers/iommu/intel/prq.c            | 406 +++++++++++++++++++++++++++++++++++
+ drivers/iommu/intel/svm.c            | 397 ----------------------------------
+ drivers/iommu/iommufd/hw_pagetable.c |   3 +-
+ 7 files changed, 428 insertions(+), 427 deletions(-)
+---
+base-commit: 8cf0b93919e13d1e8d4466eb4080a4c4d9d66d7b
+change-id: 20240904-jag-iopfv8-1577fd20422d
+
+Best regards,
 -- 
-2.34.1
+Joel Granados <joel.granados@kernel.org>
 
