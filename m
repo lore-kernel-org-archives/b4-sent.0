@@ -1,83 +1,60 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Wed, 09 Oct 2024 16:16:46 +0200
-Subject: [PATCH 4/4] iio: frequency: adf4371: make use of dev_err_probe()
+From: Nathan Lynch <nathan.lynch@amd.com>
+Date: Thu, 10 Oct 2024 12:52:07 -0500
+Subject: [PATCH] Documentation: dmaengine: Correct reference to
+ glReadPixels()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241009-dev-adf4371-minor-improv-v1-4-97f4f22ed941@analog.com>
-References: <20241009-dev-adf4371-minor-improv-v1-0-97f4f22ed941@analog.com>
-In-Reply-To: <20241009-dev-adf4371-minor-improv-v1-0-97f4f22ed941@analog.com>
-To: linux-iio@vger.kernel.org
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728483403; l=1733;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=DGH4I8LERGUVBi449GUHzvNvBiAJHsHztF+43+7F+ac=;
- b=WUiHMjYXsVhamHZoKp5SXwyL2fY/16mdslO7qxD9UkUMiZOLD/6K8CR+s4T2Y5EpYdqKf3JQu
- il75xzcUJFnDGY0blvg5wYcCKofRDCiAia3HsHT3jh1gX7rWoGJVxOP
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Message-Id: <20241010-doc-dmaengine-glreadpixels-v1-1-8202e5834b13@amd.com>
+X-B4-Tracking: v=1; b=H4sIAEYUCGcC/xXMwQqEIBRG4VeJu+6CmRPVq0QLR//sQlkoRBC9+
+ zjLjwPnoYwkyDRWDyVckuWIBU1dkVttDGDxxaSVNo1SA/vDsd8tYpAIDluC9afc2DL339Z8tOl
+ 6OE1lcCYspfzn0/y+P0jULq9sAAAA
+X-Change-ID: 20241009-doc-dmaengine-glreadpixels-8b3452468ec2
+To: Vinod Koul <vkoul@kernel.org>, Jonathan Corbet <corbet@lwn.net>
+Cc: dmaengine@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Nathan Lynch <nathan.lynch@amd.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728582737; l=1424;
+ i=nathan.lynch@amd.com; s=20241010; h=from:subject:message-id;
+ bh=sDI7N3mxHAJ03TcvFpl2PcGzAZf7bKpMalFWT9iQmv8=;
+ b=C2kVbm9G0oEK8V8c2YVh5mkgs4l3JJMx87pC6fK6biBfp90u3cCU638A9FdaIo3IPPlGudriY
+ 3Io0jApTASJC251tjhjmU7+fLufEo7UYd5bGXz14PqV2J98qNIQYpzn
+X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
+ pk=ZR637UTGg5YLDj56cxFeHdYoUjPMMFbcijfOkAmAnbc=
+X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20241010 with auth_id=241
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use dev_err_probe() to simplify probe() error handling. While at it, add
-some error log in case we fail to get clkin.
+The author very likely meant "glReadPixels()" instead of
+"glReadpielx()", which does not appear in the OpenGL API.
 
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+https://registry.khronos.org/OpenGL-Refpages/gl4/html/glReadPixels.xhtml
+
+Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- drivers/iio/frequency/adf4371.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+ Documentation/driver-api/dmaengine/provider.rst | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/iio/frequency/adf4371.c b/drivers/iio/frequency/adf4371.c
-index 45c8398a45d0..d752507e0c98 100644
---- a/drivers/iio/frequency/adf4371.c
-+++ b/drivers/iio/frequency/adf4371.c
-@@ -4,6 +4,7 @@
-  *
-  * Copyright 2019 Analog Devices Inc.
-  */
-+#include "linux/dev_printk.h"
- #include <linux/bitfield.h>
- #include <linux/clk.h>
- #include <linux/device.h>
-@@ -554,11 +555,9 @@ static int adf4371_probe(struct spi_device *spi)
- 		return -ENOMEM;
+diff --git a/Documentation/driver-api/dmaengine/provider.rst b/Documentation/driver-api/dmaengine/provider.rst
+index 3085f8b460fa5514bf95d07e9c7120c19f2d467b..48ad4fd6e2773ab4e4ca5bcb851c0204295ab56f 100644
+--- a/Documentation/driver-api/dmaengine/provider.rst
++++ b/Documentation/driver-api/dmaengine/provider.rst
+@@ -172,8 +172,8 @@ Currently, the types available are:
+   - It's usually used for copying pixel data between host memory and
+     memory-mapped GPU device memory, such as found on modern PCI video graphics
+     cards. The most immediate example is the OpenGL API function
+-    ``glReadPielx()``, which might require a verbatim copy of a huge framebuffer
+-    from local device memory onto host memory.
++    ``glReadPixels()``, which might require a verbatim copy of a huge
++    framebuffer from local device memory onto host memory.
  
- 	regmap = devm_regmap_init_spi(spi, &adf4371_regmap_config);
--	if (IS_ERR(regmap)) {
--		dev_err(&spi->dev, "Error initializing spi regmap: %ld\n",
--			PTR_ERR(regmap));
--		return PTR_ERR(regmap);
--	}
-+	if (IS_ERR(regmap))
-+		return dev_err_probe(&spi->dev, PTR_ERR(regmap),
-+				     "Error initializing spi regmap\n");
+ - DMA_XOR
  
- 	st = iio_priv(indio_dev);
- 	st->spi = spi;
-@@ -577,15 +576,14 @@ static int adf4371_probe(struct spi_device *spi)
- 
- 	clkin = devm_clk_get_enabled(&spi->dev, "clkin");
- 	if (IS_ERR(clkin))
--		return PTR_ERR(clkin);
-+		return dev_err_probe(&spi->dev, PTR_ERR(clkin),
-+				     "Failed to get clkin\n");
- 
- 	st->clkin_freq = clk_get_rate(clkin);
- 
- 	ret = adf4371_setup(st);
--	if (ret < 0) {
--		dev_err(&spi->dev, "ADF4371 setup failed\n");
--		return ret;
--	}
-+	if (ret < 0)
-+		return dev_err_probe(&spi->dev, ret, "ADF4371 setup failed\n");
- 
- 	return devm_iio_device_register(&spi->dev, indio_dev);
- }
 
+---
+base-commit: 8cf0b93919e13d1e8d4466eb4080a4c4d9d66d7b
+change-id: 20241009-doc-dmaengine-glreadpixels-8b3452468ec2
+
+Best regards,
 -- 
-2.46.1
+Nathan Lynch <nathan.lynch@amd.com>
 
