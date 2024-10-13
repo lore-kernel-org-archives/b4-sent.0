@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Sun, 13 Oct 2024 23:27:46 +0200
-Subject: [PATCH v3 11/16] net: xgene_enet: Use helper rgmii_clock
+Date: Sun, 13 Oct 2024 23:27:47 +0200
+Subject: [PATCH v3 12/16] net: dwmac-sti: Use helper rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241013-upstream_s32cc_gmac-v3-11-d84b5a67b930@oss.nxp.com>
+Message-Id: <20241013-upstream_s32cc_gmac-v3-12-d84b5a67b930@oss.nxp.com>
 References: <20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com>
 In-Reply-To: <20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -33,11 +33,11 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728854875; l=1042;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728854875; l=1868;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=DaBsxGLe+QPFfNqlL0firzZ6hvDDB4Cd5sKjF5BEVMA=;
- b=ozIF2GNrr53C8rxjd2XD5oEL3dafHpIOFC2v7R8d0/7LqNPr7ZJaJ+gnLubDPaEFkfHIfycmo
- 6rGVnFJiV6+AfvFAtXXCxbCYMqhx6R4Cd0lruHLZ5sMqJU94LfMVdjN
+ bh=JMTOl/4Rkgg8MzRxHwxEln56QmjXWHwbotmJcc4tZQA=;
+ b=YhJIILVd9Eay9lSSnwFd64FJMwW3HOTjRBkTyLBmu9udYHtKm6H8zZSWkYwVISN+20AT+3McJ
+ LyJfpw+HRj8BWnbs1e/dU/Jdsh+79q4Fyt735099z8GRUObyNjJiwOL
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
@@ -47,37 +47,57 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/ethernet/apm/xgene/xgene_enet_hw.c | 16 +++++-----------
- 1 file changed, 5 insertions(+), 11 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c | 18 +++++-------------
+ 1 file changed, 5 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/net/ethernet/apm/xgene/xgene_enet_hw.c b/drivers/net/ethernet/apm/xgene/xgene_enet_hw.c
-index e641dbbea1e2..b854b6b42d77 100644
---- a/drivers/net/ethernet/apm/xgene/xgene_enet_hw.c
-+++ b/drivers/net/ethernet/apm/xgene/xgene_enet_hw.c
-@@ -421,18 +421,12 @@ static void xgene_enet_configure_clock(struct xgene_enet_pdata *pdata)
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c
+index 4445cddc4cbe..0b02d079360d 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c
+@@ -21,10 +21,7 @@
  
- 	if (dev->of_node) {
- 		struct clk *parent = clk_get_parent(pdata->clk);
-+		long rate = rgmii_clock(pdata->phy_speed);
+ #include "stmmac_platform.h"
  
--		switch (pdata->phy_speed) {
--		case SPEED_10:
--			clk_set_rate(parent, 2500000);
--			break;
--		case SPEED_100:
--			clk_set_rate(parent, 25000000);
--			break;
--		default:
--			clk_set_rate(parent, 125000000);
--			break;
--		}
-+		if (rate < 0)
-+			rate = 125000000;
+-#define DWMAC_125MHZ	125000000
+ #define DWMAC_50MHZ	50000000
+-#define DWMAC_25MHZ	25000000
+-#define DWMAC_2_5MHZ	2500000
+ 
+ #define IS_PHY_IF_MODE_RGMII(iface)	(iface == PHY_INTERFACE_MODE_RGMII || \
+ 			iface == PHY_INTERFACE_MODE_RGMII_ID || \
+@@ -140,7 +137,7 @@ static void stih4xx_fix_retime_src(void *priv, u32 spd, unsigned int mode)
+ 	struct sti_dwmac *dwmac = priv;
+ 	u32 src = dwmac->tx_retime_src;
+ 	u32 reg = dwmac->ctrl_reg;
+-	u32 freq = 0;
++	long freq = 0;
+ 
+ 	if (dwmac->interface == PHY_INTERFACE_MODE_MII) {
+ 		src = TX_RETIME_SRC_TXCLK;
+@@ -153,19 +150,14 @@ static void stih4xx_fix_retime_src(void *priv, u32 spd, unsigned int mode)
+ 		}
+ 	} else if (IS_PHY_IF_MODE_RGMII(dwmac->interface)) {
+ 		/* On GiGa clk source can be either ext or from clkgen */
+-		if (spd == SPEED_1000) {
+-			freq = DWMAC_125MHZ;
+-		} else {
++		freq = rgmii_clock(spd);
 +
-+		clk_set_rate(parent, rate);
++		if (spd != SPEED_1000 && freq > 0)
+ 			/* Switch to clkgen for these speeds */
+ 			src = TX_RETIME_SRC_CLKGEN;
+-			if (spd == SPEED_100)
+-				freq = DWMAC_25MHZ;
+-			else if (spd == SPEED_10)
+-				freq = DWMAC_2_5MHZ;
+-		}
  	}
- #ifdef CONFIG_ACPI
- 	else {
+ 
+-	if (src == TX_RETIME_SRC_CLKGEN && freq)
++	if (src == TX_RETIME_SRC_CLKGEN && freq > 0)
+ 		clk_set_rate(dwmac->clk, freq);
+ 
+ 	regmap_update_bits(dwmac->regmap, reg, STIH4XX_RETIME_SRC_MASK,
 
 -- 
 2.46.0
