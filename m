@@ -1,11 +1,11 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Sun, 13 Oct 2024 23:27:50 +0200
-Subject: [PATCH v3 15/16] MAINTAINERS: Add Jan Petrous as the NXP S32G/R
- DWMAC driver maintainer
+Date: Sun, 13 Oct 2024 23:27:51 +0200
+Subject: [PATCH v3 16/16] net: stmmac: dwmac-s32: Read PTP clock rate when
+ ready
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241013-upstream_s32cc_gmac-v3-15-d84b5a67b930@oss.nxp.com>
+Message-Id: <20241013-upstream_s32cc_gmac-v3-16-d84b5a67b930@oss.nxp.com>
 References: <20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com>
 In-Reply-To: <20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -32,43 +32,63 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  netdev@vger.kernel.org, linux-arm-msm@vger.kernel.org, imx@lists.linux.dev, 
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
+ "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
+ Andrei Botila <andrei.botila@nxp.org>, 
+ Jacob Keller <jacob.e.keller@intel.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728854875; l=872;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728854875; l=1605;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=zmHx3KNbX8A6L/euQ4+Hu4yJAQBrFW95hHmYe/45/dc=;
- b=RGWSZgVVXDcvhXEDq6X4N4KOzc9Vs2WUbIYIGOBAGbaN5c778ikD3JcWUboQ9SFq1FnEUqVVd
- wpgujQ3WsjvCRakL9q30pisG1A12E5+ILIURNsQFfyz1XMt4w6ZiiLu
+ bh=yghcsP0rT1E+KchKPuX8DbIOCwUwU33DKX66yshrGiI=;
+ b=rlFKSP5vX/qcXmdlWd4FXmmlRdEmQ1yeJaLvdVoYW0pouWkcfUFvPcxCrMwVsedbS365JSzZB
+ h+dQP6P/jtsBNIya5JLVNWMXWpGB7PDdgKlyqw+3OjugSO34ce4lc7a
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add myself as NXP S32G/R DWMAC Ethernet driver maintainer.
+The PTP clock is read by stmmac_platform during DT parse.
+On S32G/R the clock is not ready and returns 0. Postpone
+reading of the clock on PTP init.
 
+Co-developed-by: Andrei Botila <andrei.botila@nxp.org>
+Signed-off-by: Andrei Botila <andrei.botila@nxp.org>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Reviewed-by: Jacob Keller <jacob.e.keller@intel.com>
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 7387afe8f7ea..217a7edb25c7 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2757,6 +2757,13 @@ S:	Maintained
- F:	arch/arm64/boot/dts/freescale/s32g*.dts*
- F:	drivers/pinctrl/nxp/
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
+index aedd6bf80684..3daf282d8da7 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
+@@ -140,6 +140,18 @@ static void s32_fix_mac_speed(void *priv, unsigned int speed, unsigned int mode)
+ 		dev_err(gmac->dev, "Can't set tx clock\n");
+ }
  
-+ARM/NXP S32G/S32R DWMAC ETHERNET DRIVER
-+M:	Jan Petrous <jan.petrous@oss.nxp.com>
-+L:	NXP S32 Linux Team <s32@nxp.com>
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/nxp,dwmac-s32.yaml
-+F:	drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
++static void s32_dwmac_ptp_clk_freq_config(struct stmmac_priv *priv)
++{
++	struct plat_stmmacenet_data *plat = priv->plat;
 +
- ARM/Orion SoC/Technologic Systems TS-78xx platform support
- M:	Alexander Clouter <alex@digriz.org.uk>
- L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
++	if (!plat->clk_ptp_ref)
++		return;
++
++	plat->clk_ptp_rate = clk_get_rate(plat->clk_ptp_ref);
++
++	netdev_dbg(priv->dev, "PTP rate %lu\n", plat->clk_ptp_rate);
++}
++
+ static int s32_dwmac_probe(struct platform_device *pdev)
+ {
+ 	struct plat_stmmacenet_data *plat;
+@@ -195,6 +207,7 @@ static int s32_dwmac_probe(struct platform_device *pdev)
+ 	plat->init = s32_gmac_init;
+ 	plat->exit = s32_gmac_exit;
+ 	plat->fix_mac_speed = s32_fix_mac_speed;
++	plat->ptp_clk_freq_config = s32_dwmac_ptp_clk_freq_config;
+ 
+ 	plat->bsp_priv = gmac;
+ 
 
 -- 
 2.46.0
