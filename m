@@ -1,10 +1,11 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Sun, 13 Oct 2024 23:27:38 +0200
-Subject: [PATCH v3 03/16] net: stmmac: Fix clock rate variables size
+Date: Sun, 13 Oct 2024 23:27:39 +0200
+Subject: [PATCH v3 04/16] net: phy: Add helper for mapping RGMII link speed
+ to clock rate
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241013-upstream_s32cc_gmac-v3-3-d84b5a67b930@oss.nxp.com>
+Message-Id: <20241013-upstream_s32cc_gmac-v3-4-d84b5a67b930@oss.nxp.com>
 References: <20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com>
 In-Reply-To: <20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -32,110 +33,97 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  netdev@vger.kernel.org, linux-arm-msm@vger.kernel.org, imx@lists.linux.dev, 
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
- Serge Semin <fancer.lancer@gmail.com>
+ "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728854875; l=4015;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728854875; l=2138;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=rZtvgxdJs+uvFCspKOdVSbISr0XerCY0VS1ForZPWcc=;
- b=qGAdtifhY+adK80vHwqsEVOx202MRrqBh5WpmcYV0IkVWKznOLsSbId2cJxV1jKHUTTa4tLZj
- Y0KinVpiB/cAg9R4msHIXGf55De/5B5x9wzFZKCe9y7Bvxw/2wh2vmZ
+ bh=DaDkzUPthYLXEW32SreKBO3MyQ9lanZalBFxpDCNQzE=;
+ b=bo+RPMH3Mt3S1/zUl8ym396kld4wUMRFbTsLm5IgKWk0eKbfyTYScNWSGecqm9ZQqMjJk8ZEp
+ qtga7k6oZDxDG2MG5OuboP6Z/O5hDkbWtDc3kFxhksvVJCx7PNcKAvX
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The clock API clk_get_rate() returns unsigned long value.
-Expand affected members of stmmac platform data and
-convert the stmmac_clk_csr_set() and dwmac4_core_init() methods
-to defining the unsigned long clk_rate local variables.
+The helper rgmii_clock() implemented Russel's hint during stmmac
+glue driver review:
 
+  > We seem to have multiple cases of very similar logic in lots of stmmac
+  > platform drivers, and I think it's about time we said no more to this.
+  > So, what I think we should do is as follows:
+  >
+  > add the following helper - either in stmmac, or more generically
+  > (phylib? - in which case its name will need changing.)
+  >
+  > static long stmmac_get_rgmii_clock(int speed)
+  > {
+  >        switch (speed) {
+  >        case SPEED_10:
+  >                return 2500000;
+  >
+  >        case SPEED_100:
+  >                return 25000000;
+  >
+  >        case SPEED_1000:
+  >                return 125000000;
+  >
+  >        default:
+  >                return -ENVAL;
+  >        }
+  > }
+  >
+  > Then, this can become:
+  >
+  >        long tx_clk_rate;
+  >
+  >        ...
+  >
+  >        tx_clk_rate = stmmac_get_rgmii_clock(speed);
+  >        if (tx_clk_rate < 0) {
+  >                dev_err(gmac->dev, "Unsupported/Invalid speed: %d\n", speed);
+  >                return;
+  >        }
+  >
+  >        ret = clk_set_rate(gmac->tx_clk, tx_clk_rate);
+
+Suggested-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
-Reviewed-by: Serge Semin <fancer.lancer@gmail.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-qcom-ethqos.c | 2 +-
- drivers/net/ethernet/stmicro/stmmac/dwmac4_core.c       | 2 +-
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c       | 2 +-
- drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c   | 2 +-
- include/linux/stmmac.h                                  | 6 +++---
- 5 files changed, 7 insertions(+), 7 deletions(-)
+ include/linux/phy.h | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-qcom-ethqos.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-qcom-ethqos.c
-index 901a3c1959fa..2a5b38723635 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-qcom-ethqos.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-qcom-ethqos.c
-@@ -777,7 +777,7 @@ static void ethqos_ptp_clk_freq_config(struct stmmac_priv *priv)
- 		netdev_err(priv->dev, "Failed to max out clk_ptp_ref: %d\n", err);
- 	plat_dat->clk_ptp_rate = clk_get_rate(plat_dat->clk_ptp_ref);
- 
--	netdev_dbg(priv->dev, "PTP rate %d\n", plat_dat->clk_ptp_rate);
-+	netdev_dbg(priv->dev, "PTP rate %lu\n", plat_dat->clk_ptp_rate);
+diff --git a/include/linux/phy.h b/include/linux/phy.h
+index a98bc91a0cde..7f6d9e7533ce 100644
+--- a/include/linux/phy.h
++++ b/include/linux/phy.h
+@@ -298,6 +298,27 @@ static inline const char *phy_modes(phy_interface_t interface)
+ 	}
  }
  
- static int qcom_ethqos_probe(struct platform_device *pdev)
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac4_core.c b/drivers/net/ethernet/stmicro/stmmac/dwmac4_core.c
-index a1858f083eef..a70bcd72f5ad 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac4_core.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac4_core.c
-@@ -25,7 +25,7 @@ static void dwmac4_core_init(struct mac_device_info *hw,
- 	struct stmmac_priv *priv = netdev_priv(dev);
- 	void __iomem *ioaddr = hw->pcsr;
- 	u32 value = readl(ioaddr + GMAC_CONFIG);
--	u32 clk_rate;
-+	unsigned long clk_rate;
++/**
++ * rgmii_clock - map link speed to the clock rate
++ * @speed: link speed value
++ *
++ * Description: maps RGMII supported link speeds
++ * into the clock rates.
++ */
++static inline long rgmii_clock(int speed)
++{
++	switch (speed) {
++	case SPEED_10:
++		return 2500000;
++	case SPEED_100:
++		return 25000000;
++	case SPEED_1000:
++		return 125000000;
++	default:
++		return -EINVAL;
++	}
++}
++
+ #define PHY_INIT_TIMEOUT	100000
+ #define PHY_FORCE_TIMEOUT	10
  
- 	value |= GMAC_CORE_INIT;
- 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-index f9cab62cfde9..dd155dd4903b 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -300,7 +300,7 @@ static void stmmac_global_err(struct stmmac_priv *priv)
-  */
- static void stmmac_clk_csr_set(struct stmmac_priv *priv)
- {
--	u32 clk_rate;
-+	unsigned long clk_rate;
- 
- 	clk_rate = clk_get_rate(priv->plat->stmmac_clk);
- 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
-index ad868e8d195d..b1e4df1a86a0 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
-@@ -639,7 +639,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
- 		dev_info(&pdev->dev, "PTP uses main clock\n");
- 	} else {
- 		plat->clk_ptp_rate = clk_get_rate(plat->clk_ptp_ref);
--		dev_dbg(&pdev->dev, "PTP rate %d\n", plat->clk_ptp_rate);
-+		dev_dbg(&pdev->dev, "PTP rate %lu\n", plat->clk_ptp_rate);
- 	}
- 
- 	plat->stmmac_rst = devm_reset_control_get_optional(&pdev->dev,
-diff --git a/include/linux/stmmac.h b/include/linux/stmmac.h
-index 865d0fe26f98..c9878a612e53 100644
---- a/include/linux/stmmac.h
-+++ b/include/linux/stmmac.h
-@@ -252,8 +252,8 @@ struct plat_stmmacenet_data {
- 	struct clk *stmmac_clk;
- 	struct clk *pclk;
- 	struct clk *clk_ptp_ref;
--	unsigned int clk_ptp_rate;
--	unsigned int clk_ref_rate;
-+	unsigned long clk_ptp_rate;
-+	unsigned long clk_ref_rate;
- 	unsigned int mult_fact_100ns;
- 	s32 ptp_max_adj;
- 	u32 cdc_error_adj;
-@@ -265,7 +265,7 @@ struct plat_stmmacenet_data {
- 	int mac_port_sel_speed;
- 	int has_xgmac;
- 	u8 vlan_fail_q;
--	unsigned int eee_usecs_rate;
-+	unsigned long eee_usecs_rate;
- 	struct pci_dev *pdev;
- 	int int_snapshot_num;
- 	int msi_mac_vec;
 
 -- 
 2.46.0
