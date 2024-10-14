@@ -1,95 +1,61 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Sun, 13 Oct 2024 23:27:51 +0200
-Subject: [PATCH v3 16/16] net: stmmac: dwmac-s32: Read PTP clock rate when
- ready
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v2 0/3] Pinctrl: A4: Add pinctrl driver
+Date: Mon, 14 Oct 2024 17:05:50 +0800
+Message-Id: <20241014-a4_pinctrl-v2-0-3e74a65c285e@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241013-upstream_s32cc_gmac-v3-16-d84b5a67b930@oss.nxp.com>
-References: <20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com>
-In-Reply-To: <20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com>
-To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Jose Abreu <joabreu@synopsys.com>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Vinod Koul <vkoul@kernel.org>, 
- Richard Cochran <richardcochran@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Emil Renner Berthing <kernel@esmil.dk>, 
- Minda Chen <minda.chen@starfivetech.com>, 
- Nicolas Ferre <nicolas.ferre@microchip.com>, 
- Claudiu Beznea <claudiu.beznea@tuxon.dev>, 
- Iyappan Subramanian <iyappan@os.amperecomputing.com>, 
- Keyur Chudgar <keyur@os.amperecomputing.com>, 
- Quan Nguyen <quan@os.amperecomputing.com>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAO7eDGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDIxNDA0Mj3UST+ILMvOSSohxdA8sUwySjREPzVBNzJaCGgqLUtMwKsGHRsbW
+ 1ANHff0ZcAAAA
+To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Giuseppe Cavallaro <peppe.cavallaro@st.com>
-Cc: linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org, linux-arm-msm@vger.kernel.org, imx@lists.linux.dev, 
- devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
- Andrei Botila <andrei.botila@nxp.org>, 
- Jacob Keller <jacob.e.keller@intel.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1728854875; l=1605;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=yghcsP0rT1E+KchKPuX8DbIOCwUwU33DKX66yshrGiI=;
- b=rlFKSP5vX/qcXmdlWd4FXmmlRdEmQ1yeJaLvdVoYW0pouWkcfUFvPcxCrMwVsedbS365JSzZB
- h+dQP6P/jtsBNIya5JLVNWMXWpGB7PDdgKlyqw+3OjugSO34ce4lc7a
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1728896762; l=1092;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=rXMah+J87oYT3vd/VshwC8Oh5TzIdt2Y9rGblinQcgc=;
+ b=zE3a0ATHwkt0UPDkqLiAfcZlwI7i+KGHXLiqYxVGuW8pgGCunXwkYetcGBd+Uwi7VDAZiZr7K
+ 8jbTkxDvx04AbcAAIUD1Yb07ySmA03pn6T4ZJs0hKuvniT23uDLnTJd
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PTP clock is read by stmmac_platform during DT parse.
-On S32G/R the clock is not ready and returns 0. Postpone
-reading of the clock on PTP init.
+Add pinctrl driver support for Amloigc A4 SoC
 
-Co-developed-by: Andrei Botila <andrei.botila@nxp.org>
-Signed-off-by: Andrei Botila <andrei.botila@nxp.org>
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
-Reviewed-by: Jacob Keller <jacob.e.keller@intel.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Changes in v2:
+- Use one marco instead of all pin define.
+- Add unit name for dts node.
+- Link to v1: https://lore.kernel.org/all/20240611-a4_pinctrl-v1-0-dc487b1977b3@amlogic.com/
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-index aedd6bf80684..3daf282d8da7 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-@@ -140,6 +140,18 @@ static void s32_fix_mac_speed(void *priv, unsigned int speed, unsigned int mode)
- 		dev_err(gmac->dev, "Can't set tx clock\n");
- }
- 
-+static void s32_dwmac_ptp_clk_freq_config(struct stmmac_priv *priv)
-+{
-+	struct plat_stmmacenet_data *plat = priv->plat;
-+
-+	if (!plat->clk_ptp_ref)
-+		return;
-+
-+	plat->clk_ptp_rate = clk_get_rate(plat->clk_ptp_ref);
-+
-+	netdev_dbg(priv->dev, "PTP rate %lu\n", plat->clk_ptp_rate);
-+}
-+
- static int s32_dwmac_probe(struct platform_device *pdev)
- {
- 	struct plat_stmmacenet_data *plat;
-@@ -195,6 +207,7 @@ static int s32_dwmac_probe(struct platform_device *pdev)
- 	plat->init = s32_gmac_init;
- 	plat->exit = s32_gmac_exit;
- 	plat->fix_mac_speed = s32_fix_mac_speed;
-+	plat->ptp_clk_freq_config = s32_dwmac_ptp_clk_freq_config;
- 
- 	plat->bsp_priv = gmac;
- 
+---
+Xianwei Zhao (3):
+      dt-bindings: pinctrl: Add support for Amlogic A4 SoCs
+      pinctrl: meson: Add driver support for Amlogic A4 SoCs
+      arm64: dts: amlogic: a4: add pinctrl node
 
+ .../bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml |    2 +
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |   36 +
+ drivers/pinctrl/meson/Kconfig                      |    6 +
+ drivers/pinctrl/meson/Makefile                     |    1 +
+ drivers/pinctrl/meson/pinctrl-amlogic-a4.c         | 1176 ++++++++++++++++++++
+ include/dt-bindings/gpio/amlogic-a4-gpio.h         |   38 +
+ 6 files changed, 1259 insertions(+)
+---
+base-commit: 58e2d28ed28e5bc8836f8c14df1f94c27c1f9e2f
+change-id: 20241012-a4_pinctrl-09d1b2a17e47
+
+Best regards,
 -- 
-2.46.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
