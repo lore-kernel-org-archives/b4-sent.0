@@ -1,133 +1,100 @@
-From: Nuno Sa <nuno.sa@analog.com>
-Date: Wed, 16 Oct 2024 16:22:01 +0200
-Subject: [PATCH 3/3] iio: addac: ad74413r: simplify with cleanup.h
+From: Celeste Liu <CoelacanthusHex@gmail.com>
+Date: Thu, 17 Oct 2024 01:49:49 +0800
+Subject: [PATCH] riscv/entry: get correct syscall number from
+ syscall_get_nr()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241016-dev-ad74413r-minor-improv-v1-3-13c9c769237d@analog.com>
-References: <20241016-dev-ad74413r-minor-improv-v1-0-13c9c769237d@analog.com>
-In-Reply-To: <20241016-dev-ad74413r-minor-improv-v1-0-13c9c769237d@analog.com>
-To: linux-iio@vger.kernel.org
-Cc: Cosmin Tanislav <cosmin.tanislav@analog.com>, 
- Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729088521; l=3081;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=fSsvW/amVn55Zii+damJ6Q75Aec5l4o8BgF4z/jzw4k=;
- b=rT8vdmqfQoH1Cf9MlwNFOiXKSZlPayhyO2TcM1OmRJpYfVtawRSGu5vntKSAxpramZfNuPyL1
- 0EfIwKzS+FxAcBx4CC5ejw6LXUbky+nZ7R6bXLUG/IAsT0HSC5rbBU1
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Message-Id: <20241017-fix-riscv-syscall-nr-v1-1-4edb4ca07f07@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALz8D2cC/x2MSQqAMAwAvyI5G7AuFf2KeNCaakCqJFAU8e8Wj
+ wMz84CSMCn02QNCkZWPkMDkGbhtCishL4mhLMraFMai5wuF1UXUW9207xgEO9POjbW+a30FKT2
+ Fkvdvh/F9P1Mix5BmAAAA
+X-Change-ID: 20241016-fix-riscv-syscall-nr-917b566f97f3
+To: Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ =?utf-8?q?Bj=C3=B6rn_T=C3=B6pel?= <bjorn@rivosinc.com>, 
+ Celeste Liu <coelacanthushex@gmail.com>
+Cc: Palmer Dabbelt <palmer@rivosinc.com>, Alexandre Ghiti <alex@ghiti.fr>, 
+ "Dmitry V. Levin" <ldv@strace.io>, Andrea Bolognani <abologna@redhat.com>, 
+ Felix Yan <felixonmars@archlinux.org>, Ruizhe Pan <c141028@gmail.com>, 
+ Shiqi Zhang <shiqi@isrc.iscas.ac.cn>, Guo Ren <guoren@kernel.org>, 
+ Yao Zi <ziyao@disroot.org>, Han Gao <gaohan@iscas.ac.cn>, 
+ linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Celeste Liu <CoelacanthusHex@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2366;
+ i=CoelacanthusHex@gmail.com; h=from:subject:message-id;
+ bh=lQHWH4mdPxR6fSPtGuLhEmZBLbEpDpJ9XVmyzF+kIjU=;
+ b=owJ4nJvAy8zAJfY4pvNJRPo6U8bTakkM6fx//rDbHWUTjFeQ1lxc+evTyrQnVWz7ZnMl5gXGN
+ bKeX89itrCjlIVBjItBVkyRRWzn09fLSh99WMZrMgNmDisTyBAGLk4BmIiTFyPDhFnn9dIvunfM
+ ezeRcxLDm791Uyo+aE9KqdXql5lxwCePn5HhUrLiJuNJhmd61+wIi3naMVdOfk7c5X/cwk3Xt4c
+ 4mnjxAQABV0jh
+X-Developer-Key: i=CoelacanthusHex@gmail.com; a=openpgp;
+ fpr=892EBC7DC392DFF9C9C03F1D15F4180E73787863
+X-Endpoint-Received: by B4 Relay for CoelacanthusHex@gmail.com/default with auth_id=84
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make use of mutex guard() and IIO iio_device_claim_direct_scoped() to
-simplify code and error handling.
+The return value of syscall_enter_from_user_mode() is always -1 when the
+syscall was filtered. We can't know whether syscall_nr is -1 when we get -1
+from syscall_enter_from_user_mode(). And the old syscall variable is
+unusable because syscall_enter_from_user_mode() may change a7 register.
+So get correct syscall number from syscall_get_nr().
 
-While at it, use devm_mutex_init() to initialize the mutex.
+So syscall number part of return value of syscall_enter_from_user_mode()
+is completely useless. We can remove it from API and require caller to
+get syscall number from syscall_get_nr(). But this change affect more
+architectures and will block more time. So we split it into another
+patchset to avoid block this fix. (Other architectures can works
+without this change but riscv need it, see Link: tag below)
 
-Signed-off-by: Nuno Sa <nuno.sa@analog.com>
+Fixes: 61119394631f ("riscv: entry: always initialize regs->a0 to -ENOSYS")
+Reported-by: Andrea Bolognani <abologna@redhat.com>
+Closes: https://github.com/strace/strace/issues/315
+Link: https://lore.kernel.org/all/59505464-c84a-403d-972f-d4b2055eeaac@gmail.com/
+Signed-off-by: Celeste Liu <CoelacanthusHex@gmail.com>
 ---
- drivers/iio/addac/ad74413r.c | 37 +++++++++++++++----------------------
- 1 file changed, 15 insertions(+), 22 deletions(-)
+ arch/riscv/kernel/traps.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/iio/addac/ad74413r.c b/drivers/iio/addac/ad74413r.c
-index cfe26a394465..daea2bde7acf 100644
---- a/drivers/iio/addac/ad74413r.c
-+++ b/drivers/iio/addac/ad74413r.c
-@@ -6,6 +6,7 @@
- 
- #include <linux/unaligned.h>
- #include <linux/bitfield.h>
-+#include <linux/cleanup.h>
- #include <linux/crc8.h>
- #include <linux/device.h>
- #include <linux/err.h>
-@@ -864,19 +865,12 @@ static int ad74413r_get_single_adc_result(struct iio_dev *indio_dev,
- 					  unsigned int channel, int *val)
+diff --git a/arch/riscv/kernel/traps.c b/arch/riscv/kernel/traps.c
+index 51ebfd23e0076447518081d137102a9a11ff2e45..3125fab8ee4af468ace9f692dd34e1797555cce3 100644
+--- a/arch/riscv/kernel/traps.c
++++ b/arch/riscv/kernel/traps.c
+@@ -316,18 +316,25 @@ void do_trap_ecall_u(struct pt_regs *regs)
  {
- 	struct ad74413r_state *st = iio_priv(indio_dev);
--	int ret;
+ 	if (user_mode(regs)) {
+ 		long syscall = regs->a7;
++		long res;
  
--	ret = iio_device_claim_direct_mode(indio_dev);
--	if (ret)
--		return ret;
--
--	mutex_lock(&st->lock);
--	ret = _ad74413r_get_single_adc_result(st, channel, val);
--	mutex_unlock(&st->lock);
--
--	iio_device_release_direct_mode(indio_dev);
--
--	return ret;
-+	iio_device_claim_direct_scoped(return -EBUSY, indio_dev) {
-+		guard(mutex)(&st->lock);
-+		return _ad74413r_get_single_adc_result(st, channel, val);
-+	}
-+	unreachable();
- }
+ 		regs->epc += 4;
+ 		regs->orig_a0 = regs->a0;
+-		regs->a0 = -ENOSYS;
  
- static void ad74413r_adc_to_resistance_result(int adc_result, int *val)
-@@ -898,7 +892,7 @@ static int ad74413r_update_scan_mode(struct iio_dev *indio_dev,
- 	unsigned int channel;
- 	int ret = -EINVAL;
+ 		riscv_v_vstate_discard(regs);
  
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
+-		syscall = syscall_enter_from_user_mode(regs, syscall);
++		res = syscall_enter_from_user_mode(regs, syscall);
++		/*
++		 * Call syscall_get_nr() again because syscall_enter_from_user_mode()
++		 * may change a7 register.
++		 */
++		syscall = syscall_get_nr(current, regs);
  
- 	spi_message_init(&st->adc_samples_msg);
- 	st->adc_active_channels = 0;
-@@ -906,11 +900,11 @@ static int ad74413r_update_scan_mode(struct iio_dev *indio_dev,
- 	for_each_clear_bit(channel, active_scan_mask, AD74413R_CHANNEL_MAX) {
- 		ret = ad74413r_set_adc_channel_enable(st, channel, false);
- 		if (ret)
--			goto out;
-+			return ret;
- 	}
+ 		add_random_kstack_offset();
  
- 	if (*active_scan_mask == 0)
--		goto out;
-+		return ret;
+-		if (syscall >= 0 && syscall < NR_syscalls)
++		if (syscall < 0 || syscall >= NR_syscalls)
++			regs->a0 = -ENOSYS;
++		else if (res != -1)
+ 			syscall_handler(regs, syscall);
  
- 	/*
- 	 * The read select register is used to select which register's value
-@@ -928,7 +922,7 @@ static int ad74413r_update_scan_mode(struct iio_dev *indio_dev,
- 	for_each_set_bit(channel, active_scan_mask, AD74413R_CHANNEL_MAX) {
- 		ret = ad74413r_set_adc_channel_enable(st, channel, true);
- 		if (ret)
--			goto out;
-+			return ret;
- 
- 		st->adc_active_channels++;
- 
-@@ -959,11 +953,7 @@ static int ad74413r_update_scan_mode(struct iio_dev *indio_dev,
- 	xfer->cs_change = 0;
- 
- 	spi_message_add_tail(xfer, &st->adc_samples_msg);
--
--out:
--	mutex_unlock(&st->lock);
--
--	return ret;
-+	return 0;
- }
- 
- static int ad74413r_buffer_postenable(struct iio_dev *indio_dev)
-@@ -1368,7 +1358,10 @@ static int ad74413r_probe(struct spi_device *spi)
- 	if (!st->chip_info)
- 		return -EINVAL;
- 
--	mutex_init(&st->lock);
-+	ret = devm_mutex_init(st->dev, &st->lock);
-+	if (ret)
-+		return ret;
-+
- 	init_completion(&st->adc_data_completion);
- 
- 	st->regmap = devm_regmap_init(st->dev, NULL, st,
+ 		/*
 
+---
+base-commit: 2f87d0916ce0d2925cedbc9e8f5d6291ba2ac7b2
+change-id: 20241016-fix-riscv-syscall-nr-917b566f97f3
+
+Best regards,
 -- 
-2.46.1
+Celeste Liu <CoelacanthusHex@gmail.com>
 
