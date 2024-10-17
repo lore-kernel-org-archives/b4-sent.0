@@ -1,62 +1,1596 @@
 From: Daniel Gomez <da.gomez@samsung.com>
-Date: Thu, 17 Oct 2024 14:42:45 +0200
-Subject: [PATCH 3/5] sysbench: fix SYSBENCH_MYSQL_INNODB_REDO_LOG_CAPACITY
- typo
+Date: Thu, 17 Oct 2024 14:42:46 +0200
+Subject: [PATCH 4/5] sysbench: split mysql-docker benchmark
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241017-add-postgresql-tps-var-v1-3-4996d45426af@samsung.com>
+Message-Id: <20241017-add-postgresql-tps-var-v1-4-4996d45426af@samsung.com>
 References: <20241017-add-postgresql-tps-var-v1-0-4996d45426af@samsung.com>
 In-Reply-To: <20241017-add-postgresql-tps-var-v1-0-4996d45426af@samsung.com>
 To: kdevops@lists.linux.dev, mcgrof@kernel.org
 Cc: d+samsung@kruces.com, Daniel Gomez <da.gomez@samsung.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729168974; l=1470;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729168974; l=59484;
  i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
- bh=DB+ZvmYhPF9qcb4ltw+jE9FcUQQhau5ZlPsY+YOxAuo=;
- b=1dAdZeKxMdp1V4OuCSct5Q+ylOiWo9OrvwPf3VL3O99STA5i64q0pPDm1cqGmxnf4gIClS4zp
- GkWx4aP700NCAaJdtarhdiUIz3pBKVlm0E3NkRV0AHRAYLu2gvfooP8
+ bh=3y75C4Va16mt9CiSeQ8n3Hrq4f0spLECfpQYtsV0e20=;
+ b=7FX+3pasiclMuBl3MFyyVRJux3g5cfo6jpf39zQYLhF9A4e/TYbnjjnzYbi4bsHZ0js+AXDqq
+ JFPvv0o8uAwBJ0bHULQAD1df9rmbhm+ZF6RjKoJOcDhKqpBHw2YyQ6B
 X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
  pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
 X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Just remove the extra "o".
-
-No functional changes.
+Group all tasks in a subdirectory mysql-docker to have the workload
+self-contained.
 
 Signed-off-by: Daniel Gomez <da.gomez@samsung.com>
 ---
- playbooks/roles/sysbench/templates/mysql.conf.j2 | 2 +-
- workflows/sysbench/Kconfig                       | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ playbooks/roles/sysbench/tasks/main.yaml           | 775 +--------------------
+ .../roles/sysbench/tasks/mysql-docker/main.yaml    | 773 ++++++++++++++++++++
+ 2 files changed, 776 insertions(+), 772 deletions(-)
 
-diff --git a/playbooks/roles/sysbench/templates/mysql.conf.j2 b/playbooks/roles/sysbench/templates/mysql.conf.j2
-index f00fa40..225099c 100644
---- a/playbooks/roles/sysbench/templates/mysql.conf.j2
-+++ b/playbooks/roles/sysbench/templates/mysql.conf.j2
-@@ -33,7 +33,7 @@ default-authentication-plugin=mysql_native_password
- # For systems with above 10 GiB RAM: 0.5625 * (RAM in GB)
- # n1-standard-16: 33.75G
- # i4i.4xlarge: 72G
--innodb_redo_log_capacity        = {{ sysbench_mysql_innoodb_redo_log_capacity }}
-+innodb_redo_log_capacity        = {{ sysbench_mysql_innodb_redo_log_capacity }}
+diff --git a/playbooks/roles/sysbench/tasks/main.yaml b/playbooks/roles/sysbench/tasks/main.yaml
+index 0eafb20..4f4ab51 100644
+--- a/playbooks/roles/sysbench/tasks/main.yaml
++++ b/playbooks/roles/sysbench/tasks/main.yaml
+@@ -31,775 +31,6 @@
+     name: create_data_partition
+   tags: [ 'mkfs' ]
  
- # For systems with above 4 GiB RAM: 0.75 * (RAM in GB)
- # n1-standard-16: 45G
-diff --git a/workflows/sysbench/Kconfig b/workflows/sysbench/Kconfig
-index f3878c7..35ff821 100644
---- a/workflows/sysbench/Kconfig
-+++ b/workflows/sysbench/Kconfig
-@@ -33,7 +33,7 @@ config SYSBENCH_MYSQL_TABLE_ENGINE
- 	output yaml
- 	default "innodb" if SYSBENCH_TYPE_MYSQL_DOCKER
- 
--config SYSBENCH_MYSQL_INNOODB_REDO_LOG_CAPACITY
-+config SYSBENCH_MYSQL_INNODB_REDO_LOG_CAPACITY
- 	string "innodb_redo_log_capacity"
- 	output yaml
- 	default "1G" if SYSBENCH_TYPE_MYSQL_DOCKER
+-- name: Ensure telemetry data directory exists
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  ansible.builtin.file:
+-    path: "{{ sysbench_telemetry_path }}"
+-    state: directory
+-    mode: "u=rwx,g=rx,o=rx"
+-  when: 'sysbench_type_mysql_docker|bool'
+-  tags: ['setup']
+-
+-- name: Ensure MySQL root user directory exists
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  ansible.builtin.file:
+-    path: "{{ sysbench_mysql_container_host_root_path }}"
+-    state: directory
+-    mode: "u=rwx,g=rx,o=rx"
+-  when: 'sysbench_type_mysql_docker|bool'
+-  tags: ['setup']
+-
+-- name: Determine filesystem setting used and db page size
+-  vars:
+-    fs_type_variable: "{{ ansible_host | regex_replace('^' + kdevops_host_prefix + '-', '')  | regex_replace('-.+', '') }}"
+-    fs_command_variable_simple: "sysbench_{{ ansible_host | regex_replace('^' + kdevops_host_prefix + '-', '') | regex_replace('-dev$', '') }}_cmd"
+-    fs_command_variable: "{{ fs_command_variable_simple | regex_replace('-', '_') | regex_replace('^sysbench_' + fs_type_variable, fs_type_variable + '_section') }}"
+-    db_page_size_simple: "sysbench_{{ ansible_host | regex_replace('^' + kdevops_host_prefix + '-', '') | regex_replace('-dev$', '') }}_db_page_size"
+-    db_page_size_variable: "{{ db_page_size_simple | regex_replace('-', '_') | regex_replace('^sysbench_' + fs_type_variable, fs_type_variable + '_section') }}"
+-    fs_sector_size_variable: "sysbench_{{ fs_type_variable }}_sector_size"
+-    fs_cmd: "{{  lookup('vars', 'sysbench_' + fs_command_variable) }}"
+-    sect_size: "{{  lookup('vars', fs_sector_size_variable) }}"
+-    db_page_size: "{{  lookup('vars', 'sysbench_' + db_page_size_variable) }}"
+-  set_fact:
+-    filesystem_command_for_host: "{{ fs_cmd }}"
+-    sysbench_fs_sector_size: "{{ sect_size }}"
+-    sysbench_fstype: "{{ fs_type_variable }}"
+-    sysbench_fs_opts_without_sector_size: "{{ fs_cmd | regex_replace('^[^ ]+ ', '')  }}"
+-    sysbench_db_page_size: "{{ db_page_size }}"
+-  tags: ['vars' ]
+-
+-- name: Set filesystem options for XFS with sector size
+-  set_fact:
+-    sysbench_fs_opts: "{{ sysbench_fs_opts_without_sector_size }} -s size={{ sysbench_fs_sector_size }} -L {{ sysbench_label }}"
+-  when: sysbench_fstype != 'ext4'
+-  tags: ['mkfs']
+-
+-- name: Set filesystem options for ext4 without sector size
+-  set_fact:
+-    sysbench_fs_opts: "{{ sysbench_fs_opts_without_sector_size }} -L {{ sysbench_label }}"
+-  when: sysbench_fstype == 'ext4'
+-  tags: ['mkfs']
+-
+-- name: Set environment variable for sector size for ext4
+-  vars:
+-  set_fact:
+-    sysbench_fs_env:
+-      MKE2FS_DEVICE_SECTSIZE: "{{ sysbench_fs_sector_size }}"
+-  when: sysbench_fstype == 'ext4'
+-  tags: ['mkfs']
+-
+-- name: Clear environment variable for non-ext4 filesystems
+-  set_fact:
+-    sysbench_fs_env: {}
+-  when: sysbench_fstype != 'ext4'
+-  tags: ['mkfs']
+-
+-- name: Display the filesystem options and environment variable for the current host
+-  debug:
+-    msg: |
+-      Sysbench device:    {{ sysbench_device }}
+-      Sysbench fstype:    {{ sysbench_fstype }}
+-      Sysbench fs opts:   {{ sysbench_fs_opts }}
+-      Sysbench label:     {{ sysbench_label }}
+-      Sysbench mount:     {{ sysbench_mnt }}
+-      Sysbench env:       {{ sysbench_fs_env }}
+-  tags: ['debug']
+-
+-- name: Fail if no filesystem command is found for the host
+-  fail:
+-    msg: "No filesystem configuration command found for the current host: {{ ansible_host }}"
+-  when: filesystem_command_for_host is undefined
+-  tags: ['mkfs']
+-
+-- name: Remove any old sysbench container
+-  tags: ['post_entrypoint', 'clean' ]
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container:
+-    name: "{{ sysbench_container_name }}"
+-    image: "{{ sysbench_container_image_name }}"
+-    state: absent
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Remove any old MySQL container
+-  tags: ['post_entrypoint', 'clean' ]
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container:
+-    name: "{{ sysbench_mysql_container_name }}"
+-    image: "{{ sysbench_mysql_container_image_string }}"
+-    state: absent
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Unmount {{ sysbench_mnt }}
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  ansible.builtin.mount:
+-    path: "{{ sysbench_mnt }}"
+-    state: unmounted
+-  tags: ['clean', 'mkfs']
+-
+-- name: Wipe filesystem signatures from the device
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  ansible.builtin.command:
+-    cmd: "wipefs --all {{ sysbench_device }}"
+-  tags: ['clean', 'mkfs']
+-
+-- name: Create the filesystem we'll use to place the database under test
+-  ansible.builtin.include_role:
+-    name: create_partition
+-  vars:
+-    disk_setup_device: "{{ sysbench_device }}"
+-    disk_setup_fstype: "{{ sysbench_fstype }}"
+-    disk_setup_label: "{{ sysbench_label }}"
+-    disk_setup_path: "{{ sysbench_mnt }}"
+-    disk_setup_fs_opts: "{{ sysbench_fs_opts }}"
+-    disk_setup_env: "{{ sysbench_fs_env }}"
+-  tags: ['clean', 'mkfs']
+-
+-- name: Set sysbench_mysql_innodb_doublewrite based on ansible_host
+-  tags: ['vars' ]
+-  set_fact:
+-    sysbench_host_is_baseline: "{{ False if ansible_host is search('-dev$') else True }}"
+-    sysbench_mysql_innodb_doublewrite: "{{ '0' if ansible_host is search('-dev$') else '1' }}"
+-  when:
+-    - 'sysbench_disable_doublewrite_auto|bool'
+-
+-- name: Set sysbench_mysql_innodb_doublewrite based on ansible_host
+-  tags: ['vars' ]
+-  set_fact:
+-    sysbench_mysql_innodb_doublewrite: '0'
+-  when:
+-    - 'sysbench_disable_doublewrite_always|bool'
+-
+-- name: Generate MySQL client configuration file from template
+-  tags: ['setup']
+-  ansible.builtin.template:
+-    src: "{{ sysbench_mysql_container_host_client_config_path | basename }}.j2"
+-    dest: "{{ sysbench_mysql_container_host_client_config_path }}"
+-    mode: "u=rw,g=r,o=r"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Generate MySQL server configuration file from template
+-  tags: ['setup']
+-  ansible.builtin.template:
+-    src: "{{ sysbench_mysql_container_host_config_path | basename }}.j2"
+-    dest: "{{ sysbench_mysql_container_host_config_path }}"
+-    mode: "u=rw,g=r,o=r"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Create a few directories needed for telemetry inside the docker container
+-  tags: [ 'setup' ]
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  ansible.builtin.file:
+-    path: "{{ item }}"
+-    state: directory
+-  with_items:
+-    - "{{ sysbench_mysql_container_host_root_path }}/.mysqlsh/"
+-
+-- name: git clone our mysqlsh plugin for telemetry
+-  tags: ['setup']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  environment:
+-    GIT_SSL_NO_VERIFY:  true
+-  git:
+-    repo: "https://github.com/lefred/mysqlshell-plugins.git"
+-    dest: "{{ sysbench_mysql_container_host_root_path }}/.mysqlsh/plugins/"
+-    update: yes
+-    version: master
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Get used target kernel version
+-  tags: [ 'db_start' ]
+-  command: "uname -r"
+-  register: uname_cmd
+-
+-- name: Store last kernel variable
+-  set_fact:
+-    last_kernel: "{{ uname_cmd.stdout_lines | regex_replace('\\]') | regex_replace('\\[') | replace(\"'\",'') }}"
+-  tags: ['db_start']
+-  run_once: true
+-
+-- name: Ensure the results directory exists on the localhost
+-  tags: ['db_start']
+-  local_action: file
+-  args:
+-    path: "{{ topdir_path }}/workflows/sysbench/results/"
+-    state: directory
+-  run_once: true
+-
+-- name: Ensure the results directory exists on the localhost for each node locally
+-  tags: ['db_start']
+-  local_action: file
+-  args:
+-    path: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/"
+-    state: directory
+-
+-- name: Document used target kernel version
+-  local_action: "shell echo {{ last_kernel }} > {{ topdir_path }}/workflows/sysbench/results/last-kernel.txt"
+-  tags: ['db_start']
+-  run_once: true
+-
+-- name: Document double write buffer setting on node
+-  local_action: "shell echo {{ sysbench_mysql_innodb_doublewrite }} > {{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/innodb_doublewrite.txt"
+-  tags: ['db_start']
+-
+-- name: Document db page size setting on node
+-  local_action: "shell echo {{ sysbench_db_page_size }} > {{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/innodb_page_size.txt"
+-  tags: ['db_start']
+-
+-- name: Start MySQL Docker container
+-  tags: ['db_start']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container:
+-    name: "{{ sysbench_mysql_container_name }}"
+-    image: "{{ sysbench_mysql_container_image_string }}"
+-    state: started
+-    restart_policy: unless-stopped
+-    volumes:
+-      - "{{ sysbench_mysql_container_host_config_path }}:{{ sysbench_mysql_container_config }}"
+-      - "{{ sysbench_mysql_container_host_client_config_path }}:{{ sysbench_mysql_container_client_config }}"
+-      - "{{ sysbench_mnt }}:{{ sysbench_mysql_container_db_path }}"
+-      - "{{ sysbench_telemetry_path }}:{{ sysbench_docker_telemetry_path }}"
+-      - "{{ sysbench_mysql_container_host_root_path }}:/root/"
+-    published_ports:
+-      - "{{ sysbench_local_db_port }}:3306"
+-    env:
+-      MYSQL_DATABASE: "{{ sysbench_db_name }}"
+-      MYSQL_ROOT_PASSWORD: "{{ sysbench_root_db_password }}"
+-      PYTHONPATH: "{{ sysbench_mysql_container_python_path }}"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Wait for for it... (MySQL data port to be up)
+-  tags: ['db_start']
+-  ansible.builtin.wait_for:
+-    port: "{{ sysbench_local_db_port }}"
+-    timeout: 20
+-    state: started
+-
+-- name: Wait for MySQL socket file inside Docker container
+-  tags: ['db_start']
+-  become: yes
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    command: /bin/bash -c "test -S /var/lib/mysql/mysql.sock"
+-  register: result
+-  retries: 12  # Retry up to 12 times
+-  delay: 5  # Delay 5 seconds between retries
+-  until: result.rc == 0
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Verify MySQL client works inside Docker container using explicit socket
+-  tags: ['db_start']
+-  become: yes
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    command: mysql --socket=/var/lib/mysql/mysql.sock -e "SHOW DATABASES;"
+-  register: mysql_socket_output_explicit
+-  ignore_errors: true
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Save MySQL client explicit socket test output to a file on the host
+-  tags: ['db_start']
+-  become: yes
+-  become_method: sudo
+-  copy:
+-    content: "{{ mysql_socket_output_explicit.stdout }}"
+-    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-mysql-client-explicit-test.txt"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Verify MySQL client works on server and capture output
+-  tags: ['db_start']
+-  become: yes
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    command: mysql -h localhost -e "SHOW DATABASES;"
+-  register: mysql_socket_output
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Save MySQL client socket test output to a file on the host
+-  tags: ['db_start']
+-  become: yes
+-  become_method: sudo
+-  copy:
+-    content: "{{ mysql_socket_output.stdout }}"
+-    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-mysql-client-test.txt"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Add sysbench test user using the MySQL container
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    command: mysql -e "CREATE USER {{ sysbench_db_username }}@'%' IDENTIFIED WITH 'mysql_native_password' BY '{{ sysbench_db_password }}';"
+-  register: mysql_add_sysbench_user
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Save MySQL output of adding sysbench user
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_method: sudo
+-  copy:
+-    content: "{{ mysql_add_sysbench_user.stdout }}"
+-    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-0001-add-user.txt"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Grant sysbench test user privileges using the MySQL container
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    command: mysql -e "GRANT ALL PRIVILEGES ON {{ sysbench_db_name }}.* to {{ sysbench_db_username }}@'%';"
+-  register: mysql_sysbench_privs
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Save MySQL output of granting all privileges to sysbench user
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_method: sudo
+-  copy:
+-    content: "{{ mysql_sysbench_privs.stdout }}"
+-    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-0002-grant-privs-user.txt"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Flush privileges
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    command: mysql -e "FLUSH PRIVILEGES;"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Install pip using MySQL container
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    command: microdnf install -y python-pip
+-  register: mysql_pip
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Save MySQL output of installing pip
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_method: sudo
+-  copy:
+-    content: "{{ mysql_pip.stdout }}"
+-    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-0003-install-python-pip.txt"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Install Python packages we need for telemetry pip using the MySQL container
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    command: pip install pandas matplotlib
+-    env:
+-      PYTHONPATH: "{{ sysbench_mysql_container_python_path }}"
+-  register: mysql_pip_install_deps
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Save MySQL output of installing telemetry reqs with pip
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_method: sudo
+-  copy:
+-    content: "{{ mysql_pip_install_deps.stdout }}"
+-    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-0004-install-telemetry-reqs.txt"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Ensure sysbench user is present on the mysql container
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    command: mysql -e "SELECT user, host, plugin FROM mysql.user WHERE user = '{{ sysbench_db_username }}' AND plugin = 'mysql_native_password';"
+-  register: user_check_result
+-  failed_when: user_check_result.stdout.find(sysbench_db_username) == -1
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Remove the sysbench container
+-  tags: ['populate_sbtest']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container:
+-    name: "{{ sysbench_container_name }}"
+-    image: "{{ sysbench_container_image_name }}"
+-    state: absent
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Start a sysbench container we will re-use for population and running the test
+-  tags: ['populate_sbtest']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container:
+-    name: "{{ sysbench_container_name }}"
+-    image: "{{ sysbench_container_image_name }}"
+-    volumes:
+-      - "{{ sysbench_telemetry_path }}:{{ sysbench_docker_telemetry_path }}"
+-    network_mode: host
+-    state: started
+-    detach: true
+-    restart_policy: unless-stopped
+-    command: "tail -f /dev/null"  # Keeps the container running
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Wait for the sysbench container to be in running state
+-  tags: ['populate_sbtest']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_info:
+-    name: "{{ sysbench_container_name }}"
+-  register: sysbench_container_status
+-  until: sysbench_container_status.container is defined and sysbench_container_status.container.State.Running
+-  retries: 5
+-  delay: 5
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-# Keep this at threads=1 as multiple threads don't work when building the
+-# initial database.
+-- name: Use the sysbench container to populate the sysbench database
+-  tags: [ 'populate_sbtest' ]
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_container_name }}"
+-    command: |
+-      /usr/bin/sysbench
+-      /usr/share/sysbench/tests/include/oltp_legacy/parallel_prepare.lua
+-      --db-driver={{ sysbench_db_type }}
+-      --mysql-table-engine={{ sysbench_mysql_table_engine }}
+-      --oltp-table-size={{ sysbench_oltp_table_size }}
+-      --oltp-tables-count={{ sysbench_oltp_table_count }}
+-      --threads=1
+-      --mysql-auth-plugin=mysql_native_password
+-      --mysql-host=127.0.0.1
+-      --mysql-port={{ sysbench_local_db_port }}
+-      --mysql-user={{ sysbench_db_username }}
+-      --mysql-password={{ sysbench_db_password }}
+-      run
+-  register: sysbench_init_pop
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Save the output of popuating the initial sysench database
+-  tags: ['post_entrypoint']
+-  become: yes
+-  become_method: sudo
+-  copy:
+-    content: "{{ sysbench_init_pop.stdout }}"
+-    dest: "{{ sysbench_docker_telemetry_path }}/sysbench_populate.txt"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-# We use a shell here to be able to directly output to a file instad
+-# of saving to an ansible variable with register because we expect this
+-# file to be long.
+-- name: Run sysbench benchmark workload against MySQL
+-  tags: ['run_sysbench']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_container_name }}"
+-    command: >
+-      sh -c "/usr/bin/sysbench
+-      --test=/usr/share/sysbench/tests/include/oltp_legacy/oltp.lua
+-      --db-driver={{ sysbench_db_type }}
+-      --report-interval={{ sysbench_report_interval }}
+-      --mysql-table-engine={{ sysbench_mysql_table_engine }}
+-      --oltp-table-size={{ sysbench_oltp_table_size }}
+-      --oltp-tables-count={{ sysbench_oltp_table_count }}
+-      --threads={{ sysbench_threads }}
+-      --time={{ sysbench_test_duration }}
+-      --mysql-host=127.0.0.1
+-      --mysql-port={{ sysbench_local_db_port }}
+-      --mysql-user={{ sysbench_db_username }}
+-      --mysql-password={{ sysbench_db_password }}
+-      --mysql-auth-plugin=mysql_native_password
+-      run >
+-      {{ sysbench_docker_telemetry_path }}/sysbench_tps.txt"
+-  async: "{{ sysbench_test_duration | int + 10 }}" # Maximum allowed time to complete
+-  poll: 0 # Run in the background
+-  register: sysbench_job # Register the job ID
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Collect MySQL telemetry inside the Docker MySQL container at the same time
+-  tags: ['telemetry', 'tel' ]
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container_exec:
+-    container: "{{ sysbench_mysql_container_name }}"
+-    env:
+-      MYSQL_DATABASE: "{{ sysbench_db_name }}"
+-      MYSQL_ROOT_PASSWORD: "{{ sysbench_db_password }}"
+-      PYTHONPATH: "{{ sysbench_mysql_container_python_path }}"
+-    command: |
+-      mysqlsh --execute
+-      "support.collect(mysql=true, os=true, time={{ sysbench_test_duration | int // 60 }}, outputdir='{{ sysbench_telemetry_path }}')"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Wait for sysbench workload to complete
+-  tags: ['run_sysbench']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  async_status:
+-    jid: "{{ sysbench_job.ansible_job_id }}"
+-  register: sysbench_result
+-  until: sysbench_result.finished
+-  retries: "{{ sysbench_test_duration | int // 60 }}"  # Retries every minute
+-  delay: 60  # Delay between retries (in seconds)
+-
+-- name: Move sysbench async results file to telemetry
+-  tags: ['run_sysbench']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  command: mv "{{ sysbench_result.results_file }}" "{{ sysbench_telemetry_path }}/sysbench_output.txt"
+-
+-- name: Fetch sysbench container logs
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  tags: ['run_sysbench']
+-  ansible.builtin.shell:
+-    cmd: "docker logs {{ sysbench_container_name }}"
+-  register: sysbench_logs
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Save sysbench logs to a file on the local machine
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  tags: ['run_sysbench']
+-  copy:
+-    content: "{{ sysbench_logs.stdout }}"
+-    dest: "{{ sysbench_telemetry_path }}/docker-sysbench-results-{{ ansible_date_time.iso8601 }}.log"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Collect sysbench docker logs for MySQL container
+-  tags: ['logs']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  ansible.builtin.shell:
+-    cmd: "docker logs {{ sysbench_mysql_container_name }}"
+-  register: sysbench_mysql_container_logs
+-  changed_when: false
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Save docker MySQL logs on node
+-  tags: ['logs']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  ansible.builtin.copy:
+-    content: "{{ sysbench_mysql_container_logs.stdout }}"
+-    dest: "{{ sysbench_telemetry_path}}/docker-mysql-results-{{ ansible_date_time.iso8601 }}.log"
+-    mode: "u=rw,g=r,o=r"
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Remove the sysbench container which ran the benchmark
+-  tags: ['run_sysbench']
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  community.docker.docker_container:
+-    name: "{{ sysbench_container_name }}"
+-    image: "{{ sysbench_container_image_name }}"
+-    state: absent
+-  when: 'sysbench_type_mysql_docker|bool'
+-
+-- name: Copy telemetry data from each node to the localhost
+-  tags: ['results']
+-  synchronize:
+-    src: "{{ sysbench_telemetry_path }}/"
+-    dest: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/"
+-    mode: pull
+-    recursive: yes
+-    rsync_opts:
+-      - "--ignore-existing"
+-  delegate_to: localhost
+-  become: false
+-
+-- name: Gather kernel logs from each node
+-  tags: ['results']
+-  become: yes
+-  become_method: sudo
+-  command: journalctl -k
+-  register: journal_cmd
+-
+-- name: Save kernel logs to local file per node
+-  copy:
+-    content: "{{ journal_cmd.stdout }}"
+-    dest: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/dmesg.txt"
+-  delegate_to: localhost
+-  tags: ['results']
+-
+-- name: Gather memory fragmentation index on each node
+-  tags: ['results']
+-  become: yes
+-  become_method: sudo
+-  command: cat /sys/kernel/debug/extfrag/extfrag_index
+-  register: extfrag_index_cmd
+-
+-- name: Save memory fragmentation index per node
+-  copy:
+-    content: "{{ extfrag_index_cmd.stdout }}"
+-    dest: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/extfrag_index.txt"
+-  delegate_to: localhost
+-  tags: ['results']
+-
+-- name: Gather memory unusable index on each node
+-  tags: ['results']
+-  become: yes
+-  become_method: sudo
+-  command: cat /sys/kernel/debug/extfrag/unusable_index
+-  register: unusable_index_cmd
+-
+-- name: Save memory memory unusable index per node
+-  copy:
+-    content: "{{ unusable_index_cmd.stdout }}"
+-    dest: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/unusable_index.txt"
+-  delegate_to: localhost
+-  tags: ['results']
+-
+-- name: Remove all results and telemetry directories on the node
+-  become: yes
+-  become_flags: 'su - -c'
+-  become_method: sudo
+-  file:
+-    path: "{{ item }}"
+-    state: absent
+-  loop:
+-    - "{{ sysbench_telemetry_path }}/"
+-  loop_control:
+-    label: "Removing {{ item }}"
+-  tags: ['clean']
+-
+-- name: Remove all results and telemetry directories on the host
+-  become: yes
+-  file:
+-    path: "{{ item }}"
+-    state: absent
+-  loop:
+-    - "{{ topdir_path }}/workflows/sysbench/results/"
+-  delegate_to: localhost
+-  tags: ['clean']
+-
+-- name: Find directories under sysbench results target
+-  vars:
+-    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
+-  find:
+-    paths: "{{ sysbench_results_target }}"
+-    recurse: no
+-    file_type: directory
+-  register: sysbench_results_dirs
+-  delegate_to: localhost
+-  tags: [ 'plot' ]
+-  when:
+-    - 'sysbench_type_mysql_docker|bool'
+-
+-- name: Check if sysbench_tps.txt exists in each directory
+-  vars:
+-    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
+-  stat:
+-    path: "{{ sysbench_results_target }}/{{ item.path | basename }}/sysbench_tps.txt"
+-  register: sysbench_tps_exists
+-  with_items: "{{ sysbench_results_dirs.files }}"
+-  loop_control:
+-    label: "Checking sysbench tps output file exists  {{ item.path }}/sysbench_tps.txt"
+-  delegate_to: localhost
+-  tags: [ 'plot' ]
+-  when:
+-    - 'sysbench_type_mysql_docker|bool'
+-
+-- name: Plot sysbench tps plot for each node
+-  vars:
+-    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
+-    host_dir: "{{ item.item.path | basename }}"
+-    output_image: "{{ sysbench_results_target }}/{{ host_dir }}/sysbench_tps_plot.png"
+-  command: "./python/workflows/sysbench/sysbench-tps-plot.py {{ sysbench_results_target }}/{{ host_dir }}/sysbench_tps.txt --output {{ output_image }}"
+-  tags: [ 'plot' ]
+-  delegate_to: localhost
+-  with_items: "{{ sysbench_tps_exists.results }}"
+-  loop_control:
+-    label: "Generating plot for {{ output_image }}"
+-  when:
+-    - 'sysbench_type_mysql_docker|bool'
+-    - "item.stat.exists"
+-
+-- name: Plot sysbench tps non-atomic Vs atomic
+-  vars:
+-    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
+-    fs_type: "{{ item | regex_replace('^' + kdevops_host_prefix + '-', '') }}"
+-    baseline_host: "{{ item }}"
+-    legend1: "{{ fs_type }} innodb_doublewrite=ON"
+-    file1: "{{ sysbench_results_target }}/{{ baseline_host }}/sysbench_tps.txt"
+-    dev_host: "{{ item }}-dev"
+-    legend2: "{{ fs_type }} innodb_doublewrite=OFF"
+-    file2: "{{ sysbench_results_target }}/{{ dev_host }}/sysbench_tps.txt"
+-    output_image: "{{ sysbench_results_target }}a_vs_b.png"
+-  command: "./python/workflows/sysbench/sysbench-tps-compare.py --legend1 \"{{ legend1 }}\" --legend2 \"{{ legend2 }}\" --output {{ output_image }} {{ file1 }} {{ file2 }}"
+-  tags: [ 'plot' ]
+-  delegate_to: localhost
+-  with_items:
+-    - "{{ hostvars[inventory_hostname]['groups']['baseline'] }}"
+-  when:
+-    - 'sysbench_type_mysql_docker|bool'
+-    - 'kdevops_baseline_and_dev|bool'
+-    - 'sysbench_host_is_baseline|bool'
+-
+-- name: Plot sysbench TPS variance
+-  vars:
+-    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
+-    fs_type: "{{ item | regex_replace('^' + kdevops_host_prefix + '-', '') }}"
+-    legend1: "{{ fs_type }} innodb_doublewrite=ON"
+-    baseline_host: "{{ item }}"
+-    file1: "{{ sysbench_results_target }}/{{ baseline_host }}/sysbench_tps.txt"
+-    dev_host: "{{ item }}-dev"
+-    legend2: "{{ fs_type }} innodb_doublewrite=OFF"
+-    file2: "{{ sysbench_results_target }}/{{ dev_host }}/sysbench_tps.txt"
+-  command: "./python/workflows/sysbench/sysbench-tps-variance.py --legend1 \"{{ legend1 }}\" --legend2 \"{{ legend2 }}\" --dir {{ sysbench_results_target }} {{ file1 }} {{ file2}}"
+-  tags: [ 'plot' ]
+-  delegate_to: localhost
+-  with_items:
+-    - "{{ hostvars[inventory_hostname]['groups']['baseline'] }}"
+-  when:
+-    - 'sysbench_type_mysql_docker|bool'
+-    - 'kdevops_baseline_and_dev|bool'
+-    - 'sysbench_host_is_baseline|bool'
++- name: MySQL Docker
++  ansible.builtin.import_tasks: mysql-docker/main.yml
++  when: sysbench_type_mysql_docker | bool
+diff --git a/playbooks/roles/sysbench/tasks/mysql-docker/main.yaml b/playbooks/roles/sysbench/tasks/mysql-docker/main.yaml
+new file mode 100644
+index 0000000..0227fe6
+--- /dev/null
++++ b/playbooks/roles/sysbench/tasks/mysql-docker/main.yaml
+@@ -0,0 +1,773 @@
++---
++- name: Ensure telemetry data directory exists
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  ansible.builtin.file:
++    path: "{{ sysbench_telemetry_path }}"
++    state: directory
++    mode: "u=rwx,g=rx,o=rx"
++  when: 'sysbench_type_mysql_docker|bool'
++  tags: ['setup']
++
++- name: Ensure MySQL root user directory exists
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  ansible.builtin.file:
++    path: "{{ sysbench_mysql_container_host_root_path }}"
++    state: directory
++    mode: "u=rwx,g=rx,o=rx"
++  when: 'sysbench_type_mysql_docker|bool'
++  tags: ['setup']
++
++- name: Determine filesystem setting used and db page size
++  vars:
++    fs_type_variable: "{{ ansible_host | regex_replace('^' + kdevops_host_prefix + '-', '')  | regex_replace('-.+', '') }}"
++    fs_command_variable_simple: "sysbench_{{ ansible_host | regex_replace('^' + kdevops_host_prefix + '-', '') | regex_replace('-dev$', '') }}_cmd"
++    fs_command_variable: "{{ fs_command_variable_simple | regex_replace('-', '_') | regex_replace('^sysbench_' + fs_type_variable, fs_type_variable + '_section') }}"
++    db_page_size_simple: "sysbench_{{ ansible_host | regex_replace('^' + kdevops_host_prefix + '-', '') | regex_replace('-dev$', '') }}_db_page_size"
++    db_page_size_variable: "{{ db_page_size_simple | regex_replace('-', '_') | regex_replace('^sysbench_' + fs_type_variable, fs_type_variable + '_section') }}"
++    fs_sector_size_variable: "sysbench_{{ fs_type_variable }}_sector_size"
++    fs_cmd: "{{  lookup('vars', 'sysbench_' + fs_command_variable) }}"
++    sect_size: "{{  lookup('vars', fs_sector_size_variable) }}"
++    db_page_size: "{{  lookup('vars', 'sysbench_' + db_page_size_variable) }}"
++  set_fact:
++    filesystem_command_for_host: "{{ fs_cmd }}"
++    sysbench_fs_sector_size: "{{ sect_size }}"
++    sysbench_fstype: "{{ fs_type_variable }}"
++    sysbench_fs_opts_without_sector_size: "{{ fs_cmd | regex_replace('^[^ ]+ ', '')  }}"
++    sysbench_db_page_size: "{{ db_page_size }}"
++  tags: ['vars' ]
++
++- name: Set filesystem options for XFS with sector size
++  set_fact:
++    sysbench_fs_opts: "{{ sysbench_fs_opts_without_sector_size }} -s size={{ sysbench_fs_sector_size }} -L {{ sysbench_label }}"
++  when: sysbench_fstype != 'ext4'
++  tags: ['mkfs']
++
++- name: Set filesystem options for ext4 without sector size
++  set_fact:
++    sysbench_fs_opts: "{{ sysbench_fs_opts_without_sector_size }} -L {{ sysbench_label }}"
++  when: sysbench_fstype == 'ext4'
++  tags: ['mkfs']
++
++- name: Set environment variable for sector size for ext4
++  vars:
++  set_fact:
++    sysbench_fs_env:
++      MKE2FS_DEVICE_SECTSIZE: "{{ sysbench_fs_sector_size }}"
++  when: sysbench_fstype == 'ext4'
++  tags: ['mkfs']
++
++- name: Clear environment variable for non-ext4 filesystems
++  set_fact:
++    sysbench_fs_env: {}
++  when: sysbench_fstype != 'ext4'
++  tags: ['mkfs']
++
++- name: Display the filesystem options and environment variable for the current host
++  debug:
++    msg: |
++      Sysbench device:    {{ sysbench_device }}
++      Sysbench fstype:    {{ sysbench_fstype }}
++      Sysbench fs opts:   {{ sysbench_fs_opts }}
++      Sysbench label:     {{ sysbench_label }}
++      Sysbench mount:     {{ sysbench_mnt }}
++      Sysbench env:       {{ sysbench_fs_env }}
++  tags: ['debug']
++
++- name: Fail if no filesystem command is found for the host
++  fail:
++    msg: "No filesystem configuration command found for the current host: {{ ansible_host }}"
++  when: filesystem_command_for_host is undefined
++  tags: ['mkfs']
++
++- name: Remove any old sysbench container
++  tags: ['post_entrypoint', 'clean' ]
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container:
++    name: "{{ sysbench_container_name }}"
++    image: "{{ sysbench_container_image_name }}"
++    state: absent
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Remove any old MySQL container
++  tags: ['post_entrypoint', 'clean' ]
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container:
++    name: "{{ sysbench_mysql_container_name }}"
++    image: "{{ sysbench_mysql_container_image_string }}"
++    state: absent
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Unmount {{ sysbench_mnt }}
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  ansible.builtin.mount:
++    path: "{{ sysbench_mnt }}"
++    state: unmounted
++  tags: ['clean', 'mkfs']
++
++- name: Wipe filesystem signatures from the device
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  ansible.builtin.command:
++    cmd: "wipefs --all {{ sysbench_device }}"
++  tags: ['clean', 'mkfs']
++
++- name: Create the filesystem we'll use to place the database under test
++  ansible.builtin.include_role:
++    name: create_partition
++  vars:
++    disk_setup_device: "{{ sysbench_device }}"
++    disk_setup_fstype: "{{ sysbench_fstype }}"
++    disk_setup_label: "{{ sysbench_label }}"
++    disk_setup_path: "{{ sysbench_mnt }}"
++    disk_setup_fs_opts: "{{ sysbench_fs_opts }}"
++    disk_setup_env: "{{ sysbench_fs_env }}"
++  tags: ['clean', 'mkfs']
++
++- name: Set sysbench_mysql_innodb_doublewrite based on ansible_host
++  tags: ['vars' ]
++  set_fact:
++    sysbench_host_is_baseline: "{{ False if ansible_host is search('-dev$') else True }}"
++    sysbench_mysql_innodb_doublewrite: "{{ '0' if ansible_host is search('-dev$') else '1' }}"
++  when:
++    - 'sysbench_disable_doublewrite_auto|bool'
++
++- name: Set sysbench_mysql_innodb_doublewrite based on ansible_host
++  tags: ['vars' ]
++  set_fact:
++    sysbench_mysql_innodb_doublewrite: '0'
++  when:
++    - 'sysbench_disable_doublewrite_always|bool'
++
++- name: Generate MySQL client configuration file from template
++  tags: ['setup']
++  ansible.builtin.template:
++    src: "{{ sysbench_mysql_container_host_client_config_path | basename }}.j2"
++    dest: "{{ sysbench_mysql_container_host_client_config_path }}"
++    mode: "u=rw,g=r,o=r"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Generate MySQL server configuration file from template
++  tags: ['setup']
++  ansible.builtin.template:
++    src: "{{ sysbench_mysql_container_host_config_path | basename }}.j2"
++    dest: "{{ sysbench_mysql_container_host_config_path }}"
++    mode: "u=rw,g=r,o=r"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Create a few directories needed for telemetry inside the docker container
++  tags: [ 'setup' ]
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  ansible.builtin.file:
++    path: "{{ item }}"
++    state: directory
++  with_items:
++    - "{{ sysbench_mysql_container_host_root_path }}/.mysqlsh/"
++
++- name: git clone our mysqlsh plugin for telemetry
++  tags: ['setup']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  environment:
++    GIT_SSL_NO_VERIFY:  true
++  git:
++    repo: "https://github.com/lefred/mysqlshell-plugins.git"
++    dest: "{{ sysbench_mysql_container_host_root_path }}/.mysqlsh/plugins/"
++    update: yes
++    version: master
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Get used target kernel version
++  tags: [ 'db_start' ]
++  command: "uname -r"
++  register: uname_cmd
++
++- name: Store last kernel variable
++  set_fact:
++    last_kernel: "{{ uname_cmd.stdout_lines | regex_replace('\\]') | regex_replace('\\[') | replace(\"'\",'') }}"
++  tags: ['db_start']
++  run_once: true
++
++- name: Ensure the results directory exists on the localhost
++  tags: ['db_start']
++  local_action: file
++  args:
++    path: "{{ topdir_path }}/workflows/sysbench/results/"
++    state: directory
++  run_once: true
++
++- name: Ensure the results directory exists on the localhost for each node locally
++  tags: ['db_start']
++  local_action: file
++  args:
++    path: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/"
++    state: directory
++
++- name: Document used target kernel version
++  local_action: "shell echo {{ last_kernel }} > {{ topdir_path }}/workflows/sysbench/results/last-kernel.txt"
++  tags: ['db_start']
++  run_once: true
++
++- name: Document double write buffer setting on node
++  local_action: "shell echo {{ sysbench_mysql_innodb_doublewrite }} > {{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/innodb_doublewrite.txt"
++  tags: ['db_start']
++
++- name: Document db page size setting on node
++  local_action: "shell echo {{ sysbench_db_page_size }} > {{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/innodb_page_size.txt"
++  tags: ['db_start']
++
++- name: Start MySQL Docker container
++  tags: ['db_start']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container:
++    name: "{{ sysbench_mysql_container_name }}"
++    image: "{{ sysbench_mysql_container_image_string }}"
++    state: started
++    restart_policy: unless-stopped
++    volumes:
++      - "{{ sysbench_mysql_container_host_config_path }}:{{ sysbench_mysql_container_config }}"
++      - "{{ sysbench_mysql_container_host_client_config_path }}:{{ sysbench_mysql_container_client_config }}"
++      - "{{ sysbench_mnt }}:{{ sysbench_mysql_container_db_path }}"
++      - "{{ sysbench_telemetry_path }}:{{ sysbench_docker_telemetry_path }}"
++      - "{{ sysbench_mysql_container_host_root_path }}:/root/"
++    published_ports:
++      - "{{ sysbench_local_db_port }}:3306"
++    env:
++      MYSQL_DATABASE: "{{ sysbench_db_name }}"
++      MYSQL_ROOT_PASSWORD: "{{ sysbench_root_db_password }}"
++      PYTHONPATH: "{{ sysbench_mysql_container_python_path }}"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Wait for for it... (MySQL data port to be up)
++  tags: ['db_start']
++  ansible.builtin.wait_for:
++    port: "{{ sysbench_local_db_port }}"
++    timeout: 20
++    state: started
++
++- name: Wait for MySQL socket file inside Docker container
++  tags: ['db_start']
++  become: yes
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    command: /bin/bash -c "test -S /var/lib/mysql/mysql.sock"
++  register: result
++  retries: 12  # Retry up to 12 times
++  delay: 5  # Delay 5 seconds between retries
++  until: result.rc == 0
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Verify MySQL client works inside Docker container using explicit socket
++  tags: ['db_start']
++  become: yes
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    command: mysql --socket=/var/lib/mysql/mysql.sock -e "SHOW DATABASES;"
++  register: mysql_socket_output_explicit
++  ignore_errors: true
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Save MySQL client explicit socket test output to a file on the host
++  tags: ['db_start']
++  become: yes
++  become_method: sudo
++  copy:
++    content: "{{ mysql_socket_output_explicit.stdout }}"
++    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-mysql-client-explicit-test.txt"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Verify MySQL client works on server and capture output
++  tags: ['db_start']
++  become: yes
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    command: mysql -h localhost -e "SHOW DATABASES;"
++  register: mysql_socket_output
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Save MySQL client socket test output to a file on the host
++  tags: ['db_start']
++  become: yes
++  become_method: sudo
++  copy:
++    content: "{{ mysql_socket_output.stdout }}"
++    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-mysql-client-test.txt"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Add sysbench test user using the MySQL container
++  tags: ['post_entrypoint']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    command: mysql -e "CREATE USER {{ sysbench_db_username }}@'%' IDENTIFIED WITH 'mysql_native_password' BY '{{ sysbench_db_password }}';"
++  register: mysql_add_sysbench_user
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Save MySQL output of adding sysbench user
++  tags: ['post_entrypoint']
++  become: yes
++  become_method: sudo
++  copy:
++    content: "{{ mysql_add_sysbench_user.stdout }}"
++    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-0001-add-user.txt"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Grant sysbench test user privileges using the MySQL container
++  tags: ['post_entrypoint']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    command: mysql -e "GRANT ALL PRIVILEGES ON {{ sysbench_db_name }}.* to {{ sysbench_db_username }}@'%';"
++  register: mysql_sysbench_privs
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Save MySQL output of granting all privileges to sysbench user
++  tags: ['post_entrypoint']
++  become: yes
++  become_method: sudo
++  copy:
++    content: "{{ mysql_sysbench_privs.stdout }}"
++    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-0002-grant-privs-user.txt"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Flush privileges
++  tags: ['post_entrypoint']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    command: mysql -e "FLUSH PRIVILEGES;"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Install pip using MySQL container
++  tags: ['post_entrypoint']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    command: microdnf install -y python-pip
++  register: mysql_pip
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Save MySQL output of installing pip
++  tags: ['post_entrypoint']
++  become: yes
++  become_method: sudo
++  copy:
++    content: "{{ mysql_pip.stdout }}"
++    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-0003-install-python-pip.txt"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Install Python packages we need for telemetry pip using the MySQL container
++  tags: ['post_entrypoint']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    command: pip install pandas matplotlib
++    env:
++      PYTHONPATH: "{{ sysbench_mysql_container_python_path }}"
++  register: mysql_pip_install_deps
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Save MySQL output of installing telemetry reqs with pip
++  tags: ['post_entrypoint']
++  become: yes
++  become_method: sudo
++  copy:
++    content: "{{ mysql_pip_install_deps.stdout }}"
++    dest: "{{ sysbench_docker_telemetry_path }}/root-setup-0004-install-telemetry-reqs.txt"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Ensure sysbench user is present on the mysql container
++  tags: ['post_entrypoint']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    command: mysql -e "SELECT user, host, plugin FROM mysql.user WHERE user = '{{ sysbench_db_username }}' AND plugin = 'mysql_native_password';"
++  register: user_check_result
++  failed_when: user_check_result.stdout.find(sysbench_db_username) == -1
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Remove the sysbench container
++  tags: ['populate_sbtest']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container:
++    name: "{{ sysbench_container_name }}"
++    image: "{{ sysbench_container_image_name }}"
++    state: absent
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Start a sysbench container we will re-use for population and running the test
++  tags: ['populate_sbtest']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container:
++    name: "{{ sysbench_container_name }}"
++    image: "{{ sysbench_container_image_name }}"
++    volumes:
++      - "{{ sysbench_telemetry_path }}:{{ sysbench_docker_telemetry_path }}"
++    network_mode: host
++    state: started
++    detach: true
++    restart_policy: unless-stopped
++    command: "tail -f /dev/null"  # Keeps the container running
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Wait for the sysbench container to be in running state
++  tags: ['populate_sbtest']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_info:
++    name: "{{ sysbench_container_name }}"
++  register: sysbench_container_status
++  until: sysbench_container_status.container is defined and sysbench_container_status.container.State.Running
++  retries: 5
++  delay: 5
++  when: 'sysbench_type_mysql_docker|bool'
++
++# Keep this at threads=1 as multiple threads don't work when building the
++# initial database.
++- name: Use the sysbench container to populate the sysbench database
++  tags: [ 'populate_sbtest' ]
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_container_name }}"
++    command: |
++      /usr/bin/sysbench
++      /usr/share/sysbench/tests/include/oltp_legacy/parallel_prepare.lua
++      --db-driver={{ sysbench_db_type }}
++      --mysql-table-engine={{ sysbench_mysql_table_engine }}
++      --oltp-table-size={{ sysbench_oltp_table_size }}
++      --oltp-tables-count={{ sysbench_oltp_table_count }}
++      --threads=1
++      --mysql-auth-plugin=mysql_native_password
++      --mysql-host=127.0.0.1
++      --mysql-port={{ sysbench_local_db_port }}
++      --mysql-user={{ sysbench_db_username }}
++      --mysql-password={{ sysbench_db_password }}
++      run
++  register: sysbench_init_pop
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Save the output of popuating the initial sysench database
++  tags: ['post_entrypoint']
++  become: yes
++  become_method: sudo
++  copy:
++    content: "{{ sysbench_init_pop.stdout }}"
++    dest: "{{ sysbench_docker_telemetry_path }}/sysbench_populate.txt"
++  when: 'sysbench_type_mysql_docker|bool'
++
++# We use a shell here to be able to directly output to a file instad
++# of saving to an ansible variable with register because we expect this
++# file to be long.
++- name: Run sysbench benchmark workload against MySQL
++  tags: ['run_sysbench']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_container_name }}"
++    command: >
++      sh -c "/usr/bin/sysbench
++      --test=/usr/share/sysbench/tests/include/oltp_legacy/oltp.lua
++      --db-driver={{ sysbench_db_type }}
++      --report-interval={{ sysbench_report_interval }}
++      --mysql-table-engine={{ sysbench_mysql_table_engine }}
++      --oltp-table-size={{ sysbench_oltp_table_size }}
++      --oltp-tables-count={{ sysbench_oltp_table_count }}
++      --threads={{ sysbench_threads }}
++      --time={{ sysbench_test_duration }}
++      --mysql-host=127.0.0.1
++      --mysql-port={{ sysbench_local_db_port }}
++      --mysql-user={{ sysbench_db_username }}
++      --mysql-password={{ sysbench_db_password }}
++      --mysql-auth-plugin=mysql_native_password
++      run >
++      {{ sysbench_docker_telemetry_path }}/sysbench_tps.txt"
++  async: "{{ sysbench_test_duration | int + 10 }}" # Maximum allowed time to complete
++  poll: 0 # Run in the background
++  register: sysbench_job # Register the job ID
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Collect MySQL telemetry inside the Docker MySQL container at the same time
++  tags: ['telemetry', 'tel' ]
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container_exec:
++    container: "{{ sysbench_mysql_container_name }}"
++    env:
++      MYSQL_DATABASE: "{{ sysbench_db_name }}"
++      MYSQL_ROOT_PASSWORD: "{{ sysbench_db_password }}"
++      PYTHONPATH: "{{ sysbench_mysql_container_python_path }}"
++    command: |
++      mysqlsh --execute
++      "support.collect(mysql=true, os=true, time={{ sysbench_test_duration | int // 60 }}, outputdir='{{ sysbench_telemetry_path }}')"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Wait for sysbench workload to complete
++  tags: ['run_sysbench']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  async_status:
++    jid: "{{ sysbench_job.ansible_job_id }}"
++  register: sysbench_result
++  until: sysbench_result.finished
++  retries: "{{ sysbench_test_duration | int // 60 }}"  # Retries every minute
++  delay: 60  # Delay between retries (in seconds)
++
++- name: Move sysbench async results file to telemetry
++  tags: ['run_sysbench']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  command: mv "{{ sysbench_result.results_file }}" "{{ sysbench_telemetry_path }}/sysbench_output.txt"
++
++- name: Fetch sysbench container logs
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  tags: ['run_sysbench']
++  ansible.builtin.shell:
++    cmd: "docker logs {{ sysbench_container_name }}"
++  register: sysbench_logs
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Save sysbench logs to a file on the local machine
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  tags: ['run_sysbench']
++  copy:
++    content: "{{ sysbench_logs.stdout }}"
++    dest: "{{ sysbench_telemetry_path }}/docker-sysbench-results-{{ ansible_date_time.iso8601 }}.log"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Collect sysbench docker logs for MySQL container
++  tags: ['logs']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  ansible.builtin.shell:
++    cmd: "docker logs {{ sysbench_mysql_container_name }}"
++  register: sysbench_mysql_container_logs
++  changed_when: false
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Save docker MySQL logs on node
++  tags: ['logs']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  ansible.builtin.copy:
++    content: "{{ sysbench_mysql_container_logs.stdout }}"
++    dest: "{{ sysbench_telemetry_path}}/docker-mysql-results-{{ ansible_date_time.iso8601 }}.log"
++    mode: "u=rw,g=r,o=r"
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Remove the sysbench container which ran the benchmark
++  tags: ['run_sysbench']
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  community.docker.docker_container:
++    name: "{{ sysbench_container_name }}"
++    image: "{{ sysbench_container_image_name }}"
++    state: absent
++  when: 'sysbench_type_mysql_docker|bool'
++
++- name: Copy telemetry data from each node to the localhost
++  tags: ['results']
++  synchronize:
++    src: "{{ sysbench_telemetry_path }}/"
++    dest: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/"
++    mode: pull
++    recursive: yes
++    rsync_opts:
++      - "--ignore-existing"
++  delegate_to: localhost
++  become: false
++
++- name: Gather kernel logs from each node
++  tags: ['results']
++  become: yes
++  become_method: sudo
++  command: journalctl -k
++  register: journal_cmd
++
++- name: Save kernel logs to local file per node
++  copy:
++    content: "{{ journal_cmd.stdout }}"
++    dest: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/dmesg.txt"
++  delegate_to: localhost
++  tags: ['results']
++
++- name: Gather memory fragmentation index on each node
++  tags: ['results']
++  become: yes
++  become_method: sudo
++  command: cat /sys/kernel/debug/extfrag/extfrag_index
++  register: extfrag_index_cmd
++
++- name: Save memory fragmentation index per node
++  copy:
++    content: "{{ extfrag_index_cmd.stdout }}"
++    dest: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/extfrag_index.txt"
++  delegate_to: localhost
++  tags: ['results']
++
++- name: Gather memory unusable index on each node
++  tags: ['results']
++  become: yes
++  become_method: sudo
++  command: cat /sys/kernel/debug/extfrag/unusable_index
++  register: unusable_index_cmd
++
++- name: Save memory memory unusable index per node
++  copy:
++    content: "{{ unusable_index_cmd.stdout }}"
++    dest: "{{ topdir_path }}/workflows/sysbench/results/{{ inventory_hostname }}/unusable_index.txt"
++  delegate_to: localhost
++  tags: ['results']
++
++- name: Remove all results and telemetry directories on the node
++  become: yes
++  become_flags: 'su - -c'
++  become_method: sudo
++  file:
++    path: "{{ item }}"
++    state: absent
++  loop:
++    - "{{ sysbench_telemetry_path }}/"
++  loop_control:
++    label: "Removing {{ item }}"
++  tags: ['clean']
++
++- name: Remove all results and telemetry directories on the host
++  become: yes
++  file:
++    path: "{{ item }}"
++    state: absent
++  loop:
++    - "{{ topdir_path }}/workflows/sysbench/results/"
++  delegate_to: localhost
++  tags: ['clean']
++
++- name: Find directories under sysbench results target
++  vars:
++    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
++  find:
++    paths: "{{ sysbench_results_target }}"
++    recurse: no
++    file_type: directory
++  register: sysbench_results_dirs
++  delegate_to: localhost
++  tags: [ 'plot' ]
++  when:
++    - 'sysbench_type_mysql_docker|bool'
++
++- name: Check if sysbench_tps.txt exists in each directory
++  vars:
++    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
++  stat:
++    path: "{{ sysbench_results_target }}/{{ item.path | basename }}/sysbench_tps.txt"
++  register: sysbench_tps_exists
++  with_items: "{{ sysbench_results_dirs.files }}"
++  loop_control:
++    label: "Checking sysbench tps output file exists  {{ item.path }}/sysbench_tps.txt"
++  delegate_to: localhost
++  tags: [ 'plot' ]
++  when:
++    - 'sysbench_type_mysql_docker|bool'
++
++- name: Plot sysbench tps plot for each node
++  vars:
++    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
++    host_dir: "{{ item.item.path | basename }}"
++    output_image: "{{ sysbench_results_target }}/{{ host_dir }}/sysbench_tps_plot.png"
++  command: "./python/workflows/sysbench/sysbench-tps-plot.py {{ sysbench_results_target }}/{{ host_dir }}/sysbench_tps.txt --output {{ output_image }}"
++  tags: [ 'plot' ]
++  delegate_to: localhost
++  with_items: "{{ sysbench_tps_exists.results }}"
++  loop_control:
++    label: "Generating plot for {{ output_image }}"
++  when:
++    - 'sysbench_type_mysql_docker|bool'
++    - "item.stat.exists"
++
++- name: Plot sysbench tps non-atomic Vs atomic
++  vars:
++    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
++    fs_type: "{{ item | regex_replace('^' + kdevops_host_prefix + '-', '') }}"
++    baseline_host: "{{ item }}"
++    legend1: "{{ fs_type }} innodb_doublewrite=ON"
++    file1: "{{ sysbench_results_target }}/{{ baseline_host }}/sysbench_tps.txt"
++    dev_host: "{{ item }}-dev"
++    legend2: "{{ fs_type }} innodb_doublewrite=OFF"
++    file2: "{{ sysbench_results_target }}/{{ dev_host }}/sysbench_tps.txt"
++    output_image: "{{ sysbench_results_target }}a_vs_b.png"
++  command: "./python/workflows/sysbench/sysbench-tps-compare.py --legend1 \"{{ legend1 }}\" --legend2 \"{{ legend2 }}\" --output {{ output_image }} {{ file1 }} {{ file2 }}"
++  tags: [ 'plot' ]
++  delegate_to: localhost
++  with_items:
++    - "{{ hostvars[inventory_hostname]['groups']['baseline'] }}"
++  when:
++    - 'sysbench_type_mysql_docker|bool'
++    - 'kdevops_baseline_and_dev|bool'
++    - 'sysbench_host_is_baseline|bool'
++
++- name: Plot sysbench TPS variance
++  vars:
++    sysbench_results_target: "{{ topdir_path }}/workflows/sysbench/results/"
++    fs_type: "{{ item | regex_replace('^' + kdevops_host_prefix + '-', '') }}"
++    legend1: "{{ fs_type }} innodb_doublewrite=ON"
++    baseline_host: "{{ item }}"
++    file1: "{{ sysbench_results_target }}/{{ baseline_host }}/sysbench_tps.txt"
++    dev_host: "{{ item }}-dev"
++    legend2: "{{ fs_type }} innodb_doublewrite=OFF"
++    file2: "{{ sysbench_results_target }}/{{ dev_host }}/sysbench_tps.txt"
++  command: "./python/workflows/sysbench/sysbench-tps-variance.py --legend1 \"{{ legend1 }}\" --legend2 \"{{ legend2 }}\" --dir {{ sysbench_results_target }} {{ file1 }} {{ file2}}"
++  tags: [ 'plot' ]
++  delegate_to: localhost
++  with_items:
++    - "{{ hostvars[inventory_hostname]['groups']['baseline'] }}"
++  when:
++    - 'sysbench_type_mysql_docker|bool'
++    - 'kdevops_baseline_and_dev|bool'
++    - 'sysbench_host_is_baseline|bool'
 
 -- 
 2.39.2
