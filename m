@@ -1,107 +1,62 @@
 From: Daniel Gomez <da.gomez@samsung.com>
-Date: Thu, 17 Oct 2024 14:42:44 +0200
-Subject: [PATCH 2/5] sysbench: fix typos
+Date: Thu, 17 Oct 2024 14:42:45 +0200
+Subject: [PATCH 3/5] sysbench: fix SYSBENCH_MYSQL_INNODB_REDO_LOG_CAPACITY
+ typo
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241017-add-postgresql-tps-var-v1-2-4996d45426af@samsung.com>
+Message-Id: <20241017-add-postgresql-tps-var-v1-3-4996d45426af@samsung.com>
 References: <20241017-add-postgresql-tps-var-v1-0-4996d45426af@samsung.com>
 In-Reply-To: <20241017-add-postgresql-tps-var-v1-0-4996d45426af@samsung.com>
 To: kdevops@lists.linux.dev, mcgrof@kernel.org
 Cc: d+samsung@kruces.com, Daniel Gomez <da.gomez@samsung.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729168974; l=3816;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729168974; l=1470;
  i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
- bh=UTr1BKBV5HFpUQVsZDsOm4nn5v0XoS7KL6NOzpU7v84=;
- b=rOF4v+eBtQqvybhaVDx0B5uxY+drw4sIU2JAjcIOVwk7GUTL26sL0H1mTCJGFKSIIJnI9LPeM
- Y4CwMp+G5JoBm4EIMGtjBFdi0z33b9naFvNvTf3K2N374bPb7mPa02m
+ bh=DB+ZvmYhPF9qcb4ltw+jE9FcUQQhau5ZlPsY+YOxAuo=;
+ b=1dAdZeKxMdp1V4OuCSct5Q+ylOiWo9OrvwPf3VL3O99STA5i64q0pPDm1cqGmxnf4gIClS4zp
+ GkWx4aP700NCAaJdtarhdiUIz3pBKVlm0E3NkRV0AHRAYLu2gvfooP8
 X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
  pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
 X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Minor typos found.
+Just remove the extra "o".
 
-pre-commit run codespell --files workflows/sysbench/Kconfig*
-codespell................................................................Passed
+No functional changes.
 
 Signed-off-by: Daniel Gomez <da.gomez@samsung.com>
 ---
- workflows/sysbench/Kconfig        | 2 +-
- workflows/sysbench/Kconfig.docker | 8 ++++----
- workflows/sysbench/Kconfig.fs     | 6 +++---
- 3 files changed, 8 insertions(+), 8 deletions(-)
+ playbooks/roles/sysbench/templates/mysql.conf.j2 | 2 +-
+ workflows/sysbench/Kconfig                       | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/playbooks/roles/sysbench/templates/mysql.conf.j2 b/playbooks/roles/sysbench/templates/mysql.conf.j2
+index f00fa40..225099c 100644
+--- a/playbooks/roles/sysbench/templates/mysql.conf.j2
++++ b/playbooks/roles/sysbench/templates/mysql.conf.j2
+@@ -33,7 +33,7 @@ default-authentication-plugin=mysql_native_password
+ # For systems with above 10 GiB RAM: 0.5625 * (RAM in GB)
+ # n1-standard-16: 33.75G
+ # i4i.4xlarge: 72G
+-innodb_redo_log_capacity        = {{ sysbench_mysql_innoodb_redo_log_capacity }}
++innodb_redo_log_capacity        = {{ sysbench_mysql_innodb_redo_log_capacity }}
+ 
+ # For systems with above 4 GiB RAM: 0.75 * (RAM in GB)
+ # n1-standard-16: 45G
 diff --git a/workflows/sysbench/Kconfig b/workflows/sysbench/Kconfig
-index b5111f1..f3878c7 100644
+index f3878c7..35ff821 100644
 --- a/workflows/sysbench/Kconfig
 +++ b/workflows/sysbench/Kconfig
-@@ -40,7 +40,7 @@ config SYSBENCH_MYSQL_INNOODB_REDO_LOG_CAPACITY
- 	help
- 	  innodb_dedicated_server=ON is not compatible with innodb_flush_method=O_DIRECT
- 	  and so we do what we can. See the following values which MySQL does
--	  recommand use when dedicated server is enabled, we just have to compute
-+	  recommend use when dedicated server is enabled, we just have to compute
- 	  on our own and test on our own:
- 
- 	  https://dev.mysql.com/doc/refman/8.0/en/innodb-dedicated-server.html
-diff --git a/workflows/sysbench/Kconfig.docker b/workflows/sysbench/Kconfig.docker
-index 2153e14..469d918 100644
---- a/workflows/sysbench/Kconfig.docker
-+++ b/workflows/sysbench/Kconfig.docker
-@@ -40,7 +40,7 @@ config SYSBENCH_MYSQL_CONTAINER_NAME
- 	  Set the name for the MySQL Docker container.
- 
- config SYSBENCH_MYSQL_CONTAINER_PYTHON_PATH
--	string "The MySQL container pytyhon path"
-+	string "The MySQL container python path"
- 	default "/usr/local/lib/python3.9/site-packages" if SYSBENCH_MYSQL_CONTAINER_IMAGE_8_0
+@@ -33,7 +33,7 @@ config SYSBENCH_MYSQL_TABLE_ENGINE
  	output yaml
- 	help
-@@ -60,7 +60,7 @@ config SYSBENCH_MYSQL_CONTAINER_HOST_CLIENT_CONFIG_PATH
- 	  us make edits on the node.
+ 	default "innodb" if SYSBENCH_TYPE_MYSQL_DOCKER
  
- config SYSBENCH_MYSQL_CONTAINER_CLIENT_CONFIG
--	string "The MySQL container client configuraton file"
-+	string "The MySQL container client configuration file"
- 	default "/root/.my.cnf"
+-config SYSBENCH_MYSQL_INNOODB_REDO_LOG_CAPACITY
++config SYSBENCH_MYSQL_INNODB_REDO_LOG_CAPACITY
+ 	string "innodb_redo_log_capacity"
  	output yaml
- 	help
-@@ -101,7 +101,7 @@ config SYSBENCH_MYSQL_CONTAINER_HOST_ROOT_PATH
- 	  When using a container, in order to support telemetry we rely on
- 	  a mysqlsh plugin which we git clone on the node where we will
- 	  run the container on. We use a container volume to let the container
--	  get access to this clone. This specificies the path on the node which
-+	  get access to this clone. This specifies the path on the node which
- 	  we will use a docker volume passed onto the container as the
- 	  /root/ directory.
- 
-@@ -145,4 +145,4 @@ config SYSBENCH_DOCKER_TELEMETRY_PATH
- 	default SYSBENCH_TELEMETRY_PATH
- 	output yaml
- 	help
--	  Where to place telemetry informaton inside the docker container.
-+	  Where to place telemetry information inside the docker container.
-diff --git a/workflows/sysbench/Kconfig.fs b/workflows/sysbench/Kconfig.fs
-index 75f163e..b0f6e61 100644
---- a/workflows/sysbench/Kconfig.fs
-+++ b/workflows/sysbench/Kconfig.fs
-@@ -7,12 +7,12 @@ config SYSBENCH_TEST_ATOMICS
- 	output yaml
- 	select KDEVOPS_BASELINE_AND_DEV
- 	help
--	  This type of test is aimed of testing the emperical value of support
-+	  This type of test is aimed of testing the empirical value of support
- 	  for large atomics on storage devices and its impact on databases.
--	  Most drives today support only power-fail safe gaurantees when writing
-+	  Most drives today support only power-fail safe guarantees when writing
- 	  up to 4 KiB. Drives which support 16 KiB atomic writes or larger can
- 	  take advanage of software features in databases which typically
--	  do software work arounds to gaurantee writes above 4 KiB will be
-+	  do software work arounds to guarantee writes above 4 KiB will be
- 	  recoverable in case of power failure.
- 
- 	  Different database have different features one can disable if one has
+ 	default "1G" if SYSBENCH_TYPE_MYSQL_DOCKER
 
 -- 
 2.39.2
