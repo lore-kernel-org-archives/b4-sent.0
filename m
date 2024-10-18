@@ -1,13 +1,13 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v3 0/3] Pinctrl: A4: Add pinctrl driver
-Date: Fri, 18 Oct 2024 16:10:49 +0800
-Message-Id: <20241018-a4_pinctrl-v3-0-e76fd1cf01d7@amlogic.com>
+Date: Fri, 18 Oct 2024 16:10:50 +0800
+Subject: [PATCH v3 1/3] dt-bindings: pinctrl: Add support for Amlogic A4
+ SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAkYEmcC/03M0QqCMBTG8VeRc91iO85WXvUeIbHmSQ+ok01GI
- b57Swi6/H/w/VaIFJgi1MUKgRJH9lOO8lCA6+3UkeA2N6BEraRCYfV95sktYRDy0qoHWmVIG8i
- HOdCTXzt2a3L3HBcf3rud8Lv+GP3PJBRSlGS0PVUOzxVd7Tj4jt3R+RGabds+UeMFT6YAAAA=
+Message-Id: <20241018-a4_pinctrl-v3-1-e76fd1cf01d7@amlogic.com>
+References: <20241018-a4_pinctrl-v3-0-e76fd1cf01d7@amlogic.com>
+In-Reply-To: <20241018-a4_pinctrl-v3-0-e76fd1cf01d7@amlogic.com>
 To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -19,47 +19,38 @@ Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729239051; l=1206;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729239051; l=946;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=qam845+M054/HCuxE2Dub4pqx0T6LNs2036Ba2LFmY8=;
- b=iq5sxMdSUIEb/ykt5CpcF6wTUW7k5vVqa1/aARrx4VQWbC7RVa4rVQEkZ2/RvI+s4XmHmW66h
- ZH7b6a8vJc+C4s/evg5ba7t8c9UZRdHkZw1MOWQX+Fz8dW58kTSduDI
+ bh=erHuvYG/t/AVd4eUd14dcFM5SWvZGqssHP0bU7TcvIg=;
+ b=QQK13099mw5FxDBedU9SIlHR292xdMjHxwMhyib4JdFOStJsapbeWZd8kEfxU2YcA5scA5VLp
+ 49+oeQuh/YxBxPGr3ZTa94juPul8ps9zbb4i1/314xKn9J5AbgAsoH9
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add pinctrl driver support for Amloigc A4 SoC
+Add the new compatible name for Amlogic A4 pin controller, and add
+a new dt-binding header file which document the detail pin names.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v3:
-- Remove head file from binding.
-- Move GPIO define to file *.c.
-- Link to v2: https://lore.kernel.org/r/20241014-a4_pinctrl-v2-0-3e74a65c285e@amlogic.com
+ Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Changes in v2:
-- Use one marco instead of all pin define.
-- Add unit name for dts node.
-- Link to v1: https://lore.kernel.org/all/20240611-a4_pinctrl-v1-0-dc487b1977b3@amlogic.com/
+diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
+index d9e0b2c48e84..f5eefa0fab5b 100644
+--- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
+@@ -15,6 +15,8 @@ allOf:
+ properties:
+   compatible:
+     enum:
++      - amlogic,a4-aobus-pinctrl
++      - amlogic,a4-periphs-pinctrl
+       - amlogic,c3-periphs-pinctrl
+       - amlogic,t7-periphs-pinctrl
+       - amlogic,meson-a1-periphs-pinctrl
 
----
-Xianwei Zhao (3):
-      dt-bindings: pinctrl: Add support for Amlogic A4 SoCs
-      pinctrl: meson: Add driver support for Amlogic A4 SoCs
-      arm64: dts: amlogic: a4: add pinctrl node
-
- .../bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml |    2 +
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |   35 +
- drivers/pinctrl/meson/Kconfig                      |    6 +
- drivers/pinctrl/meson/Makefile                     |    1 +
- drivers/pinctrl/meson/pinctrl-amlogic-a4.c         | 1253 ++++++++++++++++++++
- 5 files changed, 1297 insertions(+)
----
-base-commit: 58e2d28ed28e5bc8836f8c14df1f94c27c1f9e2f
-change-id: 20241012-a4_pinctrl-09d1b2a17e47
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
