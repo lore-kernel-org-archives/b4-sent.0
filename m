@@ -1,84 +1,41 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 18 Oct 2024 16:10:52 +0800
-Subject: [PATCH v3 3/3] arm64: dts: amlogic: a4: add pinctrl node
+From: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
+Subject: [PATCH v2 0/2] common: buffer access out-of-bounds
+Date: Fri, 18 Oct 2024 14:45:54 +0300
+Message-Id: <20241018-errors_fixes-v2-0-7f49d5a0087b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241018-a4_pinctrl-v3-3-e76fd1cf01d7@amlogic.com>
-References: <20241018-a4_pinctrl-v3-0-e76fd1cf01d7@amlogic.com>
-In-Reply-To: <20241018-a4_pinctrl-v3-0-e76fd1cf01d7@amlogic.com>
-To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Bartosz Golaszewski <brgl@bgdev.pl>
-Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729239051; l=1373;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=0TyPdSWayWVTMUykbXRDetRSywdwa5DK/B9vqJRVr4w=;
- b=ZqOVlZk372JHtgitbR4ca7CgNHxcIlTajIDPZZVvZ1OnC72L63RTbCmyO277r60OSaQuGKyX1
- BBXGLi5vlfXCqaUcB3Nzj8lMNXg8uWObiBtREPa2nlYKaL45AfBH+FQ
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+X-B4-Tracking: v=1; b=H4sIAHJKEmcC/3WMQQrCMBBFr1JmbaQTUhtceQ8pEpOxHbBNmUhQS
+ u5u7N7l+5/3NkgkTAnOzQZCmRPHpYI+NOAnt4ykOFQG3WqDLfaKRKKk24PflJRFbWzfdXd7MlC
+ VVWg/qnEdKk+cXlE+ez3jb/0TyqhQGW8COu1rNFzG2fHz6OMMQynlC4ho4F6oAAAA
+To: Sascha Hauer <s.hauer@pengutronix.de>, 
+ BAREBOX <barebox@lists.infradead.org>
+Cc: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729251992; l=527;
+ i=abdelrahmanyossef12@gmail.com; s=20241017; h=from:subject:message-id;
+ bh=DwB4qhKEGaH5UaxcTDX1tQ/vNnewSgLF/1z4q0oLQpU=;
+ b=YBYhsUqIJ7FENNqcmhBIy9c5AG47+ACGE1VVpmGymH+Ps8Kim459vabIjvMbjDJhhpqajWTW/
+ t/j1OaRXQw3CFHsHX0BuOnGfbb8UZV9QtVptEnKu7mbicwHsMewyqTX
+X-Developer-Key: i=abdelrahmanyossef12@gmail.com; a=ed25519;
+ pk=ayjFVDSRo1qKm+PGih8rsNvcMQvJ4ROQWuZWrYU8ujc=
+X-Endpoint-Received: by B4 Relay for abdelrahmanyossef12@gmail.com/20241017 with auth_id=251
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add pinctrl device to support Amlogic A4.
-
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi | 35 +++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+Abdelrahman Youssef (2):
+      include: Include <linux/math.h> to resolve implicit declaration of do_div()
+      common: buffer access out-of-bounds
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-index de10e7aebf21..599635eb86d0 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-@@ -48,3 +48,38 @@ pwrc: power-controller {
- 		};
- 	};
- };
-+
-+&apb {
-+	periphs_pinctrl: pinctrl@4000 {
-+		compatible = "amlogic,a4-periphs-pinctrl";
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges = <0x0 0x0 0x0 0x4000 0x0 0x02e0>;
-+
-+		gpio: bank@0 {
-+			reg = <0x0 0x0 0x0 0x0050>,
-+			      <0x0 0xc0 0x0 0x0220>;
-+			reg-names = "mux", "gpio";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 0 73>;
-+		};
-+	};
-+
-+	aobus_pinctrl: pinctrl@8e700 {
-+		compatible = "amlogic,a4-aobus-pinctrl";
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges = <0x0 0x0 0x0 0x8e700 0x0 0x0064>;
-+
-+		ao_gpio: bank@0 {
-+			reg = <0x0 0x00 0x0 0x04>,
-+			      <0x0 0x04 0x0 0x60>;
-+			reg-names = "mux", "gpio";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&aobus_pinctrl 0 0 8>;
-+		};
-+	};
-+
-+};
+ common/filetype.c     | 8 ++++----
+ include/linux/ktime.h | 1 +
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+---
+base-commit: 9d47ff66c3892c5a6ddd4704993365a797fbeb68
+change-id: 20241017-errors_fixes-81248755b864
 
+Best regards,
 -- 
-2.37.1
+Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
 
