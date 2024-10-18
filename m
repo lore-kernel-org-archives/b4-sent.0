@@ -1,53 +1,61 @@
-From: Eric Long <i@hack3r.moe>
-Date: Thu, 17 Oct 2024 23:33:17 +0800
-Subject: [PATCH nftables] libnftables-json: fix raw payload expression
- documentation
+From: Matt Johnston <matt@codeconstruct.com.au>
+Date: Fri, 18 Oct 2024 11:07:56 +0800
+Subject: [PATCH net] mctp i2c: handle NULL header address
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241017-libnftables-json-doc-fix-v1-1-c0d2efca1ab2@hack3r.moe>
-X-B4-Tracking: v=1; b=H4sIADwuEWcC/zWMQQqEMAwAvyI5G7ChIvgV8VDbqBFppRFZEP++R
- fA4AzM3KGdhhb66IfMlKikWMHUFfnVxYZRQGKghaxrT4S5TnE837ay4aYoYksdZfshEtnVkPQc
- PJT8yF/2uB/gSGJ/nD0+tDXN0AAAA
-X-Change-ID: 20241017-libnftables-json-doc-fix-e2245a24cedc
-To: netfilter-devel@vger.kernel.org
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=978; i=i@hack3r.moe;
- h=from:subject:message-id; bh=8G2jiRNCYmstnPIa64oo9+zrrbBcL2qkry/1/TIQ7H8=;
- b=owGbwMvMwCUWYb/agfVY0D7G02pJDOmCeo5b1JvS4kKdZ1qmvJVLu34pLOW1cMj64ObI1OT8L
- Tmzl4t3lLIwiHExyIopsmw5/EctQb970xLuOeUwc1iZQIYwcHEKwERqXzIyLPtkfNjtx+LMuWW5
- CcdnP7i644zW9Ovu5aK6aSsvq5cYvWJkOLY359v6Uq3aj9N3KmyaZpDsduRqzKQHah55ZzRuNvF
- sZAEA
-X-Developer-Key: i=i@hack3r.moe; a=openpgp;
- fpr=3A7A1F5A7257780C45A9A147E1487564916D3DF5
-X-Endpoint-Received: by B4 Relay for i@hack3r.moe/default with auth_id=225
+Message-Id: <20241018-mctp-i2c-null-dest-v1-1-ba1ab52966e9@codeconstruct.com.au>
+X-B4-Tracking: v=1; b=H4sIAAvREWcC/x3MQQqAIBBA0avErBtQEYquEi1MpxowC7UIwrsnL
+ d/i/xcSRaYEQ/NCpJsTH6FCtg3YzYSVkF01KKG0FLLH3eYTWVkMl/foKGU0YjaqkySs7qGGZ6S
+ Fn386QqAMUykfIW658GkAAAA=
+To: Jeremy Kerr <jk@codeconstruct.com.au>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, stable@vger.kernel.org, 
+ Dung Cao <dung@os.amperecomputing.com>, 
+ Matt Johnston <matt@codeconstruct.com.au>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729220892; l=1006;
+ i=matt@codeconstruct.com.au; s=20241018; h=from:subject:message-id;
+ bh=7a9bBX5OhQLyOr0r2mEwMYUi2yLjFDmAXhWqLtXX1W8=;
+ b=/kNBRjdGOn742jnFpm20G3DlxvqTct2cMcXuCtIZTiEISmQex18y9fVEgY0Ii8Ngu8YDHGt+7
+ u6RB0cOeiE3AhBqtNltj+KYY4be3ke+hCZ26q0kNMwb8ifYDVhMCybB
+X-Developer-Key: i=matt@codeconstruct.com.au; a=ed25519;
+ pk=exersTcCYD/pEBOzXGO6HkLd6kKXRuWxHhj+LXn3DYE=
+X-Endpoint-Received: by B4 Relay for matt@codeconstruct.com.au/20241018 with auth_id=253
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Raw payload expression accesses payload data in bits, not bytes.
+daddr can be NULL if there is no neighbour table entry present,
+in that case the tx packet should be dropped.
+
+Fixes: f5b8abf9fc3d ("mctp i2c: MCTP I2C binding driver")
+Cc: stable@vger.kernel.org
+Reported-by: Dung Cao <dung@os.amperecomputing.com>
+Signed-off-by: Matt Johnston <matt@codeconstruct.com.au>
+---
+ drivers/net/mctp/mctp-i2c.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git drivers/net/mctp/mctp-i2c.c drivers/net/mctp/mctp-i2c.c
+index 4dc057c121f5..e70fb6687994 100644
+--- drivers/net/mctp/mctp-i2c.c
++++ drivers/net/mctp/mctp-i2c.c
+@@ -588,6 +588,9 @@ static int mctp_i2c_header_create(struct sk_buff *skb, struct net_device *dev,
+ 	if (len > MCTP_I2C_MAXMTU)
+ 		return -EMSGSIZE;
+ 
++	if (!daddr || !saddr)
++		return -EINVAL;
++
+ 	lldst = *((u8 *)daddr);
+ 	llsrc = *((u8 *)saddr);
+ 
 
 ---
- doc/libnftables-json.adoc | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/doc/libnftables-json.adoc b/doc/libnftables-json.adoc
-index a8a6165fde59d419f1ec7a1fa904e1491fe15284..2f29ac0436280719e50016ee92a6b78605894831 100644
---- a/doc/libnftables-json.adoc
-+++ b/doc/libnftables-json.adoc
-@@ -1182,7 +1182,7 @@ ____
- 
- Construct a payload expression, i.e. a reference to a certain part of packet
- data. The first form creates a raw payload expression to point at a random
--number (*len*) of bytes at a certain offset (*offset*) from a given reference
-+number (*len*) of bits at a certain offset (*offset*) from a given reference
- point (*base*). The following *base* values are accepted:
- 
- *"ll"*::
-
----
-base-commit: ff0846371c0c1cca41fd61ef2c481248684b8aa9
-change-id: 20241017-libnftables-json-doc-fix-e2245a24cedc
+base-commit: cb560795c8c2ceca1d36a95f0d1b2eafc4074e37
+change-id: 20241018-mctp-i2c-null-dest-a0ba271e0c48
 
 Best regards,
 -- 
-Eric Long <i@hack3r.moe>
+Matt Johnston <matt@codeconstruct.com.au>
 
