@@ -1,21 +1,22 @@
 From: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
-Date: Fri, 18 Oct 2024 14:45:56 +0300
-Subject: [PATCH v2 2/2] common: buffer access out-of-bounds
+Date: Fri, 18 Oct 2024 18:26:34 +0300
+Subject: [PATCH v3] common: buffer access out-of-bounds
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241018-errors_fixes-v2-2-7f49d5a0087b@gmail.com>
-References: <20241018-errors_fixes-v2-0-7f49d5a0087b@gmail.com>
-In-Reply-To: <20241018-errors_fixes-v2-0-7f49d5a0087b@gmail.com>
+Message-Id: <20241018-overflow-v3-1-30dc98fe930a@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACl+EmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDA0ML3fyy1KK0nPxy3ZRkE6OU1DTzVJM0MyWg8oKi1LTMCrBR0bG1tQD
+ iSrwSWgAAAA==
 To: Sascha Hauer <s.hauer@pengutronix.de>, 
  BAREBOX <barebox@lists.infradead.org>
 Cc: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729251992; l=1246;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729265200; l=1500;
  i=abdelrahmanyossef12@gmail.com; s=20241017; h=from:subject:message-id;
- bh=ZQGlteveeYHhMUHGwjTXIUeYQOG4oblMLEUZ2E18yDo=;
- b=ZU+Uk/HSWvwitMEyW/8+oyd2HafLdUKHvIBaI8s/UWgdrbHTASe4MC/WrPbHNSxcUxpZgSG08
- gTY9m96DrQ1B3V+l7Xrn6uiOoFTGnCMHkUf6UUjErn9Ow9Uys0BOBG0
+ bh=i8c9ivcrgzC7TxEGB7gC3sLaxScw2SEdmsCmpe64u0g=;
+ b=tBpAmcaHlN9jjo3kRbrItMqxBKFKA5ogP/8WjZJlaJbEcA/3oMy2xS9stegVoFyrLc04RufY5
+ IGx62SlXhrsAqggJN/LbaD7XT1So5KkWohiU+jyvZgKxkLgjEG9HCAm
 X-Developer-Key: i=abdelrahmanyossef12@gmail.com; a=ed25519;
  pk=ayjFVDSRo1qKm+PGih8rsNvcMQvJ4ROQWuZWrYU8ujc=
 X-Endpoint-Received: by B4 Relay for abdelrahmanyossef12@gmail.com/20241017 with auth_id=251
@@ -26,6 +27,8 @@ in file_detect_type() to detect file of type socfpga_xload you need at least
 So I moved it after checking if `bufsize >= 256`.
 
 Signed-off-by: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
+---
+This patch is a replacement of the last one because there were some issues with it
 ---
  common/filetype.c | 8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)
@@ -57,6 +60,11 @@ index 3690d4ae07..3f74871d7f 100644
  			switch(le32_to_cpu(buf[63])) {
  			case 0x00000000:
 
+---
+base-commit: 9d47ff66c3892c5a6ddd4704993365a797fbeb68
+change-id: 20241018-overflow-dc42def7e4f6
+
+Best regards,
 -- 
-2.43.0
+Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
 
