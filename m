@@ -1,22 +1,23 @@
 From: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
-Date: Fri, 18 Oct 2024 19:24:43 +0300
-Subject: [PATCH v4] common: buffer access out-of-bounds
+Date: Fri, 18 Oct 2024 20:13:31 +0300
+Subject: [PATCH v5] common: buffer access out-of-bounds
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241018-overflow-v4-1-b0aed7711dc6@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMqLEmcC/23MSwqDMBSF4a3IHTclL1rtyH0UByG50QtqSlLSi
- mTvpo47/A+Hb4eEkTDBo9khYqZEYa2hLw3YyawjMnK1QXKpBRctCxmjn8OHOaulQ39H7W9Q76+
- Inr4n9RxqT5TeIW6nnNVv/YNkxQRT3Nmu9dgpbvpxMTRfbVhgKKUc9tmesqAAAAA=
+Message-Id: <20241018-overflow-v5-1-6a438ff92ca2@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADqXEmcC/3WMyw7CIBBFf6WZtRgo2Icr/8O4QBjaSdrSgEFN0
+ 3+XduVCl+fmnrNAxEAY4VwsEDBRJD9lOB0KML2eOmRkM0PJSyW4aJhPGNzgn8waVVp0NSpXQb7
+ PAR299tT1lrmn+PDhvZeT3NYfkSSZYJJb0zYOW8n1pRs1DUfjR9giSf0TVRbvXKOtayGsqb7Fd
+ V0/F20N9NkAAAA=
 To: Sascha Hauer <s.hauer@pengutronix.de>, 
  BAREBOX <barebox@lists.infradead.org>
 Cc: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729268684; l=1598;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729271617; l=1673;
  i=abdelrahmanyossef12@gmail.com; s=20241017; h=from:subject:message-id;
- bh=QWTUuGk9RwnfJAMjCAGxegxXtgyypiWYdpNK77oXhZk=;
- b=KaI5JXvxeLwgryzpnRRi4dhL+K5uR2AGbJTXgkS0koCNEXaHCBxBVzuHbzAEipFKi4fZyoQzX
- Cee7oD41pjHBbb2TgbMFfWO5ey8S8sDj0Q9zjLLkrdDb8GQTFe1FS3t
+ bh=ECwB9jAzpYJYU3ijMMyMb/rTEhskLDq37D0Kv7kaNzo=;
+ b=xw5QaH1/ThujjiNaG1TfAxd6jSF0F0hTBVGlHqbF50u93D06rTulrJw39otjN+2++1GXCNQ2X
+ ybI77z/2vBJCjaP+UcHcKZrKwhwFncCS89APkRFJN+5LKwKhg/geMVf
 X-Developer-Key: i=abdelrahmanyossef12@gmail.com; a=ed25519;
  pk=ayjFVDSRo1qKm+PGih8rsNvcMQvJ4ROQWuZWrYU8ujc=
 X-Endpoint-Received: by B4 Relay for abdelrahmanyossef12@gmail.com/20241017 with auth_id=251
@@ -33,6 +34,9 @@ This patch is a replacement of the last one because there were some issues with 
 To: Sascha Hauer <s.hauer@pengutronix.de>
 To: open list:BAREBOX <barebox@lists.infradead.org>
 Signed-off-by: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
+---
+Changes in v5:
+Removed leading spaces that misaliged the code in v3
 ---
  common/filetype.c | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
