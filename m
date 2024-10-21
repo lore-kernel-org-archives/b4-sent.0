@@ -1,68 +1,80 @@
-From: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
-Date: Mon, 21 Oct 2024 18:43:03 +0300
-Subject: [PATCH v6] lib: fix dereferencing of a NULL pointer
+From: Manas <manas18244@iiitd.ac.in>
+Date: Mon, 21 Oct 2024 22:18:57 +0530
+Subject: [PATCH] Revert "bcachefs: Add asserts to
+ bch2_dev_btree_bitmap_marked_sectors()"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241021-null_der-v6-1-8dfc261cfc91@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAIZ2FmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyzHQUlJIzE
- vPSU3UzU4B8JSMDIxNDAyND3bzSnJz4lNQiXUNjcwsjQ+M0g5REIyWg8oKi1LTMCrBR0bG1tQA
- njtWrWgAAAA==
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729525395; l=1766;
- i=abdelrahmanyossef12@gmail.com; s=20241017; h=from:subject:message-id;
- bh=kai+Z49hC8e6geQiU2ef8bSL6Qi7IG7gmC3/9g9xYtw=;
- b=+tyf/kjS7Ea0QVO1Axu7HX6xK6t2NTlnziAB0BO+Mr/pHQChdyjtDdIb6ChxZ9/2OCCjSd5nf
- frDn7Ah6QK2C7GjzX0Pdm/uDa5eyj0lUJcSkf72/Muy/e8STrkpCu/q
-X-Developer-Key: i=abdelrahmanyossef12@gmail.com; a=ed25519;
- pk=ayjFVDSRo1qKm+PGih8rsNvcMQvJ4ROQWuZWrYU8ujc=
-X-Endpoint-Received: by B4 Relay for abdelrahmanyossef12@gmail.com/20241017 with auth_id=251
+Message-Id: <20241021-revert-assert-bch2-v1-1-e869c7c55bb6@iiitd.ac.in>
+X-B4-Tracking: v=1; b=H4sIAPmFFmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDAyNDXaCi1KIS3cTiYhCVlJxhpGtkamJukpZqYWCZYqgE1FhQlJqWWQE
+ 2NDq2thYAFnuBOGQAAAA=
+X-Change-ID: 20241021-revert-assert-bch2-25474fe809d1
+To: Kent Overstreet <kent.overstreet@linux.dev>
+Cc: linux-bcachefs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Anup Sharma <anupnewsmail@gmail.com>, 
+ Shuah Khan <skhan@linuxfoundation.org>, Manas <manas18244@iiitd.ac.in>, 
+ syzbot+e8eff054face85d7ea41@syzkaller.appspotmail.com
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729529344; l=1877;
+ i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
+ bh=M5hbMLylF0b+ZchbJH4bBirAx8QVk4kpDgu8JqXEiG0=;
+ b=WgevtVQ8IzkqKxDmL4PPt4x+pwzKgX51dRXKIkpi/bHg+qtl1U1+wYlMsvhRz3aI+SKqx7uQJ
+ /moCqOYxegOAir9iBXGhNInRIgLvsv2CRck4KxE2nrWm2swoQTEIXd3
+X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
+ pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
+X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Runtime reported by AddressSanitizer due to time a NULL pointer dereference.
+This reverts commit 60f2b1bcf519416dbffee219132aa949d0c39d0e.
 
-This is the stack trace:
-    #0 0x5b2550e70c4b in get_param_by_name /barebox/lib/parameter.c:56:2
-    #1 0x5b2550e70c4b in __dev_add_param /barebox/lib/parameter.c:153:6
-    #2 0x5b2550e71666 in __dev_add_param_int /barebox/lib/parameter.c:471:8
-    #3 0x5b2550daece8 in dev_add_param_uint32 /barebox/include/param.h:266:1
-    #4 0x5b2550daece8 in dos_partition /barebox/common/partitions/dos.c:289:2
-    #5 0x5b2550dadc62 in fuzz_partition_table_parser /barebox/common/partitions.c:331:10
-    #6 0x5b2550dadc62 in fuzz_partition_table_parser_ramdisk /barebox/common/partitions.c:344:1
-    #7 0x5b2550ebb94d in fuzz_test_once /barebox/include/fuzz.h:68:2
-    #8 0x5b2550ebb94d in fuzz_main /barebox/lib/fuzz.c:38:3
-    #9 0x5b2550d8eb41 in start_barebox /barebox/common/startup.c:381:3
-    #10 0x5b2550f4ea6d in sandbox_main (/barebox/images/main.elf+0x411a6d) (BuildId: dfdb3401891b94e86545eddb1502f0815ffd0afb)
-    #11 0x5b2550f4f2b2 in start_barebox_coop fuzz.c
+This syzbot bug[1] is triggered due to the BUG_ON assertions added in
+__bch2_dev_btree_bitmap_mark. During runtime, m->btree_bitmap_shift is
+63 '?'. This triggers both the assertions.
 
-Signed-off-by: Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
+Reverting the commit does not reproduce the said bug.
+
+[1] https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
+
+Signed-off-by: Manas <manas18244@iiitd.ac.in>
+Reported-by: syzbot+e8eff054face85d7ea41@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
 ---
- lib/parameter.c | 3 +++
- 1 file changed, 3 insertions(+)
+This syzbot bug[1] is triggered due to the BUG_ON assertions added in
+__bch2_dev_btree_bitmap_mark. During runtime, m->btree_bitmap_shift is
+63 '?'. This triggers both the assertions.
 
-diff --git a/lib/parameter.c b/lib/parameter.c
-index bf9e83152b..21fa9e7e70 100644
---- a/lib/parameter.c
-+++ b/lib/parameter.c
-@@ -51,6 +51,9 @@ const char *get_param_type(struct param_d *param)
+I am unfamiliar with the codebase, and there wasn't a lore discussion
+about the assertions in the commit, so I am unsure about the relevance
+of these assertions.
+
+Reverting the commit does not reproduce the said bug.
+
+[1] https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
+---
+ fs/bcachefs/sb-members.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c
+index fb08dd680dacf82bca414f424024e4a00bf432de..9790fd47338c46d2af30547e1f41a1e578b71aa4 100644
+--- a/fs/bcachefs/sb-members.c
++++ b/fs/bcachefs/sb-members.c
+@@ -450,9 +450,6 @@ static void __bch2_dev_btree_bitmap_mark(struct bch_sb_field_members_v2 *mi, uns
+ 		m->btree_bitmap_shift += resize;
+ 	}
  
- struct param_d *get_param_by_name(struct device *dev, const char *name)
- {
-+	if (!dev)
-+		return NULL;
-+
- 	struct param_d *p;
- 
- 	list_for_each_entry(p, &dev->parameters, list) {
+-	BUG_ON(m->btree_bitmap_shift > 57);
+-	BUG_ON(end > 64ULL << m->btree_bitmap_shift);
+-
+ 	for (unsigned bit = start >> m->btree_bitmap_shift;
+ 	     (u64) bit << m->btree_bitmap_shift < end;
+ 	     bit++)
 
 ---
-base-commit: 9d47ff66c3892c5a6ddd4704993365a797fbeb68
-change-id: 20241021-null_der-1378213f0da2
+base-commit: 42f7652d3eb527d03665b09edac47f85fb600924
+change-id: 20241021-revert-assert-bch2-25474fe809d1
 
 Best regards,
 -- 
-Abdelrahman Youssef <abdelrahmanyossef12@gmail.com>
+Manas <manas18244@iiitd.ac.in>
 
