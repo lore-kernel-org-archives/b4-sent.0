@@ -1,132 +1,149 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Mon, 21 Oct 2024 10:38:42 +0200
-Subject: [PATCH v2] iio: invensense: fix multiple odr switch when FIFO is
- off
+From: Vasileios Bimpikas <vasileios.bimpikas@analog.com>
+Subject: [PATCH v2 00/11] drivers: Driver support for ADI SC5xx SoCs
+Date: Mon, 21 Oct 2024 14:54:31 +0100
+Message-Id: <20241021-sc5xx-driver-series-v2-0-53e2472e11d0@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241021-invn-inv-sensors-timestamp-fix-switch-fifo-off-v2-1-39ffd43edcc4@tdk.com>
-X-B4-Tracking: v=1; b=H4sIABETFmcC/52N0QrCMAxFf2X02UhbJ2U++R+yh65LXZC1oylVG
- ft3u32CBEJOuNyzCsZEyOLWrCJhIaYYKuhTI9xkwxOBxspCS90qqQxQKGFfwBg4JoZMM3K28wK
- ePsBvym6qp48QvYeL151SErvrKEUtXRLW2CF89JUn4hzT9/AXtX//VhUFdQbnrZHWtGa45/F1d
- nEW/bZtP/cHZmDqAAAA
-X-Change-ID: 20241017-invn-inv-sensors-timestamp-fix-switch-fifo-off-3f29110e95d0
-To: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>
-Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+X-B4-Tracking: v=1; b=H4sIABhdFmcC/0WOQW6DMBBFr4K87iDbgICsco8qi8GMjaUYiO0go
+ ih37yS06m6+Rv/99xSJoqckTsVTRNp88svMQX8Vwkw4OwI/chZa6lr2uoJkmn2HMfqNIhxlwB7
+ t0Jqm7wYjuLlGsn7/UL8vnG1cAuQpEv6zGtVo1XRVW6pa6g4UuEiuDHh9JDxnHyg9UmmW8AuMd
+ LuzXT6ogt8JP3Ys++Z1zDjc7mvKPBX87GDFbCY23BRIqOuxx9GOttLtGWe8Lu5vYMBEwHfw+VR
+ sb2CpJERTi8vr9QPA5NlEJQEAAA==
+X-Change-ID: 20240923-sc5xx-driver-series-a9afb7c598bc
+To: Tom Rini <trini@konsulko.com>, 
+ Nathan Barrett-Morrison <nathan.morrison@timesys.com>, 
+ Greg Malysa <greg.malysa@timesys.com>, 
+ Ian Roberts <ian.roberts@timesys.com>, 
+ Vasileios Bimpikas <vasileios.bimpikas@analog.com>, 
+ Utsav Agarwal <utsav.agarwal@analog.com>, 
+ Arturs Artamonovs <arturs.artamonovs@analog.com>, 
+ Marek Vasut <marex@denx.de>, Heiko Schocher <hs@denx.de>, 
+ Joe Hershberger <joe.hershberger@ni.com>, 
+ Ramon Fried <rfried.dev@gmail.com>, Stefan Roese <sr@denx.de>, 
+ Jagan Teki <jagan@amarulasolutions.com>, Peng Fan <peng.fan@nxp.com>, 
+ Jaehoon Chung <jh80.chung@samsung.com>
+Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
+ Oliver Gaskell <Oliver.Gaskell@analog.com>, 
+ Angelo Dureghello <angelo.dureghello@timesys.com>, 
+ Piotr Wojtaszczyk <piotr.wojtaszczyk@timesys.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729499932; l=4913;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=HwKkaznxa/GtKkxWPn8/QMQwIOns9lkHLrxgztbXJrs=;
- b=/sQVEhyGw77DuiPXFRVEer1YQBIacJXR2hYlZQwCLOik+ZPXySdxk1USKK4w3JDsy4VFRjklU
- v5nmDzjaHoyC++TpxnT4m2GYvVMc7wwyJIUh73MoyP9kJGq2pZsJ6V+
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729518874; l=5307;
+ i=vasileios.bimpikas@analog.com; s=20240927; h=from:subject:message-id;
+ bh=Cq311unnyEOsAEXQ+0MeodXiBtSZTdLSvvW0P9gzTmY=;
+ b=kUR/y1nq/tGM6RRoJBBPBbULmFUVQIU5B8h0bjGDK4XsW91H6DekUiPQDP8OzaklY0LhcpViM
+ YXSICK01PUKCRrhAHtGgweIuRV3d+s2i1mefdk13KfDKfENUZ7B0uPr
+X-Developer-Key: i=vasileios.bimpikas@analog.com; a=ed25519;
+ pk=JkXh+NeXYCpTenwrB0gg5fMpKEnagLOXdsLFiUrqZRo=
+X-Endpoint-Received: by B4 Relay for vasileios.bimpikas@analog.com/20240927 with auth_id=220
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When multiple ODR switch happens during FIFO off, the change could
-not be taken into account if you get back to previous FIFO on value.
-For example, if you run sensor buffer at 50Hz, stop, change to
-200Hz, then back to 50Hz and restart buffer, data will be timestamped
-at 200Hz. This due to testing against mult and not new_mult.
+This series adds all of the supported peripheral drivers for the sc5xx
+series of SoCs from Analog Devices and other drivers that are used by
+the evaluation kits, such as a GPIO expander used by the EZLITE carrier
+boards.
 
-To prevent this, let's just run apply_odr automatically when FIFO is
-off. It will also simplify driver code.
+This series is based on my earlier patch series:
+  "arm: Initial support for Analog Devices SC5xx boards"
+  20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com
+since both that series and this series modify MAINTAINERS.
 
-Update inv_mpu6050 and inv_icm42600 to delete now useless apply_odr.
+Note that patches 05, 07 had Reviewed-by tags, but have had minor
+changes since v1 so these weren't kept.
 
-Fixes: 95444b9eeb8c ("iio: invensense: fix odr switching to same value")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
 Changes in v2:
-- Delete unused anymore local variables.
-- Link to v1: https://lore.kernel.org/r/20241017-invn-inv-sensors-timestamp-fix-switch-fifo-off-v1-1-1bcfa70a747b@tdk.com
----
- drivers/iio/common/inv_sensors/inv_sensors_timestamp.c | 4 ++++
- drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c      | 2 --
- drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c       | 3 ---
- drivers/iio/imu/inv_mpu6050/inv_mpu_trigger.c          | 1 -
- 4 files changed, 4 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-index f44458c380d92823ce2e7e5f78ca877ea4c06118..37d0bdaa8d824f79dcd2f341be7501d249926951 100644
---- a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-+++ b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-@@ -70,6 +70,10 @@ int inv_sensors_timestamp_update_odr(struct inv_sensors_timestamp *ts,
- 	if (mult != ts->mult)
- 		ts->new_mult = mult;
- 
-+	/* When FIFO is off, directly apply the new ODR */
-+	if (!fifo)
-+		inv_sensors_timestamp_apply_odr(ts, 0, 0, 0);
-+
- 	return 0;
- }
- EXPORT_SYMBOL_NS_GPL(inv_sensors_timestamp_update_odr, IIO_INV_SENSORS_TIMESTAMP);
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-index 56ac198142500a2e1fc40b62cdd465cc736d8bf0..7968aa27f9fd798f206e72891f1c9b483811dea2 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-@@ -200,7 +200,6 @@ static int inv_icm42600_accel_update_scan_mode(struct iio_dev *indio_dev,
- {
- 	struct inv_icm42600_state *st = iio_device_get_drvdata(indio_dev);
- 	struct inv_icm42600_sensor_state *accel_st = iio_priv(indio_dev);
--	struct inv_sensors_timestamp *ts = &accel_st->ts;
- 	struct inv_icm42600_sensor_conf conf = INV_ICM42600_SENSOR_CONF_INIT;
- 	unsigned int fifo_en = 0;
- 	unsigned int sleep_temp = 0;
-@@ -229,7 +228,6 @@ static int inv_icm42600_accel_update_scan_mode(struct iio_dev *indio_dev,
- 	}
- 
- 	/* update data FIFO write */
--	inv_sensors_timestamp_apply_odr(ts, 0, 0, 0);
- 	ret = inv_icm42600_buffer_set_fifo_en(st, fifo_en | st->fifo.en);
- 
- out_unlock:
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
-index 938af5b640b00f58d2b8185f752c4755edfb0d25..c6bb68bf5e1449d4b961ac962311cbc5aa3c0a97 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
-@@ -99,8 +99,6 @@ static int inv_icm42600_gyro_update_scan_mode(struct iio_dev *indio_dev,
- 					      const unsigned long *scan_mask)
- {
- 	struct inv_icm42600_state *st = iio_device_get_drvdata(indio_dev);
--	struct inv_icm42600_sensor_state *gyro_st = iio_priv(indio_dev);
--	struct inv_sensors_timestamp *ts = &gyro_st->ts;
- 	struct inv_icm42600_sensor_conf conf = INV_ICM42600_SENSOR_CONF_INIT;
- 	unsigned int fifo_en = 0;
- 	unsigned int sleep_gyro = 0;
-@@ -128,7 +126,6 @@ static int inv_icm42600_gyro_update_scan_mode(struct iio_dev *indio_dev,
- 	}
- 
- 	/* update data FIFO write */
--	inv_sensors_timestamp_apply_odr(ts, 0, 0, 0);
- 	ret = inv_icm42600_buffer_set_fifo_en(st, fifo_en | st->fifo.en);
- 
- out_unlock:
-diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_trigger.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_trigger.c
-index 3bfeabab0ec4f6fa28fbbcd47afe92af5b8a58e2..5b1088cc3704f1ad1288a0d65b2f957b91455d7f 100644
---- a/drivers/iio/imu/inv_mpu6050/inv_mpu_trigger.c
-+++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_trigger.c
-@@ -112,7 +112,6 @@ int inv_mpu6050_prepare_fifo(struct inv_mpu6050_state *st, bool enable)
- 	if (enable) {
- 		/* reset timestamping */
- 		inv_sensors_timestamp_reset(&st->timestamp);
--		inv_sensors_timestamp_apply_odr(&st->timestamp, 0, 0, 0);
- 		/* reset FIFO */
- 		d = st->chip_config.user_ctrl | INV_MPU6050_BIT_FIFO_RST;
- 		ret = regmap_write(st->map, st->reg->user_ctrl, d);
+- Address comments on adi_spi3.c
+- Clean up some whitespace errors
+- Modify Kconfigs to reflect changes to mach-sc5xx/Kconfig
+- Link to v1: https://lore.kernel.org/r/20240515215837.14028-1-greg.malysa@timesys.com
 
 ---
-base-commit: c3e9df514041ec6c46be83801b1891392f4522f7
-change-id: 20241017-invn-inv-sensors-timestamp-fix-switch-fifo-off-3f29110e95d0
+Changes in v3:
+- Rebased with current master
+- Link to v2: https://lore.kernel.org/u-boot/20240925-sc5xx-driver-series-v2-0-ad9287c25c08@analog.com/
+
+---
+Greg Malysa (2):
+      net: Add support for ADI SC5xx SoCs with DWC QoS ethernet
+      dma: Add driver for ADI SC5xx-family SoC MDMA functionality
+
+Nathan Barrett-Morrison (3):
+      gpio: Add support for ADI ADP5588 GPIO expander chips
+      usb: musb-new: Add support for Analog Devices SC5xx SoCs
+      remoteproc: Add in SHARC loading for ADI SC5XX-family processors
+
+Oliver Gaskell (6):
+      pinctrl: Add support for ADI SC5XX-family pinctrl
+      gpio: Add support for SC5XX-family processor GPIO driver
+      i2c: Add support for ADI SC5XX-family I2C peripheral
+      watchdog: Add support for ADI SC5XX-family watchdog peripheral
+      spi: Add support for ADI SC5XX-family processor SPI peripherals
+      mmc: Add support for ADI SC5XX-family processor SDHCI peripherals
+
+ MAINTAINERS                            |  11 +
+ drivers/dma/Kconfig                    |   7 +
+ drivers/dma/Makefile                   |   1 +
+ drivers/dma/adi_dma.c                  | 255 ++++++++++++
+ drivers/gpio/Kconfig                   |  17 +
+ drivers/gpio/Makefile                  |   2 +
+ drivers/gpio/adp5588_gpio.c            | 208 ++++++++++
+ drivers/gpio/gpio-adi-adsp.c           | 179 +++++++++
+ drivers/i2c/Kconfig                    |   7 +
+ drivers/i2c/Makefile                   |   3 +-
+ drivers/i2c/adi_i2c.c                  | 395 +++++++++++++++++++
+ drivers/mmc/Kconfig                    |   9 +
+ drivers/mmc/Makefile                   |   1 +
+ drivers/mmc/adi_sdhci.c                | 154 ++++++++
+ drivers/net/Kconfig                    |   7 +
+ drivers/net/Makefile                   |   1 +
+ drivers/net/dwc_eth_qos.c              |   6 +
+ drivers/net/dwc_eth_qos.h              |   2 +
+ drivers/net/dwc_eth_qos_adi.c          | 102 +++++
+ drivers/pinctrl/Kconfig                |   8 +
+ drivers/pinctrl/Makefile               |   1 +
+ drivers/pinctrl/pinctrl-adi-adsp.c     | 156 ++++++++
+ drivers/remoteproc/Kconfig             |  11 +
+ drivers/remoteproc/Makefile            |   1 +
+ drivers/remoteproc/adi_sc5xx_rproc.c   | 276 +++++++++++++
+ drivers/spi/Kconfig                    |   7 +
+ drivers/spi/Makefile                   |   1 +
+ drivers/spi/adi_spi3.c                 | 690 +++++++++++++++++++++++++++++++++
+ drivers/usb/musb-new/Kconfig           |   7 +
+ drivers/usb/musb-new/Makefile          |   1 +
+ drivers/usb/musb-new/sc5xx.c           | 202 ++++++++++
+ drivers/watchdog/Kconfig               |   9 +
+ drivers/watchdog/Makefile              |   1 +
+ drivers/watchdog/adi_wdt.c             | 145 +++++++
+ include/dt-bindings/pinctrl/adi-adsp.h |  21 +
+ 35 files changed, 2903 insertions(+), 1 deletion(-)
+---
+base-commit: 041bf69038e2957f38e2de4e5d77bdb3e2ccf8a8
+change-id: 20240923-sc5xx-driver-series-a9afb7c598bc
+prerequisite-message-id: 20240828-sc5xx-upstreaming-patches-v1-0-44d9adfdf327@analog.com
+prerequisite-patch-id: 184667bccb34335a943f5ba405bf2acd75b8c7f3
+prerequisite-patch-id: aad9a1786ecfe51a46034fc055c57bff62d2a653
+prerequisite-patch-id: 7640097fdc5a25ec2ffdf0eddb22f3c452510390
+prerequisite-patch-id: 909e13e6d779858f6d862b703e7cbfe510cb3a16
+prerequisite-patch-id: 0564b8079526f2fe1d9f723c8c4a2471e3ec6e1c
+prerequisite-patch-id: 469d6193e82a2f702e938004ad6ff7c22dfbab86
+prerequisite-patch-id: f6a45739e56120f54170b924a3069b98d355d1c0
+prerequisite-patch-id: 24787a90e7adadab2ae3aa2348ac9d5838c26cfe
+prerequisite-patch-id: 94e1c6fde429c63a6fa4f7b5aeab0df9a8a00d81
+prerequisite-patch-id: 32d268fd6372bda3129cddd26da45d69291efc33
+prerequisite-patch-id: f54e027ac323522349f24acbc4a946d8a3cdfaef
+prerequisite-patch-id: 0ca62b4ff0cfd3bf5a10ac84f13d0ab261e737d1
+prerequisite-patch-id: 8101423151112c3876c88223ac9ab196aebb8912
+prerequisite-patch-id: fbc3b9227e2dc550878d4e8d113b1ad81ee00028
+prerequisite-patch-id: 63cec707680793ef2feeb5b782b1db19d49766ce
+prerequisite-patch-id: 6f85ade3b9119dba85b65da8a49c4a6345c6b3ba
+prerequisite-patch-id: 988919879c6440227124dc0bb4b24d22c9041d99
+prerequisite-patch-id: 3227e7bdc2614c377b6837a47ad1cde99791d794
+prerequisite-patch-id: 10f9f40c697f22a33b83a8538e13bac642795851
+prerequisite-patch-id: e57e6a95ef319c12565a6469f230198259f0bf7d
 
 Best regards,
 -- 
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Vasileios Bimpikas <vasileios.bimpikas@analog.com>
 
