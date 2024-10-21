@@ -1,11 +1,11 @@
 From: Vasileios Bimpikas <vasileios.bimpikas@analog.com>
-Date: Mon, 21 Oct 2024 14:54:41 +0100
-Subject: [PATCH v2 10/11] spi: Add support for ADI SC5XX-family processor
- SPI peripherals
+Date: Mon, 21 Oct 2024 14:54:42 +0100
+Subject: [PATCH v2 11/11] mmc: Add support for ADI SC5XX-family processor
+ SDHCI peripherals
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241021-sc5xx-driver-series-v2-10-53e2472e11d0@analog.com>
+Message-Id: <20241021-sc5xx-driver-series-v2-11-53e2472e11d0@analog.com>
 References: <20241021-sc5xx-driver-series-v2-0-53e2472e11d0@analog.com>
 In-Reply-To: <20241021-sc5xx-driver-series-v2-0-53e2472e11d0@analog.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -21,15 +21,13 @@ To: Tom Rini <trini@konsulko.com>,
  Jagan Teki <jagan@amarulasolutions.com>, Peng Fan <peng.fan@nxp.com>, 
  Jaehoon Chung <jh80.chung@samsung.com>
 Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
- Oliver Gaskell <Oliver.Gaskell@analog.com>, 
- Angelo Dureghello <angelo.dureghello@timesys.com>, 
- Piotr Wojtaszczyk <piotr.wojtaszczyk@timesys.com>
+ Oliver Gaskell <Oliver.Gaskell@analog.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729518874; l=28000;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729518874; l=7504;
  i=vasileios.bimpikas@analog.com; s=20240927; h=from:subject:message-id;
- bh=4VFo0yGZpyKd3UYiOVNgYWXbtmtBjDx20k80ABVxzag=;
- b=FZB9mgM1BrIyNtoWehyHyrWMgyRy7aFhECiDmTRwMcuUi7Uv9zx4wtBB/MtPPGExoJBcdj6Hq
- n0WNihOtSa9DdUW/yHHy6Tcul1UCQPsspd4qSVogi52aNOLSSk+f/Y1
+ bh=wVlr+OyPnjDZv6oQ4REp64YmoS9XIEBQJPuZm7IL2q4=;
+ b=sgEJcyU6zg0Rc/Zkw8zX4S8dNBcco5sxK+fgLUDGTBFgDZn9bVFHCJcsMnVLZuBxe7WRPiqFc
+ 4ig0HKELNnRDtMB8lNQWdHkApfrKIQlMRAmWmiCtQPqeOjAToUJk10U
 X-Developer-Key: i=vasileios.bimpikas@analog.com; a=ed25519;
  pk=JkXh+NeXYCpTenwrB0gg5fMpKEnagLOXdsLFiUrqZRo=
 X-Endpoint-Received: by B4 Relay for vasileios.bimpikas@analog.com/20240927 with auth_id=220
@@ -37,768 +35,225 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Oliver Gaskell <Oliver.Gaskell@analog.com>
 
-This adds support for the ADI-specific SPI driver present in the ADI
-SC5xx line of SoCs. This IP block is distinct from the QSPI/OSPI block
-that uses the Cadence driver. Both may be used at once with appropriate
-pin muxing configuration.
-
 Co-developed-by: Greg Malysa <greg.malysa@timesys.com>
 Signed-off-by: Greg Malysa <greg.malysa@timesys.com>
-Co-developed-by: Angelo Dureghello <angelo.dureghello@timesys.com>
-Signed-off-by: Angelo Dureghello <angelo.dureghello@timesys.com>
 Co-developed-by: Ian Roberts <ian.roberts@timesys.com>
 Signed-off-by: Ian Roberts <ian.roberts@timesys.com>
-Co-developed-by: Piotr Wojtaszczyk <piotr.wojtaszczyk@timesys.com>
-Signed-off-by: Piotr Wojtaszczyk <piotr.wojtaszczyk@timesys.com>
 Signed-off-by: Vasileios Bimpikas <vasileios.bimpikas@analog.com>
 Signed-off-by: Utsav Agarwal <utsav.agarwal@analog.com>
 Signed-off-by: Arturs Artamonovs <arturs.artamonovs@analog.com>
 Signed-off-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
 Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
 ---
- MAINTAINERS            |   1 +
- drivers/spi/Kconfig    |   7 +
- drivers/spi/Makefile   |   1 +
- drivers/spi/adi_spi3.c | 690 +++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 699 insertions(+)
+ MAINTAINERS             |   1 +
+ drivers/mmc/Kconfig     |   9 +++
+ drivers/mmc/Makefile    |   1 +
+ drivers/mmc/adi_sdhci.c | 154 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 165 insertions(+)
 
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 86a7f18f530c0fdabd015d49518841b0160bfdba..a553584fb7390adff2af78fe5d9461e99d0084e7 100644
+index a553584fb7390adff2af78fe5d9461e99d0084e7..c59e061671e1bca03236211515bc4016306fdf68 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -620,6 +620,7 @@ F:	drivers/net/dwc_eth_qos_adi.c
+@@ -616,6 +616,7 @@ F:	drivers/dma/adi_dma.c
+ F:	drivers/gpio/adp5588_gpio.c
+ F:	drivers/gpio/gpio-adi-adsp.c
+ F:	drivers/i2c/adi_i2c.c
++F:	drivers/mmc/adi_sdhci.c
+ F:	drivers/net/dwc_eth_qos_adi.c
  F:	drivers/pinctrl/pinctrl-adi-adsp.c
  F:	drivers/remoteproc/adi_sc5xx_rproc.c
- F:	drivers/serial/serial_adi_uart4.c
-+F:	drivers/spi/adi_spi3.c
- F:	drivers/timer/adi_sc5xx_timer.c
- F:	drivers/usb/musb-new/sc5xx.c
- F:	drivers/watchdog/adi_wdt.c
-diff --git a/drivers/spi/Kconfig b/drivers/spi/Kconfig
-index fa817ec4883008481a699a0e673a64c9f923d2d0..1b03bc454f245e12110bfdb15b1f7a1ac85d1a7d 100644
---- a/drivers/spi/Kconfig
-+++ b/drivers/spi/Kconfig
-@@ -58,6 +58,13 @@ config SPI_DIRMAP
+diff --git a/drivers/mmc/Kconfig b/drivers/mmc/Kconfig
+index 38817622fca1784703024c357b5d5ca11703afd6..b922765799bdbda991abb306e61969b4d9646e05 100644
+--- a/drivers/mmc/Kconfig
++++ b/drivers/mmc/Kconfig
+@@ -293,6 +293,15 @@ config MMC_DW_ROCKCHIP
+ 	  SD 3.0, SDIO 3.0 and MMC 4.5 and supports common eMMC chips as well
+ 	  as removeable SD and micro-SD cards.
  
- if DM_SPI
- 
-+config ADI_SPI3
-+	bool "Enable ADI SPI Driver"
++config MMC_SDHCI_ADI
++	bool "ADI SD/MMC controller support"
 +	depends on ARCH_SC5XX
++	depends on DM_MMC && OF_CONTROL
++	depends on MMC_SDHCI && MMC_SDHCI_ADMA
 +	help
-+	  Enable the ADI (Analog Devices) SPI controller driver. This
-+	  driver enables the support for SC5XX spi controller.
++	  This enables support for the SD/MMC controller included in some Analog
++	  Devices SC5XX Socs.
 +
- config ALTERA_SPI
- 	bool "Altera SPI driver"
- 	help
-diff --git a/drivers/spi/Makefile b/drivers/spi/Makefile
-index 7051e2a00c604aaf36995b3921f541f06783b5dd..21895d464294a50b13d49566225e7575058d988c 100644
---- a/drivers/spi/Makefile
-+++ b/drivers/spi/Makefile
-@@ -19,6 +19,7 @@ obj-y += spi.o
- obj-$(CONFIG_SPI_MEM) += spi-mem-nodm.o
- endif
- 
-+obj-$(CONFIG_ADI_SPI3) += adi_spi3.o
- obj-$(CONFIG_ALTERA_SPI) += altera_spi.o
- obj-$(CONFIG_APPLE_SPI) += apple_spi.o
- obj-$(CONFIG_ATH79_SPI) += ath79_spi.o
-diff --git a/drivers/spi/adi_spi3.c b/drivers/spi/adi_spi3.c
+ config MMC_DW_SOCFPGA
+ 	bool "SOCFPGA specific extensions for Synopsys DW Memory Card Interface"
+ 	depends on ARCH_SOCFPGA
+diff --git a/drivers/mmc/Makefile b/drivers/mmc/Makefile
+index 868f3090ff24cc50cf9d71ac8f1f779efeb1471f..d4b747784b061996e218a2df6906d8c731732b9f 100644
+--- a/drivers/mmc/Makefile
++++ b/drivers/mmc/Makefile
+@@ -70,6 +70,7 @@ obj-$(CONFIG_MMC_SDHCI_MV)		+= mv_sdhci.o
+ obj-$(CONFIG_MMC_SDHCI_NPCM)            += npcm_sdhci.o
+ obj-$(CONFIG_MMC_SDHCI_PIC32)		+= pic32_sdhci.o
+ obj-$(CONFIG_MMC_SDHCI_ROCKCHIP)	+= rockchip_sdhci.o
++obj-$(CONFIG_MMC_SDHCI_ADI)		+= adi_sdhci.o
+ obj-$(CONFIG_MMC_SDHCI_S5P)		+= s5p_sdhci.o
+ obj-$(CONFIG_MMC_SDHCI_STI)		+= sti_sdhci.o
+ obj-$(CONFIG_MMC_SDHCI_TANGIER)		+= tangier_sdhci.o
+diff --git a/drivers/mmc/adi_sdhci.c b/drivers/mmc/adi_sdhci.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..9e75050a89707a883398c9ddb7f16af409f30a21
+index 0000000000000000000000000000000000000000..311089a5f5230d827bbf8b5439064c94ada2b209
 --- /dev/null
-+++ b/drivers/spi/adi_spi3.c
-@@ -0,0 +1,690 @@
++++ b/drivers/mmc/adi_sdhci.c
+@@ -0,0 +1,154 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * (C) Copyright 2022 - Analog Devices, Inc.
 + *
 + * Written and/or maintained by Timesys Corporation
 + *
-+ * Converted to driver model by Nathan Barrett-Morrison
-+ *
 + * Contact: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
 + * Contact: Greg Malysa <greg.malysa@timesys.com>
-+ * Contact: Ian Roberts <ian.roberts@timesys.com>
-+ * Contact: Piotr Wojtaszczyk <piotr.wojtaszczyk@timesys.com>
 + *
++ * Based on Rockchip's sdhci.c file
 + */
 +
 +#include <clk.h>
 +#include <dm.h>
-+#include <spi.h>
-+#include <spi-mem.h>
-+#include <asm/io.h>
-+#include <dm/device_compat.h>
-+
-+#define SPI_IDLE_VAL	0xff
-+
-+#define MAX_CTRL_CS 7
-+
-+/* SPI_CONTROL */
-+#define SPI_CTL_EN          0x00000001 /* Enable */
-+#define SPI_CTL_MSTR        0x00000002 /* Master/Slave */
-+#define SPI_CTL_PSSE        0x00000004 /* controls modf error in master mode */
-+#define SPI_CTL_ODM         0x00000008 /* Open Drain Mode */
-+#define SPI_CTL_CPHA        0x00000010 /* Clock Phase */
-+#define SPI_CTL_CPOL        0x00000020 /* Clock Polarity */
-+#define SPI_CTL_ASSEL       0x00000040 /* Slave Select Pin Control */
-+#define SPI_CTL_SELST       0x00000080 /* Slave Select Polarity in transfers */
-+#define SPI_CTL_EMISO       0x00000100 /*Enable MISO */
-+#define SPI_CTL_SIZE        0x00000600 /*Word Transfer Size */
-+#define SPI_CTL_SIZE08      0x00000000 /*SIZE: 8 bits */
-+#define SPI_CTL_SIZE16      0x00000200 /*SIZE: 16 bits */
-+#define SPI_CTL_SIZE32      0x00000400 /*SIZE: 32 bits */
-+#define SPI_CTL_LSBF        0x00001000 /*LSB First */
-+#define SPI_CTL_FCEN        0x00002000 /*Flow-Control Enable */
-+#define SPI_CTL_FCCH        0x00004000 /*Flow-Control Channel Selection */
-+#define SPI_CTL_FCPL        0x00008000 /*Flow-Control Polarity */
-+#define SPI_CTL_FCWM        0x00030000 /*Flow-Control Water-Mark */
-+#define SPI_CTL_FIFO0       0x00000000 /*FCWM: Tx empty or Rx Full */
-+#define SPI_CTL_FIFO1       0x00010000 /*FCWM: Tx empty or Rx full (>=75%) */
-+#define SPI_CTL_FIFO2       0x00020000 /*FCWM: Tx empty or Rx full (>=50%) */
-+#define SPI_CTL_FMODE       0x00040000 /*Fast-mode Enable */
-+#define SPI_CTL_MIOM        0x00300000 /*Multiple I/O Mode */
-+#define SPI_CTL_MIO_DIS     0x00000000 /*MIOM: Disable */
-+#define SPI_CTL_MIO_DUAL    0x00100000 /*MIOM: Enable DIOM (Dual I/O Mode) */
-+#define SPI_CTL_MIO_QUAD    0x00200000 /*MIOM: Enable QUAD (Quad SPI Mode) */
-+#define SPI_CTL_SOSI        0x00400000 /*Start on MOSI */
-+#define SPI_CTL_MMWEM       0x40000000 /*Start on MMWEM */
-+#define SPI_CTL_MMSE        0x80000000 /*Start on MMSE */
-+/* SPI_RX_CONTROL */
-+#define SPI_RXCTL_REN       0x00000001 /*Receive Channel Enable */
-+#define SPI_RXCTL_RTI       0x00000004 /*Receive Transfer Initiate */
-+#define SPI_RXCTL_RWCEN     0x00000008 /*Receive Word Counter Enable */
-+#define SPI_RXCTL_RDR       0x00000070 /*Receive Data Request */
-+#define SPI_RXCTL_RDR_DIS   0x00000000 /*RDR: Disabled */
-+#define SPI_RXCTL_RDR_NE    0x00000010 /*RDR: RFIFO not empty */
-+#define SPI_RXCTL_RDR_25    0x00000020 /*RDR: RFIFO 25% full */
-+#define SPI_RXCTL_RDR_50    0x00000030 /*RDR: RFIFO 50% full */
-+#define SPI_RXCTL_RDR_75    0x00000040 /*RDR: RFIFO 75% full */
-+#define SPI_RXCTL_RDR_FULL  0x00000050 /*RDR: RFIFO full */
-+#define SPI_RXCTL_RDO       0x00000100 /*Receive Data Over-Run */
-+#define SPI_RXCTL_RRWM      0x00003000 /*FIFO Regular Water-Mark */
-+#define SPI_RXCTL_RWM_0     0x00000000 /*RRWM: RFIFO Empty */
-+#define SPI_RXCTL_RWM_25    0x00001000 /*RRWM: RFIFO 25% full */
-+#define SPI_RXCTL_RWM_50    0x00002000 /*RRWM: RFIFO 50% full */
-+#define SPI_RXCTL_RWM_75    0x00003000 /*RRWM: RFIFO 75% full */
-+#define SPI_RXCTL_RUWM      0x00070000 /*FIFO Urgent Water-Mark */
-+#define SPI_RXCTL_UWM_DIS   0x00000000 /*RUWM: Disabled */
-+#define SPI_RXCTL_UWM_25    0x00010000 /*RUWM: RFIFO 25% full */
-+#define SPI_RXCTL_UWM_50    0x00020000 /*RUWM: RFIFO 50% full */
-+#define SPI_RXCTL_UWM_75    0x00030000 /*RUWM: RFIFO 75% full */
-+#define SPI_RXCTL_UWM_FULL  0x00040000 /*RUWM: RFIFO full */
-+/* SPI_TX_CONTROL */
-+#define SPI_TXCTL_TEN       0x00000001 /*Transmit Channel Enable */
-+#define SPI_TXCTL_TTI       0x00000004 /*Transmit Transfer Initiate */
-+#define SPI_TXCTL_TWCEN     0x00000008 /*Transmit Word Counter Enable */
-+#define SPI_TXCTL_TDR       0x00000070 /*Transmit Data Request */
-+#define SPI_TXCTL_TDR_DIS   0x00000000 /*TDR: Disabled */
-+#define SPI_TXCTL_TDR_NF    0x00000010 /*TDR: TFIFO not full */
-+#define SPI_TXCTL_TDR_25    0x00000020 /*TDR: TFIFO 25% empty */
-+#define SPI_TXCTL_TDR_50    0x00000030 /*TDR: TFIFO 50% empty */
-+#define SPI_TXCTL_TDR_75    0x00000040 /*TDR: TFIFO 75% empty */
-+#define SPI_TXCTL_TDR_EMPTY 0x00000050 /*TDR: TFIFO empty */
-+#define SPI_TXCTL_TDU       0x00000100 /*Transmit Data Under-Run */
-+#define SPI_TXCTL_TRWM      0x00003000 /*FIFO Regular Water-Mark */
-+#define SPI_TXCTL_RWM_FULL  0x00000000 /*TRWM: TFIFO full */
-+#define SPI_TXCTL_RWM_25    0x00001000 /*TRWM: TFIFO 25% empty */
-+#define SPI_TXCTL_RWM_50    0x00002000 /*TRWM: TFIFO 50% empty */
-+#define SPI_TXCTL_RWM_75    0x00003000 /*TRWM: TFIFO 75% empty */
-+#define SPI_TXCTL_TUWM      0x00070000 /*FIFO Urgent Water-Mark */
-+#define SPI_TXCTL_UWM_DIS   0x00000000 /*TUWM: Disabled */
-+#define SPI_TXCTL_UWM_25    0x00010000 /*TUWM: TFIFO 25% empty */
-+#define SPI_TXCTL_UWM_50    0x00020000 /*TUWM: TFIFO 50% empty */
-+#define SPI_TXCTL_UWM_75    0x00030000 /*TUWM: TFIFO 75% empty */
-+#define SPI_TXCTL_UWM_EMPTY 0x00040000 /*TUWM: TFIFO empty */
-+/* SPI_CLOCK */
-+#define SPI_CLK_BAUD        0x0000FFFF /*Baud Rate */
-+/* SPI_DELAY */
-+#define SPI_DLY_STOP        0x000000FF /*Transfer delay time */
-+#define SPI_DLY_LEADX       0x00000100 /*Extended (1 SCK) LEAD Control */
-+#define SPI_DLY_LAGX        0x00000200 /*Extended (1 SCK) LAG control */
-+/* SPI_SSEL */
-+#define SPI_SLVSEL_SSE1     0x00000002 /*SPISSEL1 Enable */
-+#define SPI_SLVSEL_SSE2     0x00000004 /*SPISSEL2 Enable */
-+#define SPI_SLVSEL_SSE3     0x00000008 /*SPISSEL3 Enable */
-+#define SPI_SLVSEL_SSE4     0x00000010 /*SPISSEL4 Enable */
-+#define SPI_SLVSEL_SSE5     0x00000020 /*SPISSEL5 Enable */
-+#define SPI_SLVSEL_SSE6     0x00000040 /*SPISSEL6 Enable */
-+#define SPI_SLVSEL_SSE7     0x00000080 /*SPISSEL7 Enable */
-+#define SPI_SLVSEL_SSEL1    0x00000200 /*SPISSEL1 Value */
-+#define SPI_SLVSEL_SSEL2    0x00000400 /*SPISSEL2 Value */
-+#define SPI_SLVSEL_SSEL3    0x00000800 /*SPISSEL3 Value */
-+#define SPI_SLVSEL_SSEL4    0x00001000 /*SPISSEL4 Value */
-+#define SPI_SLVSEL_SSEL5    0x00002000 /*SPISSEL5 Value */
-+#define SPI_SLVSEL_SSEL6    0x00004000 /*SPISSEL6 Value */
-+#define SPI_SLVSEL_SSEL7    0x00008000 /*SPISSEL7 Value */
-+/* SPI_RWC */
-+#define SPI_RWC_VALUE       0x0000FFFF /*Received Word-Count */
-+/* SPI_RWCR */
-+#define SPI_RWCR_VALUE      0x0000FFFF /*Received Word-Count Reload */
-+/* SPI_TWC */
-+#define SPI_TWC_VALUE       0x0000FFFF /*Transmitted Word-Count */
-+/* SPI_TWCR */
-+#define SPI_TWCR_VALUE      0x0000FFFF /*Transmitted Word-Count Reload */
-+/* SPI_IMASK */
-+#define SPI_IMSK_RUWM       0x00000002 /*Receive Water-Mark Interrupt Mask */
-+#define SPI_IMSK_TUWM       0x00000004 /*Transmit Water-Mark Interrupt Mask */
-+#define SPI_IMSK_ROM        0x00000010 /*Receive Over-Run Interrupt Mask */
-+#define SPI_IMSK_TUM        0x00000020 /*Transmit Under-Run Interrupt Mask */
-+#define SPI_IMSK_TCM        0x00000040 /*Transmit Collision Interrupt Mask */
-+#define SPI_IMSK_MFM        0x00000080 /*Mode Fault Interrupt Mask */
-+#define SPI_IMSK_RSM        0x00000100 /*Receive Start Interrupt Mask */
-+#define SPI_IMSK_TSM        0x00000200 /*Transmit Start Interrupt Mask */
-+#define SPI_IMSK_RFM        0x00000400 /*Receive Finish Interrupt Mask */
-+#define SPI_IMSK_TFM        0x00000800 /*Transmit Finish Interrupt Mask */
-+/* SPI_IMASKCL */
-+#define SPI_IMSK_CLR_RUW    0x00000002 /*Receive Water-Mark Interrupt Mask */
-+#define SPI_IMSK_CLR_TUWM   0x00000004 /*Transmit Water-Mark Interrupt Mask */
-+#define SPI_IMSK_CLR_ROM    0x00000010 /*Receive Over-Run Interrupt Mask */
-+#define SPI_IMSK_CLR_TUM    0x00000020 /*Transmit Under-Run Interrupt Mask */
-+#define SPI_IMSK_CLR_TCM    0x00000040 /*Transmit Collision Interrupt Mask */
-+#define SPI_IMSK_CLR_MFM    0x00000080 /*Mode Fault Interrupt Mask */
-+#define SPI_IMSK_CLR_RSM    0x00000100 /*Receive Start Interrupt Mask */
-+#define SPI_IMSK_CLR_TSM    0x00000200 /*Transmit Start Interrupt Mask */
-+#define SPI_IMSK_CLR_RFM    0x00000400 /*Receive Finish Interrupt Mask */
-+#define SPI_IMSK_CLR_TFM    0x00000800 /*Transmit Finish Interrupt Mask */
-+/* SPI_IMASKST */
-+#define SPI_IMSK_SET_RUWM   0x00000002 /*Receive Water-Mark Interrupt Mask */
-+#define SPI_IMSK_SET_TUWM   0x00000004 /*Transmit Water-Mark Interrupt Mask */
-+#define SPI_IMSK_SET_ROM    0x00000010 /*Receive Over-Run Interrupt Mask */
-+#define SPI_IMSK_SET_TUM    0x00000020 /*Transmit Under-Run Interrupt Mask */
-+#define SPI_IMSK_SET_TCM    0x00000040 /*Transmit Collision Interrupt Mask */
-+#define SPI_IMSK_SET_MFM    0x00000080 /*Mode Fault Interrupt Mask */
-+#define SPI_IMSK_SET_RSM    0x00000100 /*Receive Start Interrupt Mask */
-+#define SPI_IMSK_SET_TSM    0x00000200 /*Transmit Start Interrupt Mask */
-+#define SPI_IMSK_SET_RFM    0x00000400 /*Receive Finish Interrupt Mask */
-+#define SPI_IMSK_SET_TFM    0x00000800 /*Transmit Finish Interrupt Mask */
-+/* SPI_STATUS */
-+#define SPI_STAT_SPIF       0x00000001 /*SPI Finished */
-+#define SPI_STAT_RUWM       0x00000002 /*Receive Water-Mark Breached */
-+#define SPI_STAT_TUWM       0x00000004 /*Transmit Water-Mark Breached */
-+#define SPI_STAT_ROE        0x00000010 /*Receive Over-Run Indication */
-+#define SPI_STAT_TUE        0x00000020 /*Transmit Under-Run Indication */
-+#define SPI_STAT_TCE        0x00000040 /*Transmit Collision Indication */
-+#define SPI_STAT_MODF       0x00000080 /*Mode Fault Indication */
-+#define SPI_STAT_RS         0x00000100 /*Receive Start Indication */
-+#define SPI_STAT_TS         0x00000200 /*Transmit Start Indication */
-+#define SPI_STAT_RF         0x00000400 /*Receive Finish Indication */
-+#define SPI_STAT_TF         0x00000800 /*Transmit Finish Indication */
-+#define SPI_STAT_RFS        0x00007000 /*SPI_RFIFO status */
-+#define SPI_STAT_RFIFO_EMPTY 0x00000000 /*RFS: RFIFO Empty */
-+#define SPI_STAT_RFIFO_25   0x00001000 /*RFS: RFIFO 25% Full */
-+#define SPI_STAT_RFIFO_50   0x00002000 /*RFS: RFIFO 50% Full */
-+#define SPI_STAT_RFIFO_75   0x00003000 /*RFS: RFIFO 75% Full */
-+#define SPI_STAT_RFIFO_FULL 0x00004000 /*RFS: RFIFO Full */
-+#define SPI_STAT_TFS        0x00070000 /*SPI_TFIFO status */
-+#define SPI_STAT_TFIFO_FULL 0x00000000 /*TFS: TFIFO full */
-+#define SPI_STAT_TFIFO_25   0x00010000 /*TFS: TFIFO 25% empty */
-+#define SPI_STAT_TFIFO_50   0x00020000 /*TFS: TFIFO 50% empty */
-+#define SPI_STAT_TFIFO_75   0x00030000 /*TFS: TFIFO 75% empty */
-+#define SPI_STAT_TFIFO_EMPTY 0x00040000 /*TFS: TFIFO empty */
-+#define SPI_STAT_FCS        0x00100000 /*Flow-Control Stall Indication */
-+#define SPI_STAT_RFE        0x00400000 /*SPI_RFIFO Empty */
-+#define SPI_STAT_TFF        0x00800000 /*SPI_TFIFO Full */
-+/* SPI_ILAT */
-+#define SPI_ILAT_RUWMI      0x00000002 /*Receive Water Mark Interrupt */
-+#define SPI_ILAT_TUWMI      0x00000004 /*Transmit Water Mark Interrupt */
-+#define SPI_ILAT_ROI        0x00000010 /*Receive Over-Run Indication */
-+#define SPI_ILAT_TUI        0x00000020 /*Transmit Under-Run Indication */
-+#define SPI_ILAT_TCI        0x00000040 /*Transmit Collision Indication */
-+#define SPI_ILAT_MFI        0x00000080 /*Mode Fault Indication */
-+#define SPI_ILAT_RSI        0x00000100 /*Receive Start Indication */
-+#define SPI_ILAT_TSI        0x00000200 /*Transmit Start Indication */
-+#define SPI_ILAT_RFI        0x00000400 /*Receive Finish Indication */
-+#define SPI_ILAT_TFI        0x00000800 /*Transmit Finish Indication */
-+/* SPI_ILATCL */
-+#define SPI_ILAT_CLR_RUWMI  0x00000002 /*Receive Water Mark Interrupt */
-+#define SPI_ILAT_CLR_TUWMI  0x00000004 /*Transmit Water Mark Interrupt */
-+#define SPI_ILAT_CLR_ROI    0x00000010 /*Receive Over-Run Indication */
-+#define SPI_ILAT_CLR_TUI    0x00000020 /*Transmit Under-Run Indication */
-+#define SPI_ILAT_CLR_TCI    0x00000040 /*Transmit Collision Indication */
-+#define SPI_ILAT_CLR_MFI    0x00000080 /*Mode Fault Indication */
-+#define SPI_ILAT_CLR_RSI    0x00000100 /*Receive Start Indication */
-+#define SPI_ILAT_CLR_TSI    0x00000200 /*Transmit Start Indication */
-+#define SPI_ILAT_CLR_RFI    0x00000400 /*Receive Finish Indication */
-+#define SPI_ILAT_CLR_TFI    0x00000800 /*Transmit Finish Indication */
-+/* SPI_MMRDH */
-+#define SPI_MMRDH_MERGE     0x04000000 /*Merge Enable */
-+#define SPI_MMRDH_DMY_SZ    0x00007000 /*Bytes of Dummy */
-+#define SPI_MMRDH_ADDR_PINS 0x00000800 /*Pins used for Address */
-+#define SPI_MMRDH_ADDR_SZ   0x00000700 /*Bytes of Read Address */
-+#define SPI_MMRDH_OPCODE    0x000000FF /*Read Opcode */
-+
-+#define SPI_MMRDH_TRIDMY_OFF	24 /*Bytes of Dummy offset */
-+#define SPI_MMRDH_DMY_SZ_OFF	12 /*Bytes of Dummy offset */
-+#define SPI_MMRDH_ADDR_SZ_OFF	8  /*Bytes of Read Address offset */
-+
-+#define BIT_SSEL_VAL(x) ((1 << 8) << (x)) /* Slave Select input value bit */
-+#define BIT_SSEL_EN(x) (1 << (x))         /* Slave Select enable bit*/
-+
-+struct adi_spi_regs {
-+	u32 revid;
-+	u32 control;
-+	u32 rx_control;
-+	u32 tx_control;
-+	u32 clock;
-+	u32 delay;
-+	u32 ssel;
-+	u32 rwc;
-+	u32 rwcr;
-+	u32 twc;
-+	u32 twcr;
-+	u32 reserved0;
-+	u32 emask;
-+	u32 emaskcl;
-+	u32 emaskst;
-+	u32 reserved1;
-+	u32 status;
-+	u32 elat;
-+	u32 elatcl;
-+	u32 reserved2;
-+	u32 rfifo;
-+	u32 reserved3;
-+	u32 tfifo;
-+	u32 reserved4;
-+	u32 mmrdh;
-+	u32 mmtop;
-+};
-+
-+struct adi_spi_platdata {
-+	u32 max_hz;
-+	u32 bus_num;
-+	struct adi_spi_regs *regs;
-+};
-+
-+struct adi_spi_priv {
-+	u32 control;
-+	u32 clock;
-+	u32 bus_num;
-+	u32 max_cs;
-+	struct adi_spi_regs *regs;
-+	unsigned short *pins;
-+	void *memory_map;
-+};
-+
-+static int adi_spi_cs_info(struct udevice *bus, uint cs,
-+			   struct spi_cs_info *info)
-+{
-+	struct adi_spi_priv *priv = dev_get_priv(bus);
-+
-+	if (cs == 0 || cs > priv->max_cs) {
-+		dev_err(bus, "invalid chipselect %u\n", cs);
-+		return -EINVAL;
-+	}
-+
-+	return 0;
-+}
-+
-+static int adi_spi_of_to_plat(struct udevice *bus)
-+{
-+	struct adi_spi_platdata *plat = dev_get_plat(bus);
-+	fdt_addr_t addr;
-+
-+	plat->max_hz = dev_read_u32_default(bus, "spi-max-frequency", 500000);
-+	plat->bus_num = dev_read_u32_default(bus, "bus-num", 0);
-+	addr = dev_read_addr(bus);
-+
-+	if (addr == FDT_ADDR_T_NONE)
-+		return -EINVAL;
-+
-+	plat->regs = (struct adi_spi_regs *)addr;
-+
-+	return 0;
-+}
-+
-+static int adi_spi_probe(struct udevice *bus)
-+{
-+	struct adi_spi_platdata *plat = dev_get_plat(bus);
-+	struct adi_spi_priv *priv = dev_get_priv(bus);
-+
-+	priv->bus_num = plat->bus_num;
-+	priv->regs = plat->regs;
-+	priv->max_cs = dev_read_u32_default(bus, "num-cs", MAX_CTRL_CS);
-+
-+	writel(0x0, &plat->regs->control);
-+	writel(0x0, &plat->regs->rx_control);
-+	writel(0x0, &plat->regs->tx_control);
-+
-+	return 0;
-+}
-+
-+static int adi_spi_remove(struct udevice *dev)
-+{
-+	return -ENODEV;
-+}
-+
-+static int adi_spi_claim_bus(struct udevice *dev)
-+{
-+	struct adi_spi_priv *priv;
-+	struct udevice *bus = dev->parent;
-+
-+	priv = dev_get_priv(bus);
-+
-+	debug("%s: control:%i clock:%i\n",
-+	      __func__, priv->control, priv->clock);
-+
-+	writel(priv->control, &priv->regs->control);
-+	writel(priv->clock, &priv->regs->clock);
-+	writel(0x0, &priv->regs->delay);
-+
-+	return 0;
-+}
-+
-+static int adi_spi_release_bus(struct udevice *dev)
-+{
-+	struct adi_spi_priv *priv;
-+	struct udevice *bus = dev->parent;
-+
-+	priv = dev_get_priv(bus);
-+
-+	debug("%s: control:%i clock:%i\n",
-+	      __func__, priv->control, priv->clock);
-+
-+	writel(0x0, &priv->regs->rx_control);
-+	writel(0x0, &priv->regs->tx_control);
-+	writel(0x0, &priv->regs->control);
-+
-+	return 0;
-+}
-+
-+void adi_spi_enable_ssel(struct adi_spi_priv *priv, int cs)
-+{
-+	u32 ssel = readl(&priv->regs->ssel);
-+
-+	ssel = readl(&priv->regs->ssel);
-+	ssel |= BIT_SSEL_EN(cs);
-+	writel(ssel, &priv->regs->ssel);
-+}
-+
-+void adi_spi_set_ssel(struct adi_spi_priv *priv, int cs, int high)
-+{
-+	u32 ssel = readl(&priv->regs->ssel);
-+
-+	if (high)
-+		ssel |= BIT_SSEL_VAL(cs);
-+	else
-+		ssel &= ~BIT_SSEL_VAL(cs);
-+	writel(ssel, &priv->regs->ssel);
-+}
-+
-+void adi_spi_cs_activate(struct adi_spi_priv *priv, struct dm_spi_slave_plat *slave_plat)
-+{
-+	bool high = slave_plat->mode & SPI_CS_HIGH;
-+
-+	adi_spi_set_ssel(priv, slave_plat->cs, high);
-+	adi_spi_enable_ssel(priv, slave_plat->cs);
-+}
-+
-+void adi_spi_cs_deactivate(struct adi_spi_priv *priv, struct dm_spi_slave_plat *slave_plat)
-+{
-+	bool high = !(slave_plat->mode & SPI_CS_HIGH);
-+
-+	adi_spi_set_ssel(priv, slave_plat->cs, high);
-+}
-+
-+static void discard_rx_fifo_contents(struct adi_spi_regs *regs)
-+{
-+	while (!(readl(&regs->status) & SPI_STAT_RFE))
-+		readl(&regs->rfifo);
-+}
-+
-+static int adi_spi_fifo_mio_xfer(struct adi_spi_priv *priv, const u8 *tx, u8 *rx,
-+				 uint bytes, uint32_t mio_mode)
-+{
-+	u8 value;
-+
-+	/* switch current SPI transfer to mio SPI mode */
-+	writel((priv->control & ~SPI_CTL_SOSI) | mio_mode,
-+	       &priv->regs->control);
-+	/*
-+	 * Data can only be transferred in one direction in multi-io SPI
-+	 * modes, trigger the transfer in respective direction.
-+	 */
-+	if (rx) {
-+		writel(0x0, &priv->regs->tx_control);
-+		writel(SPI_RXCTL_REN | SPI_RXCTL_RTI,
-+		       &priv->regs->rx_control);
-+
-+		while (bytes--) {
-+			while (readl(&priv->regs->status) &
-+				SPI_STAT_RFE)
-+				if (ctrlc())
-+					return -1;
-+			value = readl(&priv->regs->rfifo);
-+			*rx++ = value;
-+		}
-+	} else if (tx) {
-+		writel(0x0, &priv->regs->rx_control);
-+		writel(SPI_TXCTL_TEN | SPI_TXCTL_TTI,
-+		       &priv->regs->tx_control);
-+
-+		while (bytes--) {
-+			value = *tx++;
-+			writel(value, &priv->regs->tfifo);
-+			while (readl(&priv->regs->status) &
-+				SPI_STAT_TFF)
-+				if (ctrlc())
-+					return -1;
-+		}
-+
-+		/* Wait till the tfifo is empty */
-+		while ((readl(&priv->regs->status) & SPI_STAT_TFS) !=
-+			0x40000)
-+			if (ctrlc())
-+				return -1;
-+	} else {
-+		return -1;
-+	}
-+	return 0;
-+}
-+
-+static int adi_spi_fifo_1x_xfer(struct adi_spi_priv *priv, const u8 *tx, u8 *rx,
-+				uint bytes)
-+{
-+	u8 value;
-+	int spi_idle;
-+
-+	#if defined(CONFIG_SPI_IDLE_VAL)
-+		spi_idle = CONFIG_SPI_IDLE_VAL;
-+	#else
-+		spi_idle = SPI_IDLE_VAL;
-+	#endif
-+	/*
-+	 * Set current SPI transfer in normal mode and trigger
-+	 * the bi-direction transfer by tx write operation.
-+	 */
-+	writel(priv->control, &priv->regs->control);
-+	writel(SPI_RXCTL_REN, &priv->regs->rx_control);
-+	writel(SPI_TXCTL_TEN | SPI_TXCTL_TTI, &priv->regs->tx_control);
-+
-+	while (bytes--) {
-+		value = (tx ? *tx++ : spi_idle);
-+		debug("%s: tx:%x ", __func__, value);
-+		writel(value, &priv->regs->tfifo);
-+		while (readl(&priv->regs->status) & SPI_STAT_RFE)
-+			if (ctrlc())
-+				return -1;
-+		value = readl(&priv->regs->rfifo);
-+		if (rx)
-+			*rx++ = value;
-+		debug("rx:%x\n", value);
-+	}
-+	return 0;
-+}
-+
-+static int adi_spi_fifo_xfer(struct adi_spi_priv *priv, int buswidth,
-+			     const u8 *tx, u8 *rx, uint bytes)
-+{
-+	switch (buswidth) {
-+	case 1:
-+		return adi_spi_fifo_1x_xfer(priv, tx, rx, bytes);
-+	case 2:
-+		return adi_spi_fifo_mio_xfer(priv, tx, rx, bytes, SPI_CTL_MIO_DUAL);
-+	case 4:
-+		return adi_spi_fifo_mio_xfer(priv, tx, rx, bytes, SPI_CTL_MIO_QUAD);
-+	default:
-+		return -ENOSYS;
-+	}
-+}
-+
-+static int adi_spi_xfer(struct udevice *dev, unsigned int bitlen,
-+			const void *dout, void *din, unsigned long flags)
-+{
-+	struct udevice *bus = dev->parent;
-+	struct adi_spi_priv *priv = dev_get_priv(bus);
-+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
-+
-+	const u8 *tx = dout;
-+	u8 *rx = din;
-+	uint bytes = bitlen / 8;
-+	int ret = 0;
-+
-+	debug("%s: bus_num:%i cs:%i bitlen:%i bytes:%i flags:%lx\n", __func__,
-+	      priv->bus_num, slave_plat->cs, bitlen, bytes, flags);
-+
-+	if (flags & SPI_XFER_BEGIN)
-+		adi_spi_cs_activate(priv, slave_plat);
-+
-+	if (bitlen == 0)
-+		goto done;
-+
-+	/* we can only do 8 bit transfers */
-+	if (bitlen % 8) {
-+		flags |= SPI_XFER_END;
-+		goto done;
-+	}
-+
-+	/* Discard invalid rx data and empty rfifo */
-+	discard_rx_fifo_contents(priv->regs);
-+
-+	ret = adi_spi_fifo_1x_xfer(priv, tx, rx, bytes);
-+
-+ done:
-+	if (flags & SPI_XFER_END)
-+		adi_spi_cs_deactivate(priv, slave_plat);
-+
-+	return ret;
-+}
-+
-+static int adi_spi_set_speed(struct udevice *bus, uint speed)
-+{
-+	struct adi_spi_platdata *plat = dev_get_plat(bus);
-+	struct adi_spi_priv *priv = dev_get_priv(bus);
-+	int ret;
-+	u32 clock, spi_base_clk;
-+	struct clk spi_clk;
-+
-+	ret = clk_get_by_name(bus, "spi", &spi_clk);
-+	if (ret < 0) {
-+		dev_err(bus, "Can't get SPI clk: %d\n", ret);
-+		return ret;
-+	}
-+	spi_base_clk = clk_get_rate(&spi_clk);
-+
-+	if (speed > plat->max_hz)
-+		speed = plat->max_hz;
-+
-+	if (speed > spi_base_clk)
-+		return -ENODEV;
-+
-+	clock = spi_base_clk / speed;
-+	if (clock)
-+		clock--;
-+
-+	priv->clock = clock;
-+
-+	debug("%s: priv->clock: %x, speed: %x, get_spi_clk(): %x\n",
-+	      __func__, clock, speed, spi_base_clk);
-+
-+	return 0;
-+}
-+
-+static int adi_spi_set_mode(struct udevice *bus, uint mode)
-+{
-+	struct adi_spi_priv *priv = dev_get_priv(bus);
-+	u32 reg;
-+
-+	reg = SPI_CTL_EN | SPI_CTL_MSTR;
-+	if (mode & SPI_CPHA)
-+		reg |= SPI_CTL_CPHA;
-+	if (mode & SPI_CPOL)
-+		reg |= SPI_CTL_CPOL;
-+	if (mode & SPI_LSB_FIRST)
-+		reg |= SPI_CTL_LSBF;
-+	reg &= ~SPI_CTL_ASSEL;
-+
-+	priv->control = reg;
-+
-+	debug("%s: control=%d, cs_pol=%d\n", __func__, reg, mode & SPI_CS_HIGH ? 1 : 0);
-+
-+	return 0;
-+}
-+
-+/**
-+ * U-boot's version of spi-mem does not support mixed bus-width
-+ * commands nor anything more than 1x mode.
-+ * Using a custom exec_op implementation, we can support it.
++#include <malloc.h>
++#include <sdhci.h>
++#include <asm/cache.h>
++
++/* 400KHz is max freq for card ID etc. Use that as min */
++#define EMMC_MIN_FREQ	400000
++
++/* Check if an operation crossed a boundary of size ADMA_BOUNDARY_ALIGN */
++#define ADMA_BOUNDARY_ALGN SZ_128M
++#define BOUNDARY_OK(addr, len) \
++	(((addr) | (ADMA_BOUNDARY_ALGN - 1)) == (((addr) + (len) - 1) | \
++	(ADMA_BOUNDARY_ALGN - 1)))
++
++/* We split a descriptor for every crossing of the ADMA alignment boundary,
++ * so we need an additional descriptor for every expected crossing.
++ * As I understand it, the max expected transaction size is:
++ *  CONFIG_SYS_MMC_MAX_BLK_COUNT * MMC_MAX_BLOCK_LEN
++ *
++ * With the way the SDHCI-ADMA driver is implemented, if ADMA_MAX_LEN was a
++ * clean power of two, we'd only ever need +1 descriptor as the first
++ * descriptor that got split would then bring the remaining DMA
++ * destination addresses into alignment. Unfortunately, it's currently
++ * hardcoded to a non-power-of-two value.
++ *
++ * If that ever becomes parameterized, ADMA max length can be set to
++ * 0x10000, and set this to 1.
 + */
-+static int adi_spi_mem_exec_op(struct spi_slave *slave,
-+			       const struct spi_mem_op *op)
++#define ADMA_POTENTIAL_CROSSINGS \
++	DIV_ROUND_UP((CONFIG_SYS_MMC_MAX_BLK_COUNT * MMC_MAX_BLOCK_LEN), \
++		 ADMA_BOUNDARY_ALGN)
++/* +1 descriptor for each crossing.
++ */
++#define ADMA_TABLE_EXTRA_SZ (ADMA_POTENTIAL_CROSSINGS * ADMA_DESC_LEN)
++
++struct adi_sdhc_plat {
++	struct mmc_config cfg;
++	struct mmc mmc;
++};
++
++struct adi_sdhc {
++	struct sdhci_host host;
++	void *base;
++};
++
++void adi_dwcmshc_adma_write_desc(struct sdhci_host *host, void **desc,
++				 dma_addr_t addr, int len, bool end)
 +{
-+	int rv = 0;
-+	struct udevice *bus = slave->dev->parent;
-+	struct adi_spi_priv *priv = dev_get_priv(bus);
-+	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(slave->dev);
-+	u8 tmpbuf[64];
-+	int i;
++	int tmplen, offset;
 +
-+	if ((op->cmd.nbytes + op->addr.nbytes + op->dummy.nbytes) >
-+	    sizeof(tmpbuf))
-+		return -ENOMEM;
-+
-+	for (i = 0; i < op->cmd.nbytes; i++)
-+		tmpbuf[i] = op->cmd.opcode >>
-+				(8 * (op->cmd.nbytes - i - 1));
-+	for (i = 0; i < op->addr.nbytes; i++)
-+		tmpbuf[i + op->cmd.nbytes] = op->addr.val >>
-+				(8 * (op->addr.nbytes - i - 1));
-+	memset(tmpbuf + op->addr.nbytes + op->cmd.nbytes, 0xff,
-+	       op->dummy.nbytes);
-+
-+	adi_spi_cs_activate(priv, slave_plat);
-+	discard_rx_fifo_contents(priv->regs);
-+
-+	if (op->cmd.nbytes) {
-+		rv = adi_spi_fifo_xfer(priv, op->cmd.buswidth,
-+				       tmpbuf, NULL, op->cmd.nbytes);
-+		if (rv != 0)
-+			goto cleanup;
++	if (likely(!len || BOUNDARY_OK(addr, len))) {
++		sdhci_adma_write_desc(host, desc, addr, len, end);
++		return;
 +	}
 +
-+	if (op->addr.nbytes) {
-+		rv = adi_spi_fifo_xfer(priv, op->addr.buswidth,
-+				       tmpbuf + op->cmd.nbytes, NULL,
-+				       op->addr.nbytes);
-+		if (rv != 0)
-+			goto cleanup;
-+	}
++	offset = addr & (ADMA_BOUNDARY_ALGN - 1);
++	tmplen = ADMA_BOUNDARY_ALGN - offset;
++	sdhci_adma_write_desc(host, desc, addr, tmplen, false);
 +
-+	if (op->dummy.nbytes) {
-+		rv = adi_spi_fifo_xfer(priv, op->dummy.buswidth,
-+				       tmpbuf + op->cmd.nbytes +
-+				       op->addr.nbytes,
-+				       NULL, op->dummy.nbytes);
-+		if (rv != 0)
-+			goto cleanup;
-+	}
-+
-+	if (op->data.dir == SPI_MEM_DATA_IN)
-+		rv = adi_spi_fifo_xfer(priv, op->data.buswidth,
-+				       NULL, op->data.buf.in,
-+				       op->data.nbytes);
-+	else if (op->data.dir == SPI_MEM_DATA_OUT)
-+		rv = adi_spi_fifo_xfer(priv, op->data.buswidth,
-+				       op->data.buf.out, NULL,
-+				       op->data.nbytes);
-+
-+cleanup:
-+	adi_spi_cs_deactivate(priv, slave_plat);
-+	return rv;
++	addr += tmplen;
++	len -= tmplen;
++	sdhci_adma_write_desc(host, desc, addr, len, end);
 +}
 +
-+static const struct spi_controller_mem_ops adi_spi_mem_ops = {
-+	.exec_op = adi_spi_mem_exec_op,
++struct sdhci_ops adi_dwcmshc_sdhci_ops = {
++	.adma_write_desc = adi_dwcmshc_adma_write_desc,
 +};
 +
-+static const struct dm_spi_ops adi_spi_ops = {
-+	.claim_bus = adi_spi_claim_bus,
-+	.release_bus = adi_spi_release_bus,
-+	.xfer = adi_spi_xfer,
-+	.set_speed = adi_spi_set_speed,
-+	.set_mode = adi_spi_set_mode,
-+	.cs_info = adi_spi_cs_info,
-+	.mem_ops = &adi_spi_mem_ops,
-+};
++static int adi_dwcmshc_sdhci_probe(struct udevice *dev)
++{
++	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
++	struct adi_sdhc_plat *plat = dev_get_plat(dev);
++	struct adi_sdhc *prv = dev_get_priv(dev);
++	struct sdhci_host *host = &prv->host;
++	int max_frequency, ret;
++	struct clk clk;
 +
-+static const struct udevice_id adi_spi_ids[] = {
-+	{ .compatible = "adi,spi3" },
++	max_frequency = dev_read_u32_default(dev, "max-frequency", 0);
++	ret = clk_get_by_index(dev, 0, &clk);
++
++	host->quirks = 0;
++	host->max_clk = max_frequency;
++	/*
++	 * The sdhci-driver only supports 4bit and 8bit, as sdhci_setup_cfg
++	 * doesn't allow us to clear MMC_MODE_4BIT.  Consequently, we don't
++	 * check for other bus-width values.
++	 */
++	if (host->bus_width == 8)
++		host->host_caps |= MMC_MODE_8BIT;
++
++	host->mmc = &plat->mmc;
++	host->mmc->priv = &prv->host;
++	host->mmc->dev = dev;
++	upriv->mmc = host->mmc;
++
++	host->ops = &adi_dwcmshc_sdhci_ops;
++	host->adma_desc_table = memalign(ARCH_DMA_MINALIGN,
++					 ADMA_TABLE_SZ + ADMA_TABLE_EXTRA_SZ);
++	host->adma_addr = virt_to_phys(host->adma_desc_table);
++
++	ret = sdhci_setup_cfg(&plat->cfg, host, 0, EMMC_MIN_FREQ);
++	if (ret)
++		return ret;
++
++	return sdhci_probe(dev);
++}
++
++static int adi_dwcmshc_sdhci_of_to_plat(struct udevice *dev)
++{
++	struct sdhci_host *host = dev_get_priv(dev);
++
++	host->name = dev->name;
++	host->ioaddr = dev_read_addr_ptr(dev);
++	host->bus_width = dev_read_u32_default(dev, "bus-width", 4);
++
++	return 0;
++}
++
++static int adi_sdhci_bind(struct udevice *dev)
++{
++	struct adi_sdhc_plat *plat = dev_get_plat(dev);
++
++	return sdhci_bind(dev, &plat->mmc, &plat->cfg);
++}
++
++static const struct udevice_id adi_dwcmshc_sdhci_ids[] = {
++	{ .compatible = "adi,dwc-sdhci" },
 +	{ }
 +};
 +
-+U_BOOT_DRIVER(adi_spi3) = {
-+	.name = "adi_spi3",
-+	.id = UCLASS_SPI,
-+	.of_match = adi_spi_ids,
-+	.ops = &adi_spi_ops,
-+	.of_to_plat = adi_spi_of_to_plat,
-+	.probe = adi_spi_probe,
-+	.remove = adi_spi_remove,
-+	.plat_auto = sizeof(struct adi_spi_platdata),
-+	.priv_auto = sizeof(struct adi_spi_priv),
-+	.per_child_auto = sizeof(struct spi_slave),
++U_BOOT_DRIVER(adi_dwcmshc_sdhci_drv) = {
++	.name		= "adi_sdhci",
++	.id		= UCLASS_MMC,
++	.of_match	= adi_dwcmshc_sdhci_ids,
++	.of_to_plat	= adi_dwcmshc_sdhci_of_to_plat,
++	.ops		= &sdhci_ops,
++	.bind		= adi_sdhci_bind,
++	.probe		= adi_dwcmshc_sdhci_probe,
++	.priv_auto	= sizeof(struct adi_sdhc),
++	.plat_auto	= sizeof(struct adi_sdhc_plat),
 +};
 
 -- 
