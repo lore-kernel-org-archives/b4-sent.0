@@ -1,261 +1,82 @@
-From: Vasileios Bimpikas <vasileios.bimpikas@analog.com>
-Date: Mon, 21 Oct 2024 14:54:42 +0100
-Subject: [PATCH v2 11/11] mmc: Add support for ADI SC5XX-family processor
- SDHCI peripherals
+From: Levi Zim <rsworktech@outlook.com>
+Date: Mon, 21 Oct 2024 21:55:49 +0800
+Subject: [PATCH net] docs: networking: packet_mmap: replace dead links with
+ archive.org links
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20241021-sc5xx-driver-series-v2-11-53e2472e11d0@analog.com>
-References: <20241021-sc5xx-driver-series-v2-0-53e2472e11d0@analog.com>
-In-Reply-To: <20241021-sc5xx-driver-series-v2-0-53e2472e11d0@analog.com>
-To: Tom Rini <trini@konsulko.com>, 
- Nathan Barrett-Morrison <nathan.morrison@timesys.com>, 
- Greg Malysa <greg.malysa@timesys.com>, 
- Ian Roberts <ian.roberts@timesys.com>, 
- Vasileios Bimpikas <vasileios.bimpikas@analog.com>, 
- Utsav Agarwal <utsav.agarwal@analog.com>, 
- Arturs Artamonovs <arturs.artamonovs@analog.com>, 
- Marek Vasut <marex@denx.de>, Heiko Schocher <hs@denx.de>, 
- Joe Hershberger <joe.hershberger@ni.com>, 
- Ramon Fried <rfried.dev@gmail.com>, Stefan Roese <sr@denx.de>, 
- Jagan Teki <jagan@amarulasolutions.com>, Peng Fan <peng.fan@nxp.com>, 
- Jaehoon Chung <jh80.chung@samsung.com>
-Cc: u-boot@lists.denx.de, adsp-linux@analog.com, 
- Oliver Gaskell <Oliver.Gaskell@analog.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20241021-packet_mmap_fix_link-v1-1-dffae4a174c0@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAGRdFmcC/x2MUQqAIBAFrxL7naAWFF0lQsRetVQmGhFEd0/6H
+ IaZhxIiI1FXPBRxceLDZ1BlQW6xfobgMTNpqWsltRLBuhWn2XcbzMS32divArIeXYOmrSQopyE
+ iu3/bk8dJw/t+KkwZRGsAAAA=
+X-Change-ID: 20241021-packet_mmap_fix_link-e04dc7e7830e
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: netdev@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Levi Zim <rsworktech@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729518874; l=7504;
- i=vasileios.bimpikas@analog.com; s=20240927; h=from:subject:message-id;
- bh=wVlr+OyPnjDZv6oQ4REp64YmoS9XIEBQJPuZm7IL2q4=;
- b=sgEJcyU6zg0Rc/Zkw8zX4S8dNBcco5sxK+fgLUDGTBFgDZn9bVFHCJcsMnVLZuBxe7WRPiqFc
- 4ig0HKELNnRDtMB8lNQWdHkApfrKIQlMRAmWmiCtQPqeOjAToUJk10U
-X-Developer-Key: i=vasileios.bimpikas@analog.com; a=ed25519;
- pk=JkXh+NeXYCpTenwrB0gg5fMpKEnagLOXdsLFiUrqZRo=
-X-Endpoint-Received: by B4 Relay for vasileios.bimpikas@analog.com/20240927 with auth_id=220
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1633;
+ i=rsworktech@outlook.com; h=from:subject:message-id;
+ bh=Tqm24mciBlPvfXzUkyHHyeW7l0+/0A++Nb0XfZNXVQ0=;
+ b=owEBbQKS/ZANAwAIAW87mNQvxsnYAcsmYgBnFl14aAbfvjyean9OX/0IBGVcmOBWNnuHcCtyg
+ 31/aaoIkcKJAjMEAAEIAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCZxZdeAAKCRBvO5jUL8bJ
+ 2IMYEACm3r3q3gqs1RP2TQcq3S4pgdxgYPd5tH0Y6o1ZrDy4rPqEXLhB0mlbCxGamVgZQPYG7DB
+ putaxZBiGJxHaZBppQrguFkBWj5R3SjLUtBe/MfRzFepFtL79VLEZcjrcPJlngkRU9lWl9/oanZ
+ 8c/DvnkQRET1xE+EaapJXXfoecczAjkwebQ4pZ3YOyokWXMzkwjrkwGP5+86yLlkQqaC0fKfwhb
+ 7l+qpTaoR5MlSIZdKMoQNAvwPFWBEEbdLDdHWV3DV/OwMqkP0vIM4x30uPELAEOP0acVVIT0Cfj
+ uSWKz1fu3m7bKEHsYZxANf+gkLiG4t5+x6wsOgoBAY/7kCFfN1zKjrKAs/VBsTMXX7tldKo0gSp
+ 7eBGarHOz2LWynuk9+HdKqmqVydD2h3uALxow1Tc/jlGks7w5ko/BgTvIjKa6WAPSEDxIsu36E8
+ z0gSvqZh99Hrt2MmLKVAMKZSkFrz27z9PYlGOA+9KSRvdKv3V2jS5flm8TDRQajMNJ0ULb9ZhEp
+ lx4uZH/byQBEXVXg4CWuMqRiJO/j4hYGopTeLkUFuw+gXpW4EZQkASJMwhzMEmR6grYyGR70hyQ
+ DYJKzGHeGM9yYSHUEBKAr8rI+Rp1E8tYnB+IsjDLX8jsbDE8N5hjPPLeo4XnEGTa5Jm+QhNOFcF
+ OI7XcRZKDEMdeAw==
+X-Developer-Key: i=rsworktech@outlook.com; a=openpgp;
+ fpr=17AADD6726DDC58B8EE5881757670CCFA42CCF0A
+X-Endpoint-Received: by B4 Relay for rsworktech@outlook.com/default with auth_id=219
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Oliver Gaskell <Oliver.Gaskell@analog.com>
+The original link returns 404 now. This commit replaces the dead google
+site link with archive.org link.
 
-Co-developed-by: Greg Malysa <greg.malysa@timesys.com>
-Signed-off-by: Greg Malysa <greg.malysa@timesys.com>
-Co-developed-by: Ian Roberts <ian.roberts@timesys.com>
-Signed-off-by: Ian Roberts <ian.roberts@timesys.com>
-Signed-off-by: Vasileios Bimpikas <vasileios.bimpikas@analog.com>
-Signed-off-by: Utsav Agarwal <utsav.agarwal@analog.com>
-Signed-off-by: Arturs Artamonovs <arturs.artamonovs@analog.com>
-Signed-off-by: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
-Signed-off-by: Oliver Gaskell <Oliver.Gaskell@analog.com>
+Signed-off-by: Levi Zim <rsworktech@outlook.com>
 ---
- MAINTAINERS             |   1 +
- drivers/mmc/Kconfig     |   9 +++
- drivers/mmc/Makefile    |   1 +
- drivers/mmc/adi_sdhci.c | 154 ++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 165 insertions(+)
+The original link returns 404 now. This commit replaces the dead google
+site link with archive.org link.
+---
+ Documentation/networking/packet_mmap.rst | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a553584fb7390adff2af78fe5d9461e99d0084e7..c59e061671e1bca03236211515bc4016306fdf68 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -616,6 +616,7 @@ F:	drivers/dma/adi_dma.c
- F:	drivers/gpio/adp5588_gpio.c
- F:	drivers/gpio/gpio-adi-adsp.c
- F:	drivers/i2c/adi_i2c.c
-+F:	drivers/mmc/adi_sdhci.c
- F:	drivers/net/dwc_eth_qos_adi.c
- F:	drivers/pinctrl/pinctrl-adi-adsp.c
- F:	drivers/remoteproc/adi_sc5xx_rproc.c
-diff --git a/drivers/mmc/Kconfig b/drivers/mmc/Kconfig
-index 38817622fca1784703024c357b5d5ca11703afd6..b922765799bdbda991abb306e61969b4d9646e05 100644
---- a/drivers/mmc/Kconfig
-+++ b/drivers/mmc/Kconfig
-@@ -293,6 +293,15 @@ config MMC_DW_ROCKCHIP
- 	  SD 3.0, SDIO 3.0 and MMC 4.5 and supports common eMMC chips as well
- 	  as removeable SD and micro-SD cards.
+diff --git a/Documentation/networking/packet_mmap.rst b/Documentation/networking/packet_mmap.rst
+index dca15d15feaf99ce44d2a73d857928c3eac56da0..02370786e77bc1219f75478cee07264ea12627b5 100644
+--- a/Documentation/networking/packet_mmap.rst
++++ b/Documentation/networking/packet_mmap.rst
+@@ -16,7 +16,7 @@ ii) transmit network traffic, or any other that needs raw
  
-+config MMC_SDHCI_ADI
-+	bool "ADI SD/MMC controller support"
-+	depends on ARCH_SC5XX
-+	depends on DM_MMC && OF_CONTROL
-+	depends on MMC_SDHCI && MMC_SDHCI_ADMA
-+	help
-+	  This enables support for the SD/MMC controller included in some Analog
-+	  Devices SC5XX Socs.
-+
- config MMC_DW_SOCFPGA
- 	bool "SOCFPGA specific extensions for Synopsys DW Memory Card Interface"
- 	depends on ARCH_SOCFPGA
-diff --git a/drivers/mmc/Makefile b/drivers/mmc/Makefile
-index 868f3090ff24cc50cf9d71ac8f1f779efeb1471f..d4b747784b061996e218a2df6906d8c731732b9f 100644
---- a/drivers/mmc/Makefile
-+++ b/drivers/mmc/Makefile
-@@ -70,6 +70,7 @@ obj-$(CONFIG_MMC_SDHCI_MV)		+= mv_sdhci.o
- obj-$(CONFIG_MMC_SDHCI_NPCM)            += npcm_sdhci.o
- obj-$(CONFIG_MMC_SDHCI_PIC32)		+= pic32_sdhci.o
- obj-$(CONFIG_MMC_SDHCI_ROCKCHIP)	+= rockchip_sdhci.o
-+obj-$(CONFIG_MMC_SDHCI_ADI)		+= adi_sdhci.o
- obj-$(CONFIG_MMC_SDHCI_S5P)		+= s5p_sdhci.o
- obj-$(CONFIG_MMC_SDHCI_STI)		+= sti_sdhci.o
- obj-$(CONFIG_MMC_SDHCI_TANGIER)		+= tangier_sdhci.o
-diff --git a/drivers/mmc/adi_sdhci.c b/drivers/mmc/adi_sdhci.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..311089a5f5230d827bbf8b5439064c94ada2b209
---- /dev/null
-+++ b/drivers/mmc/adi_sdhci.c
-@@ -0,0 +1,154 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * (C) Copyright 2022 - Analog Devices, Inc.
-+ *
-+ * Written and/or maintained by Timesys Corporation
-+ *
-+ * Contact: Nathan Barrett-Morrison <nathan.morrison@timesys.com>
-+ * Contact: Greg Malysa <greg.malysa@timesys.com>
-+ *
-+ * Based on Rockchip's sdhci.c file
-+ */
-+
-+#include <clk.h>
-+#include <dm.h>
-+#include <malloc.h>
-+#include <sdhci.h>
-+#include <asm/cache.h>
-+
-+/* 400KHz is max freq for card ID etc. Use that as min */
-+#define EMMC_MIN_FREQ	400000
-+
-+/* Check if an operation crossed a boundary of size ADMA_BOUNDARY_ALIGN */
-+#define ADMA_BOUNDARY_ALGN SZ_128M
-+#define BOUNDARY_OK(addr, len) \
-+	(((addr) | (ADMA_BOUNDARY_ALGN - 1)) == (((addr) + (len) - 1) | \
-+	(ADMA_BOUNDARY_ALGN - 1)))
-+
-+/* We split a descriptor for every crossing of the ADMA alignment boundary,
-+ * so we need an additional descriptor for every expected crossing.
-+ * As I understand it, the max expected transaction size is:
-+ *  CONFIG_SYS_MMC_MAX_BLK_COUNT * MMC_MAX_BLOCK_LEN
-+ *
-+ * With the way the SDHCI-ADMA driver is implemented, if ADMA_MAX_LEN was a
-+ * clean power of two, we'd only ever need +1 descriptor as the first
-+ * descriptor that got split would then bring the remaining DMA
-+ * destination addresses into alignment. Unfortunately, it's currently
-+ * hardcoded to a non-power-of-two value.
-+ *
-+ * If that ever becomes parameterized, ADMA max length can be set to
-+ * 0x10000, and set this to 1.
-+ */
-+#define ADMA_POTENTIAL_CROSSINGS \
-+	DIV_ROUND_UP((CONFIG_SYS_MMC_MAX_BLK_COUNT * MMC_MAX_BLOCK_LEN), \
-+		 ADMA_BOUNDARY_ALGN)
-+/* +1 descriptor for each crossing.
-+ */
-+#define ADMA_TABLE_EXTRA_SZ (ADMA_POTENTIAL_CROSSINGS * ADMA_DESC_LEN)
-+
-+struct adi_sdhc_plat {
-+	struct mmc_config cfg;
-+	struct mmc mmc;
-+};
-+
-+struct adi_sdhc {
-+	struct sdhci_host host;
-+	void *base;
-+};
-+
-+void adi_dwcmshc_adma_write_desc(struct sdhci_host *host, void **desc,
-+				 dma_addr_t addr, int len, bool end)
-+{
-+	int tmplen, offset;
-+
-+	if (likely(!len || BOUNDARY_OK(addr, len))) {
-+		sdhci_adma_write_desc(host, desc, addr, len, end);
-+		return;
-+	}
-+
-+	offset = addr & (ADMA_BOUNDARY_ALGN - 1);
-+	tmplen = ADMA_BOUNDARY_ALGN - offset;
-+	sdhci_adma_write_desc(host, desc, addr, tmplen, false);
-+
-+	addr += tmplen;
-+	len -= tmplen;
-+	sdhci_adma_write_desc(host, desc, addr, len, end);
-+}
-+
-+struct sdhci_ops adi_dwcmshc_sdhci_ops = {
-+	.adma_write_desc = adi_dwcmshc_adma_write_desc,
-+};
-+
-+static int adi_dwcmshc_sdhci_probe(struct udevice *dev)
-+{
-+	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
-+	struct adi_sdhc_plat *plat = dev_get_plat(dev);
-+	struct adi_sdhc *prv = dev_get_priv(dev);
-+	struct sdhci_host *host = &prv->host;
-+	int max_frequency, ret;
-+	struct clk clk;
-+
-+	max_frequency = dev_read_u32_default(dev, "max-frequency", 0);
-+	ret = clk_get_by_index(dev, 0, &clk);
-+
-+	host->quirks = 0;
-+	host->max_clk = max_frequency;
-+	/*
-+	 * The sdhci-driver only supports 4bit and 8bit, as sdhci_setup_cfg
-+	 * doesn't allow us to clear MMC_MODE_4BIT.  Consequently, we don't
-+	 * check for other bus-width values.
-+	 */
-+	if (host->bus_width == 8)
-+		host->host_caps |= MMC_MODE_8BIT;
-+
-+	host->mmc = &plat->mmc;
-+	host->mmc->priv = &prv->host;
-+	host->mmc->dev = dev;
-+	upriv->mmc = host->mmc;
-+
-+	host->ops = &adi_dwcmshc_sdhci_ops;
-+	host->adma_desc_table = memalign(ARCH_DMA_MINALIGN,
-+					 ADMA_TABLE_SZ + ADMA_TABLE_EXTRA_SZ);
-+	host->adma_addr = virt_to_phys(host->adma_desc_table);
-+
-+	ret = sdhci_setup_cfg(&plat->cfg, host, 0, EMMC_MIN_FREQ);
-+	if (ret)
-+		return ret;
-+
-+	return sdhci_probe(dev);
-+}
-+
-+static int adi_dwcmshc_sdhci_of_to_plat(struct udevice *dev)
-+{
-+	struct sdhci_host *host = dev_get_priv(dev);
-+
-+	host->name = dev->name;
-+	host->ioaddr = dev_read_addr_ptr(dev);
-+	host->bus_width = dev_read_u32_default(dev, "bus-width", 4);
-+
-+	return 0;
-+}
-+
-+static int adi_sdhci_bind(struct udevice *dev)
-+{
-+	struct adi_sdhc_plat *plat = dev_get_plat(dev);
-+
-+	return sdhci_bind(dev, &plat->mmc, &plat->cfg);
-+}
-+
-+static const struct udevice_id adi_dwcmshc_sdhci_ids[] = {
-+	{ .compatible = "adi,dwc-sdhci" },
-+	{ }
-+};
-+
-+U_BOOT_DRIVER(adi_dwcmshc_sdhci_drv) = {
-+	.name		= "adi_sdhci",
-+	.id		= UCLASS_MMC,
-+	.of_match	= adi_dwcmshc_sdhci_ids,
-+	.of_to_plat	= adi_dwcmshc_sdhci_of_to_plat,
-+	.ops		= &sdhci_ops,
-+	.bind		= adi_sdhci_bind,
-+	.probe		= adi_dwcmshc_sdhci_probe,
-+	.priv_auto	= sizeof(struct adi_sdhc),
-+	.plat_auto	= sizeof(struct adi_sdhc_plat),
-+};
+ Howto can be found at:
+ 
+-    https://sites.google.com/site/packetmmap/
++    https://web.archive.org/web/20220404160947/https://sites.google.com/site/packetmmap/
+ 
+ Please send your comments to
+     - Ulisses Alonso Camaró <uaca@i.hate.spam.alumni.uv.es>
+@@ -166,7 +166,8 @@ As capture, each frame contains two parts::
+     /* bind socket to eth0 */
+     bind(this->socket, (struct sockaddr *)&my_addr, sizeof(struct sockaddr_ll));
+ 
+- A complete tutorial is available at: https://sites.google.com/site/packetmmap/
++ A complete tutorial is available at:
++ https://web.archive.org/web/20220404160947/https://sites.google.com/site/packetmmap/
+ 
+ By default, the user should put data at::
+ 
 
+---
+base-commit: d95d9a31aceb2021084bc9b94647bc5b175e05e7
+change-id: 20241021-packet_mmap_fix_link-e04dc7e7830e
+
+Best regards,
 -- 
-2.34.1
+Levi Zim <rsworktech@outlook.com>
 
