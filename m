@@ -1,80 +1,75 @@
-From: Manas <manas18244@iiitd.ac.in>
-Date: Mon, 21 Oct 2024 22:18:57 +0530
-Subject: [PATCH] Revert "bcachefs: Add asserts to
- bch2_dev_btree_bitmap_marked_sectors()"
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH 0/5] PCI/pwrctl: Ensure that the pwrctl drivers are probed
+ before PCI client drivers
+Date: Tue, 22 Oct 2024 15:57:28 +0530
+Message-Id: <20241022-pci-pwrctl-rework-v1-0-94a7e90f58c5@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241021-revert-assert-bch2-v1-1-e869c7c55bb6@iiitd.ac.in>
-X-B4-Tracking: v=1; b=H4sIAPmFFmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxNDAyNDXaCi1KIS3cTiYhCVlJxhpGtkamJukpZqYWCZYqgE1FhQlJqWWQE
- 2NDq2thYAFnuBOGQAAAA=
-X-Change-ID: 20241021-revert-assert-bch2-25474fe809d1
-To: Kent Overstreet <kent.overstreet@linux.dev>
-Cc: linux-bcachefs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Anup Sharma <anupnewsmail@gmail.com>, 
- Shuah Khan <skhan@linuxfoundation.org>, Manas <manas18244@iiitd.ac.in>, 
- syzbot+e8eff054face85d7ea41@syzkaller.appspotmail.com
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729529344; l=1877;
- i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
- bh=M5hbMLylF0b+ZchbJH4bBirAx8QVk4kpDgu8JqXEiG0=;
- b=WgevtVQ8IzkqKxDmL4PPt4x+pwzKgX51dRXKIkpi/bHg+qtl1U1+wYlMsvhRz3aI+SKqx7uQJ
- /moCqOYxegOAir9iBXGhNInRIgLvsv2CRck4KxE2nrWm2swoQTEIXd3
-X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
- pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
-X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
+X-B4-Tracking: v=1; b=H4sIABB+F2cC/x2MQQqAIBAAvxJ7bkElIfpKdCjbailM1sgg+nvWc
+ RhmbogkTBGa4gahkyPvPoMuC3BL72dCHjODUabSyhgMjjEkcceGQmmXFXs9fNLW1lrIXRCa+Pq
+ fbfc8L9a+InxjAAAA
+To: Bjorn Helgaas <bhelgaas@google.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dmitry Baryshkov <dmitry.baryshkov@linaro.org>, 
+ Johan Hovold <johan+linaro@kernel.org>, Abel Vesa <abel.vesa@linaro.org>, 
+ Stephan Gerhold <stephan.gerhold@linaro.org>, 
+ Srinivas Kandagatla <srinivas.kandagatla@linaro.org>, 
+ Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ stable+noautosel@kernel.org
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1703;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=6ZLo//vlVw/cpstTFieW8KdXJ1ymTE0OxNpZC2aia6w=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnF34u2ysVPAWfHEd/oykozMn0K7bPPcLmD1CXs
+ 49HCtvqZkqJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZxd+LgAKCRBVnxHm/pHO
+ 9XOkB/0U5taKt3+UYFHDZ7AaIxuqZpxsuNgJyD4TemD9BXMfO8b5ZhURh3kpeEo0q5SKlYWKfgt
+ 75N0oGi0QbnToJckFFljdF63od9c1xvrTCZmjpZdxTRqlWFReDA/6oZfr6tDcvyHNl5KQOLC239
+ 5eDPFCfz/B3W72ok8eQlQ4qni3syMszntnus75F/hloPO3sFMB8bJsvUa0Qk11oMfHLSQ/hRIn5
+ FTaUnWhhL7AhJgLG0NDJsYRUPcZY869hJbdL36AYIsCPxNrxN6kWJstAetGiJDhexAXQeN4eQxX
+ u/oPbiH7WfGVsrnzzXybcx6uabQBH5F10BDfdh/4TOquU+4R
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This reverts commit 60f2b1bcf519416dbffee219132aa949d0c39d0e.
+Hi,
 
-This syzbot bug[1] is triggered due to the BUG_ON assertions added in
-__bch2_dev_btree_bitmap_mark. During runtime, m->btree_bitmap_shift is
-63 '?'. This triggers both the assertions.
+This series reworks the PCI/pwrctl integration to ensure that the pwrctl drivers
+are always probed before the PCI client drivers. This series addresses a race
+condition when both pwrctl and pwrctl/pwrseq drivers probe parallely (even when
+the later one probes last). One such issue was reported for the Qcom X13s
+platform with WLAN module and fixed with 'commit a9aaf1ff88a8 ("power:
+sequencing: request the WLAN enable GPIO as-is")'.
 
-Reverting the commit does not reproduce the said bug.
+Though the issue was fixed with a hack in the pwrseq driver, it was clear that
+the issue is applicable to all pwrctl drivers. Hence, this series tries to
+address the issue in the PCI/pwrctl integration.
 
-[1] https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
+- Mani
 
-Signed-off-by: Manas <manas18244@iiitd.ac.in>
-Reported-by: syzbot+e8eff054face85d7ea41@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
-This syzbot bug[1] is triggered due to the BUG_ON assertions added in
-__bch2_dev_btree_bitmap_mark. During runtime, m->btree_bitmap_shift is
-63 '?'. This triggers both the assertions.
+Manivannan Sadhasivam (5):
+      PCI/pwrctl: Use of_platform_device_create() to create pwrctl devices
+      PCI/pwrctl: Create pwrctl devices only if at least one power supply is present
+      PCI/pwrctl: Ensure that the pwrctl drivers are probed before the PCI client drivers
+      PCI/pwrctl: Move pwrctl device creation to its own helper function
+      PCI/pwrctl: Remove pwrctl device without iterating over all children of pwrctl parent
 
-I am unfamiliar with the codebase, and there wasn't a lore discussion
-about the assertions in the commit, so I am unsure about the relevance
-of these assertions.
-
-Reverting the commit does not reproduce the said bug.
-
-[1] https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
+ drivers/pci/bus.c         | 64 +++++++++++++++++++++++++++++++++++++++++------
+ drivers/pci/of.c          | 27 ++++++++++++++++++++
+ drivers/pci/pci.h         |  5 ++++
+ drivers/pci/pwrctl/core.c | 10 --------
+ drivers/pci/remove.c      | 17 ++++++-------
+ 5 files changed, 96 insertions(+), 27 deletions(-)
 ---
- fs/bcachefs/sb-members.c | 3 ---
- 1 file changed, 3 deletions(-)
-
-diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c
-index fb08dd680dacf82bca414f424024e4a00bf432de..9790fd47338c46d2af30547e1f41a1e578b71aa4 100644
---- a/fs/bcachefs/sb-members.c
-+++ b/fs/bcachefs/sb-members.c
-@@ -450,9 +450,6 @@ static void __bch2_dev_btree_bitmap_mark(struct bch_sb_field_members_v2 *mi, uns
- 		m->btree_bitmap_shift += resize;
- 	}
- 
--	BUG_ON(m->btree_bitmap_shift > 57);
--	BUG_ON(end > 64ULL << m->btree_bitmap_shift);
--
- 	for (unsigned bit = start >> m->btree_bitmap_shift;
- 	     (u64) bit << m->btree_bitmap_shift < end;
- 	     bit++)
-
----
-base-commit: 42f7652d3eb527d03665b09edac47f85fb600924
-change-id: 20241021-revert-assert-bch2-25474fe809d1
+base-commit: 48dc7986beb60522eb217c0016f999cc7afaf0b7
+change-id: 20241022-pci-pwrctl-rework-a1b024158555
 
 Best regards,
 -- 
-Manas <manas18244@iiitd.ac.in>
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
