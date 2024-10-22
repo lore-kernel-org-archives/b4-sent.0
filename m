@@ -1,90 +1,88 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Tue, 22 Oct 2024 15:57:33 +0530
-Subject: [PATCH 5/5] PCI/pwrctl: Remove pwrctl device without iterating
- over all children of pwrctl parent
+From: Manas <manas18244@iiitd.ac.in>
+Date: Tue, 22 Oct 2024 20:55:32 +0530
+Subject: [PATCH] bcachefs: Add missing btree_bitmap_shift check in
+ bch2_dev_btree_bitmap_marked_sectors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241022-pci-pwrctl-rework-v1-5-94a7e90f58c5@linaro.org>
-References: <20241022-pci-pwrctl-rework-v1-0-94a7e90f58c5@linaro.org>
-In-Reply-To: <20241022-pci-pwrctl-rework-v1-0-94a7e90f58c5@linaro.org>
-To: Bjorn Helgaas <bhelgaas@google.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
-Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dmitry Baryshkov <dmitry.baryshkov@linaro.org>, 
- Johan Hovold <johan+linaro@kernel.org>, Abel Vesa <abel.vesa@linaro.org>, 
- Stephan Gerhold <stephan.gerhold@linaro.org>, 
- Srinivas Kandagatla <srinivas.kandagatla@linaro.org>, 
- Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1846;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=Fx4nsEA2QZpP1ERShZZ8bZw3IQBN6+Um75DdA2nrjyg=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnF34v/nlnaSD9lCRQmkUSbC0gN51VH+Ya8loNI
- VZhLq3xK7eJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZxd+LwAKCRBVnxHm/pHO
- 9WpUCACKafJIXVlw/tZAI/sQS1x6dJE+i6hX9zJsxTo/DczSyuwA6FHOswiX8NHCLJZyYTyspGt
- rFNtE5+WOuWGABNRXUvTZLGAOJZljL1UHYFJMkPRzuLUfFhTPjuEJ2aXkYTFz6tJaaAoah74P8r
- hUrkZve4eH0d3qRD3NDeZuwBIhT0ZyGPN9j32ESnqYhBhyuY6vxemjBM38NAWSDFc5gUdSBufzA
- Lwa8k652Feas0X9FUPl+RrPjjq/Yot8oDfpSiKhAnPQNYLinqbLfb6vrAbphM9VMDRv35P01xNY
- lgPl05mHeyzVat+aw1w4oGVinO277ji4pUNpIEanlGGfbcHs
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+Message-Id: <20241022-fix-missing-cond-bcachefs-v1-1-064a40e55610@iiitd.ac.in>
+X-B4-Tracking: v=1; b=H4sIAOvDF2cC/x2MQQqAMAzAviI9W3BFYfoV8VBnpz04ZQURxL87P
+ AaSPGCSVQyG6oEsl5oeqYCrKwgbp1VQl8JADbWuIcKoN+5qpmnFcKQF58Bhk2jI3vexc+KZCUp
+ /Ziny/x6n9/0A2B8oKWsAAAA=
+X-Change-ID: 20241022-fix-missing-cond-bcachefs-a889f51e8aa2
+To: Kent Overstreet <kent.overstreet@linux.dev>
+Cc: Hongbo Li <lihongbo22@huawei.com>, linux-bcachefs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Anup Sharma <anupnewsmail@gmail.com>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ linux-kernel-mentees@lists.linuxfoundation.org, 
+ syzbot+e8eff054face85d7ea41@syzkaller.appspotmail.com, 
+ Manas <manas18244@iiitd.ac.in>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729610734; l=2170;
+ i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
+ bh=NGrI/M2/WyNTfN55jNdw37iuKR8z9suYfRj2qkDzA8E=;
+ b=BGWbWB7uVb+YRHyrS+si0zmvjxu3ypdpqlixw+iXJ1cuktYtCNYYpc/DgJ0bIV40PN3NL1hv/
+ s7C5v41YqdZBIBgcpie7iEA49J2qevrmUO/LypEiD4F+7tvvLVkOGJE
+X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
+ pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
+X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There is no need to iterate over all children of the pwrctl device parent
-to remove the pwrctl device. Since the pwrctl device associated with the
-PCI device can be found using of_find_device_by_node() API, use it directly
-instead.
+The syzkaller bug triggers BUG_ON assertions in
+__bch2_dev_btree_bitmap_mark. btree_bitmap_shift is checked in
+bch2_dev_btree_bitmap_marked_sectors prior to this. But only one out of
+two assertions is checked. This patch adds the other as conditional.
 
-If any pwrctl devices lying around without getting associated with the PCI
-devices, then those will be removed once their parent device gets removed.
-
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Reported-by: syzbot+e8eff054face85d7ea41@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
+Signed-off-by: Manas <manas18244@iiitd.ac.in>
 ---
- drivers/pci/remove.c | 17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+The syzkaller bug[1] triggers BUG_ON assertions in
+__bch2_dev_btree_bitmap_mark.
 
-diff --git a/drivers/pci/remove.c b/drivers/pci/remove.c
-index e4ce1145aa3e..3dd9b3024956 100644
---- a/drivers/pci/remove.c
-+++ b/drivers/pci/remove.c
-@@ -17,16 +17,16 @@ static void pci_free_resources(struct pci_dev *dev)
- 	}
- }
- 
--static int pci_pwrctl_unregister(struct device *dev, void *data)
-+static void pci_pwrctl_unregister(struct device *dev)
+btree_bitmap_shift is checked in bch2_dev_btree_bitmap_marked_sectors
+prior to this. But only one out of two assertions is checked. This patch
+adds the other as conditional.
+
+A previous discussion about adding conditional in
+bch2_dev_btree_bitmap_marked_sectors is here[2].
+
+[1] https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
+[2] https://lore.kernel.org/all/9ec25394-3d89-41b3-b62e-2d522cdc7319@huawei.com/
+---
+ fs/bcachefs/sb-members.h | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/fs/bcachefs/sb-members.h b/fs/bcachefs/sb-members.h
+index 762083b564ee5909071eb4235c3d5cd6e72ee519..3141791491928930a707a6a16579c6d2e11e3700 100644
+--- a/fs/bcachefs/sb-members.h
++++ b/fs/bcachefs/sb-members.h
+@@ -347,12 +347,16 @@ void bch2_dev_errors_reset(struct bch_dev *);
+ static inline bool bch2_dev_btree_bitmap_marked_sectors(struct bch_dev *ca, u64 start, unsigned sectors)
  {
--	struct device_node *pci_node = data, *plat_node = dev_of_node(dev);
-+	struct platform_device *pdev;
+ 	u64 end = start + sectors;
++	u8 bitmap_shift = ca->mi.btree_bitmap_shift;
  
--	if (dev_is_platform(dev) && plat_node && plat_node == pci_node) {
--		of_device_unregister(to_platform_device(dev));
--		of_node_clear_flag(plat_node, OF_POPULATED);
--	}
-+	pdev = of_find_device_by_node(dev_of_node(dev));
-+	if (!pdev)
-+		return;
+-	if (end > 64ULL << ca->mi.btree_bitmap_shift)
++	if (bitmap_shift > 57)
++		return true;
++
++	if (end > 64ULL << bitmap_shift)
+ 		return false;
  
--	return 0;
-+	of_device_unregister(pdev);
-+	of_node_clear_flag(dev_of_node(dev), OF_POPULATED);
- }
- 
- static void pci_stop_dev(struct pci_dev *dev)
-@@ -34,8 +34,7 @@ static void pci_stop_dev(struct pci_dev *dev)
- 	pci_pme_active(dev, false);
- 
- 	if (pci_dev_is_added(dev)) {
--		device_for_each_child(dev->dev.parent, dev_of_node(&dev->dev),
--				      pci_pwrctl_unregister);
-+		pci_pwrctl_unregister(&dev->dev);
- 		device_release_driver(&dev->dev);
- 		pci_proc_detach_device(dev);
- 		pci_remove_sysfs_dev_files(dev);
+-	for (unsigned bit = start >> ca->mi.btree_bitmap_shift;
+-	     (u64) bit << ca->mi.btree_bitmap_shift < end;
++	for (unsigned bit = start >> bitmap_shift;
++	     (u64) bit << bitmap_shift < end;
+ 	     bit++)
+ 		if (!(ca->mi.btree_allocated_bitmap & BIT_ULL(bit)))
+ 			return false;
 
+---
+base-commit: 42f7652d3eb527d03665b09edac47f85fb600924
+change-id: 20241022-fix-missing-cond-bcachefs-a889f51e8aa2
+
+Best regards,
 -- 
-2.25.1
+Manas <manas18244@iiitd.ac.in>
 
