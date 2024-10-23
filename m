@@ -1,88 +1,82 @@
-From: Manas <manas18244@iiitd.ac.in>
-Date: Tue, 22 Oct 2024 20:55:32 +0530
-Subject: [PATCH] bcachefs: Add missing btree_bitmap_shift check in
- bch2_dev_btree_bitmap_marked_sectors
+From: Daniel Gomez <da.gomez@samsung.com>
+Subject: [PATCH v2 0/2] sysbench: add postgresql tps variability
+Date: Wed, 23 Oct 2024 11:26:13 +0200
+Message-Id: <20241023-add-postgresql-tps-var-v2-0-ff2f3c6e1632@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241022-fix-missing-cond-bcachefs-v1-1-064a40e55610@iiitd.ac.in>
-X-B4-Tracking: v=1; b=H4sIAOvDF2cC/x2MQQqAMAzAviI9W3BFYfoV8VBnpz04ZQURxL87P
- AaSPGCSVQyG6oEsl5oeqYCrKwgbp1VQl8JADbWuIcKoN+5qpmnFcKQF58Bhk2jI3vexc+KZCUp
- /Ziny/x6n9/0A2B8oKWsAAAA=
-X-Change-ID: 20241022-fix-missing-cond-bcachefs-a889f51e8aa2
-To: Kent Overstreet <kent.overstreet@linux.dev>
-Cc: Hongbo Li <lihongbo22@huawei.com>, linux-bcachefs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Anup Sharma <anupnewsmail@gmail.com>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- linux-kernel-mentees@lists.linuxfoundation.org, 
- syzbot+e8eff054face85d7ea41@syzkaller.appspotmail.com, 
- Manas <manas18244@iiitd.ac.in>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729610734; l=2170;
- i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
- bh=NGrI/M2/WyNTfN55jNdw37iuKR8z9suYfRj2qkDzA8E=;
- b=BGWbWB7uVb+YRHyrS+si0zmvjxu3ypdpqlixw+iXJ1cuktYtCNYYpc/DgJ0bIV40PN3NL1hv/
- s7C5v41YqdZBIBgcpie7iEA49J2qevrmUO/LypEiD4F+7tvvLVkOGJE
-X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
- pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
-X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
+X-B4-Tracking: v=1; b=H4sIADXBGGcC/4WNQQ7CIBBFr9LM2jFAkAZX3sN0gYVSEltaphJNw
+ 93FXsDle8l/fwdyKTiCa7NDcjlQiHMFcWqgH83sHQZbGQQTkjPeorEWl0ibT47WJ24LYTYJ2cO
+ 0vRislkpDHS/JDeF9hO9d5THQFtPn+Mn8Z/8mM0eGUmtl5UUKZYYbmYlesz/3cYKulPIFmgT5Y
+ 74AAAA=
+To: kdevops@lists.linux.dev, mcgrof@kernel.org
+Cc: d+samsung@kruces.com, Daniel Gomez <da.gomez@samsung.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729675585; l=2457;
+ i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
+ bh=FgGlflK+ly9RvAR1AS3jd4m4g5+C8WmPuYjNdn6U7zM=;
+ b=dO/fsqeaWhZ/pWhFfjnsOfHOiPh2yHm6EuRClLAnoLUEUWyea2FN6uqcqNJj3pc3WwZ4exHi1
+ DtX1gqax5rdBam2IvAjO1gznbfXUJ/H5Gw5ljzK7xbotHXh5orXer3G
+X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
+ pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
+X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The syzkaller bug triggers BUG_ON assertions in
-__bch2_dev_btree_bitmap_mark. btree_bitmap_shift is checked in
-bch2_dev_btree_bitmap_marked_sectors prior to this. But only one out of
-two assertions is checked. This patch adds the other as conditional.
+This patch set adds the PostgreSQL TPS variability benchmark using
+sysbench workload.
 
-Reported-by: syzbot+e8eff054face85d7ea41@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
-Signed-off-by: Manas <manas18244@iiitd.ac.in>
+Split sysbench workloads into two separate Ansible task YAML files,
+one for MySQL (docker) and one for PostgreSQL (native), to create
+self-contained workload files, enabling independent control of task
+workflows.
+
+To: kdevops@lists.linux.dev
+To: mcgrof@kernel.org
+Cc: d+samsung@kruces.com
+
+Signed-off-by: Daniel Gomez <da.gomez@samsung.com>
 ---
-The syzkaller bug[1] triggers BUG_ON assertions in
-__bch2_dev_btree_bitmap_mark.
+Changes in v2:
+* Make sysbench PostgreSQL workload idempotence (sysbench vs
+sysbench-test).
+* Add/fix plots target (sysbench-plot).
+* Move 'tags' keyword to the top of the task for better control flow
+review.
+* Add results/<host>-ab/ directory to place 'a vs b' plots.
+* Add 2 different configuration templates for PostgreSQL. Default with
+full_page_writes on/off based on kconfig (+ port). Extra with custom
+options + full_page_writes on/off based on kconfig (+ port).
+* Sysbench workflow test with 14 profiles (xfs and ext4).
+* Move command to shell when plotting to fix space/arg issue.
+* Merged patches:
+sysbench: fix kconfig tabs -- patch contents already upstream
+sysbench: fix typos -- patch contents already upstream
+sysbench: fix SYSBENCH_MYSQL_INNODB_REDO_LOG_CAPACITY typo
+* Add code-review trailers.
 
-btree_bitmap_shift is checked in bch2_dev_btree_bitmap_marked_sectors
-prior to this. But only one out of two assertions is checked. This patch
-adds the other as conditional.
-
-A previous discussion about adding conditional in
-bch2_dev_btree_bitmap_marked_sectors is here[2].
-
-[1] https://syzkaller.appspot.com/bug?extid=e8eff054face85d7ea41
-[2] https://lore.kernel.org/all/9ec25394-3d89-41b3-b62e-2d522cdc7319@huawei.com/
----
- fs/bcachefs/sb-members.h | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
-
-diff --git a/fs/bcachefs/sb-members.h b/fs/bcachefs/sb-members.h
-index 762083b564ee5909071eb4235c3d5cd6e72ee519..3141791491928930a707a6a16579c6d2e11e3700 100644
---- a/fs/bcachefs/sb-members.h
-+++ b/fs/bcachefs/sb-members.h
-@@ -347,12 +347,16 @@ void bch2_dev_errors_reset(struct bch_dev *);
- static inline bool bch2_dev_btree_bitmap_marked_sectors(struct bch_dev *ca, u64 start, unsigned sectors)
- {
- 	u64 end = start + sectors;
-+	u8 bitmap_shift = ca->mi.btree_bitmap_shift;
- 
--	if (end > 64ULL << ca->mi.btree_bitmap_shift)
-+	if (bitmap_shift > 57)
-+		return true;
-+
-+	if (end > 64ULL << bitmap_shift)
- 		return false;
- 
--	for (unsigned bit = start >> ca->mi.btree_bitmap_shift;
--	     (u64) bit << ca->mi.btree_bitmap_shift < end;
-+	for (unsigned bit = start >> bitmap_shift;
-+	     (u64) bit << bitmap_shift < end;
- 	     bit++)
- 		if (!(ca->mi.btree_allocated_bitmap & BIT_ULL(bit)))
- 			return false;
+- Link to v1: https://lore.kernel.org/r/20241017-add-postgresql-tps-var-v1-0-4996d45426af@samsung.com
 
 ---
-base-commit: 42f7652d3eb527d03665b09edac47f85fb600924
-change-id: 20241022-fix-missing-cond-bcachefs-a889f51e8aa2
+Daniel Gomez (2):
+      sysbench: split mysql-docker benchmark
+      sysbench: add postgresql native TPS variablity support
+
+ playbooks/roles/sysbench/defaults/main.yml         |  15 +
+ .../sysbench/tasks/install-deps/debian/main.yml    |  64 +-
+ playbooks/roles/sysbench/tasks/main.yaml           | 777 +------------------
+ .../roles/sysbench/tasks/mysql-docker/main.yaml    | 773 +++++++++++++++++++
+ .../sysbench/tasks/postgresql-native/main.yaml     | 735 ++++++++++++++++++
+ .../sysbench/templates/postgresql-conf-000.conf.j2 | 820 +++++++++++++++++++++
+ .../templates/postgresql-conf-default.conf.j2      | 820 +++++++++++++++++++++
+ workflows/sysbench/Kconfig                         |  47 ++
+ workflows/sysbench/Kconfig.fs                      |  30 +
+ workflows/sysbench/Kconfig.native                  | 138 ++++
+ 10 files changed, 3446 insertions(+), 773 deletions(-)
+---
+base-commit: 38746a0f1bced2e58d5c5d36618e111d348a7ae3
+change-id: 20241017-add-postgresql-tps-var-0ba7c2fd9469
 
 Best regards,
 -- 
-Manas <manas18244@iiitd.ac.in>
+Daniel Gomez <da.gomez@samsung.com>
 
