@@ -1,58 +1,71 @@
-From: Daniel Gomez <da.gomez@samsung.com>
-Date: Wed, 23 Oct 2024 22:10:30 +0200
-Subject: [PATCH RESEND 2/2] .b4-config: add b4 support
+From: "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
+Date: Thu, 24 Oct 2024 17:37:13 +0800
+Subject: [PATCH] Revert "drm/mipi-dsi: Set the fwnode for mipi_dsi_device"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241023-add-maintainers-file-v1-2-beaa0fdb7f8c@samsung.com>
-References: <20241023-add-maintainers-file-v1-0-beaa0fdb7f8c@samsung.com>
-In-Reply-To: <20241023-add-maintainers-file-v1-0-beaa0fdb7f8c@samsung.com>
-To: Luis Chamberlain <mcgrof@kernel.org>
-Cc: "Daniel Gomez (Samsung)" <d@kruces.com>, kdevops@lists.linux.dev, 
- Daniel Gomez <da.gomez@samsung.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729714235; l=1247;
- i=da.gomez@samsung.com; s=20240621; h=from:subject:message-id;
- bh=6ZdVTdaEhW89kmttz1r6ZJj8jv9rMcQnbFq107FvY5g=;
- b=+ooHcYBjtCBH+hC9ssp2BfA5PHqwU/KZa5aJLz0PY3quHAAj2kFrkxlhqFCaUppelhB3FB6JL
- 6qILPwj44rsAAr6bm6saq5Wrr2QaHN4HbfL6I+SS+OlfieV+qqIRhH+
-X-Developer-Key: i=da.gomez@samsung.com; a=ed25519;
- pk=BqYk31UHkmv0WZShES6pIZcdmPPGay5LbzifAdZ2Ia4=
-X-Endpoint-Received: by B4 Relay for da.gomez@samsung.com/20240621 with auth_id=175
+Message-Id: <20241024-fixup-5-15-v1-1-74d360bd3002@mediatek.com>
+X-B4-Tracking: v=1; b=H4sIAEgVGmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDINZNy6woLdA11TU01TVNS0kxs0hJTDU3MFcCaigoSgXKgg2Ljq2tBQC
+ +m6XyXAAAAA==
+To: Saravana Kannan <saravanak@google.com>, stable@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Seiya Wang <seiya.wang@mediatek.com>, 
+ "Jason-JH.Lin" <jason-jh.lin@mediatek.com>, 
+ Singo Chang <singo.chang@mediatek.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729762687; l=1624;
+ i=jason-jh.lin@mediatek.com; s=20240718; h=from:subject:message-id;
+ bh=3qI4cofzJIOGhAuMDl/AeKoCQ8rIiQm9bD4C+nDQrco=;
+ b=tWMrCFbt5wPfKwkMYwLI7hkKkGBc6Sh8AtNZumboECYDQdFTreparCIMo6Q/UQ6yp/498m11C
+ Z33NXD5fIkCC/hI5XfJ0qG6ep7GNw6F2Z9hC3nSz3lZBaVbIfj5SGNq
+X-Developer-Key: i=jason-jh.lin@mediatek.com; a=ed25519;
+ pk=7Hn+BnFBlPrluT5ks5tKVWb3f7O/bMBs6qEemVJwqOo=
+X-Endpoint-Received: by B4 Relay for jason-jh.lin@mediatek.com/20240718 with auth_id=187
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To be able to support b4 properly, we need to configure a custom
-get_maintainers.pl argument list in b4. Use the same b4 default
-arguments + "--no-tree" to run the script outside a kernel tree.
+This reverts commit ac88a1f41f93499df6f50fd18ea835e6ff4f3200.
 
-Documentation b4.send-auto-to-cmd and b4.send-auto-cc-cmd:
-https://b4.docs.kernel.org/en/latest/
-config.html#contributor-oriented-settings
+Reason for revert:
+1. The commit [1] does not land on linux-5.15, so this patch does not
+fix anything.
 
-This allows to run 'b4 prep --auto-to-cc', to collect the relevant
-addresses from the MAINTAINERS file for the commits/files included in
-the contributor patch series.
+2. Since the fw_device improvements series [2] does not land on
+linux-5.15, using device_set_fwnode() causes the panel to flash during
+bootup.
 
-For more information about contributor workflow:
-https://b4.docs.kernel.org/en/latest/contributor/
-overview.html#what-s-the-b4-contributor-workflow
+Incorrect link management may lead to incorrect device initialization,
+affecting firmware node links and consumer relationships.
+The fwnode setting of panel to the DSI device would cause a DSI
+initialization error without series[2], so this patch was reverted to
+avoid using the incomplete fw_devlink functionality.
 
-Signed-off-by: Daniel Gomez <da.gomez@samsung.com>
-Reviewed-by: Luis Chamberlain <mcgrof@kernel.org>
+[1] commit 3fb16866b51d ("driver core: fw_devlink: Make cycle detection more robust")
+[2] Link: https://lore.kernel.org/all/20230207014207.1678715-1-saravanak@google.com
+
+Signed-off-by: Jason-JH.Lin <jason-jh.lin@mediatek.com>
 ---
- .b4-config | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/gpu/drm/drm_mipi_dsi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/.b4-config b/.b4-config
-new file mode 100644
-index 0000000..e6cbbe6
---- /dev/null
-+++ b/.b4-config
-@@ -0,0 +1,3 @@
-+[b4]
-+  send-auto-to-cmd = "scripts/get_maintainer.pl --nogit --nogit-fallback --nogit-chief-penguins --norolestats --nol --no-tree"
-+  send-auto-cc-cmd = "scripts/get_maintainer.pl --nogit --nogit-fallback --nogit-chief-penguins --norolestats --nom --no-tree"
+diff --git a/drivers/gpu/drm/drm_mipi_dsi.c b/drivers/gpu/drm/drm_mipi_dsi.c
+index 24606b632009..468a3a7cb6a5 100644
+--- a/drivers/gpu/drm/drm_mipi_dsi.c
++++ b/drivers/gpu/drm/drm_mipi_dsi.c
+@@ -221,7 +221,7 @@ mipi_dsi_device_register_full(struct mipi_dsi_host *host,
+ 		return dsi;
+ 	}
+ 
+-	device_set_node(&dsi->dev, of_fwnode_handle(info->node));
++	dsi->dev.of_node = info->node;
+ 	dsi->channel = info->channel;
+ 	strlcpy(dsi->name, info->type, sizeof(dsi->name));
+ 
 
+---
+base-commit: 74cdd62cb4706515b454ce5bacb73b566c1d1bcf
+change-id: 20241024-fixup-5-15-5fdd68dae707
+
+Best regards,
 -- 
-2.39.2
+Jason-JH.Lin <jason-jh.lin@mediatek.com>
 
