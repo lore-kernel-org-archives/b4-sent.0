@@ -1,73 +1,69 @@
-From: "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
-Date: Thu, 24 Oct 2024 18:30:01 +0800
-Subject: [PATCH] Revert "drm/mipi-dsi: Set the fwnode for mipi_dsi_device"
+From: Nelson Escobar <neescoba@cisco.com>
+Subject: [PATCH net-next v2 0/5] enic: Use all the resources configured on
+ VIC
+Date: Thu, 24 Oct 2024 18:19:42 -0700
+Message-Id: <20241024-remove_vic_resource_limits-v2-0-039b8cae5fdd@cisco.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241024-fixup-5-15-v1-1-62f21a32b5a5@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIAKghGmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxNDINZNy6woLdA11TU01TVNS0kxs0hJTDU3MFcCaigoSgXKgg2Ljq2tBQC
- +m6XyXAAAAA==
-To: stable@vger.kernel.org, Saravana Kannan <saravanak@google.com>
-Cc: Greg KH <gregkh@linuxfoundation.org>, 
- Seiya Wang <seiya.wang@mediatek.com>, 
- "Jason-JH.Lin" <jason-jh.lin@mediatek.com>, 
- Singo Chang <singo.chang@mediatek.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1729765825; l=1663;
- i=jason-jh.lin@mediatek.com; s=20240718; h=from:subject:message-id;
- bh=8ojWfopcwKup0laonpHcvKr5CiOjB346s5EoLYHs1DY=;
- b=78uPs8dIh0Y+kRKnDp4pFGRm7Ym3IYjRmcCb95SheqtFTJPlTaHxCLprxsjIhwqKTCqScWfkS
- t6Y7S6WBIDCBAG+IQvNJTBKsdWcPY7F3f4aRlquRgVQ1bMvKXxW9tNJ
-X-Developer-Key: i=jason-jh.lin@mediatek.com; a=ed25519;
- pk=7Hn+BnFBlPrluT5ks5tKVWb3f7O/bMBs6qEemVJwqOo=
-X-Endpoint-Received: by B4 Relay for jason-jh.lin@mediatek.com/20240718 with auth_id=187
+X-B4-Tracking: v=1; b=H4sIAC7yGmcC/y2NwQrCMBBEf0X2bEq6xhY9+R9SShq3dsEmko2hU
+ vrvhuJpGB7zZgWhyCRwPawQKbNw8KXg8QBusv5Jih+lA2o0tcaTijSHTH1m10eS8ImO+hfPnES
+ RtY0ZL9ScxwGK4B1p5GWX38FTUp6WBF0hE0sK8bu/5nrn/wPUpm51W2FrNCosExIXBntzXLJyY
+ YZu27YfBfx0wbgAAAA=
+X-Change-ID: 20241023-remove_vic_resource_limits-eaa64f9e65fb
+To: John Daley <johndale@cisco.com>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Christian Benvenuti <benve@cisco.com>, Satish Kharat <satishkh@cisco.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nelson Escobar <neescoba@cisco.com>, Simon Horman <horms@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1729819262; l=1555;
+ i=neescoba@cisco.com; s=20241023; h=from:subject:message-id;
+ bh=1otnsKA6AXNJNQvjX5o3McHr/yUE64d7zrdHdVp9Ttk=;
+ b=rxT7brw5elvfAKfY0od+z1O8R1B5DOpECJDXa8DVkzNHCyto+LC4iXbSrZ7Q/Z+Cv6dkmCldO
+ 0rW82RCUmlsD9xDTJ1D4xcs6nx0mqkuFsUj2t0HdCzsdtp0MGBi0VeO
+X-Developer-Key: i=neescoba@cisco.com; a=ed25519;
+ pk=bLqWB7VU0KFoVybF4LVB4c2Redvnplt7+5zLHf4KwZM=
+X-Endpoint-Received: by B4 Relay for neescoba@cisco.com/20241023 with auth_id=255
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This reverts commit ac88a1f41f93499df6f50fd18ea835e6ff4f3200.
+Allow users to configure and use more than 8 rx queues and 8 tx queues
+on the Cisco VIC.
 
-Reason for revert:
-1. The commit [1] does not land on linux-5.15, so this patch does not
-fix anything.
+This series changes the maximum number of tx and rx queues supported
+from 8 to the hardware limit of 256, and allocates memory based on the
+number of resources configured on the VIC.
 
-2. Since the fw_device improvements series [2] does not land on
-linux-5.15, using device_set_fwnode() causes the panel to flash during
-bootup.
-
-Incorrect link management may lead to incorrect device initialization,
-affecting firmware node links and consumer relationships.
-The fwnode setting of panel to the DSI device would cause a DSI
-initialization error without series[2], so this patch was reverted to
-avoid using the incomplete fw_devlink functionality.
-
-[1] commit 3fb16866b51d ("driver core: fw_devlink: Make cycle detection more robust")
-[2] Link: https://lore.kernel.org/all/20230207014207.1678715-1-saravanak@google.com
-
-Cc: stable@vger.kernel.org # 5.15.169
-Signed-off-by: Jason-JH.Lin <jason-jh.lin@mediatek.com>
+Signed-off-by: Nelson Escobar <neescoba@cisco.com>
 ---
- drivers/gpu/drm/drm_mipi_dsi.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/gpu/drm/drm_mipi_dsi.c b/drivers/gpu/drm/drm_mipi_dsi.c
-index 24606b632009..468a3a7cb6a5 100644
---- a/drivers/gpu/drm/drm_mipi_dsi.c
-+++ b/drivers/gpu/drm/drm_mipi_dsi.c
-@@ -221,7 +221,7 @@ mipi_dsi_device_register_full(struct mipi_dsi_host *host,
- 		return dsi;
- 	}
- 
--	device_set_node(&dsi->dev, of_fwnode_handle(info->node));
-+	dsi->dev.of_node = info->node;
- 	dsi->channel = info->channel;
- 	strlcpy(dsi->name, info->type, sizeof(dsi->name));
- 
+Changes in v2:
+- Followed Kalesh's suggestions: removed redundant NULL assigments,
+  returning -ENOMEM directly
+- Reviewed-by tag for Simon Horman <horms@kernel.org>
+- Marked Satish Kharat and John Daley as co-developers to better reflect
+  their role in this patch set
+- Link to v1: https://lore.kernel.org/r/20241022041707.27402-2-neescoba@cisco.com
 
 ---
-base-commit: 74cdd62cb4706515b454ce5bacb73b566c1d1bcf
-change-id: 20241024-fixup-5-15-5fdd68dae707
+Nelson Escobar (5):
+      enic: Create enic_wq/rq structures to bundle per wq/rq data
+      enic: Make MSI-X I/O interrupts come after the other required ones
+      enic: Save resource counts we read from HW
+      enic: Allocate arrays in enic struct based on VIC config
+      enic: Adjust used MSI-X wq/rq/cq/interrupt resources in a more robust way
+
+ drivers/net/ethernet/cisco/enic/enic.h         |  62 ++--
+ drivers/net/ethernet/cisco/enic/enic_ethtool.c |   8 +-
+ drivers/net/ethernet/cisco/enic/enic_main.c    | 397 +++++++++++++++----------
+ drivers/net/ethernet/cisco/enic/enic_res.c     |  33 +-
+ 4 files changed, 294 insertions(+), 206 deletions(-)
+---
+base-commit: 6f07cd8301706b661776074ddc97c991d107cc91
+change-id: 20241023-remove_vic_resource_limits-eaa64f9e65fb
 
 Best regards,
 -- 
-Jason-JH.Lin <jason-jh.lin@mediatek.com>
+Nelson Escobar <neescoba@cisco.com>
 
