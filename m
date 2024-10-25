@@ -1,14 +1,13 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Subject: [PATCH v2 0/5] PCI/pwrctl: Ensure that the pwrctl drivers are
- probed before PCI client drivers
-Date: Fri, 25 Oct 2024 13:24:50 +0530
-Message-Id: <20241025-pci-pwrctl-rework-v2-0-568756156cbe@linaro.org>
+Date: Fri, 25 Oct 2024 13:24:51 +0530
+Subject: [PATCH v2 1/5] PCI/pwrctl: Use of_platform_device_create() to
+ create pwrctl devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMpOG2cC/32NQQqDMBBFryKz7pQkGKpd9R7iIk1HHSpGJhJbx
- Ls3eoAu3//89zeIJEwR7sUGQokjhymDuRTgBzf1hPzKDEaZUitjcPaM8yp+GVFoDfJGp59HaSt
- rLeTdLNTx53Q2beaB4xLke14kfaT/bEmjwrp0N6pVZytvHyNPTsI1SA/tvu8/7mwmobMAAAA=
+Message-Id: <20241025-pci-pwrctl-rework-v2-1-568756156cbe@linaro.org>
+References: <20241025-pci-pwrctl-rework-v2-0-568756156cbe@linaro.org>
+In-Reply-To: <20241025-pci-pwrctl-rework-v2-0-568756156cbe@linaro.org>
 To: Bjorn Helgaas <bhelgaas@google.com>, 
  Bartosz Golaszewski <bartosz.golaszewski@linaro.org>, 
  Bartosz Golaszewski <brgl@bgdev.pl>
@@ -19,66 +18,75 @@ Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org,
  Srinivas Kandagatla <srinivas.kandagatla@linaro.org>, 
  Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Krishna chaitanya chundru <quic_krichai@quicinc.com>, 
- stable+noautosel@kernel.org
+ Krishna chaitanya chundru <quic_krichai@quicinc.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1932;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1911;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=/P9q2KbiK+vcSshfBjILffb3hynuvF5fiM7tfFtChPU=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnG07Swl0G4ixBGpbr+vGMdccGZh0t6UayFam6Z
- lb+jRhARDOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZxtO0gAKCRBVnxHm/pHO
- 9ULRCACW7PS0HfebJvSt6rB4hkHg2sIdTDJJxVgdVvmfX0motvf7zRQpEVsBhCBakf83kuwdNh/
- +wiKL2PimBQbnxReXcmmQjCqRufHCSPxaPdl4KnnNCPr0fNxigeXBcU1WUJctymADBjSIS6T6yZ
- eG8r1IeyCmoq2lQWSwsEykPRg11bTyDzQ02810G26b4x7c5V3jQrQWE4GLzKgJxjeqIStwj7XL7
- M3pYz4hPauk0aHMqvhB6b/FfutLh1VdwTD9Gje+zLj9yHTp8U6RKOCq3bFxlLiXniUh2UcFddsx
- /4ml60f5t44g+dPvAUYYkoRBkqdMS8soTXSfT98GaOjRZtmA
+ bh=bQwt/wTH5U7vcbRycg6o15FZXsFwt0f+Sqj6aoPRom4=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnG07TaqMG39ouPhAtQ/1hfbOR1a1q9jrf2+EHO
+ qn1DwnNI5aJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZxtO0wAKCRBVnxHm/pHO
+ 9ZekB/9MkgETc9QdhjILs7JgkZY5fUcLEiB5I3JJ+b4pnCyel9S3vgWZMEAyT0X9TKU2B9oaT+y
+ BV8/dxvPqyiElIAcPsg+PGpRICrJczC2ZiCej0znaTj1bWZLpzNGiZGNiba98B74NAS2n0vO7c1
+ LNvoKZjqIpAfcJH/e09p5q6u+e0ujrfw6il1ALsv/cD5pSJkKTCGMWcBbK/VIrz8q3GAxNSmsus
+ uXQiZg2LsDKb8ZLC6i8o3I6ylTCEA/ajJRqEIX5onH8w3O1R9EUaaB7K037jUYz/HgvBDk3lMS2
+ cOXDjQOhsmcJA1f/mkl6dTh1AJm2CzEjwbctRa5ASY4w14vR
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+of_platform_populate() API creates platform devices by descending through
+the children of the parent node. But it provides no control over the child
+nodes, which makes it difficult to add checks for the child nodes in the
+future. So use of_platform_device_create() API together with
+for_each_child_of_node_scoped() so that it is possible to add checks for
+each node before creating the platform device.
 
-This series reworks the PCI/pwrctl integration to ensure that the pwrctl drivers
-are always probed before the PCI client drivers. This series addresses a race
-condition when both pwrctl and pwrctl/pwrseq drivers probe parallely (even when
-the later one probes last). One such issue was reported for the Qcom X13s
-platform with WLAN module and fixed with 'commit a9aaf1ff88a8 ("power:
-sequencing: request the WLAN enable GPIO as-is")'.
-
-Though the issue was fixed with a hack in the pwrseq driver, it was clear that
-the issue is applicable to all pwrctl drivers. Hence, this series tries to
-address the issue in the PCI/pwrctl integration.
-
-- Mani
-
+Tested-by: Krishna chaitanya chundru <quic_krichai@quicinc.com>
+Tested-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
-Changes in v2:
-- Used for_each_available_child_of_node_scoped() to iterate over child nodes
-  (Bartosz)
-- Collected tags
-- Link to v1: https://lore.kernel.org/r/20241022-pci-pwrctl-rework-v1-0-94a7e90f58c5@linaro.org
+ drivers/pci/bus.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
----
-Manivannan Sadhasivam (5):
-      PCI/pwrctl: Use of_platform_device_create() to create pwrctl devices
-      PCI/pwrctl: Create pwrctl devices only if at least one power supply is present
-      PCI/pwrctl: Ensure that the pwrctl drivers are probed before the PCI client drivers
-      PCI/pwrctl: Move pwrctl device creation to its own helper function
-      PCI/pwrctl: Remove pwrctl device without iterating over all children of pwrctl parent
+diff --git a/drivers/pci/bus.c b/drivers/pci/bus.c
+index 55c853686051..9d278d3a19ff 100644
+--- a/drivers/pci/bus.c
++++ b/drivers/pci/bus.c
+@@ -13,6 +13,7 @@
+ #include <linux/ioport.h>
+ #include <linux/of.h>
+ #include <linux/of_platform.h>
++#include <linux/platform_device.h>
+ #include <linux/proc_fs.h>
+ #include <linux/slab.h>
+ 
+@@ -329,6 +330,7 @@ void __weak pcibios_bus_add_device(struct pci_dev *pdev) { }
+ void pci_bus_add_device(struct pci_dev *dev)
+ {
+ 	struct device_node *dn = dev->dev.of_node;
++	struct platform_device *pdev;
+ 	int retval;
+ 
+ 	/*
+@@ -351,11 +353,11 @@ void pci_bus_add_device(struct pci_dev *dev)
+ 	pci_dev_assign_added(dev, true);
+ 
+ 	if (dev_of_node(&dev->dev) && pci_is_bridge(dev)) {
+-		retval = of_platform_populate(dev_of_node(&dev->dev), NULL, NULL,
+-					      &dev->dev);
+-		if (retval)
+-			pci_err(dev, "failed to populate child OF nodes (%d)\n",
+-				retval);
++		for_each_available_child_of_node_scoped(dn, child) {
++			pdev = of_platform_device_create(child, NULL, &dev->dev);
++			if (!pdev)
++				pci_err(dev, "failed to create OF node: %s\n", child->name);
++		}
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(pci_bus_add_device);
 
- drivers/pci/bus.c         | 64 +++++++++++++++++++++++++++++++++++++++++------
- drivers/pci/of.c          | 27 ++++++++++++++++++++
- drivers/pci/pci.h         |  5 ++++
- drivers/pci/pwrctl/core.c | 10 --------
- drivers/pci/remove.c      | 17 ++++++-------
- 5 files changed, 96 insertions(+), 27 deletions(-)
----
-base-commit: 48dc7986beb60522eb217c0016f999cc7afaf0b7
-change-id: 20241022-pci-pwrctl-rework-a1b024158555
-
-Best regards,
 -- 
-Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+2.25.1
 
