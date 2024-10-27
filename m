@@ -1,95 +1,127 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Fri, 25 Oct 2024 13:24:55 +0530
-Subject: [PATCH v2 5/5] PCI/pwrctl: Remove pwrctl device without iterating
- over all children of pwrctl parent
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v4 0/3] arm64: dts: qcom: sc8280xp-blackrock: dt definition
+ for Windows Dev Kit 2023
+Date: Sun, 27 Oct 2024 14:02:15 +0100
+Message-Id: <20241027-jg-blackrock-for-upstream-v4-0-703b254fc95f@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241025-pci-pwrctl-rework-v2-5-568756156cbe@linaro.org>
-References: <20241025-pci-pwrctl-rework-v2-0-568756156cbe@linaro.org>
-In-Reply-To: <20241025-pci-pwrctl-rework-v2-0-568756156cbe@linaro.org>
-To: Bjorn Helgaas <bhelgaas@google.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@linaro.org>, 
- Bartosz Golaszewski <brgl@bgdev.pl>
-Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dmitry Baryshkov <dmitry.baryshkov@linaro.org>, 
- Johan Hovold <johan+linaro@kernel.org>, Abel Vesa <abel.vesa@linaro.org>, 
- Stephan Gerhold <stephan.gerhold@linaro.org>, 
- Srinivas Kandagatla <srinivas.kandagatla@linaro.org>, 
- Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Krishna chaitanya chundru <quic_krichai@quicinc.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2043;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=ZMmwlwCRSzjhOUE5z4PNfZQoS9fl60qTZUGrmIa0oTI=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnG07UrEI+ygFFYRiJquOhxF3/HIbsroWH7tQhL
- aK5AVibzrqJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZxtO1AAKCRBVnxHm/pHO
- 9RnwB/0Wzu1JRJdjBTy8WSMsnT+5odUgmGM2uRrgVJHOE75GND9wNiKEqdu3tffLo3uQIe4l+QN
- q2huoKlgRmUe88U77wsCXrHnZBdLjwByElTa4uP1CoSJfC7RJvx9a+2+BtWVezy4ufj0FYN/Ca/
- kC75FJPe4y8bCWDgA20i2nbRfZ1kUi56iOGrhN9QOUg4UHPaa7bewh0WAyDGsp5TcIE/Bz8gg41
- PbB0Q+ucWngtUGqsttOdjhn+CMjo+udGDfJgdC+aI2VdRbd1OYdgUe4xbMSuKwgkd65wmEXq1g2
- V+n8/BxngjXH+alX4zivvBwsnFiU42THzJRmBsptvG0Dk3b9
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+X-B4-Tracking: v=1; b=H4sIANc5HmcC/43OQW7DIBAF0KtErDsVDFBDV71HlcUYDzGNGyJwr
+ LSR717iRXeNuvwjzfv/JiqXxFW87m6i8JJqyqcWzNNOhJFOB4Y0tCxQopEeJXwcoJ8oHEsOR4i
+ 5wOVc58L0CV3oKBBKdhpF+z8Xjum62e/7lsdU51y+tqpF3a/CRmtcxwrYWAeGNAFFiRAsspWBl
+ H8xb3kaahhznmqeLnPbV5/79C3u5IIb849xC4IE30eMqkflVXjI6l9WSaUfsbqxTvtBG6fJcfc
+ nu67rD49PNNhtAQAA
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Merck Hung <merckhung@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730034139; l=3963;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=2rkjcFwK0Py1jv662REF1gLRHu3ZVW1+5EOnFztegdA=;
+ b=0XeGeiyNBlb9dEK8wgisG4nlvq5mHqFL4ylLMud6YBtllUOO1Z0yKn3yllvx7ri6+zqSdSKQD
+ keq3TI0bYO+DL+UPOUuwMN2Ma41TMBan4kXhAnKTHYKMqLpTnOGjfrT
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There is no need to iterate over all children of the pwrctl device parent
-to remove the pwrctl device. Since the pwrctl device associated with the
-PCI device can be found using of_find_device_by_node() API, use it directly
-instead.
+"Microsoft Windows Dev Kit 2023" aka "Blackrock" aka "Project Volterra"
 
-If any pwrctl devices lying around without getting associated with the PCI
-devices, then those will be removed once their parent device gets removed.
+Device tree for the Microsoft Windows Dev Kit 2023. This work
+is based on the initial work of Merck Hung <merckhung@gmail.com>.
 
-Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
-Tested-by: Krishna chaitanya chundru <quic_krichai@quicinc.com>
-Tested-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+The Windows Dev Kit 2023 is a nice little desktop based on sc8280xp.
+Link: https://learn.microsoft.com/en-us/windows/arm/dev-kit/
+
+Supported features:
+- USB type-c and type-a ports
+- minidp connector
+- built-in r8152 Ethernet adapter
+- PCIe devices
+- nvme
+- ath11k WiFi (WCN6855)
+- WCN6855 Bluetooth
+- A690 GPU
+- Venus codec
+- ADSP and CDSP
+- GPIO keys
+- Audio definition (works via USB)
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Signed-off-by: Merck Hung <merckhung@gmail.com>
+
+Original work: https://github.com/merckhung/linux_ms_dev_kit/blob/ms-dev-kit-2023-v6.3.0/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-dev-kit-2023.dts
+
+This dt is more or less deducted from the Thinkpad X13s.
+It contains a lot of guesswork, and also a lot of research on
+what works with the Windows Dev Kit.
+
+The WiFi definition references qcom,ath11k-calibration-variant = "volterra"
+which is unfortunately not yet in the linux-firmware. You can leave it out,
+and the ath11k driver finds the default one for 
+"bus=pci,vendor=17cb,device=1103,subsystem-vendor=17cb,subsystem-device=0108,qmi-chip-id=2|18,qmi-board-id=255"
+which is quite sub-optimal. I have placed a pr on github/qca-swiss-army-knife:
+https://github.com/qca/qca-swiss-army-knife/pull/9 that provides an amended 
+board-2.bin and a board-2.json to generate it. 
+
+pcie2 (nvme) is intentionally specified as max-link-speed = <16>. The 
+interface is capable of it, most current nvme ssds are capable of it, 
+but the physical slot isn't. This leads to a silent downgrade to <8> instead 
+of the "device is limited by bus, capable of..." message.
+
+It is in use and under development since May 2023, pretty stable now.
+
 ---
- drivers/pci/remove.c | 17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+Changes in v4:
+- removed the redundant regulator definitions
+- changed the pinctrl property order
+- use microsoft instead of MICROSOFT as subdirectory and device name component
+- amend spacing in audio nodes
+- change external connector dp1 for mini-dp to DP-3 for consistency
+- Link to v3: https://lore.kernel.org/r/20241013-jg-blackrock-for-upstream-v3-0-839d3483a8e7@oldschoolsolutions.biz
 
-diff --git a/drivers/pci/remove.c b/drivers/pci/remove.c
-index e4ce1145aa3e..3dd9b3024956 100644
---- a/drivers/pci/remove.c
-+++ b/drivers/pci/remove.c
-@@ -17,16 +17,16 @@ static void pci_free_resources(struct pci_dev *dev)
- 	}
- }
- 
--static int pci_pwrctl_unregister(struct device *dev, void *data)
-+static void pci_pwrctl_unregister(struct device *dev)
- {
--	struct device_node *pci_node = data, *plat_node = dev_of_node(dev);
-+	struct platform_device *pdev;
- 
--	if (dev_is_platform(dev) && plat_node && plat_node == pci_node) {
--		of_device_unregister(to_platform_device(dev));
--		of_node_clear_flag(plat_node, OF_POPULATED);
--	}
-+	pdev = of_find_device_by_node(dev_of_node(dev));
-+	if (!pdev)
-+		return;
- 
--	return 0;
-+	of_device_unregister(pdev);
-+	of_node_clear_flag(dev_of_node(dev), OF_POPULATED);
- }
- 
- static void pci_stop_dev(struct pci_dev *dev)
-@@ -34,8 +34,7 @@ static void pci_stop_dev(struct pci_dev *dev)
- 	pci_pme_active(dev, false);
- 
- 	if (pci_dev_is_added(dev)) {
--		device_for_each_child(dev->dev.parent, dev_of_node(&dev->dev),
--				      pci_pwrctl_unregister);
-+		pci_pwrctl_unregister(&dev->dev);
- 		device_release_driver(&dev->dev);
- 		pci_proc_detach_device(dev);
- 		pci_remove_sysfs_dev_files(dev);
+Changes in v3:
+- tried to heed all advice and comments given - thank you
+- re-ordered patches to definition before use
+- added "microsoft,blackrock" as compatible in QSEECOM driver
+- removed the qseecom node
+- ordered nodes alphabetically {address, node name, label}
+- amended indentation
+- consistently used blackrock as identifier / directory name
+- sorted identifiers by the same order for multiple instances
+- added some explanation re WiFi
+- added definition for PMU on the WCN6855
+- added some explanation for pcie2 max-link-speed
+- Link to v2: https://lore.kernel.org/r/20240920-jg-blackrock-for-upstream-v2-0-9bf2f1b2191c@oldschoolsolutions.biz
 
+Changes in v2:
+- removed whitespaces and breaks
+- added compatibility binding
+- added feature list
+- reformatted Signed-off list
+- Link to v1: https://lore.kernel.org/r/5f5487e1-e458-4a3a-af02-c52e50ca1964@oldschoolsolutions.biz
+
+---
+Jens Glathe (3):
+      dt-bindings: arm: qcom: Add Microsoft Windows Dev Kit 2023
+      firmware: qcom: scm: Allow QSEECOM for Windows Dev Kit 2023
+      arm64: dts: qcom: sc8280xp-blackrock: dt definition for WDK2023
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    1 +
+ .../boot/dts/qcom/sc8280xp-microsoft-blackrock.dts | 1383 ++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ 4 files changed, 1386 insertions(+)
+---
+base-commit: a39230ecf6b3057f5897bc4744a790070cfbe7a8
+change-id: 20240920-jg-blackrock-for-upstream-7c7aca20e832
+
+Best regards,
 -- 
-2.25.1
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
