@@ -1,25 +1,25 @@
 From: "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
-Date: Mon, 28 Oct 2024 13:42:49 +0800
-Subject: [PATCH v2] Revert "drm/mipi-dsi: Set the fwnode for
+Date: Mon, 28 Oct 2024 14:32:57 +0800
+Subject: [PATCH v3] Revert "drm/mipi-dsi: Set the fwnode for
  mipi_dsi_device"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241028-fixup-5-15-v2-1-40216f0fe383@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIAFgkH2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+Message-Id: <20241028-fixup-5-15-v3-1-078531a8d70a@mediatek.com>
+X-B4-Tracking: v=1; b=H4sIABgwH2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
  vPSU3UzU4B8JSMDIxNDINZNy6woLdA11TU01TVNS0kxs0hJTDU3MFcCaigoSgXKgg2Ljq2tBQD
- YM+NdXAAAAA==
+ 6q944XAAAAA==
 To: stable@vger.kernel.org, Saravana Kannan <saravanak@google.com>, 
  Greg KH <gregkh@linuxfoundation.org>
 Cc: Seiya Wang <seiya.wang@mediatek.com>, 
  "Jason-JH.Lin" <jason-jh.lin@mediatek.com>, 
  Singo Chang <singo.chang@mediatek.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730094178; l=1663;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730097189; l=1740;
  i=jason-jh.lin@mediatek.com; s=20240718; h=from:subject:message-id;
- bh=8ojWfopcwKup0laonpHcvKr5CiOjB346s5EoLYHs1DY=;
- b=5G5P3Yj1R/AQV7XiUAhveRxNe04tFWOZ3YTvRakAKWohbP+GuzP8ihOdNdb8/zDmsAHIAzcTI
- EfqxdQk3UHpB1+jJMCgJShZLo+hJC9RSp8eoNTbS3FsiosUhxHRktn4
+ bh=bVfIERPhq4e+ukiO8o0skwuih9+HfNbAYOSnExc291I=;
+ b=R9T6v7Mh2aggvu3SLI17HuZXMvi8oJcQCA11sGkuGiH6bPVywawm1FAPjRngRojjRdUG1uffy
+ CeTd1oY7rqRA2vPsr9JB7Okyzvl/Bx6qFUO5JWvIaOfkmGwiqCpEUAo
 X-Developer-Key: i=jason-jh.lin@mediatek.com; a=ed25519;
  pk=7Hn+BnFBlPrluT5ks5tKVWb3f7O/bMBs6qEemVJwqOo=
 X-Endpoint-Received: by B4 Relay for jason-jh.lin@mediatek.com/20240718 with auth_id=187
@@ -45,6 +45,8 @@ avoid using the incomplete fw_devlink functionality.
 [2] Link: https://lore.kernel.org/all/20230207014207.1678715-1-saravanak@google.com
 
 Cc: stable@vger.kernel.org # 5.15.169
+Cc: stable@vger.kernel.org # 5.10.228
+Cc: stable@vger.kernel.org # 5.4.284
 Signed-off-by: Jason-JH.Lin <jason-jh.lin@mediatek.com>
 ---
  drivers/gpu/drm/drm_mipi_dsi.c | 2 +-
