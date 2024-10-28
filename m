@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Mon, 28 Oct 2024 21:24:50 +0100
-Subject: [PATCH v4 08/16] net: dwmac-rk: Use helper rgmii_clock
+Date: Mon, 28 Oct 2024 21:24:51 +0100
+Subject: [PATCH v4 09/16] net: dwmac-starfive: Use helper rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241028-upstream_s32cc_gmac-v4-8-03618f10e3e2@oss.nxp.com>
+Message-Id: <20241028-upstream_s32cc_gmac-v4-9-03618f10e3e2@oss.nxp.com>
 References: <20241028-upstream_s32cc_gmac-v4-0-03618f10e3e2@oss.nxp.com>
 In-Reply-To: <20241028-upstream_s32cc_gmac-v4-0-03618f10e3e2@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -33,11 +33,11 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730147124; l=1665;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730147124; l=1184;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=p818FBc7h3Q76HlCUWlShPBCXFvDmTCoSOPi3/tS6SA=;
- b=TJVMimqq1u4CFzpQYu/wodYi6KnQAaB6hrxTPbXvNPBkFoqi9J1Ilc7N3I9KL7asfPVO6W4r7
- lT3pA9y1zYrAOGU2wIYg0abWf4aLHoDZEKmnyOE0yv4rsGjyJLUvOHv
+ bh=YVAUfNddfX6I63XBPKwqSvyB5DYz6NCjgmmbUf+1q5U=;
+ b=BNQoqbyvZT9P3j86kVabLJTJzgQIuXduLBqYyOVc+Gr57eySX+k4bMLPlCea2Wnk0yTGB40XE
+ Kpa0XUJEeEKCefuPgwqKRWjDXkRskERHGBHAu3AcDeKK9W3sxNzc0n6
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
@@ -47,61 +47,42 @@ Utilize a new helper function rgmii_clock().
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c | 30 ++++++--------------------
- 1 file changed, 6 insertions(+), 24 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c | 19 ++++---------------
+ 1 file changed, 4 insertions(+), 15 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-index 50073bdade46..2fd650b3bc5c 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-@@ -1079,20 +1079,11 @@ static void rk3568_set_gmac_speed(struct rk_priv_data *bsp_priv, int speed)
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c
+index 4e1076faee0c..d80461a721c1 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c
+@@ -34,24 +34,13 @@ struct starfive_dwmac {
+ static void starfive_dwmac_fix_mac_speed(void *priv, unsigned int speed, unsigned int mode)
  {
- 	struct clk *clk_mac_speed = bsp_priv->clks[RK_CLK_MAC_SPEED].clk;
- 	struct device *dev = &bsp_priv->pdev->dev;
+ 	struct starfive_dwmac *dwmac = priv;
 -	unsigned long rate;
 +	long rate;
- 	int ret;
+ 	int err;
  
+-	rate = clk_get_rate(dwmac->clk_tx);
+-
 -	switch (speed) {
--	case 10:
--		rate = 2500000;
+-	case SPEED_1000:
+-		rate = 125000000;
 -		break;
--	case 100:
+-	case SPEED_100:
 -		rate = 25000000;
 -		break;
--	case 1000:
--		rate = 125000000;
+-	case SPEED_10:
+-		rate = 2500000;
 -		break;
 -	default:
 +	rate = rgmii_clock(speed);
 +	if (rate < 0) {
- 		dev_err(dev, "unknown speed value for GMAC speed=%d", speed);
- 		return;
+ 		dev_err(dwmac->dev, "invalid speed %u\n", speed);
+-		break;
++		return;
  	}
-@@ -1540,20 +1531,11 @@ static void rv1126_set_rgmii_speed(struct rk_priv_data *bsp_priv, int speed)
- {
- 	struct clk *clk_mac_speed = bsp_priv->clks[RK_CLK_MAC_SPEED].clk;
- 	struct device *dev = &bsp_priv->pdev->dev;
--	unsigned long rate;
-+	long rate;
- 	int ret;
  
--	switch (speed) {
--	case 10:
--		rate = 2500000;
--		break;
--	case 100:
--		rate = 25000000;
--		break;
--	case 1000:
--		rate = 125000000;
--		break;
--	default:
-+	rate = rgmii_clock(speed);
-+	if (rate < 0) {
- 		dev_err(dev, "unknown speed value for RGMII speed=%d", speed);
- 		return;
- 	}
+ 	err = clk_set_rate(dwmac->clk_tx, rate);
 
 -- 
 2.46.0
