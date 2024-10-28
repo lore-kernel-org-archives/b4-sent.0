@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Mon, 28 Oct 2024 21:24:52 +0100
-Subject: [PATCH v4 10/16] net: macb: Use helper rgmii_clock
+Date: Mon, 28 Oct 2024 21:24:53 +0100
+Subject: [PATCH v4 11/16] net: xgene_enet: Use helper rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241028-upstream_s32cc_gmac-v4-10-03618f10e3e2@oss.nxp.com>
+Message-Id: <20241028-upstream_s32cc_gmac-v4-11-03618f10e3e2@oss.nxp.com>
 References: <20241028-upstream_s32cc_gmac-v4-0-03618f10e3e2@oss.nxp.com>
 In-Reply-To: <20241028-upstream_s32cc_gmac-v4-0-03618f10e3e2@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -33,11 +33,11 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730147124; l=953;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730147124; l=1083;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=cfFMV/oCv4h7wawq2S7/Nrlkv2gYpjiAbwErMMsRoC4=;
- b=QptE/ox0BP0PKywOxOQUJNHbaFkGlOwtL4gzNasllt2FkNCPLgOJtcm5hBk4sA9qKjsbrB7vG
- bmOOEU267emC22EuhsV56s5yzJKkM5Wj1cWcYefAtGxrAPjEGgUEKeV
+ bh=ez2eUvox+NA2tsnzDHS2muudXDPXOUk289T76vN/OhU=;
+ b=vEL45N1FGJLM+RgRwo1FmE4ffW8cGr8QBpLo+HpPla/E6gxsLRqEF5clGWKNsJcfwmEB/EFdC
+ J46TAbaFEPaCIvJL9QEF3u576I1KQoIDnblJTsraa5S119/1WoOQ/RH
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
@@ -47,35 +47,37 @@ Utilize a new helper function rgmii_clock().
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/ethernet/cadence/macb_main.c | 14 ++------------
- 1 file changed, 2 insertions(+), 12 deletions(-)
+ drivers/net/ethernet/apm/xgene/xgene_enet_hw.c | 16 +++++-----------
+ 1 file changed, 5 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/net/ethernet/cadence/macb_main.c b/drivers/net/ethernet/cadence/macb_main.c
-index f06babec04a0..f1e481264511 100644
---- a/drivers/net/ethernet/cadence/macb_main.c
-+++ b/drivers/net/ethernet/cadence/macb_main.c
-@@ -530,19 +530,9 @@ static void macb_set_tx_clk(struct macb *bp, int speed)
- 	if (bp->phy_interface == PHY_INTERFACE_MODE_MII)
- 		return;
+diff --git a/drivers/net/ethernet/apm/xgene/xgene_enet_hw.c b/drivers/net/ethernet/apm/xgene/xgene_enet_hw.c
+index e641dbbea1e2..b854b6b42d77 100644
+--- a/drivers/net/ethernet/apm/xgene/xgene_enet_hw.c
++++ b/drivers/net/ethernet/apm/xgene/xgene_enet_hw.c
+@@ -421,18 +421,12 @@ static void xgene_enet_configure_clock(struct xgene_enet_pdata *pdata)
  
--	switch (speed) {
--	case SPEED_10:
--		rate = 2500000;
--		break;
--	case SPEED_100:
--		rate = 25000000;
--		break;
--	case SPEED_1000:
--		rate = 125000000;
--		break;
--	default:
-+	rate = rgmii_clock(speed);
-+	if (rate < 0)
- 		return;
--	}
+ 	if (dev->of_node) {
+ 		struct clk *parent = clk_get_parent(pdata->clk);
++		long rate = rgmii_clock(pdata->phy_speed);
  
- 	rate_rounded = clk_round_rate(bp->tx_clk, rate);
- 	if (rate_rounded < 0)
+-		switch (pdata->phy_speed) {
+-		case SPEED_10:
+-			clk_set_rate(parent, 2500000);
+-			break;
+-		case SPEED_100:
+-			clk_set_rate(parent, 25000000);
+-			break;
+-		default:
+-			clk_set_rate(parent, 125000000);
+-			break;
+-		}
++		if (rate < 0)
++			rate = 125000000;
++
++		clk_set_rate(parent, rate);
+ 	}
+ #ifdef CONFIG_ACPI
+ 	else {
 
 -- 
 2.46.0
