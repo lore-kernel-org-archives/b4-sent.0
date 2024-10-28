@@ -1,76 +1,64 @@
-From: "Jason-JH.Lin" <jason-jh.lin@mediatek.com>
-Date: Mon, 28 Oct 2024 14:32:57 +0800
-Subject: [PATCH v3] Revert "drm/mipi-dsi: Set the fwnode for
- mipi_dsi_device"
+From: Nuno Sa <nuno.sa@analog.com>
+Subject: [PATCH v2 0/4] ASoC: codecs: adau1373: drop platform data
+Date: Mon, 28 Oct 2024 16:43:37 +0100
+Message-Id: <20241028-adau1373-shutdown-v2-0-647f56bbd182@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20241028-fixup-5-15-v3-1-078531a8d70a@mediatek.com>
-X-B4-Tracking: v=1; b=H4sIABgwH2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
- vPSU3UzU4B8JSMDIxNDINZNy6woLdA11TU01TVNS0kxs0hJTDU3MFcCaigoSgXKgg2Ljq2tBQD
- 6q944XAAAAA==
-To: stable@vger.kernel.org, Saravana Kannan <saravanak@google.com>, 
- Greg KH <gregkh@linuxfoundation.org>
-Cc: Seiya Wang <seiya.wang@mediatek.com>, 
- "Jason-JH.Lin" <jason-jh.lin@mediatek.com>, 
- Singo Chang <singo.chang@mediatek.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730097189; l=1740;
- i=jason-jh.lin@mediatek.com; s=20240718; h=from:subject:message-id;
- bh=bVfIERPhq4e+ukiO8o0skwuih9+HfNbAYOSnExc291I=;
- b=R9T6v7Mh2aggvu3SLI17HuZXMvi8oJcQCA11sGkuGiH6bPVywawm1FAPjRngRojjRdUG1uffy
- CeTd1oY7rqRA2vPsr9JB7Okyzvl/Bx6qFUO5JWvIaOfkmGwiqCpEUAo
-X-Developer-Key: i=jason-jh.lin@mediatek.com; a=ed25519;
- pk=7Hn+BnFBlPrluT5ks5tKVWb3f7O/bMBs6qEemVJwqOo=
-X-Endpoint-Received: by B4 Relay for jason-jh.lin@mediatek.com/20240718 with auth_id=187
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIACmxH2cC/x2MuwqAMAwAf0UyWzCpUPRXxKHa1Gap0voC8d8tD
+ jfccPdA5iScoa8eSHxKljUWobqCOdi4sBJXHKihFgvKOnugNlrlcOxuvaLqkNiT1zihgdJtib3
+ c/3MY3/cDn9cZ2GMAAAA=
+To: linux-sound@vger.kernel.org, devicetree@vger.kernel.org
+Cc: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730130219; l=1126;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=hG904Ejk14QzUK5GUCqREAtgpqylEPSsrKPmrN/RinA=;
+ b=Mioo4Du/EgbgNIZY5irudzwOi/1vAN5HzRIrCZc6P+J950jCVzehd6biTY+6nGthqQnSl4z+I
+ CtWSydD+XJvDVzKfPFLTsxnnYz1vUAbGTmN8epWRqDX12JFuTZXv06w
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This reverts commit ac88a1f41f93499df6f50fd18ea835e6ff4f3200.
+Hi Mark,
 
-Reason for revert:
-1. The commit [1] does not land on linux-5.15, so this patch does not
-fix anything.
+Here it goes v2...
 
-2. Since the fw_device improvements series [2] does not land on
-linux-5.15, using device_set_fwnode() causes the panel to flash during
-bootup.
+v1:
+ * https://lore.kernel.org/all/20241021-adau1373-shutdown-v1-0-bec4ff9dfa16@analog.com/ 
 
-Incorrect link management may lead to incorrect device initialization,
-affecting firmware node links and consumer relationships.
-The fwnode setting of panel to the DSI device would cause a DSI
-initialization error without series[2], so this patch was reverted to
-avoid using the incomplete fw_devlink functionality.
-
-[1] commit 3fb16866b51d ("driver core: fw_devlink: Make cycle detection more robust")
-[2] Link: https://lore.kernel.org/all/20230207014207.1678715-1-saravanak@google.com
-
-Cc: stable@vger.kernel.org # 5.15.169
-Cc: stable@vger.kernel.org # 5.10.228
-Cc: stable@vger.kernel.org # 5.4.284
-Signed-off-by: Jason-JH.Lin <jason-jh.lin@mediatek.com>
----
- drivers/gpu/drm/drm_mipi_dsi.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/gpu/drm/drm_mipi_dsi.c b/drivers/gpu/drm/drm_mipi_dsi.c
-index 24606b632009..468a3a7cb6a5 100644
---- a/drivers/gpu/drm/drm_mipi_dsi.c
-+++ b/drivers/gpu/drm/drm_mipi_dsi.c
-@@ -221,7 +221,7 @@ mipi_dsi_device_register_full(struct mipi_dsi_host *host,
- 		return dsi;
- 	}
- 
--	device_set_node(&dsi->dev, of_fwnode_handle(info->node));
-+	dsi->dev.of_node = info->node;
- 	dsi->channel = info->channel;
- 	strlcpy(dsi->name, info->type, sizeof(dsi->name));
- 
+v2:
+ - Patch 2 (Bindings):
+   * Removed extra blank line;
+   * Fixed example messed indentation;
+   * Added more properties to the example;
+   * Add maxItems.
+ - Patch 4 (Powerdown gpio):
+   * Powerdown the chip when unbound.
 
 ---
-base-commit: 74cdd62cb4706515b454ce5bacb73b566c1d1bcf
-change-id: 20241024-fixup-5-15-5fdd68dae707
+Nuno Sa (4):
+      ASoC: codecs: adau1373: add some kconfig text
+      ASoC: dt-bindings: document the adau1373 Codec
+      ASoC: codecs: adau1373: drop patform_data
+      ASoC: codecs: adau1373: add powerdown gpio
 
-Best regards,
--- 
-Jason-JH.Lin <jason-jh.lin@mediatek.com>
+ .../devicetree/bindings/sound/adi,adau1373.yaml    | 111 +++++++++++
+ MAINTAINERS                                        |   1 +
+ include/sound/adau1373.h                           |  33 ----
+ sound/soc/codecs/Kconfig                           |   2 +-
+ sound/soc/codecs/adau1373.c                        | 208 ++++++++++++++++-----
+ 5 files changed, 272 insertions(+), 83 deletions(-)
+---
+base-commit: e25169fb5a8c37e8f7d1da3d1427dee938f15f07
+change-id: 20241024-adau1373-shutdown-912ef2f31b17
+--
+
+Thanks!
+- Nuno Sá
 
