@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Mon, 28 Oct 2024 21:24:51 +0100
-Subject: [PATCH v4 09/16] net: dwmac-starfive: Use helper rgmii_clock
+Date: Mon, 28 Oct 2024 21:24:52 +0100
+Subject: [PATCH v4 10/16] net: macb: Use helper rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241028-upstream_s32cc_gmac-v4-9-03618f10e3e2@oss.nxp.com>
+Message-Id: <20241028-upstream_s32cc_gmac-v4-10-03618f10e3e2@oss.nxp.com>
 References: <20241028-upstream_s32cc_gmac-v4-0-03618f10e3e2@oss.nxp.com>
 In-Reply-To: <20241028-upstream_s32cc_gmac-v4-0-03618f10e3e2@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -33,11 +33,11 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730147124; l=1184;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730147124; l=953;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=YVAUfNddfX6I63XBPKwqSvyB5DYz6NCjgmmbUf+1q5U=;
- b=BNQoqbyvZT9P3j86kVabLJTJzgQIuXduLBqYyOVc+Gr57eySX+k4bMLPlCea2Wnk0yTGB40XE
- Kpa0XUJEeEKCefuPgwqKRWjDXkRskERHGBHAu3AcDeKK9W3sxNzc0n6
+ bh=cfFMV/oCv4h7wawq2S7/Nrlkv2gYpjiAbwErMMsRoC4=;
+ b=QptE/ox0BP0PKywOxOQUJNHbaFkGlOwtL4gzNasllt2FkNCPLgOJtcm5hBk4sA9qKjsbrB7vG
+ bmOOEU267emC22EuhsV56s5yzJKkM5Wj1cWcYefAtGxrAPjEGgUEKeV
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
@@ -47,42 +47,35 @@ Utilize a new helper function rgmii_clock().
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c | 19 ++++---------------
- 1 file changed, 4 insertions(+), 15 deletions(-)
+ drivers/net/ethernet/cadence/macb_main.c | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c
-index 4e1076faee0c..d80461a721c1 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c
-@@ -34,24 +34,13 @@ struct starfive_dwmac {
- static void starfive_dwmac_fix_mac_speed(void *priv, unsigned int speed, unsigned int mode)
- {
- 	struct starfive_dwmac *dwmac = priv;
--	unsigned long rate;
-+	long rate;
- 	int err;
+diff --git a/drivers/net/ethernet/cadence/macb_main.c b/drivers/net/ethernet/cadence/macb_main.c
+index f06babec04a0..f1e481264511 100644
+--- a/drivers/net/ethernet/cadence/macb_main.c
++++ b/drivers/net/ethernet/cadence/macb_main.c
+@@ -530,19 +530,9 @@ static void macb_set_tx_clk(struct macb *bp, int speed)
+ 	if (bp->phy_interface == PHY_INTERFACE_MODE_MII)
+ 		return;
  
--	rate = clk_get_rate(dwmac->clk_tx);
--
 -	switch (speed) {
--	case SPEED_1000:
--		rate = 125000000;
+-	case SPEED_10:
+-		rate = 2500000;
 -		break;
 -	case SPEED_100:
 -		rate = 25000000;
 -		break;
--	case SPEED_10:
--		rate = 2500000;
+-	case SPEED_1000:
+-		rate = 125000000;
 -		break;
 -	default:
 +	rate = rgmii_clock(speed);
-+	if (rate < 0) {
- 		dev_err(dwmac->dev, "invalid speed %u\n", speed);
--		break;
-+		return;
- 	}
++	if (rate < 0)
+ 		return;
+-	}
  
- 	err = clk_set_rate(dwmac->clk_tx, rate);
+ 	rate_rounded = clk_round_rate(bp->tx_clk, rate);
+ 	if (rate_rounded < 0)
 
 -- 
 2.46.0
