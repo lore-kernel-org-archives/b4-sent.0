@@ -1,13 +1,12 @@
 From: Nuno Sa <nuno.sa@analog.com>
-Subject: [PATCH v2 0/4] ASoC: codecs: adau1373: drop platform data
-Date: Mon, 28 Oct 2024 16:43:37 +0100
-Message-Id: <20241028-adau1373-shutdown-v2-0-647f56bbd182@analog.com>
+Date: Mon, 28 Oct 2024 16:43:38 +0100
+Subject: [PATCH v2 1/4] ASoC: codecs: adau1373: add some kconfig text
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIACmxH2cC/x2MuwqAMAwAf0UyWzCpUPRXxKHa1Gap0voC8d8tD
- jfccPdA5iScoa8eSHxKljUWobqCOdi4sBJXHKihFgvKOnugNlrlcOxuvaLqkNiT1zihgdJtib3
- c/3MY3/cDn9cZ2GMAAAA=
+Content-Transfer-Encoding: 7bit
+Message-Id: <20241028-adau1373-shutdown-v2-1-647f56bbd182@analog.com>
+References: <20241028-adau1373-shutdown-v2-0-647f56bbd182@analog.com>
+In-Reply-To: <20241028-adau1373-shutdown-v2-0-647f56bbd182@analog.com>
 To: linux-sound@vger.kernel.org, devicetree@vger.kernel.org
 Cc: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
  Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
@@ -15,50 +14,38 @@ Cc: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>,
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730130219; l=1126;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730130219; l=634;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=hG904Ejk14QzUK5GUCqREAtgpqylEPSsrKPmrN/RinA=;
- b=Mioo4Du/EgbgNIZY5irudzwOi/1vAN5HzRIrCZc6P+J950jCVzehd6biTY+6nGthqQnSl4z+I
- CtWSydD+XJvDVzKfPFLTsxnnYz1vUAbGTmN8epWRqDX12JFuTZXv06w
+ bh=N9cgwu1zwzbWD0Fw9Jji5tH1Q286lBcXZ7unQPQVoMc=;
+ b=bZajh8COAzo3ueYiEtpERuzBybdCOmSlIp7naGoorXVvjZd5C+Z9EVkceVvWEnCoBCxzxY6qN
+ gJc9NwNPJasCuRral1nBov4XDCHfkC/b6/3y99gxIDYXKOwezGuTFkG
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi Mark,
+Add some text to 'tristate' so that we can actually enable the driver
+when using things like menuconfig.
 
-Here it goes v2...
-
-v1:
- * https://lore.kernel.org/all/20241021-adau1373-shutdown-v1-0-bec4ff9dfa16@analog.com/ 
-
-v2:
- - Patch 2 (Bindings):
-   * Removed extra blank line;
-   * Fixed example messed indentation;
-   * Added more properties to the example;
-   * Add maxItems.
- - Patch 4 (Powerdown gpio):
-   * Powerdown the chip when unbound.
-
+Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
-Nuno Sa (4):
-      ASoC: codecs: adau1373: add some kconfig text
-      ASoC: dt-bindings: document the adau1373 Codec
-      ASoC: codecs: adau1373: drop patform_data
-      ASoC: codecs: adau1373: add powerdown gpio
+ sound/soc/codecs/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- .../devicetree/bindings/sound/adi,adau1373.yaml    | 111 +++++++++++
- MAINTAINERS                                        |   1 +
- include/sound/adau1373.h                           |  33 ----
- sound/soc/codecs/Kconfig                           |   2 +-
- sound/soc/codecs/adau1373.c                        | 208 ++++++++++++++++-----
- 5 files changed, 272 insertions(+), 83 deletions(-)
----
-base-commit: e25169fb5a8c37e8f7d1da3d1427dee938f15f07
-change-id: 20241024-adau1373-shutdown-912ef2f31b17
---
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 6a6125e94d2d..72643907cef7 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -464,7 +464,7 @@ config SND_SOC_ADAU1372_SPI
+ 	select REGMAP_SPI
+ 
+ config SND_SOC_ADAU1373
+-	tristate
++	tristate "Analog Devices ADAU1373 CODEC"
+ 	depends on I2C
+ 	select SND_SOC_ADAU_UTILS
+ 
 
-Thanks!
-- Nuno Sá
+-- 
+2.47.0
 
