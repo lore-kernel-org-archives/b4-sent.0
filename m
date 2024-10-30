@@ -1,271 +1,131 @@
-From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Wed, 30 Oct 2024 04:22:33 +0000
-Subject: [PATCH] net/tcp: Add missing lockdep annotations for TCP-AO hlist
- traversals
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v5 0/3] arm64: dts: qcom: sc8280xp-blackrock: dt definition
+ for Windows Dev Kit 2023
+Date: Wed, 30 Oct 2024 08:09:18 +0100
+Message-Id: <20241030-jg-blackrock-for-upstream-v5-0-830c938437ad@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241030-tcp-ao-hlist-lockdep-annotate-v1-1-bf641a64d7c6@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAIi0IWcC/x3MQQqDMBBA0avIrDsQYzHYq5Qu4jg2Q+0kJEEK4
- t2bdvn+4h9QOAsXuHUHZN6lSNSG/tIBBa9PRlmawRp77c1gsFJCHzFsUipukV4Lt6Aaq6+Mbhz
- cNBk32pWgPVLmVT7///3RPPvCOGevFH7X+k5wnl9ate2zhQAAAA==
-X-Change-ID: 20241030-tcp-ao-hlist-lockdep-annotate-7637990762fc
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- David Ahern <dsahern@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dmitry Safonov <0x7f454c46@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730262176; l=9743;
- i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=REoYesXnOZcViXMhTpRDXKCqR3ncq7wNiulbSW1AwT0=;
- b=yMgKLLPNSxtrI65bcm6gqxYwdbKxpRuoP1KLGp/g/Pc/olGveWzUb91MuPbaoyL3oIMILIyF8
- kVcDEGJaDBJDVCSz1ecte2IbPXPv1dTM75nvm2WquSKjWB3tfkKjLQQ
-X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
- pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
-X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
+X-B4-Tracking: v=1; b=H4sIAJ7bIWcC/43OQW7DIBAF0KtErDsVDFCgq96j6gLjIaZxQgSOl
+ TTy3Uu8qLqp1eUfad7/d1apJKrsdXdnheZUUz61oJ92LAz+tCdIfcsMOSrukMPnHrrRh0PJ4QA
+ xF7ic61TIH8EE44NHTlYia//nQjFdV/v9o+Uh1SmX21o1i8eV6aiVNSSAlLagvPTgI0cIGknz4
+ IV7UW957GsYch5rHi9T21efu/TFHuSMK/OPcTMCB9dFjKJD4UTYZOUPK7iQW6xsrJWul8pKb8l
+ ssuoXi2aLVY01XHaoVQxOxz/ZZVm+AdmkxIHEAQAA
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Merck Hung <merckhung@gmail.com>, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730272174; l=4293;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=FMi9v9rfyShs+0KRXyfefZqFxm7p06wxhQoe9oN6UtQ=;
+ b=Ajqw19rSXIkd1RBiABcxiW8b01Bc5t0jFpuKL2AYPGWSGhAnAHIQKbKUJwFM2ooQIaRNYP2Ao
+ 5gcNAzG2JqrAAOn/iEILZ57/5PJRpBcPbxDvyjahcQHVtepBVA+xE8K
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Under CONFIG_PROVE_RCU_LIST + CONFIG_RCU_EXPERT
-hlist_for_each_entry_rcu() provides very helpful splats, which help
-to find possible issues. I missed CONFIG_RCU_EXPERT=y in my testing
-config the same as described in
-a3e4bf7f9675 ("configs/debug: make sure PROVE_RCU_LIST=y takes effect").
+"Microsoft Windows Dev Kit 2023" aka "Blackrock" aka "Project Volterra"
 
-The fix itself is trivial: add the very same lockdep annotations
-as were used to dereference ao_info from the socket.
+Device tree for the Microsoft Windows Dev Kit 2023. This work
+is based on the initial work of Merck Hung <merckhung@gmail.com>.
 
-Reported-by: Jakub Kicinski <kuba@kernel.org>
-Closes: https://lore.kernel.org/netdev/20241028152645.35a8be66@kernel.org/
-Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
----
- include/net/tcp_ao.h |  3 ++-
- net/ipv4/tcp_ao.c    | 42 +++++++++++++++++++++++-------------------
- net/ipv4/tcp_ipv4.c  |  3 ++-
- net/ipv6/tcp_ipv6.c  |  4 ++--
- 4 files changed, 29 insertions(+), 23 deletions(-)
+The Windows Dev Kit 2023 is a nice little desktop based on sc8280xp.
+Link: https://learn.microsoft.com/en-us/windows/arm/dev-kit/
 
-diff --git a/include/net/tcp_ao.h b/include/net/tcp_ao.h
-index 1d46460d0fefab10feefa318e4ba579a3aa1f1d0..df655ce6987d3730fea7a6ef0db09c2e27b34f21 100644
---- a/include/net/tcp_ao.h
-+++ b/include/net/tcp_ao.h
-@@ -183,7 +183,8 @@ int tcp_ao_hash_skb(unsigned short int family,
- 		    const u8 *tkey, int hash_offset, u32 sne);
- int tcp_parse_ao(struct sock *sk, int cmd, unsigned short int family,
- 		 sockptr_t optval, int optlen);
--struct tcp_ao_key *tcp_ao_established_key(struct tcp_ao_info *ao,
-+struct tcp_ao_key *tcp_ao_established_key(const struct sock *sk,
-+					  struct tcp_ao_info *ao,
- 					  int sndid, int rcvid);
- int tcp_ao_copy_all_matching(const struct sock *sk, struct sock *newsk,
- 			     struct request_sock *req, struct sk_buff *skb,
-diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
-index db6516092daf5b180fb75482fb711f226451a647..bbb8d5f0eae7d3d8887da3fa4d68e248af9060ad 100644
---- a/net/ipv4/tcp_ao.c
-+++ b/net/ipv4/tcp_ao.c
-@@ -109,12 +109,13 @@ bool tcp_ao_ignore_icmp(const struct sock *sk, int family, int type, int code)
-  * it's known that the keys in ao_info are matching peer's
-  * family/address/VRF/etc.
-  */
--struct tcp_ao_key *tcp_ao_established_key(struct tcp_ao_info *ao,
-+struct tcp_ao_key *tcp_ao_established_key(const struct sock *sk,
-+					  struct tcp_ao_info *ao,
- 					  int sndid, int rcvid)
- {
- 	struct tcp_ao_key *key;
- 
--	hlist_for_each_entry_rcu(key, &ao->head, node) {
-+	hlist_for_each_entry_rcu(key, &ao->head, node, lockdep_sock_is_held(sk)) {
- 		if ((sndid >= 0 && key->sndid != sndid) ||
- 		    (rcvid >= 0 && key->rcvid != rcvid))
- 			continue;
-@@ -205,7 +206,7 @@ static struct tcp_ao_key *__tcp_ao_do_lookup(const struct sock *sk, int l3index,
- 	if (!ao)
- 		return NULL;
- 
--	hlist_for_each_entry_rcu(key, &ao->head, node) {
-+	hlist_for_each_entry_rcu(key, &ao->head, node, lockdep_sock_is_held(sk)) {
- 		u8 prefixlen = min(prefix, key->prefixlen);
- 
- 		if (!tcp_ao_key_cmp(key, l3index, addr, prefixlen,
-@@ -793,7 +794,7 @@ int tcp_ao_prepare_reset(const struct sock *sk, struct sk_buff *skb,
- 		if (!ao_info)
- 			return -ENOENT;
- 
--		*key = tcp_ao_established_key(ao_info, aoh->rnext_keyid, -1);
-+		*key = tcp_ao_established_key(sk, ao_info, aoh->rnext_keyid, -1);
- 		if (!*key)
- 			return -ENOENT;
- 		*traffic_key = snd_other_key(*key);
-@@ -979,7 +980,7 @@ tcp_inbound_ao_hash(struct sock *sk, const struct sk_buff *skb,
- 		 */
- 		key = READ_ONCE(info->rnext_key);
- 		if (key->rcvid != aoh->keyid) {
--			key = tcp_ao_established_key(info, -1, aoh->keyid);
-+			key = tcp_ao_established_key(sk, info, -1, aoh->keyid);
- 			if (!key)
- 				goto key_not_found;
- 		}
-@@ -1003,7 +1004,7 @@ tcp_inbound_ao_hash(struct sock *sk, const struct sk_buff *skb,
- 						   aoh->rnext_keyid,
- 						   tcp_ao_hdr_maclen(aoh));
- 			/* If the key is not found we do nothing. */
--			key = tcp_ao_established_key(info, aoh->rnext_keyid, -1);
-+			key = tcp_ao_established_key(sk, info, aoh->rnext_keyid, -1);
- 			if (key)
- 				/* pairs with tcp_ao_del_cmd */
- 				WRITE_ONCE(info->current_key, key);
-@@ -1163,7 +1164,7 @@ void tcp_ao_established(struct sock *sk)
- 	if (!ao)
- 		return;
- 
--	hlist_for_each_entry_rcu(key, &ao->head, node)
-+	hlist_for_each_entry_rcu(key, &ao->head, node, lockdep_sock_is_held(sk))
- 		tcp_ao_cache_traffic_keys(sk, ao, key);
- }
- 
-@@ -1180,7 +1181,7 @@ void tcp_ao_finish_connect(struct sock *sk, struct sk_buff *skb)
- 	WRITE_ONCE(ao->risn, tcp_hdr(skb)->seq);
- 	ao->rcv_sne = 0;
- 
--	hlist_for_each_entry_rcu(key, &ao->head, node)
-+	hlist_for_each_entry_rcu(key, &ao->head, node, lockdep_sock_is_held(sk))
- 		tcp_ao_cache_traffic_keys(sk, ao, key);
- }
- 
-@@ -1256,14 +1257,14 @@ int tcp_ao_copy_all_matching(const struct sock *sk, struct sock *newsk,
- 	key_head = rcu_dereference(hlist_first_rcu(&new_ao->head));
- 	first_key = hlist_entry_safe(key_head, struct tcp_ao_key, node);
- 
--	key = tcp_ao_established_key(new_ao, tcp_rsk(req)->ao_keyid, -1);
-+	key = tcp_ao_established_key(req_to_sk(req), new_ao, tcp_rsk(req)->ao_keyid, -1);
- 	if (key)
- 		new_ao->current_key = key;
- 	else
- 		new_ao->current_key = first_key;
- 
- 	/* set rnext_key */
--	key = tcp_ao_established_key(new_ao, -1, tcp_rsk(req)->ao_rcv_next);
-+	key = tcp_ao_established_key(req_to_sk(req), new_ao, -1, tcp_rsk(req)->ao_rcv_next);
- 	if (key)
- 		new_ao->rnext_key = key;
- 	else
-@@ -1857,12 +1858,12 @@ static int tcp_ao_del_cmd(struct sock *sk, unsigned short int family,
- 	 * if there's any.
- 	 */
- 	if (cmd.set_current) {
--		new_current = tcp_ao_established_key(ao_info, cmd.current_key, -1);
-+		new_current = tcp_ao_established_key(sk, ao_info, cmd.current_key, -1);
- 		if (!new_current)
- 			return -ENOENT;
- 	}
- 	if (cmd.set_rnext) {
--		new_rnext = tcp_ao_established_key(ao_info, -1, cmd.rnext);
-+		new_rnext = tcp_ao_established_key(sk, ao_info, -1, cmd.rnext);
- 		if (!new_rnext)
- 			return -ENOENT;
- 	}
-@@ -1902,7 +1903,8 @@ static int tcp_ao_del_cmd(struct sock *sk, unsigned short int family,
- 	 * "It is presumed that an MKT affecting a particular
- 	 * connection cannot be destroyed during an active connection"
- 	 */
--	hlist_for_each_entry_rcu(key, &ao_info->head, node) {
-+	hlist_for_each_entry_rcu(key, &ao_info->head, node,
-+				 lockdep_sock_is_held(sk)) {
- 		if (cmd.sndid != key->sndid ||
- 		    cmd.rcvid != key->rcvid)
- 			continue;
-@@ -2000,14 +2002,14 @@ static int tcp_ao_info_cmd(struct sock *sk, unsigned short int family,
- 	 * if there's any.
- 	 */
- 	if (cmd.set_current) {
--		new_current = tcp_ao_established_key(ao_info, cmd.current_key, -1);
-+		new_current = tcp_ao_established_key(sk, ao_info, cmd.current_key, -1);
- 		if (!new_current) {
- 			err = -ENOENT;
- 			goto out;
- 		}
- 	}
- 	if (cmd.set_rnext) {
--		new_rnext = tcp_ao_established_key(ao_info, -1, cmd.rnext);
-+		new_rnext = tcp_ao_established_key(sk, ao_info, -1, cmd.rnext);
- 		if (!new_rnext) {
- 			err = -ENOENT;
- 			goto out;
-@@ -2101,7 +2103,8 @@ int tcp_v4_parse_ao(struct sock *sk, int cmd, sockptr_t optval, int optlen)
-  * The layout of the fields in the user and kernel structures is expected to
-  * be the same (including in the 32bit vs 64bit case).
-  */
--static int tcp_ao_copy_mkts_to_user(struct tcp_ao_info *ao_info,
-+static int tcp_ao_copy_mkts_to_user(const struct sock *sk,
-+				    struct tcp_ao_info *ao_info,
- 				    sockptr_t optval, sockptr_t optlen)
- {
- 	struct tcp_ao_getsockopt opt_in, opt_out;
-@@ -2229,7 +2232,8 @@ static int tcp_ao_copy_mkts_to_user(struct tcp_ao_info *ao_info,
- 	/* May change in RX, while we're dumping, pre-fetch it */
- 	current_key = READ_ONCE(ao_info->current_key);
- 
--	hlist_for_each_entry_rcu(key, &ao_info->head, node) {
-+	hlist_for_each_entry_rcu(key, &ao_info->head, node,
-+				 lockdep_sock_is_held(sk)) {
- 		if (opt_in.get_all)
- 			goto match;
- 
-@@ -2309,7 +2313,7 @@ int tcp_ao_get_mkts(struct sock *sk, sockptr_t optval, sockptr_t optlen)
- 	if (!ao_info)
- 		return -ENOENT;
- 
--	return tcp_ao_copy_mkts_to_user(ao_info, optval, optlen);
-+	return tcp_ao_copy_mkts_to_user(sk, ao_info, optval, optlen);
- }
- 
- int tcp_ao_get_sock_info(struct sock *sk, sockptr_t optval, sockptr_t optlen)
-@@ -2396,7 +2400,7 @@ int tcp_ao_set_repair(struct sock *sk, sockptr_t optval, unsigned int optlen)
- 	WRITE_ONCE(ao->snd_sne, cmd.snd_sne);
- 	WRITE_ONCE(ao->rcv_sne, cmd.rcv_sne);
- 
--	hlist_for_each_entry_rcu(key, &ao->head, node)
-+	hlist_for_each_entry_rcu(key, &ao->head, node, lockdep_sock_is_held(sk))
- 		tcp_ao_cache_traffic_keys(sk, ao, key);
- 
- 	return 0;
-diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
-index 9d3dd101ea713b14e13afe662baa49d21b3b716c..a38c8b1f44dbd95fcea08bd81e0ceaa70177ac8a 100644
---- a/net/ipv4/tcp_ipv4.c
-+++ b/net/ipv4/tcp_ipv4.c
-@@ -1053,7 +1053,8 @@ static void tcp_v4_timewait_ack(struct sock *sk, struct sk_buff *skb)
- 			}
- 
- 			if (aoh)
--				key.ao_key = tcp_ao_established_key(ao_info, aoh->rnext_keyid, -1);
-+				key.ao_key = tcp_ao_established_key(sk, ao_info,
-+								    aoh->rnext_keyid, -1);
- 		}
- 	}
- 	if (key.ao_key) {
-diff --git a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
-index 597920061a3a061a878bf0f7a1b03ac4898918a9..c748eeae1453342bab22f0e5cdb450b9827d2d5f 100644
---- a/net/ipv6/tcp_ipv6.c
-+++ b/net/ipv6/tcp_ipv6.c
-@@ -1172,8 +1172,8 @@ static void tcp_v6_timewait_ack(struct sock *sk, struct sk_buff *skb)
- 			if (tcp_parse_auth_options(tcp_hdr(skb), NULL, &aoh))
- 				goto out;
- 			if (aoh)
--				key.ao_key = tcp_ao_established_key(ao_info,
--						aoh->rnext_keyid, -1);
-+				key.ao_key = tcp_ao_established_key(sk, ao_info,
-+								    aoh->rnext_keyid, -1);
- 		}
- 	}
- 	if (key.ao_key) {
+Supported features:
+- USB type-c and type-a ports
+- minidp connector
+- built-in r8152 Ethernet adapter
+- PCIe devices
+- nvme
+- ath11k WiFi (WCN6855)
+- WCN6855 Bluetooth
+- A690 GPU
+- ADSP and CDSP
+- GPIO keys
+- Audio definition (works via USB)
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+
+Original work: https://github.com/merckhung/linux_ms_dev_kit/blob/ms-dev-kit-2023-v6.3.0/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-dev-kit-2023.dts
+
+This dt is more or less deducted from the Thinkpad X13s.
+It contains a lot of guesswork, and also a lot of research on
+what works with the Windows Dev Kit.
+
+The WiFi definition references qcom,ath11k-calibration-variant = "volterra"
+which is unfortunately not yet in the linux-firmware. You can leave it out,
+and the ath11k driver finds the default one for 
+"bus=pci,vendor=17cb,device=1103,subsystem-vendor=17cb,subsystem-device=0108,qmi-chip-id=2|18,qmi-board-id=255"
+which is quite sub-optimal. I have placed a pr on github/qca-swiss-army-knife:
+https://github.com/qca/qca-swiss-army-knife/pull/9 that provides an amended 
+board-2.bin and a board-2.json to generate it. 
+
+pcie2 (nvme) is intentionally specified as max-link-speed = <16>. The 
+interface is capable of it, most current nvme ssds are capable of it, 
+but the physical slot isn't. This leads to a silent downgrade to <8> instead 
+of the "device is limited by bus, capable of..." message.
+
+It is in use and under development since May 2023, pretty stable now.
 
 ---
-base-commit: 71e0ad345163c150ea15434b37036b0678d5f6f4
-change-id: 20241030-tcp-ao-hlist-lockdep-annotate-7637990762fc
+Changes in v5:
+- removed s-o-b from Merck Hung as suggested by Bjorn Andersson. The credits
+  for the original work are in the cover letter and in the dts commit
+- removed Venus codec from the list of supported features. It is, but that
+  part is not in this patch set.
+- Link to v4: https://lore.kernel.org/r/20241027-jg-blackrock-for-upstream-v4-0-703b254fc95f@oldschoolsolutions.biz
+
+Changes in v4:
+- removed the redundant regulator definitions
+- changed the pinctrl property order
+- use microsoft instead of MICROSOFT as subdirectory and device name component
+- amend spacing in audio nodes
+- change external connector dp1 for mini-dp to DP-3 for consistency
+- Link to v3: https://lore.kernel.org/r/20241013-jg-blackrock-for-upstream-v3-0-839d3483a8e7@oldschoolsolutions.biz
+
+Changes in v3:
+- tried to heed all advice and comments given - thank you
+- re-ordered patches to definition before use
+- added "microsoft,blackrock" as compatible in QSEECOM driver
+- removed the qseecom node
+- ordered nodes alphabetically {address, node name, label}
+- amended indentation
+- consistently used blackrock as identifier / directory name
+- sorted identifiers by the same order for multiple instances
+- added some explanation re WiFi
+- added definition for PMU on the WCN6855
+- added some explanation for pcie2 max-link-speed
+- Link to v2: https://lore.kernel.org/r/20240920-jg-blackrock-for-upstream-v2-0-9bf2f1b2191c@oldschoolsolutions.biz
+
+Changes in v2:
+- removed whitespaces and breaks
+- added compatibility binding
+- added feature list
+- reformatted Signed-off list
+- Link to v1: https://lore.kernel.org/r/5f5487e1-e458-4a3a-af02-c52e50ca1964@oldschoolsolutions.biz
+
+---
+Jens Glathe (3):
+      dt-bindings: arm: qcom: Add Microsoft Windows Dev Kit 2023
+      firmware: qcom: scm: Allow QSEECOM for Windows Dev Kit 2023
+      arm64: dts: qcom: sc8280xp-blackrock: dt definition for WDK2023
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    1 +
+ .../boot/dts/qcom/sc8280xp-microsoft-blackrock.dts | 1383 ++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ 4 files changed, 1386 insertions(+)
+---
+base-commit: 6fb2fa9805c501d9ade047fc511961f3273cdcb5
+change-id: 20240920-jg-blackrock-for-upstream-7c7aca20e832
 
 Best regards,
 -- 
-Dmitry Safonov <0x7f454c46@gmail.com>
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
