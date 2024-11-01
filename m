@@ -1,14 +1,13 @@
 From: Janne Grunau <j@jannau.net>
-Subject: [PATCH v3 0/3] Apple SPI controller driver
-Date: Fri, 01 Nov 2024 20:26:11 +0100
-Message-Id: <20241101-asahi-spi-v3-0-3b411c5fb8e5@jannau.net>
+Date: Fri, 01 Nov 2024 20:26:12 +0100
+Subject: [PATCH v3 1/3] dt-bindings: spi: apple,spi: Add binding for Apple
+ SPI controllers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFMrJWcC/03MSw7CIBSF4a00dyyGVwQddR+mg6tQuQ5oA5VoG
- vYuMnL4n5x8O2SfyGe4DDskXyjTEluowwD3gPHhGbnWILnU3ArBMGMglldiszWa39CcjTPQ/mv
- yM727dZ1aB8rbkj6dLvK3dkUI/q8UyTgzJ4UWrXZW6fGJMeLrGP0GU631CwOaUVajAAAA
-X-Change-ID: 20240811-asahi-spi-f8740ba797d7
+Message-Id: <20241101-asahi-spi-v3-1-3b411c5fb8e5@jannau.net>
+References: <20241101-asahi-spi-v3-0-3b411c5fb8e5@jannau.net>
+In-Reply-To: <20241101-asahi-spi-v3-0-3b411c5fb8e5@jannau.net>
 To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>, Mark Brown <broonie@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,91 +16,99 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-spi@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3003; i=j@jannau.net;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2077; i=j@jannau.net;
  s=yk2024; h=from:subject:message-id;
- bh=bNz1oB7QECkZuE3P038Od4nszwKOfKz7QoIkKxCF1j0=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhnRV7TK207MXz2E6r9ZtqfBvlmvcjEXOFb84t0Xrqa6ZW
- 7LeNCyro5SFQYyLQVZMkSVJ+2UHw+oaxZjaB2Ewc1iZQIYwcHEKwERCLzAynObT2NL/SyPOZkXS
- PUWrG+/bQ2cd+v9yToa21WPWFZ8Z8xj+Z8RWCZuG/uK8/1fJnWNiVca3Eyu5WwtLL5clLDq3QuE
- uDwA=
+ bh=TsW7zwdUd7DpJxv+e2Rjl4FSQ1yenKbJUaCwJVIeRgk=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhnRV7bK+lzuPJp1PrtvwrTfuwVU/Tst+lvM/3UsuNsusv
+ 6V83Ci+o5SFQYyLQVZMkSVJ+2UHw+oaxZjaB2Ewc1iZQIYwcHEKwETEJjAyXNXsm612RTNCOJb/
+ zPaqfaz8i/d4aIdeFQxVOyhc8/5oMcN/37Z3KYcFUvfsufS9JszvVmSJTfflF2eWh8zL8lz4oW8
+ /EwA=
 X-Developer-Key: i=j@jannau.net; a=openpgp;
  fpr=8B336A6BE4E5695E89B8532B81E806F586338419
 X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi all,
+From: Hector Martin <marcan@marcan.st>
 
-This updated series address the review comments from the original
-submission in 2021 [1]. It adds a new SPI controller driver for Apple
-SoCs and is based on spi-sifive. It has been tested with the generic
-jedec,spi-nor support and with a downstream driver for an Apple specific
-HID over SPI transport.
+The Apple SPI controller is present in SoCs such as the M1 (t8103) and
+M1 Pro/Max (t600x). This controller uses one IRQ and one clock, and
+doesn't need any special properties, so the binding is trivial.
 
-As usual, I'm splitting off the MAINTAINERS and DT binding changes.
-We would rather merge the MAINTAINERS change through the Asahi-SoC
-tree to avoid merge conflicts as things trickle upstream, since
-we have other submissions touching that section of the file.
-
-The DT binding change can go via the SPI tree or via ours, but it's
-easier if we merge it, as then we can make the DT changes to
-instantiate it without worrying about DT validation failures depending
-on merge order.
-
-This is mostly Hector's work with a few minor changes to address review
-comments from me.
-
-[1] https://lore.kernel.org/linux-spi/20211212034726.26306-1-marcan@marcan.st/
-
-v2:
-- removed '#address-cells' and '#size-cells' from the bindings and added
-  Rob's Rb:
-- fixed (new) checkpatch warnings
-- added t8112 (M2) SoC
-- shorted long and complex source code lines
-- switch to devm_clk_prepare_enable() and devm_pm_runtime_enable()
-- switch to dev_err_probe() in probe function
-- removed "pdev->dev.dma_mask = NULL;"
-- got rid of apple_spi_remove()
-
+Signed-off-by: Hector Martin <marcan@marcan.st>
 Signed-off-by: Janne Grunau <j@jannau.net>
 ---
-Changes in v3:
-- fixed bindings_check warning
-- converted top file comment to C++ style comments
-- dropped verbose dev_err_probe after failed devm_* function
-- stopped setting field in zero initialized struct to 0
-- added error handling for devm_pm_runtime_enable()
-- Link to v2: https://lore.kernel.org/r/20241101-asahi-spi-v2-0-763a8a84d834@jannau.net
+ .../devicetree/bindings/spi/apple,spi.yaml         | 62 ++++++++++++++++++++++
+ 1 file changed, 62 insertions(+)
 
-Changes in v2:
-- removed '#address-cells' and '#size-cells' from the bindings and added
-  Rob's Rb:
-- fixed (new) checkpatch warnings
-- added t8112 (M2) SoC
-- shorted long and complex source code lines
-- switch to devm_clk_prepare_enable() and devm_pm_runtime_enable()
-- switch to dev_err_probe() in probe function
-- removed "pdev->dev.dma_mask = NULL;"
-- got rid of apple_spi_remove()
-- Link to v1: https://lore.kernel.org/linux-spi/20211212034726.26306-1-marcan@marcan.st/
+diff --git a/Documentation/devicetree/bindings/spi/apple,spi.yaml b/Documentation/devicetree/bindings/spi/apple,spi.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..8b4f974faa23bcf9a1ea0a0eb52ad17ca196b341
+--- /dev/null
++++ b/Documentation/devicetree/bindings/spi/apple,spi.yaml
+@@ -0,0 +1,62 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/spi/apple,spi.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple ARM SoC SPI controller
++
++allOf:
++  - $ref: spi-controller.yaml#
++
++maintainers:
++  - Hector Martin <marcan@marcan.st>
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,t8103-spi
++          - apple,t8112-spi
++          - apple,t6000-spi
++      - const: apple,spi
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  power-domains:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - interrupts
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/apple-aic.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    soc {
++      #address-cells = <2>;
++      #size-cells = <2>;
++
++      spi: spi@39b104000 {
++        compatible = "apple,t6000-spi", "apple,spi";
++        reg = <0x3 0x9b104000 0x0 0x4000>;
++        interrupt-parent = <&aic>;
++        interrupts = <AIC_IRQ 0 1107 IRQ_TYPE_LEVEL_HIGH>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++        clocks = <&clk>;
++      };
++    };
 
----
-Hector Martin (3):
-      dt-bindings: spi: apple,spi: Add binding for Apple SPI controllers
-      spi: apple: Add driver for Apple SPI controller
-      MAINTAINERS: Add apple-spi driver & binding files
-
- .../devicetree/bindings/spi/apple,spi.yaml         |  62 +++
- MAINTAINERS                                        |   2 +
- drivers/spi/Kconfig                                |  11 +
- drivers/spi/Makefile                               |   1 +
- drivers/spi/spi-apple.c                            | 531 +++++++++++++++++++++
- 5 files changed, 607 insertions(+)
----
-base-commit: 98f7e32f20d28ec452afb208f9cffc08448a2652
-change-id: 20240811-asahi-spi-f8740ba797d7
-
-Best regards,
 -- 
-Janne Grunau <j@jannau.net>
+2.47.0
 
