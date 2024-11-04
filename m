@@ -1,11 +1,11 @@
 From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Mon, 04 Nov 2024 14:43:37 +0800
-Subject: [PATCH v7 07/10] drm/bridge: it6505: fix HDCP CTS KSV list read
- with UNIGRAF DPR-100.
+Date: Mon, 04 Nov 2024 14:43:38 +0800
+Subject: [PATCH v7 08/10] drm/bridge: it6505: fix HDCP CTS compare V
+ matching
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241104-v7-upstream-v7-7-8b71fd0f1d2d@ite.com.tw>
+Message-Id: <20241104-v7-upstream-v7-8-8b71fd0f1d2d@ite.com.tw>
 References: <20241104-v7-upstream-v7-0-8b71fd0f1d2d@ite.com.tw>
 In-Reply-To: <20241104-v7-upstream-v7-0-8b71fd0f1d2d@ite.com.tw>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
@@ -20,109 +20,80 @@ To: Andrzej Hajda <andrzej.hajda@intel.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Pin-yen Lin <treapking@chromium.org>, 
  Kenneth Hung <Kenneth.Hung@ite.com.tw>, Pet Weng <Pet.Weng@ite.com.tw>, 
- Hermes Wu <Hermes.wu@ite.com.tw>, 
- Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+ Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730702658; l=3017;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730702658; l=2090;
  i=Hermes.wu@ite.com.tw; s=20241101; h=from:subject:message-id;
- bh=LkPmWJ3+m9M5J4gwKc6RK5juQw3WKrt44Jh3DJ8DUnY=;
- b=/4DGNl6gmpJctBFosSW3teRnwAylMwNxDWmHIo/I0uS3ya8Giz7igPIWIDr0M9XMQ/JM+r68N
- 07XvT2jGbNdBq/0jkfwFWZvcPKkedRW+m5rJQT9Is7PkYfA26gsxVOv
+ bh=ZSAKlMN3TX9Z+Nap4xZYSRAsF5UPHncEdZ0YN4lKi7Q=;
+ b=0RC1LwORg5n2qNKKa8sJE+M5MpcnheMXVmLKiazuSzvFA6rmb+PWeuLh0GWcMbNH7/MOx85P3
+ 1FdmQ1mUfv+ASAarixZchTIpD7edv9+UpmDFOV60Y8+LUosXEP7SeeX
 X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
  pk=FOYYbsP2Nlw6mjB3rLFYSLmAiENzj4AWQly5XTcDuMM=
 X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241101 with auth_id=268
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When running the HDCP CTS test with UNIGRAF DPR-100.
-KSV list must be read from DP_AUX_HDCP_KSV_FIFO in an AUX request,
-and can not separate with multiple read requests.
+When HDCP negotiation with a repeater device.
+Checking SHA V' matching must retry 3 times before restarting HDCP.
 
-The AUX operation command "CMD_AUX_GET_KSV_LIST" reads the KSV list
-with AUX FIFO and is able to read DP_AUX_HDCP_KSV_FIFO in an AUX request.
-
-Add it6505_get_ksvlist() which uses CMD_AUX_GET_KSV_LIST operation
-to read the KSV list.
-
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
 Signed-off-by: Hermes Wu <hermes.wu@ite.com.tw>
 ---
- drivers/gpu/drm/bridge/ite-it6505.c | 48 +++++++++++++++++++++++++++----------
- 1 file changed, 36 insertions(+), 12 deletions(-)
+ drivers/gpu/drm/bridge/ite-it6505.c | 32 +++++++++++++++++++-------------
+ 1 file changed, 19 insertions(+), 13 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index 614fbb6295237708aa5b692de87ab5548c499da5..4ed4899227602a4574a13ffa22442dcc4a5c2092 100644
+index 4ed4899227602a4574a13ffa22442dcc4a5c2092..2b8f208d1e17eebe3287ab0aa71180176dd0574e 100644
 --- a/drivers/gpu/drm/bridge/ite-it6505.c
 +++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -1189,6 +1189,37 @@ static int it6505_get_edid_block(void *data, u8 *buf, unsigned int block,
- 	return 0;
- }
- 
-+static int it6505_get_ksvlist(struct it6505 *it6505, u8 *buf, size_t len)
-+{
-+	struct device *dev = it6505->dev;
-+	enum aux_cmd_reply reply;
-+	int request_size, ret;
-+	int i = 0;
-+
-+	do {
-+		request_size = min_t(int, (int)len - i, 15);
-+
-+		ret = it6505_aux_do_transfer(it6505, CMD_AUX_GET_KSV_LIST,
-+					     DP_AUX_HDCP_KSV_FIFO,
-+					     buf + i, request_size, &reply);
-+
-+		DRM_DEV_DEBUG_DRIVER(dev, "request_size = %d, ret =%d", request_size, ret);
-+		if (ret < 0)
-+			return ret;
-+
-+		i += request_size;
-+	} while (i < len);
-+
-+	DRM_DEV_DEBUG_DRIVER(dev, "ksv read cnt = %d down_stream_cnt=%d ", i, i / 5);
-+
-+	for (i = 0 ; i < len; i += 5) {
-+		DRM_DEV_DEBUG_DRIVER(dev, "ksv[%d] = %02X%02X%02X%02X%02X",
-+				     i / 5, buf[i], buf[i + 1], buf[i + 2], buf[i + 3], buf[i + 4]);
-+	}
-+
-+	return len;
-+}
-+
- static void it6505_variable_config(struct it6505 *it6505)
- {
- 	it6505->link_rate_bw_code = HBR;
-@@ -1970,7 +2001,7 @@ static int it6505_setup_sha1_input(struct it6505 *it6505, u8 *sha1_input)
+@@ -2058,7 +2058,7 @@ static bool it6505_hdcp_part2_ksvlist_check(struct it6505 *it6505)
  {
  	struct device *dev = it6505->dev;
- 	u8 binfo[2];
--	int down_stream_count, i, err, msg_count = 0;
-+	int down_stream_count, err, msg_count = 0;
+ 	u8 av[5][4], bv[5][4];
+-	int i, err;
++	int i, err, retry;
  
- 	err = it6505_get_dpcd(it6505, DP_AUX_HDCP_BINFO, binfo,
- 			      ARRAY_SIZE(binfo));
-@@ -1995,18 +2026,11 @@ static int it6505_setup_sha1_input(struct it6505 *it6505, u8 *sha1_input)
- 			down_stream_count);
- 		return 0;
+ 	i = it6505_setup_sha1_input(it6505, it6505->sha1_input);
+ 	if (i <= 0) {
+@@ -2067,22 +2067,28 @@ static bool it6505_hdcp_part2_ksvlist_check(struct it6505 *it6505)
  	}
-+	err =  it6505_get_ksvlist(it6505, sha1_input, down_stream_count * 5);
-+	if (err < 0)
-+		return err;
  
--	for (i = 0; i < down_stream_count; i++) {
--		err = it6505_get_dpcd(it6505, DP_AUX_HDCP_KSV_FIFO +
--				      (i % 3) * DRM_HDCP_KSV_LEN,
--				      sha1_input + msg_count,
--				      DRM_HDCP_KSV_LEN);
--
--		if (err < 0)
--			return err;
--
--		msg_count += 5;
+ 	it6505_sha1_digest(it6505, it6505->sha1_input, i, (u8 *)av);
++	/*1B-05 V' must retry 3 times */
++	for (retry = 0; retry < 3; retry++) {
++		err = it6505_get_dpcd(it6505, DP_AUX_HDCP_V_PRIME(0), (u8 *)bv,
++				      sizeof(bv));
+ 
+-	err = it6505_get_dpcd(it6505, DP_AUX_HDCP_V_PRIME(0), (u8 *)bv,
+-			      sizeof(bv));
++		if (err < 0) {
++			dev_err(dev, "Read V' value Fail %d", retry);
++			continue;
++		}
+ 
+-	if (err < 0) {
+-		dev_err(dev, "Read V' value Fail");
+-		return false;
 -	}
-+	msg_count += down_stream_count * 5;
++		for (i = 0; i < 5; i++) {
++			if (bv[i][3] != av[i][0] || bv[i][2] != av[i][1] ||
++			    av[i][1] != av[i][2] || bv[i][0] != av[i][3])
++				break;
  
- 	it6505->hdcp_down_stream_count = down_stream_count;
- 	sha1_input[msg_count++] = binfo[0];
+-	for (i = 0; i < 5; i++)
+-		if (bv[i][3] != av[i][0] || bv[i][2] != av[i][1] ||
+-		    bv[i][1] != av[i][2] || bv[i][0] != av[i][3])
+-			return false;
++			DRM_DEV_DEBUG_DRIVER(dev, "V' all match!! %d, %d", retry, i);
++			return true;
++		}
++	}
+ 
+-	DRM_DEV_DEBUG_DRIVER(dev, "V' all match!!");
+-	return true;
++	DRM_DEV_DEBUG_DRIVER(dev, "V' NOT match!! %d", retry);
++	return false;
+ }
+ 
+ static void it6505_hdcp_wait_ksv_list(struct work_struct *work)
 
 -- 
 2.34.1
