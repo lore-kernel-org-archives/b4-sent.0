@@ -1,135 +1,118 @@
-From: Janne Grunau <j@jannau.net>
-Date: Sat, 02 Nov 2024 12:34:24 +0100
-Subject: [PATCH 5/5] arm64: dts: apple: Add SPI NOR nvram partition to all
- devices
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH v7 00/10] drm/bridge: it6505: fix HDCP CTS fail items and
+ add MCCS support
+Date: Mon, 04 Nov 2024 14:43:30 +0800
+Message-Id: <20241104-v7-upstream-v7-0-8b71fd0f1d2d@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241102-asahi-spi-dt-v1-5-7ac44c0a88f9@jannau.net>
-References: <20241102-asahi-spi-dt-v1-0-7ac44c0a88f9@jannau.net>
-In-Reply-To: <20241102-asahi-spi-dt-v1-0-7ac44c0a88f9@jannau.net>
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Janne Grunau <j@jannau.net>
+X-B4-Tracking: v=1; b=H4sIABJtKGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyzHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDQwND3TJz3dKC4pKi1MRcXXPT1MQUozSjNFMzcyWgjoKi1LTMCrBp0bG
+ 1tQBAzplEXQAAAA==
+X-Change-ID: 20241101-v7-upstream-75ead2f2f567
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Hermes Wu <hermes.wu@ite.com.tw>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Pin-yen Lin <treapking@chromium.org>, 
+ Kenneth Hung <Kenneth.Hung@ite.com.tw>, Pet Weng <Pet.Weng@ite.com.tw>, 
+ Hermes Wu <Hermes.wu@ite.com.tw>, 
+ Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3506; i=j@jannau.net;
- s=yk2024; h=from:subject:message-id;
- bh=4sH2FvtVOU7J6ZD/GsHPG804yvHnrTdh0gHvxrTVtvc=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhnQ1PrvyhtB54ap732lO8opJM52R+f/D5FkNsoGxHWksx
- +wqDt/pKGVhEONikBVTZEnSftnBsLpGMab2QRjMHFYmkCEMXJwCMJH10YwMR55PusaXVe8n5XBh
- Jqvmi6X3HwnWcxaqPZLuPqRQ7laTxMjwjb09Sa9la9eqb9+XvDPIMT0xK+7G9qk8gW1XQyw2N6m
- zAQA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730702658; l=2910;
+ i=Hermes.wu@ite.com.tw; s=20241101; h=from:subject:message-id;
+ bh=N2BEphD6E+ts757yq9dfmmqSySIs2TwDaeNZtjT8DQ8=;
+ b=SnEN66Llgw53Ax04tEB9EPogFfgJEnebxA2xp/6yJ0r/3ojcYg2jVR1CrBzaKZ/7O0Gzl+QKt
+ IDXftIsWc6pCifgJ3F51AP/xEG0oehgeu4c1MWR8K3g1EszvJUWRpfD
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=FOYYbsP2Nlw6mjB3rLFYSLmAiENzj4AWQly5XTcDuMM=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241101 with auth_id=268
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All known M1* and M2* devices use an identical SPI NOR flash
-configuration with a partition containing a non-volatile key:value
-storage. Use a .dtsi and include it for every device.
-The nvram partition parameters itself depend on the version of the
-installed Apple iboot boot loader. m1n1 will fill in the current values
-provided by Apple's iboot.
+There are lots of failure items while running HDCP CTS using UNIGRAF DPR-100.
+In Order to fix those failures, HDCP flow needs to be changed.
 
-Signed-off-by: Janne Grunau <j@jannau.net>
+The DisplayPort AUX protocol supports I2C transport.
+In Order to support MCCS via the aux channel, the aux-i2c operation is added.
+
+v6->v7
+	-[3/10] add header <linux/bitfield.h> included
+
+	links:
+	https://lore.kernel.org/all/20241016-upstream-v6-v6-0-4d93a0c46de1@ite.com.tw/
+
+v5->v6:
+	-keep the commit message wrapped at 72-75 chars.
+	-[10/10] fix return variable being used without being initialized
+
+v4->v5:
+	-add more messages for changes.
+	-[2/10] modified AUX transfer data size judgment.
+		change for-loop to do-while.
+	-[7/10] change for-loop to do-while.
+	-[9/10] change wait timer with timer_after()
+
+	links:
+	https://lore.kernel.org/all/20240926074755.22176-4-Hermes.Wu@ite.com.tw/
+	https://lore.kernel.org/all/20240926075134.22394-1-Hermes.Wu@ite.com.tw/
+
+v3->v4:
+	-split changes  into patches.
+
+v2->v3:
+	-split aux read  KSV function to a patch.
+	-[1/3] new in v3
+	-[2/3] add description of patch
+
+v1->v2:
+	- ignored.
+
+To: Andrzej Hajda <andrzej.hajda@intel.com>
+To: Neil Armstrong <neil.armstrong@linaro.org>
+To: Robert Foss <rfoss@kernel.org>
+To: Laurent Pinchart <Laurent.pinchart@ideasonboard.com>
+To: Jonas Karlman <jonas@kwiboo.se>
+To: Jernej Skrabec <jernej.skrabec@gmail.com>
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+To: Maxime Ripard <mripard@kernel.org>
+To: Thomas Zimmermann <tzimmermann@suse.de>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+To: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+To: Hermes Wu <hermes.wu@ite.com.tw>
+Cc: dri-devel@lists.freedesktop.org
+Cc: linux-kernel@vger.kernel.org
+Cc: Pin-yen Lin <treapking@chromium.org>
+Cc: Kenneth Hung <Kenneth.Hung@ite.com.tw>
+Cc: Pet Weng <Pet.Weng@ite.com.tw> 
+
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- arch/arm64/boot/dts/apple/spi1-nvram.dtsi      | 39 ++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi |  2 ++
- arch/arm64/boot/dts/apple/t600x-j375.dtsi      |  2 ++
- arch/arm64/boot/dts/apple/t8103-jxxx.dtsi      |  2 ++
- arch/arm64/boot/dts/apple/t8112-jxxx.dtsi      |  2 ++
- 5 files changed, 47 insertions(+)
+Hermes Wu (10):
+      drm/bridge: it6505: Change definition of AUX_FIFO_MAX_SIZE
+      drm/bridge: it6505: improve AUX operation for edid read
+      drm/bridge: it6505: add AUX operation for HDCP KSV list read
+      drm/bridge: it6505: Change definition MAX_HDCP_DOWN_STREAM_COUNT
+      drm/bridge: it6505: fix HDCP Bstatus check
+      drm/bridge: it6505: fix HDCP encryption when R0 ready
+      drm/bridge: it6505: fix HDCP CTS KSV list read with UNIGRAF DPR-100.
+      drm/bridge: it6505: fix HDCP CTS compare V matching
+      drm/bridge: it6505: fix HDCP CTS KSV list wait timer
+      drm/bridge: it6505: add I2C functionality on AUX
 
-diff --git a/arch/arm64/boot/dts/apple/spi1-nvram.dtsi b/arch/arm64/boot/dts/apple/spi1-nvram.dtsi
-new file mode 100644
-index 0000000000000000000000000000000000000000..3df2fd3993b52884d7c00b65099c88d830a7a4c3
---- /dev/null
-+++ b/arch/arm64/boot/dts/apple/spi1-nvram.dtsi
-@@ -0,0 +1,39 @@
-+// SPDX-License-Identifier: GPL-2.0+ OR MIT
-+//
-+// Devicetree include for common spi-nor nvram flash.
-+//
-+// Apple uses a consistent configiguration for the nvram on all known M1* and
-+// M2* devices.
-+//
-+// Copyright The Asahi Linux Contributors
-+
-+/ {
-+	aliases {
-+		nvram = &nvram;
-+	};
-+};
-+
-+&spi1 {
-+	status = "okay";
-+
-+	flash@0 {
-+		compatible = "jedec,spi-nor";
-+		reg = <0x0>;
-+		spi-max-frequency = <25000000>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+
-+		partitions {
-+			compatible = "fixed-partitions";
-+			#address-cells = <1>;
-+			#size-cells = <1>;
-+
-+			nvram: partition@700000 {
-+				label = "nvram";
-+				/* To be filled by the loader */
-+				reg = <0x0 0x0>;
-+				status = "disabled";
-+			};
-+		};
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi b/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi
-index 2e471dfe43cf885c1234d36bf0e0acfdc4904621..22ebc78e120bf8f0f71fd532e9dce4dcd117bbc6 100644
---- a/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi
-@@ -119,3 +119,5 @@ sdhci0: mmc@0,0 {
- &fpwm0 {
- 	status = "okay";
- };
-+
-+#include "spi1-nvram.dtsi"
-diff --git a/arch/arm64/boot/dts/apple/t600x-j375.dtsi b/arch/arm64/boot/dts/apple/t600x-j375.dtsi
-index 1e5a19e49b089d4b3c5e12828b682d1993e35e75..d5b985ad567936111ee5cccc9ca9fc23d01d9edf 100644
---- a/arch/arm64/boot/dts/apple/t600x-j375.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-j375.dtsi
-@@ -126,3 +126,5 @@ &pcie0_dart_2 {
- &pcie0_dart_3 {
- 	status = "okay";
- };
-+
-+#include "spi1-nvram.dtsi"
-diff --git a/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi b/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
-index 5988a4eb6efaa008c290b1842e0da2aae8052ba4..8e82231acab59ca0bffdcecfb6681f59661fcd96 100644
---- a/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
-@@ -90,3 +90,5 @@ bluetooth0: bluetooth@0,1 {
- &nco_clkref {
- 	clock-frequency = <900000000>;
- };
-+
-+#include "spi1-nvram.dtsi"
-diff --git a/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi b/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi
-index f5edf61113e7aa869613d672b281f7b7e84efb79..6da35496a4c88dbaba125ebbe8c5a4a428c647c3 100644
---- a/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi
-@@ -79,3 +79,5 @@ &i2c3 {
- &nco_clkref {
- 	clock-frequency = <900000000>;
- };
-+
-+#include "spi1-nvram.dtsi"
+ drivers/gpu/drm/bridge/ite-it6505.c | 335 ++++++++++++++++++++++++++++++------
+ 1 file changed, 278 insertions(+), 57 deletions(-)
+---
+base-commit: 4d1c251e8889b4629789425fe85adfc6d39666ac
+change-id: 20241101-v7-upstream-75ead2f2f567
 
+Best regards,
 -- 
-2.47.0
+Hermes Wu <Hermes.wu@ite.com.tw>
 
