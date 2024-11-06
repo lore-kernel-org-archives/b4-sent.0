@@ -1,15 +1,12 @@
 From: Jens Korinth <jens.korinth@tuta.io>
-Subject: [PATCH v2 0/3] rust: Add pr_*_once macros
-Date: Thu, 07 Nov 2024 00:28:30 +0100
-Message-Id: <20241107-pr_once_macros-v2-0-dc0317ff301e@tuta.io>
+Date: Thu, 07 Nov 2024 00:28:31 +0100
+Subject: [PATCH v2 1/3] rust: print: Add do_once_lite macro
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJ/7K2cC/03MQQ6CMBCF4auYWVsCLRR15T2MIbVOYYztkCkaE
- 8LdbVyZt/oW718hoxBmOO1WEHxTJk4Fer8DP7k0oqJ7Mehat01T92qWgZPHITovnJVtzQFt6G5
- HbaCcZsFAn1/wci0OwlEtk6D7z5iyztRVb/vOqkaF14MWVy0cObHQeYyOnpXnCNv2BZlrqAijA
- AAA
-X-Change-ID: 20241107-pr_once_macros-6438e6f5b923
+Message-Id: <20241107-pr_once_macros-v2-1-dc0317ff301e@tuta.io>
+References: <20241107-pr_once_macros-v2-0-dc0317ff301e@tuta.io>
+In-Reply-To: <20241107-pr_once_macros-v2-0-dc0317ff301e@tuta.io>
 To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
  Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
  =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
@@ -20,46 +17,68 @@ Cc: rust-for-linux@vger.kernel.org,
  FUJITA Tomonori <fujita.tomonori@gmail.com>, 
  Dirk Behme <dirk.behme@gmail.com>, Jens Korinth <jens.korinth@tuta.io>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730935742; l=1165;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730935742; l=1737;
  i=jens.korinth@tuta.io; s=20241107; h=from:subject:message-id;
- bh=tw5fLm83O0UTmbo9rIYoAbdVNaWkQiP+TDLFds65lNo=;
- b=Sh9XFH3RvKvlt28Wir7l4tE3kbQ9S0dnphTIpAAuVJnAo2M+IMtK3QZsf5WDeQAcRXExciXXb
- 3i2L4fJMk+JDO9j/kVH73OXbO+JeQ3pvUI+WAfSgUoHMDRIWt/mALeD
+ bh=XAaxx9JmqKS+Pe6xMJnXcJZk36ZsLXSLNP4nDUqpGWQ=;
+ b=nlo7tRq3zFwZSaKfoh2qn6IK8kzCzxDKbH8xIpf4z5UJL/fZtWhMG3GZ599jVImoik7A/dFDP
+ JSxC2eEEyAzCDxybfZKNsgLSjw5p1N2hmIP62lxAGr2QNw+KZEJ+X5v
 X-Developer-Key: i=jens.korinth@tuta.io; a=ed25519;
  pk=bG0q4Zyj3o4d/r326zKL7ym+/tXzyykcjh+U0M13iyc=
 X-Endpoint-Received: by B4 Relay for jens.korinth@tuta.io/20241107 with auth_id=270
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Rust version of pr_[emerg|alert|crit|err|warn|notic|info]_once
-functions, which print a message only once.
-
-v2:
-- Split patch into do_once_lite part and pr_*_once macros
-- Add macro rule for call without condition => renamed to do_once_lite
-- Used condition-less call in pr_*_once macros
-- Added examples
-- Removed TODO in kernel/error.rs using pr_warn_once
-v1: https://lore.kernel.org/rust-for-linux/20241106.083113.356536037967804464.fujita.tomonori@gmail.com/
+Add do_once_lite macro that executes code only once.
+Has two rules, one with a condition to replace [`do_once_lite_if`] in
+the kernel, and one without.
 
 Signed-off-by: Jens Korinth <jens.korinth@tuta.io>
-Co-developed-by: FUJITA Tomonori <fujita.tomonori@gmail.com>
-Co-developed-by: Boqun Feng <boqun.feng@gmail.com>
 ---
-FUJITA Tomonori (1):
-      rust: print: Add pr_*_once macros
+ rust/kernel/print.rs | 34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
 
-Jens Korinth (2):
-      rust: print: Add do_once_lite macro
-      rust: error: Replace pr_warn by pr_warn_once
+diff --git a/rust/kernel/print.rs b/rust/kernel/print.rs
+index a28077a7cb301193dcca293befb096b2dd153202..9c7434b221984ad325138e5dc90ab4340cd0be2e 100644
+--- a/rust/kernel/print.rs
++++ b/rust/kernel/print.rs
+@@ -414,3 +414,37 @@ macro_rules! pr_cont (
+         $crate::print_macro!($crate::print::format_strings::CONT, true, $($arg)*)
+     )
+ );
++
++/// Executes code only once.
++///
++/// Equivalent to the kernel's [`do_once_lite_if`] macro when called with
++/// a condition expression.
++/// Public but hidden since it should only be used from public macros.
++///
++/// # Examples
++///
++/// ```
++/// kernel::do_once_lite!(pr_warn!("warn once"));
++/// kernel::do_once_lite!({ /* perform_complex_test() */ true }, pr_warn!("warn only once"));
++/// ```
++#[doc(hidden)]
++#[macro_export]
++macro_rules! do_once_lite (
++    ($e:expr) => (
++         $crate::do_once_lite!(true, $e);
++    );
++    ($condition:expr, $e:expr) => (
++        {
++            #[link_section = ".data.once"]
++            static ALREADY_DONE: core::sync::atomic::AtomicBool =
++                core::sync::atomic::AtomicBool::new(false);
++
++            if !ALREADY_DONE.load(core::sync::atomic::Ordering::Relaxed)
++                && $condition
++                && !ALREADY_DONE.swap(true, core::sync::atomic::Ordering::Relaxed)
++            {
++                $e;
++            }
++        }
++    );
++);
 
- rust/kernel/error.rs |   3 +-
- rust/kernel/print.rs | 143 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 144 insertions(+), 2 deletions(-)
----
-base-commit: ae7851c29747fa3765ecb722fe722117a346f988
-change-id: 20241107-pr_once_macros-6438e6f5b923
-
-Best regards,
 -- 
-Jens Korinth <jens.korinth@tuta.io>
+2.44.1
 
