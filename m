@@ -1,109 +1,65 @@
-From: Janne Grunau <j@jannau.net>
-Date: Wed, 06 Nov 2024 22:10:12 +0100
-Subject: [PATCH v2 4/4] iommu: apple: Manage IOVA separately from global
- LMB mem map
+From: Jens Korinth <jens.korinth@tuta.io>
+Subject: [PATCH v2 0/3] rust: Add pr_*_once macros
+Date: Thu, 07 Nov 2024 00:28:30 +0100
+Message-Id: <20241107-pr_once_macros-v2-0-dc0317ff301e@tuta.io>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241106-io_lmb_apple_dart_iommu-v2-4-0580f4bdb023@jannau.net>
-References: <20241106-io_lmb_apple_dart_iommu-v2-0-0580f4bdb023@jannau.net>
-In-Reply-To: <20241106-io_lmb_apple_dart_iommu-v2-0-0580f4bdb023@jannau.net>
-To: Tom Rini <trini@konsulko.com>, Mark Kettenis <kettenis@openbsd.org>, 
- Sughosh Ganu <sughosh.ganu@linaro.org>, Simon Glass <sjg@chromium.org>
-Cc: u-boot@lists.denx.de, Janne Grunau <j@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAJ/7K2cC/03MQQ6CMBCF4auYWVsCLRR15T2MIbVOYYztkCkaE
+ 8LdbVyZt/oW718hoxBmOO1WEHxTJk4Fer8DP7k0oqJ7Mehat01T92qWgZPHITovnJVtzQFt6G5
+ HbaCcZsFAn1/wci0OwlEtk6D7z5iyztRVb/vOqkaF14MWVy0cObHQeYyOnpXnCNv2BZlrqAijA
+ AAA
+X-Change-ID: 20241107-pr_once_macros-6438e6f5b923
+To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <benno.lossin@proton.me>, 
+ Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Trevor Gross <tmgross@umich.edu>
+Cc: rust-for-linux@vger.kernel.org, 
+ FUJITA Tomonori <fujita.tomonori@gmail.com>, 
+ Dirk Behme <dirk.behme@gmail.com>, Jens Korinth <jens.korinth@tuta.io>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2694; i=j@jannau.net;
- s=yk2024; h=from:subject:message-id;
- bh=08kZAPvA4oNAZQc/Pg50HxtG4DgEYxQOQYIzZTgD1O4=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhnTt25ZPRBe0qH1U4bpW/ORH9weFvMUhdxXPmzR2mdsLv
- 4mp1OXvKGVhEONikBVTZEnSftnBsLpGMab2QRjMHFYmkCEMXJwCMBG5jYwMrxVFQqfod6s7Rbd3
- 7fL+wNxibxOazt++zu3gA47uiboqjAyTDCWcbJ23shyU0f3yuU03+eTkLy8i0zRrOK+J7nEsvcI
- MAA==
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730935742; l=1165;
+ i=jens.korinth@tuta.io; s=20241107; h=from:subject:message-id;
+ bh=tw5fLm83O0UTmbo9rIYoAbdVNaWkQiP+TDLFds65lNo=;
+ b=Sh9XFH3RvKvlt28Wir7l4tE3kbQ9S0dnphTIpAAuVJnAo2M+IMtK3QZsf5WDeQAcRXExciXXb
+ 3i2L4fJMk+JDO9j/kVH73OXbO+JeQ3pvUI+WAfSgUoHMDRIWt/mALeD
+X-Developer-Key: i=jens.korinth@tuta.io; a=ed25519;
+ pk=bG0q4Zyj3o4d/r326zKL7ym+/tXzyykcjh+U0M13iyc=
+X-Endpoint-Received: by B4 Relay for jens.korinth@tuta.io/20241107 with auth_id=270
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There is no overlap between the IOVA space managed by the iommu (here
-the 32-bit address space) and physical RAM on Apple silicon systems. The
-RAM starts at 0x10_0000_0000 or 0x100_0000_0000 so it's not possible to
-manage the IOVA with the global memory LMB and use 1:1 translation.
-In addition each device has its own iommu and does not need to share the
-address space with all other devices. This should not be problem for
-u-boot's limited use and hardware support.
-Restore the private per instance LMB IOVA map.
+Add Rust version of pr_[emerg|alert|crit|err|warn|notic|info]_once
+functions, which print a message only once.
 
-Fixes: ed17a33fed2 ("lmb: make LMB memory map persistent and global")
-Signed-off-by: Janne Grunau <j@jannau.net>
+v2:
+- Split patch into do_once_lite part and pr_*_once macros
+- Add macro rule for call without condition => renamed to do_once_lite
+- Used condition-less call in pr_*_once macros
+- Added examples
+- Removed TODO in kernel/error.rs using pr_warn_once
+v1: https://lore.kernel.org/rust-for-linux/20241106.083113.356536037967804464.fujita.tomonori@gmail.com/
+
+Signed-off-by: Jens Korinth <jens.korinth@tuta.io>
+Co-developed-by: FUJITA Tomonori <fujita.tomonori@gmail.com>
+Co-developed-by: Boqun Feng <boqun.feng@gmail.com>
 ---
- drivers/iommu/apple_dart.c | 18 ++++++++++++++----
- 1 file changed, 14 insertions(+), 4 deletions(-)
+FUJITA Tomonori (1):
+      rust: print: Add pr_*_once macros
 
-diff --git a/drivers/iommu/apple_dart.c b/drivers/iommu/apple_dart.c
-index 611ac7cd6deb4fccd45ccfe8cbb9b3e36e2af753..3e9e7819e517b8fe62b9e429b7a8ca3eca29741d 100644
---- a/drivers/iommu/apple_dart.c
-+++ b/drivers/iommu/apple_dart.c
-@@ -73,6 +73,8 @@ struct apple_dart_priv {
- 	u64 *l1, *l2;
- 	int bypass, shift;
- 
-+	struct lmb io_lmb;
-+
- 	dma_addr_t dvabase;
- 	dma_addr_t dvaend;
- 
-@@ -123,7 +125,7 @@ static dma_addr_t apple_dart_map(struct udevice *dev, void *addr, size_t size)
- 	off = (phys_addr_t)addr - paddr;
- 	psize = ALIGN(size + off, DART_PAGE_SIZE);
- 
--	dva = lmb_alloc(psize, DART_PAGE_SIZE);
-+	dva = io_lmb_alloc(&priv->io_lmb, psize, DART_PAGE_SIZE);
- 
- 	idx = dva / DART_PAGE_SIZE;
- 	for (i = 0; i < psize / DART_PAGE_SIZE; i++) {
-@@ -159,7 +161,7 @@ static void apple_dart_unmap(struct udevice *dev, dma_addr_t addr, size_t size)
- 			   (unsigned long)&priv->l2[idx + i]);
- 	priv->flush_tlb(priv);
- 
--	lmb_free(dva, psize);
-+	io_lmb_free(&priv->io_lmb, dva, psize);
- }
- 
- static struct iommu_ops apple_dart_ops = {
-@@ -173,7 +175,7 @@ static int apple_dart_probe(struct udevice *dev)
- 	dma_addr_t addr;
- 	phys_addr_t l2;
- 	int ntte, nl1, nl2;
--	int sid, i;
-+	int ret, sid, i;
- 	u32 params2, params4;
- 
- 	priv->base = dev_read_addr_ptr(dev);
-@@ -212,7 +214,13 @@ static int apple_dart_probe(struct udevice *dev)
- 	priv->dvabase = DART_PAGE_SIZE;
- 	priv->dvaend = SZ_4G - DART_PAGE_SIZE;
- 
--	lmb_add(priv->dvabase, priv->dvaend - priv->dvabase);
-+	ret = io_lmb_setup(&priv->io_lmb);
-+	if (ret)
-+		return ret;
-+	ret = io_lmb_add(&priv->io_lmb, priv->dvabase,
-+			 priv->dvaend - priv->dvabase);
-+	if (ret)
-+		return -EINVAL;
- 
- 	/* Disable translations. */
- 	for (sid = 0; sid < priv->nsid; sid++)
-@@ -294,6 +302,8 @@ static int apple_dart_remove(struct udevice *dev)
- 	}
- 	priv->flush_tlb(priv);
- 
-+	io_lmb_teardown(&priv->io_lmb);
-+
- 	return 0;
- }
- 
+Jens Korinth (2):
+      rust: print: Add do_once_lite macro
+      rust: error: Replace pr_warn by pr_warn_once
 
+ rust/kernel/error.rs |   3 +-
+ rust/kernel/print.rs | 143 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 144 insertions(+), 2 deletions(-)
+---
+base-commit: ae7851c29747fa3765ecb722fe722117a346f988
+change-id: 20241107-pr_once_macros-6438e6f5b923
+
+Best regards,
 -- 
-2.47.0
+Jens Korinth <jens.korinth@tuta.io>
 
