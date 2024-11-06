@@ -1,66 +1,120 @@
-From: Janne Grunau <j@jannau.net>
-Date: Wed, 06 Nov 2024 08:54:02 +0100
-Subject: [PATCH v5 3/3] MAINTAINERS: Add apple-spi driver & binding files
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Subject: [PATCH net 0/6] Make TCP-MD5-diag slightly less broken
+Date: Wed, 06 Nov 2024 18:10:13 +0000
+Message-Id: <20241106-tcp-md5-diag-prep-v1-0-d62debf3dded@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241106-asahi-spi-v5-3-e81a4f3a8e19@jannau.net>
-References: <20241106-asahi-spi-v5-0-e81a4f3a8e19@jannau.net>
-In-Reply-To: <20241106-asahi-spi-v5-0-e81a4f3a8e19@jannau.net>
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-spi@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Janne Grunau <j@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAAWxK2cC/x2MSQrDMAwAvxJ0rsB2N9qvlB4cS050iGssUwohf
+ 4/S4wzMrKDchBWewwqNv6LyKQb+NECaY5kYhYwhuHDx3t2wp4oLXZEkTlgbVwzZUcrnu6eHA+t
+ MZvn9ny8o3OFtcozKOLZY0nzslqidG2zbDgv5IMqBAAAA
+X-Change-ID: 20241106-tcp-md5-diag-prep-2f0dcf371d90
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ David Ahern <dsahern@kernel.org>, Ivan Delalande <colona@arista.com>, 
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>, Boris Pismenny <borisp@nvidia.com>, 
+ John Fastabend <john.fastabend@gmail.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ mptcp@lists.linux.dev, Dmitry Safonov <0x7f454c46@gmail.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1316; i=j@jannau.net;
- s=yk2024; h=from:subject:message-id;
- bh=wbyAeXiak8ymhiqSGZePVuZ0IdBpI3guim8H/E8/EiU=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhnRthfUzOlZFlm65nPWA31d2+UxpfaX3bhb9xmdWlsk/M
- dfttwrsKGVhEONikBVTZEnSftnBsLpGMab2QRjMHFYmkCEMXJwCMJG3Lgz/7EJ9pv446XDkfNcc
- vRr1wn7ufpEozhxfWdOnuxxXlu09w/BP+cxVu9ZHHV8kPmvfsX1v5qap9Jm9rneJi47p+8tRwn3
- MAA==
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730918993; l=4298;
+ i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
+ bh=DVwDJD/KkZRG9Ci5yJY5o05rou58w9qxq4QZ3Hjqx9g=;
+ b=Q5kvMZzu/5iCWGWYFoCykO42N7Cilo4ui53yOEQLYEJv7xu6ULHvMTUwZFbYnd+grqxebBatf
+ xgQC6i5XrsnCZN2KLe4KTqooOmKeaCoknsIy/eDclwlURdI3tb6kx4K
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+My original intent was to replace the last non-upstream Arista's TCP-AO
+piece. That is per-netns procfs seqfile which lists AO keys. In my view
+an acceptable upstream alternative would be TCP-AO-diag uAPI.
 
-This Apple SPI controller is present on Apple ARM SoCs (t8103/t6000).
+So, I started by looking and reviewing TCP-MD5-diag code. And straight
+away I saw a bunch of issues:
 
-Splitting this change from the binding/driver commits to avoid merge
-conflicts with other things touching this section, as usual.
+1. Similarly to TCP_MD5SIG_EXT, which doesn't check tcpm_flags for
+   unknown flags and so being non-extendable setsockopt(), the same
+   way tcp_diag_put_md5sig() dumps md5 keys in an array of
+   tcp_diag_md5sig, which makes it ABI non-extendable structure
+   as userspace can't tolerate any new members in it.
 
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Janne Grunau <j@jannau.net>
+2. Inet-diag allocates netlink message for sockets in
+   inet_diag_dump_one_icsk(), which uses a TCP-diag callback
+   .idiag_get_aux_size(), that pre-calculates the needed space for
+   TCP-diag related information. But as neither socket lock nor
+   rcu_readlock() are held between allocation and the actual TCP
+   info filling, the TCP-related space requirement may change before
+   reaching tcp_diag_put_md5sig(). I.e., the number of TCP-MD5 keys on
+   a socket. Thankfully, TCP-MD5-diag won't overwrite the skb, but will
+   return EMSGSIZE, triggering WARN_ON() in inet_diag_dump_one_icsk().
+
+3. Inet-diag "do" request* can create skb of any message required size.
+   But "dump" request* the skb size, since d35c99ff77ec ("netlink: do
+   not enter direct reclaim from netlink_dump()") is limited by
+   32 KB. Having in mind that sizeof(struct tcp_diag_md5sig) = 100 bytes, 
+   dumps for sockets that have more than 327 keys are going to fail
+   (not counting other diag infos, which lower this limit futher).
+   That is much lower than the number of TCP-MD5 keys that can be
+   allocated on a socket with the current default
+   optmem_max limit (128Kb).
+
+So, then I went and written selftests for TCP-MD5-diag and besides
+confirming that (2) and (3) are not theoretical issues, I also
+discovered another issues, that I didn't notice on code inspection:
+
+4. nlattr::nla_len is __u16, which limits the largest netlink attibute
+   by 64Kb or by 655 tcp_diag_md5sig keys in the diag array. What
+   happens de-facto is that the netlink attribute gets u16 overflow,
+   breaking the userspace parsing - RTA_NEXT(), that should point
+   to the next attribute, points into the middle of md5 keys array.
+
+In this patch set issues (2) and (4) are addressed.
+(2) by not returning EMSGSIZE when the dump raced with modifying
+TCP-MD5 keys on a socket, but mark the dump inconsistent by setting
+NLM_F_DUMP_INTR nlmsg flag. Which changes uAPI in situations where
+previously kernel did WARN() and errored the dump.
+(4) by artificially limiting the maximum attribute size by U16_MAX - 1.
+
+In order to remove the new limit from (4) solution, my plan is to
+convert the dump of TCP-MD5 keys from an array to
+NL_ATTR_TYPE_NESTED_ARRAY (or alike), which should also address (1).
+And for (3), it's needed to teach tcp-diag how-to remember not only
+socket on which previous recvmsg() stopped, but potentially TCP-MD5
+key as well.
+
+I plan in the next part of patch set address (3), (1) and the new limit
+for (4), together with adding new TCP-AO-diag.
+
+* Terminology from Documentation/userspace-api/netlink/intro.rst
+
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- MAINTAINERS | 2 ++
- 1 file changed, 2 insertions(+)
+Dmitry Safonov (6):
+      net/diag: Do not race on dumping MD5 keys with adding new MD5 keys
+      net/diag: Warn only once on EMSGSIZE
+      net/diag: Pre-allocate optional info only if requested
+      net/diag: Always pre-allocate tcp_ulp info
+      net/diag: Limit TCP-MD5-diag array by max attribute length
+      net/netlink: Correct the comment on netlink message max cap
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index cc40a9d9b8cd10e2e00caa5a5881381cd40c0d9a..552febcb12a95766ff502960782941d9d016d5e0 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2068,6 +2068,7 @@ F:	Documentation/devicetree/bindings/pci/apple,pcie.yaml
- F:	Documentation/devicetree/bindings/pinctrl/apple,pinctrl.yaml
- F:	Documentation/devicetree/bindings/power/apple*
- F:	Documentation/devicetree/bindings/pwm/apple,s5l-fpwm.yaml
-+F:	Documentation/devicetree/bindings/spi/apple,spi.yaml
- F:	Documentation/devicetree/bindings/watchdog/apple,wdt.yaml
- F:	arch/arm64/boot/dts/apple/
- F:	drivers/bluetooth/hci_bcm4377.c
-@@ -2085,6 +2086,7 @@ F:	drivers/nvmem/apple-efuses.c
- F:	drivers/pinctrl/pinctrl-apple-gpio.c
- F:	drivers/pwm/pwm-apple.c
- F:	drivers/soc/apple/*
-+F:	drivers/spi/spi-apple.c
- F:	drivers/watchdog/apple_wdt.c
- F:	include/dt-bindings/interrupt-controller/apple-aic.h
- F:	include/dt-bindings/pinctrl/apple.h
+ include/linux/inet_diag.h |  3 +-
+ include/net/tcp.h         |  1 -
+ net/ipv4/inet_diag.c      | 87 ++++++++++++++++++++++++++++++++++++++---------
+ net/ipv4/tcp_diag.c       | 69 ++++++++++++++++++-------------------
+ net/mptcp/diag.c          | 20 -----------
+ net/netlink/af_netlink.c  |  4 +--
+ net/tls/tls_main.c        | 17 ---------
+ 7 files changed, 109 insertions(+), 92 deletions(-)
+---
+base-commit: 2e1b3cc9d7f790145a80cb705b168f05dab65df2
+change-id: 20241106-tcp-md5-diag-prep-2f0dcf371d90
 
+Best regards,
 -- 
-2.47.0
+Dmitry Safonov <0x7f454c46@gmail.com>
 
