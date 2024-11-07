@@ -1,10 +1,10 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Thu, 07 Nov 2024 11:58:09 +0000
-Subject: [PATCH 1/2] clk: qcom: gcc-sm8550: Keep UFS PHY GDSCs ALWAYS_ON
+Date: Thu, 07 Nov 2024 11:58:10 +0000
+Subject: [PATCH 2/2] clk: qcom: gcc-sm8650: Keep UFS PHY GDSCs ALWAYS_ON
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241107-ufs-clk-fix-v1-1-6032ff22a052@linaro.org>
+Message-Id: <20241107-ufs-clk-fix-v1-2-6032ff22a052@linaro.org>
 References: <20241107-ufs-clk-fix-v1-0-6032ff22a052@linaro.org>
 In-Reply-To: <20241107-ufs-clk-fix-v1-0-6032ff22a052@linaro.org>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -17,26 +17,25 @@ Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org,
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1811;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1726;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=HLNXhxeA0d1kaDOGx2ZDq/GyczbnxDOYCBJsf8padcs=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnLKtWlMyTFtfeKixW/Ry1GRcw0Wc5ZeIShmfST
- ljUoOuh8CCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZyyrVgAKCRBVnxHm/pHO
- 9dUECACmLYKmlwTa3vNIOh8c2A9iQNTlvtbUop9MU+loAitzIM7cVs4ieKxbIdbNIV2OKoJpeDZ
- VaBcbVCrOjtKb0OcshplAXBbO+ev5HC1Vk/SRBf6SfZMF2JT0m1I6MpPP4g0HHnRaSuaJZFkGGa
- zNlEJZQyx/E1b03Tu0EOqnpdC4vLyN8YTB4YKukAtWBiEdHN/5mY4OreyvRzb/EBG3IfPB4DKJm
- LQ9VDOBMNRG7Y7Hr1M0le04AlUaiz+MD8r+ReV3GyCu0NYhbV2p7qnSEq1lf66BDZ9kop5lDJzR
- oNv6e5rrm5Tyz6/9DuQpTxNmYITg+BOTcM6QDTVvdu8cjqkh
+ bh=FYMKCEEuacXk+42R8P6zQhXoxh2cvI/j+fmsSrjKCbU=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnLKtWTSaVN7myne/t1gzjS1A1koyo4Svt/P6RF
+ qn/vo26NbCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZyyrVgAKCRBVnxHm/pHO
+ 9YJhCACEM11P1PgwtQ5SOpPd5K0j4R0YiML/G5exG9X1Il6TFhcWi1gOKtfe4Qxa7PV18rq871H
+ Xxt4v9fyAZrR/sO4kIzKE9UE4VjUOx7uEQLx0mfHjYVhSfmFOA1+IwvNz0QSJZxSmJbMA4Ngl+N
+ 3fytbwtVJfLD+L9+Sj0jrezK4xc9JdTSEETyRcPXhKIcQxEY98Y8uUuzpsR8SOWuu7mtyAYUgcz
+ pFh8mQwrmT+8zHpPb5PYhmHc91rJjy1c99aflBgmCL2X66hc7UuL4LMwBK5XTtuf48lKjxEMcVC
+ jdv+PWToC5RWqj30LLEY2qpW8fWoRw4isIOtSEm2Si7KmCfi
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Starting from SM8550, UFS PHY GDSCs doesn't support hardware retention. So
-using RETAIN_FF_ENABLE is wrong. Moreover, without ALWAYS_ON flag, GDSCs
-will get powered down during suspend, causing the UFS PHY to loose its
-state. And this will lead to below UFS error during resume as observed on
-SM8550-QRD:
+In SM8650, UFS PHY GDSCs doesn't support hardware retention. So using
+RETAIN_FF_ENABLE is wrong. Moreover, without ALWAYS_ON flag, GDSCs will get
+powered down during suspend, causing the UFS PHY to loose its state. And
+this will lead to UFS error similar to below during resume:
 
 ufshcd-qcom 1d84000.ufs: ufshcd_uic_hibern8_exit: hibern8 exit failed. ret = 5
 ufshcd-qcom 1d84000.ufs: __ufshcd_wl_resume: hibern8 exit failed 5
@@ -45,19 +44,18 @@ ufs_device_wlun 0:0:0:49488: PM: dpm_run_callback(): scsi_bus_resume+0x0/0x84 re
 ufs_device_wlun 0:0:0:49488: PM: failed to resume async: error 5
 
 Cc: stable@vger.kernel.org # 6.8
-Fixes: 1fe8273c8d40 ("clk: qcom: gcc-sm8550: Add the missing RETAIN_FF_ENABLE GDSC flag")
-Reported-by: Neil Armstrong <neil.armstrong@linaro.org>
+Fixes: c58225b7e3d7 ("clk: qcom: add the SM8650 Global Clock Controller driver, part 1")
 Suggested-by: Nitin Rawat <quic_nitirawa@quicinc.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/clk/qcom/gcc-sm8550.c | 4 ++--
+ drivers/clk/qcom/gcc-sm8650.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/clk/qcom/gcc-sm8550.c b/drivers/clk/qcom/gcc-sm8550.c
-index 5abaeddd6afc..7dd08e175820 100644
---- a/drivers/clk/qcom/gcc-sm8550.c
-+++ b/drivers/clk/qcom/gcc-sm8550.c
-@@ -3046,7 +3046,7 @@ static struct gdsc ufs_phy_gdsc = {
+diff --git a/drivers/clk/qcom/gcc-sm8650.c b/drivers/clk/qcom/gcc-sm8650.c
+index fd9d6544bdd5..ddc38caf7160 100644
+--- a/drivers/clk/qcom/gcc-sm8650.c
++++ b/drivers/clk/qcom/gcc-sm8650.c
+@@ -3480,7 +3480,7 @@ static struct gdsc ufs_phy_gdsc = {
  		.name = "ufs_phy_gdsc",
  	},
  	.pwrsts = PWRSTS_OFF_ON,
@@ -66,7 +64,7 @@ index 5abaeddd6afc..7dd08e175820 100644
  };
  
  static struct gdsc ufs_mem_phy_gdsc = {
-@@ -3055,7 +3055,7 @@ static struct gdsc ufs_mem_phy_gdsc = {
+@@ -3489,7 +3489,7 @@ static struct gdsc ufs_mem_phy_gdsc = {
  		.name = "ufs_mem_phy_gdsc",
  	},
  	.pwrsts = PWRSTS_OFF_ON,
