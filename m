@@ -1,79 +1,92 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Thu, 07 Nov 2024 11:58:10 +0000
-Subject: [PATCH 2/2] clk: qcom: gcc-sm8650: Keep UFS PHY GDSCs ALWAYS_ON
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Date: Thu, 07 Nov 2024 22:20:06 +0100
+Subject: [PATCH] iio: imu: inv_icm42600: fix spi burst write not supported
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241107-ufs-clk-fix-v1-2-6032ff22a052@linaro.org>
-References: <20241107-ufs-clk-fix-v1-0-6032ff22a052@linaro.org>
-In-Reply-To: <20241107-ufs-clk-fix-v1-0-6032ff22a052@linaro.org>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Amit Pundir <amit.pundir@linaro.org>, 
- Nitin Rawat <quic_nitirawa@quicinc.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- stable@vger.kernel.org
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1726;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=FYMKCEEuacXk+42R8P6zQhXoxh2cvI/j+fmsSrjKCbU=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnLKtWTSaVN7myne/t1gzjS1A1koyo4Svt/P6RF
- qn/vo26NbCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZyyrVgAKCRBVnxHm/pHO
- 9YJhCACEM11P1PgwtQ5SOpPd5K0j4R0YiML/G5exG9X1Il6TFhcWi1gOKtfe4Qxa7PV18rq871H
- Xxt4v9fyAZrR/sO4kIzKE9UE4VjUOx7uEQLx0mfHjYVhSfmFOA1+IwvNz0QSJZxSmJbMA4Ngl+N
- 3fytbwtVJfLD+L9+Sj0jrezK4xc9JdTSEETyRcPXhKIcQxEY98Y8uUuzpsR8SOWuu7mtyAYUgcz
- pFh8mQwrmT+8zHpPb5PYhmHc91rJjy1c99aflBgmCL2X66hc7UuL4LMwBK5XTtuf48lKjxEMcVC
- jdv+PWToC5RWqj30LLEY2qpW8fWoRw4isIOtSEm2Si7KmCfi
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+Message-Id: <20241107-inv-icm42600-fix-spi-burst-write-not-supported-v1-1-800b22574d01@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAAUvLWcC/x2NQQ6CMBAAv0L27CZtQap+hXBAuuAebJvdgiaEv
+ 9t4nMPMHKAkTAqP5gChnZVTrGAvDcyvKa6EHCqDM66z1njkuCPP7871xuDCX9TM+NxEC36EC2F
+ MBXXLOUmhgLSQvwXf+vt0hRrNQlX6D4fxPH9mAghhgAAAAA==
+X-Change-ID: 20241107-inv-icm42600-fix-spi-burst-write-not-supported-efe78d7379a5
+To: Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>
+Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
+ Jonathan Cameron <Jonathan.Cameron@huawei.com>, linux-iio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731014416; l=2772;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=eEsvkfouCdMgwkJJdk752XAqwbz3MkUlI7SGBMxVUEA=;
+ b=rGRs/voApe1d3FHAtobH1O1wnVlfw8ltZ85xR27K9NB5sP2Y6y0Ko+FLzwKAKK1tSmud64sjq
+ 8rH/UkcvuMHBG90IpziZBixkIu53Rx/IjT5HG3d7/SkMxXT7fmT59R5
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In SM8650, UFS PHY GDSCs doesn't support hardware retention. So using
-RETAIN_FF_ENABLE is wrong. Moreover, without ALWAYS_ON flag, GDSCs will get
-powered down during suspend, causing the UFS PHY to loose its state. And
-this will lead to UFS error similar to below during resume:
+Burst write with SPI is not working for all icm42600 chips. It was
+only used for setting user offsets with regmap_bulk_write.
 
-ufshcd-qcom 1d84000.ufs: ufshcd_uic_hibern8_exit: hibern8 exit failed. ret = 5
-ufshcd-qcom 1d84000.ufs: __ufshcd_wl_resume: hibern8 exit failed 5
-ufs_device_wlun 0:0:0:49488: ufshcd_wl_resume failed: 5
-ufs_device_wlun 0:0:0:49488: PM: dpm_run_callback(): scsi_bus_resume+0x0/0x84 returns 5
-ufs_device_wlun 0:0:0:49488: PM: failed to resume async: error 5
+Allow tweak of common regmap_config for using only single write for
+spi.
 
-Cc: stable@vger.kernel.org # 6.8
-Fixes: c58225b7e3d7 ("clk: qcom: add the SM8650 Global Clock Controller driver, part 1")
-Suggested-by: Nitin Rawat <quic_nitirawa@quicinc.com>
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Fixes: 9f9ff91b775b ("iio: imu: inv_icm42600: add SPI driver for inv_icm42600 driver")
+Cc: stable@vger.kernel.org
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- drivers/clk/qcom/gcc-sm8650.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/iio/imu/inv_icm42600/inv_icm42600.h      | 2 +-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_core.c | 2 +-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c  | 3 +++
+ 3 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/clk/qcom/gcc-sm8650.c b/drivers/clk/qcom/gcc-sm8650.c
-index fd9d6544bdd5..ddc38caf7160 100644
---- a/drivers/clk/qcom/gcc-sm8650.c
-+++ b/drivers/clk/qcom/gcc-sm8650.c
-@@ -3480,7 +3480,7 @@ static struct gdsc ufs_phy_gdsc = {
- 		.name = "ufs_phy_gdsc",
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
+index 3a07e43e4cf154f3107c015c30248330d8e677f8..36a3b0795fb7d6cb0c178fadd93896fbc346ba0d 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
+@@ -402,7 +402,7 @@ struct inv_icm42600_sensor_state {
+ 
+ typedef int (*inv_icm42600_bus_setup)(struct inv_icm42600_state *);
+ 
+-extern const struct regmap_config inv_icm42600_regmap_config;
++extern struct regmap_config inv_icm42600_regmap_config;
+ extern const struct dev_pm_ops inv_icm42600_pm_ops;
+ 
+ const struct iio_mount_matrix *
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
+index 93b5d7a3339ccff16b21bf6c40ed7b2311317cf4..680373f6267b37d386e4e7bda543ba4efe97e66b 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
+@@ -74,7 +74,7 @@ static const struct regmap_access_table inv_icm42600_regmap_rd_noinc_accesses[]
  	},
- 	.pwrsts = PWRSTS_OFF_ON,
--	.flags = POLL_CFG_GDSCR | RETAIN_FF_ENABLE,
-+	.flags = POLL_CFG_GDSCR | ALWAYS_ON,
  };
  
- static struct gdsc ufs_mem_phy_gdsc = {
-@@ -3489,7 +3489,7 @@ static struct gdsc ufs_mem_phy_gdsc = {
- 		.name = "ufs_mem_phy_gdsc",
- 	},
- 	.pwrsts = PWRSTS_OFF_ON,
--	.flags = POLL_CFG_GDSCR | RETAIN_FF_ENABLE,
-+	.flags = POLL_CFG_GDSCR | ALWAYS_ON,
- };
+-const struct regmap_config inv_icm42600_regmap_config = {
++struct regmap_config inv_icm42600_regmap_config = {
+ 	.name = "inv_icm42600",
+ 	.reg_bits = 8,
+ 	.val_bits = 8,
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
+index 3b6d05fce65d544524b25299c6d342af92cfd1e0..73cacfd157a4538ae8c9d1c8d97157afa28aa672 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
+@@ -59,6 +59,9 @@ static int inv_icm42600_probe(struct spi_device *spi)
+ 		return -EINVAL;
+ 	chip = (uintptr_t)match;
  
- static struct gdsc usb30_prim_gdsc = {
++	/* spi doesn't support burst write */
++	inv_icm42600_regmap_config.use_single_write = true;
++
+ 	regmap = devm_regmap_init_spi(spi, &inv_icm42600_regmap_config);
+ 	if (IS_ERR(regmap))
+ 		return PTR_ERR(regmap);
 
+---
+base-commit: c9f8285ec18c08fae0de08835eb8e5953339e664
+change-id: 20241107-inv-icm42600-fix-spi-burst-write-not-supported-efe78d7379a5
+
+Best regards,
 -- 
-2.25.1
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
