@@ -1,15 +1,13 @@
 From: Oliver Facklam <oliver.facklam@zuehlke.com>
-Subject: [PATCH 0/4] usb: typec: hd3ss3220: enhance driver with port type,
- power opmode, and role preference settings
-Date: Thu, 07 Nov 2024 12:43:26 +0100
-Message-Id: <20241107-usb-typec-controller-enhancements-v1-0-3886c1acced2@zuehlke.com>
+Date: Thu, 07 Nov 2024 12:43:27 +0100
+Subject: [PATCH 1/4] usb: typec: hd3ss3220: configure advertised power
+ opmode based on fwnode property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAN6nLGcC/x2NwQrCMBAFf6Xs2YUkBLX+injQ+KoLdVOyqVhK/
- 73B48Aws5KhCIwu3UoFXzHJ2sAfOkrvu77A8mxMwYXovYs824PrMiFxylpLHkcUhjY34QOtxsf
- zyYfYx9APjlpnKhjk939cb9u2A+ddx6RzAAAA
-X-Change-ID: 20241104-usb-typec-controller-enhancements-6871249429f0
+Message-Id: <20241107-usb-typec-controller-enhancements-v1-1-3886c1acced2@zuehlke.com>
+References: <20241107-usb-typec-controller-enhancements-v1-0-3886c1acced2@zuehlke.com>
+In-Reply-To: <20241107-usb-typec-controller-enhancements-v1-0-3886c1acced2@zuehlke.com>
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -18,38 +16,118 @@ Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org,
  Mathis Foerst <mathis.foerst@zuehlke.com>, 
  Michael Glettig <michael.glettig@zuehlke.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730979838; l=1040;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730979838; l=3492;
  i=oliver.facklam@zuehlke.com; s=20241107; h=from:subject:message-id;
- bh=XYYLn1zHeH3UNBGUAYyypY198vN0jFLiOM8L5eat9OE=;
- b=g+uONn75YrD3FrsvESNSt4vNkomXLwmCRwNYqfOvr1YLdbjQwB4//ktoGdzuJEdejKij7vmIN
- Tr4X2aUk+CKCMzpb8TWmvyc6HhDpxf/P8HeADh/TLaMoeXnqPfH0ugq
+ bh=xQEWItvO4K2hmgsVC5C+clRiGDX0sc04fruShxWbObY=;
+ b=Tqye3+C+vb15i1SGLnSaSimixcm0SjmZ31zzyMIapThQJyi051aNEe82OlBkwdUKDm5CpER0k
+ LhT95ki85z0A24A8UK8uE6zVtvqQYATagSVIufnge5fWpJJVeLWN4UQ
 X-Developer-Key: i=oliver.facklam@zuehlke.com; a=ed25519;
  pk=bMlB+nko+ewJHQJLwq2t26VDbmRmNDPr/1woleqp7Lw=
 X-Endpoint-Received: by B4 Relay for oliver.facklam@zuehlke.com/20241107 with auth_id=271
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The TI HD3SS3220 Type-C controller supports configuring the port type,
-the advertised power operation mode, and its role preference
-through its I2C register map.
+The TI HD3SS3220 Type-C controller supports configuring its advertised
+power operation mode over I2C using the CURRENT_MODE_ADVERTISE field
+of the Connection Status Register.
 
-This patch series adds support for configuring these registers
-based on existing fwnode properties and typec_operations.
+Configure this power mode based on the existing (optional) property
+"typec-power-opmode" of /schemas/connector/usb-connector.yaml
 
 Signed-off-by: Oliver Facklam <oliver.facklam@zuehlke.com>
 ---
-Oliver Facklam (4):
-      usb: typec: hd3ss3220: configure advertised power opmode based on fwnode property
-      usb: typec: hd3ss3220: use typec_get_fw_cap() to fill typec_cap
-      usb: typec: hd3ss3220: support configuring port type
-      usb: typec: hd3ss3220: support configuring role preference based on fwnode property and typec_operation
+ drivers/usb/typec/hd3ss3220.c | 53 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 53 insertions(+)
 
- drivers/usb/typec/hd3ss3220.c | 171 +++++++++++++++++++++++++++++++++++-------
- 1 file changed, 144 insertions(+), 27 deletions(-)
----
-base-commit: afb92ad8733ef0a2843cc229e4d96aead80bc429
-change-id: 20241104-usb-typec-controller-enhancements-6871249429f0
+diff --git a/drivers/usb/typec/hd3ss3220.c b/drivers/usb/typec/hd3ss3220.c
+index fb1242e82ffdc64a9a3330f50155bb8f0fe45685..56f74bf70895ca701083bde44a5bbe0b691551e1 100644
+--- a/drivers/usb/typec/hd3ss3220.c
++++ b/drivers/usb/typec/hd3ss3220.c
+@@ -16,10 +16,17 @@
+ #include <linux/delay.h>
+ #include <linux/workqueue.h>
+ 
++#define HD3SS3220_REG_CN_STAT		0x08
+ #define HD3SS3220_REG_CN_STAT_CTRL	0x09
+ #define HD3SS3220_REG_GEN_CTRL		0x0A
+ #define HD3SS3220_REG_DEV_REV		0xA0
+ 
++/* Register HD3SS3220_REG_CN_STAT */
++#define HD3SS3220_REG_CN_STAT_CURRENT_MODE_MASK		(BIT(7) | BIT(6))
++#define HD3SS3220_REG_CN_STAT_CURRENT_MODE_DEFAULT	0x00
++#define HD3SS3220_REG_CN_STAT_CURRENT_MODE_MID		BIT(6)
++#define HD3SS3220_REG_CN_STAT_CURRENT_MODE_HIGH		BIT(7)
++
+ /* Register HD3SS3220_REG_CN_STAT_CTRL*/
+ #define HD3SS3220_REG_CN_STAT_CTRL_ATTACHED_STATE_MASK	(BIT(7) | BIT(6))
+ #define HD3SS3220_REG_CN_STAT_CTRL_AS_DFP		BIT(6)
+@@ -43,6 +50,31 @@ struct hd3ss3220 {
+ 	bool poll;
+ };
+ 
++static int hd3ss3220_set_power_opmode(struct hd3ss3220 *hd3ss3220, int power_opmode)
++{
++	int current_mode;
++
++	switch (power_opmode) {
++	case TYPEC_PWR_MODE_USB:
++		current_mode = HD3SS3220_REG_CN_STAT_CURRENT_MODE_DEFAULT;
++		break;
++	case TYPEC_PWR_MODE_1_5A:
++		current_mode = HD3SS3220_REG_CN_STAT_CURRENT_MODE_MID;
++		break;
++	case TYPEC_PWR_MODE_3_0A:
++		current_mode = HD3SS3220_REG_CN_STAT_CURRENT_MODE_HIGH;
++		break;
++	case TYPEC_PWR_MODE_PD: /* Power delivery not supported */
++	default:
++		dev_err(hd3ss3220->dev, "bad power operation mode: %d\n", power_opmode);
++		return -EINVAL;
++	}
++
++	return regmap_update_bits(hd3ss3220->regmap, HD3SS3220_REG_CN_STAT,
++				  HD3SS3220_REG_CN_STAT_CURRENT_MODE_MASK,
++				  current_mode);
++}
++
+ static int hd3ss3220_set_source_pref(struct hd3ss3220 *hd3ss3220, int src_pref)
+ {
+ 	return regmap_update_bits(hd3ss3220->regmap, HD3SS3220_REG_GEN_CTRL,
+@@ -162,6 +194,23 @@ static irqreturn_t hd3ss3220_irq_handler(int irq, void *data)
+ 	return hd3ss3220_irq(hd3ss3220);
+ }
+ 
++static int hd3ss3220_configure_power_opmode(struct hd3ss3220 *hd3ss3220,
++					    struct fwnode_handle *connector)
++{
++	/*
++	 * Supported power operation mode can be configured through device tree
++	 */
++	const char *cap_str;
++	int ret, power_opmode;
++
++	ret = fwnode_property_read_string(connector, "typec-power-opmode", &cap_str);
++	if (ret)
++		return 0;
++
++	power_opmode = typec_find_pwr_opmode(cap_str);
++	return hd3ss3220_set_power_opmode(hd3ss3220, power_opmode);
++}
++
+ static const struct regmap_config config = {
+ 	.reg_bits = 8,
+ 	.val_bits = 8,
+@@ -223,6 +272,10 @@ static int hd3ss3220_probe(struct i2c_client *client)
+ 		goto err_put_role;
+ 	}
+ 
++	ret = hd3ss3220_configure_power_opmode(hd3ss3220, connector);
++	if (ret < 0)
++		goto err_unreg_port;
++
+ 	hd3ss3220_set_role(hd3ss3220);
+ 	ret = regmap_read(hd3ss3220->regmap, HD3SS3220_REG_CN_STAT_CTRL, &data);
+ 	if (ret < 0)
 
-Best regards,
 -- 
-Oliver Facklam <oliver.facklam@zuehlke.com>
+2.34.1
 
