@@ -1,54 +1,164 @@
-From: Jens Korinth <jens.korinth@tuta.io>
-Date: Thu, 07 Nov 2024 00:28:33 +0100
-Subject: [PATCH v2 3/3] rust: error: Replace pr_warn by pr_warn_once
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v8 0/3] arm64: dts: qcom: sc8280xp-blackrock: dt definition
+ for Windows Dev Kit 2023
+Date: Thu, 07 Nov 2024 07:16:46 +0100
+Message-Id: <20241107-jg-blackrock-for-upstream-v8-0-0305621f17f2@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241107-pr_once_macros-v2-3-dc0317ff301e@tuta.io>
-References: <20241107-pr_once_macros-v2-0-dc0317ff301e@tuta.io>
-In-Reply-To: <20241107-pr_once_macros-v2-0-dc0317ff301e@tuta.io>
-To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <benno.lossin@proton.me>, 
- Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Trevor Gross <tmgross@umich.edu>
-Cc: rust-for-linux@vger.kernel.org, 
- FUJITA Tomonori <fujita.tomonori@gmail.com>, 
- Dirk Behme <dirk.behme@gmail.com>, Jens Korinth <jens.korinth@tuta.io>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1730935742; l=871;
- i=jens.korinth@tuta.io; s=20241107; h=from:subject:message-id;
- bh=bZLBDxudHxGsVw5ADGygZHTwpiRJkVukaGhfv2uAfCU=;
- b=rCRDNFVHsl6EvjGErsf96ETgFVTCOcgf4A4s1Q94yDktDaDqLW5xgq2wU1C+7PZ1M+OLqzIUn
- gWNdGWRyyC3ClY9JuqFHxUaOnMkg6sZjn22Py0ggrsz2uQYA881j02Z
-X-Developer-Key: i=jens.korinth@tuta.io; a=ed25519;
- pk=bG0q4Zyj3o4d/r326zKL7ym+/tXzyykcjh+U0M13iyc=
-X-Endpoint-Received: by B4 Relay for jens.korinth@tuta.io/20241107 with auth_id=270
+X-B4-Tracking: v=1; b=H4sIAE5bLGcC/43SzU4DIRQF4FdpWHsNXKCAK9/DuGD4abHT0sB0o
+ jZ9d5lZaDeSLg8JHycnXEkNJYVKXjZXUsKcasqnFvTThri9Pe0CJN8yQYqCGqTwsYNhtO5Qsjt
+ AzAUu5zqVYI+gnLLOIg2aI2n3zyXE9Lnab+8t71Odcvlan5rZckpklEKrwCAIqUFYbsFGiuAkB
+ kmdZWYrXvPoq9vnPNY8XqbWrz4P6Zss5Iwr80C5GYGCGSJGNiAzzHVZ/ssyyniP5Y3V3HguNLc
+ 6qC4r7lhUPVY0VlE+oBTRGRm7rLxjeXcEubalznAtuLK+y24fZrdLW+dVVF57o/rbqj+2jdtj1
+ dIWjQymfRPpzb/s7Xb7Aca+TljJAgAA
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kalle Valo <kvalo@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Merck Hung <merckhung@gmail.com>, 
+ xlazom00@gmail.com, Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1730960208; l=6104;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=hRZ6R9XGg0C09TZAwpxZbnEHKBb4TEY7MB4O1hSHSzA=;
+ b=Qqo3GKpmQtkj2guCSnQInzHuRW1wy3aJiM+dtgNYDhAeKcg4YrVLof/tX3k8cGD95J3xw3yjy
+ Bry+VsijwTvBB47bxBdjL0Q769K7SElBg8PMqC/1ZRhlh7lfeuo4+t5
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use new pr_warn_once macro to resolve TODO in error.rs.
+"Microsoft Windows Dev Kit 2023" aka "Blackrock" aka "Project Volterra"
 
-Signed-off-by: Jens Korinth <jens.korinth@tuta.io>
+Device tree for the Microsoft Windows Dev Kit 2023. This work
+is based on the initial work of Merck Hung <merckhung@gmail.com>.
+
+The Windows Dev Kit 2023 is a nice little desktop based on sc8280xp.
+Link: https://learn.microsoft.com/en-us/windows/arm/dev-kit/
+
+Supported features:
+- USB type-c and type-a ports
+- minidp connector
+- built-in r8152 Ethernet adapter
+- PCIe devices
+- nvme
+- ath11k WiFi (WCN6855)
+- WCN6855 Bluetooth
+- A690 GPU
+- ADSP and CDSP
+- GPIO keys
+- Audio definition (works via USB)
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+
+Original work: https://github.com/merckhung/linux_ms_dev_kit/blob/ms-dev-kit-2023-v6.3.0/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-dev-kit-2023.dts
+
+This dt is more or less deducted from the Thinkpad X13s.
+It contains a lot of guesswork, and also a lot of research on
+what works with the Windows Dev Kit.
+
+The WiFi definition references qcom,ath11k-calibration-variant = "MS_Volterra"
+which is unfortunately not yet in the linux-firmware. The ath11k driver finds
+the default one for 
+"bus=pci,vendor=17cb,device=1103,subsystem-vendor=17cb,subsystem-device=0108,qmi-chip-id=2|18,qmi-board-id=255"
+when the entry with the variant is not found which is quite sub-optimal. I 
+have placed a pr on github/qca-swiss-army-knife:
+https://github.com/qca/qca-swiss-army-knife/pull/9 that provides an amended 
+board-2.bin and a board-2.json to generate it. 
+
+It is in use and under development since May 2023, pretty stable now.
+
 ---
- rust/kernel/error.rs | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Changes in v8:
+- Re-checked and amended the usb_2_dwc3 definition as pointed out by Krishna.
+  Reduced the usb_2 ports used to one, with usb_2_hsphy0 and usb_2_qmpphy0 as 
+  phys. Removed all others from the definition. Apparently there is a 4 port
+  hub on this port, with the r8152 ethernet adapter on port 001 of this, the
+  other three are the external connectors.
+- Removed max-link-speed = <4> from the pcie2a node. The cap warning is shown
+  regardless.
+- Link to v7: https://lore.kernel.org/r/20241101-jg-blackrock-for-upstream-v7-0-8295e9f545d9@oldschoolsolutions.biz
 
-diff --git a/rust/kernel/error.rs b/rust/kernel/error.rs
-index 7cd3bbab52f208961390de03a255446950e9eb04..fe1b31506b30fba0ec9d5339d80c2a7fa76ce7c7 100644
---- a/rust/kernel/error.rs
-+++ b/rust/kernel/error.rs
-@@ -102,8 +102,7 @@ impl Error {
-     /// be returned in such a case.
-     pub fn from_errno(errno: core::ffi::c_int) -> Error {
-         if errno < -(bindings::MAX_ERRNO as i32) || errno >= 0 {
--            // TODO: Make it a `WARN_ONCE` once available.
--            crate::pr_warn!(
-+            crate::pr_warn_once!(
-                 "attempted to create `Error` with out of range `errno`: {}",
-                 errno
-             );
+Changes in v7:
+- re-checked and amended the usb_2_dwc3 definition as pointed out by Krishna. 
+  The SoC definition already has most of it, reduced to enable node and pinctrl
+- re-worked the sound definition - this box has no mics or speakers or jacks 
+  for them AFAIK. There needs to be something done regarding Soundwire on DP, 
+  but this isn't working yet.(Konrad)
+- rebased the patch onto <20241018-sc8280xp-pwrseq-v6-0-8da8310d9564@linaro.org>
+  and updated wcn-6855-pmu accordingly. (Konrad)
+- re-sorted the pmc8280_1_gpios (Konrad)
+- removed the gpio-reserved-ranges since I don't know what they are for. Best I 
+  could do is refer to the X13s dt, but it's not the same hardware. (Konrad)
+- ath11k: opened a bug https://bugzilla.kernel.org/show_bug.cgi?id=219454 
+  to add the board id with variant to board-2.bin
+- Link to v6: https://lore.kernel.org/r/20241030-jg-blackrock-for-upstream-v6-0-7cd7f7d8d97c@oldschoolsolutions.biz
 
+Changes in v6:
+- added missing acked-by tag from Krzysztof
+- removed aspm-no-l0s from the PCIe ports as suggested by Johan
+- corrected max-link-speed to <4> on PCIe2 as suggested by Johan
+- changed WLAN variant description to "MS_Volterra", added Kalle Valo 
+  for approval / guidance
+- trimmed the supply statements on hsphy and other pcie ports for what 
+  is known and defined on the Thinkpad X13s
+- Link to v5: https://lore.kernel.org/r/20241030-jg-blackrock-for-upstream-v5-0-830c938437ad@oldschoolsolutions.biz
+
+Changes in v5:
+- removed s-o-b from Merck Hung as suggested by Bjorn Andersson. The credits
+  for the original work are in the cover letter and in the dts commit
+- removed Venus codec from the list of supported features. It is, but that
+  part is not in this patch set.
+- Link to v4: https://lore.kernel.org/r/20241027-jg-blackrock-for-upstream-v4-0-703b254fc95f@oldschoolsolutions.biz
+
+Changes in v4:
+- removed the redundant regulator definitions
+- changed the pinctrl property order
+- use microsoft instead of MICROSOFT as subdirectory and device name component
+- amend spacing in audio nodes
+- change external connector dp1 for mini-dp to DP-3 for consistency
+- Link to v3: https://lore.kernel.org/r/20241013-jg-blackrock-for-upstream-v3-0-839d3483a8e7@oldschoolsolutions.biz
+
+Changes in v3:
+- tried to heed all advice and comments given - thank you
+- re-ordered patches to definition before use
+- added "microsoft,blackrock" as compatible in QSEECOM driver
+- removed the qseecom node
+- ordered nodes alphabetically {address, node name, label}
+- amended indentation
+- consistently used blackrock as identifier / directory name
+- sorted identifiers by the same order for multiple instances
+- added some explanation re WiFi
+- added definition for PMU on the WCN6855
+- added some explanation for pcie2 max-link-speed
+- Link to v2: https://lore.kernel.org/r/20240920-jg-blackrock-for-upstream-v2-0-9bf2f1b2191c@oldschoolsolutions.biz
+
+Changes in v2:
+- removed whitespaces and breaks
+- added compatibility binding
+- added feature list
+- reformatted Signed-off list
+- Link to v1: https://lore.kernel.org/r/5f5487e1-e458-4a3a-af02-c52e50ca1964@oldschoolsolutions.biz
+
+---
+Jens Glathe (3):
+      dt-bindings: arm: qcom: Add Microsoft Windows Dev Kit 2023
+      firmware: qcom: scm: Allow QSEECOM for Windows Dev Kit 2023
+      arm64: dts: qcom: sc8280xp-blackrock: dt definition for WDK2023
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    1 +
+ .../boot/dts/qcom/sc8280xp-microsoft-blackrock.dts | 1325 ++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ 4 files changed, 1328 insertions(+)
+---
+base-commit: 5b913f5d7d7fe0f567dea8605f21da6eaa1735fb
+change-id: 20240920-jg-blackrock-for-upstream-7c7aca20e832
+
+Best regards,
 -- 
-2.44.1
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
