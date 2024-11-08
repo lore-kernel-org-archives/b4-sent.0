@@ -1,92 +1,75 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Thu, 07 Nov 2024 22:20:06 +0100
-Subject: [PATCH] iio: imu: inv_icm42600: fix spi burst write not supported
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v5 0/3] support for amlogic rtc
+Date: Fri, 08 Nov 2024 13:54:40 +0800
+Message-Id: <20241108-rtc-v5-0-0194727c778b@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241107-inv-icm42600-fix-spi-burst-write-not-supported-v1-1-800b22574d01@tdk.com>
-X-B4-Tracking: v=1; b=H4sIAAUvLWcC/x2NQQ6CMBAAv0L27CZtQap+hXBAuuAebJvdgiaEv
- 9t4nMPMHKAkTAqP5gChnZVTrGAvDcyvKa6EHCqDM66z1njkuCPP7871xuDCX9TM+NxEC36EC2F
- MBXXLOUmhgLSQvwXf+vt0hRrNQlX6D4fxPH9mAghhgAAAAA==
-X-Change-ID: 20241107-inv-icm42600-fix-spi-burst-write-not-supported-efe78d7379a5
-To: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>
-Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
- Jonathan Cameron <Jonathan.Cameron@huawei.com>, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731014416; l=2772;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=eEsvkfouCdMgwkJJdk752XAqwbz3MkUlI7SGBMxVUEA=;
- b=rGRs/voApe1d3FHAtobH1O1wnVlfw8ltZ85xR27K9NB5sP2Y6y0Ko+FLzwKAKK1tSmud64sjq
- 8rH/UkcvuMHBG90IpziZBixkIu53Rx/IjT5HG3d7/SkMxXT7fmT59R5
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-B4-Tracking: v=1; b=H4sIAKCnLWcC/2XMQQrCMBCF4atI1kZmJk2TuPIe4mKapBpQK6kUp
+ fTuRi2ouHzDfP8o+phT7MV6MYoch9Sn7lyGXi6EP/B5H2UKZQsCqsCSkvnqJZLxwaIjRiXK5yX
+ HNt1ele2u7EPqr12+v6IDPq+/fkAJsm4NKIuByaoNn47dPvmV707iWRjooxzMiooCHVgbrRsb3
+ L9SXwrhrVRR2DIYw7Vjgn9VfSmaVVWUQ466baqogv5V0zQ9AHxC7B46AQAA
+To: Yiting Deng <yiting.deng@amlogic.com>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, linux-rtc@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Krzysztof Kozlowski <krzk@kernel.org>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731045288; l=1783;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=Y4CwMwPQuIcU9wjKisRuEikA8yK46OIFjAflX16ws80=;
+ b=jNGWNeJoco9mLfZbzE2NrkqAIYDH1CSdtYucDI0JEHejYpvcKvY4w66zcRCS9Mb/K3YCtBcUj
+ hkfwvRfI3bkB02bbKqR3yXYI6kKWxsGkcNT9ClwgDaq+OXPLCFZvPrc
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Burst write with SPI is not working for all icm42600 chips. It was
-only used for setting user offsets with regmap_bulk_write.
+Add rtc driver and bindigns for the amlogic A4(A113L2) and A5(A113X2) SoCs.
 
-Allow tweak of common regmap_config for using only single write for
-spi.
-
-Fixes: 9f9ff91b775b ("iio: imu: inv_icm42600: add SPI driver for inv_icm42600 driver")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600.h      | 2 +-
- drivers/iio/imu/inv_icm42600/inv_icm42600_core.c | 2 +-
- drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c  | 3 +++
- 3 files changed, 5 insertions(+), 2 deletions(-)
+Changes in v5:
+- Some formatting adjustments and minor fixes were made based on Christophe's suggestions.
+- Link to v4: https://lore.kernel.org/r/20240920-rtc-v4-0-91ae5fb4e3d5@amlogic.com
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-index 3a07e43e4cf154f3107c015c30248330d8e677f8..36a3b0795fb7d6cb0c178fadd93896fbc346ba0d 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-@@ -402,7 +402,7 @@ struct inv_icm42600_sensor_state {
- 
- typedef int (*inv_icm42600_bus_setup)(struct inv_icm42600_state *);
- 
--extern const struct regmap_config inv_icm42600_regmap_config;
-+extern struct regmap_config inv_icm42600_regmap_config;
- extern const struct dev_pm_ops inv_icm42600_pm_ops;
- 
- const struct iio_mount_matrix *
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-index 93b5d7a3339ccff16b21bf6c40ed7b2311317cf4..680373f6267b37d386e4e7bda543ba4efe97e66b 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-@@ -74,7 +74,7 @@ static const struct regmap_access_table inv_icm42600_regmap_rd_noinc_accesses[]
- 	},
- };
- 
--const struct regmap_config inv_icm42600_regmap_config = {
-+struct regmap_config inv_icm42600_regmap_config = {
- 	.name = "inv_icm42600",
- 	.reg_bits = 8,
- 	.val_bits = 8,
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-index 3b6d05fce65d544524b25299c6d342af92cfd1e0..73cacfd157a4538ae8c9d1c8d97157afa28aa672 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-@@ -59,6 +59,9 @@ static int inv_icm42600_probe(struct spi_device *spi)
- 		return -EINVAL;
- 	chip = (uintptr_t)match;
- 
-+	/* spi doesn't support burst write */
-+	inv_icm42600_regmap_config.use_single_write = true;
-+
- 	regmap = devm_regmap_init_spi(spi, &inv_icm42600_regmap_config);
- 	if (IS_ERR(regmap))
- 		return PTR_ERR(regmap);
+Changes in v4:
+- Keep the same order as as in properties.
+- Link to v3: https://lore.kernel.org/r/20240910-rtc-v3-0-1fa077a69a20@amlogic.com
+
+Changes in v3:
+- Perfect the binding description and rename binding.
+- Using dev_err_probe function correctly, and modify commit message.
+- Change placement about MAINTAINERS.
+- Link to v2: https://lore.kernel.org/r/20240903-rtc-v2-0-05da5755b8d9@amlogic.com
+
+Changes in v2:
+- Modify bindings clock name and perfect the example.
+- Fix some bug in driver, and use dev_err_probe instead of dev_err in probe process.
+- Use RTC API to handle calibration.
+- Remove unused func and rename driver file name.
+- Link to v1: https://lore.kernel.org/r/20240823-rtc-v1-0-6f70381da283@amlogic.com
 
 ---
-base-commit: c9f8285ec18c08fae0de08835eb8e5953339e664
-change-id: 20241107-inv-icm42600-fix-spi-burst-write-not-supported-efe78d7379a5
+Yiting Deng (3):
+      dt-bindings: rtc: Add Amlogic A4 and A5 RTC
+      rtc: support for the Amlogic on-chip RTC
+      MAINTAINERS: Add an entry for Amlogic RTC driver
+
+ .../devicetree/bindings/rtc/amlogic,a4-rtc.yaml    |  63 +++
+ MAINTAINERS                                        |   8 +
+ drivers/rtc/Kconfig                                |  12 +
+ drivers/rtc/Makefile                               |   1 +
+ drivers/rtc/rtc-amlogic-a4.c                       | 476 +++++++++++++++++++++
+ 5 files changed, 560 insertions(+)
+---
+base-commit: 8a2c49e0fd92e6760636bcfbf11e11d9ddd61cf9
+change-id: 20240823-rtc-127cd8192a13
 
 Best regards,
 -- 
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
