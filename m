@@ -1,103 +1,68 @@
-From: Manas <manas18244@iiitd.ac.in>
-Date: Sat, 09 Nov 2024 11:58:34 +0530
-Subject: [PATCH] Remove unused function parameter in __smc_diag_dump
+From: Jens Korinth <jens.korinth@tuta.io>
+Subject: [PATCH v3 0/3] rust: Add pr_*_once macros
+Date: Sat, 09 Nov 2024 21:30:06 +0100
+Message-Id: <20241109-pr_once_macros-v3-0-6beb24e0cac8@tuta.io>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241109-fix-oops-__smc_diag_dump-v1-1-1c55a3e54ad4@iiitd.ac.in>
-X-B4-Tracking: v=1; b=H4sIABEBL2cC/x2MQQqAIBAAvxJ7bkErAvtKhFhutYdSXIog/HvSc
- WBmXhBKTAJD9UKim4XDWUDXFSy7OzdC9oWhUU2ntTK48oMhREFr5VisZ7dZfx0RVe/mloxvzdp
- ByWOi4v7rccr5A9z2hXNqAAAA
-X-Change-ID: 20241109-fix-oops-__smc_diag_dump-06ab3e9d39f4
-To: Wenjia Zhang <wenjia@linux.ibm.com>, Jan Karcher <jaka@linux.ibm.com>, 
- "D. Wythe" <alibuda@linux.alibaba.com>, Tony Lu <tonylu@linux.alibaba.com>, 
- Wen Gu <guwen@linux.alibaba.com>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>
-Cc: Shuah Khan <shuah@kernel.org>, Anup Sharma <anupnewsmail@gmail.com>, 
- linux-s390@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Manas <manas18244@iiitd.ac.in>
+X-B4-Tracking: v=1; b=H4sIAE7GL2cC/3XOPQ7CMAyG4augzKTKD22BiXugqgrBoUakrpxQg
+ VDvTmBiQZ7ewY++l0jACEnsVy/BMGNCGkvY9Ur4wY0XkHguLYwyG61VKyfuafTQR+eZkmw2dgt
+ NqE87Y0V5mhgCPr7gsSsdmKLMA4P7ZWy52qqqbdq6kVqG+xWzqzJFGonxcIkOb5Wn+CEHTJn4+
+ Z04mw/8d81spJJnr6xuQ7BKwyHfi4skumVZ3mEA3HvtAAAA
+X-Change-ID: 20241107-pr_once_macros-6438e6f5b923
+To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <benno.lossin@proton.me>, 
+ Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Trevor Gross <tmgross@umich.edu>
+Cc: rust-for-linux@vger.kernel.org, 
+ FUJITA Tomonori <fujita.tomonori@gmail.com>, 
+ Dirk Behme <dirk.behme@gmail.com>, Jens Korinth <jens.korinth@tuta.io>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731133722; l=2754;
- i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
- bh=uj59/apt0R4vc2BSfem7J5/pEkXFApMSXA+V90Ln/PY=;
- b=DBoFQEraDrMRc9cmU2gZR0vrq1jy1s3x5PYP93B5LyVZszthzhOfKkZvePz8D4qjnDZDjFrRP
- M+n7bDZGW5wCCa/3dAG6xrV6Fyr2pVM96n6kO+YAoWBsc1ZI4oKxGlv
-X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
- pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
-X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731184236; l=1315;
+ i=jens.korinth@tuta.io; s=20241107; h=from:subject:message-id;
+ bh=2H6S41IRcCn9Cb+JAGXeMkPfayPmFqX4nU3fok/DcA0=;
+ b=fCkxcu4Pb9MFk+4BXy+Xgx27D/0StGavmNENGRTa0pKZ3YkyQoZvvKdfHXSc6LHzvU5HBTOZT
+ Ji5dF3s5F6/ATS3xBKheY2zPx+T+ZS2GOWKrHk5pU8PSBhQDc3aV6F+
+X-Developer-Key: i=jens.korinth@tuta.io; a=ed25519;
+ pk=bG0q4Zyj3o4d/r326zKL7ym+/tXzyykcjh+U0M13iyc=
+X-Endpoint-Received: by B4 Relay for jens.korinth@tuta.io/20241107 with auth_id=270
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The last parameter in __smc_diag_dump (struct nlattr *bc) is unused.
-There is only one instance of this function being called and its passed
-with a NULL value in place of bc.
+Add Rust version of pr_[emerg|alert|crit|err|warn|notic|info]_once
+functions, which print a message only once.
 
-Signed-off-by: Manas <manas18244@iiitd.ac.in>
+v3:
+- Fix rustdoc error, formatting issues
+- Fix missing Signed-off-by
+v2: https://lore.kernel.org/r/20241107-pr_once_macros-v2-0-dc0317ff301e@tuta.io
+- Split patch into do_once_lite part and pr_*_once macros
+- Add macro rule for call without condition => renamed to do_once_lite
+- Used condition-less call in pr_*_once macros
+- Added examples
+- Removed TODO in kernel/error.rs using pr_warn_once
+v1: https://lore.kernel.org/rust-for-linux/20241106.083113.356536037967804464.fujita.tomonori@gmail.com/
+
+Co-developed-by: FUJITA Tomonori <fujita.tomonori@gmail.com>
+Co-developed-by: Boqun Feng <boqun.feng@gmail.com>
+Signed-off-by: Jens Korinth <jens.korinth@tuta.io>
 ---
-The last parameter in __smc_diag_dump (struct nlattr *bc) is unused.
-There is only one instance of this function being called and its passed
-with a NULL value in place of bc.
+FUJITA Tomonori (1):
+      rust: print: Add pr_*_once macros
 
-Though, the compiler (gcc) optimizes it. Looking at the object dump of
-vmlinux (via `objdump -D vmlinux`), a new function clone
-(__smc_diag_dump.constprop.0) is added which removes this parameter from
-calling convention altogether.
+Jens Korinth (2):
+      rust: print: Add do_once_lite macro
+      rust: error: Replace pr_warn by pr_warn_once
 
-ffffffff8a701770 <__smc_diag_dump.constprop.0>:
-ffffffff8a701770:       41 57                   push   %r15
-ffffffff8a701772:       41 56                   push   %r14
-ffffffff8a701774:       41 55                   push   %r13
-ffffffff8a701776:       41 54                   push   %r12
-
-There are 5 parameters in original function, but in the cloned function
-only 4.
-
-I believe this patch also fixes this oops bug[1], which arises in the
-same function __smc_diag_dump. But I couldn't verify it further. Can
-someone please test this?
-
-[1] https://syzkaller.appspot.com/bug?extid=271fed3ed6f24600c364
+ rust/kernel/error.rs |   3 +-
+ rust/kernel/print.rs | 160 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 161 insertions(+), 2 deletions(-)
 ---
- net/smc/smc_diag.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
-
-diff --git a/net/smc/smc_diag.c b/net/smc/smc_diag.c
-index 6fdb2d96777ad704c394709ec845f9ddef5e599a..8f7bd40f475945171a0afa5a2cce12d9aa2b1eb4 100644
---- a/net/smc/smc_diag.c
-+++ b/net/smc/smc_diag.c
-@@ -71,8 +71,7 @@ static int smc_diag_msg_attrs_fill(struct sock *sk, struct sk_buff *skb,
- 
- static int __smc_diag_dump(struct sock *sk, struct sk_buff *skb,
- 			   struct netlink_callback *cb,
--			   const struct smc_diag_req *req,
--			   struct nlattr *bc)
-+			   const struct smc_diag_req *req)
- {
- 	struct smc_sock *smc = smc_sk(sk);
- 	struct smc_diag_fallback fallback;
-@@ -199,7 +198,6 @@ static int smc_diag_dump_proto(struct proto *prot, struct sk_buff *skb,
- 	struct smc_diag_dump_ctx *cb_ctx = smc_dump_context(cb);
- 	struct net *net = sock_net(skb->sk);
- 	int snum = cb_ctx->pos[p_type];
--	struct nlattr *bc = NULL;
- 	struct hlist_head *head;
- 	int rc = 0, num = 0;
- 	struct sock *sk;
-@@ -214,7 +212,7 @@ static int smc_diag_dump_proto(struct proto *prot, struct sk_buff *skb,
- 			continue;
- 		if (num < snum)
- 			goto next;
--		rc = __smc_diag_dump(sk, skb, cb, nlmsg_data(cb->nlh), bc);
-+		rc = __smc_diag_dump(sk, skb, cb, nlmsg_data(cb->nlh));
- 		if (rc < 0)
- 			goto out;
- next:
-
----
-base-commit: 59b723cd2adbac2a34fc8e12c74ae26ae45bf230
-change-id: 20241109-fix-oops-__smc_diag_dump-06ab3e9d39f4
+base-commit: ae7851c29747fa3765ecb722fe722117a346f988
+change-id: 20241107-pr_once_macros-6438e6f5b923
 
 Best regards,
 -- 
-Manas <manas18244@iiitd.ac.in>
+Jens Korinth <jens.korinth@tuta.io>
 
