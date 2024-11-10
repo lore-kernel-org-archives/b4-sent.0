@@ -1,54 +1,66 @@
-From: Jens Korinth <jens.korinth@tuta.io>
-Date: Sat, 09 Nov 2024 21:30:09 +0100
-Subject: [PATCH v3 3/3] rust: error: Replace pr_warn by pr_warn_once
+From: maud spierings <maud_spierings@hotmail.com>
+Date: Sun, 10 Nov 2024 13:46:12 +0100
+Subject: [PATCH] enable the gpu node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241109-pr_once_macros-v3-3-6beb24e0cac8@tuta.io>
-References: <20241109-pr_once_macros-v3-0-6beb24e0cac8@tuta.io>
-In-Reply-To: <20241109-pr_once_macros-v3-0-6beb24e0cac8@tuta.io>
-To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <benno.lossin@proton.me>, 
- Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Trevor Gross <tmgross@umich.edu>
-Cc: rust-for-linux@vger.kernel.org, 
- FUJITA Tomonori <fujita.tomonori@gmail.com>, 
- Dirk Behme <dirk.behme@gmail.com>, Jens Korinth <jens.korinth@tuta.io>
+Message-Id: <20241110-qcom-asus-gpu-v1-1-13d7b05784b8@hotmail.com>
+X-B4-Tracking: v=1; b=H4sIABOrMGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDQ0MD3cLk/FzdxOLSYt30glJdC3ODZPNkIyNLY9NkJaCegqLUtMwKsHn
+ RsbW1AMtWuORfAAAA
+X-Change-ID: 20241110-qcom-asus-gpu-870c7c22935c
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, maud spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731184236; l=871;
- i=jens.korinth@tuta.io; s=20241107; h=from:subject:message-id;
- bh=bZLBDxudHxGsVw5ADGygZHTwpiRJkVukaGhfv2uAfCU=;
- b=6+ZSRETK6UwifxPKFo41QPqrr0AH+c/soH4o+418zkt5npLUEhHomEIBZrcSLOb76qb5V8y7m
- qE5+OtNGiVSBEK/U0aDugS2KDwjtT3XYZ64sm3jwXoCi+pBiAMcDoIY
-X-Developer-Key: i=jens.korinth@tuta.io; a=ed25519;
- pk=bG0q4Zyj3o4d/r326zKL7ym+/tXzyykcjh+U0M13iyc=
-X-Endpoint-Received: by B4 Relay for jens.korinth@tuta.io/20241107 with auth_id=270
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731242781; l=1072;
+ i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
+ bh=r3QqlTk6/PdijpA+1hzU7uSYno80RzxewgsClzl2Gxo=;
+ b=uz7Ftt5vnXmdUh012LFdLEbFGUKoaVnsAceQDCjeb1yYRh2yL3NhijBx8qekuLKRIKLTrHVSj
+ lohsU+0kM6CAzhd0g59n/a23dmGmQ5y+UirXSPhHAymGi1ZLnnu+LY0
+X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
+ pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
+X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use new pr_warn_once macro to resolve TODO in error.rs.
+enable the gpu node on the snapdragon powered asus vivobook s15
 
-Signed-off-by: Jens Korinth <jens.korinth@tuta.io>
 ---
- rust/kernel/error.rs | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+enables the gpu on the asus vivobook s15
 
-diff --git a/rust/kernel/error.rs b/rust/kernel/error.rs
-index 7cd3bbab52f208961390de03a255446950e9eb04..fe1b31506b30fba0ec9d5339d80c2a7fa76ce7c7 100644
---- a/rust/kernel/error.rs
-+++ b/rust/kernel/error.rs
-@@ -102,8 +102,7 @@ impl Error {
-     /// be returned in such a case.
-     pub fn from_errno(errno: core::ffi::c_int) -> Error {
-         if errno < -(bindings::MAX_ERRNO as i32) || errno >= 0 {
--            // TODO: Make it a `WARN_ONCE` once available.
--            crate::pr_warn!(
-+            crate::pr_warn_once!(
-                 "attempted to create `Error` with out of range `errno`: {}",
-                 errno
-             );
+Signed-off-by: maud spierings <maud_spierings@hotmail.com>
+---
+ arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
+index 8515c254e15868a5d7f378b0dc0bf8f339fc7b19..f25991b887de3fca0092c5f81c881c5d8bd71aac 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
+@@ -328,6 +328,14 @@ vreg_l3j_0p8: ldo3 {
+ 	};
+ };
+ 
++&gpu {
++	status = "okay";
++
++	zap-shader {
++		firmware-name = "qcom/x1e80100/ASUSTeK/vivobook-s15/qcdxkmsuc8380.mbn";
++	};
++};
++
+ &i2c0 {
+ 	clock-frequency = <400000>;
+ 	status = "okay";
+
+---
+base-commit: 929beafbe7acce3267c06115e13e03ff6e50548a
+change-id: 20241110-qcom-asus-gpu-870c7c22935c
+
+Best regards,
 -- 
-2.44.1
+maud spierings <maud_spierings@hotmail.com>
 
