@@ -1,65 +1,55 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Sun, 10 Nov 2024 18:25:57 +0100
-Subject: [PATCH v2] arm64: dts: qcom: x1e80100-vivobook-s15: Enable the gpu
+Date: Sun, 10 Nov 2024 19:05:02 +0100
+Subject: [PATCH] Input: docs: Fix the input_event struct documentation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241110-qcom-asus-gpu-v2-1-5f774b17ced8@hotmail.com>
-X-B4-Tracking: v=1; b=H4sIAKTsMGcC/3WMQQ6DIBREr2L+ujSAGmhXvUfjApHKT6pYvpI2h
- ruXum9m9SYzbwdyER3BtdohuoSEYS4gTxVYb+bRMRwKg+SyEUJw9rJhYoY2YuOyMa24VVbKS91
- aKJ8luge+D9+9K+yR1hA/hz6JX/vPlAQrqQfV81bpptc3H9bJ4PNcZtDlnL9+my8XrAAAAA==
-X-Change-ID: 20241110-qcom-asus-gpu-870c7c22935c
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+Message-Id: <20241110-fix_input_doc-v1-1-745d5f908e61@hotmail.com>
+X-B4-Tracking: v=1; b=H4sIAM31MGcC/x2MQQqAIBAAvxJ7TnCjiPpKRKS71l4stCIQ/550H
+ JiZBJGDcISxShD4kSiHL4B1BXZf/cZKqDA0umkRUSsn7yL+vK+FDquQ2LjeWBpsB6U5Axfh/01
+ zzh8lKx+AXwAAAA==
+X-Change-ID: 20241110-fix_input_doc-1debf7bcd9c5
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: linux-input@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731259560; l=1174;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731261906; l=989;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=GQznThV+46C0yZ1o8eInWLmC6i4Kl8cR+JfdVp1PeJk=;
- b=yjtC5wcK9nIcFq++TbCIQjTGbE9pz/7vZ3NUI48TZbB6BvMKVvbY/EKQE0QZ4KDWKE3lT7SED
- akyaNSXz3mSC9SI7Wm8toLDsSBGhtjBB+pI0b3u/io/FmRt2M3EgKdo
+ bh=C55UbquVRgOMqi6UfZZBpAe/1aOdlwpfJfKcF6CPsNI=;
+ b=CQvLWKLBbf1pXbv7y9zWnHjF4IH0ndv5lI+R3SdakQNXVtyCWCDjpsKy/M+buAs3eNTNh8HRi
+ jFMbz304H9hBtsU6dyMqVreEMVUDWvmjwCXITwtX48QfdHNJqdGlzUg
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the gpu on the snapdragon powered asus vivobook s15
+Fix the datatype of the value field of the input_event struct which is
+signed instead of unsigned.
+See include/uapi/linux/input.h
 
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
-Changes in v2:
-- Apply comments made by Bjorn Anderson
-- Link to v1: https://lore.kernel.org/r/20241110-qcom-asus-gpu-v1-1-13d7b05784b8@hotmail.com
----
- arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ Documentation/input/input.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-index 8515c254e15868a5d7f378b0dc0bf8f339fc7b19..f25991b887de3fca0092c5f81c881c5d8bd71aac 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-@@ -328,6 +328,14 @@ vreg_l3j_0p8: ldo3 {
- 	};
- };
+diff --git a/Documentation/input/input.rst b/Documentation/input/input.rst
+index 2c67fa904adcf902cebf8e7137c0a1609d879a50..d9a6de87d02de5301500b392191ab67e7db431ed 100644
+--- a/Documentation/input/input.rst
++++ b/Documentation/input/input.rst
+@@ -264,7 +264,7 @@ events on a read. Their layout is::
+ 	    struct timeval time;
+ 	    unsigned short type;
+ 	    unsigned short code;
+-	    unsigned int value;
++	    int value;
+     };
  
-+&gpu {
-+	status = "okay";
-+
-+	zap-shader {
-+		firmware-name = "qcom/x1e80100/ASUSTeK/vivobook-s15/qcdxkmsuc8380.mbn";
-+	};
-+};
-+
- &i2c0 {
- 	clock-frequency = <400000>;
- 	status = "okay";
+ ``time`` is the timestamp, it returns the time at which the event happened.
 
 ---
-base-commit: 929beafbe7acce3267c06115e13e03ff6e50548a
-change-id: 20241110-qcom-asus-gpu-870c7c22935c
+base-commit: de2f378f2b771b39594c04695feee86476743a69
+change-id: 20241110-fix_input_doc-1debf7bcd9c5
 
 Best regards,
 -- 
