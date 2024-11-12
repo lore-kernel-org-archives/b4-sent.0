@@ -1,15 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v6 0/3] support for amlogic rtc
-Date: Tue, 12 Nov 2024 11:10:13 +0800
-Message-Id: <20241112-rtc-v6-0-a71b60d2f354@amlogic.com>
+Date: Tue, 12 Nov 2024 11:10:14 +0800
+Subject: [PATCH v6 1/3] dt-bindings: rtc: Add Amlogic A4 and A5 RTC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIABbHMmcC/2XQTY7CMAwF4KugrCcj20mahBX3GLFwkxQiDRSlq
- BqEevdJAfGjLp/l78nyVQyp5DSI9eoqShrzkPtjDc3XSoQ9H3dJ5lizICANjpQs5yCRbIgOPTE
- qUTdPJXX579bys615n4dzXy630hHn6acfUYJsOgvKYWRyasOH336Xw3foD2JuGOmlPDwUVQUms
- rHGtC76pVJvCuGuVFXYMVjLjWeCpdJvih5KV+WRk+lanVQ0S2WeChHcXZn5QvTa1gdZ69pPNU3
- TP2F2bv9wAQAA
+Message-Id: <20241112-rtc-v6-1-a71b60d2f354@amlogic.com>
+References: <20241112-rtc-v6-0-a71b60d2f354@amlogic.com>
+In-Reply-To: <20241112-rtc-v6-0-a71b60d2f354@amlogic.com>
 To: Yiting Deng <yiting.deng@amlogic.com>, 
  Alexandre Belloni <alexandre.belloni@bootlin.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,62 +16,97 @@ Cc: linux-amlogic@lists.infradead.org, linux-rtc@vger.kernel.org,
  Xianwei Zhao <xianwei.zhao@amlogic.com>, 
  Krzysztof Kozlowski <krzk@kernel.org>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731381015; l=1965;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731381015; l=2146;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=8+WX5Wakdt4EUxqtzq8N3biWqhl54KfXtJQv1VX3/4Y=;
- b=TANdTkttCYRYPNirhoyhhJut9zf+qam2b1+ZjxF92JQSH8rIvnasgBpPHoyIZ/AF/oGS8QHw2
- i8JZX2q3orfCBqLQ8lP46a687tVDlH0RIl7c0nLfNOycuwips6tZZvm
+ bh=SnfWHSIVk7X6HuExSpIoFJO0hQjcCpxtc5dtKXQKyis=;
+ b=ARyRjGQBigrOHawyvYihlaq+QPQMdFvObHVumkJjjR07eDzlV0/z5lY9omeWLJxA3S1mMEIyz
+ Agc312FFxZuB6Yr6GlmpxflTkX3QurKNjusSNwkwEqeGVMZ2xWP/W8R
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add rtc driver and bindigns for the amlogic A4(A113L2) and A5(A113X2) SoCs.
+From: Yiting Deng <yiting.deng@amlogic.com>
 
+Add documentation describing the Amlogic A4(A113L2) and A5(A113X2) RTC.
+
+Signed-off-by: Yiting Deng <yiting.deng@amlogic.com>
+Reviewed-by: Krzysztof Kozlowski <krzk@kernel.org>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v6:
-- Solve compilation problems and dropped disable rtc action in remove funcion.
-- Link to v5: https://lore.kernel.org/r/20241108-rtc-v5-0-0194727c778b@amlogic.com
+ .../devicetree/bindings/rtc/amlogic,a4-rtc.yaml    | 63 ++++++++++++++++++++++
+ 1 file changed, 63 insertions(+)
 
-Changes in v5:
-- Some formatting adjustments and minor fixes were made based on Christophe's suggestions.
-- Link to v4: https://lore.kernel.org/r/20240920-rtc-v4-0-91ae5fb4e3d5@amlogic.com
+diff --git a/Documentation/devicetree/bindings/rtc/amlogic,a4-rtc.yaml b/Documentation/devicetree/bindings/rtc/amlogic,a4-rtc.yaml
+new file mode 100644
+index 000000000000..5d3ac737abcb
+--- /dev/null
++++ b/Documentation/devicetree/bindings/rtc/amlogic,a4-rtc.yaml
+@@ -0,0 +1,63 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++# Copyright (C) 2024 Amlogic, Inc. All rights reserved
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/rtc/amlogic,a4-rtc.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Amlogic A4 and A5 RTC
++
++maintainers:
++  - Yiting Deng <yiting.deng@amlogic.com>
++  - Xianwei Zhao <xianwei.zhao@amlogic.com>
++
++allOf:
++  - $ref: rtc.yaml#
++
++properties:
++  compatible:
++    enum:
++      - amlogic,a4-rtc
++      - amlogic,a5-rtc
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    items:
++      - description: RTC clock source, available 24M or 32K crystal
++          oscillator source. when using 24M, need to divide 24M into 32K.
++      - description: RTC module accesses the clock of the apb bus.
++
++  clock-names:
++    items:
++      - const: osc
++      - const: sys
++
++  interrupts:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - clock-names
++  - interrupts
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    apb {
++        #address-cells = <2>;
++        #size-cells = <2>;
++
++        rtc@8e600 {
++            compatible = "amlogic,a4-rtc";
++            reg = <0x0 0x8e600 0x0 0x38>;
++            clocks = <&xtal_32k>, <&clkc_periphs 1>;
++            clock-names = "osc", "sys";
++            interrupts = <GIC_SPI 131 IRQ_TYPE_EDGE_RISING>;
++        };
++    };
 
-Changes in v4:
-- Keep the same order as as in properties.
-- Link to v3: https://lore.kernel.org/r/20240910-rtc-v3-0-1fa077a69a20@amlogic.com
-
-Changes in v3:
-- Perfect the binding description and rename binding.
-- Using dev_err_probe function correctly, and modify commit message.
-- Change placement about MAINTAINERS.
-- Link to v2: https://lore.kernel.org/r/20240903-rtc-v2-0-05da5755b8d9@amlogic.com
-
-Changes in v2:
-- Modify bindings clock name and perfect the example.
-- Fix some bug in driver, and use dev_err_probe instead of dev_err in probe process.
-- Use RTC API to handle calibration.
-- Remove unused func and rename driver file name.
-- Link to v1: https://lore.kernel.org/r/20240823-rtc-v1-0-6f70381da283@amlogic.com
-
----
-Yiting Deng (3):
-      dt-bindings: rtc: Add Amlogic A4 and A5 RTC
-      rtc: support for the Amlogic on-chip RTC
-      MAINTAINERS: Add an entry for Amlogic RTC driver
-
- .../devicetree/bindings/rtc/amlogic,a4-rtc.yaml    |  63 +++
- MAINTAINERS                                        |   8 +
- drivers/rtc/Kconfig                                |  12 +
- drivers/rtc/Makefile                               |   1 +
- drivers/rtc/rtc-amlogic-a4.c                       | 474 +++++++++++++++++++++
- 5 files changed, 558 insertions(+)
----
-base-commit: 8a2c49e0fd92e6760636bcfbf11e11d9ddd61cf9
-change-id: 20240823-rtc-127cd8192a13
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
