@@ -1,10 +1,11 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Tue, 12 Nov 2024 18:26:55 +0800
-Subject: [PATCH v5 1/5] dt-bindings: pinctrl: modify gpio-cells property
+Date: Tue, 12 Nov 2024 18:26:56 +0800
+Subject: [PATCH v5 2/5] dt-bindings: pinctrl: Add support for Amlogic A4
+ SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241112-a4_pinctrl-v5-1-3460ce10c480@amlogic.com>
+Message-Id: <20241112-a4_pinctrl-v5-2-3460ce10c480@amlogic.com>
 References: <20241112-a4_pinctrl-v5-0-3460ce10c480@amlogic.com>
 In-Reply-To: <20241112-a4_pinctrl-v5-0-3460ce10c480@amlogic.com>
 To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
@@ -18,39 +19,91 @@ Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731407219; l=972;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731407219; l=2582;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=vZqjjnCO3zwPWuTy0qDsSgOCsxCV7fM7PewSW3T9rgc=;
- b=vcZvhifPHORlWOS0LP5dmR4xmjVZApG64++PFcGo9B8LlLDz+aPXv1CK9UdzrxNjozCr6v3/S
- tMKjBWTbJL1BDcc3W6TDDy84l6vUVuKboaEkrAnonuxhKjQFb/yba6X
+ bh=uO4TJ2ja77acTbAqMRXIRWimmcaql9Ax5+y2igpzZwU=;
+ b=kgdeyuL6lEctCLbfExo6Bnu7GSA/W0Nx4PY3zuhgWy9uBoBeFBleplnEKVhzLbq66GFX832GU
+ 2HuIu4MfGemAK18lIX0Fz1eLT8rVSh1nwpQWMw0LLj0LdO0J22AOGZP
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extend the value range of #gpio-cells property, including [2, 3],
-to compatible with Amlogic A4 SoC and later chips's pinctrl module.
-The early GPIO parameter number is 2, and the later GPIO parameter
-number is 3.
+Add the new compatible name for Amlogic A4 pin controller, and add
+a new dt-binding header file which document the GPIO bank names of
+all Amlogic subsequent SoCs.
 
+Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- .../devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml       | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ .../bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml |  2 +
+ include/dt-bindings/gpio/amlogic-gpio.h            | 45 ++++++++++++++++++++++
+ 2 files changed, 47 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml
-index e707c222a07f..6b53577dea59 100644
---- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml
-+++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml
-@@ -36,7 +36,7 @@ $defs:
-       gpio-controller: true
- 
-       "#gpio-cells":
--        const: 2
-+        enum: [2, 3]
- 
-       gpio-ranges:
-         maxItems: 1
+diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
+index d9e0b2c48e84..f5eefa0fab5b 100644
+--- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
+@@ -15,6 +15,8 @@ allOf:
+ properties:
+   compatible:
+     enum:
++      - amlogic,a4-aobus-pinctrl
++      - amlogic,a4-periphs-pinctrl
+       - amlogic,c3-periphs-pinctrl
+       - amlogic,t7-periphs-pinctrl
+       - amlogic,meson-a1-periphs-pinctrl
+diff --git a/include/dt-bindings/gpio/amlogic-gpio.h b/include/dt-bindings/gpio/amlogic-gpio.h
+new file mode 100644
+index 000000000000..5bfdb39eeda8
+--- /dev/null
++++ b/include/dt-bindings/gpio/amlogic-gpio.h
+@@ -0,0 +1,45 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
++/*
++ * Copyright (c) 2024 Amlogic, Inc. All rights reserved.
++ * Author: Xianwei Zhao <xianwei.zhao@amlogic.com>
++ */
++
++#ifndef _DT_BINDINGS_AMLOGIC_GPIO_H
++#define _DT_BINDINGS_AMLOGIC_GPIO_H
++
++#include <dt-bindings/gpio/gpio.h>
++
++/* Normal GPIO bank */
++#define AMLOGIC_GPIO_A		0
++#define AMLOGIC_GPIO_B		1
++#define AMLOGIC_GPIO_C		2
++#define AMLOGIC_GPIO_D		3
++#define AMLOGIC_GPIO_E		4
++#define AMLOGIC_GPIO_F		5
++#define AMLOGIC_GPIO_G		6
++#define AMLOGIC_GPIO_H		7
++#define AMLOGIC_GPIO_I		8
++#define AMLOGIC_GPIO_J		9
++#define AMLOGIC_GPIO_K		10
++#define AMLOGIC_GPIO_L		11
++#define AMLOGIC_GPIO_M		12
++#define AMLOGIC_GPIO_N		13
++#define AMLOGIC_GPIO_O		14
++#define AMLOGIC_GPIO_P		15
++#define AMLOGIC_GPIO_Q		16
++#define AMLOGIC_GPIO_R		17
++#define AMLOGIC_GPIO_S		18
++#define AMLOGIC_GPIO_T		19
++#define AMLOGIC_GPIO_U		20
++#define AMLOGIC_GPIO_V		21
++#define AMLOGIC_GPIO_W		22
++#define AMLOGIC_GPIO_X		23
++#define AMLOGIC_GPIO_Y		24
++#define AMLOGIC_GPIO_Z		25
++/* Special GPIO bank */
++#define AMLOGIC_GPIO_DV		26
++#define AMLOGIC_GPIO_AO		27
++#define AMLOGIC_GPIO_CC		28
++#define AMLOGIC_GPIO_TEST_N	29
++
++#endif /* _DT_BINDINGS_AMLOGIC_GPIO_H */
 
 -- 
 2.37.1
