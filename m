@@ -1,11 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Tue, 12 Nov 2024 18:26:56 +0800
-Subject: [PATCH v5 2/5] dt-bindings: pinctrl: Add support for Amlogic A4
- SoCs
+Date: Tue, 12 Nov 2024 18:26:57 +0800
+Subject: [PATCH v5 3/5] pinctrl: meson: add interface of of_xlate
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241112-a4_pinctrl-v5-2-3460ce10c480@amlogic.com>
+Message-Id: <20241112-a4_pinctrl-v5-3-3460ce10c480@amlogic.com>
 References: <20241112-a4_pinctrl-v5-0-3460ce10c480@amlogic.com>
 In-Reply-To: <20241112-a4_pinctrl-v5-0-3460ce10c480@amlogic.com>
 To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
@@ -19,91 +18,58 @@ Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731407219; l=2582;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731407219; l=1697;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=uO4TJ2ja77acTbAqMRXIRWimmcaql9Ax5+y2igpzZwU=;
- b=kgdeyuL6lEctCLbfExo6Bnu7GSA/W0Nx4PY3zuhgWy9uBoBeFBleplnEKVhzLbq66GFX832GU
- 2HuIu4MfGemAK18lIX0Fz1eLT8rVSh1nwpQWMw0LLj0LdO0J22AOGZP
+ bh=knLIUCSGih56JEya5+7FKqp5xI+HFVaycdj15fbWv+g=;
+ b=kS5VjjbODTrXUOWox21tZe1qSyaH88DvfQphEHJ7JKf/QXzT+qT28LcFHG/LOyiRxyG8VfTHJ
+ vTcykybrR0ECTs1gRJFwW9G/HERuMExt8Yd1HgJvNU3qujCRR9DYMFd
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the new compatible name for Amlogic A4 pin controller, and add
-a new dt-binding header file which document the GPIO bank names of
-all Amlogic subsequent SoCs.
+Amlogic pinctrl software framework use system API of_gpio_simple_xlate
+which only support linear one-to-one correspondence to translate gpiospec
+to the GPIO number and flags before. It can not meet the non-linear needs.
+Add the interface satisfies the underlying driver to implement the
+transformation to meet the needs of various scenarios.
 
-Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- .../bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml |  2 +
- include/dt-bindings/gpio/amlogic-gpio.h            | 45 ++++++++++++++++++++++
- 2 files changed, 47 insertions(+)
+ drivers/pinctrl/meson/pinctrl-meson.c | 4 ++++
+ drivers/pinctrl/meson/pinctrl-meson.h | 4 ++++
+ 2 files changed, 8 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
-index d9e0b2c48e84..f5eefa0fab5b 100644
---- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
-+++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
-@@ -15,6 +15,8 @@ allOf:
- properties:
-   compatible:
-     enum:
-+      - amlogic,a4-aobus-pinctrl
-+      - amlogic,a4-periphs-pinctrl
-       - amlogic,c3-periphs-pinctrl
-       - amlogic,t7-periphs-pinctrl
-       - amlogic,meson-a1-periphs-pinctrl
-diff --git a/include/dt-bindings/gpio/amlogic-gpio.h b/include/dt-bindings/gpio/amlogic-gpio.h
-new file mode 100644
-index 000000000000..5bfdb39eeda8
---- /dev/null
-+++ b/include/dt-bindings/gpio/amlogic-gpio.h
-@@ -0,0 +1,45 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
-+/*
-+ * Copyright (c) 2024 Amlogic, Inc. All rights reserved.
-+ * Author: Xianwei Zhao <xianwei.zhao@amlogic.com>
-+ */
-+
-+#ifndef _DT_BINDINGS_AMLOGIC_GPIO_H
-+#define _DT_BINDINGS_AMLOGIC_GPIO_H
-+
-+#include <dt-bindings/gpio/gpio.h>
-+
-+/* Normal GPIO bank */
-+#define AMLOGIC_GPIO_A		0
-+#define AMLOGIC_GPIO_B		1
-+#define AMLOGIC_GPIO_C		2
-+#define AMLOGIC_GPIO_D		3
-+#define AMLOGIC_GPIO_E		4
-+#define AMLOGIC_GPIO_F		5
-+#define AMLOGIC_GPIO_G		6
-+#define AMLOGIC_GPIO_H		7
-+#define AMLOGIC_GPIO_I		8
-+#define AMLOGIC_GPIO_J		9
-+#define AMLOGIC_GPIO_K		10
-+#define AMLOGIC_GPIO_L		11
-+#define AMLOGIC_GPIO_M		12
-+#define AMLOGIC_GPIO_N		13
-+#define AMLOGIC_GPIO_O		14
-+#define AMLOGIC_GPIO_P		15
-+#define AMLOGIC_GPIO_Q		16
-+#define AMLOGIC_GPIO_R		17
-+#define AMLOGIC_GPIO_S		18
-+#define AMLOGIC_GPIO_T		19
-+#define AMLOGIC_GPIO_U		20
-+#define AMLOGIC_GPIO_V		21
-+#define AMLOGIC_GPIO_W		22
-+#define AMLOGIC_GPIO_X		23
-+#define AMLOGIC_GPIO_Y		24
-+#define AMLOGIC_GPIO_Z		25
-+/* Special GPIO bank */
-+#define AMLOGIC_GPIO_DV		26
-+#define AMLOGIC_GPIO_AO		27
-+#define AMLOGIC_GPIO_CC		28
-+#define AMLOGIC_GPIO_TEST_N	29
-+
-+#endif /* _DT_BINDINGS_AMLOGIC_GPIO_H */
+diff --git a/drivers/pinctrl/meson/pinctrl-meson.c b/drivers/pinctrl/meson/pinctrl-meson.c
+index 253a0cc57e39..fc0c0bef38c0 100644
+--- a/drivers/pinctrl/meson/pinctrl-meson.c
++++ b/drivers/pinctrl/meson/pinctrl-meson.c
+@@ -620,6 +620,10 @@ static int meson_gpiolib_register(struct meson_pinctrl *pc)
+ 	pc->chip.base = -1;
+ 	pc->chip.ngpio = pc->data->num_pins;
+ 	pc->chip.can_sleep = false;
++	if (pc->data->of_xlate) {
++		pc->chip.of_gpio_n_cells = pc->data->of_gpio_n_cells;
++		pc->chip.of_xlate = pc->data->of_xlate;
++	}
+ 
+ 	ret = gpiochip_add_data(&pc->chip, pc);
+ 	if (ret) {
+diff --git a/drivers/pinctrl/meson/pinctrl-meson.h b/drivers/pinctrl/meson/pinctrl-meson.h
+index 7883ea31a001..cbb3f22552b9 100644
+--- a/drivers/pinctrl/meson/pinctrl-meson.h
++++ b/drivers/pinctrl/meson/pinctrl-meson.h
+@@ -120,6 +120,10 @@ struct meson_pinctrl_data {
+ 	const struct pinmux_ops *pmx_ops;
+ 	const void *pmx_data;
+ 	int (*parse_dt)(struct meson_pinctrl *pc);
++	int (*of_xlate)(struct gpio_chip *gc,
++			const struct of_phandle_args *gpiospec,
++			u32 *flags);
++	int of_gpio_n_cells;
+ };
+ 
+ struct meson_pinctrl {
 
 -- 
 2.37.1
