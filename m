@@ -1,109 +1,95 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Tue, 12 Nov 2024 10:30:10 +0100
-Subject: [PATCH v2] iio: imu: inv_icm42600: fix spi burst write not
- supported
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v5 0/5] Pinctrl: A4: Add pinctrl driver
+Date: Tue, 12 Nov 2024 18:26:54 +0800
+Message-Id: <20241112-a4_pinctrl-v5-0-3460ce10c480@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241112-inv-icm42600-fix-spi-burst-write-not-supported-v2-1-97690dc03607@tdk.com>
-X-B4-Tracking: v=1; b=H4sIACEgM2cC/52NQQ7CIBBFr9KwdgxgK9WV9zBdtGVqJ6ZAgKKm4
- e5ij+Dy/eS/t7GAnjCwa7Uxj4kCWVNAHio2zr15IJAuzCSXtRBcAZkENC61PHMOE70hOIJh9SH
- Cy1NEMDZCWJ2zPqIGnFC1Wp3UpW9YkTqP5bQH713hmUK0/rP3k/itf6eSAAEt54OUjao1F7eon
- 8fRLqzLOX8BnHrTQOoAAAA=
-X-Change-ID: 20241107-inv-icm42600-fix-spi-burst-write-not-supported-efe78d7379a5
-To: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>
-Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
- Jonathan Cameron <Jonathan.Cameron@huawei.com>, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731403815; l=3521;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=7v9hwAsLUpLcVbsTisYNf2ERfbiuJIYiXvYRPsz8tx0=;
- b=hlq8yXvk4Oc+vucDWRJ3i3I3OlJVXjHjKmsaAEgYaeD6i/+m9S2RotslVeST0sV1EnSRxVOPW
- Z1uRlrfd9VzAGHoTHeQNUK4RLC3zng+++9EXla5uVWddL2S+VWS7BbF
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-B4-Tracking: v=1; b=H4sIAG4tM2cC/2XM3wqCMByG4VuRHbfYP5121H1ExNp+04E62UQK8
+ d6bQqR0+H3wvDOKEBxEdMlmFGBy0fk+jfyUId2ovgbsTNqIESYooQwr8Rhcr8fQYlIZ+mSKShA
+ SJTAEsO61xW73tBsXRx/eW3ti6/vNiH1mYphgDlKoIteszOGqutbXTp+179AamvgelwfMEwZZW
+ EO1JdTIfyx+OOkDFiu2pirBaK6MOOJlWT4n9FvRIAEAAA==
+To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731407219; l=2465;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=ozCy6ZU2hX5f6zY41iGDT6qBtG5/wtGMJOKYzcXL8mI=;
+ b=sOGzqIGmNL31284iCxi1Im2K6kJYoy+yb5BpDC2T9TUmiq625OP+fUfHSwf99+yMwsOCF/1nF
+ Pa2dYuD0s4QAr2AkEy7txineOfnN2uYSdPybPk+c3kLiBt2IX9nu1Bo
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Burst write with SPI is not working for all icm42600 chips. It was
-only used for setting user offsets with regmap_bulk_write.
+Add pinctrl driver support for Amloigc A4 SoC
 
-Add specific SPI regmap config for using only single write with SPI.
+All of Amogic SoCs GPIO device requirement is met here by
+adding GPIO bank definition instead of the pin definition.
+Binding header files will no longer be added to future
+SoCs's pin devices.
 
-Fixes: 9f9ff91b775b ("iio: imu: inv_icm42600: add SPI driver for inv_icm42600 driver")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+The pinctrl software only adds insterface of of_xlate to support
+for transformation without affecting the overall framework and
+is compatible with previous drivers.
+
+The code in DTS file is also readable when using GPIO, as below:
+
+reset-gpios = <&gpio AMLOGIC_GPIO_X 6 GPIO_ACTIVE_LOW>;
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
+Changes in v5:
+- Modify if to switch.
+- Dropped parameter combination, bank and offset as independent parameter passing
+- Link to v4: https://lore.kernel.org/r/20241101-a4_pinctrl-v4-0-efd98edc3ad4@amlogic.com
+
+Changes in v4:
+- Add interface of of_xlate support.
+- Add const for some variable.
+- Link to v3: https://lore.kernel.org/r/20241018-a4_pinctrl-v3-0-e76fd1cf01d7@amlogic.com
+
+Changes in v3:
+- Remove head file from binding.
+- Move GPIO define to file *.c.
+- Link to v2: https://lore.kernel.org/r/20241014-a4_pinctrl-v2-0-3e74a65c285e@amlogic.com
+
 Changes in v2:
-- Add new spi specific regmap config instead of editing existing one.
-- Link to v1: https://lore.kernel.org/r/20241107-inv-icm42600-fix-spi-burst-write-not-supported-v1-1-800b22574d01@tdk.com
----
- drivers/iio/imu/inv_icm42600/inv_icm42600.h      |  1 +
- drivers/iio/imu/inv_icm42600/inv_icm42600_core.c | 15 +++++++++++++++
- drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c  |  3 ++-
- 3 files changed, 18 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-index 3a07e43e4cf154f3107c015c30248330d8e677f8..18787a43477b89db12caee597ab040af5c8f52d5 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-@@ -403,6 +403,7 @@ struct inv_icm42600_sensor_state {
- typedef int (*inv_icm42600_bus_setup)(struct inv_icm42600_state *);
- 
- extern const struct regmap_config inv_icm42600_regmap_config;
-+extern const struct regmap_config inv_icm42600_spi_regmap_config;
- extern const struct dev_pm_ops inv_icm42600_pm_ops;
- 
- const struct iio_mount_matrix *
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-index 93b5d7a3339ccff16b21bf6c40ed7b2311317cf4..834c32cb07f354ab52e69bfeea8f00b6443e8dd9 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-@@ -87,6 +87,21 @@ const struct regmap_config inv_icm42600_regmap_config = {
- };
- EXPORT_SYMBOL_NS_GPL(inv_icm42600_regmap_config, IIO_ICM42600);
- 
-+/* define specific regmap for SPI not supporting burst write */
-+const struct regmap_config inv_icm42600_spi_regmap_config = {
-+	.name = "inv_icm42600",
-+	.reg_bits = 8,
-+	.val_bits = 8,
-+	.max_register = 0x4FFF,
-+	.ranges = inv_icm42600_regmap_ranges,
-+	.num_ranges = ARRAY_SIZE(inv_icm42600_regmap_ranges),
-+	.volatile_table = inv_icm42600_regmap_volatile_accesses,
-+	.rd_noinc_table = inv_icm42600_regmap_rd_noinc_accesses,
-+	.cache_type = REGCACHE_RBTREE,
-+	.use_single_write = true,
-+};
-+EXPORT_SYMBOL_NS_GPL(inv_icm42600_spi_regmap_config, IIO_ICM42600);
-+
- struct inv_icm42600_hw {
- 	uint8_t whoami;
- 	const char *name;
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-index 3b6d05fce65d544524b25299c6d342af92cfd1e0..deb0cbd8b7fe6fcb562067afaca931c148f6fca6 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-@@ -59,7 +59,8 @@ static int inv_icm42600_probe(struct spi_device *spi)
- 		return -EINVAL;
- 	chip = (uintptr_t)match;
- 
--	regmap = devm_regmap_init_spi(spi, &inv_icm42600_regmap_config);
-+	/* use SPI specific regmap */
-+	regmap = devm_regmap_init_spi(spi, &inv_icm42600_spi_regmap_config);
- 	if (IS_ERR(regmap))
- 		return PTR_ERR(regmap);
- 
+- Use one marco instead of all pin define.
+- Add unit name for dts node.
+- Link to v1: https://lore.kernel.org/all/20240611-a4_pinctrl-v1-0-dc487b1977b3@amlogic.com/
 
 ---
-base-commit: c9f8285ec18c08fae0de08835eb8e5953339e664
-change-id: 20241107-inv-icm42600-fix-spi-burst-write-not-supported-efe78d7379a5
+Xianwei Zhao (5):
+      dt-bindings: pinctrl: modify gpio-cells property
+      dt-bindings: pinctrl: Add support for Amlogic A4 SoCs
+      pinctrl: meson: add interface of of_xlate
+      pinctrl: meson: Add driver support for Amlogic A4 SoCs
+      arm64: dts: amlogic: a4: add pinctrl node
+
+ .../bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml |    2 +
+ .../pinctrl/amlogic,meson-pinctrl-common.yaml      |    2 +-
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |   36 +
+ drivers/pinctrl/meson/Kconfig                      |    6 +
+ drivers/pinctrl/meson/Makefile                     |    1 +
+ drivers/pinctrl/meson/pinctrl-amlogic-a4.c         | 1335 ++++++++++++++++++++
+ drivers/pinctrl/meson/pinctrl-meson.c              |    4 +
+ drivers/pinctrl/meson/pinctrl-meson.h              |    4 +
+ include/dt-bindings/gpio/amlogic-gpio.h            |   45 +
+ 9 files changed, 1434 insertions(+), 1 deletion(-)
+---
+base-commit: 58e2d28ed28e5bc8836f8c14df1f94c27c1f9e2f
+change-id: 20241012-a4_pinctrl-09d1b2a17e47
 
 Best regards,
 -- 
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
