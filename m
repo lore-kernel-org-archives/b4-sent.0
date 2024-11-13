@@ -1,10 +1,11 @@
 From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Wed, 13 Nov 2024 18:46:41 +0000
-Subject: [PATCH net v2 2/5] net/diag: Warn only once on EMSGSIZE
+Date: Wed, 13 Nov 2024 18:46:42 +0000
+Subject: [PATCH net v2 3/5] net/diag: Pre-allocate optional info only if
+ requested
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241113-tcp-md5-diag-prep-v2-2-00a2a7feb1fa@gmail.com>
+Message-Id: <20241113-tcp-md5-diag-prep-v2-3-00a2a7feb1fa@gmail.com>
 References: <20241113-tcp-md5-diag-prep-v2-0-00a2a7feb1fa@gmail.com>
 In-Reply-To: <20241113-tcp-md5-diag-prep-v2-0-00a2a7feb1fa@gmail.com>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -18,41 +19,76 @@ To: "David S. Miller" <davem@davemloft.net>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  mptcp@lists.linux.dev, Dmitry Safonov <0x7f454c46@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731523626; l=1040;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731523626; l=2351;
  i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
- bh=yIywEl4vHF1DrEzww1U5WkkGaZ14BAMY3GjreNIr5EA=;
- b=ahphbF5AdQ/YmMPb55wCdyrbqn/6GMhNcA7jAD8XjpApgUgjhWRAjpue/f/P1DrnN2kU89FZ+
- GTRYqJkq0hjDMElCMf254wHTm+cB5av1JauVhNtee+mxdyHaF/mjKwV
+ bh=fOCy3J49s/tDFSTizx6qbQKYeByBMBjOxYu/MDJO9nw=;
+ b=xHWPnxmlAgxsfd16AJPEx1EnW4uGj4R/JjEmmfgnBzL3Hmkc30GZ5vPzYF6SdZsjvFPghqpLk
+ qjfKBbuQiiSBHYODhtp73IeEqO2X3XNzJ1QisAQRqUcu+NuWwZxmLDL
 X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
  pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
 X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The code clearly expects that the pre-allocated skb will be enough for
-the netlink reply message. But if in an unbelievable situation there is
-a kernel issue and sk_diag_fill() fails with -EMSGSIZE, this WARN_ON()
-can be triggered from userspace. That aggravates the issue from KASLR
-leak into possible DOS vector. Use WARN_ON_ONCE() which is clearly
-enough to provide an information on a kernel issue.
+Those INET_DIAG_* flags from req->idiag_ext are provided by the
+userspace, so they are not going to change during one socket dump.
+This is going to save just nits and bits for typical netlink reply,
+which I'm going to utilise in the very next patch by always allocating
+tls_get_info_size().
+It's possible to save even some more by checking the request in
+inet_diag_msg_attrs_size(), but that's being on very stingy side.
 
 Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- net/ipv4/inet_diag.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/ipv4/inet_diag.c | 29 ++++++++++++++++++-----------
+ 1 file changed, 18 insertions(+), 11 deletions(-)
 
 diff --git a/net/ipv4/inet_diag.c b/net/ipv4/inet_diag.c
-index 67b9cc4c0e47a596a4d588e793b7f13ee040a1e3..ca9a7e61d8d7de80cb234c45c41d6357fde50c11 100644
+index ca9a7e61d8d7de80cb234c45c41d6357fde50c11..2dd173a73bd1e2657957e5e4ecb70401cc85dfda 100644
 --- a/net/ipv4/inet_diag.c
 +++ b/net/ipv4/inet_diag.c
-@@ -583,7 +583,7 @@ int inet_diag_dump_one_icsk(struct inet_hashinfo *hashinfo,
+@@ -102,24 +102,31 @@ static size_t inet_sk_attr_size(struct sock *sk,
+ 				bool net_admin)
+ {
+ 	const struct inet_diag_handler *handler;
+-	size_t aux = 0;
++	int ext = req->idiag_ext;
++	size_t ret = 0;
  
- 	err = sk_diag_fill(sk, rep, cb, req, 0, net_admin);
- 	if (err < 0) {
--		WARN_ON(err == -EMSGSIZE);
-+		WARN_ON_ONCE(err == -EMSGSIZE);
- 		nlmsg_free(rep);
- 		goto out;
- 	}
+ 	rcu_read_lock();
+ 	handler = rcu_dereference(inet_diag_table[req->sdiag_protocol]);
+ 	DEBUG_NET_WARN_ON_ONCE(!handler);
+ 	if (handler && handler->idiag_get_aux_size)
+-		aux = handler->idiag_get_aux_size(sk, net_admin);
++		ret += handler->idiag_get_aux_size(sk, net_admin);
+ 	rcu_read_unlock();
+ 
+-	return	  nla_total_size(sizeof(struct tcp_info))
+-		+ nla_total_size(sizeof(struct inet_diag_msg))
+-		+ inet_diag_msg_attrs_size()
+-		+ nla_total_size(sizeof(struct inet_diag_meminfo))
+-		+ nla_total_size(SK_MEMINFO_VARS * sizeof(u32))
+-		+ nla_total_size(TCP_CA_NAME_MAX)
+-		+ nla_total_size(sizeof(struct tcpvegas_info))
+-		+ aux
+-		+ 64;
++	ret += nla_total_size(sizeof(struct tcp_info))
++	     + nla_total_size(sizeof(struct inet_diag_msg))
++	     + inet_diag_msg_attrs_size()
++	     + 64;
++
++	if (ext & (1 << (INET_DIAG_MEMINFO - 1)))
++		ret += nla_total_size(sizeof(struct inet_diag_meminfo));
++	if (ext & (1 << (INET_DIAG_SKMEMINFO - 1)))
++		ret += nla_total_size(SK_MEMINFO_VARS * sizeof(u32));
++	if (ext & (1 << (INET_DIAG_CONG - 1)))
++		ret += nla_total_size(TCP_CA_NAME_MAX);
++	if (ext & (1 << (INET_DIAG_VEGASINFO - 1)))
++		ret += nla_total_size(sizeof(struct tcpvegas_info));
++
++	return ret;
+ }
+ 
+ int inet_diag_msg_attrs_fill(struct sock *sk, struct sk_buff *skb,
 
 -- 
 2.42.2
