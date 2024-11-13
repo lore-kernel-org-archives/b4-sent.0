@@ -1,14 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v6 0/5] Pinctrl: A4: Add pinctrl driver
-Date: Wed, 13 Nov 2024 15:29:38 +0800
-Message-Id: <20241113-a4_pinctrl-v6-0-35ba2401ee35@amlogic.com>
+Date: Wed, 13 Nov 2024 15:29:39 +0800
+Subject: [PATCH v6 1/5] dt-bindings: pinctrl: move gpio-cells property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGJVNGcC/2XP0QqCMBTG8VeRXbfY5tFZV71HRKyzow7UxYxRh
- O/eDCLFy2/w+3P2ZiMFRyM7Zm8WKLrR+SGNcpcxbM3QEHc2baaEAimk4gaudzfgI3RcHKy8KSM
- 1gWYJ3APV7vmNnS9pt258+PD6tqOaX38ZWGai4oLnpMGUBaqqoJPpO9843KPv2RyK+RJXK5wnT
- LqsrcRaSKu3GP446RWGGdf2UJHF3FjY4mKB17+PxXw2lAJJCoRKrPE0TR/FIPJkXQEAAA==
+Message-Id: <20241113-a4_pinctrl-v6-1-35ba2401ee35@amlogic.com>
+References: <20241113-a4_pinctrl-v6-0-35ba2401ee35@amlogic.com>
+In-Reply-To: <20241113-a4_pinctrl-v6-0-35ba2401ee35@amlogic.com>
 To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -20,88 +18,114 @@ Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731482979; l=3167;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731482979; l=4180;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=jTZlTZlZlc/8oe7tDDpKMU27TjCaQVXWIYr+dhvV8jI=;
- b=m4K96oRnL5/UOrRY29MRVvvw544CUEkerxoU9h9+7gESaPC+1p4F26yp8bt0b3sdQ+/DisqvJ
- TQPy19ewAEQCS6TZcCKjgOP75oiW4iuhjTXIynPf891+IeErHIFnSoj
+ bh=qxv4emgVPROFoR8ScbTFnmLM8WUD+O9zBXHAgvRPWts=;
+ b=95hEgHD2NGZC5TRpIpdAB5GLXogZK1SArEDVX3xOOhfXvQZ+cNZ1IdEhmVMaTg6NVSRGmO8Jm
+ YjpMd9laA+BCcR3N+yBpSLxoX/hUTOD9CRhKxluoiNbUpiUDsh4EBDE
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add pinctrl driver support for Amloigc A4 SoC
-
-All of Amogic SoCs GPIO device requirement is met here by
-adding GPIO bank definition instead of the pin definition.
-Binding header files will no longer be added to future
-SoCs's pin devices.
-
-The pinctrl software only adds insterface of of_xlate to support
-for transformation without affecting the overall framework and
-is compatible with previous drivers.
-
-The code in DTS file is also readable when using GPIO, as below:
-
-reset-gpios = <&gpio AMLOGIC_GPIO_X 6 GPIO_ACTIVE_LOW>;
+Move #gpio-cells property from common yaml file
+to lower-level yaml files.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v6:
-- Adjust code formatting and style.
-- Remove "#gpio-cells" definition from amlogic,meson-pinctrl-common.yaml
-  and add them in all amlogic,meson-pinctrl-XXX.yaml with const: 2, and then
-  add amlogic,meson-pinctrl-a4.yaml(copy form  amlogic,meson-pinctrl-a1.yaml) with const: 3.
-- Link to v5: https://lore.kernel.org/r/20241112-a4_pinctrl-v5-0-3460ce10c480@amlogic.com
+ .../devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml          | 3 +++
+ .../devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml      | 3 ---
+ .../devicetree/bindings/pinctrl/amlogic,meson-pinctrl-g12a-aobus.yaml  | 3 +++
+ .../bindings/pinctrl/amlogic,meson-pinctrl-g12a-periphs.yaml           | 3 +++
+ .../devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-aobus.yaml      | 3 +++
+ .../devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-cbus.yaml       | 3 +++
+ 6 files changed, 15 insertions(+), 3 deletions(-)
 
-Changes in v5:
-- Modify if to switch.
-- Dropped parameter combination, bank and offset as independent parameter passing
-- Link to v4: https://lore.kernel.org/r/20241101-a4_pinctrl-v4-0-efd98edc3ad4@amlogic.com
+diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
+index d9e0b2c48e84..a43d6d2a336d 100644
+--- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml
+@@ -38,6 +38,9 @@ patternProperties:
+           - const: mux
+           - const: gpio
+ 
++      "#gpio-cells":
++        const: 2
++
+       gpio-line-names:
+         minItems: 62 # A1
+         maxItems: 82 # S4
+diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml
+index e707c222a07f..7b2d129845f1 100644
+--- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-common.yaml
+@@ -35,9 +35,6 @@ $defs:
+     properties:
+       gpio-controller: true
+ 
+-      "#gpio-cells":
+-        const: 2
+-
+       gpio-ranges:
+         maxItems: 1
+ 
+diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-g12a-aobus.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-g12a-aobus.yaml
+index 108719bde0d0..9488bb7c8da3 100644
+--- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-g12a-aobus.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-g12a-aobus.yaml
+@@ -36,6 +36,9 @@ patternProperties:
+           - const: ds
+           - const: gpio
+ 
++      "#gpio-cells":
++        const: 2
++
+       gpio-line-names:
+         maxItems: 15
+ 
+diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-g12a-periphs.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-g12a-periphs.yaml
+index dc277f2e2edf..b6f72b2c3d38 100644
+--- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-g12a-periphs.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson-pinctrl-g12a-periphs.yaml
+@@ -38,6 +38,9 @@ patternProperties:
+           - const: mux
+           - const: ds
+ 
++      "#gpio-cells":
++        const: 2
++
+       gpio-line-names:
+         maxItems: 85
+ 
+diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-aobus.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-aobus.yaml
+index add83c676327..1315e6203f44 100644
+--- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-aobus.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-aobus.yaml
+@@ -44,6 +44,9 @@ patternProperties:
+           - const: pull
+           - const: gpio
+ 
++      "#gpio-cells":
++        const: 2
++
+       gpio-line-names:
+         minItems: 11 # GXL
+         maxItems: 16 # Meson8
+diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-cbus.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-cbus.yaml
+index 412bbcc276f3..07fc77403c6f 100644
+--- a/Documentation/devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-cbus.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/amlogic,meson8-pinctrl-cbus.yaml
+@@ -45,6 +45,9 @@ patternProperties:
+           - const: pull-enable
+           - const: gpio
+ 
++      "#gpio-cells":
++        const: 2
++
+       gpio-line-names:
+         minItems: 86 # AXG
+         maxItems: 120 # Meson8
 
-Changes in v4:
-- Add interface of of_xlate support.
-- Add const for some variable.
-- Link to v3: https://lore.kernel.org/r/20241018-a4_pinctrl-v3-0-e76fd1cf01d7@amlogic.com
-
-Changes in v3:
-- Remove head file from binding.
-- Move GPIO define to file *.c.
-- Link to v2: https://lore.kernel.org/r/20241014-a4_pinctrl-v2-0-3e74a65c285e@amlogic.com
-
-Changes in v2:
-- Use one marco instead of all pin define.
-- Add unit name for dts node.
-- Link to v1: https://lore.kernel.org/all/20240611-a4_pinctrl-v1-0-dc487b1977b3@amlogic.com/
-
----
-Xianwei Zhao (5):
-      dt-bindings: pinctrl: move gpio-cells property
-      dt-bindings: pinctrl: Add support for Amlogic A4 SoCs
-      pinctrl: meson: add interface of of_xlate
-      pinctrl: meson: Add driver support for Amlogic A4 SoCs
-      arm64: dts: amlogic: a4: add pinctrl node
-
- .../bindings/pinctrl/amlogic,meson-pinctrl-a1.yaml |    3 +
- .../bindings/pinctrl/amlogic,meson-pinctrl-a4.yaml |   80 ++
- .../pinctrl/amlogic,meson-pinctrl-common.yaml      |    3 -
- .../pinctrl/amlogic,meson-pinctrl-g12a-aobus.yaml  |    3 +
- .../amlogic,meson-pinctrl-g12a-periphs.yaml        |    3 +
- .../pinctrl/amlogic,meson8-pinctrl-aobus.yaml      |    3 +
- .../pinctrl/amlogic,meson8-pinctrl-cbus.yaml       |    3 +
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |   36 +
- drivers/pinctrl/meson/Kconfig                      |    6 +
- drivers/pinctrl/meson/Makefile                     |    1 +
- drivers/pinctrl/meson/pinctrl-amlogic-a4.c         | 1324 ++++++++++++++++++++
- drivers/pinctrl/meson/pinctrl-meson.c              |    4 +
- drivers/pinctrl/meson/pinctrl-meson.h              |    4 +
- include/dt-bindings/gpio/amlogic-gpio.h            |   45 +
- 14 files changed, 1515 insertions(+), 3 deletions(-)
----
-base-commit: 58e2d28ed28e5bc8836f8c14df1f94c27c1f9e2f
-change-id: 20241012-a4_pinctrl-09d1b2a17e47
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
