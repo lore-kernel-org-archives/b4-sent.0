@@ -1,70 +1,72 @@
-From: Manas <manas18244@iiitd.ac.in>
-Date: Thu, 14 Nov 2024 06:15:15 +0530
-Subject: [PATCH net v2] netlink: Add string check in netlink_ack_tlv_fill
+From: Stephen Horvath <s.horvath@outlook.com.au>
+Subject: [PATCH 0/6] decode-dimms: Implement DDR5 decoding
+Date: Thu, 14 Nov 2024 16:37:34 +1000
+Message-Id: <20241114-decode-ddr5-v1-0-0ed2db8ef30f@outlook.com.au>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241114-fix-netlink_ack_tlv_fill-v2-1-affdfb5f4c6f@iiitd.ac.in>
-X-B4-Tracking: v=1; b=H4sIABpINWcC/4WNWwqDMBBFtyLz3UgnRq1+dR9FJM2jDoZYkhBax
- L03uIF+3te5O0QTyEQYqx2CyRRp80XwSwVqkf5lGOmigV+5QETBLH2YN8mRX2ep1jm5PFtyjqH
- Qz6bprG6xhTJ/B1O6J/oBZQFTMReKaQvf8y7jGf0nZ2TIRN8PN2mFVEN3J6Kka6lq8jAdx/ED+
- MjqGccAAAA=
-X-Change-ID: 20241114-fix-netlink_ack_tlv_fill-14db336fd515
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Kuniyuki Iwashima <kuniyu@amazon.com>
-Cc: Shuah Khan <shuah@kernel.org>, Anup Sharma <anupnewsmail@gmail.com>, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+d4373fa8042c06cefa84@syzkaller.appspotmail.com, 
- Manas <manas18244@iiitd.ac.in>
+X-B4-Tracking: v=1; b=H4sIAK6aNWcC/x3MQQqAIBBA0avIrBNUNKSrRAtzppqNhkIE4t2Tl
+ m/xf4NKhanCIhoUerhyTgN6EhCvkE6SjMNglLFqNk4ixYwkEYuTuw/BOuu8NgSjuAsd/P63dev
+ 9A1wdAKhdAAAA
+X-Change-ID: 20240625-decode-ddr5-b8aa4545812e
+To: linux-i2c@vger.kernel.org
+Cc: Jean Delvare <jdelvare@suse.de>, 
+ Stephen Horvath <s.horvath@outlook.com.au>, 
+ Guenter Roeck <linux@roeck-us.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731545118; l=1451;
- i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
- bh=NtyokQuE+L7LfwkDaBwq3Oyce2jW67JcMuZbTIVPJTg=;
- b=Aa9G7PxjtwSy3lJ8NJDyNdVyeYBEc1b4xSaFHymXyNF9Dk5P3D7APXdA6KEZxnrriq5Uosx+8
- n6w8FhIucjYCBapw5g//T8cnQMaV6Fyy0APxrS0kJW4wnLsXNuVEsKA
-X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
- pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
-X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1295;
+ i=s.horvath@outlook.com.au; s=2024-05-10; h=from:subject:message-id;
+ bh=yjwiqCS+mcyDBmeLd00KtGZJyJ/qzKMlwHe28yYIm4k=;
+ b=owEBbQKS/ZANAwAKAYC8XiInGJ2jAcsmYgBnNZtvHWZ/Xc7F8uUfAq90j546x8z99urE1xw8E
+ +eko9CbBreJAjMEAAEKAB0WIQTIAeBGYgifSxYwNMiAvF4iJxidowUCZzWbbwAKCRCAvF4iJxid
+ o2PnEACJSusba7fsL6vQ0alw9MYjvWfDrKd3Xr3KiXiercQ48T/+9x+CGBAhpDaSQ/nT1YLJpca
+ KtC4HX/x/XjwuayBSsBZxMI4vnpSI6y7ve+lmWejiw0s6E9OGe+qvFpSAgjt/Hh464xZn8AnIS6
+ INLlXRywsloPNZ9mQrVhykDKUxXTJoxTY95UNTd4wKebcCNxiPony2/VBcemQvb2twv7L18J3Ax
+ nLkdVjGr98vw2NsyK4PMC29AscFTBx5hrZTi6OH80F/15qb3npV9uPWlxjYOjdNGShXN6XxTbT8
+ nHxTvuAyFK8f+Ya4cYLwiDC7XFy++6SZTi2qfcYfpartdNds0nN5NRJ/29tfOAvSZwHL60bbwYK
+ R0DUWjlLp3NokqkrwQHBiINt7AxXYQAbVgIjb6ivfFMWT78uZDtpXeIZ38D32WvmbKT/LtCHtPI
+ dB6AvquS6Qfk8KYzE/vp1Z6yJWpY/P9XU1feFvYyoR1T6L70Bza2BlTZGgNWJRpQdaZxikK0cBn
+ 5uYUvnqnAc+KH+ARGcoBeJaPH4JK46CYQw64Ll18A9L2pSw5lpr+CwmfP+71GP+OstZqna0JSBc
+ 9wXd5unG853hEochkcGF5HtMPLKvj35VhmcE+tP4R8KXI4ShOaoSr+p6dW0YShOV4lw7pDH34+Y
+ zx+keMm1DXlbdUw==
+X-Developer-Key: i=s.horvath@outlook.com.au; a=openpgp;
+ fpr=C801E04662089F4B163034C880BC5E2227189DA3
+X-Endpoint-Received: by B4 Relay for s.horvath@outlook.com.au/2024-05-10 with auth_id=277
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-netlink_ack_tlv_fill crashes when in_skb->data is an empty string. This
-adds a check to prevent it.
+Hi, this series of patches adds DDR5 support to decode-dimms.
 
-Reported-by: syzbot+d4373fa8042c06cefa84@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=d4373fa8042c06cefa84
-Fixes: 652332e3f1d6 ("netlink: move extack writing helpers")
-Signed-off-by: Manas <manas18244@iiitd.ac.in>
----
-Changes in v2:
-- Add target tree and prefix in commit message
-- Add Fixes tag
-- Remove duplicate commit message from cover letter
-- Link to v1: https://lore.kernel.org/r/20241114-fix-netlink_ack_tlv_fill-v1-1-47798af4ac96@iiitd.ac.in
----
- net/netlink/af_netlink.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I'm not too experienced with perl or the JEDEC specs, so there's probably
+going to be some questionable choices here, but I'd love to hear
+feedback.
 
-diff --git a/net/netlink/af_netlink.c b/net/netlink/af_netlink.c
-index 0a9287fadb47a2afaf0babe675738bc43051c5a7..ea205a4f81e9755a229d46a7e617ce0c090fe5e3 100644
---- a/net/netlink/af_netlink.c
-+++ b/net/netlink/af_netlink.c
-@@ -2205,7 +2205,7 @@ netlink_ack_tlv_fill(struct sk_buff *in_skb, struct sk_buff *skb,
- 	if (!err)
- 		return;
- 
--	if (extack->bad_attr &&
-+	if (extack->bad_attr && strlen(in_skb->data) &&
- 	    !WARN_ON((u8 *)extack->bad_attr < in_skb->data ||
- 		     (u8 *)extack->bad_attr >= in_skb->data + in_skb->len))
- 		WARN_ON(nla_put_u32(skb, NLMSGERR_ATTR_OFFS,
+The first 4 patches (1, 2, 3, 4) add the essential information to
+decode-dimms.
 
+The next 2 patches (5, 6) haven't really been tested on hardware
+implementations so I'm happy for them to be dropped if they're not
+useful.
+
+I also wrote these a few months ago, but wasn't sure if I'd be free
+enough for any revisions at the time.
+
+Signed-off-by: Stephen Horvath <s.horvath@outlook.com.au>
 ---
-base-commit: 2d5404caa8c7bb5c4e0435f94b28834ae5456623
-change-id: 20241114-fix-netlink_ack_tlv_fill-14db336fd515
+Stephen Horvath (6):
+      decode-dimms: Implement DDR5 checksum parsing
+      decode-dimms: Decode DDR5 Manufacturer Data
+      decode-dimms: Decode timings and other data for DDR5
+      decode-dimms: Decode DDR5 common module information
+      decode-dimms: Add basic decoding of type specific information for DDR5
+      decode-dimms: Decode DDR5 error log
+
+ eeprom/decode-dimms | 517 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 513 insertions(+), 4 deletions(-)
+---
+base-commit: cd435c853bc9df0058620a471d4191c7de27a2f9
+change-id: 20240625-decode-ddr5-b8aa4545812e
 
 Best regards,
 -- 
-Manas <manas18244@iiitd.ac.in>
+Stephen Horvath <s.horvath@outlook.com.au>
 
