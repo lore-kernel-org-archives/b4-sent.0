@@ -1,60 +1,54 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Sat, 16 Nov 2024 13:49:36 +0100
-Subject: [PATCH v2] input: Documentation: Fix the input_event struct
- documentation
+Date: Sat, 16 Nov 2024 14:44:39 +0100
+Subject: [PATCH] firmware: qcom: scm: Allow QSEECOM on the asus vivobook
+ s15
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241116-fix_input_doc-v2-1-133dad7ae928@hotmail.com>
-X-B4-Tracking: v=1; b=H4sIAN+UOGcC/3WMQQ6CMBBFr0JmbU2HgIgr7mEIgXZqJ5GWtEg0p
- He3snf5fv57O0QKTBFuxQ6BNo7sXYbyVICyo3uQYJ0ZSllWiCiF4ffAbnmtg/ZKoKbJNJPSrao
- hO0ugfDh69z6z5bj68DnyG/7Wf6UNBYqmqnVtWnmlC3bWr/PIz7PyM/QppS/S7GqQrAAAAA==
-X-Change-ID: 20241110-fix_input_doc-1debf7bcd9c5
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Jonathan Corbet <corbet@lwn.net>
-Cc: linux-input@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>
+Message-Id: <20241116-add_asus_qcom_scm-v1-1-5aa2b0fb52bd@hotmail.com>
+X-B4-Tracking: v=1; b=H4sIAMahOGcC/x3MSwqAMAwA0atI1hZM1QpeRaTUNmoW/hoUQby7x
+ eVbzDwgFJkE2uyBSBcLb2sC5hn42a0TKQ7JoAtdIaJRLgTr5BR7+G2x4heFZWO8HmpjkCB1e6S
+ R7//Z9e/7AcLp1DFjAAAA
+X-Change-ID: 20241116-add_asus_qcom_scm-1376c2b5661e
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731761407; l=1144;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731764682; l=1061;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=aJIAHE62NFe2v1AZvK2w1bKfLBVXM8fqWYWzZ+CLOFQ=;
- b=56Cb4rSIgy+NvQOd/PHdf+aL2L6cfyu5NJvfKmowENuxGlYLjVLJhFsk5KGXwN/FpGqFmp0Bb
- yNMdzsDKyOVCYrl0STxX5krtgAMOKBBq99Bw5ZnFDAkmpE6SaNiRy8S
+ bh=LGt2vVLNhgxRFLVYlxRxtn5kjW0oNXk/G6bF1cNREYc=;
+ b=Xi/cjvg8PRVTuBhZbAHv+dX7ue1iv3nEv5wUfqWK5n1IHHZCz2+aEiz5Q3N8FgYO+XMG+dnPO
+ tvK5hXdJNeIDgfZs1hqIDn15/4uV0jYifYgQSHP85IPFug76cJcnVNU
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix the datatype of the value field of the input_event struct which is
-signed instead of unsigned.
-See include/uapi/linux/input.h
+Add the asus vivobook s15 to the compatible list to allow access to
+efivars
 
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
-Changes in v2:
-- Fixed the tags in the commit message
-- Link to v1: https://lore.kernel.org/r/20241110-fix_input_doc-v1-1-745d5f908e61@hotmail.com
----
- Documentation/input/input.rst | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/firmware/qcom/qcom_scm.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/input/input.rst b/Documentation/input/input.rst
-index 2c67fa904adcf902cebf8e7137c0a1609d879a50..d9a6de87d02de5301500b392191ab67e7db431ed 100644
---- a/Documentation/input/input.rst
-+++ b/Documentation/input/input.rst
-@@ -264,7 +264,7 @@ events on a read. Their layout is::
- 	    struct timeval time;
- 	    unsigned short type;
- 	    unsigned short code;
--	    unsigned int value;
-+	    int value;
-     };
- 
- ``time`` is the timestamp, it returns the time at which the event happened.
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+index 72bf87ddcd969834609cda2aa915b67505e93943..0bdfe64a0ff009c38720692fe60d9f13342181a9 100644
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -1768,6 +1768,7 @@ EXPORT_SYMBOL_GPL(qcom_scm_qseecom_app_send);
+  + any potential issues with this, only allow validated machines for now.
+  */
+ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
++	{ .compatible = "asus,vivobook-s15" },
+ 	{ .compatible = "dell,xps13-9345" },
+ 	{ .compatible = "lenovo,flex-5g" },
+ 	{ .compatible = "lenovo,thinkpad-t14s" },
 
 ---
-base-commit: de2f378f2b771b39594c04695feee86476743a69
-change-id: 20241110-fix_input_doc-1debf7bcd9c5
+base-commit: 744cf71b8bdfcdd77aaf58395e068b7457634b2c
+change-id: 20241116-add_asus_qcom_scm-1376c2b5661e
 
 Best regards,
 -- 
