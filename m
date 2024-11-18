@@ -1,15 +1,13 @@
 From: Manas <manas18244@iiitd.ac.in>
-Subject: [PATCH v3 0/3] rust: simplify Result<()> uses
-Date: Mon, 18 Nov 2024 20:06:57 +0530
-Message-Id: <20241118-simplify-result-v3-0-6b1566a77eab@iiitd.ac.in>
+Date: Mon, 18 Nov 2024 20:06:58 +0530
+Subject: [PATCH v3 1/3] rust: block: simplify Result<()> in
+ validate_block_size return
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAlRO2cC/3XNQQ6CMBCF4auQrh3SKYLUlfcwLkpbZBIE0tZGQ
- ri7hZXGuPxfMt8szFtH1rNztjBnI3kahxTFIWO6U8PdApnUTHBxRMQTeHpMPbUzOOuffQCtjKx
- VyyXXkqWrydmWXrt4vaXuyIfRzfuDiNv634oICGXDsTGi4KpqLkQUTK50TgPbtCg+hfpXEMBBG
- lFzZVSJlfkW1nV9A8Na983yAAAA
-X-Change-ID: 20241117-simplify-result-cad98af090c9
+Message-Id: <20241118-simplify-result-v3-1-6b1566a77eab@iiitd.ac.in>
+References: <20241118-simplify-result-v3-0-6b1566a77eab@iiitd.ac.in>
+In-Reply-To: <20241118-simplify-result-v3-0-6b1566a77eab@iiitd.ac.in>
 To: FUJITA Tomonori <fujita.tomonori@gmail.com>, 
  Trevor Gross <tmgross@umich.edu>, Andrew Lunn <andrew@lunn.ch>, 
  Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -26,47 +24,41 @@ Cc: Shuah Khan <skhan@linuxfoundation.org>,
  rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-block@vger.kernel.org, Manas <manas18244@iiitd.ac.in>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1731940618; l=1260;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1731940618; l=1188;
  i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
- bh=QHseiXY+gfW1EiR35D5KxqOHqK4eeKBQcxrZQPzLitA=;
- b=s2Lr7AgQs25d0IvfDjJKsibL0zs8oJ2YK5AHcKdytvGp7n1aGMrCGAuQVem9QwVc13EGdycYI
- hZaY8R/tP5rCbgqqMYIWtb64UcS2AO+vcvLbYO3kPWYkKBZxYBkUkrg
+ bh=SjEoEAw4QthSgW06VVqrPjPqp4OFSw3Gjp5nrbE0RAU=;
+ b=A/Mb8qo7Qi7OcYvRPjGPtfsA0qTx3z8eiNe0JuAYfi+2Rbz/Gr8wY65BMN1YbqOcIy8K0CH5v
+ +IhxvUu7D4BCvgatpit1szrB6fHrzoXC9w5hIyQ4Jx7vcN2djHlwat+
 X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
  pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
 X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+`Result` is used in place of `Result<()>` because the default type
+parameters are unit `()` and `Error` types, which are automatically
+inferred. Thus keep the usage consistent throughout codebase.
+
+Suggested-by: Miguel Ojeda <ojeda@kernel.org>
+Link: https://github.com/Rust-for-Linux/linux/issues/1128
 Signed-off-by: Manas <manas18244@iiitd.ac.in>
 ---
-Changes in v3:
-- Add Link: and Suggested-by: tags in all three commit messages
-- Edit in imperative tense for commit messages
-- Link to v2: https://lore.kernel.org/r/20241118-simplify-result-v2-0-9d280ada516d@iiitd.ac.in
-
-Changes in v2:
-- rust: split patches according to various subsystems
-- rust: add rationale for change
-- qt2025: removed qt2025 patch from this series and sent it separately
-  to netdev subsystem
-  Link to qt2025 patch:
-  https://lore.kernel.org/netdev/20241118-simplify-result-qt2025-v1-1-f2d9cef17fca@iiitd.ac.in/
-- Link to v1: https://lore.kernel.org/r/20241117-simplify-result-v1-1-5b01bd230a6b@iiitd.ac.in
-
----
-Manas (3):
-      rust: block: simplify Result<()> in validate_block_size return
-      rust: uaccess: simplify Result<()> in bytes_add_one return
-      rust: macros: simplify Result<()> in function returns
-
  rust/kernel/block/mq/gen_disk.rs | 2 +-
- rust/kernel/uaccess.rs           | 2 +-
- rust/macros/lib.rs               | 6 +++---
- 3 files changed, 5 insertions(+), 5 deletions(-)
----
-base-commit: b2603f8ac8217bc59f5c7f248ac248423b9b99cb
-change-id: 20241117-simplify-result-cad98af090c9
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Best regards,
+diff --git a/rust/kernel/block/mq/gen_disk.rs b/rust/kernel/block/mq/gen_disk.rs
+index 708125dce96a934f32caab44d5e6cff14c4321a9..798c4ae0bdedd58221b5851a630c0e1052e0face 100644
+--- a/rust/kernel/block/mq/gen_disk.rs
++++ b/rust/kernel/block/mq/gen_disk.rs
+@@ -45,7 +45,7 @@ pub fn rotational(mut self, rotational: bool) -> Self {
+ 
+     /// Validate block size by verifying that it is between 512 and `PAGE_SIZE`,
+     /// and that it is a power of two.
+-    fn validate_block_size(size: u32) -> Result<()> {
++    fn validate_block_size(size: u32) -> Result {
+         if !(512..=bindings::PAGE_SIZE as u32).contains(&size) || !size.is_power_of_two() {
+             Err(error::code::EINVAL)
+         } else {
+
 -- 
-Manas <manas18244@iiitd.ac.in>
+2.47.0
 
