@@ -1,10 +1,11 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Tue, 19 Nov 2024 16:00:18 +0100
-Subject: [PATCH v5 12/16] net: dwmac-sti: Use helper rgmii_clock
+Date: Tue, 19 Nov 2024 16:00:19 +0100
+Subject: [PATCH v5 13/16] dt-bindings: net: Add DT bindings for DWMAC on
+ NXP S32G/R SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241119-upstream_s32cc_gmac-v5-12-7dcc90fcffef@oss.nxp.com>
+Message-Id: <20241119-upstream_s32cc_gmac-v5-13-7dcc90fcffef@oss.nxp.com>
 References: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 In-Reply-To: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -33,72 +34,150 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=1952;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=4093;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=4WAcRIbJeVrGoUYNaNKyXpe1e/1nCZz3HHyJvSF+DTE=;
- b=QJSE/uwH7qbGZ5Pt5AlP3qUpMisqMtOtJGoWm3nKCyRZm+VVvwzalJgkarLJiS7GZuaJMR0bp
- 4HZaWtP8UDeArvf21s/WgqOVmBTKD3sAUrVX6YwxBF7twnxzAib/NSm
+ bh=1xROYlylzwH8UK0iKW6W31OAoU/xH+M2AeMY1t7N71A=;
+ b=egKGCJN7L7SfDPwLAkt0D8PQm2WbSjgetnAwUx7ajU6wFMX7ZykF4MeT4vQGiic4QS3j4HY7g
+ dukyTfF5/bgCfzXADaOQyoGgrz6ag4THqvIlg54jUjvEv7bGItftnQy
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Utilize a new helper function rgmii_clock().
+Add basic description for DWMAC ethernet IP on NXP S32G2xx, S32G3xx
+and S32R45 automotive series SoCs.
 
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c | 18 +++++-------------
- 1 file changed, 5 insertions(+), 13 deletions(-)
+ .../devicetree/bindings/net/nxp,s32-dwmac.yaml     | 105 +++++++++++++++++++++
+ .../devicetree/bindings/net/snps,dwmac.yaml        |   3 +
+ 2 files changed, 108 insertions(+)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c
-index 4445cddc4cbe..0b02d079360d 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c
-@@ -21,10 +21,7 @@
- 
- #include "stmmac_platform.h"
- 
--#define DWMAC_125MHZ	125000000
- #define DWMAC_50MHZ	50000000
--#define DWMAC_25MHZ	25000000
--#define DWMAC_2_5MHZ	2500000
- 
- #define IS_PHY_IF_MODE_RGMII(iface)	(iface == PHY_INTERFACE_MODE_RGMII || \
- 			iface == PHY_INTERFACE_MODE_RGMII_ID || \
-@@ -140,7 +137,7 @@ static void stih4xx_fix_retime_src(void *priv, u32 spd, unsigned int mode)
- 	struct sti_dwmac *dwmac = priv;
- 	u32 src = dwmac->tx_retime_src;
- 	u32 reg = dwmac->ctrl_reg;
--	u32 freq = 0;
-+	long freq = 0;
- 
- 	if (dwmac->interface == PHY_INTERFACE_MODE_MII) {
- 		src = TX_RETIME_SRC_TXCLK;
-@@ -153,19 +150,14 @@ static void stih4xx_fix_retime_src(void *priv, u32 spd, unsigned int mode)
- 		}
- 	} else if (IS_PHY_IF_MODE_RGMII(dwmac->interface)) {
- 		/* On GiGa clk source can be either ext or from clkgen */
--		if (spd == SPEED_1000) {
--			freq = DWMAC_125MHZ;
--		} else {
-+		freq = rgmii_clock(spd);
+diff --git a/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml b/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
+new file mode 100644
+index 000000000000..a141e826a295
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
+@@ -0,0 +1,105 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++# Copyright 2021-2024 NXP
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/nxp,s32-dwmac.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+		if (spd != SPEED_1000 && freq > 0)
- 			/* Switch to clkgen for these speeds */
- 			src = TX_RETIME_SRC_CLKGEN;
--			if (spd == SPEED_100)
--				freq = DWMAC_25MHZ;
--			else if (spd == SPEED_10)
--				freq = DWMAC_2_5MHZ;
--		}
- 	}
- 
--	if (src == TX_RETIME_SRC_CLKGEN && freq)
-+	if (src == TX_RETIME_SRC_CLKGEN && freq > 0)
- 		clk_set_rate(dwmac->clk, freq);
- 
- 	regmap_update_bits(dwmac->regmap, reg, STIH4XX_RETIME_SRC_MASK,
++title: NXP S32G2xx/S32G3xx/S32R45 GMAC ethernet controller
++
++maintainers:
++  - Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
++
++description:
++  This device is a Synopsys DWC IP, integrated on NXP S32G/R SoCs.
++  The SoC series S32G2xx and S32G3xx feature one DWMAC instance,
++  the SoC S32R45 has two instances. The devices can use RGMII/RMII/MII
++  interface over Pinctrl device or the output can be routed
++  to the embedded SerDes for SGMII connectivity.
++
++properties:
++  compatible:
++    oneOf:
++      - const: nxp,s32g2-dwmac
++      - items:
++        - enum:
++            - nxp,s32g3-dwmac
++            - nxp,s32r45-dwmac
++        - const: nxp,s32g2-dwmac
++
++  reg:
++    items:
++      - description: Main GMAC registers
++      - description: GMAC PHY mode control register
++
++  interrupts:
++    maxItems: 1
++
++  interrupt-names:
++    const: macirq
++
++  clocks:
++    items:
++      - description: Main GMAC clock
++      - description: Transmit clock
++      - description: Receive clock
++      - description: PTP reference clock
++
++  clock-names:
++    items:
++      - const: stmmaceth
++      - const: tx
++      - const: rx
++      - const: ptp_ref
++
++required:
++  - clocks
++  - clock-names
++
++allOf:
++  - $ref: snps,dwmac.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
++    #include <dt-bindings/phy/phy.h>
++    bus {
++      #address-cells = <2>;
++      #size-cells = <2>;
++
++      ethernet@4033c000 {
++        compatible = "nxp,s32g2-dwmac";
++        reg = <0x0 0x4033c000 0x0 0x2000>, /* gmac IP */
++              <0x0 0x4007c004 0x0 0x4>;    /* GMAC_0_CTRL_STS */
++        interrupt-parent = <&gic>;
++        interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
++        interrupt-names = "macirq";
++        snps,mtl-rx-config = <&mtl_rx_setup>;
++        snps,mtl-tx-config = <&mtl_tx_setup>;
++        clocks = <&clks 24>, <&clks 17>, <&clks 16>, <&clks 15>;
++        clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
++        phy-mode = "rgmii-id";
++        phy-handle = <&phy0>;
++
++        mtl_rx_setup: rx-queues-config {
++          snps,rx-queues-to-use = <5>;
++        };
++
++        mtl_tx_setup: tx-queues-config {
++          snps,tx-queues-to-use = <5>;
++        };
++
++        mdio {
++          #address-cells = <1>;
++          #size-cells = <0>;
++          compatible = "snps,dwmac-mdio";
++
++          phy0: ethernet-phy@0 {
++            reg = <0>;
++          };
++        };
++      };
++    };
+diff --git a/Documentation/devicetree/bindings/net/snps,dwmac.yaml b/Documentation/devicetree/bindings/net/snps,dwmac.yaml
+index 4e2ba1bf788c..a88d1c236eaf 100644
+--- a/Documentation/devicetree/bindings/net/snps,dwmac.yaml
++++ b/Documentation/devicetree/bindings/net/snps,dwmac.yaml
+@@ -66,6 +66,9 @@ properties:
+         - ingenic,x2000-mac
+         - loongson,ls2k-dwmac
+         - loongson,ls7a-dwmac
++        - nxp,s32g2-dwmac
++        - nxp,s32g3-dwmac
++        - nxp,s32r-dwmac
+         - qcom,qcs404-ethqos
+         - qcom,sa8775p-ethqos
+         - qcom,sc8280xp-ethqos
 
 -- 
 2.47.0
