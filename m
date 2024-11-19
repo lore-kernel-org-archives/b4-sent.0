@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Tue, 19 Nov 2024 16:00:13 +0100
-Subject: [PATCH v5 07/16] net: dwmac-intel-plat: Use helper rgmii_clock
+Date: Tue, 19 Nov 2024 16:00:14 +0100
+Subject: [PATCH v5 08/16] net: dwmac-rk: Use helper rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241119-upstream_s32cc_gmac-v5-7-7dcc90fcffef@oss.nxp.com>
+Message-Id: <20241119-upstream_s32cc_gmac-v5-8-7dcc90fcffef@oss.nxp.com>
 References: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 In-Reply-To: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -33,11 +33,11 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=1227;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=1708;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=slqRw7objjurz553hpNnHk7Oq3u52m0s/u20cRgTiOo=;
- b=X/dVu48GWo9o+7QqgePHJElMkzsTJa1PUZuhR9ytxNevODjPxQO/lj6gznC/I2xcocEtOv6kP
- +VdcspNoLSlCdmCkNPIdyCDtr+4lSb0R2aZ0D9qDZaqKCJnP0mJw4Zd
+ bh=qgV3Pn8mQViI9wI7w0SXeEm8aXeN4r9kNedskC88Gbw=;
+ b=7MX3L571k5Y4YP2dBvgCCHyWPFDCquMX+NbR+SdC1/iy+YsgRPUhs1scm81+GpypUxG1j3HkH
+ FiIQY0h2X7IDkVQDQgMM9uSR7Q52Bz3v4WJCSF2n1ENS4nYrFmvZNpc
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
@@ -48,45 +48,61 @@ Utilize a new helper function rgmii_clock().
 Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- .../net/ethernet/stmicro/stmmac/dwmac-intel-plat.c   | 20 ++++----------------
- 1 file changed, 4 insertions(+), 16 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c | 30 ++++++--------------------
+ 1 file changed, 6 insertions(+), 24 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-intel-plat.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-intel-plat.c
-index 9739bc9867c5..71dbb8031506 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-intel-plat.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-intel-plat.c
-@@ -31,27 +31,15 @@ struct intel_dwmac_data {
- static void kmb_eth_fix_mac_speed(void *priv, unsigned int speed, unsigned int mode)
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+index 50073bdade46..2fd650b3bc5c 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
+@@ -1079,20 +1079,11 @@ static void rk3568_set_gmac_speed(struct rk_priv_data *bsp_priv, int speed)
  {
- 	struct intel_dwmac *dwmac = priv;
+ 	struct clk *clk_mac_speed = bsp_priv->clks[RK_CLK_MAC_SPEED].clk;
+ 	struct device *dev = &bsp_priv->pdev->dev;
 -	unsigned long rate;
 +	long rate;
  	int ret;
  
- 	rate = clk_get_rate(dwmac->tx_clk);
- 
 -	switch (speed) {
--	case SPEED_1000:
--		rate = 125000000;
--		break;
--
--	case SPEED_100:
--		rate = 25000000;
--		break;
--
--	case SPEED_10:
+-	case 10:
 -		rate = 2500000;
 -		break;
--
+-	case 100:
+-		rate = 25000000;
+-		break;
+-	case 1000:
+-		rate = 125000000;
+-		break;
 -	default:
 +	rate = rgmii_clock(speed);
 +	if (rate < 0) {
- 		dev_err(dwmac->dev, "Invalid speed\n");
--		break;
-+		return;
+ 		dev_err(dev, "unknown speed value for GMAC speed=%d", speed);
+ 		return;
  	}
+@@ -1540,20 +1531,11 @@ static void rv1126_set_rgmii_speed(struct rk_priv_data *bsp_priv, int speed)
+ {
+ 	struct clk *clk_mac_speed = bsp_priv->clks[RK_CLK_MAC_SPEED].clk;
+ 	struct device *dev = &bsp_priv->pdev->dev;
+-	unsigned long rate;
++	long rate;
+ 	int ret;
  
- 	ret = clk_set_rate(dwmac->tx_clk, rate);
+-	switch (speed) {
+-	case 10:
+-		rate = 2500000;
+-		break;
+-	case 100:
+-		rate = 25000000;
+-		break;
+-	case 1000:
+-		rate = 125000000;
+-		break;
+-	default:
++	rate = rgmii_clock(speed);
++	if (rate < 0) {
+ 		dev_err(dev, "unknown speed value for RGMII speed=%d", speed);
+ 		return;
+ 	}
 
 -- 
 2.47.0
