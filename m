@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Tue, 19 Nov 2024 16:00:12 +0100
-Subject: [PATCH v5 06/16] net: dwmac-imx: Use helper rgmii_clock
+Date: Tue, 19 Nov 2024 16:00:13 +0100
+Subject: [PATCH v5 07/16] net: dwmac-intel-plat: Use helper rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241119-upstream_s32cc_gmac-v5-6-7dcc90fcffef@oss.nxp.com>
+Message-Id: <20241119-upstream_s32cc_gmac-v5-7-7dcc90fcffef@oss.nxp.com>
 References: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 In-Reply-To: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -33,11 +33,11 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=1311;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=1227;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=RMVTH3hvh5z3jXZFII2jqlp8hQsgh3kxOOMPagrwF3g=;
- b=dQnFrCsQGyOKB3ADiDaFhX22HH/kYW8anN5LeDqQvsHDyOqQMAyG7LnAD8YtZxHTxyASzcmTr
- dJosg2cfywGAj/+rRC6ZylDwKZatdHlRaV/oKj1sI/jLTsBiNSiOh1R
+ bh=slqRw7objjurz553hpNnHk7Oq3u52m0s/u20cRgTiOo=;
+ b=X/dVu48GWo9o+7QqgePHJElMkzsTJa1PUZuhR9ytxNevODjPxQO/lj6gznC/I2xcocEtOv6kP
+ +VdcspNoLSlCdmCkNPIdyCDtr+4lSb0R2aZ0D9qDZaqKCJnP0mJw4Zd
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
@@ -48,42 +48,45 @@ Utilize a new helper function rgmii_clock().
 Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c | 15 +++------------
- 1 file changed, 3 insertions(+), 12 deletions(-)
+ .../net/ethernet/stmicro/stmmac/dwmac-intel-plat.c   | 20 ++++----------------
+ 1 file changed, 4 insertions(+), 16 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c
-index 6b65420e11b5..4147b56d40e1 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c
-@@ -186,7 +186,7 @@ static void imx_dwmac_fix_speed(void *priv, unsigned int speed, unsigned int mod
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-intel-plat.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-intel-plat.c
+index 9739bc9867c5..71dbb8031506 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-intel-plat.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-intel-plat.c
+@@ -31,27 +31,15 @@ struct intel_dwmac_data {
+ static void kmb_eth_fix_mac_speed(void *priv, unsigned int speed, unsigned int mode)
  {
- 	struct plat_stmmacenet_data *plat_dat;
- 	struct imx_priv_data *dwmac = priv;
+ 	struct intel_dwmac *dwmac = priv;
 -	unsigned long rate;
 +	long rate;
- 	int err;
+ 	int ret;
  
- 	plat_dat = dwmac->plat_dat;
-@@ -196,17 +196,8 @@ static void imx_dwmac_fix_speed(void *priv, unsigned int speed, unsigned int mod
- 	    (plat_dat->mac_interface == PHY_INTERFACE_MODE_MII))
- 		return;
+ 	rate = clk_get_rate(dwmac->tx_clk);
  
 -	switch (speed) {
 -	case SPEED_1000:
 -		rate = 125000000;
 -		break;
+-
 -	case SPEED_100:
 -		rate = 25000000;
 -		break;
+-
 -	case SPEED_10:
 -		rate = 2500000;
 -		break;
+-
 -	default:
 +	rate = rgmii_clock(speed);
 +	if (rate < 0) {
- 		dev_err(dwmac->dev, "invalid speed %u\n", speed);
- 		return;
+ 		dev_err(dwmac->dev, "Invalid speed\n");
+-		break;
++		return;
  	}
+ 
+ 	ret = clk_set_rate(dwmac->tx_clk, rate);
 
 -- 
 2.47.0
