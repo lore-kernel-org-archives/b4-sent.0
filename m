@@ -1,11 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Tue, 19 Nov 2024 16:00:21 +0100
-Subject: [PATCH v5 15/16] MAINTAINERS: Add Jan Petrous as the NXP S32G/R
- DWMAC driver maintainer
+Date: Tue, 19 Nov 2024 16:00:22 +0100
+Subject: [PATCH v5 16/16] net: stmmac: platform: Fix PTP clock rate reading
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241119-upstream_s32cc_gmac-v5-15-7dcc90fcffef@oss.nxp.com>
+Message-Id: <20241119-upstream_s32cc_gmac-v5-16-7dcc90fcffef@oss.nxp.com>
 References: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 In-Reply-To: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -34,42 +33,41 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=915;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=1264;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=pHfq2w2j/SBgXCktQF2QqXPe5W6F70KOUcF5p5w2GsQ=;
- b=kg29ciDxOYgCtpwUA3BwC8OyW9MWH36GrRkyP2aoXLaiP8YzLpujxXXK+dVU1O7XUH5tRKMmO
- 50nCIVDiH+9CkW1LffGBetnJYKNNZxBRWJIyA9rTWuO9O0z8R/ZHoE1
+ bh=SPtatx8x0ZkbtjnD8HA6OeWFeo+DZZ7ciHEBKeYJXkM=;
+ b=2UaIZd/gCwdI5kIGbU8BJj5qpiNrj2FL1GF/utf3Q9uRD7+lnoiRcKDO9pbhMhMM611X5TL1E
+ toRgEv2X5geDhoQ+eHY+2G/4K1Vn3mTfArX/V9Hwli6Rqyvby60GyYU
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add myself as NXP S32G/R DWMAC Ethernet driver maintainer.
+The stmmac driver supports many vendors SoCs using Synopsys-licensed
+Ethernet controller IP. Most of these vendors reuse the stmmac_platform
+codebase, which has a potential PTP clock initialization issue.
+The PTP clock rate reading might require ungating what is not provided.
 
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
+Fix the PTP clock initialization by enabling it immediately.
+
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 82161bc70b51..c65d8f904871 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2791,6 +2791,13 @@ S:	Maintained
- F:	arch/arm64/boot/dts/freescale/s32g*.dts*
- F:	drivers/pinctrl/nxp/
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
+index b1e4df1a86a0..db3e8ef4fc3a 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
+@@ -632,7 +632,7 @@ stmmac_probe_config_dt(struct platform_device *pdev, u8 *mac)
+ 	clk_prepare_enable(plat->pclk);
  
-+ARM/NXP S32G/S32R DWMAC ETHERNET DRIVER
-+M:	Jan Petrous <jan.petrous@oss.nxp.com>
-+L:	NXP S32 Linux Team <s32@nxp.com>
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
-+F:	drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+
- ARM/Orion SoC/Technologic Systems TS-78xx platform support
- M:	Alexander Clouter <alex@digriz.org.uk>
- L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
+ 	/* Fall-back to main clock in case of no PTP ref is passed */
+-	plat->clk_ptp_ref = devm_clk_get(&pdev->dev, "ptp_ref");
++	plat->clk_ptp_ref = devm_clk_get_enabled(&pdev->dev, "ptp_ref");
+ 	if (IS_ERR(plat->clk_ptp_ref)) {
+ 		plat->clk_ptp_rate = clk_get_rate(plat->stmmac_clk);
+ 		plat->clk_ptp_ref = NULL;
 
 -- 
 2.47.0
