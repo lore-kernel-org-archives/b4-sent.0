@@ -1,11 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Tue, 19 Nov 2024 16:00:10 +0100
-Subject: [PATCH v5 04/16] net: phy: Add helper for mapping RGMII link speed
- to clock rate
+Date: Tue, 19 Nov 2024 16:00:11 +0100
+Subject: [PATCH v5 05/16] net: dwmac-dwc-qos-eth: Use helper rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241119-upstream_s32cc_gmac-v5-4-7dcc90fcffef@oss.nxp.com>
+Message-Id: <20241119-upstream_s32cc_gmac-v5-5-7dcc90fcffef@oss.nxp.com>
 References: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 In-Reply-To: <20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -32,70 +31,58 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  netdev@vger.kernel.org, linux-arm-msm@vger.kernel.org, imx@lists.linux.dev, 
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
- "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
+ "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=1444;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732028461; l=1225;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=9P0ry2iOu969sx+k09VLkaOhf19TsKhJriPqamf/d5Q=;
- b=3x1pZvA190M4/JSVKA6683Fqp6WmSzqEWmYvvett/32O9XyIAaAkbscj0re5YlXILhFY1HZEn
- +qAywTHv1c2BOioB2wL4dAHT4KiTNVvLwyHWaBz2kKoAR8J4QSJ4x9D
+ bh=w8qKMUbePd0dbgi97IzRvhmqA046iGgBejOkw++o5yw=;
+ b=FMYBRt/A42Qa4Z7krGr0OpDcK1HAoTIvhUKlceHXBBPZmS7ounwtwMYDRVL2veeohiXghfahL
+ QOTdDUwh03cAVnGXFV5f0n+fVcuokSl/Ri+59pCCK6DspQVe8FuC+T2
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RGMII interface supports three data rates: 10/100 Mbps
-and 1 Gbps. These speeds correspond to clock frequencies
-of 2.5/25 MHz and 125 MHz, respectively.
+Utilize a new helper function rgmii_clock().
 
-Many Ethernet drivers, including glues in stmmac, follow
-a similar pattern of converting RGMII speed to clock frequency.
-
-To simplify code, define the helper rgmii_clock(speed)
-to convert connection speed to clock frequency.
-
-Suggested-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
 Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- include/linux/phy.h | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/phy.h b/include/linux/phy.h
-index a98bc91a0cde..e28c971d7616 100644
---- a/include/linux/phy.h
-+++ b/include/linux/phy.h
-@@ -298,6 +298,29 @@ static inline const char *phy_modes(phy_interface_t interface)
- 	}
- }
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c
+index ec924c6c76c6..6fd59338ce85 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c
+@@ -181,24 +181,19 @@ static void dwc_qos_remove(struct platform_device *pdev)
+ static void tegra_eqos_fix_speed(void *priv, unsigned int speed, unsigned int mode)
+ {
+ 	struct tegra_eqos *eqos = priv;
+-	unsigned long rate = 125000000;
+ 	bool needs_calibration = false;
++	long rate = 125000000;
+ 	u32 value;
+ 	int err;
  
-+/**
-+ * rgmii_clock - map link speed to the clock rate
-+ * @speed: link speed value
-+ *
-+ * Description: maps RGMII supported link speeds
-+ * into the clock rates.
-+ *
-+ * Returns: clock rate or negative errno
-+ */
-+static inline long rgmii_clock(int speed)
-+{
-+	switch (speed) {
-+	case SPEED_10:
-+		return 2500000;
-+	case SPEED_100:
-+		return 25000000;
-+	case SPEED_1000:
-+		return 125000000;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
- #define PHY_INIT_TIMEOUT	100000
- #define PHY_FORCE_TIMEOUT	10
+ 	switch (speed) {
+ 	case SPEED_1000:
+-		needs_calibration = true;
+-		rate = 125000000;
+-		break;
+-
+ 	case SPEED_100:
+ 		needs_calibration = true;
+-		rate = 25000000;
+-		break;
++		fallthrough;
  
+ 	case SPEED_10:
+-		rate = 2500000;
++		rate = rgmii_clock(speed);
+ 		break;
+ 
+ 	default:
 
 -- 
 2.47.0
