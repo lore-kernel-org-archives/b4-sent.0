@@ -1,14 +1,12 @@
 From: Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>
-Subject: [PATCH 0/2] Add support for Avago/Broadcom APDS9160
-Date: Tue, 19 Nov 2024 15:36:55 -0500
-Message-Id: <20241119-apds9160-driver-v1-0-fa00675b4ea4@dimonoff.com>
+Date: Tue, 19 Nov 2024 15:36:56 -0500
+Subject: [PATCH 1/2] dt-bindings: iio: light: Add APDS9160 binding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOf2PGcC/x3MQQqAIBBA0avIrBMaK6muEi1Ex5qNxQgRiHdPW
- r7F/wUyCVOGVRUQejjzlRqwU+BPlw7SHJrB9GZExEW7O+QFba+D8EOiZ+vjRLMNNEzQqlso8vs
- ft73WD10JX6xhAAAA
-X-Change-ID: 20241119-apds9160-driver-86cf5e86de35
+Message-Id: <20241119-apds9160-driver-v1-1-fa00675b4ea4@dimonoff.com>
+References: <20241119-apds9160-driver-v1-0-fa00675b4ea4@dimonoff.com>
+In-Reply-To: <20241119-apds9160-driver-v1-0-fa00675b4ea4@dimonoff.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -21,36 +19,80 @@ Cc: Mikael Gonella-Bolduc <m.gonella.bolduc@gmail.com>,
  Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>, 
  Hugo Villeneuve <hvilleneuve@dimonoff.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732048621; l=926;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732048621; l=1677;
  i=mgonellabolduc@dimonoff.com; s=20241119; h=from:subject:message-id;
- bh=5ZtJ47OwVXBSoFV+aJ4Xr6HwqQoievLKVIyNMZI/poc=;
- b=+ma2BrFzBD30dJSA+R6419ctgdetUJPQudiqX55DnAVS9N7flyeN+0wL/u1JvSjUCbi8q+pqj
- 6PrWSEvetk0C9U/p4dynYYXUO38MIYK7wBAMY8+O/QG3h/CX6/bITkh
+ bh=MyhZj/K793WP3q4NesJzysEVuCCKb6IcZKJIuThoJ/Y=;
+ b=vjNvPdct8qXA1+JHHHHkGD75WVzMdskg5mJkJne7yODyjuOPp4cmXSFLAJ7q7oq9jfrAIYgj/
+ UXBRSVznXPRAPeuyq0UnghbHSeSh/i3U1v8dDg/lWtgwu95G/+0w5hs
 X-Developer-Key: i=mgonellabolduc@dimonoff.com; a=ed25519;
  pk=p4tvPfGPfXRyChsgHc6s7HwB6YBl2JqqcP3BXtoDitE=
 X-Endpoint-Received: by B4 Relay for mgonellabolduc@dimonoff.com/20241119 with auth_id=279
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-APDS9160 is an ALS and proximity sensor.
-https://www.broadcom.com/products/optical-sensors/integrated-ambient-light-and-proximity-sensors/apds-9160-003
+Add device tree bindings for APDS9160 driver
 
 Signed-off-by: Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>
 ---
-Mikael Gonella-Bolduc (2):
-      dt-bindings: iio: light: Add APDS9160 binding
-      iio: light: Add APDS9160 ALS & Proximity sensor driver
+ .../bindings/iio/light/avago,apds9160.yaml         | 50 ++++++++++++++++++++++
+ 1 file changed, 50 insertions(+)
 
- .../bindings/iio/light/avago,apds9160.yaml         |   50 +
- MAINTAINERS                                        |    7 +
- drivers/iio/light/Kconfig                          |   13 +
- drivers/iio/light/Makefile                         |    1 +
- drivers/iio/light/apds9160.c                       | 1420 ++++++++++++++++++++
- 5 files changed, 1491 insertions(+)
----
-base-commit: adc218676eef25575469234709c2d87185ca223a
-change-id: 20241119-apds9160-driver-86cf5e86de35
+diff --git a/Documentation/devicetree/bindings/iio/light/avago,apds9160.yaml b/Documentation/devicetree/bindings/iio/light/avago,apds9160.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..12e196b297fe523e4d324156041ef9c6900676eb
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/light/avago,apds9160.yaml
+@@ -0,0 +1,50 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/light/avago,apds9160.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Broadcom Combined Proximity & Ambient light sensor
++
++maintainers:
++  - Mikael Gonella-Bolduc <m.gonella.bolduc@gmail.com>
++
++description: |
++  Datasheet: https://docs.broadcom.com/docs/APDS-9160-003-DS
++
++properties:
++  compatible:
++    enum:
++      - avago,apds9160
++      - broadmobi,apds9160
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  vdd-supply: true
++
++additionalProperties: false
++
++required:
++  - compatible
++  - reg
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        apds9160@53 {
++          compatible = "broadmobi,apds9160";
++          reg = <0x53>;
++          interrupts = <29 IRQ_TYPE_EDGE_FALLING>;
++          interrupt-parent = <&pinctrl>;
++        };
++    };
++...
 
-Best regards,
 -- 
-Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>
+2.34.1
 
