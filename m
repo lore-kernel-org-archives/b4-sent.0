@@ -1,50 +1,68 @@
-From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Date: Fri, 22 Nov 2024 09:53:59 +0100
-Subject: [PATCH v2 3/3] dt-bindings: w1: ds2482: Add vcc-supply property
+From: Tobias Sperling <tobias.sperling@softing.com>
+Subject: [PATCH 0/2] Support for TI ADS7128 and ADS7138 ADCs
+Date: Fri, 22 Nov 2024 16:15:35 +0100
+Message-Id: <20241122-adc_ml-v1-0-0769f2e1bbc1@softing.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20241122-ds2482-add-reg-v2-3-a5a03ee74da7@gmail.com>
-References: <20241122-ds2482-add-reg-v2-0-a5a03ee74da7@gmail.com>
-In-Reply-To: <20241122-ds2482-add-reg-v2-0-a5a03ee74da7@gmail.com>
-To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Stefan Wahren <stefan.wahren@chargebyte.com>
-Cc: Ben Gardner <bgardner@wabtec.com>, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, 
- =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732265684; l=696;
- i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
- bh=fq/t3WqU49PJQPpZQn6+x14CxqIiQvaPHmtq+9hs7xQ=;
- b=dBAWTA0O/eR2X7TNdA+AbJgVi/EML/3B5fLsEY9eS3rgvmWGfYBHf4Esgp18AKOjSVLPrsdUx
- GvGY1dmEYbIBoMmeaPEO7U2xERaPWry5Vyilo3Lj1kzbkvz8S1AHkpu
-X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
- pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
-X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIABegQGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDQyMj3cSU5PjcHN0Uw+RUC7NUC9Mko2QloOKCotS0zAqwQdGxtbUA/2k
+ grlgAAAA=
+X-Change-ID: 20241122-adc_ml-d1ce86e85b2c
+To: Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Tobias Sperling <tobias.sperling@softing.com>
+X-Mailer: b4 0.15-dev-355e8
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732288552; l=1621;
+ i=tobias.sperling@softing.com; s=20241122; h=from:subject:message-id;
+ bh=TGa7Of0k80PmwcFhPdThmmvF7lbiviqdPAM1Y997XAU=;
+ b=vaDfFwv9U9SBeSnnomZ3qhMudcfqPeU9OqSxBVHX7QlW7lY2WZg4ZysWJbp7pCrEg6fMqSDw+
+ 2mrkok1/BQ3BDUHotcBbPSsWhWJR5ESTKny1J0lm55NuuFp/BXdFRrE
+X-Developer-Key: i=tobias.sperling@softing.com; a=ed25519;
+ pk=v7hgaMHsrA9ul4UXkBVUuwusS9PF3uHW/CC+gABI65E=
+X-Endpoint-Received: by B4 Relay for tobias.sperling@softing.com/20241122 with auth_id=281
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ds2482 has a VCC pin, accepting 2.9-5.5 V.
+This patch series adds support for Texas Instruments ADS7128 and
+ADS7138, which are 12-bit, 8 channel analog-to-digital converters (ADCs)
+with build-in digital window comparator (DWC), using the I2C interface.
 
-Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
+The driver exposes the interfaces to read the raw values, as well as the
+minimum and maximum value for each channel. In addition several settings
+can be configured, like the DWC, sampling frequency or an averaging
+filter/oversampling. Interrupts triggered by the DWC, if configured, are
+then exposed as IIO events.
+
+ADS7128 differs in the addition of further hardware features, like a
+root-mean-square (RMS) and a zero-crossing-detect (ZCD) module, which
+are not yet supported by the driver.
+
+Regarding the I2C interface the chips using opcodes to define the way
+how the registeres are accessed, like single or multiple register(s)
+read/write or setting/clearing only bits. 
+
+Changes in v1:
+- dt-bindings: Extended description
+
+Signed-off-by: Tobias Sperling <tobias.sperling@softing.com>
 ---
- Documentation/devicetree/bindings/w1/maxim,ds2482.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+Tobias Sperling (2):
+      dt-bindings: iio: adc: Introduce ADS7138
+      iio: adc: Add driver for ADS7128 / ADS7138
 
-diff --git a/Documentation/devicetree/bindings/w1/maxim,ds2482.yaml b/Documentation/devicetree/bindings/w1/maxim,ds2482.yaml
-index 422becc6e1fa8d58665c5586ebdc611cd0b2c760..fe6b3f9a3f8bbd00366c3e36aad3ffa72ec1a31f 100644
---- a/Documentation/devicetree/bindings/w1/maxim,ds2482.yaml
-+++ b/Documentation/devicetree/bindings/w1/maxim,ds2482.yaml
-@@ -25,6 +25,8 @@ properties:
-   reg:
-     maxItems: 1
- 
-+  vcc-supply: true
-+
- required:
-   - compatible
-   - reg
+ .../devicetree/bindings/iio/adc/ti,ads7138.yaml    |  64 ++
+ drivers/iio/adc/Kconfig                            |  10 +
+ drivers/iio/adc/Makefile                           |   1 +
+ drivers/iio/adc/ti-ads7138.c                       | 796 +++++++++++++++++++++
+ 4 files changed, 871 insertions(+)
+---
+base-commit: 2d5404caa8c7bb5c4e0435f94b28834ae5456623
+change-id: 20241122-adc_ml-d1ce86e85b2c
 
+Best regards,
 -- 
-2.39.5
+Tobias Sperling <tobias.sperling@softing.com>
 
