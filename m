@@ -1,14 +1,13 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Subject: [PATCH 0/4] Asus vivobook s15 improvements
-Date: Sat, 23 Nov 2024 12:05:50 +0100
-Message-Id: <20241123-asus_qcom_display-v1-0-85a9ff9240aa@hotmail.com>
+Date: Sat, 23 Nov 2024 12:05:51 +0100
+Subject: [PATCH 1/4] dt-bindings: display: panel: samsung,atna56ac03:
+ Document ATNA56AC03
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAA63QWcC/x3MywqAIBBA0V+JWSeovahfiQixsQZ6OhSF9O9Jy
- 7O4NwCjJ2RokgAeL2La1giVJmAns44oaIgGLXWulCqF4ZP7w25LPxDvs3mExcK5StdZlkuI3e7
- R0f0/2+59Pxu0/GpjAAAA
-X-Change-ID: 20241116-asus_qcom_display-ce5ff7293340
+Message-Id: <20241123-asus_qcom_display-v1-1-85a9ff9240aa@hotmail.com>
+References: <20241123-asus_qcom_display-v1-0-85a9ff9240aa@hotmail.com>
+In-Reply-To: <20241123-asus_qcom_display-v1-0-85a9ff9240aa@hotmail.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <quic_jesszhan@quicinc.com>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -23,36 +22,39 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732359972; l=801;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732359972; l=1104;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=k3s+kIa0CozrUauq1AcjHwaHwwjQ2E8jG+8stGujCCA=;
- b=z1bfmanqY+F+p3ytY2hnlRngqnTu7lFNHbAn7lzUqGHYP7BtJcw8ub8fLIDszw/fvWfCho3e1
- FBXlSkGgSnTDom3LJS3emaPssGL7hj1bpn5QqFd+GTa2XJbiTp16ZqD
+ bh=IsotGGeS1hNHslMt3hu9mke2nzQXlgG9kOU5FgNZHkA=;
+ b=1bY5DkY93Gn2mdw2OBx6WTL8VTBKNeT3HFOhpT8r+4u8hC0+0oqU8R90hvLidqgDuSddYjwvG
+ Ehq72DVIwbcB6gHQU7y25tEaXYlQNutH7A3Lq5VbMEosZmFmZwKnQfd
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Improves several parts of the devicetree:
-1. The eDP panel bindings
-2. Adds a lid switch
-3. Adds bluetooth
+The Samsung ATNA56AC03 panel is an AMOLED eDP panel.
+It is similar to the ATNA33xc20 except it is larger
+and has a different resolution.
 
+Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
-Maud Spierings (4):
-      dt-bindings: display: panel: samsung,atna56ac03: Document ATNA56AC03
-      arm64: dts: qcom: x1e80100-vivobook-s15: Use the samsung,atna33xc20 panel driver
-      arm64: dts: qcom: x1e80100-vivobook-s15: Add lid switch
-      arm64: dts: qcom: x1e80100-vivobook-s15: Add bluetooth
+ Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
- .../bindings/display/panel/samsung,atna33xc20.yaml |  2 +
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 59 +++++++++++++++++++++-
- 2 files changed, 60 insertions(+), 1 deletion(-)
----
-base-commit: decc701f41d07481893fdea942c0ac6b226e84cd
-change-id: 20241116-asus_qcom_display-ce5ff7293340
+diff --git a/Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml b/Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml
+index 032f783eefc4508df35da10e53ca20ff8b1b9bdf..684c2896d2387077cf2d91cc5a025e0838c0f536 100644
+--- a/Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml
++++ b/Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml
+@@ -23,6 +23,8 @@ properties:
+               - samsung,atna45af01
+               # Samsung 14.5" 3K (2944x1840 pixels) eDP AMOLED panel
+               - samsung,atna45dc02
++              # Samsung 15.6" 3K (2880x1620 pixels) eDP AMOLED panel
++              - samsung,atna56ac03
+           - const: samsung,atna33xc20
+ 
+   enable-gpios: true
 
-Best regards,
 -- 
-Maud Spierings <maud_spierings@hotmail.com>
+2.47.0
 
