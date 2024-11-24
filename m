@@ -1,70 +1,60 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Sun, 24 Nov 2024 16:48:28 +0100
-Subject: [PATCH] dmaengine: apple-admac: Avoid accessing registers in probe
+From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+Subject: [PATCH v3 0/3] Add support for attaching a regulator to w1: ds2482
+Date: Sun, 24 Nov 2024 17:21:34 +0100
+Message-Id: <20241124-ds2482-add-reg-v3-0-806df39c9454@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20241124-admac-power-v1-1-58f2165a4d55@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMtKQ2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxNDQyMT3cSU3MRk3YL88tQiXfM0Y6Nko0RDC1ODRCWgjoKi1LTMCrBp0bG
- 1tQAYOnwwXQAAAA==
-X-Change-ID: 20241124-admac-power-7f32c2a1850a
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Vinod Koul <vkoul@kernel.org>, 
- =?utf-8?q?Martin_Povi=C5=A1er?= <povik+lin@cutebit.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAI5SQ2cC/2WMywrCMBBFf6Vk7UgyTR+68j/ExTSZtgHbSiJBK
+ f1304JQ9O7OhXNmEdg7DuKczcJzdMFNY4L8kAnT09gxOJtYoESt0sAG1DUCWQueO2hZ5Sgl2cq
+ WIkkPz617bcHrLXHvwnPy760f1fp+U8VvKiqQYEytmxM1pLC8dAO5+9FMg1hTEXc64p+OSaeCZ
+ M5caUvVXl+W5QOztA/L6wAAAA==
+X-Change-ID: 20241111-ds2482-add-reg-fe13200ad7d6
+To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Stefan Wahren <stefan.wahren@chargebyte.com>
+Cc: Ben Gardner <bgardner@wabtec.com>, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, 
+ =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732463315; l=1574;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=fzYr2mOnaTThuwM8nzcfIvcWzFVACOsEp4j04pez3Us=;
- b=RMWELGTjitjliRQGKVjh9SJeijRLX/Kvt/3E/LLmmy3YJdBhs3xVJh9TFlJpN0Hg+IxvsqdiH
- zT/+9C3lwZEAHnQOhKvdsR7FrdibkKVGBpZb3XTTIDy4zEzccMhr/E3
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732465298; l=1048;
+ i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
+ bh=/9ijyl8GH0XD0x3k3EDuqb7k1ihuj0joBaoT2aUOF4w=;
+ b=T8bKNb/jV0tPhdz3tKUndiEJsHAJ0g2LD8k+h1QGp8n+8cWVyrVgo705iH02D8LTng8BzZN9N
+ qivFJymlTwfDjymO/kzxYEDAnB03gHnpYQyoyApCGgSNm40cUn+zsCK
+X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
+ pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
+X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ADMAC attached to the AOP has complex power sequencing, and is
-power gated when the probe callback runs. Move the register reads
-to other functions, where we can guarantee that the hardware is
-switched on.
+Implemented changes requested in review and retested them.
 
-Fixes: 568aa6dd641f ("dmaengine: apple-admac: Allocate cache SRAM to channels")
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
 ---
- drivers/dma/apple-admac.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+Changes in v3:
+- Switched from regulator_enable() to devm_regulator_get_enable()
+- Removed obvious comments.
+- Link to v2: https://lore.kernel.org/r/20241122-ds2482-add-reg-v2-0-a5a03ee74da7@gmail.com
 
-diff --git a/drivers/dma/apple-admac.c b/drivers/dma/apple-admac.c
-index 9588773dd2eb670a2f6115fdaef39a0e88248015..037ec38730cf980eee11ebb8ec17be7623879cf8 100644
---- a/drivers/dma/apple-admac.c
-+++ b/drivers/dma/apple-admac.c
-@@ -153,6 +153,8 @@ static int admac_alloc_sram_carveout(struct admac_data *ad,
- {
- 	struct admac_sram *sram;
- 	int i, ret = 0, nblocks;
-+	ad->txcache.size = readl_relaxed(ad->base + REG_TX_SRAM_SIZE);
-+	ad->rxcache.size = readl_relaxed(ad->base + REG_RX_SRAM_SIZE);
- 
- 	if (dir == DMA_MEM_TO_DEV)
- 		sram = &ad->txcache;
-@@ -912,12 +914,7 @@ static int admac_probe(struct platform_device *pdev)
- 		goto free_irq;
- 	}
- 
--	ad->txcache.size = readl_relaxed(ad->base + REG_TX_SRAM_SIZE);
--	ad->rxcache.size = readl_relaxed(ad->base + REG_RX_SRAM_SIZE);
--
- 	dev_info(&pdev->dev, "Audio DMA Controller\n");
--	dev_info(&pdev->dev, "imprint %x TX cache %u RX cache %u\n",
--		 readl_relaxed(ad->base + REG_IMPRINT), ad->txcache.size, ad->rxcache.size);
- 
- 	return 0;
- 
+Changes in v2:
+- Removed property description
+- Changed commit message of binding commit
+- Link to v1: https://lore.kernel.org/r/20241115-ds2482-add-reg-v1-0-cc84b9aba126@gmail.com
 
 ---
-base-commit: 9f16d5e6f220661f73b36a4be1b21575651d8833
-change-id: 20241124-admac-power-7f32c2a1850a
+Kryštof Černý (3):
+      w1: ds2482: Add regulator support
+      w1: ds2482: Fix datasheet URL
+      dt-bindings: w1: ds2482: Add vcc-supply property
+
+ Documentation/devicetree/bindings/w1/maxim,ds2482.yaml |  2 ++
+ drivers/w1/masters/ds2482.c                            | 10 +++++++++-
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+---
+base-commit: 6d59cab07b8d74d0f0422b750038123334f6ecc2
+change-id: 20241111-ds2482-add-reg-fe13200ad7d6
+
+Best regards,
+-- 
+Kryštof Černý <cleverline1mc@gmail.com>
 
