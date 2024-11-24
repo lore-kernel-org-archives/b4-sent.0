@@ -1,15 +1,13 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Subject: [PATCH v3 0/4] Asus vivobook s15 improvements
-Date: Sun, 24 Nov 2024 11:00:56 +0100
-Message-Id: <20241124-asus_qcom_display-v3-0-002b723b1920@hotmail.com>
+Date: Sun, 24 Nov 2024 11:00:57 +0100
+Subject: [PATCH v3 1/4] dt-bindings: display: panel: samsung,atna56ac03:
+ Document ATNA56AC03
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFj5QmcC/4XNywrCMBAF0F8pWRvJo09X/odIGdPEDrRNTWqwl
- P67aXEjCC7vcO+ZhXjtUHtyShbidECPdohBHhKiWhjummITMxFMpJzznIJ/+vqhbF836McOZqp
- 0ZkwhKilTRuJudNrgazcv15hb9JN18/4i8O360YT8oQVOGS0zqIypRMoAzq2desDuGFtk84L4a
- 4hoALsZU2ZFHnvfxrqub6RDhTz4AAAA
-X-Change-ID: 20241116-asus_qcom_display-ce5ff7293340
+Message-Id: <20241124-asus_qcom_display-v3-1-002b723b1920@hotmail.com>
+References: <20241124-asus_qcom_display-v3-0-002b723b1920@hotmail.com>
+In-Reply-To: <20241124-asus_qcom_display-v3-0-002b723b1920@hotmail.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <quic_jesszhan@quicinc.com>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -24,56 +22,39 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732442467; l=1685;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732442467; l=1104;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=wsiWmyEwu4YNSWKps6tXSxMb1RutH3lVHwYYksxB0QI=;
- b=wMo89KlcYiVtbpv3CmvyQ2to4ZkboF/CtjQQKLMntm1f+0+og1b/bOfmCy+L0Or5QNGBGlBGG
- /8olbMCxBN/DUoRth+saS1ecD+A9h0S6NfXITmKyvBoxJ6A5KS9emRq
+ bh=s4yKTNvJO3mx17xZFU/LK3Mq9NKRmsc9/ZsIIVmQu0M=;
+ b=88PqRHIQd2UVupflLuSHUweEBp1Hb+Lq+/bPNq7X4rXbCptbDK1wS/Jf0FPZHbk3tfMUHujEQ
+ e+xTT+oTmnSCZdpaH/LpacKKAX57gq1u7PsK2scdH3YIgccOhb4b+r2
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Improves several parts of the devicetree:
-1. The eDP panel bindings
-2. Add a lid switch
-3. Add bluetooth and describe wlan (depends on [1])
+The Samsung ATNA56AC03 panel is an AMOLED eDP panel.
+It is similar to the ATNA33xc20 except it is larger and has a different
+resolution.
 
-[1]: https://lore.kernel.org/all/20241007-x1e80100-pwrseq-qcp-v1-0-f7166510ab17@linaro.org/
-
+Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
-I seem to get a warning that the pci17cb vendor is undocumented (wlan)
-I can find this compatible in
-Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml
-But pci17cb doesn't really seem like a vendor name to me, I have ignored
-this warning for now.
+ Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Changes in v3:
-- Fixed commit message formatting (line wrapping)
-- Fixed bad indentation (lid switch pinctrl)
-- Fixed bluetooth addition and added wifi description
-- Link to v2: https://lore.kernel.org/r/20241123-asus_qcom_display-v2-0-a0bff8576024@hotmail.com
+diff --git a/Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml b/Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml
+index 032f783eefc4508df35da10e53ca20ff8b1b9bdf..684c2896d2387077cf2d91cc5a025e0838c0f536 100644
+--- a/Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml
++++ b/Documentation/devicetree/bindings/display/panel/samsung,atna33xc20.yaml
+@@ -23,6 +23,8 @@ properties:
+               - samsung,atna45af01
+               # Samsung 14.5" 3K (2944x1840 pixels) eDP AMOLED panel
+               - samsung,atna45dc02
++              # Samsung 15.6" 3K (2880x1620 pixels) eDP AMOLED panel
++              - samsung,atna56ac03
+           - const: samsung,atna33xc20
+ 
+   enable-gpios: true
 
-Changes in v2:
-- Add missing gpiokeys include in the lid switch patch
-- Add depends on for the bluetooth patch
-- Link to v1: https://lore.kernel.org/r/20241123-asus_qcom_display-v1-0-85a9ff9240aa@hotmail.com
-
----
-Maud Spierings (4):
-      dt-bindings: display: panel: samsung,atna56ac03: Document ATNA56AC03
-      arm64: dts: qcom: x1e80100-vivobook-s15: Use the samsung,atna33xc20 panel driver
-      arm64: dts: qcom: x1e80100-vivobook-s15: Add lid switch
-      arm64: dts: qcom: x1e80100-vivobook-s15: Add bluetooth
-
- .../bindings/display/panel/samsung,atna33xc20.yaml |   2 +
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 201 ++++++++++++++++++++-
- 2 files changed, 202 insertions(+), 1 deletion(-)
----
-base-commit: 98fb106aa5265aab0d857a942c410a753b470cc0
-change-id: 20241116-asus_qcom_display-ce5ff7293340
-
-Best regards,
 -- 
-Maud Spierings <maud_spierings@hotmail.com>
+2.47.0
 
