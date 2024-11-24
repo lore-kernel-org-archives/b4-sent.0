@@ -1,63 +1,160 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Sun, 24 Nov 2024 23:29:28 +0100
-Subject: [PATCH 5/5] MAINTAINERS: Add entries for touchbar display driver
+From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
+Subject: [PATCH RFC net-next v6 00/15] Add support for Synopsis DWMAC IP on
+ NXP Automotive SoCs S32G2xx/S32G3xx/S32R45
+Date: Sun, 24 Nov 2024 23:42:31 +0100
+Message-Id: <20241124-upstream_s32cc_gmac-v6-0-dc5718ccf001@oss.nxp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241124-adpdrm-v1-5-3191d8e6e49a@gmail.com>
-References: <20241124-adpdrm-v1-0-3191d8e6e49a@gmail.com>
-In-Reply-To: <20241124-adpdrm-v1-0-3191d8e6e49a@gmail.com>
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIANerQ2cC/23NTQ6CMBAF4KuQri3pDxTqysTEA7g1hkCZYhcU0
+ iLBEO5uYaNGlm8y73sz8uAMeHSMZuRgNN50NgRxiJB6lLYBbOqQESMsIZJx/Oz94KBsC8+ZUkX
+ TlgqLXFKosrSiTKDQ7B1oM23qDV0v5/VmYcAWpgHdQ3gYP3Tuta2OfHtbByih+wMjxwTXeVKlp
+ cgqycmp8z62Ux+rrt3EMflSWL6vJEEhXNBcUwIc2L+SfhRK5b6SBiWrlZJEK61B/yrLsrwBjil
+ N0VUBAAA=
+To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Jose Abreu <joabreu@synopsys.com>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Vinod Koul <vkoul@kernel.org>, 
+ Richard Cochran <richardcochran@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Emil Renner Berthing <kernel@esmil.dk>, 
+ Minda Chen <minda.chen@starfivetech.com>, 
+ Nicolas Ferre <nicolas.ferre@microchip.com>, 
+ Claudiu Beznea <claudiu.beznea@tuxon.dev>, 
+ Iyappan Subramanian <iyappan@os.amperecomputing.com>, 
+ Keyur Chudgar <keyur@os.amperecomputing.com>, 
+ Quan Nguyen <quan@os.amperecomputing.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <quic_jesszhan@quicinc.com>, asahi@lists.linux.dev
-Cc: linux-arm-kernel@lists.infradead.org, dri-devel@lists.freedesktop.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732487379; l=1179;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=Zo6z/5ObW5tpoXAd3EL3OeGr9DmJcirQwYT2c5Ljs0k=;
- b=6a+DIWi9GClhX0WByRx54Ur2Q/eMDyfO7632pcDcXF4uq+86V0QRMTAU2VoDMJFZXp6aXA2vH
- AXSUleowlhlDLrepwdiuHmpzTO0gZBEA6pKVWIu+/+sOFSB104Z0Kju
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+ Giuseppe Cavallaro <peppe.cavallaro@st.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>
+Cc: linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org, linux-arm-msm@vger.kernel.org, imx@lists.linux.dev, 
+ devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
+ "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
+ Jacob Keller <jacob.e.keller@intel.com>, 
+ "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>, 
+ Serge Semin <fancer.lancer@gmail.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732488190; l=4790;
+ i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
+ bh=1bYiF74wMHxsa04kMTESHyr25mPtlwPTiJNmpr7MXm0=;
+ b=d9Ty/OqevCdDLdsu1WsjWIeseAYYPTveiK39AHU+p0pyrHDZwhn30CoyZOzlGOAs00k2mzgIg
+ tyLlopfVfN4AVAu1+wsI0yeLBfivo3udAhJkFS4r3oYGYVyc3IYR4kJ
+X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
+ pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
+X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the MAINTAINERS entries for the driver
+The SoC series S32G2xx and S32G3xx feature one DWMAC instance,
+the SoC S32R45 has two instances. The devices can use RGMII/RMII/MII
+interface over Pinctrl device or the output can be routed
+to the embedded SerDes for SGMII connectivity.
 
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+The provided stmmac glue code implements only basic functionality,
+interface support is restricted to RGMII only. More, including
+SGMII/SerDes support will come later.
+
+This patchset adds stmmac glue driver based on downstream NXP git [0].
+
+[0] https://github.com/nxp-auto-linux/linux
+
+v6:
+- removed dead code in dwmac-intel-plat.c
+- yaml: fix indention
+- validate interface mode in probe
+- dropped patch#16 to fit in max 15 patches in series
+- Link to v5: https://lore.kernel.org/r/20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com
+
+v5:
+- yaml: refactored compatible string to use fallback
+- yaml: fix indention in example
+- fix xmas tree formating in local variable declarations
+- removed lazy rx clk setup
+- drop PTP clock reading patch and replace it with stmmac_platform fix
+- Link to v4: https://lore.kernel.org/r/20241028-upstream_s32cc_gmac-v4-0-03618f10e3e2@oss.nxp.com
+
+v4:
+- fixed empty commit messages for rgmi_clock() helper patches
+- fixed yaml path in MAINTAINERS
+- switched to platform_driver::remove() as suggested Uwe
+- yaml: returned back all compatibility sting values
+- added better commit description for rgmii_clock() helper
+- Link to v3: https://lore.kernel.org/r/20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com
+
+v3:
+- switched to b4 WoW to overcome threading issue with b4
+- extracted the hunk with the typo fix from v2 patch#1 to separate patch
+  as Jacob suggested
+- removed dead code for RMII/MII support, which will be added alter
+- used new rgmii_clock() helper in other stmmac:dwmac glue drivers
+- yaml: compatible strings compressed to simple one "nxp,s32-dwmac",
+  removed duplicated required properties, already defined in snps,dwmac,
+  fixed example
+
+v2:
+- send to wider audience as first version missed many maintainers
+- created rgmi_clk() helper as Russell suggested (see patch#4)
+- address Andrew's, Russell's, Serge's and Simon's comments
+
+Message-ID: <AM9PR04MB85066576AD6848E2402DA354E2832@AM9PR04MB8506.eurprd04.prod.outlook.com>
+
+Cc: 
+
+Cc: 
+
+Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- MAINTAINERS | 2 ++
- 1 file changed, 2 insertions(+)
+---
+Jan Petrous (OSS) (15):
+      net: driver: stmmac: Fix CSR divider comment
+      net: driver: stmmac: Extend CSR calc support
+      net: stmmac: Fix clock rate variables size
+      net: phy: Add helper for mapping RGMII link speed to clock rate
+      net: dwmac-dwc-qos-eth: Use helper rgmii_clock
+      net: dwmac-imx: Use helper rgmii_clock
+      net: dwmac-intel-plat: Use helper rgmii_clock
+      net: dwmac-rk: Use helper rgmii_clock
+      net: dwmac-starfive: Use helper rgmii_clock
+      net: macb: Use helper rgmii_clock
+      net: xgene_enet: Use helper rgmii_clock
+      net: dwmac-sti: Use helper rgmii_clock
+      dt-bindings: net: Add DT bindings for DWMAC on NXP S32G/R SoCs
+      net: stmmac: dwmac-s32: add basic NXP S32G/S32R glue driver
+      MAINTAINERS: Add Jan Petrous as the NXP S32G/R DWMAC driver maintainer
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index e7f0170977013889ca7c39b17727ba36d32e92dc..1964bb705cae0b0f12e2174fc96c5cd123d31520 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2164,6 +2164,7 @@ F:	Documentation/devicetree/bindings/arm/apple.yaml
- F:	Documentation/devicetree/bindings/arm/apple/*
- F:	Documentation/devicetree/bindings/clock/apple,nco.yaml
- F:	Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
-+F:	Documentation/devicetree/bindings/display/apple,display-pipe.yaml
- F:	Documentation/devicetree/bindings/dma/apple,admac.yaml
- F:	Documentation/devicetree/bindings/i2c/apple,i2c.yaml
- F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
-@@ -2183,6 +2184,7 @@ F:	drivers/bluetooth/hci_bcm4377.c
- F:	drivers/clk/clk-apple-nco.c
- F:	drivers/cpufreq/apple-soc-cpufreq.c
- F:	drivers/dma/apple-admac.c
-+F:	drivers/gpu/drm/adp/
- F:	drivers/pmdomain/apple/
- F:	drivers/i2c/busses/i2c-pasemi-core.c
- F:	drivers/i2c/busses/i2c-pasemi-platform.c
+ .../devicetree/bindings/net/nxp,s32-dwmac.yaml     | 105 ++++++++++++
+ .../devicetree/bindings/net/snps,dwmac.yaml        |   1 +
+ MAINTAINERS                                        |   7 +
+ drivers/net/ethernet/apm/xgene/xgene_enet_hw.c     |  16 +-
+ drivers/net/ethernet/cadence/macb_main.c           |  14 +-
+ drivers/net/ethernet/stmicro/stmmac/Kconfig        |  12 ++
+ drivers/net/ethernet/stmicro/stmmac/Makefile       |   1 +
+ drivers/net/ethernet/stmicro/stmmac/common.h       |   2 +
+ .../ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c    |  11 +-
+ drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c    |  15 +-
+ .../net/ethernet/stmicro/stmmac/dwmac-intel-plat.c |  22 +--
+ .../ethernet/stmicro/stmmac/dwmac-qcom-ethqos.c    |   2 +-
+ drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c     |  30 +---
+ drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c    | 189 +++++++++++++++++++++
+ .../net/ethernet/stmicro/stmmac/dwmac-starfive.c   |  19 +--
+ drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c    |  18 +-
+ drivers/net/ethernet/stmicro/stmmac/dwmac4_core.c  |   2 +-
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c  |   6 +-
+ .../net/ethernet/stmicro/stmmac/stmmac_platform.c  |   2 +-
+ include/linux/phy.h                                |  23 +++
+ include/linux/stmmac.h                             |  10 +-
+ 21 files changed, 386 insertions(+), 121 deletions(-)
+---
+base-commit: 9f16d5e6f220661f73b36a4be1b21575651d8833
+change-id: 20240923-upstream_s32cc_gmac-6891eb75b126
 
+Best regards,
 -- 
-2.47.0
+Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 
