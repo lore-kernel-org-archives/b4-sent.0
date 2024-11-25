@@ -1,77 +1,85 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Sun, 24 Nov 2024 23:42:46 +0100
-Subject: [PATCH RFC net-next v6 15/15] MAINTAINERS: Add Jan Petrous as the
- NXP S32G/R DWMAC driver maintainer
+From: Maud Spierings <maud_spierings@hotmail.com>
+Subject: [PATCH v4 0/3] Asus vivobook s15 improvements
+Date: Mon, 25 Nov 2024 20:11:16 +0100
+Message-Id: <20241125-asus_qcom_display-v4-0-61a4da162406@hotmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241124-upstream_s32cc_gmac-v6-15-dc5718ccf001@oss.nxp.com>
-References: <20241124-upstream_s32cc_gmac-v6-0-dc5718ccf001@oss.nxp.com>
-In-Reply-To: <20241124-upstream_s32cc_gmac-v6-0-dc5718ccf001@oss.nxp.com>
-To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Jose Abreu <joabreu@synopsys.com>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Vinod Koul <vkoul@kernel.org>, 
- Richard Cochran <richardcochran@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Emil Renner Berthing <kernel@esmil.dk>, 
- Minda Chen <minda.chen@starfivetech.com>, 
- Nicolas Ferre <nicolas.ferre@microchip.com>, 
- Claudiu Beznea <claudiu.beznea@tuxon.dev>, 
- Iyappan Subramanian <iyappan@os.amperecomputing.com>, 
- Keyur Chudgar <keyur@os.amperecomputing.com>, 
- Quan Nguyen <quan@os.amperecomputing.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIANTLRGcC/4XNTQ6CMBAF4KuQrq1pp+XPlfcwhhRopQlQbLGRE
+ O5uIS40krh8k/e+mZGTVkuHTtGMrPTaadOHwA8RqhrR3yTWdcgICHBKaYKFe7jiXpmuqLUbWjH
+ hSsZKpZAzxgkKu8FKpZ+bebmG3Gg3GjttLzxdr28N2I7mKSY4i0WuVA6cCHFuzNgJ3R5DC62eh
+ 78GBEOQUqksTpPQ+zXYp8H3DBYMQqBMgZU0B/JtLMvyAn/F1wY8AQAA
+X-Change-ID: 20241116-asus_qcom_display-ce5ff7293340
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <quic_jesszhan@quicinc.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Giuseppe Cavallaro <peppe.cavallaro@st.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>
-Cc: linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org, linux-arm-msm@vger.kernel.org, imx@lists.linux.dev, 
- devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732488190; l=915;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=AB+C+oFGx/nUk90lBuH2NQMFBAAsgdQa1O4ljHjBgAU=;
- b=Kywb2KIXNROek0tfQQzkmWXDOrb1hA03ssVjFY+r9P584GKXG9ul+AcMtcMT/BvX5dYjTs5dh
- CIXotOx9/3lBROcgwIOof2FDu87i41hzr64p7oqLbJ+hrKolWPMQzVy
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+ Douglas Anderson <dianders@chromium.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ Maud Spierings <maud_spierings@hotmail.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732561888; l=1871;
+ i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
+ bh=eFUTVbLHQaMj7xbeYC7nH7CHXsIUv43Pb2cwsd9S9X4=;
+ b=Id8inyzU8O10Eg3QvPqZBZb3O9cdwzrt+zEAv1gLliZeIDkn0BpXbQbU3ituB1KbKD2Oq/Un1
+ KL8Rilx5LdnBnDuxOrqAA70SGOU/b3GC+LmHg1q/9QWAS1Lm1gdygyJ
+X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
+ pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
+X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add myself as NXP S32G/R DWMAC Ethernet driver maintainer.
+Improves several parts of the devicetree:
+1. The eDP panel bindings
+2. Add a lid switch
+3. Add bluetooth and describe wlan (depends on [1])
 
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+[1]: https://lore.kernel.org/all/20241007-x1e80100-pwrseq-qcp-v1-0-f7166510ab17@linaro.org/
+
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+I seem to get a warning that the pci17cb vendor is undocumented (wlan)
+I can find this compatible in
+Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml
+But pci17cb doesn't really seem like a vendor name to me, I have ignored
+this warning for now.
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index e7f017097701..f1cf5dfe5998 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2809,6 +2809,13 @@ S:	Maintained
- F:	arch/arm64/boot/dts/freescale/s32g*.dts*
- F:	drivers/pinctrl/nxp/
- 
-+ARM/NXP S32G/S32R DWMAC ETHERNET DRIVER
-+M:	Jan Petrous <jan.petrous@oss.nxp.com>
-+L:	NXP S32 Linux Team <s32@nxp.com>
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
-+F:	drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+
- ARM/Orion SoC/Technologic Systems TS-78xx platform support
- M:	Alexander Clouter <alex@digriz.org.uk>
- L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
+Changes in v4:
+- Fixed the pin parameters for the backlight enable pin
+- Fixed the wcn_sw_en drive-strength, this was not in the acpi table I
+  checked.
+- Fixed the ordering of several nodes in the bluetooth/wifi patch
+- Link to v3: https://lore.kernel.org/r/20241124-asus_qcom_display-v3-0-002b723b1920@hotmail.com
 
+Changes in v3:
+- Fixed commit message formatting (line wrapping)
+- Fixed bad indentation (lid switch pinctrl)
+- Fixed bluetooth addition and added wifi description
+- Link to v2: https://lore.kernel.org/r/20241123-asus_qcom_display-v2-0-a0bff8576024@hotmail.com
+
+Changes in v2:
+- Add missing gpiokeys include in the lid switch patch
+- Add depends on for the bluetooth patch
+- Link to v1: https://lore.kernel.org/r/20241123-asus_qcom_display-v1-0-85a9ff9240aa@hotmail.com
+
+---
+Maud Spierings (3):
+      arm64: dts: qcom: x1e80100-vivobook-s15: Use the samsung,atna33xc20 panel driver
+      arm64: dts: qcom: x1e80100-vivobook-s15: Add lid switch
+      arm64: dts: qcom: x1e80100-vivobook-s15: Add bluetooth
+
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 203 ++++++++++++++++++++-
+ 1 file changed, 202 insertions(+), 1 deletion(-)
+---
+base-commit: 5f48de798324665d18f539ee09a61de1a9221f33
+change-id: 20241116-asus_qcom_display-ce5ff7293340
+
+Best regards,
 -- 
-2.47.0
+Maud Spierings <maud_spierings@hotmail.com>
 
