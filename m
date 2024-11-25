@@ -1,15 +1,13 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Subject: [PATCH v4 0/3] Asus vivobook s15 improvements
-Date: Mon, 25 Nov 2024 20:11:16 +0100
-Message-Id: <20241125-asus_qcom_display-v4-0-61a4da162406@hotmail.com>
+Date: Mon, 25 Nov 2024 20:11:17 +0100
+Subject: [PATCH v4 1/3] arm64: dts: qcom: x1e80100-vivobook-s15: Use the
+ samsung,atna33xc20 panel driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANTLRGcC/4XNTQ6CMBAF4KuQrq1pp+XPlfcwhhRopQlQbLGRE
- O5uIS40krh8k/e+mZGTVkuHTtGMrPTaadOHwA8RqhrR3yTWdcgICHBKaYKFe7jiXpmuqLUbWjH
- hSsZKpZAzxgkKu8FKpZ+bebmG3Gg3GjttLzxdr28N2I7mKSY4i0WuVA6cCHFuzNgJ3R5DC62eh
- 78GBEOQUqksTpPQ+zXYp8H3DBYMQqBMgZU0B/JtLMvyAn/F1wY8AQAA
-X-Change-ID: 20241116-asus_qcom_display-ce5ff7293340
+Message-Id: <20241125-asus_qcom_display-v4-1-61a4da162406@hotmail.com>
+References: <20241125-asus_qcom_display-v4-0-61a4da162406@hotmail.com>
+In-Reply-To: <20241125-asus_qcom_display-v4-0-61a4da162406@hotmail.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <quic_jesszhan@quicinc.com>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -22,64 +20,66 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
  Konrad Dybcio <konradybcio@kernel.org>
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- Maud Spierings <maud_spierings@hotmail.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+ Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732561888; l=1871;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732561888; l=1440;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=eFUTVbLHQaMj7xbeYC7nH7CHXsIUv43Pb2cwsd9S9X4=;
- b=Id8inyzU8O10Eg3QvPqZBZb3O9cdwzrt+zEAv1gLliZeIDkn0BpXbQbU3ituB1KbKD2Oq/Un1
- KL8Rilx5LdnBnDuxOrqAA70SGOU/b3GC+LmHg1q/9QWAS1Lm1gdygyJ
+ bh=/7ww43t4PL3OnNaGBy55/XHQy/o3cpc7eGJ7M5Nsi7k=;
+ b=59b76BxFiKShlT5Zlo3YLSAemYxcOgNFq5CctPB1xE/ZTqx2Q5XaJwiWfZRyilkGKTyA8kcgW
+ ttOuyqOrSX/Dxbi4HspRD0nhqR1GdEoGG04B6KDwY3yUUBGg5ustsmD
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Improves several parts of the devicetree:
-1. The eDP panel bindings
-2. Add a lid switch
-3. Add bluetooth and describe wlan (depends on [1])
+The Asus vivobook s15 uses the ATNA56AC03 panel.
+This panel is controlled by the atna33xc20 driver instead of the generic
+edp-panel driver
 
-[1]: https://lore.kernel.org/all/20241007-x1e80100-pwrseq-qcp-v1-0-f7166510ab17@linaro.org/
-
+Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
-I seem to get a warning that the pci17cb vendor is undocumented (wlan)
-I can find this compatible in
-Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml
-But pci17cb doesn't really seem like a vendor name to me, I have ignored
-this warning for now.
+ .../arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
 
-Changes in v4:
-- Fixed the pin parameters for the backlight enable pin
-- Fixed the wcn_sw_en drive-strength, this was not in the acpi table I
-  checked.
-- Fixed the ordering of several nodes in the bluetooth/wifi patch
-- Link to v3: https://lore.kernel.org/r/20241124-asus_qcom_display-v3-0-002b723b1920@hotmail.com
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
+index f25991b887de3fca0092c5f81c881c5d8bd71aac..8cdb2888d10a1dfc0c28480b6636584ab06853bb 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
+@@ -407,9 +407,13 @@ &mdss_dp3 {
+ 
+ 	aux-bus {
+ 		panel {
+-			compatible = "edp-panel";
++			compatible = "samsung,atna56ac03", "samsung,atna33xc20";
++			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
+ 			power-supply = <&vreg_edp_3p3>;
+ 
++			pinctrl-0 = <&edp_bl_en>;
++			pinctrl-names = "default";
++
+ 			port {
+ 				edp_panel_in: endpoint {
+ 					remote-endpoint = <&mdss_dp3_out>;
+@@ -475,6 +479,18 @@ &pcie6a_phy {
+ 	status = "okay";
+ };
+ 
++&pmc8380_3_gpios {
++	edp_bl_en: edp-bl-en-state {
++		pins = "gpio4";
++		function = "normal";
++		power-source = <1>;
++		qcom,drive-strength = <2>;
++		bias-pull-down;
++		input-disable;
++		output-enable;
++	};
++};
++
+ &qupv3_0 {
+ 	status = "okay";
+ };
 
-Changes in v3:
-- Fixed commit message formatting (line wrapping)
-- Fixed bad indentation (lid switch pinctrl)
-- Fixed bluetooth addition and added wifi description
-- Link to v2: https://lore.kernel.org/r/20241123-asus_qcom_display-v2-0-a0bff8576024@hotmail.com
-
-Changes in v2:
-- Add missing gpiokeys include in the lid switch patch
-- Add depends on for the bluetooth patch
-- Link to v1: https://lore.kernel.org/r/20241123-asus_qcom_display-v1-0-85a9ff9240aa@hotmail.com
-
----
-Maud Spierings (3):
-      arm64: dts: qcom: x1e80100-vivobook-s15: Use the samsung,atna33xc20 panel driver
-      arm64: dts: qcom: x1e80100-vivobook-s15: Add lid switch
-      arm64: dts: qcom: x1e80100-vivobook-s15: Add bluetooth
-
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 203 ++++++++++++++++++++-
- 1 file changed, 202 insertions(+), 1 deletion(-)
----
-base-commit: 5f48de798324665d18f539ee09a61de1a9221f33
-change-id: 20241116-asus_qcom_display-ce5ff7293340
-
-Best regards,
 -- 
-Maud Spierings <maud_spierings@hotmail.com>
+2.47.1
 
