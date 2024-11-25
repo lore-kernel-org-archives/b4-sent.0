@@ -1,11 +1,11 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Mon, 25 Nov 2024 20:11:17 +0100
-Subject: [PATCH v4 1/3] arm64: dts: qcom: x1e80100-vivobook-s15: Use the
- samsung,atna33xc20 panel driver
+Date: Mon, 25 Nov 2024 20:11:18 +0100
+Subject: [PATCH v4 2/3] arm64: dts: qcom: x1e80100-vivobook-s15: Add lid
+ switch
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241125-asus_qcom_display-v4-1-61a4da162406@hotmail.com>
+Message-Id: <20241125-asus_qcom_display-v4-2-61a4da162406@hotmail.com>
 References: <20241125-asus_qcom_display-v4-0-61a4da162406@hotmail.com>
 In-Reply-To: <20241125-asus_qcom_display-v4-0-61a4da162406@hotmail.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -20,65 +20,73 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
  Konrad Dybcio <konradybcio@kernel.org>
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
  Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732561888; l=1440;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732561888; l=1659;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=/7ww43t4PL3OnNaGBy55/XHQy/o3cpc7eGJ7M5Nsi7k=;
- b=59b76BxFiKShlT5Zlo3YLSAemYxcOgNFq5CctPB1xE/ZTqx2Q5XaJwiWfZRyilkGKTyA8kcgW
- ttOuyqOrSX/Dxbi4HspRD0nhqR1GdEoGG04B6KDwY3yUUBGg5ustsmD
+ bh=dtYV+z9lYSzEf2bGKf8JU+PRYZscyBu18hsPuUz7+R4=;
+ b=ghzjrMjlhBAs8cX/JpCUp9nqvj2YH6ZkPiXEliEnVHiyTdizACb8S+EYJpzv8gGccwNj267AF
+ KgqBK/3N7YEAB0IwGAtgszOfVHVHepX2nO+ZHvHE2IloJfhKx/YKYtN
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Asus vivobook s15 uses the ATNA56AC03 panel.
-This panel is controlled by the atna33xc20 driver instead of the generic
-edp-panel driver
+Add the lid switch for the Asus vivobook s15
 
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
- .../arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts | 18 +++++++++++++++++-
- 1 file changed, 17 insertions(+), 1 deletion(-)
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts    | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-index f25991b887de3fca0092c5f81c881c5d8bd71aac..8cdb2888d10a1dfc0c28480b6636584ab06853bb 100644
+index 8cdb2888d10a1dfc0c28480b6636584ab06853bb..7269f8e7709988657b363004875163a69142f16c 100644
 --- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
 +++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-@@ -407,9 +407,13 @@ &mdss_dp3 {
+@@ -7,6 +7,7 @@
+ /dts-v1/;
  
- 	aux-bus {
- 		panel {
--			compatible = "edp-panel";
-+			compatible = "samsung,atna56ac03", "samsung,atna33xc20";
-+			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
- 			power-supply = <&vreg_edp_3p3>;
+ #include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/gpio-keys.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
  
-+			pinctrl-0 = <&edp_bl_en>;
-+			pinctrl-names = "default";
+ #include "x1e80100.dtsi"
+@@ -17,6 +18,20 @@ / {
+ 	compatible = "asus,vivobook-s15", "qcom,x1e80100";
+ 	chassis-type = "laptop";
+ 
++	gpio-keys {
++		compatible = "gpio-keys";
++		pinctrl-0 = <&hall_int_n_default>;
++		pinctrl-names = "default";
 +
- 			port {
- 				edp_panel_in: endpoint {
- 					remote-endpoint = <&mdss_dp3_out>;
-@@ -475,6 +479,18 @@ &pcie6a_phy {
- 	status = "okay";
- };
- 
-+&pmc8380_3_gpios {
-+	edp_bl_en: edp-bl-en-state {
-+		pins = "gpio4";
-+		function = "normal";
-+		power-source = <1>;
-+		qcom,drive-strength = <2>;
-+		bias-pull-down;
-+		input-disable;
-+		output-enable;
++		switch-lid {
++			gpios = <&tlmm 92 GPIO_ACTIVE_LOW>;
++			linux,input-type = <EV_SW>;
++			linux,code = <SW_LID>;
++			wakeup-source;
++			wakeup-event-action = <EV_ACT_DEASSERTED>;
++		};
 +	};
-+};
 +
- &qupv3_0 {
- 	status = "okay";
- };
+ 	pmic-glink {
+ 		compatible = "qcom,x1e80100-pmic-glink",
+ 			     "qcom,sm8550-pmic-glink",
+@@ -539,6 +554,12 @@ edp_reg_en: edp-reg-en-state {
+ 		bias-disable;
+ 	};
+ 
++	hall_int_n_default: hall-int-n-state {
++		pins = "gpio92";
++		function = "gpio";
++		bias-disable;
++	};
++
+ 	kybd_default: kybd-default-state {
+ 		pins = "gpio67";
+ 		function = "gpio";
 
 -- 
 2.47.1
