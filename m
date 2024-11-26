@@ -1,14 +1,12 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Subject: [PATCH 0/4] Driver for Apple Z2 touchscreens.
-Date: Tue, 26 Nov 2024 21:47:58 +0100
-Message-Id: <20241126-z2-v1-0-c43c4cc6200d@gmail.com>
+Date: Tue, 26 Nov 2024 21:47:59 +0100
+Subject: [PATCH 1/4] dt-bindings: input: touchscreen: Add Z2 controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAP4zRmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxNDQyMT3Soj3WQDQ6MkUyOL1ESDFCWgwoKi1LTMCrAh0bG1tQDHCvI+VAA
- AAA==
-X-Change-ID: 20241124-z2-c012b528ea0d
+Message-Id: <20241126-z2-v1-1-c43c4cc6200d@gmail.com>
+References: <20241126-z2-v1-0-c43c4cc6200d@gmail.com>
+In-Reply-To: <20241126-z2-v1-0-c43c4cc6200d@gmail.com>
 To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
  Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
@@ -16,53 +14,116 @@ To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>,
  Conor Dooley <conor+dt@kernel.org>, Henrik Rydberg <rydberg@bitmath.org>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>, 
- Janne Grunau <j@jannau.net>
+ linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732654092; l=1728;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732654092; l=2804;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=ZBU8Fy8Sv/FwJD6yKpClEj3SItHuR1C5MYFPcenYJWs=;
- b=EPyBrRhCz60QqrUaFxi1MkFuNhZO6e8bc/6+SNKD6Cylw/79q7NOFNe9CUIP+7jIQEFDrFVIc
- fsNWUEUOiIZCm7qEFDH18CdE4WrB+YB2/Z0k3HvMNvnkl3oL8QRhHrh
+ bh=UHvXgMi/23w7qON+PGUGo++6lr9MH2GBkiekDOSsTok=;
+ b=v2an5Zj1C0uzlwCBhHF2ZQWwt6rSGPADVo45ZAjcVatoE2WRViXstwZvsJUf7P6F9MtmnBKza
+ 2GOjGYozUJwDVOHKJNJtRTlkyNCJtsYdABKic9dSMOvOWgu8iwJqldS
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi.
-
-This series adds support for Apple touchscreens using the Z2 protocol.
-Those are used as the primary touchscreen on mobile Apple devices, and for the
-touchbar on laptops using the M-series chips. (T1/T2 laptops have a coprocessor
-in charge of speaking Z2 to the touchbar).
-
-Originally sent as a RFC at https://lore.kernel.org/all/20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com/
-The changes since then mostly address the review feedback, but also
-add another machine that has this specific controller.
-
-The extra gpio needed to be toggled turned out to be a quirk of the
-j293, normal CS is unusable on it, and a gpio has to be used instead.
-(j493 does not have this quirk)
+Add bindings for touchscreen controllers attached using the Z2 protocol.
+Those are present in most Apple devices.
 
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
-Sasha Finkelstein (4):
-      dt-bindings: input: touchscreen: Add Z2 controller
-      input: apple_z2: Add a driver for Apple Z2 touchscreens
-      arm64: dts: apple: Add touchbar digitizer nodes
-      MAINTAINERS: Add entries for Apple Z2 touchscreen driver
+ .../input/touchscreen/apple,z2-multitouch.yaml     | 83 ++++++++++++++++++++++
+ 1 file changed, 83 insertions(+)
 
- .../input/touchscreen/apple,z2-multitouch.yaml     |  83 ++++
- MAINTAINERS                                        |   2 +
- arch/arm64/boot/dts/apple/t8103-j293.dts           |  24 +
- arch/arm64/boot/dts/apple/t8103.dtsi               |  19 +
- arch/arm64/boot/dts/apple/t8112-j493.dts           |  20 +
- arch/arm64/boot/dts/apple/t8112.dtsi               |  14 +
- drivers/input/touchscreen/Kconfig                  |  13 +
- drivers/input/touchscreen/Makefile                 |   1 +
- drivers/input/touchscreen/apple_z2.c               | 495 +++++++++++++++++++++
- 9 files changed, 671 insertions(+)
----
-base-commit: 9f16d5e6f220661f73b36a4be1b21575651d8833
-change-id: 20241124-z2-c012b528ea0d
+diff --git a/Documentation/devicetree/bindings/input/touchscreen/apple,z2-multitouch.yaml b/Documentation/devicetree/bindings/input/touchscreen/apple,z2-multitouch.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..0387e2178b91d5658dfd60cb44099a8048dc97df
+--- /dev/null
++++ b/Documentation/devicetree/bindings/input/touchscreen/apple,z2-multitouch.yaml
+@@ -0,0 +1,83 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/input/touchscreen/apple,z2-multitouch.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple touchscreens attached using the Z2 protocol
++
++maintainers:
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++description: A series of touschscreen controllers used in Apple products
++
++allOf:
++  - $ref: touchscreen.yaml#
++  - $ref: /schemas/spi/spi-peripheral-props.yaml#
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,j293-touchbar
++          - apple,j493-touchbar
++      - const: apple,z2-touchbar
++      - const: apple,z2-multitouch
++
++  interrupts:
++    maxItems: 1
++
++  reset-gpios:
++    maxItems: 1
++
++  cs-gpios:
++    maxItems: 1
++    description: |
++      J293 has a hardware quirk where the CS line is unusable and has
++      to the be driven by a GPIO pin instead
++
++  firmware-name:
++    maxItems: 1
++
++  label:
++    maxItems: 1
++
++  touchscreen-size-x: true
++  touchscreen-size-y: true
++
++required:
++  - compatible
++  - interrupts
++  - reset-gpios
++  - firmware-name
++  - label
++  - touchscreen-size-x
++  - touchscreen-size-y
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        touchscreen@0 {
++            compatible = "apple,j293-touchbar", "apple,z2-touchbar",
++                         "apple,z2-multitouch";
++            reg = <0>;
++            spi-max-frequency = <11500000>;
++            reset-gpios = <&pinctrl_ap 139 0>;
++            cs-gpios = <&pinctrl_ap 109 0>;
++            interrupts-extended = <&pinctrl_ap 194 IRQ_TYPE_EDGE_FALLING>;
++            firmware-name = "apple/dfrmtfw-j293.bin";
++            touchscreen-size-x = <23045>;
++            touchscreen-size-y = <640>;
++            label = "MacBookPro17,1 Touch Bar";
++        };
++    };
++
++...
+
+-- 
+2.47.1
 
