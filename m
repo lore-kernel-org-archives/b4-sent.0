@@ -1,10 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Tue, 26 Nov 2024 15:21:51 -0800
-Subject: [PATCH 01/36] x86/setup: fix typo in acpi=off description
+Date: Tue, 26 Nov 2024 15:21:52 -0800
+Subject: [PATCH 02/36] xsm/flask: missing breaks, MISRA rule 16.4
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241126-vuart-ns8250-v1-v1-1-87b9a8375b7a@ford.com>
+Message-Id: <20241126-vuart-ns8250-v1-v1-2-87b9a8375b7a@ford.com>
 References: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 In-Reply-To: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 To: Jan Beulich <jbeulich@suse.com>, 
@@ -26,34 +26,64 @@ To: Jan Beulich <jbeulich@suse.com>,
  =?utf-8?q?Marek_Marczykowski-G=C3=B3recki?= <marmarek@invisiblethingslab.com>
 Cc: xen-devel@lists.xenproject.org, Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=913;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=1534;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=7yTBjRl8lmc1tg+ZFlXhUwzuZwMkcPhVqwc9gw3xsIQ=;
- b=fGhLeTafOQHdmZPBdD9bIVheTVXsfAPHD70yBmhJl2mjqDLgSZD+W7NfTS1UpjOjg5WWyO82s
- 3nLC9cTHbFbD0Zur6mUCtIfo/TkKIfkB94RsV1dDD42fBf/p2X0hkh9
+ bh=Om6cdnbe5fxG+CPjXPUOumzF0XPQ191PKf8s/8GFQ90=;
+ b=w8ahloFDu924cxnDNLZ4R1wwM6DWcNf1t2DrnlPft9LzkIetQCU1BI/6U654/5ljvXy08gkyR
+ 0sUOpQD/agmCgTz6kCaQ8aW0762sTvVUZlawmKG9f0feuH2wHd5/HYB
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+While working on console forwarding for virtual NS8250 I stepped into
+  flask_domain_alloc_security()
+where break statement was missing in default case which violates MISRA
+rule 16.4.
+
+Fixed everywhere in hooks.c.
+
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/arch/x86/setup.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ xen/xsm/flask/hooks.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/xen/arch/x86/setup.c b/xen/arch/x86/setup.c
-index d8661d7ca699c96f38229c75ad0a8626c6f675d4..0a748e2c14122d6c5d692bc5691e8cbe13a32c81 100644
---- a/xen/arch/x86/setup.c
-+++ b/xen/arch/x86/setup.c
-@@ -83,7 +83,7 @@ int8_t __initdata opt_probe_port_aliases = -1;
- boolean_param("probe-port-aliases", opt_probe_port_aliases);
+diff --git a/xen/xsm/flask/hooks.c b/xen/xsm/flask/hooks.c
+index dfa23738cd8a9fd91eda23d9c328c3cc55d31418..a79474ffe43af19f602a6c067eab6b40dba0d946 100644
+--- a/xen/xsm/flask/hooks.c
++++ b/xen/xsm/flask/hooks.c
+@@ -198,6 +198,7 @@ static int cf_check flask_domain_alloc_security(struct domain *d)
+             else if ( pv_shim )
+                 dsec->sid = SECINITSID_DOMU;
+         }
++        break;
+     }
  
- /* **** Linux config option: propagated to domain0. */
--/* "acpi=off":    Sisables both ACPI table parsing and interpreter. */
-+/* "acpi=off":    Disables both ACPI table parsing and interpreter. */
- /* "acpi=force":  Override the disable blacklist.                   */
- /* "acpi=ht":     Limit ACPI just to boot-time to enable HT.        */
- /* "acpi=noirq":  Disables ACPI interrupt routing.                  */
+     dsec->self_sid = dsec->sid;
+@@ -342,6 +343,7 @@ static int cf_check flask_evtchn_send(struct domain *d, struct evtchn *chn)
+         break;
+     default:
+         rc = avc_unknown_permission("event channel state", chn->state);
++        break;
+     }
+ 
+     return rc;
+@@ -1310,6 +1312,7 @@ static int cf_check flask_hvm_param(struct domain *d, unsigned long op)
+         break;
+     default:
+         perm = HVM__HVMCTL;
++        break;
+     }
+ 
+     return current_has_perm(d, SECCLASS_HVM, perm);
+@@ -2013,6 +2016,7 @@ const struct xsm_ops *__init flask_init(
+     case FLASK_BOOTPARAM_INVALID:
+     default:
+         panic("Flask: Invalid value for flask= boot parameter.\n");
++        break;
+     }
+ 
+     avc_init();
 
 -- 
 2.34.1
