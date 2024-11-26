@@ -1,14 +1,13 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Subject: [PATCH v2 0/5] Driver for pre-DCP apple display controller.
-Date: Tue, 26 Nov 2024 17:34:19 +0100
-Message-Id: <20241126-adpdrm-v2-0-c90485336c09@gmail.com>
+Date: Tue, 26 Nov 2024 17:34:20 +0100
+Subject: [PATCH v2 1/5] dt-bindings: display: Add Apple pre-DCP display
+ controller bindings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIv4RWcC/2XMQQ6CMBCF4auQWVvDlKrAynsYFk1ngEkskNY0G
- tK7W9m6/F9evh0iB+EIfbVD4CRR1qWEPlXgZrtMrIRKg661QdRGWdooeKUvo+OGqLU3hHLeAo/
- yPqDHUHqW+FrD53AT/tY/IqGqVYMdUstXNp29T97K8+xWD0PO+QtOmwltnAAAAA==
-X-Change-ID: 20241124-adpdrm-25fce3dd8a71
+Message-Id: <20241126-adpdrm-v2-1-c90485336c09@gmail.com>
+References: <20241126-adpdrm-v2-0-c90485336c09@gmail.com>
+In-Reply-To: <20241126-adpdrm-v2-0-c90485336c09@gmail.com>
 To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -20,59 +19,271 @@ To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>,
  Jessica Zhang <quic_jesszhan@quicinc.com>, asahi@lists.linux.dev
 Cc: linux-arm-kernel@lists.infradead.org, dri-devel@lists.freedesktop.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, Janne Grunau <j@jannau.net>, 
- Nick Chan <towinchenmi@gmail.com>
+ Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732638864; l=2009;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732638864; l=6343;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=/LDcePj0XDKsYma0zK+FP7xyH1ASdKtuEO+PZnGEDFc=;
- b=OZR7bklMcaizua9kd4TjpLz0AjqB1X+Vunzk81NYY7+bDd6YxbJUoKnvBPvak/Wdfbw4r/1u6
- ivWR35297jmCQnjxOTmbOKHjfiKdJI/RzDIBL6aOxGv6AdRQodof9IX
+ bh=g48Jg5r677KMzSMpMRmoo0wqjqOCLTepYWRiT3THiy0=;
+ b=JyWUct6fDmArKlep5mGw0yzFNg2T5T3D1QKWlsQHOA19YDCqOO27AU9srxSoMw56J5uijKsO7
+ ZMzE1AiAqMcDu7Yc5hjiwzD0tlgQK8rOOR5ImWd/WcQyvAtQyfm3xFX
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi.
-
-This patch series adds support for a secondary display controller
-present on Apple M1/M2 chips and used to drive the display of the
-"touchbar" touch panel present on those. 
+Add bindings for a secondary display controller present on certain
+Apple laptops.
 
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
-Changes in v2:
-- Addressing the review feedback.
-- Split out the mipi part of the display controller into a separate device
-- Link to v1: https://lore.kernel.org/r/20241124-adpdrm-v1-0-3191d8e6e49a@gmail.com
+ .../display/apple,h7-display-pipe-mipi.yaml        | 89 ++++++++++++++++++++++
+ .../bindings/display/apple,h7-display-pipe.yaml    | 77 +++++++++++++++++++
+ .../bindings/display/panel/apple,summit.yaml       | 58 ++++++++++++++
+ 3 files changed, 224 insertions(+)
 
----
-Sasha Finkelstein (5):
-      dt-bindings: display: Add Apple pre-DCP display controller bindings
-      drm: adp: Add Apple Display Pipe driver
-      drm: panel: Add a panel driver for the Summit display
-      arm64: dts: apple: Add touchbar screen nodes
-      MAINTAINERS: Add entries for touchbar display driver
+diff --git a/Documentation/devicetree/bindings/display/apple,h7-display-pipe-mipi.yaml b/Documentation/devicetree/bindings/display/apple,h7-display-pipe-mipi.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..2cf2f50e9fc7329a5b424d5ddf8c34cad2ebb6be
+--- /dev/null
++++ b/Documentation/devicetree/bindings/display/apple,h7-display-pipe-mipi.yaml
+@@ -0,0 +1,89 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/display/apple,h7-display-pipe-mipi.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple pre-DCP display controller MIPI interface.
++
++maintainers:
++  - asahi@lists.linux.dev
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++description:
++  The MIPI controller part of the pre-DCP Apple display controller
++
++allOf:
++  - $ref: dsi-controller.yaml#
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,t8112-display-pipe-mipi
++          - apple,t8103-display-pipe-mipi
++      - const: apple,h7-display-pipe-mipi
++
++  reg:
++    maxItems: 1
++
++  reg-names:
++    const: mipi
++
++  power-domains:
++    maxItems: 1
++
++  ports:
++    $ref: /schemas/graph.yaml#/properties/ports
++
++    properties:
++      port@0:
++        $ref: /schemas/graph.yaml#/properties/port
++
++      port@1:
++        $ref: /schemas/graph.yaml#/properties/port
++
++    required:
++      - port@0
++      - port@1
++
++  '#address-cells': true
++
++  '#size-cells': true
++
++patternProperties:
++  "^panel@[0-3]$": true
++
++required:
++  - compatible
++  - reg
++  - ports
++
++additionalProperties: false
++
++examples:
++  - |
++    display_dfr: dsi@228200000 {
++    	compatible = "apple,t8103-display-pipe-mipi", "apple,h7-display-pipe-mipi";
++    	reg-names = "mipi";
++    	reg = <0x28200000 0xc000>;
++    	power-domains = <&ps_dispdfr_mipi>;
++
++    	ports {
++    		#address-cells = <1>;
++    		#size-cells = <0>;
++
++    		dfr_mipi_in: port@0 {
++    			#address-cells = <1>;
++    			#size-cells = <0>;
++    			reg = <0>;
++    		};
++
++    		dfr_mipi_out: port@1 {
++    			#address-cells = <1>;
++    			#size-cells = <0>;
++    			reg = <1>;
++    		};
++    	};
++    };
++...
+diff --git a/Documentation/devicetree/bindings/display/apple,h7-display-pipe.yaml b/Documentation/devicetree/bindings/display/apple,h7-display-pipe.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..98982da9c5f672167d67e4cd3b47e1fbdafc9510
+--- /dev/null
++++ b/Documentation/devicetree/bindings/display/apple,h7-display-pipe.yaml
+@@ -0,0 +1,77 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/display/apple,h7-display-pipe.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple pre-DCP display controller.
++
++maintainers:
++  - asahi@lists.linux.dev
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++description:
++  A secondary display controller used to drive the "touchbar" on certain Apple laptops.
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,t8112-display-pipe
++          - apple,t8103-display-pipe
++      - const: apple,h7-display-pipe
++
++  reg:
++    maxItems: 2
++
++  reg-names:
++    items:
++      - const: be
++      - const: fe
++
++  power-domains:
++    maxItems: 2
++
++  interrupts:
++    maxItems: 2
++
++  interrupt-names:
++    items:
++      - const: be
++      - const: fe
++
++  iommus:
++    maxItems: 1
++
++  port:
++    $ref: /schemas/graph.yaml#/properties/port
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - port
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/apple-aic.h>
++    display_dfr: display-pipe@228200000 {
++    	compatible = "apple,t8103-display-pipe", "apple,h7-display-pipe";
++    	reg-names = "be", "fe";
++    	reg = <0x28200000 0xc000>,
++    		<0x28400000 0x4000>;
++    	power-domains = <&ps_dispdfr_fe>, <&ps_dispdfr_be>;
++    	interrupt-parent = <&aic>;
++    	interrupts = <AIC_IRQ 502 IRQ_TYPE_LEVEL_HIGH>,
++    		<AIC_IRQ 506 IRQ_TYPE_LEVEL_HIGH>;
++    	interrupt-names = "be", "fe";
++    	iommus = <&displaydfr_dart 0>;
++    	port {
++    		dfr_adp_out_mipi: endpoint {
++    			remote-endpoint = <&dfr_mipi_in_adp>;
++    		};
++    	};
++    };
++...
+diff --git a/Documentation/devicetree/bindings/display/panel/apple,summit.yaml b/Documentation/devicetree/bindings/display/panel/apple,summit.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..db14f7af3787076c84ccdda08fedeb8912d5514d
+--- /dev/null
++++ b/Documentation/devicetree/bindings/display/panel/apple,summit.yaml
+@@ -0,0 +1,58 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/display/panel/apple,summit.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple "Summit" display panel.
++
++maintainers:
++  - asahi@lists.linux.dev
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++allOf:
++  - $ref: panel-common.yaml#
++  - $ref: /schemas/leds/backlight/common.yaml#
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,j293-summit
++          - apple,j493-summit
++      - const: apple,summit
++
++  reg:
++    maxItems: 1
++
++  max-brightness: true
++
++  port: true
++
++required:
++  - compatible
++  - reg
++  - max-brightness
++  - port
++
++additionalProperties: false
++
++examples:
++  - |
++    dsi {
++    	#address-cells = <1>;
++    	#size-cells = <0>;
++
++    	panel@0 {
++    		compatible = "apple,j293-summit", "apple,summit";
++    		reg = <0>;
++    		max-brightness = <255>;
++
++    		port {
++    			dfr_panel_in: endpoint {
++    				remote-endpoint = <&dfr_bridge_out>;
++    			};
++    		};
++    	};
++    };
++...
 
- .../display/apple,h7-display-pipe-mipi.yaml        |  89 +++
- .../bindings/display/apple,h7-display-pipe.yaml    |  77 +++
- .../bindings/display/panel/apple,summit.yaml       |  58 ++
- MAINTAINERS                                        |   5 +
- arch/arm64/boot/dts/apple/t8103-j293.dts           |  31 ++
- arch/arm64/boot/dts/apple/t8103.dtsi               |  61 +++
- arch/arm64/boot/dts/apple/t8112-j493.dts           |  31 ++
- arch/arm64/boot/dts/apple/t8112.dtsi               |  62 +++
- drivers/gpu/drm/Kconfig                            |   2 +
- drivers/gpu/drm/Makefile                           |   1 +
- drivers/gpu/drm/adp/Kconfig                        |  16 +
- drivers/gpu/drm/adp/Makefile                       |   4 +
- drivers/gpu/drm/adp/adp-mipi.c                     | 251 +++++++++
- drivers/gpu/drm/adp/adp_drv.c                      | 594 +++++++++++++++++++++
- drivers/gpu/drm/panel/Kconfig                      |   9 +
- drivers/gpu/drm/panel/Makefile                     |   1 +
- drivers/gpu/drm/panel/panel-summit.c               | 143 +++++
- 17 files changed, 1435 insertions(+)
----
-base-commit: 9f16d5e6f220661f73b36a4be1b21575651d8833
-change-id: 20241124-adpdrm-25fce3dd8a71
+-- 
+2.47.1
 
