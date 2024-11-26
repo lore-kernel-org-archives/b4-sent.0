@@ -1,55 +1,68 @@
-From: Jens Korinth <jens.korinth@tuta.io>
-Date: Tue, 26 Nov 2024 17:40:59 +0100
-Subject: [PATCH v4 3/3] rust: error: Replace pr_warn by pr_warn_once
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Subject: [PATCH 0/4] Driver for Apple Z2 touchscreens.
+Date: Tue, 26 Nov 2024 21:47:58 +0100
+Message-Id: <20241126-z2-v1-0-c43c4cc6200d@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241126-pr_once_macros-v4-3-410b8ca9643e@tuta.io>
-References: <20241126-pr_once_macros-v4-0-410b8ca9643e@tuta.io>
-In-Reply-To: <20241126-pr_once_macros-v4-0-410b8ca9643e@tuta.io>
-To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <benno.lossin@proton.me>, 
- Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Trevor Gross <tmgross@umich.edu>
-Cc: rust-for-linux@vger.kernel.org, 
- FUJITA Tomonori <fujita.tomonori@gmail.com>, 
- Dirk Behme <dirk.behme@gmail.com>, linux-kernel@vger.kernel.org, 
- Jens Korinth <jens.korinth@tuta.io>
+X-B4-Tracking: v=1; b=H4sIAP4zRmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDQyMT3Soj3WQDQ6MkUyOL1ESDFCWgwoKi1LTMCrAh0bG1tQDHCvI+VAA
+ AAA==
+X-Change-ID: 20241124-z2-c012b528ea0d
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Henrik Rydberg <rydberg@bitmath.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>, 
+ Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732639280; l=872;
- i=jens.korinth@tuta.io; s=20241107; h=from:subject:message-id;
- bh=Ibn3wEyptEN6rItZsMxTwWDZUjDEMOkNcZSR4EQjX4M=;
- b=MnERlW0iiP5yuqZAjJpBuHzt97f3tAqsZl9SVLCPvMjRPTJAHSg/fNl90GinoaOYCJ1wtfdys
- j90U8UUchUDCAGgCqNYJEStmvh62yiv5Zit+gDB4ftZJURYincQqO8c
-X-Developer-Key: i=jens.korinth@tuta.io; a=ed25519;
- pk=bG0q4Zyj3o4d/r326zKL7ym+/tXzyykcjh+U0M13iyc=
-X-Endpoint-Received: by B4 Relay for jens.korinth@tuta.io/20241107 with auth_id=270
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732654092; l=1728;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=ZBU8Fy8Sv/FwJD6yKpClEj3SItHuR1C5MYFPcenYJWs=;
+ b=EPyBrRhCz60QqrUaFxi1MkFuNhZO6e8bc/6+SNKD6Cylw/79q7NOFNe9CUIP+7jIQEFDrFVIc
+ fsNWUEUOiIZCm7qEFDH18CdE4WrB+YB2/Z0k3HvMNvnkl3oL8QRhHrh
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use new pr_warn_once macro to resolve TODO in error.rs.
+Hi.
 
-Signed-off-by: Jens Korinth <jens.korinth@tuta.io>
+This series adds support for Apple touchscreens using the Z2 protocol.
+Those are used as the primary touchscreen on mobile Apple devices, and for the
+touchbar on laptops using the M-series chips. (T1/T2 laptops have a coprocessor
+in charge of speaking Z2 to the touchbar).
+
+Originally sent as a RFC at https://lore.kernel.org/all/20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com/
+The changes since then mostly address the review feedback, but also
+add another machine that has this specific controller.
+
+The extra gpio needed to be toggled turned out to be a quirk of the
+j293, normal CS is unusable on it, and a gpio has to be used instead.
+(j493 does not have this quirk)
+
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- rust/kernel/error.rs | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Sasha Finkelstein (4):
+      dt-bindings: input: touchscreen: Add Z2 controller
+      input: apple_z2: Add a driver for Apple Z2 touchscreens
+      arm64: dts: apple: Add touchbar digitizer nodes
+      MAINTAINERS: Add entries for Apple Z2 touchscreen driver
 
-diff --git a/rust/kernel/error.rs b/rust/kernel/error.rs
-index 52c5024324474fc1306047f3fd7516f0023d0313..f6813dace1128b7ef91f64e79cd83bb64995bf97 100644
---- a/rust/kernel/error.rs
-+++ b/rust/kernel/error.rs
-@@ -102,8 +102,7 @@ impl Error {
-     /// be returned in such a case.
-     pub fn from_errno(errno: crate::ffi::c_int) -> Error {
-         if errno < -(bindings::MAX_ERRNO as i32) || errno >= 0 {
--            // TODO: Make it a `WARN_ONCE` once available.
--            crate::pr_warn!(
-+            crate::pr_warn_once!(
-                 "attempted to create `Error` with out of range `errno`: {}",
-                 errno
-             );
-
--- 
-2.47.0
+ .../input/touchscreen/apple,z2-multitouch.yaml     |  83 ++++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t8103-j293.dts           |  24 +
+ arch/arm64/boot/dts/apple/t8103.dtsi               |  19 +
+ arch/arm64/boot/dts/apple/t8112-j493.dts           |  20 +
+ arch/arm64/boot/dts/apple/t8112.dtsi               |  14 +
+ drivers/input/touchscreen/Kconfig                  |  13 +
+ drivers/input/touchscreen/Makefile                 |   1 +
+ drivers/input/touchscreen/apple_z2.c               | 495 +++++++++++++++++++++
+ 9 files changed, 671 insertions(+)
+---
+base-commit: 9f16d5e6f220661f73b36a4be1b21575651d8833
+change-id: 20241124-z2-c012b528ea0d
 
