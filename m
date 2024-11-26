@@ -1,10 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Tue, 26 Nov 2024 15:22:15 -0800
-Subject: [PATCH 25/36] xen/console: introduce handle_keypress_in_domain()
+Date: Tue, 26 Nov 2024 15:22:16 -0800
+Subject: [PATCH 26/36] xen/console: introduce console_write()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241126-vuart-ns8250-v1-v1-25-87b9a8375b7a@ford.com>
+Message-Id: <20241126-vuart-ns8250-v1-v1-26-87b9a8375b7a@ford.com>
 References: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 In-Reply-To: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 To: Jan Beulich <jbeulich@suse.com>, 
@@ -26,149 +26,158 @@ To: Jan Beulich <jbeulich@suse.com>,
  =?utf-8?q?Marek_Marczykowski-G=C3=B3recki?= <marmarek@invisiblethingslab.com>
 Cc: xen-devel@lists.xenproject.org, Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=4030;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=4283;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=WFmMQGLVJ0pT89tmxZ0ESYKHXHYqZV3StRB9Oqc56Go=;
- b=GoTkJnk83G9LUzBwpX7Aka4GbqCU17s/CyNsDUtmb57uNiKM4uuDJ+oKcwJiPDwset63x3jYN
- YB7yk8Qun2gBof4pKaDDjOz1+GkUp1ER7gJzYPIEFEAEe0lcgNWckUO
+ bh=mC1dfr4+26P41BllPMG6MZbu9F46btGiiA2X1kH3gME=;
+ b=hb4ZH7CsrUUdK9/NkrG9FYu22AqGi/bZMiyvvI9e3EZYIzNKn/vse7pJTCknstGu43n9nc68n
+ zegv/33ak9sCf0BS87RJVnZ4f1YoDras7AKDidQNrQtdz43jVQn137A
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With introduction of NS8250 emulator for x86, the logic of switching console
-focus gets more convoluted: HVM domain w/ NS8205 must be able to receive the
-physical console input for guest VM debugging.
+PV Linux kernel uses HYPERVISOR_console_io hypercall for early console which
+ends up being handled by Xen's console driver's guest_console_write().
 
-Also, existing code does not honor `hardware_dom=` xen command line parameter
-(hardware domain ID does _not_ necessarily starts from 0).
-
-Introduce handle_keypress_in_domain() to account for all scenarios of console
-input forwarding.
+guest_console_write() duplicates the code from __putstr(), elimitate code
+duplication.
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/drivers/char/console.c | 102 ++++++++++++++++++++++++++-------------------
- 1 file changed, 59 insertions(+), 43 deletions(-)
+ xen/drivers/char/console.c | 94 ++++++++++++++++++++++++----------------------
+ 1 file changed, 50 insertions(+), 44 deletions(-)
 
 diff --git a/xen/drivers/char/console.c b/xen/drivers/char/console.c
-index 6261bdb5a2ac1075bc89fa408c0fd6cfef380ae6..4439e00763631969767719053cdc81e67c2cda2c 100644
+index 4439e00763631969767719053cdc81e67c2cda2c..3d8d3c852e69d8fddd1d978fdd8932eb75551f25 100644
 --- a/xen/drivers/char/console.c
 +++ b/xen/drivers/char/console.c
-@@ -570,54 +570,70 @@ static void console_init_owner(void)
-     console_set_owner(domid);
- }
+@@ -665,6 +665,19 @@ static void cf_check notify_dom0_con_ring(void *unused)
+ static DECLARE_SOFTIRQ_TASKLET(notify_dom0_con_ring_tasklet,
+                                notify_dom0_con_ring, NULL);
  
--static void __serial_rx(char c)
-+static void handle_keypress_in_domain(struct domain *d, char c)
- {
--    switch ( console_owner )
-+    int rc = 0;
++static bool console_locks_busted;
 +
-+    /*
-+     * Deliver input to the emulated UART.
-+     */
-+    if ( domain_has_vuart(d) )
-     {
--    case DOMID_XEN:
--        return handle_keypress(c, false);
--
--    case 0:
--        /*
--         * Deliver input to the hardware domain buffer, unless it is
--         * already full.
--         */
--        if ( (serial_rx_prod - serial_rx_cons) != SERIAL_RX_SIZE )
--            serial_rx_ring[SERIAL_RX_MASK(serial_rx_prod++)] = c;
--
--        /*
--         * Always notify the hardware domain: prevents receive path from
--         * getting stuck.
--         */
--        send_global_virq(VIRQ_CONSOLE);
--        break;
--
--#ifdef CONFIG_SBSA_VUART_CONSOLE
--    default:
--    {
--        struct domain *d = rcu_lock_domain_by_id(console_owner);
--
--        /*
--         * If we have a properly initialized vpl011 console for the
--         * domain, without a full PV ring to Dom0 (in that case input
--         * comes from the PV ring), then send the character to it.
--         */
--        if ( d != NULL )
--            vpl011_rx_char_xen(d, c);
--        else
--            printk("Cannot send chars to Dom%d: no UART available\n",
--                   console_owner);
--
--        if ( d != NULL )
--            rcu_unlock_domain(d);
--
--        break;
--    }
-+#if defined(CONFIG_SBSA_VUART_CONSOLE)
-+        rc = vpl011_rx_char_xen(d, c);
- #endif
-     }
-+    /*
-+     * Deliver input to the hardware domain buffer.
-+     */
-+    else if ( d == hardware_domain )
++static void conring_write(const char *str, size_t len)
++{
++    if ( opt_console_to_ring )
 +    {
-+        /*
-+         * Deliver input to the PV shim console.
-+         */
-+        if ( consoled_is_enabled() )
-+            rc = consoled_guest_tx(c);
-+        else
-+        {
-+            /*
-+             * Deliver input to the hardware domain buffer, unless it is
-+             * already full.
-+             */
-+            if ( (serial_rx_prod - serial_rx_cons) != SERIAL_RX_SIZE )
-+                serial_rx_ring[SERIAL_RX_MASK(serial_rx_prod++)] = c;
- 
--    if ( consoled_is_enabled() )
--        consoled_guest_tx(c);
-+            /*
-+             * Always notify the hardware domain: prevents receive path from
-+             * getting stuck.
-+             */
-+            send_global_virq(VIRQ_CONSOLE);
-+            rc = 0;
-+        }
++        conring_puts(str, len);
++
++        if ( !console_locks_busted )
++            tasklet_schedule(&notify_dom0_con_ring_tasklet);
 +    }
-+    /*
-+     * Deliver input to the PV shim console.
-+     */
-+    else if ( consoled_is_enabled() )
-+        rc = consoled_guest_tx(c);
-+
-+    if ( rc )
-+        printk(KERN_WARNING "console input domain %d: not ready: %d\n",
-+               d->domain_id, rc);
-+
 +}
 +
-+static void __serial_rx(char c)
-+{
-+    struct domain *d;
+ #ifdef CONFIG_X86
+ static inline void xen_console_write_debug_port(const char *buf, size_t len)
+ {
+@@ -673,8 +686,43 @@ static inline void xen_console_write_debug_port(const char *buf, size_t len)
+                    : "=&S" (tmp), "=&c" (tmp)
+                    : "0" (buf), "1" (len), "d" (XEN_HVM_DEBUGCONS_IOPORT) );
+ }
 +
-+    d = rcu_lock_domain_console_owner();
-+    if ( d != NULL )
++static void xen_console_write(const char *str, size_t len)
++{
++    if ( opt_console_xen )
 +    {
-+        handle_keypress_in_domain(d, c);
-+        rcu_unlock_domain(d);
++        if ( xen_guest )
++            xen_hypercall_console_write(str, len);
++        else
++            xen_console_write_debug_port(str, len);
 +    }
-+    else
-+        handle_keypress(c, false);
++}
++#else
++static void xen_console_write(const char *str, size_t len)
++{
++}
+ #endif
+ 
++/*
++ * Write characters to console.
++ *
++ * That will handle all possible scenarios working w/ console
++ * - serial console;
++ * - video output;
++ * - __HYPERVISOR_console_io hypercall (x86 only);
++ * - debug I/O port (x86 only);
++ * - forward to Xen event channel.
++ */
++static void console_write(const char *str, size_t len)
++{
++    ASSERT(rspin_is_locked(&console_lock));
++
++    console_serial_puts(str, len);
++    video_puts(str, len);
++    xen_console_write(str, len);
++    conring_write(str, len);
++}
++
+ static long guest_console_write(XEN_GUEST_HANDLE_PARAM(char) buffer,
+                                 unsigned int count)
+ {
+@@ -695,28 +743,8 @@ static long guest_console_write(XEN_GUEST_HANDLE_PARAM(char) buffer,
+ 
+         if ( is_hardware_domain(cd) )
+         {
+-            /* Use direct console output as it could be interactive */
+             nrspin_lock_irq(&console_lock);
+-
+-            console_serial_puts(kbuf, kcount);
+-            video_puts(kbuf, kcount);
+-
+-#ifdef CONFIG_X86
+-            if ( opt_console_xen )
+-            {
+-                if ( xen_guest )
+-                    xen_hypercall_console_write(kbuf, kcount);
+-                else
+-                    xen_console_write_debug_port(kbuf, kcount);
+-            }
+-#endif
+-
+-            if ( opt_console_to_ring )
+-            {
+-                conring_puts(kbuf, kcount);
+-                tasklet_schedule(&notify_dom0_con_ring_tasklet);
+-            }
+-
++            console_write(kbuf, kcount);
+             nrspin_unlock_irq(&console_lock);
+         }
+         else
+@@ -817,31 +845,9 @@ long do_console_io(
+  * *****************************************************
+  */
+ 
+-static bool console_locks_busted;
+-
+ static void __putstr(const char *str)
+ {
+-    size_t len = strlen(str);
+-
+-    ASSERT(rspin_is_locked(&console_lock));
+-
+-    console_serial_puts(str, len);
+-    video_puts(str, len);
+-
+-#ifdef CONFIG_X86
+-    if ( opt_console_xen )
+-    {
+-        if ( xen_guest )
+-            xen_hypercall_console_write(str, len);
+-        else
+-            xen_console_write_debug_port(str, len);
+-    }
+-#endif
+-
+-    conring_puts(str, len);
+-
+-    if ( !console_locks_busted )
+-        tasklet_schedule(&notify_dom0_con_ring_tasklet);
++    console_write(str, strlen(str));
  }
  
- static void cf_check serial_rx(char c)
+ static int printk_prefix_check(char *p, char **pp)
 
 -- 
 2.34.1
