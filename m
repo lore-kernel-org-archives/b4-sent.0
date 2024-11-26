@@ -1,10 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Tue, 26 Nov 2024 15:21:59 -0800
-Subject: [PATCH 09/36] riscv/domain: introduce domain_has_vuart()
+Date: Tue, 26 Nov 2024 15:22:00 -0800
+Subject: [PATCH 10/36] ppc/domain: introduce domain_has_vuart()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241126-vuart-ns8250-v1-v1-9-87b9a8375b7a@ford.com>
+Message-Id: <20241126-vuart-ns8250-v1-v1-10-87b9a8375b7a@ford.com>
 References: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 In-Reply-To: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 To: Jan Beulich <jbeulich@suse.com>, 
@@ -26,35 +26,35 @@ To: Jan Beulich <jbeulich@suse.com>,
  =?utf-8?q?Marek_Marczykowski-G=C3=B3recki?= <marmarek@invisiblethingslab.com>
 Cc: xen-devel@lists.xenproject.org, Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=677;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=728;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=Fxckvj4Rq3ciLOXnJC51fJ7legC3d6vrDts1ke6yfmU=;
- b=TSM/n3jP/hKn1R5R46t8lGXKgXQW9Tyfrrj8oA8KSn8tY69MNLUbX+Yv33RoFU6wp81P1amtR
- +jBKzcZRr28AL3WaamkV1l7PcFmGc64Z5+C8v2tVYQqRalGfZwHKDNg
+ bh=t3QJZEOM8PRrx5tFAM37Q5lrsCWx/ouiwIRJrERCogM=;
+ b=f8wXFvd3jIkFIxNMBQ/Axu1bbqXBT0SUKFv83mK3ibYkFiQYPB/1CIit84amN75UuJ8kKxZhP
+ qoa3sZDsWsYBHULljtv9I1Vynu51trtpjkriYMTMTyEbSz/qdAX7tC/
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce domain_has_vuart() for RISC-V port to be used in the console driver.
+Introduce domain_has_vuart() for PPC port to be used in the console driver.
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/arch/riscv/include/asm/domain.h | 2 ++
+ xen/arch/ppc/include/asm/domain.h | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/xen/arch/riscv/include/asm/domain.h b/xen/arch/riscv/include/asm/domain.h
-index c3d965a559b6ce3661bf17166d0c51853ff295a2..efbc4f1ea2619a187fe30ede17d96de01e599220 100644
---- a/xen/arch/riscv/include/asm/domain.h
-+++ b/xen/arch/riscv/include/asm/domain.h
+diff --git a/xen/arch/ppc/include/asm/domain.h b/xen/arch/ppc/include/asm/domain.h
+index 3a447272c6f28586bf0d610929adbf228579e13f..764978e6a61b9d7220ec10fe0763e3424d07d27a 100644
+--- a/xen/arch/ppc/include/asm/domain.h
++++ b/xen/arch/ppc/include/asm/domain.h
 @@ -10,6 +10,8 @@ struct hvm_domain
      uint64_t              params[HVM_NR_PARAMS];
  };
  
 +#define domain_has_vuart(d)         false
 +
- struct arch_vcpu_io {
- };
+ /* TODO: Implement */
+ #define guest_mode(r) ({ (void)(r); BUG_ON("unimplemented"); 0; })
  
 
 -- 
