@@ -1,14 +1,12 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Subject: [PATCH 00/36] Introduce NS8250 UART emulator
-Date: Tue, 26 Nov 2024 15:21:50 -0800
-Message-Id: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
+Date: Tue, 26 Nov 2024 15:21:51 -0800
+Subject: [PATCH 01/36] x86/setup: fix typo in acpi=off description
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAA5YRmcC/x3MPQqAMAxA4atIZgM2NPhzFXGoGjVLlVaLIN7d4
- vgN7z0QJahE6IoHgiSNuvsMUxYwbc6vgjpnA1VkjSHGdLlwoo8NcYXJIDs7cj05plYgV0eQRe/
- /2A/v+wF3B1M6YQAAAA==
-X-Change-ID: 20241125-vuart-ns8250-v1-5a4b57ca529e
+Message-Id: <20241126-vuart-ns8250-v1-v1-1-87b9a8375b7a@ford.com>
+References: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
+In-Reply-To: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 To: Jan Beulich <jbeulich@suse.com>, 
  Andrew Cooper <andrew.cooper3@citrix.com>, 
  =?utf-8?q?Roger_Pau_Monn=C3=A9?= <roger.pau@citrix.com>, 
@@ -28,169 +26,35 @@ To: Jan Beulich <jbeulich@suse.com>,
  =?utf-8?q?Marek_Marczykowski-G=C3=B3recki?= <marmarek@invisiblethingslab.com>
 Cc: xen-devel@lists.xenproject.org, Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=7092;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=913;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=1Tgv8W8Bg/t7u7numSd+mYVQFp79uUbY0gFJ5smR4Lk=;
- b=TMajczvcEwZsVEZSpSBygegHOC6glKacY9NMJVzDrOE6mZAG5Nlxrk9ABAf2L7b1iwKOE+wnP
- f9KyyxjAaIWCU4GkH6hcub7e2wRit1jrLBqZb0DdWFhI1kC1++YP8wr
+ bh=7yTBjRl8lmc1tg+ZFlXhUwzuZwMkcPhVqwc9gw3xsIQ=;
+ b=fGhLeTafOQHdmZPBdD9bIVheTVXsfAPHD70yBmhJl2mjqDLgSZD+W7NfTS1UpjOjg5WWyO82s
+ 3nLC9cTHbFbD0Zur6mUCtIfo/TkKIfkB94RsV1dDD42fBf/p2X0hkh9
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The patch series introduces initial in-hypervisor emulator for
-NS8250/NS16x50-compatible UARTs under CONFIG_HAS_VUART_NS8250.
-
-In parallel domain creation scenario (hyperlaunch), NS8520 emulator helps
-early guest OS bringup debugging, because it eliminates dependency on the
-external emulator being operational by the time domains are created. Also,
-there's no early console facility similar to vpl011 to support x86 guest OS
-bring up.
-
-The NS8250 emulator is disabled by default.
-
-Series
-======
-- patches 1-2: some miscellaneous random fixes, added into the series
-  because I stepped into those while debugging NS8250 emulator.
-
-- patches 3-14: preparation fixes for xen console and NS8250 emulator.
-
-- patches 15-29: xen console driver cleanup and preparation for enabling
-  physical serial console focus assignment to the guest VM w/ virtual NS8250.
-
-- patches 30-36: initial NS8250 emulator. That adds the I/O port emulator
-  for legacy PC COM UARTs, Kconfig option, enabling emulator and libxl
-  plumbing.
-
-Limitations
-===========
-- Only x86;
-- Only Linux guest tested so far;
-- Only legacy COM{1,2,3,4} resources, no customization;
-- Only Xen console as a backend, no inter-domain communication (similar to
-  vpl011 on Arm);
-- Only 8-bit characters;
-- Baud rate is not emulated;
-- FIFO-less mode is not emulated properly;
-- RX FIFO interrupt moderation (FCR) is not emulated properly, TL16C750
-  has special FCR handling;
-- No integration w/ VM snapshotting (HVM_REGISTER_SAVE_RESTORE() and
-  friends);
-- Assumes no ISA-device IRQ sharing;
-- MMIO-based UART is not supported.
-
-Testing
-=======
-
-I tested boot of HVM linux guest w/ OVMF as the virtual firmware.
-
-The emulator, if enabled via CONFIG_HAS_VUART_NS8250=y, will use COM1 (0x3f8)
-resources by default.
-
-To test w/ virtual COM1, the guest kernel parameters should contain
-  earlycon=uart,io,0x3f8,115200n8 console=uart,io,0x3f8,115200n8
-
-Xen is able to forward physical console input to the domain w/ virtual NS8250.
-To switch the console focus press Ctrl+aaa. If console= is given to the HVM
-kernel, then the user shall be able to see the login prompt on xen console once
-console focus is switched to the HVM guest.
-
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
-Denis Mukhin (36):
-      x86/setup: fix typo in acpi=off description
-      xsm/flask: missing breaks, MISRA rule 16.4
-      xen: introduce resource.h
-      xen/irq: introduce NO_IRQ
-      xen/xmalloc: add kmalloc() and kfree() aliases
-      xen/ctype: introduce isconsole()
-      arm/vuart: use guest_printk()
-      arm/vuart: make domain_has_vuart() public
-      riscv/domain: introduce domain_has_vuart()
-      ppc/domain: introduce domain_has_vuart()
-      x86/domain: introduce domain_has_vuart()
-      x86/domain: print emulation_flags
-      xen/domain: add get_initial_domain_id()
-      xen/domain: enable max_init_domid for all architectures
-      xen/console: move vpl011-related code to vpl011 emulator
-      xen/console: rename console_input_domain
-      xen/console: rename switch_serial_input() to console_find_owner()
-      xen/console: rename console_rx to console_owner
-      xen/console: introduce printk_common()
-      xen/console: introduce consoled_is_enabled()
-      xen/console: introduce use of 'is_console' flag
-      xen/console: introduce console_set_owner()
-      xen/console: introduce console_owner_domid()
-      xen/console: introduce console_init_owner()
-      xen/console: introduce handle_keypress_in_domain()
-      xen/console: introduce console_write()
-      xen/console: introduce hwdom_crashconsole=
-      xen/console: simplify console owner switch hint
-      xen/console: make console buffer size configurable
-      xen/8250-uart: add missing definitions
-      x86/hvm: add HVM-specific Kconfig
-      x86/hvm: add helpers for raising guest IRQs
-      x86/hvm: introduce NS8250 UART emulator
-      x86/domain: implement domain_has_vuart()
-      xen/console: enable console owners w/ emulated NS8250
-      docs/misc: update console documentation
+ xen/arch/x86/setup.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- docs/misc/console.txt                       |   48 +-
- docs/misc/xen-command-line.pandoc           |    5 +
- tools/libs/light/libxl_x86.c                |    6 +-
- tools/ocaml/libs/xc/xenctrl.ml              |    1 +
- tools/ocaml/libs/xc/xenctrl.mli             |    1 +
- tools/python/xen/lowlevel/xc/xc.c           |    4 +-
- xen/arch/arm/include/asm/domain.h           |    9 +
- xen/arch/arm/include/asm/setup.h            |    2 -
- xen/arch/arm/include/asm/vpl011.h           |    2 +-
- xen/arch/arm/setup.c                        |    2 -
- xen/arch/arm/vpl011.c                       |   21 +-
- xen/arch/arm/vuart.c                        |    9 +-
- xen/arch/ppc/include/asm/domain.h           |    2 +
- xen/arch/ppc/include/asm/setup.h            |    2 -
- xen/arch/riscv/include/asm/domain.h         |    2 +
- xen/arch/riscv/include/asm/setup.h          |    2 -
- xen/arch/x86/Kconfig                        |   66 +-
- xen/arch/x86/dom0_build.c                   |    2 +
- xen/arch/x86/domain.c                       |   16 +-
- xen/arch/x86/hvm/Kconfig                    |   77 ++
- xen/arch/x86/hvm/Makefile                   |    1 +
- xen/arch/x86/hvm/hvm.c                      |   10 +-
- xen/arch/x86/hvm/irq.c                      |   24 +
- xen/arch/x86/hvm/vuart_ns8250.c             | 1012 +++++++++++++++++++++++++++
- xen/arch/x86/include/asm/domain.h           |    8 +-
- xen/arch/x86/include/asm/hvm/domain.h       |    5 +
- xen/arch/x86/include/asm/hvm/irq.h          |    3 +
- xen/arch/x86/include/asm/hvm/vuart_ns8250.h |   75 ++
- xen/arch/x86/include/asm/pv/shim.h          |    4 +-
- xen/arch/x86/include/asm/setup.h            |    3 +-
- xen/arch/x86/pv/shim.c                      |    6 +-
- xen/arch/x86/setup.c                        |    2 +-
- xen/common/device-tree/device-tree.c        |   21 +-
- xen/common/domain.c                         |   41 +-
- xen/drivers/char/Kconfig                    |   23 +
- xen/drivers/char/console.c                  |  379 +++++-----
- xen/drivers/char/consoled.c                 |   18 +-
- xen/drivers/passthrough/arm/smmu.c          |   19 +-
- xen/include/public/arch-x86/xen.h           |   14 +-
- xen/include/xen/8250-uart.h                 |   82 ++-
- xen/include/xen/console.h                   |    4 +-
- xen/include/xen/consoled.h                  |   35 +-
- xen/include/xen/ctype.h                     |    3 +
- xen/include/xen/domain.h                    |    4 +
- xen/include/xen/irq.h                       |    1 +
- xen/include/xen/lib.h                       |    3 +
- xen/include/xen/resource.h                  |   40 ++
- xen/include/xen/xmalloc.h                   |    5 +
- xen/xsm/flask/hooks.c                       |    4 +
- 49 files changed, 1778 insertions(+), 350 deletions(-)
----
-base-commit: c8e3e39085bf97d1afb775d54884d239387e32cd
-change-id: 20241125-vuart-ns8250-v1-5a4b57ca529e
+diff --git a/xen/arch/x86/setup.c b/xen/arch/x86/setup.c
+index d8661d7ca699c96f38229c75ad0a8626c6f675d4..0a748e2c14122d6c5d692bc5691e8cbe13a32c81 100644
+--- a/xen/arch/x86/setup.c
++++ b/xen/arch/x86/setup.c
+@@ -83,7 +83,7 @@ int8_t __initdata opt_probe_port_aliases = -1;
+ boolean_param("probe-port-aliases", opt_probe_port_aliases);
+ 
+ /* **** Linux config option: propagated to domain0. */
+-/* "acpi=off":    Sisables both ACPI table parsing and interpreter. */
++/* "acpi=off":    Disables both ACPI table parsing and interpreter. */
+ /* "acpi=force":  Override the disable blacklist.                   */
+ /* "acpi=ht":     Limit ACPI just to boot-time to enable HT.        */
+ /* "acpi=noirq":  Disables ACPI interrupt routing.                  */
 
-Best regards,
 -- 
-Denis Mukhin <dmukhin@ford.com>
+2.34.1
 
