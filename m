@@ -1,10 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Tue, 26 Nov 2024 15:21:58 -0800
-Subject: [PATCH 08/36] arm/vuart: make domain_has_vuart() public
+Date: Tue, 26 Nov 2024 15:21:59 -0800
+Subject: [PATCH 09/36] riscv/domain: introduce domain_has_vuart()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241126-vuart-ns8250-v1-v1-8-87b9a8375b7a@ford.com>
+Message-Id: <20241126-vuart-ns8250-v1-v1-9-87b9a8375b7a@ford.com>
 References: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 In-Reply-To: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 To: Jan Beulich <jbeulich@suse.com>, 
@@ -26,83 +26,35 @@ To: Jan Beulich <jbeulich@suse.com>,
  =?utf-8?q?Marek_Marczykowski-G=C3=B3recki?= <marmarek@invisiblethingslab.com>
 Cc: xen-devel@lists.xenproject.org, Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=2314;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=677;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=uCztJF40iiw3Im/nqwTMa7qbljN2JkGzlchQ98JzHsE=;
- b=isneJVgwidpN8rhG/OkAiaRbJdUdO7yE2BwELU9Bp6jwr+k8o9BX8cUFkDWfx0RMKc2FRLugJ
- BGjQU6KqQiuBLLooUpXjSIHbWfvIAg5+S+qgjK4tEdnPv1tizdzO1OC
+ bh=Fxckvj4Rq3ciLOXnJC51fJ7legC3d6vrDts1ke6yfmU=;
+ b=TSM/n3jP/hKn1R5R46t8lGXKgXQW9Tyfrrj8oA8KSn8tY69MNLUbX+Yv33RoFU6wp81P1amtR
+ +jBKzcZRr28AL3WaamkV1l7PcFmGc64Z5+C8v2tVYQqRalGfZwHKDNg
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move domain_has_vuart() to arch namespace as preparation code change for
-architecture-agnostic way of forwarding physical console to the guest OS w/
-in-hypervisor UART emulator.
+Introduce domain_has_vuart() for RISC-V port to be used in the console driver.
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/arch/arm/include/asm/domain.h | 9 +++++++++
- xen/arch/arm/vpl011.c             | 2 ++
- xen/arch/arm/vuart.c              | 4 ++--
- 3 files changed, 13 insertions(+), 2 deletions(-)
+ xen/arch/riscv/include/asm/domain.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/xen/arch/arm/include/asm/domain.h b/xen/arch/arm/include/asm/domain.h
-index f1d72c6e48dfeba347b4cd091ca33603c368b7c0..2bbd3f472176bdcfbc0f95f9d8809343d11965c8 100644
---- a/xen/arch/arm/include/asm/domain.h
-+++ b/xen/arch/arm/include/asm/domain.h
-@@ -119,8 +119,17 @@ struct arch_domain
-     void *tee;
- #endif
+diff --git a/xen/arch/riscv/include/asm/domain.h b/xen/arch/riscv/include/asm/domain.h
+index c3d965a559b6ce3661bf17166d0c51853ff295a2..efbc4f1ea2619a187fe30ede17d96de01e599220 100644
+--- a/xen/arch/riscv/include/asm/domain.h
++++ b/xen/arch/riscv/include/asm/domain.h
+@@ -10,6 +10,8 @@ struct hvm_domain
+     uint64_t              params[HVM_NR_PARAMS];
+ };
  
-+    /* Emulated devices enabled bitmap. */
-+    uint32_t emulation_flags;
++#define domain_has_vuart(d)         false
 +
- }  __cacheline_aligned;
- 
-+enum {
-+    ARM_EMU_VUART           = BIT(0, U),
-+};
-+
-+#define domain_has_vuart(d)     (!!((d)->arch.emulation_flags & ARM_EMU_VUART))
-+
- struct arch_vcpu
- {
-     struct {
-diff --git a/xen/arch/arm/vpl011.c b/xen/arch/arm/vpl011.c
-index 8ade6f2588b8bbcc58fb0f9edc324502a1992ce7..140dca48e0a3901cba289dbc6eb117358134d917 100644
---- a/xen/arch/arm/vpl011.c
-+++ b/xen/arch/arm/vpl011.c
-@@ -730,6 +730,8 @@ int domain_vpl011_init(struct domain *d, struct vpl011_init_info *info)
-     register_mmio_handler(d, &vpl011_mmio_handler,
-                           vpl011->base_addr, GUEST_PL011_SIZE, NULL);
- 
-+    d->arch.emulation_flags |= ARM_EMU_VUART;
-+
-     return 0;
- 
- out1:
-diff --git a/xen/arch/arm/vuart.c b/xen/arch/arm/vuart.c
-index 38ce8cc14fac4132578059b696be952b29fab809..8ca8ae5523a7924846df4324f9e0a81f225756ad 100644
---- a/xen/arch/arm/vuart.c
-+++ b/xen/arch/arm/vuart.c
-@@ -31,8 +31,6 @@
- 
- #include "vuart.h"
- 
--#define domain_has_vuart(d) ((d)->arch.vuart.info != NULL)
--
- static int vuart_mmio_read(struct vcpu *v, mmio_info_t *info,
-                            register_t *r, void *priv);
- static int vuart_mmio_write(struct vcpu *v, mmio_info_t *info,
-@@ -63,6 +61,8 @@ int domain_vuart_init(struct domain *d)
-                           d->arch.vuart.info->size,
-                           NULL);
- 
-+    d->arch.emulation_flags |= ARM_EMU_VUART;
-+
-     return 0;
- }
+ struct arch_vcpu_io {
+ };
  
 
 -- 
