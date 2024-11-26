@@ -1,10 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Tue, 26 Nov 2024 15:22:10 -0800
-Subject: [PATCH 20/36] xen/console: introduce consoled_is_enabled()
+Date: Tue, 26 Nov 2024 15:22:11 -0800
+Subject: [PATCH 21/36] xen/console: introduce use of 'is_console' flag
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241126-vuart-ns8250-v1-v1-20-87b9a8375b7a@ford.com>
+Message-Id: <20241126-vuart-ns8250-v1-v1-21-87b9a8375b7a@ford.com>
 References: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 In-Reply-To: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
 To: Jan Beulich <jbeulich@suse.com>, 
@@ -26,182 +26,121 @@ To: Jan Beulich <jbeulich@suse.com>,
  =?utf-8?q?Marek_Marczykowski-G=C3=B3recki?= <marmarek@invisiblethingslab.com>
 Cc: xen-devel@lists.xenproject.org, Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=4384;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=3376;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=dmfspZvPgoI4EGX+YrlzVMe2EpWEao1fcT911zaxlEE=;
- b=b8yT+vorsOT/zpMXLcXELRcjbP8A5xks6ATDBkx57XKFIDY+aHn3Ylyvhm4Z3AH3+ZRx1C8qL
- Jwel3yfp81XClJATR0JRkeqv+Ek2LpNbnP2Vh/Z/EibO0x25KL5xBeT
+ bh=ly2NKmV1rm1k90TAwD4huxu/gpF7eMHcF04jNDfnH2A=;
+ b=Adf9/uDabysbO97VQCxegMuFHWIbw+k/X5FX4Vsxz0Y+j/VcL+5URcPHM/jpc4NJZyL8kTyY4
+ yGmxTV2nxksDqRPybSI7d7nPcT9HN8BKUfsx8LBkoVWN5+6Gsr2vfOd
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There are few places which check pv_shim console under CONFIG_PV_SHIM in xen
-console driver. Instead of #ifdef-ing, use new consoled_is_enabled() to
-customize the logic.
+The code now inspects d->is_console flag to decide whether the console focus
+should move to the domain w/ console after administrator presses <Ctrl+aaa>.
 
-Header file now can be included w/o CONFIG_X86.
+To do that max_init_domid is updated in domain_create().
 
-Signature of consoled_guest_{rx,tx} has changed to account for follow-on
-console switch logic cleanup.
+Console owner domain switch logic updated accordingly.
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/drivers/char/console.c  | 10 +++-------
- xen/drivers/char/consoled.c | 18 ++++++++++++++----
- xen/include/xen/consoled.h  | 35 +++++++++++++++++++++++++++++++++--
- 3 files changed, 50 insertions(+), 13 deletions(-)
+ xen/arch/x86/pv/shim.c     |  2 ++
+ xen/common/domain.c        | 14 ++++++++++++++
+ xen/drivers/char/console.c | 14 ++++++++++----
+ 3 files changed, 26 insertions(+), 4 deletions(-)
 
-diff --git a/xen/drivers/char/console.c b/xen/drivers/char/console.c
-index f034ce5aab3f3bf59b0df9fa583ee9ce32dbf665..60c055396b697869b04b9132b0dcfa832fabe932 100644
---- a/xen/drivers/char/console.c
-+++ b/xen/drivers/char/console.c
-@@ -33,9 +33,9 @@
- #include <xen/pv_console.h>
- #include <asm/setup.h>
- #include <xen/sections.h>
-+#include <xen/consoled.h>
+diff --git a/xen/arch/x86/pv/shim.c b/xen/arch/x86/pv/shim.c
+index 17cb30620290c76cf42251f70cfa4199c0e165d1..a55c1d2a1e616f8979677a198eb9caabc3afc6bf 100644
+--- a/xen/arch/x86/pv/shim.c
++++ b/xen/arch/x86/pv/shim.c
+@@ -238,6 +238,8 @@ void __init pv_shim_setup_dom(struct domain *d, l4_pgentry_t *l4start,
+      * guest from depleting the shim memory pool.
+      */
+     d->max_pages = domain_tot_pages(d);
++
++    d->is_console = true;
+ }
  
- #ifdef CONFIG_X86
--#include <xen/consoled.h>
- #include <asm/guest.h>
- #endif
- #ifdef CONFIG_SBSA_VUART_CONSOLE
-@@ -505,11 +505,9 @@ static void console_find_owner(void)
-             break;
-         }
+ static void write_start_info(struct domain *d)
+diff --git a/xen/common/domain.c b/xen/common/domain.c
+index d8f6829db50dabba7464004b39eea39f6970f800..56f5d3b2031c52d567bfcf839740600320d952e9 100644
+--- a/xen/common/domain.c
++++ b/xen/common/domain.c
+@@ -682,6 +682,8 @@ struct domain *domain_create(domid_t domid,
  
--#ifdef CONFIG_PV_SHIM
--        if ( next_rx == 1 )
-+        if ( consoled_is_enabled() && next_rx == 1 )
-             domid = get_initial_domain_id();
-         else
--#endif
-             domid = next_rx - 1;
-         d = rcu_lock_domain_by_id(domid);
-         if ( d )
-@@ -573,10 +571,8 @@ static void __serial_rx(char c)
- #endif
+         old_hwdom = hardware_domain;
+         hardware_domain = d;
++
++        d->is_console = true;
      }
  
--#ifdef CONFIG_X86
--    if ( pv_shim && pv_console )
-+    if ( consoled_is_enabled() )
-         consoled_guest_tx(c);
--#endif
- }
+     TRACE_TIME(TRC_DOM0_DOM_ADD, d->domain_id);
+@@ -818,6 +820,18 @@ struct domain *domain_create(domid_t domid,
  
- static void cf_check serial_rx(char c)
-diff --git a/xen/drivers/char/consoled.c b/xen/drivers/char/consoled.c
-index b415b632cecc0a80e161b701d7b70ba4f3cc5fb8..d6624e7697f56e1a1959b0efa5dca104f34af002 100644
---- a/xen/drivers/char/consoled.c
-+++ b/xen/drivers/char/consoled.c
-@@ -43,13 +43,13 @@ struct xencons_interface *consoled_get_ring_addr(void)
- static char buf[BUF_SZ + 1];
+     memcpy(d->handle, config->handle, sizeof(d->handle));
  
- /* Receives characters from a domain's PV console */
--void consoled_guest_rx(void)
-+int consoled_guest_rx(void)
++    /*
++     * Housekeeping for physical console forwarding to the domain.
++     */
++    if ( !is_system_domain(d) && max_init_domid < domid )
++        max_init_domid = domid;
++
++    /*
++     * NB: flag is already set for PV shim and hardware domain, check whether
++     * virtual UART is present.
++     */
++    d->is_console |= domain_has_vuart(d);
++
+     return d;
+ 
+  fail:
+diff --git a/xen/drivers/char/console.c b/xen/drivers/char/console.c
+index 60c055396b697869b04b9132b0dcfa832fabe932..8cbac54c66044ae8581e486a782102b75c8bfaa9 100644
+--- a/xen/drivers/char/console.c
++++ b/xen/drivers/char/console.c
+@@ -1,8 +1,8 @@
+ /******************************************************************************
+  * console.c
+- * 
++ *
+  * Emergency console I/O for Xen and the domain-0 guest OS.
+- * 
++ *
+  * Copyright (c) 2002-2004, K A Fraser.
+  *
+  * Added printf_ratelimit
+@@ -509,14 +509,20 @@ static void console_find_owner(void)
+             domid = get_initial_domain_id();
+         else
+             domid = next_rx - 1;
++
+         d = rcu_lock_domain_by_id(domid);
+-        if ( d )
++        if ( d == NULL )
++            continue;
++
++        if ( d->is_console )
+         {
+             rcu_unlock_domain(d);
+             console_owner = next_rx;
+             printk("*** Serial input to DOM%u", domid);
+             break;
+         }
++
++        rcu_unlock_domain(d);
+     }
+ 
+     if ( switch_code )
+@@ -814,7 +820,7 @@ static int printk_prefix_check(char *p, char **pp)
+     return ((atomic_read(&print_everything) != 0) ||
+             (loglvl < lower_thresh) ||
+             ((loglvl < upper_thresh) && printk_ratelimit()));
+-} 
++}
+ 
+ static int cf_check parse_console_timestamps(const char *s)
  {
-     size_t idx = 0;
-     XENCONS_RING_IDX cons, prod;
- 
-     if ( !cons_ring )
--        return;
-+        return 0;
- 
-     spin_lock(&rx_lock);
- 
-@@ -91,15 +91,17 @@ void consoled_guest_rx(void)
- 
-  out:
-     spin_unlock(&rx_lock);
-+
-+    return 0;
- }
- 
- /* Sends a character into a domain's PV console */
--void consoled_guest_tx(char c)
-+int consoled_guest_tx(char c)
- {
-     XENCONS_RING_IDX cons, prod;
- 
-     if ( !cons_ring )
--        return;
-+        return 0;
- 
-     cons = ACCESS_ONCE(cons_ring->in_cons);
-     prod = cons_ring->in_prod;
-@@ -118,6 +120,7 @@ void consoled_guest_tx(char c)
- 
-     cons_ring->in[MASK_XENCONS_IDX(prod++, cons_ring->in)] = c;
- 
-+
-     /* Write to the ring before updating the pointer */
-     smp_wmb();
-     ACCESS_ONCE(cons_ring->in_prod) = prod;
-@@ -125,6 +128,13 @@ void consoled_guest_tx(char c)
-  notify:
-     /* Always notify the guest: prevents receive path from getting stuck. */
-     pv_shim_inject_evtchn(pv_console_evtchn());
-+
-+    return 0;
-+}
-+
-+bool consoled_is_enabled(void)
-+{
-+    return pv_shim && pv_console;
- }
- 
- /*
-diff --git a/xen/include/xen/consoled.h b/xen/include/xen/consoled.h
-index bd7ab6329ee8a7c466484021247241ded8ed03c7..b88e3025fde84a52d7027b785b0a51ada8493832 100644
---- a/xen/include/xen/consoled.h
-+++ b/xen/include/xen/consoled.h
-@@ -3,10 +3,41 @@
- 
- #include <public/io/console.h>
- 
-+#if defined(CONFIG_PV_SHIM)
-+
- void consoled_set_ring_addr(struct xencons_interface *ring);
- struct xencons_interface *consoled_get_ring_addr(void);
--void consoled_guest_rx(void);
--void consoled_guest_tx(char c);
-+int consoled_guest_rx(void);
-+int consoled_guest_tx(char c);
-+bool consoled_is_enabled(void);
-+
-+#else
-+
-+void consoled_set_ring_addr(struct xencons_interface *ring)
-+{
-+}
-+
-+struct xencons_interface *consoled_get_ring_addr(void)
-+{
-+    return NULL;
-+}
-+
-+int consoled_guest_rx(void)
-+{
-+    return 0;
-+}
-+
-+int consoled_guest_tx(char c)
-+{
-+    return 0;
-+}
-+
-+bool consoled_is_enabled(void)
-+{
-+    return false;
-+}
-+
-+#endif /* #if defined(CONFIG_PV_SHIM) */
- 
- #endif /* __XEN_CONSOLED_H__ */
- /*
 
 -- 
 2.34.1
