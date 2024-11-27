@@ -1,143 +1,82 @@
-From: Denis Mukhin <dmukhin@ford.com>
-Date: Tue, 26 Nov 2024 15:22:26 -0800
-Subject: [PATCH 36/36] docs/misc: update console documentation
+From: Janne Grunau <j@jannau.net>
+Subject: [PATCH RESEND 0/5] Add Apple SPI controller and spi-nor dt nodes
+Date: Wed, 27 Nov 2024 10:52:27 +0100
+Message-Id: <20241127-asahi-spi-dt-v1-0-907c9447f623@jannau.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241126-vuart-ns8250-v1-v1-36-87b9a8375b7a@ford.com>
-References: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
-In-Reply-To: <20241126-vuart-ns8250-v1-v1-0-87b9a8375b7a@ford.com>
-To: Jan Beulich <jbeulich@suse.com>, 
- Andrew Cooper <andrew.cooper3@citrix.com>, 
- =?utf-8?q?Roger_Pau_Monn=C3=A9?= <roger.pau@citrix.com>, 
- "Daniel P. Smith" <dpsmith@apertussolutions.com>, 
- Stefano Stabellini <sstabellini@kernel.org>, Julien Grall <julien@xen.org>, 
- Bertrand Marquis <bertrand.marquis@arm.com>, 
- Michal Orzel <michal.orzel@amd.com>, Rahul Singh <rahul.singh@arm.com>, 
- Volodymyr Babchuk <Volodymyr_Babchuk@epam.com>, 
- Alistair Francis <alistair.francis@wdc.com>, 
- Bob Eshleman <bobbyeshleman@gmail.com>, 
- Connor Davis <connojdavis@gmail.com>, 
- Oleksii Kurochko <oleksii.kurochko@gmail.com>, 
- Shawn Anastasio <sanastasio@raptorengineering.com>, 
- Anthony PERARD <anthony.perard@vates.tech>, Juergen Gross <jgross@suse.com>, 
- Christian Lindig <christian.lindig@citrix.com>, 
- David Scott <dave@recoil.org>, 
- =?utf-8?q?Marek_Marczykowski-G=C3=B3recki?= <marmarek@invisiblethingslab.com>
-Cc: xen-devel@lists.xenproject.org, Denis Mukhin <dmukhin@ford.com>
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732663312; l=5611;
- i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=O/e2TuAbfREf6sK5Rox2Z4H+zlo5Q3N8ksFZglsK7sE=;
- b=XavKhjZA3mfK4h09UVfAzuoD+nqYtkqc4418biMqkmSexlVgea/EgM0/sVOixRT0rGc6Is/Ke
- gmcR6+YgzKOD7ftpuWh53AGZUZYrdt+D/f3ZpAPz7y6T7Ams0JNWAsX
-X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
- pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
-X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2640; i=j@jannau.net;
+ s=yk2024; h=from:subject:message-id;
+ bh=AlyikN0YqHFLUKRJr7wvyyU0Pc9nGL/KGQvMwi2DpR8=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhnS311+Xf7aYfyjSyzxHbGFn/4yrqeGzt6kzbc+d4D9h1
+ 48+Q4v9HaUsDGJcDLJiiixJ2i87GFbXKMbUPgiDmcPKBDKEgYtTACaikcjIsGKT6ONE7uldsnP8
+ dOeVS0zWTntgsj5G2ve0Mf8H7Vp1e4Z/BgdUN8RyPdA7+jW8uyb+6uUFGzml5170U6k0E4isYsl
+ mAgA=
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Minor update related to virtual UART support.
+This series adds SPI controller and SPI NOR flash device nodes to the
+man Apple silicon SoC dts files. Only the subset of used SPI controllers
+is added. Five SPI controllers exists according to pmgr ADT data but the
+commits only add controllers found in use on any of the devices. The
+parameters for the missing nodes are guessable but there's no point in
+adding them since no further M1 or M2 devices are expected.
+Together with controller nodes the first SPI device is added. All Apple
+silicon devices connect a SPI NOR flash to spi1. This holds Apple's 1st
+stage bootloader, firmwares, platform and machine specific config data
+and a writeable key-value store (nvram). Expose only the nvram as mtd
+partition since it has use beyond exploring the content. Tools from
+asahi-nvram [1] can modify the (default) boot configuration
+(asahi-bless), read Bluetooth sync keys (asahi-btsync) and read and
+write arbitrary keys (asahi-nvram).
 
-Also:
- s/pv/PV/g
- s/hvm/HVM/g
+Devicetree bindings are included in the driver series. Last version at
+https://lore.kernel.org/linux-devicetree/20241101-asahi-spi-v3-0-3b411c5fb8e5@jannau.net/
 
-Signed-off-by: Denis Mukhin <dmukhin@ford.com>
+This series passes `make CHECK_DTBS=1 dtbs` with the spi bindings except
+for "local-mac-address" for the Bluetooth device (I need get back to
+this).
+
+[1] https://github.com/WhatAmISupposedToPutHere/asahi-nvram/
+
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- docs/misc/console.txt | 48 +++++++++++++++++++++++++-----------------------
- 1 file changed, 25 insertions(+), 23 deletions(-)
+Hector Martin (1):
+      arm64: dts: apple: t8103: Fix spi4 power domain sort order
 
-diff --git a/docs/misc/console.txt b/docs/misc/console.txt
-index 4e180f88ba1312d8fcc47d27622ec347d387ce12..b5411b4d74b6d3d920a4fbb2ce6033a239ec5832 100644
---- a/docs/misc/console.txt
-+++ b/docs/misc/console.txt
-@@ -4,11 +4,11 @@ Xen PV Console notes
-                                         stefano.stabellini@eu.citrix.com
- 
- 
--Xen traditionally provided a single pv console to pv guests, storing the
-+Xen traditionally provided a single PV console to PV guests, storing the
- relevant information in xenstore under /local/domain/$DOMID/console.
- 
--Now many years after the introduction of the pv console we have
--multiple pv consoles support for pv and hvm guests; multiple pv
-+Now many years after the introduction of the PV console we have
-+multiple PV consoles support for PV and HVM guests; multiple PV
- console backends (qemu and xenconsoled, see limitations below) and
- emulated serial cards too.
- 
-@@ -103,48 +103,50 @@ The supported values are only xenconsoled or ioemu; xenconsoled has
- several limitations: it can only be used for the first PV or virtual UART
- console and it can only connect to a pty.
- 
--Emulated serials are provided by qemu-dm only to hvm guests; the number
--of emulated serials depends on how many "-serial" command line options
--are given to qemu. The output of a serial is specified as argument to
--the -serial command line option to qemu. Qemu writes the tty name to
--xenstore in the following path:
-+Emulated serials are provided to HVM guests by qemu-dm or in-hypervisor UART
-+emulator (Xen needs to be re-compiled).
-+
-+In qemu-dm case, the number of emulated serials depends on how many "-serial"
-+command line options are given to qemu. The output of a serial is specified as
-+argument to the -serial command line option to qemu. Qemu writes the tty name
-+to xenstore in the following path:
- 
- /local/domain/$DOMID/serial/$SERIAL_NUM/tty
- 
- xenconsole is the tool to connect to a PV or virtual UART console or an
- emulated serial that has a pty as output. Xenconsole takes a domid as
--parameter plus an optional console type (pv for PV consoles, vuart for
-+parameter plus an optional console type (PV for PV consoles, vuart for
- virtual UART or serial for emulated serials) and console number.
- Depending on the type and console number, xenconsole will look for the tty
- node in different xenstore paths, as described above.  If the user doesn't
--specify the console type xenconsole will try to guess: if the guest is a pv
--guest it defaults to PV console, if the guest is an hvm guest it defaults to
-+specify the console type xenconsole will try to guess: if the guest is a PV
-+guest it defaults to PV console, if the guest is an HVM guest it defaults to
- emulated serial.
- 
--By default xl creates a pv console for hvm guests, plus an emulated
-+By default xl creates a PV console for HVM guests, plus an emulated
- serial if the user specified 'serial = "pty"' in the VM config file.
--Considering that xenconsole defaults to emulated serials for hvm guests,
-+Considering that xenconsole defaults to emulated serials for HVM guests,
- executing xl create -c "domain" causes xenconsole to attach to the
- emulated serial tty. This is most probably what the user wanted because
--currently no bootloaders support xen pv consoles so the only way to
-+currently no bootloaders support xen PV consoles so the only way to
- interact with a bootloader like grub over a console is to use the
- emulated serial.
--However the pv console is still easy to use with Linux PV on HVM guests:
-+However the PV console is still easy to use with Linux PV on HVM guests:
- the user just need to pass "console=hvc0" to the kernel command line and
- then execute "xl console -t pv <domain>" to connect to it.
- 
- When using stubdoms the serial cards are still emulated by qemu (this
- time running in the stubdom), the number of serial cards and where the
- output goes is still specified using qemu command line options.
--The difference is that for each emulated serial card there must be a pv
-+The difference is that for each emulated serial card there must be a PV
- console connection between the stubdom and dom0 to export the serial
--output from the stubdom to dom0. The pv console backend for stubdom's pv
--consoles is always ioemu because multiple pv consoles support is a
--requirement in this case, considering that minios has its own pv console
--too. In order to simplify the setup when using stubdoms the hvm guest
--can only have one pv console with xenstored as backend (the stubdom
--could provide pv console backends to the hvm guest but then it would
--need another pv console connection for each console backend to export
-+output from the stubdom to dom0. The PV console backend for stubdom's PV
-+consoles is always ioemu because multiple PV consoles support is a
-+requirement in this case, considering that minios has its own PV console
-+too. In order to simplify the setup when using stubdoms the HVM guest
-+can only have one PV console with xenstored as backend (the stubdom
-+could provide PV console backends to the HVM guest but then it would
-+need another PV console connection for each console backend to export
- the pty to dom0).
- 
- The xenconsole program supports a very simple protocol to notify parent about
+Janne Grunau (4):
+      arm64: dts: apple: t8103: Add spi controller nodes
+      arm64: dts: apple: t8112: Add spi controller nodes
+      arm64: dts: apple: t600x: Add spi controller nodes
+      arm64: dts: apple: Add SPI NOR nvram partition to all devices
 
+ arch/arm64/boot/dts/apple/spi1-nvram.dtsi      | 39 +++++++++++++++
+ arch/arm64/boot/dts/apple/t600x-common.dtsi    |  7 +++
+ arch/arm64/boot/dts/apple/t600x-die0.dtsi      | 28 +++++++++++
+ arch/arm64/boot/dts/apple/t600x-gpio-pins.dtsi | 14 ++++++
+ arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi |  2 +
+ arch/arm64/boot/dts/apple/t600x-j375.dtsi      |  2 +
+ arch/arm64/boot/dts/apple/t8103-jxxx.dtsi      |  2 +
+ arch/arm64/boot/dts/apple/t8103-pmgr.dtsi      | 18 +++----
+ arch/arm64/boot/dts/apple/t8103.dtsi           | 68 ++++++++++++++++++++++++++
+ arch/arm64/boot/dts/apple/t8112-jxxx.dtsi      |  2 +
+ arch/arm64/boot/dts/apple/t8112.dtsi           | 44 ++++++++++++++++-
+ 11 files changed, 216 insertions(+), 10 deletions(-)
+---
+base-commit: 98f7e32f20d28ec452afb208f9cffc08448a2652
+change-id: 20241101-asahi-spi-dt-58245bb1da3e
+
+Best regards,
 -- 
-2.34.1
+Janne Grunau <j@jannau.net>
 
