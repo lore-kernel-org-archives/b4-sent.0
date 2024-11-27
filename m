@@ -1,135 +1,53 @@
-From: Janne Grunau <j@jannau.net>
-Date: Wed, 27 Nov 2024 10:52:32 +0100
-Subject: [PATCH RESEND 5/5] arm64: dts: apple: Add SPI NOR nvram partition
- to all devices
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Date: Wed, 27 Nov 2024 23:18:29 +0100
+Subject: [PATCH] spi: apple: Set use_gpio_descriptors to true
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241127-asahi-spi-dt-v1-5-907c9447f623@jannau.net>
-References: <20241127-asahi-spi-dt-v1-0-907c9447f623@jannau.net>
-In-Reply-To: <20241127-asahi-spi-dt-v1-0-907c9447f623@jannau.net>
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Janne Grunau <j@jannau.net>
+Message-Id: <20241127-gpio-descs-v1-1-c586b518a7d5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALSaR2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDQyNz3fSCzHzdlNTi5GJdU4u05DTLRAOTZJNkJaCGgqLUtMwKsGHRsbW
+ 1AJl8XwxcAAAA
+X-Change-ID: 20241127-gpio-descs-58fcf9a04c4c
+To: Mark Brown <broonie@kernel.org>, Hector Martin <marcan@marcan.st>, 
+ Sven Peter <sven@svenpeter.dev>, Alyssa Rosenzweig <alyssa@rosenzweig.io>
+Cc: linux-spi@vger.kernel.org, asahi@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3506; i=j@jannau.net;
- s=yk2024; h=from:subject:message-id;
- bh=4sH2FvtVOU7J6ZD/GsHPG804yvHnrTdh0gHvxrTVtvc=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhnS3199yz65NmvRLy/PKvT2HH3orSzo3i20U+PxT+eJJz
- uZfG5fEdJSyMIhxMciKKbIkab/sYFhdoxhT+yAMZg4rE8gQBi5OAZhIfA3D/6Dd01wWcimWFCQK
- BD1dH/ZFfEeit7bZrT/GSQxSxe1HJjH84fweaFBQPCFc80/cl5kVc4qTd1yYsytiTXStSmXG9k/
- qzAA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732745939; l=929;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=I6RiQB/DHHaeohSxMjebLzpsTxP8yPVRu7SXWDHE5HI=;
+ b=/c8gIuS+kh48ubs1Hq95yjV5JOPYIofMQzBlghiIjcZ++7rwW+QsSWZFb/XN5GWexuYZSF5OA
+ sWKRxaSe7FrA7BQwIUEQI917LkvvL0yiRlsr6455o2So3QzqAhT9nIK
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All known M1* and M2* devices use an identical SPI NOR flash
-configuration with a partition containing a non-volatile key:value
-storage. Use a .dtsi and include it for every device.
-The nvram partition parameters itself depend on the version of the
-installed Apple iboot boot loader. m1n1 will fill in the current values
-provided by Apple's iboot.
+There is at least one peripheral that is attached to this
+controller and can not use native CS. Make it possible to use
+a GPIO instead.
 
-Signed-off-by: Janne Grunau <j@jannau.net>
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- arch/arm64/boot/dts/apple/spi1-nvram.dtsi      | 39 ++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi |  2 ++
- arch/arm64/boot/dts/apple/t600x-j375.dtsi      |  2 ++
- arch/arm64/boot/dts/apple/t8103-jxxx.dtsi      |  2 ++
- arch/arm64/boot/dts/apple/t8112-jxxx.dtsi      |  2 ++
- 5 files changed, 47 insertions(+)
+ drivers/spi/spi-apple.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/arch/arm64/boot/dts/apple/spi1-nvram.dtsi b/arch/arm64/boot/dts/apple/spi1-nvram.dtsi
-new file mode 100644
-index 0000000000000000000000000000000000000000..3df2fd3993b52884d7c00b65099c88d830a7a4c3
---- /dev/null
-+++ b/arch/arm64/boot/dts/apple/spi1-nvram.dtsi
-@@ -0,0 +1,39 @@
-+// SPDX-License-Identifier: GPL-2.0+ OR MIT
-+//
-+// Devicetree include for common spi-nor nvram flash.
-+//
-+// Apple uses a consistent configiguration for the nvram on all known M1* and
-+// M2* devices.
-+//
-+// Copyright The Asahi Linux Contributors
-+
-+/ {
-+	aliases {
-+		nvram = &nvram;
-+	};
-+};
-+
-+&spi1 {
-+	status = "okay";
-+
-+	flash@0 {
-+		compatible = "jedec,spi-nor";
-+		reg = <0x0>;
-+		spi-max-frequency = <25000000>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+
-+		partitions {
-+			compatible = "fixed-partitions";
-+			#address-cells = <1>;
-+			#size-cells = <1>;
-+
-+			nvram: partition@700000 {
-+				label = "nvram";
-+				/* To be filled by the loader */
-+				reg = <0x0 0x0>;
-+				status = "disabled";
-+			};
-+		};
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi b/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi
-index 2e471dfe43cf885c1234d36bf0e0acfdc4904621..22ebc78e120bf8f0f71fd532e9dce4dcd117bbc6 100644
---- a/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi
-@@ -119,3 +119,5 @@ sdhci0: mmc@0,0 {
- &fpwm0 {
- 	status = "okay";
- };
-+
-+#include "spi1-nvram.dtsi"
-diff --git a/arch/arm64/boot/dts/apple/t600x-j375.dtsi b/arch/arm64/boot/dts/apple/t600x-j375.dtsi
-index 1e5a19e49b089d4b3c5e12828b682d1993e35e75..d5b985ad567936111ee5cccc9ca9fc23d01d9edf 100644
---- a/arch/arm64/boot/dts/apple/t600x-j375.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-j375.dtsi
-@@ -126,3 +126,5 @@ &pcie0_dart_2 {
- &pcie0_dart_3 {
- 	status = "okay";
- };
-+
-+#include "spi1-nvram.dtsi"
-diff --git a/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi b/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
-index 5988a4eb6efaa008c290b1842e0da2aae8052ba4..8e82231acab59ca0bffdcecfb6681f59661fcd96 100644
---- a/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
-@@ -90,3 +90,5 @@ bluetooth0: bluetooth@0,1 {
- &nco_clkref {
- 	clock-frequency = <900000000>;
- };
-+
-+#include "spi1-nvram.dtsi"
-diff --git a/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi b/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi
-index f5edf61113e7aa869613d672b281f7b7e84efb79..6da35496a4c88dbaba125ebbe8c5a4a428c647c3 100644
---- a/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi
-@@ -79,3 +79,5 @@ &i2c3 {
- &nco_clkref {
- 	clock-frequency = <900000000>;
- };
-+
-+#include "spi1-nvram.dtsi"
+diff --git a/drivers/spi/spi-apple.c b/drivers/spi/spi-apple.c
+index d4b126c8701a67083e7247d1c82fb56f1725d9cb..6273352a2b2861c9da0976a46ec2adbc4c71d3d2 100644
+--- a/drivers/spi/spi-apple.c
++++ b/drivers/spi/spi-apple.c
+@@ -493,6 +493,7 @@ static int apple_spi_probe(struct platform_device *pdev)
+ 	ctlr->prepare_message = apple_spi_prepare_message;
+ 	ctlr->set_cs = apple_spi_set_cs;
+ 	ctlr->transfer_one = apple_spi_transfer_one;
++	ctlr->use_gpio_descriptors = true;
+ 	ctlr->auto_runtime_pm = true;
+ 
+ 	pm_runtime_set_active(&pdev->dev);
 
--- 
-2.47.0
+---
+base-commit: 9f16d5e6f220661f73b36a4be1b21575651d8833
+change-id: 20241127-gpio-descs-58fcf9a04c4c
 
