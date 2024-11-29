@@ -1,45 +1,48 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Subject: [PATCH 0/2] Minor typo fixes
-Date: Fri, 29 Nov 2024 20:42:27 +0100
-Message-Id: <20241129-typo-v1-0-1ac3fef74eee@posteo.net>
+Date: Fri, 29 Nov 2024 20:42:28 +0100
+Subject: [PATCH 1/2] clk: mpc83xx: Fix typo in "Coherent System Bus"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIACMZSmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxNDQyNL3ZLKgnxdyxSTFJNEC/PEZLNUJaDSgqLUtMwKsDHRsbW1AFt66id
- WAAAA
-X-Change-ID: 20241129-typo-9d4d4a87ac6e
+Message-Id: <20241129-typo-v1-1-1ac3fef74eee@posteo.net>
+References: <20241129-typo-v1-0-1ac3fef74eee@posteo.net>
+In-Reply-To: <20241129-typo-v1-0-1ac3fef74eee@posteo.net>
 To: Mario Six <mario.six@gdsys.cc>, Lukasz Majewski <lukma@denx.de>, 
  Sean Anderson <seanga2@gmail.com>, Tom Rini <trini@konsulko.com>
 Cc: u-boot@lists.denx.de, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732909355; l=519;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732909355; l=748;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=5p1ZuMH4hjGy0QxNBSAhRF0kND0CdqEMCGSoiIiObDY=;
- b=a3E0EblwADltd9wOWEAmEirDDjTsCVKYSoLVvmqAL7uuP8Kz2LfHIrhHm1di94w79HSQtZfE/
- 5+LeV3JfetJAFN1lAsprMqW++5VFc69wF5v7veQoiJhsI7/e9Mhh6xd
+ bh=d1Imfeaz4mmEu1sdX3Ph06IdWoxZEdhIx3m0qbtgCfM=;
+ b=LQ5Kp2MuI9bS+EQwehlTjN/qI/Cgl/84DfOtQp51ryVLtEq48CKlSeVvf9iE+VG6gzvzydwDk
+ EwTbbh8p9YJAoVH6l3sLegMdY6WAefyy+t83arkOHhP4vR5atsPbIK9
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patchset includes two small typo fixes.
+Cosmetic change.
 
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-J. Neuschäfer (2):
-      clk: mpc83xx: Fix typo in "Coherent System Bus"
-      doc: sending_patches: Fix spelling of "its"
+ drivers/clk/mpc83xx_clk.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- doc/develop/sending_patches.rst | 2 +-
- drivers/clk/mpc83xx_clk.h       | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
----
-base-commit: 62224280d9e89648ae90346c0aede76f9b7e7610
-change-id: 20241129-typo-9d4d4a87ac6e
+diff --git a/drivers/clk/mpc83xx_clk.h b/drivers/clk/mpc83xx_clk.h
+index c06a51ecd43a426e8ecd4e99a3f8ff3e902f9106..6b74fc5f16b613cec4fbc654644835fbc0dfe3eb 100644
+--- a/drivers/clk/mpc83xx_clk.h
++++ b/drivers/clk/mpc83xx_clk.h
+@@ -321,7 +321,7 @@ static inline u32 get_pci_sync_in(immap_t *im)
+ }
+ 
+ /**
+- * get_csb_clk() - Read the CSB (Coheren System Bus) clock speed
++ * get_csb_clk() - Read the CSB (Coherent System Bus) clock speed
+  * @im: Pointer to the MPC83xx main register map in question
+  *
+  * Return: The CSB clock speed value as a 32-bit number.
 
-Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+2.45.2
 
