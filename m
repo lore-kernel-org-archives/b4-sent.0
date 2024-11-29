@@ -1,10 +1,10 @@
 From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Date: Fri, 29 Nov 2024 10:53:18 +0100
-Subject: [PATCH v5 3/4] w1: ds2482: Add regulator support
+Date: Fri, 29 Nov 2024 10:53:19 +0100
+Subject: [PATCH v5 4/4] w1: ds2482: Fix datasheet URL
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20241129-ds2482-add-reg-v5-3-af8e83d41344@gmail.com>
+Message-Id: <20241129-ds2482-add-reg-v5-4-af8e83d41344@gmail.com>
 References: <20241129-ds2482-add-reg-v5-0-af8e83d41344@gmail.com>
 In-Reply-To: <20241129-ds2482-add-reg-v5-0-af8e83d41344@gmail.com>
 To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -15,54 +15,36 @@ Cc: Ben Gardner <bgardner@wabtec.com>, linux-kernel@vger.kernel.org,
  devicetree@vger.kernel.org, 
  =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1732874180; l=1167;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732874180; l=803;
  i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
- bh=ORSul3n77E1q/jzP7L31MvdWj04FGrfU0fUd1F/Lh1A=;
- b=P7BE0+oekr36olNRl8rfrkOB65P0U7yDGcSWbW31D2RkfhGHOH+f+OR0K/9MsYace0CDchLFt
- 9N1t3cf1kx4D7gHncQ/G5vdKaDM9GHPaO3VnlL5fSCzVP5YLI92wl59
+ bh=03Cepzmlkc7S59f4WEx6i61KjUdKKkD9CK15GJyvMcE=;
+ b=cZvdu2khzFLOnoIoOrBZMdoYPcaRapSWDZj40Vet1PUk+3E0akKvpgLeVkeXGxWNTlJirJyjE
+ 5IIm8UrEeKLAYuojpBV970HfHrLoJfKdyUZUT1dfJVocsPOnIUdyIR9
 X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
  pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
 X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds a support for attaching a supply regulator.
+Current link does redirect to wrong place.
 
 Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
 ---
- drivers/w1/masters/ds2482.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ drivers/w1/masters/ds2482.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/w1/masters/ds2482.c b/drivers/w1/masters/ds2482.c
-index b2157869067d52f79d618e163b6cd96dbc7bee60..8c34c2e9a5a34e38ed097d7fbd965ec5b75e71d8 100644
+index 8c34c2e9a5a34e38ed097d7fbd965ec5b75e71d8..117a53d80ce88ebaffea3097079aa54e79d549d3 100644
 --- a/drivers/w1/masters/ds2482.c
 +++ b/drivers/w1/masters/ds2482.c
-@@ -15,6 +15,7 @@
- #include <linux/slab.h>
- #include <linux/i2c.h>
- #include <linux/delay.h>
-+#include <linux/regulator/consumer.h>
+@@ -7,7 +7,7 @@
+  * It is a I2C to 1-wire bridge.
+  * There are two variations: -100 and -800, which have 1 or 8 1-wire ports.
+  * The complete datasheet can be obtained from MAXIM's website at:
+- *   http://www.maxim-ic.com/quick_view2.cfm/qv_pk/4382
++ *   https://www.analog.com/en/products/ds2482-100.html
+  */
  
- #include <linux/w1.h>
- 
-@@ -445,6 +446,7 @@ static int ds2482_probe(struct i2c_client *client)
- 	int err = -ENODEV;
- 	int temp1;
- 	int idx;
-+	int ret;
- 
- 	if (!i2c_check_functionality(client->adapter,
- 				     I2C_FUNC_SMBUS_WRITE_BYTE_DATA |
-@@ -455,6 +457,10 @@ static int ds2482_probe(struct i2c_client *client)
- 	if (!data)
- 		return -ENOMEM;
- 
-+	ret = devm_regulator_get_enable(&client->dev, "vcc");
-+	if (ret)
-+		return dev_err_probe(&client->dev, ret, "Failed to enable regulator\n");
-+
- 	data->client = client;
- 	i2c_set_clientdata(client, data);
- 
+ #include <linux/module.h>
 
 -- 
 2.39.5
