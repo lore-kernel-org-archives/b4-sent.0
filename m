@@ -1,118 +1,111 @@
-From: Levi Zim <rsworktech@outlook.com>
-Date: Sat, 30 Nov 2024 21:38:23 +0800
-Subject: [PATCH net 2/2] tcp_bpf: fix copied value in tcp_bpf_sendmsg
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v2 0/4] arm64: dts: qcom: x1e80100-hp-x14: dt for HP
+ Omnibook X Laptop 14
+Date: Sat, 30 Nov 2024 20:08:51 +0100
+Message-Id: <20241130-hp-omnibook-x14-v2-0-72227bc6bbf4@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241130-tcp-bpf-sendmsg-v1-2-bae583d014f3@outlook.com>
-References: <20241130-tcp-bpf-sendmsg-v1-0-bae583d014f3@outlook.com>
-In-Reply-To: <20241130-tcp-bpf-sendmsg-v1-0-bae583d014f3@outlook.com>
-To: John Fastabend <john.fastabend@gmail.com>, 
- Jakub Sitnicki <jakub@cloudflare.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, David Ahern <dsahern@kernel.org>
-Cc: netdev@vger.kernel.org, bpf@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Levi Zim <rsworktech@outlook.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2613;
- i=rsworktech@outlook.com; h=from:subject:message-id;
- bh=BSkGG9GTRoR+hvU0RGsIgrZN4wSOYMDvwCLwhO4xA0I=;
- b=owEBbQKS/ZANAwAIAW87mNQvxsnYAcsmYgBnSxV/R4dBaQRVcQRIIaNhbEPgxR11GIvnSrfk0
- FNrgI8Ds9qJAjMEAAEIAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCZ0sVfwAKCRBvO5jUL8bJ
- 2JhIEADFnoc0KrtgtrkTiauoo1Nu6q/SztNB5pqKgENVv6F8U11ZtAThNKgJZ0bAqOedmgz5Sa5
- rNVW2ooN6hS4zKVq5SGypoGoMqx9k+dEX8B7NP7eQpcU+HOhyXx0eTKZs8P8Yre2UL9N4ZJdRMF
- AiCTaPnh+Cs3nnuJTK5yMsPsc9c4miizFTzs34FidtHRZ/mRayXqMkVqBnI5aVx6WzoThrtI/mY
- wGbDC9Qa2jzzAovMCbooG9lxTch9mzRM/p0sbBOAve5eMRnkagDDEqWRPP+sbfhkd+U06REtM8S
- 95K8uBtqDgQUXSvVdwD2vv2CgDqvkAtHoSehPN47Rcq9JnATvSLxkQqqi1kWWRKvdgHz6Dmm2cy
- Iy83wsC5iydLapfsWp/vUn60NAHBYBQtaBNpOMl/mZIiWXZCLaq2+UMT+Ybf9tTx3bn/9wdgSUC
- yIiMvdl57DAobJRLzr+tcFQ6AiKTHOAZ1pmuzkAY9sv3VCDdyZWTlvdljJdiGoM1lf1pNX5VAdq
- cQcc2hQ1Kmzz1xoUQGv2eRlZ7yiT0YgDVPWs900RGh5N34V6cml7qhDy36RIpv0EIOu/OIBmstL
- rJ887YIecSfwhK311xHvFjyrCiDcj+4e9SAfYZhV0+ZwirotZ+QM7aiSbZAaoc32pC1pp4ct0HD
- 3VbRGGq8Qa/z4rw==
-X-Developer-Key: i=rsworktech@outlook.com; a=openpgp;
- fpr=17AADD6726DDC58B8EE5881757670CCFA42CCF0A
-X-Endpoint-Received: by B4 Relay for rsworktech@outlook.com/default with auth_id=219
+X-B4-Tracking: v=1; b=H4sIAMNiS2cC/2WOzQ6CMBCEX8Xs2ZpuLRg8+R6GAz+t3Ygs6SJBC
+ e9uJd48fpPMN7OAuEhO4LxbILqJhLhPYPY7aELV35yiNjEYbSwi5ioMih891cx3NaNVhc6Oha+
+ aE2YtpNYQnad5M17LxIFk5PjaBib8pj+XsX+uCZVWzprceG0y66sLd600gbkT7p5j+iaHmt5Qr
+ uv6ATUhK2u7AAAA
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Douglas Anderson <dianders@chromium.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <quic_jesszhan@quicinc.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Kalle Valo <kvalo@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1732993736; l=3019;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=hqAKmns3GJfToP3zAXRQaDGsgbUUADfXFp5gbTXfOJY=;
+ b=pu3b5VwGlHRyNkzkQoKDekoTp+dNcxUAkccnJSuHeKGE41aXN0iRC+QxT0xLXdzhlBZsutEOn
+ hD4VfeEnzI6CkKI3ZvGMB2yXAwIWVQQacQxDpn8Mf6OLj4VVbm6aFkr
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-bpf kselftest sockhash::test_txmsg_cork_hangs in test_sockmap.c triggers a
-kernel NULL pointer dereference:
+Introduce device tree for the HP Omnibook X Laptop 14-fe0750ng
+(hp-omnibook-x14). It is a Laptop based on the Qualcomm Snapdragon
+X Elite SoC. There seem to be other SKUs, some with Wifi-7 (WCN7850)
+instead of Wifi-6E (WCN6855). This dt explicitly supports WCN6855,
+I haven't found a good way yet to describe both.
+    
+PDF link: https://www8.hp.com/h20195/V2/GetPDF.aspx/c08989140
 
-BUG: kernel NULL pointer dereference, address: 0000000000000008
- ? __die_body+0x6e/0xb0
- ? __die+0x8b/0xa0
- ? page_fault_oops+0x358/0x3c0
- ? local_clock+0x19/0x30
- ? lock_release+0x11b/0x440
- ? kernelmode_fixup_or_oops+0x54/0x60
- ? __bad_area_nosemaphore+0x4f/0x210
- ? mmap_read_unlock+0x13/0x30
- ? bad_area_nosemaphore+0x16/0x20
- ? do_user_addr_fault+0x6fd/0x740
- ? prb_read_valid+0x1d/0x30
- ? exc_page_fault+0x55/0xd0
- ? asm_exc_page_fault+0x2b/0x30
- ? splice_to_socket+0x52e/0x630
- ? shmem_file_splice_read+0x2b1/0x310
- direct_splice_actor+0x47/0x70
- splice_direct_to_actor+0x133/0x300
- ? do_splice_direct+0x90/0x90
- do_splice_direct+0x64/0x90
- ? __ia32_sys_tee+0x30/0x30
- do_sendfile+0x214/0x300
- __se_sys_sendfile64+0x8e/0xb0
- __x64_sys_sendfile64+0x25/0x30
- x64_sys_call+0xb82/0x2840
- do_syscall_64+0x75/0x110
- entry_SYSCALL_64_after_hwframe+0x4b/0x53
+Supported features:
+    
+- Keyboard (no function keys though)
+- Display (IPS 2240x1400, 300nits)
+- PWM brightness control (works via brightnessctl)
+- Touchpad
+- Touchscreen
+- PCIe ports (pcie4, pcie6a)
+- USB type-c, type-a
+- WCN6855 Wifi-6E
+- WCN6855 Bluetooth
+- ADSP and CDSP
+- X1 GPU
+- GPIO Keys (Lid switch)
+- Audio definition (works via USB)
+- prepared for DP Altmode
 
-This is caused by tcp_bpf_sendmsg() returning a larger value(12289) than
-size (8192), which causes the while loop in splice_to_socket() to release
-an uninitialized pipe buf.
+Bringup work has started with the Asus Vivobook S15 as initial template,
+worked from there by comparing and copying from the CRD, QCP, 
+Yoga Slim 7, Thinkpad T14s. Special thanks to all the people that helped
+on #aarch64-laptops [1] with comments and suggestions.
+I tested on my laptop, mostly. Since the dt is also in Ubuntu-Concept X1E
+[2] there is also test exposure there, with some feedback.
 
-The underlying cause is that this code assumes sk_msg_memcopy_from_iter()
-will copy all bytes upon success but it actually might only copy part of
-it.
+For WiFi to work you need a board file matching the board string [3]. By 
+experiment and pure guess I found the already existing calibration for
+HP_G8_LANCIA_14 to be quite nice, it gives 866MB/s link speed here. A 
+patch proposal is on its way.
 
-This commit changes it to use the real copied bytes.
+For this patchset to work you also need patch [4] in the tree,
+otherwise uart14 for BT will be mising.
 
-Signed-off-by: Levi Zim <rsworktech@outlook.com>
+[1] https://oftc.irclog.whitequark.org/aarch64-laptops
+[2] https://discourse.ubuntu.com/t/ubuntu-24-10-concept-snapdragon-x-elite/48800
+[3] "bus=pci,vendor=17cb,device=1103,subsystem-vendor=105b,subsystem-device=e108,qmi-chip-id=2,qmi-board-id=255"
+[4] https://lore.kernel.org/all/20241007-x1e80100-pwrseq-qcp-v1-0-f7166510ab17@linaro.org/
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- net/ipv4/tcp_bpf.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Changes in v2:
+- amended usb_mp_dwc3 definition to reference both phys that are used,
+  as suggested by Krishna Kurapati
+- Link to v1: https://lore.kernel.org/r/20241124-hp-omnibook-x14-v1-0-e4262f0254fa@oldschoolsolutions.biz
 
-diff --git a/net/ipv4/tcp_bpf.c b/net/ipv4/tcp_bpf.c
-index 370993c03d31363c0f82a003d9e5b0ca3bbed721..8e46c4d618cbbff0d120fe4cd917624e5d5cae15 100644
---- a/net/ipv4/tcp_bpf.c
-+++ b/net/ipv4/tcp_bpf.c
-@@ -496,7 +496,7 @@ static int tcp_bpf_send_verdict(struct sock *sk, struct sk_psock *psock,
- static int tcp_bpf_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
- {
- 	struct sk_msg tmp, *msg_tx = NULL;
--	int copied = 0, err = 0;
-+	int copied = 0, err = 0, ret = 0;
- 	struct sk_psock *psock;
- 	long timeo;
- 	int flags;
-@@ -539,14 +539,14 @@ static int tcp_bpf_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
- 			copy = msg_tx->sg.size - osize;
- 		}
- 
--		err = sk_msg_memcopy_from_iter(sk, &msg->msg_iter, msg_tx,
-+		ret = sk_msg_memcopy_from_iter(sk, &msg->msg_iter, msg_tx,
- 					       copy);
--		if (err < 0) {
-+		if (ret < 0) {
- 			sk_msg_trim(sk, msg_tx, osize);
- 			goto out_err;
- 		}
- 
--		copied += copy;
-+		copied += ret;
- 		if (psock->cork_bytes) {
- 			if (size > psock->cork_bytes)
- 				psock->cork_bytes = 0;
+---
+Jens Glathe (4):
+      dt-bindings: arm: qcom: Add HP Omnibook X 14
+      firmware: qcom: scm: Allow QSEECOM for HP Omnibook X14
+      drm/panel-edp: Add unknown BOE panel for HP Omnibook X14
+      arm64: dts: qcom: x1e80100-hp-x14: dt for HP Omnibook X Laptop 14
 
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    1 +
+ .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 1693 ++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ drivers/gpu/drm/panel/panel-edp.c                  |    1 +
+ 5 files changed, 1697 insertions(+)
+---
+base-commit: 02d920be494a5f953319e7589d23a8ba3f00ce05
+change-id: 20241116-hp-omnibook-x14-90539fac715d
+
+Best regards,
 -- 
-2.47.1
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
