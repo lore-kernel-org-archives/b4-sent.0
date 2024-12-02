@@ -1,10 +1,11 @@
 From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Date: Tue, 03 Dec 2024 02:33:23 +0900
-Subject: [PATCH 01/10] compiler.h: add statically_false()
+Date: Tue, 03 Dec 2024 02:33:24 +0900
+Subject: [PATCH 02/10] compiler.h: add is_const() as a replacement of
+ __is_constexpr()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20241203-is_constexpr-refactor-v1-1-4e4cbaecc216@wanadoo.fr>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20241203-is_constexpr-refactor-v1-2-4e4cbaecc216@wanadoo.fr>
 References: <20241203-is_constexpr-refactor-v1-0-4e4cbaecc216@wanadoo.fr>
 In-Reply-To: <20241203-is_constexpr-refactor-v1-0-4e4cbaecc216@wanadoo.fr>
 To: Linus Torvalds <torvalds@linux-foundation.org>, 
@@ -31,45 +32,103 @@ Cc: linux-sparse@vger.kernel.org, linux-kernel@vger.kernel.org,
  coresight@lists.linaro.org, linux-arm-kernel@lists.infradead.org, 
  Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1089;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3781;
  i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
- bh=MUJOQQOOJL9dYDVaPT65KhZRSmD+ZVJ1pjvxSAixArY=;
- b=owGbwMvMwCV2McXO4Xp97WbG02pJDOm+74/KH7/U7qegXjXTofXb3TYljXrmuVYbMjW/tLXe4
- w0P49vQUcrCIMbFICumyLKsnJNboaPQO+zQX0uYOaxMIEMYuDgFYCKiExj+h59n32w4XUS9Q6Hd
- rUTL9LrKv/cufhltT6M9vi38WfriOSPDth1s9Y4XTgudV69oFplrmhzR2RRm0jljjlHtl08TxWX
- ZAQ==
+ bh=ut5SHXlG8TFqM4dSL1voozHgmPfm9PCB5ssUWoNnPGc=;
+ b=owGbwMvMwCV2McXO4Xp97WbG02pJDOm+748Gv37O5/hx2ynzqG0iN+cezF1/Uri8ynPxlkd99
+ 448enNwUUcpC4MYF4OsmCLLsnJOboWOQu+wQ38tYeawMoEMYeDiFICJTCliZNgwxSRxxgaPNqN9
+ SvblgqYXk6R6q/p2hk3PmPP5/5TfZXaMDPsvHppbuS+xzuf2BZ0oL/Hl4l8WKni3vHLVk9a2ddC
+ S5AQA
 X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
  fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
 X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For completion, add statically_false() which is the equivalent of
-statically_true() except that it will return true only if the input is
-known to be false at compile time.
+__is_constexpr(), while being one of the most glorious one liner hack
+ever witnessed by mankind, is overly complex. Following the adoption
+of C11 in the kernel, this macro can be simplified through the use of
+a _Generic() selection.
 
-The == operator is used instead of the ! negation to prevent a
--Wint-in-bool-context compiler warning when the argument is not a
-boolean. For example:
+First, split the macro in two:
 
-  statically_false(var * 0)
+  - __is_const_zero(x): an helper macro; tells whether x is the
+    integer constant expression 0 or something else.
+
+  - is_const(x): replacement of __is_constexpr(); tells whether x is a
+    integer constant expression.
+
+The split serves two purposes: first make it easier to understand;
+second, __is_const_zero() will be reused as a building block for other
+is_const_*() macros that will be introduced later on.
+
+The core principle of __is_constexpr() to abuse the return type of the
+ternary operator remains, but all the surrounding sizeof() hack
+disappear.
+
+On a side note, while not relevant to the kernel, __is_constexpr()
+relied on the GNU extension that sizeof(void) is 1. const_expr() does
+not use any GNU extensions, making it ISO C compliant.
+
+__is_constexpr() is temporarily kept and will be removed once all its
+users get migrated to is_const() (or one of its friend).
 
 Signed-off-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 ---
- include/linux/compiler.h | 1 +
- 1 file changed, 1 insertion(+)
+ include/linux/compiler.h | 41 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
 
 diff --git a/include/linux/compiler.h b/include/linux/compiler.h
-index 469a64dd6495fefab2c85ffc279568a657b72660..a2a56a50dd85227a4fdc62236a2710ca37c5ba52 100644
+index a2a56a50dd85227a4fdc62236a2710ca37c5ba52..30ce06df4153cfdc0fad9bc7bffab9097f8b0450 100644
 --- a/include/linux/compiler.h
 +++ b/include/linux/compiler.h
-@@ -314,6 +314,7 @@ static inline void *offset_to_ptr(const int *off)
-  * values to determine that the condition is statically true.
-  */
+@@ -316,6 +316,47 @@ static inline void *offset_to_ptr(const int *off)
  #define statically_true(x) (__builtin_constant_p(x) && (x))
-+#define statically_false(x) (__builtin_constant_p(x) && (x) == 0)
+ #define statically_false(x) (__builtin_constant_p(x) && (x) == 0)
  
++/*
++ * Whether x is the integer constant expression 0 or something else.
++ *
++ * Details:
++ *   - The C11 standard defines in §6.3.2.3.3
++ *       (void *)<integer constant expression with the value 0>
++ *     as a null pointer constant (c.f. the NULL macro).
++ *   - If x evaluates to the integer constant expression 0,
++ *       (void *)(x)
++ *     is a null pointer constant. Else, it is a void * expression.
++ *   - In a ternary expression:
++ *       condition ? operand1 : operand2
++ *     if one of the two operands is of type void * and the other one
++ *     some other pointer type, the C11 standard defines in §6.5.15.6
++ *     the resulting type as below:
++ *       if one operand is a null pointer constant, the result has the
++ *       type of the other operand; otherwise [...] the result type is
++ *       a pointer to an appropriately qualified version of void.
++ *   - As such, in
++ *       0 ? (void *)(x) : (char *)0
++ *     if x is the integer constant expression 0, operand1 is a null
++ *     pointer constant and the resulting type is that of operand2:
++ *     char *. If x is anything else, the type is void *.
++ *   - The (long) cast silences a compiler warning for when x is not 0.
++ *   - Finally, the _Generic() dispatches the resulting type into a
++ *     Boolean.
++ *
++ * Glory to Martin Uecker <Martin.Uecker@med.uni-goettingen.de>
++ */
++#define __is_const_zero(x) \
++	_Generic(0 ? (void *)(long)(x) : (char *)0, char *: 1, void *: 0)
++
++/*
++ * Returns a constant expression while determining if its argument is a
++ * constant expression, most importantly without evaluating the argument.
++ *
++ * If getting a constant expression is not relevant to you, use the more
++ * powerful __builtin_constant_p() instead.
++ */
++#define is_const(x) __is_const_zero(0 * (x))
++
  /*
   * This is needed in functions which generate the stack canary, see
+  * arch/x86/kernel/smpboot.c::start_secondary() for an example.
 
 -- 
 2.45.2
