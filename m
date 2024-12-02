@@ -1,88 +1,60 @@
-From: Manas <manas18244@iiitd.ac.in>
-Date: Mon, 02 Dec 2024 15:40:51 +0530
-Subject: [PATCH net-next RESEND v2] net/smc: Remove unused function
- parameter in __smc_diag_dump
+From: Thomas Antoine <t.antoine@uclouvain.be>
+Subject: [PATCH 0/4] Google Pixel 6 (oriole): max77759 fuel gauge
+ enablement and driver support
+Date: Mon, 02 Dec 2024 14:07:14 +0100
+Message-Id: <20241202-b4-gs101_max77759_fg-v1-0-98d2fa7bfe30@uclouvain.be>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241202-fix-oops-__smc_diag_dump-v2-1-119736963ba9@iiitd.ac.in>
-X-B4-Tracking: v=1; b=H4sIAKqHTWcC/4WNMQ+CMBSE/wrpbElbQK2Tg6wOOhpDCn3AGyikr
- QRD+O9WJl00t7zLu/tuJg4sgiOHaCYWRnTYm2DEJiJVq0wDFHXwRDCRcs4krXGifT84WhSuqwq
- Nqin0oxso26oyAakTWack1AcLIbuib8SApwYm/35c8mt+PpF7OFt0vrfPdX3ka/L/0MhpUJVlK
- oEsVTo9IqLXsapiNCt2FB8owX6gREDJHUtKvueSA/tGLcvyAlRntyYhAQAA
-X-Change-ID: 20241109-fix-oops-__smc_diag_dump-06ab3e9d39f4
-To: Wenjia Zhang <wenjia@linux.ibm.com>, Jan Karcher <jaka@linux.ibm.com>, 
- "D. Wythe" <alibuda@linux.alibaba.com>, Tony Lu <tonylu@linux.alibaba.com>, 
- Wen Gu <guwen@linux.alibaba.com>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>
-Cc: Shuah Khan <shuah@kernel.org>, Anup Sharma <anupnewsmail@gmail.com>, 
- linux-s390@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, 
- Manas <manas18244@iiitd.ac.in>
+X-B4-Tracking: v=1; b=H4sIAAKxTWcC/x2MywqAIBAAfyX2nOCqIfUrEWG12h56oBCC9O9Jl
+ 4E5zBRIFJkSDE2BSA8nvs4q2Daw7u4MJHirDkoqgxViMSIklDgfLltru372QRipSGl0ZtEaanp
+ H8pz/7Ti97wc7Q2hxZgAAAA==
+X-Change-ID: 20241202-b4-gs101_max77759_fg-402e231a4b33
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Dimitri Fedrau <dima.fedrau@gmail.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>
+Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-samsung-soc@vger.kernel.org, Thomas Antoine <t.antoine@uclouvain.be>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733134252; l=1964;
- i=manas18244@iiitd.ac.in; s=20240813; h=from:subject:message-id;
- bh=zCxOxxK4jUmuWneAk7mzPYC43+hjuOr5TSFC2vSGlrc=;
- b=UJ2tqCJTl+Rjxgg3UW7xGs/kWb0PbQKYRae+HCAb15pkoLFCldFgsbURksOSEj2qN4V8BQfaf
- x1Gk5jADLFOCg3tFAZ9B8zgBAYRtO83dl52EQLzyYyK9kv9RtMJ2kB+
-X-Developer-Key: i=manas18244@iiitd.ac.in; a=ed25519;
- pk=pXNEDKd3qTkQe9vsJtBGT9hrfOR7Dph1rfX5ig2AAoM=
-X-Endpoint-Received: by B4 Relay for manas18244@iiitd.ac.in/20240813 with auth_id=196
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733144859; l=1133;
+ i=t.antoine@uclouvain.be; s=20241202; h=from:subject:message-id;
+ bh=gutyObQKsachHq0/nA2oAKqQxOFoQ3uvLG/DLWbnDiw=;
+ b=Bhzd4ybqtj55n/U2YOZSfbuvXzTGyNb206Tg8GJtVh03aqvqpmF8Nj8CDa4qgOCKVsNZyXzzf
+ NKlykWlpZGdAQoXH5iuxKaEXiFeZPBrvAsOb3+wQlD3Lviex1H6Bmen
+X-Developer-Key: i=t.antoine@uclouvain.be; a=ed25519;
+ pk=sw7UYl31W1LTpgWRiX4xIF5x6ok7YWZ6XZnHqy/d3dY=
+X-Endpoint-Received: by B4 Relay for t.antoine@uclouvain.be/20241202 with auth_id=289
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The last parameter in __smc_diag_dump (struct nlattr *bc) is unused.
-There is only one instance of this function being called and its passed
-with a NULL value in place of bc.
+The Google Pixel 6 has a Maxim max77759 which provides a fuel gauge with
+the same interface as the Maxim max1720x, except for the non-volatile
+memory.
 
-Reviewed-by: Simon Horman <horms@kernel.org>
-Signed-off-by: Manas <manas18244@iiitd.ac.in>
----
-Changes in v2:
-- Added target tree and prefix
-- Carried forward Reviewed-by: tag from v1
-- Link to v1: https://lore.kernel.org/r/20241109-fix-oops-__smc_diag_dump-v1-1-1c55a3e54ad4@iiitd.ac.in
----
- net/smc/smc_diag.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+Modify the Maxim max1720x driver to be compatible with the Maxim max77759 and
+enable it for the gs101-oriole board.
 
-diff --git a/net/smc/smc_diag.c b/net/smc/smc_diag.c
-index 6fdb2d96777ad704c394709ec845f9ddef5e599a..8f7bd40f475945171a0afa5a2cce12d9aa2b1eb4 100644
---- a/net/smc/smc_diag.c
-+++ b/net/smc/smc_diag.c
-@@ -71,8 +71,7 @@ static int smc_diag_msg_attrs_fill(struct sock *sk, struct sk_buff *skb,
- 
- static int __smc_diag_dump(struct sock *sk, struct sk_buff *skb,
- 			   struct netlink_callback *cb,
--			   const struct smc_diag_req *req,
--			   struct nlattr *bc)
-+			   const struct smc_diag_req *req)
- {
- 	struct smc_sock *smc = smc_sk(sk);
- 	struct smc_diag_fallback fallback;
-@@ -199,7 +198,6 @@ static int smc_diag_dump_proto(struct proto *prot, struct sk_buff *skb,
- 	struct smc_diag_dump_ctx *cb_ctx = smc_dump_context(cb);
- 	struct net *net = sock_net(skb->sk);
- 	int snum = cb_ctx->pos[p_type];
--	struct nlattr *bc = NULL;
- 	struct hlist_head *head;
- 	int rc = 0, num = 0;
- 	struct sock *sk;
-@@ -214,7 +212,7 @@ static int smc_diag_dump_proto(struct proto *prot, struct sk_buff *skb,
- 			continue;
- 		if (num < snum)
- 			goto next;
--		rc = __smc_diag_dump(sk, skb, cb, nlmsg_data(cb->nlh), bc);
-+		rc = __smc_diag_dump(sk, skb, cb, nlmsg_data(cb->nlh));
- 		if (rc < 0)
- 			goto out;
- next:
-
+Signed-off-by: Thomas Antoine <t.antoine@uclouvain.be>
 ---
-base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
-change-id: 20241109-fix-oops-__smc_diag_dump-06ab3e9d39f4
+Thomas Antoine (4):
+      power: supply: add support for max77759 fuel gauge
+      dt-bindings: power: supply: add max77759-fg flavor and don't require nvme address
+      arm64: defconfig: enable Maxim max1720x driver
+      arm64: dts: exynos: gs101-oriole: enable Maxim max77759 fuel gauge
+
+ .../bindings/power/supply/maxim,max17201.yaml      | 14 +++++
+ arch/arm64/boot/dts/exynos/google/gs101-oriole.dts |  7 +++
+ arch/arm64/configs/defconfig                       |  1 +
+ drivers/power/supply/max1720x_battery.c            | 71 ++++++++++++++++++----
+ 4 files changed, 81 insertions(+), 12 deletions(-)
+---
+base-commit: 12e0a4072e8edc49c99418a4303bd7b96916de95
+change-id: 20241202-b4-gs101_max77759_fg-402e231a4b33
 
 Best regards,
 -- 
-Manas <manas18244@iiitd.ac.in>
+Thomas Antoine <t.antoine@uclouvain.be>
 
