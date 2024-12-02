@@ -1,10 +1,11 @@
 From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Date: Tue, 03 Dec 2024 02:33:29 +0900
-Subject: [PATCH 07/10] overflow: replace __is_constexpr() by is_const()
+Date: Tue, 03 Dec 2024 02:33:30 +0900
+Subject: [PATCH 08/10] drm/i915/reg: replace __is_const_expr() by
+ is_const_true() or is_const()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241203-is_constexpr-refactor-v1-7-4e4cbaecc216@wanadoo.fr>
+Message-Id: <20241203-is_constexpr-refactor-v1-8-4e4cbaecc216@wanadoo.fr>
 References: <20241203-is_constexpr-refactor-v1-0-4e4cbaecc216@wanadoo.fr>
 In-Reply-To: <20241203-is_constexpr-refactor-v1-0-4e4cbaecc216@wanadoo.fr>
 To: Linus Torvalds <torvalds@linux-foundation.org>, 
@@ -31,65 +32,163 @@ Cc: linux-sparse@vger.kernel.org, linux-kernel@vger.kernel.org,
  coresight@lists.linaro.org, linux-arm-kernel@lists.infradead.org, 
  Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2119;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6558;
  i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
- bh=3zhdAHGJKxe/cfP6gSQHSq0jEALX5ywlxJaLknSE8PU=;
- b=owGbwMvMwCV2McXO4Xp97WbG02pJDOm+74/q876MC9CKYjyo9Ky9cdPpsilBc38vnbBxvs6ZW
- UF5mtXRHaUsDGJcDLJiiizLyjm5FToKvcMO/bWEmcPKBDKEgYtTACbyQ5fhr7xK1ZyIKSviHgrp
- 8+d4/NxvmD6DX/jspxv39qf9Nnzx8QYjw5+v16eWdS2+XNXV/TjVMnulR8GKU3Mazly4pdn98Ng
- OKx4A
+ bh=IT41eIS+OIIsRMdNS4yKlf8V72ofU+yIl1OolUa3zxc=;
+ b=owGbwMvMwCV2McXO4Xp97WbG02pJDOm+748G+l5SvWBYeEcwf3ZH9lTPGKdm67Bt3/tZLGav/
+ 10qOqOto5SFQYyLQVZMkWVZOSe3Qkehd9ihv5Ywc1iZQIYwcHEKwESexjIyLH55gHdrk2cszxbF
+ xhXdX74eKihrm/W6N9dCbd7DwkLng4wM65yVF6n33pSYytozo6h2wxde748zo9jPf1NZx+O44VI
+ lOwA=
 X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
  fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
 X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-is_const() is a one to one replacement of __is_constexpr(). Do the
-replacement so that __is_constexpr() can be removed.
+Most of the use of __is_const_expr() in i915_reg_defs.h are just to
+test whether an expression is known to be true. Because those checks
+are all done in a BUILD_BUG_ON_ZERO(), replace those with
+is_const_true().
+
+Replace the few other occurrences of __is_const_expr() with is_const().
 
 Signed-off-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 ---
- include/linux/overflow.h | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ drivers/gpu/drm/i915/i915_reg_defs.h | 47 +++++++++++++++++-------------------
+ 1 file changed, 22 insertions(+), 25 deletions(-)
 
-diff --git a/include/linux/overflow.h b/include/linux/overflow.h
-index 0c7e3dcfe8670cb95f371a6f7d41bb8b63b1786c..d69361a3128897d493b5e2ec471f077ca2b9861d 100644
---- a/include/linux/overflow.h
-+++ b/include/linux/overflow.h
-@@ -234,7 +234,7 @@ static inline bool __must_check __must_check_overflow(bool overflow)
-  * Returns: true if overflow can occur, false otherwise.
+diff --git a/drivers/gpu/drm/i915/i915_reg_defs.h b/drivers/gpu/drm/i915/i915_reg_defs.h
+index e251bcc0c89f5710125bc70f07851b2cb978c89c..6ed2fb9cf506a3bd6467ba30f9d0e863d62762f3 100644
+--- a/drivers/gpu/drm/i915/i915_reg_defs.h
++++ b/drivers/gpu/drm/i915/i915_reg_defs.h
+@@ -19,8 +19,7 @@
   */
- #define overflows_type(n, T)					\
--	__builtin_choose_expr(__is_constexpr(n),		\
-+	__builtin_choose_expr(is_const(n),			\
- 			      __overflows_type_constexpr(n, T),	\
- 			      __overflows_type(n, T))
+ #define REG_BIT(__n)							\
+ 	((u32)(BIT(__n) +						\
+-	       BUILD_BUG_ON_ZERO(__is_constexpr(__n) &&		\
+-				 ((__n) < 0 || (__n) > 31))))
++	       BUILD_BUG_ON_ZERO(is_const_true((__n) < 0 || (__n) > 31))))
  
-@@ -250,7 +250,7 @@ static inline bool __must_check __must_check_overflow(bool overflow)
-  * back to __same_type().
+ /**
+  * REG_BIT8() - Prepare a u8 bit value
+@@ -32,8 +31,7 @@
   */
- #define castable_to_type(n, T)						\
--	__builtin_choose_expr(__is_constexpr(n),			\
-+	__builtin_choose_expr(is_const(n),				\
- 			      !__overflows_type_constexpr(n, T),	\
- 			      __same_type(n, T))
+ #define REG_BIT8(__n)                                                   \
+ 	((u8)(BIT(__n) +                                                \
+-	       BUILD_BUG_ON_ZERO(__is_constexpr(__n) &&         \
+-				 ((__n) < 0 || (__n) > 7))))
++	      BUILD_BUG_ON_ZERO(is_const_true((__n) < 0 || (__n) > 7))))
  
-@@ -352,7 +352,7 @@ static inline size_t __must_check size_sub(size_t minuend, size_t subtrahend)
-  * Return: number of bytes needed or SIZE_MAX on overflow.
+ /**
+  * REG_GENMASK() - Prepare a continuous u32 bitmask
+@@ -46,9 +44,9 @@
   */
- #define flex_array_size(p, member, count)				\
--	__builtin_choose_expr(__is_constexpr(count),			\
-+	__builtin_choose_expr(is_const(count),				\
- 		(count) * sizeof(*(p)->member) + __must_be_array((p)->member),	\
- 		size_mul(count, sizeof(*(p)->member) + __must_be_array((p)->member)))
+ #define REG_GENMASK(__high, __low)					\
+ 	((u32)(GENMASK(__high, __low) +					\
+-	       BUILD_BUG_ON_ZERO(__is_constexpr(__high) &&	\
+-				 __is_constexpr(__low) &&		\
+-				 ((__low) < 0 || (__high) > 31 || (__low) > (__high)))))
++	       BUILD_BUG_ON_ZERO(is_const_true((__low) < 0 ||		\
++					       (__high) > 31 ||		\
++					       (__low) > (__high)))))
  
-@@ -368,7 +368,7 @@ static inline size_t __must_check size_sub(size_t minuend, size_t subtrahend)
-  * Return: number of bytes needed or SIZE_MAX on overflow.
+ /**
+  * REG_GENMASK64() - Prepare a continuous u64 bitmask
+@@ -61,9 +59,9 @@
   */
- #define struct_size(p, member, count)					\
--	__builtin_choose_expr(__is_constexpr(count),			\
-+	__builtin_choose_expr(is_const(count),				\
- 		sizeof(*(p)) + flex_array_size(p, member, count),	\
- 		size_add(sizeof(*(p)), flex_array_size(p, member, count)))
+ #define REG_GENMASK64(__high, __low)					\
+ 	((u64)(GENMASK_ULL(__high, __low) +				\
+-	       BUILD_BUG_ON_ZERO(__is_constexpr(__high) &&		\
+-				 __is_constexpr(__low) &&		\
+-				 ((__low) < 0 || (__high) > 63 || (__low) > (__high)))))
++	       BUILD_BUG_ON_ZERO(is_const_true((__low) < 0 ||		\
++					       (__high) > 63 ||		\
++					       (__low) > (__high)))))
+ 
+ /**
+  * REG_GENMASK8() - Prepare a continuous u8 bitmask
+@@ -76,9 +74,9 @@
+  */
+ #define REG_GENMASK8(__high, __low)                                     \
+ 	((u8)(GENMASK(__high, __low) +                                  \
+-	       BUILD_BUG_ON_ZERO(__is_constexpr(__high) &&      \
+-				 __is_constexpr(__low) &&               \
+-				 ((__low) < 0 || (__high) > 7 || (__low) > (__high)))))
++	      BUILD_BUG_ON_ZERO(is_const_true((__low) < 0 ||            \
++					      (__high) > 7 ||           \
++					      (__low) > (__high)))))
+ 
+ /*
+  * Local integer constant expression version of is_power_of_2().
+@@ -97,10 +95,10 @@
+  */
+ #define REG_FIELD_PREP(__mask, __val)						\
+ 	((u32)((((typeof(__mask))(__val) << __bf_shf(__mask)) & (__mask)) +	\
+-	       BUILD_BUG_ON_ZERO(!__is_constexpr(__mask)) +		\
++	       BUILD_BUG_ON_ZERO(!is_const(__mask)) +				\
+ 	       BUILD_BUG_ON_ZERO((__mask) == 0 || (__mask) > U32_MAX) +		\
+ 	       BUILD_BUG_ON_ZERO(!IS_POWER_OF_2((__mask) + (1ULL << __bf_shf(__mask)))) + \
+-	       BUILD_BUG_ON_ZERO(__builtin_choose_expr(__is_constexpr(__val), (~((__mask) >> __bf_shf(__mask)) & (__val)), 0))))
++	       BUILD_BUG_ON_ZERO(is_const_true(~((__mask) >> __bf_shf(__mask)) & (__val)))))
+ 
+ /**
+  * REG_FIELD_PREP8() - Prepare a u8 bitfield value
+@@ -114,10 +112,10 @@
+  */
+ #define REG_FIELD_PREP8(__mask, __val)                                          \
+ 	((u8)((((typeof(__mask))(__val) << __bf_shf(__mask)) & (__mask)) +      \
+-	       BUILD_BUG_ON_ZERO(!__is_constexpr(__mask)) +             \
++	       BUILD_BUG_ON_ZERO(!is_const(__mask)) +                           \
+ 	       BUILD_BUG_ON_ZERO((__mask) == 0 || (__mask) > U8_MAX) +          \
+ 	       BUILD_BUG_ON_ZERO(!IS_POWER_OF_2((__mask) + (1ULL << __bf_shf(__mask)))) + \
+-	       BUILD_BUG_ON_ZERO(__builtin_choose_expr(__is_constexpr(__val), (~((__mask) >> __bf_shf(__mask)) & (__val)), 0))))
++	       BUILD_BUG_ON_ZERO(is_const_true(~((__mask) >> __bf_shf(__mask)) & (__val)))))
+ 
+ /**
+  * REG_FIELD_GET() - Extract a u32 bitfield value
+@@ -154,8 +152,7 @@
+  */
+ #define REG_BIT16(__n)                                                   \
+ 	((u16)(BIT(__n) +                                                \
+-	       BUILD_BUG_ON_ZERO(__is_constexpr(__n) &&         \
+-				 ((__n) < 0 || (__n) > 15))))
++	       BUILD_BUG_ON_ZERO(is_const_true((__n) < 0 || (__n) > 15))))
+ 
+ /**
+  * REG_GENMASK16() - Prepare a continuous u8 bitmask
+@@ -169,9 +166,9 @@
+  */
+ #define REG_GENMASK16(__high, __low)                                     \
+ 	((u16)(GENMASK(__high, __low) +                                  \
+-	       BUILD_BUG_ON_ZERO(__is_constexpr(__high) &&      \
+-				 __is_constexpr(__low) &&               \
+-				 ((__low) < 0 || (__high) > 15 || (__low) > (__high)))))
++	       BUILD_BUG_ON_ZERO(is_const_true((__low) < 0 ||            \
++					       (__high) > 15 ||          \
++					       (__low) > (__high)))))
+ 
+ /**
+  * REG_FIELD_PREP16() - Prepare a u16 bitfield value
+@@ -186,10 +183,10 @@
+  */
+ #define REG_FIELD_PREP16(__mask, __val)                                          \
+ 	((u16)((((typeof(__mask))(__val) << __bf_shf(__mask)) & (__mask)) +      \
+-	       BUILD_BUG_ON_ZERO(!__is_constexpr(__mask)) +             \
++	       BUILD_BUG_ON_ZERO(!is_const(__mask)) +                            \
+ 	       BUILD_BUG_ON_ZERO((__mask) == 0 || (__mask) > U16_MAX) +          \
+ 	       BUILD_BUG_ON_ZERO(!IS_POWER_OF_2((__mask) + (1ULL << __bf_shf(__mask)))) + \
+-	       BUILD_BUG_ON_ZERO(__builtin_choose_expr(__is_constexpr(__val), (~((__mask) >> __bf_shf(__mask)) & (__val)), 0))))
++	       BUILD_BUG_ON_ZERO(is_const_true(~((__mask) >> __bf_shf(__mask)) & (__val)))))
+ 
+ #define __MASKED_FIELD(mask, value) ((mask) << 16 | (value))
+ #define _MASKED_FIELD(mask, value) ({					   \
+@@ -237,7 +234,7 @@
+  *	...
+  */
+ #define _PICK_EVEN_2RANGES(__index, __c_index, __a, __b, __c, __d)		\
+-	(BUILD_BUG_ON_ZERO(!__is_constexpr(__c_index)) +			\
++	(BUILD_BUG_ON_ZERO(!is_const(__c_index)) +				\
+ 	 ((__index) < (__c_index) ? _PICK_EVEN(__index, __a, __b) :		\
+ 				   _PICK_EVEN((__index) - (__c_index), __c, __d)))
  
 
 -- 
