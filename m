@@ -1,11 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Mon, 02 Dec 2024 23:03:44 +0100
-Subject: [PATCH net-next v7 05/15] net: dwmac-dwc-qos-eth: Use helper
- rgmii_clock
+Date: Mon, 02 Dec 2024 23:03:45 +0100
+Subject: [PATCH net-next v7 06/15] net: dwmac-imx: Use helper rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241202-upstream_s32cc_gmac-v7-5-bc3e1f9f656e@oss.nxp.com>
+Message-Id: <20241202-upstream_s32cc_gmac-v7-6-bc3e1f9f656e@oss.nxp.com>
 References: <20241202-upstream_s32cc_gmac-v7-0-bc3e1f9f656e@oss.nxp.com>
 In-Reply-To: <20241202-upstream_s32cc_gmac-v7-0-bc3e1f9f656e@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -37,11 +36,11 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
  "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733177022; l=1290;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733177022; l=1376;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=ZX+NwH2HQko3cIWDQjmmck130Lb3TijMXiPn59w6r/U=;
- b=uFp6e8h+BhAGpSRRXxR2e7S65R+2Nk4BVvwpSvoqxh9gwImcp6mIyNDmExHQ6dDj4WXJX7JbM
- p5u50oCGZHYCFppK8t8F3U0MIgqvWLohOmp9qdkp+hZl4WEN6/eC13h
+ bh=SsszkUP8I3NbcQMnOnyLygQGzFscaLh2fXkadRBQwQg=;
+ b=9hHUt4Qq44TlHvyR2z23YCG1uAC4LFSMTHZD90Lgc/7EaGWLCOIxcHRF0zaruNcS6iaCwkIO5
+ GNQhSu694X4DbDyV5GEi9npK8Ft/AwvuNCLSehUeXXWU2YlyKgTj6x1
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
@@ -53,41 +52,42 @@ Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Reviewed-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c | 11 +++--------
- 1 file changed, 3 insertions(+), 8 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c | 15 +++------------
+ 1 file changed, 3 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c
-index 83290e707df5..bd4eb187f8c6 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c
-@@ -181,24 +181,19 @@ static void dwc_qos_remove(struct platform_device *pdev)
- static void tegra_eqos_fix_speed(void *priv, unsigned int speed, unsigned int mode)
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c
+index 641f3cd019a3..43e0fbba4f77 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c
+@@ -186,7 +186,7 @@ static void imx_dwmac_fix_speed(void *priv, unsigned int speed, unsigned int mod
  {
- 	struct tegra_eqos *eqos = priv;
--	unsigned long rate = 125000000;
- 	bool needs_calibration = false;
-+	long rate = 125000000;
- 	u32 value;
+ 	struct plat_stmmacenet_data *plat_dat;
+ 	struct imx_priv_data *dwmac = priv;
+-	unsigned long rate;
++	long rate;
  	int err;
  
- 	switch (speed) {
- 	case SPEED_1000:
--		needs_calibration = true;
+ 	plat_dat = dwmac->plat_dat;
+@@ -196,17 +196,8 @@ static void imx_dwmac_fix_speed(void *priv, unsigned int speed, unsigned int mod
+ 	    (plat_dat->mac_interface == PHY_INTERFACE_MODE_MII))
+ 		return;
+ 
+-	switch (speed) {
+-	case SPEED_1000:
 -		rate = 125000000;
 -		break;
--
- 	case SPEED_100:
- 		needs_calibration = true;
+-	case SPEED_100:
 -		rate = 25000000;
 -		break;
-+		fallthrough;
- 
- 	case SPEED_10:
+-	case SPEED_10:
 -		rate = 2500000;
-+		rate = rgmii_clock(speed);
- 		break;
- 
- 	default:
+-		break;
+-	default:
++	rate = rgmii_clock(speed);
++	if (rate < 0) {
+ 		dev_err(dwmac->dev, "invalid speed %u\n", speed);
+ 		return;
+ 	}
 
 -- 
 2.47.0
