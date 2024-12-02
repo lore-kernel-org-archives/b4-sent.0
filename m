@@ -1,63 +1,117 @@
-From: Thomas Antoine <t.antoine@uclouvain.be>
-Date: Mon, 02 Dec 2024 14:07:18 +0100
-Subject: [PATCH 4/4] arm64: dts: exynos: gs101-oriole: enable Maxim
- max77759 fuel gauge
+From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
+Subject: [PATCH 00/10] compiler.h: refactor __is_constexpr() into
+ is_const{,_true,_false}()
+Date: Tue, 03 Dec 2024 02:33:22 +0900
+Message-Id: <20241203-is_constexpr-refactor-v1-0-4e4cbaecc216@wanadoo.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241202-b4-gs101_max77759_fg-v1-4-98d2fa7bfe30@uclouvain.be>
-References: <20241202-b4-gs101_max77759_fg-v1-0-98d2fa7bfe30@uclouvain.be>
-In-Reply-To: <20241202-b4-gs101_max77759_fg-v1-0-98d2fa7bfe30@uclouvain.be>
-To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Dimitri Fedrau <dima.fedrau@gmail.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-samsung-soc@vger.kernel.org, Thomas Antoine <t.antoine@uclouvain.be>
+X-B4-Tracking: v=1; b=H4sIAGLvTWcC/x2MQQqAIBAAvxJ7TlCRqL4SEaJb7UVlNyII/550H
+ IaZFwSZUGDuXmC8SSinBqbvIJw+HagoNgarrTPGTopkCznJhU9hxbj7cGVWZnKD9hFjcCO0tjR
+ Dz/9d1lo/1Xd5X2cAAAA=
+X-Change-ID: 20241129-is_constexpr-refactor-19460adedc48
+To: Linus Torvalds <torvalds@linux-foundation.org>, 
+ David Laight <David.Laight@aculab.com>, 
+ Luc Van Oostenryck <luc.vanoostenryck@gmail.com>, 
+ Nathan Chancellor <nathan@kernel.org>, 
+ Nick Desaulniers <ndesaulniers@google.com>, 
+ Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>, 
+ Yury Norov <yury.norov@gmail.com>, 
+ Rasmus Villemoes <linux@rasmusvillemoes.dk>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Jani Nikula <jani.nikula@linux.intel.com>, 
+ Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
+ Rodrigo Vivi <rodrigo.vivi@intel.com>, 
+ Tvrtko Ursulin <tursulin@ursulin.net>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Mike Leach <mike.leach@linaro.org>, James Clark <james.clark@linaro.org>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Rikard Falkeborn <rikard.falkeborn@gmail.com>, 
+ Martin Uecker <Martin.Uecker@med.uni-goettingen.de>
+Cc: linux-sparse@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ llvm@lists.linux.dev, linux-hardening@vger.kernel.org, 
+ intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ coresight@lists.linaro.org, linux-arm-kernel@lists.infradead.org, 
+ Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733144859; l=1033;
- i=t.antoine@uclouvain.be; s=20241202; h=from:subject:message-id;
- bh=C6G2HNmCWsR7T7ZeSn//curscN+6Mz2Xd6Jnx+k56sQ=;
- b=fA9D6CBCX7gFNZtMJUgL0dFcwNCYI4mlMT8MAW2SwI7p3XgJFaWYEPyx7u68on+520i20JHid
- sicaCn2SzJGABlQm0g5TkuRvsBAZOKtxj5LMxDQNSbhwKrusQCJaTxs
-X-Developer-Key: i=t.antoine@uclouvain.be; a=ed25519;
- pk=sw7UYl31W1LTpgWRiX4xIF5x6ok7YWZ6XZnHqy/d3dY=
-X-Endpoint-Received: by B4 Relay for t.antoine@uclouvain.be/20241202 with auth_id=289
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2878;
+ i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
+ bh=H6X4HxSuzHzBru4loE1fIv7uvjl0ePjrXaJ1JNnadsE=;
+ b=owGbwMvMwCV2McXO4Xp97WbG02pJDOm+749yHXE+efV7rnOkcu+WY3bx8n7fTmrbr7jmluH9X
+ F7W1cW8o5SFQYyLQVZMkWVZOSe3Qkehd9ihv5Ywc1iZQIYwcHEKwER4zRkZer+7/w40uWUXt65D
+ Rr+mWXn16tUHF2i6i7bLMZjcEecUZmQ4/WjnTadfPbbmk36KXW7f62Rq1pXeP+uB7A/2w3svHNv
+ MBgA=
+X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
+ fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
+X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the node for the max77759 fuel gauge as a slave of the i2c.
+This series is the spiritual successor of [1] which introduced
+const_true(). In [1], following a comment from David Laight, Linus
+came with a suggestion to simplify __is_constexpr() and its derived
+macros using a _Generic() selection. Because of the total change of
+scope, I am starting a new series.
 
-The fuel gauge has been tested and seems to give coherent results.
-Manual activation of the charger via i2cset shows that the sign of
-the current does indicate charging/discharging status.
+The goal is to introduce a set of three macros:
 
-Signed-off-by: Thomas Antoine <t.antoine@uclouvain.be>
+  - is_const(): a one to one replacement of __is_constexpr() in term
+    of features but written in a less hacky way thanks to _Generic().
+
+  - is_const_true(): tells whether or not the argument is a true
+    integer constant expression.
+
+  - is_const_false(): tells whether or not the argument is a false
+    integer constant expression.
+
+Once defined, apply them tree-wide.
+
+All those three macros will rely on a single building block:
+__is_const_zero().
+
+Patch 1 adds statically_false(). This is just done so that at the end
+of this series, the full set of statically_true/false() and
+is_const_true/false() is present.
+
+Patch 2 adds __is_const_zero() and is_const().
+
+Patch 3 adds is_const_true() and is_const_false().
+
+Patch 4 to 9 do a tree-wide replacement to remove all the usages of
+__is_constexpr() and replace them by is_const_true() or
+is_const_false() whenever feasible, or by is_const() otherwise.
+
+Patch 10 finally remove __is_constexpr(). RIP!
+
+[1] add const_true() to simplify GENMASK_INPUT_CHECK()
+Link: https://lore.kernel.org/all/20241113172939.747686-4-mailhol.vincent@wanadoo.fr/
+
+Signed-off-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 ---
- arch/arm64/boot/dts/exynos/google/gs101-oriole.dts | 7 +++++++
- 1 file changed, 7 insertions(+)
+Vincent Mailhol (10):
+      compiler.h: add statically_false()
+      compiler.h: add is_const() as a replacement of __is_constexpr()
+      compiler.h: add is_const_true() and is_const_false()
+      linux/bits.h: simplify GENMASK_INPUT_CHECK() by using is_const_true()
+      minmax: simplify __clamp_once() by using is_const_false()
+      fortify: replace __is_constexpr() by is_const() in strlen()
+      overflow: replace __is_constexpr() by is_const()
+      drm/i915/reg: replace __is_const_expr() by is_const_true() or is_const()
+      coresight: etm4x: replace __is_const_expr() by is_const()
+      compiler.h: remove __is_constexpr()
 
-diff --git a/arch/arm64/boot/dts/exynos/google/gs101-oriole.dts b/arch/arm64/boot/dts/exynos/google/gs101-oriole.dts
-index 387fb779bd29ea3812331a7951f03b181c5fe659..4c45dd6fd0173889234b7b04d7abb4b382c7706c 100644
---- a/arch/arm64/boot/dts/exynos/google/gs101-oriole.dts
-+++ b/arch/arm64/boot/dts/exynos/google/gs101-oriole.dts
-@@ -90,6 +90,13 @@ eeprom: eeprom@50 {
- &hsi2c_12 {
- 	status = "okay";
- 	/* TODO: add the devices once drivers exist */
-+
-+	fuel-gauge@36 {
-+		compatible = "maxim,max77759-fg";
-+		reg = <0x36>;
-+		reg-names = "m5";
-+	};
-+
- };
- 
- &pinctrl_far_alive {
+ drivers/gpu/drm/i915/i915_reg_defs.h          |  47 +++++------
+ drivers/hwtracing/coresight/coresight-etm4x.h |   2 +-
+ include/linux/bits.h                          |   5 +-
+ include/linux/compiler.h                      | 112 +++++++++++++++-----------
+ include/linux/fortify-string.h                |   4 +-
+ include/linux/minmax.h                        |   3 +-
+ include/linux/overflow.h                      |   8 +-
+ 7 files changed, 97 insertions(+), 84 deletions(-)
+---
+base-commit: e70140ba0d2b1a30467d4af6bcfe761327b9ec95
+change-id: 20241129-is_constexpr-refactor-19460adedc48
 
+Best regards,
 -- 
-2.47.1
+Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 
