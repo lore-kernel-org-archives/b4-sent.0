@@ -1,244 +1,118 @@
-From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Mon, 02 Dec 2024 19:18:13 +0100
-Subject: [PATCH v5 3/3] arm64: dts: qcom: x1e80100-vivobook-s15: Add
- bluetooth
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v3 0/3] arm64: dts: qcom: x1e80100-hp-x14: dt for HP
+ Omnibook X Laptop 14
+Date: Mon, 02 Dec 2024 20:41:28 +0100
+Message-Id: <20241202-hp-omnibook-x14-v3-0-0fcd96483723@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241202-asus_qcom_display-v5-3-e0d3752ff71f@hotmail.com>
-References: <20241202-asus_qcom_display-v5-0-e0d3752ff71f@hotmail.com>
-In-Reply-To: <20241202-asus_qcom_display-v5-0-e0d3752ff71f@hotmail.com>
+X-B4-Tracking: v=1; b=H4sIAGgNTmcC/3XOwQ6CMAyA4VchOzuzlQHBk+9hPLCxuUWkZMMFJ
+ by7g3gwIR7/Jv3amQTtnQ7klM3E6+iCwz5FfsiIsk1/09S1qQkwEJzzktqB4qN3EvFOJy5ozYq
+ 8No2qeNGStDV4bdy0iZdrauvCiP61HYh8nX4tEDsrcsqoFlCCYVAI05yxa4OyiF3A7jmm38JRu
+ jdZ4Qg/WM72GCSsAoBKqlJKI/5iy7J8AN/wCEAIAQAA
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
+ Conor Dooley <conor+dt@kernel.org>, Kalle Valo <kvalo@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, 
- Dmitry Baryshkov <dmitry.baryshkov@linaro.org>, 
- Maud Spierings <maud_spierings@hotmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733163500; l=5331;
- i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=R7SddrtNscYTiSFlO59UXfIspqmMFfrUbX7RUwGj7PM=;
- b=vIYMbfcG+kyAVEpsuEY1uFlHGTR/MzWqD83kGbDC1kxL8X/MbCczlQlB1oUv5kLSR8QG7b8DA
- zvfTTOvComkAoraR8KhHKFcnXzgcMqYSA+3IEAoOdG2YtAgeP9yRAj+
-X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
- pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
-X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733168490; l=3638;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=rNGn5lYsz515JXXPpEUswF6PhdUyNi1X5qQjQ2VMzQk=;
+ b=q6EiZmR19/dO+ECqSEVIl03r794vd63LL70/3v3eyh3klS1GlTQmYtsF3aRlp8btfXVaopraW
+ ZbEUTQrUfX+DTRw2/qQbUouiTnLyigTeSxgTHfPEXZaslydCLYt7ysy
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bluetooth for the asus vivobook s15
-Describe wlan configuration
+Introduce device tree for the HP Omnibook X Laptop 14-fe0750ng
+(hp-omnibook-x14). It is a Laptop based on the Qualcomm Snapdragon
+X Elite SoC. There seem to be other SKUs, some with Wifi-7 (WCN7850)
+instead of Wifi-6E (WCN6855). This dt explicitly supports WCN6855,
+I haven't found a good way yet to describe both.
+    
+PDF link: https://www8.hp.com/h20195/V2/GetPDF.aspx/c08989140
 
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
+Supported features:
+    
+- Keyboard (no function keys though)
+- Display (IPS 2240x1400, 300nits)
+- PWM brightness control (works via brightnessctl)
+- Touchpad
+- Touchscreen
+- PCIe ports (pcie4, pcie6a)
+- USB type-c, type-a
+- WCN6855 Wifi-6E
+- WCN6855 Bluetooth
+- ADSP and CDSP
+- X1 GPU
+- GPIO Keys (Lid switch)
+- Audio definition (works via USB)
+- prepared for DP Altmode
+
+Bringup work has started with the Asus Vivobook S15 as initial template,
+worked from there by comparing and copying from the CRD, QCP, 
+Yoga Slim 7, Thinkpad T14s. Special thanks to all the people that helped
+on #aarch64-laptops [1] with comments and suggestions.
+I tested on my laptop, mostly. Since the dt is also in Ubuntu-Concept X1E
+[2] there is also test exposure there, with some feedback.
+
+For WiFi to work you need a board file matching the board string [3]. By 
+experiment and pure guess I found the already existing calibration for
+HP_G8_LANCIA_14 to be quite nice, it gives 866MB/s link speed here. A 
+patch proposal [5] has been sent.
+
+For this patchset to work you also need patch [4] in the tree,
+otherwise uart14 for BT will be mising.
+
+[1] https://oftc.irclog.whitequark.org/aarch64-laptops
+[2] https://discourse.ubuntu.com/t/ubuntu-24-10-concept-snapdragon-x-elite/48800
+[3] "bus=pci,vendor=17cb,device=1103,subsystem-vendor=105b,subsystem-device=e108,qmi-chip-id=2,qmi-board-id=255"
+[4] https://lore.kernel.org/all/20241007-x1e80100-pwrseq-qcp-v1-0-f7166510ab17@linaro.org/
+[5] https://lore.kernel.org/all/f6693075-60ea-4fed-8453-9e124e94203b@oldschoolsolutions.biz/
+
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Kalle Valo <kvalo@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+
+Changes in v3:
+- removed patch for the BOE panel from the set, already merged
+  c1bae6802ee9 drm/panel-edp: Add unknown BOE panel for HP Omnibook X14
+- added link to the WiFi board file patch
+- Link to v2: https://lore.kernel.org/r/20241130-hp-omnibook-x14-v2-0-72227bc6bbf4@oldschoolsolutions.biz
+
+Changes in v2:
+- amended usb_mp_dwc3 definition to reference both phys that are used,
+  as suggested by Krishna Kurapati
+- Link to v1: https://lore.kernel.org/r/20241124-hp-omnibook-x14-v1-0-e4262f0254fa@oldschoolsolutions.biz
+
 ---
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 163 +++++++++++++++++++++
- 1 file changed, 163 insertions(+)
+Jens Glathe (3):
+      dt-bindings: arm: qcom: Add HP Omnibook X 14
+      firmware: qcom: scm: Allow QSEECOM for HP Omnibook X14
+      arm64: dts: qcom: x1e80100-hp-x14: dt for HP Omnibook X Laptop 14
 
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-index 7269f8e7709988657b363004875163a69142f16c..0774bd65ae8cddab81b98e27a116fd5adbe1363c 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-@@ -18,6 +18,11 @@ / {
- 	compatible = "asus,vivobook-s15", "qcom,x1e80100";
- 	chassis-type = "laptop";
- 
-+	aliases {
-+		serial0 = &uart21;
-+		serial1 = &uart14;
-+	};
-+
- 	gpio-keys {
- 		compatible = "gpio-keys";
- 		pinctrl-0 = <&hall_int_n_default>;
-@@ -152,6 +157,101 @@ vph_pwr: regulator-vph-pwr {
- 		regulator-always-on;
- 		regulator-boot-on;
- 	};
-+
-+	vreg_wcn_0p95: regulator-wcn-0p95 {
-+		compatible = "regulator-fixed";
-+
-+		regulator-name = "VREG_WCN_0P95";
-+		regulator-min-microvolt = <950000>;
-+		regulator-max-microvolt = <950000>;
-+
-+		vin-supply = <&vreg_wcn_3p3>;
-+	};
-+
-+	vreg_wcn_1p9: regulator-wcn-1p9 {
-+		compatible = "regulator-fixed";
-+
-+		regulator-name = "VREG_WCN_1P9";
-+		regulator-min-microvolt = <1900000>;
-+		regulator-max-microvolt = <1900000>;
-+
-+		vin-supply = <&vreg_wcn_3p3>;
-+	};
-+
-+	vreg_wcn_3p3: regulator-wcn-3p3 {
-+		compatible = "regulator-fixed";
-+
-+		regulator-name = "VREG_WCN_3P3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+
-+		gpio = <&tlmm 214 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+
-+		pinctrl-0 = <&wcn_sw_en>;
-+		pinctrl-names = "default";
-+
-+		regulator-boot-on;
-+	};
-+
-+	wcn7850-pmu {
-+		compatible = "qcom,wcn7850-pmu";
-+
-+		vdd-supply = <&vreg_wcn_0p95>;
-+		vddio-supply = <&vreg_l15b_1p8>;
-+		vddaon-supply = <&vreg_wcn_0p95>;
-+		vdddig-supply = <&vreg_wcn_0p95>;
-+		vddrfa1p2-supply = <&vreg_wcn_1p9>;
-+		vddrfa1p8-supply = <&vreg_wcn_1p9>;
-+
-+		wlan-enable-gpios = <&tlmm 117 GPIO_ACTIVE_HIGH>;
-+		bt-enable-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
-+
-+		pinctrl-0 = <&wcn_wlan_en>, <&wcn_bt_en>;
-+		pinctrl-names = "default";
-+
-+		regulators {
-+			vreg_pmu_rfa_cmn: ldo0 {
-+				regulator-name = "vreg_pmu_rfa_cmn";
-+			};
-+
-+			vreg_pmu_aon_0p59: ldo1 {
-+				regulator-name = "vreg_pmu_aon_0p59";
-+			};
-+
-+			vreg_pmu_wlcx_0p8: ldo2 {
-+				regulator-name = "vreg_pmu_wlcx_0p8";
-+			};
-+
-+			vreg_pmu_wlmx_0p85: ldo3 {
-+				regulator-name = "vreg_pmu_wlmx_0p85";
-+			};
-+
-+			vreg_pmu_btcmx_0p85: ldo4 {
-+				regulator-name = "vreg_pmu_btcmx_0p85";
-+			};
-+
-+			vreg_pmu_rfa_0p8: ldo5 {
-+				regulator-name = "vreg_pmu_rfa_0p8";
-+			};
-+
-+			vreg_pmu_rfa_1p2: ldo6 {
-+				regulator-name = "vreg_pmu_rfa_1p2";
-+			};
-+
-+			vreg_pmu_rfa_1p8: ldo7 {
-+				regulator-name = "vreg_pmu_rfa_1p8";
-+			};
-+
-+			vreg_pmu_pcie_0p9: ldo8 {
-+				regulator-name = "vreg_pmu_pcie_0p9";
-+			};
-+
-+			vreg_pmu_pcie_1p8: ldo9 {
-+				regulator-name = "vreg_pmu_pcie_1p8";
-+			};
-+		};
-+	};
- };
- 
- &apps_rsc {
-@@ -197,6 +297,13 @@ vreg_l14b_3p0: ldo14 {
- 			regulator-max-microvolt = <3072000>;
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 		};
-+
-+		vreg_l15b_1p8: ldo15 {
-+			regulator-name = "vreg_l15b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
- 	};
- 
- 	regulators-1 {
-@@ -475,6 +582,23 @@ &pcie4_phy {
- 	status = "okay";
- };
- 
-+&pcie4_port0 {
-+	wifi@0 {
-+		compatible = "pci17cb,1107";
-+		reg = <0x10000 0x0 0x0 0x0 0x0>;
-+
-+		vddaon-supply = <&vreg_pmu_aon_0p59>;
-+		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
-+		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
-+		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
-+		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
-+		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
-+		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
-+		vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
-+		vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
-+	};
-+};
-+
- &pcie6a {
- 	perst-gpios = <&tlmm 152 GPIO_ACTIVE_LOW>;
- 	wake-gpios = <&tlmm 154 GPIO_ACTIVE_LOW>;
-@@ -624,6 +748,45 @@ tpad_default: tpad-default-state {
- 		function = "gpio";
- 		bias-disable;
- 	};
-+
-+	wcn_bt_en: bt-en-state {
-+		pins = "gpio116";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		output-low;
-+		bias-pull-down;
-+	};
-+
-+	wcn_sw_en: wcn-sw-en-state {
-+		pins = "gpio214";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		bias-disable;
-+	};
-+
-+	wcn_wlan_en: wlan-en-state {
-+		pins = "gpio117";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		bias-disable;
-+	};
-+};
-+
-+&uart14 {
-+	status = "okay";
-+
-+	bluetooth {
-+		compatible = "qcom,wcn7850-bt";
-+		max-speed = <3200000>;
-+
-+		vddaon-supply = <&vreg_pmu_aon_0p59>;
-+		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
-+		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
-+		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
-+		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
-+		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
-+		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
-+	};
- };
- 
- &usb_1_ss0_hsphy {
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    1 +
+ .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 1693 ++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ 4 files changed, 1696 insertions(+)
+---
+base-commit: 02d920be494a5f953319e7589d23a8ba3f00ce05
+change-id: 20241116-hp-omnibook-x14-90539fac715d
 
+Best regards,
 -- 
-2.47.1
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
