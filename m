@@ -1,78 +1,94 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Mon, 02 Dec 2024 23:03:54 +0100
-Subject: [PATCH net-next v7 15/15] MAINTAINERS: Add Jan Petrous as the NXP
- S32G/R DWMAC driver maintainer
+From: Janne Grunau <j@jannau.net>
+Subject: [PATCH v2 0/5] Add Apple SPI controller and spi-nor dt nodes
+Date: Tue, 03 Dec 2024 08:57:56 +0100
+Message-Id: <20241203-asahi-spi-dt-v2-0-cd68bfaf0c84@jannau.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241202-upstream_s32cc_gmac-v7-15-bc3e1f9f656e@oss.nxp.com>
-References: <20241202-upstream_s32cc_gmac-v7-0-bc3e1f9f656e@oss.nxp.com>
-In-Reply-To: <20241202-upstream_s32cc_gmac-v7-0-bc3e1f9f656e@oss.nxp.com>
-To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Jose Abreu <joabreu@synopsys.com>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Vinod Koul <vkoul@kernel.org>, 
- Richard Cochran <richardcochran@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Emil Renner Berthing <kernel@esmil.dk>, 
- Minda Chen <minda.chen@starfivetech.com>, 
- Nicolas Ferre <nicolas.ferre@microchip.com>, 
- Claudiu Beznea <claudiu.beznea@tuxon.dev>, 
- Iyappan Subramanian <iyappan@os.amperecomputing.com>, 
- Keyur Chudgar <keyur@os.amperecomputing.com>, 
- Quan Nguyen <quan@os.amperecomputing.com>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAS6TmcC/1XMQQ6CMBCF4auQWTumrSWiK+5hWAxlkHFRSIuNh
+ vTuVhIXLv+XvG+DyEE4wrXaIHCSKLMvYQ4VuIn8nVGG0mCUsVorjRRpEoyL4LBi3Rhb970e6MR
+ QLkvgUV47d+tKTxLXObx3Penv+oPMP5Q0KjyTs9Ypaprx0j7Ie3oePa/Q5Zw/IzMp36kAAAA=
+X-Change-ID: 20241101-asahi-spi-dt-58245bb1da3e
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Giuseppe Cavallaro <peppe.cavallaro@st.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>
-Cc: linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org, linux-arm-msm@vger.kernel.org, imx@lists.linux.dev, 
- devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
- 0x1207@gmail.com, fancer.lancer@gmail.com, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733177022; l=915;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=4615b800g/SFqCBNWwu3wPncyuWc4LNL3Kg9996VRhc=;
- b=R1xsjMpsqLH/cAho48SbcZaangLpTYAtQG3NRaP4fkNywz9ximUdUwFyBLo2fMhpiFQh4iebH
- BmkcKeEldPtDJYSKYlUQj1TPfRyU7/OqIdwSLmYQxZplRniL2b4KZiB
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+ Conor Dooley <conor+dt@kernel.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2988; i=j@jannau.net;
+ s=yk2024; h=from:subject:message-id;
+ bh=38p7GC9R1as6v+LwylJU+xoFYW0MlJUbCVhahYq60k0=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhnS/XVx8XB/sTvDsaRLr+iK/Suegj9iJztcWOsxvK+x27
+ D86/8jtjlIWBjEuBlkxRZYk7ZcdDKtrFGNqH4TBzGFlAhnCwMUpABORX8bw30W1lDOg+3Gy3CPu
+ vw/D46uTHhxYdPGBLXd2sVeXtcnBXQz/S+z2MiqWmTl371rHnNT+ikHccNOBi31u7JEtl77tWtT
+ CBgA=
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add myself as NXP S32G/R DWMAC Ethernet driver maintainer.
+This series adds SPI controller and SPI NOR flash device nodes to the
+man Apple silicon SoC dts files. Only the subset of used SPI controllers
+is added. Five SPI controllers exists according to pmgr ADT data but the
+commits only add controllers found in use on any of the devices. The
+parameters for the missing nodes are guessable but there's no point in
+adding them since no further M1 or M2 devices are expected.
+Together with controller nodes the first SPI device is added. All Apple
+silicon devices connect a SPI NOR flash to spi1. This holds Apple's 1st
+stage bootloader, firmwares, platform and machine specific config data
+and a writeable key-value store (nvram). Expose only the nvram as mtd
+partition since it has use beyond exploring the content. Tools from
+asahi-nvram [1] can modify the (default) boot configuration
+(asahi-bless), read Bluetooth sync keys (asahi-btsync) and read and
+write arbitrary keys (asahi-nvram).
 
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Devicetree bindings are included in the driver series. Last version at
+https://lore.kernel.org/linux-devicetree/20241101-asahi-spi-v3-0-3b411c5fb8e5@jannau.net/
+
+This series passes `make CHECK_DTBS=1 dtbs` with the spi bindings except
+for "local-mac-address" for the Bluetooth device (I need get back to
+this).
+
+[1] https://github.com/WhatAmISupposedToPutHere/asahi-nvram/
+
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v2:
+- added spi0 pins from https://lore.kernel.org/asahi/969b7440-5173-4ecc-af31-c3cd1f3f5acf@marcan.st/
+- rebased onto v6.13-rc1
+- added Neal's Rb:
+- Link to v1: https://lore.kernel.org/r/20241102-asahi-spi-dt-v1-0-7ac44c0a88f9@jannau.net
+              https://lore.kernel.org/r/20241127-asahi-spi-dt-v1-0-907c9447f623@jannau.net
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 1e930c7a58b1..baf41d73d14e 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2836,6 +2836,13 @@ S:	Maintained
- F:	arch/arm64/boot/dts/freescale/s32g*.dts*
- F:	drivers/pinctrl/nxp/
- 
-+ARM/NXP S32G/S32R DWMAC ETHERNET DRIVER
-+M:	Jan Petrous <jan.petrous@oss.nxp.com>
-+L:	NXP S32 Linux Team <s32@nxp.com>
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
-+F:	drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+
- ARM/Orion SoC/Technologic Systems TS-78xx platform support
- M:	Alexander Clouter <alex@digriz.org.uk>
- L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
+---
+Hector Martin (1):
+      arm64: dts: apple: t8103: Fix spi4 power domain sort order
 
+Janne Grunau (4):
+      arm64: dts: apple: t8103: Add spi controller nodes
+      arm64: dts: apple: t8112: Add spi controller nodes
+      arm64: dts: apple: t600x: Add spi controller nodes
+      arm64: dts: apple: Add SPI NOR nvram partition to all devices
+
+ arch/arm64/boot/dts/apple/spi1-nvram.dtsi      | 39 +++++++++++++
+ arch/arm64/boot/dts/apple/t600x-common.dtsi    |  7 +++
+ arch/arm64/boot/dts/apple/t600x-die0.dtsi      | 28 ++++++++++
+ arch/arm64/boot/dts/apple/t600x-gpio-pins.dtsi | 14 +++++
+ arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi |  2 +
+ arch/arm64/boot/dts/apple/t600x-j375.dtsi      |  2 +
+ arch/arm64/boot/dts/apple/t8103-jxxx.dtsi      |  2 +
+ arch/arm64/boot/dts/apple/t8103-pmgr.dtsi      | 18 +++---
+ arch/arm64/boot/dts/apple/t8103.dtsi           | 76 ++++++++++++++++++++++++++
+ arch/arm64/boot/dts/apple/t8112-jxxx.dtsi      |  2 +
+ arch/arm64/boot/dts/apple/t8112.dtsi           | 44 ++++++++++++++-
+ 11 files changed, 224 insertions(+), 10 deletions(-)
+---
+base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
+change-id: 20241101-asahi-spi-dt-58245bb1da3e
+
+Best regards,
 -- 
-2.47.0
+Janne Grunau <j@jannau.net>
 
