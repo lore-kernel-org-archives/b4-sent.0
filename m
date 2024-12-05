@@ -1,11 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Thu, 05 Dec 2024 17:43:06 +0100
-Subject: [PATCH net-next v8 09/15] net: dwmac-starfive: Use helper
- rgmii_clock
+Date: Thu, 05 Dec 2024 17:43:07 +0100
+Subject: [PATCH net-next v8 10/15] net: macb: Use helper rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241205-upstream_s32cc_gmac-v8-9-ec1d180df815@oss.nxp.com>
+Message-Id: <20241205-upstream_s32cc_gmac-v8-10-ec1d180df815@oss.nxp.com>
 References: <20241205-upstream_s32cc_gmac-v8-0-ec1d180df815@oss.nxp.com>
 In-Reply-To: <20241205-upstream_s32cc_gmac-v8-0-ec1d180df815@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -35,14 +34,13 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
  0x1207@gmail.com, fancer.lancer@gmail.com, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
- "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>, 
- Emil Renner Berthing <emil.renner.berthing@canonical.com>
+ "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733417009; l=1364;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733417009; l=1061;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=iW+rtrhNTh7WkbcA9xBon+2w19YzKulFFk0dv7RW/YA=;
- b=NOIwLIuzNeNzUYzaRpQaBZN2GHObVUWkFhO970SdtF6MLwSTP4bOhX/HGV5TRldTVniarDwNt
- bVYJMWLRcV7DILqASh3TIhxMmDjdEp44snp2JFS13GWdOv3pbEd2WU2
+ bh=lqge0TxoQLFiynEUre89U7vm4A38Pvil86ayrYiUui0=;
+ b=HVHZUUwYBwhrlL6BmOOImKqXUfNg2MEpvgsvdQxpheQtqTJkFS1atcWcvBZMIuVU0RGITds2R
+ JKKMG6yJ6L2DRn5uzlzCLP26+8gBZZpw93jPiI4gG63B7AyoGOJhtW+
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
@@ -52,45 +50,37 @@ Utilize a new helper function rgmii_clock().
 
 Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Reviewed-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
-Reviewed-by: Emil Renner Berthing <emil.renner.berthing@canonical.com>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c | 19 ++++---------------
- 1 file changed, 4 insertions(+), 15 deletions(-)
+ drivers/net/ethernet/cadence/macb_main.c | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c
-index 421666279dd3..0a0a363d3730 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-starfive.c
-@@ -34,24 +34,13 @@ struct starfive_dwmac {
- static void starfive_dwmac_fix_mac_speed(void *priv, unsigned int speed, unsigned int mode)
- {
- 	struct starfive_dwmac *dwmac = priv;
--	unsigned long rate;
-+	long rate;
- 	int err;
+diff --git a/drivers/net/ethernet/cadence/macb_main.c b/drivers/net/ethernet/cadence/macb_main.c
+index daa416fb1724..640f500f989d 100644
+--- a/drivers/net/ethernet/cadence/macb_main.c
++++ b/drivers/net/ethernet/cadence/macb_main.c
+@@ -530,19 +530,9 @@ static void macb_set_tx_clk(struct macb *bp, int speed)
+ 	if (bp->phy_interface == PHY_INTERFACE_MODE_MII)
+ 		return;
  
--	rate = clk_get_rate(dwmac->clk_tx);
--
 -	switch (speed) {
--	case SPEED_1000:
--		rate = 125000000;
+-	case SPEED_10:
+-		rate = 2500000;
 -		break;
 -	case SPEED_100:
 -		rate = 25000000;
 -		break;
--	case SPEED_10:
--		rate = 2500000;
+-	case SPEED_1000:
+-		rate = 125000000;
 -		break;
 -	default:
 +	rate = rgmii_clock(speed);
-+	if (rate < 0) {
- 		dev_err(dwmac->dev, "invalid speed %u\n", speed);
--		break;
-+		return;
- 	}
++	if (rate < 0)
+ 		return;
+-	}
  
- 	err = clk_set_rate(dwmac->clk_tx, rate);
+ 	rate_rounded = clk_round_rate(bp->tx_clk, rate);
+ 	if (rate_rounded < 0)
 
 -- 
 2.47.0
