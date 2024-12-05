@@ -1,11 +1,11 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Thu, 05 Dec 2024 17:43:01 +0100
-Subject: [PATCH net-next v8 04/15] net: phy: Add helper for mapping RGMII
- link speed to clock rate
+Date: Thu, 05 Dec 2024 17:43:02 +0100
+Subject: [PATCH net-next v8 05/15] net: dwmac-dwc-qos-eth: Use helper
+ rgmii_clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241205-upstream_s32cc_gmac-v8-4-ec1d180df815@oss.nxp.com>
+Message-Id: <20241205-upstream_s32cc_gmac-v8-5-ec1d180df815@oss.nxp.com>
 References: <20241205-upstream_s32cc_gmac-v8-0-ec1d180df815@oss.nxp.com>
 In-Reply-To: <20241205-upstream_s32cc_gmac-v8-0-ec1d180df815@oss.nxp.com>
 To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
@@ -37,68 +37,57 @@ Cc: linux-stm32@st-md-mailman.stormreply.com,
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
  "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733417009; l=1509;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733417009; l=1290;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=3exSjKEVuojsQxBeLN9HdAigOEc+2YUOvrl9BYstKAs=;
- b=mNFYLfQv105ROGOwlEnxB5fCA+2r6XhmI/q3hg5Ago/2NAp0TTsQCa8sMxSHZlBt7CzuAmfoG
- aMbYb0d/YdYB7qfGFkN26+mFOUm0y+OMiVWKG0DWo/JUd8XpPN+AVPV
+ bh=ZX+NwH2HQko3cIWDQjmmck130Lb3TijMXiPn59w6r/U=;
+ b=PiP3f5Y7IK9B/J+oX/VL3ObtYifBhcxhpwIqRynudDjaaEIP00vQhJrkSe7I9cyTonjDFywbU
+ oDNtZ0epzAGC7ZXXBTUXFmG8kC1MhnkYuy68W5hG3JFBtKBuNHAdjl+
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RGMII interface supports three data rates: 10/100 Mbps
-and 1 Gbps. These speeds correspond to clock frequencies
-of 2.5/25 MHz and 125 MHz, respectively.
+Utilize a new helper function rgmii_clock().
 
-Many Ethernet drivers, including glues in stmmac, follow
-a similar pattern of converting RGMII speed to clock frequency.
-
-To simplify code, define the helper rgmii_clock(speed)
-to convert connection speed to clock frequency.
-
-Suggested-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
 Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Reviewed-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- include/linux/phy.h | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/phy.h b/include/linux/phy.h
-index 563c46205685..a746f056ed57 100644
---- a/include/linux/phy.h
-+++ b/include/linux/phy.h
-@@ -298,6 +298,29 @@ static inline const char *phy_modes(phy_interface_t interface)
- 	}
- }
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c
+index 83290e707df5..bd4eb187f8c6 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c
+@@ -181,24 +181,19 @@ static void dwc_qos_remove(struct platform_device *pdev)
+ static void tegra_eqos_fix_speed(void *priv, unsigned int speed, unsigned int mode)
+ {
+ 	struct tegra_eqos *eqos = priv;
+-	unsigned long rate = 125000000;
+ 	bool needs_calibration = false;
++	long rate = 125000000;
+ 	u32 value;
+ 	int err;
  
-+/**
-+ * rgmii_clock - map link speed to the clock rate
-+ * @speed: link speed value
-+ *
-+ * Description: maps RGMII supported link speeds
-+ * into the clock rates.
-+ *
-+ * Returns: clock rate or negative errno
-+ */
-+static inline long rgmii_clock(int speed)
-+{
-+	switch (speed) {
-+	case SPEED_10:
-+		return 2500000;
-+	case SPEED_100:
-+		return 25000000;
-+	case SPEED_1000:
-+		return 125000000;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
- #define PHY_INIT_TIMEOUT	100000
- #define PHY_FORCE_TIMEOUT	10
+ 	switch (speed) {
+ 	case SPEED_1000:
+-		needs_calibration = true;
+-		rate = 125000000;
+-		break;
+-
+ 	case SPEED_100:
+ 		needs_calibration = true;
+-		rate = 25000000;
+-		break;
++		fallthrough;
  
+ 	case SPEED_10:
+-		rate = 2500000;
++		rate = rgmii_clock(speed);
+ 		break;
+ 
+ 	default:
 
 -- 
 2.47.0
