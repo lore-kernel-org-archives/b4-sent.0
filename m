@@ -1,223 +1,210 @@
-From: Keke Li <keke.li@amlogic.com>
-Date: Thu, 05 Dec 2024 17:04:36 +0800
-Subject: [PATCH v4 10/10] Documentation: media: add documentation file
- c3-isp.rst
+From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
+Subject: [PATCH net-next v8 00/15] Add support for Synopsis DWMAC IP on NXP
+ Automotive SoCs S32G2xx/S32G3xx/S32R45
+Date: Thu, 05 Dec 2024 17:42:57 +0100
+Message-Id: <20241205-upstream_s32cc_gmac-v8-0-ec1d180df815@oss.nxp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241205-c3isp-v4-10-cb1868be0105@amlogic.com>
-References: <20241205-c3isp-v4-0-cb1868be0105@amlogic.com>
-In-Reply-To: <20241205-c3isp-v4-0-cb1868be0105@amlogic.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, kieran.bingham@ideasonboard.com, 
- laurent.pinchart@ideasonboard.com, dan.scally@ideasonboard.com, 
- Keke Li <keke.li@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIABHYUWcC/23Py2rDMBAF0F8JWldBo7ey6n+UEuzxKNHCDyzXu
+ AT/exVvkmJvBi6XOcM8WKYxUWaX04ONNKec+q4E/3FieK+6G/HUlMykkFoEqfjPkKeRqvaalUS
+ 83toKufUBqHamBmlZ2RxGimnZ1C/W0cQ7Wib2XZp7ylM//m7nZrX1TxkEHMuz4oI3Xtemsq4OS
+ nz2OZ+7ZThj327irN8U6Y8VXRShLPgIghTJvWJeCkA4VkxRXIMYRMQYKe4V+6ZIfazY50doHHj
+ EKATsFfdSyjhWXFFqVAQxRGss/VfWdf0D8zuZmdoBAAA=
+To: Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Jose Abreu <joabreu@synopsys.com>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Vinod Koul <vkoul@kernel.org>, 
+ Richard Cochran <richardcochran@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Emil Renner Berthing <kernel@esmil.dk>, 
+ Minda Chen <minda.chen@starfivetech.com>, 
+ Nicolas Ferre <nicolas.ferre@microchip.com>, 
+ Claudiu Beznea <claudiu.beznea@tuxon.dev>, 
+ Iyappan Subramanian <iyappan@os.amperecomputing.com>, 
+ Keyur Chudgar <keyur@os.amperecomputing.com>, 
+ Quan Nguyen <quan@os.amperecomputing.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Giuseppe Cavallaro <peppe.cavallaro@st.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>
+Cc: linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org, linux-arm-msm@vger.kernel.org, imx@lists.linux.dev, 
+ devicetree@vger.kernel.org, NXP S32 Linux Team <s32@nxp.com>, 
+ 0x1207@gmail.com, fancer.lancer@gmail.com, 
+ "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
+ Jacob Keller <jacob.e.keller@intel.com>, 
+ "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>, 
+ Emil Renner Berthing <emil.renner.berthing@canonical.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733389471; l=8378;
- i=keke.li@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=H0RQU9asCesFOIT5c2J2aVn6KNIPpH4ysETliTY0WyI=;
- b=9+7KmOWDIz0lXYMVcfKr1pFFgjv7tYe6gW9Vqs6mNvZiKbrVJRfm4V6N7FN7trr+C5BGwbGb4
- v5ezg1+1MBRBWnA4RgB8gVKUmx62D52Z3UYijikbOOv4Ei+8+0+Wy+x
-X-Developer-Key: i=keke.li@amlogic.com; a=ed25519;
- pk=XxNPTsQ0YqMJLLekV456eoKV5gbSlxnViB1k1DhfRmU=
-X-Endpoint-Received: by B4 Relay for keke.li@amlogic.com/20240902 with auth_id=204
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733417009; l=6670;
+ i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
+ bh=Tl/s8JiV2SmGTZhlUaKGgX3/7+W6B+dH6noXJZ++bs4=;
+ b=jqz5a1dhjZiXqKcL3y2gtJfIRnyu4VHGYnJ6F8wTkQVkurHP9vUPM/EvymoExsa9f6VWqis4z
+ iDIN2RYSxzVDn6mpr8/S5oI+NqZxvDfHbbq0RAUDemu2LbwTE1Mnw33
+X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
+ pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
+X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the file 'c3-isp.rst' that documents the c3-isp driver.
+The SoC series S32G2xx and S32G3xx feature one DWMAC instance,
+the SoC S32R45 has two instances. The devices can use RGMII/RMII/MII
+interface over Pinctrl device or the output can be routed
+to the embedded SerDes for SGMII connectivity.
 
-Signed-off-by: Keke Li <keke.li@amlogic.com>
+The provided stmmac glue code implements only basic functionality,
+interface support is restricted to RGMII only. More, including
+SGMII/SerDes support will come later.
+
+This patchset adds stmmac glue driver based on downstream NXP git [0].
+
+[0] https://github.com/nxp-auto-linux/linux
+
+v8:
+- dropped 'driver' in patch subject
+- fixed interface rx/tx clock init
+- Link to v7: https://lore.kernel.org/r/20241202-upstream_s32cc_gmac-v7-0-bc3e1f9f656e@oss.nxp.com
+
+v7:
+- rebased on v6.13-rc1 and removed RFC prefix
+- Link to v6: https://lore.kernel.org/r/20241124-upstream_s32cc_gmac-v6-0-dc5718ccf001@oss.nxp.com
+
+v6:
+- removed dead code in dwmac-intel-plat.c
+- yaml: fix indention
+- validate interface mode in probe
+- dropped patch#16 to fit in max 15 patches in series
+- Link to v5: https://lore.kernel.org/r/20241119-upstream_s32cc_gmac-v5-0-7dcc90fcffef@oss.nxp.com
+
+v5:
+- yaml: refactored compatible string to use fallback
+- yaml: fix indention in example
+- fix xmas tree formating in local variable declarations
+- removed lazy rx clk setup
+- drop PTP clock reading patch and replace it with stmmac_platform fix
+- Link to v4: https://lore.kernel.org/r/20241028-upstream_s32cc_gmac-v4-0-03618f10e3e2@oss.nxp.com
+
+v4:
+- fixed empty commit messages for rgmi_clock() helper patches
+- fixed yaml path in MAINTAINERS
+- switched to platform_driver::remove() as suggested Uwe
+- yaml: returned back all compatibility sting values
+- added better commit description for rgmii_clock() helper
+- Link to v3: https://lore.kernel.org/r/20241013-upstream_s32cc_gmac-v3-0-d84b5a67b930@oss.nxp.com
+
+v3:
+- switched to b4 WoW to overcome threading issue with b4
+- extracted the hunk with the typo fix from v2 patch#1 to separate patch
+  as Jacob suggested
+- removed dead code for RMII/MII support, which will be added alter
+- used new rgmii_clock() helper in other stmmac:dwmac glue drivers
+- yaml: compatible strings compressed to simple one "nxp,s32-dwmac",
+  removed duplicated required properties, already defined in snps,dwmac,
+  fixed example
+
+v2:
+- send to wider audience as first version missed many maintainers
+- created rgmi_clk() helper as Russell suggested (see patch#4)
+- address Andrew's, Russell's, Serge's and Simon's comments
+
+Message-ID: <AM9PR04MB85066576AD6848E2402DA354E2832@AM9PR04MB8506.eurprd04.prod.outlook.com>
+
+Cc: 
+
+Cc:
+
 ---
- Documentation/admin-guide/media/c3-isp.dot      |  26 ++++++
- Documentation/admin-guide/media/c3-isp.rst      | 109 ++++++++++++++++++++++++
- Documentation/admin-guide/media/v4l-drivers.rst |   1 +
- MAINTAINERS                                     |  11 +++
- 4 files changed, 147 insertions(+)
+To: Maxime Coquelin <mcoquelin.stm32@gmail.com>
+To: Alexandre Torgue <alexandre.torgue@foss.st.com>
+To: Jose Abreu <joabreu@synopsys.com>
+To: David S. Miller <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Vinod Koul <vkoul@kernel.org>
+To: Richard Cochran <richardcochran@gmail.com>
+To: Andrew Lunn <andrew@lunn.ch>
+To: Heiner Kallweit <hkallweit1@gmail.com>
+To: Russell King <linux@armlinux.org.uk>
+To: Shawn Guo <shawnguo@kernel.org>
+To: Sascha Hauer <s.hauer@pengutronix.de>
+To: Pengutronix Kernel Team <kernel@pengutronix.de>
+To: Fabio Estevam <festevam@gmail.com>
+To: Emil Renner Berthing <kernel@esmil.dk>
+To: Minda Chen <minda.chen@starfivetech.com>
+To: Nicolas Ferre <nicolas.ferre@microchip.com>
+To: Claudiu Beznea <claudiu.beznea@tuxon.dev>
+To: Iyappan Subramanian <iyappan@os.amperecomputing.com>
+To: Keyur Chudgar <keyur@os.amperecomputing.com>
+To: Quan Nguyen <quan@os.amperecomputing.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Giuseppe Cavallaro <peppe.cavallaro@st.com>
+To: Andrew Lunn <andrew+netdev@lunn.ch>
+Cc: linux-stm32@st-md-mailman.stormreply.com
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Cc: linux-arm-msm@vger.kernel.org
+Cc: imx@lists.linux.dev
+Cc: devicetree@vger.kernel.org
+Cc: NXP S32 Linux Team <s32@nxp.com>
+Cc: 0x1207@gmail.com
+Cc: fancer.lancer@gmail.com
+Cc: 
+Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 
-diff --git a/Documentation/admin-guide/media/c3-isp.dot b/Documentation/admin-guide/media/c3-isp.dot
-new file mode 100644
-index 000000000000..f96217dbcebf
---- /dev/null
-+++ b/Documentation/admin-guide/media/c3-isp.dot
-@@ -0,0 +1,26 @@
-+digraph board {
-+	rankdir=TB
-+	n00000001 [label="{{<port0> 0 | <port1> 1} | c3-isp-core\n/dev/v4l-subdev0 | {<port2> 2 | <port3> 3}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000001:port3 -> n00000006:port0
-+	n00000001:port3 -> n00000009:port0
-+	n00000001:port3 -> n0000000c:port0
-+	n00000001:port2 -> n00000025
-+	n00000006 [label="{{<port0> 0} | c3-isp-resizer0\n/dev/v4l-subdev1 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000006:port1 -> n00000019 [style=bold]
-+	n00000009 [label="{{<port0> 0} | c3-isp-resizer1\n/dev/v4l-subdev2 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000009:port1 -> n0000001d [style=bold]
-+	n0000000c [label="{{<port0> 0} | c3-isp-resizer2\n/dev/v4l-subdev3 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000000c:port1 -> n00000021 [style=bold]
-+	n0000000f [label="{{<port0> 0} | c3-mipi-adapter\n/dev/v4l-subdev4 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000000f:port1 -> n00000001:port0 [style=bold]
-+	n00000014 [label="{{<port0> 0} | c3-mipi-csi2\n/dev/v4l-subdev5 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000014:port1 -> n0000000f:port0 [style=bold]
-+	n00000019 [label="c3-isp-cap0\n/dev/video0", shape=box, style=filled, fillcolor=yellow]
-+	n0000001d [label="c3-isp-cap1\n/dev/video1", shape=box, style=filled, fillcolor=yellow]
-+	n00000021 [label="c3-isp-cap2\n/dev/video2", shape=box, style=filled, fillcolor=yellow]
-+	n00000025 [label="c3-isp-stats\n/dev/video3", shape=box, style=filled, fillcolor=yellow]
-+	n00000029 [label="c3-isp-params\n/dev/video4", shape=box, style=filled, fillcolor=yellow]
-+	n00000029 -> n00000001:port1
-+	n0000003d [label="{{} | imx290 2-001a\n/dev/v4l-subdev6 | {<port0> 0}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000003d:port0 -> n00000014:port0 [style=bold]
-+}
-diff --git a/Documentation/admin-guide/media/c3-isp.rst b/Documentation/admin-guide/media/c3-isp.rst
-new file mode 100644
-index 000000000000..8adac4605a6a
---- /dev/null
-+++ b/Documentation/admin-guide/media/c3-isp.rst
-@@ -0,0 +1,109 @@
-+.. SPDX-License-Identifier: (GPL-2.0-only OR MIT)
-+
-+.. include:: <isonum.txt>
-+
-+=================================================
-+Amlogic C3 Image Signal Processing (C3ISP) driver
-+=================================================
-+
-+Introduction
-+============
-+
-+This file documents the Amlogic C3ISP driver located under
-+drivers/media/platform/amlogic/c3/isp.
-+
-+The current version of the driver supports the C3ISP found on
-+Amlogic C308L processor.
-+
-+The driver implements V4L2, Media controller and V4L2 subdev interfaces.
-+Camera sensor using V4L2 subdev interface in the kernel is supported.
-+
-+The driver has been tested on AW419-C308L-Socket platform.
-+
-+Anlogic Camera hardware
-+=======================
-+
-+The Camera hardware found on C308L processors and supported by
-+the driver consists of:
-+
-+- 1 MIPI-CSI2 module. It handle the Physical layer of the CSI2 receivers and
-+  receive MIPI data.
-+  A separate camera sensor can be connected to MIPI-CSi2 module.
-+- 1 MIPI-ADAPTER module. Organize MIPI data to meet ISP input requirements and
-+  send MIPI data to ISP
-+- 1 ISP (Image Signal Processing) module. Contain a pipeline of image processing
-+  hardware blocks.
-+  The ISP pipeline contains three scalers at the end.
-+  The ISP also contains the DMA interface which writes the output data to memory.
-+
-+A high level functional view of the C3 ISP is presented below. The ISP
-+takes input from the sensor.::
-+
-+                                                                   +---------+    +-------+
-+                                                                   | Scaler  |--->| WRMIF |
-+  +---------+    +------------+    +--------------+    +-------+   |---------+    +-------+
-+  | Sensor  |--->| MIPI CSI-2 |--->| MIPI ADAPTER |--->|  ISP  |---|---------+    +-------+
-+  +---------+    +------------+    +--------------+    +-------+   | Scaler  |--->| WRMIF |
-+                                                                   +---------+    +-------+
-+                                                                   |---------+    +-------+
-+                                                                   | Scaler  |--->| WRMIF |
-+                                                                   +---------+    +-------+
-+
-+Supported functionality
-+=======================
-+
-+The current version of the driver supports:
-+
-+- Input from camera sensor via MIPI-CSI2;
-+
-+- Pixel output interface of ISP
-+
-+  - Scaling support. Configuration of the scaler module
-+    for downscalling with ratio up to 8x.
-+
-+Driver Architecture and Design
-+==============================
-+
-+The driver implements the V4L2 subdev interface. With the goal to model the
-+hardware links between the modules and to expose a clean, logical and usable
-+interface, the driver is split into V4L2 sub-devices as follows:
-+
-+- 1 c3-mipi-csi2 sub-device - mipi-csi2 is represented by a single sub-device.
-+- 1 c3-mipi-adapter sub-device - mipi-adapter is represented by a single sub-devices.
-+- 1 c3-isp-core sub-device - isp-core is represented by a single sub-devices.
-+- 3 c3-isp-resizer sub-devices - isp-resizer is represented by a number of sub-devices
-+  equal to the number of capture device.
-+
-+c3-isp-core sub-device is linked to 2 separate video device nodes and
-+3 c3-isp-resizer sub-devices nodes.
-+
-+- 1 capture statistics video device node.
-+- 1 output parameters video device node.
-+- 3 c3-isp-resizer sub-device nodes.
-+
-+c3-isp-resizer sub-device is linked to capture video device node.
-+
-+- c3-isp-resizer0 is linked to c3-isp-cap0
-+- c3-isp-resizer1 is linked to c3-isp-cap1
-+- c3-isp-resizer2 is linked to c3-isp-cap2
-+
-+The media controller pipeline graph is as follows (with connected a
-+IMX290 camera sensor):
-+
-+.. _isp_topology_graph:
-+
-+.. kernel-figure:: c3-isp.dot
-+    :alt:   c3-isp.dot
-+    :align: center
-+
-+    Media pipeline topology
-+
-+Implementation
-+==============
-+
-+Runtime configuration of the hardware via 'c3-isp-params' video device node.
-+Acquiring statistics of ISP hardware via 'c3-isp-stats' video device node.
-+Acquiring output image of ISP hardware via 'c3-isp-cap[0, 2]' video device node.
-+
-+The output size of the scaler module in the ISP is configured with
-+the pixel format of 'c3-isp-cap[0, 2]' video device node.
-diff --git a/Documentation/admin-guide/media/v4l-drivers.rst b/Documentation/admin-guide/media/v4l-drivers.rst
-index e8761561b2fe..3bac5165b134 100644
---- a/Documentation/admin-guide/media/v4l-drivers.rst
-+++ b/Documentation/admin-guide/media/v4l-drivers.rst
-@@ -10,6 +10,7 @@ Video4Linux (V4L) driver-specific documentation
- 	:maxdepth: 2
- 
- 	bttv
-+	c3-isp
- 	cafe_ccic
- 	cx88
- 	fimc
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 0136101bef0d..ffd2c6ae827f 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1224,6 +1224,17 @@ F:	Documentation/devicetree/bindings/perf/amlogic,g12-ddr-pmu.yaml
- F:	drivers/perf/amlogic/
- F:	include/soc/amlogic/
- 
-+AMLOGIC ISP DRIVER
-+M:	Keke Li <keke.li@amlogic.com>
-+L:	linux-media@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/admin-guide/media/c3-isp.dot
-+F:	Documentation/admin-guide/media/c3-isp.rst
-+F:	Documentation/devicetree/bindings/media/amlogic,c3-isp.yaml
-+F:	Documentation/userspace-api/media/v4l/metafmt-c3-isp.rst
-+F:	drivers/media/platform/amlogic/c3/isp/
-+F:	include/uapi/linux/media/amlogic/
-+
- AMLOGIC MIPI ADAPTER DRIVER
- M:	Keke Li <keke.li@amlogic.com>
- L:	linux-media@vger.kernel.org
+---
+Jan Petrous (OSS) (15):
+      net: stmmac: Fix CSR divider comment
+      net: stmmac: Extend CSR calc support
+      net: stmmac: Fix clock rate variables size
+      net: phy: Add helper for mapping RGMII link speed to clock rate
+      net: dwmac-dwc-qos-eth: Use helper rgmii_clock
+      net: dwmac-imx: Use helper rgmii_clock
+      net: dwmac-intel-plat: Use helper rgmii_clock
+      net: dwmac-rk: Use helper rgmii_clock
+      net: dwmac-starfive: Use helper rgmii_clock
+      net: macb: Use helper rgmii_clock
+      net: xgene_enet: Use helper rgmii_clock
+      net: dwmac-sti: Use helper rgmii_clock
+      dt-bindings: net: Add DT bindings for DWMAC on NXP S32G/R SoCs
+      net: stmmac: dwmac-s32: add basic NXP S32G/S32R glue driver
+      MAINTAINERS: Add Jan Petrous as the NXP S32G/R DWMAC driver maintainer
 
+ .../devicetree/bindings/net/nxp,s32-dwmac.yaml     | 105 +++++++++++
+ .../devicetree/bindings/net/snps,dwmac.yaml        |   1 +
+ MAINTAINERS                                        |   7 +
+ drivers/net/ethernet/apm/xgene/xgene_enet_hw.c     |  16 +-
+ drivers/net/ethernet/cadence/macb_main.c           |  14 +-
+ drivers/net/ethernet/stmicro/stmmac/Kconfig        |  12 ++
+ drivers/net/ethernet/stmicro/stmmac/Makefile       |   1 +
+ drivers/net/ethernet/stmicro/stmmac/common.h       |   2 +
+ .../ethernet/stmicro/stmmac/dwmac-dwc-qos-eth.c    |  11 +-
+ drivers/net/ethernet/stmicro/stmmac/dwmac-imx.c    |  15 +-
+ .../net/ethernet/stmicro/stmmac/dwmac-intel-plat.c |  22 +--
+ .../ethernet/stmicro/stmmac/dwmac-qcom-ethqos.c    |   2 +-
+ drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c     |  30 +--
+ drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c    | 202 +++++++++++++++++++++
+ .../net/ethernet/stmicro/stmmac/dwmac-starfive.c   |  19 +-
+ drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c    |  18 +-
+ drivers/net/ethernet/stmicro/stmmac/dwmac4_core.c  |   2 +-
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c  |   6 +-
+ .../net/ethernet/stmicro/stmmac/stmmac_platform.c  |   2 +-
+ include/linux/phy.h                                |  23 +++
+ include/linux/stmmac.h                             |  10 +-
+ 21 files changed, 399 insertions(+), 121 deletions(-)
+---
+base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
+change-id: 20240923-upstream_s32cc_gmac-6891eb75b126
+
+Best regards,
 -- 
-2.47.0
+Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 
