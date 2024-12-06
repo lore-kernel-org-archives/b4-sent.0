@@ -1,11 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Thu, 05 Dec 2024 20:42:02 -0800
-Subject: [PATCH v2 32/35] x86/hvm: add debugging facility to NS8250 UART
- emulator
+Date: Thu, 05 Dec 2024 20:42:03 -0800
+Subject: [PATCH v2 33/35] x86/domain: implement domain_has_vuart()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241205-vuart-ns8250-v1-32-e9aa923127eb@ford.com>
+Message-Id: <20241205-vuart-ns8250-v1-33-e9aa923127eb@ford.com>
 References: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 In-Reply-To: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 To: xen-devel@lists.xenproject.org
@@ -14,192 +13,177 @@ Cc: Andrew Cooper <andrew.cooper3@citrix.com>,
  Stefano Stabellini <sstabellini@kernel.org>, 
  Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460095; l=5202;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460095; l=7401;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=fA/jJbL46n/cnt80o0lruMDE2CrX4KhOfstGR8R1g3U=;
- b=iKpHnHA52J7NwfZnAJaaYuYval44oMyAoTpLRR63oT969Q6ILWC0DwKXqePHb5y1UuvSLSiJD
- tf8/iPi9W0YBRYqrwgNGNpvlhNKnoHkaE//16iIF3La5S0GB4zMmWcD
+ bh=tfiJLSOur1vSXiemSyjr8enIFIEF26fIRGrdEEwbY18=;
+ b=VUVl57v6//L3I+BVOtYyFg49j9VIti9hgqIArW35Tvfb1KnFjpdoyqXsMGsyn7IqjVEgKnwMC
+ PbyvHwuU4uVDf9Jg3XNoX0yzmMarqvvv+SMIcmGTCTCKalKac3WS555
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable keyhandler mechanism for dumping state of emulated NS8250 on the
-console.
+Add new emulation flag for virtual UART on x86 and plumb it through the stack.
+
+This change enables NS8250 emulator initialization.
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/arch/x86/hvm/vuart_ns8250.c | 122 ++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 122 insertions(+)
+ tools/libs/light/libxl_x86.c      |  6 +++++-
+ tools/ocaml/libs/xc/xenctrl.ml    |  1 +
+ tools/ocaml/libs/xc/xenctrl.mli   |  1 +
+ tools/python/xen/lowlevel/xc/xc.c |  4 +---
+ xen/arch/x86/domain.c             |  8 +++++---
+ xen/arch/x86/include/asm/domain.h |  7 ++++---
+ xen/include/public/arch-x86/xen.h | 14 +++++++++++++-
+ 7 files changed, 30 insertions(+), 11 deletions(-)
 
-diff --git a/xen/arch/x86/hvm/vuart_ns8250.c b/xen/arch/x86/hvm/vuart_ns8250.c
-index 779dbd80d7be4e070ea9df3ae736ecdc662a527a..c8c75afaf2b2419d1dae999da1d1e400fd367791 100644
---- a/xen/arch/x86/hvm/vuart_ns8250.c
-+++ b/xen/arch/x86/hvm/vuart_ns8250.c
-@@ -25,6 +25,7 @@
+diff --git a/tools/libs/light/libxl_x86.c b/tools/libs/light/libxl_x86.c
+index a3164a3077fec7e1b81a34074894dc646954a49a..de5f05e18cb0671bb031b101b9a7159eb0fe0178 100644
+--- a/tools/libs/light/libxl_x86.c
++++ b/tools/libs/light/libxl_x86.c
+@@ -8,7 +8,11 @@ int libxl__arch_domain_prepare_config(libxl__gc *gc,
+ {
+     switch(d_config->c_info.type) {
+     case LIBXL_DOMAIN_TYPE_HVM:
+-        config->arch.emulation_flags = (XEN_X86_EMU_ALL & ~XEN_X86_EMU_VPCI);
++        config->arch.emulation_flags = XEN_X86_EMU_ALL;
++        config->arch.emulation_flags &= ~XEN_X86_EMU_VPCI;
++        /* Virtual UART is selected at Xen build time */
++        config->arch.emulation_flags &= ~XEN_X86_EMU_VUART;
++
+         if (!libxl_defbool_val(d_config->b_info.u.hvm.pirq))
+             config->arch.emulation_flags &= ~XEN_X86_EMU_USE_PIRQ;
+         break;
+diff --git a/tools/ocaml/libs/xc/xenctrl.ml b/tools/ocaml/libs/xc/xenctrl.ml
+index 2690f9a92316b812ad3d3ff0e1c36823070adb4a..647239b3e55e88b00eb8e9773a5267894cbbae54 100644
+--- a/tools/ocaml/libs/xc/xenctrl.ml
++++ b/tools/ocaml/libs/xc/xenctrl.ml
+@@ -47,6 +47,7 @@ type x86_arch_emulation_flags =
+   | X86_EMU_PIT
+   | X86_EMU_USE_PIRQ
+   | X86_EMU_VPCI
++  | X86_EMU_VUART
  
- /* Development debugging */
- #define NS8250_LOG_LEVEL    0
-+#undef NS8250_DEBUG
+ type x86_arch_misc_flags =
+   | X86_MSR_RELAXED
+diff --git a/tools/ocaml/libs/xc/xenctrl.mli b/tools/ocaml/libs/xc/xenctrl.mli
+index febbe1f6ae3f10c5abe45eaa3c06a8a67d9ba268..4f5f64c786e83e8a0c3dd3cdb0460f7095de4a62 100644
+--- a/tools/ocaml/libs/xc/xenctrl.mli
++++ b/tools/ocaml/libs/xc/xenctrl.mli
+@@ -41,6 +41,7 @@ type x86_arch_emulation_flags =
+   | X86_EMU_PIT
+   | X86_EMU_USE_PIRQ
+   | X86_EMU_VPCI
++  | X86_EMU_VUART
  
- #include <xen/types.h>
- #include <xen/event.h>
-@@ -35,6 +36,9 @@
- #include <xen/resource.h>
- #include <xen/ctype.h>
- #include <xen/param.h>
-+#if defined(NS8250_DEBUG)
-+#include <xen/keyhandler.h>
-+#endif
- #include <xen/console.h> /* console_input_domid() */
- #include <asm/setup.h>   /* max_init_domid */
- #include <asm/iocap.h>
-@@ -625,6 +629,121 @@ static const char *ns8250_regname(
-     return reg_names[reg][dir];
- }
+ type x86_arch_misc_flags =
+   | X86_MSR_RELAXED
+diff --git a/tools/python/xen/lowlevel/xc/xc.c b/tools/python/xen/lowlevel/xc/xc.c
+index 9feb12ae2b16e48cb5d0c3c45044ae226f152f2d..e54308956efc7061d58d2166ec9a95bc1dcd1781 100644
+--- a/tools/python/xen/lowlevel/xc/xc.c
++++ b/tools/python/xen/lowlevel/xc/xc.c
+@@ -159,9 +159,7 @@ static PyObject *pyxc_domain_create(XcObject *self,
  
-+#if defined(NS8250_DEBUG)
-+static void ns8250_dump(struct vuart_ns8250 *vdev)
-+{
-+    struct xencons_interface *cons = vdev->cons;
-+    uint8_t val;
+ #if defined (__i386) || defined(__x86_64__)
+     if ( config.flags & XEN_DOMCTL_CDF_hvm )
+-        config.arch.emulation_flags = XEN_X86_EMU_ALL &
+-                                      ~(XEN_X86_EMU_VPCI |
+-                                        XEN_X86_EMU_USE_PIRQ);
++        config.arch.emulation_flags = XEN_X86_EMU_HVM_ALLOWABLE;
+ #elif defined (__arm__) || defined(__aarch64__)
+     config.arch.gic_version = XEN_DOMCTL_CONFIG_GIC_NATIVE;
+ #else
+diff --git a/xen/arch/x86/domain.c b/xen/arch/x86/domain.c
+index c88d422a64544531c1e1058fa484364bb4277d1e..439da7adc92a3a8eb481075bf834da5f9670dd54 100644
+--- a/xen/arch/x86/domain.c
++++ b/xen/arch/x86/domain.c
+@@ -752,10 +752,10 @@ static bool emulation_flags_ok(const struct domain *d, uint32_t emflags)
+         if ( is_hardware_domain(d) &&
+              emflags != (X86_EMU_VPCI | X86_EMU_LAPIC | X86_EMU_IOAPIC) )
+             return false;
 +
-+    printk("I/O port %02"PRIx64" IRQ %d flags %"PRIx32" owner %d\n",
-+            vdev->io_addr, vdev->irq,
-+            vdev->flags, vdev->owner->domain_id);
-+
-+    printk("RX size %ld in_prod %d in_cons %d used %d\n",
-+            sizeof(cons->in),
-+            cons->in_prod, cons->in_cons,
-+            cons->in_prod - cons->in_cons);
-+
-+    printk("TX size %ld out_prod %d out_cons %d used %d\n",
-+            sizeof(cons->out),
-+            cons->out_prod, cons->out_cons,
-+            cons->out_prod - cons->out_cons);
-+
-+    printk("%02x RBR [ %c ] THR [ %c ] DLL %02x DLM %02x\n",
-+            UART_RBR,
-+            cons->in[MASK_XENCONS_IDX(cons->in_prod, cons)],
-+            cons->out[MASK_XENCONS_IDX(cons->out_prod, cons)],
-+            vdev->dl & 0xFFU, vdev->dl >> 8);
-+
-+    printk("%02"PRIx8" IER %02"PRIx8"\n", UART_IER, vdev->regs[UART_IER]);
-+
-+    val = (vdev->regs[UART_FCR] & UART_FCR_ENABLE) ? UART_IIR_FE_MASK : 0;
-+    val |= ns8250_irq_reason(vdev);
-+    printk("%02"PRIx8" FCR %02"PRIx8" IIR %02"PRIx8"\n",
-+            UART_FCR, vdev->regs[UART_FCR], val);
-+
-+    printk("%02"PRIx8" LCR %02"PRIx8"\n", UART_LCR, vdev->regs[UART_LCR]);
-+    printk("%02"PRIx8" MCR %02"PRIx8"\n", UART_MCR, vdev->regs[UART_MCR]);
-+    printk("%02"PRIx8" LSR %02"PRIx8"\n", UART_LSR, vdev->regs[UART_LSR]);
-+    printk("%02"PRIx8" MSR %02"PRIx8"\n", UART_MSR, vdev->regs[UART_MSR]);
-+}
-+
-+static struct domain *rcu_find_first_domain_with_vuart(void)
-+{
-+    struct domain *d = NULL;
-+    domid_t i;
-+
-+    for ( i = 0; i < max_init_domid + 1; i++ )
-+    {
-+        d = rcu_lock_domain_by_id(i);
-+        if ( d == NULL )
-+            continue;
-+
-+        if ( domain_has_vuart(d) )
-+            break;
-+
-+        rcu_unlock_domain(d);
-+    }
-+
-+    return d;
-+}
-+
-+static void cf_check ns8250_keyhandler_show(unsigned char key)
-+{
-+    struct vuart_ns8250 *vdev;
-+    struct domain *d;
-+
-+    d = rcu_find_first_domain_with_vuart();
-+    if ( d == NULL )
-+        return;
-+
-+    printk("'%c' pressed -> dumping virtual NS8250 state (d%d)\n",
-+            key, d->domain_id);
-+
-+    vdev = &d->arch.hvm.vuart;
-+    spin_lock(&vdev->lock);
-+    ns8250_dump(vdev);
-+    spin_unlock(&vdev->lock);
-+
-+    rcu_unlock_domain(d);
-+}
-+
-+static void cf_check ns8250_keyhandler_irq(unsigned char key)
-+{
-+    struct vuart_ns8250 *vdev;
-+    struct domain *d;
-+
-+    d = rcu_find_first_domain_with_vuart();
-+    if ( d == NULL )
-+        return;
-+
-+    printk("'%c' pressed -> triggering IRQ on virtual NS8250 (d%d)\n",
-+            key, d->domain_id);
-+
-+    vdev = &d->arch.hvm.vuart;
-+    spin_lock(&vdev->lock);
-+    ns8250_irq_assert(vdev);
-+    spin_unlock(&vdev->lock);
-+
-+    rcu_unlock_domain(d);
-+}
-+
-+static void ns8250_keyhandler_init(void)
-+{
-+    register_keyhandler('1', ns8250_keyhandler_show,
-+                        "dump virtual NS8250 state", 0);
-+    register_keyhandler('2', ns8250_keyhandler_irq,
-+                        "trigger IRQ from virtual NS8250", 0);
-+}
-+#else
-+static inline void ns8250_keyhandler_init(void)
-+{
-+}
-+static inline void ns8250_dump(struct vuart_ns8250 *vdev)
-+{
-+}
-+#endif /* #if defined(NS8250_DEBUG) */
-+
- /*
-  * Emulate I/O access to NS8250 register.
-  */
-@@ -688,6 +807,7 @@ static int cf_check ns8250_io_handle(
-     rc = X86EMUL_OKAY;
- 
- out:
-+    ns8250_dump(vdev);
-     spin_unlock(&vdev->lock);
- 
-     return rc;
-@@ -786,6 +906,7 @@ static int ns8250_init(struct domain *d, const struct resource *r)
++        emflags &= ~X86_EMU_VUART;
+         if ( !is_hardware_domain(d) &&
+-             /* HVM PIRQ feature is user-selectable. */
+-             (emflags & ~X86_EMU_USE_PIRQ) !=
+-             (X86_EMU_ALL & ~(X86_EMU_VPCI | X86_EMU_USE_PIRQ)) &&
++             xen_emflags_allowable(emflags) != XEN_X86_EMU_HVM_ALLOWABLE &&
+              emflags != X86_EMU_LAPIC )
+             return false;
      }
+@@ -806,6 +806,8 @@ int arch_domain_create(struct domain *d,
  
-     spin_lock_init(&vdev->lock);
-+    ns8250_keyhandler_init();
-     hvm_irq_lower(d, vdev->irq);
+     emflags = config->arch.emulation_flags;
  
-     vdev->dl = (UART_CLOCK_HZ / 115200) >> 4; /* Report 115200 baud rate */
-@@ -852,6 +973,7 @@ int vuart_putchar(struct vuart_ns8250 *vdev, char ch)
-     ns8250_irq_assert(vdev);
++    if ( IS_ENABLED(CONFIG_HAS_VUART_NS8250) && is_hvm_domain(d) )
++        emflags |= XEN_X86_EMU_VUART;
+     if ( is_hardware_domain(d) && is_pv_domain(d) )
+         emflags |= XEN_X86_EMU_PIT;
  
- out:
-+    ns8250_dump(vdev);
-     spin_unlock(&vdev->lock);
+diff --git a/xen/arch/x86/include/asm/domain.h b/xen/arch/x86/include/asm/domain.h
+index c1d0d1f47324e8cc678a4c76c43f86820a89e7b3..dacea6e1aad46e9f8710b2202bb81203c5e92807 100644
+--- a/xen/arch/x86/include/asm/domain.h
++++ b/xen/arch/x86/include/asm/domain.h
+@@ -484,7 +484,8 @@ struct arch_domain
+ #define X86_EMU_VPCI     0
+ #endif
  
-     return rc;
+-#define X86_EMU_PIT     XEN_X86_EMU_PIT
++#define X86_EMU_PIT      XEN_X86_EMU_PIT
++#define X86_EMU_VUART    XEN_X86_EMU_VUART
+ 
+ /* This must match XEN_X86_EMU_ALL in xen.h */
+ #define X86_EMU_ALL             (X86_EMU_LAPIC | X86_EMU_HPET |         \
+@@ -492,7 +493,7 @@ struct arch_domain
+                                  X86_EMU_IOAPIC | X86_EMU_PIC |         \
+                                  X86_EMU_VGA | X86_EMU_IOMMU |          \
+                                  X86_EMU_PIT | X86_EMU_USE_PIRQ |       \
+-                                 X86_EMU_VPCI)
++                                 X86_EMU_VPCI | X86_EMU_VUART)
+ 
+ #define has_vlapic(d)      (!!((d)->arch.emulation_flags & X86_EMU_LAPIC))
+ #define has_vhpet(d)       (!!((d)->arch.emulation_flags & X86_EMU_HPET))
+@@ -507,7 +508,7 @@ struct arch_domain
+ #define has_vpci(d)        (!!((d)->arch.emulation_flags & X86_EMU_VPCI))
+ 
+ /* NB: same symbol as in Arm port */
+-#define domain_has_vuart(d) false
++#define domain_has_vuart(d) (!!((d)->arch.emulation_flags & X86_EMU_VUART))
+ 
+ #define gdt_ldt_pt_idx(v) \
+       ((v)->vcpu_id >> (PAGETABLE_ORDER - GDT_LDT_VCPU_SHIFT))
+diff --git a/xen/include/public/arch-x86/xen.h b/xen/include/public/arch-x86/xen.h
+index fc2487986642a7694578ab9d2f5f16d09761bff8..e7922e3f9ddc1742a464d228807279839df31e52 100644
+--- a/xen/include/public/arch-x86/xen.h
++++ b/xen/include/public/arch-x86/xen.h
+@@ -283,13 +283,25 @@ struct xen_arch_domainconfig {
+ #define XEN_X86_EMU_USE_PIRQ        (1U<<_XEN_X86_EMU_USE_PIRQ)
+ #define _XEN_X86_EMU_VPCI           10
+ #define XEN_X86_EMU_VPCI            (1U<<_XEN_X86_EMU_VPCI)
++#define _XEN_X86_EMU_VUART          11
++#define XEN_X86_EMU_VUART           (1U<<_XEN_X86_EMU_VUART)
+ 
+ #define XEN_X86_EMU_ALL             (XEN_X86_EMU_LAPIC | XEN_X86_EMU_HPET |  \
+                                      XEN_X86_EMU_PM | XEN_X86_EMU_RTC |      \
+                                      XEN_X86_EMU_IOAPIC | XEN_X86_EMU_PIC |  \
+                                      XEN_X86_EMU_VGA | XEN_X86_EMU_IOMMU |   \
+                                      XEN_X86_EMU_PIT | XEN_X86_EMU_USE_PIRQ |\
+-                                     XEN_X86_EMU_VPCI)
++                                     XEN_X86_EMU_VPCI | XEN_X86_EMU_VUART)
++
++/* HVM PIRQ feature is user-selectable (libxl). */
++#define XEN_X86_EMU_HVM_SELECTABLE  (XEN_X86_EMU_VPCI | \
++                                     XEN_X86_EMU_USE_PIRQ | \
++                                     XEN_X86_EMU_VUART)
++
++#define xen_emflags_allowable(x)    ((x) & ~XEN_X86_EMU_HVM_SELECTABLE)
++
++#define XEN_X86_EMU_HVM_ALLOWABLE   xen_emflags_allowable(XEN_X86_EMU_ALL)
++
+     uint32_t emulation_flags;
+ 
+ /*
 
 -- 
 2.34.1
