@@ -1,11 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Thu, 05 Dec 2024 20:41:57 -0800
-Subject: [PATCH v2 27/35] xen/console: flush console ring to physical
- console
+Date: Thu, 05 Dec 2024 20:41:58 -0800
+Subject: [PATCH v2 28/35] xen/8250-uart: add missing definitions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241205-vuart-ns8250-v1-27-e9aa923127eb@ford.com>
+Message-Id: <20241205-vuart-ns8250-v1-28-e9aa923127eb@ford.com>
 References: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 In-Reply-To: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 To: xen-devel@lists.xenproject.org
@@ -14,122 +13,162 @@ Cc: Andrew Cooper <andrew.cooper3@citrix.com>,
  Stefano Stabellini <sstabellini@kernel.org>, 
  Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460095; l=3110;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460095; l=7150;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=9P4Y8stZ3v9veFAxdHp9EFeTfuXrbjGeXMl4yBrDrRM=;
- b=LcDAXG+yR65ns4PDQ7+Ep0c/twONKtCO6FP3OyvFTTqVtifqgbIkwSkeCUfa9psmIj3lFPPnM
- 83h3+UYJFZ4D7QPLSxSZewJhQFIyiw2yPpSDbEylErgaWgtM7WS39IF
+ bh=tIDl7kdtapSdiWgcLjWmQ7v8zbW9hmc48ULvT599z7A=;
+ b=kPzosi8ho+ByeLwfCWEeVFseo8sJZ+0pQO4SEJq2xAHq/cop5Z9wnnfTJ7hX4VXH2kuye0ajT
+ y1zxyalUV4kBc0xBvVDO5M7y3G4JHEggAouSPKUNF5FfZUP436ueI3j
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Messages printed before the serial and VGA consoles are initialized end up in
-the internal console buffer (conring). Flush contents of conring to all
-external consoles after external consoles are fully initialied.
+Added missing definitions needed for NS8250 UART emulator.
 
-Link: https://gitlab.com/xen-project/xen/-/issues/184
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/drivers/char/console.c | 54 +++++++++++++++++++++++++++++++++-------------
- 1 file changed, 39 insertions(+), 15 deletions(-)
+ xen/include/xen/8250-uart.h | 81 +++++++++++++++++++++++++++++++++------------
+ 1 file changed, 60 insertions(+), 21 deletions(-)
 
-diff --git a/xen/drivers/char/console.c b/xen/drivers/char/console.c
-index 581ee22b85302a54db5b9d5d28e8b2d689d31403..a26daee9c4c4b1134d0ae3d105ffdb656340b6df 100644
---- a/xen/drivers/char/console.c
-+++ b/xen/drivers/char/console.c
-@@ -426,23 +426,35 @@ void console_serial_puts(const char *s, size_t nr)
-     pv_console_puts(s, nr);
- }
+diff --git a/xen/include/xen/8250-uart.h b/xen/include/xen/8250-uart.h
+index d13352940c13c50bac17d4cdf2f3bf584380776a..4a69b2b225140efda287bdf96fa0caa4aa70074f 100644
+--- a/xen/include/xen/8250-uart.h
++++ b/xen/include/xen/8250-uart.h
+@@ -32,16 +32,22 @@
+ #define UART_MCR          0x04    /* Modem control        */
+ #define UART_LSR          0x05    /* line status          */
+ #define UART_MSR          0x06    /* Modem status         */
++#define UART_SCR          0x07    /* Scratch pad          */
+ #define UART_USR          0x1f    /* Status register (DW) */
+ #define UART_DLL          0x00    /* divisor latch (ls) (DLAB=1) */
+ #define UART_DLM          0x01    /* divisor latch (ms) (DLAB=1) */
+ #define UART_XR_EFR       0x09    /* Enhanced function register (Exar) */
  
--static void cf_check dump_console_ring_key(unsigned char key)
-+/*
-+ * Write characters to physical console(s).
-+ * That covers:
-+ * - serial console;
-+ * - video output.
-+ */
-+static void console_puts(const char *str, size_t len)
-+{
-+    ASSERT(rspin_is_locked(&console_lock));
++/* ns8250 emulator: range of emulated registers [0..UART_MAX-1] */
++#define UART_MAX          (UART_SCR + 1)
 +
-+    console_serial_puts(str, len);
-+    video_puts(str, len);
-+}
-+
-+/*
-+ * Flush contents of the conring to the physical console devices.
-+ */
-+static int console_flush(void)
- {
-     uint32_t idx, len, sofar, c;
-     unsigned int order;
-     char *buf;
+ /* Interrupt Enable Register */
+ #define UART_IER_ERDAI    0x01    /* rx data recv'd       */
+ #define UART_IER_ETHREI   0x02    /* tx reg. empty        */
+ #define UART_IER_ELSI     0x04    /* rx line status       */
+ #define UART_IER_EMSI     0x08    /* MODEM status         */
++#define UART_IER_MASK \
++    (UART_IER_ERDAI | UART_IER_ETHREI | UART_IER_ELSI | UART_IER_EMSI)
  
--    printk("'%c' pressed -> dumping console ring buffer (dmesg)\n", key);
--
--    /* create a buffer in which we'll copy the ring in the correct
--       order and NUL terminate */
-     order = get_order_from_bytes(conring_size + 1);
-     buf = alloc_xenheap_pages(order, 0);
-     if ( buf == NULL )
--    {
--        printk("unable to allocate memory!\n");
--        return;
--    }
-+        return -ENOMEM;
-+
-+    nrspin_lock_irq(&console_lock);
+ /* Interrupt Identification Register */
+ #define UART_IIR_NOINT    0x01    /* no interrupt pending */
+@@ -51,12 +57,21 @@
+ #define UART_IIR_THR      0x02    /*  - tx reg. empty     */
+ #define UART_IIR_MSI      0x00    /*  - MODEM status      */
+ #define UART_IIR_BSY      0x07    /*  - busy detect (DW) */
++#define UART_IIR_FE0      BIT(6, U) /* FIFO enable #0 */
++#define UART_IIR_FE1      BIT(7, U) /* FIFO enable #1 */
++#define UART_IIR_FE_MASK  (UART_IIR_FE0 | UART_IIR_FE1)
  
-     c = conringc;
-     sofar = 0;
-@@ -457,10 +469,23 @@ static void cf_check dump_console_ring_key(unsigned char key)
-         c += len;
-     }
- 
--    console_serial_puts(buf, sofar);
--    video_puts(buf, sofar);
-+    console_puts(buf, sofar);
+ /* FIFO Control Register */
+-#define UART_FCR_ENABLE   0x01    /* enable FIFO          */
+-#define UART_FCR_CLRX     0x02    /* clear Rx FIFO        */
+-#define UART_FCR_CLTX     0x04    /* clear Tx FIFO        */
+-#define UART_FCR_DMA      0x10    /* enter DMA mode       */
++#define UART_FCR_ENABLE     BIT(0, U)   /* enable FIFO          */
++#define UART_FCR_CLRX       BIT(1, U)   /* clear Rx FIFO        */
++#define UART_FCR_CLTX       BIT(2, U)   /* clear Tx FIFO        */
++#define UART_FCR_DMA        BIT(3, U)   /* enter DMA mode       */
++#define UART_FCR_RESERVED0  BIT(4, U)   /* reserved; always 0   */
++#define UART_FCR_RESERVED1  BIT(5, U)   /* reserved; always 0   */
++#define UART_FCR_RTB0       BIT(6, U)   /* receiver trigger bit #0 */
++#define UART_FCR_RTB1       BIT(7, U)   /* receiver trigger bit #1 */
++#define UART_FCR_TRG_MASK   (UART_FCR_RTB0 | UART_FCR_RTB1)
 +
-+    nrspin_unlock_irq(&console_lock);
- 
-     free_xenheap_pages(buf, order);
-+
-+    return 0;
-+}
-+
-+static void cf_check dump_console_ring_key(unsigned char key)
-+{
-+    int rc;
-+
-+    printk("'%c' pressed -> dumping console ring buffer (dmesg)\n", key);
-+    rc = console_flush();
-+    if ( rc )
-+        printk("failed to dump console ring buffer: %d\n", rc);
- }
+ #define UART_FCR_TRG1     0x00    /* Rx FIFO trig lev 1   */
+ #define UART_FCR_TRG4     0x40    /* Rx FIFO trig lev 4   */
+ #define UART_FCR_TRG8     0x80    /* Rx FIFO trig lev 8   */
+@@ -64,17 +79,17 @@
  
  /*
-@@ -707,10 +732,7 @@ static inline void xen_console_write(const char *str, size_t len)
+  * Note: The FIFO trigger levels are chip specific:
+- *	RX:76 = 00  01  10  11	TX:54 = 00  01  10  11
+- * PC16550D:	 1   4   8  14		xx  xx  xx  xx
+- * TI16C550A:	 1   4   8  14          xx  xx  xx  xx
+- * TI16C550C:	 1   4   8  14          xx  xx  xx  xx
+- * ST16C550:	 1   4   8  14		xx  xx  xx  xx
+- * ST16C650:	 8  16  24  28		16   8  24  30	PORT_16650V2
+- * NS16C552:	 1   4   8  14		xx  xx  xx  xx
+- * ST16C654:	 8  16  56  60		 8  16  32  56	PORT_16654
+- * TI16C750:	 1  16  32  56		xx  xx  xx  xx	PORT_16750
+- * TI16C752:	 8  16  56  60		 8  16  32  56
+- * Tegra:	 1   4   8  14		16   8   4   1	PORT_TEGRA
++ *  RX:76 = 00  01  10  11  TX:54 = 00  01  10  11
++ * PC16550D:     1   4   8  14      xx  xx  xx  xx
++ * TI16C550A:    1   4   8  14      xx  xx  xx  xx
++ * TI16C550C:    1   4   8  14      xx  xx  xx  xx
++ * ST16C550:     1   4   8  14      xx  xx  xx  xx
++ * ST16C650:     8  16  24  28      16   8  24  30  PORT_16650V2
++ * NS16C552:     1   4   8  14      xx  xx  xx  xx
++ * ST16C654:     8  16  56  60       8  16  32  56  PORT_16654
++ * TI16C750:     1  16  32  56      xx  xx  xx  xx  PORT_16750
++ * TI16C752:     8  16  56  60       8  16  32  56
++ * Tegra:        1   4   8  14      16   8   4   1  PORT_TEGRA
   */
- static void console_write(const char *str, size_t len)
- {
--    ASSERT(rspin_is_locked(&console_lock));
--
--    console_serial_puts(str, len);
--    video_puts(str, len);
-+    console_puts(str, len);
+ #define UART_FCR_R_TRIG_00 0x00
+ #define UART_FCR_R_TRIG_01 0x40
+@@ -96,11 +111,31 @@
+ #define UART_LCR_CONF_MODE_B	0xBF		/* Configuration mode B */
  
-     if ( opt_console_xen )
-         xen_console_write(str, len);
-@@ -1177,6 +1199,8 @@ void __init console_endboot(void)
+ /* Modem Control Register */
+-#define UART_MCR_DTR      0x01    /* Data Terminal Ready  */
+-#define UART_MCR_RTS      0x02    /* Request to Send      */
+-#define UART_MCR_OUT2     0x08    /* OUT2: interrupt mask */
+-#define UART_MCR_LOOP     0x10    /* Enable loopback test mode */
+-#define UART_MCR_TCRTLR   0x40    /* Access TCR/TLR (TI16C752, EFR[4]=1) */
++#define UART_MCR_DTR            BIT(0, U)   /* Data Terminal Ready  */
++#define UART_MCR_RTS            BIT(1, U)   /* Request to Send      */
++#define UART_MCR_OUT1           BIT(2, U)   /* OUT1: interrupt mask */
++#define UART_MCR_OUT2           BIT(3, U)   /* OUT2: interrupt mask */
++#define UART_MCR_LOOP           BIT(4, U)   /* Enable loopback test mode */
++#define UART_MCR_RESERVED0      BIT(5, U)   /* Reserved #0 */
++#define UART_MCR_RESERVED1      BIT(6, U)   /* Reserved #1 */
++#define UART_MCR_TCRTLR         BIT(6, U)   /* Access TCR/TLR (TI16C752, EFR[4]=1) */
++#define UART_MCR_RESERVED2      BIT(7, U)   /* Reserved #2 */
++#define UART_MCR_MASK \
++    (UART_MCR_DTR | UART_MCR_RTS | \
++     UART_MCR_OUT1 | UART_MCR_OUT2 | \
++     UART_MCR_LOOP)
++
++/* Modem Status Register */
++#define UART_MSR_DCTS           BIT(0, U)   /* Change in CTS */
++#define UART_MSR_DDSR           BIT(1, U)   /* Change in DSR */
++#define UART_MSR_TERI           BIT(2, U)   /* Change in RI */
++#define UART_MSR_DDCD           BIT(3, U)   /* Change in CTS */
++#define UART_MSR_CTS            BIT(4, U)
++#define UART_MSR_DSR            BIT(5, U)
++#define UART_MSR_RI             BIT(6, U)
++#define UART_MSR_DCD            BIT(7, U)
++#define UART_MSR_DELTA \
++    (UART_MSR_DCTS | UART_MSR_DDSR | UART_MSR_TERI | UART_MSR_DDCD)
  
-     video_endboot();
+ /* Line Status Register */
+ #define UART_LSR_DR       0x01    /* Data ready           */
+@@ -111,6 +146,7 @@
+ #define UART_LSR_THRE     0x20    /* Xmit hold reg empty  */
+ #define UART_LSR_TEMT     0x40    /* Xmitter empty        */
+ #define UART_LSR_ERR      0x80    /* Error                */
++#define UART_LSR_MASK     (UART_LSR_OE | UART_LSR_BI)
  
-+    /* NB: send conring contents to all enabled physical consoles, if any */
-+    console_flush();
-     use_conring = opt_console_to_ring;
-     smp_wmb();
+ /* These parity settings can be ORed directly into the LCR. */
+ #define UART_PARITY_NONE  (0<<3)
+@@ -119,7 +155,10 @@
+ #define UART_PARITY_MARK  (5<<3)
+ #define UART_PARITY_SPACE (7<<3)
  
+-/* Frequency of external clock source. This definition assumes PC platform. */
++/*
++ * Frequency of external UART clock source.
++ * Same as IBM PC master input clock frequency.
++ */
+ #define UART_CLOCK_HZ     1843200
+ 
+ /* Bits in Exar specific UART_XR_EFR register */
 
 -- 
 2.34.1
