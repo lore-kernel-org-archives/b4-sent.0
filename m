@@ -1,10 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Thu, 05 Dec 2024 20:41:53 -0800
-Subject: [PATCH v2 23/35] xen/console: introduce console_write()
+Date: Thu, 05 Dec 2024 20:41:54 -0800
+Subject: [PATCH v2 24/35] xen/console: introduce hwdom_crashconsole=
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241205-vuart-ns8250-v1-23-e9aa923127eb@ford.com>
+Message-Id: <20241205-vuart-ns8250-v1-24-e9aa923127eb@ford.com>
 References: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 In-Reply-To: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 To: xen-devel@lists.xenproject.org
@@ -13,175 +13,112 @@ Cc: Andrew Cooper <andrew.cooper3@citrix.com>,
  Stefano Stabellini <sstabellini@kernel.org>, 
  Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460094; l=5090;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460094; l=3897;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=IJndR90ln3ebR9JBLgcF8uZuUsxgXYKVX60Wdeeyfgg=;
- b=jHyeiWGUT3FC9wqdvmDyFZNzJI9ClfZ3Imp+FXv2XyaFHnvRcCAdBiVl5YgFppU5q80Nh4ylX
- 0lCDMsThybKD8ezbX7OiCuZe8c8k5/af+wQnUOUAs2dL7Iq58CX25YI
+ bh=1SE1nPGu4xeTH/OTKpOlxTlLd/mo9Wc6622Zz4Y1AHc=;
+ b=Ojfyv76A9s+nHItTnUu5XXzmcReLwQ/cS7xcueyxc3sbROAgSJngYgjiuIlonbN9oIe8CBGJs
+ YSZYIJCFA4+CNyG8V/SJfCQkjRyHkBMEHk16OIe2bCfcQi3csn2vS0U
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-PV Linux kernel uses HYPERVISOR_console_io hypercall for early console which
-ends up being handled by Xen's console driver's guest_console_write().
+The new command line switch `hwdom_crashconsole=BOOL` allows to switch serial
+console input focus to xen for machine state inspection using keyhandler
+mechanism after the hardware domain crashes.
 
-guest_console_write() duplicates the code from __putstr(), elimitate code
-duplication.
+The new command line switch is aliased via `dom0=...,crashconsole` knob.
+
+Such functionality can be useful while debugging dom0 bringup.
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/drivers/char/console.c | 97 +++++++++++++++++++++++++---------------------
- 1 file changed, 53 insertions(+), 44 deletions(-)
+ docs/misc/xen-command-line.pandoc |  5 +++++
+ xen/arch/x86/dom0_build.c         |  2 ++
+ xen/common/domain.c               | 14 +++++++++++++-
+ xen/include/xen/domain.h          |  1 +
+ 4 files changed, 21 insertions(+), 1 deletion(-)
 
-diff --git a/xen/drivers/char/console.c b/xen/drivers/char/console.c
-index ce3639a4cdcda00ea63e3bf119bc3b242cbfdf6a..115967d179998cba4a81578caba09db4e4aca7f7 100644
---- a/xen/drivers/char/console.c
-+++ b/xen/drivers/char/console.c
-@@ -63,6 +63,8 @@ static const char __initconst warning_sync_console[] =
-     "However it can introduce SIGNIFICANT latencies and affect\n"
-     "timekeeping. It is NOT recommended for production use!\n";
+diff --git a/docs/misc/xen-command-line.pandoc b/docs/misc/xen-command-line.pandoc
+index 293dbc1a957ba6e668fd4d55d58e84f643822126..fb77d7dca1ea517f79d6713aa6909422f31e7724 100644
+--- a/docs/misc/xen-command-line.pandoc
++++ b/docs/misc/xen-command-line.pandoc
+@@ -806,6 +806,7 @@ Specify the bit width of the DMA heap.
  
-+/* Flag: use conring for early console; switches to opt_console_to_ring */
-+static bool __read_mostly use_conring = true;
- /* console_to_ring: send guest (incl. dom 0) console data to console ring. */
- static bool __read_mostly opt_console_to_ring;
- boolean_param("console_to_ring", opt_console_to_ring);
-@@ -661,6 +663,16 @@ static void cf_check notify_dom0_con_ring(void *unused)
- static DECLARE_SOFTIRQ_TASKLET(notify_dom0_con_ring_tasklet,
-                                notify_dom0_con_ring, NULL);
+ ### dom0
+     = List of [ pv | pvh, shadow=<bool>, verbose=<bool>,
++                crashconsole=<bool>,
+                 cpuid-faulting=<bool>, msr-relaxed=<bool> ] (x86)
  
-+static bool console_locks_busted;
+     = List of [ sve=<integer> ] (Arm64)
+@@ -839,6 +840,10 @@ Controls for how dom0 is constructed on x86 systems.
+     information during the dom0 build.  It defaults to the compile time choice
+     of `CONFIG_VERBOSE_DEBUG`.
+ 
++*   The `crashconsole` boolean instructs Xen to drop into emergency console
++    in case of dom0 crash. May be useful for dom0 bringup on a custom
++    hardware.
 +
-+static void conring_write(const char *str, size_t len)
-+{
-+    conring_puts(str, len);
-+
-+    if ( !console_locks_busted )
-+        tasklet_schedule(&notify_dom0_con_ring_tasklet);
-+}
-+
- #ifdef CONFIG_X86
- static inline void xen_console_write_debug_port(const char *buf, size_t len)
- {
-@@ -669,8 +681,44 @@ static inline void xen_console_write_debug_port(const char *buf, size_t len)
-                    : "=&S" (tmp), "=&c" (tmp)
-                    : "0" (buf), "1" (len), "d" (XEN_HVM_DEBUGCONS_IOPORT) );
- }
-+
-+static void xen_console_write(const char *str, size_t len)
-+{
-+    if ( xen_guest )
-+        xen_hypercall_console_write(str, len);
-+    else
-+        xen_console_write_debug_port(str, len);
-+}
-+#else
-+static inline void xen_console_write(const char *str, size_t len)
-+{
-+}
- #endif
+ *   The `cpuid-faulting` boolean is an interim option, is only applicable to
+     PV dom0, and defaults to true.
+ 
+diff --git a/xen/arch/x86/dom0_build.c b/xen/arch/x86/dom0_build.c
+index e8f5bf5447bc47a6daa3d95787106a4c11e80d31..706aeec0ecbb565a415edbfb33ca2fd72967c560 100644
+--- a/xen/arch/x86/dom0_build.c
++++ b/xen/arch/x86/dom0_build.c
+@@ -286,6 +286,8 @@ int __init parse_arch_dom0_param(const char *s, const char *e)
+         opt_dom0_cpuid_faulting = val;
+     else if ( (val = parse_boolean("msr-relaxed", s, e)) >= 0 )
+         opt_dom0_msr_relaxed = val;
++    else if ( (val = parse_boolean("crashconsole", s, e)) >= 0 )
++        opt_hwdom_crashconsole = !!val;
+     else
+         return -EINVAL;
+ 
+diff --git a/xen/common/domain.c b/xen/common/domain.c
+index aab546c0a8535e4f007cbbc9c5c552bcf66b5807..4fe69f294158dda7b2e0b9d98d49c34e04131cb8 100644
+--- a/xen/common/domain.c
++++ b/xen/common/domain.c
+@@ -56,6 +56,13 @@ unsigned int xen_processor_pmbits = XEN_PROCESSOR_PM_PX;
+ bool opt_dom0_vcpus_pin;
+ boolean_param("dom0_vcpus_pin", opt_dom0_vcpus_pin);
  
 +/*
-+ * Write characters to console.
-+ *
-+ * That will handle all possible scenarios working w/ console
-+ * - serial console;
-+ * - video output;
-+ * - __HYPERVISOR_console_io hypercall (x86 only);
-+ * - debug I/O port (x86 only);
-+ * - forward to Xen event channel.
++ * Hardware domain crash handler: if true, do not halt machine, but switch to
++ * Xen console for debugging.
 + */
-+static void console_write(const char *str, size_t len)
-+{
-+    ASSERT(rspin_is_locked(&console_lock));
++bool opt_hwdom_crashconsole;
++boolean_param("hwdom_crashconsole", opt_hwdom_crashconsole);
 +
-+    console_serial_puts(str, len);
-+    video_puts(str, len);
-+
-+    if ( opt_console_xen )
-+        xen_console_write(str, len);
-+
-+    if ( use_conring )
-+        conring_write(str, len);
-+}
-+
- static long guest_console_write(XEN_GUEST_HANDLE_PARAM(char) buffer,
-                                 unsigned int count)
- {
-@@ -691,28 +739,8 @@ static long guest_console_write(XEN_GUEST_HANDLE_PARAM(char) buffer,
+ /* Protect updates/reads (resp.) of domain_list and domain_hash. */
+ DEFINE_SPINLOCK(domlist_update_lock);
+ DEFINE_RCU_READ_LOCK(domlist_read_lock);
+@@ -1138,7 +1145,12 @@ int domain_shutdown(struct domain *d, u8 reason)
+     reason = d->shutdown_code;
  
-         if ( is_hardware_domain(cd) )
-         {
--            /* Use direct console output as it could be interactive */
-             nrspin_lock_irq(&console_lock);
--
--            console_serial_puts(kbuf, kcount);
--            video_puts(kbuf, kcount);
--
--#ifdef CONFIG_X86
--            if ( opt_console_xen )
--            {
--                if ( xen_guest )
--                    xen_hypercall_console_write(kbuf, kcount);
--                else
--                    xen_console_write_debug_port(kbuf, kcount);
--            }
--#endif
--
--            if ( opt_console_to_ring )
--            {
--                conring_puts(kbuf, kcount);
--                tasklet_schedule(&notify_dom0_con_ring_tasklet);
--            }
--
-+            console_write(kbuf, kcount);
-             nrspin_unlock_irq(&console_lock);
-         }
-         else
-@@ -813,31 +841,9 @@ long do_console_io(
-  * *****************************************************
-  */
+     if ( is_hardware_domain(d) )
+-        hwdom_shutdown(reason);
++    {
++        if ( opt_hwdom_crashconsole )
++            console_set_owner(DOMID_XEN);
++        else
++            hwdom_shutdown(reason);
++    }
  
--static bool console_locks_busted;
--
- static void __putstr(const char *str)
- {
--    size_t len = strlen(str);
--
--    ASSERT(rspin_is_locked(&console_lock));
--
--    console_serial_puts(str, len);
--    video_puts(str, len);
--
--#ifdef CONFIG_X86
--    if ( opt_console_xen )
--    {
--        if ( xen_guest )
--            xen_hypercall_console_write(str, len);
--        else
--            xen_console_write_debug_port(str, len);
--    }
--#endif
--
--    conring_puts(str, len);
--
--    if ( !console_locks_busted )
--        tasklet_schedule(&notify_dom0_con_ring_tasklet);
-+    console_write(str, strlen(str));
- }
+     if ( d->is_shutting_down )
+     {
+diff --git a/xen/include/xen/domain.h b/xen/include/xen/domain.h
+index 6102826a929ff7aad58a4bc40974815071a97446..e0c52af878b69e28e2d19957d0d3a8234860ecba 100644
+--- a/xen/include/xen/domain.h
++++ b/xen/include/xen/domain.h
+@@ -150,6 +150,7 @@ extern unsigned int xen_processor_pmbits;
+ extern bool opt_dom0_vcpus_pin;
+ extern cpumask_t dom0_cpus;
+ extern bool dom0_affinity_relaxed;
++extern bool opt_hwdom_crashconsole;
  
- static int printk_prefix_check(char *p, char **pp)
-@@ -1171,6 +1177,9 @@ void __init console_endboot(void)
- 
-     video_endboot();
- 
-+    use_conring = opt_console_to_ring;
-+    smp_wmb();
-+
-     register_keyhandler('w', dump_console_ring_key,
-                         "synchronously dump console ring buffer (dmesg)", 0);
-     register_irq_keyhandler('+', &do_inc_thresh,
+ /* vnuma topology per domain. */
+ struct vnuma_info {
 
 -- 
 2.34.1
