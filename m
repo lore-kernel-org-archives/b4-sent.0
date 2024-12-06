@@ -1,10 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Thu, 05 Dec 2024 20:41:48 -0800
-Subject: [PATCH v2 18/35] xen/console: introduce use of 'is_console' flag
+Date: Thu, 05 Dec 2024 20:41:49 -0800
+Subject: [PATCH v2 19/35] xen/console: introduce console_set_owner()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241205-vuart-ns8250-v1-18-e9aa923127eb@ford.com>
+Message-Id: <20241205-vuart-ns8250-v1-19-e9aa923127eb@ford.com>
 References: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 In-Reply-To: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 To: xen-devel@lists.xenproject.org
@@ -13,147 +13,222 @@ Cc: Andrew Cooper <andrew.cooper3@citrix.com>,
  Stefano Stabellini <sstabellini@kernel.org>, 
  Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460094; l=4575;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460094; l=6105;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=c1qncLIbvdXkIva3csVS48o24QoMrU3zNKu5KbZwS0s=;
- b=WG1ksIYw4EgMLqSvIv9tHZhu+lH3WcqfWVayi+nfHijfuS+xnIvMui9g5p5iudJvKLVyMnVUq
- PSoDBtHWfQ7CsaFONJoLb62ddxjajRWzEKEVzmeJCrzkAq7eNAreWBp
+ bh=LaoLtTtPVB803Wx66ywoNWCuGefL+9P7BcXWkOi4Ttw=;
+ b=qIUuqjar9jBz7vlbvZO91eK5QZyrPGkyZdxoOW+bK/PhH1tCuhvcar4R2tTKQ6B0C7F6lxM93
+ WMCmcpor8byDDi3SZubIYvLxdlI1nk8JsNjv/6WTA/rYizZqV4c2rlQ
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The code now inspects d->is_console flag to decide whether the console focus
-should move to the domain w/ console after administrator presses <Ctrl+aaa>.
+console_set_owner() is introduced for setting the new console owner.
 
-Console owner domain switch logic updated accordingly.
+Switches console owner to domain ID vs range of integer numbers mapped to
+domain IDs.
+
+This a public API to console driver, will be used in the follow on code change.
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/arch/arm/dom0less-build.c |  2 +-
- xen/arch/arm/domain.c         |  1 +
- xen/arch/arm/domctl.c         |  1 +
- xen/arch/x86/pv/shim.c        |  2 ++
- xen/common/domain.c           |  2 ++
- xen/drivers/char/console.c    | 14 ++++++++++----
- 6 files changed, 17 insertions(+), 5 deletions(-)
+ xen/drivers/char/console.c | 122 ++++++++++++++++++++++++++-------------------
+ xen/include/xen/console.h  |   1 +
+ 2 files changed, 71 insertions(+), 52 deletions(-)
 
-diff --git a/xen/arch/arm/dom0less-build.c b/xen/arch/arm/dom0less-build.c
-index de64ee930fdfe9a1c2842761275641485f69f675..32b5e8e16a28ae9a4951c8b7815638e69b66406a 100644
---- a/xen/arch/arm/dom0less-build.c
-+++ b/xen/arch/arm/dom0less-build.c
-@@ -833,6 +833,7 @@ static int __init construct_domU(struct domain *d,
-             return rc;
- 
-         d->arch.emulation_flags |= ARM_EMU_VUART;
-+        d->is_console = true;
-     }
- 
-     rc = prepare_dtb_domU(d, &kinfo);
-@@ -1015,7 +1016,6 @@ void __init create_domUs(void)
-             panic("Error creating domain %s (rc = %ld)\n",
-                   dt_node_name(node), PTR_ERR(d));
- 
--        d->is_console = true;
-         dt_device_set_used_by(node, d->domain_id);
- 
-         rc = construct_domU(d, node);
-diff --git a/xen/arch/arm/domain.c b/xen/arch/arm/domain.c
-index 02f9d59b38b4b7f6f73d97c421c9948c90e681d5..c52d6e932a9a71b620ecefacc1e884338858e3ea 100644
---- a/xen/arch/arm/domain.c
-+++ b/xen/arch/arm/domain.c
-@@ -781,6 +781,7 @@ int arch_domain_create(struct domain *d,
-             goto fail;
- 
-         d->arch.emulation_flags |= ARM_EMU_VUART;
-+        d->is_console = true;
-     }
- 
-     if ( (rc = domain_vpci_init(d)) != 0 )
-diff --git a/xen/arch/arm/domctl.c b/xen/arch/arm/domctl.c
-index f80d34bf5f3d323a15db7f032073be52ea1009ae..81b5caf17c4e0badb2eefa90b1522c107f844d06 100644
---- a/xen/arch/arm/domctl.c
-+++ b/xen/arch/arm/domctl.c
-@@ -46,6 +46,7 @@ static int handle_vuart_init(struct domain *d,
-     {
-         vuart_op->evtchn = info.evtchn;
-         d->arch.emulation_flags |= ARM_EMU_VUART;
-+        d->is_console = true;
-     }
- 
-     return rc;
-diff --git a/xen/arch/x86/pv/shim.c b/xen/arch/x86/pv/shim.c
-index 17cb30620290c76cf42251f70cfa4199c0e165d1..a55c1d2a1e616f8979677a198eb9caabc3afc6bf 100644
---- a/xen/arch/x86/pv/shim.c
-+++ b/xen/arch/x86/pv/shim.c
-@@ -238,6 +238,8 @@ void __init pv_shim_setup_dom(struct domain *d, l4_pgentry_t *l4start,
-      * guest from depleting the shim memory pool.
-      */
-     d->max_pages = domain_tot_pages(d);
-+
-+    d->is_console = true;
- }
- 
- static void write_start_info(struct domain *d)
-diff --git a/xen/common/domain.c b/xen/common/domain.c
-index 9e57dd4122a726e2fb42efe9c029e775202be0e6..aab546c0a8535e4f007cbbc9c5c552bcf66b5807 100644
---- a/xen/common/domain.c
-+++ b/xen/common/domain.c
-@@ -682,6 +682,8 @@ struct domain *domain_create(domid_t domid,
- 
-         old_hwdom = hardware_domain;
-         hardware_domain = d;
-+
-+        d->is_console = true;
-     }
- 
-     TRACE_TIME(TRC_DOM0_DOM_ADD, d->domain_id);
 diff --git a/xen/drivers/char/console.c b/xen/drivers/char/console.c
-index 60c055396b697869b04b9132b0dcfa832fabe932..8cbac54c66044ae8581e486a782102b75c8bfaa9 100644
+index 8cbac54c66044ae8581e486a782102b75c8bfaa9..52cf64dbf6fd18d599cb88835d03501a23b3e3c4 100644
 --- a/xen/drivers/char/console.c
 +++ b/xen/drivers/char/console.c
-@@ -1,8 +1,8 @@
- /******************************************************************************
-  * console.c
-- * 
-+ *
-  * Emergency console I/O for Xen and the domain-0 guest OS.
-- * 
-+ *
-  * Copyright (c) 2002-2004, K A Fraser.
-  *
-  * Added printf_ratelimit
-@@ -509,14 +509,20 @@ static void console_find_owner(void)
-             domid = get_initial_domain_id();
-         else
-             domid = next_rx - 1;
-+
-         d = rcu_lock_domain_by_id(domid);
--        if ( d )
-+        if ( d == NULL )
-+            continue;
-+
-+        if ( d->is_console )
-         {
-             rcu_unlock_domain(d);
-             console_owner = next_rx;
-             printk("*** Serial input to DOM%u", domid);
-             break;
-         }
-+
-+        rcu_unlock_domain(d);
-     }
+@@ -463,82 +463,100 @@ static void cf_check dump_console_ring_key(unsigned char key)
  
-     if ( switch_code )
-@@ -814,7 +820,7 @@ static int printk_prefix_check(char *p, char **pp)
-     return ((atomic_read(&print_everything) != 0) ||
-             (loglvl < lower_thresh) ||
-             ((loglvl < upper_thresh) && printk_ratelimit()));
--} 
+ /*
+  * CTRL-<switch_char> changes input direction, rotating among Xen, Dom0,
+- * and the DomUs started from Xen at boot.
++ * and the DomUs.
+  */
+ #define switch_code (opt_conswitch[0]-'a'+1)
++
+ /*
+- * console_owner=0 => input to xen
+- * console_owner=1 => input to dom0 (or the sole shim domain)
+- * console_owner=N => input to dom(N-1)
++ * Current console owner domain ID: either Xen or domain w/ d->is_console ==
++ * true.
++ *
++ * Initialized in console_endboot().
+  */
+-static unsigned int __read_mostly console_owner = 0;
++static domid_t __read_mostly console_owner;
+ 
+-#define max_console_rx (max_init_domid + 1)
++static struct domain *rcu_lock_domain_console_by_id(domid_t domid)
++{
++    struct domain *d;
++
++    d = rcu_lock_domain_by_id(domid);
++
++    if ( d == NULL )
++        return NULL;
++
++    if ( d->is_console )
++        return d;
++
++    rcu_unlock_domain(d);
++
++    return NULL;
 +}
  
- static int cf_check parse_console_timestamps(const char *s)
+-#ifdef CONFIG_SBSA_VUART_CONSOLE
+ /* Make sure to rcu_unlock_domain after use */
+ struct domain *rcu_lock_domain_console_owner(void)
  {
+-    if ( console_owner == 0 )
+-            return NULL;
+-    return rcu_lock_domain_by_id(console_owner - 1);
++    return rcu_lock_domain_console_by_id(console_owner);
+ }
+-#endif
+ 
+-static void console_find_owner(void)
++static bool console_owner_possible(domid_t domid)
+ {
+-    unsigned int next_rx = console_owner;
+-
+-    /*
+-     * Rotate among Xen, dom0 and boot-time created domUs while skipping
+-     * switching serial input to non existing domains.
+-     */
+-    for ( ; ; )
+-    {
+-        domid_t domid;
+-        struct domain *d;
+-
+-        if ( next_rx++ >= max_console_rx )
+-        {
+-            console_owner = 0;
+-            printk("*** Serial input to Xen");
+-            break;
+-        }
+-
+-        if ( consoled_is_enabled() && next_rx == 1 )
+-            domid = get_initial_domain_id();
+-        else
+-            domid = next_rx - 1;
+-
+-        d = rcu_lock_domain_by_id(domid);
+-        if ( d == NULL )
+-            continue;
+-
+-        if ( d->is_console )
+-        {
+-            rcu_unlock_domain(d);
+-            console_owner = next_rx;
+-            printk("*** Serial input to DOM%u", domid);
+-            break;
+-        }
++    struct domain *d;
+ 
++    d = rcu_lock_domain_console_by_id(domid);
++    if ( d != NULL )
+         rcu_unlock_domain(d);
+-    }
++
++    return d != NULL;
++}
++
++int console_set_owner(domid_t domid)
++{
++    if ( domid == DOMID_XEN )
++        printk("*** Serial input to Xen");
++    else if ( console_owner_possible(domid) )
++        printk("*** Serial input to DOM%u", domid);
++    else
++        return -ENOENT;
++
++    console_owner = domid;
+ 
+     if ( switch_code )
+         printk(" (type 'CTRL-%c' three times to switch input)",
+                opt_conswitch[0]);
+     printk("\n");
++
++    return 0;
++}
++
++/*
++ * Switch console input focus.
++ * Rotates input focus among Xen, dom0 and boot-time created domUs while
++ * skipping switching serial input to non existing domains.
++ */
++static void console_find_owner(void)
++{
++    domid_t i, n = max_init_domid + 1;
++
++    if ( console_owner == DOMID_XEN )
++        i = get_initial_domain_id();
++    else
++        i = console_owner + 1;
++
++    for ( ; i < n; i++ )
++        if ( !console_set_owner(i) )
++            break;
++    if ( i == n )
++        console_set_owner(DOMID_XEN);
+ }
+ 
+ static void __serial_rx(char c)
+ {
+     switch ( console_owner )
+     {
+-    case 0:
++    case DOMID_XEN:
+         return handle_keypress(c, false);
+ 
+-    case 1:
++    case 0:
+         /*
+          * Deliver input to the hardware domain buffer, unless it is
+          * already full.
+@@ -556,7 +574,7 @@ static void __serial_rx(char c)
+ #ifdef CONFIG_SBSA_VUART_CONSOLE
+     default:
+     {
+-        struct domain *d = rcu_lock_domain_by_id(console_owner - 1);
++        struct domain *d = rcu_lock_domain_by_id(console_owner);
+ 
+         /*
+          * If we have a properly initialized vpl011 console for the
+@@ -567,7 +585,7 @@ static void __serial_rx(char c)
+             vpl011_rx_char_xen(d, c);
+         else
+             printk("Cannot send chars to Dom%d: no UART available\n",
+-                   console_owner - 1);
++                   console_owner);
+ 
+         if ( d != NULL )
+             rcu_unlock_domain(d);
+@@ -1126,7 +1144,7 @@ void __init console_endboot(void)
+      * a useful 'how to switch' message.
+      */
+     if ( opt_conswitch[1] == 'x' )
+-        console_owner = max_console_rx;
++        console_owner = DOMID_XEN;
+ 
+     register_keyhandler('w', dump_console_ring_key,
+                         "synchronously dump console ring buffer (dmesg)", 0);
+diff --git a/xen/include/xen/console.h b/xen/include/xen/console.h
+index 0e211e44d9703c804e18f52c9743916f8d2a9d4e..57c482cfbf2da15b011e64841ea086e779f4588d 100644
+--- a/xen/include/xen/console.h
++++ b/xen/include/xen/console.h
+@@ -32,6 +32,7 @@ void console_start_log_everything(void);
+ void console_end_log_everything(void);
+ 
+ struct domain *rcu_lock_domain_console_owner(void);
++int console_set_owner(domid_t);
+ 
+ /*
+  * Steal output from the console. Returns +ve identifier, else -ve error.
 
 -- 
 2.34.1
