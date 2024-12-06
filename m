@@ -1,11 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Thu, 05 Dec 2024 20:42:04 -0800
-Subject: [PATCH v2 34/35] xen/console: enable console owners w/ emulated
- NS8250
+Date: Thu, 05 Dec 2024 20:42:05 -0800
+Subject: [PATCH v2 35/35] docs/misc: update console documentation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241205-vuart-ns8250-v1-34-e9aa923127eb@ford.com>
+Message-Id: <20241205-vuart-ns8250-v1-35-e9aa923127eb@ford.com>
 References: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 In-Reply-To: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
 To: xen-devel@lists.xenproject.org
@@ -14,49 +13,118 @@ Cc: Andrew Cooper <andrew.cooper3@citrix.com>,
  Stefano Stabellini <sstabellini@kernel.org>, 
  Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460095; l=1133;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460095; l=5686;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=m+DZYhBfJNv2KVuFKRvMQy0kCP3iadnxj6rLAihix3M=;
- b=RacSKnwM5fBYuU8iskMZVZ/uehW76whDkeSjA2tP9mNGpXECzUNwGvJga6wsGA/b5LOBbFu5w
- EWu5DcHxADFDmrUml9OkGjTT4S3BA2zE90U1GzOO4ch9aJoZcj+SqBz
+ bh=APQcmog0xQYM3EBoFVE5ETu0ersksioDS4x/FBTt9bk=;
+ b=fcukqs0MtpzP6GXP1AFPeyDh0mwVyYwNrAX1JE4Iad+84acEb8EnzftsWAW+Z/wvNGcrsuDbD
+ /f1msBsXsXIBcTxHGqeGTmkklbg1oCypJQ1P8VwuGv9wF8UtrpSF+ZE
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable console focus for domains w/ virtual NS8250.
+Minor update related to virtual UART support.
 
-Code change allows to capture the output from the guest OS now and send it to
-the physical console device.
+Also:
+ s/pv/PV/g
+ s/hvm/HVM/g
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/drivers/char/console.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ docs/misc/console.txt | 50 ++++++++++++++++++++++++++------------------------
+ 1 file changed, 26 insertions(+), 24 deletions(-)
 
-diff --git a/xen/drivers/char/console.c b/xen/drivers/char/console.c
-index a26daee9c4c4b1134d0ae3d105ffdb656340b6df..798dfdf3412a2feef35e72946d6c59bee59a9251 100644
---- a/xen/drivers/char/console.c
-+++ b/xen/drivers/char/console.c
-@@ -41,6 +41,9 @@
- #ifdef CONFIG_SBSA_VUART_CONSOLE
- #include <asm/vpl011.h>
- #endif
-+#if defined(CONFIG_HAS_VUART_NS8250)
-+#include <asm/hvm/vuart_ns8250.h>
-+#endif
+diff --git a/docs/misc/console.txt b/docs/misc/console.txt
+index 4e180f88ba1312d8fcc47d27622ec347d387ce12..7840729b0c95d9c4ea5295f17ce77c04177f48a5 100644
+--- a/docs/misc/console.txt
++++ b/docs/misc/console.txt
+@@ -4,11 +4,11 @@ Xen PV Console notes
+                                         stefano.stabellini@eu.citrix.com
  
- /* console: comma-separated list of console outputs. */
- static char __initdata opt_console[30] = OPT_CONSOLE_STR;
-@@ -627,6 +630,8 @@ static void handle_keypress_in_domain(struct domain *d, char c)
-     {
- #if defined(CONFIG_SBSA_VUART_CONSOLE)
-         rc = vpl011_rx_char_xen(d, c);
-+#elif defined(CONFIG_HAS_VUART_NS8250)
-+        rc = vuart_putchar(&d->arch.hvm.vuart, c);
- #endif
-     }
-     /*
+ 
+-Xen traditionally provided a single pv console to pv guests, storing the
++Xen traditionally provided a single PV console to PV guests, storing the
+ relevant information in xenstore under /local/domain/$DOMID/console.
+ 
+-Now many years after the introduction of the pv console we have
+-multiple pv consoles support for pv and hvm guests; multiple pv
++Now many years after the introduction of the PV console we have
++multiple PV consoles support for PV and HVM guests; multiple PV
+ console backends (qemu and xenconsoled, see limitations below) and
+ emulated serial cards too.
+ 
+@@ -103,48 +103,50 @@ The supported values are only xenconsoled or ioemu; xenconsoled has
+ several limitations: it can only be used for the first PV or virtual UART
+ console and it can only connect to a pty.
+ 
+-Emulated serials are provided by qemu-dm only to hvm guests; the number
+-of emulated serials depends on how many "-serial" command line options
+-are given to qemu. The output of a serial is specified as argument to
+-the -serial command line option to qemu. Qemu writes the tty name to
+-xenstore in the following path:
++Emulated serials are provided to HVM guests by qemu-dm or in-hypervisor UART
++emulator (Xen needs to be re-compiled).
++
++In qemu-dm case, the number of emulated serials depends on how many "-serial"
++command line options are given to qemu. The output of a serial is specified as
++argument to the -serial command line option to qemu. Qemu writes the tty name
++to xenstore in the following path:
+ 
+ /local/domain/$DOMID/serial/$SERIAL_NUM/tty
+ 
+ xenconsole is the tool to connect to a PV or virtual UART console or an
+ emulated serial that has a pty as output. Xenconsole takes a domid as
+-parameter plus an optional console type (pv for PV consoles, vuart for
+-virtual UART or serial for emulated serials) and console number.
++parameter plus an optional console type ('pv' for PV consoles, 'vuart' for
++virtual UART or 'serial' for emulated serials) and console number.
+ Depending on the type and console number, xenconsole will look for the tty
+ node in different xenstore paths, as described above.  If the user doesn't
+-specify the console type xenconsole will try to guess: if the guest is a pv
+-guest it defaults to PV console, if the guest is an hvm guest it defaults to
++specify the console type xenconsole will try to guess: if the guest is a PV
++guest it defaults to PV console, if the guest is an HVM guest it defaults to
+ emulated serial.
+ 
+-By default xl creates a pv console for hvm guests, plus an emulated
++By default xl creates a PV console for HVM guests, plus an emulated
+ serial if the user specified 'serial = "pty"' in the VM config file.
+-Considering that xenconsole defaults to emulated serials for hvm guests,
++Considering that xenconsole defaults to emulated serials for HVM guests,
+ executing xl create -c "domain" causes xenconsole to attach to the
+ emulated serial tty. This is most probably what the user wanted because
+-currently no bootloaders support xen pv consoles so the only way to
++currently no bootloaders support xen PV consoles so the only way to
+ interact with a bootloader like grub over a console is to use the
+ emulated serial.
+-However the pv console is still easy to use with Linux PV on HVM guests:
++However the PV console is still easy to use with Linux PV on HVM guests:
+ the user just need to pass "console=hvc0" to the kernel command line and
+ then execute "xl console -t pv <domain>" to connect to it.
+ 
+ When using stubdoms the serial cards are still emulated by qemu (this
+ time running in the stubdom), the number of serial cards and where the
+ output goes is still specified using qemu command line options.
+-The difference is that for each emulated serial card there must be a pv
++The difference is that for each emulated serial card there must be a PV
+ console connection between the stubdom and dom0 to export the serial
+-output from the stubdom to dom0. The pv console backend for stubdom's pv
+-consoles is always ioemu because multiple pv consoles support is a
+-requirement in this case, considering that minios has its own pv console
+-too. In order to simplify the setup when using stubdoms the hvm guest
+-can only have one pv console with xenstored as backend (the stubdom
+-could provide pv console backends to the hvm guest but then it would
+-need another pv console connection for each console backend to export
++output from the stubdom to dom0. The PV console backend for stubdom's PV
++consoles is always ioemu because multiple PV consoles support is a
++requirement in this case, considering that minios has its own PV console
++too. In order to simplify the setup when using stubdoms the HVM guest
++can only have one PV console with xenstored as backend (the stubdom
++could provide PV console backends to the HVM guest but then it would
++need another PV console connection for each console backend to export
+ the pty to dom0).
+ 
+ The xenconsole program supports a very simple protocol to notify parent about
 
 -- 
 2.34.1
