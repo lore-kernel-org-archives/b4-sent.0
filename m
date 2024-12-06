@@ -1,131 +1,57 @@
-From: Denis Mukhin <dmukhin@ford.com>
-Date: Thu, 05 Dec 2024 20:42:05 -0800
-Subject: [PATCH v2 35/35] docs/misc: update console documentation
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH 0/3] Add support for responding to Get_Revision request
+Date: Thu, 05 Dec 2024 23:46:07 -0800
+Message-Id: <20241205-get_rev_upstream-v1-0-90158ee7d75f@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241205-vuart-ns8250-v1-35-e9aa923127eb@ford.com>
-References: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
-In-Reply-To: <20241205-vuart-ns8250-v1-0-e9aa923127eb@ford.com>
-To: xen-devel@lists.xenproject.org
-Cc: Andrew Cooper <andrew.cooper3@citrix.com>, 
- Jan Beulich <jbeulich@suse.com>, Julien Grall <julien@xen.org>, 
- Stefano Stabellini <sstabellini@kernel.org>, 
- Denis Mukhin <dmukhin@ford.com>
+X-B4-Tracking: v=1; b=H4sIAL+rUmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDIwNT3fTUknigwvjSguKSotTEXF2zJDMDIDAzNkhMUwJqKyhKTcusABs
+ ZHVtbCwAxUc9OYgAAAA==
+X-Change-ID: 20241205-get_rev_upstream-6b60000630af
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>
+Cc: Kyle Tso <kyletso@google.com>, RD Babiera <rdbabiera@google.com>, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-usb@vger.kernel.org, Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733460095; l=5686;
- i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=APQcmog0xQYM3EBoFVE5ETu0ersksioDS4x/FBTt9bk=;
- b=fcukqs0MtpzP6GXP1AFPeyDh0mwVyYwNrAX1JE4Iad+84acEb8EnzftsWAW+Z/wvNGcrsuDbD
- /f1msBsXsXIBcTxHGqeGTmkklbg1oCypJQ1P8VwuGv9wF8UtrpSF+ZE
-X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
- pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
-X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733471217; l=1144;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=rIuOPSZ3vHFGNWi/6Cw75i5UpoJ+Y1ASP/eaOjNNLBM=;
+ b=YKIez4YBYfYYsJa+1AFtSUFmhxjiYGDNbHUnDHgje5A92QwKJb1MDUDHicgLm/fG50ZXNaFKO
+ hWZgAPclbrjA6EW8y4PTa5t4ewhu1cFc7i5+UUVEribllXSFCzKP63M
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Minor update related to virtual UART support.
+Currently TCPM doesn't support responding to Get_Revision request
+message. However, as per Message Applicability in USB PD Spec 3.1 v1.8
+("6.13.2 Applicability of Data Messages") "Revision" is a Normative
+(compulsory) message and needs to be supported. As part of this patchset
+add support for responding to Get_Revision requests as part of
+Revision_Information AMS.
 
-Also:
- s/pv/PV/g
- s/hvm/HVM/g
-
-Signed-off-by: Denis Mukhin <dmukhin@ford.com>
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
- docs/misc/console.txt | 50 ++++++++++++++++++++++++++------------------------
- 1 file changed, 26 insertions(+), 24 deletions(-)
+Amit Sunil Dhamne (3):
+      dt-bindings: connector: Add pd-revision property
+      usb: typec: tcpm: Add support for parsing pd-revision DT property
+      usb: typec: tcpm: Add new AMS for Get_Revision response
 
-diff --git a/docs/misc/console.txt b/docs/misc/console.txt
-index 4e180f88ba1312d8fcc47d27622ec347d387ce12..7840729b0c95d9c4ea5295f17ce77c04177f48a5 100644
---- a/docs/misc/console.txt
-+++ b/docs/misc/console.txt
-@@ -4,11 +4,11 @@ Xen PV Console notes
-                                         stefano.stabellini@eu.citrix.com
- 
- 
--Xen traditionally provided a single pv console to pv guests, storing the
-+Xen traditionally provided a single PV console to PV guests, storing the
- relevant information in xenstore under /local/domain/$DOMID/console.
- 
--Now many years after the introduction of the pv console we have
--multiple pv consoles support for pv and hvm guests; multiple pv
-+Now many years after the introduction of the PV console we have
-+multiple PV consoles support for PV and HVM guests; multiple PV
- console backends (qemu and xenconsoled, see limitations below) and
- emulated serial cards too.
- 
-@@ -103,48 +103,50 @@ The supported values are only xenconsoled or ioemu; xenconsoled has
- several limitations: it can only be used for the first PV or virtual UART
- console and it can only connect to a pty.
- 
--Emulated serials are provided by qemu-dm only to hvm guests; the number
--of emulated serials depends on how many "-serial" command line options
--are given to qemu. The output of a serial is specified as argument to
--the -serial command line option to qemu. Qemu writes the tty name to
--xenstore in the following path:
-+Emulated serials are provided to HVM guests by qemu-dm or in-hypervisor UART
-+emulator (Xen needs to be re-compiled).
-+
-+In qemu-dm case, the number of emulated serials depends on how many "-serial"
-+command line options are given to qemu. The output of a serial is specified as
-+argument to the -serial command line option to qemu. Qemu writes the tty name
-+to xenstore in the following path:
- 
- /local/domain/$DOMID/serial/$SERIAL_NUM/tty
- 
- xenconsole is the tool to connect to a PV or virtual UART console or an
- emulated serial that has a pty as output. Xenconsole takes a domid as
--parameter plus an optional console type (pv for PV consoles, vuart for
--virtual UART or serial for emulated serials) and console number.
-+parameter plus an optional console type ('pv' for PV consoles, 'vuart' for
-+virtual UART or 'serial' for emulated serials) and console number.
- Depending on the type and console number, xenconsole will look for the tty
- node in different xenstore paths, as described above.  If the user doesn't
--specify the console type xenconsole will try to guess: if the guest is a pv
--guest it defaults to PV console, if the guest is an hvm guest it defaults to
-+specify the console type xenconsole will try to guess: if the guest is a PV
-+guest it defaults to PV console, if the guest is an HVM guest it defaults to
- emulated serial.
- 
--By default xl creates a pv console for hvm guests, plus an emulated
-+By default xl creates a PV console for HVM guests, plus an emulated
- serial if the user specified 'serial = "pty"' in the VM config file.
--Considering that xenconsole defaults to emulated serials for hvm guests,
-+Considering that xenconsole defaults to emulated serials for HVM guests,
- executing xl create -c "domain" causes xenconsole to attach to the
- emulated serial tty. This is most probably what the user wanted because
--currently no bootloaders support xen pv consoles so the only way to
-+currently no bootloaders support xen PV consoles so the only way to
- interact with a bootloader like grub over a console is to use the
- emulated serial.
--However the pv console is still easy to use with Linux PV on HVM guests:
-+However the PV console is still easy to use with Linux PV on HVM guests:
- the user just need to pass "console=hvc0" to the kernel command line and
- then execute "xl console -t pv <domain>" to connect to it.
- 
- When using stubdoms the serial cards are still emulated by qemu (this
- time running in the stubdom), the number of serial cards and where the
- output goes is still specified using qemu command line options.
--The difference is that for each emulated serial card there must be a pv
-+The difference is that for each emulated serial card there must be a PV
- console connection between the stubdom and dom0 to export the serial
--output from the stubdom to dom0. The pv console backend for stubdom's pv
--consoles is always ioemu because multiple pv consoles support is a
--requirement in this case, considering that minios has its own pv console
--too. In order to simplify the setup when using stubdoms the hvm guest
--can only have one pv console with xenstored as backend (the stubdom
--could provide pv console backends to the hvm guest but then it would
--need another pv console connection for each console backend to export
-+output from the stubdom to dom0. The PV console backend for stubdom's PV
-+consoles is always ioemu because multiple PV consoles support is a
-+requirement in this case, considering that minios has its own PV console
-+too. In order to simplify the setup when using stubdoms the HVM guest
-+can only have one PV console with xenstored as backend (the stubdom
-+could provide PV console backends to the HVM guest but then it would
-+need another PV console connection for each console backend to export
- the pty to dom0).
- 
- The xenconsole program supports a very simple protocol to notify parent about
+ .../bindings/connector/usb-connector.yaml          |  6 ++
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |  1 +
+ drivers/usb/typec/tcpm/tcpm.c                      | 87 +++++++++++++++++++++-
+ include/linux/usb/pd.h                             | 22 +++++-
+ 4 files changed, 111 insertions(+), 5 deletions(-)
+---
+base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
+change-id: 20241205-get_rev_upstream-6b60000630af
 
+Best regards,
 -- 
-2.34.1
+Amit Sunil Dhamne <amitsd@google.com>
 
