@@ -1,11 +1,10 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sat, 07 Dec 2024 21:47:58 +0100
-Subject: [PATCH v3 09/12] media: i2c: imx214: Add analogue/digital gain
- control
+Date: Sat, 07 Dec 2024 21:47:59 +0100
+Subject: [PATCH v3 10/12] media: i2c: imx214: Verify chip ID
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20241207-imx214-v3-9-ab60af7ee915@apitzsch.eu>
+Message-Id: <20241207-imx214-v3-10-ab60af7ee915@apitzsch.eu>
 References: <20241207-imx214-v3-0-ab60af7ee915@apitzsch.eu>
 In-Reply-To: <20241207-imx214-v3-0-ab60af7ee915@apitzsch.eu>
 To: Ricardo Ribalda <ribalda@kernel.org>, 
@@ -18,138 +17,78 @@ Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org,
  =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
  Ricardo Ribalda <ribalda@chromium.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733604504; l=4360;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733604504; l=1922;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=cw+yJDd3SjuLV2GaKcypZv6W/vwBf+RRXM5LyGnTosw=;
- b=oXE5IeRdFzkQEqr9PWEG881V1OChx7Nea97MmCN8h3KrVK1cZkH++st3taOg/AWhTdXpXQq1k
- ZDXTBFgxvLeCAF3E+ichgscIuXvNJieohBvBp1Bb/hl6CHY7d2nXmzl
+ bh=TLL1L63CYz7vxWgfg6u2A7RVfVB86BDjDm4kG2L4gow=;
+ b=hiIysf/xZoKo2oL7O428EUzFOxPOqrxDF9dOfDUbox1dr75KqpzKJXmds2TK/Eteviypfplcu
+ rL6KlQ2m2tAD2P7VrH7lGSOw/mYr1nv+R72FkvF2pMXSf8yOA6nKjzJ
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The imx214 sensor supports analogue gain up to 8x and digital gain up to
-16x. Implement the corresponding controls in the driver. Default gain
-values are not modified by this patch.
+Check the chip ID and stop probing if it is no imx214 sensor.
 
 Acked-by: Ricardo Ribalda <ribalda@chromium.org>
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/media/i2c/imx214.c | 53 +++++++++++++++++++++++++++++++++-------------
- 1 file changed, 38 insertions(+), 15 deletions(-)
+ drivers/media/i2c/imx214.c | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
 
 diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
-index f7715b13edd09169d81fbbd04dc231be37cc59f0..a35e4e60e55c2b9d9e3090c98e695f78d099cf44 100644
+index a35e4e60e55c2b9d9e3090c98e695f78d099cf44..3cd64bb91795d8490acad5926940c111fb95fae5 100644
 --- a/drivers/media/i2c/imx214.c
 +++ b/drivers/media/i2c/imx214.c
-@@ -52,12 +52,20 @@
- /* Analog gain control */
- #define IMX214_REG_ANALOG_GAIN		CCI_REG16(0x0204)
- #define IMX214_REG_SHORT_ANALOG_GAIN	CCI_REG16(0x0216)
-+#define IMX214_ANA_GAIN_MIN		0
-+#define IMX214_ANA_GAIN_MAX		448
-+#define IMX214_ANA_GAIN_STEP		1
-+#define IMX214_ANA_GAIN_DEFAULT		0x0
+@@ -20,6 +20,10 @@
+ #include <media/v4l2-fwnode.h>
+ #include <media/v4l2-subdev.h>
  
- /* Digital gain control */
- #define IMX214_REG_DIG_GAIN_GREENR	CCI_REG16(0x020e)
- #define IMX214_REG_DIG_GAIN_RED		CCI_REG16(0x0210)
- #define IMX214_REG_DIG_GAIN_BLUE	CCI_REG16(0x0212)
- #define IMX214_REG_DIG_GAIN_GREENB	CCI_REG16(0x0214)
-+#define IMX214_DGTL_GAIN_MIN		0x0100
-+#define IMX214_DGTL_GAIN_MAX		0x0fff
-+#define IMX214_DGTL_GAIN_DEFAULT	0x0100
-+#define IMX214_DGTL_GAIN_STEP		1
- 
- #define IMX214_REG_ORIENTATION		CCI_REG8(0x0101)
- 
-@@ -280,13 +288,6 @@ static const struct cci_reg_sequence mode_4096x2304[] = {
- 
- 	{ IMX214_REG_SHORT_EXPOSURE, 500 },
- 
--	{ IMX214_REG_ANALOG_GAIN, 0 },
--	{ IMX214_REG_DIG_GAIN_GREENR, 256 },
--	{ IMX214_REG_DIG_GAIN_RED, 256 },
--	{ IMX214_REG_DIG_GAIN_BLUE, 256 },
--	{ IMX214_REG_DIG_GAIN_GREENB, 256 },
--	{ IMX214_REG_SHORT_ANALOG_GAIN, 0 },
--
- 	{ CCI_REG8(0x4170), 0x00 },
- 	{ CCI_REG8(0x4171), 0x10 },
- 	{ CCI_REG8(0x4176), 0x00 },
-@@ -350,13 +351,6 @@ static const struct cci_reg_sequence mode_1920x1080[] = {
- 
- 	{ IMX214_REG_SHORT_EXPOSURE, 500 },
- 
--	{ IMX214_REG_ANALOG_GAIN, 0 },
--	{ IMX214_REG_DIG_GAIN_GREENR, 256 },
--	{ IMX214_REG_DIG_GAIN_RED, 256 },
--	{ IMX214_REG_DIG_GAIN_BLUE, 256 },
--	{ IMX214_REG_DIG_GAIN_GREENB, 256 },
--	{ IMX214_REG_SHORT_ANALOG_GAIN, 0 },
--
- 	{ CCI_REG8(0x4170), 0x00 },
- 	{ CCI_REG8(0x4171), 0x10 },
- 	{ CCI_REG8(0x4176), 0x00 },
-@@ -747,6 +741,18 @@ static int imx214_entity_init_state(struct v4l2_subdev *subdev,
- 	return 0;
++/* Chip ID */
++#define IMX214_REG_CHIP_ID		CCI_REG16(0x0016)
++#define IMX214_CHIP_ID			0x0214
++
+ #define IMX214_REG_MODE_SELECT		CCI_REG8(0x0100)
+ #define IMX214_MODE_STANDBY		0x00
+ #define IMX214_MODE_STREAMING		0x01
+@@ -1092,6 +1096,27 @@ static int imx214_get_regulators(struct device *dev, struct imx214 *imx214)
+ 				       imx214->supplies);
  }
  
-+static int imx214_update_digital_gain(struct imx214 *imx214, u32 val)
++/* Verify chip ID */
++static int imx214_identify_module(struct imx214 *imx214)
 +{
-+	int ret = 0;
++	struct i2c_client *client = v4l2_get_subdevdata(&imx214->sd);
++	int ret;
++	u64 val;
 +
-+	cci_write(imx214->regmap, IMX214_REG_DIG_GAIN_GREENR, val, &ret);
-+	cci_write(imx214->regmap, IMX214_REG_DIG_GAIN_RED, val, &ret);
-+	cci_write(imx214->regmap, IMX214_REG_DIG_GAIN_BLUE, val, &ret);
-+	cci_write(imx214->regmap, IMX214_REG_DIG_GAIN_GREENB, val, &ret);
++	ret = cci_read(imx214->regmap, IMX214_REG_CHIP_ID, &val, NULL);
++	if (ret)
++		return dev_err_probe(&client->dev, ret,
++				     "failed to read chip id %x\n",
++				     IMX214_CHIP_ID);
 +
-+	return ret;
++	if (val != IMX214_CHIP_ID)
++		return dev_err_probe(&client->dev, -EIO,
++				     "chip id mismatch: %x!=%llx\n",
++				     IMX214_CHIP_ID, val);
++
++	return 0;
 +}
 +
- static int imx214_set_ctrl(struct v4l2_ctrl *ctrl)
+ static int imx214_parse_fwnode(struct device *dev)
  {
- 	struct imx214 *imx214 = container_of(ctrl->handler,
-@@ -778,6 +784,15 @@ static int imx214_set_ctrl(struct v4l2_ctrl *ctrl)
- 		return 0;
+ 	struct fwnode_handle *endpoint;
+@@ -1184,6 +1209,10 @@ static int imx214_probe(struct i2c_client *client)
+ 	 */
+ 	imx214_power_on(imx214->dev);
  
- 	switch (ctrl->id) {
-+	case V4L2_CID_ANALOGUE_GAIN:
-+		cci_write(imx214->regmap, IMX214_REG_ANALOG_GAIN,
-+			  ctrl->val, &ret);
-+		cci_write(imx214->regmap, IMX214_REG_SHORT_ANALOG_GAIN,
-+			  ctrl->val, &ret);
-+		break;
-+	case V4L2_CID_DIGITAL_GAIN:
-+		ret = imx214_update_digital_gain(imx214, ctrl->val);
-+		break;
- 	case V4L2_CID_EXPOSURE:
- 		cci_write(imx214->regmap, IMX214_REG_EXPOSURE, ctrl->val, &ret);
- 		break;
-@@ -824,7 +839,7 @@ static int imx214_ctrls_init(struct imx214 *imx214)
- 		return ret;
- 
- 	ctrl_hdlr = &imx214->ctrls;
--	ret = v4l2_ctrl_handler_init(&imx214->ctrls, 10);
-+	ret = v4l2_ctrl_handler_init(&imx214->ctrls, 12);
- 	if (ret)
- 		return ret;
- 
-@@ -872,6 +887,14 @@ static int imx214_ctrls_init(struct imx214 *imx214)
- 					     IMX214_EXPOSURE_STEP,
- 					     exposure_def);
- 
-+	v4l2_ctrl_new_std(ctrl_hdlr, &imx214_ctrl_ops, V4L2_CID_ANALOGUE_GAIN,
-+			  IMX214_ANA_GAIN_MIN, IMX214_ANA_GAIN_MAX,
-+			  IMX214_ANA_GAIN_STEP, IMX214_ANA_GAIN_DEFAULT);
++	ret = imx214_identify_module(imx214);
++	if (ret)
++		goto error_power_off;
 +
-+	v4l2_ctrl_new_std(ctrl_hdlr, &imx214_ctrl_ops, V4L2_CID_DIGITAL_GAIN,
-+			  IMX214_DGTL_GAIN_MIN, IMX214_DGTL_GAIN_MAX,
-+			  IMX214_DGTL_GAIN_STEP, IMX214_DGTL_GAIN_DEFAULT);
-+
- 	imx214->hflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx214_ctrl_ops,
- 					  V4L2_CID_HFLIP, 0, 1, 1, 0);
- 	if (imx214->hflip)
+ 	pm_runtime_set_active(imx214->dev);
+ 	pm_runtime_enable(imx214->dev);
+ 	pm_runtime_idle(imx214->dev);
 
 -- 
 2.47.1
