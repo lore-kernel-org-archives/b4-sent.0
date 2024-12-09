@@ -1,185 +1,256 @@
-From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Date: Mon, 09 Dec 2024 21:25:56 +0900
-Subject: [PATCH] nfsd: fix incorrect high limit in clamp() on
- over-allocation
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Date: Mon, 09 Dec 2024 18:50:42 +0100
+Subject: [PATCH net-next] net: phy: dp83822: Replace DP83822_DEVADDR with
+ MDIO_MMD_VEND2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20241209-nfs4state_fix-v1-1-7a66819c60f0@wanadoo.fr>
-X-B4-Tracking: v=1; b=H4sIANPhVmcC/x2MQQqAIBAAvxJ7TnBFgvpKRJiutRcLVyKQ/p50n
- IGZCkKZSWDqKmS6WfhMDbDvwB8u7aQ4NAajjUWjR5WiWCmu0Br5UZsfInqMHgNCa65MTf+/eXn
- fDxK1LlhfAAAA
-X-Change-ID: 20241209-nfs4state_fix-bc6f1c1fc1d1
-To: NeilBrown <neilb@suse.de>, Andrew Morton <akpm@linux-foundation.org>, 
- "J. Bruce Fields" <bfields@fieldses.org>
-Cc: David Laight <David.Laight@ACULAB.COM>, 
- Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>, 
- Neil Brown <neilb@suse.de>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Vincent Mailhol <mailhol.vincent@wanadoo.fr>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20241209-dp83822-mdio-mmd-vend2-v1-1-4473c7284b94@liebherr.com>
+X-B4-Tracking: v=1; b=H4sIAPEtV2cC/x3MQQqEMAxA0atI1gZqKrR6FXExM4ljFo3Sigji3
+ afM8i3+v6FIVikwNjdkObXoZhVd28BnfdlXULkayFHfkRuQ9+gjESbWDVNiPMWYMPoQfHRL798
+ BarxnWfT6jycwOdDkOmB+nh8DxbvrcgAAAA==
+X-Change-ID: 20241209-dp83822-mdio-mmd-vend2-8377380f43b7
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>, 
+ Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6431;
- i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
- bh=biKwuRBMNlIV5wmE0TMmbH2x66QYghxgZBUd/wbFtdw=;
- b=owGbwMvMwCV2McXO4Xp97WbG02pJDOlhD5/1fCxcUZ56/Nzfqa0LZwUt1lc1MhbV2RJZfzve5
- tCtbXr9HaUsDGJcDLJiiizLyjm5FToKvcMO/bWEmcPKBDKEgYtTACYimsDI8OJTi5XzhsZNPg0Z
- khs5Ft58IHBFZurhsxty+ZfcmW8vI8HwP9votF7xOWvRBcaC2e6nzts/4SzZxC6o0lyW1ZkfZrW
- RFQA=
-X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
- fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
-X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733766655; l=9020;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=y2zn+L/aWE1Ero8F6H4omU9e4vAI0N/THmMcxqt/cio=;
+ b=aplgF5k7dWDI6IDBJarFpSHt9HI3DAtjsQfg4wF+4kPTUgjWolR3JKiP1bVZVQ54EEJ4VMbbk
+ YJJj+Wru2anCWf5Msqt1aNjm9yhH9B/W7nal6eeK8r95kS0XYBvRNMs
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If over allocation occurs in nfsd4_get_drc_mem(), total_avail is set
-to zero. Consequently,
+Instead of using DP83822_DEVADDR which is locally defined use
+MDIO_MMD_VEND2.
 
-  clamp_t(unsigned long, avail, slotsize, total_avail/scale_factor);
-
-gives:
-
-  clamp_t(unsigned long, avail, slotsize, 0);
-
-resulting in a clamp() call where the high limit is smaller than the
-low limit, which is undefined: the result could be either slotsize or
-zero depending on the order of evaluation.
-
-Luckily, the two instructions just below the clamp() recover the
-undefined behaviour:
-
-  num = min_t(int, num, avail / slotsize);
-  num = max_t(int, num, 1);
-
-If avail = slotsize, the min_t() sets it back to 1. If avail = 0, the
-max_t() sets it back to 1.
-
-So this undefined behaviour has no visible effect.
-
-Anyway, remove the undefined behaviour in clamp() by only calling it
-and only doing the calculation of num if memory is still available.
-Otherwise, if over-allocation occurred, directly set num to 1 as
-intended by the author.
-
-While at it, apply below checkpatch fix:
-
-  WARNING: min() should probably be min_t(unsigned long, NFSD_MAX_MEM_PER_SESSION, total_avail)
-  #100: FILE: fs/nfsd/nfs4state.c:1954:
-  +		avail = min((unsigned long)NFSD_MAX_MEM_PER_SESSION, total_avail);
-
-Fixes: 7f49fd5d7acd ("nfsd: handle drc over-allocation gracefully.")
-Signed-off-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
-Found by applying below patch from David:
+ drivers/net/phy/dp83822.c | 58 +++++++++++++++++++++++------------------------
+ 1 file changed, 28 insertions(+), 30 deletions(-)
 
-  https://lore.kernel.org/all/34d53778977747f19cce2abb287bb3e6@AcuMS.aculab.com/
-
-Doing so yield this report:
-
-  In function ‘nfsd4_get_drc_mem’,
-      inlined from ‘check_forechannel_attrs’ at fs/nfsd/nfs4state.c:3791:16,
-      inlined from ‘nfsd4_create_session’ at fs/nfsd/nfs4state.c:3864:11:
-  ././include/linux/compiler_types.h:542:38: error: call to ‘__compiletime_assert_3707’ declared with attribute error: clamp() low limit (unsigned long)(slotsize) greater than high limit (unsigned long)(total_avail/scale_factor)
-    542 |  _compiletime_assert(condition, msg, __compiletime_assert_, __COUNTER__)
-        |                                      ^
-  ././include/linux/compiler_types.h:523:4: note: in definition of macro ‘__compiletime_assert’
-    523 |    prefix ## suffix();    \
-        |    ^~~~~~
-  ././include/linux/compiler_types.h:542:2: note: in expansion of macro ‘_compiletime_assert’
-    542 |  _compiletime_assert(condition, msg, __compiletime_assert_, __COUNTER__)
-        |  ^~~~~~~~~~~~~~~~~~~
-  ./include/linux/build_bug.h:39:37: note: in expansion of macro ‘compiletime_assert’
-     39 | #define BUILD_BUG_ON_MSG(cond, msg) compiletime_assert(!(cond), msg)
-        |                                     ^~~~~~~~~~~~~~~~~~
-  ./include/linux/minmax.h:114:2: note: in expansion of macro ‘BUILD_BUG_ON_MSG’
-    114 |  BUILD_BUG_ON_MSG(statically_true(ulo > uhi),    \
-        |  ^~~~~~~~~~~~~~~~
-  ./include/linux/minmax.h:121:2: note: in expansion of macro ‘__clamp_once’
-    121 |  __clamp_once(val, lo, hi, __UNIQUE_ID(v_), __UNIQUE_ID(l_), __UNIQUE_ID(h_))
-        |  ^~~~~~~~~~~~
-  ./include/linux/minmax.h:275:36: note: in expansion of macro ‘__careful_clamp’
-    275 | #define clamp_t(type, val, lo, hi) __careful_clamp((type)(val), (type)(lo), (type)(hi))
-        |                                    ^~~~~~~~~~~~~~~
-  fs/nfsd/nfs4state.c:1972:10: note: in expansion of macro ‘clamp_t’
-   1972 |  avail = clamp_t(unsigned long, avail, slotsize,
-        |          ^~~~~~~
-
-Because David's patch is targetting Andrew's mm tree, I would suggest
-that my patch also goes to that tree.
----
- fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++---------------------
- 1 file changed, 25 insertions(+), 21 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 741b9449f727defc794347f1b116c955d715e691..eb91460c434e30f6df70f66d937f8c0f334b8e1b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1944,35 +1944,39 @@ static u32 nfsd4_get_drc_mem(struct nfsd4_channel_attrs *ca, struct nfsd_net *nn
- {
- 	u32 slotsize = slot_bytes(ca);
- 	u32 num = ca->maxreqs;
--	unsigned long avail, total_avail;
--	unsigned int scale_factor;
+diff --git a/drivers/net/phy/dp83822.c b/drivers/net/phy/dp83822.c
+index cf8b6d0bfaa9812eee98c612c0d4259d87da7572..25ee09c48027c86b7d8f4acb5cbe2e157c56a85a 100644
+--- a/drivers/net/phy/dp83822.c
++++ b/drivers/net/phy/dp83822.c
+@@ -22,8 +22,6 @@
+ #define DP83826C_PHY_ID		0x2000a130
+ #define DP83826NC_PHY_ID	0x2000a110
  
- 	spin_lock(&nfsd_drc_lock);
--	if (nfsd_drc_max_mem > nfsd_drc_mem_used)
-+	if (nfsd_drc_max_mem > nfsd_drc_mem_used) {
-+		unsigned long avail, total_avail;
-+		unsigned int scale_factor;
-+
- 		total_avail = nfsd_drc_max_mem - nfsd_drc_mem_used;
--	else
-+		avail = min_t(unsigned long,
-+			      NFSD_MAX_MEM_PER_SESSION, total_avail);
-+		/*
-+		 * Never use more than a fraction of the remaining memory,
-+		 * unless it's the only way to give this client a slot.
-+		 * The chosen fraction is either 1/8 or 1/number of threads,
-+		 * whichever is smaller.  This ensures there are adequate
-+		 * slots to support multiple clients per thread.
-+		 * Give the client one slot even if that would require
-+		 * over-allocation--it is better than failure.
-+		 */
-+		scale_factor = max_t(unsigned int,
-+				     8, nn->nfsd_serv->sv_nrthreads);
-+
-+		avail = clamp_t(unsigned long, avail, slotsize,
-+				total_avail/scale_factor);
-+		num = min_t(int, num, avail / slotsize);
-+		num = max_t(int, num, 1);
-+	} else {
- 		/* We have handed out more space than we chose in
- 		 * set_max_drc() to allow.  That isn't really a
- 		 * problem as long as that doesn't make us think we
- 		 * have lots more due to integer overflow.
- 		 */
--		total_avail = 0;
--	avail = min((unsigned long)NFSD_MAX_MEM_PER_SESSION, total_avail);
--	/*
--	 * Never use more than a fraction of the remaining memory,
--	 * unless it's the only way to give this client a slot.
--	 * The chosen fraction is either 1/8 or 1/number of threads,
--	 * whichever is smaller.  This ensures there are adequate
--	 * slots to support multiple clients per thread.
--	 * Give the client one slot even if that would require
--	 * over-allocation--it is better than failure.
--	 */
--	scale_factor = max_t(unsigned int, 8, nn->nfsd_serv->sv_nrthreads);
+-#define DP83822_DEVADDR		0x1f
 -
--	avail = clamp_t(unsigned long, avail, slotsize,
--			total_avail/scale_factor);
--	num = min_t(int, num, avail / slotsize);
--	num = max_t(int, num, 1);
-+		num = 1;
-+	}
- 	nfsd_drc_mem_used += num * slotsize;
- 	spin_unlock(&nfsd_drc_lock);
+ #define MII_DP83822_CTRL_2	0x0a
+ #define MII_DP83822_PHYSTS	0x10
+ #define MII_DP83822_PHYSCR	0x11
+@@ -159,14 +157,14 @@ static int dp83822_config_wol(struct phy_device *phydev,
+ 		/* MAC addresses start with byte 5, but stored in mac[0].
+ 		 * 822 PHYs store bytes 4|5, 2|3, 0|1
+ 		 */
+-		phy_write_mmd(phydev, DP83822_DEVADDR, MII_DP83822_WOL_DA1,
++		phy_write_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_WOL_DA1,
+ 			      (mac[1] << 8) | mac[0]);
+-		phy_write_mmd(phydev, DP83822_DEVADDR, MII_DP83822_WOL_DA2,
++		phy_write_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_WOL_DA2,
+ 			      (mac[3] << 8) | mac[2]);
+-		phy_write_mmd(phydev, DP83822_DEVADDR, MII_DP83822_WOL_DA3,
++		phy_write_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_WOL_DA3,
+ 			      (mac[5] << 8) | mac[4]);
  
+-		value = phy_read_mmd(phydev, DP83822_DEVADDR,
++		value = phy_read_mmd(phydev, MDIO_MMD_VEND2,
+ 				     MII_DP83822_WOL_CFG);
+ 		if (wol->wolopts & WAKE_MAGIC)
+ 			value |= DP83822_WOL_MAGIC_EN;
+@@ -174,13 +172,13 @@ static int dp83822_config_wol(struct phy_device *phydev,
+ 			value &= ~DP83822_WOL_MAGIC_EN;
+ 
+ 		if (wol->wolopts & WAKE_MAGICSECURE) {
+-			phy_write_mmd(phydev, DP83822_DEVADDR,
++			phy_write_mmd(phydev, MDIO_MMD_VEND2,
+ 				      MII_DP83822_RXSOP1,
+ 				      (wol->sopass[1] << 8) | wol->sopass[0]);
+-			phy_write_mmd(phydev, DP83822_DEVADDR,
++			phy_write_mmd(phydev, MDIO_MMD_VEND2,
+ 				      MII_DP83822_RXSOP2,
+ 				      (wol->sopass[3] << 8) | wol->sopass[2]);
+-			phy_write_mmd(phydev, DP83822_DEVADDR,
++			phy_write_mmd(phydev, MDIO_MMD_VEND2,
+ 				      MII_DP83822_RXSOP3,
+ 				      (wol->sopass[5] << 8) | wol->sopass[4]);
+ 			value |= DP83822_WOL_SECURE_ON;
+@@ -194,10 +192,10 @@ static int dp83822_config_wol(struct phy_device *phydev,
+ 		value |= DP83822_WOL_EN | DP83822_WOL_INDICATION_SEL |
+ 			 DP83822_WOL_CLR_INDICATION;
+ 
+-		return phy_write_mmd(phydev, DP83822_DEVADDR,
++		return phy_write_mmd(phydev, MDIO_MMD_VEND2,
+ 				     MII_DP83822_WOL_CFG, value);
+ 	} else {
+-		return phy_clear_bits_mmd(phydev, DP83822_DEVADDR,
++		return phy_clear_bits_mmd(phydev, MDIO_MMD_VEND2,
+ 					  MII_DP83822_WOL_CFG,
+ 					  DP83822_WOL_EN |
+ 					  DP83822_WOL_MAGIC_EN |
+@@ -226,23 +224,23 @@ static void dp83822_get_wol(struct phy_device *phydev,
+ 	wol->supported = (WAKE_MAGIC | WAKE_MAGICSECURE);
+ 	wol->wolopts = 0;
+ 
+-	value = phy_read_mmd(phydev, DP83822_DEVADDR, MII_DP83822_WOL_CFG);
++	value = phy_read_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_WOL_CFG);
+ 
+ 	if (value & DP83822_WOL_MAGIC_EN)
+ 		wol->wolopts |= WAKE_MAGIC;
+ 
+ 	if (value & DP83822_WOL_SECURE_ON) {
+-		sopass_val = phy_read_mmd(phydev, DP83822_DEVADDR,
++		sopass_val = phy_read_mmd(phydev, MDIO_MMD_VEND2,
+ 					  MII_DP83822_RXSOP1);
+ 		wol->sopass[0] = (sopass_val & 0xff);
+ 		wol->sopass[1] = (sopass_val >> 8);
+ 
+-		sopass_val = phy_read_mmd(phydev, DP83822_DEVADDR,
++		sopass_val = phy_read_mmd(phydev, MDIO_MMD_VEND2,
+ 					  MII_DP83822_RXSOP2);
+ 		wol->sopass[2] = (sopass_val & 0xff);
+ 		wol->sopass[3] = (sopass_val >> 8);
+ 
+-		sopass_val = phy_read_mmd(phydev, DP83822_DEVADDR,
++		sopass_val = phy_read_mmd(phydev, MDIO_MMD_VEND2,
+ 					  MII_DP83822_RXSOP3);
+ 		wol->sopass[4] = (sopass_val & 0xff);
+ 		wol->sopass[5] = (sopass_val >> 8);
+@@ -430,18 +428,18 @@ static int dp83822_config_init(struct phy_device *phydev)
+ 		if (tx_int_delay <= 0)
+ 			rgmii_delay |= DP83822_TX_CLK_SHIFT;
+ 
+-		err = phy_modify_mmd(phydev, DP83822_DEVADDR, MII_DP83822_RCSR,
++		err = phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_RCSR,
+ 				     DP83822_RX_CLK_SHIFT | DP83822_TX_CLK_SHIFT, rgmii_delay);
+ 		if (err)
+ 			return err;
+ 
+-		err = phy_set_bits_mmd(phydev, DP83822_DEVADDR,
++		err = phy_set_bits_mmd(phydev, MDIO_MMD_VEND2,
+ 				       MII_DP83822_RCSR, DP83822_RGMII_MODE_EN);
+ 
+ 		if (err)
+ 			return err;
+ 	} else {
+-		err = phy_clear_bits_mmd(phydev, DP83822_DEVADDR,
++		err = phy_clear_bits_mmd(phydev, MDIO_MMD_VEND2,
+ 					 MII_DP83822_RCSR, DP83822_RGMII_MODE_EN);
+ 
+ 		if (err)
+@@ -496,7 +494,7 @@ static int dp83822_config_init(struct phy_device *phydev)
+ 			return err;
+ 
+ 		if (dp83822->fx_signal_det_low) {
+-			err = phy_set_bits_mmd(phydev, DP83822_DEVADDR,
++			err = phy_set_bits_mmd(phydev, MDIO_MMD_VEND2,
+ 					       MII_DP83822_GENCFG,
+ 					       DP83822_SIG_DET_LOW);
+ 			if (err)
+@@ -514,10 +512,10 @@ static int dp8382x_config_rmii_mode(struct phy_device *phydev)
+ 
+ 	if (!device_property_read_string(dev, "ti,rmii-mode", &of_val)) {
+ 		if (strcmp(of_val, "master") == 0) {
+-			ret = phy_clear_bits_mmd(phydev, DP83822_DEVADDR, MII_DP83822_RCSR,
++			ret = phy_clear_bits_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_RCSR,
+ 						 DP83822_RMII_MODE_SEL);
+ 		} else if (strcmp(of_val, "slave") == 0) {
+-			ret = phy_set_bits_mmd(phydev, DP83822_DEVADDR, MII_DP83822_RCSR,
++			ret = phy_set_bits_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_RCSR,
+ 					       DP83822_RMII_MODE_SEL);
+ 		} else {
+ 			phydev_err(phydev, "Invalid value for ti,rmii-mode property (%s)\n",
+@@ -539,7 +537,7 @@ static int dp83826_config_init(struct phy_device *phydev)
+ 	int ret;
+ 
+ 	if (phydev->interface == PHY_INTERFACE_MODE_RMII) {
+-		ret = phy_set_bits_mmd(phydev, DP83822_DEVADDR, MII_DP83822_RCSR,
++		ret = phy_set_bits_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_RCSR,
+ 				       DP83822_RMII_MODE_EN);
+ 		if (ret)
+ 			return ret;
+@@ -548,7 +546,7 @@ static int dp83826_config_init(struct phy_device *phydev)
+ 		if (ret)
+ 			return ret;
+ 	} else {
+-		ret = phy_clear_bits_mmd(phydev, DP83822_DEVADDR, MII_DP83822_RCSR,
++		ret = phy_clear_bits_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_RCSR,
+ 					 DP83822_RMII_MODE_EN);
+ 		if (ret)
+ 			return ret;
+@@ -560,7 +558,7 @@ static int dp83826_config_init(struct phy_device *phydev)
+ 				 FIELD_GET(DP83826_CFG_DAC_MINUS_MDIX_5_TO_4,
+ 					   dp83822->cfg_dac_minus));
+ 		mask = DP83826_VOD_CFG1_MINUS_MDIX_MASK | DP83826_VOD_CFG1_MINUS_MDI_MASK;
+-		ret = phy_modify_mmd(phydev, DP83822_DEVADDR, MII_DP83826_VOD_CFG1, mask, val);
++		ret = phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83826_VOD_CFG1, mask, val);
+ 		if (ret)
+ 			return ret;
+ 
+@@ -568,7 +566,7 @@ static int dp83826_config_init(struct phy_device *phydev)
+ 				 FIELD_GET(DP83826_CFG_DAC_MINUS_MDIX_3_TO_0,
+ 					   dp83822->cfg_dac_minus));
+ 		mask = DP83826_VOD_CFG2_MINUS_MDIX_MASK;
+-		ret = phy_modify_mmd(phydev, DP83822_DEVADDR, MII_DP83826_VOD_CFG2, mask, val);
++		ret = phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83826_VOD_CFG2, mask, val);
+ 		if (ret)
+ 			return ret;
+ 	}
+@@ -577,7 +575,7 @@ static int dp83826_config_init(struct phy_device *phydev)
+ 		val = FIELD_PREP(DP83826_VOD_CFG2_PLUS_MDIX_MASK, dp83822->cfg_dac_plus) |
+ 		      FIELD_PREP(DP83826_VOD_CFG2_PLUS_MDI_MASK, dp83822->cfg_dac_plus);
+ 		mask = DP83826_VOD_CFG2_PLUS_MDIX_MASK | DP83826_VOD_CFG2_PLUS_MDI_MASK;
+-		ret = phy_modify_mmd(phydev, DP83822_DEVADDR, MII_DP83826_VOD_CFG2, mask, val);
++		ret = phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83826_VOD_CFG2, mask, val);
+ 		if (ret)
+ 			return ret;
+ 	}
+@@ -673,7 +671,7 @@ static int dp83822_read_straps(struct phy_device *phydev)
+ 	int fx_enabled, fx_sd_enable;
+ 	int val;
+ 
+-	val = phy_read_mmd(phydev, DP83822_DEVADDR, MII_DP83822_SOR1);
++	val = phy_read_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_SOR1);
+ 	if (val < 0)
+ 		return val;
+ 
+@@ -748,7 +746,7 @@ static int dp83822_suspend(struct phy_device *phydev)
+ {
+ 	int value;
+ 
+-	value = phy_read_mmd(phydev, DP83822_DEVADDR, MII_DP83822_WOL_CFG);
++	value = phy_read_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_WOL_CFG);
+ 
+ 	if (!(value & DP83822_WOL_EN))
+ 		genphy_suspend(phydev);
+@@ -762,9 +760,9 @@ static int dp83822_resume(struct phy_device *phydev)
+ 
+ 	genphy_resume(phydev);
+ 
+-	value = phy_read_mmd(phydev, DP83822_DEVADDR, MII_DP83822_WOL_CFG);
++	value = phy_read_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_WOL_CFG);
+ 
+-	phy_write_mmd(phydev, DP83822_DEVADDR, MII_DP83822_WOL_CFG, value |
++	phy_write_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_WOL_CFG, value |
+ 		      DP83822_WOL_CLR_INDICATION);
+ 
+ 	return 0;
 
 ---
-base-commit: fac04efc5c793dccbd07e2d59af9f90b7fc0dca4
-change-id: 20241209-nfs4state_fix-bc6f1c1fc1d1
+base-commit: 6145fefc1e42c1895c0c1c2c8593de2c085d8c56
+change-id: 20241209-dp83822-mdio-mmd-vend2-8377380f43b7
 
 Best regards,
 -- 
-Vincent Mailhol <mailhol.vincent@wanadoo.fr>
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
