@@ -1,14 +1,12 @@
 From: Amit Sunil Dhamne <amitsd@google.com>
-Subject: [PATCH v2 0/3] Add support for responding to Get_Revision request
-Date: Tue, 10 Dec 2024 19:07:06 -0800
-Message-Id: <20241210-get_rev_upstream-v2-0-d0094e52d48f@google.com>
+Date: Tue, 10 Dec 2024 19:07:07 -0800
+Subject: [PATCH v2 1/3] dt-bindings: connector: Add pd-revision property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANoBWWcC/32NTQ7CIBCFr9LMWsyAlmpX3sM0DbYDJbGlASSah
- ruLPYBv9728nw0CeUsB2moDT8kG65YC4lDBMKnFELNjYRAozlxgzQzFvgT71xqiJzUz+ZBYJE+
- oNJTa6knb9z557wpPNkTnP/tD4j/3z1jiDNkVeX0hasam1jfjnHnScXAzdDnnL/C4TpKxAAAA
-X-Change-ID: 20241205-get_rev_upstream-6b60000630af
+Message-Id: <20241210-get_rev_upstream-v2-1-d0094e52d48f@google.com>
+References: <20241210-get_rev_upstream-v2-0-d0094e52d48f@google.com>
+In-Reply-To: <20241210-get_rev_upstream-v2-0-d0094e52d48f@google.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -18,45 +16,56 @@ Cc: Kyle Tso <kyletso@google.com>, RD Babiera <rdbabiera@google.com>,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-usb@vger.kernel.org, Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733886444; l=1318;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733886444; l=1976;
  i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=CEwUdYH0nCr9FSjB3Vc7SkwELpFgK6Eq00uXcIMkpiM=;
- b=NZyEywntSJaRNYEZgJ8E1nGOMQ+NnCFvACWapkVOKgSHnikaWWYbndwYepCoL4hFEpOZ6EbpJ
- X+zZYEYLd6mCY2VY+ChM5709KSmPLyIzVgxByByztlHn5EoHhA/6+a+
+ bh=B8pzC6JyPb6d6J2y5c3NtirTYdP4wbp3vA4FOkKh+8Y=;
+ b=x6OZql4uZejwU/PoFmWILQjDk19x2cbxV0bPjxctWOr7XEGzX1u12+ILPURCy5+sFV7jj7vCv
+ vnhoNyv95QGBZ0GGeB4+xHtcFQ0X6Qer+HaGrjl9y1qJDjVRGE2qCbM
 X-Developer-Key: i=amitsd@google.com; a=ed25519;
  pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
 X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently TCPM doesn't support responding to Get_Revision request
-message. However, as per Message Applicability in USB PD Spec 3.1 v1.8
-("6.13.2 Applicability of Data Messages") "Revision" is a Normative
-(compulsory) message and needs to be supported. As part of this patchset
-add support for responding to Get_Revision requests as part of
-Revision_Information AMS.
+Add pd-revision property definition, to specify the maximum Power
+Delivery Revision and Version supported by the connector.
 
 Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
-Changes in v2:
-- Added maxItems constraint to "pd-revision" property
-- Link to v1: https://lore.kernel.org/r/20241205-get_rev_upstream-v1-0-90158ee7d75f@google.com
+ Documentation/devicetree/bindings/connector/usb-connector.yaml | 7 +++++++
+ Documentation/devicetree/bindings/usb/maxim,max33359.yaml      | 1 +
+ 2 files changed, 8 insertions(+)
 
----
-Amit Sunil Dhamne (3):
-      dt-bindings: connector: Add pd-revision property
-      usb: typec: tcpm: Add support for parsing pd-revision DT property
-      usb: typec: tcpm: Add new AMS for Get_Revision response
+diff --git a/Documentation/devicetree/bindings/connector/usb-connector.yaml b/Documentation/devicetree/bindings/connector/usb-connector.yaml
+index 67700440e23b5b7ca0db2c395c8a455bcf650864..11e40d225b9f3a0d0aeea7bf764f1c00a719d615 100644
+--- a/Documentation/devicetree/bindings/connector/usb-connector.yaml
++++ b/Documentation/devicetree/bindings/connector/usb-connector.yaml
+@@ -293,6 +293,13 @@ properties:
+       PD negotiation till BC1.2 detection completes.
+     default: 0
+ 
++  pd-revision:
++    description: Specifies the maximum USB PD revision and version supported by
++      the connector. This property is specified in the following order;
++      <revision_major, revision_minor, version_major, version_minor>.
++    $ref: /schemas/types.yaml#/definitions/uint8-array
++    maxItems: 4
++
+ dependencies:
+   sink-vdos-v1: [ sink-vdos ]
+   sink-vdos: [ sink-vdos-v1 ]
+diff --git a/Documentation/devicetree/bindings/usb/maxim,max33359.yaml b/Documentation/devicetree/bindings/usb/maxim,max33359.yaml
+index 20b62228371bdedf2fe92767ffe443bec87babc5..350d39fbf2dcd4d99db07cb8f099467e6fc653ee 100644
+--- a/Documentation/devicetree/bindings/usb/maxim,max33359.yaml
++++ b/Documentation/devicetree/bindings/usb/maxim,max33359.yaml
+@@ -70,6 +70,7 @@ examples:
+                                        PDO_FIXED_DUAL_ROLE)
+                                        PDO_FIXED(9000, 2000, 0)>;
+                 sink-bc12-completion-time-ms = <500>;
++                pd-revision = /bits/ 8 <0x03 0x01 0x01 0x08>;
+             };
+         };
+     };
 
- .../bindings/connector/usb-connector.yaml          |  7 ++
- .../devicetree/bindings/usb/maxim,max33359.yaml    |  1 +
- drivers/usb/typec/tcpm/tcpm.c                      | 87 +++++++++++++++++++++-
- include/linux/usb/pd.h                             | 22 +++++-
- 4 files changed, 112 insertions(+), 5 deletions(-)
----
-base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
-change-id: 20241205-get_rev_upstream-6b60000630af
-
-Best regards,
 -- 
-Amit Sunil Dhamne <amitsd@google.com>
+2.47.0.338.g60cca15819-goog
 
