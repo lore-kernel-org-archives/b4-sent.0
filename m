@@ -1,136 +1,76 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Wed, 11 Dec 2024 09:04:40 +0100
-Subject: [PATCH net-next v2 2/2] net: phy: dp83822: Add support for GPIO2
- clock output
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH 0/3] scsi: ufs: qcom: Suspend fixes
+Date: Wed, 11 Dec 2024 23:10:15 +0530
+Message-Id: <20241211-ufs-qcom-suspend-fix-v1-0-83ebbde76b1c@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241211-dp83822-gpio2-clk-out-v2-2-614a54f6acab@liebherr.com>
-References: <20241211-dp83822-gpio2-clk-out-v2-0-614a54f6acab@liebherr.com>
-In-Reply-To: <20241211-dp83822-gpio2-clk-out-v2-0-614a54f6acab@liebherr.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andrew Davis <afd@ti.com>, 
- Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733904292; l=3323;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=ocCCgiir9YwkF+ZSQqZS9864rONkKgcoc4c4WnPnqVY=;
- b=yv1U8A6QoIBwBBqKl4gSs2JSbfnbvmc98aZjStsY5+TxTQTke+7Ebc67gEeHDX/hUj8EcZK04
- Ps6bx+EPbexAPRquU4pgDp6wU31AMnTQtjN2QvhKgCRAu5H5DiDfufA
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-B4-Tracking: v=1; b=H4sIAH/OWWcC/x2MSQqAMAwAvyI5GzB1Qf2KeJA2ag5WbagI4t8tH
+ mdg5gHlIKzQZw8EvkRl9wkoz8Cuk18YxSUGU5iKDBHGWfG0+4Ya9WDvcJYb64Za7mzduK6ElB6
+ Bk/63w/i+H+hB7tlmAAAA
+To: Alim Akhtar <alim.akhtar@samsung.com>, 
+ Avri Altman <avri.altman@wdc.com>, Bart Van Assche <bvanassche@acm.org>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ Abel Vesa <abel.vesa@linaro.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, Amit Pundir <amit.pundir@linaro.org>, 
+ Nitin Rawat <quic_nitirawa@quicinc.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ stable@vger.kernel.org, Ram Kumar Dwivedi <quic_rdwivedi@quicinc.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1691;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=nTPLx+F/uIjNlE3QmhI8zO7IqE2vvW6UobaEj+4tukI=;
+ b=owGbwMvMwMUYOl/w2b+J574ynlZLYkiPPNf60/Tk6StscSpJE6I7pL7Fr73e7JXqOsstcGmq4
+ Jo3b5gudjIaszAwcjHIiimypC911mr0OH1jSYT6dJhBrEwgUxi4OAVgImXf2H8xc0WrWzOuPzix
+ Nl7GWiLB/0w8h/zzxC+fY/6ZZfx+4bqKaaX+bWEJHuPMRCejr9ssWLbpN07sK243+rQksmnH/co
+ lTDWVUmnt674L2bVFKjw4cfQBowF//PS3m33KK7aZHTTXXrjj5GvjnEWmzjYcp6fbbsi8sv5P/y
+ Ld3NsTWMXW/ynbd5nl5lT5Z6FKfKriHt+dU56xHbgcn7ZT6PPN9KDCBe39V6Q7Fp9NyjU93VD6g
+ 4NTcGW7gFZ/mZqs8ERDNV2pL47Ln4gZ9PDZNrH9U32kYC8Tc1NEgWH6qafnDFZdLb2dpZn1bmvU
+ DO5YH4kirTO3TmxW+PnRPMI1MnhZimfYDiePOy5N9uJZAA==
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The GPIO2 pin on the DP83822 can be configured as clock output. Add support
-for configuration via DT.
+Hi,
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+This series fixes the several suspend issues on Qcom platforms. Patch 1 fixes
+the resume failure with spm_lvl=5 suspend on most of the Qcom platforms. For
+this patch, I couldn't figure out the exact commit that caused the issue. So I
+used the commit that introduced reinit support as a placeholder.
+
+Patch 3 fixes the suspend issue on SM8550 and SM8650 platforms where UFS
+PHY retention is not supported. Hence the default spm_lvl=3 suspend fails. So
+this patch configures spm_lvl=5 as the default suspend level to force UFSHC/
+device powerdown during suspend. This supersedes the previous series [1] that
+tried to fix the issue in clock drivers.
+
+This series is tested on Qcom SM8550 MTP and Qcom RB5 boards.
+
+[1] https://lore.kernel.org/linux-arm-msm/20241107-ufs-clk-fix-v1-0-6032ff22a052@linaro.org
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/net/phy/dp83822.c | 40 ++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 40 insertions(+)
+Manivannan Sadhasivam (3):
+      scsi: ufs: qcom: Power off the PHY if it was already powered on in ufs_qcom_power_up_sequence()
+      scsi: ufs: qcom: Allow passing platform specific OF data
+      scsi: ufs: qcom: Power down the controller/device during system suspend for SM8550/SM8650 SoCs
 
-diff --git a/drivers/net/phy/dp83822.c b/drivers/net/phy/dp83822.c
-index 25ee09c48027c86b7d8f4acb5cbe2e157c56a85a..dc5595eae6cc74e5c77914d53772c5fad64c3e70 100644
---- a/drivers/net/phy/dp83822.c
-+++ b/drivers/net/phy/dp83822.c
-@@ -14,6 +14,8 @@
- #include <linux/netdevice.h>
- #include <linux/bitfield.h>
- 
-+#include <dt-bindings/net/ti-dp83822.h>
-+
- #define DP83822_PHY_ID	        0x2000a240
- #define DP83825S_PHY_ID		0x2000a140
- #define DP83825I_PHY_ID		0x2000a150
-@@ -30,6 +32,7 @@
- #define MII_DP83822_FCSCR	0x14
- #define MII_DP83822_RCSR	0x17
- #define MII_DP83822_RESET_CTRL	0x1f
-+#define MII_DP83822_IOCTRL2	0x463
- #define MII_DP83822_GENCFG	0x465
- #define MII_DP83822_SOR1	0x467
- 
-@@ -104,6 +107,11 @@
- #define DP83822_RX_CLK_SHIFT	BIT(12)
- #define DP83822_TX_CLK_SHIFT	BIT(11)
- 
-+/* IOCTRL2 bits */
-+#define DP83822_IOCTRL2_GPIO2_CLK_SRC		GENMASK(6, 4)
-+#define DP83822_IOCTRL2_GPIO2_CTRL		GENMASK(2, 0)
-+#define DP83822_IOCTRL2_GPIO2_CTRL_CLK_REF	GENMASK(1, 0)
-+
- /* SOR1 mode */
- #define DP83822_STRAP_MODE1	0
- #define DP83822_STRAP_MODE2	BIT(0)
-@@ -139,6 +147,8 @@ struct dp83822_private {
- 	u8 cfg_dac_minus;
- 	u8 cfg_dac_plus;
- 	struct ethtool_wolinfo wol;
-+	bool set_gpio2_clk_out;
-+	u32 gpio2_clk_out;
- };
- 
- static int dp83822_config_wol(struct phy_device *phydev,
-@@ -413,6 +423,15 @@ static int dp83822_config_init(struct phy_device *phydev)
- 	int err = 0;
- 	int bmcr;
- 
-+	if (dp83822->set_gpio2_clk_out)
-+		phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_IOCTRL2,
-+			       DP83822_IOCTRL2_GPIO2_CTRL |
-+			       DP83822_IOCTRL2_GPIO2_CLK_SRC,
-+			       FIELD_PREP(DP83822_IOCTRL2_GPIO2_CTRL,
-+					  DP83822_IOCTRL2_GPIO2_CTRL_CLK_REF) |
-+			       FIELD_PREP(DP83822_IOCTRL2_GPIO2_CLK_SRC,
-+					  dp83822->gpio2_clk_out));
-+
- 	if (phy_interface_is_rgmii(phydev)) {
- 		rx_int_delay = phy_get_internal_delay(phydev, dev, NULL, 0,
- 						      true);
-@@ -611,6 +630,7 @@ static int dp83822_of_init(struct phy_device *phydev)
- {
- 	struct dp83822_private *dp83822 = phydev->priv;
- 	struct device *dev = &phydev->mdio.dev;
-+	int ret;
- 
- 	/* Signal detection for the PHY is only enabled if the FX_EN and the
- 	 * SD_EN pins are strapped. Signal detection can only enabled if FX_EN
-@@ -623,6 +643,26 @@ static int dp83822_of_init(struct phy_device *phydev)
- 		dp83822->fx_enabled = device_property_present(dev,
- 							      "ti,fiber-mode");
- 
-+	ret = of_property_read_u32(dev->of_node, "ti,gpio2-clk-out",
-+				   &dp83822->gpio2_clk_out);
-+	if (!ret) {
-+		switch (dp83822->gpio2_clk_out) {
-+		case DP83822_CLK_SRC_MAC_IF:
-+		case DP83822_CLK_SRC_XI:
-+		case DP83822_CLK_SRC_INT_REF:
-+		case DP83822_CLK_SRC_RMII_MASTER_MODE_REF:
-+		case DP83822_CLK_SRC_FREE_RUNNING:
-+		case DP83822_CLK_SRC_RECOVERED:
-+			break;
-+		default:
-+			phydev_err(phydev, "ti,gpio2-clk-out value %u not valid\n",
-+				   dp83822->gpio2_clk_out);
-+			return -EINVAL;
-+		}
-+
-+		dp83822->set_gpio2_clk_out = true;
-+	}
-+
- 	return 0;
- }
- 
+ drivers/ufs/core/ufshcd-priv.h |  6 ------
+ drivers/ufs/core/ufshcd.c      |  1 -
+ drivers/ufs/host/ufs-qcom.c    | 31 +++++++++++++++++++------------
+ drivers/ufs/host/ufs-qcom.h    |  5 +++++
+ include/ufs/ufshcd.h           |  2 --
+ 5 files changed, 24 insertions(+), 21 deletions(-)
+---
+base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
+change-id: 20241211-ufs-qcom-suspend-fix-5618e9c56d93
 
+Best regards,
 -- 
-2.39.5
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
