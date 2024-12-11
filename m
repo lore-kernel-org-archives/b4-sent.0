@@ -1,187 +1,62 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Tue, 10 Dec 2024 15:25:27 +0530
-Subject: [PATCH 4/4] PCI/pwrctrl: Add pwrctrl driver for PCI Slots
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH v2 0/3] Add support for responding to Get_Revision request
+Date: Tue, 10 Dec 2024 19:07:06 -0800
+Message-Id: <20241210-get_rev_upstream-v2-0-d0094e52d48f@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241210-pci-pwrctrl-slot-v1-4-eae45e488040@linaro.org>
-References: <20241210-pci-pwrctrl-slot-v1-0-eae45e488040@linaro.org>
-In-Reply-To: <20241210-pci-pwrctrl-slot-v1-0-eae45e488040@linaro.org>
-To: Bjorn Helgaas <bhelgaas@google.com>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Qiang Yu <quic_qianyu@quicinc.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4981;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=YiO/Xkyr66zpr8ftXrJsgVMQidcdDYAQ3s8kybejH8U=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnWBAoSZbAO7NaYQtUqGwmqySbRc0IDno/0dpQV
- ko9F8LAGXSJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ1gQKAAKCRBVnxHm/pHO
- 9Q/8B/40OUYeHncAGg4SaeSyebHtqnHyoJPGUElGT6EWialymhoBEGsobAx92+JXAzxpOASf4rE
- c2lxg3v4VY1jcbui5Vdq8sCwn43x2g+ObBVIZe3qoae7GE2cPv5xqfibsLxvAO4e0ozdTx7TiPJ
- mVwhTMlJLC10JlWeNwn/Nim/85nzOrbbhAr+y5RfjwVaBAa+/Gfb3z4C6aqDM9Tg0XXr31OnWAw
- /bldwQX0teFk3ZgPt6o0sLzCAnQfhvJbKnT0nVCBotMsfLVYWtvjkC4atbW7iPPNapGSVzajM9l
- KkBaLkk5QSO88iBcvPSJxZQVbMawc4WiSA1cF72rd/LCXk+t
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+X-B4-Tracking: v=1; b=H4sIANoBWWcC/32NTQ7CIBCFr9LMWsyAlmpX3sM0DbYDJbGlASSah
+ ruLPYBv9728nw0CeUsB2moDT8kG65YC4lDBMKnFELNjYRAozlxgzQzFvgT71xqiJzUz+ZBYJE+
+ oNJTa6knb9z557wpPNkTnP/tD4j/3z1jiDNkVeX0hasam1jfjnHnScXAzdDnnL/C4TpKxAAAA
+X-Change-ID: 20241205-get_rev_upstream-6b60000630af
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>
+Cc: Kyle Tso <kyletso@google.com>, RD Babiera <rdbabiera@google.com>, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-usb@vger.kernel.org, Amit Sunil Dhamne <amitsd@google.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733886444; l=1318;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=CEwUdYH0nCr9FSjB3Vc7SkwELpFgK6Eq00uXcIMkpiM=;
+ b=NZyEywntSJaRNYEZgJ8E1nGOMQ+NnCFvACWapkVOKgSHnikaWWYbndwYepCoL4hFEpOZ6EbpJ
+ X+zZYEYLd6mCY2VY+ChM5709KSmPLyIzVgxByByztlHn5EoHhA/6+a+
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This driver is used to control the power state of the devices attached to
-the PCI slots. Currently, it controls the voltage rails of the PCI slots
-defined in the devicetree node of the root port.
+Currently TCPM doesn't support responding to Get_Revision request
+message. However, as per Message Applicability in USB PD Spec 3.1 v1.8
+("6.13.2 Applicability of Data Messages") "Revision" is a Normative
+(compulsory) message and needs to be supported. As part of this patchset
+add support for responding to Get_Revision requests as part of
+Revision_Information AMS.
 
-The voltage rails for PCI slots are documented in the dt-schema:
-https://github.com/devicetree-org/dt-schema/blob/v2024.11/dtschema/schemas/pci/pci-bus-common.yaml#L153
-
-Since this driver has to work with different kind of slots (x{1/4/8/16}
-PCIe, Mini PCIe, PCI etc...), the driver is using the
-of_regulator_bulk_get_all() API to obtain the voltage regulators defined
-in the DT node, instead of hardcoding them. The DT node of the root port
-should define the relevant supply properties corresponding to the voltage
-rails of the PCI slot.
-
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
- drivers/pci/pwrctrl/Kconfig  | 11 ++++++
- drivers/pci/pwrctrl/Makefile |  3 ++
- drivers/pci/pwrctrl/slot.c   | 93 ++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 107 insertions(+)
+Changes in v2:
+- Added maxItems constraint to "pd-revision" property
+- Link to v1: https://lore.kernel.org/r/20241205-get_rev_upstream-v1-0-90158ee7d75f@google.com
 
-diff --git a/drivers/pci/pwrctrl/Kconfig b/drivers/pci/pwrctrl/Kconfig
-index 54589bb2403b..990cab67d413 100644
---- a/drivers/pci/pwrctrl/Kconfig
-+++ b/drivers/pci/pwrctrl/Kconfig
-@@ -10,3 +10,14 @@ config PCI_PWRCTL_PWRSEQ
- 	tristate
- 	select POWER_SEQUENCING
- 	select PCI_PWRCTL
-+
-+config PCI_PWRCTL_SLOT
-+	tristate "PCI Power Control driver for PCI slots"
-+	select PCI_PWRCTL
-+	help
-+	  Say Y here to enable the PCI Power Control driver to control the power
-+	  state of PCI slots.
-+
-+	  This is a generic driver that controls the power state of different
-+	  PCI slots. The voltage regulators powering the rails of the PCI slots
-+	  are expected to be defined in the devicetree node of the PCI bridge.
-diff --git a/drivers/pci/pwrctrl/Makefile b/drivers/pci/pwrctrl/Makefile
-index 75c7ce531c7e..ddfb12c5aadf 100644
---- a/drivers/pci/pwrctrl/Makefile
-+++ b/drivers/pci/pwrctrl/Makefile
-@@ -4,3 +4,6 @@ obj-$(CONFIG_PCI_PWRCTL)		+= pci-pwrctrl-core.o
- pci-pwrctrl-core-y			:= core.o
- 
- obj-$(CONFIG_PCI_PWRCTL_PWRSEQ)		+= pci-pwrctrl-pwrseq.o
-+
-+obj-$(CONFIG_PCI_PWRCTL_SLOT)		+= pci-pwrctl-slot.o
-+pci-pwrctl-slot-y			:= slot.o
-diff --git a/drivers/pci/pwrctrl/slot.c b/drivers/pci/pwrctrl/slot.c
-new file mode 100644
-index 000000000000..18becc144913
---- /dev/null
-+++ b/drivers/pci/pwrctrl/slot.c
-@@ -0,0 +1,93 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2024 Linaro Ltd.
-+ * Author: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-+ */
-+
-+#include <linux/device.h>
-+#include <linux/mod_devicetable.h>
-+#include <linux/module.h>
-+#include <linux/pci-pwrctrl.h>
-+#include <linux/platform_device.h>
-+#include <linux/regulator/consumer.h>
-+#include <linux/slab.h>
-+
-+struct pci_pwrctrl_slot_data {
-+	struct pci_pwrctrl ctx;
-+	struct regulator_bulk_data *supplies;
-+	int num_supplies;
-+};
-+
-+static void devm_pci_pwrctrl_slot_power_off(void *data)
-+{
-+	struct pci_pwrctrl_slot_data *slot = data;
-+
-+	regulator_bulk_disable(slot->num_supplies, slot->supplies);
-+	regulator_bulk_free(slot->num_supplies, slot->supplies);
-+}
-+
-+static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
-+{
-+	struct pci_pwrctrl_slot_data *slot;
-+	struct device *dev = &pdev->dev;
-+	int ret;
-+
-+	slot = devm_kzalloc(dev, sizeof(*slot), GFP_KERNEL);
-+	if (!slot)
-+		return -ENOMEM;
-+
-+	ret = of_regulator_bulk_get_all(dev, dev_of_node(dev),
-+					&slot->supplies);
-+	if (ret < 0) {
-+		dev_err_probe(dev, ret, "Failed to get slot regulators\n");
-+		return ret;
-+	}
-+
-+	slot->num_supplies = ret;
-+	ret = regulator_bulk_enable(slot->num_supplies, slot->supplies);
-+	if (ret < 0) {
-+		dev_err_probe(dev, ret, "Failed to enable slot regulators\n");
-+		goto err_regulator_free;
-+	}
-+
-+	ret = devm_add_action_or_reset(dev, devm_pci_pwrctrl_slot_power_off,
-+				       slot);
-+	if (ret)
-+		goto err_regulator_disable;
-+
-+	pci_pwrctrl_init(&slot->ctx, dev);
-+
-+	ret = devm_pci_pwrctrl_device_set_ready(dev, &slot->ctx);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "Failed to register pwrctrl driver\n");
-+
-+	return 0;
-+
-+err_regulator_disable:
-+	regulator_bulk_disable(slot->num_supplies, slot->supplies);
-+err_regulator_free:
-+	regulator_bulk_free(slot->num_supplies, slot->supplies);
-+
-+	return ret;
-+}
-+
-+static const struct of_device_id pci_pwrctrl_slot_of_match[] = {
-+	{
-+		.compatible = "pciclass,0604",
-+	},
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, pci_pwrctrl_slot_of_match);
-+
-+static struct platform_driver pci_pwrctrl_slot_driver = {
-+	.driver = {
-+		.name = "pci-pwrctrl-slot",
-+		.of_match_table = pci_pwrctrl_slot_of_match,
-+	},
-+	.probe = pci_pwrctrl_slot_probe,
-+};
-+module_platform_driver(pci_pwrctrl_slot_driver);
-+
-+MODULE_AUTHOR("Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>");
-+MODULE_DESCRIPTION("Generic PCI Power Control driver for PCI Slots");
-+MODULE_LICENSE("GPL");
+---
+Amit Sunil Dhamne (3):
+      dt-bindings: connector: Add pd-revision property
+      usb: typec: tcpm: Add support for parsing pd-revision DT property
+      usb: typec: tcpm: Add new AMS for Get_Revision response
 
+ .../bindings/connector/usb-connector.yaml          |  7 ++
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |  1 +
+ drivers/usb/typec/tcpm/tcpm.c                      | 87 +++++++++++++++++++++-
+ include/linux/usb/pd.h                             | 22 +++++-
+ 4 files changed, 112 insertions(+), 5 deletions(-)
+---
+base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
+change-id: 20241205-get_rev_upstream-6b60000630af
+
+Best regards,
 -- 
-2.25.1
+Amit Sunil Dhamne <amitsd@google.com>
 
