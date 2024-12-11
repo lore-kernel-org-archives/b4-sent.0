@@ -1,186 +1,66 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Tue, 10 Dec 2024 19:07:09 -0800
-Subject: [PATCH v2 3/3] usb: typec: tcpm: Add new AMS for Get_Revision
- response
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH RFC 0/3] Pinctrl: Add Amlogic pinctrl driver
+Date: Wed, 11 Dec 2024 14:47:48 +0800
+Message-Id: <20241211-amlogic-pinctrl-v1-0-410727335119@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241210-get_rev_upstream-v2-3-d0094e52d48f@google.com>
-References: <20241210-get_rev_upstream-v2-0-d0094e52d48f@google.com>
-In-Reply-To: <20241210-get_rev_upstream-v2-0-d0094e52d48f@google.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAJQ1WWcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDI0ND3cTcnPz0zGTdgsy85JKiHF0jo9REM0MLI4MUgxQloK6CotS0zAq
+ widFKQW7OSrG1tQCTIDtuZgAAAA==
+To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Cc: Kyle Tso <kyletso@google.com>, RD Babiera <rdbabiera@google.com>, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, Amit Sunil Dhamne <amitsd@google.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1733886444; l=4930;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=YvUI3CfbZ7WfPHWV3UO69yuWSZoIOQnnvLn9UUmlros=;
- b=twZ9Jg43zeC+dNyfJ/GALSE7oL41cdMQiWpprn4cLvNLH3jh8ty5Ew4EenHBCJ7nptF9YdgGp
- JsaKD+KOGDTDI5AXMGEPXBWth+BM86m0mMv2gKPlMRbhzwmGF0K+uGt
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1733899686; l=1432;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=OXcuGUST6PRMVKw++DvXhy9nNIvoCMMSwx2WhM7mMpE=;
+ b=FCAXcPi+2/pdauQ4NMuHxESiRUOmogABmpyrp0hwKtO3ielhPDS+1E/wKrJ4TTlFKTKZDGwDt
+ um+UAOvzQjIDnQFdm51p4MCGAvMyKCjf+u4yv8ye9qDZAgNmUxQiOuK
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This commit adds a new AMS for responding to a "Get_Revision" request.
-Revision message consists of the following fields:
+Add pinctrl driver support for Amloigc SoCs
 
- +----------------------------------------------------+
- |         Header             |         RMDO          |
- |  No. of data objects = 1   |                       |
- +----------------------------------------------------+
+Base on the previous discussion,
+https://lore.kernel.org/r/20241113-a4_pinctrl-v6-0-35ba2401ee35@amlogic.com
+The existed meson driver failed to meet the requirement of the current dt-binding.
+So we start this new pinctrl driver to solve problem.
 
- While RMDO consists of:
-  * B31..28     Revision Major
-  * B27..24     Revision Minor
-  * B23..20     Version Major
-  * B19..16     Version Minor
-  * B15..0      Reserved, shall be set to zero.
+The advantage of this version: Once the source file and binding document
+are added, adding dts node will be only operation for subsequent Amlogic SoCs
+(such as A4, A5).
 
-As per the PD spec ("8.3.3.16.2.1 PR_Give_Revision State"), a request is
-only expected when an explicit contract is established and the port is
-in ready state. This AMS is only supported for PD >= 3.0.
+The code in DTS file is also readable when using GPIO, as below:
+reset-gpios = <&gpiob 6 GPIO_ACTIVE_LOW>;
 
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 41 ++++++++++++++++++++++++++++++++++++++++-
- include/linux/usb/pd.h        | 22 ++++++++++++++++++++--
- 2 files changed, 60 insertions(+), 3 deletions(-)
+Xianwei Zhao (3):
+      dt-bindings: pinctrl: Add support for Amlogic SoCs
+      pinctrl: Add driver support for Amlogic SoCs
+      arm64: dts: amlogic: a4: add pinctrl node
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index 59621cfaee3d67a36f3ad6870bd1aa92d382f33a..460dbde9fe2239b10c43cfb12dce92c736b1cea9 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -185,7 +185,8 @@
- 	S(UNSTRUCTURED_VDMS),			\
- 	S(STRUCTURED_VDMS),			\
- 	S(COUNTRY_INFO),			\
--	S(COUNTRY_CODES)
-+	S(COUNTRY_CODES),			\
-+	S(REVISION_INFORMATION)
- 
- #define GENERATE_ENUM(e)	e
- #define GENERATE_STRING(s)	#s
-@@ -225,6 +226,7 @@ enum pd_msg_request {
- 	PD_MSG_CTRL_NOT_SUPP,
- 	PD_MSG_DATA_SINK_CAP,
- 	PD_MSG_DATA_SOURCE_CAP,
-+	PD_MSG_DATA_REV,
- };
- 
- enum adev_actions {
-@@ -1244,6 +1246,24 @@ static u32 tcpm_forge_legacy_pdo(struct tcpm_port *port, u32 pdo, enum typec_rol
- 	}
- }
- 
-+static int tcpm_pd_send_revision(struct tcpm_port *port)
-+{
-+	struct pd_message msg;
-+	u32 rmdo;
-+
-+	memset(&msg, 0, sizeof(msg));
-+	rmdo = RMDO(port->pd_rev.rev_major, port->pd_rev.rev_minor,
-+		    port->pd_rev.ver_major, port->pd_rev.ver_minor);
-+	msg.payload[0] = cpu_to_le32(rmdo);
-+	msg.header = PD_HEADER_LE(PD_DATA_REVISION,
-+				  port->pwr_role,
-+				  port->data_role,
-+				  port->negotiated_rev,
-+				  port->message_id,
-+				  1);
-+	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
-+}
-+
- static int tcpm_pd_send_source_caps(struct tcpm_port *port)
- {
- 	struct pd_message msg;
-@@ -3547,6 +3567,17 @@ static void tcpm_pd_ctrl_request(struct tcpm_port *port,
- 				   PD_MSG_CTRL_NOT_SUPP,
- 				   NONE_AMS);
- 		break;
-+	case PD_CTRL_GET_REVISION:
-+		if (port->negotiated_rev >= PD_REV30 && port->pd_rev.rev_major)
-+			tcpm_pd_handle_msg(port, PD_MSG_DATA_REV,
-+					   REVISION_INFORMATION);
-+		else
-+			tcpm_pd_handle_msg(port,
-+					   port->negotiated_rev < PD_REV30 ?
-+					   PD_MSG_CTRL_REJECT :
-+					   PD_MSG_CTRL_NOT_SUPP,
-+					   NONE_AMS);
-+		break;
- 	default:
- 		tcpm_pd_handle_msg(port,
- 				   port->negotiated_rev < PD_REV30 ?
-@@ -3791,6 +3822,14 @@ static bool tcpm_send_queued_message(struct tcpm_port *port)
- 				tcpm_ams_finish(port);
- 			}
- 			break;
-+		case PD_MSG_DATA_REV:
-+			ret = tcpm_pd_send_revision(port);
-+			if (ret)
-+				tcpm_log(port,
-+					 "Unable to send revision msg, ret=%d",
-+					 ret);
-+			tcpm_ams_finish(port);
-+			break;
- 		default:
- 			break;
- 		}
-diff --git a/include/linux/usb/pd.h b/include/linux/usb/pd.h
-index d50098fb16b5d2e2d9e39c55db4329224115e8b1..3068c3084eb6176d7d9184c3959a4110282a9fa0 100644
---- a/include/linux/usb/pd.h
-+++ b/include/linux/usb/pd.h
-@@ -33,7 +33,9 @@ enum pd_ctrl_msg_type {
- 	PD_CTRL_FR_SWAP = 19,
- 	PD_CTRL_GET_PPS_STATUS = 20,
- 	PD_CTRL_GET_COUNTRY_CODES = 21,
--	/* 22-31 Reserved */
-+	/* 22-23 Reserved */
-+	PD_CTRL_GET_REVISION = 24,
-+	/* 25-31 Reserved */
- };
- 
- enum pd_data_msg_type {
-@@ -46,7 +48,9 @@ enum pd_data_msg_type {
- 	PD_DATA_ALERT = 6,
- 	PD_DATA_GET_COUNTRY_INFO = 7,
- 	PD_DATA_ENTER_USB = 8,
--	/* 9-14 Reserved */
-+	/* 9-11 Reserved */
-+	PD_DATA_REVISION = 12,
-+	/* 13-14 Reserved */
- 	PD_DATA_VENDOR_DEF = 15,
- 	/* 16-31 Reserved */
- };
-@@ -453,6 +457,20 @@ static inline unsigned int rdo_max_power(u32 rdo)
- #define EUDO_TBT_SUPPORT		BIT(14)
- #define EUDO_HOST_PRESENT		BIT(13)
- 
-+/*
-+ * Request Message Data Object (PD Revision 3.1+ only)
-+ * --------
-+ * <31:28> :: Revision Major
-+ * <27:24> :: Revision Minor
-+ * <23:20> :: Version Major
-+ * <19:16> :: Version Minor
-+ * <15:0>  :: Reserved, Shall be set to zero
-+ */
-+
-+#define RMDO(rev_maj, rev_min, ver_maj, ver_min)			\
-+	(((rev_maj) & 0xf) << 28 | ((rev_min) & 0xf) << 24 |		\
-+	 ((ver_maj) & 0xf) << 20 | ((ver_min) & 0xf) << 16)
-+
- /* USB PD timers and counters */
- #define PD_T_NO_RESPONSE	5000	/* 4.5 - 5.5 seconds */
- #define PD_T_DB_DETECT		10000	/* 10 - 15 seconds */
+ .../bindings/pinctrl/amlogic,pinctrl.yaml          |  150 +++
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |  146 +++
+ drivers/pinctrl/Kconfig                            |   18 +
+ drivers/pinctrl/Makefile                           |    1 +
+ drivers/pinctrl/pinctrl-amlogic.c                  | 1190 ++++++++++++++++++++
+ include/dt-bindings/pinctrl/amlogic,pinctrl.h      |   68 ++
+ 6 files changed, 1573 insertions(+)
+---
+base-commit: 171aa289a6fe65faffeb92a1fda283c055435a62
+change-id: 20241211-amlogic-pinctrl-22ea61820d0d
 
+Best regards,
 -- 
-2.47.0.338.g60cca15819-goog
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
