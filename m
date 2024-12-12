@@ -1,74 +1,51 @@
-From: Ernst Persson <ernst.persson@non.se.com>
-Date: Thu, 12 Dec 2024 15:36:59 +0100
-Subject: [PATCH OE-core kirkstone] package.bbclass: Use shlex instead of
- deprecated pipes
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH 0/2] powerpc: Fix and enforce distinction between
+ immediates and registers
+Date: Thu, 12 Dec 2024 18:05:45 +0100
+Message-Id: <20241212-gpr-checks-v1-0-8c084c5fc0b6@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20241212-b4-package-shlex-kirkstone-v1-1-27e5f76049b8@non.se.com>
-X-B4-Tracking: v=1; b=H4sIAAr1WmcC/z2MQQrCMBBFr1Jm7YAJwaJ71x5AXEyTqR0iSZkpU
- ii9u9GFy/c/721grMIGl24D5beY1NLAHTqIE5Uno6TG4I8+OO88DgFnipnaY9OLV8yi2ZZaGE9
- 9oDTQ2MdzghaYlUdZf/E73K4Yq/J3/xvw2PcPcUpTsIIAAAA=
-X-Change-ID: 20241212-b4-package-shlex-kirkstone-674adbaf7c9d
-To: openembedded-core@lists.openembedded.org
-Cc: Ernst Persson <ernst.persson@non.se.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAOkXW2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDQyNL3fSCIt3kjNTk7GLdlFQDA7OUlEQLQ8skJaCGgqLUtMwKsGHRsbW
+ 1ANxExHNcAAAA
+X-Change-ID: 20241129-gpr-checks-de006dda819b
+To: Mario Six <mario.six@gdsys.cc>, Tom Rini <trini@konsulko.com>, 
+ =?utf-8?q?Marek_Beh=C3=BAn?= <kabel@kernel.org>
+Cc: u-boot@lists.denx.de, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1492;
- i=ernst.persson@non.se.com; h=from:subject:message-id;
- bh=pOWG8/NAjjVhQAcB8v1I3LsMBWvK7F5TrcY04gl3v9U=;
- b=owEB7QES/pANAwAKAbrk269F2n0DAcsmYgBnWvUdF5QAav9F/DwIqWM1wQNIfZEwONV9/lz4y
- 2S4onj1Z0SJAbMEAAEKAB0WIQRqWagaLrShCohIFwi65NuvRdp9AwUCZ1r1HQAKCRC65NuvRdp9
- A7HqDADUBl4dHHuUlRmf3j1P2N+T9zW8Ya+o3V0PrMEnCwxwMF+h0zr5RFp2HG5Qg08x9Yp3eHS
- ayICAOtJ69sxpfMzKfLtgknlbsMU+P+Q5Il7B0dH3xG4U+u+JXQN+EHtI7SE8qH1lZIHKnRy36r
- q4rFzTetBuJsEhR7XyPOPYZoP02i3e/sPeh4C8hLSNxvtCF36Npae3QhnWI0pmHp3zGxAGGbDWV
- 5E/fEyZgyiYFo5SWh4K9E8iJkOg3S3NIjDwJ5LAC+Rbo99/IA2adLou/4AXzqYLrfJ6CkiZDztG
- BvpqOPem3/BWs7Vbth3P5ZUJrWvK2PWBYL0E8iXtwGf3SArWDQBjcNC/BAfZFiNbmVt5CkBDjCr
- 6UcfaJpGbWS9B+LxhFV4hrHLTqA1j98I23eRish2qAOxBW+uuAVXiOnKAI5mOfiZAiAl9rLqt46
- WeRm4CZTbfcCUEBsyWNddr3HKwHSQup4dZuu6JIepGl4tc0B1f035x4oqc/zVc3Hw2UDc=
-X-Developer-Key: i=ernst.persson@non.se.com; a=openpgp;
- fpr=6A59A81A2EB4A10A88481708BAE4DBAF45DA7D03
-X-Endpoint-Received: by B4 Relay for ernst.persson@non.se.com/default with auth_id=297
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734023157; l=882;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=ZcU6uQ7ejaFY/D4tPICQRF7swS4pWua3gbeiw/SjWxs=;
+ b=Fcgm6nOpVyMcjFy4P3CmkabP9WqMwwfBrNAn7qU8IVTpQQNNvYOG+loXXnjEFIthxY1lyMc/O
+ FS33e0/s4clA5gug0I7sErGOOT8yTlefokWKHtBY0I7YaPjgvo6O1zq
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The pipes library is deprecated in Python 3.11 and will be removed in
-Python 3.13. pipes.quote is just an import of shlex.quote anyway.
+This patchset changes the definition r0 etc. to %r0, so that the
+assembler can check that registers are only used where expected, and
+fixes the fallout.
 
-Signed-off-by: Ernst Persson <ernst.persson@non.se.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-This patch is only for Kirkstone, the code has changed
-in later versions.
----
- meta/classes/package.bbclass | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+J. Neuschäfer (2):
+      powerpc: Fix 0 vs. r0 confusion in X/D-form instructions
+      powerpc: Introduce and enforce assembler checks on GPR usage
 
-diff --git a/meta/classes/package.bbclass b/meta/classes/package.bbclass
-index 07bf5eb426e2561512e762729144dfcb5d0bda15..e6ba79346c4468ede9da4bf35be2aebbb261b311 100644
---- a/meta/classes/package.bbclass
-+++ b/meta/classes/package.bbclass
-@@ -1850,7 +1850,7 @@ SHLIBSWORKDIR = "${PKGDESTWORK}/${MLPREFIX}shlibs2"
- 
- python package_do_shlibs() {
-     import itertools
--    import re, pipes
-+    import re, shlex
-     import subprocess
- 
-     exclude_shlibs = d.getVar('EXCLUDE_FROM_SHLIBS', False)
-@@ -1894,7 +1894,7 @@ python package_do_shlibs() {
-         sonames = set()
-         renames = []
-         ldir = os.path.dirname(file).replace(pkgdest + "/" + pkg, '')
--        cmd = d.getVar('OBJDUMP') + " -p " + pipes.quote(file) + " 2>/dev/null"
-+        cmd = d.getVar('OBJDUMP') + " -p " + shlex.quote(file) + " 2>/dev/null"
-         fd = os.popen(cmd)
-         lines = fd.readlines()
-         fd.close()
-
+ arch/powerpc/config.mk           |  2 +-
+ arch/powerpc/cpu/mpc83xx/start.S | 72 ++++++++++++++++++++--------------------
+ arch/powerpc/cpu/mpc85xx/start.S | 24 +++++++-------
+ arch/powerpc/lib/ppccache.S      |  6 ++--
+ include/ppc_asm.tmpl             | 66 ++++++++++++++++++------------------
+ 5 files changed, 85 insertions(+), 85 deletions(-)
 ---
-base-commit: ccf5b0a8896eba43f59151885aeb30b6cfc0573f
-change-id: 20241212-b4-package-shlex-kirkstone-674adbaf7c9d
+base-commit: a75acb55442302aeaca993a5c4337fd130766e58
+change-id: 20241129-gpr-checks-de006dda819b
 
 Best regards,
 -- 
-Ernst Persson <ernst.persson@non.se.com>
+J. Neuschäfer <j.ne@posteo.net>
 
