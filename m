@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Fri, 13 Dec 2024 19:23:30 +0530
-Subject: [PATCH v2 2/3] scsi: ufs: qcom: Allow passing platform specific OF
- data
+Date: Fri, 13 Dec 2024 19:23:31 +0530
+Subject: [PATCH v2 3/3] scsi: ufs: qcom: Power down the controller/device
+ during system suspend for SM8550/SM8650 SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241213-ufs-qcom-suspend-fix-v2-2-1de6cd2d6146@linaro.org>
+Message-Id: <20241213-ufs-qcom-suspend-fix-v2-3-1de6cd2d6146@linaro.org>
 References: <20241213-ufs-qcom-suspend-fix-v2-0-1de6cd2d6146@linaro.org>
 In-Reply-To: <20241213-ufs-qcom-suspend-fix-v2-0-1de6cd2d6146@linaro.org>
 To: Alim Akhtar <alim.akhtar@samsung.com>, 
@@ -18,92 +18,98 @@ To: Alim Akhtar <alim.akhtar@samsung.com>,
 Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-arm-msm@vger.kernel.org, Amit Pundir <amit.pundir@linaro.org>, 
  Nitin Rawat <quic_nitirawa@quicinc.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2709;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3153;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=qqrxdC5u7a2vZfs8QFNpeAZBHqn1+eO7J3Xdho8U5SY=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnXDxc+9/I1Jb3eWtP2983AMBHpbG+joy36Ntck
- aqYAwgqzuGJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ1w8XAAKCRBVnxHm/pHO
- 9aJeB/4jtWCKxXc9qwEo64zElXLbEEQqNkPs8ZnFmOG3ENGVzDQ2g+83YJ8nG/1g8wSuEOBu62N
- qUDUwnTp4Ts14JmWMiJXz3Wa+lewGZqnxCBupsDRuUZ81AL/z+2e3Z8xj5qiiAbYGGaiuyu+zKJ
- BrJny0V8yHUkbCsqF3Tg2X8oFBS5TM1IRvPSyZp9yzRK/1ODd/lolElkJ8QBDWS2fzzGyqrMtbU
- tsmMKYCDb1i8f4dXhs2FmxvxIbzGKARMqpCNTRLWmjecOsIGUYrbNsc+JzGzlvfvmsBIDGaUt2O
- E81DEi3LOH/iNxMpxb+pXg/MTiRrUiHW8RmuphVT4X46R0km
+ bh=dm+C1IineBDRJt5UyRNTw/yDrjuto+TzGCEuC82e76E=;
+ b=owGbwMvMwMUYOl/w2b+J574ynlZLYkiPsYk5XdcQFOSdlJb88sca9c9lF9+/U52kUZDiuavBQ
+ jI1S0Ctk9GYhYGRi0FWTJElfamzVqPH6RtLItSnwwxiZQKZwsDFKQATWSPP/s9a+p95776Zt1rF
+ kqQX+kyw0jFp1D954eYuWx4+VgHViTseKmY/c3hR9+i3dN3ZNo1eLo6T/3bVBn5mTJRg0v214/E
+ 27+0zQrnfG5j5h8+QDy8q7dKqc/TOqV7NKebmLVkvuuID/5ED3NOn/N3W32zgFLHK5V69vNUUCf
+ 2VxbV26VJO0kcYZJ7yqGQY6HKWsMTO3pGfujD72vRv9VXdl1udnH6/W6AavC5Z1ox7gckzt9XuM
+ plhFiprrGYHWWxNqZl2a/arq1bfdbp+T6t+lmls+rKH1zEppLl0tW/n4Vs/d9aIhK/98nea6O41
+ trNsMlz3N4Qr/3z7O4Vtj1iP2aZ37poTr2Q9Fkz14nsIAA==
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In order to allow platform specific flags and configurations, introduce
-the platform specific OF data and move the existing quirk
-UFSHCD_QUIRK_BROKEN_LSDBS_CAP for SM8550 and SM8650 SoCs.
+SM8550 and SM8650 SoCs doesn't support UFS PHY retention. So once these
+SoCs reaches the low power state (CX power collapse) during system suspend,
+all the PHY hardware state gets lost. This leads to the UFS resume failure:
 
-Reviewed-by: Avri Altman <avri.altman@wdc.com>
-Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
+ufshcd-qcom 1d84000.ufs: ufshcd_uic_hibern8_exit: hibern8 exit failed. ret = 5
+ufshcd-qcom 1d84000.ufs: __ufshcd_wl_resume: hibern8 exit failed 5
+ufs_device_wlun 0:0:0:49488: ufshcd_wl_resume failed: 5
+ufs_device_wlun 0:0:0:49488: PM: dpm_run_callback(): scsi_bus_resume+0x0/0x84 returns 5
+ufs_device_wlun 0:0:0:49488: PM: failed to resume async: error 5
+
+With the default system suspend level of UFS_PM_LVL_3, the power domain for
+UFS PHY needs to be kept always ON to retain the state. But this would
+prevent these SoCs from reaching the CX power collapse state, leading to
+poor power saving during system suspend.
+
+So to fix this issue without affecting the power saving, set
+'ufs_qcom_drvdata::no_phy_retention' to true which sets 'hba->spm_lvl' to
+UFS_PM_LVL_5 to allow both the controller and device (in turn the PHY) to
+be powered down during system suspend for these SoCs by default.
+
+Cc: stable@vger.kernel.org # 6.3
+Fixes: 35cf1aaab169 ("arm64: dts: qcom: sm8550: Add UFS host controller and phy nodes")
+Fixes: 10e024671295 ("arm64: dts: qcom: sm8650: add interconnect dependent device nodes")
+Reported-by: Neil Armstrong <neil.armstrong@linaro.org>
 Tested-by: Amit Pundir <amit.pundir@linaro.org> # on SM8550-HDK
 Reviewed-by: Bart Van Assche <bvanassche@acm.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/ufs/host/ufs-qcom.c | 13 +++++++++----
- drivers/ufs/host/ufs-qcom.h |  4 ++++
- 2 files changed, 13 insertions(+), 4 deletions(-)
+ drivers/ufs/host/ufs-qcom.c | 5 +++++
+ drivers/ufs/host/ufs-qcom.h | 1 +
+ 2 files changed, 6 insertions(+)
 
 diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 32b0c74437de..35ae8c8fc301 100644
+index 35ae8c8fc301..edf62430cabe 100644
 --- a/drivers/ufs/host/ufs-qcom.c
 +++ b/drivers/ufs/host/ufs-qcom.c
-@@ -871,6 +871,7 @@ static u32 ufs_qcom_get_ufs_hci_version(struct ufs_hba *hba)
-  */
- static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
- {
+@@ -1069,6 +1069,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
+ 	struct device *dev = hba->dev;
+ 	struct ufs_qcom_host *host;
+ 	struct ufs_clk_info *clki;
 +	const struct ufs_qcom_drvdata *drvdata = of_device_get_match_data(hba->dev);
- 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
  
- 	if (host->hw_ver.major == 0x2)
-@@ -879,9 +880,8 @@ static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
- 	if (host->hw_ver.major > 0x3)
- 		hba->quirks |= UFSHCD_QUIRK_REINIT_AFTER_MAX_GEAR_SWITCH;
+ 	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
+ 	if (!host)
+@@ -1148,6 +1149,9 @@ static int ufs_qcom_init(struct ufs_hba *hba)
+ 		dev_warn(dev, "%s: failed to configure the testbus %d\n",
+ 				__func__, err);
  
--	if (of_device_is_compatible(hba->dev->of_node, "qcom,sm8550-ufshc") ||
--	    of_device_is_compatible(hba->dev->of_node, "qcom,sm8650-ufshc"))
--		hba->quirks |= UFSHCD_QUIRK_BROKEN_LSDBS_CAP;
-+	if (drvdata && drvdata->quirks)
-+		hba->quirks |= drvdata->quirks;
- }
- 
- static void ufs_qcom_set_phy_gear(struct ufs_qcom_host *host)
-@@ -1864,9 +1864,14 @@ static void ufs_qcom_remove(struct platform_device *pdev)
- 	platform_device_msi_free_irqs_all(hba->dev);
- }
- 
-+static const struct ufs_qcom_drvdata ufs_qcom_sm8550_drvdata = {
-+	.quirks = UFSHCD_QUIRK_BROKEN_LSDBS_CAP,
-+};
++	if (drvdata && drvdata->no_phy_retention)
++		hba->spm_lvl = UFS_PM_LVL_5;
 +
- static const struct of_device_id ufs_qcom_of_match[] __maybe_unused = {
- 	{ .compatible = "qcom,ufshc" },
--	{ .compatible = "qcom,sm8550-ufshc" },
-+	{ .compatible = "qcom,sm8550-ufshc", .data = &ufs_qcom_sm8550_drvdata },
-+	{ .compatible = "qcom,sm8650-ufshc", .data = &ufs_qcom_sm8550_drvdata },
- 	{},
+ 	return 0;
+ 
+ out_variant_clear:
+@@ -1866,6 +1870,7 @@ static void ufs_qcom_remove(struct platform_device *pdev)
+ 
+ static const struct ufs_qcom_drvdata ufs_qcom_sm8550_drvdata = {
+ 	.quirks = UFSHCD_QUIRK_BROKEN_LSDBS_CAP,
++	.no_phy_retention = true,
  };
- MODULE_DEVICE_TABLE(of, ufs_qcom_of_match);
+ 
+ static const struct of_device_id ufs_qcom_of_match[] __maybe_unused = {
 diff --git a/drivers/ufs/host/ufs-qcom.h b/drivers/ufs/host/ufs-qcom.h
-index b9de170983c9..15f6dad8b27f 100644
+index 15f6dad8b27f..919f53682beb 100644
 --- a/drivers/ufs/host/ufs-qcom.h
 +++ b/drivers/ufs/host/ufs-qcom.h
-@@ -217,6 +217,10 @@ struct ufs_qcom_host {
- 	bool esi_enabled;
+@@ -219,6 +219,7 @@ struct ufs_qcom_host {
+ 
+ struct ufs_qcom_drvdata {
+ 	enum ufshcd_quirks quirks;
++	bool no_phy_retention;
  };
  
-+struct ufs_qcom_drvdata {
-+	enum ufshcd_quirks quirks;
-+};
-+
  static inline u32
- ufs_qcom_get_debug_reg_offset(struct ufs_qcom_host *host, u32 reg)
- {
 
 -- 
 2.25.1
