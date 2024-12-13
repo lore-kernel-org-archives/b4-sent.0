@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Fri, 13 Dec 2024 19:23:29 +0530
-Subject: [PATCH v2 1/3] scsi: ufs: qcom: Power off the PHY if it was
- already powered on in ufs_qcom_power_up_sequence()
+Date: Fri, 13 Dec 2024 19:23:30 +0530
+Subject: [PATCH v2 2/3] scsi: ufs: qcom: Allow passing platform specific OF
+ data
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241213-ufs-qcom-suspend-fix-v2-1-1de6cd2d6146@linaro.org>
+Message-Id: <20241213-ufs-qcom-suspend-fix-v2-2-1de6cd2d6146@linaro.org>
 References: <20241213-ufs-qcom-suspend-fix-v2-0-1de6cd2d6146@linaro.org>
 In-Reply-To: <20241213-ufs-qcom-suspend-fix-v2-0-1de6cd2d6146@linaro.org>
 To: Alim Akhtar <alim.akhtar@samsung.com>, 
@@ -18,165 +18,92 @@ To: Alim Akhtar <alim.akhtar@samsung.com>,
 Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-arm-msm@vger.kernel.org, Amit Pundir <amit.pundir@linaro.org>, 
  Nitin Rawat <quic_nitirawa@quicinc.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- stable@vger.kernel.org, Ram Kumar Dwivedi <quic_rdwivedi@quicinc.com>
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6268;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2709;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=Sv4V4lP72bSSLgkPPE0X0h9+uMY2fNRzExFuxTd/oBU=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnXDxb7oP5rerxn5AN1GGgl0eGejKfGcaFcWqgf
- yW3X6IAOhuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ1w8WwAKCRBVnxHm/pHO
- 9Y56B/9HwMY/oBu+OmjNpGOKJDFBMQXkS79rz2KZj/YBNXHImDeR1SIaaBxuPyc2tcyEornXz/8
- 2WptibUDZ/VqDRx+nksbSmLxX43e8IqdF8UW/+O/RmxEX5/jbO9UpWh0M1G5ejlJkmoZq8Yxoql
- wrR0rTufz6mjoVL7OoHf7PDXqjqygA39kTygzlgz69YW8udZFAl2mOA1+dCtnBPYHDRbBVPe/iZ
- 32MNbLZ8IUVNEcJGSC2wyPpC4AFs4z8/NAs8/KAxOtSLWgVgv1BeGWWvSvKjWmk1l9Y5AXhkPW6
- gaNmxLrJYbyK64wti7GDzJH3qIJZ4VCEYYBMVKGRz2DkTbGg
+ bh=qqrxdC5u7a2vZfs8QFNpeAZBHqn1+eO7J3Xdho8U5SY=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnXDxc+9/I1Jb3eWtP2983AMBHpbG+joy36Ntck
+ aqYAwgqzuGJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ1w8XAAKCRBVnxHm/pHO
+ 9aJeB/4jtWCKxXc9qwEo64zElXLbEEQqNkPs8ZnFmOG3ENGVzDQ2g+83YJ8nG/1g8wSuEOBu62N
+ qUDUwnTp4Ts14JmWMiJXz3Wa+lewGZqnxCBupsDRuUZ81AL/z+2e3Z8xj5qiiAbYGGaiuyu+zKJ
+ BrJny0V8yHUkbCsqF3Tg2X8oFBS5TM1IRvPSyZp9yzRK/1ODd/lolElkJ8QBDWS2fzzGyqrMtbU
+ tsmMKYCDb1i8f4dXhs2FmxvxIbzGKARMqpCNTRLWmjecOsIGUYrbNsc+JzGzlvfvmsBIDGaUt2O
+ E81DEi3LOH/iNxMpxb+pXg/MTiRrUiHW8RmuphVT4X46R0km
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-PHY might already be powered on during ufs_qcom_power_up_sequence() in a
-couple of cases:
+In order to allow platform specific flags and configurations, introduce
+the platform specific OF data and move the existing quirk
+UFSHCD_QUIRK_BROKEN_LSDBS_CAP for SM8550 and SM8650 SoCs.
 
-1. During UFSHCD_QUIRK_REINIT_AFTER_MAX_GEAR_SWITCH quirk
-2. Resuming from spm_lvl = 5 suspend
-
-In those cases, it is necessary to call phy_power_off() and phy_exit() in
-ufs_qcom_power_up_sequence() function to power off the PHY before calling
-phy_init() and phy_power_on().
-
-Case (1) is doing it via ufs_qcom_reinit_notify() callback, but case (2) is
-not handled. So to satisfy both cases, call phy_power_off() and phy_exit()
-if the phy_count is non-zero. And with this change, the reinit_notify()
-callback is no longer needed.
-
-This fixes the below UFS resume failure with spm_lvl = 5:
-
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: ufshcd_host_reset_and_restore: Host init failed -5
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: ufshcd_host_reset_and_restore: Host init failed -5
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: ufshcd_host_reset_and_restore: Host init failed -5
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: ufshcd_host_reset_and_restore: Host init failed -5
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: Enabling the controller failed
-ufshcd-qcom 1d84000.ufshc: ufshcd_host_reset_and_restore: Host init failed -5
-ufs_device_wlun 0:0:0:49488: ufshcd_wl_resume failed: -5
-ufs_device_wlun 0:0:0:49488: PM: dpm_run_callback(): scsi_bus_resume returns -5
-ufs_device_wlun 0:0:0:49488: PM: failed to resume async: error -5
-
-Cc: stable@vger.kernel.org # 6.3
-Fixes: baf5ddac90dc ("scsi: ufs: ufs-qcom: Add support for reinitializing the UFS device")
-Reported-by: Ram Kumar Dwivedi <quic_rdwivedi@quicinc.com>
+Reviewed-by: Avri Altman <avri.altman@wdc.com>
+Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
 Tested-by: Amit Pundir <amit.pundir@linaro.org> # on SM8550-HDK
 Reviewed-by: Bart Van Assche <bvanassche@acm.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/ufs/core/ufshcd-priv.h |  6 ------
- drivers/ufs/core/ufshcd.c      |  1 -
- drivers/ufs/host/ufs-qcom.c    | 13 +++++--------
- include/ufs/ufshcd.h           |  2 --
- 4 files changed, 5 insertions(+), 17 deletions(-)
+ drivers/ufs/host/ufs-qcom.c | 13 +++++++++----
+ drivers/ufs/host/ufs-qcom.h |  4 ++++
+ 2 files changed, 13 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/ufs/core/ufshcd-priv.h b/drivers/ufs/core/ufshcd-priv.h
-index 7aea8fbaeee8..1f413b3aab5d 100644
---- a/drivers/ufs/core/ufshcd-priv.h
-+++ b/drivers/ufs/core/ufshcd-priv.h
-@@ -236,12 +236,6 @@ static inline void ufshcd_vops_config_scaling_param(struct ufs_hba *hba,
- 		hba->vops->config_scaling_param(hba, p, data);
- }
- 
--static inline void ufshcd_vops_reinit_notify(struct ufs_hba *hba)
--{
--	if (hba->vops && hba->vops->reinit_notify)
--		hba->vops->reinit_notify(hba);
--}
--
- static inline int ufshcd_vops_mcq_config_resource(struct ufs_hba *hba)
- {
- 	if (hba->vops && hba->vops->mcq_config_resource)
-diff --git a/drivers/ufs/core/ufshcd.c b/drivers/ufs/core/ufshcd.c
-index 6a2685333076..7bd0f5482db3 100644
---- a/drivers/ufs/core/ufshcd.c
-+++ b/drivers/ufs/core/ufshcd.c
-@@ -8820,7 +8820,6 @@ static int ufshcd_probe_hba(struct ufs_hba *hba, bool init_dev_params)
- 		ufshcd_device_reset(hba);
- 		ufs_put_device_desc(hba);
- 		ufshcd_hba_stop(hba);
--		ufshcd_vops_reinit_notify(hba);
- 		ret = ufshcd_hba_enable(hba);
- 		if (ret) {
- 			dev_err(hba->dev, "Host controller enable failed\n");
 diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 3b592492e152..32b0c74437de 100644
+index 32b0c74437de..35ae8c8fc301 100644
 --- a/drivers/ufs/host/ufs-qcom.c
 +++ b/drivers/ufs/host/ufs-qcom.c
-@@ -368,6 +368,11 @@ static int ufs_qcom_power_up_sequence(struct ufs_hba *hba)
- 	if (ret)
- 		return ret;
+@@ -871,6 +871,7 @@ static u32 ufs_qcom_get_ufs_hci_version(struct ufs_hba *hba)
+  */
+ static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
+ {
++	const struct ufs_qcom_drvdata *drvdata = of_device_get_match_data(hba->dev);
+ 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
  
-+	if (phy->power_count) {
-+		phy_power_off(phy);
-+		phy_exit(phy);
-+	}
-+
- 	/* phy initialization - calibrate the phy */
- 	ret = phy_init(phy);
- 	if (ret) {
-@@ -1579,13 +1584,6 @@ static void ufs_qcom_config_scaling_param(struct ufs_hba *hba,
+ 	if (host->hw_ver.major == 0x2)
+@@ -879,9 +880,8 @@ static void ufs_qcom_advertise_quirks(struct ufs_hba *hba)
+ 	if (host->hw_ver.major > 0x3)
+ 		hba->quirks |= UFSHCD_QUIRK_REINIT_AFTER_MAX_GEAR_SWITCH;
+ 
+-	if (of_device_is_compatible(hba->dev->of_node, "qcom,sm8550-ufshc") ||
+-	    of_device_is_compatible(hba->dev->of_node, "qcom,sm8650-ufshc"))
+-		hba->quirks |= UFSHCD_QUIRK_BROKEN_LSDBS_CAP;
++	if (drvdata && drvdata->quirks)
++		hba->quirks |= drvdata->quirks;
  }
- #endif
  
--static void ufs_qcom_reinit_notify(struct ufs_hba *hba)
--{
--	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
--
--	phy_power_off(host->generic_phy);
--}
--
- /* Resources */
- static const struct ufshcd_res_info ufs_res_info[RES_MAX] = {
- 	{.name = "ufs_mem",},
-@@ -1825,7 +1823,6 @@ static const struct ufs_hba_variant_ops ufs_hba_qcom_vops = {
- 	.device_reset		= ufs_qcom_device_reset,
- 	.config_scaling_param = ufs_qcom_config_scaling_param,
- 	.program_key		= ufs_qcom_ice_program_key,
--	.reinit_notify		= ufs_qcom_reinit_notify,
- 	.mcq_config_resource	= ufs_qcom_mcq_config_resource,
- 	.get_hba_mac		= ufs_qcom_get_hba_mac,
- 	.op_runtime_config	= ufs_qcom_op_runtime_config,
-diff --git a/include/ufs/ufshcd.h b/include/ufs/ufshcd.h
-index d7aca9e61684..6e40b8e8009b 100644
---- a/include/ufs/ufshcd.h
-+++ b/include/ufs/ufshcd.h
-@@ -327,7 +327,6 @@ struct ufs_pwr_mode_info {
-  * @program_key: program or evict an inline encryption key
-  * @fill_crypto_prdt: initialize crypto-related fields in the PRDT
-  * @event_notify: called to notify important events
-- * @reinit_notify: called to notify reinit of UFSHCD during max gear switch
-  * @mcq_config_resource: called to configure MCQ platform resources
-  * @get_hba_mac: reports maximum number of outstanding commands supported by
-  *	the controller. Should be implemented for UFSHCI 4.0 or later
-@@ -379,7 +378,6 @@ struct ufs_hba_variant_ops {
- 				    void *prdt, unsigned int num_segments);
- 	void	(*event_notify)(struct ufs_hba *hba,
- 				enum ufs_event_type evt, void *data);
--	void	(*reinit_notify)(struct ufs_hba *);
- 	int	(*mcq_config_resource)(struct ufs_hba *hba);
- 	int	(*get_hba_mac)(struct ufs_hba *hba);
- 	int	(*op_runtime_config)(struct ufs_hba *hba);
+ static void ufs_qcom_set_phy_gear(struct ufs_qcom_host *host)
+@@ -1864,9 +1864,14 @@ static void ufs_qcom_remove(struct platform_device *pdev)
+ 	platform_device_msi_free_irqs_all(hba->dev);
+ }
+ 
++static const struct ufs_qcom_drvdata ufs_qcom_sm8550_drvdata = {
++	.quirks = UFSHCD_QUIRK_BROKEN_LSDBS_CAP,
++};
++
+ static const struct of_device_id ufs_qcom_of_match[] __maybe_unused = {
+ 	{ .compatible = "qcom,ufshc" },
+-	{ .compatible = "qcom,sm8550-ufshc" },
++	{ .compatible = "qcom,sm8550-ufshc", .data = &ufs_qcom_sm8550_drvdata },
++	{ .compatible = "qcom,sm8650-ufshc", .data = &ufs_qcom_sm8550_drvdata },
+ 	{},
+ };
+ MODULE_DEVICE_TABLE(of, ufs_qcom_of_match);
+diff --git a/drivers/ufs/host/ufs-qcom.h b/drivers/ufs/host/ufs-qcom.h
+index b9de170983c9..15f6dad8b27f 100644
+--- a/drivers/ufs/host/ufs-qcom.h
++++ b/drivers/ufs/host/ufs-qcom.h
+@@ -217,6 +217,10 @@ struct ufs_qcom_host {
+ 	bool esi_enabled;
+ };
+ 
++struct ufs_qcom_drvdata {
++	enum ufshcd_quirks quirks;
++};
++
+ static inline u32
+ ufs_qcom_get_debug_reg_offset(struct ufs_qcom_host *host, u32 reg)
+ {
 
 -- 
 2.25.1
