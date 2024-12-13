@@ -1,116 +1,71 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Fri, 13 Dec 2024 19:23:31 +0530
-Subject: [PATCH v2 3/3] scsi: ufs: qcom: Power down the controller/device
- during system suspend for SM8550/SM8650 SoCs
+From: Ross Burton <ross.burton@arm.com>
+Date: Fri, 13 Dec 2024 16:12:58 +0000
+Subject: [PATCH] arm64: defconfig: remove obsolete CONFIG_SM_DISPCC_8650
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241213-ufs-qcom-suspend-fix-v2-3-1de6cd2d6146@linaro.org>
-References: <20241213-ufs-qcom-suspend-fix-v2-0-1de6cd2d6146@linaro.org>
-In-Reply-To: <20241213-ufs-qcom-suspend-fix-v2-0-1de6cd2d6146@linaro.org>
-To: Alim Akhtar <alim.akhtar@samsung.com>, 
- Avri Altman <avri.altman@wdc.com>, Bart Van Assche <bvanassche@acm.org>, 
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>, 
- Abel Vesa <abel.vesa@linaro.org>, Bjorn Andersson <andersson@kernel.org>, 
+Message-Id: <20241213-clkmaster-v1-1-dcbf7fad37b1@arm.com>
+X-B4-Tracking: v=1; b=H4sIAAldXGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDI0Nj3eSc7NzE4pLUIl1TU4tU0xTzZEszs2QloPqCotS0zAqwWdGxtbU
+ AZmVDoFsAAAA=
+X-Change-ID: 20241213-clkmaster-558e5d7c966c
+To: Catalin Marinas <catalin.marinas@arm.com>, 
+ Will Deacon <will@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@linaro.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
  Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, Amit Pundir <amit.pundir@linaro.org>, 
- Nitin Rawat <quic_nitirawa@quicinc.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- stable@vger.kernel.org
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3153;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=dm+C1IineBDRJt5UyRNTw/yDrjuto+TzGCEuC82e76E=;
- b=owGbwMvMwMUYOl/w2b+J574ynlZLYkiPsYk5XdcQFOSdlJb88sca9c9lF9+/U52kUZDiuavBQ
- jI1S0Ctk9GYhYGRi0FWTJElfamzVqPH6RtLItSnwwxiZQKZwsDFKQATWSPP/s9a+p95776Zt1rF
- kqQX+kyw0jFp1D954eYuWx4+VgHViTseKmY/c3hR9+i3dN3ZNo1eLo6T/3bVBn5mTJRg0v214/E
- 27+0zQrnfG5j5h8+QDy8q7dKqc/TOqV7NKebmLVkvuuID/5ED3NOn/N3W32zgFLHK5V69vNUUCf
- 2VxbV26VJO0kcYZJ7yqGQY6HKWsMTO3pGfujD72vRv9VXdl1udnH6/W6AavC5Z1ox7gckzt9XuM
- plhFiprrGYHWWxNqZl2a/arq1bfdbp+T6t+lmls+rKH1zEppLl0tW/n4Vs/d9aIhK/98nea6O41
- trNsMlz3N4Qr/3z7O4Vtj1iP2aZ37poTr2Q9Fkz14nsIAA==
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Ross Burton <ross.burton@arm.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1058; i=ross.burton@arm.com;
+ h=from:subject:message-id; bh=epENDaJFaEN+XJXFXZ723Iyyxb7oJBNFgTPKcQODkWo=;
+ b=kA0DAAgBZItO7TOROJ0ByyZiAGdcXQvIqGC4hPhLJYfOvCIyA/T+rzDsNRxIyP39hHE1cxwB3
+ IkCMwQAAQgAHRYhBIf9jOMBgVWcojlzDGSLTu0zkTidBQJnXF0LAAoJEGSLTu0zkTidtUUQALlI
+ eHpo8h7c6m53q4NRc5Oca+Yj504O56wR7RfZApjR1hmzhklavRFuDBkfXtpYmoja3Mg73mN1cu0
+ jhnHVRn8azedLxL5BQnh5UNa6ZH7voXrmeFyp+DrEPnozElBSlYilXvyfmj5sdkU7J/hxSiux8g
+ Egyclnn6TYepZ+t59SajE3gmtQLj/Q731dS8B/7Tc/pr0dcxLxozTohv3o1Yl2c9vCK/r5AvgNy
+ +t3Xm85Dc6JLnDgv00iR8a/FsbKC7N0/jcv0RwZZKfjAu8TFdSsZCM7ki/ppKRa9H9ZPQ4NLkgK
+ YlnY3h9wtj5BI/cpDecn/X4cg5hln5RvjmAMRurk/zDwjekzmFUGCMV+UKdMT4FmWHcpvE0BWvx
+ CNHLMb8Adu2wDe+1VYqJbZY1vHWUZSKNlbSb2AOEjaNf3K/jDiTEy6aaxAtuzipb2Hs/JvT/n20
+ HM6i2Gy2tsvLsonwd/T2U8fDhAPOH2/nJEj5HjH+r/f6DnPn61Oqed1DR99GJtV7YwLVaClXa1J
+ 63WeHvvVi71mEaBpWSUV+QJo8Ygfq9AREPUZrTEGX8N9VadFUNIbvphZQnoUKA0ScHeIqS73ml9
+ qfNGVimrwZc5Mz+2Itqrq1k2paKu8CESgrbgSP5O78mlsuTpXIjZN/W/eyWv3A7hkzTGItFsU2N
+ 6VWsg
+X-Developer-Key: i=ross.burton@arm.com; a=openpgp;
+ fpr=87FD8CE30181559CA239730C648B4EED3391389D
+X-Endpoint-Received: by B4 Relay for ross.burton@arm.com/default with auth_id=59
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SM8550 and SM8650 SoCs doesn't support UFS PHY retention. So once these
-SoCs reaches the low power state (CX power collapse) during system suspend,
-all the PHY hardware state gets lost. This leads to the UFS resume failure:
+This option was removed from the Kconfig in commit 802b83205519 ("clk:
+qcom: fold dispcc-sm8650 info dispcc-sm8550") but it was not removed
+from the defconfig.
 
-ufshcd-qcom 1d84000.ufs: ufshcd_uic_hibern8_exit: hibern8 exit failed. ret = 5
-ufshcd-qcom 1d84000.ufs: __ufshcd_wl_resume: hibern8 exit failed 5
-ufs_device_wlun 0:0:0:49488: ufshcd_wl_resume failed: 5
-ufs_device_wlun 0:0:0:49488: PM: dpm_run_callback(): scsi_bus_resume+0x0/0x84 returns 5
-ufs_device_wlun 0:0:0:49488: PM: failed to resume async: error 5
-
-With the default system suspend level of UFS_PM_LVL_3, the power domain for
-UFS PHY needs to be kept always ON to retain the state. But this would
-prevent these SoCs from reaching the CX power collapse state, leading to
-poor power saving during system suspend.
-
-So to fix this issue without affecting the power saving, set
-'ufs_qcom_drvdata::no_phy_retention' to true which sets 'hba->spm_lvl' to
-UFS_PM_LVL_5 to allow both the controller and device (in turn the PHY) to
-be powered down during system suspend for these SoCs by default.
-
-Cc: stable@vger.kernel.org # 6.3
-Fixes: 35cf1aaab169 ("arm64: dts: qcom: sm8550: Add UFS host controller and phy nodes")
-Fixes: 10e024671295 ("arm64: dts: qcom: sm8650: add interconnect dependent device nodes")
-Reported-by: Neil Armstrong <neil.armstrong@linaro.org>
-Tested-by: Amit Pundir <amit.pundir@linaro.org> # on SM8550-HDK
-Reviewed-by: Bart Van Assche <bvanassche@acm.org>
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Fixes: 802b83205519 ("clk: qcom: fold dispcc-sm8650 info dispcc-sm8550")
+Signed-off-by: Ross Burton <ross.burton@arm.com>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 ---
- drivers/ufs/host/ufs-qcom.c | 5 +++++
- drivers/ufs/host/ufs-qcom.h | 1 +
- 2 files changed, 6 insertions(+)
+ arch/arm64/configs/defconfig | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 35ae8c8fc301..edf62430cabe 100644
---- a/drivers/ufs/host/ufs-qcom.c
-+++ b/drivers/ufs/host/ufs-qcom.c
-@@ -1069,6 +1069,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
- 	struct device *dev = hba->dev;
- 	struct ufs_qcom_host *host;
- 	struct ufs_clk_info *clki;
-+	const struct ufs_qcom_drvdata *drvdata = of_device_get_match_data(hba->dev);
- 
- 	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
- 	if (!host)
-@@ -1148,6 +1149,9 @@ static int ufs_qcom_init(struct ufs_hba *hba)
- 		dev_warn(dev, "%s: failed to configure the testbus %d\n",
- 				__func__, err);
- 
-+	if (drvdata && drvdata->no_phy_retention)
-+		hba->spm_lvl = UFS_PM_LVL_5;
-+
- 	return 0;
- 
- out_variant_clear:
-@@ -1866,6 +1870,7 @@ static void ufs_qcom_remove(struct platform_device *pdev)
- 
- static const struct ufs_qcom_drvdata ufs_qcom_sm8550_drvdata = {
- 	.quirks = UFSHCD_QUIRK_BROKEN_LSDBS_CAP,
-+	.no_phy_retention = true,
- };
- 
- static const struct of_device_id ufs_qcom_of_match[] __maybe_unused = {
-diff --git a/drivers/ufs/host/ufs-qcom.h b/drivers/ufs/host/ufs-qcom.h
-index 15f6dad8b27f..919f53682beb 100644
---- a/drivers/ufs/host/ufs-qcom.h
-+++ b/drivers/ufs/host/ufs-qcom.h
-@@ -219,6 +219,7 @@ struct ufs_qcom_host {
- 
- struct ufs_qcom_drvdata {
- 	enum ufshcd_quirks quirks;
-+	bool no_phy_retention;
- };
- 
- static inline u32
+diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
+index c62831e6158633f07c1f3532fba62f09b31e7448..c6d6a31a8f48c7ce9c9ca74e29db3b8835bfd556 100644
+--- a/arch/arm64/configs/defconfig
++++ b/arch/arm64/configs/defconfig
+@@ -1352,7 +1352,6 @@ CONFIG_SM_DISPCC_6115=m
+ CONFIG_SM_DISPCC_8250=y
+ CONFIG_SM_DISPCC_8450=m
+ CONFIG_SM_DISPCC_8550=m
+-CONFIG_SM_DISPCC_8650=m
+ CONFIG_SM_GCC_4450=y
+ CONFIG_SM_GCC_6115=y
+ CONFIG_SM_GCC_8350=y
 
+---
+base-commit: 231825b2e1ff6ba799c5eaf396d3ab2354e37c6b
+change-id: 20241213-clkmaster-558e5d7c966c
+
+Best regards,
 -- 
-2.25.1
+Ross Burton <ross.burton@arm.com>
 
