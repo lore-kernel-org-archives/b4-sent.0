@@ -1,97 +1,64 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Fri, 13 Dec 2024 18:32:50 +0100
-Subject: [PATCH 4/4] gpio: 74x164: Add latch GPIO support
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Subject: [PATCH v2 0/2] power: supply: gpio-charger: add support for
+ default charge current limit
+Date: Fri, 13 Dec 2024 20:32:32 +0100
+Message-Id: <20241213-default-charge-current-limit-v2-0-45886fce905c@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20241213-gpio74-v1-4-fa2c089caf41@posteo.net>
-References: <20241213-gpio74-v1-0-fa2c089caf41@posteo.net>
-In-Reply-To: <20241213-gpio74-v1-0-fa2c089caf41@posteo.net>
-To: Linus Walleij <linus.walleij@linaro.org>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIANCLXGcC/32Nyw6CMBBFf8XM2jGdBsG68j8MiwKDTMLDTAvRE
+ P7dSly7PPck564QWIUDXA8rKC8SZBoT2OMB6s6PD0ZpEoM1NiNrHDbc+rmPmKwmW8+qPEbsZZC
+ IufNcuOxscvKQEk/lVl57/l4m7iTESd/720Lf9Rcm+h9eCA0WF3KVNzmz9bdeuOpY9VRPA5Tbt
+ n0AJHglm8sAAAA=
+X-Change-ID: 20241209-default-charge-current-limit-69ae7945061a
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Maxime Ripard <mripard@kernel.org>
-Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734111175; l=2116;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=NHTF1nhuNdR0eYjJx9o0IFR59AC3RI+5HuDVC8y4CZg=;
- b=UuX6oJtAJB0Vb331MtDfTa02d4W2XlOU+gzFGpyU8X4UfOI/j+NEDiNv4n7jPD5WalTaT4APJ
- 1tu5bE8X/psDcivPrJl434Q8ssJRtCRRer2H3Yrtj5S63pqPIMGgjyb
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734118360; l=1474;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=Ud2wCa8TSYVfpnac2gkRPt80w1+N1OzZr1JJXuVpSps=;
+ b=zf9bjiGiLdqbtu5VANIqnr1BgtHuGTzqBJeXJABZGOjH1vn14TO6pLAItRzl13cm+iFqeMyXN
+ pARni1WA2NiB/AmeCBXVFbGouit8cuSLzBriVeHs7EiBsgiuvyzmPeT
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Fairchild MM74HC595 and other compatible parts have a latch clock
-input (also known as storage register clock input), which must be
-clocked once in order to apply any value that was serially shifted in.
+With DT properties charge-current-limit-gpios and
+charge-current-limit-mapping one can define charge current limits in uA
+using up to 32 GPIOs. At the moment the driver defaults to smallest charge
+current limitation for safety reasons. When disabling charging is
+supported, which should be common, the driver defaults to non charging on
+probe. By having a default, charging can be enabled on probe for such
+devices.
 
-This patch adds driver support for using a GPIO that connects to the
-latch clock.
-
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- drivers/gpio/gpio-74x164.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+Changes in v2:
+- renamed DT property charge-current-limit-default to
+  charge-current-limit-default-microamp
+- Added dependency on charge-current-limit-mapping
+- Added intention and use case to commit descriptions
+- Added charge-current-limit-default-microamp in bindings example
+- Link to v1: https://lore.kernel.org/r/20241211-default-charge-current-limit-v1-0-7819ba06ee2a@liebherr.com
 
-diff --git a/drivers/gpio/gpio-74x164.c b/drivers/gpio/gpio-74x164.c
-index 187032efa5b5cd1aa7aea7b2d55f6c06df4ccac4..8e87eeb7a1c7a8c71079c8d837dc5c426db8b65b 100644
---- a/drivers/gpio/gpio-74x164.c
-+++ b/drivers/gpio/gpio-74x164.c
-@@ -7,6 +7,7 @@
-  */
- 
- #include <linux/bitops.h>
-+#include <linux/delay.h>
- #include <linux/gpio/consumer.h>
- #include <linux/gpio/driver.h>
- #include <linux/module.h>
-@@ -21,6 +22,7 @@ struct gen_74x164_chip {
- 	struct gpio_chip	gpio_chip;
- 	struct mutex		lock;
- 	struct gpio_desc	*gpiod_oe;
-+	struct gpio_desc	*gpiod_latch;
- 	u32			registers;
- 	/*
- 	 * Since the registers are chained, every byte sent will make
-@@ -34,8 +36,20 @@ struct gen_74x164_chip {
- 
- static int __gen_74x164_write_config(struct gen_74x164_chip *chip)
- {
--	return spi_write(to_spi_device(chip->gpio_chip.parent), chip->buffer,
-+	int ret;
-+
-+	ret = spi_write(to_spi_device(chip->gpio_chip.parent), chip->buffer,
- 			 chip->registers);
-+	if (ret)
-+		return ret;
-+
-+	if (chip->gpiod_latch) {
-+		gpiod_set_value_cansleep(chip->gpiod_latch, 1);
-+		udelay(1);
-+		gpiod_set_value_cansleep(chip->gpiod_latch, 0);
-+	}
-+
-+	return 0;
- }
- 
- static int gen_74x164_get_value(struct gpio_chip *gc, unsigned offset)
-@@ -127,6 +141,11 @@ static int gen_74x164_probe(struct spi_device *spi)
- 	if (IS_ERR(chip->gpiod_oe))
- 		return PTR_ERR(chip->gpiod_oe);
- 
-+	chip->gpiod_latch = devm_gpiod_get_optional(&spi->dev, "latch",
-+						    GPIOD_OUT_LOW);
-+	if (IS_ERR(chip->gpiod_latch))
-+		return PTR_ERR(chip->gpiod_latch);
-+
- 	spi_set_drvdata(spi, chip);
- 
- 	chip->gpio_chip.label = spi->modalias;
+---
+Dimitri Fedrau (2):
+      dt-bindings: power: supply: gpio-charger: add support for default charge current limit
+      power: supply: gpio-charger: add support for default charge current limit
 
+ .../devicetree/bindings/power/supply/gpio-charger.yaml      |  6 ++++++
+ drivers/power/supply/gpio-charger.c                         | 13 +++++++++++++
+ 2 files changed, 19 insertions(+)
+---
+base-commit: 57cb041f61d4abcf8dfa41259df27d081ab4cb6a
+change-id: 20241209-default-charge-current-limit-69ae7945061a
+
+Best regards,
 -- 
-2.45.2
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
