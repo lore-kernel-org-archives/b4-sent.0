@@ -1,71 +1,52 @@
-From: Ross Burton <ross.burton@arm.com>
-Date: Fri, 13 Dec 2024 16:12:58 +0000
-Subject: [PATCH] arm64: defconfig: remove obsolete CONFIG_SM_DISPCC_8650
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH 0/4] gpio: 74HC595 / 74x164 shift register improvements
+Date: Fri, 13 Dec 2024 18:32:46 +0100
+Message-Id: <20241213-gpio74-v1-0-fa2c089caf41@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20241213-clkmaster-v1-1-dcbf7fad37b1@arm.com>
-X-B4-Tracking: v=1; b=H4sIAAldXGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxNDI0Nj3eSc7NzE4pLUIl1TU4tU0xTzZEszs2QloPqCotS0zAqwWdGxtbU
- AZmVDoFsAAAA=
-X-Change-ID: 20241213-clkmaster-558e5d7c966c
-To: Catalin Marinas <catalin.marinas@arm.com>, 
- Will Deacon <will@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Dmitry Baryshkov <dmitry.baryshkov@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Ross Burton <ross.burton@arm.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAL5vXGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDI0Nj3fSCzHxzE10zs9REY+OURBMTsxQloOKCotS0zAqwQdGxtbUA7th
+ OyVgAAAA=
+X-Change-ID: 20241213-gpio74-66ea33da446d
+To: Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Maxime Ripard <mripard@kernel.org>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1058; i=ross.burton@arm.com;
- h=from:subject:message-id; bh=epENDaJFaEN+XJXFXZ723Iyyxb7oJBNFgTPKcQODkWo=;
- b=kA0DAAgBZItO7TOROJ0ByyZiAGdcXQvIqGC4hPhLJYfOvCIyA/T+rzDsNRxIyP39hHE1cxwB3
- IkCMwQAAQgAHRYhBIf9jOMBgVWcojlzDGSLTu0zkTidBQJnXF0LAAoJEGSLTu0zkTidtUUQALlI
- eHpo8h7c6m53q4NRc5Oca+Yj504O56wR7RfZApjR1hmzhklavRFuDBkfXtpYmoja3Mg73mN1cu0
- jhnHVRn8azedLxL5BQnh5UNa6ZH7voXrmeFyp+DrEPnozElBSlYilXvyfmj5sdkU7J/hxSiux8g
- Egyclnn6TYepZ+t59SajE3gmtQLj/Q731dS8B/7Tc/pr0dcxLxozTohv3o1Yl2c9vCK/r5AvgNy
- +t3Xm85Dc6JLnDgv00iR8a/FsbKC7N0/jcv0RwZZKfjAu8TFdSsZCM7ki/ppKRa9H9ZPQ4NLkgK
- YlnY3h9wtj5BI/cpDecn/X4cg5hln5RvjmAMRurk/zDwjekzmFUGCMV+UKdMT4FmWHcpvE0BWvx
- CNHLMb8Adu2wDe+1VYqJbZY1vHWUZSKNlbSb2AOEjaNf3K/jDiTEy6aaxAtuzipb2Hs/JvT/n20
- HM6i2Gy2tsvLsonwd/T2U8fDhAPOH2/nJEj5HjH+r/f6DnPn61Oqed1DR99GJtV7YwLVaClXa1J
- 63WeHvvVi71mEaBpWSUV+QJo8Ygfq9AREPUZrTEGX8N9VadFUNIbvphZQnoUKA0ScHeIqS73ml9
- qfNGVimrwZc5Mz+2Itqrq1k2paKu8CESgrbgSP5O78mlsuTpXIjZN/W/eyWv3A7hkzTGItFsU2N
- 6VWsg
-X-Developer-Key: i=ross.burton@arm.com; a=openpgp;
- fpr=87FD8CE30181559CA239730C648B4EED3391389D
-X-Endpoint-Received: by B4 Relay for ross.burton@arm.com/default with auth_id=59
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734111175; l=830;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=lJEKgDelnzJ/bRVH+G+3ZU4n1kpliDSjZnLzDu3+33A=;
+ b=nCylNQ9tjXA6uUAwnCBq5dw+48WODp8/N7kS8h/0jbZgk5k5HJTueBtpi5Od4mgQCuuApSund
+ CIZ4mxGAhW5BsZv0355VczPRgi/Saf3+MfRulcTSzWL9kST1Gp3ZOUK
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This option was removed from the Kconfig in commit 802b83205519 ("clk:
-qcom: fold dispcc-sm8650 info dispcc-sm8550") but it was not removed
-from the defconfig.
+This patchset adds a compatible string for another part, and adds the
+ability to specify and use the latch clock pin on 74x164-compatible
+shift registers.
 
-Fixes: 802b83205519 ("clk: qcom: fold dispcc-sm8650 info dispcc-sm8550")
-Signed-off-by: Ross Burton <ross.burton@arm.com>
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- arch/arm64/configs/defconfig | 1 -
- 1 file changed, 1 deletion(-)
+J. Neuschäfer (4):
+      dt-bindings: gpio: fairchild,74hc595: Add On Semi MC74HC595A compat
+      dt-bindings: gpio: fairchild,74hc595: Add latch-gpios property
+      gpio: 74x164: Add On Semi MC74HC595A compat
+      gpio: 74x164: Add latch GPIO support
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index c62831e6158633f07c1f3532fba62f09b31e7448..c6d6a31a8f48c7ce9c9ca74e29db3b8835bfd556 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -1352,7 +1352,6 @@ CONFIG_SM_DISPCC_6115=m
- CONFIG_SM_DISPCC_8250=y
- CONFIG_SM_DISPCC_8450=m
- CONFIG_SM_DISPCC_8550=m
--CONFIG_SM_DISPCC_8650=m
- CONFIG_SM_GCC_4450=y
- CONFIG_SM_GCC_6115=y
- CONFIG_SM_GCC_8350=y
-
+ .../bindings/gpio/fairchild,74hc595.yaml           |  5 +++++
+ drivers/gpio/gpio-74x164.c                         | 22 +++++++++++++++++++++-
+ 2 files changed, 26 insertions(+), 1 deletion(-)
 ---
-base-commit: 231825b2e1ff6ba799c5eaf396d3ab2354e37c6b
-change-id: 20241213-clkmaster-558e5d7c966c
+base-commit: fac04efc5c793dccbd07e2d59af9f90b7fc0dca4
+change-id: 20241213-gpio74-66ea33da446d
 
 Best regards,
 -- 
-Ross Burton <ross.burton@arm.com>
+J. Neuschäfer <j.ne@posteo.net>
 
