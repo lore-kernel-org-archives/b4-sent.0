@@ -1,139 +1,83 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Thu, 12 Dec 2024 18:05:47 +0100
-Subject: [PATCH 2/2] powerpc: Introduce and enforce assembler checks on GPR
- usage
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH v2 0/3] scsi: ufs: qcom: Suspend fixes
+Date: Fri, 13 Dec 2024 19:23:28 +0530
+Message-Id: <20241213-ufs-qcom-suspend-fix-v2-0-1de6cd2d6146@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20241212-gpr-checks-v1-2-8c084c5fc0b6@posteo.net>
-References: <20241212-gpr-checks-v1-0-8c084c5fc0b6@posteo.net>
-In-Reply-To: <20241212-gpr-checks-v1-0-8c084c5fc0b6@posteo.net>
-To: Mario Six <mario.six@gdsys.cc>, Tom Rini <trini@konsulko.com>, 
- =?utf-8?q?Marek_Beh=C3=BAn?= <kabel@kernel.org>
-Cc: u-boot@lists.denx.de, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734023157; l=3076;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=z8qAEvazTMW3Pn4yZzgH4+wLaoAxWPDN1wAhNikkFBM=;
- b=r2qxweIysC8VOQteqWQc+5BAwmiMWIszbrYzouFaC22bKQkd/X8tOpXoKH+SHx6QMGl8GXYYk
- 388Bb9+knD7DB8dHJg4yvXhPgFOaP3NeZNiobhhCPTNyHYPY9OeEtAy
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAFg8XGcC/4WNQQ6CMBBFr0K6dgxTBMGV9zAsaDvAJNpiR4iGc
+ HcrF3D5XvLfX5VQZBJ1yVYVaWHh4BPoQ6bs2PmBgF1ipXN9Qo0Icy/wtOEBMstE3kHPbygrrKm
+ xZeWaQqXpFCnpPXtrE48srxA/+8uCP/snuCDkUBdkjKNzZdBe7+y7GI4hDqrdtu0LZeQanrkAA
+ AA=
+To: Alim Akhtar <alim.akhtar@samsung.com>, 
+ Avri Altman <avri.altman@wdc.com>, Bart Van Assche <bvanassche@acm.org>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ Abel Vesa <abel.vesa@linaro.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, Amit Pundir <amit.pundir@linaro.org>, 
+ Nitin Rawat <quic_nitirawa@quicinc.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ stable@vger.kernel.org, Ram Kumar Dwivedi <quic_rdwivedi@quicinc.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1899;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=fIuJ9Ysk9gL+ewa+bZt/zoZBjAsb6V7Ms7TdivTupdo=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnXDxb3KcXOghNgIpuuCcdfyVgKGCwAcCekf5fQ
+ LpHRst7b0+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ1w8WwAKCRBVnxHm/pHO
+ 9XY3B/wLzUP0NCGuuYLBOLe0RaLeeWkLOene69s5naQb3jmGe58IDnTYvyusrK3iC9RyYFpamGq
+ M1PPlvCjuWcFa51KtKvdjISqMc37XqBZfe7qzsyJCtz1srHqbgOx0jkvQYuKFU1NLEWTx2jE3J0
+ XjBA6biHVHcRjbHFs5XzuoIOih19uMmv0ADGM2pVtADUVPNhtH4WaAx/25EGpQW5ppuOmLBSaSw
+ 9VNNN8EPEH3ePwu+vODoYmbFjeabB7R03o1knI4nHBgjvB5qyxWznWAvd8WNi3IMZlpJhwk1GSb
+ 5i+8p0FNF2dp2mM+SNHREjKelzyJWLTvQy1tTtvIrOzlcGqx
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-PowerPC general-purpose registers are historically specified as plain
-numbers (0-31), which makes them hard to distinguish from immediates.
-For this reason, include/ppc_asm.tmpl defines aliases named r0-r31.
-This can still lead to uncaught mistakes if a register is used in place
-of a number.
+Hi,
 
-Instead of (e.g.) 5 use %r5, which will result in an assembler warning
-if used as a number. Turn these warnings into errors by passing
-`--fatal-warnings` to the assembler.
+This series fixes the several suspend issues on Qcom platforms. Patch 1 fixes
+the resume failure with spm_lvl=5 suspend on most of the Qcom platforms. For
+this patch, I couldn't figure out the exact commit that caused the issue. So I
+used the commit that introduced reinit support as a placeholder.
 
-I verified with gazerbeam_defconfig (MPC83xx) and qemu-ppce500_defconfig
-(MPC85xx) that this patch results in the same machine code.
+Patch 3 fixes the suspend issue on SM8550 and SM8650 platforms where UFS
+PHY retention is not supported. Hence the default spm_lvl=3 suspend fails. So
+this patch configures spm_lvl=5 as the default suspend level to force UFSHC/
+device powerdown during suspend. This supersedes the previous series [1] that
+tried to fix the issue in clock drivers.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+This series is tested on Qcom SM8550 MTP and Qcom RB5 boards.
+
+[1] https://lore.kernel.org/linux-arm-msm/20241107-ufs-clk-fix-v1-0-6032ff22a052@linaro.org
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- arch/powerpc/config.mk |  2 +-
- include/ppc_asm.tmpl   | 66 +++++++++++++++++++++++++-------------------------
- 2 files changed, 34 insertions(+), 34 deletions(-)
+Changes in v2:
+- Changed 'ufs_qcom_drvdata::quirks' type to 'enum ufshcd_quirks'
+- Collected tags
+- Link to v1: https://lore.kernel.org/r/20241211-ufs-qcom-suspend-fix-v1-0-83ebbde76b1c@linaro.org
 
-diff --git a/arch/powerpc/config.mk b/arch/powerpc/config.mk
-index dd0124cace19be060d9374c440b0f35e5dbd801a..6e30df6504ecc62eff3dc3cb7d0a3e9cc9dcf4b3 100644
---- a/arch/powerpc/config.mk
-+++ b/arch/powerpc/config.mk
-@@ -8,7 +8,7 @@ LDFLAGS_FINAL += --bss-plt
- PLATFORM_RELFLAGS += -fpic -mrelocatable -ffunction-sections \
- -fdata-sections -mcall-linux
- 
--PF_CPPFLAGS_POWERPC	:= $(call cc-option,-fno-ira-hoist-pressure,)
-+PF_CPPFLAGS_POWERPC	:= $(call cc-option,-fno-ira-hoist-pressure,) $(call cc-option,-Xassembler --fatal-warnings,)
- PLATFORM_CPPFLAGS += -D__powerpc__ -ffixed-r2 -m32 $(PF_CPPFLAGS_POWERPC)
- KBUILD_LDFLAGS  += -m32 -melf32ppclinux
- 
-diff --git a/include/ppc_asm.tmpl b/include/ppc_asm.tmpl
-index db7b1668d99a60ecd3992f0e090b37a7f0c23e00..0b858c41e32398d074069f9f0fdbc8e28d8e407e 100644
---- a/include/ppc_asm.tmpl
-+++ b/include/ppc_asm.tmpl
-@@ -45,40 +45,40 @@
- 
- 
- /***************************************************************************
-- * Register names
-+ * Register names. The %r1 offers some error-checking in GNU as.
-  */
--#define	r0	0
--#define	r1	1
--#define	r2	2
--#define	r3	3
--#define	r4	4
--#define	r5	5
--#define	r6	6
--#define	r7	7
--#define	r8	8
--#define	r9	9
--#define	r10	10
--#define	r11	11
--#define	r12	12
--#define	r13	13
--#define	r14	14
--#define	r15	15
--#define	r16	16
--#define	r17	17
--#define	r18	18
--#define	r19	19
--#define	r20	20
--#define	r21	21
--#define	r22	22
--#define	r23	23
--#define	r24	24
--#define	r25	25
--#define	r26	26
--#define	r27	27
--#define	r28	28
--#define	r29	29
--#define	r30	30
--#define	r31	31
-+#define	r0	%r0
-+#define	r1	%r1
-+#define	r2	%r2
-+#define	r3	%r3
-+#define	r4	%r4
-+#define	r5	%r5
-+#define	r6	%r6
-+#define	r7	%r7
-+#define	r8	%r8
-+#define	r9	%r9
-+#define	r10	%r10
-+#define	r11	%r11
-+#define	r12	%r12
-+#define	r13	%r13
-+#define	r14	%r14
-+#define	r15	%r15
-+#define	r16	%r16
-+#define	r17	%r17
-+#define	r18	%r18
-+#define	r19	%r19
-+#define	r20	%r20
-+#define	r21	%r21
-+#define	r22	%r22
-+#define	r23	%r23
-+#define	r24	%r24
-+#define	r25	%r25
-+#define	r26	%r26
-+#define	r27	%r27
-+#define	r28	%r28
-+#define	r29	%r29
-+#define	r30	%r30
-+#define	r31	%r31
- 
- #if defined(CONFIG_MPC8xx)
- 
+---
+Manivannan Sadhasivam (3):
+      scsi: ufs: qcom: Power off the PHY if it was already powered on in ufs_qcom_power_up_sequence()
+      scsi: ufs: qcom: Allow passing platform specific OF data
+      scsi: ufs: qcom: Power down the controller/device during system suspend for SM8550/SM8650 SoCs
 
+ drivers/ufs/core/ufshcd-priv.h |  6 ------
+ drivers/ufs/core/ufshcd.c      |  1 -
+ drivers/ufs/host/ufs-qcom.c    | 31 +++++++++++++++++++------------
+ drivers/ufs/host/ufs-qcom.h    |  5 +++++
+ include/ufs/ufshcd.h           |  2 --
+ 5 files changed, 24 insertions(+), 21 deletions(-)
+---
+base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
+change-id: 20241211-ufs-qcom-suspend-fix-5618e9c56d93
+
+Best regards,
 -- 
-2.45.2
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
