@@ -1,71 +1,144 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sun, 15 Dec 2024 16:18:16 +0100
-Subject: [PATCH 4/4] gpio: mpc8xxx: Preserve pre-init state of outputs
+Date: Sun, 15 Dec 2024 16:38:29 +0100
+Subject: [PATCH] doc: fit: Format image tree source example
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20241215-mpc83xx-misc-v1-4-8cd6daae4f93@posteo.net>
-References: <20241215-mpc83xx-misc-v1-0-8cd6daae4f93@posteo.net>
-In-Reply-To: <20241215-mpc83xx-misc-v1-0-8cd6daae4f93@posteo.net>
-To: Mario Six <mario.six@gdsys.cc>, Tom Rini <trini@konsulko.com>
+Message-Id: <20241215-fdt-fmt-v1-1-81f8b27b6eb3@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAPT3XmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDI0Mj3bSUEt203BLdVMNUQ8vkNGMTY7M0JaDqgqLUtMwKsEnRsbW1AA4
+ PRY1ZAAAA
+X-Change-ID: 20241212-fdt-fmt-e1e19cf3436f
+To: Tom Rini <trini@konsulko.com>
 Cc: u-boot@lists.denx.de, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734275902; l=1861;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734277122; l=3156;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=uNPDeRR/wgJc9S7kufpmSM2o4jamsal9x7rfTFEben8=;
- b=t8F1v86n93FoB8YQSEnT6rThhnWa/wVTcWTNLkGNp7Qe8CzbDfAhkcUpdFGCs2s12z7xqqx1G
- q9k22LyvGbXAI2xKOjb7YhR9iC4yONj1rIjfQK/rSYoTcrsZjoZkwx0
+ bh=Fe/VvMe3FkkIkQQKWTv32RL7TTOwDYeL00kYy3ByvZY=;
+ b=pAkLTkamxuqGOIIGxaxUE/vJlHFfHoNAY8HKxJe/QOHybA2QnrNXhAJ3dlEWakqK8oJTGZTXG
+ gS3fjfFnF31BnAiypk2CJZVw3M/UFj7iPmeCoKuo38HyN8yolPDSr7g
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The mpc8xxx_gpio driver contains a workaround for certain chips
-where the previously written state of outputs cannot be read back
-from the GPIO data (GPDAT) register (MPC8572/MPC8536). This workaround
-consists of tracking the state of GPDAT in a "shadow register" (i.e. a
-software variable). The shadow register is initialized to zero.
+The example in kernel_fdt.rst is inconsistently indented, making it
+difficult to read.
 
-This results in a problem w.r.t. outputs that are configured to a
-high (1) state before U-Boot runs, but not touched by U-Boot itself:
-Due to the zero-initialization, these GPIOs end up being set to zero,
-the first time that any other output is set.
-
-To avoid such issues initialize the GPDAT shadow register to the value
-previously held by any outputs, if possible. On MPC8572/MPC8536 this
-should make no difference, i.e. the shadow register should be
-initialized to zero on these chips.
+Indent the example with the same standard as the other examples:
+Four spaces for the ReST code block and for every nesting level.
 
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- drivers/gpio/mpc8xxx_gpio.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ doc/usage/fit/kernel_fdt.rst | 88 ++++++++++++++++++++++----------------------
+ 1 file changed, 44 insertions(+), 44 deletions(-)
 
-diff --git a/drivers/gpio/mpc8xxx_gpio.c b/drivers/gpio/mpc8xxx_gpio.c
-index e9bd38f162c10c76460bc63f93c03a711cb4d38e..709d04017d154ecae1e8d16d7c35ced521157c4d 100644
---- a/drivers/gpio/mpc8xxx_gpio.c
-+++ b/drivers/gpio/mpc8xxx_gpio.c
-@@ -204,7 +204,17 @@ static int mpc8xxx_gpio_plat_to_priv(struct udevice *dev)
- 		return -ENOMEM;
+diff --git a/doc/usage/fit/kernel_fdt.rst b/doc/usage/fit/kernel_fdt.rst
+index 9cc26fb7831e4bc244c4843645221f9643c0c1ae..3802c8292d6c5f6f30301db314d2740a52558c9d 100644
+--- a/doc/usage/fit/kernel_fdt.rst
++++ b/doc/usage/fit/kernel_fdt.rst
+@@ -5,50 +5,50 @@ Single kernel and FDT blob
  
- 	priv->gpio_count = plat->ngpios;
--	priv->dat_shadow = 0;
-+
-+	/*
-+	 * On platforms that do support reading back output values, we want to
-+	 * try preserving them, so that we don't accidentally set unrelated
-+	 * GPIOs to zero in mpc8xxx_gpio_set_value.
-+	 */
-+	if (priv->little_endian)
-+		priv->dat_shadow = in_le32(&priv->base->gpdat) & in_le32(&priv->base->gpdir);
-+	else
-+		priv->dat_shadow = in_be32(&priv->base->gpdat) & in_be32(&priv->base->gpdir);
-+
+ ::
  
- 	priv->type = driver_data;
+-	/dts-v1/;
++    /dts-v1/;
  
+-	/ {
+-	description = "Simple image with single Linux kernel and FDT blob";
+-	#address-cells = <1>;
++    / {
++        description = "Simple image with single Linux kernel and FDT blob";
++        #address-cells = <1>;
+ 
+-	images {
+-		kernel {
+-		description = "Vanilla Linux kernel";
+-		data = /incbin/("./vmlinux.bin.gz");
+-		type = "kernel";
+-		arch = "ppc";
+-		os = "linux";
+-		compression = "gzip";
+-		load = <00000000>;
+-		entry = <00000000>;
+-		hash-1 {
+-			algo = "crc32";
+-		};
+-		hash-2 {
+-			algo = "sha256";
+-		};
+-		};
+-		fdt-1 {
+-		description = "Flattened Device Tree blob";
+-		data = /incbin/("./target.dtb");
+-		type = "flat_dt";
+-		arch = "ppc";
+-		compression = "none";
+-		hash-1 {
+-			algo = "crc32";
+-		};
+-		hash-2 {
+-			algo = "sha256";
+-		};
+-		};
+-	};
++        images {
++            kernel {
++                description = "Vanilla Linux kernel";
++                data = /incbin/("./vmlinux.bin.gz");
++                type = "kernel";
++                arch = "ppc";
++                os = "linux";
++                compression = "gzip";
++                load = <00000000>;
++                entry = <00000000>;
++                hash-1 {
++                    algo = "crc32";
++                };
++                hash-2 {
++                    algo = "sha256";
++                };
++            };
++            fdt-1 {
++                description = "Flattened Device Tree blob";
++                data = /incbin/("./target.dtb");
++                type = "flat_dt";
++                arch = "ppc";
++                compression = "none";
++                hash-1 {
++                    algo = "crc32";
++                };
++                hash-2 {
++                    algo = "sha256";
++                };
++            };
++        };
+ 
+-	configurations {
+-		default = "conf-1";
+-		conf-1 {
+-		description = "Boot Linux kernel with FDT blob";
+-		kernel = "kernel";
+-		fdt = "fdt-1";
+-		};
+-	};
+-	};
++        configurations {
++            default = "conf-1";
++            conf-1 {
++                description = "Boot Linux kernel with FDT blob";
++                kernel = "kernel";
++                fdt = "fdt-1";
++            };
++        };
++    };
 
+---
+base-commit: 8aab7730c1c26192b0e4218fbf2f6009f955cb88
+change-id: 20241212-fdt-fmt-e1e19cf3436f
+
+Best regards,
 -- 
-2.45.2
+J. Neuschäfer <j.ne@posteo.net>
 
