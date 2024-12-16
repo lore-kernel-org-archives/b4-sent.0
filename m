@@ -1,11 +1,10 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Mon, 16 Dec 2024 22:00:58 +0100
-Subject: [PATCH v4 12/13] media: i2c: imx214: Fix clock handling on probe
- error or remove
+Date: Mon, 16 Dec 2024 22:00:59 +0100
+Subject: [PATCH v4 13/13] media: i2c: imx214: Fix link frequency validation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20241216-imx214-v4-12-8cbda160fbce@apitzsch.eu>
+Message-Id: <20241216-imx214-v4-13-8cbda160fbce@apitzsch.eu>
 References: <20241216-imx214-v4-0-8cbda160fbce@apitzsch.eu>
 In-Reply-To: <20241216-imx214-v4-0-8cbda160fbce@apitzsch.eu>
 To: Ricardo Ribalda <ribalda@kernel.org>, 
@@ -15,51 +14,93 @@ Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Dave Stevenson <dave.stevenson@raspberrypi.com>, 
  Vincent Knecht <vincent.knecht@mailoo.org>, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
+ Ricardo Ribalda <ribalda@chromium.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734382889; l=1153;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734382889; l=2951;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=ClL94X4s2eV905yGjnxIxBW7JXrrqHRlT04Ut/i9afE=;
- b=n2aw+dUZqV/HRpAw2CK/KHXkfeYT038EHThcHbYPkHIAQYGFyAhEKWL0JS9WLYSIsL+87molz
- EjVk5ws56iPB463adylOXVoTkAg6PZczhuSwaR/rqJqZvRVCF95CbmY
+ bh=D7YFG3/jOgKsmwyXK4z8awdZ0P/liqaJZaNwTAIMjLQ=;
+ b=g2GvMWsp7QznX9NQgHSywyp1EEHvcQaNoI2wXnbthoj4jtMbgeQMrFJCMSz1fs/yUIDexNdgH
+ VjOqukBrEdzC5eM8lycFbe/6XqqlrmvJMwYSC+rq7bHRI2aN4w0bUzT
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver should disable or unprepare the clock on probe error and on
-removing the module.
+The driver defines IMX214_DEFAULT_LINK_FREQ 480000000, and then
+IMX214_DEFAULT_PIXEL_RATE ((IMX214_DEFAULT_LINK_FREQ * 8LL) / 10),
+which works out as 384MPix/s. (The 8 is 4 lanes and DDR.)
 
-Remove regulator_bulk_disable(), because it is called by
-imx214_power_off().
+Parsing the PLL registers with the defined 24MHz input. We're in single
+PLL mode, so MIPI frequency is directly linked to pixel rate.  VTCK ends
+up being 1200MHz, and VTPXCK and OPPXCK both are 120MHz.  Section 5.3
+"Frame rate calculation formula" says "Pixel rate
+[pixels/s] = VTPXCK [MHz] * 4", so 120 * 4 = 480MPix/s, which basically
+agrees with my number above.
 
+3.1.4. MIPI global timing setting says "Output bitrate = OPPXCK * reg
+0x113[7:0]", so 120MHz * 10, or 1200Mbit/s. That would be a link
+frequency of 600MHz due to DDR.
+That also matches to 480MPix/s * 10bpp / 4 lanes / 2 for DDR.
+
+Keep the previous link frequency for backward compatibility.
+
+Acked-by: Ricardo Ribalda <ribalda@chromium.org>
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/media/i2c/imx214.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ drivers/media/i2c/imx214.c | 28 +++++++++++++++++++---------
+ 1 file changed, 19 insertions(+), 9 deletions(-)
 
 diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
-index d15422873e7ba0588914d78d3d26374d2769541c..0e587f0a44d941bd7d9230b56df18c08250e679e 100644
+index 0e587f0a44d941bd7d9230b56df18c08250e679e..43d5181aac40c864ab09c2464d576ce457c76572 100644
 --- a/drivers/media/i2c/imx214.c
 +++ b/drivers/media/i2c/imx214.c
-@@ -1340,7 +1340,7 @@ static int imx214_probe(struct i2c_client *client)
- 	v4l2_ctrl_handler_free(&imx214->ctrls);
- error_power_off:
- 	pm_runtime_disable(imx214->dev);
--	regulator_bulk_disable(IMX214_NUM_SUPPLIES, imx214->supplies);
-+	imx214_power_off(dev);
+@@ -31,7 +31,9 @@
+ #define IMX214_REG_FAST_STANDBY_CTRL	CCI_REG8(0x0106)
  
- 	return ret;
- }
-@@ -1356,6 +1356,8 @@ static void imx214_remove(struct i2c_client *client)
- 	v4l2_ctrl_handler_free(&imx214->ctrls);
+ #define IMX214_DEFAULT_CLK_FREQ	24000000
+-#define IMX214_DEFAULT_LINK_FREQ 480000000
++#define IMX214_DEFAULT_LINK_FREQ	600000000
++/* Keep wrong link frequency for backward compatibility */
++#define IMX214_DEFAULT_LINK_FREQ_LEGACY	480000000
+ #define IMX214_DEFAULT_PIXEL_RATE ((IMX214_DEFAULT_LINK_FREQ * 8LL) / 10)
+ #define IMX214_FPS 30
  
- 	pm_runtime_disable(&client->dev);
-+	if (!pm_runtime_status_suspended(&client->dev))
-+		imx214_power_off(&client->dev);
- 	pm_runtime_set_suspended(&client->dev);
- }
+@@ -1222,18 +1224,26 @@ static int imx214_parse_fwnode(struct device *dev)
+ 		goto done;
+ 	}
  
+-	for (i = 0; i < bus_cfg.nr_of_link_frequencies; i++)
++	if (bus_cfg.nr_of_link_frequencies != 1)
++		dev_warn(dev, "Only one link-frequency supported, please review your DT. Continuing anyway\n");
++
++	for (i = 0; i < bus_cfg.nr_of_link_frequencies; i++) {
+ 		if (bus_cfg.link_frequencies[i] == IMX214_DEFAULT_LINK_FREQ)
+ 			break;
+-
+-	if (i == bus_cfg.nr_of_link_frequencies) {
+-		dev_err_probe(dev, -EINVAL,
+-			      "link-frequencies %d not supported, Please review your DT\n",
+-			      IMX214_DEFAULT_LINK_FREQ);
+-		ret = -EINVAL;
+-		goto done;
++		if (bus_cfg.link_frequencies[i] ==
++		    IMX214_DEFAULT_LINK_FREQ_LEGACY) {
++			dev_warn(dev,
++				 "link-frequencies %d not supported, please review your DT. Continuing anyway\n",
++				 IMX214_DEFAULT_LINK_FREQ);
++			break;
++		}
+ 	}
+ 
++	if (i == bus_cfg.nr_of_link_frequencies)
++		ret = dev_err_probe(dev, -EINVAL,
++				    "link-frequencies %d not supported, please review your DT\n",
++				    IMX214_DEFAULT_LINK_FREQ);
++
+ done:
+ 	v4l2_fwnode_endpoint_free(&bus_cfg);
+ 	fwnode_handle_put(endpoint);
 
 -- 
 2.47.1
