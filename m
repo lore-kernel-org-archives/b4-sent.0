@@ -1,15 +1,12 @@
 From: Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>
-Subject: [PATCH v3 0/2] Add support for Avago/Broadcom APDS9160
-Date: Mon, 16 Dec 2024 17:55:39 -0500
-Message-Id: <20241216-apds9160-driver-v3-0-c29f6c670bdb@dimonoff.com>
+Date: Mon, 16 Dec 2024 17:55:40 -0500
+Subject: [PATCH v3 1/2] dt-bindings: iio: light: Add APDS9160 binding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOuvYGcC/3XNTQ7CIBCG4as0rMUAbenPynsYFxRm7CxaGjBE0
- /Tu0m5MNC7fL5lnVhYhEETWFysLkCiSn3OUp4LZ0cx34ORyMyVUJaXsuFlc7KQW3AVKEHirLdb
- QagdlzfLVEgDpeYjXW+6R4sOH1/EgyX39byXJBUcjhG7qoQJTXRxNfvaIZ+sntnNJfQgl9C+hM
- jGAskOjAFv8JrZtewM+W14D9AAAAA==
-X-Change-ID: 20241119-apds9160-driver-86cf5e86de35
+Message-Id: <20241216-apds9160-driver-v3-1-c29f6c670bdb@dimonoff.com>
+References: <20241216-apds9160-driver-v3-0-c29f6c670bdb@dimonoff.com>
+In-Reply-To: <20241216-apds9160-driver-v3-0-c29f6c670bdb@dimonoff.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,69 +20,82 @@ Cc: Mikael Gonella-Bolduc <m.gonella.bolduc@gmail.com>,
  Hugo Villeneuve <hvilleneuve@dimonoff.com>, 
  Matti Vaittinen <mazziesaccount@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734389751; l=2469;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734389751; l=1743;
  i=mgonellabolduc@dimonoff.com; s=20241119; h=from:subject:message-id;
- bh=HWkTxX+IpDGQNG52ogknWjClj9up9Mh0BRCF+szV+n0=;
- b=+42sxzvfPl1eT5ll3dVLEOTAVpMhKjB+BIa9Hp1ShMspCQwr4MNjOmWpFBA4PV2ff65lJSQ69
- li7jgfiYkhpAC6v6GDBLE+PgM85AeWASs1UeJObVqfu2R9IVyGtrDiV
+ bh=z+T/dCJyhuoD5A4B8Hhqb+eAjQn23VEvoZX4TORdNlk=;
+ b=m0D2X9j7KFF4K/Incs8HGvfLVjGhJdN/5rF5J5/j44hUQSwsQUx4EiBOYy+0Pqzs6MKb+/+rg
+ xQx1ln4JmsHBVbmgqQTMJOcEhyPxXZOYQJPwrF2hIyC0CUubxyJsA3x
 X-Developer-Key: i=mgonellabolduc@dimonoff.com; a=ed25519;
  pk=p4tvPfGPfXRyChsgHc6s7HwB6YBl2JqqcP3BXtoDitE=
 X-Endpoint-Received: by B4 Relay for mgonellabolduc@dimonoff.com/20241119 with auth_id=279
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-APDS9160 is an ALS and proximity sensor.
-https://www.broadcom.com/products/optical-sensors/integrated-ambient-light-and-proximity-sensors/apds-9160-003
+Add device tree bindings for APDS9160
+Note: Using alternate email for maintainer
 
 Signed-off-by: Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>
 ---
-Changes in v3:
-- Updated maintainers file email and vendor
-- Corrected documentation file reference
-- dt-bindings: Changed commit message
-- driver: Added event and channel table when irq is not used
-- driver: Using int time instead of sampling freq for proximity channel
-- driver: Using scale instead of hardwaregain for proximity channel
-- driver: Dropped unused static variables
-- driver: Fixed switch fall-through
-- driver: Dropped explicit void pointer cast
-- driver: Dropped some less relevant comments
-- driver: Various code style related fix
-- Link to v2: https://lore.kernel.org/r/20241206-apds9160-driver-v2-0-be2cb72ef8f4@dimonoff.com
+ .../bindings/iio/light/brcm,apds9160.yaml          | 51 ++++++++++++++++++++++
+ 1 file changed, 51 insertions(+)
 
-Changes in v2:
-- Rebased on linux-iio 20fd1383
-- dt-bindings: Dropped the old Avago name and use the brcm vendor prefix
-- dt-bindings: Updated example node name with a generic name
-- dt-bindings: Updated example indentation to 4 spaces
-- dt-bindings: Fixed element ordering
-- KConfig: Dropped unsure sentences
-- KConfig: Dropped unused Kfifo buffer selection
-- driver: Use a more recent iio light driver as template
-- driver: Remove buffer declaration
-- driver: Use avail functions instead of custom iio attributes
-- driver: Use scale instead of hardware gain
-- driver: Removed unused members and unreachable statements
-- driver: Removed unnecessary info and debug prints
-- driver: Fix some coding style and line wrapping issues
-- driver: Reordering of functions
-- Link to v1: https://lore.kernel.org/r/20241119-apds9160-driver-v1-0-fa00675b4ea4@dimonoff.com
+diff --git a/Documentation/devicetree/bindings/iio/light/brcm,apds9160.yaml b/Documentation/devicetree/bindings/iio/light/brcm,apds9160.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..525fba52f156df3b78e24d7d0d445fe9d882eaa7
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/light/brcm,apds9160.yaml
+@@ -0,0 +1,51 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/light/brcm,apds9160.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Broadcom Combined Proximity & Ambient light sensor
++
++maintainers:
++  - Mikael Gonella-Bolduc <m.gonella.bolduc@gmail.com>
++
++description: |
++  Datasheet: https://docs.broadcom.com/docs/APDS-9160-003-DS
++
++properties:
++  compatible:
++    enum:
++      - brcm,apds9160
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  vdd-supply: true
++
++required:
++  - compatible
++  - reg
++  - vdd-supply
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        light-sensor@53 {
++            compatible = "brcm,apds9160";
++            reg = <0x53>;
++            vdd-supply = <&vdd_reg>;
++            interrupts = <29 IRQ_TYPE_EDGE_FALLING>;
++            interrupt-parent = <&pinctrl>;
++        };
++    };
++...
 
----
-Mikael Gonella-Bolduc (2):
-      dt-bindings: iio: light: Add APDS9160 binding
-      iio: light: Add APDS9160 ALS & Proximity sensor driver
-
- .../bindings/iio/light/brcm,apds9160.yaml          |   51 +
- MAINTAINERS                                        |    7 +
- drivers/iio/light/Kconfig                          |   11 +
- drivers/iio/light/Makefile                         |    1 +
- drivers/iio/light/apds9160.c                       | 1581 ++++++++++++++++++++
- 5 files changed, 1651 insertions(+)
----
-base-commit: 5de07b8a24cf44cdb78adeab790704bf577c2c1d
-change-id: 20241119-apds9160-driver-86cf5e86de35
-
-Best regards,
 -- 
-Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>
+2.34.1
 
