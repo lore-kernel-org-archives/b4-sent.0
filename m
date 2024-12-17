@@ -1,11 +1,11 @@
 From: Hans-Frieder Vogt <hfdevel@gmx.net>
-Date: Tue, 17 Dec 2024 22:07:35 +0100
-Subject: [PATCH net-next v3 4/7] net: phy: aquantia: add essential
- functions to aqr105 driver
+Date: Tue, 17 Dec 2024 22:07:36 +0100
+Subject: [PATCH net-next v3 5/7] net: tn40xx: create software node for mdio
+ and phy and add to mdiobus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241217-tn9510-v3a-v3-4-4d5ef6f686e0@gmx.net>
+Message-Id: <20241217-tn9510-v3a-v3-5-4d5ef6f686e0@gmx.net>
 References: <20241217-tn9510-v3a-v3-0-4d5ef6f686e0@gmx.net>
 In-Reply-To: <20241217-tn9510-v3a-v3-0-4d5ef6f686e0@gmx.net>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -16,295 +16,214 @@ To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>,
  Andrew Lunn <andrew+netdev@lunn.ch>
 Cc: netdev@vger.kernel.org, Hans-Frieder Vogt <hfdevel@gmx.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734469657; l=8794;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734469657; l=6540;
  i=hfdevel@gmx.net; s=20240915; h=from:subject:message-id;
- bh=ctTiAl4wmGgoj/eQI0xNjdg5Ki78Oas1YQuhYekuf7U=;
- b=DtNmreKSV9fBZlNUyqr2E4il9DPJxSjz+A4HuIby6BVVZ7f+oTjVf0yJaYs0GP5yrVf71Nhgo
- dj3eoJMD9rvAiH0vanLbfvUYo3FfMGRZvO/fSzShloneBqrS04XLdNG
+ bh=4/i6FVXGucUwDy2wgJmhDqtqKtov9plpSkkW58Fze9g=;
+ b=qn3exb0jZcNvSWhlvYozCRMmqJVVvh+BNFccMYoK8MeOuRuwWQiqdTxC/ejAE45BB36zGlaJI
+ KiDqynHhR8IAS5xZfl+6yGU54+u3tR1UuZZxQG/AFaQtMcY9Gb1qTVh
 X-Developer-Key: i=hfdevel@gmx.net; a=ed25519;
  pk=s3DJ3DFe6BJDRAcnd7VGvvwPXcLgV8mrfbpt8B9coRc=
 X-Endpoint-Received: by B4 Relay for hfdevel@gmx.net/20240915 with auth_id=209
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch makes functions that were provided for aqr107 applicable to
-aqr105, or replaces generic functions with specific ones. Since the aqr105
-was introduced before NBASE-T was defined (or 802.3bz), there are a number
-of vendor specific registers involved in the definition of the
-advertisement, in auto-negotiation and in the setting of the speed. The
-functions have been written following the downstream driver for TN4010
-cards with AQR105 PHY. To avoid duplication of code, aqr_config_aneg was
-split in a common part and a specific part for aqr105 and other aqr PHYs.
-A similar approach has been chosen for the aqr107_read_status function.
-Here, the aqr generation (=1 for aqr105, and =2 for aqr107 and higher) is
-used to decide whether aqr107(and up) specific registers can be used. I
-know this is not particularly elegant, but it is doing the job.
+Create a software node for the mdio function, with a child node for the
+Aquantia AQR105 PHY, providing a firmware-name (and a bit more, which may
+be used for future checks) to allow the PHY to load a MAC specific
+firmware from the file system.
+
+The name of the PHY software node follows the naming convention suggested
+in the patch for the mdiobus_scan function (in the same patch series).
 
 Signed-off-by: Hans-Frieder Vogt <hfdevel@gmx.net>
 ---
- drivers/net/phy/aquantia/aquantia_main.c | 168 ++++++++++++++++++++++++++-----
- 1 file changed, 144 insertions(+), 24 deletions(-)
+ drivers/net/ethernet/tehuti/tn40.c      | 10 ++++-
+ drivers/net/ethernet/tehuti/tn40.h      | 30 +++++++++++++++
+ drivers/net/ethernet/tehuti/tn40_mdio.c | 65 ++++++++++++++++++++++++++++++++-
+ 3 files changed, 103 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/net/phy/aquantia/aquantia_main.c b/drivers/net/phy/aquantia/aquantia_main.c
-index 81eeee29ba3e6fb11a476a5b51a8a8be061ca8c3..a112e3473e079822671535c313f3ae816fe186dd 100644
---- a/drivers/net/phy/aquantia/aquantia_main.c
-+++ b/drivers/net/phy/aquantia/aquantia_main.c
-@@ -33,6 +33,9 @@
- #define PHY_ID_AQR115C	0x31c31c33
- #define PHY_ID_AQR813	0x31c31cb2
- 
-+#define MDIO_AN_10GBT_CTRL_ADV_LTIM		BIT(0)
-+#define ADVERTISE_XNP				BIT(12)
-+
- #define MDIO_PHYXS_VEND_IF_STATUS		0xe812
- #define MDIO_PHYXS_VEND_IF_STATUS_TYPE_MASK	GENMASK(7, 3)
- #define MDIO_PHYXS_VEND_IF_STATUS_TYPE_KR	0
-@@ -50,6 +53,7 @@
- #define MDIO_AN_VEND_PROV_1000BASET_HALF	BIT(14)
- #define MDIO_AN_VEND_PROV_5000BASET_FULL	BIT(11)
- #define MDIO_AN_VEND_PROV_2500BASET_FULL	BIT(10)
-+#define MDIO_AN_VEND_PROV_EXC_PHYID_INFO	BIT(6)
- #define MDIO_AN_VEND_PROV_DOWNSHIFT_EN		BIT(4)
- #define MDIO_AN_VEND_PROV_DOWNSHIFT_MASK	GENMASK(3, 0)
- #define MDIO_AN_VEND_PROV_DOWNSHIFT_DFLT	4
-@@ -107,6 +111,30 @@
- #define AQR107_OP_IN_PROG_SLEEP		1000
- #define AQR107_OP_IN_PROG_TIMEOUT	100000
- 
-+static int aqr105_get_features(struct phy_device *phydev)
-+{
-+	int ret;
-+
-+	/* Normal feature discovery */
-+	ret = genphy_c45_pma_read_abilities(phydev);
-+	if (ret)
-+		return ret;
-+
-+	/* The AQR105 PHY misses to indicate the 2.5G and 5G modes, so add them
-+	 * here
-+	 */
-+	linkmode_set_bit(ETHTOOL_LINK_MODE_5000baseT_Full_BIT,
-+			 phydev->supported);
-+	linkmode_set_bit(ETHTOOL_LINK_MODE_2500baseT_Full_BIT,
-+			 phydev->supported);
-+
-+	/* The AQR105 PHY suppports both RJ45 and SFP+ interfaces */
-+	linkmode_set_bit(ETHTOOL_LINK_MODE_TP_BIT, phydev->supported);
-+	linkmode_set_bit(ETHTOOL_LINK_MODE_FIBRE_BIT, phydev->supported);
-+
-+	return 0;
-+}
-+
- static int aqr107_get_sset_count(struct phy_device *phydev)
- {
- 	return AQR107_SGMII_STAT_SZ;
-@@ -164,6 +192,59 @@ static void aqr107_get_stats(struct phy_device *phydev,
- 	}
- }
- 
-+static int aqr105_config_speed(struct phy_device *phydev)
-+{
-+	int vend = MDIO_AN_VEND_PROV_EXC_PHYID_INFO;
-+	int ctrl10 = MDIO_AN_10GBT_CTRL_ADV_LTIM;
-+	int adv = ADVERTISE_CSMA;
-+	int ret;
-+
-+	/* Half duplex is not supported */
-+	if (phydev->duplex != DUPLEX_FULL)
-+		return -EINVAL;
-+
-+	switch (phydev->speed) {
-+	case SPEED_100:
-+		adv |= ADVERTISE_100FULL;
-+		break;
-+	case SPEED_1000:
-+		adv |= ADVERTISE_NPAGE;
-+		vend |= MDIO_AN_VEND_PROV_1000BASET_FULL;
-+		break;
-+	case SPEED_2500:
-+		adv |= (ADVERTISE_NPAGE | ADVERTISE_XNP);
-+		vend |= MDIO_AN_VEND_PROV_2500BASET_FULL;
-+		break;
-+	case SPEED_5000:
-+		adv |= (ADVERTISE_NPAGE | ADVERTISE_XNP);
-+		vend |= MDIO_AN_VEND_PROV_5000BASET_FULL;
-+		break;
-+	case SPEED_10000:
-+		adv |= (ADVERTISE_NPAGE | ADVERTISE_XNP);
-+		ctrl10 |= MDIO_AN_10GBT_CTRL_ADV10G;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+	ret = phy_write_mmd(phydev, MDIO_MMD_AN, MDIO_AN_ADVERTISE, adv);
-+	if (ret < 0)
-+		return ret;
-+	ret = phy_write_mmd(phydev, MDIO_MMD_AN, MDIO_AN_VEND_PROV, vend);
-+	if (ret < 0)
-+		return ret;
-+	ret = phy_write_mmd(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL, ctrl10);
-+	if (ret < 0)
-+		return ret;
-+
-+	/* set by vendor driver, but should be on by default */
-+	ret = phy_set_bits_mmd(phydev, MDIO_MMD_AN, MDIO_CTRL1,
-+			       MDIO_AN_CTRL1_XNP);
-+	if (ret < 0)
-+		return ret;
-+
-+	return genphy_c45_an_disable_aneg(phydev);
-+}
-+
- static int aqr_set_mdix(struct phy_device *phydev, int mdix)
- {
- 	u16 val = 0;
-@@ -186,21 +267,11 @@ static int aqr_set_mdix(struct phy_device *phydev, int mdix)
- 				      MDIO_AN_RESVD_VEND_PROV_MDIX_MASK, val);
- }
- 
--static int aqr_config_aneg(struct phy_device *phydev)
-+static int aqr_common_config_aneg(struct phy_device *phydev, bool changed)
- {
--	bool changed = false;
- 	u16 reg;
- 	int ret;
- 
--	ret = aqr_set_mdix(phydev, phydev->mdix_ctrl);
--	if (ret < 0)
--		return ret;
--	if (ret > 0)
--		changed = true;
--
--	if (phydev->autoneg == AUTONEG_DISABLE)
--		return genphy_c45_pma_setup_forced(phydev);
--
- 	ret = genphy_c45_an_config_aneg(phydev);
- 	if (ret < 0)
- 		return ret;
-@@ -241,6 +312,40 @@ static int aqr_config_aneg(struct phy_device *phydev)
- 	return genphy_c45_check_and_restart_aneg(phydev, changed);
- }
- 
-+static int aqr105_config_aneg(struct phy_device *phydev)
-+{
-+	bool changed = false;
-+	int ret;
-+
-+	ret = aqr_set_mdix(phydev, phydev->mdix_ctrl);
-+	if (ret < 0)
-+		return ret;
-+	if (ret > 0)
-+		changed = true;
-+
-+	if (phydev->autoneg == AUTONEG_DISABLE)
-+		return aqr105_config_speed(phydev);
-+
-+	return aqr_common_config_aneg(phydev, changed);
-+}
-+
-+static int aqr_config_aneg(struct phy_device *phydev)
-+{
-+	bool changed = false;
-+	int ret;
-+
-+	ret = aqr_set_mdix(phydev, phydev->mdix_ctrl);
-+	if (ret < 0)
-+		return ret;
-+	if (ret > 0)
-+		changed = true;
-+
-+	if (phydev->autoneg == AUTONEG_DISABLE)
-+		return genphy_c45_pma_setup_forced(phydev);
-+
-+	return aqr_common_config_aneg(phydev, changed);
-+}
-+
- static int aqr_config_intr(struct phy_device *phydev)
- {
- 	bool en = phydev->interrupts == PHY_INTERRUPT_ENABLED;
-@@ -333,7 +438,7 @@ static int aqr_read_status(struct phy_device *phydev)
- 	return genphy_c45_read_status(phydev);
- }
- 
--static int aqr107_read_rate(struct phy_device *phydev)
-+static int aqr_common_read_rate(struct phy_device *phydev, int aqr_gen)
- {
- 	u32 config_reg;
- 	int val;
-@@ -377,20 +482,22 @@ static int aqr107_read_rate(struct phy_device *phydev)
- 		return 0;
+diff --git a/drivers/net/ethernet/tehuti/tn40.c b/drivers/net/ethernet/tehuti/tn40.c
+index 259bdac24cf211113b8f80934feb093d61e46f2d..5f73eb1f7d9f74294cd5546c2ef4797ebc24c052 100644
+--- a/drivers/net/ethernet/tehuti/tn40.c
++++ b/drivers/net/ethernet/tehuti/tn40.c
+@@ -1778,7 +1778,7 @@ static int tn40_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 	ret = tn40_phy_register(priv);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "failed to set up PHY.\n");
+-		goto err_free_irq;
++		goto err_unregister_swnodes;
  	}
  
--	val = phy_read_mmd(phydev, MDIO_MMD_VEND1, config_reg);
--	if (val < 0)
--		return val;
-+	if (aqr_gen > 1) {
-+		val = phy_read_mmd(phydev, MDIO_MMD_VEND1, config_reg);
-+		if (val < 0)
-+			return val;
- 
--	if (FIELD_GET(VEND1_GLOBAL_CFG_RATE_ADAPT, val) ==
--	    VEND1_GLOBAL_CFG_RATE_ADAPT_PAUSE)
--		phydev->rate_matching = RATE_MATCH_PAUSE;
--	else
--		phydev->rate_matching = RATE_MATCH_NONE;
-+		if (FIELD_GET(VEND1_GLOBAL_CFG_RATE_ADAPT, val) ==
-+		    VEND1_GLOBAL_CFG_RATE_ADAPT_PAUSE)
-+			phydev->rate_matching = RATE_MATCH_PAUSE;
-+		else
-+			phydev->rate_matching = RATE_MATCH_NONE;
-+	}
- 
+ 	ret = tn40_priv_init(priv);
+@@ -1795,6 +1795,10 @@ static int tn40_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
  	return 0;
+ err_unregister_phydev:
+ 	tn40_phy_unregister(priv);
++err_unregister_swnodes:
++	fwnode_handle_put(dev_fwnode(&priv->mdio->dev));
++	device_remove_software_node(&priv->mdio->dev);
++	software_node_unregister_node_group(priv->nodes.group);
+ err_free_irq:
+ 	pci_free_irq_vectors(pdev);
+ err_unset_drvdata:
+@@ -1816,6 +1820,10 @@ static void tn40_remove(struct pci_dev *pdev)
+ 	unregister_netdev(ndev);
+ 
+ 	tn40_phy_unregister(priv);
++	/* cleanup software nodes */
++	fwnode_handle_put(dev_fwnode(&priv->mdio->dev));
++	device_remove_software_node(&priv->mdio->dev);
++	software_node_unregister_node_group(priv->nodes.group);
+ 	pci_free_irq_vectors(priv->pdev);
+ 	pci_set_drvdata(pdev, NULL);
+ 	iounmap(priv->regs);
+diff --git a/drivers/net/ethernet/tehuti/tn40.h b/drivers/net/ethernet/tehuti/tn40.h
+index 490781fe512053d0d2cf0d6e819fc11d078a6733..e083f34f29849186a5ea68ed710a96ba9def116e 100644
+--- a/drivers/net/ethernet/tehuti/tn40.h
++++ b/drivers/net/ethernet/tehuti/tn40.h
+@@ -4,6 +4,7 @@
+ #ifndef _TN40_H_
+ #define _TN40_H_
+ 
++#include <linux/property.h>
+ #include "tn40_regs.h"
+ 
+ #define TN40_DRV_NAME "tn40xx"
+@@ -102,10 +103,39 @@ struct tn40_txdb {
+ 	int size; /* Number of elements in the db */
+ };
+ 
++#define NODE_PROP(_NAME, _PROP)	(		\
++	(const struct software_node) {		\
++		.name = _NAME,			\
++		.properties = _PROP,		\
++	})
++
++#define NODE_PAR_PROP(_NAME, _PAR, _PROP)	(	\
++	(const struct software_node) {		\
++		.name = _NAME,			\
++		.parent = _PAR,			\
++		.properties = _PROP,		\
++	})
++
++enum tn40_swnodes {
++	SWNODE_MDIO,
++	SWNODE_PHY,
++	SWNODE_MAX
++};
++
++struct tn40_nodes {
++	char phy_name[32];
++	char mdio_name[32];
++	struct property_entry phy_props[3];
++	struct software_node swnodes[SWNODE_MAX];
++	const struct software_node *group[SWNODE_MAX + 1];
++};
++
+ struct tn40_priv {
+ 	struct net_device *ndev;
+ 	struct pci_dev *pdev;
+ 
++	struct tn40_nodes nodes;
++
+ 	struct napi_struct napi;
+ 	/* RX FIFOs: 1 for data (full) descs, and 2 for free descs */
+ 	struct tn40_rxd_fifo rxd_fifo0;
+diff --git a/drivers/net/ethernet/tehuti/tn40_mdio.c b/drivers/net/ethernet/tehuti/tn40_mdio.c
+index af18615d64a8a290c7f79e56260b9aacf82c0386..b8ee553f60d1beadeda828584adfea670f0d4ca8 100644
+--- a/drivers/net/ethernet/tehuti/tn40_mdio.c
++++ b/drivers/net/ethernet/tehuti/tn40_mdio.c
+@@ -14,6 +14,8 @@
+ 	 (FIELD_PREP(TN40_MDIO_PRTAD_MASK, (port))))
+ #define TN40_MDIO_CMD_READ BIT(15)
+ 
++#define AQR105_FIRMWARE "tehuti/aqr105-tn40xx.cld"
++
+ static void tn40_mdio_set_speed(struct tn40_priv *priv, u32 speed)
+ {
+ 	void __iomem *regs = priv->regs;
+@@ -111,6 +113,46 @@ static int tn40_mdio_write_c45(struct mii_bus *mii_bus, int addr, int devnum,
+ 	return  tn40_mdio_write(mii_bus->priv, addr, devnum, regnum, val);
  }
  
--static int aqr107_read_status(struct phy_device *phydev)
-+static int aqr_common_read_status(struct phy_device *phydev, int aqr_gen)
++/* registers an mdio node and an aqr105 PHY at address 1
++ * tn40_mdio-%id {
++ *	ethernet-phy@1 {
++ *		compatible = "ethernet-phy-id03a1.b4a3";
++ *		reg = <1>;
++ *		firmware-name = AQR105_FIRMWARE;
++ *	};
++ * };
++ */
++static int tn40_swnodes_register(struct tn40_priv *priv)
++{
++	struct tn40_nodes *nodes = &priv->nodes;
++	struct pci_dev *pdev = priv->pdev;
++	struct software_node *swnodes;
++	u32 id;
++
++	id = pci_dev_id(pdev);
++
++	snprintf(nodes->phy_name, sizeof(nodes->phy_name), "ethernet-phy@1");
++	snprintf(nodes->mdio_name, sizeof(nodes->mdio_name), "tn40_mdio-%x",
++		 id);
++
++	swnodes = nodes->swnodes;
++
++	swnodes[SWNODE_MDIO] = NODE_PROP(nodes->mdio_name, NULL);
++
++	nodes->phy_props[0] = PROPERTY_ENTRY_STRING("compatible",
++						    "ethernet-phy-id03a1.b4a3");
++	nodes->phy_props[1] = PROPERTY_ENTRY_U32("reg", 1);
++	nodes->phy_props[2] = PROPERTY_ENTRY_STRING("firmware-name",
++						    AQR105_FIRMWARE);
++	swnodes[SWNODE_PHY] = NODE_PAR_PROP(nodes->phy_name,
++					    &swnodes[SWNODE_MDIO],
++					    nodes->phy_props);
++
++	nodes->group[SWNODE_PHY] = &swnodes[SWNODE_PHY];
++	nodes->group[SWNODE_MDIO] = &swnodes[SWNODE_MDIO];
++	return software_node_register_node_group(nodes->group);
++}
++
+ int tn40_mdiobus_init(struct tn40_priv *priv)
  {
- 	int val, ret;
+ 	struct pci_dev *pdev = priv->pdev;
+@@ -130,13 +172,34 @@ int tn40_mdiobus_init(struct tn40_priv *priv)
+ 	bus->read_c45 = tn40_mdio_read_c45;
+ 	bus->write_c45 = tn40_mdio_write_c45;
  
-@@ -415,6 +522,7 @@ static int aqr107_read_status(struct phy_device *phydev)
- 	if (ret && ret != -ETIMEDOUT)
- 		return ret;
- 
-+	phydev->rate_matching = RATE_MATCH_NONE;
- 	switch (FIELD_GET(MDIO_PHYXS_VEND_IF_STATUS_TYPE_MASK, val)) {
- 	case MDIO_PHYXS_VEND_IF_STATUS_TYPE_KR:
- 		phydev->interface = PHY_INTERFACE_MODE_10GKR;
-@@ -448,7 +556,17 @@ static int aqr107_read_status(struct phy_device *phydev)
++	ret = tn40_swnodes_register(priv);
++	if (ret) {
++		pr_err("swnodes failed\n");
++		return ret;
++	}
++
++	ret = device_add_software_node(&bus->dev,
++				       priv->nodes.group[SWNODE_MDIO]);
++	if (ret) {
++		dev_err(&pdev->dev, "device_add_software_node failed: %d\n",
++			ret);
++	}
++
+ 	ret = devm_mdiobus_register(&pdev->dev, bus);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "failed to register mdiobus %d %u %u\n",
+ 			ret, bus->state, MDIOBUS_UNREGISTERED);
+-		return ret;
++		goto err_swnodes_unregister;
  	}
- 
- 	/* Read possibly downshifted rate from vendor register */
--	return aqr107_read_rate(phydev);
-+	return aqr_common_read_rate(phydev, aqr_gen);
-+}
+ 	tn40_mdio_set_speed(priv, TN40_MDIO_SPEED_6MHZ);
+ 	priv->mdio = bus;
+ 	return 0;
 +
-+static int aqr105_read_status(struct phy_device *phydev)
-+{
-+	return aqr_common_read_status(phydev, 1);
-+}
-+
-+static int aqr107_read_status(struct phy_device *phydev)
-+{
-+	return aqr_common_read_status(phydev, 2);
++err_swnodes_unregister:
++	fwnode_handle_put(dev_fwnode(&bus->dev));
++	device_remove_software_node(&bus->dev);
++	software_node_unregister_node_group(priv->nodes.group);
++	return ret;
  }
- 
- static int aqr107_get_downshift(struct phy_device *phydev, u8 *data)
-@@ -911,11 +1029,13 @@ static struct phy_driver aqr_driver[] = {
- {
- 	PHY_ID_MATCH_MODEL(PHY_ID_AQR105),
- 	.name		= "Aquantia AQR105",
--	.config_aneg    = aqr_config_aneg,
-+	.get_features	= aqr105_get_features,
- 	.probe		= aqr107_probe,
-+	.config_init	= aqr107_config_init,
-+	.config_aneg    = aqr105_config_aneg,
- 	.config_intr	= aqr_config_intr,
- 	.handle_interrupt = aqr_handle_interrupt,
--	.read_status	= aqr_read_status,
-+	.read_status	= aqr105_read_status,
- 	.suspend	= aqr107_suspend,
- 	.resume		= aqr107_resume,
- },
++
++MODULE_FIRMWARE(AQR105_FIRMWARE);
 
 -- 
 2.45.2
