@@ -1,84 +1,78 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Wed, 18 Dec 2024 09:35:01 +0100
-Subject: [PATCH v3 2/2] power: supply: gpio-charger: add support for
- default charge current limit
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH 00/12] kdevops: Various fixes
+Date: Wed, 18 Dec 2024 11:29:54 +0100
+Message-Id: <20241218-jag-bringup_fixes-v1-0-0bf2e07c640c@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241218-default-charge-current-limit-v3-2-b26118cf06b5@liebherr.com>
-References: <20241218-default-charge-current-limit-v3-0-b26118cf06b5@liebherr.com>
-In-Reply-To: <20241218-default-charge-current-limit-v3-0-b26118cf06b5@liebherr.com>
-To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734510905; l=2214;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=8kkaeG3Fu8A0mMHCllTq6XlCfvacmcvVln/ePhFAfLE=;
- b=BsFCVnrWbJa0Tq6woukkKhmEd6zHKDqChEwZAYq1d4oKSBXaRfVP4dP/WQgR2xOle8V6HHKcq
- NBAX9wHlSfpBOzHhNzqzQSd0aGKPoQpLn/b8UWQpV4xPUFcCTbZ0fV+
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-B4-Tracking: v=1; b=H4sIACKkYmcC/x3LQQqAIBBA0avIrBtoBiHoKhGhNtm0sFCKILp70
+ vLx+Q8UySoFevNAlkuL7qmCGgNhdSkK6lwN3LIlpg43F9FnTfE8pkVvKchWFvLBMpGD+h1Z/lC
+ 3YXzfD92yW1xjAAAA
+To: kdevops@lists.linux.dev
+Cc: Joel Granados <joel.granados@kernel.org>, da.gomez@samsung.com
+X-Mailer: b4 0.15-dev-00a43
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2259;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=osn+tf2J1/rv3p+LR5X9rn6FBuri2hBkCrAErFzy/q0=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGdipCpfQhfBp71ToxvNInQOJ77g2aUhNE2Od
+ j7L51N26a+ehIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnYqQqAAoJELqXzVK3
+ lkFPKaYL/22mFiDdHnvu41pC6nNYIxYxn01GxfHNTsrDnrMeIaOiANwi+tKVfddLWFZw1BpJBCL
+ v0QHkU5Bxtw3Ser4n+QOZ+f5pyQvmHINeNWBpf/xR5aoig/hq9zeJ3d3jhMdLlLRlRI6XhHbB8x
+ qqHzf5CiVXwT4NCeJd0KOnXFEGP1JGFBEKIpbdC+IECye6AjFIbMTfe3JkYPirM89U4n6/cbE8a
+ jI1hkRfi+fxPqRAKaek3lAuyRrUotyLBrbWQOFGkQY/yc9qq958vyTIrMIY7xeRsm7ef3ty7QWD
+ IXRyr0diIsubpC3AziVvqgMj7Kw4ibX4xO+wl/KanUmn6giWLzO4nVY+WUktecRhNr2LHOhBGsZ
+ qkBA5ykY9+9mGnrkkkPwSg06f0G0jm+EKoTccN3oI/NHzg0sgoLZGhd9D3Nk/Jtleo9pByEzB1y
+ NOdDiSQjWHHf9BXlQDf9iSfRwIRIW/XxS4+CPuKbRdUKXIkKA5UBZgh7jkcwmPgVyMzzdeIoqw5
+ V0=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With DT properties charge-current-limit-gpios and
-charge-current-limit-mapping one can define charge current limits in uA
-using up to 32 GPIOs. At the moment the driver defaults to smallest charge
-current limitation for safety reasons. When disabling charging is
-supported, which should be common, the driver defaults to non charging on
-probe. By having a default, charging can be enabled on probe for such
-devices.
+These are fixes that I used when doing a 'make bringup' on a debian
+13 without libvirt. They seem unrelated because I changed things that
+prevented me from moving forward. Get back to me if I need to separate
+these in some way.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Summary of changes (more information in commit messages):
+* Adjust the heuristic on becomming sudo
+* Prefer -K ansible argument for getting the sudo password
+* Use full paths when using tasks from other roles
+* Call libvirt configuration tasks when doing the bringup
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- drivers/power/supply/gpio-charger.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Joel Granados (12):
+      Kconfig: Add error path in conf_value_to_yaml
+      scripts: Adjust heuristic to see if current user can sudo
+      ansible: libvirt_user: Install additional pkgs for debian
+      Makefile: Add virsh and libvirtd to minimum dependencies
+      ansible: Add build-deps tag
+      ansible: Use full paths when importing tasks
+      ansible: Run sudo by using the '-K' ansible arg
+      ansible: Install libvirt deps and enable user
+      ansible: Reduce long ansible messages for readability
+      bringup: Use full path when creating custom_source file
+      scripts: Return the full default path of the pool path
+      ansible: Set running_user explicitly to the USER var of the script
 
-diff --git a/drivers/power/supply/gpio-charger.c b/drivers/power/supply/gpio-charger.c
-index 68212b39785beabfe5536a18fa15bc249f7b1eea..56149545a1dc6004b474cec44984c6dfad3413b5 100644
---- a/drivers/power/supply/gpio-charger.c
-+++ b/drivers/power/supply/gpio-charger.c
-@@ -187,6 +187,8 @@ static int init_charge_current_limit(struct device *dev,
- {
- 	int i, len;
- 	u32 cur_limit = U32_MAX;
-+	bool set_def_limit;
-+	u32 def_limit;
- 
- 	gpio_charger->current_limit_gpios = devm_gpiod_get_array_optional(dev,
- 		"charge-current-limit", GPIOD_OUT_LOW);
-@@ -220,6 +222,9 @@ static int init_charge_current_limit(struct device *dev,
- 	if (len < 0)
- 		return len;
- 
-+	set_def_limit = !device_property_read_u32(dev,
-+						  "charge-current-limit-default-microamp",
-+						  &def_limit);
- 	for (i=0; i < gpio_charger->current_limit_map_size; i++) {
- 		if (gpio_charger->current_limit_map[i].limit_ua > cur_limit) {
- 			dev_err(dev, "charge-current-limit-mapping not sorted by current in descending order\n");
-@@ -227,8 +232,16 @@ static int init_charge_current_limit(struct device *dev,
- 		}
- 
- 		cur_limit = gpio_charger->current_limit_map[i].limit_ua;
-+		if (set_def_limit && def_limit == cur_limit) {
-+			set_charge_current_limit(gpio_charger, cur_limit);
-+			return 0;
-+		}
- 	}
- 
-+	if (set_def_limit)
-+		dev_warn(dev, "charge-current-limit-default-microamp %u not listed in charge-current-limit-mapping\n",
-+			 def_limit);
-+
- 	/* default to smallest current limitation for safety reasons */
- 	len = gpio_charger->current_limit_map_size - 1;
- 	set_charge_current_limit(gpio_charger,
+ Makefile.min_deps                                  |  2 ++
+ playbooks/roles/bringup_guestfs/tasks/main.yml     | 32 ++++++++++++++++------
+ .../libvirt_user/tasks/enable-user/debian/main.yml |  7 +++--
+ .../roles/libvirt_user/tasks/enable-user/main.yml  | 12 +++++---
+ .../tasks/install-deps/debian/main.yml             |  2 ++
+ .../roles/libvirt_user/tasks/install-deps/main.yml | 15 +++++++---
+ scripts/bringup_guestfs.sh                         |  3 +-
+ scripts/get_libvirsh_pool_path.sh                  |  2 +-
+ scripts/guestfs.Makefile                           |  5 ++--
+ scripts/kconfig/confdata.c                         | 16 +++++------
+ scripts/libvirt_pool.sh                            | 25 ++++++++++++++---
+ 11 files changed, 86 insertions(+), 35 deletions(-)
+---
+base-commit: b9e7570e72dac2df62d2ba80b01e3ff534316517
+change-id: 20241217-jag-bringup_fixes-24ef1bc4211a
 
+Best regards,
 -- 
-2.39.5
+Joel Granados <joel.granados@kernel.org>
 
