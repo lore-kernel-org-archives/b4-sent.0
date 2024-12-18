@@ -1,107 +1,70 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Tue, 17 Dec 2024 22:39:25 +0100
-Subject: [PATCH v5 13/13] media: i2c: imx214: Fix link frequency validation
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Subject: [PATCH v3 0/2] power: supply: gpio-charger: add support for
+ default charge current limit
+Date: Wed, 18 Dec 2024 09:34:59 +0100
+Message-Id: <20241218-default-charge-current-limit-v3-0-b26118cf06b5@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20241217-imx214-v5-13-387f52adef4d@apitzsch.eu>
-References: <20241217-imx214-v5-0-387f52adef4d@apitzsch.eu>
-In-Reply-To: <20241217-imx214-v5-0-387f52adef4d@apitzsch.eu>
-To: Ricardo Ribalda <ribalda@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dave Stevenson <dave.stevenson@raspberrypi.com>, 
- Vincent Knecht <vincent.knecht@mailoo.org>, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
- Ricardo Ribalda <ribalda@chromium.org>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIADOJYmcC/4XNywrCMBCF4VcpWRtJ0mtc+R7iIk2ndqAXmaRBK
+ X130+JCXOjynwPfLMwBITh2ShZGENDhNMZIDwmznRlvwLGJzZRQmVRC8wZaM/eex5XiamciGD3
+ vcUDPC22g1FkuCmlYJO4ELT52/nKN3aHzEz33b0Fu1zcs5W84SC54WUldG1EAKHPuEeoOiI52G
+ thmB/XppX88Fb0sr6qitaBFbr+8dV1fjFA2LBsBAAA=
+X-Change-ID: 20241209-default-charge-current-limit-69ae7945061a
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734471561; l=2951;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=IaHeW2kn0+BFS3UpeRipHSvLaInVm6GgixkZfvH8Zn8=;
- b=iceWVJ/p6O7NHmC2GG6/G00Ue3fCNEOdq+Km0itSPUrZBIifHQiuWcE0/Oj+cpofhaS6rS9Vn
- LWct7FTWZXDAHSf4LXuhe47H7G4pQFDB2/HyHCDpBd3sHdmwCmtzkMR
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734510905; l=1729;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=+QDle9JEkjDQ/QxtUf4707ZXIzare578DXwCr4H8Ixw=;
+ b=AA7hl+bQkoeVXU0gCuOpYd+ewT4c9d+ccmAsRG23kspyCjmivC0iGHf0yAPSXO4a+n8dNivw5
+ WI6XFA2jAHzDHJDSoCaAE5ULGGFE2zlujAAHNBdLZrPL1ovJW6bcqsG
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver defines IMX214_DEFAULT_LINK_FREQ 480000000, and then
-IMX214_DEFAULT_PIXEL_RATE ((IMX214_DEFAULT_LINK_FREQ * 8LL) / 10),
-which works out as 384MPix/s. (The 8 is 4 lanes and DDR.)
+With DT properties charge-current-limit-gpios and
+charge-current-limit-mapping one can define charge current limits in uA
+using up to 32 GPIOs. At the moment the driver defaults to smallest charge
+current limitation for safety reasons. When disabling charging is
+supported, which should be common, the driver defaults to non charging on
+probe. By having a default, charging can be enabled on probe for such
+devices.
 
-Parsing the PLL registers with the defined 24MHz input. We're in single
-PLL mode, so MIPI frequency is directly linked to pixel rate.  VTCK ends
-up being 1200MHz, and VTPXCK and OPPXCK both are 120MHz.  Section 5.3
-"Frame rate calculation formula" says "Pixel rate
-[pixels/s] = VTPXCK [MHz] * 4", so 120 * 4 = 480MPix/s, which basically
-agrees with my number above.
-
-3.1.4. MIPI global timing setting says "Output bitrate = OPPXCK * reg
-0x113[7:0]", so 120MHz * 10, or 1200Mbit/s. That would be a link
-frequency of 600MHz due to DDR.
-That also matches to 480MPix/s * 10bpp / 4 lanes / 2 for DDR.
-
-Keep the previous link frequency for backward compatibility.
-
-Acked-by: Ricardo Ribalda <ribalda@chromium.org>
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- drivers/media/i2c/imx214.c | 28 +++++++++++++++++++---------
- 1 file changed, 19 insertions(+), 9 deletions(-)
+Changes in v3:
+- Fix commit msg for "dt-bindings: power: supply: gpio-charger: add support for default charge current limit"
+  Add use case
+- Link to v2: https://lore.kernel.org/r/20241213-default-charge-current-limit-v2-0-45886fce905c@liebherr.com
 
-diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
-index e8d35f8b0f8b57d64f03ff6f5ed9eac51a671e8e..6a05094bbd4e94bb1a436a602745c3b5b2fdfbe2 100644
---- a/drivers/media/i2c/imx214.c
-+++ b/drivers/media/i2c/imx214.c
-@@ -31,7 +31,9 @@
- #define IMX214_REG_FAST_STANDBY_CTRL	CCI_REG8(0x0106)
- 
- #define IMX214_DEFAULT_CLK_FREQ	24000000
--#define IMX214_DEFAULT_LINK_FREQ 480000000
-+#define IMX214_DEFAULT_LINK_FREQ	600000000
-+/* Keep wrong link frequency for backward compatibility */
-+#define IMX214_DEFAULT_LINK_FREQ_LEGACY	480000000
- #define IMX214_DEFAULT_PIXEL_RATE ((IMX214_DEFAULT_LINK_FREQ * 8LL) / 10)
- #define IMX214_FPS 30
- 
-@@ -1225,18 +1227,26 @@ static int imx214_parse_fwnode(struct device *dev)
- 		goto done;
- 	}
- 
--	for (i = 0; i < bus_cfg.nr_of_link_frequencies; i++)
-+	if (bus_cfg.nr_of_link_frequencies != 1)
-+		dev_warn(dev, "Only one link-frequency supported, please review your DT. Continuing anyway\n");
-+
-+	for (i = 0; i < bus_cfg.nr_of_link_frequencies; i++) {
- 		if (bus_cfg.link_frequencies[i] == IMX214_DEFAULT_LINK_FREQ)
- 			break;
--
--	if (i == bus_cfg.nr_of_link_frequencies) {
--		dev_err_probe(dev, -EINVAL,
--			      "link-frequencies %d not supported, Please review your DT\n",
--			      IMX214_DEFAULT_LINK_FREQ);
--		ret = -EINVAL;
--		goto done;
-+		if (bus_cfg.link_frequencies[i] ==
-+		    IMX214_DEFAULT_LINK_FREQ_LEGACY) {
-+			dev_warn(dev,
-+				 "link-frequencies %d not supported, please review your DT. Continuing anyway\n",
-+				 IMX214_DEFAULT_LINK_FREQ);
-+			break;
-+		}
- 	}
- 
-+	if (i == bus_cfg.nr_of_link_frequencies)
-+		ret = dev_err_probe(dev, -EINVAL,
-+				    "link-frequencies %d not supported, please review your DT\n",
-+				    IMX214_DEFAULT_LINK_FREQ);
-+
- done:
- 	v4l2_fwnode_endpoint_free(&bus_cfg);
- 	fwnode_handle_put(endpoint);
+Changes in v2:
+- renamed DT property charge-current-limit-default to
+  charge-current-limit-default-microamp
+- Added dependency on charge-current-limit-mapping
+- Added intention and use case to commit descriptions
+- Added charge-current-limit-default-microamp in bindings example
+- Link to v1: https://lore.kernel.org/r/20241211-default-charge-current-limit-v1-0-7819ba06ee2a@liebherr.com
 
+---
+Dimitri Fedrau (2):
+      dt-bindings: power: supply: gpio-charger: add support for default charge current limit
+      power: supply: gpio-charger: add support for default charge current limit
+
+ .../devicetree/bindings/power/supply/gpio-charger.yaml      |  6 ++++++
+ drivers/power/supply/gpio-charger.c                         | 13 +++++++++++++
+ 2 files changed, 19 insertions(+)
+---
+base-commit: 57cb041f61d4abcf8dfa41259df27d081ab4cb6a
+change-id: 20241209-default-charge-current-limit-69ae7945061a
+
+Best regards,
 -- 
-2.47.1
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
