@@ -1,78 +1,70 @@
 From: Joel Granados <joel.granados@kernel.org>
-Subject: [PATCH 00/12] kdevops: Various fixes
-Date: Wed, 18 Dec 2024 11:29:54 +0100
-Message-Id: <20241218-jag-bringup_fixes-v1-0-0bf2e07c640c@kernel.org>
+Date: Wed, 18 Dec 2024 11:29:55 +0100
+Subject: [PATCH 01/12] Kconfig: Add error path in conf_value_to_yaml
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACKkYmcC/x3LQQqAIBBA0avIrBtoBiHoKhGhNtm0sFCKILp70
- vLx+Q8UySoFevNAlkuL7qmCGgNhdSkK6lwN3LIlpg43F9FnTfE8pkVvKchWFvLBMpGD+h1Z/lC
- 3YXzfD92yW1xjAAAA
+Message-Id: <20241218-jag-bringup_fixes-v1-1-0bf2e07c640c@kernel.org>
+References: <20241218-jag-bringup_fixes-v1-0-0bf2e07c640c@kernel.org>
+In-Reply-To: <20241218-jag-bringup_fixes-v1-0-0bf2e07c640c@kernel.org>
 To: kdevops@lists.linux.dev
 Cc: Joel Granados <joel.granados@kernel.org>, da.gomez@samsung.com
 X-Mailer: b4 0.15-dev-00a43
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2259;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1224;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=osn+tf2J1/rv3p+LR5X9rn6FBuri2hBkCrAErFzy/q0=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGdipCpfQhfBp71ToxvNInQOJ77g2aUhNE2Od
- j7L51N26a+ehIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnYqQqAAoJELqXzVK3
- lkFPKaYL/22mFiDdHnvu41pC6nNYIxYxn01GxfHNTsrDnrMeIaOiANwi+tKVfddLWFZw1BpJBCL
- v0QHkU5Bxtw3Ser4n+QOZ+f5pyQvmHINeNWBpf/xR5aoig/hq9zeJ3d3jhMdLlLRlRI6XhHbB8x
- qqHzf5CiVXwT4NCeJd0KOnXFEGP1JGFBEKIpbdC+IECye6AjFIbMTfe3JkYPirM89U4n6/cbE8a
- jI1hkRfi+fxPqRAKaek3lAuyRrUotyLBrbWQOFGkQY/yc9qq958vyTIrMIY7xeRsm7ef3ty7QWD
- IXRyr0diIsubpC3AziVvqgMj7Kw4ibX4xO+wl/KanUmn6giWLzO4nVY+WUktecRhNr2LHOhBGsZ
- qkBA5ykY9+9mGnrkkkPwSg06f0G0jm+EKoTccN3oI/NHzg0sgoLZGhd9D3Nk/Jtleo9pByEzB1y
- NOdDiSQjWHHf9BXlQDf9iSfRwIRIW/XxS4+CPuKbRdUKXIkKA5UBZgh7jkcwmPgVyMzzdeIoqw5
- V0=
+ bh=bGbxHk/oOI1UiN1TNn3H56GZV7Xir+xzbDLx5Xo3kUg=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGdipCvz1wWmZEZZi5o483Dz4xKiud6OXcXxQ
+ KCwDJyO+BRUiIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnYqQrAAoJELqXzVK3
+ lkFPnYEL/01tgYp2GYYNMRI5uF5MJH6jcZWuHSDVpJFaH/wDq8ATxBNf3N7w8qa+zlhUK/vDbQT
+ DHOnSSXYwHMySR1491FITI0up8nDub+XunxYdQmEXWdkQ5TQfezIsFpQP7+N52xlt/kIZab7gKi
+ jd89QKMLoEpA+C40E3CzIjimuEI2SLhZRI0FBjNtHGoy1Yg6kv6hlDhfhCQDZUCm7L0t2WOidNz
+ 6yP2SIDss3X98e9XFVxv77VlWOWaLVtR6CaSbn56N9lJaczgoCyStTsNo36b2vlRc7oX1HUxC90
+ MSefx5ByGl8B5kSZjaSUfeP1KT9tkUTuF/KUueIJSS/i5QMgpWscT4I+Ik2fOEQ4Awtmpa+FauZ
+ 51VqdVHtYUPERjX7M2o0ed/zxLmd8TneMq8Ay7UVRDeeCHHM27m7TgTkun/csVqyuNhe2PHH4BF
+ 7yh+I/qOxtLHCX944qo62TSL/NqkJ7peOYLep7AcTrmQw43G7Wi+5KThuji1ZtXeUgPpvsq9K66
+ Jw=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These are fixes that I used when doing a 'make bringup' on a debian
-13 without libvirt. They seem unrelated because I changed things that
-prevented me from moving forward. Get back to me if I need to separate
-these in some way.
-
-Summary of changes (more information in commit messages):
-* Adjust the heuristic on becomming sudo
-* Prefer -K ansible argument for getting the sudo password
-* Use full paths when using tasks from other roles
-* Call libvirt configuration tasks when doing the bringup
+The asprintf call returns -1 on error. In this case the value of
+yaml_value is undefined. Return NULL, so the caller can handle the
+error.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-Joel Granados (12):
-      Kconfig: Add error path in conf_value_to_yaml
-      scripts: Adjust heuristic to see if current user can sudo
-      ansible: libvirt_user: Install additional pkgs for debian
-      Makefile: Add virsh and libvirtd to minimum dependencies
-      ansible: Add build-deps tag
-      ansible: Use full paths when importing tasks
-      ansible: Run sudo by using the '-K' ansible arg
-      ansible: Install libvirt deps and enable user
-      ansible: Reduce long ansible messages for readability
-      bringup: Use full path when creating custom_source file
-      scripts: Return the full default path of the pool path
-      ansible: Set running_user explicitly to the USER var of the script
+ scripts/kconfig/confdata.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
- Makefile.min_deps                                  |  2 ++
- playbooks/roles/bringup_guestfs/tasks/main.yml     | 32 ++++++++++++++++------
- .../libvirt_user/tasks/enable-user/debian/main.yml |  7 +++--
- .../roles/libvirt_user/tasks/enable-user/main.yml  | 12 +++++---
- .../tasks/install-deps/debian/main.yml             |  2 ++
- .../roles/libvirt_user/tasks/install-deps/main.yml | 15 +++++++---
- scripts/bringup_guestfs.sh                         |  3 +-
- scripts/get_libvirsh_pool_path.sh                  |  2 +-
- scripts/guestfs.Makefile                           |  5 ++--
- scripts/kconfig/confdata.c                         | 16 +++++------
- scripts/libvirt_pool.sh                            | 25 ++++++++++++++---
- 11 files changed, 86 insertions(+), 35 deletions(-)
----
-base-commit: b9e7570e72dac2df62d2ba80b01e3ff534316517
-change-id: 20241217-jag-bringup_fixes-24ef1bc4211a
+diff --git a/scripts/kconfig/confdata.c b/scripts/kconfig/confdata.c
+index 0156b38..49a5729 100644
+--- a/scripts/kconfig/confdata.c
++++ b/scripts/kconfig/confdata.c
+@@ -669,14 +669,14 @@ static char *conf_value_to_yaml(struct symbol *sym, const char *val)
+ 		yaml_value = strdup(val);
+ 		break;
+ 	case S_HEX:
+-            asprintf(&yaml_value, "0x%s", val);
+-            break;
+-        case S_STRING:
+-	    /* Wrap strings in quotes */
+-            asprintf(&yaml_value, "\"%s\"", val);
+-            break;
+-        case S_BOOLEAN:
+-        case S_TRISTATE:
++		if (asprintf(&yaml_value, "0x%s", val) < 0)
++			return NULL;
++	case S_STRING:
++		/* Wrap strings in quotes */
++		if (asprintf(&yaml_value, "\"%s\"", val) < 0)
++			return NULL;
++	case S_BOOLEAN:
++	case S_TRISTATE:
+ 		if (strcmp(val, "y") == 0)
+ 			yaml_value = strdup("True");
+ 		else if (strcmp(val, "n") == 0)
 
-Best regards,
 -- 
-Joel Granados <joel.granados@kernel.org>
+2.44.2
 
