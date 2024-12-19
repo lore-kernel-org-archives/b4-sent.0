@@ -1,131 +1,91 @@
-From: Anthony Ruhier <aruhier@mailbox.org>
-Date: Thu, 19 Dec 2024 17:05:08 +0100
-Subject: [PATCH v3] arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: Add lid
- switch
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH v3 0/4] scsi: ufs: qcom: Suspend fixes
+Date: Thu, 19 Dec 2024 22:20:40 +0530
+Message-Id: <20241219-ufs-qcom-suspend-fix-v3-0-63c4b95a70b9@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241219-patch-lenovo-yoga-v3-1-9c4a79068141@mailbox.org>
-X-B4-Tracking: v=1; b=H4sIADNEZGcC/32NQQ6CMBBFr2Jm7Rg61CiuvIdhUeoAkyBDWtJAC
- He3cgCX7yX//Q0iB+EIj9MGgZNE0TFDeT6B793YMco7M1BB1pCpcHKz73HgUZPiqp1Dc7P26gt
- XeCbIuylwK8vRfNWZe4mzhvW4SPSz/2qJ0KCtSnLc+qby9+fHydDoctHQQb3v+xfSqW6etAAAA
- A==
-X-Change-ID: 20241219-patch-lenovo-yoga-17445c0a0ce2
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Maya Matuszczyk <maccraft123mc@gmail.com>, 
- Anthony Ruhier <aruhier@mailbox.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3018; i=aruhier@mailbox.org;
- h=from:subject:message-id; bh=uDmiSiifdArMxe2Gtww5z4PcJOuwqHEtKieS1LFlNuY=;
- b=owGbwMvMwCVW2Nrw47jsO3/G02pJDOkpLn7zm43WOgV3svQqGMy+rPPzzKMNskGXmjrD3AvOT
- K2/bZjYUcrCIMbFICumyFKyP0r4tkrHfYe1y1lg5rAygQxh4OIUgIncrWH4HxTdtC4xnPNX6rUp
- AoVp6XNePJ8Wc3Pu5xWHGR2ZbFP9+hl+MatPvlCitOz1OpmFc00NJ+1xtujYLTBx8qm51c8PCGR
- f5wUA
-X-Developer-Key: i=aruhier@mailbox.org; a=openpgp;
- fpr=F4A378DD8D494AE48EBA554CB00FBC7D08D231D9
-X-Endpoint-Received: by B4 Relay for aruhier@mailbox.org/default with auth_id=302
+X-B4-Tracking: v=1; b=H4sIAOBOZGcC/4XNQQ6CMBCF4auQrh3DtFDBlfcwLqAdoIm22EqjI
+ dzdwkoXxuX/kvlmZoG8ocCO2cw8RROMsynELmNqaGxPYHRqxnNeIEeEqQtwV+4GYQojWQ2deUI
+ psaJalVLXgqXT0VOaN/Z8ST2Y8HD+tX2JuK5/wIiQQyWobTUdZIvqdDW28W7vfM9WMfJPRfxQe
+ FJQk1Saa4mF/FKWZXkDArZAGP8AAAA=
+To: Alim Akhtar <alim.akhtar@samsung.com>, 
+ Avri Altman <avri.altman@wdc.com>, Bart Van Assche <bvanassche@acm.org>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ Abel Vesa <abel.vesa@linaro.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, Amit Pundir <amit.pundir@linaro.org>, 
+ Nitin Rawat <quic_nitirawa@quicinc.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ stable@vger.kernel.org, Ram Kumar Dwivedi <quic_rdwivedi@quicinc.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2310;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=IiSx2c1rWCpopOjw7IUhmvQhktehYl5PNc2RgbhH8LM=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnZE7pF0xR8u5j1AZQNq0a1iIPAASQkMD+7+21s
+ TL6BvlQftOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ2RO6QAKCRBVnxHm/pHO
+ 9Y7xB/wJQUKBYCijZxDVSc4pOmjWd4WRh4wnXcK5J6+Xz6N3i1CNoFuu2JQGfbMx7vUQCgtzsjY
+ H8GahM/OrQSw1LWp8tOJQ2idxcqLOYtj76lF/Z6vq97A3rF3O1XoNAS8nfh2aCemWnFx1CofxMy
+ YbkPFly62g1yTOe1qboqc7FUjgiXtIAgH79y/RjrpKenhF7aY8ecLbn4kyWn7h+bjTkiGmNGOrW
+ EScBBX7B36xE+ifj3bp8FHK8KrL2xkc5KcN6M6fYnrdcmtxwSX0XwMEsqwcCPoqVqqhzqUMKADH
+ lfN0Hkcf5d3LO8chNNHB5Zdc5bVUSx+3n+dEeHB2Z1eG/ki4
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the lid switch for the Lenovo Yoga Slim 7x.
+Hi,
 
-Other x1e80100 laptops use the GPIO pin 92 only, however on the Yoga
-Slim 7x this pin seems to be bridged with the pin 71. By default, the
-pin 71 is set as output-high, which blocks any event on pin 92.
+This series fixes the several suspend issues on Qcom platforms. Patch 1 fixes
+the resume failure with spm_lvl=5 suspend on most of the Qcom platforms. For
+this patch, I couldn't figure out the exact commit that caused the issue. So I
+used the commit that introduced reinit support as a placeholder.
 
-This patch sets the pin 71 as output-disable and sets the LID switch on
-pin 92. This is aligned with how they're configured on Windows:
-    GPIO  71 | 0xf147000 | in | func0 | hi | pull up   | 16 mA
-    GPIO  92 | 0xf15c000 | in | func0 | lo | no pull   |  2 mA
+Patch 4 fixes the suspend issue on SM8550 and SM8650 platforms where UFS
+PHY retention is not supported. Hence the default spm_lvl=3 suspend fails. So
+this patch configures spm_lvl=5 as the default suspend level to force UFSHC/
+device powerdown during suspend. This supersedes the previous series [1] that
+tried to fix the issue in clock drivers.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Tested-by: Maya Matuszczyk <maccraft123mc@gmail.com>
-Signed-off-by: Anthony Ruhier <aruhier@mailbox.org>
+This series is tested on Qcom SM8550 QRD, SM8650 QRD and Qcom RB5 boards.
+
+[1] https://lore.kernel.org/linux-arm-msm/20241107-ufs-clk-fix-v1-0-6032ff22a052@linaro.org
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
 Changes in v3:
-- Changes the key order to respect the DTS coding style.
-- Link to v2: https://lore.kernel.org/r/20241219-patch-lenovo-yoga-v2-1-4932aefcb9c8@mailbox.org
+- Added a patch that honors the runtime/system PM levels set by host drivers.
+  Otherwise patch 4 doesn't have any effect. This was discovered with SM8650
+  QRD.
+- Collected tags
+- Link to v2: https://lore.kernel.org/r/20241213-ufs-qcom-suspend-fix-v2-0-1de6cd2d6146@linaro.org
 
 Changes in v2:
-- Fixes patch format.
----
- .../boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts  | 38 ++++++++++++++++++++++
- 1 file changed, 38 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-index ca5a808f2c7df66a861a933df407fd4bdaea3fe1..0beec4b0f3cc843d7d508e23d5037140a8d96ef6 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-@@ -6,6 +6,7 @@
- /dts-v1/;
- 
- #include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/gpio-keys.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- 
- #include "x1e80100.dtsi"
-@@ -23,6 +24,21 @@ chosen {
- 		stdout-path = "serial0:115200n8";
- 	};
- 
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		pinctrl-0 = <&hall_int_n_default>;
-+		pinctrl-names = "default";
-+
-+		switch-lid {
-+			gpios = <&tlmm 92 GPIO_ACTIVE_LOW>;
-+			linux,input-type = <EV_SW>;
-+			linux,code = <SW_LID>;
-+			wakeup-source;
-+			wakeup-event-action = <EV_ACT_DEASSERTED>;
-+		};
-+	};
-+
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
- 			     "qcom,sm8550-pmic-glink",
-@@ -811,6 +827,28 @@ edp_reg_en: edp-reg-en-state {
- 		bias-disable;
- 	};
- 
-+	hall_int_n_default: hall-int-n-state {
-+		lid-n-pins {
-+			pins = "gpio92";
-+			function = "gpio";
-+			bias-disable;
-+		};
-+
-+		/*
-+		 * Pins 71 and 92 seem to be bridged together (pin 71 and 92 show the same
-+		 * events). By default, pin 71 is set as output-high, which blocks any
-+		 * event on pin 92. Output-disable on pin 71 is necessary to get events on
-+		 * pin 92.
-+		 * The purpose of pin 71 is not yet known; lid-pull is a supposition.
-+		 */
-+		lid-pull-n-pins {
-+			pins = "gpio71";
-+			function = "gpio";
-+			bias-pull-up;
-+			output-disable;
-+		};
-+	};
-+
- 	kybd_default: kybd-default-state {
- 		pins = "gpio67";
- 		function = "gpio";
+- Changed 'ufs_qcom_drvdata::quirks' type to 'enum ufshcd_quirks'
+- Collected tags
+- Link to v1: https://lore.kernel.org/r/20241211-ufs-qcom-suspend-fix-v1-0-83ebbde76b1c@linaro.org
 
 ---
-base-commit: 78d4f34e2115b517bcbfe7ec0d018bbbb6f9b0b8
-change-id: 20241219-patch-lenovo-yoga-17445c0a0ce2
+Manivannan Sadhasivam (4):
+      scsi: ufs: qcom: Power off the PHY if it was already powered on in ufs_qcom_power_up_sequence()
+      scsi: ufs: core: Honor runtime/system PM levels if set by host controller drivers
+      scsi: ufs: qcom: Allow passing platform specific OF data
+      scsi: ufs: qcom: Power down the controller/device during system suspend for SM8550/SM8650 SoCs
+
+ drivers/ufs/core/ufshcd-priv.h |  6 ------
+ drivers/ufs/core/ufshcd.c      | 10 ++++++----
+ drivers/ufs/host/ufs-qcom.c    | 31 +++++++++++++++++++------------
+ drivers/ufs/host/ufs-qcom.h    |  5 +++++
+ include/ufs/ufshcd.h           |  2 --
+ 5 files changed, 30 insertions(+), 24 deletions(-)
+---
+base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
+change-id: 20241211-ufs-qcom-suspend-fix-5618e9c56d93
 
 Best regards,
 -- 
-Anthony Ruhier <aruhier@mailbox.org>
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
