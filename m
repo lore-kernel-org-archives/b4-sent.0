@@ -1,78 +1,126 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Fri, 20 Dec 2024 11:37:54 +0100
-Subject: [PATCH v2 4/4] gpio: mpc8xxx: Preserve pre-init state of outputs
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH v6 00/13] media: i2c: imx214: Miscellaneous cleanups and
+ improvements
+Date: Fri, 20 Dec 2024 14:25:59 +0100
+Message-Id: <20241220-imx214-v6-0-d90a185d82e5@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20241220-mpc83xx-misc-v2-4-ff4c17ee5fa4@posteo.net>
-References: <20241220-mpc83xx-misc-v2-0-ff4c17ee5fa4@posteo.net>
-In-Reply-To: <20241220-mpc83xx-misc-v2-0-ff4c17ee5fa4@posteo.net>
-To: Mario Six <mario.six@gdsys.cc>, Tom Rini <trini@konsulko.com>
-Cc: Sinan Akman <sinan@writeme.com>, u-boot@lists.denx.de, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAGdwZWcC/23NS24CMRAE0Ksgr+PI3f5nlXugLPxpZ7wIoDGMS
+ NDcPYaIARSW1epXdWKNxkqNva1ObKSptrrd9GBeViwNYfNJvOaeGQpUwoHj9euIoLiTqKxTyUY
+ i1p93I5V6vBStP3oeattvx+9L7wTn61+FF3itmIALnrxJMXjnJej3sKv7n5aGVzqwc8mECwSBs
+ EDssMSMkrzXCug/lDeIwi5QdhiiEaFYIv9sUd1BMAtUHboUcwAjSkxPFvU9vC3qDqWzRWPIVFR
+ +hPM8/wIahqqCggEAAA==
+X-Change-ID: 20240818-imx214-8324784c7bee
+To: Ricardo Ribalda <ribalda@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dave Stevenson <dave.stevenson@raspberrypi.com>, 
+ Vincent Knecht <vincent.knecht@mailoo.org>, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
+ Ricardo Ribalda <ribalda@chromium.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734691081; l=2017;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=3OOJ1gFlOUtLdlbIMEpQp2gBYtM4bC2L3oBPBpICZwE=;
- b=CUY4EeyCZnhTAJVh8ZGfJXjBCo4QrmZ9Rk5v4rmy7uFZHR+4L25bpnFsOsYsvyPtXoGXWhsh8
- sVMNiQvUZBaDnRnqEUZ/WJMCGNpUrkZodMS5HEoF+XAOuE16mYkwZQk
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734701191; l=3709;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=gsHp8x3rZPFbbVXat+AkjIIGNsSe4fQXvwGDypL8V4A=;
+ b=kpP/ESFAgb8Wb0hMNM857ZPboqwkgLMvplwHkTBM8Rb1m0q2a18F3IlcqCADtpSgIFqb7yRce
+ jShhJ8lEdaqAcuBx39G7csE7xws9Svzg9y2iyX/CI6papvOoGVPaJoa
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The mpc8xxx_gpio driver contains a workaround for certain chips
-where the previously written state of outputs cannot be read back
-from the GPIO data (GPDAT) register (MPC8572/MPC8536). This workaround
-consists of tracking the state of GPDAT in a "shadow register" (i.e. a
-software variable). The shadow register is initialized to zero.
+This patch series is a collection of miscellaneous cleanups and
+improvements to the imx214 driver.
 
-This results in a problem w.r.t. outputs that are configured to a
-high (1) state before U-Boot runs, but not touched by U-Boot itself:
-Due to the zero-initialization, these GPIOs end up being set to zero,
-the first time that any other output is set.
+The series converts the driver to the CCI helpers and adds controls
+needed to make the driver work with libcamera.
 
-To avoid such issues initialize the GPDAT shadow register to the value
-previously held by any outputs, if possible. On MPC8572/MPC8536 this
-should make no difference, i.e. the shadow register should be
-initialized to zero on these chips.
+The changes are inspired by the imx219 driver.
 
-This patch has been tested on a MPC8314E-based board.
-
-Reviewed-by: Sinan Akman <sinan@writeme.com>
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
+Changes in v6:
+- Make series bisectable
+- Add A-b tag
+- Link to v5: https://lore.kernel.org/r/20241217-imx214-v5-0-387f52adef4d@apitzsch.eu
 
-V2:
-- Clarify how the patch has been tested
+Changes in v5:
+- Remove cur_mode field
+- Link to v4: https://lore.kernel.org/r/20241216-imx214-v4-0-8cbda160fbce@apitzsch.eu
+
+Changes in v4:
+- Drop function name from dev error message
+- Initialize *format to fix compile error
+- Improve comment "Update {FPS -> blank} limit"
+- Improve code formatting
+- Warn once on usage of frame_interval functions
+- Fix commit message
+- Add patch to fix clock handling on probe error or remove
+- Warn if number of DT provided link frequencies != 1
+- Add A-b tags
+- Link to v3: https://lore.kernel.org/r/20241207-imx214-v3-0-ab60af7ee915@apitzsch.eu
+
+Changes in v3:
+- Also keep previous link freq for backward compatibility
+- Move link freq patch to the end of the series
+- Remove return-early check from imx214_set_format()
+- Remove unneeded struct imx214 function parameter
+- Use correct ret value on number of data lanes error
+- Revert changing order (imx214_parse_fwnode, devm_kzalloc)
+- Fix typo
+- Remove unused definition IMX214_EXPOSURE_MAX
+- Don't set FPS to default
+- Simplify exposure_def definition
+- Set state and format only if control id is V4L2_CID_VBLANK
+- Restore Ricardo's message to Sony
+- Drop "media: i2c: imx214: Extract format and crop settings" patch
+- Add A-b tag
+- Link to v2: https://lore.kernel.org/r/20241021-imx214-v2-0-fbd23e99541e@apitzsch.eu
+
+Changes in v2:
+- Add patch to fix link frequency
+- Don't use and remove fmt and crop from struct imx214
+- Squash patch 1/13 and 2/13
+- Only check if #lanes == 4
+- Add comment that enum_frame_interval() shouldn't be used by userspace
+- Set V4L2_CID_VBLANK step size to 2 (according to datasheet Table 4-4)
+- Increase IMX214_VBLANK_MIN to limit max frame rate of full resolution
+  to the documented 30 fps
+- As bpp is always 10, simplify setting IMX214_REG_CSI_DATA_FORMAT and
+  IMX214_REG_OPPXCK_DIV
+- Simplify imx214_get_format_code()
+- Cluster hflip and vflip
+- Remove kernel log note from 11/13, issue was fixed by a kernel update
+- Add A-b tags
+- Link to v1: https://lore.kernel.org/r/20240902-imx214-v1-0-c96cba989315@apitzsch.eu
+
 ---
- drivers/gpio/mpc8xxx_gpio.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+André Apitzsch (13):
+      media: i2c: imx214: Use subdev active state
+      media: i2c: imx214: Simplify with dev_err_probe()
+      media: i2c: imx214: Convert to CCI register access helpers
+      media: i2c: imx214: Replace register addresses with macros
+      media: i2c: imx214: Drop IMX214_REG_EXPOSURE from mode reg arrays
+      media: i2c: imx214: Check number of lanes from device tree
+      media: i2c: imx214: Add vblank and hblank controls
+      media: i2c: imx214: Implement vflip/hflip controls
+      media: i2c: imx214: Add analogue/digital gain control
+      media: i2c: imx214: Verify chip ID
+      media: i2c: imx214: Add test pattern control
+      media: i2c: imx214: Fix clock handling on probe error or remove
+      media: i2c: imx214: Fix link frequency validation
 
-diff --git a/drivers/gpio/mpc8xxx_gpio.c b/drivers/gpio/mpc8xxx_gpio.c
-index e9bd38f162c10c76460bc63f93c03a711cb4d38e..709d04017d154ecae1e8d16d7c35ced521157c4d 100644
---- a/drivers/gpio/mpc8xxx_gpio.c
-+++ b/drivers/gpio/mpc8xxx_gpio.c
-@@ -204,7 +204,17 @@ static int mpc8xxx_gpio_plat_to_priv(struct udevice *dev)
- 		return -ENOMEM;
- 
- 	priv->gpio_count = plat->ngpios;
--	priv->dat_shadow = 0;
-+
-+	/*
-+	 * On platforms that do support reading back output values, we want to
-+	 * try preserving them, so that we don't accidentally set unrelated
-+	 * GPIOs to zero in mpc8xxx_gpio_set_value.
-+	 */
-+	if (priv->little_endian)
-+		priv->dat_shadow = in_le32(&priv->base->gpdat) & in_le32(&priv->base->gpdir);
-+	else
-+		priv->dat_shadow = in_be32(&priv->base->gpdat) & in_be32(&priv->base->gpdir);
-+
- 
- 	priv->type = driver_data;
- 
+ drivers/media/i2c/Kconfig  |    1 +
+ drivers/media/i2c/imx214.c | 1265 ++++++++++++++++++++++++++------------------
+ 2 files changed, 752 insertions(+), 514 deletions(-)
+---
+base-commit: 62f608176a46b6a794725022101d0d7f42faedb9
+change-id: 20240818-imx214-8324784c7bee
 
+Best regards,
 -- 
-2.45.2
+André Apitzsch <git@apitzsch.eu>
 
