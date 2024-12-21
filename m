@@ -1,107 +1,108 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Fri, 20 Dec 2024 14:26:12 +0100
-Subject: [PATCH v6 13/13] media: i2c: imx214: Fix link frequency validation
+From: Hans-Frieder Vogt <hfdevel@gmx.net>
+Subject: [PATCH net-next v4 0/7] net: tn40xx: add support for AQR105 based
+ cards
+Date: Sat, 21 Dec 2024 15:43:35 +0100
+Message-Id: <20241221-tn9510-v3a-v4-0-dafff89ba7a7@gmx.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20241220-imx214-v6-13-d90a185d82e5@apitzsch.eu>
-References: <20241220-imx214-v6-0-d90a185d82e5@apitzsch.eu>
-In-Reply-To: <20241220-imx214-v6-0-d90a185d82e5@apitzsch.eu>
-To: Ricardo Ribalda <ribalda@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dave Stevenson <dave.stevenson@raspberrypi.com>, 
- Vincent Knecht <vincent.knecht@mailoo.org>, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
- Ricardo Ribalda <ribalda@chromium.org>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIABfUZmcC/02NwQ6DIBAFf8XsudsAKrU99T8aD4iLchAbIITG+
+ O9F00OPLy8zs0EgbynAo9rAU7LBrq6M5lKBnpWbCO1YNggmGi64xOjuLWeYaoVCG827dpQdM1C
+ Atydj8yl7gaOIjnKEvjyDCoSDV07Ph2xR1h3AbENc/eeMp/rEfp3bfyfVyLAZWzLSyE4Se05Lv
+ pYA9Pu+fwEkONhuwwAAAA==
+X-Change-ID: 20241216-tn9510-v3a-2cfc185d680f
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ FUJITA Tomonori <fujita.tomonori@gmail.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>
+Cc: netdev@vger.kernel.org, Hans-Frieder Vogt <hfdevel@gmx.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1734701191; l=2951;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=IaHeW2kn0+BFS3UpeRipHSvLaInVm6GgixkZfvH8Zn8=;
- b=Po0SGggNaPu5O51OSAA3+Nyz+HSVKOHv8NES/O+KqW/EtK1fQnx6tqn3cvMXCBJ3xroWNX7AX
- 1JXE1KMkCEwCsWatXwTXB61SUb5Vvf4lS7wtevlgagfAHeNz+Vwy3OZ
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1734792250; l=3890;
+ i=hfdevel@gmx.net; s=20240915; h=from:subject:message-id;
+ bh=WNV7VzPZ8IYtkgzuWUpSuVQulrCqx6cTlAD0PaHvaVQ=;
+ b=YqIIdHSNqjf1BaCxIeg6aMOn04ua42yFiNZ6h/tGBE2EB5OWgDdDqnSy/lhqqUn4neWWq+yT5
+ CYfgxbBevOsCzu2JAvtJJoh9Gug0xvDA4r5L2+HeJRoMQ6Mklf4GOzG
+X-Developer-Key: i=hfdevel@gmx.net; a=ed25519;
+ pk=s3DJ3DFe6BJDRAcnd7VGvvwPXcLgV8mrfbpt8B9coRc=
+X-Endpoint-Received: by B4 Relay for hfdevel@gmx.net/20240915 with auth_id=209
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver defines IMX214_DEFAULT_LINK_FREQ 480000000, and then
-IMX214_DEFAULT_PIXEL_RATE ((IMX214_DEFAULT_LINK_FREQ * 8LL) / 10),
-which works out as 384MPix/s. (The 8 is 4 lanes and DDR.)
+This patch series adds support to the Tehuti tn40xx driver for TN9510 cards
+which combine a TN4010 MAC with an Aquantia AQR105.
+It is an update of the patch series "net: tn40xx: add support for AQR105
+based cards", addressing review comments and generally cleaning up the series.
 
-Parsing the PLL registers with the defined 24MHz input. We're in single
-PLL mode, so MIPI frequency is directly linked to pixel rate.  VTCK ends
-up being 1200MHz, and VTPXCK and OPPXCK both are 120MHz.  Section 5.3
-"Frame rate calculation formula" says "Pixel rate
-[pixels/s] = VTPXCK [MHz] * 4", so 120 * 4 = 480MPix/s, which basically
-agrees with my number above.
+The patch was tested on a Tehuti TN9510 card (1fc9:4025:1fc9:3015).
 
-3.1.4. MIPI global timing setting says "Output bitrate = OPPXCK * reg
-0x113[7:0]", so 120MHz * 10, or 1200Mbit/s. That would be a link
-frequency of 600MHz due to DDR.
-That also matches to 480MPix/s * 10bpp / 4 lanes / 2 for DDR.
+Changes v1 -> v2:
+- simplify the check for a firmware-name in a swnode in the aquantia PHY driver
+(comment from Andrew Lunn)
+- changed the software node definition to an mdio node with phy child nodes, to
+be more in line with a typical device tree definition (also comment from
+Andrew Lunn)
+This also solves the problem with several TN4010-based cards that FUJITA
+Tomonori reported
+- clarified the cleanup calls, now calling fwnode_handle_put instead of
+software_node_unregister (comment by FUJITA Tomonori)
+- updated the function mdiobus_scan to support swnodes (following hint of
+Andrew Lunn)
+- remove the small patch to avoid failing after aqr_wait_reset_complete, now
+that a proper patch by Vladimir Oltean is available
+- replace setting of bit 3 in TN40_REG_MDIO_CMD_STAT by calling of
+tn40_mdio_set_speed (suggestion by FUJITA Tomonori)
+- cleaning up the distributed calls to set the MDIO speed in the tn40xx driver
+- define supported PCI-IDs including subvendor IDs to prevent loading on
+unsupported card
+- Link to v1: https://lore.kernel.org/netdev/trinity-33332a4a-1c44-46b7-8526-b53b1a94ffc2-1726082106356@3c-app-gmx-bs04/
 
-Keep the previous link frequency for backward compatibility.
+Changes v2 -> v3:
+- aquantia_firmware: remove call to of_property_read_string. It should be
+  called from the more generic function device_property_read_string
+- add more AQR105-specific function, to support proper advertising and auto-
+  negotiation
+- re-organize the patches about the mdio speed and TN40_REG_MDIO_CMD_STAT,
+  skipping the 1MHz intermediate speed step
+- re-organized the sequence of the patches:
+    1. changes to the general support functions (net/phy/mdio_bus.c)
+    2. changes to the aquantia PHY driver
+    3. changes to the tn40xx MAC driver, required to support the TN9510 cards
+- Link to v2: https://lore.kernel.org/netdev/trinity-602c050f-bc76-4557-9824-252b0de48659-1726429697171@3c-app-gmx-bap07/
 
-Acked-by: Ricardo Ribalda <ribalda@chromium.org>
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/media/i2c/imx214.c | 28 +++++++++++++++++++---------
- 1 file changed, 19 insertions(+), 9 deletions(-)
+Changes in v4:
+- use separate aqr105 specific functions instead of adding aqr105 functionality
+  in common functions, with need of "chip generation" parameter
+  (suggested by Andrew Lunn <andrew@lunn.ch>)
+- make generation and cleanup of swnodes more symmetric
+  (suggested by Andrew Lunn <andrew@lunn.ch>)
+- add MDIO/PHY software nodes only for devices that have an aqr105 PHY
+  (suggested by FUJITA Tomonori <fujita.tomonori@gmail.com>)
+- Link to v3: https://lore.kernel.org/r/20241217-tn9510-v3a-v3-0-4d5ef6f686e0@gmx.net
 
-diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
-index e8d35f8b0f8b57d64f03ff6f5ed9eac51a671e8e..6a05094bbd4e94bb1a436a602745c3b5b2fdfbe2 100644
---- a/drivers/media/i2c/imx214.c
-+++ b/drivers/media/i2c/imx214.c
-@@ -31,7 +31,9 @@
- #define IMX214_REG_FAST_STANDBY_CTRL	CCI_REG8(0x0106)
- 
- #define IMX214_DEFAULT_CLK_FREQ	24000000
--#define IMX214_DEFAULT_LINK_FREQ 480000000
-+#define IMX214_DEFAULT_LINK_FREQ	600000000
-+/* Keep wrong link frequency for backward compatibility */
-+#define IMX214_DEFAULT_LINK_FREQ_LEGACY	480000000
- #define IMX214_DEFAULT_PIXEL_RATE ((IMX214_DEFAULT_LINK_FREQ * 8LL) / 10)
- #define IMX214_FPS 30
- 
-@@ -1225,18 +1227,26 @@ static int imx214_parse_fwnode(struct device *dev)
- 		goto done;
- 	}
- 
--	for (i = 0; i < bus_cfg.nr_of_link_frequencies; i++)
-+	if (bus_cfg.nr_of_link_frequencies != 1)
-+		dev_warn(dev, "Only one link-frequency supported, please review your DT. Continuing anyway\n");
-+
-+	for (i = 0; i < bus_cfg.nr_of_link_frequencies; i++) {
- 		if (bus_cfg.link_frequencies[i] == IMX214_DEFAULT_LINK_FREQ)
- 			break;
--
--	if (i == bus_cfg.nr_of_link_frequencies) {
--		dev_err_probe(dev, -EINVAL,
--			      "link-frequencies %d not supported, Please review your DT\n",
--			      IMX214_DEFAULT_LINK_FREQ);
--		ret = -EINVAL;
--		goto done;
-+		if (bus_cfg.link_frequencies[i] ==
-+		    IMX214_DEFAULT_LINK_FREQ_LEGACY) {
-+			dev_warn(dev,
-+				 "link-frequencies %d not supported, please review your DT. Continuing anyway\n",
-+				 IMX214_DEFAULT_LINK_FREQ);
-+			break;
-+		}
- 	}
- 
-+	if (i == bus_cfg.nr_of_link_frequencies)
-+		ret = dev_err_probe(dev, -EINVAL,
-+				    "link-frequencies %d not supported, please review your DT\n",
-+				    IMX214_DEFAULT_LINK_FREQ);
-+
- done:
- 	v4l2_fwnode_endpoint_free(&bus_cfg);
- 	fwnode_handle_put(endpoint);
+---
+Hans-Frieder Vogt (7):
+      net: phy: Add swnode support to mdiobus_scan
+      net: phy: aquantia: add probe function to aqr105 for firmware loading
+      net: phy: aquantia: search for firmware-name in fwnode
+      net: phy: aquantia: add essential functions to aqr105 driver
+      net: tn40xx: create swnode for mdio and aqr105 phy and add to mdiobus
+      net: tn40xx: prepare tn40xx driver to find phy of the TN9510 card
+      net: tn40xx: add pci-id of the aqr105-based Tehuti TN4010 cards
 
+ drivers/net/ethernet/tehuti/tn40.c           |   9 +-
+ drivers/net/ethernet/tehuti/tn40.h           |  31 ++++
+ drivers/net/ethernet/tehuti/tn40_mdio.c      |  80 ++++++++-
+ drivers/net/phy/aquantia/aquantia_firmware.c |   7 +-
+ drivers/net/phy/aquantia/aquantia_main.c     | 243 ++++++++++++++++++++++++++-
+ drivers/net/phy/mdio_bus.c                   |  14 ++
+ 6 files changed, 375 insertions(+), 9 deletions(-)
+---
+base-commit: 860dbab69ad8d07a91117ed9c9eb5fb64adf7e0e
+change-id: 20241216-tn9510-v3a-2cfc185d680f
+
+Best regards,
 -- 
-2.47.1
+Hans-Frieder Vogt <hfdevel@gmx.net>
 
