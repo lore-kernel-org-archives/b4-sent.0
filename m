@@ -1,85 +1,74 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Tue, 24 Dec 2024 13:42:37 +0100
-Subject: [PATCH] scripts/make_fit: Print DT name before libfdt errors
+From: "Chester A. Unal" <chester.a.unal@arinc9.com>
+Date: Wed, 25 Dec 2024 15:50:41 +0300
+Subject: =?utf-8?q?=5BPATCH=5D_MAINTAINERS=3A_change_Ar=C4=B1n=C3=A7_=C3?=
+ =?utf-8?q?=9CNAL=27s_name_and_email_address?=
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20241224-makefit-v1-1-feeccef137ee@posteo.net>
-X-B4-Tracking: v=1; b=H4sIADysamcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxNDIyMT3dzE7NS0zBJdY8M0cwvLJMvUVJM0JaDqgiKgcAXYpOjY2loA/1A
- rUlkAAAA=
-X-Change-ID: 20241224-makefit-31f789b9ee4f
-To: Simon Glass <sjg@chromium.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Message-Id: <20241225-for-unknown-upstream-v1-1-3e35e4d5e161@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIAKD/a2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDIyNT3bT8It3SvOy8/PI83dKC4pKi1MRc3VQzcxMDE1NLM0PTRCWg1oK
+ i1LTMCrCx0bG1tQARqWyuZgAAAA==
+X-Change-ID: 20241225-for-unknown-upstream-e6740459615a
+To: akpm@linux-foundation.org
+Cc: linux-kernel@vger.kernel.org, 
+ "Chester A. Unal" <chester.a.unal@arinc9.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1735044177; l=2504;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=qNYHUnAZnyBHAWNkYsjAlxvZcMVlVw3UbvcsQUL+fy8=;
- b=9cH15+82rUPew5FWYHisRJZ1579YkP0KJq670oUqZwkqMpTzQQZuQusGEXLCKZFJwse0LY8dZ
- hkbIfmJtBr/CsITqhiVUYuXQ0IpgidL4z/7RTB2Pxlpmhz0qmFvof0P
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1735131041; l=1640;
+ i=chester.a.unal@arinc9.com; s=arinc9-PC; h=from:subject:message-id;
+ bh=SoVuz6m68EiOy/XnkZtIUeN2ANvw7K851B2snaXs5Bw=;
+ b=st4mk/8kUJ7goi/8XSvMJxE3ttxnNykcyeCuZHSECx3fgirQSe08+gjbkQPmgQ9hJGeKl2wnO
+ 1EEODBeaBkVDZE0058++aA1AjazRdx9Gf7QnTjK7G04VP+CJ9fOrRfW
+X-Developer-Key: i=chester.a.unal@arinc9.com; a=ed25519;
+ pk=Bd1s2kQtNfZAWyeLHg39jaWBDqt8Ud1WJXLFh7gxl20=
+X-Endpoint-Received: by B4 Relay for chester.a.unal@arinc9.com/arinc9-PC with auth_id=305
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This makes it easier to pinpoint where the error happened. For example:
+My legal name now includes Chester. Change the name and the email address
+sections to reflect that.
 
-  FIT     arch/powerpc/boot/image.fit
-Error processing arch/powerpc/boot/dts/microwatt.dtb:
-Traceback (most recent call last):
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 335, in <module>
-    sys.exit(run_make_fit())
-             ^^^^^^^^^^^^^^
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 309, in run_make_fit
-    out_data, count, size = build_fit(args)
-                            ^^^^^^^^^^^^^^^
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 286, in build_fit
-    raise e
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 283, in build_fit
-    (model, compat, files) = process_dtb(fname, args)
-                             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 231, in process_dtb
-    model = fdt.getprop(0, 'model').as_str()
-            ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3/dist-packages/libfdt.py", line 448, in getprop
-    pdata = check_err_null(fdt_getprop(self._fdt, nodeoffset, prop_name),
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3/dist-packages/libfdt.py", line 153, in check_err_null
-    raise FdtException(val)
-libfdt.FdtException: pylibfdt error -1: FDT_ERR_NOTFOUND
-
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: Chester A. Unal <chester.a.unal@arinc9.com>
 ---
-The example is from a different series which I will release soon, which
-enables FIT on powerpc.
----
- scripts/make_fit.py | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ MAINTAINERS | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/scripts/make_fit.py b/scripts/make_fit.py
-index 4a1bb2f55861adfce07959528e175260bc503593..1683e5ec6e6754dff3383dfec89df78b9c2fa896 100755
---- a/scripts/make_fit.py
-+++ b/scripts/make_fit.py
-@@ -279,7 +279,11 @@ def build_fit(args):
-         if os.path.splitext(fname)[1] != '.dtb':
-             continue
+diff --git a/MAINTAINERS b/MAINTAINERS
+index d2ab799a0659eef918dee6c2dc807047c252164c..6b7fb26e4e73706f100c9d8cf25a1422e7159e39 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -14838,7 +14838,7 @@ F:	drivers/memory/mtk-smi.c
+ F:	include/soc/mediatek/smi.h
  
--        (model, compat, files) = process_dtb(fname, args)
-+        try:
-+            (model, compat, files) = process_dtb(fname, args)
-+        except Exception as e:
-+            sys.stderr.write(f"Error processing {fname}:\n")
-+            raise e
+ MEDIATEK SWITCH DRIVER
+-M:	Arınç ÜNAL <arinc.unal@arinc9.com>
++M:	Chester A. Unal <chester.a.unal@arinc9.com>
+ M:	Daniel Golle <daniel@makrotopia.org>
+ M:	DENG Qingfang <dqfext@gmail.com>
+ M:	Sean Wang <sean.wang@mediatek.com>
+@@ -18550,7 +18550,7 @@ F:	Documentation/devicetree/bindings/pinctrl/mediatek,mt8183-pinctrl.yaml
+ F:	drivers/pinctrl/mediatek/
  
-         for fn in files:
-             if fn not in fdts:
+ PIN CONTROLLER - MEDIATEK MIPS
+-M:	Arınç ÜNAL <arinc.unal@arinc9.com>
++M:	Chester A. Unal <chester.a.unal@arinc9.com>
+ M:	Sergio Paracuellos <sergio.paracuellos@gmail.com>
+ L:	linux-mediatek@lists.infradead.org (moderated for non-subscribers)
+ L:	linux-mips@vger.kernel.org
+@@ -19603,7 +19603,7 @@ S:	Maintained
+ F:	arch/mips/ralink
+ 
+ RALINK MT7621 MIPS ARCHITECTURE
+-M:	Arınç ÜNAL <arinc.unal@arinc9.com>
++M:	Chester A. Unal <chester.a.unal@arinc9.com>
+ M:	Sergio Paracuellos <sergio.paracuellos@gmail.com>
+ L:	linux-mips@vger.kernel.org
+ S:	Maintained
 
 ---
-base-commit: 4bbf9020becbfd8fc2c3da790855b7042fad455b
-change-id: 20241224-makefit-31f789b9ee4f
+base-commit: 8155b4ef3466f0e289e8fcc9e6e62f3f4dceeac2
+change-id: 20241225-for-unknown-upstream-e6740459615a
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Chester A. Unal <chester.a.unal@arinc9.com>
 
