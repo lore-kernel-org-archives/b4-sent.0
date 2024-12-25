@@ -1,74 +1,59 @@
-From: "Chester A. Unal" <chester.a.unal@arinc9.com>
-Date: Wed, 25 Dec 2024 15:50:41 +0300
-Subject: =?utf-8?q?=5BPATCH=5D_MAINTAINERS=3A_change_Ar=C4=B1n=C3=A7_=C3?=
- =?utf-8?q?=9CNAL=27s_name_and_email_address?=
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Wed, 25 Dec 2024 13:53:42 +0100
+Subject: [PATCH] powerpc/microwatt: Fix model property in device tree
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20241225-for-unknown-upstream-v1-1-3e35e4d5e161@arinc9.com>
-X-B4-Tracking: v=1; b=H4sIAKD/a2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxNDIyNT3bT8It3SvOy8/PI83dKC4pKi1MRc3VQzcxMDE1NLM0PTRCWg1oK
- i1LTMCrCx0bG1tQARqWyuZgAAAA==
-X-Change-ID: 20241225-for-unknown-upstream-e6740459615a
-To: akpm@linux-foundation.org
-Cc: linux-kernel@vger.kernel.org, 
- "Chester A. Unal" <chester.a.unal@arinc9.com>
+Message-Id: <20241225-microwatt-v1-1-8e071fcfc2bd@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAFUAbGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDIyNT3dzM5KL88sSSEt0USyNTC0MLy8S0NFMloPqCotS0zAqwWdGxtbU
+ AJNlPVVsAAAA=
+X-Change-ID: 20241225-microwatt-d9258189aff5
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Michael Ellerman <mpe@ellerman.id.au>, 
+ Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Naveen N Rao <naveen@kernel.org>, Madhavan Srinivasan <maddy@linux.ibm.com>
+Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1735131041; l=1640;
- i=chester.a.unal@arinc9.com; s=arinc9-PC; h=from:subject:message-id;
- bh=SoVuz6m68EiOy/XnkZtIUeN2ANvw7K851B2snaXs5Bw=;
- b=st4mk/8kUJ7goi/8XSvMJxE3ttxnNykcyeCuZHSECx3fgirQSe08+gjbkQPmgQ9hJGeKl2wnO
- 1EEODBeaBkVDZE0058++aA1AjazRdx9Gf7QnTjK7G04VP+CJ9fOrRfW
-X-Developer-Key: i=chester.a.unal@arinc9.com; a=ed25519;
- pk=Bd1s2kQtNfZAWyeLHg39jaWBDqt8Ud1WJXLFh7gxl20=
-X-Endpoint-Received: by B4 Relay for chester.a.unal@arinc9.com/arinc9-PC with auth_id=305
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1735131236; l=823;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=3C1YCyi76jTrcxunvIWw4CH9zMDlOTH9wFP4VAcUHL0=;
+ b=gkj0v9fIXqP50WvdD1SfkJUpjFjLAxSQVPwzXugvNYqFDK0iRkHSiJMzU4XvUxnmld76zHA1p
+ pBfh2O1PUKDDClwd94hbm7Hf+I8lRPTvRO7Iz74DKLwhFi4IFvtAdAJ
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-My legal name now includes Chester. Change the name and the email address
-sections to reflect that.
+The standard property for the model name is called "model".
 
-Signed-off-by: Chester A. Unal <chester.a.unal@arinc9.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- MAINTAINERS | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ arch/powerpc/boot/dts/microwatt.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index d2ab799a0659eef918dee6c2dc807047c252164c..6b7fb26e4e73706f100c9d8cf25a1422e7159e39 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -14838,7 +14838,7 @@ F:	drivers/memory/mtk-smi.c
- F:	include/soc/mediatek/smi.h
+diff --git a/arch/powerpc/boot/dts/microwatt.dts b/arch/powerpc/boot/dts/microwatt.dts
+index 269e930b3b0b14a2bf6a76261062294c1d003c72..162b5f2f8aac2d6c50824b55a8b894a19d741f07 100644
+--- a/arch/powerpc/boot/dts/microwatt.dts
++++ b/arch/powerpc/boot/dts/microwatt.dts
+@@ -3,7 +3,7 @@
+ / {
+ 	#size-cells = <0x02>;
+ 	#address-cells = <0x02>;
+-	model-name = "microwatt";
++	model = "microwatt";
+ 	compatible = "microwatt-soc";
  
- MEDIATEK SWITCH DRIVER
--M:	Arınç ÜNAL <arinc.unal@arinc9.com>
-+M:	Chester A. Unal <chester.a.unal@arinc9.com>
- M:	Daniel Golle <daniel@makrotopia.org>
- M:	DENG Qingfang <dqfext@gmail.com>
- M:	Sean Wang <sean.wang@mediatek.com>
-@@ -18550,7 +18550,7 @@ F:	Documentation/devicetree/bindings/pinctrl/mediatek,mt8183-pinctrl.yaml
- F:	drivers/pinctrl/mediatek/
- 
- PIN CONTROLLER - MEDIATEK MIPS
--M:	Arınç ÜNAL <arinc.unal@arinc9.com>
-+M:	Chester A. Unal <chester.a.unal@arinc9.com>
- M:	Sergio Paracuellos <sergio.paracuellos@gmail.com>
- L:	linux-mediatek@lists.infradead.org (moderated for non-subscribers)
- L:	linux-mips@vger.kernel.org
-@@ -19603,7 +19603,7 @@ S:	Maintained
- F:	arch/mips/ralink
- 
- RALINK MT7621 MIPS ARCHITECTURE
--M:	Arınç ÜNAL <arinc.unal@arinc9.com>
-+M:	Chester A. Unal <chester.a.unal@arinc9.com>
- M:	Sergio Paracuellos <sergio.paracuellos@gmail.com>
- L:	linux-mips@vger.kernel.org
- S:	Maintained
+ 	aliases {
 
 ---
-base-commit: 8155b4ef3466f0e289e8fcc9e6e62f3f4dceeac2
-change-id: 20241225-for-unknown-upstream-e6740459615a
+base-commit: 4bbf9020becbfd8fc2c3da790855b7042fad455b
+change-id: 20241225-microwatt-d9258189aff5
 
 Best regards,
 -- 
-Chester A. Unal <chester.a.unal@arinc9.com>
+J. Neuschäfer <j.ne@posteo.net>
 
