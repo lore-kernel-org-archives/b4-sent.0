@@ -1,59 +1,84 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Wed, 25 Dec 2024 13:53:42 +0100
-Subject: [PATCH] powerpc/microwatt: Fix model property in device tree
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v2 0/5] Pinctrl: Add Amlogic pinctrl driver
+Date: Thu, 26 Dec 2024 15:57:40 +0800
+Message-Id: <20241226-amlogic-pinctrl-v2-0-cdae42a67b76@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20241225-microwatt-v1-1-8e071fcfc2bd@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAFUAbGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxNDIyNT3dzM5KL88sSSEt0USyNTC0MLy8S0NFMloPqCotS0zAqwWdGxtbU
- AJNlPVVsAAAA=
-X-Change-ID: 20241225-microwatt-d9258189aff5
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>, 
- Christophe Leroy <christophe.leroy@csgroup.eu>, 
- Naveen N Rao <naveen@kernel.org>, Madhavan Srinivasan <maddy@linux.ibm.com>
-Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1735131236; l=823;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=3C1YCyi76jTrcxunvIWw4CH9zMDlOTH9wFP4VAcUHL0=;
- b=gkj0v9fIXqP50WvdD1SfkJUpjFjLAxSQVPwzXugvNYqFDK0iRkHSiJMzU4XvUxnmld76zHA1p
- pBfh2O1PUKDDClwd94hbm7Hf+I8lRPTvRO7Iz74DKLwhFi4IFvtAdAJ
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAHQMbWcC/3WNwQ6CMBBEf4Xs2TXdBUU9+R+GQ9NW2AQoaUmjI
+ f13K/Hq8U1m3mwQXRAX4VZtEFySKH4uwIcKzKDn3qHYwsCKG2Ii1NPoezG4yGzWMCKz02e6sLL
+ KQlktwT3ltRsfXeFB4urDez9I9E3/uxKhwoZUy21dn4iu91/jaPwEXc75A8+qYYuwAAAA
+To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1735199863; l=2379;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=8b/59hoXnXDAUbIUEYcQ6psWuniloV83ts4PS5yxSSc=;
+ b=g7vOqRgzWD6wbJu6ZnJIYzXnuvYrSKYObzaPPRDDncvr3/7T5Uh2NGMiBOE6kG9mOYKexn8bu
+ c9P5+f3KiSADr1WYPYvuzAxx620iDH4bbdU8mO1fDqSnc8WFlMx9Ieu
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The standard property for the model name is called "model".
+Add pinctrl driver support for Amloigc SoCs
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Base on the previous discussion,
+https://lore.kernel.org/r/20241113-a4_pinctrl-v6-0-35ba2401ee35@amlogic.com
+The existed meson driver failed to meet the requirement of the current dt-binding.
+So we start this new pinctrl driver to solve problem.
+
+The advantage of this version: Once the source file and binding document
+are added, adding dts node will be only operation for subsequent Amlogic SoCs
+(such as A4, A5).
+
+The code in DTS file is also readable when using GPIO, as below:
+reset-gpios = <&gpiob 6 GPIO_ACTIVE_LOW>;
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/powerpc/boot/dts/microwatt.dts | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/arch/powerpc/boot/dts/microwatt.dts b/arch/powerpc/boot/dts/microwatt.dts
-index 269e930b3b0b14a2bf6a76261062294c1d003c72..162b5f2f8aac2d6c50824b55a8b894a19d741f07 100644
---- a/arch/powerpc/boot/dts/microwatt.dts
-+++ b/arch/powerpc/boot/dts/microwatt.dts
-@@ -3,7 +3,7 @@
- / {
- 	#size-cells = <0x02>;
- 	#address-cells = <0x02>;
--	model-name = "microwatt";
-+	model = "microwatt";
- 	compatible = "microwatt-soc";
- 
- 	aliases {
+Changes in v2:
+- Some modifications and optimizations were made to bindings according to Rob's suggestions.
+- Refined some details on functions node for bindings. 
+- Some source code optimizations were made according to Linus's suggestions.
+- Add stand API to generic to deal pinmux propertity.
+- Add private reg data to deal with for future SoCs.
+- Simplified some unused processing (previously used for extension).
+- Sync add to MAINTAINERS files.
+- Link to v1: https://lore.kernel.org/r/20241211-amlogic-pinctrl-v1-0-410727335119@amlogic.com
 
 ---
-base-commit: 4bbf9020becbfd8fc2c3da790855b7042fad455b
-change-id: 20241225-microwatt-d9258189aff5
+Xianwei Zhao (5):
+      dt-bindings: pinctrl: Add support for Amlogic SoCs
+      pinctrl: pinconf-generic: Add API for pinmux propertity in DTS file
+      pinctrl: Add driver support for Amlogic SoCs
+      arm64: dts: amlogic: a4: add pinctrl node
+      MAINTAINERS: Add an entry for Amlogic pinctrl driver
+
+ .../bindings/pinctrl/amlogic,pinctrl-a4.yaml       |  155 +++
+ MAINTAINERS                                        |    8 +
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |  133 +++
+ drivers/pinctrl/Kconfig                            |   18 +
+ drivers/pinctrl/Makefile                           |    1 +
+ drivers/pinctrl/pinconf-generic.c                  |  130 +++
+ drivers/pinctrl/pinconf.h                          |    4 +
+ drivers/pinctrl/pinctrl-amlogic.c                  | 1047 ++++++++++++++++++++
+ include/dt-bindings/pinctrl/amlogic,pinctrl.h      |   68 ++
+ include/linux/pinctrl/pinconf-generic.h            |    4 +
+ 10 files changed, 1568 insertions(+)
+---
+base-commit: 4de5110762b94b9978fb8182a568572fb2194f8b
+change-id: 20241211-amlogic-pinctrl-22ea61820d0d
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
