@@ -1,275 +1,114 @@
-From: Hermes Wu <Hermes.wu@ite.corp-partner.google.com>
-Date: Mon, 30 Dec 2024 18:51:28 +0800
-Subject: [PATCH RESEND v7 10/10] drm/bridge: it6505: add I2C functionality
- on AUX
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH v2 0/6] PCI/pwrctrl: Rework pwrctrl driver integration and
+ add driver for PCI slot
+Date: Tue, 31 Dec 2024 15:13:41 +0530
+Message-Id: <20241231-pci-pwrctrl-slot-v2-0-6a15088ba541@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20241230-v7-upstream-v7-10-e0fdd4844703@ite.corp-partner.google.com>
-References: <20241230-v7-upstream-v7-0-e0fdd4844703@ite.corp-partner.google.com>
-In-Reply-To: <20241230-v7-upstream-v7-0-e0fdd4844703@ite.corp-partner.google.com>
-To: Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Hermes Wu <hermes.wu@ite.com.tw>, Allen Chen <allen.chen@ite.com.tw>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Pin-yen Lin <treapking@chromium.org>, 
- Kenneth Hung <Kenneth.Hung@ite.com.tw>, Pet Weng <Pet.Weng@ite.com.tw>, 
- Hermes Wu <Hermes.wu@ite.com.tw>, 
- Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1735555881; l=6930;
- i=Hermes.wu@ite.corp-partner.google.com; s=20241230;
- h=from:subject:message-id; bh=J4rvU2IuQU84l+7pDQWlWwKvnpve8QmHuGwdiA2w++k=;
- b=13nnuAtHANeIYaqLqLdCoZ+uhUqJIi1vPl1TMkKiwucDyZgbUPaUeixhxzt3amqM2P+pVVeMq
- wm8y8ZPGuR6CSnUP7dVE1ge9tlH0Ga/lXOjTivkJH8RCHmAecwc2FK+
-X-Developer-Key: i=Hermes.wu@ite.corp-partner.google.com; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.corp-partner.google.com/20241230 with auth_id=307
+X-B4-Tracking: v=1; b=H4sIAM28c2cC/32NQQrCMBBFr1Jm7cgkRi2uvId0EeK0HQhNmYSql
+ N7d2AO4fA/++ytkVuEMt2YF5UWypKmCPTQQRj8NjPKsDJasM9YQzkFwfmkoGjHHVJBsIA6Xk7n
+ aHupsVu7lvScfXeVRckn62R8W87N/YotBQvbszuzalhzdo0xe0zHpAN22bV96fvsusQAAAA==
+To: Bjorn Helgaas <bhelgaas@google.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Qiang Yu <quic_qianyu@quicinc.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ kernel test robot <lkp@intel.com>, Lukas Wunner <lukas@wunner.de>, 
+ Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3392;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=RpiwBlHdPMGD4+MQEjX5Hf9AEzulvxLAiyeOBn8eUos=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnc7zllJBJR1ndBGOzKIQsX3DLr3Nn1hcoWnhry
+ A1o8MdJ97mJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ3O85QAKCRBVnxHm/pHO
+ 9WQcCACHW6KvqSl8aplMdIQzTTmlQOYyPvBPRXjyrfGUxbH8ibF7W8TxXDo74u4BwVNJoYS6lTb
+ nvRbCxkK7NEZRNfSRSv/bW1MliRouX/bgGCMIglW/DNPKwxqZ1zWR3Y9Wg2NBz8AQsKs88YCH46
+ XYJp+jgRZUHl4ZFLrVY2GoJrAtyuwmLGld3toCar14JLcWncrvw3s7moqNCN5rJqqwyY9LR25I0
+ mFxWmcIrFhiqU+hREbgjcY7tlUM3lKUwJ0qfY+EMIuYUORN+UyX0bQ6Z+oRsmAjS642mXu0Y/NZ
+ lBPJiuMMFX19DJSF8S6wEtDYJ4f+38ii5XJx0kwqSgjvpsbn
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hermes Wu <Hermes.wu@ite.com.tw>
+Hi,
 
-DisplayPort AUX protocol supports I2C transport which is capable of
-reading EDID or supports MCCS.
+This series reworks the PCI pwrctrl integration (again) by moving the creation
+and removal of pwrctrl devices to pci_scan_device() and pci_destroy_dev() APIs.
+This is based on the suggestion provided by Lukas Wunner [1][2]. With this
+change, it is now possible to create pwrctrl devices for PCI bridges as well.
+This is required to control the power state of the PCI slots in a system. Since
+the PCI slots are not explicitly defined in devicetree, the agreement is to
+define the supplies for PCI slots in PCI bridge nodes itself [3].
 
-In drm_dp_helper, drm_dp_i2c_xfer() packs I2C requests into a
-sequence of AUX requests.
-it6505_aux_i2c_operation() is implemented to match drm_dp_i2c_xfer()
-operactions.
-it6505_aux_i2c_transfer() adds I2C functionality
-for it6505_aux_transfer().
+Based on this, a pwrctrl driver to control the supplies of PCI slots are also
+added in patch 4. With this driver, it is now possible to control the voltage
+regulators powering the PCI slots defined in PCI bridge nodes as below:
 
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Signed-off-by: Hermes Wu <hermes.wu@ite.com.tw>
+```
+pcie@0 {
+	compatible "pciclass,0604"
+	...
+
+	vpcie12v-supply = <&vpcie12v_reg>;
+	vpcie3v3-supply = <&vpcie3v3_reg>;
+	vpcie3v3aux-supply = <&vpcie3v3aux_reg>;
+};
+```
+
+To make use of this driver, the PCI bridge DT node should also have the
+compatible "pciclass,0604". But adding this compatible triggers the following
+checkpatch warning:
+
+WARNING: DT compatible string vendor "pciclass" appears un-documented --
+check ./Documentation/devicetree/bindings/vendor-prefixes.yaml
+
+For fixing it, I added patch 3. But due to some reason, checkpatch is not
+picking the 'pciclass' vendor prefix alone, and requires adding the full
+compatible 'pciclass,0604' in the vendor-prefixes list. Since my perl skills are
+not great, I'm leaving it in the hands of Rob to fix the checkpatch script.
+
+[1] https://lore.kernel.org/linux-pci/Z0yLDBMAsh0yKWf2@wunner.de
+[2] https://lore.kernel.org/linux-pci/Z0xAdQ2ozspEnV5g@wunner.de
+[3] https://github.com/devicetree-org/dt-schema/issues/145
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/gpu/drm/bridge/ite-it6505.c | 177 +++++++++++++++++++++++++++++++++++-
- 1 file changed, 175 insertions(+), 2 deletions(-)
+Changes in v2:
+- Added new patch to skip the device scan if pwrctrl device is found
+- Added a new patch to fix the build issue
+- Collected tags
+- Link to v1: https://lore.kernel.org/r/20241210-pci-pwrctrl-slot-v1-0-eae45e488040@linaro.org
 
-diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index 83e2df618c97f8fe3e59789ffb810ce8639f96bb..c2a846f5d8d9b7251913c82d21f7957401e35e5e 100644
---- a/drivers/gpu/drm/bridge/ite-it6505.c
-+++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -268,6 +268,18 @@
- #define REG_SSC_CTRL1 0x189
- #define REG_SSC_CTRL2 0x18A
- 
-+#define REG_AUX_USER_CTRL 0x190
-+#define EN_USER_AUX BIT(0)
-+#define USER_AUX_DONE BIT(1)
-+#define AUX_EVENT BIT(4)
-+
-+#define REG_AUX_USER_DATA_REC 0x191
-+#define M_AUX_IN_REC   0xF0
-+#define M_AUX_OUT_REC  0x0F
-+
-+#define REG_AUX_USER_REPLY 0x19A
-+#define REG_AUX_USER_RXB(n) (n + 0x19B)
-+
- #define RBR DP_LINK_BW_1_62
- #define HBR DP_LINK_BW_2_7
- #define HBR2 DP_LINK_BW_5_4
-@@ -303,6 +315,8 @@
- #define MAX_EQ_LEVEL 0x03
- #define AUX_WAIT_TIMEOUT_MS 15
- #define AUX_FIFO_MAX_SIZE 16
-+#define AUX_I2C_MAX_SIZE 4
-+#define AUX_I2C_DEFER_RETRY 4
- #define PIXEL_CLK_DELAY 1
- #define PIXEL_CLK_INVERSE 0
- #define ADJUST_PHASE_THRESHOLD 80000
-@@ -325,7 +339,12 @@
- enum aux_cmd_type {
- 	CMD_AUX_NATIVE_READ = 0x0,
- 	CMD_AUX_NATIVE_WRITE = 0x5,
-+	CMD_AUX_GI2C_ADR = 0x08,
-+	CMD_AUX_GI2C_READ = 0x09,
-+	CMD_AUX_GI2C_WRITE = 0x0A,
- 	CMD_AUX_I2C_EDID_READ = 0xB,
-+	CMD_AUX_I2C_READ = 0x0D,
-+	CMD_AUX_I2C_WRITE = 0x0C,
- 
- 	/* KSV read with AUX FIFO extend from CMD_AUX_NATIVE_READ*/
- 	CMD_AUX_GET_KSV_LIST = 0x10,
-@@ -1107,6 +1126,161 @@ static ssize_t it6505_aux_do_transfer(struct it6505 *it6505,
- 	return ret;
- }
- 
-+static bool it6505_aux_i2c_reply_defer(u8 reply)
-+{
-+	if (reply == DP_AUX_NATIVE_REPLY_DEFER || reply == DP_AUX_I2C_REPLY_DEFER)
-+		return true;
-+	return false;
-+}
-+
-+static bool it6505_aux_i2c_reply_nack(u8 reply)
-+{
-+	if (reply == DP_AUX_NATIVE_REPLY_NACK || reply == DP_AUX_I2C_REPLY_NACK)
-+		return true;
-+	return false;
-+}
-+
-+static int it6505_aux_i2c_wait(struct it6505 *it6505, u8 *reply)
-+{
-+	int err = 0;
-+	unsigned long timeout;
-+	struct device *dev = it6505->dev;
-+
-+	timeout = jiffies + msecs_to_jiffies(AUX_WAIT_TIMEOUT_MS) + 1;
-+
-+	do {
-+		if (it6505_read(it6505, REG_AUX_USER_CTRL) & AUX_EVENT)
-+			break;
-+		if (time_after(jiffies, timeout)) {
-+			dev_err(dev, "Timed out waiting AUX I2C, BUSY = %X\n",
-+				it6505_aux_op_finished(it6505));
-+			err = -ETIMEDOUT;
-+			goto end_aux_i2c_wait;
-+		}
-+		usleep_range(300, 800);
-+	} while (!it6505_aux_op_finished(it6505));
-+
-+	*reply = it6505_read(it6505, REG_AUX_USER_REPLY) >> 4;
-+
-+	if (*reply == 0)
-+		goto end_aux_i2c_wait;
-+
-+	if (it6505_aux_i2c_reply_defer(*reply))
-+		err = -EBUSY;
-+	else if (it6505_aux_i2c_reply_nack(*reply))
-+		err = -ENXIO;
-+
-+end_aux_i2c_wait:
-+	it6505_set_bits(it6505, REG_AUX_USER_CTRL, USER_AUX_DONE, USER_AUX_DONE);
-+	return err;
-+}
-+
-+static int it6505_aux_i2c_readb(struct it6505 *it6505, u8 *buf, size_t size, u8 *reply)
-+{
-+	int ret, i;
-+	int retry;
-+
-+	for (retry = 0; retry < AUX_I2C_DEFER_RETRY; retry++) {
-+		it6505_write(it6505, REG_AUX_CMD_REQ, CMD_AUX_GI2C_READ);
-+
-+		ret = it6505_aux_i2c_wait(it6505, reply);
-+		if (it6505_aux_i2c_reply_defer(*reply))
-+			continue;
-+		if (ret >= 0)
-+			break;
-+	}
-+
-+	for (i = 0; i < size; i++)
-+		buf[i] = it6505_read(it6505, REG_AUX_USER_RXB(0 + i));
-+
-+	return size;
-+}
-+
-+static int it6505_aux_i2c_writeb(struct it6505 *it6505, u8 *buf, size_t size, u8 *reply)
-+{
-+	int i, ret;
-+	int retry;
-+
-+	for (i = 0; i < size; i++)
-+		it6505_write(it6505, REG_AUX_OUT_DATA0 + i, buf[i]);
-+
-+	for (retry = 0; retry < AUX_I2C_DEFER_RETRY; retry++) {
-+		it6505_write(it6505, REG_AUX_CMD_REQ, CMD_AUX_GI2C_WRITE);
-+
-+		ret = it6505_aux_i2c_wait(it6505, reply);
-+		if (it6505_aux_i2c_reply_defer(*reply))
-+			continue;
-+		if (ret >= 0)
-+			break;
-+	}
-+	return size;
-+}
-+
-+static ssize_t it6505_aux_i2c_operation(struct it6505 *it6505,
-+					struct drm_dp_aux_msg *msg)
-+{
-+	int ret;
-+	ssize_t request_size, data_cnt = 0;
-+	u8 *buffer = msg->buffer;
-+
-+	/* set AUX user mode */
-+	it6505_set_bits(it6505, REG_AUX_CTRL,
-+			AUX_USER_MODE | AUX_NO_SEGMENT_WR, AUX_USER_MODE);
-+	it6505_set_bits(it6505, REG_AUX_USER_CTRL, EN_USER_AUX, EN_USER_AUX);
-+	/* clear AUX FIFO */
-+	it6505_set_bits(it6505, REG_AUX_CTRL,
-+			AUX_EN_FIFO_READ | CLR_EDID_FIFO,
-+			AUX_EN_FIFO_READ | CLR_EDID_FIFO);
-+
-+	it6505_set_bits(it6505, REG_AUX_CTRL,
-+			AUX_EN_FIFO_READ | CLR_EDID_FIFO, 0x00);
-+
-+	it6505_write(it6505, REG_AUX_ADR_0_7, 0x00);
-+	it6505_write(it6505, REG_AUX_ADR_8_15, msg->address << 1);
-+
-+	if (msg->size == 0) {
-+		/* IIC Start/STOP dummy write */
-+		it6505_write(it6505, REG_AUX_ADR_16_19, msg->request);
-+		it6505_write(it6505, REG_AUX_CMD_REQ, CMD_AUX_GI2C_ADR);
-+		ret = it6505_aux_i2c_wait(it6505, &msg->reply);
-+		goto end_aux_i2c_transfer;
-+	}
-+
-+	/* IIC data transfer */
-+	data_cnt = 0;
-+	do {
-+		request_size = min_t(ssize_t, msg->size - data_cnt, AUX_I2C_MAX_SIZE);
-+		it6505_write(it6505, REG_AUX_ADR_16_19,
-+			     msg->request | ((request_size - 1) << 4));
-+		if ((msg->request & DP_AUX_I2C_READ) == DP_AUX_I2C_READ)
-+			ret = it6505_aux_i2c_readb(it6505, &buffer[data_cnt],
-+						   request_size, &msg->reply);
-+		else
-+			ret = it6505_aux_i2c_writeb(it6505, &buffer[data_cnt],
-+						    request_size, &msg->reply);
-+
-+		if (ret < 0)
-+			goto end_aux_i2c_transfer;
-+
-+		data_cnt += request_size;
-+	} while (data_cnt < msg->size);
-+	ret = data_cnt;
-+end_aux_i2c_transfer:
-+
-+	it6505_set_bits(it6505, REG_AUX_USER_CTRL, EN_USER_AUX, 0);
-+	it6505_set_bits(it6505, REG_AUX_CTRL, AUX_USER_MODE, 0);
-+	return ret;
-+}
-+
-+static ssize_t it6505_aux_i2c_transfer(struct drm_dp_aux *aux,
-+				       struct drm_dp_aux_msg *msg)
-+{
-+	struct it6505 *it6505 = container_of(aux, struct it6505, aux);
-+
-+	guard(mutex)(&it6505->aux_lock);
-+	return it6505_aux_i2c_operation(it6505, msg);
-+}
-+
- static ssize_t it6505_aux_transfer(struct drm_dp_aux *aux,
- 				   struct drm_dp_aux_msg *msg)
- {
-@@ -1116,9 +1290,8 @@ static ssize_t it6505_aux_transfer(struct drm_dp_aux *aux,
- 	int ret;
- 	enum aux_cmd_reply reply;
- 
--	/* IT6505 doesn't support arbitrary I2C read / write. */
- 	if (is_i2c)
--		return -EINVAL;
-+		return it6505_aux_i2c_transfer(aux, msg);
- 
- 	switch (msg->request) {
- 	case DP_AUX_NATIVE_READ:
+---
+Manivannan Sadhasivam (6):
+      regulator: Guard of_regulator_bulk_get_all() with CONFIG_OF
+      PCI/pwrctrl: Move creation of pwrctrl devices to pci_scan_device()
+      PCI/pwrctrl: Move pci_pwrctrl_unregister() to pci_destroy_dev()
+      PCI/pwrctrl: Skip scanning for the device further if pwrctrl device is created
+      dt-bindings: vendor-prefixes: Document the 'pciclass' prefix
+      PCI/pwrctrl: Add pwrctrl driver for PCI Slots
 
+ .../devicetree/bindings/vendor-prefixes.yaml       |  2 +-
+ drivers/pci/bus.c                                  | 43 ----------
+ drivers/pci/probe.c                                | 41 ++++++++++
+ drivers/pci/pwrctrl/Kconfig                        | 11 +++
+ drivers/pci/pwrctrl/Makefile                       |  3 +
+ drivers/pci/pwrctrl/core.c                         |  2 +-
+ drivers/pci/pwrctrl/slot.c                         | 93 ++++++++++++++++++++++
+ drivers/pci/remove.c                               |  2 +-
+ include/linux/regulator/consumer.h                 | 17 ++--
+ 9 files changed, 160 insertions(+), 54 deletions(-)
+---
+base-commit: 40384c840ea1944d7c5a392e8975ed088ecf0b37
+change-id: 20241210-pci-pwrctrl-slot-02c0ec63172f
+
+Best regards,
 -- 
-2.34.1
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
