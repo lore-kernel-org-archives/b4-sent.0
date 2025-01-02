@@ -1,189 +1,74 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Tue, 31 Dec 2024 15:13:47 +0530
-Subject: [PATCH v2 6/6] PCI/pwrctrl: Add pwrctrl driver for PCI Slots
+From: Thomas Antoine <t.antoine@uclouvain.be>
+Subject: [PATCH v2 0/4] Google Pixel 6 (oriole): max77759 fuel gauge
+ enablement and driver support
+Date: Thu, 02 Jan 2025 12:15:02 +0100
+Message-Id: <20250102-b4-gs101_max77759_fg-v2-0-87959abeb7ff@uclouvain.be>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20241231-pci-pwrctrl-slot-v2-6-6a15088ba541@linaro.org>
-References: <20241231-pci-pwrctrl-slot-v2-0-6a15088ba541@linaro.org>
-In-Reply-To: <20241231-pci-pwrctrl-slot-v2-0-6a15088ba541@linaro.org>
-To: Bjorn Helgaas <bhelgaas@google.com>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIADZ1dmcC/4WNWwqDMBREtyL3uyl5ldR+dR9FJNEbvdAaSWqwi
+ Htv6gb6M3AG5swGCSNhglu1QcRMicJUQJ4q6EY7DcioLwySSy1KMKfZkAQX7cuuxphL3fqBaS5
+ RKmG1UwrKdI7oaT20j6bwSOkd4ud4yeLX/hFmwTirr7301jiPit+X7hmWbGk6O4Rm3/cvUWaGq
+ bsAAAA=
+X-Change-ID: 20241202-b4-gs101_max77759_fg-402e231a4b33
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Qiang Yu <quic_qianyu@quicinc.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5046;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=5dX65BdkoJK96uXxbW3egypDqFuEy1NtN49QNZGGNsE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnc7zr7I0vWAahaKk1DBFdKMQZ91pYlEUDFnSrL
- RAnljRPpcCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ3O86wAKCRBVnxHm/pHO
- 9cZWB/91OJ2SOc0tiIbMRhbFZqRG+z01zOJH0m32xtqf6742piljnQrylYQ0cLvKDgZm445jn1V
- 9lM71Iz+aCLBEZeF2hbBdtEEIh6CmRUBDB+YcpwOsb7P0HVnbmt8ECjXQsu7cEQabuuRyyVzFtf
- aORILbefzyiIoeOsyKrPYsslnxx4gQp8c9r3+97crDAgA5yK3odKXzPuNkJk63tGJAWgRSJ1+zx
- LOlHQktW5LyVKJOTT4BAMyuT7SnHlpFa7KJo1+po33EXCoJSl0lceV6j7SEWq5PVlPB1eJvMoab
- wZ9qu9kz1JIVcWWwSz4OKGmpmlrqOftdCZVwfks/eeqg3mN8
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+ Conor Dooley <conor+dt@kernel.org>, Dimitri Fedrau <dima.fedrau@gmail.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, 
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>
+Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-samsung-soc@vger.kernel.org, Thomas Antoine <t.antoine@uclouvain.be>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1735816515; l=1708;
+ i=t.antoine@uclouvain.be; s=20241202; h=from:subject:message-id;
+ bh=BCKCRIacyWKgqo6gAegHeTB5UJABaGjYit2k0RzaGXo=;
+ b=nNwiaZEpXaE/xmq13KUaZhCVGXxQKaEr/PxDVQPiVg9kT2kvTD0OYSbdMx2Gh/O1M5enu4LZj
+ vL6grHmE2QpAp6Z94gjM2/KM23we6cqO7iHL2goR6lHLpCb0jy0IE1L
+X-Developer-Key: i=t.antoine@uclouvain.be; a=ed25519;
+ pk=sw7UYl31W1LTpgWRiX4xIF5x6ok7YWZ6XZnHqy/d3dY=
+X-Endpoint-Received: by B4 Relay for t.antoine@uclouvain.be/20241202 with auth_id=289
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This driver is used to control the power state of the devices attached to
-the PCI slots. Currently, it controls the voltage rails of the PCI slots
-defined in the devicetree node of the root port.
+The Google Pixel 6 has a Maxim max77759 which provides a fuel gauge with
+an interface with a lot in common with the Maxim max1720x.
 
-The voltage rails for PCI slots are documented in the dt-schema:
-https://github.com/devicetree-org/dt-schema/blob/v2024.11/dtschema/schemas/pci/pci-bus-common.yaml#L153
+Modify the Maxim max1720x driver to be compatible with the Maxim max77759 and
+enable it for the gs101-oriole board.
 
-Since this driver has to work with different kind of slots (x{1/4/8/16}
-PCIe, Mini PCIe, PCI etc...), the driver is using the
-of_regulator_bulk_get_all() API to obtain the voltage regulators defined
-in the DT node, instead of hardcoding them. The DT node of the root port
-should define the relevant supply properties corresponding to the voltage
-rails of the PCI slot.
-
-Tested-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Signed-off-by: Thomas Antoine <t.antoine@uclouvain.be>
 ---
- drivers/pci/pwrctrl/Kconfig  | 11 ++++++
- drivers/pci/pwrctrl/Makefile |  3 ++
- drivers/pci/pwrctrl/slot.c   | 93 ++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 107 insertions(+)
+Changes in v2:
+- Add fallback for voltage measurement (André Draszik)
+- Add regmap for the max77759 (André Draszik)
+- Add chip identification for the max77759 (André Draszik, Peter Griffin)
+- Move RSense value to a devicetree property shunt-resistor-micro-ohms
+  (Dimitri Fedrau, André Draszik)
+- Use allOf:if to narrow binding per variant (Krzysztof Kozlowski)
+- Remove binding example (Krzysztof Kozlowski)
+- Change defconfig order to follow savedefconfig (Krzysztof Kozlowski)
+- Fix style errors
+- Link to v1: https://lore.kernel.org/r/20241202-b4-gs101_max77759_fg-v1-0-98d2fa7bfe30@uclouvain.be
 
-diff --git a/drivers/pci/pwrctrl/Kconfig b/drivers/pci/pwrctrl/Kconfig
-index 54589bb2403b..990cab67d413 100644
---- a/drivers/pci/pwrctrl/Kconfig
-+++ b/drivers/pci/pwrctrl/Kconfig
-@@ -10,3 +10,14 @@ config PCI_PWRCTL_PWRSEQ
- 	tristate
- 	select POWER_SEQUENCING
- 	select PCI_PWRCTL
-+
-+config PCI_PWRCTL_SLOT
-+	tristate "PCI Power Control driver for PCI slots"
-+	select PCI_PWRCTL
-+	help
-+	  Say Y here to enable the PCI Power Control driver to control the power
-+	  state of PCI slots.
-+
-+	  This is a generic driver that controls the power state of different
-+	  PCI slots. The voltage regulators powering the rails of the PCI slots
-+	  are expected to be defined in the devicetree node of the PCI bridge.
-diff --git a/drivers/pci/pwrctrl/Makefile b/drivers/pci/pwrctrl/Makefile
-index 75c7ce531c7e..ddfb12c5aadf 100644
---- a/drivers/pci/pwrctrl/Makefile
-+++ b/drivers/pci/pwrctrl/Makefile
-@@ -4,3 +4,6 @@ obj-$(CONFIG_PCI_PWRCTL)		+= pci-pwrctrl-core.o
- pci-pwrctrl-core-y			:= core.o
- 
- obj-$(CONFIG_PCI_PWRCTL_PWRSEQ)		+= pci-pwrctrl-pwrseq.o
-+
-+obj-$(CONFIG_PCI_PWRCTL_SLOT)		+= pci-pwrctl-slot.o
-+pci-pwrctl-slot-y			:= slot.o
-diff --git a/drivers/pci/pwrctrl/slot.c b/drivers/pci/pwrctrl/slot.c
-new file mode 100644
-index 000000000000..18becc144913
---- /dev/null
-+++ b/drivers/pci/pwrctrl/slot.c
-@@ -0,0 +1,93 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2024 Linaro Ltd.
-+ * Author: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-+ */
-+
-+#include <linux/device.h>
-+#include <linux/mod_devicetable.h>
-+#include <linux/module.h>
-+#include <linux/pci-pwrctrl.h>
-+#include <linux/platform_device.h>
-+#include <linux/regulator/consumer.h>
-+#include <linux/slab.h>
-+
-+struct pci_pwrctrl_slot_data {
-+	struct pci_pwrctrl ctx;
-+	struct regulator_bulk_data *supplies;
-+	int num_supplies;
-+};
-+
-+static void devm_pci_pwrctrl_slot_power_off(void *data)
-+{
-+	struct pci_pwrctrl_slot_data *slot = data;
-+
-+	regulator_bulk_disable(slot->num_supplies, slot->supplies);
-+	regulator_bulk_free(slot->num_supplies, slot->supplies);
-+}
-+
-+static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
-+{
-+	struct pci_pwrctrl_slot_data *slot;
-+	struct device *dev = &pdev->dev;
-+	int ret;
-+
-+	slot = devm_kzalloc(dev, sizeof(*slot), GFP_KERNEL);
-+	if (!slot)
-+		return -ENOMEM;
-+
-+	ret = of_regulator_bulk_get_all(dev, dev_of_node(dev),
-+					&slot->supplies);
-+	if (ret < 0) {
-+		dev_err_probe(dev, ret, "Failed to get slot regulators\n");
-+		return ret;
-+	}
-+
-+	slot->num_supplies = ret;
-+	ret = regulator_bulk_enable(slot->num_supplies, slot->supplies);
-+	if (ret < 0) {
-+		dev_err_probe(dev, ret, "Failed to enable slot regulators\n");
-+		goto err_regulator_free;
-+	}
-+
-+	ret = devm_add_action_or_reset(dev, devm_pci_pwrctrl_slot_power_off,
-+				       slot);
-+	if (ret)
-+		goto err_regulator_disable;
-+
-+	pci_pwrctrl_init(&slot->ctx, dev);
-+
-+	ret = devm_pci_pwrctrl_device_set_ready(dev, &slot->ctx);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "Failed to register pwrctrl driver\n");
-+
-+	return 0;
-+
-+err_regulator_disable:
-+	regulator_bulk_disable(slot->num_supplies, slot->supplies);
-+err_regulator_free:
-+	regulator_bulk_free(slot->num_supplies, slot->supplies);
-+
-+	return ret;
-+}
-+
-+static const struct of_device_id pci_pwrctrl_slot_of_match[] = {
-+	{
-+		.compatible = "pciclass,0604",
-+	},
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, pci_pwrctrl_slot_of_match);
-+
-+static struct platform_driver pci_pwrctrl_slot_driver = {
-+	.driver = {
-+		.name = "pci-pwrctrl-slot",
-+		.of_match_table = pci_pwrctrl_slot_of_match,
-+	},
-+	.probe = pci_pwrctrl_slot_probe,
-+};
-+module_platform_driver(pci_pwrctrl_slot_driver);
-+
-+MODULE_AUTHOR("Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>");
-+MODULE_DESCRIPTION("Generic PCI Power Control driver for PCI Slots");
-+MODULE_LICENSE("GPL");
+---
+Thomas Antoine (4):
+      power: supply: add support for max77759 fuel gauge
+      dt-bindings: power: supply: add max77759-fg flavor
+      arm64: defconfig: enable Maxim max1720x driver
+      arm64: dts: exynos: gs101-oriole: enable Maxim max77759 fuel gauge
 
+ .../bindings/power/supply/maxim,max17201.yaml      |  56 ++++--
+ arch/arm64/boot/dts/exynos/google/gs101-oriole.dts |  10 ++
+ arch/arm64/configs/defconfig                       |   1 +
+ drivers/power/supply/max1720x_battery.c            | 189 ++++++++++++++++++---
+ 4 files changed, 218 insertions(+), 38 deletions(-)
+---
+base-commit: 12e0a4072e8edc49c99418a4303bd7b96916de95
+change-id: 20241202-b4-gs101_max77759_fg-402e231a4b33
+
+Best regards,
 -- 
-2.25.1
+Thomas Antoine <t.antoine@uclouvain.be>
 
