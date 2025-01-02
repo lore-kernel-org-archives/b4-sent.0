@@ -1,77 +1,91 @@
-From: Thomas Antoine <t.antoine@uclouvain.be>
-Date: Thu, 02 Jan 2025 12:15:06 +0100
-Subject: [PATCH v2 4/4] arm64: dts: exynos: gs101-oriole: enable Maxim
- max77759 fuel gauge
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH 00/19] powerpc: MPC83xx cleanup and LANCOM NWAPP2 board
+Date: Thu, 02 Jan 2025 19:31:41 +0100
+Message-Id: <20250102-mpc83xx-v1-0-86f78ba2a7af@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250102-b4-gs101_max77759_fg-v2-4-87959abeb7ff@uclouvain.be>
-References: <20250102-b4-gs101_max77759_fg-v2-0-87959abeb7ff@uclouvain.be>
-In-Reply-To: <20250102-b4-gs101_max77759_fg-v2-0-87959abeb7ff@uclouvain.be>
-To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Dimitri Fedrau <dima.fedrau@gmail.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-samsung-soc@vger.kernel.org, Thomas Antoine <t.antoine@uclouvain.be>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAI7bdmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIxNDI2ND3dyCZAvjigpdQ/NkC0uLRBNLExNDJaDqgqLUtMwKsEnRsbW1ALn
+ E2NdZAAAA
+X-Change-ID: 20241231-mpc83xx-17c898a49441
+To: Michael Ellerman <mpe@ellerman.id.au>, 
+ Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Naveen N Rao <naveen@kernel.org>, Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, Frank Li <Frank.Li@nxp.com>
+Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1735816515; l=1485;
- i=t.antoine@uclouvain.be; s=20241202; h=from:subject:message-id;
- bh=GN3EniKaEOYE0aMNRzhLT0R4oirK05MCY9w8a0rDXYc=;
- b=eMvTZq9F+2RWFQ1BgK4RRLys8hBQwJ8vxzR3brqK5tBh//epZY74AciI9nsB10bwtDs1X2cbA
- YbKhbU97pEDDbvI3SWyzXLCMXp5vg1Z6AoNRMAQDFPtFUDxrpzy1Z+z
-X-Developer-Key: i=t.antoine@uclouvain.be; a=ed25519;
- pk=sw7UYl31W1LTpgWRiX4xIF5x6ok7YWZ6XZnHqy/d3dY=
-X-Endpoint-Received: by B4 Relay for t.antoine@uclouvain.be/20241202 with auth_id=289
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1735842735; l=2877;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=s9KOsJHPX8mNPryGVyICWhP1YoIx1vF2Sh4FXkHLgpk=;
+ b=Yes62fmOx2x2qZhQDLO1dreJSQZiMF9f1nnFMaGDZeK+FBloj2U8kviImy+hqs0K4bJ17FFXx
+ oLI8tgG+VsmCNh41LCNbnc+oAla8AExIhxUWOPTE8qd9z8vIciFRu5Y
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the node for the max77759 fuel gauge as a slave of the i2c.
+This patchset adds a devicetree for the LANCOM NWAPP2 board based on the
+MPC8314E platform, and slightly modernizes the MPC83xx platform support
+in the process.
 
-The todo is still applicable given there are other slaves on the
-bus (pca9468, other max77759 functions and the max20339 OVP).
+This board is nominally end-of-life, but available to hobbyists.
+A U-Boot port is also in the making.
 
-The fuel gauge has been tested and seems to give coherent results.
-Manual activation of the charger via i2cset shows that the sign of
-the current does indicate charging/discharging status.
-
-Signed-off-by: Thomas Antoine <t.antoine@uclouvain.be>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- arch/arm64/boot/dts/exynos/google/gs101-oriole.dts | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+J. Neuschäfer (19):
+      powerpc: Generalize MPC831x platform support
+      powerpc: dts: Extract mpc8315e.dtsi from mpc8315erdb.dts
+      powerpc: dts: mpc8315e: Use IRQ_TYPE_* macros
+      powerpc: dts: mpc8315e: Add labels to peripherals
+      powerpc: dts: mpc8315e: Disable peripherals by default
+      powerpc: dts: mpc8315e: Add missing #cells properties to SPI bus
+      powerpc: dts: mpc8315erdb: Add missing model property
+      powerpc: boot: Enable FIT image generation
+      powerpc: boot: Build devicetrees when CONFIG_MPC831x=y
+      powerpc: dts: Add MPC8314E devicetree
+      dt-bindings: gpio: fsl,qoriq-gpio: Add compatible string fsl,mpc8314-gpio
+      powerpc: dts: mpc8315e: Add GPIO controller node
+      gpio: mpc8xxx: Add MPC8314 support
+      powerpc: mpc83xx: Switch to of_platform_populate
+      dt-bindings: vendor-prefixes: Add LANCOM Systems GmbH
+      powerpc: dts: Add LANCOM NWAPP2 board devicetree
+      powerpc: Regenerate mpc83xx_defconfig
+      powerpc: mpc83xx_defconfig: Enable NWAPP2 board features
+      MAINTAINERS: Add entry for LANCOM board support
 
-diff --git a/arch/arm64/boot/dts/exynos/google/gs101-oriole.dts b/arch/arm64/boot/dts/exynos/google/gs101-oriole.dts
-index 387fb779bd29ea3812331a7951f03b181c5fe659..6c83ee6f8a6b0327c576573d03a8d2bcc93f9e16 100644
---- a/arch/arm64/boot/dts/exynos/google/gs101-oriole.dts
-+++ b/arch/arm64/boot/dts/exynos/google/gs101-oriole.dts
-@@ -10,6 +10,7 @@
- 
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/input/input.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
- #include "gs101-pinctrl.h"
- #include "gs101.dtsi"
- 
-@@ -90,6 +91,15 @@ eeprom: eeprom@50 {
- &hsi2c_12 {
- 	status = "okay";
- 	/* TODO: add the devices once drivers exist */
-+
-+	fuel-gauge@36 {
-+		compatible = "maxim,max77759-fg";
-+		reg = <0x36>;
-+		reg-names = "m5";
-+		shunt-resistor-micro-ohms = <5000>;
-+		interrupt-parent = <&gpa9>;
-+		interrupts = <3 IRQ_TYPE_LEVEL_LOW>;
-+	};
- };
- 
- &pinctrl_far_alive {
+ .../devicetree/bindings/gpio/fsl,qoriq-gpio.yaml   |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ MAINTAINERS                                        |   8 +
+ arch/powerpc/Makefile                              |   3 +-
+ arch/powerpc/boot/Makefile                         |  11 +
+ arch/powerpc/boot/dts/Makefile                     |   6 +
+ arch/powerpc/boot/dts/lancom-nwapp2.dts            | 276 +++++++++++++++
+ arch/powerpc/boot/dts/mpc8314e.dtsi                |   7 +
+ arch/powerpc/boot/dts/mpc8315e.dtsi                | 390 +++++++++++++++++++++
+ arch/powerpc/boot/dts/mpc8315erdb.dts              | 327 +----------------
+ arch/powerpc/configs/83xx/mpc8313_rdb_defconfig    |   2 +-
+ arch/powerpc/configs/83xx/mpc8315_rdb_defconfig    |   2 +-
+ arch/powerpc/configs/mpc83xx_defconfig             |  41 ++-
+ arch/powerpc/configs/ppc6xx_defconfig              |   2 +-
+ arch/powerpc/platforms/83xx/Kconfig                |   6 +-
+ arch/powerpc/platforms/83xx/Makefile               |   2 +-
+ arch/powerpc/platforms/83xx/misc.c                 |   6 +-
+ .../platforms/83xx/{mpc831x_rdb.c => mpc831x.c}    |  21 +-
+ drivers/gpio/gpio-mpc8xxx.c                        |   1 +
+ 19 files changed, 769 insertions(+), 345 deletions(-)
+---
+base-commit: fc033cf25e612e840e545f8d5ad2edd6ba613ed5
+change-id: 20241231-mpc83xx-17c898a49441
 
+Best regards,
 -- 
-2.47.1
+J. Neuschäfer <j.ne@posteo.net>
 
