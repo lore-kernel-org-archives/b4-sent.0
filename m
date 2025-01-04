@@ -1,10 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Fri, 03 Jan 2025 17:58:24 -0800
-Subject: [PATCH v3 18/24] xen/include: introduce resource.h
+Date: Fri, 03 Jan 2025 17:58:25 -0800
+Subject: [PATCH v3 19/24] xen/8250-uart: add missing definitions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250103-vuart-ns8250-v3-v1-18-c5d36b31d66c@ford.com>
+Message-Id: <20250103-vuart-ns8250-v3-v1-19-c5d36b31d66c@ford.com>
 References: <20250103-vuart-ns8250-v3-v1-0-c5d36b31d66c@ford.com>
 In-Reply-To: <20250103-vuart-ns8250-v3-v1-0-c5d36b31d66c@ford.com>
 To: xen-devel@lists.xenproject.org
@@ -15,144 +15,178 @@ Cc: Stefano Stabellini <sstabellini@kernel.org>,
  =?utf-8?q?Roger_Pau_Monn=C3=A9?= <roger.pau@citrix.com>, 
  Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1735955892; l=4529;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1735955892; l=7808;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=/P+5vP8U8ti5w5xPLZtVwxfiABIGoHWoOC2zq7CuRN4=;
- b=FQXcMfLgv4oy0lSh4nZAJJfZwlJFq4kmqFTwWUf1GKQJhh19eTVM2pPOzhN85YG6ZA/bi410l
- y/VJ3oanYN0A5a4cG4PypCJds9z7yDwWwR35ly14MCgXf/rH3H7TbzZ
+ bh=T+cbSUlwhOiYz+Afz3lMbHpJVwMTNzMdAT/z7b8cRYc=;
+ b=Seh7LR0DR3fCTrjLnw3IFzcTtD9s+yB1Dw9zGVcAIVgBH0T14IQCAi2JaSEmb3Itsmxz5kRJD
+ fDh0gHaKhV9BZJqddjdkPR5d3OBSGRt1Jm6ts0V00OayTEtEPw4C1Re
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move common resource definitions to a new architecture-agnostic shared header
-file.
+Added missing definitions needed for NS8250 UART emulator.
+
+Re-used newly introduced MSR definitions in the existing ns16550 driver.
+
+Also, fixed indentation in a comment for FCR register.
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
-It will be used in follow on NS8250 emulator code to describe legacy
-PC COM resources.
----
----
- xen/common/device-tree/device-tree.c | 21 +--------------------
- xen/drivers/passthrough/arm/smmu.c   | 15 +--------------
- xen/include/xen/resource.h           | 34 ++++++++++++++++++++++++++++++++++
- 3 files changed, 36 insertions(+), 34 deletions(-)
+ xen/drivers/char/ns16550.c  |  6 ++--
+ xen/include/xen/8250-uart.h | 78 +++++++++++++++++++++++++++++++++------------
+ 2 files changed, 60 insertions(+), 24 deletions(-)
 
-diff --git a/xen/common/device-tree/device-tree.c b/xen/common/device-tree/device-tree.c
-index d0528c5825651f7cc9ebca0c949229c9083063c6..e8f810b2fe10890c033ed3a9d4ca627010ad019b 100644
---- a/xen/common/device-tree/device-tree.c
-+++ b/xen/common/device-tree/device-tree.c
-@@ -24,6 +24,7 @@
- #include <xen/ctype.h>
- #include <asm/setup.h>
- #include <xen/err.h>
-+#include <xen/resource.h>
- 
- const void *device_tree_flattened;
- dt_irq_xlate_func dt_irq_xlate;
-@@ -535,26 +536,6 @@ int dt_child_n_size_cells(const struct dt_device_node *parent)
-     return __dt_n_size_cells(parent, true);
+diff --git a/xen/drivers/char/ns16550.c b/xen/drivers/char/ns16550.c
+index eaeb0e09d01ea70f865b8aee4f34ab7a0d4c5cf9..025ba5819d46ea567d41cea512b5f166969fb95f 100644
+--- a/xen/drivers/char/ns16550.c
++++ b/xen/drivers/char/ns16550.c
+@@ -721,9 +721,9 @@ static int __init check_existence(struct ns16550 *uart)
+      * Check to see if a UART is really there.
+      * Use loopback test mode.
+      */
+-    ns_write_reg(uart, UART_MCR, UART_MCR_LOOP | 0x0A);
+-    status = ns_read_reg(uart, UART_MSR) & 0xF0;
+-    return (status == 0x90);
++    ns_write_reg(uart, UART_MCR, UART_MCR_LOOP | UART_MCR_RTS | UART_MCR_OUT2);
++    status = ns_read_reg(uart, UART_MSR) & UART_MSR_STATUS;
++    return (status == (UART_MSR_CTS | UART_MSR_DCD));
  }
  
--/*
-- * These are defined in Linux where much of this code comes from, but
-- * are currently unused outside this file in the context of Xen.
-- */
--#define IORESOURCE_BITS         0x000000ff      /* Bus-specific bits */
--
--#define IORESOURCE_TYPE_BITS    0x00001f00      /* Resource type */
--#define IORESOURCE_IO           0x00000100      /* PCI/ISA I/O ports */
--#define IORESOURCE_MEM          0x00000200
--#define IORESOURCE_REG          0x00000300      /* Register offsets */
--#define IORESOURCE_IRQ          0x00000400
--#define IORESOURCE_DMA          0x00000800
--#define IORESOURCE_BUS          0x00001000
--
--#define IORESOURCE_PREFETCH     0x00002000      /* No side effects */
--#define IORESOURCE_READONLY     0x00004000
--#define IORESOURCE_CACHEABLE    0x00008000
--#define IORESOURCE_RANGELENGTH  0x00010000
--#define IORESOURCE_SHADOWABLE   0x00020000
--
- /*
-  * Default translator (generic bus)
-  */
-diff --git a/xen/drivers/passthrough/arm/smmu.c b/xen/drivers/passthrough/arm/smmu.c
-index 03d22bce1e497e41834c273f9048b98dcbd48a54..aa6a968b574dce7cc753e8070fad3a6e585cd9e7 100644
---- a/xen/drivers/passthrough/arm/smmu.c
-+++ b/xen/drivers/passthrough/arm/smmu.c
-@@ -50,6 +50,7 @@
- #include <xen/rbtree.h>
- #include <xen/sched.h>
- #include <xen/sizes.h>
-+#include <xen/resource.h>
- #include <asm/atomic.h>
- #include <asm/device.h>
- #include <asm/io.h>
-@@ -70,22 +71,8 @@
- #define of_property_read_u32(np, pname, out) (!dt_property_read_u32(np, pname, out))
- #define of_property_read_bool dt_property_read_bool
- #define of_parse_phandle_with_args dt_parse_phandle_with_args
--
--/* Xen: Helpers to get device MMIO and IRQs */
--struct resource
--{
--	paddr_t addr;
--	paddr_t size;
--	unsigned int type;
--};
--
--#define resource_size(res) (res)->size;
--
- #define platform_device dt_device_node
+ #ifdef CONFIG_HAS_PCI
+diff --git a/xen/include/xen/8250-uart.h b/xen/include/xen/8250-uart.h
+index d13352940c13c50bac17d4cdf2f3bf584380776a..6d1af31d582a3dd674a401d7f649e28c889cdc3e 100644
+--- a/xen/include/xen/8250-uart.h
++++ b/xen/include/xen/8250-uart.h
+@@ -32,6 +32,7 @@
+ #define UART_MCR          0x04    /* Modem control        */
+ #define UART_LSR          0x05    /* line status          */
+ #define UART_MSR          0x06    /* Modem status         */
++#define UART_SCR          0x07    /* Scratch pad          */
+ #define UART_USR          0x1f    /* Status register (DW) */
+ #define UART_DLL          0x00    /* divisor latch (ls) (DLAB=1) */
+ #define UART_DLM          0x01    /* divisor latch (ms) (DLAB=1) */
+@@ -42,6 +43,8 @@
+ #define UART_IER_ETHREI   0x02    /* tx reg. empty        */
+ #define UART_IER_ELSI     0x04    /* rx line status       */
+ #define UART_IER_EMSI     0x08    /* MODEM status         */
++#define UART_IER_MASK \
++    (UART_IER_ERDAI | UART_IER_ETHREI | UART_IER_ELSI | UART_IER_EMSI)
  
--#define IORESOURCE_MEM 0
--#define IORESOURCE_IRQ 1
--
- static struct resource *platform_get_resource(struct platform_device *pdev,
- 					      unsigned int type,
- 					      unsigned int num)
-diff --git a/xen/include/xen/resource.h b/xen/include/xen/resource.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..4512658133defe8dc62d87192ffd19ad94b63c3b
---- /dev/null
-+++ b/xen/include/xen/resource.h
-@@ -0,0 +1,34 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
+ /* Interrupt Identification Register */
+ #define UART_IIR_NOINT    0x01    /* no interrupt pending */
+@@ -51,12 +54,19 @@
+ #define UART_IIR_THR      0x02    /*  - tx reg. empty     */
+ #define UART_IIR_MSI      0x00    /*  - MODEM status      */
+ #define UART_IIR_BSY      0x07    /*  - busy detect (DW) */
++#define UART_IIR_FE       0xC0    /* FIFO enabled (2 bits) */
+ 
+ /* FIFO Control Register */
+-#define UART_FCR_ENABLE   0x01    /* enable FIFO          */
+-#define UART_FCR_CLRX     0x02    /* clear Rx FIFO        */
+-#define UART_FCR_CLTX     0x04    /* clear Tx FIFO        */
+-#define UART_FCR_DMA      0x10    /* enter DMA mode       */
++#define UART_FCR_ENABLE     BIT(0, U)   /* enable FIFO          */
++#define UART_FCR_CLRX       BIT(1, U)   /* clear Rx FIFO        */
++#define UART_FCR_CLTX       BIT(2, U)   /* clear Tx FIFO        */
++#define UART_FCR_DMA        BIT(3, U)   /* enter DMA mode       */
++#define UART_FCR_RESERVED0  BIT(4, U)   /* reserved; always 0   */
++#define UART_FCR_RESERVED1  BIT(5, U)   /* reserved; always 0   */
++#define UART_FCR_RTB0       BIT(6, U)   /* receiver trigger bit #0 */
++#define UART_FCR_RTB1       BIT(7, U)   /* receiver trigger bit #1 */
++#define UART_FCR_TRG_MASK   (UART_FCR_RTB0 | UART_FCR_RTB1)
++
+ #define UART_FCR_TRG1     0x00    /* Rx FIFO trig lev 1   */
+ #define UART_FCR_TRG4     0x40    /* Rx FIFO trig lev 4   */
+ #define UART_FCR_TRG8     0x80    /* Rx FIFO trig lev 8   */
+@@ -64,17 +74,17 @@
+ 
+ /*
+  * Note: The FIFO trigger levels are chip specific:
+- *	RX:76 = 00  01  10  11	TX:54 = 00  01  10  11
+- * PC16550D:	 1   4   8  14		xx  xx  xx  xx
+- * TI16C550A:	 1   4   8  14          xx  xx  xx  xx
+- * TI16C550C:	 1   4   8  14          xx  xx  xx  xx
+- * ST16C550:	 1   4   8  14		xx  xx  xx  xx
+- * ST16C650:	 8  16  24  28		16   8  24  30	PORT_16650V2
+- * NS16C552:	 1   4   8  14		xx  xx  xx  xx
+- * ST16C654:	 8  16  56  60		 8  16  32  56	PORT_16654
+- * TI16C750:	 1  16  32  56		xx  xx  xx  xx	PORT_16750
+- * TI16C752:	 8  16  56  60		 8  16  32  56
+- * Tegra:	 1   4   8  14		16   8   4   1	PORT_TEGRA
++ *  RX:76 = 00  01  10  11  TX:54 = 00  01  10  11
++ * PC16550D:     1   4   8  14      xx  xx  xx  xx
++ * TI16C550A:    1   4   8  14      xx  xx  xx  xx
++ * TI16C550C:    1   4   8  14      xx  xx  xx  xx
++ * ST16C550:     1   4   8  14      xx  xx  xx  xx
++ * ST16C650:     8  16  24  28      16   8  24  30  PORT_16650V2
++ * NS16C552:     1   4   8  14      xx  xx  xx  xx
++ * ST16C654:     8  16  56  60       8  16  32  56  PORT_16654
++ * TI16C750:     1  16  32  56      xx  xx  xx  xx  PORT_16750
++ * TI16C752:     8  16  56  60       8  16  32  56
++ * Tegra:        1   4   8  14      16   8   4   1  PORT_TEGRA
+  */
+ #define UART_FCR_R_TRIG_00 0x00
+ #define UART_FCR_R_TRIG_01 0x40
+@@ -96,11 +106,33 @@
+ #define UART_LCR_CONF_MODE_B	0xBF		/* Configuration mode B */
+ 
+ /* Modem Control Register */
+-#define UART_MCR_DTR      0x01    /* Data Terminal Ready  */
+-#define UART_MCR_RTS      0x02    /* Request to Send      */
+-#define UART_MCR_OUT2     0x08    /* OUT2: interrupt mask */
+-#define UART_MCR_LOOP     0x10    /* Enable loopback test mode */
+-#define UART_MCR_TCRTLR   0x40    /* Access TCR/TLR (TI16C752, EFR[4]=1) */
++#define UART_MCR_DTR            BIT(0, U)   /* Data Terminal Ready  */
++#define UART_MCR_RTS            BIT(1, U)   /* Request to Send      */
++#define UART_MCR_OUT1           BIT(2, U)   /* OUT1: interrupt mask */
++#define UART_MCR_OUT2           BIT(3, U)   /* OUT2: interrupt mask */
++#define UART_MCR_LOOP           BIT(4, U)   /* Enable loopback test mode */
++#define UART_MCR_RESERVED0      BIT(5, U)   /* Reserved #0 */
++#define UART_MCR_RESERVED1      BIT(6, U)   /* Reserved #1 */
++#define UART_MCR_TCRTLR         BIT(6, U)   /* Access TCR/TLR (TI16C752, EFR[4]=1) */
++#define UART_MCR_RESERVED2      BIT(7, U)   /* Reserved #2 */
++#define UART_MCR_MASK \
++    (UART_MCR_DTR | UART_MCR_RTS | \
++     UART_MCR_OUT1 | UART_MCR_OUT2 | \
++     UART_MCR_LOOP)
++
++/* Modem Status Register */
++#define UART_MSR_DCTS           BIT(0, U)   /* Change in CTS */
++#define UART_MSR_DDSR           BIT(1, U)   /* Change in DSR */
++#define UART_MSR_TERI           BIT(2, U)   /* Change in RI */
++#define UART_MSR_DDCD           BIT(3, U)   /* Change in CTS */
++#define UART_MSR_CTS            BIT(4, U)
++#define UART_MSR_DSR            BIT(5, U)
++#define UART_MSR_RI             BIT(6, U)
++#define UART_MSR_DCD            BIT(7, U)
++#define UART_MSR_CHANGE \
++    (UART_MSR_DCTS | UART_MSR_DDSR | UART_MSR_TERI | UART_MSR_DDCD)
++#define UART_MSR_STATUS \
++    (UART_MSR_CTS | UART_MSR_DSR | UART_MSR_RI | UART_MSR_DCD)
+ 
+ /* Line Status Register */
+ #define UART_LSR_DR       0x01    /* Data ready           */
+@@ -111,6 +143,7 @@
+ #define UART_LSR_THRE     0x20    /* Xmit hold reg empty  */
+ #define UART_LSR_TEMT     0x40    /* Xmitter empty        */
+ #define UART_LSR_ERR      0x80    /* Error                */
++#define UART_LSR_MASK     (UART_LSR_OE | UART_LSR_BI)
+ 
+ /* These parity settings can be ORed directly into the LCR. */
+ #define UART_PARITY_NONE  (0<<3)
+@@ -119,7 +152,10 @@
+ #define UART_PARITY_MARK  (5<<3)
+ #define UART_PARITY_SPACE (7<<3)
+ 
+-/* Frequency of external clock source. This definition assumes PC platform. */
 +/*
-+ * System resource description.
++ * Frequency of external UART clock source.
++ * Same as IBM PC master input clock frequency.
 + */
-+#ifndef XEN__RESOURCE_H
-+#define XEN__RESOURCE_H
-+
-+#define IORESOURCE_BITS         0x000000FFU      /* Bus-specific bits */
-+
-+#define IORESOURCE_TYPE_BITS    0x00001F00U      /* Resource type */
-+#define IORESOURCE_IO           0x00000100U      /* PCI/ISA I/O ports */
-+#define IORESOURCE_MEM          0x00000200U
-+#define IORESOURCE_REG          0x00000300U      /* Register offsets */
-+#define IORESOURCE_IRQ          0x00000400U
-+#define IORESOURCE_DMA          0x00000800U
-+#define IORESOURCE_BUS          0x00001000U
-+
-+#define IORESOURCE_PREFETCH     0x00002000U      /* No side effects */
-+#define IORESOURCE_READONLY     0x00004000U
-+#define IORESOURCE_CACHEABLE    0x00008000U
-+#define IORESOURCE_RANGELENGTH  0x00010000U
-+#define IORESOURCE_SHADOWABLE   0x00020000U
-+
-+#define IORESOURCE_UNKNOWN      ( ~0U )
-+
-+struct resource {
-+    paddr_t addr;
-+    paddr_t size;
-+    unsigned int type;
-+};
-+
-+#define resource_size(res)      ( (res)->size )
-+
-+#endif /* XEN__RESOURCE_H */
+ #define UART_CLOCK_HZ     1843200
+ 
+ /* Bits in Exar specific UART_XR_EFR register */
 
 -- 
 2.34.1
