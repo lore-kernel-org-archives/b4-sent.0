@@ -1,10 +1,10 @@
 From: Denis Mukhin <dmukhin@ford.com>
-Date: Fri, 03 Jan 2025 17:58:10 -0800
-Subject: [PATCH v3 04/24] xen/console: introduce console_{get,put}_domain()
+Date: Fri, 03 Jan 2025 17:58:11 -0800
+Subject: [PATCH v3 05/24] xen/console: introduce consoled_is_enabled()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250103-vuart-ns8250-v3-v1-4-c5d36b31d66c@ford.com>
+Message-Id: <20250103-vuart-ns8250-v3-v1-5-c5d36b31d66c@ford.com>
 References: <20250103-vuart-ns8250-v3-v1-0-c5d36b31d66c@ford.com>
 In-Reply-To: <20250103-vuart-ns8250-v3-v1-0-c5d36b31d66c@ford.com>
 To: xen-devel@lists.xenproject.org
@@ -15,158 +15,173 @@ Cc: Stefano Stabellini <sstabellini@kernel.org>,
  =?utf-8?q?Roger_Pau_Monn=C3=A9?= <roger.pau@citrix.com>, 
  Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1735955892; l=4310;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1735955892; l=4404;
  i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=R8dApJ/XiKqchnt0Y9PJCOHsEWibqS36Kuatzu/KWu8=;
- b=rK9fr+LsEaTbokvlrCZ5xF8dd1MfNZorXXzg3xb4JWUj/zpaTVp8S/Q0xZx0mVKdNRQp0oBC1
- 1zCgsNnNpYABQvoEcda1xy4WpELmdyQjZUv036bWzaLNEjynD9w9v9J
+ bh=n4Aqa3ybnKIx5xmfT+5F0wUDK/FeirbGr0o6DW85ymA=;
+ b=C4K8KLpFn1MjYhJMBZQMxhbcwkSQbMQPkN60/GkOpUDva4wrnJU3OI1jMwq1OYrhFKd3FJAbL
+ pLO5JKF6+JdBYum8mrIHzPA5dZ7qRLqRtkU0jOY0jQiRbsCifK3SU4j
 X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
  pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
 X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-console_input_domain() takes an RCU lock to protect domain structure.
-That implies call to rcu_unlock_domain() after use.
+There are few places which check pv_shim console under CONFIG_PV_SHIM in xen
+console driver. Instead of #ifdef-ing, use new consoled_is_enabled() to
+customize the logic.
 
-Introduce a pair of console_get_domain() / console_put_domain() to highlight
-the correct use of the call within the code interacting with Xen console
-driver.
+Header file now can be included w/o CONFIG_X86.
 
-Also, use new calls in the console driver in __serial_rx(). That prepares
-the code for the follow-on console driver cleanup series.
+Signature of consoled_guest_{rx,tx} has changed so the error can be logged.
 
 Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- xen/arch/arm/vpl011.c      |  6 +++---
- xen/drivers/char/console.c | 44 +++++++++++++++++++++-----------------------
- xen/include/xen/console.h  |  3 ++-
- 3 files changed, 26 insertions(+), 27 deletions(-)
+ xen/drivers/char/console.c  | 13 +++++--------
+ xen/drivers/char/consoled.c | 17 +++++++++++++----
+ xen/include/xen/consoled.h  | 32 +++++++++++++++++++++++++++-----
+ 3 files changed, 45 insertions(+), 17 deletions(-)
 
-diff --git a/xen/arch/arm/vpl011.c b/xen/arch/arm/vpl011.c
-index c72f3778bfedf9434f9d1a0cd7fa33852563112d..66047bf33cedb930a6bd7c96577913cd1ae08f05 100644
---- a/xen/arch/arm/vpl011.c
-+++ b/xen/arch/arm/vpl011.c
-@@ -78,7 +78,7 @@ static void vpl011_write_data_xen(struct domain *d, uint8_t data)
-     unsigned long flags;
-     struct vpl011 *vpl011 = &d->arch.vpl011;
-     struct vpl011_xen_backend *intf = vpl011->backend.xen;
--    struct domain *input = console_input_domain();
-+    struct domain *input = console_get_domain();
- 
-     VPL011_LOCK(d, flags);
- 
-@@ -123,8 +123,8 @@ static void vpl011_write_data_xen(struct domain *d, uint8_t data)
-     vpl011_update_interrupt_status(d);
- 
-     VPL011_UNLOCK(d, flags);
--    if ( input != NULL )
--        rcu_unlock_domain(input);
-+
-+    console_put_domain(input);
- }
- 
- /*
 diff --git a/xen/drivers/char/console.c b/xen/drivers/char/console.c
-index 1411c991977b5fb26ee5709e523b7bc32b612808..4785f0e93a17e3ecba79a7813d2928f946abab8f 100644
+index 4785f0e93a17e3ecba79a7813d2928f946abab8f..2d20a9d7531e069803eaf30ce79354b998c4a52f 100644
 --- a/xen/drivers/char/console.c
 +++ b/xen/drivers/char/console.c
-@@ -475,15 +475,18 @@ static unsigned int __read_mostly console_rx = 0;
- 
- #define max_console_rx (max_init_domid + 1)
- 
--#ifdef CONFIG_SBSA_VUART_CONSOLE
--/* Make sure to rcu_unlock_domain after use */
--struct domain *console_input_domain(void)
-+struct domain *console_get_domain(void)
- {
-     if ( console_rx == 0 )
-             return NULL;
-     return rcu_lock_domain_by_id(console_rx - 1);
- }
--#endif
-+
-+void console_put_domain(struct domain *d)
-+{
-+    if ( d )
-+        rcu_unlock_domain(d);
-+}
- 
- static void switch_serial_input(void)
- {
-@@ -529,14 +532,18 @@ static void switch_serial_input(void)
- 
- static void __serial_rx(char c)
- {
-+    struct domain *d;
-     int rc = 0;
- 
--    switch ( console_rx )
--    {
--    case 0:
-+    if ( console_rx == 0 )
-         return handle_keypress(c, false);
- 
--    case 1:
-+    d = console_get_domain();
-+    if ( !d )
-+        return;
-+
-+    if ( is_hardware_domain(d) )
-+    {
-         /*
-          * Deliver input to the hardware domain buffer, unless it is
-          * already full.
-@@ -549,23 +556,12 @@ static void __serial_rx(char c)
-          * getting stuck.
-          */
-         send_global_virq(VIRQ_CONSOLE);
--        break;
--
-+    }
- #ifdef CONFIG_SBSA_VUART_CONSOLE
--    default:
--    {
--        struct domain *d = rcu_lock_domain_by_id(console_rx - 1);
--
--        if ( d )
--        {
--            rc = vpl011_rx_char_xen(d, c);
--            rcu_unlock_domain(d);
--        }
--
--        break;
--    }
-+    else
-+        /* Deliver input to the emulated UART. */
-+        rc = vpl011_rx_char_xen(d, c);
- #endif
--    }
+@@ -33,9 +33,9 @@
+ #include <xen/pv_console.h>
+ #include <asm/setup.h>
+ #include <xen/sections.h>
++#include <xen/consoled.h>
  
  #ifdef CONFIG_X86
-     if ( pv_shim && pv_console )
-@@ -574,6 +570,8 @@ static void __serial_rx(char c)
+-#include <xen/consoled.h>
+ #include <asm/guest.h>
+ #endif
+ #ifdef CONFIG_SBSA_VUART_CONSOLE
+@@ -508,11 +508,9 @@ static void switch_serial_input(void)
+             break;
+         }
+ 
+-#ifdef CONFIG_PV_SHIM
+-        if ( next_rx == 1 )
++        if ( consoled_is_enabled() && next_rx == 1 )
+             domid = get_initial_domain_id();
+         else
+-#endif
+             domid = next_rx - 1;
+         d = rcu_lock_domain_by_id(domid);
+         if ( d )
+@@ -563,10 +561,9 @@ static void __serial_rx(char c)
+         rc = vpl011_rx_char_xen(d, c);
+ #endif
+ 
+-#ifdef CONFIG_X86
+-    if ( pv_shim && pv_console )
+-        consoled_guest_tx(c);
+-#endif
++    if ( consoled_is_enabled() )
++        /* Deliver input to the PV shim console. */
++        rc = consoled_guest_tx(c);
  
      if ( rc )
          printk(KERN_ERR "d%pd: failed to process console input: %d\n", d, rc);
+diff --git a/xen/drivers/char/consoled.c b/xen/drivers/char/consoled.c
+index b415b632cecc0a80e161b701d7b70ba4f3cc5fb8..8704ec251eb19e9c1cdc5927f896aeb20cc5af1e 100644
+--- a/xen/drivers/char/consoled.c
++++ b/xen/drivers/char/consoled.c
+@@ -43,13 +43,13 @@ struct xencons_interface *consoled_get_ring_addr(void)
+ static char buf[BUF_SZ + 1];
+ 
+ /* Receives characters from a domain's PV console */
+-void consoled_guest_rx(void)
++int consoled_guest_rx(void)
+ {
+     size_t idx = 0;
+     XENCONS_RING_IDX cons, prod;
+ 
+     if ( !cons_ring )
+-        return;
++        return -ENODEV;
+ 
+     spin_lock(&rx_lock);
+ 
+@@ -91,15 +91,17 @@ void consoled_guest_rx(void)
+ 
+  out:
+     spin_unlock(&rx_lock);
 +
-+    console_put_domain(d);
++    return 0;
  }
  
- static void cf_check serial_rx(char c)
-diff --git a/xen/include/xen/console.h b/xen/include/xen/console.h
-index 6dfbade3ece36352c74f1124305da945b210f2a7..8631fd279bfe1aba42b61d76fbdb45016c2859f9 100644
---- a/xen/include/xen/console.h
-+++ b/xen/include/xen/console.h
-@@ -31,7 +31,8 @@ void console_end_sync(void);
- void console_start_log_everything(void);
- void console_end_log_everything(void);
+ /* Sends a character into a domain's PV console */
+-void consoled_guest_tx(char c)
++int consoled_guest_tx(char c)
+ {
+     XENCONS_RING_IDX cons, prod;
  
--struct domain *console_input_domain(void);
-+struct domain *console_get_domain(void);
-+void console_put_domain(struct domain *d);
+     if ( !cons_ring )
+-        return;
++        return -ENODEV;
+ 
+     cons = ACCESS_ONCE(cons_ring->in_cons);
+     prod = cons_ring->in_prod;
+@@ -125,6 +127,13 @@ void consoled_guest_tx(char c)
+  notify:
+     /* Always notify the guest: prevents receive path from getting stuck. */
+     pv_shim_inject_evtchn(pv_console_evtchn());
++
++    return 0;
++}
++
++bool consoled_is_enabled(void)
++{
++    return pv_shim && pv_console;
+ }
  
  /*
-  * Steal output from the console. Returns +ve identifier, else -ve error.
+diff --git a/xen/include/xen/consoled.h b/xen/include/xen/consoled.h
+index bd7ab6329ee8a7c466484021247241ded8ed03c7..14e5e3284a86201919f0f70a8c2785609f35b15f 100644
+--- a/xen/include/xen/consoled.h
++++ b/xen/include/xen/consoled.h
+@@ -1,14 +1,36 @@
+-#ifndef __XEN_CONSOLED_H__
+-#define __XEN_CONSOLED_H__
++/* SPDX-License-Identifier: GPL-2.0-only */
++#ifndef XEN__CONSOLED_H
++#define XEN__CONSOLED_H
+ 
+ #include <public/io/console.h>
+ 
++#ifdef CONFIG_PV_SHIM
++
+ void consoled_set_ring_addr(struct xencons_interface *ring);
+ struct xencons_interface *consoled_get_ring_addr(void);
+-void consoled_guest_rx(void);
+-void consoled_guest_tx(char c);
++int consoled_guest_rx(void);
++int consoled_guest_tx(char c);
++bool consoled_is_enabled(void);
+ 
+-#endif /* __XEN_CONSOLED_H__ */
++#else
++
++static inline int consoled_guest_rx(void)
++{
++    ASSERT_UNREACHABLE();
++    return 0;
++}
++
++static inline int consoled_guest_tx(char c)
++{
++    ASSERT_UNREACHABLE();
++    return 0;
++}
++
++#define consoled_is_enabled() ( false )
++
++#endif /* CONFIG_PV_SHIM */
++
++#endif /* XEN__CONSOLED_H */
+ /*
+  * Local variables:
+  * mode: C
 
 -- 
 2.34.1
