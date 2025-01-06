@@ -1,186 +1,136 @@
-From: Denis Mukhin <dmukhin@ford.com>
-Date: Fri, 03 Jan 2025 17:58:30 -0800
-Subject: [PATCH v3 24/24] xen/console: unify printout behavior for UART
- emulators
+From: Yang Li <yang.li@amlogic.com>
+Date: Mon, 06 Jan 2025 10:50:33 +0800
+Subject: [PATCH BlueZ bluez] bap: fixed issue of muting music silent after
+ pause and resume.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250103-vuart-ns8250-v3-v1-24-c5d36b31d66c@ford.com>
-References: <20250103-vuart-ns8250-v3-v1-0-c5d36b31d66c@ford.com>
-In-Reply-To: <20250103-vuart-ns8250-v3-v1-0-c5d36b31d66c@ford.com>
-To: xen-devel@lists.xenproject.org
-Cc: Stefano Stabellini <sstabellini@kernel.org>, 
- Julien Grall <julien@xen.org>, Michal Orzel <michal.orzel@amd.com>, 
- Andrew Cooper <andrew.cooper3@citrix.com>, 
- Anthony PERARD <anthony.perard@vates.tech>, Jan Beulich <jbeulich@suse.com>, 
- =?utf-8?q?Roger_Pau_Monn=C3=A9?= <roger.pau@citrix.com>, 
- Denis Mukhin <dmukhin@ford.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1735955892; l=6584;
- i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=ht6Wazj1keo9tj+WEpSpwlWS9w1mUW+HbPE+9o8P0XA=;
- b=a9v2A+pEGC73S64duP7Evt85PvPWNZaAkUU7eN+j8YqqbMH0bZXfZJ28pMx0ePRJsPx1uTi6w
- Bw2REOs04J5AizYVsUfSAOcGa9KX2lR3rudN3+aJ/KzFXDA+5IQITHi
-X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
- pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
-X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
+Message-Id: <20250106-upstream-v1-1-a16879b78ffd@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAPhEe2cC/x3MSwqAIBRG4a3EHSdoVGBbiQZmf3WhF5oRSXtPG
+ n5wOJE8HMNTk0VyuNjzviWoPCM7m22C4CGZCllUUslahMOfDmYVClYb6NoOpqSUHw4j3/+qpX4
+ JeKh73w/ykkCDYQAAAA==
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736131842; l=3358;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=0vJza6mORdA09fG39CPF0TZT9NAGC+UO9Oed6hi3bPM=;
+ b=pWEyFH+FovdewVUB8NJxC/3swuzP3b3j+tGRFi4lyJh+rCZGQk1ZBkq2nex7ogqvNJ6Pcj+jG
+ I9lYtIydM9pCP1dgB2sm0AlOmcj1vuP2P244/62z+TZX/x+sREAnJ/b
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If virtual UART prints on the physical console, the behavior is updated to:
-- no prefix for Dom0 output;
-- DOM$NUM for DomUs when not in focus, otherwise no prefix.
+CIS sink need caching the Codec Configured when releasing by Pixel,
+state machine is releasing -> Codec. If streamming -> idle, CIS sink
+was silent after resume music.
 
-Introduce printk_noprefix() for convenient printouts which skip '(XEN)'
-prefix on the physical console. This is needed for the case when physical
-console is owned by a domain with in-hypervisor UART emulation enabled.
-
-Add printk_noprefix() to exception into ECLAIR deviations list for
-rule MC3A2.R17.1.
-
-Use guest_printk() in all current in-hypervisor UART emulators. That aligns
-behavior with debug I/O port 0xe9 handler in x86 port and slightly improves the
-logging since guest_printk() already prints the domain ID.
-
-Signed-off-by: Denis Mukhin <dmukhin@ford.com>
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- automation/eclair_analysis/ECLAIR/deviations.ecl | 1 +
- xen/arch/arm/vpl011.c                            | 6 +++---
- xen/arch/arm/vuart.c                             | 8 +++++++-
- xen/arch/x86/hvm/vuart-ns16550.c                 | 7 +++++--
- xen/drivers/char/console.c                       | 8 ++++++++
- xen/include/xen/lib.h                            | 3 +++
- 6 files changed, 27 insertions(+), 6 deletions(-)
+ src/shared/bap.c | 43 +++++++++++++++++++++++++++++++------------
+ 1 file changed, 31 insertions(+), 12 deletions(-)
 
-diff --git a/automation/eclair_analysis/ECLAIR/deviations.ecl b/automation/eclair_analysis/ECLAIR/deviations.ecl
-index ae25eeb76ac938588d16c9b4f9f116ddcaf97956..d94a8bc59d0b562cc285bb236dbac41a151042ac 100644
---- a/automation/eclair_analysis/ECLAIR/deviations.ecl
-+++ b/automation/eclair_analysis/ECLAIR/deviations.ecl
-@@ -523,6 +523,7 @@ safe."
- -config=MC3A2.R17.1,reports+={deliberate,"any_area(^.*va_list.*$&&context(ancestor_or_self(name(panic)&&kind(function))))"}
- -config=MC3A2.R17.1,reports+={deliberate,"any_area(^.*va_list.*$&&context(ancestor_or_self(name(elf_call_log_callback)&&kind(function))))"}
- -config=MC3A2.R17.1,reports+={deliberate,"any_area(^.*va_list.*$&&context(ancestor_or_self(name(vprintk_common)&&kind(function))))"}
-+-config=MC3A2.R17.1,reports+={deliberate,"any_area(^.*va_list.*$&&context(ancestor_or_self(name(printk_noprefix)&&kind(function))))"}
- -config=MC3A2.R17.1,macros+={hide , "^va_(arg|start|copy|end)$"}
- -doc_end
- 
-diff --git a/xen/arch/arm/vpl011.c b/xen/arch/arm/vpl011.c
-index efe77c13007716d0e0d70ab5ccf5f94268d5b693..ab85893174e76c5ec4350931a030760c9e0331b0 100644
---- a/xen/arch/arm/vpl011.c
-+++ b/xen/arch/arm/vpl011.c
-@@ -89,7 +89,7 @@ static void vpl011_write_data_xen(struct domain *d, uint8_t data)
-     {
-         if ( intf->out_prod == 1 )
-         {
--            printk("%c", data);
-+            printk_noprefix("%c", data);
-             intf->out_prod = 0;
-         }
-         else
-@@ -97,7 +97,7 @@ static void vpl011_write_data_xen(struct domain *d, uint8_t data)
-             if ( data != '\n' )
-                 intf->out[intf->out_prod++] = '\n';
-             intf->out[intf->out_prod++] = '\0';
--            printk("%s", intf->out);
-+            printk_noprefix("%s", intf->out);
-             intf->out_prod = 0;
-         }
-     }
-@@ -109,7 +109,7 @@ static void vpl011_write_data_xen(struct domain *d, uint8_t data)
-             if ( data != '\n' )
-                 intf->out[intf->out_prod++] = '\n';
-             intf->out[intf->out_prod++] = '\0';
--            printk("DOM%u: %s", d->domain_id, intf->out);
-+            guest_printk(d, "%s", intf->out);
-             intf->out_prod = 0;
-         }
-     }
-diff --git a/xen/arch/arm/vuart.c b/xen/arch/arm/vuart.c
-index 03366da17a604502f6e0afb45e8824c9d7cfa3dd..0e0fba344b68760463e894dc43133121bccbd960 100644
---- a/xen/arch/arm/vuart.c
-+++ b/xen/arch/arm/vuart.c
-@@ -31,6 +31,7 @@
- #include <xen/serial.h>
- #include <asm/mmio.h>
- #include <xen/perfc.h>
-+#include <xen/console.h>
- 
- #include "vuart.h"
- 
-@@ -87,7 +88,12 @@ static void hwdom_vuart_print_char(struct vcpu *v, char c)
-         if ( c != '\n' )
-             uart->buf[uart->idx++] = '\n';
-         uart->buf[uart->idx] = '\0';
--        printk(XENLOG_G_DEBUG "DOM%u: %s", d->domain_id, uart->buf);
-+
-+        if ( d->domain_id == console_get_owner() )
-+            printk_noprefix("%s", uart->buf);
-+        else
-+            guest_printk(d, "%s", uart->buf);
-+
-         uart->idx = 0;
-     }
-     spin_unlock(&uart->lock);
-diff --git a/xen/arch/x86/hvm/vuart-ns16550.c b/xen/arch/x86/hvm/vuart-ns16550.c
-index d0c19f53399bd8241f54d2fe2716e62046b8e59d..67cc7e9acc396a2f4346aebeef85d4b96c0d0e3f 100644
---- a/xen/arch/x86/hvm/vuart-ns16550.c
-+++ b/xen/arch/x86/hvm/vuart-ns16550.c
-@@ -35,6 +35,7 @@
- #include <asm/setup.h>   /* max_init_domid */
- #include <public/io/console.h>
- #include <xen/8250-uart.h>
-+#include <xen/console.h>
- #include <xen/ctype.h>
- #include <xen/ioreq.h>
- #include <xen/resource.h>
-@@ -899,10 +900,12 @@ static int cf_check ns16550_putchar(struct domain *d, char ch)
-         regs[UART_LSR] |= UART_LSR_DR | val;
- 
-         /*
--         * Echo the user input on Xen console.
-+         * Echo the user input on Xen console iff Xen console input is owned
-+         * by NS16550 domain.
-          * NB: use 'console_timestamps=none' to disable Xen timestamps.
-          */
--        printk("%c", ch);
-+        if ( d->domain_id == console_get_owner() )
-+            printk_noprefix("%c", ch);
- 
-         /* FIXME: check FCR when to fire an interrupt */
-         ns16550_irq_check(vdev);
-diff --git a/xen/drivers/char/console.c b/xen/drivers/char/console.c
-index 96375067164980a138b1a93161712c0758f4f7fe..64abde479305910d1a962e68d5c1f0c25000cb3d 100644
---- a/xen/drivers/char/console.c
-+++ b/xen/drivers/char/console.c
-@@ -1026,6 +1026,14 @@ void printk(const char *fmt, ...)
-     va_end(args);
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index 167501282..a7f5dec92 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -1063,6 +1063,28 @@ static void stream_notify_metadata(struct bt_bap_stream *stream)
+ 	free(status);
  }
  
-+void printk_noprefix(const char *fmt, ...)
++static void stream_notify_release(struct bt_bap_stream *stream)
 +{
-+    va_list args;
-+    va_start(args, fmt);
-+    vprintk_common("", fmt, args);
-+    va_end(args);
++	struct bt_bap_endpoint *ep = stream->ep;
++	struct bt_ascs_ase_status *status;
++	size_t len;
++
++	DBG(stream->bap, "stream %p", stream);
++
++	len = sizeof(*status);
++	status = malloc(len);
++
++	memset(status, 0, len);
++	status->id = ep->id;
++	ep->state = BT_BAP_STREAM_STATE_RELEASING;
++	status->state = ep->state;
++
++	gatt_db_attribute_notify(ep->attr, (void *) status, len,
++					bt_bap_get_att(stream->bap));
++
++	free(status);
 +}
 +
- void guest_printk(const struct domain *d, const char *fmt, ...)
+ static struct bt_bap *bt_bap_ref_safe(struct bt_bap *bap)
  {
-     va_list args;
-diff --git a/xen/include/xen/lib.h b/xen/include/xen/lib.h
-index 81b722ea3e801e9089aaf8758249feb3a758c4f7..e55b8fac8d4d121262a56948638d83f1146e5a06 100644
---- a/xen/include/xen/lib.h
-+++ b/xen/include/xen/lib.h
-@@ -61,6 +61,9 @@ debugtrace_printk(const char *fmt, ...) {}
- extern void printk(const char *fmt, ...)
-     __attribute__ ((format (printf, 1, 2), cold));
+ 	if (!bap || !bap->ref_count || !queue_find(sessions, NULL, bap))
+@@ -1634,7 +1656,7 @@ static bool stream_notify_state(void *data)
+ 	struct bt_bap_stream *stream = data;
+ 	struct bt_bap_endpoint *ep = stream->ep;
  
-+extern void printk_noprefix(const char *fmt, ...)
-+    __attribute__ ((format (printf, 1, 2), cold));
-+
- #define printk_once(fmt, args...)               \
- ({                                              \
-     static bool __read_mostly once_;            \
+-	DBG(stream->bap, "stream %p", stream);
++	DBG(stream->bap, "stream %p status %d", stream, ep->state);
+ 
+ 	if (stream->state_id) {
+ 		timeout_remove(stream->state_id);
+@@ -1655,6 +1677,9 @@ static bool stream_notify_state(void *data)
+ 	case BT_ASCS_ASE_STATE_DISABLING:
+ 		stream_notify_metadata(stream);
+ 		break;
++	case BT_ASCS_ASE_STATE_RELEASING:
++		stream_notify_release(stream);
++		break;
+ 	}
+ 
+ 	return false;
+@@ -1936,9 +1961,7 @@ static uint8_t stream_disable(struct bt_bap_stream *stream, struct iovec *rsp)
+ 	/* Sink can autonomously transit to QOS while source needs to go to
+ 	 * Disabling until BT_ASCS_STOP is received.
+ 	 */
+-	if (stream->ep->dir == BT_BAP_SINK)
+-		stream_set_state(stream, BT_BAP_STREAM_STATE_QOS);
+-	else
++	if (stream->ep->dir == BT_BAP_SOURCE)
+ 		stream_set_state(stream, BT_BAP_STREAM_STATE_DISABLING);
+ 
+ 	return 0;
+@@ -2068,17 +2091,11 @@ static unsigned int bap_ucast_metadata(struct bt_bap_stream *stream,
+ 
+ static uint8_t stream_release(struct bt_bap_stream *stream, struct iovec *rsp)
+ {
+-	struct bt_bap_pac *pac;
+-
+ 	DBG(stream->bap, "stream %p", stream);
+ 
+ 	ascs_ase_rsp_success(rsp, stream->ep->id);
+ 
+-	pac = stream->lpac;
+-	if (pac->ops && pac->ops->clear)
+-		pac->ops->clear(stream, pac->user_data);
+-
+-	stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
++	stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
+ 
+ 	return 0;
+ }
+@@ -6172,8 +6189,10 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
+ 
+ 	DBG(stream->bap, "stream %p io disconnected", stream);
+ 
+-	bt_bap_stream_set_io(stream, -1);
++	if (stream->ep->state == BT_ASCS_ASE_STATE_RELEASING)
++		stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
+ 
++	bt_bap_stream_set_io(stream, -1);
+ 	return false;
+ }
+ 
 
+---
+base-commit: dfb1ffdc95a00bc06d81a75c11ab5ad2e24d37bf
+change-id: 20250106-upstream-1ec9ae96cda4
+
+Best regards,
 -- 
-2.34.1
+Yang Li <yang.li@amlogic.com>
 
