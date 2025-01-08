@@ -1,130 +1,93 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Wed, 08 Jan 2025 19:09:28 +0530
-Subject: [PATCH 2/2] bus: mhi: host: pci_generic: Recover the device
- synchronously from mhi_pci_runtime_resume()
+From: Nuno Sa <nuno.sa@analog.com>
+Date: Wed, 08 Jan 2025 16:44:23 +0000
+Subject: [PATCH] hwmon: (pmbus/max15301): add support for MAX15303
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250108-mhi_recovery_fix-v1-2-a0a00a17da46@linaro.org>
-References: <20250108-mhi_recovery_fix-v1-0-a0a00a17da46@linaro.org>
-In-Reply-To: <20250108-mhi_recovery_fix-v1-0-a0a00a17da46@linaro.org>
-To: mhi@lists.linux.dev, Loic Poulain <loic.poulain@linaro.org>
-Cc: Johan Hovold <johan@kernel.org>, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- stable@vger.kernel.org
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3728;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=PbUVuYWUfqmustC2WiHHQap1G0eBPYmJC2LfYKutaU8=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnfoAR34yGYQF9ycq3TNgC1rXfy1K3VN1q2TEbX
- bZuU9qbRAuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ36AEQAKCRBVnxHm/pHO
- 9dAqB/49P68aL4DjPjADl5s3uTq/Fv4ZvUlOBpNpEAB3hxBsN5sU9I4NLNghM7SWTeWw7zQVb5s
- iz2A2ROGdhVQZj5E7awq6zDUIR+xMsm4TCet1Z/jsrbs6wcX7GDOFCptJq/wNzJHyEW4EnvuXmt
- 9SW8Lc9aM+bDif5e3yn5jTal4/Q7tQh7/MjK3mYT1Bif09i9+H9jImoK0n0H6/fyWLvIPfMIpHO
- kmIf9OXb8+d9R7+q28oDVQxCCFHUBAo/ARtQDN8w1j5eMff9TdpB1fOQ7CvXXj4AwGC7uY528XL
- V0OtkzTkawrMyxuqfeXM4KTp4fhfhNbKJh53fWyEan0Y1epI
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250108-dev-max15303-v1-1-9154eb2c9d9e@analog.com>
+X-B4-Tracking: v=1; b=H4sIAGarfmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDQwML3ZTUMt3cxApDU2MDY93UZNM0S7OU5KRUyyQloJaCotS0zAqwcdG
+ xtbUAJnOORV4AAAA=
+X-Change-ID: 20250108-dev-max15303-ec5f96dcbe9b
+To: linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Daniel Nilsson <daniel.nilsson@flex.com>, 
+ Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
+ Jonathan Corbet <corbet@lwn.net>, 
+ Delphine CC Chiu <Delphine_CC_Chiu@Wiwynn.com>, 
+ Robin Getz <rgetz503@gmail.com>, Erik Rosen <erik.rosen@metormote.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736354673; l=2244;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=phBtWv0JmSXD1jmhsvkWUdoTzfmFQsSMU7yBfuZFESo=;
+ b=Ap9HKOT5a++EFRAYJRnCQ68XtDUslwWqw5r93RK23dXVBExyHuZbp6iP6iwgpeCoie3HC8fK9
+ BLdQZKGxnvMC55d3aYaW4fmc3QwicGkTqA/1Yj4yTW0C0f4e4R7q62A
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, in mhi_pci_runtime_resume(), if the resume fails, recovery_work
-is started asynchronously and success is returned. But this doesn't align
-with what PM core expects as documented in
-Documentation/power/runtime_pm.rst:
+The MAX15303 is a full-featured, flexible, efficient, 6A digital
+point-of-load (PoL) controller with integrated switching MOSFETs. It
+contains advanced power management and telemetry features.
 
-"Once the subsystem-level resume callback (or the driver resume callback,
-if invoked directly) has completed successfully, the PM core regards the
-device as fully operational, which means that the device _must_ be able to
-complete I/O operations as needed.  The runtime PM status of the device is
-then 'active'."
-
-So the PM core ends up marking the runtime PM status of the device as
-'active', even though the device is not able to handle the I/O operations.
-This same condition more or less applies to system resume as well.
-
-So to avoid this ambiguity, try to recover the device synchronously from
-mhi_pci_runtime_resume() and return the actual error code in the case of
-recovery failure.
-
-For doing so, move the recovery code to __mhi_pci_recovery_work() helper
-and call that from both mhi_pci_recovery_work() and
-mhi_pci_runtime_resume(). Former still ignores the return value, while the
-latter passes it to PM core.
-
-Cc: stable@vger.kernel.org # 5.13
-Reported-by: Johan Hovold <johan@kernel.org>
-Closes: https://lore.kernel.org/mhi/Z2PbEPYpqFfrLSJi@hovoldconsulting.com
-Fixes: d3800c1dce24 ("bus: mhi: pci_generic: Add support for runtime PM")
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Tested-by: Robin Getz <rgetz503@gmail.com>
+Signed-off-by: Nuno Sa <nuno.sa@analog.com>
 ---
- drivers/bus/mhi/host/pci_generic.c | 29 +++++++++++++++++------------
- 1 file changed, 17 insertions(+), 12 deletions(-)
+ Documentation/hwmon/max15301.rst | 8 ++++++++
+ drivers/hwmon/pmbus/Kconfig      | 2 +-
+ drivers/hwmon/pmbus/max15301.c   | 1 +
+ 3 files changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/bus/mhi/host/pci_generic.c b/drivers/bus/mhi/host/pci_generic.c
-index e92df380c785..f6de407e077e 100644
---- a/drivers/bus/mhi/host/pci_generic.c
-+++ b/drivers/bus/mhi/host/pci_generic.c
-@@ -997,10 +997,8 @@ static void mhi_pci_runtime_put(struct mhi_controller *mhi_cntrl)
- 	pm_runtime_put(mhi_cntrl->cntrl_dev);
- }
+diff --git a/Documentation/hwmon/max15301.rst b/Documentation/hwmon/max15301.rst
+index e3dc22fe1c6d0035593e59481a610452eec8abf9..e2222e98304fda5885b94bc37c0f1f16474ed271 100644
+--- a/Documentation/hwmon/max15301.rst
++++ b/Documentation/hwmon/max15301.rst
+@@ -13,6 +13,14 @@ Supported chips:
  
--static void mhi_pci_recovery_work(struct work_struct *work)
-+static int __mhi_pci_recovery_work(struct mhi_pci_device *mhi_pdev)
- {
--	struct mhi_pci_device *mhi_pdev = container_of(work, struct mhi_pci_device,
--						       recovery_work);
- 	struct mhi_controller *mhi_cntrl = &mhi_pdev->mhi_cntrl;
- 	struct pci_dev *pdev = to_pci_dev(mhi_cntrl->cntrl_dev);
- 	int err;
-@@ -1035,13 +1033,25 @@ static void mhi_pci_recovery_work(struct work_struct *work)
+     Datasheet: https://datasheets.maximintegrated.com/en/ds/MAX15301.pdf
  
- 	set_bit(MHI_PCI_DEV_STARTED, &mhi_pdev->status);
- 	mod_timer(&mhi_pdev->health_check_timer, jiffies + HEALTH_CHECK_PERIOD);
--	return;
++  * Maxim MAX15303
 +
-+	return 0;
- 
- err_unprepare:
- 	mhi_unprepare_after_power_down(mhi_cntrl);
- err_try_reset:
--	if (pci_try_reset_function(pdev))
-+	err = pci_try_reset_function(pdev);
-+	if (err)
- 		dev_err(&pdev->dev, "Recovery failed\n");
++    Prefix: 'max15303'
 +
-+	return err;
-+}
++    Addresses scanned: -
 +
-+static void mhi_pci_recovery_work(struct work_struct *work)
-+{
-+	struct mhi_pci_device *mhi_pdev = container_of(work, struct mhi_pci_device,
-+						       recovery_work);
++    Datasheet: https://www.analog.com/media/en/technical-documentation/data-sheets/max15303.pdf
 +
-+	__mhi_pci_recovery_work(mhi_pdev);
- }
+ Author: Erik Rosen <erik.rosen@metormote.com>
  
- static void health_check(struct timer_list *t)
-@@ -1400,15 +1410,10 @@ static int __maybe_unused mhi_pci_runtime_resume(struct device *dev)
- 	return 0;
  
- err_recovery:
--	/* Do not fail to not mess up our PCI device state, the device likely
--	 * lost power (d3cold) and we simply need to reset it from the recovery
--	 * procedure, trigger the recovery asynchronously to prevent system
--	 * suspend exit delaying.
--	 */
--	queue_work(system_long_wq, &mhi_pdev->recovery_work);
-+	err = __mhi_pci_recovery_work(mhi_pdev);
- 	pm_runtime_mark_last_busy(dev);
+diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
+index 233533e28f7678c41bc1973ebcc3b53b10854baf..419469f40ba0283c72b71071566efec575263e98 100644
+--- a/drivers/hwmon/pmbus/Kconfig
++++ b/drivers/hwmon/pmbus/Kconfig
+@@ -260,7 +260,7 @@ config SENSORS_MAX15301
+ 	tristate "Maxim MAX15301"
+ 	help
+ 	  If you say yes here you get hardware monitoring support for Maxim
+-	  MAX15301, as well as for Flex BMR461.
++	  MAX15301, MAX15303, as well as for Flex BMR461.
  
--	return 0;
-+	return err;
- }
- 
- static int  __maybe_unused mhi_pci_suspend(struct device *dev)
+ 	  This driver can also be built as a module. If so, the module will
+ 	  be called max15301.
+diff --git a/drivers/hwmon/pmbus/max15301.c b/drivers/hwmon/pmbus/max15301.c
+index 50dfd477772ffe680446b5c0bf31d45a70042d27..d5810b88ea8d8dad151e2597da205dbab6155ae1 100644
+--- a/drivers/hwmon/pmbus/max15301.c
++++ b/drivers/hwmon/pmbus/max15301.c
+@@ -25,6 +25,7 @@
+ static const struct i2c_device_id max15301_id[] = {
+ 	{ "bmr461" },
+ 	{ "max15301" },
++	{ "max15303" },
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(i2c, max15301_id);
 
--- 
-2.25.1
+---
+base-commit: adc52dd4078067fabf1431036ba180eafd8a7eee
+change-id: 20250108-dev-max15303-ec5f96dcbe9b
+--
+
+Thanks!
+- Nuno Sá
 
