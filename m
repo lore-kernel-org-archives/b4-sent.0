@@ -1,114 +1,62 @@
-From: "Vasiliy Doylov (NekoCWD)" <nekodevelopper@gmail.com>
-Date: Fri, 10 Jan 2025 00:37:50 +0300
-Subject: [PATCH v3 4/4] input: cyttsp5: add startup retry
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Date: Thu, 09 Jan 2025 22:45:46 +0100
+Subject: [PATCH] drm/virtio: Support partial maps of GEM objects
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250110-nekocwd-upstreaming-cyttsp5-v3-4-b33659c8effc@gmail.com>
-References: <20250110-nekocwd-upstreaming-cyttsp5-v3-0-b33659c8effc@gmail.com>
-In-Reply-To: <20250110-nekocwd-upstreaming-cyttsp5-v3-0-b33659c8effc@gmail.com>
-To: Linus Walleij <linus.walleij@linaro.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- James Hilliard <james.hilliard1@gmail.com>, 
- "Vasiliy Doylov (NekoCWD)" <nekodevelopper@gmail.com>
+Message-Id: <20250109-virtgpu-gem-partial-map-v1-1-a914b48776bd@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIlDgGcC/x3MTQqAIBBA4avErBvQSqGuEi2kJhvoR8aKILx70
+ vJbvPdCJGGK0BUvCN0c+dgzdFnAuLjdE/KUDZWqjNKqxZvl9OFCTxsGJye7FTcXsK4NjY2yxk4
+ ach2EZn7+cz+k9AG7IPqtaQAAAA==
+X-Change-ID: 20250109-virtgpu-gem-partial-map-335ec40656d1
+To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
+ Gurchetan Singh <gurchetansingh@chromium.org>, 
+ Chia-I Wu <olvaffe@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
+ Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2675;
- i=nekodevelopper@gmail.com; h=from:subject:message-id;
- bh=X51YJwi8tEku39ZDVrFKacvBYHetK/hiRJthYLceyxE=;
- b=owGbwMvMwCW2fZ/SFZeSpU2Mp9WSGNIbHM80Rk/+2NYxW+mLiUXIiv9N2bqGbyaqFmyamf3if
- OWSvS7RHaUsDGJcDLJiiiw2Gz1mi+WHS06a9lQBZg4rE8gQBi5OAZjIxhaG/3lXj65WMjpsay/H
- 9c2jaHcbz5SSl+o6f9X7Wvv+X8qqLWH4H/zl3cRHYXWX77PNmpY1zU7knoJLteSsS7O/aNrzHVp
- qzAQA
-X-Developer-Key: i=nekodevelopper@gmail.com; a=openpgp;
- fpr=3CB1489B166F57199296E520B7BE22D44474A582
-X-Endpoint-Received: by B4 Relay for nekodevelopper@gmail.com/default with auth_id=314
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736459146; l=1210;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=6LaFAVHHmrz+1IfVs72P1kiVYM0D1mQ7zg4Ht9kbRhU=;
+ b=a9a4yi1JLL93u7BZpaJzIF6IITCFbBFAUMuKnh7fGXMrwgkF7Il9gEb5VBIkbOhjguOZiL1zz
+ 12Ar6JMxxb5AnfUsdFILyBjAOjDb96QbUMLStBIL0vBG1sNmoeNR72p
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some firmware/configuration variants fails to start with first attempt.
-Vendors drivers tries to start multiple times.
+Those are useful to implement coherent cross-vm mmap.
 
-Co-developed-by: James Hilliard <james.hilliard1@gmail.com>
-Signed-off-by: James Hilliard <james.hilliard1@gmail.com>
-Signed-off-by: Vasiliy Doylov (NekoCWD) <nekodevelopper@gmail.com>
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- drivers/input/touchscreen/cyttsp5.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ drivers/gpu/drm/virtio/virtgpu_vram.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/input/touchscreen/cyttsp5.c b/drivers/input/touchscreen/cyttsp5.c
-index 4860ce751c913c605d5f72dad66d1eba9825a900..c8771f44b8e35fcdbf278034f25b0be2bb392869 100644
---- a/drivers/input/touchscreen/cyttsp5.c
-+++ b/drivers/input/touchscreen/cyttsp5.c
-@@ -29,6 +29,7 @@
- #define CY_PIP_1P7_EMPTY_BUF			0xFF00
- #define CYTTSP5_PREALLOCATED_CMD_BUFFER		32
- #define CY_BITS_PER_BTN				1
-+#define CY_CORE_STARTUP_RETRY_COUNT		10
- #define CY_NUM_BTN_EVENT_ID			GENMASK(CY_BITS_PER_BTN - 1, 0)
+diff --git a/drivers/gpu/drm/virtio/virtgpu_vram.c b/drivers/gpu/drm/virtio/virtgpu_vram.c
+index 25df81c027837c248a746e41856b5aa7e216b8d5..64e2c6dbdd678ac4c0da89fdd4c9dbf937c2c335 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_vram.c
++++ b/drivers/gpu/drm/virtio/virtgpu_vram.c
+@@ -56,12 +56,11 @@ static int virtio_gpu_vram_mmap(struct drm_gem_object *obj,
+ 	else if (vram->map_info == VIRTIO_GPU_MAP_CACHE_UNCACHED)
+ 		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
  
- #define MAX_AREA				255
-@@ -824,8 +825,10 @@ static int cyttsp5_fill_all_touch(struct cyttsp5 *ts)
+-	/* Partial mappings of GEM buffers don't happen much in practice. */
+-	if (vm_size != vram->vram_node.size)
++	if (vm_size > vram->vram_node.size)
+ 		return -EINVAL;
  
- static int cyttsp5_startup(struct cyttsp5 *ts)
- {
-+	int retry = CY_CORE_STARTUP_RETRY_COUNT;
- 	int error;
- 
-+reset:
- 	error = cyttsp5_deassert_int(ts);
- 	if (error) {
- 		dev_err(ts->dev, "Error on deassert int r=%d\n", error);
-@@ -834,6 +837,8 @@ static int cyttsp5_startup(struct cyttsp5 *ts)
- 	error = cyttsp5_get_hid_descriptor(ts, &ts->hid_desc);
- 	if (error < 0) {
- 		dev_err(ts->dev, "Error on getting HID descriptor r=%d\n", error);
-+		if (retry--)
-+			goto reset;
- 		return error;
- 	}
- 
-@@ -845,17 +850,23 @@ static int cyttsp5_startup(struct cyttsp5 *ts)
- 		error = cyttsp5_hid_output_bl_launch_app(ts);
- 		if (error < 0) {
- 			dev_err(ts->dev, "Error on launch app r=%d\n", error);
-+			if (retry--)
-+				goto reset;
- 			return error;
- 		}
- 
- 		error = cyttsp5_get_hid_descriptor(ts, &ts->hid_desc);
- 		if (error < 0) {
- 			dev_err(ts->dev, "Error on getting HID descriptor r=%d\n", error);
-+			if (retry--)
-+				goto reset;
- 			return error;
- 		}
- 
- 		if (ts->hid_desc.packet_id == HID_BL_REPORT_ID) {
- 			dev_err(ts->dev, "Error on launch app still in bootloader\n");
-+			if (retry--)
-+				goto reset;
- 			return -EPROTO;
- 		}
- 	}
-@@ -863,12 +874,16 @@ static int cyttsp5_startup(struct cyttsp5 *ts)
- 	error = cyttsp5_fill_all_touch(ts);
- 	if (error < 0) {
- 		dev_err(ts->dev, "Error on report descriptor r=%d\n", error);
-+		if (retry--)
-+			goto reset;
- 		return error;
- 	}
- 
- 	error = cyttsp5_hid_output_get_sysinfo(ts);
- 	if (error) {
- 		dev_err(ts->dev, "Error on getting sysinfo r=%d\n", error);
-+		if (retry--)
-+			goto reset;
- 		return error;
- 	}
- 
+ 	ret = io_remap_pfn_range(vma, vma->vm_start,
+-				 vram->vram_node.start >> PAGE_SHIFT,
++				 (vram->vram_node.start >> PAGE_SHIFT) + vma->vm_pgoff,
+ 				 vm_size, vma->vm_page_prot);
+ 	return ret;
+ }
 
--- 
-2.47.1
+---
+base-commit: 643e2e259c2b25a2af0ae4c23c6e16586d9fd19c
+change-id: 20250109-virtgpu-gem-partial-map-335ec40656d1
 
