@@ -1,251 +1,77 @@
-From: Ao Xu <ao.xu@amlogic.com>
-Date: Fri, 10 Jan 2025 13:40:01 +0800
-Subject: [PATCH 11/11] arm64: dts: amlogic: s4: add DRM support [1/1]
+From: Chuan Liu <chuan.liu@amlogic.com>
+Subject: [PATCH 0/2] clk: amlogic: Limit the rate boundaries of clk_hw
+Date: Fri, 10 Jan 2025 19:47:09 +0800
+Message-Id: <20250110-limit-rate-range-of-clk-v1-0-dd618adc4aa8@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250110-drm-s4-v1-11-cbc2d5edaae8@amlogic.com>
-References: <20250110-drm-s4-v1-0-cbc2d5edaae8@amlogic.com>
-In-Reply-To: <20250110-drm-s4-v1-0-cbc2d5edaae8@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Kevin Hilman <khilman@baylibre.com>, 
- Jerome Brunet <jbrunet@baylibre.com>, 
+X-B4-Tracking: v=1; b=H4sIAL0IgWcC/x2MSwqAMAwFr1KyNtAWWsGriAutUYNf2iKCeHejm
+ 4FheO+GRJEpQaVuiHRy4n0TMYWCMLXbSMi9OFhtnTZG48IrZ4xtJsHX9wHDMqM33vpQdr4PDmR
+ 9RBr4+p/r5nleLUKm2GkAAAA=
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
  Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: dri-devel@lists.freedesktop.org, linux-amlogic@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Ao Xu <ao.xu@amlogic.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1736487593; l=6247;
- i=ao.xu@amlogic.com; s=20250103; h=from:subject:message-id;
- bh=XuHerOPR1COry4ixXJL2bKpILc0PgbExEjuuK22BMs8=;
- b=PJJmhdfuiVW6iCkU5sshDWKvx3mCxxGLTp2FuK353sgQWkCzjibuRHzv/pfGySXCJx4j4+VVW
- wPBh2MRtFvvCW5LiVkBYILuGYfU6rDpUG5mlAT/xe/vVK7vzU4tPPrU
-X-Developer-Key: i=ao.xu@amlogic.com; a=ed25519;
- pk=c0TSXrwQuL4EhPVf3lJ676U27ax2yfFTqmRoseP/fA8=
-X-Endpoint-Received: by B4 Relay for ao.xu@amlogic.com/20250103 with auth_id=308
+Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-amlogic@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ Chuan Liu <chuan.liu@amlogic.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736509666; l=1897;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=CQAk7BNs7sCcSti/FzDNut5RqmprsFJZKhzVyPEixDU=;
+ b=K/a3PUYWKhuKUwR/mV8m0LWvJiDK+kJ4UGtfSAsu+LGb3ueehwFWJ7GnAvwTTf5lm2umeQD+w
+ D3z32mIAdFNBggglBhIP2ZH8UbCXQ6YSwbkdCwNXoahb14mEEDXtE84
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Device Tree support for the DRM subsystem on the Amlogic S4 SoC.
-Enable nodes for canvas, vpu, and HDMI controllers.
-Enable nodes for CVBS and HDMI bridge connector components.
+The following figure shows a rough hardware connection block diagram
+between "clk_hw" and "clk_consumer". The frequency of the clock is
+affected by the following two situations:
+1. The hardware limitations of "clk_hw" itself. For instance, the
+effective output frequency range of some PLL designs is 3G to 6G.
+2. The timing constraints for the electrical "line" between "clk_hw" and
+"clk_consumer". Timing constraints are applied to each clock network
+within the chip, which limits the maximum frequency of the "line".
 
-Signed-off-by: Ao Xu <ao.xu@amlogic.com>
+   ________             ________________
+  |        |   line    |                |
+  | clk_hw |-----+---->| clk_consumer 1 |
+  |________|     |     |________________|
+                 |
+		 |            ...
+                 |      ________________
+		 |     |                |
+		 +---->| clk_consumer n |
+		       |________________|
+
+The frequency boundaries specified for clk_hw in the patch are the
+combined frequency boundaries of "clk_hw" and "line", just like the
+frequency boundaries obtained after clk_core_get_boundaries() combines
+each clks_node.
+
+The min_rate/max_rate of the clk_hw can be described in a less strict
+way as follows:
+* min_rate = max("clk_hw", "line");
+* max_rate = min("clk_hw", "line");
+
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     |  39 +++++++
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 121 +++++++++++++++++++++
- 2 files changed, 160 insertions(+)
+Chuan Liu (2):
+      clk: Add initialize the rate boundaries of the clk provider
+      clk: amlogic: c3: Limit the rate boundaries of clk_hw
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
-index 6730c44642d2910d42ec0c4adf49fefc3514dbec..e40206192ac0f7b80da23e629aa3044c04f7e969 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
-@@ -129,6 +129,27 @@ vddcpu: regulator-vddcpu {
- 				<699000 98>,
- 				<689000 100>;
- 	};
-+
-+	cvbs-connector {
-+		compatible = "composite-video-connector";
-+
-+		port {
-+			cvbs_connector_in: endpoint {
-+				remote-endpoint = <&cvbs_vdac_out>;
-+			};
-+		};
-+	};
-+
-+	hdmi-connector {
-+		compatible = "hdmi-connector";
-+		type = "a";
-+
-+		port {
-+			hdmi_connector_in: endpoint {
-+				remote-endpoint = <&hdmi_tx_tmds_out>;
-+			};
-+		};
-+	};
- };
- 
- &pwm_ef {
-@@ -235,3 +256,21 @@ &ethmac {
- 	phy-handle = <&internal_ephy>;
- 	phy-mode = "rmii";
- };
-+
-+&cvbs_vdac_port {
-+	cvbs_vdac_out: endpoint {
-+		remote-endpoint = <&cvbs_connector_in>;
-+	};
-+};
-+
-+&hdmi_tx_tmds_port {
-+	hdmi_tx_tmds_out: endpoint {
-+		remote-endpoint = <&hdmi_connector_in>;
-+	};
-+};
-+
-+&hdmi_tx {
-+	status = "okay";
-+	pinctrl-0 = <&hdmitx_hpd_pins>, <&hdmitx_ddc_pins>;
-+	pinctrl-names = "default";
-+};
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-index 957577d986c0675a503115e1ccbc4387c2051620..ce4a24f0880c09cf4fd06d2046b520335d62a6cd 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-@@ -9,6 +9,7 @@
- #include <dt-bindings/gpio/meson-s4-gpio.h>
- #include <dt-bindings/clock/amlogic,s4-pll-clkc.h>
- #include <dt-bindings/clock/amlogic,s4-peripherals-clkc.h>
-+#include <dt-bindings/reset/amlogic,meson-s4-reset.h>
- #include <dt-bindings/power/meson-s4-power.h>
- #include <dt-bindings/reset/amlogic,meson-s4-reset.h>
- 
-@@ -102,6 +103,50 @@ apb4: bus@fe000000 {
- 			#size-cells = <2>;
- 			ranges = <0x0 0x0 0x0 0xfe000000 0x0 0x480000>;
- 
-+			dmc: bus@36000 {
-+				compatible = "simple-bus";
-+				#address-cells = <2>;
-+				#size-cells = <2>;
-+				ranges = <0x0 0x0 0x0 0x36000 0x0 0x2000>;
-+
-+				canvas: video-lut@48 {
-+					compatible = "amlogic,canvas";
-+					reg = <0x0 0x48 0x0 0x14>;
-+				};
-+			};
-+
-+			hdmi_tx: hdmi-tx@300000 {
-+				compatible = "amlogic,meson-s4-dw-hdmi";
-+				reg = <0x0 0x300000 0x0 0x10000>;
-+				interrupts = <GIC_SPI 204 IRQ_TYPE_EDGE_RISING>;
-+				resets = <&reset RESET_HDMITX_APB>,
-+					 <&reset RESET_HDMITXPHY>,
-+					 <&reset RESET_HDMI_TX>;
-+				reset-names = "hdmitx_apb", "hdmitx", "hdmitx_phy";
-+				clocks = <&clkc_periphs CLKID_HDMI>,
-+					 <&clkc_periphs CLKID_HDMITX_APB>,
-+					 <&clkc_periphs CLKID_VPU_INTR>;
-+				clock-names = "isfr", "iahb", "venci";
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+				#sound-dai-cells = <0>;
-+				status = "disabled";
-+
-+				/* VPU VENC Input */
-+				hdmi_tx_venc_port: port@0 {
-+					reg = <0>;
-+
-+					hdmi_tx_in: endpoint {
-+						remote-endpoint = <&hdmi_tx_out>;
-+					};
-+				};
-+
-+				/* TMDS Output */
-+				hdmi_tx_tmds_port: port@1 {
-+					reg = <1>;
-+				};
-+			};
-+
- 			clkc_periphs: clock-controller@0 {
- 				compatible = "amlogic,s4-peripherals-clkc";
- 				reg = <0x0 0x0 0x0 0x49c>;
-@@ -584,6 +629,24 @@ mux {
- 					};
- 				};
- 
-+				hdmitx_hpd_pins: hdmitx-hpd {
-+					mux {
-+						groups = "hdmitx_hpd_in";
-+						function = "hdmitx";
-+						bias-disable;
-+					};
-+				};
-+
-+				hdmitx_ddc_pins: hdmitx-ddc {
-+					mux {
-+						groups = "hdmitx_sda",
-+								"hdmitx_sck";
-+						function = "hdmitx";
-+						bias-disable;
-+						drive-strength-microamp = <4000>;
-+					};
-+				};
-+
- 			};
- 
- 			gpio_intc: interrupt-controller@4080 {
-@@ -848,5 +911,63 @@ emmc: mmc@fe08c000 {
- 			no-sd;
- 			status = "disabled";
- 		};
-+
-+		vpu: vpu@ff000000 {
-+			compatible = "amlogic,meson-s4-vpu";
-+			reg = <0x0 0xff000000 0x0 0x40000>,
-+				  <0x0 0xfe008000 0x0 0x2000>,
-+				  <0x0 0xfe000000 0x0 0x2000>,
-+				  <0x0 0xfe00c000 0x0 0x0800>,
-+				  <0x0 0xfe010000 0x0 0x0100>;
-+			reg-names = "vpu", "hhi", "clkctrl", "pwrctrl", "sysctrl";
-+			interrupts = <GIC_SPI 197 IRQ_TYPE_EDGE_RISING>;
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			amlogic,canvas = <&canvas>;
-+			power-domains = <&pwrc PWRC_S4_VPU_HDMI_ID>;
-+
-+			clocks = <&clkc_periphs CLKID_VPU>,
-+				 <&clkc_periphs CLKID_VAPB>;
-+			clock-names = "vpu", "vapb";
-+
-+			/*
-+			 * VPU clocking is provided by two identical clock paths
-+			 * VPU_0 and VPU_1 muxed to a single clock by a glitch
-+			 * free mux to safely change frequency while running.
-+			 * Same for VAPB but with a final gate after the glitch free mux.
-+			 */
-+			assigned-clocks = <&clkc_periphs CLKID_VPU_0_SEL>,
-+					  <&clkc_periphs CLKID_VPU_0>,
-+					  <&clkc_periphs CLKID_VPU>, /* Glitch free mux */
-+					  <&clkc_periphs CLKID_VAPB_0_SEL>,
-+					  <&clkc_periphs CLKID_VAPB_0>,
-+					  <&clkc_periphs CLKID_VAPB>; /* Glitch free mux */
-+			assigned-clock-parents = <&clkc_periphs CLKID_FCLK_DIV3>,
-+						 <0>, /* Do Nothing */
-+						 <&clkc_periphs CLKID_VPU_0>,
-+						 <&clkc_periphs CLKID_FCLK_DIV4>,
-+						 <0>, /* Do Nothing */
-+						 <&clkc_periphs CLKID_VAPB_0>;
-+			assigned-clock-rates = <0>, /* Do Nothing */
-+					       <666666666>,
-+					       <0>, /* Do Nothing */
-+					       <0>, /* Do Nothing */
-+					       <250000000>,
-+					       <0>; /* Do Nothing */
-+
-+			/* CVBS VDAC output port */
-+			cvbs_vdac_port: port@0 {
-+				reg = <0>;
-+			};
-+
-+			/* HDMI-TX output port */
-+			hdmi_tx_port: port@1 {
-+				reg = <1>;
-+
-+				hdmi_tx_out: endpoint {
-+					remote-endpoint = <&hdmi_tx_in>;
-+				};
-+			};
-+		};
- 	};
- };
+ drivers/clk/clk.c                  |  4 ++--
+ drivers/clk/meson/c3-peripherals.c | 21 +++++++++++++++++++++
+ drivers/clk/meson/c3-pll.c         |  4 ++++
+ include/linux/clk-provider.h       |  4 ++++
+ 4 files changed, 31 insertions(+), 2 deletions(-)
+---
+base-commit: 1e1fd26ed4ca05cc1f0e5857918da4dd54967f7d
+change-id: 20250110-limit-rate-range-of-clk-61626c7b6dc5
 
+Best regards,
 -- 
-2.43.0
+Chuan Liu <chuan.liu@amlogic.com>
 
