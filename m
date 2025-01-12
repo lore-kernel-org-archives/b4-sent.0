@@ -1,12 +1,15 @@
 From: Vasiliy Doylov <nekodevelopper@gmail.com>
-Date: Sat, 11 Jan 2025 23:11:09 +0300
-Subject: [PATCH 4/4] dt-bindings: iio: accel: mc3230: document mc3510c
+Subject: [PATCH v2 0/5] iio: accel: mc3230: improve driver, add mc3510c
+Date: Sun, 12 Jan 2025 15:06:01 +0300
+Message-Id: <20250112-mainlining-mc3510c-v2-0-322804a545cf@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250111-mainlining-mc3510c-v1-4-57be503addf8@gmail.com>
-References: <20250111-mainlining-mc3510c-v1-0-57be503addf8@gmail.com>
-In-Reply-To: <20250111-mainlining-mc3510c-v1-0-57be503addf8@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACmwg2cC/32NTQrDIBSErxLeuhY1sYaueo+ShfEvD6IJWqQle
+ PfaHKDLb5j55oBsE9oM9+6AZAtm3GIDfulALyp6S9A0Bk65oIwxEhTGFSNGT4LuBaOaiNsgKXe
+ zGkYJbbgn6/B9Sp9T4wXza0uf86OwX/pXVxihRMjZCtorY9z48K21XvUWYKq1fgFmMScjtAAAA
+ A==
+X-Change-ID: 20250111-mainlining-mc3510c-564702fba487
 To: Jonathan Cameron <jic23@kernel.org>, 
  Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -14,41 +17,51 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Vasiliy Doylov <nekodevelopper@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1060;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1129;
  i=nekodevelopper@gmail.com; h=from:subject:message-id;
- bh=kKqPGqcAMrV8Q/3yZlxILQP7a1DF7juDcij9I0w4AmM=;
- b=owGbwMvMwCW2fZ/SFZeSpU2Mp9WSGNKbLsRsbOf57LUpY1Gc8NOvEnNuVggs/qV4PsKL5f6mi
- bJqZisPdpSyMIhxMciKKbLYbPSYLZYfLjlp2lMFmDmsTCBDGLg4BWAiEQyMDC8Z1PhlP+yUbotb
- ZJYgo3bTQ3CiooDiZnc/211fAuXEtBgZ5gkvzPVpmpmaxx9378CsxprO5XYrJtXcUbP9OOt9h0I
- WGwA=
+ bh=51UGbQJDkXeaZdgyZ5/k8YnnHoPQZujzOElYRCDV4aQ=;
+ b=owGbwMvMwCW2fZ/SFZeSpU2Mp9WSGNKbN2j1eUW1f1j4+A+Lo2r+744k09ajswWKXG2m6kQ9O
+ LDSbLppRykLgxgXg6yYIovNRo/ZYvnhkpOmPVWAmcPKBDKEgYtTACbyah7D/7BNouoNp2/59XFm
+ /JnRmaS19tLC1ud3j896VpL2Mermy1qGfxrHcs08JFlZwv7LVXefZHs8UcDPdJKzbO0ez59aFUc
+ 28gAA
 X-Developer-Key: i=nekodevelopper@gmail.com; a=openpgp;
  fpr=3CB1489B166F57199296E520B7BE22D44474A582
 X-Endpoint-Received: by B4 Relay for nekodevelopper@gmail.com/default with auth_id=314
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MC3510C is a 3 asix digital accelerometer.
-It handled by the same driver as MC3230.
-Document it as a trivial device.
+Changes includes:
+- Add mount matrix handling
+- Add match table to work with DT
+- Add MC3510C support
+
+MC3510C use same registors as MC3230, but different value scale.
 
 Signed-off-by: Vasiliy Doylov <nekodevelopper@gmail.com>
 ---
- Documentation/devicetree/bindings/trivial-devices.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v2:
+- Ordered commits
+- Fixed comment style
+- Ordered struct members
+- Fixed device table
+- MC5310C commit splitted
+- Link to v1: https://lore.kernel.org/r/20250111-mainlining-mc3510c-v1-0-57be503addf8@gmail.com
 
-diff --git a/Documentation/devicetree/bindings/trivial-devices.yaml b/Documentation/devicetree/bindings/trivial-devices.yaml
-index fadbd3c041c8c39faedfe62874d4eba25a0bf30e..6c34e4c0dcc6df5a4d8edc5effb80980de820db9 100644
---- a/Documentation/devicetree/bindings/trivial-devices.yaml
-+++ b/Documentation/devicetree/bindings/trivial-devices.yaml
-@@ -187,6 +187,8 @@ properties:
-           - maxim,max6621
-             # mCube 3-axis 8-bit digital accelerometer
-           - mcube,mc3230
-+            # mCube 3-axis 8-bit digital accelerometer
-+          - mcube,mc3510c
-             # Measurement Specialities I2C temperature and humidity sensor
-           - meas,htu21
-             # Measurement Specialities I2C pressure and temperature sensor
+---
+Vasiliy Doylov (5):
+      dt-bindings: iio: accel: mc3230: document mc3510c
+      iio: accel: mc3230: add mount matrix support
+      iio: accel: mc3230: add OF match table
+      iio: accel: mc3230: add multiple devices support
+      iio: accel: mc3230: add mc3510c support
 
+ .../devicetree/bindings/trivial-devices.yaml       |  2 +
+ drivers/iio/accel/mc3230.c                         | 93 ++++++++++++++++++----
+ 2 files changed, 79 insertions(+), 16 deletions(-)
+---
+base-commit: 2b88851f583d3c4e40bcd40cfe1965241ec229dd
+change-id: 20250111-mainlining-mc3510c-564702fba487
+
+Best regards,
 -- 
-2.47.1
+Vasiliy Doylov <nekodevelopper@gmail.com>
 
