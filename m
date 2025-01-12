@@ -1,10 +1,10 @@
 From: Vasiliy Doylov <nekodevelopper@gmail.com>
-Date: Sun, 12 Jan 2025 15:25:37 +0300
-Subject: [PATCH v3 3/5] iio: accel: mc3230: add OF match table
+Date: Sun, 12 Jan 2025 15:25:38 +0300
+Subject: [PATCH v3 4/5] iio: accel: mc3230: add multiple devices support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250112-mainlining-mc3510c-v3-3-9ee6520ab69d@gmail.com>
+Message-Id: <20250112-mainlining-mc3510c-v3-4-9ee6520ab69d@gmail.com>
 References: <20250112-mainlining-mc3510c-v3-0-9ee6520ab69d@gmail.com>
 In-Reply-To: <20250112-mainlining-mc3510c-v3-0-9ee6520ab69d@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -14,46 +14,144 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Vasiliy Doylov <nekodevelopper@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=921;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3869;
  i=nekodevelopper@gmail.com; h=from:subject:message-id;
- bh=CXzfdvJmi3hz61iMY9QNCk/KSoxBmTl8+cAWMbpfFFg=;
- b=owGbwMvMwCW2fZ/SFZeSpU2Mp9WSGNKbt7y6x7/qffH/JYs9JHu/B3S5CZk2Pzf8uMrvC1s49
- 0Gn8y89OkpZGMS4GGTFFFlsNnrMFssPl5w07akCzBxWJpAhDFycAjCRS/8YGTozdjL070rM1Vba
- NXtOxewrPh6bYm0fbbw3TybTbP9CaTVGhj1Ht2TeemwR+Njw6LPqIy/TJ0bfKvBdsnG7tteW3c+
- 61nADAA==
+ bh=YcfiMUnze8tmhEPaR9oGF3t6Cjv+BkLj5cOU6InNf2c=;
+ b=owGbwMvMwCW2fZ/SFZeSpU2Mp9WSGNKbt7yycpC+v7Xr6cdHrae/l09fu/HE6ili/lG/uRNmf
+ NN/NEHasaOUhUGMi0FWTJHFZqPHbLH8cMlJ054qwMxhZQIZwsDFKQATmfmC4RezfEjRtaVXnpir
+ Rn+vd5I2LjPrMLhk+uvmefP165ca7ZvCyHDjnv/jM9dy/r+fdlmvYjvHpp8P3tr/nni7Mt3q0G9
+ buT4GAA==
 X-Developer-Key: i=nekodevelopper@gmail.com; a=openpgp;
  fpr=3CB1489B166F57199296E520B7BE22D44474A582
 X-Endpoint-Received: by B4 Relay for nekodevelopper@gmail.com/default with auth_id=314
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This will make the driver auto loaded via device-tree.
+This patch allows to add new devices to this driver.
 
 Signed-off-by: Vasiliy Doylov <nekodevelopper@gmail.com>
 ---
- drivers/iio/accel/mc3230.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/iio/accel/mc3230.c | 50 ++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 37 insertions(+), 13 deletions(-)
 
 diff --git a/drivers/iio/accel/mc3230.c b/drivers/iio/accel/mc3230.c
-index a153a3f715ed7f2f1417618715767f265b49191d..ba30c904d3f67002deeb3ca5a7e12bfae312e05f 100644
+index ba30c904d3f67002deeb3ca5a7e12bfae312e05f..1b58f3ea50655b6563a78a2531b16a8088e8f8d5 100644
 --- a/drivers/iio/accel/mc3230.c
 +++ b/drivers/iio/accel/mc3230.c
-@@ -205,9 +205,16 @@ static const struct i2c_device_id mc3230_i2c_id[] = {
+@@ -22,20 +22,29 @@
+ #define MC3230_MODE_OPCON_STANDBY	0x03
+ 
+ #define MC3230_REG_CHIP_ID		0x18
+-#define MC3230_CHIP_ID			0x01
+-
+ #define MC3230_REG_PRODUCT_CODE		0x3b
+-#define MC3230_PRODUCT_CODE		0x19
+ 
+ /*
+  * The accelerometer has one measurement range:
+  *
+  * -1.5g - +1.5g (8-bit, signed)
+  *
+- * scale = (1.5 + 1.5) * 9.81 / (2^8 - 1)	= 0.115411765
+  */
+ 
+-static const int mc3230_nscale = 115411765;
++struct mc3230_chip_info {
++	const u8 chip_id;
++	const char *name;
++	const u8 product_code;
++	const int scale;
++};
++
++static struct mc3230_chip_info mc3230_chip_info = {
++	.chip_id = 0x01,
++	.name = "mc3230",
++	.product_code = 0x19,
++	/* (1.5 + 1.5) * 9.81 / (2^8 - 1) = 0.115411765 */
++	.scale = 115411765,
++};
+ 
+ #define MC3230_CHANNEL(reg, axis) {	\
+ 	.type = IIO_ACCEL,	\
+@@ -48,6 +57,7 @@ static const int mc3230_nscale = 115411765;
+ }
+ 
+ struct mc3230_data {
++	const struct mc3230_chip_info *chip_info;
+ 	struct i2c_client *client;
+ 	struct iio_mount_matrix orientation;
+ };
+@@ -111,7 +121,7 @@ static int mc3230_read_raw(struct iio_dev *indio_dev,
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_SCALE:
+ 		*val = 0;
+-		*val2 = mc3230_nscale;
++		*val2 = data->chip_info->scale;
+ 		return IIO_VAL_INT_PLUS_NANO;
+ 	default:
+ 		return -EINVAL;
+@@ -127,15 +137,28 @@ static int mc3230_probe(struct i2c_client *client)
+ 	int ret;
+ 	struct iio_dev *indio_dev;
+ 	struct mc3230_data *data;
++	const struct mc3230_chip_info *chip_info;
++
++	chip_info = i2c_get_match_data(client);
++	if (chip_info == NULL) {
++		dev_err(&client->dev, "failed to get match data");
++		return -ENODATA;
++	}
+ 
+ 	/* First check chip-id and product-id */
+ 	ret = i2c_smbus_read_byte_data(client, MC3230_REG_CHIP_ID);
+-	if (ret != MC3230_CHIP_ID)
+-		return (ret < 0) ? ret : -ENODEV;
++	if (ret != chip_info->chip_id) {
++		dev_info(&client->dev,
++			"chip id check fail: 0x%x != 0x%x !\n",
++			ret, chip_info->chip_id);
++	}
+ 
+ 	ret = i2c_smbus_read_byte_data(client, MC3230_REG_PRODUCT_CODE);
+-	if (ret != MC3230_PRODUCT_CODE)
+-		return (ret < 0) ? ret : -ENODEV;
++	if (ret != chip_info->product_code) {
++		dev_info(&client->dev,
++			"product code check fail: 0x%x != 0x%x !\n",
++			ret, chip_info->product_code);
++	}
+ 
+ 	indio_dev = devm_iio_device_alloc(&client->dev, sizeof(*data));
+ 	if (!indio_dev) {
+@@ -144,11 +167,12 @@ static int mc3230_probe(struct i2c_client *client)
+ 	}
+ 
+ 	data = iio_priv(indio_dev);
++	data->chip_info = chip_info;
+ 	data->client = client;
+ 	i2c_set_clientdata(client, indio_dev);
+ 
+ 	indio_dev->info = &mc3230_info;
+-	indio_dev->name = "mc3230";
++	indio_dev->name = chip_info->name;
+ 	indio_dev->modes = INDIO_DIRECT_MODE;
+ 	indio_dev->channels = mc3230_channels;
+ 	indio_dev->num_channels = ARRAY_SIZE(mc3230_channels);
+@@ -200,13 +224,13 @@ static int mc3230_resume(struct device *dev)
+ static DEFINE_SIMPLE_DEV_PM_OPS(mc3230_pm_ops, mc3230_suspend, mc3230_resume);
+ 
+ static const struct i2c_device_id mc3230_i2c_id[] = {
+-	{ "mc3230" },
++	{ "mc3230", (kernel_ulong_t)&mc3230_chip_info },
+ 	{}
  };
  MODULE_DEVICE_TABLE(i2c, mc3230_i2c_id);
  
-+static const struct of_device_id mc3230_of_match[] = {
-+	{ .compatible = "mcube,mc3230" },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, mc3230_of_match);
-+
- static struct i2c_driver mc3230_driver = {
- 	.driver = {
- 		.name = "mc3230",
-+		.of_match_table = mc3230_of_match,
- 		.pm = pm_sleep_ptr(&mc3230_pm_ops),
- 	},
- 	.probe		= mc3230_probe,
+ static const struct of_device_id mc3230_of_match[] = {
+-	{ .compatible = "mcube,mc3230" },
++	{ .compatible = "mcube,mc3230", &mc3230_chip_info },
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, mc3230_of_match);
 
 -- 
 2.47.1
