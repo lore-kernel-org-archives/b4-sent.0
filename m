@@ -1,104 +1,125 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Mon, 13 Jan 2025 12:53:04 +0100
-Subject: [PATCH RESEND 06/12] ansible: Use full paths when importing tasks
+Date: Mon, 13 Jan 2025 12:53:05 +0100
+Subject: [PATCH RESEND 07/12] ansible: Run sudo by using the '-K' ansible
+ arg
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250113-jag-bringup_fixes-v1-6-fb28030b1f26@kernel.org>
+Message-Id: <20250113-jag-bringup_fixes-v1-7-fb28030b1f26@kernel.org>
 References: <20250113-jag-bringup_fixes-v1-0-fb28030b1f26@kernel.org>
 In-Reply-To: <20250113-jag-bringup_fixes-v1-0-fb28030b1f26@kernel.org>
 To: kdevops@lists.linux.dev
 Cc: Joel Granados <joel.granados@kernel.org>, mcgrof@kernel.org, 
  da.gomez@samsung.com
 X-Mailer: b4 0.15-dev-00a43
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2953;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3240;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=kK8WYlj3lCiI+bWD9/rTi5l4rFK8spbgf35AT9VzodE=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGeE/qW2akKCceaIlZdov3dN8E5BhqnWe1L/X
- Jss1o+eRPft94kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnhP6lAAoJELqXzVK3
- lkFPgNcL/jv2sT+JYlAjwgBRa1xH4d/OFJTDnhddeGwKOdymIOMPtXzO8/oq0CS5L7Ms7zXh/Gx
- yWge6T7J3RXv3Jl6VcKaIKontZaEMmj8QRv53IdvN6A/+JndTyTthnHucBKwXqV6OtqiP0zw1WD
- qVifuLf40Pig9AMjmAmrDiPbpKPfJ1rKStfaHxhU+7eE/uvjtwRbDxurTY5ELVRLBeIhgvR6iwM
- i2sgEjaWwx9KNevVbIrUsdI3/xpfmSTJ35yOvK/BznXBp3uyZljLLCMa/cz8fB1+cDlW9oE6UKZ
- zFaDdN1aeEGXwktcUxbRBadob5a5ECA3ClJ8t935eqLHrygnLOglsTw94Nlo700+Id7+0P7c6xA
- A4IiVpewoBZw1+ZOfgDUXwGbTCv/9veenivemR2M5GP4H8/jIrOsR/XqJMGFHNdy/Oxiff3xZHz
- icoLMOsFDxc0vsfNv1xUVFm9XfV50HMxhK2PAwo/upvcASN8DNK0OV1z71rJr5jXaRHh5mDNdF8
- 9Y=
+ bh=FVJUFjxaM/R8fpk2NV9PoLz5rdhcjKBPNJtHwh5TkzY=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGeE/qbtjh6tlRNzC3rhNV22vS6dEpRScKjU+
+ QLoECBcRn7vAokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnhP6mAAoJELqXzVK3
+ lkFPoxkL/1wgbop1AiHixSqjBrHy/rURT+ip2Ub2wAJb/nmy5GApYHg8u/t4iTTgBMmDfI6AY1K
+ B60nnMBffhw90zMoqSjMrH4jASh6+oR/bgWq55Ua8QNWwuoehAgjxWh7HAk6ytIVzq+GI3JAA5L
+ rSEHD1UGTVS1sKdiFlis30YMYeIG3mKUAO0Vsic26RQsmIiY84Z+PF0EHLXRb4b9g1BFKpcjb+S
+ 3/b56xwwR7VppNxypTV/N/SO+Z6M7nz14uUlEzpgfPMZmIY4bzHkOyOdq/sgDUUyMu3XJAxqLqK
+ 7QHdD9Fzi46OlrhhRsqDDhwg8h6sWiL5MwdQ8INJ+TTvfs1gJ0KVJIyNgevl9skAcsdrPrME41t
+ E1YmysPZpzpZ3+xe3zit1Dwi0tCKb9FM2wzR7bpp1/SpWhIPvwLsG45FuaBL2ukaT+uCjv55kP0
+ 3IO5b/ql7XJHZcYYwCc/CWvHNwzMMiR6oNdCMcTFnZNoOM6j3PhUvq5T25ksGl1FAomsW94i1Q9
+ BU=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This allows importing libvirt_user tasks without the hassle of
-changing relative paths.
+This patch does two things:
+* Remove the become_flags from sudo tasks in bringup_guestfs and
+  libvirt_user roles
+* Call the playbook with the -K argument so the user enters the
+  sudo password just once after the playbook call
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- playbooks/roles/libvirt_user/tasks/enable-user/main.yml  | 8 ++++----
- playbooks/roles/libvirt_user/tasks/install-deps/main.yml | 8 ++++----
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ playbooks/roles/bringup_guestfs/tasks/main.yml                 | 6 ------
+ playbooks/roles/libvirt_user/tasks/enable-user/debian/main.yml | 1 -
+ scripts/guestfs.Makefile                                       | 2 +-
+ 3 files changed, 1 insertion(+), 8 deletions(-)
 
-diff --git a/playbooks/roles/libvirt_user/tasks/enable-user/main.yml b/playbooks/roles/libvirt_user/tasks/enable-user/main.yml
-index 364d625..2c632f2 100644
---- a/playbooks/roles/libvirt_user/tasks/enable-user/main.yml
-+++ b/playbooks/roles/libvirt_user/tasks/enable-user/main.yml
-@@ -1,23 +1,23 @@
- ---
- - name: Debian-specific set up
--  ansible.builtin.include_tasks: install-deps/debian/main.yml
-+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/enable-user/debian/main.yml"
-   when: ansible_os_family == 'Debian'
-   tags: [ 'build-deps' ]
+diff --git a/playbooks/roles/bringup_guestfs/tasks/main.yml b/playbooks/roles/bringup_guestfs/tasks/main.yml
+index 07e0fc4..95631aa 100644
+--- a/playbooks/roles/bringup_guestfs/tasks/main.yml
++++ b/playbooks/roles/bringup_guestfs/tasks/main.yml
+@@ -59,7 +59,6 @@
  
- - name: SuSE-specific set up
--  ansible.builtin.include_tasks: install-deps/suse/main.yml
-+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/enable-user/suse/main.yml"
-   when: ansible_os_family == 'Suse'
-   tags: [ 'build-deps' ]
+ - name: Check dnsmasq service status
+   become: yes
+-  become_flags: 'su - -c'
+   become_method: sudo
+   command: systemctl is-enabled dnsmasq
+   register: dnsmasq_enabled
+@@ -72,7 +71,6 @@
  
- - name: Red Hat-specific set up
--  ansible.builtin.include_tasks: install-deps/redhat/main.yml
-+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/enable-user/redhat/main.yml"
+ - name: Check if dnsmasq service is active
+   become: yes
+-  become_flags: 'su - -c'
+   become_method: sudo
+   command: systemctl is-active dnsmasq
+   register: dnsmasq_active
+@@ -94,7 +92,6 @@
+ 
+ - name: Check if libvirt default network is running
+   become: yes
+-  become_flags: 'su - -c'
+   become_method: sudo
+   shell: virsh net-list | grep -q default
+   register: libvirt_default_net
+@@ -106,7 +103,6 @@
+ - name: Start the libvirt default network if not running
+   command: virsh net-start default
+   become: yes
+-  become_flags: 'su - -c'
+   become_method: sudo
    when:
-     - ansible_os_family == 'RedHat'
-     - ansible_facts['distribution'] != "Fedora"
-   tags: [ 'build-deps' ]
+     - 'libvirt_uri_system|bool'
+@@ -123,7 +119,6 @@
  
- - name: Fedora-specific set up
--  ansible.builtin.include_tasks: install-deps/fedora/main.yml
-+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/enable-user/fedora/main.yml"
-   when:
-     - ansible_os_family == 'RedHat'
-     - ansible_facts['distribution'] == "Fedora"
-diff --git a/playbooks/roles/libvirt_user/tasks/install-deps/main.yml b/playbooks/roles/libvirt_user/tasks/install-deps/main.yml
-index c2f58c8..cd12e05 100644
---- a/playbooks/roles/libvirt_user/tasks/install-deps/main.yml
-+++ b/playbooks/roles/libvirt_user/tasks/install-deps/main.yml
-@@ -9,20 +9,20 @@
-   tags: vars
+ - name: Look for console.log files in guestfs subdirectories to check for CI enablement
+   become: yes
+-  become_flags: 'su - -c'
+   become_method: sudo
+   find:
+     paths: "{{ topdir_path }}/guestfs"
+@@ -137,7 +132,6 @@
  
- - name: Distribution specific setup
--  import_tasks: debian/main.yml
-+  import_tasks: "{{ role_path }}/tasks/install-deps/debian/main.yml"
-   when: ansible_facts['os_family']|lower == 'debian'
-   tags: [ 'build-deps' ]
+ - name: Ensure console.log files are owned by the main user for CI monitoring
+   become: yes
+-  become_flags: 'su - -c'
+   become_method: sudo
+   file:
+     path: "{{ item.path }}"
+diff --git a/playbooks/roles/libvirt_user/tasks/enable-user/debian/main.yml b/playbooks/roles/libvirt_user/tasks/enable-user/debian/main.yml
+index 5797bd6..2fa31ce 100644
+--- a/playbooks/roles/libvirt_user/tasks/enable-user/debian/main.yml
++++ b/playbooks/roles/libvirt_user/tasks/enable-user/debian/main.yml
+@@ -49,7 +49,6 @@
+ - name: Ensure our user is part of the libvirt/kvm groups
+   tags: [ 'journal', 'build-deps' ]
+   become: yes
+-  become_flags: 'su - -c'
+   become_method: sudo
+   ansible.builtin.user:
+     name:  "{{ ansible_user_id }}"
+diff --git a/scripts/guestfs.Makefile b/scripts/guestfs.Makefile
+index dbfb372..480bc4f 100644
+--- a/scripts/guestfs.Makefile
++++ b/scripts/guestfs.Makefile
+@@ -73,7 +73,7 @@ $(KDEVOPS_PROVISIONED_SSH):
+ 	$(Q)touch $(KDEVOPS_PROVISIONED_SSH)
  
--- import_tasks: suse/main.yml
-+- import_tasks: "{{ role_path }}/tasks/install-deps/suse/main.yml"
-   when: ansible_facts['os_family']|lower == 'suse'
-   tags: [ 'build-deps' ]
- 
--- import_tasks: redhat/main.yml
-+- import_tasks: "{{ role_path }}/tasks/install-deps/redhat/main.yml"
-   when:
-     - ansible_facts['os_family']|lower == 'redhat'
-     - ansible_facts['distribution']|lower != "fedora"
-   tags: [ 'build-deps' ]
- 
--- import_tasks: fedora/main.yml
-+- import_tasks: "{{ role_path }}/tasks/install-deps/fedora/main.yml"
-   when: ansible_facts['distribution']|lower == "fedora"
-   tags: [ 'build-deps' ]
+ bringup_guestfs: $(GUESTFS_BRINGUP_DEPS)
+-	$(Q)ansible-playbook $(ANSIBLE_VERBOSE) --connection=local \
++	$(Q)ansible-playbook -K $(ANSIBLE_VERBOSE) --connection=local \
+ 		--inventory localhost, \
+ 		playbooks/bringup_guestfs.yml \
+ 		-e 'ansible_python_interpreter=/usr/bin/python3' \
 
 -- 
 2.44.2
