@@ -1,15 +1,13 @@
 From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Subject: [PATCH net-next 0/2] net: phy: dp83822: Add support for changing
- the transmit amplitude voltage
-Date: Mon, 13 Jan 2025 06:40:11 +0100
-Message-Id: <20250113-dp83822-tx-swing-v1-0-7ed5a9d80010@liebherr.com>
+Date: Mon, 13 Jan 2025 06:40:12 +0100
+Subject: [PATCH net-next 1/2] dt-bindings: net: dp83822: Add support for
+ changing the transmit amplitude voltage
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIADunhGcC/x3MSQqAMAxA0atI1gZsHFCvIi4comYTpS1aKN7d4
- vIt/o/g2Ao76LMIlm9xcmqCyTNYjkl3RlmTgQqqDJkS16stWyL0Ad0jumM9T81iuJuLpoaUXZY
- 3Cf9yAGWPysHD+L4fOXfUxGwAAAA=
-X-Change-ID: 20241213-dp83822-tx-swing-5ba6c1e9b065
+Message-Id: <20250113-dp83822-tx-swing-v1-1-7ed5a9d80010@liebherr.com>
+References: <20250113-dp83822-tx-swing-v1-0-7ed5a9d80010@liebherr.com>
+In-Reply-To: <20250113-dp83822-tx-swing-v1-0-7ed5a9d80010@liebherr.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -21,33 +19,54 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
  Dimitri Fedrau <dima.fedrau@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1736746828; l=741;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736746828; l=1391;
  i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=CMktPUZ1l4ycL/1KVGf9E6EF7MwJYouBdAu3wr7LLjA=;
- b=dbdzM3ZZU5gwurgEXklNsudXAT9os5VxcfxqueqohybLOoAlKkQMczcH3GWhx81HDhTfM12J0
- CVwLo8xavb2C7mMy2kT2yYwmpNMvqCC3Sk4FX9E6BSwNKPPxtsW32D+
+ bh=CZ9EoWKNP+/yooo8m8ATI3MQdPGKi2t5WYkqruGrKw0=;
+ b=c5f72qmNQb5JqM9ZYOTk316s1HqpmHm+ubmPZGydKgvEGgl4AIPtz3jmnIMLY7MGYK1UrFPLT
+ tVdcQmVAauuBrRyKanAb7ENtKR1ZRDK8TMXkuwHWRRGUTHt0omFYolp
 X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
  pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
 X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Add support for changing the transmit amplitude voltage in 100BASE-TX mode.
-Add support for configuration via DT.
+Add binding to support this feature.
 
 Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
-Dimitri Fedrau (2):
-      dt-bindings: net: dp83822: Add support for changing the transmit amplitude voltage
-      net: phy: dp83822: Add support for changing the transmit amplitude voltage
+ Documentation/devicetree/bindings/net/ti,dp83822.yaml | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
- .../devicetree/bindings/net/ti,dp83822.yaml        | 11 +++++++
- drivers/net/phy/dp83822.c                          | 35 ++++++++++++++++++++++
- 2 files changed, 46 insertions(+)
----
-base-commit: 7d0da8f862340c5f42f0062b8560b8d0971a6ac4
-change-id: 20241213-dp83822-tx-swing-5ba6c1e9b065
+diff --git a/Documentation/devicetree/bindings/net/ti,dp83822.yaml b/Documentation/devicetree/bindings/net/ti,dp83822.yaml
+index 50c24248df266f1950371b950cd9c4d417835f97..b44f7068011b8e594f2ba245c526f4f48e3c5963 100644
+--- a/Documentation/devicetree/bindings/net/ti,dp83822.yaml
++++ b/Documentation/devicetree/bindings/net/ti,dp83822.yaml
+@@ -122,6 +122,16 @@ properties:
+       - free-running
+       - recovered
+ 
++  ti,tx-amplitude-100base-tx-millivolt:
++    description: |
++       DP83822 PHY only.
++       Transmit amplitude voltage for 100BASE-TX in millivolt. When omitted,
++       the PHY's default will be left as is.
++    $ref: /schemas/types.yaml#/definitions/uint32
++    enum: [1600, 1633, 1667, 1700, 1733, 1767, 1800, 1833,
++           1867, 1900, 1933, 1967, 2000, 2033, 2067, 2100]
++    default: 2000
++
+ required:
+   - reg
+ 
+@@ -137,6 +147,7 @@ examples:
+         rx-internal-delay-ps = <1>;
+         tx-internal-delay-ps = <1>;
+         ti,gpio2-clk-out = "xi";
++        ti,tx-amplitude-100base-tx-millivolt = <2100>;
+       };
+     };
+ 
 
-Best regards,
 -- 
-Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+2.39.5
 
