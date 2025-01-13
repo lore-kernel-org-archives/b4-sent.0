@@ -1,10 +1,10 @@
 From: jiebing chen <jiebing.chen@amlogic.com>
-Date: Mon, 13 Jan 2025 14:35:14 +0800
-Subject: [PATCH 2/3] ASoC: meson: s4:support for the on-chip audio
+Date: Mon, 13 Jan 2025 14:35:15 +0800
+Subject: [PATCH 3/3] arm64: dts: amlogic: Add Amlogic S4 Audio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250113-audio_drvier-v1-2-8c14770f38a0@amlogic.com>
+Message-Id: <20250113-audio_drvier-v1-3-8c14770f38a0@amlogic.com>
 References: <20250113-audio_drvier-v1-0-8c14770f38a0@amlogic.com>
 In-Reply-To: <20250113-audio_drvier-v1-0-8c14770f38a0@amlogic.com>
 To: Jerome Brunet <jbrunet@baylibre.com>, 
@@ -18,861 +18,676 @@ Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-amlogic@lists.infradead.org, jiebing chen <jiebing.chen@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1736750144; l=28495;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736750144; l=20860;
  i=jiebing.chen@amlogic.com; s=20250110; h=from:subject:message-id;
- bh=jaJ9B/y4s3w6VQWE6+tqXUR9XM5vgnlu1yFxZDn/q/k=;
- b=fvATIsE0mOCmOdn/H3WrnLPrAaQkU9IV7YegtF8n3WIv9xBEHShAZnQgZpHh3cG/12AQcyex3
- v6uwxvgzsP+BH8DH9zr5M6HA20mpZgSkOtEbrFCpG6G0MmmnvAk/8KZ
+ bh=2u7GHXpPa/EtVO2Qk293Yt7S+43atX06hHJjPyDEP0o=;
+ b=87cQQvF4kNzgPxgOJzfRW2Y9nYdid+7u3bjqWeIEyWTSqLulNrGjmgO+NrjO9VPCBQiIHZdhd
+ NUQf83G5uBHBc39EUzjz2nk4NOmDBTktMvS+kIQ6SifYWaP8AV6gdse
 X-Developer-Key: i=jiebing.chen@amlogic.com; a=ed25519;
  pk=6rFvvF45A84pLNRy03hfUHeROxHCnZ+1KAGw/DoqKic=
 X-Endpoint-Received: by B4 Relay for jiebing.chen@amlogic.com/20250110 with auth_id=316
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add audio support for Amlogic S4.The audio output pad
-can be freelycombined with the output lane,and the tocodec
-control logic has been optimized.
+Add basic audio driver support for the Amlogic S4 based Amlogic
+AQ222 board.
 
 Signed-off-by: jiebing chen <jiebing.chen@amlogic.com>
 ---
- sound/soc/meson/Kconfig              |  16 ++
- sound/soc/meson/Makefile             |   6 +
- sound/soc/meson/s4-pad-out-control.c | 372 ++++++++++++++++++++++++++++++++++
- sound/soc/meson/s4-tocodec-control.c | 376 +++++++++++++++++++++++++++++++++++
- sound/soc/meson/t9015.c              |   5 +-
- 5 files changed, 771 insertions(+), 4 deletions(-)
+ .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     | 226 ++++++++++++
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 385 ++++++++++++++++++++-
+ 2 files changed, 610 insertions(+), 1 deletion(-)
 
-diff --git a/sound/soc/meson/Kconfig b/sound/soc/meson/Kconfig
-index 6458d5dc4902f665211bb9e4ae7d274e4bff2fdc..d01e284642fd987cf4bdf88e5bf5f7c9a241af59 100644
---- a/sound/soc/meson/Kconfig
-+++ b/sound/soc/meson/Kconfig
-@@ -69,6 +69,8 @@ config SND_MESON_AXG_SOUND_CARD
- 	imply SND_MESON_AXG_SPDIFIN
- 	imply SND_MESON_AXG_PDM
- 	imply SND_MESON_G12A_TOACODEC
-+	imply SND_SOC_MESON_PAD_OUT
-+	imply SND_SOC_MESON_TOCODEC_CONTROL
- 	imply SND_MESON_G12A_TOHDMITX if DRM_MESON_DW_HDMI
- 	help
- 	  Select Y or M to add support for the AXG SoC sound card
-@@ -135,4 +137,18 @@ config SND_SOC_MESON_T9015
- 	help
- 	  Say Y or M if you want to add support for the internal DAC found
- 	  on GXL, G12 and SM1 SoC family.
-+
-+config SND_SOC_MESON_PAD_OUT
-+	tristate "Amlogic PAD OUT"
-+	select REGMAP_MMIO
-+	help
-+	  Say Y or M if you want to add support for the S4 Audio Output from
-+	  the data Pad.
-+
-+config SND_SOC_MESON_TOCODEC_CONTROL
-+	tristate "Amlogic TOCODEC CONTROL"
-+	select REGMAP_MMIO
-+	help
-+	 Say Y or M if you want to add support for the internal DAC control
-+	 on SM1 SoC family.
- endmenu
-diff --git a/sound/soc/meson/Makefile b/sound/soc/meson/Makefile
-index 24078e4396b02d545d8ba4bcb1632979001354e3..afbefcb1313670f9b1365e88b8eb1a0badd7dc1e 100644
---- a/sound/soc/meson/Makefile
-+++ b/sound/soc/meson/Makefile
-@@ -24,8 +24,11 @@ snd-soc-meson-codec-glue-y := meson-codec-glue.o
- snd-soc-meson-gx-sound-card-y := gx-card.o
- snd-soc-meson-g12a-toacodec-y := g12a-toacodec.o
- snd-soc-meson-g12a-tohdmitx-y := g12a-tohdmitx.o
-+snd-soc-meson-s4-padout-objs := s4-pad-out-control.o
-+snd-soc-meson-s4-tocodec-control-objs := s4-tocodec-control.o
- snd-soc-meson-t9015-y := t9015.o
+diff --git a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
+index 6730c44642d2910d42ec0c4adf49fefc3514dbec..32f50a5b860435d50d9c5528b43422b705b20130 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
++++ b/arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dts
+@@ -75,6 +75,19 @@ vddio_ao1v8: regulator-vddio-ao1v8 {
+ 	       regulator-always-on;
+ 	};
  
++	vcc5v_reg: regulator-vcc-5v {
++		compatible = "regulator-fixed";
++		vin-supply = <&main_12v>;
++		regulator-name = "VCC5V";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		gpio = <&gpio GPIOH_7 GPIO_ACTIVE_HIGH>;
++		startup-delay-us = <7000>;
++		enable-active-high;
++		regulator-boot-on;
++		regulator-always-on;
++	};
++
+ 	/* SY8120B1ABC DC/DC Regulator. */
+ 	vddcpu: regulator-vddcpu {
+ 		compatible = "pwm-regulator";
+@@ -129,6 +142,219 @@ vddcpu: regulator-vddcpu {
+ 				<699000 98>,
+ 				<689000 100>;
+ 	};
++	dmics: audio-codec-1 {
++		compatible = "dmic-codec";
++		#sound-dai-cells = <0>;
++		num-channels = <2>;
++		wakeup-delay-ms = <50>;
++		sound-name-prefix = "MIC";
++	};
++
++	dioo2133: audio-amplifier-0 {
++		compatible = "simple-audio-amplifier";
++		enable-gpios = <&gpio GPIOH_8 GPIO_ACTIVE_HIGH>;
++		VCC-supply = <&vcc5v_reg>;
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "10U2";
++	};
++
++	spdif_dir: audio-spdif-in {
++		compatible = "linux,spdif-dir";
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "DIR";
++	};
++
++	spdif_dit: audio-spdif-out {
++		compatible = "linux,spdif-dit";
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "DIT";
++	};
++
++	sound {
++		compatible = "amlogic,axg-sound-card";
++		model = "aq222";
++		audio-widgets = "Line", "Lineout";
++		audio-aux-devs = <&tdmout_a>, <&tdmout_b>, <&tdmout_c>,
++				 <&tdmin_a>, <&tdmin_b>, <&tdmin_c>,
++				 <&tdmin_lb>, <&dioo2133>, <&tdmout_pad>, <&toacodec>;
++		audio-routing = "TDMOUT_A IN 0", "FRDDR_A OUT 0",
++				"TDMOUT_A IN 1", "FRDDR_B OUT 0",
++				"TDMOUT_A IN 2", "FRDDR_C OUT 0",
++				"TDM_A Playback", "TDMOUT_A OUT",
++				"TDMA_OUT SEL",   "TDM_A Playback",
++				"TDMOUT_B IN 0", "FRDDR_A OUT 1",
++				"TDMOUT_B IN 1", "FRDDR_B OUT 1",
++				"TDMOUT_B IN 2", "FRDDR_C OUT 1",
++				"TDM_B Playback", "TDMOUT_B OUT",
++				"TDMB_OUT SEL",   "TDM_B Playback",
++				"TDMOUT_C IN 0", "FRDDR_A OUT 2",
++				"TDMOUT_C IN 1", "FRDDR_B OUT 2",
++				"TDMOUT_C IN 2", "FRDDR_C OUT 2",
++				"TDM_C Playback", "TDMOUT_C OUT",
++				"TDMC_OUT SEL",   "TDM_C Playback",
++				"TOACODEC TDMA", "TDM_A Playback",
++				"TOACODEC TDMB", "TDM_B Playback",
++				"TOACODEC TDMC", "TDM_C Playback",
++				"SPDIFOUT_A IN 0", "FRDDR_A OUT 3",
++				"SPDIFOUT_A IN 1", "FRDDR_B OUT 3",
++				"SPDIFOUT_A IN 2", "FRDDR_C OUT 3",
++				"SPDIFOUT_B IN 0", "FRDDR_A OUT 4",
++				"SPDIFOUT_B IN 1", "FRDDR_B OUT 4",
++				"SPDIFOUT_B IN 2", "FRDDR_C OUT 4",
++				"TDMIN_A IN 0", "TDM_A Capture",
++				"TDMIN_A IN 1", "TDM_B Capture",
++				"TDMIN_A IN 2", "TDM_C Capture",
++				"TDMIN_A IN 3", "TDM_A Loopback",
++				"TDMIN_A IN 4", "TDM_B Loopback",
++				"TDMIN_A IN 5", "TDM_C Loopback",
++				"TDMIN_B IN 0", "TDM_A Capture",
++				"TDMIN_B IN 1", "TDM_B Capture",
++				"TDMIN_B IN 2", "TDM_C Capture",
++				"TDMIN_B IN 3", "TDM_A Loopback",
++				"TDMIN_B IN 4", "TDM_B Loopback",
++				"TDMIN_B IN 5", "TDM_C Loopback",
++				"TDMIN_C IN 0", "TDM_A Capture",
++				"TDMIN_C IN 1", "TDM_B Capture",
++				"TDMIN_C IN 2", "TDM_C Capture",
++				"TDMIN_C IN 3", "TDM_A Loopback",
++				"TDMIN_C IN 4", "TDM_B Loopback",
++				"TDMIN_C IN 5", "TDM_C Loopback",
++				"TDMIN_LB IN 3", "TDM_A Capture",
++				"TDMIN_LB IN 4", "TDM_B Capture",
++				"TDMIN_LB IN 5", "TDM_C Capture",
++				"TDMIN_LB IN 0", "TDM_A Loopback",
++				"TDMIN_LB IN 1", "TDM_B Loopback",
++				"TDMIN_LB IN 2", "TDM_C Loopback",
++				"TODDR_A IN 0", "TDMIN_A OUT",
++				"TODDR_B IN 0", "TDMIN_A OUT",
++				"TODDR_C IN 0", "TDMIN_A OUT",
++				"TODDR_A IN 1", "TDMIN_B OUT",
++				"TODDR_B IN 1", "TDMIN_B OUT",
++				"TODDR_C IN 1", "TDMIN_B OUT",
++				"TODDR_A IN 2", "TDMIN_C OUT",
++				"TODDR_B IN 2", "TDMIN_C OUT",
++				"TODDR_C IN 2", "TDMIN_C OUT",
++				"TODDR_A IN 3", "SPDIFIN Capture",
++				"TODDR_B IN 3", "SPDIFIN Capture",
++				"TODDR_C IN 3", "SPDIFIN Capture",
++				"TODDR_A IN 6", "TDMIN_LB OUT",
++				"TODDR_B IN 6", "TDMIN_LB OUT",
++				"TODDR_C IN 6", "TDMIN_LB OUT",
++				"10U2 INL", "ACODEC LOLP",
++				"10U2 INR", "ACODEC LORP",
++				"Lineout", "10U2 OUTL",
++				"Lineout", "10U2 OUTR";
++		assigned-clocks = <&clkc_pll CLKID_HIFI_PLL>,
++				  <&clkc_pll CLKID_MPLL2>,
++				  <&clkc_pll CLKID_MPLL0>,
++				  <&clkc_pll CLKID_MPLL1>;
++		assigned-clock-rates = <491520000>,
++				       <294912000>,
++				       <270950400>,
++				       <393216000>;
++
++		dai-link-0 {
++			sound-dai = <&frddr_a>;
++		};
++
++		dai-link-1 {
++			sound-dai = <&frddr_b>;
++		};
++
++		dai-link-2 {
++			sound-dai = <&frddr_c>;
++		};
++
++		dai-link-3 {
++			sound-dai = <&toddr_a>;
++		};
++
++		dai-link-4 {
++			sound-dai = <&toddr_b>;
++		};
++
++		dai-link-5 {
++			sound-dai = <&toddr_c>;
++		};
++
++		/* Connected to the WIFI/BT chip */
++		dai-link-6 {
++			sound-dai = <&tdmif_a>;
++			dai-format = "dsp_a";
++			dai-tdm-slot-tx-mask-0 = <1 1>;
++			mclk-fs = <256>;
++			codec-0 {
++				sound-dai = <&tohdmitx TOHDMITX_I2S_IN_A>;
++			};
++		};
++
++		/* Connected to the onboard AD82584F DAC */
++		dai-link-7 {
++			sound-dai = <&tdmif_b>;
++			dai-format = "i2s";
++			dai-tdm-slot-tx-mask-0 = <1 1>;
++			mclk-fs = <256>;
++
++			codec-0 {
++				sound-dai = <&acodec>;
++			};
++
++			codec-1 {
++				sound-dai = <&tohdmitx TOHDMITX_I2S_IN_B>;
++			};
++		};
++
++		/* 8ch HDMI interface */
++		dai-link-8 {
++			sound-dai = <&tdmif_c>;
++			dai-format = "i2s";
++			dai-tdm-slot-tx-mask-0 = <1 1>;
++			dai-tdm-slot-tx-mask-1 = <1 1>;
++			dai-tdm-slot-tx-mask-2 = <1 1>;
++			dai-tdm-slot-tx-mask-3 = <1 1>;
++			mclk-fs = <256>;
++
++			codec-0 {
++				sound-dai = <&acodec>;
++			};
++
++			codec-1 {
++				sound-dai = <&tohdmitx TOHDMITX_I2S_IN_C>;
++			};
++		};
++
++		/* spdif hdmi and coax output */
++		dai-link-9 {
++			sound-dai = <&spdifout_a>;
++
++			codec-0 {
++				sound-dai = <&spdif_dit>;
++			};
++
++			codec-1 {
++				sound-dai = <&tohdmitx TOHDMITX_SPDIF_IN_A>;
++			};
++		};
++
++		/* spdif hdmi interface */
++		dai-link-10 {
++			sound-dai = <&spdifout_b>;
++
++			codec {
++				sound-dai = <&tohdmitx TOHDMITX_SPDIF_IN_B>;
++			};
++		};
++
++		/* spdif coax input */
++		dai-link-11 {
++			sound-dai = <&spdifin>;
++
++			codec {
++				sound-dai = <&spdif_dir>;
++			};
++		};
++	};
 +
- obj-$(CONFIG_SND_MESON_AIU) += snd-soc-meson-aiu.o
- obj-$(CONFIG_SND_MESON_AXG_FIFO) += snd-soc-meson-axg-fifo.o
- obj-$(CONFIG_SND_MESON_AXG_FRDDR) += snd-soc-meson-axg-frddr.o
-@@ -43,4 +46,7 @@ obj-$(CONFIG_SND_MESON_CODEC_GLUE) += snd-soc-meson-codec-glue.o
- obj-$(CONFIG_SND_MESON_GX_SOUND_CARD) += snd-soc-meson-gx-sound-card.o
- obj-$(CONFIG_SND_MESON_G12A_TOACODEC) += snd-soc-meson-g12a-toacodec.o
- obj-$(CONFIG_SND_MESON_G12A_TOHDMITX) += snd-soc-meson-g12a-tohdmitx.o
-+obj-$(CONFIG_SND_SOC_MESON_PAD_OUT) += snd-soc-meson-s4-padout.o
-+obj-$(CONFIG_SND_SOC_MESON_TOCODEC_CONTROL) += snd-soc-meson-s4-tocodec-control.o
- obj-$(CONFIG_SND_SOC_MESON_T9015) += snd-soc-meson-t9015.o
-+
-diff --git a/sound/soc/meson/s4-pad-out-control.c b/sound/soc/meson/s4-pad-out-control.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..a86dcf8a5995926f0ddf8d2911f42006daed0feb
---- /dev/null
-+++ b/sound/soc/meson/s4-pad-out-control.c
-@@ -0,0 +1,372 @@
-+// SPDX-License-Identifier: (GPL-2.0-only OR MIT)
-+/*
-+ * Copyright (C) 2024 Amlogic, Inc. All rights reserved
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/of_platform.h>
-+#include <linux/regmap.h>
-+#include <sound/soc.h>
-+#include <sound/soc-dai.h>
-+#include <linux/init.h>
-+#include <linux/kernel.h>
-+#include<linux/kstrtox.h>
-+
-+#include "axg-tdm.h"
-+
-+static const struct regmap_config tdmout_pad_regmap_cfg = {
-+	.reg_bits	= 32,
-+	.val_bits	= 32,
-+	.reg_stride	= 4,
-+	.max_register	= 0x28,
-+};
-+
-+#define TDM_IFACE 0
-+#define TDM_A_PAD 0
-+#define TDM_B_PAD 1
-+#define TDM_C_PAD 2
-+
-+#define EE_AUDIO_DAT_PAD_CTRL6 0x0
-+#define EE_AUDIO_DAT_PAD_CTRL7 0x4
-+#define EE_AUDIO_DAT_PAD_CTRL8 0x8
-+#define EE_AUDIO_DAT_PAD_CTRL9 0xc
-+#define EE_AUDIO_DAT_PAD_CTRLA 0x10
-+#define EE_AUDIO_DAT_PAD_CTRLB 0x14
-+#define EE_AUDIO_DAT_PAD_CTRLC 0x1c
-+#define EE_AUDIO_DAT_PAD_CTRLD 0x20
-+#define EE_AUDIO_DAT_PAD_CTRLE 0x24
-+#define EE_AUDIO_DAT_PAD_CTRLF 0x28
-+
-+#define REG_OFFSET 4
-+
-+static const char * const s4_tdmout_sel_texts[] = {
-+	"TDM_D0", "TDM_D1", "TDM_D2", "TDM_D3", "TDM_D4", "TDM_D5", "TDM_D6", "TDM_D7",
-+	"TDM_D8", "TDM_D9", "TDM_D10", "TDM_D11", "TDM_D12", "TDM_D13", "TDM_D14", "TDM_D15",
-+	"TDM_D16", "TDM_D17", "TDM_D18", "TDM_D19", "TDM_D20", "TDM_D21", "TDM_D22", "TDM_D23",
-+	"TDM_D24", "TDM_D25", "TDM_D26", "TDM_D27", "TDM_D28", "TDM_D29", "TDM_D30", "TDM_D31"
-+};
-+
-+static const struct soc_enum tdmout_sel_enum =
-+	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0, ARRAY_SIZE(s4_tdmout_sel_texts),
-+			s4_tdmout_sel_texts);
-+
-+static struct snd_soc_dai *tdm_get_ahead_be(struct snd_soc_dapm_widget *w)
-+{
-+	struct snd_soc_dapm_path *p;
-+	struct snd_soc_dai *be;
-+
-+	snd_soc_dapm_widget_for_each_source_path(w, p) {
-+		if (p->source->id == snd_soc_dapm_dai_in)
-+			return (struct snd_soc_dai *)p->source->priv;
-+		be = tdm_get_ahead_be(p->source);
-+		if (be && be->id == TDM_IFACE)
-+			return be;
-+	}
-+	return NULL;
-+}
-+
-+#define SND_SOC_DAPM_DEMUX_E(wname, wreg, wshift, winvert, wcontrols, \
-+	wevent, wflags) \
-+((struct snd_soc_dapm_widget) { \
-+	.id = snd_soc_dapm_demux, .name = wname, \
-+	SND_SOC_DAPM_INIT_REG_VAL(wreg, wshift, winvert), \
-+	.kcontrol_news = wcontrols, .num_kcontrols = 1, \
-+	.event = wevent, .event_flags = wflags})
-+
-+static const struct snd_kcontrol_new tdmout_sel_demux[] = {
-+	SOC_DAPM_ENUM("TDMOUTA SEL", tdmout_sel_enum),
-+	SOC_DAPM_ENUM("TDMOUTB SEL", tdmout_sel_enum),
-+	SOC_DAPM_ENUM("TDMOUTC SEL", tdmout_sel_enum),
-+};
-+
-+static unsigned int aml_simple_strtoull(const char *cp)
-+{
-+	unsigned int result = 0;
-+	unsigned int value = 0;
-+	unsigned int len =  strlen(cp);
-+
-+	while (len != 0) {
-+		len--;
-+		value = isdigit(*cp);
-+		if (value) {
-+			value = *cp - '0';
-+		} else {
-+			cp++;
-+			continue;
-+		}
-+		cp++;
-+		result = result * 10 + value;
-+	}
-+	return result;
-+}
-+
-+static int tdm_out_pad_set(struct snd_soc_dapm_widget *w)
-+{
-+	struct snd_soc_dai *be;
-+	struct axg_tdm_stream *stream;
-+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-+	unsigned int tdm_id = TDM_A_PAD;
-+	const char *dai_widget_name;
-+	struct snd_soc_dapm_path *p;
-+	unsigned int lane_num = 0;
-+	unsigned long pin = 0;
-+	unsigned int reg, mask, val = 0;
-+	int lane_cnt;
-+
-+	be = tdm_get_ahead_be(w);
-+	if (!be) {
-+		dev_err(component->dev, "%s not find the be\n", __func__);
-+		return -EINVAL;
-+	}
-+	stream = snd_soc_dai_dma_data_get_playback(be);
-+	if (!stream) {
-+		dev_err(component->dev, "%s not find the stream\n", __func__);
-+		return -EINVAL;
-+	}
-+	lane_cnt = (stream->channels - 1) / stream->iface->slots + 1;
-+	/*we like to use dai id, but it is fixed val*/
-+	dai_widget_name = be->stream[SNDRV_PCM_STREAM_PLAYBACK].widget->name;
-+	if (strstr(dai_widget_name, "TDM_A"))
-+		tdm_id = TDM_A_PAD;
-+	else if (strstr(dai_widget_name, "TDM_B"))
-+		tdm_id = TDM_B_PAD;
-+	else if (strstr(dai_widget_name, "TDM_C"))
-+		tdm_id = TDM_C_PAD;
-+	else
-+		dev_err(component->dev, "%s not find the be dai widget\n", __func__);
-+	dev_dbg(component->dev, "tdm_id:%d, channel:%d, slot:%d\n",
-+		tdm_id, stream->channels, stream->iface->slots);
-+	snd_soc_dapm_widget_for_each_sink_path(w, p) {
-+		if (p->sink->id == snd_soc_dapm_output) {
-+			if (p->connect) {
-+				pin = aml_simple_strtoull(p->name);
-+				reg = (pin / 4) * REG_OFFSET;
-+				/*calculate mask pos */
-+				mask = 0x1f << ((pin % 4) * 8);
-+				val = tdm_id * 8 + lane_num;
-+				snd_soc_component_update_bits(component, reg, mask, val);
-+				snd_soc_component_update_bits(component, EE_AUDIO_DAT_PAD_CTRLF,
-+							      0x1 << pin, 0 << pin);
-+				lane_num++;
-+				if (lane_num > lane_cnt - 1)
-+					break;
-+			}
-+		}
-+	}
-+	return 0;
-+}
-+
-+static int tdmout_sel_pad_event(struct snd_soc_dapm_widget *w,
-+				struct snd_kcontrol *control,
-+				int event)
-+{
-+	int ret = 0;
-+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-+
-+	switch (event) {
-+	case SND_SOC_DAPM_PRE_PMU:
-+		tdm_out_pad_set(w);
-+		break;
-+
-+	case SND_SOC_DAPM_PRE_PMD:
-+		break;
-+
-+	default:
-+		dev_err(component->dev, "Unexpected event %d\n", event);
-+		return -EINVAL;
-+	}
-+
-+	return ret;
-+}
-+
-+static const struct snd_soc_dapm_widget s4_tdmout_pad_dapm_widgets[] = {
-+	SND_SOC_DAPM_DEMUX_E("TDMA_OUT SEL", SND_SOC_NOPM, 0, 0,
-+			     &tdmout_sel_demux[TDM_A_PAD], tdmout_sel_pad_event,
-+			   (SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD)),
-+	SND_SOC_DAPM_DEMUX_E("TDMB_OUT SEL", SND_SOC_NOPM, 0, 0,
-+			     &tdmout_sel_demux[TDM_B_PAD], tdmout_sel_pad_event,
-+			   (SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD)),
-+	SND_SOC_DAPM_DEMUX_E("TDMC_OUT SEL", SND_SOC_NOPM, 0, 0,
-+			     &tdmout_sel_demux[TDM_C_PAD], tdmout_sel_pad_event,
-+			   (SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD)),
-+	SND_SOC_DAPM_OUTPUT("TDM_D0"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D1"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D2"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D3"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D4"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D5"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D6"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D7"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D8"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D9"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D10"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D11"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D12"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D13"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D14"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D15"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D16"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D17"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D18"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D19"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D20"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D21"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D22"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D23"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D24"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D25"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D26"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D27"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D28"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D29"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D30"),
-+	SND_SOC_DAPM_OUTPUT("TDM_D31"),
-+};
-+
-+static const struct snd_soc_dapm_route s4_tdmout_pad_dapm_routes[] = {
-+	{ "TDM_D0", "TDM_D0", "TDMA_OUT SEL" },
-+	{ "TDM_D1", "TDM_D1", "TDMA_OUT SEL" },
-+	{ "TDM_D2", "TDM_D2", "TDMA_OUT SEL" },
-+	{ "TDM_D3", "TDM_D3", "TDMA_OUT SEL" },
-+	{ "TDM_D4", "TDM_D4", "TDMA_OUT SEL" },
-+	{ "TDM_D5", "TDM_D5", "TDMA_OUT SEL" },
-+	{ "TDM_D6", "TDM_D6", "TDMA_OUT SEL" },
-+	{ "TDM_D7", "TDM_D7", "TDMA_OUT SEL" },
-+	{ "TDM_D8", "TDM_D8", "TDMA_OUT SEL" },
-+	{ "TDM_D9", "TDM_D9", "TDMA_OUT SEL" },
-+	{ "TDM_D10", "TDM_D10", "TDMA_OUT SEL" },
-+	{ "TDM_D11", "TDM_D11", "TDMA_OUT SEL" },
-+	{ "TDM_D12", "TDM_D12", "TDMA_OUT SEL" },
-+	{ "TDM_D13", "TDM_D13", "TDMA_OUT SEL" },
-+	{ "TDM_D14", "TDM_D14", "TDMA_OUT SEL" },
-+	{ "TDM_D15", "TDM_D15", "TDMA_OUT SEL" },
-+	{ "TDM_D16", "TDM_D16", "TDMA_OUT SEL" },
-+	{ "TDM_D17", "TDM_D17", "TDMA_OUT SEL" },
-+	{ "TDM_D18", "TDM_D18", "TDMA_OUT SEL" },
-+	{ "TDM_D19", "TDM_D19", "TDMA_OUT SEL" },
-+	{ "TDM_D20", "TDM_D20", "TDMA_OUT SEL" },
-+	{ "TDM_D21", "TDM_D21", "TDMA_OUT SEL" },
-+	{ "TDM_D22", "TDM_D22", "TDMA_OUT SEL" },
-+	{ "TDM_D23", "TDM_D23", "TDMA_OUT SEL" },
-+	{ "TDM_D24", "TDM_D24", "TDMA_OUT SEL" },
-+	{ "TDM_D25", "TDM_D25", "TDMA_OUT SEL" },
-+	{ "TDM_D26", "TDM_D26", "TDMA_OUT SEL" },
-+	{ "TDM_D27", "TDM_D27", "TDMA_OUT SEL" },
-+	{ "TDM_D28", "TDM_D28", "TDMA_OUT SEL" },
-+	{ "TDM_D29", "TDM_D29", "TDMA_OUT SEL" },
-+	{ "TDM_D30", "TDM_D30", "TDMA_OUT SEL" },
-+	{ "TDM_D31", "TDM_D31", "TDMA_OUT SEL" },
-+	{ "TDM_D0", "TDM_D0", "TDMB_OUT SEL" },
-+	{ "TDM_D1", "TDM_D1", "TDMB_OUT SEL" },
-+	{ "TDM_D2", "TDM_D2", "TDMB_OUT SEL" },
-+	{ "TDM_D3", "TDM_D3", "TDMB_OUT SEL" },
-+	{ "TDM_D4", "TDM_D4", "TDMB_OUT SEL" },
-+	{ "TDM_D5", "TDM_D5", "TDMB_OUT SEL" },
-+	{ "TDM_D6", "TDM_D6", "TDMB_OUT SEL" },
-+	{ "TDM_D7", "TDM_D7", "TDMB_OUT SEL" },
-+	{ "TDM_D8", "TDM_D8", "TDMB_OUT SEL" },
-+	{ "TDM_D9", "TDM_D9", "TDMB_OUT SEL" },
-+	{ "TDM_D10", "TDM_D10", "TDMB_OUT SEL" },
-+	{ "TDM_D11", "TDM_D11", "TDMB_OUT SEL" },
-+	{ "TDM_D12", "TDM_D12", "TDMB_OUT SEL" },
-+	{ "TDM_D13", "TDM_D13", "TDMB_OUT SEL" },
-+	{ "TDM_D14", "TDM_D14", "TDMB_OUT SEL" },
-+	{ "TDM_D15", "TDM_D15", "TDMB_OUT SEL" },
-+
-+	{ "TDM_D16", "TDM_D16", "TDMB_OUT SEL" },
-+	{ "TDM_D17", "TDM_D17", "TDMB_OUT SEL" },
-+	{ "TDM_D18", "TDM_D18", "TDMB_OUT SEL" },
-+	{ "TDM_D19", "TDM_D19", "TDMB_OUT SEL" },
-+	{ "TDM_D20", "TDM_D20", "TDMB_OUT SEL" },
-+	{ "TDM_D21", "TDM_D21", "TDMB_OUT SEL" },
-+	{ "TDM_D22", "TDM_D22", "TDMB_OUT SEL" },
-+	{ "TDM_D23", "TDM_D23", "TDMB_OUT SEL" },
-+	{ "TDM_D24", "TDM_D24", "TDMB_OUT SEL" },
-+	{ "TDM_D25", "TDM_D25", "TDMB_OUT SEL" },
-+	{ "TDM_D26", "TDM_D26", "TDMB_OUT SEL" },
-+	{ "TDM_D27", "TDM_D27", "TDMB_OUT SEL" },
-+	{ "TDM_D28", "TDM_D28", "TDMB_OUT SEL" },
-+	{ "TDM_D29", "TDM_D29", "TDMB_OUT SEL" },
-+	{ "TDM_D30", "TDM_D30", "TDMB_OUT SEL" },
-+	{ "TDM_D31", "TDM_D31", "TDMB_OUT SEL" },
-+	{ "TDM_D0", "TDM_D0", "TDMC_OUT SEL" },
-+	{ "TDM_D1", "TDM_D1", "TDMC_OUT SEL" },
-+	{ "TDM_D2", "TDM_D2", "TDMC_OUT SEL" },
-+	{ "TDM_D3", "TDM_D3", "TDMC_OUT SEL" },
-+	{ "TDM_D4", "TDM_D4", "TDMC_OUT SEL" },
-+	{ "TDM_D5", "TDM_D5", "TDMC_OUT SEL" },
-+	{ "TDM_D6", "TDM_D6", "TDMC_OUT SEL" },
-+	{ "TDM_D7", "TDM_D7", "TDMC_OUT SEL" },
-+	{ "TDM_D8", "TDM_D8", "TDMC_OUT SEL" },
-+	{ "TDM_D9", "TDM_D9", "TDMC_OUT SEL" },
-+	{ "TDM_D10", "TDM_D10", "TDMC_OUT SEL" },
-+	{ "TDM_D11", "TDM_D11", "TDMC_OUT SEL" },
-+	{ "TDM_D12", "TDM_D12", "TDMC_OUT SEL" },
-+	{ "TDM_D13", "TDM_D13", "TDMC_OUT SEL" },
-+	{ "TDM_D14", "TDM_D14", "TDMC_OUT SEL" },
-+	{ "TDM_D15", "TDM_D15", "TDMC_OUT SEL" },
-+	{ "TDM_D16", "TDM_D16", "TDMC_OUT SEL" },
-+	{ "TDM_D17", "TDM_D17", "TDMC_OUT SEL" },
-+	{ "TDM_D18", "TDM_D18", "TDMC_OUT SEL" },
-+	{ "TDM_D19", "TDM_D19", "TDMC_OUT SEL" },
-+	{ "TDM_D20", "TDM_D20", "TDMC_OUT SEL" },
-+	{ "TDM_D21", "TDM_D21", "TDMC_OUT SEL" },
-+	{ "TDM_D22", "TDM_D22", "TDMC_OUT SEL" },
-+	{ "TDM_D23", "TDM_D23", "TDMC_OUT SEL" },
-+	{ "TDM_D24", "TDM_D24", "TDMC_OUT SEL" },
-+	{ "TDM_D25", "TDM_D25", "TDMC_OUT SEL" },
-+	{ "TDM_D26", "TDM_D26", "TDMC_OUT SEL" },
-+	{ "TDM_D27", "TDM_D27", "TDMC_OUT SEL" },
-+	{ "TDM_D28", "TDM_D28", "TDMC_OUT SEL" },
-+	{ "TDM_D29", "TDM_D29", "TDMC_OUT SEL" },
-+	{ "TDM_D30", "TDM_D30", "TDMC_OUT SEL" },
-+	{ "TDM_D31", "TDM_D31", "TDMC_OUT SEL" },
-+};
-+
-+static const struct snd_soc_component_driver s4_tdmout_pad_component_drv = {
-+	.dapm_widgets		= s4_tdmout_pad_dapm_widgets,
-+	.num_dapm_widgets	= ARRAY_SIZE(s4_tdmout_pad_dapm_widgets),
-+	.dapm_routes		= s4_tdmout_pad_dapm_routes,
-+	.num_dapm_routes	= ARRAY_SIZE(s4_tdmout_pad_dapm_routes),
-+
-+};
-+
-+static const struct of_device_id s4_tdmout_pad_of_match[] = {
-+	{
-+		.compatible = "amlogic,s4-tdmout-pad",
-+	}, {}
-+};
-+
-+MODULE_DEVICE_TABLE(of, s4_tdmout_pad_of_match);
-+
-+static int tdm_pad_out_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	struct regmap *map;
-+	void __iomem *regs;
-+
-+	regs = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(regs))
-+		return PTR_ERR(regs);
-+
-+	map = devm_regmap_init_mmio(dev, regs, &tdmout_pad_regmap_cfg);
-+	if (IS_ERR(map))
-+		return dev_err_probe(dev, PTR_ERR(map), "failed to init regmap\n");
-+
-+	return devm_snd_soc_register_component(dev, &s4_tdmout_pad_component_drv,
-+					       NULL, 0);
-+}
-+
-+static struct platform_driver tdmout_pad_pdrv = {
-+	.probe = tdm_pad_out_probe,
-+	.driver = {
-+		.name = "s4-pad-out",
-+		.of_match_table = s4_tdmout_pad_of_match,
-+	},
-+};
-+
-+module_platform_driver(tdmout_pad_pdrv);
-+
-+MODULE_DESCRIPTION("Amlogic TDM PAD DRIVER");
-+MODULE_AUTHOR("jiebing.chen@amlogic.com");
-+MODULE_LICENSE("GPL");
-diff --git a/sound/soc/meson/s4-tocodec-control.c b/sound/soc/meson/s4-tocodec-control.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..e5d824fae0eba545d38dc36e2566e7cee590e7f5
---- /dev/null
-+++ b/sound/soc/meson/s4-tocodec-control.c
-@@ -0,0 +1,376 @@
-+// SPDX-License-Identifier: (GPL-2.0-only OR MIT)
-+/*
-+ * Copyright (C) 2023 Amlogic, Inc. All rights reserved
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/of_platform.h>
-+#include <linux/regmap.h>
-+#include <sound/soc.h>
-+#include <sound/soc-dai.h>
-+#include <linux/init.h>
-+#include <linux/kernel.h>
-+#include<linux/kstrtox.h>
-+#include <linux/clk-provider.h>
-+#include <linux/reset.h>
-+#include "axg-tdm.h"
-+
-+#define TOACODEC_CTRL0			0x0
-+
-+#define CTRL0_ENABLE_SHIFT		31
-+#define CTRL0_BCLK_ENABLE_SHIFT		30
-+#define CTRL0_MCLK_ENABLE_SHIFT		29
-+#define CTRL0_BLK_CAP_INV_SHIFT		9
-+
-+#define TDM_IFACE 0
-+#define TDM_A_PAD 0
-+#define TDM_B_PAD 1
-+#define TDM_C_PAD 2
-+
-+struct toacodec {
-+	struct regmap_field *field_dat_sel;
-+	struct regmap_field *field_lrclk_sel;
-+	struct regmap_field *field_bclk_sel;
-+	struct regmap_field *field_mclk_sel;
-+};
-+
-+struct toacodec_match_data {
-+	const struct snd_soc_component_driver *component_drv;
-+	const struct reg_field field_dat_sel;
-+	const struct reg_field field_lrclk_sel;
-+	const struct reg_field field_bclk_sel;
-+	const struct reg_field field_mclk_sel;
-+};
-+
-+static const struct regmap_config tocodec_regmap_cfg = {
-+	.reg_bits	= 32,
-+	.val_bits	= 32,
-+	.reg_stride	= 4,
-+	.max_register	= 0x1,
-+};
-+
-+#define S4_LANE_OFFSET 8
-+
-+static const char * const s4_tocodec_lane_sel_texts[] = {
-+	"Lane0", "Lane1", "Lane2", "Lane3", "Lane4", "Lane5", "Lane6", "Lane7"
-+};
-+
-+static const struct soc_enum s4_tocodec_lane_sel_enum =
-+	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0, ARRAY_SIZE(s4_tocodec_lane_sel_texts),
-+			s4_tocodec_lane_sel_texts);
-+
-+static const struct snd_kcontrol_new s4_tocodec_lane_sel =
-+	SOC_DAPM_ENUM("TOCODEC LANE SEL", s4_tocodec_lane_sel_enum);
-+
-+static const char * const s4_tocodec_src_sel_texts[] = {
-+	"TDMA", "TDMB", "TDMC"
-+};
-+
-+static const struct soc_enum s4_tocodec_src_sel_enum =
-+	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0, ARRAY_SIZE(s4_tocodec_src_sel_texts),
-+			s4_tocodec_src_sel_texts);
-+
-+static const struct snd_kcontrol_new s4_tocodec_src_sel =
-+	SOC_DAPM_ENUM("TOCODEC SEL", s4_tocodec_src_sel_enum);
-+
-+static const struct snd_kcontrol_new s4_toacodec_out_enable =
-+	SOC_DAPM_SINGLE_AUTODISABLE("Switch", TOACODEC_CTRL0,
-+				    CTRL0_ENABLE_SHIFT, 1, 0);
-+
-+static struct snd_soc_dai *tocodec_tdm_get_ahead_be(struct snd_soc_dapm_widget *w)
-+{
-+	struct snd_soc_dapm_path *p;
-+	struct snd_soc_dai *be;
-+
-+	snd_soc_dapm_widget_for_each_source_path(w, p) {
-+		if (!p->connect)
-+			continue;
-+		if (p->source->id == snd_soc_dapm_dai_in)
-+			return (struct snd_soc_dai *)p->source->priv;
-+		be = tocodec_tdm_get_ahead_be(p->source);
-+		if (be && be->id == TDM_IFACE)
-+			return be;
-+	}
-+	return NULL;
-+}
-+
-+static unsigned int aml_simple_strtoull(const char *cp)
-+{
-+	unsigned int result = 0;
-+	unsigned int value = 0;
-+	unsigned int len = strlen(cp);
-+
-+	while (len != 0) {
-+		len--;
-+		value = isdigit(*cp);
-+		if (value) {
-+			value = *cp - '0';
-+		} else {
-+			cp++;
-+			continue;
-+		}
-+		cp++;
-+		result = result * 10 + value;
-+	}
-+	return result;
-+}
-+
-+static int aml_get_clk_id(const char *name)
-+{
-+	int clk_id = 0;
-+
-+	if (strstr(name, "mst_a"))
-+		clk_id = 0;
-+	else if (strstr(name, "mst_b"))
-+		clk_id = 1;
-+	else if (strstr(name, "mst_c"))
-+		clk_id = 2;
-+	else if (strstr(name, "mst_d"))
-+		clk_id = 3;
-+	else if (strstr(name, "mst_e"))
-+		clk_id = 4;
-+	else if (strstr(name, "mst_f"))
-+		clk_id = 5;
-+
-+	return clk_id;
-+}
-+
-+static int aml_tocodec_sel_set(struct snd_soc_dapm_widget *w)
-+{
-+	struct snd_soc_dai *be;
-+	struct axg_tdm_stream *stream;
-+	struct axg_tdm_iface *iface;
-+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-+	struct toacodec *priv = snd_soc_component_get_drvdata(component);
-+	unsigned int tdm_id = TDM_A_PAD;
-+	const char *dai_widget_name;
-+	struct snd_soc_dapm_path *p;
-+	unsigned int lane = 0;
-+	unsigned int val = 0;
-+	struct clk *sclk, *mclk;
-+	char *clk_name;
-+	int mclk_id, sclk_id;
-+
-+	be = tocodec_tdm_get_ahead_be(w);
-+	if (!be) {
-+		dev_err(component->dev, "%s not find the be\n", __func__);
-+		return -EINVAL;
-+	}
-+	stream = snd_soc_dai_dma_data_get_playback(be);
-+	if (!stream) {
-+		dev_err(component->dev, "%s not find the stream\n", __func__);
-+		return -EINVAL;
-+	}
-+	/*we like to use dai id, but it is fixed val*/
-+	dai_widget_name = be->stream[SNDRV_PCM_STREAM_PLAYBACK].widget->name;
-+	if (strstr(dai_widget_name, "TDM_A"))
-+		tdm_id = TDM_A_PAD;
-+	else if (strstr(dai_widget_name, "TDM_B"))
-+		tdm_id = TDM_B_PAD;
-+	else if (strstr(dai_widget_name, "TDM_C"))
-+		tdm_id = TDM_C_PAD;
-+	snd_soc_dapm_widget_for_each_source_path(w, p) {
-+		if (p->connect && p->name) {
-+			lane = aml_simple_strtoull(p->name);
-+			val = lane + tdm_id * S4_LANE_OFFSET;
-+			regmap_field_write(priv->field_dat_sel, val);
-+		}
-+	}
-+	iface = stream->iface;
-+	mclk = iface->mclk;
-+	sclk = iface->sclk;
-+	mclk_id = aml_get_clk_id(__clk_get_name(mclk));
-+	sclk_id = aml_get_clk_id(__clk_get_name(sclk));
-+	regmap_field_write(priv->field_mclk_sel, mclk_id);
-+	regmap_field_write(priv->field_bclk_sel, sclk_id);
-+	regmap_field_write(priv->field_lrclk_sel, sclk_id);
-+
-+	return 0;
-+}
-+
-+static int tocodec_sel_event(struct snd_soc_dapm_widget *w,
-+			     struct snd_kcontrol *control,
-+			     int event)
-+{
-+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-+	int ret = 0;
-+
-+	switch (event) {
-+	case SND_SOC_DAPM_PRE_PMU:
-+		ret = aml_tocodec_sel_set(w);
-+		break;
-+
-+	case SND_SOC_DAPM_PRE_PMD:
-+		break;
-+
-+	default:
-+		dev_err(component->dev, "Unexpected event %d\n", event);
-+		return -EINVAL;
-+	}
-+
-+	return ret;
-+}
-+
-+static int tocodec_clk_enable(struct snd_soc_dapm_widget *w,
-+			      struct snd_kcontrol *control,
-+			      int event)
-+{
-+	int ret = 0;
-+	unsigned int mask = 0, val = 0;
-+	struct snd_soc_component *component = snd_soc_dapm_to_component(w->dapm);
-+
-+	snd_soc_component_update_bits(component, TOACODEC_CTRL0,
-+				      1 << CTRL0_BLK_CAP_INV_SHIFT, 1 << CTRL0_BLK_CAP_INV_SHIFT);
-+	switch (event) {
-+	case SND_SOC_DAPM_PRE_PMU:
-+		mask = 1 << CTRL0_MCLK_ENABLE_SHIFT | 1 << CTRL0_BCLK_ENABLE_SHIFT;
-+		val = 1 << CTRL0_MCLK_ENABLE_SHIFT | 1 << CTRL0_BCLK_ENABLE_SHIFT;
-+		snd_soc_component_update_bits(component, TOACODEC_CTRL0, mask, val);
-+		break;
-+	case SND_SOC_DAPM_PRE_PMD:
-+		mask = 1 << CTRL0_MCLK_ENABLE_SHIFT | 1 << CTRL0_BCLK_ENABLE_SHIFT;
-+		val = 0 << CTRL0_MCLK_ENABLE_SHIFT | 0 << CTRL0_BCLK_ENABLE_SHIFT;
-+		snd_soc_component_update_bits(component, TOACODEC_CTRL0, mask, val);
-+		break;
-+	default:
-+		dev_err(component->dev, "Unexpected event %d\n", event);
-+		return -EINVAL;
-+	}
-+
-+	return ret;
-+}
-+
-+static const struct snd_soc_dapm_widget s4_toacodec_widgets[] = {
-+	SND_SOC_DAPM_MUX_E("Lane SRC", SND_SOC_NOPM, 0, 0,
-+			   &s4_tocodec_lane_sel, tocodec_sel_event,
-+			   (SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD)),
-+	SND_SOC_DAPM_MUX("INPUT SRC", SND_SOC_NOPM, 0, 0, &s4_tocodec_src_sel),
-+	SND_SOC_DAPM_SWITCH_E("OUT EN", SND_SOC_NOPM, 0, 0,
-+			      &s4_toacodec_out_enable, tocodec_clk_enable,
-+				(SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD)),
-+	SND_SOC_DAPM_AIF_IN("TDMA", NULL, 0, SND_SOC_NOPM, 0, 0),
-+	SND_SOC_DAPM_AIF_IN("TDMB", NULL, 0, SND_SOC_NOPM, 0, 0),
-+	SND_SOC_DAPM_AIF_IN("TDMC", NULL, 0, SND_SOC_NOPM, 0, 0),
-+	SND_SOC_DAPM_OUT_DRV("Lane0", SND_SOC_NOPM, 0, 0, NULL, 0),
-+	SND_SOC_DAPM_OUT_DRV("Lane1", SND_SOC_NOPM, 0, 0, NULL, 0),
-+	SND_SOC_DAPM_OUT_DRV("Lane2", SND_SOC_NOPM, 0, 0, NULL, 0),
-+	SND_SOC_DAPM_OUT_DRV("Lane3", SND_SOC_NOPM, 0, 0, NULL, 0),
-+	SND_SOC_DAPM_OUT_DRV("Lane4", SND_SOC_NOPM, 0, 0, NULL, 0),
-+	SND_SOC_DAPM_OUT_DRV("Lane5", SND_SOC_NOPM, 0, 0, NULL, 0),
-+	SND_SOC_DAPM_OUT_DRV("Lane6", SND_SOC_NOPM, 0, 0, NULL, 0),
-+	SND_SOC_DAPM_OUT_DRV("Lane7", SND_SOC_NOPM, 0, 0, NULL, 0),
-+	SND_SOC_DAPM_OUTPUT("TDM_TO_ACODEC"),
-+};
-+
-+static const struct snd_soc_dapm_route s4_tocodec_dapm_routes[] = {
-+	{ "INPUT SRC", "TDMA", "TDMA"},
-+	{ "INPUT SRC", "TDMB", "TDMB"},
-+	{ "INPUT SRC", "TDMC", "TDMC"},
-+	{ "Lane0", NULL, "INPUT SRC" },
-+	{ "Lane1", NULL, "INPUT SRC"},
-+	{ "Lane2", NULL, "INPUT SRC"},
-+	{ "Lane3", NULL, "INPUT SRC"},
-+	{ "Lane4", NULL, "INPUT SRC"},
-+	{ "Lane5", NULL, "INPUT SRC"},
-+	{ "Lane6", NULL, "INPUT SRC"},
-+	{ "Lane7", NULL, "INPUT SRC"},
-+	{ "Lane SRC", "Lane0", "Lane0"},
-+	{ "Lane SRC", "Lane1", "Lane1"},
-+	{ "Lane SRC", "Lane2", "Lane2"},
-+	{ "Lane SRC", "Lane3", "Lane3"},
-+	{ "Lane SRC", "Lane4", "Lane4"},
-+	{ "Lane SRC", "Lane5", "Lane5"},
-+	{ "Lane SRC", "Lane6", "Lane6"},
-+	{ "Lane SRC", "Lane7", "Lane7"},
-+	{ "OUT EN", "Switch", "Lane SRC"},
-+	{ "TDM_TO_ACODEC", NULL, "OUT EN"},
-+
-+};
-+
-+static const struct snd_soc_component_driver s4_tocodec_component_drv = {
-+	.dapm_widgets		= s4_toacodec_widgets,
-+	.num_dapm_widgets	= ARRAY_SIZE(s4_toacodec_widgets),
-+	.dapm_routes		= s4_tocodec_dapm_routes,
-+	.num_dapm_routes	= ARRAY_SIZE(s4_tocodec_dapm_routes),
-+};
-+
-+static const struct toacodec_match_data s4_toacodec_match_data = {
-+	.component_drv	= &s4_tocodec_component_drv,
-+	.field_dat_sel	= REG_FIELD(TOACODEC_CTRL0, 16, 20),
-+	.field_lrclk_sel = REG_FIELD(TOACODEC_CTRL0, 12, 14),
-+	.field_bclk_sel	= REG_FIELD(TOACODEC_CTRL0, 4, 6),
-+	.field_mclk_sel	= REG_FIELD(TOACODEC_CTRL0, 0, 2),
-+};
-+
-+static const struct of_device_id s4_tocodec_of_match[] = {
-+	{
-+		.compatible = "amlogic,s4-tocodec",
-+		.data = &s4_toacodec_match_data,
-+	}, {}
-+};
-+
-+MODULE_DEVICE_TABLE(of, s4_tocodec_of_match);
-+
-+static int tocodec_probe(struct platform_device *pdev)
-+{
-+	const struct toacodec_match_data *data;
-+	struct device *dev = &pdev->dev;
-+	struct toacodec *priv;
-+	void __iomem *regs;
-+	struct regmap *map;
-+	int ret;
-+
-+	data = device_get_match_data(dev);
-+	if (!data)
-+		return dev_err_probe(dev, -ENODEV, "failed to match device\n");
-+	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
-+	if (!priv)
-+		return -ENOMEM;
-+
-+	platform_set_drvdata(pdev, priv);
-+
-+	ret = device_reset(dev);
-+	if (ret)
-+		return ret;
-+
-+	regs = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(regs))
-+		return PTR_ERR(regs);
-+
-+	map = devm_regmap_init_mmio(dev, regs, &tocodec_regmap_cfg);
-+	if (IS_ERR(map))
-+		return dev_err_probe(dev, PTR_ERR(map), "failed to init regmap\n");
-+
-+	priv->field_dat_sel = devm_regmap_field_alloc(dev, map, data->field_dat_sel);
-+	if (IS_ERR(priv->field_dat_sel))
-+		return PTR_ERR(priv->field_dat_sel);
-+
-+	priv->field_lrclk_sel = devm_regmap_field_alloc(dev, map, data->field_lrclk_sel);
-+	if (IS_ERR(priv->field_lrclk_sel))
-+		return PTR_ERR(priv->field_lrclk_sel);
-+
-+	priv->field_bclk_sel = devm_regmap_field_alloc(dev, map, data->field_bclk_sel);
-+	if (IS_ERR(priv->field_bclk_sel))
-+		return PTR_ERR(priv->field_bclk_sel);
-+
-+	priv->field_mclk_sel = devm_regmap_field_alloc(dev, map, data->field_mclk_sel);
-+	if (IS_ERR(priv->field_mclk_sel))
-+		return PTR_ERR(priv->field_mclk_sel);
-+
-+	return devm_snd_soc_register_component(dev,
-+			data->component_drv, NULL, 0);
-+}
-+
-+static struct platform_driver tocodec_pdrv = {
-+	.probe = tocodec_probe,
-+	.driver = {
-+		.name = "s4-tocodec",
-+		.of_match_table = s4_tocodec_of_match,
-+	},
-+};
-+
-+module_platform_driver(tocodec_pdrv);
-+
-+MODULE_DESCRIPTION("Amlogic to codec driver");
-+MODULE_AUTHOR("jiebing.chen@amlogic.com");
-+MODULE_LICENSE("GPL");
-diff --git a/sound/soc/meson/t9015.c b/sound/soc/meson/t9015.c
-index 571f65788c592050abdca264f5656d4d1a9d99f6..2db1cd18cf2cea507f3d7282054e03d953586648 100644
---- a/sound/soc/meson/t9015.c
-+++ b/sound/soc/meson/t9015.c
-@@ -89,10 +89,7 @@ static struct snd_soc_dai_driver t9015_dai = {
- 		.channels_min = 1,
- 		.channels_max = 2,
- 		.rates = SNDRV_PCM_RATE_8000_96000,
--		.formats = (SNDRV_PCM_FMTBIT_S8 |
--			    SNDRV_PCM_FMTBIT_S16_LE |
--			    SNDRV_PCM_FMTBIT_S20_LE |
--			    SNDRV_PCM_FMTBIT_S24_LE),
-+		.formats = (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE),
- 	},
- 	.ops = &t9015_dai_ops,
  };
+ 
+ &pwm_ef {
+diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
+index 957577d986c0675a503115e1ccbc4387c2051620..87a00ace23131e31822bb43fbe956b8abcbaef40 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
++++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
+@@ -11,7 +11,11 @@
+ #include <dt-bindings/clock/amlogic,s4-peripherals-clkc.h>
+ #include <dt-bindings/power/meson-s4-power.h>
+ #include <dt-bindings/reset/amlogic,meson-s4-reset.h>
+-
++#include <dt-bindings/clock/axg-audio-clkc.h>
++#include <dt-bindings/reset/amlogic,meson-axg-audio-arb.h>
++#include <dt-bindings/reset/amlogic,meson-g12a-audio-reset.h>
++#include <dt-bindings/sound/meson-g12a-toacodec.h>
++#include <dt-bindings/sound/meson-g12a-tohdmitx.h>
+ / {
+ 	cpus {
+ 		#address-cells = <2>;
+@@ -46,6 +50,42 @@ cpu3: cpu@3 {
+ 		};
+ 	};
+ 
++	tdmif_a: audio-controller-0 {
++		compatible = "amlogic,axg-tdm-iface";
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "TDM_A";
++		clocks = <&clkc_audio AUD_CLKID_MST_A_MCLK>,
++			 <&clkc_audio AUD_CLKID_MST_A_SCLK>,
++			 <&clkc_audio AUD_CLKID_MST_A_LRCLK>;
++		clock-names = "mclk", "sclk", "lrclk";
++		assigned-clocks = <&clkc_audio AUD_CLKID_MST_A_MCLK_SEL>;
++		assigned-clock-parents = <&clkc_pll CLKID_HIFI_PLL>;
++	};
++
++	tdmif_b: audio-controller-1 {
++		compatible = "amlogic,axg-tdm-iface";
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "TDM_B";
++		clocks = <&clkc_audio AUD_CLKID_MST_B_MCLK>,
++			 <&clkc_audio AUD_CLKID_MST_B_SCLK>,
++			 <&clkc_audio AUD_CLKID_MST_B_LRCLK>;
++		clock-names = "mclk", "sclk", "lrclk";
++		assigned-clocks = <&clkc_audio AUD_CLKID_MST_B_MCLK_SEL>;
++		assigned-clock-parents = <&clkc_pll CLKID_HIFI_PLL>;
++	};
++
++	tdmif_c: audio-controller-2 {
++		compatible = "amlogic,axg-tdm-iface";
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "TDM_C";
++		clocks = <&clkc_audio AUD_CLKID_MST_C_MCLK>,
++			 <&clkc_audio AUD_CLKID_MST_C_SCLK>,
++			 <&clkc_audio AUD_CLKID_MST_C_LRCLK>;
++		clock-names = "mclk", "sclk", "lrclk";
++		assigned-clocks = <&clkc_audio AUD_CLKID_MST_C_MCLK_SEL>;
++		assigned-clock-parents = <&clkc_pll CLKID_HIFI_PLL>;
++	};
++
+ 	timer {
+ 		compatible = "arm,armv8-timer";
+ 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+@@ -850,3 +890,346 @@ emmc: mmc@fe08c000 {
+ 		};
+ 	};
+ };
++
++&apb4 {
++	audio: bus@330000 {
++		compatible = "simple-bus";
++		reg = <0x0 0x330000 0x0 0x1000>;
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges = <0x0 0x0 0x0 0x330000 0x0 0x1000>;
++
++		clkc_audio: clock-controller@0 {
++			compatible = "amlogic,sm1-audio-clkc";
++			reg = <0x0 0x0 0x0 0xb4>;
++			#clock-cells = <1>;
++			#reset-cells = <1>;
++			power-domains = <&pwrc PWRC_S4_AUDIO_ID>;
++			clocks = <&clkc_periphs CLKID_AUDIO>,
++				 <&clkc_pll CLKID_MPLL0>,
++				 <&clkc_pll CLKID_MPLL1>,
++				 <&clkc_pll CLKID_MPLL2>,
++				 <&clkc_pll CLKID_MPLL3>,
++				 <&clkc_pll CLKID_HIFI_PLL>,
++				 <&clkc_pll CLKID_FCLK_DIV3>,
++				 <&clkc_pll CLKID_FCLK_DIV4>,
++				 <&clkc_pll CLKID_FCLK_DIV5>;
++			clock-names = "pclk",
++				      "mst_in0",
++				      "mst_in1",
++				      "mst_in2",
++				      "mst_in3",
++				      "mst_in4",
++				      "mst_in5",
++				      "mst_in6",
++				      "mst_in7";
++
++			resets = <&reset RESET_AUDIO>;
++		};
++
++		toddr_a: audio-controller@100 {
++			compatible = "amlogic,sm1-toddr",
++				     "amlogic,axg-toddr";
++			reg = <0x0 0x100 0x0 0x2c>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "TODDR_A";
++			interrupts = <GIC_SPI 32 IRQ_TYPE_EDGE_RISING>;
++			clocks = <&clkc_audio AUD_CLKID_TODDR_A>;
++			resets = <&arb AXG_ARB_TODDR_A>,
++				 <&clkc_audio AUD_RESET_TODDR_A>;
++			reset-names = "arb", "rst";
++			amlogic,fifo-depth = <8192>;
++		};
++
++		toddr_b: audio-controller@140 {
++			compatible = "amlogic,sm1-toddr",
++				     "amlogic,axg-toddr";
++			reg = <0x0 0x140 0x0 0x2c>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "TODDR_B";
++			interrupts = <GIC_SPI 33 IRQ_TYPE_EDGE_RISING>;
++			clocks = <&clkc_audio AUD_CLKID_TODDR_B>;
++			resets = <&arb AXG_ARB_TODDR_B>,
++				 <&clkc_audio AUD_RESET_TODDR_B>;
++			reset-names = "arb", "rst";
++			amlogic,fifo-depth = <256>;
++		};
++
++		toddr_c: audio-controller@180 {
++			compatible = "amlogic,sm1-toddr",
++				     "amlogic,axg-toddr";
++			reg = <0x0 0x180 0x0 0x2c>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "TODDR_C";
++			interrupts = <GIC_SPI 34 IRQ_TYPE_EDGE_RISING>;
++			clocks = <&clkc_audio AUD_CLKID_TODDR_C>;
++			resets = <&arb AXG_ARB_TODDR_C>,
++				 <&clkc_audio AUD_RESET_TODDR_C>;
++			reset-names = "arb", "rst";
++			amlogic,fifo-depth = <256>;
++		};
++
++		frddr_a: audio-controller@1c0 {
++			compatible = "amlogic,sm1-frddr",
++				     "amlogic,axg-frddr";
++			reg = <0x0 0x1c0 0x0 0x2c>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "FRDDR_A";
++			interrupts = <GIC_SPI 36 IRQ_TYPE_EDGE_RISING>;
++			clocks = <&clkc_audio AUD_CLKID_FRDDR_A>;
++			resets = <&arb AXG_ARB_FRDDR_A>,
++				 <&clkc_audio AUD_RESET_FRDDR_A>;
++			reset-names = "arb", "rst";
++			amlogic,fifo-depth = <512>;
++		};
++
++		frddr_b: audio-controller@200 {
++			compatible = "amlogic,sm1-frddr",
++				     "amlogic,axg-frddr";
++			reg = <0x0 0x200 0x0 0x2c>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "FRDDR_B";
++			interrupts = <GIC_SPI 37 IRQ_TYPE_EDGE_RISING>;
++			clocks = <&clkc_audio AUD_CLKID_FRDDR_B>;
++			resets = <&arb AXG_ARB_FRDDR_B>,
++				 <&clkc_audio AUD_RESET_FRDDR_B>;
++			reset-names = "arb", "rst";
++			amlogic,fifo-depth = <256>;
++		};
++
++		frddr_c: audio-controller@240 {
++			compatible = "amlogic,sm1-frddr",
++				     "amlogic,axg-frddr";
++			reg = <0x0 0x240 0x0 0x2c>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "FRDDR_C";
++			interrupts = <GIC_SPI 38 IRQ_TYPE_EDGE_RISING>;
++			clocks = <&clkc_audio AUD_CLKID_FRDDR_C>;
++			resets = <&arb AXG_ARB_FRDDR_C>,
++				 <&clkc_audio AUD_RESET_FRDDR_C>;
++			reset-names = "arb", "rst";
++			amlogic,fifo-depth = <256>;
++		};
++
++		arb: reset-controller@280 {
++			compatible = "amlogic,meson-sm1-audio-arb";
++			reg = <0x0 0x280 0x0 0x4>;
++			#reset-cells = <1>;
++			clocks = <&clkc_audio AUD_CLKID_DDR_ARB>;
++		};
++
++		tdmin_a: audio-controller@300 {
++			compatible = "amlogic,sm1-tdmin",
++				     "amlogic,axg-tdmin";
++			reg = <0x0 0x300 0x0 0x40>;
++			sound-name-prefix = "TDMIN_A";
++			resets = <&clkc_audio AUD_RESET_TDMIN_A>;
++			clocks = <&clkc_audio AUD_CLKID_TDMIN_A>,
++				 <&clkc_audio AUD_CLKID_TDMIN_A_SCLK>,
++				 <&clkc_audio AUD_CLKID_TDMIN_A_SCLK_SEL>,
++				 <&clkc_audio AUD_CLKID_TDMIN_A_LRCLK>,
++				 <&clkc_audio AUD_CLKID_TDMIN_A_LRCLK>;
++			clock-names = "pclk", "sclk", "sclk_sel",
++				      "lrclk", "lrclk_sel";
++		};
++
++		tdmin_b: audio-controller@340 {
++			compatible = "amlogic,sm1-tdmin",
++				     "amlogic,axg-tdmin";
++			reg = <0x0 0x340 0x0 0x40>;
++			sound-name-prefix = "TDMIN_B";
++			resets = <&clkc_audio AUD_RESET_TDMIN_B>;
++			clocks = <&clkc_audio AUD_CLKID_TDMIN_B>,
++				 <&clkc_audio AUD_CLKID_TDMIN_B_SCLK>,
++				 <&clkc_audio AUD_CLKID_TDMIN_B_SCLK_SEL>,
++				 <&clkc_audio AUD_CLKID_TDMIN_B_LRCLK>,
++				 <&clkc_audio AUD_CLKID_TDMIN_B_LRCLK>;
++			clock-names = "pclk", "sclk", "sclk_sel",
++				      "lrclk", "lrclk_sel";
++		};
++
++		tdmin_c: audio-controller@380 {
++			compatible = "amlogic,sm1-tdmin",
++				     "amlogic,axg-tdmin";
++			reg = <0x0 0x380 0x0 0x40>;
++			sound-name-prefix = "TDMIN_C";
++			resets = <&clkc_audio AUD_RESET_TDMIN_C>;
++			clocks = <&clkc_audio AUD_CLKID_TDMIN_C>,
++				 <&clkc_audio AUD_CLKID_TDMIN_C_SCLK>,
++				 <&clkc_audio AUD_CLKID_TDMIN_C_SCLK_SEL>,
++				 <&clkc_audio AUD_CLKID_TDMIN_C_LRCLK>,
++				 <&clkc_audio AUD_CLKID_TDMIN_C_LRCLK>;
++			clock-names = "pclk", "sclk", "sclk_sel",
++				      "lrclk", "lrclk_sel";
++		};
++
++		tdmin_lb: audio-controller@3c0 {
++			compatible = "amlogic,sm1-tdmin",
++				     "amlogic,axg-tdmin";
++			reg = <0x0 0x3c0 0x0 0x40>;
++			sound-name-prefix = "TDMIN_LB";
++			resets = <&clkc_audio AUD_RESET_TDMIN_LB>;
++			clocks = <&clkc_audio AUD_CLKID_TDMIN_LB>,
++				 <&clkc_audio AUD_CLKID_TDMIN_LB_SCLK>,
++				 <&clkc_audio AUD_CLKID_TDMIN_LB_SCLK_SEL>,
++				 <&clkc_audio AUD_CLKID_TDMIN_LB_LRCLK>,
++				 <&clkc_audio AUD_CLKID_TDMIN_LB_LRCLK>;
++			clock-names = "pclk", "sclk", "sclk_sel",
++				      "lrclk", "lrclk_sel";
++		};
++
++		spdifin: audio-controller@400 {
++			compatible = "amlogic,g12a-spdifin",
++				     "amlogic,axg-spdifin";
++			reg = <0x0 0x400 0x0 0x30>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "SPDIFIN";
++			interrupts = <GIC_SPI 151 IRQ_TYPE_EDGE_RISING>;
++			clocks = <&clkc_audio AUD_CLKID_SPDIFIN>,
++			<&clkc_audio AUD_CLKID_SPDIFIN_CLK>;
++			clock-names = "pclk", "refclk";
++			resets = <&clkc_audio AUD_RESET_SPDIFIN>;
++		};
++
++		spdifout_a: audio-controller@480 {
++			compatible = "amlogic,g12a-spdifout",
++				     "amlogic,axg-spdifout";
++			reg = <0x0 0x480 0x0 0x50>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "SPDIFOUT_A";
++			clocks = <&clkc_audio AUD_CLKID_SPDIFOUT>,
++			<&clkc_audio AUD_CLKID_SPDIFOUT_CLK>;
++			clock-names = "pclk", "mclk";
++			resets = <&clkc_audio AUD_RESET_SPDIFOUT>;
++		};
++
++		tdmout_a: audio-controller@500 {
++			compatible = "amlogic,sm1-tdmout";
++			reg = <0x0 0x500 0x0 0x40>;
++			sound-name-prefix = "TDMOUT_A";
++			resets = <&clkc_audio AUD_RESET_TDMOUT_A>;
++			clocks = <&clkc_audio AUD_CLKID_TDMOUT_A>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_A_SCLK>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_A_SCLK_SEL>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_A_LRCLK>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_A_LRCLK>;
++			clock-names = "pclk", "sclk", "sclk_sel",
++				      "lrclk", "lrclk_sel";
++		};
++
++		tdmout_b: audio-controller@540 {
++			compatible = "amlogic,sm1-tdmout";
++			reg = <0x0 0x540 0x0 0x40>;
++			sound-name-prefix = "TDMOUT_B";
++			resets = <&clkc_audio AUD_RESET_TDMOUT_B>;
++			clocks = <&clkc_audio AUD_CLKID_TDMOUT_B>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_B_SCLK>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_B_SCLK_SEL>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_B_LRCLK>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_B_LRCLK>;
++			clock-names = "pclk", "sclk", "sclk_sel",
++				      "lrclk", "lrclk_sel";
++		};
++
++		tdmout_c: audio-controller@580 {
++			compatible = "amlogic,sm1-tdmout";
++			reg = <0x0 0x580 0x0 0x40>;
++			sound-name-prefix = "TDMOUT_C";
++			resets = <&clkc_audio AUD_RESET_TDMOUT_C>;
++			clocks = <&clkc_audio AUD_CLKID_TDMOUT_C>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_C_SCLK>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_C_SCLK_SEL>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_C_LRCLK>,
++				 <&clkc_audio AUD_CLKID_TDMOUT_C_LRCLK>;
++			clock-names = "pclk", "sclk", "sclk_sel",
++				      "lrclk", "lrclk_sel";
++		};
++
++		spdifout_b: audio-controller@680 {
++			compatible = "amlogic,g12a-spdifout",
++				     "amlogic,axg-spdifout";
++			reg = <0x0 0x680 0x0 0x50>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "SPDIFOUT_B";
++			clocks = <&clkc_audio AUD_CLKID_SPDIFOUT_B>,
++				 <&clkc_audio AUD_CLKID_SPDIFOUT_B_CLK>;
++			clock-names = "pclk", "mclk";
++			resets = <&clkc_audio AUD_RESET_SPDIFOUT_B>;
++		};
++
++		toacodec: audio-controller@740 {
++			compatible = "amlogic,s4-tocodec";
++			reg = <0x0 0x740 0x0 0x4>;
++			sound-name-prefix = "TOACODEC";
++			resets = <&clkc_audio AUD_RESET_TOACODEC>;
++		};
++
++		tohdmitx: audio-controller@744 {
++			compatible = "amlogic,sm1-tohdmitx",
++				     "amlogic,g12a-tohdmitx";
++			reg = <0x0 0x744 0x0 0x4>;
++			#sound-dai-cells = <1>;
++			sound-name-prefix = "TOHDMITX";
++			resets = <&clkc_audio AUD_RESET_TOHDMITX>;
++		};
++
++		toddr_d: audio-controller@840 {
++			compatible = "amlogic,sm1-toddr",
++				     "amlogic,axg-toddr";
++			reg = <0x0 0x840 0x0 0x2c>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "TODDR_D";
++			interrupts = <GIC_SPI 45 IRQ_TYPE_EDGE_RISING>;
++			clocks = <&clkc_audio AUD_CLKID_TODDR_D>;
++			resets = <&arb AXG_ARB_TODDR_D>,
++				 <&clkc_audio AUD_RESET_TODDR_D>;
++			reset-names = "arb", "rst";
++			amlogic,fifo-depth = <256>;
++		};
++
++		frddr_d: audio-controller@880 {
++			 compatible = "amlogic,sm1-frddr",
++				      "amlogic,axg-frddr";
++			reg = <0x0 0x880 0x0 0x2c>;
++			#sound-dai-cells = <0>;
++			sound-name-prefix = "FRDDR_D";
++			interrupts = <GIC_SPI 46 IRQ_TYPE_EDGE_RISING>;
++			clocks = <&clkc_audio AUD_CLKID_FRDDR_D>;
++			resets = <&arb AXG_ARB_FRDDR_D>,
++				 <&clkc_audio AUD_RESET_FRDDR_D>;
++			reset-names = "arb", "rst";
++			amlogic,fifo-depth = <256>;
++		};
++
++		tdmout_pad: audio-controller@E58 {
++			compatible = "amlogic,s4-tdmout-pad";
++			reg = <0x0 0xe58 0x0 0x28>;
++		};
++	};
++
++	pdm: audio-controller@331000 {
++		compatible = "amlogic,sm1-pdm",
++			     "amlogic,axg-pdm";
++		reg = <0x0 0x331000 0x0 0x34>;
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "PDM";
++		clocks = <&clkc_audio AUD_CLKID_PDM>,
++			 <&clkc_audio AUD_CLKID_PDM_DCLK>,
++			 <&clkc_audio AUD_CLKID_PDM_SYSCLK>;
++		clock-names = "pclk", "dclk", "sysclk";
++		resets = <&clkc_audio AUD_RESET_PDM>;
++		assigned-clocks = <&clkc_audio AUD_CLKID_PDM_DCLK_SEL>,
++				  <&clkc_audio AUD_CLKID_PDM_SYSCLK_SEL>;
++		assigned-clock-parents = <&clkc_pll CLKID_HIFI_PLL>,<&clkc_pll CLKID_HIFI_PLL>;
++	};
++	 acodec: audio-controller@1A000 {
++		compatible = "amlogic,t9015";
++		reg = <0x0 0x1A000 0x0 0x14>;
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "ACODEC";
++		clocks = <&clkc_periphs CLKID_ACODEC>;
++		clock-names = "pclk";
++		resets = <&reset RESET_ACODEC>;
++	};
++
++};
 
 -- 
 2.43.0
