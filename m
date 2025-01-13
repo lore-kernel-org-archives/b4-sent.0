@@ -1,63 +1,53 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Mon, 13 Jan 2025 12:53:08 +0100
-Subject: [PATCH RESEND 10/12] bringup: Use full path when creating
- custom_source file
+Date: Mon, 13 Jan 2025 12:53:09 +0100
+Subject: [PATCH RESEND 11/12] scripts: Return the full default path of the
+ pool path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250113-jag-bringup_fixes-v1-10-fb28030b1f26@kernel.org>
+Message-Id: <20250113-jag-bringup_fixes-v1-11-fb28030b1f26@kernel.org>
 References: <20250113-jag-bringup_fixes-v1-0-fb28030b1f26@kernel.org>
 In-Reply-To: <20250113-jag-bringup_fixes-v1-0-fb28030b1f26@kernel.org>
 To: kdevops@lists.linux.dev
 Cc: Joel Granados <joel.granados@kernel.org>, mcgrof@kernel.org, 
  da.gomez@samsung.com
 X-Mailer: b4 0.15-dev-00a43
-X-Developer-Signature: v=1; a=openpgp-sha256; l=940;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=618;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=l/flaod/aZKoU8m0yBnBUBZzRVVykVMk2fVKTOumNQU=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGeE/qfa1sJ/HfBa0mocYc6jdWvtDJGVW76R5
- dtpfyE7fZXNO4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnhP6nAAoJELqXzVK3
- lkFPcnoL/06qw5gdDicKVyr0fk5l2fgFSOjzS/iUc9mc3MNq7gk3d0oqKcCby0EIifsUgnmQN9F
- 4HeisSoWUbyf2t9+qjyoeaIAxa6CaI0biYnEK7tWBNFQJqHbIHFJUx+45eDTPXci7AeiwpiQtb/
- pMtai2YWEcofAoMH24Ne8kr6dv7I1azhQGLs2vzgJML5sHTPAL0nYDcH1s32N90QFUffdaPMVox
- i82sTQr189RRrpoUnFANqxSybYpfV9za0848o2rtnQLm0HNrnr5Bj+xsbdGe2BJLMOyVEiYDacY
- 2aXsLmZhsGpuommtJfekJM0Dy07bvcNePtxDvDhA1xMgXqNcM3H9xFuJsYNv4vihJvj8DPbnLCJ
- bbdmdL3ADwukSbLlzTPUwBA/+3fnrGDNMNEfBG5f8KEJORUtCbpxFwbJLzsU1FclS2RpAz6flO5
- xFLxaQXr3VI/fI8z4hZjqI0FWCWPQxPJPPhTTD/jbHyHg6L6kz6BOFzeUjUBfJvyMa7QFOqfAD6
- Dk=
+ bh=Kv/ycEEjWStHBxJuRHp2jefllpU4iYXDCmq1ZbHsqLs=;
+ b=kA0DAAoBupfNUreWQU8ByyZiAGeE/qihjTAk+t4sfpUIDKRspIW+2P/vcvk64I4+wMMVgMihs
+ YkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnhP6oAAoJELqXzVK3lkFPBkUL/iQ7
+ 29G+y0NWZtSazP+onjmYbre4TAvOP7k8H3SthkNre8mq32inh72bk3d49yBF2q2CPmF26RgG6yU
+ zAKW1ygddXSYcUTPzYtIMyo5aNYRt5DK6x4iOFffMXzbqSCpLmJ8J5arSjHcLUrh1aujtvVVXvC
+ tSVYmMj/4PrHZIH0LNPmb3ytSQ8FnV0GCg9ZdSh1ODp5ijO9IidZxktczRH8s0RGbGUBi9Siq1h
+ Y8ozvxbrgaLWHZePxDpRbMKk5gEVuI+EEFgGZhOXORgvD9Xiuzd1a3Gaag2wRnnCgfycL/seYY9
+ yvKDk9vt1P5zhtnOtiUXYtNMQXYZhla7VjRgi6hhSyQiSolzk0KqrBlCOiGjRsRj81JrOyC3E0O
+ 0G900liW9dn6UR5LhoM86nCgoKslPxz0og/WkTTg+DKRNefxTDgdK/urh6KJh1lE/w0BZouqjCG
+ NSX/NXRxHi4Mh5ket712I74IwWzEUKAhYMx3/8Z/kD6YZrZH3/YuBXweGKvQ==
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Avoid "file not found" failures related to relative paths in
-custom_source
+Avoid "file not found" failures related to relative paths in pool paths.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- scripts/bringup_guestfs.sh | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ scripts/get_libvirsh_pool_path.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/scripts/bringup_guestfs.sh b/scripts/bringup_guestfs.sh
-index 74eecea..f49fd12 100755
---- a/scripts/bringup_guestfs.sh
-+++ b/scripts/bringup_guestfs.sh
-@@ -34,7 +34,7 @@ build_custom_source()
- 	SOURCE_TMP=$(mktemp)
- 	cat <<_EOT >$SOURCE_TMP
- [local]
--uri=file:///${CUSTOM_INDEX}
-+uri=file:///${REAL_CUSTOM_INDEX}
- proxy=off
- _EOT
- 	sudo mv $SOURCE_TMP $CUSTOM_SOURCE
-@@ -111,6 +111,7 @@ build_custom_image()
- 	CUSTOM_IMAGE_OK="${CUSTOM_IMAGE_DIR}.ok"
- 	CUSTOM_SOURCE="/etc/virt-builder/repos.d/kdevops-custom-images-${OS_VERSION}.conf"
- 	CUSTOM_INDEX="${CUSTOM_IMAGE_DIR}/index"
-+	REAL_CUSTOM_INDEX="$(realpath $CUSTOM_INDEX)"
- 
- 	mkdir -p ${CUSTOM_IMAGE_DIR}
+diff --git a/scripts/get_libvirsh_pool_path.sh b/scripts/get_libvirsh_pool_path.sh
+index 92901a8..c036777 100755
+--- a/scripts/get_libvirsh_pool_path.sh
++++ b/scripts/get_libvirsh_pool_path.sh
+@@ -17,7 +17,7 @@ POOL_LIST=""
+ get_pool_vars
+ VIRSH_WORKS=$(virsh_works)
+ if [[ "$VIRSH_WORKS" == "n" ]]; then
+-	echo "default"
++	echo "$(pwd)/default"
+ 	exit
+ fi
  
 
 -- 
