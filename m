@@ -1,67 +1,53 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Sun, 12 Jan 2025 21:43:52 +0100
-Subject: [PATCH v3 5/5] MAINTAINERS: Add entries for touchbar display
- driver
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Subject: [PATCH net-next 0/2] net: phy: dp83822: Add support for changing
+ the transmit amplitude voltage
+Date: Mon, 13 Jan 2025 06:40:11 +0100
+Message-Id: <20250113-dp83822-tx-swing-v1-0-7ed5a9d80010@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250112-adpdrm-v3-5-c674dc19fa7f@gmail.com>
-References: <20250112-adpdrm-v3-0-c674dc19fa7f@gmail.com>
-In-Reply-To: <20250112-adpdrm-v3-0-c674dc19fa7f@gmail.com>
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+X-B4-Tracking: v=1; b=H4sIADunhGcC/x3MSQqAMAxA0atI1gZsHFCvIi4comYTpS1aKN7d4
+ vIt/o/g2Ao76LMIlm9xcmqCyTNYjkl3RlmTgQqqDJkS16stWyL0Ad0jumM9T81iuJuLpoaUXZY
+ 3Cf9yAGWPysHD+L4fOXfUxGwAAAA=
+X-Change-ID: 20241213-dp83822-tx-swing-5ba6c1e9b065
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <quic_jesszhan@quicinc.com>, asahi@lists.linux.dev
-Cc: linux-arm-kernel@lists.infradead.org, dri-devel@lists.freedesktop.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Alyssa Ross <hi@alyssa.is>, Sasha Finkelstein <fnkl.kernel@gmail.com>
+ Conor Dooley <conor+dt@kernel.org>, Andrew Davis <afd@ti.com>, 
+ Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1736714637; l=1377;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=KEf80SVHicxgRXKAdu52Cd2dNEz+kgXSg0wZwqOZ7j0=;
- b=Z6vQ9xWGPgienAp28uq2+kCpuQpCu6k/45FtO0pxfnHFT/eJDa83aXt0knen4AeoNyHpA9yia
- 2wsfvQYhsnIDUSugsd+fcOv8bNSbL4PRa7zUR7LIMw6YpEH98MoN04o
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736746828; l=741;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=CMktPUZ1l4ycL/1KVGf9E6EF7MwJYouBdAu3wr7LLjA=;
+ b=dbdzM3ZZU5gwurgEXklNsudXAT9os5VxcfxqueqohybLOoAlKkQMczcH3GWhx81HDhTfM12J0
+ CVwLo8xavb2C7mMy2kT2yYwmpNMvqCC3Sk4FX9E6BSwNKPPxtsW32D+
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the MAINTAINERS entries for the driver
+Add support for changing the transmit amplitude voltage in 100BASE-TX mode.
+Add support for configuration via DT.
 
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- MAINTAINERS | 5 +++++
- 1 file changed, 5 insertions(+)
+Dimitri Fedrau (2):
+      dt-bindings: net: dp83822: Add support for changing the transmit amplitude voltage
+      net: phy: dp83822: Add support for changing the transmit amplitude voltage
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a87ddad78e26f28ffd0f3433560d6db1518f9f95..4ce0d3bcf67910d909ba41261535dcb14a24a7b7 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2189,6 +2189,9 @@ F:	Documentation/devicetree/bindings/arm/apple.yaml
- F:	Documentation/devicetree/bindings/arm/apple/*
- F:	Documentation/devicetree/bindings/clock/apple,nco.yaml
- F:	Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
-+F:	Documentation/devicetree/bindings/display/apple,h7-display-pipe-mipi.yaml
-+F:	Documentation/devicetree/bindings/display/apple,h7-display-pipe.yaml
-+F:	Documentation/devicetree/bindings/display/panel/apple,summit.yaml
- F:	Documentation/devicetree/bindings/dma/apple,admac.yaml
- F:	Documentation/devicetree/bindings/i2c/apple,i2c.yaml
- F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
-@@ -2208,6 +2211,8 @@ F:	drivers/bluetooth/hci_bcm4377.c
- F:	drivers/clk/clk-apple-nco.c
- F:	drivers/cpufreq/apple-soc-cpufreq.c
- F:	drivers/dma/apple-admac.c
-+F:	drivers/gpu/drm/adp/
-+F:	drivers/gpu/drm/panel/panel-summit.c
- F:	drivers/pmdomain/apple/
- F:	drivers/i2c/busses/i2c-pasemi-core.c
- F:	drivers/i2c/busses/i2c-pasemi-platform.c
+ .../devicetree/bindings/net/ti,dp83822.yaml        | 11 +++++++
+ drivers/net/phy/dp83822.c                          | 35 ++++++++++++++++++++++
+ 2 files changed, 46 insertions(+)
+---
+base-commit: 7d0da8f862340c5f42f0062b8560b8d0971a6ac4
+change-id: 20241213-dp83822-tx-swing-5ba6c1e9b065
 
+Best regards,
 -- 
-2.48.0
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
