@@ -1,138 +1,88 @@
-From: Ricky Cheung <rcheung844@gmail.com>
-Date: Tue, 14 Jan 2025 22:46:50 +0800
-Subject: [PATCH RESEND v2 3/3] arm64: dts: qcom:
- msm8916-xiaoxun-jz0145-v33: Add initial device tree
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Subject: [PATCH v4 0/5] Driver for pre-DCP apple display controller.
+Date: Tue, 14 Jan 2025 22:38:51 +0100
+Message-Id: <20250114-adpdrm-v4-0-e9b5260a39f1@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250114-xiaoxun-jz0145-v33-v2-3-495e986579ce@gmail.com>
-References: <20250114-xiaoxun-jz0145-v33-v2-0-495e986579ce@gmail.com>
-In-Reply-To: <20250114-xiaoxun-jz0145-v33-v2-0-495e986579ce@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, Ricky Cheung <rcheung844@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGvZhmcC/2XMywrDIBCF4VcJrmtx1Fzsqu9RuhAdE6G5oEVaQ
+ t69JtAQ2uUZ5vtnEjF4jORSzCRg8tGPQx7yVBDT6aFF6m3ehDMuAbik2k429JSXzqCwttE1kPw
+ 8BXT+tYVu97w7H59jeG/dBOv1L5GAMipAgW2wQqn0te21f5zN2JM1kfiRVTvjmRnFZFMKURmmf
+ pn4spJltzOxsqqW1oByunZHtizLBwoVYPgKAQAA
+X-Change-ID: 20241124-adpdrm-25fce3dd8a71
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <quic_jesszhan@quicinc.com>, asahi@lists.linux.dev
+Cc: linux-arm-kernel@lists.infradead.org, dri-devel@lists.freedesktop.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Alyssa Ross <hi@alyssa.is>, Sasha Finkelstein <fnkl.kernel@gmail.com>, 
+ Janne Grunau <j@jannau.net>, Nick Chan <towinchenmi@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1736866013; l=2981;
- i=rcheung844@gmail.com; s=20250114; h=from:subject:message-id;
- bh=aIMQMh96vCDp6yLLJW7U1OCy3sPhGfKYSD82VLXOyKc=;
- b=Q9gCbGyNmj2MC/WTb3BTCarJrM+iQpvKWnQeA+GZ9Kdo/XuMKmuIhBvGAtL7sLBax9LU/zDK0
- JEjkA+kIma0APajAAMo+AtZS8/gtPNjKeqX/tG1tdAE1m+AGgSdYx6T
-X-Developer-Key: i=rcheung844@gmail.com; a=ed25519;
- pk=JjZsSnuDD1xuR4EXY4XGKELgToA++HxxheDlHU/41yI=
-X-Endpoint-Received: by B4 Relay for rcheung844@gmail.com/20250114 with auth_id=323
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736890736; l=2322;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=ZqXJD3Ty0hy3p1Rn2AjYRjEtykGB6SyBFMldnyqM0Bw=;
+ b=ePZzGayCIflzxCQOZEHfmM1ZpjGRm9Jv16/Y3XbsjvMGeFINB091HBgC1w099s9OC9FGCFAft
+ x8UzvWrCUAMDV/wkZihuT2i8JeN1u00hdCxZrYLVleU311MFq5t2lAY
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This commit implements support for the JZ0145 v33 WiFi/LTE dongle
-based on MSM8916, which was sold by XiaoXun BiCheng Technology.
+Hi.
 
-The stock bootloader could boot with this patch with lk2nd, but only
-one CPU core would be enabled. Enablement for all CPU cores require
-lk1st and d410c firmware files.
+This patch series adds support for a secondary display controller
+present on Apple M1/M2 chips and used to drive the display of the
+"touchbar" touch panel present on those. 
 
-Currently supported / tested:
-- All CPU cores
-- Buttons
-- LEDs
-- Modem
-- SDHC
-- USB Device Mode
-
-Although I do not have UART equipment on hand, UART should function
-and is labelled on the PCB of this device.
-
-Signed-off-by: Ricky Cheung <rcheung844@gmail.com>
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |  1 +
- .../boot/dts/qcom/msm8916-xiaoxun-jz0145-v33.dts   | 66 ++++++++++++++++++++++
- 2 files changed, 67 insertions(+)
+Changes in v4:
+- Fixed dt bindings.
+- Link to v3: https://lore.kernel.org/r/20250112-adpdrm-v3-0-c674dc19fa7f@gmail.com
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index ae002c7cf1268a6f848fefdfadbd746091ee517b..ce8d4a731645e012f1222a130f068b62cacaa514 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -58,6 +58,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-thwc-ufi001c.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-wingtech-wt86518.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-wingtech-wt86528.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-wingtech-wt88047.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-xiaoxun-jz0145-v33.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-yiming-uz801v3.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8929-wingtech-wt82918hd.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-huawei-kiwi.dtb
-diff --git a/arch/arm64/boot/dts/qcom/msm8916-xiaoxun-jz0145-v33.dts b/arch/arm64/boot/dts/qcom/msm8916-xiaoxun-jz0145-v33.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..7f1049e111b37213eeadc6a247d4cf21e7e0cd5f
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/msm8916-xiaoxun-jz0145-v33.dts
-@@ -0,0 +1,66 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+/dts-v1/;
-+
-+#include "msm8916-ufi.dtsi"
-+
-+/ {
-+	model = "JZ0145 v33 4G Modem Stick";
-+	compatible = "xiaoxun,jz0145-v33", "qcom,msm8916";
-+};
-+
-+&button_restart {
-+	gpios = <&tlmm 37 GPIO_ACTIVE_HIGH>;
-+};
-+
-+&led_b {
-+	gpios = <&tlmm 8 GPIO_ACTIVE_HIGH>;
-+};
-+
-+&led_g {
-+	gpios = <&tlmm 7 GPIO_ACTIVE_HIGH>;
-+};
-+
-+&led_r {
-+	gpios = <&tlmm 6 GPIO_ACTIVE_HIGH>;
-+};
-+
-+&mpss {
-+	pinctrl-0 = <&sim_ctrl_default>;
-+	pinctrl-names = "default";
-+};
-+
-+&button_default {
-+	pins = "gpio37";
-+	bias-pull-down;
-+};
-+
-+&gpio_leds_default {
-+	pins = "gpio6", "gpio7", "gpio8";
-+};
-+
-+/* This selects the external SIM card slot by default */
-+&tlmm {
-+	sim_ctrl_default: sim-ctrl-default-state {
-+		esim-sel-pins {
-+			pins = "gpio22", "gpio23";
-+			function = "gpio";
-+			bias-disable;
-+			output-low;
-+		};
-+
-+		sim-en-pins {
-+			pins = "gpio1";
-+			function = "gpio";
-+			bias-disable;
-+			output-low;
-+		};
-+
-+		sim-sel-pins {
-+			pins = "gpio20";
-+			function = "gpio";
-+			bias-disable;
-+			output-high;
-+		};
-+	};
-+};
+Changes in v3:
+- Fixed building as module after splitting out mipi block
+- Addressing the review feedback.
+- Link to v2: https://lore.kernel.org/r/20241126-adpdrm-v2-0-c90485336c09@gmail.com
 
--- 
-2.47.1
+Changes in v2:
+- Addressing the review feedback.
+- Split out the mipi part of the display controller into a separate device
+- Link to v1: https://lore.kernel.org/r/20241124-adpdrm-v1-0-3191d8e6e49a@gmail.com
+
+---
+Sasha Finkelstein (5):
+      dt-bindings: display: Add Apple pre-DCP display controller
+      drm: adp: Add Apple Display Pipe driver
+      drm: panel: Add a panel driver for the Summit display
+      arm64: dts: apple: Add touchbar screen nodes
+      MAINTAINERS: Add entries for touchbar display driver
+
+ .../display/apple,h7-display-pipe-mipi.yaml        |  83 +++
+ .../bindings/display/apple,h7-display-pipe.yaml    |  88 +++
+ .../bindings/display/panel/apple,summit.yaml       |  58 ++
+ MAINTAINERS                                        |   5 +
+ arch/arm64/boot/dts/apple/t8103-j293.dts           |  31 ++
+ arch/arm64/boot/dts/apple/t8103.dtsi               |  60 +++
+ arch/arm64/boot/dts/apple/t8112-j493.dts           |  31 ++
+ arch/arm64/boot/dts/apple/t8112.dtsi               |  61 +++
+ drivers/gpu/drm/Kconfig                            |   2 +
+ drivers/gpu/drm/Makefile                           |   1 +
+ drivers/gpu/drm/adp/Kconfig                        |  16 +
+ drivers/gpu/drm/adp/Makefile                       |   5 +
+ drivers/gpu/drm/adp/adp-mipi.c                     | 251 +++++++++
+ drivers/gpu/drm/adp/adp_drv.c                      | 594 +++++++++++++++++++++
+ drivers/gpu/drm/panel/Kconfig                      |   9 +
+ drivers/gpu/drm/panel/Makefile                     |   1 +
+ drivers/gpu/drm/panel/panel-summit.c               | 132 +++++
+ 17 files changed, 1428 insertions(+)
+---
+base-commit: b62cef9a5c673f1b8083159f5dc03c1c5daced2f
+change-id: 20241124-adpdrm-25fce3dd8a71
 
