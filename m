@@ -1,61 +1,56 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 15 Jan 2025 14:42:03 +0800
-Subject: [PATCH v3 5/5] MAINTAINERS: Add an entry for Amlogic pinctrl
- driver
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Subject: [PATCH 0/4] Add support for Loongson-1 AC97
+Date: Wed, 15 Jan 2025 19:03:06 +0800
+Message-Id: <20250115-loongson1-ac97-v1-0-2087b04dcd7f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250115-amlogic-pinctrl-v3-5-2b8536457aba@amlogic.com>
-References: <20250115-amlogic-pinctrl-v3-0-2b8536457aba@amlogic.com>
-In-Reply-To: <20250115-amlogic-pinctrl-v3-0-2b8536457aba@amlogic.com>
-To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Bartosz Golaszewski <brgl@bgdev.pl>
-Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1736923319; l=856;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=g90Y7KQss/y457N73Cj7ZyZIWWG4o61VIHvixhZOt74=;
- b=c4t4ZWSqUQS2jrEX0OzSMuVwpF2kpjDeorFlg/oJPUPhTONBvWoiUWXGhhCnOG+rWLY0Mb7GK
- MGhjx/Ol4ViDSIfhoM0oWU5PcEH7nmur1scCcIiko2qBnZbB4OfWmpe
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+X-B4-Tracking: v=1; b=H4sIAOqVh2cC/x3MTQqAIBBA4avIrBP8QcquEi1EJxsIDYUIxLsnL
+ b/Few0qFsIKK2tQ8KFKOQ3IiYE/XYrIKQyDEsoIKQ2/ck6x5iS583bmerHBIXpjUMOI7oIHvf9
+ w23v/AOFwKkJgAAAA
+To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
+ Takashi Iwai <tiwai@suse.com>
+Cc: linux-mips@vger.kernel.org, linux-sound@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Keguang Zhang <keguang.zhang@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736938989; l=1104;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=TgflvuICDFK30ml2cKH2ZgYrUsJrKdWN1Z5vaApfIV0=;
+ b=RZzN0p9wcJQWMe0rv9jn9Qwuk75gGeQtNyKTe5foyOakzYVylCb9ycE4PdnoPNYaY90YfzF8l
+ k3KR20EVLrKBYHH6ukvdDdfIH6d9UutWHAhGvCu7PQYv2bdX3y5uMet
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Amlogic pinctrl entry to MAINTAINERS to clarify the maintainers.
+Add the driver and dt-binding document for Loongson-1 AC97.
+Add the dt-binding document for Realtek ALC203 Codec.
+Add DT support for the AC97 generic codec driver.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- MAINTAINERS | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Keguang Zhang (4):
+      ASoC: dt-bindings: Add Loongson-1 AC97 Controller
+      ASoC: dt-bindings: Add Realtek ALC203 Codec
+      ASoC: loongson: Add Loongson-1 AC97 Driver
+      ASoC: ac97: Add DT support
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 1e930c7a58b1..b8905e8aa802 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1218,6 +1218,14 @@ F:	Documentation/devicetree/bindings/perf/amlogic,g12-ddr-pmu.yaml
- F:	drivers/perf/amlogic/
- F:	include/soc/amlogic/
- 
-+AMLOGIC PINCTRL DRIVER
-+M:	Xianwei Zhao <xianwei.zhao@amlogic.com>
-+L:	linux-amlogic@lists.infradead.org
-+L:	linux-gpio@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/pinctrl/amlogic,pinctrl-a4.yaml
-+F:	drivers/pinctrl/pinctrl-amlogic.c
-+
- AMLOGIC RTC DRIVER
- M:	Yiting Deng <yiting.deng@amlogic.com>
- M:	Xianwei Zhao <xianwei.zhao@amlogic.com>
+ .../bindings/sound/loongson,ls1b-ac97.yaml         |  68 ++++
+ .../devicetree/bindings/sound/realtek,alc203.yaml  |  33 ++
+ MAINTAINERS                                        |   1 +
+ sound/soc/codecs/ac97.c                            |  10 +
+ sound/soc/loongson/Kconfig                         |  10 +
+ sound/soc/loongson/Makefile                        |   2 +
+ sound/soc/loongson/loongson1_ac97.c                | 394 +++++++++++++++++++++
+ 7 files changed, 518 insertions(+)
+---
+base-commit: e7bb221a638962d487231ac45a6699fb9bb8f9fa
+change-id: 20250115-loongson1-ac97-389daeec55e3
 
+Best regards,
 -- 
-2.37.1
+Keguang Zhang <keguang.zhang@gmail.com>
 
