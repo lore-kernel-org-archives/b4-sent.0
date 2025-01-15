@@ -1,67 +1,169 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Tue, 14 Jan 2025 22:38:56 +0100
-Subject: [PATCH v4 5/5] MAINTAINERS: Add entries for touchbar display
- driver
+From: Nayab Sayed <nayabbasha.sayed@microchip.com>
+Date: Wed, 15 Jan 2025 11:37:04 +0530
+Subject: [PATCH v2] iio: adc: at91-sama5d2_adc: fix sama7g5 realbits value
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250114-adpdrm-v4-5-e9b5260a39f1@gmail.com>
-References: <20250114-adpdrm-v4-0-e9b5260a39f1@gmail.com>
-In-Reply-To: <20250114-adpdrm-v4-0-e9b5260a39f1@gmail.com>
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <quic_jesszhan@quicinc.com>, asahi@lists.linux.dev
-Cc: linux-arm-kernel@lists.infradead.org, dri-devel@lists.freedesktop.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Alyssa Ross <hi@alyssa.is>, Sasha Finkelstein <fnkl.kernel@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1736890736; l=1377;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=KEf80SVHicxgRXKAdu52Cd2dNEz+kgXSg0wZwqOZ7j0=;
- b=tIjqWyPizwmuQ4MvM1PbsbAt5UwiHuHH2S/xckQkz+poI3Wc1LrropTswbyz0A+KoDSg0qqp3
- rsdSKCfGiq0BCan/6ZNOoqZuNhkkvYcx+c4DdO1OV0ee1JEVHHyD+mw
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+Message-Id: <20250115-fix-sama7g5-adc-realbits-v2-1-58a6e4087584@microchip.com>
+X-B4-Tracking: v=1; b=H4sIAIdQh2cC/42NTQ7CIBCFr9LM2jF0CEVdeQ/TBQJtJ5HSQEM0T
+ e8u9gTmrb6X97NB9ol9hluzQfKFM8e5Ap0asJOZR4/sKgMJUqIVEgd+YzbB6FGhcRaTN68nrxm
+ lHjoaLldSTkOtL8nX7DH96CtPnNeYPsdTaX/uH6OlxSotyVGnrOzMPbBN0U68nG0M0O/7/gXV7
+ YAwxAAAAA==
+To: Eugen Hristev <eugen.hristev@linaro.org>, 
+ Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>, 
+ Nicolas Ferre <nicolas.ferre@microchip.com>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Claudiu Beznea <claudiu.beznea@tuxon.dev>
+Cc: linux-iio@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
+ Nayab Sayed <nayabbasha.sayed@microchip.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5233;
+ i=nayabbasha.sayed@microchip.com; h=from:subject:message-id;
+ bh=akVlIDY4JEv/jdH/CBhdCc65c1LeP0Vt27jvi+Wz5GY=;
+ b=owGbwMvMwCEmfMj/xNz7ei8ZT6slMaS3B0ztTL3+/4ne+5WfzKxz1uR8cRVatqDx6tM5NQ4Xf
+ 6QoZlz43FHKwiDGwSArpsjSvXn+bMOiP52ZPzlXwMxhZQIZwsDFKQATCcpnZLi+d2a14iT/0BXJ
+ Ygetert3/pn4Ud7br0Hn3d2WXL+8S0EM/0wCK3JU26IZYuV1Hjubn467ILAm/u6Ue3qZZ4MyGgR
+ ucgEA
+X-Developer-Key: i=nayabbasha.sayed@microchip.com; a=openpgp;
+ fpr=E108A58C09FB2280B0AB41DAE24318EF3B3861A3
+X-Endpoint-Received: by B4 Relay for nayabbasha.sayed@microchip.com/default with auth_id=304
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the MAINTAINERS entries for the driver
+The number of valid bits in SAMA7G5 ADC channel data register are 16.
+Hence changing the realbits value to 16
 
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Fixes: 840bf6cb983f ("iio: adc: at91-sama5d2_adc: add support for sama7g5 device")
+Signed-off-by: Nayab Sayed <nayabbasha.sayed@microchip.com>
 ---
- MAINTAINERS | 5 +++++
- 1 file changed, 5 insertions(+)
+Changes in v2:
+- Add `Fixes:` tag in commit message.
+- Link to v1: https://lore.kernel.org/r/20250103-fix-sama7g5-adc-realbits-v1-1-1732d265c36a@microchip.com
+---
+ drivers/iio/adc/at91-sama5d2_adc.c | 68 ++++++++++++++++++++++----------------
+ 1 file changed, 40 insertions(+), 28 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a87ddad78e26f28ffd0f3433560d6db1518f9f95..4ce0d3bcf67910d909ba41261535dcb14a24a7b7 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2189,6 +2189,9 @@ F:	Documentation/devicetree/bindings/arm/apple.yaml
- F:	Documentation/devicetree/bindings/arm/apple/*
- F:	Documentation/devicetree/bindings/clock/apple,nco.yaml
- F:	Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
-+F:	Documentation/devicetree/bindings/display/apple,h7-display-pipe-mipi.yaml
-+F:	Documentation/devicetree/bindings/display/apple,h7-display-pipe.yaml
-+F:	Documentation/devicetree/bindings/display/panel/apple,summit.yaml
- F:	Documentation/devicetree/bindings/dma/apple,admac.yaml
- F:	Documentation/devicetree/bindings/i2c/apple,i2c.yaml
- F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
-@@ -2208,6 +2211,8 @@ F:	drivers/bluetooth/hci_bcm4377.c
- F:	drivers/clk/clk-apple-nco.c
- F:	drivers/cpufreq/apple-soc-cpufreq.c
- F:	drivers/dma/apple-admac.c
-+F:	drivers/gpu/drm/adp/
-+F:	drivers/gpu/drm/panel/panel-summit.c
- F:	drivers/pmdomain/apple/
- F:	drivers/i2c/busses/i2c-pasemi-core.c
- F:	drivers/i2c/busses/i2c-pasemi-platform.c
+diff --git a/drivers/iio/adc/at91-sama5d2_adc.c b/drivers/iio/adc/at91-sama5d2_adc.c
+index 8e5aaf15a921..c3a1dea2aa82 100644
+--- a/drivers/iio/adc/at91-sama5d2_adc.c
++++ b/drivers/iio/adc/at91-sama5d2_adc.c
+@@ -329,7 +329,7 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
+ #define AT91_HWFIFO_MAX_SIZE_STR	"128"
+ #define AT91_HWFIFO_MAX_SIZE		128
+ 
+-#define AT91_SAMA5D2_CHAN_SINGLE(index, num, addr)			\
++#define AT91_SAMA_CHAN_SINGLE(index, num, addr, rbits)			\
+ 	{								\
+ 		.type = IIO_VOLTAGE,					\
+ 		.channel = num,						\
+@@ -337,7 +337,7 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
+ 		.scan_index = index,					\
+ 		.scan_type = {						\
+ 			.sign = 'u',					\
+-			.realbits = 14,					\
++			.realbits = rbits,				\
+ 			.storagebits = 16,				\
+ 		},							\
+ 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
+@@ -350,7 +350,13 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
+ 		.indexed = 1,						\
+ 	}
+ 
+-#define AT91_SAMA5D2_CHAN_DIFF(index, num, num2, addr)			\
++#define AT91_SAMA5D2_CHAN_SINGLE(index, num, addr)			\
++	AT91_SAMA_CHAN_SINGLE(index, num, addr, 14)
++
++#define AT91_SAMA7G5_CHAN_SINGLE(index, num, addr)			\
++	AT91_SAMA_CHAN_SINGLE(index, num, addr, 16)
++
++#define AT91_SAMA_CHAN_DIFF(index, num, num2, addr, rbits)		\
+ 	{								\
+ 		.type = IIO_VOLTAGE,					\
+ 		.differential = 1,					\
+@@ -360,7 +366,7 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
+ 		.scan_index = index,					\
+ 		.scan_type = {						\
+ 			.sign = 's',					\
+-			.realbits = 14,					\
++			.realbits = rbits,				\
+ 			.storagebits = 16,				\
+ 		},							\
+ 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
+@@ -373,6 +379,12 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
+ 		.indexed = 1,						\
+ 	}
+ 
++#define AT91_SAMA5D2_CHAN_DIFF(index, num, num2, addr)			\
++	AT91_SAMA_CHAN_DIFF(index, num, num2, addr, 14)
++
++#define AT91_SAMA7G5_CHAN_DIFF(index, num, num2, addr)			\
++	AT91_SAMA_CHAN_DIFF(index, num, num2, addr, 16)
++
+ #define AT91_SAMA5D2_CHAN_TOUCH(num, name, mod)				\
+ 	{								\
+ 		.type = IIO_POSITIONRELATIVE,				\
+@@ -666,30 +678,30 @@ static const struct iio_chan_spec at91_sama5d2_adc_channels[] = {
+ };
+ 
+ static const struct iio_chan_spec at91_sama7g5_adc_channels[] = {
+-	AT91_SAMA5D2_CHAN_SINGLE(0, 0, 0x60),
+-	AT91_SAMA5D2_CHAN_SINGLE(1, 1, 0x64),
+-	AT91_SAMA5D2_CHAN_SINGLE(2, 2, 0x68),
+-	AT91_SAMA5D2_CHAN_SINGLE(3, 3, 0x6c),
+-	AT91_SAMA5D2_CHAN_SINGLE(4, 4, 0x70),
+-	AT91_SAMA5D2_CHAN_SINGLE(5, 5, 0x74),
+-	AT91_SAMA5D2_CHAN_SINGLE(6, 6, 0x78),
+-	AT91_SAMA5D2_CHAN_SINGLE(7, 7, 0x7c),
+-	AT91_SAMA5D2_CHAN_SINGLE(8, 8, 0x80),
+-	AT91_SAMA5D2_CHAN_SINGLE(9, 9, 0x84),
+-	AT91_SAMA5D2_CHAN_SINGLE(10, 10, 0x88),
+-	AT91_SAMA5D2_CHAN_SINGLE(11, 11, 0x8c),
+-	AT91_SAMA5D2_CHAN_SINGLE(12, 12, 0x90),
+-	AT91_SAMA5D2_CHAN_SINGLE(13, 13, 0x94),
+-	AT91_SAMA5D2_CHAN_SINGLE(14, 14, 0x98),
+-	AT91_SAMA5D2_CHAN_SINGLE(15, 15, 0x9c),
+-	AT91_SAMA5D2_CHAN_DIFF(16, 0, 1, 0x60),
+-	AT91_SAMA5D2_CHAN_DIFF(17, 2, 3, 0x68),
+-	AT91_SAMA5D2_CHAN_DIFF(18, 4, 5, 0x70),
+-	AT91_SAMA5D2_CHAN_DIFF(19, 6, 7, 0x78),
+-	AT91_SAMA5D2_CHAN_DIFF(20, 8, 9, 0x80),
+-	AT91_SAMA5D2_CHAN_DIFF(21, 10, 11, 0x88),
+-	AT91_SAMA5D2_CHAN_DIFF(22, 12, 13, 0x90),
+-	AT91_SAMA5D2_CHAN_DIFF(23, 14, 15, 0x98),
++	AT91_SAMA7G5_CHAN_SINGLE(0, 0, 0x60),
++	AT91_SAMA7G5_CHAN_SINGLE(1, 1, 0x64),
++	AT91_SAMA7G5_CHAN_SINGLE(2, 2, 0x68),
++	AT91_SAMA7G5_CHAN_SINGLE(3, 3, 0x6c),
++	AT91_SAMA7G5_CHAN_SINGLE(4, 4, 0x70),
++	AT91_SAMA7G5_CHAN_SINGLE(5, 5, 0x74),
++	AT91_SAMA7G5_CHAN_SINGLE(6, 6, 0x78),
++	AT91_SAMA7G5_CHAN_SINGLE(7, 7, 0x7c),
++	AT91_SAMA7G5_CHAN_SINGLE(8, 8, 0x80),
++	AT91_SAMA7G5_CHAN_SINGLE(9, 9, 0x84),
++	AT91_SAMA7G5_CHAN_SINGLE(10, 10, 0x88),
++	AT91_SAMA7G5_CHAN_SINGLE(11, 11, 0x8c),
++	AT91_SAMA7G5_CHAN_SINGLE(12, 12, 0x90),
++	AT91_SAMA7G5_CHAN_SINGLE(13, 13, 0x94),
++	AT91_SAMA7G5_CHAN_SINGLE(14, 14, 0x98),
++	AT91_SAMA7G5_CHAN_SINGLE(15, 15, 0x9c),
++	AT91_SAMA7G5_CHAN_DIFF(16, 0, 1, 0x60),
++	AT91_SAMA7G5_CHAN_DIFF(17, 2, 3, 0x68),
++	AT91_SAMA7G5_CHAN_DIFF(18, 4, 5, 0x70),
++	AT91_SAMA7G5_CHAN_DIFF(19, 6, 7, 0x78),
++	AT91_SAMA7G5_CHAN_DIFF(20, 8, 9, 0x80),
++	AT91_SAMA7G5_CHAN_DIFF(21, 10, 11, 0x88),
++	AT91_SAMA7G5_CHAN_DIFF(22, 12, 13, 0x90),
++	AT91_SAMA7G5_CHAN_DIFF(23, 14, 15, 0x98),
+ 	IIO_CHAN_SOFT_TIMESTAMP(24),
+ 	AT91_SAMA5D2_CHAN_TEMP(AT91_SAMA7G5_ADC_TEMP_CHANNEL, "temp", 0xdc),
+ };
 
+---
+base-commit: 619f0b6fad524f08d493a98d55bac9ab8895e3a6
+change-id: 20250103-fix-sama7g5-adc-realbits-37f62f8925d7
+
+Best regards,
 -- 
-2.48.0
+Nayab Sayed <nayabbasha.sayed@microchip.com>
 
