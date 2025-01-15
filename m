@@ -1,13 +1,12 @@
 From: Keguang Zhang <keguang.zhang@gmail.com>
-Subject: [PATCH 0/4] Add support for Loongson-1 AC97
-Date: Wed, 15 Jan 2025 19:03:06 +0800
-Message-Id: <20250115-loongson1-ac97-v1-0-2087b04dcd7f@gmail.com>
+Date: Wed, 15 Jan 2025 19:03:07 +0800
+Subject: [PATCH 1/4] ASoC: dt-bindings: Add Loongson-1 AC97 Controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOqVh2cC/x3MTQqAIBBA4avIrBP8QcquEi1EJxsIDYUIxLsnL
- b/Few0qFsIKK2tQ8KFKOQ3IiYE/XYrIKQyDEsoIKQ2/ck6x5iS583bmerHBIXpjUMOI7oIHvf9
- w23v/AOFwKkJgAAAA
+Message-Id: <20250115-loongson1-ac97-v1-1-2087b04dcd7f@gmail.com>
+References: <20250115-loongson1-ac97-v1-0-2087b04dcd7f@gmail.com>
+In-Reply-To: <20250115-loongson1-ac97-v1-0-2087b04dcd7f@gmail.com>
 To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
@@ -16,41 +15,98 @@ Cc: linux-mips@vger.kernel.org, linux-sound@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Keguang Zhang <keguang.zhang@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1736938989; l=1104;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736938989; l=2085;
  i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=TgflvuICDFK30ml2cKH2ZgYrUsJrKdWN1Z5vaApfIV0=;
- b=RZzN0p9wcJQWMe0rv9jn9Qwuk75gGeQtNyKTe5foyOakzYVylCb9ycE4PdnoPNYaY90YfzF8l
- k3KR20EVLrKBYHH6ukvdDdfIH6d9UutWHAhGvCu7PQYv2bdX3y5uMet
+ bh=sj9gFgnj3eTfVF3m8C07vZrwbwVlXrglvLvbMnZ9jsI=;
+ b=xIA/2qQqzVoEkunR/DFz1G4Zb+2kfDoAPliIuHYfHCLR2MfwsA+4jjLa7IX8iWby9ThVmDwdb
+ 5xsGMr9QsW7Cit8s1ma6T6KsZQ7XHbmBYSLh+9IcFwc9cFhJMhUKJeB
 X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
  pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
 X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the driver and dt-binding document for Loongson-1 AC97.
-Add the dt-binding document for Realtek ALC203 Codec.
-Add DT support for the AC97 generic codec driver.
+Add devicetree binding document for Loongson-1 AC97 controller.
 
 Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
-Keguang Zhang (4):
-      ASoC: dt-bindings: Add Loongson-1 AC97 Controller
-      ASoC: dt-bindings: Add Realtek ALC203 Codec
-      ASoC: loongson: Add Loongson-1 AC97 Driver
-      ASoC: ac97: Add DT support
+ .../bindings/sound/loongson,ls1b-ac97.yaml         | 68 ++++++++++++++++++++++
+ 1 file changed, 68 insertions(+)
 
- .../bindings/sound/loongson,ls1b-ac97.yaml         |  68 ++++
- .../devicetree/bindings/sound/realtek,alc203.yaml  |  33 ++
- MAINTAINERS                                        |   1 +
- sound/soc/codecs/ac97.c                            |  10 +
- sound/soc/loongson/Kconfig                         |  10 +
- sound/soc/loongson/Makefile                        |   2 +
- sound/soc/loongson/loongson1_ac97.c                | 394 +++++++++++++++++++++
- 7 files changed, 518 insertions(+)
----
-base-commit: e7bb221a638962d487231ac45a6699fb9bb8f9fa
-change-id: 20250115-loongson1-ac97-389daeec55e3
+diff --git a/Documentation/devicetree/bindings/sound/loongson,ls1b-ac97.yaml b/Documentation/devicetree/bindings/sound/loongson,ls1b-ac97.yaml
+new file mode 100644
+index 000000000000..1c6a2771f942
+--- /dev/null
++++ b/Documentation/devicetree/bindings/sound/loongson,ls1b-ac97.yaml
+@@ -0,0 +1,68 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/sound/loongson,ls1b-ac97.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Loongson-1 AC97 Controller
++
++maintainers:
++  - Keguang Zhang <keguang.zhang@gmail.com>
++
++description:
++  The Loongson-1 AC97 controller supports 2-channel stereo output and input.
++  It is paired with the DMA engine to handle playback and capture functions.
++
++allOf:
++  - $ref: dai-common.yaml#
++
++properties:
++  compatible:
++    oneOf:
++      - const: loongson,ls1b-ac97
++      - items:
++          - enum:
++              - loongson,ls1a-ac97
++              - loongson,ls1c-ac97
++          - const: loongson,ls1b-ac97
++
++  reg:
++    maxItems: 3
++
++  reg-names:
++    items:
++      - const: ac97
++      - const: audio-tx
++      - const: audio-rx
++
++  dmas:
++    maxItems: 2
++
++  dma-names:
++    items:
++      - const: tx
++      - const: rx
++
++  '#sound-dai-cells':
++    const: 0
++
++required:
++  - compatible
++  - reg
++  - reg-names
++  - dmas
++  - dma-names
++  - '#sound-dai-cells'
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    audio-controller@1fe74000 {
++        compatible = "loongson,ls1b-ac97";
++        reg = <0x1fe74000 0x60>, <0x1fe72420 0x4>, <0x1fe74c4c 0x4>;
++        reg-names = "ac97", "audio-tx", "audio-rx";
++        dmas = <&dma 1>, <&dma 2>;
++        dma-names = "tx", "rx";
++        #sound-dai-cells = <0>;
++    };
 
-Best regards,
 -- 
-Keguang Zhang <keguang.zhang@gmail.com>
+2.43.0
 
