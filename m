@@ -1,169 +1,93 @@
-From: Nayab Sayed <nayabbasha.sayed@microchip.com>
-Date: Wed, 15 Jan 2025 11:37:04 +0530
-Subject: [PATCH v2] iio: adc: at91-sama5d2_adc: fix sama7g5 realbits value
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v3 0/5] Pinctrl: Add Amlogic pinctrl driver
+Date: Wed, 15 Jan 2025 14:41:58 +0800
+Message-Id: <20250115-amlogic-pinctrl-v3-0-2b8536457aba@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250115-fix-sama7g5-adc-realbits-v2-1-58a6e4087584@microchip.com>
-X-B4-Tracking: v=1; b=H4sIAIdQh2cC/42NTQ7CIBCFr9LM2jF0CEVdeQ/TBQJtJ5HSQEM0T
- e8u9gTmrb6X97NB9ol9hluzQfKFM8e5Ap0asJOZR4/sKgMJUqIVEgd+YzbB6FGhcRaTN68nrxm
- lHjoaLldSTkOtL8nX7DH96CtPnNeYPsdTaX/uH6OlxSotyVGnrOzMPbBN0U68nG0M0O/7/gXV7
- YAwxAAAAA==
-To: Eugen Hristev <eugen.hristev@linaro.org>, 
- Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>, 
- Nicolas Ferre <nicolas.ferre@microchip.com>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>, 
- Claudiu Beznea <claudiu.beznea@tuxon.dev>
-Cc: linux-iio@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, 
- Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- Nayab Sayed <nayabbasha.sayed@microchip.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5233;
- i=nayabbasha.sayed@microchip.com; h=from:subject:message-id;
- bh=akVlIDY4JEv/jdH/CBhdCc65c1LeP0Vt27jvi+Wz5GY=;
- b=owGbwMvMwCEmfMj/xNz7ei8ZT6slMaS3B0ztTL3+/4ne+5WfzKxz1uR8cRVatqDx6tM5NQ4Xf
- 6QoZlz43FHKwiDGwSArpsjSvXn+bMOiP52ZPzlXwMxhZQIZwsDFKQATCcpnZLi+d2a14iT/0BXJ
- Ygetert3/pn4Ud7br0Hn3d2WXL+8S0EM/0wCK3JU26IZYuV1Hjubn467ILAm/u6Ue3qZZ4MyGgR
- ucgEA
-X-Developer-Key: i=nayabbasha.sayed@microchip.com; a=openpgp;
- fpr=E108A58C09FB2280B0AB41DAE24318EF3B3861A3
-X-Endpoint-Received: by B4 Relay for nayabbasha.sayed@microchip.com/default with auth_id=304
+X-B4-Tracking: v=1; b=H4sIALZYh2cC/3XNwQ6CMAyA4VchOzuzFtyUk+9hPMxtQhNgZCOLh
+ vDuDuJBYzz+Tft1ZtEFcpHVxcyCSxTJDznKXcFMq4fGcbK5GQqsAAG47jvfkOEjDWYKHUd0WsI
+ RhRWW5asxuDs9NvFyzd1SnHx4bg8SrNP/VgIueAVCoSrLA8Dp/N7YG9+zVUv4IaD8FTALxmpXo
+ ZbqpuS3sCzLCw4DEJXyAAAA
+To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736923319; l=2866;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=yAzz8DVv15VnfgafeklHW7SZXuVzWgf+QTN4jS3Z664=;
+ b=Oh4+tcghBMmFd5b0eO2G34Vd5bpa0jqVva6QPVtlL8HxmBP8pu8kSegvKUbjSZ8xaorNRArsH
+ ngIHUTxMgMuBKPPJnxZxwuogTfB0TtIvh4c9BE5fLTChkfLbxc/YDOy
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The number of valid bits in SAMA7G5 ADC channel data register are 16.
-Hence changing the realbits value to 16
+Add pinctrl driver support for Amloigc SoCs
 
-Fixes: 840bf6cb983f ("iio: adc: at91-sama5d2_adc: add support for sama7g5 device")
-Signed-off-by: Nayab Sayed <nayabbasha.sayed@microchip.com>
+Base on the previous discussion,
+https://lore.kernel.org/r/20241113-a4_pinctrl-v6-0-35ba2401ee35@amlogic.com
+The existed meson driver failed to meet the requirement of the current dt-binding.
+So we start this new pinctrl driver to solve problem.
+
+The advantage of this version: Once the source file and binding document
+are added, adding dts node will be only operation for subsequent Amlogic SoCs
+(such as A4, A5).
+
+The code in DTS file is also readable when using GPIO, as below:
+reset-gpios = <&gpiob 6 GPIO_ACTIVE_LOW>;
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
+Changes in v3:
+- Move reg and reg-name from pin controller node into gpio-controller node and drop mask property.
+- Use gpio-range instead of ngpios property.
+- Some little modifications were made to bindings according to Rob's suggestions.
+- Fix bug reported by kernel test robot.
+- Two pin controller node compressed into one because of register address defined in gpio-controller.
+- Link to v2: https://lore.kernel.org/r/20241226-amlogic-pinctrl-v2-0-cdae42a67b76@amlogic.com
+
 Changes in v2:
-- Add `Fixes:` tag in commit message.
-- Link to v1: https://lore.kernel.org/r/20250103-fix-sama7g5-adc-realbits-v1-1-1732d265c36a@microchip.com
----
- drivers/iio/adc/at91-sama5d2_adc.c | 68 ++++++++++++++++++++++----------------
- 1 file changed, 40 insertions(+), 28 deletions(-)
-
-diff --git a/drivers/iio/adc/at91-sama5d2_adc.c b/drivers/iio/adc/at91-sama5d2_adc.c
-index 8e5aaf15a921..c3a1dea2aa82 100644
---- a/drivers/iio/adc/at91-sama5d2_adc.c
-+++ b/drivers/iio/adc/at91-sama5d2_adc.c
-@@ -329,7 +329,7 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
- #define AT91_HWFIFO_MAX_SIZE_STR	"128"
- #define AT91_HWFIFO_MAX_SIZE		128
- 
--#define AT91_SAMA5D2_CHAN_SINGLE(index, num, addr)			\
-+#define AT91_SAMA_CHAN_SINGLE(index, num, addr, rbits)			\
- 	{								\
- 		.type = IIO_VOLTAGE,					\
- 		.channel = num,						\
-@@ -337,7 +337,7 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
- 		.scan_index = index,					\
- 		.scan_type = {						\
- 			.sign = 'u',					\
--			.realbits = 14,					\
-+			.realbits = rbits,				\
- 			.storagebits = 16,				\
- 		},							\
- 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
-@@ -350,7 +350,13 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
- 		.indexed = 1,						\
- 	}
- 
--#define AT91_SAMA5D2_CHAN_DIFF(index, num, num2, addr)			\
-+#define AT91_SAMA5D2_CHAN_SINGLE(index, num, addr)			\
-+	AT91_SAMA_CHAN_SINGLE(index, num, addr, 14)
-+
-+#define AT91_SAMA7G5_CHAN_SINGLE(index, num, addr)			\
-+	AT91_SAMA_CHAN_SINGLE(index, num, addr, 16)
-+
-+#define AT91_SAMA_CHAN_DIFF(index, num, num2, addr, rbits)		\
- 	{								\
- 		.type = IIO_VOLTAGE,					\
- 		.differential = 1,					\
-@@ -360,7 +366,7 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
- 		.scan_index = index,					\
- 		.scan_type = {						\
- 			.sign = 's',					\
--			.realbits = 14,					\
-+			.realbits = rbits,				\
- 			.storagebits = 16,				\
- 		},							\
- 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),		\
-@@ -373,6 +379,12 @@ static const struct at91_adc_reg_layout sama7g5_layout = {
- 		.indexed = 1,						\
- 	}
- 
-+#define AT91_SAMA5D2_CHAN_DIFF(index, num, num2, addr)			\
-+	AT91_SAMA_CHAN_DIFF(index, num, num2, addr, 14)
-+
-+#define AT91_SAMA7G5_CHAN_DIFF(index, num, num2, addr)			\
-+	AT91_SAMA_CHAN_DIFF(index, num, num2, addr, 16)
-+
- #define AT91_SAMA5D2_CHAN_TOUCH(num, name, mod)				\
- 	{								\
- 		.type = IIO_POSITIONRELATIVE,				\
-@@ -666,30 +678,30 @@ static const struct iio_chan_spec at91_sama5d2_adc_channels[] = {
- };
- 
- static const struct iio_chan_spec at91_sama7g5_adc_channels[] = {
--	AT91_SAMA5D2_CHAN_SINGLE(0, 0, 0x60),
--	AT91_SAMA5D2_CHAN_SINGLE(1, 1, 0x64),
--	AT91_SAMA5D2_CHAN_SINGLE(2, 2, 0x68),
--	AT91_SAMA5D2_CHAN_SINGLE(3, 3, 0x6c),
--	AT91_SAMA5D2_CHAN_SINGLE(4, 4, 0x70),
--	AT91_SAMA5D2_CHAN_SINGLE(5, 5, 0x74),
--	AT91_SAMA5D2_CHAN_SINGLE(6, 6, 0x78),
--	AT91_SAMA5D2_CHAN_SINGLE(7, 7, 0x7c),
--	AT91_SAMA5D2_CHAN_SINGLE(8, 8, 0x80),
--	AT91_SAMA5D2_CHAN_SINGLE(9, 9, 0x84),
--	AT91_SAMA5D2_CHAN_SINGLE(10, 10, 0x88),
--	AT91_SAMA5D2_CHAN_SINGLE(11, 11, 0x8c),
--	AT91_SAMA5D2_CHAN_SINGLE(12, 12, 0x90),
--	AT91_SAMA5D2_CHAN_SINGLE(13, 13, 0x94),
--	AT91_SAMA5D2_CHAN_SINGLE(14, 14, 0x98),
--	AT91_SAMA5D2_CHAN_SINGLE(15, 15, 0x9c),
--	AT91_SAMA5D2_CHAN_DIFF(16, 0, 1, 0x60),
--	AT91_SAMA5D2_CHAN_DIFF(17, 2, 3, 0x68),
--	AT91_SAMA5D2_CHAN_DIFF(18, 4, 5, 0x70),
--	AT91_SAMA5D2_CHAN_DIFF(19, 6, 7, 0x78),
--	AT91_SAMA5D2_CHAN_DIFF(20, 8, 9, 0x80),
--	AT91_SAMA5D2_CHAN_DIFF(21, 10, 11, 0x88),
--	AT91_SAMA5D2_CHAN_DIFF(22, 12, 13, 0x90),
--	AT91_SAMA5D2_CHAN_DIFF(23, 14, 15, 0x98),
-+	AT91_SAMA7G5_CHAN_SINGLE(0, 0, 0x60),
-+	AT91_SAMA7G5_CHAN_SINGLE(1, 1, 0x64),
-+	AT91_SAMA7G5_CHAN_SINGLE(2, 2, 0x68),
-+	AT91_SAMA7G5_CHAN_SINGLE(3, 3, 0x6c),
-+	AT91_SAMA7G5_CHAN_SINGLE(4, 4, 0x70),
-+	AT91_SAMA7G5_CHAN_SINGLE(5, 5, 0x74),
-+	AT91_SAMA7G5_CHAN_SINGLE(6, 6, 0x78),
-+	AT91_SAMA7G5_CHAN_SINGLE(7, 7, 0x7c),
-+	AT91_SAMA7G5_CHAN_SINGLE(8, 8, 0x80),
-+	AT91_SAMA7G5_CHAN_SINGLE(9, 9, 0x84),
-+	AT91_SAMA7G5_CHAN_SINGLE(10, 10, 0x88),
-+	AT91_SAMA7G5_CHAN_SINGLE(11, 11, 0x8c),
-+	AT91_SAMA7G5_CHAN_SINGLE(12, 12, 0x90),
-+	AT91_SAMA7G5_CHAN_SINGLE(13, 13, 0x94),
-+	AT91_SAMA7G5_CHAN_SINGLE(14, 14, 0x98),
-+	AT91_SAMA7G5_CHAN_SINGLE(15, 15, 0x9c),
-+	AT91_SAMA7G5_CHAN_DIFF(16, 0, 1, 0x60),
-+	AT91_SAMA7G5_CHAN_DIFF(17, 2, 3, 0x68),
-+	AT91_SAMA7G5_CHAN_DIFF(18, 4, 5, 0x70),
-+	AT91_SAMA7G5_CHAN_DIFF(19, 6, 7, 0x78),
-+	AT91_SAMA7G5_CHAN_DIFF(20, 8, 9, 0x80),
-+	AT91_SAMA7G5_CHAN_DIFF(21, 10, 11, 0x88),
-+	AT91_SAMA7G5_CHAN_DIFF(22, 12, 13, 0x90),
-+	AT91_SAMA7G5_CHAN_DIFF(23, 14, 15, 0x98),
- 	IIO_CHAN_SOFT_TIMESTAMP(24),
- 	AT91_SAMA5D2_CHAN_TEMP(AT91_SAMA7G5_ADC_TEMP_CHANNEL, "temp", 0xdc),
- };
+- Some modifications and optimizations were made to bindings according to Rob's suggestions.
+- Refined some details on functions node for bindings. 
+- Some source code optimizations were made according to Linus's suggestions.
+- Add stand API to generic to deal pinmux propertity.
+- Add private reg data to deal with for future SoCs.
+- Simplified some unused processing (previously used for extension).
+- Sync add to MAINTAINERS files.
+- Link to v1: https://lore.kernel.org/r/20241211-amlogic-pinctrl-v1-0-410727335119@amlogic.com
 
 ---
-base-commit: 619f0b6fad524f08d493a98d55bac9ab8895e3a6
-change-id: 20250103-fix-sama7g5-adc-realbits-37f62f8925d7
+Xianwei Zhao (5):
+      dt-bindings: pinctrl: Add support for Amlogic SoCs
+      pinctrl: pinconf-generic: Add API for pinmux propertity in DTS file
+      pinctrl: Add driver support for Amlogic SoCs
+      arm64: dts: amlogic: a4: add pinctrl node
+      MAINTAINERS: Add an entry for Amlogic pinctrl driver
+
+ .../bindings/pinctrl/amlogic,pinctrl-a4.yaml       |  132 +++
+ MAINTAINERS                                        |    8 +
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |  133 +++
+ drivers/pinctrl/Kconfig                            |   18 +
+ drivers/pinctrl/Makefile                           |    1 +
+ drivers/pinctrl/pinconf-generic.c                  |  130 +++
+ drivers/pinctrl/pinconf.h                          |    4 +
+ drivers/pinctrl/pinctrl-amlogic.c                  | 1040 ++++++++++++++++++++
+ include/dt-bindings/pinctrl/amlogic,pinctrl.h      |   46 +
+ include/linux/pinctrl/pinconf-generic.h            |    4 +
+ 10 files changed, 1516 insertions(+)
+---
+base-commit: 4de5110762b94b9978fb8182a568572fb2194f8b
+change-id: 20241211-amlogic-pinctrl-22ea61820d0d
 
 Best regards,
 -- 
-Nayab Sayed <nayabbasha.sayed@microchip.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
