@@ -1,66 +1,83 @@
-From: =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
-Date: Wed, 15 Jan 2025 21:35:57 +0100
-Subject: [PATCH v14 4/4] MAINTAINERS: add myself as Marvell PXA1908
- maintainer
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Subject: [PATCH v4 0/4] Driver for Apple Z2 touchscreens.
+Date: Wed, 15 Jan 2025 23:46:04 +0100
+Message-Id: <20250115-z2-v4-0-d7361ab16ba0@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250115-pxa1908-lkml-v14-4-847d24f3665a@skole.hr>
-References: <20250115-pxa1908-lkml-v14-0-847d24f3665a@skole.hr>
-In-Reply-To: <20250115-pxa1908-lkml-v14-0-847d24f3665a@skole.hr>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Lubomir Rintel <lkundrak@v3.sk>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Andrew Lunn <andrew@lunn.ch>, Gregory Clement <gregory.clement@bootlin.com>, 
- Sebastian Hesselbarth <sebastian.hesselbarth@gmail.com>, 
- Kees Cook <kees@kernel.org>, Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>
-Cc: David Wronek <david@mainlining.org>, Karel Balej <balejk@matfyz.cz>, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-hardening@vger.kernel.org, 
- phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAKw6iGcC/13MQQ6CMBCF4auQrq3pTFtAV97DuIBpgSYipjWNS
+ ri7pQkJcflP5nszC9Y7G9i5mJm30QU3PVKoQ8FoaB695c6kZihQAaDiX+QkAFuNtW2EYenx6W3
+ n3nnkeks9uPCa/CdvRlivGy9XHoELTkqSIipRCHPpx8bdjzSNbOUR96TOBBOpSiJ9atsOoPonc
+ iNaJJOJTESTsFprI00He7Isyw8zFY11+gAAAA==
+X-Change-ID: 20241124-z2-c012b528ea0d
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Henrik Rydberg <rydberg@bitmath.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Neal Gompa <neal@gompa.dev>, Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=962;
- i=duje.mihanovic@skole.hr; s=20240706; h=from:subject:message-id;
- bh=6vZolXLVCSzdTOeYInagQh75YU9IpR7xHoGIhphNx0U=;
- b=owGbwMvMwCW21nBykGv/WmbG02pJDOkdsjwWDY21N7ZWfmLyC3w98w/3FJYtSmI5jw5dUPwvE
- M2ScNmro5SFQYyLQVZMkSX3v+M13s8iW7dnLzOAmcPKBDKEgYtTACYSbs3IcPrsXgPdH1F2K06z
- MM2fH7fGceXpmefncOrbZEZ/YInc9Z2R4e+u/1WeS1Qv/JnAtmKP6aZcbva5h/aYmHSalohbLu6
- 5yQ4A
-X-Developer-Key: i=duje.mihanovic@skole.hr; a=openpgp;
- fpr=6DFF41D60DF314B5B76BA630AD319352458FAD03
-X-Endpoint-Received: by B4 Relay for duje.mihanovic@skole.hr/20240706 with auth_id=191
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1736981170; l=2269;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=Knr0caKO3pB1buKxJm1DtsDZu8Tt8G4u0XclRVx/eiY=;
+ b=6zM0bJw99JTimTeE7zFuZxaj7GgP7UA/B7bfcVXNRcVFEcW8vpRFkZHU8DvH+JyEfuNnnP/QA
+ yZxSuCnnfgHBrQk4A4sgXIH+x3IELa4v7W//ulON6ujaRXRUiL/cozE
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add myself as the maintainer for Marvell PXA1908 SoC support.
+Hi.
 
-Signed-off-by: Duje Mihanović <duje.mihanovic@skole.hr>
+This series adds support for Apple touchscreens using the Z2 protocol.
+Those are used as the primary touchscreen on mobile Apple devices, and for the
+touchbar on laptops using the M-series chips. (T1/T2 laptops have a coprocessor
+in charge of speaking Z2 to the touchbar).
+
+Originally sent as a RFC at https://lore.kernel.org/all/20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com/
+The changes since then mostly address the review feedback, but also
+add another machine that has this specific controller.
+
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- MAINTAINERS | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Changes in v4:
+- Dropped another allocation, other fixes.
+- Link to v3: https://lore.kernel.org/r/20250112-z2-v3-0-5c0e555d3df1@gmail.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a87ddad78e26f28ffd0f3433560d6db1518f9f95..caa5f6b96251a3da0f3f9d2f760b38288eb23ab3 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2624,6 +2624,15 @@ F:	drivers/irqchip/irq-mvebu-*
- F:	drivers/pinctrl/mvebu/
- F:	drivers/rtc/rtc-armada38x.c
- 
-+ARM/Marvell PXA1908 SOC support
-+M:	Duje Mihanović <duje.mihanovic@skole.hr>
-+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
-+S:	Maintained
-+T:	git https://gitlab.com/LegoLivesMatter/linux
-+F:	arch/arm64/boot/dts/marvell/pxa1908*
-+F:	drivers/clk/mmp/clk-pxa1908*.c
-+F:	include/dt-bindings/clock/marvell,pxa1908.h
-+
- ARM/Mediatek RTC DRIVER
- M:	Eddie Huang <eddie.huang@mediatek.com>
- M:	Sean Wang <sean.wang@mediatek.com>
+Changes in v3:
+- Tx/Rx buffers used in interrupt handler are now allocated in probe and reused
+- Other various style fixes
+- Link to v2: https://lore.kernel.org/r/20241128-z2-v2-0-76cc59bbf117@gmail.com
 
--- 
-2.48.0
+Changes in v2:
+- In a separate patch, fixed an issue that prevented the SPI controller
+  from using GPIO CS, and as such, moved the hardware quirk to there
+- Went back to uploading the firmware in probe() instad of open()
+- Other changes addressing the review feedback
+- Link to v1: https://lore.kernel.org/r/20241126-z2-v1-0-c43c4cc6200d@gmail.com
+
+---
+Sasha Finkelstein (4):
+      dt-bindings: input: touchscreen: Add Z2 controller
+      input: apple_z2: Add a driver for Apple Z2 touchscreens
+      arm64: dts: apple: Add touchbar digitizer nodes
+      MAINTAINERS: Add entries for Apple Z2 touchscreen driver
+
+ .../input/touchscreen/apple,z2-multitouch.yaml     |  70 ++++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t8103-j293.dts           |  27 ++
+ arch/arm64/boot/dts/apple/t8103.dtsi               |  19 +
+ arch/arm64/boot/dts/apple/t8112-j493.dts           |  23 ++
+ arch/arm64/boot/dts/apple/t8112.dtsi               |  14 +
+ drivers/input/touchscreen/Kconfig                  |  13 +
+ drivers/input/touchscreen/Makefile                 |   1 +
+ drivers/input/touchscreen/apple_z2.c               | 454 +++++++++++++++++++++
+ 9 files changed, 623 insertions(+)
+---
+base-commit: b62cef9a5c673f1b8083159f5dc03c1c5daced2f
+change-id: 20241124-z2-c012b528ea0d
 
