@@ -1,35 +1,35 @@
 From: Karthik Nayak <karthik.188@gmail.com>
-Date: Thu, 16 Jan 2025 12:35:14 +0100
-Subject: [PATCH 2/5] pack-write: pass repository to `index_pack_lockfile()`
+Date: Thu, 16 Jan 2025 12:35:15 +0100
+Subject: [PATCH 3/5] pack-write: pass hash_algo to `write_idx_file()`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250116-kn-the-repo-cleanup-v1-2-a2f4c8e1c4c3@gmail.com>
+Message-Id: <20250116-kn-the-repo-cleanup-v1-3-a2f4c8e1c4c3@gmail.com>
 References: <20250116-kn-the-repo-cleanup-v1-0-a2f4c8e1c4c3@gmail.com>
 In-Reply-To: <20250116-kn-the-repo-cleanup-v1-0-a2f4c8e1c4c3@gmail.com>
 To: git@vger.kernel.org
 Cc: Karthik Nayak <karthik.188@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3498; i=karthik.188@gmail.com;
- h=from:subject:message-id; bh=4+NcIvb9eGXZWFVkaGz25U3+N7Kc8XV6gLpT89ksQDA=;
- b=owJ4nAHtARL+kA0DAAoBPtWfJI5GjH8ByyZiAGeI7vXhuwr8JrGpb907ky1LbhEAU2s8a0Wn2
- +E4ScLTlPXzmokBswQAAQoAHRYhBFfOTH9jdXEPy2XGBj7VnySORox/BQJniO71AAoJED7VnySO
- Rox/ZT4MAIfr+NVGqktnAehiZKd3Bhh30rRGf9Pjc8iO0DGdMFzzSVH6eKcSIJP3ysA9X2V5So6
- FBvkaam15Bx1IMAYz2rM6ZyHJpeenupILx/ZFWTGbVEjvPNbIiizlKKZWn1ZMXL2u+kWCuSepXp
- fWnpP2GwtnSapNYD9aBTqSaX+NhP0C1SbGkGulsZDm1hLH1TOecGY0TJCm3VsneSVGS/0ivpAyo
- W8AmcnWzf7XiA+I3bcTR9sBbQuVtwn7TVQ42J0ciqCVwuIAG1nE4iFERqYLwk4d0opYzYC8Arjs
- JMKdoHEehrYe6f3EvZG8/6AqOfCAz/t/TcitUUjT4lkT+Ifi6NKQTUF4CsEgAaYW9HpOVetjcHF
- BFViuHMd2SRTiLZNa7z0u3UfC8Ep69WHl/bP+DTWQ9He8crFkSdBEdYVI1XAQGh6fclhUlAxeYx
- AlqgPvUXfVUAcIzC9Mp8YMNsE89Csz2hsBUzPDwI7LEx1n09w/0/JCVPf8N0xzstZGrZ9tcRfZ6
- Fw=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7342; i=karthik.188@gmail.com;
+ h=from:subject:message-id; bh=lgH6WSk//9YmVZiDA9JT771GFfmm1Z/I3oTlK5JxM7M=;
+ b=owJ4nAHtARL+kA0DAAoBPtWfJI5GjH8ByyZiAGeI7vWfKA0RDW6FFbQZbZFenubzf2jJdmem+
+ 81DuVNryjoZUokBswQAAQoAHRYhBFfOTH9jdXEPy2XGBj7VnySORox/BQJniO71AAoJED7VnySO
+ Rox/+RML/39AJtLVnEACAS6DrDZ/InCd3MzRssFCmyWdIp+9m4P+kos1WU+5nll5k6+XsV/mmFN
+ a5K2+2aalhtpbSE4SH6c+v/juiTN4wNF/36KF+CXA7g4KBzRPQd/GvsKFBLmnbk/JDABhRAxEom
+ G9gkdVxy8QBGHWpmwkU7Mm6cKwE1QoQTf7/y7eeUtPLiU6zQ6lskm1s8QLqUg+4w0+sIP5dDQWf
+ gBGTT8m6Rl50N5ZHhY94BdUTzLiXrO4ehHGIs7BuLBUO/QMUyWufBqJyjR7TMy2i14k8Tat9ZS7
+ AVJ1XIf10AmMCKBcTSpKzLkLM18aGwGER5hL7WNHUDNMeeBFjdyzdhBpH6XLJkIax/n5oH2pJ5w
+ 8/ol/JqGfRw8lQOaiOy2NghZDOnGfpDbkz7Go2qSxMNe4CUnfvui8ECsnGrAbgzSf65z+caN/Lh
+ BKxlglbn6cXOc0771+0RxBFxowARMFc9phKON/+8d3RPw92+BFlmBcachYHj2QmQcSoI30hg4L3
+ sU=
 X-Developer-Key: i=karthik.188@gmail.com; a=openpgp;
  fpr=57CE4C7F6375710FCB65C6063ED59F248E468C7F
 X-Endpoint-Received: by B4 Relay for karthik.188@gmail.com/default with auth_id=276
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The `index_pack_lockfile()` function uses the global `the_repository`
-variable to access the repository. To avoid global variable usage, pass
-the repository from the layers above.
+The `write_idx_file()` function uses the global `the_hash_algo` variable
+to access the repository's hash function. To avoid global variable
+usage, pass the hash function from the layers above.
 
 Altough the layers above could have access to the hash function
 internally, simply pass in `the_hash_algo`. This avoids any
@@ -38,79 +38,158 @@ layers which can be eventually resolved.
 
 Signed-off-by: Karthik Nayak <karthik.188@gmail.com>
 ---
- builtin/receive-pack.c | 2 +-
- fetch-pack.c           | 4 +++-
- pack-write.c           | 6 +++---
- pack.h                 | 2 +-
- 4 files changed, 8 insertions(+), 6 deletions(-)
+ builtin/fast-import.c  |  4 ++--
+ builtin/index-pack.c   |  3 ++-
+ builtin/pack-objects.c |  7 ++++---
+ bulk-checkin.c         |  5 +++--
+ pack-write.c           | 14 ++++++++------
+ pack.h                 | 10 ++++++++--
+ 6 files changed, 27 insertions(+), 16 deletions(-)
 
-diff --git a/builtin/receive-pack.c b/builtin/receive-pack.c
-index 56347a79633505efe8dc05acf1583b4c9995eefe..b83abe5d220cefd3707b701409dc5e6b67566599 100644
---- a/builtin/receive-pack.c
-+++ b/builtin/receive-pack.c
-@@ -2304,7 +2304,7 @@ static const char *unpack(int err_fd, struct shallow_info *si)
- 		if (status)
- 			return "index-pack fork failed";
+diff --git a/builtin/fast-import.c b/builtin/fast-import.c
+index 6baf2b1b71e2443a7987a41e0cd246076682bf58..c4bc52f93c011f34bd7f98c8e9d74a33cf9783bd 100644
+--- a/builtin/fast-import.c
++++ b/builtin/fast-import.c
+@@ -798,8 +798,8 @@ static const char *create_index(void)
+ 	if (c != last)
+ 		die("internal consistency error creating the index");
  
--		lockfile = index_pack_lockfile(child.out, NULL);
-+		lockfile = index_pack_lockfile(the_repository, child.out, NULL);
- 		if (lockfile) {
- 			pack_lockfile = register_tempfile(lockfile);
- 			free(lockfile);
-diff --git a/fetch-pack.c b/fetch-pack.c
-index 3a227721ed0935d1f9c40584c57f54043354c032..824f56ecbca11cd9e4da6a3e4c450c6b2e7078ab 100644
---- a/fetch-pack.c
-+++ b/fetch-pack.c
-@@ -1036,7 +1036,9 @@ static int get_pack(struct fetch_pack_args *args,
- 		die(_("fetch-pack: unable to fork off %s"), cmd_name);
- 	if (do_keep && (pack_lockfiles || fsck_objects)) {
- 		int is_well_formed;
--		char *pack_lockfile = index_pack_lockfile(cmd.out, &is_well_formed);
-+		char *pack_lockfile = index_pack_lockfile(the_repository,
-+							  cmd.out,
-+							  &is_well_formed);
+-	tmpfile = write_idx_file(NULL, idx, object_count, &pack_idx_opts,
+-				 pack_data->hash);
++	tmpfile = write_idx_file(the_hash_algo, NULL, idx, object_count,
++				 &pack_idx_opts, pack_data->hash);
+ 	free(idx);
+ 	return tmpfile;
+ }
+diff --git a/builtin/index-pack.c b/builtin/index-pack.c
+index 6c5e3483f4fe67fb2e26132c55b1f8395d60c11f..d73699653a2227f8ecfee2c0f51cd680093ac764 100644
+--- a/builtin/index-pack.c
++++ b/builtin/index-pack.c
+@@ -2096,7 +2096,8 @@ int cmd_index_pack(int argc,
+ 	ALLOC_ARRAY(idx_objects, nr_objects);
+ 	for (i = 0; i < nr_objects; i++)
+ 		idx_objects[i] = &objects[i].idx;
+-	curr_index = write_idx_file(index_name, idx_objects, nr_objects, &opts, pack_hash);
++	curr_index = write_idx_file(the_hash_algo, index_name, idx_objects,
++				    nr_objects, &opts, pack_hash);
+ 	if (rev_index)
+ 		curr_rev_index = write_rev_file(rev_index_name, idx_objects,
+ 						nr_objects, pack_hash,
+diff --git a/builtin/pack-objects.c b/builtin/pack-objects.c
+index ffc62930b68c9b4152057572ede216381a4b0991..7b2dacda514c29f5393b604f15d379abb81546c0 100644
+--- a/builtin/pack-objects.c
++++ b/builtin/pack-objects.c
+@@ -1369,9 +1369,10 @@ static void write_pack_file(void)
+ 			if (cruft)
+ 				pack_idx_opts.flags |= WRITE_MTIMES;
  
- 		if (!is_well_formed)
- 			die(_("fetch-pack: invalid index-pack output"));
+-			stage_tmp_packfiles(&tmpname, pack_tmp_name,
+-					    written_list, nr_written,
+-					    &to_pack, &pack_idx_opts, hash,
++			stage_tmp_packfiles(the_hash_algo, &tmpname,
++					    pack_tmp_name, written_list,
++					    nr_written, &to_pack,
++					    &pack_idx_opts, hash,
+ 					    &idx_tmp_name);
+ 
+ 			if (write_bitmap_index) {
+diff --git a/bulk-checkin.c b/bulk-checkin.c
+index c4b085f57f74fb8b998576ac9d84fed9e01ed0ed..0d49889bfbb233d58fc094f5e2c2d2433dad9851 100644
+--- a/bulk-checkin.c
++++ b/bulk-checkin.c
+@@ -44,8 +44,9 @@ static void finish_tmp_packfile(struct strbuf *basename,
+ {
+ 	char *idx_tmp_name = NULL;
+ 
+-	stage_tmp_packfiles(basename, pack_tmp_name, written_list, nr_written,
+-			    NULL, pack_idx_opts, hash, &idx_tmp_name);
++	stage_tmp_packfiles(the_hash_algo, basename, pack_tmp_name,
++			    written_list, nr_written, NULL, pack_idx_opts, hash,
++			    &idx_tmp_name);
+ 	rename_tmp_packfile_idx(basename, &idx_tmp_name);
+ 
+ 	free(idx_tmp_name);
 diff --git a/pack-write.c b/pack-write.c
-index fc887850dfb9789132b8642733c6472944dbe32d..0cd75d2e55419362a61cf981fc11117ea7a1d88a 100644
+index 0cd75d2e55419362a61cf981fc11117ea7a1d88a..f344e78a9ec20cea9812a5eaffc72ae0b7e7424d 100644
 --- a/pack-write.c
 +++ b/pack-write.c
-@@ -460,10 +460,10 @@ void fixup_pack_header_footer(const struct git_hash_algo *hash_algo,
- 	fsync_component_or_die(FSYNC_COMPONENT_PACK, pack_fd, pack_name);
+@@ -56,7 +56,8 @@ static int need_large_offset(off_t offset, const struct pack_idx_option *opts)
+  * The *sha1 contains the pack content SHA1 hash.
+  * The objects array passed in will be sorted by SHA1 on exit.
+  */
+-const char *write_idx_file(const char *index_name, struct pack_idx_entry **objects,
++const char *write_idx_file(const struct git_hash_algo *hash_algo,
++			   const char *index_name, struct pack_idx_entry **objects,
+ 			   int nr_objects, const struct pack_idx_option *opts,
+ 			   const unsigned char *sha1)
+ {
+@@ -130,7 +131,7 @@ const char *write_idx_file(const char *index_name, struct pack_idx_entry **objec
+ 		struct pack_idx_entry *obj = *list++;
+ 		if (index_version < 2)
+ 			hashwrite_be32(f, obj->offset);
+-		hashwrite(f, obj->oid.hash, the_hash_algo->rawsz);
++		hashwrite(f, obj->oid.hash, hash_algo->rawsz);
+ 		if ((opts->flags & WRITE_IDX_STRICT) &&
+ 		    (i && oideq(&list[-2]->oid, &obj->oid)))
+ 			die("The same object %s appears twice in the pack",
+@@ -172,7 +173,7 @@ const char *write_idx_file(const char *index_name, struct pack_idx_entry **objec
+ 		}
+ 	}
+ 
+-	hashwrite(f, sha1, the_hash_algo->rawsz);
++	hashwrite(f, sha1, hash_algo->rawsz);
+ 	finalize_hashfile(f, NULL, FSYNC_COMPONENT_PACK_METADATA,
+ 			  CSUM_HASH_IN_STREAM | CSUM_CLOSE |
+ 			  ((opts->flags & WRITE_IDX_VERIFY) ? 0 : CSUM_FSYNC));
+@@ -546,7 +547,8 @@ void rename_tmp_packfile_idx(struct strbuf *name_buffer,
+ 	rename_tmp_packfile(name_buffer, *idx_tmp_name, "idx");
  }
  
--char *index_pack_lockfile(int ip_out, int *is_well_formed)
-+char *index_pack_lockfile(struct repository *r, int ip_out, int *is_well_formed)
- {
- 	char packname[GIT_MAX_HEXSZ + 6];
--	const int len = the_hash_algo->hexsz + 6;
-+	const int len = r->hash_algo->hexsz + 6;
+-void stage_tmp_packfiles(struct strbuf *name_buffer,
++void stage_tmp_packfiles(const struct git_hash_algo *hash_algo,
++			 struct strbuf *name_buffer,
+ 			 const char *pack_tmp_name,
+ 			 struct pack_idx_entry **written_list,
+ 			 uint32_t nr_written,
+@@ -561,8 +563,8 @@ void stage_tmp_packfiles(struct strbuf *name_buffer,
+ 	if (adjust_shared_perm(pack_tmp_name))
+ 		die_errno("unable to make temporary pack file readable");
  
- 	/*
- 	 * The first thing we expect from index-pack's output
-@@ -480,7 +480,7 @@ char *index_pack_lockfile(int ip_out, int *is_well_formed)
- 		packname[len-1] = 0;
- 		if (skip_prefix(packname, "keep\t", &name))
- 			return xstrfmt("%s/pack/pack-%s.keep",
--				       repo_get_object_directory(the_repository), name);
-+				       repo_get_object_directory(r), name);
- 		return NULL;
- 	}
- 	if (is_well_formed)
+-	*idx_tmp_name = (char *)write_idx_file(NULL, written_list, nr_written,
+-					       pack_idx_opts, hash);
++	*idx_tmp_name = (char *)write_idx_file(hash_algo, NULL, written_list,
++					       nr_written, pack_idx_opts, hash);
+ 	if (adjust_shared_perm(*idx_tmp_name))
+ 		die_errno("unable to make temporary index file readable");
+ 
 diff --git a/pack.h b/pack.h
-index 6d9d477adc83e83d9e9175ccf699c100b4c147c6..46d85e5bec787c90af69700fd4b328b1ebf1d606 100644
+index 46d85e5bec787c90af69700fd4b328b1ebf1d606..c650fdbe2dcde8055ad0efe55646338cd0f81df5 100644
 --- a/pack.h
 +++ b/pack.h
-@@ -94,7 +94,7 @@ off_t write_pack_header(struct hashfile *f, uint32_t);
- void fixup_pack_header_footer(const struct git_hash_algo *, int,
- 			      unsigned char *, const char *, uint32_t,
- 			      unsigned char *, off_t);
--char *index_pack_lockfile(int fd, int *is_well_formed);
-+char *index_pack_lockfile(struct repository *r, int fd, int *is_well_formed);
+@@ -86,7 +86,12 @@ struct progress;
+ /* Note, the data argument could be NULL if object type is blob */
+ typedef int (*verify_fn)(const struct object_id *, enum object_type, unsigned long, void*, int*);
  
- struct ref;
+-const char *write_idx_file(const char *index_name, struct pack_idx_entry **objects, int nr_objects, const struct pack_idx_option *, const unsigned char *sha1);
++const char *write_idx_file(const struct git_hash_algo *hash_algo,
++			   const char *index_name,
++			   struct pack_idx_entry **objects,
++			   int nr_objects,
++			   const struct pack_idx_option *,
++			   const unsigned char *sha1);
+ int check_pack_crc(struct packed_git *p, struct pack_window **w_curs, off_t offset, off_t len, unsigned int nr);
+ int verify_pack_index(struct packed_git *);
+ int verify_pack(struct repository *, struct packed_git *, verify_fn fn, struct progress *, uint32_t);
+@@ -119,7 +124,8 @@ int read_pack_header(int fd, struct pack_header *);
+ struct packing_data;
  
+ struct hashfile *create_tmp_packfile(char **pack_tmp_name);
+-void stage_tmp_packfiles(struct strbuf *name_buffer,
++void stage_tmp_packfiles(const struct git_hash_algo *hash_algo,
++			 struct strbuf *name_buffer,
+ 			 const char *pack_tmp_name,
+ 			 struct pack_idx_entry **written_list,
+ 			 uint32_t nr_written,
 
 -- 
 2.47.0
