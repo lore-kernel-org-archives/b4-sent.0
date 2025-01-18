@@ -1,10 +1,11 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Sat, 18 Jan 2025 23:42:24 +0100
-Subject: [PATCH v5 3/4] arm64: dts: apple: Add touchbar digitizer nodes
+Date: Sat, 18 Jan 2025 23:42:25 +0100
+Subject: [PATCH v5 4/4] MAINTAINERS: Add entries for Apple Z2 touchscreen
+ driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250118-z2-v5-3-6d38b2582169@gmail.com>
+Message-Id: <20250118-z2-v5-4-6d38b2582169@gmail.com>
 References: <20250118-z2-v5-0-6d38b2582169@gmail.com>
 In-Reply-To: <20250118-z2-v5-0-6d38b2582169@gmail.com>
 To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
@@ -15,176 +16,47 @@ To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>,
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>, 
- Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>
+ Neal Gompa <neal@gompa.dev>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737240231; l=5236;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737240231; l=1303;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=1boTlH5tHhFdxgQAxkVdGzBCBQTHtbLT4xTF/cNJCyo=;
- b=4PZorKJD48gTBKjKxkqZGt+/2RJcol/dQxTAvOn0l/xFP8SxfXK6iErOUhAcwVMO4FfIOLsRT
- blXqU1ShOJaDqG3pyIpJAXkCHSm9fdUqCjAkmxsFh781Z2z3bcnbuQ0
+ bh=ldnhN4cLWZdaSAnK+nFhxc/agLls9azNZ2cuvQL5DLw=;
+ b=7oTK1inJvgaKlZiB3z0DYljz4VXOOpM6tbf2NMMV3SQ9BBiKcq9sPdl8a0bkZPYBVhxZKl3mD
+ Qhu+CuXSWU/BNK7eaS7rJWmztCoRJ0BZxci2CMo+DsqsXqVLTxRTAQc
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds device tree entries for the touchbar digitizer
+Add the MAINTAINERS entries for the driver
 
-Co-developed-by: Janne Grunau <j@jannau.net>
-Signed-off-by: Janne Grunau <j@jannau.net>
 Reviewed-by: Neal Gompa <neal@gompa.dev>
 Acked-by: Sven Peter <sven@svenpeter.dev>
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- arch/arm64/boot/dts/apple/t8103-j293.dts | 27 +++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8103.dtsi     | 19 +++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j493.dts | 23 +++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi     | 14 ++++++++++++++
- 4 files changed, 83 insertions(+)
+ MAINTAINERS | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/apple/t8103-j293.dts b/arch/arm64/boot/dts/apple/t8103-j293.dts
-index 56b0c67bfcda321b60c621de092643017693ff91..0a93d3891c23da8b8c77dce64001caacb69ee140 100644
---- a/arch/arm64/boot/dts/apple/t8103-j293.dts
-+++ b/arch/arm64/boot/dts/apple/t8103-j293.dts
-@@ -17,6 +17,14 @@ / {
- 	compatible = "apple,j293", "apple,t8103", "apple,arm-platform";
- 	model = "Apple MacBook Pro (13-inch, M1, 2020)";
- 
-+	/*
-+	 * All of those are used by the bootloader to pass calibration
-+	 * blobs and other device-specific properties
-+	 */
-+	aliases {
-+		touchbar0 = &touchbar0;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -49,3 +57,22 @@ &i2c4 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&spi0 {
-+	cs-gpios = <&pinctrl_ap 109 GPIO_ACTIVE_LOW>;
-+	status = "okay";
-+
-+	touchbar0: touchbar@0 {
-+		compatible = "apple,j293-touchbar";
-+		reg = <0>;
-+		spi-max-frequency = <11500000>;
-+		spi-cs-setup-delay-ns = <2000>;
-+		spi-cs-hold-delay-ns = <2000>;
-+		reset-gpios = <&pinctrl_ap 139 GPIO_ACTIVE_LOW>;
-+		interrupts-extended = <&pinctrl_ap 194 IRQ_TYPE_EDGE_FALLING>;
-+		firmware-name = "apple/dfrmtfw-j293.bin";
-+		touchscreen-size-x = <23045>;
-+		touchscreen-size-y = <640>;
-+		touchscreen-inverted-y;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index 9b0dad6b618444ac6b1c9735c50cccfc3965f947..dc72aae3844bf33579f623f0b01abc7de4033af4 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -326,6 +326,13 @@ clkref: clock-ref {
- 		clock-output-names = "clkref";
- 	};
- 
-+	clk_200m: clock-200m {
-+		compatible = "fixed-clock";
-+		#clock-cells = <0>;
-+		clock-frequency = <200000000>;
-+		clock-output-names = "clk_200m";
-+	};
-+
- 	/*
- 	 * This is a fabulated representation of the input clock
- 	 * to NCO since we don't know the true clock tree.
-@@ -441,6 +448,18 @@ fpwm1: pwm@235044000 {
- 			status = "disabled";
- 		};
- 
-+		spi0: spi@235100000 {
-+			compatible = "apple,t8103-spi", "apple,spi";
-+			reg = <0x2 0x35100000 0x0 0x4000>;
-+			interrupt-parent = <&aic>;
-+			interrupts = <AIC_IRQ 614 IRQ_TYPE_LEVEL_HIGH>;
-+			clocks = <&clk_200m>;
-+			power-domains = <&ps_spi0>;
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			status = "disabled"; /* only used in J293 */
-+		};
-+
- 		serial0: serial@235200000 {
- 			compatible = "apple,s5l-uart";
- 			reg = <0x2 0x35200000 0x0 0x1000>;
-diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
-index 0ad908349f55406783942735a2e9dad54cda00ec..045bd0716cb7d20c1379ebc1e3ff7f4d0dddc179 100644
---- a/arch/arm64/boot/dts/apple/t8112-j493.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
-@@ -17,8 +17,13 @@ / {
- 	compatible = "apple,j493", "apple,t8112", "apple,arm-platform";
- 	model = "Apple MacBook Pro (13-inch, M2, 2022)";
- 
-+	/*
-+	 * All of those are used by the bootloader to pass calibration
-+	 * blobs and other device-specific properties
-+	 */
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		touchbar0 = &touchbar0;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -67,3 +72,21 @@ &i2c4 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&spi3 {
-+	status = "okay";
-+
-+	touchbar0: touchbar@0 {
-+		compatible = "apple,j493-touchbar";
-+		reg = <0>;
-+		spi-max-frequency = <8000000>;
-+		spi-cs-setup-delay-ns = <2000>;
-+		spi-cs-hold-delay-ns = <2000>;
-+		reset-gpios = <&pinctrl_ap 170 GPIO_ACTIVE_LOW>;
-+		interrupts-extended = <&pinctrl_ap 174 IRQ_TYPE_EDGE_FALLING>;
-+		firmware-name = "apple/dfrmtfw-j493.bin";
-+		touchscreen-size-x = <23045>;
-+		touchscreen-size-y = <640>;
-+		touchscreen-inverted-y;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index 1666e6ab250bc0be9b8318e3c8fc903ccd3f3760..bb6c9e769c65330a32a3c7aa2f074c1f63e195fd 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -467,6 +467,20 @@ fpwm1: pwm@235044000 {
- 			status = "disabled";
- 		};
- 
-+		spi3: spi@23510c000 {
-+			compatible = "apple,t8112-spi", "apple,spi";
-+			reg = <0x2 0x3510c000 0x0 0x4000>;
-+			interrupt-parent = <&aic>;
-+			interrupts = <AIC_IRQ 751 IRQ_TYPE_LEVEL_HIGH>;
-+			clocks = <&clkref>;
-+			pinctrl-0 = <&spi3_pins>;
-+			pinctrl-names = "default";
-+			power-domains = <&ps_spi3>;
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			status = "disabled"; /* only used in J493 */
-+		};
-+
- 		serial0: serial@235200000 {
- 			compatible = "apple,s5l-uart";
- 			reg = <0x2 0x35200000 0x0 0x1000>;
+diff --git a/MAINTAINERS b/MAINTAINERS
+index a87ddad78e26f28ffd0f3433560d6db1518f9f95..8b3776eb748e128f87c44886b117e0652447fb37 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2191,6 +2191,7 @@ F:	Documentation/devicetree/bindings/clock/apple,nco.yaml
+ F:	Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
+ F:	Documentation/devicetree/bindings/dma/apple,admac.yaml
+ F:	Documentation/devicetree/bindings/i2c/apple,i2c.yaml
++F:	Documentation/devicetree/bindings/input/touchscreen/apple,z2-multitouch.yaml
+ F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
+ F:	Documentation/devicetree/bindings/iommu/apple,dart.yaml
+ F:	Documentation/devicetree/bindings/iommu/apple,sart.yaml
+@@ -2211,6 +2212,7 @@ F:	drivers/dma/apple-admac.c
+ F:	drivers/pmdomain/apple/
+ F:	drivers/i2c/busses/i2c-pasemi-core.c
+ F:	drivers/i2c/busses/i2c-pasemi-platform.c
++F:	drivers/input/touchscreen/apple_z2.c
+ F:	drivers/iommu/apple-dart.c
+ F:	drivers/iommu/io-pgtable-dart.c
+ F:	drivers/irqchip/irq-apple-aic.c
 
 -- 
 2.48.0
