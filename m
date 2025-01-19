@@ -1,15 +1,13 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Subject: [PATCH 0/2] arm64: dts: qcom: x1e80100-vivobook-s15: Add usb a and
- sd-card reader
-Date: Sun, 19 Jan 2025 15:50:50 +0100
-Message-Id: <20250119-usb_a_micro_sd-v1-0-01eb7502ae05@hotmail.com>
+Date: Sun, 19 Jan 2025 15:50:51 +0100
+Subject: [PATCH 1/2] arm64: dts: qcom: x1e80100-vivobook-s15: Enable USB-A
+ ports
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEoRjWcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDQ0NL3dLipPjE+NzM5KL8+OIUXZNkE3Oz1ERzM8skQyWgpoKi1LTMCrC
- B0bG1tQAlmMaJYAAAAA==
-X-Change-ID: 20250119-usb_a_micro_sd-4c476ea769b1
+Message-Id: <20250119-usb_a_micro_sd-v1-1-01eb7502ae05@hotmail.com>
+References: <20250119-usb_a_micro_sd-v1-0-01eb7502ae05@hotmail.com>
+In-Reply-To: <20250119-usb_a_micro_sd-v1-0-01eb7502ae05@hotmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,62 +15,163 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737298255; l=2119;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737298255; l=3649;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=AX5VJfJx56rXXVQSO+9NkM/PmYBy4kqrprJ7LvyVVn0=;
- b=kx/NfvnPmOYQw+KpxvPD8lyMcKVtHa8QDaSo3OM8h2zwU8uwivmDT0bxQEI/CA5XMHdoeVvc2
- JQzN9bV4x4/BkBEjSiPAwWZfjZRFWcLOhAvLESNheEu/3pFxhs8uSgf
+ bh=idUvFTYnjlWc1hne6a9f/k2cF8fXFoNt7OjqqPI7Elg=;
+ b=rWhKRfL8YkTdmOrujhoQlvGsFleap4guv118Cjw48KX4aQtMFVnlHGM6lM1p6LQgDdGcLq857
+ 6xM003uNvPxA6FZ9kAr+JJj60G1tSoz3tqYKBtFMa5v1RcqBnlq3gMo
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Asus Vivobook s15 has 2 5gbps usb A ports on the right side which
-are controlled by the usb_mp controller enable them and the retimers
-required.
-
-There is also a micro sd-card reader on the left side below the two
-usb-c ports, this one is attached to the usb_2 controller. Enable it and
-the retimer to enable the micro sd-card reader.
-
-The micro sd-card reader seems to have so interesting behaviour, on my
-machine and someone elses it kind of half works, but not really, the
-same under windows, unusable. Either we both got unlucky with a hardware
-defect or there is something else going on, however two other people did
-succesfully test it, one of which on (free?)bsd instead of linux even.
-One hypothesis is that this area is where the charging circuitry is,
-which gets *very* hot while charging and might damage this bit of
-hardware. However this is very much speculation and not based on
-anything concrete.
-
-Symptoms of dysfunctional sd-card reader:
-The sd card will get detected, a usb device will appear as "Genesys Logic
-STORAGE DEVICE" 05e3:0747
-
-log:
-[ 2456.648075] usb 1-1: new high-speed USB device number 3 using xhci-hcd
-[ 2456.792703] usb-storage 1-1:1.0: USB Mass Storage device detected
-[ 2456.795530] scsi host0: usb-storage 1-1:1.0
-[ 2457.840518] scsi 0:0:0:0: Direct-Access     Generic  MassStorageClass
-2402 PQ: 0 ANSI: 6
-[ 2458.072281] sd 0:0:0:0: [sda] Media removed, stopped polling
-[ 2458.073001] sd 0:0:0:0: [sda] Attached SCSI removable disk
-
-/dev/sda will appear, but it will not do anything, fdisk rejects it etc
+The asus vivobook has 2 USB type A ports on the right side, enable them
 
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
-Maud Spierings (2):
-      arm64: dts: qcom: x1e80100-vivobook-s15: Enable USB-A ports
-      arm64: dts: qcom: x1e80100-vivobook-s15: Enable micro-sd card reader
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 103 ++++++++++++++++++++-
+ 1 file changed, 102 insertions(+), 1 deletion(-)
 
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 142 ++++++++++++++++++++-
- 1 file changed, 141 insertions(+), 1 deletion(-)
----
-base-commit: 0907e7fb35756464aa34c35d6abb02998418164b
-change-id: 20250119-usb_a_micro_sd-4c476ea769b1
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
+index 53781f9b13af3e8491dcf63c57868eaf7025d0a8..b66d03ee3ff30561e8665be6ad34919f89a79572 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
+@@ -192,6 +192,20 @@ vreg_l2b_3p0: ldo2 {
+ 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+ 		};
+ 
++		vreg_l4b_1p8: ldo4 {
++			regulator-name = "vreg_l4b_1p8";
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
++		vreg_l13b_3p0: ldo13 {
++			regulator-name = "vreg_l13b_3p0";
++			regulator-min-microvolt = <3072000>;
++			regulator-max-microvolt = <3072000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
+ 		vreg_l14b_3p0: ldo14 {
+ 			regulator-name = "vreg_l14b_3p0";
+ 			regulator-min-microvolt = <3072000>;
+@@ -209,6 +223,13 @@ regulators-1 {
+ 		vdd-l3-supply = <&vreg_s1f_0p7>;
+ 		vdd-s4-supply = <&vph_pwr>;
+ 
++		vreg_l3c_0p8: ldo3 {
++			regulator-name = "vreg_l3c_0p8";
++			regulator-min-microvolt = <912000>;
++			regulator-max-microvolt = <912000>;
++			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++		};
++
+ 		vreg_s4c_1p8: smps4 {
+ 			regulator-name = "vreg_s4c_1p8";
+ 			regulator-min-microvolt = <1856000>;
+@@ -401,7 +422,35 @@ keyboard@3a {
+ 		wakeup-source;
+ 	};
+ 
+-	/* EC? @ 0x5b, 0x76 */
++	eusb3_repeater: redriver@47 {
++		compatible = "nxp,ptn3222";
++		reg = <0x47>;
++		#phy-cells = <0>;
++
++		vdd3v3-supply = <&vreg_l13b_3p0>;
++		vdd1v8-supply = <&vreg_l4b_1p8>;
++
++		reset-gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
++
++		pinctrl-0 = <&eusb3_reset_n>;
++		pinctrl-names = "default";
++	};
++
++	eusb6_repeater: redriver@4f {
++		compatible = "nxp,ptn3222";
++		reg = <0x4f>;
++		#phy-cells = <0>;
++
++		vdd3v3-supply = <&vreg_l13b_3p0>;
++		vdd1v8-supply = <&vreg_l4b_1p8>;
++
++		reset-gpios = <&tlmm 184 GPIO_ACTIVE_LOW>;
++
++		pinctrl-0 = <&eusb6_reset_n>;
++		pinctrl-names = "default";
++	};
++
++	/* EC @ 0x76 */
+ };
+ 
+ &i2c7 {
+@@ -563,6 +612,22 @@ edp_reg_en: edp-reg-en-state {
+ 		bias-disable;
+ 	};
+ 
++	eusb3_reset_n: eusb3-reset-n-state {
++		pins = "gpio6";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-up;
++		output-low;
++	};
++
++	eusb6_reset_n: eusb6-reset-n-state {
++		pins = "gpio184";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-up;
++		output-low;
++	};
++
+ 	hall_int_n_default: hall-int-n-state {
+ 		pins = "gpio92";
+ 		function = "gpio";
+@@ -698,3 +763,39 @@ &usb_1_ss1_dwc3_hs {
+ &usb_1_ss1_qmpphy_out {
+ 	remote-endpoint = <&pmic_glink_ss1_ss_in>;
+ };
++
++&usb_mp {
++	status = "okay";
++};
++
++&usb_mp_hsphy0 {
++	vdd-supply = <&vreg_l2e_0p8>;
++	vdda12-supply = <&vreg_l3e_1p2>;
++
++	phys = <&eusb6_repeater>;
++
++	status = "okay";
++};
++
++&usb_mp_hsphy1 {
++	vdd-supply = <&vreg_l2e_0p8>;
++	vdda12-supply = <&vreg_l3e_1p2>;
++
++	phys = <&eusb3_repeater>;
++
++	status = "okay";
++};
++
++&usb_mp_qmpphy0 {
++	vdda-phy-supply = <&vreg_l3e_1p2>;
++	vdda-pll-supply = <&vreg_l3c_0p8>;
++
++	status = "okay";
++};
++
++&usb_mp_qmpphy1 {
++	vdda-phy-supply = <&vreg_l3e_1p2>;
++	vdda-pll-supply = <&vreg_l3c_0p8>;
++
++	status = "okay";
++};
 
-Best regards,
 -- 
-Maud Spierings <maud_spierings@hotmail.com>
+2.47.1
 
