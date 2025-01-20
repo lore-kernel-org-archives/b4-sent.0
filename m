@@ -1,104 +1,65 @@
-From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Sun, 19 Jan 2025 15:50:52 +0100
-Subject: [PATCH 2/2] arm64: dts: qcom: x1e80100-vivobook-s15: Enable
- micro-sd card reader
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Subject: [PATCH net-next v2 0/3] net: phy: dp83822: Add support for
+ changing the transmit amplitude voltage
+Date: Mon, 20 Jan 2025 14:50:20 +0100
+Message-Id: <20250120-dp83822-tx-swing-v2-0-07c99dc42627@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250119-usb_a_micro_sd-v1-2-01eb7502ae05@hotmail.com>
-References: <20250119-usb_a_micro_sd-v1-0-01eb7502ae05@hotmail.com>
-In-Reply-To: <20250119-usb_a_micro_sd-v1-0-01eb7502ae05@hotmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>
+X-B4-Tracking: v=1; b=H4sIAJxUjmcC/22NQQ6CMBBFr0Jm7ZhpsQiuvIdhAXSESbQlbYMYw
+ t1tWLt8efnvbxA5CEe4FRsEXiSKdxn0qYBh6tzIKDYzaNIXpVWJdq7LWmtMK8aPuBFN31WD4qa
+ nykCezYGfsh7JBzhO6HhN0GYzSUw+fI+vRR0+Zw2pf9lFIeGVrekaWxMpur+E+4lDOA/+De2+7
+ z/oBY0wvQAAAA==
+X-Change-ID: 20241213-dp83822-tx-swing-5ba6c1e9b065
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andrew Davis <afd@ti.com>, 
+ Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ Florian Fainelli <f.fainelli@gmail.com>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737298255; l=1805;
- i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=qEagHCN4mp21iK7xTZ9rdbXZ95q3ftiIVYE+wWP/Qys=;
- b=mRJxbTQ8UQcOnifr4c0sNJ1GMXjvTA8gQs78OsAvmkTEWPbKTcgqhafeEaHusblvuEiGlfGDs
- P8ZZWl3jTh3CORgC+JAoXa7bCIkJuzZ2GCKOrDNhlW0soF/ERKS17Dg
-X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
- pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
-X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737381028; l=1257;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=tgzpuPTlk55PqGR4hzKBitiv5FYSx8q9JuFUVygLiZU=;
+ b=dPLIo5u0zT2/jV5kb4jkzAGVdakwVyp3mtlz9U3opi/THSQPsrot3icWRVzpytUmDEe1NtLo4
+ DlVAJf7A1wdA66zxl4S/GHwUc03AMqxHPwOrh1r0oZ/E0d/YVdb9K2o
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The asus vivobook s15 has a micro-sd card reader attached to usb_2.
+Add support for changing the transmit amplitude voltage in 100BASE-TX mode.
+Add support for configuration via DT.
 
-Enable usb_2 to enable this reader.
-
-Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 39 ++++++++++++++++++++++
- 1 file changed, 39 insertions(+)
+Changes in v2:
+- Remove binding ti,tx-amplitude-100base-tx-millivolt from ti,dp83822.yaml
+- Add binding tx-amplitude-100base-tx-gain-milli to ethernet-phy.yaml
+- Add helper to get tx amplitude gain from DT
+- Link to v1: https://lore.kernel.org/r/20250113-dp83822-tx-swing-v1-0-7ed5a9d80010@liebherr.com
 
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-index b66d03ee3ff30561e8665be6ad34919f89a79572..fb9567817be6f887c9214cafbfbabda8b8cb8203 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-@@ -422,6 +422,20 @@ keyboard@3a {
- 		wakeup-source;
- 	};
- 
-+	eusb5_repeater: redriver@43 {
-+		compatible = "nxp,ptn3222";
-+		reg = <0x43>;
-+		#phy-cells = <0>;
-+
-+		vdd3v3-supply = <&vreg_l13b_3p0>;
-+		vdd1v8-supply = <&vreg_l4b_1p8>;
-+
-+		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
-+
-+		pinctrl-0 = <&eusb5_reset_n>;
-+		pinctrl-names = "default";
-+	};
-+
- 	eusb3_repeater: redriver@47 {
- 		compatible = "nxp,ptn3222";
- 		reg = <0x47>;
-@@ -620,6 +634,14 @@ eusb3_reset_n: eusb3-reset-n-state {
- 		output-low;
- 	};
- 
-+	eusb5_reset_n: eusb5-reset-n-state {
-+		pins = "gpio7";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-up;
-+		output-low;
-+	};
-+
- 	eusb6_reset_n: eusb6-reset-n-state {
- 		pins = "gpio184";
- 		function = "gpio";
-@@ -764,6 +786,23 @@ &usb_1_ss1_qmpphy_out {
- 	remote-endpoint = <&pmic_glink_ss1_ss_in>;
- };
- 
-+&usb_2 {
-+	status = "okay";
-+};
-+
-+&usb_2_dwc3 {
-+	dr_mode = "host";
-+};
-+
-+&usb_2_hsphy {
-+	vdd-supply = <&vreg_l2e_0p8>;
-+	vdda12-supply = <&vreg_l3e_1p2>;
-+
-+	phys = <&eusb5_repeater>;
-+
-+	status = "okay";
-+};
-+
- &usb_mp {
- 	status = "okay";
- };
+---
+Dimitri Fedrau (3):
+      dt-bindings: net: ethernet-phy: add property tx-amplitude-100base-tx-gain-milli
+      net: phy: Add helper for getting tx amplitude gain
+      net: phy: dp83822: Add support for changing the transmit amplitude voltage
 
+ .../devicetree/bindings/net/ethernet-phy.yaml      |  8 +++++
+ drivers/net/phy/dp83822.c                          | 37 ++++++++++++++++++++++
+ drivers/net/phy/phy_device.c                       | 20 +++++++++---
+ include/linux/phy.h                                |  3 ++
+ 4 files changed, 64 insertions(+), 4 deletions(-)
+---
+base-commit: 64ff63aeefb03139ae27454bd4208244579ae88e
+change-id: 20241213-dp83822-tx-swing-5ba6c1e9b065
+
+Best regards,
 -- 
-2.47.1
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
