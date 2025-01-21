@@ -1,135 +1,94 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Mon, 20 Jan 2025 14:50:23 +0100
-Subject: [PATCH net-next v2 3/3] net: phy: dp83822: Add support for
- changing the transmit amplitude voltage
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Date: Tue, 21 Jan 2025 15:01:51 +0800
+Subject: [PATCH v4] drm/bridge: it6505: fix HDCP V match check is not
+ performed correctly
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250120-dp83822-tx-swing-v2-3-07c99dc42627@liebherr.com>
-References: <20250120-dp83822-tx-swing-v2-0-07c99dc42627@liebherr.com>
-In-Reply-To: <20250120-dp83822-tx-swing-v2-0-07c99dc42627@liebherr.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andrew Davis <afd@ti.com>, 
- Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- Florian Fainelli <f.fainelli@gmail.com>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+Message-Id: <20250121-fix-hdcp-v-comp-v4-1-185f45c728dc@ite.com.tw>
+X-B4-Tracking: v=1; b=H4sIAF5Gj2cC/4XNQQ7CIBAF0KsY1tLAACm48h7GBYWpZWHbQIOap
+ neXNjHRdOHyz/x5M5OEMWAip8NMIuaQwtCXII8H4jrb35AGXzIBBopxVtM2PGnn3UgzdcN9pKK
+ xGoWvrW8FKVdjxFLZxMu15C6kaYiv7UHm6/Rj6Z2VOeXUSCY15xqU8+cwYVVW1fQgK5bhGzB7A
+ ApQe4fMKqNAtDtA/AFEATgojb4BaWzzAyzL8gY27iWFMQEAAA==
+X-Change-ID: 20250107-fix-hdcp-v-comp-3ba8e3d7adf3
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Dmitry Baryshkov <dmitry.baryshkov@linaro.org>, 
+ Hermes Wu <hermes.wu@ite.com.tw>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org, 
+ Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737381028; l=3492;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=i7JK4ez08mIrB/fvCWOiiy6f3mWMVK6RC5dLYH/FlCk=;
- b=S/2O6vcc8bP/dacaUOWDYebuPHZGwfVOeZxhsnjym5v4Sfg3FdSWqCDKBgrsvMuetE+yZHA0R
- xctx5ih/nBjAqmwmPDG0syV8TJHAy1XKwTRh3XAXgz8MiybtYnzMjm1
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737442945; l=2084;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=dUqXlNgYAl2Ay3XuEGf25rTzX7c3cUgN/Ydq0aXRSw0=;
+ b=nhbLadf23YE4qooMAxAUwjrpv7qAIZFRU5IYDckSVOaGDmJ7mdEbwcLIJhd4fRDiDwexc8PKJ
+ IOu5RI71KYrAZUdYsCaaoksnZrYbLNnHp4cYAL1uz4AbJlG07knRRND
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for changing the transmit amplitude voltage in 100BASE-TX mode.
-Modifying it can be necessary to compensate losses on the PCB and
-connector, so the voltages measured on the RJ45 pins are conforming.
+Fix a typo where V compare incorrectly compares av[] with av[] itself,
+which can result in HDCP failure.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+The loop of V compare is expected to iterate for 5 times
+which compare V array form av[0][] to av[4][].
+It should check loop counter reach the last statement "i == 5"
+before return true
+
+Fixes: 0989c02c7a5c ("drm/bridge: it6505: fix HDCP CTS compare V matching")
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- drivers/net/phy/dp83822.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+Changes in v4:
+- Fix a typo where V compare incorrectly compares av[] with av[] itself
+- Link to v3: https://lore.kernel.org/r/20250109-fix-hdcp-v-comp-v3-1-1258edb249ab@ite.com.tw
 
-diff --git a/drivers/net/phy/dp83822.c b/drivers/net/phy/dp83822.c
-index 6599feca1967d705331d6e354205a2485ea962f2..dd5aaf1b2c61ee31c521f83aa1dccb6d3f5aae15 100644
---- a/drivers/net/phy/dp83822.c
-+++ b/drivers/net/phy/dp83822.c
-@@ -31,6 +31,7 @@
- #define MII_DP83822_RCSR	0x17
- #define MII_DP83822_RESET_CTRL	0x1f
- #define MII_DP83822_MLEDCR	0x25
-+#define MII_DP83822_LDCTRL	0x403
- #define MII_DP83822_LEDCFG1	0x460
- #define MII_DP83822_IOCTRL1	0x462
- #define MII_DP83822_IOCTRL2	0x463
-@@ -123,6 +124,9 @@
- #define DP83822_IOCTRL1_GPIO1_CTRL		GENMASK(2, 0)
- #define DP83822_IOCTRL1_GPIO1_CTRL_LED_1	BIT(0)
+Changes in v3:
+- The V value compare loop from i = 0 to i = 4 and shall exit with i == 5 
+  if all V element matches
+- Link to v2: https://lore.kernel.org/r/20250109-fix-hdcp-v-comp-v2-1-7dce0a59523f@ite.com.tw
+
+Changes in v2:
+- pull the check of statment "i" out of V value check loop 
+- Link to v1: https://lore.kernel.org/r/20250108-fix-hdcp-v-comp-v1-1-9404811825cd@ite.com.tw
+---
+ drivers/gpu/drm/bridge/ite-it6505.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
+index 88ef76a37fe6accacdd343839ff2569b31b18ceb..76dabca04d0d191b3bdee23c6a3e55f4b6d3bad4 100644
+--- a/drivers/gpu/drm/bridge/ite-it6505.c
++++ b/drivers/gpu/drm/bridge/ite-it6505.c
+@@ -2250,12 +2250,13 @@ static bool it6505_hdcp_part2_ksvlist_check(struct it6505 *it6505)
+ 			continue;
+ 		}
  
-+/* LDCTRL bits */
-+#define DP83822_100BASE_TX_LINE_DRIVER_SWING	GENMASK(7, 4)
-+
- /* IOCTRL2 bits */
- #define DP83822_IOCTRL2_GPIO2_CLK_SRC		GENMASK(6, 4)
- #define DP83822_IOCTRL2_GPIO2_CTRL		GENMASK(2, 0)
-@@ -197,6 +201,7 @@ struct dp83822_private {
- 	bool set_gpio2_clk_out;
- 	u32 gpio2_clk_out;
- 	bool led_pin_enable[DP83822_MAX_LED_PINS];
-+	int tx_amplitude_100base_tx_index;
- };
+-		for (i = 0; i < 5; i++) {
++		for (i = 0; i < 5; i++)
+ 			if (bv[i][3] != av[i][0] || bv[i][2] != av[i][1] ||
+-			    av[i][1] != av[i][2] || bv[i][0] != av[i][3])
++			    bv[i][1] != av[i][2] || bv[i][0] != av[i][3])
+ 				break;
  
- static int dp83822_config_wol(struct phy_device *phydev,
-@@ -522,6 +527,12 @@ static int dp83822_config_init(struct phy_device *phydev)
- 			       FIELD_PREP(DP83822_IOCTRL2_GPIO2_CLK_SRC,
- 					  dp83822->gpio2_clk_out));
- 
-+	if (dp83822->tx_amplitude_100base_tx_index >= 0)
-+		phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_LDCTRL,
-+			       DP83822_100BASE_TX_LINE_DRIVER_SWING,
-+			       FIELD_PREP(DP83822_100BASE_TX_LINE_DRIVER_SWING,
-+					  dp83822->tx_amplitude_100base_tx_index));
-+
- 	err = dp83822_config_init_leds(phydev);
- 	if (err)
- 		return err;
-@@ -720,6 +731,11 @@ static int dp83822_phy_reset(struct phy_device *phydev)
- }
- 
- #ifdef CONFIG_OF_MDIO
-+static const u32 tx_amplitude_100base_tx_gain[] = {
-+	800, 816, 833, 850, 866, 1767, 883, 916,
-+	933, 950, 966, 983, 1000, 1016, 1033, 1050,
-+};
-+
- static int dp83822_of_init_leds(struct phy_device *phydev)
- {
- 	struct device_node *node = phydev->mdio.dev.of_node;
-@@ -780,6 +796,8 @@ static int dp83822_of_init(struct phy_device *phydev)
- 	struct dp83822_private *dp83822 = phydev->priv;
- 	struct device *dev = &phydev->mdio.dev;
- 	const char *of_val;
-+	s32 val;
-+	int i;
- 
- 	/* Signal detection for the PHY is only enabled if the FX_EN and the
- 	 * SD_EN pins are strapped. Signal detection can only enabled if FX_EN
-@@ -815,6 +833,25 @@ static int dp83822_of_init(struct phy_device *phydev)
- 		dp83822->set_gpio2_clk_out = true;
+-			DRM_DEV_DEBUG_DRIVER(dev, "V' all match!! %d, %d", retry, i);
++		if (i == 5) {
++			DRM_DEV_DEBUG_DRIVER(dev, "V' all match!! %d", retry);
+ 			return true;
+ 		}
  	}
- 
-+	dp83822->tx_amplitude_100base_tx_index = -1;
-+	val = phy_get_tx_amplitude_gain(phydev, dev,
-+					ETHTOOL_LINK_MODE_100baseT_Full_BIT);
-+	if (val > 0) {
-+		for (i = 0; i < ARRAY_SIZE(tx_amplitude_100base_tx_gain); i++) {
-+			if (tx_amplitude_100base_tx_gain[i] == val) {
-+				dp83822->tx_amplitude_100base_tx_index = i;
-+				break;
-+			}
-+		}
-+
-+		if (dp83822->tx_amplitude_100base_tx_index < 0) {
-+			phydev_err(phydev,
-+				   "Invalid value for tx-amplitude-100base-tx-gain-milli property (%u)\n",
-+				   val);
-+			return -EINVAL;
-+		}
-+	}
-+
- 	return dp83822_of_init_leds(phydev);
- }
- 
 
+---
+base-commit: 938fbb16aba8f7b88e0fdcf56f315a5bbad41aad
+change-id: 20250107-fix-hdcp-v-comp-3ba8e3d7adf3
+
+Best regards,
 -- 
-2.39.5
+Hermes Wu <Hermes.wu@ite.com.tw>
 
