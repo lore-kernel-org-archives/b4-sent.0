@@ -1,22 +1,19 @@
 From: Massimiliano Minella <massimiliano.minella@se.com>
-Date: Tue, 21 Jan 2025 14:07:37 +0100
-Subject: [PATCH meta-virtualization] virt-manager: use inherit_defer for
- optional gtk-icon-cache class
+Date: Tue, 21 Jan 2025 16:12:47 +0100
+Subject: [PATCH RESEND meta-virtualization] virt-manager: use inherit_defer
+ for optional gtk-icon-cache class
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250121-use_inherit_defer-v1-1-ab38610c2ff4@se.com>
-X-B4-Tracking: v=1; b=H4sIABicj2cC/x3MQQqDMBBG4avIrA1kUgTpVUqR1PzRgTaVSZRS8
- e5NXb7F93bKUEGma7OTYpMs71SD24bG2acJRkJtctZ1lh2bNWOQNFdVhoAINTb04Pjou5EvVN2
- iiPI5nzd6oXiziZbVP+Xry39/P44fTwRGVngAAAA=
+Message-Id: <20250121-use_inherit_defer-v1-1-dbfd42de3a01@se.com>
 To: meta-virtualization@lists.yoctoproject.org
 Cc: Massimiliano Minella <massimiliano.minella@se.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737464858; l=1359;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737472369; l=1359;
  i=massimiliano.minella@se.com; s=20250121; h=from:subject:message-id;
  bh=zh1M+VIYhaVDdHzTqvyHbs1bN9I+xLH2CnDVhSv29bw=;
- b=KjqCgmJz1aSmC2jg78wzhKHf/12BK3ZrHAnaBLaIgsuX7G/skGimDAkHfe+3JG5J2XtDtRF3y
- g0hrmpX6WCcAKS//tzw7BhKWBkq/iCcqE2Y1FLKiTXG3QX4yv77FO//
+ b=aXlIka1l/NgkiYWrC9Kfx8FUuiIFOShokd0dQdhOWw1IusYkflCNmgiy1T+tApnicGkBVQfvD
+ vISmO1GX0bED2HcwRvCoAvdvqAZALElxfw28CovjtQjcaNgNVoVqm4t
 X-Developer-Key: i=massimiliano.minella@se.com; a=ed25519;
  pk=p6Og4stDBPm4cBEySH8oVWARLO52pxVayNFqHslSXU0=
 X-Endpoint-Received: by B4 Relay for massimiliano.minella@se.com/20250121 with auth_id=325
