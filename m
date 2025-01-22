@@ -1,54 +1,102 @@
-From: Massimiliano Minella <massimiliano.minella@se.com>
-Date: Tue, 21 Jan 2025 16:12:47 +0100
-Subject: [PATCH RESEND meta-virtualization] virt-manager: use inherit_defer
- for optional gtk-icon-cache class
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v4 0/5] Pinctrl: Add Amlogic pinctrl driver
+Date: Wed, 22 Jan 2025 11:25:58 +0800
+Message-Id: <20250122-amlogic-pinctrl-v4-0-4677b2e18ff1@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250121-use_inherit_defer-v1-1-dbfd42de3a01@se.com>
-To: meta-virtualization@lists.yoctoproject.org
-Cc: Massimiliano Minella <massimiliano.minella@se.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737472369; l=1359;
- i=massimiliano.minella@se.com; s=20250121; h=from:subject:message-id;
- bh=zh1M+VIYhaVDdHzTqvyHbs1bN9I+xLH2CnDVhSv29bw=;
- b=aXlIka1l/NgkiYWrC9Kfx8FUuiIFOShokd0dQdhOWw1IusYkflCNmgiy1T+tApnicGkBVQfvD
- vISmO1GX0bED2HcwRvCoAvdvqAZALElxfw28CovjtQjcaNgNVoVqm4t
-X-Developer-Key: i=massimiliano.minella@se.com; a=ed25519;
- pk=p6Og4stDBPm4cBEySH8oVWARLO52pxVayNFqHslSXU0=
-X-Endpoint-Received: by B4 Relay for massimiliano.minella@se.com/20250121 with auth_id=325
+X-B4-Tracking: v=1; b=H4sIAEdlkGcC/3XNSw6CMBCA4auQrq3pTF/oynsYF6VUaAKUFEI0h
+ LtbiCYa4vKfzHwzk8FF7wZyzmYS3eQHH7oU4pARW5uuctSXqQkyFIAA1LRNqLylve/sGBuK6Iy
+ CHFnJSpKu+uju/rGJ11vq2g9jiM/twQTr9L81AWVUANOoOZcAp8t742hDS1Ztwi8B1V7AJNjSO
+ IFG6UKrvcA/gmQAci/wJGCRS66E1KYwv8KyLC8v+5EfNAEAAA==
+To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737516363; l=3484;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=t2wfr4/PkO9Lh3Bw0KccXsVOWadq4npkK7mf3G0pXFk=;
+ b=oql750cdOMuzojijnhNz0Mv/peGMkD6Mlq6I4ChVZCwrxxDIfpOtbXRbXrKWxuoD6LDqlG86u
+ VkI6c1lxlToC+jYdnFNEdKNOjhV244OzNscoE/5FuxvVv5N8JwDFEur
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The inherit is controlled by the PACKAGECONFIG option "gui" but, since
-it is expanded at parse time, this causes a build error if the option is
-removed via a bbappend and DISTRO_FEATURES doesn't contain "x11" or
-"wayland". Replace the inherit with inherit_defer to evaluate the
-inherit at the end of parsing.
+Add pinctrl driver support for Amloigc SoCs
 
-Signed-off-by: Massimiliano Minella <massimiliano.minella@se.com>
+Base on the previous discussion,
+https://lore.kernel.org/r/20241113-a4_pinctrl-v6-0-35ba2401ee35@amlogic.com
+The existed meson driver failed to meet the requirement of the current dt-binding.
+So we start this new pinctrl driver to solve problem.
+
+The advantage of this version: Once the source file and binding document
+are added, adding dts node will be only operation for subsequent Amlogic SoCs
+(such as A4, A5).
+
+The code in DTS file is also readable when using GPIO, as below:
+reset-gpios = <&gpiob 6 GPIO_ACTIVE_LOW>;
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- recipes-extended/virt-manager/virt-manager_4.1.0.bb | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v4:
+- Drop bank-number property, and get information from gpio-ranges property.
+- Keep required of pinctrol after patternProperties, and add missing "ranges" for required.
+- Add required(pinmux) of function.
+- Keep address-cells and size-cells property values, because:
+  Previously only represented a register address offset value, now directly represents a register, through 'ranges" which to represent.
+- Some little modifications were made to bindings and dts according to Krzysztof's suggestions.
+- Link to v3: https://lore.kernel.org/r/20250115-amlogic-pinctrl-v3-0-2b8536457aba@amlogic.com
 
-diff --git recipes-extended/virt-manager/virt-manager_4.1.0.bb recipes-extended/virt-manager/virt-manager_4.1.0.bb
-index d752fd2b..08b7d02b 100644
---- recipes-extended/virt-manager/virt-manager_4.1.0.bb
-+++ recipes-extended/virt-manager/virt-manager_4.1.0.bb
-@@ -15,7 +15,7 @@ S = "${WORKDIR}/git"
- PACKAGECONFIG ??= "gui"
- PACKAGECONFIG[gui] = ",--no-update-icon-cache --no-compile-schemas,python3-pygobject"
- 
--inherit ${@bb.utils.contains('PACKAGECONFIG', 'gui', 'gtk-icon-cache', '', d)}
-+inherit_defer ${@bb.utils.contains('PACKAGECONFIG', 'gui', 'gtk-icon-cache', '', d)}
- inherit bash-completion gettext pkgconfig setuptools3_legacy
- 
- PACKAGES += " \
+Changes in v3:
+- Move reg and reg-name from pin controller node into gpio-controller node and drop mask property.
+- Use gpio-range instead of ngpios property.
+- Some little modifications were made to bindings according to Rob's suggestions.
+- Fix bug reported by kernel test robot.
+- Two pin controller node compressed into one because of register address defined in gpio-controller.
+- Link to v2: https://lore.kernel.org/r/20241226-amlogic-pinctrl-v2-0-cdae42a67b76@amlogic.com
+
+Changes in v2:
+- Some modifications and optimizations were made to bindings according to Rob's suggestions.
+- Refined some details on functions node for bindings. 
+- Some source code optimizations were made according to Linus's suggestions.
+- Add stand API to generic to deal pinmux propertity.
+- Add private reg data to deal with for future SoCs.
+- Simplified some unused processing (previously used for extension).
+- Sync add to MAINTAINERS files.
+- Link to v1: https://lore.kernel.org/r/20241211-amlogic-pinctrl-v1-0-410727335119@amlogic.com
 
 ---
-base-commit: b57f8a25a35a93b95e3baa950c2d359fffc13051
-change-id: 20250121-use_inherit_defer-0d8e1fb85c13
+Xianwei Zhao (5):
+      dt-bindings: pinctrl: Add support for Amlogic SoCs
+      pinctrl: pinconf-generic: Add API for pinmux propertity in DTS file
+      pinctrl: Add driver support for Amlogic SoCs
+      arm64: dts: amlogic: a4: add pinctrl node
+      MAINTAINERS: Add an entry for Amlogic pinctrl driver
+
+ .../bindings/pinctrl/amlogic,pinctrl-a4.yaml       |  127 +++
+ MAINTAINERS                                        |    8 +
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |  120 +++
+ drivers/pinctrl/Kconfig                            |   18 +
+ drivers/pinctrl/Makefile                           |    1 +
+ drivers/pinctrl/pinconf-generic.c                  |  130 +++
+ drivers/pinctrl/pinconf.h                          |    4 +
+ drivers/pinctrl/pinctrl-amlogic.c                  | 1053 ++++++++++++++++++++
+ include/dt-bindings/pinctrl/amlogic,pinctrl.h      |   46 +
+ include/linux/pinctrl/pinconf-generic.h            |    4 +
+ 10 files changed, 1511 insertions(+)
+---
+base-commit: 4de5110762b94b9978fb8182a568572fb2194f8b
+change-id: 20241211-amlogic-pinctrl-22ea61820d0d
 
 Best regards,
 -- 
-Massimiliano Minella <massimiliano.minella@se.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
