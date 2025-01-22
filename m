@@ -1,89 +1,62 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Wed, 22 Jan 2025 07:41:56 +0100
-Subject: [PATCH] arm64: dts: qcom: sc8280xp-blackrock: switch to uefi rtc
- offset
+From: Joel Granados <joel.granados@kernel.org>
+Date: Wed, 22 Jan 2025 11:33:49 +0100
+Subject: [PATCH] tests/module: nix-ify
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250122-jg-blackrock-rtc-v1-1-3b05cd85bdfa@oldschoolsolutions.biz>
-X-B4-Tracking: v=1; b=H4sIADOTkGcC/x3M3QpAQBBA4VfRXJva3fzEq8iFHYNBaFZS8u42l
- 9/FOQ8EVuEAdfKA8iVB9i3CpgnQ1G0jo/TR4IzLjXUG5xH92tGiOy2oJ6HPKlty4YmrDGJ2KA9
- y/8umfd8PgwYjlWIAAAA=
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Johan Hovold <johan@kernel.org>, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737528116; l=1921;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=4fIfQMa3HqpPjSmfIw1qUNksE48aZP+ZpYp1h1ftNbI=;
- b=5uy6wYE1C3rG3cAXw5pTu1FPBjpNikCW0xrJ5P6YbdxkwJh8AxZZy2TMeo9WLBW8OOfSYOgCn
- +AFQlqZvYe5AOARybBO1c+h/mfAwyx0Ud0ZF6xd2g1H2D0x9aaEMnYf
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+Message-Id: <20250122-jag-nix-ify-v1-1-addb3170f93c@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAIzJkGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDQyMj3azEdN28zArdzLRKXcPERCMDM8Nkk8QUCyWgjoKi1LTMCrBp0bG
+ 1tQDH4RmHXQAAAA==
+To: Luis Chamberlain <mcgrof@kernel.org>
+Cc: linux-kernel@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.15-dev-00a43
+X-Developer-Signature: v=1; a=openpgp-sha256; l=961;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=Iyg0ddW/CJJPTP76JMAtDW2ZxUMTCRKQkqS1CRRRagU=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGeQyZ1D6eEQyZgjZz2tRG9d9RtlfVJBPSbt3
+ t4agpD9Xa/95IkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnkMmdAAoJELqXzVK3
+ lkFPIRwL/2FkZUYui5xQ/m9v+5SaCo59Yb56z+w4xQ2zBLr32AY7LtdCZEbJTaK5uKmKRLWzSoO
+ EEhYX//lSxpJ3/pO/TArVqEfzNnQo7xtSN4bPnJiOiLn2etdHCR/OxAFiccqIdCj+yUkjMwMhuB
+ PL3gCfJzcEDoRuvz6lCYVGfUImyZtrIFRsBsNQ7MRJ1GH46bwKsoA1St1AMhaaBzVtJ3ee4Qezy
+ J37wO5+/UNp/0tgEHjSYXqrf8Yl2bC1PA7Ap5Ff0B+UIeb1k+plg8k9RU0zpssFhguFYpmqUFr2
+ 9ndNGOq9qzXDt0fpJo7HUyrvJCI+7GzACgHCnHmJWOyVV5y8JBgzSkDYZR6LPfWeZ4z6p60hgq9
+ jRbAkG2EmPZccGwuBER2flv9ksxWIu+222H9XRW1b27xevjpZ//KgmrTsOG99tP/YuAohb4DXy+
+ QjIM7nT/RMcEUL2FF3LKW+GUq+RIawQ0f4NBNgVrw2FNVPMNowGnnX2z1lOZ+kzMny3Zvoqzbg6
+ Yg=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On many Qualcomm platforms the PMIC RTC control and time registers are
-read-only so that the RTC time can not be updated. Instead an offset
-needs be stored in some machine-specific non-volatile memory, which a
-driver can take into account.
+Use "#!/usr/bin/env bash" instead of "#!/bin/bash". This is necessary
+for nix environments as they only provide /usr/bin/env at the standard
+location.
 
-Switch to using the Qualcomm specific UEFI variable that is used by the
-UEFI firmware (and Windows) to store the RTC offset.
-
-This specifically means that the RTC time will be synchronised between
-the UEFI firmware setup (or UEFI shell), Windows and Linux.
-
-Note however that Windows stores the RTC time in local time by default,
-while Linux typically uses UTC (i.e. as on X86).
-
-Based on a patch by Johan Hovold. [1]
-
-Link: https://lore.kernel.org/all/20250120144152.11949-7-johan+linaro@kernel.org/ # [1]
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-This is a patch to switch the Windows Dev Kit 2023 over to
-using the UEFI offset.
+I just saw this break my allyes test build. I had usually done it in
+debian, but now that its on NixOs; this patch corrects the build error.
 ---
- arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts | 11 +----------
- 1 file changed, 1 insertion(+), 10 deletions(-)
+ lib/tests/module/gen_test_kallsyms.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-index fa9d941050522..aaea2fa3c6c0a 100644
---- a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-+++ b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-@@ -762,20 +762,11 @@ &pmk8280_pon_resin {
- };
+diff --git a/lib/tests/module/gen_test_kallsyms.sh b/lib/tests/module/gen_test_kallsyms.sh
+index 561dcac0f359..31fe4ed63de8 100755
+--- a/lib/tests/module/gen_test_kallsyms.sh
++++ b/lib/tests/module/gen_test_kallsyms.sh
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/usr/bin/env bash
  
- &pmk8280_rtc {
--	nvmem-cells = <&rtc_offset>;
--	nvmem-cell-names = "offset";
-+	qcom,uefi-rtc-info;
- 
- 	status = "okay";
- };
- 
--&pmk8280_sdam_6 {
--	status = "okay";
--
--	rtc_offset: rtc-offset@bc {
--		reg = <0xbc 0x4>;
--	};
--};
--
- &pmk8280_vadc {
- 	channel@144 {
- 		reg = <PM8350_ADC7_AMUX_THM1_100K_PU(1)>;
+ TARGET=$(basename $1)
+ DIR=lib/tests/module
 
 ---
-base-commit: 232f121837ad8b1c21cc80f2c8842a4090c5a2a0
-change-id: 20250120-jg-blackrock-rtc-b4917e6bce94
+base-commit: ffd294d346d185b70e28b1a28abe367bbfe53c04
+change-id: 20250122-jag-nix-ify-1aa2061c4ad8
 
 Best regards,
 -- 
-Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Joel Granados <joel.granados@kernel.org>
 
