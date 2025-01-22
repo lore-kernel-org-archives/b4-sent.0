@@ -1,16 +1,12 @@
 From: Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>
-Subject: [PATCH v5 0/2] Add support for Avago/Broadcom APDS9160
-Date: Wed, 22 Jan 2025 17:59:32 -0500
-Message-Id: <20250122-apds9160-driver-v5-0-5393be10279a@dimonoff.com>
+Date: Wed, 22 Jan 2025 17:59:33 -0500
+Subject: [PATCH v5 1/2] dt-bindings: iio: light: Add APDS9160 binding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFR4kWcC/3XPQQ7CIBAF0KsY1mKAAqWuvIdxUWBGWVgaMERje
- nepidFoXf5J5s2fO8mQAmSyXd1JghJyiEMNar0i7tQPR6DB10wEE5Jz3tF+9LnjmlGfQoFEjXa
- owGgPjSJ1a0yA4foU94eaTyFfYro9DxQ+T/9bhVNGsWdMt8pK6OXOh3McIuLGxTOZuSLehGD6l
- xCVsCCcbQWgwSWi+SD4AtFUwokOtdMts94uEPJFKMaXWsj5EWN8h04qb75bTNP0ALdAtyx6AQA
- A
-X-Change-ID: 20241119-apds9160-driver-86cf5e86de35
+Message-Id: <20250122-apds9160-driver-v5-1-5393be10279a@dimonoff.com>
+References: <20250122-apds9160-driver-v5-0-5393be10279a@dimonoff.com>
+In-Reply-To: <20250122-apds9160-driver-v5-0-5393be10279a@dimonoff.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -24,85 +20,109 @@ Cc: Mikael Gonella-Bolduc <m.gonella.bolduc@gmail.com>,
  Hugo Villeneuve <hvilleneuve@dimonoff.com>, 
  Matti Vaittinen <mazziesaccount@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737586780; l=3221;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737586780; l=2849;
  i=mgonellabolduc@dimonoff.com; s=20241119; h=from:subject:message-id;
- bh=8uqoflCjXKKdp0P7r0EJGrV8SwpmYb2NJr/xhdDj5Kk=;
- b=MDxKkeA1OxLo9R2bUnaYI08tUHwpl0NSVt5Pu/YIQeVoLw2+bhFfDq8KjuRUTHfCscjVB9JiG
- KAlg7RqbO2hA29E+IISf0VHTr6sXR5Ti5aS1wcwREVjS0fRW5H2OrQ0
+ bh=hKuTDSH0XmEpjVDIx28SQC5NbWNqqOrY7dOGPzuivBA=;
+ b=Fq41pZdHJ4spxfLxY1i88NGOEHaoEpjQQ/622cMdXQlnIRCsHITrR7WwyfmQbtn6De/SFp7CE
+ bvaottf/hJHBe2HzYngxx70A7rv1YbcjP4PO9lldmPy5p3+wK/vlCR5
 X-Developer-Key: i=mgonellabolduc@dimonoff.com; a=ed25519;
  pk=p4tvPfGPfXRyChsgHc6s7HwB6YBl2JqqcP3BXtoDitE=
 X-Endpoint-Received: by B4 Relay for mgonellabolduc@dimonoff.com/20241119 with auth_id=279
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-APDS9160 is an ALS and proximity sensor.
-https://www.broadcom.com/products/optical-sensors/integrated-ambient-light-and-proximity-sensors/apds-9160-003
+Add device tree bindings for APDS9160
+Note: Using alternate email for maintainer
 
 Signed-off-by: Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>
 ---
-Changes in v5:
-- dt-bindings: Use new picoamp unit suffix instead of index for
-  cancellation current property
-- driver: Use new picoamp unit to calculate cancellation level coarse
-  and fine
-- driver: Add a warning if requested cancellation level is not supported
-- driver: Minor additional changes
-- Link to v4: https://lore.kernel.org/r/20250106-apds9160-driver-v4-0-f88d9fc45d84@dimonoff.com
+ .../bindings/iio/light/brcm,apds9160.yaml          | 78 ++++++++++++++++++++++
+ 1 file changed, 78 insertions(+)
 
-Changes in v4:
-- dt-bindings: Add additional analog cancellation properties
-- driver: Using analog cancellation properties from device tree
-- driver: Changed proximity channel type calibscale to calibbias
-- driver: Fixed some comments format
-- Link to v3: https://lore.kernel.org/r/20241216-apds9160-driver-v3-0-c29f6c670bdb@dimonoff.com
+diff --git a/Documentation/devicetree/bindings/iio/light/brcm,apds9160.yaml b/Documentation/devicetree/bindings/iio/light/brcm,apds9160.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..bb1cc4404a55760d3f2ef3818d8f5c14782dc5b8
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/light/brcm,apds9160.yaml
+@@ -0,0 +1,78 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/light/brcm,apds9160.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Broadcom Combined Proximity & Ambient light sensor
++
++maintainers:
++  - Mikael Gonella-Bolduc <m.gonella.bolduc@gmail.com>
++
++description: |
++  Datasheet: https://docs.broadcom.com/docs/APDS-9160-003-DS
++
++properties:
++  compatible:
++    enum:
++      - brcm,apds9160
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  vdd-supply: true
++
++  ps-cancellation-duration:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    description:
++      Proximity sensor cancellation pulse duration in half clock cycles.
++      This parameter determines a cancellation pulse duration.
++      The cancellation is applied in the integration phase to cancel out
++      unwanted reflected light from very near objects such as tempered glass
++      in front of the sensor.
++    default: 0
++    maximum: 63
++
++  ps-cancellation-current-picoamp:
++    description:
++      Proximity sensor crosstalk cancellation current in picoampere.
++      This parameter adjusts the current in steps of 2400 pA up to 276000 pA.
++      The provided value must be a multiple of 2400 and in one of these ranges
++      [60000 - 96000]
++      [120000 - 156000]
++      [180000 - 216000]
++      [240000 - 276000]
++      This parameter is used in conjunction with the cancellation duration.
++    minimum: 60000
++    maximum: 276000
++    multipleOf: 2400
++
++required:
++  - compatible
++  - reg
++  - vdd-supply
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        light-sensor@53 {
++            compatible = "brcm,apds9160";
++            reg = <0x53>;
++            vdd-supply = <&vdd_reg>;
++            interrupts = <29 IRQ_TYPE_EDGE_FALLING>;
++            interrupt-parent = <&pinctrl>;
++            ps-cancellation-duration = <10>;
++            ps-cancellation-current-picoamp = <62400>;
++        };
++    };
++...
 
-Changes in v3:
-- Updated maintainers file email and vendor
-- Corrected documentation file reference
-- dt-bindings: Changed commit message
-- driver: Added event and channel table when irq is not used
-- driver: Using int time instead of sampling freq for proximity channel
-- driver: Using scale instead of hardwaregain for proximity channel
-- driver: Dropped unused static variables
-- driver: Fixed switch fall-through
-- driver: Dropped explicit void pointer cast
-- driver: Dropped some less relevant comments
-- driver: Various code style related fix
-- Link to v2: https://lore.kernel.org/r/20241206-apds9160-driver-v2-0-be2cb72ef8f4@dimonoff.com
-
-Changes in v2:
-- Rebased on linux-iio 20fd1383
-- dt-bindings: Dropped the old Avago name and use the brcm vendor prefix
-- dt-bindings: Updated example node name with a generic name
-- dt-bindings: Updated example indentation to 4 spaces
-- dt-bindings: Fixed element ordering
-- KConfig: Dropped unsure sentences
-- KConfig: Dropped unused Kfifo buffer selection
-- driver: Use a more recent iio light driver as template
-- driver: Remove buffer declaration
-- driver: Use avail functions instead of custom iio attributes
-- driver: Use scale instead of hardware gain
-- driver: Removed unused members and unreachable statements
-- driver: Removed unnecessary info and debug prints
-- driver: Fix some coding style and line wrapping issues
-- driver: Reordering of functions
-- Link to v1: https://lore.kernel.org/r/20241119-apds9160-driver-v1-0-fa00675b4ea4@dimonoff.com
-
----
-Mikael Gonella-Bolduc (2):
-      dt-bindings: iio: light: Add APDS9160 binding
-      iio: light: Add APDS9160 ALS & Proximity sensor driver
-
- .../bindings/iio/light/brcm,apds9160.yaml          |   78 +
- MAINTAINERS                                        |    7 +
- drivers/iio/light/Kconfig                          |   11 +
- drivers/iio/light/Makefile                         |    1 +
- drivers/iio/light/apds9160.c                       | 1597 ++++++++++++++++++++
- 5 files changed, 1694 insertions(+)
----
-base-commit: 5de07b8a24cf44cdb78adeab790704bf577c2c1d
-change-id: 20241119-apds9160-driver-86cf5e86de35
-
-Best regards,
 -- 
-Mikael Gonella-Bolduc <mgonellabolduc@dimonoff.com>
+2.34.1
 
