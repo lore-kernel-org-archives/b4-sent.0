@@ -1,320 +1,392 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Thu, 23 Jan 2025 18:37:08 +0800
-Subject: [PATCH] soc: amlogic: clk-measure: Optimize the memory size of
- clk-measure
+From: "Chester A. Unal" <chester.a.unal@arinc9.com>
+Date: Thu, 23 Jan 2025 13:13:27 +0000
+Subject: [PATCH] USB: serial: option: add MeiG Smart SLM828
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250123-optimize_memory_size_of_clk_measure-v1-1-06aa6a01ff37@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIANMbkmcC/x2N0QrCMBAEf6Xcs4Ektmj9FSmhxI0emqbcqail/
- 270bWYedhdSCEPp0CwkeLJymaq4TUPxMk5nGD5VJ299Z53fmjLfOfMHISMXeQf9cUkh3q41jfo
- QmNTH1mLvul3fUl2aBYlf/5fjsK5fo59KM3UAAAA=
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737628646; l=9300;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=09XhYDP6iI0Tb7WSsTJeEPwen1jQBHDBnTyU/ciBS8c=;
- b=IDA62YuwwJTS75iY3P6AMNE7mnzXnQVceQXhlo/VtGYQqoiiAqWtFDNQMB/I8/2d/D3hif5PK
- 99O/0zM5p/MAmBD4AtSdc6WekpU+vYnfuoA5qii9cL8DanTxN/Dstpq
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+Message-Id: <20250123-for-johan-meig-slm828-v1-1-6456996e94a5@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIAHZAkmcC/x2MQQqAIBAAvxJ7bqGUyvpKdEhbbaMyFCKQ/p50H
+ IaZBJECU4ShSBDo5sj+zFCXBZh1Ph0hL5lBVKKpaiHR+oCbzwoPYodxP5RQaLRUbdsvWnYGcns
+ Fsvz833F63w/aJ1lYZwAAAA==
+X-Change-ID: 20250123-for-johan-meig-slm828-cb38669db37c
+To: Johan Hovold <johan@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ dwayne Du Preez <dwayne.dupreez@xpedite-tech.com>, 
+ Alexander Scholten <alexander.scholten@xpedite-tech.com>, 
+ Zenon van Deventer <zenon@xpedite-tech.com>, 
+ "Chester A. Unal" <chester.a.unal@arinc9.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737638007; l=14951;
+ i=chester.a.unal@arinc9.com; s=arinc9; h=from:subject:message-id;
+ bh=OJ1c6yKXsZfgiGadirnJL+EvRISVd9cignDoZ6jPTD8=;
+ b=BZMD0MocLD7r38TTfia1qhZX+kSTBu5Y8Ci3NxaC9NArMHXwJyi4DBedvqypZksT4r+DUqQnf
+ mbIEma/fHUOAMkdq9le7q1IwXriiR7UrOSDmCBXYnKomEFs41aESVk/
+X-Developer-Key: i=chester.a.unal@arinc9.com; a=ed25519;
+ pk=/g3vBAV0YSvcIpSQ052xJbid7nrPXz8ExGKhTEuc6IY=
+X-Endpoint-Received: by B4 Relay for chester.a.unal@arinc9.com/arinc9 with auth_id=306
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Define struct meson_msr as a static global variable and remove the
-"*priv" member from struct meson_msr_id.
+MeiG Smart SLM828 is an LTE-A CAT6 modem with the mPCIe form factor. The
+"Cls=ff(vend.) Sub=10 Prot=02" and "Cls=ff(vend.) Sub=10 Prot=03"
+interfaces respond to AT commands. Add these interfaces.
 
-Define the size of the corresponding array based on the actual number of
-msr_id of the chip.
+The product ID the modem uses is shared across multiple modems. Therefore,
+add comments to describe which interface is used for which modem.
 
-The array corresponding to msr_id is defined as "__initdata" to reduce
-memory usage.
+T:  Bus=01 Lev=01 Prnt=05 Port=01 Cnt=01 Dev#=  6 Spd=480  MxCh= 0
+D:  Ver= 2.10 Cls=00(>ifc ) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+P:  Vendor=2dee ProdID=4d22 Rev=05.04
+S:  Manufacturer=MEIG
+S:  Product=LTE-A Module
+S:  SerialNumber=4da7ec42
+C:  #Ifs= 6 Cfg#= 1 Atr=80 MxPwr=500mA
+I:  If#= 0 Alt= 0 #EPs= 2 Cls=ff(vend.) Sub=10 Prot=01 Driver=(none)
+E:  Ad=01(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=81(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:  If#= 1 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=10 Prot=02 Driver=(none)
+E:  Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=82(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=83(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
+I:  If#= 2 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=10 Prot=03 Driver=(none)
+E:  Ad=03(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=84(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=85(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
+I:  If#= 3 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=10 Prot=04 Driver=(none)
+E:  Ad=04(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=86(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=87(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
+I:  If#= 4 Alt= 0 #EPs= 1 Cls=ff(vend.) Sub=ff Prot=ff Driver=(none)
+E:  Ad=88(I) Atr=03(Int.) MxPS=  64 Ivl=32ms
+I:  If#= 5 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=10 Prot=05 Driver=qmi_wwan
+E:  Ad=0f(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=89(I) Atr=03(Int.) MxPS=   8 Ivl=32ms
+E:  Ad=8e(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Signed-off-by: Chester A. Unal <chester.a.unal@arinc9.com>
 ---
-Each msr_id defines a pointer(*priv), and all these pointers point to
-the same address.
+$ lsusb -v
 
-The number of msr_ids for each chip is inconsistent. Defining a
-fixed-size array for each chip to store msr_ids would waste memory.
+Bus 001 Device 006: ID 2dee:4d22 MEIG LTE-A Module
+Negotiated speed: High Speed (480Mbps)
+Device Descriptor:
+  bLength                18
+  bDescriptorType         1
+  bcdUSB               2.10
+  bDeviceClass            0 [unknown]
+  bDeviceSubClass         0 [unknown]
+  bDeviceProtocol         0 
+  bMaxPacketSize0        64
+  idVendor           0x2dee MEIG
+  idProduct          0x4d22 LTE-A Module
+  bcdDevice            5.04
+  iManufacturer           1 MEIG
+  iProduct                2 LTE-A Module
+  iSerial                 3 4da7ec42
+  bNumConfigurations      1
+  Configuration Descriptor:
+    bLength                 9
+    bDescriptorType         2
+    wTotalLength       0x00e1
+    bNumInterfaces          6
+    bConfigurationValue     1
+    iConfiguration          4 DIAG_MODEM_AT_NMEA_ADB_RMNET
+    bmAttributes         0x80
+      (Bus Powered)
+    MaxPower              500mA
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        0
+      bAlternateSetting       0
+      bNumEndpoints           2
+      bInterfaceClass       255 Vendor Specific Class
+      bInterfaceSubClass     16 [unknown]
+      bInterfaceProtocol      1 
+      iInterface              0 
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x01  EP 1 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x81  EP 1 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        1
+      bAlternateSetting       0
+      bNumEndpoints           3
+      bInterfaceClass       255 Vendor Specific Class
+      bInterfaceSubClass     16 [unknown]
+      bInterfaceProtocol      2 
+      iInterface              0 
+      ** UNRECOGNIZED:  05 24 00 10 01
+      ** UNRECOGNIZED:  05 24 01 00 00
+      ** UNRECOGNIZED:  04 24 02 02
+      ** UNRECOGNIZED:  05 24 06 00 00
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x83  EP 3 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x000a  1x 10 bytes
+        bInterval               9
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x82  EP 2 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x02  EP 2 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        2
+      bAlternateSetting       0
+      bNumEndpoints           3
+      bInterfaceClass       255 Vendor Specific Class
+      bInterfaceSubClass     16 [unknown]
+      bInterfaceProtocol      3 
+      iInterface              0 
+      ** UNRECOGNIZED:  05 24 00 10 01
+      ** UNRECOGNIZED:  05 24 01 00 00
+      ** UNRECOGNIZED:  04 24 02 02
+      ** UNRECOGNIZED:  05 24 06 00 00
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x85  EP 5 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x000a  1x 10 bytes
+        bInterval               9
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x84  EP 4 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x03  EP 3 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        3
+      bAlternateSetting       0
+      bNumEndpoints           3
+      bInterfaceClass       255 Vendor Specific Class
+      bInterfaceSubClass     16 [unknown]
+      bInterfaceProtocol      4 
+      iInterface              0 
+      ** UNRECOGNIZED:  05 24 00 10 01
+      ** UNRECOGNIZED:  05 24 01 00 00
+      ** UNRECOGNIZED:  04 24 02 02
+      ** UNRECOGNIZED:  05 24 06 00 00
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x87  EP 7 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x000a  1x 10 bytes
+        bInterval               9
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x86  EP 6 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x04  EP 4 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        4
+      bAlternateSetting       0
+      bNumEndpoints           1
+      bInterfaceClass       255 Vendor Specific Class
+      bInterfaceSubClass    255 Vendor Specific Subclass
+      bInterfaceProtocol    255 Vendor Specific Protocol
+      iInterface              6 GPS
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x88  EP 8 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0040  1x 64 bytes
+        bInterval               9
+    Interface Descriptor:
+      bLength                 9
+      bDescriptorType         4
+      bInterfaceNumber        5
+      bAlternateSetting       0
+      bNumEndpoints           3
+      bInterfaceClass       255 Vendor Specific Class
+      bInterfaceSubClass     16 [unknown]
+      bInterfaceProtocol      5 
+      iInterface              7 RmNet
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x89  EP 9 IN
+        bmAttributes            3
+          Transfer Type            Interrupt
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0008  1x 8 bytes
+        bInterval               9
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x8e  EP 14 IN
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+      Endpoint Descriptor:
+        bLength                 7
+        bDescriptorType         5
+        bEndpointAddress     0x0f  EP 15 OUT
+        bmAttributes            2
+          Transfer Type            Bulk
+          Synch Type               None
+          Usage Type               Data
+        wMaxPacketSize     0x0200  1x 512 bytes
+        bInterval               0
+Binary Object Store Descriptor:
+  bLength                 5
+  bDescriptorType        15
+  wTotalLength       0x0016
+  bNumDeviceCaps          2
+  USB 2.0 Extension Device Capability:
+    bLength                 7
+    bDescriptorType        16
+    bDevCapabilityType      2
+    bmAttributes   0x0000211e
+      BESL Link Power Management (LPM) Supported
+    BESL value      256 us 
+    Deep BESL value     8192 us 
+  SuperSpeed USB Device Capability:
+    bLength                10
+    bDescriptorType        16
+    bDevCapabilityType      3
+    bmAttributes         0x00
+    wSpeedsSupported   0x000f
+      Device can operate at Low Speed (1Mbps)
+      Device can operate at Full Speed (12Mbps)
+      Device can operate at High Speed (480Mbps)
+      Device can operate at SuperSpeed (5Gbps)
+    bFunctionalitySupport   1
+      Lowest fully-functional device speed is Full Speed (12Mbps)
+    bU1DevExitLat           0 micro seconds
+    bU2DevExitLat           0 micro seconds
+Device Status:     0x0000
+  (Bus Powered)
 ---
- drivers/soc/amlogic/meson-clk-measure.c | 119 ++++++++++++++++++++------------
- 1 file changed, 74 insertions(+), 45 deletions(-)
+ drivers/usb/serial/option.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/soc/amlogic/meson-clk-measure.c b/drivers/soc/amlogic/meson-clk-measure.c
-index a6453ffeb753..b52e9ce25ea8 100644
---- a/drivers/soc/amlogic/meson-clk-measure.c
-+++ b/drivers/soc/amlogic/meson-clk-measure.c
-@@ -33,23 +33,27 @@ static DEFINE_MUTEX(measure_lock);
- #define DIV_STEP		32
- #define DIV_MAX			640
+diff --git a/drivers/usb/serial/option.c b/drivers/usb/serial/option.c
+index 1e2ae0c6c41c79dd38f2c1d3a98e58ebf076050a..e25acac854cca38d2e0ace464be11337d3bbecee 100644
+--- a/drivers/usb/serial/option.c
++++ b/drivers/usb/serial/option.c
+@@ -621,7 +621,9 @@ static void option_instat_callback(struct urb *urb);
  
--#define CLK_MSR_MAX		128
--
- struct meson_msr_id {
--	struct meson_msr *priv;
- 	unsigned int id;
- 	const char *name;
- };
- 
-+struct meson_msr_data {
-+	struct meson_msr_id *msr_table;
-+	unsigned int msr_count;
-+};
-+
- struct meson_msr {
- 	struct regmap *regmap;
--	struct meson_msr_id msr_table[CLK_MSR_MAX];
-+	struct meson_msr_data data;
- };
- 
- #define CLK_MSR_ID(__id, __name) \
- 	[__id] = {.id = __id, .name = __name,}
- 
--static struct meson_msr_id clk_msr_m8[CLK_MSR_MAX] = {
-+static struct meson_msr meson_msr;
-+
-+static struct meson_msr_id clk_msr_m8[] __initdata = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee2"),
-@@ -98,7 +102,7 @@ static struct meson_msr_id clk_msr_m8[CLK_MSR_MAX] = {
- 	CLK_MSR_ID(63, "mipi_csi_cfg"),
- };
- 
--static struct meson_msr_id clk_msr_gx[CLK_MSR_MAX] = {
-+static struct meson_msr_id clk_msr_gx[] __initdata = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
-@@ -168,7 +172,7 @@ static struct meson_msr_id clk_msr_gx[CLK_MSR_MAX] = {
- 	CLK_MSR_ID(82, "ge2d"),
- };
- 
--static struct meson_msr_id clk_msr_axg[CLK_MSR_MAX] = {
-+static struct meson_msr_id clk_msr_axg[] __initdata = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
-@@ -242,7 +246,7 @@ static struct meson_msr_id clk_msr_axg[CLK_MSR_MAX] = {
- 	CLK_MSR_ID(109, "audio_locker_in"),
- };
- 
--static struct meson_msr_id clk_msr_g12a[CLK_MSR_MAX] = {
-+static struct meson_msr_id clk_msr_g12a[] __initdata = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
-@@ -358,7 +362,7 @@ static struct meson_msr_id clk_msr_g12a[CLK_MSR_MAX] = {
- 	CLK_MSR_ID(122, "audio_pdm_dclk"),
- };
- 
--static struct meson_msr_id clk_msr_sm1[CLK_MSR_MAX] = {
-+static struct meson_msr_id clk_msr_sm1[] __initdata = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
-@@ -489,9 +493,8 @@ static struct meson_msr_id clk_msr_sm1[CLK_MSR_MAX] = {
- };
- 
- static int meson_measure_id(struct meson_msr_id *clk_msr_id,
--			       unsigned int duration)
-+			    unsigned int duration)
- {
--	struct meson_msr *priv = clk_msr_id->priv;
- 	unsigned int val;
- 	int ret;
- 
-@@ -499,22 +502,22 @@ static int meson_measure_id(struct meson_msr_id *clk_msr_id,
- 	if (ret)
- 		return ret;
- 
--	regmap_write(priv->regmap, MSR_CLK_REG0, 0);
-+	regmap_write(meson_msr.regmap, MSR_CLK_REG0, 0);
- 
- 	/* Set measurement duration */
--	regmap_update_bits(priv->regmap, MSR_CLK_REG0, MSR_DURATION,
-+	regmap_update_bits(meson_msr.regmap, MSR_CLK_REG0, MSR_DURATION,
- 			   FIELD_PREP(MSR_DURATION, duration - 1));
- 
- 	/* Set ID */
--	regmap_update_bits(priv->regmap, MSR_CLK_REG0, MSR_CLK_SRC,
-+	regmap_update_bits(meson_msr.regmap, MSR_CLK_REG0, MSR_CLK_SRC,
- 			   FIELD_PREP(MSR_CLK_SRC, clk_msr_id->id));
- 
- 	/* Enable & Start */
--	regmap_update_bits(priv->regmap, MSR_CLK_REG0,
-+	regmap_update_bits(meson_msr.regmap, MSR_CLK_REG0,
- 			   MSR_RUN | MSR_ENABLE,
- 			   MSR_RUN | MSR_ENABLE);
- 
--	ret = regmap_read_poll_timeout(priv->regmap, MSR_CLK_REG0,
-+	ret = regmap_read_poll_timeout(meson_msr.regmap, MSR_CLK_REG0,
- 				       val, !(val & MSR_BUSY), 10, 10000);
- 	if (ret) {
- 		mutex_unlock(&measure_lock);
-@@ -522,10 +525,10 @@ static int meson_measure_id(struct meson_msr_id *clk_msr_id,
- 	}
- 
- 	/* Disable */
--	regmap_update_bits(priv->regmap, MSR_CLK_REG0, MSR_ENABLE, 0);
-+	regmap_update_bits(meson_msr.regmap, MSR_CLK_REG0, MSR_ENABLE, 0);
- 
- 	/* Get the value in multiple of gate time counts */
--	regmap_read(priv->regmap, MSR_CLK_REG2, &val);
-+	regmap_read(meson_msr.regmap, MSR_CLK_REG2, &val);
- 
- 	mutex_unlock(&measure_lock);
- 
-@@ -579,7 +582,7 @@ static int clk_msr_summary_show(struct seq_file *s, void *data)
- 	seq_puts(s, "  clock                     rate    precision\n");
- 	seq_puts(s, "---------------------------------------------\n");
- 
--	for (i = 0 ; i < CLK_MSR_MAX ; ++i) {
-+	for (i = 0 ; i < meson_msr.data.msr_count ; ++i) {
- 		if (!msr_table[i].name)
- 			continue;
- 
-@@ -604,77 +607,103 @@ static const struct regmap_config meson_clk_msr_regmap_config = {
- 
- static int meson_msr_probe(struct platform_device *pdev)
- {
--	const struct meson_msr_id *match_data;
--	struct meson_msr *priv;
-+	const struct meson_msr_data *match_data;
-+	struct meson_msr_id *msr_table;
- 	struct dentry *root, *clks;
- 	void __iomem *base;
- 	int i;
- 
--	priv = devm_kzalloc(&pdev->dev, sizeof(struct meson_msr),
--			    GFP_KERNEL);
--	if (!priv)
--		return -ENOMEM;
--
- 	match_data = device_get_match_data(&pdev->dev);
- 	if (!match_data) {
- 		dev_err(&pdev->dev, "failed to get match data\n");
- 		return -ENODEV;
- 	}
- 
--	memcpy(priv->msr_table, match_data, sizeof(priv->msr_table));
-+	msr_table = devm_kcalloc(&pdev->dev, match_data->msr_count,
-+				 sizeof(struct meson_msr_id), GFP_KERNEL);
-+	if (!msr_table)
-+		return -ENOMEM;
-+
-+	memcpy(msr_table, match_data->msr_table,
-+	       match_data->msr_count * sizeof(struct meson_msr_id));
-+	meson_msr.data.msr_table = msr_table;
-+	meson_msr.data.msr_count = match_data->msr_count;
- 
- 	base = devm_platform_ioremap_resource(pdev, 0);
- 	if (IS_ERR(base))
- 		return PTR_ERR(base);
- 
--	priv->regmap = devm_regmap_init_mmio(&pdev->dev, base,
--					     &meson_clk_msr_regmap_config);
--	if (IS_ERR(priv->regmap))
--		return PTR_ERR(priv->regmap);
-+	meson_msr.regmap = devm_regmap_init_mmio(&pdev->dev, base,
-+						 &meson_clk_msr_regmap_config);
-+	if (IS_ERR(meson_msr.regmap))
-+		return PTR_ERR(meson_msr.regmap);
- 
- 	root = debugfs_create_dir("meson-clk-msr", NULL);
- 	clks = debugfs_create_dir("clks", root);
- 
--	debugfs_create_file("measure_summary", 0444, root,
--			    priv->msr_table, &clk_msr_summary_fops);
-+	debugfs_create_file("measure_summary", 0444, root, msr_table,
-+			    &clk_msr_summary_fops);
- 
--	for (i = 0 ; i < CLK_MSR_MAX ; ++i) {
--		if (!priv->msr_table[i].name)
-+	for (i = 0 ; i < meson_msr.data.msr_count ; ++i) {
-+		if (!msr_table[i].name)
- 			continue;
- 
--		priv->msr_table[i].priv = priv;
--
--		debugfs_create_file(priv->msr_table[i].name, 0444, clks,
--				    &priv->msr_table[i], &clk_msr_fops);
-+		debugfs_create_file(msr_table[i].name, 0444, clks,
-+				    &msr_table[i], &clk_msr_fops);
- 	}
- 
- 	return 0;
- }
- 
-+static const struct meson_msr_data clk_msr_gx_data = {
-+	.msr_table = clk_msr_gx,
-+	.msr_count = ARRAY_SIZE(clk_msr_gx),
-+};
-+
-+static const struct meson_msr_data clk_msr_m8_data = {
-+	.msr_table = clk_msr_m8,
-+	.msr_count = ARRAY_SIZE(clk_msr_m8),
-+};
-+
-+static const struct meson_msr_data clk_msr_axg_data = {
-+	.msr_table = clk_msr_axg,
-+	.msr_count = ARRAY_SIZE(clk_msr_axg),
-+};
-+
-+static const struct meson_msr_data clk_msr_g12a_data = {
-+	.msr_table = clk_msr_g12a,
-+	.msr_count = ARRAY_SIZE(clk_msr_g12a),
-+};
-+
-+static const struct meson_msr_data clk_msr_sm1_data = {
-+	.msr_table = clk_msr_sm1,
-+	.msr_count = ARRAY_SIZE(clk_msr_sm1),
-+};
-+
- static const struct of_device_id meson_msr_match_table[] = {
- 	{
- 		.compatible = "amlogic,meson-gx-clk-measure",
--		.data = (void *)clk_msr_gx,
-+		.data = &clk_msr_gx_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson8-clk-measure",
--		.data = (void *)clk_msr_m8,
-+		.data = &clk_msr_m8_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson8b-clk-measure",
--		.data = (void *)clk_msr_m8,
-+		.data = &clk_msr_m8_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson-axg-clk-measure",
--		.data = (void *)clk_msr_axg,
-+		.data = &clk_msr_axg_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson-g12a-clk-measure",
--		.data = (void *)clk_msr_g12a,
-+		.data = &clk_msr_g12a_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson-sm1-clk-measure",
--		.data = (void *)clk_msr_sm1,
-+		.data = &clk_msr_sm1_data,
- 	},
- 	{ /* sentinel */ }
- };
+ /* MeiG Smart Technology products */
+ #define MEIGSMART_VENDOR_ID			0x2dee
+-/* MeiG Smart SRM815/SRM825L based on Qualcomm 315 */
++/* MeiG Smart SLM828, SRM815, and SRM825L use the same product ID. SRM815 and
++ * SRM825L are based on Qualcomm 315.
++ */
+ #define MEIGSMART_PRODUCT_SRM825L		0x4d22
+ /* MeiG Smart SLM320 based on UNISOC UIS8910 */
+ #define MEIGSMART_PRODUCT_SLM320		0x4d41
+@@ -2405,10 +2407,12 @@ static const struct usb_device_id option_ids[] = {
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(UNISOC_VENDOR_ID, LUAT_PRODUCT_AIR720U, 0xff, 0, 0) },
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SLM320, 0xff, 0, 0) },
+ 	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SLM770A, 0xff, 0, 0) },
+-	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0, 0) },
+-	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0xff, 0x30) },
+-	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0xff, 0x40) },
+-	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0xff, 0x60) },
++	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0, 0) },	/* MeiG Smart SRM815 */
++	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0x10, 0x02) },	/* MeiG Smart SLM828 */
++	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0x10, 0x03) },	/* MeiG Smart SLM828 */
++	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0xff, 0x30) },	/* MeiG Smart SRM825L */
++	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0xff, 0x40) },	/* MeiG Smart SRM825L */
++	{ USB_DEVICE_AND_INTERFACE_INFO(MEIGSMART_VENDOR_ID, MEIGSMART_PRODUCT_SRM825L, 0xff, 0xff, 0x60) },	/* MeiG Smart SRM825L */
+ 	{ USB_DEVICE_INTERFACE_CLASS(0x1bbb, 0x0530, 0xff),			/* TCL IK512 MBIM */
+ 	  .driver_info = NCTRL(1) },
+ 	{ USB_DEVICE_INTERFACE_CLASS(0x1bbb, 0x0640, 0xff),			/* TCL IK512 ECM */
 
 ---
-base-commit: 1e1fd26ed4ca05cc1f0e5857918da4dd54967f7d
-change-id: 20250123-optimize_memory_size_of_clk_measure-f9c40e815794
+base-commit: 5bc55a333a2f7316b58edc7573e8e893f7acb532
+change-id: 20250123-for-johan-meig-slm828-cb38669db37c
 
 Best regards,
 -- 
-Chuan Liu <chuan.liu@amlogic.com>
+Chester A. Unal <chester.a.unal@arinc9.com>
 
