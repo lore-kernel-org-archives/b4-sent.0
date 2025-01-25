@@ -1,15 +1,12 @@
 From: Levi Zim <rsworktech@outlook.com>
-Subject: [PATCH 0/7] bpf: Add probe_read_{kernel,user}_dynptr and
- copy_from_user_dynptr
-Date: Sat, 25 Jan 2025 16:23:35 +0800
-Message-Id: <20250125-bpf_dynptr_probe-v1-0-c3cb121f6951@outlook.com>
+Date: Sat, 25 Jan 2025 16:23:36 +0800
+Subject: [PATCH 1/7] bpf: Implement bpf_probe_read_kernel_dynptr helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIeflGcC/x3MQQqAIBBA0avErBPUFKKrRITWWLNRGSOK6O5Jy
- 7f4/4GCTFhgaB5gPKlQihWqbWDZXdxQ0FoNWmorlTbC5zCvd8wHz5mTR+G86bvFWhOUg5plxkD
- Xvxyn9/0AV9yrMmIAAAA=
-X-Change-ID: 20250124-bpf_dynptr_probe-ab483c554f1a
+Message-Id: <20250125-bpf_dynptr_probe-v1-1-c3cb121f6951@outlook.com>
+References: <20250125-bpf_dynptr_probe-v1-0-c3cb121f6951@outlook.com>
+In-Reply-To: <20250125-bpf_dynptr_probe-v1-0-c3cb121f6951@outlook.com>
 To: Alexei Starovoitov <ast@kernel.org>, 
  Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
  Martin KaFai Lau <martin.lau@linux.dev>, 
@@ -27,58 +24,184 @@ Cc: bpf@vger.kernel.org, linux-kernel@vger.kernel.org,
  Andrii Nakryiko <andrii.nakryiko@gmail.com>, 
  Levi Zim <rsworktech@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1609;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6356;
  i=rsworktech@outlook.com; h=from:subject:message-id;
- bh=hTYJU8HfjlKdIevLGmzWkOa6/jkRNnZ81llqBTx0oas=;
- b=owEBbQKS/ZANAwAIAW87mNQvxsnYAcsmYgBnlJ+h5PE5cEOfd260Q563RihUGWI2X8YoRdatI
- ccWSV2eoLSJAjMEAAEIAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCZ5SfoQAKCRBvO5jUL8bJ
- 2GAAEACoZmnxJGr8tDW3HqH28VzCoRGdc6e7L7N4W8PmDwpBD+wCdZuaMpTeSq3GxMSVwqyqBdM
- WPSPRj8r9dq7Azm+HWqX5PT4Mu/30JVHteVGRcNOgwoHDl1ks/+QXjffhgwMzeeBrcjVD5AIiOW
- rmAZj0bN0I0lFvz0SL+Luj/3OwG/Ubl2fErsFXqhhXfP05b3+QPeenivg7TlPovmrcQgCX3JDaW
- b0lNHKSxiOIROA0GMEV+2MVgg56nyghMLqdNg2VrSJFlt233sHfAPFxCWuDH9aVJJHFzO7RZikq
- YQEikxvAE8Iv0TqKF4Auu+pCrMf6iTiA+SSsN/Mla2V2Zi+kB6aMiKSFZP1/5eCPGaG2S30jxoj
- wfXvoLvRb8nqrJt3u7YIR8rSh6+WvCbVqQQhnuwV1oifeP1Jp88zwgT7PoI5CAH8R51jCcBOWe0
- YEUYsXGQD0ozA/zEkMwCLfQV6b2ryEQIS1Y7ATn5V3MopC2PWz8RbUs4l1A0rORAr1tXt5Ai73J
- AakLq64RhXZeUOHHEosmVtUJFVuUE6cwJo0Ah/MU6lm4GGUFkRTkRk4dTRjFZmqUvjJagWT1fD0
- cSEdYa4PvELsV2+CJQ8gmrRSs4dgBhqbhAukurJ0psCMWTAOgMprL3QNywIaHzMQ7lZUtRjwlss
- 94stLfcRYkT6+Vg==
+ bh=A7uHiAoA3YZYbVOxcHt/y8HP3bfI8O7Zg6oKJ3y0uAs=;
+ b=owEBbQKS/ZANAwAIAW87mNQvxsnYAcsmYgBnlJ+mqr8bV8bPsJXRYVZLG0rZ7T7ty/y176ahK
+ t7RKvT0WKWJAjMEAAEIAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCZ5SfpgAKCRBvO5jUL8bJ
+ 2NfMD/94TgHhtijqB3q4yHm6EDOXB5z081f8B38saB77wJFiAVemNdDSlrVDKngee8xZmbBsvIQ
+ SUXq7BREHY39j+I15r9+17sUajBvS4pukDJysAD7m8v+UVx26Es9oaJuJGOkzGgXEpyzJHsSoAh
+ 7oHvzsb9dAIXWitpeLEG6PGMN3XkfwjIxtQybmUd5kRM37U7s6eUftzEgQjKwrB2ddsl58TE9mS
+ o6koqXB32s0S86Y+cjG/CdD3h+P20fADMMKge92mPHyYRTM0AY9deSjUrMqDRWgw9Nz9ldzZJ3c
+ 9dklAeeJ62cbjZBBLYC40ahcGdKAwFnfARBP4yApXDE7OKzUb53T8qEFGbqGQhIdDxflT8QBsM7
+ eckeT7BxCojhXRIr+k2d6EgRrcxob3xTQSdbO1vdBYzs05FT5coId3xThV9TG3nvMVZ9yRdTpJC
+ mKF/6Ofl9hxdKsbtG4gqvaZc6+ts1XpFLRa3nf323U/H7t2LqVwGbDPOqoB7xwMIu15W+5JcZql
+ dAEVg8Dv75DRU3kccC/UJdTCFI3L/4TUTh5fwiXvDiTn701aMAH+BKrgoek8+14F2E1sYmpSwE0
+ 2hXbdZ7jIcG3HSHROIPWEYBD3+n3hlk8HZKLItaB1ugf9F0MnFm+rAzzg2tcpJ2jqQEMQnZuhtV
+ uvPJnJg0YHWxt2g==
 X-Developer-Key: i=rsworktech@outlook.com; a=openpgp;
  fpr=17AADD6726DDC58B8EE5881757670CCFA42CCF0A
 X-Endpoint-Received: by B4 Relay for rsworktech@outlook.com/default with auth_id=219
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series introduce the dynptr counterpart of the
-bpf_probe_read_{kernel,user} helpers and bpf_copy_from_user helper.
+This patch add a helper function bpf_probe_read_kernel_dynptr:
 
-These helpers are helpful for reading variable-length data from kernel
-memory into dynptr without going through an intermediate buffer.
+long bpf_probe_read_kernel_dynptr(const struct bpf_dynptr *dst,
+	u32 offset, u32 size, const void *unsafe_ptr, u64 flags);
+
+It is useful for reading variable-length data from kernel memory into
+dynptr.
 
 Link: https://lore.kernel.org/bpf/MEYP282MB2312CFCE5F7712FDE313215AC64D2@MEYP282MB2312.AUSP282.PROD.OUTLOOK.COM/
-Suggested-by: Andrii Nakryiko <andrii.nakryiko@gmail.com>
 Signed-off-by: Levi Zim <rsworktech@outlook.com>
 ---
-Levi Zim (7):
-      bpf: Implement bpf_probe_read_kernel_dynptr helper
-      bpf: Implement bpf_probe_read_user_dynptr helper
-      bpf: Implement bpf_copy_from_user_dynptr helper
-      tools headers UAPI: Update tools's copy of bpf.h header
-      selftests/bpf: probe_read_kernel_dynptr test
-      selftests/bpf: probe_read_user_dynptr test
-      selftests/bpf: copy_from_user_dynptr test
+ include/linux/bpf.h      |  2 ++
+ include/uapi/linux/bpf.h | 16 ++++++++++++++++
+ kernel/bpf/helpers.c     |  8 ++++++--
+ kernel/trace/bpf_trace.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 66 insertions(+), 2 deletions(-)
 
- include/linux/bpf.h                                |   3 +
- include/uapi/linux/bpf.h                           |  49 ++++++++++
- kernel/bpf/helpers.c                               |  53 ++++++++++-
- kernel/trace/bpf_trace.c                           |  72 ++++++++++++++
- tools/include/uapi/linux/bpf.h                     |  49 ++++++++++
- tools/testing/selftests/bpf/prog_tests/dynptr.c    |  45 ++++++++-
- tools/testing/selftests/bpf/progs/dynptr_success.c | 106 +++++++++++++++++++++
- 7 files changed, 374 insertions(+), 3 deletions(-)
----
-base-commit: d0d106a2bd21499901299160744e5fe9f4c83ddb
-change-id: 20250124-bpf_dynptr_probe-ab483c554f1a
+diff --git a/include/linux/bpf.h b/include/linux/bpf.h
+index f3f50e29d63929acaf12c81f8356173f1f5e154b..9d5ae8b4b7d82c4523bf0ab041d4b76bf134a106 100644
+--- a/include/linux/bpf.h
++++ b/include/linux/bpf.h
+@@ -1323,6 +1323,8 @@ u32 __bpf_dynptr_size(const struct bpf_dynptr_kern *ptr);
+ const void *__bpf_dynptr_data(const struct bpf_dynptr_kern *ptr, u32 len);
+ void *__bpf_dynptr_data_rw(const struct bpf_dynptr_kern *ptr, u32 len);
+ bool __bpf_dynptr_is_rdonly(const struct bpf_dynptr_kern *ptr);
++int bpf_dynptr_check_off_len(const struct bpf_dynptr_kern *ptr, u32 offset, u32 len);
++enum bpf_dynptr_type bpf_dynptr_get_type(const struct bpf_dynptr_kern *ptr);
+ 
+ #ifdef CONFIG_BPF_JIT
+ int bpf_trampoline_link_prog(struct bpf_tramp_link *link,
+diff --git a/include/uapi/linux/bpf.h b/include/uapi/linux/bpf.h
+index 2acf9b33637174bd16b1d12ccc6410c5f55a7ea9..2e08a59527ecf56732ea14ac34446b5eb25b5690 100644
+--- a/include/uapi/linux/bpf.h
++++ b/include/uapi/linux/bpf.h
+@@ -5805,6 +5805,21 @@ union bpf_attr {
+  *		0 on success.
+  *
+  *		**-ENOENT** if the bpf_local_storage cannot be found.
++ *
++ * long bpf_probe_read_kernel_dynptr(const struct bpf_dynptr *dst, u32 offset, u32 size, const void *unsafe_ptr, u64 flags)
++ *	Description
++ *		Safely attempt to read *size* bytes from kernel space address
++ *		*unsafe_ptr* and store the data in *dst* starting from *offset*.
++ *		*flags* is currently unused.
++ *	Return
++ *		0 on success.
++ *
++ *		**-E2BIG** if *offset* + *len* exceeds the length of *src*'s data
++ *
++ *		**-EINVAL** if *src* is an invalid dynptr or doesn't support this
++ *		support this helper, or if *flags* is not 0.
++ *
++ *		Or other negative errors on failure reading kernel memory.
+  */
+ #define ___BPF_FUNC_MAPPER(FN, ctx...)			\
+ 	FN(unspec, 0, ##ctx)				\
+@@ -6019,6 +6034,7 @@ union bpf_attr {
+ 	FN(user_ringbuf_drain, 209, ##ctx)		\
+ 	FN(cgrp_storage_get, 210, ##ctx)		\
+ 	FN(cgrp_storage_delete, 211, ##ctx)		\
++	FN(probe_read_kernel_dynptr, 212, ##ctx)		\
+ 	/* */
+ 
+ /* backwards-compatibility macros for users of __BPF_FUNC_MAPPER that don't
+diff --git a/kernel/bpf/helpers.c b/kernel/bpf/helpers.c
+index f27ce162427ab4040d2e2d2eb84a883fe57de59e..a736dc9e7be98571103ba404420be0da4dac4fbe 100644
+--- a/kernel/bpf/helpers.c
++++ b/kernel/bpf/helpers.c
+@@ -1678,7 +1678,7 @@ static void bpf_dynptr_set_type(struct bpf_dynptr_kern *ptr, enum bpf_dynptr_typ
+ 	ptr->size |= type << DYNPTR_TYPE_SHIFT;
+ }
+ 
+-static enum bpf_dynptr_type bpf_dynptr_get_type(const struct bpf_dynptr_kern *ptr)
++enum bpf_dynptr_type bpf_dynptr_get_type(const struct bpf_dynptr_kern *ptr)
+ {
+ 	return (ptr->size & ~(DYNPTR_RDONLY_BIT)) >> DYNPTR_TYPE_SHIFT;
+ }
+@@ -1714,7 +1714,7 @@ void bpf_dynptr_set_null(struct bpf_dynptr_kern *ptr)
+ 	memset(ptr, 0, sizeof(*ptr));
+ }
+ 
+-static int bpf_dynptr_check_off_len(const struct bpf_dynptr_kern *ptr, u32 offset, u32 len)
++int bpf_dynptr_check_off_len(const struct bpf_dynptr_kern *ptr, u32 offset, u32 len)
+ {
+ 	u32 size = __bpf_dynptr_size(ptr);
+ 
+@@ -1900,6 +1900,7 @@ const struct bpf_func_proto bpf_probe_read_user_proto __weak;
+ const struct bpf_func_proto bpf_probe_read_user_str_proto __weak;
+ const struct bpf_func_proto bpf_probe_read_kernel_proto __weak;
+ const struct bpf_func_proto bpf_probe_read_kernel_str_proto __weak;
++const struct bpf_func_proto bpf_probe_read_kernel_dynptr_proto __weak;
+ const struct bpf_func_proto bpf_task_pt_regs_proto __weak;
+ 
+ const struct bpf_func_proto *
+@@ -2031,6 +2032,9 @@ bpf_base_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
+ 	case BPF_FUNC_probe_read_kernel:
+ 		return security_locked_down(LOCKDOWN_BPF_READ_KERNEL) < 0 ?
+ 		       NULL : &bpf_probe_read_kernel_proto;
++	case BPF_FUNC_probe_read_kernel_dynptr:
++		return security_locked_down(LOCKDOWN_BPF_READ_KERNEL) < 0 ?
++		       NULL : &bpf_probe_read_kernel_dynptr_proto;
+ 	case BPF_FUNC_probe_read_user_str:
+ 		return &bpf_probe_read_user_str_proto;
+ 	case BPF_FUNC_probe_read_kernel_str:
+diff --git a/kernel/trace/bpf_trace.c b/kernel/trace/bpf_trace.c
+index adc947587eb8132ebbd54778d2db937b3b8861de..75c9d1e8d04c3b8930ae81345f5586756ce8b5ec 100644
+--- a/kernel/trace/bpf_trace.c
++++ b/kernel/trace/bpf_trace.c
+@@ -248,6 +248,48 @@ const struct bpf_func_proto bpf_probe_read_kernel_proto = {
+ 	.arg3_type	= ARG_ANYTHING,
+ };
+ 
++BPF_CALL_5(bpf_probe_read_kernel_dynptr, const struct bpf_dynptr_kern *, dst,
++	u32, offset, u32, size, void *, unsafe_ptr, u64, flags)
++{
++	enum bpf_dynptr_type type;
++	int err;
++
++	if (!dst->data || __bpf_dynptr_is_rdonly(dst))
++		return -EINVAL;
++
++	err = bpf_dynptr_check_off_len(dst, offset, size);
++	if (err)
++		return err;
++
++	type = bpf_dynptr_get_type(dst);
++
++	switch (type) {
++	case BPF_DYNPTR_TYPE_LOCAL:
++	case BPF_DYNPTR_TYPE_RINGBUF:
++		if (flags)
++			return -EINVAL;
++		return bpf_probe_read_kernel_common(dst->data + dst->offset + offset,
++				size, unsafe_ptr);
++	case BPF_DYNPTR_TYPE_SKB:
++	case BPF_DYNPTR_TYPE_XDP:
++		return -EINVAL;
++	default:
++		WARN_ONCE(true, "%s: unknown dynptr type %d\n", __func__, type);
++		return -EFAULT;
++	}
++}
++
++const struct bpf_func_proto bpf_probe_read_kernel_dynptr_proto = {
++	.func		= bpf_probe_read_kernel_dynptr,
++	.gpl_only	= true,
++	.ret_type	= RET_INTEGER,
++	.arg1_type	= ARG_PTR_TO_DYNPTR | MEM_RDONLY,
++	.arg2_type	= ARG_ANYTHING,
++	.arg3_type	= ARG_ANYTHING,
++	.arg4_type	= ARG_ANYTHING,
++	.arg5_type	= ARG_ANYTHING,
++};
++
+ static __always_inline int
+ bpf_probe_read_kernel_str_common(void *dst, u32 size, const void *unsafe_ptr)
+ {
 
-Best regards,
 -- 
-Levi Zim <rsworktech@outlook.com>
+2.48.1
 
