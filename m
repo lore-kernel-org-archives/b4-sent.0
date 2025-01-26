@@ -1,15 +1,13 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Subject: [PATCH 0/9] YAML conversion of several Freescale/PowerPC DT
- bindings
-Date: Sun, 26 Jan 2025 19:58:55 +0100
-Message-Id: <20250126-ppcyaml-v1-0-50649f51c3dd@posteo.net>
+Date: Sun, 26 Jan 2025 19:58:56 +0100
+Subject: [PATCH 1/9] dt-bindings: powerpc: Add binding for Freescale/NXP
+ MPC83xx SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAO+FlmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDQyMz3YKC5MrE3BxdMwuD5OQUiyTjtGQjJaDqgqLUtMwKsEnRsbW1AIw
- prb9ZAAAA
-X-Change-ID: 20250126-ppcyaml-680ccd8b3fc2
+Message-Id: <20250126-ppcyaml-v1-1-50649f51c3dd@posteo.net>
+References: <20250126-ppcyaml-v1-0-50649f51c3dd@posteo.net>
+In-Reply-To: <20250126-ppcyaml-v1-0-50649f51c3dd@posteo.net>
 To: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org
 Cc: Scott Wood <oss@buserror.net>, 
  Madhavan Srinivasan <maddy@linux.ibm.com>, 
@@ -35,64 +33,101 @@ Cc: Scott Wood <oss@buserror.net>,
  linux-spi@vger.kernel.org, linux-mtd@lists.infradead.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737917943; l=2648;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737917943; l=2560;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=t7MiR81B+Iee46VXjw3fUJ5IYqT5cIbBOLroU8KM1fQ=;
- b=rX4cEDadyqjKuA8yYkLZevdyfcRaUdz4BHeJl10YNn4xTsKCjeCD6OKBl3O1tpdL5puknSF0r
- w3DGg25+T63CHz+RBokGYXZ8fMyOUHiLEo+aY9gwD/QBhE8TjlNwX8S
+ bh=E5l46pAV8cFDwcEg1WB+Na8IX5nk86e/w9y8E+nF/Rs=;
+ b=7Wr9qCpmJvIjC1lyC/O75ZA3WieLQA6qbLwT1LieeCLorQzrlbIXYDMvvtqnRyrQj24Aw3daO
+ hPZJLmboPkyDjYCsfo5vaoRG6SUf127m1KfVqBMeMYa2W0PLimeRwsz
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is a spin-off of the series titled
-"powerpc: MPC83xx cleanup and LANCOM NWAPP2 board".
+Add a new binding for MPC83xx platforms, describing the board compatible
+strings used in currently existing device trees.
 
-During the development of that series, it became clear that many
-devicetree bindings for Freescale MPC8xxx platforms are still in the old
-plain-text format, or don't exist at all, and in any case don't mention
-all valid compatible strings.
+Note that the SoC bus is called immr@... in many existing devicetrees,
+but this contradicts the simple-bus binding.
 
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-J. Neuschäfer (9):
-      dt-bindings: powerpc: Add binding for Freescale/NXP MPC83xx SoCs
-      dt-bindings: ata: Convert fsl,pq-sata binding to YAML
-      dt-bindings: crypto: Convert fsl,sec-2.0 binding to YAML
-      dt-bindings: mfd: Convert fsl,mcu-mpc8349emitx binding to YAML
-      dt-bindings: dma: Convert fsl,elo*-dma bindings to YAML
-      dt-bindings: pci: Add fsl,mpc83xx-pcie bindings
-      dt-bindings: watchdog: Convert mpc8xxx-wdt binding to YAML
-      dt-bindings: spi: Convert Freescale SPI bindings to YAML
-      [RFC] dt-bindings: nand: Convert fsl,elbc bindings to YAML
+ .../bindings/powerpc/fsl/fsl,mpc83xx.yaml          | 67 ++++++++++++++++++++++
+ 1 file changed, 67 insertions(+)
 
- .../devicetree/bindings/ata/fsl,pq-sata.yaml       |  59 ++++++
- Documentation/devicetree/bindings/ata/fsl-sata.txt |  28 ---
- .../devicetree/bindings/crypto/fsl,sec2.0.yaml     | 139 ++++++++++++++
- .../devicetree/bindings/crypto/fsl-sec2.txt        |  65 -------
- .../devicetree/bindings/dma/fsl,elo-dma.yaml       | 129 +++++++++++++
- .../devicetree/bindings/dma/fsl,elo3-dma.yaml      | 105 +++++++++++
- .../devicetree/bindings/dma/fsl,eloplus-dma.yaml   | 120 ++++++++++++
- .../bindings/mfd/fsl,mcu-mpc8349emitx.yaml         |  53 ++++++
- .../devicetree/bindings/mtd/fsl,elbc-fcm-nand.yaml |  61 ++++++
- .../devicetree/bindings/pci/fsl,mpc8xxx-pci.yaml   |  83 +++++++++
- .../devicetree/bindings/powerpc/fsl/dma.txt        | 204 ---------------------
- .../bindings/powerpc/fsl/fsl,elbc-gpcm-uio.yaml    |  55 ++++++
- .../devicetree/bindings/powerpc/fsl/fsl,elbc.yaml  | 150 +++++++++++++++
- .../bindings/powerpc/fsl/fsl,mpc83xx.yaml          |  67 +++++++
- .../devicetree/bindings/powerpc/fsl/lbc.txt        |  43 -----
- .../bindings/powerpc/fsl/mcu-mpc8349emitx.txt      |  17 --
- .../devicetree/bindings/spi/fsl,espi.yaml          |  56 ++++++
- Documentation/devicetree/bindings/spi/fsl,spi.yaml |  71 +++++++
- Documentation/devicetree/bindings/spi/fsl-spi.txt  |  62 -------
- .../devicetree/bindings/watchdog/mpc8xxx-wdt.txt   |  25 ---
- .../devicetree/bindings/watchdog/mpc8xxx-wdt.yaml  |  64 +++++++
- 21 files changed, 1212 insertions(+), 444 deletions(-)
----
-base-commit: ffd294d346d185b70e28b1a28abe367bbfe53c04
-change-id: 20250126-ppcyaml-680ccd8b3fc2
+diff --git a/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml b/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..d51c85b505b0dec3a25d50e2bdc980cd2ee04b7c
+--- /dev/null
++++ b/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml
+@@ -0,0 +1,67 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/powerpc/fsl/fsl,mpc83xx.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Freescale PowerQUICC II Pro (MPC83xx) platforms
++
++maintainers:
++  - J. Neuschäfer <j.ne@posteo.net>
++
++properties:
++  $nodename:
++    const: '/'
++  compatible:
++    oneOf:
++      - description: MPC83xx Reference Design Boards
++        items:
++          - enum:
++              - fsl,mpc8308rdb
++              - fsl,mpc8315erdb
++              - fsl,mpc8360rdk
++              - fsl,mpc8377rdb
++              - fsl,mpc8377wlan
++              - fsl,mpc8378rdb
++              - fsl,mpc8379rdb
++
++patternProperties:
++  "^soc@.*$":
++    type: object
++    properties:
++      compatible:
++        oneOf:
++          - items:
++              - enum:
++                  - fsl,mpc8315-immr
++                  - fsl,mpc8308-immr
++              - const: simple-bus
++          - items:
++              - const: fsl,mpc8360-immr
++              - const: fsl,immr
++              - const: fsl,soc
++              - const: simple-bus
++          - const: simple-bus
++
++additionalProperties: true
++
++examples:
++  - |
++    / {
++        compatible = "fsl,mpc8315erdb";
++        model = "MPC8315E-RDB";
++        #address-cells = <1>;
++        #size-cells = <1>;
++
++        soc@e0000000 {
++            #address-cells = <1>;
++            #size-cells = <1>;
++            device_type = "soc";
++            compatible = "fsl,mpc8315-immr", "simple-bus";
++            ranges = <0 0xe0000000 0x00100000>;
++            reg = <0xe0000000 0x00000200>;
++            bus-frequency = <0>;
++        };
++    };
++
++...
 
-Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+2.48.0.rc1.219.gb6b6757d772
 
