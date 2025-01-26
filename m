@@ -1,125 +1,98 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Sat, 25 Jan 2025 22:08:14 +0100
-Subject: [PATCH v2] drm/virtio: Align host mapping request to maximum
- platform page size
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH 0/9] YAML conversion of several Freescale/PowerPC DT
+ bindings
+Date: Sun, 26 Jan 2025 19:58:55 +0100
+Message-Id: <20250126-ppcyaml-v1-0-50649f51c3dd@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250125-virtgpu-mixed-page-size-v2-1-c40c555cf276@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAL1SlWcC/4WNQQ7CIBBFr9LM2jGANqGuvIfpAulAJ5G2gUrUh
- rtLvYDL9/P/+xskikwJLs0GkTInnqcK6tCAHc3kCXmoDEqoVkjRYea4+uWJgV804GJqI/GHUGl
- 11+5shHIW6nqJ5GplN9/6yiOndY7v31GWe/rfmSVKtNqRJKnbzp2uPhh+HO0coC+lfAGwCfYzv
- gAAAA==
-X-Change-ID: 20250109-virtgpu-mixed-page-size-282b8f4a02fc
-To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
- Gurchetan Singh <gurchetansingh@chromium.org>, 
- Chia-I Wu <olvaffe@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev, 
- linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAO+FlmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDQyMz3YKC5MrE3BxdMwuD5OQUiyTjtGQjJaDqgqLUtMwKsEnRsbW1AIw
+ prb9ZAAAA
+X-Change-ID: 20250126-ppcyaml-680ccd8b3fc2
+To: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org
+Cc: Scott Wood <oss@buserror.net>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Naveen N Rao <naveen@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Damien Le Moal <dlemoal@kernel.org>, 
+ Niklas Cassel <cassel@kernel.org>, Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Lee Jones <lee@kernel.org>, 
+ Vinod Koul <vkoul@kernel.org>, Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.neuschaefer@gmx.net>, 
+ Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Mark Brown <broonie@kernel.org>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
+ linux-kernel@vger.kernel.org, linux-ide@vger.kernel.org, 
+ linux-crypto@vger.kernel.org, dmaengine@vger.kernel.org, 
+ linux-pci@vger.kernel.org, linux-watchdog@vger.kernel.org, 
+ linux-spi@vger.kernel.org, linux-mtd@lists.infradead.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737839300; l=4035;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=3zZcDtrmzU80dSYarHh3Szvvoc/9VAfbk8eEmWVbJzo=;
- b=PPOumAdOAWKk1KG70bsAN/MNWYF7huqyDMnowaOgSyhe3GoaSGFvCKE86DPb9z2bZyswFuWGp
- eDpxEj8Gh1QAn5irhJPGXzXU6BjymQjFyeXXWW5cJ0pqkJsCzR4PffE
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1737917943; l=2648;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=t7MiR81B+Iee46VXjw3fUJ5IYqT5cIbBOLroU8KM1fQ=;
+ b=rX4cEDadyqjKuA8yYkLZevdyfcRaUdz4BHeJl10YNn4xTsKCjeCD6OKBl3O1tpdL5puknSF0r
+ w3DGg25+T63CHz+RBokGYXZ8fMyOUHiLEo+aY9gwD/QBhE8TjlNwX8S
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This allows running different page sizes between host and guest on
-platforms that support mixed page sizes.
+This is a spin-off of the series titled
+"powerpc: MPC83xx cleanup and LANCOM NWAPP2 board".
 
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
----
-Changes in v2:
-- Aligned all object sizes to MAX_PAGE_SIZE too.
-- Link to v1: https://lore.kernel.org/r/20250109-virtgpu-mixed-page-size-v1-1-c8fe1e1859f3@gmail.com
----
- drivers/gpu/drm/virtio/virtgpu_drv.h    | 6 ++++++
- drivers/gpu/drm/virtio/virtgpu_gem.c    | 2 +-
- drivers/gpu/drm/virtio/virtgpu_ioctl.c  | 2 +-
- drivers/gpu/drm/virtio/virtgpu_object.c | 2 +-
- drivers/gpu/drm/virtio/virtgpu_vram.c   | 4 ++--
- 5 files changed, 11 insertions(+), 5 deletions(-)
+During the development of that series, it became clear that many
+devicetree bindings for Freescale MPC8xxx platforms are still in the old
+plain-text format, or don't exist at all, and in any case don't mention
+all valid compatible strings.
 
-diff --git a/drivers/gpu/drm/virtio/virtgpu_drv.h b/drivers/gpu/drm/virtio/virtgpu_drv.h
-index 64c236169db88acd6ba9afd20a1ab16c667490c4..b73844d6535e45402dc46898035eaa7492de935d 100644
---- a/drivers/gpu/drm/virtio/virtgpu_drv.h
-+++ b/drivers/gpu/drm/virtio/virtgpu_drv.h
-@@ -61,6 +61,12 @@
- /* See virtio_gpu_ctx_create. One additional character for NULL terminator. */
- #define DEBUG_NAME_MAX_LEN 65
- 
-+#if defined(__powerpc64__) || defined(__aarch64__) || defined(__mips__) || defined(__loongarch__)
-+#define MAX_PAGE_SIZE SZ_64K
-+#else
-+#define MAX_PAGE_SIZE PAGE_SIZE
-+#endif
-+
- struct virtio_gpu_object_params {
- 	unsigned long size;
- 	bool dumb;
-diff --git a/drivers/gpu/drm/virtio/virtgpu_gem.c b/drivers/gpu/drm/virtio/virtgpu_gem.c
-index 7db48d17ee3a8a9c638a8c6f9e58f35bd004b453..8e625ccae308f46b11a390a0987fd5ea55ccbf8d 100644
---- a/drivers/gpu/drm/virtio/virtgpu_gem.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_gem.c
-@@ -73,7 +73,7 @@ int virtio_gpu_mode_dumb_create(struct drm_file *file_priv,
- 
- 	pitch = args->width * 4;
- 	args->size = pitch * args->height;
--	args->size = ALIGN(args->size, PAGE_SIZE);
-+	args->size = ALIGN(args->size, MAX_PAGE_SIZE);
- 
- 	params.format = virtio_gpu_translate_format(DRM_FORMAT_HOST_XRGB8888);
- 	params.width = args->width;
-diff --git a/drivers/gpu/drm/virtio/virtgpu_ioctl.c b/drivers/gpu/drm/virtio/virtgpu_ioctl.c
-index e4f76f31555049369000a50c0cb1d5edab68536b..e39ae008ac5f734ec52e9703413958b4ea4be7d6 100644
---- a/drivers/gpu/drm/virtio/virtgpu_ioctl.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_ioctl.c
-@@ -167,7 +167,7 @@ static int virtio_gpu_resource_create_ioctl(struct drm_device *dev, void *data,
- 	params.size = rc->size;
- 	/* allocate a single page size object */
- 	if (params.size == 0)
--		params.size = PAGE_SIZE;
-+		params.size = MAX_PAGE_SIZE;
- 
- 	fence = virtio_gpu_fence_alloc(vgdev, vgdev->fence_drv.context, 0);
- 	if (!fence)
-diff --git a/drivers/gpu/drm/virtio/virtgpu_object.c b/drivers/gpu/drm/virtio/virtgpu_object.c
-index c7e74cf130221bbed3aa447e416065b03bf3e2b4..5aab82028293b7d73bcc4e686e7e2ecba6108b7b 100644
---- a/drivers/gpu/drm/virtio/virtgpu_object.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_object.c
-@@ -190,7 +190,7 @@ int virtio_gpu_object_create(struct virtio_gpu_device *vgdev,
- 
- 	*bo_ptr = NULL;
- 
--	params->size = roundup(params->size, PAGE_SIZE);
-+	params->size = roundup(params->size, MAX_PAGE_SIZE);
- 	shmem_obj = drm_gem_shmem_create(vgdev->ddev, params->size);
- 	if (IS_ERR(shmem_obj))
- 		return PTR_ERR(shmem_obj);
-diff --git a/drivers/gpu/drm/virtio/virtgpu_vram.c b/drivers/gpu/drm/virtio/virtgpu_vram.c
-index 25df81c027837c248a746e41856b5aa7e216b8d5..18e773b036f7c8190d4e20ad3f2c85c36e7e295c 100644
---- a/drivers/gpu/drm/virtio/virtgpu_vram.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_vram.c
-@@ -150,8 +150,8 @@ static int virtio_gpu_vram_map(struct virtio_gpu_object *bo)
- 		return -EINVAL;
- 
- 	spin_lock(&vgdev->host_visible_lock);
--	ret = drm_mm_insert_node(&vgdev->host_visible_mm, &vram->vram_node,
--				 bo->base.base.size);
-+	ret = drm_mm_insert_node_generic(&vgdev->host_visible_mm, &vram->vram_node,
-+					 bo->base.base.size, MAX_PAGE_SIZE, 0, 0);
- 	spin_unlock(&vgdev->host_visible_lock);
- 
- 	if (ret)
-
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-base-commit: 643e2e259c2b25a2af0ae4c23c6e16586d9fd19c
-change-id: 20250109-virtgpu-mixed-page-size-282b8f4a02fc
+J. Neuschäfer (9):
+      dt-bindings: powerpc: Add binding for Freescale/NXP MPC83xx SoCs
+      dt-bindings: ata: Convert fsl,pq-sata binding to YAML
+      dt-bindings: crypto: Convert fsl,sec-2.0 binding to YAML
+      dt-bindings: mfd: Convert fsl,mcu-mpc8349emitx binding to YAML
+      dt-bindings: dma: Convert fsl,elo*-dma bindings to YAML
+      dt-bindings: pci: Add fsl,mpc83xx-pcie bindings
+      dt-bindings: watchdog: Convert mpc8xxx-wdt binding to YAML
+      dt-bindings: spi: Convert Freescale SPI bindings to YAML
+      [RFC] dt-bindings: nand: Convert fsl,elbc bindings to YAML
+
+ .../devicetree/bindings/ata/fsl,pq-sata.yaml       |  59 ++++++
+ Documentation/devicetree/bindings/ata/fsl-sata.txt |  28 ---
+ .../devicetree/bindings/crypto/fsl,sec2.0.yaml     | 139 ++++++++++++++
+ .../devicetree/bindings/crypto/fsl-sec2.txt        |  65 -------
+ .../devicetree/bindings/dma/fsl,elo-dma.yaml       | 129 +++++++++++++
+ .../devicetree/bindings/dma/fsl,elo3-dma.yaml      | 105 +++++++++++
+ .../devicetree/bindings/dma/fsl,eloplus-dma.yaml   | 120 ++++++++++++
+ .../bindings/mfd/fsl,mcu-mpc8349emitx.yaml         |  53 ++++++
+ .../devicetree/bindings/mtd/fsl,elbc-fcm-nand.yaml |  61 ++++++
+ .../devicetree/bindings/pci/fsl,mpc8xxx-pci.yaml   |  83 +++++++++
+ .../devicetree/bindings/powerpc/fsl/dma.txt        | 204 ---------------------
+ .../bindings/powerpc/fsl/fsl,elbc-gpcm-uio.yaml    |  55 ++++++
+ .../devicetree/bindings/powerpc/fsl/fsl,elbc.yaml  | 150 +++++++++++++++
+ .../bindings/powerpc/fsl/fsl,mpc83xx.yaml          |  67 +++++++
+ .../devicetree/bindings/powerpc/fsl/lbc.txt        |  43 -----
+ .../bindings/powerpc/fsl/mcu-mpc8349emitx.txt      |  17 --
+ .../devicetree/bindings/spi/fsl,espi.yaml          |  56 ++++++
+ Documentation/devicetree/bindings/spi/fsl,spi.yaml |  71 +++++++
+ Documentation/devicetree/bindings/spi/fsl-spi.txt  |  62 -------
+ .../devicetree/bindings/watchdog/mpc8xxx-wdt.txt   |  25 ---
+ .../devicetree/bindings/watchdog/mpc8xxx-wdt.yaml  |  64 +++++++
+ 21 files changed, 1212 insertions(+), 444 deletions(-)
+---
+base-commit: ffd294d346d185b70e28b1a28abe367bbfe53c04
+change-id: 20250126-ppcyaml-680ccd8b3fc2
+
+Best regards,
+-- 
+J. Neuschäfer <j.ne@posteo.net>
 
