@@ -1,79 +1,106 @@
-From: Anthony Ruhier <aruhier@mailbox.org>
-Date: Tue, 28 Jan 2025 09:42:56 +0100
-Subject: [PATCH] power: supply: qcom_battmgr: abs() on POWER_NOW property
+From: Federico Fuga <fuga@studiofuga.com>
+Date: Tue, 28 Jan 2025 12:18:37 +0100
+Subject: [PATCH] Fix fastboot handling of partitions when no slots are
+ supported
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250128-patch-qcomm-bat-uint-power-v1-1-54a63d8ada92@mailbox.org>
-X-B4-Tracking: v=1; b=H4sIAJCYmGcC/x3MQQ6DIBAAwK+YPXcThUC1X2l6QFzqHgQKVE2Mf
- 5d4nMsckCkxZXg1ByRaOXPwFd2jATsb/yXkqRpEK1TbiR6jKXbGnw3LgqMp+GdfMIaNEqrnIJ3
- UsrdKQw1iIsf7nb8/53kBJDqtGWwAAAA=
-X-Change-ID: 20250128-patch-qcomm-bat-uint-power-5793f3638c56
-To: Sebastian Reichel <sre@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Anthony Ruhier <aruhier@mailbox.org>
+Message-Id: <20250128-fastboot_slot_fix-v1-1-1a4688936662@studiofuga.com>
+X-B4-Tracking: v=1; b=H4sIAAy9mGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDQyML3bTE4pKk/PyS+OIcIJGWWaFrZmlkamhqbpZimZSkBNRXUJQKFAa
+ bGR1bWwsAkAvxoGMAAAA=
+X-Change-ID: 20250128-fastboot_slot_fix-69251576d9bb
+To: Mattijs Korpershoek <mkorpershoek@baylibre.com>, 
+ Tom Rini <trini@konsulko.com>
+Cc: u-boot@lists.denx.de, Federico Fuga <fuga@studiofuga.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2103; i=aruhier@mailbox.org;
- h=from:subject:message-id; bh=lSOxkdOf6gRdpUszCsRF5pZ7uZYHKUdsGgP+kJrQraU=;
- b=owGbwMvMwCVW2Nrw47jsO3/G02pJDOkzZkziyNm+UOVmxY1KtjcWd2cap2/oK358t8bUme1Wd
- vHZis6vHaUsDGJcDLJiiiwl+6OEb6t03HdYu5wFZg4rE8gQBi5OAZhIiCPDfzfPczHv5gZtuKa1
- ZfrHysAy+S1t/B5R0dMYvqQoKCZ1XmBkePOcddadw00mrxO8m19N33rN9bLsYoayC5xL3TW+/DX
- LZQcA
-X-Developer-Key: i=aruhier@mailbox.org; a=openpgp;
- fpr=F4A378DD8D494AE48EBA554CB00FBC7D08D231D9
-X-Endpoint-Received: by B4 Relay for aruhier@mailbox.org/default with auth_id=302
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3127; i=fuga@studiofuga.com;
+ h=from:subject:message-id; bh=TKOjlYcOT6aH74HSyiAsmNFDbwha6KERQuHNXYuuMWg=;
+ b=owGbwMvMwCWWHKr8a5mpjg3jabUkhvQZe4WOzZW80y9XezsuOSdl1urHn2zYErJedK8zNdvdM
+ 8/IZlFiRykLgxgXg6yYIsucl8/OZH3LPvtRd70WzBxWJpAhDFycAjCRN5cZ/gemTPScIO3qNf2n
+ 45nDu4wvJhaeWTh3eljedM5TvYYb52xl+MNRfJbZW8IkedsZieUyTprOhWWnHpYa65nUNm7ov2O
+ 8ixkA
+X-Developer-Key: i=fuga@studiofuga.com; a=openpgp;
+ fpr=9CE9E6CC6AF66BCDF12DAF2A635523FAA6352C3C
+X-Endpoint-Received: by B4 Relay for fuga@studiofuga.com/default with auth_id=333
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The value for the POWER_NOW property is by default negative when the
-battery is discharging, positive when charging.
+The fastboot module has a bug that prevents some command to work
+properly on devices that haven't an Android-like partition scheme, that
+is, just one spl and one kernel partition, instead of the redundant
+scheme with _a and _b slots.
 
-However on x1e laptops it breaks several userland tools that give a
-prediction of the battery run time (such as the acpi command, powertop
-or the waybar battery module), as these tools do not expect a negative
-value for /sys/class/power_supply/qcom-battmgr-bat/power_now. They
-estimate the battery run time by dividing the value of energy_full by
-power_now. The battery percentage is calculated by dividing energy_full
-by energy_now, therefore it is not impacted.
+This is the schema of our NAND storage (board is based on an AllWinner
+A33 sunxi chip):
 
-While having a negative number during discharge makes sense, it is not
-standard with how other battery drivers expose it. Instead, it seems
-standard to have a positive value for power_now, and rely on the status
-file instead to know if the battery is charging or discharging. It is
-what other x86 laptops do.
+=> mtdparts
 
-Without the patch:
-    $ acpi
-    Battery 0: Discharging, 98%, discharging at zero rate - will never fully discharge.
+device nand0 <1c03000.nand>, # parts = 4
+ #: name         size            net size        offset          mask_flags
+ 0: spl          0x00020000      0x00020000      0x00000000      0
+ 1: uboot        0x00100000      0x00100000      0x00020000      0
+ 2: kernel_a     0x00400000      0x00400000      0x00120000      0
+ 3: ubi          0x07ae0000      0x079e0000 (!)  0x00520000      0
 
-With the patch:
-    $ acpi
-    Battery 0: Discharging, 97%, 10:18:27 remaining
+active partition: nand0,0 - (spl) 0x00020000 @ 0x00000000
+
+This happens when we try to erase the spl partition using fastboot:
+
+$ fastboot erase spl
+Erasing 'spl_a'               FAILED (remote: 'invalid NAND device')
+fastboot: error: Command failed
+
+The error occurs because getvars fails to handle the error returned by
+nand layer when a partition cannot be found.
+
+Indeed, getvar_get_part_info returns what is returned by
+fastboot_nand_get_part_info (0 on success, 1 on failure) but it should
+return -ENODEV or -EINVAL instead. Since the cause of failure is not
+returned by the nand function, I decided to return -EINVAL to make it
+simple.
+
+Signed-off-by: Federico Fuga <fuga@studiofuga.com>
+---
+ drivers/fastboot/fb_getvar.c | 5 ++++-
+ drivers/fastboot/fb_nand.c   | 2 +-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/fastboot/fb_getvar.c b/drivers/fastboot/fb_getvar.c
+index 9c2ce65a4e5bce0da6b18aa1b2818f7db556c528..816ed8a6213b5c1f0948a813c6f6a865a4b47ba8 100644
+--- a/drivers/fastboot/fb_getvar.c
++++ b/drivers/fastboot/fb_getvar.c
+@@ -121,8 +121,11 @@ static int getvar_get_part_info(const char *part_name, char *response,
+ 			*size = disk_part.size * disk_part.blksz;
+ 	} else if (IS_ENABLED(CONFIG_FASTBOOT_FLASH_NAND)) {
+ 		r = fastboot_nand_get_part_info(part_name, &part_info, response);
+-		if (r >= 0 && size)
++		if (r == 0 && size) {
+ 			*size = part_info->size;
++		} else {
++			r = -EINVAL;
++		}
+ 	} else {
+ 		fastboot_fail("this storage is not supported in bootloader", response);
+ 		r = -ENODEV;
+diff --git a/drivers/fastboot/fb_nand.c b/drivers/fastboot/fb_nand.c
+index afc64fd5280717ae4041ed70268ccc01cfbb0496..9e2f7c01895785a4409eb67ea48abd02a6a6da26 100644
+--- a/drivers/fastboot/fb_nand.c
++++ b/drivers/fastboot/fb_nand.c
+@@ -151,7 +151,7 @@ static lbaint_t fb_nand_sparse_reserve(struct sparse_storage *info,
+  *
+  * @part_name: Named device to lookup
+  * @part_info: Pointer to returned part_info pointer
+- * @response: Pointer to fastboot response buffer
++ * @response: 0 on success, 1 otherwise
+  */
+ int fastboot_nand_get_part_info(const char *part_name,
+ 				struct part_info **part_info, char *response)
 
 ---
-Signed-off-by: Anthony Ruhier <aruhier@mailbox.org>
----
- drivers/power/supply/qcom_battmgr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
-index 47d29271ddf400b76dd5b0a1b8d1ba86c017afc0..3e2e0c5af2814df0eb0bfc408d4b3d26399ab4e4 100644
---- a/drivers/power/supply/qcom_battmgr.c
-+++ b/drivers/power/supply/qcom_battmgr.c
-@@ -530,7 +530,7 @@ static int qcom_battmgr_bat_get_property(struct power_supply *psy,
- 		val->intval = battmgr->status.current_now;
- 		break;
- 	case POWER_SUPPLY_PROP_POWER_NOW:
--		val->intval = battmgr->status.power_now;
-+		val->intval = abs(battmgr->status.power_now);
- 		break;
- 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
- 		if (unit != QCOM_BATTMGR_UNIT_mAh)
-
----
-base-commit: ffd294d346d185b70e28b1a28abe367bbfe53c04
-change-id: 20250128-patch-qcomm-bat-uint-power-5793f3638c56
+base-commit: a517796cfa5d8f4ca2f0c11c78c24a08a102c047
+change-id: 20250128-fastboot_slot_fix-69251576d9bb
 
 Best regards,
 -- 
-Anthony Ruhier <aruhier@mailbox.org>
+Federico Fuga <fuga@studiofuga.com>
 
