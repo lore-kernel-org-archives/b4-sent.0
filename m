@@ -1,61 +1,79 @@
-From: David Dgien <dgienda125@gmail.com>
-Date: Mon, 27 Jan 2025 23:16:18 -0500
-Subject: [PATCH] macb: Fix tx completion check
+From: Anthony Ruhier <aruhier@mailbox.org>
+Date: Tue, 28 Jan 2025 09:42:56 +0100
+Subject: [PATCH] power: supply: qcom_battmgr: abs() on POWER_NOW property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250127-fix-macb-send-v1-1-d9b6067dda86@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABFamGcC/x2MQQqAIBAAvyJ7bmEzsugr0cF0qz1koRCB+Pek4
- 8DMZEgchRNMKkPkR5JcoULbKHCHDTuj+MqgSffUaoObvHhat2Li4LEzRMNIW+95hNrckavw/+a
- llA9/D1swXwAAAA==
-X-Change-ID: 20250126-fix-macb-send-3600780f5de8
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: Billy Gomez <william.james.gomez@gmail.com>, 
- David Dgien <dgienda125@gmail.com>
+Message-Id: <20250128-patch-qcomm-bat-uint-power-v1-1-54a63d8ada92@mailbox.org>
+X-B4-Tracking: v=1; b=H4sIAJCYmGcC/x3MQQ6DIBAAwK+YPXcThUC1X2l6QFzqHgQKVE2Mf
+ 5d4nMsckCkxZXg1ByRaOXPwFd2jATsb/yXkqRpEK1TbiR6jKXbGnw3LgqMp+GdfMIaNEqrnIJ3
+ UsrdKQw1iIsf7nb8/53kBJDqtGWwAAAA=
+X-Change-ID: 20250128-patch-qcomm-bat-uint-power-5793f3638c56
+To: Sebastian Reichel <sre@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Anthony Ruhier <aruhier@mailbox.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738037790; l=1127;
- i=dgienda125@gmail.com; s=20250126; h=from:subject:message-id;
- bh=TOYs8c3poqqRPzuaB7uHXHWJwieavBQK6hgSIzXrSE4=;
- b=7et2K7QnCEirSrH4zAp0Y+iIl+0BZZQgR8FCgwc5FRF/kpMN0DPUJd5CQunY3sEB9bfgBHA78
- KS8p1A8GdECC7oHunRP1N83lJcRyyTbx/nWAVZArXauyMK9kwfDQOQ1
-X-Developer-Key: i=dgienda125@gmail.com; a=ed25519;
- pk=zPhfl/eH2iShpaIksvU8MCg11Il6Dx2oW7WYAzpKbo0=
-X-Endpoint-Received: by B4 Relay for dgienda125@gmail.com/20250126 with auth_id=332
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2103; i=aruhier@mailbox.org;
+ h=from:subject:message-id; bh=lSOxkdOf6gRdpUszCsRF5pZ7uZYHKUdsGgP+kJrQraU=;
+ b=owGbwMvMwCVW2Nrw47jsO3/G02pJDOkzZkziyNm+UOVmxY1KtjcWd2cap2/oK358t8bUme1Wd
+ vHZis6vHaUsDGJcDLJiiiwl+6OEb6t03HdYu5wFZg4rE8gQBi5OAZhIiCPDfzfPczHv5gZtuKa1
+ ZfrHysAy+S1t/B5R0dMYvqQoKCZ1XmBkePOcddadw00mrxO8m19N33rN9bLsYoayC5xL3TW+/DX
+ LZQcA
+X-Developer-Key: i=aruhier@mailbox.org; a=openpgp;
+ fpr=F4A378DD8D494AE48EBA554CB00FBC7D08D231D9
+X-Endpoint-Received: by B4 Relay for aruhier@mailbox.org/default with auth_id=302
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Check the send completion bit for the current packet in the descriptor
-ring, instead of just the first entry in the ring.
+The value for the POWER_NOW property is by default negative when the
+battery is discharging, positive when charging.
 
-This fixes issues when sending multiple small packets in quick
-succession, such as with netconsole.
+However on x1e laptops it breaks several userland tools that give a
+prediction of the battery run time (such as the acpi command, powertop
+or the waybar battery module), as these tools do not expect a negative
+value for /sys/class/power_supply/qcom-battmgr-bat/power_now. They
+estimate the battery run time by dividing the value of energy_full by
+power_now. The battery percentage is calculated by dividing energy_full
+by energy_now, therefore it is not impacted.
 
-Reported-by: Billy Gomez <william.james.gomez@gmail.com>
-Signed-off-by: David Dgien <dgienda125@gmail.com>
-Fixes: aa2095304a ("macb: fix tx ring size")
+While having a negative number during discharge makes sense, it is not
+standard with how other battery drivers expose it. Instead, it seems
+standard to have a positive value for power_now, and rely on the status
+file instead to know if the battery is charging or discharging. It is
+what other x86 laptops do.
+
+Without the patch:
+    $ acpi
+    Battery 0: Discharging, 98%, discharging at zero rate - will never fully discharge.
+
+With the patch:
+    $ acpi
+    Battery 0: Discharging, 97%, 10:18:27 remaining
+
 ---
- drivers/net/macb.c | 2 +-
+Signed-off-by: Anthony Ruhier <aruhier@mailbox.org>
+---
+ drivers/power/supply/qcom_battmgr.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/macb.c b/drivers/net/macb.c
-index 28c2fc860e37853a91488a675af3716d9f3843df..205e3169f17b2b762ba51640248a2ea96db5c582 100644
---- a/drivers/net/macb.c
-+++ b/drivers/net/macb.c
-@@ -132,7 +132,7 @@ static int macb_send(struct eth_device *edev, void *packet,
- 	start = get_time_ns();
- 	ret = -ETIMEDOUT;
- 	do {
--		ctrl = readl(&macb->tx_ring[0].ctrl);
-+		ctrl = readl(&macb->tx_ring[tx_head].ctrl);
- 		if (ctrl & MACB_BIT(TX_USED)) {
- 			ret = 0;
- 			break;
+diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
+index 47d29271ddf400b76dd5b0a1b8d1ba86c017afc0..3e2e0c5af2814df0eb0bfc408d4b3d26399ab4e4 100644
+--- a/drivers/power/supply/qcom_battmgr.c
++++ b/drivers/power/supply/qcom_battmgr.c
+@@ -530,7 +530,7 @@ static int qcom_battmgr_bat_get_property(struct power_supply *psy,
+ 		val->intval = battmgr->status.current_now;
+ 		break;
+ 	case POWER_SUPPLY_PROP_POWER_NOW:
+-		val->intval = battmgr->status.power_now;
++		val->intval = abs(battmgr->status.power_now);
+ 		break;
+ 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+ 		if (unit != QCOM_BATTMGR_UNIT_mAh)
 
 ---
-base-commit: 1a3be5bdf6329e4e691f1d39461f5157767c7e72
-change-id: 20250126-fix-macb-send-3600780f5de8
+base-commit: ffd294d346d185b70e28b1a28abe367bbfe53c04
+change-id: 20250128-patch-qcomm-bat-uint-power-5793f3638c56
 
 Best regards,
 -- 
-David Dgien <dgienda125@gmail.com>
+Anthony Ruhier <aruhier@mailbox.org>
 
