@@ -1,404 +1,61 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sun, 26 Jan 2025 19:59:04 +0100
-Subject: [PATCH RFC 9/9] dt-bindings: nand: Convert fsl,elbc bindings to
- YAML
+From: David Dgien <dgienda125@gmail.com>
+Date: Mon, 27 Jan 2025 23:16:18 -0500
+Subject: [PATCH] macb: Fix tx completion check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250126-ppcyaml-v1-9-50649f51c3dd@posteo.net>
-References: <20250126-ppcyaml-v1-0-50649f51c3dd@posteo.net>
-In-Reply-To: <20250126-ppcyaml-v1-0-50649f51c3dd@posteo.net>
-To: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org
-Cc: Scott Wood <oss@buserror.net>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- Christophe Leroy <christophe.leroy@csgroup.eu>, 
- Naveen N Rao <naveen@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Damien Le Moal <dlemoal@kernel.org>, 
- Niklas Cassel <cassel@kernel.org>, Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>, Lee Jones <lee@kernel.org>, 
- Vinod Koul <vkoul@kernel.org>, Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.neuschaefer@gmx.net>, 
- Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>, Mark Brown <broonie@kernel.org>, 
- Miquel Raynal <miquel.raynal@bootlin.com>, 
- Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
- linux-kernel@vger.kernel.org, linux-ide@vger.kernel.org, 
- linux-crypto@vger.kernel.org, dmaengine@vger.kernel.org, 
- linux-pci@vger.kernel.org, linux-watchdog@vger.kernel.org, 
- linux-spi@vger.kernel.org, linux-mtd@lists.infradead.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250127-fix-macb-send-v1-1-d9b6067dda86@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABFamGcC/x2MQQqAIBAAvyJ7bmEzsugr0cF0qz1koRCB+Pek4
+ 8DMZEgchRNMKkPkR5JcoULbKHCHDTuj+MqgSffUaoObvHhat2Li4LEzRMNIW+95hNrckavw/+a
+ llA9/D1swXwAAAA==
+X-Change-ID: 20250126-fix-macb-send-3600780f5de8
+To: Sascha Hauer <s.hauer@pengutronix.de>, 
+ BAREBOX <barebox@lists.infradead.org>
+Cc: Billy Gomez <william.james.gomez@gmail.com>, 
+ David Dgien <dgienda125@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1737917943; l=10572;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=lxtaXbwhrZfRbbjWoXllHChabX+zDomEeja/97bPnL0=;
- b=4aHykToIcBDXPGJ4bhvg4QsblNaqpXDo2KbDwaI7EygVFW6vPbQRY8lCXd2Tlmc0rlkGyz3CJ
- FGZGUHURdauBMOVkTRZNGh9QWkVU1QrFwlAZO8xPuP/eHiakmJMZj2Y
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1738037790; l=1127;
+ i=dgienda125@gmail.com; s=20250126; h=from:subject:message-id;
+ bh=TOYs8c3poqqRPzuaB7uHXHWJwieavBQK6hgSIzXrSE4=;
+ b=7et2K7QnCEirSrH4zAp0Y+iIl+0BZZQgR8FCgwc5FRF/kpMN0DPUJd5CQunY3sEB9bfgBHA78
+ KS8p1A8GdECC7oHunRP1N83lJcRyyTbx/nWAVZArXauyMK9kwfDQOQ1
+X-Developer-Key: i=dgienda125@gmail.com; a=ed25519;
+ pk=zPhfl/eH2iShpaIksvU8MCg11Il6Dx2oW7WYAzpKbo0=
+X-Endpoint-Received: by B4 Relay for dgienda125@gmail.com/20250126 with auth_id=332
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert the Freescale localbus controller bindings from text form to
-YAML. The list of compatible strings reflects current usage.
+Check the send completion bit for the current packet in the descriptor
+ring, instead of just the first entry in the ring.
 
-Changes compared to the txt version:
- - removed the board-control (fsl,mpc8272ads-bcsr) node because it only
-   appears in this example and nowhere else
- - added a new example with NAND flash
+This fixes issues when sending multiple small packets in quick
+succession, such as with netconsole.
 
-Remaining issues:
- - The localbus is not really a simple-bus: Unit addresses are not simply
-   addresses on a memory bus. Instead, they have a format: The first cell
-   is a chip select number, the remaining one or two cells are bus
-   addresses.
-
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Reported-by: Billy Gomez <william.james.gomez@gmail.com>
+Signed-off-by: David Dgien <dgienda125@gmail.com>
+Fixes: aa2095304a ("macb: fix tx ring size")
 ---
- .../devicetree/bindings/mtd/fsl,elbc-fcm-nand.yaml |  61 +++++++++
- .../bindings/powerpc/fsl/fsl,elbc-gpcm-uio.yaml    |  55 ++++++++
- .../devicetree/bindings/powerpc/fsl/fsl,elbc.yaml  | 150 +++++++++++++++++++++
- .../devicetree/bindings/powerpc/fsl/lbc.txt        |  43 ------
- 4 files changed, 266 insertions(+), 43 deletions(-)
+ drivers/net/macb.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/mtd/fsl,elbc-fcm-nand.yaml b/Documentation/devicetree/bindings/mtd/fsl,elbc-fcm-nand.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..127f164443972bbaf50fd9daa80c504577ddd7bd
---- /dev/null
-+++ b/Documentation/devicetree/bindings/mtd/fsl,elbc-fcm-nand.yaml
-@@ -0,0 +1,61 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/mtd/fsl,elbc-fcm-nand.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: NAND flash attached to Freescale eLBC
-+
-+maintainers:
-+  - J. Neuschäfer <j.ne@posteo.net>
-+
-+allOf:
-+  - $ref: nand-chip.yaml#
-+
-+properties:
-+  compatible:
-+    oneOf:
-+      - items:
-+          - enum:
-+              - fsl,mpc8313-fcm-nand
-+              - fsl,mpc8315-fcm-nand
-+              - fsl,mpc8377-fcm-nand
-+              - fsl,mpc8378-fcm-nand
-+              - fsl,mpc8379-fcm-nand
-+              - fsl,mpc8536-fcm-nand
-+              - fsl,mpc8569-fcm-nand
-+              - fsl,mpc8572-fcm-nand
-+              - fsl,p1020-fcm-nand
-+              - fsl,p1021-fcm-nand
-+              - fsl,p1025-fcm-nand
-+              - fsl,p2020-fcm-nand
-+          - const: fsl,elbc-fcm-nand
-+      - const: fsl,elbc-fcm-nand
-+
-+  reg:
-+    maxItems: 1
-+
-+  "#address-cells": true
-+
-+  "#size-cells": true
-+
-+required:
-+  - compatible
-+  - reg
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    localbus {
-+        #address-cells = <2>;
-+        #size-cells = <1>;
-+
-+        nand@1,0 {
-+            #address-cells = <1>;
-+            #size-cells = <1>;
-+            compatible = "fsl,mpc8315-fcm-nand",
-+                         "fsl,elbc-fcm-nand";
-+            reg = <0x1 0x0 0x2000>;
-+        };
-+    };
-diff --git a/Documentation/devicetree/bindings/powerpc/fsl/fsl,elbc-gpcm-uio.yaml b/Documentation/devicetree/bindings/powerpc/fsl/fsl,elbc-gpcm-uio.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..60f849b79c11a4060f2fa4ab163f9fa9317df130
---- /dev/null
-+++ b/Documentation/devicetree/bindings/powerpc/fsl/fsl,elbc-gpcm-uio.yaml
-@@ -0,0 +1,55 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/powerpc/fsl/fsl,elbc-gpcm-uio.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Userspace I/O interface for Freescale eLBC devices
-+
-+maintainers:
-+  - J. Neuschäfer <j.ne@posteo.net>
-+
-+properties:
-+  compatible:
-+    const: fsl,elbc-gpcm-uio
-+
-+  reg:
-+    maxItems: 1
-+
-+  elbc-gpcm-br:
-+    description: Base Register (BR) value to set
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+
-+  elbc-gpcm-or:
-+    description: Option Register (OR) value to set
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+
-+  device_type: true
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  uio_name:
-+    $ref: /schemas/types.yaml#/definitions/string
-+
-+required:
-+  - compatible
-+  - reg
-+  - elbc-gpcm-br
-+  - elbc-gpcm-or
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    localbus {
-+        #address-cells = <2>;
-+        #size-cells = <1>;
-+
-+        simple-periph@2,0 {
-+            compatible = "fsl,elbc-gpcm-uio";
-+            reg = <0x2 0x0 0x10000>;
-+            elbc-gpcm-br = <0xfd810800>;
-+            elbc-gpcm-or = <0xffff09f7>;
-+        };
-+    };
-diff --git a/Documentation/devicetree/bindings/powerpc/fsl/fsl,elbc.yaml b/Documentation/devicetree/bindings/powerpc/fsl/fsl,elbc.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..6bbceb82c77826499abe85879e9189b18d396eea
---- /dev/null
-+++ b/Documentation/devicetree/bindings/powerpc/fsl/fsl,elbc.yaml
-@@ -0,0 +1,150 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/powerpc/fsl/fsl,elbc.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Freescale Enhanced Local Bus Controller
-+
-+maintainers:
-+  - J. Neuschäfer <j.ne@posteo.net>
-+
-+properties:
-+  $nodename:
-+    pattern: "^localbus@[0-9a-f]+$"
-+
-+  compatible:
-+    oneOf:
-+      - items:
-+          - enum:
-+              - fsl,mpc8313-elbc
-+              - fsl,mpc8315-elbc
-+              - fsl,mpc8377-elbc
-+              - fsl,mpc8378-elbc
-+              - fsl,mpc8379-elbc
-+              - fsl,mpc8536-elbc
-+              - fsl,mpc8569-elbc
-+              - fsl,mpc8572-elbc
-+              - fsl,p1020-elbc
-+              - fsl,p1021-elbc
-+              - fsl,p1023-elbc
-+              - fsl,p2020-elbc
-+              - fsl,p2041-elbc
-+              - fsl,p3041-elbc
-+              - fsl,p4080-elbc
-+              - fsl,p5020-elbc
-+              - fsl,p5040-elbc
-+          - const: fsl,elbc
-+          - const: simple-bus
-+
-+      - items:
-+          - const: fsl,mpc8272-localbus
-+          - const: fsl,pq2-localbus
-+
-+      - items:
-+          - enum:
-+              - fsl,mpc8247-localbus
-+              - fsl,mpc8248-localbus
-+              - fsl,mpc8360-localbus
-+          - const: fsl,pq2pro-localbus
-+          - const: simple-bus
-+
-+      - items:
-+          - enum:
-+              - fsl,mpc8540-localbus
-+              - fsl,mpc8544-lbc
-+              - fsl,mpc8544-localbus
-+              - fsl,mpc8548-lbc
-+              - fsl,mpc8548-localbus
-+              - fsl,mpc8560-localbus
-+              - fsl,mpc8568-localbus
-+          - const: fsl,pq3-localbus
-+          - const: simple-bus
-+
-+  reg:
-+    maxItems: 1
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  "#address-cells":
-+    enum: [2, 3]
-+    description: |
-+      The first cell is the chipselect number, and the remaining cells are the
-+      offset into the chipselect.
-+
-+  "#size-cells":
-+    enum: [1, 2]
-+    description: |
-+      Either one or two, depending on how large each chipselect can be.
-+
-+  ranges:
-+    description: |
-+      Each range corresponds to a single chipselect, and covers the entire
-+      access window as configured.
-+
-+patternProperties:
-+  "^.*@.*$":
-+    type: object
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    localbus@f0010100 {
-+        compatible = "fsl,mpc8272-localbus",
-+                     "fsl,pq2-localbus";
-+        #address-cells = <2>;
-+        #size-cells = <1>;
-+        reg = <0xf0010100 0x40>;
-+
-+        ranges = <0x0 0x0 0xfe000000 0x02000000
-+                  0x1 0x0 0xf4500000 0x00008000
-+                  0x2 0x0 0xfd810000 0x00010000>;
-+
-+        flash@0,0 {
-+            compatible = "jedec-flash";
-+            reg = <0x0 0x0 0x2000000>;
-+            bank-width = <4>;
-+            device-width = <1>;
-+        };
-+
-+        simple-periph@2,0 {
-+            compatible = "fsl,elbc-gpcm-uio";
-+            reg = <0x2 0x0 0x10000>;
-+            elbc-gpcm-br = <0xfd810800>;
-+            elbc-gpcm-or = <0xffff09f7>;
-+        };
-+    };
-+
-+  - |
-+    localbus@e0005000 {
-+        #address-cells = <2>;
-+        #size-cells = <1>;
-+        compatible = "fsl,mpc8315-elbc", "fsl,elbc", "simple-bus";
-+        reg = <0xe0005000 0x1000>;
-+        interrupts = <77 0x8>;
-+        interrupt-parent = <&ipic>;
-+
-+        ranges = <0x0 0x0 0xfe000000 0x00800000
-+                  0x1 0x0 0xe0600000 0x00002000
-+                  0x2 0x0 0xf0000000 0x00020000
-+                  0x3 0x0 0xfa000000 0x00008000>;
-+
-+        flash@0,0 {
-+            #address-cells = <1>;
-+            #size-cells = <1>;
-+            compatible = "cfi-flash";
-+            reg = <0x0 0x0 0x800000>;
-+            bank-width = <2>;
-+            device-width = <1>;
-+        };
-+
-+        nand@1,0 {
-+            #address-cells = <1>;
-+            #size-cells = <1>;
-+            compatible = "fsl,mpc8315-fcm-nand",
-+                         "fsl,elbc-fcm-nand";
-+            reg = <0x1 0x0 0x2000>;
-+        };
-+    };
-diff --git a/Documentation/devicetree/bindings/powerpc/fsl/lbc.txt b/Documentation/devicetree/bindings/powerpc/fsl/lbc.txt
-deleted file mode 100644
-index 1c80fcedebb52049721fbd61c4dd4c57133bd47c..0000000000000000000000000000000000000000
---- a/Documentation/devicetree/bindings/powerpc/fsl/lbc.txt
-+++ /dev/null
-@@ -1,43 +0,0 @@
--* Chipselect/Local Bus
--
--Properties:
--- name : Should be localbus
--- #address-cells : Should be either two or three.  The first cell is the
--                   chipselect number, and the remaining cells are the
--                   offset into the chipselect.
--- #size-cells : Either one or two, depending on how large each chipselect
--                can be.
--- ranges : Each range corresponds to a single chipselect, and cover
--           the entire access window as configured.
--
--Example:
--	localbus@f0010100 {
--		compatible = "fsl,mpc8272-localbus",
--			   "fsl,pq2-localbus";
--		#address-cells = <2>;
--		#size-cells = <1>;
--		reg = <0xf0010100 0x40>;
--
--		ranges = <0x0 0x0 0xfe000000 0x02000000
--			  0x1 0x0 0xf4500000 0x00008000
--			  0x2 0x0 0xfd810000 0x00010000>;
--
--		flash@0,0 {
--			compatible = "jedec-flash";
--			reg = <0x0 0x0 0x2000000>;
--			bank-width = <4>;
--			device-width = <1>;
--		};
--
--		board-control@1,0 {
--			reg = <0x1 0x0 0x20>;
--			compatible = "fsl,mpc8272ads-bcsr";
--		};
--
--		simple-periph@2,0 {
--			compatible = "fsl,elbc-gpcm-uio";
--			reg = <0x2 0x0 0x10000>;
--			elbc-gpcm-br = <0xfd810800>;
--			elbc-gpcm-or = <0xffff09f7>;
--		};
--	};
+diff --git a/drivers/net/macb.c b/drivers/net/macb.c
+index 28c2fc860e37853a91488a675af3716d9f3843df..205e3169f17b2b762ba51640248a2ea96db5c582 100644
+--- a/drivers/net/macb.c
++++ b/drivers/net/macb.c
+@@ -132,7 +132,7 @@ static int macb_send(struct eth_device *edev, void *packet,
+ 	start = get_time_ns();
+ 	ret = -ETIMEDOUT;
+ 	do {
+-		ctrl = readl(&macb->tx_ring[0].ctrl);
++		ctrl = readl(&macb->tx_ring[tx_head].ctrl);
+ 		if (ctrl & MACB_BIT(TX_USED)) {
+ 			ret = 0;
+ 			break;
 
+---
+base-commit: 1a3be5bdf6329e4e691f1d39461f5157767c7e72
+change-id: 20250126-fix-macb-send-3600780f5de8
+
+Best regards,
 -- 
-2.48.0.rc1.219.gb6b6757d772
+David Dgien <dgienda125@gmail.com>
 
