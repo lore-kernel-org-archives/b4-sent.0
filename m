@@ -1,256 +1,64 @@
-From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Mon, 03 Feb 2025 14:04:30 +0800
-Subject: [PATCH v2] drm/bridge: it6505: support hdmi_codec_ops for audio
- stream setup
+From: Brendan King <Brendan.King@imgtec.com>
+Date: Mon, 03 Feb 2025 15:31:03 +0000
+Subject: [PATCH] drm/imagination: only init job done fences once
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250203-add-audio-codec-v2-1-5c8cd72ee5bb@ite.com.tw>
-X-B4-Tracking: v=1; b=H4sIAG1coGcC/2WNyw6CMBBFf8XM2iFMQR6u/A/Dok4HmYXUtIgaw
- r9biTuX5yT33AWiBJUIx90CQWaN6scEZr8DHux4FVSXGExuDjlRidY5tA+nHtk7YWy4dWWdV8Z
- WDGl1D9Lrayueu8SDxsmH93Yw09f+Wob+WjMhoRR9X9Ol4Ibak06Ssb9l0xO6dV0/ZVx3Qa8AA
- AA=
-X-Change-ID: 20250114-add-audio-codec-8c9d47062a6c
-To: Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+Message-Id: <20250203-init-done-fences-once-v1-1-a2d62406564b@imgtec.com>
+X-B4-Tracking: v=1; b=H4sIADbhoGcC/x2MMQqAMAwAv1IyG2jVgvgVcZA01SyptCJC8e8Wl
+ 4Mb7ioUzsIFZlMh8y1FkjZxnQE6Nt0ZJTSH3vbeusGhqFwYkjJGVuKCqRHJe/LBxjFMBK09M0d
+ 5/u+yvu8H/PicQGcAAAA=
+X-Change-ID: 20250131-init-done-fences-once-c55c5d0f4d8c
+To: Frank Binns <frank.binns@imgtec.com>, 
+ Matt Coster <matt.coster@imgtec.com>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
  Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
  David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: treapking@chromium.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, 
- Hermes Wu <Hermes.wu@ite.com.tw>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Brendan King <brendan.king@imgtec.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738562676; l=7353;
- i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=lqZfEfNoydFlPCDKtWPfpO3fwht+N1S5cJwdQJmO1+c=;
- b=/MzEvq2dYLYQujk9oTXPpGxAGAKJzh9XakdQCtNdueKsw5sorux3J1fj0smHHNszs/dZ0EGMC
- jhApGPXTMH+D4G73sNuDwl4tneMGRDapt8DjbHNQZnYfQeVM708gVV/
-X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1738596677; l=1196;
+ i=Brendan.King@imgtec.com; s=20250203; h=from:subject:message-id;
+ bh=UjK3FC3XXdkxQeYEYfFWpaTm/iFaz77TzbxNoVMDyf0=;
+ b=My4AKSVKqtml8fmbWNeG7+uNB1hJeePCt8h5m8p1YMXMVMWi4Ca2kDGbYQYyuowV8VWFHz3o5
+ BX+BCQa2pX4AlrXF5avolyMkWWzU/cSzJUtfcAn4aJKKwRMqhOmj+Iz
+X-Developer-Key: i=Brendan.King@imgtec.com; a=ed25519;
+ pk=i3JvC3unEBLW+4r5s/aEWQZFsRCWaCBrWdFbMXIXCqg=
+X-Endpoint-Received: by B4 Relay for Brendan.King@imgtec.com/20250203 with auth_id=335
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For supporting audio form I2S to DP audio data sub stream.
-Add hdmi_audio callbacks to drm_bridge_funcs for the
-HDMI codec framework. The DRM_BRIDGE_OP_HDMI flag in bridge.ops
-must be set, and hdmi_write_infoframe and hdmi_clear_infoframe
-are necessary for the drm_bridge_connector to enable the HDMI codec.
+Ensure job done fences are only initialised once.
 
-Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
----
-Changes in v2:
-- Use DRM HDMI codec framewrok for audio stream setup.
-- Link to v1: https://lore.kernel.org/r/20250121-add-audio-codec-v1-1-e3ff71b3c819@ite.com.tw
----
- drivers/gpu/drm/bridge/ite-it6505.c | 151 +++++++++++++++++++++++++++++++-----
- 1 file changed, 132 insertions(+), 19 deletions(-)
+This fixes a memory manager not clean warning from drm_mm_takedown
+on module unload.
 
-diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index 88ef76a37fe6accacdd343839ff2569b31b18ceb..361e2412b8e8f040cf4254479b60588d99e8c99a 100644
---- a/drivers/gpu/drm/bridge/ite-it6505.c
-+++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -1414,32 +1414,43 @@ static void it6505_variable_config(struct it6505 *it6505)
- 	memset(it6505->bksvs, 0, sizeof(it6505->bksvs));
- }
- 
-+static int it6505_write_avi_infoframe(struct it6505 *it6505,
-+				      const u8 *buffer, size_t len)
-+{
-+	struct device *dev = it6505->dev;
-+
-+	if (len - HDMI_INFOFRAME_HEADER_SIZE > 13) {
-+		DRM_DEV_DEBUG_DRIVER(dev, "AVI size fail %d", len);
-+		return -EINVAL;
-+	}
-+
-+	it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT, 0);
-+	regmap_bulk_write(it6505->regmap, REG_AVI_INFO_DB1,
-+			  buffer + HDMI_INFOFRAME_HEADER_SIZE,
-+			  len - HDMI_INFOFRAME_HEADER_SIZE);
-+
-+	it6505_write(it6505, REG_AVI_INFO_SUM, buffer[3]);
-+	it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT,
-+			EN_AVI_PKT);
-+
-+	return 0;
-+}
-+
- static int it6505_send_video_infoframe(struct it6505 *it6505,
- 				       struct hdmi_avi_infoframe *frame)
+Signed-off-by: Brendan King <brendan.king@imgtec.com>
+---
+ drivers/gpu/drm/imagination/pvr_queue.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/imagination/pvr_queue.c b/drivers/gpu/drm/imagination/pvr_queue.c
+index c4f08432882b12f5cdfeb7fc991fd941f0946676..9a67e646f1eae709859f664c796e1940f0b45300 100644
+--- a/drivers/gpu/drm/imagination/pvr_queue.c
++++ b/drivers/gpu/drm/imagination/pvr_queue.c
+@@ -304,8 +304,9 @@ pvr_queue_cccb_fence_init(struct dma_fence *fence, struct pvr_queue *queue)
+ static void
+ pvr_queue_job_fence_init(struct dma_fence *fence, struct pvr_queue *queue)
  {
- 	u8 buffer[HDMI_INFOFRAME_HEADER_SIZE + HDMI_AVI_INFOFRAME_SIZE];
--	int err;
-+	int err, length;
- 	struct device *dev = it6505->dev;
- 
--	err = hdmi_avi_infoframe_pack(frame, buffer, sizeof(buffer));
--	if (err < 0) {
--		dev_err(dev, "Failed to pack AVI infoframe: %d", err);
--		return err;
-+	length = hdmi_avi_infoframe_pack(frame, buffer, sizeof(buffer));
-+	if (length < 0) {
-+		dev_err(dev, "Failed to pack AVI infoframe: %d", length);
-+		return length;
- 	}
- 
--	err = it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT, 0x00);
--	if (err)
--		return err;
--
--	err = regmap_bulk_write(it6505->regmap, REG_AVI_INFO_DB1,
--				buffer + HDMI_INFOFRAME_HEADER_SIZE,
--				frame->length);
--	if (err)
--		return err;
--
--	err = it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT,
--			      EN_AVI_PKT);
--	if (err)
-+	err = it6505_write_avi_infoframe(it6505, buffer, length);
-+	if (err < 0)
- 		return err;
- 
- 	return 0;
-@@ -1625,6 +1636,18 @@ static void it6505_enable_audio_infoframe(struct it6505 *it6505)
- 			EN_AUD_CTRL_PKT);
+-	pvr_queue_fence_init(fence, queue, &pvr_queue_job_fence_ops,
+-			     &queue->job_fence_ctx);
++	if (!fence->ops)
++		pvr_queue_fence_init(fence, queue, &pvr_queue_job_fence_ops,
++				     &queue->job_fence_ctx);
  }
  
-+static void it6505_write_audio_infoframe(struct it6505 *it6505,
-+					 const u8 *buffer, size_t len)
-+{
-+	it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AUD_PKT, 0);
-+	regmap_bulk_write(it6505->regmap, REG_AUD_INFOFRAM_DB1,
-+			  buffer + HDMI_INFOFRAME_HEADER_SIZE,
-+			  4);
-+	it6505_write(it6505, REG_AUD_INFOFRAM_SUM, buffer[3]);
-+	it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AUD_PKT,
-+			EN_AUD_PKT);
-+}
-+
- static void it6505_disable_audio(struct it6505 *it6505)
- {
- 	it6505_set_bits(it6505, REG_DATA_MUTE_CTRL, EN_AUD_MUTE, EN_AUD_MUTE);
-@@ -3302,6 +3325,85 @@ static const struct drm_edid *it6505_bridge_edid_read(struct drm_bridge *bridge,
- 	return drm_edid_dup(it6505->cached_edid);
- }
- 
-+static int it6505_bridge_hdmi_audio_startup(struct drm_connector *connector,
-+					    struct drm_bridge *bridge)
-+{
-+	struct it6505 *it6505 = bridge_to_it6505(bridge);
-+	struct device *dev = it6505->dev;
-+
-+	if (!it6505->powered || it6505->enable_drv_hold)
-+		return -EIO;
-+
-+	DRM_DEV_DEBUG_DRIVER(dev, "Audio enable");
-+	it6505_enable_audio(it6505);
-+
-+	return 0;
-+}
-+
-+static int it6505_bridge_hdmi_audio_prepare(struct drm_connector *connector,
-+					    struct drm_bridge *bridge,
-+					    struct hdmi_codec_daifmt *fmt,
-+					    struct hdmi_codec_params *hparms)
-+{
-+	struct it6505 *it6505 = bridge_to_it6505(bridge);
-+
-+	return it6505_audio_setup_hw_params(it6505, hparms);
-+}
-+
-+static void it6505_bridge_hdmi_audio_shutdown(struct drm_connector *connector,
-+					      struct drm_bridge *bridge)
-+{
-+	struct it6505 *it6505 = bridge_to_it6505(bridge);
-+
-+	if (it6505->powered && !it6505->enable_drv_hold)
-+		it6505_disable_audio(it6505);
-+}
-+
-+static int it6505_bridge_hdmi_clear_infoframe(struct drm_bridge *bridge,
-+					      enum hdmi_infoframe_type type)
-+{
-+	struct it6505 *it6505 = bridge_to_it6505(bridge);
-+	struct device *dev = it6505->dev;
-+
-+	switch (type) {
-+	case HDMI_INFOFRAME_TYPE_AUDIO:
-+		it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AUD_PKT, 0);
-+		break;
-+
-+	case HDMI_INFOFRAME_TYPE_AVI:
-+		it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT, 0);
-+		break;
-+	default:
-+		dev_dbg(dev, "unsupported HDMI infoframe 0x%x\n", type);
-+		break;
-+	}
-+
-+	return 0;
-+}
-+
-+static int it6505_bridge_hdmi_write_infoframe(struct drm_bridge *bridge,
-+					      enum hdmi_infoframe_type type,
-+					      const u8 *buffer, size_t len)
-+{
-+	struct it6505 *it6505 = bridge_to_it6505(bridge);
-+	struct device *dev = it6505->dev;
-+
-+	switch (type) {
-+	case HDMI_INFOFRAME_TYPE_AUDIO:
-+		it6505_write_audio_infoframe(it6505, buffer, len);
-+		break;
-+
-+	case HDMI_INFOFRAME_TYPE_AVI:
-+		it6505_write_avi_infoframe(it6505, buffer, len);
-+		break;
-+	default:
-+		dev_dbg(dev, "unsupported HDMI infoframe 0x%x\n", type);
-+		break;
-+	}
-+
-+	return 0;
-+}
-+
- static const struct drm_bridge_funcs it6505_bridge_funcs = {
- 	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
- 	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
-@@ -3315,6 +3417,12 @@ static const struct drm_bridge_funcs it6505_bridge_funcs = {
- 	.atomic_post_disable = it6505_bridge_atomic_post_disable,
- 	.detect = it6505_bridge_detect,
- 	.edid_read = it6505_bridge_edid_read,
-+	.hdmi_audio_startup = it6505_bridge_hdmi_audio_startup,
-+	.hdmi_audio_prepare = it6505_bridge_hdmi_audio_prepare,
-+	.hdmi_audio_shutdown = it6505_bridge_hdmi_audio_shutdown,
-+	.hdmi_clear_infoframe = it6505_bridge_hdmi_clear_infoframe,
-+	.hdmi_write_infoframe = it6505_bridge_hdmi_write_infoframe,
-+
- };
- 
- static __maybe_unused int it6505_bridge_resume(struct device *dev)
-@@ -3700,7 +3808,12 @@ static int it6505_i2c_probe(struct i2c_client *client)
- 	it6505->bridge.funcs = &it6505_bridge_funcs;
- 	it6505->bridge.type = DRM_MODE_CONNECTOR_DisplayPort;
- 	it6505->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_EDID |
--			     DRM_BRIDGE_OP_HPD;
-+			     DRM_BRIDGE_OP_HPD | DRM_BRIDGE_OP_HDMI;
-+	it6505->bridge.vendor = "iTE";
-+	it6505->bridge.product = "IT6505";
-+	it6505->bridge.hdmi_audio_dev = dev;
-+	it6505->bridge.hdmi_audio_max_i2s_playback_channels = 2;
-+	it6505->bridge.hdmi_audio_dai_port = 1;
- 	drm_bridge_add(&it6505->bridge);
- 
- 	return 0;
+ /**
 
 ---
-base-commit: fe003bcb69f7bff9ff2b30b659b004dbafe52907
-change-id: 20250114-add-audio-codec-8c9d47062a6c
+base-commit: 3ab334814dc7dff39075e055e12847d51878916e
+change-id: 20250131-init-done-fences-once-c55c5d0f4d8c
 
 Best regards,
 -- 
-Hermes Wu <Hermes.wu@ite.com.tw>
+Brendan King <Brendan.King@imgtec.com>
 
