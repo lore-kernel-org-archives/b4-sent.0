@@ -1,14 +1,14 @@
 From: Brendan King <Brendan.King@imgtec.com>
-Date: Mon, 03 Feb 2025 15:31:03 +0000
-Subject: [PATCH] drm/imagination: only init job done fences once
+Date: Mon, 03 Feb 2025 15:32:34 +0000
+Subject: [PATCH] drm/imagination: avoid deadlock on fence release
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250203-init-done-fences-once-v1-1-a2d62406564b@imgtec.com>
-X-B4-Tracking: v=1; b=H4sIADbhoGcC/x2MMQqAMAwAv1IyG2jVgvgVcZA01SyptCJC8e8Wl
- 4Mb7ioUzsIFZlMh8y1FkjZxnQE6Nt0ZJTSH3vbeusGhqFwYkjJGVuKCqRHJe/LBxjFMBK09M0d
- 5/u+yvu8H/PicQGcAAAA=
-X-Change-ID: 20250131-init-done-fences-once-c55c5d0f4d8c
+Message-Id: <20250203-fence-release-deadlock-v1-1-6e1de1260b38@imgtec.com>
+X-B4-Tracking: v=1; b=H4sIAJHhoGcC/x3MQQqDMBBG4avIrB0YIyL0KsVFzPzRoSGWBEohe
+ PeGLr/Fe40qiqHSY2hU8LFqV+6YxoHC6fMBNu0mJ24RJzNH5AAuSPAVrPCarvBiL+syB1n3qEo
+ 9fhdE+/7Hz+2+f6QGOD1oAAAA
+X-Change-ID: 20250203-fence-release-deadlock-a0753c07bfdd
 To: Frank Binns <frank.binns@imgtec.com>, 
  Matt Coster <matt.coster@imgtec.com>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -17,46 +17,107 @@ To: Frank Binns <frank.binns@imgtec.com>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Brendan King <brendan.king@imgtec.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738596677; l=1196;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1738596758; l=3436;
  i=Brendan.King@imgtec.com; s=20250203; h=from:subject:message-id;
- bh=UjK3FC3XXdkxQeYEYfFWpaTm/iFaz77TzbxNoVMDyf0=;
- b=My4AKSVKqtml8fmbWNeG7+uNB1hJeePCt8h5m8p1YMXMVMWi4Ca2kDGbYQYyuowV8VWFHz3o5
- BX+BCQa2pX4AlrXF5avolyMkWWzU/cSzJUtfcAn4aJKKwRMqhOmj+Iz
+ bh=Imcb2s2055ggCSrAAAaIVMPc5WER7Wm2bjB9kmOerXA=;
+ b=VbpFCDkjD7PI15JYLvdz+FUy7DwJzkrqlZ662VPb+A0ZrnuODcJCbScsFwXfBnEh1+vFT4U/r
+ SvJ6YLtgcnPAVrsMn6YX8RF5nQ4kveh9KGUKOiY9vgeDCU9HsklRrsQ
 X-Developer-Key: i=Brendan.King@imgtec.com; a=ed25519;
  pk=i3JvC3unEBLW+4r5s/aEWQZFsRCWaCBrWdFbMXIXCqg=
 X-Endpoint-Received: by B4 Relay for Brendan.King@imgtec.com/20250203 with auth_id=335
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Ensure job done fences are only initialised once.
+Do scheduler queue fence release processing on a workqueue, rather
+than in the release function itself.
 
-This fixes a memory manager not clean warning from drm_mm_takedown
-on module unload.
+Fixes deadlock issues such as the following:
+
+[  607.400437] ============================================
+[  607.405755] WARNING: possible recursive locking detected
+[  607.415500] --------------------------------------------
+[  607.420817] weston:zfq0/24149 is trying to acquire lock:
+[  607.426131] ffff000017d041a0 (reservation_ww_class_mutex){+.+.}-{3:3}, at: pvr_gem_object_vunmap+0x40/0xc0 [powervr]
+[  607.436728]
+               but task is already holding lock:
+[  607.442554] ffff000017d105a0 (reservation_ww_class_mutex){+.+.}-{3:3}, at: dma_buf_ioctl+0x250/0x554
+[  607.451727]
+               other info that might help us debug this:
+[  607.458245]  Possible unsafe locking scenario:
+
+[  607.464155]        CPU0
+[  607.466601]        ----
+[  607.469044]   lock(reservation_ww_class_mutex);
+[  607.473584]   lock(reservation_ww_class_mutex);
+[  607.478114]
+                *** DEADLOCK ***
 
 Signed-off-by: Brendan King <brendan.king@imgtec.com>
 ---
- drivers/gpu/drm/imagination/pvr_queue.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/imagination/pvr_queue.c | 13 +++++++++++--
+ drivers/gpu/drm/imagination/pvr_queue.h |  4 ++++
+ 2 files changed, 15 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/gpu/drm/imagination/pvr_queue.c b/drivers/gpu/drm/imagination/pvr_queue.c
-index c4f08432882b12f5cdfeb7fc991fd941f0946676..9a67e646f1eae709859f664c796e1940f0b45300 100644
+index c4f08432882b12f5cdfeb7fc991fd941f0946676..f3f1c5212df7432161919ddc510cececacbbe143 100644
 --- a/drivers/gpu/drm/imagination/pvr_queue.c
 +++ b/drivers/gpu/drm/imagination/pvr_queue.c
-@@ -304,8 +304,9 @@ pvr_queue_cccb_fence_init(struct dma_fence *fence, struct pvr_queue *queue)
- static void
- pvr_queue_job_fence_init(struct dma_fence *fence, struct pvr_queue *queue)
- {
--	pvr_queue_fence_init(fence, queue, &pvr_queue_job_fence_ops,
--			     &queue->job_fence_ctx);
-+	if (!fence->ops)
-+		pvr_queue_fence_init(fence, queue, &pvr_queue_job_fence_ops,
-+				     &queue->job_fence_ctx);
+@@ -109,12 +109,20 @@ pvr_queue_fence_get_driver_name(struct dma_fence *f)
+ 	return PVR_DRIVER_NAME;
  }
+ 
++static void pvr_queue_fence_release_work(struct work_struct *w)
++{
++	struct pvr_queue_fence *fence = container_of(w, struct pvr_queue_fence, release_work);
++
++	pvr_context_put(fence->queue->ctx);
++	dma_fence_free(&fence->base);
++}
++
+ static void pvr_queue_fence_release(struct dma_fence *f)
+ {
+ 	struct pvr_queue_fence *fence = container_of(f, struct pvr_queue_fence, base);
++	struct pvr_device *pvr_dev = fence->queue->ctx->pvr_dev;
+ 
+-	pvr_context_put(fence->queue->ctx);
+-	dma_fence_free(f);
++	queue_work(pvr_dev->sched_wq, &fence->release_work);
+ }
+ 
+ static const char *
+@@ -268,6 +276,7 @@ pvr_queue_fence_init(struct dma_fence *f,
+ 
+ 	pvr_context_get(queue->ctx);
+ 	fence->queue = queue;
++	INIT_WORK(&fence->release_work, pvr_queue_fence_release_work);
+ 	dma_fence_init(&fence->base, fence_ops,
+ 		       &fence_ctx->lock, fence_ctx->id,
+ 		       atomic_inc_return(&fence_ctx->seqno));
+diff --git a/drivers/gpu/drm/imagination/pvr_queue.h b/drivers/gpu/drm/imagination/pvr_queue.h
+index e06ced69302fca47fc26451dfb09ebbb24b57f52..93fe9ac9f58ccc020615485e86be438548dcee43 100644
+--- a/drivers/gpu/drm/imagination/pvr_queue.h
++++ b/drivers/gpu/drm/imagination/pvr_queue.h
+@@ -5,6 +5,7 @@
+ #define PVR_QUEUE_H
+ 
+ #include <drm/gpu_scheduler.h>
++#include <linux/workqueue.h>
+ 
+ #include "pvr_cccb.h"
+ #include "pvr_device.h"
+@@ -63,6 +64,9 @@ struct pvr_queue_fence {
+ 
+ 	/** @queue: Queue that created this fence. */
+ 	struct pvr_queue *queue;
++
++	/** @release_work: Fence release work structure. */
++	struct work_struct release_work;
+ };
  
  /**
 
 ---
 base-commit: 3ab334814dc7dff39075e055e12847d51878916e
-change-id: 20250131-init-done-fences-once-c55c5d0f4d8c
+change-id: 20250203-fence-release-deadlock-a0753c07bfdd
 
 Best regards,
 -- 
