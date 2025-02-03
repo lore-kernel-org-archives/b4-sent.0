@@ -1,73 +1,256 @@
-From: David Dgien <dgienda125@gmail.com>
-Date: Fri, 31 Jan 2025 22:59:08 -0500
-Subject: [PATCH] kbuild: Use uname for BAREBOX_COMPILE_HOST
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Date: Mon, 03 Feb 2025 14:04:30 +0800
+Subject: [PATCH v2] drm/bridge: it6505: support hdmi_codec_ops for audio
+ stream setup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250131-hostname-fix-v1-1-8d7ae619fcf4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAucnWcC/x2MQQqAIBAAvyJ7TnANsfpKdJDccg9paEQQ/j3pO
- AMzLxTKTAUm8UKmmwun2AA7AWtwcSfJvjFopY3CHmVI5YruILnxIw1atHbwflQGWnJmavrfzUu
- tH17sbo5eAAAA
-X-Change-ID: 20250131-hostname-fix-5171778dd905
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: David Dgien <dgienda125@gmail.com>
+Message-Id: <20250203-add-audio-codec-v2-1-5c8cd72ee5bb@ite.com.tw>
+X-B4-Tracking: v=1; b=H4sIAG1coGcC/2WNyw6CMBBFf8XM2iFMQR6u/A/Dok4HmYXUtIgaw
+ r9biTuX5yT33AWiBJUIx90CQWaN6scEZr8DHux4FVSXGExuDjlRidY5tA+nHtk7YWy4dWWdV8Z
+ WDGl1D9Lrayueu8SDxsmH93Yw09f+Wob+WjMhoRR9X9Ol4Ibak06Ssb9l0xO6dV0/ZVx3Qa8AA
+ AA=
+X-Change-ID: 20250114-add-audio-codec-8c9d47062a6c
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: treapking@chromium.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, 
+ Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738382352; l=1525;
- i=dgienda125@gmail.com; s=20250126; h=from:subject:message-id;
- bh=xhq+3Us3jV+l4WYQJZs4XD7JPkB7pB6UeKbnNdxDEBc=;
- b=piTPCB7bQwQvnVKV6FbnS2xB4f5sAVpzHhAblH70JHdeYyzL+3xCQtXEWxBpXcKOBAWPtEhdz
- UbvwgYjZ+cwBCfOK1d0ZtiS82DIsXPdN2L1rV8PZSezQ16cXYCo7Rml
-X-Developer-Key: i=dgienda125@gmail.com; a=ed25519;
- pk=zPhfl/eH2iShpaIksvU8MCg11Il6Dx2oW7WYAzpKbo0=
-X-Endpoint-Received: by B4 Relay for dgienda125@gmail.com/20250126 with auth_id=332
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1738562676; l=7353;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=lqZfEfNoydFlPCDKtWPfpO3fwht+N1S5cJwdQJmO1+c=;
+ b=/MzEvq2dYLYQujk9oTXPpGxAGAKJzh9XakdQCtNdueKsw5sorux3J1fj0smHHNszs/dZ0EGMC
+ jhApGPXTMH+D4G73sNuDwl4tneMGRDapt8DjbHNQZnYfQeVM708gVV/
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adoption of Linux Commit:
+For supporting audio form I2S to DP audio data sub stream.
+Add hdmi_audio callbacks to drm_bridge_funcs for the
+HDMI codec framework. The DRM_BRIDGE_OP_HDMI flag in bridge.ops
+must be set, and hdmi_write_infoframe and hdmi_clear_infoframe
+are necessary for the drm_bridge_connector to enable the HDMI codec.
 
-| commit 1e66d50ad3a1dbf0169b14d502be59a4b1213149
-| Author: Chris Down <chris@chrisdown.name>
-| Date:   Tue Oct 20 10:34:59 2020 +0100
-|
-|     kbuild: Use uname for LINUX_COMPILE_HOST detection
-|
-|     `hostname` may not be present on some systems as it's not mandated by
-|     POSIX/SUSv4. This isn't just a theoretical problem: on Arch Linux,
-|     `hostname` is provided by `inetutils`, which isn't part of the base
-|     distribution.
-|
-|         ./scripts/mkcompile_h: line 38: hostname: command not found
-|
-|     Use `uname -n` instead, which is more likely to be available (and
-|     mandated by standards).
-|
-|     Signed-off-by: Chris Down <chris@chrisdown.name>
-|     Signed-off-by: Masahiro Yamada <masahiroy@kernel.org>
-
-Signed-off-by: David Dgien <dgienda125@gmail.com>
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- scripts/mkcompile_h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v2:
+- Use DRM HDMI codec framewrok for audio stream setup.
+- Link to v1: https://lore.kernel.org/r/20250121-add-audio-codec-v1-1-e3ff71b3c819@ite.com.tw
+---
+ drivers/gpu/drm/bridge/ite-it6505.c | 151 +++++++++++++++++++++++++++++++-----
+ 1 file changed, 132 insertions(+), 19 deletions(-)
 
-diff --git a/scripts/mkcompile_h b/scripts/mkcompile_h
-index 49aadc153d44995c23ccc5bc604c2370384387ae..0cc6aa8f0585767435fc6c8537b878925a81a691 100755
---- a/scripts/mkcompile_h
-+++ b/scripts/mkcompile_h
-@@ -46,7 +46,7 @@ else
- 	BAREBOX_COMPILE_BY=$KBUILD_BUILD_USER
- fi
- if test -z "$KBUILD_BUILD_HOST"; then
--	BAREBOX_COMPILE_HOST=`hostname`
-+	BAREBOX_COMPILE_HOST=`uname -n`
- else
- 	BAREBOX_COMPILE_HOST=$KBUILD_BUILD_HOST
- fi
+diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
+index 88ef76a37fe6accacdd343839ff2569b31b18ceb..361e2412b8e8f040cf4254479b60588d99e8c99a 100644
+--- a/drivers/gpu/drm/bridge/ite-it6505.c
++++ b/drivers/gpu/drm/bridge/ite-it6505.c
+@@ -1414,32 +1414,43 @@ static void it6505_variable_config(struct it6505 *it6505)
+ 	memset(it6505->bksvs, 0, sizeof(it6505->bksvs));
+ }
+ 
++static int it6505_write_avi_infoframe(struct it6505 *it6505,
++				      const u8 *buffer, size_t len)
++{
++	struct device *dev = it6505->dev;
++
++	if (len - HDMI_INFOFRAME_HEADER_SIZE > 13) {
++		DRM_DEV_DEBUG_DRIVER(dev, "AVI size fail %d", len);
++		return -EINVAL;
++	}
++
++	it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT, 0);
++	regmap_bulk_write(it6505->regmap, REG_AVI_INFO_DB1,
++			  buffer + HDMI_INFOFRAME_HEADER_SIZE,
++			  len - HDMI_INFOFRAME_HEADER_SIZE);
++
++	it6505_write(it6505, REG_AVI_INFO_SUM, buffer[3]);
++	it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT,
++			EN_AVI_PKT);
++
++	return 0;
++}
++
+ static int it6505_send_video_infoframe(struct it6505 *it6505,
+ 				       struct hdmi_avi_infoframe *frame)
+ {
+ 	u8 buffer[HDMI_INFOFRAME_HEADER_SIZE + HDMI_AVI_INFOFRAME_SIZE];
+-	int err;
++	int err, length;
+ 	struct device *dev = it6505->dev;
+ 
+-	err = hdmi_avi_infoframe_pack(frame, buffer, sizeof(buffer));
+-	if (err < 0) {
+-		dev_err(dev, "Failed to pack AVI infoframe: %d", err);
+-		return err;
++	length = hdmi_avi_infoframe_pack(frame, buffer, sizeof(buffer));
++	if (length < 0) {
++		dev_err(dev, "Failed to pack AVI infoframe: %d", length);
++		return length;
+ 	}
+ 
+-	err = it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT, 0x00);
+-	if (err)
+-		return err;
+-
+-	err = regmap_bulk_write(it6505->regmap, REG_AVI_INFO_DB1,
+-				buffer + HDMI_INFOFRAME_HEADER_SIZE,
+-				frame->length);
+-	if (err)
+-		return err;
+-
+-	err = it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT,
+-			      EN_AVI_PKT);
+-	if (err)
++	err = it6505_write_avi_infoframe(it6505, buffer, length);
++	if (err < 0)
+ 		return err;
+ 
+ 	return 0;
+@@ -1625,6 +1636,18 @@ static void it6505_enable_audio_infoframe(struct it6505 *it6505)
+ 			EN_AUD_CTRL_PKT);
+ }
+ 
++static void it6505_write_audio_infoframe(struct it6505 *it6505,
++					 const u8 *buffer, size_t len)
++{
++	it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AUD_PKT, 0);
++	regmap_bulk_write(it6505->regmap, REG_AUD_INFOFRAM_DB1,
++			  buffer + HDMI_INFOFRAME_HEADER_SIZE,
++			  4);
++	it6505_write(it6505, REG_AUD_INFOFRAM_SUM, buffer[3]);
++	it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AUD_PKT,
++			EN_AUD_PKT);
++}
++
+ static void it6505_disable_audio(struct it6505 *it6505)
+ {
+ 	it6505_set_bits(it6505, REG_DATA_MUTE_CTRL, EN_AUD_MUTE, EN_AUD_MUTE);
+@@ -3302,6 +3325,85 @@ static const struct drm_edid *it6505_bridge_edid_read(struct drm_bridge *bridge,
+ 	return drm_edid_dup(it6505->cached_edid);
+ }
+ 
++static int it6505_bridge_hdmi_audio_startup(struct drm_connector *connector,
++					    struct drm_bridge *bridge)
++{
++	struct it6505 *it6505 = bridge_to_it6505(bridge);
++	struct device *dev = it6505->dev;
++
++	if (!it6505->powered || it6505->enable_drv_hold)
++		return -EIO;
++
++	DRM_DEV_DEBUG_DRIVER(dev, "Audio enable");
++	it6505_enable_audio(it6505);
++
++	return 0;
++}
++
++static int it6505_bridge_hdmi_audio_prepare(struct drm_connector *connector,
++					    struct drm_bridge *bridge,
++					    struct hdmi_codec_daifmt *fmt,
++					    struct hdmi_codec_params *hparms)
++{
++	struct it6505 *it6505 = bridge_to_it6505(bridge);
++
++	return it6505_audio_setup_hw_params(it6505, hparms);
++}
++
++static void it6505_bridge_hdmi_audio_shutdown(struct drm_connector *connector,
++					      struct drm_bridge *bridge)
++{
++	struct it6505 *it6505 = bridge_to_it6505(bridge);
++
++	if (it6505->powered && !it6505->enable_drv_hold)
++		it6505_disable_audio(it6505);
++}
++
++static int it6505_bridge_hdmi_clear_infoframe(struct drm_bridge *bridge,
++					      enum hdmi_infoframe_type type)
++{
++	struct it6505 *it6505 = bridge_to_it6505(bridge);
++	struct device *dev = it6505->dev;
++
++	switch (type) {
++	case HDMI_INFOFRAME_TYPE_AUDIO:
++		it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AUD_PKT, 0);
++		break;
++
++	case HDMI_INFOFRAME_TYPE_AVI:
++		it6505_set_bits(it6505, REG_INFOFRAME_CTRL, EN_AVI_PKT, 0);
++		break;
++	default:
++		dev_dbg(dev, "unsupported HDMI infoframe 0x%x\n", type);
++		break;
++	}
++
++	return 0;
++}
++
++static int it6505_bridge_hdmi_write_infoframe(struct drm_bridge *bridge,
++					      enum hdmi_infoframe_type type,
++					      const u8 *buffer, size_t len)
++{
++	struct it6505 *it6505 = bridge_to_it6505(bridge);
++	struct device *dev = it6505->dev;
++
++	switch (type) {
++	case HDMI_INFOFRAME_TYPE_AUDIO:
++		it6505_write_audio_infoframe(it6505, buffer, len);
++		break;
++
++	case HDMI_INFOFRAME_TYPE_AVI:
++		it6505_write_avi_infoframe(it6505, buffer, len);
++		break;
++	default:
++		dev_dbg(dev, "unsupported HDMI infoframe 0x%x\n", type);
++		break;
++	}
++
++	return 0;
++}
++
+ static const struct drm_bridge_funcs it6505_bridge_funcs = {
+ 	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
+ 	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
+@@ -3315,6 +3417,12 @@ static const struct drm_bridge_funcs it6505_bridge_funcs = {
+ 	.atomic_post_disable = it6505_bridge_atomic_post_disable,
+ 	.detect = it6505_bridge_detect,
+ 	.edid_read = it6505_bridge_edid_read,
++	.hdmi_audio_startup = it6505_bridge_hdmi_audio_startup,
++	.hdmi_audio_prepare = it6505_bridge_hdmi_audio_prepare,
++	.hdmi_audio_shutdown = it6505_bridge_hdmi_audio_shutdown,
++	.hdmi_clear_infoframe = it6505_bridge_hdmi_clear_infoframe,
++	.hdmi_write_infoframe = it6505_bridge_hdmi_write_infoframe,
++
+ };
+ 
+ static __maybe_unused int it6505_bridge_resume(struct device *dev)
+@@ -3700,7 +3808,12 @@ static int it6505_i2c_probe(struct i2c_client *client)
+ 	it6505->bridge.funcs = &it6505_bridge_funcs;
+ 	it6505->bridge.type = DRM_MODE_CONNECTOR_DisplayPort;
+ 	it6505->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_EDID |
+-			     DRM_BRIDGE_OP_HPD;
++			     DRM_BRIDGE_OP_HPD | DRM_BRIDGE_OP_HDMI;
++	it6505->bridge.vendor = "iTE";
++	it6505->bridge.product = "IT6505";
++	it6505->bridge.hdmi_audio_dev = dev;
++	it6505->bridge.hdmi_audio_max_i2s_playback_channels = 2;
++	it6505->bridge.hdmi_audio_dai_port = 1;
+ 	drm_bridge_add(&it6505->bridge);
+ 
+ 	return 0;
 
 ---
-base-commit: b2a15c383ddc4f31792e48e395a425e5c3658dd1
-change-id: 20250131-hostname-fix-5171778dd905
+base-commit: fe003bcb69f7bff9ff2b30b659b004dbafe52907
+change-id: 20250114-add-audio-codec-8c9d47062a6c
 
 Best regards,
 -- 
-David Dgien <dgienda125@gmail.com>
+Hermes Wu <Hermes.wu@ite.com.tw>
 
