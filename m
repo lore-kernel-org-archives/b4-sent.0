@@ -1,135 +1,124 @@
 From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Tue, 04 Feb 2025 14:09:17 +0100
-Subject: [PATCH net-next v3 3/3] net: phy: dp83822: Add support for
- changing the transmit amplitude voltage
+Date: Tue, 04 Feb 2025 14:10:31 +0100
+Subject: [PATCH] power: supply: max1720x: add health property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250204-dp83822-tx-swing-v3-3-9798e96500d9@liebherr.com>
-References: <20250204-dp83822-tx-swing-v3-0-9798e96500d9@liebherr.com>
-In-Reply-To: <20250204-dp83822-tx-swing-v3-0-9798e96500d9@liebherr.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andrew Davis <afd@ti.com>, 
- Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- Florian Fainelli <f.fainelli@gmail.com>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+Message-Id: <20250204-max1720x_health-v1-1-97ebbe4a0bc5@liebherr.com>
+X-B4-Tracking: v=1; b=H4sIAMYRomcC/x3MTQqAIBBA4avErBPGqQi6SkSIjjnQHxohRHdPW
+ n6L9x5IHIUTDNUDkW9JcuwFuq7ABrMvrMQVAyF1qKlRm8m6J8xzYLNeQVlkx9g69E5Dqc7IXvJ
+ /HKf3/QA3iZM9YQAAAA==
+X-Change-ID: 20250123-max1720x_health-c0ede04d0fd1
+To: Sebastian Reichel <sre@kernel.org>
+Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>, 
+ Thomas Antoine <t.antoine@uclouvain.be>, 
+ Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738674559; l=3472;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1738674636; l=3559;
  i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=ztpkGISeXg8t3r7zAhGd49uq4pvJ3laG+9qmmnQTdzo=;
- b=BsZ41GbYpZax+5vDhxewWKmmaKHE/FKYBeHN622wgJq6X0oRp3PKAC3X3J+ciPvUson3D4i00
- JWq4JQ6U987ATfbvwMZ1XaBCQ+5FFR5qb2Pj5Z5B+M1n7oj3goYx0mm
+ bh=Rx3BHuxKX4jLbGUvrYB+xiYMQ7GjWqSEoUzSJP/Ox1M=;
+ b=CqOtEfgiE0TlDmKQuBp3RVGzDnF09JPYrytSuOQ8jNEGb9Q3bnwTzWrRHrqHfVVMVYyyCFhuT
+ 2+jHsfk+HenCaUF4xZu9RJikiQry9OHje7gJEnTrVhaCNO5E4XJFiqX
 X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
  pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
 X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for changing the transmit amplitude voltage in 100BASE-TX mode.
-Modifying it can be necessary to compensate losses on the PCB and
-connector, so the voltages measured on the RJ45 pins are conforming.
+Add health property, which checks that temperature, voltage and current are
+within limits for the battery. Limits can be programmed in non-volatile
+memory.
 
 Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- drivers/net/phy/dp83822.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+ drivers/power/supply/max1720x_battery.c | 47 +++++++++++++++++++++++++++++++++
+ 1 file changed, 47 insertions(+)
 
-diff --git a/drivers/net/phy/dp83822.c b/drivers/net/phy/dp83822.c
-index 6599feca1967d705331d6e354205a2485ea962f2..80b49e7744d6d4c9571606455fe50534d2dee977 100644
---- a/drivers/net/phy/dp83822.c
-+++ b/drivers/net/phy/dp83822.c
-@@ -31,6 +31,7 @@
- #define MII_DP83822_RCSR	0x17
- #define MII_DP83822_RESET_CTRL	0x1f
- #define MII_DP83822_MLEDCR	0x25
-+#define MII_DP83822_LDCTRL	0x403
- #define MII_DP83822_LEDCFG1	0x460
- #define MII_DP83822_IOCTRL1	0x462
- #define MII_DP83822_IOCTRL2	0x463
-@@ -123,6 +124,9 @@
- #define DP83822_IOCTRL1_GPIO1_CTRL		GENMASK(2, 0)
- #define DP83822_IOCTRL1_GPIO1_CTRL_LED_1	BIT(0)
- 
-+/* LDCTRL bits */
-+#define DP83822_100BASE_TX_LINE_DRIVER_SWING	GENMASK(7, 4)
-+
- /* IOCTRL2 bits */
- #define DP83822_IOCTRL2_GPIO2_CLK_SRC		GENMASK(6, 4)
- #define DP83822_IOCTRL2_GPIO2_CTRL		GENMASK(2, 0)
-@@ -197,6 +201,7 @@ struct dp83822_private {
- 	bool set_gpio2_clk_out;
- 	u32 gpio2_clk_out;
- 	bool led_pin_enable[DP83822_MAX_LED_PINS];
-+	int tx_amplitude_100base_tx_index;
+diff --git a/drivers/power/supply/max1720x_battery.c b/drivers/power/supply/max1720x_battery.c
+index 11580e414713b7f42354a8bf4e4ef7bee6e33f36..810edda327683761f16ce0d0affc1e0affd90f90 100644
+--- a/drivers/power/supply/max1720x_battery.c
++++ b/drivers/power/supply/max1720x_battery.c
+@@ -29,6 +29,11 @@
+ /* ModelGauge m5 */
+ #define MAX172XX_STATUS			0x00	/* Status */
+ #define MAX172XX_STATUS_BAT_ABSENT	BIT(3)	/* Battery absent */
++#define MAX172XX_STATUS_IMX		BIT(6)	/* Maximum Current Alert Threshold Exceeded */
++#define MAX172XX_STATUS_VMN		BIT(8)	/* Minimum Voltage Alert Threshold Exceeded */
++#define MAX172XX_STATUS_TMN		BIT(9)	/* Minimum Temperature Alert Threshold Exceeded */
++#define MAX172XX_STATUS_VMX		BIT(12)	/* Maximum Voltage Alert Threshold Exceeded */
++#define MAX172XX_STATUS_TMX		BIT(13)	/* Maximum Temperature Alert Threshold Exceeded */
+ #define MAX172XX_REPCAP			0x05	/* Average capacity */
+ #define MAX172XX_REPSOC			0x06	/* Percentage of charge */
+ #define MAX172XX_TEMP			0x08	/* Temperature */
+@@ -250,6 +255,7 @@ static const struct nvmem_cell_info max1720x_nvmem_cells[] = {
  };
  
- static int dp83822_config_wol(struct phy_device *phydev,
-@@ -522,6 +527,12 @@ static int dp83822_config_init(struct phy_device *phydev)
- 			       FIELD_PREP(DP83822_IOCTRL2_GPIO2_CLK_SRC,
- 					  dp83822->gpio2_clk_out));
- 
-+	if (dp83822->tx_amplitude_100base_tx_index >= 0)
-+		phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_LDCTRL,
-+			       DP83822_100BASE_TX_LINE_DRIVER_SWING,
-+			       FIELD_PREP(DP83822_100BASE_TX_LINE_DRIVER_SWING,
-+					  dp83822->tx_amplitude_100base_tx_index));
-+
- 	err = dp83822_config_init_leds(phydev);
- 	if (err)
- 		return err;
-@@ -720,6 +731,11 @@ static int dp83822_phy_reset(struct phy_device *phydev)
+ static const enum power_supply_property max1720x_battery_props[] = {
++	POWER_SUPPLY_PROP_HEALTH,
+ 	POWER_SUPPLY_PROP_PRESENT,
+ 	POWER_SUPPLY_PROP_CAPACITY,
+ 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+@@ -314,6 +320,43 @@ static int max172xx_current_to_voltage(unsigned int reg)
+ 	return val * 156252;
  }
  
- #ifdef CONFIG_OF_MDIO
-+static const u32 tx_amplitude_100base_tx_gain[] = {
-+	80, 82, 83, 85, 87, 88, 90, 92,
-+	93, 95, 97, 98, 100, 102, 103, 105,
-+};
++static int max172xx_battery_health(struct max1720x_device_info *info,
++				   unsigned int *health)
++{
++	unsigned int status;
++	int ret;
 +
- static int dp83822_of_init_leds(struct phy_device *phydev)
- {
- 	struct device_node *node = phydev->mdio.dev.of_node;
-@@ -780,6 +796,8 @@ static int dp83822_of_init(struct phy_device *phydev)
- 	struct dp83822_private *dp83822 = phydev->priv;
- 	struct device *dev = &phydev->mdio.dev;
- 	const char *of_val;
-+	s32 val;
-+	int i;
- 
- 	/* Signal detection for the PHY is only enabled if the FX_EN and the
- 	 * SD_EN pins are strapped. Signal detection can only enabled if FX_EN
-@@ -815,6 +833,25 @@ static int dp83822_of_init(struct phy_device *phydev)
- 		dp83822->set_gpio2_clk_out = true;
- 	}
- 
-+	dp83822->tx_amplitude_100base_tx_index = -1;
-+	val = phy_get_tx_amplitude_gain(phydev, dev,
-+					ETHTOOL_LINK_MODE_100baseT_Full_BIT);
-+	if (val > 0) {
-+		for (i = 0; i < ARRAY_SIZE(tx_amplitude_100base_tx_gain); i++) {
-+			if (tx_amplitude_100base_tx_gain[i] == val) {
-+				dp83822->tx_amplitude_100base_tx_index = i;
-+				break;
-+			}
-+		}
++	ret = regmap_read(info->regmap, MAX172XX_STATUS, &status);
++	if (ret < 0)
++		return ret;
 +
-+		if (dp83822->tx_amplitude_100base_tx_index < 0) {
-+			phydev_err(phydev,
-+				   "Invalid value for tx-amplitude-100base-tx-percent property (%u)\n",
-+				   val);
-+			return -EINVAL;
-+		}
++	if (status & MAX172XX_STATUS_VMN)
++		*health = POWER_SUPPLY_HEALTH_DEAD;
++	else if (status & MAX172XX_STATUS_VMX)
++		*health = POWER_SUPPLY_HEALTH_OVERVOLTAGE;
++	else if (status & MAX172XX_STATUS_TMN)
++		*health = POWER_SUPPLY_HEALTH_COLD;
++	else if (status & MAX172XX_STATUS_TMX)
++		*health = POWER_SUPPLY_HEALTH_OVERHEAT;
++	else if (status & MAX172XX_STATUS_IMX)
++		*health = POWER_SUPPLY_HEALTH_OVERCURRENT;
++	else
++		*health = POWER_SUPPLY_HEALTH_GOOD;
++
++	/* Clear events which are not self-clearing to detect next events */
++	if (status > 0 && status != MAX172XX_STATUS_IMX) {
++		ret = regmap_set_bits(info->regmap, MAX172XX_STATUS,
++				      MAX172XX_STATUS_VMN |
++				      MAX172XX_STATUS_VMX |
++				      MAX172XX_STATUS_TMN |
++				      MAX172XX_STATUS_TMX);
++		if (ret < 0)
++			return ret;
 +	}
 +
- 	return dp83822_of_init_leds(phydev);
- }
++	return 0;
++}
++
+ static int max1720x_battery_get_property(struct power_supply *psy,
+ 					 enum power_supply_property psp,
+ 					 union power_supply_propval *val)
+@@ -323,6 +366,10 @@ static int max1720x_battery_get_property(struct power_supply *psy,
+ 	int ret = 0;
  
+ 	switch (psp) {
++	case POWER_SUPPLY_PROP_HEALTH:
++		ret = max172xx_battery_health(info, &reg_val);
++		val->intval = reg_val;
++		break;
+ 	case POWER_SUPPLY_PROP_PRESENT:
+ 		/*
+ 		 * POWER_SUPPLY_PROP_PRESENT will always readable via
 
+---
+base-commit: b4a95b8fd3e67c1222c76bdd1078d43c9a11d132
+change-id: 20250123-max1720x_health-c0ede04d0fd1
+
+Best regards,
 -- 
-2.39.5
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
