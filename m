@@ -1,72 +1,92 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Tue, 04 Feb 2025 21:10:34 +0100
-Subject: [PATCH] build: Replace meson introspection argument with a
- builddir
+From: Krishanth Jagaduri <Krishanth.Jagaduri@sony.com>
+Date: Wed, 05 Feb 2025 08:32:14 +0530
+Subject: [PATCH] Documentation/no_hz: Remove description that states boot
+ CPU cannot be nohz_full
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250204-jag-fix_meson-v1-1-ecb6bdb1db51@kernel.org>
-X-B4-Tracking: v=1; b=H4sIADl0omcC/x2MWwqAIBAAryL7neDzo64SEZabbZCGQgTS3ZM+h
- 2GmQsFMWGBgFTLeVCjFBrJjsO4uBuTkG4MSygolDD9c4Bs984klRW60X4xXvdDSQmuujE3+v3F
- 63w/xCzuaXwAAAA==
-X-Change-ID: 20250204-jag-fix_meson-43db4d290315
-To: qemu-devel@nongnu.org
-Cc: Paolo Bonzini <pbonzini@redhat.com>, 
- =?utf-8?q?Alex_Benn=C3=A9e?= <alex.bennee@linaro.org>, 
- Thomas Huth <thuth@redhat.com>, Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.15-dev-64da2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1262;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=n903QA//BBYKpY4cOT1+2ldqqv5Gmu9LPXH4tfYVe+M=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGeidEdVR4Y+ouemPf1zTZjEMaNRJFn89bnt4
- dgnUdtMIAj4A4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnonRHAAoJELqXzVK3
- lkFPuDUL/3uPcT7NKjoHmxwSq470mQp0rmGM0CqaKYBCZWBSJxdaQw6uhViGUT1C8PXWp/kWY+O
- tEtyUyhiD5V3HIc5i7X8bveN4A+potmEJaJ2LWf8sIJcMWFPlENh2wOzk1DpGRy0Y/8c1Y0B4Wv
- fJteBBO9XAICnim88PhzpXkt9ia0KeNHKrbq7nhE2p2WXDjIB4wCrUyR1tM55A4FTKTLoxDP3nh
- qJLgK2VRbJOkuRx4UfTl0VYfQiar5UT/9m60YXg4/ueighvMAOUhbt4JoRlrRjZ6OIBil8x6y5D
- W21VwLubidLzKf5MiZDlo8T260HqhklvaDh+WGSdC8hd96Q5exgKjC1FCiUzkPyzlaqQsMP48ta
- QY5Gt+HbPbK5NUSCBJ/3kAkwi2rL7Da3vYcU4n7Q2/zuKwbQh5KAJ2VcLF4MJLUgMMYyTv0rTy0
- 8Cvza78hO4HNoZyg1c3yR4ipwtxExlQQb/fm9UKcG+Gd5bG73T6AhlXON1peDDiYxBj3kajTEU7
- HA=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+Message-Id: <20250205-send-oss-20250129-v1-1-d404921e6d7e@sony.com>
+X-B4-Tracking: v=1; b=H4sIALXUomcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDQyNL3eLUvBTd/OJiXbiIcbKJUUpymomZcWqSElBfQVFqWmYF2Mzo2Np
+ aANx8/qJjAAAA
+X-Change-ID: 20250129-send-oss-20250129-3c42dcf463eb
+To: Thomas Gleixner <tglx@linutronix.de>, Jonathan Corbet <corbet@lwn.net>
+Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Atsushi Ochiai <Atsushi.Ochiai@sony.com>, 
+ Daniel Palmer <Daniel.Palmer@sony.com>, Oleg Nesterov <oleg@redhat.com>, 
+ stable@vger.kernel.org, Krishanth Jagaduri <Krishanth.Jagaduri@sony.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1738724552; l=2701;
+ i=Krishanth.Jagaduri@sony.com; s=20250122; h=from:subject:message-id;
+ bh=E835T3tqOhFIcn/Jm6X5qlETpMAWcMeplxvdOyEAeTk=;
+ b=arldPplnu5QfSI/nuErJEq7UekxDqNZEtHWhOuNB63444+4wrmK/5cLfNDHZOvmrYyCnN/vOn
+ GO55gjfsmhvDDyu1ZDrKcb7qOBtL1+NorXtzZGYZXpdTPdiNYzmlqQ0
+X-Developer-Key: i=Krishanth.Jagaduri@sony.com; a=ed25519;
+ pk=lx2tvWPqsnFN2XCeuuKdm7G2bXm/Grq1a1KTsSpFZSk=
+X-Endpoint-Received: by B4 Relay for Krishanth.Jagaduri@sony.com/20250122 with auth_id=326
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the meson introspect argument with the build directory instead
-of the meson.build file. The introspect command accepts an optional
-build directory not a file.
+From: Oleg Nesterov <oleg@redhat.com>
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+[ Upstream commit 5097cbcb38e6e0d2627c9dde1985e91d2c9f880e ]
+
+Documentation/timers/no_hz.rst states that the "nohz_full=" mask must not
+include the boot CPU, which is no longer true after:
+
+  commit 08ae95f4fd3b ("nohz_full: Allow the boot CPU to be nohz_full").
+
+Apply changes only to Documentation/timers/no_hz.rst in stable kernels.
+
+Signed-off-by: Oleg Nesterov <oleg@redhat.com>
+Cc: stable@vger.kernel.org # 5.4+
+Signed-off-by: Krishanth Jagaduri <Krishanth.Jagaduri@sony.com>
 ---
-For some reason this causes an error when I "remote" compile qemu.
-In any case, the introspect only accepts directories, so having it point
-the to the meson.build file is a mistake.
+Hi,
 
-Comments are greatly appreciated
+Before kernel 6.9, Documentation/timers/no_hz.rst states that
+"nohz_full=" mask must not include the boot CPU, which is no longer
+true after commit 08ae95f4fd3b ("nohz_full: Allow the boot CPU to be
+nohz_full").
+
+This was fixed upstream by commit 5097cbcb38e6 ("sched/isolation: Prevent
+boot crash when the boot CPU is nohz_full").
+
+While it fixes the document description, it also fixes issue introduced
+by another commit aae17ebb53cd ("workqueue: Avoid using isolated cpus'
+timers on queue_delayed_work").
+
+It is unlikely that it will be backported to stable kernels which does
+not contain the commit that introduced the issue.
+
+Could Documentation/timers/no_hz.rst be fixed in stable kernels 5.4+?
 ---
- Makefile | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Documentation/timers/no_hz.rst | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/Makefile b/Makefile
-index b65b0bd41a..da88d9bb31 100644
---- a/Makefile
-+++ b/Makefile
-@@ -129,7 +129,7 @@ Makefile.mtest: build.ninja scripts/mtest2make.py
- .PHONY: update-buildoptions
- all update-buildoptions: $(SRC_PATH)/scripts/meson-buildoptions.sh
- $(SRC_PATH)/scripts/meson-buildoptions.sh: $(SRC_PATH)/meson_options.txt
--	$(MESON) introspect --buildoptions $(SRC_PATH)/meson.build | $(PYTHON) \
-+	$(MESON) introspect --buildoptions $(BUILD_DIR) | $(PYTHON) \
- 	  scripts/meson-buildoptions.py > $@.tmp && mv $@.tmp $@
- endif
+diff --git a/Documentation/timers/no_hz.rst b/Documentation/timers/no_hz.rst
+index 065db217cb04fc252bbf6a05991296e7f1d3a4c5..16bda468423e88090c0dc467ca7a5c7f3fd2bf02 100644
+--- a/Documentation/timers/no_hz.rst
++++ b/Documentation/timers/no_hz.rst
+@@ -129,11 +129,8 @@ adaptive-tick CPUs:  At least one non-adaptive-tick CPU must remain
+ online to handle timekeeping tasks in order to ensure that system
+ calls like gettimeofday() returns accurate values on adaptive-tick CPUs.
+ (This is not an issue for CONFIG_NO_HZ_IDLE=y because there are no running
+-user processes to observe slight drifts in clock rate.)  Therefore, the
+-boot CPU is prohibited from entering adaptive-ticks mode.  Specifying a
+-"nohz_full=" mask that includes the boot CPU will result in a boot-time
+-error message, and the boot CPU will be removed from the mask.  Note that
+-this means that your system must have at least two CPUs in order for
++user processes to observe slight drifts in clock rate.) Note that this
++means that your system must have at least two CPUs in order for
+ CONFIG_NO_HZ_FULL=y to do anything for you.
  
+ Finally, adaptive-ticks CPUs must have their RCU callbacks offloaded.
 
 ---
-base-commit: d922088eb4ba6bc31a99f17b32cf75e59dd306cd
-change-id: 20250204-jag-fix_meson-43db4d290315
+base-commit: 219d54332a09e8d8741c1e1982f5eae56099de85
+change-id: 20250129-send-oss-20250129-3c42dcf463eb
 
 Best regards,
 -- 
-Joel Granados <joel.granados@kernel.org>
+Krishanth Jagaduri <Krishanth.Jagaduri@sony.com>
 
