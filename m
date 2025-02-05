@@ -1,76 +1,92 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Wed, 05 Feb 2025 09:50:51 +0100
-Subject: [PATCH v2] bringup: Use full path when creating custom_source file
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Subject: [PATCH v6 0/4] Driver for Apple Z2 touchscreens.
+Date: Wed, 05 Feb 2025 17:27:25 +0100
+Message-Id: <20250205-z2-v6-0-cc60cbee1d5b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250205-jag-bringup_fixes-v2-1-48f70c0d0a08@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAGomo2cC/22NwQrCMBBEf6Xs2Uh2CVY8+R9SpI3bdFXSstGgl
- P67seDN45vhzcyQWIUTHKoZlLMkGWMB2lTghzYGNnIpDGTJIWFtrm0wnUoMz+ncy4uTIcc9dt4
- RYgvFm5TXominpvAg6THqe73I+E1/a/s/axmNNbbriW3td87644018n07aoBmWZYP+g32MbMAA
- AA=
-X-Change-ID: 20241217-jag-bringup_fixes-24ef1bc4211a
-To: Luis Chamberlain <mcgrof@kernel.org>, 
- Daniel Gomez <da.gomez@samsung.com>
-Cc: kdevops@lists.linux.dev, Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.15-dev-64da2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1474;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=cvXy/yFqYcvqf90EjZ/XNMPUxCh0tms83z3EobnIfeE=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGejJnvYM5S7jEvHbH18O1ZwtvNQAD0Y3GjAl
- y0CcAybqOf0OYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnoyZ7AAoJELqXzVK3
- lkFPNVUL/1MiQudcpI+LDfiBo2Q8Fbk9Us+5l6krgnoFMESZt+NSMX3UlTHgiQcqkSMJM5PETJM
- MhBZ3wnbfCUckV8dkxWT9tsIT8X9ZTlKKPQ64hoNWN18QFn2A28olaI8fGkS98ltm4KUbsThDNC
- cjN8V7rOWlgzsmIpHL+pQmQJfsRIexep1HdZvYNSSsxiPqeVTsf6KRo97TKADuS78TuyLEjss69
- s2UyunF52+FxkYm4SfUaipMP9EzZ9NK8kEF++1SpAn5dvBIRcKX0UenesnsDnQe5tQ4FatEe4OI
- s5KoZMeXHig6pPcWX3rZpyf7gffdJz8URu5VM4/Bg1wlfYtU9glb6Quk8p8SW6H5zKfm/UdJirL
- WI36voxvYBzFFD/NQCMeRBrsxToAGgeAliPZXbOUIs2tcdLrMHjoz/SarLxYw9PRkbMDmB2nO73
- Y/JkGwVDxp/yCiSyKM/E6wl2nY8lmlhb+3dpOnrJFGheAH3PDyoXD3EpxqhjCWEAMIpGAz8dRp5
- nE=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-B4-Tracking: v=1; b=H4sIAG6Ro2cC/13OQWrDMBAF0KsEraOiGWlkp6vcI3QhjeREkMTFD
+ iZt8N07VgkYL/9n3mdeasxDyaP63L3UkKcylv4uwe93ii/hfs66JMkKDToAdPoXNRvASNjmYJK
+ Sw+8hd+VZR05fki9lfPTDT92cYGnf3C98Am00O8uO2aMx6Xi+hXL94P6mFj7hmrSVoJDGM9Mhx
+ g6g2RL7JmTEVGKFEJtMRMmmDrbErQlV4oSkxnoIEXwMZktoTf4fIyE+2TYitQj+sCbzPP8B8AS
+ Q5mABAAA=
+X-Change-ID: 20241124-z2-c012b528ea0d
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Henrik Rydberg <rydberg@bitmath.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Neal Gompa <neal@gompa.dev>, Janne Grunau <j@jannau.net>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1738772855; l=2592;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=pdvJaLK1YetgfWtC/g4XRn1PEiiMbwT/keJUb2ZUpPw=;
+ b=ohHUwa25UeGvPAIPFl6IHnroVpZ+96B3w9nWrr5pZpCtYgbIWoKI7jjWSOlH+SqAT1T8DJ2nF
+ PQKEcVGn36TBUI8dyW9cHuSLrnPvs9yrKG5HAHWmQyUGiGCp6o/F2xe
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Avoid "file not found" failures related to relative paths in
-custom_source
+Hi.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+This series adds support for Apple touchscreens using the Z2 protocol.
+Those are used as the primary touchscreen on mobile Apple devices, and for the
+touchbar on laptops using the M-series chips. (T1/T2 laptops have a coprocessor
+in charge of speaking Z2 to the touchbar).
+
+Originally sent as a RFC at https://lore.kernel.org/all/20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com/
+The changes since then mostly address the review feedback, but also
+add another machine that has this specific controller.
+
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
-After discussion in the list there is only one patch remaining. I have
-dropped the ones that were "shot down" and kept the one that makes sure
-we use full paths instead of relative; which seems to be a good idea.
+Changes in v6:
+- Went back to build_cal_blob returning an allocated buffer, other fixes.
+- Link to v5: https://lore.kernel.org/r/20250118-z2-v5-0-6d38b2582169@gmail.com
+
+Changes in v5:
+- Added missing \ns, removed 4kb-ish of wasted ram
+- Link to v4: https://lore.kernel.org/r/20250115-z2-v4-0-d7361ab16ba0@gmail.com
+
+Changes in v4:
+- Dropped another allocation, other fixes.
+- Link to v3: https://lore.kernel.org/r/20250112-z2-v3-0-5c0e555d3df1@gmail.com
+
+Changes in v3:
+- Tx/Rx buffers used in interrupt handler are now allocated in probe and reused
+- Other various style fixes
+- Link to v2: https://lore.kernel.org/r/20241128-z2-v2-0-76cc59bbf117@gmail.com
 
 Changes in v2:
-- Only one patch remains : "[PATCH RESEND 10/12] bringup: Use full path
-  when creating custom_source file", because some have already gone into
-  mainline and some other were "shot down"
-- Link to v1: https://lore.kernel.org/r/20241218-jag-bringup_fixes-v1-0-0bf2e07c640c@kernel.org
----
+- In a separate patch, fixed an issue that prevented the SPI controller
+  from using GPIO CS, and as such, moved the hardware quirk to there
+- Went back to uploading the firmware in probe() instad of open()
+- Other changes addressing the review feedback
+- Link to v1: https://lore.kernel.org/r/20241126-z2-v1-0-c43c4cc6200d@gmail.com
 
 ---
- scripts/bringup_guestfs.sh | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Sasha Finkelstein (4):
+      dt-bindings: input: touchscreen: Add Z2 controller
+      input: apple_z2: Add a driver for Apple Z2 touchscreens
+      arm64: dts: apple: Add touchbar digitizer nodes
+      MAINTAINERS: Add entries for Apple Z2 touchscreen driver
 
-diff --git a/scripts/bringup_guestfs.sh b/scripts/bringup_guestfs.sh
-index 74eecea..2c41999 100755
---- a/scripts/bringup_guestfs.sh
-+++ b/scripts/bringup_guestfs.sh
-@@ -110,7 +110,7 @@ build_custom_image()
- 	CUSTOM_IMAGE="${CUSTOM_IMAGE_DIR}/${OS_VERSION}.raw"
- 	CUSTOM_IMAGE_OK="${CUSTOM_IMAGE_DIR}.ok"
- 	CUSTOM_SOURCE="/etc/virt-builder/repos.d/kdevops-custom-images-${OS_VERSION}.conf"
--	CUSTOM_INDEX="${CUSTOM_IMAGE_DIR}/index"
-+	CUSTOM_INDEX="$(realpath ${CUSTOM_IMAGE_DIR}/index)"
- 
- 	mkdir -p ${CUSTOM_IMAGE_DIR}
- 
-
+ .../input/touchscreen/apple,z2-multitouch.yaml     |  70 +++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t8103-j293.dts           |  27 ++
+ arch/arm64/boot/dts/apple/t8103.dtsi               |  19 +
+ arch/arm64/boot/dts/apple/t8112-j493.dts           |  23 +
+ arch/arm64/boot/dts/apple/t8112.dtsi               |  14 +
+ drivers/input/touchscreen/Kconfig                  |  13 +
+ drivers/input/touchscreen/Makefile                 |   1 +
+ drivers/input/touchscreen/apple_z2.c               | 473 +++++++++++++++++++++
+ 9 files changed, 642 insertions(+)
 ---
-base-commit: 4bffd17ac6a3ac757a26897a75ffa185d623a8e4
-change-id: 20241217-jag-bringup_fixes-24ef1bc4211a
-
-Best regards,
--- 
-Joel Granados <joel.granados@kernel.org>
+base-commit: b62cef9a5c673f1b8083159f5dc03c1c5daced2f
+change-id: 20241124-z2-c012b528ea0d
 
