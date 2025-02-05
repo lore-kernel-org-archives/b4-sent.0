@@ -1,262 +1,76 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Wed, 05 Feb 2025 15:58:43 +0800
-Subject: [PATCH v2] soc: amlogic: clk-measure: Optimize the memory size of
- clk-measure
+From: Joel Granados <joel.granados@kernel.org>
+Date: Wed, 05 Feb 2025 09:50:51 +0100
+Subject: [PATCH v2] bringup: Use full path when creating custom_source file
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250205-optimize_memory_size_of_clk_measure-v2-1-4f546053495d@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIADIao2cC/5WNWw6CMBREt0LutzVteYlf7sMQ0tRbuJFS0iJRS
- fduYQf+zZlk5mwQ0BMGuGYbeFwpkJsSyFMGelBTj4weiUFyWXIhc+bmhSx9sbNonf90Yc/OdHp
- 8pkqFl0dmGl1wvIiybgpIT7NHQ+/Dcm8TDxSWtD2kq9jb//5XwQTjlVKV4sKYvL4pO7qe9Fk7C
- 22M8QfWd3ks2AAAAA==
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738742326; l=7454;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=CmPH3b1j74K558ccUEKEAgqGmyZRPF8SYGNr1A0i6CM=;
- b=JJUxo3NfEYFOoJCIwiriJ83d+KNiGzq1jcQ7AAQRhodrDHrguh/T49K5lXqMIA6/MlHve3lFP
- s4xSfhbuf4ZBFeBNFKMh3Jf1wUXoMOCsh0Qa2hN9H1/mhH7nO53BjKH
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+Message-Id: <20250205-jag-bringup_fixes-v2-1-48f70c0d0a08@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAGomo2cC/22NwQrCMBBEf6Xs2Uh2CVY8+R9SpI3bdFXSstGgl
+ P67seDN45vhzcyQWIUTHKoZlLMkGWMB2lTghzYGNnIpDGTJIWFtrm0wnUoMz+ncy4uTIcc9dt4
+ RYgvFm5TXominpvAg6THqe73I+E1/a/s/axmNNbbriW3td87644018n07aoBmWZYP+g32MbMAA
+ AA=
+X-Change-ID: 20241217-jag-bringup_fixes-24ef1bc4211a
+To: Luis Chamberlain <mcgrof@kernel.org>, 
+ Daniel Gomez <da.gomez@samsung.com>
+Cc: kdevops@lists.linux.dev, Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.15-dev-64da2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1474;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=cvXy/yFqYcvqf90EjZ/XNMPUxCh0tms83z3EobnIfeE=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGejJnvYM5S7jEvHbH18O1ZwtvNQAD0Y3GjAl
+ y0CcAybqOf0OYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJnoyZ7AAoJELqXzVK3
+ lkFPNVUL/1MiQudcpI+LDfiBo2Q8Fbk9Us+5l6krgnoFMESZt+NSMX3UlTHgiQcqkSMJM5PETJM
+ MhBZ3wnbfCUckV8dkxWT9tsIT8X9ZTlKKPQ64hoNWN18QFn2A28olaI8fGkS98ltm4KUbsThDNC
+ cjN8V7rOWlgzsmIpHL+pQmQJfsRIexep1HdZvYNSSsxiPqeVTsf6KRo97TKADuS78TuyLEjss69
+ s2UyunF52+FxkYm4SfUaipMP9EzZ9NK8kEF++1SpAn5dvBIRcKX0UenesnsDnQe5tQ4FatEe4OI
+ s5KoZMeXHig6pPcWX3rZpyf7gffdJz8URu5VM4/Bg1wlfYtU9glb6Quk8p8SW6H5zKfm/UdJirL
+ WI36voxvYBzFFD/NQCMeRBrsxToAGgeAliPZXbOUIs2tcdLrMHjoz/SarLxYw9PRkbMDmB2nO73
+ Y/JkGwVDxp/yCiSyKM/E6wl2nY8lmlhb+3dpOnrJFGheAH3PDyoXD3EpxqhjCWEAMIpGAz8dRp5
+ nE=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Drop "CLK_MSR_MAX" and replace it with adding a member "msr_count" in
-the structure to specify the count of msr_id.
+Avoid "file not found" failures related to relative paths in
+custom_source
 
-Mark the table of msr_id as const.
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
+---
+After discussion in the list there is only one patch remaining. I have
+dropped the ones that were "shot down" and kept the one that makes sure
+we use full paths instead of relative; which seems to be a good idea.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
----
-The number of msr_ids for each chip is inconsistent. Defining a
-fixed-size array for each chip to store msr_ids would waste memory.
----
 Changes in v2:
-- Discard the global variable and restore the "priv" member in the
-"struct meson_msr_id".
-- Mark msr_id_table as const.
-- Link to v1: https://lore.kernel.org/r/20250123-optimize_memory_size_of_clk_measure-v1-1-06aa6a01ff37@amlogic.com
+- Only one patch remains : "[PATCH RESEND 10/12] bringup: Use full path
+  when creating custom_source file", because some have already gone into
+  mainline and some other were "shot down"
+- Link to v1: https://lore.kernel.org/r/20241218-jag-bringup_fixes-v1-0-0bf2e07c640c@kernel.org
 ---
- drivers/soc/amlogic/meson-clk-measure.c | 86 ++++++++++++++++++++++++---------
- 1 file changed, 62 insertions(+), 24 deletions(-)
-
-diff --git a/drivers/soc/amlogic/meson-clk-measure.c b/drivers/soc/amlogic/meson-clk-measure.c
-index a6453ffeb753..39638d6a593c 100644
---- a/drivers/soc/amlogic/meson-clk-measure.c
-+++ b/drivers/soc/amlogic/meson-clk-measure.c
-@@ -33,23 +33,26 @@ static DEFINE_MUTEX(measure_lock);
- #define DIV_STEP		32
- #define DIV_MAX			640
- 
--#define CLK_MSR_MAX		128
--
- struct meson_msr_id {
- 	struct meson_msr *priv;
- 	unsigned int id;
- 	const char *name;
- };
- 
-+struct meson_msr_data {
-+	struct meson_msr_id *msr_table;
-+	unsigned int msr_count;
-+};
-+
- struct meson_msr {
- 	struct regmap *regmap;
--	struct meson_msr_id msr_table[CLK_MSR_MAX];
-+	struct meson_msr_data data;
- };
- 
- #define CLK_MSR_ID(__id, __name) \
- 	[__id] = {.id = __id, .name = __name,}
- 
--static struct meson_msr_id clk_msr_m8[CLK_MSR_MAX] = {
-+static const struct meson_msr_id clk_msr_m8[] = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee2"),
-@@ -98,7 +101,7 @@ static struct meson_msr_id clk_msr_m8[CLK_MSR_MAX] = {
- 	CLK_MSR_ID(63, "mipi_csi_cfg"),
- };
- 
--static struct meson_msr_id clk_msr_gx[CLK_MSR_MAX] = {
-+static const struct meson_msr_id clk_msr_gx[] = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
-@@ -168,7 +171,7 @@ static struct meson_msr_id clk_msr_gx[CLK_MSR_MAX] = {
- 	CLK_MSR_ID(82, "ge2d"),
- };
- 
--static struct meson_msr_id clk_msr_axg[CLK_MSR_MAX] = {
-+static const struct meson_msr_id clk_msr_axg[] = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
-@@ -242,7 +245,7 @@ static struct meson_msr_id clk_msr_axg[CLK_MSR_MAX] = {
- 	CLK_MSR_ID(109, "audio_locker_in"),
- };
- 
--static struct meson_msr_id clk_msr_g12a[CLK_MSR_MAX] = {
-+static const struct meson_msr_id clk_msr_g12a[] = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
-@@ -358,7 +361,7 @@ static struct meson_msr_id clk_msr_g12a[CLK_MSR_MAX] = {
- 	CLK_MSR_ID(122, "audio_pdm_dclk"),
- };
- 
--static struct meson_msr_id clk_msr_sm1[CLK_MSR_MAX] = {
-+static const struct meson_msr_id clk_msr_sm1[] = {
- 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
- 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
- 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
-@@ -489,7 +492,7 @@ static struct meson_msr_id clk_msr_sm1[CLK_MSR_MAX] = {
- };
- 
- static int meson_measure_id(struct meson_msr_id *clk_msr_id,
--			       unsigned int duration)
-+			    unsigned int duration)
- {
- 	struct meson_msr *priv = clk_msr_id->priv;
- 	unsigned int val;
-@@ -573,13 +576,14 @@ DEFINE_SHOW_ATTRIBUTE(clk_msr);
- static int clk_msr_summary_show(struct seq_file *s, void *data)
- {
- 	struct meson_msr_id *msr_table = s->private;
-+	unsigned int msr_count = msr_table->priv->data.msr_count;
- 	unsigned int precision = 0;
- 	int val, i;
- 
- 	seq_puts(s, "  clock                     rate    precision\n");
- 	seq_puts(s, "---------------------------------------------\n");
- 
--	for (i = 0 ; i < CLK_MSR_MAX ; ++i) {
-+	for (i = 0 ; i < msr_count ; ++i) {
- 		if (!msr_table[i].name)
- 			continue;
- 
-@@ -604,7 +608,7 @@ static const struct regmap_config meson_clk_msr_regmap_config = {
- 
- static int meson_msr_probe(struct platform_device *pdev)
- {
--	const struct meson_msr_id *match_data;
-+	const struct meson_msr_data *match_data;
- 	struct meson_msr *priv;
- 	struct dentry *root, *clks;
- 	void __iomem *base;
-@@ -621,7 +625,16 @@ static int meson_msr_probe(struct platform_device *pdev)
- 		return -ENODEV;
- 	}
- 
--	memcpy(priv->msr_table, match_data, sizeof(priv->msr_table));
-+	priv->data.msr_table = devm_kcalloc(&pdev->dev,
-+					    match_data->msr_count,
-+					    sizeof(struct meson_msr_id),
-+					    GFP_KERNEL);
-+	if (!priv->data.msr_table)
-+		return -ENOMEM;
-+
-+	memcpy(priv->data.msr_table, match_data->msr_table,
-+	       match_data->msr_count * sizeof(struct meson_msr_id));
-+	priv->data.msr_count = match_data->msr_count;
- 
- 	base = devm_platform_ioremap_resource(pdev, 0);
- 	if (IS_ERR(base))
-@@ -636,45 +649,70 @@ static int meson_msr_probe(struct platform_device *pdev)
- 	clks = debugfs_create_dir("clks", root);
- 
- 	debugfs_create_file("measure_summary", 0444, root,
--			    priv->msr_table, &clk_msr_summary_fops);
-+			    priv->data.msr_table, &clk_msr_summary_fops);
- 
--	for (i = 0 ; i < CLK_MSR_MAX ; ++i) {
--		if (!priv->msr_table[i].name)
-+	for (i = 0 ; i < priv->data.msr_count ; ++i) {
-+		if (!priv->data.msr_table[i].name)
- 			continue;
- 
--		priv->msr_table[i].priv = priv;
-+		priv->data.msr_table[i].priv = priv;
- 
--		debugfs_create_file(priv->msr_table[i].name, 0444, clks,
--				    &priv->msr_table[i], &clk_msr_fops);
-+		debugfs_create_file(priv->data.msr_table[i].name, 0444, clks,
-+				    &priv->data.msr_table[i], &clk_msr_fops);
- 	}
- 
- 	return 0;
- }
- 
-+static const struct meson_msr_data clk_msr_gx_data = {
-+	.msr_table = (void *)clk_msr_gx,
-+	.msr_count = ARRAY_SIZE(clk_msr_gx),
-+};
-+
-+static const struct meson_msr_data clk_msr_m8_data = {
-+	.msr_table = (void *)clk_msr_m8,
-+	.msr_count = ARRAY_SIZE(clk_msr_m8),
-+};
-+
-+static const struct meson_msr_data clk_msr_axg_data = {
-+	.msr_table = (void *)clk_msr_axg,
-+	.msr_count = ARRAY_SIZE(clk_msr_axg),
-+};
-+
-+static const struct meson_msr_data clk_msr_g12a_data = {
-+	.msr_table = (void *)clk_msr_g12a,
-+	.msr_count = ARRAY_SIZE(clk_msr_g12a),
-+};
-+
-+static const struct meson_msr_data clk_msr_sm1_data = {
-+	.msr_table = (void *)clk_msr_sm1,
-+	.msr_count = ARRAY_SIZE(clk_msr_sm1),
-+};
-+
- static const struct of_device_id meson_msr_match_table[] = {
- 	{
- 		.compatible = "amlogic,meson-gx-clk-measure",
--		.data = (void *)clk_msr_gx,
-+		.data = &clk_msr_gx_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson8-clk-measure",
--		.data = (void *)clk_msr_m8,
-+		.data = &clk_msr_m8_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson8b-clk-measure",
--		.data = (void *)clk_msr_m8,
-+		.data = &clk_msr_m8_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson-axg-clk-measure",
--		.data = (void *)clk_msr_axg,
-+		.data = &clk_msr_axg_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson-g12a-clk-measure",
--		.data = (void *)clk_msr_g12a,
-+		.data = &clk_msr_g12a_data,
- 	},
- 	{
- 		.compatible = "amlogic,meson-sm1-clk-measure",
--		.data = (void *)clk_msr_sm1,
-+		.data = &clk_msr_sm1_data,
- 	},
- 	{ /* sentinel */ }
- };
 
 ---
-base-commit: 1e1fd26ed4ca05cc1f0e5857918da4dd54967f7d
-change-id: 20250123-optimize_memory_size_of_clk_measure-f9c40e815794
+ scripts/bringup_guestfs.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/scripts/bringup_guestfs.sh b/scripts/bringup_guestfs.sh
+index 74eecea..2c41999 100755
+--- a/scripts/bringup_guestfs.sh
++++ b/scripts/bringup_guestfs.sh
+@@ -110,7 +110,7 @@ build_custom_image()
+ 	CUSTOM_IMAGE="${CUSTOM_IMAGE_DIR}/${OS_VERSION}.raw"
+ 	CUSTOM_IMAGE_OK="${CUSTOM_IMAGE_DIR}.ok"
+ 	CUSTOM_SOURCE="/etc/virt-builder/repos.d/kdevops-custom-images-${OS_VERSION}.conf"
+-	CUSTOM_INDEX="${CUSTOM_IMAGE_DIR}/index"
++	CUSTOM_INDEX="$(realpath ${CUSTOM_IMAGE_DIR}/index)"
+ 
+ 	mkdir -p ${CUSTOM_IMAGE_DIR}
+ 
+
+---
+base-commit: 4bffd17ac6a3ac757a26897a75ffa185d623a8e4
+change-id: 20241217-jag-bringup_fixes-24ef1bc4211a
 
 Best regards,
 -- 
-Chuan Liu <chuan.liu@amlogic.com>
+Joel Granados <joel.granados@kernel.org>
 
