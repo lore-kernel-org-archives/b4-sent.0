@@ -1,73 +1,103 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Thu, 06 Feb 2025 15:01:58 +0100
-Subject: [PATCH v6 5/5] MAINTAINERS: Add entries for touchbar display
- driver
+From: Tobias Sperling <tobias.sperling@softing.com>
+Subject: [PATCH v3 0/2] Support for TI ADS7128 and ADS7138 ADCs
+Date: Thu, 06 Feb 2025 16:41:47 +0100
+Message-Id: <20250206-adc_ml-v3-0-1d0bd3483aa2@softing.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250206-adpdrm-v6-5-c8ab9348b853@gmail.com>
-References: <20250206-adpdrm-v6-0-c8ab9348b853@gmail.com>
-In-Reply-To: <20250206-adpdrm-v6-0-c8ab9348b853@gmail.com>
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIADvYpGcC/2WM0QqCMBSGXyXOdYvt2KZ21XtEhM6jHkgXm4xCf
+ PemUBBdfj//980QyDMFOO1m8BQ5sBsTZPsd2L4aOxLcJAaUeFQKUVSNvQ130ShLhaFC12ghnR+
+ eWn5uocs1cc9hcv61daNa179EVEIKmZuyRVJ1bdU5uHbisTtYN8AaifgRtUSZfUVMYlHpMjdG2
+ qzUv+KyLG+d9ek51wAAAA==
+X-Change-ID: 20241122-adc_ml-d1ce86e85b2c
+To: Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <quic_jesszhan@quicinc.com>, asahi@lists.linux.dev, 
- Janne Grunau <j@jannau.net>
-Cc: linux-arm-kernel@lists.infradead.org, dri-devel@lists.freedesktop.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Alyssa Ross <hi@alyssa.is>, Sasha Finkelstein <fnkl.kernel@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738850518; l=1351;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=QZbXiYlIe2lkzDC1TDBQjKD2XWfozo+Zu2nizcpe9lI=;
- b=hj74DCc42VipOopXJGsCkSRizSll3yOyirOlf2oPMfapmTohJQUmlU4r3lofykfmq5AHwFP+F
- bbydgCBWvAqADwAMvKgHsfBuyv6Di5rePfJ34zTrCW5jOs99CKBslCR
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+ Tobias Sperling <tobias.sperling@softing.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>
+Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.15-dev-355e8
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1738856545; l=2986;
+ i=tobias.sperling@softing.com; s=20241122; h=from:subject:message-id;
+ bh=1fOQzDV6HZJ2nN25yLU7hZ1P3TPmArQ54K7qLHm0wt0=;
+ b=EDhZjivm2O9mwyFHeORx+WauW1U4nzeS00mqk6I26KR0A+OjgJ+GiRdQyBsQO8xhOha5mygZE
+ sXkn1loYnQtA73o2cnWWJCiCFgFHqyWz0OKd+GDYQrgOFyj6jlu8g4P
+X-Developer-Key: i=tobias.sperling@softing.com; a=ed25519;
+ pk=v7hgaMHsrA9ul4UXkBVUuwusS9PF3uHW/CC+gABI65E=
+X-Endpoint-Received: by B4 Relay for tobias.sperling@softing.com/20241122 with auth_id=281
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the MAINTAINERS entries for the driver
+This patch series adds support for Texas Instruments ADS7128 and
+ADS7138, which are 12-bit, 8 channel analog-to-digital converters (ADCs)
+with build-in digital window comparator (DWC), using the I2C interface.
 
-Acked-by: Sven Peter <sven@svenpeter.dev>
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+The driver exposes the interfaces to read the raw values, as well as the
+minimum and maximum value for each channel. In addition several settings
+can be configured, like the DWC, sampling frequency or an averaging
+filter/oversampling. Interrupts triggered by the DWC, if configured, are
+then exposed as IIO events.
+
+ADS7128 differs in the addition of further hardware features, like a
+root-mean-square (RMS) and a zero-crossing-detect (ZCD) module, which
+are not yet supported by the driver.
+
+Regarding the I2C interface the chips using opcodes to define the way
+how the registeres are accessed, like single or multiple register(s)
+read/write or setting/clearing only bits.
+
 ---
- MAINTAINERS | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Changes in v3:
+- Make interrupt optional.
+- Replace SET_RUNTIME_PM_OPS() with RUNTIME_PM_OPS() to prevent warning.
+- Rework read_avail for sampling frequency to show each frequency only
+  once.
+- Use IIO_CHAN_INFO_PEAK and IIO_CHAN_INFO_TROUGH instead of ext_info.
+- Link to v2: https://lore.kernel.org/r/20250203-adc_ml-v2-0-8a597660c395@softing.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a87ddad78e26f28ffd0f3433560d6db1518f9f95..895d682bcf4e351971b04c6515ebf685fd39b662 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -7746,6 +7746,22 @@ F:	drivers/gpu/host1x/
- F:	include/linux/host1x.h
- F:	include/uapi/drm/tegra_drm.h
- 
-+DRM DRIVERS FOR PRE-DCP APPLE DISPLAY OUTPUT
-+M:	Sasha Finkelstein <fnkl.kernel@gmail.com>
-+R:	Janne Grunau <j@jannau.net>
-+L:	dri-devel@lists.freedesktop.org
-+L:	asahi@lists.linux.dev
-+S:	Maintained
-+W:	https://asahilinux.org
-+B:	https://github.com/AsahiLinux/linux/issues
-+C:	irc://irc.oftc.net/asahi-dev
-+T:	git https://gitlab.freedesktop.org/drm/misc/kernel.git
-+F:	Documentation/devicetree/bindings/display/apple,h7-display-pipe-mipi.yaml
-+F:	Documentation/devicetree/bindings/display/apple,h7-display-pipe.yaml
-+F:	Documentation/devicetree/bindings/display/panel/apple,summit.yaml
-+F:	drivers/gpu/drm/adp/
-+F:	drivers/gpu/drm/panel/panel-summit.c
-+
- DRM DRIVERS FOR RENESAS R-CAR
- M:	Laurent Pinchart <laurent.pinchart@ideasonboard.com>
- M:	Kieran Bingham <kieran.bingham+renesas@ideasonboard.com>
+Changes in v2:
+- Improved commit messages.
+- dt-bindings: drop info about what driver supports, make 'avdd-supply'
+  optional.
+- General rework of driver regarding indentation and code style.
+- General code improvements to make code shorter and improve
+  readability, like remove 'goto's, order of declarations, ...
+- Use kernel macros and functions, like FIELD_*, guard(), ...
+- Rework i2c functions to return 0 in case of success and use
+  i2c_master_send() if possible.
+- Use struct for chip data instead of enum.
+- Add comment to what the lock is used for and make sure it's used in
+  these cases.
+- Use read_avail of iio_info and extend to return also the available
+  values for OSR.
+- Rework to only accept values of the availability list.
+- Use devm_* if possible and therefore drop 'remove' callback.
+- Rebase to kernel 6.13 and adjust to API changes.
+- Link to v1:
+  https://lore.kernel.org/r/20241122-adc_ml-v1-0-0769f2e1bbc1@softing.com
 
+Changes in v1 (to patch series without b4):
+- dt-bindings: Extended description
+
+Signed-off-by: Tobias Sperling <tobias.sperling@softing.com>
+
+---
+Tobias Sperling (2):
+      dt-bindings: iio: adc: Introduce ADS7138
+      iio: adc: Add driver for ADS7128 / ADS7138
+
+ .../devicetree/bindings/iio/adc/ti,ads7138.yaml    |  62 ++
+ drivers/iio/adc/Kconfig                            |  10 +
+ drivers/iio/adc/Makefile                           |   1 +
+ drivers/iio/adc/ti-ads7138.c                       | 746 +++++++++++++++++++++
+ 4 files changed, 819 insertions(+)
+---
+base-commit: 05dbaf8dd8bf537d4b4eb3115ab42a5fb40ff1f5
+change-id: 20241122-adc_ml-d1ce86e85b2c
+
+Best regards,
 -- 
-2.48.1
+Tobias Sperling <tobias.sperling@softing.com>
 
