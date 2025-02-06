@@ -1,74 +1,66 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Thu, 06 Feb 2025 10:56:47 +0800
-Subject: [PATCH BlueZ bluez v2] gatt: expanded maximum GATT channels to 6
+From: Cryolitia PukNgae <Cryolitia@gmail.com>
+Date: Thu, 06 Feb 2025 15:09:42 +0800
+Subject: [PATCH] iio: imu: bmi270: Match ACPI ID found on newer GPD
+ firmware
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250206-upstream-v2-1-ffb66c7f9544@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAO4kpGcC/2WNwQqDMBBEf0X23JRs1AZ66n+Ih6irLhgjiYa24
- r835NrjmxnenBDIMwV4Fid4ihzYrQnUrYB+NutEgofEoKSqJSoUxxZ2T8aK0XRSy7JGM5SQ5pu
- nkd9Z1UC3HPSFNsUzh935Tz6ImMt/V0SBQncPqmqpKz3ql7GLm7i/985Ce13XD0Me1nmpAAAA
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738810609; l=1511;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=fKYDsSvbaUUoFFAF0fHWpr7zgdIXSd4zmy7DhmuHQYo=;
- b=TpvwSgriPApPjSCj18DHCjJ7LeorAhTRbckJ1KdDuMcaK18wWpFju4LQi5F0ZMyCkC0L0TCoD
- X8s1vJ3fQL2BLmLoYqaNd37vhN0ohiY376vOK2JNaCvIY6ehWKDAilf
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Message-Id: <20250206-bmi270-gpd-acpi-v1-1-db638cfb9a3c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADVgpGcC/x3MQQqAIBBA0avErBvQoRK6SrRInWwWmShEIN09a
+ fkW/1conIULzF2FzLcUuWKD7jtwxxYDo/hmIEWjIjWhPYWMwpA8bi4Jeh68Jut4nAy0KmXe5fm
+ Py/q+HxuTkRdhAAAA
+X-Change-ID: 20250206-bmi270-gpd-acpi-de4d12bce567
+To: Alex Lanzano <lanzano.alex@gmail.com>, 
+ Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yao Zi <ziyao@disroot.org>, Cryolitia PukNgae <Cryolitia@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1657; i=Cryolitia@gmail.com;
+ h=from:subject:message-id; bh=vGeYvEdVrXEykpDXoY202pSht7dfgKW3Zo+sT/kvXh0=;
+ b=LS0tLS1CRUdJTiBQR1AgTUVTU0FHRS0tLS0tCgprQTBEQUFvV1k1Z21DYUprZlR3Qnl5WmlBR
+ 2VrWUR1Z0F6MnBiUHAzYzJlV0U4bTVTSjVWL0VRRmJIQzJFM2xOCk5VanFnUVNaUTRoMUJBQVdD
+ Z0FkRmlFRXFCdzdrWDUwaW12VUg0UzhZNWdtQ2FKa2ZUd0ZBbWVrWURzQUNna1EKWTVnbUNhSmt
+ mVHdwNlFFQTVZODYrTnBvV1pKQmFxYVlQS1JCa1JEU09qaVdqZHdYWDB3ZVE4dk1qMHNBL1JqRQ
+ pPMm5uYjZtcjVZbFgvNWp0bUJRMXRxdTZZVU9ySERlSXo5NjZCK1lQCj0zVFB5Ci0tLS0tRU5EI
+ FBHUCBNRVNTQUdFLS0tLS0K
+X-Developer-Key: i=Cryolitia@gmail.com; a=openpgp;
+ fpr=1C3C6547538D7152310C0EEA84DD0C0130A54DF7
+X-Endpoint-Received: by B4 Relay for Cryolitia@gmail.com/default with auth_id=186
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The maximum value of GATT channels should be 6,
-including ATT connection(1) and L2CAP CB connection(1-5).
+Some GPD devices ship a buggy firmware that describes on-device BMI260 with ACPI ID "BMI0160". Since this is fixed in BIOS update v0.40[1], let's match the correct ID to detect the device. The buggy ID "BMI0160" is kept as well to maintain compatibility with older firmwares.
 
-Ref https://github.com/bluez/bluez/issues/1033
-
-Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
-Changes in v2:
-- Change the maximum value of Channels to 6
-- Link to v1: https://patch.msgid.link/20250121-upstream-v1-1-7b6e450747f7@amlogic.com
----
- src/main.c    | 2 +-
- src/main.conf | 3 ++-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+Some GPD devices ship a buggy firmware that describes on-device BMI260 with ACPI ID "BMI0160". Since this is fixed in BIOS update v0.40[1], let's match the correct ID to detect the device. The buggy ID "BMI0160" is kept as well to maintain compatibility with older firmwares.
 
-diff --git a/src/main.c b/src/main.c
-index d13ada2af..50346abbb 100644
---- a/src/main.c
-+++ b/src/main.c
-@@ -1119,7 +1119,7 @@ static void parse_gatt(GKeyFile *config)
- 	parse_config_u16(config, "GATT", "ExchangeMTU", &btd_opts.gatt_mtu,
- 				BT_ATT_DEFAULT_LE_MTU, BT_ATT_MAX_LE_MTU);
- 	parse_config_u8(config, "GATT", "Channels", &btd_opts.gatt_channels,
--				1, 5);
-+				1, 6);
- 	parse_config_bool(config, "GATT", "Client", &btd_opts.gatt_client);
- 	parse_gatt_export(config);
- }
-diff --git a/src/main.conf b/src/main.conf
-index 60ab60edc..749ed6d25 100644
---- a/src/main.conf
-+++ b/src/main.conf
-@@ -264,7 +264,8 @@
- #ExchangeMTU = 517
- 
- # Number of ATT channels
--# Possible values: 1-5 (1 disables EATT)
-+# Possible values: 1-6 (1 disables EATT)
-+# The ATT channels contains ATT connection(1) and L2CAP CB connection(1-5)
- # Default to 1
- #Channels = 1
+Link: http://download.softwincn.com/WIN%20Max%202024/Max2-7840-BIOS-V0.41.zip
+
+[1]. See the update nodes in the archive file above
+
+Signed-off-by: Cryolitia PukNgae <Cryolitia@gmail.com>
+---
+ drivers/iio/imu/bmi270/bmi270_i2c.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/iio/imu/bmi270/bmi270_i2c.c b/drivers/iio/imu/bmi270/bmi270_i2c.c
+index 44699ab589097eaa0eec5f2172245496ed031185..f66ae01e301df24f1e563e059da8cc531fc173eb 100644
+--- a/drivers/iio/imu/bmi270/bmi270_i2c.c
++++ b/drivers/iio/imu/bmi270/bmi270_i2c.c
+@@ -40,6 +40,8 @@ static const struct i2c_device_id bmi270_i2c_id[] = {
+ static const struct acpi_device_id bmi270_acpi_match[] = {
+ 	/* GPD Win Mini, Aya Neo AIR Pro, OXP Mini Pro, etc. */
+ 	{ "BMI0160",  (kernel_ulong_t)&bmi260_chip_info },
++	/* GPD Win Max 2 2023(sincice BIOS v0.40), etc. */
++	{ "BMI0260",  (kernel_ulong_t)&bmi260_chip_info },
+ 	{ }
+ };
  
 
 ---
-base-commit: 2ee08ffd4d469781dc627fa50b4a015d9ad68007
-change-id: 20250121-upstream-fab070351ad3
+base-commit: ffd294d346d185b70e28b1a28abe367bbfe53c04
+change-id: 20250206-bmi270-gpd-acpi-de4d12bce567
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Cryolitia PukNgae <Cryolitia@gmail.com>
 
