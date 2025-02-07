@@ -1,10 +1,11 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Fri, 07 Feb 2025 22:30:20 +0100
-Subject: [PATCH v2 03/12] dt-bindings: crypto: Convert fsl,sec-2.0 to YAML
+Date: Fri, 07 Feb 2025 22:30:21 +0100
+Subject: [PATCH v2 04/12] dt-bindings: mfd: Convert fsl,mcu-mpc8349emitx to
+ YAML
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250207-ppcyaml-v2-3-8137b0c42526@posteo.net>
+Message-Id: <20250207-ppcyaml-v2-4-8137b0c42526@posteo.net>
 References: <20250207-ppcyaml-v2-0-8137b0c42526@posteo.net>
 In-Reply-To: <20250207-ppcyaml-v2-0-8137b0c42526@posteo.net>
 To: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
@@ -33,255 +34,113 @@ Cc: imx@lists.linux.dev, Scott Wood <oss@buserror.net>,
  linux-spi@vger.kernel.org, linux-mtd@lists.infradead.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738963832; l=9358;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1738963832; l=2984;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=+yTRVwl3VkcYahav8JkTXEVtr2bYHRekq+nInu+cROg=;
- b=fEk9M9rQDa1tD+jSDet5rbVxe3FcOFRrFAHu7LNTf0mTG3qF6jgn3SmfgK/yLFHsBT9pqb4SZ
- k5YaOEc/p9aCrYatv/JAtUloZ+0YUvM6ZO651oGft59rqHlXU4tiMn+
+ bh=uDy6u7+vjMysytDO3zWjx3Kn3oUqiW3GteoXfkCwZKA=;
+ b=iFXGU+mNZUpUqA9uza05gJYMsMBoJdg86aLQh1PgURVUwU/03DcfeAfebz0wdehh60plhBbPb
+ sqQK+Qjx2SFBGdyjhZLJG40nneXpeIDU6GM+y26pfUBo0zsE2hF9wE4
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert the Freescale security engine (crypto accelerator) binding from
-text form to YAML. The list of compatible strings reflects what was
-previously described in prose; not all combinations occur in existing
-devicetrees.
+Convert mcu-mpc8349emitx.txt to YAML and list the compatible strings
+currently in use.
 
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
 
 V2:
-- several improvements suggested by Rob Herring:
-  - remove unnecessary multiline markers
-  - constrain fsl,num-channels to enum: [1,4]
-  - constrain fsl,channel-fifo-len to plausible limits
-  - constrain fsl,exec-units-mask to maximum=0xfff
 - trim subject line (remove "binding")
+- fix property order to comply with dts coding style
 ---
- .../devicetree/bindings/crypto/fsl,sec2.0.yaml     | 142 +++++++++++++++++++++
- .../devicetree/bindings/crypto/fsl-sec2.txt        |  65 ----------
- 2 files changed, 142 insertions(+), 65 deletions(-)
+ .../bindings/mfd/fsl,mcu-mpc8349emitx.yaml         | 53 ++++++++++++++++++++++
+ .../bindings/powerpc/fsl/mcu-mpc8349emitx.txt      | 17 -------
+ 2 files changed, 53 insertions(+), 17 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/crypto/fsl,sec2.0.yaml b/Documentation/devicetree/bindings/crypto/fsl,sec2.0.yaml
+diff --git a/Documentation/devicetree/bindings/mfd/fsl,mcu-mpc8349emitx.yaml b/Documentation/devicetree/bindings/mfd/fsl,mcu-mpc8349emitx.yaml
 new file mode 100644
-index 0000000000000000000000000000000000000000..0b82f3b68b5f82e7fb52d292a623d452c1cdb059
+index 0000000000000000000000000000000000000000..d20de7a4142546c95f65814a3f1b03dd0949cffb
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/crypto/fsl,sec2.0.yaml
-@@ -0,0 +1,142 @@
++++ b/Documentation/devicetree/bindings/mfd/fsl,mcu-mpc8349emitx.yaml
+@@ -0,0 +1,53 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/crypto/fsl,sec2.0.yaml#
++$id: http://devicetree.org/schemas/mfd/fsl,mcu-mpc8349emitx.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Freescale SoC SEC Security Engines versions 1.x-2.x-3.x
++title: Freescale MPC8349E-mITX-compatible Power Management Micro Controller Unit (MCU)
 +
 +maintainers:
-+  - J. Neuschäfer <j.ne@posteo.net.
++  - J. Neuschäfer <j.ne@posteo.net>
 +
 +properties:
 +  compatible:
-+    description:
-+      Should contain entries for this and backward compatible SEC versions,
-+      high to low. Warning - SEC1 and SEC2 are mutually exclusive.
 +    oneOf:
 +      - items:
-+          - const: fsl,sec3.3
-+          - const: fsl,sec3.1
-+          - const: fsl,sec3.0
-+          - const: fsl,sec2.4
-+          - const: fsl,sec2.2
-+          - const: fsl,sec2.1
-+          - const: fsl,sec2.0
-+      - items:
-+          - const: fsl,sec3.1
-+          - const: fsl,sec3.0
-+          - const: fsl,sec2.4
-+          - const: fsl,sec2.2
-+          - const: fsl,sec2.1
-+          - const: fsl,sec2.0
-+      - items:
-+          - const: fsl,sec3.0
-+          - const: fsl,sec2.4
-+          - const: fsl,sec2.2
-+          - const: fsl,sec2.1
-+          - const: fsl,sec2.0
-+      - items:
-+          - const: fsl,sec2.4
-+          - const: fsl,sec2.2
-+          - const: fsl,sec2.1
-+          - const: fsl,sec2.0
-+      - items:
-+          - const: fsl,sec2.2
-+          - const: fsl,sec2.1
-+          - const: fsl,sec2.0
-+      - items:
-+          - const: fsl,sec2.1
-+          - const: fsl,sec2.0
-+      - items:
-+          - const: fsl,sec2.0
-+      - items:
-+          - const: fsl,sec1.2
-+          - const: fsl,sec1.0
-+      - items:
-+          - const: fsl,sec1.0
++          - enum:
++              - fsl,mc9s08qg8-mpc8315erdb
++              - fsl,mc9s08qg8-mpc8349emitx
++              - fsl,mc9s08qg8-mpc8377erdb
++              - fsl,mc9s08qg8-mpc8378erdb
++              - fsl,mc9s08qg8-mpc8379erdb
++          - const: fsl,mcu-mpc8349emitx
 +
 +  reg:
 +    maxItems: 1
 +
-+  interrupts:
-+    maxItems: 1
++  "#gpio-cells":
++    const: 2
 +
-+  fsl,num-channels:
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+    enum: [ 1, 4 ]
-+    description: An integer representing the number of channels available.
-+
-+  fsl,channel-fifo-len:
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+    maximum: 100
-+    description:
-+      An integer representing the number of descriptor pointers each channel
-+      fetch fifo can hold.
-+
-+  fsl,exec-units-mask:
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+    maximum: 0xfff
-+    description: |
-+      The bitmask representing what execution units (EUs) are available.
-+      EU information should be encoded following the SEC's Descriptor Header
-+      Dword EU_SEL0 field documentation, i.e. as follows:
-+
-+        bit 0  = reserved - should be 0
-+        bit 1  = set if SEC has the ARC4 EU (AFEU)
-+        bit 2  = set if SEC has the DES/3DES EU (DEU)
-+        bit 3  = set if SEC has the message digest EU (MDEU/MDEU-A)
-+        bit 4  = set if SEC has the random number generator EU (RNG)
-+        bit 5  = set if SEC has the public key EU (PKEU)
-+        bit 6  = set if SEC has the AES EU (AESU)
-+        bit 7  = set if SEC has the Kasumi EU (KEU)
-+        bit 8  = set if SEC has the CRC EU (CRCU)
-+        bit 11 = set if SEC has the message digest EU extended alg set (MDEU-B)
-+
-+      remaining bits are reserved for future SEC EUs.
-+
-+  fsl,descriptor-types-mask:
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+    description: |
-+      The bitmask representing what descriptors are available. Descriptor type
-+      information should be encoded following the SEC's Descriptor Header Dword
-+      DESC_TYPE field documentation, i.e. as follows:
-+
-+        bit 0  = set if SEC supports the aesu_ctr_nonsnoop desc. type
-+        bit 1  = set if SEC supports the ipsec_esp descriptor type
-+        bit 2  = set if SEC supports the common_nonsnoop desc. type
-+        bit 3  = set if SEC supports the 802.11i AES ccmp desc. type
-+        bit 4  = set if SEC supports the hmac_snoop_no_afeu desc. type
-+        bit 5  = set if SEC supports the srtp descriptor type
-+        bit 6  = set if SEC supports the non_hmac_snoop_no_afeu desc.type
-+        bit 7  = set if SEC supports the pkeu_assemble descriptor type
-+        bit 8  = set if SEC supports the aesu_key_expand_output desc.type
-+        bit 9  = set if SEC supports the pkeu_ptmul descriptor type
-+        bit 10 = set if SEC supports the common_nonsnoop_afeu desc. type
-+        bit 11 = set if SEC supports the pkeu_ptadd_dbl descriptor type
-+
-+      ..and so on and so forth.
++  gpio-controller: true
 +
 +required:
 +  - compatible
 +  - reg
-+  - fsl,num-channels
-+  - fsl,channel-fifo-len
-+  - fsl,exec-units-mask
-+  - fsl,descriptor-types-mask
++  - "#gpio-cells"
++  - gpio-controller
 +
-+unevaluatedProperties: false
++additionalProperties: false
 +
 +examples:
 +  - |
-+    /* MPC8548E */
-+    crypto@30000 {
-+        compatible = "fsl,sec2.1", "fsl,sec2.0";
-+        reg = <0x30000 0x10000>;
-+        interrupts = <29 2>;
-+        interrupt-parent = <&mpic>;
-+        fsl,num-channels = <4>;
-+        fsl,channel-fifo-len = <24>;
-+        fsl,exec-units-mask = <0xfe>;
-+        fsl,descriptor-types-mask = <0x12b0ebf>;
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        mcu@a {
++            compatible = "fsl,mc9s08qg8-mpc8349emitx",
++                         "fsl,mcu-mpc8349emitx";
++            reg = <0x0a>;
++            #gpio-cells = <2>;
++            gpio-controller;
++        };
 +    };
-diff --git a/Documentation/devicetree/bindings/crypto/fsl-sec2.txt b/Documentation/devicetree/bindings/crypto/fsl-sec2.txt
+diff --git a/Documentation/devicetree/bindings/powerpc/fsl/mcu-mpc8349emitx.txt b/Documentation/devicetree/bindings/powerpc/fsl/mcu-mpc8349emitx.txt
 deleted file mode 100644
-index 125f155d00d052eec7d5093b5c5076cbe720417f..0000000000000000000000000000000000000000
---- a/Documentation/devicetree/bindings/crypto/fsl-sec2.txt
+index 37f91fa576545aa245d893c24248bdbb2c0fcc07..0000000000000000000000000000000000000000
+--- a/Documentation/devicetree/bindings/powerpc/fsl/mcu-mpc8349emitx.txt
 +++ /dev/null
-@@ -1,65 +0,0 @@
--Freescale SoC SEC Security Engines versions 1.x-2.x-3.x
+@@ -1,17 +0,0 @@
+-Freescale MPC8349E-mITX-compatible Power Management Micro Controller Unit (MCU)
 -
 -Required properties:
--
--- compatible : Should contain entries for this and backward compatible
--  SEC versions, high to low, e.g., "fsl,sec2.1", "fsl,sec2.0" (SEC2/3)
--                             e.g., "fsl,sec1.2", "fsl,sec1.0" (SEC1)
--    warning: SEC1 and SEC2 are mutually exclusive
--- reg : Offset and length of the register set for the device
--- interrupts : the SEC's interrupt number
--- fsl,num-channels : An integer representing the number of channels
--  available.
--- fsl,channel-fifo-len : An integer representing the number of
--  descriptor pointers each channel fetch fifo can hold.
--- fsl,exec-units-mask : The bitmask representing what execution units
--  (EUs) are available. It's a single 32-bit cell. EU information
--  should be encoded following the SEC's Descriptor Header Dword
--  EU_SEL0 field documentation, i.e. as follows:
--
--	bit 0  = reserved - should be 0
--	bit 1  = set if SEC has the ARC4 EU (AFEU)
--	bit 2  = set if SEC has the DES/3DES EU (DEU)
--	bit 3  = set if SEC has the message digest EU (MDEU/MDEU-A)
--	bit 4  = set if SEC has the random number generator EU (RNG)
--	bit 5  = set if SEC has the public key EU (PKEU)
--	bit 6  = set if SEC has the AES EU (AESU)
--	bit 7  = set if SEC has the Kasumi EU (KEU)
--	bit 8  = set if SEC has the CRC EU (CRCU)
--	bit 11 = set if SEC has the message digest EU extended alg set (MDEU-B)
--
--remaining bits are reserved for future SEC EUs.
--
--- fsl,descriptor-types-mask : The bitmask representing what descriptors
--  are available. It's a single 32-bit cell. Descriptor type information
--  should be encoded following the SEC's Descriptor Header Dword DESC_TYPE
--  field documentation, i.e. as follows:
--
--	bit 0  = set if SEC supports the aesu_ctr_nonsnoop desc. type
--	bit 1  = set if SEC supports the ipsec_esp descriptor type
--	bit 2  = set if SEC supports the common_nonsnoop desc. type
--	bit 3  = set if SEC supports the 802.11i AES ccmp desc. type
--	bit 4  = set if SEC supports the hmac_snoop_no_afeu desc. type
--	bit 5  = set if SEC supports the srtp descriptor type
--	bit 6  = set if SEC supports the non_hmac_snoop_no_afeu desc.type
--	bit 7  = set if SEC supports the pkeu_assemble descriptor type
--	bit 8  = set if SEC supports the aesu_key_expand_output desc.type
--	bit 9  = set if SEC supports the pkeu_ptmul descriptor type
--	bit 10 = set if SEC supports the common_nonsnoop_afeu desc. type
--	bit 11 = set if SEC supports the pkeu_ptadd_dbl descriptor type
--
--  ..and so on and so forth.
+-- compatible : "fsl,<mcu-chip>-<board>", "fsl,mcu-mpc8349emitx".
+-- reg : should specify I2C address (0x0a).
+-- #gpio-cells : should be 2.
+-- gpio-controller : should be present.
 -
 -Example:
 -
--	/* MPC8548E */
--	crypto@30000 {
--		compatible = "fsl,sec2.1", "fsl,sec2.0";
--		reg = <0x30000 0x10000>;
--		interrupts = <29 2>;
--		interrupt-parent = <&mpic>;
--		fsl,num-channels = <4>;
--		fsl,channel-fifo-len = <24>;
--		fsl,exec-units-mask = <0xfe>;
--		fsl,descriptor-types-mask = <0x12b0ebf>;
--	};
+-mcu@a {
+-	#gpio-cells = <2>;
+-	compatible = "fsl,mc9s08qg8-mpc8349emitx",
+-		     "fsl,mcu-mpc8349emitx";
+-	reg = <0x0a>;
+-	gpio-controller;
+-};
 
 -- 
 2.48.0.rc1.219.gb6b6757d772
