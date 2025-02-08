@@ -1,78 +1,113 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sat, 08 Feb 2025 12:13:49 +0100
-Subject: [PATCH v2] media: dw9719: Add of_match table
+From: Yang Li <yang.li@amlogic.com>
+Date: Sat, 08 Feb 2025 19:40:12 +0800
+Subject: [PATCH BlueZ bluez] client: Set the feature when initializing the
+ client
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250208-dw9761dts-v2-1-c038f8a2fb94@apitzsch.eu>
-X-B4-Tracking: v=1; b=H4sIAGw8p2cC/43Oy27DIBCF4VexWJdoZrDBeJX3iLLAMI5ZOG6BX
- CTL7x6atvsuf+no09lE5hQ5i6HZROJ7zHG91qCPRvjZXS8sY6gtCKgDAi3DwxqNoWTpg/fgDbY
- jOlH3n4mn+Hxbp3PtKa2LLHNi9ye0iNARKN31B7JGGYlyDnxZOfAxcZhdOfh1+cUSf93qn/Iji
- oVzdu8/9d6/reGO39zoMsuaSyxD009ak/UA9blVgZRG0i16pcGw6bseLVvjRnHe9xd6asUMIQE
- AAA==
-X-Change-ID: 20250206-dw9761dts-cdcc0c714b1a
-To: Daniel Scally <djrscally@gmail.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739013233; l=1668;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=b835oDqUUZS0v891A6AlggPykmhV5x5NmgzamCCTc1s=;
- b=4hhSpZKPITXRRN4vBFA46KSzOWefN37FlAADEfvQdm6PUU79Ry8HS4ryRkVrOS0GJDIQsHGJS
- 3fWNMEHzD/qDwRtLdm0/SV1FW/mloJ8wuQd3KUY68+ottY4rHuay0XA
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250208-client_eatt-v1-1-17932786b2cf@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAJtCp2cC/x3M0QpAMBiG4VvRf2y1TSK3Imnmw18abSORe7ccP
+ gfv+1CAZwRqsoc8Tg68uQSVZ2QX42YIHpNJS11KLWthV4aLPUyMwlaqHFHUhdITpWL3mPj6by0
+ N64Gbuvf9AGEVC9NkAAAA
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739014815; l=2912;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=NjeN/W6SMOhbUw5onPZ37ZDUR1czSasHWD76p2hBMRU=;
+ b=Y6dL81o54s4ApBMTKiSaGaua5LtgVWFFMFxNnwZJw1fqwLTNP55P8jYINLLQ1D5GPX9KEIeHD
+ rDnJ47GnzGfBsDNwmsHqlbECniW87FBxRTYd0WHdlvIJwyDP2FsV/5K
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add of_match table for "dongwoon,dw9719" and "dongwoon,dw9761"
-compatible string. This fixes automatic driver loading when using a
-device-tree, and if built as a module like major linux distributions do.
+When writing Client Features feature values, it needs
+to determine whether local eatt is enabled.
 
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
-This patch depends on https://lore.kernel.org/linux-media/20241105203658.29737-1-hdegoede@redhat.com/
----
- drivers/media/i2c/dw9719.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ src/device.c             | 9 ++++++++-
+ src/gatt-database.c      | 3 ++-
+ src/shared/gatt-client.c | 8 +++++---
+ 3 files changed, 15 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/media/i2c/dw9719.c b/drivers/media/i2c/dw9719.c
-index 032fbcb981f20f4e93202415e62f67379897a048..6c76212d4c698462a9128d26ef95f0eccb243c7c 100644
---- a/drivers/media/i2c/dw9719.c
-+++ b/drivers/media/i2c/dw9719.c
-@@ -360,6 +360,13 @@ static const struct i2c_device_id dw9719_id_table[] = {
- };
- MODULE_DEVICE_TABLE(i2c, dw9719_id_table);
+diff --git a/src/device.c b/src/device.c
+index e8bff718c..dfa8b277e 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -5628,6 +5628,8 @@ static void gatt_debug(const char *str, void *user_data)
  
-+static const struct of_device_id dw9719_of_table[] = {
-+	{ .compatible = "dongwoon,dw9719" },
-+	{ .compatible = "dongwoon,dw9761" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, dw9719_of_table);
+ static void gatt_client_init(struct btd_device *device)
+ {
++	uint8_t features;
 +
- static DEFINE_RUNTIME_DEV_PM_OPS(dw9719_pm_ops, dw9719_suspend, dw9719_resume,
- 				 NULL);
+ 	gatt_client_cleanup(device);
  
-@@ -367,6 +374,7 @@ static struct i2c_driver dw9719_i2c_driver = {
- 	.driver = {
- 		.name = "dw9719",
- 		.pm = pm_sleep_ptr(&dw9719_pm_ops),
-+		.of_match_table = of_match_ptr(dw9719_of_table),
- 	},
- 	.probe = dw9719_probe,
- 	.remove = dw9719_remove,
+ 	if (!device->connect && !btd_opts.reverse_discovery) {
+@@ -5639,8 +5641,13 @@ static void gatt_client_init(struct btd_device *device)
+ 		return;
+ 	}
+ 
++	features =  BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING
++				| BT_GATT_CHRC_CLI_FEAT_NFY_MULTI;
++	if (btd_opts.gatt_channels > 1)
++		features |= BT_GATT_CHRC_CLI_FEAT_EATT;
++
+ 	device->client = bt_gatt_client_new(device->db, device->att,
+-							device->att_mtu, 0);
++							device->att_mtu, features);
+ 	if (!device->client) {
+ 		DBG("Failed to initialize");
+ 		return;
+diff --git a/src/gatt-database.c b/src/gatt-database.c
+index a5a01add4..1056b9797 100644
+--- a/src/gatt-database.c
++++ b/src/gatt-database.c
+@@ -1245,7 +1245,8 @@ static void server_feat_read_cb(struct gatt_db_attribute *attrib,
+ 		goto done;
+ 	}
+ 
+-	value |= BT_GATT_CHRC_SERVER_FEAT_EATT;
++	if (btd_opts.gatt_channels > 1)
++		value |= BT_GATT_CHRC_SERVER_FEAT_EATT;
+ 
+ done:
+ 	gatt_db_attribute_read_result(attrib, id, ecode, &value, sizeof(value));
+diff --git a/src/shared/gatt-client.c b/src/shared/gatt-client.c
+index 9db3f5211..41a5c6f9c 100644
+--- a/src/shared/gatt-client.c
++++ b/src/shared/gatt-client.c
+@@ -2043,7 +2043,7 @@ static void write_client_features(struct bt_gatt_client *client)
+ 
+ 	handle = gatt_db_attribute_get_handle(attr);
+ 
+-	client->features = BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
++	client->features |= BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
+ 
+ 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVER_FEAT);
+ 
+@@ -2055,10 +2055,12 @@ static void write_client_features(struct bt_gatt_client *client)
+ 		gatt_db_attribute_read(attr, 0, BT_ATT_OP_READ_REQ,
+ 						NULL, server_feat_read_value,
+ 						&feat);
+-		if (feat && feat[0] & BT_GATT_CHRC_SERVER_FEAT_EATT)
+-			client->features |= BT_GATT_CHRC_CLI_FEAT_EATT;
++		if (!(feat && feat[0] & BT_GATT_CHRC_SERVER_FEAT_EATT)
++			|| !(client->features & BT_GATT_CHRC_CLI_FEAT_EATT))
++			client->features &= ~BT_GATT_CHRC_CLI_FEAT_EATT;
+ 	}
+ 
++
+ 	client->features |= BT_GATT_CHRC_CLI_FEAT_NFY_MULTI;
+ 
+ 	DBG(client, "Writing Client Features 0x%02x", client->features);
 
 ---
-base-commit: 8f6629c004b193d23612641c3607e785819e97ab
-change-id: 20250206-dw9761dts-cdcc0c714b1a
-prerequisite-message-id: 20241105203658.29737-1-hdegoede@redhat.com:v1
-prerequisite-patch-id: b0a57666bd20b97291583c3052065dc314a37e79
+base-commit: 2ee08ffd4d469781dc627fa50b4a015d9ad68007
+change-id: 20250208-client_eatt-c715de38312f
 
 Best regards,
 -- 
-André Apitzsch <git@apitzsch.eu>
+Yang Li <yang.li@amlogic.com>
 
