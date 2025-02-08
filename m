@@ -1,128 +1,78 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Sat, 08 Feb 2025 11:05:33 +0800
-Subject: [PATCH BlueZ bluez v2] bap: fixed issue of muting music silent
- after pause and resume.
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Date: Sat, 08 Feb 2025 12:13:49 +0100
+Subject: [PATCH v2] media: dw9719: Add of_match table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250208-ascs_bug-v2-1-b7e062d6604d@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAPzJpmcC/0WMQQrDIBAAvxL23C1qMdqe+o9SitE1EWIMmoTSk
- L9XeulxhmF2KJQDFbg1O2TaQglpqiBODdjBTD1hcJVBMCGZYBpNseXVrT2SslJx6S5OW6j5nMm
- H92/1gG5c6QPPqn1OEZchk/l/OGtxnctSZcSNI0fDW62undLeu7uJY+qDPdsU4Ti+zNQw5qMAA
- AA=
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1738983933; l=3075;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=cL1auiNbqgfFusI2hsCVHr9b6YHr78iQptggtpCsNj0=;
- b=sncM0B4xEvur6qaE6j6Uty/1FigEo09hiM1gulf1mM6R9jjMK6c+ibG2E735dzTG8hJ7aNaxt
- CQEOaYIVmUQBak76Tr651VjBQyPqWKfPz4G27Jy1WyInrMTgBY5dLwL
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250208-dw9761dts-v2-1-c038f8a2fb94@apitzsch.eu>
+X-B4-Tracking: v=1; b=H4sIAGw8p2cC/43Oy27DIBCF4VexWJdoZrDBeJX3iLLAMI5ZOG6BX
+ CTL7x6atvsuf+no09lE5hQ5i6HZROJ7zHG91qCPRvjZXS8sY6gtCKgDAi3DwxqNoWTpg/fgDbY
+ jOlH3n4mn+Hxbp3PtKa2LLHNi9ye0iNARKN31B7JGGYlyDnxZOfAxcZhdOfh1+cUSf93qn/Iji
+ oVzdu8/9d6/reGO39zoMsuaSyxD009ak/UA9blVgZRG0i16pcGw6bseLVvjRnHe9xd6asUMIQE
+ AAA==
+X-Change-ID: 20250206-dw9761dts-cdcc0c714b1a
+To: Daniel Scally <djrscally@gmail.com>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739013233; l=1668;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=b835oDqUUZS0v891A6AlggPykmhV5x5NmgzamCCTc1s=;
+ b=4hhSpZKPITXRRN4vBFA46KSzOWefN37FlAADEfvQdm6PUU79Ry8HS4ryRkVrOS0GJDIQsHGJS
+ 3fWNMEHzD/qDwRtLdm0/SV1FW/mloJ8wuQd3KUY68+ottY4rHuay0XA
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After the ASE state changes (streaming->releasing->idle),
-the Client needs to be notified. The process as follows:
+Add of_match table for "dongwoon,dw9719" and "dongwoon,dw9761"
+compatible string. This fixes automatic driver loading when using a
+device-tree, and if built as a module like major linux distributions do.
 
-...(Sink ASE: ID=1, State=Streaming)
-ATT Write Command Packet (ASE Control Point: Op=Release)
-ATT Notification Packet (Sink ASE: ID=1, State=Releasing)
-ATT Notification Packet (Sink ASE: ID=1, State=Idle)
-
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- src/shared/bap.c | 31 ++++++++++++++++++++++---------
- 1 file changed, 22 insertions(+), 9 deletions(-)
+This patch depends on https://lore.kernel.org/linux-media/20241105203658.29737-1-hdegoede@redhat.com/
+---
+ drivers/media/i2c/dw9719.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/src/shared/bap.c b/src/shared/bap.c
-index 167501282..1cadb682d 100644
---- a/src/shared/bap.c
-+++ b/src/shared/bap.c
-@@ -930,6 +930,18 @@ static void ascs_ase_rsp_success(struct iovec *iov, uint8_t id)
- 					BT_ASCS_REASON_NONE);
- }
+diff --git a/drivers/media/i2c/dw9719.c b/drivers/media/i2c/dw9719.c
+index 032fbcb981f20f4e93202415e62f67379897a048..6c76212d4c698462a9128d26ef95f0eccb243c7c 100644
+--- a/drivers/media/i2c/dw9719.c
++++ b/drivers/media/i2c/dw9719.c
+@@ -360,6 +360,13 @@ static const struct i2c_device_id dw9719_id_table[] = {
+ };
+ MODULE_DEVICE_TABLE(i2c, dw9719_id_table);
  
-+static void stream_notify_ase_state(struct bt_bap_stream *stream)
-+{
-+	struct bt_bap_endpoint *ep = stream->ep;
-+	struct bt_ascs_ase_status status;
++static const struct of_device_id dw9719_of_table[] = {
++	{ .compatible = "dongwoon,dw9719" },
++	{ .compatible = "dongwoon,dw9761" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, dw9719_of_table);
 +
-+	status.id = ep->id;
-+	status.state = ep->state;
-+
-+	gatt_db_attribute_notify(ep->attr, &status, sizeof(status),
-+					bt_bap_get_att(stream->bap));
-+}
-+
- static void stream_notify_config(struct bt_bap_stream *stream)
- {
- 	struct bt_bap_endpoint *ep = stream->ep;
-@@ -1634,7 +1646,9 @@ static bool stream_notify_state(void *data)
- 	struct bt_bap_stream *stream = data;
- 	struct bt_bap_endpoint *ep = stream->ep;
+ static DEFINE_RUNTIME_DEV_PM_OPS(dw9719_pm_ops, dw9719_suspend, dw9719_resume,
+ 				 NULL);
  
--	DBG(stream->bap, "stream %p", stream);
-+	DBG(stream->bap, "stream %p state %s",
-+			stream,
-+			bt_bap_stream_statestr(ep->state));
- 
- 	if (stream->state_id) {
- 		timeout_remove(stream->state_id);
-@@ -1643,6 +1657,7 @@ static bool stream_notify_state(void *data)
- 
- 	switch (ep->state) {
- 	case BT_ASCS_ASE_STATE_IDLE:
-+		stream_notify_ase_state(stream);
- 		break;
- 	case BT_ASCS_ASE_STATE_CONFIG:
- 		stream_notify_config(stream);
-@@ -1655,6 +1670,9 @@ static bool stream_notify_state(void *data)
- 	case BT_ASCS_ASE_STATE_DISABLING:
- 		stream_notify_metadata(stream);
- 		break;
-+	case BT_ASCS_ASE_STATE_RELEASING:
-+		stream_notify_ase_state(stream);
-+		break;
- 	}
- 
- 	return false;
-@@ -2068,17 +2086,11 @@ static unsigned int bap_ucast_metadata(struct bt_bap_stream *stream,
- 
- static uint8_t stream_release(struct bt_bap_stream *stream, struct iovec *rsp)
- {
--	struct bt_bap_pac *pac;
--
- 	DBG(stream->bap, "stream %p", stream);
- 
- 	ascs_ase_rsp_success(rsp, stream->ep->id);
- 
--	pac = stream->lpac;
--	if (pac->ops && pac->ops->clear)
--		pac->ops->clear(stream, pac->user_data);
--
--	stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
-+	stream_set_state(stream, BT_BAP_STREAM_STATE_RELEASING);
- 
- 	return 0;
- }
-@@ -6172,7 +6184,8 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
- 
- 	DBG(stream->bap, "stream %p io disconnected", stream);
- 
--	bt_bap_stream_set_io(stream, -1);
-+	if (stream->ep->state == BT_BAP_STREAM_STATE_RELEASING)
-+		stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
- 
- 	return false;
- }
+@@ -367,6 +374,7 @@ static struct i2c_driver dw9719_i2c_driver = {
+ 	.driver = {
+ 		.name = "dw9719",
+ 		.pm = pm_sleep_ptr(&dw9719_pm_ops),
++		.of_match_table = of_match_ptr(dw9719_of_table),
+ 	},
+ 	.probe = dw9719_probe,
+ 	.remove = dw9719_remove,
 
 ---
-base-commit: 2ee08ffd4d469781dc627fa50b4a015d9ad68007
-change-id: 20250208-ascs_bug-e7c5715d3d8c
+base-commit: 8f6629c004b193d23612641c3607e785819e97ab
+change-id: 20250206-dw9761dts-cdcc0c714b1a
+prerequisite-message-id: 20241105203658.29737-1-hdegoede@redhat.com:v1
+prerequisite-patch-id: b0a57666bd20b97291583c3052065dc314a37e79
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+André Apitzsch <git@apitzsch.eu>
 
