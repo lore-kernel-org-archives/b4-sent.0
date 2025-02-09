@@ -1,17 +1,12 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Subject: [PATCH v3 0/2] media: i2c: dw9719: Add device tree bindings for
- the VCM
-Date: Sun, 09 Feb 2025 22:51:56 +0100
-Message-Id: <20250209-dw9761dts-v3-0-14d3f00f0585@apitzsch.eu>
+Date: Sun, 09 Feb 2025 22:51:57 +0100
+Subject: [PATCH v3 1/2] dt-bindings: media: i2c: Add DW9719 and DW9761 VCM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAHwjqWcC/42QzW7DIBAGX8XiXCxYbH58yntUOWBYBw6OUyBO2
- sjvXuKmUo89joRmh+9BMqaImQzNgyRcY47LuYJ4a4gL9nxCGn1lAgx6BkxSfzNKcl8ydd455hT
- vRm5JfX9JOMX77no/Vp7SMtMSEtpfQ8c564EJ2esWjBKKcho8nhb0eEjogy2tW+aXLOHHtfaUH
- yOZMWe79wzN/13Dyp+60WakFedYhkZPUoJxjNVyIzwIyUF23AnJFCrda27QKDuS5y9CzGVJn/t
- AK+wlry30ny1WqOcdE3rSFqbRdAd7ieUru9DilRy3bfsG+6/qdmoBAAA=
-X-Change-ID: 20250206-dw9761dts-cdcc0c714b1a
+Message-Id: <20250209-dw9761dts-v3-1-14d3f00f0585@apitzsch.eu>
+References: <20250209-dw9761dts-v3-0-14d3f00f0585@apitzsch.eu>
+In-Reply-To: <20250209-dw9761dts-v3-0-14d3f00f0585@apitzsch.eu>
 To: Daniel Scally <djrscally@gmail.com>, 
  Sakari Ailus <sakari.ailus@linux.intel.com>, 
  Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -21,43 +16,75 @@ Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739137936; l=1009;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739137936; l=1650;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=uLOKFkONbrwKQL0GVTL+RBqZQj2F5LXwTUf/BvmTzYQ=;
- b=IiP+hQdUKjqTHKOqSuxW1WjW+yGfW8hmUydgX6oR5AURPoKBy3XBShxsYFyalzKIFzRVTHQDS
- TolWnwqv4ZYB5rNwKTkTe4pScljy2iThcbsn3Uoipz2JDLP5bH9RXHg
+ bh=VMCqVc24c9S5LJtNjPFsXe/GrcCNw3hzuYoj92Rfr3Y=;
+ b=0ThCYlAuDhrGQ10YOxPYdp0nNASxxTKs4qP4uq+GUh8ksDVdew/NEv8VR7yZ8JVep7D5+nFdJ
+ DNxu9OmClHdDQiVgp2oIazWRuJz7qo6gx8lmz0RiosuwVgCsT2vzvqi
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the Dongwoon DW9719 and DW9761 dt-bindings and add the related
-of_match table.
+Document Dongwoon DW9719 and DW9761 VCM devicetree bindings.
 
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
-Changes in v3:
-- Add patch to document devicetree bindings
-- Add "i2c:" to the subject of the 'Add of_match table' commit message
-- Link to v2: https://lore.kernel.org/r/20250208-dw9761dts-v2-1-c038f8a2fb94@apitzsch.eu
-
-Note, there was no v1.
-
----
-André Apitzsch (2):
-      dt-bindings: media: i2c: Add DW9719 and DW9761 VCM
-      media: i2c: dw9719: Add of_match table
-
  .../bindings/media/i2c/dongwoon,dw9719.yaml        | 45 ++++++++++++++++++++++
- drivers/media/i2c/dw9719.c                         |  8 ++++
- 2 files changed, 53 insertions(+)
----
-base-commit: 8f6629c004b193d23612641c3607e785819e97ab
-change-id: 20250206-dw9761dts-cdcc0c714b1a
-prerequisite-message-id: 20241105203658.29737-1-hdegoede@redhat.com:v1
-prerequisite-patch-id: b0a57666bd20b97291583c3052065dc314a37e79
+ 1 file changed, 45 insertions(+)
 
-Best regards,
+diff --git a/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9719.yaml b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9719.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..b38d22bf09713a7999e1f9ce6553de7587dbe5d2
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9719.yaml
+@@ -0,0 +1,45 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/i2c/dongwoon,dw9719.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Dongwoon Anatech DW9719 Voice Coil Motor (VCM) Controller
++
++maintainers:
++  - devicetree@vger.kernel.org
++
++description:
++  The Dongwoon DW9719 is a 10-bit digital-to-analog (DAC) converter. The DAC
++  is controlled via a 2-wire (I2C-compatible) serial interface.
++
++properties:
++  compatible:
++    enum:
++      - dongwoon,dw9719
++      - dongwoon,dw9761
++
++  reg:
++    maxItems: 1
++
++  vdd-supply:
++    description: Regulator providing power to the "VDD" pin.
++
++required:
++  - compatible
++  - reg
++
++additionalProperties: false
++
++examples:
++  - |
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        camera-lens@c {
++            compatible = "dongwoon,dw9761";
++            reg = <0x0c>;
++            vdd-supply = <&pm8916_l10>;
++        };
++    };
+
 -- 
-André Apitzsch <git@apitzsch.eu>
+2.48.1
 
