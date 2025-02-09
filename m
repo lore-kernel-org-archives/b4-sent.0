@@ -1,113 +1,83 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Sat, 08 Feb 2025 19:40:12 +0800
-Subject: [PATCH BlueZ bluez] client: Set the feature when initializing the
- client
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Sun, 09 Feb 2025 17:55:28 +0100
+Subject: [PATCH RESEND] scripts/make_fit: Print DT name before libfdt
+ errors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250208-client_eatt-v1-1-17932786b2cf@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAJtCp2cC/x3M0QpAMBiG4VvRf2y1TSK3Imnmw18abSORe7ccP
- gfv+1CAZwRqsoc8Tg68uQSVZ2QX42YIHpNJS11KLWthV4aLPUyMwlaqHFHUhdITpWL3mPj6by0
- N64Gbuvf9AGEVC9NkAAAA
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739014815; l=2912;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=NjeN/W6SMOhbUw5onPZ37ZDUR1czSasHWD76p2hBMRU=;
- b=Y6dL81o54s4ApBMTKiSaGaua5LtgVWFFMFxNnwZJw1fqwLTNP55P8jYINLLQ1D5GPX9KEIeHD
- rDnJ47GnzGfBsDNwmsHqlbECniW87FBxRTYd0WHdlvIJwyDP2FsV/5K
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250209-makefit-v1-1-bfe6151e8f0a@posteo.net>
+To: Simon Glass <sjg@chromium.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739120133; l=2504;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=qNYHUnAZnyBHAWNkYsjAlxvZcMVlVw3UbvcsQUL+fy8=;
+ b=wes9wYfXwUGeWcaAUCu5kNs9CIRC4rXfWm7xTK2sserLOYrdIsz035w6eRJCAu9HPXjuGFcPu
+ XXRyQ0UxUh3B2Gh1qwiZRLDA2mTnDEc830lGFG9jdndtFQphIiX7FgJ
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When writing Client Features feature values, it needs
-to determine whether local eatt is enabled.
+This makes it easier to pinpoint where the error happened. For example:
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+  FIT     arch/powerpc/boot/image.fit
+Error processing arch/powerpc/boot/dts/microwatt.dtb:
+Traceback (most recent call last):
+  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 335, in <module>
+    sys.exit(run_make_fit())
+             ^^^^^^^^^^^^^^
+  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 309, in run_make_fit
+    out_data, count, size = build_fit(args)
+                            ^^^^^^^^^^^^^^^
+  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 286, in build_fit
+    raise e
+  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 283, in build_fit
+    (model, compat, files) = process_dtb(fname, args)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 231, in process_dtb
+    model = fdt.getprop(0, 'model').as_str()
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/libfdt.py", line 448, in getprop
+    pdata = check_err_null(fdt_getprop(self._fdt, nodeoffset, prop_name),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/libfdt.py", line 153, in check_err_null
+    raise FdtException(val)
+libfdt.FdtException: pylibfdt error -1: FDT_ERR_NOTFOUND
+
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- src/device.c             | 9 ++++++++-
- src/gatt-database.c      | 3 ++-
- src/shared/gatt-client.c | 8 +++++---
- 3 files changed, 15 insertions(+), 5 deletions(-)
+The example is from a different series which I will release soon, which
+enables FIT on powerpc.
+---
+ scripts/make_fit.py | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/src/device.c b/src/device.c
-index e8bff718c..dfa8b277e 100644
---- a/src/device.c
-+++ b/src/device.c
-@@ -5628,6 +5628,8 @@ static void gatt_debug(const char *str, void *user_data)
+diff --git a/scripts/make_fit.py b/scripts/make_fit.py
+index 4a1bb2f55861adfce07959528e175260bc503593..1683e5ec6e6754dff3383dfec89df78b9c2fa896 100755
+--- a/scripts/make_fit.py
++++ b/scripts/make_fit.py
+@@ -279,7 +279,11 @@ def build_fit(args):
+         if os.path.splitext(fname)[1] != '.dtb':
+             continue
  
- static void gatt_client_init(struct btd_device *device)
- {
-+	uint8_t features;
-+
- 	gatt_client_cleanup(device);
+-        (model, compat, files) = process_dtb(fname, args)
++        try:
++            (model, compat, files) = process_dtb(fname, args)
++        except Exception as e:
++            sys.stderr.write(f"Error processing {fname}:\n")
++            raise e
  
- 	if (!device->connect && !btd_opts.reverse_discovery) {
-@@ -5639,8 +5641,13 @@ static void gatt_client_init(struct btd_device *device)
- 		return;
- 	}
- 
-+	features =  BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING
-+				| BT_GATT_CHRC_CLI_FEAT_NFY_MULTI;
-+	if (btd_opts.gatt_channels > 1)
-+		features |= BT_GATT_CHRC_CLI_FEAT_EATT;
-+
- 	device->client = bt_gatt_client_new(device->db, device->att,
--							device->att_mtu, 0);
-+							device->att_mtu, features);
- 	if (!device->client) {
- 		DBG("Failed to initialize");
- 		return;
-diff --git a/src/gatt-database.c b/src/gatt-database.c
-index a5a01add4..1056b9797 100644
---- a/src/gatt-database.c
-+++ b/src/gatt-database.c
-@@ -1245,7 +1245,8 @@ static void server_feat_read_cb(struct gatt_db_attribute *attrib,
- 		goto done;
- 	}
- 
--	value |= BT_GATT_CHRC_SERVER_FEAT_EATT;
-+	if (btd_opts.gatt_channels > 1)
-+		value |= BT_GATT_CHRC_SERVER_FEAT_EATT;
- 
- done:
- 	gatt_db_attribute_read_result(attrib, id, ecode, &value, sizeof(value));
-diff --git a/src/shared/gatt-client.c b/src/shared/gatt-client.c
-index 9db3f5211..41a5c6f9c 100644
---- a/src/shared/gatt-client.c
-+++ b/src/shared/gatt-client.c
-@@ -2043,7 +2043,7 @@ static void write_client_features(struct bt_gatt_client *client)
- 
- 	handle = gatt_db_attribute_get_handle(attr);
- 
--	client->features = BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
-+	client->features |= BT_GATT_CHRC_CLI_FEAT_ROBUST_CACHING;
- 
- 	bt_uuid16_create(&uuid, GATT_CHARAC_SERVER_FEAT);
- 
-@@ -2055,10 +2055,12 @@ static void write_client_features(struct bt_gatt_client *client)
- 		gatt_db_attribute_read(attr, 0, BT_ATT_OP_READ_REQ,
- 						NULL, server_feat_read_value,
- 						&feat);
--		if (feat && feat[0] & BT_GATT_CHRC_SERVER_FEAT_EATT)
--			client->features |= BT_GATT_CHRC_CLI_FEAT_EATT;
-+		if (!(feat && feat[0] & BT_GATT_CHRC_SERVER_FEAT_EATT)
-+			|| !(client->features & BT_GATT_CHRC_CLI_FEAT_EATT))
-+			client->features &= ~BT_GATT_CHRC_CLI_FEAT_EATT;
- 	}
- 
-+
- 	client->features |= BT_GATT_CHRC_CLI_FEAT_NFY_MULTI;
- 
- 	DBG(client, "Writing Client Features 0x%02x", client->features);
+         for fn in files:
+             if fn not in fdts:
 
 ---
-base-commit: 2ee08ffd4d469781dc627fa50b4a015d9ad68007
-change-id: 20250208-client_eatt-c715de38312f
+base-commit: 4bbf9020becbfd8fc2c3da790855b7042fad455b
+change-id: 20241224-makefit-31f789b9ee4f
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+J. Neuschäfer <j.ne@posteo.net>
 
