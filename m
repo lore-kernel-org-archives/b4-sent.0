@@ -1,83 +1,63 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sun, 09 Feb 2025 17:55:28 +0100
-Subject: [PATCH RESEND] scripts/make_fit: Print DT name before libfdt
- errors
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH v3 0/2] media: i2c: dw9719: Add device tree bindings for
+ the VCM
+Date: Sun, 09 Feb 2025 22:51:56 +0100
+Message-Id: <20250209-dw9761dts-v3-0-14d3f00f0585@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250209-makefit-v1-1-bfe6151e8f0a@posteo.net>
-To: Simon Glass <sjg@chromium.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAHwjqWcC/42QzW7DIBAGX8XiXCxYbH58yntUOWBYBw6OUyBO2
+ sjvXuKmUo89joRmh+9BMqaImQzNgyRcY47LuYJ4a4gL9nxCGn1lAgx6BkxSfzNKcl8ydd455hT
+ vRm5JfX9JOMX77no/Vp7SMtMSEtpfQ8c564EJ2esWjBKKcho8nhb0eEjogy2tW+aXLOHHtfaUH
+ yOZMWe79wzN/13Dyp+60WakFedYhkZPUoJxjNVyIzwIyUF23AnJFCrda27QKDuS5y9CzGVJn/t
+ AK+wlry30ny1WqOcdE3rSFqbRdAd7ieUru9DilRy3bfsG+6/qdmoBAAA=
+X-Change-ID: 20250206-dw9761dts-cdcc0c714b1a
+To: Daniel Scally <djrscally@gmail.com>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, devicetree@vger.kernel.org
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739120133; l=2504;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=qNYHUnAZnyBHAWNkYsjAlxvZcMVlVw3UbvcsQUL+fy8=;
- b=wes9wYfXwUGeWcaAUCu5kNs9CIRC4rXfWm7xTK2sserLOYrdIsz035w6eRJCAu9HPXjuGFcPu
- XXRyQ0UxUh3B2Gh1qwiZRLDA2mTnDEc830lGFG9jdndtFQphIiX7FgJ
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739137936; l=1009;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=uLOKFkONbrwKQL0GVTL+RBqZQj2F5LXwTUf/BvmTzYQ=;
+ b=IiP+hQdUKjqTHKOqSuxW1WjW+yGfW8hmUydgX6oR5AURPoKBy3XBShxsYFyalzKIFzRVTHQDS
+ TolWnwqv4ZYB5rNwKTkTe4pScljy2iThcbsn3Uoipz2JDLP5bH9RXHg
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This makes it easier to pinpoint where the error happened. For example:
+Document the Dongwoon DW9719 and DW9761 dt-bindings and add the related
+of_match table.
 
-  FIT     arch/powerpc/boot/image.fit
-Error processing arch/powerpc/boot/dts/microwatt.dtb:
-Traceback (most recent call last):
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 335, in <module>
-    sys.exit(run_make_fit())
-             ^^^^^^^^^^^^^^
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 309, in run_make_fit
-    out_data, count, size = build_fit(args)
-                            ^^^^^^^^^^^^^^^
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 286, in build_fit
-    raise e
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 283, in build_fit
-    (model, compat, files) = process_dtb(fname, args)
-                             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jn/dev/linux/linux-git/build-mpc83xx/../scripts/make_fit.py", line 231, in process_dtb
-    model = fdt.getprop(0, 'model').as_str()
-            ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3/dist-packages/libfdt.py", line 448, in getprop
-    pdata = check_err_null(fdt_getprop(self._fdt, nodeoffset, prop_name),
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3/dist-packages/libfdt.py", line 153, in check_err_null
-    raise FdtException(val)
-libfdt.FdtException: pylibfdt error -1: FDT_ERR_NOTFOUND
-
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
-The example is from a different series which I will release soon, which
-enables FIT on powerpc.
----
- scripts/make_fit.py | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Changes in v3:
+- Add patch to document devicetree bindings
+- Add "i2c:" to the subject of the 'Add of_match table' commit message
+- Link to v2: https://lore.kernel.org/r/20250208-dw9761dts-v2-1-c038f8a2fb94@apitzsch.eu
 
-diff --git a/scripts/make_fit.py b/scripts/make_fit.py
-index 4a1bb2f55861adfce07959528e175260bc503593..1683e5ec6e6754dff3383dfec89df78b9c2fa896 100755
---- a/scripts/make_fit.py
-+++ b/scripts/make_fit.py
-@@ -279,7 +279,11 @@ def build_fit(args):
-         if os.path.splitext(fname)[1] != '.dtb':
-             continue
- 
--        (model, compat, files) = process_dtb(fname, args)
-+        try:
-+            (model, compat, files) = process_dtb(fname, args)
-+        except Exception as e:
-+            sys.stderr.write(f"Error processing {fname}:\n")
-+            raise e
- 
-         for fn in files:
-             if fn not in fdts:
+Note, there was no v1.
 
 ---
-base-commit: 4bbf9020becbfd8fc2c3da790855b7042fad455b
-change-id: 20241224-makefit-31f789b9ee4f
+André Apitzsch (2):
+      dt-bindings: media: i2c: Add DW9719 and DW9761 VCM
+      media: i2c: dw9719: Add of_match table
+
+ .../bindings/media/i2c/dongwoon,dw9719.yaml        | 45 ++++++++++++++++++++++
+ drivers/media/i2c/dw9719.c                         |  8 ++++
+ 2 files changed, 53 insertions(+)
+---
+base-commit: 8f6629c004b193d23612641c3607e785819e97ab
+change-id: 20250206-dw9761dts-cdcc0c714b1a
+prerequisite-message-id: 20241105203658.29737-1-hdegoede@redhat.com:v1
+prerequisite-patch-id: b0a57666bd20b97291583c3052065dc314a37e79
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+André Apitzsch <git@apitzsch.eu>
 
