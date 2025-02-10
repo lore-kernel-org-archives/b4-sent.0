@@ -1,69 +1,67 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sun, 09 Feb 2025 23:13:40 +0100
-Subject: [PATCH] dt-bindings: serial: Allow fsl,ns16550 with broken FIFOs
+From: Nathan Lynch <nathan.lynch@amd.com>
+Date: Mon, 10 Feb 2025 17:29:11 -0600
+Subject: [PATCH] dmaengine: Remove device_prep_dma_imm_data from struct
+ dma_device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250209-uartfifo-v1-1-501a510a5f07@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAJMoqWcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDIwNL3dLEopK0zLR8XVPzpEQzi0QLsxTTRCWg8oKi1LTMCrBR0bG1tQB
- TRFOjWgAAAA==
-X-Change-ID: 20250209-uartfifo-57ba68a86d5a
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Lubomir Rintel <lkundrak@v3.sk>, 
- devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250210-dmaengine-drop-imm-data-v1-1-e017766da2fa@amd.com>
+X-B4-Tracking: v=1; b=H4sIAMaLqmcC/x3MSwqEMBBF0a1IjbsgBsXPVqQHhXnRGiRKItIQ3
+ HsHh2dwb6GMpMg0N4USbs16xIr209C6S9zA6qrJGtsb2xp2QRA3jWCXjpM1BHZyCftBRgzd5Fd
+ 4qvWZ4PX3npfv8/wBAttvX2kAAAA=
+X-Change-ID: 20250210-dmaengine-drop-imm-data-f7a8e749fcef
+To: Vinod Koul <vkoul@kernel.org>
+Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739139233; l=1503;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=V4qJYrQtaQiojtSYf/ifxE0jLBJR4+HF4WHFmCDMQ4U=;
- b=ItwFNaplItvd5ajPVusy1cLSxPUZOQmWwvAOpnVvX8aBvjoDqqiWUZzhwIAYyeQAV0IaPYvq8
- tBHElu7YnssAN5uuVUYlM8fdn7q1pJ0O79rl8MfVXLjmQg5ITWC/v3+
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739230184; l=1774;
+ i=nathan.lynch@amd.com; s=20241010; h=from:subject:message-id;
+ bh=sXjE4x9Dbe9KQkwP5XNR830aZAR+1CIxnoSjbiiaAbk=;
+ b=XxCcMUYHxv5qITDImcQuJbWFVgkGchmfqg8g+UnTZ+n01bHul4r3+72ROxnXuy50Y+PFTsq2g
+ xhgZBPLLoMLA2zs83eJsaGaNy9ssNCyPOEhUMpgnv7mRGiXHVP+zG/d
+X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
+ pk=ZR637UTGg5YLDj56cxFeHdYoUjPMMFbcijfOkAmAnbc=
+X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20241010 with auth_id=241
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-While testing on a Freescale MPC8314E board, I noticed that changing
-the UART compatible string from ns16550 to ns16550a breaks the output,
-suggesting that the FIFOs don't work correctly. To accommodate this
-fact, move the definition of fsl,ns16550 to the section of 8250.yaml
-that allows broken FIFOs.
+The device_prep_dma_imm_data() method isn't implemented or invoked by
+any code since commit 80ade22c06ca ("misc: mic: remove the MIC drivers").
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Remove it, shrinking struct dma_device by a few bytes.
+
+Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- Documentation/devicetree/bindings/serial/8250.yaml | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/dmaengine.h | 4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/serial/8250.yaml b/Documentation/devicetree/bindings/serial/8250.yaml
-index 0bde2379e864749a20a2e1c962103bf8f5299e42..dc0d52920575ff851a24e56b808e50ee3a14743b 100644
---- a/Documentation/devicetree/bindings/serial/8250.yaml
-+++ b/Documentation/devicetree/bindings/serial/8250.yaml
-@@ -77,7 +77,6 @@ properties:
-               - altr,16550-FIFO64
-               - altr,16550-FIFO128
-               - fsl,16550-FIFO64
--              - fsl,ns16550
-               - andestech,uart16550
-               - nxp,lpc1850-uart
-               - opencores,uart16550-rtlsvn105
-@@ -86,6 +85,7 @@ properties:
-       - items:
-           - enum:
-               - ns16750
-+              - fsl,ns16550
-               - cavium,octeon-3860-uart
-               - xlnx,xps-uart16550-2.00.b
-               - ralink,rt2880-uart
+diff --git a/include/linux/dmaengine.h b/include/linux/dmaengine.h
+index a360e0330436470bfea17f8df567ff785e4293ea..bb146c5ac3e4ccd7bc0afbf3b28e5b3d659ad62f 100644
+--- a/include/linux/dmaengine.h
++++ b/include/linux/dmaengine.h
+@@ -839,7 +839,6 @@ struct dma_filter {
+  *	The function takes a buffer of size buf_len. The callback function will
+  *	be called after period_len bytes have been transferred.
+  * @device_prep_interleaved_dma: Transfer expression in a generic way.
+- * @device_prep_dma_imm_data: DMA's 8 byte immediate data to the dst address
+  * @device_caps: May be used to override the generic DMA slave capabilities
+  *	with per-channel specific ones
+  * @device_config: Pushes a new configuration to a channel, return 0 or an error
+@@ -942,9 +941,6 @@ struct dma_device {
+ 	struct dma_async_tx_descriptor *(*device_prep_interleaved_dma)(
+ 		struct dma_chan *chan, struct dma_interleaved_template *xt,
+ 		unsigned long flags);
+-	struct dma_async_tx_descriptor *(*device_prep_dma_imm_data)(
+-		struct dma_chan *chan, dma_addr_t dst, u64 data,
+-		unsigned long flags);
+ 
+ 	void (*device_caps)(struct dma_chan *chan, struct dma_slave_caps *caps);
+ 	int (*device_config)(struct dma_chan *chan, struct dma_slave_config *config);
 
 ---
-base-commit: b142aa50047767e0ab2739102e913fff8207cae1
-change-id: 20250209-uartfifo-57ba68a86d5a
+base-commit: 2c17e9ea0caa5555e31e154fa1b06260b816f5cc
+change-id: 20250210-dmaengine-drop-imm-data-f7a8e749fcef
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Nathan Lynch <nathan.lynch@amd.com>
 
