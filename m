@@ -1,137 +1,79 @@
-From: Cryolitia PukNgae <Cryolitia@gmail.com>
-Date: Tue, 11 Feb 2025 15:01:18 +0800
-Subject: [PATCH v5 2/2] hwmon: document: add gpd-fan
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Subject: [PATCH net-next v4 0/3] net: phy: dp83822: Add support for
+ changing the transmit amplitude voltage
+Date: Tue, 11 Feb 2025 09:33:46 +0100
+Message-Id: <20250211-dp83822-tx-swing-v4-0-1e8ebd71ad54@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250211-gpd_fan-v5-2-608f4255f0e1@gmail.com>
-References: <20250211-gpd_fan-v5-0-608f4255f0e1@gmail.com>
-In-Reply-To: <20250211-gpd_fan-v5-0-608f4255f0e1@gmail.com>
-To: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
- Cryolitia PukNgae <Cryolitia@gmail.com>, Jonathan Corbet <corbet@lwn.net>
-Cc: linux-kernel@vger.kernel.org, linux-hwmon@vger.kernel.org, 
- linux-doc@vger.kernel.org, Celeste Liu <CoelacanthusHex@gmail.com>, 
- Yao Zi <ziyao@disroot.org>, Derek John Clark <derekjohn.clark@gmail.com>, 
- =?utf-8?q?Marcin_Str=C4=85gowski?= <marcin@stragowski.com>, 
- someone5678 <someone5678.dev@gmail.com>, 
- Justin Weiss <justin@justinweiss.com>
+X-B4-Tracking: v=1; b=H4sIAGoLq2cC/23NQQ6CMBQE0KuYrq35/aVAXXkP4wLaLzTRQlqCG
+ MLdbbrRGJaTybxZWaTgKLLzYWWBZhfd4FMojgdm+sZ3xJ1NmSFgIVBIbsda1oh8Wnh8Od9x1Ta
+ lEaRbKBVLszHQ3S2ZvDJPE/e0TOyWmt7FaQjv/DWL3CdWgdhjZ8GBV2RVo20NIODycNT2FMLJD
+ M/szfhjIOwYmAyojNbWFFhitWPIr4FQ7BgyGbrSNelSAVj9Z2zb9gH4b5SzRQEAAA==
+X-Change-ID: 20241213-dp83822-tx-swing-5ba6c1e9b065
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andrew Davis <afd@ti.com>, 
+ Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ Florian Fainelli <f.fainelli@gmail.com>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3009; i=Cryolitia@gmail.com;
- h=from:subject:message-id; bh=Ra7Bz7JR/t/+vRZrFRWqPASIg4t3PfuJpe83YD+tFAY=;
- b=LS0tLS1CRUdJTiBQR1AgTUVTU0FHRS0tLS0tCgpvd0did012TXdDV1dQRU9OYzFGS3JRM2phY
- lVraHZSVlh5K1VMYkc2OU92aXNqbmZkZ1RuYjdCMTdWRlptcUR3CjhOM0tTK2RLdHN1SGJSUVQ2
- Q2hsWVJEallwQVZVMlJaSVdNOXNhNmtLL3VLZk1zZW1EbXNUQ0JER0xnNEJXQWkKRHFvTS83TmJ
- MdVUyM2JtcnRiYmZPZEoyNDl5T3l3dnJEQ04yWnA0MjVyOFJhSm5Ub2Nid3Y4aEthZm5yaWlsTg
- ptN2Y5a3RPcFBtZ3I4SDIxN3RORHU1T1BxaGh4UHhYWXl3d0EKPVl0REsKLS0tLS1FTkQgUEdQI
- E1FU1NBR0UtLS0tLQo=
-X-Developer-Key: i=Cryolitia@gmail.com; a=openpgp;
- fpr=1C3C6547538D7152310C0EEA84DD0C0130A54DF7
-X-Endpoint-Received: by B4 Relay for Cryolitia@gmail.com/default with auth_id=186
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739262831; l=1880;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=NX6m3Adayc0vNqxUwfaOwMkKFBcSZx8C8KPimyfNAR8=;
+ b=YhgSfLb+zmjwX3GngGcIPF4m91Jxb0cBPhjrgeoaKlLWSN6oMMnbo/y0v7T3CE8Z2dHVNdrmk
+ u2jJx+DyLU3BsN9ZKWoayIgUABWGJUo2070thrqmcYcaYiNdMpAMEAg
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add GPD fan driver document
+Add support for changing the transmit amplitude voltage in 100BASE-TX mode.
+Add support for configuration via DT.
 
-Signed-off-by: Cryolitia PukNgae <Cryolitia@gmail.com>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- Documentation/hwmon/gpd-fan.rst | 63 +++++++++++++++++++++++++++++++++++++++++
- Documentation/hwmon/index.rst   |  1 +
- MAINTAINERS                     |  1 +
- 3 files changed, 65 insertions(+)
+Changes in v4:
+- Remove type $ref from binding
+- Remove '|' from description in binding
+- Change helper function from:
+    static int phy_get_int_delay_property(struct device *dev, const char *name)
+  to:
+    static int phy_get_u32_property(struct device *dev, const char *name, u32 *val)
+- Apply helper function to phy_get_internal_delay
+- Link to v3: https://lore.kernel.org/r/20250204-dp83822-tx-swing-v3-0-9798e96500d9@liebherr.com
 
-diff --git a/Documentation/hwmon/gpd-fan.rst b/Documentation/hwmon/gpd-fan.rst
-new file mode 100644
-index 0000000000000000000000000000000000000000..9d478c7350b5fb88e43e54407503dac441328142
---- /dev/null
-+++ b/Documentation/hwmon/gpd-fan.rst
-@@ -0,0 +1,63 @@
-+.. SPDX-License-Identifier: GPL-2.0-or-later
-+
-+Kernel driver gpd-fan
-+=========================
-+
-+Author:
-+    - Cryolitia PukNgae <Cryolitia@gmail.com>
-+
-+Description
-+------------
-+
-+Handheld devices from Shenzhen GPD Technology Co., Ltd. provide fan readings and fan control through
-+their embedded controllers.
-+
-+Supported devices
-+-----------------
-+
-+Currently the driver supports the following handhelds:
-+
-+ - GPD Win Mini (7840U)
-+ - GPD Win Mini (8840U)
-+ - GPD Win Max 2
-+ - GPD Win Max 2 2023 (7840U)
-+ - GPD Win Max 2 2024 (8840U)
-+ - GPD Win 4 (6800U)
-+ - GPD Win 4 (7840U)
-+
-+Module parameters
-+-----------------
-+
-+gpd_fan_board
-+  Force specific which module quirk should be used.
-+  Use it like "gpd_fan_board=wm2".
-+
-+   - wm2
-+       - GPD Win 4 (7840U)
-+       - GPD Win Max 2 (6800U)
-+       - GPD Win Max 2 2023 (7840U)
-+       - GPD Win Max 2 2024 (8840U)
-+   - win4
-+       - GPD Win 4 (6800U)
-+   - win_mini
-+       - GPD Win Mini (7840U)
-+       - GPD Win Mini (8840U)
-+
-+Sysfs entries
-+-------------
-+
-+The following attributes are supported:
-+
-+fan1_input
-+  Read Only. Reads current fan RPM.
-+
-+pwm1_enable
-+  Read/Write. Enable manual fan control. Write "0" to disable control and run at
-+  full speed. Write "1" to set to manual, write "2" to let the EC control decide
-+  fan speed. Read this attribute to see current status.
-+
-+pwm1
-+  Read/Write. Read this attribute to see current duty cycle in the range [0-255].
-+  When pwm1_enable is set to "1" (manual) write any value in the range [0-255]
-+  to set fan speed.
-+
-diff --git a/Documentation/hwmon/index.rst b/Documentation/hwmon/index.rst
-index 55f1111594b2e9ada4a881e5d4d8884f33256d1f..d5c7cd0cfdeb7059b6cd83050ae98aa7cb1334e6 100644
---- a/Documentation/hwmon/index.rst
-+++ b/Documentation/hwmon/index.rst
-@@ -80,6 +80,7 @@ Hardware Monitoring Kernel Drivers
-    gigabyte_waterforce
-    gsc-hwmon
-    gl518sm
-+   gpd-fan
-    gxp-fan-ctrl
-    hih6130
-    hp-wmi-sensors
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 777ba74ccb07ccc0840c3cd34e7b4d98d726f964..20faebeae981e4b7619fb10331c50525d98db944 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -9766,6 +9766,7 @@ GPD FAN DRIVER
- M:	Cryolitia PukNgae <Cryolitia@gmail.com>
- L:	linux-hwmon@vger.kernel.org
- S:	Maintained
-+F:	Documentation/hwmon/gpd-fan.rst
- F:	drivers/hwmon/gpd-fan.c
- 
- GPD POCKET FAN DRIVER
+Changes in v3:
+- Switch to tx-amplitude-100base-tx-percent in bindings
+- Link to v2: https://lore.kernel.org/r/20250120-dp83822-tx-swing-v2-0-07c99dc42627@liebherr.com
 
+Changes in v2:
+- Remove binding ti,tx-amplitude-100base-tx-millivolt from ti,dp83822.yaml
+- Add binding tx-amplitude-100base-tx-gain-milli to ethernet-phy.yaml
+- Add helper to get tx amplitude gain from DT
+- Link to v1: https://lore.kernel.org/r/20250113-dp83822-tx-swing-v1-0-7ed5a9d80010@liebherr.com
+
+---
+Dimitri Fedrau (3):
+      dt-bindings: net: ethernet-phy: add property tx-amplitude-100base-tx-percent
+      net: phy: Add helper for getting tx amplitude gain
+      net: phy: dp83822: Add support for changing the transmit amplitude voltage
+
+ .../devicetree/bindings/net/ethernet-phy.yaml      |  6 +++
+ drivers/net/phy/dp83822.c                          | 38 +++++++++++++++++++
+ drivers/net/phy/phy_device.c                       | 44 +++++++++++++---------
+ include/linux/phy.h                                |  4 ++
+ 4 files changed, 74 insertions(+), 18 deletions(-)
+---
+base-commit: c2933b2befe25309f4c5cfbea0ca80909735fd76
+change-id: 20241213-dp83822-tx-swing-5ba6c1e9b065
+
+Best regards,
 -- 
-2.47.1
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
