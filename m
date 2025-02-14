@@ -1,11 +1,11 @@
 From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Fri, 14 Feb 2025 15:14:10 +0100
-Subject: [PATCH net-next v5 2/3] net: phy: Add helper for getting tx
- amplitude gain
+Date: Fri, 14 Feb 2025 15:14:11 +0100
+Subject: [PATCH net-next v5 3/3] net: phy: dp83822: Add support for
+ changing the transmit amplitude voltage
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250214-dp83822-tx-swing-v5-2-02ca72620599@liebherr.com>
+Message-Id: <20250214-dp83822-tx-swing-v5-3-02ca72620599@liebherr.com>
 References: <20250214-dp83822-tx-swing-v5-0-02ca72620599@liebherr.com>
 In-Reply-To: <20250214-dp83822-tx-swing-v5-0-02ca72620599@liebherr.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -20,137 +20,115 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
  Dimitri Fedrau <dima.fedrau@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739542465; l=4484;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739542465; l=3488;
  i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=dj7XjLsD1vcv58mbznpKHLLZxlHxYB7Mj8UF6IH59YQ=;
- b=Aejaq9OY2Odwpc2y8jo8Bh7r8uRC4Z4WNGMWvnnFLn2N7YGbSvNaZMntwtqhsN3Gwa52ckmIq
- wjNFtQaTu9uDJUQL4DQ+87NYB1DPVM7rf1x6TKgp9mCEzSPHyZ1/ZrF
+ bh=Or6PDXKPMq4kk1AHxpqPQpxSNSkTyzooFMkd9jkPUKk=;
+ b=WVZP1AGB+0WKyM2keetZIyKR2MJ5QQffba06je+G7obuCNMafoggYpuEJfP6BkMf7viovLvSl
+ Bz2qj6R74dWBe3FDQ3ZIy6c5+QDQRXv06FQkJPJYoGrIzEU7BT6jGGV
 X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
  pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
 X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add helper which returns the tx amplitude gain defined in device tree.
+Add support for changing the transmit amplitude voltage in 100BASE-TX mode.
 Modifying it can be necessary to compensate losses on the PCB and
 connector, so the voltages measured on the RJ45 pins are conforming.
 
 Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- drivers/net/phy/phy_device.c | 53 +++++++++++++++++++++++++++++---------------
- include/linux/phy.h          |  4 ++++
- 2 files changed, 39 insertions(+), 18 deletions(-)
+ drivers/net/phy/dp83822.c | 38 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
 
-diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
-index 9b06ba92f2ed207ec1e254ad3d1c8111933f4181..4223742e3b0c16d782f790c2fcf9e7dbdd32ba2d 100644
---- a/drivers/net/phy/phy_device.c
-+++ b/drivers/net/phy/phy_device.c
-@@ -3096,19 +3096,12 @@ void phy_get_pause(struct phy_device *phydev, bool *tx_pause, bool *rx_pause)
- EXPORT_SYMBOL(phy_get_pause);
+diff --git a/drivers/net/phy/dp83822.c b/drivers/net/phy/dp83822.c
+index 6599feca1967d705331d6e354205a2485ea962f2..3662f3905d5ade8ad933608fcaeabb714a588418 100644
+--- a/drivers/net/phy/dp83822.c
++++ b/drivers/net/phy/dp83822.c
+@@ -31,6 +31,7 @@
+ #define MII_DP83822_RCSR	0x17
+ #define MII_DP83822_RESET_CTRL	0x1f
+ #define MII_DP83822_MLEDCR	0x25
++#define MII_DP83822_LDCTRL	0x403
+ #define MII_DP83822_LEDCFG1	0x460
+ #define MII_DP83822_IOCTRL1	0x462
+ #define MII_DP83822_IOCTRL2	0x463
+@@ -123,6 +124,9 @@
+ #define DP83822_IOCTRL1_GPIO1_CTRL		GENMASK(2, 0)
+ #define DP83822_IOCTRL1_GPIO1_CTRL_LED_1	BIT(0)
  
- #if IS_ENABLED(CONFIG_OF_MDIO)
--static int phy_get_int_delay_property(struct device *dev, const char *name)
-+static int phy_get_u32_property(struct device *dev, const char *name, u32 *val)
- {
--	s32 int_delay;
--	int ret;
--
--	ret = device_property_read_u32(dev, name, &int_delay);
--	if (ret)
--		return ret;
--
--	return int_delay;
-+	return device_property_read_u32(dev, name, val);
++/* LDCTRL bits */
++#define DP83822_100BASE_TX_LINE_DRIVER_SWING	GENMASK(7, 4)
++
+ /* IOCTRL2 bits */
+ #define DP83822_IOCTRL2_GPIO2_CLK_SRC		GENMASK(6, 4)
+ #define DP83822_IOCTRL2_GPIO2_CTRL		GENMASK(2, 0)
+@@ -197,6 +201,7 @@ struct dp83822_private {
+ 	bool set_gpio2_clk_out;
+ 	u32 gpio2_clk_out;
+ 	bool led_pin_enable[DP83822_MAX_LED_PINS];
++	int tx_amplitude_100base_tx_index;
+ };
+ 
+ static int dp83822_config_wol(struct phy_device *phydev,
+@@ -522,6 +527,12 @@ static int dp83822_config_init(struct phy_device *phydev)
+ 			       FIELD_PREP(DP83822_IOCTRL2_GPIO2_CLK_SRC,
+ 					  dp83822->gpio2_clk_out));
+ 
++	if (dp83822->tx_amplitude_100base_tx_index >= 0)
++		phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_LDCTRL,
++			       DP83822_100BASE_TX_LINE_DRIVER_SWING,
++			       FIELD_PREP(DP83822_100BASE_TX_LINE_DRIVER_SWING,
++					  dp83822->tx_amplitude_100base_tx_index));
++
+ 	err = dp83822_config_init_leds(phydev);
+ 	if (err)
+ 		return err;
+@@ -720,6 +731,11 @@ static int dp83822_phy_reset(struct phy_device *phydev)
  }
- #else
--static int phy_get_int_delay_property(struct device *dev, const char *name)
-+static int phy_get_u32_property(struct device *dev, const char *name, u32 *val)
+ 
+ #ifdef CONFIG_OF_MDIO
++static const u32 tx_amplitude_100base_tx_gain[] = {
++	80, 82, 83, 85, 87, 88, 90, 92,
++	93, 95, 97, 98, 100, 102, 103, 105,
++};
++
+ static int dp83822_of_init_leds(struct phy_device *phydev)
  {
- 	return -EINVAL;
- }
-@@ -3133,12 +3126,12 @@ static int phy_get_int_delay_property(struct device *dev, const char *name)
- s32 phy_get_internal_delay(struct phy_device *phydev, struct device *dev,
- 			   const int *delay_values, int size, bool is_rx)
- {
--	s32 delay;
--	int i;
+ 	struct device_node *node = phydev->mdio.dev.of_node;
+@@ -780,6 +796,8 @@ static int dp83822_of_init(struct phy_device *phydev)
+ 	struct dp83822_private *dp83822 = phydev->priv;
+ 	struct device *dev = &phydev->mdio.dev;
+ 	const char *of_val;
 +	int i, ret;
-+	u32 delay;
++	u32 val;
  
- 	if (is_rx) {
--		delay = phy_get_int_delay_property(dev, "rx-internal-delay-ps");
--		if (delay < 0 && size == 0) {
-+		ret = phy_get_u32_property(dev, "rx-internal-delay-ps", &delay);
-+		if (ret < 0 && size == 0) {
- 			if (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID ||
- 			    phydev->interface == PHY_INTERFACE_MODE_RGMII_RXID)
- 				return 1;
-@@ -3147,8 +3140,8 @@ s32 phy_get_internal_delay(struct phy_device *phydev, struct device *dev,
- 		}
- 
- 	} else {
--		delay = phy_get_int_delay_property(dev, "tx-internal-delay-ps");
--		if (delay < 0 && size == 0) {
-+		ret = phy_get_u32_property(dev, "tx-internal-delay-ps", &delay);
-+		if (ret < 0 && size == 0) {
- 			if (phydev->interface == PHY_INTERFACE_MODE_RGMII_ID ||
- 			    phydev->interface == PHY_INTERFACE_MODE_RGMII_TXID)
- 				return 1;
-@@ -3157,8 +3150,8 @@ s32 phy_get_internal_delay(struct phy_device *phydev, struct device *dev,
- 		}
+ 	/* Signal detection for the PHY is only enabled if the FX_EN and the
+ 	 * SD_EN pins are strapped. Signal detection can only enabled if FX_EN
+@@ -815,6 +833,26 @@ static int dp83822_of_init(struct phy_device *phydev)
+ 		dp83822->set_gpio2_clk_out = true;
  	}
  
--	if (delay < 0)
--		return delay;
-+	if (ret < 0)
-+		return ret;
- 
- 	if (size == 0)
- 		return delay;
-@@ -3193,6 +3186,30 @@ s32 phy_get_internal_delay(struct phy_device *phydev, struct device *dev,
- }
- EXPORT_SYMBOL(phy_get_internal_delay);
- 
-+/**
-+ * phy_get_tx_amplitude_gain - stores tx amplitude gain in @val
-+ * @phydev: phy_device struct
-+ * @dev: pointer to the devices device struct
-+ * @linkmode: linkmode for which the tx amplitude gain should be retrieved
-+ * @val: tx amplitude gain
-+ *
-+ * Returns: 0 on success, < 0 on failure
-+ */
-+int phy_get_tx_amplitude_gain(struct phy_device *phydev, struct device *dev,
-+			      enum ethtool_link_mode_bit_indices linkmode,
-+			      u32 *val)
-+{
-+	switch (linkmode) {
-+	case ETHTOOL_LINK_MODE_100baseT_Full_BIT:
-+		return phy_get_u32_property(dev,
-+					    "tx-amplitude-100base-tx-percent",
-+					    val);
-+	default:
-+		return -EINVAL;
++	dp83822->tx_amplitude_100base_tx_index = -1;
++	ret = phy_get_tx_amplitude_gain(phydev, dev,
++					ETHTOOL_LINK_MODE_100baseT_Full_BIT,
++					&val);
++	if (!ret) {
++		for (i = 0; i < ARRAY_SIZE(tx_amplitude_100base_tx_gain); i++) {
++			if (tx_amplitude_100base_tx_gain[i] == val) {
++				dp83822->tx_amplitude_100base_tx_index = i;
++				break;
++			}
++		}
++
++		if (dp83822->tx_amplitude_100base_tx_index < 0) {
++			phydev_err(phydev,
++				   "Invalid value for tx-amplitude-100base-tx-percent property (%u)\n",
++				   val);
++			return -EINVAL;
++		}
 +	}
-+}
-+EXPORT_SYMBOL_GPL(phy_get_tx_amplitude_gain);
 +
- static int phy_led_set_brightness(struct led_classdev *led_cdev,
- 				  enum led_brightness value)
- {
-diff --git a/include/linux/phy.h b/include/linux/phy.h
-index 64982eba71d1eab504307cc83b9c5bbe6886ed29..ffd0eb7f7425ba3dfebbeb966c1fd83783586e08 100644
---- a/include/linux/phy.h
-+++ b/include/linux/phy.h
-@@ -2124,6 +2124,10 @@ void phy_get_pause(struct phy_device *phydev, bool *tx_pause, bool *rx_pause);
- s32 phy_get_internal_delay(struct phy_device *phydev, struct device *dev,
- 			   const int *delay_values, int size, bool is_rx);
- 
-+int phy_get_tx_amplitude_gain(struct phy_device *phydev, struct device *dev,
-+			      enum ethtool_link_mode_bit_indices linkmode,
-+			      u32 *val);
-+
- void phy_resolve_pause(unsigned long *local_adv, unsigned long *partner_adv,
- 		       bool *tx_pause, bool *rx_pause);
+ 	return dp83822_of_init_leds(phydev);
+ }
  
 
 -- 
