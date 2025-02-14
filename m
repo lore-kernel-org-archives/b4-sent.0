@@ -1,17 +1,13 @@
 From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Subject: [PATCH net-next v5 0/3] net: phy: dp83822: Add support for
- changing the transmit amplitude voltage
-Date: Fri, 14 Feb 2025 15:14:08 +0100
-Message-Id: <20250214-dp83822-tx-swing-v5-0-02ca72620599@liebherr.com>
+Date: Fri, 14 Feb 2025 15:14:09 +0100
+Subject: [PATCH net-next v5 1/3] dt-bindings: net: ethernet-phy: add
+ property tx-amplitude-100base-tx-percent
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALBPr2cC/23NwW7DIBAE0F+JOIdqdw0Gcsp/VD3YsI2RGhyB5
- bqK/O9FvjSqOI5G8+YpCufIRVxOT5F5jSXOqQZ9Pgk/DenGMoaaBQEpJOxkeNjOEsllk+U7ppv
- U49B7ZDdCr0WdPTJ/xu0g30XiRSbeFvFRmymWZc4/x9eKR19ZDdhiV5QgDQc9uGABEK5fkceJc
- 37z8/3wVnoxCBoGVQOMdy54RT2ZhtH9GQSqYXTVcMZZdr0GCK5hqBcDsWGoaiBbHoPBIWj1z9j
- 3/RdtI8CKiQEAAA==
-X-Change-ID: 20241213-dp83822-tx-swing-5ba6c1e9b065
+Message-Id: <20250214-dp83822-tx-swing-v5-1-02ca72620599@liebherr.com>
+References: <20250214-dp83822-tx-swing-v5-0-02ca72620599@liebherr.com>
+In-Reply-To: <20250214-dp83822-tx-swing-v5-0-02ca72620599@liebherr.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -25,65 +21,45 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  Dimitri Fedrau <dima.fedrau@gmail.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739542465; l=2248;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739542465; l=1291;
  i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=mKExfhVU1mGueFObQGf6TrT/sXrlbwhC802VWY3/t6I=;
- b=RNdzwZ9/nf1p22uBC/NIXeObi2rcn6NMKekvnCJosWzod7J2BRJGVHOmrPnX4CgqVnI1J7SiD
- qFLVEzBtyNtAGRDWAcX0lxlW2p0sK9iiMqUYP+1aOOve2i4nOVhciIX
+ bh=gyZm/1v6xiCoF5uqR707anExlbQRcIOzUUiGOITwpxE=;
+ b=SBuwnrqzF6QTwF9+w/3C5Swl95+cSy18Hddgj0XLt3YUL+Xezz/oAjTOX3UE/6LO4LWycnCv7
+ okgKIiFFh9OCNpQfWZxy7RBfGjBzqiq/orDoP9Kf6e3AZGDT81egVQr
 X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
  pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
 X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for changing the transmit amplitude voltage in 100BASE-TX mode.
-Add support for configuration via DT.
+Add property tx-amplitude-100base-tx-percent in the device tree bindings
+for configuring the tx amplitude of 100BASE-TX PHYs. Modifying it can be
+necessary to compensate losses on the PCB and connector, so the voltages
+measured on the RJ45 pins are conforming.
 
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
-Changes in v5:
-- Remove default from binding
-- Fix description in binding by defining what 100% gain means
-- Switch to reverse christmas tree in phy_get_internal_delay
-- Add kernel doc for phy_get_tx_amplitude_gain
-- EXPORT_SYMBOL_GPL for phy_get_tx_amplitude_gain
-- Link to v4: https://lore.kernel.org/r/20250211-dp83822-tx-swing-v4-0-1e8ebd71ad54@liebherr.com
+ Documentation/devicetree/bindings/net/ethernet-phy.yaml | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-Changes in v4:
-- Remove type $ref from binding
-- Remove '|' from description in binding
-- Change helper function from:
-    static int phy_get_int_delay_property(struct device *dev, const char *name)
-  to:
-    static int phy_get_u32_property(struct device *dev, const char *name, u32 *val)
-- Apply helper function to phy_get_internal_delay
-- Link to v3: https://lore.kernel.org/r/20250204-dp83822-tx-swing-v3-0-9798e96500d9@liebherr.com
+diff --git a/Documentation/devicetree/bindings/net/ethernet-phy.yaml b/Documentation/devicetree/bindings/net/ethernet-phy.yaml
+index 2c71454ae8e362e7032e44712949e12da6826070..824bbe4333b7ed95cc39737d3c334a20aa890f01 100644
+--- a/Documentation/devicetree/bindings/net/ethernet-phy.yaml
++++ b/Documentation/devicetree/bindings/net/ethernet-phy.yaml
+@@ -232,6 +232,12 @@ properties:
+       PHY's that have configurable TX internal delays. If this property is
+       present then the PHY applies the TX delay.
+ 
++  tx-amplitude-100base-tx-percent:
++    description:
++      Transmit amplitude gain applied for 100BASE-TX. 100% matches 2V
++      peak-to-peak specified in ANSI X3.263. When omitted, the PHYs default
++      will be left as is.
++
+   leds:
+     type: object
+ 
 
-Changes in v3:
-- Switch to tx-amplitude-100base-tx-percent in bindings
-- Link to v2: https://lore.kernel.org/r/20250120-dp83822-tx-swing-v2-0-07c99dc42627@liebherr.com
-
-Changes in v2:
-- Remove binding ti,tx-amplitude-100base-tx-millivolt from ti,dp83822.yaml
-- Add binding tx-amplitude-100base-tx-gain-milli to ethernet-phy.yaml
-- Add helper to get tx amplitude gain from DT
-- Link to v1: https://lore.kernel.org/r/20250113-dp83822-tx-swing-v1-0-7ed5a9d80010@liebherr.com
-
----
-Dimitri Fedrau (3):
-      dt-bindings: net: ethernet-phy: add property tx-amplitude-100base-tx-percent
-      net: phy: Add helper for getting tx amplitude gain
-      net: phy: dp83822: Add support for changing the transmit amplitude voltage
-
- .../devicetree/bindings/net/ethernet-phy.yaml      |  6 +++
- drivers/net/phy/dp83822.c                          | 38 ++++++++++++++++
- drivers/net/phy/phy_device.c                       | 53 ++++++++++++++--------
- include/linux/phy.h                                |  4 ++
- 4 files changed, 83 insertions(+), 18 deletions(-)
----
-base-commit: 7a7e0197133d18cfd9931e7d3a842d0f5730223f
-change-id: 20241213-dp83822-tx-swing-5ba6c1e9b065
-
-Best regards,
 -- 
-Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+2.39.5
 
