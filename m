@@ -1,15 +1,13 @@
 From: jiebing chen <jiebing.chen@amlogic.com>
-Subject: [PATCH v2 0/5] Add support for S4 audio
-Date: Fri, 14 Feb 2025 10:13:39 +0800
-Message-Id: <20250214-audio_drvier-v2-0-37881fa37c9e@amlogic.com>
+Date: Fri, 14 Feb 2025 10:13:40 +0800
+Subject: [PATCH v2 1/5] dt-bindings: clock: axg-audio: Add mclk and sclk
+ pad for s4
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANOmrmcC/1XM0QrCIBTG8VcZ5zrjqBtaV71HjDB124E2Q0uK4
- btngy66/H/w/VZIPpJPcGxWiD5TorDUELsG7GSW0TNytUGg6JBzZObpKFxczOQjQ2U6qbltD+0
- V6uUe/UCvjTv3tSdKjxDfm575d/1B8h/KnCHTlrdK4SC1wZOZb2Eku7dhhr6U8gGrkwkdqgAAA
- A==
-X-Change-ID: 20250110-audio_drvier-07a5381c494b
+Message-Id: <20250214-audio_drvier-v2-1-37881fa37c9e@amlogic.com>
+References: <20250214-audio_drvier-v2-0-37881fa37c9e@amlogic.com>
+In-Reply-To: <20250214-audio_drvier-v2-0-37881fa37c9e@amlogic.com>
 To: Jerome Brunet <jbrunet@baylibre.com>, 
  Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -25,49 +23,96 @@ Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org,
  jian.xu@amlogic.com, shuai.li@amlogic.com, zhe.wang@amlogic.com, 
  jiebing chen <jiebing.chen@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739499221; l=1437;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739499221; l=2710;
  i=jiebing.chen@amlogic.com; s=20250110; h=from:subject:message-id;
- bh=ODJBeAyu7yG9wfg1tMx7ifensJoaGn0MRyzsb8NOKTs=;
- b=IrYG6+tVk3zdh0UgKNgdgxRY+xWdt28tefwfjiNO5BANQ+TJ21Qx+JAznmInNJ7kI3fsjNZfz
- IWlwUx5kJtmA4NHvM8XL6TIpzmiiJ1CRbtjSwHivS4etqDvXEIsuYMa
+ bh=TXC0nl0bF7ijEJ/f38+2QuSrF8LeB5NHcRgGAcnuK24=;
+ b=hAMjhlWqZaRMxN531Yg+WGONAd/WY5kKkSD06NC7KGnMbzlciO0K80ublViD+xrTkfXqM8JwG
+ p75Eq0MFLDoDJKe4Vm/Wx/FTn0L6cGgslDabJaKnkzKXY/41ZfN7WYd
 X-Developer-Key: i=jiebing.chen@amlogic.com; a=ed25519;
  pk=6rFvvF45A84pLNRy03hfUHeROxHCnZ+1KAGw/DoqKic=
 X-Endpoint-Received: by B4 Relay for jiebing.chen@amlogic.com/20250110 with auth_id=316
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add s4 audio base driver. 
+add the s4 audio power domain, add the mclk pad, sclk pad
+and lrclk pad clock id for s4
 
 Signed-off-by: jiebing chen <jiebing.chen@amlogic.com>
 ---
-Changes in v2:
-- remove tdm pad control and change tocodec base on g12a
-- change hifipll rate to support 24bit
-- add s4 audio clock
-- Link to v1: https://lore.kernel.org/r/20250113-audio_drvier-v1-0-8c14770f38a0@amlogic.com
+ .../bindings/clock/amlogic,axg-audio-clkc.yaml         | 18 ++++++++++++++++++
+ include/dt-bindings/clock/axg-audio-clkc.h             | 11 +++++++++++
+ 2 files changed, 29 insertions(+)
 
----
-jiebing chen (5):
-      dt-bindings: clock: axg-audio: Add mclk and sclk pad for s4
-      dt-bindings: Asoc: axg-audio: Add s4 audio tocodec
-      ASoC: meson: s4:support the audio clk
-      ASoC: meson: s4:support audio tocodec
-      arm64: dts: amlogic: Add Amlogic S4 Audio
+diff --git a/Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml b/Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml
+index fd7982dd4ceab82389167079c2258a9acff51a76..364783c6f7572b09d57de2b35d33adb7bcf7db18 100644
+--- a/Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml
++++ b/Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml
+@@ -21,6 +21,7 @@ properties:
+       - amlogic,axg-audio-clkc
+       - amlogic,g12a-audio-clkc
+       - amlogic,sm1-audio-clkc
++      - amlogic,s4-audio-clkc
+ 
+   '#clock-cells':
+     const: 1
+@@ -100,6 +101,9 @@ properties:
+   resets:
+     description: internal reset line
+ 
++  power-domains:
++    description: audio controller power
++
+ required:
+   - compatible
+   - '#clock-cells'
+@@ -116,12 +120,26 @@ allOf:
+             enum:
+               - amlogic,g12a-audio-clkc
+               - amlogic,sm1-audio-clkc
++              - amlogic,s4-audio-clkc
+     then:
+       required:
+         - '#reset-cells'
+     else:
+       properties:
+         '#reset-cells': false
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - amlogic,s4-audio-clkc
++    then:
++      required:
++        - power-domains
++
++    else:
++      properties:
++        power-domains: false
+ 
+ additionalProperties: false
+ 
+diff --git a/include/dt-bindings/clock/axg-audio-clkc.h b/include/dt-bindings/clock/axg-audio-clkc.h
+index 607f23b83fa7287fe0403682ebf827e2df26a1ce..75dde05343d1fa74304ee21c9ec0541a8f51b15e 100644
+--- a/include/dt-bindings/clock/axg-audio-clkc.h
++++ b/include/dt-bindings/clock/axg-audio-clkc.h
+@@ -162,5 +162,16 @@
+ #define AUD_CLKID_EARCRX_DMAC_SEL	182
+ #define AUD_CLKID_EARCRX_DMAC_DIV	183
+ #define AUD_CLKID_EARCRX_DMAC		184
++#define AUD_CLKID_TDM_MCLK_PAD0_SEL     185
++#define AUD_CLKID_TDM_MCLK_PAD1_SEL     186
++#define AUD_CLKID_TDM_MCLK_PAD0_DIV     187
++#define AUD_CLKID_TDM_MCLK_PAD1_DIV     188
++#define AUD_CLKID_TDM_MCLK_PAD2         189
++#define AUD_CLKID_TDM_MCLK_PAD2_SEL     190
++#define AUD_CLKID_TDM_MCLK_PAD2_DIV     191
++#define AUD_CLKID_TDM_SCLK_PAD3		192
++#define AUD_CLKID_TDM_SCLK_PAD4		193
++#define AUD_CLKID_TDM_LRCLK_PAD3	194
++#define AUD_CLKID_TDM_LRCLK_PAD4	195
+ 
+ #endif /* __AXG_AUDIO_CLKC_BINDINGS_H */
 
- .../bindings/clock/amlogic,axg-audio-clkc.yaml     |  18 +
- .../bindings/sound/amlogic,g12a-toacodec.yaml      |   1 +
- .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     | 219 +++++++++++
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 370 ++++++++++++++++++-
- drivers/clk/meson/axg-audio.c                      | 410 ++++++++++++++++++++-
- drivers/clk/meson/axg-audio.h                      |   4 +
- include/dt-bindings/clock/axg-audio-clkc.h         |  11 +
- sound/soc/meson/axg-card.c                         |   3 +-
- sound/soc/meson/g12a-toacodec.c                    |  64 ++++
- 9 files changed, 1095 insertions(+), 5 deletions(-)
----
-base-commit: 6ecd20965bdc21b265a0671ccf36d9ad8043f5ab
-change-id: 20250110-audio_drvier-07a5381c494b
-
-Best regards,
 -- 
-jiebing chen <jiebing.chen@amlogic.com>
+2.43.0
 
