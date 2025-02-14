@@ -1,76 +1,73 @@
-From: Anthony Ruhier <aruhier@mailbox.org>
-Date: Thu, 13 Feb 2025 17:51:38 +0100
-Subject: [PATCH RESEND] power: supply: qcom_battmgr: abs() on POWER_NOW
- property
+From: jiebing chen <jiebing.chen@amlogic.com>
+Subject: [PATCH v2 0/5] Add support for S4 audio
+Date: Fri, 14 Feb 2025 10:13:39 +0800
+Message-Id: <20250214-audio_drvier-v2-0-37881fa37c9e@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250213-patch-qcomm-bat-uint-power-v1-1-16e7e2a77a02@mailbox.org>
-To: Sebastian Reichel <sre@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Anthony Ruhier <aruhier@mailbox.org>
+X-B4-Tracking: v=1; b=H4sIANOmrmcC/1XM0QrCIBTG8VcZ5zrjqBtaV71HjDB124E2Q0uK4
+ btngy66/H/w/VZIPpJPcGxWiD5TorDUELsG7GSW0TNytUGg6JBzZObpKFxczOQjQ2U6qbltD+0
+ V6uUe/UCvjTv3tSdKjxDfm575d/1B8h/KnCHTlrdK4SC1wZOZb2Eku7dhhr6U8gGrkwkdqgAAA
+ A==
+X-Change-ID: 20250110-audio_drvier-07a5381c494b
+To: Jerome Brunet <jbrunet@baylibre.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
+ Takashi Iwai <tiwai@suse.com>, Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ jian.xu@amlogic.com, shuai.li@amlogic.com, zhe.wang@amlogic.com, 
+ jiebing chen <jiebing.chen@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2103; i=aruhier@mailbox.org;
- h=from:subject:message-id; bh=lSOxkdOf6gRdpUszCsRF5pZ7uZYHKUdsGgP+kJrQraU=;
- b=owGbwMvMwCVW2Nrw47jsO3/G02pJDOnrlLUlpUtWJmwo37z5H7fgTxWLRTtP/zPi65D4fydhx
- 9Te0vlmHaUsDGJcDLJiiiwl+6OEb6t03HdYu5wFZg4rE8gQBi5OAZhIzgqGfwq3Mw1zP1pMVFH7
- X3J796T3nvfVzJimaOUbqQVOsknYzMLIsPPMo7TopmVuYQ0bZtTt2a3VZcVRcyjm86W1T3z1JTW
- ZWAA=
-X-Developer-Key: i=aruhier@mailbox.org; a=openpgp;
- fpr=F4A378DD8D494AE48EBA554CB00FBC7D08D231D9
-X-Endpoint-Received: by B4 Relay for aruhier@mailbox.org/default with auth_id=302
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739499221; l=1437;
+ i=jiebing.chen@amlogic.com; s=20250110; h=from:subject:message-id;
+ bh=ODJBeAyu7yG9wfg1tMx7ifensJoaGn0MRyzsb8NOKTs=;
+ b=IrYG6+tVk3zdh0UgKNgdgxRY+xWdt28tefwfjiNO5BANQ+TJ21Qx+JAznmInNJ7kI3fsjNZfz
+ IWlwUx5kJtmA4NHvM8XL6TIpzmiiJ1CRbtjSwHivS4etqDvXEIsuYMa
+X-Developer-Key: i=jiebing.chen@amlogic.com; a=ed25519;
+ pk=6rFvvF45A84pLNRy03hfUHeROxHCnZ+1KAGw/DoqKic=
+X-Endpoint-Received: by B4 Relay for jiebing.chen@amlogic.com/20250110 with auth_id=316
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The value for the POWER_NOW property is by default negative when the
-battery is discharging, positive when charging.
+Add s4 audio base driver. 
 
-However on x1e laptops it breaks several userland tools that give a
-prediction of the battery run time (such as the acpi command, powertop
-or the waybar battery module), as these tools do not expect a negative
-value for /sys/class/power_supply/qcom-battmgr-bat/power_now. They
-estimate the battery run time by dividing the value of energy_full by
-power_now. The battery percentage is calculated by dividing energy_full
-by energy_now, therefore it is not impacted.
-
-While having a negative number during discharge makes sense, it is not
-standard with how other battery drivers expose it. Instead, it seems
-standard to have a positive value for power_now, and rely on the status
-file instead to know if the battery is charging or discharging. It is
-what other x86 laptops do.
-
-Without the patch:
-    $ acpi
-    Battery 0: Discharging, 98%, discharging at zero rate - will never fully discharge.
-
-With the patch:
-    $ acpi
-    Battery 0: Discharging, 97%, 10:18:27 remaining
+Signed-off-by: jiebing chen <jiebing.chen@amlogic.com>
+---
+Changes in v2:
+- remove tdm pad control and change tocodec base on g12a
+- change hifipll rate to support 24bit
+- add s4 audio clock
+- Link to v1: https://lore.kernel.org/r/20250113-audio_drvier-v1-0-8c14770f38a0@amlogic.com
 
 ---
-Signed-off-by: Anthony Ruhier <aruhier@mailbox.org>
----
- drivers/power/supply/qcom_battmgr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+jiebing chen (5):
+      dt-bindings: clock: axg-audio: Add mclk and sclk pad for s4
+      dt-bindings: Asoc: axg-audio: Add s4 audio tocodec
+      ASoC: meson: s4:support the audio clk
+      ASoC: meson: s4:support audio tocodec
+      arm64: dts: amlogic: Add Amlogic S4 Audio
 
-diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
-index 47d29271ddf400b76dd5b0a1b8d1ba86c017afc0..3e2e0c5af2814df0eb0bfc408d4b3d26399ab4e4 100644
---- a/drivers/power/supply/qcom_battmgr.c
-+++ b/drivers/power/supply/qcom_battmgr.c
-@@ -530,7 +530,7 @@ static int qcom_battmgr_bat_get_property(struct power_supply *psy,
- 		val->intval = battmgr->status.current_now;
- 		break;
- 	case POWER_SUPPLY_PROP_POWER_NOW:
--		val->intval = battmgr->status.power_now;
-+		val->intval = abs(battmgr->status.power_now);
- 		break;
- 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
- 		if (unit != QCOM_BATTMGR_UNIT_mAh)
-
+ .../bindings/clock/amlogic,axg-audio-clkc.yaml     |  18 +
+ .../bindings/sound/amlogic,g12a-toacodec.yaml      |   1 +
+ .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     | 219 +++++++++++
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 370 ++++++++++++++++++-
+ drivers/clk/meson/axg-audio.c                      | 410 ++++++++++++++++++++-
+ drivers/clk/meson/axg-audio.h                      |   4 +
+ include/dt-bindings/clock/axg-audio-clkc.h         |  11 +
+ sound/soc/meson/axg-card.c                         |   3 +-
+ sound/soc/meson/g12a-toacodec.c                    |  64 ++++
+ 9 files changed, 1095 insertions(+), 5 deletions(-)
 ---
-base-commit: ffd294d346d185b70e28b1a28abe367bbfe53c04
-change-id: 20250128-patch-qcomm-bat-uint-power-5793f3638c56
+base-commit: 6ecd20965bdc21b265a0671ccf36d9ad8043f5ab
+change-id: 20250110-audio_drvier-07a5381c494b
 
 Best regards,
 -- 
-Anthony Ruhier <aruhier@mailbox.org>
+jiebing chen <jiebing.chen@amlogic.com>
 
