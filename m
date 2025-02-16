@@ -1,91 +1,45 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sun, 16 Feb 2025 19:46:47 +0100
-Subject: [PATCH 4/4] media: i2c: imx214: Add support for 23.88MHz clock
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH 0/2] net: tsec: Improve receive error path
+Date: Sun, 16 Feb 2025 22:18:11 +0100
+Message-Id: <20250216-tsec-v1-0-9a704bedd048@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250216-imx214_clk_freq-v1-4-812f40f07db3@apitzsch.eu>
-References: <20250216-imx214_clk_freq-v1-0-812f40f07db3@apitzsch.eu>
-In-Reply-To: <20250216-imx214_clk_freq-v1-0-812f40f07db3@apitzsch.eu>
-To: Ricardo Ribalda <ribalda@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+X-B4-Tracking: v=1; b=H4sIABNWsmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDI0Mz3ZLi1GRdo8TkFDOjJMs0CxMTJaDSgqLUtMwKsDHRsbW1AD/iLYp
+ WAAAA
+X-Change-ID: 20250216-tsec-2acd62b9f844
+To: Joe Hershberger <joe.hershberger@ni.com>, 
+ Ramon Fried <rfried.dev@gmail.com>, Tom Rini <trini@konsulko.com>
+Cc: u-boot@lists.denx.de, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739731620; l=2166;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=WazSPfo9iHxmaDrm3SErM4Vh2VDI2d/EHPhwKDpeOK0=;
- b=BoyYCYkxO//ewUb9c7pOCpeeStR0dHu5eekomgEGJ/18Mc+UzekMg0rTJBYYMRtU59/G3WqLu
- dqSnzYLJfqMBpauXbMRRAAdBwHU8X0wquKgiHnzTAYP1sXqeDoc0dSy
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739740693; l=603;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=ocAAKkpNeD1R37ZlvXCW9INUlqN8UcuGOX/TcPPNr8k=;
+ b=ll7CbA5opicZYcLkskJDYE/Th5a0ezXbI/xinvVGwPuYReZ5d95IR6G199JDmRWwSBjEty9oo
+ x7Rya2I5U97DZgWSU/f+Bye64K5xJvnh+Wl59LGc2/oRHVDu30f6IHt
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Qualcomm MSM8916 devices only provide an external clock of 23.88MHz.
-Make the sensor usable by those devices by adding support for this
-frequency.
+Currently, errors in the receive path of the TSEC Ethernet driver result
+in an exhaustion of packet buffer descriptors. This series fixes it.
 
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- drivers/media/i2c/imx214.c | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
+J. Neuschäfer (2):
+      net: tsec: Reorder tsec_recv and tsec_free_pkt
+      net: tsec: Re-arm packet buffer in error case
 
-diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
-index c3d55259d6fd1c4ca96f52833864bdfe6bedf13a..e24c76e01ab5070c073d082b1a2969cff3e17f9f 100644
---- a/drivers/media/i2c/imx214.c
-+++ b/drivers/media/i2c/imx214.c
-@@ -30,7 +30,10 @@
- 
- #define IMX214_REG_FAST_STANDBY_CTRL	CCI_REG8(0x0106)
- 
-+#define IMX214_CLK_FREQ_23880KHZ	23880000
- #define IMX214_CLK_FREQ_24000KHZ	24000000
-+
-+#define IMX214_LINK_FREQ_597MHZ		597000000
- #define IMX214_LINK_FREQ_600MHZ		600000000
- /* Keep wrong link frequency for backward compatibility */
- #define IMX214_DEFAULT_LINK_FREQ_LEGACY	480000000
-@@ -233,6 +236,7 @@ static const char * const imx214_supply_name[] = {
- #define IMX214_NUM_SUPPLIES ARRAY_SIZE(imx214_supply_name)
- 
- static const s64 link_freq[] = {
-+	IMX214_LINK_FREQ_597MHZ,
- 	IMX214_LINK_FREQ_600MHZ,
- };
- 
-@@ -242,6 +246,10 @@ struct imx214_clk_params {
- };
- 
- static const struct imx214_clk_params imx214_clk_params[] = {
-+	{
-+		.clk_freq = IMX214_CLK_FREQ_23880KHZ,
-+		.link_freq = IMX214_LINK_FREQ_597MHZ,
-+	},
- 	{
- 		.clk_freq = IMX214_CLK_FREQ_24000KHZ,
- 		.link_freq = IMX214_LINK_FREQ_600MHZ,
-@@ -1320,8 +1328,7 @@ static int imx214_parse_fwnode(struct device *dev, struct imx214 *imx214)
- 
- 	if (i == bus_cfg.nr_of_link_frequencies)
- 		ret = dev_err_probe(dev, -EINVAL,
--				    "link-frequencies %d not supported, please review your DT\n",
--				    IMX214_LINK_FREQ_600MHZ);
-+				    "provided link-frequencies not supported, please review your DT\n");
- 
- done:
- 	v4l2_fwnode_endpoint_free(&bus_cfg);
-@@ -1359,6 +1366,7 @@ static int imx214_probe(struct i2c_client *client)
- 	}
- 
- 	switch (xclk_freq) {
-+	case IMX214_CLK_FREQ_23880KHZ:
- 	case IMX214_CLK_FREQ_24000KHZ:
- 		if (imx214->clk_params->clk_freq != xclk_freq)
- 			return dev_err_probe(imx214->dev, -EINVAL,
+ drivers/net/tsec.c | 39 +++++++++++++++++++++------------------
+ 1 file changed, 21 insertions(+), 18 deletions(-)
+---
+base-commit: 5919f48b1c751b85453adca96493ab16f9098be0
+change-id: 20250216-tsec-2acd62b9f844
 
+Best regards,
 -- 
-2.48.1
+J. Neuschäfer <j.ne@posteo.net>
 
