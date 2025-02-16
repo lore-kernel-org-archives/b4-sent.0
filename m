@@ -1,73 +1,51 @@
-From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Sat, 15 Feb 2025 10:46:47 +0100
-Subject: [PATCH] riscv: dts: starfive: fml13v01: increase eMMC bus speed
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH 0/4] media: i2c: imx214: Add support for 23.88MHz clock
+Date: Sun, 16 Feb 2025 19:46:43 +0100
+Message-Id: <20250216-imx214_clk_freq-v1-0-812f40f07db3@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250215-fml13v01_emmc_speed-v1-1-e3bd224ae0e8@hotmail.com>
-X-B4-Tracking: v=1; b=H4sIAIZisGcC/x3MTQqAIBBA4avErBMc0/6uEhGVUw1kiUIE0d2Tl
- t/ivQciBaYIbfZAoIsjn0cC5hnM23isJNgmg5LKSIVGLG7H4pI4kHPzED2RFWVVo5psM2mpIZU
- +0ML3f+369/0AZumOPWUAAAA=
-X-Change-ID: 20250215-fml13v01_emmc_speed-67812bd9b404
-To: Conor Dooley <conor@kernel.org>, Emil Renner Berthing <kernel@esmil.dk>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>
-Cc: linux-riscv@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAJMysmcC/y2Myw5AMBBFf0VmrUmVWvgVESmmTLxbRCL+3QTLc
+ 3PPucCjI/SQBRc4PMjTPDFEYQB1Z6YWBTXMoKTSUkktaDxVlJT10JfW4SriyqZG6gZjbYCtxaG
+ l8y3mxcd82zm8/eN9P6SaR0h2AAAA
+X-Change-ID: 20250205-imx214_clk_freq-3bf6a05de35a
+To: Ricardo Ribalda <ribalda@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739612809; l=1547;
- i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=Qt3zVrtNxWWmhv3zol8ojyDROGvggaowhiJ4UV1nnpE=;
- b=ABsIVsrA7IzSOMBc4BWZIT3O7KPYMp7Yc8IZ6p9dAl9a6kVX4JD1KwgZJwIhwFCZ5hE8xVmRr
- dSiZK0HOv4SBEbNstLQNVK3+ycPP0TrdD42NBGv3rCQEFrVCIdDw6Ni
-X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
- pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
-X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739731620; l=884;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=rJ3EJo67QZrfQjk9KphkLETXlDZM6lXQKTtE3crJb+w=;
+ b=FuN7euOnqyx4NSMvv220hPYnePtYt3PcpliJNlPCs5BQwXml35M/PyWVVwPOEOKZhys5HB/QI
+ Ff7rT06hnLRBN96GBH3O6Vmsj3S85D7u6C1PTJT0Nf0dnelvazd5uoD
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The assigned clock speed of 50 MHz is and max-frequency of 100MHz are
-limitting this interface which is SDIO 5.0 capable. Sadly at 200MHz it
-fails to mount an eMMC drive, 150MHz (really 132 MHz) is the highest it
-was able to get.
+The imx214 driver currently supports only a 24MHz external clock. But
+there are devices, like Qualcomm-MSM8916-based phones, which cannot
+provide this frequency. To make the sensor usable by those devices, add
+support for 23.88MHz clock. 
 
-This improves the seq read/write performance by 2x~
-
-Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
-I put this in this specific dts instead of the common one as I cannot
-test if other boards are also able to handle these speeds.
+André Apitzsch (4):
+      media: i2c: imx214: Calculate link bit rate from clock frequency
+      media: i2c: imx214: Prepare for variable clock frequency
+      media: i2c: imx214: Read clock frequency from device tree
+      media: i2c: imx214: Add support for 23.88MHz clock
 
-This patch depends on [1]
-
-[1]: https://lore.kernel.org/all/20250207093618.126636-1-sandie.cao@deepcomputing.io/
+ drivers/media/i2c/imx214.c | 188 +++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 146 insertions(+), 42 deletions(-)
 ---
- arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts | 5 +++++
- 1 file changed, 5 insertions(+)
-
-diff --git a/arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts b/arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts
-index 8d9ce8b69a71be78ca57618ae842c9f415648450..1f4bac9f89463a6af844b8f1743bdfa659e612ab 100644
---- a/arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts
-+++ b/arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts
-@@ -11,6 +11,11 @@ / {
- 	compatible = "deepcomputing,fml13v01", "starfive,jh7110";
- };
- 
-+&mmc0 {
-+	max-frequency = <200000000>;
-+	assigned-clock-rates = <150000000>;
-+};
-+
- &pcie1 {
- 	perst-gpios = <&sysgpio 21 GPIO_ACTIVE_LOW>;
- 	phys = <&pciephy1>;
-
----
-base-commit: 0bc08ec1ff5a32449d2b04704173dbf3ebd6b014
-change-id: 20250215-fml13v01_emmc_speed-67812bd9b404
+base-commit: 942a51cca29ed20f23ba37f34ff52a6af32ab6c4
+change-id: 20250205-imx214_clk_freq-3bf6a05de35a
 
 Best regards,
 -- 
-Maud Spierings <maud_spierings@hotmail.com>
+André Apitzsch <git@apitzsch.eu>
 
