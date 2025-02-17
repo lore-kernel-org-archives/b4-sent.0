@@ -1,61 +1,88 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Mon, 17 Feb 2025 12:18:03 +0100
-Subject: [PATCH] gpio: 74x146: depend on DM_SPI
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Subject: [PATCH RESEND v6 0/4] Driver for Apple Z2 touchscreens.
+Date: Mon, 17 Feb 2025 12:38:00 +0100
+Message-Id: <20250217-z2-v6-0-c2115d6e5a8f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250217-dmspi-v1-1-58d2a71dc9f6@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAOoas2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDI0Nz3ZTc4oJMXSMz81Rzc/NEE0vjRCWg2oKi1LTMCrA50bG1tQD05F3
- 9VwAAAA==
-X-Change-ID: 20250217-dmspi-267e777a493a
-To: Tom Rini <trini@konsulko.com>
-Cc: u-boot@lists.denx.de, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Henrik Rydberg <rydberg@bitmath.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Neal Gompa <neal@gompa.dev>, Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739791099; l=1167;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=25ZfUZoVl66vrXVOeP0VBOYoBI6N1iF4HWWpjTXnQtc=;
- b=CEkdF4YsCvw+erpQVrar3184FI4TXa+1gdfy+htXtJpt4fC+1eWsMFQirmgKCxmrdrBtr0mkL
- sbPSy4FfpZvCoK6HG6YorW50rIkmauoT1kbMur4VHLqMCl27IkO8dsO
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739792294; l=2640;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=EJ5uj+Lo5BxDKmeBIn1FiPC18dDjdUmxMUU2i+B+sco=;
+ b=vwT0A6gkRH+Zl2/0CowLCLL+90Jxenq829Gs/+O0oAU3C+lsBUwoT/vLs+g93OYXbLJ5rOLz4
+ n4dwit1+eC7Cb9YjC7CeL9B5B7deDtzj06OzMD+nxl1PYCFhcQpHCvv
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, Kconfig allows building CONFIG_DM_74X164 without
-CONFIG_DM_SPI, which results in linker errors because this driver
-actually uses dm_spi_* functions:
+Hi.
 
-drivers/gpio/74x164_gpio.o: in function `gen_74x164_write_conf':
-  undefined reference to `dm_spi_claim_bus'
-  undefined reference to `dm_spi_xfer'
-  undefined reference to `dm_spi_release_bus'
+This series adds support for Apple touchscreens using the Z2 protocol.
+Those are used as the primary touchscreen on mobile Apple devices, and for the
+touchbar on laptops using the M-series chips. (T1/T2 laptops have a coprocessor
+in charge of speaking Z2 to the touchbar).
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Originally sent as a RFC at https://lore.kernel.org/all/20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com/
+The changes since then mostly address the review feedback, but also
+add another machine that has this specific controller.
+
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- drivers/gpio/Kconfig | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v6:
+- Went back to build_cal_blob returning an allocated buffer, other fixes.
+- Link to v5: https://lore.kernel.org/r/20250118-z2-v5-0-6d38b2582169@gmail.com
 
-diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index f4a453e1cdd57702eb3944a23b92ab0b6dfbcc71..21361f56e69c829ca87bddba77e8b2201407bafb 100644
---- a/drivers/gpio/Kconfig
-+++ b/drivers/gpio/Kconfig
-@@ -516,7 +516,7 @@ config ZYNQ_GPIO
- 
- config DM_74X164
- 	bool "74x164 serial-in/parallel-out 8-bits shift register"
--	depends on DM_GPIO
-+	depends on DM_GPIO && DM_SPI
- 	help
- 	  Driver for 74x164 compatible serial-in/parallel-out 8-outputs
- 	  shift registers, such as 74lv165, 74hc595.
+Changes in v5:
+- Added missing \ns, removed 4kb-ish of wasted ram
+- Link to v4: https://lore.kernel.org/r/20250115-z2-v4-0-d7361ab16ba0@gmail.com
+
+Changes in v4:
+- Dropped another allocation, other fixes.
+- Link to v3: https://lore.kernel.org/r/20250112-z2-v3-0-5c0e555d3df1@gmail.com
+
+Changes in v3:
+- Tx/Rx buffers used in interrupt handler are now allocated in probe and reused
+- Other various style fixes
+- Link to v2: https://lore.kernel.org/r/20241128-z2-v2-0-76cc59bbf117@gmail.com
+
+Changes in v2:
+- In a separate patch, fixed an issue that prevented the SPI controller
+  from using GPIO CS, and as such, moved the hardware quirk to there
+- Went back to uploading the firmware in probe() instad of open()
+- Other changes addressing the review feedback
+- Link to v1: https://lore.kernel.org/r/20241126-z2-v1-0-c43c4cc6200d@gmail.com
 
 ---
-base-commit: e62df6169eded226d02240eac54d60be8e9da960
-change-id: 20250217-dmspi-267e777a493a
+Sasha Finkelstein (4):
+      dt-bindings: input: touchscreen: Add Z2 controller
+      input: apple_z2: Add a driver for Apple Z2 touchscreens
+      arm64: dts: apple: Add touchbar digitizer nodes
+      MAINTAINERS: Add entries for Apple Z2 touchscreen driver
 
-Best regards,
+ .../input/touchscreen/apple,z2-multitouch.yaml     |  70 +++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t8103-j293.dts           |  27 ++
+ arch/arm64/boot/dts/apple/t8103.dtsi               |  19 +
+ arch/arm64/boot/dts/apple/t8112-j493.dts           |  23 +
+ arch/arm64/boot/dts/apple/t8112.dtsi               |  14 +
+ drivers/input/touchscreen/Kconfig                  |  13 +
+ drivers/input/touchscreen/Makefile                 |   1 +
+ drivers/input/touchscreen/apple_z2.c               | 473 +++++++++++++++++++++
+ 9 files changed, 642 insertions(+)
+---
+base-commit: b62cef9a5c673f1b8083159f5dc03c1c5daced2f
+change-id: 20241124-z2-c012b528ea0d
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Sasha Finkelstein <fnkl.kernel@gmail.com>
 
