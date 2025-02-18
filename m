@@ -1,55 +1,62 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 17 Feb 2025 17:43:18 -0600
-Subject: [PATCH] drm/nouveau/pmu: Fix gp10b firmware guard
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v2 0/2] arm64: dts: imx8m: Add pinctrl config definitions
+Date: Tue, 18 Feb 2025 09:39:15 +0100
+Message-Id: <20250218-pinctrl_defines-v2-0-c554cad0e1d2@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250217-nouveau-gm10b-guard-v1-1-0d96f0068570@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJXJs2cC/x2MQQqAIBAAvxJ7bkG3ougr0cFqsz2koRiB9Pek4
- 8DMZIgchCOMVYbAt0TxroCuK1gP4yyjbIWBFHWKdI/Op5tNQntqtaBNJmxo2mZoFS3FICjlFXi
- X579O8/t+8YEsT2UAAAA=
-X-Change-ID: 20250217-nouveau-gm10b-guard-a438402b5022
-To: Karol Herbst <kherbst@redhat.com>, Lyude Paul <lyude@redhat.com>, 
- Danilo Krummrich <dakr@kernel.org>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, Ben Skeggs <bskeggs@redhat.com>
-Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADNHtGcC/3WNwQqDMBBEf0X23BQTbSw99T+KlLhudMEmkgRpk
+ fx7U+89vhnmzQ6RAlOEW7VDoI0je1dAnSrA2biJBI+FQdXqUivZipUdprA8R7LsKArVdNSNg5a
+ oDZTVGkrxPoyPvvDMMfnwOQ42+Uv/uzYpamEHvGrTKrIN3ieP3qXgl+WM/gV9zvkLPCtAqLMAA
+ AA=
+X-Change-ID: 20250214-pinctrl_defines-237e7db61c6a
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: devicetree@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739835804; l=1102;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=f8lb6sJV/0LlAIwBP7HgEJtH0QjoGFU98w+WZTb7n3A=;
- b=zrOqogMmtS+s+z9c0ZTFVovU04FHtGu75y4ymeQgMVFlFom3ckutTmS40FWLi5r9k/jjJ/PqW
- 4EB3YkQumtdAcdfBGN24IIENroYNuD0HoEuQDww+AyIotTJtZzd7JP0
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739867960; l=1173;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=SPcl/UOhW/cy7ZS6G7DShHFIAuQPHxxo6CaqutmigeY=;
+ b=WjUzSixqXZo3HZ5py+rVjBFU2osjMWLtfUUHAw7i8UoIHjvmiDZBG7dchTMK6tDDJuAFt7mBp
+ bdZCkawsCreCnrG+Jeq20itLp9IenEbjYO9c1fOUCt/qGdErcDKwJjs
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fixes: 989863d7cbe5 ("drm/nouveau/pmu: select implementation based on available firmware")
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
----
- drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Up untill now the extra function mux (pull resistor, etc) has been
+defined as a raw hex value, this is difficult to interpret. Add
+definitions for these parts of the pinctrl registers to allow for more
+readable pinctrl definitions in devictree files.
 
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c b/drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c
-index a6f410ba60bc94ec9d52fc78868acddfc6770e19..d393bc540f8628812990dffe4c2f7e9014be07c5 100644
---- a/drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c
-@@ -75,7 +75,7 @@ gp10b_pmu_acr = {
- 	.bootstrap_multiple_falcons = gp10b_pmu_acr_bootstrap_multiple_falcons,
- };
- 
--#if IS_ENABLED(CONFIG_ARCH_TEGRA_210_SOC)
-+#if IS_ENABLED(CONFIG_ARCH_TEGRA_186_SOC)
- MODULE_FIRMWARE("nvidia/gp10b/pmu/desc.bin");
- MODULE_FIRMWARE("nvidia/gp10b/pmu/image.bin");
- MODULE_FIRMWARE("nvidia/gp10b/pmu/sig.bin");
+It should also be done for the mn/mq but I currently do not have the
+reference manuals for these to verify these fields, though I can only
+assume that they would be the same.
+
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+---
+Changes in v2:
+- Changed mystery bit to SION
+- Link to v1: https://lore.kernel.org/r/20250214-pinctrl_defines-v1-0-fbc86a42ef3c@gocontroll.com
 
 ---
-base-commit: 2408a807bfc3f738850ef5ad5e3fd59d66168996
-change-id: 20250217-nouveau-gm10b-guard-a438402b5022
+Maud Spierings (2):
+      arm64: dts: imx8mm: Add pinctrl config definitions
+      arm64: dts: imx8mp: Add pinctrl config definitions
+
+ arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h | 27 ++++++++++++++++++++++++++
+ arch/arm64/boot/dts/freescale/imx8mp-pinfunc.h | 27 ++++++++++++++++++++++++++
+ 2 files changed, 54 insertions(+)
+---
+base-commit: 0ae0fa3bf0b44c8611d114a9f69985bf451010c3
+change-id: 20250214-pinctrl_defines-237e7db61c6a
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Maud Spierings <maudspierings@gocontroll.com>
 
