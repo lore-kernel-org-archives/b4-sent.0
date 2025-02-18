@@ -1,13 +1,13 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Subject: [PATCH 0/4] PCI: dwc: Add PTM sysfs support
-Date: Tue, 18 Feb 2025 20:06:39 +0530
-Message-Id: <20250218-pcie-qcom-ptm-v1-0-16d7e480d73e@linaro.org>
+Date: Tue, 18 Feb 2025 20:06:40 +0530
+Subject: [PATCH 1/4] perf/dwc_pcie: Move common DWC struct definitions to
+ 'pcie-dwc.h'
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPeatGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDI0ML3YLkzFTdwuT8XN2CklzdpDQzS1OjNNNkk1RTJaCegqLUtMwKsHn
- RsbW1ADxCJLNfAAAA
+Message-Id: <20250218-pcie-qcom-ptm-v1-1-16d7e480d73e@linaro.org>
+References: <20250218-pcie-qcom-ptm-v1-0-16d7e480d73e@linaro.org>
+In-Reply-To: <20250218-pcie-qcom-ptm-v1-0-16d7e480d73e@linaro.org>
 To: Shuai Xue <xueshuai@linux.alibaba.com>, 
  Jing Zhang <renyu.zj@linux.alibaba.com>, Will Deacon <will@kernel.org>, 
  Mark Rutland <mark.rutland@arm.com>, Jingoo Han <jingoohan1@gmail.com>, 
@@ -20,110 +20,132 @@ Cc: Shradha Todi <shradha.t@samsung.com>, linux-kernel@vger.kernel.org,
  linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3647;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3403;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=JomdOoiQ17paEXI4f+PdfOHyWq+hd8mMOpVRmJpqAqk=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBntJsCRFv6m9eazV1uDz0AhPMpFELd3Ewc3zgXo
- +fhwihHEpuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ7SbAgAKCRBVnxHm/pHO
- 9bJICACZnuPkpD/+2MJa10YW7L52k2KZ9u9IjOvhXxIj2mVM8PULlDt3iUY4gLBw7c+1SWVf0r/
- x22opFo0IspCHMj11sYpyfq5huuUizvadSYKa5mS9wr4EWwHP9m32Q0yRVvc1R0u+Z9Iks9mDTy
- 5lCWYYs5SRez6erms0QnXTbV6lYimtHrkqy7B3qcUURXDOsBsDGzAVJRnKG/S2vXp28U06zMHlI
- 4BK4kWsWvl1i8ai4bkGEYOKvaicCm2aXZ1yuwb+7TYyDZNZd2WII4jFA4D/F2zlwpg8p0pYJaXZ
- N1Yu5D/wUOytbANzHVEmTmCyFWJMVtLaLjz7MmEVEh3Nkc36
+ bh=6d2Yb8pZtN0A+yfWOqcZ9eUeZfdnTNPaYMX4prFPOcU=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBntJsHNIhzToT44AY+uhNUlCsCN6bOgu98Qogla
+ 8fEUJTYaTeJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ7SbBwAKCRBVnxHm/pHO
+ 9WZ0B/9Nin9btaLnESIchxC1r4blWqXKP9BhZLaYFCxr61YM/Ph8gTp0V8EHuv2b7Va1fr0QWky
+ 5PGPDx8LXDlVdLyoPq0tz0t1jnv6USht1n+8SCWYLUAwUfMNU2iXopohMhcY3flFWFgGmOqatQq
+ MC5k05B6r4WatPiN/s1AIbo8QlGoAp/nPJsgttnQrtWvKcuA84LYi01Hg0XZBt7fuTzr3hyY8nY
+ 7Yys0rTVKtBQn6s6eCcPu7I7fBpcgpfuHAAjHfpsPry7KpQxAK8KweQ+1xrzA2Iu6GzKJ90T2Ib
+ Mpp00V379HiuU/qgoo7PcgX/ik+4LfjwG993avYaYGYGEue5
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
-
-This series adds sysfs support for PCIe PTM in Synopsys Designware IPs.
-
-First patch moves the common DWC struct definitions (dwc_pcie_vsec_id) to
-include/pci/pcie-dwc.h from dwc-pcie-pmu driver. This allows reusing the same
-definitions in pcie-designware-sysfs driver introduced in this series and also
-in the debugfs series by Shradha [1].
-
-Second patch adds support for searching the Vendor Specific Extended Capability
-(VSEC) in the pcie-designware driver. This patch was originally based on
-Shradha's patch [2], but modified to accept 'struct dwc_pcie_vsec_id' to avoid
-iterating through the vsec_ids in the driver.
-
-Third patch adds the actual sysfs support for PTM in a new file
-pcie-designware-sysfs.c built along with pcie-designware.c.
-
-Finally, fourth patch masks the PTM_UPDATING interrupt in the pcie-qcom-ep
-driver to avoid processing the interrupt for each PTM context update.
-
-Testing
-=======
-
-This series is tested on Qcom SA8775p Ride Mx platform where one SA8775p acts as
-RC and another as EP with following instructions:
-
-RC
---
-
-$ echo 1 > /sys/devices/platform/1c10000.pcie/dwc/ptm/ptm_context_valid
-
-EP
---
-
-$ echo auto > /sys/devices/platform/1c10000.pcie-ep/dwc/ptm/ptm_context_update
-
-$ cat /sys/devices/platform/1c10000.pcie-ep/dwc/ptm/ptm_local_clock
-159612570424
-
-$ cat /sys/devices/platform/1c10000.pcie-ep/dwc/ptm/ptm_master_clock
-159609466232
-
-$ cat /sys/devices/platform/1c10000.pcie-ep/dwc/ptm/ptm_t1
-159609466112
-
-$ cat /sys/devices/platform/1c10000.pcie-ep/dwc/ptm/ptm_t4
-159609466518
-
-NOTE: To make use of the PTM feature, the host PCIe client driver has to call
-'pci_enable_ptm()' API during probe. This series was tested with enabling PTM in
-the MHI host driver with a local change (which will be upstreamed later).
-Technically, PTM could also be enabled in the pci_endpoint_test driver, but I
-didn't add the change as I'm not sure we'd want to add random PCIe features in
-the test driver without corresponding code in pci-epf-test driver.
-
-Merging Strategy
-================
-
-I'd like to have an ACK from the perf maintainers to take the whole series
-through PCI tree.
-
-[1] https://lore.kernel.org/linux-pci/20250214105007.97582-1-shradha.t@samsung.com
-[2] https://lore.kernel.org/linux-pci/20250214105007.97582-2-shradha.t@samsung.com
+Since these are common to all Desginware PCIe IPs, move them to a new
+header, 'pcie-dwc.h' so that other drivers could make use of them.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
-Manivannan Sadhasivam (4):
-      perf/dwc_pcie: Move common DWC struct definitions to 'pcie-dwc.h'
-      PCI: dwc: Add helper to find the Vendor Specific Extended Capability (VSEC)
-      PCI: dwc: Add sysfs support for PTM
-      PCI: qcom-ep: Mask PTM_UPDATING interrupt
+ MAINTAINERS                 |  1 +
+ drivers/perf/dwc_pcie_pmu.c | 23 ++---------------------
+ include/linux/pcie-dwc.h    | 34 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+), 21 deletions(-)
 
- Documentation/ABI/testing/sysfs-platform-dwc-pcie  |  70 ++++++
- MAINTAINERS                                        |   2 +
- drivers/pci/controller/dwc/Makefile                |   2 +-
- drivers/pci/controller/dwc/pcie-designware-ep.c    |   3 +
- drivers/pci/controller/dwc/pcie-designware-host.c  |   4 +
- drivers/pci/controller/dwc/pcie-designware-sysfs.c | 278 +++++++++++++++++++++
- drivers/pci/controller/dwc/pcie-designware.c       |  46 ++++
- drivers/pci/controller/dwc/pcie-designware.h       |  22 ++
- drivers/pci/controller/dwc/pcie-qcom-ep.c          |   8 +
- drivers/perf/dwc_pcie_pmu.c                        |  23 +-
- include/linux/pcie-dwc.h                           |  42 ++++
- 11 files changed, 478 insertions(+), 22 deletions(-)
----
-base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
-change-id: 20250218-pcie-qcom-ptm-bf6952f5c4e5
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 896a307fa065..b4d09d52a750 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -18123,6 +18123,7 @@ S:	Maintained
+ F:	Documentation/devicetree/bindings/pci/snps,dw-pcie-ep.yaml
+ F:	Documentation/devicetree/bindings/pci/snps,dw-pcie.yaml
+ F:	drivers/pci/controller/dwc/*designware*
++F:	include/linux/pcie-dwc.h
+ 
+ PCI DRIVER FOR TI DRA7XX/J721E
+ M:	Vignesh Raghavendra <vigneshr@ti.com>
+diff --git a/drivers/perf/dwc_pcie_pmu.c b/drivers/perf/dwc_pcie_pmu.c
+index cccecae9823f..05b37ea7cf16 100644
+--- a/drivers/perf/dwc_pcie_pmu.c
++++ b/drivers/perf/dwc_pcie_pmu.c
+@@ -13,6 +13,7 @@
+ #include <linux/errno.h>
+ #include <linux/kernel.h>
+ #include <linux/list.h>
++#include <linux/pcie-dwc.h>
+ #include <linux/perf_event.h>
+ #include <linux/pci.h>
+ #include <linux/platform_device.h>
+@@ -99,26 +100,6 @@ struct dwc_pcie_dev_info {
+ 	struct list_head dev_node;
+ };
+ 
+-struct dwc_pcie_pmu_vsec_id {
+-	u16 vendor_id;
+-	u16 vsec_id;
+-	u8 vsec_rev;
+-};
+-
+-/*
+- * VSEC IDs are allocated by the vendor, so a given ID may mean different
+- * things to different vendors.  See PCIe r6.0, sec 7.9.5.2.
+- */
+-static const struct dwc_pcie_pmu_vsec_id dwc_pcie_pmu_vsec_ids[] = {
+-	{ .vendor_id = PCI_VENDOR_ID_ALIBABA,
+-	  .vsec_id = 0x02, .vsec_rev = 0x4 },
+-	{ .vendor_id = PCI_VENDOR_ID_AMPERE,
+-	  .vsec_id = 0x02, .vsec_rev = 0x4 },
+-	{ .vendor_id = PCI_VENDOR_ID_QCOM,
+-	  .vsec_id = 0x02, .vsec_rev = 0x4 },
+-	{} /* terminator */
+-};
+-
+ static ssize_t cpumask_show(struct device *dev,
+ 					 struct device_attribute *attr,
+ 					 char *buf)
+@@ -529,7 +510,7 @@ static void dwc_pcie_unregister_pmu(void *data)
+ 
+ static u16 dwc_pcie_des_cap(struct pci_dev *pdev)
+ {
+-	const struct dwc_pcie_pmu_vsec_id *vid;
++	const struct dwc_pcie_vsec_id *vid;
+ 	u16 vsec;
+ 	u32 val;
+ 
+diff --git a/include/linux/pcie-dwc.h b/include/linux/pcie-dwc.h
+new file mode 100644
+index 000000000000..261ae11d75a4
+--- /dev/null
++++ b/include/linux/pcie-dwc.h
+@@ -0,0 +1,34 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (C) 2021-2023 Alibaba Inc.
++ *
++ * Copyright 2025 Linaro Ltd.
++ * Author: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
++ */
++
++#ifndef LINUX_PCIE_DWC_H
++#define LINUX_PCIE_DWC_H
++
++#include <linux/pci_ids.h>
++
++struct dwc_pcie_vsec_id {
++	u16 vendor_id;
++	u16 vsec_id;
++	u8 vsec_rev;
++};
++
++/*
++ * VSEC IDs are allocated by the vendor, so a given ID may mean different
++ * things to different vendors.  See PCIe r6.0, sec 7.9.5.2.
++ */
++static const struct dwc_pcie_vsec_id dwc_pcie_pmu_vsec_ids[] = {
++	{ .vendor_id = PCI_VENDOR_ID_ALIBABA,
++	  .vsec_id = 0x02, .vsec_rev = 0x4 },
++	{ .vendor_id = PCI_VENDOR_ID_AMPERE,
++	  .vsec_id = 0x02, .vsec_rev = 0x4 },
++	{ .vendor_id = PCI_VENDOR_ID_QCOM,
++	  .vsec_id = 0x02, .vsec_rev = 0x4 },
++	{} /* terminator */
++};
++
++#endif /* LINUX_PCIE_DWC_H */
 
-Best regards,
 -- 
-Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+2.25.1
 
