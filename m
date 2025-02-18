@@ -1,64 +1,120 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Tue, 18 Feb 2025 03:28:03 -0600
-Subject: [PATCH v2] drm/nouveau/pmu: Fix gp10b firmware guard
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH 0/8] sysctl: Move sysctls from kern_table into their
+ respective subsystems
+Date: Tue, 18 Feb 2025 10:56:16 +0100
+Message-Id: <20250218-jag-mv_ctltables-v1-0-cd3698ab8d29@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250218-nouveau-gm10b-guard-v2-1-a4de71500d48@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKJStGcC/32NTQ6CMBCFr0Jm7Zhp5U9X3sOwKLSUSSwlrTQaw
- t2tHMDl9/Le9zaIJrCJcCs2CCZxZD9nkKcChknN1iDrzCBJViRFg7Nfk1ErWieoR7uqoFGVl7Y
- k2eeGhLxcghn5fVgfXeaJ48uHz3GSxC/970sCBZK+1iNR3VYN3a1T/DwP3kG37/sXkW7/abYAA
- AA=
-X-Change-ID: 20250217-nouveau-gm10b-guard-a438402b5022
-To: Karol Herbst <kherbst@redhat.com>, Lyude Paul <lyude@redhat.com>, 
- Danilo Krummrich <dakr@kernel.org>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, Ben Skeggs <bskeggs@redhat.com>
-Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739870890; l=1447;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=oUmXAASwstZ9XuCaJCBOKOPtkuHQeVnyTw6zIVfBoIM=;
- b=Lc4eulMZkHiDkKi6LmyfgLQk8uAW71n7exKAE83hBn0tADQ7hyCGlswDiVHvEmbVq2f8Kpa5s
- wlo7lYLG0dRBUP99CQs/v4eg5jVp+iZh9casmSptBVFutS7WfmrcHQ7
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-B4-Tracking: v=1; b=H4sIAEBZtGcC/x3MTQqAIBBA4avErBNMEqOrRITZZBP2g4oE4d2Tl
+ t/ivRcCesIAffWCx0SBrrOgqSswmz4tMlqKQXAhuWgU27VlR5pMdFHPDgMzq5LYKo68k1Cy2+N
+ Kz78cxpw/2JeJ2mIAAAA=
+X-Change-ID: 20250217-jag-mv_ctltables-cf75e470e085
+To: Kees Cook <kees@kernel.org>, Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ "Liang, Kan" <kan.liang@linux.intel.com>, 
+ "David S. Miller" <davem@davemloft.net>, 
+ Andreas Larsson <andreas@gaisler.com>, Heiko Carstens <hca@linux.ibm.com>, 
+ Vasily Gorbik <gor@linux.ibm.com>, 
+ Alexander Gordeev <agordeev@linux.ibm.com>, 
+ Christian Borntraeger <borntraeger@linux.ibm.com>, 
+ Sven Schnelle <svens@linux.ibm.com>, 
+ Gerald Schaefer <gerald.schaefer@linux.ibm.com>, 
+ Thomas Gleixner <tglx@linutronix.de>, Borislav Petkov <bp@alien8.de>, 
+ Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
+ "H. Peter Anvin" <hpa@zytor.com>, "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Len Brown <lenb@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ linux-trace-kernel@vger.kernel.org, linux-perf-users@vger.kernel.org, 
+ sparclinux@vger.kernel.org, linux-s390@vger.kernel.org, 
+ linux-acpi@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.15-dev-64da2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2573;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=+Ro/oqfvGVYxj3TObN+RDoEaw0SsbEolN0PZuCXlz9k=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGe0WVOoj6LvNDW0CL4P50y0ZMFe6cFQ86kia
+ kfkpVTXzGuYgYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJntFlTAAoJELqXzVK3
+ lkFPJpIL/2715yYj/GmvnxpGika5Ef5M6h06gykmNbmK/8jadbKLcQAe9tsLGnF3+Ojw7ChLrol
+ HlTolz82WQ2I/xVSm4XoRxfixCkZfY0coFA9OeuPhHMNzQ+Ut1JWZewtKtxIVAG4H8bqDVQRs/G
+ Aaoy15GXfo+rPVTu3r8Kd/VugKe9FQzDSRgXpTGLCBzWBv1sn/+QBdW9/9pbGXf6gfdq4Mn8aoO
+ S9nuRmKjQ1q+k3kfif/7TakTbtjGwuTxksRI1SlBbrkubYjAK2StDNNwqOyblX+rvIZIAdue5hJ
+ FbqZ17s9ye/NoC/0AxPYsf6C34UOU5GQIVEQzhHskYb8iVUc6nooUVtM1I/4/cpc8zJomftwpsf
+ KaNmZx6F1CuttQ/3bCA+xAxEQB3SkjpJ8nbvFEki/OFbxXTUwu2lnxX8EFVwsj0AmT9G7CanU+H
+ Fz2s1gjQFsVpWSQ9URUj1XmxuoZBETbem4y9lXwW0L5ar2wZN266UfFAX7nD2+01sHs6eY5WoB7
+ D8=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Most kernel configs enable multiple Tegra SoC generations, causing this
-typo to go unnoticed. But in the case where a kernel config is strictly
-for Tegra186, this is a problem.
+This series relocates sysctl tables from kern_table to their respective
+subsystems. To keep the scope manageable, this patchset focuses on
+architecture-specific and core kernel sysctl tables. Further relocations
+will follow once this series progresses.
 
-Fixes: 989863d7cbe5 ("drm/nouveau/pmu: select implementation based on available firmware")
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
----
-Changes in v2:
-- Updated commit message to include a body
-- Link to v1: https://lore.kernel.org/r/20250217-nouveau-gm10b-guard-v1-1-0d96f0068570@gmail.com
----
- drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+By decentralizing sysctl registrations, subsystem maintainers regain
+control over their sysctl interfaces, improving maintainability and
+reducing the likelihood of merge conflicts. All this is made possible by
+the work done to reduce the ctl_table memory footprint in commit
+d7a76ec87195 ("sysctl: Remove check for sentinel element in ctl_table
+arrays").
 
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c b/drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c
-index a6f410ba60bc94ec9d52fc78868acddfc6770e19..d393bc540f8628812990dffe4c2f7e9014be07c5 100644
---- a/drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/pmu/gp10b.c
-@@ -75,7 +75,7 @@ gp10b_pmu_acr = {
- 	.bootstrap_multiple_falcons = gp10b_pmu_acr_bootstrap_multiple_falcons,
- };
- 
--#if IS_ENABLED(CONFIG_ARCH_TEGRA_210_SOC)
-+#if IS_ENABLED(CONFIG_ARCH_TEGRA_186_SOC)
- MODULE_FIRMWARE("nvidia/gp10b/pmu/desc.bin");
- MODULE_FIRMWARE("nvidia/gp10b/pmu/image.bin");
- MODULE_FIRMWARE("nvidia/gp10b/pmu/sig.bin");
+* Birds eye view of what has changed:
+    - Archs: sparc, s390 and x86
+        arch/s390/{lib/spinlock.c,mm/fault.c}
+        arch/sparc/kernel/{Makefile,setup.c}
+        arch/x86/include/asm/{setup.h,traps.h}
+    - Kernel core:
+        kernel/{panic.c,signal.c,trace/trace.c}
+        kernel/events/{core.c,callchain.c}
 
+* Testing was done by running sysctl selftests on x86_64 and 0-day.
+
+Comments are greatly appreciated
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-base-commit: 2408a807bfc3f738850ef5ad5e3fd59d66168996
-change-id: 20250217-nouveau-gm10b-guard-a438402b5022
+Joel Granados (7):
+      panic: Move panic ctl tables into panic.c
+      signal: Move signal ctl tables into signal.c
+      ftrace: Move trace sysctls into trace.c
+      stack_tracer: move sysctl registration to kernel/trace/trace.c
+      events: Move perf_event sysctls into kernel/events
+      sparc: mv sparc sysctls into their own file under arch/sparc/kernel
+      x86: Move sysctls into arch/x86
+
+joel granados (1):
+      s390: mv s390 sysctls into their own file under arch/s390 dir
+
+ arch/s390/lib/spinlock.c     |  23 ++++
+ arch/s390/mm/fault.c         |  17 +++
+ arch/sparc/kernel/Makefile   |   1 +
+ arch/sparc/kernel/setup.c    |  46 ++++++++
+ arch/x86/include/asm/setup.h |   1 +
+ arch/x86/include/asm/traps.h |   2 -
+ arch/x86/kernel/setup.c      |  66 ++++++++++++
+ include/linux/acpi.h         |   1 -
+ include/linux/ftrace.h       |   7 --
+ include/linux/perf_event.h   |   9 --
+ kernel/events/callchain.c    |  38 +++++--
+ kernel/events/core.c         |  57 ++++++++--
+ kernel/panic.c               |  30 ++++++
+ kernel/signal.c              |  11 ++
+ kernel/sysctl.c              | 250 -------------------------------------------
+ kernel/trace/trace.c         |  45 +++++++-
+ 16 files changed, 322 insertions(+), 282 deletions(-)
+---
+base-commit: 0ad2507d5d93f39619fc42372c347d6006b64319
+change-id: 20250217-jag-mv_ctltables-cf75e470e085
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Joel Granados <joel.granados@kernel.org>
 
