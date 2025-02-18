@@ -1,11 +1,11 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Tue, 18 Feb 2025 10:56:22 +0100
-Subject: [PATCH 6/8] sparc: mv sparc sysctls into their own file under
- arch/sparc/kernel
+From: joel granados <joel.granados@kernel.org>
+Date: Tue, 18 Feb 2025 10:56:23 +0100
+Subject: [PATCH 7/8] s390: mv s390 sysctls into their own file under
+ arch/s390 dir
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250218-jag-mv_ctltables-v1-6-cd3698ab8d29@kernel.org>
+Message-Id: <20250218-jag-mv_ctltables-v1-7-cd3698ab8d29@kernel.org>
 References: <20250218-jag-mv_ctltables-v1-0-cd3698ab8d29@kernel.org>
 In-Reply-To: <20250218-jag-mv_ctltables-v1-0-cd3698ab8d29@kernel.org>
 To: Kees Cook <kees@kernel.org>, Steven Rostedt <rostedt@goodmis.org>, 
@@ -34,158 +34,145 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  sparclinux@vger.kernel.org, linux-s390@vger.kernel.org, 
  linux-acpi@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.15-dev-64da2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3680;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3521;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=W9D1x5RI31lDx3p+LX5++XnrPbNPs0OdXkbg0azO5zg=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGe0WVqTdU3OmlPVNS3l8Ja/Z2IQKVamKk9d7
- nVMVgnpwno2SIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJntFlaAAoJELqXzVK3
- lkFPkB8MAJTy8l0YojZMRVO2pk2av6uMJ/lqppw/sG19vlr94QoANJIAlDvZ6a02ouwtBS5yiDQ
- OJd2LuJATMT9/074vJzWN1EMSBLWQM/BDxT4up6IKKCFN1XwF7URrZ2O5+DEesNEYl+S2qXcKs3
- OWhJS6mm8rzxYo8Faw/o94dZPdkz7hCu8dVzgFks20DvZh734/Zphu6+PrnkKenOmMyg+opVgNq
- GpmmnVwdjLsE/BEDgrNl1SpzYjpiQ7KhPmrirfehqlnR7LOmgsyfYedZXj2IzQhLRYi7vDcLoio
- r9TnixsuLQgS6BO2BkKeijFrrHAXKpqyHZmZCDvl3MZyCcHFhqUljbxmp1glUS1od+PXW2tJv3y
- tsHB5TXeOuAxna9jcjiXOZaMf4zySQM00GhDKP1cdd+gJpxVCLBv6LBYxZJqQ/ff5UyH9MC0UZB
- UXbAmV6tL4VN84xj5VgTM3Ep+XWOVx9cuwz+bN9I3rPAr807EJ8xvzArYjktRwb8RizLGzvx7W5
- Mo=
+ bh=N7FQbtF5ltXkGtvDBPbDBnYnA6Jue7K/KSgw9wenOFM=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGe0WVrYqtwc7VEBWPUryeCr6UzTsodifa1V4
+ CuoLFfpqs2PiokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJntFlaAAoJELqXzVK3
+ lkFPBUsL/ilaJN/M2x5LmYQCnoB9tWZ3Y9gdJo92ZebGWWbZVzMlVOy16V+EWORPHSxFTyNq0jJ
+ 2DFlqm0+J41KgFUgCXXkWhavZqVV5QpGkCZQ1eUDsrSEISgNu+kpYhqllYTAcEQyLah33jm1Yld
+ 7z1SSWbm/mAPk/tRV39wZn6V8y4IVW+jczx6nUO/ekNqLAGg7dwYQAIepv7UixCMB2EgYqpqw0N
+ hBxmxHbhhdZstJGF+K5o8WZP6faE9ntyK1g42n8WZ/ENwjae2FiPTU5pI/D2f/HRybg4MrdvwY2
+ rcHQNzklx6KvCw1s/KFJyPvxdgpcVLqeMEtqoUwc0n6svbJZtgyUy/dwFePwTBQ+TXiuOjZYC/A
+ 07u47HcjEy2ajf3BNZNfGYdvpJkUCnMn1lzU1R8BGGDgvPgwYWFKBIaCzQv78MkEe56Qo8y2qsq
+ F0BnjOlkTFv1ecsfXZp3j6g8LlwO0jFg1b0L1gLh2AI/mIY99tSmoFdAvUomc+StqFRyZypCkM5
+ lE=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move sparc sysctls (reboot-cmd, stop-a, scons-poweroff and tsb-ratio)
-into a new file (arch/sparc/kernel/setup.c). This file will be included
-for both 32 and 64 bit sparc. Leave "tsb-ratio" under SPARC64 ifdef as
-it was in kernel/sysctl.c. The sysctl table register is called with
-arch_initcall placing it after its original place in proc_root_init.
+Move s390 sysctls (spin_retry and userprocess_debug) into their own
+files under arch/s390. We create two new sysctl tables
+(2390_{fault,spin}_sysctl_table) which will be initialized with
+arch_initcall placing them after their original place in proc_root_init.
 
 This is part of a greater effort to move ctl tables into their
 respective subsystems which will reduce the merge conflicts in
 kerenel/sysctl.c.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+Signed-off-by: joel granados <joel.granados@kernel.org>
 ---
- arch/sparc/kernel/Makefile |  1 +
- arch/sparc/kernel/setup.c  | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- kernel/sysctl.c            | 35 -----------------------------------
- 3 files changed, 47 insertions(+), 35 deletions(-)
+ arch/s390/lib/spinlock.c | 23 +++++++++++++++++++++++
+ arch/s390/mm/fault.c     | 17 +++++++++++++++++
+ kernel/sysctl.c          | 18 ------------------
+ 3 files changed, 40 insertions(+), 18 deletions(-)
 
-diff --git a/arch/sparc/kernel/Makefile b/arch/sparc/kernel/Makefile
-index 58ea4ef9b622..3453f330e363 100644
---- a/arch/sparc/kernel/Makefile
-+++ b/arch/sparc/kernel/Makefile
-@@ -35,6 +35,7 @@ obj-y                   += process.o
- obj-y                   += signal_$(BITS).o
- obj-y                   += sigutil_$(BITS).o
- obj-$(CONFIG_SPARC32)   += ioport.o
-+obj-y                   += setup.o
- obj-y                   += setup_$(BITS).o
- obj-y                   += idprom.o
- obj-y                   += sys_sparc_$(BITS).o
-diff --git a/arch/sparc/kernel/setup.c b/arch/sparc/kernel/setup.c
-new file mode 100644
-index 000000000000..4975867d9001
---- /dev/null
-+++ b/arch/sparc/kernel/setup.c
-@@ -0,0 +1,46 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include <asm/setup.h>
+diff --git a/arch/s390/lib/spinlock.c b/arch/s390/lib/spinlock.c
+index a81a01c44927..4483fdc9d472 100644
+--- a/arch/s390/lib/spinlock.c
++++ b/arch/s390/lib/spinlock.c
+@@ -17,6 +17,10 @@
+ #include <asm/alternative.h>
+ #include <asm/asm.h>
+ 
++#if defined(CONFIG_SMP)
 +#include <linux/sysctl.h>
-+
-+static const struct ctl_table sparc_sysctl_table[] = {
-+	{
-+		.procname	= "reboot-cmd",
-+		.data		= reboot_command,
-+		.maxlen		= 256,
-+		.mode		= 0644,
-+		.proc_handler	= proc_dostring,
-+	},
-+	{
-+		.procname	= "stop-a",
-+		.data		= &stop_a_enabled,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+	{
-+		.procname	= "scons-poweroff",
-+		.data		= &scons_pwroff,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+#ifdef CONFIG_SPARC64
-+	{
-+		.procname	= "tsb-ratio",
-+		.data		= &sysctl_tsb_ratio,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
 +#endif
++
+ int spin_retry = -1;
+ 
+ static int __init spin_retry_init(void)
+@@ -37,6 +41,25 @@ static int __init spin_retry_setup(char *str)
+ }
+ __setup("spin_retry=", spin_retry_setup);
+ 
++#if defined(CONFIG_SMP)
++static const struct ctl_table s390_spin_sysctl_table[] = {
++	{
++		.procname	= "spin_retry",
++		.data		= &spin_retry,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
 +};
 +
-+
-+static int __init init_sparc_sysctls(void)
++static int __init init_s390_spin_sysctls(void)
 +{
-+	register_sysctl_init("kernel", sparc_sysctl_table);
++	register_sysctl_init("kernel", s390_spin_sysctl_table);
 +	return 0;
 +}
++arch_initcall(init_s390_spin_sysctls);
++#endif
 +
-+arch_initcall(init_sparc_sysctls);
+ struct spin_wait {
+ 	struct spin_wait *next, *prev;
+ 	int node_id;
+diff --git a/arch/s390/mm/fault.c b/arch/s390/mm/fault.c
+index 9b681f74dccc..507da355bf68 100644
+--- a/arch/s390/mm/fault.c
++++ b/arch/s390/mm/fault.c
+@@ -175,6 +175,23 @@ static void dump_fault_info(struct pt_regs *regs)
+ 
+ int show_unhandled_signals = 1;
+ 
++static const struct ctl_table s390_fault_sysctl_table[] = {
++	{
++		.procname	= "userprocess_debug",
++		.data		= &show_unhandled_signals,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
++};
++
++static int __init init_s390_fault_sysctls(void)
++{
++	register_sysctl_init("kernel", s390_fault_sysctl_table);
++	return 0;
++}
++arch_initcall(init_s390_fault_sysctls);
++
+ void report_user_fault(struct pt_regs *regs, long signr, int is_mm_fault)
+ {
+ 	static DEFINE_RATELIMIT_STATE(rs, DEFAULT_RATELIMIT_INTERVAL, DEFAULT_RATELIMIT_BURST);
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index fdc92d80e841..b63d53e592d8 100644
+index b63d53e592d8..7f505f9ace87 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -69,9 +69,6 @@
- #include <asm/nmi.h>
- #include <asm/io.h>
- #endif
--#ifdef CONFIG_SPARC
--#include <asm/setup.h>
+@@ -1702,15 +1702,6 @@ static const struct ctl_table kern_table[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 		.extra2		= SYSCTL_MAXOLDUID,
+ 	},
+-#ifdef CONFIG_S390
+-	{
+-		.procname	= "userprocess_debug",
+-		.data		= &show_unhandled_signals,
+-		.maxlen		= sizeof(int),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec,
+-	},
 -#endif
- #ifdef CONFIG_RT_MUTEXES
- #include <linux/rtmutex.h>
- #endif
-@@ -1616,38 +1613,6 @@ static const struct ctl_table kern_table[] = {
- 		.extra2		= SYSCTL_ONE,
+ 	{
+ 		.procname	= "ngroups_max",
+ 		.data		= (void *)&ngroups_max,
+@@ -1791,15 +1782,6 @@ static const struct ctl_table kern_table[] = {
+ 		.proc_handler	= proc_dointvec,
  	},
  #endif
--#ifdef CONFIG_SPARC
+-#if defined(CONFIG_S390) && defined(CONFIG_SMP)
 -	{
--		.procname	= "reboot-cmd",
--		.data		= reboot_command,
--		.maxlen		= 256,
--		.mode		= 0644,
--		.proc_handler	= proc_dostring,
--	},
--	{
--		.procname	= "stop-a",
--		.data		= &stop_a_enabled,
--		.maxlen		= sizeof (int),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
--	},
--	{
--		.procname	= "scons-poweroff",
--		.data		= &scons_pwroff,
+-		.procname	= "spin_retry",
+-		.data		= &spin_retry,
 -		.maxlen		= sizeof (int),
 -		.mode		= 0644,
 -		.proc_handler	= proc_dointvec,
 -	},
 -#endif
--#ifdef CONFIG_SPARC64
--	{
--		.procname	= "tsb-ratio",
--		.data		= &sysctl_tsb_ratio,
--		.maxlen		= sizeof (int),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
--	},
--#endif
- #ifdef CONFIG_PARISC
+ #if	defined(CONFIG_ACPI_SLEEP) && defined(CONFIG_X86)
  	{
- 		.procname	= "soft-power",
+ 		.procname	= "acpi_video_flags",
 
 -- 
 2.44.2
