@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Tue, 18 Feb 2025 20:06:40 +0530
-Subject: [PATCH 1/4] perf/dwc_pcie: Move common DWC struct definitions to
- 'pcie-dwc.h'
+Date: Tue, 18 Feb 2025 20:06:41 +0530
+Subject: [PATCH 2/4] PCI: dwc: Add helper to find the Vendor Specific
+ Extended Capability (VSEC)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250218-pcie-qcom-ptm-v1-1-16d7e480d73e@linaro.org>
+Message-Id: <20250218-pcie-qcom-ptm-v1-2-16d7e480d73e@linaro.org>
 References: <20250218-pcie-qcom-ptm-v1-0-16d7e480d73e@linaro.org>
 In-Reply-To: <20250218-pcie-qcom-ptm-v1-0-16d7e480d73e@linaro.org>
 To: Shuai Xue <xueshuai@linux.alibaba.com>, 
@@ -20,131 +20,89 @@ Cc: Shradha Todi <shradha.t@samsung.com>, linux-kernel@vger.kernel.org,
  linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3403;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2145;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=6d2Yb8pZtN0A+yfWOqcZ9eUeZfdnTNPaYMX4prFPOcU=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBntJsHNIhzToT44AY+uhNUlCsCN6bOgu98Qogla
- 8fEUJTYaTeJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ7SbBwAKCRBVnxHm/pHO
- 9WZ0B/9Nin9btaLnESIchxC1r4blWqXKP9BhZLaYFCxr61YM/Ph8gTp0V8EHuv2b7Va1fr0QWky
- 5PGPDx8LXDlVdLyoPq0tz0t1jnv6USht1n+8SCWYLUAwUfMNU2iXopohMhcY3flFWFgGmOqatQq
- MC5k05B6r4WatPiN/s1AIbo8QlGoAp/nPJsgttnQrtWvKcuA84LYi01Hg0XZBt7fuTzr3hyY8nY
- 7Yys0rTVKtBQn6s6eCcPu7I7fBpcgpfuHAAjHfpsPry7KpQxAK8KweQ+1xrzA2Iu6GzKJ90T2Ib
- Mpp00V379HiuU/qgoo7PcgX/ik+4LfjwG993avYaYGYGEue5
+ bh=M9WJthaTZXknfPb3HtwggK+nN0/yT7ulurjEGVuJfkQ=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBntJsHXKdWE8O15AQDIQdT7u8m2BaEWqY5eK3Yl
+ IKQcIeh2riJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ7SbBwAKCRBVnxHm/pHO
+ 9XHjCACSV0ixZHMt4QHkcF/ELFQt95Op2JM1tNpLmUbnyo2ApXOsLFfNkA7/nsPnqeWXQuziAsk
+ SqQHgeFy27PnZoYMJBmsWnAeveButQMxWOEWuvVLBeGGEiBV1EH0gCzJMnmjifXjjir2UECSk3p
+ /3nFFGK+gDqJdVFOtCPl3C1dlgdS+xYRQjni0GF/nE/iAtk4qdA4yqZTcjQoovF/P/mJTb+RxJV
+ uto/1ekr1p0Zb3djsHB+RHTSPhF/K7rxOnEk6XxAzos83BHAbq9Q6++d2X1nw5msgEK5Pk+spJh
+ qtsgWY/9PikvilTHIsvk4nSQo8wB6A+sK1i+1PK32qkFxHC+
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since these are common to all Desginware PCIe IPs, move them to a new
-header, 'pcie-dwc.h' so that other drivers could make use of them.
+dw_pcie_find_vsec_capability() is used by upcoming DWC APIs to find the
+VSEC capabilities like PTM, RAS etc...
 
+Co-developed-by: Shradha Todi <shradha.t@samsung.com>
+Signed-off-by: Shradha Todi <shradha.t@samsung.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- MAINTAINERS                 |  1 +
- drivers/perf/dwc_pcie_pmu.c | 23 ++---------------------
- include/linux/pcie-dwc.h    | 34 ++++++++++++++++++++++++++++++++++
- 3 files changed, 37 insertions(+), 21 deletions(-)
+ drivers/pci/controller/dwc/pcie-designware.c | 40 ++++++++++++++++++++++++++++
+ 1 file changed, 40 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 896a307fa065..b4d09d52a750 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -18123,6 +18123,7 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/pci/snps,dw-pcie-ep.yaml
- F:	Documentation/devicetree/bindings/pci/snps,dw-pcie.yaml
- F:	drivers/pci/controller/dwc/*designware*
-+F:	include/linux/pcie-dwc.h
- 
- PCI DRIVER FOR TI DRA7XX/J721E
- M:	Vignesh Raghavendra <vigneshr@ti.com>
-diff --git a/drivers/perf/dwc_pcie_pmu.c b/drivers/perf/dwc_pcie_pmu.c
-index cccecae9823f..05b37ea7cf16 100644
---- a/drivers/perf/dwc_pcie_pmu.c
-+++ b/drivers/perf/dwc_pcie_pmu.c
-@@ -13,6 +13,7 @@
- #include <linux/errno.h>
- #include <linux/kernel.h>
- #include <linux/list.h>
+diff --git a/drivers/pci/controller/dwc/pcie-designware.c b/drivers/pci/controller/dwc/pcie-designware.c
+index 145e7f579072..a7c0671c6715 100644
+--- a/drivers/pci/controller/dwc/pcie-designware.c
++++ b/drivers/pci/controller/dwc/pcie-designware.c
+@@ -16,6 +16,7 @@
+ #include <linux/gpio/consumer.h>
+ #include <linux/ioport.h>
+ #include <linux/of.h>
 +#include <linux/pcie-dwc.h>
- #include <linux/perf_event.h>
- #include <linux/pci.h>
  #include <linux/platform_device.h>
-@@ -99,26 +100,6 @@ struct dwc_pcie_dev_info {
- 	struct list_head dev_node;
- };
+ #include <linux/sizes.h>
+ #include <linux/types.h>
+@@ -283,6 +284,45 @@ u16 dw_pcie_find_ext_capability(struct dw_pcie *pci, u8 cap)
+ }
+ EXPORT_SYMBOL_GPL(dw_pcie_find_ext_capability);
  
--struct dwc_pcie_pmu_vsec_id {
--	u16 vendor_id;
--	u16 vsec_id;
--	u8 vsec_rev;
--};
--
--/*
-- * VSEC IDs are allocated by the vendor, so a given ID may mean different
-- * things to different vendors.  See PCIe r6.0, sec 7.9.5.2.
-- */
--static const struct dwc_pcie_pmu_vsec_id dwc_pcie_pmu_vsec_ids[] = {
--	{ .vendor_id = PCI_VENDOR_ID_ALIBABA,
--	  .vsec_id = 0x02, .vsec_rev = 0x4 },
--	{ .vendor_id = PCI_VENDOR_ID_AMPERE,
--	  .vsec_id = 0x02, .vsec_rev = 0x4 },
--	{ .vendor_id = PCI_VENDOR_ID_QCOM,
--	  .vsec_id = 0x02, .vsec_rev = 0x4 },
--	{} /* terminator */
--};
--
- static ssize_t cpumask_show(struct device *dev,
- 					 struct device_attribute *attr,
- 					 char *buf)
-@@ -529,7 +510,7 @@ static void dwc_pcie_unregister_pmu(void *data)
- 
- static u16 dwc_pcie_des_cap(struct pci_dev *pdev)
- {
--	const struct dwc_pcie_pmu_vsec_id *vid;
++static u16 __dw_pcie_find_vsec_capability(struct dw_pcie *pci, u16 vendor_id,
++					  u16 vsec_id)
++{
++	u16 vsec = 0;
++	u32 header;
++
++	if (vendor_id != dw_pcie_readw_dbi(pci, PCI_VENDOR_ID))
++		return 0;
++
++	while ((vsec = dw_pcie_find_next_ext_capability(pci, vsec,
++						       PCI_EXT_CAP_ID_VNDR))) {
++		header = dw_pcie_readl_dbi(pci, vsec + PCI_VNDR_HEADER);
++		if (PCI_VNDR_HEADER_ID(header) == vsec_id)
++			return vsec;
++	}
++
++	return 0;
++}
++
++static u16 dw_pcie_find_vsec_capability(struct dw_pcie *pci,
++					const struct dwc_pcie_vsec_id *vsec_ids)
++{
 +	const struct dwc_pcie_vsec_id *vid;
- 	u16 vsec;
- 	u32 val;
- 
-diff --git a/include/linux/pcie-dwc.h b/include/linux/pcie-dwc.h
-new file mode 100644
-index 000000000000..261ae11d75a4
---- /dev/null
-+++ b/include/linux/pcie-dwc.h
-@@ -0,0 +1,34 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Copyright (C) 2021-2023 Alibaba Inc.
-+ *
-+ * Copyright 2025 Linaro Ltd.
-+ * Author: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-+ */
++	u16 vsec;
++	u32 header;
 +
-+#ifndef LINUX_PCIE_DWC_H
-+#define LINUX_PCIE_DWC_H
++	for (vid = vsec_ids; vid->vendor_id; vid++) {
++		vsec = __dw_pcie_find_vsec_capability(pci, vid->vendor_id,
++						      vid->vsec_id);
++		if (vsec) {
++			header = dw_pcie_readl_dbi(pci, vsec + PCI_VNDR_HEADER);
++			if (PCI_VNDR_HEADER_REV(header) == vid->vsec_rev)
++				return vsec;
++		}
++	}
 +
-+#include <linux/pci_ids.h>
++	return 0;
++}
 +
-+struct dwc_pcie_vsec_id {
-+	u16 vendor_id;
-+	u16 vsec_id;
-+	u8 vsec_rev;
-+};
-+
-+/*
-+ * VSEC IDs are allocated by the vendor, so a given ID may mean different
-+ * things to different vendors.  See PCIe r6.0, sec 7.9.5.2.
-+ */
-+static const struct dwc_pcie_vsec_id dwc_pcie_pmu_vsec_ids[] = {
-+	{ .vendor_id = PCI_VENDOR_ID_ALIBABA,
-+	  .vsec_id = 0x02, .vsec_rev = 0x4 },
-+	{ .vendor_id = PCI_VENDOR_ID_AMPERE,
-+	  .vsec_id = 0x02, .vsec_rev = 0x4 },
-+	{ .vendor_id = PCI_VENDOR_ID_QCOM,
-+	  .vsec_id = 0x02, .vsec_rev = 0x4 },
-+	{} /* terminator */
-+};
-+
-+#endif /* LINUX_PCIE_DWC_H */
+ int dw_pcie_read(void __iomem *addr, int size, u32 *val)
+ {
+ 	if (!IS_ALIGNED((uintptr_t)addr, size)) {
 
 -- 
 2.25.1
