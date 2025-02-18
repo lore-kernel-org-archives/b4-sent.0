@@ -1,10 +1,10 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Tue, 18 Feb 2025 10:56:17 +0100
-Subject: [PATCH 1/8] panic: Move panic ctl tables into panic.c
+Date: Tue, 18 Feb 2025 10:56:18 +0100
+Subject: [PATCH 2/8] signal: Move signal ctl tables into signal.c
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250218-jag-mv_ctltables-v1-1-cd3698ab8d29@kernel.org>
+Message-Id: <20250218-jag-mv_ctltables-v1-2-cd3698ab8d29@kernel.org>
 References: <20250218-jag-mv_ctltables-v1-0-cd3698ab8d29@kernel.org>
 In-Reply-To: <20250218-jag-mv_ctltables-v1-0-cd3698ab8d29@kernel.org>
 To: Kees Cook <kees@kernel.org>, Steven Rostedt <rostedt@goodmis.org>, 
@@ -33,139 +33,86 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  sparclinux@vger.kernel.org, linux-s390@vger.kernel.org, 
  linux-acpi@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.15-dev-64da2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3111;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1782;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=NyFjle3l0026Gd8PBKMPo4EmMXIGmeeTI/HzQnjZhwo=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGe0WVcAzJMiraNriDVA+Jt05tU4vLaM0b9zm
- pQ2Aq7OP5eX/YkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJntFlXAAoJELqXzVK3
- lkFPLfAL/20rjwkdDzYb51zKDdgXrnBcdHhkgJERVMP5kLuoDZPIpCzZp0dzglrDGrmWlA8rhxN
- NQU/dO9PP0QZrfy/Hfe2s8RXLT20avONnO7wYWu18KpWrTsp6TWbmJ7Zw3nAzDrGhpM+kO8VE2z
- IQntkQdUb1PWcV5Vm2G5GzZ01F6vKIVWYRw/z/gNZQF8csmvMOmkOIu+irJCgNCzhygDkPmhzDY
- efozZo2EblyEvFTgKPaP2s13syORR3hbJc4QjhOP57eR3WBTD+0GSaFFL0rIEGk++DJCX9VXFjM
- Cud8ZlqEMrbXPiE4LIWZsa5ce4O2Ik2fAPxhBwPWwE27VcFmVwE08vnP+EurCOP7EBMst60ZQPC
- KFowdYMyOAKk6890XxRSNZ2dYj/lWpNAjY6wgZPxVb9COHxmqfmT22EGGtdlw5rOJM0bMQop0PP
- vEgf8A6vjycLBM+VlS8tZpT/YLtLex21joa/9v6Wvmj7UWlN+ibSIzK/WRs1HVOWVIhWAVmnBQ6
- Qs=
+ bh=bNOhzTe2prG7ApNrzEgxiz1fkHFIuGiO+IoM7HFyf6g=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGe0WVePspv5KFWYMyxxLrq5NdT/+kjWQWT00
+ rb5ohuXmdhRRYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJntFlXAAoJELqXzVK3
+ lkFP/xwL/iWUKDAOOAgg2CCZDNJ/yTk7qhzst2m5RCQY9Y9zkZd8qKFneoSuZFOUv47OcPnifVs
+ PRXUs74ZHqQKYph9Cc+Lxv1aQ/ur/PUH9bxmz2ZaXGaLF7WrOymkU8yQJf+YHZLE8RAxjeOL6rt
+ cYouRwqv6R4TQUOt947+voVAO/nYSGPzQ6gce4vukbpBnEou2q05GRROklOEs7HtAuAKQ8LL9sz
+ s9LunTmFGywtFwEXwfxl8tgrWi88kRV6TKTLhCCwwHVh5lW8g0Ee24SvTIDuvQqwYib7KBtXlyI
+ J6XG8Puogwm2gxIEuR+whFOP9c9prA/d6sLn5ItTocmOUzF7oKb1a4HFtpoxjI7nNVNWye1z7LR
+ AzxihVlvEG6A8lpIx7lxKdbaD7DOkbbSTLfARmcA9nl4C2cakCWzx8hI57bcJUrJmDRqMolX+qm
+ LmCj5YMEOQfmswhrtpm6mEpxZElhKQ/QruoIC34NUUc5tQkBqW7VxMxIEX7kTXV63PjbIzceDX8
+ I8=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move panic, panic_on_oops, panic_print, panic_on_warn into
-kerne/panic.c. This is part of a greater effort to move ctl tables into
-their respective subsystems which will reduce the merge conflicts in
-kerenel/sysctl.c.
+Move print-fatal-signals into its own const ctl table array in
+kernel/signal.c. This is part of a greater effort to move ctl tables
+into their respective subsystems which will reduce the merge conflicts
+in kerenel/sysctl.c.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- kernel/panic.c  | 30 ++++++++++++++++++++++++++++++
- kernel/sysctl.c | 31 -------------------------------
- 2 files changed, 30 insertions(+), 31 deletions(-)
+ kernel/signal.c | 11 +++++++++++
+ kernel/sysctl.c |  8 --------
+ 2 files changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/kernel/panic.c b/kernel/panic.c
-index d8635d5cecb2..f9bf88f4c262 100644
---- a/kernel/panic.c
-+++ b/kernel/panic.c
-@@ -96,6 +96,36 @@ static const struct ctl_table kern_panic_table[] = {
- 		.extra2         = SYSCTL_ONE,
- 	},
+diff --git a/kernel/signal.c b/kernel/signal.c
+index 875e97f6205a..347b74800f92 100644
+--- a/kernel/signal.c
++++ b/kernel/signal.c
+@@ -4962,9 +4962,20 @@ static const struct ctl_table signal_debug_table[] = {
  #endif
+ };
+ 
++static const struct ctl_table signal_table[] = {
 +	{
-+		.procname	= "panic",
-+		.data		= &panic_timeout,
++		.procname	= "print-fatal-signals",
++		.data		= &print_fatal_signals,
 +		.maxlen		= sizeof(int),
 +		.mode		= 0644,
 +		.proc_handler	= proc_dointvec,
 +	},
-+	{
-+		.procname	= "panic_on_oops",
-+		.data		= &panic_on_oops,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+	{
-+		.procname	= "panic_print",
-+		.data		= &panic_print,
-+		.maxlen		= sizeof(unsigned long),
-+		.mode		= 0644,
-+		.proc_handler	= proc_doulongvec_minmax,
-+	},
-+	{
-+		.procname	= "panic_on_warn",
-+		.data		= &panic_on_warn,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec_minmax,
-+		.extra1		= SYSCTL_ZERO,
-+		.extra2		= SYSCTL_ONE,
-+	},
- 	{
- 		.procname       = "warn_limit",
- 		.data           = &warn_limit,
++};
++
+ static int __init init_signal_sysctls(void)
+ {
+ 	register_sysctl_init("debug", signal_debug_table);
++	register_sysctl_init("kernel", signal_table);
+ 	return 0;
+ }
+ early_initcall(init_signal_sysctls);
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index cb57da499ebb..7759b1ed7221 100644
+index 7759b1ed7221..6514c13800a4 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -26,7 +26,6 @@
+@@ -25,7 +25,6 @@
+ #include <linux/slab.h>
  #include <linux/sysctl.h>
  #include <linux/bitmap.h>
- #include <linux/signal.h>
--#include <linux/panic.h>
+-#include <linux/signal.h>
  #include <linux/printk.h>
  #include <linux/proc_fs.h>
  #include <linux/security.h>
-@@ -1610,13 +1609,6 @@ int proc_do_static_key(const struct ctl_table *table, int write,
- }
- 
- static const struct ctl_table kern_table[] = {
+@@ -1626,13 +1625,6 @@ static const struct ctl_table kern_table[] = {
+ 		.extra2		= SYSCTL_ONE,
+ 	},
+ #endif
 -	{
--		.procname	= "panic",
--		.data		= &panic_timeout,
+-		.procname	= "print-fatal-signals",
+-		.data		= &print_fatal_signals,
 -		.maxlen		= sizeof(int),
 -		.mode		= 0644,
 -		.proc_handler	= proc_dointvec,
 -	},
- #ifdef CONFIG_PROC_SYSCTL
+ #ifdef CONFIG_SPARC
  	{
- 		.procname	= "tainted",
-@@ -1803,20 +1795,6 @@ static const struct ctl_table kern_table[] = {
- 		.proc_handler	= proc_dointvec,
- 	},
- #endif
--	{
--		.procname	= "panic_on_oops",
--		.data		= &panic_on_oops,
--		.maxlen		= sizeof(int),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
--	},
--	{
--		.procname	= "panic_print",
--		.data		= &panic_print,
--		.maxlen		= sizeof(unsigned long),
--		.mode		= 0644,
--		.proc_handler	= proc_doulongvec_minmax,
--	},
- 	{
- 		.procname	= "ngroups_max",
- 		.data		= (void *)&ngroups_max,
-@@ -1990,15 +1968,6 @@ static const struct ctl_table kern_table[] = {
- 		.extra2		= SYSCTL_ONE_THOUSAND,
- 	},
- #endif
--	{
--		.procname	= "panic_on_warn",
--		.data		= &panic_on_warn,
--		.maxlen		= sizeof(int),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= SYSCTL_ZERO,
--		.extra2		= SYSCTL_ONE,
--	},
- #ifdef CONFIG_TREE_RCU
- 	{
- 		.procname	= "panic_on_rcu_stall",
+ 		.procname	= "reboot-cmd",
 
 -- 
 2.44.2
