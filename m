@@ -1,61 +1,70 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 19 Feb 2025 15:29:06 +0800
-Subject: [PATCH 4/4] arm64: dts: Add gpio_intc node for Amlogic-A5 SoCs
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Date: Wed, 19 Feb 2025 10:13:53 +0100
+Subject: [PATCH] iommu/io-pgtable-dart: Only set subpage protection disable
+ for DART 1
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250219-irqchip-gpio-a4-a5-v1-4-3c8e44ae42df@amlogic.com>
-References: <20250219-irqchip-gpio-a4-a5-v1-0-3c8e44ae42df@amlogic.com>
-In-Reply-To: <20250219-irqchip-gpio-a4-a5-v1-0-3c8e44ae42df@amlogic.com>
-To: Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Heiner Kallweit <hkallweit1@gmail.com>
-Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739950145; l=835;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=+kt3Jevc/8KR/ZsMbFbD2TjHFreHkm3hzIePStnSOmI=;
- b=Gz9eY74qdMAmL/N5DpslVabeRg+4GyurES08b0DsfIFa/n5AEP23l0Kun+CdM1YiQ5gwEEne8
- U8l3Dzz6wOUCDOuZjeaqIvSavN0786zN6rka1xBcyneQwByrsSmIsFX
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Message-Id: <20250219-dart2-no-sp-disable-v1-1-9f324cfa4e70@gmail.com>
+X-B4-Tracking: v=1; b=H4sIANCgtWcC/x3MMQqAMAxA0atIZgM1oqJXEYfWRg1IlUZEkN7d4
+ viG/19QjsIKQ/FC5FtUjpBRlQXMmw0ro/hsIEONoapHb+NFGA7UE72odTvjUjemo9k537eQyzP
+ yIs9/HaeUPitxVDtlAAAA
+X-Change-ID: 20250219-dart2-no-sp-disable-f35072cbbd96
+To: Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, Joerg Roedel <joro@8bytes.org>, 
+ Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
+ Hector Martin <marcan@marcan.st>, Rob Herring <robh@kernel.org>, 
+ Janne Grunau <j@jannau.net>
+Cc: Joerg Roedel <jroedel@suse.de>, asahi@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, iommu@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Asahi Lina <lina@asahilina.net>, 
+ Sasha Finkelstein <fnkl.kernel@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739956436; l=1398;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=4vIOKtPg+OtkD6k1fuo7D/3yWj1rRgyOMiGeGabXJoQ=;
+ b=2XvYZiLPQ55QTshLqUD4aTt/pUSerHvszW6QhuxyTNjK/hq2NYquR+5dssye/dFu6aJEtq/su
+ c/ZlgVVyC4ICgNDsQpVVlQtMaUH4ApO55G9hM21HQQvekVzMzpLohQw
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add GPIO interrupt controller device.
+From: Asahi Lina <lina@asahilina.net>
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subpage protection can't be disabled on t6000-style darts,
+as such the disable flag no longer applies, and probably
+even affects something else.
+
+Fixes: dc09fe1c5edd ("iommu/io-pgtable-dart: Add DART PTE support for t6000")
+Signed-off-by: Asahi Lina <lina@asahilina.net>
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/iommu/io-pgtable-dart.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-index 17a6316de891..32ed1776891b 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-@@ -48,3 +48,15 @@ pwrc: power-controller {
- 		};
- 	};
- };
-+
-+&apb {
-+	gpio_intc: interrupt-controller@4080 {
-+		compatible = "amlogic,a5-gpio-intc",
-+			     "amlogic,meson-gpio-intc";
-+		reg = <0x0 0x4080 0x0 0x20>;
-+		interrupt-controller;
-+		#interrupt-cells = <2>;
-+		amlogic,channel-interrupts =
-+			<10 11 12 13 14 15 16 17 18 19 20 21>;
-+	};
-+};
+diff --git a/drivers/iommu/io-pgtable-dart.c b/drivers/iommu/io-pgtable-dart.c
+index c004640640ee50d01dd54c38e89162c0fcb1988f..06aca9ab52f9a811a2608ae75155a36919799c74 100644
+--- a/drivers/iommu/io-pgtable-dart.c
++++ b/drivers/iommu/io-pgtable-dart.c
+@@ -135,7 +135,6 @@ static int dart_init_pte(struct dart_io_pgtable *data,
+ 	pte |= FIELD_PREP(APPLE_DART_PTE_SUBPAGE_START, 0);
+ 	pte |= FIELD_PREP(APPLE_DART_PTE_SUBPAGE_END, 0xfff);
+ 
+-	pte |= APPLE_DART1_PTE_PROT_SP_DIS;
+ 	pte |= APPLE_DART_PTE_VALID;
+ 
+ 	for (i = 0; i < num_entries; i++)
+@@ -211,6 +210,7 @@ static dart_iopte dart_prot_to_pte(struct dart_io_pgtable *data,
+ 	dart_iopte pte = 0;
+ 
+ 	if (data->iop.fmt == APPLE_DART) {
++		pte |= APPLE_DART1_PTE_PROT_SP_DIS;
+ 		if (!(prot & IOMMU_WRITE))
+ 			pte |= APPLE_DART1_PTE_PROT_NO_WRITE;
+ 		if (!(prot & IOMMU_READ))
 
--- 
-2.37.1
+---
+base-commit: 2408a807bfc3f738850ef5ad5e3fd59d66168996
+change-id: 20250219-dart2-no-sp-disable-f35072cbbd96
 
