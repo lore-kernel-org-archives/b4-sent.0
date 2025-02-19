@@ -1,82 +1,54 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Tue, 18 Feb 2025 16:55:51 +0100
-Subject: [PATCH] common: board_r: Initialize interrupts before watchdog
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH 0/4] Add GPIO interrupt support for Amlogic A4 and A5 SoCs
+Date: Wed, 19 Feb 2025 15:29:02 +0800
+Message-Id: <20250219-irqchip-gpio-a4-a5-v1-0-3c8e44ae42df@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250218-init-v1-1-a1c5bf9e8fb0@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAIattGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDI0ML3cy8zBLdlMQkw7Rkc6PEpBQjJaDSgqLUtMwKsDHRsbW1AIDogUJ
- WAAAA
-X-Change-ID: 20250218-init-dab1fc72abd2
-To: Tom Rini <trini@konsulko.com>
-Cc: u-boot@lists.denx.de, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739894152; l=1865;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=T4cIbIiYoRKNkHbTkYfbF9qlEVqdDddNnJIsoKjEF5M=;
- b=5vqu+d/XmpJ3e+jb0E9fpm7ooQJrG39yzWg2yG9TDZuChejCv7UmVvOFPV3eBxL2ZPN4z6hJM
- rXg55bKh7XUCsF4FJaxmZo5LizGdkzuaFjYFdqD2LPxDIAvICTQSnaa
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAD6ItWcC/x3MQQqAIBBA0avErBtQ04iuEi3EJp2NmUIE4t2Tl
+ m/xf4VCmanAOlTI9HDhK3bIcQAXbPSEfHSDEkpLJSfkfLvACX3iC61Ga3ARzggrtZmdhh6mTCe
+ //3TbW/sAeJI412QAAAA=
+To: Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Heiner Kallweit <hkallweit1@gmail.com>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739950145; l=903;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=ImNpnsptW8WJoO1olJWkaeTDPYynu8aJPZ10S0NXgBA=;
+ b=kBJy8i3DWBxIZsOOmE/IltkEkpIMhPO6n8vGPuyAvcvoNrKq3atiLHkfjy9kjHyRTRrWpPILK
+ h7FUOk0a6/lBs1Dqwb5WzEfHSgZMzdE7hoJS3uooL02uyvXMD3vWlA5
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On some platforms, initializing the watchdog driver enables a timer
-interrupt. This of course requires the interrupt handlers to be
-properly initialized, otherwise U-Boot may crash or run the timer
-interrupt handler of a previous bootloader stage.
+This patch adds GPIO interrupt support for Amlogic A4 and A5 SoCs
 
-To account for such systems, always initialize interrupts
-(arch_initr_trap) before the watchdog (initr_watchdog).
-
-This problem was observed on a PowerPC MPC83xx board.
-
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-NOTE: This approach seems safe and fine to me, but an argument could be
-      made that this should be fixed in the platform-specific drivers
-      instead.  Please let me know what you think.
+Xianwei Zhao (4):
+      dt-bindings: interrupt-controller: Add support for Amlogic A4 and A5 SoCs
+      irqchip: Add support for Amlogic A4 and A5 SoCs
+      arm64: dts: Add gpio_intc node for Amlogic-A4 SoCs
+      arm64: dts: Add gpio_intc node for Amlogic-A5 SoCs
 
-
-Rough stack trace (not sure if it should be part of the commit message):
-
-  initr_watchdog                (drivers/watchdog/wdt-uclass.c)
-    device_probe(wdt@200)
-      device_probe(timer)
-        mpc8xxx_wdt_start       (drivers/watchdog/mpc8xxx_wdt.c)
-          set_msr(get_msr() | MSR_EE);
-
-  arch_initr_trap               (arch/powerpc/lib/traps.c)
-    trap_init                   (arch/powerpc/cpu/mpc83xx/start.S)
+ .../amlogic,meson-gpio-intc.yaml                   |  5 +-
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        | 21 ++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        | 12 +++++
+ drivers/irqchip/irq-meson-gpio.c                   | 61 ++++++++++++++++++++++
+ 4 files changed, 98 insertions(+), 1 deletion(-)
 ---
- common/board_r.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/common/board_r.c b/common/board_r.c
-index 179259b00de81f7ba9802fc5288e7c2b6e6f381a..f711cd237ae76d80ca2413017bfe131656f44180 100644
---- a/common/board_r.c
-+++ b/common/board_r.c
-@@ -652,11 +652,11 @@ static init_fnc_t init_sequence_r[] = {
- 	serial_initialize,
- 	initr_announce,
- 	dm_announce,
-+	arch_initr_trap,
- #if CONFIG_IS_ENABLED(WDT)
- 	initr_watchdog,
- #endif
- 	INIT_FUNC_WATCHDOG_RESET
--	arch_initr_trap,
- #if defined(CONFIG_BOARD_EARLY_INIT_R)
- 	board_early_init_r,
- #endif
-
----
-base-commit: 064556910e61044f1295162ceaad600582b66cda
-change-id: 20250218-init-dab1fc72abd2
+base-commit: 953913df9c3ab6f496c6facd5aa7fc9f2f847ac2
+change-id: 20241213-irqchip-gpio-a4-a5-80c50a1456c4
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
