@@ -1,10 +1,10 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Wed, 19 Feb 2025 10:26:58 +0100
-Subject: [PATCH 2/5] pmdomain: apple: Add force-disable/force-reset
+Date: Wed, 19 Feb 2025 10:26:59 +0100
+Subject: [PATCH 3/5] media: dt-bindings: Add Apple ISP
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250219-isp-v1-2-6d3e89b67c31@gmail.com>
+Message-Id: <20250219-isp-v1-3-6d3e89b67c31@gmail.com>
 References: <20250219-isp-v1-0-6d3e89b67c31@gmail.com>
 In-Reply-To: <20250219-isp-v1-0-6d3e89b67c31@gmail.com>
 To: Sven Peter <sven@svenpeter.dev>, 
@@ -19,127 +19,196 @@ To: Sven Peter <sven@svenpeter.dev>,
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-pm@vger.kernel.org, linux-media@vger.kernel.org, imx@lists.linux.dev, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, Asahi Lina <lina@asahilina.net>
+ Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739957223; l=4185;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739957223; l=5702;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=ILeuHWleXhwI4K5IQ/A7AJ/hB6N+vx/m/9DJygdXU5M=;
- b=m7tS+W7n9OmHjO2HKePvd2Pb2y/jUt80l6iQFjZPGrA6pxlU8hO8mTLFM4UA4HHPtNg3pqA8U
- zm+sUIF+HJSCtecFbaEhHLjXcK4/HjcE3vEJ6trTzQ/1LcJAYn4+nfO
+ bh=A9oH4JPrA84M2AIoue7FVKM9TwqTr7E5y+sVJjno88Q=;
+ b=XBhltGV9upjAetievVsxuOOHOJqwjFWEQS4CcHPjb8inxvCNo5X/gTHoybc1LTAJ95fVKfZnn
+ R/qqq4PjLRxAYmNoyZE26x0HUOU0QvIf2WDp0SQzmEyQYl5M+8cWoMF
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Asahi Lina <lina@asahilina.net>
+Add bindings for the ISP used with the webcam in Apple
+ARM laptops.
 
-It seems some ISP power states should have their force disable device
-access flag set when powered down (which may avoid this problem, but
-we're still figuring that out), and on some bit 12 is also explicitly
-set before shutdown. Add two properties to handle this case.
-
-Signed-off-by: Asahi Lina <lina@asahilina.net>
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- drivers/pmdomain/apple/pmgr-pwrstate.c | 43 +++++++++++++++++++++++++++++-----
- 1 file changed, 37 insertions(+), 6 deletions(-)
+ .../devicetree/bindings/media/apple,isp.yaml       | 151 +++++++++++++++++++++
+ MAINTAINERS                                        |   1 +
+ 2 files changed, 152 insertions(+)
 
-diff --git a/drivers/pmdomain/apple/pmgr-pwrstate.c b/drivers/pmdomain/apple/pmgr-pwrstate.c
-index 9467235110f4654e00ab96c25e160e125ef0f3e5..3236d854265c9489cca7affadf4448e8444dd839 100644
---- a/drivers/pmdomain/apple/pmgr-pwrstate.c
-+++ b/drivers/pmdomain/apple/pmgr-pwrstate.c
-@@ -21,7 +21,8 @@
- #define APPLE_PMGR_AUTO_ENABLE  BIT(28)
- #define APPLE_PMGR_PS_AUTO      GENMASK(27, 24)
- #define APPLE_PMGR_PS_MIN       GENMASK(19, 16)
--#define APPLE_PMGR_PARENT_OFF   BIT(11)
-+#define APPLE_PMGR_PS_RESET     BIT(12)
-+#define APPLE_PMGR_BUSY         BIT(11)
- #define APPLE_PMGR_DEV_DISABLE  BIT(10)
- #define APPLE_PMGR_WAS_CLKGATED BIT(9)
- #define APPLE_PMGR_WAS_PWRGATED BIT(8)
-@@ -44,6 +45,8 @@ struct apple_pmgr_ps {
- 	struct regmap *regmap;
- 	u32 offset;
- 	u32 min_state;
-+	bool force_disable;
-+	bool force_reset;
- };
- 
- #define genpd_to_apple_pmgr_ps(_genpd) container_of(_genpd, struct apple_pmgr_ps, genpd)
-@@ -53,7 +56,7 @@ static int apple_pmgr_ps_set(struct generic_pm_domain *genpd, u32 pstate, bool a
- {
- 	int ret;
- 	struct apple_pmgr_ps *ps = genpd_to_apple_pmgr_ps(genpd);
--	u32 reg;
-+	u32 reg, cur;
- 
- 	ret = regmap_read(ps->regmap, ps->offset, &reg);
- 	if (ret < 0)
-@@ -64,7 +67,29 @@ static int apple_pmgr_ps_set(struct generic_pm_domain *genpd, u32 pstate, bool a
- 		dev_err(ps->dev, "PS %s: powering off with RESET active\n",
- 			genpd->name);
- 
--	reg &= ~(APPLE_PMGR_AUTO_ENABLE | APPLE_PMGR_FLAGS | APPLE_PMGR_PS_TARGET);
-+	if (pstate != APPLE_PMGR_PS_ACTIVE && (ps->force_disable || ps->force_reset)) {
-+		u32 reg_pre = reg & ~(APPLE_PMGR_AUTO_ENABLE | APPLE_PMGR_FLAGS);
+diff --git a/Documentation/devicetree/bindings/media/apple,isp.yaml b/Documentation/devicetree/bindings/media/apple,isp.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..67d536b61851af30fcc5bc452a761138876c6b18
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/apple,isp.yaml
+@@ -0,0 +1,151 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/apple,isp.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+		if (ps->force_disable)
-+			reg_pre |= APPLE_PMGR_DEV_DISABLE;
-+		if (ps->force_reset)
-+			reg_pre |= APPLE_PMGR_PS_RESET;
++title: An ISP block used in Apple products
 +
-+		regmap_write(ps->regmap, ps->offset, reg_pre);
++maintainers:
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
 +
-+		ret = regmap_read_poll_timeout_atomic(
-+			ps->regmap, ps->offset, cur,
-+			(cur & (APPLE_PMGR_DEV_DISABLE | APPLE_PMGR_PS_RESET)) ==
-+			(reg_pre & (APPLE_PMGR_DEV_DISABLE | APPLE_PMGR_PS_RESET)), 1,
-+			APPLE_PMGR_PS_SET_TIMEOUT);
++description:
++  The ISP in charge of webcams on ARM Apple laptops
 +
-+		if (ret < 0)
-+			dev_err(ps->dev, "PS %s: Failed to set reset/disable bits (now: 0x%x)\n",
-+				genpd->name, reg);
-+	}
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,t8103-isp
++          - apple,t8112-isp
++          - apple,t6000-isp
++          - apple,t6020-isp
++      - const: apple,isp
 +
-+	reg &= ~(APPLE_PMGR_DEV_DISABLE | APPLE_PMGR_PS_RESET |
-+		 APPLE_PMGR_AUTO_ENABLE | APPLE_PMGR_FLAGS | APPLE_PMGR_PS_TARGET);
- 	reg |= FIELD_PREP(APPLE_PMGR_PS_TARGET, pstate);
- 
- 	dev_dbg(ps->dev, "PS %s: pwrstate = 0x%x: 0x%x\n", genpd->name, pstate, reg);
-@@ -72,16 +97,16 @@ static int apple_pmgr_ps_set(struct generic_pm_domain *genpd, u32 pstate, bool a
- 	regmap_write(ps->regmap, ps->offset, reg);
- 
- 	ret = regmap_read_poll_timeout_atomic(
--		ps->regmap, ps->offset, reg,
--		(FIELD_GET(APPLE_PMGR_PS_ACTUAL, reg) == pstate), 1,
-+		ps->regmap, ps->offset, cur,
-+		FIELD_GET(APPLE_PMGR_PS_ACTUAL, cur) == pstate, 1,
- 		APPLE_PMGR_PS_SET_TIMEOUT);
++  reg:
++    items:
++      - description: ASC coprocessor control
++      - description: Peripheral to host mailbox
++      - description: General-purpose ASC IO registers
++      - description: Host to peripheral mailbox
 +
- 	if (ret < 0)
- 		dev_err(ps->dev, "PS %s: Failed to reach power state 0x%x (now: 0x%x)\n",
- 			genpd->name, pstate, reg);
- 
- 	if (auto_enable) {
- 		/* Not all devices implement this; this is a no-op where not implemented. */
--		reg &= ~APPLE_PMGR_FLAGS;
- 		reg |= APPLE_PMGR_AUTO_ENABLE;
- 		regmap_write(ps->regmap, ps->offset, reg);
- 	}
-@@ -244,6 +269,12 @@ static int apple_pmgr_ps_probe(struct platform_device *pdev)
- 		}
- 	}
- 
-+	if (of_property_read_bool(node, "apple,force-disable"))
-+		ps->force_disable = true;
++  reg-names:
++    items:
++      - const: coproc
++      - const: mbox
++      - const: gpio
++      - const: mbox2
 +
-+	if (of_property_read_bool(node, "apple,force-reset"))
-+		ps->force_reset = true;
++  iommus:
++    description: All 3 must be kept in sync
++    minItems: 3
++    maxItems: 3
 +
- 	/* Turn on auto-PM if the domain is already on */
- 	if (active)
- 		regmap_update_bits(regmap, ps->offset, APPLE_PMGR_FLAGS | APPLE_PMGR_AUTO_ENABLE,
++  interrupts:
++    maxItems: 1
++
++  power-domains:
++    minItems: 1
++    maxItems: 20
++    description: All necessary power domains. Driver will enable them in order
++
++  memory-region:
++    maxItems: 1
++
++  apple,dart-vm-size:
++    description: Supported device memory range
++    $ref: /schemas/types.yaml#/definitions/uint64
++
++  apple,platform-id:
++    description: Platform id for firmware
++    $ref: /schemas/types.yaml#/definitions/uint32
++
++  apple,temporal-filter:
++    description: Whether temporal filter should be enabled in firmware
++    $ref: /schemas/types.yaml#/definitions/uint32
++
++  sensor-presets:
++    additionalProperties: false
++
++    patternProperties:
++      '^preset[0-9]+$':
++        type: object
++
++        additionalProperties: false
++
++        properties:
++          apple,config-index:
++            description: Firmware config index
++            $ref: /schemas/types.yaml#/definitions/uint32
++
++          apple,input-size:
++            $ref: /schemas/types.yaml#/definitions/uint32-array
++            minItems: 2
++            maxItems: 2
++            description: Raw sensor size
++
++          apple,output-size:
++            $ref: /schemas/types.yaml#/definitions/uint32-array
++            minItems: 2
++            maxItems: 2
++            description: Cropped and scaled image size
++
++          apple,crop:
++            $ref: /schemas/types.yaml#/definitions/uint32-array
++            minItems: 4
++            maxItems: 4
++            description: Area to crop
++
++        required:
++          - apple,config-index
++          - apple,input-size
++          - apple,output-size
++          - apple,crop
++
++required:
++  - compatible
++  - reg
++  - iommus
++  - interrupts
++  - power-domains
++  - memory-region
++  - apple,dart-vm-size
++  - apple,platform-id
++  - apple,temporal-filter
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/apple-aic.h>
++    isp: isp@2a000000 {
++        compatible = "apple,t8103-isp", "apple,isp";
++        reg = <0x2a000000 0x2000000>,
++              <0x2c104000 0x100>,
++              <0x2c104170 0x100>,
++              <0x2c1043f0 0x100>;
++        reg-names = "coproc", "mbox", "gpio", "mbox2";
++        iommus = <&isp_dart0 0>, <&isp_dart1 0>, <&isp_dart2 0>;
++        interrupt-parent = <&aic>;
++        interrupts = <AIC_IRQ 246 IRQ_TYPE_LEVEL_HIGH>;
++        power-domains = <&ps_isp_sys>, <&ps_isp_set0>,
++                        <&ps_isp_set1>, <&ps_isp_set2>, <&ps_isp_fe>,
++                        <&ps_isp_set4>, <&ps_isp_set5>, <&ps_isp_set6>,
++                        <&ps_isp_set7>, <&ps_isp_set8>, <&ps_isp_set9>,
++                        <&ps_isp_set10>, <&ps_isp_set11>,
++                        <&ps_isp_set12>;
++        memory-region = <&isp_heap>;
++        apple,dart-vm-size = <0x0 0xa0000000>;
++        apple,platform-id = <1>;
++        apple,temporal-filter = <0>;
++
++        sensor-presets {
++            preset0 {
++                apple,config-index = <0>;
++                apple,input-size = <1296 736>;
++                apple,output-size = <1280 720>;
++                apple,crop = <8 8 1280 720>;
++            };
++        };
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index efee40ea589f70bc5e4a390072a4543234616743..dea7239ee0f5464b31efed5a2e0e5e602bcb6439 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2228,6 +2228,7 @@ F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
+ F:	Documentation/devicetree/bindings/iommu/apple,dart.yaml
+ F:	Documentation/devicetree/bindings/iommu/apple,sart.yaml
+ F:	Documentation/devicetree/bindings/mailbox/apple,mailbox.yaml
++F:	Documentation/devicetree/bindings/media/apple,isp.yaml
+ F:	Documentation/devicetree/bindings/net/bluetooth/brcm,bcm4377-bluetooth.yaml
+ F:	Documentation/devicetree/bindings/nvme/apple,nvme-ans.yaml
+ F:	Documentation/devicetree/bindings/nvmem/apple,efuses.yaml
 
 -- 
 2.48.1
