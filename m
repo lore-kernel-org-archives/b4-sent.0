@@ -1,13 +1,13 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH 0/4] Add GPIO interrupt support for Amlogic A4 and A5 SoCs
-Date: Wed, 19 Feb 2025 15:29:02 +0800
-Message-Id: <20250219-irqchip-gpio-a4-a5-v1-0-3c8e44ae42df@amlogic.com>
+Date: Wed, 19 Feb 2025 15:29:03 +0800
+Subject: [PATCH 1/4] dt-bindings: interrupt-controller: Add support for
+ Amlogic A4 and A5 SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAD6ItWcC/x3MQQqAIBBA0avErBtQ04iuEi3EJp2NmUIE4t2Tl
- m/xf4VCmanAOlTI9HDhK3bIcQAXbPSEfHSDEkpLJSfkfLvACX3iC61Ga3ARzggrtZmdhh6mTCe
- //3TbW/sAeJI412QAAAA=
+Message-Id: <20250219-irqchip-gpio-a4-a5-v1-1-3c8e44ae42df@amlogic.com>
+References: <20250219-irqchip-gpio-a4-a5-v1-0-3c8e44ae42df@amlogic.com>
+In-Reply-To: <20250219-irqchip-gpio-a4-a5-v1-0-3c8e44ae42df@amlogic.com>
 To: Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -19,36 +19,48 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1739950145; l=903;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1739950145; l=1351;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=ImNpnsptW8WJoO1olJWkaeTDPYynu8aJPZ10S0NXgBA=;
- b=kBJy8i3DWBxIZsOOmE/IltkEkpIMhPO6n8vGPuyAvcvoNrKq3atiLHkfjy9kjHyRTRrWpPILK
- h7FUOk0a6/lBs1Dqwb5WzEfHSgZMzdE7hoJS3uooL02uyvXMD3vWlA5
+ bh=vjPBu1HHhtJ40032LUG+5H8YJbi/gKBdDE3m5hFavvg=;
+ b=0aRX+LboPpexOaTwmX3H+YQd0Y2mCu1hV2pp4pVwj/4pM5zotWkSSzIl64AOHuySD3aaUFC4c
+ nkskPATR3SuBhUeZ4PnX5/a0Dr2mK3HMwpE9vMkxBt7H4774FUf4PEb
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds GPIO interrupt support for Amlogic A4 and A5 SoCs
+Update dt-binding document for GPIO interrupt controller
+of Amlogic A4 and A5 SoCs
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Xianwei Zhao (4):
-      dt-bindings: interrupt-controller: Add support for Amlogic A4 and A5 SoCs
-      irqchip: Add support for Amlogic A4 and A5 SoCs
-      arm64: dts: Add gpio_intc node for Amlogic-A4 SoCs
-      arm64: dts: Add gpio_intc node for Amlogic-A5 SoCs
+ .../bindings/interrupt-controller/amlogic,meson-gpio-intc.yaml       | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
- .../amlogic,meson-gpio-intc.yaml                   |  5 +-
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        | 21 ++++++++
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        | 12 +++++
- drivers/irqchip/irq-meson-gpio.c                   | 61 ++++++++++++++++++++++
- 4 files changed, 98 insertions(+), 1 deletion(-)
----
-base-commit: 953913df9c3ab6f496c6facd5aa7fc9f2f847ac2
-change-id: 20241213-irqchip-gpio-a4-a5-80c50a1456c4
+diff --git a/Documentation/devicetree/bindings/interrupt-controller/amlogic,meson-gpio-intc.yaml b/Documentation/devicetree/bindings/interrupt-controller/amlogic,meson-gpio-intc.yaml
+index a93744763787..03548ee695bd 100644
+--- a/Documentation/devicetree/bindings/interrupt-controller/amlogic,meson-gpio-intc.yaml
++++ b/Documentation/devicetree/bindings/interrupt-controller/amlogic,meson-gpio-intc.yaml
+@@ -35,6 +35,9 @@ properties:
+               - amlogic,meson-sm1-gpio-intc
+               - amlogic,meson-a1-gpio-intc
+               - amlogic,meson-s4-gpio-intc
++              - amlogic,a4-gpio-intc
++              - amlogic,a4-gpio-ao-intc
++              - amlogic,a5-gpio-intc
+               - amlogic,c3-gpio-intc
+               - amlogic,t7-gpio-intc
+           - const: amlogic,meson-gpio-intc
+@@ -49,7 +52,7 @@ properties:
+ 
+   amlogic,channel-interrupts:
+     description: Array with the upstream hwirq numbers
+-    minItems: 8
++    minItems: 2
+     maxItems: 12
+     $ref: /schemas/types.yaml#/definitions/uint32-array
+ 
 
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
