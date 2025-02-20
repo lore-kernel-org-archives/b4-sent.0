@@ -1,129 +1,137 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Thu, 20 Feb 2025 09:22:11 +0100
-Subject: [PATCH v2 2/2] can: flexcan: add transceiver capabilities
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Thu, 20 Feb 2025 12:31:24 +0100
+Subject: [PATCH v3] dt-bindings: powerpc: Add Freescale/NXP MPC83xx SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250220-flexcan-add-transceiver-caps-v2-2-a81970f11846@liebherr.com>
-References: <20250220-flexcan-add-transceiver-caps-v2-0-a81970f11846@liebherr.com>
-In-Reply-To: <20250220-flexcan-add-transceiver-caps-v2-0-a81970f11846@liebherr.com>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol.vincent@wanadoo.fr>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250220-ppcyaml-soc-v3-1-b8c98a61bc1a@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAIsSt2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDIyMD3YKC5MrE3Bzd4vxk3eTEVMM0Q5PkNGMLSyWgjoKi1LTMCrBp0bG
+ 1tQDQw/PdXQAAAA==
+X-Change-ID: 20250220-ppcyaml-soc-cae1f14cf389
+To: Scott Wood <oss@buserror.net>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Naveen N Rao <naveen@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+Cc: linuxppc-dev@lists.ozlabs.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740039736; l=3553;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=f8wDtbBWhus6CF2XVFXMOTBwX1LOfB9aOJZ29pdlyPo=;
- b=KAivBnF5zPSH30Mj67FkakzqX5s1r5WVPqiTqjmCpacvj9n9tzdGarouQAWwyu+HGSqaF+QqJ
- UypJUj41D73Aii3H79QYLeqcq8wuKB4GYtGlx0VKHldR2Z4HyWsPUCJ
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740051094; l=3092;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=NAj+Jqp8KPeLt4L556NresRK/7mtlfJD3BTkH6XEDfQ=;
+ b=svr6EYY1rL3k+PY+Cs6q2u237DnQIj+3pXfKA5mT8jlrXmGEKRocbcBDlYHRe97Q4p7MfMFu1
+ S0bDZ6K3hzaBbFzQJovWtbkKg34hQmOcP9jjL5yXQ+iLk3a+XHakeX/
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently the flexcan driver does only support adding PHYs by using the
-"old" regulator bindings. Add support for CAN transceivers as a PHY. Add
-the capability to ensure that the PHY is in operational state when the link
-is set to an "up" state.
+Add a new binding for MPC83xx platforms, describing the board compatible
+strings used in currently existing device trees.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Note that the SoC bus is called immr@... in many existing devicetrees,
+but this contradicts the simple-bus binding.
+
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- drivers/net/can/flexcan/flexcan-core.c | 30 ++++++++++++++++++++++++------
- drivers/net/can/flexcan/flexcan.h      |  1 +
- 2 files changed, 25 insertions(+), 6 deletions(-)
+V3:
+- split out as a single patch
+- otherwise no changes
 
-diff --git a/drivers/net/can/flexcan/flexcan-core.c b/drivers/net/can/flexcan/flexcan-core.c
-index b347a1c93536d54efaa5f7d3347bd47c20860b3e..45d9a6957d9a806ed80d810a6a5f7eb99fcc702c 100644
---- a/drivers/net/can/flexcan/flexcan-core.c
-+++ b/drivers/net/can/flexcan/flexcan-core.c
-@@ -30,6 +30,7 @@
- #include <linux/property.h>
- #include <linux/regmap.h>
- #include <linux/regulator/consumer.h>
-+#include <linux/phy/phy.h>
- 
- #include "flexcan.h"
- 
-@@ -644,18 +645,22 @@ static void flexcan_clks_disable(const struct flexcan_priv *priv)
- 
- static inline int flexcan_transceiver_enable(const struct flexcan_priv *priv)
- {
--	if (!priv->reg_xceiver)
--		return 0;
-+	if (priv->reg_xceiver)
-+		return regulator_enable(priv->reg_xceiver);
-+	else if (priv->transceiver)
-+		return phy_power_on(priv->transceiver);
- 
--	return regulator_enable(priv->reg_xceiver);
-+	return 0;
- }
- 
- static inline int flexcan_transceiver_disable(const struct flexcan_priv *priv)
- {
--	if (!priv->reg_xceiver)
--		return 0;
-+	if (priv->reg_xceiver)
-+		return regulator_disable(priv->reg_xceiver);
-+	else if (priv->transceiver)
-+		return phy_power_off(priv->transceiver);
- 
--	return regulator_disable(priv->reg_xceiver);
-+	return 0;
- }
- 
- static int flexcan_chip_enable(struct flexcan_priv *priv)
-@@ -2086,6 +2091,7 @@ static int flexcan_probe(struct platform_device *pdev)
- 	struct net_device *dev;
- 	struct flexcan_priv *priv;
- 	struct regulator *reg_xceiver;
-+	struct phy *transceiver;
- 	struct clk *clk_ipg = NULL, *clk_per = NULL;
- 	struct flexcan_regs __iomem *regs;
- 	struct flexcan_platform_data *pdata;
-@@ -2101,6 +2107,14 @@ static int flexcan_probe(struct platform_device *pdev)
- 	else if (IS_ERR(reg_xceiver))
- 		return PTR_ERR(reg_xceiver);
- 
-+	transceiver = devm_phy_optional_get(&pdev->dev, NULL);
-+	if (PTR_ERR(transceiver) == -EPROBE_DEFER) {
-+		return -EPROBE_DEFER;
-+	} else if (IS_ERR(transceiver)) {
-+		dev_err(&pdev->dev, "failed to get phy\n");
-+		return PTR_ERR(transceiver);
-+	}
-+
- 	if (pdev->dev.of_node) {
- 		of_property_read_u32(pdev->dev.of_node,
- 				     "clock-frequency", &clock_freq);
-@@ -2198,6 +2212,10 @@ static int flexcan_probe(struct platform_device *pdev)
- 	priv->clk_per = clk_per;
- 	priv->clk_src = clk_src;
- 	priv->reg_xceiver = reg_xceiver;
-+	priv->transceiver = transceiver;
-+
-+	if (transceiver)
-+		priv->can.bitrate_max = transceiver->attrs.max_link_rate;
- 
- 	if (priv->devtype_data.quirks & FLEXCAN_QUIRK_NR_IRQ_3) {
- 		priv->irq_boff = platform_get_irq(pdev, 1);
-diff --git a/drivers/net/can/flexcan/flexcan.h b/drivers/net/can/flexcan/flexcan.h
-index 2cf886618c9621166173b865f266830b3f6c1fb0..16692a2502eba26575eeeec83dfffdf35f07b034 100644
---- a/drivers/net/can/flexcan/flexcan.h
-+++ b/drivers/net/can/flexcan/flexcan.h
-@@ -107,6 +107,7 @@ struct flexcan_priv {
- 	struct clk *clk_per;
- 	struct flexcan_devtype_data devtype_data;
- 	struct regulator *reg_xceiver;
-+	struct phy *transceiver;
- 	struct flexcan_stop_mode stm;
- 
- 	int irq_boff;
+V2:
+- part of series [PATCH v2 00/12] YAML conversion of several Freescale/PowerPC DT bindings
+  Link: https://lore.kernel.org/lkml/20250207-ppcyaml-v2-1-8137b0c42526@posteo.net/
+- trim subject line
+- fix property order to comply with dts coding style
+- add Rob Herrings's R-b tag
+---
+ .../bindings/powerpc/fsl/fsl,mpc83xx.yaml          | 67 ++++++++++++++++++++++
+ 1 file changed, 67 insertions(+)
 
+diff --git a/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml b/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..1d7ed67473ca447e0fd2e9b8f30d20e18c601ccf
+--- /dev/null
++++ b/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml
+@@ -0,0 +1,67 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/powerpc/fsl/fsl,mpc83xx.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Freescale PowerQUICC II Pro (MPC83xx) platforms
++
++maintainers:
++  - J. Neuschäfer <j.ne@posteo.net>
++
++properties:
++  $nodename:
++    const: '/'
++  compatible:
++    oneOf:
++      - description: MPC83xx Reference Design Boards
++        items:
++          - enum:
++              - fsl,mpc8308rdb
++              - fsl,mpc8315erdb
++              - fsl,mpc8360rdk
++              - fsl,mpc8377rdb
++              - fsl,mpc8377wlan
++              - fsl,mpc8378rdb
++              - fsl,mpc8379rdb
++
++patternProperties:
++  "^soc@.*$":
++    type: object
++    properties:
++      compatible:
++        oneOf:
++          - items:
++              - enum:
++                  - fsl,mpc8315-immr
++                  - fsl,mpc8308-immr
++              - const: simple-bus
++          - items:
++              - const: fsl,mpc8360-immr
++              - const: fsl,immr
++              - const: fsl,soc
++              - const: simple-bus
++          - const: simple-bus
++
++additionalProperties: true
++
++examples:
++  - |
++    / {
++        compatible = "fsl,mpc8315erdb";
++        model = "MPC8315E-RDB";
++        #address-cells = <1>;
++        #size-cells = <1>;
++
++        soc@e0000000 {
++            compatible = "fsl,mpc8315-immr", "simple-bus";
++            reg = <0xe0000000 0x00000200>;
++            #address-cells = <1>;
++            #size-cells = <1>;
++            device_type = "soc";
++            ranges = <0 0xe0000000 0x00100000>;
++            bus-frequency = <0>;
++        };
++    };
++
++...
+
+---
+base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
+change-id: 20250220-ppcyaml-soc-cae1f14cf389
+
+Best regards,
 -- 
-2.39.5
+J. Neuschäfer <j.ne@posteo.net>
 
