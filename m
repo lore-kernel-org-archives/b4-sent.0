@@ -1,95 +1,141 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Thu, 20 Feb 2025 13:37:38 +0100
-Subject: [PATCH v3] dt-bindings: watchdog: Convert mpc8xxx-wdt to YAML
+Date: Thu, 20 Feb 2025 13:46:32 +0100
+Subject: [PATCH v3] dt-bindings: spi: Convert Freescale SPI bindings to
+ YAML
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250220-ppcyaml-wdt-v3-1-a0e2ba9b616e@posteo.net>
-X-B4-Tracking: v=1; b=H4sIABEit2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
- vPSU3UzU4B8JSMDI1MDIyMD3YKC5MrE3Bzd8pQSXUNjg0TjxFRji0TLNCWgjoKi1LTMCrBp0bG
- 1tQCK+CLQXQAAAA==
-X-Change-ID: 20250220-ppcyaml-wdt-130a3ae38a9f
-To: Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20250220-ppcyaml-spi-v3-1-e340613c7875@posteo.net>
+X-B4-Tracking: v=1; b=H4sIACckt2cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDIyMD3YKC5MrE3Bzd4oJMXQvTNGMLI4skIxNjUyWgjoKi1LTMCrBp0bG
+ 1tQBkMzqJXQAAAA==
+X-Change-ID: 20250220-ppcyaml-spi-85f3828b2435
+To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-watchdog@vger.kernel.org, devicetree@vger.kernel.org, 
+Cc: linux-spi@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740055071; l=4252;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740055598; l=7775;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=izQ2S0HRQ3pNq1mfIq6x2Dz7g0dV4Wo3Ov+CrOwy1kc=;
- b=elhAjkZYbKu4rlKzIGvXrPPXNcLUIeXY2BV6/zXA5JoXLmDgyVPEIGWVYtDVAFyEYSoQ/tmnh
- x9IVRoSCgxcBUvp3UubPMZmWAH5K8QzMQ5n8xeaQ9J+bADy1LM4Snc4
+ bh=boF0Ptb0S1YPvdr9oEqVUSafvrLS+pZmCso6Fl1gjco=;
+ b=PO2ytQrrgjrqH3PJyuQ+9iOvcuAke4DEX0xzz8Cm49UN4/5+8w6OZPfs71uwvMhAAjIDJMerw
+ 3HmahTtu0QwCZZN+iy42ppYB5whvaaz+5KXKgEiX/ZflrYRBt/PmFZx
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert mpc83xx-wdt.txt to YAML to enable automatic schema validation.
+fsl-spi.txt contains the bindings for the fsl,spi and fsl,espi
+contollers. Convert them to YAML.
 
 Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
 V3:
 - split out as a single patch
-- remove unnecessary node labels in examples
+- use IRQ_TYPE_* constants in examples
+- drop interrupt-parent from examples, add Rob's review tag
 
 V2:
 - part of series [PATCH v2 00/12] YAML conversion of several Freescale/PowerPC DT bindings
-  Link: https://lore.kernel.org/lkml/20250207-ppcyaml-v2-7-8137b0c42526@posteo.net/
-- trim subject line (remove "binding")
+  Link: https://lore.kernel.org/lkml/20250207-ppcyaml-v2-8-8137b0c42526@posteo.net/
+- add missing end-of-document ("...") markers
+- add missing constraints to interrupts, fsl,espi-num-chipselects,
+  fsl,csbef and fsl,csaft properties
+- remove unnecessary type from clock-frequency property
 - fix property order to comply with dts coding style
 ---
- .../devicetree/bindings/watchdog/mpc8xxx-wdt.txt   | 25 ---------
- .../devicetree/bindings/watchdog/mpc8xxx-wdt.yaml  | 64 ++++++++++++++++++++++
- 2 files changed, 64 insertions(+), 25 deletions(-)
+ .../devicetree/bindings/spi/fsl,espi.yaml          | 65 +++++++++++++++++++
+ Documentation/devicetree/bindings/spi/fsl,spi.yaml | 74 ++++++++++++++++++++++
+ Documentation/devicetree/bindings/spi/fsl-spi.txt  | 62 ------------------
+ 3 files changed, 139 insertions(+), 62 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/watchdog/mpc8xxx-wdt.txt b/Documentation/devicetree/bindings/watchdog/mpc8xxx-wdt.txt
-deleted file mode 100644
-index a384ff5b3ce8c62d813fc23d72f74e2158ff543e..0000000000000000000000000000000000000000
---- a/Documentation/devicetree/bindings/watchdog/mpc8xxx-wdt.txt
-+++ /dev/null
-@@ -1,25 +0,0 @@
--* Freescale mpc8xxx watchdog driver (For 83xx, 86xx and 8xx)
--
--Required properties:
--- compatible: Shall contain one of the following:
--	"mpc83xx_wdt" for an mpc83xx
--	"fsl,mpc8610-wdt" for an mpc86xx
--	"fsl,mpc823-wdt" for an mpc8xx
--- reg: base physical address and length of the area hosting the
--       watchdog registers.
--		On the 83xx, "Watchdog Timer Registers" area:	<0x200 0x100>
--		On the 86xx, "Watchdog Timer Registers" area:	<0xe4000 0x100>
--		On the 8xx, "General System Interface Unit" area: <0x0 0x10>
--
--Optional properties:
--- reg: additional physical address and length (4) of location of the
--       Reset Status Register (called RSTRSCR on the mpc86xx)
--		On the 83xx, it is located at offset 0x910
--		On the 86xx, it is located at offset 0xe0094
--		On the 8xx, it is located at offset 0x288
--
--Example:
--		WDT: watchdog@0 {
--		    compatible = "fsl,mpc823-wdt";
--		    reg = <0x0 0x10 0x288 0x4>;
--		};
-diff --git a/Documentation/devicetree/bindings/watchdog/mpc8xxx-wdt.yaml b/Documentation/devicetree/bindings/watchdog/mpc8xxx-wdt.yaml
+diff --git a/Documentation/devicetree/bindings/spi/fsl,espi.yaml b/Documentation/devicetree/bindings/spi/fsl,espi.yaml
 new file mode 100644
-index 0000000000000000000000000000000000000000..67ad4f1eda8de0799954cb5a87df613ea53a2864
+index 0000000000000000000000000000000000000000..d267bbfaf02f56e5b1ab8f6b2a8a34be13fb6766
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/watchdog/mpc8xxx-wdt.yaml
-@@ -0,0 +1,64 @@
++++ b/Documentation/devicetree/bindings/spi/fsl,espi.yaml
+@@ -0,0 +1,65 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/watchdog/mpc8xxx-wdt.yaml#
++$id: http://devicetree.org/schemas/spi/fsl,espi.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Freescale MPC8xxx watchdog timer (For 83xx, 86xx and 8xx)
++title: Freescale eSPI (Enhanced Serial Peripheral Interface) controller
++
++maintainers:
++  - J. Neuschäfer <j.ne@posteo.net>
++
++properties:
++  compatible:
++    const: fsl,mpc8536-espi
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  fsl,espi-num-chipselects:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    enum: [ 1, 4 ]
++    description: The number of the chipselect signals.
++
++  fsl,csbef:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    minimum: 0
++    maximum: 15
++    description: Chip select assertion time in bits before frame starts
++
++  fsl,csaft:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    minimum: 0
++    maximum: 15
++    description: Chip select negation time in bits after frame ends
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - fsl,espi-num-chipselects
++
++allOf:
++  - $ref: spi-controller.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    spi@110000 {
++        compatible = "fsl,mpc8536-espi";
++        reg = <0x110000 0x1000>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++        interrupts = <53 IRQ_TYPE_EDGE_FALLING>;
++        fsl,espi-num-chipselects = <4>;
++        fsl,csbef = <1>;
++        fsl,csaft = <1>;
++    };
++
++...
+diff --git a/Documentation/devicetree/bindings/spi/fsl,spi.yaml b/Documentation/devicetree/bindings/spi/fsl,spi.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..d74792fc9bf2d74c1e3126c1dc28878df95bf57e
+--- /dev/null
++++ b/Documentation/devicetree/bindings/spi/fsl,spi.yaml
+@@ -0,0 +1,74 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/spi/fsl,spi.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Freescale SPI (Serial Peripheral Interface) controller
 +
 +maintainers:
 +  - J. Neuschäfer <j.ne@posteo.net>
@@ -97,60 +143,138 @@ index 0000000000000000000000000000000000000000..67ad4f1eda8de0799954cb5a87df613e
 +properties:
 +  compatible:
 +    enum:
-+      - mpc83xx_wdt       # for an mpc83xx
-+      - fsl,mpc8610-wdt   # for an mpc86xx
-+      - fsl,mpc823-wdt    # for an mpc8xx
-+
-+  device_type:
-+    const: watchdog
++      - fsl,spi
++      - aeroflexgaisler,spictrl
 +
 +  reg:
-+    minItems: 1
-+    items:
-+      - description: |
-+          Base physical address and length of the area hosting the watchdog
-+          registers.
++    maxItems: 1
 +
-+          On the 83xx, "Watchdog Timer Registers" area:     <0x200 0x100>
-+          On the 86xx, "Watchdog Timer Registers" area:     <0xe4000 0x100>
-+          On the 8xx, "General System Interface Unit" area: <0x0 0x10>
++  cell-index:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    description: |
++      QE SPI subblock index.
++      0: QE subblock SPI1
++      1: QE subblock SPI2
 +
-+      - description: |
-+          Additional optional physical address and length (4) of location of
-+          the Reset Status Register (called RSTRSCR on the mpc86xx)
++  mode:
++    description: SPI operation mode
++    enum:
++      - cpu
++      - cpu-qe
 +
-+          On the 83xx, it is located at offset 0x910
-+          On the 86xx, it is located at offset 0xe0094
-+          On the 8xx, it is located at offset 0x288
++  interrupts:
++    maxItems: 1
++
++  clock-frequency:
++    description: input clock frequency to non FSL_SOC cores
++
++  cs-gpios: true
++
++  fsl,spisel_boot:
++    $ref: /schemas/types.yaml#/definitions/flag
++    description:
++      For the MPC8306 and MPC8309, specifies that the SPISEL_BOOT signal is used
++      as chip select for a slave device. Use reg = <number of gpios> in the
++      corresponding child node, i.e. 0 if the cs-gpios property is not present.
 +
 +required:
 +  - compatible
 +  - reg
++  - mode
++  - interrupts
 +
 +allOf:
-+  - $ref: watchdog.yaml#
++  - $ref: spi-controller.yaml#
 +
-+additionalProperties: false
++unevaluatedProperties: false
 +
 +examples:
 +  - |
-+    watchdog@0 {
-+        compatible = "fsl,mpc823-wdt";
-+        reg = <0x0 0x10 0x288 0x4>;
-+    };
++    #include <dt-bindings/interrupt-controller/irq.h>
 +
-+  - |
-+    watchdog@200 {
-+        compatible = "mpc83xx_wdt";
-+        reg = <0x200 0x100>;
-+        device_type = "watchdog";
++    spi@4c0 {
++        compatible = "fsl,spi";
++        reg = <0x4c0 0x40>;
++        cell-index = <0>;
++        interrupts = <82 0>;
++        mode = "cpu";
++        cs-gpios = <&gpio 18 IRQ_TYPE_EDGE_RISING          // device reg=<0>
++                    &gpio 19 IRQ_TYPE_EDGE_RISING>;        // device reg=<1>
 +    };
 +
 +...
+diff --git a/Documentation/devicetree/bindings/spi/fsl-spi.txt b/Documentation/devicetree/bindings/spi/fsl-spi.txt
+deleted file mode 100644
+index 0654380eb7515d8bda80eea1486e77b939ac38d8..0000000000000000000000000000000000000000
+--- a/Documentation/devicetree/bindings/spi/fsl-spi.txt
++++ /dev/null
+@@ -1,62 +0,0 @@
+-* SPI (Serial Peripheral Interface)
+-
+-Required properties:
+-- cell-index : QE SPI subblock index.
+-		0: QE subblock SPI1
+-		1: QE subblock SPI2
+-- compatible : should be "fsl,spi" or "aeroflexgaisler,spictrl".
+-- mode : the SPI operation mode, it can be "cpu" or "cpu-qe".
+-- reg : Offset and length of the register set for the device
+-- interrupts : <a b> where a is the interrupt number and b is a
+-  field that represents an encoding of the sense and level
+-  information for the interrupt.  This should be encoded based on
+-  the information in section 2) depending on the type of interrupt
+-  controller you have.
+-- clock-frequency : input clock frequency to non FSL_SOC cores
+-
+-Optional properties:
+-- cs-gpios : specifies the gpio pins to be used for chipselects.
+-  The gpios will be referred to as reg = <index> in the SPI child nodes.
+-  If unspecified, a single SPI device without a chip select can be used.
+-- fsl,spisel_boot : for the MPC8306 and MPC8309, specifies that the
+-  SPISEL_BOOT signal is used as chip select for a slave device. Use
+-  reg = <number of gpios> in the corresponding child node, i.e. 0 if
+-  the cs-gpios property is not present.
+-
+-Example:
+-	spi@4c0 {
+-		cell-index = <0>;
+-		compatible = "fsl,spi";
+-		reg = <4c0 40>;
+-		interrupts = <82 0>;
+-		interrupt-parent = <700>;
+-		mode = "cpu";
+-		cs-gpios = <&gpio 18 1		// device reg=<0>
+-			    &gpio 19 1>;	// device reg=<1>
+-	};
+-
+-
+-* eSPI (Enhanced Serial Peripheral Interface)
+-
+-Required properties:
+-- compatible : should be "fsl,mpc8536-espi".
+-- reg : Offset and length of the register set for the device.
+-- interrupts : should contain eSPI interrupt, the device has one interrupt.
+-- fsl,espi-num-chipselects : the number of the chipselect signals.
+-
+-Optional properties:
+-- fsl,csbef: chip select assertion time in bits before frame starts
+-- fsl,csaft: chip select negation time in bits after frame ends
+-
+-Example:
+-	spi@110000 {
+-		#address-cells = <1>;
+-		#size-cells = <0>;
+-		compatible = "fsl,mpc8536-espi";
+-		reg = <0x110000 0x1000>;
+-		interrupts = <53 0x2>;
+-		interrupt-parent = <&mpic>;
+-		fsl,espi-num-chipselects = <4>;
+-		fsl,csbef = <1>;
+-		fsl,csaft = <1>;
+-	};
 
 ---
 base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
-change-id: 20250220-ppcyaml-wdt-130a3ae38a9f
+change-id: 20250220-ppcyaml-spi-85f3828b2435
 
 Best regards,
 -- 
