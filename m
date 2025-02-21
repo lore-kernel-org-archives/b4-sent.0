@@ -1,126 +1,74 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Fri, 21 Feb 2025 08:40:05 +0100
-Subject: [PATCH v3 2/2] can: flexcan: add transceiver capabilities
+From: Thomas Prescher <thomas.prescher@cyberus-technology.de>
+Subject: [PATCH 0/2] Add a command line option that enables control of how
+ many threads per NUMA node should be used to allocate huge pages.
+Date: Fri, 21 Feb 2025 14:49:02 +0100
+Message-Id: <20250221-hugepage-parameter-v1-0-fa49a77c87c8@cyberus-technology.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250221-flexcan-add-transceiver-caps-v3-2-a947bde55a62@liebherr.com>
-References: <20250221-flexcan-add-transceiver-caps-v3-0-a947bde55a62@liebherr.com>
-In-Reply-To: <20250221-flexcan-add-transceiver-caps-v3-0-a947bde55a62@liebherr.com>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol.vincent@wanadoo.fr>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAE+EuGcC/x2M0QpAQBBFf0XzbGtNlPyKPEzcZR6wzSIl/27ze
+ E6d81CCKRJ1xUOGS5PuW4aqLGhcZJvhdMpM7LnxzJVbzhlRso9isuKAObRNzWEKoxdQDqMh6P1
+ P++F9P6ZOKcZkAAAA
+X-Change-ID: 20250221-hugepage-parameter-e8542fdfc0ae
+To: Jonathan Corbet <corbet@lwn.net>, Muchun Song <muchun.song@linux.dev>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-mm@kvack.org, Thomas Prescher <thomas.prescher@cyberus-technology.de>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740123678; l=3555;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=kSxxiQHxl//wCevFJfiq2EaHcqBYYuWBjHktSM+Fwds=;
- b=mJy8In3h47OksHpZVNhxcoZbKbvYREY2hVQNAOD6IR0AVGcLMT7+qrO1D+I/AuEH4QF0WU0GC
- R1lIfClAmmDCm+DvzitiAtXrqwDIoLOEkxCCtlHDN4h2hJYkcGh7bsR
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740145745; l=1895;
+ i=thomas.prescher@cyberus-technology.de; s=20250221;
+ h=from:subject:message-id; bh=UalauN8XWtUsTEbYj+PKqhYtpX3u+/YFSuhA5nmw7d8=;
+ b=JfCkdFsZg1zFxVgHw1RR2OOZrwWQQ4+CJPZufzTC/zoCX918Y1i8T5b22UG2JM5RDv9J1D80m
+ Uwxd5zbJJTADWO9UMhCRe7u8qHjPlCmGfjpSD4XvLx4UDMa4ecmxOg0
+X-Developer-Key: i=thomas.prescher@cyberus-technology.de; a=ed25519;
+ pk=T5MVdLVCc/0UUyv5IcSqGVvGcVkgWW/KtuEo2RRJwM8=
+X-Endpoint-Received: by B4 Relay for thomas.prescher@cyberus-technology.de/20250221 with auth_id=345
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently the flexcan driver does only support adding PHYs by using the
-"old" regulator bindings. Add support for CAN transceivers as a PHY. Add
-the capability to ensure that the PHY is in operational state when the link
-is set to an "up" state.
+Allocating huge pages can take a very long time on servers
+with terabytes of memory even when they are allocated at
+boot time where the allocation happens in parallel.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+The kernel currently uses a hard coded value of 2 threads per
+NUMA node for these allocations. This value might have been good
+enough in the past but it is not sufficient to fully utilize
+newer systems.
+
+This patch allows to override this value.
+
+We tested this on 2 generations of Xeon CPUs and the results
+show a big improvement of the overall allocation time.
+
++--------------------+-------+-------+-------+-------+-------+
+| threads per node   |   2   |   4   |   8   |   16  |    32 |
++--------------------+-------+-------+-------+-------+-------+
+| skylake 4node      |   44s |   22s |   16s |   19s |   20s |
+| cascade lake 4node |   39s |   20s |   11s |   10s |    9s |
++--------------------+-------+-------+-------+-------+-------+
+
+On skylake, we see an improvment of 2.75x when using 8 threads,
+on cascade lake we can get even better at 4.3x when we use
+32 threads per node.
+
+This speedup is quite significant and users of large machines
+like these should have the option to make the machines boot
+as fast as possible.
+
+Signed-off-by: Thomas Prescher <thomas.prescher@cyberus-technology.de>
 ---
- drivers/net/can/flexcan/flexcan-core.c | 27 +++++++++++++++++++++------
- drivers/net/can/flexcan/flexcan.h      |  1 +
- 2 files changed, 22 insertions(+), 6 deletions(-)
+Thomas Prescher (2):
+      mm: hugetlb: add hugetlb_alloc_threads cmdline option
+      mm: hugetlb: log time needed to allocate hugepages
 
-diff --git a/drivers/net/can/flexcan/flexcan-core.c b/drivers/net/can/flexcan/flexcan-core.c
-index b347a1c93536d54efaa5f7d3347bd47c20860b3e..7588cb54a909af065522ddbcb06cc3acb9669893 100644
---- a/drivers/net/can/flexcan/flexcan-core.c
-+++ b/drivers/net/can/flexcan/flexcan-core.c
-@@ -26,6 +26,7 @@
- #include <linux/pinctrl/consumer.h>
- #include <linux/platform_device.h>
- #include <linux/can/platform/flexcan.h>
-+#include <linux/phy/phy.h>
- #include <linux/pm_runtime.h>
- #include <linux/property.h>
- #include <linux/regmap.h>
-@@ -644,18 +645,22 @@ static void flexcan_clks_disable(const struct flexcan_priv *priv)
- 
- static inline int flexcan_transceiver_enable(const struct flexcan_priv *priv)
- {
--	if (!priv->reg_xceiver)
--		return 0;
-+	if (priv->reg_xceiver)
-+		return regulator_enable(priv->reg_xceiver);
-+	else if (priv->transceiver)
-+		return phy_power_on(priv->transceiver);
- 
--	return regulator_enable(priv->reg_xceiver);
-+	return 0;
- }
- 
- static inline int flexcan_transceiver_disable(const struct flexcan_priv *priv)
- {
--	if (!priv->reg_xceiver)
--		return 0;
-+	if (priv->reg_xceiver)
-+		return regulator_disable(priv->reg_xceiver);
-+	else if (priv->transceiver)
-+		return phy_power_off(priv->transceiver);
- 
--	return regulator_disable(priv->reg_xceiver);
-+	return 0;
- }
- 
- static int flexcan_chip_enable(struct flexcan_priv *priv)
-@@ -2086,6 +2091,7 @@ static int flexcan_probe(struct platform_device *pdev)
- 	struct net_device *dev;
- 	struct flexcan_priv *priv;
- 	struct regulator *reg_xceiver;
-+	struct phy *transceiver;
- 	struct clk *clk_ipg = NULL, *clk_per = NULL;
- 	struct flexcan_regs __iomem *regs;
- 	struct flexcan_platform_data *pdata;
-@@ -2101,6 +2107,11 @@ static int flexcan_probe(struct platform_device *pdev)
- 	else if (IS_ERR(reg_xceiver))
- 		return PTR_ERR(reg_xceiver);
- 
-+	transceiver = devm_phy_optional_get(&pdev->dev, NULL);
-+	if (IS_ERR(transceiver))
-+		return dev_err_probe(&pdev->dev, PTR_ERR(transceiver),
-+				     "failed to get phy\n");
-+
- 	if (pdev->dev.of_node) {
- 		of_property_read_u32(pdev->dev.of_node,
- 				     "clock-frequency", &clock_freq);
-@@ -2198,6 +2209,10 @@ static int flexcan_probe(struct platform_device *pdev)
- 	priv->clk_per = clk_per;
- 	priv->clk_src = clk_src;
- 	priv->reg_xceiver = reg_xceiver;
-+	priv->transceiver = transceiver;
-+
-+	if (transceiver)
-+		priv->can.bitrate_max = transceiver->attrs.max_link_rate;
- 
- 	if (priv->devtype_data.quirks & FLEXCAN_QUIRK_NR_IRQ_3) {
- 		priv->irq_boff = platform_get_irq(pdev, 1);
-diff --git a/drivers/net/can/flexcan/flexcan.h b/drivers/net/can/flexcan/flexcan.h
-index 2cf886618c9621166173b865f266830b3f6c1fb0..16692a2502eba26575eeeec83dfffdf35f07b034 100644
---- a/drivers/net/can/flexcan/flexcan.h
-+++ b/drivers/net/can/flexcan/flexcan.h
-@@ -107,6 +107,7 @@ struct flexcan_priv {
- 	struct clk *clk_per;
- 	struct flexcan_devtype_data devtype_data;
- 	struct regulator *reg_xceiver;
-+	struct phy *transceiver;
- 	struct flexcan_stop_mode stm;
- 
- 	int irq_boff;
+ Documentation/admin-guide/kernel-parameters.txt |  7 +++
+ Documentation/admin-guide/mm/hugetlbpage.rst    |  9 +++-
+ mm/hugetlb.c                                    | 59 ++++++++++++++++++-------
+ 3 files changed, 58 insertions(+), 17 deletions(-)
+---
+base-commit: 334426094588f8179fe175a09ecc887ff0c75758
+change-id: 20250221-hugepage-parameter-e8542fdfc0ae
 
+Best regards,
 -- 
-2.39.5
+Thomas Prescher <thomas.prescher@cyberus-technology.de>
 
