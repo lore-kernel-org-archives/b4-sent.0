@@ -1,10 +1,10 @@
 From: Sven Peter <sven@svenpeter.dev>
-Date: Sat, 22 Feb 2025 13:38:33 +0000
-Subject: [PATCH 1/4] i2c: pasemi: Add registers bits and switch to BIT()
+Date: Sat, 22 Feb 2025 13:38:34 +0000
+Subject: [PATCH 2/4] i2c: pasemi: Improve error recovery
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250222-pasemi-fixes-v1-1-d7ea33d50c5e@svenpeter.dev>
+Message-Id: <20250222-pasemi-fixes-v1-2-d7ea33d50c5e@svenpeter.dev>
 References: <20250222-pasemi-fixes-v1-0-d7ea33d50c5e@svenpeter.dev>
 In-Reply-To: <20250222-pasemi-fixes-v1-0-d7ea33d50c5e@svenpeter.dev>
 To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
@@ -17,86 +17,160 @@ Cc: linuxppc-dev@lists.ozlabs.org, asahi@lists.linux.dev,
  linux-kernel@vger.kernel.org, Sven Peter <sven@svenpeter.dev>, 
  Hector Martin <marcan@marcan.st>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2037; i=sven@svenpeter.dev;
- h=from:subject:message-id; bh=iPv0XjpNaU2PSc1JHoHKcgCr0CRP3yf1b4EAPEcXwng=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ/rOy9ESFaHHtpUbMr91cTRekSrY3mPm4vwl4djZsz+Kw
- 0rCA+o7SlkYxDgYZMUUWbbvtzd98vCN4NJNl97DzGFlAhnCwMUpABPpSWZk+Okau99t7x9PDrd7
- Bewzl0+r1NyzLGjKtR6F2u6Y5ZpbHzIyzBb9undnbnzudPf6usJzQa0X5xRkCsf4CkWc3b3xodM
- 7JgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4391; i=sven@svenpeter.dev;
+ h=from:subject:message-id; bh=FOQIV4q7QbwGt8D9/MCWC8cZNMpith++DiclVxlmaig=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ/rOyzHXHGYEMRdvvZQdf+b35HAG7jV1fXEBv+3epzBOj
+ Pfwu3K+o5SFQYyDQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjCRhpmMDGfYv3fz+dwVN3j+
+ 47OXaKGTUe2hyf/CpdvNZfxfSR8pY2Rk6BTTbD4r61F6tmjvwZU3dq5/MKWRSXnxd41XE9lvpYp
+ PZwYA
 X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the missing register bits to the defines and also switch
-those to use the BIT macro which is much more readable than
-using hardcoded masks
+From: Hector Martin <marcan@marcan.st>
 
-Co-developed-by: Hector Martin <marcan@marcan.st>
+The hardware (supposedly) has a 25ms timeout for clock stretching
+and the driver uses 100ms which should be plenty. The error
+reocvery itself is however lacking.
+
+Add handling for all the missing error condition, and better recovery in
+pasemi_smb_clear(). Also move the timeout to a #define since it's used
+in multiple places now.
+
 Signed-off-by: Hector Martin <marcan@marcan.st>
+[sven: adjusted commit message after splitting the commit into two]
 Signed-off-by: Sven Peter <sven@svenpeter.dev>
 ---
- drivers/i2c/busses/i2c-pasemi-core.c | 40 ++++++++++++++++++++++--------------
- 1 file changed, 25 insertions(+), 15 deletions(-)
+ drivers/i2c/busses/i2c-pasemi-core.c | 70 +++++++++++++++++++++++++++++-------
+ 1 file changed, 58 insertions(+), 12 deletions(-)
 
 diff --git a/drivers/i2c/busses/i2c-pasemi-core.c b/drivers/i2c/busses/i2c-pasemi-core.c
-index dac694a9d781..bd128ab2e2eb 100644
+index bd128ab2e2eb..770b86b92a10 100644
 --- a/drivers/i2c/busses/i2c-pasemi-core.c
 +++ b/drivers/i2c/busses/i2c-pasemi-core.c
-@@ -5,6 +5,7 @@
-  * SMBus host driver for PA Semi PWRficient
-  */
+@@ -52,6 +52,8 @@
+ #define CTL_UJM		BIT(8)
+ #define CTL_CLK_M	GENMASK(7, 0)
  
-+#include <linux/bitfield.h>
- #include <linux/module.h>
- #include <linux/pci.h>
- #include <linux/kernel.h>
-@@ -26,21 +27,30 @@
- #define REG_REV		0x28
- 
- /* Register defs */
--#define MTXFIFO_READ	0x00000400
--#define MTXFIFO_STOP	0x00000200
--#define MTXFIFO_START	0x00000100
--#define MTXFIFO_DATA_M	0x000000ff
--
--#define MRXFIFO_EMPTY	0x00000100
--#define MRXFIFO_DATA_M	0x000000ff
--
--#define SMSTA_XEN	0x08000000
--#define SMSTA_MTN	0x00200000
--
--#define CTL_MRR		0x00000400
--#define CTL_MTR		0x00000200
--#define CTL_EN		0x00000800
--#define CTL_CLK_M	0x000000ff
-+#define MTXFIFO_READ	BIT(10)
-+#define MTXFIFO_STOP	BIT(9)
-+#define MTXFIFO_START	BIT(8)
-+#define MTXFIFO_DATA_M	GENMASK(7, 0)
++#define TRANSFER_TIMEOUT_MS	100
 +
-+#define MRXFIFO_EMPTY	BIT(8)
-+#define MRXFIFO_DATA_M	GENMASK(7, 0)
-+
-+#define SMSTA_XIP	BIT(28)
-+#define SMSTA_XEN	BIT(27)
-+#define SMSTA_JMD	BIT(25)
-+#define SMSTA_JAM	BIT(24)
-+#define SMSTA_MTO	BIT(23)
-+#define SMSTA_MTA	BIT(22)
-+#define SMSTA_MTN	BIT(21)
-+#define SMSTA_MRNE	BIT(19)
-+#define SMSTA_MTE	BIT(16)
-+#define SMSTA_TOM	BIT(6)
-+
-+#define CTL_EN		BIT(11)
-+#define CTL_MRR		BIT(10)
-+#define CTL_MTR		BIT(9)
-+#define CTL_UJM		BIT(8)
-+#define CTL_CLK_M	GENMASK(7, 0)
- 
  static inline void reg_write(struct pasemi_smbus *smbus, int reg, int val)
  {
+ 	dev_dbg(smbus->dev, "smbus write reg %x val %08x\n", reg, val);
+@@ -80,23 +82,45 @@ static void pasemi_reset(struct pasemi_smbus *smbus)
+ 	reinit_completion(&smbus->irq_completion);
+ }
+ 
+-static void pasemi_smb_clear(struct pasemi_smbus *smbus)
++static int pasemi_smb_clear(struct pasemi_smbus *smbus)
+ {
+ 	unsigned int status;
++	int timeout = TRANSFER_TIMEOUT_MS;
+ 
+ 	status = reg_read(smbus, REG_SMSTA);
++
++	/* First wait for the bus to go idle */
++	while ((status & (SMSTA_XIP | SMSTA_JAM)) && timeout--) {
++		msleep(1);
++		status = reg_read(smbus, REG_SMSTA);
++	}
++
++	if (timeout < 0) {
++		dev_warn(smbus->dev, "Bus is still stuck (status 0x%08x)\n", status);
++		return -EIO;
++	}
++
++	/* If any badness happened or there is data in the FIFOs, reset the FIFOs */
++	if ((status & (SMSTA_MRNE | SMSTA_JMD | SMSTA_MTO | SMSTA_TOM | SMSTA_MTN | SMSTA_MTA)) ||
++		!(status & SMSTA_MTE))
++		pasemi_reset(smbus);
++
++	/* Clear the flags */
+ 	reg_write(smbus, REG_SMSTA, status);
++
++	return 0;
+ }
+ 
+ static int pasemi_smb_waitready(struct pasemi_smbus *smbus)
+ {
+-	int timeout = 100;
++	int timeout = TRANSFER_TIMEOUT_MS;
+ 	unsigned int status;
+ 
+ 	if (smbus->use_irq) {
+ 		reinit_completion(&smbus->irq_completion);
+-		reg_write(smbus, REG_IMASK, SMSTA_XEN | SMSTA_MTN);
+-		wait_for_completion_timeout(&smbus->irq_completion, msecs_to_jiffies(100));
++		/* XEN should be set when a transaction terminates, whether due to error or not */
++		reg_write(smbus, REG_IMASK, SMSTA_XEN);
++		wait_for_completion_timeout(&smbus->irq_completion, msecs_to_jiffies(timeout));
+ 		reg_write(smbus, REG_IMASK, 0);
+ 		status = reg_read(smbus, REG_SMSTA);
+ 	} else {
+@@ -107,16 +131,36 @@ static int pasemi_smb_waitready(struct pasemi_smbus *smbus)
+ 		}
+ 	}
+ 
+-	/* Got NACK? */
+-	if (status & SMSTA_MTN)
+-		return -ENXIO;
++	/* Controller timeout? */
++	if (status & SMSTA_TOM) {
++		dev_warn(smbus->dev, "Controller timeout, status 0x%08x\n", status);
++		return -EIO;
++	}
+ 
+-	if (timeout < 0) {
+-		dev_warn(smbus->dev, "Timeout, status 0x%08x\n", status);
+-		reg_write(smbus, REG_SMSTA, status);
++	/* Peripheral timeout? */
++	if (status & SMSTA_MTO) {
++		dev_warn(smbus->dev, "Peripheral timeout, status 0x%08x\n", status);
+ 		return -ETIME;
+ 	}
+ 
++	/* Still stuck in a transaction? */
++	if (status & SMSTA_XIP) {
++		dev_warn(smbus->dev, "Bus stuck, status 0x%08x\n", status);
++		return -EIO;
++	}
++
++	/* Arbitration loss? */
++	if (status & SMSTA_MTA) {
++		dev_warn(smbus->dev, "Arbitration loss, status 0x%08x\n", status);
++		return -EBUSY;
++	}
++
++	/* Got NACK? */
++	if (status & SMSTA_MTN) {
++		dev_warn(smbus->dev, "NACK, status 0x%08x\n", status);
++		return -ENXIO;
++	}
++
+ 	/* Clear XEN */
+ 	reg_write(smbus, REG_SMSTA, SMSTA_XEN);
+ 
+@@ -177,7 +221,8 @@ static int pasemi_i2c_xfer(struct i2c_adapter *adapter,
+ 	struct pasemi_smbus *smbus = adapter->algo_data;
+ 	int ret, i;
+ 
+-	pasemi_smb_clear(smbus);
++	if (pasemi_smb_clear(smbus))
++		return -EIO;
+ 
+ 	ret = 0;
+ 
+@@ -200,7 +245,8 @@ static int pasemi_smb_xfer(struct i2c_adapter *adapter,
+ 	addr <<= 1;
+ 	read_flag = read_write == I2C_SMBUS_READ;
+ 
+-	pasemi_smb_clear(smbus);
++	if (pasemi_smb_clear(smbus))
++		return -EIO;
+ 
+ 	switch (size) {
+ 	case I2C_SMBUS_QUICK:
 
 -- 
 2.34.1
