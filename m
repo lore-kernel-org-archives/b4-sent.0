@@ -1,58 +1,63 @@
-From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Sat, 22 Feb 2025 14:34:16 +0100
-Subject: [PATCH v2 2/2] riscv: dts: starfive: fml13v01: increase eMMC bus
- speed
+From: Sven Peter <sven@svenpeter.dev>
+Subject: [PATCH 0/4] Apple/PASemi i2c error recovery fixes
+Date: Sat, 22 Feb 2025 13:38:32 +0000
+Message-Id: <20250222-pasemi-fixes-v1-0-d7ea33d50c5e@svenpeter.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250222-fml13v01_emmc_speed-v2-2-3ffc5b1f5663@hotmail.com>
-References: <20250222-fml13v01_emmc_speed-v2-0-3ffc5b1f5663@hotmail.com>
-In-Reply-To: <20250222-fml13v01_emmc_speed-v2-0-3ffc5b1f5663@hotmail.com>
-To: Conor Dooley <conor@kernel.org>, Emil Renner Berthing <kernel@esmil.dk>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>
-Cc: linux-riscv@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740231263; l=1059;
- i=maud_spierings@hotmail.com; s=20250222; h=from:subject:message-id;
- bh=6oKEZmpEgAskDT6drBgPswULe7sk6pmiFucVopPkPkQ=;
- b=HISq9mxkhULqrOz8w55mew/rcWCHUqglVyJ7IgxAcKmWD/2YQN766hisLl/aobRLIwGdeNfp3
- sjHDAQxsHuyAQDKnhr3zIIoSHBveLa/iQIAvP6iCeHcVt98HumFzn2c
-X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
- pk=Z2m97WkDS9Sm3JnKpIpH4JwQtLm2Yw8oFCNw6uMBqb8=
-X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20250222 with auth_id=346
+X-B4-Tracking: v=1; b=H4sIAFjTuWcC/x3LQQqAIBBA0avIrBNULKmrRAu1qWaRiQMRSHdPW
+ j4+vwJjIWSYRIWCNzFdqUF3AuLh046S1mYwyvTKGCWzZzxJbvQgy1EPMThnlQ0e2pIL/qEd8/K
+ +H5oY4NteAAAA
+To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Naveen N Rao <naveen@kernel.org>, Andi Shyti <andi.shyti@kernel.org>
+Cc: linuxppc-dev@lists.ozlabs.org, asahi@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sven Peter <sven@svenpeter.dev>, 
+ Hector Martin <marcan@marcan.st>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=914; i=sven@svenpeter.dev;
+ h=from:subject:message-id; bh=YvDVaUlNxk0FFYVh0Uih/QBxDdTXOT7A8XEjDIMtIh8=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ/rOy5HrJq+aLtY2ozoptL78762o7OM1P5+2PDjD8rfuR
+ uLhdnuWjlIWBjEOBlkxRZbt++1Nnzx8I7h006X3MHNYmUCGMHBxCsBEPq9m+B8UVsSsKB6l/aLM
+ SGmO1TO/xDc3TO5efhvyobe+eUXa+heMDF84zpXYKKjnr520yNlii5XDksSac68jXTJCt34JMb5
+ 9nREA
+X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The assigned clock speed of 50 MHz is limitting this interface which is
-SDIO 5.0 capable. Sadly at 200MHz it fails to mount an eMMC drive,
-150MHz (really 132 MHz) is the highest it was able to get.
+Hi,
 
-This improves the seq read/write performance by 2x~
+This series adds a few fixes/improvements to the error recovery for
+Apple/PASemi i2c controllers.
+The patches have been in our downstream tree and were originally used
+to debug a rare glitch caused by clock strechting but are useful in
+general. We haven't seen the controller misbehave since adding these.
 
-Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
+Best,
+
+Sven
+
+Signed-off-by: Sven Peter <sven@svenpeter.dev>
 ---
- arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts | 4 ++++
- 1 file changed, 4 insertions(+)
+Hector Martin (3):
+      i2c: pasemi: Improve error recovery
+      i2c: pasemi: Enable the unjam machine
+      i2c: pasemi: Log bus reset causes
 
-diff --git a/arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts b/arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts
-index 8d9ce8b69a71be78ca57618ae842c9f415648450..63b539bedd63d39dbe2096f85aaf70ba6ab64d29 100644
---- a/arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts
-+++ b/arch/riscv/boot/dts/starfive/jh7110-deepcomputing-fml13v01.dts
-@@ -11,6 +11,10 @@ / {
- 	compatible = "deepcomputing,fml13v01", "starfive,jh7110";
- };
- 
-+&mmc0 {
-+	assigned-clock-rates = <150000000>;
-+};
-+
- &pcie1 {
- 	perst-gpios = <&sysgpio 21 GPIO_ACTIVE_LOW>;
- 	phys = <&pciephy1>;
+Sven Peter (1):
+      i2c: pasemi: Add registers bits and switch to BIT()
 
+ drivers/i2c/busses/i2c-pasemi-core.c | 121 ++++++++++++++++++++++++++---------
+ 1 file changed, 92 insertions(+), 29 deletions(-)
+---
+base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
+change-id: 20250220-pasemi-fixes-916cb77404ba
+
+Best regards,
 -- 
-2.48.1
+Sven Peter <sven@svenpeter.dev>
 
