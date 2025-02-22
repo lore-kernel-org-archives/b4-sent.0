@@ -1,126 +1,118 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Sat, 22 Feb 2025 08:43:14 +0100
-Subject: [PATCH v4 2/2] can: flexcan: add transceiver capabilities
+From: Hans-Frieder Vogt <hfdevel@gmx.net>
+Subject: [PATCH net-next v5 0/7] net: tn40xx: add support for AQR105 based
+ cards
+Date: Sat, 22 Feb 2025 10:49:27 +0100
+Message-Id: <20250222-tn9510-v3a-v5-0-99365047e309@gmx.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250222-flexcan-add-transceiver-caps-v4-2-a38dfadab763@liebherr.com>
-References: <20250222-flexcan-add-transceiver-caps-v4-0-a38dfadab763@liebherr.com>
-In-Reply-To: <20250222-flexcan-add-transceiver-caps-v4-0-a38dfadab763@liebherr.com>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol.vincent@wanadoo.fr>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKeduWcC/1XNQQ6DIBCF4asY1qUBVNSueo+mi1EGZSE2QIiN8
+ e5F0qR2OZl879+IR2fQk1uxEYfReLPYdNSXggwT2BGpUekmgomKCy5psF3NGY0lUDHogbe1ki3
+ TJIGXQ23WPPYgFgO1uAbyTJ8ePNLegR2mY2wGYw8wGR8W987xWGb27TTnTiwpo5WqUUstW4nsP
+ s7rNQXydqxOUPA/WCWoQGvddj000Pzgvu8ffiTArfwAAAA=
+X-Change-ID: 20241216-tn9510-v3a-2cfc185d680f
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ FUJITA Tomonori <fujita.tomonori@gmail.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Hans-Frieder Vogt <hfdevel@gmx.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740210200; l=3555;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=kSxxiQHxl//wCevFJfiq2EaHcqBYYuWBjHktSM+Fwds=;
- b=cwtIoowK6jS+eb7vY9RSnnv3BPYga+3nZ1PaYEn9/e8LFvbWetnG+b3HCPn7YruHyZyvCVW8P
- qFGtmbg1xw7D8+UajmCa9LQZwSSXk+2HI3YzF+OWiYb8Ajiy4aNgLLb
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740217800; l=4309;
+ i=hfdevel@gmx.net; s=20240915; h=from:subject:message-id;
+ bh=rpBgNJ8tgnDrWZnhBR0r6ELzBvy/EYm7qgnjIHEZaR8=;
+ b=BM7Od9afPYzOlw2zXeXD5dap++F0scfoMv07HKY8xYRLVHrLtedZpSV1qUJjMvRzhE8i/PUYf
+ VmnyvVrFZY/B8ZN9BtbAKIraWwNcr6Cs2dbQtfZcBK4mFxANukNP5RJ
+X-Developer-Key: i=hfdevel@gmx.net; a=ed25519;
+ pk=s3DJ3DFe6BJDRAcnd7VGvvwPXcLgV8mrfbpt8B9coRc=
+X-Endpoint-Received: by B4 Relay for hfdevel@gmx.net/20240915 with auth_id=209
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently the flexcan driver does only support adding PHYs by using the
-"old" regulator bindings. Add support for CAN transceivers as a PHY. Add
-the capability to ensure that the PHY is in operational state when the link
-is set to an "up" state.
+This patch series adds support to the Tehuti tn40xx driver for TN9510 cards
+which combine a TN4010 MAC with an Aquantia AQR105.
+It is an update of the patch series "net: tn40xx: add support for AQR105
+based cards", addressing review comments and generally cleaning up the series.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+The patch was tested on a Tehuti TN9510 card (1fc9:4025:1fc9:3015).
+
 ---
- drivers/net/can/flexcan/flexcan-core.c | 27 +++++++++++++++++++++------
- drivers/net/can/flexcan/flexcan.h      |  1 +
- 2 files changed, 22 insertions(+), 6 deletions(-)
+Changes in v5:
+- changed version because "b4 send --resend v4" did not succeed
+- used opportunity to rebaseline to net-next
+- only source code change is merging a split string in tn40_mdio.c, removing
+  a warning from b4 prep --check
+- changed format of cover letter in line with b4 (sequence of changes from
+  latest to oldest)
+- Link to v4: https://lore.kernel.org/r/20241221-tn9510-v3a-v4-0-dafff89ba7a7@gmx.net
 
-diff --git a/drivers/net/can/flexcan/flexcan-core.c b/drivers/net/can/flexcan/flexcan-core.c
-index b347a1c93536d54efaa5f7d3347bd47c20860b3e..7588cb54a909af065522ddbcb06cc3acb9669893 100644
---- a/drivers/net/can/flexcan/flexcan-core.c
-+++ b/drivers/net/can/flexcan/flexcan-core.c
-@@ -26,6 +26,7 @@
- #include <linux/pinctrl/consumer.h>
- #include <linux/platform_device.h>
- #include <linux/can/platform/flexcan.h>
-+#include <linux/phy/phy.h>
- #include <linux/pm_runtime.h>
- #include <linux/property.h>
- #include <linux/regmap.h>
-@@ -644,18 +645,22 @@ static void flexcan_clks_disable(const struct flexcan_priv *priv)
- 
- static inline int flexcan_transceiver_enable(const struct flexcan_priv *priv)
- {
--	if (!priv->reg_xceiver)
--		return 0;
-+	if (priv->reg_xceiver)
-+		return regulator_enable(priv->reg_xceiver);
-+	else if (priv->transceiver)
-+		return phy_power_on(priv->transceiver);
- 
--	return regulator_enable(priv->reg_xceiver);
-+	return 0;
- }
- 
- static inline int flexcan_transceiver_disable(const struct flexcan_priv *priv)
- {
--	if (!priv->reg_xceiver)
--		return 0;
-+	if (priv->reg_xceiver)
-+		return regulator_disable(priv->reg_xceiver);
-+	else if (priv->transceiver)
-+		return phy_power_off(priv->transceiver);
- 
--	return regulator_disable(priv->reg_xceiver);
-+	return 0;
- }
- 
- static int flexcan_chip_enable(struct flexcan_priv *priv)
-@@ -2086,6 +2091,7 @@ static int flexcan_probe(struct platform_device *pdev)
- 	struct net_device *dev;
- 	struct flexcan_priv *priv;
- 	struct regulator *reg_xceiver;
-+	struct phy *transceiver;
- 	struct clk *clk_ipg = NULL, *clk_per = NULL;
- 	struct flexcan_regs __iomem *regs;
- 	struct flexcan_platform_data *pdata;
-@@ -2101,6 +2107,11 @@ static int flexcan_probe(struct platform_device *pdev)
- 	else if (IS_ERR(reg_xceiver))
- 		return PTR_ERR(reg_xceiver);
- 
-+	transceiver = devm_phy_optional_get(&pdev->dev, NULL);
-+	if (IS_ERR(transceiver))
-+		return dev_err_probe(&pdev->dev, PTR_ERR(transceiver),
-+				     "failed to get phy\n");
-+
- 	if (pdev->dev.of_node) {
- 		of_property_read_u32(pdev->dev.of_node,
- 				     "clock-frequency", &clock_freq);
-@@ -2198,6 +2209,10 @@ static int flexcan_probe(struct platform_device *pdev)
- 	priv->clk_per = clk_per;
- 	priv->clk_src = clk_src;
- 	priv->reg_xceiver = reg_xceiver;
-+	priv->transceiver = transceiver;
-+
-+	if (transceiver)
-+		priv->can.bitrate_max = transceiver->attrs.max_link_rate;
- 
- 	if (priv->devtype_data.quirks & FLEXCAN_QUIRK_NR_IRQ_3) {
- 		priv->irq_boff = platform_get_irq(pdev, 1);
-diff --git a/drivers/net/can/flexcan/flexcan.h b/drivers/net/can/flexcan/flexcan.h
-index 2cf886618c9621166173b865f266830b3f6c1fb0..16692a2502eba26575eeeec83dfffdf35f07b034 100644
---- a/drivers/net/can/flexcan/flexcan.h
-+++ b/drivers/net/can/flexcan/flexcan.h
-@@ -107,6 +107,7 @@ struct flexcan_priv {
- 	struct clk *clk_per;
- 	struct flexcan_devtype_data devtype_data;
- 	struct regulator *reg_xceiver;
-+	struct phy *transceiver;
- 	struct flexcan_stop_mode stm;
- 
- 	int irq_boff;
+Changes in v4:
+- use separate aqr105 specific functions instead of adding aqr105 functionality
+  in common functions, with need of "chip generation" parameter
+  (suggested by Andrew Lunn <andrew@lunn.ch>)
+- make generation and cleanup of swnodes more symmetric
+  (suggested by Andrew Lunn <andrew@lunn.ch>)
+- add MDIO/PHY software nodes only for devices that have an aqr105 PHY
+  (suggested by FUJITA Tomonori <fujita.tomonori@gmail.com>)
+- Link to v3: https://lore.kernel.org/r/20241217-tn9510-v3a-v3-0-4d5ef6f686e0@gmx.net
 
+Changes in v3:
+- aquantia_firmware: remove call to of_property_read_string. It should be
+  called from the more generic function device_property_read_string
+- add more AQR105-specific function, to support proper advertising and auto-
+  negotiation
+- re-organize the patches about the mdio speed and TN40_REG_MDIO_CMD_STAT,
+  skipping the 1MHz intermediate speed step
+- re-organized the sequence of the patches:
+    1. changes to the general support functions (net/phy/mdio_bus.c)
+    2. changes to the aquantia PHY driver
+    3. changes to the tn40xx MAC driver, required to support the TN9510 cards
+- Link to v2: https://lore.kernel.org/netdev/trinity-602c050f-bc76-4557-9824-252b0de48659-1726429697171@3c-app-gmx-bap07/
+
+Changes in v2:
+- simplify the check for a firmware-name in a swnode in the aquantia PHY driver
+(comment from Andrew Lunn)
+- changed the software node definition to an mdio node with phy child nodes, to
+be more in line with a typical device tree definition (also comment from
+Andrew Lunn)
+This also solves the problem with several TN4010-based cards that FUJITA
+Tomonori reported
+- clarified the cleanup calls, now calling fwnode_handle_put instead of
+software_node_unregister (comment by FUJITA Tomonori)
+- updated the function mdiobus_scan to support swnodes (following hint of
+Andrew Lunn)
+- remove the small patch to avoid failing after aqr_wait_reset_complete, now
+that a proper patch by Vladimir Oltean is available
+- replace setting of bit 3 in TN40_REG_MDIO_CMD_STAT by calling of
+tn40_mdio_set_speed (suggestion by FUJITA Tomonori)
+- cleaning up the distributed calls to set the MDIO speed in the tn40xx driver
+- define supported PCI-IDs including subvendor IDs to prevent loading on
+unsupported card
+- Link to v1: https://lore.kernel.org/netdev/trinity-33332a4a-1c44-46b7-8526-b53b1a94ffc2-1726082106356@3c-app-gmx-bs04/
+
+---
+Hans-Frieder Vogt (7):
+      net: phy: Add swnode support to mdiobus_scan
+      net: phy: aquantia: add probe function to aqr105 for firmware loading
+      net: phy: aquantia: search for firmware-name in fwnode
+      net: phy: aquantia: add essential functions to aqr105 driver
+      net: tn40xx: create swnode for mdio and aqr105 phy and add to mdiobus
+      net: tn40xx: prepare tn40xx driver to find phy of the TN9510 card
+      net: tn40xx: add pci-id of the aqr105-based Tehuti TN4010 cards
+
+ drivers/net/ethernet/tehuti/tn40.c           |   9 +-
+ drivers/net/ethernet/tehuti/tn40.h           |  31 ++++
+ drivers/net/ethernet/tehuti/tn40_mdio.c      |  80 ++++++++-
+ drivers/net/phy/aquantia/aquantia_firmware.c |   7 +-
+ drivers/net/phy/aquantia/aquantia_main.c     | 243 ++++++++++++++++++++++++++-
+ drivers/net/phy/mdio_bus.c                   |  14 ++
+ 6 files changed, 375 insertions(+), 9 deletions(-)
+---
+base-commit: bb3bb6c92e5719c0f5d7adb9d34db7e76705ac33
+change-id: 20241216-tn9510-v3a-2cfc185d680f
+
+Best regards,
 -- 
-2.39.5
+Hans-Frieder Vogt <hfdevel@gmx.net>
 
