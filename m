@@ -1,10 +1,10 @@
 From: Sven Peter <sven@svenpeter.dev>
-Date: Sat, 22 Feb 2025 13:38:35 +0000
-Subject: [PATCH 3/4] i2c: pasemi: Enable the unjam machine
+Date: Sat, 22 Feb 2025 13:38:36 +0000
+Subject: [PATCH 4/4] i2c: pasemi: Log bus reset causes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250222-pasemi-fixes-v1-3-d7ea33d50c5e@svenpeter.dev>
+Message-Id: <20250222-pasemi-fixes-v1-4-d7ea33d50c5e@svenpeter.dev>
 References: <20250222-pasemi-fixes-v1-0-d7ea33d50c5e@svenpeter.dev>
 In-Reply-To: <20250222-pasemi-fixes-v1-0-d7ea33d50c5e@svenpeter.dev>
 To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
@@ -17,12 +17,12 @@ Cc: linuxppc-dev@lists.ozlabs.org, asahi@lists.linux.dev,
  linux-kernel@vger.kernel.org, Sven Peter <sven@svenpeter.dev>, 
  Hector Martin <marcan@marcan.st>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1147; i=sven@svenpeter.dev;
- h=from:subject:message-id; bh=2vIJw3C8UuzlR0vDYIDEMzK/yjJe3TCpkfiUQCAlb68=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ/rOy3GzHj/dEP3xtk/58bMGC1Ys+l3dfPtjVbnC09wJz
- A+sr00M6ChlYRDjYJAVU2TZvt/e9MnDN4JLN116DzOHlQlkCAMXpwBMpPMyI8OxM6p5HBcKLa7/
- X7/syeXHrYtiGiofibCW1W198dqFXfQ5w19Z0ZporoRI5wvvvpebbs1Z9PQ7Z0SBR/BzDuu5TXW
- zL3ABAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1852; i=sven@svenpeter.dev;
+ h=from:subject:message-id; bh=Jxw9FakomFtq1Asfv39ujqR2viJkk3GlzvSkFwhw82g=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ/rOy/G9bPs878o/+CTRkbdfmm/Lhezdx5g13m4KbKiT/
+ 8G38L5BRykLgxgHg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAiGxQZ/qnyVAicXbnM/M1T
+ hl+P9OxCS5f+WvFccDXf9t2Pfm+YK5DG8D+rcuO/gvTpxdKxP2UqBZRYb+95m3Jgi/zta3tq3zI
+ JZbIAAA==
 X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
@@ -30,32 +30,60 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Hector Martin <marcan@marcan.st>
 
-The I2C bus can get stuck under some conditions (desync between
-controller and device). The pasemi controllers include an unjam feature
-that is enabled on reset, but was being disabled by the driver. Keep it
-enabled by explicitly setting the UJM bit in the CTL register. This
-should help recover the bus from certain conditions, which would
-otherwise remain stuck forever.
+This ensures we get all information we need to debug issues when users
+forward us their logs.
 
 Signed-off-by: Hector Martin <marcan@marcan.st>
 Signed-off-by: Sven Peter <sven@svenpeter.dev>
 ---
- drivers/i2c/busses/i2c-pasemi-core.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/i2c/busses/i2c-pasemi-core.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/i2c/busses/i2c-pasemi-core.c b/drivers/i2c/busses/i2c-pasemi-core.c
-index 770b86b92a10..8f0ba975172f 100644
+index 8f0ba975172f..ae0181a76470 100644
 --- a/drivers/i2c/busses/i2c-pasemi-core.c
 +++ b/drivers/i2c/busses/i2c-pasemi-core.c
-@@ -73,7 +73,7 @@ static inline int reg_read(struct pasemi_smbus *smbus, int reg)
+@@ -21,6 +21,7 @@
+ /* Register offsets */
+ #define REG_MTXFIFO	0x00
+ #define REG_MRXFIFO	0x04
++#define REG_XFSTA	0x0c
+ #define REG_SMSTA	0x14
+ #define REG_IMASK	0x18
+ #define REG_CTL		0x1c
+@@ -84,7 +85,7 @@ static void pasemi_reset(struct pasemi_smbus *smbus)
  
- static void pasemi_reset(struct pasemi_smbus *smbus)
+ static int pasemi_smb_clear(struct pasemi_smbus *smbus)
  {
--	u32 val = (CTL_MTR | CTL_MRR | (smbus->clk_div & CTL_CLK_M));
-+	u32 val = (CTL_MTR | CTL_MRR | CTL_UJM | (smbus->clk_div & CTL_CLK_M));
+-	unsigned int status;
++	unsigned int status, xfstatus;
+ 	int timeout = TRANSFER_TIMEOUT_MS;
  
- 	if (smbus->hw_rev >= 6)
- 		val |= CTL_EN;
+ 	status = reg_read(smbus, REG_SMSTA);
+@@ -95,15 +96,21 @@ static int pasemi_smb_clear(struct pasemi_smbus *smbus)
+ 		status = reg_read(smbus, REG_SMSTA);
+ 	}
+ 
++	xfstatus = reg_read(smbus, REG_XFSTA);
++
+ 	if (timeout < 0) {
+-		dev_warn(smbus->dev, "Bus is still stuck (status 0x%08x)\n", status);
++		dev_warn(smbus->dev, "Bus is still stuck (status 0x%08x xfstatus 0x%08x)\n",
++			 status, xfstatus);
+ 		return -EIO;
+ 	}
+ 
+ 	/* If any badness happened or there is data in the FIFOs, reset the FIFOs */
+ 	if ((status & (SMSTA_MRNE | SMSTA_JMD | SMSTA_MTO | SMSTA_TOM | SMSTA_MTN | SMSTA_MTA)) ||
+-		!(status & SMSTA_MTE))
++		!(status & SMSTA_MTE)) {
++		dev_warn(smbus->dev, "Issuing reset due to status 0x%08x (xfstatus 0x%08x)\n",
++			 status, xfstatus);
+ 		pasemi_reset(smbus);
++	}
+ 
+ 	/* Clear the flags */
+ 	reg_write(smbus, REG_SMSTA, status);
 
 -- 
 2.34.1
