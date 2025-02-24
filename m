@@ -1,64 +1,66 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 24 Feb 2025 11:55:34 -0600
-Subject: [PATCH 2/2] PCI: tegra194: Allow building for Tegra234
+Date: Mon, 24 Feb 2025 12:39:48 -0600
+Subject: [PATCH] mfd: max77620: Allow building as a module
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250224-build-tegra234-v1-2-39e4e912f968@gmail.com>
-References: <20250224-build-tegra234-v1-0-39e4e912f968@gmail.com>
-In-Reply-To: <20250224-build-tegra234-v1-0-39e4e912f968@gmail.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, Sumit Gupta <sumitg@nvidia.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- Vidya Sagar <vidyas@nvidia.com>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-pci@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20250224-max77620-module-v1-1-96eb22e9f266@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPS8vGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDIyMT3dzECnNzMyMD3dz8lNKcVF0Lk6TUVANDyySDREsloK6CotS0zAq
+ widGxtbUANxYYmmEAAAA=
+X-Change-ID: 20250224-max77620-module-84bee019b0a9
+To: Lee Jones <lee@kernel.org>
+Cc: linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740419820; l=1308;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740422403; l=1436;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=RQMU1OruosUtu/kFiSKZkJtzqv30gwNTIdbY5d1PAWo=;
- b=NxyKmg4DpPG0QjYEYE1fUUbABtXtfAfAuXjENVceq5qPHCOTBW6ZoKPEXAUHTmcZvanTswfNQ
- qfYzOvdtqvOC80CStXD4sT2/EtEcz2GI2kFShXidYVcvlTfR8arSKp5
+ bh=+r4q7w35q/PUW+4DTP800ohxi4hzqBWXk37ruWNqFeU=;
+ b=arAMSc8xvewZ6BcSWy7gonvoCNgyjMMMvOf/TwbKy6sRhU+0vTk7Rp5wkXOsVAk/5auLjFwZ7
+ xOpOtRxttmmBlNNa6LPb808YyA/UbHgLmcgiF3YiDyOzpPhGxP7V7+u
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Support was added for Tegra234 in the referenced commit, but the Kconfig
-was not updated to allow building for the arch.
+The driver works fine as a module, so allowing building as such.
 
-Fixes: a54e19073718 ("PCI: tegra194: Add Tegra234 PCIe support")
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/pci/controller/dwc/Kconfig | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/mfd/Kconfig    | 2 +-
+ drivers/mfd/max77620.c | 4 ++++
+ 2 files changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/pci/controller/dwc/Kconfig b/drivers/pci/controller/dwc/Kconfig
-index b6d6778b0698b2ab22ef69f6c8d8cd5619ede41f..6dd232cf80642583482827d80c6321dd8e8156da 100644
---- a/drivers/pci/controller/dwc/Kconfig
-+++ b/drivers/pci/controller/dwc/Kconfig
-@@ -205,7 +205,7 @@ config PCIE_TEGRA194
+diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
+index 6b0682af6e32b434ee3e99940005a6cce14ff55c..922704bd0ce3fe6c094da6b1528b72fedcfa1677 100644
+--- a/drivers/mfd/Kconfig
++++ b/drivers/mfd/Kconfig
+@@ -858,7 +858,7 @@ config MFD_MAX77541
+ 	  There are regulators and adc.
  
- config PCIE_TEGRA194_HOST
- 	tristate "NVIDIA Tegra194 (and later) PCIe controller (host mode)"
--	depends on ARCH_TEGRA_194_SOC || COMPILE_TEST
-+	depends on ARCH_TEGRA_194_SOC || ARCH_TEGRA_234_SOC || COMPILE_TEST
- 	depends on PCI_MSI
- 	select PCIE_DW_HOST
- 	select PHY_TEGRA194_P2U
-@@ -220,7 +220,7 @@ config PCIE_TEGRA194_HOST
- 
- config PCIE_TEGRA194_EP
- 	tristate "NVIDIA Tegra194 (and later) PCIe controller (endpoint mode)"
--	depends on ARCH_TEGRA_194_SOC || COMPILE_TEST
-+	depends on ARCH_TEGRA_194_SOC || ARCH_TEGRA_234_SOC || COMPILE_TEST
- 	depends on PCI_ENDPOINT
- 	select PCIE_DW_EP
- 	select PHY_TEGRA194_P2U
+ config MFD_MAX77620
+-	bool "Maxim Semiconductor MAX77620 and MAX20024 PMIC Support"
++	tristate "Maxim Semiconductor MAX77620 and MAX20024 PMIC Support"
+ 	depends on I2C=y
+ 	depends on OF
+ 	select MFD_CORE
+diff --git a/drivers/mfd/max77620.c b/drivers/mfd/max77620.c
+index 89b30ef91f4f112b06e0e055e75e480fab176f8f..10264fce95a4a37f22f205edbf364fa6783e35dd 100644
+--- a/drivers/mfd/max77620.c
++++ b/drivers/mfd/max77620.c
+@@ -700,3 +700,7 @@ static struct i2c_driver max77620_driver = {
+ 	.id_table = max77620_id,
+ };
+ builtin_i2c_driver(max77620_driver);
++
++MODULE_DESCRIPTION("Maxim Semiconductor MAX77620 and MAX20024 PMIC Support");
++MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
++MODULE_LICENSE("GPL");
 
+---
+base-commit: d082ecbc71e9e0bf49883ee4afd435a77a5101b6
+change-id: 20250224-max77620-module-84bee019b0a9
+
+Best regards,
 -- 
-2.48.1
+Aaron Kling <webgeek1234@gmail.com>
 
