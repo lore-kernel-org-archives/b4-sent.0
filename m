@@ -1,11 +1,10 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Mon, 24 Feb 2025 14:50:53 +0100
-Subject: [PATCH 03/14] dt-bindings: arm: fsl: Add GOcontroll Moduline
- Display
+Date: Mon, 24 Feb 2025 14:50:54 +0100
+Subject: [PATCH 04/14] dt-bindings: vendor-prefixes: add GOcontroll
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250224-initial_display-v1-3-5ccbbf613543@gocontroll.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250224-initial_display-v1-4-5ccbbf613543@gocontroll.com>
 References: <20250224-initial_display-v1-0-5ccbbf613543@gocontroll.com>
 In-Reply-To: <20250224-initial_display-v1-0-5ccbbf613543@gocontroll.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -25,35 +24,37 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, 
  Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740405062; l=1177;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740405062; l=973;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=scPD+OgNUAYsQVTxMgUj2Bfa1YhpGLs4x0xykI3n24k=;
- b=mYX3R22poxBhjhAZBjz4BDirZm2V7dy8Vnyk1tTLA7TnHBsc6hztIBhrUrX8dCAQ/CvcOVSaP
- rezkBfC/jvxAX36FpuRCqK/iIbM7tWJfZtXqCn1nfTENLh7RD4vW5Dz
+ bh=GJs6pNBexRn96NM+OGXxZUfK9O73xNA0YJNFsc5BkjU=;
+ b=IJEmmCyq9UEKO0tAanMOCXF7YyKSMtNx5xwL9il4SoqOZ0zccX5GR4svLEQ+D5oAUtrxo2Flu
+ CzPPhebk0IOA4dQ509AFMK+reya+R2ZDIqRtiXy22t5OplPrBzlh7Vc
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the compatible strings for the Moduline Display controller.
+GOcontroll produces embedded linux systems and IO modules to use in
+these sytems, add its a prefix.
 
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- Documentation/devicetree/bindings/arm/fsl.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/fsl.yaml b/Documentation/devicetree/bindings/arm/fsl.yaml
-index db781d31569811ca241b5bd9a32a0896f7d9c3b9..40b2734f0caf3c431f05d33637a6bed8312c9d10 100644
---- a/Documentation/devicetree/bindings/arm/fsl.yaml
-+++ b/Documentation/devicetree/bindings/arm/fsl.yaml
-@@ -1099,6 +1099,7 @@ properties:
-               - gateworks,imx8mp-gw74xx   # i.MX8MP Gateworks Board
-               - gateworks,imx8mp-gw75xx-2x # i.MX8MP Gateworks Board
-               - gateworks,imx8mp-gw82xx-2x # i.MX8MP Gateworks Board
-+              - gocontroll,moduline-display # GOcontroll Moduline Display controller
-               - skov,imx8mp-skov-revb-hdmi # SKOV i.MX8MP climate control without panel
-               - skov,imx8mp-skov-revb-lt6 # SKOV i.MX8MP climate control with 7” panel
-               - skov,imx8mp-skov-revb-mi1010ait-1cp1 # SKOV i.MX8MP climate control with 10.1" panel
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index dac80c62b742fec14cd7652d9d690acc4b4b1ee6..5dc61a05de0ce907caeb60bb92018569df0d19e3 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -597,6 +597,8 @@ patternProperties:
+     description: GlobalTop Technology, Inc.
+   "^gmt,.*":
+     description: Global Mixed-mode Technology, Inc.
++  "^gocontroll,.*":
++    description: GOcontroll Modular Embedded Electronics B.V.
+   "^goldelico,.*":
+     description: Golden Delicious Computers GmbH & Co. KG
+   "^goodix,.*":
 
 -- 
 2.48.1
