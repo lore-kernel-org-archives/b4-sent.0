@@ -1,56 +1,96 @@
-From: Sven Peter <sven@svenpeter.dev>
-Date: Sat, 22 Feb 2025 16:56:49 +0000
-Subject: [PATCH 4/4] soc: apple: rtkit: Cut syslog messages after the first
- '\0'
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Subject: [PATCH v7 0/4] Driver for Apple Z2 touchscreens.
+Date: Mon, 24 Feb 2025 12:01:08 +0100
+Message-Id: <20250224-z2-v7-0-2746f2bd07d0@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250222-apple-soc-misc-v1-4-1a3af494a48a@svenpeter.dev>
-References: <20250222-apple-soc-misc-v1-0-1a3af494a48a@svenpeter.dev>
-In-Reply-To: <20250222-apple-soc-misc-v1-0-1a3af494a48a@svenpeter.dev>
-To: Alyssa Rosenzweig <alyssa@rosenzweig.io>, Janne Grunau <j@jannau.net>, 
- Sven Peter <sven@svenpeter.dev>
+X-B4-Tracking: v=1; b=H4sIAHRRvGcC/13PzU7DMAwH8FeZcibIdmK348R7IA6Nk26R2IpaV
+ AFT350000TV49/yzx83M6Uxp8m8HG5mTHOe8nAtoXk6GD1311OyOZZsCMgjkre/ZBWQAlObOoi
+ mNH6Oqc/fdcjbe8nnPH0N40+dOeNafXBZ+YwWrHqnXlUIIL6eLl3+eNbhYlY+05a0lVAhjajyM
+ YQesdkT9yAMxVTiCmGFxMzRxR73xG8JV+ILiY0T7AJK6GBPeEvuh3EhEl0biFtCOe6J/BOC+xZ
+ Z31cBDSlh5LAly7L8AbWoL1aTAQAA
+X-Change-ID: 20241124-z2-c012b528ea0d
+To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Henrik Rydberg <rydberg@bitmath.org>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=992; i=sven@svenpeter.dev;
- h=from:subject:message-id; bh=XmS84SoHATsmW4yIuH/yX1sErrlBc4P71wmt3DfDGeo=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ/ouxi+/pm7Ov+GW8XbZ0X35fc+0Wo63t2ifWBm8oPy5x
- jLvS+p1HaUsDGIcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJlE9iZFhQvnpuRLrzJF3+
- 5Ieqeg3y7Jyb+Jd7Ha4yb1jQcCw2IIWRoaNu37tZWSsWV/06lORaflOEcalCfeqTvfdn1/md/LX
- /NxsA
-X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
+ linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Neal Gompa <neal@gompa.dev>, Janne Grunau <j@jannau.net>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740394875; l=2765;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=IRBOBjOupyewlrDGtPHlu0OHXgrrC2CpFC42RCnOQDE=;
+ b=FJOVBRwuAD8k0F5ggHNq+YETM0cbGKs7+eewX3jq6+WWMtPjJpWcJBEFZEgKLsV1iTpN8MLuT
+ ltMNgXuBQ2eATILFiJU6bjscMI2ilQ+B90otPxPOj1+8PfHch7EWwhz
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Janne Grunau <j@jannau.net>
+Hi.
 
-Certain messages from DCP contain NUL bytes in the random data after the
-NUL terminated syslog message. Since the syslog message ends with '\n'
-this results in a dev_info() message terminated with two newlines and an
-empty printed line in the kernel log.
+This series adds support for Apple touchscreens using the Z2 protocol.
+Those are used as the primary touchscreen on mobile Apple devices, and for the
+touchbar on laptops using the M-series chips. (T1/T2 laptops have a coprocessor
+in charge of speaking Z2 to the touchbar).
 
-Signed-off-by: Janne Grunau <j@jannau.net>
-Signed-off-by: Sven Peter <sven@svenpeter.dev>
+Originally sent as a RFC at https://lore.kernel.org/all/20230223-z2-for-ml-v1-0-028f2b85dc15@gmail.com/
+The changes since then mostly address the review feedback, but also
+add another machine that has this specific controller.
+
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- drivers/soc/apple/rtkit.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v7:
+- Added a dependency on ARCH_APPLE to prevent potential confusion on x86
+- Link to v6: https://lore.kernel.org/r/20250205-z2-v6-0-cc60cbee1d5b@gmail.com
 
-diff --git a/drivers/soc/apple/rtkit.c b/drivers/soc/apple/rtkit.c
-index b7f4654c3341..595efce265ce 100644
---- a/drivers/soc/apple/rtkit.c
-+++ b/drivers/soc/apple/rtkit.c
-@@ -476,7 +476,7 @@ static void apple_rtkit_syslog_rx_log(struct apple_rtkit *rtk, u64 msg)
- 
- 	log_context[sizeof(log_context) - 1] = 0;
- 
--	msglen = rtk->syslog_msg_size - 1;
-+	msglen = strnlen(rtk->syslog_msg_buffer, rtk->syslog_msg_size - 1);
- 	while (msglen > 0 &&
- 		   should_crop_syslog_char(rtk->syslog_msg_buffer[msglen - 1]))
- 		msglen--;
+Changes in v6:
+- Went back to build_cal_blob returning an allocated buffer, other fixes.
+- Link to v5: https://lore.kernel.org/r/20250118-z2-v5-0-6d38b2582169@gmail.com
 
--- 
-2.34.1
+Changes in v5:
+- Added missing \ns, removed 4kb-ish of wasted ram
+- Link to v4: https://lore.kernel.org/r/20250115-z2-v4-0-d7361ab16ba0@gmail.com
+
+Changes in v4:
+- Dropped another allocation, other fixes.
+- Link to v3: https://lore.kernel.org/r/20250112-z2-v3-0-5c0e555d3df1@gmail.com
+
+Changes in v3:
+- Tx/Rx buffers used in interrupt handler are now allocated in probe and reused
+- Other various style fixes
+- Link to v2: https://lore.kernel.org/r/20241128-z2-v2-0-76cc59bbf117@gmail.com
+
+Changes in v2:
+- In a separate patch, fixed an issue that prevented the SPI controller
+  from using GPIO CS, and as such, moved the hardware quirk to there
+- Went back to uploading the firmware in probe() instad of open()
+- Other changes addressing the review feedback
+- Link to v1: https://lore.kernel.org/r/20241126-z2-v1-0-c43c4cc6200d@gmail.com
+
+---
+Sasha Finkelstein (4):
+      dt-bindings: input: touchscreen: Add Z2 controller
+      input: apple_z2: Add a driver for Apple Z2 touchscreens
+      arm64: dts: apple: Add touchbar digitizer nodes
+      MAINTAINERS: Add entries for Apple Z2 touchscreen driver
+
+ .../input/touchscreen/apple,z2-multitouch.yaml     |  70 +++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t8103-j293.dts           |  27 ++
+ arch/arm64/boot/dts/apple/t8103.dtsi               |  19 +
+ arch/arm64/boot/dts/apple/t8112-j493.dts           |  23 +
+ arch/arm64/boot/dts/apple/t8112.dtsi               |  14 +
+ drivers/input/touchscreen/Kconfig                  |  13 +
+ drivers/input/touchscreen/Makefile                 |   1 +
+ drivers/input/touchscreen/apple_z2.c               | 473 +++++++++++++++++++++
+ 9 files changed, 642 insertions(+)
+---
+base-commit: b62cef9a5c673f1b8083159f5dc03c1c5daced2f
+change-id: 20241124-z2-c012b528ea0d
 
