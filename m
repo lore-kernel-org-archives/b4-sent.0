@@ -1,192 +1,53 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Mon, 24 Feb 2025 14:51:04 +0100
-Subject: [PATCH 14/14] arm64: dts: freescale: Add the BOE av123z7m-n17
- variant of the Moduline Display
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/2] (no cover subject)
+Date: Mon, 24 Feb 2025 11:55:32 -0600
+Message-Id: <20250224-build-tegra234-v1-0-39e4e912f968@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250224-initial_display-v1-14-5ccbbf613543@gocontroll.com>
-References: <20250224-initial_display-v1-0-5ccbbf613543@gocontroll.com>
-In-Reply-To: <20250224-initial_display-v1-0-5ccbbf613543@gocontroll.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <quic_jesszhan@quicinc.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, Sam Ravnborg <sam@ravnborg.org>, 
- Liu Ying <victor.liu@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, imx@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, 
- Maud Spierings <maudspierings@gocontroll.com>
+X-B4-Tracking: v=1; b=H4sIAJSyvGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDIyMT3aTSzJwU3ZLU9KJEI2MT3WRDC9OklETLtBSTRCWgpoKi1LTMCrC
+ B0bG1tQDeDU1GYAAAAA==
+X-Change-ID: 20250224-build-tegra234-c185bda9fd4a
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Viresh Kumar <viresh.kumar@linaro.org>, Sumit Gupta <sumitg@nvidia.com>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Vidya Sagar <vidyas@nvidia.com>
+Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-pci@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740405062; l=3566;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=oTP9B5+eckemcAq7BoHH8WLYSzQY53IU8NlYcoi8TI4=;
- b=aQ+VE0ltCkVpecPynixQhO2jlXkv5MbH2Ub/umJWYy2F2l+LhIXFrAg+miCS5eqAogchWhS3+
- 7JLJf8Xl76wCUt081BHlCJk6B9CStdy7l91pUD5HAkmbSCe6tqa6zBQ
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740419820; l=723;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=98Z6rWquwnb+oqau6pISJGfTMsaiWJKg9oR7AsN7MLQ=;
+ b=iARYKkm2gfxVmnVK8DYl1ygPH+MXiUi2obi+p9pHnMiJJH3kPeSHY4FES+MyFsGKXyVN4z984
+ mxKf7YYuNk0DrCqYGfvBq/7H/VUvvLRujZj1xLNpRYw92WAaZu3INUa
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the BOE av123z7m-n17 variant of the Moduline Display, this variant
-comes with a 12.3" 1920x720 display.
+When Tegra234 support was added to existing Tegra drivers, many of them
+did not have the matching Kconfig entries updated to allow building for
+the arch. A few of those have already been fixed. This series fixes a
+couple more.
 
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
-
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Currently the backlight driver is not available, this will be upstreamed
-in a future patch series. It is a Maxim max25014atg.
+Aaron Kling (2):
+      cpufreq: tegra194: Allow building for Tegra234
+      PCI: tegra194: Allow building for Tegra234
+
+ drivers/cpufreq/Kconfig.arm        | 2 +-
+ drivers/pci/controller/dwc/Kconfig | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 ---
- ...tx8p-ml81-moduline-display-106-av123z7m-n17.dts | 133 +++++++++++++++++++++
- 1 file changed, 133 insertions(+)
+base-commit: d082ecbc71e9e0bf49883ee4afd435a77a5101b6
+change-id: 20250224-build-tegra234-c185bda9fd4a
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dts b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..129c69598f38566460efb271628c1d1e10eb2a85
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dts
-@@ -0,0 +1,133 @@
-+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
-+/*
-+ * Copyright 2025 GOcontroll B.V.
-+ * Author: Maud Spierings <maudspierings@gocontroll.com>
-+ */
-+
-+/dts-v1/;
-+
-+#include "imx8mp-tx8p-ml81-moduline-display-106.dtsi"
-+
-+/ {
-+	model = "GOcontroll Moduline Display with BOE av123z7m-n17 display";
-+
-+	panel {
-+		compatible = "boe,av123z7m-n17";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pinctrl_panel>;
-+		enable-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
-+		reset-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
-+		power-supply = <&reg_3v3_per>;
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+				dual-lvds-odd-pixels;
-+
-+				panel_in0: endpoint {
-+					remote-endpoint = <&lvds1_out>;
-+				};
-+			};
-+
-+			port@1 {
-+				reg = <1>;
-+				dual-lvds-even-pixels;
-+
-+				panel_in1: endpoint {
-+					remote-endpoint = <&lvds0_out>;
-+				};
-+			};
-+		};
-+	};
-+};
-+
-+&i2c4 {
-+	bridge@2d { /* sn65dsi85 */
-+		compatible = "ti,sn65dsi84";
-+		reg = <0x2d>;
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pinctrl_lvds_bridge>;
-+		enable-gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>;
-+		vcc-supply = <&reg_1v8_per>;
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+
-+				dsi_lvds_bridge_in: endpoint {
-+					remote-endpoint = <&mipi_dsi_out>;
-+					data-lanes = <1 2 3 4>;
-+				};
-+			};
-+
-+			port@2 {
-+				reg = <2>;
-+
-+				lvds0_out: endpoint {
-+					remote-endpoint = <&panel_in1>;
-+				};
-+			};
-+
-+			port@3 {
-+				reg = <3>;
-+
-+				lvds1_out: endpoint {
-+					remote-endpoint = <&panel_in0>;
-+				};
-+			};
-+		};
-+	};
-+
-+	/* max25014 @ 0x6f */
-+};
-+
-+&lcdif1 {
-+	status = "okay";
-+};
-+
-+&mipi_dsi {
-+	samsung,esc-clock-frequency = <12000000>;
-+	/*
-+	 * burst has to be at least 2x dsi clock that the sn65dsi85 expects
-+	 * display pixelclock * bpp / lanes / 2 = dsi clock
-+	 * 88.000.000 * 24 / 4 / 2 = 264.000.000
-+	 * range gets rounded up to 265.000.000 - 270.000.000
-+	 * 267.500.000 * 2 = 535.000.000
-+	 */
-+	samsung,burst-clock-frequency = <535000000>;
-+	status = "okay";
-+
-+	ports {
-+		port@1 {
-+			mipi_dsi_out: endpoint {
-+				remote-endpoint = < &dsi_lvds_bridge_in>;
-+				data-lanes = <1 2 3 4>;
-+			};
-+		};
-+	};
-+};
-+
-+&iomuxc {
-+	pinctrl_lvds_bridge: lvdsbridgegrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_SAI1_TXD2__GPIO4_IO14 /* COM pin 113 */
-+			MX8MP_DSE_X1
-+		>;
-+	};
-+
-+	pinctrl_panel: panelgrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_GPIO1_IO07__GPIO1_IO07 /* COM pin 157 */
-+			MX8MP_DSE_X1
-+			MX8MP_IOMUXC_GPIO1_IO09__GPIO1_IO09 /* COM pin 159 */
-+			MX8MP_DSE_X1
-+		>;
-+	};
-+};
-
+Best regards,
 -- 
-2.48.1
+Aaron Kling <webgeek1234@gmail.com>
 
