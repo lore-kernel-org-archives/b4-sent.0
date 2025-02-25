@@ -1,54 +1,59 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Tue, 25 Feb 2025 08:48:24 +0100
-Subject: [PATCH] input: apple_z2: Fix potential confusion in KConfig
+From: "ye.he" <ye.he@amlogic.com>
+Date: Tue, 25 Feb 2025 17:04:07 +0800
+Subject: [PATCH bluez] adapter: Prepend the new added device to the adapter
+ devices list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250225-z2-kconfig-v1-1-a67d9b778a6c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMd1vWcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDIyNT3Soj3ezk/Ly0zHRdszTzRBPztKSkFPNkJaCGgqLUtMwKsGHRsbW
- 1ANwzviBcAAAA
-X-Change-ID: 20250225-z2-kconfig-6f7a47fbbd7c
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- asahi@lists.linux.dev, Sasha Finkelstein <fnkl.kernel@gmail.com>
+Message-Id: <20250225-leaudio-no-media-v1-1-6da9454067d3@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAIaHvWcC/x3MQQqDMBBG4avIrB2IY5TiVcRFav62AzaRBEUq3
+ t3Q5bd476SMpMg0VCcl7Jo1hoKmrmj+uPAGqy8mMdIZkY4XuM1r5BD5C6+O+9Zaac2jh7NUsjX
+ hpcd/OdJz2fCj6bpu5WJMnGkAAAA=
+X-Change-ID: 20250225-leaudio-no-media-634423086ea4
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: "ye.he" <ye.he@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740469708; l=1031;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=M+k6ONNmhncbOygKgNxDfkOOv4aJ8TjDfJ9c96zbA9I=;
- b=nSePU+uFQ961+MUI2ngin8dOOursf0PVEzo8cjbR9e4JUizGvEHwqrRG0N1BuxRYwsFz3V4uS
- 2E+jZRkT/heADUIdl/0m/6geVTC3etkLTAr4bjYPycIQIzZH+E6KBza
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740474272; l=1144;
+ i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
+ bh=LiGBECn3b0Rk/VUHLXhxHMcVkP8VTGA2MyBmfyfM1r0=;
+ b=ZlRx8DI8XcFeJtepjZzxZcknAdYqlWYb2doFr922Erxr6lH23dmsY/LWa+RjQtpeq8HmeU8Sh
+ Fc5Dbs+9oUuDBiNZYB3PEXnQI2Xywt+qksll71d6CMmWqfE3JtqP+6V
+X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
+ pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
+X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a dependency on ARCH_APPLE and clarify the description to make it more
-obvious that this is for ARM machines, not x86 ones
+When the DUT is paired with a mobile phone using RPA multiple times,
+multiple device contexts with the same bdaddr will be cached.
+When we query the device context through bdaddr, we always get the
+context at the head of adapter->devices, but its status is inactive.
 
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+https://github.com/bluez/bluez/issues/1095
+
+Signed-off-by: ye.he <ye.he@amlogic.com>
 ---
- drivers/input/touchscreen/Kconfig | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ src/adapter.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/input/touchscreen/Kconfig b/drivers/input/touchscreen/Kconfig
-index 6c885cc58f323b3628538d41460248f8ab1dbf7d..91a2b584dab1469a3c907c0f1accfa10c4c4a3ca 100644
---- a/drivers/input/touchscreen/Kconfig
-+++ b/drivers/input/touchscreen/Kconfig
-@@ -106,9 +106,9 @@ config TOUCHSCREEN_ADC
- config TOUCHSCREEN_APPLE_Z2
- 	tristate "Apple Z2 touchscreens"
- 	default ARCH_APPLE
--	depends on SPI
-+	depends on SPI && (ARCH_APPLE || COMPILE_TEST)
- 	help
--	  Say Y here if you have an Apple device with
-+	  Say Y here if you have an ARM Apple device with
- 	  a touchscreen or a touchbar.
+diff --git a/src/adapter.c b/src/adapter.c
+index 2bb94cf1673e85710abf1e619fdeee9c9fa0f087..d675f0b1575a21bc345cbdb003411cf188fdd314 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -5243,7 +5243,7 @@ void device_resolved_drivers(struct btd_adapter *adapter,
+ static void adapter_add_device(struct btd_adapter *adapter,
+ 						struct btd_device *device)
+ {
+-	adapter->devices = g_slist_append(adapter->devices, device);
++	adapter->devices = g_slist_prepend(adapter->devices, device);
+ 	device_added_drivers(adapter, device);
+ }
  
- 	  If unsure, say N.
 
 ---
-base-commit: 9995b98a4b2a704fa6744d2bee9c5d50b2c33836
-change-id: 20250225-z2-kconfig-6f7a47fbbd7c
+base-commit: 0845b8f6ef2ac004b1c953cf4fe4ca3458cd8e36
+change-id: 20250225-leaudio-no-media-634423086ea4
+
+Best regards,
+-- 
+ye.he <ye.he@amlogic.com>
 
