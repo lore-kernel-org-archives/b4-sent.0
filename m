@@ -1,83 +1,57 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Tue, 25 Feb 2025 13:25:03 +0100
-Subject: [PATCH] usb: storage: jumpshot: Use const for constant arrays
+From: Richard Leitner <richard.leitner@linux.dev>
+Subject: [PATCH 0/3] Fix analogue gain maximum for ov9282
+Date: Tue, 25 Feb 2025 14:08:39 +0100
+Message-Id: <20250225-b4-ov9282-gain-v1-0-a24af2820dde@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250225-misc-const-v1-1-121ff3b86437@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAJ+2vWcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIxMDEwND3dzM4mTd5Py84hLdVPMkk+Q0I4MU0zRLJaCGgqLUtMwKsGHRsbW
- 1AOPiNc9cAAAA
-X-Change-ID: 20240401-misc-const-e7b4cf20d5f9
-To: Alan Stern <stern@rowland.harvard.edu>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, usb-storage@lists.one-eyed-alien.net, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>, 
- =?utf-8?q?Jonathan_Neusch=C3=A4fer?= <j.neuschaefer@gmx.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIANjAvWcC/x3MTQqAIBBA4avIrBvIIaG6SrTwZ6zZWChIIN09a
+ fkt3mtQOAsXWFWDzFWKXKlDDwr8adPBKKEbaCQzEhl0E151oZnwsJKQo/bBOmtcDNCjO3OU5x9
+ u+/t+x6CGd2AAAAA=
+X-Change-ID: 20250225-b4-ov9282-gain-ef1cdaba5bfd
+To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Dave Stevenson <dave.stevenson@raspberrypi.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Richard Leitner <richard.leitner@linux.dev>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740486309; l=1810;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=8rz6vHhtFj67IR1PYVzJt/W+sDgjep7yfy8XQRNUyVM=;
- b=xcrvT+n6wVQZdgOquo/5oCozE3BNKpweD3XshACH5KiYMKRKGFNmqrlpzJa9go/5yaUOv/1m6
- J215lkf+nznAm3bUW8JpZvqPnlnHgmQGXmbgm/03EEUBACJssgxzOWh
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740488957; l=1042;
+ i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
+ bh=G7awnzToNUy7mW4PV6EH6k9+Z2pQLMHAQTl2CVo5Lvg=;
+ b=5p2rAjjPKVLFr0+2xXN3lP9htymOr7PjqvnUo/2PMystoPS7YDi/E8HdlJQjbENmaIXwF3dnv
+ +GMqHGrpdvzArP69tqyfa30E+hfby/vN2UsJBSG5U7KxncBk+pySX0R
+X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
+ pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
+X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These arrays are not modified. Make them const.
+This series fixes/increases the analogue gain maximum value of the
+ov9282 sensor driver to the limits specified in the datasheet.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
----
-Signed-off-by: Jonathan Neuschäfer <j.neuschaefer@gmx.net>
----
+It furthermore introduces a new register definition (including its
+values) and uses available defined registers instead of addresses where
+possible.
 
-This change was compile-tested with ARCH=powerpc
----
- drivers/usb/storage/jumpshot.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+This is basically a first improvement/cleanup series for the ov9282
+driver with likely more to follow.
 
-diff --git a/drivers/usb/storage/jumpshot.c b/drivers/usb/storage/jumpshot.c
-index 39ca84d6859122903de4e64b13e697e8b7d4ab31..089c6f8ac85fbb683cca8b03a2ff06c0ca776167 100644
---- a/drivers/usb/storage/jumpshot.c
-+++ b/drivers/usb/storage/jumpshot.c
-@@ -367,16 +367,16 @@ static int jumpshot_handle_mode_sense(struct us_data *us,
- 				      struct scsi_cmnd * srb, 
- 				      int sense_6)
- {
--	static unsigned char rw_err_page[12] = {
-+	static const unsigned char rw_err_page[12] = {
- 		0x1, 0xA, 0x21, 1, 0, 0, 0, 0, 1, 0, 0, 0
- 	};
--	static unsigned char cache_page[12] = {
-+	static const unsigned char cache_page[12] = {
- 		0x8, 0xA, 0x1, 0, 0, 0, 0, 0, 0, 0, 0, 0
- 	};
--	static unsigned char rbac_page[12] = {
-+	static const unsigned char rbac_page[12] = {
- 		0x1B, 0xA, 0, 0x81, 0, 0, 0, 0, 0, 0, 0, 0
- 	};
--	static unsigned char timer_page[8] = {
-+	static const unsigned char timer_page[8] = {
- 		0x1C, 0x6, 0, 0, 0, 0
- 	};
- 	unsigned char pc, page_code;
-@@ -477,7 +477,7 @@ static int jumpshot_transport(struct scsi_cmnd *srb, struct us_data *us)
- 	int rc;
- 	unsigned long block, blocks;
- 	unsigned char *ptr = us->iobuf;
--	static unsigned char inquiry_response[8] = {
-+	static const unsigned char inquiry_response[8] = {
- 		0x00, 0x80, 0x00, 0x01, 0x1F, 0x00, 0x00, 0x00
- 	};
- 
+All register addresses/values are based on the OV9281 datasheet v1.01
+(09.18.2015).
 
+Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
-base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
-change-id: 20240401-misc-const-e7b4cf20d5f9
+Richard Leitner (3):
+      media: i2c: ov9282: use register definitions
+      media: i2c: ov9282: add AEC Manual register definition
+      media: i2c: ov9282: fix analogue gain maximum
+
+ drivers/media/i2c/ov9282.c | 40 ++++++++++++++++++++++++++--------------
+ 1 file changed, 26 insertions(+), 14 deletions(-)
+---
+base-commit: d082ecbc71e9e0bf49883ee4afd435a77a5101b6
+change-id: 20250225-b4-ov9282-gain-ef1cdaba5bfd
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Richard Leitner <richard.leitner@linux.dev>
 
