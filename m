@@ -1,59 +1,171 @@
-From: "ye.he" <ye.he@amlogic.com>
-Date: Tue, 25 Feb 2025 17:04:07 +0800
-Subject: [PATCH bluez] adapter: Prepend the new added device to the adapter
- devices list
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Tue, 25 Feb 2025 12:50:43 +0100
+Subject: [PATCH] dt-bindings: timer: Convert fsl,gtm to YAML
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250225-leaudio-no-media-v1-1-6da9454067d3@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAIaHvWcC/x3MQQqDMBBG4avIrB2IY5TiVcRFav62AzaRBEUq3
- t3Q5bd476SMpMg0VCcl7Jo1hoKmrmj+uPAGqy8mMdIZkY4XuM1r5BD5C6+O+9Zaac2jh7NUsjX
- hpcd/OdJz2fCj6bpu5WJMnGkAAAA=
-X-Change-ID: 20250225-leaudio-no-media-634423086ea4
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: "ye.he" <ye.he@amlogic.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250225-gtm-yaml-v1-1-de5da7299430@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAJOuvWcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDI0MD3fSSXN3KxNwc3SQTw0RLE3PTFIMkYyWg8oKi1LTMCrBR0bG1tQC
+ 3qRAMWgAAAA==
+X-Change-ID: 20250210-gtm-yaml-b41a9475d0b3
+To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
+ Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740474272; l=1144;
- i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
- bh=LiGBECn3b0Rk/VUHLXhxHMcVkP8VTGA2MyBmfyfM1r0=;
- b=ZlRx8DI8XcFeJtepjZzxZcknAdYqlWYb2doFr922Erxr6lH23dmsY/LWa+RjQtpeq8HmeU8Sh
- Fc5Dbs+9oUuDBiNZYB3PEXnQI2Xywt+qksll71d6CMmWqfE3JtqP+6V
-X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
- pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
-X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740484262; l=4248;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=IJ2Pa/73xPD+G6Z1wxNgj8rNjWlTYDU/+mVzEQ1et/Q=;
+ b=yeu7WB5KhuLu0yJuJmFG0VtBoDF5CMhRLBSJuFsg0b4GNU5rG2b0VN4XgOSIR/ccG4ZpMflSF
+ /erfPHQ/nGAC4ijVrHlaEthKqFxgmPA/NPBMpA0x6jWAXvZTuZe7pOV
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the DUT is paired with a mobile phone using RPA multiple times,
-multiple device contexts with the same bdaddr will be cached.
-When we query the device context through bdaddr, we always get the
-context at the head of adapter->devices, but its status is inactive.
+Convert fsl,gtm.txt to YAML so that device trees using a Freescale
+General-purpose Timers Module can be properly validated.
 
-https://github.com/bluez/bluez/issues/1095
-
-Signed-off-by: ye.he <ye.he@amlogic.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- src/adapter.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ .../devicetree/bindings/timer/fsl,gtm.txt          | 30 --------
+ .../devicetree/bindings/timer/fsl,gtm.yaml         | 83 ++++++++++++++++++++++
+ 2 files changed, 83 insertions(+), 30 deletions(-)
 
-diff --git a/src/adapter.c b/src/adapter.c
-index 2bb94cf1673e85710abf1e619fdeee9c9fa0f087..d675f0b1575a21bc345cbdb003411cf188fdd314 100644
---- a/src/adapter.c
-+++ b/src/adapter.c
-@@ -5243,7 +5243,7 @@ void device_resolved_drivers(struct btd_adapter *adapter,
- static void adapter_add_device(struct btd_adapter *adapter,
- 						struct btd_device *device)
- {
--	adapter->devices = g_slist_append(adapter->devices, device);
-+	adapter->devices = g_slist_prepend(adapter->devices, device);
- 	device_added_drivers(adapter, device);
- }
- 
+diff --git a/Documentation/devicetree/bindings/timer/fsl,gtm.txt b/Documentation/devicetree/bindings/timer/fsl,gtm.txt
+deleted file mode 100644
+index fc1c571f74123d2293bf5c3af3197000d46a07ee..0000000000000000000000000000000000000000
+--- a/Documentation/devicetree/bindings/timer/fsl,gtm.txt
++++ /dev/null
+@@ -1,30 +0,0 @@
+-* Freescale General-purpose Timers Module
+-
+-Required properties:
+-  - compatible : should be
+-    "fsl,<chip>-gtm", "fsl,gtm" for SOC GTMs
+-    "fsl,<chip>-qe-gtm", "fsl,qe-gtm", "fsl,gtm" for QE GTMs
+-    "fsl,<chip>-cpm2-gtm", "fsl,cpm2-gtm", "fsl,gtm" for CPM2 GTMs
+-  - reg : should contain gtm registers location and length (0x40).
+-  - interrupts : should contain four interrupts.
+-  - clock-frequency : specifies the frequency driving the timer.
+-
+-Example:
+-
+-timer@500 {
+-	compatible = "fsl,mpc8360-gtm", "fsl,gtm";
+-	reg = <0x500 0x40>;
+-	interrupts = <90 8 78 8 84 8 72 8>;
+-	interrupt-parent = <&ipic>;
+-	/* filled by u-boot */
+-	clock-frequency = <0>;
+-};
+-
+-timer@440 {
+-	compatible = "fsl,mpc8360-qe-gtm", "fsl,qe-gtm", "fsl,gtm";
+-	reg = <0x440 0x40>;
+-	interrupts = <12 13 14 15>;
+-	interrupt-parent = <&qeic>;
+-	/* filled by u-boot */
+-	clock-frequency = <0>;
+-};
+diff --git a/Documentation/devicetree/bindings/timer/fsl,gtm.yaml b/Documentation/devicetree/bindings/timer/fsl,gtm.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..1f35f1ee0be2a947ad241f4ba0be391e7e0d0882
+--- /dev/null
++++ b/Documentation/devicetree/bindings/timer/fsl,gtm.yaml
+@@ -0,0 +1,83 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/timer/fsl,gtm.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Freescale General-purpose Timers Module
++
++maintainers:
++  - J. Neuschäfer <j.ne@posteo.net>
++
++properties:
++  compatible:
++    oneOf:
++      # for SoC GTMs
++      - items:
++          - enum:
++              - fsl,mpc8308-gtm
++              - fsl,mpc8313-gtm
++              - fsl,mpc8315-gtm
++              - fsl,mpc8360-gtm
++          - const: fsl,gtm
++
++      # for QE GTMs
++      - items:
++          - enum:
++              - fsl,mpc8360-qe-gtm
++              - fsl,mpc8569-qe-gtm
++          - const: fsl,qe-gtm
++          - const: fsl,gtm
++
++      # for CPM2 GTMs (no known examples)
++      - items:
++          # - enum:
++          #     - fsl,<chip>-cpm2-gtm
++          - const: fsl,cpm2-gtm
++          - const: fsl,gtm
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    items:
++      - description: Interrupt for timer 1 (e.g. GTM1 or GTM5)
++      - description: Interrupt for timer 2 (e.g. GTM2 or GTM6)
++      - description: Interrupt for timer 3 (e.g. GTM3 or GTM7)
++      - description: Interrupt for timer 4 (e.g. GTM4 or GTM8)
++
++  clock-frequency: true
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - clock-frequency
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    timer@500 {
++        compatible = "fsl,mpc8360-gtm", "fsl,gtm";
++        reg = <0x500 0x40>;
++        interrupts = <90 IRQ_TYPE_LEVEL_LOW>,
++                     <78 IRQ_TYPE_LEVEL_LOW>,
++                     <84 IRQ_TYPE_LEVEL_LOW>,
++                     <72 IRQ_TYPE_LEVEL_LOW>;
++        /* filled by u-boot */
++        clock-frequency = <0>;
++    };
++
++  - |
++    timer@440 {
++        compatible = "fsl,mpc8360-qe-gtm", "fsl,qe-gtm", "fsl,gtm";
++        reg = <0x440 0x40>;
++        interrupts = <12>, <13>, <14>, <15>;
++        /* filled by u-boot */
++        clock-frequency = <0>;
++    };
++
++...
 
 ---
-base-commit: 0845b8f6ef2ac004b1c953cf4fe4ca3458cd8e36
-change-id: 20250225-leaudio-no-media-634423086ea4
+base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
+change-id: 20250210-gtm-yaml-b41a9475d0b3
 
 Best regards,
 -- 
-ye.he <ye.he@amlogic.com>
+J. Neuschäfer <j.ne@posteo.net>
 
