@@ -1,66 +1,62 @@
 From: Sven Peter <sven@svenpeter.dev>
-Subject: [PATCH v2 0/4] Miscellaneous Apple RTKit fixes
-Date: Wed, 26 Feb 2025 19:00:02 +0000
-Message-Id: <20250226-apple-soc-misc-v2-0-c3ec37f9021b@svenpeter.dev>
+Date: Wed, 26 Feb 2025 19:00:03 +0000
+Subject: [PATCH v2 1/4] soc: apple: rtkit: Add and use PWR_STATE_INIT
+ instead of _ON
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALJkv2cC/13MQQrCMBCF4auUWTuSjClUV95Dugjp1A5oGzIlK
- CV3NxbcuPwfvG8D5SSscGk2SJxFZZlr0KGBMPn5zihDbSBDrSEy6GN8MOoS8CkasG05WHK2c+M
- A9RQTj/LawVtfexJdl/Te/Wy/64+ifypbNGj9yY/u7Lzr/FUzz5FXTseBM/SllA9SysEtsAAAA
- A==
+Message-Id: <20250226-apple-soc-misc-v2-1-c3ec37f9021b@svenpeter.dev>
+References: <20250226-apple-soc-misc-v2-0-c3ec37f9021b@svenpeter.dev>
+In-Reply-To: <20250226-apple-soc-misc-v2-0-c3ec37f9021b@svenpeter.dev>
 To: Alyssa Rosenzweig <alyssa@rosenzweig.io>, Janne Grunau <j@jannau.net>, 
  Sven Peter <sven@svenpeter.dev>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Hector Martin <marcan@marcan.st>
+ linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1200; i=sven@svenpeter.dev;
- h=from:subject:message-id; bh=wRpTgVNyj3uFgb5wwu79FFUhOzFVyOzLcCfMgdRPLUM=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ/r+lF0rtmXPCKrcHZwkdkdrq9kvHjMe3mcezRsknjxdt
- ERMTVyqo5SFQYyDQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjARrQaG/zHO/8T+hOSnBcwU
- Yw9u38vbtfb/l+/zvW9eiuPY+cD2GhfDf3fjQ68NFCcdn3JxEtuRx7IqsixdG2dIrJ8xgfHQ1oV
- cAvwA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1269; i=sven@svenpeter.dev;
+ h=from:subject:message-id; bh=7cIMb5W1B1VA4bj9uxkLGyPS9AbrGxHzx345cZFtAjE=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ/r+lD1Bh8qjJmd9L3nt8Wfjzf+VE6cxljdMYp51V4h1z
+ vIHkkldHaUsDGIcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJ2P5kZLgmfEC234zvaQHL
+ m+Umc17u7+aRLZvYOX3X/zuc2WEseraMDC8UpRU3M5w+m8wbFMrmMJk5MVT9T/cVw9a5b4/G77j
+ qwgkA
 X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+From: Janne Grunau <j@jannau.net>
 
-This series contains four unrelated minor fixes to our RTKit driver.
-These are mainly required for drivers which aren't upstream yet but
-have been part of our downstream tree for quite a while now.
+This state is needed to wake the dcp IOP after m1n1 shut it down
+and works for all other co-processors as well.
 
-Best,
-
-Sven
-
+Signed-off-by: Janne Grunau <j@jannau.net>
+Signed-off-by: Sven Peter <sven@svenpeter.dev>
 ---
-Changes in v2:
-- Changed commit message for APPLE_RTKIT_PWR_STATE_INIT to make it clear
-  this is a behavioral change
-- Added a comment for the new oslog logic that the asymetric shifts are
-  indeed correct
-- Collected r-b tags
-- Link to v1: https://lore.kernel.org/r/20250222-apple-soc-misc-v1-0-1a3af494a48a@svenpeter.dev
+ drivers/soc/apple/rtkit.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
----
-Hector Martin (1):
-      soc: apple: rtkit: Implement OSLog buffers properly
+diff --git a/drivers/soc/apple/rtkit.c b/drivers/soc/apple/rtkit.c
+index 2f5f878bf899..be0d08861168 100644
+--- a/drivers/soc/apple/rtkit.c
++++ b/drivers/soc/apple/rtkit.c
+@@ -12,6 +12,7 @@ enum {
+ 	APPLE_RTKIT_PWR_STATE_IDLE = 0x201, /* sleeping, retain state */
+ 	APPLE_RTKIT_PWR_STATE_QUIESCED = 0x10, /* running but no communication */
+ 	APPLE_RTKIT_PWR_STATE_ON = 0x20, /* normal operating state */
++	APPLE_RTKIT_PWR_STATE_INIT = 0x220, /* init after starting the coproc */
+ };
+ 
+ enum {
+@@ -898,7 +899,7 @@ int apple_rtkit_wake(struct apple_rtkit *rtk)
+ 	 * Use open-coded apple_rtkit_set_iop_power_state since apple_rtkit_boot
+ 	 * will wait for the completion anyway.
+ 	 */
+-	msg = FIELD_PREP(APPLE_RTKIT_MGMT_PWR_STATE, APPLE_RTKIT_PWR_STATE_ON);
++	msg = FIELD_PREP(APPLE_RTKIT_MGMT_PWR_STATE, APPLE_RTKIT_PWR_STATE_INIT);
+ 	ret = apple_rtkit_management_send(rtk, APPLE_RTKIT_MGMT_SET_IOP_PWR_STATE,
+ 					  msg);
+ 	if (ret)
 
-Janne Grunau (3):
-      soc: apple: rtkit: Add and use PWR_STATE_INIT instead of _ON
-      soc: apple: rtkit: Use high prio work queue
-      soc: apple: rtkit: Cut syslog messages after the first '\0'
-
- drivers/soc/apple/rtkit-internal.h |  1 +
- drivers/soc/apple/rtkit.c          | 63 +++++++++++++++++++++++---------------
- 2 files changed, 39 insertions(+), 25 deletions(-)
----
-base-commit: 00834971f0d9e38beae37e92055b1432782827d0
-change-id: 20250220-apple-soc-misc-55ec124184fd
-
-Best regards,
 -- 
-Sven Peter <sven@svenpeter.dev>
+2.34.1
 
