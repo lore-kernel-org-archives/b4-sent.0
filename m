@@ -1,143 +1,67 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Tue, 25 Feb 2025 22:19:54 +0100
-Subject: [PATCH] arm64: dts: apple: Add touchbar digitizer nodes
+From: Ye He <ye.he@amlogic.com>
+Date: Wed, 26 Feb 2025 09:52:06 +0800
+Subject: [PATCH bluez v2] adapter: Prepend the new added device to the
+ adapter devices list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250225-z2-dts-v1-1-df101a7c17c8@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAPkzvmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDIyNT3Soj3ZSSYt3URBMjQ+OUVJNEIyMloOKCotS0zAqwQdGxtbUANAL
- YuFgAAAA=
-X-Change-ID: 20250225-z2-dts-ea4213de4a22
-To: Hector Martin <marcan@marcan.st>, Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>
+Message-Id: <20250226-leaudio-no-media-v2-1-8d4dd95513ed@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAMVzvmcC/3WNzQ6DIBCEX8XsudsgIP059T0aDxS2uomKgWraG
+ t69xHuP30zmmw0SRaYE12qDSCsnDlMBeajA9XbqCNkXBilkI6RscCC7eA44BRzJs0WjtJZKnA1
+ ZDWU2R3rye1fe4TEs9IW2xD2nV4if/Wit9/K/c62xRuPtRTdamJNXNzsOoWN3dGGENuf8Aw9xV
+ f65AAAA
+X-Change-ID: 20250225-leaudio-no-media-634423086ea4
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Ye He <ye.he@amlogic.com>, "ye.he" <ye.he@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740518398; l=3677;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=SeavfPLsBuaZJzKTxcJ2pMU97oNr50qsmltlLTUZBAI=;
- b=IUfKp0rV+n8SLeaZzuhEz2/BzCOvdP8DpjHRR8/QFLEjh1S/nritzhjqCFiwTm60uKcGoQUhS
- 9UVzH2t39tdApIBmwR7Ffe/bhkqbKOeo/4fAKbwTsfJ3q1LtGrjPK6y
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740534731; l=1417;
+ i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
+ bh=9JsiHCZlCs1D1DvtBuitQVccssm2fR/XGb53thZYVIg=;
+ b=9EUdayr3IkVnxQI/LXm+4Hux/gRp9UC29tJ2pTA41aAG3dD9ltIEwzuYAszzOA6Ildcxcgo6e
+ f0ew38HEoBoDm+VJ7sgfRcXgPLefzVtrIyQRGKLLgNXJ+qKTx5lhV1A
+X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
+ pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
+X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds device tree entries for the touchbar digitizer
+When the DUT is paired with a mobile phone using RPA multiple times,
+multiple device contexts with the same bdaddr will be cached.
+When we query the device context through bdaddr, we always get the
+context at the head of adapter->devices, but its status is inactive.
 
-Co-developed-by: Janne Grunau <j@jannau.net>
-Signed-off-by: Janne Grunau <j@jannau.net>
-Reviewed-by: Neal Gompa <neal@gompa.dev>
-Acked-by: Sven Peter <sven@svenpeter.dev>
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+https://github.com/bluez/bluez/issues/1095
+
+Signed-off-by: Ye He <ye.he@amlogic.com>
 ---
- arch/arm64/boot/dts/apple/t8103-j293.dts | 27 +++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j493.dts | 23 +++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi     |  2 +-
- 3 files changed, 51 insertions(+), 1 deletion(-)
+Signed-off-by: ye.he <ye.he@amlogic.com>
+---
+Changes in v2:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://patch.msgid.link/20250225-leaudio-no-media-v1-1-6da9454067d3@amlogic.com
+---
+ src/adapter.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/apple/t8103-j293.dts b/arch/arm64/boot/dts/apple/t8103-j293.dts
-index 56b0c67bfcda321b60c621de092643017693ff91..0a93d3891c23da8b8c77dce64001caacb69ee140 100644
---- a/arch/arm64/boot/dts/apple/t8103-j293.dts
-+++ b/arch/arm64/boot/dts/apple/t8103-j293.dts
-@@ -17,6 +17,14 @@ / {
- 	compatible = "apple,j293", "apple,t8103", "apple,arm-platform";
- 	model = "Apple MacBook Pro (13-inch, M1, 2020)";
+diff --git a/src/adapter.c b/src/adapter.c
+index 2bb94cf1673e85710abf1e619fdeee9c9fa0f087..d675f0b1575a21bc345cbdb003411cf188fdd314 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -5243,7 +5243,7 @@ void device_resolved_drivers(struct btd_adapter *adapter,
+ static void adapter_add_device(struct btd_adapter *adapter,
+ 						struct btd_device *device)
+ {
+-	adapter->devices = g_slist_append(adapter->devices, device);
++	adapter->devices = g_slist_prepend(adapter->devices, device);
+ 	device_added_drivers(adapter, device);
+ }
  
-+	/*
-+	 * All of those are used by the bootloader to pass calibration
-+	 * blobs and other device-specific properties
-+	 */
-+	aliases {
-+		touchbar0 = &touchbar0;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -49,3 +57,22 @@ &i2c4 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&spi0 {
-+	cs-gpios = <&pinctrl_ap 109 GPIO_ACTIVE_LOW>;
-+	status = "okay";
-+
-+	touchbar0: touchbar@0 {
-+		compatible = "apple,j293-touchbar";
-+		reg = <0>;
-+		spi-max-frequency = <11500000>;
-+		spi-cs-setup-delay-ns = <2000>;
-+		spi-cs-hold-delay-ns = <2000>;
-+		reset-gpios = <&pinctrl_ap 139 GPIO_ACTIVE_LOW>;
-+		interrupts-extended = <&pinctrl_ap 194 IRQ_TYPE_EDGE_FALLING>;
-+		firmware-name = "apple/dfrmtfw-j293.bin";
-+		touchscreen-size-x = <23045>;
-+		touchscreen-size-y = <640>;
-+		touchscreen-inverted-y;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
-index 0ad908349f55406783942735a2e9dad54cda00ec..045bd0716cb7d20c1379ebc1e3ff7f4d0dddc179 100644
---- a/arch/arm64/boot/dts/apple/t8112-j493.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
-@@ -17,8 +17,13 @@ / {
- 	compatible = "apple,j493", "apple,t8112", "apple,arm-platform";
- 	model = "Apple MacBook Pro (13-inch, M2, 2022)";
- 
-+	/*
-+	 * All of those are used by the bootloader to pass calibration
-+	 * blobs and other device-specific properties
-+	 */
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		touchbar0 = &touchbar0;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -67,3 +72,21 @@ &i2c4 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&spi3 {
-+	status = "okay";
-+
-+	touchbar0: touchbar@0 {
-+		compatible = "apple,j493-touchbar";
-+		reg = <0>;
-+		spi-max-frequency = <8000000>;
-+		spi-cs-setup-delay-ns = <2000>;
-+		spi-cs-hold-delay-ns = <2000>;
-+		reset-gpios = <&pinctrl_ap 170 GPIO_ACTIVE_LOW>;
-+		interrupts-extended = <&pinctrl_ap 174 IRQ_TYPE_EDGE_FALLING>;
-+		firmware-name = "apple/dfrmtfw-j493.bin";
-+		touchscreen-size-x = <23045>;
-+		touchscreen-size-y = <640>;
-+		touchscreen-inverted-y;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index 58d88f1ef92a32061765bd3b569fdae0255dcd7e..271986a7697f7033e96d11fb4ea6a50a467f0f2f 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -499,7 +499,7 @@ spi3: spi@23510c000 {
- 			power-domains = <&ps_spi3>;
- 			#address-cells = <1>;
- 			#size-cells = <0>;
--			status = "disabled";
-+			status = "disabled"; /* only used in J493 */
- 		};
- 
- 		serial0: serial@235200000 {
 
 ---
-base-commit: 3febe9de5ca5267618675650871a626d0901f8cb
-change-id: 20250225-z2-dts-ea4213de4a22
+base-commit: 0845b8f6ef2ac004b1c953cf4fe4ca3458cd8e36
+change-id: 20250225-leaudio-no-media-634423086ea4
+
+Best regards,
+-- 
+Ye He <ye.he@amlogic.com>
 
