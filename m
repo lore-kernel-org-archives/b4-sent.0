@@ -1,11 +1,11 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Wed, 26 Feb 2025 15:19:14 +0100
-Subject: [PATCH v2 03/12] dt-bindings: connector: Add the GOcontroll
- Moduline module slot bindings
+Date: Wed, 26 Feb 2025 15:19:15 +0100
+Subject: [PATCH v2 04/12] arm64: dts: imx8mp: Add pinctrl config
+ definitions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250226-initial_display-v2-3-23fafa130817@gocontroll.com>
+Message-Id: <20250226-initial_display-v2-4-23fafa130817@gocontroll.com>
 References: <20250226-initial_display-v2-0-23fafa130817@gocontroll.com>
 In-Reply-To: <20250226-initial_display-v2-0-23fafa130817@gocontroll.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -25,152 +25,71 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-spi@vger.kernel.org, 
  Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740579556; l=5048;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740579556; l=1835;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=pJTRryEUH61y/AD454hzp/uuXsK9vkVHu0FC9+9tIo4=;
- b=5Vy65hAOZ6+zDffYGJ4I89iOR6gkn9v6VIpxtfvaD3g4iEr4vK6fOm3hDLEHBc73H+EZYNOzC
- B4UQQjssmy/DnyeOH0kqf0Lwj/p2P6Svkw30uRwwBAvZPQG4emMmWoa
+ bh=lDaJ9PpD3LTiVueZZ5aFZexkMQcpo4jEuPMfz3jSIN8=;
+ b=O0vJiBfO9wnWdxZzbjsNPzJfiq/cawRLlZdr0PevfBIIVUWb10oC5W6SbqkOP+lg1C+tnTKrf
+ g3NPe82lQ0aA8F2OhoShu6cXbA/VsFy4ObhSR9jMr91wblOTZ60jZn7
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the bindings that describe a GOcontroll Moduline module slot. This
-slot provides all the interfaces to interface with a Moduline compatible
-IO module. The actual module is not reasonable to describe as it can be
-swapped at will, with this connector the driver will be able to probe
-for a module on boot.
+Currently to configure each IOMUXC_SW_PAD_CTL_PAD the raw value of this
+register is written in the dts, these values are not obvious. Add defines
+which describe the fields of this register which can be or-ed together to
+produce readable settings.
 
-The connector consists of 2 parts, one part for interfacing with the SoC
-and main board, the other part has 13 IO channels for the module to
-interact with the outside world. The functions of these IO channels are
-determined by the type of module in the slot. The IO on the SoC side is
-as follows:
-
- - a 3v3 supply, this tends to be the logic level of the module and its
-   microcontroller
- - a 5v0 supply, this can be used to power low power peripherals on the
-   module
- - a 6v-8v supply, this can be used for high power peripherals on the
-   module
- - a 6v-30v supply, this tends to be a dirty supply that comes from the
-   controller supply after some circuit protection, or is the same as
-   the 6v-8v supply.
- - an SPI bus which carries the communication between the SoC and the
-   microcontroller on the module.
- - an I2C bus shared between the SoC and all module slots which can
-   carry direct module-to-module communication.
- - a reset line
- - an interrupt line that indicates a clear to transmit signal
- - a sync line shared between the SoC and all module slots which could
-   be used to synchronize modules for time sensitive IO spread across
-   modules.
- - a SMBus alert line that is shared between the modules but is not
-   connected to the SoC so that is ignored.
-
-A slot-number property is used to identify the physical location of a
-module slot. Without it, it would be impossible to identify which module
-to control if there are multiple of one type, to address the desired IO.
-
+Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- .../connector/gocontroll,moduline-module-slot.yaml | 88 ++++++++++++++++++++++
- 1 file changed, 88 insertions(+)
+This patch has already been sent in a different group of patches: [1]
+It was requested there to submit it along with a user, this series also
+includes some users for it.
 
-diff --git a/Documentation/devicetree/bindings/connector/gocontroll,moduline-module-slot.yaml b/Documentation/devicetree/bindings/connector/gocontroll,moduline-module-slot.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..a16ae2762d160180d5b163e20f5294235e65053b
---- /dev/null
-+++ b/Documentation/devicetree/bindings/connector/gocontroll,moduline-module-slot.yaml
-@@ -0,0 +1,88 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/connector/gocontroll,moduline-module-slot.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+[1]: https://lore.kernel.org/all/20250218-pinctrl_defines-v2-2-c554cad0e1d2@gocontroll.com/
+---
+ arch/arm64/boot/dts/freescale/imx8mp-pinfunc.h | 27 ++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/freescale/imx8mp-pinfunc.h b/arch/arm64/boot/dts/freescale/imx8mp-pinfunc.h
+index 0fef066471ba607be02d0ab15da5a048a8a213a7..0927ed11ec687d5b273c4a4a6455e8d81468f676 100644
+--- a/arch/arm64/boot/dts/freescale/imx8mp-pinfunc.h
++++ b/arch/arm64/boot/dts/freescale/imx8mp-pinfunc.h
+@@ -6,6 +6,33 @@
+ #ifndef __DTS_IMX8MP_PINFUNC_H
+ #define __DTS_IMX8MP_PINFUNC_H
+ 
++//Drive Strength
++#define MX8MP_DSE_X1 0x0
++#define MX8MP_DSE_X2 0x4
++#define MX8MP_DSE_X4 0x2
++#define MX8MP_DSE_X6 0x6
 +
-+title: GOcontroll Moduline Module slot
++//Slew Rate
++#define MX8MP_FSEL_FAST 0x10
++#define MX8MP_FSEL_SLOW 0x0
 +
-+maintainers:
-+  - Maud Spierings <maudspierings@gocontroll.com>
++//Open Drain
++#define MX8MP_ODE_ENABLE 0x20
++#define MX8MP_ODE_DISABLE 0x0
 +
-+description:
-+  The GOcontroll Moduline module slot represents a connector that fullfills the
-+  Moduline slot specification, and can thus house any IO module that is also
-+  built to this spec.
++#define MX8MP_PULL_DOWN 0x0
++#define MX8MP_PULL_UP 0x40
 +
-+properties:
-+  compatible:
-+    const: gocontroll,moduline-module-slot
++//Hysteresis
++#define MX8MP_HYS_CMOS 0x0
++#define MX8MP_HYS_SCHMITT 0x80
 +
-+  reg:
-+    maxItems: 1
++#define MX8MP_PULL_ENABLE 0x100
++#define MX8MP_PULL_DISABLE 0x0
 +
-+  interrupts:
-+    description: indicates readiness, high means busy.
-+    maxItems: 1
-+  reset-gpios:
-+    description: resets the module, active low.
-+    maxItems: 1
-+  sync-gpios:
-+    description: sync line between all module slots.
-+    maxItems: 1
++//SION force input mode
++#define MX8MP_SION 0x40000000
 +
-+  vdd-supply:
-+    description: low power 3v3 supply generally for the microcontroller.
-+  vddp-supply:
-+    description: medium power 5v0 supply for on module low power peripherals.
-+  vddhpp-supply:
-+    description: high power 6v-8v supply for on module high power peripherals.
-+  power-supply:
-+    description: high power 6v-30v supply for high power module circuits.
-+
-+  i2c-bus:
-+    description: i2c bus shared between module slots and the SoC
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+
-+  slot-number:
-+    description:
-+      The number of the module slot representing the location of on the pcb.
-+      This enables access to the modules based on slot location.
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+
-+  spi-max-frequency: true
-+
-+required:
-+  - compatible
-+  - reg
-+  - reset-gpios
-+  - interrupts
-+  - sync-gpios
-+  - i2c-bus
-+  - slot-number
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+
-+    spi {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+
-+        connector@0 {
-+            reg = <0>;
-+            compatible = "gocontroll,moduline-module-slot";
-+            reset-gpios = <&gpio5 10 GPIO_ACTIVE_LOW>;
-+            sync-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
-+            interrupt-parent = <&gpio4>;
-+            interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
-+            vdd-supply = <&reg_3v3_per>;
-+            vddp-supply = <&reg_5v0>;
-+            vddhpp-supply = <&reg_6v4>;
-+            i2c-bus = <&i2c2>;
-+            slot-number = <1>;
-+        };
-+    };
+ /*
+  * The pin function ID is a tuple of
+  * <mux_reg conf_reg input_reg mux_mode input_val>
 
 -- 
 2.48.1
