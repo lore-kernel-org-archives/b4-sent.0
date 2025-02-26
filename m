@@ -1,11 +1,11 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Wed, 26 Feb 2025 15:19:22 +0100
-Subject: [PATCH v2 11/12] arm64: dts: freescale: Add the BOE av123z7m-n17
- variant of the Moduline Display
+Date: Wed, 26 Feb 2025 15:19:23 +0100
+Subject: [PATCH v2 12/12] spi: spidev: Add an entry for the gocontroll
+ moduline module slot
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250226-initial_display-v2-11-23fafa130817@gocontroll.com>
+Message-Id: <20250226-initial_display-v2-12-23fafa130817@gocontroll.com>
 References: <20250226-initial_display-v2-0-23fafa130817@gocontroll.com>
 In-Reply-To: <20250226-initial_display-v2-0-23fafa130817@gocontroll.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -25,167 +25,48 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-spi@vger.kernel.org, 
  Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740579556; l=3566;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740579556; l=1586;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=oTP9B5+eckemcAq7BoHH8WLYSzQY53IU8NlYcoi8TI4=;
- b=gtKh5ZnGCMRzyf8rS5Cyu6XQpZBunDrsBYyz/LTIEp8TzUQcvNWw07RlZWPuoSDk29EIxwmAg
- zsqb0P/UmzrB9oB+hZ0cMK6CRUcRPD7sYQqAqHr1Vwu1+gs9t0J1vQf
+ bh=Tycawk+/5vgO1pNpkUXDG2S/Gx+HvpTkRpC88dFEYj4=;
+ b=6lU9pAT+NW5qS57Ca9Rq3dfeMU83IRh/BZe/VuSTJYVbPvx7jK0+WtZGOd/B0b9I4sWLR6PIy
+ tXF7iNFpYdOBRuzUcoSSXasaqTMdzZV4nzvxZDYI0xNl1lpeuuKb90+
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the BOE av123z7m-n17 variant of the Moduline Display, this variant
-comes with a 12.3" 1920x720 display.
+The main point of the Moduline series of embedded controllers is its
+ecosystem of IO modules, these are currently operated through the spidev
+interface. Ideally there will be a full dedicated driver in the future.
+
+Add the gocontroll moduline-module-slot device to enable the required
+spidev interface.
 
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
-
 ---
-Currently the backlight driver is not available, this will be upstreamed
-in a future patch series. It is a Maxim max25014atg.
----
- ...tx8p-ml81-moduline-display-106-av123z7m-n17.dts | 133 +++++++++++++++++++++
- 1 file changed, 133 insertions(+)
+ drivers/spi/spidev.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dts b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..129c69598f38566460efb271628c1d1e10eb2a85
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dts
-@@ -0,0 +1,133 @@
-+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
-+/*
-+ * Copyright 2025 GOcontroll B.V.
-+ * Author: Maud Spierings <maudspierings@gocontroll.com>
-+ */
-+
-+/dts-v1/;
-+
-+#include "imx8mp-tx8p-ml81-moduline-display-106.dtsi"
-+
-+/ {
-+	model = "GOcontroll Moduline Display with BOE av123z7m-n17 display";
-+
-+	panel {
-+		compatible = "boe,av123z7m-n17";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pinctrl_panel>;
-+		enable-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
-+		reset-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
-+		power-supply = <&reg_3v3_per>;
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+				dual-lvds-odd-pixels;
-+
-+				panel_in0: endpoint {
-+					remote-endpoint = <&lvds1_out>;
-+				};
-+			};
-+
-+			port@1 {
-+				reg = <1>;
-+				dual-lvds-even-pixels;
-+
-+				panel_in1: endpoint {
-+					remote-endpoint = <&lvds0_out>;
-+				};
-+			};
-+		};
-+	};
-+};
-+
-+&i2c4 {
-+	bridge@2d { /* sn65dsi85 */
-+		compatible = "ti,sn65dsi84";
-+		reg = <0x2d>;
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pinctrl_lvds_bridge>;
-+		enable-gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>;
-+		vcc-supply = <&reg_1v8_per>;
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+
-+				dsi_lvds_bridge_in: endpoint {
-+					remote-endpoint = <&mipi_dsi_out>;
-+					data-lanes = <1 2 3 4>;
-+				};
-+			};
-+
-+			port@2 {
-+				reg = <2>;
-+
-+				lvds0_out: endpoint {
-+					remote-endpoint = <&panel_in1>;
-+				};
-+			};
-+
-+			port@3 {
-+				reg = <3>;
-+
-+				lvds1_out: endpoint {
-+					remote-endpoint = <&panel_in0>;
-+				};
-+			};
-+		};
-+	};
-+
-+	/* max25014 @ 0x6f */
-+};
-+
-+&lcdif1 {
-+	status = "okay";
-+};
-+
-+&mipi_dsi {
-+	samsung,esc-clock-frequency = <12000000>;
-+	/*
-+	 * burst has to be at least 2x dsi clock that the sn65dsi85 expects
-+	 * display pixelclock * bpp / lanes / 2 = dsi clock
-+	 * 88.000.000 * 24 / 4 / 2 = 264.000.000
-+	 * range gets rounded up to 265.000.000 - 270.000.000
-+	 * 267.500.000 * 2 = 535.000.000
-+	 */
-+	samsung,burst-clock-frequency = <535000000>;
-+	status = "okay";
-+
-+	ports {
-+		port@1 {
-+			mipi_dsi_out: endpoint {
-+				remote-endpoint = < &dsi_lvds_bridge_in>;
-+				data-lanes = <1 2 3 4>;
-+			};
-+		};
-+	};
-+};
-+
-+&iomuxc {
-+	pinctrl_lvds_bridge: lvdsbridgegrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_SAI1_TXD2__GPIO4_IO14 /* COM pin 113 */
-+			MX8MP_DSE_X1
-+		>;
-+	};
-+
-+	pinctrl_panel: panelgrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_GPIO1_IO07__GPIO1_IO07 /* COM pin 157 */
-+			MX8MP_DSE_X1
-+			MX8MP_IOMUXC_GPIO1_IO09__GPIO1_IO09 /* COM pin 159 */
-+			MX8MP_DSE_X1
-+		>;
-+	};
-+};
+diff --git a/drivers/spi/spidev.c b/drivers/spi/spidev.c
+index 58ae4304fdab155748e66117f7ceb050da95afed..6108959c28d9c7505be63583e8206519275663ba 100644
+--- a/drivers/spi/spidev.c
++++ b/drivers/spi/spidev.c
+@@ -706,6 +706,7 @@ static const struct spi_device_id spidev_spi_ids[] = {
+ 	{ .name = /* cisco */ "spi-petra" },
+ 	{ .name = /* dh */ "dhcom-board" },
+ 	{ .name = /* elgin */ "jg10309-01" },
++	{ .name = /* gocontroll */ "moduline-module-slot"},
+ 	{ .name = /* lineartechnology */ "ltc2488" },
+ 	{ .name = /* lwn */ "bk4" },
+ 	{ .name = /* lwn */ "bk4-spi" },
+@@ -737,6 +738,7 @@ static const struct of_device_id spidev_dt_ids[] = {
+ 	{ .compatible = "cisco,spi-petra", .data = &spidev_of_check },
+ 	{ .compatible = "dh,dhcom-board", .data = &spidev_of_check },
+ 	{ .compatible = "elgin,jg10309-01", .data = &spidev_of_check },
++	{ .compatible = "gocontroll,moduline-module-slot", .data = &spidev_of_check},
+ 	{ .compatible = "lineartechnology,ltc2488", .data = &spidev_of_check },
+ 	{ .compatible = "lwn,bk4", .data = &spidev_of_check },
+ 	{ .compatible = "lwn,bk4-spi", .data = &spidev_of_check },
 
 -- 
 2.48.1
