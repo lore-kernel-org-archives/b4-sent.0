@@ -1,10 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 26 Feb 2025 13:47:54 +0800
-Subject: [PATCH v2 3/4] arm64: dts: Add gpio_intc node for Amlogic A4 SoCs
+Date: Wed, 26 Feb 2025 13:47:55 +0800
+Subject: [PATCH v2 4/4] arm64: dts: Add gpio_intc node for Amlogic A5 SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250226-irqchip-gpio-a4-a5-v2-3-c55b1050cb55@amlogic.com>
+Message-Id: <20250226-irqchip-gpio-a4-a5-v2-4-c55b1050cb55@amlogic.com>
 References: <20250226-irqchip-gpio-a4-a5-v2-0-c55b1050cb55@amlogic.com>
 In-Reply-To: <20250226-irqchip-gpio-a4-a5-v2-0-c55b1050cb55@amlogic.com>
 To: Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
@@ -18,11 +18,11 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740548891; l=1112;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740548891; l=835;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=Z5iS0U/t0eDJi8p3yWZRKRxB4HUB3kbspYJzuBGUEvY=;
- b=qWhlHeVp5HdIvXGNlrBtimBUO1/Uvp5eGfppGUfVjw3u3jRfq8lbOlIDWbAy8eANT2OgbqiSX
- M/3/ruD6MI+BllMEliN7maoIfv4Vw7kbPjb2Y2BNAftCp0u4cbRQzIw
+ bh=+kt3Jevc/8KR/ZsMbFbD2TjHFreHkm3hzIePStnSOmI=;
+ b=CoIEsGrZqQ1GBrZW8B3uLxYQoeppsFhcT7o/OqKQYww9AXiV6b4ZonIPv9CAm/SVJ50+Iz/bz
+ Oj5RIrnPZHAD/xns8ykTDCLR69YpIlbruAD6Mr8x0/PwxQYr0eqvAdH
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
@@ -32,36 +32,27 @@ Add GPIO interrupt controller device.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-index de10e7aebf21..a06838552f21 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-@@ -48,3 +48,24 @@ pwrc: power-controller {
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
+index 17a6316de891..32ed1776891b 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
+@@ -48,3 +48,15 @@ pwrc: power-controller {
  		};
  	};
  };
 +
 +&apb {
 +	gpio_intc: interrupt-controller@4080 {
-+		compatible = "amlogic,a4-gpio-intc",
++		compatible = "amlogic,a5-gpio-intc",
 +			     "amlogic,meson-gpio-intc";
 +		reg = <0x0 0x4080 0x0 0x20>;
 +		interrupt-controller;
 +		#interrupt-cells = <2>;
 +		amlogic,channel-interrupts =
 +			<10 11 12 13 14 15 16 17 18 19 20 21>;
-+	};
-+
-+	gpio_ao_intc: interrupt-controller@8e72c {
-+		compatible = "amlogic,a4-gpio-ao-intc",
-+			     "amlogic,meson-gpio-intc";
-+		reg = <0x0 0x8e72c 0x0 0x0c>;
-+		interrupt-controller;
-+		#interrupt-cells = <2>;
-+		amlogic,channel-interrupts = <140 141>;
 +	};
 +};
 
