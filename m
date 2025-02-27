@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Thu, 27 Feb 2025 19:10:44 +0530
-Subject: [PATCH 02/23] arm64: dts: qcom: sm8150: Add 'global' PCIe
+Date: Thu, 27 Feb 2025 19:10:45 +0530
+Subject: [PATCH 03/23] dt-bindings: PCI: qcom,pcie-sm8250: Add 'global'
  interrupt
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250227-pcie-global-irq-v1-2-2b70a7819d1e@linaro.org>
+Message-Id: <20250227-pcie-global-irq-v1-3-2b70a7819d1e@linaro.org>
 References: <20250227-pcie-global-irq-v1-0-2b70a7819d1e@linaro.org>
 In-Reply-To: <20250227-pcie-global-irq-v1-0-2b70a7819d1e@linaro.org>
 To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -18,16 +18,16 @@ Cc: linux-arm-msm@vger.kernel.org, linux-pci@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1863;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1751;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=7uBSWDIfhUklxBW1/XSMAhommU1p8JsVSjILqCd/ExU=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnwGtdTKh3IumSGsH/ZQBSf8ArkqVzaa8sxmgMA
- tkxvF+UjR2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ8BrXQAKCRBVnxHm/pHO
- 9bf6B/40nLuZPC7rv5pnblGdPLwglgDs7NYup2NcBgVxhUfexaE6uCuDjITjsqoXCjC50C3c/4e
- OK9Iy5Z85TsWdG7oFuccS4KMCKCotrXzT9xqkpqHFopQY+gSMsr5WFFJCuVxgw9jPGHfI++Jp3I
- 7uRtFz1A5ANR4sqIe11uGoyKgI/D/7UdDyylIjhdtzC/UdzsjPJPgmvVAJqBYA6e36VpxseNKkc
- o/wIc6CmR4qXFCGBhgOsdCtD5w2Nsr2ogXlso/YQYFOmuNuTGCZMNZsTV4dvLPB99DIhT+CZ/65
- fDDa/8T66eW0fKyMKx0b2GnpxBM36DyF6I/CY18VyBanXtcc
+ bh=EsGx8DzxLm57OyGTXGe0TOfMlOA4Ni7Q8YePcJ+flH4=;
+ b=owGbwMvMwMUYOl/w2b+J574ynlZLYkg/kB075a1Qqc/Sfawc3KnePy2rU+al7n//1Ld8puXn7
+ l2ccTInOxmNWRgYuRhkxRRZ0pc6azV6nL6xJEJ9OswgViaQKQxcnAIwkY+l7P+0jMsrQ1av3J3t
+ X/hrbmrP0hc/p4fveDW5bmFNecTelHd3dvcmZMY4KBXsPjTpgroVW/9Ge6uTkQr12iuqm3et3fN
+ Y+PRlX+FKsdJA5Y9T2KwNmy0fXLBJy0oMrp7WGXdgjaOYxOdbGVxnbGz3yq7+zFzqp6ckyHtKdc
+ Fy+62FGaz8pZkVprp7D9RWmyQc52XbVZzjWSCtNc1m1raXQv6rDUKWF1zc8K8tNuGSSNJxGTNWw
+ +MeRUkp23y2bzqyd8IK5jw2tyjBa7Fz3u52di8wjjcKF3ylFHZplfVGvfc7mfoSq3bWh+cf67dw
+ yXKeqXa+xbJNLaPCbPlM9fwGh382YvV2P5321Zbllv0CAA==
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
@@ -38,53 +38,46 @@ events.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- arch/arm64/boot/dts/qcom/sm8150.dtsi | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+ Documentation/devicetree/bindings/pci/qcom,pcie-sm8250.yaml | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-index 4dbda54b47a5..12f1d40b1db8 100644
---- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-@@ -1852,7 +1852,8 @@ pcie0: pcie@1c00000 {
- 				     <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 146 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>,
--				     <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
-+				     <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
- 			interrupt-names = "msi0",
- 					  "msi1",
- 					  "msi2",
-@@ -1860,7 +1861,8 @@ pcie0: pcie@1c00000 {
- 					  "msi4",
- 					  "msi5",
- 					  "msi6",
--					  "msi7";
-+					  "msi7",
-+					  "global";
- 			#interrupt-cells = <1>;
- 			interrupt-map-mask = <0 0 0 0x7>;
- 			interrupt-map = <0 0 0 1 &intc 0 149 IRQ_TYPE_LEVEL_HIGH>, /* int_a */
-@@ -1969,7 +1971,8 @@ pcie1: pcie@1c08000 {
- 				     <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 314 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 374 IRQ_TYPE_LEVEL_HIGH>,
--				     <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH>;
-+				     <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 306 IRQ_TYPE_LEVEL_HIGH>;
- 			interrupt-names = "msi0",
- 					  "msi1",
- 					  "msi2",
-@@ -1977,7 +1980,8 @@ pcie1: pcie@1c08000 {
- 					  "msi4",
- 					  "msi5",
- 					  "msi6",
--					  "msi7";
-+					  "msi7",
-+					  "global";
- 			#interrupt-cells = <1>;
- 			interrupt-map-mask = <0 0 0 0x7>;
- 			interrupt-map = <0 0 0 1 &intc 0 434 IRQ_TYPE_LEVEL_HIGH>, /* int_a */
+diff --git a/Documentation/devicetree/bindings/pci/qcom,pcie-sm8250.yaml b/Documentation/devicetree/bindings/pci/qcom,pcie-sm8250.yaml
+index 4d060bce6f9d..af4dae68d508 100644
+--- a/Documentation/devicetree/bindings/pci/qcom,pcie-sm8250.yaml
++++ b/Documentation/devicetree/bindings/pci/qcom,pcie-sm8250.yaml
+@@ -61,9 +61,10 @@ properties:
+ 
+   interrupts:
+     minItems: 8
+-    maxItems: 8
++    maxItems: 9
+ 
+   interrupt-names:
++    minItems: 8
+     items:
+       - const: msi0
+       - const: msi1
+@@ -73,6 +74,7 @@ properties:
+       - const: msi5
+       - const: msi6
+       - const: msi7
++      - const: global
+ 
+   resets:
+     maxItems: 1
+@@ -143,9 +145,10 @@ examples:
+                          <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>,
+                          <GIC_SPI 146 IRQ_TYPE_LEVEL_HIGH>,
+                          <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>,
+-                         <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
++                         <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>,
++                         <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
+             interrupt-names = "msi0", "msi1", "msi2", "msi3",
+-                              "msi4", "msi5", "msi6", "msi7";
++                              "msi4", "msi5", "msi6", "msi7", "global";
+             #interrupt-cells = <1>;
+             interrupt-map-mask = <0 0 0 0x7>;
+             interrupt-map = <0 0 0 1 &intc 0 149 IRQ_TYPE_LEVEL_HIGH>, /* int_a */
 
 -- 
 2.25.1
