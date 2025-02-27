@@ -1,101 +1,91 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Thu, 27 Feb 2025 17:56:04 +0100
-Subject: [PATCH 2/2] iommu: apple-dart: Allow mismatched bypass support
+From: Thomas Prescher <thomas.prescher@cyberus-technology.de>
+Subject: [PATCH v2 0/3] Add a command line option that enables control of
+ how many threads should be used to allocate huge pages.
+Date: Thu, 27 Feb 2025 23:45:04 +0100
+Message-Id: <20250227-hugepage-parameter-v2-0-7db8c6dc0453@cyberus-technology.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250227-isp-dart-v1-2-161e91ef4f46@gmail.com>
-References: <20250227-isp-dart-v1-0-161e91ef4f46@gmail.com>
-In-Reply-To: <20250227-isp-dart-v1-0-161e91ef4f46@gmail.com>
-To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, Hector Martin <marcan@marcan.st>
+X-B4-Tracking: v=1; b=H4sIAPDqwGcC/32NQQqDMBREr1L+uikxKNqueo/i4jdOTKA18qNSE
+ e/e1AMUZvMG5s1GCRKQ6HbaSLCEFOKQwZxPZD0PPVToMpPRptLGFMrPPUbO/cjCb0wQhaYqjeu
+ c1QzKw1HgwueQPtrMPqQpynp8LMWv/atbCqWV4/LKdW2bnLtdn5A5qQnWD/EV+/XSgdp937/Dc
+ nztwAAAAA==
+X-Change-ID: 20250221-hugepage-parameter-e8542fdfc0ae
+To: Jonathan Corbet <corbet@lwn.net>, Muchun Song <muchun.song@linux.dev>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-mm@kvack.org, Thomas Prescher <thomas.prescher@cyberus-technology.de>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740675366; l=2179;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=oluYR6lIJ3W34r9MjQqDF6TqqSgqgYrQRwERY4BEI9Q=;
- b=eSN3v9XIi1argWNG7Tks59zvBzP73SHZjZmG7g7vHKGjGjGTcH8kxslRl9ra2VlQRsSOi+cNx
- TvD1Mx+i6jVD/mlzanTcUEi2j/UABzguTp0j3oJDjvGU15w3aEgz8t6
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740696310; l=2765;
+ i=thomas.prescher@cyberus-technology.de; s=20250221;
+ h=from:subject:message-id; bh=vyI324UstKdb+sPeA7ZVxzdeYYc4q0ETxwlx7afOJj0=;
+ b=2E9xalrcukB26zkYXKEmd8MK9+5Hm2Nw6sahJY/gUgW5omPB2dru8Oglq0//8NXb4plBesUQX
+ Ph+Ustmqi3KACr2cGPCLtUBNkcDy/KHnj7Nr7nZ54anKrENwDPbHKsa
+X-Developer-Key: i=thomas.prescher@cyberus-technology.de; a=ed25519;
+ pk=T5MVdLVCc/0UUyv5IcSqGVvGcVkgWW/KtuEo2RRJwM8=
+X-Endpoint-Received: by B4 Relay for thomas.prescher@cyberus-technology.de/20250221 with auth_id=345
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+Allocating huge pages can take a very long time on servers
+with terabytes of memory even when they are allocated at
+boot time where the allocation happens in parallel.
 
-This is needed by ISP, which has DART0 with bypass and DART1/2 without.
+Before this series, the kernel used a hard coded value of 2 threads per
+NUMA node for these allocations. This value might have been good
+enough in the past but it is not sufficient to fully utilize
+newer systems.
 
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+This series changes the default so the kernel uses 25% of the available
+hardware threads for these allocations. In addition, we allow the user
+that wish to micro-optimize the allocation time to override this value
+via a new kernel parameter.
+
+We tested this on 2 generations of Xeon CPUs and the results
+show a big improvement of the overall allocation time.
+
++-----------------------+-------+-------+-------+-------+-------+
+| threads               |   8   |   16  |   32  |   64  |   128 |
++-----------------------+-------+-------+-------+-------+-------+
+| skylake      144 cpus |   44s |   22s |   16s |   19s |   20s |
+| cascade lake 192 cpus |   39s |   20s |   11s |   10s |    9s |
++-----------------------+-------+-------+-------+-------+-------+
+
+On skylake, we see an improvment of 2.75x when using 32 threads,
+on cascade lake we can get even better at 4.3x when we use
+128 threads.
+
+This speedup is quite significant and users of large machines
+like these should have the option to make the machines boot
+as fast as possible.
+
+Signed-off-by: Thomas Prescher <thomas.prescher@cyberus-technology.de>
 ---
- drivers/iommu/apple-dart.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+Changes in v2:
+- the default thread value has been changed from 2 threads per node to
+  25% of the available hardware threads
+- the hugepage_alloc_threads parameter now specifies the total number of
+  threads being used instead of threads per node
+- the kernel now logs the time needed to allocate the huge pages and the
+  number of threads being used
+- update the documentation so that users are aware that this does not
+  apply to non-gigantic huge pages
+- Link to v1: https://lore.kernel.org/r/20250221-hugepage-parameter-v1-0-fa49a77c87c8@cyberus-technology.de
 
-diff --git a/drivers/iommu/apple-dart.c b/drivers/iommu/apple-dart.c
-index edb2fb22333506d7c64ad1b6321df00ebfd07747..a41ad0627be003f2b0ce42a128c3b04bb2537d56 100644
---- a/drivers/iommu/apple-dart.c
-+++ b/drivers/iommu/apple-dart.c
-@@ -277,6 +277,9 @@ struct apple_dart_domain {
-  * @streams: streams for this device
-  */
- struct apple_dart_master_cfg {
-+	/* Intersection of DART capabilitles */
-+	u32 supports_bypass : 1;
-+
- 	struct apple_dart_stream_map stream_maps[MAX_DARTS_PER_DEVICE];
- };
- 
-@@ -684,7 +687,7 @@ static int apple_dart_attach_dev_identity(struct iommu_domain *domain,
- 	struct apple_dart_stream_map *stream_map;
- 	int i;
- 
--	if (!cfg->stream_maps[0].dart->supports_bypass)
-+	if (!cfg->supports_bypass)
- 		return -EINVAL;
- 
- 	for_each_stream_map(i, cfg, stream_map)
-@@ -792,20 +795,25 @@ static int apple_dart_of_xlate(struct device *dev,
- 		return -EINVAL;
- 	sid = args->args[0];
- 
--	if (!cfg)
-+	if (!cfg) {
- 		cfg = kzalloc(sizeof(*cfg), GFP_KERNEL);
-+
-+		/* Will be ANDed with DART capabilities */
-+		cfg->supports_bypass = true;
-+	}
- 	if (!cfg)
- 		return -ENOMEM;
- 	dev_iommu_priv_set(dev, cfg);
- 
- 	cfg_dart = cfg->stream_maps[0].dart;
- 	if (cfg_dart) {
--		if (cfg_dart->supports_bypass != dart->supports_bypass)
--			return -EINVAL;
- 		if (cfg_dart->pgsize != dart->pgsize)
- 			return -EINVAL;
- 	}
- 
-+	if (!dart->supports_bypass)
-+		cfg->supports_bypass = false;
-+
- 	for (i = 0; i < MAX_DARTS_PER_DEVICE; ++i) {
- 		if (cfg->stream_maps[i].dart == dart) {
- 			set_bit(sid, cfg->stream_maps[i].sidmap);
-@@ -945,7 +953,7 @@ static int apple_dart_def_domain_type(struct device *dev)
- 
- 	if (cfg->stream_maps[0].dart->pgsize > PAGE_SIZE)
- 		return IOMMU_DOMAIN_IDENTITY;
--	if (!cfg->stream_maps[0].dart->supports_bypass)
-+	if (!cfg->supports_bypass)
- 		return IOMMU_DOMAIN_DMA;
- 
- 	return 0;
+---
+Thomas Prescher (3):
+      mm: hugetlb: improve parallel huge page allocation time
+      mm: hugetlb: add hugetlb_alloc_threads cmdline option
+      mm: hugetlb: log time needed to allocate hugepages
 
+ Documentation/admin-guide/kernel-parameters.txt |  9 ++++
+ Documentation/admin-guide/mm/hugetlbpage.rst    | 10 ++++
+ mm/hugetlb.c                                    | 67 +++++++++++++++++++------
+ 3 files changed, 70 insertions(+), 16 deletions(-)
+---
+base-commit: dd83757f6e686a2188997cb58b5975f744bb7786
+change-id: 20250221-hugepage-parameter-e8542fdfc0ae
+
+Best regards,
 -- 
-2.48.1
+Thomas Prescher <thomas.prescher@cyberus-technology.de>
 
