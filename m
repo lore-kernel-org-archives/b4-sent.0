@@ -1,125 +1,116 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Thu, 27 Feb 2025 13:57:53 +0100
-Subject: [PATCH 3/3] hwmon: (ntc_thermistor) Fix the ncpXXxh103 sensor
- table
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH 00/23] arm64: dts: qcom: Add 'global' IRQ to supported SoCs
+Date: Thu, 27 Feb 2025 19:10:42 +0530
+Message-Id: <20250227-pcie-global-irq-v1-0-2b70a7819d1e@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250227-ntc_thermistor_fixes-v1-3-70fa73200b52@gocontroll.com>
-References: <20250227-ntc_thermistor_fixes-v1-0-70fa73200b52@gocontroll.com>
-In-Reply-To: <20250227-ntc_thermistor_fixes-v1-0-70fa73200b52@gocontroll.com>
-To: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Linus Walleij <linus.walleij@linaro.org>, 
- Joseph McNally <jmcna06@gmail.com>
-Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Maud Spierings <maudspierings@gocontroll.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740661074; l=3425;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=JzTO5KFiHcrwpuT7BW1qiQaJXRCQVMkUIuPMKe8dI38=;
- b=3Q1xEMiSYUJiPAasiu4enywjJAFYhRtoCZ/D0o0+tV7hAh/q14mK8ZPD24IbkU8mBvl7N0ScU
- 7Uf34Hr0xvlDf1PmiNhn8l3l3Fj6RsnbdPu59Sl9Qbm7Wbo0GEOg2uc
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+X-B4-Tracking: v=1; b=H4sIAFtrwGcC/x3MQQqAIBBA0avIrBtIwZKuEi3KmWwgyhQikO6et
+ HyL/wtkTsIZBlUg8S1ZzqNCNwr8Nh+BUagaTGtsa0yP0Qtj2M9l3lHShUTak+2co15DrWLiVZ7
+ /OE7v+wGN/SjbYQAAAA==
+To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, cros-qcom-dts-watchers@chromium.org
+Cc: linux-arm-msm@vger.kernel.org, linux-pci@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4126;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=EDBrFEqGXCmp/lR9TA9ZDa3602RxAjfTzKEBgxyXAXg=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnwGtdjTGtJxMtF4CD++uH0HTDRyZM+vVszZyrQ
+ XcJH0Cxgg2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ8BrXQAKCRBVnxHm/pHO
+ 9U5tB/9ud8/6+REWjHULCz/4oZ98TOULWIK4kUQj4wPAnsEWpbn2BF2ijppNUBNC7a44lH9zFGx
+ aXwz0D20UwaTap+9BQ4MjJvm4yQMiOK3Rb3XcMJ0nW8jwREvjH5F7ov7bCa8DqQKRklQ1jZxS1/
+ yKjiHtsZpHT0Ugq/QgKuHSPfupABu8ppYnTMJgfv1m+htJVn/CPEuoYH8Kt3g2WPnABCgZEJgWW
+ 6Uh59rlqEKyL6onWuO/dP2MHyXvay2b6xDjb9VDqROK5zHSKonDqfx3VwNziRP001szp55MzOqf
+ gdOCqy7le0WmuyrEIBCXcz8T1tYXv3jCX6NQ50o48DKZ0+1h
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-I could not find a single table that has the values currently present in
-the table, change it to the actual values that can be found in [1]/[2]
-and [3] (page 15 column 2)
+Hi,
 
-[1]: https://www.murata.com/products/productdetail?partno=NCP15XH103F03RC
-[2]: https://www.murata.com/products/productdata/8796836626462/NTHCG83.txt?1437969843000
-[3]: https://nl.mouser.com/datasheet/2/281/r44e-522712.pdf
+This series adds the Qualcomm specific 'global' IRQ to the supported SoCs.
+This IRQ is used to receive the PCIe controller and link specific events
+such as Link Up/Down, MSI, PTM etc... in the driver. Support for this IRQ
+was already added to the pcie-qcom driver. So enabling this IRQ would allow
+the driver to enumerate the endpoint device and also retrain the link when
+the device is removed [1] without user intervention.
 
-Fixes: 54ce3a0d8011 ("hwmon: (ntc_thermistor) Add support for ncpXXxh103")
+This series also adds missing MSI SPI IRQ to some of the SoCs.
 
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+Testing
+=======
+
+This series was tested on Qualcomm RB5 board based on SM8250 SoC and
+Qualcomm Ride MX board based on SA8775p SoC.
+
+NOTE
+====
+
+I've left a few SoCs in the tree like QCS404, SC8280XP due to lack of
+documentation. Those will be added later.
+
+[1] https://lore.kernel.org/linux-pci/20250221172309.120009-1-manivannan.sadhasivam@linaro.org/
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/hwmon/ntc_thermistor.c | 66 +++++++++++++++++++++---------------------
- 1 file changed, 33 insertions(+), 33 deletions(-)
+Manivannan Sadhasivam (23):
+      dt-bindings: PCI: qcom,pcie-sm8150: Add 'global' interrupt
+      arm64: dts: qcom: sm8150: Add 'global' PCIe interrupt
+      dt-bindings: PCI: qcom,pcie-sm8250: Add 'global' interrupt
+      arm64: dts: qcom: sm8250: Add 'global' PCIe interrupt
+      dt-bindings: PCI: qcom,pcie-sm8350: Add 'global' interrupt
+      arm64: dts: qcom: sm8350: Add 'global' PCIe interrupt
+      dt-bindings: PCI: qcom,pcie-sa8775p: Add 'global' interrupt
+      arm64: dts: qcom: sa8775p: Add 'global' PCIe interrupt
+      dt-bindings: PCI: qcom,pcie-sc7280: Add 'global' interrupt
+      arm64: dts: qcom: sc7280: Add 'global' PCIe interrupt
+      dt-bindings: PCI: qcom: Add 'global' interrupt for SDM845 SoC
+      arm64: dts: qcom: sdm845: Add missing MSI and 'global' IRQs
+      arm64: dts: qcom: msm8996: Add missing MSI SPI interrupts
+      dt-bindings: PCI: qcom: Allow MSM8998 to use 8 MSI and one 'global' interrupt
+      arm64: dts: qcom: msm8998: Add missing MSI and 'global' IRQs
+      dt-bindings: PCI: qcom: Allow IPQ8074 to use 8 MSI and one 'global' interrupt
+      arm64: dts: qcom: ipq8074: Add missing MSI and 'global' IRQs
+      dt-bindings: PCI: qcom: Allow IPQ6018 to use 8 MSI and one 'global' interrupt
+      arm64: dts: qcom: ipq6018: Add missing MSI and 'global' IRQs
+      dt-bindings: PCI: qcom,pcie-sc8180x: Add 'global' interrupt
+      arm64: dts: qcom: sc8180x: Add 'global' PCIe interrupt
+      arm64: dts: qcom: sar2130p: Add 'global' PCIe interrupt
+      arm64: dts: qcom: x1e80100: Add missing 'global' PCIe interrupt
 
-diff --git a/drivers/hwmon/ntc_thermistor.c b/drivers/hwmon/ntc_thermistor.c
-index b5352900463fb9b4fc68605a73feb8875961f554..0d29c8f97ba7c2f264588b6309b91ca494012ad6 100644
---- a/drivers/hwmon/ntc_thermistor.c
-+++ b/drivers/hwmon/ntc_thermistor.c
-@@ -181,40 +181,40 @@ static const struct ntc_compensation ncpXXwf104[] = {
- };
- 
- static const struct ntc_compensation ncpXXxh103[] = {
--	{ .temp_c	= -40, .ohm	= 247565 },
--	{ .temp_c	= -35, .ohm	= 181742 },
--	{ .temp_c	= -30, .ohm	= 135128 },
--	{ .temp_c	= -25, .ohm	= 101678 },
--	{ .temp_c	= -20, .ohm	= 77373 },
--	{ .temp_c	= -15, .ohm	= 59504 },
--	{ .temp_c	= -10, .ohm	= 46222 },
--	{ .temp_c	= -5, .ohm	= 36244 },
--	{ .temp_c	= 0, .ohm	= 28674 },
--	{ .temp_c	= 5, .ohm	= 22878 },
--	{ .temp_c	= 10, .ohm	= 18399 },
--	{ .temp_c	= 15, .ohm	= 14910 },
--	{ .temp_c	= 20, .ohm	= 12169 },
-+	{ .temp_c	= -40, .ohm	= 195652 },
-+	{ .temp_c	= -35, .ohm	= 148171 },
-+	{ .temp_c	= -30, .ohm	= 113347 },
-+	{ .temp_c	= -25, .ohm	= 87559 },
-+	{ .temp_c	= -20, .ohm	= 68237 },
-+	{ .temp_c	= -15, .ohm	= 53650 },
-+	{ .temp_c	= -10, .ohm	= 42506 },
-+	{ .temp_c	= -5, .ohm	= 33892 },
-+	{ .temp_c	= 0, .ohm	= 27219 },
-+	{ .temp_c	= 5, .ohm	= 22021 },
-+	{ .temp_c	= 10, .ohm	= 17926 },
-+	{ .temp_c	= 15, .ohm	= 14674 },
-+	{ .temp_c	= 20, .ohm	= 12081 },
- 	{ .temp_c	= 25, .ohm	= 10000 },
--	{ .temp_c	= 30, .ohm	= 8271 },
--	{ .temp_c	= 35, .ohm	= 6883 },
--	{ .temp_c	= 40, .ohm	= 5762 },
--	{ .temp_c	= 45, .ohm	= 4851 },
--	{ .temp_c	= 50, .ohm	= 4105 },
--	{ .temp_c	= 55, .ohm	= 3492 },
--	{ .temp_c	= 60, .ohm	= 2985 },
--	{ .temp_c	= 65, .ohm	= 2563 },
--	{ .temp_c	= 70, .ohm	= 2211 },
--	{ .temp_c	= 75, .ohm	= 1915 },
--	{ .temp_c	= 80, .ohm	= 1666 },
--	{ .temp_c	= 85, .ohm	= 1454 },
--	{ .temp_c	= 90, .ohm	= 1275 },
--	{ .temp_c	= 95, .ohm	= 1121 },
--	{ .temp_c	= 100, .ohm	= 990 },
--	{ .temp_c	= 105, .ohm	= 876 },
--	{ .temp_c	= 110, .ohm	= 779 },
--	{ .temp_c	= 115, .ohm	= 694 },
--	{ .temp_c	= 120, .ohm	= 620 },
--	{ .temp_c	= 125, .ohm	= 556 },
-+	{ .temp_c	= 30, .ohm	= 8315 },
-+	{ .temp_c	= 35, .ohm	= 6948 },
-+	{ .temp_c	= 40, .ohm	= 5834 },
-+	{ .temp_c	= 45, .ohm	= 4917 },
-+	{ .temp_c	= 50, .ohm	= 4161 },
-+	{ .temp_c	= 55, .ohm	= 3535 },
-+	{ .temp_c	= 60, .ohm	= 3014 },
-+	{ .temp_c	= 65, .ohm	= 2586 },
-+	{ .temp_c	= 70, .ohm	= 2228 },
-+	{ .temp_c	= 75, .ohm	= 1925 },
-+	{ .temp_c	= 80, .ohm	= 1669 },
-+	{ .temp_c	= 85, .ohm	= 1452 },
-+	{ .temp_c	= 90, .ohm	= 1268 },
-+	{ .temp_c	= 95, .ohm	= 1110 },
-+	{ .temp_c	= 100, .ohm	= 974 },
-+	{ .temp_c	= 105, .ohm	= 858 },
-+	{ .temp_c	= 110, .ohm	= 758 },
-+	{ .temp_c	= 115, .ohm	= 672 },
-+	{ .temp_c	= 120, .ohm	= 596 },
-+	{ .temp_c	= 125, .ohm	= 531 },
- };
- 
- /*
+ .../devicetree/bindings/pci/qcom,pcie-sa8775p.yaml | 10 ++--
+ .../devicetree/bindings/pci/qcom,pcie-sc7280.yaml  |  9 ++--
+ .../devicetree/bindings/pci/qcom,pcie-sc8180x.yaml | 10 ++--
+ .../devicetree/bindings/pci/qcom,pcie-sm8150.yaml  |  9 ++--
+ .../devicetree/bindings/pci/qcom,pcie-sm8250.yaml  |  9 ++--
+ .../devicetree/bindings/pci/qcom,pcie-sm8350.yaml  |  9 ++--
+ .../devicetree/bindings/pci/qcom,pcie.yaml         | 14 ++++--
+ arch/arm64/boot/dts/qcom/ipq6018.dtsi              | 20 +++++++-
+ arch/arm64/boot/dts/qcom/ipq8074.dtsi              | 40 ++++++++++++++--
+ arch/arm64/boot/dts/qcom/msm8996.dtsi              | 54 +++++++++++++++++++---
+ arch/arm64/boot/dts/qcom/msm8998.dtsi              | 20 +++++++-
+ arch/arm64/boot/dts/qcom/sa8775p.dtsi              | 28 ++++++++---
+ arch/arm64/boot/dts/qcom/sar2130p.dtsi             | 12 +++--
+ arch/arm64/boot/dts/qcom/sc7280.dtsi               | 14 ++++--
+ arch/arm64/boot/dts/qcom/sc8180x.dtsi              | 24 ++++++----
+ arch/arm64/boot/dts/qcom/sdm845.dtsi               | 40 ++++++++++++++--
+ arch/arm64/boot/dts/qcom/sm8150.dtsi               | 12 +++--
+ arch/arm64/boot/dts/qcom/sm8250.dtsi               | 18 +++++---
+ arch/arm64/boot/dts/qcom/sm8350.dtsi               | 12 +++--
+ arch/arm64/boot/dts/qcom/x1e80100.dtsi             | 18 +++++---
+ 20 files changed, 300 insertions(+), 82 deletions(-)
+---
+base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
+change-id: 20250227-pcie-global-irq-dd1cd5688d71
 
+Best regards,
 -- 
-2.48.1
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
