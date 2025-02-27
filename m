@@ -1,10 +1,11 @@
 From: Keke Li <keke.li@amlogic.com>
-Date: Thu, 27 Feb 2025 15:27:16 +0800
-Subject: [PATCH v6 05/10] dt-bindings: media: Add amlogic,c3-isp.yaml
+Date: Thu, 27 Feb 2025 15:27:17 +0800
+Subject: [PATCH v6 06/10] media: Add C3ISP_PARAMS and C3ISP_STATS meta
+ formats
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250227-c3isp-v6-5-f72e19084d0d@amlogic.com>
+Message-Id: <20250227-c3isp-v6-6-f72e19084d0d@amlogic.com>
 References: <20250227-c3isp-v6-0-f72e19084d0d@amlogic.com>
 In-Reply-To: <20250227-c3isp-v6-0-f72e19084d0d@amlogic.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -15,135 +16,55 @@ Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org,
  laurent.pinchart@ideasonboard.com, dan.scally@ideasonboard.com, 
  jacopo.mondi@ideasonboard.com, Keke Li <keke.li@amlogic.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740641235; l=3207;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740641235; l=2313;
  i=keke.li@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=EHs/phh4vXvzEuo2rEKTjxu0DSB+uSkdhIq6EoyKz08=;
- b=wJ7RN+ohGF2yDCvF4W3MAsE3yCA8DxHAAqeEkOw1yEKyNMMfGbLj9odlHosvveKWA5h8FeG+F
- D9k+hhVchXmDYr2qD7R6sN8QISM80z2LDW5BnnYlf3hK6B/8U6ib3Sd
+ bh=JvbVoI7PEbuiyUXXcsJxp3yWP506VvLVbF84WkyJ/xY=;
+ b=E5V3yKBtDuvjdU282J6kqFIpWDQu2lozrnvPE/eS18nGvwJPgFkm1KmPQzXpfD1QXwE2sJyBJ
+ SXe7RPeuB25Aya3WwZS33cK8wY+0q+qZcJKkDK9FPwm4AjP6bx7X2C4
 X-Developer-Key: i=keke.li@amlogic.com; a=ed25519;
  pk=XxNPTsQ0YqMJLLekV456eoKV5gbSlxnViB1k1DhfRmU=
 X-Endpoint-Received: by B4 Relay for keke.li@amlogic.com/20240902 with auth_id=204
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-c3-isp is used to process raw image.
+C3ISP_PARAMS is the C3 ISP Parameters format.
+C3ISP_STATS is the C3 ISP Statistics format.
 
+Reviewed-by: Daniel Scally <dan.scally@ideasonboard.com>
+Reviewed-by: Jacopo Mondi <jacopo.mondi@ideasonboard.com>
 Signed-off-by: Keke Li <keke.li@amlogic.com>
 ---
- .../devicetree/bindings/media/amlogic,c3-isp.yaml  | 88 ++++++++++++++++++++++
- MAINTAINERS                                        |  6 ++
- 2 files changed, 94 insertions(+)
+ drivers/media/v4l2-core/v4l2-ioctl.c | 2 ++
+ include/uapi/linux/videodev2.h       | 4 ++++
+ 2 files changed, 6 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/media/amlogic,c3-isp.yaml b/Documentation/devicetree/bindings/media/amlogic,c3-isp.yaml
-new file mode 100644
-index 000000000000..123bf462f098
---- /dev/null
-+++ b/Documentation/devicetree/bindings/media/amlogic,c3-isp.yaml
-@@ -0,0 +1,88 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/media/amlogic,c3-isp.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Amlogic C3 Image Signal Processing Unit
-+
-+maintainers:
-+  - Keke Li <keke.li@amlogic.com>
-+
-+description:
-+  Amlogic ISP is the RAW image processing module
-+  and supports three channels image output.
-+
-+properties:
-+  compatible:
-+    enum:
-+      - amlogic,c3-isp
-+
-+  reg:
-+    maxItems: 1
-+
-+  reg-names:
-+    items:
-+      - const: isp
-+
-+  power-domains:
-+    maxItems: 1
-+
-+  clocks:
-+    maxItems: 2
-+
-+  clock-names:
-+    items:
-+      - const: vapb
-+      - const: isp0
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  port:
-+    $ref: /schemas/graph.yaml#/properties/port
-+    description: input port node.
-+
-+required:
-+  - compatible
-+  - reg
-+  - reg-names
-+  - power-domains
-+  - clocks
-+  - clock-names
-+  - interrupts
-+  - port
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/arm-gic.h>
-+    #include <dt-bindings/clock/amlogic,c3-peripherals-clkc.h>
-+    #include <dt-bindings/power/amlogic,c3-pwrc.h>
-+
-+    soc {
-+        #address-cells = <2>;
-+        #size-cells = <2>;
-+
-+        isp: isp@ff000000 {
-+            compatible = "amlogic,c3-isp";
-+            reg = <0x0 0xff000000 0x0 0xf000>;
-+            reg-names = "isp";
-+            power-domains = <&pwrc PWRC_C3_ISP_TOP_ID>;
-+            clocks = <&clkc_periphs CLKID_VAPB>,
-+                     <&clkc_periphs CLKID_ISP0>;
-+            clock-names = "vapb", "isp0";
-+            assigned-clocks = <&clkc_periphs CLKID_VAPB>,
-+                              <&clkc_periphs CLKID_ISP0>;
-+            assigned-clock-rates = <0>, <400000000>;
-+            interrupts = <GIC_SPI 145 IRQ_TYPE_EDGE_RISING>;
-+
-+            port {
-+                c3_isp_in: endpoint {
-+                    remote-endpoint = <&c3_adap_out>;
-+                };
-+            };
-+        };
-+    };
-+...
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 98ae971936a0..72f403904df4 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1252,6 +1252,12 @@ F:	Documentation/devicetree/bindings/perf/amlogic,g12-ddr-pmu.yaml
- F:	drivers/perf/amlogic/
- F:	include/soc/amlogic/
+diff --git a/drivers/media/v4l2-core/v4l2-ioctl.c b/drivers/media/v4l2-core/v4l2-ioctl.c
+index 0304daa8471d..dae34b1170d7 100644
+--- a/drivers/media/v4l2-core/v4l2-ioctl.c
++++ b/drivers/media/v4l2-core/v4l2-ioctl.c
+@@ -1460,6 +1460,8 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
+ 	case V4L2_META_FMT_RK_ISP1_PARAMS:	descr = "Rockchip ISP1 3A Parameters"; break;
+ 	case V4L2_META_FMT_RK_ISP1_STAT_3A:	descr = "Rockchip ISP1 3A Statistics"; break;
+ 	case V4L2_META_FMT_RK_ISP1_EXT_PARAMS:	descr = "Rockchip ISP1 Ext 3A Params"; break;
++	case V4L2_META_FMT_C3ISP_PARAMS:	descr = "Amlogic C3 ISP Parameters"; break;
++	case V4L2_META_FMT_C3ISP_STATS:		descr = "Amlogic C3 ISP Statistics"; break;
+ 	case V4L2_PIX_FMT_NV12_8L128:	descr = "NV12 (8x128 Linear)"; break;
+ 	case V4L2_PIX_FMT_NV12M_8L128:	descr = "NV12M (8x128 Linear)"; break;
+ 	case V4L2_PIX_FMT_NV12_10BE_8L128:	descr = "10-bit NV12 (8x128 Linear, BE)"; break;
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index e7c4dce39007..75e990e9d8b7 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -858,6 +858,10 @@ struct v4l2_pix_format {
+ #define V4L2_META_FMT_RK_ISP1_STAT_3A	v4l2_fourcc('R', 'K', '1', 'S') /* Rockchip ISP1 3A Statistics */
+ #define V4L2_META_FMT_RK_ISP1_EXT_PARAMS	v4l2_fourcc('R', 'K', '1', 'E') /* Rockchip ISP1 3a Extensible Parameters */
  
-+AMLOGIC ISP DRIVER
-+M:	Keke Li <keke.li@amlogic.com>
-+L:	linux-media@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/media/amlogic,c3-isp.yaml
++/* Vendor specific - used for C3_ISP */
++#define V4L2_META_FMT_C3ISP_PARAMS	v4l2_fourcc('C', '3', 'P', 'M') /* Amlogic C3 ISP Parameters */
++#define V4L2_META_FMT_C3ISP_STATS	v4l2_fourcc('C', '3', 'S', 'T') /* Amlogic C3 ISP Statistics */
 +
- AMLOGIC MIPI ADAPTER DRIVER
- M:	Keke Li <keke.li@amlogic.com>
- L:	linux-media@vger.kernel.org
+ /* Vendor specific - used for RaspberryPi PiSP */
+ #define V4L2_META_FMT_RPI_BE_CFG	v4l2_fourcc('R', 'P', 'B', 'C') /* PiSP BE configuration */
+ #define V4L2_META_FMT_RPI_FE_CFG	v4l2_fourcc('R', 'P', 'F', 'C') /* PiSP FE configuration */
 
 -- 
 2.48.1
