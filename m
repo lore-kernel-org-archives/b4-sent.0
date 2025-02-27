@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Thu, 27 Feb 2025 19:11:01 +0530
-Subject: [PATCH 19/23] arm64: dts: qcom: ipq6018: Add missing MSI and
- 'global' IRQs
+Date: Thu, 27 Feb 2025 19:11:02 +0530
+Subject: [PATCH 20/23] dt-bindings: PCI: qcom,pcie-sc8180x: Add 'global'
+ interrupt
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250227-pcie-global-irq-v1-19-2b70a7819d1e@linaro.org>
+Message-Id: <20250227-pcie-global-irq-v1-20-2b70a7819d1e@linaro.org>
 References: <20250227-pcie-global-irq-v1-0-2b70a7819d1e@linaro.org>
 In-Reply-To: <20250227-pcie-global-irq-v1-0-2b70a7819d1e@linaro.org>
 To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -18,59 +18,73 @@ Cc: linux-arm-msm@vger.kernel.org, linux-pci@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1416;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1916;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=RowCCsa7UmB5mPOEsSXdyNQWv59aOMUHKBxIbtgXr/U=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnwGtho03MSKCOi1OZSeZzOcyA6tRYzXGdRBo8t
- BThJZlrT2GJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ8BrYQAKCRBVnxHm/pHO
- 9W5JB/4qgyIIi+x3cyWS0XyxVtV8zWuzaPhuu7NYJTxAIbABr3v/9Xe38jPeT+mALauJ53rFTzW
- xSG5FDITYkf4psiMCnwioco+rldyJr6PcvF57/wCeaCE1+wQsbOjq2DYyGbnDPvKuWYAQJXg5Do
- +RoyM9UkLuGiAqnvuTG0+PWHfRYhfV/VgKU8MDfjSNiJa9iajzA7AXZ2Owc08uY5+46fP7Ocp9x
- 2O0Ez1hYxSOpPrN6RpKNHeCBWzIsSUV2AHWjc92G6rCY+nMTNZag5baLV4JdcipMj+C4g4JaAvf
- 7MGPe5Ims/2MmLK+RG8YBSSSXiISILLX9uUWLL57Q2hksEEJ
+ bh=Na12fmGJbdooTFijRdHfDd5PBT36knP9iLScIFZtl68=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnwGtiZFdkTxnv7NuCHp2GN9Rm/aTBWYJZQn+e9
+ PwYElIAjVGJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ8BrYgAKCRBVnxHm/pHO
+ 9ZWrB/wPz8+bq4a82ucw3T/2CPxOQRWrnjrMU+l1T2nEBfqqz2FKqT8nGL82LGPMYA09hmxSQZ4
+ dQ43eZrJgM+l5cK+GMt9iXjEq2/iVhuisdaeqRPJXnbFcjqb3LgY3oNenU+1TYovSoS7LuwmhzS
+ YljJhwXsNA7Af4e+AVxlqn9h4XwwUX9Gy2h2v0fkxtjG+0h3aliUZKk5BU2ESVg/sRtW6tlPKVv
+ a5e7AIozRvYZhHxnhqOgjdm1G7712zF8KLg6u9aa8xJh1tlgZJShv6eMpGaGtwP0AHAqYE6IHUx
+ ZoFX4FEO/DmJVlH62U98LO9KzKFiUjMMDJq+6iHh5Kq1SvD6
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IPQ6018 has 8 MSI SPI interrupts and one 'global' interrupt.
+'global' interrupt is used to receive PCIe controller and link specific
+events.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- arch/arm64/boot/dts/qcom/ipq6018.dtsi | 20 ++++++++++++++++++--
- 1 file changed, 18 insertions(+), 2 deletions(-)
+ Documentation/devicetree/bindings/pci/qcom,pcie-sc8180x.yaml | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq6018.dtsi b/arch/arm64/boot/dts/qcom/ipq6018.dtsi
-index dbf6716bcb59..d1b1dc048262 100644
---- a/arch/arm64/boot/dts/qcom/ipq6018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq6018.dtsi
-@@ -888,8 +888,24 @@ pcie0: pcie@20000000 {
- 			ranges = <0x81000000 0x0 0x00000000 0x0 0x20200000 0x0 0x10000>,
- 				 <0x82000000 0x0 0x20220000 0x0 0x20220000 0x0 0xfde0000>;
+diff --git a/Documentation/devicetree/bindings/pci/qcom,pcie-sc8180x.yaml b/Documentation/devicetree/bindings/pci/qcom,pcie-sc8180x.yaml
+index baf1813ec0ac..331fc25d7a17 100644
+--- a/Documentation/devicetree/bindings/pci/qcom,pcie-sc8180x.yaml
++++ b/Documentation/devicetree/bindings/pci/qcom,pcie-sc8180x.yaml
+@@ -49,9 +49,10 @@ properties:
  
--			interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>;
--			interrupt-names = "msi";
-+			interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "msi0",
-+					  "msi1",
-+					  "msi2",
-+					  "msi3",
-+					  "msi4",
-+					  "msi5",
-+					  "msi6",
-+					  "msi7",
-+					  "global";
+   interrupts:
+     minItems: 8
+-    maxItems: 8
++    maxItems: 9
  
- 			#interrupt-cells = <1>;
- 			interrupt-map-mask = <0 0 0 0x7>;
+   interrupt-names:
++    minItems: 8
+     items:
+       - const: msi0
+       - const: msi1
+@@ -61,6 +62,7 @@ properties:
+       - const: msi5
+       - const: msi6
+       - const: msi7
++      - const: global
+ 
+   resets:
+     maxItems: 1
+@@ -136,7 +138,8 @@ examples:
+                          <GIC_SPI 145 IRQ_TYPE_LEVEL_HIGH>,
+                          <GIC_SPI 146 IRQ_TYPE_LEVEL_HIGH>,
+                          <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH>,
+-                         <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
++                         <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>,
++                         <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
+             interrupt-names = "msi0",
+                           "msi1",
+                           "msi2",
+@@ -144,7 +147,8 @@ examples:
+                           "msi4",
+                           "msi5",
+                           "msi6",
+-                          "msi7";
++                          "msi7",
++                          "global";
+             #interrupt-cells = <1>;
+             interrupt-map-mask = <0 0 0 0x7>;
+             interrupt-map = <0 0 0 1 &intc 0 149 IRQ_TYPE_LEVEL_HIGH>, /* int_a */
 
 -- 
 2.25.1
