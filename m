@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Thu, 27 Feb 2025 19:10:52 +0530
-Subject: [PATCH 10/23] arm64: dts: qcom: sc7280: Add 'global' PCIe
- interrupt
+Date: Thu, 27 Feb 2025 19:10:53 +0530
+Subject: [PATCH 11/23] dt-bindings: PCI: qcom: Add 'global' interrupt for
+ SDM845 SoC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250227-pcie-global-irq-v1-10-2b70a7819d1e@linaro.org>
+Message-Id: <20250227-pcie-global-irq-v1-11-2b70a7819d1e@linaro.org>
 References: <20250227-pcie-global-irq-v1-0-2b70a7819d1e@linaro.org>
 In-Reply-To: <20250227-pcie-global-irq-v1-0-2b70a7819d1e@linaro.org>
 To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -18,16 +18,16 @@ Cc: linux-arm-msm@vger.kernel.org, linux-pci@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1231;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1270;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=rTVW3NDc0JeWq6yq9e/nkqc0ekGHzOskko7jXo30pow=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnwGtfa2G7HwwBqeR8mHB73A8SCXutjIRdwVCRQ
- sx4mOAhz5CJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ8BrXwAKCRBVnxHm/pHO
- 9YsUB/9x6+6qzeRcqWVXMmbtVxEG39zy5osUNg9SvPvDjBT28PybAk3653x+KRa3cYMjOk5Br6X
- XIgkKImmlK1ekXArw3UrP73FADar96FKar9h12GApd78di/LSIoR1TWIzcpbpsBkGisTwsEjeZn
- QGZIgFdEUZ0UkygqGogqyU2BhETAa6rwycHhIqz1Mbs+iTjq8tHas6Fx1TIOaT8LjWgDmKfE+2y
- 4rajgXgpEGWAeahJTLNohN8/0q1Kkg2mg+9rsg8MpqmqRE6rSpwV+nbF5jUDUszCkulHx4rZw46
- NOJ501gAQd5mP8Zk6oARwYI31GrqTy7GT9MyRbwukVP9E3GE
+ bh=PoEhXCfBs5e3V4TSUedTjigqATIQI/CO3FwH77CyhdM=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBnwGtfXka7p4vJZjRxG0Y5keFxL2MDwu7B5DYZk
+ O7JFjyojGCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ8BrXwAKCRBVnxHm/pHO
+ 9SqgB/oDAyCV/42b1JlqEcf8jUzXqLM20XbWPP6469FBUP3Ao4ypq2C8E/7/Eqv2ljupORkyqot
+ x0HsnORxutnE3ymL8gBRPB5xNQxAwna0nF7qlGQOfDrL269zDWEGusWEwUGUBimAgY+DNthWbla
+ 1Nt2EClFi+HeEh7eMie0Gzd3d+fMybXG6yCpIpe5ep2OF3BTGQgzWKBV+T8F9ZwuOqFp1Cb1cS6
+ MQk5ttcnZ2yqRWjuN3rex9z9tYVEIpnfRlhjclUsCiNxDiT0VsW1/PlTTJ5d2wT5Zx9ub7CY+Qc
+ bN5H35exx2KNYFc1iwFPn6b2HkyNc7+Te4VPA1ol9tnuWBSs
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
@@ -38,34 +38,45 @@ events.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- arch/arm64/boot/dts/qcom/sc7280.dtsi | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+ Documentation/devicetree/bindings/pci/qcom,pcie.yaml | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sc7280.dtsi b/arch/arm64/boot/dts/qcom/sc7280.dtsi
-index 0f2caf36910b..6cfba0862157 100644
---- a/arch/arm64/boot/dts/qcom/sc7280.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sc7280.dtsi
-@@ -2225,9 +2225,17 @@ pcie1: pcie@1c08000 {
- 				     <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 314 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 374 IRQ_TYPE_LEVEL_HIGH>,
--				     <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH>;
--			interrupt-names = "msi0", "msi1", "msi2", "msi3",
--					  "msi4", "msi5", "msi6", "msi7";
-+				     <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 306 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "msi0",
-+					  "msi1",
-+					  "msi2",
-+					  "msi3",
-+					  "msi4",
-+					  "msi5",
-+					  "msi6",
-+					  "msi7",
-+					  "global";
- 			#interrupt-cells = <1>;
- 			interrupt-map-mask = <0 0 0 0x7>;
- 			interrupt-map = <0 0 0 1 &intc 0 0 0 434 IRQ_TYPE_LEVEL_HIGH>,
+diff --git a/Documentation/devicetree/bindings/pci/qcom,pcie.yaml b/Documentation/devicetree/bindings/pci/qcom,pcie.yaml
+index 7235d6554cfb..3776dfcd2dca 100644
+--- a/Documentation/devicetree/bindings/pci/qcom,pcie.yaml
++++ b/Documentation/devicetree/bindings/pci/qcom,pcie.yaml
+@@ -49,11 +49,11 @@ properties:
+ 
+   interrupts:
+     minItems: 1
+-    maxItems: 8
++    maxItems: 9
+ 
+   interrupt-names:
+     minItems: 1
+-    maxItems: 8
++    maxItems: 9
+ 
+   iommu-map:
+     minItems: 1
+@@ -599,7 +599,9 @@ allOf:
+         - properties:
+             interrupts:
+               minItems: 8
++              maxItems: 9
+             interrupt-names:
++              minItems: 8
+               items:
+                 - const: msi0
+                 - const: msi1
+@@ -609,6 +611,7 @@ allOf:
+                 - const: msi5
+                 - const: msi6
+                 - const: msi7
++                - const: global
+ 
+   - if:
+       properties:
 
 -- 
 2.25.1
