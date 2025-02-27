@@ -1,95 +1,104 @@
 From: Thomas Prescher <thomas.prescher@cyberus-technology.de>
-Subject: [PATCH v3 0/3] Add a command line option that enables control of
- how many threads should be used to allocate huge pages.
-Date: Fri, 28 Feb 2025 00:02:09 +0100
-Message-Id: <20250228-hugepage-parameter-v3-0-2628e9b2b5c0@cyberus-technology.de>
+Date: Fri, 28 Feb 2025 00:02:10 +0100
+Subject: [PATCH v3 1/3] mm: hugetlb: improve parallel huge page allocation
+ time
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPHuwGcC/33NQQ6CMBAF0KuQrq0pBSy68h7GRZlOaROlTQuNh
- HB3CysXajKb/5P/ZiERg8VILsVCAiYbrRtyqA4FASOHHqlVORPOeMM4L6mZevQy914G+cQRA8W
- 2qblWGphEkoc+oLavHb3dczY2ji7M+49Ubu1fLpWUUS3rsxQC2nxXmDsMU6Qjghncw/XzUSHZ6
- MQ/OfGV45kTqmvhpIDVTfWLW9f1DRVYK/QPAQAA
-X-Change-ID: 20250221-hugepage-parameter-e8542fdfc0ae
+Message-Id: <20250228-hugepage-parameter-v3-1-2628e9b2b5c0@cyberus-technology.de>
+References: <20250228-hugepage-parameter-v3-0-2628e9b2b5c0@cyberus-technology.de>
+In-Reply-To: <20250228-hugepage-parameter-v3-0-2628e9b2b5c0@cyberus-technology.de>
 To: Jonathan Corbet <corbet@lwn.net>, Muchun Song <muchun.song@linux.dev>, 
  Andrew Morton <akpm@linux-foundation.org>
 Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-mm@kvack.org, Thomas Prescher <thomas.prescher@cyberus-technology.de>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740697330; l=2949;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740697330; l=3225;
  i=thomas.prescher@cyberus-technology.de; s=20250221;
- h=from:subject:message-id; bh=77mfKSU/7bUid7o9jDTk0QDdNak1HyZH2KPQxoAjUqg=;
- b=9MUeqnBuqLbrQS5045xPrHI4IgCVsWVTUBuVD3OAtqS7we6JJlqgxV8uvskTuQNoPESsrgYVm
- o84ZIPyr5GTBHpV7LiQWNLpUR+QEgJaYo3w7hpJzfrKF5Aw7i/+vbWK
+ h=from:subject:message-id; bh=J38/TB8riQAZ4fzuSMdQ3k6+xa/EprG/GBf8GbXV050=;
+ b=vOjP4B1DdPNfhvskR5NLf5KL0dhmWvZ8fNSGh+J2B/n9nrAWy1cYAwk4sJjUbqvqK+Wq1RjLV
+ KLwMJC6/XAHDMH7TZTR8U4e9ce3TwK3/dB61DC+yHT7uY6kVQvCEhBt
 X-Developer-Key: i=thomas.prescher@cyberus-technology.de; a=ed25519;
  pk=T5MVdLVCc/0UUyv5IcSqGVvGcVkgWW/KtuEo2RRJwM8=
 X-Endpoint-Received: by B4 Relay for thomas.prescher@cyberus-technology.de/20250221 with auth_id=345
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Allocating huge pages can take a very long time on servers
-with terabytes of memory even when they are allocated at
-boot time where the allocation happens in parallel.
+Before this patch, the kernel currently used a hard coded
+value of 2 threads per NUMA node for these allocations.
 
-Before this series, the kernel used a hard coded value of 2 threads per
-NUMA node for these allocations. This value might have been good
-enough in the past but it is not sufficient to fully utilize
-newer systems.
-
-This series changes the default so the kernel uses 25% of the available
-hardware threads for these allocations. In addition, we allow the user
-that wish to micro-optimize the allocation time to override this value
-via a new kernel parameter.
-
-We tested this on 2 generations of Xeon CPUs and the results
-show a big improvement of the overall allocation time.
-
-+-----------------------+-------+-------+-------+-------+-------+
-| threads               |   8   |   16  |   32  |   64  |   128 |
-+-----------------------+-------+-------+-------+-------+-------+
-| skylake      144 cpus |   44s |   22s |   16s |   19s |   20s |
-| cascade lake 192 cpus |   39s |   20s |   11s |   10s |    9s |
-+-----------------------+-------+-------+-------+-------+-------+
-
-On skylake, we see an improvment of 2.75x when using 32 threads,
-on cascade lake we can get even better at 4.3x when we use
-128 threads.
-
-This speedup is quite significant and users of large machines
-like these should have the option to make the machines boot
-as fast as possible.
+This patch changes this policy and the kernel now uses 25%
+of the available hardware threads for the allocations.
 
 Signed-off-by: Thomas Prescher <thomas.prescher@cyberus-technology.de>
 ---
-Changes in v3:
-- Fix log message (the name of the parameter was incorrect)
-- Link to v2: https://lore.kernel.org/r/20250227-hugepage-parameter-v2-0-7db8c6dc0453@cyberus-technology.de
+ mm/hugetlb.c | 34 ++++++++++++++++++----------------
+ 1 file changed, 18 insertions(+), 16 deletions(-)
 
-Changes in v2:
-- the default thread value has been changed from 2 threads per node to
-  25% of the available hardware threads
-- the hugepage_alloc_threads parameter now specifies the total number of
-  threads being used instead of threads per node
-- the kernel now logs the time needed to allocate the huge pages and the
-  number of threads being used
-- update the documentation so that users are aware that this does not
-  apply to gigantic huge pages
-- Link to v1: https://lore.kernel.org/r/20250221-hugepage-parameter-v1-0-fa49a77c87c8@cyberus-technology.de
+diff --git a/mm/hugetlb.c b/mm/hugetlb.c
+index 163190e89ea16450026496c020b544877db147d1..e9b1b3e2b9d467f067d54359e1401a03f9926108 100644
+--- a/mm/hugetlb.c
++++ b/mm/hugetlb.c
+@@ -14,9 +14,11 @@
+ #include <linux/pagemap.h>
+ #include <linux/mempolicy.h>
+ #include <linux/compiler.h>
++#include <linux/cpumask.h>
+ #include <linux/cpuset.h>
+ #include <linux/mutex.h>
+ #include <linux/memblock.h>
++#include <linux/minmax.h>
+ #include <linux/sysfs.h>
+ #include <linux/slab.h>
+ #include <linux/sched/mm.h>
+@@ -3427,31 +3429,31 @@ static unsigned long __init hugetlb_pages_alloc_boot(struct hstate *h)
+ 		.numa_aware	= true
+ 	};
+ 
++	unsigned int num_allocation_threads = max(num_online_cpus() / 4, 1);
++
+ 	job.thread_fn	= hugetlb_pages_alloc_boot_node;
+ 	job.start	= 0;
+ 	job.size	= h->max_huge_pages;
+ 
+ 	/*
+-	 * job.max_threads is twice the num_node_state(N_MEMORY),
++	 * job.max_threads is 25% of the available cpu threads by default.
+ 	 *
+-	 * Tests below indicate that a multiplier of 2 significantly improves
+-	 * performance, and although larger values also provide improvements,
+-	 * the gains are marginal.
++	 * On large servers with terabytes of memory, huge page allocation
++	 * can consume a considerably amount of time.
+ 	 *
+-	 * Therefore, choosing 2 as the multiplier strikes a good balance between
+-	 * enhancing parallel processing capabilities and maintaining efficient
+-	 * resource management.
++	 * Tests below show how long it takes to allocate 1 TiB of memory with 2MiB huge pages.
++	 * 2MiB huge pages. Using more threads can significantly improve allocation time.
+ 	 *
+-	 * +------------+-------+-------+-------+-------+-------+
+-	 * | multiplier |   1   |   2   |   3   |   4   |   5   |
+-	 * +------------+-------+-------+-------+-------+-------+
+-	 * | 256G 2node | 358ms | 215ms | 157ms | 134ms | 126ms |
+-	 * | 2T   4node | 979ms | 679ms | 543ms | 489ms | 481ms |
+-	 * | 50G  2node | 71ms  | 44ms  | 37ms  | 30ms  | 31ms  |
+-	 * +------------+-------+-------+-------+-------+-------+
++	 * +-----------------------+-------+-------+-------+-------+-------+
++	 * | threads               |   8   |   16  |   32  |   64  |   128 |
++	 * +-----------------------+-------+-------+-------+-------+-------+
++	 * | skylake      144 cpus |   44s |   22s |   16s |   19s |   20s |
++	 * | cascade lake 192 cpus |   39s |   20s |   11s |   10s |    9s |
++	 * +-----------------------+-------+-------+-------+-------+-------+
+ 	 */
+-	job.max_threads	= num_node_state(N_MEMORY) * 2;
+-	job.min_chunk	= h->max_huge_pages / num_node_state(N_MEMORY) / 2;
++
++	job.max_threads	= num_allocation_threads;
++	job.min_chunk	= h->max_huge_pages / num_allocation_threads;
+ 	padata_do_multithreaded(&job);
+ 
+ 	return h->nr_huge_pages;
 
----
-Thomas Prescher (3):
-      mm: hugetlb: improve parallel huge page allocation time
-      mm: hugetlb: add hugetlb_alloc_threads cmdline option
-      mm: hugetlb: log time needed to allocate hugepages
-
- Documentation/admin-guide/kernel-parameters.txt |  9 ++++
- Documentation/admin-guide/mm/hugetlbpage.rst    | 10 ++++
- mm/hugetlb.c                                    | 67 +++++++++++++++++++------
- 3 files changed, 70 insertions(+), 16 deletions(-)
----
-base-commit: dd83757f6e686a2188997cb58b5975f744bb7786
-change-id: 20250221-hugepage-parameter-e8542fdfc0ae
-
-Best regards,
 -- 
-Thomas Prescher <thomas.prescher@cyberus-technology.de>
+2.48.1
 
