@@ -1,11 +1,11 @@
 From: Thomas Prescher <thomas.prescher@cyberus-technology.de>
-Date: Fri, 28 Feb 2025 00:02:10 +0100
-Subject: [PATCH v3 1/3] mm: hugetlb: improve parallel huge page allocation
- time
+Date: Fri, 28 Feb 2025 00:02:11 +0100
+Subject: [PATCH v3 2/3] mm: hugetlb: add hugetlb_alloc_threads cmdline
+ option
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250228-hugepage-parameter-v3-1-2628e9b2b5c0@cyberus-technology.de>
+Message-Id: <20250228-hugepage-parameter-v3-2-2628e9b2b5c0@cyberus-technology.de>
 References: <20250228-hugepage-parameter-v3-0-2628e9b2b5c0@cyberus-technology.de>
 In-Reply-To: <20250228-hugepage-parameter-v3-0-2628e9b2b5c0@cyberus-technology.de>
 To: Jonathan Corbet <corbet@lwn.net>, Muchun Song <muchun.song@linux.dev>, 
@@ -13,91 +13,132 @@ To: Jonathan Corbet <corbet@lwn.net>, Muchun Song <muchun.song@linux.dev>,
 Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-mm@kvack.org, Thomas Prescher <thomas.prescher@cyberus-technology.de>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740697330; l=3225;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740697330; l=4838;
  i=thomas.prescher@cyberus-technology.de; s=20250221;
- h=from:subject:message-id; bh=J38/TB8riQAZ4fzuSMdQ3k6+xa/EprG/GBf8GbXV050=;
- b=vOjP4B1DdPNfhvskR5NLf5KL0dhmWvZ8fNSGh+J2B/n9nrAWy1cYAwk4sJjUbqvqK+Wq1RjLV
- KLwMJC6/XAHDMH7TZTR8U4e9ce3TwK3/dB61DC+yHT7uY6kVQvCEhBt
+ h=from:subject:message-id; bh=/OuX4vllZ9DrhNgACxdiUGULgJjK6Nnwd9N61kSfqhA=;
+ b=plgqK9FRmX14NZYx5n6BIStbjlTw2JlRsmYOuxhiFjGV95BR4FhopQxq99CpBwNWQ+78eFYmB
+ U7Of9U+aQ3dACUsAM7MTCS3k7oh6/dFlYcEawYMIR1uou0e+RilLHoZ
 X-Developer-Key: i=thomas.prescher@cyberus-technology.de; a=ed25519;
  pk=T5MVdLVCc/0UUyv5IcSqGVvGcVkgWW/KtuEo2RRJwM8=
 X-Endpoint-Received: by B4 Relay for thomas.prescher@cyberus-technology.de/20250221 with auth_id=345
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Before this patch, the kernel currently used a hard coded
-value of 2 threads per NUMA node for these allocations.
-
-This patch changes this policy and the kernel now uses 25%
-of the available hardware threads for the allocations.
+Add a command line option that enables control of how many
+threads should be used to allocate huge pages.
 
 Signed-off-by: Thomas Prescher <thomas.prescher@cyberus-technology.de>
 ---
- mm/hugetlb.c | 34 ++++++++++++++++++----------------
- 1 file changed, 18 insertions(+), 16 deletions(-)
+ Documentation/admin-guide/kernel-parameters.txt |  9 +++++++
+ Documentation/admin-guide/mm/hugetlbpage.rst    | 10 ++++++++
+ mm/hugetlb.c                                    | 31 +++++++++++++++++++++----
+ 3 files changed, 46 insertions(+), 4 deletions(-)
 
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index fb8752b42ec8582b8750d7e014c4d76166fa2fc1..1937ee02c1f883ecd910bab33cdb9194bddbd9b1 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -1882,6 +1882,15 @@
+ 			Documentation/admin-guide/mm/hugetlbpage.rst.
+ 			Format: size[KMG]
+ 
++	hugepage_alloc_threads=
++			[HW] The number of threads that should be used to
++			allocate hugepages during boot. This option can be
++			used to improve system bootup time when allocating
++			a large amount of huge pages.
++			The default value is 25% of the available hardware threads.
++
++			Note that this parameter only applies to non-gigantic huge pages.
++
+ 	hugetlb_cma=	[HW,CMA,EARLY] The size of a CMA area used for allocation
+ 			of gigantic hugepages. Or using node format, the size
+ 			of a CMA area per node can be specified.
+diff --git a/Documentation/admin-guide/mm/hugetlbpage.rst b/Documentation/admin-guide/mm/hugetlbpage.rst
+index f34a0d798d5b533f30add99a34f66ba4e1c496a3..67a941903fd2231e6c082cffb4c9179ee094b208 100644
+--- a/Documentation/admin-guide/mm/hugetlbpage.rst
++++ b/Documentation/admin-guide/mm/hugetlbpage.rst
+@@ -145,7 +145,17 @@ hugepages
+ 
+ 	It will allocate 1 2M hugepage on node0 and 2 2M hugepages on node1.
+ 	If the node number is invalid,  the parameter will be ignored.
++hugepage_alloc_threads
++	Specify the number of threads that should be used to allocate hugepages
++	during boot. This parameter can be used to improve system bootup time
++	when allocating a large amount of huge pages.
+ 
++	The default value is 25% of the available hardware threads.
++	Example to use 8 allocation threads::
++
++		hugepage_alloc_threads=8
++
++	Note that this parameter only applies to non-gigantic huge pages.
+ default_hugepagesz
+ 	Specify the default huge page size.  This parameter can
+ 	only be specified once on the command line.  default_hugepagesz can
 diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 163190e89ea16450026496c020b544877db147d1..e9b1b3e2b9d467f067d54359e1401a03f9926108 100644
+index e9b1b3e2b9d467f067d54359e1401a03f9926108..98dbfa18bee01d01b40cc7c650cd3eca5eae2457 100644
 --- a/mm/hugetlb.c
 +++ b/mm/hugetlb.c
-@@ -14,9 +14,11 @@
- #include <linux/pagemap.h>
- #include <linux/mempolicy.h>
- #include <linux/compiler.h>
-+#include <linux/cpumask.h>
- #include <linux/cpuset.h>
- #include <linux/mutex.h>
- #include <linux/memblock.h>
-+#include <linux/minmax.h>
- #include <linux/sysfs.h>
- #include <linux/slab.h>
- #include <linux/sched/mm.h>
-@@ -3427,31 +3429,31 @@ static unsigned long __init hugetlb_pages_alloc_boot(struct hstate *h)
+@@ -70,6 +70,7 @@ static unsigned long __initdata default_hstate_max_huge_pages;
+ static bool __initdata parsed_valid_hugepagesz = true;
+ static bool __initdata parsed_default_hugepagesz;
+ static unsigned int default_hugepages_in_node[MAX_NUMNODES] __initdata;
++static unsigned long hugepage_allocation_threads __initdata;
+ 
+ /*
+  * Protects updates to hugepage_freelists, hugepage_activelist, nr_huge_pages,
+@@ -3429,8 +3430,6 @@ static unsigned long __init hugetlb_pages_alloc_boot(struct hstate *h)
  		.numa_aware	= true
  	};
  
-+	unsigned int num_allocation_threads = max(num_online_cpus() / 4, 1);
-+
+-	unsigned int num_allocation_threads = max(num_online_cpus() / 4, 1);
+-
  	job.thread_fn	= hugetlb_pages_alloc_boot_node;
  	job.start	= 0;
  	job.size	= h->max_huge_pages;
- 
- 	/*
--	 * job.max_threads is twice the num_node_state(N_MEMORY),
-+	 * job.max_threads is 25% of the available cpu threads by default.
- 	 *
--	 * Tests below indicate that a multiplier of 2 significantly improves
--	 * performance, and although larger values also provide improvements,
--	 * the gains are marginal.
-+	 * On large servers with terabytes of memory, huge page allocation
-+	 * can consume a considerably amount of time.
- 	 *
--	 * Therefore, choosing 2 as the multiplier strikes a good balance between
--	 * enhancing parallel processing capabilities and maintaining efficient
--	 * resource management.
-+	 * Tests below show how long it takes to allocate 1 TiB of memory with 2MiB huge pages.
-+	 * 2MiB huge pages. Using more threads can significantly improve allocation time.
- 	 *
--	 * +------------+-------+-------+-------+-------+-------+
--	 * | multiplier |   1   |   2   |   3   |   4   |   5   |
--	 * +------------+-------+-------+-------+-------+-------+
--	 * | 256G 2node | 358ms | 215ms | 157ms | 134ms | 126ms |
--	 * | 2T   4node | 979ms | 679ms | 543ms | 489ms | 481ms |
--	 * | 50G  2node | 71ms  | 44ms  | 37ms  | 30ms  | 31ms  |
--	 * +------------+-------+-------+-------+-------+-------+
-+	 * +-----------------------+-------+-------+-------+-------+-------+
-+	 * | threads               |   8   |   16  |   32  |   64  |   128 |
-+	 * +-----------------------+-------+-------+-------+-------+-------+
-+	 * | skylake      144 cpus |   44s |   22s |   16s |   19s |   20s |
-+	 * | cascade lake 192 cpus |   39s |   20s |   11s |   10s |    9s |
-+	 * +-----------------------+-------+-------+-------+-------+-------+
+@@ -3451,9 +3450,13 @@ static unsigned long __init hugetlb_pages_alloc_boot(struct hstate *h)
+ 	 * | cascade lake 192 cpus |   39s |   20s |   11s |   10s |    9s |
+ 	 * +-----------------------+-------+-------+-------+-------+-------+
  	 */
--	job.max_threads	= num_node_state(N_MEMORY) * 2;
--	job.min_chunk	= h->max_huge_pages / num_node_state(N_MEMORY) / 2;
-+
-+	job.max_threads	= num_allocation_threads;
-+	job.min_chunk	= h->max_huge_pages / num_allocation_threads;
++	if (hugepage_allocation_threads == 0) {
++		hugepage_allocation_threads = num_online_cpus() / 4;
++		hugepage_allocation_threads = max(hugepage_allocation_threads, 1);
++	}
+ 
+-	job.max_threads	= num_allocation_threads;
+-	job.min_chunk	= h->max_huge_pages / num_allocation_threads;
++	job.max_threads	= hugepage_allocation_threads;
++	job.min_chunk	= h->max_huge_pages / hugepage_allocation_threads;
  	padata_do_multithreaded(&job);
  
  	return h->nr_huge_pages;
+@@ -4766,6 +4769,26 @@ static int __init default_hugepagesz_setup(char *s)
+ }
+ __setup("default_hugepagesz=", default_hugepagesz_setup);
+ 
++/* hugepage_alloc_threads command line parsing
++ * When set, use this specific number of threads for the boot
++ * allocation of hugepages.
++ */
++static int __init hugepage_alloc_threads_setup(char *s)
++{
++	unsigned long allocation_threads;
++
++	if (kstrtoul(s, 0, &allocation_threads) != 0)
++		return 1;
++
++	if (allocation_threads == 0)
++		return 1;
++
++	hugepage_allocation_threads = allocation_threads;
++
++	return 1;
++}
++__setup("hugepage_alloc_threads=", hugepage_alloc_threads_setup);
++
+ static unsigned int allowed_mems_nr(struct hstate *h)
+ {
+ 	int node;
 
 -- 
 2.48.1
