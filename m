@@ -1,100 +1,61 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Fri, 28 Feb 2025 17:32:08 +0100
-Subject: [PATCH v2 2/2] iommu: apple-dart: Allow mismatched bypass support
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH v2 0/3] net: Convert Gianfar (Triple Speed Ethernet
+ Controller) bindings to YAML
+Date: Fri, 28 Feb 2025 18:32:49 +0100
+Message-Id: <20250228-gianfar-yaml-v2-0-6beeefbd4818@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250228-isp-dart-v2-2-0ead81a90e2d@gmail.com>
-References: <20250228-isp-dart-v2-0-0ead81a90e2d@gmail.com>
-In-Reply-To: <20250228-isp-dart-v2-0-0ead81a90e2d@gmail.com>
-To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, Hector Martin <marcan@marcan.st>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAEHzwWcC/1XMQQqDMBCF4avIrJsSR6PYlfcoLmKd6ECbSBJCR
+ bx7U+mmy//B+3YI5JkC3IodPCUO7GwOvBTwWLSdSfCUG1Cikig7MbO2Rnux6ddT6EbV2FRjq6o
+ a8mX1ZPh9cvch98IhOr+deiq/6w9C+Q+lUkghR921ZirJdNivLkRyV0sRhuM4PnZOJHCpAAAA
+X-Change-ID: 20250209-gianfar-yaml-a654263b7534
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Claudiu Manoil <claudiu.manoil@nxp.com>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740760327; l=2163;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=JQSupRxxeo02jeCiSjlLYXGm5UYUz824xOI4n+kLsIc=;
- b=NIJtNGenNUqCGcrYn+CSg5iwM1CMxzExqc+CYKhhPQo7i/RgO9AE9OfTxrviHYf4OG5lC8nJg
- OGL27PZVqIaAgrswsqJtotv4GAOiML7r1Pe8wVGJdZ2W5H+Kw+Q2c34
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740763971; l=1162;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=05YjIwxt9ICbD8A5g413HEEyLgeVF09nKkvpDTpwysE=;
+ b=QXXMsMCKLcwGmYcgKknZtJuqocOJDhGbr3dYT/Km5BQNVg3sQJFdVbmJj0GRxpYO0l1NJ+ncR
+ 5wBDm7U3nnFCIMmBCFjrGyYeC1G7yCZEadaa9aR2PRU0jUA1McHDzFT
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+The aim of this series is to modernize the device tree bindings for the
+Freescale "Gianfar" ethernet controller (a.k.a. TSEC, Triple Speed
+Ethernet Controller) by converting them to YAML.
 
-This is needed by ISP, which has DART0 with bypass and DART1/2 without.
-
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- drivers/iommu/apple-dart.c | 17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
+Changes in v2:
+- various cleanups suggested by reviewers
+- use a 'select:' schema to disambiguate compatible = "gianfar" between
+  network controller and MDIO nodes
+- Link to v1: https://lore.kernel.org/r/20250220-gianfar-yaml-v1-0-0ba97fd1ef92@posteo.net
 
-diff --git a/drivers/iommu/apple-dart.c b/drivers/iommu/apple-dart.c
-index edb2fb22333506d7c64ad1b6321df00ebfd07747..13ccb801f52a4d34f6653f78e92787af7dfed1bc 100644
---- a/drivers/iommu/apple-dart.c
-+++ b/drivers/iommu/apple-dart.c
-@@ -277,6 +277,9 @@ struct apple_dart_domain {
-  * @streams: streams for this device
-  */
- struct apple_dart_master_cfg {
-+	/* Intersection of DART capabilitles */
-+	u32 supports_bypass : 1;
-+
- 	struct apple_dart_stream_map stream_maps[MAX_DARTS_PER_DEVICE];
- };
- 
-@@ -684,7 +687,7 @@ static int apple_dart_attach_dev_identity(struct iommu_domain *domain,
- 	struct apple_dart_stream_map *stream_map;
- 	int i;
- 
--	if (!cfg->stream_maps[0].dart->supports_bypass)
-+	if (!cfg->supports_bypass)
- 		return -EINVAL;
- 
- 	for_each_stream_map(i, cfg, stream_map)
-@@ -792,20 +795,24 @@ static int apple_dart_of_xlate(struct device *dev,
- 		return -EINVAL;
- 	sid = args->args[0];
- 
--	if (!cfg)
-+	if (!cfg) {
- 		cfg = kzalloc(sizeof(*cfg), GFP_KERNEL);
-+
-+		/* Will be ANDed with DART capabilities */
-+		cfg->supports_bypass = true;
-+	}
- 	if (!cfg)
- 		return -ENOMEM;
- 	dev_iommu_priv_set(dev, cfg);
- 
- 	cfg_dart = cfg->stream_maps[0].dart;
- 	if (cfg_dart) {
--		if (cfg_dart->supports_bypass != dart->supports_bypass)
--			return -EINVAL;
- 		if (cfg_dart->pgsize != dart->pgsize)
- 			return -EINVAL;
- 	}
- 
-+	cfg->supports_bypass &= dart->supports_bypass;
-+
- 	for (i = 0; i < MAX_DARTS_PER_DEVICE; ++i) {
- 		if (cfg->stream_maps[i].dart == dart) {
- 			set_bit(sid, cfg->stream_maps[i].sidmap);
-@@ -945,7 +952,7 @@ static int apple_dart_def_domain_type(struct device *dev)
- 
- 	if (cfg->stream_maps[0].dart->pgsize > PAGE_SIZE)
- 		return IOMMU_DOMAIN_IDENTITY;
--	if (!cfg->stream_maps[0].dart->supports_bypass)
-+	if (!cfg->supports_bypass)
- 		return IOMMU_DOMAIN_DMA;
- 
- 	return 0;
+---
+J. Neuschäfer (3):
+      dt-bindings: net: Convert fsl,gianfar-{mdio,tbi} to YAML
+      dt-bindings: net: fsl,gianfar-mdio: Update information about TBI
+      dt-bindings: net: Convert fsl,gianfar to YAML
 
+ .../devicetree/bindings/net/fsl,gianfar-mdio.yaml  | 112 ++++++++++
+ .../devicetree/bindings/net/fsl,gianfar.yaml       | 248 +++++++++++++++++++++
+ .../devicetree/bindings/net/fsl-tsec-phy.txt       |  80 +------
+ 3 files changed, 363 insertions(+), 77 deletions(-)
+---
+base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
+change-id: 20250209-gianfar-yaml-a654263b7534
+
+Best regards,
 -- 
-2.48.1
+J. Neuschäfer <j.ne@posteo.net>
 
