@@ -1,11 +1,10 @@
 From: jiebing chen <jiebing.chen@amlogic.com>
-Date: Fri, 28 Feb 2025 16:04:10 +0800
-Subject: [PATCH v3 2/6] dt-bindings: clock: axg-audio: Add mclk and sclk
- pad clock ids
+Date: Fri, 28 Feb 2025 16:04:11 +0800
+Subject: [PATCH v3 3/6] dt-bindings: Asoc: axg-audio: Add s4 audio tocodec
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250228-audio_drvier-v3-2-dbfd30507e4c@amlogic.com>
+Message-Id: <20250228-audio_drvier-v3-3-dbfd30507e4c@amlogic.com>
 References: <20250228-audio_drvier-v3-0-dbfd30507e4c@amlogic.com>
 In-Reply-To: <20250228-audio_drvier-v3-0-dbfd30507e4c@amlogic.com>
 To: Jerome Brunet <jbrunet@baylibre.com>, 
@@ -23,44 +22,35 @@ Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org,
  jian.xu@amlogic.com, shuai.li@amlogic.com, zhe.wang@amlogic.com, 
  jiebing chen <jiebing.chen@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740729872; l=1189;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740729873; l=814;
  i=jiebing.chen@amlogic.com; s=20250110; h=from:subject:message-id;
- bh=88wOt7PQOZgMOfEb+IdY8ro91DFKMHUEezQLsKjA1uk=;
- b=NRb7Af0SblT1s22xNxsRpztqbejXeyPzRRg2nWh298Z5IoQTpEqvtOgqR6DJjvmHrLnx8SwyW
- EGfSy9Q/ZiyAGHFbaJF3z/DGlcR+FTMidRL7/jsHGQltd1mRooAru3S
+ bh=yLn4ez8IBN5cqEFPit7mp5UgBhrhZLIZZw6YIL6gw/A=;
+ b=Ln4I8fiQnLMfuiMcRK4BwIzEX2oprZoBT81J9aYb4LCt/OOibp8DXvXsERxzUJ2hkE7YS4brs
+ WP3M5XyLV3hCFQSRZ8oPumPoEi5QCB9NJtHnRPPuQRCOpvXvy/3gfNI
 X-Developer-Key: i=jiebing.chen@amlogic.com; a=ed25519;
  pk=6rFvvF45A84pLNRy03hfUHeROxHCnZ+1KAGw/DoqKic=
 X-Endpoint-Received: by B4 Relay for jiebing.chen@amlogic.com/20250110 with auth_id=316
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add clock IDs for the mclk pads found on s4 SoCs
+Add the s4 tocodec compatible
 
 Signed-off-by: jiebing chen <jiebing.chen@amlogic.com>
 ---
- include/dt-bindings/clock/axg-audio-clkc.h | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/include/dt-bindings/clock/axg-audio-clkc.h b/include/dt-bindings/clock/axg-audio-clkc.h
-index 607f23b83fa7287fe0403682ebf827e2df26a1ce..75dde05343d1fa74304ee21c9ec0541a8f51b15e 100644
---- a/include/dt-bindings/clock/axg-audio-clkc.h
-+++ b/include/dt-bindings/clock/axg-audio-clkc.h
-@@ -162,5 +162,16 @@
- #define AUD_CLKID_EARCRX_DMAC_SEL	182
- #define AUD_CLKID_EARCRX_DMAC_DIV	183
- #define AUD_CLKID_EARCRX_DMAC		184
-+#define AUD_CLKID_TDM_MCLK_PAD0_SEL     185
-+#define AUD_CLKID_TDM_MCLK_PAD1_SEL     186
-+#define AUD_CLKID_TDM_MCLK_PAD0_DIV     187
-+#define AUD_CLKID_TDM_MCLK_PAD1_DIV     188
-+#define AUD_CLKID_TDM_MCLK_PAD2         189
-+#define AUD_CLKID_TDM_MCLK_PAD2_SEL     190
-+#define AUD_CLKID_TDM_MCLK_PAD2_DIV     191
-+#define AUD_CLKID_TDM_SCLK_PAD3		192
-+#define AUD_CLKID_TDM_SCLK_PAD4		193
-+#define AUD_CLKID_TDM_LRCLK_PAD3	194
-+#define AUD_CLKID_TDM_LRCLK_PAD4	195
+diff --git a/Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml b/Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml
+index 23f82bb89750898d20c866015bc2e1a4b0554846..ea669f4359bc81b0f45bc2105c832fc2b11d8441 100644
+--- a/Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml
++++ b/Documentation/devicetree/bindings/sound/amlogic,g12a-toacodec.yaml
+@@ -26,6 +26,7 @@ properties:
+       - items:
+           - enum:
+               - amlogic,sm1-toacodec
++              - amlogic,s4-toacodec
+           - const: amlogic,g12a-toacodec
  
- #endif /* __AXG_AUDIO_CLKC_BINDINGS_H */
+   reg:
 
 -- 
 2.43.0
