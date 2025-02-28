@@ -1,10 +1,11 @@
 From: =?utf-8?q?Jonathan_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Fri, 28 Feb 2025 16:11:23 +0100
-Subject: [PATCH v3 8/9] usb: storage: sddr55: Use const for constant arrays
+Date: Fri, 28 Feb 2025 16:11:24 +0100
+Subject: [PATCH v3 9/9] usb: storage: shuttle_usbat: Use const for constant
+ array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250228-misc-const-v3-8-09b417ded9c4@posteo.net>
+Message-Id: <20250228-misc-const-v3-9-09b417ded9c4@posteo.net>
 References: <20250228-misc-const-v3-0-09b417ded9c4@posteo.net>
 In-Reply-To: <20250228-misc-const-v3-0-09b417ded9c4@posteo.net>
 To: Alan Stern <stern@rowland.harvard.edu>, 
@@ -13,17 +14,17 @@ Cc: linux-usb@vger.kernel.org, usb-storage@lists.one-eyed-alien.net,
  linux-kernel@vger.kernel.org, 
  =?utf-8?q?Jonathan_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740755487; l=1301;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740755487; l=1113;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=dyKVA5pPyRY7TuBL1KemWvR3umAVS5JkAQpDbS4Ydg8=;
- b=BA2AmNdIfge2Df+JYGIJv5vw589dHvWjgpw9g3g4XAmSw0hlylN9Cwos695Ecbek4xyDO25CK
- YPc4LO4ulNyCW2RrB7XQ6aT4rULx/eUV2vZE8BRKGz3BpojbZOU/8sn
+ bh=c3zFUpIiLQBTnxFuX58IYeC708hZ2OFipFj3XEiE89M=;
+ b=17wwAL61o0Jxp0MpLVODKSR5Di1ZGuLePUAxm0dBAjg9XqlvS+dfhTNn3txurpA0eEvTR+bhD
+ VBaqrrNEvXeAsyefhBm1t9roTEB21NVsLaiAcO0Rq7eMhdHhDVxA4eR
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These arrays are only read, not modified.
+This array is only read, not modified.
 
 Declaring data as const makes it easier to see what's going on, and can
 prevent unintended writes through placement in a read-only section.
@@ -37,27 +38,22 @@ V3:
 V2:
 - new patch
 ---
- drivers/usb/storage/sddr55.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/usb/storage/shuttle_usbat.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/usb/storage/sddr55.c b/drivers/usb/storage/sddr55.c
-index d5cdff30f6f31f98d3d58ffcdd2426d7cd385cbb..b323f0a3626031905b946ce64ddf04539a6e3232 100644
---- a/drivers/usb/storage/sddr55.c
-+++ b/drivers/usb/storage/sddr55.c
-@@ -775,11 +775,11 @@ static void sddr55_card_info_destructor(void *extra) {
- static int sddr55_transport(struct scsi_cmnd *srb, struct us_data *us)
- {
- 	int result;
--	static unsigned char inquiry_response[8] = {
-+	static const unsigned char inquiry_response[8] = {
- 		0x00, 0x80, 0x00, 0x02, 0x1F, 0x00, 0x00, 0x00
+diff --git a/drivers/usb/storage/shuttle_usbat.c b/drivers/usb/storage/shuttle_usbat.c
+index c33cbf177e6fcaa80e0d2639594d1314c59f4950..27faa0ead11d1b0ee9e45ba6a3ee5bade8a416e4 100644
+--- a/drivers/usb/storage/shuttle_usbat.c
++++ b/drivers/usb/storage/shuttle_usbat.c
+@@ -1683,7 +1683,7 @@ static int usbat_flash_transport(struct scsi_cmnd * srb, struct us_data *us)
+ 	struct usbat_info *info = (struct usbat_info *) (us->extra);
+ 	unsigned long block, blocks;
+ 	unsigned char *ptr = us->iobuf;
+-	static unsigned char inquiry_response[36] = {
++	static const unsigned char inquiry_response[36] = {
+ 		0x00, 0x80, 0x00, 0x01, 0x1F, 0x00, 0x00, 0x00
  	};
-  	// write-protected for now, no block descriptor support
--	static unsigned char mode_page_01[20] = {
-+	static const unsigned char mode_page_01[20] = {
- 		0x0, 0x12, 0x00, 0x80, 0x0, 0x0, 0x0, 0x0,
- 		0x01, 0x0A,
- 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+ 
 
 -- 
 2.48.0.rc1.219.gb6b6757d772
