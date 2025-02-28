@@ -1,11 +1,10 @@
 From: =?utf-8?q?Jonathan_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Fri, 28 Feb 2025 16:11:17 +0100
-Subject: [PATCH v3 2/9] usb: storage: transport: Use const for constant
- array
+Date: Fri, 28 Feb 2025 16:11:18 +0100
+Subject: [PATCH v3 3/9] usb: storage: alauda: Use const for card ID array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250228-misc-const-v3-2-09b417ded9c4@posteo.net>
+Message-Id: <20250228-misc-const-v3-3-09b417ded9c4@posteo.net>
 References: <20250228-misc-const-v3-0-09b417ded9c4@posteo.net>
 In-Reply-To: <20250228-misc-const-v3-0-09b417ded9c4@posteo.net>
 To: Alan Stern <stern@rowland.harvard.edu>, 
@@ -14,17 +13,17 @@ Cc: linux-usb@vger.kernel.org, usb-storage@lists.one-eyed-alien.net,
  linux-kernel@vger.kernel.org, 
  =?utf-8?q?Jonathan_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740755487; l=1083;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740755487; l=1923;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=5QhhUgzLhqlm9TuqxkqZvu43pDK5vNdB37hr9QmYLe0=;
- b=Do+TFHXIzpuTMoqzCo0Tlwt1aL6JJT8DwkXkg/H3OvZYEdkDmwi2cv0YFHb/HTKnG0germ+oH
- 3FcQCQ4aPi4AYzYLjafm50iYjfGO2uOQK+QciXxn5RZ3CgOFtFWEsdV
+ bh=AZumiHFV94k9HcBLZR6/HqBt2YaBXyvzIkuQ2zvtWu4=;
+ b=7qv1Cd/INWh/lZF4QpH0wu5HRq6qdQDZ65XW11dcqRHlPkoDgZDiwVk4a4xitAUAuiBPD5d81
+ W4RebuHnTelCFEKEumtfyEZXcIfLfczTk/A2gxSoMLMYfDFUA+m+G+E
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This array is only read, not modified.
+The alauda_card_ids array is only read, and not modified.
 
 Declaring data as const makes it easier to see what's going on, and can
 prevent unintended writes through placement in a read-only section.
@@ -38,22 +37,49 @@ V3:
 V2:
 - new patch
 ---
- drivers/usb/storage/transport.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/usb/storage/alauda.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/usb/storage/transport.c b/drivers/usb/storage/transport.c
-index e6bc8ecaecbb202714be69c6db6b0a4824de4855..1aa1bd26c81f2f9fbd508fdfed4465e6482bdef0 100644
---- a/drivers/usb/storage/transport.c
-+++ b/drivers/usb/storage/transport.c
-@@ -528,7 +528,7 @@ static void last_sector_hacks(struct us_data *us, struct scsi_cmnd *srb)
- 	u32 sector;
+diff --git a/drivers/usb/storage/alauda.c b/drivers/usb/storage/alauda.c
+index 6263c4e61678e890e0192c5c9dad9b97dbaf0e66..e01f3a42bde4200da245c17abd5299c062868204 100644
+--- a/drivers/usb/storage/alauda.c
++++ b/drivers/usb/storage/alauda.c
+@@ -174,7 +174,7 @@ struct alauda_card_info {
+ 	unsigned char zoneshift;	/* 1<<zs blocks per zone */
+ };
  
- 	/* To Report "Medium Error: Record Not Found */
--	static unsigned char record_not_found[18] = {
-+	static const unsigned char record_not_found[18] = {
- 		[0]	= 0x70,			/* current error */
- 		[2]	= MEDIUM_ERROR,		/* = 0x03 */
- 		[7]	= 0x0a,			/* additional length */
+-static struct alauda_card_info alauda_card_ids[] = {
++static const struct alauda_card_info alauda_card_ids[] = {
+ 	/* NAND flash */
+ 	{ 0x6e, 20, 8, 4, 8},	/* 1 MB */
+ 	{ 0xe8, 20, 8, 4, 8},	/* 1 MB */
+@@ -200,7 +200,7 @@ static struct alauda_card_info alauda_card_ids[] = {
+ 	{ 0,}
+ };
+ 
+-static struct alauda_card_info *alauda_card_find_id(unsigned char id)
++static const struct alauda_card_info *alauda_card_find_id(unsigned char id)
+ {
+ 	int i;
+ 
+@@ -383,7 +383,7 @@ static int alauda_init_media(struct us_data *us)
+ {
+ 	unsigned char *data = us->iobuf;
+ 	int ready = 0;
+-	struct alauda_card_info *media_info;
++	const struct alauda_card_info *media_info;
+ 	unsigned int num_zones;
+ 
+ 	while (ready == 0) {
+@@ -1132,7 +1132,7 @@ static int alauda_transport(struct scsi_cmnd *srb, struct us_data *us)
+ 	int rc;
+ 	struct alauda_info *info = (struct alauda_info *) us->extra;
+ 	unsigned char *ptr = us->iobuf;
+-	static unsigned char inquiry_response[36] = {
++	static const unsigned char inquiry_response[36] = {
+ 		0x00, 0x80, 0x00, 0x01, 0x1F, 0x00, 0x00, 0x00
+ 	};
+ 
 
 -- 
 2.48.0.rc1.219.gb6b6757d772
