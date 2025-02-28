@@ -1,65 +1,75 @@
-From: Thomas Prescher <thomas.prescher@cyberus-technology.de>
-Date: Fri, 28 Feb 2025 00:02:12 +0100
-Subject: [PATCH v3 3/3] mm: hugetlb: log time needed to allocate hugepages
+From: Satish Kharat <satishkh@cisco.com>
+Subject: [PATCH 0/8] enic:enable 32, 64 byte cqes and get max rx/tx ring
+ size from hw
+Date: Thu, 27 Feb 2025 19:30:43 -0500
+Message-Id: <20250227-enic_cleanup_and_ext_cq-v1-0-c314f95812bb@cisco.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250228-hugepage-parameter-v3-3-2628e9b2b5c0@cyberus-technology.de>
-References: <20250228-hugepage-parameter-v3-0-2628e9b2b5c0@cyberus-technology.de>
-In-Reply-To: <20250228-hugepage-parameter-v3-0-2628e9b2b5c0@cyberus-technology.de>
-To: Jonathan Corbet <corbet@lwn.net>, Muchun Song <muchun.song@linux.dev>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mm@kvack.org, Thomas Prescher <thomas.prescher@cyberus-technology.de>
+X-B4-Tracking: v=1; b=H4sIALMDwWcC/x2MUQqEMBDFriLzbaEW1hWvIlJq+1wHZNRWRRDvv
+ sXPEJKbEiIjUVvcFHFy4kUyVGVBfnLyg+KQmYw2H22qRkHYWz/DybFaJ8Hi2q3f1Jhl3QxDgP5
+ SrteIka/33PXP8wfd6BOGaQAAAA==
+X-Change-ID: 20250218-enic_cleanup_and_ext_cq-f21868bbde07
+To: Christian Benvenuti <benve@cisco.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Satish Kharat <satishkh@cisco.com>, Nelson Escobar <neescoba@cisco.com>, 
+ John Daley <johndale@cisco.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740697330; l=1233;
- i=thomas.prescher@cyberus-technology.de; s=20250221;
- h=from:subject:message-id; bh=kVTCFV+/k+LokF7dkdID5wL+yhEPOHMcEjpG7h57QQg=;
- b=nviinN1UkUOO52193TwciC1bmDLsz/73yA7LF21tAe2rtkqUTXcEs3t41sxDWKNPeuMzSfORT
- Amw8zTCZiFNCkhEelV45hTzezgt+y4I9gVdfv+f4fjnpx/kApNWENHU
-X-Developer-Key: i=thomas.prescher@cyberus-technology.de; a=ed25519;
- pk=T5MVdLVCc/0UUyv5IcSqGVvGcVkgWW/KtuEo2RRJwM8=
-X-Endpoint-Received: by B4 Relay for thomas.prescher@cyberus-technology.de/20250221 with auth_id=345
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740702696; l=2108;
+ i=satishkh@cisco.com; s=20250226; h=from:subject:message-id;
+ bh=PZwKPZNIwsktgfTRcNnaJkTyo3RuC268bylz7yQgfOg=;
+ b=yXTfvSBP6ouKK/vCk+TWVcKFz+0RU/rWTHyrOcd+XmLM35vplEhXCZAtmN57zTtOTeWRnScLv
+ Q6iADyGlfTaCwGwWh0oN+/HQJK8ToB8K3upPjVizE3TwlN+vcHh3vCE
+X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
+ pk=lkxzORFYn5ejiy0kzcsfkpGoXZDcnHMc4n3YK7jJnJo=
+X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/20250226 with auth_id=351
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Having this information allows users to easily tune
-the hugepages_node_threads parameter.
+This series enables using the max rx and tx ring sizes read from hw.
+For newer hw that can be up to 16k entries. This requires bigger
+completion entries for rx queues. This series enables the use of the
+32 and 64 byte completion queues entries for enic rx queues on
+supported hw versions. This is in addition to the exiting (default)
+16 byte rx cqes.
 
-Signed-off-by: Thomas Prescher <thomas.prescher@cyberus-technology.de>
+Signed-off-by: Satish Kharat <satishkh@cisco.com>
 ---
- mm/hugetlb.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Satish Kharat (8):
+      enic: Move function from header file to c file
+      enic: enic rq code reorg
+      enic: enic rq extended cq defines
+      enic: enable rq extended cq support
+      enic : remove unused function cq_enet_wq_desc_dec
+      enic : added enic_wq.c and enic_wq.h
+      enic : cleanup of enic wq request completion path
+      enic : get max rq & wq entries supported by hw, 16K queues
 
-diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 98dbfa18bee01d01b40cc7c650cd3eca5eae2457..816e5846222a54255b99515a94e0c1ba9b2b7b27 100644
---- a/mm/hugetlb.c
-+++ b/mm/hugetlb.c
-@@ -3430,6 +3430,9 @@ static unsigned long __init hugetlb_pages_alloc_boot(struct hstate *h)
- 		.numa_aware	= true
- 	};
- 
-+	unsigned long jiffies_start;
-+	unsigned long jiffies_end;
-+
- 	job.thread_fn	= hugetlb_pages_alloc_boot_node;
- 	job.start	= 0;
- 	job.size	= h->max_huge_pages;
-@@ -3457,7 +3460,14 @@ static unsigned long __init hugetlb_pages_alloc_boot(struct hstate *h)
- 
- 	job.max_threads	= hugepage_allocation_threads;
- 	job.min_chunk	= h->max_huge_pages / hugepage_allocation_threads;
-+
-+	jiffies_start = jiffies;
- 	padata_do_multithreaded(&job);
-+	jiffies_end = jiffies;
-+
-+	pr_info("HugeTLB: allocation took %dms with hugepage_alloc_threads=%ld\n",
-+		jiffies_to_msecs(jiffies_end - jiffies_start),
-+		hugepage_allocation_threads);
- 
- 	return h->nr_huge_pages;
- }
+ drivers/net/ethernet/cisco/enic/Makefile       |   2 +-
+ drivers/net/ethernet/cisco/enic/cq_desc.h      |  25 +--
+ drivers/net/ethernet/cisco/enic/cq_enet_desc.h | 142 ++++++--------
+ drivers/net/ethernet/cisco/enic/enic.h         |  13 ++
+ drivers/net/ethernet/cisco/enic/enic_ethtool.c |  12 +-
+ drivers/net/ethernet/cisco/enic/enic_main.c    |  69 +------
+ drivers/net/ethernet/cisco/enic/enic_res.c     |  87 +++++++--
+ drivers/net/ethernet/cisco/enic/enic_res.h     |  11 +-
+ drivers/net/ethernet/cisco/enic/enic_rq.c      | 246 ++++++++++++++++++++++---
+ drivers/net/ethernet/cisco/enic/enic_rq.h      |   6 +-
+ drivers/net/ethernet/cisco/enic/enic_wq.c      | 121 ++++++++++++
+ drivers/net/ethernet/cisco/enic/enic_wq.h      |   6 +
+ drivers/net/ethernet/cisco/enic/vnic_cq.h      |  41 -----
+ drivers/net/ethernet/cisco/enic/vnic_devcmd.h  |  19 ++
+ drivers/net/ethernet/cisco/enic/vnic_enet.h    |   5 +
+ drivers/net/ethernet/cisco/enic/vnic_rq.h      |   2 +-
+ drivers/net/ethernet/cisco/enic/vnic_wq.h      |   2 +-
+ 17 files changed, 545 insertions(+), 264 deletions(-)
+---
+base-commit: de7a88b639d488607352a270ef2e052c4442b1b3
+change-id: 20250218-enic_cleanup_and_ext_cq-f21868bbde07
 
+Best regards,
 -- 
-2.48.1
+Satish Kharat <satishkh@cisco.com>
 
