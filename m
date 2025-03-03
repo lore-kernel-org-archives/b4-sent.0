@@ -1,59 +1,84 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Mon, 03 Mar 2025 17:06:05 +0800
-Subject: [PATCH] pmdomain: amlogic: fix T7 ISP secpower
+From: "Chester A. Unal" <chester.a.unal@arinc9.com>
+Date: Mon, 03 Mar 2025 13:06:50 +0000
+Subject: [PATCH] ARM: dts: BCM5301X: Fix switch port labels of ASUS
+ RT-AC5300
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250303-fix-t7-pwrc-v1-1-b563612bcd86@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAPxwxWcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDYwNj3bTMCt0Sc92C8qJk3TRjYzNTgyRDS4PUNCWgjoKiVKA02LTo2Np
- aAPHs9UBdAAAA
-To: Ulf Hansson <ulf.hansson@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740992766; l=1171;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=rJx19Mccy9v03r4IPzrydNTt9cu21guWRk4PdtQnj/s=;
- b=uqesClxVofnbW/ynh5d/bm2c3Kt2QwEI3r8qy7137qIkThIhcwEJ5t8Lm7peBNEKl3AhmZ73V
- TB14yRL8lI1C2wcDWE5UOeddEEODPuhesytoihG1QQQjHR9llVP55r3
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Message-Id: <20250303-for-broadcom-fix-rt-ac5300-switch-ports-v1-1-e058856ef4d3@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIAGmpxWcC/x2NQQqDMBAAvyJ77sI20Yb2K6WHmKx1DzWyG2xB/
+ HuDx4FhZgdjFTZ4dDsob2JSlgbXSwdpjsubUXJjcOQG8uRxKoqjlphT+eAkP9SKMQ2eCO0rNc2
+ 4Fq2GIdzGQD1nF+7Qaqtys8/T83Ucf/OpD9N5AAAA
+X-Change-ID: 20250303-for-broadcom-fix-rt-ac5300-switch-ports-776b704ed279
+To: Florian Fainelli <florian.fainelli@broadcom.com>, 
+ Hauke Mehrtens <hauke@hauke-m.de>, 
+ =?utf-8?q?Rafa=C5=82_Mi=C5=82ecki?= <zajec5@gmail.com>, 
+ Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Tom Brautaset <tbrautaset@gmail.com>, 
+ =?utf-8?q?Ar=C4=B1n=C3=A7_=C3=9CNAL?= <arinc.unal@arinc9.com>, 
+ Linus Walleij <linus.walleij@linaro.org>
+Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, "Chester A. Unal" <chester.a.unal@arinc9.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741007221; l=1355;
+ i=chester.a.unal@arinc9.com; s=arinc9; h=from:subject:message-id;
+ bh=pnEACfUXw4i/i7KomdhkZyj3vwZ11bi8No1VYOFnwDs=;
+ b=qLc0CTqWEMG6zp53x9qNafll5DaO+iOLlCT86V716Yc1ca2n5cHbE8Kbt6Cg9WBKQgh9SCUWJ
+ F5fOYwVex56C5CTxFBl9oDM/M4keZbY0lv0dqahvCYqSn3bKx9yQyqv
+X-Developer-Key: i=chester.a.unal@arinc9.com; a=ed25519;
+ pk=/g3vBAV0YSvcIpSQ052xJbid7nrPXz8ExGKhTEuc6IY=
+X-Endpoint-Received: by B4 Relay for chester.a.unal@arinc9.com/arinc9 with auth_id=306
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ISP and MIPI_ISP, these two have a parent-child relationship,
-ISP depends on MIPI_ISP.
+After using the device for a while, Tom reports that he initially described
+the switch port labels incorrectly. Correct them.
 
-Fixes: ca75e4b214c6 ("pmdomain: amlogic: Add support for T7 power domains controller")
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Reported-by: Tom Brautaset <tbrautaset@gmail.com>
+Fixes: 961dedc6b4e4 ("ARM: dts: BCM5301X: Add DT for ASUS RT-AC5300")
+Signed-off-by: Chester A. Unal <chester.a.unal@arinc9.com>
 ---
- drivers/pmdomain/amlogic/meson-secure-pwrc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/pmdomain/amlogic/meson-secure-pwrc.c b/drivers/pmdomain/amlogic/meson-secure-pwrc.c
-index 42ce41a2fe3a..ff76ea36835e 100644
---- a/drivers/pmdomain/amlogic/meson-secure-pwrc.c
-+++ b/drivers/pmdomain/amlogic/meson-secure-pwrc.c
-@@ -221,7 +221,7 @@ static const struct meson_secure_pwrc_domain_desc t7_pwrc_domains[] = {
- 	SEC_PD(T7_VI_CLK2,	0),
- 	/* ETH is for ethernet online wakeup, and should be always on */
- 	SEC_PD(T7_ETH,		GENPD_FLAG_ALWAYS_ON),
--	SEC_PD(T7_ISP,		0),
-+	TOP_PD(T7_ISP,		0, PWRC_T7_MIPI_ISP_ID),
- 	SEC_PD(T7_MIPI_ISP,	0),
- 	TOP_PD(T7_GDC,		0, PWRC_T7_NIC3_ID),
- 	TOP_PD(T7_DEWARP,	0, PWRC_T7_NIC3_ID),
+diff --git a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts
+index 6c666dc7ad23ef7c31ac22904c39789838caea2e..01ec8c03686a66dd1efa439333f83737fe572191 100644
+--- a/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts
++++ b/arch/arm/boot/dts/broadcom/bcm47094-asus-rt-ac5300.dts
+@@ -126,11 +126,11 @@ &srab {
+ 
+ 	ports {
+ 		port@0 {
+-			label = "lan4";
++			label = "wan";
+ 		};
+ 
+ 		port@1 {
+-			label = "lan3";
++			label = "lan1";
+ 		};
+ 
+ 		port@2 {
+@@ -138,11 +138,11 @@ port@2 {
+ 		};
+ 
+ 		port@3 {
+-			label = "lan1";
++			label = "lan3";
+ 		};
+ 
+ 		port@4 {
+-			label = "wan";
++			label = "lan4";
+ 		};
+ 	};
+ };
 
 ---
-base-commit: 73e4ffb27bb8a093d557bb2dac1a271474cca99c
-change-id: 20250303-fix-t7-pwrc-f33650b190ef
+base-commit: 768953614c1c13fdf771be5742f1be573eea8fa4
+change-id: 20250303-for-broadcom-fix-rt-ac5300-switch-ports-776b704ed279
 
 Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+Chester A. Unal <chester.a.unal@arinc9.com>
 
