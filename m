@@ -1,76 +1,64 @@
-From: Joel Selvaraj <foss@joelselvaraj.com>
-Date: Mon, 03 Mar 2025 16:36:58 -0600
-Subject: [PATCH v4 4/4] arm64: dts: qcom: sdm845-xiaomi-beryllium-ebbg:
- introduce touchscreen support
+From: Richard Leitner <richard.leitner@linux.dev>
+Subject: [PATCH 0/3] Add flash/strobe support for ov9282
+Date: Mon, 03 Mar 2025 23:58:56 +0100
+Message-Id: <20250303-ov9282-flash-strobe-v1-0-0fd57a1564ba@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250303-pocof1-touchscreen-support-v4-4-cdc3bebc3942@joelselvaraj.com>
-References: <20250303-pocof1-touchscreen-support-v4-0-cdc3bebc3942@joelselvaraj.com>
-In-Reply-To: <20250303-pocof1-touchscreen-support-v4-0-cdc3bebc3942@joelselvaraj.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
- Joel Selvaraj <foss@joelselvaraj.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-X-Mailer: b4 0.14-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741041422; l=1353;
- i=foss@joelselvaraj.com; s=20241007; h=from:subject:message-id;
- bh=/EYGZKfsbI654LMI3OrPLlYqb/jeTp2euCUTiMhRjIc=;
- b=fX+JxFS3q1blDTJqocmSoo6oLccGcIuMhF3/6GbezvwEZD01gWYTr1MkQvA6ekK/Wn/S6YWPS
- naLH8FxucPJAsu5zCY92z2kvEPFhCCGw70JobUsTswahc2a0+J8BY81
-X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
- pk=pqYvzJftxCPloaoUbVsfQE7Gwv8bynZPy8mjYohwMCc=
-X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20241007 with auth_id=238
+X-B4-Tracking: v=1; b=H4sIADA0xmcC/0XMywrDIBCF4VcJs+6AmhoaX6Vk4WVMhKKtplIIe
+ fdKQunyP3C+DQrlQAVUt0GmGkpIsQW/dGAXHWfC4FqDYEKynvWY6ihuAv1DlwXLmpMh1HYwjjE
+ 7OhqgPZ+ZfPgc6n06O9Pr3fD1HP+26g5ZCInm+sNnHSKS59Zpo6XxTlUO075/AURFWfKuAAAA
+X-Change-ID: 20250303-ov9282-flash-strobe-ac6bd00c9de6
+To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Dave Stevenson <dave.stevenson@raspberrypi.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Richard Leitner <richard.leitner@linux.dev>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741042742; l=1479;
+ i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
+ bh=XbOH1fC1/MqVpPPDTqHt/Rol16iCZE4/cwigRDqrXss=;
+ b=tPsXSgcYuvu4Sx6vaJjj2l/fOFaX2Ujdxbk35Mtejtr68dD/w/VDfKMwsAOA2P9f9fUKvMzn9
+ 9hkSLXJOWU8DAZFP8SNmuPzXo4EUbzMSV+95eKEnfqIia+VIrINvDTk
+X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
+ pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
+X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the Focaltech FT8719 touchscreen controller used in the Poco F1
-(EBBG) panel variant.
+This series adds basic flash/strobe support for ov9282 sensors using
+their "hardware strobe output".
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
+Apart from en-/disabling the flash/strobe output, setting a timeout
+(duration of activated strobe per frame) is implemented. The calculation
+of this timeout is only interpolated from various measurements, as no
+documentation was found.
+
+Further flash/strobe-related controls as well as a migration to v4l2-cci
+helpers will likely be implemented in future series.
+
+All register addresses/values are based on the OV9281 datasheet v1.53
+(january 2019). This series was tested using an ov9281 VisionComponents
+camera module.
+
+Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- .../boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts | 23 ++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+Richard Leitner (3):
+      media: i2c: ov9282: add output enable register definitions
+      media: i2c: ov9282: add led_mode v4l2 control
+      media: i2c: ov9282: add strobe_timeout v4l2 control
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts
-index 76931ebad065..2d6f0e382a6c 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts
-@@ -13,3 +13,26 @@ &display_panel {
- 	compatible = "ebbg,ft8719";
- 	status = "okay";
- };
-+
-+&i2c14 {
-+	status = "okay";
-+
-+	touchscreen@38 {
-+		compatible = "focaltech,ft8719";
-+		reg = <0x38>;
-+
-+		interrupts-extended = <&tlmm 31 IRQ_TYPE_EDGE_RISING>;
-+		reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
-+		panel = <&display_panel>;
-+
-+		iovcc-supply = <&vreg_l14a_1p8>;
-+		vcc-supply = <&lab>;
-+
-+		pinctrl-0 = <&ts_int_default &ts_reset_default>;
-+		pinctrl-1 = <&ts_int_sleep &ts_reset_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <2246>;
-+	};
-+};
+ drivers/media/i2c/ov9282.c | 89 ++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 86 insertions(+), 3 deletions(-)
+---
+base-commit: f41427b3bdee7d9845b13a80c0d03882212f4b20
+change-id: 20250303-ov9282-flash-strobe-ac6bd00c9de6
+prerequisite-change-id: 20250225-b4-ov9282-gain-ef1cdaba5bfd:v1
+prerequisite-patch-id: 86f2582378ff7095ab65ce4bb25a143eb639e840
+prerequisite-patch-id: b06eb6ec697aaf0b3155b4b2370f171d0d304ae2
+prerequisite-patch-id: b123047d71bfb9b93f743bbdd6893d5a98495801
 
+Best regards,
 -- 
-2.48.1
+Richard Leitner <richard.leitner@linux.dev>
 
