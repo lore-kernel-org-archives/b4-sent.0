@@ -1,74 +1,78 @@
-From: Joel Selvaraj <foss@joelselvaraj.com>
-Date: Sat, 01 Mar 2025 17:43:10 -0600
-Subject: [PATCH v3 4/4] arm64: dts: qcom: sdm845-xiaomi-beryllium-ebbg:
- introduce touchscreen support
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Mon, 03 Mar 2025 15:53:20 +0800
+Subject: [PATCH] pinctrl: meson: fix pin input property for a4
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250301-pocof1-touchscreen-support-v3-4-af01c3b30b55@joelselvaraj.com>
-References: <20250301-pocof1-touchscreen-support-v3-0-af01c3b30b55@joelselvaraj.com>
-In-Reply-To: <20250301-pocof1-touchscreen-support-v3-0-af01c3b30b55@joelselvaraj.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
- Joel Selvaraj <foss@joelselvaraj.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1740872603; l=1286;
- i=foss@joelselvaraj.com; s=20241007; h=from:subject:message-id;
- bh=RjgUxrTDZeUZrOstA31OE2MhayiA53NoLQULv+T9AW4=;
- b=qAPYySoh/iApH9aSUQYNS2tH7+LHh3fWU2i6VPL6LdtFUB+5lRGSAJGZ7k9s9HQUzrWsp5um/
- GKkxBxsxjNeAnKtYvR05sg8AF/0XqRh3JRRNWKd36+ydp27RSjZeT44
-X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
- pk=pqYvzJftxCPloaoUbVsfQE7Gwv8bynZPy8mjYohwMCc=
-X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20241007 with auth_id=238
+Message-Id: <20250303-fix-a4-pinctl-v1-1-6579888b4272@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAO9fxWcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDYwNj3bTMCt1EE92CzLzkkhxdkyQjQ9M04zRLEwsLJaCegqJUoAKwedG
+ xtbUAl0BJTl8AAAA=
+To: Linus Walleij <linus.walleij@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1740988400; l=1905;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=8KAlxGwDBrTjecjGM2UBSMoeZW/HVDXc337RfYbdpLs=;
+ b=lSCzkCPO4V0PMaYz3RHyLMVvoDIJFa+ttEleYaHx84tqa5hPPEuIuhBgqPVQxEuCkdXP9TslC
+ bIGD/OzMizrAHgH73PTjU+OBpqW5wF23nSa2kAG3qyHAmbGpcSMfPcW
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the Focaltech FT8719 touchscreen controller used in the Poco F1
-(EBBG) panel variant.
+The register of pin input attribute means the opposite.
+value of reigster meaning is 1 for input and 0 for output.
+So fix it.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
+Fixes: 6e9be3abb78c ("pinctrl: Add driver support for Amlogic SoCs")
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- .../boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts | 23 ++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ drivers/pinctrl/meson/pinctrl-amlogic-a4.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts
-index 76931ebad065..2d6f0e382a6c 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts
-@@ -13,3 +13,26 @@ &display_panel {
- 	compatible = "ebbg,ft8719";
- 	status = "okay";
- };
-+
-+&i2c14 {
-+	status = "okay";
-+
-+	touchscreen@38 {
-+		compatible = "focaltech,ft8719";
-+		reg = <0x38>;
-+
-+		interrupts-extended = <&tlmm 31 IRQ_TYPE_EDGE_RISING>;
-+		reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
-+		panel = <&display_panel>;
-+
-+		iovcc-supply = <&vreg_l14a_1p8>;
-+		vcc-supply = <&lab>;
-+
-+		pinctrl-0 = <&ts_int_default &ts_reset_default>;
-+		pinctrl-1 = <&ts_int_sleep &ts_reset_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <2246>;
-+	};
-+};
+diff --git a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
+index a5218e8f1e03..35d5540b8eaa 100644
+--- a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
++++ b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
+@@ -775,7 +775,7 @@ static int aml_gpio_get_direction(struct gpio_chip *chip, unsigned int gpio)
+ 	if (ret)
+ 		return ret;
+ 
+-	return BIT(bit) & val ? GPIO_LINE_DIRECTION_OUT : GPIO_LINE_DIRECTION_IN;
++	return BIT(bit) & val ? GPIO_LINE_DIRECTION_IN : GPIO_LINE_DIRECTION_OUT;
+ }
+ 
+ static int aml_gpio_direction_input(struct gpio_chip *chip, unsigned int gpio)
+@@ -785,7 +785,7 @@ static int aml_gpio_direction_input(struct gpio_chip *chip, unsigned int gpio)
+ 
+ 	aml_gpio_calc_reg_and_bit(bank, AML_REG_DIR, gpio, &reg, &bit);
+ 
+-	return regmap_update_bits(bank->reg_gpio, reg, BIT(bit), 0);
++	return regmap_update_bits(bank->reg_gpio, reg, BIT(bit), BIT(bit));
+ }
+ 
+ static int aml_gpio_direction_output(struct gpio_chip *chip, unsigned int gpio,
+@@ -796,7 +796,7 @@ static int aml_gpio_direction_output(struct gpio_chip *chip, unsigned int gpio,
+ 	int ret;
+ 
+ 	aml_gpio_calc_reg_and_bit(bank, AML_REG_DIR, gpio, &reg, &bit);
+-	ret = regmap_update_bits(bank->reg_gpio, reg, BIT(bit), BIT(bit));
++	ret = regmap_update_bits(bank->reg_gpio, reg, BIT(bit), 0);
+ 	if (ret < 0)
+ 		return ret;
+ 
 
+---
+base-commit: 73e4ffb27bb8a093d557bb2dac1a271474cca99c
+change-id: 20250303-fix-a4-pinctl-4b215f3f9488
+
+Best regards,
 -- 
-2.48.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
