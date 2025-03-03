@@ -1,79 +1,95 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Mon, 03 Mar 2025 16:14:37 +0100
-Subject: [PATCH 2/2] net: phy: tja11xx: enable PHY in sleep mode for
- TJA1102S
+From: Patrick Vogelaar <patrick.vogelaar@belden.com>
+Date: Mon, 03 Mar 2025 17:35:22 +0100
+Subject: [PATCH ][bitbake][scarthgap][2.8] bitbake-diffsigs: fix handling
+ when finding only a single sigfile
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250303-tja1102s-support-v1-2-180e945396e0@liebherr.com>
-References: <20250303-tja1102s-support-v1-0-180e945396e0@liebherr.com>
-In-Reply-To: <20250303-tja1102s-support-v1-0-180e945396e0@liebherr.com>
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>, Marek Vasut <marex@denx.de>, 
- Oleksij Rempel <o.rempel@pengutronix.de>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741014885; l=1657;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=fBVwJfKA7vzb3FvQIQ+c8V1qrobOuDv18BhKafbdQZE=;
- b=FdXcsDo2MrmnegrJeWJl01AAbNIN2MwO2dE2AqikztnZHnXJ1ZWgENF8egIt/ke00SojEpV3+
- TUBuD61aB5eBIkkczmouE+W/Fmvq7sQ/VtWqMlkvRyA+i6vbVqYln+H
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250303-backport-2-8-v1-1-e9b2a4122e04@belden.com>
+X-B4-Tracking: v=1; b=H4sIAEnaxWcC/x3MQQqDMBBA0avIrJsyjSimVwlZTOKog6BhEkpBv
+ HtDl2/x/wWFVbjAu7tA+SNFzqPh9eggbXSsbGRuBot2wB57Eynt+dRqrJnMnNCRw9ENRNCSrLz
+ I97/zEHyUGmnn4EsirdtKOXj7nCDc9w+X6PSpeQAAAA==
+To: main@lists.openembedded.org
+Cc: =?utf-8?q?Enrico_J=C3=B6rns?= <ejo@pengutronix.de>, 
+ Richard Purdie <richard.purdie@linuxfoundation.org>, 
+ Patrick Vogelaar <patrick.vogelaar@belden.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741019750; l=2704;
+ i=patrick.vogelaar@belden.com; s=20240201; h=from:subject:message-id;
+ bh=2pmnH8Tjl1idvqHL7k46i5otmOo4LRFy0F96KT1khvU=;
+ b=aKYWVaTS+preUZNQqr/sHr+IfFwtTo3Ng8P8havIh4nl7hftd/6lp8MKNhkxLdlyhHREiifWz
+ Jy2cbnAXc7DBu4dcXtbV7m9P3Hgswq8e0e1XmmMN0tJeAX6omArJDQ/
+X-Developer-Key: i=patrick.vogelaar@belden.com; a=ed25519;
+ pk=w0QU8RmOR3hQv1DxMcz6KmySeE8yqbvO0xC1ZSSUNqY=
+X-Endpoint-Received: by B4 Relay for patrick.vogelaar@belden.com/20240201 with auth_id=125
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Due to pin strapping the PHY maybe disabled per default. TJA1102 devices
-can be enabled by setting the PHY_EN bit. Support is provided for TJA1102S
-devices but can be easily added for TJA1102 too.
+From: Enrico Jörns <ejo@pengutronix.de>
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+This fixes the following error when calling 'bitbake-dumpsig' or
+'bitbake-diffsigs' when having only a single sigfile available:
+
+| Traceback (most recent call last):
+|   File "[..]/poky/bitbake/bin/bitbake-dumpsig", line 171, in <module>
+|     files = find_siginfo_task(tinfoil, options.taskargs[0], options.taskargs[1])
+|             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+|   File "[..]/poky/bitbake/bin/bitbake-dumpsig", line 83, in find_siginfo_task
+|     sig2 = latestsigs[1]
+|            ~~~~~~~~~~^^^
+| IndexError: list index out of range
+
+Handle this by adding (and returning) the path for the second sigfile
+only if one is found. This way it will work for both diffsigs and
+dumpsig use case.
+
+The calling argparse code already deals with find_siginfo_task()
+returning only a single file.
+For 'bitbake-dumpsig' it will just dump the single sigfile, for
+'bitbake-diffsigs' it will emit a proper error message again:
+
+| ERROR: Only one matching sigdata file found for the specified task (systemd configure)
+
+(cherry picked from commit 25057d33e9131f3214a06bbb316c916c744f8f03)
+
+Signed-off-by: Enrico Jörns <ejo@pengutronix.de>
+Signed-off-by: Richard Purdie <richard.purdie@linuxfoundation.org>
+Signed-off-by: Patrick Vogelaar <patrick.vogelaar@belden.com>
 ---
- drivers/net/phy/nxp-tja11xx.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ bin/bitbake-diffsigs | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/net/phy/nxp-tja11xx.c b/drivers/net/phy/nxp-tja11xx.c
-index 8f3bd27b023b5755c223b6769980aad0b76aad89..42a21371c7502a2bd08ae1a9385bf90dfab9105c 100644
---- a/drivers/net/phy/nxp-tja11xx.c
-+++ b/drivers/net/phy/nxp-tja11xx.c
-@@ -28,6 +28,7 @@
- #define MII_ECTRL_POWER_MODE_MASK	GENMASK(14, 11)
- #define MII_ECTRL_POWER_MODE_NO_CHANGE	(0x0 << 11)
- #define MII_ECTRL_POWER_MODE_NORMAL	(0x3 << 11)
-+#define MII_ECTRL_POWER_MODE_SLEEP	(0xa << 11)
- #define MII_ECTRL_POWER_MODE_STANDBY	(0xc << 11)
- #define MII_ECTRL_CABLE_TEST		BIT(5)
- #define MII_ECTRL_CONFIG_EN		BIT(2)
-@@ -79,6 +80,9 @@
- #define MII_COMMCFG			27
- #define MII_COMMCFG_AUTO_OP		BIT(15)
- 
-+#define MII_CFG3			28
-+#define MII_CFG3_PHY_EN			BIT(0)
+diff --git a/bin/bitbake-diffsigs b/bin/bitbake-diffsigs
+index 8202c7862..9d6cb8c94 100755
+--- a/bin/bitbake-diffsigs
++++ b/bin/bitbake-diffsigs
+@@ -72,16 +72,17 @@ def find_siginfo_task(bbhandler, pn, taskname, sig1=None, sig2=None):
+         elif sig2 not in sigfiles:
+             logger.error('No sigdata files found matching %s %s with signature %s' % (pn, taskname, sig2))
+             sys.exit(1)
 +
- /* Configure REF_CLK as input in RMII mode */
- #define TJA110X_RMII_MODE_REFCLK_IN       BIT(0)
++        latestfiles = [sigfiles[sig1]['path'], sigfiles[sig2]['path']]
+     else:
+         sigfiles = find_siginfo(bbhandler, pn, taskname)
+         latestsigs = sorted(sigfiles.keys(), key=lambda h: sigfiles[h]['time'])[-2:]
+         if not latestsigs:
+             logger.error('No sigdata files found matching %s %s' % (pn, taskname))
+             sys.exit(1)
+-        sig1 = latestsigs[0]
+-        sig2 = latestsigs[1]
+-
+-    latestfiles = [sigfiles[sig1]['path'], sigfiles[sig2]['path']]
++        latestfiles = [sigfiles[latestsigs[0]]['path']]
++        if len(latestsigs) > 1:
++            latestfiles.append(sigfiles[latestsigs[1]]['path'])
  
-@@ -180,6 +184,14 @@ static int tja11xx_wakeup(struct phy_device *phydev)
- 			return ret;
+     return latestfiles
  
- 		return tja11xx_enable_link_control(phydev);
-+	case MII_ECTRL_POWER_MODE_SLEEP:
-+		switch (phydev->phy_id & PHY_ID_MASK) {
-+		case PHY_ID_TJA1102S:
-+			/* Enable PHY, maybe it is disabled due to pin strapping */
-+			return phy_set_bits(phydev, MII_CFG3, MII_CFG3_PHY_EN);
-+		default:
-+			return 0;
-+		}
- 	default:
- 		break;
- 	}
 
+---
+base-commit: f6635b32ab553e812fe7c05998ef05834fccd0f3
+change-id: 20250303-backport-2-8-dc09a90695aa
+
+Best regards,
 -- 
-2.39.5
+Patrick Vogelaar <patrick.vogelaar@belden.com>
 
