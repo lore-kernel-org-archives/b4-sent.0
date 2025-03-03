@@ -1,95 +1,89 @@
-From: Patrick Vogelaar <patrick.vogelaar@belden.com>
-Date: Mon, 03 Mar 2025 17:35:22 +0100
-Subject: [PATCH ][bitbake][scarthgap][2.8] bitbake-diffsigs: fix handling
- when finding only a single sigfile
+From: Joel Selvaraj <foss@joelselvaraj.com>
+Subject: [PATCH v4 0/4] Add Xiaomi Poco F1 touchscreen support
+Date: Mon, 03 Mar 2025 16:36:54 -0600
+Message-Id: <20250303-pocof1-touchscreen-support-v4-0-cdc3bebc3942@joelselvaraj.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250303-backport-2-8-v1-1-e9b2a4122e04@belden.com>
-X-B4-Tracking: v=1; b=H4sIAEnaxWcC/x3MQQqDMBBA0avIrJsyjSimVwlZTOKog6BhEkpBv
- HtDl2/x/wWFVbjAu7tA+SNFzqPh9eggbXSsbGRuBot2wB57Eynt+dRqrJnMnNCRw9ENRNCSrLz
- I97/zEHyUGmnn4EsirdtKOXj7nCDc9w+X6PSpeQAAAA==
-To: main@lists.openembedded.org
-Cc: =?utf-8?q?Enrico_J=C3=B6rns?= <ejo@pengutronix.de>, 
- Richard Purdie <richard.purdie@linuxfoundation.org>, 
- Patrick Vogelaar <patrick.vogelaar@belden.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741019750; l=2704;
- i=patrick.vogelaar@belden.com; s=20240201; h=from:subject:message-id;
- bh=2pmnH8Tjl1idvqHL7k46i5otmOo4LRFy0F96KT1khvU=;
- b=aKYWVaTS+preUZNQqr/sHr+IfFwtTo3Ng8P8havIh4nl7hftd/6lp8MKNhkxLdlyhHREiifWz
- Jy2cbnAXc7DBu4dcXtbV7m9P3Hgswq8e0e1XmmMN0tJeAX6omArJDQ/
-X-Developer-Key: i=patrick.vogelaar@belden.com; a=ed25519;
- pk=w0QU8RmOR3hQv1DxMcz6KmySeE8yqbvO0xC1ZSSUNqY=
-X-Endpoint-Received: by B4 Relay for patrick.vogelaar@belden.com/20240201 with auth_id=125
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAYvxmcC/43QTU7DMBAF4KtEXmPk8U8cd8U9EAt7MqGu2ji1k
+ whU9e44rRAbqNjNm5G+kd6FFcqRCts1F5ZpjSWmsQb91DDc+/GdeOxrZlJIDUJYPiVMA/A5Lbg
+ vmIlGXpZpSnnmaI300ErsUbIKTJmG+HHDX99q3scyp/x5+7XCtv0XuwIXvA8KgoQOOjQvh0THQ
+ sfVZ394xnRim77KH1GK7qEoq2h8S9YqR4P+S1TfohFKwENRVdEPAlAFJYL5TbzeK8l0XmrN870
+ XFnwhXu+nOO8aFBRao50m43rXKe0Hi8FvYysdOQE2SOOhYtcvdPVsB7sBAAA=
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
+ Joel Selvaraj <foss@joelselvaraj.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.14-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741041422; l=2842;
+ i=foss@joelselvaraj.com; s=20241007; h=from:subject:message-id;
+ bh=AAwL5uoOTe6wCwpJpDywIRpKXFmiHBgm7TpEJavHXSQ=;
+ b=ZETUobULmmXhyhIGzHqdwoGOGOnpjPs32JZM3DQR8vuUwgI8D/VvKYwj+oxKlCx5C2iXlL90Z
+ CL4KpMOKJXWAOcF5NglFXw9lc/krCFjR5hbvNpZZCOjiTA+o8ZhlNA2
+X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
+ pk=pqYvzJftxCPloaoUbVsfQE7Gwv8bynZPy8mjYohwMCc=
+X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20241007 with auth_id=238
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Enrico Jörns <ejo@pengutronix.de>
+In the first patch, I have updated the edt-ft5x06 touchscreen binding 
+documentation. In Xiaomi Poco F1(qcom/sdm845-xiaomi-beryllium-ebbg.dts),
+the FocalTech FT8719 touchscreen is integrally connected to the display 
+panel (EBBG FT8719) and thus should be power sequenced together with 
+display panel for proper functioning using the panel property. Since the
+edt-ft5x06 touchscreen binding uses almost all the properties present in 
+touchscreen.yaml, let's remove additionalProperties: false and use 
+unevaluatedProperties to include all the properties, including the needed
+panel property.
 
-This fixes the following error when calling 'bitbake-dumpsig' or
-'bitbake-diffsigs' when having only a single sigfile available:
+In the second patch, I have enabled the qupv3_id_1 and gpi_dma1 as they
+are required for configuring touchscreen. Also added the pinctrl
+configurations. These are common for both the Poco F1 Tianma and EBBG
+panel variant.
 
-| Traceback (most recent call last):
-|   File "[..]/poky/bitbake/bin/bitbake-dumpsig", line 171, in <module>
-|     files = find_siginfo_task(tinfoil, options.taskargs[0], options.taskargs[1])
-|             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-|   File "[..]/poky/bitbake/bin/bitbake-dumpsig", line 83, in find_siginfo_task
-|     sig2 = latestsigs[1]
-|            ~~~~~~~~~~^^^
-| IndexError: list index out of range
+In the subsequent patches, I have enabled support for the Novatek NT36672a
+touchscreen and FocalTech FT8719 touchscreen that are used in the Poco F1
+Tianma and EBBG panel variant respectively.
 
-Handle this by adding (and returning) the path for the second sigfile
-only if one is found. This way it will work for both diffsigs and
-dumpsig use case.
-
-The calling argparse code already deals with find_siginfo_task()
-returning only a single file.
-For 'bitbake-dumpsig' it will just dump the single sigfile, for
-'bitbake-diffsigs' it will emit a proper error message again:
-
-| ERROR: Only one matching sigdata file found for the specified task (systemd configure)
-
-(cherry picked from commit 25057d33e9131f3214a06bbb316c916c744f8f03)
-
-Signed-off-by: Enrico Jörns <ejo@pengutronix.de>
-Signed-off-by: Richard Purdie <richard.purdie@linuxfoundation.org>
-Signed-off-by: Patrick Vogelaar <patrick.vogelaar@belden.com>
+Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
 ---
- bin/bitbake-diffsigs | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+Changes in v4:
+- Update the dt-binding patch's commit message to be more accurate
+- Link to v3: https://lore.kernel.org/r/20250301-pocof1-touchscreen-support-v3-0-af01c3b30b55@joelselvaraj.com
 
-diff --git a/bin/bitbake-diffsigs b/bin/bitbake-diffsigs
-index 8202c7862..9d6cb8c94 100755
---- a/bin/bitbake-diffsigs
-+++ b/bin/bitbake-diffsigs
-@@ -72,16 +72,17 @@ def find_siginfo_task(bbhandler, pn, taskname, sig1=None, sig2=None):
-         elif sig2 not in sigfiles:
-             logger.error('No sigdata files found matching %s %s with signature %s' % (pn, taskname, sig2))
-             sys.exit(1)
-+
-+        latestfiles = [sigfiles[sig1]['path'], sigfiles[sig2]['path']]
-     else:
-         sigfiles = find_siginfo(bbhandler, pn, taskname)
-         latestsigs = sorted(sigfiles.keys(), key=lambda h: sigfiles[h]['time'])[-2:]
-         if not latestsigs:
-             logger.error('No sigdata files found matching %s %s' % (pn, taskname))
-             sys.exit(1)
--        sig1 = latestsigs[0]
--        sig2 = latestsigs[1]
--
--    latestfiles = [sigfiles[sig1]['path'], sigfiles[sig2]['path']]
-+        latestfiles = [sigfiles[latestsigs[0]]['path']]
-+        if len(latestsigs) > 1:
-+            latestfiles.append(sigfiles[latestsigs[1]]['path'])
- 
-     return latestfiles
- 
+Changes in v3:
+- Fix SoB email id mismatch (suggested by Krzysztof Kozlowski)
+- Use unevaluatedProperties instead additionalProperties in dt-binding (suggested by Krzysztof Kozlowski)
+- Link to v2: https://lore.kernel.org/r/20241208-pocof1-touchscreen-support-v2-0-5a6e7739ef45@joelselvaraj.com
+
+Changes in v2:
+- Fixed the missing "panel" property dt-binding error reported by Rob Herring's bot.
+- Change the "input-enable" property to "output-disable" in qcom/sdm845-xiaomi-beryllium-common.dtsi
+  (Based on a patch suggested by Konrad Dybcio).
+- Link to v1: https://lore.kernel.org/r/20241007-pocof1-touchscreen-support-v1-0-db31b21818c5@joelselvaraj.com
 
 ---
-base-commit: f6635b32ab553e812fe7c05998ef05834fccd0f3
-change-id: 20250303-backport-2-8-dc09a90695aa
+Joel Selvaraj (4):
+      dt-bindings: input: touchscreen: edt-ft5x06: use unevaluatedProperties
+      arm64: dts: qcom: sdm845-xiaomi-beryllium-common: add touchscreen related nodes
+      arm64: dts: qcom: sdm845-xiaomi-beryllium-tianma: introduce touchscreen support
+      arm64: dts: qcom: sdm845-xiaomi-beryllium-ebbg: introduce touchscreen support
+
+ .../bindings/input/touchscreen/edt-ft5x06.yaml     |  9 +----
+ .../dts/qcom/sdm845-xiaomi-beryllium-common.dtsi   | 39 ++++++++++++++++++++++
+ .../boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts | 23 +++++++++++++
+ .../dts/qcom/sdm845-xiaomi-beryllium-tianma.dts    | 23 +++++++++++++
+ 4 files changed, 86 insertions(+), 8 deletions(-)
+---
+base-commit: c0eb65494e59d9834af7cbad983629e9017b25a1
+change-id: 20241007-pocof1-touchscreen-support-c752a162cdc2
 
 Best regards,
 -- 
-Patrick Vogelaar <patrick.vogelaar@belden.com>
+Joel Selvaraj <foss@joelselvaraj.com>
 
