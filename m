@@ -1,80 +1,83 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Tue, 04 Mar 2025 19:37:27 +0100
-Subject: [PATCH net-next v2 2/2] net: phy: tja11xx: enable PHY in sleep
- mode for TJA1102S
+From: Janne Grunau <j@jannau.net>
+Date: Tue, 04 Mar 2025 20:12:14 +0100
+Subject: [PATCH] drm: Select DRM_KMS_HELPER from
+ DRM_DEBUG_DP_MST_TOPOLOGY_REFS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250304-tja1102s-support-v2-2-cd3e61ab920f@liebherr.com>
-References: <20250304-tja1102s-support-v2-0-cd3e61ab920f@liebherr.com>
-In-Reply-To: <20250304-tja1102s-support-v2-0-cd3e61ab920f@liebherr.com>
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>, Marek Vasut <marex@denx.de>, 
- Oleksij Rempel <o.rempel@pengutronix.de>
+Message-Id: <20250304-drm_debug_dp_mst_topo_kconfig-v1-1-e16fd152f258@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAI1Qx2cC/x3MQQqDMBAAwK/InhvIplqwXylliWZNFzEJiRZB/
+ LvB41zmgMJZuMC7OSDzX4rEUIGPBsafDZ6VuGow2nT6qVvl8kKOh82TS7SUldaYIs1jDJN4ZRF
+ Nr9vBvhChHinzJPv9f77neQHbKI4hbwAAAA==
+X-Change-ID: 20250304-drm_debug_dp_mst_topo_kconfig-a112904ba611
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Lyude Paul <lyude@redhat.com>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741113448; l=1700;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=DWnLX8up0ewgoQK/chnywysY6pNuZir0wY9kYTPFSC8=;
- b=Pe8Mg7UQFFHMEDej+r44aZcmqA5f+skjcS/S5M6mcZnkLLmh1yvcNMQd66xMM9h+9lMwZ8B4i
- aJ7cBieHtiMDdKw9SYpsrW+6oxvhxJhXJnzKhwhYuD0GKZucyKs9eXU
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2182; i=j@jannau.net;
+ s=yk2024; h=from:subject:message-id;
+ bh=CwxEpxjxqdhwbX3K+IrTZdcGwFWOTIRbUncA5vUkg+8=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhvTjAZNFwncV/wzyebfhsJvo05Cm1F29cU5SRzkvqPMtC
+ HKMUGDvKGVhEONikBVTZEnSftnBsLpGMab2QRjMHFYmkCEMXJwCMJHqXQx/RblCHy68xXKhLsYv
+ Tm7D4XJWr3XbKn8UcM/6YMh7yfuPACPD1kdeDy+VKrpv/qm9QSUyjl/koIfU851KOw/P2LS6wMe
+ HEwA=
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Due to pin strapping the PHY maybe disabled per default. TJA1102 devices
-can be enabled by setting the PHY_EN bit. Support is provided for TJA1102S
-devices but can be easily added for TJA1102 too.
+Using "depends on" and "select" for the same Kconfig symbol is known to
+cause circular dependencies (cmp. "Kconfig recursive dependency
+limitations" in Documentation/kbuild/kconfig-language.rst.
+DRM drivers are selecting drm helpers so do the same for
+DRM_DEBUG_DP_MST_TOPOLOGY_REFS.
+Fixes following circular dependency reported on x86 for the downstream
+Asahi Linux tree:
 
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+error: recursive dependency detected!
+  symbol DRM_KMS_HELPER is selected by DRM_GEM_SHMEM_HELPER
+  symbol DRM_GEM_SHMEM_HELPER is selected by RUST_DRM_GEM_SHMEM_HELPER
+  symbol RUST_DRM_GEM_SHMEM_HELPER is selected by DRM_ASAHI
+  symbol DRM_ASAHI depends on RUST
+  symbol RUST depends on CALL_PADDING
+  symbol CALL_PADDING depends on OBJTOOL
+  symbol OBJTOOL is selected by STACK_VALIDATION
+  symbol STACK_VALIDATION depends on UNWINDER_FRAME_POINTER
+  symbol UNWINDER_FRAME_POINTER is part of choice block at arch/x86/Kconfig.debug:224
+  symbol <choice> unknown is visible depending on UNWINDER_GUESS
+  symbol UNWINDER_GUESS prompt is visible depending on STACKDEPOT
+  symbol STACKDEPOT is selected by DRM_DEBUG_DP_MST_TOPOLOGY_REFS
+  symbol DRM_DEBUG_DP_MST_TOPOLOGY_REFS depends on DRM_KMS_HELPER
+
+Fixes: 12a280c72868 ("drm/dp_mst: Add topology ref history tracking for debugging")
+Cc: stable@vger.kernel.org
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
- drivers/net/phy/nxp-tja11xx.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/gpu/drm/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/phy/nxp-tja11xx.c b/drivers/net/phy/nxp-tja11xx.c
-index 9cf5e6d32fab88cae5cd556623a9ffa285227ab6..601094fe24ca8273a845512b111ccdd9d2785758 100644
---- a/drivers/net/phy/nxp-tja11xx.c
-+++ b/drivers/net/phy/nxp-tja11xx.c
-@@ -28,6 +28,7 @@
- #define MII_ECTRL_POWER_MODE_MASK	GENMASK(14, 11)
- #define MII_ECTRL_POWER_MODE_NO_CHANGE	(0x0 << 11)
- #define MII_ECTRL_POWER_MODE_NORMAL	(0x3 << 11)
-+#define MII_ECTRL_POWER_MODE_SLEEP	(0xa << 11)
- #define MII_ECTRL_POWER_MODE_STANDBY	(0xc << 11)
- #define MII_ECTRL_CABLE_TEST		BIT(5)
- #define MII_ECTRL_CONFIG_EN		BIT(2)
-@@ -79,6 +80,9 @@
- #define MII_COMMCFG			27
- #define MII_COMMCFG_AUTO_OP		BIT(15)
- 
-+#define MII_CFG3			28
-+#define MII_CFG3_PHY_EN			BIT(0)
-+
- /* Configure REF_CLK as input in RMII mode */
- #define TJA110X_RMII_MODE_REFCLK_IN       BIT(0)
- 
-@@ -180,6 +184,14 @@ static int tja11xx_wakeup(struct phy_device *phydev)
- 			return ret;
- 
- 		return tja11xx_enable_link_control(phydev);
-+	case MII_ECTRL_POWER_MODE_SLEEP:
-+		switch (phydev->phy_id & PHY_ID_MASK) {
-+		case PHY_ID_TJA1102S:
-+			/* Enable PHY, maybe it is disabled due to pin strapping */
-+			return phy_set_bits(phydev, MII_CFG3, MII_CFG3_PHY_EN);
-+		default:
-+			return 0;
-+		}
- 	default:
- 		break;
- 	}
+diff --git a/drivers/gpu/drm/Kconfig b/drivers/gpu/drm/Kconfig
+index fbef3f471bd0e5101699cf576542f7350bea3982..bd228dc77e99b4356b09de02d9001237eb2423e2 100644
+--- a/drivers/gpu/drm/Kconfig
++++ b/drivers/gpu/drm/Kconfig
+@@ -188,7 +188,7 @@ config DRM_DEBUG_DP_MST_TOPOLOGY_REFS
+         bool "Enable refcount backtrace history in the DP MST helpers"
+ 	depends on STACKTRACE_SUPPORT
+         select STACKDEPOT
+-        depends on DRM_KMS_HELPER
++        select DRM_KMS_HELPER
+         depends on DEBUG_KERNEL
+         depends on EXPERT
+         help
 
+---
+base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
+change-id: 20250304-drm_debug_dp_mst_topo_kconfig-a112904ba611
+
+Best regards,
 -- 
-2.39.5
+Janne Grunau <j@jannau.net>
 
