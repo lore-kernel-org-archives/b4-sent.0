@@ -1,83 +1,85 @@
-From: Janne Grunau <j@jannau.net>
-Date: Tue, 04 Mar 2025 20:12:14 +0100
-Subject: [PATCH] drm: Select DRM_KMS_HELPER from
- DRM_DEBUG_DP_MST_TOPOLOGY_REFS
+From: Satish Kharat <satishkh@cisco.com>
+Subject: [PATCH net-next v2 0/8] enic:enable 32, 64 byte cqes and get max
+ rx/tx ring size from hw
+Date: Tue, 04 Mar 2025 19:56:36 -0500
+Message-Id: <20250304-enic_cleanup_and_ext_cq-v2-0-85804263dad8@cisco.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250304-drm_debug_dp_mst_topo_kconfig-v1-1-e16fd152f258@jannau.net>
-X-B4-Tracking: v=1; b=H4sIAI1Qx2cC/x3MQQqDMBAAwK/InhvIplqwXylliWZNFzEJiRZB/
- LvB41zmgMJZuMC7OSDzX4rEUIGPBsafDZ6VuGow2nT6qVvl8kKOh82TS7SUldaYIs1jDJN4ZRF
- Nr9vBvhChHinzJPv9f77neQHbKI4hbwAAAA==
-X-Change-ID: 20250304-drm_debug_dp_mst_topo_kconfig-a112904ba611
-To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Lyude Paul <lyude@redhat.com>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Janne Grunau <j@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAEShx2cC/3WNwQ6CMBBEf4Xs2Zq2iqAn/8OQhi6LbKIttpVgC
+ P9ug2ePkzfzZoFIgSnCpVgg0MSRvctB7wrAoXV3EtzlDFrqUmpVC3KMBh/UuvdoWtcZmpPBl+g
+ zPNXWdiQryOsxUM/zZr6BoyRcLkKTycAx+fDZLie18Z9dV3/tkxJS4EEd+3NZK23tFTmi36N/Q
+ rOu6xd4r76syAAAAA==
+X-Change-ID: 20250218-enic_cleanup_and_ext_cq-f21868bbde07
+To: Christian Benvenuti <benve@cisco.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Satish Kharat <satishkh@cisco.com>, Nelson Escobar <neescoba@cisco.com>, 
+ John Daley <johndale@cisco.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2182; i=j@jannau.net;
- s=yk2024; h=from:subject:message-id;
- bh=CwxEpxjxqdhwbX3K+IrTZdcGwFWOTIRbUncA5vUkg+8=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhvTjAZNFwncV/wzyebfhsJvo05Cm1F29cU5SRzkvqPMtC
- HKMUGDvKGVhEONikBVTZEnSftnBsLpGMab2QRjMHFYmkCEMXJwCMJHqXQx/RblCHy68xXKhLsYv
- Tm7D4XJWr3XbKn8UcM/6YMh7yfuPACPD1kdeDy+VKrpv/qm9QSUyjl/koIfU851KOw/P2LS6wMe
- HEwA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741136202; l=2463;
+ i=satishkh@cisco.com; s=20250226; h=from:subject:message-id;
+ bh=tIhOLNOlcINBx0UYhFOL+x8Q07QOhFjHXPWnR8anXHc=;
+ b=BZwIfK2gawRr7sIDLP7RnxjDXPXKTC56P8ilZ8yA2qgJ0K6GIEknAIO+BcAeFHSv+uhsU1UT5
+ SjBo+UGe2KEC0FrE6MxOGWW1kwoQ37c3tVoYxqtBI4LaAdg4U9VXgPi
+X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
+ pk=lkxzORFYn5ejiy0kzcsfkpGoXZDcnHMc4n3YK7jJnJo=
+X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/20250226 with auth_id=351
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Using "depends on" and "select" for the same Kconfig symbol is known to
-cause circular dependencies (cmp. "Kconfig recursive dependency
-limitations" in Documentation/kbuild/kconfig-language.rst.
-DRM drivers are selecting drm helpers so do the same for
-DRM_DEBUG_DP_MST_TOPOLOGY_REFS.
-Fixes following circular dependency reported on x86 for the downstream
-Asahi Linux tree:
+This series enables using the max rx and tx ring sizes read from hw.
+For newer hw that can be up to 16k entries. This requires bigger
+completion entries for rx queues. This series enables the use of the
+32 and 64 byte completion queues entries for enic rx queues on
+supported hw versions. This is in addition to the exiting (default)
+16 byte rx cqes.
 
-error: recursive dependency detected!
-  symbol DRM_KMS_HELPER is selected by DRM_GEM_SHMEM_HELPER
-  symbol DRM_GEM_SHMEM_HELPER is selected by RUST_DRM_GEM_SHMEM_HELPER
-  symbol RUST_DRM_GEM_SHMEM_HELPER is selected by DRM_ASAHI
-  symbol DRM_ASAHI depends on RUST
-  symbol RUST depends on CALL_PADDING
-  symbol CALL_PADDING depends on OBJTOOL
-  symbol OBJTOOL is selected by STACK_VALIDATION
-  symbol STACK_VALIDATION depends on UNWINDER_FRAME_POINTER
-  symbol UNWINDER_FRAME_POINTER is part of choice block at arch/x86/Kconfig.debug:224
-  symbol <choice> unknown is visible depending on UNWINDER_GUESS
-  symbol UNWINDER_GUESS prompt is visible depending on STACKDEPOT
-  symbol STACKDEPOT is selected by DRM_DEBUG_DP_MST_TOPOLOGY_REFS
-  symbol DRM_DEBUG_DP_MST_TOPOLOGY_REFS depends on DRM_KMS_HELPER
-
-Fixes: 12a280c72868 ("drm/dp_mst: Add topology ref history tracking for debugging")
-Cc: stable@vger.kernel.org
-Signed-off-by: Janne Grunau <j@jannau.net>
+Signed-off-by: Satish Kharat <satishkh@cisco.com>
 ---
- drivers/gpu/drm/Kconfig | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/gpu/drm/Kconfig b/drivers/gpu/drm/Kconfig
-index fbef3f471bd0e5101699cf576542f7350bea3982..bd228dc77e99b4356b09de02d9001237eb2423e2 100644
---- a/drivers/gpu/drm/Kconfig
-+++ b/drivers/gpu/drm/Kconfig
-@@ -188,7 +188,7 @@ config DRM_DEBUG_DP_MST_TOPOLOGY_REFS
-         bool "Enable refcount backtrace history in the DP MST helpers"
- 	depends on STACKTRACE_SUPPORT
-         select STACKDEPOT
--        depends on DRM_KMS_HELPER
-+        select DRM_KMS_HELPER
-         depends on DEBUG_KERNEL
-         depends on EXPERT
-         help
+Changes in v2:
+- Added net-next to the subject line.
+- Removed inlines from function defs in .c file.
+- Fixed function local variable style issues.
+- Added couple of helper functions to common code.
+- Fixed checkpatch errors and warnings.
+- Link to v1: https://lore.kernel.org/r/20250227-enic_cleanup_and_ext_cq-v1-0-c314f95812bb@cisco.com
 
 ---
-base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
-change-id: 20250304-drm_debug_dp_mst_topo_kconfig-a112904ba611
+Satish Kharat (8):
+      enic: Move function from header file to c file
+      enic: enic rq code reorg
+      enic: enic rq extended cq defines
+      enic: enable rq extended cq support
+      enic : remove unused function cq_enet_wq_desc_dec
+      enic : added enic_wq.c and enic_wq.h
+      enic : cleanup of enic wq request completion path
+      enic : get max rq & wq entries supported by hw, 16K queues
+
+ drivers/net/ethernet/cisco/enic/Makefile       |   2 +-
+ drivers/net/ethernet/cisco/enic/cq_desc.h      |  25 +--
+ drivers/net/ethernet/cisco/enic/cq_enet_desc.h | 142 ++++++---------
+ drivers/net/ethernet/cisco/enic/enic.h         |  13 ++
+ drivers/net/ethernet/cisco/enic/enic_ethtool.c |  12 +-
+ drivers/net/ethernet/cisco/enic/enic_main.c    |  69 ++-----
+ drivers/net/ethernet/cisco/enic/enic_res.c     |  87 +++++++--
+ drivers/net/ethernet/cisco/enic/enic_res.h     |  11 +-
+ drivers/net/ethernet/cisco/enic/enic_rq.c      | 240 ++++++++++++++++++++++---
+ drivers/net/ethernet/cisco/enic/enic_rq.h      |   6 +-
+ drivers/net/ethernet/cisco/enic/enic_wq.c      | 117 ++++++++++++
+ drivers/net/ethernet/cisco/enic/enic_wq.h      |   7 +
+ drivers/net/ethernet/cisco/enic/vnic_cq.h      |  45 +----
+ drivers/net/ethernet/cisco/enic/vnic_devcmd.h  |  19 ++
+ drivers/net/ethernet/cisco/enic/vnic_enet.h    |   5 +
+ drivers/net/ethernet/cisco/enic/vnic_rq.h      |   2 +-
+ drivers/net/ethernet/cisco/enic/vnic_wq.h      |   2 +-
+ 17 files changed, 545 insertions(+), 259 deletions(-)
+---
+base-commit: de7a88b639d488607352a270ef2e052c4442b1b3
+change-id: 20250218-enic_cleanup_and_ext_cq-f21868bbde07
 
 Best regards,
 -- 
-Janne Grunau <j@jannau.net>
+Satish Kharat <satishkh@cisco.com>
 
