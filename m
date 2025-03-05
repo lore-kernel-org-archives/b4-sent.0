@@ -1,11 +1,11 @@
 From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Date: Wed, 05 Mar 2025 22:00:13 +0900
-Subject: [PATCH v4 1/8] bits: fix typo 'unsigned __init128' -> 'unsigned
- __int128'
+Date: Wed, 05 Mar 2025 22:00:14 +0900
+Subject: [PATCH v4 2/8] bits: split the definition of the asm and non-asm
+ GENMASK()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250305-fixed-type-genmasks-v4-1-1873dcdf6723@wanadoo.fr>
+Message-Id: <20250305-fixed-type-genmasks-v4-2-1873dcdf6723@wanadoo.fr>
 References: <20250305-fixed-type-genmasks-v4-0-1873dcdf6723@wanadoo.fr>
 In-Reply-To: <20250305-fixed-type-genmasks-v4-0-1873dcdf6723@wanadoo.fr>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -23,38 +23,74 @@ Cc: linux-kernel@vger.kernel.org, intel-gfx@lists.freedesktop.org,
  Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
  Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=880;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1671;
  i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
- bh=OwRhvflyURxATxZcko1vxuJdGFTknPZsp+6vhXZr8YE=;
- b=owGbwMvMwCV2McXO4Xp97WbG02pJDOknvL7N+3ySo8NTU7DScMITxwmchcZbm/4cihU4M8dPw
- mvSidVTOkpZGMS4GGTFFFmWlXNyK3QUeocd+msJM4eVCWQIAxenAExEX4Phf2T/rL9/Pv794nb5
- +Ua+T2lfdugeviDXEML4ROTLXFa/vSsYGTadUTy/IEmr81Rqja7Fn7SrpqdXHIr6aLihs8v7/jI
- HBhYA
+ bh=8ZMKzF5zIF0GZ21khxd7rKfGPQljVe1hrWQ81ny4PLk=;
+ b=owGbwMvMwCV2McXO4Xp97WbG02pJDOknvH7tb7504iaTa5t6js2mbJeOxt0P2+Kbk6eFaRjss
+ yx7kWzZUcrCIMbFICumyLKsnJNboaPQO+zQX0uYOaxMIEMYuDgFYCLyVxgZWuuCGgWa1gZ3TeNR
+ WzuH0euLw4YvTRoWUQ1HzmXavF3rxfCH99SUuc7xTD8DZ91rPDxZ5KeFSa1LqOinr/qGa+wKU6s
+ ZAA==
 X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
  fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
 X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-"int" was misspelled as "init" in GENMASK_U128() comments. Fix the typo.
+In an upcoming change, GENMASK() and its friends will indirectly
+depend on sizeof() which is not available in asm.
+
+Instead of adding further complexity to __GENMASK() to make it work
+for both asm and non asm, just split the definition of the two
+variants.
 
 Signed-off-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 ---
- include/linux/bits.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/bits.h | 18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/include/linux/bits.h b/include/linux/bits.h
-index 61a75d3f294bfa96267383b5e2fd2a5d4593fcee..14fd0ca9a6cd17339dd2f69e449558312a8a001b 100644
+index 14fd0ca9a6cd17339dd2f69e449558312a8a001b..5f68980a1b98d771426872c74d7b5c0f79e5e802 100644
 --- a/include/linux/bits.h
 +++ b/include/linux/bits.h
-@@ -40,7 +40,7 @@
+@@ -19,23 +19,17 @@
+  * GENMASK_ULL(39, 21) gives us the 64bit vector 0x000000ffffe00000.
+  */
+ #if !defined(__ASSEMBLY__)
++
+ #include <linux/build_bug.h>
+ #include <linux/compiler.h>
++
+ #define GENMASK_INPUT_CHECK(h, l) BUILD_BUG_ON_ZERO(const_true((l) > (h)))
+-#else
+-/*
+- * BUILD_BUG_ON_ZERO is not available in h files included from asm files,
+- * disable the input check if that is the case.
+- */
+-#define GENMASK_INPUT_CHECK(h, l) 0
+-#endif
+ 
+ #define GENMASK(h, l) \
+ 	(GENMASK_INPUT_CHECK(h, l) + __GENMASK(h, l))
+ #define GENMASK_ULL(h, l) \
+ 	(GENMASK_INPUT_CHECK(h, l) + __GENMASK_ULL(h, l))
+ 
+-#if !defined(__ASSEMBLY__)
+ /*
   * Missing asm support
   *
-  * __GENMASK_U128() depends on _BIT128() which would not work
-- * in the asm code, as it shifts an 'unsigned __init128' data
-+ * in the asm code, as it shifts an 'unsigned __int128' data
-  * type instead of direct representation of 128 bit constants
-  * such as long and unsigned long. The fundamental problem is
-  * that a 128 bit constant will get silently truncated by the
+@@ -48,6 +42,12 @@
+  */
+ #define GENMASK_U128(h, l) \
+ 	(GENMASK_INPUT_CHECK(h, l) + __GENMASK_U128(h, l))
+-#endif
++
++#else /* defined(__ASSEMBLY__) */
++
++#define GENMASK(h, l) __GENMASK(h, l)
++#define GENMASK_ULL(h, l) __GENMASK_ULL(h, l)
++
++#endif /* !defined(__ASSEMBLY__) */
+ 
+ #endif	/* __LINUX_BITS_H */
 
 -- 
 2.45.3
