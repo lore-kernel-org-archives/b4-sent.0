@@ -1,10 +1,10 @@
 From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Date: Thu, 06 Mar 2025 20:29:57 +0900
-Subject: [PATCH v5 6/7] test_bits: add tests for GENMASK_U*()
+Date: Thu, 06 Mar 2025 20:29:58 +0900
+Subject: [PATCH v5 7/7] test_bits: add tests for BIT_U*()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250306-fixed-type-genmasks-v5-6-b443e9dcba63@wanadoo.fr>
+Message-Id: <20250306-fixed-type-genmasks-v5-7-b443e9dcba63@wanadoo.fr>
 References: <20250306-fixed-type-genmasks-v5-0-b443e9dcba63@wanadoo.fr>
 In-Reply-To: <20250306-fixed-type-genmasks-v5-0-b443e9dcba63@wanadoo.fr>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -22,91 +22,57 @@ Cc: linux-kernel@vger.kernel.org, intel-gfx@lists.freedesktop.org,
  Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
  Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2231;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1339;
  i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
- bh=1TWDnZuK4H6aZXY1mDhIfDoxCABP+2rzCCCoYFZzW3c=;
- b=owGbwMvMwCV2McXO4Xp97WbG02pJDOkn24tfHts45ZydRU3ZwfPRKzjfrH2zc5VWccrCbTcP8
- h62u/9XtKOUhUGMi0FWTJFlWTknt0JHoXfYob+WMHNYmUCGMHBxCsBEMiUYGXYdf5+38IuJbOXq
- cgO3xxn5O7dl5E15d9V64XnlXZNUVpkwMpzwWawu8vF+7ZPSDKmvXxfqsmicj6+4pZ+epHfI1Z2
- jjAcA
+ bh=asAoSxIsd+6NgC+TDV5wEh4nM1LYuph2VqJY5OZYYVA=;
+ b=owGbwMvMwCV2McXO4Xp97WbG02pJDOkn28uit0fOchL91THp8/2pV/2ZatYHPC/pu5WoLLzuq
+ OS5RrXZHaUsDGJcDLJiiizLyjm5FToKvcMO/bWEmcPKBDKEgYtTACZiEsvwV9Lq43bev36PTq/U
+ 28S76/Gz+Uf49G+sKPm5gDdLReyIUSrD/6T3j8zWV5iXfJwUN/2L1OH+B9t1fn1z3v9/13sNT/n
+ Ms5wA
 X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
  fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
 X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Lucas De Marchi <lucas.demarchi@intel.com>
+Add some additional tests in lib/test_bits.c to cover the expected
+results of the fixed type BIT_U*() macros.
 
-Add some additional tests in lib/test_bits.c to cover the
-expected/non-expected values of the fixed-type GENMASK_U*() macros.
-
-Also check that the result value matches the expected type. Since
-those are known at build time, use static_assert() instead of normal
-kunit tests.
-
-Signed-off-by: Lucas De Marchi <lucas.demarchi@intel.com>
 Signed-off-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 ---
-Changelog:
+Changelog
 
   v4 -> v5:
 
-    - Revert v4 change. GENMASK_U8()/GENMASK_U16() are now back to
-      u8/u16.
+    - BIT_U8()/BIT_U16() are now back to u8/u16.
 
   v3 -> v4:
 
-    - Adjust the type of GENMASK_U8()/GENMASK_U16() from u8/u16 to
-      unsigned int.
-
-    - Reorder the tests to match the order in which the macros are
-      declared in bits.h.
+    - New patch.
 ---
- lib/test_bits.c | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+ lib/test_bits.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
 diff --git a/lib/test_bits.c b/lib/test_bits.c
-index dc93ded9fdb201e0d44b3c1cd71e233fd62258a5..91968227687bb11b7d1361b153c27eb851c6c1c2 100644
+index 91968227687bb11b7d1361b153c27eb851c6c1c2..72984fae7b815031bb6eb2892c772ffcc409cf78 100644
 --- a/lib/test_bits.c
 +++ b/lib/test_bits.c
-@@ -5,7 +5,16 @@
+@@ -9,6 +9,16 @@
  
- #include <kunit/test.h>
- #include <linux/bits.h>
-+#include <linux/types.h>
+ #define assert_type(t, x) _Generic(x, t: x, default: 0)
  
-+#define assert_type(t, x) _Generic(x, t: x, default: 0)
++static_assert(assert_type(u8, BIT_U8(0)) == 1u);
++static_assert(assert_type(u16, BIT_U16(0)) == 1u);
++static_assert(assert_type(u32, BIT_U32(0)) == 1u);
++static_assert(assert_type(u64, BIT_U64(0)) == 1ull);
 +
-+static_assert(assert_type(unsigned long, GENMASK(31, 0)) == U32_MAX);
-+static_assert(assert_type(unsigned long long, GENMASK_ULL(63, 0)) == U64_MAX);
-+static_assert(assert_type(u8, GENMASK_U8(7, 0)) == U8_MAX);
-+static_assert(assert_type(u16, GENMASK_U16(15, 0)) == U16_MAX);
-+static_assert(assert_type(u32, GENMASK_U32(31, 0)) == U32_MAX);
-+static_assert(assert_type(u64, GENMASK_U64(63, 0)) == U64_MAX);
- 
- static void __genmask_test(struct kunit *test)
- {
-@@ -30,11 +39,21 @@ static void genmask_test(struct kunit *test)
- 	KUNIT_EXPECT_EQ(test, 6ul, GENMASK(2, 1));
- 	KUNIT_EXPECT_EQ(test, 0xFFFFFFFFul, GENMASK(31, 0));
- 
-+	KUNIT_EXPECT_EQ(test, 1u, GENMASK_U8(0, 0));
-+	KUNIT_EXPECT_EQ(test, 3u, GENMASK_U16(1, 0));
-+	KUNIT_EXPECT_EQ(test, 0x10000, GENMASK_U32(16, 16));
++static_assert(assert_type(u8, BIT_U8(7)) == 0x80u);
++static_assert(assert_type(u16, BIT_U16(15)) == 0x8000u);
++static_assert(assert_type(u32, BIT_U32(31)) == 0x80000000u);
++static_assert(assert_type(u64, BIT_U64(63)) == 0x8000000000000000ull);
 +
- #ifdef TEST_GENMASK_FAILURES
- 	/* these should fail compilation */
- 	GENMASK(0, 1);
- 	GENMASK(0, 10);
- 	GENMASK(9, 10);
-+
-+	GENMASK_U32(0, 31);
-+	GENMASK_U64(64, 0);
-+	GENMASK_U32(32, 0);
-+	GENMASK_U16(16, 0);
-+	GENMASK_U8(8, 0);
- #endif
- 
- 
+ static_assert(assert_type(unsigned long, GENMASK(31, 0)) == U32_MAX);
+ static_assert(assert_type(unsigned long long, GENMASK_ULL(63, 0)) == U64_MAX);
+ static_assert(assert_type(u8, GENMASK_U8(7, 0)) == U8_MAX);
 
 -- 
 2.45.3
