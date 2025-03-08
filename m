@@ -1,10 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 08 Mar 2025 21:00:59 +0100
-Subject: [PATCH 2/4] iio: light: al3000a: Use DRV_NAME
+Date: Sat, 08 Mar 2025 21:01:00 +0100
+Subject: [PATCH 3/4] iio: light: al3010: Implement regmap support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250308-al3010-iio-regmap-v1-2-b672535e8213@ixit.cz>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250308-al3010-iio-regmap-v1-3-b672535e8213@ixit.cz>
 References: <20250308-al3010-iio-regmap-v1-0-b672535e8213@ixit.cz>
 In-Reply-To: <20250308-al3010-iio-regmap-v1-0-b672535e8213@ixit.cz>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -13,63 +13,243 @@ Cc: Svyatoslav Ryhel <clamor95@gmail.com>,
  Robert Eckelmann <longnoserob@gmail.com>, linux-iio@vger.kernel.org, 
  linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1248; i=david@ixit.cz;
- h=from:subject:message-id; bh=OztXp4B+Ou/RwdPOQioIug1hZ1oOyPA0zbFHMaWwpTA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBnzKJUrEM0E1z5B6zdsevZMBPtg5f0lVFPsD1Jo
- IU2gNgblVmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ8yiVAAKCRBgAj/E00kg
- cmqDD/49ajNvfw4bP7MWvD/QQ0yRsdD47903cCoa5kt/iuVpdL+E4m9TsUnBoNqV9P877afkspN
- xWyDbnm0w04tenzbVNKduFOwU5gFOzFkXA62PVGjO7K1EbaPzbojVcmwTwz7eNXIa+dtkdivyMR
- 97ucGVvT9awYNRobTo5IL1Y8swyEXtcDtHOdxovY045POFdaCyYylii5OXl2g7658aWcJmV3ZMK
- mQ25VT9EhTxjfJMDtKjSrrEqUoXXBymQRo1rVl+wBH9m0rZqih/fdJHGttGjeimTnRFRFOz6gHY
- c/5ROacg0SHHmUip0N+oftd+Q5zvm1loaaKSe/kxeG64Q1S8NGGNzv6+zlcnXbVU7hrMuBY0q7G
- 7MidBjLn8BSTyGQ7sWOrvKmKlixhVbzpDXMZflX5bwbYKfozBk5T2H02CXaMlVki/p55bzLWUPA
- LW29MT8XkZLYm7hSaBN4SttCp5D7ZNA+XpYzz2st8a0RVLfWgguNo2PJAO4Tyvy+5B6nNffgYCu
- RSdJUvya5hNvEJrCSpVHvaBoX1K+rsn6G0ACFxSR9+Le1dEvqooi0x+sQPbSReabF2+NU4odnW4
- lKrjG2ztrvVxj2JnbgUoU5xXUvsy15dKCMrtihIpZblG3hAUcBm8BFCez9HMhaqXCQYTAkkAPT0
- swYCZDFrIFJlEww==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6586; i=david@ixit.cz;
+ h=from:subject:message-id; bh=0ARMKIzxYYDa8ckpNzQObR3a0fTEgZFZCzYqD+3QDso=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBnzKJUhbmOjYMI5g7UGr6V86HcY6q1ucYtsjPA5
+ eOjXNP1UfaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ8yiVAAKCRBgAj/E00kg
+ ciOcD/9Bgc6DYRtx+1luJ/BNm1QccnBXxKhTRPXthTkXXzodaEbrB1poTZ55hF4E653AeL0Gssp
+ aO3nY2MShcnYd/KKTJj/wwYP9HThsB1ove7koTCeR47kQhzPHDyIUQi13iaPCqrG0coKA9XYklH
+ vpT0J4AFeoIiEgYHkvygK/FTsBCQjUERCdQ7YNAktoNxPdH1qZXKQxwvQ4ARYdv1M+uyZ7xA1st
+ VgyjL5d26ivJkqhIj2nZ0+r/zqKGY9IR5xQ6WNSrdCgndWYQlmjMVFK5vgF7Je0OGfU8Qg51EG4
+ WOEKCYwsJUWr1c8UQt8jBi6iK0lbse2bvYsnOR0AEhlgTZf9zsQ0WeUmgDDeKJDRN3Sy8bS1Ef/
+ LvDcLgn+7oqs5RvvbtSEnmouPRXpvKjLHcOBda45+hJs7t9VfKpPi0R9ftVBp6qTr/EmZIYU9tJ
+ U5i/YGFzIpaQG95IiQOCrqE1ZwyNOhUJHU4Db7mJF0c2ZqZGABpECszHoPPeHDdDBywArJOAtui
+ buidRpVxJ5Mb2g6m8ceZgIzESIHK3Pgzcbm1x4bzLyP8pNpFHNFTOH7mwXTGMBP2vqAaQL/0XB0
+ VFbwGesLpG5N4ZryAipw1DmgW6B7HSS9AhE2dMmEPfymByhdutbXlnjBA+jZENdyMb/baoZohfs
+ Nk5tHI9K2KMmv7Q==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Sync syntax with other similar drivers.
+Modernize and make driver a bit cleaner.
+
+Incorporate most of the feedback given on new AL3000A.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/iio/light/al3000a.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ drivers/iio/light/al3010.c | 95 ++++++++++++++++++++++++++--------------------
+ 1 file changed, 53 insertions(+), 42 deletions(-)
 
-diff --git a/drivers/iio/light/al3000a.c b/drivers/iio/light/al3000a.c
-index e2fbb1270040f43d9f0a97838861818a8eaef813..e1fa4543f336cec61140b5c44d3794df1fa485cd 100644
---- a/drivers/iio/light/al3000a.c
-+++ b/drivers/iio/light/al3000a.c
-@@ -13,6 +13,8 @@
+diff --git a/drivers/iio/light/al3010.c b/drivers/iio/light/al3010.c
+index 7cbb8b203300907a88f4a0ab87da89cabdd087f3..f6ed7246864a777fdb7d3861b74f5834e8af4105 100644
+--- a/drivers/iio/light/al3010.c
++++ b/drivers/iio/light/al3010.c
+@@ -4,7 +4,7 @@
+  *
+  * Copyright (c) 2014, Intel Corporation.
+  * Copyright (c) 2016, Dyna-Image Corp.
+- * Copyright (c) 2020, David Heidelberg, Michał Mirosław, Dmitry Osipenko
++ * Copyright (c) 2020 - 2025, David Heidelberg, Michał Mirosław, Dmitry Osipenko
+  *
+  * IIO driver for AL3010 (7-bit I2C slave address 0x1C).
+  *
+@@ -17,6 +17,7 @@
+ #include <linux/bitfield.h>
+ #include <linux/i2c.h>
+ #include <linux/module.h>
++#include <linux/regmap.h>
+ #include <linux/mod_devicetable.h>
  
  #include <linux/iio/iio.h>
+@@ -46,8 +47,14 @@ static const int al3010_scales[][2] = {
+ 	{0, 1187200}, {0, 296800}, {0, 74200}, {0, 18600}
+ };
  
-+#define AL3000A_DRV_NAME "al3000a"
++static const struct regmap_config al3010_regmap_config = {
++	.reg_bits = 8,
++	.val_bits = 8,
++	.max_register = AL3010_REG_CONFIG,
++};
 +
- #define AL3000A_REG_SYSTEM		0x00
- #define AL3000A_REG_DATA		0x05
+ struct al3010_data {
+-	struct i2c_client *client;
++	struct regmap *regmap;
+ };
  
-@@ -148,7 +150,7 @@ static int al3000a_probe(struct i2c_client *client)
- 				     "failed to get vdd regulator\n");
+ static const struct iio_chan_spec al3010_channels[] = {
+@@ -69,40 +76,32 @@ static const struct attribute_group al3010_attribute_group = {
+ 	.attrs = al3010_attributes,
+ };
  
- 	indio_dev->info = &al3000a_info;
--	indio_dev->name = "al3000a";
-+	indio_dev->name = AL3000A_DRV_NAME;
- 	indio_dev->channels = al3000a_channels;
- 	indio_dev->num_channels = ARRAY_SIZE(al3000a_channels);
- 	indio_dev->modes = INDIO_DIRECT_MODE;
-@@ -195,7 +197,7 @@ MODULE_DEVICE_TABLE(of, al3000a_of_match);
+-static int al3010_set_pwr(struct i2c_client *client, bool pwr)
++static int al3010_set_pwr_on(struct al3010_data *data)
+ {
+-	u8 val = pwr ? AL3010_CONFIG_ENABLE : AL3010_CONFIG_DISABLE;
+-	return i2c_smbus_write_byte_data(client, AL3010_REG_SYSTEM, val);
++	return regmap_write(data->regmap, AL3010_REG_SYSTEM, AL3010_CONFIG_ENABLE);
+ }
  
- static struct i2c_driver al3000a_driver = {
- 	.driver = {
--		.name = "al3000a",
-+		.name = AL3000A_DRV_NAME,
- 		.of_match_table = al3000a_of_match,
- 		.pm = pm_sleep_ptr(&al3000a_pm_ops),
- 	},
+ static void al3010_set_pwr_off(void *_data)
+ {
+ 	struct al3010_data *data = _data;
++	struct device *dev = regmap_get_device(data->regmap);
++	int ret;
+ 
+-	al3010_set_pwr(data->client, false);
++	ret = regmap_write(data->regmap, AL3010_REG_SYSTEM, AL3010_CONFIG_DISABLE);
++	if (ret)
++		dev_err(dev, "failed to write system register\n");
+ }
+ 
+ static int al3010_init(struct al3010_data *data)
+ {
+ 	int ret;
+ 
+-	ret = al3010_set_pwr(data->client, true);
+-	if (ret < 0)
+-		return ret;
+-
+-	ret = devm_add_action_or_reset(&data->client->dev,
+-				       al3010_set_pwr_off,
+-				       data);
+-	if (ret < 0)
+-		return ret;
+-
+-	ret = i2c_smbus_write_byte_data(data->client, AL3010_REG_CONFIG,
+-					FIELD_PREP(AL3010_GAIN_MASK,
+-						   AL3XXX_RANGE_3));
+-	if (ret < 0)
++	ret = al3010_set_pwr_on(data);
++	if (ret)
+ 		return ret;
+ 
+-	return 0;
++	return regmap_write(data->regmap, AL3010_REG_CONFIG,
++			    FIELD_PREP(AL3010_GAIN_MASK, AL3XXX_RANGE_3));
+ }
+ 
+ static int al3010_read_raw(struct iio_dev *indio_dev,
+@@ -110,7 +109,7 @@ static int al3010_read_raw(struct iio_dev *indio_dev,
+ 			   int *val2, long mask)
+ {
+ 	struct al3010_data *data = iio_priv(indio_dev);
+-	int ret;
++	int ret, value;
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_RAW:
+@@ -119,21 +118,21 @@ static int al3010_read_raw(struct iio_dev *indio_dev,
+ 		 * - low byte of output is stored at AL3010_REG_DATA_LOW
+ 		 * - high byte of output is stored at AL3010_REG_DATA_LOW + 1
+ 		 */
+-		ret = i2c_smbus_read_word_data(data->client,
+-					       AL3010_REG_DATA_LOW);
+-		if (ret < 0)
++		ret = regmap_read(data->regmap, AL3010_REG_DATA_LOW, &value);
++		if (ret)
+ 			return ret;
+-		*val = ret;
++
++		*val = value;
++
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_SCALE:
+-		ret = i2c_smbus_read_byte_data(data->client,
+-					       AL3010_REG_CONFIG);
+-		if (ret < 0)
++		ret = regmap_read(data->regmap, AL3010_REG_CONFIG, &value);
++		if (ret)
+ 			return ret;
+ 
+-		ret = FIELD_GET(AL3010_GAIN_MASK, ret);
+-		*val = al3010_scales[ret][0];
+-		*val2 = al3010_scales[ret][1];
++		value = FIELD_GET(AL3010_GAIN_MASK, value);
++		*val = al3010_scales[value][0];
++		*val2 = al3010_scales[value][1];
+ 
+ 		return IIO_VAL_INT_PLUS_MICRO;
+ 	}
+@@ -145,7 +144,7 @@ static int al3010_write_raw(struct iio_dev *indio_dev,
+ 			    int val2, long mask)
+ {
+ 	struct al3010_data *data = iio_priv(indio_dev);
+-	int i;
++	unsigned int i;
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_SCALE:
+@@ -154,9 +153,8 @@ static int al3010_write_raw(struct iio_dev *indio_dev,
+ 			    val2 != al3010_scales[i][1])
+ 				continue;
+ 
+-			return i2c_smbus_write_byte_data(data->client,
+-					AL3010_REG_CONFIG,
+-					FIELD_PREP(AL3010_GAIN_MASK, i));
++			return regmap_write(data->regmap, AL3010_REG_CONFIG,
++					    FIELD_PREP(AL3010_GAIN_MASK, i));
+ 		}
+ 		break;
+ 	}
+@@ -172,16 +170,20 @@ static const struct iio_info al3010_info = {
+ static int al3010_probe(struct i2c_client *client)
+ {
+ 	struct al3010_data *data;
++	struct device *dev = &client->dev;
+ 	struct iio_dev *indio_dev;
+ 	int ret;
+ 
+-	indio_dev = devm_iio_device_alloc(&client->dev, sizeof(*data));
++	indio_dev = devm_iio_device_alloc(dev, sizeof(*data));
+ 	if (!indio_dev)
+ 		return -ENOMEM;
+ 
+ 	data = iio_priv(indio_dev);
+ 	i2c_set_clientdata(client, indio_dev);
+-	data->client = client;
++	data->regmap = devm_regmap_init_i2c(client, &al3010_regmap_config);
++	if (IS_ERR(data->regmap))
++		return dev_err_probe(dev, PTR_ERR(data->regmap),
++				     "cannot allocate regmap\n");
+ 
+ 	indio_dev->info = &al3010_info;
+ 	indio_dev->name = AL3010_DRV_NAME;
+@@ -191,21 +193,30 @@ static int al3010_probe(struct i2c_client *client)
+ 
+ 	ret = al3010_init(data);
+ 	if (ret < 0) {
+-		dev_err(&client->dev, "al3010 chip init failed\n");
++		dev_err(dev, "failed to init ALS\n");
+ 		return ret;
+ 	}
+ 
+-	return devm_iio_device_register(&client->dev, indio_dev);
++	ret = devm_add_action_or_reset(dev, al3010_set_pwr_off, data);
++	if (ret < 0)
++		return ret;
++
++	return devm_iio_device_register(dev, indio_dev);
+ }
+ 
+ static int al3010_suspend(struct device *dev)
+ {
+-	return al3010_set_pwr(to_i2c_client(dev), false);
++	struct al3010_data *data = iio_priv(dev_get_drvdata(dev));
++
++	al3010_set_pwr_off(data);
++	return 0;
+ }
+ 
+ static int al3010_resume(struct device *dev)
+ {
+-	return al3010_set_pwr(to_i2c_client(dev), true);
++	struct al3010_data *data = iio_priv(dev_get_drvdata(dev));
++
++	return al3010_set_pwr_on(data);
+ }
+ 
+ static DEFINE_SIMPLE_DEV_PM_OPS(al3010_pm_ops, al3010_suspend, al3010_resume);
 
 -- 
 2.47.2
