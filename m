@@ -1,104 +1,64 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Fri, 07 Mar 2025 21:09:01 +0100
-Subject: [PATCH v2 3/3] arm64: dts: apple: Add SPMI controller nodes
+From: Xilin Wu <wuxilin123@gmail.com>
+Date: Sat, 08 Mar 2025 18:27:51 +0800
+Subject: [PATCH] arm64: dts: qcom: sm8250: Fix CPU7 opp table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250307-spmi-v2-3-eccdb06afb99@gmail.com>
-References: <20250307-spmi-v2-0-eccdb06afb99@gmail.com>
-In-Reply-To: <20250307-spmi-v2-0-eccdb06afb99@gmail.com>
-To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Stephen Boyd <sboyd@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, 
- Nick Chan <towinchenmi@gmail.com>
+Message-Id: <20250308-fix-sm8250-cpufreq-v1-1-8a0226721399@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKYbzGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDYwML3bTMCt3iXAsgTze5oDStKLVQN8XS1NLEJMksxTDRWAmosaAoFag
+ KbGh0bG0tAADDTpNkAAAA
+X-Change-ID: 20250308-fix-sm8250-cpufreq-d95944b6d1a3
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@linaro.org>, 
+ Thara Gopinath <thara.gopinath@linaro.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xilin Wu <wuxilin123@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741378140; l=2656;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=vAy3qAJvENlWfH+6RnDDlx2HQlH2MYFllFghIMOrbEU=;
- b=MClImYe6YJJM14dS7aEJlgncn9cez8m0s5vjVl604WH60T+4pOqVUAgjY5+lfzVcMvNK9C2Aw
- q5cItAiy1W2AJB7A6XeKCJRtrzrjD6SOIUqko8dXi/Z8Du9mlH82qiT
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741429673; l=1086;
+ i=wuxilin123@gmail.com; s=20240424; h=from:subject:message-id;
+ bh=D9z9X3e5J8ftwp1wdYD55jK/Ci2H15jjh248DelqCdQ=;
+ b=n/PHBwcxilz316ny13BQE1y4sYxBxB+E1XcDU8ZpXttkORZqR1x5/1iFqaQrQGz9NKE1uu/6t
+ JxzlZ3NhRU/CLeR1T8p+Sb2zWFU4raSRtCwL0CSPOmL+K9DksCzJMA/
+X-Developer-Key: i=wuxilin123@gmail.com; a=ed25519;
+ pk=vPnxeJnlD/PfEbyQPZzaay5ezxI/lMrke7qXy31lSM8=
+X-Endpoint-Received: by B4 Relay for wuxilin123@gmail.com/20240424 with auth_id=157
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device tree entries for the SPMI controller
+There is a typo in cpu7_opp9. Fix it to get rid of the following
+errors.
 
-Reviewed-by: Nick Chan <towinchenmi@gmail.com>
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+[    0.198043] cpu cpu7: Voltage update failed freq=1747200
+[    0.198052] cpu cpu7: failed to update OPP for freq=1747200
+
+Fixes: 8e0e8016cb79 ("arm64: dts: qcom: sm8250: Add CPU opp tables")
+Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
 ---
- arch/arm64/boot/dts/apple/t600x-die0.dtsi | 7 +++++++
- arch/arm64/boot/dts/apple/t8103.dtsi      | 8 ++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi      | 7 +++++++
- 3 files changed, 22 insertions(+)
+ arch/arm64/boot/dts/qcom/sm8250.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-index b1c875e692c8fb9c0af46a23568a7b0cd720141b..d544a35c8af414c583d38b040e1aa753902f1c93 100644
---- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-@@ -53,6 +53,13 @@ wdt: watchdog@2922b0000 {
- 		interrupts = <AIC_IRQ 0 631 IRQ_TYPE_LEVEL_HIGH>;
- 	};
- 
-+	nub_spmi0: spmi@2920a1300 {
-+		compatible = "apple,t6000-spmi", "apple,spmi";
-+		reg = <0x2 0x920a1300 0x0 0x100>;
-+		#address-cells = <2>;
-+		#size-cells = <0>;
-+	};
-+
- 	sio_dart_0: iommu@39b004000 {
- 		compatible = "apple,t6000-dart";
- 		reg = <0x3 0x9b004000 0x0 0x4000>;
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index 9b0dad6b618444ac6b1c9735c50cccfc3965f947..0f03dc808cf7c6b7d71afc79dd29d368f957f979 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -11,6 +11,7 @@
- #include <dt-bindings/interrupt-controller/apple-aic.h>
- #include <dt-bindings/interrupt-controller/irq.h>
- #include <dt-bindings/pinctrl/apple.h>
-+#include <dt-bindings/spmi/spmi.h>
- 
- / {
- 	compatible = "apple,t8103", "apple,arm-platform";
-@@ -604,6 +605,13 @@ pcie_pins: pcie-pins {
- 			};
+diff --git a/arch/arm64/boot/dts/qcom/sm8250.dtsi b/arch/arm64/boot/dts/qcom/sm8250.dtsi
+index c2937b4d9f180296733b6d7a7a16a088f1f96b76..68613ea7146c8882150f1b81dbc0f3384d3380ba 100644
+--- a/arch/arm64/boot/dts/qcom/sm8250.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8250.dtsi
+@@ -606,7 +606,7 @@ cpu7_opp8: opp-1632000000 {
  		};
  
-+		nub_spmi: spmi@23d0d9300 {
-+			compatible = "apple,t8103-spmi", "apple,spmi";
-+			reg = <0x2 0x3d0d9300 0x0 0x100>;
-+			#address-cells = <2>;
-+			#size-cells = <0>;
-+		};
-+
- 		pinctrl_nub: pinctrl@23d1f0000 {
- 			compatible = "apple,t8103-pinctrl", "apple,pinctrl";
- 			reg = <0x2 0x3d1f0000 0x0 0x4000>;
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index 1666e6ab250bc0be9b8318e3c8fc903ccd3f3760..fecf70eba255c668757e2edfe25a4e9e7c0d0bad 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -641,6 +641,13 @@ pcie_pins: pcie-pins {
- 			};
+ 		cpu7_opp9: opp-1747200000 {
+-			opp-hz = /bits/ 64 <1708800000>;
++			opp-hz = /bits/ 64 <1747200000>;
+ 			opp-peak-kBps = <5412000 42393600>;
  		};
  
-+		nub_spmi: spmi@23d714000 {
-+			compatible = "apple,t8112-spmi", "apple,spmi";
-+			reg = <0x2 0x3d714000 0x0 0x100>;
-+			#address-cells = <2>;
-+			#size-cells = <0>;
-+		};
-+
- 		pinctrl_nub: pinctrl@23d1f0000 {
- 			compatible = "apple,t8112-pinctrl", "apple,pinctrl";
- 			reg = <0x2 0x3d1f0000 0x0 0x4000>;
 
+---
+base-commit: 0a2f889128969dab41861b6e40111aa03dc57014
+change-id: 20250308-fix-sm8250-cpufreq-d95944b6d1a3
+
+Best regards,
 -- 
-2.48.1
+Xilin Wu <wuxilin123@gmail.com>
 
