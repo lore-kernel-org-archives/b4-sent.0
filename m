@@ -1,431 +1,108 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sun, 09 Mar 2025 01:45:51 +0100
-Subject: [PATCH v3] ARM: dts: nexus4: Initial dts
+From: "Chester A. Unal" <chester.a.unal@arinc9.com>
+Date: Sun, 09 Mar 2025 12:39:36 +0000
+Subject: [PATCH] ALSA: hda/realtek: Limit Internal Microphone boost for
+ ALC3246
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250309-lg-nexus4-mako-v3-1-1dc2807df296@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAL7kzGcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
- vPSU3UzU4B8JSMDI1MDYwNL3Zx03bzUitJiE93cxOx83ZREAwtjYwsL0yQjMyWgpoKi1LTMCrC
- B0bG1tQBZJpPaYAAAAA==
-X-Change-ID: 20250309-lg-nexus4-mako-da0833885b26
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
- Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org, 
- Ivan Belokobylskiy <belokobylskij@gmail.com>, 
- David Heidelberg <david@ixit.cz>
+Message-Id: <20250309-for-sound-alc256-dell-v1-1-aacd84853907@arinc9.com>
+X-B4-Tracking: v=1; b=H4sIAAeMzWcC/x3MQQrDIBBA0avIrDtgTDW1VwlZiI7NgGhREgKSu
+ 1e6fIv/OzSqTA3eokOlkxuXPDA9BPjd5Q8hh2FQUmk5yxfGUrGVIwd0ySttMFBKaCZrlmitp6e
+ G0X4rRb7+33W77x+M9elUZwAAAA==
+X-Change-ID: 20250308-for-sound-alc256-dell-61967f99ce45
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Kailang Yang <kailang@realtek.com>, 
+ Stefan Binding <sbinding@opensource.cirrus.com>, 
+ Simon Trimmer <simont@opensource.cirrus.com>, 
+ Joshua Grisham <josh@joshuagrisham.com>
+Cc: alexander.scholten@xpedite-tech.com, dwayne.dupreez@xpedite-tech.com, 
+ zenon@xpedite-tech.com, linux-sound@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, "Chester A. Unal" <chester.a.unal@arinc9.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9332; i=david@ixit.cz;
- h=from:subject:message-id; bh=9lc+Nh7NerfyDiSvyeKzTUvba0fLnRsfpQ800uDYWYk=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBnzOTkF/2WfSE74KadOYDw/DH6i+wOCpVPvKM+q
- iX/6x4qPu6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ8zk5AAKCRBgAj/E00kg
- cu+jEAC8UFxNROOHGz3fyWMPTfko908pWET3p05yvENRIVS7OHjVZQVMDNVaLRp24S7CQ/Sf9cx
- YUE2BGM8HhqED/D44msppu4ZwhQW0Q8EC7a6NTOvbQXhH/YjzIS4bUeovAn20GpMpzv+7BGcYtl
- qHB3Nut0I1r+oOuWvQIwbEsLw3XZ26QUk3lgNvf+vrGj+FDuzGxXjtu8R/oDG5H+mtIEU+Mukt/
- Q3HbJP0+18+fchDkpTTvG+XAgY4CWpQz1mViThWt8TjEsZLQ1UGi46fYVZwhY8rPf0N4kdIVj8h
- 0S8QBrX/pKpOslRieggwP/8gRN8s7KMhX/p0CQAANEg47ON90LDYCEzwUt1o/2nzf1nVGH0bfvR
- Nb1SHFZad1dhvXPSIOEYaAcqmEWoMqrmHwlb5JoFHW/g7c7RbG/GZM/dyIQuCpZBGLkxdXKCqjl
- UDSp7eX2NxYYtngxgHoDvdVhQvK5fx44OvKVABohKTOK6hx9kFThXTybEcLiMpvOZQQWD+lSayj
- rHru2m3oamz+5bF3rU2U/TCXtmt48jn84O5k65PJDPEWD7JTETcyA+bv4tqVh6ZVtkDV4swLkwj
- l4B/tJgItXIM/kCbKNBqynjcWHca8rjM4xJC3Y0+PeQenhY9zJ7HVPqpnvoCv7pamemGLfn/0sW
- qemrCaPS4X9HvMA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741523982; l=3467;
+ i=chester.a.unal@arinc9.com; s=arinc9; h=from:subject:message-id;
+ bh=6CDVT2SLeMufNzb6wH1khK6tsAEt+ToJ1Hx6kvFEPZs=;
+ b=RjzqhlLgi4pwA4YjdKCIz/HMB6cBnKGtclU9g6cSTRfB9RbgpDMgC/y+bJSUKs3jvW4P7PcwI
+ RUJhN/ob/RZBqerIWNCzYZDzEXBhZhPcQJGv2nv+fTUY1l1+yC7IWti
+X-Developer-Key: i=chester.a.unal@arinc9.com; a=ed25519;
+ pk=/g3vBAV0YSvcIpSQ052xJbid7nrPXz8ExGKhTEuc6IY=
+X-Endpoint-Received: by B4 Relay for chester.a.unal@arinc9.com/arinc9 with auth_id=306
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Ivan Belokobylskiy <belokobylskij@gmail.com>
+Internal Microphone is too loud on Dell Latitude 5490, Dell Device
+[1028:0816], which has got ALC3246. I suppose this is the case for all
+devices with ALC3246 which is ALC256 for Dell devices. Therefore, limit the
+Internal Microphone boost for ALC3246. Change
+ALC255_FIXUP_DELL1_MIC_NO_PRESENCE to
+ALC255_FIXUP_DELL1_LIMIT_INT_MIC_BOOST which includes the former fixup.
 
-Add initial support for LG Nexus 4 (mako).
-
-Features currently working: regulators, eMMC, WiFi, and volume keys.
-
-Signed-off-by: Ivan Belokobylskiy <belokobylskij@gmail.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Chester A. Unal <chester.a.unal@arinc9.com>
 ---
-Changes in v3:
-- rebased against next-20250307
-- dropped backlight until driver gets converted to DT
+I don't know ALSA or the Intel HDA specification very well so feel free to
+correct any incorrect information in the patch log.
 
-Changes in v2:
-- lge vendor doesn't exist anymore, rename to lg
-- sdcc@ to mmc@ to comply with dt-schema
+I experience another issue with this laptop that is also there on ALC3204.
+Headphones output loops back to Headset Microphone. So if I record with
+this microphone, sysystem audio is recorded as well. I have tried a fair
+share of fixups by compiling snd-hda-codec-realtek.ko with different fixups
+applied for "0x10ec0256, 0x1028", replacing the existing module in
+/lib/modules, and then rebooting.
+
+ALC2XX_FIXUP_HEADSET_MIC makes Headset Microphone appear unplugged. But I
+can see on the OS that it detects voice, so, it works. When it appears
+unplugged, Headphones output won't loop back to it. This fixup also makes
+Speakers appear unavailable and makes Microphone disappear, as
+ALC255_FIXUP_DELL1_MIC_NO_PRESENCE won't apply anymore.
+
+Another issue is when I toggle capture on Headphone Mic on alsamixer,
+physically no audio will be played on Headphone. Speaker is unaffected. If
+the capture is toggled on anything else, Headphone will play audio.
+
+Tested on Debian Trixie Alpha, kernel 6.12.17. My headphones are
+Tip-Ring-Ring-Sleeve. Here's how I test both issues:
+
+systemctl --user stop pipewire.socket && systemctl --user stop pipewire
+alsamixer -c 0
+
+speaker-test -Dhw:0,0 -c2 -r48000 -FS16_LE -t sine
+
+arecord -Dhw:0,0 -c2 -r48000 -fS16_LE -d30 test.wav
+aplay -Dhw:0,0 test.wav
+
+Attached is test.wav. The timeline of the recording is:
+- I run speaker-test. Then I run arecord. After that I say: Speaker-test is
+  running. Capture is toggled on Headphone Mic.
+- After about five seconds I say: I am switching capture to Headset Mic.
+- I toggle capture on Headset Mic. After that I say: This is Headset Mic.
+- I kill speaker-test. After that I say: I have killed speaker-test.
+
+Maintainers, please let me know if you have an idea how to fix these two
+issues.
+
+Chester A.
 ---
- arch/arm/boot/dts/qcom/Makefile                    |   1 +
- .../boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts  | 342 +++++++++++++++++++++
- 2 files changed, 343 insertions(+)
+ sound/pci/hda/patch_realtek.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm/boot/dts/qcom/Makefile b/arch/arm/boot/dts/qcom/Makefile
-index f06c6d425e91dd73c2b453d15543d95bd32383b9..0c1d116f6e84f76994aa8c8286350bdcd1657a42 100644
---- a/arch/arm/boot/dts/qcom/Makefile
-+++ b/arch/arm/boot/dts/qcom/Makefile
-@@ -12,6 +12,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
- 	qcom-apq8064-ifc6410.dtb \
- 	qcom-apq8064-sony-xperia-lagan-yuga.dtb \
- 	qcom-apq8064-asus-nexus7-flo.dtb \
-+	qcom-apq8064-lg-nexus4-mako.dtb \
- 	qcom-apq8074-dragonboard.dtb \
- 	qcom-apq8084-ifc6540.dtb \
- 	qcom-apq8084-mtp.dtb \
-diff --git a/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts b/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..bcb57675aa24892b290d543601f7a6b36b6a65f6
---- /dev/null
-+++ b/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
-@@ -0,0 +1,342 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+#include "qcom-apq8064-v2.0.dtsi"
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/mfd/qcom-rpm.h>
-+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
-+/ {
-+	model = "LG Nexus 4 (mako)";
-+	compatible = "lg,nexus4-mako", "qcom,apq8064";
-+
-+	aliases {
-+		serial0 = &gsbi7_serial;
-+		serial1 = &gsbi6_serial;
-+		serial2 = &gsbi4_serial;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial2:115200n8";
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		ranges;
-+
-+		ramoops@88d00000{
-+			compatible = "ramoops";
-+			reg = <0x88d00000 0x100000>;
-+			record-size = <0x00020000>;
-+			console-size = <0x00020000>;
-+			ftrace-size = <0x00020000>;
-+		};
-+	};
-+
-+	battery_cell: battery-cell {
-+		compatible = "simple-battery";
-+		constant-charge-current-max-microamp = <900000>;
-+		operating-range-celsius = <0 45>;
-+	};
-+
-+	soc {
-+		rpm@108000 {
-+			regulators {
-+				vdd_l1_l2_l12_l18-supply = <&pm8921_s4>;
-+				vin_lvs1_3_6-supply = <&pm8921_s4>;
-+				vin_lvs4_5_7-supply = <&pm8921_s4>;
-+
-+				vdd_l24-supply = <&pm8921_s1>;
-+				vdd_l25-supply = <&pm8921_s1>;
-+				vin_lvs2-supply = <&pm8921_s1>;
-+
-+				vdd_l26-supply = <&pm8921_s7>;
-+				vdd_l27-supply = <&pm8921_s7>;
-+				vdd_l28-supply = <&pm8921_s7>;
-+
-+				/* Buck SMPS */
-+				s1 {
-+					regulator-always-on;
-+					regulator-min-microvolt = <1225000>;
-+					regulator-max-microvolt = <1225000>;
-+					qcom,switch-mode-frequency = <3200000>;
-+					bias-pull-down;
-+				};
-+				s2 {
-+					regulator-min-microvolt = <1300000>;
-+					regulator-max-microvolt = <1300000>;
-+					qcom,switch-mode-frequency = <1600000>;
-+					bias-pull-down;
-+				};
-+
-+				/* msm otg HSUSB_VDDCX */
-+				s3 {
-+					regulator-min-microvolt = <500000>;
-+					regulator-max-microvolt = <1150000>;
-+					qcom,switch-mode-frequency = <4800000>;
-+					bias-pull-down;
-+				};
-+
-+				/*
-+				 * msm_sdcc.1-sdc-vdd_io
-+				 * tabla2x-slim-CDC_VDDA_RX
-+				 * tabla2x-slim-CDC_VDDA_TX
-+				 * tabla2x-slim-CDC_VDD_CP
-+				 * tabla2x-slim-VDDIO_CDC
-+				 */
-+				s4 {
-+					regulator-always-on;
-+					regulator-min-microvolt	= <1800000>;
-+					regulator-max-microvolt	= <1800000>;
-+					qcom,switch-mode-frequency = <1600000>;
-+					bias-pull-down;
-+					qcom,force-mode = <QCOM_RPM_FORCE_MODE_AUTO>;
-+				};
-+
-+				/*
-+				 * supply vdd_l26, vdd_l27, vdd_l28
-+				 */
-+				s7 {
-+					regulator-min-microvolt = <1300000>;
-+					regulator-max-microvolt = <1300000>;
-+					qcom,switch-mode-frequency = <3200000>;
-+				};
-+
-+				s8 {
-+					regulator-min-microvolt = <2200000>;
-+					regulator-max-microvolt = <2200000>;
-+					qcom,switch-mode-frequency = <1600000>;
-+				};
-+
-+				l1 {
-+					regulator-min-microvolt = <1100000>;
-+					regulator-max-microvolt = <1100000>;
-+					regulator-always-on;
-+					bias-pull-down;
-+				};
-+
-+				/* mipi_dsi.1-dsi1_pll_vdda */
-+				l2 {
-+					regulator-min-microvolt = <1200000>;
-+					regulator-max-microvolt = <1200000>;
-+					bias-pull-down;
-+				};
-+
-+				/* msm_otg-HSUSB_3p3 */
-+				l3 {
-+					regulator-min-microvolt = <3075000>;
-+					regulator-max-microvolt = <3500000>;
-+					bias-pull-down;
-+				};
-+
-+				/* msm_otg-HSUSB_1p8 */
-+				l4 {
-+					regulator-always-on;
-+					regulator-min-microvolt = <1800000>;
-+					regulator-max-microvolt = <1800000>;
-+				};
-+
-+				/* msm_sdcc.1-sdc_vdd */
-+				l5 {
-+					regulator-min-microvolt = <2950000>;
-+					regulator-max-microvolt = <2950000>;
-+					bias-pull-down;
-+				};
-+
-+				/* earjack_debug */
-+				l6 {
-+					regulator-min-microvolt = <3000000>;
-+					regulator-max-microvolt = <3000000>;
-+					bias-pull-down;
-+				};
-+
-+				/* mipi_dsi.1-dsi_vci */
-+				l8 {
-+					regulator-min-microvolt = <2800000>;
-+					regulator-max-microvolt = <3000000>;
-+					bias-pull-down;
-+				};
-+
-+				/* wcnss_wlan.0-iris_vddpa */
-+				l10 {
-+					regulator-min-microvolt = <2900000>;
-+					regulator-max-microvolt = <2900000>;
-+					bias-pull-down;
-+				};
-+
-+				/* mipi_dsi.1-dsi1_avdd */
-+				l11 {
-+					regulator-min-microvolt = <2850000>;
-+					regulator-max-microvolt = <2850000>;
-+					bias-pull-down;
-+				};
-+
-+				/* touch_vdd */
-+				l15 {
-+					regulator-min-microvolt = <1800000>;
-+					regulator-max-microvolt = <2950000>;
-+					bias-pull-down;
-+				};
-+
-+				/* slimport_dvdd */
-+				l18 {
-+					regulator-min-microvolt = <1100000>;
-+					regulator-max-microvolt = <1100000>;
-+					bias-pull-down;
-+				};
-+
-+				/* touch_io */
-+				l22 {
-+					regulator-min-microvolt = <1800000>;
-+					regulator-max-microvolt = <1800000>;
-+					bias-pull-down;
-+				};
-+
-+				/*
-+				 * mipi_dsi.1-dsi_vddio
-+				 * pil_qdsp6v4.1-pll_vdd
-+				 * pil_qdsp6v4.2-pll_vdd
-+				 * msm_ehci_host.0-HSUSB_1p8
-+				 * msm_ehci_host.1-HSUSB_1p8
-+				 */
-+				l23 {
-+					regulator-min-microvolt = <1800000>;
-+					regulator-max-microvolt = <1800000>;
-+					bias-pull-down;
-+				};
-+
-+				/*
-+				 * tabla2x-slim-CDC_VDDA_A_1P2V
-+				 * tabla2x-slim-VDDD_CDC_D
-+				 */
-+				l24 {
-+					regulator-min-microvolt = <750000>;
-+					regulator-max-microvolt = <1150000>;
-+					bias-pull-down;
-+				};
-+
-+				l25 {
-+					regulator-min-microvolt = <1250000>;
-+					regulator-max-microvolt = <1250000>;
-+					regulator-always-on;
-+					bias-pull-down;
-+				};
-+
-+				l26 {
-+					regulator-min-microvolt = <375000>;
-+					regulator-max-microvolt = <1050000>;
-+					regulator-always-on;
-+					bias-pull-down;
-+				};
-+
-+				l27 {
-+					regulator-min-microvolt = <1100000>;
-+					regulator-max-microvolt = <1100000>;
-+				};
-+
-+				l28 {
-+					regulator-min-microvolt = <1050000>;
-+					regulator-max-microvolt = <1050000>;
-+					bias-pull-down;
-+				};
-+
-+				/* wcnss_wlan.0-iris_vddio */
-+				lvs1 {
-+					bias-pull-down;
-+				};
-+
-+				/* wcnss_wlan.0-iris_vdddig */
-+				lvs2 {
-+					bias-pull-down;
-+				};
-+
-+				lvs3 {
-+					bias-pull-down;
-+				};
-+
-+				lvs4 {
-+					bias-pull-down;
-+				};
-+
-+				lvs5 {
-+					bias-pull-down;
-+				};
-+
-+				/* mipi_dsi.1-dsi_iovcc */
-+				lvs6 {
-+					bias-pull-down;
-+				};
-+
-+				/*
-+				 * pil_riva-pll_vdd
-+				 * lvds.0-lvds_vdda
-+				 * mipi_dsi.1-dsi1_vddio
-+				 * hdmi_msm.0-hdmi_vdda
-+				 */
-+				lvs7 {
-+					bias-pull-down;
-+				};
-+
-+				ncp {
-+					regulator-min-microvolt = <1800000>;
-+					regulator-max-microvolt = <1800000>;
-+					qcom,switch-mode-frequency = <1600000>;
-+				};
-+			};
-+		};
-+	};
-+};
-+
-+&pmicintc {
-+	keypad@148 {
-+		compatible = "qcom,pm8921-keypad";
-+		reg = <0x148>;
-+		interrupt-parent = <&pmicintc>;
-+		interrupts = <74 1>, <75 1>;
-+		linux,keymap = <
-+			MATRIX_KEY(0, 0, KEY_VOLUMEDOWN)
-+			MATRIX_KEY(0, 1, KEY_VOLUMEUP)
-+		>;
-+
-+		keypad,num-rows = <1>;
-+		keypad,num-columns = <5>;
-+		debounce = <15>;
-+		scan-delay = <32>;
-+		row-hold = <91500>;
-+	};
-+};
-+
-+&gsbi1 {
-+	status = "okay";
-+	qcom,mode = <GSBI_PROT_I2C>;
-+};
-+
-+&gsbi1_i2c {
-+	status = "okay";
-+	clock-frequency = <200000>;
-+	pinctrl-0 = <&i2c1_pins>;
-+	pinctrl-names = "default";
-+};
-+
-+&gsbi4 {
-+	status = "okay";
-+	qcom,mode = <GSBI_PROT_I2C_UART>;
-+};
-+
-+&gsbi4_serial {
-+	status = "okay";
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&gsbi4_uart_pin_a>;
-+};
-+
-+/* eMMC */
-+&sdcc1 {
-+	status = "okay";
-+	vmmc-supply = <&pm8921_l5>;
-+	vqmmc-supply = <&pm8921_s4>;
-+};
-+
-+&riva {
-+	status = "okay";
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&riva_wlan_pin_a>;
-+};
+diff --git a/sound/pci/hda/patch_realtek.c b/sound/pci/hda/patch_realtek.c
+index d2a1f836dbbf714c26be682133b44cc0bd173ad9..379a325e96641232485a2fc8e6de03798461f466 100644
+--- a/sound/pci/hda/patch_realtek.c
++++ b/sound/pci/hda/patch_realtek.c
+@@ -11799,7 +11799,7 @@ static const struct snd_hda_pin_quirk alc269_fallback_pin_fixup_tbl[] = {
+ 	SND_HDA_PIN_QUIRK(0x10ec0295, 0x1028, "Dell", ALC269_FIXUP_DELL4_MIC_NO_PRESENCE_QUIET,
+ 		{0x19, 0x40000000},
+ 		{0x1b, 0x40000000}),
+-	SND_HDA_PIN_QUIRK(0x10ec0256, 0x1028, "Dell", ALC255_FIXUP_DELL1_MIC_NO_PRESENCE,
++	SND_HDA_PIN_QUIRK(0x10ec0256, 0x1028, "Dell", ALC255_FIXUP_DELL1_LIMIT_INT_MIC_BOOST,
+ 		{0x19, 0x40000000},
+ 		{0x1a, 0x40000000}),
+ 	SND_HDA_PIN_QUIRK(0x10ec0236, 0x1028, "Dell", ALC255_FIXUP_DELL1_LIMIT_INT_MIC_BOOST,
 
 ---
-base-commit: 0a2f889128969dab41861b6e40111aa03dc57014
-change-id: 20250309-lg-nexus4-mako-da0833885b26
+base-commit: b7c90e3e717abff6fe06445b98be306b732bbd2b
+change-id: 20250308-for-sound-alc256-dell-61967f99ce45
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Chester A. Unal <chester.a.unal@arinc9.com>
 
