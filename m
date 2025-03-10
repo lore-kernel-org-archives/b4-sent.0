@@ -1,73 +1,56 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 10 Mar 2025 00:28:48 -0500
-Subject: [PATCH v2] cpufreq: tegra186: Share policy per cluster
+Date: Mon, 10 Mar 2025 01:11:58 -0500
+Subject: [PATCH] iommu/arm: Allow disabling Qualcomm support in arm_smmu_v3
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250310-cpufreq-t186-share-policy-v2-1-d0b743cd051f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAI94zmcC/0XMTQ7CIBBA4as0rJ2GGQTRlfcwLhCnLbEtFepfm
- t5d4sblt3hvEZlT4CwO1SISP0MOcSygTSV858aWIVyLBUnSUqEEPz2axHeY0RrInUsMU+yD/4C
- jndFkldWKROmnxE14/96nc3GT4gBzl9j9j4QGjbTS1GqP2hhAePGlZb4hqe2xHVzoax8Hsa5fr
- JkUUqsAAAA=
-X-Change-ID: 20250310-cpufreq-t186-share-policy-a27652838532
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-pm@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <luceoscutum@gmail.com>, 
- Sumit Gupta <sumitg@nvidia.com>, Thierry Reding <treding@nvidia.com>, 
- Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20250310-b4-qcom-smmu-v1-1-733a1398ff85@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAK2CzmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDY0MD3SQT3cLk/Fzd4tzcUt0Uk+TkxDQzs0TD5FQloJaCotS0zAqwcdG
+ xtbUAKo+Rtl4AAAA=
+X-Change-ID: 20250310-b4-qcom-smmu-d4ccaf66a1ce
+To: Joerg Roedel <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
+ Robin Murphy <robin.murphy@arm.com>, Arnd Bergmann <arnd@arndb.de>
+Cc: iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741584529; l=1424;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741587175; l=992;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=/U0Kh7Cb90mT2b4NourHWsyj9SF5IW5h30D3gxH4nRw=;
- b=PCFAeC5Bm9uq1dNxo+stUss63q42Esm2EXmtWsfRFbcc7mCaEnG69ijd77iec6/SSgX0SLsY2
- 7c7GqheMqsXCAi4IEEqCtMGlQOdU0Y8jYktpuRf1ba8fqUhWhflzU0x
+ bh=8mZdDIMzM15RJAJ2ViAymKW4I/RyQ463WLVTHNvdOss=;
+ b=VxZlCVYBtjNtBkmmPUW9Cq2dx3v6oxhk7wRY+57QD7wraDxUu2bicinn3sWO5zq0hNa5Bto0T
+ /dYzcsQuL2KB5bhHQ8pQL52WvdFKE00bBofObUCQcIpLBHOGJxLGeDO
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Aaron Kling <luceoscutum@gmail.com>
+If ARCH_QCOM is enabled when building arm_smmu_v3, a dependency on
+qcom-scm is added, which currently cannot be disabled. Add a prompt to
+ARM_SMMU_QCOM to allow disabling this dependency.
 
-This functionally brings tegra186 in line with tegra210 and tegra194,
-sharing a cpufreq policy between all cores in a cluster.
-
-Reviewed-by: Sumit Gupta <sumitg@nvidia.com>
-Acked-by: Thierry Reding <treding@nvidia.com>
+Fixes: 0f0f80d9d5db ("iommu/arm: fix ARM_SMMU_QCOM compilation")
+Cc: stable@vger.kernel.org
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/cpufreq/tegra186-cpufreq.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/iommu/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/cpufreq/tegra186-cpufreq.c b/drivers/cpufreq/tegra186-cpufreq.c
-index c7761eb99f3ccc3e85389cb1e79d338c47584ae3..92aa50f0166601e7b077a4127eba0cb60181dee3 100644
---- a/drivers/cpufreq/tegra186-cpufreq.c
-+++ b/drivers/cpufreq/tegra186-cpufreq.c
-@@ -73,11 +73,18 @@ static int tegra186_cpufreq_init(struct cpufreq_policy *policy)
- {
- 	struct tegra186_cpufreq_data *data = cpufreq_get_driver_data();
- 	unsigned int cluster = data->cpus[policy->cpu].bpmp_cluster_id;
-+	u32 cpu;
+diff --git a/drivers/iommu/Kconfig b/drivers/iommu/Kconfig
+index ec1b5e32b9725bc1104d10e5d7a32af7b211b50a..cca0825551959e3f37cc2ea41aeae526fdb73312 100644
+--- a/drivers/iommu/Kconfig
++++ b/drivers/iommu/Kconfig
+@@ -381,6 +381,7 @@ config ARM_SMMU_MMU_500_CPRE_ERRATA
  
- 	policy->freq_table = data->clusters[cluster].table;
- 	policy->cpuinfo.transition_latency = 300 * 1000;
- 	policy->driver_data = NULL;
- 
-+	/* set same policy for all cpus in a cluster */
-+	for (cpu = 0; cpu < ARRAY_SIZE(tegra186_cpus); cpu++) {
-+		if (data->cpus[cpu].bpmp_cluster_id == cluster)
-+			cpumask_set_cpu(cpu, policy->cpus);
-+	}
-+
- 	return 0;
- }
- 
+ config ARM_SMMU_QCOM
+ 	def_tristate y
++	prompt "Qualcomm SMMUv3 Support"
+ 	depends on ARM_SMMU && ARCH_QCOM
+ 	select QCOM_SCM
+ 	help
 
 ---
 base-commit: 1110ce6a1e34fe1fdc1bfe4ad52405f327d5083b
-change-id: 20250310-cpufreq-t186-share-policy-a27652838532
+change-id: 20250310-b4-qcom-smmu-d4ccaf66a1ce
 
 Best regards,
 -- 
