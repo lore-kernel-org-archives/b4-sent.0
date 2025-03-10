@@ -1,10 +1,10 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Mon, 10 Mar 2025 23:07:58 +0100
-Subject: [PATCH v3 1/3] dt-bindings: spmi: Add Apple SPMI controller
+Date: Mon, 10 Mar 2025 23:07:59 +0100
+Subject: [PATCH v3 2/3] spmi: add a spmi driver for Apple SoC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250310-spmi-v3-1-92a82e7d9f0d@gmail.com>
+Message-Id: <20250310-spmi-v3-2-92a82e7d9f0d@gmail.com>
 References: <20250310-spmi-v3-0-92a82e7d9f0d@gmail.com>
 In-Reply-To: <20250310-spmi-v3-0-92a82e7d9f0d@gmail.com>
 To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
@@ -13,95 +13,253 @@ To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>,
  Conor Dooley <conor+dt@kernel.org>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>
+ Sasha Finkelstein <fnkl.kernel@gmail.com>, 
+ Jean-Francois Bortolotti <jeff@borto.fr>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741644479; l=2426;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741644479; l=6952;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=pDg6BHX8yhXPsIWO6kJBvdxVHd8GSLyf4Z1JkcNwg+U=;
- b=KiRktVb0Tmmq+7Xhyq0yRNnEROe9ZZyi+ImNWMBOjbCeAmMaUpU005jmU+n3nQ1fYBavPgpa2
- +okBPspZAOyAsCW5lCzO9nyn6DyALt4HgZONMs6/rnNn/kz69oYue3l
+ bh=HWm9h1XrGTkFNhxBV+c5Dt9QP4ibWUbEVLcXuEk4LbU=;
+ b=N+ISCvI9qhC6f+C9ojUGAgFxxaKOPvbTTvcggQkVCXYZk51zqzExrkC4aqa+udqMBxTAfogRa
+ 2gmdYbUGcXYD+A60msfHJh2jUH9rksdMuFFA9XuVbHShR1hNQBHS9nS
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bindings for the SPMI controller present on most Apple SoCs
+From: Jean-Francois Bortolotti <jeff@borto.fr>
 
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+The connected PMU contains several useful nvmem cells such as RTC offset,
+boot failure counters, reboot/shutdown selector, and a few others.
+In addition M3+ machines have their USB-PD controller connected via SPMI.
+
+Signed-off-by: Jean-Francois Bortolotti <jeff@borto.fr>
 Reviewed-by: Sven Peter <sven@svenpeter.dev>
+Co-developed-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- .../devicetree/bindings/spmi/apple,spmi.yaml       | 49 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 2 files changed, 50 insertions(+)
+ MAINTAINERS                          |   1 +
+ drivers/spmi/Kconfig                 |   8 ++
+ drivers/spmi/Makefile                |   1 +
+ drivers/spmi/spmi-apple-controller.c | 168 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 178 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/spmi/apple,spmi.yaml b/Documentation/devicetree/bindings/spmi/apple,spmi.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..16bd7eb2b7af2c0b176f0e5b1970f4670af691da
---- /dev/null
-+++ b/Documentation/devicetree/bindings/spmi/apple,spmi.yaml
-@@ -0,0 +1,49 @@
-+# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/spmi/apple,spmi.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Apple SPMI controller
-+
-+maintainers:
-+  - Sasha Finkelstein <fnkl.kernel@gmail.com>
-+
-+description: A SPMI controller present on most Apple SoCs
-+
-+allOf:
-+  - $ref: spmi.yaml#
-+
-+properties:
-+  compatible:
-+    items:
-+      - enum:
-+          - apple,t8103-spmi
-+          - apple,t6000-spmi
-+          - apple,t8112-spmi
-+      - const: apple,spmi
-+
-+  reg:
-+    maxItems: 1
-+
-+required:
-+  - compatible
-+  - reg
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/spmi/spmi.h>
-+
-+    spmi@920a1300 {
-+        compatible = "apple,t6000-spmi", "apple,spmi";
-+        reg = <0x920a1300 0x100>;
-+        #address-cells = <2>;
-+        #size-cells = <0>;
-+
-+        pmic@f {
-+            reg = <0xf SPMI_USID>;
-+            /* PMIC-specific properties */
-+        };
-+    };
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 8e0736dc2ee0e33544fa373a4978b7dae18c040c..271ff8110df83c2d4fe7fbbfffc0a72259460bc5 100644
+index 271ff8110df83c2d4fe7fbbfffc0a72259460bc5..9006695261d29fbc1e15659c2b43d7afeee0b656 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -2236,6 +2236,7 @@ F:	Documentation/devicetree/bindings/pci/apple,pcie.yaml
- F:	Documentation/devicetree/bindings/pinctrl/apple,pinctrl.yaml
- F:	Documentation/devicetree/bindings/power/apple*
- F:	Documentation/devicetree/bindings/pwm/apple,s5l-fpwm.yaml
-+F:	Documentation/devicetree/bindings/spmi/apple,spmi.yaml
- F:	Documentation/devicetree/bindings/watchdog/apple,wdt.yaml
- F:	arch/arm64/boot/dts/apple/
- F:	drivers/bluetooth/hci_bcm4377.c
+@@ -2254,6 +2254,7 @@ F:	drivers/nvmem/apple-efuses.c
+ F:	drivers/pinctrl/pinctrl-apple-gpio.c
+ F:	drivers/pwm/pwm-apple.c
+ F:	drivers/soc/apple/*
++F:	drivers/spmi/spmi-apple-controller.c
+ F:	drivers/watchdog/apple_wdt.c
+ F:	include/dt-bindings/interrupt-controller/apple-aic.h
+ F:	include/dt-bindings/pinctrl/apple.h
+diff --git a/drivers/spmi/Kconfig b/drivers/spmi/Kconfig
+index 73780204631463631cabcbad5bf83e8dbbee94ce..9005fa91d9f4e541403ccc7bf84e0592402ac41e 100644
+--- a/drivers/spmi/Kconfig
++++ b/drivers/spmi/Kconfig
+@@ -11,6 +11,14 @@ menuconfig SPMI
+ 
+ if SPMI
+ 
++config SPMI_APPLE
++	tristate "Apple SoC SPMI Controller platform driver"
++	depends on ARCH_APPLE || COMPILE_TEST
++	help
++	  If you say yes to this option, support will be included for the
++	  SPMI controller present on many Apple SoCs, including the
++	  t8103 (M1) and t600x (M1 Pro/Max).
++
+ config SPMI_HISI3670
+ 	tristate "Hisilicon 3670 SPMI Controller"
+ 	select IRQ_DOMAIN_HIERARCHY
+diff --git a/drivers/spmi/Makefile b/drivers/spmi/Makefile
+index 7f152167bb05b2c24a0f9669f60278152898eebb..38ac635645ba65aa46cb5e8a50072ed9771e229b 100644
+--- a/drivers/spmi/Makefile
++++ b/drivers/spmi/Makefile
+@@ -4,6 +4,7 @@
+ #
+ obj-$(CONFIG_SPMI)	+= spmi.o spmi-devres.o
+ 
++obj-$(CONFIG_SPMI_APPLE)	+= spmi-apple-controller.o
+ obj-$(CONFIG_SPMI_HISI3670)	+= hisi-spmi-controller.o
+ obj-$(CONFIG_SPMI_MSM_PMIC_ARB)	+= spmi-pmic-arb.o
+ obj-$(CONFIG_SPMI_MTK_PMIF)	+= spmi-mtk-pmif.o
+diff --git a/drivers/spmi/spmi-apple-controller.c b/drivers/spmi/spmi-apple-controller.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..697b3e8bb023566f17911fc222666d84f5e14c91
+--- /dev/null
++++ b/drivers/spmi/spmi-apple-controller.c
+@@ -0,0 +1,168 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Apple SoC SPMI device driver
++ *
++ * Copyright The Asahi Linux Contributors
++ *
++ * Inspired by:
++ *		OpenBSD support Copyright (c) 2021 Mark Kettenis <kettenis@openbsd.org>
++ *		Correllium support Copyright (C) 2021 Corellium LLC
++ *		hisi-spmi-controller.c
++ *		spmi-pmic-arb.c Copyright (c) 2021, The Linux Foundation.
++ */
++
++#include <linux/io.h>
++#include <linux/iopoll.h>
++#include <linux/module.h>
++#include <linux/mod_devicetable.h>
++#include <linux/platform_device.h>
++#include <linux/spmi.h>
++
++/* SPMI Controller Registers */
++#define SPMI_STATUS_REG 0
++#define SPMI_CMD_REG 0x4
++#define SPMI_RSP_REG 0x8
++
++#define SPMI_RX_FIFO_EMPTY BIT(24)
++
++#define REG_POLL_INTERVAL_US 10000
++#define REG_POLL_TIMEOUT_US (REG_POLL_INTERVAL_US * 5)
++
++struct apple_spmi {
++	void __iomem *regs;
++};
++
++#define poll_reg(spmi, reg, val, cond) \
++	readl_poll_timeout((spmi)->regs + (reg), (val), (cond), \
++			   REG_POLL_INTERVAL_US, REG_POLL_TIMEOUT_US)
++
++static inline u32 apple_spmi_pack_cmd(u8 opc, u8 sid, u16 saddr, size_t len)
++{
++	return opc | sid << 8 | saddr << 16 | (len - 1) | (1 << 15);
++}
++
++/* Wait for Rx FIFO to have something */
++static int apple_spmi_wait_rx_not_empty(struct spmi_controller *ctrl)
++{
++	struct apple_spmi *spmi = spmi_controller_get_drvdata(ctrl);
++	int ret;
++	u32 status;
++
++	ret = poll_reg(spmi, SPMI_STATUS_REG, status, !(status & SPMI_RX_FIFO_EMPTY));
++	if (ret) {
++		dev_err(&ctrl->dev,
++			"failed to wait for RX FIFO not empty\n");
++		return ret;
++	}
++
++	return 0;
++}
++
++static int spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
++			 u16 saddr, u8 *buf, size_t len)
++{
++	struct apple_spmi *spmi = spmi_controller_get_drvdata(ctrl);
++	u32 spmi_cmd = apple_spmi_pack_cmd(opc, sid, saddr, len);
++	u32 rsp;
++	size_t len_read = 0;
++	u8 i;
++	int ret;
++
++	writel(spmi_cmd, spmi->regs + SPMI_CMD_REG);
++
++	ret = apple_spmi_wait_rx_not_empty(ctrl);
++	if (ret)
++		return ret;
++
++	/* Discard SPMI reply status */
++	readl(spmi->regs + SPMI_RSP_REG);
++
++	/* Read SPMI data reply */
++	while (len_read < len) {
++		rsp = readl(spmi->regs + SPMI_RSP_REG);
++		i = 0;
++		while ((len_read < len) && (i < 4)) {
++			buf[len_read++] = ((0xff << (8 * i)) & rsp) >> (8 * i);
++			i += 1;
++		}
++	}
++
++	return 0;
++}
++
++static int spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
++			  u16 saddr, const u8 *buf, size_t len)
++{
++	struct apple_spmi *spmi = spmi_controller_get_drvdata(ctrl);
++	u32 spmi_cmd = apple_spmi_pack_cmd(opc, sid, saddr, len);
++	size_t i = 0, j;
++	int ret;
++
++	writel(spmi_cmd, spmi->regs + SPMI_CMD_REG);
++
++	while (i < len) {
++		j = 0;
++		spmi_cmd = 0;
++		while ((j < 4) & (i < len))
++			spmi_cmd |= buf[i++] << (j++ * 8);
++
++		writel(spmi_cmd, spmi->regs + SPMI_CMD_REG);
++	}
++
++	ret = apple_spmi_wait_rx_not_empty(ctrl);
++	if (ret)
++		return ret;
++
++	/* Discard */
++	readl(spmi->regs + SPMI_RSP_REG);
++
++	return 0;
++}
++
++static int apple_spmi_probe(struct platform_device *pdev)
++{
++	struct apple_spmi *spmi;
++	struct spmi_controller *ctrl;
++	int ret;
++
++	ctrl = devm_spmi_controller_alloc(&pdev->dev, sizeof(*spmi));
++	if (IS_ERR(ctrl))
++		return -ENOMEM;
++
++	spmi = spmi_controller_get_drvdata(ctrl);
++
++	spmi->regs = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(spmi->regs))
++		return PTR_ERR(spmi->regs);
++
++	ctrl->dev.of_node = pdev->dev.of_node;
++
++	ctrl->read_cmd = spmi_read_cmd;
++	ctrl->write_cmd = spmi_write_cmd;
++
++	ret = devm_spmi_controller_add(&pdev->dev, ctrl);
++	if (ret)
++		return dev_err_probe(&pdev->dev, ret,
++				     "spmi_controller_add failed\n");
++
++	return 0;
++}
++
++static const struct of_device_id apple_spmi_match_table[] = {
++	{ .compatible = "apple,spmi", },
++	{}
++};
++MODULE_DEVICE_TABLE(of, apple_spmi_match_table);
++
++static struct platform_driver apple_spmi_driver = {
++	.probe		= apple_spmi_probe,
++	.driver		= {
++		.name	= "apple-spmi",
++		.of_match_table = apple_spmi_match_table,
++	},
++};
++module_platform_driver(apple_spmi_driver);
++
++MODULE_AUTHOR("Jean-Francois Bortolotti <jeff@borto.fr>");
++MODULE_DESCRIPTION("Apple SoC SPMI driver");
++MODULE_LICENSE("GPL");
 
 -- 
 2.48.1
