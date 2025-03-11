@@ -1,104 +1,82 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Mon, 10 Mar 2025 23:08:00 +0100
-Subject: [PATCH v3 3/3] arm64: dts: apple: Add SPMI controller nodes
+From: Amit Sunil Dhamne <amitsd@google.com>
+Date: Mon, 10 Mar 2025 19:19:07 -0700
+Subject: [PATCH] usb: typec: tcpm: fix state transition for
+ SNK_WAIT_CAPABILITIES state in run_state_machine()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250310-spmi-v3-3-92a82e7d9f0d@gmail.com>
-References: <20250310-spmi-v3-0-92a82e7d9f0d@gmail.com>
-In-Reply-To: <20250310-spmi-v3-0-92a82e7d9f0d@gmail.com>
-To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Stephen Boyd <sboyd@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, 
- Nick Chan <towinchenmi@gmail.com>
+Message-Id: <20250310-fix-snk-wait-timeout-v6-14-rc6-v1-1-5db14475798f@google.com>
+X-B4-Tracking: v=1; b=H4sIAJqdz2cC/x2NQQqDMBQFryJ/7YPEWiW9irgw8Vs/pbEkqQri3
+ Q0uZzEzB0UOwpFexUGBV4my+Ay6LMjNg38zZMxMlaqe6qEVJtkR/QfbIAlJvrz8E9YGukZwDVp
+ bj2ayxjpjKEd+gbNxD7r+PC8ebybscAAAAA==
+X-Change-ID: 20250310-fix-snk-wait-timeout-v6-14-rc6-7b4d9fb9bc99
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Xu Yang <xu.yang_2@nxp.com>, stable@vger.kernel.org, 
+ Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741644479; l=2708;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=Pa8VSPAfUl5rQWcSmiEYDiYAy3MCXTK35oo91BheHOg=;
- b=GOd8zWco/1HabLA5aHDW6D1sJ33ybbnjoVDC+caUzRNKsUkXPPsrIOcdLLp+IHdKIJkQEUa3P
- 4iebaR/tpqwBdnnuk5Px2vlaS0qWgeJz8kJYHVfMf3kdbnhUqMwM1tz
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741659565; l=1869;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=XWKs46l6MPTHMIBPMpAx7vxNIqzh3Rjw4va51+i3hu0=;
+ b=mOi/HQ11Z/dzJ5PxxlT67S+U9on/YeTBQANmHH5IF/SogEd0hxlPmReJW7KBH8mte5yaCXODy
+ Z0P5YiKv/lqDw0c7ak5BFfx5wnO/acB2v7BH7AEhFAbAbhHPwrtfGqe
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device tree entries for the SPMI controller
+A subtle error got introduced while manually fixing merge conflict in
+tcpm.c for commit 85c4efbe6088 ("Merge v6.12-rc6 into usb-next"). As a
+result of this error, the next state is unconditionally set to
+SNK_WAIT_CAPABILITIES_TIMEOUT while handling SNK_WAIT_CAPABILITIES state
+in run_state_machine(...).
 
-Reviewed-by: Nick Chan <towinchenmi@gmail.com>
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Fix this by setting new state of TCPM state machine to `upcoming_state`
+(that is set to different values based on conditions).
+
+Cc: stable@vger.kernel.org
+Fixes: 85c4efbe60888 ("Merge v6.12-rc6 into usb-next")
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
+Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
 ---
- arch/arm64/boot/dts/apple/t600x-die0.dtsi | 7 +++++++
- arch/arm64/boot/dts/apple/t8103.dtsi      | 8 ++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi      | 7 +++++++
- 3 files changed, 22 insertions(+)
+ drivers/usb/typec/tcpm/tcpm.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-index b1c875e692c8fb9c0af46a23568a7b0cd720141b..64d4f301ca850ddb043bccc087e0b874fb96da9b 100644
---- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-@@ -45,6 +45,13 @@ pinctrl_smc: pinctrl@290820000 {
- 				<AIC_IRQ 0 749 IRQ_TYPE_LEVEL_HIGH>;
- 	};
- 
-+	nub_spmi0: spmi@2920a1300 {
-+		compatible = "apple,t6000-spmi", "apple,spmi";
-+		reg = <0x2 0x920a1300 0x0 0x100>;
-+		#address-cells = <2>;
-+		#size-cells = <0>;
-+	};
+diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
+index 47be450d2be352698e9dee2e283664cd4db8081b..758933d4ac9e4e55d45940b068f3c416e7e51ee8 100644
+--- a/drivers/usb/typec/tcpm/tcpm.c
++++ b/drivers/usb/typec/tcpm/tcpm.c
+@@ -5117,16 +5117,16 @@ static void run_state_machine(struct tcpm_port *port)
+ 		 */
+ 		if (port->vbus_never_low) {
+ 			port->vbus_never_low = false;
+-			tcpm_set_state(port, SNK_SOFT_RESET,
+-				       port->timings.sink_wait_cap_time);
++			upcoming_state = SNK_SOFT_RESET;
+ 		} else {
+ 			if (!port->self_powered)
+ 				upcoming_state = SNK_WAIT_CAPABILITIES_TIMEOUT;
+ 			else
+ 				upcoming_state = hard_reset_state(port);
+-			tcpm_set_state(port, SNK_WAIT_CAPABILITIES_TIMEOUT,
+-				       port->timings.sink_wait_cap_time);
+ 		}
 +
- 	wdt: watchdog@2922b0000 {
- 		compatible = "apple,t6000-wdt", "apple,wdt";
- 		reg = <0x2 0x922b0000 0x0 0x4000>;
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index 9b0dad6b618444ac6b1c9735c50cccfc3965f947..0f03dc808cf7c6b7d71afc79dd29d368f957f979 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -11,6 +11,7 @@
- #include <dt-bindings/interrupt-controller/apple-aic.h>
- #include <dt-bindings/interrupt-controller/irq.h>
- #include <dt-bindings/pinctrl/apple.h>
-+#include <dt-bindings/spmi/spmi.h>
- 
- / {
- 	compatible = "apple,t8103", "apple,arm-platform";
-@@ -604,6 +605,13 @@ pcie_pins: pcie-pins {
- 			};
- 		};
- 
-+		nub_spmi: spmi@23d0d9300 {
-+			compatible = "apple,t8103-spmi", "apple,spmi";
-+			reg = <0x2 0x3d0d9300 0x0 0x100>;
-+			#address-cells = <2>;
-+			#size-cells = <0>;
-+		};
-+
- 		pinctrl_nub: pinctrl@23d1f0000 {
- 			compatible = "apple,t8103-pinctrl", "apple,pinctrl";
- 			reg = <0x2 0x3d1f0000 0x0 0x4000>;
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index 1666e6ab250bc0be9b8318e3c8fc903ccd3f3760..fa4309bb92975c4edbc11c998496f125267f2353 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -679,6 +679,13 @@ wdt: watchdog@23d2b0000 {
- 			interrupts = <AIC_IRQ 379 IRQ_TYPE_LEVEL_HIGH>;
- 		};
- 
-+		nub_spmi: spmi@23d714000 {
-+			compatible = "apple,t8112-spmi", "apple,spmi";
-+			reg = <0x2 0x3d714000 0x0 0x100>;
-+			#address-cells = <2>;
-+			#size-cells = <0>;
-+		};
-+
- 		pinctrl_smc: pinctrl@23e820000 {
- 			compatible = "apple,t8112-pinctrl", "apple,pinctrl";
- 			reg = <0x2 0x3e820000 0x0 0x4000>;
++		tcpm_set_state(port, upcoming_state,
++			       port->timings.sink_wait_cap_time);
+ 		break;
+ 	case SNK_WAIT_CAPABILITIES_TIMEOUT:
+ 		/*
 
+---
+base-commit: 5c8c229261f14159b54b9a32f12e5fa89d88b905
+change-id: 20250310-fix-snk-wait-timeout-v6-14-rc6-7b4d9fb9bc99
+
+Best regards,
 -- 
-2.48.1
+Amit Sunil Dhamne <amitsd@google.com>
 
