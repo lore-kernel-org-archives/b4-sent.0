@@ -1,63 +1,80 @@
-From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Wed, 12 Mar 2025 10:32:50 -0500
-Subject: [PATCH] dmaengine: Fix dma_async_tx_descriptor->tx_submit
- documentation
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Date: Wed, 12 Mar 2025 18:23:32 +0100
+Subject: [PATCH] net: phy: dp83822: fix transmit amplitude if
+ CONFIG_OF_MDIO not defined
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250312-dma_async_tx_desc-tx_submit-doc-v1-1-16390060264c@amd.com>
-X-B4-Tracking: v=1; b=H4sIACGp0WcC/x2NwQqDMBAFf0X23AVNK4i/UkqIm6fuwViytljEf
- 2/wNMxl5iBDVhj11UEZXzVdU5HmVpHMIU1gjcXJ1a6t743juAQf7JfEb7uPMOFC+wyLbhxX4bY
- LDxkBh26gUnlnjLpfh+frPP84Wem8cQAAAA==
-X-Change-ID: 20250312-dma_async_tx_desc-tx_submit-doc-58a4cfee2e8b
-To: Vinod Koul <vkoul@kernel.org>, Randy Dunlap <rdunlap@infradead.org>
-Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Nathan Lynch <nathan.lynch@amd.com>
+Message-Id: <20250312-dp83822-fix-transceiver-mdio-v1-1-7b69103c5ab0@liebherr.com>
+X-B4-Tracking: v=1; b=H4sIABPD0WcC/x3MQQqDMBBG4avIrB1IJ6ixV5EugvnVWTTKpEhBv
+ HtDlx883kUFpij0bC4ynFp0zxWPtqF5i3kFa6omcdI57wZOR/BBhBf98sdiLjP0hPE76c4RMix
+ IwfXjSHVxGGr330+v+/4Bv2o46W4AAAA=
+X-Change-ID: 20250307-dp83822-fix-transceiver-mdio-ae27fed80699
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>, 
+ Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741793579; l=1583;
- i=nathan.lynch@amd.com; s=20241010; h=from:subject:message-id;
- bh=jp/DMy7JLfNicBeQPv3Ol20fnz7oTC0prR6cxoePnxE=;
- b=Mgbv/xwUHT1whJBL31TEUUUXdJfr2k6dY0JVcSLvH5yc3PnMmNCEzdW3p4i45rFohDbZJBN9w
- +xPAaXzrtP4Dd41ZF6C8Aw++raCCJPJa/3lwGJp9wqXu1XDLMq0HvCQ
-X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
- pk=ZR637UTGg5YLDj56cxFeHdYoUjPMMFbcijfOkAmAnbc=
-X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20241010 with auth_id=241
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741800212; l=1832;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=mTFreHX34pBc+oU2pNBg+ke78ROdzLxTH0hZJ0yVXyw=;
+ b=E2EFw8PtEHMY2cU2EAObFNnLPVJSmYdJUHq4B1GKMusIPHWH28S+jC1WuDKZDUqDG8IEnSYiD
+ b5VmYCuMFNbBaB+pnQkyQHGHSVBtAjeCgfanKaHVq5O9lZLUOwCHkG+
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 790fb9956eea ("linux/dmaengine.h: fix a few kernel-doc
-warnings") inserted new documentation for @desc_free in the middle of
-@tx_submit's description.
+When CONFIG_OF_MDIO is not defined the index for selecting the transmit
+amplitude voltage for 100BASE-TX is set to 0, but it should be -1, if there
+is no need to modify the transmit amplitude voltage. Add a flag to make
+sure there is a need to modify it.
 
-Put @tx_submit's description back together, matching the indentation
-style of the rest of the documentation for dma_async_tx_descriptor.
-
-Fixes: 790fb9956eea ("linux/dmaengine.h: fix a few kernel-doc warnings")
-Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
+Fixes: 4f3735e82d8a ("net: phy: dp83822: Add support for changing the transmit amplitude voltage")
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- include/linux/dmaengine.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/net/phy/dp83822.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/dmaengine.h b/include/linux/dmaengine.h
-index bb146c5ac3e4ccd7bc0afbf3b28e5b3d659ad62f..51e1e357892a0325646f82d580b199321d59ced4 100644
---- a/include/linux/dmaengine.h
-+++ b/include/linux/dmaengine.h
-@@ -594,9 +594,9 @@ struct dma_descriptor_metadata_ops {
-  * @phys: physical address of the descriptor
-  * @chan: target channel for this operation
-  * @tx_submit: accept the descriptor, assign ordered cookie and mark the
-+ *	descriptor pending. To be pushed on .issue_pending() call
-  * @desc_free: driver's callback function to free a resusable descriptor
-  *	after completion
-- * descriptor pending. To be pushed on .issue_pending() call
-  * @callback: routine to call after this operation is complete
-  * @callback_result: error result from a DMA transaction
-  * @callback_param: general parameter to pass to the callback routine
+diff --git a/drivers/net/phy/dp83822.c b/drivers/net/phy/dp83822.c
+index 3662f3905d5ade8ad933608fcaeabb714a588418..d69000cb0ceff28e8288ba24e0af1c960ea9cc97 100644
+--- a/drivers/net/phy/dp83822.c
++++ b/drivers/net/phy/dp83822.c
+@@ -201,6 +201,7 @@ struct dp83822_private {
+ 	bool set_gpio2_clk_out;
+ 	u32 gpio2_clk_out;
+ 	bool led_pin_enable[DP83822_MAX_LED_PINS];
++	bool tx_amplitude_100base_tx_modify;
+ 	int tx_amplitude_100base_tx_index;
+ };
+ 
+@@ -527,7 +528,7 @@ static int dp83822_config_init(struct phy_device *phydev)
+ 			       FIELD_PREP(DP83822_IOCTRL2_GPIO2_CLK_SRC,
+ 					  dp83822->gpio2_clk_out));
+ 
+-	if (dp83822->tx_amplitude_100base_tx_index >= 0)
++	if (dp83822->tx_amplitude_100base_tx_modify)
+ 		phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_LDCTRL,
+ 			       DP83822_100BASE_TX_LINE_DRIVER_SWING,
+ 			       FIELD_PREP(DP83822_100BASE_TX_LINE_DRIVER_SWING,
+@@ -851,6 +852,8 @@ static int dp83822_of_init(struct phy_device *phydev)
+ 				   val);
+ 			return -EINVAL;
+ 		}
++
++		dp83822->tx_amplitude_100base_tx_modify = true;
+ 	}
+ 
+ 	return dp83822_of_init_leds(phydev);
 
 ---
-base-commit: 6565439894570a07b00dba0b739729fe6b56fba4
-change-id: 20250312-dma_async_tx_desc-tx_submit-doc-58a4cfee2e8b
+base-commit: c62e6f056ea308d6382450c1cb32e41727375885
+change-id: 20250307-dp83822-fix-transceiver-mdio-ae27fed80699
 
 Best regards,
 -- 
-Nathan Lynch <nathan.lynch@amd.com>
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
