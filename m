@@ -1,126 +1,68 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Wed, 12 Mar 2025 18:45:23 +0100
-Subject: [PATCH RESEND v4 2/2] can: flexcan: add transceiver capabilities
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH 0/5] Add support for Battery Status & Battery Caps AMS in
+ TCPM
+Date: Wed, 12 Mar 2025 16:42:00 -0700
+Message-Id: <20250312-batt_ops-v1-0-88e0bb3129fd@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250312-flexcan-add-transceiver-caps-v4-2-29e89ae0225a@liebherr.com>
-References: <20250312-flexcan-add-transceiver-caps-v4-0-29e89ae0225a@liebherr.com>
-In-Reply-To: <20250312-flexcan-add-transceiver-caps-v4-0-29e89ae0225a@liebherr.com>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol.vincent@wanadoo.fr>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMkb0mcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDY0ND3aTEkpL4/IJi3aRUw6QUc8PkRCNTEyWg8oKi1LTMCrBR0bG1tQD
+ JEMecWgAAAA==
+X-Change-ID: 20250311-batt_ops-be1bd71ca254
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Sebastian Reichel <sre@kernel.org>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <len.brown@intel.com>, 
+ Pavel Machek <pavel@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-usb@vger.kernel.org, linux-pm@vger.kernel.org, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741801523; l=3555;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=kSxxiQHxl//wCevFJfiq2EaHcqBYYuWBjHktSM+Fwds=;
- b=AyaNOZsIKwCr/iDwY2md+sZf0aTIm3EaIUXHX7cY4JKTqFM9nvuYvL0r9TSbYDJSrqWDj64sA
- /klYUbJb9PwCwOMH+b/ZXl54OvwSn3huH7mu48di2Ugu7AYfH4mqHKY
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741822998; l=1546;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=90OuS2yk7g7bxyQlFmmSVP8LGE/eGIxU1ogAteq6FsQ=;
+ b=zsL7hGB9X2//AJOcUw5HcZ2DY008IsSVM3aNDnOjpwzKN60kqxUEfHb8ORIW8KJMzcJ3L8fXH
+ vDkHVUwomUuBDN/ZOODp4w5hu8fKuyQuPPptydVvvtFxZjCiyYDtYO5
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently the flexcan driver does only support adding PHYs by using the
-"old" regulator bindings. Add support for CAN transceivers as a PHY. Add
-the capability to ensure that the PHY is in operational state when the link
-is set to an "up" state.
+Support for Battery Status & Battery Caps messages in response to
+Get_Battery_Status & Get_Battery_Cap request is required by USB PD devices
+powered by battery, as per "USB PD R3.1 V1.8 Spec", "6.13 Message
+Applicability" section. This patchset adds support for these AMSes
+to achieve greater compliance with the spec.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
- drivers/net/can/flexcan/flexcan-core.c | 27 +++++++++++++++++++++------
- drivers/net/can/flexcan/flexcan.h      |  1 +
- 2 files changed, 22 insertions(+), 6 deletions(-)
+Amit Sunil Dhamne (5):
+      dt-bindings: connector: add fixed-batteries property
+      power: supply: core: add function to get supplies from fwnode
+      usb: typec: tcpm: Add support for Battery Status response message
+      power: supply: core: add vendor and product id properties
+      usb: typec: tcpm: Add support for Battery Cap response message
 
-diff --git a/drivers/net/can/flexcan/flexcan-core.c b/drivers/net/can/flexcan/flexcan-core.c
-index b347a1c93536d54efaa5f7d3347bd47c20860b3e..7588cb54a909af065522ddbcb06cc3acb9669893 100644
---- a/drivers/net/can/flexcan/flexcan-core.c
-+++ b/drivers/net/can/flexcan/flexcan-core.c
-@@ -26,6 +26,7 @@
- #include <linux/pinctrl/consumer.h>
- #include <linux/platform_device.h>
- #include <linux/can/platform/flexcan.h>
-+#include <linux/phy/phy.h>
- #include <linux/pm_runtime.h>
- #include <linux/property.h>
- #include <linux/regmap.h>
-@@ -644,18 +645,22 @@ static void flexcan_clks_disable(const struct flexcan_priv *priv)
- 
- static inline int flexcan_transceiver_enable(const struct flexcan_priv *priv)
- {
--	if (!priv->reg_xceiver)
--		return 0;
-+	if (priv->reg_xceiver)
-+		return regulator_enable(priv->reg_xceiver);
-+	else if (priv->transceiver)
-+		return phy_power_on(priv->transceiver);
- 
--	return regulator_enable(priv->reg_xceiver);
-+	return 0;
- }
- 
- static inline int flexcan_transceiver_disable(const struct flexcan_priv *priv)
- {
--	if (!priv->reg_xceiver)
--		return 0;
-+	if (priv->reg_xceiver)
-+		return regulator_disable(priv->reg_xceiver);
-+	else if (priv->transceiver)
-+		return phy_power_off(priv->transceiver);
- 
--	return regulator_disable(priv->reg_xceiver);
-+	return 0;
- }
- 
- static int flexcan_chip_enable(struct flexcan_priv *priv)
-@@ -2086,6 +2091,7 @@ static int flexcan_probe(struct platform_device *pdev)
- 	struct net_device *dev;
- 	struct flexcan_priv *priv;
- 	struct regulator *reg_xceiver;
-+	struct phy *transceiver;
- 	struct clk *clk_ipg = NULL, *clk_per = NULL;
- 	struct flexcan_regs __iomem *regs;
- 	struct flexcan_platform_data *pdata;
-@@ -2101,6 +2107,11 @@ static int flexcan_probe(struct platform_device *pdev)
- 	else if (IS_ERR(reg_xceiver))
- 		return PTR_ERR(reg_xceiver);
- 
-+	transceiver = devm_phy_optional_get(&pdev->dev, NULL);
-+	if (IS_ERR(transceiver))
-+		return dev_err_probe(&pdev->dev, PTR_ERR(transceiver),
-+				     "failed to get phy\n");
-+
- 	if (pdev->dev.of_node) {
- 		of_property_read_u32(pdev->dev.of_node,
- 				     "clock-frequency", &clock_freq);
-@@ -2198,6 +2209,10 @@ static int flexcan_probe(struct platform_device *pdev)
- 	priv->clk_per = clk_per;
- 	priv->clk_src = clk_src;
- 	priv->reg_xceiver = reg_xceiver;
-+	priv->transceiver = transceiver;
-+
-+	if (transceiver)
-+		priv->can.bitrate_max = transceiver->attrs.max_link_rate;
- 
- 	if (priv->devtype_data.quirks & FLEXCAN_QUIRK_NR_IRQ_3) {
- 		priv->irq_boff = platform_get_irq(pdev, 1);
-diff --git a/drivers/net/can/flexcan/flexcan.h b/drivers/net/can/flexcan/flexcan.h
-index 2cf886618c9621166173b865f266830b3f6c1fb0..16692a2502eba26575eeeec83dfffdf35f07b034 100644
---- a/drivers/net/can/flexcan/flexcan.h
-+++ b/drivers/net/can/flexcan/flexcan.h
-@@ -107,6 +107,7 @@ struct flexcan_priv {
- 	struct clk *clk_per;
- 	struct flexcan_devtype_data devtype_data;
- 	struct regulator *reg_xceiver;
-+	struct phy *transceiver;
- 	struct flexcan_stop_mode stm;
- 
- 	int irq_boff;
+ Documentation/ABI/testing/sysfs-class-power        |  20 ++
+ .../bindings/connector/usb-connector.yaml          |   8 +
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |   1 +
+ Documentation/power/power_supply_class.rst         |  11 ++
+ drivers/power/supply/power_supply_core.c           |  60 ++++++
+ drivers/power/supply/power_supply_sysfs.c          |   2 +
+ drivers/usb/typec/tcpm/tcpm.c                      | 217 ++++++++++++++++++++-
+ include/linux/power_supply.h                       |   7 +
+ include/linux/usb/pd.h                             |  65 ++++++
+ 9 files changed, 388 insertions(+), 3 deletions(-)
+---
+base-commit: 80e54e84911a923c40d7bee33a34c1b4be148d7a
+change-id: 20250311-batt_ops-be1bd71ca254
 
+Best regards,
 -- 
-2.39.5
+Amit Sunil Dhamne <amitsd@google.com>
 
