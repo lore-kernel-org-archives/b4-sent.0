@@ -1,78 +1,67 @@
 From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Wed, 12 Mar 2025 18:23:32 +0100
-Subject: [PATCH] net: phy: dp83822: fix transmit amplitude if
- CONFIG_OF_MDIO not defined
+Subject: [PATCH RESEND v4 0/2] can: flexcan: add transceiver capabilities
+Date: Wed, 12 Mar 2025 18:45:21 +0100
+Message-Id: <20250312-flexcan-add-transceiver-caps-v4-0-29e89ae0225a@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250312-dp83822-fix-transceiver-mdio-v1-1-7b69103c5ab0@liebherr.com>
-X-B4-Tracking: v=1; b=H4sIABPD0WcC/x3MQQqDMBBG4avIrB1IJ6ixV5EugvnVWTTKpEhBv
- HtDlx883kUFpij0bC4ynFp0zxWPtqF5i3kFa6omcdI57wZOR/BBhBf98sdiLjP0hPE76c4RMix
- IwfXjSHVxGGr330+v+/4Bv2o46W4AAAA=
-X-Change-ID: 20250307-dp83822-fix-transceiver-mdio-ae27fed80699
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+To: Marc Kleine-Budde <mkl@pengutronix.de>, 
+ Vincent Mailhol <mailhol.vincent@wanadoo.fr>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
  Dimitri Fedrau <dima.fedrau@gmail.com>, 
- Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741800212; l=1832;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741801523; l=1800;
  i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=mTFreHX34pBc+oU2pNBg+ke78ROdzLxTH0hZJ0yVXyw=;
- b=E2EFw8PtEHMY2cU2EAObFNnLPVJSmYdJUHq4B1GKMusIPHWH28S+jC1WuDKZDUqDG8IEnSYiD
- b5VmYCuMFNbBaB+pnQkyQHGHSVBtAjeCgfanKaHVq5O9lZLUOwCHkG+
+ bh=122xJzOd1ODbkxxXzrAgg7StS4O2IbUSeCXvlztvOyU=;
+ b=h7s8AGloWvFsNufNDUA8Nft4Rx1IuHBTW9TRg2XZ/KQBBQ8/fu8+L3QGC+yhaayVSQzSsyiPl
+ Tv3vqDb4hpEAbNBrmspyHuW/WiMVFEPZgERzaj31BYKoBkahhCCl6yX
 X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
  pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
 X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When CONFIG_OF_MDIO is not defined the index for selecting the transmit
-amplitude voltage for 100BASE-TX is set to 0, but it should be -1, if there
-is no need to modify the transmit amplitude voltage. Add a flag to make
-sure there is a need to modify it.
+Currently the flexcan driver does only support adding PHYs by using the
+"old" regulator bindings. Add support for CAN transceivers as a PHY. Add
+the capability to ensure that the PHY is in operational state when the link
+is set to an "up" state.
 
-Fixes: 4f3735e82d8a ("net: phy: dp83822: Add support for changing the transmit amplitude voltage")
 Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- drivers/net/phy/dp83822.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+Changes in v4:
+- Dropped "if: required: phys" in bindings
+- Link to v3: https://lore.kernel.org/r/20250221-flexcan-add-transceiver-caps-v3-0-a947bde55a62@liebherr.com
 
-diff --git a/drivers/net/phy/dp83822.c b/drivers/net/phy/dp83822.c
-index 3662f3905d5ade8ad933608fcaeabb714a588418..d69000cb0ceff28e8288ba24e0af1c960ea9cc97 100644
---- a/drivers/net/phy/dp83822.c
-+++ b/drivers/net/phy/dp83822.c
-@@ -201,6 +201,7 @@ struct dp83822_private {
- 	bool set_gpio2_clk_out;
- 	u32 gpio2_clk_out;
- 	bool led_pin_enable[DP83822_MAX_LED_PINS];
-+	bool tx_amplitude_100base_tx_modify;
- 	int tx_amplitude_100base_tx_index;
- };
- 
-@@ -527,7 +528,7 @@ static int dp83822_config_init(struct phy_device *phydev)
- 			       FIELD_PREP(DP83822_IOCTRL2_GPIO2_CLK_SRC,
- 					  dp83822->gpio2_clk_out));
- 
--	if (dp83822->tx_amplitude_100base_tx_index >= 0)
-+	if (dp83822->tx_amplitude_100base_tx_modify)
- 		phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_LDCTRL,
- 			       DP83822_100BASE_TX_LINE_DRIVER_SWING,
- 			       FIELD_PREP(DP83822_100BASE_TX_LINE_DRIVER_SWING,
-@@ -851,6 +852,8 @@ static int dp83822_of_init(struct phy_device *phydev)
- 				   val);
- 			return -EINVAL;
- 		}
-+
-+		dp83822->tx_amplitude_100base_tx_modify = true;
- 	}
- 
- 	return dp83822_of_init_leds(phydev);
+Changes in v3:
+- Have xceiver-supply or phys properties in bindings
+- Switch do dev_err_probe in flexcan_probe when checking error of call
+  devm_phy_optional_get
+- Link to v2: https://lore.kernel.org/r/20250220-flexcan-add-transceiver-caps-v2-0-a81970f11846@liebherr.com
+
+Changes in v2:
+- Rename variable xceiver to transceiver in struct flexcan_priv and in
+  flexcan_probe
+- Set priv->can.bitrate_max if transceiver is found
+- Fix commit messages which claim that transceivers are not supported
+- Do not print error on EPROBE_DEFER after calling devm_phy_optional_get in
+  flexcan_probe
+- Link to v1: https://lore.kernel.org/r/20250211-flexcan-add-transceiver-caps-v1-0-c6abb7817b0f@liebherr.com
 
 ---
-base-commit: c62e6f056ea308d6382450c1cb32e41727375885
-change-id: 20250307-dp83822-fix-transceiver-mdio-ae27fed80699
+Dimitri Fedrau (2):
+      dt-bindings: can: fsl,flexcan: add transceiver capabilities
+      can: flexcan: add transceiver capabilities
+
+ .../devicetree/bindings/net/can/fsl,flexcan.yaml   |  9 ++++++++
+ drivers/net/can/flexcan/flexcan-core.c             | 27 +++++++++++++++++-----
+ drivers/net/can/flexcan/flexcan.h                  |  1 +
+ 3 files changed, 31 insertions(+), 6 deletions(-)
+---
+base-commit: 6a24171b9625471abfc90c7b28c4b45bee64b3a4
+change-id: 20241209-flexcan-add-transceiver-caps-7cff9400c926
 
 Best regards,
 -- 
