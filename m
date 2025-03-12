@@ -1,15 +1,12 @@
 From: Amit Sunil Dhamne <amitsd@google.com>
-Subject: [PATCH 0/5] Add support for Battery Status & Battery Caps AMS in
- TCPM
-Date: Wed, 12 Mar 2025 16:42:00 -0700
-Message-Id: <20250312-batt_ops-v1-0-88e0bb3129fd@google.com>
+Date: Wed, 12 Mar 2025 16:42:01 -0700
+Subject: [PATCH 1/5] dt-bindings: connector: add fixed-batteries property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMkb0mcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDY0ND3aTEkpL4/IJi3aRUw6QUc8PkRCNTEyWg8oKi1LTMCrBR0bG1tQD
- JEMecWgAAAA==
-X-Change-ID: 20250311-batt_ops-be1bd71ca254
+Message-Id: <20250312-batt_ops-v1-1-88e0bb3129fd@google.com>
+References: <20250312-batt_ops-v1-0-88e0bb3129fd@google.com>
+In-Reply-To: <20250312-batt_ops-v1-0-88e0bb3129fd@google.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -23,46 +20,60 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
  Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741822998; l=1546;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741822998; l=2148;
  i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=90OuS2yk7g7bxyQlFmmSVP8LGE/eGIxU1ogAteq6FsQ=;
- b=zsL7hGB9X2//AJOcUw5HcZ2DY008IsSVM3aNDnOjpwzKN60kqxUEfHb8ORIW8KJMzcJ3L8fXH
- vDkHVUwomUuBDN/ZOODp4w5hu8fKuyQuPPptydVvvtFxZjCiyYDtYO5
+ bh=lqB7hbM4siiws9pIh8thUf/I8+c5fiz+QxbzSuLaKTI=;
+ b=hsUx8+UVc88upFK9cm+h8BLvCbfLdOUWzajlTp2MMm6mhFBleKWb8+HpA/plfvmMQYjbZ68zu
+ p4UeoLFlbZaDKPMCwtoPQDgTMN7r+riaPZLxj73hm2hWzkwoq23N1HT
 X-Developer-Key: i=amitsd@google.com; a=ed25519;
  pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
 X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Support for Battery Status & Battery Caps messages in response to
-Get_Battery_Status & Get_Battery_Cap request is required by USB PD devices
-powered by battery, as per "USB PD R3.1 V1.8 Spec", "6.13 Message
-Applicability" section. This patchset adds support for these AMSes
-to achieve greater compliance with the spec.
+Add a new "fixed-batteries" DT property to connector class. This
+property is populated with nodes associated with battery type power
+supplies powering the USB PD connector. This is needed by the Type-C
+Port Manager (TCPM) to query psy properties which are used to feed
+Battery_Status & Battery_Capacity AMS.
 
 Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
-Amit Sunil Dhamne (5):
-      dt-bindings: connector: add fixed-batteries property
-      power: supply: core: add function to get supplies from fwnode
-      usb: typec: tcpm: Add support for Battery Status response message
-      power: supply: core: add vendor and product id properties
-      usb: typec: tcpm: Add support for Battery Cap response message
+ Documentation/devicetree/bindings/connector/usb-connector.yaml | 8 ++++++++
+ Documentation/devicetree/bindings/usb/maxim,max33359.yaml      | 1 +
+ 2 files changed, 9 insertions(+)
 
- Documentation/ABI/testing/sysfs-class-power        |  20 ++
- .../bindings/connector/usb-connector.yaml          |   8 +
- .../devicetree/bindings/usb/maxim,max33359.yaml    |   1 +
- Documentation/power/power_supply_class.rst         |  11 ++
- drivers/power/supply/power_supply_core.c           |  60 ++++++
- drivers/power/supply/power_supply_sysfs.c          |   2 +
- drivers/usb/typec/tcpm/tcpm.c                      | 217 ++++++++++++++++++++-
- include/linux/power_supply.h                       |   7 +
- include/linux/usb/pd.h                             |  65 ++++++
- 9 files changed, 388 insertions(+), 3 deletions(-)
----
-base-commit: 80e54e84911a923c40d7bee33a34c1b4be148d7a
-change-id: 20250311-batt_ops-be1bd71ca254
+diff --git a/Documentation/devicetree/bindings/connector/usb-connector.yaml b/Documentation/devicetree/bindings/connector/usb-connector.yaml
+index 11e40d225b9f3a0d0aeea7bf764f1c00a719d615..5e15bc060f5a2cfce842f83de738f1e8bae3ce2d 100644
+--- a/Documentation/devicetree/bindings/connector/usb-connector.yaml
++++ b/Documentation/devicetree/bindings/connector/usb-connector.yaml
+@@ -300,6 +300,14 @@ properties:
+     $ref: /schemas/types.yaml#/definitions/uint8-array
+     maxItems: 4
+ 
++  fixed-batteries:
++    description: Contains references to nodes associated with battery type power
++      supplies powering the USB PD device. These batteries are fixed type and
++      not hot swappable.
++    minItems: 1
++    maxItems: 4
++    $ref: /schemas/types.yaml#/definitions/phandle-array
++
+ dependencies:
+   sink-vdos-v1: [ sink-vdos ]
+   sink-vdos: [ sink-vdos-v1 ]
+diff --git a/Documentation/devicetree/bindings/usb/maxim,max33359.yaml b/Documentation/devicetree/bindings/usb/maxim,max33359.yaml
+index 3de4dc40b79192b60443421b557bd2fb18683bf7..66c99f0131f074f1c08e31d7481f555647e3b2f8 100644
+--- a/Documentation/devicetree/bindings/usb/maxim,max33359.yaml
++++ b/Documentation/devicetree/bindings/usb/maxim,max33359.yaml
+@@ -75,6 +75,7 @@ examples:
+                                        PDO_FIXED(9000, 2000, 0)>;
+                 sink-bc12-completion-time-ms = <500>;
+                 pd-revision = /bits/ 8 <0x03 0x01 0x01 0x08>;
++                fixed-batteries = <&batt1 &batt2>;
+             };
+         };
+     };
 
-Best regards,
 -- 
-Amit Sunil Dhamne <amitsd@google.com>
+2.49.0.rc0.332.g42c0ae87b1-goog
 
