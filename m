@@ -1,206 +1,63 @@
-From: Tobias Sperling <tobias.sperling@softing.com>
-Date: Wed, 12 Mar 2025 16:29:40 +0100
-Subject: [PATCH] iio: adc: sort TI drivers alphanumerical
+From: Nathan Lynch <nathan.lynch@amd.com>
+Date: Wed, 12 Mar 2025 10:32:50 -0500
+Subject: [PATCH] dmaengine: Fix dma_async_tx_descriptor->tx_submit
+ documentation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250312-sort_ti_drivers-v1-1-4e8813e662d2@softing.com>
-X-B4-Tracking: v=1; b=H4sIAGOo0WcC/x3MPQqAMAxA4atIZgu1Pw5eRaQUGzWLSiJFKL27x
- fEb3isgyIQCU1eAMZPQdTYMfQfrEc8dFaVmMNp4bQej5OInPBQSU0YWpZ21Y9RjdMZDq27Gjd7
- /OC+1fsa55R5hAAAA
-X-Change-ID: 20250312-sort_ti_drivers-04336a06a425
-To: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Tobias Sperling <tobias.sperling@softing.com>
-X-Mailer: b4 0.15-dev-355e8
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741793385; l=5636;
- i=tobias.sperling@softing.com; s=20241122; h=from:subject:message-id;
- bh=pr36xwj3Tb4zVizwF/veJfHorhZaS8NYWrN5ZPaOFoY=;
- b=qTX1AO98j3b96kwWP2rf/qDe9PH+ILdOpWXtlmNDK2GCf1+oqdC8FkSNGwQlQisyzCGFJuyGZ
- XnxwQLOeCk6Ds+VXUrVDbxr6VXCUUIQuHFhNYoBNK3q0f6RaGxD0XHe
-X-Developer-Key: i=tobias.sperling@softing.com; a=ed25519;
- pk=v7hgaMHsrA9ul4UXkBVUuwusS9PF3uHW/CC+gABI65E=
-X-Endpoint-Received: by B4 Relay for tobias.sperling@softing.com/20241122 with auth_id=281
+Message-Id: <20250312-dma_async_tx_desc-tx_submit-doc-v1-1-16390060264c@amd.com>
+X-B4-Tracking: v=1; b=H4sIACGp0WcC/x2NwQqDMBAFf0X23AVNK4i/UkqIm6fuwViytljEf
+ 2/wNMxl5iBDVhj11UEZXzVdU5HmVpHMIU1gjcXJ1a6t743juAQf7JfEb7uPMOFC+wyLbhxX4bY
+ LDxkBh26gUnlnjLpfh+frPP84Wem8cQAAAA==
+X-Change-ID: 20250312-dma_async_tx_desc-tx_submit-doc-58a4cfee2e8b
+To: Vinod Koul <vkoul@kernel.org>, Randy Dunlap <rdunlap@infradead.org>
+Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nathan Lynch <nathan.lynch@amd.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741793579; l=1583;
+ i=nathan.lynch@amd.com; s=20241010; h=from:subject:message-id;
+ bh=jp/DMy7JLfNicBeQPv3Ol20fnz7oTC0prR6cxoePnxE=;
+ b=Mgbv/xwUHT1whJBL31TEUUUXdJfr2k6dY0JVcSLvH5yc3PnMmNCEzdW3p4i45rFohDbZJBN9w
+ +xPAaXzrtP4Dd41ZF6C8Aw++raCCJPJa/3lwGJp9wqXu1XDLMq0HvCQ
+X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
+ pk=ZR637UTGg5YLDj56cxFeHdYoUjPMMFbcijfOkAmAnbc=
+X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20241010 with auth_id=241
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Sort TI drivers again in an alphanumerical manner.
+Commit 790fb9956eea ("linux/dmaengine.h: fix a few kernel-doc
+warnings") inserted new documentation for @desc_free in the middle of
+@tx_submit's description.
 
-Signed-off-by: Tobias Sperling <tobias.sperling@softing.com>
----
-At some point the order of TI IIO ADC drivers
-was scrambled up and is now brought back to
-alphanumerical order.
----
- drivers/iio/adc/Kconfig | 114 ++++++++++++++++++++++++------------------------
- 1 file changed, 57 insertions(+), 57 deletions(-)
+Put @tx_submit's description back together, matching the indentation
+style of the rest of the documentation for dma_async_tx_descriptor.
 
-diff --git a/drivers/iio/adc/Kconfig b/drivers/iio/adc/Kconfig
-index 6529df1a498c2c3b32b3640b5c3a90d8fff33788..75ed633a3c43d176a4e73e341eea3fef890325d0 100644
---- a/drivers/iio/adc/Kconfig
-+++ b/drivers/iio/adc/Kconfig
-@@ -1440,18 +1440,6 @@ config TI_ADC084S021
- 	  This driver can also be built as a module. If so, the module will be
- 	  called ti-adc084s021.
- 
--config TI_ADC12138
--	tristate "Texas Instruments ADC12130/ADC12132/ADC12138"
--	depends on SPI
--	select IIO_BUFFER
--	select IIO_TRIGGERED_BUFFER
--	help
--	  If you say yes here you get support for Texas Instruments ADC12130,
--	  ADC12132 and ADC12138 chips.
--
--	  This driver can also be built as a module. If so, the module will be
--	  called ti-adc12138.
--
- config TI_ADC108S102
- 	tristate "Texas Instruments ADC108S102 and ADC128S102 driver"
- 	depends on SPI
-@@ -1464,6 +1452,18 @@ config TI_ADC108S102
- 	  To compile this driver as a module, choose M here: the module will
- 	  be called ti-adc108s102.
- 
-+config TI_ADC12138
-+	tristate "Texas Instruments ADC12130/ADC12132/ADC12138"
-+	depends on SPI
-+	select IIO_BUFFER
-+	select IIO_TRIGGERED_BUFFER
-+	help
-+	  If you say yes here you get support for Texas Instruments ADC12130,
-+	  ADC12132 and ADC12138 chips.
-+
-+	  This driver can also be built as a module. If so, the module will be
-+	  called ti-adc12138.
-+
- config TI_ADC128S052
- 	tristate "Texas Instruments ADC128S052/ADC122S021/ADC124S021"
- 	depends on SPI
-@@ -1499,6 +1499,16 @@ config TI_ADS1015
- 	  This driver can also be built as a module. If so, the module will be
- 	  called ti-ads1015.
- 
-+config TI_ADS1100
-+	tristate "Texas Instruments ADS1100 and ADS1000 ADC"
-+	depends on I2C
-+	help
-+	  If you say yes here you get support for Texas Instruments ADS1100 and
-+	  ADS1000 ADC chips.
-+
-+	  This driver can also be built as a module. If so, the module will be
-+	  called ti-ads1100.
-+
- config TI_ADS1119
-        tristate "Texas Instruments ADS1119 ADC"
-        depends on I2C
-@@ -1511,6 +1521,41 @@ config TI_ADS1119
-          This driver can also be built as a module. If so, the module will be
-          called ti-ads1119.
- 
-+config TI_ADS124S08
-+	tristate "Texas Instruments ADS124S08"
-+	depends on SPI
-+	select IIO_BUFFER
-+	select IIO_TRIGGERED_BUFFER
-+	help
-+	  If you say yes here you get support for Texas Instruments ADS124S08
-+	  and ADS124S06 ADC chips
-+
-+	  This driver can also be built as a module. If so, the module will be
-+	  called ti-ads124s08.
-+
-+config TI_ADS1298
-+	tristate "Texas Instruments ADS1298"
-+	depends on SPI
-+	select IIO_BUFFER
-+	help
-+	  If you say yes here you get support for Texas Instruments ADS1298
-+	  medical ADC chips
-+
-+	  This driver can also be built as a module. If so, the module will be
-+	  called ti-ads1298.
-+
-+config TI_ADS131E08
-+	tristate "Texas Instruments ADS131E08"
-+	depends on SPI
-+	select IIO_BUFFER
-+	select IIO_TRIGGERED_BUFFER
-+	help
-+	  Say yes here to get support for Texas Instruments ADS131E04, ADS131E06
-+	  and ADS131E08 chips.
-+
-+	  This driver can also be built as a module. If so, the module will be
-+	  called ti-ads131e08.
-+
- config TI_ADS7138
- 	tristate "Texas Instruments ADS7128 and ADS7138 ADC driver"
- 	depends on I2C
-@@ -1532,27 +1577,6 @@ config TI_ADS7924
- 	  This driver can also be built as a module. If so, the module will be
- 	  called ti-ads7924.
- 
--config TI_ADS1100
--	tristate "Texas Instruments ADS1100 and ADS1000 ADC"
--	depends on I2C
--	help
--	  If you say yes here you get support for Texas Instruments ADS1100 and
--	  ADS1000 ADC chips.
--
--	  This driver can also be built as a module. If so, the module will be
--	  called ti-ads1100.
--
--config TI_ADS1298
--	tristate "Texas Instruments ADS1298"
--	depends on SPI
--	select IIO_BUFFER
--	help
--	  If you say yes here you get support for Texas Instruments ADS1298
--	  medical ADC chips
--
--	  This driver can also be built as a module. If so, the module will be
--	  called ti-ads1298.
--
- config TI_ADS7950
- 	tristate "Texas Instruments ADS7950 ADC driver"
- 	depends on SPI && GPIOLIB
-@@ -1588,30 +1612,6 @@ config TI_ADS8688
- 	  This driver can also be built as a module. If so, the module will be
- 	  called ti-ads8688.
- 
--config TI_ADS124S08
--	tristate "Texas Instruments ADS124S08"
--	depends on SPI
--	select IIO_BUFFER
--	select IIO_TRIGGERED_BUFFER
--	help
--	  If you say yes here you get support for Texas Instruments ADS124S08
--	  and ADS124S06 ADC chips
--
--	  This driver can also be built as a module. If so, the module will be
--	  called ti-ads124s08.
--
--config TI_ADS131E08
--	tristate "Texas Instruments ADS131E08"
--	depends on SPI
--	select IIO_BUFFER
--	select IIO_TRIGGERED_BUFFER
--	help
--	  Say yes here to get support for Texas Instruments ADS131E04, ADS131E06
--	  and ADS131E08 chips.
--
--	  This driver can also be built as a module. If so, the module will be
--	  called ti-ads131e08.
--
- config TI_AM335X_ADC
- 	tristate "TI's AM335X ADC driver"
- 	depends on MFD_TI_AM335X_TSCADC && HAS_DMA
+Fixes: 790fb9956eea ("linux/dmaengine.h: fix a few kernel-doc warnings")
+Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
+---
+ include/linux/dmaengine.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/linux/dmaengine.h b/include/linux/dmaengine.h
+index bb146c5ac3e4ccd7bc0afbf3b28e5b3d659ad62f..51e1e357892a0325646f82d580b199321d59ced4 100644
+--- a/include/linux/dmaengine.h
++++ b/include/linux/dmaengine.h
+@@ -594,9 +594,9 @@ struct dma_descriptor_metadata_ops {
+  * @phys: physical address of the descriptor
+  * @chan: target channel for this operation
+  * @tx_submit: accept the descriptor, assign ordered cookie and mark the
++ *	descriptor pending. To be pushed on .issue_pending() call
+  * @desc_free: driver's callback function to free a resusable descriptor
+  *	after completion
+- * descriptor pending. To be pushed on .issue_pending() call
+  * @callback: routine to call after this operation is complete
+  * @callback_result: error result from a DMA transaction
+  * @callback_param: general parameter to pass to the callback routine
 
 ---
-base-commit: 97fe5f8a4299e4b8601ecb62c9672c27f2d2ccce
-change-id: 20250312-sort_ti_drivers-04336a06a425
+base-commit: 6565439894570a07b00dba0b739729fe6b56fba4
+change-id: 20250312-dma_async_tx_desc-tx_submit-doc-58a4cfee2e8b
 
 Best regards,
 -- 
-Tobias Sperling <tobias.sperling@softing.com>
+Nathan Lynch <nathan.lynch@amd.com>
 
