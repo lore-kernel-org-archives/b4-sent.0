@@ -1,82 +1,104 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Thu, 13 Mar 2025 16:46:36 +0100
-Subject: [PATCH] drop_caches: Allow re-enabling message after disabling
+Subject: [PATCH v3 0/5] sysctl: Move sysctls from kern_table into their
+ respective subsystems
+Date: Thu, 13 Mar 2025 17:22:22 +0100
+Message-Id: <20250313-jag-mv_ctltables-v3-0-91f3bb434d27@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250313-jag-drop_caches_msg-v1-1-c2e4e7874b72@kernel.org>
-X-B4-Tracking: v=1; b=H4sIANv90mcC/x3MTQqAIBBA4avErBM0a9NVIsKf0SZIxYEIorsnL
- b/Few8wVkKGuXug4kVMOTWovgO3mxRRkG+GQQ6T1EqLw0Thay6bM25H3k6Owo3BBvR2UkFDK0v
- FQPd/Xdb3/QD22YgqZQAAAA==
-X-Change-ID: 20250313-jag-drop_caches_msg-c4fbfedb51f3
-To: Jonathan Corbet <corbet@lwn.net>, 
- Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-fsdevel@vger.kernel.org, Ruiwu Chen <rwchen404@gmail.com>, 
- Luis Chamberlain <mcgrof@kernel.org>, 
- Joel Granados <joel.granados@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAD4G02cC/23N3wqCMBTH8VeJc91if9TNrnqPiJjbUVemsckox
+ HdvChFRl98fnM+ZIKB3GGC/mcBjdMENfQqx3YBpdd8gcTY1cMpzypkkF92QWzybsRt11WEgppY
+ 5ZpIiVTmks7vH2j1W8nhK3bowDv65fohsWd+Y+sUiI5QYK4pS6UpZXh6u6HvsdoNvYNEi/wiCF
+ n8EngTJKp4Jo6yo1Zcwz/MLvJ2Q0PMAAAA=
+X-Change-ID: 20250217-jag-mv_ctltables-cf75e470e085
+To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
+ Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ "David S. Miller" <davem@davemloft.net>, 
+ Andreas Larsson <andreas@gaisler.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ linux-trace-kernel@vger.kernel.org, sparclinux@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1756;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2666;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=onqUyIR18v4Kxp915+i4qq8AG9pw2nIIaV6s1W5Ie2I=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGfS/f6CEC4g2XnGlGRlSme4x3oOFMFovBpF7
- JcxYrJVTJTsb4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn0v3+AAoJELqXzVK3
- lkFPPNYL/jHTPUPVYZaSe0Tz1azPRYnf0WszSAKm+jNqgbZXptpqSIgTNuiRiXalABLa94PT/vf
- kNo26IgXSmsz7t/qRDUCSg6URaTItyfUMQ5kE12xtzqu4t6PBNRa0QfTcGG+ZkcQtD9k6iSx48u
- wWzjVc/l72eww/CtfGAvwGATdzt2jUxofWkUyPsXA9jYIs5staKiBzDPPgGhVWV3uUdXP+5xXws
- UxlT61ooON9PW0HVJds9DzHZz1/tO88Qgy5gs/kbheAPlL3sIIYxxyt/LwPyy9A8GrTZl/uSJv6
- OXIlkJ87Yt1cZBNYONFDiLdu+W8YJPmQpiGRZ+hGfAmJ/ExvRYCuZyz6CjtY+cc55YWjCCzRzdX
- IfaG1MM4FeDnkRVEjCRt5idGfM8rKxHfebqk4Z+HvAoqyPT8sBObxGl/r4Hu6ZvW4BLBUZfe6iy
- Y/BCsgAwQeMx4Df2x3fvD9rZpAYpFK5EB1VMx9/9znIOKAScp9HCqENAKc46/Sn6Jm8qAlyt0a7
- N0=
+ bh=9BJrspz9yE1EjgzFvirmz3UiLOLMBPHH+mtqER++Sv4=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGfTBkiMKwNqoKHHDpFPfiyeQ2Fe0oUt/OEGr
+ v94WKqL/HG7rIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn0wZIAAoJELqXzVK3
+ lkFPvoAL/3V02KJiyAmy9V2bEiQYwDMb29ke6mz1PS2I1Hyq6bTTE+UOFqXEJK3263QufMxE1ym
+ 1ngbr1fQ9ayJAjPqDVxalEbAM4tm9tUipTiJBCAKrjWIXbn9c8SuonY7lcTWLzuIf9KJDOOO8MP
+ ta6m3pLU+J2mbCgPqyJg0CrbyOltjxkWWK0YnyzlTA0EMNYfkTBOOKK+bHpeQdqhV/yM+444WM/
+ pBDKXOb3Xtvid9OKx62BqIPJ6d0DlFf+TdmorQWitW0YtjhFJ4p8qyh5Ju5ToW/uoCYKsc8EJqU
+ MC74luzxZNer3UwjAwWz0kYQimT8QvW6bGQhBLcDUL70aLr/srJ1KquVbYbGW+L8CfS0buGn9VD
+ MDw79Hh9mX8QiUB/B1D5/KIVdaDEFe9IgO6TabiX3NYvJI+gUQB1iSZt2Bo8W8Sy7i1zuPRisYg
+ tJDqSuvoCNPD/N/ffv96zxA7FdMtJ5SBRIpvxGyWi4cIxc8Fv2fL2LGkdUgQKwK5ER+I1ouBmr7
+ uo=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After writing "4" to /proc/sys/vm/drop_caches there was no way to
-re-enable the drop_caches kernel message. By removing the "or" logic for
-the stfu variable in drop_cache_sysctl_handler, it is now possible to
-toggle the message on and off by setting the 4th bit in
-/proc/sys/vm/drop_caches.
+This series relocates sysctl tables from kern_table to their respective
+subsystems. To keep the scope manageable, this patchset focuses on
+architecture-specific and core kernel sysctl tables. Further relocations
+will follow once this series progresses.
 
+By decentralizing sysctl registrations, subsystem maintainers regain
+control over their sysctl interfaces, improving maintainability and
+reducing the likelihood of merge conflicts. All this is made possible by
+the work done to reduce the ctl_table memory footprint in commit
+d7a76ec87195 ("sysctl: Remove check for sentinel element in ctl_table
+arrays").
+
+* Birds eye view of what has changed:
+    - Archs: sparc
+        arch/sparc/kernel/{Makefile,setup.c}
+    - Kernel core:
+        kernel/{panic.c,signal.c,trace/trace.c}
+        kernel/events/{core.c,callchain.c}
+
+* Testing was done by running sysctl selftests on x86_64 and 0-day.
+
+Comments are greatly appreciated
+
+Changes in v3:
+- Removed s390 from the series as it is being upstreamed through s390
+  tree. Adjusted the Cc and To to reflect this.
+- made stack_tracer_enabled static
+- Link to v2: https://lore.kernel.org/r/20250306-jag-mv_ctltables-v2-0-71b243c8d3f8@kernel.org
+
+Changes in v2:
+- Dropped the perf and x86 patches as they are making their way
+  upstream. Removed relevant ppl from To: and Cc: mail header.
+- "ftrace:..." -> "tracing:..." for patch 3
+- Moved stac_tracer_enabled to trace_stack.c instead of trace.c
+- s390: fixed typo and removed the CONFIG_SMP ifdefs
+- Updated trailers
+- Link to v1: https://lore.kernel.org/r/20250218-jag-mv_ctltables-v1-0-cd3698ab8d29@kernel.org
+
+---
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
----
- Documentation/admin-guide/sysctl/vm.rst | 2 +-
- fs/drop_caches.c                        | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/Documentation/admin-guide/sysctl/vm.rst b/Documentation/admin-guide/sysctl/vm.rst
-index f48eaa98d22d2b575f6e913f437b0d548daac3e6..75a032f8cbfb4e05f04610cca219d154bd852789 100644
---- a/Documentation/admin-guide/sysctl/vm.rst
-+++ b/Documentation/admin-guide/sysctl/vm.rst
-@@ -266,7 +266,7 @@ used::
- 	cat (1234): drop_caches: 3
- 
- These are informational only.  They do not mean that anything is wrong
--with your system.  To disable them, echo 4 (bit 2) into drop_caches.
-+with your system.  To toggle them, echo 4 (bit 2) into drop_caches.
- 
- enable_soft_offline
- ===================
-diff --git a/fs/drop_caches.c b/fs/drop_caches.c
-index d45ef541d848a73cbd19205e0111c2cab3b73617..501b9f690445e245f88cbb31a5123b2752e2e7ce 100644
---- a/fs/drop_caches.c
-+++ b/fs/drop_caches.c
-@@ -73,7 +73,7 @@ int drop_caches_sysctl_handler(const struct ctl_table *table, int write,
- 				current->comm, task_pid_nr(current),
- 				sysctl_drop_caches);
- 		}
--		stfu |= sysctl_drop_caches & 4;
-+		stfu = sysctl_drop_caches & 4;
- 	}
- 	return 0;
- }
 
 ---
-base-commit: 7eb172143d5508b4da468ed59ee857c6e5e01da6
-change-id: 20250313-jag-drop_caches_msg-c4fbfedb51f3
+Joel Granados (5):
+      panic: Move panic ctl tables into panic.c
+      signal: Move signal ctl tables into signal.c
+      tracing: Move trace sysctls into trace.c
+      stack_tracer: move sysctl registration to kernel/trace/trace_stack.c
+      sparc: mv sparc sysctls into their own file under arch/sparc/kernel
+
+ arch/sparc/kernel/Makefile |   1 +
+ arch/sparc/kernel/setup.c  |  46 +++++++++++++++++++
+ include/linux/ftrace.h     |   9 ----
+ kernel/panic.c             |  30 +++++++++++++
+ kernel/signal.c            |  11 +++++
+ kernel/sysctl.c            | 108 ---------------------------------------------
+ kernel/trace/trace.c       |  36 ++++++++++++++-
+ kernel/trace/trace_stack.c |  22 ++++++++-
+ 8 files changed, 144 insertions(+), 119 deletions(-)
+---
+base-commit: 0ad2507d5d93f39619fc42372c347d6006b64319
+change-id: 20250217-jag-mv_ctltables-cf75e470e085
 
 Best regards,
 -- 
