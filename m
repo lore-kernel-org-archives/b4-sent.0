@@ -1,187 +1,153 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Fri, 14 Mar 2025 00:11:00 +0100
-Subject: [PATCH v2 2/2] arm64: dts: amlogic: Add Ugoos AM3
+From: Denis Mukhin <dmukhin@ford.com>
+Date: Thu, 13 Mar 2025 16:45:51 -0700
+Subject: [PATCH] x86/early_printk: add MMIO-based UARTs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250314-ugoos-am3-v2-2-422104b0cec5@posteo.net>
-References: <20250314-ugoos-am3-v2-0-422104b0cec5@posteo.net>
-In-Reply-To: <20250314-ugoos-am3-v2-0-422104b0cec5@posteo.net>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250313-earlyprintk-v1-1-8f818d77a8dd@ford.com>
+X-B4-Tracking: v=1; b=H4sIAC5u02cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDY0Nj3dTEopzKgqLMvJJs3TQzi6TkNEODtNSkZCWgjoKi1LTMCrBp0bG
+ 1tQCqvvfAXQAAAA==
+X-Change-ID: 20250313-earlyprintk-f68bcf10febc
+To: Jonathan Corbet <corbet@lwn.net>, Thomas Gleixner <tglx@linutronix.de>, 
+ Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
+ Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
+ "H. Peter Anvin" <hpa@zytor.com>
+Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741907460; l=4596;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=m3invKokLgdJ1eCdXuhwHYci6oBGOULnHFVI8Wy8tiI=;
- b=h5PCF4nsdbjTbwVFveX7lFEADyFz+xxk+07lMMMq6sLw/WUAvtmvQjLPr91KEmOCSjRsUAvKy
- uwyGgJ5YPgnBYGmkPOb8gWawgVEoEbBrfGGWI2N4hsP9SLcMLXum8OY
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741909589; l=4181;
+ i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
+ bh=hyfhwTjX30IsViMitxMZyys23Irq8zRLMoLGx9pZo6s=;
+ b=xZJY8y5EoFN5fT6CCK5ossSAOntuA5+L3ssJ1Fga3KugCMBZHrPQ689DGmPRfeXU/rFURONeW
+ N4PjskEm3arAGBX+/o451GBaKudqerwmWZW62mRFHCrmAqRRkvAMDeZ
+X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
+ pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
+X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Ugoos AM3 is a small set-top box based on the Amlogic S912 SoC,
-with a board design that is very close to the Q20x development boards.
-The MMC max-frequency properties are copied from the downstream device
-tree.
+During the bring-up of an x86 board, the kernel was crashing before
+reaching the platform's console driver because of a bug in the firmware,
+leaving no trace of the boot progress.
 
-  https://ugoos.com/ugoos-am3-16g
+It was discovered that the only available method to debug the kernel
+boot process was via the platform's MMIO-based UART, as the board lacked
+an I/O port-based UART, PCI UART, or functional video output.
 
-The following functionality has been tested and is known to work:
- - debug serial port
- - "update" button inside the case
- - USB host mode, on all three ports
- - HDMI video/audio output
- - eMMC, MicroSD, and SDIO WLAN
- - S/PDIF audio output
- - Ethernet
- - Infrared remote control input
+Then it turned out that earlyprintk= does not have a knob to configure
+the MMIO-mapped UART.
 
-The following functionality doesn't seem to work:
- - USB role switching and device mode on the "OTG" port
- - case LED
+Extend the early printk facility to support platform MMIO-based UARTs
+on x86 systems, enabling debugging during the system bring-up phase.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+The command line syntax to enable platform MMIO-based UART is:
+  earlyprintk=mmio,membase[,{nocfg|baudrate}][,keep]
+
+Note, the change does not integrate MMIO-based UART support to:
+  arch/x86/boot/early_serial_console.c
+
+Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
+ Documentation/admin-guide/kernel-parameters.txt |  4 +++
+ arch/x86/kernel/early_printk.c                  | 45 ++++++++++++++++++++++++-
+ 2 files changed, 48 insertions(+), 1 deletion(-)
 
-V2:
-- Fix vendor name in patch subject
-- Remove incorrect override of SDIO pwrseq reset line
----
- arch/arm64/boot/dts/amlogic/Makefile               |  1 +
- .../arm64/boot/dts/amlogic/meson-gx-p23x-q20x.dtsi |  2 +-
- .../arm64/boot/dts/amlogic/meson-gxm-ugoos-am3.dts | 91 ++++++++++++++++++++++
- 3 files changed, 93 insertions(+), 1 deletion(-)
-
-diff --git a/arch/arm64/boot/dts/amlogic/Makefile b/arch/arm64/boot/dts/amlogic/Makefile
-index 2fbda8419c65a3056410ac45ca3ddaceb69ea4f5..bf2bc14528bfa27e8d6ae2730085fc356d6c6dd8 100644
---- a/arch/arm64/boot/dts/amlogic/Makefile
-+++ b/arch/arm64/boot/dts/amlogic/Makefile
-@@ -76,6 +76,7 @@ dtb-$(CONFIG_ARCH_MESON) += meson-gxm-q200.dtb
- dtb-$(CONFIG_ARCH_MESON) += meson-gxm-q201.dtb
- dtb-$(CONFIG_ARCH_MESON) += meson-gxm-rbox-pro.dtb
- dtb-$(CONFIG_ARCH_MESON) += meson-gxm-s912-libretech-pc.dtb
-+dtb-$(CONFIG_ARCH_MESON) += meson-gxm-ugoos-am3.dtb
- dtb-$(CONFIG_ARCH_MESON) += meson-gxm-vega-s96.dtb
- dtb-$(CONFIG_ARCH_MESON) += meson-gxm-wetek-core2.dtb
- dtb-$(CONFIG_ARCH_MESON) += meson-s4-s805x2-aq222.dtb
-diff --git a/arch/arm64/boot/dts/amlogic/meson-gx-p23x-q20x.dtsi b/arch/arm64/boot/dts/amlogic/meson-gx-p23x-q20x.dtsi
-index 45ccddd1aaf0546632c81a52c8917a923beae883..4223b26f7d0f3aa47e42e9434d24f73b20441981 100644
---- a/arch/arm64/boot/dts/amlogic/meson-gx-p23x-q20x.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-gx-p23x-q20x.dtsi
-@@ -97,7 +97,7 @@ sdio_pwrseq: sdio-pwrseq {
- 		clock-names = "ext_clock";
- 	};
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index fb8752b42ec8582b8750d7e014c4d76166fa2fc1..bee9ee18a506d019dc3d330268e3e1c83434ebba 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -1414,11 +1414,15 @@
+ 			earlyprintk=pciserial[,force],bus:device.function[,baudrate]
+ 			earlyprintk=xdbc[xhciController#]
+ 			earlyprintk=bios
++			earlyprintk=mmio,membase[,{nocfg|baudrate}][,keep]
  
--	cvbs-connector {
-+	cvbs_connector: cvbs-connector {
- 		compatible = "composite-video-connector";
+ 			earlyprintk is useful when the kernel crashes before
+ 			the normal console is initialized. It is not enabled by
+ 			default because it has some cosmetic problems.
  
- 		port {
-diff --git a/arch/arm64/boot/dts/amlogic/meson-gxm-ugoos-am3.dts b/arch/arm64/boot/dts/amlogic/meson-gxm-ugoos-am3.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..ba871f3f53bb99b47b325bae228b59b722c5123b
---- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/meson-gxm-ugoos-am3.dts
-@@ -0,0 +1,91 @@
-+// SPDX-License-Identifier: GPL-2.0
++			Use "nocfg" to skip UART configuration, assume
++			BIOS/firmware has configured UART correctly.
++
+ 			Append ",keep" to not disable it when the real console
+ 			takes over.
+ 
+diff --git a/arch/x86/kernel/early_printk.c b/arch/x86/kernel/early_printk.c
+index 44f937015e1e25bf41532eb7e1031a6be32a6523..19248c73b5b0950e9edf1a60ba67829f1cd3279e 100644
+--- a/arch/x86/kernel/early_printk.c
++++ b/arch/x86/kernel/early_printk.c
+@@ -191,7 +191,6 @@ static __init void early_serial_init(char *s)
+ 	early_serial_hw_init(divisor);
+ }
+ 
+-#ifdef CONFIG_PCI
+ static void mem32_serial_out(unsigned long addr, int offset, int value)
+ {
+ 	u32 __iomem *vaddr = (u32 __iomem *)addr;
+@@ -206,6 +205,45 @@ static unsigned int mem32_serial_in(unsigned long addr, int offset)
+ 	return readl(vaddr + offset);
+ }
+ 
 +/*
-+ * Copyright (C) 2025 J. Neuschäfer <j.ne@posteo.net>
-+ *
-+ * Debug UART (3.3V, 115200 baud) at the corner of the board:
-+ *   (4) (3) (2) [1]
-+ *   Vcc RXD TXD GND
++ * early_mmio_serial_init() - Initialize MMIO-based early serial console.
++ * @membase: UART base address.
++ * @nocfg: Skip configuration, assume BIOS has configured UART correctly.
++ * @baudrate (int): Baud rate.
++ * @keep: Keep after the real driver is available.
 + */
++static __init void early_mmio_serial_init(char *s)
++{
++	unsigned long baudrate;
++	unsigned long membase;
++	char *e;
 +
-+/dts-v1/;
++	if (*s == ',')
++		s++;
 +
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/interrupt-controller/amlogic,meson-g12a-gpio-intc.h>
++	if (!strncmp(s, "0x", 2)) {
++		membase = simple_strtoul(s, &e, 16);
++		early_serial_base = (unsigned long)early_ioremap(membase, PAGE_SIZE);
++		serial_in = mem32_serial_in;
++		serial_out = mem32_serial_out;
 +
-+#include "meson-gxm.dtsi"
-+#include "meson-gx-p23x-q20x.dtsi"
++		s += strcspn(s, ",");
++		if (*s == ',')
++			s++;
++	}
 +
-+/ {
-+	compatible = "ugoos,am3", "amlogic,s912", "amlogic,meson-gxm";
-+	model = "Ugoos AM3";
++	if (!strncmp(s, "nocfg", 5))
++		baudrate = 0;
++	else {
++		baudrate = simple_strtoul(s, &e, 0);
++		if (baudrate == 0 || s == e)
++			baudrate = DEFAULT_BAUD;
++	}
++	if (baudrate)
++		early_serial_hw_init(115200 / baudrate);
++}
 +
-+	adc-keys {
-+		compatible = "adc-keys";
-+		io-channels = <&saradc 0>;
-+		io-channel-names = "buttons";
-+		keyup-threshold-microvolt = <1710000>;
-+
-+		button-function {
-+			label = "Update";
-+			linux,code = <KEY_VENDOR>;
-+			press-threshold-microvolt = <10000>;
-+		};
-+	};
-+};
-+
-+&cvbs_connector {
-+	/* Not used on this board */
-+	status = "disabled";
-+};
-+
-+&ethmac {
-+	pinctrl-0 = <&eth_pins>;
-+	pinctrl-names = "default";
-+
-+	/* Select external PHY by default */
-+	phy-handle = <&external_phy>;
-+
-+	amlogic,tx-delay-ns = <2>;
-+
-+	/* External PHY is in RGMII */
-+	phy-mode = "rgmii";
-+
-+	status = "okay";
-+};
-+
-+&external_mdio {
-+	external_phy: ethernet-phy@0 {
-+		/* Realtek RTL8211F (0x001cc916) */
-+		reg = <0>;
-+
-+		reset-assert-us = <10000>;
-+		reset-deassert-us = <80000>;
-+		reset-gpios = <&gpio GPIOZ_14 GPIO_ACTIVE_LOW>;
-+
-+		interrupt-parent = <&gpio_intc>;
-+		/* MAC_INTR on GPIOZ_15 */
-+		interrupts = <25 IRQ_TYPE_LEVEL_LOW>;
-+	};
-+};
-+
-+&i2c_B {
-+	status = "okay";
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c_b_pins>;
-+
-+	rtc: rtc@51 {
-+		compatible = "haoyu,hym8563";
-+		reg = <0x51>;
-+		#clock-cells = <0>;
-+	};
-+};
-+
-+/* WLAN: Atheros 10k (QCA9377) */
-+&sd_emmc_a {
-+	max-frequency = <200000000>;
-+};
-+
-+/* eMMC */
-+&sd_emmc_c {
-+	max-frequency = <100000000>;
-+};
++#ifdef CONFIG_PCI
+ /*
+  * early_pci_serial_init()
+  *
+@@ -352,6 +390,11 @@ static int __init setup_early_printk(char *buf)
+ 	keep = (strstr(buf, "keep") != NULL);
+ 
+ 	while (*buf != '\0') {
++		if (!strncmp(buf, "mmio", 4)) {
++			early_mmio_serial_init(buf + 4);
++			early_console_register(&early_serial_console, keep);
++			buf += 4;
++		}
+ 		if (!strncmp(buf, "serial", 6)) {
+ 			buf += 6;
+ 			early_serial_init(buf);
 
+---
+base-commit: 8aed61b8334e00f4fe5de9f2df1cd183dc328a9d
+change-id: 20250313-earlyprintk-f68bcf10febc
+
+Best regards,
 -- 
-2.48.0.rc1.219.gb6b6757d772
+Denis Mukhin <dmukhin@ford.com>
 
