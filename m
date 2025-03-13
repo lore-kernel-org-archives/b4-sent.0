@@ -1,173 +1,111 @@
-From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Date: Thu, 13 Mar 2025 17:05:36 +0800
-Subject: [PATCH v4 3/3] arm64: dts: amlogic: Add A5 Reset Controller
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH 00/18] mfd: adp5585: support keymap events and drop legacy
+ Input driver
+Date: Thu, 13 Mar 2025 14:19:17 +0000
+Message-Id: <20250313-dev-adp5589-fw-v1-0-20e80d4bd4ea@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250313-a4-a5-reset-v4-3-8076f684d6cf@amlogic.com>
-References: <20250313-a4-a5-reset-v4-0-8076f684d6cf@amlogic.com>
-In-Reply-To: <20250313-a4-a5-reset-v4-0-8076f684d6cf@amlogic.com>
-To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAGbp0mcC/x3MQQqAIBBA0avErBtQ06iuEi1Ex5qNhUIF4t2Tl
+ m/xf4FMiSnD0hVIdHPmMzbIvgN32LgTsm8GJZQRg5To6UbrL2OmGcODJLQLftZGTSO06EoU+P2
+ H61brB2w0KPRgAAAA
+X-Change-ID: 20250311-dev-adp5589-fw-e04cfd945286
+To: linux-gpio@vger.kernel.org, linux-pwm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-input@vger.kernel.org
+Cc: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Zelong Dong <zelong.dong@amlogic.com>, 
- Kelvin Zhang <kelvin.zhang@amlogic.com>
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Liu Ying <victor.liu@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741856786; l=3877;
- i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=ZFu/iq6Br16B1GmXZXg+n7u5XDIS+7iiJRB1TMYOhs4=;
- b=8WsA+Mm77eVUAT3YgjZQzAi9J3yuCVLHAYgwmSKS8l6fcCTikKBtv+PoxXMtrweg0qyrUt9n4
- 19h7CXmFbd3DXsUYHDxicwR7642QUCitxBuP0WfbwV/EQKeIIjb976U
-X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
- pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
-X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741875561; l=3601;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=1hmYFCYRlnFEnOVA+8j1hptv02veyE2YwfRsJCXsjL4=;
+ b=HO4x96uZcuESctomGU8fatWdFsgoQn9KLUeut0G8836eRXN3jvJMzSkjvrZOH486P6BzuEohr
+ QbgRIWaUh1RD8yCObB7uHdwzu2js9lzPZHXjqenm/x/MH8Whl/wHbit
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Zelong Dong <zelong.dong@amlogic.com>
+The adp5585 MFD driver was introduced in 6.11 adding support for gpio
+and PWM. However, the gpio part of it was already supported as part of
+the keyboard driver:
 
-Add the device node and related header file for Amlogic
-A5 reset controller.
+https://elixir.bootlin.com/linux/v6.14-rc6/source/drivers/input/keyboard/adp5589-keys.c#L532
 
-Signed-off-by: Zelong Dong <zelong.dong@amlogic.com>
-Link: https://lore.kernel.org/r/20240918074211.8067-4-zelong.dong@amlogic.com
-Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
+On top of that it also overlapped with my refactoring of the above driver [1]
+to drop usage of platform data and use FW properties instead.
+
+Now, it actually makes sense for this device to be supported under MFD
+and since the "legacy" input device depends on platform data that is not
+defined anywhere the plan in this series is to add support for the
+keyboard and adp5589 devices as part of the MFD driver. Once the MFD
+driver supports all that's supported in the Input one, we drop it...
+
+For DT Maintainers:
+
+The compatible for adp5589 is part of trivial devices. To me, it makes
+sense to remove it in the patch where we drop the driver but doing so
+would result in a warning when adding the same compatible for the MFD
+bindings. Hence, I remove it in that patch. Is that ok?
+
+Uwe:
+
+In my eval board, I could see that reading the GPIO value (when
+configured as input) does not work when OSC_EN is not set. Therefore,
+commit ("pwm: adp5585: don't control OSC_EN in the pwm driver") could
+very well have a Fixes tag. However I'm not 100% sure it's a real issue
+or something special to my eval board.
+
+It would be nice if Laurent or Liu could test the PWM bits or even
+check that the above is also an issue for their platform.
+
+[1]: https://lore.kernel.org/linux-input/d1395bd61ce58b3734121bca4e09605a3e997af3.camel@gmail.com/
+
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h | 95 ++++++++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi    | 10 +++
- 2 files changed, 105 insertions(+)
+Nuno Sá (18):
+      dt-bindings: mfd: adp5585: ease on the required properties
+      mfd: adp5585: enable oscilator during probe
+      pwm: adp5585: don't control OSC_EN in the pwm driver
+      mfd: adp5585: make use of MFD_CELL_NAME()
+      dt-bindings: mfd: adp5585: document adp5589 I/O expander
+      mfd: adp5585: add support for adp5589
+      gpio: adp5585: add support for the ad5589 expander
+      pwm: adp5585: add support for adp5589
+      dt-bindings: mfd: adp5585: add properties for input events
+      mfd: adp5585: add support for key events
+      gpio: adp5585: support gpi events
+      Input: adp5585: Add Analog Devices ADP5585/89 support
+      Input: adp5589: remove the driver
+      mfd: adp5585: support getting vdd regulator
+      dt-bindings: mfd: adp5585: document reset gpio
+      mfd: adp5585: add support for a reset pin
+      pwm: adp5585: make sure to include mod_devicetable.h
+      gpio: adp5585: make sure to include mod_devicetable.h
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h b/arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..cdf0f515962097c606e4c53badb19df7d21606ec
---- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h
-@@ -0,0 +1,95 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
-+/*
-+ * Copyright (c) 2024 Amlogic, Inc. All rights reserved.
-+ */
-+
-+#ifndef __DTS_AMLOGIC_A5_RESET_H
-+#define __DTS_AMLOGIC_A5_RESET_H
-+
-+/* RESET0 */
-+/*						0-3 */
-+#define RESET_USB				4
-+/*						5-7 */
-+#define RESET_USBPHY20				8
-+/*						9 */
-+#define RESET_USB2DRD				10
-+/*						11-31 */
-+
-+/* RESET1 */
-+#define RESET_AUDIO				32
-+#define RESET_AUDIO_VAD				33
-+/*                                              34 */
-+#define RESET_DDR_APB				35
-+#define RESET_DDR				36
-+/*						37-40 */
-+#define RESET_DSPA_DEBUG			41
-+/*                                              42 */
-+#define RESET_DSPA				43
-+/*						44-46 */
-+#define RESET_NNA				47
-+#define RESET_ETHERNET				48
-+/*						49-63 */
-+
-+/* RESET2 */
-+#define RESET_ABUS_ARB				64
-+#define RESET_IRCTRL				65
-+/*						66 */
-+#define RESET_TS_PLL				67
-+/*						68-72 */
-+#define RESET_SPICC_0				73
-+#define RESET_SPICC_1				74
-+#define RESET_RSA				75
-+
-+/*						76-79 */
-+#define RESET_MSR_CLK				80
-+#define RESET_SPIFC				81
-+#define RESET_SAR_ADC				82
-+/*						83-90 */
-+#define RESET_WATCHDOG				91
-+/*						92-95 */
-+
-+/* RESET3 */
-+/*						96-127 */
-+
-+/* RESET4 */
-+#define RESET_RTC				128
-+/*						129-131 */
-+#define RESET_PWM_AB				132
-+#define RESET_PWM_CD				133
-+#define RESET_PWM_EF				134
-+#define RESET_PWM_GH				135
-+/*						104-105 */
-+#define RESET_UART_A				138
-+#define RESET_UART_B				139
-+#define RESET_UART_C				140
-+#define RESET_UART_D				141
-+#define RESET_UART_E				142
-+/*						143*/
-+#define RESET_I2C_S_A				144
-+#define RESET_I2C_M_A				145
-+#define RESET_I2C_M_B				146
-+#define RESET_I2C_M_C				147
-+#define RESET_I2C_M_D				148
-+/*						149-151 */
-+#define RESET_SDEMMC_A				152
-+/*						153 */
-+#define RESET_SDEMMC_C				154
-+/*						155-159*/
-+
-+/* RESET5 */
-+/*						160-175 */
-+#define RESET_BRG_AO_NIC_SYS			176
-+#define RESET_BRG_AO_NIC_DSPA			177
-+#define RESET_BRG_AO_NIC_MAIN			178
-+#define RESET_BRG_AO_NIC_AUDIO			179
-+/*						180-183 */
-+#define RESET_BRG_AO_NIC_ALL			184
-+#define RESET_BRG_NIC_NNA			185
-+#define RESET_BRG_NIC_SDIO			186
-+#define RESET_BRG_NIC_EMMC			187
-+#define RESET_BRG_NIC_DSU			188
-+#define RESET_BRG_NIC_SYSCLK			189
-+#define RESET_BRG_NIC_MAIN			190
-+#define RESET_BRG_NIC_ALL			191
-+
-+#endif
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-index 17a6316de8918f31f3f7625f2eda06a60664139a..b97e2f3091bf62f4bdaaebeaf5d1dfe695cfc6d5 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-@@ -4,6 +4,7 @@
-  */
- 
- #include "amlogic-a4-common.dtsi"
-+#include "amlogic-a5-reset.h"
- #include <dt-bindings/power/amlogic,a5-pwrc.h>
- / {
- 	cpus {
-@@ -48,3 +49,12 @@ pwrc: power-controller {
- 		};
- 	};
- };
-+
-+&apb {
-+	reset: reset-controller@2000 {
-+		compatible = "amlogic,a5-reset",
-+			     "amlogic,meson-s4-reset";
-+		reg = <0x0 0x2000 0x0 0x98>;
-+		#reset-cells = <1>;
-+	};
-+};
+ .../devicetree/bindings/mfd/adi,adp5585.yaml       |  243 ++++-
+ .../devicetree/bindings/trivial-devices.yaml       |    2 -
+ MAINTAINERS                                        |    1 +
+ drivers/gpio/Kconfig                               |    1 +
+ drivers/gpio/gpio-adp5585.c                        |  299 +++++-
+ drivers/input/keyboard/Kconfig                     |   21 +-
+ drivers/input/keyboard/Makefile                    |    2 +-
+ drivers/input/keyboard/adp5585-keys.c              |  221 ++++
+ drivers/input/keyboard/adp5589-keys.c              | 1066 --------------------
+ drivers/mfd/adp5585.c                              |  799 ++++++++++++++-
+ drivers/pwm/pwm-adp5585.c                          |   57 +-
+ include/linux/mfd/adp5585.h                        |  153 ++-
+ 12 files changed, 1703 insertions(+), 1162 deletions(-)
+---
+base-commit: 4d395cb071a343196ca524d3694790f06978fe91
+change-id: 20250311-dev-adp5589-fw-e04cfd945286
+--
 
--- 
-2.37.1
+Thanks!
+- Nuno Sá
 
