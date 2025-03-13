@@ -1,16 +1,12 @@
 From: Joel Granados <joel.granados@kernel.org>
-Subject: [PATCH v3 0/5] sysctl: Move sysctls from kern_table into their
- respective subsystems
-Date: Thu, 13 Mar 2025 17:22:22 +0100
-Message-Id: <20250313-jag-mv_ctltables-v3-0-91f3bb434d27@kernel.org>
+Date: Thu, 13 Mar 2025 17:22:23 +0100
+Subject: [PATCH v3 1/5] panic: Move panic ctl tables into panic.c
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAD4G02cC/23N3wqCMBTH8VeJc91if9TNrnqPiJjbUVemsckox
- HdvChFRl98fnM+ZIKB3GGC/mcBjdMENfQqx3YBpdd8gcTY1cMpzypkkF92QWzybsRt11WEgppY
- 5ZpIiVTmks7vH2j1W8nhK3bowDv65fohsWd+Y+sUiI5QYK4pS6UpZXh6u6HvsdoNvYNEi/wiCF
- n8EngTJKp4Jo6yo1Zcwz/MLvJ2Q0PMAAAA=
-X-Change-ID: 20250217-jag-mv_ctltables-cf75e470e085
+Message-Id: <20250313-jag-mv_ctltables-v3-1-91f3bb434d27@kernel.org>
+References: <20250313-jag-mv_ctltables-v3-0-91f3bb434d27@kernel.org>
+In-Reply-To: <20250313-jag-mv_ctltables-v3-0-91f3bb434d27@kernel.org>
 To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
  Steven Rostedt <rostedt@goodmis.org>, 
  Masami Hiramatsu <mhiramat@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
@@ -20,87 +16,140 @@ To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  linux-trace-kernel@vger.kernel.org, sparclinux@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2666;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3223;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=9BJrspz9yE1EjgzFvirmz3UiLOLMBPHH+mtqER++Sv4=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGfTBkiMKwNqoKHHDpFPfiyeQ2Fe0oUt/OEGr
- v94WKqL/HG7rIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn0wZIAAoJELqXzVK3
- lkFPvoAL/3V02KJiyAmy9V2bEiQYwDMb29ke6mz1PS2I1Hyq6bTTE+UOFqXEJK3263QufMxE1ym
- 1ngbr1fQ9ayJAjPqDVxalEbAM4tm9tUipTiJBCAKrjWIXbn9c8SuonY7lcTWLzuIf9KJDOOO8MP
- ta6m3pLU+J2mbCgPqyJg0CrbyOltjxkWWK0YnyzlTA0EMNYfkTBOOKK+bHpeQdqhV/yM+444WM/
- pBDKXOb3Xtvid9OKx62BqIPJ6d0DlFf+TdmorQWitW0YtjhFJ4p8qyh5Ju5ToW/uoCYKsc8EJqU
- MC74luzxZNer3UwjAwWz0kYQimT8QvW6bGQhBLcDUL70aLr/srJ1KquVbYbGW+L8CfS0buGn9VD
- MDw79Hh9mX8QiUB/B1D5/KIVdaDEFe9IgO6TabiX3NYvJI+gUQB1iSZt2Bo8W8Sy7i1zuPRisYg
- tJDqSuvoCNPD/N/ffv96zxA7FdMtJ5SBRIpvxGyWi4cIxc8Fv2fL2LGkdUgQKwK5ER+I1ouBmr7
- uo=
+ bh=99SvQXLjoPiWd0/gxkEdf3AsdJ/IenQsyJp3SptYBS0=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGfTBki52Ay4X1MNDbXJN+xBjgEAqwuoqLgsZ
+ wucLRs1EkUuOYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn0wZIAAoJELqXzVK3
+ lkFPE3gL/iS8YOsZuV5Wwt/XmvzPRNawgQ99iH2WAmO2xsfejsM8ubgObFTFQzfjqJ4PgmE0hFb
+ i/Z8oF/qZ7ErQqxqREl1zbfIoDSewcIkbRKkjZnbWCIC1nnTznkg4yDBCItp2iUL0e1C+d/D9RC
+ r58Qom/3jMWPJnz3+4s3EdxsmhU5fuKMUW5L7Taxd5kQ+jyaCGmEcmn2Ur/sV2odOpJP4dGB8Rn
+ mu7natQ5G4AF6q/+Ks3dEGgvpjF+u1bmGK0eprBlSuYVkNZqBKPaCPZg9yK18VpkJiyJp3b4WEF
+ AitFdryDXwRIqcGeh7wFX18xHBNtTttpC41wIXRifiArYummUuJSiAxf4oXWHgs/v8N02eVWgdr
+ rXpdPq8l7bzr8QJXy2zy9LpqM5RTJ9t2Ba7qoIbCIG5ylAPIOeiLOusDRhAXphGrA7ff6WePjSN
+ 8wELoqBr/+7bbdekdTGXZynwxAACHqhphUDy30SuxOICyl8gSrhozHAuqmqXhnJp4RgsV/JoXj6
+ WM=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series relocates sysctl tables from kern_table to their respective
-subsystems. To keep the scope manageable, this patchset focuses on
-architecture-specific and core kernel sysctl tables. Further relocations
-will follow once this series progresses.
+Move panic, panic_on_oops, panic_print, panic_on_warn into
+kerne/panic.c. This is part of a greater effort to move ctl tables into
+their respective subsystems which will reduce the merge conflicts in
+kerenel/sysctl.c.
 
-By decentralizing sysctl registrations, subsystem maintainers regain
-control over their sysctl interfaces, improving maintainability and
-reducing the likelihood of merge conflicts. All this is made possible by
-the work done to reduce the ctl_table memory footprint in commit
-d7a76ec87195 ("sysctl: Remove check for sentinel element in ctl_table
-arrays").
-
-* Birds eye view of what has changed:
-    - Archs: sparc
-        arch/sparc/kernel/{Makefile,setup.c}
-    - Kernel core:
-        kernel/{panic.c,signal.c,trace/trace.c}
-        kernel/events/{core.c,callchain.c}
-
-* Testing was done by running sysctl selftests on x86_64 and 0-day.
-
-Comments are greatly appreciated
-
-Changes in v3:
-- Removed s390 from the series as it is being upstreamed through s390
-  tree. Adjusted the Cc and To to reflect this.
-- made stack_tracer_enabled static
-- Link to v2: https://lore.kernel.org/r/20250306-jag-mv_ctltables-v2-0-71b243c8d3f8@kernel.org
-
-Changes in v2:
-- Dropped the perf and x86 patches as they are making their way
-  upstream. Removed relevant ppl from To: and Cc: mail header.
-- "ftrace:..." -> "tracing:..." for patch 3
-- Moved stac_tracer_enabled to trace_stack.c instead of trace.c
-- s390: fixed typo and removed the CONFIG_SMP ifdefs
-- Updated trailers
-- Link to v1: https://lore.kernel.org/r/20250218-jag-mv_ctltables-v1-0-cd3698ab8d29@kernel.org
-
----
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
-
 ---
-Joel Granados (5):
-      panic: Move panic ctl tables into panic.c
-      signal: Move signal ctl tables into signal.c
-      tracing: Move trace sysctls into trace.c
-      stack_tracer: move sysctl registration to kernel/trace/trace_stack.c
-      sparc: mv sparc sysctls into their own file under arch/sparc/kernel
+ kernel/panic.c  | 30 ++++++++++++++++++++++++++++++
+ kernel/sysctl.c | 31 -------------------------------
+ 2 files changed, 30 insertions(+), 31 deletions(-)
 
- arch/sparc/kernel/Makefile |   1 +
- arch/sparc/kernel/setup.c  |  46 +++++++++++++++++++
- include/linux/ftrace.h     |   9 ----
- kernel/panic.c             |  30 +++++++++++++
- kernel/signal.c            |  11 +++++
- kernel/sysctl.c            | 108 ---------------------------------------------
- kernel/trace/trace.c       |  36 ++++++++++++++-
- kernel/trace/trace_stack.c |  22 ++++++++-
- 8 files changed, 144 insertions(+), 119 deletions(-)
----
-base-commit: 0ad2507d5d93f39619fc42372c347d6006b64319
-change-id: 20250217-jag-mv_ctltables-cf75e470e085
+diff --git a/kernel/panic.c b/kernel/panic.c
+index d8635d5cecb2505da1c08a4f70814e9b87ac3b37..f9bf88f4c26216cd5a93754378a36ea1e841472a 100644
+--- a/kernel/panic.c
++++ b/kernel/panic.c
+@@ -96,6 +96,36 @@ static const struct ctl_table kern_panic_table[] = {
+ 		.extra2         = SYSCTL_ONE,
+ 	},
+ #endif
++	{
++		.procname	= "panic",
++		.data		= &panic_timeout,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
++	{
++		.procname	= "panic_on_oops",
++		.data		= &panic_on_oops,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++	},
++	{
++		.procname	= "panic_print",
++		.data		= &panic_print,
++		.maxlen		= sizeof(unsigned long),
++		.mode		= 0644,
++		.proc_handler	= proc_doulongvec_minmax,
++	},
++	{
++		.procname	= "panic_on_warn",
++		.data		= &panic_on_warn,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec_minmax,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= SYSCTL_ONE,
++	},
+ 	{
+ 		.procname       = "warn_limit",
+ 		.data           = &warn_limit,
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index cb57da499ebb1216cefb3705694ab62028fee03e..7759b1ed7221f588f49ec3d81b19aeb4d2fdf2f7 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -26,7 +26,6 @@
+ #include <linux/sysctl.h>
+ #include <linux/bitmap.h>
+ #include <linux/signal.h>
+-#include <linux/panic.h>
+ #include <linux/printk.h>
+ #include <linux/proc_fs.h>
+ #include <linux/security.h>
+@@ -1610,13 +1609,6 @@ int proc_do_static_key(const struct ctl_table *table, int write,
+ }
+ 
+ static const struct ctl_table kern_table[] = {
+-	{
+-		.procname	= "panic",
+-		.data		= &panic_timeout,
+-		.maxlen		= sizeof(int),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec,
+-	},
+ #ifdef CONFIG_PROC_SYSCTL
+ 	{
+ 		.procname	= "tainted",
+@@ -1803,20 +1795,6 @@ static const struct ctl_table kern_table[] = {
+ 		.proc_handler	= proc_dointvec,
+ 	},
+ #endif
+-	{
+-		.procname	= "panic_on_oops",
+-		.data		= &panic_on_oops,
+-		.maxlen		= sizeof(int),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec,
+-	},
+-	{
+-		.procname	= "panic_print",
+-		.data		= &panic_print,
+-		.maxlen		= sizeof(unsigned long),
+-		.mode		= 0644,
+-		.proc_handler	= proc_doulongvec_minmax,
+-	},
+ 	{
+ 		.procname	= "ngroups_max",
+ 		.data		= (void *)&ngroups_max,
+@@ -1990,15 +1968,6 @@ static const struct ctl_table kern_table[] = {
+ 		.extra2		= SYSCTL_ONE_THOUSAND,
+ 	},
+ #endif
+-	{
+-		.procname	= "panic_on_warn",
+-		.data		= &panic_on_warn,
+-		.maxlen		= sizeof(int),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_minmax,
+-		.extra1		= SYSCTL_ZERO,
+-		.extra2		= SYSCTL_ONE,
+-	},
+ #ifdef CONFIG_TREE_RCU
+ 	{
+ 		.procname	= "panic_on_rcu_stall",
 
-Best regards,
 -- 
-Joel Granados <joel.granados@kernel.org>
+2.47.2
 
