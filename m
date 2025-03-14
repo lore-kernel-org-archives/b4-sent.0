@@ -1,180 +1,154 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Fri, 14 Mar 2025 20:58:27 +0100
-Subject: [PATCH v2] media: dt-bindings: Convert Analog Devices ad5820 to DT
- schema
+From: Denis Mukhin <dmukhin@ford.com>
+Date: Fri, 14 Mar 2025 13:09:45 -0700
+Subject: [PATCH v2] x86/early_printk: add MMIO-based UARTs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250314-b4-ad5820-dt-yaml-v2-1-287958c3c07c@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAGKK1GcC/yWNQQqDMBBFryKz7shkjKBd9R7FRTRJHWi1JCJay
- d2b2uV78N8/ILogLsK1OCC4VaLMUwa+FDCMZno4FJsZmLimSmnsNRpbN0xoF9zN64kVM/WevXK
- aIO/ewXnZzua9yzxKXOawnxer+tl/jallqlpNpapbahpUaM0q9iabLOXwgS6l9AX/gf3DoQAAA
- A==
-X-Change-ID: 20250314-b4-ad5820-dt-yaml-3220bf2f1e40
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Pavel Machek <pavel@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: Pavel Machek <pavel@ucw.cz>, linux-media@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+Message-Id: <20250314-earlyprintk-v2-1-2bcbe05290b8@ford.com>
+X-B4-Tracking: v=1; b=H4sIAAiN1GcC/23MQQ7CIBCF4as0sxYDNFriyns0XVAY7EQtzdAQm
+ 4a7i127/F/yvh0SMmGCW7MDY6ZEca6hTw24yc4PFORrg5b6IlvVCrT82hameX2KcDWjC0oGHB3
+ Ux8IY6HNo/VB7orRG3g48q9/638lKKGGCUcZ3nTXe30Nkf3bxDUMp5QuxcbaTpQAAAA==
+X-Change-ID: 20250313-earlyprintk-f68bcf10febc
+To: Jonathan Corbet <corbet@lwn.net>, Thomas Gleixner <tglx@linutronix.de>, 
+ Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
+ Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
+ "H. Peter Anvin" <hpa@zytor.com>
+Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4138; i=david@ixit.cz;
- h=from:subject:message-id; bh=z81Yqbut3SZDaJXDHotF1NCKDbHx0Fdm/k4FGFc127s=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn1Ipm2nYSDpgV9ujf/RnKXz3/hUx5ecREWpynY
- I6pg8cGtIuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9SKZgAKCRBgAj/E00kg
- cspeD/97vOwKteluX4cjW3PO5WfeMenU4W3nCdvvBfjJYetpVEXUBfqy+pb13vHSDZezopxd39O
- lT5CeFtteh1dzlf7j6IXSlEOtJUuSSjL3p/2/C3JAYTbk+UNss1mDR/YPbZyLC6LEo2U18235BF
- wRv2FIz4G1E9i1nZ3yDKT1iB7im8nwkfK678qxZAK0VgSw/+D8dhh6SQcniok376fhYEceHG9fM
- K7tlXovESZbxepoKFnprKWi8K8XlfSV75ZTESFMg6wW1L+IP6mlwducL/dIFLy316qj2qeukjfs
- fW1TUQXPy/VZlPhOH291QTec+xsjqnchC9ytJU/nfJs+Je1bFMJUs5xk0J88kwMsXFX9PmD9BDJ
- 5U686vtu3Q8/j1Ov8xXSUzW0EgSjRs//Hzlv4bRZQ/SD6nT8ryRFVVOrH81IG6kYwGL56HAIrBH
- pRKQjlhjiED7/+t3ugzLzE3NWR5PHddngCXyiEIb6wuoYLWvslVinPmhTxs9l/7GKH9EjCoW3qF
- CxrDRcn5BptiwvxG7XwpdT8/J2FHXjUxyWoW4yXzC0BJR/2k2czk6VSk+i7U7SHM75+7M2V9u9v
- bh+ZMa/24sKynJHxElKEU5PYyXAAYiOe9+wzvFnKJ3kUAsrOXNW/VR6/FpeAZ0VH9Y1ka/7NLor
- p9YDZoD7nz2eudw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1741982987; l=4186;
+ i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
+ bh=nRjw5s6qvJdy0IHWC7BFiP/737YxH4rYS8hst3iRRtM=;
+ b=+5cgtBnIGpj9caRMXvhQnolR3F9sf8P0BFHozEvxkBONhdQ/y/htcvvW9uK/LYms512hXpr9i
+ Thl43dAF4clDRASBgrehH9Emf9gz7S1h7TfPTJCNEhMVsKXhCTkZdVp
+X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
+ pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
+X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert the Analog Devices ad5820 to DT schema format.
+During the bring-up of an x86 board, the kernel was crashing before
+reaching the platform's console driver because of a bug in the firmware,
+leaving no trace of the boot progress.
 
-Add the previously undocumented io-channel-cells property,
-which can be omitted. If present, it must be set to 0,
-as the device provides only one channel.
+It was discovered that the only available method to debug the kernel
+boot process was via the platform's MMIO-based UART, as the board lacked
+an I/O port-based UART, PCI UART, or functional video output.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Then it turned out that earlyprintk= does not have a knob to configure
+the MMIO-mapped UART.
+
+Extend the early printk facility to support platform MMIO-based UARTs
+on x86 systems, enabling debugging during the system bring-up phase.
+
+The command line syntax to enable platform MMIO-based UART is:
+  earlyprintk=mmio,membase[,{nocfg|baudrate}][,keep]
+
+Note, the change does not integrate MMIO-based UART support to:
+  arch/x86/boot/early_serial_console.c
+
+Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
 Changes in v2:
-- added MAINTAINERS entry for the binding
-- documented why io-channel-cells got added into the binding.
-- dropped io-channel-cells in required properties.
-- adjusted example indentation to 4 spaces.
-- Link to v1: https://lore.kernel.org/r/20250209203940.159088-1-david@ixit.cz
+- Fixed description of early_mmio_serial_init()
+- Link to v1: https://lore.kernel.org/r/20250313-earlyprintk-v1-1-8f818d77a8dd@ford.com
 ---
- .../devicetree/bindings/media/i2c/ad5820.txt       | 28 ----------
- .../devicetree/bindings/media/i2c/adi,ad5820.yaml  | 59 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 3 files changed, 60 insertions(+), 28 deletions(-)
+ Documentation/admin-guide/kernel-parameters.txt |  4 +++
+ arch/x86/kernel/early_printk.c                  | 42 ++++++++++++++++++++++++-
+ 2 files changed, 45 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/media/i2c/ad5820.txt b/Documentation/devicetree/bindings/media/i2c/ad5820.txt
-deleted file mode 100644
-index 5764cbedf9b73387ad1bfa9acf99c643f959b84a..0000000000000000000000000000000000000000
---- a/Documentation/devicetree/bindings/media/i2c/ad5820.txt
-+++ /dev/null
-@@ -1,28 +0,0 @@
--* Analog Devices AD5820 autofocus coil
--
--Required Properties:
--
--  - compatible: Must contain one of:
--		- "adi,ad5820"
--		- "adi,ad5821"
--		- "adi,ad5823"
--
--  - reg: I2C slave address
--
--  - VANA-supply: supply of voltage for VANA pin
--
--Optional properties:
--
--   - enable-gpios : GPIO spec for the XSHUTDOWN pin. The XSHUTDOWN signal is
--active low, a high level on the pin enables the device.
--
--Example:
--
--       ad5820: coil@c {
--               compatible = "adi,ad5820";
--               reg = <0x0c>;
--
--               VANA-supply = <&vaux4>;
--               enable-gpios = <&msmgpio 26 GPIO_ACTIVE_HIGH>;
--       };
--
-diff --git a/Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml b/Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..7967b8dcd77a2171074829625d71dbb53a80fbc6
---- /dev/null
-+++ b/Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml
-@@ -0,0 +1,59 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/media/i2c/adi,ad5820.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Analog Devices AD5820 autofocus coil
-+
-+maintainers:
-+  - Pavel Machek <pavel@ucw.cz>
-+
-+description:
-+  The AD5820 is a current sink driver designed for precise control of
-+  voice coil motors (VCMs) in camera autofocus systems.
-+
-+properties:
-+  compatible:
-+    enum:
-+      - adi,ad5820
-+      - adi,ad5821
-+      - adi,ad5823
-+
-+  reg:
-+    maxItems: 1
-+
-+  enable-gpios:
-+    maxItems: 1
-+    description:
-+      GPIO spec for the XSHUTDOWN pin. The XSHUTDOWN signal is active low,
-+      a high level on the pin enables the device.
-+
-+  VANA-supply:
-+    description: supply of voltage for VANA pin
-+
-+  '#io-channel-cells':
-+    const: 0
-+
-+required:
-+  - compatible
-+  - reg
-+  - VANA-supply
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+
-+    i2c {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+        coil@c {
-+            compatible = "adi,ad5820";
-+            reg = <0x0c>;
-+
-+            enable-gpios = <&msmgpio 26 GPIO_ACTIVE_HIGH>;
-+            VANA-supply = <&vaux4>;
-+        };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index e4b6545aab3ec75f92c0daaabe2fc1bb1d483969..238c00d3abe2f53ea7b7e6ba265d560ad5c3fe86 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -17073,6 +17073,7 @@ M:	Pavel Machek <pavel@kernel.org>
- M:	Sakari Ailus <sakari.ailus@iki.fi>
- L:	linux-media@vger.kernel.org
- S:	Maintained
-+F:	Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml
- F:	drivers/media/i2c/ad5820.c
- F:	drivers/media/i2c/et8ek8
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index fb8752b42ec8582b8750d7e014c4d76166fa2fc1..bee9ee18a506d019dc3d330268e3e1c83434ebba 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -1414,11 +1414,15 @@
+ 			earlyprintk=pciserial[,force],bus:device.function[,baudrate]
+ 			earlyprintk=xdbc[xhciController#]
+ 			earlyprintk=bios
++			earlyprintk=mmio,membase[,{nocfg|baudrate}][,keep]
  
+ 			earlyprintk is useful when the kernel crashes before
+ 			the normal console is initialized. It is not enabled by
+ 			default because it has some cosmetic problems.
+ 
++			Use "nocfg" to skip UART configuration, assume
++			BIOS/firmware has configured UART correctly.
++
+ 			Append ",keep" to not disable it when the real console
+ 			takes over.
+ 
+diff --git a/arch/x86/kernel/early_printk.c b/arch/x86/kernel/early_printk.c
+index 44f937015e1e25bf41532eb7e1031a6be32a6523..068729a53e87cafd27ea9de1781887dff01d5710 100644
+--- a/arch/x86/kernel/early_printk.c
++++ b/arch/x86/kernel/early_printk.c
+@@ -191,7 +191,6 @@ static __init void early_serial_init(char *s)
+ 	early_serial_hw_init(divisor);
+ }
+ 
+-#ifdef CONFIG_PCI
+ static void mem32_serial_out(unsigned long addr, int offset, int value)
+ {
+ 	u32 __iomem *vaddr = (u32 __iomem *)addr;
+@@ -206,6 +205,42 @@ static unsigned int mem32_serial_in(unsigned long addr, int offset)
+ 	return readl(vaddr + offset);
+ }
+ 
++/*
++ * early_mmio_serial_init() - Initialize MMIO-based early serial console.
++ * @s: MMIO-based serial specification.
++ */
++static __init void early_mmio_serial_init(char *s)
++{
++	unsigned long baudrate;
++	unsigned long membase;
++	char *e;
++
++	if (*s == ',')
++		s++;
++
++	if (!strncmp(s, "0x", 2)) {
++		membase = simple_strtoul(s, &e, 16);
++		early_serial_base = (unsigned long)early_ioremap(membase, PAGE_SIZE);
++		serial_in = mem32_serial_in;
++		serial_out = mem32_serial_out;
++
++		s += strcspn(s, ",");
++		if (*s == ',')
++			s++;
++	}
++
++	if (!strncmp(s, "nocfg", 5))
++		baudrate = 0;
++	else {
++		baudrate = simple_strtoul(s, &e, 0);
++		if (baudrate == 0 || s == e)
++			baudrate = DEFAULT_BAUD;
++	}
++	if (baudrate)
++		early_serial_hw_init(115200 / baudrate);
++}
++
++#ifdef CONFIG_PCI
+ /*
+  * early_pci_serial_init()
+  *
+@@ -352,6 +387,11 @@ static int __init setup_early_printk(char *buf)
+ 	keep = (strstr(buf, "keep") != NULL);
+ 
+ 	while (*buf != '\0') {
++		if (!strncmp(buf, "mmio", 4)) {
++			early_mmio_serial_init(buf + 4);
++			early_console_register(&early_serial_console, keep);
++			buf += 4;
++		}
+ 		if (!strncmp(buf, "serial", 6)) {
+ 			buf += 6;
+ 			early_serial_init(buf);
 
 ---
-base-commit: da920b7df701770e006928053672147075587fb2
-change-id: 20250314-b4-ad5820-dt-yaml-3220bf2f1e40
+base-commit: 8aed61b8334e00f4fe5de9f2df1cd183dc328a9d
+change-id: 20250313-earlyprintk-f68bcf10febc
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Denis Mukhin <dmukhin@ford.com>
 
