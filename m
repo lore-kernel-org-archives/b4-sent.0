@@ -1,154 +1,291 @@
-From: Denis Mukhin <dmukhin@ford.com>
-Date: Fri, 14 Mar 2025 13:09:45 -0700
-Subject: [PATCH v2] x86/early_printk: add MMIO-based UARTs
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Sat, 15 Mar 2025 18:27:05 +0100
+Subject: [PATCH] dt-bindings: powerpc: Convert fsl/pmc.txt to YAML
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250314-earlyprintk-v2-1-2bcbe05290b8@ford.com>
-X-B4-Tracking: v=1; b=H4sIAAiN1GcC/23MQQ7CIBCF4as0sxYDNFriyns0XVAY7EQtzdAQm
- 4a7i127/F/yvh0SMmGCW7MDY6ZEca6hTw24yc4PFORrg5b6IlvVCrT82hameX2KcDWjC0oGHB3
- Ux8IY6HNo/VB7orRG3g48q9/638lKKGGCUcZ3nTXe30Nkf3bxDUMp5QuxcbaTpQAAAA==
-X-Change-ID: 20250313-earlyprintk-f68bcf10febc
-To: Jonathan Corbet <corbet@lwn.net>, Thomas Gleixner <tglx@linutronix.de>, 
- Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
- Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
- "H. Peter Anvin" <hpa@zytor.com>
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Denis Mukhin <dmukhin@ford.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250315-fslpmc-yaml-v1-1-10ba354a85c2@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAGi41WcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDIyMz3bTinILcZN3KxNwcXUuDlGQzy7Qk8xSjRCWgjoKi1LTMCrBp0bG
+ 1tQDeCcXEXQAAAA==
+X-Change-ID: 20250226-fslpmc-yaml-90dc69fb7d2a
+To: Crystal Wood <oss@buserror.net>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Naveen N Rao <naveen@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linuxppc-dev@lists.ozlabs.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1741982987; l=4186;
- i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=nRjw5s6qvJdy0IHWC7BFiP/737YxH4rYS8hst3iRRtM=;
- b=+5cgtBnIGpj9caRMXvhQnolR3F9sf8P0BFHozEvxkBONhdQ/y/htcvvW9uK/LYms512hXpr9i
- Thl43dAF4clDRASBgrehH9Emf9gz7S1h7TfPTJCNEhMVsKXhCTkZdVp
-X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
- pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
-X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742059676; l=9266;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=ROIgCsvPCxP9IhicDa1mF/HFY+gVpx3zheGzT7ids68=;
+ b=qlQ/n8SdxdHzpS9rxj0aXvH2NXuUrSUKoiuualvgGlUdFbIS2GU4AHLLE5t7E1jFr541mwkdM
+ bFI0PBQ0gG5B+Tcvr3rqnsWQrnnWHeYwsVLMSX7tYEFcox0PJxk7x9O
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-During the bring-up of an x86 board, the kernel was crashing before
-reaching the platform's console driver because of a bug in the firmware,
-leaving no trace of the boot progress.
+This patch rewrites pmc.txt into YAML format. Descriptive texts are
+expanded or shortened in a few places to better fit today's conventions.
 
-It was discovered that the only available method to debug the kernel
-boot process was via the platform's MMIO-based UART, as the board lacked
-an I/O port-based UART, PCI UART, or functional video output.
+The list of compatible strings (and combinations of them) is based on
+existing device trees in arch/powerpc as well as compatible strings
+already mentioned in the plain-text version of the binding.
 
-Then it turned out that earlyprintk= does not have a knob to configure
-the MMIO-mapped UART.
+One thing I didn't handle are soc-clk@... nodes as seen in
+Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml.
 
-Extend the early printk facility to support platform MMIO-based UARTs
-on x86 systems, enabling debugging during the system bring-up phase.
-
-The command line syntax to enable platform MMIO-based UART is:
-  earlyprintk=mmio,membase[,{nocfg|baudrate}][,keep]
-
-Note, the change does not integrate MMIO-based UART support to:
-  arch/x86/boot/early_serial_console.c
-
-Signed-off-by: Denis Mukhin <dmukhin@ford.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-Changes in v2:
-- Fixed description of early_mmio_serial_init()
-- Link to v1: https://lore.kernel.org/r/20250313-earlyprintk-v1-1-8f818d77a8dd@ford.com
----
- Documentation/admin-guide/kernel-parameters.txt |  4 +++
- arch/x86/kernel/early_printk.c                  | 42 ++++++++++++++++++++++++-
- 2 files changed, 45 insertions(+), 1 deletion(-)
+ .../devicetree/bindings/powerpc/fsl/pmc.txt        |  63 --------
+ .../devicetree/bindings/powerpc/fsl/pmc.yaml       | 159 +++++++++++++++++++++
+ 2 files changed, 159 insertions(+), 63 deletions(-)
 
-diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index fb8752b42ec8582b8750d7e014c4d76166fa2fc1..bee9ee18a506d019dc3d330268e3e1c83434ebba 100644
---- a/Documentation/admin-guide/kernel-parameters.txt
-+++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -1414,11 +1414,15 @@
- 			earlyprintk=pciserial[,force],bus:device.function[,baudrate]
- 			earlyprintk=xdbc[xhciController#]
- 			earlyprintk=bios
-+			earlyprintk=mmio,membase[,{nocfg|baudrate}][,keep]
- 
- 			earlyprintk is useful when the kernel crashes before
- 			the normal console is initialized. It is not enabled by
- 			default because it has some cosmetic problems.
- 
-+			Use "nocfg" to skip UART configuration, assume
-+			BIOS/firmware has configured UART correctly.
+diff --git a/Documentation/devicetree/bindings/powerpc/fsl/pmc.txt b/Documentation/devicetree/bindings/powerpc/fsl/pmc.txt
+deleted file mode 100644
+index 07256b7ffcaab2ba57b33cf279df45d830ce33b3..0000000000000000000000000000000000000000
+--- a/Documentation/devicetree/bindings/powerpc/fsl/pmc.txt
++++ /dev/null
+@@ -1,63 +0,0 @@
+-* Power Management Controller
+-
+-Properties:
+-- compatible: "fsl,<chip>-pmc".
+-
+-  "fsl,mpc8349-pmc" should be listed for any chip whose PMC is
+-  compatible.  "fsl,mpc8313-pmc" should also be listed for any chip
+-  whose PMC is compatible, and implies deep-sleep capability.
+-
+-  "fsl,mpc8548-pmc" should be listed for any chip whose PMC is
+-  compatible.  "fsl,mpc8536-pmc" should also be listed for any chip
+-  whose PMC is compatible, and implies deep-sleep capability.
+-
+-  "fsl,mpc8641d-pmc" should be listed for any chip whose PMC is
+-  compatible; all statements below that apply to "fsl,mpc8548-pmc" also
+-  apply to "fsl,mpc8641d-pmc".
+-
+-  Compatibility does not include bit assignments in SCCR/PMCDR/DEVDISR; these
+-  bit assignments are indicated via the sleep specifier in each device's
+-  sleep property.
+-
+-- reg: For devices compatible with "fsl,mpc8349-pmc", the first resource
+-  is the PMC block, and the second resource is the Clock Configuration
+-  block.
+-
+-  For devices compatible with "fsl,mpc8548-pmc", the first resource
+-  is a 32-byte block beginning with DEVDISR.
+-
+-- interrupts: For "fsl,mpc8349-pmc"-compatible devices, the first
+-  resource is the PMC block interrupt.
+-
+-- fsl,mpc8313-wakeup-timer: For "fsl,mpc8313-pmc"-compatible devices,
+-  this is a phandle to an "fsl,gtm" node on which timer 4 can be used as
+-  a wakeup source from deep sleep.
+-
+-Sleep specifiers:
+-
+-  fsl,mpc8349-pmc: Sleep specifiers consist of one cell.  For each bit
+-  that is set in the cell, the corresponding bit in SCCR will be saved
+-  and cleared on suspend, and restored on resume.  This sleep controller
+-  supports disabling and resuming devices at any time.
+-
+-  fsl,mpc8536-pmc: Sleep specifiers consist of three cells, the third of
+-  which will be ORed into PMCDR upon suspend, and cleared from PMCDR
+-  upon resume.  The first two cells are as described for fsl,mpc8578-pmc.
+-  This sleep controller only supports disabling devices during system
+-  sleep, or permanently.
+-
+-  fsl,mpc8548-pmc: Sleep specifiers consist of one or two cells, the
+-  first of which will be ORed into DEVDISR (and the second into
+-  DEVDISR2, if present -- this cell should be zero or absent if the
+-  hardware does not have DEVDISR2) upon a request for permanent device
+-  disabling.  This sleep controller does not support configuring devices
+-  to disable during system sleep (unless supported by another compatible
+-  match), or dynamically.
+-
+-Example:
+-
+-	power@b00 {
+-		compatible = "fsl,mpc8313-pmc", "fsl,mpc8349-pmc";
+-		reg = <0xb00 0x100 0xa00 0x100>;
+-		interrupts = <80 8>;
+-	};
+diff --git a/Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml b/Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..bb2db8adb74c54fec5d07393573f156c63a9e886
+--- /dev/null
++++ b/Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml
+@@ -0,0 +1,159 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/powerpc/fsl/pmc.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
- 			Append ",keep" to not disable it when the real console
- 			takes over.
- 
-diff --git a/arch/x86/kernel/early_printk.c b/arch/x86/kernel/early_printk.c
-index 44f937015e1e25bf41532eb7e1031a6be32a6523..068729a53e87cafd27ea9de1781887dff01d5710 100644
---- a/arch/x86/kernel/early_printk.c
-+++ b/arch/x86/kernel/early_printk.c
-@@ -191,7 +191,6 @@ static __init void early_serial_init(char *s)
- 	early_serial_hw_init(divisor);
- }
- 
--#ifdef CONFIG_PCI
- static void mem32_serial_out(unsigned long addr, int offset, int value)
- {
- 	u32 __iomem *vaddr = (u32 __iomem *)addr;
-@@ -206,6 +205,42 @@ static unsigned int mem32_serial_in(unsigned long addr, int offset)
- 	return readl(vaddr + offset);
- }
- 
-+/*
-+ * early_mmio_serial_init() - Initialize MMIO-based early serial console.
-+ * @s: MMIO-based serial specification.
-+ */
-+static __init void early_mmio_serial_init(char *s)
-+{
-+	unsigned long baudrate;
-+	unsigned long membase;
-+	char *e;
++title: Power Management Controller
 +
-+	if (*s == ',')
-+		s++;
++maintainers:
++  - J. Neuschäfer <j.ne@posteo.net>
 +
-+	if (!strncmp(s, "0x", 2)) {
-+		membase = simple_strtoul(s, &e, 16);
-+		early_serial_base = (unsigned long)early_ioremap(membase, PAGE_SIZE);
-+		serial_in = mem32_serial_in;
-+		serial_out = mem32_serial_out;
++description: |
++  The Power Management Controller in several MPC8xxx SoCs helps save power by
++  controlling chip-wide low-power states as well as peripheral clock gating.
 +
-+		s += strcspn(s, ",");
-+		if (*s == ',')
-+			s++;
-+	}
++  Sleep of peripheral devices is configured by the `sleep` property, for
++  example `sleep = <&pmc 0x00000030>`. Any cells after the &pmc phandle are
++  called a sleep specifier.
 +
-+	if (!strncmp(s, "nocfg", 5))
-+		baudrate = 0;
-+	else {
-+		baudrate = simple_strtoul(s, &e, 0);
-+		if (baudrate == 0 || s == e)
-+			baudrate = DEFAULT_BAUD;
-+	}
-+	if (baudrate)
-+		early_serial_hw_init(115200 / baudrate);
-+}
++  For "fsl,mpc8349-pmc", sleep specifiers consist of one cell.  For each bit that
++  is set in the cell, the corresponding bit in SCCR will be saved and cleared
++  on suspend, and restored on resume.  This sleep controller supports disabling
++  and resuming devices at any time.
 +
-+#ifdef CONFIG_PCI
- /*
-  * early_pci_serial_init()
-  *
-@@ -352,6 +387,11 @@ static int __init setup_early_printk(char *buf)
- 	keep = (strstr(buf, "keep") != NULL);
- 
- 	while (*buf != '\0') {
-+		if (!strncmp(buf, "mmio", 4)) {
-+			early_mmio_serial_init(buf + 4);
-+			early_console_register(&early_serial_console, keep);
-+			buf += 4;
-+		}
- 		if (!strncmp(buf, "serial", 6)) {
- 			buf += 6;
- 			early_serial_init(buf);
++  For "fsl,mpc8536-pmc", sleep specifiers consist of three cells, the third of
++  which will be ORed into PMCDR upon suspend, and cleared from PMCDR upon
++  resume.  The first two cells are as described for fsl,mpc8548-pmc.  This
++  sleep controller only supports disabling devices during system sleep, or
++  permanently.
++
++  For "fsl,mpc8548-pmc" or "fsl,mpc8641d-pmc", Sleep specifiers consist of one
++  or two cells, the first of which will be ORed into DEVDISR (and the second
++  into DEVDISR2, if present -- this cell should be zero or absent if the
++  hardware does not have DEVDISR2) upon a request for permanent device
++  disabling.  This sleep controller does not support configuring devices to
++  disable during system sleep (unless supported by another compatible match),
++  or dynamically.
++
++properties:
++  compatible:
++    oneOf:
++      - items:
++          - const: fsl,mpc8315-pmc
++          - const: fsl,mpc8313-pmc
++          - const: fsl,mpc8349-pmc
++
++      - items:
++          - enum:
++              - fsl,mpc8313-pmc
++              - fsl,mpc8323-pmc
++              - fsl,mpc8360-pmc
++              - fsl,mpc8377-pmc
++              - fsl,mpc8378-pmc
++              - fsl,mpc8379-pmc
++          - const: fsl,mpc8349-pmc
++
++      - items:
++          - const: fsl,p1022-pmc
++          - const: fsl,mpc8536-pmc
++          - const: fsl,mpc8548-pmc
++
++      - items:
++          - enum:
++              - fsl,mpc8536-pmc
++              - fsl,mpc8568-pmc
++              - fsl,mpc8569-pmc
++          - const: fsl,mpc8548-pmc
++
++      - const: fsl,mpc8548-pmc
++
++      - const: fsl,mpc8641d-pmc
++
++    description: |
++      "fsl,mpc8349-pmc" should be listed for any chip whose PMC is
++      compatible.  "fsl,mpc8313-pmc" should also be listed for any chip
++      whose PMC is compatible, and implies deep-sleep capability.
++
++      "fsl,mpc8548-pmc" should be listed for any chip whose PMC is
++      compatible.  "fsl,mpc8536-pmc" should also be listed for any chip
++      whose PMC is compatible, and implies deep-sleep capability.
++
++      "fsl,mpc8641d-pmc" should be listed for any chip whose PMC is
++      compatible; all statements below that apply to "fsl,mpc8548-pmc" also
++      apply to "fsl,mpc8641d-pmc".
++
++      Compatibility does not include bit assignments in SCCR/PMCDR/DEVDISR; these
++      bit assignments are indicated via the sleep specifier in each device's
++      sleep property.
++
++  reg:
++    minItems: 1
++    maxItems: 2
++
++  interrupts:
++    maxItems: 1
++
++  fsl,mpc8313-wakeup-timer:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description:
++      For "fsl,mpc8313-pmc"-compatible devices, this is a phandle to an
++      "fsl,gtm" node on which timer 4 can be used as a wakeup source from deep
++      sleep.
++
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: fsl,mpc8349-pmc
++    then:
++      properties:
++        reg:
++          items:
++            - description: PMC block
++            - description: Clock Configuration block
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - fsl,mpc8548-pmc
++              - fsl,mpc8641d-pmc
++    then:
++      properties:
++        reg:
++          items:
++            - description: 32-byte block beginning with DEVDISR
++
++required:
++  - compatible
++  - reg
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    pmc: power@b00 {
++        compatible = "fsl,mpc8377-pmc", "fsl,mpc8349-pmc";
++        reg = <0xb00 0x100>, <0xa00 0x100>;
++        interrupts = <80 IRQ_TYPE_LEVEL_LOW>;
++    };
++
++    sata@19000 {
++        compatible = "fsl,mpc8377-sata", "fsl,pq-sata";
++        reg = <0x19000 0x1000>;
++        interrupts = <45 IRQ_TYPE_LEVEL_LOW>;
++        sleep = <&pmc 0x00000030>;
++    };
++
++  - |
++    power@e0070 {
++        compatible = "fsl,mpc8548-pmc";
++        reg = <0xe0070 0x20>;
++    };
++
++...
 
 ---
-base-commit: 8aed61b8334e00f4fe5de9f2df1cd183dc328a9d
-change-id: 20250313-earlyprintk-f68bcf10febc
+base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
+change-id: 20250226-fslpmc-yaml-90dc69fb7d2a
 
 Best regards,
 -- 
-Denis Mukhin <dmukhin@ford.com>
+J. Neuschäfer <j.ne@posteo.net>
 
