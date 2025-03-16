@@ -1,291 +1,446 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sat, 15 Mar 2025 18:27:05 +0100
-Subject: [PATCH] dt-bindings: powerpc: Convert fsl/pmc.txt to YAML
+From: David Heidelberg <david@ixit.cz>
+Date: Sun, 16 Mar 2025 23:16:55 +0100
+Subject: [PATCH v5] ARM: dts: nexus4: Initial dts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250315-fslpmc-yaml-v1-1-10ba354a85c2@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAGi41WcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDIyMz3bTinILcZN3KxNwcXUuDlGQzy7Qk8xSjRCWgjoKi1LTMCrBp0bG
- 1tQDeCcXEXQAAAA==
-X-Change-ID: 20250226-fslpmc-yaml-90dc69fb7d2a
-To: Crystal Wood <oss@buserror.net>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- Christophe Leroy <christophe.leroy@csgroup.eu>, 
- Naveen N Rao <naveen@kernel.org>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250316-lg-nexus4-mako-v5-1-79feae815a85@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIANZN12cC/3XMSw6CMBSF4a2QO7amDx7FkfswDqC9wI0KpsUGJ
+ ezdwkQT4/Cc5Ptn8OgIPRySGRwG8jT0cWS7BExX9S0ysnGD5DLjipfs2rIep4dP2a26DMxWXCu
+ ldVbLHCK6O2xo2oKnc9wd+XFwz60f1Pr+TQXFBBPWSM0L28gyP9JE4968YA2F9AsL8YPTiFUpc
+ qPRFGjrD16W5Q3X+TEB5wAAAA==
+X-Change-ID: 20250309-lg-nexus4-mako-da0833885b26
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linuxppc-dev@lists.ozlabs.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+ Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
+ Tony Luck <tony.luck@intel.com>, 
+ "Guilherme G. Piccoli" <gpiccoli@igalia.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org, 
+ Ivan Belokobylskiy <belokobylskij@gmail.com>, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742059676; l=9266;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=ROIgCsvPCxP9IhicDa1mF/HFY+gVpx3zheGzT7ids68=;
- b=qlQ/n8SdxdHzpS9rxj0aXvH2NXuUrSUKoiuualvgGlUdFbIS2GU4AHLLE5t7E1jFr541mwkdM
- bFI0PBQ0gG5B+Tcvr3rqnsWQrnnWHeYwsVLMSX7tYEFcox0PJxk7x9O
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=openpgp-sha256; l=9706; i=david@ixit.cz;
+ h=from:subject:message-id; bh=eiVSVBGFky6FNlAEKXP/r3BB2aTVwWzF7cR+i71YhIc=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn103gJtWmEuuA5HbbieYN2dcnVOCGm30Fj4jWx
+ OKH0siN4h2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9dN4AAKCRBgAj/E00kg
+ cteND/0bsziHNxnWwSWGlEKhMoVe99SGNW0HJHuZVpm4Gsme7o9exGtH6/lLmwAHeZ4p74IiBr8
+ 2DvUekBeRxZVwFm5GnI9u0z4S3er1szx48Uo/uICBRAPYFnWNgFr831jvgikh+kgLUoCqlpMFoh
+ GwvplIi1WQARNpaH5/5Oig32kCyqVIJ3ck7MhMSpijrB3dnpZLTVycgsbph+CTyti0Qt+wP/iQ8
+ Q3fZPz1KOgXjfwlZg6kdhE3Av6zOAQpMuiuIwj7qsimzBZ95EL1tHChtzMev3XyplvXavJ4ErfR
+ U8RXRNe0Ofq7dphILm4cTZokviVmYL5rRW23gUclExRM9//bp3vLd16p0lSG+h5M4fHBRndQxk7
+ a9DlIdeAzbZWqMJ75wZy8x6AoHvwPZ1Xyas1Z5/55RHiIfnGi61ZeTmcCWAy8tuAO1uOOLtmmdN
+ eaaizUofPP21LHYrlkZ4qi/o/9kAgwixEQmXcECCBrScVBwmmwzuMGjmaVAI+uxLW6+wB5vRn1n
+ D4xa/Zp0HxWneKgxgp0nbaZHkp1am1xv/hMST52QQII+jxlNBsWjyH5fMFcmCnxqXTSkt5O1I6V
+ h/dTEXw3ARfuzjrHDPe4+HKAQ9c2iE18KNBSrcoK+CxHJJrDAtDH+HGmZIAdC0mP2F8WQahdIFi
+ gHe3bqA6pxPp3Lw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch rewrites pmc.txt into YAML format. Descriptive texts are
-expanded or shortened in a few places to better fit today's conventions.
+From: Ivan Belokobylskiy <belokobylskij@gmail.com>
 
-The list of compatible strings (and combinations of them) is based on
-existing device trees in arch/powerpc as well as compatible strings
-already mentioned in the plain-text version of the binding.
+Add initial support for LG Nexus 4 (mako).
 
-One thing I didn't handle are soc-clk@... nodes as seen in
-Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml.
+Features currently working: regulators, eMMC, and volume keys.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: Ivan Belokobylskiy <belokobylskij@gmail.com>
+Co-developed-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../devicetree/bindings/powerpc/fsl/pmc.txt        |  63 --------
- .../devicetree/bindings/powerpc/fsl/pmc.yaml       | 159 +++++++++++++++++++++
- 2 files changed, 159 insertions(+), 63 deletions(-)
+Changes in v5:
+- Sorted nodes alphabetically.
+- Link to v4: https://lore.kernel.org/r/20250311-lg-nexus4-mako-v4-1-3916c8ec7edb@ixit.cz
 
-diff --git a/Documentation/devicetree/bindings/powerpc/fsl/pmc.txt b/Documentation/devicetree/bindings/powerpc/fsl/pmc.txt
-deleted file mode 100644
-index 07256b7ffcaab2ba57b33cf279df45d830ce33b3..0000000000000000000000000000000000000000
---- a/Documentation/devicetree/bindings/powerpc/fsl/pmc.txt
-+++ /dev/null
-@@ -1,63 +0,0 @@
--* Power Management Controller
--
--Properties:
--- compatible: "fsl,<chip>-pmc".
--
--  "fsl,mpc8349-pmc" should be listed for any chip whose PMC is
--  compatible.  "fsl,mpc8313-pmc" should also be listed for any chip
--  whose PMC is compatible, and implies deep-sleep capability.
--
--  "fsl,mpc8548-pmc" should be listed for any chip whose PMC is
--  compatible.  "fsl,mpc8536-pmc" should also be listed for any chip
--  whose PMC is compatible, and implies deep-sleep capability.
--
--  "fsl,mpc8641d-pmc" should be listed for any chip whose PMC is
--  compatible; all statements below that apply to "fsl,mpc8548-pmc" also
--  apply to "fsl,mpc8641d-pmc".
--
--  Compatibility does not include bit assignments in SCCR/PMCDR/DEVDISR; these
--  bit assignments are indicated via the sleep specifier in each device's
--  sleep property.
--
--- reg: For devices compatible with "fsl,mpc8349-pmc", the first resource
--  is the PMC block, and the second resource is the Clock Configuration
--  block.
--
--  For devices compatible with "fsl,mpc8548-pmc", the first resource
--  is a 32-byte block beginning with DEVDISR.
--
--- interrupts: For "fsl,mpc8349-pmc"-compatible devices, the first
--  resource is the PMC block interrupt.
--
--- fsl,mpc8313-wakeup-timer: For "fsl,mpc8313-pmc"-compatible devices,
--  this is a phandle to an "fsl,gtm" node on which timer 4 can be used as
--  a wakeup source from deep sleep.
--
--Sleep specifiers:
--
--  fsl,mpc8349-pmc: Sleep specifiers consist of one cell.  For each bit
--  that is set in the cell, the corresponding bit in SCCR will be saved
--  and cleared on suspend, and restored on resume.  This sleep controller
--  supports disabling and resuming devices at any time.
--
--  fsl,mpc8536-pmc: Sleep specifiers consist of three cells, the third of
--  which will be ORed into PMCDR upon suspend, and cleared from PMCDR
--  upon resume.  The first two cells are as described for fsl,mpc8578-pmc.
--  This sleep controller only supports disabling devices during system
--  sleep, or permanently.
--
--  fsl,mpc8548-pmc: Sleep specifiers consist of one or two cells, the
--  first of which will be ORed into DEVDISR (and the second into
--  DEVDISR2, if present -- this cell should be zero or absent if the
--  hardware does not have DEVDISR2) upon a request for permanent device
--  disabling.  This sleep controller does not support configuring devices
--  to disable during system sleep (unless supported by another compatible
--  match), or dynamically.
--
--Example:
--
--	power@b00 {
--		compatible = "fsl,mpc8313-pmc", "fsl,mpc8349-pmc";
--		reg = <0xb00 0x100 0xa00 0x100>;
--		interrupts = <80 8>;
--	};
-diff --git a/Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml b/Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml
+Changes in v4:
+- Sorted regulators and added regulators compatible.
+- Corrected pmic include and references.
+- Moved &rpm outside of / node.
+- Moved and simplify pm8921 keypad.
+- Added chasis-type.
+- Dropped incomplete WiFi node, will be provided in future
+  contributions.
+- Link to v3: https://lore.kernel.org/r/20250309-lg-nexus4-mako-v3-1-1dc2807df296@ixit.cz
+
+Changes in v3:
+- rebased against next-20250307
+- dropped backlight until driver gets converted to DT
+
+Changes in v2:
+- lge vendor doesn't exist anymore, rename to lg
+- sdcc@ to mmc@ to comply with dt-schema
+---
+ arch/arm/boot/dts/qcom/Makefile                    |   1 +
+ .../boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts  | 341 +++++++++++++++++++++
+ 2 files changed, 342 insertions(+)
+
+diff --git a/arch/arm/boot/dts/qcom/Makefile b/arch/arm/boot/dts/qcom/Makefile
+index f06c6d425e91dd73c2b453d15543d95bd32383b9..0c1d116f6e84f76994aa8c8286350bdcd1657a42 100644
+--- a/arch/arm/boot/dts/qcom/Makefile
++++ b/arch/arm/boot/dts/qcom/Makefile
+@@ -12,6 +12,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
+ 	qcom-apq8064-ifc6410.dtb \
+ 	qcom-apq8064-sony-xperia-lagan-yuga.dtb \
+ 	qcom-apq8064-asus-nexus7-flo.dtb \
++	qcom-apq8064-lg-nexus4-mako.dtb \
+ 	qcom-apq8074-dragonboard.dtb \
+ 	qcom-apq8084-ifc6540.dtb \
+ 	qcom-apq8084-mtp.dtb \
+diff --git a/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts b/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
 new file mode 100644
-index 0000000000000000000000000000000000000000..bb2db8adb74c54fec5d07393573f156c63a9e886
+index 0000000000000000000000000000000000000000..5710450faabf34fa5991d8803a2369cfbb09e4ea
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml
-@@ -0,0 +1,159 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/powerpc/fsl/pmc.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
++++ b/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
+@@ -0,0 +1,341 @@
++// SPDX-License-Identifier: GPL-2.0-only
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/mfd/qcom-rpm.h>
++#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 +
-+title: Power Management Controller
++#include "qcom-apq8064-v2.0.dtsi"
++#include "pm8821.dtsi"
++#include "pm8921.dtsi"
 +
-+maintainers:
-+  - J. Neuschäfer <j.ne@posteo.net>
++/ {
++	model = "LG Nexus 4 (mako)";
++	compatible = "lg,nexus4-mako", "qcom,apq8064";
++	chassis-type = "handset";
 +
-+description: |
-+  The Power Management Controller in several MPC8xxx SoCs helps save power by
-+  controlling chip-wide low-power states as well as peripheral clock gating.
++	aliases {
++		serial0 = &gsbi7_serial;
++		serial1 = &gsbi6_serial;
++		serial2 = &gsbi4_serial;
++	};
 +
-+  Sleep of peripheral devices is configured by the `sleep` property, for
-+  example `sleep = <&pmc 0x00000030>`. Any cells after the &pmc phandle are
-+  called a sleep specifier.
++	chosen {
++		stdout-path = "serial2:115200n8";
++	};
 +
-+  For "fsl,mpc8349-pmc", sleep specifiers consist of one cell.  For each bit that
-+  is set in the cell, the corresponding bit in SCCR will be saved and cleared
-+  on suspend, and restored on resume.  This sleep controller supports disabling
-+  and resuming devices at any time.
++	battery_cell: battery-cell {
++		compatible = "simple-battery";
++		constant-charge-current-max-microamp = <900000>;
++		operating-range-celsius = <0 45>;
++	};
 +
-+  For "fsl,mpc8536-pmc", sleep specifiers consist of three cells, the third of
-+  which will be ORed into PMCDR upon suspend, and cleared from PMCDR upon
-+  resume.  The first two cells are as described for fsl,mpc8548-pmc.  This
-+  sleep controller only supports disabling devices during system sleep, or
-+  permanently.
++	reserved-memory {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges;
 +
-+  For "fsl,mpc8548-pmc" or "fsl,mpc8641d-pmc", Sleep specifiers consist of one
-+  or two cells, the first of which will be ORed into DEVDISR (and the second
-+  into DEVDISR2, if present -- this cell should be zero or absent if the
-+  hardware does not have DEVDISR2) upon a request for permanent device
-+  disabling.  This sleep controller does not support configuring devices to
-+  disable during system sleep (unless supported by another compatible match),
-+  or dynamically.
++		ramoops@88d00000{
++			compatible = "ramoops";
++			reg = <0x88d00000 0x100000>;
++			record-size = <0x20000>;
++			console-size = <0x20000>;
++			ftrace-size = <0x20000>;
++		};
++	};
++};
 +
-+properties:
-+  compatible:
-+    oneOf:
-+      - items:
-+          - const: fsl,mpc8315-pmc
-+          - const: fsl,mpc8313-pmc
-+          - const: fsl,mpc8349-pmc
++&gsbi1 {
++	qcom,mode = <GSBI_PROT_I2C>;
 +
-+      - items:
-+          - enum:
-+              - fsl,mpc8313-pmc
-+              - fsl,mpc8323-pmc
-+              - fsl,mpc8360-pmc
-+              - fsl,mpc8377-pmc
-+              - fsl,mpc8378-pmc
-+              - fsl,mpc8379-pmc
-+          - const: fsl,mpc8349-pmc
++	status = "okay";
++};
 +
-+      - items:
-+          - const: fsl,p1022-pmc
-+          - const: fsl,mpc8536-pmc
-+          - const: fsl,mpc8548-pmc
++&gsbi1_i2c {
++	clock-frequency = <200000>;
 +
-+      - items:
-+          - enum:
-+              - fsl,mpc8536-pmc
-+              - fsl,mpc8568-pmc
-+              - fsl,mpc8569-pmc
-+          - const: fsl,mpc8548-pmc
++	status = "okay";
++};
 +
-+      - const: fsl,mpc8548-pmc
++&gsbi4 {
++	qcom,mode = <GSBI_PROT_I2C_UART>;
 +
-+      - const: fsl,mpc8641d-pmc
++	status = "okay";
++};
 +
-+    description: |
-+      "fsl,mpc8349-pmc" should be listed for any chip whose PMC is
-+      compatible.  "fsl,mpc8313-pmc" should also be listed for any chip
-+      whose PMC is compatible, and implies deep-sleep capability.
++&gsbi4_serial {
++	status = "okay";
++};
 +
-+      "fsl,mpc8548-pmc" should be listed for any chip whose PMC is
-+      compatible.  "fsl,mpc8536-pmc" should also be listed for any chip
-+      whose PMC is compatible, and implies deep-sleep capability.
++&pm8821 {
++	interrupts-extended = <&tlmm_pinmux 76 IRQ_TYPE_LEVEL_LOW>;
++};
 +
-+      "fsl,mpc8641d-pmc" should be listed for any chip whose PMC is
-+      compatible; all statements below that apply to "fsl,mpc8548-pmc" also
-+      apply to "fsl,mpc8641d-pmc".
++&pm8921 {
++	interrupts-extended = <&tlmm_pinmux 74 IRQ_TYPE_LEVEL_LOW>;
++};
 +
-+      Compatibility does not include bit assignments in SCCR/PMCDR/DEVDISR; these
-+      bit assignments are indicated via the sleep specifier in each device's
-+      sleep property.
++&pm8921_keypad {
++	linux,keymap = <
++		MATRIX_KEY(0, 0, KEY_VOLUMEDOWN)
++		MATRIX_KEY(0, 1, KEY_VOLUMEUP)
++	>;
 +
-+  reg:
-+    minItems: 1
-+    maxItems: 2
++	keypad,num-rows = <1>;
++	keypad,num-columns = <5>;
 +
-+  interrupts:
-+    maxItems: 1
++	status = "okay";
++};
 +
-+  fsl,mpc8313-wakeup-timer:
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+    description:
-+      For "fsl,mpc8313-pmc"-compatible devices, this is a phandle to an
-+      "fsl,gtm" node on which timer 4 can be used as a wakeup source from deep
-+      sleep.
++&rpm {
++	regulators {
++		compatible = "qcom,rpm-pm8921-regulators";
 +
-+allOf:
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: fsl,mpc8349-pmc
-+    then:
-+      properties:
-+        reg:
-+          items:
-+            - description: PMC block
-+            - description: Clock Configuration block
++		vdd_l1_l2_l12_l18-supply = <&pm8921_s4>;
++		vdd_l24-supply = <&pm8921_s1>;
++		vdd_l25-supply = <&pm8921_s1>;
++		vdd_l26-supply = <&pm8921_s7>;
++		vdd_l27-supply = <&pm8921_s7>;
++		vdd_l28-supply = <&pm8921_s7>;
++		vin_lvs1_3_6-supply = <&pm8921_s4>;
++		vin_lvs2-supply = <&pm8921_s1>;
++		vin_lvs4_5_7-supply = <&pm8921_s4>;
 +
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - fsl,mpc8548-pmc
-+              - fsl,mpc8641d-pmc
-+    then:
-+      properties:
-+        reg:
-+          items:
-+            - description: 32-byte block beginning with DEVDISR
++		pm8921_l1: l1 {
++			regulator-min-microvolt = <1100000>;
++			regulator-max-microvolt = <1100000>;
++			regulator-always-on;
++			bias-pull-down;
++		};
 +
-+required:
-+  - compatible
-+  - reg
++		/* mipi_dsi.1-dsi1_pll_vdda */
++		pm8921_l2: l2 {
++			regulator-min-microvolt = <1200000>;
++			regulator-max-microvolt = <1200000>;
++			bias-pull-down;
++		};
 +
-+additionalProperties: false
++		/* msm_otg-HSUSB_3p3 */
++		pm8921_l3: l3 {
++			regulator-min-microvolt = <3075000>;
++			regulator-max-microvolt = <3500000>;
++			bias-pull-down;
++		};
 +
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/irq.h>
++		/* msm_otg-HSUSB_1p8 */
++		pm8921_l4: l4 {
++			regulator-always-on;
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++		};
 +
-+    pmc: power@b00 {
-+        compatible = "fsl,mpc8377-pmc", "fsl,mpc8349-pmc";
-+        reg = <0xb00 0x100>, <0xa00 0x100>;
-+        interrupts = <80 IRQ_TYPE_LEVEL_LOW>;
-+    };
++		/* msm_sdcc.1-sdc_vdd */
++		pm8921_l5: l5 {
++			regulator-min-microvolt = <2950000>;
++			regulator-max-microvolt = <2950000>;
++			bias-pull-down;
++		};
 +
-+    sata@19000 {
-+        compatible = "fsl,mpc8377-sata", "fsl,pq-sata";
-+        reg = <0x19000 0x1000>;
-+        interrupts = <45 IRQ_TYPE_LEVEL_LOW>;
-+        sleep = <&pmc 0x00000030>;
-+    };
++		/* earjack_debug */
++		pm8921_l6: l6 {
++			regulator-min-microvolt = <3000000>;
++			regulator-max-microvolt = <3000000>;
++			bias-pull-down;
++		};
 +
-+  - |
-+    power@e0070 {
-+        compatible = "fsl,mpc8548-pmc";
-+        reg = <0xe0070 0x20>;
-+    };
++		/* mipi_dsi.1-dsi_vci */
++		pm8921_l8: l8 {
++			regulator-min-microvolt = <2800000>;
++			regulator-max-microvolt = <3000000>;
++			bias-pull-down;
++		};
 +
-+...
++		/* wcnss_wlan.0-iris_vddpa */
++		pm8921_l10: l10 {
++			regulator-min-microvolt = <2900000>;
++			regulator-max-microvolt = <2900000>;
++			bias-pull-down;
++		};
++
++		/* mipi_dsi.1-dsi1_avdd */
++		pm8921_l11: l11 {
++			regulator-min-microvolt = <2850000>;
++			regulator-max-microvolt = <2850000>;
++			bias-pull-down;
++		};
++
++		/* touch_vdd */
++		pm8921_l15: l15 {
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <2950000>;
++			bias-pull-down;
++		};
++
++		/* slimport_dvdd */
++		pm8921_l18: l18 {
++			regulator-min-microvolt = <1100000>;
++			regulator-max-microvolt = <1100000>;
++			bias-pull-down;
++		};
++
++		/* touch_io */
++		pm8921_l22: l22 {
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++			bias-pull-down;
++		};
++
++		/*
++		 * mipi_dsi.1-dsi_vddio
++		 * pil_qdsp6v4.1-pll_vdd
++		 * pil_qdsp6v4.2-pll_vdd
++		 * msm_ehci_host.0-HSUSB_1p8
++		 * msm_ehci_host.1-HSUSB_1p8
++		 */
++		pm8921_l23: l23 {
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++			bias-pull-down;
++		};
++
++		/*
++		 * tabla2x-slim-CDC_VDDA_A_1P2V
++		 * tabla2x-slim-VDDD_CDC_D
++		 */
++		pm8921_l24: l24 {
++			regulator-min-microvolt = <750000>;
++			regulator-max-microvolt = <1150000>;
++			bias-pull-down;
++		};
++
++		pm8921_l25: l25 {
++			regulator-min-microvolt = <1250000>;
++			regulator-max-microvolt = <1250000>;
++			regulator-always-on;
++			bias-pull-down;
++		};
++
++		pm8921_l26: l26 {
++			regulator-min-microvolt = <375000>;
++			regulator-max-microvolt = <1050000>;
++			regulator-always-on;
++			bias-pull-down;
++		};
++
++		pm8921_l27: l27 {
++			regulator-min-microvolt = <1100000>;
++			regulator-max-microvolt = <1100000>;
++		};
++
++		pm8921_l28: l28 {
++			regulator-min-microvolt = <1050000>;
++			regulator-max-microvolt = <1050000>;
++			bias-pull-down;
++		};
++
++		/* wcnss_wlan.0-iris_vddio */
++		pm8921_lvs1: lvs1 {
++			bias-pull-down;
++		};
++
++		/* wcnss_wlan.0-iris_vdddig */
++		pm8921_lvs2: lvs2 {
++			bias-pull-down;
++		};
++
++		pm8921_lvs3: lvs3 {
++			bias-pull-down;
++		};
++
++		pm8921_lvs4: lvs4 {
++			bias-pull-down;
++		};
++
++		pm8921_lvs5: lvs5 {
++			bias-pull-down;
++		};
++
++		/* mipi_dsi.1-dsi_iovcc */
++		pm8921_lvs6: lvs6 {
++			bias-pull-down;
++		};
++
++		/*
++		 * pil_riva-pll_vdd
++		 * lvds.0-lvds_vdda
++		 * mipi_dsi.1-dsi1_vddio
++		 * hdmi_msm.0-hdmi_vdda
++		 */
++		pm8921_lvs7: lvs7 {
++			bias-pull-down;
++		};
++
++		pm8921_ncp: ncp {
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++			qcom,switch-mode-frequency = <1600000>;
++		};
++
++		/* Buck SMPS */
++		pm8921_s1: s1 {
++			regulator-always-on;
++			regulator-min-microvolt = <1225000>;
++			regulator-max-microvolt = <1225000>;
++			qcom,switch-mode-frequency = <3200000>;
++			bias-pull-down;
++		};
++
++		pm8921_s2: s2 {
++			regulator-min-microvolt = <1300000>;
++			regulator-max-microvolt = <1300000>;
++			qcom,switch-mode-frequency = <1600000>;
++			bias-pull-down;
++		};
++
++		/* msm otg HSUSB_VDDCX */
++		pm8921_s3: s3 {
++			regulator-min-microvolt = <500000>;
++			regulator-max-microvolt = <1150000>;
++			qcom,switch-mode-frequency = <4800000>;
++			bias-pull-down;
++		};
++
++		/*
++		 * msm_sdcc.1-sdc-vdd_io
++		 * tabla2x-slim-CDC_VDDA_RX
++		 * tabla2x-slim-CDC_VDDA_TX
++		 * tabla2x-slim-CDC_VDD_CP
++		 * tabla2x-slim-VDDIO_CDC
++		 */
++		pm8921_s4: s4 {
++			regulator-always-on;
++			regulator-min-microvolt	= <1800000>;
++			regulator-max-microvolt	= <1800000>;
++			qcom,switch-mode-frequency = <1600000>;
++			bias-pull-down;
++			qcom,force-mode = <QCOM_RPM_FORCE_MODE_AUTO>;
++		};
++
++		/*
++		 * supply vdd_l26, vdd_l27, vdd_l28
++		 */
++		pm8921_s7: s7 {
++			regulator-min-microvolt = <1300000>;
++			regulator-max-microvolt = <1300000>;
++			qcom,switch-mode-frequency = <3200000>;
++		};
++
++		pm8921_s8: s8 {
++			regulator-min-microvolt = <2200000>;
++			regulator-max-microvolt = <2200000>;
++			qcom,switch-mode-frequency = <1600000>;
++		};
++	};
++};
++
++/* eMMC */
++&sdcc1 {
++	vmmc-supply = <&pm8921_l5>;
++	vqmmc-supply = <&pm8921_s4>;
++
++	status = "okay";
++};
 
 ---
-base-commit: 2014c95afecee3e76ca4a56956a936e23283f05b
-change-id: 20250226-fslpmc-yaml-90dc69fb7d2a
+base-commit: 0a2f889128969dab41861b6e40111aa03dc57014
+change-id: 20250309-lg-nexus4-mako-da0833885b26
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+David Heidelberg <david@ixit.cz>
 
