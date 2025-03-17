@@ -1,96 +1,67 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Mon, 17 Mar 2025 20:40:04 +0100
-Subject: [PATCH v2] drop_caches: Allow re-enabling message after disabling
+From: David Heidelberg <david@ixit.cz>
+Date: Mon, 17 Mar 2025 21:26:05 +0100
+Subject: [PATCH] dt-bindings: soc: qcom,wcnss: Document local-mac-address
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250317-jag-drop_caches_msg-v2-1-e22d9a6a3038@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAJN62GcC/32NWQrCMBRFt1Let5FmKBW/3IeUkqQvg0NSXqQop
- Xs3dgF+ngP33BUKUsQC52YFwiWWmFMFcWjABp08sjhVBtGKrpVcspv2bKI8j1bbgGV8Fs+scsb
- hZDruJNTlTOjie69eh8ohllemz36y8J/931s448wKVNifemV6cbkjJXwcM3kYtm37Aq8QtE63A
- AAA
-X-Change-ID: 20250313-jag-drop_caches_msg-c4fbfedb51f3
-To: Jonathan Corbet <corbet@lwn.net>, 
- Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-fsdevel@vger.kernel.org, Ruiwu Chen <rwchen404@gmail.com>, 
- Luis Chamberlain <mcgrof@kernel.org>, 
- Joel Granados <joel.granados@kernel.org>
+Message-Id: <20250317-wcnss-local-mac-v1-1-c7c60d4427be@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAFyF2GcC/x3MwQpAQBCA4VfRnE1Z2sSryGGMwRRLO4WSd7c5f
+ of/f8Akqhi02QNRTjXdQ4LLM+CFwiyoYzKURemLytV4cTDDdWdacSNGX4/kmPwkQwOpOqJMev/
+ Hrn/fD9ZVHRlhAAAA
+X-Change-ID: 20250317-wcnss-local-mac-57da1ca5feb9
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andy Gross <agross@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2047;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=nepMoQbELtF94lH7T+rYxLvz2Qh9WuaIy9QO1v1CDrQ=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGfYerHFV+3h8K+5MCKKabYyQ8sg92A8cm7yh
- koRx26w9cfa1okBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn2HqxAAoJELqXzVK3
- lkFPntoL/RNNBaAKCSj2xAgD7QJjEvjW4CWP0y8gRIjAJ4yTFX5L7PrDAsvjalhDJSUgvZYv+lh
- KusABjpK8ywfgLCrYxEPqgh8WaPxaeAJSHIfcb0MIKMIxFHrtsjP9EdSn3uSqa/11M9ESSBu1Km
- uTU2wLN4MO1fLE4G6wfjvOHu7KDS9y1RKnDqnsX+Ox7sXjjKyQhxrUmWCbII5VI3MwQ8tI2OmRh
- +lgHPk/4SVf8JAi0uZc2dyLDAWE4chvfoFOOJ3MadcGNSlNRlPKVFX6PIjtndgIo5OAz4tRqTbS
- lF8dWG15fFl/n3HuHvnSszCSRxhU5FEcTGhZHVrzNFUk/KjsUYGIXlg5y5yFGSrYZFn6dpHr/ef
- JnM07cKKHzlJ8pONnmEfv5x8xLCfr3r25QMZNS5gsD57rK9jDobm8IwSa7+UZKOD39hGVLEXmix
- Qq8Aiifpp+tfY80UETeY3BUzBT2I7jdW3XxA1+kEiY9186qg5/gFomLYq9OFtvKvihwFq4GdoB7
- Pw=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1056; i=david@ixit.cz;
+ h=from:subject:message-id; bh=64sSQPZfgn37XpxGWu0nVTKzcKK48ydVmCTjtTudBrE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn2IVd63X7hhBruXgk6lgCDh0TKdI/EFrqT8FIJ
+ wBZgmsEWEyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9iFXQAKCRBgAj/E00kg
+ ckhEEADPwgDK9arSVnTZrdvJTY5lCzFZt/1hucNsAx6gxPUn4bZLtbKK4N2Lgfu0XGFHSS1PiC2
+ 41kZo8MqsT/nMTvZyDJYuxKJUJH5VkOytx4d/VT3pyB45Wdcvbpt5C92/odVGEZE6n7YwuEohMj
+ QPC+gkWFVUVPhG78/UzhxEmkjFN3qCKmN68AqWdIoEMvaNNkIra9vP6GcljFiUNdHNUMH3H/fpL
+ oe48EQCHYIXpUghMtgjj+XGs+Wwgs9znt1Tov//xCpNXGbgCi2IYHJCMRst4BZyaAYL+/jsSKH0
+ rWHvaQzuR3tli1JL1BWQf70ZDATJeKjEtiaAcfG9ID8FmD3xmxGv7Kzc7R0aJVx7n38/TQi1mFW
+ +AR+gMRTQsbY/Eb/MbHgvFB7pWfNz/VvtAcVmGfekzau7RIkdQl+l+MzUadk+vxTlYFNe+32eKo
+ 14VBf25L6iRGOaHW7eQDHqWMImjIfzNn1GGKlUIZ2uuZvRWHQgI991GuwNt5yUGzTwKjSGLtrei
+ cwyysB+OKhPLEuZcgVaWMITAigBsJpNDrv2DhLnbYOixRQQlZ1z1NgG61yhF31FEIUKkGVr5yXk
+ Db6qGXu0Pa+Yld+Mp/jsGO7PXoZg/kFfEe8hmq9rVRr58N5QA0q9ybDLz7oKA2XsBJ8LOO9n84q
+ pFEqeAMxpwbxvJQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After writing "4" to /proc/sys/vm/drop_caches there was no way to
-re-enable the drop_caches kernel message. By replacing the "or"
-assignment for the stfu variable, it is now possible to toggle the
-message on and off by setting the 4th bit in /proc/sys/vm/drop_caches.
+The device and driver do support setting a custom MAC address.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+Fixes: c49e9e95f4d1 ("dt: binding: Add Qualcomm WCNSS control binding")
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v2:
-- Check the 4 bit before we actualy toggle the message
-- Link to v1: https://lore.kernel.org/r/20250313-jag-drop_caches_msg-v1-1-c2e4e7874b72@kernel.org
----
+ Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
----
- Documentation/admin-guide/sysctl/vm.rst | 2 +-
- fs/drop_caches.c                        | 3 ++-
- 2 files changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/Documentation/admin-guide/sysctl/vm.rst b/Documentation/admin-guide/sysctl/vm.rst
-index f48eaa98d22d2b575f6e913f437b0d548daac3e6..75a032f8cbfb4e05f04610cca219d154bd852789 100644
---- a/Documentation/admin-guide/sysctl/vm.rst
-+++ b/Documentation/admin-guide/sysctl/vm.rst
-@@ -266,7 +266,7 @@ used::
- 	cat (1234): drop_caches: 3
+diff --git a/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml b/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml
+index fd6db0ca98eb7e56d7399f55c408844d5e782805..6938dc4ccc2175a65f6f53c6d073fb72cf498b2c 100644
+--- a/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml
++++ b/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml
+@@ -68,6 +68,8 @@ properties:
+           - const: tx
+           - const: rx
  
- These are informational only.  They do not mean that anything is wrong
--with your system.  To disable them, echo 4 (bit 2) into drop_caches.
-+with your system.  To toggle them, echo 4 (bit 2) into drop_caches.
- 
- enable_soft_offline
- ===================
-diff --git a/fs/drop_caches.c b/fs/drop_caches.c
-index d45ef541d848a73cbd19205e0111c2cab3b73617..15730593ae39955ae7ae93aec17546fc96f89dce 100644
---- a/fs/drop_caches.c
-+++ b/fs/drop_caches.c
-@@ -68,12 +68,13 @@ int drop_caches_sysctl_handler(const struct ctl_table *table, int write,
- 			drop_slab();
- 			count_vm_event(DROP_SLAB);
- 		}
-+		if (sysctl_drop_caches & 4)
-+			stfu ^= 1;
- 		if (!stfu) {
- 			pr_info("%s (%d): drop_caches: %d\n",
- 				current->comm, task_pid_nr(current),
- 				sysctl_drop_caches);
- 		}
--		stfu |= sysctl_drop_caches & 4;
- 	}
- 	return 0;
- }
++      local-mac-address: true
++
+       qcom,smem-states:
+         $ref: /schemas/types.yaml#/definitions/phandle-array
+         maxItems: 2
 
 ---
-base-commit: 7eb172143d5508b4da468ed59ee857c6e5e01da6
-change-id: 20250313-jag-drop_caches_msg-c4fbfedb51f3
+base-commit: e94bd4ec45ac156616da285a0bf03056cd7430fc
+change-id: 20250317-wcnss-local-mac-57da1ca5feb9
 
 Best regards,
 -- 
-Joel Granados <joel.granados@kernel.org>
+David Heidelberg <david@ixit.cz>
 
