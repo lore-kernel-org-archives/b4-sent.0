@@ -1,86 +1,93 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 18 Mar 2025 13:51:21 +0100
-Subject: [PATCH] ARM: dts: qcom: apq8064-lg-nexus4-mako: Enable WiFi
+From: Brendan King <Brendan.King@imgtec.com>
+Date: Tue, 18 Mar 2025 14:53:13 +0000
+Subject: [PATCH] drm/imagination: take paired job reference
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250318-lg-nexus4-mako-enable-wifi-v1-1-e3b4a09d9f68@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAEhs2WcC/x3MQQqDMBAF0KvIrDtgbCLaqxQXaf3RQY0lQRsQ7
- 25w+TbvoIggiPQqDgrYJcrqM9SjoO9o/QCWPpuqsjLlUzU8D+yRtqh5sdPK8PYzg//ihF2ttOp
- hnDYt5eAX4CTd+bs7zwvgKhRMbAAAAA==
-X-Change-ID: 20250318-lg-nexus4-mako-enable-wifi-f6141de5f459
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20250318-ddkopsrc-1337-use-after-free-in-pvr_queue_prepare_job-v1-1-80fb30d044a6@imgtec.com>
+X-B4-Tracking: v=1; b=H4sIANiI2WcC/x2N2wrCMBAFf6Xsswu5qBV/RSTkstEoJOnGFKH03
+ w0+Dmc4s0EjTtTgOm3AtKaWSh4gDxP4p80PwhQGgxLqJLS8YAjvUht7lFrP2BuhjR9ijEzDzVh
+ XNkunTqYyVctkXsWhPEfn56MTXgkY32OL6fvv3u77/gOewIWDhwAAAA==
+X-Change-ID: 20250318-ddkopsrc-1337-use-after-free-in-pvr_queue_prepare_job-16fbc74b0c20
+To: Frank Binns <frank.binns@imgtec.com>, 
+ Matt Coster <matt.coster@imgtec.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Boris Brezillon <boris.brezillon@collabora.com>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Brendan King <brendan.king@imgtec.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1456; i=david@ixit.cz;
- h=from:subject:message-id; bh=oABHqPk0qYz8RHZ1DC5dvgMY1GAwB6itVi5XXv+ltKE=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn2WxNl/rCFHhm/Y68tSJ93r3SbPWxEGpVqZXRR
- VidrDnbnHuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9lsTQAKCRBgAj/E00kg
- cpydD/kB9AOtHCkPb46KSrycSfDhrrEVqRYmu8HiNksmTk8E2eiz1vddb3eTx4YlwDlsxG1VlsM
- tK8s1tSAPcJvHS5bmpf9XNyXyUypW9CpX0r0Anqe08gAtN6tqc7yfArpDoIpD/QbNC6cEnb93wH
- 6RutXonQxADYkZ/qhsUQfksMKJ6fSsJlKdrStbnLorr4g1T9hgH3kjn6AWBkvL30nQC/MT4bdsG
- /Ed/JT036EfrjgNFQSDiWPz9rwIkoB0k0bi4Lad9CZ0lBZTH0I67RgE+kPpNPblPzwP+sFs6oJM
- geEssK7HXyerGA3H/ztyPFFacgjh+zm2Hz7ZxtpKYEJ6dxksMjuz9NtnZb8/WEZDS+6PsfpBtr4
- XmTYJ385uTZQ3h2sh4RTQz1GxDuqPVu1PHo0Elt3953Jiq/676z5oVmvYWrHEmcKhedprglbjtZ
- jI2qF9AeIyFxfnGpBMD/Nph+cyT9zMGIL8i4giMiWw2iDW6G7Ui+gM7Je8XEVCh18fhtyuKsirJ
- PUtZCzW12geS25rvorGisoG2yqDTPI9qm228SwWiaBn7p8BGxRXwEncEmDO6GIlSn6OezuHbpf1
- sKQFdRbj08flbkdVHr7b7mIW8CaxdaxEJB1ZR3NYAJHoc3IR9RPlz3H8CneAEKZPm70L1tje1Z8
- xyeM7n0xjPQKWKg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742309603; l=2606;
+ i=Brendan.King@imgtec.com; s=20250203; h=from:subject:message-id;
+ bh=iRO8TwqpOWn8X5jFM/tEN7yZ9E4/c1t772uWrRZbV/s=;
+ b=6U0jpX6Ay9Wdn4uPme1Lovgv3I7RKQNnlFylAxRR64RsGqneC6U92TnG6vnE11fCuimMPMq/2
+ lGiXF8TO8xmAGhsqXIJIL204XFaee2fLAqQRPg5/R2StCJjyjKGC7v3
+X-Developer-Key: i=Brendan.King@imgtec.com; a=ed25519;
+ pk=i3JvC3unEBLW+4r5s/aEWQZFsRCWaCBrWdFbMXIXCqg=
+X-Endpoint-Received: by B4 Relay for Brendan.King@imgtec.com/20250203 with auth_id=335
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Wi-Fi setup is identical to that of the Sony Xperia Z (Yuga).
+For paired jobs, have the fragment job take a reference on the
+geometry job, so that the geometry job cannot be freed until
+the fragment job has finished with it.
 
-Verified against the legacy kernel configuration inside
- arch/arm/mach-msm/board-8064-regulator.c
-using LineageOS 14.1 kernel sources.
+The geometry job structure is accessed when the fragment job is being
+prepared by the GPU scheduler. Taking the reference prevents the
+geometry job being freed until the fragment job no longer requires it.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Fixes a use after free bug detected by KASAN:
+
+[  124.256386] BUG: KASAN: slab-use-after-free in pvr_queue_prepare_job+0x108/0x868 [powervr]
+[  124.264893] Read of size 1 at addr ffff0000084cb960 by task kworker/u16:4/63
+
+Cc: stable@vger.kernel.org
+Fixes: eaf01ee5ba28 ("drm/imagination: Implement job submission and scheduling")
+Signed-off-by: Brendan King <brendan.king@imgtec.com>
 ---
- arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ drivers/gpu/drm/imagination/pvr_job.c   | 7 +++++++
+ drivers/gpu/drm/imagination/pvr_queue.c | 4 ++++
+ 2 files changed, 11 insertions(+)
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts b/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
-index 5710450faabf34fa5991d8803a2369cfbb09e4ea..c187c6875bc69d6ad711b52d519fe6a2660f09be 100644
---- a/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
-+++ b/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
-@@ -86,6 +86,24 @@ MATRIX_KEY(0, 1, KEY_VOLUMEUP)
- 	status = "okay";
- };
+diff --git a/drivers/gpu/drm/imagination/pvr_job.c b/drivers/gpu/drm/imagination/pvr_job.c
+index 1cdb3cfd058d7db573337a2b4f6895ee4922f9a9..59b334d094fa826f26668d98561e956ec9c51428 100644
+--- a/drivers/gpu/drm/imagination/pvr_job.c
++++ b/drivers/gpu/drm/imagination/pvr_job.c
+@@ -671,6 +671,13 @@ pvr_jobs_link_geom_frag(struct pvr_job_data *job_data, u32 *job_count)
+ 		geom_job->paired_job = frag_job;
+ 		frag_job->paired_job = geom_job;
  
-+&riva {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&riva_wlan_pin_a>, <&riva_bt_pin_a>, <&riva_fm_pin_a>;
++		/* The geometry job pvr_job structure is used when the fragment
++		 * job is being prepared by the GPU scheduler. Have the fragment
++		 * job hold a reference on the geometry job to prevent it being
++		 * freed until the fragment job has finished with it.
++		 */
++		pvr_job_get(geom_job);
 +
-+	vddcx-supply = <&pm8921_s3>;
-+	vddmx-supply = <&pm8921_l24>;
-+	vddpx-supply = <&pm8921_s4>;
+ 		/* Skip the fragment job we just paired to the geometry job. */
+ 		i++;
+ 	}
+diff --git a/drivers/gpu/drm/imagination/pvr_queue.c b/drivers/gpu/drm/imagination/pvr_queue.c
+index 21c185d18bb2e0569bd6e12832a74e38137bd48a..6431f6b654a2e60b86a46bd8571eb9f8133c4b53 100644
+--- a/drivers/gpu/drm/imagination/pvr_queue.c
++++ b/drivers/gpu/drm/imagination/pvr_queue.c
+@@ -856,6 +856,10 @@ static void pvr_queue_free_job(struct drm_sched_job *sched_job)
+ 	struct pvr_job *job = container_of(sched_job, struct pvr_job, base);
+ 
+ 	drm_sched_job_cleanup(sched_job);
 +
-+	status = "okay";
++	if (job->type == DRM_PVR_JOB_TYPE_FRAGMENT && job->paired_job)
++		pvr_job_put(job->paired_job);
 +
-+	iris {
-+		vddxo-supply = <&pm8921_l4>;
-+		vddrfa-supply = <&pm8921_s2>;
-+		vddpa-supply = <&pm8921_l10>;
-+		vdddig-supply = <&pm8921_lvs2>;
-+	};
-+};
-+
- &rpm {
- 	regulators {
- 		compatible = "qcom,rpm-pm8921-regulators";
+ 	job->paired_job = NULL;
+ 	pvr_job_put(job);
+ }
 
 ---
-base-commit: c4d4884b67802c41fd67399747165d65c770621a
-change-id: 20250318-lg-nexus4-mako-enable-wifi-f6141de5f459
+base-commit: 96c85e428ebaeacd2c640eba075479ab92072ccd
+change-id: 20250318-ddkopsrc-1337-use-after-free-in-pvr_queue_prepare_job-16fbc74b0c20
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Brendan King <Brendan.King@imgtec.com>
 
