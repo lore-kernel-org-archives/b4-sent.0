@@ -1,11 +1,11 @@
 From: Hans-Frieder Vogt <hfdevel@gmx.net>
-Date: Tue, 18 Mar 2025 23:06:53 +0100
-Subject: [PATCH net-next v6 2/7] net: phy: aquantia: add probe function to
- aqr105 for firmware loading
+Date: Tue, 18 Mar 2025 23:06:54 +0100
+Subject: [PATCH net-next v6 3/7] net: phy: aquantia: search for
+ firmware-name in fwnode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250318-tn9510-v3a-v6-2-808a9089d24b@gmx.net>
+Message-Id: <20250318-tn9510-v3a-v6-3-808a9089d24b@gmx.net>
 References: <20250318-tn9510-v3a-v6-0-808a9089d24b@gmx.net>
 In-Reply-To: <20250318-tn9510-v3a-v6-0-808a9089d24b@gmx.net>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -17,37 +17,45 @@ To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Hans-Frieder Vogt <hfdevel@gmx.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742335636; l=900;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742335636; l=1169;
  i=hfdevel@gmx.net; s=20240915; h=from:subject:message-id;
- bh=vEeavGZyiKSDFemLfNRy5gMMBOs/2nb7oTqi4HS4XIQ=;
- b=oyS43WSmFx+ES8/DCIG31nGgeWDUQTwWPqExHYDP2jF5t8uGejyNcJrapyPFocBk6keS7d/XW
- nryh0EyZZzwAIAVPoK51rUwaYAimf3quiDzgS6eYCKungHUWiTmNpdA
+ bh=0zRi7Vk41IU72s/8DzrXAvCvexTz79in+5DW1aumMeg=;
+ b=wljGj2lw59kqmSW492zIjI0eH+/ZzkqBoEAr3NxRMQVviKUuuXPSKoqzlIXhsJrqbPOzpT1Pb
+ OsnPbeNqvnQC7RsbKyu6Qi6Tu36+aX+oV9cSuZDHYtIjPJnzAsFuK14
 X-Developer-Key: i=hfdevel@gmx.net; a=ed25519;
  pk=s3DJ3DFe6BJDRAcnd7VGvvwPXcLgV8mrfbpt8B9coRc=
 X-Endpoint-Received: by B4 Relay for hfdevel@gmx.net/20240915 with auth_id=209
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Re-use the AQR107 probe function to load the firmware on the AQR105 (and
-to probe the HWMON).
+Allow the firmware name of an Aquantia PHY alternatively be provided by the
+property "firmware-name" of a swnode. This software node may be provided by
+the MAC or MDIO driver.
 
 Signed-off-by: Hans-Frieder Vogt <hfdevel@gmx.net>
 Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 ---
- drivers/net/phy/aquantia/aquantia_main.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/net/phy/aquantia/aquantia_firmware.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/net/phy/aquantia/aquantia_main.c b/drivers/net/phy/aquantia/aquantia_main.c
-index e42ace4e682aacf56199b7fdb9613d20f240fa27..86b0e63de5d88fa1050919a8826bdbec4bbcf8ba 100644
---- a/drivers/net/phy/aquantia/aquantia_main.c
-+++ b/drivers/net/phy/aquantia/aquantia_main.c
-@@ -912,6 +912,7 @@ static struct phy_driver aqr_driver[] = {
- 	PHY_ID_MATCH_MODEL(PHY_ID_AQR105),
- 	.name		= "Aquantia AQR105",
- 	.config_aneg    = aqr_config_aneg,
-+	.probe		= aqr107_probe,
- 	.config_intr	= aqr_config_intr,
- 	.handle_interrupt = aqr_handle_interrupt,
- 	.read_status	= aqr_read_status,
+diff --git a/drivers/net/phy/aquantia/aquantia_firmware.c b/drivers/net/phy/aquantia/aquantia_firmware.c
+index dab3af80593f51ff6dc670dfb54ae358c2458c40..bbbcc9736b00e1cfa193f4398889a4c172ca27a4 100644
+--- a/drivers/net/phy/aquantia/aquantia_firmware.c
++++ b/drivers/net/phy/aquantia/aquantia_firmware.c
+@@ -328,10 +328,11 @@ static int aqr_firmware_load_fs(struct phy_device *phydev)
+ 	const char *fw_name;
+ 	int ret;
+ 
+-	ret = of_property_read_string(dev->of_node, "firmware-name",
+-				      &fw_name);
+-	if (ret)
++	ret = device_property_read_string(dev, "firmware-name", &fw_name);
++	if (ret) {
++		phydev_err(phydev, "failed to read firmware-name: %d\n", ret);
+ 		return ret;
++	}
+ 
+ 	ret = request_firmware(&fw, fw_name, dev);
+ 	if (ret) {
 
 -- 
 2.47.2
