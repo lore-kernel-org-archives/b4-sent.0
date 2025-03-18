@@ -1,152 +1,102 @@
-From: Brendan King <Brendan.King@imgtec.com>
-Date: Tue, 18 Mar 2025 14:55:55 +0000
-Subject: [PATCH] drm/imagination: fix firmware memory leaks
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v3 0/5] dt-bindings: net: Add network-class.yaml schema
+Date: Tue, 18 Mar 2025 20:56:43 +0100
+Message-Id: <20250318-dt-bindings-network-class-v3-0-4d8d04ddfb61@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250318-ddkopsrc-1339-firmware-related-memory-leak-on-module-unload-v1-1-155337c57bb4@imgtec.com>
-X-B4-Tracking: v=1; b=H4sIAHqJ2WcC/x3NSwrCMBAA0KuUWTuQNAqtVxEXY2aiofmUifVD6
- d0tLt/qrdBEozQ4dyuovGKLteywhw78g8pdMPJu6E1/Ms4OyDzVualH69yIIWp+kwqqJHoKY5Z
- c9YtJaMJaMFdekuBSUiVGbwca6RjY8A32YVYJ8fPfL9dt+wEDxHlmjQAAAA==
-X-Change-ID: 20250318-ddkopsrc-1339-firmware-related-memory-leak-on-module-unload-c18a9a4fd0db
-To: Frank Binns <frank.binns@imgtec.com>, 
- Matt Coster <matt.coster@imgtec.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Brendan King <brendan.king@imgtec.com>
+X-B4-Tracking: v=1; b=H4sIAPvP2WcC/42OzQrCMBCEX6Xk7Mp2Y/88+R7iIU2WNiopJLEip
+ e/u1pu3noaBmW9mUYmj56TOxaIizz75KYjRh0LZ0YSBwTvxipA0EmpwGXofnA9DgsD5PcUH2Kd
+ JCVpdN+xc3XSOlPR7kxj6aIIdNwIigpMFyzkyQ27LkoS2JUef8hQ/vxNzKXLdszeXgHCqiFE3F
+ SG6y92EYF5HiambYGfajaIN1XV1K+8rbPQfal3XL+TR8NAoAQAA
+X-Change-ID: 20230203-dt-bindings-network-class-8367edd679d2
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Mailing List <devicetree-spec-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, 
+ Johannes Berg <johannes@sipsolutions.net>, 
+ Lorenzo Bianconi <lorenzo@kernel.org>, van Spriel <arend@broadcom.com>, 
+ =?utf-8?q?J=C3=A9r=C3=B4me_Pouiller?= <jerome.pouiller@silabs.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Andy Gross <agross@kernel.org>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, Janne Grunau <j@jannau.net>, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742309760; l=4351;
- i=Brendan.King@imgtec.com; s=20250203; h=from:subject:message-id;
- bh=/tpZNJco7ixoFS3Y/59hpGwTqnZcAO294fgaBdsHDXU=;
- b=bhs35S9gsWUOIZq7fNMzJbm/UE6mkSmy7amvUCpvBWNFf/P7mjoghfcdRsE0TZo+Wr0Rt7nOE
- L4Lq6EZAPvWB2K6upVhvX8xoy31VeQVdxjNuyYsNitTv0EA63v6Q3Fq
-X-Developer-Key: i=Brendan.King@imgtec.com; a=ed25519;
- pk=i3JvC3unEBLW+4r5s/aEWQZFsRCWaCBrWdFbMXIXCqg=
-X-Endpoint-Received: by B4 Relay for Brendan.King@imgtec.com/20250203 with auth_id=335
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2490; i=david@ixit.cz;
+ h=from:subject:message-id; bh=7W8QpbQv5teMaSOlvTSkrQIpc6ejHxAGQeFyZZG7vrs=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn2c/+j6DMvXwXlPePgX3PHddA4M1piRIGjZllm
+ N+DF+5cZ62JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9nP/gAKCRBgAj/E00kg
+ chroD/9vAs2g7yo2x2daiSwFvP2LReGaABPJ+K/Kmjr5AS+X+QJkFZXeJr3xzmKxGjzv4HRisY1
+ 0CFZPU+EiE4tulRle9WoXr7ayonKJtFnuzmd0nLMYQtJpqfabPolWqAIXSmUqPtjgaUwUPvoVll
+ S1SKbU5tPNORhH6lwFbqdjb9Wqg9OkN/3bELAVEhXgXCoXFJ17fA46N+vkPWXRdsem0gijUAOUF
+ 0UWJNNEMrC3T6BB7gLOxjAp0L+k093wSflp+3FPH2QHR+07SMFKTnr/qHcHEfvWPjpwQuB78uOh
+ V5DSLc4zt9dokk9ZP7lmYi3x1HuGDt9/yjrH3ymPgXuU39+sSP79iwzojlf56igEry4RkKVVF47
+ a00kqS1PDZx4UZRsbIEoio7fKlnXNEBZf7pilWxqlE5OdzaDvwLLh9wAV8UgHLjyfgcZWuxDEgw
+ ix5RM75HA/ZpzORoDGCGydOavRc/eXRGS4ZYIzDABpgPvmmlsTHiPMP6owT0lU8uG4/qhOO1ki9
+ MBi4+L1v3NoyEh/pe1zYh8zYy5nZ6yHYxlRIpfSqTSH1OVQ+AdEa01n+dUafH7mDFPPj/CLeDwe
+ SZPCS73I+WI72g/GsJsBVuUzOR5Dt6snywG0Tt2ClvDhP5JT2+8MR9WTUQMvHt+O+k0ym+7f7E+
+ frkEV2LqN7wTNTA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Free the memory used to hold the results of firmware image processing
-when the module is unloaded.
+The Devicetree Specification, Release v0.3 specifies in section 4.3.1
+a "Network Class Binding". This covers MAC address and maximal frame
+size properties. "local-mac-address" and "mac-address" with a fixed
+"address-size" of 48 bits are already in the ethernet-controller.yaml
+schema so move those over.
 
-Fix the related issue of the same memory being leaked if processing
-of the firmware image fails during module load.
+Keep "address-size" fixed to 48 bits as it's unclear if network protocols
+using 64-bit mac addresses like ZigBee, 6LoWPAN and others are relevant for
+this binding. This allows mac address array size validation for ethernet
+and wireless lan devices.
 
-Ensure all firmware GEM objects are destroyed if firmware image
-processing fails.
+"max-frame-size" in the Devicetree Specification is written to cover the
+whole layer 2 ethernet frame but actual use for this property is the
+payload size. Keep the description from ethernet-controller.yaml which
+specifies the property as MTU.
 
-Fixes memory leaks on powervr module unload detected by Kmemleak:
-
-unreferenced object 0xffff000042e20000 (size 94208):
-  comm "modprobe", pid 470, jiffies 4295277154
-  hex dump (first 32 bytes):
-    02 ae 7f ed bf 45 84 00 3c 5b 1f ed 9f 45 45 05  .....E..<[...EE.
-    d5 4f 5d 14 6c 00 3d 23 30 d0 3a 4a 66 0e 48 c8  .O].l.=#0.:Jf.H.
-  backtrace (crc dd329dec):
-    kmemleak_alloc+0x30/0x40
-    ___kmalloc_large_node+0x140/0x188
-    __kmalloc_large_node_noprof+0x2c/0x13c
-    __kmalloc_noprof+0x48/0x4c0
-    pvr_fw_init+0xaa4/0x1f50 [powervr]
-
-unreferenced object 0xffff000042d20000 (size 20480):
-  comm "modprobe", pid 470, jiffies 4295277154
-  hex dump (first 32 bytes):
-    00 00 00 00 00 00 00 00 09 00 00 00 0b 00 00 00  ................
-    00 00 00 00 00 00 00 00 07 00 00 00 08 00 00 00  ................
-  backtrace (crc 395b02e3):
-    kmemleak_alloc+0x30/0x40
-    ___kmalloc_large_node+0x140/0x188
-    __kmalloc_large_node_noprof+0x2c/0x13c
-    __kmalloc_noprof+0x48/0x4c0
-    pvr_fw_init+0xb0c/0x1f50 [powervr]
-
-Cc: stable@vger.kernel.org
-Fixes: cc1aeedb98ad ("drm/imagination: Implement firmware infrastructure and META FW support")
-Signed-off-by: Brendan King <brendan.king@imgtec.com>
+Signed-off-by: Janne Grunau <j@jannau.net>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/imagination/pvr_fw.c | 27 ++++++++++++++++++++-------
- 1 file changed, 20 insertions(+), 7 deletions(-)
+Changes in v3:
+- Incorporated wireless-controller.yaml suggestion (Andrew)
+- Link to v2: https://lore.kernel.org/r/20230203-dt-bindings-network-class-v2-0-499686795073@jannau.net
 
-diff --git a/drivers/gpu/drm/imagination/pvr_fw.c b/drivers/gpu/drm/imagination/pvr_fw.c
-index 3debc9870a82ae7de9b2dc173df84c466c137bb3..d09c4c68411627714c14dee5ed4e61b07baca1ba 100644
---- a/drivers/gpu/drm/imagination/pvr_fw.c
-+++ b/drivers/gpu/drm/imagination/pvr_fw.c
-@@ -732,7 +732,7 @@ pvr_fw_process(struct pvr_device *pvr_dev)
- 					       fw_mem->core_data, fw_mem->core_code_alloc_size);
- 
- 	if (err)
--		goto err_free_fw_core_data_obj;
-+		goto err_free_kdata;
- 
- 	memcpy(fw_code_ptr, fw_mem->code, fw_mem->code_alloc_size);
- 	memcpy(fw_data_ptr, fw_mem->data, fw_mem->data_alloc_size);
-@@ -742,10 +742,14 @@ pvr_fw_process(struct pvr_device *pvr_dev)
- 		memcpy(fw_core_data_ptr, fw_mem->core_data, fw_mem->core_data_alloc_size);
- 
- 	/* We're finished with the firmware section memory on the CPU, unmap. */
--	if (fw_core_data_ptr)
-+	if (fw_core_data_ptr) {
- 		pvr_fw_object_vunmap(fw_mem->core_data_obj);
--	if (fw_core_code_ptr)
-+		fw_core_data_ptr = NULL;
-+	}
-+	if (fw_core_code_ptr) {
- 		pvr_fw_object_vunmap(fw_mem->core_code_obj);
-+		fw_core_code_ptr = NULL;
-+	}
- 	pvr_fw_object_vunmap(fw_mem->data_obj);
- 	fw_data_ptr = NULL;
- 	pvr_fw_object_vunmap(fw_mem->code_obj);
-@@ -753,7 +757,7 @@ pvr_fw_process(struct pvr_device *pvr_dev)
- 
- 	err = pvr_fw_create_fwif_connection_ctl(pvr_dev);
- 	if (err)
--		goto err_free_fw_core_data_obj;
-+		goto err_free_kdata;
- 
- 	return 0;
- 
-@@ -763,13 +767,16 @@ pvr_fw_process(struct pvr_device *pvr_dev)
- 	kfree(fw_mem->data);
- 	kfree(fw_mem->code);
- 
--err_free_fw_core_data_obj:
- 	if (fw_core_data_ptr)
--		pvr_fw_object_unmap_and_destroy(fw_mem->core_data_obj);
-+		pvr_fw_object_vunmap(fw_mem->core_data_obj);
-+	if (fw_mem->core_data_obj)
-+		pvr_fw_object_destroy(fw_mem->core_data_obj);
- 
- err_free_fw_core_code_obj:
- 	if (fw_core_code_ptr)
--		pvr_fw_object_unmap_and_destroy(fw_mem->core_code_obj);
-+		pvr_fw_object_vunmap(fw_mem->core_code_obj);
-+	if (fw_mem->core_code_obj)
-+		pvr_fw_object_destroy(fw_mem->core_code_obj);
- 
- err_free_fw_data_obj:
- 	if (fw_data_ptr)
-@@ -836,6 +843,12 @@ pvr_fw_cleanup(struct pvr_device *pvr_dev)
- 	struct pvr_fw_mem *fw_mem = &pvr_dev->fw_dev.mem;
- 
- 	pvr_fw_fini_fwif_connection_ctl(pvr_dev);
-+
-+	kfree(fw_mem->core_data);
-+	kfree(fw_mem->core_code);
-+	kfree(fw_mem->data);
-+	kfree(fw_mem->code);
-+
- 	if (fw_mem->core_code_obj)
- 		pvr_fw_object_destroy(fw_mem->core_code_obj);
- 	if (fw_mem->core_data_obj)
+Changes in v2:
+- Added "max-frame-size" with the description from ethernet-controller.yaml
+- Restrict "address-size" to 48-bits
+- Fix the mac-address array size to 6 bytes
+- Drop duplicate default value from "max-frame-size" description
+- Link to v1: https://lore.kernel.org/r/20230203-dt-bindings-network-class-v1-0-452e0375200d@jannau.net
 
 ---
-base-commit: 96c85e428ebaeacd2c640eba075479ab92072ccd
-change-id: 20250318-ddkopsrc-1339-firmware-related-memory-leak-on-module-unload-c18a9a4fd0db
+David Heidelberg (2):
+      dt-bindings: net: Add generic wireless controller
+      dt-bindings: wireless: qcom,wcnss: Use wireless-controller.yaml
+
+Janne Grunau (3):
+      dt-bindings: net: Add network-class schema for mac-address properties
+      dt-bindings: wireless: bcm4329-fmac: Use wireless-controller.yaml schema
+      dt-bindings: wireless: silabs,wfx: Use wireless-controller.yaml
+
+ .../bindings/net/ethernet-controller.yaml          | 25 +-----------
+ .../devicetree/bindings/net/network-class.yaml     | 44 ++++++++++++++++++++++
+ .../bindings/net/wireless/brcm,bcm4329-fmac.yaml   |  2 +-
+ .../bindings/net/wireless/silabs,wfx.yaml          |  5 +--
+ .../bindings/net/wireless/wireless-controller.yaml | 23 +++++++++++
+ .../devicetree/bindings/soc/qcom/qcom,wcnss.yaml   |  5 ++-
+ 6 files changed, 74 insertions(+), 30 deletions(-)
+---
+base-commit: c4d4884b67802c41fd67399747165d65c770621a
+change-id: 20230203-dt-bindings-network-class-8367edd679d2
 
 Best regards,
 -- 
-Brendan King <Brendan.King@imgtec.com>
+David Heidelberg <david@ixit.cz>
 
