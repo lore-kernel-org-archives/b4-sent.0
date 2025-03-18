@@ -1,117 +1,86 @@
-From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Tue, 18 Mar 2025 16:32:11 +0800
-Subject: [PATCH RESEND 3/3] drm/bridge: it6505: skip auto training when
- previous try fail
+From: David Heidelberg <david@ixit.cz>
+Date: Tue, 18 Mar 2025 13:51:21 +0100
+Subject: [PATCH] ARM: dts: qcom: apq8064-lg-nexus4-mako: Enable WiFi
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250318-fix-link-training-v1-3-19266711142c@ite.com.tw>
-References: <20250318-fix-link-training-v1-0-19266711142c@ite.com.tw>
-In-Reply-To: <20250318-fix-link-training-v1-0-19266711142c@ite.com.tw>
-To: Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Hermes Wu <Hermes.wu@ite.com.tw>
+Message-Id: <20250318-lg-nexus4-mako-enable-wifi-v1-1-e3b4a09d9f68@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAEhs2WcC/x3MQQqDMBAF0KvIrDtgbCLaqxQXaf3RQY0lQRsQ7
+ 25w+TbvoIggiPQqDgrYJcrqM9SjoO9o/QCWPpuqsjLlUzU8D+yRtqh5sdPK8PYzg//ihF2ttOp
+ hnDYt5eAX4CTd+bs7zwvgKhRMbAAAAA==
+X-Change-ID: 20250318-lg-nexus4-mako-enable-wifi-f6141de5f459
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742286741; l=2801;
- i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=JH5TB+6KMos7mGcxiEmqDSjWU1p596CHLwJaILJm+RQ=;
- b=S+EhrMyfHzLB4Mdct6UqU7bM+Y2qISVqUnQwr80nBAMU4i/KCs+97Mi6zRZOUYC2PykGospSR
- d5a4ditZcaCCeIxWaHLnKpvwn7E4Vl3741Wcbed/9EEBtb/QeWh2ph9
-X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1456; i=david@ixit.cz;
+ h=from:subject:message-id; bh=oABHqPk0qYz8RHZ1DC5dvgMY1GAwB6itVi5XXv+ltKE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn2WxNl/rCFHhm/Y68tSJ93r3SbPWxEGpVqZXRR
+ VidrDnbnHuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9lsTQAKCRBgAj/E00kg
+ cpydD/kB9AOtHCkPb46KSrycSfDhrrEVqRYmu8HiNksmTk8E2eiz1vddb3eTx4YlwDlsxG1VlsM
+ tK8s1tSAPcJvHS5bmpf9XNyXyUypW9CpX0r0Anqe08gAtN6tqc7yfArpDoIpD/QbNC6cEnb93wH
+ 6RutXonQxADYkZ/qhsUQfksMKJ6fSsJlKdrStbnLorr4g1T9hgH3kjn6AWBkvL30nQC/MT4bdsG
+ /Ed/JT036EfrjgNFQSDiWPz9rwIkoB0k0bi4Lad9CZ0lBZTH0I67RgE+kPpNPblPzwP+sFs6oJM
+ geEssK7HXyerGA3H/ztyPFFacgjh+zm2Hz7ZxtpKYEJ6dxksMjuz9NtnZb8/WEZDS+6PsfpBtr4
+ XmTYJ385uTZQ3h2sh4RTQz1GxDuqPVu1PHo0Elt3953Jiq/676z5oVmvYWrHEmcKhedprglbjtZ
+ jI2qF9AeIyFxfnGpBMD/Nph+cyT9zMGIL8i4giMiWw2iDW6G7Ui+gM7Je8XEVCh18fhtyuKsirJ
+ PUtZCzW12geS25rvorGisoG2yqDTPI9qm228SwWiaBn7p8BGxRXwEncEmDO6GIlSn6OezuHbpf1
+ sKQFdRbj08flbkdVHr7b7mIW8CaxdaxEJB1ZR3NYAJHoc3IR9RPlz3H8CneAEKZPm70L1tje1Z8
+ xyeM7n0xjPQKWKg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When connect to device which can only training done by
-step training, skip auto training when link training restart,
-usually happen when display resolution is changed.
+The Wi-Fi setup is identical to that of the Sony Xperia Z (Yuga).
 
-Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
+Verified against the legacy kernel configuration inside
+ arch/arm/mach-msm/board-8064-regulator.c
+using LineageOS 14.1 kernel sources.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/bridge/ite-it6505.c | 36 +++++++++++++++++++++---------------
- 1 file changed, 21 insertions(+), 15 deletions(-)
+ arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
 
-diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index 11231a642bbe185c4f36bf5f2a0b115fa056213b..730481a9446ff00a54ef70e86b4c28ff0a3f417e 100644
---- a/drivers/gpu/drm/bridge/ite-it6505.c
-+++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -468,6 +468,7 @@ struct it6505 {
- 	struct work_struct hdcp_wait_ksv_list;
- 	struct completion extcon_completion;
- 	u8 auto_train_retry;
-+	u8 step_train_only;
- 	bool hdcp_desired;
- 	bool is_repeater;
- 	u8 hdcp_down_stream_count;
-@@ -2459,11 +2460,13 @@ static void it6505_link_step_train_process(struct it6505 *it6505)
- 				     ret ? "pass" : "failed", i + 1);
- 		if (ret) {
- 			it6505_link_train_ok(it6505);
-+			it6505->step_train_only = true;
- 			return;
- 		}
- 	}
+diff --git a/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts b/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
+index 5710450faabf34fa5991d8803a2369cfbb09e4ea..c187c6875bc69d6ad711b52d519fe6a2660f09be 100644
+--- a/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
++++ b/arch/arm/boot/dts/qcom/qcom-apq8064-lg-nexus4-mako.dts
+@@ -86,6 +86,24 @@ MATRIX_KEY(0, 1, KEY_VOLUMEUP)
+ 	status = "okay";
+ };
  
- 	DRM_DEV_DEBUG_DRIVER(dev, "training fail");
-+	it6505->step_train_only = false;
- 	it6505->link_state = LINK_IDLE;
- 	it6505_video_reset(it6505);
- }
-@@ -2479,21 +2482,23 @@ static void it6505_link_training_work(struct work_struct *work)
- 
- 	if (!it6505_get_sink_hpd_status(it6505))
- 		return;
--
--	retry = it6505->auto_train_retry;
--	do {
--		it6505_link_training_setup(it6505);
--		it6505_reset_hdcp(it6505);
--		it6505_aux_reset(it6505);
--
--		ret = it6505_link_start_auto_train(it6505);
--		DRM_DEV_DEBUG_DRIVER(dev, "auto train %s, auto_train_retry: %d",
--			     ret ? "pass" : "failed", it6505->auto_train_retry);
--		if (ret) {
--			it6505_link_train_ok(it6505);
--			return;
--		}
--	} while (retry--);
-+	/* skip auto training if previous auto train is fail*/
-+	if (!it6505->step_train_only) {
-+		retry = it6505->auto_train_retry;
-+		do {
-+			it6505_link_training_setup(it6505);
-+			it6505_reset_hdcp(it6505);
-+			it6505_aux_reset(it6505);
++&riva {
++	pinctrl-names = "default";
++	pinctrl-0 = <&riva_wlan_pin_a>, <&riva_bt_pin_a>, <&riva_fm_pin_a>;
 +
-+			ret = it6505_link_start_auto_train(it6505);
-+			DRM_DEV_DEBUG_DRIVER(dev, "auto train %s, auto_train_retry: %d",
-+				ret ? "pass" : "failed", it6505->auto_train_retry);
-+			if (ret) {
-+				it6505_link_train_ok(it6505);
-+				return;
-+			}
-+		} while (retry--);
-+	}
- 
- 	/*After HW auto training fail, try link training step by step*/
- 	it6505_link_step_train_process(it6505);
-@@ -2605,6 +2610,7 @@ static void it6505_irq_hpd(struct it6505 *it6505)
- 			it6505_parse_link_capabilities(it6505);
- 		}
- 		it6505->auto_train_retry = AUTO_TRAIN_RETRY;
-+		it6505->step_train_only = false;
- 
- 		it6505_drm_dp_link_set_power(&it6505->aux, &it6505->link,
- 					     DP_SET_POWER_D0);
++	vddcx-supply = <&pm8921_s3>;
++	vddmx-supply = <&pm8921_l24>;
++	vddpx-supply = <&pm8921_s4>;
++
++	status = "okay";
++
++	iris {
++		vddxo-supply = <&pm8921_l4>;
++		vddrfa-supply = <&pm8921_s2>;
++		vddpa-supply = <&pm8921_l10>;
++		vdddig-supply = <&pm8921_lvs2>;
++	};
++};
++
+ &rpm {
+ 	regulators {
+ 		compatible = "qcom,rpm-pm8921-regulators";
 
+---
+base-commit: c4d4884b67802c41fd67399747165d65c770621a
+change-id: 20250318-lg-nexus4-mako-enable-wifi-f6141de5f459
+
+Best regards,
 -- 
-2.34.1
+David Heidelberg <david@ixit.cz>
 
