@@ -1,67 +1,56 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 17 Mar 2025 21:26:05 +0100
-Subject: [PATCH] dt-bindings: soc: qcom,wcnss: Document local-mac-address
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH RESEND 0/3] drm/bridge: it6505: fix DP link traning and
+ improve compatibility
+Date: Tue, 18 Mar 2025 16:32:08 +0800
+Message-Id: <20250318-fix-link-training-v1-0-19266711142c@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250317-wcnss-local-mac-v1-1-c7c60d4427be@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAFyF2GcC/x3MwQpAQBCA4VfRnE1Z2sSryGGMwRRLO4WSd7c5f
- of/f8Akqhi02QNRTjXdQ4LLM+CFwiyoYzKURemLytV4cTDDdWdacSNGX4/kmPwkQwOpOqJMev/
- Hrn/fD9ZVHRlhAAAA
-X-Change-ID: 20250317-wcnss-local-mac-57da1ca5feb9
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andy Gross <agross@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org, 
+ dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1056; i=david@ixit.cz;
- h=from:subject:message-id; bh=64sSQPZfgn37XpxGWu0nVTKzcKK48ydVmCTjtTudBrE=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn2IVd63X7hhBruXgk6lgCDh0TKdI/EFrqT8FIJ
- wBZgmsEWEyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9iFXQAKCRBgAj/E00kg
- ckhEEADPwgDK9arSVnTZrdvJTY5lCzFZt/1hucNsAx6gxPUn4bZLtbKK4N2Lgfu0XGFHSS1PiC2
- 41kZo8MqsT/nMTvZyDJYuxKJUJH5VkOytx4d/VT3pyB45Wdcvbpt5C92/odVGEZE6n7YwuEohMj
- QPC+gkWFVUVPhG78/UzhxEmkjFN3qCKmN68AqWdIoEMvaNNkIra9vP6GcljFiUNdHNUMH3H/fpL
- oe48EQCHYIXpUghMtgjj+XGs+Wwgs9znt1Tov//xCpNXGbgCi2IYHJCMRst4BZyaAYL+/jsSKH0
- rWHvaQzuR3tli1JL1BWQf70ZDATJeKjEtiaAcfG9ID8FmD3xmxGv7Kzc7R0aJVx7n38/TQi1mFW
- +AR+gMRTQsbY/Eb/MbHgvFB7pWfNz/VvtAcVmGfekzau7RIkdQl+l+MzUadk+vxTlYFNe+32eKo
- 14VBf25L6iRGOaHW7eQDHqWMImjIfzNn1GGKlUIZ2uuZvRWHQgI991GuwNt5yUGzTwKjSGLtrei
- cwyysB+OKhPLEuZcgVaWMITAigBsJpNDrv2DhLnbYOixRQQlZ1z1NgG61yhF31FEIUKkGVr5yXk
- Db6qGXu0Pa+Yld+Mp/jsGO7PXoZg/kFfEe8hmq9rVRr58N5QA0q9ybDLz7oKA2XsBJ8LOO9n84q
- pFEqeAMxpwbxvJQ==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742286741; l=978;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=F4ufPEdkMCW4h084hlGUoc9xbvGlZkK0roqYJfiPmSg=;
+ b=i6LuwKIo0Z3uKz2VsZ1vNownlik5hHUj/56aGdTUSDfohorbjXi4NKMY+Csqr3qS09Vc7KTPI
+ cF8NdKJGKzoCyiFu9yLkng4PdxNfIWdLap9yrimfOGu+avjC4UHGueZ
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The device and driver do support setting a custom MAC address.
+IT6505 supports HW auto link training which will write DPCD and check
+training status automatically. Some DP device can not pass
+HW auto link training and must set link training step by step.
 
-Fixes: c49e9e95f4d1 ("dt: binding: Add Qualcomm WCNSS control binding")
-Signed-off-by: David Heidelberg <david@ixit.cz>
+when HW auto link training fail, it may trigger video FIFO error,
+and link training process will reset to beginning, and never try
+step training method.
+
+Modify training method improve compatibility to these DP devices.
+
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+Hermes Wu (3):
+      drm/bridge: it6505: modify DP link auto training
+      drm/bridge: it6505: modify DP link training work
+      drm/bridge: it6505: skip auto training when previous try fail
 
-diff --git a/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml b/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml
-index fd6db0ca98eb7e56d7399f55c408844d5e782805..6938dc4ccc2175a65f6f53c6d073fb72cf498b2c 100644
---- a/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml
-+++ b/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml
-@@ -68,6 +68,8 @@ properties:
-           - const: tx
-           - const: rx
- 
-+      local-mac-address: true
-+
-       qcom,smem-states:
-         $ref: /schemas/types.yaml#/definitions/phandle-array
-         maxItems: 2
-
+ drivers/gpu/drm/bridge/ite-it6505.c | 106 ++++++++++++++++++++++--------------
+ 1 file changed, 66 insertions(+), 40 deletions(-)
 ---
-base-commit: e94bd4ec45ac156616da285a0bf03056cd7430fc
-change-id: 20250317-wcnss-local-mac-57da1ca5feb9
+base-commit: 938fbb16aba8f7b88e0fdcf56f315a5bbad41aad
+change-id: 20250121-fix-link-training-461495494655
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Hermes Wu <Hermes.wu@ite.com.tw>
 
