@@ -1,82 +1,86 @@
-From: Nikhil Jha <njha@janestreet.com>
-Date: Wed, 19 Mar 2025 13:02:40 -0400
-Subject: [PATCH v2 2/2] sunrpc: don't immediately retransmit on seqno miss
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v2 00/13] iio: light: Modernize al3010 and al3320a codebase
+Date: Wed, 19 Mar 2025 21:59:39 +0100
+Message-Id: <20250319-al3010-iio-regmap-v2-0-1310729d0543@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250319-rfc2203-seqnum-cache-v2-2-2c98b859f2dd@janestreet.com>
-References: <20250319-rfc2203-seqnum-cache-v2-0-2c98b859f2dd@janestreet.com>
-In-Reply-To: <20250319-rfc2203-seqnum-cache-v2-0-2c98b859f2dd@janestreet.com>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>, 
- Neil Brown <neilb@suse.de>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
- Nikhil Jha <njha@janestreet.com>
+X-B4-Tracking: v=1; b=H4sIADsw22cC/32NQQ6CMBBFr0Jm7Zhpm2p15T0Mi1oGmESBtISgp
+ He3cgCX7yX//Q0SR+EE12qDyIskGYcC+lBB6P3QMUpTGDRpS4Yc+qchRSgyYuTu5Sck4wJ7c2m
+ dbaDspsitrHvzXhfuJc1jfO8Xi/rZf7VFIeHjdNbWWHZamZusMh/DB+qc8xfyIQIDsAAAAA==
+X-Change-ID: 20250308-al3010-iio-regmap-038cea39f85d
+To: Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>
+Cc: Svyatoslav Ryhel <clamor95@gmail.com>, 
+ Robert Eckelmann <longnoserob@gmail.com>, linux-iio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742403794; l=1835;
- i=njha@janestreet.com; s=20250314; h=from:subject:message-id;
- bh=BUY6rJprONjD4kvNKWmmzFeJCgyo6ppGGxibOm8/Kxc=;
- b=xdX2yxAJ/6/gUy68y6Q9cvESRYHhyp5Lpb4S5e+WaYic8JxfVG7+vTuPjx6Py8ArM1tFBwawI
- LNh8oa3AoLGCNQmi/ZEwy7FJYnAsDDey9LdNm+FHLGHn8/GiRCaQvPz
-X-Developer-Key: i=njha@janestreet.com; a=ed25519;
- pk=92gWYi0ImmcatlW+pFEFh9viqpRf/PE8phYeWuNeGaA=
-X-Endpoint-Received: by B4 Relay for njha@janestreet.com/20250314 with auth_id=360
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2111; i=david@ixit.cz;
+ h=from:subject:message-id; bh=8STHuFc23s5ULduJ7aYVu6n8GpJ8UmJn4qmi5rEoGew=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn2zA9dM2IigZ+WKdbs+x1m9BqHCcuqSmS8yQ45
+ k8maostMXyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9swPQAKCRBgAj/E00kg
+ coxGEAC6OpsSBl0OPAGqFhuQO2RGtAEYNsZKTtBhofN18Xig/hHMPc78pQIC3cDs6IDaYsSxXQC
+ eXvjJES2rQL+RzCRlY0BMPmQ0szDlcD+bmspi6CYyRDkDxcSAzL+1nKFHOkfutvf3YjzoLOvS+Y
+ sCvky9NZI0zWS0tGxtO5wl3ax8yXrs1tdPlvswpAMiYmg1rY3UMW2bqmaxIJle+b9v/fQnv6neC
+ yolZyCjcaJHxmreo0aVJ4z0f6CP47gpgM5OS1zTyMt5xNBfswKLrNkRZsCizG9NVJHFee3TpOL3
+ eCXiHBHapm6HoP7UVYxLOW1jR6yUAb9/R9H6OiypB/W1Ot2Q7xGZx1jzFjv1hOPSU5ny1AbvdpI
+ uUSbKsouLPDUHJ8GbCW1mY+f0FOI5hJ/XNA6ZBFFCNKZyaxV7MhQ45txevdBNj21ZTiuo1CyzyI
+ VNGmXPRYNZZzLht2NFdDaEOFIngomFLsgpc/EV9rsgwbS1SDNV24Ast4fc4ft6mT0A9stH6I4fZ
+ 9jmsMWzOOt3dmBdMAnzX3T7rGQ07M3rGlDw1kbS1TFUZZjUtCBcvOuFXQoH5x/ssuQ39MESr6fw
+ Ry+DB3FxXBGBlt8GfipmAKR79vNgMqNSJ3LoIusNTVQedHv6q9YuHXshNtRcUZc4SO7TnMP4xQA
+ s78kdnblK2PnaVw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-RFC2203 requires that retransmitted messages use a new gss sequence
-number, but the same XID. This means that if the server is just slow
-(e.x. overloaded), the client might receive a response using an older
-seqno than the one it has recorded.
+This series targetting improved readability of code
+and modernizing code to match AL3000a (recently upstreamed).
 
-Currently, Linux's client immediately retransmits in this case. However,
-this leads to a lot of wasted retransmits until the server eventually
-responds faster than the client can resend.
+Except slightly improved error reporting,
+there shouldn't be any function changes.
 
-Client -> SEQ 1 -> Server
-Client -> SEQ 2 -> Server
-Client <- SEQ 1 <- Server (misses, expecting seqno = 2)
-Client -> SEQ 3 -> Server (immediate retransmission on miss)
-Client <- SEQ 2 <- Server (misses, expecting seqno = 3)
-Client -> SEQ 4 -> Server (immediate retransmission on miss)
-... and so on ...
+Module  before after
+al3010  72 kB  58 kB
+al3320a 72 kB  58 kB
 
-This commit makes it so that we ignore messages with bad checksums
-due to seqnum mismatch, and rely on the usual timeout behavior for
-retransmission instead of doing so immediately.
-
-Signed-off-by: Nikhil Jha <njha@janestreet.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- net/sunrpc/clnt.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+Changes in v2:
+- Dropped Daniel's email update.
+- Dropped DRV_NAME introduction for al3000a
+- Added DRV_NAME define removal for al3010 and al3320a.
+- Splitted unsigned int conversion into separate patches.
+- Replaced generic value with specific raw and gain variable.
+- Use dev_err_probe() for error handling.
+- Separated devm_add_action_or_reset move from _init back to _probe.
+- Dropped copyright update.
+- Link to v1: https://lore.kernel.org/r/20250308-al3010-iio-regmap-v1-0-b672535e8213@ixit.cz
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 2fe88ea79a70c134e58abfb03fca230883eddf1f..98c0880ec18a8b80371e20f65e7a57a8d9244f7f 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2760,8 +2760,13 @@ rpc_decode_header(struct rpc_task *task, struct xdr_stream *xdr)
- 	case -EPROTONOSUPPORT:
- 		goto out_err;
- 	case -EACCES:
--		/* Re-encode with a fresh cred */
--		fallthrough;
-+		/* possible RPCSEC_GSS out-of-sequence event (RFC2203),
-+		 * reset recv state and keep waiting, don't retransmit
-+		 */
-+		task->tk_rqstp->rq_reply_bytes_recvd = 0;
-+		task->tk_status = xprt_request_enqueue_receive(task);
-+		task->tk_action = call_transmit_status;
-+		return -EBADMSG;
- 	default:
- 		goto out_garbage;
- 	}
+---
+David Heidelberg (13):
+      iio: light: al3010: Use unsigned int for the indexing
+      iio: light: al3320a: Use unsigned int for the indexing
+      iio: light: al3010: Remove DRV_NAME definition
+      iio: light: al3320a: Remove DRV_NAME definition
+      iio: light: al3010: Abstract device reference in the probe function
+      iio: light: al3320a: Abstract device reference in the probe function
+      iio: light: al3010: Split set_pwr function into set_pwr_on and _off
+      iio: light: al3320a: Split set_pwr function into set_pwr_on and _off
+      iio: light: al3010: Move devm_add_action_or_reset back to _probe
+      iio: light: al3010: Improve al3010_init error handling with dev_err_probe
+      iio: light: al3320a: Improve error handling with dev_err_probe
+      iio: light: al3010: Implement regmap support
+      iio: light: al3320a: Implement regmap support
 
+ drivers/iio/light/al3010.c  | 103 +++++++++++++++++++++------------------
+ drivers/iio/light/al3320a.c | 115 +++++++++++++++++++++++---------------------
+ 2 files changed, 116 insertions(+), 102 deletions(-)
+---
+base-commit: ff7f9b199e3f4cc7d61df5a9a26a7cbb5c1492e6
+change-id: 20250308-al3010-iio-regmap-038cea39f85d
+
+Best regards,
 -- 
-2.43.5
+David Heidelberg <david@ixit.cz>
 
