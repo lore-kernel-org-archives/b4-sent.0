@@ -1,16 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v4 0/5] dt-bindings: net: Add network-class.yaml schema
-Date: Wed, 19 Mar 2025 08:42:45 +0100
-Message-Id: <20250319-dt-bindings-network-class-v4-0-2329336802b4@ixit.cz>
+Date: Wed, 19 Mar 2025 08:42:46 +0100
+Subject: [PATCH v4 1/5] dt-bindings: net: Add network-class schema for
+ mac-address properties
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHV12mcC/43Oy2oDMQwF0F8JXldBlufhySr/EbLwWGrGbfGA7
- UwfYf49nkBXhZKVEFydq5vKkoJkddjdVJIl5DDHujQvO+UnFy8CgeuuCMkgoQEuMIbIIV4yRCm
- fc3oH/+FyBmu6Xpi7fmBS9X50WWBMLvppExARuDZ4KUkEitWaqrYlp5DLnL4fTyy6jtMzfYsGh
- KYlQdO3hMjHNxeju+5rTJ0ru9DTFG3UMHS2ft9ib/5Q5pdq0Wj7H2U2ii1jw/w6dvoYvkLZ+x9
- 1Xtf1DnYU6OhwAQAA
-X-Change-ID: 20230203-dt-bindings-network-class-8367edd679d2
+Message-Id: <20250319-dt-bindings-network-class-v4-1-2329336802b4@ixit.cz>
+References: <20250319-dt-bindings-network-class-v4-0-2329336802b4@ixit.cz>
+In-Reply-To: <20250319-dt-bindings-network-class-v4-0-2329336802b4@ixit.cz>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -28,83 +25,144 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, Janne Grunau <j@jannau.net>, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2768; i=david@ixit.cz;
- h=from:subject:message-id; bh=393IToClAzfR0O1K/XE7LWt3enDS7PjgPZXQuUlFetg=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn2nV+fAu9Z+30XzWw6iGU1UgKuJHCa9+LbOuWu
- pyl7M0EieSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9p1fgAKCRBgAj/E00kg
- ctv1D/97fXqZxd+QFVLBALI9KOioq7nsDQmfS0I+A7jc3/po3kvHlwnbRzaeQaBSrlEYJKY4lk/
- d8SBVNM6N7CkLjDqPlCmndKHJ7W/cziirlRNp7lCsxhCq2hWvhujW0VCyvBehi66Pg7c8cYZ4f8
- XHkrIHi8U8OacZX+BhyU/hSt5FFXqCNe6yEWmv7UCBBH/qMGJr2zYUMsKU4yhnCbWlzDkOtRDAo
- 7Nj67MRvgbtcm+jbao8nYtG5Zo0w3AZ9q+dUEnOlAfEiKqWPEZu20ZCYjTciW107G/eqb8ilGiA
- LLjo2GPXHayUTce193wWJB1aDRwb8+kw2SY7xVn5QD2KkQbYTStNs6jmO6lEkteuVSmodUs8fnk
- IIMwg/ltpiOYKqKJJbEEieEyv989UX54+Z5rl4iS9A1ZKsB0db71sIn1z/eD0SmQwd6R4OyRFdf
- CnPqPJh0dVRRjqhP2seJEGdXYcvfpC2ypyjBPWkyJ+sVHAcfZU7AnSDjGCqwP0n9fIIzS7ad6Uo
- 6hCeM2sbc88dV+OQKHfM5+Zp3WzdzH0QZKIZv7X6y6ehHYdOd04L4JxPM4WzABXLvcyqDZUkA4g
- 4TMtg7TGTMpQt025eoK3Z51tPXZMm8aDW/r54LCjstqoEkY9Elj+IwSP37qJRMFHJOujDDIcclY
- L6EwX5wnB1fSHKA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4552; i=david@ixit.cz;
+ h=from:subject:message-id; bh=BKNeFwL3FQz2qg0ubOyl0m0TjIVlXMOiIVHwC04dGGA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn2nV+VWCI3EUkh2oTdBKoTBm/gUSMo17TBRfM7
+ cSoswg19jWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ9p1fgAKCRBgAj/E00kg
+ cpMVEACY6xWeHma4WkkyZ3nLUE7pYdlk+YItmt+9Dh9SU3H62pnERgAtP5ZNLus8ai5BZGXKDya
+ W3gRuMAvvwaUjpWit4hV6OPT3Krzb/677m24NwSz5T4yVZoeYfYGQyuIExmwiFTjCJB2glaH6li
+ xLhG+54mPcJim5u9jT/TRIQfj6d6j3vd/BunxQerZNrR/6UCTNUrI6r8TNJaV3i5YqfwIEbUOll
+ 1KlMEQf66Vp41h54FWqfCxE0cCfpouF/9NUHESm6CaTmkTCBx/RNsD2Qg2ESddQCcs7anlYZfqs
+ fRFuS2ojJWWeJkTDa+nnHZ79lJkNstuNDg5Xpam/fpj6ue27W0aPoxirKUL5sgMCw1/TQjV2Fpo
+ MkP2HKug/ryO40YAE11GuNvh5AmS3bCKqkP1nh/xvP7kLd05ljPDXUIxarDcB89MK2itc1x2yCb
+ ftSBmlLZfGnANS3oAC9bMF97P+x+qxCCvbB8fBdgpZNCFg/OaRq6OsEoaElGobmYhbegVMP3/XM
+ CudfFiOIplbgYBP5yPb0OVrNg2SvXpTH/1fSCt9zb+FRQq+UqOI1WV8/OZV+LoGA2EodjDaxsVe
+ SodNI9Ot9Sujr97PSS8RuaszWRDZjT48gSXPb5Aa9ILlXlbX8ReJ0I4ijXOn1r92Y4tLEefUFMW
+ lyNFW4Ge0gBJJhg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+From: Janne Grunau <j@jannau.net>
+
+The ethernet-controller schema specifies "mac-address" and
+"local-mac-address" but other network devices such as wireless network
+adapters use mac addresses as well.
 The Devicetree Specification, Release v0.3 specifies in section 4.3.1
-a "Network Class Binding". This covers MAC address and maximal frame
-size properties. "local-mac-address" and "mac-address" with a fixed
-"address-size" of 48 bits are already in the ethernet-controller.yaml
-schema so move those over.
+a generic "Network Class Binding" with "address-bits", "mac-address",
+"local-mac-address" and "max-frame-size". This schema specifies the
+"address-bits" property and moves the remaining properties over from
+the ethernet-controller.yaml schema.
 
-Keep "address-size" fixed to 48 bits as it's unclear if network protocols
-using 64-bit mac addresses like ZigBee, 6LoWPAN and others are relevant for
-this binding. This allows mac address array size validation for ethernet
-and wireless lan devices.
-
-"max-frame-size" in the Devicetree Specification is written to cover the
-whole layer 2 ethernet frame but actual use for this property is the
-payload size. Keep the description from ethernet-controller.yaml which
-specifies the property as MTU.
+The "max-frame-size" property is used to describe the maximal payload
+size despite its name. Keep the description from ethernet-controller
+specifying this property as MTU. The contradictory description in the
+Devicetree Specification is ignored.
 
 Signed-off-by: Janne Grunau <j@jannau.net>
-Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v4:
-- Changed the mailing list address (Rob)
-- Copyied the whole description for the max-frame-size, including the
-  MTU x max-frame-size contradiction. (Rob)
-- Link to v3: https://lore.kernel.org/r/20250318-dt-bindings-network-class-v3-0-4d8d04ddfb61@ixit.cz
-
-Changes in v3:
-- Incorporated wireless-controller.yaml suggestion (Andrew)
-- Link to v2: https://lore.kernel.org/r/20230203-dt-bindings-network-class-v2-0-499686795073@jannau.net
-
-Changes in v2:
-- Added "max-frame-size" with the description from ethernet-controller.yaml
-- Restrict "address-size" to 48-bits
-- Fix the mac-address array size to 6 bytes
-- Drop duplicate default value from "max-frame-size" description
-- Link to v1: https://lore.kernel.org/r/20230203-dt-bindings-network-class-v1-0-452e0375200d@jannau.net
-
----
-David Heidelberg (2):
-      dt-bindings: net: Add generic wireless controller
-      dt-bindings: wireless: qcom,wcnss: Use wireless-controller.yaml
-
-Janne Grunau (3):
-      dt-bindings: net: Add network-class schema for mac-address properties
-      dt-bindings: wireless: bcm4329-fmac: Use wireless-controller.yaml schema
-      dt-bindings: wireless: silabs,wfx: Use wireless-controller.yaml
-
  .../bindings/net/ethernet-controller.yaml          | 25 +-----------
  .../devicetree/bindings/net/network-class.yaml     | 47 ++++++++++++++++++++++
- .../bindings/net/wireless/brcm,bcm4329-fmac.yaml   |  2 +-
- .../bindings/net/wireless/silabs,wfx.yaml          |  5 +--
- .../bindings/net/wireless/wireless-controller.yaml | 23 +++++++++++
- .../devicetree/bindings/soc/qcom/qcom,wcnss.yaml   |  5 ++-
- 6 files changed, 77 insertions(+), 30 deletions(-)
----
-base-commit: c4d4884b67802c41fd67399747165d65c770621a
-change-id: 20230203-dt-bindings-network-class-8367edd679d2
+ 2 files changed, 48 insertions(+), 24 deletions(-)
 
-Best regards,
+diff --git a/Documentation/devicetree/bindings/net/ethernet-controller.yaml b/Documentation/devicetree/bindings/net/ethernet-controller.yaml
+index 45819b2358002bc75e876eddb4b2ca18017c04bd..c91b41b83d1dc1294e99ec72c7cdcc16550cb33e 100644
+--- a/Documentation/devicetree/bindings/net/ethernet-controller.yaml
++++ b/Documentation/devicetree/bindings/net/ethernet-controller.yaml
+@@ -16,30 +16,6 @@ properties:
+   label:
+     description: Human readable label on a port of a box.
+ 
+-  local-mac-address:
+-    description:
+-      Specifies the MAC address that was assigned to the network device.
+-    $ref: /schemas/types.yaml#/definitions/uint8-array
+-    minItems: 6
+-    maxItems: 6
+-
+-  mac-address:
+-    description:
+-      Specifies the MAC address that was last used by the boot
+-      program; should be used in cases where the MAC address assigned
+-      to the device by the boot program is different from the
+-      local-mac-address property.
+-    $ref: /schemas/types.yaml#/definitions/uint8-array
+-    minItems: 6
+-    maxItems: 6
+-
+-  max-frame-size:
+-    $ref: /schemas/types.yaml#/definitions/uint32
+-    description:
+-      Maximum transfer unit (IEEE defined MTU), rather than the
+-      maximum frame size (there\'s contradiction in the Devicetree
+-      Specification).
+-
+   max-speed:
+     $ref: /schemas/types.yaml#/definitions/uint32
+     description:
+@@ -262,6 +238,7 @@ dependencies:
+   pcs-handle-names: [pcs-handle]
+ 
+ allOf:
++  - $ref: /schemas/net/network-class.yaml#
+   - if:
+       properties:
+         phy-mode:
+diff --git a/Documentation/devicetree/bindings/net/network-class.yaml b/Documentation/devicetree/bindings/net/network-class.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..e0b3ed3fd3f13d94a214cf9a4bb474d1abcca2b1
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/network-class.yaml
+@@ -0,0 +1,47 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/network-class.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Network Class Common Properties
++
++maintainers:
++  - Devicetree Specification Mailing List <devicetree-spec@vger.kernel.org>
++
++properties:
++  address-bits:
++    description:
++      Specifies number of address bits required to address the device described
++      by this node. This property specifies number of bits in MAC address.
++    default: 48
++    const: 48
++
++  local-mac-address:
++    description:
++      Specifies MAC address that was assigned to the network device described by
++      the node containing this property.
++    $ref: /schemas/types.yaml#/definitions/uint8-array
++    minItems: 6
++    maxItems: 6
++
++  mac-address:
++    description:
++      Specifies the MAC address that was last used by the boot program. This
++      property should be used in cases where the MAC address assigned to the
++      device by the boot program is different from the
++      local-mac-address property. This property shall be used only if the value
++      differs from local-mac-address property value.
++    $ref: /schemas/types.yaml#/definitions/uint8-array
++    minItems: 6
++    maxItems: 6
++
++  max-frame-size:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    description:
++      Maximum transfer unit (IEEE defined MTU), rather than the
++      maximum frame size (there\'s contradiction in the Devicetree
++      Specification).
++
++
++additionalProperties: true
+
 -- 
-David Heidelberg <david@ixit.cz>
+2.49.0
 
