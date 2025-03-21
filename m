@@ -1,98 +1,204 @@
-From: Julian Stecklina <julian.stecklina@cyberus-technology.de>
-Date: Thu, 20 Mar 2025 20:46:14 +0100
-Subject: [PATCH RFC] initrd: resize /dev/ram as needed
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Fri, 21 Mar 2025 10:23:55 +0800
+Subject: [PATCH] arm64: dts: amlogic: a4: fix dtb compilation warning
+ issues
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250320-initrd-autoresize-v1-1-a9a5930205f8@cyberus-technology.de>
-X-B4-Tracking: v=1; b=H4sIAIVw3GcC/x3MsQ5AMBCA4VeRmzWpSkmsEg9gFQN15ZaSa4lov
- LvG+A3/H8EjE3posgiMF3naXUKRZ2C2ya0oaEkGJZWWpZKCHAVexHSGndHTg2Iu0Bpja11WFaT
- uYLR0/88B+q6F8X0/7g1A+2gAAAA=
-X-Change-ID: 20250320-initrd-autoresize-b1efccf75366
-To: Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>, 
- Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Julian Stecklina <julian.stecklina@cyberus-technology.de>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742499982; l=2280;
- i=julian.stecklina@cyberus-technology.de; s=20250320;
- h=from:subject:message-id; bh=cCiCLxLx2A0Zi6Phf6RkFbbe0h/GF0wXaGlOEKWI1pc=;
- b=A5zvzV3RRP1qqWNVLxRfbNCd+jmPdkg+qMjcYwPg+vFGUuxp2TZmghC5IsNUpN0u2CttjgQWo
- jXXURgvuFv5ANNIQracW2wlNBxkunZKTVfndUD1+NdgNfAbQLfp1Ei/
-X-Developer-Key: i=julian.stecklina@cyberus-technology.de; a=ed25519;
- pk=m051/8gQfs5AmkACfykwRcD6CUr2T7DQ9OA5eBgyy7c=
-X-Endpoint-Received: by B4 Relay for julian.stecklina@cyberus-technology.de/20250320 with auth_id=363
+Message-Id: <20250321-fix-a4-pinctrl-node-v1-1-5719f9f09932@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIALrN3GcC/x2MSQqAMAwAvyI5G6hacfmKeOgSNSBRWhGh+HeLx
+ 4GZSRApMEUYiwSBbo58SIaqLMBtRlZC9pmhVnWrmqrDhR80Gk8Wd4Ud5fCEgzV28VqT6lvI5Rk
+ oa/91mt/3A56PuNllAAAA
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742523835; l=4994;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=IChqhCiVUHKV/Al5PYyBFG4RW3XtS/W3OF9ZWLm5x5E=;
+ b=m1lud64/wUROGiLfKAlu7eDbYTf4Y/RBj9k8nVltMlE3s359FZ3sUFC3hN+43NIu5AYW0uFlA
+ lrPSd5xEnI7BMBENznF5Jnx4nBvPjA9G6DiGs92ZaYgeF6zaOd2etNW
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the initrd doesn't fit into the RAM disk, we currently just die.
-This is unfortunate, because users have to manually configure the RAM
-disk size for no good reason. It also means that the kernel command
-line needs to be changed for different initrds, which is sometimes
-cumbersome.
+When use command 'make ARCH=arm64 dtbs_check W=1' to compile dtb,
+a warning message appears.
+"Warning (simple_bus_reg): /soc/bus@fe000000/pinctrl:
+missing or empty reg/ranges property"
 
-Attempt resizing /dev/ram to fit the RAM disk size instead. This makes
-initrd images work a bit more like initramfs images in that they just
-work.
+Add the unit address to the pinctrl node to fix it.
 
-Of course, this only works, because we know that /dev/ram is a RAM
-disk and we can resize it freely. I'm not sure whether I've used the
-blockdev APIs here in a sane way. If not, please advise!
-
-Signed-off-by: Julian Stecklina <julian.stecklina@cyberus-technology.de>
+Fixes: ce78f679e08c ("arm64: dts: amlogic: a4: add pinctrl node")
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- init/do_mounts_rd.c | 23 +++++++++++++++++++++--
- 1 file changed, 21 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi | 102 +++++++++++++++-------------
+ 1 file changed, 55 insertions(+), 47 deletions(-)
 
-diff --git a/init/do_mounts_rd.c b/init/do_mounts_rd.c
-index ac021ae6e6fa78c7b7828a78ab2fa3af3611bef3..5ae3639765199294a07a9b9025b7b43265370896 100644
---- a/init/do_mounts_rd.c
-+++ b/init/do_mounts_rd.c
-@@ -183,6 +183,24 @@ static unsigned long nr_blocks(struct file *file)
- 	return i_size_read(inode) >> 10;
- }
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
+index fa80fa365f13..582e0043024b 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
+@@ -51,87 +51,52 @@ pwrc: power-controller {
+ };
  
-+static int resize_ramdisk(const char *devname, u64 new_size_blocks)
-+{
-+	struct block_device *bdev;
-+	struct file *bdev_file;
-+
-+	bdev_file = bdev_file_open_by_path(devname, BLK_OPEN_READ, NULL, NULL);
-+	if (IS_ERR(bdev_file))
-+		goto err;
-+
-+	bdev = file_bdev(bdev_file);
-+	set_capacity(bdev->bd_disk, (new_size_blocks * BLOCK_SIZE) / SECTOR_SIZE);
-+
-+	fput(bdev_file);
-+	return 0;
-+err:
-+	return -1;
-+}
-+
- int __init rd_load_image(char *from)
- {
- 	int res = 0;
-@@ -219,9 +237,10 @@ int __init rd_load_image(char *from)
- 	 * the number of kibibytes of data to load into a ramdisk.
- 	 */
- 	rd_blocks = nr_blocks(out_file);
--	if (nblocks > rd_blocks) {
--		printk("RAMDISK: image too big! (%dKiB/%ldKiB)\n",
-+	if (nblocks > rd_blocks && resize_ramdisk("/dev/ram", nblocks)) {
-+		printk("RAMDISK: image too big and couldn't resize! (%dKiB/%ldKiB)\n",
- 		       nblocks, rd_blocks);
-+
- 		goto done;
- 	}
+ &apb {
+-	gpio_intc: interrupt-controller@4080 {
+-		compatible = "amlogic,a4-gpio-intc",
+-			     "amlogic,meson-gpio-intc";
+-		reg = <0x0 0x4080 0x0 0x20>;
+-		interrupt-controller;
+-		#interrupt-cells = <2>;
+-		amlogic,channel-interrupts =
+-			<10 11 12 13 14 15 16 17 18 19 20 21>;
+-	};
+-
+-	gpio_ao_intc: interrupt-controller@8e72c {
+-		compatible = "amlogic,a4-gpio-ao-intc",
+-			     "amlogic,meson-gpio-intc";
+-		reg = <0x0 0x8e72c 0x0 0x0c>;
+-		interrupt-controller;
+-		#interrupt-cells = <2>;
+-		amlogic,channel-interrupts = <140 141>;
+-	};
+-
+-	periphs_pinctrl: pinctrl {
++	periphs_pinctrl: pinctrl@4000 {
+ 		compatible = "amlogic,pinctrl-a4";
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+-		ranges;
++		ranges = <0x0 0x0 0x0 0x4000 0x0 0x280>;
  
+-		gpiox: gpio@4100 {
+-			reg = <0 0x4100 0 0x40>, <0 0x400c 0 0xc>;
++		gpiox: gpio@100 {
++			reg = <0 0x100 0 0x40>, <0 0xc 0 0xc>;
+ 			reg-names = "gpio", "mux";
+ 			gpio-controller;
+ 			#gpio-cells = <2>;
+ 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_X<<8) 18>;
+ 		};
+ 
+-		gpiot: gpio@4140 {
+-			reg = <0 0x4140 0 0x40>, <0 0x402c 0 0xc>;
++		gpiot: gpio@140 {
++			reg = <0 0x140 0 0x40>, <0 0x2c 0 0xc>;
+ 			reg-names = "gpio", "mux";
+ 			gpio-controller;
+ 			#gpio-cells = <2>;
+ 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_T<<8) 23>;
+ 		};
+ 
+-		gpiod: gpio@4180 {
+-			reg = <0 0x4180 0 0x40>, <0 0x4040 0 0x8>;
++		gpiod: gpio@180 {
++			reg = <0 0x180 0 0x40>, <0 0x40 0 0x8>;
+ 			reg-names = "gpio", "mux";
+ 			gpio-controller;
+ 			#gpio-cells = <2>;
+ 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_D<<8) 16>;
+ 		};
+ 
+-		gpioe: gpio@41c0 {
+-			reg = <0 0x41c0 0 0x40>, <0 0x4048 0 0x4>;
++		gpioe: gpio@1c0 {
++			reg = <0 0x1c0 0 0x40>, <0 0x48 0 0x4>;
+ 			reg-names = "gpio", "mux";
+ 			gpio-controller;
+ 			#gpio-cells = <2>;
+ 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_E<<8) 2>;
+ 		};
+ 
+-		gpiob: gpio@4240 {
+-			reg = <0 0x4240 0 0x40>, <0 0x4000 0 0x8>;
++		gpiob: gpio@240 {
++			reg = <0 0x240 0 0x40>, <0 0 0 0x8>;
+ 			reg-names = "gpio", "mux";
+ 			gpio-controller;
+ 			#gpio-cells = <2>;
+ 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_B<<8) 14>;
+ 		};
+ 
+-		gpioao: gpio@8e704 {
+-			reg = <0 0x8e704 0 0x16>, <0 0x8e700 0 0x4>;
+-			reg-names = "gpio", "mux";
+-			gpio-controller;
+-			#gpio-cells = <2>;
+-			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_AO<<8) 7>;
+-		};
+-
+-		test_n: gpio@8e744 {
+-			reg = <0 0x8e744 0 0x20>;
+-			reg-names = "gpio";
+-			gpio-controller;
+-			#gpio-cells = <2>;
+-			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_TEST_N<<8) 1>;
+-		};
+-
+ 		func-uart-a {
+ 			uart_a_default: group-uart-a-pins1 {
+ 				pinmux = <AML_PINMUX(AMLOGIC_GPIO_X, 11, 1)>,
+@@ -186,4 +151,47 @@ uart_e_default: group-uart-e-pins {
+ 			};
+ 		};
+ 	};
++
++	gpio_intc: interrupt-controller@4080 {
++		compatible = "amlogic,a4-gpio-intc",
++			     "amlogic,meson-gpio-intc";
++		reg = <0x0 0x4080 0x0 0x20>;
++		interrupt-controller;
++		#interrupt-cells = <2>;
++		amlogic,channel-interrupts =
++			<10 11 12 13 14 15 16 17 18 19 20 21>;
++	};
++
++	ao_pinctrl: pinctrl@8e700 {
++		compatible = "amlogic,pinctrl-a4";
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges = <0x0 0x0 0x0 0x8e700 0x0 0x80>;
++
++		gpioao: gpio@4 {
++			reg = <0 0x4 0 0x16>, <0 0 0 0x4>;
++			reg-names = "gpio", "mux";
++			gpio-controller;
++			#gpio-cells = <2>;
++			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_AO<<8) 7>;
++		};
++
++		test_n: gpio@44 {
++			reg = <0 0x44 0 0x20>;
++			reg-names = "gpio";
++			gpio-controller;
++			#gpio-cells = <2>;
++			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_TEST_N<<8) 1>;
++		};
++	};
++
++	gpio_ao_intc: interrupt-controller@8e72c {
++		compatible = "amlogic,a4-gpio-ao-intc",
++			     "amlogic,meson-gpio-intc";
++		reg = <0x0 0x8e72c 0x0 0x0c>;
++		interrupt-controller;
++		#interrupt-cells = <2>;
++		amlogic,channel-interrupts = <140 141>;
++	};
++
+ };
 
 ---
-base-commit: 5fc31936081919a8572a3d644f3fbb258038f337
-change-id: 20250320-initrd-autoresize-b1efccf75366
+base-commit: 73a143e436311183186ab4b365a84c662f2c9651
+change-id: 20250317-fix-a4-pinctrl-node-9babfd44e085
 
 Best regards,
 -- 
-Julian Stecklina <julian.stecklina@cyberus-technology.de>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
