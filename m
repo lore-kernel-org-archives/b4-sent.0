@@ -1,10 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 21 Mar 2025 13:09:53 +0400
-Subject: [PATCH v5 4/6] PCI: qcom: Add support for IPQ5018
+Date: Fri, 21 Mar 2025 13:09:54 +0400
+Subject: [PATCH v5 5/6] arm64: dts: qcom: ipq5018: Add PCIe related nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250321-ipq5018-pcie-v5-4-aae2caa1f418@outlook.com>
+Message-Id: <20250321-ipq5018-pcie-v5-5-aae2caa1f418@outlook.com>
 References: <20250321-ipq5018-pcie-v5-0-aae2caa1f418@outlook.com>
 In-Reply-To: <20250321-ipq5018-pcie-v5-0-aae2caa1f418@outlook.com>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -24,11 +24,11 @@ Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org,
  20250317100029.881286-2-quic_varada@quicinc.com, 
  Sricharan R <quic_srichara@quicinc.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742548192; l=1329;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742548192; l=7376;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=hdHPuZTrjBVTUJ6XMbo2uB5TbhhbWj1SbVqmNl1k/ZI=;
- b=aWl7qLTKgwpbadAYtN8Rc/gI4tAlinSvRPw6wCeNui7cQAoBnfyHqlUwGojkyh/aNRv6qpCDE
- FM1aVhTZKyMBkodvkC3nZDBKIonDreezBCYvDDa71euaqYZy9Z8LtS8
+ bh=WAeuLjqK9NUk+ZyBqC1MGZazKF8I8F2kraQ/dHrYTKM=;
+ b=77Oey4DZWN86vNqNk+bHpDsFUC8f6mlP9aChh64D0BOmUkhHl7xENSBjeyZJzoIWUq39rwJdp
+ 2Q2sxmFzfnoCdLnqCn/xO3yIrJ8xH+OjFjI+YMDZaXjLdgfBtcX1bnn
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
@@ -36,32 +36,276 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Nitheesh Sekar <quic_nsekar@quicinc.com>
 
-Add IPQ5018 platform with is based on Qcom IP rev. 2.9.0
-and Synopsys IP rev. 5.00a.
+Add phy and controller nodes for a 2-lane Gen2 and
+a 1-lane Gen2 PCIe bus. IPQ5018 has 8 MSI SPI interrupts and
+one global interrupt.
 
-The platform itself has two PCIe Gen2 controllers: one single-lane and
-one dual-lane. So let's add the IPQ5018 compatible and re-use 2_9_0 ops.
-
-Reviewed-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 Signed-off-by: Nitheesh Sekar <quic_nsekar@quicinc.com>
 Signed-off-by: Sricharan R <quic_srichara@quicinc.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/pci/controller/dwc/pcie-qcom.c | 1 +
- 1 file changed, 1 insertion(+)
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 234 +++++++++++++++++++++++++++++++++-
+ 1 file changed, 232 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
-index dc98ae63362d..e91bbe218569 100644
---- a/drivers/pci/controller/dwc/pcie-qcom.c
-+++ b/drivers/pci/controller/dwc/pcie-qcom.c
-@@ -1840,6 +1840,7 @@ static const struct of_device_id qcom_pcie_match[] = {
- 	{ .compatible = "qcom,pcie-apq8064", .data = &cfg_2_1_0 },
- 	{ .compatible = "qcom,pcie-apq8084", .data = &cfg_1_0_0 },
- 	{ .compatible = "qcom,pcie-ipq4019", .data = &cfg_2_4_0 },
-+	{ .compatible = "qcom,pcie-ipq5018", .data = &cfg_2_9_0 },
- 	{ .compatible = "qcom,pcie-ipq6018", .data = &cfg_2_9_0 },
- 	{ .compatible = "qcom,pcie-ipq8064", .data = &cfg_2_1_0 },
- 	{ .compatible = "qcom,pcie-ipq8064-v2", .data = &cfg_2_1_0 },
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+index 8914f2ef0bc4..d08034b57e80 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+@@ -147,6 +147,40 @@ usbphy0: phy@5b000 {
+ 			status = "disabled";
+ 		};
+ 
++		pcie1_phy: phy@7e000{
++			compatible = "qcom,ipq5018-uniphy-pcie-phy";
++			reg = <0x0007e000 0x800>;
++
++			clocks = <&gcc GCC_PCIE1_PIPE_CLK>;
++
++			resets = <&gcc GCC_PCIE1_PHY_BCR>,
++				 <&gcc GCC_PCIE1PHY_PHY_BCR>;
++
++			#clock-cells = <0>;
++			#phy-cells = <0>;
++
++			num-lanes = <1>;
++
++			status = "disabled";
++		};
++
++		pcie0_phy: phy@86000{
++			compatible = "qcom,ipq5018-uniphy-pcie-phy";
++			reg = <0x00086000 0x800>;
++
++			clocks = <&gcc GCC_PCIE0_PIPE_CLK>;
++
++			resets = <&gcc GCC_PCIE0_PHY_BCR>,
++				 <&gcc GCC_PCIE0PHY_PHY_BCR>;
++
++			#clock-cells = <0>;
++			#phy-cells = <0>;
++
++			num-lanes = <2>;
++
++			status = "disabled";
++		};
++
+ 		tlmm: pinctrl@1000000 {
+ 			compatible = "qcom,ipq5018-tlmm";
+ 			reg = <0x01000000 0x300000>;
+@@ -170,8 +204,8 @@ gcc: clock-controller@1800000 {
+ 			reg = <0x01800000 0x80000>;
+ 			clocks = <&xo_board_clk>,
+ 				 <&sleep_clk>,
+-				 <0>,
+-				 <0>,
++				 <&pcie0_phy>,
++				 <&pcie1_phy>,
+ 				 <0>,
+ 				 <0>,
+ 				 <0>,
+@@ -387,6 +421,202 @@ frame@b128000 {
+ 				status = "disabled";
+ 			};
+ 		};
++
++		pcie1: pcie@80000000 {
++			compatible = "qcom,pcie-ipq5018";
++			reg = <0x80000000 0xf1d>,
++			      <0x80000f20 0xa8>,
++			      <0x80001000 0x1000>,
++			      <0x00078000 0x3000>,
++			      <0x80100000 0x1000>,
++			      <0x0007b000 0x1000>;
++			reg-names = "dbi",
++				    "elbi",
++				    "atu",
++				    "parf",
++				    "config",
++				    "mhi";
++			device_type = "pci";
++			linux,pci-domain = <0>;
++			bus-range = <0x00 0xff>;
++			num-lanes = <1>;
++			max-link-speed = <2>;
++			#address-cells = <3>;
++			#size-cells = <2>;
++
++			phys = <&pcie1_phy>;
++			phy-names ="pciephy";
++
++			ranges = <0x01000000 0 0x00000000 0x80200000 0 0x00100000>,
++				 <0x02000000 0 0x80300000 0x80300000 0 0x10000000>;
++
++			msi-map = <0x0 &v2m0 0x0 0xff8>;
++
++			interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 118 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 119 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "msi0",
++					  "msi1",
++					  "msi2",
++					  "msi3",
++					  "msi4",
++					  "msi5",
++					  "msi6",
++					  "msi7",
++					  "global";
++
++			#interrupt-cells = <1>;
++			interrupt-map-mask = <0 0 0 0x7>;
++			interrupt-map = <0 0 0 1 &intc 0 0 142 IRQ_TYPE_LEVEL_HIGH>,
++					<0 0 0 2 &intc 0 0 143 IRQ_TYPE_LEVEL_HIGH>,
++					<0 0 0 3 &intc 0 0 144 IRQ_TYPE_LEVEL_HIGH>,
++					<0 0 0 4 &intc 0 0 145 IRQ_TYPE_LEVEL_HIGH>;
++
++			clocks = <&gcc GCC_SYS_NOC_PCIE1_AXI_CLK>,
++				 <&gcc GCC_PCIE1_AXI_M_CLK>,
++				 <&gcc GCC_PCIE1_AXI_S_CLK>,
++				 <&gcc GCC_PCIE1_AHB_CLK>,
++				 <&gcc GCC_PCIE1_AUX_CLK>,
++				 <&gcc GCC_PCIE1_AXI_S_BRIDGE_CLK>;
++			clock-names = "iface",
++				      "axi_m",
++				      "axi_s",
++				      "ahb",
++				      "aux",
++				      "axi_bridge";
++
++			resets = <&gcc GCC_PCIE1_PIPE_ARES>,
++				 <&gcc GCC_PCIE1_SLEEP_ARES>,
++				 <&gcc GCC_PCIE1_CORE_STICKY_ARES>,
++				 <&gcc GCC_PCIE1_AXI_MASTER_ARES>,
++				 <&gcc GCC_PCIE1_AXI_SLAVE_ARES>,
++				 <&gcc GCC_PCIE1_AHB_ARES>,
++				 <&gcc GCC_PCIE1_AXI_MASTER_STICKY_ARES>,
++				 <&gcc GCC_PCIE1_AXI_SLAVE_STICKY_ARES>;
++			reset-names = "pipe",
++				      "sleep",
++				      "sticky",
++				      "axi_m",
++				      "axi_s",
++				      "ahb",
++				      "axi_m_sticky",
++				      "axi_s_sticky";
++
++			status = "disabled";
++
++			pcie@0 {
++				device_type = "pci";
++				reg = <0x0 0x0 0x0 0x0 0x0>;
++
++				#address-cells = <3>;
++				#size-cells = <2>;
++				ranges;
++			};
++		};
++
++		pcie0: pcie@a0000000 {
++			compatible = "qcom,pcie-ipq5018";
++			reg = <0xa0000000 0xf1d>,
++			      <0xa0000f20 0xa8>,
++			      <0xa0001000 0x1000>,
++			      <0x00080000 0x3000>,
++			      <0xa0100000 0x1000>,
++			      <0x00083000 0x1000>;
++			reg-names = "dbi",
++				    "elbi",
++				    "atu",
++				    "parf",
++				    "config",
++				    "mhi";
++			device_type = "pci";
++			linux,pci-domain = <1>;
++			bus-range = <0x00 0xff>;
++			num-lanes = <2>;
++			max-link-speed = <2>;
++			#address-cells = <3>;
++			#size-cells = <2>;
++
++			phys = <&pcie0_phy>;
++			phy-names ="pciephy";
++
++			ranges = <0x01000000 0 0x00000000 0xa0200000 0 0x00100000>,
++				 <0x02000000 0 0xa0300000 0xa0300000 0 0x10000000>;
++
++			msi-map = <0x0 &v2m0 0x0 0xff8>;
++
++			interrupts = <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 68 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "msi0",
++					  "msi1",
++					  "msi2",
++					  "msi3",
++					  "msi4",
++					  "msi5",
++					  "msi6",
++					  "msi7",
++					  "global";
++
++			#interrupt-cells = <1>;
++			interrupt-map-mask = <0 0 0 0x7>;
++			interrupt-map = <0 0 0 1 &intc 0 0 75 IRQ_TYPE_LEVEL_HIGH>,
++					<0 0 0 2 &intc 0 0 78 IRQ_TYPE_LEVEL_HIGH>,
++					<0 0 0 3 &intc 0 0 79 IRQ_TYPE_LEVEL_HIGH>,
++					<0 0 0 4 &intc 0 0 83 IRQ_TYPE_LEVEL_HIGH>;
++
++			clocks = <&gcc GCC_SYS_NOC_PCIE0_AXI_CLK>,
++				 <&gcc GCC_PCIE0_AXI_M_CLK>,
++				 <&gcc GCC_PCIE0_AXI_S_CLK>,
++				 <&gcc GCC_PCIE0_AHB_CLK>,
++				 <&gcc GCC_PCIE0_AUX_CLK>,
++				 <&gcc GCC_PCIE0_AXI_S_BRIDGE_CLK>;
++			clock-names = "iface",
++				      "axi_m",
++				      "axi_s",
++				      "ahb",
++				      "aux",
++				      "axi_bridge";
++
++			resets = <&gcc GCC_PCIE0_PIPE_ARES>,
++				 <&gcc GCC_PCIE0_SLEEP_ARES>,
++				 <&gcc GCC_PCIE0_CORE_STICKY_ARES>,
++				 <&gcc GCC_PCIE0_AXI_MASTER_ARES>,
++				 <&gcc GCC_PCIE0_AXI_SLAVE_ARES>,
++				 <&gcc GCC_PCIE0_AHB_ARES>,
++				 <&gcc GCC_PCIE0_AXI_MASTER_STICKY_ARES>,
++				 <&gcc GCC_PCIE0_AXI_SLAVE_STICKY_ARES>;
++			reset-names = "pipe",
++				      "sleep",
++				      "sticky",
++				      "axi_m",
++				      "axi_s",
++				      "ahb",
++				      "axi_m_sticky",
++				      "axi_s_sticky";
++
++			status = "disabled";
++
++			pcie@0 {
++				device_type = "pci";
++				reg = <0x0 0x0 0x0 0x0 0x0>;
++
++				#address-cells = <3>;
++				#size-cells = <2>;
++				ranges;
++			};
++		};
+ 	};
+ 
+ 	timer {
 
 -- 
 2.48.1
