@@ -1,10 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Fri, 21 Mar 2025 21:48:46 +0100
-Subject: [PATCH v3 4/7] x86/Kconfig: Update lists in X86_EXTENDED_PLATFORM
+Date: Fri, 21 Mar 2025 21:48:47 +0100
+Subject: [PATCH v3 5/7] x86/Kconfig: Document CONFIG_PCI_MMCONFIG
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250321-x86_x2apic-v3-4-b0cbaa6fa338@ixit.cz>
+Message-Id: <20250321-x86_x2apic-v3-5-b0cbaa6fa338@ixit.cz>
 References: <20250321-x86_x2apic-v3-0-b0cbaa6fa338@ixit.cz>
 In-Reply-To: <20250321-x86_x2apic-v3-0-b0cbaa6fa338@ixit.cz>
 To: Thomas Gleixner <tglx@linutronix.de>, Ingo Molnar <mingo@redhat.com>, 
@@ -17,20 +17,20 @@ Cc: linux-kernel@vger.kernel.org, Ingo Molnar <mingo@kernel.org>,
  =?utf-8?q?Mateusz_Jo=C5=84czyk?= <mat.jonczyk@o2.pl>, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1648; i=david@ixit.cz;
- h=from:subject:message-id; bh=nrv4SmvAYUhUrihtUik+drIq1LZYFKFcyzZRBUmd5Mg=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn3dCuv8nW+5F3N0iGdtqB1flVbmyxDXJkJe+1d
- b1JkzGYJ5iJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ93QrgAKCRBgAj/E00kg
- cjmBD/9pkiNdGCnuFiEQy9B8w/zs2Z3SLBwiQar0/WUwmysqq7Wrj3muZ2PaDEg7wygLs8/Vhe3
- 1n0RnQcnfEbhi17CKmvoJhi7ItXZUUojjbSqXUGDkQ/BADCofv3tRwD+hmNqUYF+E+P5A2fXmy+
- 3C5veQBJavPWtnkGQqbCk1ECq9Zg5bZeTntXH0g+zJbcPzqbtK7WHOe7aUyVpHv7gtbyst5rGWS
- VQx7qekMLZFi7BHz5dsoBy/jB1aAR2xsybYA6bKxB3Be0H5Pw5lM7QQED2mGtYY9El5+7eD/cjF
- RwGPFUvpQ6hxSRHx99+Y4U/ptgI7gCNzVa18Qc0L/MujhYDHWepBcPjdnk3dawDiLYf/Ao39chV
- 3MPPNfZ6HZ5KF/nub8CwmMFTRw3xEb14D9AhW6JAG783ucVCDof3M/Hv1uQQMpXv2bXyEbDMOpR
- tKUB4NVKu9RUzQ3kOcD12OzFazIRj9xvvddC+4XSNZn4GO8G7wrtHMueoVGK54pV/Cr9zS/pLuc
- 8ype6q0gl6f1R9unza+JI/31sKUcPs2L7xkuQYw8j+J4xUCOfxy6yRxzAH8XHEoKyFoMmpaXVUz
- mPM1dJIUWQNS4zba90WYUEBnjbxtMFuFY9C1EVxVMmDx4Swa836lWpiPGoFtMnAD9sGFM95J9Zo
- +LSdC4bJZZWyL1A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1354; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Wk/lNByjM8U8pBa5Ev4LNdWk6Mu/MLaTMuM+X8ijgiU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn3dCur5z5xbIM6Vj2mqrfW1IC8Kk112jMSEJlL
+ 9REVC+he/GJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ93QrgAKCRBgAj/E00kg
+ ckQDD/0cjn/rv15TNepea/LN5OSmUsvz1KkEO9p5surgD2M2+pPeUuTu1SnmFBRzdrRXetOJqzs
+ oK3IntTPEq2ZDf3ynxV2H6fXjfdPr1cvb6gsO8HP8mpYuCUEI10uti8a0iv+p0jEwh2zzJhtTZ8
+ HZS3067Oz7z5bcK0McMBBG+nLkdeGg5rwCIs8e7U1LuRsH0bDa0BXp9rA6KKK+3kuizFBEETtKO
+ iH0db+yFwbiEd3WJS+rWVxcDyJcpvVa+/ajd1gPVMvgjdDK9Yb2K8okUUtHyTaJVvbmy+9mLvaC
+ wP3f4fLL5zXak2gfan0T53XSognvmXLcWRipLFEx4aaaCa+Ysex7X+Y4Sr1OiNDfQqj0ld/kE3F
+ nhjnaQspSzAwh5CKXt/iEn4KBjjaVP+QwQb18+5NsN9oqVM8NTuZxTLuzGool4FfaOnV+1iP8DQ
+ MSBxeKoE5DuHoo+QnixKx7LMFGpfT5Qbf4Z9728hheIDMxyhpp3sfc6U//+YMdJbxsNh1Hl9Ngi
+ 7do8AgglsB43/B+MsBoM5n0We9uG5WEZV20YdXpjakMurLwAhNIbtJV0nqgzUxWHyknyFIAuAX3
+ v81gCuR1ekowhRbgkccgsJYVsAh3m2MA3GxW1bt0yYGAQubmRZbKWrnXwaM3Kglbra/ArZRhqY3
+ dOW1rxWrzMruKxw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -38,52 +38,42 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Mateusz Jończyk <mat.jonczyk@o2.pl>
 
-The order of the entries matches the order they appear in Kconfig.
+This configuration option had no help text, so add it.
 
-In 2011, AMD Elan was moved to Kconfig.cpu and the dependency on
-X86_EXTENDED_PLATFORM was dropped in
-commit ce9c99af8d4b ("x86, cpu: Move AMD Elan Kconfig under "Processor family"")
-
-Support for Moorestown MID devices was removed in 2012 in
-commit 1a8359e411eb ("x86/mid: Remove Intel Moorestown")
-
-SGI 320/540 (Visual Workstation) was removed in 2014 in
-commit c5f9ee3d665a ("x86, platforms: Remove SGI Visual Workstation")
+CONFIG_EXPERT is enabled on some distribution kernels, so people using a
+distribution kernel's configuration as a starting point will see this
+option.
 
 Signed-off-by: Mateusz Jończyk <mat.jonczyk@o2.pl>
 Signed-off-by: David Heideberg <david@ixit.cz>
 ---
- arch/x86/Kconfig | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ arch/x86/Kconfig | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
 diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
-index 9e5dea7c9fd7aeceb727f4c372c8880c9182f7f2..fbc9ba30fd1cbfb574399a0632b9f77876ba84a8 100644
+index fbc9ba30fd1cbfb574399a0632b9f77876ba84a8..64a1e00619df95f559488e3004558a7b0f653df3 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -553,16 +553,20 @@ config X86_EXTENDED_PLATFORM
- 	  CONFIG_64BIT.
+@@ -2914,6 +2914,19 @@ config PCI_MMCONFIG
+ 	default y
+ 	depends on PCI && (ACPI || JAILHOUSE_GUEST)
+ 	depends on X86_64 || (PCI_GOANY || PCI_GOMMCONFIG)
++	help
++	  Add support for accessing the PCI configuration space as a memory
++	  mapped area. It is the recommended method if the system supports
++	  this (it must have PCI Express and ACPI for it to be available).
++
++	  In the unlikely case that enabling this configuration option causes
++	  problems, the mechanism can be switched off with the 'pci=nommconf'
++	  command line parameter.
++
++	  Say 'n' only if you are sure that your platform does not support this
++	  access method or you have problems caused by it.
++
++	  Say 'y' otherwise.
  
- 	  32-bit platforms (CONFIG_64BIT=n):
--		Goldfish (Android emulator)
--		AMD Elan
-+		Goldfish (mostly Android emulator)
-+		Intel CE media processor (CE4100) SoC
-+		Intel MID (Mobile Internet Device)
-+		Intel Quark
- 		RDC R-321x SoC
--		SGI 320/540 (Visual Workstation)
-+		STA2X11-based (e.g. Northville)
- 
- 	  64-bit platforms (CONFIG_64BIT=y):
- 		Numascale NumaChip
- 		ScaleMP vSMP
- 		SGI Ultraviolet
- 		Merrifield/Moorefield MID devices
-+		Goldfish (mostly Android emulator)
-+		Intel MID (Mobile Internet Device)
- 
- 	  If you have one of these systems, or if you want to build a
- 	  generic distribution kernel, say Y here - otherwise say N.
+ config PCI_OLPC
+ 	def_bool y
 
 -- 
 2.49.0
