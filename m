@@ -1,10 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 21 Mar 2025 16:14:41 +0400
-Subject: [PATCH v6 3/6] dt-bindings: PCI: qcom: Add IPQ5018 SoC
+Date: Fri, 21 Mar 2025 16:14:42 +0400
+Subject: [PATCH v6 4/6] PCI: qcom: Add support for IPQ5018
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250321-ipq5018-pcie-v6-3-b7d659a76205@outlook.com>
+Message-Id: <20250321-ipq5018-pcie-v6-4-b7d659a76205@outlook.com>
 References: <20250321-ipq5018-pcie-v6-0-b7d659a76205@outlook.com>
 In-Reply-To: <20250321-ipq5018-pcie-v6-0-b7d659a76205@outlook.com>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -23,13 +23,13 @@ Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-pci@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>, 
  20250317100029.881286-2-quic_varada@quicinc.com, 
- Sricharan Ramabadhran <quic_srichara@quicinc.com>
+ Sricharan R <quic_srichara@quicinc.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742559282; l=3072;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742559282; l=1329;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=n1pq98OF6nCyGBtv37e9qjebYlzLP26UOUQF23Nah7k=;
- b=QcJqr+eg1uuWXDOVJ3X4bfRhejU+SaW69uhV608YjWAsVsg5TKNFPFHIab3cdz/5ni+fJ1/Sy
- e8CuCbLSlo4CYMW1arxo5R4MDSM8REJlG3riZZgy6sm5HtIsw5IQjHS
+ bh=hdHPuZTrjBVTUJ6XMbo2uB5TbhhbWj1SbVqmNl1k/ZI=;
+ b=dloC34ddXrnoi0F8aDwk0mIJUdN94t02LuAxYGJ234hUjg9zq8BOlPIv2wRTksRnqwNtSno1p
+ o00oz5MFbryBAtC8LfHJYwkdFqDTVm5y1/WK6Q+IZ6JE3DH59nh+GGY
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
@@ -37,98 +37,32 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Nitheesh Sekar <quic_nsekar@quicinc.com>
 
-Add support for the PCIe controller on the Qualcomm
-IPQ5108 SoC to the bindings.
+Add IPQ5018 platform with is based on Qcom IP rev. 2.9.0
+and Synopsys IP rev. 5.00a.
 
+The platform itself has two PCIe Gen2 controllers: one single-lane and
+one dual-lane. So let's add the IPQ5018 compatible and re-use 2_9_0 ops.
+
+Reviewed-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 Signed-off-by: Nitheesh Sekar <quic_nsekar@quicinc.com>
-Signed-off-by: Sricharan Ramabadhran <quic_srichara@quicinc.com>
+Signed-off-by: Sricharan R <quic_srichara@quicinc.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- .../devicetree/bindings/pci/qcom,pcie.yaml         | 50 ++++++++++++++++++++++
- 1 file changed, 50 insertions(+)
+ drivers/pci/controller/dwc/pcie-qcom.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/pci/qcom,pcie.yaml b/Documentation/devicetree/bindings/pci/qcom,pcie.yaml
-index 469b99fa0f0e..668ff03f2561 100644
---- a/Documentation/devicetree/bindings/pci/qcom,pcie.yaml
-+++ b/Documentation/devicetree/bindings/pci/qcom,pcie.yaml
-@@ -21,6 +21,7 @@ properties:
-           - qcom,pcie-apq8064
-           - qcom,pcie-apq8084
-           - qcom,pcie-ipq4019
-+          - qcom,pcie-ipq5018
-           - qcom,pcie-ipq6018
-           - qcom,pcie-ipq8064
-           - qcom,pcie-ipq8064-v2
-@@ -168,6 +169,7 @@ allOf:
-         compatible:
-           contains:
-             enum:
-+              - qcom,pcie-ipq5018
-               - qcom,pcie-ipq6018
-               - qcom,pcie-ipq8074-gen3
-               - qcom,pcie-ipq9574
-@@ -324,6 +326,53 @@ allOf:
-             - const: ahb # AHB reset
-             - const: phy_ahb # PHY AHB reset
- 
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - qcom,pcie-ipq5018
-+    then:
-+      properties:
-+        clocks:
-+          minItems: 6
-+          maxItems: 6
-+        clock-names:
-+          items:
-+            - const: iface # PCIe to SysNOC BIU clock
-+            - const: axi_m # AXI Master clock
-+            - const: axi_s # AXI Slave clock
-+            - const: ahb # AHB clock
-+            - const: aux # Auxiliary clock
-+            - const: axi_bridge # AXI bridge clock
-+        resets:
-+          minItems: 8
-+          maxItems: 8
-+        reset-names:
-+          items:
-+            - const: pipe # PIPE reset
-+            - const: sleep # Sleep reset
-+            - const: sticky # Core sticky reset
-+            - const: axi_m # AXI master reset
-+            - const: axi_s # AXI slave reset
-+            - const: ahb # AHB reset
-+            - const: axi_m_sticky # AXI master sticky reset
-+            - const: axi_s_sticky # AXI slave sticky reset
-+        interrupts:
-+          minItems: 9
-+          maxItems: 9
-+        interrupt-names:
-+          items:
-+            - const: msi0
-+            - const: msi1
-+            - const: msi2
-+            - const: msi3
-+            - const: msi4
-+            - const: msi5
-+            - const: msi6
-+            - const: msi7
-+            - const: global
-+
-   - if:
-       properties:
-         compatible:
-@@ -564,6 +613,7 @@ allOf:
-               enum:
-                 - qcom,pcie-apq8064
-                 - qcom,pcie-ipq4019
-+                - qcom,pcie-ipq5018
-                 - qcom,pcie-ipq8064
-                 - qcom,pcie-ipq8064v2
-                 - qcom,pcie-ipq8074
+diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
+index dc98ae63362d..e91bbe218569 100644
+--- a/drivers/pci/controller/dwc/pcie-qcom.c
++++ b/drivers/pci/controller/dwc/pcie-qcom.c
+@@ -1840,6 +1840,7 @@ static const struct of_device_id qcom_pcie_match[] = {
+ 	{ .compatible = "qcom,pcie-apq8064", .data = &cfg_2_1_0 },
+ 	{ .compatible = "qcom,pcie-apq8084", .data = &cfg_1_0_0 },
+ 	{ .compatible = "qcom,pcie-ipq4019", .data = &cfg_2_4_0 },
++	{ .compatible = "qcom,pcie-ipq5018", .data = &cfg_2_9_0 },
+ 	{ .compatible = "qcom,pcie-ipq6018", .data = &cfg_2_9_0 },
+ 	{ .compatible = "qcom,pcie-ipq8064", .data = &cfg_2_1_0 },
+ 	{ .compatible = "qcom,pcie-ipq8064-v2", .data = &cfg_2_1_0 },
 
 -- 
 2.48.1
