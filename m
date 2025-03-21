@@ -1,174 +1,93 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 21 Mar 2025 13:47:27 +0100
-Subject: [PATCH 4/4] sysctl: Close test ctl_headers with a for loop
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v3 0/7] x86: Kconfig cleanups and help text improvements
+Date: Fri, 21 Mar 2025 21:48:42 +0100
+Message-Id: <20250321-x86_x2apic-v3-0-b0cbaa6fa338@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250321-jag-test_extra_val-v1-4-a01b3b17dc66@kernel.org>
-References: <20250321-jag-test_extra_val-v1-0-a01b3b17dc66@kernel.org>
-In-Reply-To: <20250321-jag-test_extra_val-v1-0-a01b3b17dc66@kernel.org>
-To: Kees Cook <kees@kernel.org>, Andrew Morton <akpm@linux-foundation.org>, 
- Shuah Khan <shuah@kernel.org>, John Sperbeck <jsperbeck@google.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAKrQ3WcC/43OSw6CMBSF4a2Qji1pL5WHI/dhiGnKRa5KS1pCQ
+ MLeLSTOHf6D8+WsLKAnDOySrMzjRIGcjZGdEmY6bR/IqYnNQMBZZCD4XOb3GfRAhhdYQSNaZVT
+ RsDgYPLY0H9itjt161/Ox86h/BIhKSlGqQspUZnmluOS9HtOns+azvK4O0uG9Ux2F0fnluDXBD
+ v4/r7dt+wITVH5d2AAAAA==
+X-Change-ID: 20250320-x86_x2apic-7e92d0f4c47d
+To: Thomas Gleixner <tglx@linutronix.de>, Ingo Molnar <mingo@redhat.com>, 
+ Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, 
+ x86@kernel.org, "H. Peter Anvin" <hpa@zytor.com>, 
+ Kees Cook <kees@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>
+Cc: linux-kernel@vger.kernel.org, Ingo Molnar <mingo@kernel.org>, 
+ linux-iio@vger.kernel.org, 
+ =?utf-8?q?Mateusz_Jo=C5=84czyk?= <mat.jonczyk@o2.pl>, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4809;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=tPclanPxc2LJNZ+LffzKz/MsVwoWY65M+jCqO4MmhRM=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGfdYAmcBP428RNEZK9+DxFx/XWo1HWrXCkYx
- 1mIYMzHtpVKg4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn3WAJAAoJELqXzVK3
- lkFPldcL/3Q+mTYV2tiKx/akRMoNAII46ZkMXn0pX8wC33X6kFjgRHi2H99XUdtueb4itHmdcQR
- g0zo+z8PyAqv+1XfJOsCEy4ilUP106towob7bUHVLBVhiPGiw0XCTmEjne92Wfgk8lh2O25n7dX
- bgIJEKP1pb+aNPkCPJwcx9/Px8W98BcD+Az0yqO52SnPjInsjDJ8xfgS6GpotB4PIRCnLyiB8jW
- qBBsIjnTs9mPToF8e0qevpvgXGboSlWYmb/ELe7dQz4xlPdra+OI8CH+3aC9UrYyy2mzkOWItnp
- rV+Bek/HYMFWGXZpgG/ZR74kPDv4avI0Q1xlJl7y8AWeXbaor6BwN0NUBFgxZeqMlb3YLqCF7XX
- +m4peyWpyZp/NqtKfh9/G0IWxdhdQPh/G6FP8wdTD42t6WSad5o0dC8zoFrp/k1dFAsSlFU8A/H
- 2qjI62P+1Ef35Esy4U3d5qk0pgr+l/C0E5Sni69ArHnLxPcyEJX53aXB7pQ1HqWupHfZbpSlM38
- kE=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1883; i=david@ixit.cz;
+ h=from:subject:message-id; bh=CpTm/Ssh7UmOqET4ZoOlwg+ImY4NAduCep5IKrVt6F0=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn3dCu7jynvXJK8lPJS6rk08IvynLIer67lxdKm
+ KnBsXrlZ5+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ93QrgAKCRBgAj/E00kg
+ cpCfEACDlc7AojeczQKU7Rbtzv5C9OW1PHbmmUkO/kclLeIxRlj4FEwSCmqUKbSsDgLXPT35xl+
+ s4e0kajKOwaCE7BHBW0vlJsjKHpxOpMJH43hPLvsCoFzUpMfclQ6IJlktdZl3ckqPQAPnc1rr5B
+ RtP+w/5sj8I+z513WpRM8Ta9WngD6LdyMsG3Cd83qWmVYsrftURiZH8j0ukWWoWj+Ekau1Bq4wy
+ EPyrxqXGJtWpkqFmMiNQikO4fENYwYzynTnTE/XGGOSKL52w3Fv/yfy7YJnVHK2SsddSVu6d2GZ
+ pJ+1YzdmfzjkH4fLMRmoPGuow01DYWjRJydkX4vgs/OgLI1rgnnOlRNyCVJfbUnM1KGvtuUU/cM
+ s88ySZJ2cPQTEZDovxBoRfUjr3KEiXWuu5T/taK98wA2FsBYXtCdbnxDOJAHX3Wv+X7XydRo1nj
+ tGlZEMCyF4ykoFtYhQe3pcyAm5HwE0ODvBFlLp1roDKw385mQq6LuGlWK0CgEMji49LEE87EFXg
+ gneGtCI25l6A3sxISuYCYv/xdRrUNm78LDlaDwIUCYS1Y++mS7pzgEtH9ygMh/eXfckSJyidngr
+ RTOKihB4C5lXSlFnadYozaUDSJZUYDhPwn094iGa61R8VjqEcyhPCCMdjJmTfoCH2MZHCQL5pzR
+ ygzQhK/uzTmf40A==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As more tests are added, the exit function gets longer than it should
-be. Condense the un-register calls into a for loop to make it easier to
-add/remove tests.
+I'm resending this mainly because of the first patch, but I find
+all other patches worthy too, so here is the rebased bulk.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+ - David
+====
+
+Hello,
+
+There are some problems with Kconfig help texts in the kernel. They are
+frequently confusing and use language that is difficult to understand
+for people unfamiliar with the feature. Sometimes, the help text was not
+updated after important kernel or ecosystem changes. References to
+something "future" or "old" are also usually given without specifying
+any dates.
+
+First version of this patch series was sent out in February 2022.
+
+Greetings,
+Mateusz
+
+Signed-off-by: Mateusz Jończyk <mat.jonczyk@o2.pl>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- lib/test_sysctl.c | 65 +++++++++++++++++++++++++------------------------------
- 1 file changed, 29 insertions(+), 36 deletions(-)
+Changes in v3:
+- Rebased against latest next-20250321.
+- Dropped deprecated patches:
+   2/10  "x86/apic: fix panic message when x2APIC is not supported"
+   4/10  "x86/Kconfig: drop X86_32_NON_STANDARD"
+- Dropped patch I was not very sure about, as there are other refs:
+   10/10 "x86/Kconfig: remove CONFIG_ISA_BUS"
+- Link to v2: https://lore.kernel.org/r/20220911084711.13694-1-mat.jonczyk@o2.pl
 
-diff --git a/lib/test_sysctl.c b/lib/test_sysctl.c
-index 4b3d56de6269b93220ecbeb3d3d4e42944b0ca78..c02aa9c868f2117606b24f114326bf1c396cd584 100644
---- a/lib/test_sysctl.c
-+++ b/lib/test_sysctl.c
-@@ -30,16 +30,17 @@ static int i_zero;
- static int i_one_hundred = 100;
- static int match_int_ok = 1;
- 
-+enum {
-+	TEST_H_SETUP_NODE,
-+	TEST_H_MNT,
-+	TEST_H_MNTERROR,
-+	TEST_H_EMPTY_ADD,
-+	TEST_H_EMPTY,
-+	TEST_H_U8,
-+	TEST_H_SIZE /* Always at the end */
-+};
- 
--static struct {
--	struct ctl_table_header *test_h_setup_node;
--	struct ctl_table_header *test_h_mnt;
--	struct ctl_table_header *test_h_mnterror;
--	struct ctl_table_header *empty_add;
--	struct ctl_table_header *empty;
--	struct ctl_table_header *test_u8;
--} sysctl_test_headers;
--
-+static struct ctl_table_header *ctl_headers[TEST_H_SIZE] = {};
- struct test_sysctl_data {
- 	int int_0001;
- 	int int_0002;
-@@ -168,8 +169,8 @@ static int test_sysctl_setup_node_tests(void)
- 	test_data.bitmap_0001 = kzalloc(SYSCTL_TEST_BITMAP_SIZE/8, GFP_KERNEL);
- 	if (!test_data.bitmap_0001)
- 		return -ENOMEM;
--	sysctl_test_headers.test_h_setup_node = register_sysctl("debug/test_sysctl", test_table);
--	if (!sysctl_test_headers.test_h_setup_node) {
-+	ctl_headers[TEST_H_SETUP_NODE] = register_sysctl("debug/test_sysctl", test_table);
-+	if (!ctl_headers[TEST_H_SETUP_NODE]) {
- 		kfree(test_data.bitmap_0001);
- 		return -ENOMEM;
- 	}
-@@ -203,12 +204,12 @@ static int test_sysctl_run_unregister_nested(void)
- 
- static int test_sysctl_run_register_mount_point(void)
- {
--	sysctl_test_headers.test_h_mnt
-+	ctl_headers[TEST_H_MNT]
- 		= register_sysctl_mount_point("debug/test_sysctl/mnt");
--	if (!sysctl_test_headers.test_h_mnt)
-+	if (!ctl_headers[TEST_H_MNT])
- 		return -ENOMEM;
- 
--	sysctl_test_headers.test_h_mnterror
-+	ctl_headers[TEST_H_MNTERROR]
- 		= register_sysctl("debug/test_sysctl/mnt/mnt_error",
- 				  test_table_unregister);
- 	/*
-@@ -226,15 +227,15 @@ static const struct ctl_table test_table_empty[] = { };
- static int test_sysctl_run_register_empty(void)
- {
- 	/* Tets that an empty dir can be created */
--	sysctl_test_headers.empty_add
-+	ctl_headers[TEST_H_EMPTY_ADD]
- 		= register_sysctl("debug/test_sysctl/empty_add", test_table_empty);
--	if (!sysctl_test_headers.empty_add)
-+	if (!ctl_headers[TEST_H_EMPTY_ADD])
- 		return -ENOMEM;
- 
- 	/* Test that register on top of an empty dir works */
--	sysctl_test_headers.empty
-+	ctl_headers[TEST_H_EMPTY]
- 		= register_sysctl("debug/test_sysctl/empty_add/empty", test_table_empty);
--	if (!sysctl_test_headers.empty)
-+	if (!ctl_headers[TEST_H_EMPTY])
- 		return -ENOMEM;
- 
- 	return 0;
-@@ -279,21 +280,21 @@ static const struct ctl_table table_u8_valid[] = {
- static int test_sysctl_register_u8_extra(void)
- {
- 	/* should fail because it's over */
--	sysctl_test_headers.test_u8
-+	ctl_headers[TEST_H_U8]
- 		= register_sysctl("debug/test_sysctl", table_u8_over);
--	if (sysctl_test_headers.test_u8)
-+	if (ctl_headers[TEST_H_U8])
- 		return -ENOMEM;
- 
- 	/* should fail because it's under */
--	sysctl_test_headers.test_u8
-+	ctl_headers[TEST_H_U8]
- 		= register_sysctl("debug/test_sysctl", table_u8_under);
--	if (sysctl_test_headers.test_u8)
-+	if (ctl_headers[TEST_H_U8])
- 		return -ENOMEM;
- 
- 	/* should not fail because it's valid */
--	sysctl_test_headers.test_u8
-+	ctl_headers[TEST_H_U8]
- 		= register_sysctl("debug/test_sysctl", table_u8_valid);
--	if (!sysctl_test_headers.test_u8)
-+	if (!ctl_headers[TEST_H_U8])
- 		return -ENOMEM;
- 
- 	return 0;
-@@ -321,18 +322,10 @@ module_init(test_sysctl_init);
- static void __exit test_sysctl_exit(void)
- {
- 	kfree(test_data.bitmap_0001);
--	if (sysctl_test_headers.test_h_setup_node)
--		unregister_sysctl_table(sysctl_test_headers.test_h_setup_node);
--	if (sysctl_test_headers.test_h_mnt)
--		unregister_sysctl_table(sysctl_test_headers.test_h_mnt);
--	if (sysctl_test_headers.test_h_mnterror)
--		unregister_sysctl_table(sysctl_test_headers.test_h_mnterror);
--	if (sysctl_test_headers.empty)
--		unregister_sysctl_table(sysctl_test_headers.empty);
--	if (sysctl_test_headers.empty_add)
--		unregister_sysctl_table(sysctl_test_headers.empty_add);
--	if (sysctl_test_headers.test_u8)
--		unregister_sysctl_table(sysctl_test_headers.test_u8);
-+	for (int i = 0; i < TEST_H_SIZE; i++) {
-+		if (ctl_headers[i])
-+			unregister_sysctl_table(ctl_headers[i]);
-+	}
- }
- 
- module_exit(test_sysctl_exit);
+---
+Mateusz Jończyk (7):
+      x86/Kconfig: Enable X86_X2APIC by default and improve help text
+      x86/Kconfig: Always enable ARCH_SPARSEMEM_ENABLE
+      x86/Kconfig: Move all X86_EXTENDED_PLATFORM options together
+      x86/Kconfig: Update lists in X86_EXTENDED_PLATFORM
+      x86/Kconfig: Document CONFIG_PCI_MMCONFIG
+      x86/Kconfig: Make CONFIG_PCI_CNB20LE_QUIRK depend on X86_32
+      x86/Kconfig: Document release year of glibc 2.3.3
 
+ arch/x86/Kconfig | 85 ++++++++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 58 insertions(+), 27 deletions(-)
+---
+base-commit: 9388ec571cb1adba59d1cded2300eeb11827679c
+change-id: 20250320-x86_x2apic-7e92d0f4c47d
+
+Best regards,
 -- 
-2.47.2
+David Heidelberg <david@ixit.cz>
 
