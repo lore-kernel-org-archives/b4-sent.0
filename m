@@ -1,204 +1,154 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 21 Mar 2025 10:23:55 +0800
-Subject: [PATCH] arm64: dts: amlogic: a4: fix dtb compilation warning
- issues
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v5 0/6] Enable IPQ5018 PCI support
+Date: Fri, 21 Mar 2025 13:09:49 +0400
+Message-Id: <20250321-ipq5018-pcie-v5-0-aae2caa1f418@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250321-fix-a4-pinctrl-node-v1-1-5719f9f09932@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIALrN3GcC/x2MSQqAMAwAvyI5G6hacfmKeOgSNSBRWhGh+HeLx
- 4GZSRApMEUYiwSBbo58SIaqLMBtRlZC9pmhVnWrmqrDhR80Gk8Wd4Ud5fCEgzV28VqT6lvI5Rk
- oa/91mt/3A56PuNllAAAA
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAN0s3WcC/1WMuw6CMABFf4V0tk0fNBQnQXQzMToaBqRFGoXWF
+ omG8O9WNsdzc8+ZgFdOKw/W0QScGrXXpg/AVxGo26q/KahlYEAx5ZhRArV9ckwEtLVWkMg4rq4
+ NVrThICjWqUa/l9ylDNxqPxj3Weoj+a2gOCfHE0kPuRCC7SlnIsuSAsfJjrAtwTRPi4LSzd8N9
+ VVnnSQpss5IZF7Dw5g7qk0Hynmev42qZl7FAAAA
+To: Vinod Koul <vkoul@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Nitheesh Sekar <quic_nsekar@quicinc.com>, 
+ Varadarajan Narayanan <quic_varada@quicinc.com>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742523835; l=4994;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=IChqhCiVUHKV/Al5PYyBFG4RW3XtS/W3OF9ZWLm5x5E=;
- b=m1lud64/wUROGiLfKAlu7eDbYTf4Y/RBj9k8nVltMlE3s359FZ3sUFC3hN+43NIu5AYW0uFlA
- lrPSd5xEnI7BMBENznF5Jnx4nBvPjA9G6DiGs92ZaYgeF6zaOd2etNW
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+ linux-pci@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>, 
+ 20250317100029.881286-2-quic_varada@quicinc.com, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Sricharan Ramabadhran <quic_srichara@quicinc.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742548192; l=5246;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=SQrVa5hcvNGbT7b8PFbqplfHsajPW5GpR0t3KiUbwo8=;
+ b=cRcavix89+BN+5gtWvU3+jeOnLSD0aAOOOX8Lkq/7qD9/H5WqUxx7ptJUukvrkeqaFOL0Adpq
+ QboYMBEdN79AFz3m67U/uwyriFL5ccRI+nHIJMP+oBKW0Uuv5wiu0Wk
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When use command 'make ARCH=arm64 dtbs_check W=1' to compile dtb,
-a warning message appears.
-"Warning (simple_bus_reg): /soc/bus@fe000000/pinctrl:
-missing or empty reg/ranges property"
+This patch series adds the relevant phy and controller
+DT configurations for enabling PCI gen2 support
+on IPQ5018. IPQ5018 has two phys and two controllers, 
+one dual-lane and one single-lane.
 
-Add the unit address to the pinctrl node to fix it.
+Last patch series (v3) submitted dates back to August 30, 2024.
+As I've worked to add IPQ5018 platform support in OpenWrt, I'm
+continuing the efforts to add Linux kernel support.
 
-Fixes: ce78f679e08c ("arm64: dts: amlogic: a4: add pinctrl node")
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+To: Vinod Koul <vkoul@kernel.org>
+To: Kishon Vijay Abraham I <kishon@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Nitheesh Sekar <quic_nsekar@quicinc.com>
+To: Varadarajan Narayanan <quic_varada@quicinc.com>
+To: Bjorn Helgaas <bhelgaas@google.com>
+To: Lorenzo Pieralisi <lpieralisi@kernel.org>
+To: Krzysztof Wilczyński <kw@linux.com>
+To: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org
+Cc: linux-phy@lists.infradead.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-pci@vger.kernel.org
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+
+v5:
+  *) Re-ordered reg and reg-names in dt-bindings and dts to align with
+     other IPQ SoCs
+  *) Corrected nr of interrupts in dt-bindings: phy: qcom: Add IPQ5018 SoC
+  *) Corrected ranges property of pcie controller nodes
+  *) Removed newlines between cells properties in pcie phy nodes
+  *) Modified dt bindings to add descriptions and separate conditions for
+     ipq5018 and ipq5332 as they have different nr of clocks and resets
+     As such, also removed Krzysztof's RB tag for validation
+  *) Ran dtbs_check and fixed:
+     interrupt-map property in pcie nodes:
+     /soc@0/pcie@80000000:interrupt-map: Cell 13 is not a phandle(0)
+     /soc@0/pcie@a0000000:interrupt-map: Cell 13 is not a phandle(0)
+  *) Added missing gpio header file to ipq5018-rdp432-c2.dts
+  *) Added MHI register requirement to bindings and to PCIe nodes as per:
+     Depends-on: <20250317100029.881286-2-quic_varada@quicinc.com>
+
+v4:
+  *) removed dependency as the following have been applied:
+	dt-bindings: phy: qcom,uniphy-pcie: Document PCIe uniphy
+	phy: qcom: Introduce PCIe UNIPHY 28LP driver
+	dt-bindings: PCI: qcom: Document the IPQ5332 PCIe controller
+     Link: https://lore.kernel.org/all/20250313080600.1719505-1-quic_varada@quicinc.com/
+  *) added Mani's RB tag to: PCI: qcom: Add support for IPQ5018
+  *) Removed power-domains property requirement in dt-bindings for IPQ5018
+     and removed Krzysztof's RB tag from:
+     dt-bindings: PCI: qcom: Add IPQ5018 SoC
+  *) fixed author chain and retained Sricharan Ramabadhran in SoB tags and
+     kept Nitheesh Sekar as the original author
+  *) Removed comments as per Konrad's comment in:
+     arm64: dts: qcom: ipq5018: Add PCIe related nodes
+  *) Link to v3 submitted by Sricharan Ramabadhran:
+     Link: https://lore.kernel.org/all/20240830081132.4016860-1-quic_srichara@quicinc.com/
+  *) Link to v3, incorrectly versioned:
+     Link: https://lore.kernel.org/all/DS7PR19MB8883BC190797BECAA78EC50F9DCB2@DS7PR19MB8883.namprd19.prod.outlook.com/
+
+v3 (incorrectly versioned):
+  *) Depends on
+     Link: https://patchwork.kernel.org/project/linux-arm-msm/cover/20250220094251.230936-1-quic_varada@quicinc.com/
+  *) Added 8 MSI SPI and 1 global interrupts (Thanks Mani for confirming)
+  *) Added hw revision (internal/synopsys) and nr of lanes in patch 4
+     commit msg
+  *) Sorted reg addresses and moved PCIe nodes accordingly
+  *) Moved to GIC based interrupts
+  *) Added rootport node in controller nodes
+  *) Tested on Linksys devices (MX5500/SPNMX56)
+  *) Link to v2:
+     Link: https://lore.kernel.org/all/20240827045757.1101194-1-quic_srichara@quicinc.com/
+
+v3:
+  Added Reviewed-by tag for patch#1.
+  Fixed dev_err_probe usage in patch#3.
+  Added pinctrl/wak pins for pcie1 in patch#6.
+
+v2:
+  Fixed all review comments from Krzysztof, Robert Marko,
+  Dmitry Baryshkov, Manivannan Sadhasivam, Konrad Dybcio.
+  Updated the respective patches for their changes.
+
+v1:
+
+Link: https://lore.kernel.org/lkml/32389b66-48f3-8ee8-e2f1-1613feed3cc7@gmail.com/T/
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi | 102 +++++++++++++++-------------
- 1 file changed, 55 insertions(+), 47 deletions(-)
+Nitheesh Sekar (6):
+      dt-bindings: phy: qcom: uniphy-pcie: Add ipq5018 compatible
+      phy: qualcomm: qcom-uniphy-pcie 28LP add support for IPQ5018
+      dt-bindings: PCI: qcom: Add IPQ5018 SoC
+      PCI: qcom: Add support for IPQ5018
+      arm64: dts: qcom: ipq5018: Add PCIe related nodes
+      arm64: dts: qcom: ipq5018: Enable PCIe
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-index fa80fa365f13..582e0043024b 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-@@ -51,87 +51,52 @@ pwrc: power-controller {
- };
- 
- &apb {
--	gpio_intc: interrupt-controller@4080 {
--		compatible = "amlogic,a4-gpio-intc",
--			     "amlogic,meson-gpio-intc";
--		reg = <0x0 0x4080 0x0 0x20>;
--		interrupt-controller;
--		#interrupt-cells = <2>;
--		amlogic,channel-interrupts =
--			<10 11 12 13 14 15 16 17 18 19 20 21>;
--	};
--
--	gpio_ao_intc: interrupt-controller@8e72c {
--		compatible = "amlogic,a4-gpio-ao-intc",
--			     "amlogic,meson-gpio-intc";
--		reg = <0x0 0x8e72c 0x0 0x0c>;
--		interrupt-controller;
--		#interrupt-cells = <2>;
--		amlogic,channel-interrupts = <140 141>;
--	};
--
--	periphs_pinctrl: pinctrl {
-+	periphs_pinctrl: pinctrl@4000 {
- 		compatible = "amlogic,pinctrl-a4";
- 		#address-cells = <2>;
- 		#size-cells = <2>;
--		ranges;
-+		ranges = <0x0 0x0 0x0 0x4000 0x0 0x280>;
- 
--		gpiox: gpio@4100 {
--			reg = <0 0x4100 0 0x40>, <0 0x400c 0 0xc>;
-+		gpiox: gpio@100 {
-+			reg = <0 0x100 0 0x40>, <0 0xc 0 0xc>;
- 			reg-names = "gpio", "mux";
- 			gpio-controller;
- 			#gpio-cells = <2>;
- 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_X<<8) 18>;
- 		};
- 
--		gpiot: gpio@4140 {
--			reg = <0 0x4140 0 0x40>, <0 0x402c 0 0xc>;
-+		gpiot: gpio@140 {
-+			reg = <0 0x140 0 0x40>, <0 0x2c 0 0xc>;
- 			reg-names = "gpio", "mux";
- 			gpio-controller;
- 			#gpio-cells = <2>;
- 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_T<<8) 23>;
- 		};
- 
--		gpiod: gpio@4180 {
--			reg = <0 0x4180 0 0x40>, <0 0x4040 0 0x8>;
-+		gpiod: gpio@180 {
-+			reg = <0 0x180 0 0x40>, <0 0x40 0 0x8>;
- 			reg-names = "gpio", "mux";
- 			gpio-controller;
- 			#gpio-cells = <2>;
- 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_D<<8) 16>;
- 		};
- 
--		gpioe: gpio@41c0 {
--			reg = <0 0x41c0 0 0x40>, <0 0x4048 0 0x4>;
-+		gpioe: gpio@1c0 {
-+			reg = <0 0x1c0 0 0x40>, <0 0x48 0 0x4>;
- 			reg-names = "gpio", "mux";
- 			gpio-controller;
- 			#gpio-cells = <2>;
- 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_E<<8) 2>;
- 		};
- 
--		gpiob: gpio@4240 {
--			reg = <0 0x4240 0 0x40>, <0 0x4000 0 0x8>;
-+		gpiob: gpio@240 {
-+			reg = <0 0x240 0 0x40>, <0 0 0 0x8>;
- 			reg-names = "gpio", "mux";
- 			gpio-controller;
- 			#gpio-cells = <2>;
- 			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_B<<8) 14>;
- 		};
- 
--		gpioao: gpio@8e704 {
--			reg = <0 0x8e704 0 0x16>, <0 0x8e700 0 0x4>;
--			reg-names = "gpio", "mux";
--			gpio-controller;
--			#gpio-cells = <2>;
--			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_AO<<8) 7>;
--		};
--
--		test_n: gpio@8e744 {
--			reg = <0 0x8e744 0 0x20>;
--			reg-names = "gpio";
--			gpio-controller;
--			#gpio-cells = <2>;
--			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_TEST_N<<8) 1>;
--		};
--
- 		func-uart-a {
- 			uart_a_default: group-uart-a-pins1 {
- 				pinmux = <AML_PINMUX(AMLOGIC_GPIO_X, 11, 1)>,
-@@ -186,4 +151,47 @@ uart_e_default: group-uart-e-pins {
- 			};
- 		};
- 	};
-+
-+	gpio_intc: interrupt-controller@4080 {
-+		compatible = "amlogic,a4-gpio-intc",
-+			     "amlogic,meson-gpio-intc";
-+		reg = <0x0 0x4080 0x0 0x20>;
-+		interrupt-controller;
-+		#interrupt-cells = <2>;
-+		amlogic,channel-interrupts =
-+			<10 11 12 13 14 15 16 17 18 19 20 21>;
-+	};
-+
-+	ao_pinctrl: pinctrl@8e700 {
-+		compatible = "amlogic,pinctrl-a4";
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges = <0x0 0x0 0x0 0x8e700 0x0 0x80>;
-+
-+		gpioao: gpio@4 {
-+			reg = <0 0x4 0 0x16>, <0 0 0 0x4>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_AO<<8) 7>;
-+		};
-+
-+		test_n: gpio@44 {
-+			reg = <0 0x44 0 0x20>;
-+			reg-names = "gpio";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_TEST_N<<8) 1>;
-+		};
-+	};
-+
-+	gpio_ao_intc: interrupt-controller@8e72c {
-+		compatible = "amlogic,a4-gpio-ao-intc",
-+			     "amlogic,meson-gpio-intc";
-+		reg = <0x0 0x8e72c 0x0 0x0c>;
-+		interrupt-controller;
-+		#interrupt-cells = <2>;
-+		amlogic,channel-interrupts = <140 141>;
-+	};
-+
- };
-
+ .../devicetree/bindings/pci/qcom,pcie.yaml         |  50 +++++
+ .../bindings/phy/qcom,ipq5332-uniphy-pcie-phy.yaml |  57 ++++-
+ arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts     |  40 ++++
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              | 234 ++++++++++++++++++++-
+ drivers/pci/controller/dwc/pcie-qcom.c             |   1 +
+ drivers/phy/qualcomm/phy-qcom-uniphy-pcie-28lp.c   |  45 ++++
+ 6 files changed, 417 insertions(+), 10 deletions(-)
 ---
-base-commit: 73a143e436311183186ab4b365a84c662f2c9651
-change-id: 20250317-fix-a4-pinctrl-node-9babfd44e085
+base-commit: 5744a64fddfc33629f3bcc9a06a646f7443077a7
+change-id: 20250321-ipq5018-pcie-1d44abf0e2f5
 
 Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+George Moussalem <george.moussalem@outlook.com>
 
