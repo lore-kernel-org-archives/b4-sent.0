@@ -1,11 +1,11 @@
 From: Hans-Frieder Vogt <hfdevel@gmx.net>
-Date: Sat, 22 Mar 2025 11:45:52 +0100
-Subject: [PATCH net-next v7 1/7] net: phy: Add swnode support to
- mdiobus_scan
+Date: Sat, 22 Mar 2025 11:45:53 +0100
+Subject: [PATCH net-next v7 2/7] net: phy: aquantia: add probe function to
+ aqr105 for firmware loading
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250322-tn9510-v3a-v7-1-672a9a3d8628@gmx.net>
+Message-Id: <20250322-tn9510-v3a-v7-2-672a9a3d8628@gmx.net>
 References: <20250322-tn9510-v3a-v7-0-672a9a3d8628@gmx.net>
 In-Reply-To: <20250322-tn9510-v3a-v7-0-672a9a3d8628@gmx.net>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -17,64 +17,37 @@ To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Hans-Frieder Vogt <hfdevel@gmx.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742640367; l=1936;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742640367; l=900;
  i=hfdevel@gmx.net; s=20240915; h=from:subject:message-id;
- bh=eboV90jxD+Bku0BOXjDGCNU60DTUE9kSyEbR0D3C8dU=;
- b=yODUcpSruP6Prn/8AAbwj8cpTWqNAPLgfym6lscc+Rxx9ioXqQomJgtb+WBzveF7mQb8VCzNo
- Ki8EAabHm94CIXeA/62fgaLZKx0u5WUZqZRl58mmfcZGEhcM1tox9ll
+ bh=vEeavGZyiKSDFemLfNRy5gMMBOs/2nb7oTqi4HS4XIQ=;
+ b=NrBz3etyWZ8DkFcMAlVhUSvqUGbeYUtAKAjnx9by5Hve6YA0Nt0I9itwtk9xMmfGuewQHOJjm
+ A76ERMrz8R0Ae5cIcH7RWbuQHAlYZNA0+qjTCmvjrKyk1Om6WkrCBmZ
 X-Developer-Key: i=hfdevel@gmx.net; a=ed25519;
  pk=s3DJ3DFe6BJDRAcnd7VGvvwPXcLgV8mrfbpt8B9coRc=
 X-Endpoint-Received: by B4 Relay for hfdevel@gmx.net/20240915 with auth_id=209
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch will allow to use a swnode/fwnode defined for a phy_device. The
-MDIO bus (mii_bus) needs to contain nodes for the PHY devices, named
-"ethernet-phy@i", with i being the MDIO address (0 .. PHY_MAX_ADDR - 1).
-
-The fwnode is only attached to the phy_device if there isn't already an
-fwnode attached.
-
-fwnode_get_named_child_node will increase the usage counter of the fwnode.
-However, no new code is needed to decrease the counter again, since this is
-already implemented in the phy_device_release function.
+Re-use the AQR107 probe function to load the firmware on the AQR105 (and
+to probe the HWMON).
 
 Signed-off-by: Hans-Frieder Vogt <hfdevel@gmx.net>
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 ---
- drivers/net/phy/mdio_bus.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ drivers/net/phy/aquantia/aquantia_main.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/net/phy/mdio_bus.c b/drivers/net/phy/mdio_bus.c
-index 7e2f10182c0cf37bef4cea1820863f047b5cb466..ede596c1a69d1b2b986e9eef51c3beb4a5fbc805 100644
---- a/drivers/net/phy/mdio_bus.c
-+++ b/drivers/net/phy/mdio_bus.c
-@@ -551,6 +551,8 @@ static int mdiobus_create_device(struct mii_bus *bus,
- static struct phy_device *mdiobus_scan(struct mii_bus *bus, int addr, bool c45)
- {
- 	struct phy_device *phydev = ERR_PTR(-ENODEV);
-+	struct fwnode_handle *fwnode;
-+	char node_name[16];
- 	int err;
- 
- 	phydev = get_phy_device(bus, addr, c45);
-@@ -562,6 +564,18 @@ static struct phy_device *mdiobus_scan(struct mii_bus *bus, int addr, bool c45)
- 	 */
- 	of_mdiobus_link_mdiodev(bus, &phydev->mdio);
- 
-+	/* Search for a swnode for the phy in the swnode hierarchy of the bus.
-+	 * If there is no swnode for the phy provided, just ignore it.
-+	 */
-+	if (dev_fwnode(&bus->dev) && !dev_fwnode(&phydev->mdio.dev)) {
-+		snprintf(node_name, sizeof(node_name), "ethernet-phy@%d",
-+			 addr);
-+		fwnode = fwnode_get_named_child_node(dev_fwnode(&bus->dev),
-+						     node_name);
-+		if (fwnode)
-+			device_set_node(&phydev->mdio.dev, fwnode);
-+	}
-+
- 	err = phy_device_register(phydev);
- 	if (err) {
- 		phy_device_free(phydev);
+diff --git a/drivers/net/phy/aquantia/aquantia_main.c b/drivers/net/phy/aquantia/aquantia_main.c
+index e42ace4e682aacf56199b7fdb9613d20f240fa27..86b0e63de5d88fa1050919a8826bdbec4bbcf8ba 100644
+--- a/drivers/net/phy/aquantia/aquantia_main.c
++++ b/drivers/net/phy/aquantia/aquantia_main.c
+@@ -912,6 +912,7 @@ static struct phy_driver aqr_driver[] = {
+ 	PHY_ID_MATCH_MODEL(PHY_ID_AQR105),
+ 	.name		= "Aquantia AQR105",
+ 	.config_aneg    = aqr_config_aneg,
++	.probe		= aqr107_probe,
+ 	.config_intr	= aqr_config_intr,
+ 	.handle_interrupt = aqr_handle_interrupt,
+ 	.read_status	= aqr_read_status,
 
 -- 
 2.47.2
