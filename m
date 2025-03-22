@@ -1,11 +1,10 @@
 From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Date: Sat, 22 Mar 2025 19:39:36 +0900
-Subject: [PATCH 1/3] bits: split the definition of the asm and non-asm
- GENMASK*()
+Date: Sat, 22 Mar 2025 19:39:37 +0900
+Subject: [PATCH 2/3] bits: unify the non-asm GENMASK*()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250322-consolidate-genmask-v1-1-54bfd36c5643@wanadoo.fr>
+Message-Id: <20250322-consolidate-genmask-v1-2-54bfd36c5643@wanadoo.fr>
 References: <20250322-consolidate-genmask-v1-0-54bfd36c5643@wanadoo.fr>
 In-Reply-To: <20250322-consolidate-genmask-v1-0-54bfd36c5643@wanadoo.fr>
 To: Yury Norov <yury.norov@gmail.com>, 
@@ -22,95 +21,90 @@ Cc: linux-kernel@vger.kernel.org, intel-gfx@lists.freedesktop.org,
  Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
  Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2469;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2491;
  i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
- bh=PiGTrL0JYiV7znHV7ko5sq4U1vR9pY0pmQ4QX0K2Tvw=;
- b=owGbwMvMwCV2McXO4Xp97WbG02pJDOn3Jt/conAk8iNv4onX2b6BbG57S8yLlx6/6D3r815jw
- dc5u1+GdJSyMIhxMciKKbIsK+fkVugo9A479NcSZg4rE8gQBi5OAZiIwjNGhn9chpPuGJWUl1iu
- r3h3+1z0UlGJjy1N73ZNUDuzbrfhYUmG/4EZUsc2nFI3ZL54Lbxjn/HJxOLAzJ8ia6IbBV7rf/7
- 9mwMA
+ bh=BGowEq4gWbAVzD7qLQ3lau/i5GwxnLHfhp35jXzU/nw=;
+ b=owGbwMvMwCV2McXO4Xp97WbG02pJDOn3Jj80Lememfugk5HxUjqrWPKdCbtv3yzYP79jQv3D3
+ 9vmpbpu7ChlYRDjYpAVU2RZVs7JrdBR6B126K8lzBxWJpAhDFycAjCRd6EM/yz0rRdMda5WW6Ny
+ QbUqofz9F/3tS8tsPUXcdYVylBl49jAyHNz4ouF2msycn1sfetQ5aE/xkl0x99HNwqnTpoSye8m
+ F8gEA
 X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
  fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
 X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In an upcoming change, the non-asm GENMASK*() will all be unified to
-depend on GENMASK_TYPE() which indirectly depend on sizeof(), something
-not available in asm.
+The newly introduced GENMASK_TYPE() macro can also be used to generate
+the pre-existing non-asm GENMASK*() variants.
 
-Instead of adding further complexity to GENMASK_TYPE() to make it work
-for both asm and non asm, just split the definition of the two variants.
+Apply GENMASK_TYPE() to GENMASK(), GENMASK_ULL() and GENMASK_U128().
 
 Signed-off-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Reviewed-by: Lucas De Marchi <lucas.demarchi@intel.com>
 ---
-This patch previously belonged to this series:
-
-  bits: Fixed-type GENMASK_U*() and BIT_U*()
-  Link: https://lore.kernel.org/r/20250308-fixed-type-genmasks-v6-0-f59315e73c29@wanadoo.fr
-
-Below changelog also contains the history from the previous series.
-
-Changelog:
-
-  v6 (previous series) -> v1 (new series):
-
-    - Do not rephrase the comment saying that BUILD_BUG_ON() is not
-      available in asm code. Leave it as it is.
-
-    - Add Lucas reviewed-by tag.
-
-  v5 -> v6:
-
-    - Restore the comment saying that BUILD_BUG_ON() is not available in asm
-      code.
-
-  v4 -> v5:
-
-    - Use tab indentations instead of single space to separate the
-      macro name from its body.
-
-  v3 -> v4:
-
-    - New patch in the series
----
- include/linux/bits.h | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ include/linux/bits.h | 26 ++++----------------------
+ 1 file changed, 4 insertions(+), 22 deletions(-)
 
 diff --git a/include/linux/bits.h b/include/linux/bits.h
-index 6a942ea9ab380d3bd0e521916caa1d59db8031c0..9dd2d244c1f37fde995ed65c1eed879bb2a994a8 100644
+index 9dd2d244c1f37fde995ed65c1eed879bb2a994a8..025c9cb994b148f8d2e50e69be929d356c6c4322 100644
 --- a/include/linux/bits.h
 +++ b/include/linux/bits.h
-@@ -35,6 +35,11 @@
+@@ -2,10 +2,8 @@
+ #ifndef __LINUX_BITS_H
+ #define __LINUX_BITS_H
+ 
+-#include <linux/const.h>
+ #include <vdso/bits.h>
+ #include <uapi/linux/bits.h>
+-#include <asm/bitsperlong.h>
+ 
+ #define BIT_MASK(nr)		(UL(1) << ((nr) % BITS_PER_LONG))
+ #define BIT_WORD(nr)		((nr) / BITS_PER_LONG)
+@@ -35,11 +33,6 @@
  
  #define GENMASK_INPUT_CHECK(h, l) BUILD_BUG_ON_ZERO(const_true((l) > (h)))
- 
-+#define GENMASK(h, l) \
-+	(GENMASK_INPUT_CHECK(h, l) + __GENMASK(h, l))
-+#define GENMASK_ULL(h, l) \
-+	(GENMASK_INPUT_CHECK(h, l) + __GENMASK_ULL(h, l))
-+
- /*
-  * Generate a mask for the specified type @t. Additional checks are made to
-  * guarantee the value returned fits in that type, relying on
-@@ -79,15 +84,11 @@
-  * BUILD_BUG_ON_ZERO is not available in h files included from asm files,
-  * disable the input check if that is the case.
-  */
--#define GENMASK_INPUT_CHECK(h, l) 0
-+#define GENMASK(h, l)		__GENMASK(h, l)
-+#define GENMASK_ULL(h, l)	__GENMASK_ULL(h, l)
- 
- #endif /* !defined(__ASSEMBLY__) */
  
 -#define GENMASK(h, l) \
 -	(GENMASK_INPUT_CHECK(h, l) + __GENMASK(h, l))
 -#define GENMASK_ULL(h, l) \
 -	(GENMASK_INPUT_CHECK(h, l) + __GENMASK_ULL(h, l))
 -
- #if !defined(__ASSEMBLY__)
  /*
-  * Missing asm support
+  * Generate a mask for the specified type @t. Additional checks are made to
+  * guarantee the value returned fits in that type, relying on
+@@ -55,10 +48,14 @@
+ 	     (type_max(t) << (l) &				\
+ 	      type_max(t) >> (BITS_PER_TYPE(t) - 1 - (h)))))
+ 
++#define GENMASK(h, l)		GENMASK_TYPE(unsigned long, h, l)
++#define GENMASK_ULL(h, l)	GENMASK_TYPE(unsigned long long, h, l)
++
+ #define GENMASK_U8(h, l)	GENMASK_TYPE(u8, h, l)
+ #define GENMASK_U16(h, l)	GENMASK_TYPE(u16, h, l)
+ #define GENMASK_U32(h, l)	GENMASK_TYPE(u32, h, l)
+ #define GENMASK_U64(h, l)	GENMASK_TYPE(u64, h, l)
++#define GENMASK_U128(h, l)	GENMASK_TYPE(u128, h, l)
+ 
+ /*
+  * Fixed-type variants of BIT(), with additional checks like GENMASK_TYPE(). The
+@@ -89,19 +86,4 @@
+ 
+ #endif /* !defined(__ASSEMBLY__) */
+ 
+-#if !defined(__ASSEMBLY__)
+-/*
+- * Missing asm support
+- *
+- * __GENMASK_U128() depends on _BIT128() which would not work
+- * in the asm code, as it shifts an 'unsigned __int128' data
+- * type instead of direct representation of 128 bit constants
+- * such as long and unsigned long. The fundamental problem is
+- * that a 128 bit constant will get silently truncated by the
+- * gcc compiler.
+- */
+-#define GENMASK_U128(h, l) \
+-	(GENMASK_INPUT_CHECK(h, l) + __GENMASK_U128(h, l))
+-#endif
+-
+ #endif	/* __LINUX_BITS_H */
 
 -- 
 2.48.1
