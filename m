@@ -1,124 +1,136 @@
-From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Date: Sat, 22 Mar 2025 19:39:38 +0900
-Subject: [PATCH 3/3] test_bits: add tests for __GENMASK() and
- __GENMASK_ULL()
+From: Hans-Frieder Vogt <hfdevel@gmx.net>
+Subject: [PATCH net-next v7 0/7] net: tn40xx: add support for AQR105 based
+ cards
+Date: Sat, 22 Mar 2025 11:45:51 +0100
+Message-Id: <20250322-tn9510-v3a-v7-0-672a9a3d8628@gmx.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250322-consolidate-genmask-v1-3-54bfd36c5643@wanadoo.fr>
-References: <20250322-consolidate-genmask-v1-0-54bfd36c5643@wanadoo.fr>
-In-Reply-To: <20250322-consolidate-genmask-v1-0-54bfd36c5643@wanadoo.fr>
-To: Yury Norov <yury.norov@gmail.com>, 
- Lucas De Marchi <lucas.demarchi@intel.com>, 
- Rasmus Villemoes <linux@rasmusvillemoes.dk>, 
- Jani Nikula <jani.nikula@linux.intel.com>, 
- Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, 
- Tvrtko Ursulin <tursulin@ursulin.net>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, intel-gfx@lists.freedesktop.org, 
- dri-devel@lists.freedesktop.org, Andi Shyti <andi.shyti@linux.intel.com>, 
- David Laight <David.Laight@ACULAB.COM>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Vincent Mailhol <mailhol.vincent@wanadoo.fr>
+X-B4-Tracking: v=1; b=H4sIAN+U3mcC/1XNTW7DIBCG4atErEs1/ENXvUfVBTZDzCIkAgu5i
+ nz3EqtVwnI0er73TiqWhJV8nO6kYEs1XXM/zNuJzIvPZ6Qp9Jtw4JJxpumanWJAm/CUz3FmVgV
+ tIZIObgVj2o6xL5JxpRm3lXz3z+Qr0qn4PC+PsYtP+QGWVNdr+TniTRzsr2NeO01QoDIojDpqq
+ xE+z5ftvQeO7SZfIGcDlB0GH2O0bvLGmxGqf6iAcz5A1aFzQiuQBgW4EeonFMwOUHdowXoH1gU
+ upyfc9/0XHJhj424BAAA=
+X-Change-ID: 20241216-tn9510-v3a-2cfc185d680f
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ FUJITA Tomonori <fujita.tomonori@gmail.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Hans-Frieder Vogt <hfdevel@gmx.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2838;
- i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
- bh=lw0j5DDbt4xHaeCFRpUyWkzpSYATbilmvUEdK3pbE0k=;
- b=owGbwMvMwCV2McXO4Xp97WbG02pJDOn3Jj//niLufKnD3jTC6+n72Eu/sp3jVnzS4C22PT/zU
- +SzKbdXd5SyMIhxMciKKbIsK+fkVugo9A479NcSZg4rE8gQBi5OAZiI91dGhquce67s/1Dt4Som
- 2sKexbNwZ4nZwgOVMjz6jEdmm+yuPsfI0Hf4ssP59z3mJ9r3ra3NPvpc/8wnRbvTZS3Hf+Va+gl
- 8YQcA
-X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
- fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
-X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742640367; l=5168;
+ i=hfdevel@gmx.net; s=20240915; h=from:subject:message-id;
+ bh=dy7hnpEpmljpvnmL7VUaERJFKqdCMUh00qJI84ZH+hY=;
+ b=b2krxJvHp5+OhOArQcSFecb2wM4Tk2k+Uo9UyRO0v0MSxwvczVKs3kSNbk9Ca0NsfM92qR9W9
+ GKlKin1KN6KCkD+DvT0F4xxh7/XCpQt1kg5DOeoRxzh5xqybcUkUiok
+X-Developer-Key: i=hfdevel@gmx.net; a=ed25519;
+ pk=s3DJ3DFe6BJDRAcnd7VGvvwPXcLgV8mrfbpt8B9coRc=
+X-Endpoint-Received: by B4 Relay for hfdevel@gmx.net/20240915 with auth_id=209
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The definitions of GENMASK() and GENMASK_ULL() do not depend any more
-on __GENMASK() and __GENMASK_ULL(). Duplicate the existing unit tests
-so that __GENMASK{,ULL}() are still covered.
+This patch series adds support to the Tehuti tn40xx driver for TN9510 cards
+which combine a TN4010 MAC with an Aquantia AQR105.
+It is an update of the patch series "net: tn40xx: add support for AQR105
+based cards", addressing review comments and generally cleaning up the series.
 
-Because __GENMASK() and __GENMASK_ULL() do use GENMASK_INPUT_CHECK(),
-drop the TEST_GENMASK_FAILURES negative tests.
+The patch was tested on a Tehuti TN9510 card (1fc9:4025:1fc9:3015).
 
-It would be good to have a small assembly test case for GENMASK*() in
-case somebody decides to unify both in the future. However, I lack
-expertise in assembly to do so. Instead add a FIXME message to
-highlight the absence of the asm unit test.
-
-Signed-off-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Reviewed-by: Lucas De Marchi <lucas.demarchi@intel.com>
 ---
-This patch previously belonged to this series:
+Changes in v7:
+- change function name aqr105_config_speed to aqr105_setup_forced, in line with
+  naming of generic functions
+  (suggested by Andrew Lunn <andrew@lunn.ch>)
+- replace device id 0x4025 with symbolic name PCI_DEVICE_ID_TEHUTI_TN9510
+  (suggested by Andrew Lunn <andrew@lunn.ch>)
+- because of last change, remove the Reviewed-by: entries for PATCH 7/7
+- Link to v6: https://lore.kernel.org/r/20250318-tn9510-v3a-v6-0-808a9089d24b@gmx.net
 
-  bits: Fixed-type GENMASK_U*() and BIT_U*()
-  Link: https://lore.kernel.org/r/20250308-fixed-type-genmasks-v6-0-f59315e73c29@wanadoo.fr
+Changes in v6:
+- rebaseline to net-next
+- remove unneeded loop timing ability advertisment in aquantia_main.c
+  (highlighted by Maxime Chevallier <maxime.chevallier@bootlin.com>)
+- add failure path in tn40_mdio.c if device_add_software_node fails
+  (suggested by Ratheesh Kannoth <rkannoth@marvell.com>)
+- Link to v5: https://lore.kernel.org/r/20250222-tn9510-v3a-v5-0-99365047e309@gmx.net
 
-Below changelog also contains the history from the previous series.
+Changes in v5:
+- changed version because "b4 send --resend v4" did not succeed
+- used opportunity to rebaseline to net-next
+- only source code change is merging a split string in tn40_mdio.c, removing
+  a warning from b4 prep --check
+- changed format of cover letter in line with b4 (sequence of changes from
+  latest to oldest)
+- Link to v4: https://lore.kernel.org/r/20241221-tn9510-v3a-v4-0-dafff89ba7a7@gmx.net
 
-Changelog:
+Changes in v4:
+- use separate aqr105 specific functions instead of adding aqr105 functionality
+  in common functions, with need of "chip generation" parameter
+  (suggested by Andrew Lunn <andrew@lunn.ch>)
+- make generation and cleanup of swnodes more symmetric
+  (suggested by Andrew Lunn <andrew@lunn.ch>)
+- add MDIO/PHY software nodes only for devices that have an aqr105 PHY
+  (suggested by FUJITA Tomonori <fujita.tomonori@gmail.com>)
+- Link to v3: https://lore.kernel.org/r/20241217-tn9510-v3a-v3-0-4d5ef6f686e0@gmx.net
 
-  v6 (previous series) -> v1 (new series):
+Changes in v3:
+- aquantia_firmware: remove call to of_property_read_string. It should be
+  called from the more generic function device_property_read_string
+- add more AQR105-specific function, to support proper advertising and auto-
+  negotiation
+- re-organize the patches about the mdio speed and TN40_REG_MDIO_CMD_STAT,
+  skipping the 1MHz intermediate speed step
+- re-organized the sequence of the patches:
+    1. changes to the general support functions (net/phy/mdio_bus.c)
+    2. changes to the aquantia PHY driver
+    3. changes to the tn40xx MAC driver, required to support the TN9510 cards
+- Link to v2: https://lore.kernel.org/netdev/trinity-602c050f-bc76-4557-9824-252b0de48659-1726429697171@3c-app-gmx-bap07/
 
-    - Add a message in the commit description to explain why the
-      negative tests are dropped.
+Changes in v2:
+- simplify the check for a firmware-name in a swnode in the aquantia PHY driver
+(comment from Andrew Lunn)
+- changed the software node definition to an mdio node with phy child nodes, to
+be more in line with a typical device tree definition (also comment from
+Andrew Lunn)
+This also solves the problem with several TN4010-based cards that FUJITA
+Tomonori reported
+- clarified the cleanup calls, now calling fwnode_handle_put instead of
+software_node_unregister (comment by FUJITA Tomonori)
+- updated the function mdiobus_scan to support swnodes (following hint of
+Andrew Lunn)
+- remove the small patch to avoid failing after aqr_wait_reset_complete, now
+that a proper patch by Vladimir Oltean is available
+- replace setting of bit 3 in TN40_REG_MDIO_CMD_STAT by calling of
+tn40_mdio_set_speed (suggestion by FUJITA Tomonori)
+- cleaning up the distributed calls to set the MDIO speed in the tn40xx driver
+- define supported PCI-IDs including subvendor IDs to prevent loading on
+unsupported card
+- Link to v1: https://lore.kernel.org/netdev/trinity-33332a4a-1c44-46b7-8526-b53b1a94ffc2-1726082106356@3c-app-gmx-bs04/
 
-    - Add Lucas's Reviewed-by tag.
-
-  v5 -> v6:
-
-    - Add a FIXME message to highlight the absence of the asm
-      GENMASK*() unit tests.
-
-  v4 -> v5:
-
-    - No changes.
-
-  v3 -> v4:
-
-    - New patch.
 ---
- lib/test_bits.c | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+Hans-Frieder Vogt (7):
+      net: phy: Add swnode support to mdiobus_scan
+      net: phy: aquantia: add probe function to aqr105 for firmware loading
+      net: phy: aquantia: search for firmware-name in fwnode
+      net: phy: aquantia: add essential functions to aqr105 driver
+      net: tn40xx: create swnode for mdio and aqr105 phy and add to mdiobus
+      net: tn40xx: prepare tn40xx driver to find phy of the TN9510 card
+      net: tn40xx: add pci-id of the aqr105-based Tehuti TN4010 cards
 
-diff --git a/lib/test_bits.c b/lib/test_bits.c
-index 47325b41515fde2c3ed434ed6f4094925c98886b..ab88e50d2edfa2b011f07d50460ac8ea6ff99923 100644
---- a/lib/test_bits.c
-+++ b/lib/test_bits.c
-@@ -26,6 +26,23 @@ static_assert(assert_type(u16, GENMASK_U16(15, 0)) == U16_MAX);
- static_assert(assert_type(u32, GENMASK_U32(31, 0)) == U32_MAX);
- static_assert(assert_type(u64, GENMASK_U64(63, 0)) == U64_MAX);
- 
-+/* FIXME: add a test case written in asm for GENMASK() and GENMASK_ULL() */
-+
-+static void __genmask_test(struct kunit *test)
-+{
-+	KUNIT_EXPECT_EQ(test, 1ul, __GENMASK(0, 0));
-+	KUNIT_EXPECT_EQ(test, 3ul, __GENMASK(1, 0));
-+	KUNIT_EXPECT_EQ(test, 6ul, __GENMASK(2, 1));
-+	KUNIT_EXPECT_EQ(test, 0xFFFFFFFFul, __GENMASK(31, 0));
-+}
-+
-+static void __genmask_ull_test(struct kunit *test)
-+{
-+	KUNIT_EXPECT_EQ(test, 1ull, __GENMASK_ULL(0, 0));
-+	KUNIT_EXPECT_EQ(test, 3ull, __GENMASK_ULL(1, 0));
-+	KUNIT_EXPECT_EQ(test, 0x000000ffffe00000ull, __GENMASK_ULL(39, 21));
-+	KUNIT_EXPECT_EQ(test, 0xffffffffffffffffull, __GENMASK_ULL(63, 0));
-+}
- 
- static void genmask_test(struct kunit *test)
- {
-@@ -123,6 +140,8 @@ static void genmask_input_check_test(struct kunit *test)
- 
- 
- static struct kunit_case bits_test_cases[] = {
-+	KUNIT_CASE(__genmask_test),
-+	KUNIT_CASE(__genmask_ull_test),
- 	KUNIT_CASE(genmask_test),
- 	KUNIT_CASE(genmask_ull_test),
- 	KUNIT_CASE(genmask_u128_test),
+ drivers/net/ethernet/tehuti/tn40.c           |   9 +-
+ drivers/net/ethernet/tehuti/tn40.h           |  33 ++++
+ drivers/net/ethernet/tehuti/tn40_mdio.c      |  84 +++++++++-
+ drivers/net/phy/aquantia/aquantia_firmware.c |   7 +-
+ drivers/net/phy/aquantia/aquantia_main.c     | 240 ++++++++++++++++++++++++++-
+ drivers/net/phy/mdio_bus.c                   |  14 ++
+ 6 files changed, 378 insertions(+), 9 deletions(-)
+---
+base-commit: 23c9ff659140f97d44bf6fb59f89526a168f2b86
+change-id: 20241216-tn9510-v3a-2cfc185d680f
 
+Best regards,
 -- 
-2.48.1
+Hans-Frieder Vogt <hfdevel@gmx.net>
 
