@@ -1,83 +1,57 @@
-From: Julian Stecklina <julian.stecklina@cyberus-technology.de>
-Date: Sat, 22 Mar 2025 21:34:21 +0100
-Subject: [PATCH v2 9/9] fs: erofs: register an initrd fs detector
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH 0/3] Board support for Fernsehfee 3.0
+Date: Sun, 23 Mar 2025 13:37:49 +0100
+Message-Id: <20250323-fernsehfee-v1-0-2621341cd37a@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250322-initrd-erofs-v2-9-d66ee4a2c756@cyberus-technology.de>
-References: <20250322-initrd-erofs-v2-0-d66ee4a2c756@cyberus-technology.de>
-In-Reply-To: <20250322-initrd-erofs-v2-0-d66ee4a2c756@cyberus-technology.de>
-To: Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Gao Xiang <xiang@kernel.org>, 
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-erofs@lists.ozlabs.org, 
- Julian Stecklina <julian.stecklina@cyberus-technology.de>, 
- Niklas Sturm <niklas.sturm@secunet.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAJ0A4GcC/x3MQQqAIBRF0a3IHydoIlFbiQZmz/wTC4UIxL0nD
+ c/g3koFmVFoEZUyHi58pQ49CPLRpROSj24a1WiV0VYG5FQQAyB36xBmo7ybQD24MwK//2zdWvs
+ Ay4jP+1wAAAA=
+X-Change-ID: 20250315-fernsehfee-b5aef930ca7e
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742675713; l=1748;
- i=julian.stecklina@cyberus-technology.de; s=20250320;
- h=from:subject:message-id; bh=3yTdTgTHrBXPDCzHQY85SoPI2ekHfJ9SwSVLMJjjpHc=;
- b=gbKgVEbkExOOnYyBMICxer+0rrpqPN7L6a11TGtSHg9nUJDPcH1Az1Dcltfti9MOJD2CWO7NM
- iXnPdA1cJA4Ct+v+ehZ5rvSbO6BmO84OPaQLlG31oC9XmPYYKZEvguk
-X-Developer-Key: i=julian.stecklina@cyberus-technology.de; a=ed25519;
- pk=m051/8gQfs5AmkACfykwRcD6CUr2T7DQ9OA5eBgyy7c=
-X-Endpoint-Received: by B4 Relay for julian.stecklina@cyberus-technology.de/20250320 with auth_id=363
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742733500; l=1063;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=jd9wYHpyu6ZnNxDkrFxMFeP4lePw1I2neHhddWVkDjo=;
+ b=AMu+SEgV81icPPkhvIuoyn3r3e/kUZ9XHrbb3+w4UrKlZvVcnjOaV72cWbnRxz1Tq+ff46kXf
+ HnZqH8mi1+GCDMiKMW7SNQtuKWKX4QVY/VSCHW+Icx2oN8iNGjFWRtI
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Allow erofs to be used as a filesystem for initrds. It offers similar
-advantages as squashfs, but with higher performance and arguably nicer
-tooling. If we support squashfs, there is no reason not to support
-erofs as well.
+Fernsehfee[1] ("TV fairy") is a family of set-top boxes marketed as
+ad-blocking appliances. This patchset adds board support in the form of
+a device tree for the third generation, Fernsehfee 3.0.
 
-Suggested-by: Niklas Sturm <niklas.sturm@secunet.com>
-Signed-off-by: Julian Stecklina <julian.stecklina@cyberus-technology.de>
+[1]: https://fernsehfee.de/ (German), https://www.telefairy.com/ (English)
+
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- fs/erofs/Makefile |  5 +++++
- fs/erofs/initrd.c | 19 +++++++++++++++++++
- 2 files changed, 24 insertions(+)
+J. Neuschäfer (3):
+      dt-bindings: vendor-prefixes: Add TC Unterhaltungselektronik AG
+      dt-bindings: arm: amlogic: Add TCU Fernsehfee 3.0 board
+      ARM: dts: amlogic: Add TCU Fernsehfee 3.0
 
-diff --git a/fs/erofs/Makefile b/fs/erofs/Makefile
-index 4331d53c7109550a0518f2ed8df456deecdd2f8c..cea46a51dea2b9e22e4ba1478dd30de3262fe6cb 100644
---- a/fs/erofs/Makefile
-+++ b/fs/erofs/Makefile
-@@ -9,3 +9,8 @@ erofs-$(CONFIG_EROFS_FS_ZIP_DEFLATE) += decompressor_deflate.o
- erofs-$(CONFIG_EROFS_FS_ZIP_ZSTD) += decompressor_zstd.o
- erofs-$(CONFIG_EROFS_FS_BACKED_BY_FILE) += fileio.o
- erofs-$(CONFIG_EROFS_FS_ONDEMAND) += fscache.o
-+
-+# If we are built-in, we provide support for erofs on initrds.
-+ifeq ($(CONFIG_EROFS_FS),y)
-+erofs-objs += initrd.o
-+endif
-diff --git a/fs/erofs/initrd.c b/fs/erofs/initrd.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..e2bb313f55211a305e201f529d7da810898252ac
---- /dev/null
-+++ b/fs/erofs/initrd.c
-@@ -0,0 +1,19 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+#include <linux/initrd.h>
-+
-+#include "internal.h"
-+
-+static size_t __init detect_erofs(void *block_data)
-+{
-+	struct erofs_super_block *erofsb = block_data;
-+
-+	BUILD_BUG_ON(sizeof(*erofsb) > BLOCK_SIZE);
-+
-+	if (le32_to_cpu(erofsb->magic) != EROFS_SUPER_MAGIC_V1)
-+		return 0;
-+
-+	return le32_to_cpu(erofsb->blocks) << erofsb->blkszbits;
-+}
-+
-+initrd_fs_detect(detect_erofs, EROFS_SUPER_OFFSET);
+ Documentation/devicetree/bindings/arm/amlogic.yaml |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ arch/arm/boot/dts/amlogic/Makefile                 |   1 +
+ arch/arm/boot/dts/amlogic/meson8-fernsehfee3.dts   | 219 +++++++++++++++++++++
+ arch/arm/boot/dts/amlogic/meson8.dtsi              |  18 ++
+ 5 files changed, 241 insertions(+)
+---
+base-commit: 4701f33a10702d5fc577c32434eb62adde0a1ae1
+change-id: 20250315-fernsehfee-b5aef930ca7e
 
+Best regards,
 -- 
-2.47.0
+J. Neuschäfer <j.ne@posteo.net>
 
