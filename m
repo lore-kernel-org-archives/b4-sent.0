@@ -1,11 +1,11 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sun, 23 Mar 2025 13:37:50 +0100
-Subject: [PATCH 1/3] dt-bindings: vendor-prefixes: Add TC
- Unterhaltungselektronik AG
+Date: Sun, 23 Mar 2025 13:37:51 +0100
+Subject: [PATCH 2/3] dt-bindings: arm: amlogic: Add TCU Fernsehfee 3.0
+ board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250323-fernsehfee-v1-1-2621341cd37a@posteo.net>
+Message-Id: <20250323-fernsehfee-v1-2-2621341cd37a@posteo.net>
 References: <20250323-fernsehfee-v1-0-2621341cd37a@posteo.net>
 In-Reply-To: <20250323-fernsehfee-v1-0-2621341cd37a@posteo.net>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,37 +17,39 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742733500; l=959;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742733500; l=960;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=uaz9m8VjNE4NEygLbUtmBG2+WbjOgy1rPMuQ4WTpnro=;
- b=XWEvZjys42PmDLa1n4FLTA9f2MmzxWu8uLr8Mzx4Mal4ZylyaFFdxjPKN+Az3yww8cB+aEWHj
- WpA+cD9U14/B0t2ta3oMhRBIPPX4SlIOX4/8AZbHcQA/4q2fxIr/B45
+ bh=mrc3J8ytO/NiLhShyV41MfY6uhH+27AuqX1jMo8Sw34=;
+ b=JIcizXwOKzMDmAcqEevcbaltakZu6TXCOFfO84zrLK4aNuIbn53bU4TPJqHkwiTu5Jd8xkxwL
+ pgYiXOhP+FSBWRi5BZ9wJ5qw/AuURqMzwarOcqJ34hvQofeE3x2vvV0
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-TC Unterhaltungselektronik is the company behind Fernsehfee branded
-set-top boxes.
+Fernsehfee ("TV fairy") 3.0 is a set-top box with HDMI input and output
+ports. It originally ran Android 4.4 and a Linux 3.10 kernel.
+
+  https://fernsehfee.de/  (German)
+  https://telefairy.com/  (English)
 
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/arm/amlogic.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 5079ca6ce1d1e9e2b52312439e4b1d48b262200c..0019f6131bbfc11ba55f5a15a238825abf665aaf 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -1484,6 +1484,8 @@ patternProperties:
-     description: Toby Churchill Ltd.
-   "^tcs,.*":
-     description: Shenzhen City Tang Cheng Technology Co., Ltd.
-+  "^tcu,.*":
-+    description: TC Unterhaltungselektronik AG
-   "^tdo,.*":
-     description: Shangai Top Display Optoelectronics Co., Ltd
-   "^team-source-display,.*":
+diff --git a/Documentation/devicetree/bindings/arm/amlogic.yaml b/Documentation/devicetree/bindings/arm/amlogic.yaml
+index 0647851ae1f55a27bfb148252532bcf15ca905bf..f6f045528da32cf4625b30da59262ca21da860e6 100644
+--- a/Documentation/devicetree/bindings/arm/amlogic.yaml
++++ b/Documentation/devicetree/bindings/arm/amlogic.yaml
+@@ -27,6 +27,7 @@ properties:
+         items:
+           - enum:
+               - minix,neo-x8
++              - tcu,fernsehfee3
+           - const: amlogic,meson8
+ 
+       - description: Boards with the Amlogic Meson8m2 SoC
 
 -- 
 2.48.0.rc1.219.gb6b6757d772
