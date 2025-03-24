@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Mon, 24 Mar 2025 18:41:40 +0100
-Subject: [PATCH v5 3/5] dt-bindings: wireless: bcm4329-fmac: Use
- wireless-controller.yaml schema
+Date: Mon, 24 Mar 2025 18:41:41 +0100
+Subject: [PATCH v5 4/5] dt-bindings: wireless: silabs,wfx: Use
+ wireless-controller.yaml
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250324-dt-bindings-network-class-v5-3-f5c3fe00e8f0@ixit.cz>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250324-dt-bindings-network-class-v5-4-f5c3fe00e8f0@ixit.cz>
 References: <20250324-dt-bindings-network-class-v5-0-f5c3fe00e8f0@ixit.cz>
 In-Reply-To: <20250324-dt-bindings-network-class-v5-0-f5c3fe00e8f0@ixit.cz>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -25,20 +25,20 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, Janne Grunau <j@jannau.net>, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1082; i=david@ixit.cz;
- h=from:subject:message-id; bh=/39eFZ6ducpCjGUyDE9DMGHcDra7AKtjh9uaQngpN54=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn4ZlUt699Tlcv8r6WJO24J/HN3KZtO6w86vhOh
- rcHlVCjHG+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ+GZVAAKCRBgAj/E00kg
- cmG9D/oCykoLT9XrEn6xb1Q47UpvM0WJw8+ER5SJHyw1AQ3bzSnBRHBhPZ8VDJ3TlyhVGbkWQx9
- noV3zps0Zfjl+n0BqTH3IPBPsVmXi+woMrih0R0wPjNc39dV0WlBq64G6dXCrc5SVWBB649glBu
- gx8rYGmdyDVEmBNZv4XUyez4iiL4cmGkNwRf/atqNbmzROapeQDuGRYabDPQA6q8sNf/8hk39S7
- tdZ6HYA3Xa4z+xc2DADeuoesKl7tfgtQNjxETQpOwPmYTHPhVlDTklYylklSF59YhDRSBq9KWfD
- eppNfUdMcSa6VdBSctjJkAaKqnJOpOc7wYEOO0XEWN4iQI2Ab8l0T/r0TkV1IAncai3cmPEjqdv
- ayQ45Pc2f0r/gTtGnlvWxsC7vxKcPx3qrt0iof5nuiDwYdj9XM759iCKMzXIFX9HrACDuauPZSD
- 4neH2iIg3QsED31jB6f+3cx5KhMB5Z6CH6d7OSUJ9E8RPMMsNslwEcAEY8irjtblxG4zxx2PeTu
- mPL7w5j7JeXOcQ4bEbusJuAtyoSmo5Wr9yTm2PHYUlpo+pTwbIxI2lGac+zL4bGqCmR+TiFNpyn
- Tz4Av7pbr8u87LDnP5jsNZDsMCxKupIAa51N2CyEhK9nych/nWQFMuX86GbuoNma1pQXurxD93z
- eGVScAgNGtNlrBQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1355; i=david@ixit.cz;
+ h=from:subject:message-id; bh=1+Q97VlsmTPyLRAWooczMv5yLKsXFA3Pd6AXggMFbak=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn4ZlUF/zgQhHhLaKXCphlup97trhKf8Or6du6C
+ ZNMKVUlw6WJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ+GZVAAKCRBgAj/E00kg
+ cmJgD/9j/3y+cVi7+Qtvbk//nZ7RVgZDDN0GAGbjJrZ+UEjhd/6vdeBvEr3JWAyGNuhtvLMxTbr
+ GUoqEG2rpmlf7KgZTmFa+v3Eon8FcTNrQLP1IqMRG49r/zx2L9tmh0VF6iNa2FjjXCGdwzJjXb3
+ 72ngNCiIkcBrJ4AI6IoY2f7BZ4fD2ou2E8Lv5JXo0p80OJTff5XkSrGhFDZiqMck2Ip2GHVVepZ
+ l25HdjQoeqciRJF2FtmEnrtwIQotAUaSJre6AEM8gUXJz5ehWZBwpKQaBDKl5dzzZUbbNecPLRJ
+ MDuljAtFfSLzdgzdTzFhrIu2z3onhjnULad06GyRCTn5JPxJrtgki7MixamRWtoteMILrSpH31T
+ Xpnfijb1cyMQNhhpKliDnckjHJ18oagCOqHv4wpb9zzm5aB6VxmZ9gFwFinxecQ4uXZXE64iY7H
+ RR2vxZNg+AdyI4hp3B1xOupk+75jyqSpEGbNwwOis0VhefAuAlkRh82pBEuGdayW8jO8gRKlYxq
+ 0HDe0Dqz6ak/TRJaFIywDIBGDw8Lro5/DOQ+g5dkGAJB1ak6UK4qO4SFEcYPgYUA4s11C8DQ1z2
+ Xi91+LtieCa+/pWl/sSSC43yaHahkgcLOEb8lb3qtID1bM5/eObrx0hqj90mglvU1k6qzceNH52
+ syrqHitgj1VP83g==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -46,32 +46,39 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Janne Grunau <j@jannau.net>
 
-The wireless-controller schema specifies local-mac-address as
-used in the bcm4329-fmac device nodes of Apple silicon devices
-(arch/arm64/boot/dts/apple).
-
-Fixes `make dtbs_check` for those devices.
+Instead listing local-mac-address and mac-address properties, reference
+wireless-controller.yaml schema. The schema brings in constraints for the
+property checked during `make dtbs_check`.
 
 Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Reviewed-by: Jérôme Pouiller <jerome.pouiller@silabs.com>
 Signed-off-by: Janne Grunau <j@jannau.net>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- Documentation/devicetree/bindings/net/wireless/brcm,bcm4329-fmac.yaml | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Documentation/devicetree/bindings/net/wireless/silabs,wfx.yaml | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/net/wireless/brcm,bcm4329-fmac.yaml b/Documentation/devicetree/bindings/net/wireless/brcm,bcm4329-fmac.yaml
-index a3607d55ef3671514cdf2c884cf5bd0ccaadb162..7c8100e59a6cd045837a2f602e367f3f79ced5ba 100644
---- a/Documentation/devicetree/bindings/net/wireless/brcm,bcm4329-fmac.yaml
-+++ b/Documentation/devicetree/bindings/net/wireless/brcm,bcm4329-fmac.yaml
-@@ -16,7 +16,7 @@ description:
-   binding.
+diff --git a/Documentation/devicetree/bindings/net/wireless/silabs,wfx.yaml b/Documentation/devicetree/bindings/net/wireless/silabs,wfx.yaml
+index 84e5659e50ef3125b5063fbebcaf1d2b2bdb7398..6c0888ae4c4e172edf2a5f6249cb8aed5ed11681 100644
+--- a/Documentation/devicetree/bindings/net/wireless/silabs,wfx.yaml
++++ b/Documentation/devicetree/bindings/net/wireless/silabs,wfx.yaml
+@@ -71,15 +71,12 @@ properties:
+       "Platform Data Set" in Silabs jargon). Default depends of "compatible"
+       string. For "silabs,wf200", the default is 'wf200.pds'.
+ 
+-  local-mac-address: true
+-
+-  mac-address: true
+-
+ required:
+   - compatible
+   - reg
  
  allOf:
--  - $ref: ieee80211.yaml#
 +  - $ref: /schemas/net/wireless/wireless-controller.yaml#
+   - $ref: /schemas/spi/spi-peripheral-props.yaml#
  
- properties:
-   compatible:
+ unevaluatedProperties: false
 
 -- 
 2.49.0
