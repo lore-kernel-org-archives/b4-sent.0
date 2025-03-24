@@ -1,332 +1,71 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sun, 23 Mar 2025 13:37:52 +0100
-Subject: [PATCH 3/3] ARM: dts: amlogic: Add TCU Fernsehfee 3.0
+From: George Moussalem <george.moussalem@outlook.com>
+Date: Mon, 24 Mar 2025 10:24:59 +0400
+Subject: [PATCH] wifi: ath11k: support fetching mac address from nvmem
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250323-fernsehfee-v1-3-2621341cd37a@posteo.net>
-References: <20250323-fernsehfee-v1-0-2621341cd37a@posteo.net>
-In-Reply-To: <20250323-fernsehfee-v1-0-2621341cd37a@posteo.net>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742733500; l=7003;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=CRTxKSaqOs4QahTgYoU3CL/n6Ja8DUjhizoM0f/ZdlY=;
- b=CZVV61NDm96d+7CJNVbC5FrL5FSH6xdjd9xHnwVQz9HPH9Znb6feSAwXeBSND5la9q7jKHoKB
- JIp19v1CT/ODhiPiqeLLz51EghaMnNPjxAo9LoR00kAY4H4otnu+h3A
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250324-ath11k-nvmem-v1-1-d82bdf72820e@outlook.com>
+X-B4-Tracking: v=1; b=H4sIALv64GcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDYyMT3cSSDEPDbN28stzUXF3LJJM0U5M0ExNDCwsloJaCotS0zAqwcdG
+ xtbUAm2N0AF4AAAA=
+To: Jeff Johnson <jjohnson@kernel.org>
+Cc: ath11k@lists.infradead.org, linux-wireless@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742797500; l=1623;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=KFf/U6jpX3DLdf5cfXG9vG8Hbqcu1hFbIGhlckUUI7s=;
+ b=PoKhNSfsaNEQZQFXjHirGqsZeV20EcazdhX8I5TzQPa2R5lvPNK6z6IzkvT152fkvWA0wqYRc
+ pYhUAbz+GmRA9jGIGq7rRxXYScv+jjqoQr0WP0xU9nY4HQw+aRbHwa9
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fernsehfee[1] ("TV fairy") 3.0 is a set-top box with HDMI input and
-output ports. It originally ran Android 4.4 and a Linux 3.10 kernel.
+Many embedded devices with ath11k wifi chips store their mac address in
+nvmem partitions. Currently, the ath11k driver supports getting the
+mac address from the 'mac-address', 'local-mac-address', and 'address'
+device tree properties only. As such, add support for obtaining the mac
+address from nvmem if defined in a 'mac-address' cell by replacing the
+call to device_get_mac_address by of_get_mac_address which does exactly
+the same as the former but tries to get it from nvmem if it is not set
+by above mentioned DT properties,
 
-The following features are tested and known to work:
+Tested-on: IPQ5018, QCN6122, and QCN9074
 
-- Ethernet
-- Power LED (switching between green and red)
-- Power button
-- eMMC
-- SD Card
-- USB
-- Wifi
-
-The following features are untested or not working:
-
-- HDMI input and output
-- Infrared remote control input and output
-
-[1]: https://fernsehfee.de/ (German), https://telefairy.com/ (English)
-
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm/boot/dts/amlogic/Makefile               |   1 +
- arch/arm/boot/dts/amlogic/meson8-fernsehfee3.dts | 219 +++++++++++++++++++++++
- arch/arm/boot/dts/amlogic/meson8.dtsi            |  18 ++
- 3 files changed, 238 insertions(+)
+ drivers/net/wireless/ath/ath11k/mac.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm/boot/dts/amlogic/Makefile b/arch/arm/boot/dts/amlogic/Makefile
-index 504c533b1173298ec7f45099888d88b2fb74b978..3c8a1e88b386cd7fb9b5f41f47d7ff78fe7eeacc 100644
---- a/arch/arm/boot/dts/amlogic/Makefile
-+++ b/arch/arm/boot/dts/amlogic/Makefile
-@@ -1,6 +1,7 @@
- # SPDX-License-Identifier: GPL-2.0
- dtb-$(CONFIG_MACH_MESON8) += \
- 	meson8-minix-neo-x8.dtb \
-+	meson8-fernsehfee3.dtb \
- 	meson8b-ec100.dtb \
- 	meson8b-mxq.dtb \
- 	meson8b-odroidc1.dtb \
-diff --git a/arch/arm/boot/dts/amlogic/meson8-fernsehfee3.dts b/arch/arm/boot/dts/amlogic/meson8-fernsehfee3.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..47507316ac4a56f2bcf84ad0446a06ea9fe890cd
---- /dev/null
-+++ b/arch/arm/boot/dts/amlogic/meson8-fernsehfee3.dts
-@@ -0,0 +1,219 @@
-+// SPDX-License-Identifier: GPL-2.0-only OR MIT
-+// Copyright (C) 2025 J. Neuschäfer <j.ne@posteo.net>
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/linux-event-codes.h>
-+#include <dt-bindings/leds/common.h>
-+
-+#include "meson8.dtsi"
-+
-+/ {
-+	model = "Fernsehfee 3.0";
-+	compatible = "tcu,fernsehfee3", "amlogic,meson8";
-+
-+	aliases {
-+		serial0 = &uart_AO;
-+		gpiochip0 = &gpio;
-+		gpiochip1 = &gpio_ao;
-+		i2c0 = &i2c_AO;
-+		i2c1 = &i2c_B;
-+		mmc0 = &sdhc;
-+		mmc1 = &sdio;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	memory@0 {
-+		device_type = "memory";
-+		reg = <0x0 0x40000000>;  /* 1 GiB */
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys-polled";
-+		poll-interval = <100>;
-+
-+		power-button {
-+			label = "Power button";
-+			linux,code = <KEY_POWER>;
-+			gpios = <&gpio_ao GPIOAO_3 GPIO_ACTIVE_LOW>;
-+		};
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+
-+		led-0 {
-+			/*
-+			 * The power LED can be turned red, otherwise it is green.
-+			 */
-+			gpios = <&gpio_ao GPIO_TEST_N GPIO_ACTIVE_LOW>;
-+			function = LED_FUNCTION_POWER;
-+			color = <LED_COLOR_ID_RED>;
-+		};
-+	};
-+
-+	vcc_5v: regulator-5v {
-+		/* 5V rail, always on as long as the system is running */
-+		compatible = "regulator-fixed";
-+		regulator-name = "5V";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		regulator-always-on;
-+	};
-+
-+	vcc_3v3: regulator-3v3 {
-+		/* Chipown AP2420 step-down converter */
-+		compatible = "regulator-fixed";
-+		regulator-name = "3.3V";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&vcc_5v>;
-+	};
-+
-+	vcc_1v8: regulator-1v8 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "1.8V";
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+		vin-supply = <&vcc_3v3>;
-+	};
-+
-+	wifi_3v3: regulator-wifi {
-+		compatible = "regulator-fixed";
-+		regulator-name = "3.3V-WIFI";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&vcc_3v3>;
-+		gpio = <&gpio GPIOX_11 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+};
-+
-+&ethmac {
-+	status = "okay";
-+	pinctrl-0 = <&eth_pins>;
-+	pinctrl-names = "default";
-+	phy-handle = <&eth_phy0>;
-+	phy-mode = "rmii";
-+
-+	mdio {
-+		compatible = "snps,dwmac-mdio";
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		eth_phy0: ethernet-phy@0 {
-+			/* IC Plus IP101A (0x02430c54) */
-+			reg = <0>;
-+
-+			reset-assert-us = <10000>;
-+			reset-deassert-us = <10000>;
-+			reset-gpios = <&gpio GPIOH_4 GPIO_ACTIVE_LOW>;
-+		};
-+	};
-+};
-+
-+&i2c_AO {
-+	status = "okay";
-+	pinctrl-0 = <&i2c_ao_pins>;
-+	pinctrl-names = "default";
-+
-+	pmic@32 {
-+		compatible = "ricoh,rn5t618";
-+		reg = <0x32>;
-+		system-power-controller;
-+	};
-+
-+	eeprom@50 {
-+		/* Fairchild FM24C08A */
-+		compatible = "atmel,24c08";
-+		reg = <0x50>;
-+		pagesize = <16>;
-+		wp-gpios = <&gpio GPIOH_3 GPIO_ACTIVE_HIGH>;
-+		num-addresses = <4>;
-+	};
-+};
-+
-+&i2c_B {
-+	status = "okay";
-+	pinctrl-0 = <&i2c_b_pins>;
-+	pinctrl-names = "default";
-+
-+	/* TODO: SiI9293 HDMI receiver @ 0x39 */
-+};
-+
-+&sdhc {
-+	status = "okay";
-+	pinctrl-0 = <&sdxc_c_pins>;
-+	pinctrl-names = "default";
-+
-+	/* eMMC */
-+	bus-width = <8>;
-+	max-frequency = <100000000>;
-+
-+	disable-wp;
-+	cap-mmc-highspeed;
-+	mmc-hs200-1_8v;
-+	no-sdio;
-+
-+	vmmc-supply = <&vcc_3v3>;
-+	vqmmc-supply = <&vcc_1v8>;
-+};
-+
-+&sdio {
-+	status = "okay";
-+	pinctrl-0 = <&sd_b_pins>;
-+
-+	/* SD card */
-+	sd_card_slot: slot@1 {
-+		compatible = "mmc-slot";
-+		reg = <1>;
-+		status = "okay";
-+
-+		bus-width = <4>;
-+		cap-mmc-highspeed;
-+		cap-sd-highspeed;
-+		disable-wp;
-+
-+		cd-gpios = <&gpio CARD_6 GPIO_ACTIVE_LOW>;
-+
-+		vmmc-supply = <&vcc_3v3>;
-+	};
-+};
-+
-+&uart_AO {
-+	status = "okay";
-+	pinctrl-0 = <&uart_ao_a_pins>;
-+	pinctrl-names = "default";
-+};
-+
-+&usb0 {
-+	status = "okay";
-+};
-+
-+&usb0_phy {
-+	status = "okay";
-+};
-+
-+&usb1 {
-+	status = "okay";
-+	dr_mode = "host";
-+	/*
-+	 * This bus features a Realtek RTL8188 2.4GHz WiFi module, with a
-+	 * 3.3V supply voltage that must be enabled before use.
-+	 */
-+	vbus-supply = <&wifi_3v3>;
-+};
-+
-+&usb1_phy {
-+	status = "okay";
-+};
-+
-+&ir_receiver {
-+	status = "okay";
-+	pinctrl-0 = <&ir_recv_pins>;
-+	pinctrl-names = "default";
-+};
-diff --git a/arch/arm/boot/dts/amlogic/meson8.dtsi b/arch/arm/boot/dts/amlogic/meson8.dtsi
-index 9ff142d9fe3f4576fdd3230a966c8a6250870de7..300eccbfc0071ce10290be1c496132ac6b6a4dbc 100644
---- a/arch/arm/boot/dts/amlogic/meson8.dtsi
-+++ b/arch/arm/boot/dts/amlogic/meson8.dtsi
-@@ -477,6 +477,14 @@ gpio: bank@80 {
- 			gpio-ranges = <&pinctrl_cbus 0 0 120>;
- 		};
+diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
+index 97816916abac..49af6b9fc867 100644
+--- a/drivers/net/wireless/ath/ath11k/mac.c
++++ b/drivers/net/wireless/ath/ath11k/mac.c
+@@ -9,6 +9,7 @@
+ #include <linux/etherdevice.h>
+ #include <linux/bitfield.h>
+ #include <linux/inetdevice.h>
++#include <linux/of_net.h>
+ #include <net/if_inet6.h>
+ #include <net/ipv6.h>
  
-+		i2c_b_pins: i2c-b {
-+			mux {
-+				groups = "i2c_sda_b", "i2c_sck_b";
-+				function = "i2c_b";
-+				bias-disable;
-+			};
-+		};
-+
- 		sd_a_pins: sd-a {
- 			mux {
- 				groups = "sd_d0_a", "sd_d1_a", "sd_d2_a",
-@@ -522,6 +530,16 @@ mux {
- 			};
- 		};
+@@ -10379,7 +10380,7 @@ int ath11k_mac_register(struct ath11k_base *ab)
+ 	if (ret)
+ 		return ret;
  
-+		sdxc_c_pins: sdxc-c {
-+			mux {
-+				groups = "sdxc_d0_c", "sdxc_d13_c",
-+					"sdxc_clk_c", "sdxc_cmd_c",
-+					"sdxc_d47_c";
-+				function = "sdxc_c";
-+				bias_pull_up;
-+			};
-+		};
-+
- 		spdif_out_pins: spdif-out {
- 			mux {
- 				groups = "spdif_out";
+-	device_get_mac_address(ab->dev, mac_addr);
++	of_get_mac_address(ab->dev->of_node, mac_addr);
+ 
+ 	for (i = 0; i < ab->num_radios; i++) {
+ 		pdev = &ab->pdevs[i];
 
+---
+base-commit: 9388ec571cb1adba59d1cded2300eeb11827679c
+change-id: 20250324-ath11k-nvmem-9b4f54f44188
+
+Best regards,
 -- 
-2.48.0.rc1.219.gb6b6757d772
+George Moussalem <george.moussalem@outlook.com>
 
