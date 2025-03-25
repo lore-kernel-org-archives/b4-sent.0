@@ -1,82 +1,175 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 24 Mar 2025 18:41:42 +0100
-Subject: [PATCH v5 5/5] dt-bindings: wireless: qcom,wcnss: Use
- wireless-controller.yaml
+From: Denis Mukhin <dmukhin@ford.com>
+Date: Mon, 24 Mar 2025 17:55:40 -0700
+Subject: [PATCH v3] x86/early_printk: add MMIO-based UARTs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250324-dt-bindings-network-class-v5-5-f5c3fe00e8f0@ixit.cz>
-References: <20250324-dt-bindings-network-class-v5-0-f5c3fe00e8f0@ixit.cz>
-In-Reply-To: <20250324-dt-bindings-network-class-v5-0-f5c3fe00e8f0@ixit.cz>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Mailing List <devicetree-spec-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, 
- Johannes Berg <johannes@sipsolutions.net>, 
- Lorenzo Bianconi <lorenzo@kernel.org>, van Spriel <arend@broadcom.com>, 
- =?utf-8?q?J=C3=A9r=C3=B4me_Pouiller?= <jerome.pouiller@silabs.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Andy Gross <agross@kernel.org>, 
- Mailing List <devicetree-spec@vger.kernel.org>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, Janne Grunau <j@jannau.net>, 
- David Heidelberg <david@ixit.cz>
+Message-Id: <20250324-earlyprintk-v3-1-aee7421dc469@ford.com>
+X-B4-Tracking: v=1; b=H4sIAAv/4WcC/23MQQ6CMBCF4auQrq1pi0hl5T2MC9pOZaJSMiWNh
+ HB3CytMXL6XfP/MIhBCZE0xM4KEEUOfR3komO3a/gEcXd5MCVWJUpYcWnpNA2E/Prk/a2O9FB6
+ MZVkMBB4/W+12z7vDOAaatniS6/u/kySXXHsttavrVjt39YHc0YY3WzNJ7enpl6pMlbEGRKUuw
+ ugdXZblC3ge2nPgAAAA
+X-Change-ID: 20250313-earlyprintk-f68bcf10febc
+To: Jonathan Corbet <corbet@lwn.net>, Thomas Gleixner <tglx@linutronix.de>, 
+ Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
+ Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
+ "H. Peter Anvin" <hpa@zytor.com>
+Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Denis Mukhin <dmukhin@ford.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1122; i=david@ixit.cz;
- h=from:subject:message-id; bh=8m+TP7dhDaz8he9N9bMiZ3ZhzlbMMMqDKwJGp281Vxg=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn4ZlU7W6DvkU/GtU/5mgv1mJEVjM4fMdd4lFLB
- YEnkBz9O4aJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ+GZVAAKCRBgAj/E00kg
- cjZWD/9gYT52tWM4Pj6Xa1C9vE5/lk54/lUY/gSgvswdtF7p8i7iEfWQ1TAp6bESqwxYpp3QaZ/
- hDpevbVV/KiBcnkL9XCOImWcaGNBM+KgPmZHmgj/dChDYuhxtBhSCGTAJlPA+fsBnwuP/le9X67
- wYDmWqJAvJOdRRvDosljxZoMoCMde9D0xEQ58b8wkKvEJIALE4hDmkMTrkNAcQ9kbQs0V8WqnHu
- FakuiaHdvBiRxln3b1Jb62vC9QdJFZvut36ORsLRJNj8bkeQOyFuybIodr6Pd1URNMBulafo76t
- /knBV1EuMz2KjnvNF7kC0r2sd8K3ZK6E81Kbpb+7zci+JShAdz6vm1VUbX83FTJKTled2L3ronh
- S1QR7GJKiJ2DLaqHiaBr+S5H9Bfwa+1Y6nGZgo0GAzRBFP5+ecG++alMEjCFaqPI0g0veZ5nN8a
- iduChlEKGZSwqVVXbQofOQ9f5IRZb/zqYbEydRIb25SeOei0XaF+kbl12j5ykx6Mu9MrTFPxXby
- RpL1Jp10Zox9eYFqfnYgiz+FN9D0a8sEyYS/BAUb/6z3hPxpnBIf+NMuNh0ulyQe81F7UOq1qdK
- WYWHmwXAOpdxaBuugB3TAwIt33DuRlAmS+8X9IMWwnjOd3RrsWW+P2mxZiXHFmBed4PbPg9Swvc
- 1gEwu7ZdbzaosRg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742864146; l=5064;
+ i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
+ bh=RdmhzMXgwjWmCEHYWUItw+iaOq3OmT/DclEG21o0wbE=;
+ b=DLjU+YwK42mtzlVicEbf642u6xddAlYO6z8RLgOGDSz5avySPSRCFa7osFhaV/NtS3/koWUUg
+ MNxUjmiYQ1wBfTbCc2sltGt4f6HIhpmhJEa2jGotB/vBvvz15tpYdci
+X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
+ pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
+X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Reference wireless-controller.yaml schema, so we can use properties
-as local-mac-address or mac-address.
+During the bring-up of an x86 board, the kernel was crashing before
+reaching the platform's console driver because of a bug in the firmware,
+leaving no trace of the boot progress.
 
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+It was discovered that the only available method to debug the kernel
+boot process was via the platform's MMIO-based UART, as the board lacked
+an I/O port-based UART, PCI UART, or functional video output.
+
+Then it turned out that earlyprintk= does not have a knob to configure
+the MMIO-mapped UART.
+
+Extend the early printk facility to support platform MMIO-based UARTs
+on x86 systems, enabling debugging during the system bring-up phase.
+
+The command line syntax to enable platform MMIO-based UART is:
+  earlyprintk=mmio,membase[,{nocfg|baudrate}][,keep]
+
+Note, the change does not integrate MMIO-based UART support to:
+  arch/x86/boot/early_serial_console.c
+
+Also, update kernel parameters documentation with the new syntax and
+add missing 'nocfg' setting to PCI serial cards description.
+
+Signed-off-by: Denis Mukhin <dmukhin@ford.com>
 ---
- Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+Changes in v3:
+- Fixed formatting in early_mmio_serial_init()
+- Rebased on tip/master, new code switched to using static_call_update()
+- Doc update: added nocfg description for earlyprintk=pciserial and a note
+  on 32-bit memory-mapped UARTs
+- Link to v2: https://lore.kernel.org/r/20250314-earlyprintk-v2-1-2bcbe05290b8@ford.com
 
-diff --git a/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml b/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml
-index fd6db0ca98eb7e56d7399f55c408844d5e782805..4fcae6bedfffa845ad61c776ee0b70768e9a38a5 100644
---- a/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml
-+++ b/Documentation/devicetree/bindings/soc/qcom/qcom,wcnss.yaml
-@@ -54,7 +54,7 @@ properties:
-       - compatible
+Changes in v2:
+- Fixed description of early_mmio_serial_init()
+- Link to v1: https://lore.kernel.org/r/20250313-earlyprintk-v1-1-8f818d77a8dd@ford.com
+---
+ Documentation/admin-guide/kernel-parameters.txt |  9 ++++-
+ arch/x86/kernel/early_printk.c                  | 45 ++++++++++++++++++++++++-
+ 2 files changed, 52 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index 3e5e41cbe3ce907bb286a6d86456241e02976f6d..1d1eaeac04b31ba808b9196d0f928050acfd17b7 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -1407,14 +1407,21 @@
+ 			earlyprintk=serial[,0x...[,baudrate]]
+ 			earlyprintk=ttySn[,baudrate]
+ 			earlyprintk=dbgp[debugController#]
+-			earlyprintk=pciserial[,force],bus:device.function[,baudrate]
++			earlyprintk=pciserial[,force],bus:device.function[,{nocfg|baudrate}]
+ 			earlyprintk=xdbc[xhciController#]
+ 			earlyprintk=bios
++			earlyprintk=mmio,membase[,{nocfg|baudrate}]
  
-   wifi:
--    additionalProperties: false
-+    unevaluatedProperties: false
-     type: object
-     properties:
-       compatible:
-@@ -88,6 +88,9 @@ properties:
-       - qcom,smem-states
-       - qcom,smem-state-names
+ 			earlyprintk is useful when the kernel crashes before
+ 			the normal console is initialized. It is not enabled by
+ 			default because it has some cosmetic problems.
  
-+    allOf:
-+      - $ref: /schemas/net/wireless/wireless-controller.yaml#
++			Only 32-bit memory addresses are supported for "mmio"
++			and "pciserial" devices.
 +
- required:
-   - compatible
-   - qcom,mmio
++			Use "nocfg" to skip UART configuration, assume
++			BIOS/firmware has configured UART correctly.
++
+ 			Append ",keep" to not disable it when the real console
+ 			takes over.
+ 
+diff --git a/arch/x86/kernel/early_printk.c b/arch/x86/kernel/early_printk.c
+index fc1714bad04588abc3468a0e72df26513250162b..611f27e3890c2852cece31a9e948e7212c4e10fe 100644
+--- a/arch/x86/kernel/early_printk.c
++++ b/arch/x86/kernel/early_printk.c
+@@ -190,7 +190,6 @@ static __init void early_serial_init(char *s)
+ 	early_serial_hw_init(divisor);
+ }
+ 
+-#ifdef CONFIG_PCI
+ static __noendbr void mem32_serial_out(unsigned long addr, int offset, int value)
+ {
+ 	u32 __iomem *vaddr = (u32 __iomem *)addr;
+@@ -207,6 +206,45 @@ static __noendbr unsigned int mem32_serial_in(unsigned long addr, int offset)
+ }
+ ANNOTATE_NOENDBR_SYM(mem32_serial_in);
+ 
++/*
++ * early_mmio_serial_init() - Initialize MMIO-based early serial console.
++ * @s: MMIO-based serial specification.
++ */
++static __init void early_mmio_serial_init(char *s)
++{
++	unsigned long baudrate;
++	unsigned long membase;
++	char *e;
++
++	if (*s == ',')
++		s++;
++
++	if (!strncmp(s, "0x", 2)) {
++		/* NB: only 32-bit addresses are supported. */
++		membase = simple_strtoul(s, &e, 16);
++		early_serial_base = (unsigned long)early_ioremap(membase, PAGE_SIZE);
++
++		static_call_update(serial_in, mem32_serial_in);
++		static_call_update(serial_out, mem32_serial_out);
++
++		s += strcspn(s, ",");
++		if (*s == ',')
++			s++;
++	}
++
++	if (!strncmp(s, "nocfg", 5)) {
++		baudrate = 0;
++	} else {
++		baudrate = simple_strtoul(s, &e, 0);
++		if (baudrate == 0 || s == e)
++			baudrate = DEFAULT_BAUD;
++	}
++
++	if (baudrate)
++		early_serial_hw_init(115200 / baudrate);
++}
++
++#ifdef CONFIG_PCI
+ /*
+  * early_pci_serial_init()
+  *
+@@ -351,6 +389,11 @@ static int __init setup_early_printk(char *buf)
+ 	keep = (strstr(buf, "keep") != NULL);
+ 
+ 	while (*buf != '\0') {
++		if (!strncmp(buf, "mmio", 4)) {
++			early_mmio_serial_init(buf + 4);
++			early_console_register(&early_serial_console, keep);
++			buf += 4;
++		}
+ 		if (!strncmp(buf, "serial", 6)) {
+ 			buf += 6;
+ 			early_serial_init(buf);
 
+---
+base-commit: cc086afdd3132fa2a80c3891639c2352521e5d73
+change-id: 20250313-earlyprintk-f68bcf10febc
+
+Best regards,
 -- 
-2.49.0
+Denis Mukhin <dmukhin@ford.com>
 
