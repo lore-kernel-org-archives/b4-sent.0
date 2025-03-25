@@ -1,175 +1,199 @@
-From: Denis Mukhin <dmukhin@ford.com>
-Date: Mon, 24 Mar 2025 17:55:40 -0700
-Subject: [PATCH v3] x86/early_printk: add MMIO-based UARTs
+From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
+Subject: [PATCH v8 0/6] bits: Fixed-type GENMASK_U*() and BIT_U*()
+Date: Wed, 26 Mar 2025 00:59:55 +0900
+Message-Id: <20250326-fixed-type-genmasks-v8-0-24afed16ca00@wanadoo.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250324-earlyprintk-v3-1-aee7421dc469@ford.com>
-X-B4-Tracking: v=1; b=H4sIAAv/4WcC/23MQQ6CMBCF4auQrq1pi0hl5T2MC9pOZaJSMiWNh
- HB3CytMXL6XfP/MIhBCZE0xM4KEEUOfR3komO3a/gEcXd5MCVWJUpYcWnpNA2E/Prk/a2O9FB6
- MZVkMBB4/W+12z7vDOAaatniS6/u/kySXXHsttavrVjt39YHc0YY3WzNJ7enpl6pMlbEGRKUuw
- ugdXZblC3ge2nPgAAAA
-X-Change-ID: 20250313-earlyprintk-f68bcf10febc
-To: Jonathan Corbet <corbet@lwn.net>, Thomas Gleixner <tglx@linutronix.de>, 
- Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
- Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
- "H. Peter Anvin" <hpa@zytor.com>
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Denis Mukhin <dmukhin@ford.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAPvS4mcC/23RTW7DIBQE4KtYrIuL+TE4q9yj6gLDI0aNTQrEb
+ RTl7sW1KrmKlyPxPo2GO0oQPSR0qO4owuyTD1MJ6qVCZtDTCbC3JSNKqCCUKuz8N1icbxfAJ5h
+ GnT4SVrbRQgjHOChULi8RlmeL+vZesothxHmIoP8sTihRRHJBm1pISWSLG3y+Gp1qC6OOZvBHP
+ 2U41yaMCzn4lEO8/fac+QKvlRgRu5VmjglulGTWWNdKyo5fetI2hNpFtHSaxRZp9xFRkJ5zBp0
+ 1vW6fkXaL7I8ztwVxomONAMkM7Z4QuUEo3UdkQaxmijjXGNH/Rx7r5hE+r+UD8zo86nUCXOYbf
+ T5UIfqTn16LlmG5ePwA1/rO9foBAAA=
+X-Change-ID: 20250228-fixed-type-genmasks-8d1a555f34e8
+To: Yury Norov <yury.norov@gmail.com>, 
+ Lucas De Marchi <lucas.demarchi@intel.com>, 
+ Rasmus Villemoes <linux@rasmusvillemoes.dk>, 
+ Jani Nikula <jani.nikula@linux.intel.com>, 
+ Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
+ Rodrigo Vivi <rodrigo.vivi@intel.com>, 
+ Tvrtko Ursulin <tursulin@ursulin.net>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, intel-gfx@lists.freedesktop.org, 
+ dri-devel@lists.freedesktop.org, Andi Shyti <andi.shyti@linux.intel.com>, 
+ David Laight <David.Laight@ACULAB.COM>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, 
+ Anshuman Khandual <anshuman.khandual@arm.com>, 
+ linux-arm-kernel@lists.infradead.org, 
+ Vincent Mailhol <mailhol.vincent@wanadoo.fr>, 
+ Jani Nikula <jani.nikula@intel.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742864146; l=5064;
- i=dmukhin@ford.com; s=20241125; h=from:subject:message-id;
- bh=RdmhzMXgwjWmCEHYWUItw+iaOq3OmT/DclEG21o0wbE=;
- b=DLjU+YwK42mtzlVicEbf642u6xddAlYO6z8RLgOGDSz5avySPSRCFa7osFhaV/NtS3/koWUUg
- MNxUjmiYQ1wBfTbCc2sltGt4f6HIhpmhJEa2jGotB/vBvvz15tpYdci
-X-Developer-Key: i=dmukhin@ford.com; a=ed25519;
- pk=SsDZ9p39s0fqcpUKQuqKqrbn0rq6EtEAClvpOpzx6+U=
-X-Endpoint-Received: by B4 Relay for dmukhin@ford.com/20241125 with auth_id=287
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5325;
+ i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
+ bh=Qyqawt3yEY8kEjetVfNw5tS/eDbvtY8p88+b2hatK2U=;
+ b=owGbwMvMwCV2McXO4Xp97WbG02pJDOmPLkt1sV17eDToX5FbpYcyg85HyzccM3pONpx1W9JQn
+ elso9XTUcrCIMbFICumyLKsnJNboaPQO+zQX0uYOaxMIEMYuDgFYCLKLYwMX0JYr1z34WlecTP4
+ t4yZSky58f6kmTz1h7WnG3uXRyspMTJcX9rwf5aEnMCJmEcucVVe83xmzl2oM1VWyuYhy7xXrP8
+ 5AQ==
+X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
+ fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
+X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-During the bring-up of an x86 board, the kernel was crashing before
-reaching the platform's console driver because of a bug in the firmware,
-leaving no trace of the boot progress.
+Introduce some fixed width variant of the GENMASK() and the BIT()
+macros in bits.h. For example:
 
-It was discovered that the only available method to debug the kernel
-boot process was via the platform's MMIO-based UART, as the board lacked
-an I/O port-based UART, PCI UART, or functional video output.
+  GENMASK_U16(16, 0)
 
-Then it turned out that earlyprintk= does not have a knob to configure
-the MMIO-mapped UART.
+will raise a build bug.
 
-Extend the early printk facility to support platform MMIO-based UARTs
-on x86 systems, enabling debugging during the system bring-up phase.
+This series is a continuation of:
 
-The command line syntax to enable platform MMIO-based UART is:
-  earlyprintk=mmio,membase[,{nocfg|baudrate}][,keep]
+  https://lore.kernel.org/intel-xe/20240208074521.577076-1-lucas.demarchi@intel.com
 
-Note, the change does not integrate MMIO-based UART support to:
-  arch/x86/boot/early_serial_console.c
+from Lucas De Marchi. Above series is one year old. I really think
+that this was a good idea and I do not want this series to die. So I
+am volunteering to revive it.
 
-Also, update kernel parameters documentation with the new syntax and
-add missing 'nocfg' setting to PCI serial cards description.
+Meanwhile, many changes occurred in bits.h. The most significant
+change is that __GENMASK() was moved to the uapi headers. For this
+reason, a new GENMASK_TYPE() is introduced instead and the uapi
+__GENMASK() is left untouched.
 
-Signed-off-by: Denis Mukhin <dmukhin@ford.com>
----
-Changes in v3:
-- Fixed formatting in early_mmio_serial_init()
-- Rebased on tip/master, new code switched to using static_call_update()
-- Doc update: added nocfg description for earlyprintk=pciserial and a note
-  on 32-bit memory-mapped UARTs
-- Link to v2: https://lore.kernel.org/r/20250314-earlyprintk-v2-1-2bcbe05290b8@ford.com
+Finally, I do not think it makes sense to expose the fixed width
+variants to the asm. The fixed width integers type are a C concept. So
+the GENMASK_U*() are only visible to the non-asm code. For asm, the
+long and long long variants seem sufficient.
 
-Changes in v2:
-- Fixed description of early_mmio_serial_init()
-- Link to v1: https://lore.kernel.org/r/20250313-earlyprintk-v1-1-8f818d77a8dd@ford.com
----
- Documentation/admin-guide/kernel-parameters.txt |  9 ++++-
- arch/x86/kernel/early_printk.c                  | 45 ++++++++++++++++++++++++-
- 2 files changed, 52 insertions(+), 2 deletions(-)
+This series does not modify the actual GENMASK(), GENMASK_ULL() and
+GENMASK_U128(). A consolidation of the existing genmasks will be
+proposed later on in a separate series.
 
-diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index 3e5e41cbe3ce907bb286a6d86456241e02976f6d..1d1eaeac04b31ba808b9196d0f928050acfd17b7 100644
---- a/Documentation/admin-guide/kernel-parameters.txt
-+++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -1407,14 +1407,21 @@
- 			earlyprintk=serial[,0x...[,baudrate]]
- 			earlyprintk=ttySn[,baudrate]
- 			earlyprintk=dbgp[debugController#]
--			earlyprintk=pciserial[,force],bus:device.function[,baudrate]
-+			earlyprintk=pciserial[,force],bus:device.function[,{nocfg|baudrate}]
- 			earlyprintk=xdbc[xhciController#]
- 			earlyprintk=bios
-+			earlyprintk=mmio,membase[,{nocfg|baudrate}]
- 
- 			earlyprintk is useful when the kernel crashes before
- 			the normal console is initialized. It is not enabled by
- 			default because it has some cosmetic problems.
- 
-+			Only 32-bit memory addresses are supported for "mmio"
-+			and "pciserial" devices.
-+
-+			Use "nocfg" to skip UART configuration, assume
-+			BIOS/firmware has configured UART correctly.
-+
- 			Append ",keep" to not disable it when the real console
- 			takes over.
- 
-diff --git a/arch/x86/kernel/early_printk.c b/arch/x86/kernel/early_printk.c
-index fc1714bad04588abc3468a0e72df26513250162b..611f27e3890c2852cece31a9e948e7212c4e10fe 100644
---- a/arch/x86/kernel/early_printk.c
-+++ b/arch/x86/kernel/early_printk.c
-@@ -190,7 +190,6 @@ static __init void early_serial_init(char *s)
- 	early_serial_hw_init(divisor);
- }
- 
--#ifdef CONFIG_PCI
- static __noendbr void mem32_serial_out(unsigned long addr, int offset, int value)
- {
- 	u32 __iomem *vaddr = (u32 __iomem *)addr;
-@@ -207,6 +206,45 @@ static __noendbr unsigned int mem32_serial_in(unsigned long addr, int offset)
- }
- ANNOTATE_NOENDBR_SYM(mem32_serial_in);
- 
-+/*
-+ * early_mmio_serial_init() - Initialize MMIO-based early serial console.
-+ * @s: MMIO-based serial specification.
-+ */
-+static __init void early_mmio_serial_init(char *s)
-+{
-+	unsigned long baudrate;
-+	unsigned long membase;
-+	char *e;
-+
-+	if (*s == ',')
-+		s++;
-+
-+	if (!strncmp(s, "0x", 2)) {
-+		/* NB: only 32-bit addresses are supported. */
-+		membase = simple_strtoul(s, &e, 16);
-+		early_serial_base = (unsigned long)early_ioremap(membase, PAGE_SIZE);
-+
-+		static_call_update(serial_in, mem32_serial_in);
-+		static_call_update(serial_out, mem32_serial_out);
-+
-+		s += strcspn(s, ",");
-+		if (*s == ',')
-+			s++;
-+	}
-+
-+	if (!strncmp(s, "nocfg", 5)) {
-+		baudrate = 0;
-+	} else {
-+		baudrate = simple_strtoul(s, &e, 0);
-+		if (baudrate == 0 || s == e)
-+			baudrate = DEFAULT_BAUD;
-+	}
-+
-+	if (baudrate)
-+		early_serial_hw_init(115200 / baudrate);
-+}
-+
-+#ifdef CONFIG_PCI
- /*
-  * early_pci_serial_init()
-  *
-@@ -351,6 +389,11 @@ static int __init setup_early_printk(char *buf)
- 	keep = (strstr(buf, "keep") != NULL);
- 
- 	while (*buf != '\0') {
-+		if (!strncmp(buf, "mmio", 4)) {
-+			early_mmio_serial_init(buf + 4);
-+			early_console_register(&early_serial_console, keep);
-+			buf += 4;
-+		}
- 		if (!strncmp(buf, "serial", 6)) {
- 			buf += 6;
- 			early_serial_init(buf);
+As requested, here are the bloat-o-meter stats:
+
+  $ ./scripts/bloat-o-meter vmlinux_before.o vmlinux_after.o 
+  add/remove: 0/0 grow/shrink: 0/0 up/down: 0/0 (0)
+  Function                                     old     new   delta
+  Total: Before=22781662, After=22781662, chg +0.00%
+
+(done with GCC 12.4.1 on an x86_64_defconfig)
+
+--
+2.43.0
 
 ---
-base-commit: cc086afdd3132fa2a80c3891639c2352521e5d73
-change-id: 20250313-earlyprintk-f68bcf10febc
+Changes from v7:
+
+  - Meanwhile, in commit db6fe4d61ece ("lib: Move KUnit tests into
+    tests/ subdirectory"), lib/test_bits.c was moved to
+    lib/tests/test_bits.c. Rebase onto Linus's master branch so that
+    this change is reflected.
+
+  - Remove the note in the cover letter on the return type, instead
+    add an explanation in patch "bits: introduce fixed-type
+    GENMASK_U*()".
+
+  - s/shift-count-overflow/-Wshift-count-overflow/g
+
+  - Link to v7: https://lore.kernel.org/r/20250322-fixed-type-genmasks-v7-0-da380ff1c5b9@wanadoo.fr
+
+Changes from v6:
+
+  - Split the series in two: this series leave any existing GENMASK*()
+    unmodified. The consolidation will be done in a separate series.
+
+  - Collect some Reviewed-by tag.
+
+  - Address miscellaneous nitpick on the code comments and the line
+    wrapping (details in each patch).
+
+  - Link to v6: https://lore.kernel.org/r/20250308-fixed-type-genmasks-v6-0-f59315e73c29@wanadoo.fr
+
+Changes from v5:
+
+  - Update the cover letter message. I was still refering to
+    GENMASK_t() instead of GENMASK_TYPE().
+
+  - Add a comment in the cover letter to explain that a common
+    GENMASK_TYPE() for C and asm wouldn't allow to generate the u128
+    variant.
+
+  - Restore the comment saying that BUILD_BUG_ON() is not available in
+    asm code.
+
+  - Add a FIXME message to highlight the absence of the asm GENMASK*()
+    unit tests.
+
+  - Use git's histogram diff algorithm
+
+  - Link to v5: https://lore.kernel.org/r/20250306-fixed-type-genmasks-v5-0-b443e9dcba63@wanadoo.fr
+
+Changes from v4:
+
+  - Rebase on https://github.com/norov/linux/tree/bitmap-for-next
+
+  - Rename GENMASK_t() to GENMASK_TYPE()
+
+  - First patch of v4 (the typo fix 'init128' -> 'int128') is removed
+    because it was resent separately in:
+    https://lore.kernel.org/all/20250305-fix_init128_typo-v1-1-cbe5b8e54e7d@wanadoo.fr
+
+  - Replace the (t)~ULL(0) by type_max(t). This way, GENMASK_TYPE()
+    can now be used to generate GENMASK_U128().
+
+  - Get rid of the unsigned int cast for the U8 and U16 variants.
+
+  - Add the BIT_TYPE() helper macro.
+
+  - Link to v4: https://lore.kernel.org/r/20250305-fixed-type-genmasks-v4-0-1873dcdf6723@wanadoo.fr
+
+Changes from v3:
+
+  - Rebase on v6.14-rc5
+
+  - Fix a typo in GENMASK_U128() comment.
+
+  - Split the asm and non-asm definition of 
+
+  - Replace ~0ULL by ~ULL(0)
+
+  - Since v3, __GENMASK() was moved to the uapi and people started
+    using directly. Introduce GENMASK_t() instead.
+
+  - Link to v3: https://lore.kernel.org/intel-xe/20240208074521.577076-1-lucas.demarchi@intel.com
+
+Changes from v2:
+
+  - Document both in commit message and code about the strict type
+    checking and give examples how it´d break with invalid params.
+
+  - Link to v2: https://lore.kernel.org/intel-xe/20240124050205.3646390-1-lucas.demarchi@intel.com
+
+Link to v1: https://lore.kernel.org/intel-xe/20230509051403.2748545-1-lucas.demarchi@intel.com
+
+---
+Lucas De Marchi (3):
+      bits: introduce fixed-type BIT_U*()
+      drm/i915: Convert REG_GENMASK*() to fixed-width GENMASK_U*()
+      test_bits: add tests for GENMASK_U*()
+
+Vincent Mailhol (3):
+      bits: add comments and newlines to #if, #else and #endif directives
+      bits: introduce fixed-type GENMASK_U*()
+      test_bits: add tests for BIT_U*()
+
+ drivers/gpu/drm/i915/i915_reg_defs.h | 108 ++++-------------------------------
+ include/linux/bitops.h               |   1 -
+ include/linux/bits.h                 |  57 +++++++++++++++++-
+ lib/tests/test_bits.c                |  30 ++++++++++
+ 4 files changed, 96 insertions(+), 100 deletions(-)
+---
+base-commit: 2df0c02dab829dd89360d98a8a1abaa026ef5798
+change-id: 20250228-fixed-type-genmasks-8d1a555f34e8
 
 Best regards,
 -- 
-Denis Mukhin <dmukhin@ford.com>
+Vincent Mailhol <mailhol.vincent@wanadoo.fr>
 
