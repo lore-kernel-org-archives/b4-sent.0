@@ -1,10 +1,11 @@
 From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Wed, 26 Mar 2025 13:34:16 +0800
-Subject: [PATCH v2 4/5] drm/bridge: it6505: modify DP link training work
+Date: Wed, 26 Mar 2025 13:34:17 +0800
+Subject: [PATCH v2 5/5] drm/bridge: it6505: skip auto training when
+ previous try fail
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250326-fix-link-training-v2-4-756c8306f500@ite.com.tw>
+Message-Id: <20250326-fix-link-training-v2-5-756c8306f500@ite.com.tw>
 References: <20250326-fix-link-training-v2-0-756c8306f500@ite.com.tw>
 In-Reply-To: <20250326-fix-link-training-v2-0-756c8306f500@ite.com.tw>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
@@ -18,137 +19,91 @@ Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org,
  dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742967277; l=4425;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742967277; l=2513;
  i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=hBOJBY2XTkl+EvP8IZiH3XQVQvr/2YIKA/X+KvsSbUs=;
- b=NEFSW1BW80J6hUzk8TcL4jl7RHa78HiGxL9aafQiv5H6/4IqePGWxWSd+6Snj1mnjqFhGoAgT
- cSiuTvwgHUUASFGKotq47YHf6z/WzQCp9x6EQ9pwDlb4Op0w+sZvajX
+ bh=tiJ4RlbfopmJYWvIu2IM5fgKRrXTP6oin1aKAqqcppQ=;
+ b=lCmQZ7iuZxv2BHsc/G9uHxkeG4Ex0zbCFP4cowt8AFQz9da00JgtJQPZbg6UilJ4erYIjhDtM
+ jw25gSKiTxGBWX+I+9Cx0pHXc/+7y2VimoE+KSEaZMjbE9K2oeZbwxj
 X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
  pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
 X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The DP link training work include auto training and after
-auto training failed "AUTO_TRAIN_RETRY" times, it switch to
-step training mode.
-
-It will more efficiency that finish link auto training,
-include retry, and step training in a work, rather than
-re-schedule train work when each training fail.
-
-Drop auto_train_retry from it6505 structure,
-and it6505_dump() is remove from link trainig work,
-it takes too much time to read all register area,
-and is not necessary.
+When connect to device which can only training done by
+step training, skip auto training when link training restart,
+usually happen when display resolution is changed.
 
 Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- drivers/gpu/drm/bridge/ite-it6505.c | 40 ++++++++++++++-----------------------
- 1 file changed, 15 insertions(+), 25 deletions(-)
+ drivers/gpu/drm/bridge/ite-it6505.c | 29 +++++++++++++++++------------
+ 1 file changed, 17 insertions(+), 12 deletions(-)
 
 diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index e0e13e737763fb801fd1cd803734a0d6ae1dd812..2bbe787ccb1b57906f2a31a011dd92f327019b08 100644
+index 2bbe787ccb1b57906f2a31a011dd92f327019b08..47f8134df8b6f5c2172c6cfdbc91da8063993a05 100644
 --- a/drivers/gpu/drm/bridge/ite-it6505.c
 +++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -467,7 +467,6 @@ struct it6505 {
+@@ -467,6 +467,7 @@ struct it6505 {
  	struct delayed_work hdcp_work;
  	struct work_struct hdcp_wait_ksv_list;
  	struct completion extcon_completion;
--	u8 auto_train_retry;
++	u8 step_train_only;
  	bool hdcp_desired;
  	bool is_repeater;
  	u8 hdcp_down_stream_count;
-@@ -666,7 +665,7 @@ static int it6505_get_dpcd(struct it6505 *it6505, int offset, u8 *dpcd, int num)
- 	return 0;
- }
+@@ -2457,11 +2458,13 @@ static void it6505_link_step_train_process(struct it6505 *it6505)
+ 				     ret ? "pass" : "failed", i + 1);
+ 		if (ret) {
+ 			it6505_link_train_ok(it6505);
++			it6505->step_train_only = true;
+ 			return;
+ 		}
+ 	}
  
--static void it6505_dump(struct it6505 *it6505)
-+static void __maybe_unused it6505_dump(struct it6505 *it6505)
- {
- 	unsigned int i, j;
- 	u8 regs[16];
-@@ -1399,7 +1398,6 @@ static void it6505_variable_config(struct it6505 *it6505)
- 	it6505->lane_count = MAX_LANE_COUNT;
+ 	DRM_DEV_DEBUG_DRIVER(dev, "training fail");
++	it6505->step_train_only = false;
  	it6505->link_state = LINK_IDLE;
- 	it6505->hdcp_desired = HDCP_DESIRED;
--	it6505->auto_train_retry = AUTO_TRAIN_RETRY;
- 	it6505->audio.select = AUDIO_SELECT;
- 	it6505->audio.sample_rate = AUDIO_SAMPLE_RATE;
- 	it6505->audio.channel_count = AUDIO_CHANNEL_COUNT;
-@@ -2472,7 +2470,7 @@ static void it6505_link_training_work(struct work_struct *work)
- {
- 	struct it6505 *it6505 = container_of(work, struct it6505, link_works);
- 	struct device *dev = it6505->dev;
--	int ret;
-+	int ret, retry;
+ 	it6505_video_reset(it6505);
+ }
+@@ -2477,18 +2480,19 @@ static void it6505_link_training_work(struct work_struct *work)
  
- 	DRM_DEV_DEBUG_DRIVER(dev, "it6505->sink_count: %d",
- 			     it6505->sink_count);
-@@ -2480,27 +2478,22 @@ static void it6505_link_training_work(struct work_struct *work)
  	if (!it6505_get_sink_hpd_status(it6505))
  		return;
- 
--	it6505_link_training_setup(it6505);
--	it6505_reset_hdcp(it6505);
--	it6505_aux_reset(it6505);
 -
--	if (it6505->auto_train_retry < 1) {
--		it6505_link_step_train_process(it6505);
--		return;
--	}
+-	for (retry = AUTO_TRAIN_RETRY; retry > 0; retry--) {
+-		it6505_link_training_setup(it6505);
+-		it6505_reset_hdcp(it6505);
+-		it6505_aux_reset(it6505);
 -
--	ret = it6505_link_start_auto_train(it6505);
--	DRM_DEV_DEBUG_DRIVER(dev, "auto train %s, auto_train_retry: %d",
--			     ret ? "pass" : "failed", it6505->auto_train_retry);
-+	for (retry = AUTO_TRAIN_RETRY; retry > 0; retry--) {
-+		it6505_link_training_setup(it6505);
-+		it6505_reset_hdcp(it6505);
-+		it6505_aux_reset(it6505);
- 
--	if (ret) {
--		it6505->auto_train_retry = AUTO_TRAIN_RETRY;
--		it6505_link_train_ok(it6505);
--	} else {
--		it6505->auto_train_retry--;
--		it6505_dump(it6505);
-+		ret = it6505_link_start_auto_train(it6505);
-+		DRM_DEV_DEBUG_DRIVER(dev, "auto train %s,",
-+				     ret ? "pass" : "failed");
-+		if (ret) {
-+			it6505_link_train_ok(it6505);
-+			return;
-+		}
+-		ret = it6505_link_start_auto_train(it6505);
+-		DRM_DEV_DEBUG_DRIVER(dev, "auto train %s,",
+-				     ret ? "pass" : "failed");
+-		if (ret) {
+-			it6505_link_train_ok(it6505);
+-			return;
++	if (!it6505->step_train_only) {
++		for (retry = AUTO_TRAIN_RETRY; retry > 0; retry--) {
++			it6505_link_training_setup(it6505);
++			it6505_reset_hdcp(it6505);
++			it6505_aux_reset(it6505);
++
++			ret = it6505_link_start_auto_train(it6505);
++			DRM_DEV_DEBUG_DRIVER(dev, "auto train %s,",
++					     ret ? "pass" : "failed");
++			if (ret) {
++				it6505_link_train_ok(it6505);
++				return;
++			}
+ 		}
  	}
  
-+	/*After HW auto training fail, try link training step by step*/
-+	it6505_link_step_train_process(it6505);
- }
- 
- static void it6505_plugged_status_to_codec(struct it6505 *it6505)
-@@ -2581,7 +2574,6 @@ static int it6505_process_hpd_irq(struct it6505 *it6505)
- 			     (int)ARRAY_SIZE(link_status), link_status);
- 
- 	if (!drm_dp_channel_eq_ok(link_status, it6505->lane_count)) {
--		it6505->auto_train_retry = AUTO_TRAIN_RETRY;
- 		it6505_video_reset(it6505);
- 	}
- 
-@@ -2607,7 +2599,6 @@ static void it6505_irq_hpd(struct it6505 *it6505)
+@@ -2599,6 +2603,7 @@ static void it6505_irq_hpd(struct it6505 *it6505)
  			it6505_variable_config(it6505);
  			it6505_parse_link_capabilities(it6505);
  		}
--		it6505->auto_train_retry = AUTO_TRAIN_RETRY;
++		it6505->step_train_only = false;
  
  		it6505_drm_dp_link_set_power(&it6505->aux, &it6505->link,
  					     DP_SET_POWER_D0);
-@@ -2744,7 +2735,6 @@ static void it6505_irq_video_handler(struct it6505 *it6505, const int *int_statu
- 			     (unsigned int *)int_status)) ||
- 	    (it6505_test_bit(BIT_INT_VID_FIFO_ERROR,
- 			     (unsigned int *)int_status))) {
--		it6505->auto_train_retry = AUTO_TRAIN_RETRY;
- 		flush_work(&it6505->link_works);
- 		it6505_stop_hdcp(it6505);
- 		it6505_video_reset(it6505);
 
 -- 
 2.34.1
