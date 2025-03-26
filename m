@@ -1,202 +1,67 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 26 Mar 2025 13:17:16 +0800
-Subject: [PATCH] arm64: dts: amlogic: a4: add pinctrl node
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH v2 0/5] drm/bridge: it6505: fix DP link traning and improve
+ compatibility
+Date: Wed, 26 Mar 2025 13:34:12 +0800
+Message-Id: <20250326-fix-link-training-v2-0-756c8306f500@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250326-pinctrl-node-a4-v1-1-8c30639480f6@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIANuN42cC/x2MQQqAIBAAvxJ7TjBLi74SHUy3WggVjQjEvyfBX
- OYwkyFhJEwwNxkiPpTIuypd24A5tTuQka0OggvJeyFZIGfueDHnLTI9VJQarUQzmQ1qFSLu9P7
- HZS3lA03gC7thAAAA
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742966241; l=5053;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=71qIP+ef+rZamoMp2uHsnRGLP/3xxQGVfKdovCE34Gg=;
- b=VtxrAX3CV74cDeafGJLPn8y7m2o7qUtmyDz70JtDk8R1Zwv5Kpd1CE8gJAHcAZ8ZRpSSIPEkb
- CTZNM18bRQcDo6ArOAFQk1qsKOX7m1daledgaQMtNgWGbZK92ilb2VF
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+X-B4-Tracking: v=1; b=H4sIANSR42cC/x2MQQqAIBAAvxJ7bkFFBftKdIjabCm20IhA+nvSc
+ WBmCmRKTBm6pkCimzMfUsG0DUzrKJGQ58pglHFKG40LP7izbHilkYUlovXaBmeD9c5B7c5EVfq
+ f/fC+Hwia3E9jAAAA
+X-Change-ID: 20250121-fix-link-training-461495494655
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org, 
+ dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Hermes Wu <Hermes.wu@ite.com.tw>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742967277; l=1323;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=oKGOdDgxhAqNZ5oSM5iv/OnF2CxCH6tBHGl2VSB8qc8=;
+ b=82T34WmCkdjj6qSV8M4kPQjRl4ckK8npAAKkeembaXRcV/OIg3QCR0QAJk84CiH5zcAZGx/sb
+ J4byaM9Mb6DBdb5KWK618gl/kTW7KBxDq/QAvZeg0xYHlDbedTFttC7
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add pinctrl device to support Amlogic A4 and add uart pinconf.
+IT6505 supports HW auto link training which will write DPCD and check
+training status automatically. Some DP device can not pass
+HW auto link training and must set link training step by step.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
----
-This commit is based on the Neil's suggestion, rebase the commit on top of
-https://web.git.kernel.org/pub/scm/linux/kernel/git/soc/soc.git/log/?h=for-next 
-which merges this commit:
-https://lore.kernel.org/all/20250212-amlogic-pinctrl-v5-4-282bc2516804@amlogic.com/
-with another one:
-https://lore.kernel.org/all/20250321-fix-a4-pinctrl-node-v1-1-5719f9f09932@amlogic.com/
----
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi | 125 ++++++++++++++++++++++++++++
- 1 file changed, 125 insertions(+)
+when HW auto link training fail, it may trigger video FIFO error,
+and link training process will reset to beginning, and never try
+step training method.
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-index a06838552f21..c02fa5ee9fd2 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-@@ -5,6 +5,7 @@
- 
- #include "amlogic-a4-common.dtsi"
- #include <dt-bindings/power/amlogic,a4-pwrc.h>
-+#include <dt-bindings/pinctrl/amlogic,pinctrl.h>
- / {
- 	cpus {
- 		#address-cells = <2>;
-@@ -50,6 +51,107 @@ pwrc: power-controller {
- };
- 
- &apb {
-+	periphs_pinctrl: pinctrl@4000 {
-+		compatible = "amlogic,pinctrl-a4";
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges = <0x0 0x0 0x0 0x4000 0x0 0x280>;
-+
-+		gpiox: gpio@100 {
-+			reg = <0 0x100 0 0x40>, <0 0xc 0 0xc>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_X<<8) 18>;
-+		};
-+
-+		gpiot: gpio@140 {
-+			reg = <0 0x140 0 0x40>, <0 0x2c 0 0xc>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_T<<8) 23>;
-+		};
-+
-+		gpiod: gpio@180 {
-+			reg = <0 0x180 0 0x40>, <0 0x40 0 0x8>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_D<<8) 16>;
-+		};
-+
-+		gpioe: gpio@1c0 {
-+			reg = <0 0x1c0 0 0x40>, <0 0x48 0 0x4>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_E<<8) 2>;
-+		};
-+
-+		gpiob: gpio@240 {
-+			reg = <0 0x240 0 0x40>, <0 0 0 0x8>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_B<<8) 14>;
-+		};
-+
-+		func-uart-a {
-+			uart_a_default: group-uart-a-pins1 {
-+				pinmux = <AML_PINMUX(AMLOGIC_GPIO_X, 11, 1)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_X, 12, 1)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_X, 13, 1)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_X, 14, 1)>;
-+			};
-+
-+			group-uart-a-pins2 {
-+				pinmux = <AML_PINMUX(AMLOGIC_GPIO_D, 2, 3)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_D, 3, 3)>;
-+				bias-pull-up;
-+				drive-strength-microamp = <4000>;
-+			};
-+		};
-+
-+		func-uart-b {
-+			uart_b_default: group-uart-b-pins {
-+				pinmux = <AML_PINMUX(AMLOGIC_GPIO_E, 0, 3)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_E, 1, 3)>;
-+				bias-pull-up;
-+				drive-strength-microamp = <4000>;
-+			};
-+		};
-+
-+		func-uart-d {
-+			uart_d_default: group-uart-d-pins1 {
-+				pinmux = <AML_PINMUX(AMLOGIC_GPIO_T, 18, 4)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_T, 19, 4)>;
-+				bias-pull-up;
-+				drive-strength-microamp = <4000>;
-+			};
-+
-+			group-uart-d-pins2 {
-+				pinmux = <AML_PINMUX(AMLOGIC_GPIO_T, 7, 2)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_T, 8, 2)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_T, 9, 2)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_T, 10, 2)>;
-+				bias-pull-up;
-+				drive-strength-microamp = <4000>;
-+			};
-+		};
-+
-+		func-uart-e {
-+			uart_e_default: group-uart-e-pins {
-+				pinmux = <AML_PINMUX(AMLOGIC_GPIO_T, 14, 3)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_T, 15, 3)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_T, 16, 3)>,
-+					 <AML_PINMUX(AMLOGIC_GPIO_T, 17, 3)>;
-+				bias-pull-up;
-+				drive-strength-microamp = <4000>;
-+			};
-+		};
-+	};
-+
- 	gpio_intc: interrupt-controller@4080 {
- 		compatible = "amlogic,a4-gpio-intc",
- 			     "amlogic,meson-gpio-intc";
-@@ -60,6 +162,29 @@ gpio_intc: interrupt-controller@4080 {
- 			<10 11 12 13 14 15 16 17 18 19 20 21>;
- 	};
- 
-+	ao_pinctrl: pinctrl@8e700 {
-+		compatible = "amlogic,pinctrl-a4";
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges = <0x0 0x0 0x0 0x8e700 0x0 0x80>;
-+
-+		gpioao: gpio@4 {
-+			reg = <0 0x4 0 0x16>, <0 0 0 0x4>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_AO<<8) 7>;
-+		};
-+
-+		test_n: gpio@44 {
-+			reg = <0 0x44 0 0x20>;
-+			reg-names = "gpio";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_TEST_N<<8) 1>;
-+		};
-+	};
-+
- 	gpio_ao_intc: interrupt-controller@8e72c {
- 		compatible = "amlogic,a4-gpio-ao-intc",
- 			     "amlogic,meson-gpio-intc";
+Modify training method improve compatibility to these DP devices.
 
+v1 -> v2:
+	1. Split [PATCH 1/3] into 3 commits
+	2. Drop non necessary variable auto_ttrain_retry
+	v1 link: https://lore.kernel.org/all/20250318-fix-link-training-v1-0-19266711142c@ite.com.tw/
+
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
-base-commit: 23a708916ec7ab21c8c81d61bdb7cb933f6867d5
-change-id: 20250325-pinctrl-node-a4-a4667d5ec8cb
+Hermes Wu (5):
+      drm/bridge: it6505: fix link training state HW register reset
+      drm/bridge: it6505: check INT_LINK_TRAIN_FAIL while link auto training
+      drm/bridge: it6505: modify DP link auto training
+      drm/bridge: it6505: modify DP link training work
+      drm/bridge: it6505: skip auto training when previous try fail
+
+ drivers/gpu/drm/bridge/ite-it6505.c | 112 +++++++++++++++++++++---------------
+ 1 file changed, 65 insertions(+), 47 deletions(-)
+---
+base-commit: 938fbb16aba8f7b88e0fdcf56f315a5bbad41aad
+change-id: 20250121-fix-link-training-461495494655
 
 Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+Hermes Wu <Hermes.wu@ite.com.tw>
 
