@@ -1,15 +1,13 @@
 From: Hermes Wu <Hermes.wu@ite.com.tw>
-Subject: [PATCH v2 0/5] drm/bridge: it6505: fix DP link traning and improve
- compatibility
-Date: Wed, 26 Mar 2025 13:34:12 +0800
-Message-Id: <20250326-fix-link-training-v2-0-756c8306f500@ite.com.tw>
+Date: Wed, 26 Mar 2025 13:34:13 +0800
+Subject: [PATCH v2 1/5] drm/bridge: it6505: fix link training state HW
+ register reset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANSR42cC/x2MQQqAIBAAvxJ7bkFFBftKdIjabCm20IhA+nvSc
- WBmCmRKTBm6pkCimzMfUsG0DUzrKJGQ58pglHFKG40LP7izbHilkYUlovXaBmeD9c5B7c5EVfq
- f/fC+Hwia3E9jAAAA
-X-Change-ID: 20250121-fix-link-training-461495494655
+Message-Id: <20250326-fix-link-training-v2-1-756c8306f500@ite.com.tw>
+References: <20250326-fix-link-training-v2-0-756c8306f500@ite.com.tw>
+In-Reply-To: <20250326-fix-link-training-v2-0-756c8306f500@ite.com.tw>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
  Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
  Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
@@ -21,47 +19,50 @@ Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org,
  dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1742967277; l=1323;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1742967277; l=1417;
  i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=oKGOdDgxhAqNZ5oSM5iv/OnF2CxCH6tBHGl2VSB8qc8=;
- b=82T34WmCkdjj6qSV8M4kPQjRl4ckK8npAAKkeembaXRcV/OIg3QCR0QAJk84CiH5zcAZGx/sb
- J4byaM9Mb6DBdb5KWK618gl/kTW7KBxDq/QAvZeg0xYHlDbedTFttC7
+ bh=OPKp1zu9zQb8F0T0g3XsULli11ufIoTr8/+5pxJA4Ms=;
+ b=fVQ4Yl7k7aszXn5kMllRwvUFeiv9cHjn5Uzo5eB3T6/HhKUoNRAwLaVs//fgI4xMDMhaNBCfR
+ RlM35DmSu5jCqZnXvFVhjZadhD9oHlKaFrv/FwMKzNm5OLQNjpgLZtM
 X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
  pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
 X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IT6505 supports HW auto link training which will write DPCD and check
-training status automatically. Some DP device can not pass
-HW auto link training and must set link training step by step.
-
-when HW auto link training fail, it may trigger video FIFO error,
-and link training process will reset to beginning, and never try
-step training method.
-
-Modify training method improve compatibility to these DP devices.
-
-v1 -> v2:
-	1. Split [PATCH 1/3] into 3 commits
-	2. Drop non necessary variable auto_ttrain_retry
-	v1 link: https://lore.kernel.org/all/20250318-fix-link-training-v1-0-19266711142c@ite.com.tw/
+In order to reset HW link auto training state,
+bits FORCE_RETRAIN and MANUAL_TRAIN at REG_TRAIN_CTRL1 must be set
+at the same time.
 
 Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
-Hermes Wu (5):
-      drm/bridge: it6505: fix link training state HW register reset
-      drm/bridge: it6505: check INT_LINK_TRAIN_FAIL while link auto training
-      drm/bridge: it6505: modify DP link auto training
-      drm/bridge: it6505: modify DP link training work
-      drm/bridge: it6505: skip auto training when previous try fail
+ drivers/gpu/drm/bridge/ite-it6505.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
- drivers/gpu/drm/bridge/ite-it6505.c | 112 +++++++++++++++++++++---------------
- 1 file changed, 65 insertions(+), 47 deletions(-)
----
-base-commit: 938fbb16aba8f7b88e0fdcf56f315a5bbad41aad
-change-id: 20250121-fix-link-training-461495494655
+diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
+index 88ef76a37fe6accacdd343839ff2569b31b18ceb..b47042dc06bb1e1dfd92bc0dc6d69dc918a140ba 100644
+--- a/drivers/gpu/drm/bridge/ite-it6505.c
++++ b/drivers/gpu/drm/bridge/ite-it6505.c
+@@ -1806,7 +1806,9 @@ static bool it6505_link_start_auto_train(struct it6505 *it6505)
+ 	mutex_lock(&it6505->aux_lock);
+ 	it6505_set_bits(it6505, REG_TRAIN_CTRL0,
+ 			FORCE_CR_DONE | FORCE_EQ_DONE, 0x00);
+-	it6505_write(it6505, REG_TRAIN_CTRL1, FORCE_RETRAIN);
++	/* reset link state machine and re start training*/
++	it6505_write(it6505, REG_TRAIN_CTRL1,
++		     FORCE_RETRAIN | MANUAL_TRAIN);
+ 	it6505_write(it6505, REG_TRAIN_CTRL1, AUTO_TRAIN);
+ 
+ 	while (timeout > 0) {
+@@ -2377,7 +2379,7 @@ static void it6505_stop_link_train(struct it6505 *it6505)
+ {
+ 	it6505->link_state = LINK_IDLE;
+ 	cancel_work_sync(&it6505->link_works);
+-	it6505_write(it6505, REG_TRAIN_CTRL1, FORCE_RETRAIN);
++	it6505_write(it6505, REG_TRAIN_CTRL1, FORCE_RETRAIN | MANUAL_TRAIN);
+ }
+ 
+ static void it6505_link_train_ok(struct it6505 *it6505)
 
-Best regards,
 -- 
-Hermes Wu <Hermes.wu@ite.com.tw>
+2.34.1
 
