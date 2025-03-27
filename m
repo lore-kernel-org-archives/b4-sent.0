@@ -1,149 +1,85 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 27 Mar 2025 17:26:36 +0800
-Subject: [PATCH 2/2] dts: arm64: amlogic: add a5 pinctrl node
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v3 0/8] arm64: dts: freescale: Add support for the
+ GOcontroll Moduline Display
+Date: Thu, 27 Mar 2025 16:52:35 +0100
+Message-Id: <20250327-initial_display-v3-0-4e89ea1676ab@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250327-a5-pinctrl-v1-2-49320349c463@amlogic.com>
-References: <20250327-a5-pinctrl-v1-0-49320349c463@amlogic.com>
-In-Reply-To: <20250327-a5-pinctrl-v1-0-49320349c463@amlogic.com>
-To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1743067595; l=3211;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=zTXCd3mjrQB2UAQ+DUxS9Et3VYgrEbPO04Lv0RVd3Dc=;
- b=uLPxQhdvFA9JdqryhrPPHciK/D+98xm4FI8UAUBwfEwXpyZasZzFKunrWC9/x5mVLhU/vxfP4
- NoPpdyD8GfNBHqqLHLl/1XB6tVlZwAIYxK++H6ID02hl+ZCBuq+e21R
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+X-B4-Tracking: v=1; b=H4sIAEN05WcC/3XN0QqDIBTG8VcZXs+hx2yxq73HGMNM64DT0JBF9
+ O6zrgaxy/8H53cWkkxEk8jttJBoMiYMvoQ4n4gelO8Nxa40AQaSAVQUPU6o3KvDNDo1U6saAN4
+ YVhtJytUYjcXPLj6epQdMU4jz/iDzbf1vZU4ZlVq3ra25kJW490EHP8Xg3EWHN9nADL9IfUSgI
+ CCssooL1vDrAVnX9QsP+up8+AAAAA==
+X-Change-ID: 20250224-initial_display-fa82218e06e5
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1743090757; l=2483;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=I5laCEMQQhC0jxJBzqkC6My5Y526yISp6HHNhnXyuoI=;
+ b=7DfLoLe9EHr2CxFXvsX6B+b2N2FuAwbJ+o+BEYbd6wpwbYIid1+B5/IKTuFBwhZVf4HHD+v0f
+ 2MfEWUPAeUXCwNe5Vq4ivu3U5n2JEq25qg4sHgEjtUnRwov9iX1+Z6C
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add pinctrl device to support Amlogic A5.
+Add inital support for 2 variants of the Moduline Display controller.
+This system is powered by the Ka-Ro Electronics tx8p-ml81 COM, which
+features an imx8mp SoC.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi | 90 +++++++++++++++++++++++++++++
- 1 file changed, 90 insertions(+)
+Changes in v3:
+- Set regulator-boot-on and always-on on LDO5 of the pmic, after 20 ish
+  seconds it auto disabled this LDO causing weird behaviour like
+  ethernet droping out, wifi not working anymore. This LDO can control
+  the IO voltage level of certain pins, just let it keep the u-boot
+  value.
+- Fix the comment style in imx8mp-pinfunc.h
+- Rebase on newest next tag
+- Link to v2: https://lore.kernel.org/r/20250226-initial_display-v2-0-23fafa130817@gocontroll.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-index 32ed1776891b..844302db2133 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-@@ -4,6 +4,7 @@
-  */
- 
- #include "amlogic-a4-common.dtsi"
-+#include <dt-bindings/pinctrl/amlogic,pinctrl.h>
- #include <dt-bindings/power/amlogic,a5-pwrc.h>
- / {
- 	cpus {
-@@ -50,6 +51,95 @@ pwrc: power-controller {
- };
- 
- &apb {
-+	periphs_pinctrl: pinctrl@4000 {
-+		compatible = "amlogic,pinctrl-a5",
-+			     "amlogic,pinctrl-a4";
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges = <0x0 0x0 0x0 0x4000 0x0 0x300>;
-+
-+		gpioz: gpio@c0 {
-+			reg = <0x0 0xc0 0x0 0x40>,
-+			      <0x0 0x18 0x0 0x8>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_Z<<8) 16>;
-+		};
-+
-+		gpiox: gpio@100 {
-+			reg = <0x0 0x100 0x0 0x40>,
-+			      <0x0 0xc   0x0 0xc>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_X<<8) 20>;
-+		};
-+
-+		gpiot: gpio@140 {
-+			reg = <0x0 0x140 0x0 0x40>,
-+			      <0x0 0x2c  0x0 0x8>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_T<<8) 14>;
-+		};
-+
-+		gpiod: gpio@180 {
-+			reg = <0x0 0x180 0x0 0x40>,
-+			      <0x0 0x40  0x0 0x8>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_D<<8) 16>;
-+		};
-+
-+		gpioe: gpio@1c0 {
-+			reg = <0x0 0x1c0 0x0 0x40>,
-+			      <0x0 0x48  0x0 0x4>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_E<<8) 2>;
-+		};
-+
-+		gpioc: gpio@200 {
-+			reg = <0x0 0x200 0x0 0x40>,
-+			      <0x0 0x24  0x0 0x8>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_C<<8) 11>;
-+		};
-+
-+		gpiob: gpio@240 {
-+			reg = <0x0 0x240 0x0 0x40>,
-+			      <0x0 0x0   0x0 0x8>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_B<<8) 14>;
-+		};
-+
-+		gpioh: gpio@280 {
-+			reg = <0x0 0x280 0x0 0x40>,
-+			      <0x0 0x4c  0x0 0x4>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_H<<8) 5>;
-+		};
-+
-+		gpio_test_n: gpio@2c0 {
-+			reg = <0x0 0x2c0 0x0 0x40>,
-+			      <0x0 0x3c  0x0 0x4>;
-+			reg-names = "gpio", "mux";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+			gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_TEST_N<<8) 1>;
-+		};
-+	};
-+
- 	gpio_intc: interrupt-controller@4080 {
- 		compatible = "amlogic,a5-gpio-intc",
- 			     "amlogic,meson-gpio-intc";
+Changes in v2:
+- Dropped the trivial-devices patch
+- Added a patch with bindings for the gocontroll,moduline-module-slot
+- Added a patch to spidev.c to enable the spidev driver for the module
+  slot
+- Added a missing usb-c connector in the av101hdt-a10 variant dts
+- Switched to the new bindings for the module slots in the base dts
+- Fixed some commit typos
+- Link to v1: https://lore.kernel.org/r/20250224-initial_display-v1-0-5ccbbf613543@gocontroll.com
 
+---
+Maud Spierings (8):
+      dt-bindings: arm: fsl: Add GOcontroll Moduline Display
+      arm64: dts: imx8mp: Add pinctrl config definitions
+      MAINTAINERS: add maintainer for the Ka-Ro tx8p-ml81 COM module
+      MAINTAINERS: add maintainer for the GOcontroll Moduline controllers
+      arm64: dts: freescale: add Ka-Ro Electronics tx8p-ml81 COM
+      arm64: dts: freescale: Add the GOcontroll Moduline Display baseboard
+      arm64: dts: freescale: Add the BOE av101hdt-a10 variant of the Moduline Display
+      arm64: dts: freescale: Add the BOE av123z7m-n17 variant of the Moduline Display
+
+ Documentation/devicetree/bindings/arm/fsl.yaml     |   1 +
+ MAINTAINERS                                        |  12 +
+ arch/arm64/boot/dts/freescale/imx8mp-pinfunc.h     |  27 +
+ ...tx8p-ml81-moduline-display-106-av101hdt-a10.dts | 100 ++++
+ ...tx8p-ml81-moduline-display-106-av123z7m-n17.dts | 133 +++++
+ .../imx8mp-tx8p-ml81-moduline-display-106.dtsi     | 535 ++++++++++++++++++++
+ .../arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi | 549 +++++++++++++++++++++
+ 7 files changed, 1357 insertions(+)
+---
+base-commit: db8da9da41bced445077925f8a886c776a47440c
+change-id: 20250224-initial_display-fa82218e06e5
+
+Best regards,
 -- 
-2.37.1
+Maud Spierings <maudspierings@gocontroll.com>
 
