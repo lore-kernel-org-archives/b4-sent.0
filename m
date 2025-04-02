@@ -1,11 +1,11 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Wed, 02 Apr 2025 09:07:06 +0200
-Subject: [PATCH v4 3/9] MAINTAINERS: add maintainer for the Ka-Ro tx8p-ml81
- COM module
+Date: Wed, 02 Apr 2025 09:07:07 +0200
+Subject: [PATCH v4 4/9] MAINTAINERS: add maintainer for the GOcontroll
+ Moduline controllers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250402-initial_display-v4-3-9f898838a864@gocontroll.com>
+Message-Id: <20250402-initial_display-v4-4-9f898838a864@gocontroll.com>
 References: <20250402-initial_display-v4-0-9f898838a864@gocontroll.com>
 In-Reply-To: <20250402-initial_display-v4-0-9f898838a864@gocontroll.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,45 +17,40 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1743577640; l=964;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1743577640; l=784;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=zHAL4M9Ap2CnMpPrredehNxGxgNHYTNlXYI4S4RtDVc=;
- b=fqr88wOkEHIfZheKBwhiLf5mu0oT8rOHpAlk9ZwFlEK0GsvQjRInjHjKBzfNm/ttaSVaGggvr
- pgsmlKQ1DGAD628fds+fRZMoTYgf9ybR4N9/9YP9VdN9qBlJnmA1Y9t
+ bh=Kodl+8kPIGsleRbs7jxCH5LW1v9NBKtCtLsNy8vvbV0=;
+ b=COnYDITO8KLBM330+KlG1z4sWgqvpLjhbp6rySeWf1NXyACYSbRmrN+MS0nti86mEaSBaCFZQ
+ rWus+T1FYIuCZ9h9Q4sLbSkC7jDIhAGDE/Wla6MLpa3+xXnBQUv/R3h
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add GOcontroll as unofficial maintainers of the Ka-Ro tx8p-ml81 COM
-module bindings.
-
-This support is not officially done by Ka-Ro electronics, if they at
-some point will supporting mainline, this should be changed to them.
+Add a maintainer for the GOcontroll Moduline series of controllers.
 
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+ MAINTAINERS | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 322ee00547f6e494a96d2495092f72148da22bd0..4b3864a9852f9fca2be48987d383c0671e668336 100644
+index 4b3864a9852f9fca2be48987d383c0671e668336..7d4fbfdaaac1776fc7c4a569f7ab667f0a485eab 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -12752,6 +12752,13 @@ S:	Maintained
- F:	Documentation/hwmon/k8temp.rst
- F:	drivers/hwmon/k8temp.c
+@@ -10043,6 +10043,12 @@ L:	linux-media@vger.kernel.org
+ S:	Maintained
+ F:	drivers/media/usb/go7007/
  
-+KA-RO TX8P COM MODULE
++GOCONTROLL MODULINE CONTROLLERS
 +M:	Maud Spierings <maudspierings@gocontroll.com>
 +L:	devicetree@vger.kernel.org
-+L:	imx@lists.linux.dev
 +S:	Maintained
-+F:	arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi
++F:	arch/arm64/boot/dts/freescale/*moduline*.dts*
 +
- KASAN
- M:	Andrey Ryabinin <ryabinin.a.a@gmail.com>
- R:	Alexander Potapenko <glider@google.com>
+ GOCONTROLL MODULINE MODULE SLOT
+ M:	Maud Spierings <maudspierings@gocontroll.com>
+ S:	Maintained
 
 -- 
 2.49.0
