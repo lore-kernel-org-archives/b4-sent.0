@@ -1,95 +1,92 @@
-From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Tue, 01 Apr 2025 15:54:59 +0800
-Subject: [PATCH v3 5/5] drm/bridge: it6505: skip auto training when
- previous try fail
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Date: Wed, 02 Apr 2025 01:59:31 +0100
+Subject: [PATCH net-next] net/selftests: Add loopback link local route for
+ self-connect
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250401-fix-link-training-v3-5-7f60f2ab7b8c@ite.com.tw>
-References: <20250401-fix-link-training-v3-0-7f60f2ab7b8c@ite.com.tw>
-In-Reply-To: <20250401-fix-link-training-v3-0-7f60f2ab7b8c@ite.com.tw>
-To: Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Hermes Wu <Hermes.wu@ite.com.tw>
+Message-Id: <20250402-tcp-ao-selfconnect-flake-v1-1-8388d629ef3d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPKL7GcC/zWMywrCQAwAf6XkbDCuL/BXxEM2Zm2wpmV3kULpv
+ 7sKHodhZoGi2bTApVsg69uKjd5gt+lAevaHot0bQ6BwpAMFrDIhj1h0SDK6q1RMAz8VlZij0F7
+ ofIKWT1mTzb/1FVwrus4Vbs1ELooxs0v/Xf/d9sXmsK4fxrqPW5QAAAA=
+X-Change-ID: 20250402-tcp-ao-selfconnect-flake-e0aabc03c076
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Shuah Khan <shuah@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dmitry Safonov <0x7f454c46@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1743494115; l=2181;
- i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=pLytI76dbGjTNwcbsSYeds6mdd5OwXNWVjluMga6s9U=;
- b=/X99IPetbCEwIR1q+Ajr1KcC/09HBieAhusGSzoYAK31L/t1UfHriUum+ulkhUf7gl8LScrJK
- duXPmvUbbQ5B5WfUxot92UU4RgJYr0UhgNFn6YIUffkey4oNQ7261NM
-X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1743555610; l=2603;
+ i=0x7f454c46@gmail.com; s=20240410; h=from:subject:message-id;
+ bh=VxuHQuF+lHn7Z66dGwiCR30NCU5Nd0bRf7ml37EyIQ0=;
+ b=3aqwhOYRQXABmt30DhIo05TJTESR3xflbbuTR3dBAmI3yMdgAoZyxUVPrqaM+Ncc8k/aXIzyA
+ mxoO5rvkEHQC0Jz5Odvs0oX666np6SxSESKORHPedn8ROHccfn/nftx
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=cFSWovqtkx0HrT5O9jFCEC/Cef4DY8a2FPeqP4THeZQ=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20240410 with auth_id=152
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When connect to device which can only training done by
-step training, skip auto training when link training restart,
-usually happen when display resolution is changed.
+self-connect-ipv6 got slightly flaky on netdev:
+> # timeout set to 120
+> # selftests: net/tcp_ao: self-connect_ipv6
+> # 1..5
+> # # 708[lib/setup.c:250] rand seed 1742872572
+> # TAP version 13
+> # # 708[lib/proc.c:213]    Snmp6            Ip6OutNoRoutes: 0 => 1
+> # not ok 1 # error 708[self-connect.c:70] failed to connect()
+> # ok 2 No unexpected trace events during the test run
+> # # Planned tests != run tests (5 != 2)
+> # # Totals: pass:1 fail:0 xfail:0 xpass:0 skip:0 error:1
+> ok 1 selftests: net/tcp_ao: self-connect_ipv6
 
-Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
+I can not reproduce it on my machines, but judging by "Ip6OutNoRoutes"
+there is no route to the local_addr (::1).
+
+Looking at the kernel code, I see that kernel does add link-local
+address automatically in init_loopback(), but that is called from
+ipv6 notifier block. So, in turn the userspace that brought up
+the loopback interface may see rtnetlink ACK earlier than
+addrconf_notify() does it's job (at least, on a slow VM such as netdev).
+Probably, for ipv4 it's the same, judging by inetdev_event().
+
+The fix is quite simple: set the link-local route straight after
+bringing the loopback interface. That will make it synchronous.
+
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- drivers/gpu/drm/bridge/ite-it6505.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+Sorry to send this during the merge window, it's a test stability fix.
+It seems that netdev build bot has hit the issue a couple of times, but
+seems not hitting it constantly at this moment:
 
-diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index bff5f18fb5ae7192242308f034b60af9807c192c..20eae23cb46a4cb3fc18dd2ed3b764f2265262ca 100644
---- a/drivers/gpu/drm/bridge/ite-it6505.c
-+++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -467,6 +467,7 @@ struct it6505 {
- 	struct delayed_work hdcp_work;
- 	struct work_struct hdcp_wait_ksv_list;
- 	struct completion extcon_completion;
-+	u8 step_train_only;
- 	bool hdcp_desired;
- 	bool is_repeater;
- 	u8 hdcp_down_stream_count;
-@@ -2452,11 +2453,13 @@ static void it6505_link_step_train_process(struct it6505 *it6505)
- 				     ret ? "pass" : "failed", i + 1);
- 		if (ret) {
- 			it6505_link_train_ok(it6505);
-+			it6505->step_train_only = true;
- 			return;
- 		}
- 	}
+https://netdev.bots.linux.dev/flakes.html?br-cnt=150&tn-needle=tcp-ao
+
+I'm marking it net-next, so that build bot carries it until the merge
+closes. If it's not fine, I can re-send it after the merge window.
+---
+ tools/testing/selftests/net/tcp_ao/self-connect.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/tools/testing/selftests/net/tcp_ao/self-connect.c b/tools/testing/selftests/net/tcp_ao/self-connect.c
+index 73b2f2276f3f5410aaa74bede7f366f81761bd6e..2c73bea698a677f9aedd7bec28f6e7fee7845d2e 100644
+--- a/tools/testing/selftests/net/tcp_ao/self-connect.c
++++ b/tools/testing/selftests/net/tcp_ao/self-connect.c
+@@ -16,6 +16,9 @@ static void __setup_lo_intf(const char *lo_intf,
  
- 	DRM_DEV_DEBUG_DRIVER(dev, "training fail");
-+	it6505->step_train_only = false;
- 	it6505->link_state = LINK_IDLE;
- 	it6505_video_reset(it6505);
+ 	if (link_set_up(lo_intf))
+ 		test_error("Failed to bring %s up", lo_intf);
++
++	if (ip_route_add(lo_intf, TEST_FAMILY, local_addr, local_addr))
++		test_error("Failed to add a local route %s", lo_intf);
  }
-@@ -2473,14 +2476,14 @@ static void it6505_link_training_work(struct work_struct *work)
- 	if (!it6505_get_sink_hpd_status(it6505))
- 		return;
  
--	for (retry = AUTO_TRAIN_RETRY; retry > 0; retry--) {
-+	for (retry = AUTO_TRAIN_RETRY; retry > 0 && !it6505->step_train_only; retry--) {
- 		it6505_link_training_setup(it6505);
- 		it6505_reset_hdcp(it6505);
- 		it6505_aux_reset(it6505);
- 
- 		ret = it6505_link_start_auto_train(it6505);
- 		DRM_DEV_DEBUG_DRIVER(dev, "auto train %s,",
--				     ret ? "pass" : "failed");
-+					ret ? "pass" : "failed");
- 		if (ret) {
- 			it6505_link_train_ok(it6505);
- 			return;
-@@ -2594,6 +2597,7 @@ static void it6505_irq_hpd(struct it6505 *it6505)
- 			it6505_variable_config(it6505);
- 			it6505_parse_link_capabilities(it6505);
- 		}
-+		it6505->step_train_only = false;
- 
- 		it6505_drm_dp_link_set_power(&it6505->aux, &it6505->link,
- 					     DP_SET_POWER_D0);
+ static void setup_lo_intf(const char *lo_intf)
 
+---
+base-commit: 1a9239bb4253f9076b5b4b2a1a4e8d7defd77a95
+change-id: 20250402-tcp-ao-selfconnect-flake-e0aabc03c076
+
+Best regards,
 -- 
-2.34.1
+Dmitry Safonov <0x7f454c46@gmail.com>
 
