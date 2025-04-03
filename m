@@ -1,62 +1,61 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Thu, 03 Apr 2025 11:37:44 +0800
-Subject: [PATCH BlueZ bluez v2] bass: Set the service connection flag when
- BASS connected
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v3 0/2] Pinctrl: add amlogic a5 pinctrl node
+Date: Thu, 03 Apr 2025 16:33:13 +0800
+Message-Id: <20250403-a5-pinctrl-v3-0-a8c067e22295@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250403-bass-v2-1-7925bb16468a@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAIcC7mcC/1WMyw7CIBBFf6WZtRigL+PK/zBdDDhtJ2lLA0rUh
- n+XsHN57j05BwTyTAGu1QGeIgd2WwZ9qsDOuE0k+JEZtNStbKQWBkMQXaelNKYngwqyunsa+V0
- ydzDLi74w5Hnm8HT+U+JRlfO/E5VQoqa+rS+NGhHbG66Lm9ierVthSCn9APRI3nChAAAA
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1743651465; l=1169;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=/oUaFNQ9t8b1iPPgrFaYLuEADjVumJlRJxChQ0j/KrM=;
- b=c4YzSA5IL2+JAoCgrorUlXBUjLadnz99nJM5RGBTkkeEa+PXD575gTEGiTEvYsbgvFLzuhc3k
- EwylsoSekhEDLtHmQAk4Vf3t45EaFjAxQVH8yYCTQ37O9Har32bWGcS
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+X-B4-Tracking: v=1; b=H4sIAMpH7mcC/1XMQQqDMBCF4auUrJuSZGLUrnqP0kWYRh1QI4mEF
+ vHujVJoXb4H/7ew6AK5yK6nhQWXKJIf84DziWFnx9ZxeubNlFCFAFlxW/CJRpxDzxtAg8Za4cq
+ G5WAKrqHXjt0feXcUZx/eu53k9n4ZVf4zSXLBdQ1KgK5RG7jZofct4QX9wDYoqV+shTzEKsdWg
+ kEpigrK+hiv6/oBEbPHo+MAAAA=
+To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1743669198; l=918;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=QgyehMsARveK93ZZL1S0DWD6VKwpD0RfUNcyzEEiVwI=;
+ b=wC3pYUawqVLxEBq/uVvbyL6+tKn79Zulf2H4XuvfZ3meWIf0mcSkbL8sDDDGC/t/nsGArhLVW
+ COjkuoNlARFCmhaENF1XQ+4ZRl5fa5kaZRVR6OmFAd+EmC1zhfc2qqr
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When BASS serice connected, set the service states to
-BTD_SERVICE_STATE_CONNECTED. Otherwise, the device will
-timeout and be removed, triggering the automatic termination
- of BIG.
+Add A5 pinctrl compatible string and device node.
 
-issue: https://github.com/bluez/bluez/issues/1144
-
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
+Changes in v3:
+- Remain blank line.
+- Link to v2: https://lore.kernel.org/r/20250401-a5-pinctrl-v2-0-a136c1058379@amlogic.com
+
 Changes in v2:
-- Set the BASS service connection success flag in the connect_cb function.
-- Link to v1: https://patch.msgid.link/20250402-bass-v1-1-3e753841faa5@amlogic.com
----
- profiles/audio/bass.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/profiles/audio/bass.c b/profiles/audio/bass.c
-index c36f43277..c28d9d1ad 100644
---- a/profiles/audio/bass.c
-+++ b/profiles/audio/bass.c
-@@ -321,6 +321,8 @@ static void connect_cb(GIOChannel *io, GError *err, void *user_data)
- 	if (bt_bap_stream_set_io(stream, fd)) {
- 		g_io_channel_set_close_on_unref(io, FALSE);
- 	}
-+
-+	btd_service_connecting_complete(setup->dg->service, 0);
- }
- 
- static bool link_enabled(const void *data, const void *match_data)
+- Modify bindings according to Conor's suggestion.
+- Link to v1: https://lore.kernel.org/r/20250327-a5-pinctrl-v1-0-49320349c463@amlogic.com
 
 ---
-base-commit: 0efa20cbf3fb5693c7c2f14ba8cf67053ca029e5
-change-id: 20250402-bass-66200bb7eba1
+Xianwei Zhao (2):
+      dt-bindings: pinctl: amlogic,pinctrl-a4: Add compatible string for A5
+      dts: arm64: amlogic: add a5 pinctrl node
+
+ .../bindings/pinctrl/amlogic,pinctrl-a4.yaml       |  7 +-
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        | 90 ++++++++++++++++++++++
+ 2 files changed, 96 insertions(+), 1 deletion(-)
+---
+base-commit: 79e0ecfc780aaf8c0b6658607f75a661a5f00736
+change-id: 20250318-a5-pinctrl-f3c6c6aa0e7f
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
