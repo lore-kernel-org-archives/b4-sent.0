@@ -1,92 +1,77 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Thu, 03 Apr 2025 16:07:49 +0200
-Subject: [PATCH 2/2] usb: misc: onboard_dev: Add Realtek RTL8188 WiFi
- (0bda:0179)
+From: Nathan Lynch <nathan.lynch@amd.com>
+Date: Thu, 03 Apr 2025 11:24:19 -0500
+Subject: [PATCH] Revert "dmaengine: dmatest: Fix dmatest waiting less when
+ interrupted"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250403-rtl-onboard-v1-2-10ca9a6a4ee0@posteo.net>
-References: <20250403-rtl-onboard-v1-0-10ca9a6a4ee0@posteo.net>
-In-Reply-To: <20250403-rtl-onboard-v1-0-10ca9a6a4ee0@posteo.net>
-To: Johannes Berg <johannes@sipsolutions.net>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.neuschaefer@gmx.net>, 
- Matthias Kaehlcke <mka@chromium.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Jes Sorensen <Jes.Sorensen@gmail.com>, linux-wireless@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250403-dmaengine-dmatest-revert-waiting-less-v1-1-8227c5a3d7c8@amd.com>
+X-B4-Tracking: v=1; b=H4sIADK27mcC/x2NQQrCMBBFr1Jm7cC0qQW9irgIzTcO6CiZUIXSu
+ xu7e2/x/l/JURRO526lgkVdX9akP3Q036NlsKbmNMhwlFECp2eEZTX8qcIrtwyl8idqVcv8gDt
+ HmaZwSpL6OVDbehfc9Lv/XK7b9gNUZ22YdwAAAA==
+X-Change-ID: 20250403-dmaengine-dmatest-revert-waiting-less-a06639d0d1c3
+To: Vinod Koul <vkoul@kernel.org>, Dave Jiang <dave.jiang@intel.com>, 
+ Vinicius Costa Gomes <vinicius.gomes@intel.com>
+Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1743689273; l=2626;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=V7FgpkJgVxsLWxgPTEDrQZdT8sqpW6FnLj60Ip+eQq0=;
- b=wWlOO1jh3MgN09JfBP6U4IbG6aiD4LxjJ5jMde05MqWe3qERaOzrKekpVPopAefdy192uA2Pw
- 1f1gE6rDl4ODckwfnZuboH/L561fB6Azh1L+4PvvZIEhWdzT4gebrCv
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1743697473; l=1742;
+ i=nathan.lynch@amd.com; s=20241010; h=from:subject:message-id;
+ bh=Rc7Qs86ICgVAk71Y+cZz9vWqynj5i2cRse2Xp/Ofc2A=;
+ b=P/YaHgve0A48XRJovDouoH5dpci4+Zxe86GQH8kuKzUDVnHgw8+8THPwPx/NkTI33Vhkw7ULV
+ lsd9JmmHN/vBthrO0kvGH/pTK65GUuNyfIVxqAyLmDTyZxddgO/ydDA
+X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
+ pk=ZR637UTGg5YLDj56cxFeHdYoUjPMMFbcijfOkAmAnbc=
+X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20241010 with auth_id=241
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Realtek RTL8188EU 2.4 GHz WiFi modules are found soldered into some
-embedded devices, such as the Fernsehfee 3.0 set-top box.
+Several issues with this change:
 
-It requires a 3.3V power supply.
+* The analysis is flawed and it's unclear what problem is being
+  fixed. There is no difference between wait_event_freezable_timeout()
+  and wait_event_timeout() with respect to device interrupts. And of
+  course "the interrupt notifying the finish of an operation happens
+  during wait_event_freezable_timeout()" -- that's how it's supposed
+  to work.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+* The link at the "Closes:" tag appears to be an unrelated
+  use-after-free in idxd.
+
+* It introduces a regression: dmatest threads are meant to be
+  freezable and this change breaks that.
+
+See discussion here:
+https://lore.kernel.org/dmaengine/878qpa13fe.fsf@AUSNATLYNCH.amd.com/
+
+Fixes: e87ca16e9911 ("dmaengine: dmatest: Fix dmatest waiting less when interrupted")
+Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
+ drivers/dma/dmatest.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-checkpatch.pl flags the "usbbda" prefix as undocumented because it isn't
-in vendor-prefixes.yaml. It is, however, an established pattern:
-
-$ git grep -E 'usb[0-9a-f]{1,4},[0-9a-f]{1,4}' | wc -l
-213
----
- drivers/usb/misc/onboard_usb_dev.c | 1 +
- drivers/usb/misc/onboard_usb_dev.h | 8 ++++++++
- 2 files changed, 9 insertions(+)
-
-diff --git a/drivers/usb/misc/onboard_usb_dev.c b/drivers/usb/misc/onboard_usb_dev.c
-index 75ac3c6aa92d0d925bb9488d1e6295548446bf98..2f9e8f8108d8c36403b02f3e66db55757d4808ef 100644
---- a/drivers/usb/misc/onboard_usb_dev.c
-+++ b/drivers/usb/misc/onboard_usb_dev.c
-@@ -584,6 +584,7 @@ static const struct usb_device_id onboard_dev_id_table[] = {
- 	{ USB_DEVICE(VENDOR_ID_REALTEK, 0x5411) }, /* RTS5411 USB 2.1 HUB */
- 	{ USB_DEVICE(VENDOR_ID_REALTEK, 0x0414) }, /* RTS5414 USB 3.2 HUB */
- 	{ USB_DEVICE(VENDOR_ID_REALTEK, 0x5414) }, /* RTS5414 USB 2.1 HUB */
-+	{ USB_DEVICE(VENDOR_ID_REALTEK, 0x0179) }, /* RTL8188ETV 2.4GHz WiFi */
- 	{ USB_DEVICE(VENDOR_ID_TI, 0x8025) }, /* TI USB8020B 3.0 HUB */
- 	{ USB_DEVICE(VENDOR_ID_TI, 0x8027) }, /* TI USB8020B 2.0 HUB */
- 	{ USB_DEVICE(VENDOR_ID_TI, 0x8140) }, /* TI USB8041 3.0 HUB */
-diff --git a/drivers/usb/misc/onboard_usb_dev.h b/drivers/usb/misc/onboard_usb_dev.h
-index 317b3eb99c0255269bb0dbf27b9aa29ef1bc15bd..bee255306d21e1c95d52aaf6aea97518321ea285 100644
---- a/drivers/usb/misc/onboard_usb_dev.h
-+++ b/drivers/usb/misc/onboard_usb_dev.h
-@@ -38,6 +38,13 @@ static const struct onboard_dev_pdata realtek_rts5411_data = {
- 	.is_hub = true,
- };
+diff --git a/drivers/dma/dmatest.c b/drivers/dma/dmatest.c
+index d891dfca358e209c9a5c2d8b49e3e539130e53e8..91b2fbc0b8647127c7753669fa21c84d300764b9 100644
+--- a/drivers/dma/dmatest.c
++++ b/drivers/dma/dmatest.c
+@@ -841,9 +841,9 @@ static int dmatest_func(void *data)
+ 		} else {
+ 			dma_async_issue_pending(chan);
  
-+static const struct onboard_dev_pdata realtek_rtl8188_data = {
-+	.reset_us = 0,
-+	.num_supplies = 1,
-+	.supply_names = { "vdd" },
-+	.is_hub = false,
-+};
-+
- static const struct onboard_dev_pdata ti_tusb8020b_data = {
- 	.reset_us = 3000,
- 	.num_supplies = 1,
-@@ -111,6 +118,7 @@ static const struct of_device_id onboard_dev_match[] = {
- 	{ .compatible = "usb5e3,610", .data = &genesys_gl852g_data, },
- 	{ .compatible = "usb5e3,620", .data = &genesys_gl852g_data, },
- 	{ .compatible = "usb5e3,626", .data = &genesys_gl852g_data, },
-+	{ .compatible = "usbbda,179", .data = &realtek_rtl8188_data, },
- 	{ .compatible = "usbbda,411", .data = &realtek_rts5411_data, },
- 	{ .compatible = "usbbda,5411", .data = &realtek_rts5411_data, },
- 	{ .compatible = "usbbda,414", .data = &realtek_rts5411_data, },
+-			wait_event_timeout(thread->done_wait,
+-					   done->done,
+-					   msecs_to_jiffies(params->timeout));
++			wait_event_freezable_timeout(thread->done_wait,
++					done->done,
++					msecs_to_jiffies(params->timeout));
+ 
+ 			status = dma_async_is_tx_complete(chan, cookie, NULL,
+ 							  NULL);
 
+---
+base-commit: 6565439894570a07b00dba0b739729fe6b56fba4
+change-id: 20250403-dmaengine-dmatest-revert-waiting-less-a06639d0d1c3
+
+Best regards,
 -- 
-2.48.0.rc1.219.gb6b6757d772
+Nathan Lynch <nathan.lynch@amd.com>
 
