@@ -1,11 +1,10 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Fri, 04 Apr 2025 13:52:22 +0530
-Subject: [PATCH 2/4] PCI/ERR: Add support for resetting the slot in a
- platforms specific way
+Date: Fri, 04 Apr 2025 13:52:23 +0530
+Subject: [PATCH 3/4] PCI: Add link down handling for host bridges
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250404-pcie-reset-slot-v1-2-98952918bf90@linaro.org>
+Message-Id: <20250404-pcie-reset-slot-v1-3-98952918bf90@linaro.org>
 References: <20250404-pcie-reset-slot-v1-0-98952918bf90@linaro.org>
 In-Reply-To: <20250404-pcie-reset-slot-v1-0-98952918bf90@linaro.org>
 To: Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
@@ -19,74 +18,153 @@ Cc: dingwei@marvell.com, cassel@kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2254;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5609;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=J1pulK/QhUxJluY/dbX4w+yX5yzsNUDKLf1Z3h6Znak=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBn75bDRHEqWRk4266lWr88ralCgC34yIDiJDcQy
- 8j9qOiUwGWJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ++WwwAKCRBVnxHm/pHO
- 9Rq8B/9yjNScPcrhP4xoodQVe2UhQ06wX8j3FIiW/HCvPsWMdhDIXtFqRnnQJemw74T7Px8Rnpi
- c+ZVMPISLnO/A687KVnD3VDdzk9QBaViKfRPnVzVmTbudjSJWyHiR9EyLaAxH+hG26BSoSnbP1w
- aouo/8LRfXNRQlMdCh1CR7h6303yWBHTisq6wRfHyG/1lbuHN04IqZ7aflwaISj7dloF9c3uP7w
- o23Vh7HOHfwPK7JkrXyuY/H7xqBi77K63hN77hyDimtJiJhhR3sXumd5x0u+k2Z/YXwTuNXXnL1
- LEQ8T/VGLFZZ1a7uOZqhnslwXXjmxwachAAHMA+U3CJdFmjZ
+ bh=+ITPzeoaQcEIkq+82fVSDeyUKwuRWQPYslcPdhuwyHg=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBn75bD4Cd8YzJEF3HRP0cKDCIO4/b18SYn1gsUN
+ i3KX+KTt4aJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ++WwwAKCRBVnxHm/pHO
+ 9WTMB/9GHKbl1ReNJXYGisTpWVPXDX3UXEsckCiGgo2A143UhTD0joeYs2wDWZD3CuxbGZAVj7W
+ 8dznHcVyatwu3oFqIoRqu//qlW+ioIAT8kwSZuLhoS443XFKUwXL18BkryEKc+UaZdf4v1QGoQh
+ JgHksuRL1YAt7nG12tWWrP1Uj2dQ4VXb/RZRP/oy7uV3HnzUNcXPsFMJjJRPl8bZOZ00YP3CsEY
+ 53+R1Xua+9ku9CF2S54VyE0KATQ2cU9VolZkQ8rq0iFposlw50jF/yVyqOZhqkdhbgJ1OFNeXdc
+ kdb02a9ZxCWH1z/kwPHKMFZtd00u3fMnjNVr/nNvUaITap8m
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the PCI error handling requires resetting the slot, reset it using the
-host bridge specific 'reset_slot' callback if available before calling the
-'slot_reset' callback of the PCI drivers.
+The PCI link, when down, needs to be recovered to bring it back. But that
+cannot be done in a generic way as link recovery procedure is specific to
+host bridges. So add a new API pci_host_handle_link_down() that could be
+called by the host bridge drivers when the link goes down.
 
-The 'reset_slot' callback is responsible for resetting the given slot
-referenced by the 'pci_dev' pointer in a platform specific way and bring it
-back to the working state if possible. If any error occurs during the slot
-reset operation, relevant errno should be returned.
+The API will iterate through all the slots and calls the pcie_do_recovery()
+function with 'pci_channel_io_frozen' as the state. This will result in the
+execution of the AER Fatal error handling code. Since the link down
+recovery is pretty much the same as AER Fatal error handling,
+pcie_do_recovery() helper is reused here. First the AER error_detected
+callback will be triggered for the bridge and the downstream devices, then
+the 'reset_slot' callback for the host bridge will be called to recover the
+link. Once that's done, resume message will be broadcasted to the bridge
+and the downstream devices indicating successful link recovery.
+
+In case if the AER support is not enabled in the kernel, only the
+'reset_slot' callback will be called for each slots as there is no way we
+could inform the drivers about link recovery.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/pci/pcie/err.c | 15 ++++++++++-----
+ drivers/pci/pci.h      | 22 ++++++++++++++++++++++
+ drivers/pci/pcie/err.c | 13 ++++++++++++-
+ drivers/pci/probe.c    |  7 +++++++
  include/linux/pci.h    |  1 +
- 2 files changed, 11 insertions(+), 5 deletions(-)
+ 4 files changed, 42 insertions(+), 1 deletion(-)
 
+diff --git a/drivers/pci/pci.h b/drivers/pci/pci.h
+index b81e99cd4b62a3022c8b07a09f212f6888674487..7ea81d596d5f9608237f5897c5c13288d9169207 100644
+--- a/drivers/pci/pci.h
++++ b/drivers/pci/pci.h
+@@ -966,6 +966,7 @@ int pci_aer_clear_status(struct pci_dev *dev);
+ int pci_aer_raw_clear_status(struct pci_dev *dev);
+ void pci_save_aer_state(struct pci_dev *dev);
+ void pci_restore_aer_state(struct pci_dev *dev);
++void pcie_do_recover_slots(struct pci_host_bridge *host);
+ #else
+ static inline void pci_no_aer(void) { }
+ static inline void pci_aer_init(struct pci_dev *d) { }
+@@ -975,6 +976,27 @@ static inline int pci_aer_clear_status(struct pci_dev *dev) { return -EINVAL; }
+ static inline int pci_aer_raw_clear_status(struct pci_dev *dev) { return -EINVAL; }
+ static inline void pci_save_aer_state(struct pci_dev *dev) { }
+ static inline void pci_restore_aer_state(struct pci_dev *dev) { }
++static inline void pcie_do_recover_slots(struct pci_host_bridge *host)
++{
++	struct pci_bus *bus = host->bus;
++	struct pci_dev *dev;
++	int ret;
++
++	if (!host->reset_slot) {
++		dev_warn(&host->dev, "Missing reset_slot() callback\n");
++		return;
++	}
++
++	for_each_pci_bridge(dev, bus) {
++		ret = host->reset_slot(host, dev);
++		if (ret)
++			dev_err(&host->dev, "failed to reset slot (%s): %d\n",
++				pci_name(dev), ret);
++		else
++			dev_dbg(&host->dev, "recovered slot (%s)\n",
++				pci_name(dev));
++	}
++}
+ #endif
+ 
+ #ifdef CONFIG_ACPI
 diff --git a/drivers/pci/pcie/err.c b/drivers/pci/pcie/err.c
-index de6381c690f5c21f00021cdc7bde8d93a5c7db52..77ce9354532afee209f658175b86e625bba8a5ee 100644
+index 77ce9354532afee209f658175b86e625bba8a5ee..0f86c228245ef80c5bba4433c109ec37c57f4a67 100644
 --- a/drivers/pci/pcie/err.c
 +++ b/drivers/pci/pcie/err.c
-@@ -234,11 +234,16 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
- 	}
+@@ -196,6 +196,7 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
+ 	struct pci_dev *bridge;
+ 	pci_ers_result_t status = PCI_ERS_RESULT_CAN_RECOVER;
+ 	struct pci_host_bridge *host = pci_find_host_bridge(dev->bus);
++	int ret;
  
- 	if (status == PCI_ERS_RESULT_NEED_RESET) {
--		/*
--		 * TODO: Should call platform-specific
--		 * functions to reset slot before calling
--		 * drivers' slot_reset callbacks?
--		 */
-+		if (host->reset_slot) {
-+			ret = host->reset_slot(host, bridge);
-+			if (ret) {
-+				pci_err(bridge, "failed to reset slot: %d\n",
-+					ret);
-+				status = PCI_ERS_RESULT_DISCONNECT;
-+				goto failed;
-+			}
-+		}
+ 	/*
+ 	 * If the error was detected by a Root Port, Downstream Port, RCEC,
+@@ -219,7 +220,8 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
+ 	pci_dbg(bridge, "broadcast error_detected message\n");
+ 	if (state == pci_channel_io_frozen) {
+ 		pci_walk_bridge(bridge, report_frozen_detected, &status);
+-		if (reset_subordinates(bridge) != PCI_ERS_RESULT_RECOVERED) {
++		if (reset_subordinates && reset_subordinates(bridge) !=
++						PCI_ERS_RESULT_RECOVERED) {
+ 			pci_warn(bridge, "subordinate device reset failed\n");
+ 			goto failed;
+ 		}
+@@ -280,3 +282,12 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
+ 
+ 	return status;
+ }
 +
- 		status = PCI_ERS_RESULT_RECOVERED;
- 		pci_dbg(bridge, "broadcast slot_reset message\n");
- 		pci_walk_bridge(bridge, report_slot_reset, &status);
++void pcie_do_recover_slots(struct pci_host_bridge *host)
++{
++	struct pci_bus *bus = host->bus;
++	struct pci_dev *dev;
++
++	for_each_pci_bridge(dev, bus)
++		pcie_do_recovery(dev, pci_channel_io_frozen, NULL);
++}
+diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
+index 364fa2a514f8a68fb18bded3259c6847d3932f8b..60ad20eea0259797e68afa7979bb1fc24b6f213b 100644
+--- a/drivers/pci/probe.c
++++ b/drivers/pci/probe.c
+@@ -3249,6 +3249,13 @@ int pci_host_probe(struct pci_host_bridge *bridge)
+ }
+ EXPORT_SYMBOL_GPL(pci_host_probe);
+ 
++void pci_host_handle_link_down(struct pci_host_bridge *bridge)
++{
++	dev_info(&bridge->dev, "Recovering slots due to Link Down\n");
++	pcie_do_recover_slots(bridge);
++}
++EXPORT_SYMBOL_GPL(pci_host_handle_link_down);
++
+ int pci_bus_insert_busn_res(struct pci_bus *b, int bus, int bus_max)
+ {
+ 	struct resource *res = &b->busn_res;
 diff --git a/include/linux/pci.h b/include/linux/pci.h
-index 0e8e3fd77e96713054388bdc82f439e51023c1bf..8d7d2a49b76cf64b4218b179cec495e0d69ddf6f 100644
+index 8d7d2a49b76cf64b4218b179cec495e0d69ddf6f..76e977af2d524200b67f39a6d0417ee565cf5116 100644
 --- a/include/linux/pci.h
 +++ b/include/linux/pci.h
-@@ -599,6 +599,7 @@ struct pci_host_bridge {
- 	void (*release_fn)(struct pci_host_bridge *);
- 	int (*enable_device)(struct pci_host_bridge *bridge, struct pci_dev *dev);
- 	void (*disable_device)(struct pci_host_bridge *bridge, struct pci_dev *dev);
-+	int (*reset_slot)(struct pci_host_bridge *bridge, struct pci_dev *dev);
- 	void		*release_data;
- 	unsigned int	ignore_reset_delay:1;	/* For entire hierarchy */
- 	unsigned int	no_ext_tags:1;		/* No Extended Tags */
+@@ -1157,6 +1157,7 @@ struct pci_bus *pci_create_root_bus(struct device *parent, int bus,
+ 				    struct pci_ops *ops, void *sysdata,
+ 				    struct list_head *resources);
+ int pci_host_probe(struct pci_host_bridge *bridge);
++void pci_host_handle_link_down(struct pci_host_bridge *bridge);
+ int pci_bus_insert_busn_res(struct pci_bus *b, int bus, int busmax);
+ int pci_bus_update_busn_res_end(struct pci_bus *b, int busmax);
+ void pci_bus_release_busn_res(struct pci_bus *b);
 
 -- 
 2.43.0
