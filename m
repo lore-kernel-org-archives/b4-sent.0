@@ -1,116 +1,168 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Fri, 04 Apr 2025 17:52:03 +0200
-Subject: [PATCH 2/2] iio: imu: inv_icm42600: switch to use generic name irq
- get
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Sun, 06 Apr 2025 16:12:43 -0500
+Subject: [PATCH] arm64: tegra: Enable ramoops on Tegra210 and newer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250404-iio-imu-inv-icm42600-rework-interrupt-using-names-v1-2-72ed5100da14@tdk.com>
-References: <20250404-iio-imu-inv-icm42600-rework-interrupt-using-names-v1-0-72ed5100da14@tdk.com>
-In-Reply-To: <20250404-iio-imu-inv-icm42600-rework-interrupt-using-names-v1-0-72ed5100da14@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Message-Id: <20250406-tegra-pstore-v1-1-bf5b57f12293@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAEru8mcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDEwMT3ZLU9KJE3YLikvyiVF3TpNQU4zRzI0NjSwMloJaCotS0zAqwcdG
+ xtbUAA397DF4AAAA=
+X-Change-ID: 20250404-tegra-pstore-5bed3f721390
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, Kees Cook <kees@kernel.org>, 
+ Tony Luck <tony.luck@intel.com>, 
+ "Guilherme G. Piccoli" <gpiccoli@igalia.com>
+Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1743781928; l=3719;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=aK+9d09n/DXh1B0QAO9MWRE0rSAinKtcE5JJVNT3Ho0=;
- b=byMnHzROPs8DLM2mn3cabTWIUFGWHCYa7CvT5NK8dMafO+wt5IyQInBVadqaxAQpFsbvxPSNB
- bWxW0fplXRVBMrLQhTM21wdXrJe3RHHtBmHInes/rgtZX9OxA9+lB4r
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1743973998; l=4405;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=8+6obcSKfeNBlTaNefo4ySU2Kjh+Hx6xO5b9LE4VbJk=;
+ b=Wma2bTDlc+b7ZVz6L59OvUcBddv6u31glDElqK3rt0iOwTPWBcDzQOuD1ooZRx+zEPh8hi3Lk
+ sPHdAr4G41UDYqlvejaX92VClrwW9ziwuvPWa57miDebehCn7LFNdPr
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use generic fwnode_irq_get_byname() for getting interrupt pin using
-interrupt name.
-Only INT1 is supported by the driver currently.
+This allows using pstore on all such platforms. There are some
+differences per arch:
+
+* Tegra132: Flounder does not appear to enumerate pstore and I do not
+  have access to norrin, thus Tegra132 is left out of this commit.
+* Tegra210: Does not support ramoops carveouts in the bootloader, instead
+  relying on a dowstream driver to allocate the carveout, hence this
+  hardcodes a location matching what the downstream driver picks.
+* Tegra186 and Tegra194 on cboot: Bootloader fills in the address and
+  size in a node specifically named /reserved-memory/ramoops_carveout,
+  thus these cannot be renamed.
+* Tegra194 and Tegra234 on edk2: Bootloader looks up the node based on
+  compatible, however the dt still does not know the address, so keeping
+  the node name consistent on Tegra186 and newer.
+
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600.h      |  2 +-
- drivers/iio/imu/inv_icm42600/inv_icm42600_core.c | 13 +++++++++++--
- drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c  |  2 +-
- drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c  |  2 +-
- 4 files changed, 14 insertions(+), 5 deletions(-)
+ arch/arm64/boot/dts/nvidia/tegra186.dtsi | 16 ++++++++++++++++
+ arch/arm64/boot/dts/nvidia/tegra194.dtsi | 16 ++++++++++++++++
+ arch/arm64/boot/dts/nvidia/tegra210.dtsi | 13 +++++++++++++
+ arch/arm64/boot/dts/nvidia/tegra234.dtsi | 16 ++++++++++++++++
+ 4 files changed, 61 insertions(+)
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-index 18787a43477b89db12caee597ab040af5c8f52d5..f893dbe6996506a33eb5d3be47e6765a923665c9 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-@@ -426,7 +426,7 @@ int inv_icm42600_set_temp_conf(struct inv_icm42600_state *st, bool enable,
- int inv_icm42600_debugfs_reg(struct iio_dev *indio_dev, unsigned int reg,
- 			     unsigned int writeval, unsigned int *readval);
+diff --git a/arch/arm64/boot/dts/nvidia/tegra186.dtsi b/arch/arm64/boot/dts/nvidia/tegra186.dtsi
+index 2b3bb5d0af17bd521f87db0484fcbe943dd1a797..2e2b27deb957dfd754e42dd03f5a1da5079971dc 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra186.dtsi
++++ b/arch/arm64/boot/dts/nvidia/tegra186.dtsi
+@@ -2051,6 +2051,22 @@ pmu-denver {
+ 		interrupt-affinity = <&denver_0 &denver_1>;
+ 	};
  
--int inv_icm42600_core_probe(struct regmap *regmap, int chip, int irq,
-+int inv_icm42600_core_probe(struct regmap *regmap, int chip,
- 			    inv_icm42600_bus_setup bus_setup);
- 
- struct iio_dev *inv_icm42600_gyro_init(struct inv_icm42600_state *st);
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-index ef9875d3b79db116f9fb4f6d881a7979292c1792..bfdd7cd5fafae87ad7c6204f6dd3bef17935b3f9 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-@@ -683,12 +683,13 @@ static void inv_icm42600_disable_pm(void *_data)
- 	pm_runtime_disable(dev);
- }
- 
--int inv_icm42600_core_probe(struct regmap *regmap, int chip, int irq,
-+int inv_icm42600_core_probe(struct regmap *regmap, int chip,
- 			    inv_icm42600_bus_setup bus_setup)
- {
- 	struct device *dev = regmap_get_device(regmap);
- 	struct inv_icm42600_state *st;
--	int irq_type;
-+	struct fwnode_handle *fwnode;
-+	int irq, irq_type;
- 	bool open_drain;
- 	int ret;
- 
-@@ -697,6 +698,14 @@ int inv_icm42600_core_probe(struct regmap *regmap, int chip, int irq,
- 		return -ENODEV;
- 	}
- 
-+	/* get INT1 only supported interrupt */
-+	fwnode = dev_fwnode(dev);
-+	if (!fwnode)
-+		return -ENODEV;
-+	irq = fwnode_irq_get_byname(fwnode, "INT1");
-+	if (irq < 0)
-+		return dev_err_probe(dev, irq, "error missing INT1 interrupt\n");
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
 +
- 	irq_type = irq_get_trigger_type(irq);
- 	if (!irq_type)
- 		irq_type = IRQF_TRIGGER_FALLING;
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c
-index 04e440fe023aa3869529b0f0be003ea0544bfb8d..38cc0d7834fcb96dabc401f29d613cf9fc75b8f5 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c
-@@ -67,7 +67,7 @@ static int inv_icm42600_probe(struct i2c_client *client)
- 	if (IS_ERR(regmap))
- 		return PTR_ERR(regmap);
++		ramoops_carveout {
++			compatible = "ramoops";
++			size = <0x0 0x200000>;
++			record-size = <0x00010000>;
++			console-size = <0x00080000>;
++			alignment = <0x0 0x10000>;
++			alloc-ranges = <0x0 0x0 0x1 0x0>;
++			no-map;
++		};
++	};
++
+ 	sound {
+ 		status = "disabled";
  
--	return inv_icm42600_core_probe(regmap, chip, client->irq,
-+	return inv_icm42600_core_probe(regmap, chip,
- 				       inv_icm42600_i2c_bus_setup);
- }
+diff --git a/arch/arm64/boot/dts/nvidia/tegra194.dtsi b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
+index 33f92b77cd9d9e530eae87a4bb8ba61993ceffeb..90ffea161a57a8986c2493573c73e3cf9e2c43c0 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra194.dtsi
++++ b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
+@@ -3105,6 +3105,22 @@ psci {
+ 		method = "smc";
+ 	};
  
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-index 2bd2c4c8e50c3fe081e882aca6c64736510b474c..f40a09c4cbfc673e76922d13d61a3634785300ec 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-@@ -64,7 +64,7 @@ static int inv_icm42600_probe(struct spi_device *spi)
- 	if (IS_ERR(regmap))
- 		return PTR_ERR(regmap);
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		ramoops_carveout {
++			compatible = "ramoops";
++			size = <0x0 0x200000>;
++			record-size = <0x00010000>;
++			console-size = <0x00080000>;
++			alignment = <0x0 0x10000>;
++			alloc-ranges = <0x0 0x0 0x1 0x0>;
++			no-map;
++		};
++	};
++
+ 	tcu: serial {
+ 		compatible = "nvidia,tegra194-tcu";
+ 		mboxes = <&hsp_top0 TEGRA_HSP_MBOX_TYPE_SM TEGRA_HSP_SM_RX(0)>,
+diff --git a/arch/arm64/boot/dts/nvidia/tegra210.dtsi b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
+index b6c84d195c0ef9ae90721fada09ffd46a9c11fa3..00ae127e8b8af3fe3b95d8ce5986d937a4fc6325 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra210.dtsi
++++ b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
+@@ -2025,6 +2025,19 @@ pmu {
+ 				      &{/cpus/cpu@2} &{/cpus/cpu@3}>;
+ 	};
  
--	return inv_icm42600_core_probe(regmap, chip, spi->irq,
-+	return inv_icm42600_core_probe(regmap, chip,
- 				       inv_icm42600_spi_bus_setup);
- }
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		ramoops@b0000000 {
++			compatible = "ramoops";
++			reg = <0x0 0xb0000000 0x0 0x200000>;
++			record-size = <0x00010000>;
++			console-size = <0x00080000>;
++		};
++	};
++
+ 	sound {
+ 		status = "disabled";
  
+diff --git a/arch/arm64/boot/dts/nvidia/tegra234.dtsi b/arch/arm64/boot/dts/nvidia/tegra234.dtsi
+index 2601b43b2d8cadeb0d1f428018a82b144aa79392..36f35c6dc774d42aca8871dbfa0e0a16414cb860 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra234.dtsi
++++ b/arch/arm64/boot/dts/nvidia/tegra234.dtsi
+@@ -5723,6 +5723,22 @@ psci {
+ 		method = "smc";
+ 	};
+ 
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		ramoops_carveout {
++			compatible = "ramoops";
++			size = <0x0 0x200000>;
++			record-size = <0x00010000>;
++			console-size = <0x00080000>;
++			alignment = <0x0 0x10000>;
++			alloc-ranges = <0x0 0x0 0x1 0x0>;
++			no-map;
++		};
++	};
++
+ 	tcu: serial {
+ 		compatible = "nvidia,tegra234-tcu", "nvidia,tegra194-tcu";
+ 		mboxes = <&hsp_top0 TEGRA_HSP_MBOX_TYPE_SM TEGRA_HSP_SM_RX(0)>,
 
+---
+base-commit: 91e5bfe317d8f8471fbaa3e70cf66cae1314a516
+change-id: 20250404-tegra-pstore-5bed3f721390
+
+Best regards,
 -- 
-2.49.0
+Aaron Kling <webgeek1234@gmail.com>
 
