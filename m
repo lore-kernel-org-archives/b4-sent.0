@@ -1,168 +1,165 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 06 Apr 2025 16:12:43 -0500
-Subject: [PATCH] arm64: tegra: Enable ramoops on Tegra210 and newer
+From: David Dgien <dgienda125@gmail.com>
+Date: Sun, 06 Apr 2025 22:24:40 -0400
+Subject: [PATCH v2] tlsf: Add tracking of added tlsf memory pools
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250406-tegra-pstore-v1-1-bf5b57f12293@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEru8mcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDEwMT3ZLU9KJE3YLikvyiVF3TpNQU4zRzI0NjSwMloJaCotS0zAqwcdG
- xtbUAA397DF4AAAA=
-X-Change-ID: 20250404-tegra-pstore-5bed3f721390
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, Kees Cook <kees@kernel.org>, 
- Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20250406-tlsf-addpool-v2-1-880c64d19d59@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGc382cC/1XMyw6DIBCF4Vcxsy4Nl2JsV75H4wK56CQoBgxpY
+ 3j3Urvq8p/J+Q5INqJN8GgOiDZjwrDW4JcG9KzWyRI0tYFTLikTjOw+OaKM2ULwRLpbfdxH2XE
+ NdbJF6/B1cs+h9oxpD/F96pl9rz9I8O4fyowwwqUzdKQtFbLtp0Whv+qwwFBK+QCJEsvmqAAAA
+ A==
+X-Change-ID: 20250131-tlsf-addpool-5f42029b582c
+To: Sascha Hauer <s.hauer@pengutronix.de>, 
+ BAREBOX <barebox@lists.infradead.org>
+Cc: David Dgien <dgienda125@gmail.com>, Tyler Reece <mtreece@acm.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1743973998; l=4405;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=8+6obcSKfeNBlTaNefo4ySU2Kjh+Hx6xO5b9LE4VbJk=;
- b=Wma2bTDlc+b7ZVz6L59OvUcBddv6u31glDElqK3rt0iOwTPWBcDzQOuD1ooZRx+zEPh8hi3Lk
- sPHdAr4G41UDYqlvejaX92VClrwW9ziwuvPWa57miDebehCn7LFNdPr
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1743992692; l=3891;
+ i=dgienda125@gmail.com; s=20250126; h=from:subject:message-id;
+ bh=9Sv5Zm8CxnEOIhpDZkPAusucZer8DxpiuaUFQn/VIf4=;
+ b=qPQQJ1Gil3d1QP1FDZQnYgOioNJM9FBSPBIBkZKuLPMSluwvHKKfixsnVcFa8IP7qJOOnqLmc
+ BpnbMJTYuRdCT7ttWT9+u0UeI8VVVL0UBO8r6jjXOlyIDq5ePceLrvm
+X-Developer-Key: i=dgienda125@gmail.com; a=ed25519;
+ pk=zPhfl/eH2iShpaIksvU8MCg11Il6Dx2oW7WYAzpKbo0=
+X-Endpoint-Received: by B4 Relay for dgienda125@gmail.com/20250126 with auth_id=332
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This allows using pstore on all such platforms. There are some
-differences per arch:
+When configured to use the TLSF allocator, the malloc_stats function
+only walks the initial memory pool, as that is the only pool it is aware
+of, and TLSF doesn't link pools together in a way that the walker can
+follow.
 
-* Tegra132: Flounder does not appear to enumerate pstore and I do not
-  have access to norrin, thus Tegra132 is left out of this commit.
-* Tegra210: Does not support ramoops carveouts in the bootloader, instead
-  relying on a dowstream driver to allocate the carveout, hence this
-  hardcodes a location matching what the downstream driver picks.
-* Tegra186 and Tegra194 on cboot: Bootloader fills in the address and
-  size in a node specifically named /reserved-memory/ramoops_carveout,
-  thus these cannot be renamed.
-* Tegra194 and Tegra234 on edk2: Bootloader looks up the node based on
-  compatible, however the dt still does not know the address, so keeping
-  the node name consistent on Tegra186 and newer.
+Add a wrapper function around tlsf_add_pool to add additional tracking
+of added pools, so that they can be walked by the malloc_stats function
+and meminfo can report accurate heap utilization.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: David Dgien <dgienda125@gmail.com>
+Reviewed-by: Tyler Reece <mtreece@acm.org>
 ---
- arch/arm64/boot/dts/nvidia/tegra186.dtsi | 16 ++++++++++++++++
- arch/arm64/boot/dts/nvidia/tegra194.dtsi | 16 ++++++++++++++++
- arch/arm64/boot/dts/nvidia/tegra210.dtsi | 13 +++++++++++++
- arch/arm64/boot/dts/nvidia/tegra234.dtsi | 16 ++++++++++++++++
- 4 files changed, 61 insertions(+)
+Changes in v2:
+ - Removed malloc_remove_pool (Sasha)
+ - Reworked tlsf initialization into malloc_add_pool
+---
+ common/memory.c      |  7 +------
+ common/tlsf_malloc.c | 46 ++++++++++++++++++++++++++++++++++++++++++++--
+ include/malloc.h     |  4 ++++
+ 3 files changed, 49 insertions(+), 8 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/nvidia/tegra186.dtsi b/arch/arm64/boot/dts/nvidia/tegra186.dtsi
-index 2b3bb5d0af17bd521f87db0484fcbe943dd1a797..2e2b27deb957dfd754e42dd03f5a1da5079971dc 100644
---- a/arch/arm64/boot/dts/nvidia/tegra186.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra186.dtsi
-@@ -2051,6 +2051,22 @@ pmu-denver {
- 		interrupt-affinity = <&denver_0 &denver_1>;
- 	};
+diff --git a/common/memory.c b/common/memory.c
+index 36aa4bcb8800943a2742dd13a34165f6238af728..f25fe143984a538f5b1f7c5af7a76596b4aeaa33 100644
+--- a/common/memory.c
++++ b/common/memory.c
+@@ -34,11 +34,6 @@ unsigned long mem_malloc_end(void)
+ 	return malloc_end;
+ }
  
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		ramoops_carveout {
-+			compatible = "ramoops";
-+			size = <0x0 0x200000>;
-+			record-size = <0x00010000>;
-+			console-size = <0x00080000>;
-+			alignment = <0x0 0x10000>;
-+			alloc-ranges = <0x0 0x0 0x1 0x0>;
-+			no-map;
-+		};
-+	};
-+
- 	sound {
- 		status = "disabled";
+-#ifdef CONFIG_MALLOC_TLSF
+-#include <tlsf.h>
+-tlsf_t tlsf_mem_pool;
+-#endif
+-
+ int mem_malloc_initialized;
  
-diff --git a/arch/arm64/boot/dts/nvidia/tegra194.dtsi b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-index 33f92b77cd9d9e530eae87a4bb8ba61993ceffeb..90ffea161a57a8986c2493573c73e3cf9e2c43c0 100644
---- a/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-@@ -3105,6 +3105,22 @@ psci {
- 		method = "smc";
- 	};
+ int mem_malloc_is_initialized(void)
+@@ -52,7 +47,7 @@ void mem_malloc_init(void *start, void *end)
+ 	malloc_end = (unsigned long)end;
+ 	malloc_brk = malloc_start;
+ #ifdef CONFIG_MALLOC_TLSF
+-	tlsf_mem_pool = tlsf_create_with_pool(start, end - start + 1);
++	malloc_add_pool(start, end - start + 1);
+ #endif
+ 	mem_malloc_initialized = 1;
+ }
+diff --git a/common/tlsf_malloc.c b/common/tlsf_malloc.c
+index 6a90ee47199fa9e8223f843cc95f52eebfec2aee..4acf1c1c507153e1fef98f9f73f42605c580bc6c 100644
+--- a/common/tlsf_malloc.c
++++ b/common/tlsf_malloc.c
+@@ -12,7 +12,17 @@
+ #include <module.h>
+ #include <tlsf.h>
  
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
+-extern tlsf_t tlsf_mem_pool;
++#include <linux/kasan.h>
++#include <linux/list.h>
 +
-+		ramoops_carveout {
-+			compatible = "ramoops";
-+			size = <0x0 0x200000>;
-+			record-size = <0x00010000>;
-+			console-size = <0x00080000>;
-+			alignment = <0x0 0x10000>;
-+			alloc-ranges = <0x0 0x0 0x1 0x0>;
-+			no-map;
-+		};
-+	};
++tlsf_t tlsf_mem_pool;
 +
- 	tcu: serial {
- 		compatible = "nvidia,tegra194-tcu";
- 		mboxes = <&hsp_top0 TEGRA_HSP_MBOX_TYPE_SM TEGRA_HSP_SM_RX(0)>,
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210.dtsi b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-index b6c84d195c0ef9ae90721fada09ffd46a9c11fa3..00ae127e8b8af3fe3b95d8ce5986d937a4fc6325 100644
---- a/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-@@ -2025,6 +2025,19 @@ pmu {
- 				      &{/cpus/cpu@2} &{/cpus/cpu@3}>;
- 	};
++struct pool_entry {
++	pool_t pool;
++	struct list_head list;
++};
++
++static LIST_HEAD(mem_pool_list);
  
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		ramoops@b0000000 {
-+			compatible = "ramoops";
-+			reg = <0x0 0xb0000000 0x0 0x200000>;
-+			record-size = <0x00010000>;
-+			console-size = <0x00080000>;
-+		};
-+	};
-+
- 	sound {
- 		status = "disabled";
+ void *malloc(size_t bytes)
+ {
+@@ -75,12 +85,44 @@ static void malloc_walker(void* ptr, size_t size, int used, void *user)
  
-diff --git a/arch/arm64/boot/dts/nvidia/tegra234.dtsi b/arch/arm64/boot/dts/nvidia/tegra234.dtsi
-index 2601b43b2d8cadeb0d1f428018a82b144aa79392..36f35c6dc774d42aca8871dbfa0e0a16414cb860 100644
---- a/arch/arm64/boot/dts/nvidia/tegra234.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra234.dtsi
-@@ -5723,6 +5723,22 @@ psci {
- 		method = "smc";
- 	};
+ void malloc_stats(void)
+ {
++	struct pool_entry *cur_pool;
+ 	struct malloc_stats s;
  
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
+ 	s.used = 0;
+ 	s.free = 0;
+ 
+-	tlsf_walk_pool(tlsf_get_pool(tlsf_mem_pool), malloc_walker, &s);
++	list_for_each_entry(cur_pool, &mem_pool_list, list)
++		tlsf_walk_pool(cur_pool->pool, malloc_walker, &s);
+ 
+ 	printf("used: %zu\nfree: %zu\n", s.used, s.free);
+ }
 +
-+		ramoops_carveout {
-+			compatible = "ramoops";
-+			size = <0x0 0x200000>;
-+			record-size = <0x00010000>;
-+			console-size = <0x00080000>;
-+			alignment = <0x0 0x10000>;
-+			alloc-ranges = <0x0 0x0 0x1 0x0>;
-+			no-map;
-+		};
-+	};
++void *malloc_add_pool(void *mem, size_t bytes)
++{
++	pool_t new_pool;
++	struct pool_entry *new_pool_entry;
 +
- 	tcu: serial {
- 		compatible = "nvidia,tegra234-tcu", "nvidia,tegra194-tcu";
- 		mboxes = <&hsp_top0 TEGRA_HSP_MBOX_TYPE_SM TEGRA_HSP_SM_RX(0)>,
++	if (!mem)
++		return NULL;
++
++	if (!tlsf_mem_pool) {
++		tlsf_mem_pool = tlsf_create(mem);
++		mem = (char *)mem + tlsf_size();
++		bytes = bytes - tlsf_size();
++	}
++
++	new_pool = tlsf_add_pool(tlsf_mem_pool, mem, bytes);
++	if (!new_pool)
++		return NULL;
++
++	new_pool_entry = malloc(sizeof(*new_pool_entry));
++	if (!new_pool_entry)
++		return NULL;
++
++	kasan_poison_shadow(mem, bytes, KASAN_TAG_INVALID);
++
++	new_pool_entry->pool = new_pool;
++	list_add(&new_pool_entry->list, &mem_pool_list);
++
++	return (void *)new_pool;
++}
+diff --git a/include/malloc.h b/include/malloc.h
+index 0b74746360c08a95e593c9afe485382d02cd5c12..35551250324ee1d3c8ddc06f49a06ce07d2855bd 100644
+--- a/include/malloc.h
++++ b/include/malloc.h
+@@ -21,6 +21,10 @@
+ #define ZERO_OR_NULL_PTR(x) ((unsigned long)(x) <= \
+ 				(unsigned long)ZERO_SIZE_PTR)
+ 
++#ifdef CONFIG_MALLOC_TLSF
++void *malloc_add_pool(void *mem, size_t bytes);
++#endif
++
+ #if IN_PROPER
+ void *malloc(size_t) __alloc_size(1);
+ size_t malloc_usable_size(void *);
 
 ---
-base-commit: 91e5bfe317d8f8471fbaa3e70cf66cae1314a516
-change-id: 20250404-tegra-pstore-5bed3f721390
+base-commit: b4c0c4615ace1795aa75ced21caa1e78b665cde0
+change-id: 20250131-tlsf-addpool-5f42029b582c
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+David Dgien <dgienda125@gmail.com>
 
