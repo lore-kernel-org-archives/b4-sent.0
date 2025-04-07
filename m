@@ -1,16 +1,13 @@
 From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Subject: [PATCH v2 0/2] iio: imu: inv_icm42600: switch to use generic name
- irq get
-Date: Mon, 07 Apr 2025 21:57:15 +0200
-Message-Id: <20250407-iio-imu-inv-icm42600-rework-interrupt-using-names-v2-0-c278acf587b2@tdk.com>
+Date: Mon, 07 Apr 2025 21:57:16 +0200
+Subject: [PATCH v2 1/2] dt-bindings: iio: imu: icm42600: add interrupt
+ naming support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIABsu9GcC/52OQQ7CIBBFr2JYOwYoWHXlPUwXFcZ20gANtKhpe
- nex3sDle4v//sISRsLELruFRcyUKPgCcr9jpm99h0C2MJNcal5JDUQByM1APgMZp+SRc4j4DHE
- obsIY53GCOZHvwLcOE9yrc23Q1vJUaVZ2x4gPem3NW1O4pzSF+N4uZPG1v5ri6o9aFsChlmi14
- Ny2Ql0nOxxMcKxZ1/UD/A4HzfAAAAA=
-X-Change-ID: 20250325-iio-imu-inv-icm42600-rework-interrupt-using-names-b397ced72835
+Message-Id: <20250407-iio-imu-inv-icm42600-rework-interrupt-using-names-v2-1-c278acf587b2@tdk.com>
+References: <20250407-iio-imu-inv-icm42600-rework-interrupt-using-names-v2-0-c278acf587b2@tdk.com>
+In-Reply-To: <20250407-iio-imu-inv-icm42600-rework-interrupt-using-names-v2-0-c278acf587b2@tdk.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,44 +16,65 @@ Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, 
  Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744055845; l=1344;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744055845; l=1747;
  i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=rIJwEoz8xFlQQVlAO/VsBXMyVwVYpieUYx8Cva0KGTE=;
- b=MVjajOAMvhvW8ch5RkVeX8GmZZbQOrXdcvzHU+tA5GN7UEQXJqDv5QbJVYoJGlajjxAzi4KWT
- pUHelmpxrRwDc34RBXCdat+LH/CkpVmEvi08CPObIilHZCG+niO56pR
+ bh=1qQnOijHkXW1Hp6AoL8pvONp5bnvT1kXFXKqEP9j4Mk=;
+ b=rQ4NkV5spC2UdhZNwqF+1M9qINLIg72QUnqO0x/jde1Cheat9cnvpclLdIuncJYC7fuN/SeRn
+ okKLyYxUAiFAQ5dt4TUpcNTVNqGud+ERBZtpPjFEJ6I1YmCiUxXMxT8
 X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
  pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
 X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The purpose of this series is to switch to fwnode_irq_get_by_name()
-in the core module instead of using irq from the bus parsing.
-Add interrupt naming and support only INT1.
+Add interrupt-names field for specifying interrupt used. Only INT1
+is supported by the driver currently.
+
+Add minItems 1 for interrupts since interrupt is mandatory for the driver.
 
 Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
-Changes in v2:
-- Add INT2 in interrupt-names enum and fix enum
-- Add fallback to first interrupt if naming is not here to ensure
-  backward compatibility
-- Link to v1: https://lore.kernel.org/r/20250404-iio-imu-inv-icm42600-rework-interrupt-using-names-v1-0-72ed5100da14@tdk.com
+ .../devicetree/bindings/iio/imu/invensense,icm42600.yaml    | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
----
-Jean-Baptiste Maneyrol (2):
-      dt-bindings: iio: imu: icm42600: add interrupt naming support
-      iio: imu: inv_icm42600: switch to use generic name irq get
+diff --git a/Documentation/devicetree/bindings/iio/imu/invensense,icm42600.yaml b/Documentation/devicetree/bindings/iio/imu/invensense,icm42600.yaml
+index 7e4492bbd0278a336587dc5ac04da7153453da29..707f2169ce9a3ca41d81560bed15786fe010109e 100644
+--- a/Documentation/devicetree/bindings/iio/imu/invensense,icm42600.yaml
++++ b/Documentation/devicetree/bindings/iio/imu/invensense,icm42600.yaml
+@@ -41,6 +41,17 @@ properties:
+   interrupts:
+     maxItems: 1
+ 
++  interrupt-names:
++    minItems: 1
++    maxItems: 1
++    items:
++      enum:
++        - INT1
++        - INT2
++    description: |
++      choose chip interrupt pin to be used as interrupt input, beware that the
++      only support interrupt pin is INT1 for the moment.
++
+   drive-open-drain:
+     type: boolean
+ 
+@@ -76,6 +87,7 @@ examples:
+             reg = <0x68>;
+             interrupt-parent = <&gpio2>;
+             interrupts = <7 IRQ_TYPE_EDGE_FALLING>;
++            interrupt-names = "INT1";
+             vdd-supply = <&vdd>;
+             vddio-supply = <&vddio>;
+         };
+@@ -95,6 +107,7 @@ examples:
+             spi-cpol;
+             interrupt-parent = <&gpio1>;
+             interrupts = <2 IRQ_TYPE_EDGE_FALLING>;
++            interrupt-names = "INT1";
+             vdd-supply = <&vdd>;
+             vddio-supply = <&vddio>;
+         };
 
- .../bindings/iio/imu/invensense,icm42600.yaml           | 13 +++++++++++++
- drivers/iio/imu/inv_icm42600/inv_icm42600.h             |  2 +-
- drivers/iio/imu/inv_icm42600/inv_icm42600_core.c        | 17 +++++++++++++++--
- drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c         |  2 +-
- drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c         |  2 +-
- 5 files changed, 31 insertions(+), 5 deletions(-)
----
-base-commit: e3ee177e2a3e21ef4502f68336023154049d2acd
-change-id: 20250325-iio-imu-inv-icm42600-rework-interrupt-using-names-b397ced72835
-
-Best regards,
 -- 
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+2.49.0
 
