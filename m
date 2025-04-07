@@ -1,165 +1,73 @@
-From: David Dgien <dgienda125@gmail.com>
-Date: Sun, 06 Apr 2025 22:24:40 -0400
-Subject: [PATCH v2] tlsf: Add tracking of added tlsf memory pools
+From: George Chan <gchan9527@gmail.com>
+Date: Mon, 07 Apr 2025 14:43:44 +0800
+Subject: [PATCH RFC] fdt.c: fdt chosen cmd had off-by-one issue
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250406-tlsf-addpool-v2-1-880c64d19d59@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAGc382cC/1XMyw6DIBCF4Vcxsy4Nl2JsV75H4wK56CQoBgxpY
- 3j3Urvq8p/J+Q5INqJN8GgOiDZjwrDW4JcG9KzWyRI0tYFTLikTjOw+OaKM2ULwRLpbfdxH2XE
- NdbJF6/B1cs+h9oxpD/F96pl9rz9I8O4fyowwwqUzdKQtFbLtp0Whv+qwwFBK+QCJEsvmqAAAA
- A==
-X-Change-ID: 20250131-tlsf-addpool-5f42029b582c
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: David Dgien <dgienda125@gmail.com>, Tyler Reece <mtreece@acm.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1743992692; l=3891;
- i=dgienda125@gmail.com; s=20250126; h=from:subject:message-id;
- bh=9Sv5Zm8CxnEOIhpDZkPAusucZer8DxpiuaUFQn/VIf4=;
- b=qPQQJ1Gil3d1QP1FDZQnYgOioNJM9FBSPBIBkZKuLPMSluwvHKKfixsnVcFa8IP7qJOOnqLmc
- BpnbMJTYuRdCT7ttWT9+u0UeI8VVVL0UBO8r6jjXOlyIDq5ePceLrvm
-X-Developer-Key: i=dgienda125@gmail.com; a=ed25519;
- pk=zPhfl/eH2iShpaIksvU8MCg11Il6Dx2oW7WYAzpKbo0=
-X-Endpoint-Received: by B4 Relay for dgienda125@gmail.com/20250126 with auth_id=332
+Message-Id: <20250407-fdt-chosen-v1-1-3dda83c48c07@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAB9082cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDEwNz3bSUEt3kjPzi1DzdZAtzAxPTNKNUw1RLJaCGgqLUtMwKsGHRsbW
+ 1AB149+5cAAAA
+To: Simon Glass <sjg@chromium.org>, Tom Rini <trini@konsulko.com>
+Cc: u-boot@lists.denx.de, George Chan <gchan9527@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744008239; l=1586;
+ i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
+ bh=KXpDs9FaMUuw/TaF08xplmfD+9pguJkYrpcltFm/Q3U=;
+ b=osa2720q9l0fvEKXeaUD32d5ZTJdZDmOSmCBCLhO1f3Xwl8tEHcRqspJjfzx2FBLa1FRmDnhK
+ IP4mf1Z2qE5A184Epo8XgNBDx9En6YJHMn2LCB1RzHSbW8bdP5YKXR9
+X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
+ pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
+X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When configured to use the TLSF allocator, the malloc_stats function
-only walks the initial memory pool, as that is the only pool it is aware
-of, and TLSF doesn't link pools together in a way that the walker can
-follow.
+The kernel searching bootconfig will be off-by-1 and never match
+thus always not found in this case.
 
-Add a wrapper function around tlsf_add_pool to add additional tracking
-of added pools, so that they can be walked by the malloc_stats function
-and meminfo can report accurate heap utilization.
-
-Signed-off-by: David Dgien <dgienda125@gmail.com>
-Reviewed-by: Tyler Reece <mtreece@acm.org>
+Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
-Changes in v2:
- - Removed malloc_remove_pool (Sasha)
- - Reworked tlsf initialization into malloc_add_pool
----
- common/memory.c      |  7 +------
- common/tlsf_malloc.c | 46 ++++++++++++++++++++++++++++++++++++++++++++--
- include/malloc.h     |  4 ++++
- 3 files changed, 49 insertions(+), 8 deletions(-)
+The searching will shift-by-1 and never match the bootconfig thus
+always not found bootconfig this case.
 
-diff --git a/common/memory.c b/common/memory.c
-index 36aa4bcb8800943a2742dd13a34165f6238af728..f25fe143984a538f5b1f7c5af7a76596b4aeaa33 100644
---- a/common/memory.c
-+++ b/common/memory.c
-@@ -34,11 +34,6 @@ unsigned long mem_malloc_end(void)
- 	return malloc_end;
- }
+Kernel:
+            data = (char *)initrd_end - BOOTCONFIG_MAGIC_LEN;
+            for (i = 0; i < 4; i++) {
+                    if (!memcmp(data, BOOTCONFIG_MAGIC, BOOTCONFIG_MAGIC_LEN))
+                            goto found;
+                    data--;
+            }
+u-boot:
+            initrd_end = initrd_start + hextoul(argv[3], NULL) - 1;
+
+That would be off-by-one apprently and matching fail for bootconfig.
+Both u-boot and kernel worth a fix.
+
+An out-of-tree patch for kernel to relax the searching is available
+but not ready for submit.
+https://github.com/99degree/linux/commit/9d9ea454fe857a9f550d7e60957253e176e8e123
+---
+ cmd/fdt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cmd/fdt.c b/cmd/fdt.c
+index d16b141ce32..13ffe929f8b 100644
+--- a/cmd/fdt.c
++++ b/cmd/fdt.c
+@@ -705,7 +705,7 @@ static int do_fdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
  
--#ifdef CONFIG_MALLOC_TLSF
--#include <tlsf.h>
--tlsf_t tlsf_mem_pool;
--#endif
--
- int mem_malloc_initialized;
+ 		if (argc == 4) {
+ 			initrd_start = hextoul(argv[2], NULL);
+-			initrd_end = initrd_start + hextoul(argv[3], NULL) - 1;
++			initrd_end = initrd_start + hextoul(argv[3], NULL);
+ 		}
  
- int mem_malloc_is_initialized(void)
-@@ -52,7 +47,7 @@ void mem_malloc_init(void *start, void *end)
- 	malloc_end = (unsigned long)end;
- 	malloc_brk = malloc_start;
- #ifdef CONFIG_MALLOC_TLSF
--	tlsf_mem_pool = tlsf_create_with_pool(start, end - start + 1);
-+	malloc_add_pool(start, end - start + 1);
- #endif
- 	mem_malloc_initialized = 1;
- }
-diff --git a/common/tlsf_malloc.c b/common/tlsf_malloc.c
-index 6a90ee47199fa9e8223f843cc95f52eebfec2aee..4acf1c1c507153e1fef98f9f73f42605c580bc6c 100644
---- a/common/tlsf_malloc.c
-+++ b/common/tlsf_malloc.c
-@@ -12,7 +12,17 @@
- #include <module.h>
- #include <tlsf.h>
- 
--extern tlsf_t tlsf_mem_pool;
-+#include <linux/kasan.h>
-+#include <linux/list.h>
-+
-+tlsf_t tlsf_mem_pool;
-+
-+struct pool_entry {
-+	pool_t pool;
-+	struct list_head list;
-+};
-+
-+static LIST_HEAD(mem_pool_list);
- 
- void *malloc(size_t bytes)
- {
-@@ -75,12 +85,44 @@ static void malloc_walker(void* ptr, size_t size, int used, void *user)
- 
- void malloc_stats(void)
- {
-+	struct pool_entry *cur_pool;
- 	struct malloc_stats s;
- 
- 	s.used = 0;
- 	s.free = 0;
- 
--	tlsf_walk_pool(tlsf_get_pool(tlsf_mem_pool), malloc_walker, &s);
-+	list_for_each_entry(cur_pool, &mem_pool_list, list)
-+		tlsf_walk_pool(cur_pool->pool, malloc_walker, &s);
- 
- 	printf("used: %zu\nfree: %zu\n", s.used, s.free);
- }
-+
-+void *malloc_add_pool(void *mem, size_t bytes)
-+{
-+	pool_t new_pool;
-+	struct pool_entry *new_pool_entry;
-+
-+	if (!mem)
-+		return NULL;
-+
-+	if (!tlsf_mem_pool) {
-+		tlsf_mem_pool = tlsf_create(mem);
-+		mem = (char *)mem + tlsf_size();
-+		bytes = bytes - tlsf_size();
-+	}
-+
-+	new_pool = tlsf_add_pool(tlsf_mem_pool, mem, bytes);
-+	if (!new_pool)
-+		return NULL;
-+
-+	new_pool_entry = malloc(sizeof(*new_pool_entry));
-+	if (!new_pool_entry)
-+		return NULL;
-+
-+	kasan_poison_shadow(mem, bytes, KASAN_TAG_INVALID);
-+
-+	new_pool_entry->pool = new_pool;
-+	list_add(&new_pool_entry->list, &mem_pool_list);
-+
-+	return (void *)new_pool;
-+}
-diff --git a/include/malloc.h b/include/malloc.h
-index 0b74746360c08a95e593c9afe485382d02cd5c12..35551250324ee1d3c8ddc06f49a06ce07d2855bd 100644
---- a/include/malloc.h
-+++ b/include/malloc.h
-@@ -21,6 +21,10 @@
- #define ZERO_OR_NULL_PTR(x) ((unsigned long)(x) <= \
- 				(unsigned long)ZERO_SIZE_PTR)
- 
-+#ifdef CONFIG_MALLOC_TLSF
-+void *malloc_add_pool(void *mem, size_t bytes);
-+#endif
-+
- #if IN_PROPER
- void *malloc(size_t) __alloc_size(1);
- size_t malloc_usable_size(void *);
+ 		fdt_chosen(working_fdt);
 
 ---
-base-commit: b4c0c4615ace1795aa75ced21caa1e78b665cde0
-change-id: 20250131-tlsf-addpool-5f42029b582c
+base-commit: 848f7ffc64aa7c4cc2229095812625c12343c8c1
+change-id: 20250407-fdt-chosen-c87045f2e1e9
 
 Best regards,
 -- 
-David Dgien <dgienda125@gmail.com>
+George Chan <gchan9527@gmail.com>
 
