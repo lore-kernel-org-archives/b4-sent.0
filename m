@@ -1,73 +1,66 @@
-From: George Chan <gchan9527@gmail.com>
-Date: Mon, 07 Apr 2025 14:43:44 +0800
-Subject: [PATCH RFC] fdt.c: fdt chosen cmd had off-by-one issue
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v3 0/6] clk: clk-axi-clkgen: improvements and some fixes
+Date: Mon, 07 Apr 2025 11:28:14 +0100
+Message-Id: <20250407-dev-axi-clkgen-limits-v3-0-33c7f27c9d69@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250407-fdt-chosen-v1-1-3dda83c48c07@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAB9082cC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDEwNz3bSUEt3kjPzi1DzdZAtzAxPTNKNUw1RLJaCGgqLUtMwKsGHRsbW
- 1AB149+5cAAAA
-To: Simon Glass <sjg@chromium.org>, Tom Rini <trini@konsulko.com>
-Cc: u-boot@lists.denx.de, George Chan <gchan9527@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744008239; l=1586;
- i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
- bh=KXpDs9FaMUuw/TaF08xplmfD+9pguJkYrpcltFm/Q3U=;
- b=osa2720q9l0fvEKXeaUD32d5ZTJdZDmOSmCBCLhO1f3Xwl8tEHcRqspJjfzx2FBLa1FRmDnhK
- IP4mf1Z2qE5A184Epo8XgNBDx9En6YJHMn2LCB1RzHSbW8bdP5YKXR9
-X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
- pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
-X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAL+o82cC/3XNTQ6DIBCG4asY1qURqH9d9R5NFwiDTqrQgCE2x
+ rsXTZqmC5fvl8wzCwngEQK5ZgvxEDGgsynEKSOql7YDijo14Tkvcs5qqiFSOSNVw7MDSwcccQq
+ 0FKbNVQFK1C1Jty8PBufdvT9S9xgm59/7m8i29Ss2B2JkNKe8NBUYdlG6UTdp5eC6s3Ij2cjIf
+ 4xg4ojhiWGVkMClLgVjf8y6rh9ox3O7AgEAAA==
+X-Change-ID: 20250218-dev-axi-clkgen-limits-63fb0c5ec38b
+To: linux-clk@vger.kernel.org, linux-fpga@vger.kernel.org
+Cc: Stephen Boyd <sboyd@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Moritz Fischer <mdf@kernel.org>, Wu Hao <hao.wu@intel.com>, 
+ Xu Yilun <yilun.xu@intel.com>, Tom Rix <trix@redhat.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744021698; l=1425;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=DtKEQ7AKPSModph2Km+mV9LVY9fsLpdZjnc0srYg814=;
+ b=jo9XcmxOLCAjs6V8XW5LEWb1woSRPM3xAM89MZhmfgX4wrOc4Q9+ACAWoeecVktuFWmiJKA/T
+ h4ifHOOCv+sB0xvqQQI7uIdrhG3VqV+4ZoY9sKy2jUCrXmb+YTI2vTj
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The kernel searching bootconfig will be off-by-1 and never match
-thus always not found in this case.
-
-Signed-off-by: George Chan <gchan9527@gmail.com>
----
-The searching will shift-by-1 and never match the bootconfig thus
-always not found bootconfig this case.
-
-Kernel:
-            data = (char *)initrd_end - BOOTCONFIG_MAGIC_LEN;
-            for (i = 0; i < 4; i++) {
-                    if (!memcmp(data, BOOTCONFIG_MAGIC, BOOTCONFIG_MAGIC_LEN))
-                            goto found;
-                    data--;
-            }
-u-boot:
-            initrd_end = initrd_start + hextoul(argv[3], NULL) - 1;
-
-That would be off-by-one apprently and matching fail for bootconfig.
-Both u-boot and kernel worth a fix.
-
-An out-of-tree patch for kernel to relax the searching is available
-but not ready for submit.
-https://github.com/99degree/linux/commit/9d9ea454fe857a9f550d7e60957253e176e8e123
----
- cmd/fdt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/cmd/fdt.c b/cmd/fdt.c
-index d16b141ce32..13ffe929f8b 100644
---- a/cmd/fdt.c
-+++ b/cmd/fdt.c
-@@ -705,7 +705,7 @@ static int do_fdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
- 
- 		if (argc == 4) {
- 			initrd_start = hextoul(argv[2], NULL);
--			initrd_end = initrd_start + hextoul(argv[3], NULL) - 1;
-+			initrd_end = initrd_start + hextoul(argv[3], NULL);
- 		}
- 
- 		fdt_chosen(working_fdt);
+This series starts with a small fix and then a bunch of small
+improvements. The main change though is to allow detecting of
+struct axi_clkgen_limits during probe().
 
 ---
-base-commit: 848f7ffc64aa7c4cc2229095812625c12343c8c1
-change-id: 20250407-fdt-chosen-c87045f2e1e9
+Changes in v3:
+- Patch 6:
+    * Revert change and parenthesis back on 'if (((params->edge == 0) ^
+      (frac_divider == 1))'. While checkpatch complains, it's more
+      readable like this and in some configs we might even get -Wparentheses.
+- Link to v2: https://lore.kernel.org/r/20250313-dev-axi-clkgen-limits-v2-0-173ae2ad6311@analog.com
 
-Best regards,
--- 
-George Chan <gchan9527@gmail.com>
+Changes in v2:
+- Patch 3
+   * Rename adi_axi_fgpa_technology -> adi_axi_fpga_technology.
+
+- Link to v1: https://lore.kernel.org/r/20250219-dev-axi-clkgen-limits-v1-0-26f7ef14cd9c@analog.com
+
+---
+Nuno Sá (6):
+      clk: clk-axi-clkgen: fix fpfd_max frequency for zynq
+      clk: clk-axi-clkgen: make sure to include mod_devicetable.h
+      include: fpga: adi-axi-common: add new helper macros
+      clk: clk-axi-clkgen: detect axi_clkgen_limits at runtime
+      clk: clk-axi-clkgen move to min/max()
+      clk: clk-axi-clkgen: fix coding style issues
+
+ drivers/clk/clk-axi-clkgen.c        | 147 +++++++++++++++++++++++++-----------
+ include/linux/fpga/adi-axi-common.h |  35 +++++++++
+ 2 files changed, 140 insertions(+), 42 deletions(-)
+---
+base-commit: 82f69876ef45ad66c0b114b786c7c6ac0f6a4580
+change-id: 20250218-dev-axi-clkgen-limits-63fb0c5ec38b
+--
+
+Thanks!
+- Nuno Sá
 
