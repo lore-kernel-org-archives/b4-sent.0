@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Tue, 08 Apr 2025 15:30:00 -0500
-Subject: [PATCH v2 3/4] arm64: tegra: Add CEC controller on Tegra210
+Date: Tue, 08 Apr 2025 15:30:01 -0500
+Subject: [PATCH v2 4/4] arm64: tegra: Wire up cec to devkits
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250408-tegra-cec-v2-3-2f004fdf84e8@gmail.com>
+Message-Id: <20250408-tegra-cec-v2-4-2f004fdf84e8@gmail.com>
 References: <20250408-tegra-cec-v2-0-2f004fdf84e8@gmail.com>
 In-Reply-To: <20250408-tegra-cec-v2-0-2f004fdf84e8@gmail.com>
 To: Hans Verkuil <hverkuil@xs4all.nl>, 
@@ -17,44 +17,131 @@ Cc: linux-tegra@vger.kernel.org, linux-media@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744144221; l=999;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744144221; l=4050;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=bblG65p7/xkPR55OcOIBpt0KSwsSdM49hsWkcsMIg5A=;
- b=zMPf5KPEhsaVb3voU1tLoQ9X3dtuCdlxCuukdRLU+9d0c9gC2ABWYn/XImoXXya0YoeYDN09H
- BjQs5p6m1gRCn60EKnDN5BaDw9zyqs5/6QqJ2ktqcIFJPpOdUqqJRji
+ bh=/KKv/TYqLGMeib4RLCtBAkuSb2lVtoCy1X50R5bg7FY=;
+ b=hxvO21PIrWljF/jP5m1TrN/R4morWIR0YmOLoLcWs64IwHg47+h7mATHDUYzxU90M+Qx/5Jmp
+ Ynl/Qm2J8VlD2xayhwHfec7kjug4XeIPqfyJX+unxLZPLfGWduDzSLo
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The CEC controller found on Tegra210 can be used to control consumer
-devices using the HDMI CEC pin.
+This enables hdmi cec and routes it to the hdmi port on all supported
+Tegra210, Tegra186, and Tegra194 devkits.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra210.dtsi | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ arch/arm64/boot/dts/nvidia/tegra186-p2771-0000.dts            | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra186-p3509-0000+p3636-0001.dts | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra194-p2972-0000.dts            | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra194-p3509-0000.dtsi           | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra210-p2371-2180.dts            | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts            | 6 ++++++
+ 6 files changed, 36 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210.dtsi b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-index b6c84d195c0ef9ae90721fada09ffd46a9c11fa3..402b0ede1472af625d9d9e811f5af306d436cc98 100644
---- a/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-@@ -959,6 +959,15 @@ fuse@7000f800 {
- 		reset-names = "fuse";
+diff --git a/arch/arm64/boot/dts/nvidia/tegra186-p2771-0000.dts b/arch/arm64/boot/dts/nvidia/tegra186-p2771-0000.dts
+index 15aa49fc450399c7bd525adcdb6e92a27a185805..90155e4ff1feb609f79416a410c3666ebef8b634 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra186-p2771-0000.dts
++++ b/arch/arm64/boot/dts/nvidia/tegra186-p2771-0000.dts
+@@ -2394,6 +2394,12 @@ usb@3550000 {
+ 		phy-names = "usb2-0";
+ 	};
+ 
++	cec@3960000 {
++		status = "okay";
++
++		hdmi-phandle = <&sor1>;
++	};
++
+ 	i2c@c250000 {
+ 		/* carrier board ID EEPROM */
+ 		eeprom@57 {
+diff --git a/arch/arm64/boot/dts/nvidia/tegra186-p3509-0000+p3636-0001.dts b/arch/arm64/boot/dts/nvidia/tegra186-p3509-0000+p3636-0001.dts
+index 26f71651933d1d8ef32bbd1645cac1820bd2e104..a6d7fec2e84fb917018aff843845b02c34fede33 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra186-p3509-0000+p3636-0001.dts
++++ b/arch/arm64/boot/dts/nvidia/tegra186-p3509-0000+p3636-0001.dts
+@@ -712,6 +712,12 @@ usb@3550000 {
+ 		phy-names = "usb2-0";
+ 	};
+ 
++	cec@3960000 {
++		status = "okay";
++
++		hdmi-phandle = <&sor1>;
++	};
++
+ 	hsp@3c00000 {
+ 		status = "okay";
+ 	};
+diff --git a/arch/arm64/boot/dts/nvidia/tegra194-p2972-0000.dts b/arch/arm64/boot/dts/nvidia/tegra194-p2972-0000.dts
+index c32876699a43e9f57b3888c5bc0f5da73c5b95b5..ea6f397a27926e3dcd54002177f68749bc1cc309 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra194-p2972-0000.dts
++++ b/arch/arm64/boot/dts/nvidia/tegra194-p2972-0000.dts
+@@ -2121,6 +2121,12 @@ usb@3610000 {
+ 			phy-names = "usb2-0", "usb2-1", "usb2-3", "usb3-0", "usb3-2", "usb3-3";
+ 		};
+ 
++		cec@3960000 {
++			status = "okay";
++
++			hdmi-phandle = <&sor2>;
++		};
++
+ 		i2c@c240000 {
+ 			typec@8 {
+ 				compatible = "cypress,cypd4226";
+diff --git a/arch/arm64/boot/dts/nvidia/tegra194-p3509-0000.dtsi b/arch/arm64/boot/dts/nvidia/tegra194-p3509-0000.dtsi
+index 4a17ea5e40fd034c6f4acb023cd7908d6800f710..16cf4414de599baea96362b494be40c800a8197f 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra194-p3509-0000.dtsi
++++ b/arch/arm64/boot/dts/nvidia/tegra194-p3509-0000.dtsi
+@@ -2174,6 +2174,12 @@ usb@3610000 {
+ 			phy-names = "usb2-1", "usb2-2", "usb3-2";
+ 		};
+ 
++		cec@3960000 {
++			status = "okay";
++
++			hdmi-phandle = <&sor1>;
++		};
++
+ 		host1x@13e00000 {
+ 			display-hub@15200000 {
+ 				status = "okay";
+diff --git a/arch/arm64/boot/dts/nvidia/tegra210-p2371-2180.dts b/arch/arm64/boot/dts/nvidia/tegra210-p2371-2180.dts
+index a6a58e51822d90f8815df880ea7e668caff1b1ec..627abf51a5a472ddcc42fdc1d783876b0a03da47 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra210-p2371-2180.dts
++++ b/arch/arm64/boot/dts/nvidia/tegra210-p2371-2180.dts
+@@ -90,6 +90,12 @@ eeprom@57 {
+ 		};
  	};
  
 +	cec@70015000 {
-+		compatible = "nvidia,tegra210-cec";
-+		reg = <0x0 0x070015000 0x0 0x1000>;
-+		interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
-+		clocks = <&tegra_car TEGRA210_CLK_CEC>;
-+		clock-names = "cec";
-+		status = "disabled";
++		status = "okay";
++
++		hdmi-phandle = <&sor1>;
 +	};
 +
- 	mc: memory-controller@70019000 {
- 		compatible = "nvidia,tegra210-mc";
- 		reg = <0x0 0x70019000 0x0 0x1000>;
+ 	clock@70110000 {
+ 		status = "okay";
+ 
+diff --git a/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts b/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts
+index 0ecdd7243b2eb1abba9adbe9a404b226c29b85ef..ec0e84cb83ef9bf8f0e52e2958db33666813917c 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts
++++ b/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts
+@@ -419,6 +419,12 @@ pmc@7000e400 {
+ 		nvidia,sys-clock-req-active-high;
+ 	};
+ 
++	cec@70015000 {
++		status = "okay";
++
++		hdmi-phandle = <&sor1>;
++	};
++
+ 	hda@70030000 {
+ 		nvidia,model = "NVIDIA Jetson Nano HDA";
+ 
 
 -- 
 2.48.1
