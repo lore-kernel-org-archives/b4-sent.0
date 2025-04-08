@@ -1,95 +1,67 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Tue, 08 Apr 2025 21:13:13 +0200
-Subject: [PATCH v2 2/2] usb: misc: onboard_dev: Add Realtek RTL8188ETV WiFi
- (0bda:0179)
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH 0/3] scripts: Add a root dir in archve-source.sh
+Date: Tue, 08 Apr 2025 22:14:45 +0200
+Message-Id: <20250408-jag-sysctl-v1-0-3f4f38b751be@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250408-rtl-onboard-v2-2-0b6730b90e31@posteo.net>
-References: <20250408-rtl-onboard-v2-0-0b6730b90e31@posteo.net>
-In-Reply-To: <20250408-rtl-onboard-v2-0-0b6730b90e31@posteo.net>
-To: Johannes Berg <johannes@sipsolutions.net>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Matthias Kaehlcke <mka@chromium.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Jes Sorensen <Jes.Sorensen@gmail.com>, linux-wireless@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, Bitterblue Smith <rtl8821cerfe2@gmail.com>, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIALWD9WcC/23MSw7CIBSF4a00dyyGR6m1I/dhOqB4oWgDBhpi0
+ 7B3sWOH/0nOt0PC6DDB0OwQMbvkgq/BTg3oWXmLxD1qA6dc0pb25KksSVvS60JEp4Wcrh3VvId
+ 6eEc07nNg97H27NIa4nbYmf3Wv0xmhBIjdasmJfBizO2F0eNyDtHCWEr5Aql7VZSlAAAA
+X-Change-ID: 20250408-jag-sysctl-36c35b960c28
+To: =?utf-8?q?Alex_Benn=C3=A9e?= <alex.bennee@linaro.org>, 
+ =?utf-8?q?Philippe_Mathieu-Daud=C3=A9?= <philmd@linaro.org>, 
+ Thomas Huth <thuth@redhat.com>, 
+ Wainer dos Santos Moschetta <wainersm@redhat.com>
+Cc: qemu-devel@nongnu.org, Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744139638; l=2744;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=QAwW/fIZM1Msvyl7HFFGS2WH+QP1UgWq6wvZq+BYZTg=;
- b=y9Q6G/o77lodCmXWcuYBq9RWABkFEcolT/FoGziqDsMP8XZrz51PCYjy0q4F0xA2X5IU90gQD
- 9A4kJYwfHMUDqtlUe+2Fb4EWRwCf+tRGXOOts/DPGv4r7F28U8p67qI
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1009;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=wsX5JeCeUenZtAXorAHzLnlv/QiMaURnQ+d3eE0sd4A=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGf1g7rt1DLW60zvHojJfCFHedC4h+6vXsG47
+ +2ArW2O5vrD/4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn9YO6AAoJELqXzVK3
+ lkFPd5IL/2wml2hU6QsJcLVJNVG0qjPr2aYVKFphwndj2tG3tZBa2n/lk24D/FKZgWofIPFj7Bt
+ 85u256DZOeNOvicwvPi3XbnrVaV8GodEh4yhuqIcsl8fGDlTK5H3ZjNPKPO8czqiAl+Zs9QvctV
+ FfSze/mAENCidfyvELIYb/bhRqjLWufLBlL0ssfwYzCCmbQZCtvc1VgyfiOUvxzNnQoWNhWMMrn
+ A4qfGgZsdoKBYhkjeEPsz8aeZq110RFZ1Y6snUV5THtoz2POG3weEqofWuiTvCk34hBEj9GpAT1
+ PDfRG0uQl/IpXMTiLySWE5KrBblUylOyHx6qW2+myZ8dk7czIbOwvKTHmYADIHVvXjbYLw4VpSK
+ eQXxs33Es3IzfvZ/NfFtCyXTeA3+IpFJa1AUKGMd9ntvqBbgMS60rUmdvVem+x5VNq7HXgWh1SS
+ isLpeJJnDr1Che+eO+r+rxZKkJHP+s/2q1lD2Z7W4+SUsy0okCP42c2u14UEa/g8aDqcV8kdBi7
+ s8=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Realtek RTL8188ETV 2.4 GHz WiFi modules (detected as RTL8188EU by the
-RTL8XXXXU driver) are found soldered into some embedded devices, such as
-the Fernsehfee 3.0 set-top box.
+When creating an archive source to use in a nix overlay, it is necessary
+that all files are appended to the tar.gz file under a root dir. This
+series adds a argument (--dir) that will create a root directory and
+append all files under it.
 
-They require a 3.3V power supply.
+The series does not change the default behavior where all files are
+added to the tar.gz root.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Comments are greatly appreciated.
+
+PS: Had initialy missed adding qemu-devel to CC. Appologies if you
+    received this twice.
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
+--
+
 ---
+Joel Granados (3):
+      scripts: nixify archive-source.sh
+      scripts: Add root dir to arguments
+      scripts: Clarify doc messages in archive-source.sh
 
-checkpatch.pl flags the "usbbda" prefix as undocumented because it isn't
-in vendor-prefixes.yaml. It is, however, an established pattern:
-
-$ git grep -E 'usb[0-9a-f]{1,4},[0-9a-f]{1,4}' | wc -l
-213
-
-
-V2:
-- Refer to RTL8188ETV in the title and description
+ scripts/archive-source.sh | 92 +++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 69 insertions(+), 23 deletions(-)
 ---
- drivers/usb/misc/onboard_usb_dev.c | 1 +
- drivers/usb/misc/onboard_usb_dev.h | 8 ++++++++
- 2 files changed, 9 insertions(+)
+base-commit: ea35a5082a5fe81ce8fd184b0e163cd7b08b7ff7
+change-id: 20250408-jag-sysctl-36c35b960c28
 
-diff --git a/drivers/usb/misc/onboard_usb_dev.c b/drivers/usb/misc/onboard_usb_dev.c
-index 75ac3c6aa92d0d925bb9488d1e6295548446bf98..2f9e8f8108d8c36403b02f3e66db55757d4808ef 100644
---- a/drivers/usb/misc/onboard_usb_dev.c
-+++ b/drivers/usb/misc/onboard_usb_dev.c
-@@ -584,6 +584,7 @@ static const struct usb_device_id onboard_dev_id_table[] = {
- 	{ USB_DEVICE(VENDOR_ID_REALTEK, 0x5411) }, /* RTS5411 USB 2.1 HUB */
- 	{ USB_DEVICE(VENDOR_ID_REALTEK, 0x0414) }, /* RTS5414 USB 3.2 HUB */
- 	{ USB_DEVICE(VENDOR_ID_REALTEK, 0x5414) }, /* RTS5414 USB 2.1 HUB */
-+	{ USB_DEVICE(VENDOR_ID_REALTEK, 0x0179) }, /* RTL8188ETV 2.4GHz WiFi */
- 	{ USB_DEVICE(VENDOR_ID_TI, 0x8025) }, /* TI USB8020B 3.0 HUB */
- 	{ USB_DEVICE(VENDOR_ID_TI, 0x8027) }, /* TI USB8020B 2.0 HUB */
- 	{ USB_DEVICE(VENDOR_ID_TI, 0x8140) }, /* TI USB8041 3.0 HUB */
-diff --git a/drivers/usb/misc/onboard_usb_dev.h b/drivers/usb/misc/onboard_usb_dev.h
-index 933797a7e0841ceee655b80ee1c8d21bc2eaaa04..4b023ddfbdd61efbc41c039cafbd0c85971563ee 100644
---- a/drivers/usb/misc/onboard_usb_dev.h
-+++ b/drivers/usb/misc/onboard_usb_dev.h
-@@ -45,6 +45,13 @@ static const struct onboard_dev_pdata realtek_rts5411_data = {
- 	.is_hub = true,
- };
- 
-+static const struct onboard_dev_pdata realtek_rtl8188etv_data = {
-+	.reset_us = 0,
-+	.num_supplies = 1,
-+	.supply_names = { "vdd" },
-+	.is_hub = false,
-+};
-+
- static const struct onboard_dev_pdata ti_tusb8020b_data = {
- 	.reset_us = 3000,
- 	.num_supplies = 1,
-@@ -118,6 +125,7 @@ static const struct of_device_id onboard_dev_match[] = {
- 	{ .compatible = "usb5e3,610", .data = &genesys_gl852g_data, },
- 	{ .compatible = "usb5e3,620", .data = &genesys_gl852g_data, },
- 	{ .compatible = "usb5e3,626", .data = &genesys_gl852g_data, },
-+	{ .compatible = "usbbda,179", .data = &realtek_rtl8188etv_data, },
- 	{ .compatible = "usbbda,411", .data = &realtek_rts5411_data, },
- 	{ .compatible = "usbbda,5411", .data = &realtek_rts5411_data, },
- 	{ .compatible = "usbbda,414", .data = &realtek_rts5411_data, },
-
+Best regards,
 -- 
-2.48.0.rc1.219.gb6b6757d772
+Joel Granados <joel.granados@kernel.org>
 
