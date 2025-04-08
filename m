@@ -1,66 +1,60 @@
-From: =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
-Date: Mon, 07 Apr 2025 22:02:15 +0200
-Subject: [PATCH v15 4/4] MAINTAINERS: add myself as Marvell PXA1908
- maintainer
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/4] Tegra CEC Updates
+Date: Mon, 07 Apr 2025 23:39:47 -0500
+Message-Id: <20250407-tegra-cec-v1-0-e25dd9577b5f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250407-pxa1908-lkml-v15-4-e83ef101f944@skole.hr>
-References: <20250407-pxa1908-lkml-v15-0-e83ef101f944@skole.hr>
-In-Reply-To: <20250407-pxa1908-lkml-v15-0-e83ef101f944@skole.hr>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Lubomir Rintel <lkundrak@v3.sk>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Andrew Lunn <andrew@lunn.ch>, Gregory Clement <gregory.clement@bootlin.com>, 
- Sebastian Hesselbarth <sebastian.hesselbarth@gmail.com>, 
- Kees Cook <kees@kernel.org>, Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>
-Cc: David Wronek <david@mainlining.org>, Karel Balej <balejk@matfyz.cz>, 
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAJOo9GcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDEwNz3ZLU9KJE3eTUZF3zVONE86TUNBNTszQloPqCotS0zAqwWdGxtbU
+ A6RE18lsAAAA=
+X-Change-ID: 20250407-tegra-cec-7e3a7bef456f
+To: Hans Verkuil <hverkuil@xs4all.nl>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-tegra@vger.kernel.org, linux-media@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-hardening@vger.kernel.org, 
- phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- soc@lists.linux.dev, 
- =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=911;
- i=duje.mihanovic@skole.hr; s=20240706; h=from:subject:message-id;
- bh=XeLw/nRd7g6pEyFxTHXgaJRQM07Qgsbah3nkCqFOIBU=;
- b=owGbwMvMwCW21nBykGv/WmbG02pJDOlf9JvUgtYu4L703uyGhLWE20T/3zuP/XexfTYz7+nP6
- rK7cw/FdZSyMIhxMciKKbLk/ne8xvtZZOv27GUGMHNYmUCGMHBxCsBEnr9m+J975FPh49Bq3oPb
- /ykEZX34Ixayf+5lqfa18qbl3xf9Xf2KkeG+gefBtx/vbZR4c1WDj7dE9+AUPzWp57VKSnE2JRG
- RddwA
-X-Developer-Key: i=duje.mihanovic@skole.hr; a=openpgp;
- fpr=6DFF41D60DF314B5B76BA630AD319352458FAD03
-X-Endpoint-Received: by B4 Relay for duje.mihanovic@skole.hr/20240706 with auth_id=191
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744087203; l=1291;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=yhMKEV0cCXxqfGp4QpUkRtWTz9lltxPGH8xVqkkKk6U=;
+ b=JNmTCowIP6MS6wzfw9GGZGXQ0MW2dzlpWAzLQlRfvO1TQja1n8lxqpsC0oIgP+KoF4O49VeWF
+ qkgbthdLa0FAZzcQssXjf9m1RNjsJlbzPposr4TiSM4rSsghTM+4K/J
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add myself as the maintainer for Marvell PXA1908 SoC support.
+This series updates Tegra hdmi cec support to be usable out of the box
+on Tegra210 through Tegra194.
 
-Signed-off-by: Duje Mihanović <duje.mihanovic@skole.hr>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- MAINTAINERS | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Aaron Kling (4):
+      media: dt-bindings: Document Tegra186 and Tegra194 cec
+      media: tegra-cec: Support Tegra186 and Tegra194
+      arm64: tegra: Add CEC controller on Tegra210
+      arm64: tegra: Wire up cec to devkits
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 96b82704950184bd71623ff41fc4df31e4c7fe87..649b70ac8b96ea0bb91e3c641517c334c85270f3 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2717,6 +2717,14 @@ F:	drivers/irqchip/irq-mvebu-*
- F:	drivers/pinctrl/mvebu/
- F:	drivers/rtc/rtc-armada38x.c
- 
-+ARM/Marvell PXA1908 SOC support
-+M:	Duje Mihanović <duje.mihanovic@skole.hr>
-+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
-+S:	Maintained
-+F:	arch/arm64/boot/dts/marvell/pxa1908*
-+F:	drivers/clk/mmp/clk-pxa1908*.c
-+F:	include/dt-bindings/clock/marvell,pxa1908.h
-+
- ARM/Mediatek RTC DRIVER
- M:	Eddie Huang <eddie.huang@mediatek.com>
- M:	Sean Wang <sean.wang@mediatek.com>
+ .../devicetree/bindings/media/cec/nvidia,tegra114-cec.yaml       | 2 ++
+ arch/arm64/boot/dts/nvidia/tegra186-p2771-0000.dts               | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra186-p3509-0000+p3636-0001.dts    | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra194-p2972-0000.dts               | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra194-p3509-0000.dtsi              | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra210-p2371-2180.dts               | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts               | 6 ++++++
+ arch/arm64/boot/dts/nvidia/tegra210.dtsi                         | 9 +++++++++
+ drivers/media/cec/platform/tegra/tegra_cec.c                     | 2 ++
+ 9 files changed, 49 insertions(+)
+---
+base-commit: 0af2f6be1b4281385b618cb86ad946eded089ac8
+change-id: 20250407-tegra-cec-7e3a7bef456f
 
+Best regards,
 -- 
-2.49.0
+Aaron Kling <webgeek1234@gmail.com>
 
