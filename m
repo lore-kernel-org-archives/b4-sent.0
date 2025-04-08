@@ -1,129 +1,69 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Tue, 08 Apr 2025 09:45:34 +0200
-Subject: [PATCH net-next v2 3/3] net: phy: dp83822: Add support for
- changing the MAC termination
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH 0/3] scripts: Add a root dir in archve-source.sh
+Date: Tue, 08 Apr 2025 10:02:40 +0200
+Message-Id: <20250408-jag-sysctl-v1-0-f5c4aba3e7ff@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250408-dp83822-mac-impedance-v2-3-fefeba4a9804@liebherr.com>
-References: <20250408-dp83822-mac-impedance-v2-0-fefeba4a9804@liebherr.com>
-In-Reply-To: <20250408-dp83822-mac-impedance-v2-0-fefeba4a9804@liebherr.com>
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIACDY9GcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDEwML3azEdN3iyuLkkhxdY7NkY9MkSzODZCMLJaCGgqLUtMwKsGHRsbW
+ 1AH/6JYtcAAAA
+X-Change-ID: 20250408-jag-sysctl-36c35b960c28
+To: =?utf-8?q?Alex_Benn=C3=A9e?= <alex.bennee@linaro.org>, 
+ =?utf-8?q?Philippe_Mathieu-Daud=C3=A9?= <philmd@linaro.org>, 
+ Thomas Huth <thuth@redhat.com>, 
+ Wainer dos Santos Moschetta <wainersm@redhat.com>
+Cc: Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744098338; l=3142;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=uqjFbEaYL6in0znuVFxVSZRGnoMMf/E8l1gq/kbmCFc=;
- b=RcUpgLTX51RLZ/1goSlYifFqe2FHeIkjOLMB9SMHeSorYgXKQHJidYLmXNRTaWG4m5M+9L9gV
- lDaiQXMWPdRBdMXKsEuO71hSj4zPWLtofUQOZCvE3uRHD8hCPCG6aAo
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1102;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=oY+EUFqeVjtuXIV93ArVpYOykcvAmtvMN6MXR8UDh9s=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGf02Dl4ECwLHPmGZWeuRkJhmGeo4NOaRbb8D
+ fwjOvNiWlhxX4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn9Ng5AAoJELqXzVK3
+ lkFPmlYMAIc3SaC1Ht/sdGqX1JZ6MeUPKNAChjmS21VWoDa0HdG7RcAzgGDJuoNOMYXXTRB8ajd
+ prS3xVnGwbLrJ033CZwAZ5cqiyGa184Wnq0yhxjsH0+SQvBc/ACU0EeEFVkC2AESmOdTWF28j7+
+ DnApN4whlDghAOsFtE4xaAKJes4XMcL1PX0i2USjOa9PaN2YC6Czypg3kNXHIQ5dToscpYimA1O
+ S+ba4ylpbHXwU22DGfrITD5Kk0q8rRwFOjV5OgYvZ8vSqatgFHnL67uevKAbzsTOakSaBi2GhJc
+ MGyrGeFdCEA97FfwaR+c9YFlQqOEU4a46uZBzIBqDJSgceRdaj9m8mO9CLWyo16lVVzo5CGGj38
+ 3iLZ2jhERoZH2mvS4yLh1dFL016v9S0pPaVYqZEBGuouWcvW8pXFM2WHFwsUIDzLPUGF/Ll3DjN
+ SMkjzS4MU9s2TQS120KPveSn5Ja4fxX/M7qnx6WeEAsjAmenZYQAfIUEbLaeyproT0jyXuUYnX6
+ bs=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The dp83822 provides the possibility to set the resistance value of the
-the MAC termination. Modifying the resistance to an appropriate value can
-reduce signal reflections and therefore improve signal quality.
+When creating an archive source to use in a nix overlay, it is necessary
+that all files are appended to the tar.gz file under a root dir. This
+series adds a argument (--dir) that will create a root directory and
+append all files under it.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+The series does not change the default behavior where all files are
+added to the tar.gz root.
+
+Comments are greatly appreciated.
+
+To: "Alex Bennée" <alex.bennee@linaro.org>
+To: "Philippe Mathieu-Daudé" <philmd@linaro.org>
+To: Thomas Huth <thuth@redhat.com>
+To: Wainer dos Santos Moschetta <wainersm@redhat.com>
+
+--
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- drivers/net/phy/dp83822.c | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+Joel Granados (3):
+      scripts: nixify archive-source.sh
+      scripts: Add root dir to arguments
+      scripts: Clarify doc messages in archive-source.sh
 
-diff --git a/drivers/net/phy/dp83822.c b/drivers/net/phy/dp83822.c
-index 14f36154963841dff98be5af4dfbd2760325c13d..490c9f4e5d4e4dc866ef99f426f7497b5e1b49b4 100644
---- a/drivers/net/phy/dp83822.c
-+++ b/drivers/net/phy/dp83822.c
-@@ -33,6 +33,7 @@
- #define MII_DP83822_MLEDCR	0x25
- #define MII_DP83822_LDCTRL	0x403
- #define MII_DP83822_LEDCFG1	0x460
-+#define MII_DP83822_IOCTRL	0x461
- #define MII_DP83822_IOCTRL1	0x462
- #define MII_DP83822_IOCTRL2	0x463
- #define MII_DP83822_GENCFG	0x465
-@@ -118,6 +119,9 @@
- #define DP83822_LEDCFG1_LED1_CTRL	GENMASK(11, 8)
- #define DP83822_LEDCFG1_LED3_CTRL	GENMASK(7, 4)
- 
-+/* IOCTRL bits */
-+#define DP83822_IOCTRL_MAC_IMPEDANCE_CTRL	GENMASK(4, 1)
-+
- /* IOCTRL1 bits */
- #define DP83822_IOCTRL1_GPIO3_CTRL		GENMASK(10, 8)
- #define DP83822_IOCTRL1_GPIO3_CTRL_LED3		BIT(0)
-@@ -202,6 +206,7 @@ struct dp83822_private {
- 	u32 gpio2_clk_out;
- 	bool led_pin_enable[DP83822_MAX_LED_PINS];
- 	int tx_amplitude_100base_tx_index;
-+	int mac_termination_index;
- };
- 
- static int dp83822_config_wol(struct phy_device *phydev,
-@@ -533,6 +538,12 @@ static int dp83822_config_init(struct phy_device *phydev)
- 			       FIELD_PREP(DP83822_100BASE_TX_LINE_DRIVER_SWING,
- 					  dp83822->tx_amplitude_100base_tx_index));
- 
-+	if (dp83822->mac_termination_index >= 0)
-+		phy_modify_mmd(phydev, MDIO_MMD_VEND2, MII_DP83822_IOCTRL,
-+			       DP83822_IOCTRL_MAC_IMPEDANCE_CTRL,
-+			       FIELD_PREP(DP83822_IOCTRL_MAC_IMPEDANCE_CTRL,
-+					  dp83822->mac_termination_index));
-+
- 	err = dp83822_config_init_leds(phydev);
- 	if (err)
- 		return err;
-@@ -736,6 +747,10 @@ static const u32 tx_amplitude_100base_tx_gain[] = {
- 	93, 95, 97, 98, 100, 102, 103, 105,
- };
- 
-+static const u32 mac_termination[] = {
-+	99, 91, 84, 78, 73, 69, 65, 61, 58, 55, 53, 50, 48, 46, 44, 43,
-+};
-+
- static int dp83822_of_init_leds(struct phy_device *phydev)
- {
- 	struct device_node *node = phydev->mdio.dev.of_node;
-@@ -852,6 +867,23 @@ static int dp83822_of_init(struct phy_device *phydev)
- 		}
- 	}
- 
-+	ret = phy_get_mac_termination(phydev, dev, &val);
-+	if (!ret) {
-+		for (i = 0; i < ARRAY_SIZE(mac_termination); i++) {
-+			if (mac_termination[i] == val) {
-+				dp83822->mac_termination_index = i;
-+				break;
-+			}
-+		}
-+
-+		if (dp83822->mac_termination_index < 0) {
-+			phydev_err(phydev,
-+				   "Invalid value for mac-termination-ohms property (%u)\n",
-+				   val);
-+			return -EINVAL;
-+		}
-+	}
-+
- 	return dp83822_of_init_leds(phydev);
- }
- 
-@@ -931,6 +963,7 @@ static int dp8382x_probe(struct phy_device *phydev)
- 		return -ENOMEM;
- 
- 	dp83822->tx_amplitude_100base_tx_index = -1;
-+	dp83822->mac_termination_index = -1;
- 	phydev->priv = dp83822;
- 
- 	return 0;
+ scripts/archive-source.sh | 92 +++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 69 insertions(+), 23 deletions(-)
+---
+base-commit: ea35a5082a5fe81ce8fd184b0e163cd7b08b7ff7
+change-id: 20250408-jag-sysctl-36c35b960c28
 
+Best regards,
 -- 
-2.39.5
+Joel Granados <joel.granados@kernel.org>
 
