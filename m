@@ -1,69 +1,78 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Tue, 08 Apr 2025 10:02:43 +0200
-Subject: [PATCH 3/3] scripts: Clarify doc messages in archive-source.sh
+From: Nathan Lynch <nathan.lynch@amd.com>
+Date: Tue, 08 Apr 2025 08:37:49 -0500
+Subject: [PATCH] dmaengine: dmatest: Don't forcibly terminate channel in
+ polled mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250408-jag-sysctl-v1-3-f5c4aba3e7ff@kernel.org>
-References: <20250408-jag-sysctl-v1-0-f5c4aba3e7ff@kernel.org>
-In-Reply-To: <20250408-jag-sysctl-v1-0-f5c4aba3e7ff@kernel.org>
-To: =?utf-8?q?Alex_Benn=C3=A9e?= <alex.bennee@linaro.org>, 
- =?utf-8?q?Philippe_Mathieu-Daud=C3=A9?= <philmd@linaro.org>, 
- Thomas Huth <thuth@redhat.com>, 
- Wainer dos Santos Moschetta <wainersm@redhat.com>
-Cc: Joel Granados <joel.granados@kernel.org>
+Message-Id: <20250408-dmaengine-dmatest-poll-mode-fix-v1-1-754a446a5363@amd.com>
+X-B4-Tracking: v=1; b=H4sIAKwm9WcC/x2NQQqDMBBFryKzdmBMrbZepXSh5qsDmkgiRRDvb
+ uzuvbf4/6CIoIjUZAcF/DSqd0mKPKN+at0IVpucjJinlPJgu7RwozrctCFuvPp55sVb8KA7V3X
+ RibH9W14lpZU1IOX/w+d7nhdJi4UBcQAAAA==
+X-Change-ID: 20250403-dmaengine-dmatest-poll-mode-fix-671b02dc9084
+To: Vinod Koul <vkoul@kernel.org>
+Cc: =?utf-8?q?P=C3=A9ter_Ujfalusi?= <peter.ujfalusi@gmail.com>, 
+ Vinicius Costa Gomes <vinicius.gomes@intel.com>, 
+ Dave Jiang <dave.jiang@intel.com>, dmaengine@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1549;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=PTQEmEN9vlIeeSga0uIH4UsLep0Yj7zyUxnE3/azy2o=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGf02FiT5lU77XOBOnPLcrO041WCwz4OONPNW
- qLz4t4m6hIjiokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn9NhYAAoJELqXzVK3
- lkFPT1kL/0a9Ts19i7snCRrx2UlIS60HqnrD6rStowz2wjhypQVHsyQNnuLYU/Qy5qep+2P/xfw
- 9G4PuCbXCjS1TxisNiTC7gvPe0i6ueI6+KsZ/61tFNnYLxPO6zqyz6OewXPE9Hbm+uRDkMgUdam
- MlNuD95MolWr8xQ9MiRIIVE5OyCm3Adr4UIqcbtoIBObHvdNoh7RB8XrKDU9KEZ1EbjtTSGow+2
- B6FjYy7B8ygYGZdz22ARRXN4cXzwBCPIkZ/N3WCa4ohkxY0he6UuepA8lpysG38V1nTP81a9uzG
- gGQRRLGziIBXrS2fN4ygi7V+ehZW61Mz8XT75OMyis9aEBqh7dr80IGkMVhO7GZzoQQlaXzTrp+
- qMsc123ESZgV0jQq+l1a0H9f5/6NDevSfPp2V19LNxo21fLXsmjs5uMzn+5CoCNLhNhe8n26oG9
- SPDx/t8JQGCgb+GOQqpRrFwTymCELMCpjRu2e4Evt5KzgXSYfZVTr3rVBXK/rpydb8/PxeORaF9
- OM=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744119476; l=1736;
+ i=nathan.lynch@amd.com; s=20241010; h=from:subject:message-id;
+ bh=dERQxgU+2fAzNEP2+EuhPk8lfIVEWf/LdcDgr/XAkxk=;
+ b=fgHl1Z3V5ne92fMnkK6WX/NUlvhrY7ftyp1iGj55T2Rey1pSPm6P7YYnXu/z/lCXzmywZO2Q/
+ Za25lHutFt2BfoJWCHb5RC+THaLBzNM4f4ygDpL7fmAfPa5EliGOvRP
+X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
+ pk=ZR637UTGg5YLDj56cxFeHdYoUjPMMFbcijfOkAmAnbc=
+X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20241010 with auth_id=241
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+Invoking dmaengine_terminate_sync() against the channel after each
+submitted descriptor is strange. It's benign when the test is
+single-threaded, but disruptive when multiple threads are submitting
+descriptors to the channel concurrently:
+
+  # cd /sys/module/dmatest/parameters/
+  # echo 1 > polled
+  # echo 2 > threads_per_chan
+  # echo dma0chan0 > channel
+  # echo 1 > run
+...
+  dmatest: Added 2 threads using dma0chan0
+  dmatest: Started 2 threads using dma0chan0
+  xilinx-zynqmp-dma ffa80000.dma: dma_sync_wait: timeout!
+  xilinx-zynqmp-dma ffa80000.dma: dma_sync_wait: timeout!
+  dmatest: dma0chan0-copy0: result #3: 'test timed out' with
+    src_off=0x487 dst_off=0xf8 len=0x171b (0)
+  dmatest: dma0chan0-copy1: result #6: 'test timed out' with
+    src_off=0x227d dst_off=0xf99 len=0xf7a (0)
+
+Remove the call to dmaengine_terminate_sync() from the main thread
+loop.
+
+Fixes: fb9816f9d05f ("dmaengine: dmatest: Add support for completion polling")
+Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- scripts/archive-source.sh | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ drivers/dma/dmatest.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/scripts/archive-source.sh b/scripts/archive-source.sh
-index 7143aaefc1133fe991b329df3c78e6ed7726322f..eb6ee715a8a3a33d8abe333fd896ad1048821b0f 100755
---- a/scripts/archive-source.sh
-+++ b/scripts/archive-source.sh
-@@ -2,17 +2,15 @@
- #
- # Author: Fam Zheng <famz@redhat.com>
- #
--# Archive source tree, including submodules. This is created for test code to
--# export the source files, in order to be built in a different environment,
--# such as in a docker instance or VM.
-+# This script exports source files and submodules used by test code to build in
-+# "different" environments such as docker or VM.
- #
- # This code is licensed under the GPL version 2 or later.  See
- # the COPYING file in the top-level directory.
+diff --git a/drivers/dma/dmatest.c b/drivers/dma/dmatest.c
+index d891dfca358e209c9a5c2d8b49e3e539130e53e8..4e109c45fe0c5a7e8f337efe6e00e0616977f770 100644
+--- a/drivers/dma/dmatest.c
++++ b/drivers/dma/dmatest.c
+@@ -835,7 +835,6 @@ static int dmatest_func(void *data)
  
--# We want a predictable list of submodules for builds, that is
--# independent of what the developer currently has initialized
--# in their checkout, because the build environment is completely
--# different to the host OS.
-+# subprojects is a predictable list of submodules that is independent of what
-+# the developer has in their checkout. This is needed because the build
-+# environment is completely different to the host OS.
- subprojects="keycodemapdb libvfio-user berkeley-softfloat-3
-   berkeley-testfloat-3 arbitrary-int-1-rs bilge-0.2-rs
-   bilge-impl-0.2-rs either-1-rs itertools-0.11-rs proc-macro2-1-rs
+ 		if (params->polled) {
+ 			status = dma_sync_wait(chan, cookie);
+-			dmaengine_terminate_sync(chan);
+ 			if (status == DMA_COMPLETE)
+ 				done->done = true;
+ 		} else {
 
+---
+base-commit: 0af2f6be1b4281385b618cb86ad946eded089ac8
+change-id: 20250403-dmaengine-dmatest-poll-mode-fix-671b02dc9084
+
+Best regards,
 -- 
-2.44.1
+Nathan Lynch <nathan.lynch@amd.com>
 
