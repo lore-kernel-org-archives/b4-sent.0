@@ -1,10 +1,10 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Tue, 08 Apr 2025 10:02:42 +0200
-Subject: [PATCH 2/3] scripts: Add root dir to arguments
+Date: Tue, 08 Apr 2025 10:02:43 +0200
+Subject: [PATCH 3/3] scripts: Clarify doc messages in archive-source.sh
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250408-jag-sysctl-v1-2-f5c4aba3e7ff@kernel.org>
+Message-Id: <20250408-jag-sysctl-v1-3-f5c4aba3e7ff@kernel.org>
 References: <20250408-jag-sysctl-v1-0-f5c4aba3e7ff@kernel.org>
 In-Reply-To: <20250408-jag-sysctl-v1-0-f5c4aba3e7ff@kernel.org>
 To: =?utf-8?q?Alex_Benn=C3=A9e?= <alex.bennee@linaro.org>, 
@@ -13,143 +13,56 @@ To: =?utf-8?q?Alex_Benn=C3=A9e?= <alex.bennee@linaro.org>,
  Wainer dos Santos Moschetta <wainersm@redhat.com>
 Cc: Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3596;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1549;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=nhhtsinaOBQHNfYgiTQPRXdYH8S92/y0v4vPFKB9/BA=;
- b=kA0DAAoBupfNUreWQU8ByyZiAGf02Fegk/6fY9TzIzsBM6eY2UpbApo1DeGchN3FsIUl8wDkz
- 4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn9NhXAAoJELqXzVK3lkFPIFEL/2XL
- ZguPb+wU+O77Sh5/bcCQ8gEitlZdTpvm0Xfx/BhzZ4czXeuUn7snn3HIlu0EVhHy2kY4mzIXqps
- FDoEmP0z16270FaVwEvPeeyEk0477Jl0jG0hMr5GL7uqDHwUYu4xwZioaMj1FuxppmPbrMQ2Y7B
- 41A02zoI253dcPa3nIYQeFWv2w/o9QeAPDZgcE6JfQTGuAXUga31xddiZcpAsc5dPe6wV0FmJD+
- QL+DThsa5W1Ve0SKG+sH0qb9sHf+vpyEUwqjs267WQVgsgLr7r8WQuB0E8HuDMyg6IqBjMIKpZW
- 33kmawlaxkTnEdYxVT7EOd6fSeXuHmYoUYe/mFKFnf3e+iyV3/fRoVfvdiiRZga/Uoyz8GH/G2D
- y4yHApNslyIpR2zSUcvKYzOUqWQAChKadzh+6VXfu7dTuWW0vx8g2joNqZoL3Eyy7qwE86hDPYc
- Sw+8FeRS/SUsQOl4BZZJHNmM9J980P+BOYacReRygNTGJtrbgPFg1QcM4e4Q==
+ bh=PTQEmEN9vlIeeSga0uIH4UsLep0Yj7zyUxnE3/azy2o=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGf02FiT5lU77XOBOnPLcrO041WCwz4OONPNW
+ qLz4t4m6hIjiokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn9NhYAAoJELqXzVK3
+ lkFPT1kL/0a9Ts19i7snCRrx2UlIS60HqnrD6rStowz2wjhypQVHsyQNnuLYU/Qy5qep+2P/xfw
+ 9G4PuCbXCjS1TxisNiTC7gvPe0i6ueI6+KsZ/61tFNnYLxPO6zqyz6OewXPE9Hbm+uRDkMgUdam
+ MlNuD95MolWr8xQ9MiRIIVE5OyCm3Adr4UIqcbtoIBObHvdNoh7RB8XrKDU9KEZ1EbjtTSGow+2
+ B6FjYy7B8ygYGZdz22ARRXN4cXzwBCPIkZ/N3WCa4ohkxY0he6UuepA8lpysG38V1nTP81a9uzG
+ gGQRRLGziIBXrS2fN4ygi7V+ehZW61Mz8XT75OMyis9aEBqh7dr80IGkMVhO7GZzoQQlaXzTrp+
+ qMsc123ESZgV0jQq+l1a0H9f5/6NDevSfPp2V19LNxo21fLXsmjs5uMzn+5CoCNLhNhe8n26oG9
+ SPDx/t8JQGCgb+GOQqpRrFwTymCELMCpjRu2e4Evt5KzgXSYfZVTr3rVBXK/rpydb8/PxeORaF9
+ OM=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The archive-source script appended everything directly on the tar root
-making it unusable for creating nix overlays; nix expects all files to
-be under a directory in the tarbal.
-
-Add a "-d|--dir" argument that places all files under a custom root.
-Behaviour is unchanged when the argument is not given.
-
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- scripts/archive-source.sh | 78 ++++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 63 insertions(+), 15 deletions(-)
+ scripts/archive-source.sh | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
 diff --git a/scripts/archive-source.sh b/scripts/archive-source.sh
-index a469a5e2dec4b05e51474f0a1af190c1ccf23c7e..7143aaefc1133fe991b329df3c78e6ed7726322f 100755
+index 7143aaefc1133fe991b329df3c78e6ed7726322f..eb6ee715a8a3a33d8abe333fd896ad1048821b0f 100755
 --- a/scripts/archive-source.sh
 +++ b/scripts/archive-source.sh
-@@ -9,19 +9,6 @@
+@@ -2,17 +2,15 @@
+ #
+ # Author: Fam Zheng <famz@redhat.com>
+ #
+-# Archive source tree, including submodules. This is created for test code to
+-# export the source files, in order to be built in a different environment,
+-# such as in a docker instance or VM.
++# This script exports source files and submodules used by test code to build in
++# "different" environments such as docker or VM.
+ #
  # This code is licensed under the GPL version 2 or later.  See
  # the COPYING file in the top-level directory.
  
--error() {
--    printf %s\\n "$*" >&2
--    exit 1
--}
--
--if test $# -lt 1; then
--    error "Usage: $0 <output tarball>"
--fi
--
--tar_file=$(realpath "$1")
--sub_tdir=$(mktemp -d "${tar_file%.tar}.sub.XXXXXXXX")
--sub_file="${sub_tdir}/submodule.tar"
--
- # We want a predictable list of submodules for builds, that is
- # independent of what the developer currently has initialized
- # in their checkout, because the build environment is completely
-@@ -32,6 +19,61 @@ subprojects="keycodemapdb libvfio-user berkeley-softfloat-3
-   proc-macro-error-1-rs proc-macro-error-attr-1-rs quote-1-rs
-   syn-2-rs unicode-ident-1-rs"
- sub_deinit=""
-+git_archive_prefix=""
-+tar_transform=""
-+
-+BASENAME="$(basename "${BASH_SOURCE[0]}")"
-+USAGE="Usage: ${BASENAME} [OPTIONS] <tarball>
-+  <tarball>             Resulting tarball name
-+
-+  OPTIONS:
-+    -d, --dir <DIR>     Files will be placed into DIR inside the tarball
-+"
-+
-+error() {
-+    printf %s\\n "$*" >&2
-+    exit 1
-+}
-+
-+get_opts() {
-+    local short="d:"
-+    local long="dir:"
-+
-+    if ! tmp=$(getopt -o "$short" --long "$long" -n "$BASENAME" -- "$@"); then
-+        exit 1
-+    fi
-+    eval set -- "$tmp"
-+    unset tmp
-+
-+    while true; do
-+      case "$1" in
-+        '-d' | '--dir' )
-+            local tar_dir_name=$"$2/"; shift 2
-+            git_archive_prefix="--prefix ${tar_dir_name}"
-+            tar_transform="--transform=s|^|${tar_dir_name}|"
-+            ;;
-+
-+        '--' )
-+            shift 1
-+            ;;
-+
-+        * )
-+            tar_file_name="$1"; shift
-+            break
-+            ;;
-+
-+      esac
-+    done
-+
-+    if [ $# -gt 0 ]; then
-+        echo "Superfluous args: $@"
-+        error "${USAGE}"
-+    fi
-+
-+    tar_file=$(realpath "$tar_file_name")
-+    sub_tdir=$(mktemp -d "${tar_file%.tar}.sub.XXXXXXXX")
-+    sub_file="${sub_tdir}/submodule.tar"
-+}
- 
- function cleanup() {
-     local status=$?
-@@ -73,13 +115,19 @@ function subproject_dir() {
-     echo "${dir:-$1}"
- }
- 
--git archive --format tar "$(tree_ish)" > "$tar_file"
-+get_opts "$@"
-+
-+git archive --format tar ${git_archive_prefix} "$(tree_ish)" > "$tar_file"
- test $? -ne 0 && error "failed to archive qemu"
- 
- for sp in $subprojects; do
-     meson subprojects download $sp
-     test $? -ne 0 && error "failed to download subproject $sp"
--    tar --append --file "$tar_file" --exclude=.git subprojects/"$(subproject_dir $sp)"
-+    tar --append \
-+        --file "$tar_file" \
-+        --exclude=.git \
-+        ${tar_transform} \
-+        subprojects/"$(subproject_dir $sp)"
-     test $? -ne 0 && error "failed to append subproject $sp to $tar_file"
- done
- exit 0
+-# We want a predictable list of submodules for builds, that is
+-# independent of what the developer currently has initialized
+-# in their checkout, because the build environment is completely
+-# different to the host OS.
++# subprojects is a predictable list of submodules that is independent of what
++# the developer has in their checkout. This is needed because the build
++# environment is completely different to the host OS.
+ subprojects="keycodemapdb libvfio-user berkeley-softfloat-3
+   berkeley-testfloat-3 arbitrary-int-1-rs bilge-0.2-rs
+   bilge-impl-0.2-rs either-1-rs itertools-0.11-rs proc-macro2-1-rs
 
 -- 
 2.44.1
