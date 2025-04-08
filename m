@@ -1,69 +1,55 @@
 From: Joel Granados <joel.granados@kernel.org>
-Subject: [PATCH 0/3] scripts: Add a root dir in archve-source.sh
-Date: Tue, 08 Apr 2025 10:02:40 +0200
-Message-Id: <20250408-jag-sysctl-v1-0-f5c4aba3e7ff@kernel.org>
+Date: Tue, 08 Apr 2025 10:02:41 +0200
+Subject: [PATCH 1/3] scripts: nixify archive-source.sh
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIACDY9GcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDEwML3azEdN3iyuLkkhxdY7NkY9MkSzODZCMLJaCGgqLUtMwKsGHRsbW
- 1AH/6JYtcAAAA
-X-Change-ID: 20250408-jag-sysctl-36c35b960c28
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250408-jag-sysctl-v1-1-f5c4aba3e7ff@kernel.org>
+References: <20250408-jag-sysctl-v1-0-f5c4aba3e7ff@kernel.org>
+In-Reply-To: <20250408-jag-sysctl-v1-0-f5c4aba3e7ff@kernel.org>
 To: =?utf-8?q?Alex_Benn=C3=A9e?= <alex.bennee@linaro.org>, 
  =?utf-8?q?Philippe_Mathieu-Daud=C3=A9?= <philmd@linaro.org>, 
  Thomas Huth <thuth@redhat.com>, 
  Wainer dos Santos Moschetta <wainersm@redhat.com>
 Cc: Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1102;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=650;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=oY+EUFqeVjtuXIV93ArVpYOykcvAmtvMN6MXR8UDh9s=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGf02Dl4ECwLHPmGZWeuRkJhmGeo4NOaRbb8D
- fwjOvNiWlhxX4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn9Ng5AAoJELqXzVK3
- lkFPmlYMAIc3SaC1Ht/sdGqX1JZ6MeUPKNAChjmS21VWoDa0HdG7RcAzgGDJuoNOMYXXTRB8ajd
- prS3xVnGwbLrJ033CZwAZ5cqiyGa184Wnq0yhxjsH0+SQvBc/ACU0EeEFVkC2AESmOdTWF28j7+
- DnApN4whlDghAOsFtE4xaAKJes4XMcL1PX0i2USjOa9PaN2YC6Czypg3kNXHIQ5dToscpYimA1O
- S+ba4ylpbHXwU22DGfrITD5Kk0q8rRwFOjV5OgYvZ8vSqatgFHnL67uevKAbzsTOakSaBi2GhJc
- MGyrGeFdCEA97FfwaR+c9YFlQqOEU4a46uZBzIBqDJSgceRdaj9m8mO9CLWyo16lVVzo5CGGj38
- 3iLZ2jhERoZH2mvS4yLh1dFL016v9S0pPaVYqZEBGuouWcvW8pXFM2WHFwsUIDzLPUGF/Ll3DjN
- SMkjzS4MU9s2TQS120KPveSn5Ja4fxX/M7qnx6WeEAsjAmenZYQAfIUEbLaeyproT0jyXuUYnX6
- bs=
+ bh=jDZDxLJWDYW927mYZ8/+pBOhs25t9wQSY97XH11aeAA=;
+ b=kA0DAAoBupfNUreWQU8ByyZiAGf02Faj1DKAYHDqx/kKZPsjQ3i9Phux8mt71OUrDxjr6Z1nJ
+ okBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJn9NhWAAoJELqXzVK3lkFPcDAL/0Iy
+ pIVPxBOEOQ+jZl+UQOKsbCfNNf92FNe9pydYTZljCOaGBnzaBX+Pjxk3kJsJx+RXhijuWWToYR7
+ Q25yUE7FMdACKNBuNmtQNBWppdvFh1ewuyxomDlbcbRbDjqKhG+P5VJSIaM937uVAVdMcgadOKS
+ MaVsU32GDZ2Z551KGbvS+tMev5kXbdBoen+k9sUL+gUSp7Lc53h5WKhuVDE/F5/fZF4Y/0bm4u2
+ p+xnzmnEHvkCUoNP9LkBBGlM9XK/OvsIKP4T0afONcv4JLzKh9KAYW6rL+GvPdOzYtCOHoZ6dJs
+ YlYamsGERjPBKvyk4kPnLPuOTTcvjGynhYsl6BD6g8CHPnyRjEH9wm4c4oMWMrNU6si9sbWB/VJ
+ iXpj/jyFlL7bUgzwecZgd5sr+4vj8GYHV0jR7aSZcPFhKy1zEK5DKNUzlXqMNFEXxu+rpNdJNXj
+ pW1P/Mquomke/NGmvQaf3UA/cd9OgUEtRcKjDUe/bvgyBOnFG3brXwpnATzA==
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When creating an archive source to use in a nix overlay, it is necessary
-that all files are appended to the tar.gz file under a root dir. This
-series adds a argument (--dir) that will create a root directory and
-append all files under it.
-
-The series does not change the default behavior where all files are
-added to the tar.gz root.
-
-Comments are greatly appreciated.
-
-To: "Alex Bennée" <alex.bennee@linaro.org>
-To: "Philippe Mathieu-Daudé" <philmd@linaro.org>
-To: Thomas Huth <thuth@redhat.com>
-To: Wainer dos Santos Moschetta <wainersm@redhat.com>
-
---
+Use "#!/usr/bin/env bash" instead of "#!/bin/bash". This is necessary
+for nix environments as they only provide /usr/bin/env at the standard
+location.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-Joel Granados (3):
-      scripts: nixify archive-source.sh
-      scripts: Add root dir to arguments
-      scripts: Clarify doc messages in archive-source.sh
+ scripts/archive-source.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- scripts/archive-source.sh | 92 +++++++++++++++++++++++++++++++++++------------
- 1 file changed, 69 insertions(+), 23 deletions(-)
----
-base-commit: ea35a5082a5fe81ce8fd184b0e163cd7b08b7ff7
-change-id: 20250408-jag-sysctl-36c35b960c28
+diff --git a/scripts/archive-source.sh b/scripts/archive-source.sh
+index 30677c3ec9032ea01090f74602d839d1c571d012..a469a5e2dec4b05e51474f0a1af190c1ccf23c7e 100755
+--- a/scripts/archive-source.sh
++++ b/scripts/archive-source.sh
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/usr/bin/env bash
+ #
+ # Author: Fam Zheng <famz@redhat.com>
+ #
 
-Best regards,
 -- 
-Joel Granados <joel.granados@kernel.org>
+2.44.1
 
