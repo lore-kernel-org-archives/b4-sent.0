@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 07 Apr 2025 23:39:49 -0500
-Subject: [PATCH 2/4] media: tegra-cec: Support Tegra186 and Tegra194
+Date: Mon, 07 Apr 2025 23:39:50 -0500
+Subject: [PATCH 3/4] arm64: tegra: Add CEC controller on Tegra210
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250407-tegra-cec-v1-2-e25dd9577b5f@gmail.com>
+Message-Id: <20250407-tegra-cec-v1-3-e25dd9577b5f@gmail.com>
 References: <20250407-tegra-cec-v1-0-e25dd9577b5f@gmail.com>
 In-Reply-To: <20250407-tegra-cec-v1-0-e25dd9577b5f@gmail.com>
 To: Hans Verkuil <hverkuil@xs4all.nl>, 
@@ -17,37 +17,44 @@ Cc: linux-tegra@vger.kernel.org, linux-media@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744087203; l=912;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744087203; l=999;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=qzkH1Lb60CcGemYqjTXGR/2EtCT8x42nYq6ZuIVdnn4=;
- b=mwF6j61IoAjC9rHwr0PFWe+bAwWv8DsDyMBsHvheZZiELfnwymmTHlpUfaTRnASpGWoBIj4iX
- bz+hBJqhv2oCc5KOObnqKqs0WPxo25aU3fuZuBhPz3sHFgmjZoF1+Ss
+ bh=bblG65p7/xkPR55OcOIBpt0KSwsSdM49hsWkcsMIg5A=;
+ b=zNgg7owY5OUtcXF0vHQva73Lmo6DNe1GsIsbF8GS6qjP+D7aNxMxSAimzlQ9v78JVjXfxT7MT
+ qD49K/NfYCFAPX0w5HhHDj/65rODLOkqyOkLa38SUvdTHhxqlYBsoCE
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The tegra186 and tegra194 controllers are working with the driver as-is,
-so add the compatibles to allow them to probe.
+The CEC controller found on Tegra210 can be used to control consumer
+devices using the HDMI CEC pin.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/media/cec/platform/tegra/tegra_cec.c | 2 ++
- 1 file changed, 2 insertions(+)
+ arch/arm64/boot/dts/nvidia/tegra210.dtsi | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/drivers/media/cec/platform/tegra/tegra_cec.c b/drivers/media/cec/platform/tegra/tegra_cec.c
-index 3ed50097262f64c32fe0480698cea9a1056a0953..aa3d36286d256d59f9d726e5c3cee5decacd1d23 100644
---- a/drivers/media/cec/platform/tegra/tegra_cec.c
-+++ b/drivers/media/cec/platform/tegra/tegra_cec.c
-@@ -456,6 +456,8 @@ static const struct of_device_id tegra_cec_of_match[] = {
- 	{ .compatible = "nvidia,tegra114-cec", },
- 	{ .compatible = "nvidia,tegra124-cec", },
- 	{ .compatible = "nvidia,tegra210-cec", },
-+	{ .compatible = "nvidia,tegra186-cec", },
-+	{ .compatible = "nvidia,tegra194-cec", },
- 	{},
- };
+diff --git a/arch/arm64/boot/dts/nvidia/tegra210.dtsi b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
+index b6c84d195c0ef9ae90721fada09ffd46a9c11fa3..402b0ede1472af625d9d9e811f5af306d436cc98 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra210.dtsi
++++ b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
+@@ -959,6 +959,15 @@ fuse@7000f800 {
+ 		reset-names = "fuse";
+ 	};
  
++	cec@70015000 {
++		compatible = "nvidia,tegra210-cec";
++		reg = <0x0 0x070015000 0x0 0x1000>;
++		interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&tegra_car TEGRA210_CLK_CEC>;
++		clock-names = "cec";
++		status = "disabled";
++	};
++
+ 	mc: memory-controller@70019000 {
+ 		compatible = "nvidia,tegra210-mc";
+ 		reg = <0x0 0x70019000 0x0 0x1000>;
 
 -- 
 2.48.1
