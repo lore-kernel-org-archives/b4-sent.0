@@ -1,78 +1,63 @@
-From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Tue, 08 Apr 2025 08:37:49 -0500
-Subject: [PATCH] dmaengine: dmatest: Don't forcibly terminate channel in
- polled mode
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH v2 0/2] Onboard USB device support for RTL8188ETV 2.4GHz
+ USB WiFi module
+Date: Tue, 08 Apr 2025 21:13:11 +0200
+Message-Id: <20250408-rtl-onboard-v2-0-0b6730b90e31@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250408-dmaengine-dmatest-poll-mode-fix-v1-1-754a446a5363@amd.com>
-X-B4-Tracking: v=1; b=H4sIAKwm9WcC/x2NQQqDMBBFryKzdmBMrbZepXSh5qsDmkgiRRDvb
- uzuvbf4/6CIoIjUZAcF/DSqd0mKPKN+at0IVpucjJinlPJgu7RwozrctCFuvPp55sVb8KA7V3X
- RibH9W14lpZU1IOX/w+d7nhdJi4UBcQAAAA==
-X-Change-ID: 20250403-dmaengine-dmatest-poll-mode-fix-671b02dc9084
-To: Vinod Koul <vkoul@kernel.org>
-Cc: =?utf-8?q?P=C3=A9ter_Ujfalusi?= <peter.ujfalusi@gmail.com>, 
- Vinicius Costa Gomes <vinicius.gomes@intel.com>, 
- Dave Jiang <dave.jiang@intel.com>, dmaengine@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Nathan Lynch <nathan.lynch@amd.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAEd19WcC/23MywrCMBCF4VcpszYyuVTUVd9DukjaqQ1IpiQhK
+ CXvbuza5X/gfDskip4S3LsdIhWfPIcW6tTBtNrwJOHn1qBQ9WhQi5hfgoNjG2ex6KvuzYJOGgf
+ tsUVa/PvQHmPr1afM8XPgRf7W/06RAoXEyd7sxRoiHDZOmfgcKMNYa/0C8hFdd6cAAAA=
+X-Change-ID: 20250403-rtl-onboard-f38354f0b14b
+To: Johannes Berg <johannes@sipsolutions.net>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Matthias Kaehlcke <mka@chromium.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jes Sorensen <Jes.Sorensen@gmail.com>, linux-wireless@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-usb@vger.kernel.org, Bitterblue Smith <rtl8821cerfe2@gmail.com>, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744119476; l=1736;
- i=nathan.lynch@amd.com; s=20241010; h=from:subject:message-id;
- bh=dERQxgU+2fAzNEP2+EuhPk8lfIVEWf/LdcDgr/XAkxk=;
- b=fgHl1Z3V5ne92fMnkK6WX/NUlvhrY7ftyp1iGj55T2Rey1pSPm6P7YYnXu/z/lCXzmywZO2Q/
- Za25lHutFt2BfoJWCHb5RC+THaLBzNM4f4ygDpL7fmAfPa5EliGOvRP
-X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
- pk=ZR637UTGg5YLDj56cxFeHdYoUjPMMFbcijfOkAmAnbc=
-X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20241010 with auth_id=241
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744139638; l=1198;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=CKwo4CEyVgAnPR0XP4Ca6WTn2rjHiPkVkvAQlXqXWe0=;
+ b=uUhCgcSt/puX3o3dWNQZSDas53VdL2UfuHpeEbhOQOvmlroP9iHibEpRQjLg2ojIeIgbRcZ+a
+ 0KTiyVQ+UswBYmyG95EETp/oya+UIrjBca2XXS3o0ODLyw+0pcTHz6E
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Invoking dmaengine_terminate_sync() against the channel after each
-submitted descriptor is strange. It's benign when the test is
-single-threaded, but disruptive when multiple threads are submitting
-descriptors to the channel concurrently:
+This patchset adds rtl8188etv (usbbda,179) to the onboard_usb_dev driver.
+It is found in a set-top box called "Fernsehfee 3.0".
 
-  # cd /sys/module/dmatest/parameters/
-  # echo 1 > polled
-  # echo 2 > threads_per_chan
-  # echo dma0chan0 > channel
-  # echo 1 > run
-...
-  dmatest: Added 2 threads using dma0chan0
-  dmatest: Started 2 threads using dma0chan0
-  xilinx-zynqmp-dma ffa80000.dma: dma_sync_wait: timeout!
-  xilinx-zynqmp-dma ffa80000.dma: dma_sync_wait: timeout!
-  dmatest: dma0chan0-copy0: result #3: 'test timed out' with
-    src_off=0x487 dst_off=0xf8 len=0x171b (0)
-  dmatest: dma0chan0-copy1: result #6: 'test timed out' with
-    src_off=0x227d dst_off=0xf99 len=0xf7a (0)
+As a side note, this device is currently marked untested in the RTL8XXXU
+driver. In my experience it works (tested with a WPA2 home network).
 
-Remove the call to dmaengine_terminate_sync() from the main thread
-loop.
-
-Fixes: fb9816f9d05f ("dmaengine: dmatest: Add support for completion polling")
-Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- drivers/dma/dmatest.c | 1 -
- 1 file changed, 1 deletion(-)
+Changes in v2:
+- Fix editing errors (email address and TODO comment) in binding
+- Refer to more specific RTL8188ETV instead of RTL8188
+- Use unambiguous SPDX identifier GPL-2.0-only instead of GPL-2.0
+- Link to v1: https://lore.kernel.org/r/20250403-rtl-onboard-v1-0-10ca9a6a4ee0@posteo.net
 
-diff --git a/drivers/dma/dmatest.c b/drivers/dma/dmatest.c
-index d891dfca358e209c9a5c2d8b49e3e539130e53e8..4e109c45fe0c5a7e8f337efe6e00e0616977f770 100644
---- a/drivers/dma/dmatest.c
-+++ b/drivers/dma/dmatest.c
-@@ -835,7 +835,6 @@ static int dmatest_func(void *data)
- 
- 		if (params->polled) {
- 			status = dma_sync_wait(chan, cookie);
--			dmaengine_terminate_sync(chan);
- 			if (status == DMA_COMPLETE)
- 				done->done = true;
- 		} else {
+---
+J. Neuschäfer (2):
+      dt-bindings: net: wireless: Add Realtek RTL8188ETV USB WiFi
+      usb: misc: onboard_dev: Add Realtek RTL8188ETV WiFi (0bda:0179)
 
+ .../bindings/net/wireless/realtek,rtl8188e.yaml    | 50 ++++++++++++++++++++++
+ drivers/usb/misc/onboard_usb_dev.c                 |  1 +
+ drivers/usb/misc/onboard_usb_dev.h                 |  8 ++++
+ 3 files changed, 59 insertions(+)
 ---
 base-commit: 0af2f6be1b4281385b618cb86ad946eded089ac8
-change-id: 20250403-dmaengine-dmatest-poll-mode-fix-671b02dc9084
+change-id: 20250403-rtl-onboard-f38354f0b14b
 
 Best regards,
 -- 
-Nathan Lynch <nathan.lynch@amd.com>
+J. Neuschäfer <j.ne@posteo.net>
 
