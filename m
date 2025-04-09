@@ -1,78 +1,108 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Subject: [PATCH v4 0/3] Driver for the Apple SPMI controller
-Date: Wed, 09 Apr 2025 23:52:11 +0200
-Message-Id: <20250409-spmi-v4-0-eb81ecfd1f64@gmail.com>
+Date: Wed, 09 Apr 2025 23:52:12 +0200
+Subject: [PATCH v4 1/3] dt-bindings: spmi: Add Apple SPMI controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAvs9mcC/13MywrCMBCF4VcpWRuZJL2NK99DXKS5tAF7IZGgl
- L67aa1QXJ5hvn8mwXhnArlkM/EmuuDGIY38lBHVyaE11Om0CQdegICchql3tNRC8bxB4JUk6XX
- yxrrXlrnd0+5ceI7+vVUjW6+/QPENREaBKqxtUTIrEe217aV7nNXYkzUQ+RFVO+IJGaV0A6W0D
- eI/EgfEYEciIeSy5qbSaEEf0bIsH2wPcXQCAQAA
-X-Change-ID: 20250304-spmi-6d3c24b9027a
+Message-Id: <20250409-spmi-v4-1-eb81ecfd1f64@gmail.com>
+References: <20250409-spmi-v4-0-eb81ecfd1f64@gmail.com>
+In-Reply-To: <20250409-spmi-v4-0-eb81ecfd1f64@gmail.com>
 To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>, Stephen Boyd <sboyd@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Neal Gompa <neal@gompa.dev>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, 
- Jean-Francois Bortolotti <jeff@borto.fr>, Nick Chan <towinchenmi@gmail.com>
+ Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744235551; l=1649;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744235551; l=2425;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=CXl1nA0gkeV3YEJmr8NWq0DTje/v81qqIMYYeDNAeDU=;
- b=XaQhaaJwxWHZCyL0KjusE3kB1Cm7zwrQ5Xz6uFE0AeD50bT/9JjX1VrQy+u4VWeDkY50nLAPX
- baXS3qrjf/BBHGmLCoCIkp68qo0X+nI92t2lj1YDpAIHXpBgv0S4QhT
+ bh=zl8cAzlIaOxUvOq3GfN8ra0zdMLJS6X1fL7CB5qh1Fo=;
+ b=iG3+aBox6UlVraYoVxIUbfXcpwfTTfLIUW2EZkGMOQ+VEe20sGyDmFBR4Vt/Kw1EGLDZhmFwN
+ qu15DziQmh8AWJtVuLlx4RskGTk8SdL+tZsR6Dzpcpl6OnZt17Q8SV3
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi.
+Add bindings for the SPMI controller present on most Apple SoCs
 
-This patch series adds support for the SPMI controller persent in most
-Apple SoCs. The drivers for the attached PMU and subdevices will be in
-further patch series.
-
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Reviewed-by: Sven Peter <sven@svenpeter.dev>
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
-Changes in v4:
-- Rebase on 6.14
-- Link to v3: https://lore.kernel.org/r/20250310-spmi-v3-0-92a82e7d9f0d@gmail.com
+ .../devicetree/bindings/spmi/apple,spmi.yaml       | 49 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 2 files changed, 50 insertions(+)
 
-Changes in v3:
-- Inlined helpers, dropped unneccesary error prefixes
-- Link to v2: https://lore.kernel.org/r/20250307-spmi-v2-0-eccdb06afb99@gmail.com
+diff --git a/Documentation/devicetree/bindings/spmi/apple,spmi.yaml b/Documentation/devicetree/bindings/spmi/apple,spmi.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..16bd7eb2b7af2c0b176f0e5b1970f4670af691da
+--- /dev/null
++++ b/Documentation/devicetree/bindings/spmi/apple,spmi.yaml
+@@ -0,0 +1,49 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/spmi/apple,spmi.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple SPMI controller
++
++maintainers:
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++description: A SPMI controller present on most Apple SoCs
++
++allOf:
++  - $ref: spmi.yaml#
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,t8103-spmi
++          - apple,t6000-spmi
++          - apple,t8112-spmi
++      - const: apple,spmi
++
++  reg:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/spmi/spmi.h>
++
++    spmi@920a1300 {
++        compatible = "apple,t6000-spmi", "apple,spmi";
++        reg = <0x920a1300 0x100>;
++        #address-cells = <2>;
++        #size-cells = <0>;
++
++        pmic@f {
++            reg = <0xf SPMI_USID>;
++            /* PMIC-specific properties */
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 96b82704950184bd71623ff41fc4df31e4c7fe87..5f348736ea0bbdb83fe541c872103ce4835de40b 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2282,6 +2282,7 @@ F:	Documentation/devicetree/bindings/pinctrl/apple,pinctrl.yaml
+ F:	Documentation/devicetree/bindings/power/apple*
+ F:	Documentation/devicetree/bindings/pwm/apple,s5l-fpwm.yaml
+ F:	Documentation/devicetree/bindings/spi/apple,spi.yaml
++F:	Documentation/devicetree/bindings/spmi/apple,spmi.yaml
+ F:	Documentation/devicetree/bindings/watchdog/apple,wdt.yaml
+ F:	arch/arm64/boot/dts/apple/
+ F:	drivers/bluetooth/hci_bcm4377.c
 
-Changes in v2:
-- Removed redundant error prints
-- Various style fixes
-- Better explanation of why the driver is needed
-- Link to v1: https://lore.kernel.org/r/20250305-spmi-v1-0-c98f561fa99f@gmail.com
-
----
-Jean-Francois Bortolotti (1):
-      spmi: add a spmi driver for Apple SoC
-
-Sasha Finkelstein (2):
-      dt-bindings: spmi: Add Apple SPMI controller
-      arm64: dts: apple: Add SPMI controller nodes
-
- .../devicetree/bindings/spmi/apple,spmi.yaml       |  49 ++++++
- MAINTAINERS                                        |   2 +
- arch/arm64/boot/dts/apple/t600x-die0.dtsi          |   7 +
- arch/arm64/boot/dts/apple/t8103.dtsi               |   8 +
- arch/arm64/boot/dts/apple/t8112.dtsi               |   7 +
- drivers/spmi/Kconfig                               |   8 +
- drivers/spmi/Makefile                              |   1 +
- drivers/spmi/spmi-apple-controller.c               | 168 +++++++++++++++++++++
- 8 files changed, 250 insertions(+)
----
-base-commit: a24588245776dafc227243a01bfbeb8a59bafba9
-change-id: 20250304-spmi-6d3c24b9027a
-
-Best regards,
 -- 
-Sasha Finkelstein <fnkl.kernel@gmail.com>
+2.49.0
 
