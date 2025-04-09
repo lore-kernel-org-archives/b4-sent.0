@@ -1,125 +1,78 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Wed, 09 Apr 2025 17:14:32 +0200
-Subject: [PATCH v3 2/2] iio: imu: inv_icm42600: switch to use generic name
- irq get
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Subject: [PATCH v4 0/3] Driver for the Apple SPMI controller
+Date: Wed, 09 Apr 2025 23:52:11 +0200
+Message-Id: <20250409-spmi-v4-0-eb81ecfd1f64@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250409-iio-imu-inv-icm42600-rework-interrupt-using-names-v3-2-dab85a0a7c2b@tdk.com>
-References: <20250409-iio-imu-inv-icm42600-rework-interrupt-using-names-v3-0-dab85a0a7c2b@tdk.com>
-In-Reply-To: <20250409-iio-imu-inv-icm42600-rework-interrupt-using-names-v3-0-dab85a0a7c2b@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAAvs9mcC/13MywrCMBCF4VcpWRuZJL2NK99DXKS5tAF7IZGgl
+ L67aa1QXJ5hvn8mwXhnArlkM/EmuuDGIY38lBHVyaE11Om0CQdegICchql3tNRC8bxB4JUk6XX
+ yxrrXlrnd0+5ceI7+vVUjW6+/QPENREaBKqxtUTIrEe217aV7nNXYkzUQ+RFVO+IJGaV0A6W0D
+ eI/EgfEYEciIeSy5qbSaEEf0bIsH2wPcXQCAQAA
+X-Change-ID: 20250304-spmi-6d3c24b9027a
+To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, Stephen Boyd <sboyd@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Neal Gompa <neal@gompa.dev>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Sasha Finkelstein <fnkl.kernel@gmail.com>, 
+ Jean-Francois Bortolotti <jeff@borto.fr>, Nick Chan <towinchenmi@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744211686; l=4065;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=/VtK2uQ40gbKTy8BClZYWTjqk6A7kwyWnfPM64PZuwk=;
- b=Embo/tmwLQHDcYKYU6ptpEtaAO+uC89KyWB9MHCTT92WeA0vLH6Ux4kgPa3tz4Nhnlx0rB9Fr
- 5YeeWovYXq9AjzISPQpd8sGhlFVql7rhCuiYv1bpzwgKn0vAuxQfHX5
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744235551; l=1649;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=CXl1nA0gkeV3YEJmr8NWq0DTje/v81qqIMYYeDNAeDU=;
+ b=XaQhaaJwxWHZCyL0KjusE3kB1Cm7zwrQ5Xz6uFE0AeD50bT/9JjX1VrQy+u4VWeDkY50nLAPX
+ baXS3qrjf/BBHGmLCoCIkp68qo0X+nI92t2lj1YDpAIHXpBgv0S4QhT
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use generic fwnode_irq_get_byname() for getting interrupt pin using
-interrupt name. Only INT1 is supported by the driver currently.
+Hi.
 
-If not found fallback to first defined interrupt to keep compatibility.
+This patch series adds support for the SPMI controller persent in most
+Apple SoCs. The drivers for the attached PMU and subdevices will be in
+further patch series.
 
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600.h      |  2 +-
- drivers/iio/imu/inv_icm42600/inv_icm42600_core.c | 17 +++++++++++++++--
- drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c  |  2 +-
- drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c  |  2 +-
- 4 files changed, 18 insertions(+), 5 deletions(-)
+Changes in v4:
+- Rebase on 6.14
+- Link to v3: https://lore.kernel.org/r/20250310-spmi-v3-0-92a82e7d9f0d@gmail.com
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-index 18787a43477b89db12caee597ab040af5c8f52d5..f893dbe6996506a33eb5d3be47e6765a923665c9 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-@@ -426,7 +426,7 @@ int inv_icm42600_set_temp_conf(struct inv_icm42600_state *st, bool enable,
- int inv_icm42600_debugfs_reg(struct iio_dev *indio_dev, unsigned int reg,
- 			     unsigned int writeval, unsigned int *readval);
- 
--int inv_icm42600_core_probe(struct regmap *regmap, int chip, int irq,
-+int inv_icm42600_core_probe(struct regmap *regmap, int chip,
- 			    inv_icm42600_bus_setup bus_setup);
- 
- struct iio_dev *inv_icm42600_gyro_init(struct inv_icm42600_state *st);
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-index ef9875d3b79db116f9fb4f6d881a7979292c1792..8ce817a4d5aa78cc8b228ee3064083b336c2c357 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-@@ -683,12 +683,13 @@ static void inv_icm42600_disable_pm(void *_data)
- 	pm_runtime_disable(dev);
- }
- 
--int inv_icm42600_core_probe(struct regmap *regmap, int chip, int irq,
-+int inv_icm42600_core_probe(struct regmap *regmap, int chip,
- 			    inv_icm42600_bus_setup bus_setup)
- {
- 	struct device *dev = regmap_get_device(regmap);
- 	struct inv_icm42600_state *st;
--	int irq_type;
-+	struct fwnode_handle *fwnode;
-+	int irq, irq_type;
- 	bool open_drain;
- 	int ret;
- 
-@@ -697,6 +698,18 @@ int inv_icm42600_core_probe(struct regmap *regmap, int chip, int irq,
- 		return -ENODEV;
- 	}
- 
-+	/* get INT1 only supported interrupt or fallback to first interrupt */
-+	fwnode = dev_fwnode(dev);
-+	if (!fwnode)
-+		return -ENODEV;
-+	irq = fwnode_irq_get_byname(fwnode, "INT1");
-+	if (irq < 0 && irq != -EPROBE_DEFER) {
-+		dev_info(dev, "no INT1 interrupt defined, fallback to first interrupt\n");
-+		irq = fwnode_irq_get(fwnode, 0);
-+	}
-+	if (irq < 0)
-+		return dev_err_probe(dev, irq, "error missing INT1 interrupt\n");
-+
- 	irq_type = irq_get_trigger_type(irq);
- 	if (!irq_type)
- 		irq_type = IRQF_TRIGGER_FALLING;
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c
-index 04e440fe023aa3869529b0f0be003ea0544bfb8d..38cc0d7834fcb96dabc401f29d613cf9fc75b8f5 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c
-@@ -67,7 +67,7 @@ static int inv_icm42600_probe(struct i2c_client *client)
- 	if (IS_ERR(regmap))
- 		return PTR_ERR(regmap);
- 
--	return inv_icm42600_core_probe(regmap, chip, client->irq,
-+	return inv_icm42600_core_probe(regmap, chip,
- 				       inv_icm42600_i2c_bus_setup);
- }
- 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-index 2bd2c4c8e50c3fe081e882aca6c64736510b474c..f40a09c4cbfc673e76922d13d61a3634785300ec 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c
-@@ -64,7 +64,7 @@ static int inv_icm42600_probe(struct spi_device *spi)
- 	if (IS_ERR(regmap))
- 		return PTR_ERR(regmap);
- 
--	return inv_icm42600_core_probe(regmap, chip, spi->irq,
-+	return inv_icm42600_core_probe(regmap, chip,
- 				       inv_icm42600_spi_bus_setup);
- }
- 
+Changes in v3:
+- Inlined helpers, dropped unneccesary error prefixes
+- Link to v2: https://lore.kernel.org/r/20250307-spmi-v2-0-eccdb06afb99@gmail.com
 
+Changes in v2:
+- Removed redundant error prints
+- Various style fixes
+- Better explanation of why the driver is needed
+- Link to v1: https://lore.kernel.org/r/20250305-spmi-v1-0-c98f561fa99f@gmail.com
+
+---
+Jean-Francois Bortolotti (1):
+      spmi: add a spmi driver for Apple SoC
+
+Sasha Finkelstein (2):
+      dt-bindings: spmi: Add Apple SPMI controller
+      arm64: dts: apple: Add SPMI controller nodes
+
+ .../devicetree/bindings/spmi/apple,spmi.yaml       |  49 ++++++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t600x-die0.dtsi          |   7 +
+ arch/arm64/boot/dts/apple/t8103.dtsi               |   8 +
+ arch/arm64/boot/dts/apple/t8112.dtsi               |   7 +
+ drivers/spmi/Kconfig                               |   8 +
+ drivers/spmi/Makefile                              |   1 +
+ drivers/spmi/spmi-apple-controller.c               | 168 +++++++++++++++++++++
+ 8 files changed, 250 insertions(+)
+---
+base-commit: a24588245776dafc227243a01bfbeb8a59bafba9
+change-id: 20250304-spmi-6d3c24b9027a
+
+Best regards,
 -- 
-2.49.0
+Sasha Finkelstein <fnkl.kernel@gmail.com>
 
