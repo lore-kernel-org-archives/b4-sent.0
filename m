@@ -1,16 +1,13 @@
 From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Subject: [PATCH v2 0/3] arm64: dts: qcom: x1e80100-hp-x14: add
+Date: Thu, 10 Apr 2025 12:07:28 +0200
+Subject: [PATCH v2 1/3] arm64: dts: qcom: x1e80100-hp-x14: add
  usb-1-ss1-sbu-mux
-Date: Thu, 10 Apr 2025 12:07:27 +0200
-Message-Id: <20250410-hp-x14-v2-0-d36414704a0a@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAF+Y92cC/zXOQQ6CMBCF4auQWVvTViDWFfcwLGgZ7CSEkg4Sl
- PTuVqLL/2XyZXZgjIQMt2KHiCsxhSmHPhXgfDc9UFCfG7TUlSylEX4WmyqFHFR/ra2ztTGQj+e
- IA20HdG9ze+IlxNfhruq7/ggl/8SqhBS2xMp1urqgM00Ye3Y+hJHD+FzyJ3y29IY2pfQBG99Ut
- 6kAAAA=
-X-Change-ID: 20250409-hp-x14-0f1d86bcb699
+Message-Id: <20250410-hp-x14-v2-1-d36414704a0a@oldschoolsolutions.biz>
+References: <20250410-hp-x14-v2-0-d36414704a0a@oldschoolsolutions.biz>
+In-Reply-To: <20250410-hp-x14-v2-0-d36414704a0a@oldschoolsolutions.biz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,11 +16,11 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, 
  Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744279681; l=1464;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744279681; l=2235;
  i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=63Q2CP1BjWPMJIsb/dxHjtnUbcBupGKBm9IiQVKWr7o=;
- b=tuqFUauzJa7LaauxOGCboKN4tSuMaOgeQubZN0kK0oeSGsOJFIel2tA1kTb4gywWqDDSUfRFw
- V4xOSZ+9scmDW5Od13VRx9SUYjG3VbroHfZ+7DLgFiIsCimIbrouG90
+ bh=2GTwm12Gqkjt+P5Y8u89X8mSed3z0SGqphw3cdBNB8g=;
+ b=dBkcN3123Ev1D5obkTcKjfmENFnGC1ZwLqoRWg0LQykEXoHSaFoR8k3AQcoi5hhlyOZ6OYLJC
+ 63gs7SvyuuzCRGmpHt3GrajV3vDeRC7BA8sa8RGST4W+oY5zquFSkuL
 X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
  pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
 X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
@@ -37,36 +34,88 @@ working guesswork.
 
 Added and rewired for usb_1_1
 
-Also, did some more changes as tested here:
-
-- remove unused i2c buses
-- amend order of nodes.
-
-The series is based on [1] from Johan.
-
 Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
-Changes in v2:
-- removed overlapping patches with [1] and [2] - thanks Johan
-- EDITME: use bulletpoints and terse descriptions.
-- Link to v1: https://lore.kernel.org/r/20250410-hp-x14-v1-0-b4e5ca253ec9@oldschoolsolutions.biz
+ .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 51 ++++++++++++++++++++++
+ 1 file changed, 51 insertions(+)
 
-[1] https://lore.kernel.org/lkml/20250328084154.16759-1-johan+linaro@kernel.org/
-[2] https://lore.kernel.org/r/20250319160509.1812805-1-juerg.haefliger@canonical.com
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts b/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
+index 26ea1787e5ecfb727a4f890895b7d7fb7b3f005d..582d4326d5d527d20f99e716349ea0e9c0d35099 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
+@@ -153,6 +153,14 @@ pmic_glink_ss1_ss_in: endpoint {
+ 						remote-endpoint = <&usb_1_ss1_qmpphy_out>;
+ 					};
+ 				};
++
++				port@2 {
++					reg = <2>;
++
++					pmic_glink_ss1_sbu: endpoint {
++						remote-endpoint = <&usb_1_ss1_sbu_mux>;
++					};
++				};
+ 			};
+ 		};
+ 	};
+@@ -477,6 +485,25 @@ vreg_pmu_rfa_1p7: ldo9 {
+ 			};
+ 		};
+ 	};
++
++	usb-1-ss1-sbu-mux {
++		compatible = "onnn,fsusb42", "gpio-sbu-mux";
++
++		enable-gpios = <&tlmm 179 GPIO_ACTIVE_LOW>;
++		select-gpios = <&tlmm 178 GPIO_ACTIVE_HIGH>;
++
++		pinctrl-0 = <&usb_1_ss1_sbu_default>;
++		pinctrl-names = "default";
++
++		mode-switch;
++		orientation-switch;
++
++		port {
++			usb_1_ss1_sbu_mux: endpoint {
++				remote-endpoint = <&pmic_glink_ss1_sbu>;
++			};
++		};
++	};
+ };
+ 
+ &apps_rsc {
+@@ -1424,6 +1451,30 @@ reset-n-pins {
+ 		};
+ 	};
+ 
++	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
++		mode-pins {
++			pins = "gpio177";
++			function = "gpio";
++			bias-disable;
++			drive-strength = <2>;
++			output-high;
++		};
++
++		oe-n-pins {
++			pins = "gpio179";
++			function = "gpio";
++			bias-disable;
++			drive-strength = <2>;
++		};
++
++		sel-pins {
++			pins = "gpio178";
++			function = "gpio";
++			bias-disable;
++			drive-strength = <2>;
++		};
++	};
++
+ 	wcd_default: wcd-reset-n-active-state {
+ 		pins = "gpio191";
+ 		function = "gpio";
 
----
-Jens Glathe (3):
-      arm64: dts: qcom: x1e80100-hp-x14: add usb-1-ss1-sbu-mux
-      arm64: dts: qcom: x1e80100-hp-x14: remove unused i2c buses
-      arm64: dts: qcom: x1e80100-hp-x14: amend order of nodes
-
- .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 98 ++++++++++++++--------
- 1 file changed, 62 insertions(+), 36 deletions(-)
----
-base-commit: 2791023c72489c91f59cfe818776fc6cd164ddad
-change-id: 20250409-hp-x14-0f1d86bcb699
-
-Best regards,
 -- 
-Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+2.48.1
 
