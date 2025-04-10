@@ -1,79 +1,130 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Thu, 10 Apr 2025 12:07:30 +0200
-Subject: [PATCH v2 3/3] arm64: dts: qcom: x1e80100-hp-x14: amend order of
- nodes
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v5 0/7] Input: synaptics-rmi4 - add quirks for third party
+ touchscreen controllers
+Date: Thu, 10 Apr 2025 16:28:18 +0200
+Message-Id: <20250410-synaptics-rmi4-v5-0-b41bb90f78b9@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250410-hp-x14-v2-3-d36414704a0a@oldschoolsolutions.biz>
-References: <20250410-hp-x14-v2-0-d36414704a0a@oldschoolsolutions.biz>
-In-Reply-To: <20250410-hp-x14-v2-0-d36414704a0a@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAILV92cC/3WMQQ6CMBBFr2JmbU2ZtgKuvIdxQcsgsxBISxqQc
+ HcLGxbG/NX7yXsLBPJMAW6nBTxFDtx3Ccz5BK6tuhcJrhMDSjRSyUKEuauGkV0Q/s1auEKhxSZ
+ XjiwkafDU8LQHH8/ELYex9/Pej2p7/6aiElJgZmpFORZlhXeeeLy4D2yhqA9ZS/yRdZIza0uTR
+ uaqD3ld1y8WzIt/5wAAAA==
+X-Change-ID: 20250308-synaptics-rmi4-c832b2f73ceb
+To: Kaustabh Chakraborty <kauschluss@disroot.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+ Conor Dooley <conor+dt@kernel.org>, "Jason A. Donenfeld" <Jason@zx2c4.com>, 
+ Matthias Schiffer <matthias.schiffer@ew.tq-group.com>, 
+ Vincent Huang <vincent.huang@tw.synaptics.com>
+Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Caleb Connolly <caleb.connolly@linaro.org>, 
+ phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744279681; l=1222;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=bnPuoslWPgNZvAQ9/Qrw/txzq3JvrErhTj3TzDMEntY=;
- b=kuwVoeZ26n8+Ah4fxp7+P2goDpgr5mMwxtP/V9pTNTnYdmjwxB0NyQdgwbv/++Zb91kI/F6tI
- ShzMvfYqHCAAgX7AM5t0hkPNNahYYrXtAbPhIONVp0IA821IFO/uMGW
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4115; i=david@ixit.cz;
+ h=from:subject:message-id; bh=/tO0SoKjbCbkR8v6jdjdLMXE89gyw76G6Sr/g9tT82U=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBn99WE9RF/CMC6RDJvOfBi3l6BAkYaMmRTN+BHV
+ 9jqZ9/JbjmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCZ/fVhAAKCRBgAj/E00kg
+ ctAPD/9FK83ZOyeYstNrBozlnX+P4jxX+eYt9835Jxhey5dtkXJLljtQDGAK1ChlbNpUwhlj7iF
+ NBlOMdjk9ZFydI43/wNRQAbv3yvlDt3qWT508SSzToya6e7yQBxWLACea6Y90goTNG7Ckgxiw16
+ U2S+SF2oAlnBRxLijGI8Q0GbMnjaiPdwiEir5YENbnz6BAPOycxC0tz2mY1IsoWJJX9WP/P/lLS
+ nLCbY0VMTZEuEtE4ypdjOI2zEvf3lT733NKtXfXjiTQzgm7qCaBtcNbinatoti/b4h2W/jpjulB
+ gfMcgtOCAZTTieH/aHi+YecMK06iUjLkUFv5s1cR6MKY0FeMCsaRymgtykd31wCxwm5p9wfOtk4
+ DP4u2ZmP1AFEPk8YqLCIQF9Fzu+0ck6qH7CVIkpI8YvWnFZzeaftmgjLSS4QBKnr1YdQF1/qOR6
+ l93B/cvsC3dZA7XImakLjl+vu/iQ5SnThMSKhHmj7Pb9gPkN2d69+B8CdwFA/MPxxi8XGx+z7dX
+ bNIyUwXsAa7pMtuC6kPpzdoLdFTGVgHl2al1EJ8/9qWpdL02HWLH/3gDLOD66J9QjS64ZY4xul0
+ Zbci45+a45BuhCDJ+rT3DQLh4HVrMihl2dRtozD37K0IOjqpGLg2MB/RRU86NjnytKTNpXX2cM4
+ ybyEzdqNCu7pdAw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-amend the order of pmk8550_* nodes afte pmc8380_*
+With the growing popularity of running upstream Linux on mobile devices,
+we're beginning to run into more and more edgecases. The OnePlus 6 is a
+fairly well supported 2018 era smartphone, selling over a million units
+in it's first 22 days. With this level of popularity, it's almost
+inevitable that we get third party replacement displays, and as a
+result, replacement touchscreen controllers.
 
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+The OnePlus 6 shipped with an extremely usecase specific touchscreen
+driver, it implemented only the bare minimum parts of the highly generic
+rmi4 protocol, instead hardcoding most of the register addresses.
+  
+As a result, the third party touchscreen controllers that are often
+found in replacement screens, implement only the registers that the 
+downstream driver reads from. They additionally have other restrictions
+such as heavy penalties on unaligned reads.
+ 
+This series attempts to implement the necessary workaround to support  
+some of these chips with the rmi4 driver. Although it's worth noting
+that at the time of writing there are other unofficial controllers in
+the wild that don't work even with these patches.
+ 
+We have been shipping these patches in postmarketOS for the last several
+years, and they are known to not cause any regressions on the OnePlus
+6/6T (with the official Synaptics controller), however I don't own any
+other rmi4 hardware to further validate this.
+
 ---
- .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+Changes in v5:
+- Removed -i2c suffix from rmi4-s3706b-i2c (Krzysztof).
+- Link to v4: https://lore.kernel.org/r/20250402-synaptics-rmi4-v4-0-1bb95959e564@ixit.cz
 
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts b/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
-index 6c0e56168eaf133b9500c32b98821fa1fc3e7a2d..b492901f2d8c610e955c95aea60eb6c3d80d4f65 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
-@@ -1196,17 +1196,6 @@ edp_bl_reg_en: edp-bl-reg-en-state {
- 
- };
- 
--&pmk8550_gpios {
--	edp_bl_pwm: edp-bl-pwm-state {
--		pins = "gpio5";
--		function = "func3";
--	};
--};
--
--&pmk8550_pwm {
--	status = "okay";
--};
--
- &pmc8380_5_gpios {
- 	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
- 		pins = "gpio8";
-@@ -1218,6 +1207,17 @@ usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
- 	};
- };
- 
-+&pmk8550_gpios {
-+	edp_bl_pwm: edp-bl-pwm-state {
-+		pins = "gpio5";
-+		function = "func3";
-+	};
-+};
-+
-+&pmk8550_pwm {
-+	status = "okay";
-+};
-+
- &qupv3_0 {
- 	status = "okay";
- };
+Changes in v4:
+- Replaced patch "dt-bindings: input: syna,rmi4: document syna,pdt-fallback-desc"
+  with patch documenting specific touchscreen model used in OnePlus 6 and 6T.
+- Fixed zero electrode return code (Dmitry).
+- Switched the duplicate detection algo to bitmap (Dmitry).
+- Optimized rmi_device_platform_data struct to avoid unnecessary
+  padding.
+- Changed fallback_size from int to unsigned int.
+- Changed SoB from nickname and old address (methanal <baclofen@tuta.io>) to
+  Kaustabh Chakraborty <kauschluss@disroot.org>.
+  Verified ownership through the sdm845 chatroom on Matrix.
+- Link to v3: https://lore.kernel.org/r/20250308-synaptics-rmi4-v3-0-215d3e7289a2@ixit.cz
 
+Changes in v3:
+- reworded dt-bindings property description
+- fixed the rmi_driver_of_probe definition for non device-tree builds.
+- fixed some indentation issues reported by checkpatch
+- change rmi_pdt_entry_is_valid() variable to unsigned 
+- Link to v2: https://lore.kernel.org/all/20230929-caleb-rmi4-quirks-v2-0-b227ac498d88@linaro.org
+
+Changes in v2:
+- Improve dt-bindings patch (thanks Rob)
+- Add missing cast in patch 5 to fix the pointer arithmetic
+- Link to v1: https://lore.kernel.org/r/20230929-caleb-rmi4-quirks-v1-0-cc3c703f022d@linaro.org
+
+---
+Caleb Connolly (1):
+      Input: synaptics-rmi4 - handle duplicate/unknown PDT entries
+
+David Heidelberg (1):
+      dt-bindings: input: syna,rmi4: Document syna,rmi4-s3706b
+
+Kaustabh Chakraborty (5):
+      Input: synaptics-rmi4 - f12: use hardcoded values for aftermarket touch ICs
+      Input: synaptics-rmi4 - f55: handle zero electrode count
+      Input: synaptics-rmi4 - don't do unaligned reads in IRQ context
+      Input: synaptics-rmi4 - read product ID on aftermarket touch ICs
+      Input: synaptics-rmi4 - support fallback values for PDT descriptor bytes
+
+ .../devicetree/bindings/input/syna,rmi4.yaml       |  11 +-
+ drivers/input/rmi4/rmi_driver.c                    | 124 +++++++++++++++++----
+ drivers/input/rmi4/rmi_driver.h                    |  10 ++
+ drivers/input/rmi4/rmi_f01.c                       |  14 +++
+ drivers/input/rmi4/rmi_f12.c                       | 117 ++++++++++++++-----
+ drivers/input/rmi4/rmi_f55.c                       |   5 +
+ include/linux/rmi.h                                |   3 +
+ 7 files changed, 234 insertions(+), 50 deletions(-)
+---
+base-commit: f0a16f5363325cc8d9382471cdc7b654c53254c9
+change-id: 20250308-synaptics-rmi4-c832b2f73ceb
+
+Best regards,
 -- 
-2.48.1
+David Heidelberg <david@ixit.cz>
 
