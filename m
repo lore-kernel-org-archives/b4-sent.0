@@ -1,15 +1,13 @@
 From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Subject: [PATCH v5 0/3] Add support for Amlogic A4/A5 Reset
-Date: Fri, 11 Apr 2025 19:27:49 +0800
-Message-Id: <20250411-a4-a5-reset-v5-0-24812538dce6@amlogic.com>
+Date: Fri, 11 Apr 2025 19:27:50 +0800
+Subject: [PATCH v5 1/3] dt-bindings: reset: Add compatible for Amlogic
+ A4/A5 Reset Controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALX8+GcC/23OQQqDMBCF4atI1h1JNImxq96juEjjRANqJBFpK
- 969Ueii0M3Av5iPt5GIwWEk12wjAVcXnZ9SiEtGTK+nDsG1qUlBC0FLVoLmoAUEjLiAlLVE8WA
- KGSXpYw5o3fPU7k1qG/wISx9Qfw1Oa6ZoxQvGckVlBQzeOPipy9t0bnocfOdMbvx4eL2Liw+vc
- 9zKD/X/jpUDhcRKKxVvpbE/ULPv+wcXqykJ6AAAAA==
-X-Change-ID: 20250313-a4-a5-reset-6696e5b18e10
+Message-Id: <20250411-a4-a5-reset-v5-1-24812538dce6@amlogic.com>
+References: <20250411-a4-a5-reset-v5-0-24812538dce6@amlogic.com>
+In-Reply-To: <20250411-a4-a5-reset-v5-0-24812538dce6@amlogic.com>
 To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -22,61 +20,64 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Conor Dooley <conor.dooley@microchip.com>, 
  Kelvin Zhang <kelvin.zhang@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744370870; l=1852;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744370870; l=2254;
  i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=/hQwt0vJTBvVhJE+lXTePELN6y6nrRJohz6/U3u5fL4=;
- b=UvsI2+X25bb9TkdbcgOwYDAT2PxYzxtjSaJ6ceqVvvAPGEV/A456/DtsUkl6/nhN7WZkykTRj
- rw5v0oVybmkDGGb3vxSf+ayfi8FBK3c45YiqTr7ouM+jZG5HCf/gata
+ bh=RBPG6lp45fxsEDVQ6Y1mIySEYTUUWfsM6OujOhVw3vA=;
+ b=LPHNSyFpPJezQI1/+B2FqsCdLsR8F9dZ+NkI6lmgql6PdBtksSFpw0Q4+EpaggFA2DeE3mfa0
+ 9B1+wx8qMb1DPmzDwKznC0QyZ4c4t4PNvztoGiv58QBwmf4JIq4OLq/
 X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
  pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
 X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add dt-binding compatibles and device nodes for Amlogic A4/A5 reset.
+From: Zelong Dong <zelong.dong@amlogic.com>
 
-Imported from f20240918074211.8067-1-zelong.dong@amlogic.com
+Add compatibles for Amlogic A4 and A5 reset controllers,
+which fall back to 'amlogic,meson-s4-reset'.
 
-Changes in v6:
-- Rebased onto the latest v6.16/arm64-dt.
-- Link to v5: https://lore.kernel.org/r/20250320-a4-a5-reset-v5-0-296f83bf733d@amlogic.com
-
-Changes in v5:
-- Rebasing on top of the latest upstream changes.
-- Link to v4: https://lore.kernel.org/r/20250313-a4-a5-reset-v4-0-8076f684d6cf@amlogic.com
-
-Changes in v4:
-- Remove the superfluous 'items' in the dt-binding.
-- Rebasing due to recent upstream changes.
-- Link to v3: https://lore.kernel.org/all/20240918074211.8067-1-zelong.dong@amlogic.com/
-
-Changes in v3:
-- rebase on 'amlogic,t7-reset' patchset
-- Link to v2: https://lore.kernel.org/all/20240715051217.5286-1-zelong.dong@amlogic.com/
-
-Changes in v2:
-- remove 'amlogic,t7-reset'
-- move 'amlogic,c3-reset' to the other enum list
-- move reset node from amlogic-a4-common.dtsi to
-  amlogic-a4.dtsi/amlogic-a5.dtsi
-- Link to v1: https://lore.kernel.org/all/20240703061610.37217-1-zelong.dong@amlogic.com/
-
+Signed-off-by: Zelong Dong <zelong.dong@amlogic.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Acked-by: Philipp Zabel <p.zabel@pengutronix.de>
+Link: https://lore.kernel.org/r/20240918074211.8067-2-zelong.dong@amlogic.com
+Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
 ---
-Zelong Dong (3):
-      dt-bindings: reset: Add compatible for Amlogic A4/A5 Reset Controller
-      arm64: dts: amlogic: Add A4 Reset Controller
-      arm64: dts: amlogic: Add A5 Reset Controller
+ .../bindings/reset/amlogic,meson-reset.yaml        | 22 ++++++++++++++--------
+ 1 file changed, 14 insertions(+), 8 deletions(-)
 
- .../bindings/reset/amlogic,meson-reset.yaml        | 22 +++--
- arch/arm64/boot/dts/amlogic/amlogic-a4-reset.h     | 93 +++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |  8 ++
- arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h     | 95 ++++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        |  8 ++
- 5 files changed, 218 insertions(+), 8 deletions(-)
----
-base-commit: 4bc28af2da876531e5183d25ae807e608c816d18
-change-id: 20250313-a4-a5-reset-6696e5b18e10
+diff --git a/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml b/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml
+index 695ef38a7bb346c92b4cf428e7615d45682c940a..150e95c0d9bed74c7045942610a311114a257889 100644
+--- a/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml
++++ b/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml
+@@ -12,14 +12,20 @@ maintainers:
+ 
+ properties:
+   compatible:
+-    enum:
+-      - amlogic,meson8b-reset # Reset Controller on Meson8b and compatible SoCs
+-      - amlogic,meson-gxbb-reset # Reset Controller on GXBB and compatible SoCs
+-      - amlogic,meson-axg-reset # Reset Controller on AXG and compatible SoCs
+-      - amlogic,meson-a1-reset # Reset Controller on A1 and compatible SoCs
+-      - amlogic,meson-s4-reset # Reset Controller on S4 and compatible SoCs
+-      - amlogic,c3-reset # Reset Controller on C3 and compatible SoCs
+-      - amlogic,t7-reset
++    oneOf:
++      - enum:
++          - amlogic,meson8b-reset # Reset Controller on Meson8b and compatible SoCs
++          - amlogic,meson-gxbb-reset # Reset Controller on GXBB and compatible SoCs
++          - amlogic,meson-axg-reset # Reset Controller on AXG and compatible SoCs
++          - amlogic,meson-a1-reset # Reset Controller on A1 and compatible SoCs
++          - amlogic,meson-s4-reset # Reset Controller on S4 and compatible SoCs
++          - amlogic,c3-reset # Reset Controller on C3 and compatible SoCs
++          - amlogic,t7-reset
++      - items:
++          - enum:
++              - amlogic,a4-reset
++              - amlogic,a5-reset
++          - const: amlogic,meson-s4-reset
+ 
+   reg:
+     maxItems: 1
 
-Best regards,
 -- 
-Kelvin Zhang <kelvin.zhang@amlogic.com>
+2.37.1
 
