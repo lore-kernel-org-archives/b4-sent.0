@@ -1,10 +1,10 @@
 From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Date: Fri, 11 Apr 2025 19:27:51 +0800
-Subject: [PATCH v5 2/3] arm64: dts: amlogic: Add A4 Reset Controller
+Date: Fri, 11 Apr 2025 19:27:52 +0800
+Subject: [PATCH v5 3/3] arm64: dts: amlogic: Add A5 Reset Controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250411-a4-a5-reset-v5-2-24812538dce6@amlogic.com>
+Message-Id: <20250411-a4-a5-reset-v5-3-24812538dce6@amlogic.com>
 References: <20250411-a4-a5-reset-v5-0-24812538dce6@amlogic.com>
 In-Reply-To: <20250411-a4-a5-reset-v5-0-24812538dce6@amlogic.com>
 To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
@@ -18,11 +18,11 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Zelong Dong <zelong.dong@amlogic.com>, 
  Kelvin Zhang <kelvin.zhang@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744370870; l=3908;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744370870; l=4039;
  i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=oF2MZH3lmYKfr/9G4rTMkISCrbGCYT5binySnJgFGrM=;
- b=A2QGLQYcs37msHVMzUNvooic7mkC7zLC/nalb8cuf0yjqhKGflkHBxr5xfi1B+zW7P00FtJsS
- O8JETqqEVlzC/jyWe0Iw9tQ5miOxs+nsCNANkmlZYtEkJW+KnR0FmVl
+ bh=39cgxEleCRWNGiMf9dZjnPoJH+4QSAKwm+85hqJrCUk=;
+ b=CltO3QzwSAqj8Ivj7TTCBRsZLKkC09HSUhpD47XnvDaYqX5BfmaDB8Pwxt6r6iDtkpM58unBO
+ odors5sfLBZAN1U96gfu18fQMPow8ROgb5hrT8NOstGCYwYwSfZPtB+
 X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
  pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
 X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
@@ -31,142 +31,144 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 From: Zelong Dong <zelong.dong@amlogic.com>
 
 Add the device node and related header file for Amlogic
-A4 reset controller.
+A5 reset controller.
 
 Signed-off-by: Zelong Dong <zelong.dong@amlogic.com>
-Link: https://lore.kernel.org/r/20240918074211.8067-3-zelong.dong@amlogic.com
+Link: https://lore.kernel.org/r/20240918074211.8067-4-zelong.dong@amlogic.com
 Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
 Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a4-reset.h | 93 ++++++++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi    |  8 +++
- 2 files changed, 101 insertions(+)
+ arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h | 95 ++++++++++++++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi    |  8 +++
+ 2 files changed, 103 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4-reset.h b/arch/arm64/boot/dts/amlogic/amlogic-a4-reset.h
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h b/arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..f6a4c90bab3cf7cfaa3c98c522bed5e455b73bd3
+index 0000000000000000000000000000000000000000..cdf0f515962097c606e4c53badb19df7d21606ec
 --- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4-reset.h
-@@ -0,0 +1,93 @@
++++ b/arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h
+@@ -0,0 +1,95 @@
 +/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
 +/*
 + * Copyright (c) 2024 Amlogic, Inc. All rights reserved.
 + */
 +
-+#ifndef __DTS_AMLOGIC_A4_RESET_H
-+#define __DTS_AMLOGIC_A4_RESET_H
++#ifndef __DTS_AMLOGIC_A5_RESET_H
++#define __DTS_AMLOGIC_A5_RESET_H
 +
 +/* RESET0 */
 +/*						0-3 */
 +#define RESET_USB				4
-+/*						5-6*/
-+#define RESET_U2PHY22				7
++/*						5-7 */
 +#define RESET_USBPHY20				8
-+#define RESET_U2PHY21				9
++/*						9 */
 +#define RESET_USB2DRD				10
-+#define RESET_U2H				11
-+#define RESET_LED_CTRL				12
-+/*						13-31 */
++/*						11-31 */
 +
 +/* RESET1 */
 +#define RESET_AUDIO				32
 +#define RESET_AUDIO_VAD				33
-+/*						34*/
++/*                                              34 */
 +#define RESET_DDR_APB				35
 +#define RESET_DDR				36
-+#define RESET_VOUT_VENC				37
-+#define RESET_VOUT				38
-+/*						39-47 */
++/*						37-40 */
++#define RESET_DSPA_DEBUG			41
++/*                                              42 */
++#define RESET_DSPA				43
++/*						44-46 */
++#define RESET_NNA				47
 +#define RESET_ETHERNET				48
 +/*						49-63 */
 +
 +/* RESET2 */
-+#define RESET_DEVICE_MMC_ARB			64
++#define RESET_ABUS_ARB				64
 +#define RESET_IRCTRL				65
-+/*						66*/
++/*						66 */
 +#define RESET_TS_PLL				67
-+/*						68-72*/
++/*						68-72 */
 +#define RESET_SPICC_0				73
 +#define RESET_SPICC_1				74
-+/*						75-79*/
++#define RESET_RSA				75
++
++/*						76-79 */
 +#define RESET_MSR_CLK				80
-+/*						81*/
++#define RESET_SPIFC				81
 +#define RESET_SAR_ADC				82
-+/*						83-87*/
-+#define RESET_ACODEC				88
-+/*						89-90*/
++/*						83-90 */
 +#define RESET_WATCHDOG				91
-+/*						92-95*/
++/*						92-95 */
 +
 +/* RESET3 */
 +/*						96-127 */
 +
 +/* RESET4 */
-+/*						128-131 */
++#define RESET_RTC				128
++/*						129-131 */
 +#define RESET_PWM_AB				132
 +#define RESET_PWM_CD				133
 +#define RESET_PWM_EF				134
 +#define RESET_PWM_GH				135
-+/*						136-137*/
++/*						104-105 */
 +#define RESET_UART_A				138
 +#define RESET_UART_B				139
-+/*						140*/
++#define RESET_UART_C				140
 +#define RESET_UART_D				141
 +#define RESET_UART_E				142
-+/*						143-144*/
++/*						143*/
++#define RESET_I2C_S_A				144
 +#define RESET_I2C_M_A				145
 +#define RESET_I2C_M_B				146
 +#define RESET_I2C_M_C				147
 +#define RESET_I2C_M_D				148
-+/*						149-151*/
++/*						149-151 */
 +#define RESET_SDEMMC_A				152
-+/*						153*/
++/*						153 */
 +#define RESET_SDEMMC_C				154
 +/*						155-159*/
 +
 +/* RESET5 */
-+/*						160-175*/
++/*						160-175 */
 +#define RESET_BRG_AO_NIC_SYS			176
-+/*						177*/
++#define RESET_BRG_AO_NIC_DSPA			177
 +#define RESET_BRG_AO_NIC_MAIN			178
 +#define RESET_BRG_AO_NIC_AUDIO			179
-+/*						180-183*/
++/*						180-183 */
 +#define RESET_BRG_AO_NIC_ALL			184
-+/*						185*/
++#define RESET_BRG_NIC_NNA			185
 +#define RESET_BRG_NIC_SDIO			186
 +#define RESET_BRG_NIC_EMMC			187
 +#define RESET_BRG_NIC_DSU			188
-+#define RESET_BRG_NIC_CLK81			189
++#define RESET_BRG_NIC_SYSCLK			189
 +#define RESET_BRG_NIC_MAIN			190
 +#define RESET_BRG_NIC_ALL			191
 +
 +#endif
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-index c02fa5ee9fd22285ebad2ef52939e2fc4c4dd019..563bc2e662fac5f2ec3d0b9cc3fca0de39ec0553 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
+index 32ed1776891bc7d1befd01a76c76048631606f5a..b1da8cbaa25a1844312a23bc39eb876df3c60df5 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
 @@ -4,6 +4,7 @@
   */
  
  #include "amlogic-a4-common.dtsi"
-+#include "amlogic-a4-reset.h"
- #include <dt-bindings/power/amlogic,a4-pwrc.h>
- #include <dt-bindings/pinctrl/amlogic,pinctrl.h>
++#include "amlogic-a5-reset.h"
+ #include <dt-bindings/power/amlogic,a5-pwrc.h>
  / {
-@@ -51,6 +52,13 @@ pwrc: power-controller {
+ 	cpus {
+@@ -50,6 +51,13 @@ pwrc: power-controller {
  };
  
  &apb {
 +	reset: reset-controller@2000 {
-+		compatible = "amlogic,a4-reset",
++		compatible = "amlogic,a5-reset",
 +			     "amlogic,meson-s4-reset";
 +		reg = <0x0 0x2000 0x0 0x98>;
 +		#reset-cells = <1>;
 +	};
 +
- 	periphs_pinctrl: pinctrl@4000 {
- 		compatible = "amlogic,pinctrl-a4";
- 		#address-cells = <2>;
+ 	gpio_intc: interrupt-controller@4080 {
+ 		compatible = "amlogic,a5-gpio-intc",
+ 			     "amlogic,meson-gpio-intc";
 
 -- 
 2.37.1
