@@ -1,56 +1,96 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Fri, 11 Apr 2025 20:42:49 +0800
-Subject: [PATCH 7/7] arm64: dts: amlogic: S4: Add clk-measure controller
- node
+From: Remi Buisson <remi.buisson@tdk.com>
+Subject: [PATCH 0/8] iio: imu: new inv_icm45600 driver
+Date: Fri, 11 Apr 2025 13:28:32 +0000
+Message-Id: <20250411-add_newport_driver-v1-0-15082160b019@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250411-clk-measure-v1-7-cb46a78d019a@amlogic.com>
-References: <20250411-clk-measure-v1-0-cb46a78d019a@amlogic.com>
-In-Reply-To: <20250411-clk-measure-v1-0-cb46a78d019a@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAAZ+WcC/x3MTQqAIBBA4avErBNSkn6uEiHWTDUbizEsiO6et
+ PwW7z0QSZgi9MUDQokj7yFDlwXMmw8rKcZsMJWxVa218ogu0HXscjoUTiTKmm5e7NRo8i3k8BB
+ a+P6nw/i+H+nmgslkAAAA
+X-Change-ID: 20250411-add_newport_driver-529cf5b71ea8
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744375372; l=767;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=itRtutR2PIVs/kAFr6Titwp0GUUTkodKKnworvlokhM=;
- b=HkLHQwUO4HrZDuTx82Q4lLAZGwoF6OGZJQla3YnGfIsydsSWucE6PSmhvIS/JMYVod6KlvVBN
- spDHf+yEF9WAKvCoQ0EuQvZixoBqSExl9cfQuYZsHWI78avK2kycxxb
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, Remi Buisson <remi.buisson@tdk.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744378119; l=3510;
+ i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
+ bh=JTFeAmlNUSNT8ZCwFvfBb94G9sBpagRzzlhSQPzjPuQ=;
+ b=XoowJUulQzLBGMCFbu7uLJJggxGchQ3Sx0Ejb/SubI1Aw+8gPq5kCr2SuM4vNBpFaQJeoyTX7
+ AExoWdEVozADZ3mPgpUSLrb4zbNEWD98RtwTXER1rdmZsalZKQ1TuMc
+X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
+ pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
+X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the clk-measure controller node for S4 SoC family.
+This series add a new driver for managing InvenSense ICM-456xx 6-axis IMUs.
+This next generation of chips includes new generations of 3-axis gyroscope
+and 3-axis accelerometer, support of I3C in addition to I2C and SPI, and
+intelligent MotionTracking features like pedometer, tilt detection, and
+tap detection.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+This series is delivering a driver supporting gyroscope, accelerometer and
+temperature data, with polling and buffering using hwfifo and watermark,
+on I2C, SPI and I3C busses.
+
+Gyroscope and accelerometer sensors are completely independent and can have
+different ODRs. Since there is only a single FIFO a specific value is used to
+mark invalid data. For keeping the device standard we are de-multiplexing data
+from the FIFO to 2 IIO devices with 2 buffers, 1 for the accelerometer and 1
+for the gyroscope. This architecture also enables to easily turn each sensor
+on/off without impacting the other. The device interrupt is used to read the
+FIFO and launch parsing of accelerometer and gyroscope data. This driver
+relies on the common Invensense timestamping mechanism to handle correctly
+FIFO watermark and dynamic changes of settings.
+
+The structure of the driver is quite similar to the inv_icm42600 driver,
+however there are significant reasons for adding a different driver for
+inv_icm45600, such as:
+- A completely different register map.
+- Different FIFO management, based on number of samples instead of bytes.
+- Different indirect register access mechanism.
+
+Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi | 5 +++++
- 1 file changed, 5 insertions(+)
+Remi Buisson (8):
+      iio: imu: inv_icm45600: add new inv_icm45600 driver
+      iio: imu: inv_icm45600: add I2C driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add SPI driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add I3C driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add buffer support in iio devices
+      iio: imu: add Kconfig and Makefile for inv_icm45600 driver
+      dt-bindings: iio: imu: Add inv_icm45600 documentation
+      MAINTAINERS: add entry for inv_icm45600 6-axis imu sensor
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-index 957577d986c0..9d99ed2994df 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-@@ -629,6 +629,11 @@ internal_ephy: ethernet-phy@8 {
- 				};
- 			};
- 
-+			clk_msr: clock-measure@48000 {
-+				compatible = "amlogic,s4-clk-measure";
-+				reg = <0x0 0x48000 0x0 0x1c>;
-+			};
-+
- 			spicc0: spi@50000 {
- 				compatible = "amlogic,meson-g12a-spicc";
- 				reg = <0x0 0x50000 0x0 0x44>;
+ .../ABI/testing/sysfs-bus-iio-inv_icm45600         |  37 +
+ .../bindings/iio/imu/invensense,icm45600.yaml      | 136 +++
+ MAINTAINERS                                        |   9 +
+ drivers/iio/imu/Kconfig                            |   1 +
+ drivers/iio/imu/Makefile                           |   1 +
+ drivers/iio/imu/inv_icm45600/Kconfig               |  70 ++
+ drivers/iio/imu/inv_icm45600/Makefile              |  17 +
+ drivers/iio/imu/inv_icm45600/inv_icm45600.h        | 421 ++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c  | 902 ++++++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 572 +++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.h | 100 +++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_core.c   | 906 ++++++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c   | 919 +++++++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c    | 103 +++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c    |  84 ++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c    | 110 +++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_temp.c   |  82 ++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_temp.h   |  31 +
+ 18 files changed, 4501 insertions(+)
+---
+base-commit: 1c2409fe38d5c19015d69851d15ba543d1911932
+change-id: 20250411-add_newport_driver-529cf5b71ea8
 
+Best regards,
 -- 
-2.42.0
+Remi Buisson <remi.buisson@tdk.com>
 
