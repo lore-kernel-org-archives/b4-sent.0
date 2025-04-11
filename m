@@ -1,75 +1,82 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Thu, 10 Apr 2025 22:58:54 +0200
-Subject: [PATCH v2 2/2] clang-format: align consecutive macros
+From: Kelvin Zhang <kelvin.zhang@amlogic.com>
+Subject: [PATCH v5 0/3] Add support for Amlogic A4/A5 Reset
+Date: Fri, 11 Apr 2025 19:27:49 +0800
+Message-Id: <20250411-a4-a5-reset-v5-0-24812538dce6@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250210-clang-format-fixes-v2-2-37894413bbee@collabora.com>
-References: <20250210-clang-format-fixes-v2-0-37894413bbee@collabora.com>
-In-Reply-To: <20250210-clang-format-fixes-v2-0-37894413bbee@collabora.com>
-To: Miguel Ojeda <ojeda@kernel.org>, Nathan Chancellor <nathan@kernel.org>, 
- Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>, 
- Nick Desaulniers <nick.desaulniers+lkml@gmail.com>
-Cc: Collabora Kernel Team <kernel@collabora.com>, 
- linux-kernel@vger.kernel.org, llvm@lists.linux.dev, 
- Michael Riesch <michael.riesch@wolfvision.net>, 
- Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744318740; l=1371;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=GCAcQLFrMA5v4a8RQ+v4hX/83CyGkOIzdbZt9W/iAMo=;
- b=eQYqQ3YfPADGuVnklkfGZ8zn5fc1Ke7BHBl6FyFpdefybbJRw2NKRRgfdiT6BGn/jlXU6U0L/
- 32RqDjGfhLxDmqi61M2ZhSnT4keDU3L/iW3teyy6fMOiOL7q/ex73wB
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+X-B4-Tracking: v=1; b=H4sIALX8+GcC/23OQQqDMBCF4atI1h1JNImxq96juEjjRANqJBFpK
+ 969Ueii0M3Av5iPt5GIwWEk12wjAVcXnZ9SiEtGTK+nDsG1qUlBC0FLVoLmoAUEjLiAlLVE8WA
+ KGSXpYw5o3fPU7k1qG/wISx9Qfw1Oa6ZoxQvGckVlBQzeOPipy9t0bnocfOdMbvx4eL2Liw+vc
+ 9zKD/X/jpUDhcRKKxVvpbE/ULPv+wcXqykJ6AAAAA==
+X-Change-ID: 20250313-a4-a5-reset-6696e5b18e10
+To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Zelong Dong <zelong.dong@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Kelvin Zhang <kelvin.zhang@amlogic.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744370870; l=1852;
+ i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
+ bh=/hQwt0vJTBvVhJE+lXTePELN6y6nrRJohz6/U3u5fL4=;
+ b=UvsI2+X25bb9TkdbcgOwYDAT2PxYzxtjSaJ6ceqVvvAPGEV/A456/DtsUkl6/nhN7WZkykTRj
+ rw5v0oVybmkDGGb3vxSf+ayfi8FBK3c45YiqTr7ouM+jZG5HCf/gata
+X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
+ pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
+X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Michael Riesch <michael.riesch@wolfvision.net>
+Add dt-binding compatibles and device nodes for Amlogic A4/A5 reset.
 
-clang-format 9 introduced the option "AlignConsecutiveMacros".
-Set it to "AcrossEmptyLinesAndComments" in order to avoid macro
-definitions of the form:
+Imported from f20240918074211.8067-1-zelong.dong@amlogic.com
 
-    #define MAGIC_REGISTER_1 0x42
-    #define MAGIC_REGISTER_BIT_FLIP BIT(2)
-    /* important comment */
-    #define MAGIC_REGISTER_BIT_ENABLE BIT(12)
+Changes in v6:
+- Rebased onto the latest v6.16/arm64-dt.
+- Link to v5: https://lore.kernel.org/r/20250320-a4-a5-reset-v5-0-296f83bf733d@amlogic.com
 
-    #define MAGIC_REGISTER_2 0x43
+Changes in v5:
+- Rebasing on top of the latest upstream changes.
+- Link to v4: https://lore.kernel.org/r/20250313-a4-a5-reset-v4-0-8076f684d6cf@amlogic.com
 
-With the option set to "AcrossEmptyLinesAndComments", they will
-be converted to
+Changes in v4:
+- Remove the superfluous 'items' in the dt-binding.
+- Rebasing due to recent upstream changes.
+- Link to v3: https://lore.kernel.org/all/20240918074211.8067-1-zelong.dong@amlogic.com/
 
-    #define MAGIC_REGISTER_1	      0x42
-    #define MAGIC_REGISTER_BIT_FLIP   BIT(2)
-    /* important comment */
-    #define MAGIC_REGISTER_BIT_ENABLE BIT(12)
+Changes in v3:
+- rebase on 'amlogic,t7-reset' patchset
+- Link to v2: https://lore.kernel.org/all/20240715051217.5286-1-zelong.dong@amlogic.com/
 
-    #define MAGIC_REGISTER_2	      0x43
+Changes in v2:
+- remove 'amlogic,t7-reset'
+- move 'amlogic,c3-reset' to the other enum list
+- move reset node from amlogic-a4-common.dtsi to
+  amlogic-a4.dtsi/amlogic-a5.dtsi
+- Link to v1: https://lore.kernel.org/all/20240703061610.37217-1-zelong.dong@amlogic.com/
 
-which seems to be the convention in the kernel code base.
-
-Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
-Reviewed-by: Nathan Chancellor <nathan@kernel.org>
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- .clang-format | 1 +
- 1 file changed, 1 insertion(+)
+Zelong Dong (3):
+      dt-bindings: reset: Add compatible for Amlogic A4/A5 Reset Controller
+      arm64: dts: amlogic: Add A4 Reset Controller
+      arm64: dts: amlogic: Add A5 Reset Controller
 
-diff --git a/.clang-format b/.clang-format
-index 8040b516185b..30d09cb88170 100644
---- a/.clang-format
-+++ b/.clang-format
-@@ -13,6 +13,7 @@ AccessModifierOffset: -4
- AlignAfterOpenBracket: Align
- AlignConsecutiveAssignments: false
- AlignConsecutiveDeclarations: false
-+AlignConsecutiveMacros: AcrossEmptyLinesAndComments
- AlignEscapedNewlines: Left
- AlignOperands: true
- AlignTrailingComments: false
+ .../bindings/reset/amlogic,meson-reset.yaml        | 22 +++--
+ arch/arm64/boot/dts/amlogic/amlogic-a4-reset.h     | 93 +++++++++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |  8 ++
+ arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h     | 95 ++++++++++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        |  8 ++
+ 5 files changed, 218 insertions(+), 8 deletions(-)
+---
+base-commit: 4bc28af2da876531e5183d25ae807e608c816d18
+change-id: 20250313-a4-a5-reset-6696e5b18e10
 
+Best regards,
 -- 
-2.39.5
+Kelvin Zhang <kelvin.zhang@amlogic.com>
 
