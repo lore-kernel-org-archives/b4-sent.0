@@ -1,12 +1,15 @@
 From: Kelvin Zhang <kelvin.zhang@amlogic.com>
-Date: Fri, 11 Apr 2025 19:27:52 +0800
-Subject: [PATCH v5 3/3] arm64: dts: amlogic: Add A5 Reset Controller
+Subject: [PATCH v6 0/3] Add support for Amlogic A4/A5 Reset
+Date: Fri, 11 Apr 2025 19:38:14 +0800
+Message-Id: <20250411-a4-a5-reset-v6-0-89963278c686@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250411-a4-a5-reset-v5-3-24812538dce6@amlogic.com>
-References: <20250411-a4-a5-reset-v5-0-24812538dce6@amlogic.com>
-In-Reply-To: <20250411-a4-a5-reset-v5-0-24812538dce6@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIACb/+GcC/23OQQqDMBCF4atI1h1JNI5pV71HcZHGiQbUlESkr
+ Xj3RqGLQjcD/2I+3soiBUeRXbKVBVpcdH5KgaeMmV5PHYFrU7OCFxUvRQlagq4gUKQZEM9I1V0
+ oEpylj0cg656HdmtS2+BHmPtA+mtIfhaK17IQIlccaxDwpsFPXd6mc9Xj4DtncuPH3etdnH14H
+ eMWuav/dywSOCQWLSrZorE/ULNt2wfGzFWx6AAAAA==
+X-Change-ID: 20250313-a4-a5-reset-6696e5b18e10
 To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -16,160 +19,64 @@ To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>,
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Zelong Dong <zelong.dong@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
  Kelvin Zhang <kelvin.zhang@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744370870; l=4039;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744371498; l=1852;
  i=kelvin.zhang@amlogic.com; s=20240329; h=from:subject:message-id;
- bh=39cgxEleCRWNGiMf9dZjnPoJH+4QSAKwm+85hqJrCUk=;
- b=CltO3QzwSAqj8Ivj7TTCBRsZLKkC09HSUhpD47XnvDaYqX5BfmaDB8Pwxt6r6iDtkpM58unBO
- odors5sfLBZAN1U96gfu18fQMPow8ROgb5hrT8NOstGCYwYwSfZPtB+
+ bh=/hQwt0vJTBvVhJE+lXTePELN6y6nrRJohz6/U3u5fL4=;
+ b=PALP2scUtWnW+Qtp1sVaMJtTsv5qeOy3hkGeox/qrj4xg4vrZcvPaP3qvh042yeZALpns1XvE
+ 2F219edsTEPBnEK4V2DrF9EU7uu/SLOP/T9PwIdGDJQV0Ck0lMRL9jv
 X-Developer-Key: i=kelvin.zhang@amlogic.com; a=ed25519;
  pk=pgnle7HTNvnNTcOoGejvtTC7BJT30HUNXfMHRRXSylI=
 X-Endpoint-Received: by B4 Relay for kelvin.zhang@amlogic.com/20240329 with auth_id=148
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Zelong Dong <zelong.dong@amlogic.com>
+Add dt-binding compatibles and device nodes for Amlogic A4/A5 reset.
 
-Add the device node and related header file for Amlogic
-A5 reset controller.
+Imported from f20240918074211.8067-1-zelong.dong@amlogic.com
 
-Signed-off-by: Zelong Dong <zelong.dong@amlogic.com>
-Link: https://lore.kernel.org/r/20240918074211.8067-4-zelong.dong@amlogic.com
-Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
-Signed-off-by: Kelvin Zhang <kelvin.zhang@amlogic.com>
+Changes in v6:
+- Rebased onto the latest v6.16/arm64-dt.
+- Link to v5: https://lore.kernel.org/r/20250320-a4-a5-reset-v5-0-296f83bf733d@amlogic.com
+
+Changes in v5:
+- Rebasing on top of the latest upstream changes.
+- Link to v4: https://lore.kernel.org/r/20250313-a4-a5-reset-v4-0-8076f684d6cf@amlogic.com
+
+Changes in v4:
+- Remove the superfluous 'items' in the dt-binding.
+- Rebasing due to recent upstream changes.
+- Link to v3: https://lore.kernel.org/all/20240918074211.8067-1-zelong.dong@amlogic.com/
+
+Changes in v3:
+- rebase on 'amlogic,t7-reset' patchset
+- Link to v2: https://lore.kernel.org/all/20240715051217.5286-1-zelong.dong@amlogic.com/
+
+Changes in v2:
+- remove 'amlogic,t7-reset'
+- move 'amlogic,c3-reset' to the other enum list
+- move reset node from amlogic-a4-common.dtsi to
+  amlogic-a4.dtsi/amlogic-a5.dtsi
+- Link to v1: https://lore.kernel.org/all/20240703061610.37217-1-zelong.dong@amlogic.com/
+
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h | 95 ++++++++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi    |  8 +++
- 2 files changed, 103 insertions(+)
+Zelong Dong (3):
+      dt-bindings: reset: Add compatible for Amlogic A4/A5 Reset Controller
+      arm64: dts: amlogic: Add A4 Reset Controller
+      arm64: dts: amlogic: Add A5 Reset Controller
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h b/arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..cdf0f515962097c606e4c53badb19df7d21606ec
---- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h
-@@ -0,0 +1,95 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
-+/*
-+ * Copyright (c) 2024 Amlogic, Inc. All rights reserved.
-+ */
-+
-+#ifndef __DTS_AMLOGIC_A5_RESET_H
-+#define __DTS_AMLOGIC_A5_RESET_H
-+
-+/* RESET0 */
-+/*						0-3 */
-+#define RESET_USB				4
-+/*						5-7 */
-+#define RESET_USBPHY20				8
-+/*						9 */
-+#define RESET_USB2DRD				10
-+/*						11-31 */
-+
-+/* RESET1 */
-+#define RESET_AUDIO				32
-+#define RESET_AUDIO_VAD				33
-+/*                                              34 */
-+#define RESET_DDR_APB				35
-+#define RESET_DDR				36
-+/*						37-40 */
-+#define RESET_DSPA_DEBUG			41
-+/*                                              42 */
-+#define RESET_DSPA				43
-+/*						44-46 */
-+#define RESET_NNA				47
-+#define RESET_ETHERNET				48
-+/*						49-63 */
-+
-+/* RESET2 */
-+#define RESET_ABUS_ARB				64
-+#define RESET_IRCTRL				65
-+/*						66 */
-+#define RESET_TS_PLL				67
-+/*						68-72 */
-+#define RESET_SPICC_0				73
-+#define RESET_SPICC_1				74
-+#define RESET_RSA				75
-+
-+/*						76-79 */
-+#define RESET_MSR_CLK				80
-+#define RESET_SPIFC				81
-+#define RESET_SAR_ADC				82
-+/*						83-90 */
-+#define RESET_WATCHDOG				91
-+/*						92-95 */
-+
-+/* RESET3 */
-+/*						96-127 */
-+
-+/* RESET4 */
-+#define RESET_RTC				128
-+/*						129-131 */
-+#define RESET_PWM_AB				132
-+#define RESET_PWM_CD				133
-+#define RESET_PWM_EF				134
-+#define RESET_PWM_GH				135
-+/*						104-105 */
-+#define RESET_UART_A				138
-+#define RESET_UART_B				139
-+#define RESET_UART_C				140
-+#define RESET_UART_D				141
-+#define RESET_UART_E				142
-+/*						143*/
-+#define RESET_I2C_S_A				144
-+#define RESET_I2C_M_A				145
-+#define RESET_I2C_M_B				146
-+#define RESET_I2C_M_C				147
-+#define RESET_I2C_M_D				148
-+/*						149-151 */
-+#define RESET_SDEMMC_A				152
-+/*						153 */
-+#define RESET_SDEMMC_C				154
-+/*						155-159*/
-+
-+/* RESET5 */
-+/*						160-175 */
-+#define RESET_BRG_AO_NIC_SYS			176
-+#define RESET_BRG_AO_NIC_DSPA			177
-+#define RESET_BRG_AO_NIC_MAIN			178
-+#define RESET_BRG_AO_NIC_AUDIO			179
-+/*						180-183 */
-+#define RESET_BRG_AO_NIC_ALL			184
-+#define RESET_BRG_NIC_NNA			185
-+#define RESET_BRG_NIC_SDIO			186
-+#define RESET_BRG_NIC_EMMC			187
-+#define RESET_BRG_NIC_DSU			188
-+#define RESET_BRG_NIC_SYSCLK			189
-+#define RESET_BRG_NIC_MAIN			190
-+#define RESET_BRG_NIC_ALL			191
-+
-+#endif
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-index 32ed1776891bc7d1befd01a76c76048631606f5a..b1da8cbaa25a1844312a23bc39eb876df3c60df5 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-@@ -4,6 +4,7 @@
-  */
- 
- #include "amlogic-a4-common.dtsi"
-+#include "amlogic-a5-reset.h"
- #include <dt-bindings/power/amlogic,a5-pwrc.h>
- / {
- 	cpus {
-@@ -50,6 +51,13 @@ pwrc: power-controller {
- };
- 
- &apb {
-+	reset: reset-controller@2000 {
-+		compatible = "amlogic,a5-reset",
-+			     "amlogic,meson-s4-reset";
-+		reg = <0x0 0x2000 0x0 0x98>;
-+		#reset-cells = <1>;
-+	};
-+
- 	gpio_intc: interrupt-controller@4080 {
- 		compatible = "amlogic,a5-gpio-intc",
- 			     "amlogic,meson-gpio-intc";
+ .../bindings/reset/amlogic,meson-reset.yaml        | 22 +++--
+ arch/arm64/boot/dts/amlogic/amlogic-a4-reset.h     | 93 +++++++++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |  8 ++
+ arch/arm64/boot/dts/amlogic/amlogic-a5-reset.h     | 95 ++++++++++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        |  8 ++
+ 5 files changed, 218 insertions(+), 8 deletions(-)
+---
+base-commit: 4bc28af2da876531e5183d25ae807e608c816d18
+change-id: 20250313-a4-a5-reset-6696e5b18e10
 
+Best regards,
 -- 
-2.37.1
+Kelvin Zhang <kelvin.zhang@amlogic.com>
 
