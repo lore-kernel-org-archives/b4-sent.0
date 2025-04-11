@@ -1,11 +1,11 @@
 From: Remi Buisson <remi.buisson@tdk.com>
-Date: Fri, 11 Apr 2025 13:28:35 +0000
-Subject: [PATCH 3/8] iio: imu: inv_icm45600: add SPI driver for
+Date: Fri, 11 Apr 2025 13:28:36 +0000
+Subject: [PATCH 4/8] iio: imu: inv_icm45600: add I3C driver for
  inv_icm45600 driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250411-add_newport_driver-v1-3-15082160b019@tdk.com>
+Message-Id: <20250411-add_newport_driver-v1-4-15082160b019@tdk.com>
 References: <20250411-add_newport_driver-v1-0-15082160b019@tdk.com>
 In-Reply-To: <20250411-add_newport_driver-v1-0-15082160b019@tdk.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -17,41 +17,41 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
  devicetree@vger.kernel.org, Remi Buisson <remi.buisson@tdk.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744378119; l=3615;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744378119; l=3115;
  i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
- bh=kqX0rbDG6+UEQFF0zrY6sK4rRJYJeEFgrhZxCbw57Rw=;
- b=AP71d1UNFHiRuw1VvbmHLzAqFCdSRmI2MGJnQlK6npqHwBzB8nj8UZ3pviuLvPVUIW93GETU1
- n3Vp53wooyrCujcPNU9kKW7wjYIx923N5q9OsRaKY/g4bhcNk9/xjvU
+ bh=AAAjeWu8beshqeqWWoKXRzNOSHP5dILEmgEVvq21vZs=;
+ b=r+DS/JcwPXMldmQvkfrQqwevn33FPPQWPoCJ9dxNeZC4oh0TXQdbl6GSrNwftU362KezarD96
+ 389/OVBFAghCZCTmFEG3knzFzmwyYg/vkwzuoWCF7gtVTyyUxwGZTkC
 X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
  pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
 X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add SPI driver for InvenSense ICM-456xxx devices.
+Add I3C driver for InvenSense ICM-456xxx devices.
 
 Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
- drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c | 110 ++++++++++++++++++++++++
- 1 file changed, 110 insertions(+)
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c | 84 +++++++++++++++++++++++++
+ 1 file changed, 84 insertions(+)
 
-diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..fba0953343aaf9a6009a740d3a6e6446b5bea53f
+index 0000000000000000000000000000000000000000..da939a5da5da88cbbb4a41edd90deae950cb9760
 --- /dev/null
-+++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c
-@@ -0,0 +1,110 @@
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c
+@@ -0,0 +1,84 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * Copyright (C) 2025 InvenSense, Inc.
 + */
 +
-+#include <linux/device.h>
++#include <linux/i3c/device.h>
++#include <linux/i3c/master.h>
 +#include <linux/kernel.h>
-+#include <linux/module.h>
 +#include <linux/mod_devicetable.h>
-+#include <linux/property.h>
++#include <linux/module.h>
 +#include <linux/regmap.h>
-+#include <linux/spi/spi.h>
++#include <linux/slab.h>
 +
 +#include "inv_icm45600.h"
 +
@@ -60,94 +60,68 @@ index 0000000000000000000000000000000000000000..fba0953343aaf9a6009a740d3a6e6446
 +	.val_bits = 8,
 +};
 +
-+static int inv_icm45600_spi_bus_setup(struct inv_icm45600_state *st)
-+{
-+	/* set slew rates for SPI */
-+	return regmap_update_bits(st->map, INV_ICM45600_REG_DRIVE_CONFIG0,
-+				INV_ICM45600_DRIVE_CONFIG0_SPI_MASK,
-+				INV_ICM45600_SPI_SLEW_RATE_5NS);
-+}
++static const struct i3c_device_id inv_icm45600_i3c_ids[] = {
++	I3C_DEVICE_EXTRA_INFO(0x0235, 0x0000, 0x0011, (void *)NULL),
++	I3C_DEVICE_EXTRA_INFO(0x0235, 0x0000, 0x0084, (void *)NULL),
++	{ /* sentinel */ },
++};
++MODULE_DEVICE_TABLE(i3c, inv_icm45600_i3c_ids);
 +
-+static int inv_icm45600_probe(struct spi_device *spi)
++static const uint8_t inv_icm45600_i3c_code[INV_CHIP_NB] = {
++	[INV_CHIP_ICM45605] = INV_ICM45600_WHOAMI_ICM45605,
++	[INV_CHIP_ICM45686] = INV_ICM45600_WHOAMI_ICM45686,
++	[INV_CHIP_ICM45688P] = INV_ICM45600_WHOAMI_ICM45688P,
++	[INV_CHIP_ICM45608] = INV_ICM45600_WHOAMI_ICM45608,
++	[INV_CHIP_ICM45634] = INV_ICM45600_WHOAMI_ICM45634,
++	[INV_CHIP_ICM45689] = INV_ICM45600_WHOAMI_ICM45689,
++	[INV_CHIP_ICM45606] = INV_ICM45600_WHOAMI_ICM45606,
++	[INV_CHIP_ICM45687] = INV_ICM45600_WHOAMI_ICM45687
++};
++
++static int inv_icm45600_i3c_probe(struct i3c_device *i3cdev)
 +{
-+	const void *match;
++	int ret;
++	unsigned int whoami;
 +	enum inv_icm45600_chip chip;
 +	struct regmap *regmap;
 +
-+	match = device_get_match_data(&spi->dev);
-+	if (!match)
-+		return -EINVAL;
-+	chip = (uintptr_t)match;
-+
-+	/* use SPI specific regmap */
-+	regmap = devm_regmap_init_spi(spi, &inv_icm45600_regmap_config);
-+	if (IS_ERR(regmap))
++	regmap = devm_regmap_init_i3c(i3cdev, &inv_icm45600_regmap_config);
++	if (IS_ERR(regmap)) {
++		dev_err(&i3cdev->dev, "Failed to register i3c regmap %ld\n", PTR_ERR(regmap));
 +		return PTR_ERR(regmap);
++	}
 +
-+	return inv_icm45600_core_probe(regmap, chip, true,
-+				       inv_icm45600_spi_bus_setup);
++	ret = regmap_read(regmap, INV_ICM45600_REG_WHOAMI, &whoami);
++	if (ret) {
++		dev_err(&i3cdev->dev, "Failed to read part id %d\n", whoami);
++		return ret;
++	}
++
++	for (chip = INV_CHIP_ICM45605; chip < INV_CHIP_NB; chip++) {
++		if (whoami == inv_icm45600_i3c_code[chip])
++			break;
++	}
++
++	if (chip == INV_CHIP_NB) {
++		dev_err(&i3cdev->dev, "Failed to match part id %d\n", whoami);
++		return -ENODEV;
++	}
++
++	return inv_icm45600_core_probe(regmap, chip, false, NULL);
 +}
 +
-+/*
-+ * device id table is used to identify what device can be
-+ * supported by this driver
-+ */
-+static const struct spi_device_id inv_icm45600_id[] = {
-+	{ "icm45605", INV_CHIP_ICM45605 },
-+	{ "icm45686", INV_CHIP_ICM45686 },
-+	{ "icm45688p", INV_CHIP_ICM45688P },
-+	{ "icm45608", INV_CHIP_ICM45608 },
-+	{ "icm45634", INV_CHIP_ICM45634 },
-+	{ "icm45689", INV_CHIP_ICM45689 },
-+	{ "icm45606", INV_CHIP_ICM45606 },
-+	{ "icm45687", INV_CHIP_ICM45687 },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(spi, inv_icm45600_id);
-+
-+static const struct of_device_id inv_icm45600_of_matches[] = {
-+	{
-+		.compatible = "invensense,icm45605",
-+		.data = (void *)INV_CHIP_ICM45605,
-+	}, {
-+		.compatible = "invensense,icm45686",
-+		.data = (void *)INV_CHIP_ICM45686,
-+	}, {
-+		.compatible = "invensense,icm45688p",
-+		.data = (void *)INV_CHIP_ICM45688P,
-+	}, {
-+		.compatible = "invensense,icm45608",
-+		.data = (void *)INV_CHIP_ICM45608,
-+	}, {
-+		.compatible = "invensense,icm45634",
-+		.data = (void *)INV_CHIP_ICM45634,
-+	}, {
-+		.compatible = "invensense,icm45689",
-+		.data = (void *)INV_CHIP_ICM45689,
-+	}, {
-+		.compatible = "invensense,icm45606",
-+		.data = (void *)INV_CHIP_ICM45606,
-+	}, {
-+		.compatible = "invensense,icm45687",
-+		.data = (void *)INV_CHIP_ICM45687,
-+	},
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, inv_icm45600_of_matches);
-+
-+static struct spi_driver inv_icm45600_driver = {
++static struct i3c_driver inv_icm45600_driver = {
 +	.driver = {
-+		.name = "inv-icm45600-spi",
-+		.of_match_table = inv_icm45600_of_matches,
-+		.pm = pm_ptr(&inv_icm45600_pm_ops),
++		.name = "inv_icm45600_i3c",
++		.pm = pm_sleep_ptr(&inv_icm45600_pm_ops),
 +	},
-+	.id_table = inv_icm45600_id,
-+	.probe = inv_icm45600_probe,
++	.probe = inv_icm45600_i3c_probe,
++	.id_table = inv_icm45600_i3c_ids,
 +};
-+module_spi_driver(inv_icm45600_driver);
++module_i3c_driver(inv_icm45600_driver);
 +
-+MODULE_AUTHOR("InvenSense, Inc.");
-+MODULE_DESCRIPTION("InvenSense ICM-456xx SPI driver");
++MODULE_AUTHOR("Remi Buisson <remi.buisson@tdk.com>");
++MODULE_DESCRIPTION("InvenSense ICM-456xx i3c driver");
 +MODULE_LICENSE("GPL");
 +MODULE_IMPORT_NS("IIO_ICM45600");
 
