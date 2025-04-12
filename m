@@ -1,316 +1,171 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sat, 12 Apr 2025 15:16:05 +0200
-Subject: [PATCH v5 4/4] dt-bindings: memory-controllers: Convert fsl,elbc
- to YAML
+Date: Sat, 12 Apr 2025 15:55:38 +0200
+Subject: [PATCH v4] dt-bindings: powerpc: Add Freescale/NXP MPC83xx SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250412-ppcyaml-elbc-v5-4-03f0e577139f@posteo.net>
-References: <20250412-ppcyaml-elbc-v5-0-03f0e577139f@posteo.net>
-In-Reply-To: <20250412-ppcyaml-elbc-v5-0-03f0e577139f@posteo.net>
-To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Miquel Raynal <miquel.raynal@bootlin.com>, 
- Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, Crystal Wood <oss@buserror.net>, 
+Message-Id: <20250412-ppcyaml-soc-v4-1-bd34f4613d31@posteo.net>
+X-B4-Tracking: v=1; b=H4sIANlw+mcC/23MSw7CIBSF4a00dyyGRzXUUfdhOqDXiyXRQoAQm
+ 4a9ix07/E9yvh0SRUcJbt0OkYpLzq8t+lMHuJj1Scw9WoPk8sKl5CwE3Mz7xZJHhoaEFT1apQd
+ ojxDJus+h3afWi0vZx+3Ai/qt/52imGCzxkGbq5hRmDH4lMmfV8ow1Vq/F6KQAacAAAA=
+X-Change-ID: 20250220-ppcyaml-soc-cae1f14cf389
+To: Scott Wood <oss@buserror.net>, 
  Madhavan Srinivasan <maddy@linux.ibm.com>, 
  Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
  Christophe Leroy <christophe.leroy@csgroup.eu>, 
- Naveen N Rao <naveen@kernel.org>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>
-Cc: Frank Li <Frank.Li@nxp.com>, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-mtd@lists.infradead.org, 
- linuxppc-dev@lists.ozlabs.org, dri-devel@lists.freedesktop.org, 
+ Naveen N Rao <naveen@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linuxppc-dev@lists.ozlabs.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744463772; l=9297;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744466978; l=4043;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=x6nGrqs6VM0yQmH2zllPJ1GAbrECSG8dXA1TtNTrcHY=;
- b=hg2aoNhvqxqi85PQ7vbKOSMOmWuEXgqqh4fFGs8hhOXrhXoDbt6Csr5dSX+Zs2hLa8V47Ay0I
- VJ+I4HyK743AfAUhbCVkzJLtohurN87EUq5CBCguVXr3f7k6b10zfIu
+ bh=6plfv1l6lzxqkUoN3xWxPFcjS2rxaHYhhOY/zeHTkAc=;
+ b=lb4ghCUhlUAhV9xnysDHjXOBUe4iE8OSsf2qv12XoN8Ph2gJR6gadDhcf5HTp1+pXe9+oWbN7
+ kvkZJId0swnCiKK7IFm5AP7jtsTrexZZPorHMEM8EHVpYObW2vLUXIO
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert the Freescale localbus controller bindings from text form to
-YAML. Compared to the .txt version, the YAML binding contains a new
-usage example with FCM NAND flash, and a full list of compatible strings
-based on current usage in arch/powerpc/boot/dts/.
+Add a new binding for MPC83xx platforms, describing the board compatible
+strings used in currently existing device trees.
 
-Note that the both the compatible strings and the unit address format
-are kept as-is, for compatibility with existing kernels and device
-trees, as well as unit address readability. This results in dts
-validation warnings:
+Note that the SoC bus is called immr@... in many existing devicetrees,
+but this contradicts the simple-bus binding.
 
-  Warning (simple_bus_reg): /example-0/localbus@f0010100/board-control@1,0:
-  simple-bus unit address format error, expected "100000000"
-
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-
-V5:
-- fix reference to fsl/lbc.txt in
-  Documentation/devicetree/bindings/display/ssd1289fb.txt
+Changes in v4:
+- Rebase on v6.15-rc1
+- Link to v3: https://lore.kernel.org/r/20250220-ppcyaml-soc-v3-1-b8c98a61bc1a@posteo.net
+---
 
 V4:
-- no changes
+- Try to list all existing compatible strings for MPC83xx boards
 
 V3:
-- move this patch after the GPCM/FCM patches to dtschema/dtc warnings
-  due to missing bindings for fsl,elbc-gpcm-uio and fsl,elbc-fcm-nand
-- add "simple-bus" again, for compatibility with existing DTs/drivers
-  based on discussion with Crystal Wood and Rob Herring
-- fix fsl,pq2-localbus compatible properties based on mgcoge.dts / ep8248e.dts
-  (was missing "simple-bus")
-- add board-control (bcsr) example again, now using the compatible
-  string listed in Documentation/devicetree/bindings/board/fsl,bcsr.yaml
-- remove interrupt-parent property from example
-- rework the commit message
+- split out as a single patch
+- otherwise no changes
 
 V2:
-- fix order of properties in examples, according to dts coding style
-- move to Documentation/devicetree/bindings/memory-controllers
-- clarify the commit message a tiny bit
-- remove unnecessary multiline markers (|)
-- define address format in patternProperties
-- trim subject line (remove "binding")
-- remove use of "simple-bus", because it's technically incorrect
+- part of series [PATCH v2 00/12] YAML conversion of several Freescale/PowerPC DT bindings
+  Link: https://lore.kernel.org/lkml/20250207-ppcyaml-v2-1-8137b0c42526@posteo.net/
+- trim subject line
+- fix property order to comply with dts coding style
+- add Rob Herrings's R-b tag
 ---
- .../devicetree/bindings/display/ssd1289fb.txt      |   2 +-
- .../bindings/memory-controllers/fsl,elbc.yaml      | 158 +++++++++++++++++++++
- .../devicetree/bindings/powerpc/fsl/lbc.txt        |  43 ------
- 3 files changed, 159 insertions(+), 44 deletions(-)
+ .../bindings/powerpc/fsl/fsl,mpc83xx.yaml          | 93 ++++++++++++++++++++++
+ 1 file changed, 93 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/display/ssd1289fb.txt b/Documentation/devicetree/bindings/display/ssd1289fb.txt
-index 4fcd5e68cb6e005927f87c0c36d843de640de525..8cb59359352c6834aff73771ba2e12d0e4563ded 100644
---- a/Documentation/devicetree/bindings/display/ssd1289fb.txt
-+++ b/Documentation/devicetree/bindings/display/ssd1289fb.txt
-@@ -4,7 +4,7 @@ Required properties:
-   - compatible: Should be "solomon,ssd1289fb". The only supported bus for
-     now is lbc.
-   - reg: Should contain address of the controller on the LBC bus. The detail
--    was described in Documentation/devicetree/bindings/powerpc/fsl/lbc.txt
-+    was described in Documentation/devicetree/bindings/memory-controllers/fsl,elbc.yaml
- 
- Examples:
- display@2,0 {
-diff --git a/Documentation/devicetree/bindings/memory-controllers/fsl,elbc.yaml b/Documentation/devicetree/bindings/memory-controllers/fsl,elbc.yaml
+diff --git a/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml b/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml
 new file mode 100644
-index 0000000000000000000000000000000000000000..620d7e7c62df35c754a01498391d35ede03cdf87
+index 0000000000000000000000000000000000000000..9e37d155c5829a652d1e4e59536b6586a58d530e
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/memory-controllers/fsl,elbc.yaml
-@@ -0,0 +1,158 @@
++++ b/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml
+@@ -0,0 +1,93 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/memory-controllers/fsl,elbc.yaml#
++$id: http://devicetree.org/schemas/powerpc/fsl/fsl,mpc83xx.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Freescale Enhanced Local Bus Controller
++title: Freescale PowerQUICC II Pro (MPC83xx) platforms
 +
 +maintainers:
 +  - J. Neuschäfer <j.ne@posteo.net>
 +
 +properties:
 +  $nodename:
-+    pattern: "^localbus@[0-9a-f]+$"
-+
++    const: '/'
 +  compatible:
 +    oneOf:
-+      - items:
++      - description: MPC83xx Reference Design Boards
++        items:
 +          - enum:
-+              - fsl,mpc8313-elbc
-+              - fsl,mpc8315-elbc
-+              - fsl,mpc8377-elbc
-+              - fsl,mpc8378-elbc
-+              - fsl,mpc8379-elbc
-+              - fsl,mpc8536-elbc
-+              - fsl,mpc8569-elbc
-+              - fsl,mpc8572-elbc
-+              - fsl,p1020-elbc
-+              - fsl,p1021-elbc
-+              - fsl,p1023-elbc
-+              - fsl,p2020-elbc
-+              - fsl,p2041-elbc
-+              - fsl,p3041-elbc
-+              - fsl,p4080-elbc
-+              - fsl,p5020-elbc
-+              - fsl,p5040-elbc
-+          - const: fsl,elbc
-+          - const: simple-bus
++              - fsl,mpc8308rdb
++              - fsl,mpc8315erdb
++              - fsl,mpc8360rdk
++              - fsl,mpc8377rdb
++              - fsl,mpc8377wlan
++              - fsl,mpc8378rdb
++              - fsl,mpc8379rdb
 +
-+      - items:
++      - description: MPC8313E Reference Design Board
++        items:
++          - const: MPC8313ERDB
++          - const: MPC831xRDB
++          - const: MPC83xxRDB
++
++      - description: MPC8323E Reference Design Board
++        items:
++          - const: MPC8323ERDB
++          - const: MPC832xRDB
++          - const: MPC83xxRDB
++
++      - description: MPC8349E-mITX(-GP) Reference Design Platform
++        items:
 +          - enum:
-+              - fsl,mpc8247-localbus
-+              - fsl,mpc8248-localbus
-+              - fsl,mpc8272-localbus
-+          - const: fsl,pq2-localbus
-+          - const: simple-bus
++              - MPC8349EMITX
++              - MPC8349EMITXGP
++          - const: MPC834xMITX
++          - const: MPC83xxMITX
 +
-+      - items:
-+          - enum:
-+              - fsl,mpc8247-localbus
-+              - fsl,mpc8248-localbus
-+              - fsl,mpc8360-localbus
-+          - const: fsl,pq2pro-localbus
-+          - const: simple-bus
++      - description: Keymile KMETER1 board
++        const: keymile,KMETER1
 +
-+      - items:
-+          - enum:
-+              - fsl,mpc8540-localbus
-+              - fsl,mpc8544-lbc
-+              - fsl,mpc8544-localbus
-+              - fsl,mpc8548-lbc
-+              - fsl,mpc8548-localbus
-+              - fsl,mpc8560-localbus
-+              - fsl,mpc8568-localbus
-+          - const: fsl,pq3-localbus
-+          - const: simple-bus
-+
-+  reg:
-+    maxItems: 1
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  "#address-cells":
-+    enum: [2, 3]
-+    description:
-+      The first cell is the chipselect number, and the remaining cells are the
-+      offset into the chipselect.
-+
-+  "#size-cells":
-+    enum: [1, 2]
-+    description:
-+      Either one or two, depending on how large each chipselect can be.
-+
-+  ranges:
-+    description:
-+      Each range corresponds to a single chipselect, and covers the entire
-+      access window as configured.
++      - description: MPC8308 P1M board
++        const: denx,mpc8308_p1m
 +
 +patternProperties:
-+  # format: name@chipselect,address
-+  "^.*@[0-9a-f]+,[0-9a-f]+$":
++  "^soc@.*$":
 +    type: object
++    properties:
++      compatible:
++        oneOf:
++          - items:
++              - enum:
++                  - fsl,mpc8315-immr
++                  - fsl,mpc8308-immr
++              - const: simple-bus
++          - items:
++              - const: fsl,mpc8360-immr
++              - const: fsl,immr
++              - const: fsl,soc
++              - const: simple-bus
++          - const: simple-bus
 +
-+additionalProperties: false
++additionalProperties: true
 +
 +examples:
 +  - |
-+    localbus@f0010100 {
-+        compatible = "fsl,mpc8272-localbus",
-+                     "fsl,pq2-localbus",
-+                     "simple-bus";
-+        reg = <0xf0010100 0x40>;
-+        ranges = <0x0 0x0 0xfe000000 0x02000000
-+                  0x1 0x0 0xf4500000 0x00008000
-+                  0x2 0x0 0xfd810000 0x00010000>;
-+        #address-cells = <2>;
++    / {
++        compatible = "fsl,mpc8315erdb";
++        model = "MPC8315E-RDB";
++        #address-cells = <1>;
 +        #size-cells = <1>;
 +
-+        flash@0,0 {
-+            compatible = "jedec-flash";
-+            reg = <0x0 0x0 0x2000000>;
-+            bank-width = <4>;
-+            device-width = <1>;
-+        };
-+
-+        board-control@1,0 {
-+            reg = <0x1 0x0 0x20>;
-+            compatible = "fsl,mpc8360mds-bcsr";
-+        };
-+
-+        simple-periph@2,0 {
-+            compatible = "fsl,elbc-gpcm-uio";
-+            reg = <0x2 0x0 0x10000>;
-+            elbc-gpcm-br = <0xfd810800>;
-+            elbc-gpcm-or = <0xffff09f7>;
++        soc@e0000000 {
++            compatible = "fsl,mpc8315-immr", "simple-bus";
++            reg = <0xe0000000 0x00000200>;
++            #address-cells = <1>;
++            #size-cells = <1>;
++            device_type = "soc";
++            ranges = <0 0xe0000000 0x00100000>;
++            bus-frequency = <0>;
 +        };
 +    };
 +
-+  - |
-+    localbus@e0005000 {
-+        compatible = "fsl,mpc8315-elbc", "fsl,elbc", "simple-bus";
-+        reg = <0xe0005000 0x1000>;
-+        ranges = <0x0 0x0 0xfe000000 0x00800000
-+                  0x1 0x0 0xe0600000 0x00002000
-+                  0x2 0x0 0xf0000000 0x00020000
-+                  0x3 0x0 0xfa000000 0x00008000>;
-+        #address-cells = <2>;
-+        #size-cells = <1>;
-+        interrupts = <77 0x8>;
-+
-+        flash@0,0 {
-+            compatible = "cfi-flash";
-+            reg = <0x0 0x0 0x800000>;
-+            #address-cells = <1>;
-+            #size-cells = <1>;
-+            bank-width = <2>;
-+            device-width = <1>;
-+        };
-+
-+        nand@1,0 {
-+            compatible = "fsl,mpc8315-fcm-nand",
-+                         "fsl,elbc-fcm-nand";
-+            reg = <0x1 0x0 0x2000>;
-+            #address-cells = <1>;
-+            #size-cells = <1>;
-+        };
-+    };
-diff --git a/Documentation/devicetree/bindings/powerpc/fsl/lbc.txt b/Documentation/devicetree/bindings/powerpc/fsl/lbc.txt
-deleted file mode 100644
-index 1c80fcedebb52049721fbd61c4dd4c57133bd47c..0000000000000000000000000000000000000000
---- a/Documentation/devicetree/bindings/powerpc/fsl/lbc.txt
-+++ /dev/null
-@@ -1,43 +0,0 @@
--* Chipselect/Local Bus
--
--Properties:
--- name : Should be localbus
--- #address-cells : Should be either two or three.  The first cell is the
--                   chipselect number, and the remaining cells are the
--                   offset into the chipselect.
--- #size-cells : Either one or two, depending on how large each chipselect
--                can be.
--- ranges : Each range corresponds to a single chipselect, and cover
--           the entire access window as configured.
--
--Example:
--	localbus@f0010100 {
--		compatible = "fsl,mpc8272-localbus",
--			   "fsl,pq2-localbus";
--		#address-cells = <2>;
--		#size-cells = <1>;
--		reg = <0xf0010100 0x40>;
--
--		ranges = <0x0 0x0 0xfe000000 0x02000000
--			  0x1 0x0 0xf4500000 0x00008000
--			  0x2 0x0 0xfd810000 0x00010000>;
--
--		flash@0,0 {
--			compatible = "jedec-flash";
--			reg = <0x0 0x0 0x2000000>;
--			bank-width = <4>;
--			device-width = <1>;
--		};
--
--		board-control@1,0 {
--			reg = <0x1 0x0 0x20>;
--			compatible = "fsl,mpc8272ads-bcsr";
--		};
--
--		simple-periph@2,0 {
--			compatible = "fsl,elbc-gpcm-uio";
--			reg = <0x2 0x0 0x10000>;
--			elbc-gpcm-br = <0xfd810800>;
--			elbc-gpcm-or = <0xffff09f7>;
--		};
--	};
++...
 
+---
+base-commit: 0af2f6be1b4281385b618cb86ad946eded089ac8
+change-id: 20250220-ppcyaml-soc-cae1f14cf389
+
+Best regards,
 -- 
-2.48.0.rc1.219.gb6b6757d772
+J. Neuschäfer <j.ne@posteo.net>
 
