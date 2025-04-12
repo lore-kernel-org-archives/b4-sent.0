@@ -1,61 +1,73 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sat, 12 Apr 2025 15:01:13 +0200
-Subject: [PATCH v2] powerpc/microwatt: Fix model property in device tree
+Date: Sat, 12 Apr 2025 15:04:32 +0200
+Subject: [PATCH v2] dt-bindings: leds: Allow differently named multicolor
+ leds
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250412-microwatt-v2-1-b7b9e376c8c1@posteo.net>
-X-B4-Tracking: v=1; b=H4sIABhk+mcC/23MQQ7CIBCF4as0sxZTJhKpK+9hukAY7CyEBghqG
- u4udu3yf3n5NsiUmDJchg0SVc4cQw88DGAXEx4k2PUGHPEkEZV4sk3xZUoRbkKlpZ6M9wr6f03
- k+b1bt7n3wrnE9NnpKn/rP6VKIYWm8Sy99Rbv7rrGXCgeAxWYW2tf39K/ZaMAAAA=
-X-Change-ID: 20241225-microwatt-d9258189aff5
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Michael Ellerman <mpe@ellerman.id.au>, 
- Nicholas Piggin <npiggin@gmail.com>, 
- Christophe Leroy <christophe.leroy@csgroup.eu>, 
- Naveen N Rao <naveen@kernel.org>, Madhavan Srinivasan <maddy@linux.ibm.com>
-Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+Message-Id: <20250412-multi-led-v2-1-56af86908744@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAN9k+mcC/23MQQrDIBCF4auEWdeiA1LsqvcoWUSdNAOpBrXSE
+ rx7bdZd/o/Ht0OmxJThOuyQqHLmGHrgaQC3TOFBgn1vQIlaojTi+VoLi5W8MMYoQqktzR76f0s
+ 08/uw7mPvhXOJ6XPQVf3Wf0pVQgk9kXXOevT2cttiLhTPgQqMrbUvPNjQD6MAAAA=
+X-Change-ID: 20250209-multi-led-9991e205befd
+To: Pavel Machek <pavel@ucw.cz>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andrew Davis <afd@ti.com>, 
+ Pavel Machek <pavel@kernel.org>
+Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744462874; l=989;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744463086; l=1614;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=0awhdLFMY97nl4C5F/YShrc0qAsdI3niSehOCyjeP30=;
- b=AJkLGPu4bDJCFRhuQWdrlPSic38AcE1x0aY+UH23rpWQcoqHRfkEj6FCMSdS6585Bjj7pH5cT
- 2qV5bNEKZvjCb6/y0cJzatYQP4hTneRSNHX6f7+oTuY3kw6DlTxvqR2
+ bh=a7MVW7lJ84PcK32/7G3ucUp7YIndCA/M048QSEAkvoA=;
+ b=zq7jcq7nd/DWtjq3QNRNbNkPq+8Cpldi//o2EfFdnuzk/jWfS9b4gQM91iSibxLnntRxLBri0
+ gY+s92S2WluAzm0JVz3NuHogrRGZqWd9Kp5xv99Pby9mXchLd65lnPw
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The standard property for the model name is called "model".
+In some cases, for example when using multiple instances of
+leds-group-multicolor, a board may have multiple multi-leds which can't
+be distinguished by unit address. In such cases it should be possible to
+name them differently, for example multi-led-a and multi-led-b. This
+patch adds another node name pattern to leds-class-multicolor.yaml to
+allow such names.
 
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-Changes in v2:
-- Rebase on v6.15-rc1 (no changes except line numbers)
-- Link to v1: https://lore.kernel.org/r/20241225-microwatt-v1-1-8e071fcfc2bd@posteo.net
----
- arch/powerpc/boot/dts/microwatt.dts | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+V2:
+- Add Krzysztof's review tag
+- mention leds-group-multicolor in the commit message
+- rebase on 6.15-rc1
 
-diff --git a/arch/powerpc/boot/dts/microwatt.dts b/arch/powerpc/boot/dts/microwatt.dts
-index c4e4d2a9b4606a689e3f9eefd1ca5bcf1aa3395f..b7eac4e56019eaa84d8afe70c639f2112defdd7d 100644
---- a/arch/powerpc/boot/dts/microwatt.dts
-+++ b/arch/powerpc/boot/dts/microwatt.dts
-@@ -4,7 +4,7 @@
- / {
- 	#size-cells = <0x02>;
- 	#address-cells = <0x02>;
--	model-name = "microwatt";
-+	model = "microwatt";
- 	compatible = "microwatt-soc";
+Link to v1: https://lore.kernel.org/r/20250209-multi-led-v1-1-5aebccbd2db7@posteo.net
+---
+ Documentation/devicetree/bindings/leds/leds-class-multicolor.yaml | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/leds/leds-class-multicolor.yaml b/Documentation/devicetree/bindings/leds/leds-class-multicolor.yaml
+index bb40bb9e036ee00e06d21e2321ecd5a7d471c408..c22af25b6430be71300c0e37f696cd61112ea190 100644
+--- a/Documentation/devicetree/bindings/leds/leds-class-multicolor.yaml
++++ b/Documentation/devicetree/bindings/leds/leds-class-multicolor.yaml
+@@ -21,7 +21,9 @@ description: |
  
- 	aliases {
+ properties:
+   $nodename:
+-    pattern: "^multi-led(@[0-9a-f])?$"
++    oneOf:
++      - pattern: "^multi-led(@[0-9a-f])?$"
++      - pattern: "^multi-led-.*$"
+ 
+   color:
+     description: |
 
 ---
 base-commit: 0af2f6be1b4281385b618cb86ad946eded089ac8
-change-id: 20241225-microwatt-d9258189aff5
+change-id: 20250209-multi-led-9991e205befd
 
 Best regards,
 -- 
