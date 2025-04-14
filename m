@@ -1,214 +1,63 @@
-From: Keke Li <keke.li@amlogic.com>
-Date: Mon, 14 Apr 2025 15:35:23 +0800
-Subject: [PATCH v8 10/10] Documentation: media: add documentation file
- c3-isp.rst
+From: Chuan Liu <chuan.liu@amlogic.com>
+Subject: [PATCH v2 0/7] soc: amlogic: clk-measure: Add clk-measure support
+ for C3 and S4
+Date: Mon, 14 Apr 2025 18:12:27 +0800
+Message-Id: <20250414-clk-measure-v2-0-65077690053a@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250414-c3isp-v8-10-9f89e537494e@amlogic.com>
-References: <20250414-c3isp-v8-0-9f89e537494e@amlogic.com>
-In-Reply-To: <20250414-c3isp-v8-0-9f89e537494e@amlogic.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAIvf/GcC/23MQQ7CIBCF4as0sxYDtEXblfcwXVAY24mlGFCia
+ bi72LXL/yXv2yBiIIzQVxsETBTJryXkoQIz63VCRrY0SC5b3gjBzHJnDnV8BWS2rk2rRyWV6qA
+ 8HgFv9N6161B6pvj04bPjSfzW/04SjDMzNkqfzpaLTl+0W/xE5mi8gyHn/AVxRZfkqAAAAA==
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, kieran.bingham@ideasonboard.com, 
- laurent.pinchart@ideasonboard.com, dan.scally@ideasonboard.com, 
- jacopo.mondi@ideasonboard.com, Keke Li <keke.li@amlogic.com>
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Chuan Liu <chuan.liu@amlogic.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744616122; l=8134;
- i=keke.li@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=UxoAJSWWfek9y/D6SgG92IAyywe1fpst/ujPPpDofIw=;
- b=VNPYvOOEDTrYwlrB3KrsbDiQ624Mt0B0V1s5WrhgRoY7jkrDYTU7QAhPkTfjYU00QEphLZV8p
- cvPr4Gg/gHvCbZ8GHjIaSHxYeRrip+X/fLz+FL9hX34IMCxhsOJb6Uz
-X-Developer-Key: i=keke.li@amlogic.com; a=ed25519;
- pk=XxNPTsQ0YqMJLLekV456eoKV5gbSlxnViB1k1DhfRmU=
-X-Endpoint-Received: by B4 Relay for keke.li@amlogic.com/20240902 with auth_id=204
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744625573; l=1253;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=8/5+Mwb/Pk1qbvhX1PLg4XvpKaWqdiHo6PVGtnDXOBg=;
+ b=ZH0NEy35W5gs/Tu2051Lyxrw35300elFLKMkQjYgn1ytG5I5ExkRe0Ac/OHwoZohJ3lnXRu65
+ XNKR6HG9AfuASs6Z2IWOLeUazeEMbq6wNKIRYHw59Rdgr+/tk2OucSD
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the file 'c3-isp.rst' that documents the c3-isp driver.
+Add clk-measure support for C3/S4 SoCs.
 
-Signed-off-by: Keke Li <keke.li@amlogic.com>
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- Documentation/admin-guide/media/c3-isp.dot      |  26 ++++++
- Documentation/admin-guide/media/c3-isp.rst      | 109 ++++++++++++++++++++++++
- Documentation/admin-guide/media/v4l-drivers.rst |   1 +
- MAINTAINERS                                     |   2 +
- 4 files changed, 138 insertions(+)
+Changes in v2:
+- 1 Rename the clk-measure register.
+- 2 Remove unused registers.
+- 3 Share reg_offset across multiple chips.
+- Link to v1: https://lore.kernel.org/r/20250411-clk-measure-v1-0-cb46a78d019a@amlogic.com
 
-diff --git a/Documentation/admin-guide/media/c3-isp.dot b/Documentation/admin-guide/media/c3-isp.dot
-new file mode 100644
-index 000000000000..42dc931ee84a
---- /dev/null
-+++ b/Documentation/admin-guide/media/c3-isp.dot
-@@ -0,0 +1,26 @@
-+digraph board {
-+	rankdir=TB
-+	n00000001 [label="{{<port0> 0 | <port1> 1} | c3-isp-core\n/dev/v4l-subdev0 | {<port2> 2 | <port3> 3 | <port4> 4 | <port5> 5}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000001:port3 -> n00000008:port0
-+	n00000001:port4 -> n0000000b:port0
-+	n00000001:port5 -> n0000000e:port0
-+	n00000001:port2 -> n00000027
-+	n00000008 [label="{{<port0> 0} | c3-isp-resizer0\n/dev/v4l-subdev1 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000008:port1 -> n00000016 [style=bold]
-+	n0000000b [label="{{<port0> 0} | c3-isp-resizer1\n/dev/v4l-subdev2 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000000b:port1 -> n0000001a [style=bold]
-+	n0000000e [label="{{<port0> 0} | c3-isp-resizer2\n/dev/v4l-subdev3 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000000e:port1 -> n00000023 [style=bold]
-+	n00000011 [label="{{<port0> 0} | c3-mipi-adapter\n/dev/v4l-subdev4 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000011:port1 -> n00000001:port0 [style=bold]
-+	n00000016 [label="c3-isp-cap0\n/dev/video0", shape=box, style=filled, fillcolor=yellow]
-+	n0000001a [label="c3-isp-cap1\n/dev/video1", shape=box, style=filled, fillcolor=yellow]
-+	n0000001e [label="{{<port0> 0} | c3-mipi-csi2\n/dev/v4l-subdev5 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000001e:port1 -> n00000011:port0 [style=bold]
-+	n00000023 [label="c3-isp-cap2\n/dev/video2", shape=box, style=filled, fillcolor=yellow]
-+	n00000027 [label="c3-isp-stats\n/dev/video3", shape=box, style=filled, fillcolor=yellow]
-+	n0000002b [label="c3-isp-params\n/dev/video4", shape=box, style=filled, fillcolor=yellow]
-+	n0000002b -> n00000001:port1
-+	n0000003f [label="{{} | imx290 2-001a\n/dev/v4l-subdev6 | {<port0> 0}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000003f:port0 -> n0000001e:port0 [style=bold]
-+}
-diff --git a/Documentation/admin-guide/media/c3-isp.rst b/Documentation/admin-guide/media/c3-isp.rst
-new file mode 100644
-index 000000000000..8adac4605a6a
---- /dev/null
-+++ b/Documentation/admin-guide/media/c3-isp.rst
-@@ -0,0 +1,109 @@
-+.. SPDX-License-Identifier: (GPL-2.0-only OR MIT)
-+
-+.. include:: <isonum.txt>
-+
-+=================================================
-+Amlogic C3 Image Signal Processing (C3ISP) driver
-+=================================================
-+
-+Introduction
-+============
-+
-+This file documents the Amlogic C3ISP driver located under
-+drivers/media/platform/amlogic/c3/isp.
-+
-+The current version of the driver supports the C3ISP found on
-+Amlogic C308L processor.
-+
-+The driver implements V4L2, Media controller and V4L2 subdev interfaces.
-+Camera sensor using V4L2 subdev interface in the kernel is supported.
-+
-+The driver has been tested on AW419-C308L-Socket platform.
-+
-+Anlogic Camera hardware
-+=======================
-+
-+The Camera hardware found on C308L processors and supported by
-+the driver consists of:
-+
-+- 1 MIPI-CSI2 module. It handle the Physical layer of the CSI2 receivers and
-+  receive MIPI data.
-+  A separate camera sensor can be connected to MIPI-CSi2 module.
-+- 1 MIPI-ADAPTER module. Organize MIPI data to meet ISP input requirements and
-+  send MIPI data to ISP
-+- 1 ISP (Image Signal Processing) module. Contain a pipeline of image processing
-+  hardware blocks.
-+  The ISP pipeline contains three scalers at the end.
-+  The ISP also contains the DMA interface which writes the output data to memory.
-+
-+A high level functional view of the C3 ISP is presented below. The ISP
-+takes input from the sensor.::
-+
-+                                                                   +---------+    +-------+
-+                                                                   | Scaler  |--->| WRMIF |
-+  +---------+    +------------+    +--------------+    +-------+   |---------+    +-------+
-+  | Sensor  |--->| MIPI CSI-2 |--->| MIPI ADAPTER |--->|  ISP  |---|---------+    +-------+
-+  +---------+    +------------+    +--------------+    +-------+   | Scaler  |--->| WRMIF |
-+                                                                   +---------+    +-------+
-+                                                                   |---------+    +-------+
-+                                                                   | Scaler  |--->| WRMIF |
-+                                                                   +---------+    +-------+
-+
-+Supported functionality
-+=======================
-+
-+The current version of the driver supports:
-+
-+- Input from camera sensor via MIPI-CSI2;
-+
-+- Pixel output interface of ISP
-+
-+  - Scaling support. Configuration of the scaler module
-+    for downscalling with ratio up to 8x.
-+
-+Driver Architecture and Design
-+==============================
-+
-+The driver implements the V4L2 subdev interface. With the goal to model the
-+hardware links between the modules and to expose a clean, logical and usable
-+interface, the driver is split into V4L2 sub-devices as follows:
-+
-+- 1 c3-mipi-csi2 sub-device - mipi-csi2 is represented by a single sub-device.
-+- 1 c3-mipi-adapter sub-device - mipi-adapter is represented by a single sub-devices.
-+- 1 c3-isp-core sub-device - isp-core is represented by a single sub-devices.
-+- 3 c3-isp-resizer sub-devices - isp-resizer is represented by a number of sub-devices
-+  equal to the number of capture device.
-+
-+c3-isp-core sub-device is linked to 2 separate video device nodes and
-+3 c3-isp-resizer sub-devices nodes.
-+
-+- 1 capture statistics video device node.
-+- 1 output parameters video device node.
-+- 3 c3-isp-resizer sub-device nodes.
-+
-+c3-isp-resizer sub-device is linked to capture video device node.
-+
-+- c3-isp-resizer0 is linked to c3-isp-cap0
-+- c3-isp-resizer1 is linked to c3-isp-cap1
-+- c3-isp-resizer2 is linked to c3-isp-cap2
-+
-+The media controller pipeline graph is as follows (with connected a
-+IMX290 camera sensor):
-+
-+.. _isp_topology_graph:
-+
-+.. kernel-figure:: c3-isp.dot
-+    :alt:   c3-isp.dot
-+    :align: center
-+
-+    Media pipeline topology
-+
-+Implementation
-+==============
-+
-+Runtime configuration of the hardware via 'c3-isp-params' video device node.
-+Acquiring statistics of ISP hardware via 'c3-isp-stats' video device node.
-+Acquiring output image of ISP hardware via 'c3-isp-cap[0, 2]' video device node.
-+
-+The output size of the scaler module in the ISP is configured with
-+the pixel format of 'c3-isp-cap[0, 2]' video device node.
-diff --git a/Documentation/admin-guide/media/v4l-drivers.rst b/Documentation/admin-guide/media/v4l-drivers.rst
-index e8761561b2fe..3bac5165b134 100644
---- a/Documentation/admin-guide/media/v4l-drivers.rst
-+++ b/Documentation/admin-guide/media/v4l-drivers.rst
-@@ -10,6 +10,7 @@ Video4Linux (V4L) driver-specific documentation
- 	:maxdepth: 2
- 
- 	bttv
-+	c3-isp
- 	cafe_ccic
- 	cx88
- 	fimc
-diff --git a/MAINTAINERS b/MAINTAINERS
-index b2bf9c6cd194..4b06a798d30c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1259,6 +1259,8 @@ AMLOGIC ISP DRIVER
- M:	Keke Li <keke.li@amlogic.com>
- L:	linux-media@vger.kernel.org
- S:	Maintained
-+F:	Documentation/admin-guide/media/c3-isp.dot
-+F:	Documentation/admin-guide/media/c3-isp.rst
- F:	Documentation/devicetree/bindings/media/amlogic,c3-isp.yaml
- F:	Documentation/userspace-api/media/v4l/metafmt-c3-isp.rst
- F:	drivers/media/platform/amlogic/c3/isp/
+---
+Chuan Liu (7):
+      soc: amlogic: clk-measure: Define MSR_CLK's register offset separately
+      dt-bindings: soc: amlogic: C3 supports clk-measure
+      dt-bindings: soc: amlogic: S4 supports clk-measure
+      soc: amlogic: clk-measure: Add support for C3
+      soc: amlogic: clk-measure: Add support for S4
+      arm64: dts: amlogic: C3: Add clk-measure controller node
+      arm64: dts: amlogic: S4: Add clk-measure controller node
 
+ .../soc/amlogic/amlogic,meson-gx-clk-measure.yaml  |   2 +
+ arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi        |   5 +
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          |   5 +
+ drivers/soc/amlogic/meson-clk-measure.c            | 374 ++++++++++++++++++++-
+ 4 files changed, 371 insertions(+), 15 deletions(-)
+---
+base-commit: 37021be47d02d2913d6767795a6f4c72b4e63a4f
+change-id: 20250411-clk-measure-d33c5ab62669
+
+Best regards,
 -- 
-2.49.0
+Chuan Liu <chuan.liu@amlogic.com>
 
