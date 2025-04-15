@@ -1,14 +1,12 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Subject: [PATCH 0/3] Generic SPMI NVMEM cell driver
-Date: Tue, 15 Apr 2025 23:52:33 +0200
-Message-Id: <20250415-spmi-nvmem-v1-0-22067be253cf@gmail.com>
+Date: Tue, 15 Apr 2025 23:52:34 +0200
+Subject: [PATCH 1/3] dt-bindings: spmi: Add generic SPMI NVMEM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACLV/mcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDE0NT3eKC3EzdvLLc1FzdVAMLM2NTY0MzQ3NTJaCGgqLUtMwKsGHRsbW
- 1ABuu0b9cAAAA
-X-Change-ID: 20250415-spmi-nvmem-e08635316175
+Message-Id: <20250415-spmi-nvmem-v1-1-22067be253cf@gmail.com>
+References: <20250415-spmi-nvmem-v1-0-22067be253cf@gmail.com>
+In-Reply-To: <20250415-spmi-nvmem-v1-0-22067be253cf@gmail.com>
 To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
  Srinivas Kandagatla <srinivas.kandagatla@linaro.org>, 
@@ -16,52 +14,89 @@ To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>,
  Conor Dooley <conor+dt@kernel.org>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, Hector Martin <marcan@marcan.st>
+ Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744753962; l=1432;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744753962; l=2233;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=jBNCv2rda4YJZMZlnqUFKXhD2YixBW/bajeGa6Tnahg=;
- b=z/bozObO8yi+GVG8sufEa3NcrtwV6CqAU6PzOgE14u6VKIBZuU8qylsUv97vpKOw9XrAYnnts
- RA/RVyk+lJwCJ3/TPasI9fumkGl32BPZfim4W4o7J+IHeyGvfsrR/2T
+ bh=591KYbP5CwVkqQ6YYbLbnzAujw1V85G/WXwDPpVeG5A=;
+ b=dtHz27lt85WFhI+s2T92MhW7ImjxiLCLFGTibgzijQjFJYGkCw1YoJ6DMIPShYH1XV08HvqP6
+ vT8H80dEvlNDXgEm50C3wLDnRILWCNSnLf4fl0U5MKN3bFeT8X5KjrN
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi.
-
-This patch series adds a driver for exposing a set of SPMI registers
-as NVMEM cells. This is used on Apple ARM platforms to store the RTC
-offset and to communicate platform power state between the OS and
-boot firmware.
-
-The NVMEM cell consumer drivers will be sent in a further series.
+Add bindings for exposing SPMI registers as NVMEM cells
 
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
-Hector Martin (2):
-      nvmem: Add spmi-nvmem driver
-      arm64: dts: apple: Add PMU NVMEM
+ .../devicetree/bindings/nvmem/spmi-nvmem.yaml      | 44 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 2 files changed, 45 insertions(+)
 
-Sasha Finkelstein (1):
-      dt-bindings: spmi: Add generic SPMI NVMEM
+diff --git a/Documentation/devicetree/bindings/nvmem/spmi-nvmem.yaml b/Documentation/devicetree/bindings/nvmem/spmi-nvmem.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..0041babefc37ed4d82d7d6f68fc67d29eed53d9f
+--- /dev/null
++++ b/Documentation/devicetree/bindings/nvmem/spmi-nvmem.yaml
+@@ -0,0 +1,44 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/nvmem/spmi-nvmem.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Generic SPMI NVMEM
++
++description: Exports a series of SPMI registers as NVMEM cells
++
++maintainers:
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++allOf:
++  - $ref: nvmem.yaml#
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,maverick-pmu
++          - apple,sera-pmu
++          - apple,stowe-pmu
++      - const: spmi-nvmem
++
++  reg:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/spmi/spmi.h>
++
++    pmu@f {
++        compatible = "apple,maverick-pmu", "spmi-nvmem";
++        reg = <0xf SPMI_USID>;
++    };
++
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 96b82704950184bd71623ff41fc4df31e4c7fe87..e7b2d0df81b387ba5398957131971588dc7b89dc 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2277,6 +2277,7 @@ F:	Documentation/devicetree/bindings/mailbox/apple,mailbox.yaml
+ F:	Documentation/devicetree/bindings/net/bluetooth/brcm,bcm4377-bluetooth.yaml
+ F:	Documentation/devicetree/bindings/nvme/apple,nvme-ans.yaml
+ F:	Documentation/devicetree/bindings/nvmem/apple,efuses.yaml
++F:	Documentation/devicetree/bindings/nvmem/spmi-nvmem.yaml
+ F:	Documentation/devicetree/bindings/pci/apple,pcie.yaml
+ F:	Documentation/devicetree/bindings/pinctrl/apple,pinctrl.yaml
+ F:	Documentation/devicetree/bindings/power/apple*
 
- .../devicetree/bindings/nvmem/spmi-nvmem.yaml      | 44 +++++++++++++++
- MAINTAINERS                                        |  2 +
- arch/arm64/boot/dts/apple/t6001.dtsi               |  1 +
- arch/arm64/boot/dts/apple/t6002.dtsi               |  1 +
- arch/arm64/boot/dts/apple/t600x-die0.dtsi          | 50 +++++++++++++++++
- arch/arm64/boot/dts/apple/t8103.dtsi               | 50 +++++++++++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi               | 50 +++++++++++++++++
- drivers/nvmem/Kconfig                              | 14 +++++
- drivers/nvmem/Makefile                             |  2 +
- drivers/nvmem/spmi-nvmem.c                         | 62 ++++++++++++++++++++++
- 10 files changed, 276 insertions(+)
----
-base-commit: 2e0e70c95077172b29a5b13716c4b159d578e82c
-change-id: 20250415-spmi-nvmem-e08635316175
-
-Best regards,
 -- 
-Sasha Finkelstein <fnkl.kernel@gmail.com>
+2.49.0
 
