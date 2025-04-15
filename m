@@ -1,11 +1,11 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Tue, 15 Apr 2025 08:54:29 +0200
-Subject: [PATCH v5 6/8] arm64: dts: freescale: Add the GOcontroll Moduline
- Display baseboard
+Date: Tue, 15 Apr 2025 08:54:30 +0200
+Subject: [PATCH v5 7/8] arm64: dts: freescale: Add the BOE av101hdt-a10
+ variant of the Moduline Display
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250415-initial_display-v5-6-f309f8d71499@gocontroll.com>
+Message-Id: <20250415-initial_display-v5-7-f309f8d71499@gocontroll.com>
 References: <20250415-initial_display-v5-0-f309f8d71499@gocontroll.com>
 In-Reply-To: <20250415-initial_display-v5-0-f309f8d71499@gocontroll.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,574 +17,149 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744700066; l=14933;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744700066; l=4109;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=FbElz7h9Q9+Rezp4sqeRAQ+rTOuCMOZi7wWzuak62ws=;
- b=LnNRBwsKme0uVjvPsFAiuhoyWEwtAsMVJE5VMuhW9icGtCElzTDIUwSdpZo+w0Xc8UGedd0OM
- 5k7ZEymegdQAaQwxvrGIpiWXhgJE7est0mLNEqkfbIP2ig5TLdY/2gJ
+ bh=s+YSWWHZ/qWjR5g3Aj0fP/WU0u7E8mEW6X2vsCVzyKY=;
+ b=w4aTIeB1PGcNKrtNZlrn6+QEL/R5AfdfAIuUND5G1muYX3zbuwVOEzhx+wpxdqp9p+b8FUr8l
+ DjcCsD8C7JrBCvpsCUa/O8OVCvqIMPByAIPUVXLtpm0Hj1iKWrb6ZyF
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Moduline Display platform is a part of the wider GOcontroll Moduline
-ecosystem. These are embedded controllers that focus on modularity with
-their swappable IO modules.
-
-The base Moduline Display board includes a board-to-board connector with
-various busses to enable adding new display types required by the
-application. It includes 2 Moduline IO module slots, a simple mono
-codec/amplifier, a four channel adc, 2 CAN busses, an RTC and optional
-wifi/bluetooth.
-
-busses to the display adapter include:
-- 4 lane LVDS
-- 4 lane MIPI-DSI
-- 4 lane MIPI-CSI
-- HDMI 2.0a
-- USB 2.0
-- I2S
-- I2C
-- SPI
-
-Also a couple of GPIO and PWM pins for controlling various ICs on the
-display adapter board.
+Add the BOE av101hdt-a10 variant of the Moduline Display, this variant
+comes with a 10.1 1280x720 display with a touchscreen (not working in
+mainline).
 
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
----
- .../imx8mp-tx8p-ml81-moduline-display-106.dts      | 525 +++++++++++++++++++++
- 1 file changed, 525 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts
+---
+Currently the backlight driver is not available, this will be upstreamed
+in a future patch series. It is a Maxim max25014atg.
+
+The touchscreen has a Cypress CYAT81658-64AS48 controller which as far as
+I know is not supported upstream, the driver we currently use for this is
+a mess and I doubt we will be able to get it in an upstreamable state.
+---
+ arch/arm64/boot/dts/freescale/Makefile             |  5 ++
+ ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso | 94 ++++++++++++++++++++++
+ 2 files changed, 99 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/freescale/Makefile b/arch/arm64/boot/dts/freescale/Makefile
+index b6d3fe26d621234ab84353165d20af9d2536f839..ca3255aa9e18187b33d54c836992aca5dd5d0465 100644
+--- a/arch/arm64/boot/dts/freescale/Makefile
++++ b/arch/arm64/boot/dts/freescale/Makefile
+@@ -214,6 +214,11 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mp-skov-revc-bd500.dtb
+ dtb-$(CONFIG_ARCH_MXC) += imx8mp-skov-revc-tian-g07017.dtb
+ dtb-$(CONFIG_ARCH_MXC) += imx8mp-tqma8mpql-mba8mpxl.dtb
+ dtb-$(CONFIG_ARCH_MXC) += imx8mp-tqma8mpql-mba8mp-ras314.dtb
++
++imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10-dtbs += imx8mp-tx8p-ml81-moduline-display-106.dtb \
++	imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtbo
++dtb-$(CONFIG_ARCH_MXC) += imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtb
++
+ dtb-$(CONFIG_ARCH_MXC) += imx8mp-var-som-symphony.dtb
+ dtb-$(CONFIG_ARCH_MXC) += imx8mp-venice-gw71xx-2x.dtb
+ dtb-$(CONFIG_ARCH_MXC) += imx8mp-venice-gw72xx-2x.dtb
+diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso
 new file mode 100644
-index 0000000000000000000000000000000000000000..0de49775a0bb2879d60956f8135dd263eaab6c69
+index 0000000000000000000000000000000000000000..b3bbbd69f671493c809bbf043807a22adda5024a
 --- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts
-@@ -0,0 +1,525 @@
++++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso
+@@ -0,0 +1,94 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 +/*
 + * Copyright 2025 GOcontroll B.V.
 + * Author: Maud Spierings <maudspierings@gocontroll.com>
 + */
 +
++#include <dt-bindings/clock/imx8mp-clock.h>
++#include <dt-bindings/gpio/gpio.h>
++
++#include "imx8mp-pinfunc.h"
++
 +/dts-v1/;
++/plugin/;
 +
-+#include "imx8mp-tx8p-ml81.dtsi"
++&{/} {
++	model = "GOcontroll Moduline Display with BOE av101hdt-a10 display";
 +
-+/ {
-+	compatible = "gocontroll,moduline-display", "fsl,imx8mp";
-+	chassis-type = "embedded";
-+	hardware = "Moduline Display V1.06";
-+
-+	aliases {
-+		can0 = &flexcan1;
-+		can1 = &flexcan2;
-+		ethernet0 = &eqos;
-+		mmc0 = &usdhc3;
-+		mmc1 = &usdhc2;
-+		rtc0 = &rtc_pcf; /* i2c rtc is the main rtc */
-+		rtc1 = &snvs_rtc;
-+		spi0 = &ecspi2; /* spidev number compatibility */
-+		spi1 = &ecspi1; /* spidev number compatibility */
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	external-sensor-supply {
-+		compatible = "regulator-output";
-+		vout-supply = <&reg_5v0_sensor>;
-+	};
-+
-+	reg_1v8_per: regulator-1v8-per {
-+		compatible = "regulator-fixed";
-+		pinctrl-0 = <&pinctrl_reg_1v8>;
++	panel {
++		compatible = "boe,av101hdt-a10";
++		enable-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
++		pinctrl-0 = <&pinctrl_panel>;
 +		pinctrl-names = "default";
 +		power-supply = <&reg_3v3_per>;
-+		regulator-max-microvolt = <1800000>;
-+		regulator-min-microvolt = <1800000>;
-+		regulator-name = "1v8-per";
-+		gpio = <&gpio3 25 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
++		reset-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
++
++		port {
++			panel_lvds_in: endpoint {
++				remote-endpoint = <&ldb_lvds_ch0>;
++			};
++		};
 +	};
 +
-+	reg_3v3_per: regulator-3v3-per {
-+		compatible = "regulator-fixed";
-+		power-supply = <&reg_6v4>;
-+		regulator-always-on;
-+		regulator-max-microvolt = <3300000>;
-+		regulator-min-microvolt = <3300000>;
-+		regulator-name = "3v3-per";
-+	};
-+
-+	reg_5v0: regulator-5v0 {
++	reg_vbus: regulator-vbus {
 +		compatible = "regulator-fixed";
 +		power-supply = <&reg_6v4>;
 +		regulator-always-on;
 +		regulator-max-microvolt = <5000000>;
 +		regulator-min-microvolt = <5000000>;
-+		regulator-name = "5v0";
-+	};
-+
-+	reg_5v0_sensor: regulator-5v0-sensor {
-+		compatible = "regulator-fixed";
-+		pinctrl-0 = <&pinctrl_reg_5v0_sensor>;
-+		pinctrl-names = "default";
-+		regulator-max-microvolt = <5000000>;
-+		regulator-min-microvolt = <5000000>;
-+		regulator-name = "5v0-supply-external-sensor";
-+		gpio = <&gpio4 9 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	reg_6v4: regulator-6v4 {
-+		compatible = "regulator-fixed";
-+		regulator-always-on;
-+		regulator-max-microvolt = <6400000>;
-+		regulator-min-microvolt = <6400000>;
-+		regulator-name = "6v4";
-+	};
-+
-+	reg_can1_stby: regulator-can1-stby {
-+		compatible = "regulator-fixed";
-+		pinctrl-0 = <&pinctrl_flexcan1_reg>;
-+		pinctrl-names = "default";
-+		regulator-max-microvolt = <3300000>;
-+		regulator-min-microvolt = <3300000>;
-+		regulator-name = "can1-stby";
-+		gpio = <&gpio4 3 GPIO_ACTIVE_LOW>;
-+	};
-+
-+	reg_can2_stby: regulator-can2-stby {
-+		compatible = "regulator-fixed";
-+		pinctrl-0 = <&pinctrl_flexcan2_reg>;
-+		pinctrl-names = "default";
-+		regulator-max-microvolt = <3300000>;
-+		regulator-min-microvolt = <3300000>;
-+		regulator-name = "can2-stby";
-+		gpio = <&gpio5 9 GPIO_ACTIVE_LOW>;
-+	};
-+
-+	sound {
-+		compatible = "simple-audio-card";
-+		simple-audio-card,bitclock-master = <&cpudai>;
-+		simple-audio-card,format = "i2s";
-+		simple-audio-card,frame-master = <&cpudai>;
-+		simple-audio-card,name = "tas2505-audio";
-+		simple-audio-card,routing = "Speaker", "DAC";
-+		simple-audio-card,widgets = "Speaker", "Speaker External";
-+
-+		simple-audio-card,codec {
-+			sound-dai = <&tas2505>;
-+		};
-+
-+		cpudai: simple-audio-card,cpu {
-+			sound-dai = <&sai6>;
-+		};
-+	};
-+
-+	wifi_powerseq: wifi-powerseq {
-+		compatible = "mmc-pwrseq-simple";
-+		pinctrl-0 = <&pinctrl_wl_reg>;
-+		pinctrl-names = "default";
-+		post-power-on-delay-ms = <100>;
-+		power-off-delay-us = <500000>;
-+		reset-gpios = <&gpio2 19 GPIO_ACTIVE_LOW>;
-+	};
-+};
-+
-+&ecspi1 {
-+	cs-gpios = <&gpio2 12 GPIO_ACTIVE_LOW>,
-+			   <&gpio1 11 GPIO_ACTIVE_LOW>,
-+			   <&gpio1 10 GPIO_ACTIVE_LOW>;
-+	pinctrl-0 = <&pinctrl_ecspi1>;
-+	pinctrl-names = "default";
-+	status = "okay";
-+
-+	connector@0 {
-+		compatible = "gocontroll,moduline-module-slot";
-+		reg = <0>;
-+		interrupt-parent = <&gpio4>;
-+		interrupts = <5 IRQ_TYPE_EDGE_FALLING>;
-+		i2c-bus = <&i2c2>;
-+		reset-gpios = <&gpio5 10 GPIO_ACTIVE_LOW>;
-+		slot-number = <1>;
-+		spi-max-frequency = <54000000>;
-+		sync-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
-+		vddhpp-supply = <&reg_6v4>;
-+		vddp-supply = <&reg_5v0>;
-+		vdd-supply = <&reg_3v3_per>;
-+	};
-+
-+	connector@1 {
-+		compatible = "gocontroll,moduline-module-slot";
-+		reg = <1>;
-+		interrupt-parent = <&gpio1>;
-+		interrupts = <0 IRQ_TYPE_EDGE_FALLING>;
-+		i2c-bus = <&i2c2>;
-+		reset-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
-+		slot-number = <2>;
-+		spi-max-frequency = <54000000>;
-+		sync-gpios = <&gpio4 16 GPIO_ACTIVE_HIGH>;
-+		vddhpp-supply = <&reg_6v4>;
-+		vddp-supply = <&reg_5v0>;
-+		vdd-supply = <&reg_3v3_per>;
-+	};
-+
-+	adc@2 {
-+		compatible = "microchip,mcp3004";
-+		reg = <2>;
-+		spi-max-frequency = <2300000>;
-+		vref-supply = <&reg_vdd_3v3>;
-+	};
-+};
-+
-+&flexcan1 {
-+	pinctrl-0 = <&pinctrl_flexcan1>;
-+	pinctrl-names = "default";
-+	xceiver-supply = <&reg_can1_stby>;
-+	status = "okay";
-+};
-+
-+&flexcan2 {
-+	pinctrl-0 = <&pinctrl_flexcan2>;
-+	pinctrl-names = "default";
-+	xceiver-supply = <&reg_can2_stby>;
-+	status = "okay";
-+};
-+
-+&i2c2 {
-+	clock-frequency = <400000>;
-+	pinctrl-0 = <&pinctrl_i2c2>;
-+	pinctrl-1 = <&pinctrl_i2c2_gpio>;
-+	pinctrl-names = "default", "gpio";
-+	scl-gpios = <&gpio5 16 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+	sda-gpios = <&gpio5 17 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+	status = "okay";
-+};
-+
-+&i2c4 {
-+	clock-frequency = <400000>;
-+	pinctrl-0 = <&pinctrl_i2c4>;
-+	pinctrl-1 = <&pinctrl_i2c4_gpio>;
-+	pinctrl-names = "default", "gpio";
-+	scl-gpios = <&gpio5 12 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+	sda-gpios = <&gpio5 13 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+	status = "okay";
-+
-+	tas2505: audio-codec@18 {
-+		compatible = "ti,tas2505";
-+		reg = <0x18>;
-+		clocks = <&clk IMX8MP_CLK_AUDIOMIX_SAI6_MCLK1>;
-+		clock-names = "mclk";
-+		#sound-dai-cells = <0>;
-+		aic32x4-gpio-func = <0xff 0xff 0xff 0xff 0xff>;
-+		av-supply = <&reg_1v8_per>;
-+		dv-supply = <&reg_1v8_per>;
-+		iov-supply = <&reg_vdd_3v3>;
-+		pinctrl-0 = <&pinctrl_tas_reset>;
-+		pinctrl-names = "default";
-+		reset-gpios = <&gpio3 24 GPIO_ACTIVE_LOW>;
-+	};
-+
-+	rtc_pcf: rtc@51 {
-+		compatible = "nxp,pcf85063a";
-+		reg = <0x51>;
-+		quartz-load-femtofarads = <7000>;
-+
-+		clock {
-+			compatible = "fixed-clock";
-+			#clock-cells = <0>;
-+			clock-frequency = <32768>;
-+		};
++		regulator-name = "usb-c-vbus";
 +	};
 +};
 +
 +&iomuxc {
-+	pinctrl_bt: btgrp {
++	pinctrl_panel: panelgrp {
 +		fsl,pins = <
-+			MX8MP_IOMUXC_GPIO1_IO14__GPIO1_IO14
++			MX8MP_IOMUXC_GPIO1_IO07__GPIO1_IO07
 +			MX8MP_DSE_X1
-+			MX8MP_IOMUXC_GPIO1_IO12__GPIO1_IO12
-+			(MX8MP_PULL_UP | MX8MP_PULL_ENABLE | MX8MP_HYS_SCHMITT)
-+			MX8MP_IOMUXC_GPIO1_IO15__GPIO1_IO15
-+			MX8MP_DSE_X1
-+		>;
-+	};
-+
-+	pinctrl_ecspi1: ecspi1grp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_ECSPI1_MOSI__ECSPI1_MOSI
-+			MX8MP_DSE_X4
-+			MX8MP_IOMUXC_ECSPI1_MISO__ECSPI1_MISO
-+			(MX8MP_DSE_X4 | MX8MP_HYS_SCHMITT)
-+			MX8MP_IOMUXC_ECSPI1_SCLK__ECSPI1_SCLK
-+			MX8MP_DSE_X4
-+			MX8MP_IOMUXC_SD2_CD_B__GPIO2_IO12
-+			MX8MP_DSE_X1
-+			MX8MP_IOMUXC_GPIO1_IO11__GPIO1_IO11
-+			MX8MP_DSE_X1
-+			MX8MP_IOMUXC_GPIO1_IO10__GPIO1_IO10
-+			MX8MP_DSE_X1
-+		>;
-+	};
-+
-+	pinctrl_flexcan1: flexcan1grp {
-+		fsl,pins = <
-+			 MX8MP_IOMUXC_SPDIF_RX__CAN1_RX
-+			 (MX8MP_DSE_X2 | MX8MP_FSEL_FAST | MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+			 MX8MP_IOMUXC_SPDIF_TX__CAN1_TX
-+			 (MX8MP_DSE_X2 | MX8MP_FSEL_FAST | MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
-+	pinctrl_flexcan1_reg: flexcan1reggrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_SAI1_RXD1__GPIO4_IO03
-+			(MX8MP_DSE_X2 | MX8MP_FSEL_FAST | MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
-+	pinctrl_flexcan2: flexcan2grp {
-+		fsl,pins = <
-+			 MX8MP_IOMUXC_UART3_TXD__CAN2_RX
-+			 (MX8MP_DSE_X2 | MX8MP_FSEL_FAST | MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+			 MX8MP_IOMUXC_UART3_RXD__CAN2_TX
-+			 (MX8MP_DSE_X2 | MX8MP_FSEL_FAST | MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
-+	pinctrl_flexcan2_reg: flexcan2reggrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_ECSPI1_SS0__GPIO5_IO09
-+			(MX8MP_DSE_X2 | MX8MP_FSEL_FAST | MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
-+	pinctrl_i2c2: i2c2grp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_I2C2_SCL__I2C2_SCL
-+			MX8MP_I2C_DEFAULT
-+			MX8MP_IOMUXC_I2C2_SDA__I2C2_SDA
-+			MX8MP_I2C_DEFAULT
-+		>;
-+	};
-+
-+	pinctrl_i2c2_gpio: i2c2-gpiogrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_I2C2_SCL__GPIO5_IO16
-+			MX8MP_I2C_DEFAULT
-+			MX8MP_IOMUXC_I2C2_SDA__GPIO5_IO17
-+			MX8MP_I2C_DEFAULT
-+		>;
-+	};
-+
-+	pinctrl_i2c4: i2c4grp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_ECSPI2_MISO__I2C4_SCL
-+			MX8MP_I2C_DEFAULT
-+			MX8MP_IOMUXC_ECSPI2_SS0__I2C4_SDA
-+			MX8MP_I2C_DEFAULT
-+		>;
-+	};
-+
-+	pinctrl_i2c4_gpio: i2c4-gpiogrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_ECSPI2_MISO__GPIO5_IO12
-+			MX8MP_I2C_DEFAULT
-+			MX8MP_IOMUXC_ECSPI2_SS0__GPIO5_IO13
-+			MX8MP_I2C_DEFAULT
-+		>;
-+	};
-+
-+	pinctrl_usdhc2: pinctrlusdhc2grp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_SD2_CLK__USDHC2_CLK
-+			(MX8MP_DSE_X2 | MX8MP_FSEL_FAST | MX8MP_PULL_ENABLE)
-+			MX8MP_IOMUXC_SD2_CMD__USDHC2_CMD
-+			(MX8MP_DSE_X2 | MX8MP_USDHC_DATA_DEFAULT)
-+			MX8MP_IOMUXC_SD2_DATA0__USDHC2_DATA0
-+			(MX8MP_DSE_X2 | MX8MP_USDHC_DATA_DEFAULT)
-+			MX8MP_IOMUXC_SD2_DATA1__USDHC2_DATA1
-+			(MX8MP_DSE_X2 | MX8MP_USDHC_DATA_DEFAULT)
-+			MX8MP_IOMUXC_SD2_DATA2__USDHC2_DATA2
-+			(MX8MP_DSE_X2 | MX8MP_USDHC_DATA_DEFAULT)
-+			MX8MP_IOMUXC_SD2_DATA3__USDHC2_DATA3
-+			(MX8MP_DSE_X2 | MX8MP_USDHC_DATA_DEFAULT)
-+		>;
-+	};
-+
-+	pinctrl_reg_1v8: reg-1v8-grp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_SAI5_MCLK__GPIO3_IO25
-+			MX8MP_DSE_X1
-+		>;
-+	};
-+
-+	pinctrl_reg_5v0_sensor: reg-5v0-sensorgrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_SAI1_RXD7__GPIO4_IO09
-+			MX8MP_DSE_X1
-+		>;
-+	};
-+
-+	pinctrl_sai6: sai6grp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_SAI1_TXD6__AUDIOMIX_SAI6_TX_SYNC
-+			(MX8MP_DSE_X6 | MX8MP_FSEL_FAST | MX8MP_HYS_SCHMITT)
-+			MX8MP_IOMUXC_SAI1_RXD4__AUDIOMIX_SAI6_TX_BCLK
-+			(MX8MP_DSE_X6 | MX8MP_FSEL_FAST | MX8MP_HYS_SCHMITT)
-+			MX8MP_IOMUXC_SAI1_TXD5__AUDIOMIX_SAI6_TX_DATA00
-+			(MX8MP_DSE_X6 | MX8MP_FSEL_FAST | MX8MP_HYS_SCHMITT)
-+			MX8MP_IOMUXC_SAI1_TXD7__AUDIOMIX_SAI6_MCLK
-+			(MX8MP_DSE_X6 | MX8MP_FSEL_FAST | MX8MP_HYS_SCHMITT)
-+			MX8MP_IOMUXC_SAI1_RXD5__AUDIOMIX_SAI6_RX_DATA00
-+			(MX8MP_DSE_X6 | MX8MP_FSEL_FAST | MX8MP_HYS_SCHMITT)
-+		>;
-+	};
-+
-+	pinctrl_tas_reset: tasresetgrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_SAI5_RXD3__GPIO3_IO24
-+			MX8MP_DSE_X1
-+		>;
-+	};
-+
-+	pinctrl_uart1: uart1grp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_UART1_RXD__UART1_DCE_RX
-+			(MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+			MX8MP_IOMUXC_UART1_TXD__UART1_DCE_TX
-+			(MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
-+	pinctrl_uart2: uart2grp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_UART2_RXD__UART2_DCE_RX
-+			(MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+			MX8MP_IOMUXC_UART2_TXD__UART2_DCE_TX
-+			(MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+			MX8MP_IOMUXC_SAI3_RXD__UART2_DCE_RTS
-+			(MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+			MX8MP_IOMUXC_SAI3_RXC__UART2_DCE_CTS
-+			(MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
-+	pinctrl_wdog: wdoggrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_GPIO1_IO02__WDOG1_WDOG_B
-+			(MX8MP_DSE_X6 | MX8MP_HYS_SCHMITT)
-+		>;
-+	};
-+
-+	pinctrl_wl_int: wlintgrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_GPIO1_IO13__GPIO1_IO13
-+			(MX8MP_PULL_UP | MX8MP_HYS_SCHMITT | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
-+	pinctrl_wl_reg: wlreggrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_SD2_RESET_B__GPIO2_IO19
++			MX8MP_IOMUXC_GPIO1_IO09__GPIO1_IO09
 +			MX8MP_DSE_X1
 +		>;
 +	};
 +};
 +
-+&sai6 {
-+	assigned-clocks = <&clk IMX8MP_CLK_SAI6>;
-+	assigned-clock-parents = <&clk IMX8MP_AUDIO_PLL1_OUT>;
-+	assigned-clock-rates = <12288000>;
-+	pinctrl-0 = <&pinctrl_sai6>;
-+	pinctrl-names = "default";
-+	fsl,sai-mclk-direction-output;
++&lcdif2 {
 +	status = "okay";
 +};
 +
-+&uart1 {
-+	pinctrl-0 = <&pinctrl_uart1>;
-+	pinctrl-names = "default";
-+	status = "okay";
-+};
-+
-+&uart2 {
-+	pinctrl-0 = <&pinctrl_uart2>;
-+	pinctrl-names = "default";
-+	uart-has-rtscts;
++&lvds_bridge {
++	assigned-clocks = <&clk IMX8MP_CLK_MEDIA_LDB>, <&clk IMX8MP_VIDEO_PLL1>;
++	/* IMX8MP_VIDEO_PLL1 = IMX8MP_CLK_MEDIA_DISP2_PIX * 2 * 7 */
++	assigned-clock-rates = <0>, <1054620000>;
 +	status = "okay";
 +
-+	bluetooth {
-+		compatible = "infineon,cyw43439-bt", "brcm,bcm4329-bt";
-+		interrupt-parent = <&gpio1>;
-+		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
-+		interrupt-names = "host-wakeup";
-+		device-wakeup-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;
-+		max-speed = <921600>;
-+		pinctrl-0 = <&pinctrl_bt>;
-+		pinctrl-names = "default";
-+		shutdown-gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
-+		vbat-supply = <&reg_3v3_per>;
-+		vddio-supply = <&reg_3v3_per>;
++	ports {
++		port@1 {
++			ldb_lvds_ch0: endpoint {
++				remote-endpoint = <&panel_lvds_in>;
++			};
++		};
 +	};
 +};
 +
-+&usb3_0 {
-+	status = "okay";
-+};
++&usb_dwc3_1 {
++	dr_mode = "host";
 +
-+&usb3_1 {
-+	status = "okay";
-+};
++	connector {
++		compatible = "usb-c-connector";
++		data-role = "host";
++		pd-disable;
++		vbus-supply = <&reg_vbus>;
 +
-+&usb3_phy0 {
-+	status = "okay";
-+};
-+
-+&usb3_phy1 {
-+	status = "okay";
-+};
-+
-+&usb_dwc3_0 {
-+	dr_mode = "peripheral";
-+};
-+
-+&usdhc2 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	assigned-clocks = <&clk IMX8MP_CLK_USDHC2>;
-+	assigned-clock-rates = <50000000>;
-+	cap-power-off-card;
-+	keep-power-in-suspend;
-+	max-frequency = <50000000>;
-+	mmc-pwrseq = <&wifi_powerseq>;
-+	non-removable;
-+	pinctrl-0 = <&pinctrl_usdhc2>;
-+	pinctrl-names = "default";
-+	sd-uhs-sdr25;
-+	vmmc-supply = <&reg_3v3_per>;
-+	status = "okay";
-+
-+	wifi@1 {
-+		compatible = "infineon,cyw43439-fmac", "brcm,bcm4329-fmac";
-+		reg = <1>;
-+		interrupt-parent = <&gpio1>;
-+		interrupts = <13 IRQ_TYPE_LEVEL_LOW>;
-+		interrupt-names = "host-wake";
-+		pinctrl-0 = <&pinctrl_wl_int>;
-+		pinctrl-names = "default";
-+		brcm,board-type = "GOcontroll,moduline";
++		port {
++			high_speed_ep: endpoint {
++				remote-endpoint = <&usb1_hs_ep>;
++			};
++		};
 +	};
-+};
 +
-+&wdog1 {
-+	pinctrl-0 = <&pinctrl_wdog>;
-+	pinctrl-names = "default";
-+	fsl,ext-reset-output;
-+	status = "okay";
++	port {
++		usb1_hs_ep: endpoint {
++			remote-endpoint = <&high_speed_ep>;
++		};
++	};
 +};
 
 -- 
