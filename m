@@ -1,10 +1,10 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Tue, 15 Apr 2025 15:49:31 +0100
-Subject: [PATCH v2 15/17] dt-bindings: mfd: adp5585: document reset gpio
+Date: Tue, 15 Apr 2025 15:49:32 +0100
+Subject: [PATCH v2 16/17] mfd: adp5585: add support for a reset pin
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250415-dev-adp5589-fw-v2-15-3a799c3ed812@analog.com>
+Message-Id: <20250415-dev-adp5589-fw-v2-16-3a799c3ed812@analog.com>
 References: <20250415-dev-adp5589-fw-v2-0-3a799c3ed812@analog.com>
 In-Reply-To: <20250415-dev-adp5589-fw-v2-0-3a799c3ed812@analog.com>
 To: linux-gpio@vger.kernel.org, linux-pwm@vger.kernel.org, 
@@ -17,50 +17,63 @@ Cc: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>,
  Bartosz Golaszewski <brgl@bgdev.pl>, 
  Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Liu Ying <victor.liu@nxp.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ Liu Ying <victor.liu@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744728560; l=1110;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744728560; l=1359;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=EJgyFwH5Kj7vzTKA7DA+Bt8uPJfr6RlwqI4q0KXHGGM=;
- b=ui9o5aTwMMpNGflun9l0v0qdasSNMiL+e4YhBBTNP/WYkYMKks+dvdYy7+WOIgvtxgAPX4hzl
- qm/4MqaIx2CDHcQDTO+UeG1662mxjt02TRQ5Y1EaDr68LHU8O5e8mnp
+ bh=YXvB+ZSL0gZ4TQpg4/Gr7rz9RArZE2EGcmubpPAGy0c=;
+ b=c7XdjNLWoVohdo+K7gcTPaJ5dYtAo7/Xwwh8fOzY6qtAOuLhu1jL12IQfKPYutOaaCRnsXoTA
+ UoNtNj6O6TeBfW9lIip3xC+GP1YwGhi1nvj91grKr5LKet32SFr2rcd
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a reset gpio property. Note that for the adp5585-01 models, the
-reset pin is used as the additional ROW5 which means there's no reset.
+Make sure to perform an Hardware reset during probe  if the pin is given
+in FW.
 
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- Documentation/devicetree/bindings/mfd/adi,adp5585.yaml | 4 ++++
- 1 file changed, 4 insertions(+)
+ drivers/mfd/adp5585.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml b/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml
-index b7c36e2d4bfc4e75c856a0b8b9c842627bf3b1b2..218d6d6399d02adf678acff67b4ee246d833d209 100644
---- a/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml
-+++ b/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml
-@@ -39,6 +39,9 @@ properties:
+diff --git a/drivers/mfd/adp5585.c b/drivers/mfd/adp5585.c
+index 667cc5bd0745f64eec60837ec3c00057af0cddeb..2af110fb28054c8ad6709a9a42cb21919be433e7 100644
+--- a/drivers/mfd/adp5585.c
++++ b/drivers/mfd/adp5585.c
+@@ -12,6 +12,7 @@
+ #include <linux/device.h>
+ #include <linux/err.h>
+ #include <linux/i2c.h>
++#include <linux/gpio/consumer.h>
+ #include <linux/mfd/adp5585.h>
+ #include <linux/mfd/core.h>
+ #include <linux/minmax.h>
+@@ -833,6 +834,7 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
+ {
+ 	const struct adp5585_info *info;
+ 	struct adp5585_dev *adp5585;
++	struct gpio_desc *gpio;
+ 	unsigned int id;
+ 	int ret;
  
-   vdd-supply: true
+@@ -854,6 +856,16 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
+ 	if (ret)
+ 		return ret;
  
-+  reset-gpios:
-+    maxItems: 1
++	gpio = devm_gpiod_get_optional(&i2c->dev, "reset", GPIOD_OUT_HIGH);
++	if (IS_ERR(gpio))
++		return PTR_ERR(gpio);
 +
-   gpio-controller: true
- 
-   '#gpio-cells':
-@@ -166,6 +169,7 @@ allOf:
-         adi,unlock-keys: false
-         adi,unlock-trigger-sec: false
-         gpio-reserved-ranges: false
-+        reset-gpios: false
-         adi,keypad-pins:
-           minItems: 2
-           maxItems: 11
++	if (gpio) {
++		fsleep(30);
++		gpiod_set_value_cansleep(gpio, 0);
++		fsleep(60);
++	}
++
+ 	adp5585->regmap = devm_regmap_init_i2c(i2c, info->regmap_config);
+ 	if (IS_ERR(adp5585->regmap))
+ 		return dev_err_probe(&i2c->dev, PTR_ERR(adp5585->regmap),
 
 -- 
 2.49.0
