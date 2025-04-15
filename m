@@ -1,11 +1,11 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Tue, 15 Apr 2025 08:54:30 +0200
-Subject: [PATCH v5 7/8] arm64: dts: freescale: Add the BOE av101hdt-a10
+Date: Tue, 15 Apr 2025 08:54:31 +0200
+Subject: [PATCH v5 8/8] arm64: dts: freescale: Add the BOE av123z7m-n17
  variant of the Moduline Display
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250415-initial_display-v5-7-f309f8d71499@gocontroll.com>
+Message-Id: <20250415-initial_display-v5-8-f309f8d71499@gocontroll.com>
 References: <20250415-initial_display-v5-0-f309f8d71499@gocontroll.com>
 In-Reply-To: <20250415-initial_display-v5-0-f309f8d71499@gocontroll.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -15,65 +15,59 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  Fabio Estevam <festevam@gmail.com>
 Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- Maud Spierings <maudspierings@gocontroll.com>
+ Maud Spierings <maudspierings@gocontroll.com>, Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744700066; l=4109;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744700066; l=4676;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=s+YSWWHZ/qWjR5g3Aj0fP/WU0u7E8mEW6X2vsCVzyKY=;
- b=w4aTIeB1PGcNKrtNZlrn6+QEL/R5AfdfAIuUND5G1muYX3zbuwVOEzhx+wpxdqp9p+b8FUr8l
- DjcCsD8C7JrBCvpsCUa/O8OVCvqIMPByAIPUVXLtpm0Hj1iKWrb6ZyF
+ bh=LByPw/mrn8RNYJR8lwlP3ksUPIStEdKRG9cNVPBNlbg=;
+ b=Haprc5ZGPJdAK4aRf7mhxTyB9H52YbUECVB0FoeaKrXsOtQKJQAoxvateeFNFNKwTJCy+gWDs
+ /B7sHT+lityA4pdvwzlHx3zC+IZfDmbE0PZWSKKFUNQVg336hNz5ZLc
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the BOE av101hdt-a10 variant of the Moduline Display, this variant
-comes with a 10.1 1280x720 display with a touchscreen (not working in
-mainline).
+Add the BOE av123z7m-n17 variant of the Moduline Display, this variant
+comes with a 12.3" 1920x720 display.
 
+Reviewed-by: Frank Li <Frank.Li@nxp.com>
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 
 ---
 Currently the backlight driver is not available, this will be upstreamed
 in a future patch series. It is a Maxim max25014atg.
-
-The touchscreen has a Cypress CYAT81658-64AS48 controller which as far as
-I know is not supported upstream, the driver we currently use for this is
-a mess and I doubt we will be able to get it in an upstreamable state.
 ---
- arch/arm64/boot/dts/freescale/Makefile             |  5 ++
- ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso | 94 ++++++++++++++++++++++
- 2 files changed, 99 insertions(+)
+ arch/arm64/boot/dts/freescale/Makefile             |   3 +
+ ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso | 139 +++++++++++++++++++++
+ 2 files changed, 142 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/freescale/Makefile b/arch/arm64/boot/dts/freescale/Makefile
-index b6d3fe26d621234ab84353165d20af9d2536f839..ca3255aa9e18187b33d54c836992aca5dd5d0465 100644
+index ca3255aa9e18187b33d54c836992aca5dd5d0465..c821f9eda332abd1db1867dab196c09929316728 100644
 --- a/arch/arm64/boot/dts/freescale/Makefile
 +++ b/arch/arm64/boot/dts/freescale/Makefile
-@@ -214,6 +214,11 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mp-skov-revc-bd500.dtb
- dtb-$(CONFIG_ARCH_MXC) += imx8mp-skov-revc-tian-g07017.dtb
- dtb-$(CONFIG_ARCH_MXC) += imx8mp-tqma8mpql-mba8mpxl.dtb
- dtb-$(CONFIG_ARCH_MXC) += imx8mp-tqma8mpql-mba8mp-ras314.dtb
-+
-+imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10-dtbs += imx8mp-tx8p-ml81-moduline-display-106.dtb \
-+	imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtbo
-+dtb-$(CONFIG_ARCH_MXC) += imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtb
-+
+@@ -217,7 +217,10 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mp-tqma8mpql-mba8mp-ras314.dtb
+ 
+ imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10-dtbs += imx8mp-tx8p-ml81-moduline-display-106.dtb \
+ 	imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtbo
++imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17-dtbs += imx8mp-tx8p-ml81-moduline-display-106.dtb \
++	imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtbo
+ dtb-$(CONFIG_ARCH_MXC) += imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtb
++dtb-$(CONFIG_ARCH_MXC) += imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtb
+ 
  dtb-$(CONFIG_ARCH_MXC) += imx8mp-var-som-symphony.dtb
  dtb-$(CONFIG_ARCH_MXC) += imx8mp-venice-gw71xx-2x.dtb
- dtb-$(CONFIG_ARCH_MXC) += imx8mp-venice-gw72xx-2x.dtb
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso
+diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
 new file mode 100644
-index 0000000000000000000000000000000000000000..b3bbbd69f671493c809bbf043807a22adda5024a
+index 0000000000000000000000000000000000000000..c723d13b95a61fa5ff0e41516f8a053f9d0b7768
 --- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso
-@@ -0,0 +1,94 @@
++++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
+@@ -0,0 +1,139 @@
 +// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 +/*
 + * Copyright 2025 GOcontroll B.V.
 + * Author: Maud Spierings <maudspierings@gocontroll.com>
 + */
 +
-+#include <dt-bindings/clock/imx8mp-clock.h>
 +#include <dt-bindings/gpio/gpio.h>
 +
 +#include "imx8mp-pinfunc.h"
@@ -82,34 +76,96 @@ index 0000000000000000000000000000000000000000..b3bbbd69f671493c809bbf043807a22a
 +/plugin/;
 +
 +&{/} {
-+	model = "GOcontroll Moduline Display with BOE av101hdt-a10 display";
++	model = "GOcontroll Moduline Display with BOE av123z7m-n17 display";
 +
 +	panel {
-+		compatible = "boe,av101hdt-a10";
++		compatible = "boe,av123z7m-n17";
 +		enable-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
 +		pinctrl-0 = <&pinctrl_panel>;
 +		pinctrl-names = "default";
 +		power-supply = <&reg_3v3_per>;
 +		reset-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
 +
-+		port {
-+			panel_lvds_in: endpoint {
-+				remote-endpoint = <&ldb_lvds_ch0>;
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++				dual-lvds-odd-pixels;
++
++				panel_in0: endpoint {
++					remote-endpoint = <&lvds1_out>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++				dual-lvds-even-pixels;
++
++				panel_in1: endpoint {
++					remote-endpoint = <&lvds0_out>;
++				};
++			};
++		};
++	};
++};
++
++&i2c4 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	/* sn65dsi85 */
++	bridge@2d {
++		compatible = "ti,sn65dsi84";
++		reg = <0x2d>;
++		enable-gpios = <&gpio4 14 GPIO_ACTIVE_HIGH>;
++		pinctrl-0 = <&pinctrl_lvds_bridge>;
++		pinctrl-names = "default";
++		vcc-supply = <&reg_1v8_per>;
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++
++				dsi_lvds_bridge_in: endpoint {
++					data-lanes = <1 2 3 4>;
++					remote-endpoint = <&mipi_dsi_out>;
++				};
++			};
++
++			port@2 {
++				reg = <2>;
++
++				lvds0_out: endpoint {
++					remote-endpoint = <&panel_in1>;
++				};
++			};
++
++			port@3 {
++				reg = <3>;
++
++				lvds1_out: endpoint {
++					remote-endpoint = <&panel_in0>;
++				};
 +			};
 +		};
 +	};
 +
-+	reg_vbus: regulator-vbus {
-+		compatible = "regulator-fixed";
-+		power-supply = <&reg_6v4>;
-+		regulator-always-on;
-+		regulator-max-microvolt = <5000000>;
-+		regulator-min-microvolt = <5000000>;
-+		regulator-name = "usb-c-vbus";
-+	};
++	/* max25014 @ 0x6f */
 +};
 +
 +&iomuxc {
++	pinctrl_lvds_bridge: lvdsbridgegrp {
++		fsl,pins = <
++			MX8MP_IOMUXC_SAI1_TXD2__GPIO4_IO14
++			MX8MP_DSE_X1
++		>;
++	};
++
 +	pinctrl_panel: panelgrp {
 +		fsl,pins = <
 +			MX8MP_IOMUXC_GPIO1_IO07__GPIO1_IO07
@@ -120,44 +176,28 @@ index 0000000000000000000000000000000000000000..b3bbbd69f671493c809bbf043807a22a
 +	};
 +};
 +
-+&lcdif2 {
++&lcdif1 {
 +	status = "okay";
 +};
 +
-+&lvds_bridge {
-+	assigned-clocks = <&clk IMX8MP_CLK_MEDIA_LDB>, <&clk IMX8MP_VIDEO_PLL1>;
-+	/* IMX8MP_VIDEO_PLL1 = IMX8MP_CLK_MEDIA_DISP2_PIX * 2 * 7 */
-+	assigned-clock-rates = <0>, <1054620000>;
++&mipi_dsi {
++	/*
++	 * burst has to be at least 2x dsi clock that the sn65dsi85 expects
++	 * display pixelclock * bpp / lanes / 2 = dsi clock
++	 * 88.000.000 * 24 / 4 / 2 = 264.000.000
++	 * range gets rounded up to 265.000.000 - 270.000.000
++	 * 267.500.000 * 2 = 535.000.000
++	 */
++	samsung,burst-clock-frequency = <535000000>;
++	samsung,esc-clock-frequency = <12000000>;
 +	status = "okay";
 +
 +	ports {
 +		port@1 {
-+			ldb_lvds_ch0: endpoint {
-+				remote-endpoint = <&panel_lvds_in>;
++			mipi_dsi_out: endpoint {
++				data-lanes = <1 2 3 4>;
++				remote-endpoint = < &dsi_lvds_bridge_in>;
 +			};
-+		};
-+	};
-+};
-+
-+&usb_dwc3_1 {
-+	dr_mode = "host";
-+
-+	connector {
-+		compatible = "usb-c-connector";
-+		data-role = "host";
-+		pd-disable;
-+		vbus-supply = <&reg_vbus>;
-+
-+		port {
-+			high_speed_ep: endpoint {
-+				remote-endpoint = <&usb1_hs_ep>;
-+			};
-+		};
-+	};
-+
-+	port {
-+		usb1_hs_ep: endpoint {
-+			remote-endpoint = <&high_speed_ep>;
 +		};
 +	};
 +};
