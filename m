@@ -1,67 +1,67 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Tue, 15 Apr 2025 23:22:18 +0200
-Subject: [PATCH 4/4] media: i2c: imx214: Read clock frequency from device
- tree
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Subject: [PATCH 0/3] Generic SPMI NVMEM cell driver
+Date: Tue, 15 Apr 2025 23:52:33 +0200
+Message-Id: <20250415-spmi-nvmem-v1-0-22067be253cf@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250415-imx214_ccs_pll-v1-4-d3d7748e5fbd@apitzsch.eu>
-References: <20250415-imx214_ccs_pll-v1-0-d3d7748e5fbd@apitzsch.eu>
-In-Reply-To: <20250415-imx214_ccs_pll-v1-0-d3d7748e5fbd@apitzsch.eu>
-To: Ricardo Ribalda <ribalda@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIACLV/mcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDE0NT3eKC3EzdvLLc1FzdVAMLM2NTY0MzQ3NTJaCGgqLUtMwKsGHRsbW
+ 1ABuu0b9cAAAA
+X-Change-ID: 20250415-spmi-nvmem-e08635316175
+To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
+ Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
+ Srinivas Kandagatla <srinivas.kandagatla@linaro.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sasha Finkelstein <fnkl.kernel@gmail.com>, Hector Martin <marcan@marcan.st>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744752164; l=1324;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=W4XT5Lp9JWmAz4BFUvUl0L/Hk6LPKxssT64tgrm1IVY=;
- b=GICm5MM8ywi46qLCUp5JA6cgoyQUX3Pu9McqjhMq3TcdkoyyVgkBVnbue9lgEO9gf46KBHe22
- F8EoLxh9UZ6DU4PGEpYVJ4Uvo45CyYXH7RPFHpGg3TC29Fdw+dEj/+Z
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744753962; l=1432;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=jBNCv2rda4YJZMZlnqUFKXhD2YixBW/bajeGa6Tnahg=;
+ b=z/bozObO8yi+GVG8sufEa3NcrtwV6CqAU6PzOgE14u6VKIBZuU8qylsUv97vpKOw9XrAYnnts
+ RA/RVyk+lJwCJ3/TPasI9fumkGl32BPZfim4W4o7J+IHeyGvfsrR/2T
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the hard coded external clock frequency by the one read from
-device tree.
+Hi.
 
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+This patch series adds a driver for exposing a set of SPMI registers
+as NVMEM cells. This is used on Apple ARM platforms to store the RTC
+offset and to communicate platform power state between the OS and
+boot firmware.
+
+The NVMEM cell consumer drivers will be sent in a further series.
+
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- drivers/media/i2c/imx214.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+Hector Martin (2):
+      nvmem: Add spmi-nvmem driver
+      arm64: dts: apple: Add PMU NVMEM
 
-diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
-index 5589228d2b44417c0dbf15a6a17fd8f954f1a2bc..6d7f05073aa9ffb054d454771ce22e3141af60e8 100644
---- a/drivers/media/i2c/imx214.c
-+++ b/drivers/media/i2c/imx214.c
-@@ -1388,6 +1388,7 @@ static int imx214_probe(struct i2c_client *client)
- {
- 	struct device *dev = &client->dev;
- 	struct imx214 *imx214;
-+	u32 xclk_freq;
- 	int ret;
- 
- 	imx214 = devm_kzalloc(dev, sizeof(*imx214), GFP_KERNEL);
-@@ -1401,7 +1402,14 @@ static int imx214_probe(struct i2c_client *client)
- 		return dev_err_probe(dev, PTR_ERR(imx214->xclk),
- 				     "failed to get xclk\n");
- 
--	ret = clk_set_rate(imx214->xclk, IMX214_DEFAULT_CLK_FREQ);
-+	ret = device_property_read_u32(dev, "clock-frequency", &xclk_freq);
-+	if (ret) {
-+		dev_warn(dev,
-+			 "clock-frequency not set, please review your DT. Fallback to default\n");
-+		xclk_freq = IMX214_DEFAULT_CLK_FREQ;
-+	}
-+
-+	ret = clk_set_rate(imx214->xclk, xclk_freq);
- 	if (ret)
- 		return dev_err_probe(dev, ret,
- 				     "failed to set xclk frequency\n");
+Sasha Finkelstein (1):
+      dt-bindings: spmi: Add generic SPMI NVMEM
 
+ .../devicetree/bindings/nvmem/spmi-nvmem.yaml      | 44 +++++++++++++++
+ MAINTAINERS                                        |  2 +
+ arch/arm64/boot/dts/apple/t6001.dtsi               |  1 +
+ arch/arm64/boot/dts/apple/t6002.dtsi               |  1 +
+ arch/arm64/boot/dts/apple/t600x-die0.dtsi          | 50 +++++++++++++++++
+ arch/arm64/boot/dts/apple/t8103.dtsi               | 50 +++++++++++++++++
+ arch/arm64/boot/dts/apple/t8112.dtsi               | 50 +++++++++++++++++
+ drivers/nvmem/Kconfig                              | 14 +++++
+ drivers/nvmem/Makefile                             |  2 +
+ drivers/nvmem/spmi-nvmem.c                         | 62 ++++++++++++++++++++++
+ 10 files changed, 276 insertions(+)
+---
+base-commit: 2e0e70c95077172b29a5b13716c4b159d578e82c
+change-id: 20250415-spmi-nvmem-e08635316175
+
+Best regards,
 -- 
-2.49.0
+Sasha Finkelstein <fnkl.kernel@gmail.com>
 
