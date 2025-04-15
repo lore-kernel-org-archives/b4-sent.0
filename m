@@ -1,196 +1,128 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Tue, 15 Apr 2025 16:47:32 +0200
-Subject: [PATCH v2 2/2] iio: imu: inv_icm42600: add wakeup functionality
- for Wake-on-Motion
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v2 00/17] mfd: adp5585: support keymap events and drop
+ legacy Input driver
+Date: Tue, 15 Apr 2025 15:49:16 +0100
+Message-Id: <20250415-dev-adp5589-fw-v2-0-3a799c3ed812@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250415-losd-3-inv-icm42600-add-wom-support-v2-2-de94dfb92b7e@tdk.com>
-References: <20250415-losd-3-inv-icm42600-add-wom-support-v2-0-de94dfb92b7e@tdk.com>
-In-Reply-To: <20250415-losd-3-inv-icm42600-add-wom-support-v2-0-de94dfb92b7e@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAOxx/mcC/13MQQ7CIBCF4as0s3YMUDCtq97DdIEwtCRaGjCoa
+ bi72MSNy/8l79sgUfSU4NxsECn75MNSQxwaMLNeJkJva4NgQrGWc7SUUdtVqa5H90Ri0jjbSyW
+ 6E9TTGsn51w5extqzT48Q37uf+Xf9Ue0/lTkyFIw6ZuXVStKDXvQtTEcT7jCWUj6Zld7srQAAA
+ A==
+X-Change-ID: 20250311-dev-adp5589-fw-e04cfd945286
+To: linux-gpio@vger.kernel.org, linux-pwm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-input@vger.kernel.org
+Cc: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Liu Ying <victor.liu@nxp.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744728454; l=5749;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=CuFRYaRZxPuw+fgDSMa7IYo+bKSh1dwxzccbZhiX9sA=;
- b=vbuV00uOU5VTIzGu9D4r3pMAh4mKVxn8sBkrGlWTDOc5qrgJHSGLTivgyBPW++UvzimZdDFVi
- BNoL2+3nGkKB9e0sKWYFKS+GCYCAYTnFFr/9S7F9qOsLuUGYZyIb8ec
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744728559; l=3998;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=1YZSRaVDusksRM573pWwDi4SZBCKuSaeLIow9Kp3l3I=;
+ b=w0G5TNF3ytrz+ne3xbnvovn3y0/E5PqAb7Y/asbnYDqtM/Z73hQZEnaSQAOWjHoZdmXfWh3V6
+ Fe2KiJys+hFAiR6I8Z3ceeR9Wyvihg6p9RL3r1COFyC8eUccipAM0bQ
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When Wake-on-Motion is on, enable system wakeup and keep chip on for
-waking up system with interrupt.
+The adp5585 MFD driver was introduced in 6.11 adding support for gpio
+and PWM. However, the gpio part of it was already supported as part of
+the keyboard driver:
 
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+https://elixir.bootlin.com/linux/v6.14-rc6/source/drivers/input/keyboard/adp5589-keys.c#L532
+
+On top of that it also overlapped with my refactoring of the above driver [1]
+to drop usage of platform data and use FW properties instead.
+
+Now, it actually makes sense for this device to be supported under MFD
+and since the "legacy" input device depends on platform data that is not
+defined anywhere the plan in this series is to add support for the
+keyboard and adp5589 devices as part of the MFD driver. Once the MFD
+driver supports all that's supported in the Input one, we drop it...
+
+For DT Maintainers:
+
+The compatible for adp5589 is part of trivial devices. To me, it makes
+sense to remove it in the patch where we drop the driver but doing so
+would result in a warning when adding the same compatible for the MFD
+bindings. Hence, I remove it in that patch. Is that ok?
+
+Uwe:
+
+In my eval board, I could see that reading the GPIO value (when
+configured as input) does not work when OSC_EN is not set. Therefore,
+commit ("pwm: adp5585: don't control OSC_EN in the pwm driver") could
+very well have a Fixes tag. However I'm not 100% sure it's a real issue
+or something special to my eval board.
+
+It would be nice if Laurent or Liu could test the PWM bits or even
+check that the above is also an issue for their platform.
+
+[1]: https://lore.kernel.org/linux-input/d1395bd61ce58b3734121bca4e09605a3e997af3.camel@gmail.com/
+
+BTW the series is based on linux-next/master
+
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600.h       |  2 +
- drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c |  3 ++
- drivers/iio/imu/inv_icm42600/inv_icm42600_core.c  | 65 +++++++++++++++++------
- 3 files changed, 54 insertions(+), 16 deletions(-)
+Changes in v2:
+- Patch 5:
+   * Do not nest if:then:else::if:then.
+- Patch 6:
+   * Make use of the adp5585 info variables and adp5589 volatile regs.
+- Patch 9:
+   * Use standard "poll-interval" property (and move it before vendor
+     properties).
+- Patch 10:
+   * Make sure to include bitfield.h.
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-index f5adebe4640fc36c5dc9810b515369d4909ba834..768d773a9129c5d64f0af1959504889ffbc9c131 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-@@ -151,6 +151,7 @@ struct inv_icm42600_apex {
-  *  @map:		regmap pointer.
-  *  @vdd_supply:	VDD voltage regulator for the chip.
-  *  @vddio_supply:	I/O voltage regulator for the chip.
-+ *  @irq:		chip irq, required to enable/disable and set wakeup
-  *  @orientation:	sensor chip orientation relative to main hardware.
-  *  @conf:		chip sensors configurations.
-  *  @suspended:		suspended sensors configuration.
-@@ -168,6 +169,7 @@ struct inv_icm42600_state {
- 	struct regmap *map;
- 	struct regulator *vdd_supply;
- 	struct regulator *vddio_supply;
-+	int irq;
- 	struct iio_mount_matrix orientation;
- 	struct inv_icm42600_conf conf;
- 	struct inv_icm42600_suspended suspended;
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-index 94515166c1fcdf6cc7ba4843334f51cb14696eba..2249f551f10f3211dadde2f6aa1dccd9b704f146 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-@@ -1162,6 +1162,9 @@ struct iio_dev *inv_icm42600_accel_init(struct inv_icm42600_state *st)
- 	if (ret)
- 		return ERR_PTR(ret);
- 
-+	/* accel events are wakeup capable */
-+	device_set_wakeup_capable(&indio_dev->dev, true);
-+
- 	return indio_dev;
- }
- 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-index 9a2150ab9e874f17d7fda731cb131c3f688a75a3..14b64d14a6241ec60c23b64486a615a84513ae3c 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-@@ -765,6 +765,7 @@ int inv_icm42600_core_probe(struct regmap *regmap, int chip,
- 	mutex_init(&st->lock);
- 	st->chip = chip;
- 	st->map = regmap;
-+	st->irq = irq;
- 
- 	ret = iio_read_mount_matrix(dev, &st->orientation);
- 	if (ret) {
-@@ -843,6 +844,9 @@ EXPORT_SYMBOL_NS_GPL(inv_icm42600_core_probe, "IIO_ICM42600");
- static int inv_icm42600_suspend(struct device *dev)
- {
- 	struct inv_icm42600_state *st = dev_get_drvdata(dev);
-+	struct device *accel_dev;
-+	bool wakeup;
-+	int accel_conf;
- 	int ret;
- 
- 	mutex_lock(&st->lock);
-@@ -863,20 +867,33 @@ static int inv_icm42600_suspend(struct device *dev)
- 			goto out_unlock;
- 	}
- 
--	/* disable APEX features */
--	if (st->apex.wom.enable) {
--		ret = inv_icm42600_disable_wom(st);
--		if (ret)
--			goto out_unlock;
-+	/* keep chip on and wake-up capable if APEX and wakeup on */
-+	accel_dev = &st->indio_accel->dev;
-+	wakeup = (st->apex.on && device_may_wakeup(accel_dev)) ? true : false;
-+
-+	if (!wakeup) {
-+		/* disable APEX features and accel if wakeup disabled */
-+		if (st->apex.wom.enable) {
-+			ret = inv_icm42600_disable_wom(st);
-+			if (ret)
-+				goto out_unlock;
-+		}
-+		accel_conf = INV_ICM42600_SENSOR_MODE_OFF;
-+	} else {
-+		/* keep accel on and setup irq for wakeup */
-+		accel_conf = st->conf.accel.mode;
-+		enable_irq_wake(st->irq);
-+		disable_irq(st->irq);
- 	}
- 
- 	ret = inv_icm42600_set_pwr_mgmt0(st, INV_ICM42600_SENSOR_MODE_OFF,
--					 INV_ICM42600_SENSOR_MODE_OFF, false,
--					 NULL);
-+					 accel_conf, false, NULL);
- 	if (ret)
- 		goto out_unlock;
- 
--	regulator_disable(st->vddio_supply);
-+	/* disable vddio regulator if chip is sleeping */
-+	if (!wakeup)
-+		regulator_disable(st->vddio_supply);
- 
- out_unlock:
- 	mutex_unlock(&st->lock);
-@@ -892,13 +909,25 @@ static int inv_icm42600_resume(struct device *dev)
- 	struct inv_icm42600_state *st = dev_get_drvdata(dev);
- 	struct inv_icm42600_sensor_state *gyro_st = iio_priv(st->indio_gyro);
- 	struct inv_icm42600_sensor_state *accel_st = iio_priv(st->indio_accel);
-+	struct device *accel_dev;
-+	bool wakeup;
- 	int ret;
- 
- 	mutex_lock(&st->lock);
- 
--	ret = inv_icm42600_enable_regulator_vddio(st);
--	if (ret)
--		goto out_unlock;
-+	/* check wakeup capability */
-+	accel_dev = &st->indio_accel->dev;
-+	wakeup = (st->apex.on && device_may_wakeup(accel_dev)) ? true : false;
-+
-+	/* restore vddio if cut off or irq state */
-+	if (!wakeup) {
-+		ret = inv_icm42600_enable_regulator_vddio(st);
-+		if (ret)
-+			goto out_unlock;
-+	} else {
-+		enable_irq(st->irq);
-+		disable_irq_wake(st->irq);
-+	}
- 
- 	pm_runtime_disable(dev);
- 	pm_runtime_set_active(dev);
-@@ -911,11 +940,13 @@ static int inv_icm42600_resume(struct device *dev)
- 	if (ret)
- 		goto out_unlock;
- 
--	/* restore APEX features */
--	if (st->apex.wom.enable) {
--		ret = inv_icm42600_enable_wom(st);
--		if (ret)
--			goto out_unlock;
-+	/* restore APEX features if disabled */
-+	if (!wakeup) {
-+		if (st->apex.wom.enable) {
-+			ret = inv_icm42600_enable_wom(st);
-+			if (ret)
-+				goto out_unlock;
-+		}
- 	}
- 
- 	/* restore FIFO data streaming */
-@@ -924,6 +955,8 @@ static int inv_icm42600_resume(struct device *dev)
- 		inv_sensors_timestamp_reset(&accel_st->ts);
- 		ret = regmap_write(st->map, INV_ICM42600_REG_FIFO_CONFIG,
- 				   INV_ICM42600_FIFO_CONFIG_STREAM);
-+		if (ret)
-+			goto out_unlock;
- 	}
- 
- out_unlock:
+- Link to v1: https://lore.kernel.org/r/20250313-dev-adp5589-fw-v1-0-20e80d4bd4ea@analog.com
 
--- 
-2.49.0
+---
+Nuno Sá (17):
+      dt-bindings: mfd: adp5585: ease on the required properties
+      mfd: adp5585: enable oscilator during probe
+      pwm: adp5585: don't control OSC_EN in the pwm driver
+      mfd: adp5585: make use of MFD_CELL_NAME()
+      dt-bindings: mfd: adp5585: document adp5589 I/O expander
+      mfd: adp5585: add support for adp5589
+      gpio: adp5585: add support for the ad5589 expander
+      pwm: adp5585: add support for adp5589
+      dt-bindings: mfd: adp5585: add properties for input events
+      mfd: adp5585: add support for key events
+      gpio: adp5585: support gpi events
+      Input: adp5585: Add Analog Devices ADP5585/89 support
+      Input: adp5589: remove the driver
+      mfd: adp5585: support getting vdd regulator
+      dt-bindings: mfd: adp5585: document reset gpio
+      mfd: adp5585: add support for a reset pin
+      pwm: adp5585: make sure to include mod_devicetable.h
+
+ .../devicetree/bindings/mfd/adi,adp5585.yaml       |  240 ++++-
+ .../devicetree/bindings/trivial-devices.yaml       |    2 -
+ MAINTAINERS                                        |    1 +
+ drivers/gpio/Kconfig                               |    1 +
+ drivers/gpio/gpio-adp5585.c                        |  299 +++++-
+ drivers/input/keyboard/Kconfig                     |   21 +-
+ drivers/input/keyboard/Makefile                    |    2 +-
+ drivers/input/keyboard/adp5585-keys.c              |  221 ++++
+ drivers/input/keyboard/adp5589-keys.c              | 1066 --------------------
+ drivers/mfd/adp5585.c                              |  808 ++++++++++++++-
+ drivers/pwm/pwm-adp5585.c                          |   57 +-
+ include/linux/mfd/adp5585.h                        |  153 ++-
+ 12 files changed, 1709 insertions(+), 1162 deletions(-)
+---
+base-commit: 5b37f7bfff3b1582c34be8fb23968b226db71ebd
+change-id: 20250311-dev-adp5589-fw-e04cfd945286
+--
+
+Thanks!
+- Nuno Sá
 
