@@ -1,10 +1,10 @@
 From: Sven Peter <sven@svenpeter.dev>
-Date: Tue, 15 Apr 2025 15:36:56 +0000
-Subject: [PATCH v2 2/6] i2c: pasemi: Sort includes alphabetically
+Date: Tue, 15 Apr 2025 15:36:57 +0000
+Subject: [PATCH v2 3/6] i2c: pasemi: Improve timeout handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250415-pasemi-fixes-v2-2-c543bf53151a@svenpeter.dev>
+Message-Id: <20250415-pasemi-fixes-v2-3-c543bf53151a@svenpeter.dev>
 References: <20250415-pasemi-fixes-v2-0-c543bf53151a@svenpeter.dev>
 In-Reply-To: <20250415-pasemi-fixes-v2-0-c543bf53151a@svenpeter.dev>
 To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
@@ -17,74 +17,81 @@ Cc: linuxppc-dev@lists.ozlabs.org, asahi@lists.linux.dev,
  linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Sven Peter <sven@svenpeter.dev>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1747; i=sven@svenpeter.dev;
- h=from:subject:message-id; bh=d4SrViBETCvEIVGrCu813u0fCI79k8TBuEJCcmGpDI0=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ/q/WtWl7ddnLW1MubOp8d16cesWr2/7U2cXBHtceHk94
- Xb343vXOkpZGMQ4GGTFFFm277c3ffLwjeDSTZfew8xhZQIZwsDFKQATyZrO8D+9Oq6hSL4vb+s3
- aes9x67wXZ7ywlla4kKDZuwqy/eW7yMY/ik9+WNdy5A+zzfXXDRK0vDdoZPBj/T0lJ3n3axrt+s
- uZwUA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2138; i=sven@svenpeter.dev;
+ h=from:subject:message-id; bh=pieYM48LE5ENsb4OlGmWM38fJJzel5K/67CDk0KItDE=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ/q/WvWKcJ/Ij8b3P05fYM58StKf7c2kj6UO6rKVr2u/R
+ bN/jY3vKGVhEONgkBVTZNm+3970ycM3gks3XXoPM4eVCWQIAxenAExk7yWG/w5Skwunb99z8fBu
+ o7eC/youx5b+YzCc+W/XoprbuSEdnPcZGU4/lzac0t5wuYzjwwGL5tcNvtVFW7/VPLu1Y0rwgYr
+ 9DAwA
 X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-No functional changes.
+Add proper timeout handling for the interrupt path.
+Previously, this was only correctly done for the polling path.
+Note that we drop reg_write(smbus, REG_SMSTA, status) here which
+will be done anyway whenever the next transaction starts via
+pasemi_smb_clear.
 
 Signed-off-by: Sven Peter <sven@svenpeter.dev>
 ---
- drivers/i2c/busses/i2c-pasemi-core.c | 10 +++++-----
- drivers/i2c/busses/i2c-pasemi-pci.c  | 10 +++++-----
- 2 files changed, 10 insertions(+), 10 deletions(-)
+ drivers/i2c/busses/i2c-pasemi-core.c | 24 +++++++++++++++++-------
+ 1 file changed, 17 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/i2c/busses/i2c-pasemi-core.c b/drivers/i2c/busses/i2c-pasemi-core.c
-index 71cc8cfc7c5cbf3924269f6217712d42008c03ff..df1b0087dcacb0a3b94196368137d5e20b0e6d7e 100644
+index df1b0087dcacb0a3b94196368137d5e20b0e6d7e..9b611dbdfef23e78a4ea75ac0311938d52b6ba96 100644
 --- a/drivers/i2c/busses/i2c-pasemi-core.c
 +++ b/drivers/i2c/busses/i2c-pasemi-core.c
-@@ -6,15 +6,15 @@
-  */
+@@ -91,32 +91,42 @@ static void pasemi_smb_clear(struct pasemi_smbus *smbus)
+ static int pasemi_smb_waitready(struct pasemi_smbus *smbus)
+ {
+ 	int timeout = 100;
++	int ret;
+ 	unsigned int status;
  
- #include <linux/bits.h>
-+#include <linux/delay.h>
-+#include <linux/i2c.h>
-+#include <linux/io.h>
-+#include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/pci.h>
--#include <linux/kernel.h>
--#include <linux/stddef.h>
- #include <linux/sched.h>
--#include <linux/i2c.h>
--#include <linux/delay.h>
- #include <linux/slab.h>
--#include <linux/io.h>
-+#include <linux/stddef.h>
+ 	if (smbus->use_irq) {
+ 		reinit_completion(&smbus->irq_completion);
+ 		reg_write(smbus, REG_IMASK, SMSTA_XEN | SMSTA_MTN);
+-		wait_for_completion_timeout(&smbus->irq_completion, msecs_to_jiffies(100));
++		ret = wait_for_completion_timeout(&smbus->irq_completion, msecs_to_jiffies(100));
+ 		reg_write(smbus, REG_IMASK, 0);
+ 		status = reg_read(smbus, REG_SMSTA);
++
++		if (ret < 0) {
++			dev_err(smbus->dev,
++				"Completion wait failed with %d, status 0x%08x\n",
++				ret, status);
++			return ret;
++		} else if (ret == 0) {
++			dev_warn(smbus->dev, "Timeout, status 0x%08x\n", status);
++			return -ETIME;
++		}
+ 	} else {
+ 		status = reg_read(smbus, REG_SMSTA);
+ 		while (!(status & SMSTA_XEN) && timeout--) {
+ 			msleep(1);
+ 			status = reg_read(smbus, REG_SMSTA);
+ 		}
++
++		if (timeout < 0) {
++			dev_warn(smbus->dev, "Timeout, status 0x%08x\n", status);
++			return -ETIME;
++		}
+ 	}
  
- #include "i2c-pasemi-core.h"
+ 	/* Got NACK? */
+ 	if (status & SMSTA_MTN)
+ 		return -ENXIO;
  
-diff --git a/drivers/i2c/busses/i2c-pasemi-pci.c b/drivers/i2c/busses/i2c-pasemi-pci.c
-index 77f90c7436eda2df16afd7f1cac79355fb005bfd..b9ccb54ec77e22bb1b77848c858e2e0cc51db7e3 100644
---- a/drivers/i2c/busses/i2c-pasemi-pci.c
-+++ b/drivers/i2c/busses/i2c-pasemi-pci.c
-@@ -5,15 +5,15 @@
-  * SMBus host driver for PA Semi PWRficient
-  */
- 
-+#include <linux/delay.h>
-+#include <linux/i2c.h>
-+#include <linux/io.h>
-+#include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/pci.h>
--#include <linux/kernel.h>
--#include <linux/stddef.h>
- #include <linux/sched.h>
--#include <linux/i2c.h>
--#include <linux/delay.h>
- #include <linux/slab.h>
--#include <linux/io.h>
-+#include <linux/stddef.h>
- 
- #include "i2c-pasemi-core.h"
+-	if (timeout < 0) {
+-		dev_warn(smbus->dev, "Timeout, status 0x%08x\n", status);
+-		reg_write(smbus, REG_SMSTA, status);
+-		return -ETIME;
+-	}
+-
+ 	/* Clear XEN */
+ 	reg_write(smbus, REG_SMSTA, SMSTA_XEN);
  
 
 -- 
