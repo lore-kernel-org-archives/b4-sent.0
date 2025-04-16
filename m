@@ -1,227 +1,77 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Wed, 16 Apr 2025 21:59:06 +0530
-Subject: [PATCH v2 4/4] PCI: qcom: Add support for resetting the slot due
- to link down event
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Subject: [PATCH net-next v3 0/4] net: phy: dp83822: Add support for
+ changing the MAC series termination
+Date: Wed, 16 Apr 2025 19:14:46 +0200
+Message-Id: <20250416-dp83822-mac-impedance-v3-0-028ac426cddb@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250416-pcie-reset-slot-v2-4-efe76b278c10@linaro.org>
-References: <20250416-pcie-reset-slot-v2-0-efe76b278c10@linaro.org>
-In-Reply-To: <20250416-pcie-reset-slot-v2-0-efe76b278c10@linaro.org>
-To: Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
- Oliver O'Halloran <oohall@gmail.com>, Bjorn Helgaas <bhelgaas@google.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Rob Herring <robh@kernel.org>
-Cc: dingwei@marvell.com, cassel@kernel.org, Lukas Wunner <lukas@wunner.de>, 
- Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- linuxppc-dev@lists.ozlabs.org, linux-pci@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+X-B4-Tracking: v=1; b=H4sIAIbl/2cC/3XNywqDMBQE0F+RrHtLzKPGrvofpYs8rjVQoyQSL
+ OK/N0ihUHA5DHNmJQmjx0Su1UoiZp/8GErgp4rYXocngnclE0aZpJxKcJPiijEYtAU/TOh0sAh
+ KUMGlobbFCynbKWLnl929k4AzBFxm8ihN79M8xvd+mOu9/9rNgZ1roGCcU1I3sjVC3l4eTY8xn
+ u047GhmP0hQdQSxAnXYodFCt4qKP2jbtg89BHbNEAEAAA==
+X-Change-ID: 20250305-dp83822-mac-impedance-840435b0c9e6
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, Andrew Davis <afd@ti.com>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>, 
+ "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6126;
- i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=u/UvQ7QZOIYDpjR36le74CWa9kFm5T00hOF6YTv343I=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBn/9rYJo2pzHO0PJSZIFRclRPwqiYKcpVt0WcD1
- 30o9+sLpDyJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ//a2AAKCRBVnxHm/pHO
- 9QARB/9ByY8CCpO1DLSOJaeQ+13Fx1JKIuFwhuKvwb2W3Kjfngd6gYA+zC6FiE+8CAyJ2GUBurV
- ix/qLs4RJXZ9xIm6CjiqjDBC5iGzo69HghE3H7Bjzive33tcLbmofsRF1Y/QqvbYzDPIXuLi9vz
- lZ30ZpTrB1pJgQEapz9yPtRf29gGLtnLHX9UAHJKSalv1o22GavTdvTnaRNIdZVe55ZbXzv4kK0
- fIOerpBMmwHr2F+s6fpEhKpMyxOIDo//7UEuTy5eagf62kl7b61DBkJqSiAqrU06c4b1xF9yfF7
- 9oTsO7BKKOP9fnV99atYQOOwKyYJP6IdqcTYOInEwdgHQ3i1
-X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744823698; l=1944;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=rrCB5OTUZE7hdVNRyzzj/bm/DBwSH2wkplB+PM4ecfU=;
+ b=PiRAcgqLqN2FBIxZgGgm9aXyDZvYEBE0SzKfRcaEYVP68Q+KngzXZApdwAClkyrzpOiRr+6tI
+ ecsWZSK1OK5CNzUvHt1c1C2ZaDajaCH7/Wcz7ezalLnHSxmJmJCQyDQ
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PCIe link can go down under circumstances such as the device firmware
-crash, link instability, etc... When that happens, the PCIe slot needs to
-be reset to make it operational again. Currently, the driver is not
-handling the link down event, due to which the users have to restart the
-machine to make PCIe link operational again. So fix it by detecting the
-link down event and resetting the slot.
+The dp83822 provides the possibility to set the resistance value of the
+the MAC series termination. Modifying the resistance to an appropriate
+value can reduce signal reflections and therefore improve signal quality.
 
-Since the Qcom PCIe controllers report the link down event through the
-'global' IRQ, enable the link down event by setting PARF_INT_ALL_LINK_DOWN
-bit in PARF_INT_ALL_MASK register.
-
-Then in the case of the event, call pci_host_handle_link_down() API
-in the handler to let the PCI core handle the link down condition.
-
-The API will internally call, 'pci_host_bridge::reset_slot()' callback to
-reset the slot in a platform specific way. So implement the callback to
-reset the slot by first resetting the PCIe core, followed by reinitializing
-the resources and then finally starting the link again.
-
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- drivers/pci/controller/dwc/pcie-qcom.c | 89 +++++++++++++++++++++++++++++++++-
- 1 file changed, 87 insertions(+), 2 deletions(-)
+Changes in v3:
+- Add maximum to mac-termination-ohms in ethernet-phy.yaml
+- Add allowed values for mac-termination-ohms in ti,dp83822.yaml
+- Added mac-termination-ohms in sample in ti,dp83822.yaml
+- Link to v2: https://lore.kernel.org/r/20250408-dp83822-mac-impedance-v2-0-fefeba4a9804@liebherr.com
 
-diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
-index dc98ae63362db0422384b1879a2b9a7dc564d091..b0df108fb4f3c6a8b8290062ecb3e1c5c34ddd4c 100644
---- a/drivers/pci/controller/dwc/pcie-qcom.c
-+++ b/drivers/pci/controller/dwc/pcie-qcom.c
-@@ -55,6 +55,7 @@
- #define PARF_INT_ALL_STATUS			0x224
- #define PARF_INT_ALL_CLEAR			0x228
- #define PARF_INT_ALL_MASK			0x22c
-+#define PARF_STATUS				0x230
- #define PARF_SID_OFFSET				0x234
- #define PARF_BDF_TRANSLATE_CFG			0x24c
- #define PARF_DBI_BASE_ADDR_V2			0x350
-@@ -130,8 +131,11 @@
- 
- /* PARF_LTSSM register fields */
- #define LTSSM_EN				BIT(8)
-+#define SW_CLEAR_FLUSH_MODE			BIT(10)
-+#define FLUSH_MODE				BIT(11)
- 
- /* PARF_INT_ALL_{STATUS/CLEAR/MASK} register fields */
-+#define PARF_INT_ALL_LINK_DOWN			BIT(1)
- #define PARF_INT_ALL_LINK_UP			BIT(13)
- #define PARF_INT_MSI_DEV_0_7			GENMASK(30, 23)
- 
-@@ -145,6 +149,9 @@
- /* PARF_BDF_TO_SID_CFG fields */
- #define BDF_TO_SID_BYPASS			BIT(0)
- 
-+/* PARF_STATUS fields */
-+#define FLUSH_COMPLETED				BIT(8)
-+
- /* ELBI_SYS_CTRL register fields */
- #define ELBI_SYS_CTRL_LT_ENABLE			BIT(0)
- 
-@@ -169,6 +176,7 @@
- 						PCIE_CAP_SLOT_POWER_LIMIT_SCALE)
- 
- #define PERST_DELAY_US				1000
-+#define FLUSH_TIMEOUT_US			100
- 
- #define QCOM_PCIE_CRC8_POLYNOMIAL		(BIT(2) | BIT(1) | BIT(0))
- 
-@@ -274,11 +282,14 @@ struct qcom_pcie {
- 	struct icc_path *icc_cpu;
- 	const struct qcom_pcie_cfg *cfg;
- 	struct dentry *debugfs;
-+	int global_irq;
- 	bool suspended;
- 	bool use_pm_opp;
- };
- 
- #define to_qcom_pcie(x)		dev_get_drvdata((x)->dev)
-+static int qcom_pcie_reset_slot(struct pci_host_bridge *bridge,
-+				  struct pci_dev *pdev);
- 
- static void qcom_ep_reset_assert(struct qcom_pcie *pcie)
- {
-@@ -1263,6 +1274,8 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
- 			goto err_assert_reset;
- 	}
- 
-+	pp->bridge->reset_slot = qcom_pcie_reset_slot;
-+
- 	return 0;
- 
- err_assert_reset:
-@@ -1300,6 +1313,73 @@ static const struct dw_pcie_host_ops qcom_pcie_dw_ops = {
- 	.post_init	= qcom_pcie_host_post_init,
- };
- 
-+static int qcom_pcie_reset_slot(struct pci_host_bridge *bridge,
-+				  struct pci_dev *pdev)
-+{
-+	struct pci_bus *bus = bridge->bus;
-+	struct dw_pcie_rp *pp = bus->sysdata;
-+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
-+	struct qcom_pcie *pcie = to_qcom_pcie(pci);
-+	struct device *dev = pcie->pci->dev;
-+	u32 val;
-+	int ret;
-+
-+	/* Wait for the pending transactions to be completed */
-+	ret = readl_relaxed_poll_timeout(pcie->parf + PARF_STATUS, val,
-+					 val & FLUSH_COMPLETED, 10,
-+					 FLUSH_TIMEOUT_US);
-+	if (ret) {
-+		dev_err(dev, "Flush completion failed: %d\n", ret);
-+		goto err_host_deinit;
-+	}
-+
-+	/* Clear the FLUSH_MODE to allow the core to be reset */
-+	val = readl(pcie->parf + PARF_LTSSM);
-+	val |= SW_CLEAR_FLUSH_MODE;
-+	writel(val, pcie->parf + PARF_LTSSM);
-+
-+	/* Wait for the FLUSH_MODE to clear */
-+	ret = readl_relaxed_poll_timeout(pcie->parf + PARF_LTSSM, val,
-+					 !(val & FLUSH_MODE), 10,
-+					 FLUSH_TIMEOUT_US);
-+	if (ret) {
-+		dev_err(dev, "Flush mode clear failed: %d\n", ret);
-+		goto err_host_deinit;
-+	}
-+
-+	qcom_pcie_host_deinit(pp);
-+
-+	ret = qcom_pcie_host_init(pp);
-+	if (ret) {
-+		dev_err(dev, "Host init failed\n");
-+		return ret;
-+	}
-+
-+	ret = dw_pcie_setup_rc(pp);
-+	if (ret)
-+		goto err_host_deinit;
-+
-+	/*
-+	 * Re-enable global IRQ events as the PARF_INT_ALL_MASK register is
-+	 * non-sticky.
-+	 */
-+	if (pcie->global_irq)
-+		writel_relaxed(PARF_INT_ALL_LINK_UP | PARF_INT_ALL_LINK_DOWN |
-+			       PARF_INT_MSI_DEV_0_7, pcie->parf + PARF_INT_ALL_MASK);
-+
-+	qcom_pcie_start_link(pci);
-+	dw_pcie_wait_for_link(pci);
-+
-+	dev_dbg(dev, "Slot reset completed\n");
-+
-+	return 0;
-+
-+err_host_deinit:
-+	qcom_pcie_host_deinit(pp);
-+
-+	return ret;
-+}
-+
- /* Qcom IP rev.: 2.1.0	Synopsys IP rev.: 4.01a */
- static const struct qcom_pcie_ops ops_2_1_0 = {
- 	.get_resources = qcom_pcie_get_resources_2_1_0,
-@@ -1571,6 +1651,9 @@ static irqreturn_t qcom_pcie_global_irq_thread(int irq, void *data)
- 		pci_unlock_rescan_remove();
- 
- 		qcom_pcie_icc_opp_update(pcie);
-+	} else if (FIELD_GET(PARF_INT_ALL_LINK_DOWN, status)) {
-+		dev_dbg(dev, "Received Link down event\n");
-+		pci_host_handle_link_down(pp->bridge);
- 	} else {
- 		dev_WARN_ONCE(dev, 1, "Received unknown event. INT_STATUS: 0x%08x\n",
- 			      status);
-@@ -1732,8 +1815,10 @@ static int qcom_pcie_probe(struct platform_device *pdev)
- 			goto err_host_deinit;
- 		}
- 
--		writel_relaxed(PARF_INT_ALL_LINK_UP | PARF_INT_MSI_DEV_0_7,
--			       pcie->parf + PARF_INT_ALL_MASK);
-+		writel_relaxed(PARF_INT_ALL_LINK_UP | PARF_INT_ALL_LINK_DOWN |
-+			       PARF_INT_MSI_DEV_0_7, pcie->parf + PARF_INT_ALL_MASK);
-+
-+		pcie->global_irq = irq;
- 	}
- 
- 	qcom_pcie_icc_opp_update(pcie);
+Changes in v2:
+- Renamed "mac-series-termination-ohms" to "mac-termination-ohms"
+- Added description for "mac-termination-ohms"
+- Renamed "phy_get_mac_series_termination" to "phy_get_mac_termination"
+- Dropped "mac_series_termination_modify" from dp83822_private
+- Init mac_termination_index in dp8382x_probe
+- Renamed "mac_series_termination" to "mac_termination"
+- Link to v1: https://lore.kernel.org/r/20250307-dp83822-mac-impedance-v1-0-bdd85a759b45@liebherr.com
 
+---
+Dimitri Fedrau (4):
+      dt-bindings: net: ethernet-phy: add property mac-termination-ohms
+      dt-bindings: net: dp83822: add constraints for mac-termination-ohms
+      net: phy: Add helper for getting MAC termination resistance
+      net: phy: dp83822: Add support for changing the MAC termination
+
+ .../devicetree/bindings/net/ethernet-phy.yaml      | 10 +++++++
+ .../devicetree/bindings/net/ti,dp83822.yaml        |  4 +++
+ drivers/net/phy/dp83822.c                          | 33 ++++++++++++++++++++++
+ drivers/net/phy/phy_device.c                       | 15 ++++++++++
+ include/linux/phy.h                                |  3 ++
+ 5 files changed, 65 insertions(+)
+---
+base-commit: ac1df712442c64b50cfdbe01da0e5aca8319b559
+change-id: 20250305-dp83822-mac-impedance-840435b0c9e6
+
+Best regards,
 -- 
-2.43.0
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
