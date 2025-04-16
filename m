@@ -1,96 +1,187 @@
-From: Janne Grunau <j@jannau.net>
-Date: Wed, 16 Apr 2025 20:06:18 +0200
-Subject: [PATCH] arm64: dts: apple: touchbar: Mark ps_dispdfr_be as
- always-on
+From: Thierry Treyer <ttreyer@meta.com>
+Subject: [PATCH RFC 0/3] list inline expansions in .BTF.inline
+Date: Wed, 16 Apr 2025 19:20:34 +0000
+Message-Id: <20250416-btf_inline-v1-0-e4bd2f8adae5@meta.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250416-arm64_dts_apple_touchbar-v1-1-e1c0b53b9125@jannau.net>
-X-B4-Tracking: v=1; b=H4sIAJnx/2cC/x3MywqAIBBA0V+JWSdUmD1+JUJMpxroIWNFEP170
- vIs7n0gIBMGaJMHGC8KtG8ReZqAnc02oSAXDUVWlJnMlTC8KqndEbTxfkF97KedB8NClbV1TSU
- dNhXE3DOOdP/rrn/fD/MfiopqAAAA
-X-Change-ID: 20250416-arm64_dts_apple_touchbar-658cd974de97
-To: Sven Peter <sven@svenpeter.dev>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Nick Chan <towinchenmi@gmail.com>, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Janne Grunau <j@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAAIDAGgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDE0Mz3aSStPjMvJzMvFTdVKCIeWpqomWSWZoSUENBUWpaZgXYsGilIDd
+ npdjaWgDWL0b3YQAAAA==
+X-Change-ID: 20250416-btf_inline-e5047eea9b6f
+To: dwarves@vger.kernel.org, bpf@vger.kernel.org
+Cc: Thierry Treyer <ttreyer@meta.com>, acme@kernel.org, ast@kernel.org, 
+ yhs@meta.com, andrii@kernel.org, ihor.solodrai@linux.dev, 
+ songliubraving@meta.com, alan.maguire@oracle.com, mykolal@meta.com
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2090; i=j@jannau.net;
- s=yk2024; h=from:subject:message-id;
- bh=vW+HnwVsI6HKFCWS8Ni6G5ezcLgPyLTobLTnqE3VCiY=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhvT/H+dWvp50jXemd5qQ38RFF3hTijMsYu7mde2Ydziu+
- KpFdK5BRykLgxgXg6yYIkuS9ssOhtU1ijG1D8Jg5rAygQxh4OIUgIkY+zH8z965537Wq0sasRts
- wlRYNmew7NDQK/Cxvlme92LpL6YWXoY/PILfNx+xaZGRT/UpC81uWrzrNUvCNpd5TLmLLgRUvLj
- MAQA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744831265; l=7233;
+ i=ttreyer@meta.com; s=20250416; h=from:subject:message-id;
+ bh=Lc+Vg2cKW4n3CYvpeyaRufqKP0NY0w4a/MSRYkAwhE8=;
+ b=UTugkyM0H1twWNaeXI3tPA6mbDOGVXHJXmnKZoBBFnFHCZ3DOABtO4D8BsPgGUPVv7b18iBdv
+ nk4sWts344cCoefLfbvOfi7AHu83dEBPiOcXYYIC/9RtDXCZrmvTT7o
+X-Developer-Key: i=ttreyer@meta.com; a=ed25519;
+ pk=2NAyAkZ6zhou7+5zqr5ikv3g5BfFbkznGzvzfKv1nbU=
+X-Endpoint-Received: by B4 Relay for ttreyer@meta.com/20250416 with auth_id=382
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver depends on boot loader initialized state which resets when the
-ps_dispdfr_be power-domain is powered off. This happens on suspend or
-when the driver is missing during boot.
-Mark the domain as always on until the driver can handle this.
+This proposal extends BTF to list the locations of inlined functions and
+their arguments in a new '.BTF.inline` section.
 
-Fixes: 7275e795e520 ("arm64: dts: apple: Add touchbar screen nodes")
-Signed-off-by: Janne Grunau <j@jannau.net>
----
- arch/arm64/boot/dts/apple/t8103-j293.dts | 10 ++++++++++
- arch/arm64/boot/dts/apple/t8112-j493.dts | 10 ++++++++++
- 2 files changed, 20 insertions(+)
+== Background ==
 
-diff --git a/arch/arm64/boot/dts/apple/t8103-j293.dts b/arch/arm64/boot/dts/apple/t8103-j293.dts
-index 2dfe7b895b2bc0a913e73141e558fa5124a13b2e..e2d9439397f71a93c28b75a7eea589f4bcb3e374 100644
---- a/arch/arm64/boot/dts/apple/t8103-j293.dts
-+++ b/arch/arm64/boot/dts/apple/t8103-j293.dts
-@@ -77,6 +77,16 @@ touchbar0: touchbar@0 {
- 	};
- };
+Inline functions are often a blind spot for profiling and tracing tools:
+* They cannot probe fully inlined functions.
+  The BTF contains no data about them.
+* They miss calls to partially inlined functions,
+  where a function has a symbol, but is also inlined in some callers.
+* They cannot account for time spent in inlined calls.
+  Instead, they report the time to the caller.
+* They don't provide a way to access the arguments of an inlined call.
+
+The issue is exacerbated by Link-Time Optimization, which enables more
+inlining across Object files. One workaround is to disable inlining for
+the profiled functions, but that requires a whole kernel compilation and
+doesn't allow for iterative exploration.
+
+The information required to solve the above problems is not easily
+accessible. It requires parsing most of the DWARF's '.debug_info` section,
+which is time consuming and not trivial.
+Instead, this proposal leverages and extends the existing information
+contained in '.BTF` (for typing) and '.BTF.ext` (for caller location),
+with information from a new section called '.BTF.inline`,
+listing inlined instances.
+
+== .BTF.inline Section ==
+
+The new '.BTF.inline` section has a layout similar to '.BTF`.
+
+ off |0-bit      |16-bits  |24-bits  |32-bits                           |
+-----+-----------+---------+---------+----------------------------------+
+0x00 |   magic   | version |  flags  |          header length           |
+0x08 |      inline info offset       |        inline info length        |
+0x10 |        location offset        |          location length         |
+-----+------------------------------------------------------------------+
+     ~                        inline info section                       ~
+-----+------------------------------------------------------------------+
+     ~                          location section                        ~
+-----+------------------------------------------------------------------+
+
+It starts with a header (see 'struct btf_inline_header`),
+followed by two subsections:
+1. The 'Inline Info' section contains an entry for each inlined function.
+   Each entry describes the instance's location in its caller and is
+   followed by the offsets in the 'Location' section of the parameters
+   location expressions. See 'struct btf_inline_instance`.
+2. The 'Location' section contains location expressions describing how
+   to retrieve the value of a parameter. The expressions are NULL-
+   terminated and are adressed similarly to '.BTF`'s string table.
+
+struct btf_inline_header {
+  uint16_t magic;
+  uint8_t version, flags;
+  uint32_t header_length;
+  uint32_t inline_info_offset, inline_info_length;
+  uint32_t location_offset, location_length;
+};
+
+struct btf_inline_instance {
+  type_id_t callee_id;     // BTF id of the inlined function
+  type_id_t caller_id;     // BTF id of the caller
+  uint32_t caller_offset;  // offset of the callee within the caller
+  uint16_t nr_parms;       // number of parameters
+//uint32_t parm_location[nr_parms];  // offset of the location expression
+};                                   // in 'Location' for each parameter
+
+== Location Expressions ==
+
+We looked at the DWARF location expressions for the arguments of inlined
+instances having <= 100 instances, on a production kernel v6.9.0. This
+yielded 176,800 instances with 269,327 arguments. We learned that most
+expressions are simple register access, perhaps with an offset. We would
+get access to 87% of the arguments by implementing literal and register.
+
+Op. Category      Expr. Count    Expr. %
+----------------------------------------
+literal                 10714      3.98%
+register+above         234698     87.14%
+arithmetic+above       239444     88.90%
+composite+above        240394     89.26%
+stack+above            242075     89.88%
+empty                   27252     10.12%
+
+We propose to re-encode DWARF location expressions into a custom BTF
+location expression format. It operates on a stack of values, similar to
+DWARF's location expressions, but is stripped of unused operators,
+while allowing future expansions.
+
+A location expression is composed of a series of operations, terminated
+by a NULL-byte/LOC_END_OF_EXPR operator. The very first expression in the
+'Location' subsection must be an empty expression constisting only of
+LOC_END_OF_EXPR.
+
+An operator is a tagged union: the tag describes the operation to carry
+out and the union contains the operands.
  
-+/*
-+ * The driver depends on boot loader initialized state which resets when this
-+ * power-domain is powered off. This happens on suspend or when the driver is
-+ * missing during boot. Mark the domain as always on until the driver can
-+ * handle this.
-+ */
-+&ps_dispdfr_be {
-+	apple,always-on;
-+};
-+
- &display_dfr {
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
-index 3d73f9ee2f46a35a3b23da5b233ef316c7372ef7..be86d34c6696cb47d31696541266e504cee8ce10 100644
---- a/arch/arm64/boot/dts/apple/t8112-j493.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
-@@ -40,6 +40,16 @@ led-0 {
- 	};
- };
- 
-+/*
-+ * The driver depends on boot loader initialized state which resets when this
-+ * power-domain is powered off. This happens on suspend or when the driver is
-+ * missing during boot. Mark the domain as always on until the driver can
-+ * handle this.
-+ */
-+&ps_dispdfr_be {
-+	apple,always-on;
-+};
-+
- &display_dfr {
- 	status = "okay";
- };
+ ID | Operator Name        | Operands[...]
+----+----------------------+-------------------------------------------
+  0 | LOC_END_OF_EXPR      | _none_
+  1 | LOC_SIGNED_CONST_1   |  s8: constant's value
+  2 | LOC_SIGNED_CONST_2   | s16: constant's value
+  3 | LOC_SIGNED_CONST_4   | s32: constant's value
+  4 | LOC_SIGNED_CONST_8   | s64: constant's value
+  5 | LOC_UNSIGNED_CONST_1 |  u8: constant's value
+  6 | LOC_UNSIGNED_CONST_2 | u16: constant's value
+  7 | LOC_UNSIGNED_CONST_4 | u32: constant's value
+  8 | LOC_UNSIGNED_CONST_8 | u64: constant's value
+  9 | LOC_REGISTER         |  u8: DWARF register number from the ABI
+ 10 | LOC_REGISTER_OFFSET  |  u8: DWARF register number from the ABI
+                           | s64: offset added to the register's value
+ 11 | LOC_DEREF            |  u8: size of the deref'd type
 
+This list should be further expanded to include arithmetic operations.
+
+Example: accessing a field at offset 12B from a struct whose adresse is
+         in the '%rdi` register, on amd64, has the following encoding:
+
+[0x0a 0x05 0x000000000000000c] [0x0b 0x04] [0x00]
+ |    |    ` Offset Added       |    |      ` LOC_END_OF_EXPR
+ |    ` Register Number         |    ` Size of Deref.
+ ` LOC_REGISTER_OFFSET          ` LOC_DEREF
+
+== Summary ==
+
+Combining the new information from '.BTF.inline` with the existing data
+from '.BTF` and '.BTF.ext`, tools will be able to locate inline functions
+and their arguments. Symbolizer can also use the data to display the
+functions inlined at a given address.
+
+Fully inlined functions are not part of the BTF and thus are not covered
+by this proposal. Adding them to the BTF would enable their coverage and
+should be considered.
+
+Signed-off-by: Thierry Treyer <ttreyer@meta.com>
 ---
-base-commit: 0af2f6be1b4281385b618cb86ad946eded089ac8
-change-id: 20250416-arm64_dts_apple_touchbar-658cd974de97
+Thierry Treyer (3):
+      dwarf_loader: Add parameters list to inlined expansion
+      dwarf_loader: Add name to inline expansion
+      inline_encoder: Introduce inline encoder to emit BTF.inline
+
+ CMakeLists.txt   |   3 +-
+ btf_encoder.c    |   5 +
+ btf_encoder.h    |   2 +
+ btf_inline.pk    |  55 ++++++
+ dwarf_loader.c   | 176 ++++++++++++--------
+ dwarves.c        |  26 +++
+ dwarves.h        |   7 +
+ inline_encoder.c | 496 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ inline_encoder.h |  25 +++
+ pahole.c         |  40 ++++-
+ 10 files changed, 765 insertions(+), 70 deletions(-)
+---
+base-commit: 4ef47f84324e925051a55de10f9a4f44ef1da844
+change-id: 20250416-btf_inline-e5047eea9b6f
 
 Best regards,
 -- 
-Janne Grunau <j@jannau.net>
+Thierry Treyer <ttreyer@meta.com>
 
