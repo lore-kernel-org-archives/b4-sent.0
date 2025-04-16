@@ -1,15 +1,13 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Subject: [PATCH v2 0/4] PCI: Add support for resetting the slots in a
- platform specific way
-Date: Wed, 16 Apr 2025 21:59:02 +0530
-Message-Id: <20250416-pcie-reset-slot-v2-0-efe76b278c10@linaro.org>
+Date: Wed, 16 Apr 2025 21:59:03 +0530
+Subject: [PATCH v2 1/4] PCI/ERR: Remove misleading TODO regarding kernel
+ panic
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAM/a/2cC/3WNwQqDMBBEf0X23C1Jqmh66n8UD9FudEES2UhoE
- f+9qfce3zDzZodEwpTgXu0glDlxDAXMpYJxdmEi5FdhMMo0qlY1riMTCiXaMC1xw/amBu9a7Uo
- DymoV8vw+jc++8Mxpi/I5D7L+pf9dWaNC29nGWN0N3qrHwsFJvEaZoD+O4wsJP+HXrwAAAA==
-X-Change-ID: 20250404-pcie-reset-slot-730bfa71a202
+Message-Id: <20250416-pcie-reset-slot-v2-1-efe76b278c10@linaro.org>
+References: <20250416-pcie-reset-slot-v2-0-efe76b278c10@linaro.org>
+In-Reply-To: <20250416-pcie-reset-slot-v2-0-efe76b278c10@linaro.org>
 To: Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
  Oliver O'Halloran <oohall@gmail.com>, Bjorn Helgaas <bhelgaas@google.com>, 
  Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -21,92 +19,43 @@ Cc: dingwei@marvell.com, cassel@kernel.org, Lukas Wunner <lukas@wunner.de>,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3553;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=789;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=qkB19ebsdB7yF8JrqmDzhAIvjQoXMD7T3mmriNCrqxE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBn/9rVLvxXFkai8cVNkg23+3JBYRdthOY/lxQwa
- fbOegB4XfmJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ//a1QAKCRBVnxHm/pHO
- 9SGRB/40rRHb9fGiMK5kD1aBd/MewJxI5StivHVa5Erzx+HMuFj97jziyHXdpUsz4ffhJ4XQFoQ
- EMKPxKj+ocduRoORbAYIa33SUHBLn9X5/XInHvLBEw/E47p6YBkQDFCSXZOAgZ+9FX0D0Te5tNb
- 2CDt7KVi+T2IKCwkbBX+pLkKJfs0hbfGBijN3F6/qNXG/stthtJKfzrFg9VYRmfOjaLGXksNq1d
- OiiXevAEEKFNC81mjU+Y6fQGpvjisAiglcBeql266ba4ZFT+yV17zxaxnd1oV7XdMRq/Nmthza6
- b/hxtehyr4BdSL0Vhz0u0SENUH1/6Tv88cWuux5Xhjrb+IJ7
+ bh=Aq+BoDTRwjfmiHKRLtODTEbwNFS8yDdFMEIJ4A/Pkz4=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBn/9rWO8MISVR64q676Pw7jrTyh1uamjj6mZUmS
+ YdabH1Y02GJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ//a1gAKCRBVnxHm/pHO
+ 9bWZB/9jx+jNdhWu36G8URNn0X1XjAdW8YyUqH+VMtsKLIuiq09q37tDK/XUpiOURo7qF+/N32t
+ qCsA2CmP5dW5v02FZRBbn1GYvjtaKjsr6BxPmk6rqCJ6LpPOJNQybN+taSVyTVDmmXqfsHf1Ieb
+ fYa3lSy8KDNHy9gkynnX/6RIBwY29NVZH8tLD8xnTW0mcavswjXHpJaiu8Yljb7sNGDteE2t55t
+ p8gZCWK9xdUsjz9vSRfjTHzYqKhMFlzahyrxvV/MEdc8N0rxX6LPT5/PD4VIWBvQK8s3SrUu4pr
+ RB5gc0dqu0u5Wu5AhZYlAGbIbcTWNxKJgmK2EWFlSPd6gyU0
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
-
-Currently, in the event of AER/DPC, PCI core will try to reset the slot and its
-subordinate devices by invoking bridge control reset and FLR. But in some
-cases like AER Fatal error, it might be necessary to reset the slots using the
-PCI host bridge drivers in a platform specific way (as indicated by the TODO in
-the pcie_do_recovery() function in drivers/pci/pcie/err.c). Otherwise, the PCI
-link won't be recovered successfully.
-
-So this series adds a new callback 'pci_host_bridge::reset_slot' for the host
-bridge drivers to reset the slot when a fatal error happens.
-
-Also, this series allows the host bridge drivers to handle PCI link down event
-by resetting the slots and recovering the bus. This is accomplished by the
-help of a new API 'pci_host_handle_link_down()'. Host bridge drivers are
-expected to call this API (preferrably from a threaded IRQ handler) when a link
-down event is detected. The API will reuse the pcie_do_recovery() function to
-recover the link if AER support is enabled, otherwise it will directly call the
-reset_slot() callback of the host bridge driver (if exists).
-
-For reference, I've modified the pcie-qcom driver to call
-pci_host_handle_link_down() after receiving LINK_DOWN global_irq event and
-populated the 'pci_host_bridge::reset_slot()' callback to reset the controller
-(there by slots). Since the Qcom PCIe controllers support only a single root
-port (slot) per controller instance, reset_slot() callback is going to be
-invoked only once. For multi root port controllers, this callback is supposed to
-identify the slots using the supplied 'pci_dev' pointer and reset them.
-
-NOTE
-====
-
-This series is a reworked version of the earlier series [1] that I submitted for
-handling PCI link down event. In this series, I've made use of the AER helpers
-to recover the link as it allows notifying the device drivers and also
-allows saving/restoring the config space.
-
-Testing
-=======
-
-This series is tested on Qcom RB5 and SA8775p Ride boards by triggering the link
-down event manually by writing to LTSSM register. For the error recovery to
-succeed (if AER is enabled), all the drivers in the bridge hierarchy should have
-the 'err_handlers' populated. Otherwise, the link recovery will fail.
-
-[1] https://lore.kernel.org/linux-pci/20250221172309.120009-1-manivannan.sadhasivam@linaro.org
+A PCI device is just another peripheral in a system. So failure to
+recover it, must not result in a kernel panic. So remove the TODO which
+is quite misleading.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
-Changes in v2:
-- Moved calling reset_slot() callback from pcie_do_recovery() to pcibios_reset_secondary_bus()
-- Link to v1: https://lore.kernel.org/r/20250404-pcie-reset-slot-v1-0-98952918bf90@linaro.org
+ drivers/pci/pcie/err.c | 1 -
+ 1 file changed, 1 deletion(-)
 
----
-Manivannan Sadhasivam (4):
-      PCI/ERR: Remove misleading TODO regarding kernel panic
-      PCI/ERR: Add support for resetting the slots in a platform specific way
-      PCI: Add link down handling for host bridges
-      PCI: qcom: Add support for resetting the slot due to link down event
+diff --git a/drivers/pci/pcie/err.c b/drivers/pci/pcie/err.c
+index 31090770fffcc94e15ba6e89f649c6f84bfdf0d5..de6381c690f5c21f00021cdc7bde8d93a5c7db52 100644
+--- a/drivers/pci/pcie/err.c
++++ b/drivers/pci/pcie/err.c
+@@ -271,7 +271,6 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
+ 
+ 	pci_uevent_ers(bridge, PCI_ERS_RESULT_DISCONNECT);
+ 
+-	/* TODO: Should kernel panic here? */
+ 	pci_info(bridge, "device recovery failed\n");
+ 
+ 	return status;
 
- drivers/pci/controller/dwc/pcie-qcom.c | 89 +++++++++++++++++++++++++++++++++-
- drivers/pci/pci.c                      | 12 +++++
- drivers/pci/pci.h                      | 21 ++++++++
- drivers/pci/pcie/err.c                 | 33 ++++++++++---
- drivers/pci/probe.c                    |  7 +++
- include/linux/pci.h                    |  2 +
- 6 files changed, 156 insertions(+), 8 deletions(-)
----
-base-commit: 08733088b566b58283f0f12fb73f5db6a9a9de30
-change-id: 20250404-pcie-reset-slot-730bfa71a202
-
-Best regards,
 -- 
-Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+2.43.0
 
