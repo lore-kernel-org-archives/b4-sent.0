@@ -1,140 +1,58 @@
-From: Chen Linxuan <chenlinxuan@uniontech.com>
-Date: Wed, 16 Apr 2025 17:44:51 +0800
-Subject: [PATCH RFC v2 5/5] lib/Kconfig.debug: introduce
- CONFIG_NO_AUTO_INLINE
+From: Yang Li <yang.li@amlogic.com>
+Date: Wed, 16 Apr 2025 18:12:34 +0800
+Subject: [PATCH BlueZ bluez] bass: remove the device of BIS source when
+ modify operation.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250416-noautoinline-v2-5-e69a2717530f@uniontech.com>
-References: <20250416-noautoinline-v2-0-e69a2717530f@uniontech.com>
-In-Reply-To: <20250416-noautoinline-v2-0-e69a2717530f@uniontech.com>
-To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- Yishai Hadas <yishaih@nvidia.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
- Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>, 
- Kevin Tian <kevin.tian@intel.com>, 
- Alex Williamson <alex.williamson@redhat.com>, 
- Peter Huewe <peterhuewe@gmx.de>, Jarkko Sakkinen <jarkko@kernel.org>, 
- Masahiro Yamada <masahiroy@kernel.org>, 
- Nathan Chancellor <nathan@kernel.org>, 
- Nicolas Schier <nicolas.schier@linux.dev>, 
- Nick Desaulniers <nick.desaulniers+lkml@gmail.com>, 
- Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>
-Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-mm@kvack.org, kvm@vger.kernel.org, virtualization@lists.linux.dev, 
- linux-integrity@vger.kernel.org, linux-kbuild@vger.kernel.org, 
- llvm@lists.linux.dev, Winston Wen <wentao@uniontech.com>, 
- Chen Linxuan <chenlinxuan@uniontech.com>, 
- Changbin Du <changbin.du@intel.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3064;
- i=chenlinxuan@uniontech.com; h=from:subject:message-id;
- bh=F+1qLaqiauypU+BRTQYkrjZEyIF0AG4hvaXQhsgJYk8=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBn/3wZT3NWiI2S8hRz1pjrEUmLoC/gt8RZUtPaC
- lubpf4A4hyJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCZ/98GQAKCRB2HuYUOZmu
- izAIEACY38ESmIVOjDr7Iwh8UUrW7TzIcDjdsV2Gz25pzxNRYt2UN7F1ih++IU0mVKuCRE8VqsZ
- COqv1koPLnaC5FnVtv40PZwIiMbk1JDsa2ErGt5FBgb7ada1ai8OVfO05xZmtLjDLu0LBYqJs20
- 54Nx0HAjECSeFJB7FsRxoyck9coB80nqWw4d6BRS0UG3/nsZJYJ5zvs3iEpL5BtNePBanOqbBao
- ey+EM2gyLwiAvD/x7pkIaPnvF9Y35X4eRaTm8+SYc48zK0Q/+9L5Vg2bmyyF9Up8vdoPVfNYD49
- zE1q9RpL992v3uSn4Uh+/XGggbgTV+nw1SXRZH1NcwML9S5Tk7czniyVD1h4KFXKUZpvkZvhQi/
- eU5K9FTQedxVsK+gma+7I3bWAbm0Yn5SZ9gUzZHGIHWSMNM6aByhX3QVbVGcrvz9uBgzJLA6G2v
- blyyctLKffNf5k3i4oGfEufOigeC2JeVcreJ8YcvZos9m3zQ9f+SWCKtvtlFdNpgcm8q7SgYEOi
- Vs4lmIBCBb2MgxZbCKfiz5qnt49ANDdBLL+6jGfnsSCdSR9yiHKDzItW4XHG62rQaZ/UgtnvTqP
- guR1IhGM9mQRv0qGS8ujapIi7oqfU995Jy3XGAG6t4uHwd0t7yItMqwthqHQwNxtgOzeuuclW/d
- ThVxVEEuZANNvYg==
-X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
- fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
-X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
+Message-Id: <20250416-bass_modify-v1-1-6f4a85c2c7e4@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAJGC/2cC/x3MSQqAMAxA0atI1ha0jngVEemQasCJBsUB725x+
+ Rb/P8DoCRma6AGPBzGtS0AaR2BGtQwoyAaDTGSR5GkptGLu59WSu0SljEGNdZXJDEKxeXR0/rc
+ W9LTjDd37fvTbIHxkAAAA
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744798359; l=965;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=WtwMgRyLk6dasgHiKyiBAQVxi48ubSbCjVHnpYA4Ysw=;
+ b=y1jhPzJX0sU5nAC0OXtPgsPRFfJF+rhOxGvyBOccQ4EHU/pM26ywg9JxbcHCxNtMAtJv7bYjB
+ vXtLniQndXBDh4uDks4N2mMZ/UoXta9ivFmUWii3F6DkYqLGwjsETRQ
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Winston Wen <wentao@uniontech.com>
+When the Client sends a modify operation and PA Sync is
+"Do not synchronize to PA", the BIS source information
+needs to be cleared.
 
-Add a new kernel hacking option CONFIG_NO_AUTO_INLINE that prevents the
-compiler from auto-inlining functions not explicitly marked with the
-'inline' keyword.
-
-This enhancement improves function tracer capabilities as it can only
-trace functions that haven't been inlined by the compiler.
-
-Previous discussions:
-
-Link: https://lore.kernel.org/all/20181028130945.23581-3-changbin.du@gmail.com/
-
-This patch is modified from commit 917fad29febd ("kernel hacking: add a
-config option to disable compiler auto-inlining") which can be founded
-in linux-next-history:
-
-Link: https://web.git.kernel.org/pub/scm/linux/kernel/git/next/linux-next-history.git/commit/?id=917fad29febd
-
-Unlike the original implementation, this patch:
-
-1. Make it depends on CC_IS_GCC,
-   as Clang 18.1.3 break test_bitmap_const_eval() in lib/test_bitmap.c
-
-2. Make it depends on X86 and LOONGARCH,
-   as I haven't test other architectures
-
-3. Removes unnecessary cc-option checks per commit 7d73c3e9c514
-   ("Makefile: remove stale cc-option checks").
-
-4. Update help information.
-
-Cc: Changbin Du <changbin.du@gmail.com>
-Co-developed-by: Chen Linxuan <chenlinxuan@uniontech.com>
-Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
-Signed-off-by: Winston Wen <wentao@uniontech.com>
+Fixes: https://github.com/bluez/bluez/issues/1145
 ---
- Makefile          |  6 ++++++
- lib/Kconfig.debug | 15 +++++++++++++++
- 2 files changed, 21 insertions(+)
+Signed-off-by: Yang Li <yang.li@amlogic.com>
+---
+ profiles/audio/bass.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/Makefile b/Makefile
-index c91afd55099ea6bc7ed89bc3ef9cf58a498596d4..52da2c27f94167d2d2892a67c065e5df15efbde0 100644
---- a/Makefile
-+++ b/Makefile
-@@ -1071,6 +1071,12 @@ endif
- # Ensure compilers do not transform certain loops into calls to wcslen()
- KBUILD_CFLAGS += -fno-builtin-wcslen
+diff --git a/profiles/audio/bass.c b/profiles/audio/bass.c
+index c36f43277..4bbb1bf17 100644
+--- a/profiles/audio/bass.c
++++ b/profiles/audio/bass.c
+@@ -1427,6 +1427,9 @@ static int handle_mod_src_req(struct bt_bcast_src *bcast_src,
  
-+ifdef CONFIG_NO_AUTO_INLINE
-+KBUILD_CFLAGS   += -fno-inline-functions \
-+		   -fno-inline-small-functions \
-+		   -fno-inline-functions-called-once
-+endif
+ 			bt_bass_set_pa_sync(dg->src,
+ 				BT_BASS_NOT_SYNCHRONIZED_TO_PA);
 +
- # change __FILE__ to the relative path to the source directory
- ifdef building_out_of_srctree
- KBUILD_CPPFLAGS += $(call cc-option,-ffile-prefix-map=$(srcroot)/=)
-diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index 9fe4d8dfe5782981cc0b2b6614106aac570bd229..2ebb4802886ab4a48841dbdd8973b7d9883548b9 100644
---- a/lib/Kconfig.debug
-+++ b/lib/Kconfig.debug
-@@ -436,8 +436,23 @@ config GDB_SCRIPTS
- 	  instance. See Documentation/process/debugging/gdb-kernel-debugging.rst
- 	  for further details.
- 
-+
- endif # DEBUG_INFO
- 
-+config NO_AUTO_INLINE
-+	bool "Disable compiler auto-inline optimizations (EXPERIMENTAL)"
-+	default n
-+	depends on CC_IS_GCC && (X86 || LOONGARCH)
-+	help
-+	  This will prevent the compiler from optimizing the kernel by
-+	  auto-inlining functions not marked with the inline keyword.
-+	  With this option, only functions explicitly marked with
-+	  "inline" will be inlined. This will allow the function tracer
-+	  to trace more functions because it only traces functions that
-+	  the compiler has not inlined.
-+
-+	  If unsure, select N.
-+
- config FRAME_WARN
- 	int "Warn for stack frames larger than"
- 	range 0 8192
++			/* Remove device of BIS source*/
++			btd_adapter_remove_device(device_get_adapter(dg->device), dg->device);
+ 		} else {
+ 			bass_update_bis_sync(dg, bcast_src);
+ 		}
 
+---
+base-commit: f8e7bcfdfb83a6a3becabdba1e4448bf04e32db5
+change-id: 20250416-bass_modify-7accebe87323
+
+Best regards,
 -- 
-2.48.1
+Yang Li <yang.li@amlogic.com>
 
