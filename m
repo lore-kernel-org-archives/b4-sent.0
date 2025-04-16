@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Wed, 16 Apr 2025 21:59:03 +0530
-Subject: [PATCH v2 1/4] PCI/ERR: Remove misleading TODO regarding kernel
- panic
+Date: Wed, 16 Apr 2025 21:59:04 +0530
+Subject: [PATCH v2 2/4] PCI/ERR: Add support for resetting the slots in a
+ platform specific way
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250416-pcie-reset-slot-v2-1-efe76b278c10@linaro.org>
+Message-Id: <20250416-pcie-reset-slot-v2-2-efe76b278c10@linaro.org>
 References: <20250416-pcie-reset-slot-v2-0-efe76b278c10@linaro.org>
 In-Reply-To: <20250416-pcie-reset-slot-v2-0-efe76b278c10@linaro.org>
 To: Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
@@ -19,42 +19,90 @@ Cc: dingwei@marvell.com, cassel@kernel.org, Lukas Wunner <lukas@wunner.de>,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=789;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2766;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=Aq+BoDTRwjfmiHKRLtODTEbwNFS8yDdFMEIJ4A/Pkz4=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBn/9rWO8MISVR64q676Pw7jrTyh1uamjj6mZUmS
- YdabH1Y02GJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ//a1gAKCRBVnxHm/pHO
- 9bWZB/9jx+jNdhWu36G8URNn0X1XjAdW8YyUqH+VMtsKLIuiq09q37tDK/XUpiOURo7qF+/N32t
- qCsA2CmP5dW5v02FZRBbn1GYvjtaKjsr6BxPmk6rqCJ6LpPOJNQybN+taSVyTVDmmXqfsHf1Ieb
- fYa3lSy8KDNHy9gkynnX/6RIBwY29NVZH8tLD8xnTW0mcavswjXHpJaiu8Yljb7sNGDteE2t55t
- p8gZCWK9xdUsjz9vSRfjTHzYqKhMFlzahyrxvV/MEdc8N0rxX6LPT5/PD4VIWBvQK8s3SrUu4pr
- RB5gc0dqu0u5Wu5AhZYlAGbIbcTWNxKJgmK2EWFlSPd6gyU0
+ bh=DxjgbttCz+WbWbTBQh3uh5PZxc6tk82mAeHt4QTMKaE=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBn/9rXPir56LKePoLEBXt0d8b+kq7X+ZFgid+RI
+ JzzZ1AKKwuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ//a1wAKCRBVnxHm/pHO
+ 9WTDB/9DvoXiP4Dq0I6q4cMG31g9lImU8jRuTybuyvxvopbn/Mixdu1u8Dy4W5c7xzTqjMNMTIi
+ R22LFIph88ll3whCEIsdH7n45oO3SwPgXOvaQlC2imWxUPVKfL9SGTTOlrDX6yRGlXNSxpRpo1F
+ TfNNPT2bqFz1knIxaskBgdyollmA67HYaOMXmgW7hEK53TIWWxbSHb/6ASfjm0HyUIVmjLpZAN1
+ Sc3z32OoK/DMMvGF1dRxrWuj9Qfz/NeQcHb5uuLXur5L2QlkkDB6YjtjrSM1NTcwS5h7QfKtPxm
+ VapGFs7dlSZ7/g/ZJqdw2gr9Z2DMQ8Jmtxqr1RB1jKHmYF4U
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A PCI device is just another peripheral in a system. So failure to
-recover it, must not result in a kernel panic. So remove the TODO which
-is quite misleading.
+Some host bridge devices require resetting the slots in a platform specific
+way to recover them from error conditions such as Fatal AER errors, Link
+Down etc... So introduce pci_host_bridge::reset_slot callback and call it
+from pcibios_reset_secondary_bus() if available.
+
+The 'reset_slot' callback is responsible for resetting the given slot
+referenced by the 'pci_dev' pointer in a platform specific way and bring it
+back to the working state if possible. If any error occurs during the slot
+reset operation, relevant errno should be returned.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/pci/pcie/err.c | 1 -
- 1 file changed, 1 deletion(-)
+ drivers/pci/pci.c      | 12 ++++++++++++
+ drivers/pci/pcie/err.c |  5 -----
+ include/linux/pci.h    |  1 +
+ 3 files changed, 13 insertions(+), 5 deletions(-)
 
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index 4d7c9f64ea24ec754a135a2585c99489cfa641a9..13709bb898a967968540826a2b7ee8ade6b7e082 100644
+--- a/drivers/pci/pci.c
++++ b/drivers/pci/pci.c
+@@ -4982,7 +4982,19 @@ void pci_reset_secondary_bus(struct pci_dev *dev)
+ 
+ void __weak pcibios_reset_secondary_bus(struct pci_dev *dev)
+ {
++	struct pci_host_bridge *host = pci_find_host_bridge(dev->bus);
++	int ret;
++
++	if (host->reset_slot) {
++		ret = host->reset_slot(host, dev);
++		if (ret)
++			pci_err(dev, "failed to reset slot: %d\n", ret);
++
++		return;
++	}
++
+ 	pci_reset_secondary_bus(dev);
++
+ }
+ 
+ /**
 diff --git a/drivers/pci/pcie/err.c b/drivers/pci/pcie/err.c
-index 31090770fffcc94e15ba6e89f649c6f84bfdf0d5..de6381c690f5c21f00021cdc7bde8d93a5c7db52 100644
+index de6381c690f5c21f00021cdc7bde8d93a5c7db52..b834fc0d705938540d3d7d3d8739770c09fe7cf1 100644
 --- a/drivers/pci/pcie/err.c
 +++ b/drivers/pci/pcie/err.c
-@@ -271,7 +271,6 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
+@@ -234,11 +234,6 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
+ 	}
  
- 	pci_uevent_ers(bridge, PCI_ERS_RESULT_DISCONNECT);
- 
--	/* TODO: Should kernel panic here? */
- 	pci_info(bridge, "device recovery failed\n");
- 
- 	return status;
+ 	if (status == PCI_ERS_RESULT_NEED_RESET) {
+-		/*
+-		 * TODO: Should call platform-specific
+-		 * functions to reset slot before calling
+-		 * drivers' slot_reset callbacks?
+-		 */
+ 		status = PCI_ERS_RESULT_RECOVERED;
+ 		pci_dbg(bridge, "broadcast slot_reset message\n");
+ 		pci_walk_bridge(bridge, report_slot_reset, &status);
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index 0e8e3fd77e96713054388bdc82f439e51023c1bf..8d7d2a49b76cf64b4218b179cec495e0d69ddf6f 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -599,6 +599,7 @@ struct pci_host_bridge {
+ 	void (*release_fn)(struct pci_host_bridge *);
+ 	int (*enable_device)(struct pci_host_bridge *bridge, struct pci_dev *dev);
+ 	void (*disable_device)(struct pci_host_bridge *bridge, struct pci_dev *dev);
++	int (*reset_slot)(struct pci_host_bridge *bridge, struct pci_dev *dev);
+ 	void		*release_data;
+ 	unsigned int	ignore_reset_delay:1;	/* For entire hierarchy */
+ 	unsigned int	no_ext_tags:1;		/* No Extended Tags */
 
 -- 
 2.43.0
