@@ -1,58 +1,112 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Wed, 16 Apr 2025 18:12:34 +0800
-Subject: [PATCH BlueZ bluez] bass: remove the device of BIS source when
- modify operation.
+From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+Subject: [PATCH v2 0/4] PCI: Add support for resetting the slots in a
+ platform specific way
+Date: Wed, 16 Apr 2025 21:59:02 +0530
+Message-Id: <20250416-pcie-reset-slot-v2-0-efe76b278c10@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250416-bass_modify-v1-1-6f4a85c2c7e4@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAJGC/2cC/x3MSQqAMAxA0atI1ha0jngVEemQasCJBsUB725x+
- Rb/P8DoCRma6AGPBzGtS0AaR2BGtQwoyAaDTGSR5GkptGLu59WSu0SljEGNdZXJDEKxeXR0/rc
- W9LTjDd37fvTbIHxkAAAA
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744798359; l=965;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=WtwMgRyLk6dasgHiKyiBAQVxi48ubSbCjVHnpYA4Ysw=;
- b=y1jhPzJX0sU5nAC0OXtPgsPRFfJF+rhOxGvyBOccQ4EHU/pM26ywg9JxbcHCxNtMAtJv7bYjB
- vXtLniQndXBDh4uDks4N2mMZ/UoXta9ivFmUWii3F6DkYqLGwjsETRQ
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+X-B4-Tracking: v=1; b=H4sIAM/a/2cC/3WNwQqDMBBEf0X23C1Jqmh66n8UD9FudEES2UhoE
+ f+9qfce3zDzZodEwpTgXu0glDlxDAXMpYJxdmEi5FdhMMo0qlY1riMTCiXaMC1xw/amBu9a7Uo
+ DymoV8vw+jc++8Mxpi/I5D7L+pf9dWaNC29nGWN0N3qrHwsFJvEaZoD+O4wsJP+HXrwAAAA==
+X-Change-ID: 20250404-pcie-reset-slot-730bfa71a202
+To: Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
+ Oliver O'Halloran <oohall@gmail.com>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Rob Herring <robh@kernel.org>
+Cc: dingwei@marvell.com, cassel@kernel.org, Lukas Wunner <lukas@wunner.de>, 
+ Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
+ linuxppc-dev@lists.ozlabs.org, linux-pci@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3553;
+ i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
+ bh=qkB19ebsdB7yF8JrqmDzhAIvjQoXMD7T3mmriNCrqxE=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBn/9rVLvxXFkai8cVNkg23+3JBYRdthOY/lxQwa
+ fbOegB4XfmJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCZ//a1QAKCRBVnxHm/pHO
+ 9SGRB/40rRHb9fGiMK5kD1aBd/MewJxI5StivHVa5Erzx+HMuFj97jziyHXdpUsz4ffhJ4XQFoQ
+ EMKPxKj+ocduRoORbAYIa33SUHBLn9X5/XInHvLBEw/E47p6YBkQDFCSXZOAgZ+9FX0D0Te5tNb
+ 2CDt7KVi+T2IKCwkbBX+pLkKJfs0hbfGBijN3F6/qNXG/stthtJKfzrFg9VYRmfOjaLGXksNq1d
+ OiiXevAEEKFNC81mjU+Y6fQGpvjisAiglcBeql266ba4ZFT+yV17zxaxnd1oV7XdMRq/Nmthza6
+ b/hxtehyr4BdSL0Vhz0u0SENUH1/6Tv88cWuux5Xhjrb+IJ7
+X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the Client sends a modify operation and PA Sync is
-"Do not synchronize to PA", the BIS source information
-needs to be cleared.
+Hi,
 
-Fixes: https://github.com/bluez/bluez/issues/1145
----
-Signed-off-by: Yang Li <yang.li@amlogic.com>
----
- profiles/audio/bass.c | 3 +++
- 1 file changed, 3 insertions(+)
+Currently, in the event of AER/DPC, PCI core will try to reset the slot and its
+subordinate devices by invoking bridge control reset and FLR. But in some
+cases like AER Fatal error, it might be necessary to reset the slots using the
+PCI host bridge drivers in a platform specific way (as indicated by the TODO in
+the pcie_do_recovery() function in drivers/pci/pcie/err.c). Otherwise, the PCI
+link won't be recovered successfully.
 
-diff --git a/profiles/audio/bass.c b/profiles/audio/bass.c
-index c36f43277..4bbb1bf17 100644
---- a/profiles/audio/bass.c
-+++ b/profiles/audio/bass.c
-@@ -1427,6 +1427,9 @@ static int handle_mod_src_req(struct bt_bcast_src *bcast_src,
- 
- 			bt_bass_set_pa_sync(dg->src,
- 				BT_BASS_NOT_SYNCHRONIZED_TO_PA);
-+
-+			/* Remove device of BIS source*/
-+			btd_adapter_remove_device(device_get_adapter(dg->device), dg->device);
- 		} else {
- 			bass_update_bis_sync(dg, bcast_src);
- 		}
+So this series adds a new callback 'pci_host_bridge::reset_slot' for the host
+bridge drivers to reset the slot when a fatal error happens.
+
+Also, this series allows the host bridge drivers to handle PCI link down event
+by resetting the slots and recovering the bus. This is accomplished by the
+help of a new API 'pci_host_handle_link_down()'. Host bridge drivers are
+expected to call this API (preferrably from a threaded IRQ handler) when a link
+down event is detected. The API will reuse the pcie_do_recovery() function to
+recover the link if AER support is enabled, otherwise it will directly call the
+reset_slot() callback of the host bridge driver (if exists).
+
+For reference, I've modified the pcie-qcom driver to call
+pci_host_handle_link_down() after receiving LINK_DOWN global_irq event and
+populated the 'pci_host_bridge::reset_slot()' callback to reset the controller
+(there by slots). Since the Qcom PCIe controllers support only a single root
+port (slot) per controller instance, reset_slot() callback is going to be
+invoked only once. For multi root port controllers, this callback is supposed to
+identify the slots using the supplied 'pci_dev' pointer and reset them.
+
+NOTE
+====
+
+This series is a reworked version of the earlier series [1] that I submitted for
+handling PCI link down event. In this series, I've made use of the AER helpers
+to recover the link as it allows notifying the device drivers and also
+allows saving/restoring the config space.
+
+Testing
+=======
+
+This series is tested on Qcom RB5 and SA8775p Ride boards by triggering the link
+down event manually by writing to LTSSM register. For the error recovery to
+succeed (if AER is enabled), all the drivers in the bridge hierarchy should have
+the 'err_handlers' populated. Otherwise, the link recovery will fail.
+
+[1] https://lore.kernel.org/linux-pci/20250221172309.120009-1-manivannan.sadhasivam@linaro.org
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
+---
+Changes in v2:
+- Moved calling reset_slot() callback from pcie_do_recovery() to pcibios_reset_secondary_bus()
+- Link to v1: https://lore.kernel.org/r/20250404-pcie-reset-slot-v1-0-98952918bf90@linaro.org
 
 ---
-base-commit: f8e7bcfdfb83a6a3becabdba1e4448bf04e32db5
-change-id: 20250416-bass_modify-7accebe87323
+Manivannan Sadhasivam (4):
+      PCI/ERR: Remove misleading TODO regarding kernel panic
+      PCI/ERR: Add support for resetting the slots in a platform specific way
+      PCI: Add link down handling for host bridges
+      PCI: qcom: Add support for resetting the slot due to link down event
+
+ drivers/pci/controller/dwc/pcie-qcom.c | 89 +++++++++++++++++++++++++++++++++-
+ drivers/pci/pci.c                      | 12 +++++
+ drivers/pci/pci.h                      | 21 ++++++++
+ drivers/pci/pcie/err.c                 | 33 ++++++++++---
+ drivers/pci/probe.c                    |  7 +++
+ include/linux/pci.h                    |  2 +
+ 6 files changed, 156 insertions(+), 8 deletions(-)
+---
+base-commit: 08733088b566b58283f0f12fb73f5db6a9a9de30
+change-id: 20250404-pcie-reset-slot-730bfa71a202
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 
