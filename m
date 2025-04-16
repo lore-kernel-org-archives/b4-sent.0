@@ -1,11 +1,11 @@
 From: Chen Linxuan <chenlinxuan@uniontech.com>
-Date: Wed, 16 Apr 2025 17:44:48 +0800
-Subject: [PATCH RFC v2 2/5] mm: add __always_inline for
- page_contains_unaccepted
+Date: Wed, 16 Apr 2025 17:44:49 +0800
+Subject: [PATCH RFC v2 3/5] vfio/virtio: add __always_inline for
+ virtiovf_get_device_config_size
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250416-noautoinline-v2-2-e69a2717530f@uniontech.com>
+Message-Id: <20250416-noautoinline-v2-3-e69a2717530f@uniontech.com>
 References: <20250416-noautoinline-v2-0-e69a2717530f@uniontech.com>
 In-Reply-To: <20250416-noautoinline-v2-0-e69a2717530f@uniontech.com>
 To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
@@ -28,21 +28,21 @@ Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org,
  Chen Linxuan <chenlinxuan@uniontech.com>, 
  Changbin Du <changbin.du@intel.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2614;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3264;
  i=chenlinxuan@uniontech.com; h=from:subject:message-id;
- bh=ttFdjRheVD1OZ/EkBldHAgXU1FfcO+q/qyDgNDO6xxA=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBn/3wWMkdWR1YmxGEaQM5rETmyOEwb9WgsyzPib
- 4h8ODg1HWCJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCZ/98FgAKCRB2HuYUOZmu
- i+cdEADNT/9txgL8kjyC/wPjKEbB4hl/RFInpiCxVodRBNIWw5wpfvJ5vsG8gnTV28kQFDiRMbh
- hKll+Yo1pN1WQwmBS3d0F7h/e18CCNShQvLvfLAloblN1i7M1UgnmKeKL76XXDUKRxxqrQeTHDP
- CUMus0UtivuKibqn8CLVq6e5fbJ1RhwPsbv7D70xVHOM74/icwjmj1dPZu6DpYDfV5l00GYGS2b
- RsSbfDKkS9Y3H0ZIRiS3VMyQ2uK/1lqDTRcNw69OTDtKzeRDqUXkzTmAkZ1yo+XWJbU05MQnvN9
- 95PO/4u9U8yOzdSEY/JzzWE8B1jzPggCyIQR3AoEtU8sfvLzO8U1ro3Jw17/wQxZ0LL4csNqfmo
- fMDkPLMBwX4axRH3oyhhJpWNuOne+5V4FZe7ofqs5chLYTiWmguAJff7K3CLwNjtYf9wekUajng
- MeEUFOGz9PS4je56fpstwRPl0osMBPmAQhMUflHy8jGVX4Ai+mMmo72HfvLkq7gg2eqgpyQBohN
- pVdOVMQI8YGR2JwWxAFHXkIHE7b4wdHwN4V18J30GXbYxJ/TDPKqwiiNz0eQmx1nF4kWUuws9WK
- FifDNoUxHM5cv3Bi8sey0k3QP5FiIx0iDAMhW+1X3ikwX72hN0Whkhv84Sn5/keiJ0X/R0RCmo5
- d/FA4FSNrATMSUg==
+ bh=PuGcJxOd8DayapVsQ7YIhWxmF6aRHfRlTC8JQBmNN9k=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBn/3wXtW1weup2hT4Z+Yi7yoKEwnZs3b7CyORfq
+ Xvvrwno7P2JAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCZ/98FwAKCRB2HuYUOZmu
+ i1tpD/9a1TgfBtJrQZp06BwLsq7szJqErUQ8zTs0NqXhMPs3oGvshKi5/TpP/fH2XNZsqCCmTrz
+ EtRpJ6f358wwfWUO6ys8nznwN7yNLcVVL8/qeEfHcZNbaRmoB1xRQ6GKvyJG7BAWR8uH4oub3GH
+ bpSELAUuBC3xjihAlngAnlycH8/MAHxYjAXaQKGfcFsHCmx8GsshG2zAyRxH1CwrPxy5cfE4plC
+ Zv3YiC8Ee4UmznjWnqVs31WWKs//iFnwfYHrFvo97dOU4PNCv/ZWRp+HoExOd5x863v/jYnOH9B
+ F1c0lU4TGvUiOghX8v6ULJ1QofhSuWfJq5oYZSRc0o94MVpVjkfbuJqrfLHtF/6MgvoN0ne1h/T
+ yx3KItyQEYvUgfT/sQ+bbN2s8pTQL4MI0qI9F/p04Tgp9N4R58vkOYKqdP6Dqet6tIhX3SdxrgX
+ BY4XhL0HxUUfpgPjp3pykTxv03TG+ETBHlrNzbYrz5iaIFt3XUqFkDT3hCXVj16IDA4ilqjHn5R
+ KaBpzLHTr5Q80Ao7V14YGMflufW3NFQXMu+pw22boy/8lsiFcKKmdzoM+giVIGfVUXS5ObqO3+i
+ EktURcgQB8LRFDMgM7DfcJEzzT9XXuThlEfmJQ33+OMZ0B9S+kEvpXTSBUSiLuOA/4AtnAZNhse
+ DjYNXNAakI/Vl6A==
 X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
@@ -50,21 +50,28 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Winston Wen <wentao@uniontech.com>
 
-On x86_64 with gcc version 13.3.0, I compile mm/page_alloc.c with:
+Presume that kernel is compiled for x86_64 with gcc version 13.3.0:
 
   make defconfig
+  ./scripts/kconfig/merge_config.sh .config <(
+    echo CONFIG_VFIO=m
+    echo CONFIG_VIRTIO_PCI=y
+    echo CONFIG_VIRTIO_PCI_LIB_LEGACY=y
+    echo CONFIG_VIRTIO_VFIO_PCI=m
+    echo CONFIG_VIRTIO_VFIO_PCI_ADMIN_LEGACY=y
+  )
   make KCFLAGS="-fno-inline-small-functions -fno-inline-functions-called-once" \
-    mm/page_alloc.o
+    drivers/vfio/pci/virtio/legacy_io.o
 
-Then I get a compile error:
+This results a compile error:
 
     CALL    scripts/checksyscalls.sh
     DESCEND objtool
     INSTALL libsubcmd_headers
-    CC      mm/page_alloc.o
+    CC      drivers/vfio/pci/virtio/legacy_io.o
   In file included from <command-line>:
-  mm/page_alloc.c: In function '__free_unaccepted.isra':
-  ././include/linux/compiler_types.h:557:45: error: call to '__compiletime_assert_1013' declared with attribute error: BUILD_BUG failed
+  drivers/vfio/pci/virtio/legacy_io.c: In function 'virtiovf_init_legacy_io':
+  ././include/linux/compiler_types.h:557:45: error: call to '__compiletime_assert_889' declared with attribute error: BUILD_BUG_ON failed: !is_power_of_2(virtvdev->bar0_virtual_buf_size)
     557 |         _compiletime_assert(condition, msg, __compiletime_assert_, __COUNTER__)
         |                                             ^
   ././include/linux/compiler_types.h:538:25: note: in definition of macro '__compiletime_assert'
@@ -76,36 +83,37 @@ Then I get a compile error:
   ./include/linux/build_bug.h:39:37: note: in expansion of macro 'compiletime_assert'
      39 | #define BUILD_BUG_ON_MSG(cond, msg) compiletime_assert(!(cond), msg)
         |                                     ^~~~~~~~~~~~~~~~~~
-  ./include/linux/build_bug.h:59:21: note: in expansion of macro 'BUILD_BUG_ON_MSG'
-     59 | #define BUILD_BUG() BUILD_BUG_ON_MSG(1, "BUILD_BUG failed")
-        |                     ^~~~~~~~~~~~~~~~
-  mm/page_alloc.c:7301:9: note: in expansion of macro 'BUILD_BUG'
-   7301 |         BUILD_BUG();
-        |         ^~~~~~~~~
+  ./include/linux/build_bug.h:50:9: note: in expansion of macro 'BUILD_BUG_ON_MSG'
+     50 |         BUILD_BUG_ON_MSG(condition, "BUILD_BUG_ON failed: " #condition)
+        |         ^~~~~~~~~~~~~~~~
+  drivers/vfio/pci/virtio/legacy_io.c:401:9: note: in expansion of macro 'BUILD_BUG_ON'
+    401 |         BUILD_BUG_ON(!is_power_of_2(virtvdev->bar0_virtual_buf_size));
+        |         ^~~~~~~~~~~~
 
-Marking page_contains_unaccepted with __always_inline and let dead code
-elimination remove reference to __free_unaccepted() here.
+BUILD_BUG_ON needs virtvdev->bar0_virtual_buf_size to be computed at
+compile time. So we should mark virtiovf_get_device_config_size() with
+__always_inline here.
 
 Co-developed-by: Chen Linxuan <chenlinxuan@uniontech.com>
 Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
 Signed-off-by: Winston Wen <wentao@uniontech.com>
 ---
- mm/page_alloc.c | 2 +-
+ drivers/vfio/pci/virtio/legacy_io.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index fd6b865cb1abfbd3d2ebd67cdaa5f86d92a62e14..7c0934c818ddc719c2dcb813599708f47d56352c 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -7286,7 +7286,7 @@ static bool __free_unaccepted(struct page *page)
- 
- #else
- 
--static bool page_contains_unaccepted(struct page *page, unsigned int order)
-+static __always_inline bool page_contains_unaccepted(struct page *page, unsigned int order)
- {
- 	return false;
+diff --git a/drivers/vfio/pci/virtio/legacy_io.c b/drivers/vfio/pci/virtio/legacy_io.c
+index 832af5ba267c49a079009cfe0fa93c15ba7a490f..b6871d50b9f9e278ef3c49a9cb2baf474b8271c6 100644
+--- a/drivers/vfio/pci/virtio/legacy_io.c
++++ b/drivers/vfio/pci/virtio/legacy_io.c
+@@ -350,7 +350,7 @@ int virtiovf_open_legacy_io(struct virtiovf_pci_core_device *virtvdev)
+ 	return virtiovf_set_notify_addr(virtvdev);
  }
+ 
+-static int virtiovf_get_device_config_size(unsigned short device)
++static __always_inline int virtiovf_get_device_config_size(unsigned short device)
+ {
+ 	/* Network card */
+ 	return offsetofend(struct virtio_net_config, status);
 
 -- 
 2.48.1
