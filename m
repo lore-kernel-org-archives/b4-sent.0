@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Date: Thu, 17 Apr 2025 22:46:28 +0530
-Subject: [PATCH v3 2/5] PCI/ERR: Add support for resetting the slots in a
- platform specific way
+Date: Thu, 17 Apr 2025 22:46:29 +0530
+Subject: [PATCH v3 3/5] PCI: host-common: Make the driver as a common
+ library for host controller drivers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250417-pcie-reset-slot-v3-2-59a10811c962@linaro.org>
+Message-Id: <20250417-pcie-reset-slot-v3-3-59a10811c962@linaro.org>
 References: <20250417-pcie-reset-slot-v3-0-59a10811c962@linaro.org>
 In-Reply-To: <20250417-pcie-reset-slot-v3-0-59a10811c962@linaro.org>
 To: Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
@@ -24,90 +24,208 @@ Cc: dingwei@marvell.com, cassel@kernel.org, Lukas Wunner <lukas@wunner.de>,
  linux-arm-kernel@lists.infradead.org, linux-riscv@lists.infradead.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2766;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7466;
  i=manivannan.sadhasivam@linaro.org; h=from:subject:message-id;
- bh=DxjgbttCz+WbWbTBQh3uh5PZxc6tk82mAeHt4QTMKaE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBoATdvYVK0GQzi8sgrm/ZgUCcsXnUDTGn+R5woL
- GlG2618bPiJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaAE3bwAKCRBVnxHm/pHO
- 9R1nB/4mCdE+kKaobUu8xgqLp12VIK1lyMLUue8d1Oth+RUvL8sS+yxd4LB6Fyzs/mOxUiMk9H/
- ciVe5BciCPKbXJTceNhCr29+4sbd+EorHB0I/OxV2abPOr5PzUno1WHPIGZEwo18l5BjFHBiLDj
- JE7FV2UBmHNq6L/5khv8XpKbKu/uM+0kLdETMu1LQ0PyzvYgzNQknk0jZfBFb4ujvvPJMizNfEF
- 1bcqAbBgus7YPWMgcFrKyX1pmC7zonfc0vDo9IQDdnGT8HWat1cRgaH0q0Bg83XYaDl3Lf7p2Ub
- y1D3PjC6s1NXtA22GQWiLKxDEQv79CJFwsq6fqs7jmqCAPEF
+ bh=K/sPDFj1hecH/GGD3XDJ2CIncZKealVndyMKk1UM77I=;
+ b=owGbwMvMwMUYOl/w2b+J574ynlZLYshgNM/fpqvZ+L5CtHvib4WcqW/iGq9cFvty3XjdrHMSM
+ Q5s/R12nYzGLAyMXAyyYoos6UudtRo9Tt9YEqE+HWYQKxPIFAYuTgGYyIrjHAxNiles352M92uO
+ OjP1m35YeOSWSV77GLewZYXO+1O/KlS3In+LwaTI/5fqLHxLja0FLefO8+PifCu8/vnF63P2ODr
+ EH9VXZu1yOs2QHHvZN5ndqv9rmHKX+01BTpXDIgx8nY6uc2bFHzVvWBls9UbNX2jXuYzi+b+3fx
+ abMKHDwapNT9kmg/PzMdNS84nf879Vrd3Y1PohItN27t8Vbvs4+c61/M4v95d/6Hluu+/esGt2J
+ 7StD7IFXprMPVdjb3nd5BKVnfVJpu/1nPY35tmpmC5bOlVQ7+VCUUUtQwGhnw3+tV2/ZkzpTHmo
+ HrhH8W9MrGMXm/9dBq5uLcuEmpYPc5XWhn4rlRVLdnwPAA==
 X-Developer-Key: i=manivannan.sadhasivam@linaro.org; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@linaro.org/default with auth_id=185
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some host bridge devices require resetting the slots in a platform specific
-way to recover them from error conditions such as Fatal AER errors, Link
-Down etc... So introduce pci_host_bridge::reset_slot callback and call it
-from pcibios_reset_secondary_bus() if available.
+This common library will be used as a placeholder for helper functions
+shared by the host controller drivers. This avoids placing the host
+controller drivers specific helpers in drivers/pci/*.c, to avoid enlarging
+the kernel Image on platforms that do not use host controller drivers at
+all (like x86/ACPI platforms).
 
-The 'reset_slot' callback is responsible for resetting the given slot
-referenced by the 'pci_dev' pointer in a platform specific way and bring it
-back to the working state if possible. If any error occurs during the slot
-reset operation, relevant errno should be returned.
-
+Suggested-by: Lukas Wunner <lukas@wunner.de>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 ---
- drivers/pci/pci.c      | 12 ++++++++++++
- drivers/pci/pcie/err.c |  5 -----
- include/linux/pci.h    |  1 +
- 3 files changed, 13 insertions(+), 5 deletions(-)
+ drivers/pci/controller/Kconfig                    |  8 ++++----
+ drivers/pci/controller/dwc/pcie-hisi.c            |  1 +
+ drivers/pci/controller/pci-host-common.c          |  6 ++++--
+ drivers/pci/controller/pci-host-common.h          | 16 ++++++++++++++++
+ drivers/pci/controller/pci-host-generic.c         |  2 ++
+ drivers/pci/controller/pci-thunder-ecam.c         |  2 ++
+ drivers/pci/controller/pci-thunder-pem.c          |  1 +
+ drivers/pci/controller/pcie-apple.c               |  2 ++
+ drivers/pci/controller/plda/pcie-microchip-host.c |  1 +
+ include/linux/pci-ecam.h                          |  6 ------
+ 10 files changed, 33 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
-index 4d7c9f64ea24ec754a135a2585c99489cfa641a9..13709bb898a967968540826a2b7ee8ade6b7e082 100644
---- a/drivers/pci/pci.c
-+++ b/drivers/pci/pci.c
-@@ -4982,7 +4982,19 @@ void pci_reset_secondary_bus(struct pci_dev *dev)
+diff --git a/drivers/pci/controller/Kconfig b/drivers/pci/controller/Kconfig
+index 9800b768105402d6dd1ba4b134c2ec23da6e4201..9bb8bf669a807272777b6168d042f8fd7490aeec 100644
+--- a/drivers/pci/controller/Kconfig
++++ b/drivers/pci/controller/Kconfig
+@@ -3,6 +3,10 @@
+ menu "PCI controller drivers"
+ 	depends on PCI
  
- void __weak pcibios_reset_secondary_bus(struct pci_dev *dev)
++config PCI_HOST_COMMON
++	tristate
++	select PCI_ECAM
++
+ config PCI_AARDVARK
+ 	tristate "Aardvark PCIe controller"
+ 	depends on (ARCH_MVEBU && ARM64) || COMPILE_TEST
+@@ -119,10 +123,6 @@ config PCI_FTPCI100
+ 	depends on OF
+ 	default ARCH_GEMINI
+ 
+-config PCI_HOST_COMMON
+-	tristate
+-	select PCI_ECAM
+-
+ config PCI_HOST_GENERIC
+ 	tristate "Generic PCI host controller"
+ 	depends on OF
+diff --git a/drivers/pci/controller/dwc/pcie-hisi.c b/drivers/pci/controller/dwc/pcie-hisi.c
+index 8904b5b85ee589576afcb6c81bb4bd39ff960c15..3c17897e56fcb60ec08cf522ee1485f90a2f36a3 100644
+--- a/drivers/pci/controller/dwc/pcie-hisi.c
++++ b/drivers/pci/controller/dwc/pcie-hisi.c
+@@ -15,6 +15,7 @@
+ #include <linux/pci-acpi.h>
+ #include <linux/pci-ecam.h>
+ #include "../../pci.h"
++#include "../pci-host-common.h"
+ 
+ #if defined(CONFIG_PCI_HISI) || (defined(CONFIG_ACPI) && defined(CONFIG_PCI_QUIRKS))
+ 
+diff --git a/drivers/pci/controller/pci-host-common.c b/drivers/pci/controller/pci-host-common.c
+index f441bfd6f96a8bde1c07fcf97d43d0693c424a27..f93bc7034e697250711833a5151f7ef177cd62a0 100644
+--- a/drivers/pci/controller/pci-host-common.c
++++ b/drivers/pci/controller/pci-host-common.c
+@@ -1,6 +1,6 @@
+ // SPDX-License-Identifier: GPL-2.0
+ /*
+- * Generic PCI host driver common code
++ * Common library for PCI host controller drivers
+  *
+  * Copyright (C) 2014 ARM Limited
+  *
+@@ -15,6 +15,8 @@
+ #include <linux/pci-ecam.h>
+ #include <linux/platform_device.h>
+ 
++#include "pci-host-common.h"
++
+ static void gen_pci_unmap_cfg(void *ptr)
  {
-+	struct pci_host_bridge *host = pci_find_host_bridge(dev->bus);
-+	int ret;
-+
-+	if (host->reset_slot) {
-+		ret = host->reset_slot(host, dev);
-+		if (ret)
-+			pci_err(dev, "failed to reset slot: %d\n", ret);
-+
-+		return;
-+	}
-+
- 	pci_reset_secondary_bus(dev);
-+
+ 	pci_ecam_free((struct pci_config_window *)ptr);
+@@ -94,5 +96,5 @@ void pci_host_common_remove(struct platform_device *pdev)
  }
+ EXPORT_SYMBOL_GPL(pci_host_common_remove);
  
- /**
-diff --git a/drivers/pci/pcie/err.c b/drivers/pci/pcie/err.c
-index de6381c690f5c21f00021cdc7bde8d93a5c7db52..b834fc0d705938540d3d7d3d8739770c09fe7cf1 100644
---- a/drivers/pci/pcie/err.c
-+++ b/drivers/pci/pcie/err.c
-@@ -234,11 +234,6 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
- 	}
+-MODULE_DESCRIPTION("Generic PCI host common driver");
++MODULE_DESCRIPTION("Common library for PCI host controller drivers");
+ MODULE_LICENSE("GPL v2");
+diff --git a/drivers/pci/controller/pci-host-common.h b/drivers/pci/controller/pci-host-common.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..30253ff26e01fb445ecf67b795209e6d0a9ec7c4
+--- /dev/null
++++ b/drivers/pci/controller/pci-host-common.h
+@@ -0,0 +1,16 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Common library for PCI host controller drivers
++ *
++ * Copyright (C) 2025 Linaro Limited
++ *
++ * Author: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
++ */
++
++#ifndef _PCI_HOST_COMMON_H
++#define _PCI_HOST_COMMON_H
++
++int pci_host_common_probe(struct platform_device *pdev);
++void pci_host_common_remove(struct platform_device *pdev);
++
++#endif
+diff --git a/drivers/pci/controller/pci-host-generic.c b/drivers/pci/controller/pci-host-generic.c
+index 4051b9b61dace669422e5a6453cc9f58a081beb5..c1bc0d34348f44c9fdd549811f637fb50fe89c64 100644
+--- a/drivers/pci/controller/pci-host-generic.c
++++ b/drivers/pci/controller/pci-host-generic.c
+@@ -14,6 +14,8 @@
+ #include <linux/pci-ecam.h>
+ #include <linux/platform_device.h>
  
- 	if (status == PCI_ERS_RESULT_NEED_RESET) {
--		/*
--		 * TODO: Should call platform-specific
--		 * functions to reset slot before calling
--		 * drivers' slot_reset callbacks?
--		 */
- 		status = PCI_ERS_RESULT_RECOVERED;
- 		pci_dbg(bridge, "broadcast slot_reset message\n");
- 		pci_walk_bridge(bridge, report_slot_reset, &status);
-diff --git a/include/linux/pci.h b/include/linux/pci.h
-index 0e8e3fd77e96713054388bdc82f439e51023c1bf..8d7d2a49b76cf64b4218b179cec495e0d69ddf6f 100644
---- a/include/linux/pci.h
-+++ b/include/linux/pci.h
-@@ -599,6 +599,7 @@ struct pci_host_bridge {
- 	void (*release_fn)(struct pci_host_bridge *);
- 	int (*enable_device)(struct pci_host_bridge *bridge, struct pci_dev *dev);
- 	void (*disable_device)(struct pci_host_bridge *bridge, struct pci_dev *dev);
-+	int (*reset_slot)(struct pci_host_bridge *bridge, struct pci_dev *dev);
- 	void		*release_data;
- 	unsigned int	ignore_reset_delay:1;	/* For entire hierarchy */
- 	unsigned int	no_ext_tags:1;		/* No Extended Tags */
++#include "pci-host-common.h"
++
+ static const struct pci_ecam_ops gen_pci_cfg_cam_bus_ops = {
+ 	.bus_shift	= 16,
+ 	.pci_ops	= {
+diff --git a/drivers/pci/controller/pci-thunder-ecam.c b/drivers/pci/controller/pci-thunder-ecam.c
+index 08161065a89c35a95714df935ef437dfc8845697..b5b4a958e6a22b21501cad45bb242a95a784efc1 100644
+--- a/drivers/pci/controller/pci-thunder-ecam.c
++++ b/drivers/pci/controller/pci-thunder-ecam.c
+@@ -11,6 +11,8 @@
+ #include <linux/pci-ecam.h>
+ #include <linux/platform_device.h>
+ 
++#include "pci-host-common.h"
++
+ #if defined(CONFIG_PCI_HOST_THUNDER_ECAM) || (defined(CONFIG_ACPI) && defined(CONFIG_PCI_QUIRKS))
+ 
+ static void set_val(u32 v, int where, int size, u32 *val)
+diff --git a/drivers/pci/controller/pci-thunder-pem.c b/drivers/pci/controller/pci-thunder-pem.c
+index f1bd5de67997cddac173723bc7f4ec20aaf20064..5fa037fb61dc356f3029d1b5cae632ae1da5bb9b 100644
+--- a/drivers/pci/controller/pci-thunder-pem.c
++++ b/drivers/pci/controller/pci-thunder-pem.c
+@@ -14,6 +14,7 @@
+ #include <linux/platform_device.h>
+ #include <linux/io-64-nonatomic-lo-hi.h>
+ #include "../pci.h"
++#include "pci-host-common.h"
+ 
+ #if defined(CONFIG_PCI_HOST_THUNDER_PEM) || (defined(CONFIG_ACPI) && defined(CONFIG_PCI_QUIRKS))
+ 
+diff --git a/drivers/pci/controller/pcie-apple.c b/drivers/pci/controller/pcie-apple.c
+index 18e11b9a7f46479348815c3f706319189e0a80b5..edd4c8c683c6a693401b47f5f056641c13ae89f8 100644
+--- a/drivers/pci/controller/pcie-apple.c
++++ b/drivers/pci/controller/pcie-apple.c
+@@ -29,6 +29,8 @@
+ #include <linux/of_irq.h>
+ #include <linux/pci-ecam.h>
+ 
++#include "pci-host-common.h"
++
+ #define CORE_RC_PHYIF_CTL		0x00024
+ #define   CORE_RC_PHYIF_CTL_RUN		BIT(0)
+ #define CORE_RC_PHYIF_STAT		0x00028
+diff --git a/drivers/pci/controller/plda/pcie-microchip-host.c b/drivers/pci/controller/plda/pcie-microchip-host.c
+index 3fdfffdf027001bf88df8e1c2538587298228220..24bbf93b8051fa0d9027ce6983eae34cad81065e 100644
+--- a/drivers/pci/controller/plda/pcie-microchip-host.c
++++ b/drivers/pci/controller/plda/pcie-microchip-host.c
+@@ -23,6 +23,7 @@
+ #include <linux/wordpart.h>
+ 
+ #include "../../pci.h"
++#include "../pci-host-common.h"
+ #include "pcie-plda.h"
+ 
+ #define MC_MAX_NUM_INBOUND_WINDOWS		8
+diff --git a/include/linux/pci-ecam.h b/include/linux/pci-ecam.h
+index 3a10f8cfc3ad5c90585a8fc971be714011ed18fe..d930651473b4d0b406e657a24ede87e09517d091 100644
+--- a/include/linux/pci-ecam.h
++++ b/include/linux/pci-ecam.h
+@@ -93,10 +93,4 @@ extern const struct pci_ecam_ops al_pcie_ops;	/* Amazon Annapurna Labs PCIe */
+ extern const struct pci_ecam_ops tegra194_pcie_ops; /* Tegra194 PCIe */
+ extern const struct pci_ecam_ops loongson_pci_ecam_ops; /* Loongson PCIe */
+ #endif
+-
+-#if IS_ENABLED(CONFIG_PCI_HOST_COMMON)
+-/* for DT-based PCI controllers that support ECAM */
+-int pci_host_common_probe(struct platform_device *pdev);
+-void pci_host_common_remove(struct platform_device *pdev);
+-#endif
+ #endif
 
 -- 
 2.43.0
