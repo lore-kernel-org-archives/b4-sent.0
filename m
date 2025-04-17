@@ -1,297 +1,631 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Thu, 17 Apr 2025 16:21:14 +0200
-Subject: [PATCH v3] dt-bindings: powerpc: Convert fsl/pmc.txt to YAML
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Date: Thu, 17 Apr 2025 18:35:44 +0200
+Subject: [PATCH v2] arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: add
+ retimers, dp altmode support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250417-fslpmc-yaml-v3-1-b3eccd389176@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAFkOAWgC/1WMwQqDMBAFf0X23JRkNdb01P8oPcS41oAaSSRUx
- H9vtIci7zQPZlYI5C0FuGcreIo2WDcmyC8ZmE6Pb2K2SQzIUXLEkrWhnwbDFj30TPHGlKqtbw1
- qSMbkqbWfo/Z8Je5smJ1fjngU+/vr5EKeOlGwNF7rXBa6kgYfkwszuetIM+yhiH+5EHiWMcmqM
- lwVlUaF4iRv2/YFwKU0SOQAAAA=
-X-Change-ID: 20250226-fslpmc-yaml-90dc69fb7d2a
-To: Crystal Wood <oss@buserror.net>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- Christophe Leroy <christophe.leroy@csgroup.eu>, 
- Naveen N Rao <naveen@kernel.org>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250417-slim7x-retimer-v2-1-dbe2dd511137@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAN8tAWgC/13Oyw6CMBCF4Vchs7amUy5FV76HYcFllEkKNR0kK
+ OHdrSRuXP4nmS+zglBgEjgnKwSaWdiPMcwhgbavxzsp7mKD0SbXGRZKHA92UYEmHigoqxukwjb
+ YZQbi0SPQjZcdvFaxe5bJh9fuz/hdf5T9p2ZUqPIS09qWaX7S6cW7TtreeyfePaf4mRwbfkO1b
+ dsHHgL0irkAAAA=
+X-Change-ID: 20250416-slim7x-retimer-70b1e67b1d42
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linuxppc-dev@lists.ozlabs.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Rob Clark <robdclark@gmail.com>, 
+ Jos Dehaes <jos.dehaes@gmail.com>, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1744899675; l=9529;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=bW43HEpOEpNYn4tTSUfgDCb0hz+VsjYccuCsnUP7S4E=;
- b=e3b7ZbB1tUs08gQNlDgkQ77uMl439G6Dh0v/xgO28/jOOwNCpeTRZxLj8QvGxt1obxUsTwKrU
- 7ry8dzvcWb1CJYxXBBirrD40fcWhUnw4yjO2PFppoKJ3skf8FC8LWNN
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744907745; l=13368;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=DZAL7KsODjdxeAcP8P2DJUA/Mx25qyBJ0Vx8psZ7vds=;
+ b=2EULnk2gVDLoDqaB3tecLDRI7RkzGbg5Yc6MsO0J3K5iklmxatGVjTrOhJ7NAYygVDRuUbP88
+ +roPjIJpjAOCg4T7UvDEw7Y0vL0oM3btG8sgZRSXHInyw5NdRJW7mUl
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch rewrites pmc.txt into YAML format. Descriptive texts are
-expanded or shortened in a few places to better fit today's conventions.
+comparing with CRD and other dts for a more complete support of the 7X
+only retimers, gpios, regulators, dp outputs
 
-The list of compatible strings (and combinations of them) is based on
-existing device trees in arch/powerpc as well as compatible strings
-already mentioned in the plain-text version of the binding.
-
-One thing I didn't handle are soc-clk@... nodes as seen in
-arch/powerpc/boot/dts/fsl/pq3-power.dtsi. They are also ignored
-by Linux drivers.
-
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Tested-by: Rob Clark <robdclark@gmail.com>
+Tested-by: Jos Dehaes <jos.dehaes@gmail.com>
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
-Changes in v3:
-- Combine two compatible strings into one "enum"
-- Remove sleep consumer (sata@19000) from example
-- Fix reference to example for soc-clk@... nodes, and explain why they
-  are not modeled
-- Link to v2: https://lore.kernel.org/r/20250412-fslpmc-yaml-v2-1-98c0948a2921@posteo.net
-
+This patch adds the required nodes to support DP Altmode on all three type-c
+ports. The definition is derived from the CRD. Since they are all marked 40Gbps,
+I assume there are 3 PS8830 retimers. 
+This modification is now for ~8 weeks in my tree with little to no complaints. I 
+don't have access to a Yoga Slim 7X, however many people on #aarch64-laptops do 
+and some are using this patch.
+---
 Changes in v2:
-- Rebase on v6.15-rc1
-- Link to v1: https://lore.kernel.org/r/20250315-fslpmc-yaml-v1-1-10ba354a85c2@posteo.net
+- removed changes not relevant to retimers and dp altmode (thanks Johan)
+- Link to v1: https://lore.kernel.org/r/20250417-slim7x-retimer-v1-1-5813a7835903@oldschoolsolutions.biz
 ---
- .../devicetree/bindings/powerpc/fsl/pmc.txt        |  63 ---------
- .../devicetree/bindings/powerpc/fsl/pmc.yaml       | 152 +++++++++++++++++++++
- 2 files changed, 152 insertions(+), 63 deletions(-)
+ .../boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts  | 476 ++++++++++++++++++++-
+ 1 file changed, 470 insertions(+), 6 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/powerpc/fsl/pmc.txt b/Documentation/devicetree/bindings/powerpc/fsl/pmc.txt
-deleted file mode 100644
-index 07256b7ffcaab2ba57b33cf279df45d830ce33b3..0000000000000000000000000000000000000000
---- a/Documentation/devicetree/bindings/powerpc/fsl/pmc.txt
-+++ /dev/null
-@@ -1,63 +0,0 @@
--* Power Management Controller
--
--Properties:
--- compatible: "fsl,<chip>-pmc".
--
--  "fsl,mpc8349-pmc" should be listed for any chip whose PMC is
--  compatible.  "fsl,mpc8313-pmc" should also be listed for any chip
--  whose PMC is compatible, and implies deep-sleep capability.
--
--  "fsl,mpc8548-pmc" should be listed for any chip whose PMC is
--  compatible.  "fsl,mpc8536-pmc" should also be listed for any chip
--  whose PMC is compatible, and implies deep-sleep capability.
--
--  "fsl,mpc8641d-pmc" should be listed for any chip whose PMC is
--  compatible; all statements below that apply to "fsl,mpc8548-pmc" also
--  apply to "fsl,mpc8641d-pmc".
--
--  Compatibility does not include bit assignments in SCCR/PMCDR/DEVDISR; these
--  bit assignments are indicated via the sleep specifier in each device's
--  sleep property.
--
--- reg: For devices compatible with "fsl,mpc8349-pmc", the first resource
--  is the PMC block, and the second resource is the Clock Configuration
--  block.
--
--  For devices compatible with "fsl,mpc8548-pmc", the first resource
--  is a 32-byte block beginning with DEVDISR.
--
--- interrupts: For "fsl,mpc8349-pmc"-compatible devices, the first
--  resource is the PMC block interrupt.
--
--- fsl,mpc8313-wakeup-timer: For "fsl,mpc8313-pmc"-compatible devices,
--  this is a phandle to an "fsl,gtm" node on which timer 4 can be used as
--  a wakeup source from deep sleep.
--
--Sleep specifiers:
--
--  fsl,mpc8349-pmc: Sleep specifiers consist of one cell.  For each bit
--  that is set in the cell, the corresponding bit in SCCR will be saved
--  and cleared on suspend, and restored on resume.  This sleep controller
--  supports disabling and resuming devices at any time.
--
--  fsl,mpc8536-pmc: Sleep specifiers consist of three cells, the third of
--  which will be ORed into PMCDR upon suspend, and cleared from PMCDR
--  upon resume.  The first two cells are as described for fsl,mpc8578-pmc.
--  This sleep controller only supports disabling devices during system
--  sleep, or permanently.
--
--  fsl,mpc8548-pmc: Sleep specifiers consist of one or two cells, the
--  first of which will be ORed into DEVDISR (and the second into
--  DEVDISR2, if present -- this cell should be zero or absent if the
--  hardware does not have DEVDISR2) upon a request for permanent device
--  disabling.  This sleep controller does not support configuring devices
--  to disable during system sleep (unless supported by another compatible
--  match), or dynamically.
--
--Example:
--
--	power@b00 {
--		compatible = "fsl,mpc8313-pmc", "fsl,mpc8349-pmc";
--		reg = <0xb00 0x100 0xa00 0x100>;
--		interrupts = <80 8>;
--	};
-diff --git a/Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml b/Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..276ece7f01dbafe0accbb9d884f5611e75193ca2
---- /dev/null
-+++ b/Documentation/devicetree/bindings/powerpc/fsl/pmc.yaml
-@@ -0,0 +1,152 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/powerpc/fsl/pmc.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
+index 445d97d67d325853b7dcd2060523e7469ed4e6ea..6f1a9eec0c48bdffb6cf60ff270dffa6bf64b710 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
+@@ -72,7 +72,15 @@ port@1 {
+ 					reg = <1>;
+ 
+ 					pmic_glink_ss0_ss_in: endpoint {
+-						remote-endpoint = <&usb_1_ss0_qmpphy_out>;
++						remote-endpoint = <&retimer_ss0_ss_out>;
++					};
++				};
 +
-+title: Power Management Controller
++				port@2 {
++					reg = <2>;
 +
-+maintainers:
-+  - J. Neuschäfer <j.ne@posteo.net>
++					pmic_glink_ss0_con_sbu_in: endpoint {
++						remote-endpoint = <&retimer_ss0_con_sbu_out>;
+ 					};
+ 				};
+ 			};
+@@ -101,7 +109,15 @@ port@1 {
+ 					reg = <1>;
+ 
+ 					pmic_glink_ss1_ss_in: endpoint {
+-						remote-endpoint = <&usb_1_ss1_qmpphy_out>;
++						remote-endpoint = <&retimer_ss1_ss_out>;
++					};
++				};
 +
-+description: |
-+  The Power Management Controller in several MPC8xxx SoCs helps save power by
-+  controlling chip-wide low-power states as well as peripheral clock gating.
++				port@2 {
++					reg = <2>;
 +
-+  Sleep of peripheral devices is configured by the `sleep` property, for
-+  example `sleep = <&pmc 0x00000030>`. Any cells after the &pmc phandle are
-+  called a sleep specifier.
++					pmic_glink_ss1_con_sbu_in: endpoint {
++						remote-endpoint = <&retimer_ss1_con_sbu_out>;
+ 					};
+ 				};
+ 			};
+@@ -130,7 +146,15 @@ port@1 {
+ 					reg = <1>;
+ 
+ 					pmic_glink_ss2_ss_in: endpoint {
+-						remote-endpoint = <&usb_1_ss2_qmpphy_out>;
++						remote-endpoint = <&retimer_ss2_ss_out>;
++					};
++				};
 +
-+  For "fsl,mpc8349-pmc", sleep specifiers consist of one cell.  For each bit that
-+  is set in the cell, the corresponding bit in SCCR will be saved and cleared
-+  on suspend, and restored on resume.  This sleep controller supports disabling
-+  and resuming devices at any time.
++				port@2 {
++					reg = <2>;
 +
-+  For "fsl,mpc8536-pmc", sleep specifiers consist of three cells, the third of
-+  which will be ORed into PMCDR upon suspend, and cleared from PMCDR upon
-+  resume.  The first two cells are as described for fsl,mpc8548-pmc.  This
-+  sleep controller only supports disabling devices during system sleep, or
-+  permanently.
++					pmic_glink_ss2_con_sbu_in: endpoint {
++						remote-endpoint = <&retimer_ss2_con_sbu_out>;
+ 					};
+ 				};
+ 			};
+@@ -226,6 +250,150 @@ vreg_nvme: regulator-nvme {
+ 		regulator-boot-on;
+ 	};
+ 
++	vreg_rtmr0_1p15: regulator-rtmr0-1p15 {
++		compatible = "regulator-fixed";
 +
-+  For "fsl,mpc8548-pmc" or "fsl,mpc8641d-pmc", Sleep specifiers consist of one
-+  or two cells, the first of which will be ORed into DEVDISR (and the second
-+  into DEVDISR2, if present -- this cell should be zero or absent if the
-+  hardware does not have DEVDISR2) upon a request for permanent device
-+  disabling.  This sleep controller does not support configuring devices to
-+  disable during system sleep (unless supported by another compatible match),
-+  or dynamically.
++		regulator-name = "VREG_RTMR0_1P15";
++		regulator-min-microvolt = <1150000>;
++		regulator-max-microvolt = <1150000>;
 +
-+properties:
-+  compatible:
-+    oneOf:
-+      - items:
-+          - const: fsl,mpc8315-pmc
-+          - const: fsl,mpc8313-pmc
-+          - const: fsl,mpc8349-pmc
++		gpio = <&pmc8380_5_gpios 8 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
 +
-+      - items:
-+          - enum:
-+              - fsl,mpc8313-pmc
-+              - fsl,mpc8323-pmc
-+              - fsl,mpc8360-pmc
-+              - fsl,mpc8377-pmc
-+              - fsl,mpc8378-pmc
-+              - fsl,mpc8379-pmc
-+          - const: fsl,mpc8349-pmc
++		pinctrl-0 = <&usb0_pwr_1p15_reg_en>;
++		pinctrl-names = "default";
 +
-+      - items:
-+          - const: fsl,p1022-pmc
-+          - const: fsl,mpc8536-pmc
-+          - const: fsl,mpc8548-pmc
++		regulator-boot-on;
++	};
 +
-+      - items:
-+          - enum:
-+              - fsl,mpc8536-pmc
-+              - fsl,mpc8568-pmc
-+              - fsl,mpc8569-pmc
-+          - const: fsl,mpc8548-pmc
++	vreg_rtmr0_1p8: regulator-rtmr0-1p8 {
++		compatible = "regulator-fixed";
 +
-+      - enum:
-+          - fsl,mpc8548-pmc
-+          - fsl,mpc8641d-pmc
++		regulator-name = "VREG_RTMR0_1P8";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
 +
-+    description: |
-+      "fsl,mpc8349-pmc" should be listed for any chip whose PMC is
-+      compatible.  "fsl,mpc8313-pmc" should also be listed for any chip
-+      whose PMC is compatible, and implies deep-sleep capability.
++		gpio = <&pm8550ve_9_gpios 8 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
 +
-+      "fsl,mpc8548-pmc" should be listed for any chip whose PMC is
-+      compatible.  "fsl,mpc8536-pmc" should also be listed for any chip
-+      whose PMC is compatible, and implies deep-sleep capability.
++		pinctrl-0 = <&usb0_1p8_reg_en>;
++		pinctrl-names = "default";
 +
-+      "fsl,mpc8641d-pmc" should be listed for any chip whose PMC is
-+      compatible; all statements below that apply to "fsl,mpc8548-pmc" also
-+      apply to "fsl,mpc8641d-pmc".
++		regulator-boot-on;
++	};
 +
-+      Compatibility does not include bit assignments in SCCR/PMCDR/DEVDISR; these
-+      bit assignments are indicated via the sleep specifier in each device's
-+      sleep property.
++	vreg_rtmr0_3p3: regulator-rtmr0-3p3 {
++		compatible = "regulator-fixed";
 +
-+  reg:
-+    minItems: 1
-+    maxItems: 2
++		regulator-name = "VREG_RTMR0_3P3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
 +
-+  interrupts:
-+    maxItems: 1
++		gpio = <&pm8550_gpios 11 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
 +
-+  fsl,mpc8313-wakeup-timer:
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+    description:
-+      For "fsl,mpc8313-pmc"-compatible devices, this is a phandle to an
-+      "fsl,gtm" node on which timer 4 can be used as a wakeup source from deep
-+      sleep.
++		pinctrl-0 = <&usb0_3p3_reg_en>;
++		pinctrl-names = "default";
 +
-+allOf:
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: fsl,mpc8349-pmc
-+    then:
-+      properties:
-+        reg:
-+          items:
-+            - description: PMC block
-+            - description: Clock Configuration block
++		regulator-boot-on;
++	};
 +
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - fsl,mpc8548-pmc
-+              - fsl,mpc8641d-pmc
-+    then:
-+      properties:
-+        reg:
-+          items:
-+            - description: 32-byte block beginning with DEVDISR
++	vreg_rtmr1_1p15: regulator-rtmr1-1p15 {
++		compatible = "regulator-fixed";
 +
-+required:
-+  - compatible
-+  - reg
++		regulator-name = "VREG_RTMR1_1P15";
++		regulator-min-microvolt = <1150000>;
++		regulator-max-microvolt = <1150000>;
 +
-+additionalProperties: false
++		gpio = <&tlmm 188 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
 +
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/irq.h>
++		pinctrl-0 = <&usb1_pwr_1p15_reg_en>;
++		pinctrl-names = "default";
 +
-+    pmc: power@b00 {
-+        compatible = "fsl,mpc8377-pmc", "fsl,mpc8349-pmc";
-+        reg = <0xb00 0x100>, <0xa00 0x100>;
-+        interrupts = <80 IRQ_TYPE_LEVEL_LOW>;
-+    };
++		regulator-boot-on;
++	};
 +
-+  - |
-+    power@e0070 {
-+        compatible = "fsl,mpc8548-pmc";
-+        reg = <0xe0070 0x20>;
-+    };
++	vreg_rtmr1_1p8: regulator-rtmr1-1p8 {
++		compatible = "regulator-fixed";
 +
-+...
++		regulator-name = "VREG_RTMR1_1P8";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++
++		gpio = <&tlmm 175 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb1_pwr_1p8_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	vreg_rtmr1_3p3: regulator-rtmr1-3p3 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR1_3P3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&tlmm 186 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb1_pwr_3p3_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	vreg_rtmr2_1p15: regulator-rtmr2-1p15 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR2_1P15";
++		regulator-min-microvolt = <1150000>;
++		regulator-max-microvolt = <1150000>;
++
++		gpio = <&tlmm 189 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb2_pwr_1p15_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	vreg_rtmr2_1p8: regulator-rtmr2-1p8 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR2_1P8";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++
++		gpio = <&tlmm 126 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb2_pwr_1p8_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	vreg_rtmr2_3p3: regulator-rtmr2-3p3 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR2_3P3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&tlmm 187 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb2_pwr_3p3_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
+ 	vph_pwr: regulator-vph-pwr {
+ 		compatible = "regulator-fixed";
+ 
+@@ -567,6 +735,178 @@ keyboard@3a {
+ 	};
+ };
+ 
++&i2c1 {
++	clock-frequency = <400000>;
++
++	status = "okay";
++
++	typec-mux@8 {
++		compatible = "parade,ps8830";
++		reg = <0x08>;
++
++		clocks = <&rpmhcc RPMH_RF_CLK5>;
++
++		vdd-supply = <&vreg_rtmr2_1p15>;
++		vdd33-supply = <&vreg_rtmr2_3p3>;
++		vdd33-cap-supply = <&vreg_rtmr2_3p3>;
++		vddar-supply = <&vreg_rtmr2_1p15>;
++		vddat-supply = <&vreg_rtmr2_1p15>;
++		vddio-supply = <&vreg_rtmr2_1p8>;
++
++		reset-gpios = <&tlmm 185 GPIO_ACTIVE_LOW>;
++
++		pinctrl-0 = <&rtmr2_default>;
++		pinctrl-names = "default";
++
++		orientation-switch;
++		retimer-switch;
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++
++				retimer_ss2_ss_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss2_ss_in>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++
++				retimer_ss2_ss_in: endpoint {
++					remote-endpoint = <&usb_1_ss2_qmpphy_out>;
++				};
++			};
++
++			port@2 {
++				reg = <2>;
++
++				retimer_ss2_con_sbu_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss2_con_sbu_in>;
++				};
++			};
++		};
++	};
++};
++
++&i2c3 {
++	clock-frequency = <400000>;
++
++	status = "okay";
++
++	typec-mux@8 {
++		compatible = "parade,ps8830";
++		reg = <0x08>;
++
++		clocks = <&rpmhcc RPMH_RF_CLK3>;
++
++		vdd-supply = <&vreg_rtmr0_1p15>;
++		vdd33-supply = <&vreg_rtmr0_3p3>;
++		vdd33-cap-supply = <&vreg_rtmr0_3p3>;
++		vddar-supply = <&vreg_rtmr0_1p15>;
++		vddat-supply = <&vreg_rtmr0_1p15>;
++		vddio-supply = <&vreg_rtmr0_1p8>;
++
++		reset-gpios = <&pm8550_gpios 10 GPIO_ACTIVE_LOW>;
++
++		pinctrl-0 = <&rtmr0_default>;
++		pinctrl-names = "default";
++
++		retimer-switch;
++		orientation-switch;
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++
++				retimer_ss0_ss_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss0_ss_in>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++
++				retimer_ss0_ss_in: endpoint {
++					remote-endpoint = <&usb_1_ss0_qmpphy_out>;
++				};
++			};
++
++			port@2 {
++				reg = <2>;
++
++				retimer_ss0_con_sbu_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss0_con_sbu_in>;
++				};
++			};
++		};
++	};
++};
++
++&i2c7 {
++	clock-frequency = <400000>;
++
++	status = "okay";
++
++	typec-mux@8 {
++		compatible = "parade,ps8830";
++		reg = <0x8>;
++
++		clocks = <&rpmhcc RPMH_RF_CLK4>;
++
++		vdd-supply = <&vreg_rtmr1_1p15>;
++		vdd33-supply = <&vreg_rtmr1_3p3>;
++		vdd33-cap-supply = <&vreg_rtmr1_3p3>;
++		vddar-supply = <&vreg_rtmr1_1p15>;
++		vddat-supply = <&vreg_rtmr1_1p15>;
++		vddio-supply = <&vreg_rtmr1_1p8>;
++
++		reset-gpios = <&tlmm 176 GPIO_ACTIVE_LOW>;
++
++		pinctrl-0 = <&rtmr1_default>;
++		pinctrl-names = "default";
++
++		retimer-switch;
++		orientation-switch;
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++
++				retimer_ss1_ss_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss1_ss_in>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++
++				retimer_ss1_ss_in: endpoint {
++					remote-endpoint = <&usb_1_ss1_qmpphy_out>;
++				};
++			};
++
++			port@2 {
++				reg = <2>;
++
++				retimer_ss1_con_sbu_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss1_con_sbu_in>;
++				};
++			};
++
++		};
++	};
++};
++
+ &i2c8 {
+ 	clock-frequency = <400000>;
+ 
+@@ -614,6 +954,33 @@ &mdss {
+ 	status = "okay";
+ };
+ 
++&mdss_dp0 {
++	status = "okay";
++};
++
++&mdss_dp0_out {
++	data-lanes = <0 1>;
++	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
++};
++
++&mdss_dp1 {
++	status = "okay";
++};
++
++&mdss_dp1_out {
++	data-lanes = <0 1>;
++	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
++};
++
++&mdss_dp2 {
++	status = "okay";
++};
++
++&mdss_dp2_out {
++	data-lanes = <0 1>;
++	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
++};
++
+ &mdss_dp3 {
+ 	compatible = "qcom,x1e80100-dp";
+ 	/delete-property/ #sound-dai-cells;
+@@ -701,6 +1068,37 @@ &pcie6a_phy {
+ 	status = "okay";
+ };
+ 
++&pm8550_gpios {
++	rtmr0_default: rtmr0-reset-n-active-state {
++		pins = "gpio10";
++		function = "normal";
++		power-source = <1>; /* 1.8V */
++		bias-disable;
++		input-disable;
++		output-enable;
++	};
++
++	usb0_3p3_reg_en: usb0-3p3-reg-en-state {
++		pins = "gpio11";
++		function = "normal";
++		power-source = <1>; /* 1.8V */
++		bias-disable;
++		input-disable;
++		output-enable;
++	};
++};
++
++&pm8550ve_9_gpios {
++	usb0_1p8_reg_en: usb0-1p8-reg-en-state {
++		pins = "gpio8";
++		function = "normal";
++		power-source = <1>; /* 1.8V */
++		bias-disable;
++		input-disable;
++		output-enable;
++	};
++};
++
+ &pmc8380_3_gpios {
+ 	edp_bl_en: edp-bl-en-state {
+ 		pins = "gpio4";
+@@ -711,6 +1109,17 @@ edp_bl_en: edp-bl-en-state {
+ 	};
+ };
+ 
++&pmc8380_5_gpios {
++	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
++		pins = "gpio8";
++		function = "normal";
++		power-source = <1>; /* 1.8V */
++		bias-disable;
++		input-disable;
++		output-enable;
++	};
++};
++
+ &qupv3_0 {
+ 	status = "okay";
+ };
+@@ -919,6 +1328,20 @@ wake-n-pins {
+ 		};
+ 	};
+ 
++	rtmr1_default: rtmr1-reset-n-active-state {
++		pins = "gpio176";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	rtmr2_default: rtmr2-reset-n-active-state {
++		pins = "gpio185";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
+ 	tpad_default: tpad-default-state {
+ 		pins = "gpio3";
+ 		function = "gpio";
+@@ -940,6 +1363,47 @@ reset-n-pins {
+ 		};
+ 	};
+ 
++	usb1_pwr_1p15_reg_en: usb1-pwr-1p15-reg-en-state {
++		pins = "gpio188";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	usb1_pwr_1p8_reg_en: usb1-pwr-1p8-reg-en-state {
++		pins = "gpio175";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	usb1_pwr_3p3_reg_en: usb1-pwr-3p3-reg-en-state {
++		pins = "gpio186";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	usb2_pwr_1p15_reg_en: usb2-pwr-1p15-reg-en-state {
++		pins = "gpio189";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	usb2_pwr_1p8_reg_en: usb2-pwr-1p8-reg-en-state {
++		pins = "gpio126";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	usb2_pwr_3p3_reg_en: usb2-pwr-3p3-reg-en-state {
++		pins = "gpio187";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
+ };
+ 
+ &uart21 {
+@@ -976,7 +1440,7 @@ &usb_1_ss0_dwc3_hs {
+ };
+ 
+ &usb_1_ss0_qmpphy_out {
+-	remote-endpoint = <&pmic_glink_ss0_ss_in>;
++	remote-endpoint = <&retimer_ss0_ss_in>;
+ };
+ 
+ &usb_1_ss1_hsphy {
+@@ -1008,7 +1472,7 @@ &usb_1_ss1_dwc3_hs {
+ };
+ 
+ &usb_1_ss1_qmpphy_out {
+-	remote-endpoint = <&pmic_glink_ss1_ss_in>;
++	remote-endpoint = <&retimer_ss1_ss_in>;
+ };
+ 
+ &usb_1_ss2_hsphy {
+@@ -1040,5 +1504,5 @@ &usb_1_ss2_dwc3_hs {
+ };
+ 
+ &usb_1_ss2_qmpphy_out {
+-	remote-endpoint = <&pmic_glink_ss2_ss_in>;
++	remote-endpoint = <&retimer_ss2_ss_in>;
+ };
 
 ---
-base-commit: 0af2f6be1b4281385b618cb86ad946eded089ac8
-change-id: 20250226-fslpmc-yaml-90dc69fb7d2a
+base-commit: f660850bc246fef15ba78c81f686860324396628
+change-id: 20250416-slim7x-retimer-70b1e67b1d42
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
