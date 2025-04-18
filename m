@@ -1,63 +1,56 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Fri, 18 Apr 2025 21:28:54 +0200
-Subject: [PATCH 4/4] powerpc: p2020: Rename wdt@ nodes to watchdog@
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Date: Fri, 18 Apr 2025 22:22:04 +0200
+Subject: [PATCH] ASoC: wm8998: Add Kconfig prompt
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250418-watchdog-v1-4-987ff2046272@posteo.net>
-References: <20250418-watchdog-v1-0-987ff2046272@posteo.net>
-In-Reply-To: <20250418-watchdog-v1-0-987ff2046272@posteo.net>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- Christophe Leroy <christophe.leroy@csgroup.eu>, 
- Naveen N Rao <naveen@kernel.org>
-Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Message-Id: <20250418-wm8998-v1-1-21c4bead9cd8@apitzsch.eu>
+X-B4-Tracking: v=1; b=H4sIAGu0AmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDE0ML3fJcC0tLC92U1LTEVHPjJGNjIwMloOKCotS0zAqwQdGxtbUA6EN
+ tIlgAAAA=
+X-Change-ID: 20250418-wm8998-defae73b3320
+To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745004545; l=1065;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=Jfd85PbJEHShQtp0Z7D0ENH84wB5WrTefZVsj2LtPg4=;
- b=9Ddx++hJwjUu5ZT5RcAMKL458F4jL4oZdbNqUIm8fWLxvPqyPovL1NfQreYYdr5rYTNz/J468
- Kbeijo/OUapDOomDiJYvXXiMNPWkdWwcCjdtQrbm/WLjITPmZiWBFgf
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745008121; l=825;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=XALZ1vwO3j84k8/8tKGcIPipHuf/haqg80zA+h6cAEU=;
+ b=m8KI2nZB1kokmZ/pFqGBnA6F17BLosVjzj+zt8/Fxvr5ikwtcS6hhTZ9VNWofL/DBsr+Z9pn9
+ AKqhs4dg9EUB/RRqdR4kFtSE1UMbEZ61MK8g3lgZcSkBX0Mu5cw9Dnh
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The watchdog.yaml schema prescribes a node name of "timer" or "watchdog"
-rather than the abbreviation "wdt".
+Add tristate prompt to allow codec selection.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- arch/powerpc/boot/dts/fsl/ge_imp3a.dts | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ sound/soc/codecs/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/powerpc/boot/dts/fsl/ge_imp3a.dts b/arch/powerpc/boot/dts/fsl/ge_imp3a.dts
-index da3de8e2b7d2c55cf735f3cfdef8729655979a06..9e5c01cfac2f8ad93dfa3b33d05b3ad3331b2c76 100644
---- a/arch/powerpc/boot/dts/fsl/ge_imp3a.dts
-+++ b/arch/powerpc/boot/dts/fsl/ge_imp3a.dts
-@@ -94,7 +94,7 @@ gef_gpio: gpio@4,400 {
- 			gpio-controller;
- 		};
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 40bb7a1d44bcfa4c386f2eba0f475efeeedf1bdb..9ecc4bb7f75ff9fce87970d2e46ace72444e55b4 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -2479,7 +2479,7 @@ config SND_SOC_WM8997
+ 	depends on MFD_WM8997 && MFD_ARIZONA
  
--		wdt@4,800 {
-+		watchdog@4,800 {
- 			compatible = "ge,imp3a-fpga-wdt", "gef,fpga-wdt-1.00",
- 				"gef,fpga-wdt";
- 			reg = <0x4 0x800 0x8>;
-@@ -103,7 +103,7 @@ wdt@4,800 {
- 		};
+ config SND_SOC_WM8998
+-	tristate
++	tristate "Wolfson Microelectronics WM8998 codec driver"
+ 	depends on MFD_WM8998 && MFD_ARIZONA
  
- 		/* Second watchdog available, driver currently supports one.
--		wdt@4,808 {
-+		watchdog@4,808 {
- 			compatible = "gef,imp3a-fpga-wdt", "gef,fpga-wdt-1.00",
- 				"gef,fpga-wdt";
- 			reg = <0x4 0x808 0x8>;
+ config SND_SOC_WM9081
 
+---
+base-commit: 7e74f756f5f643148ca5537bf2fee6767e4b0ed9
+change-id: 20250418-wm8998-defae73b3320
+
+Best regards,
 -- 
-2.48.0.rc1.219.gb6b6757d772
+André Apitzsch <git@apitzsch.eu>
 
