@@ -1,69 +1,70 @@
-From: =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
-Date: Fri, 18 Apr 2025 10:43:22 +0200
-Subject: [PATCH v2] backlight: ktd2801: depend on GPIOLIB
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Subject: [PATCH v3 0/2] Add support for WoM (Wake-on-Motion) feature
+Date: Fri, 18 Apr 2025 18:19:01 +0200
+Message-Id: <20250418-losd-3-inv-icm42600-add-wom-support-v3-0-7a180af02bfe@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250418-ktd-fix-v2-1-cf3d19bafc9e@skole.hr>
-X-B4-Tracking: v=1; b=H4sIAKkQAmgC/2WMQQrCMBAAv1L27EqzNk3w5D+kh2pWs1SakpSgl
- Pzd2KvHGYbZIHEUTnBuNoicJUmYK9Chgbsf5yejuMpALem2Uwqn1eFD3mhGzdrZXpubhVovkav
- eT9ehspe0hvjZx1n97P8jK1TIpiPtyJyot5c0hRcffYShlPIFEY6HN50AAAA=
-X-Change-ID: 20250411-ktd-fix-7a5e5d8657b8
-To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
- Jingoo Han <jingoohan1@gmail.com>, Helge Deller <deller@gmx.de>
-Cc: Randy Dunlap <rdunlap@infradead.org>, dri-devel@lists.freedesktop.org, 
- linux-fbdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Duje_Mihanovi=C4=87?= <duje.mihanovic@skole.hr>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAHV7AmgC/5XNsQ6CMBSF4Vcxnb2m3BawTr6HcQB6K41CSYtVQ
+ 3h3Cwurjv8ZvjOxQN5SYKfdxDxFG6zrU4j9jjVt1d8IrE7NkGPOETk8XNAgwPYRbNNJLDiHSmt
+ 4uQ7CcxicH4EXyA0ZpWsULEmDJ2Pf68vlmrq1YXT+s57GbFn/82MGHFStRGnUsVC5PI/6fmhcx
+ xY94ibKLP9NxCRqUlKbWmFd0ibO8/wF2XyP9CYBAAA=
+X-Change-ID: 20250220-losd-3-inv-icm42600-add-wom-support-0620fef9db23
+To: Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1451;
- i=duje.mihanovic@skole.hr; s=20240706; h=from:subject:message-id;
- bh=NvkEKW66oVkFED6cl1L9OEBr+ZdxEWUqxuIzm2YmzSg=;
- b=owGbwMvMwCW21nBykGv/WmbG02pJDBlMAmvM9CdPb+m7JZzJc36l/CX7loglnypbg2edbVi5o
- 1iaJ+xTRykLgxgXg6yYIkvuf8drvJ9Ftm7PXmYAM4eVCWQIAxenAExkUhEjw5fgD3Hzz0zc8MLo
- gWtc3Zd6Zra5ec9b9pWYbhY+WLi5ZTvDX4kC5SNTFrFKbpFLqiif6btkr6KWmuOhaRyi+akfKnp
- usQAA
-X-Developer-Key: i=duje.mihanovic@skole.hr; a=openpgp;
- fpr=6DFF41D60DF314B5B76BA630AD319352458FAD03
-X-Endpoint-Received: by B4 Relay for duje.mihanovic@skole.hr/20240706 with auth_id=191
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1744993145; l=1697;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=I9rqPEmih+WGjr4eCnBNMkrmqHo+NChbgbYmv45VSAg=;
+ b=GPV7ryHOqM2AW7JlcGoNgdjFCjP9uDm5KlQVMxRi2Rwd+w5C4E+i+zmbW1/w4Y48icXzoiA2O
+ gtEEOcCI2sACA0LYHGV/Gm6+P9PtDhjiS1zA14vH97bKhXEXHkWTnzl
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ExpressWire library used by the driver depends on GPIOLIB, and by
-extension the driver does as well. This is not reflected in the driver's
-Kconfig entry, potentially causing Kconfig warnings. Fix this by adding
-the dependency.
+Similar to feature present in older chip, it compares the magnitude of
+the last 2 accel samples against a threshold and returns an interrupt
+even if the value is higher.
 
-Closes: https://lore.kernel.org/all/5cf231e1-0bba-4595-9441-46acc5255512@infradead.org
-Reported-by: Randy Dunlap <rdunlap@infradead.org>
-Tested-by: Randy Dunlap <rdunlap@infradead.org>
-Acked-by: Randy Dunlap <rdunlap@infradead.org>
-Signed-off-by: Duje Mihanović <duje.mihanovic@skole.hr>
+WoM maps best to accel x|y|z ROC event. This series add system wakeup
+functionality if WoM is on and wakeup is enabled when system suspends.
+
+This series also prepare the driver for supporting further APEX
+features like pedometer, tilt, ... It introduces an apex structure that
+will hold all APEX settings and track the enable state.
+
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
+Changes in v3:
+- Rewrites following code review
+- Link to v2: https://lore.kernel.org/r/20250415-losd-3-inv-icm42600-add-wom-support-v2-0-de94dfb92b7e@tdk.com
+
 Changes in v2:
-- s/Link/Closes
-- Pull Randy's tags
-- Link to v1: https://lore.kernel.org/r/20250411-ktd-fix-v1-1-e7425d273268@skole.hr
----
- drivers/video/backlight/Kconfig | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/drivers/video/backlight/Kconfig b/drivers/video/backlight/Kconfig
-index d9374d208ceebbf8b3c27976e9cb4d725939b942..37341474beb9982f7099711e5e2506081061df46 100644
---- a/drivers/video/backlight/Kconfig
-+++ b/drivers/video/backlight/Kconfig
-@@ -185,6 +185,7 @@ config BACKLIGHT_KTD253
- 
- config BACKLIGHT_KTD2801
- 	tristate "Backlight Driver for Kinetic KTD2801"
-+	depends on GPIOLIB || COMPILE_TEST
- 	select LEDS_EXPRESSWIRE
- 	help
- 	  Say Y to enable the backlight driver for the Kinetic KTD2801 1-wire
+- change struct order to avoir DMA overflow
+- separate wom enable/disable in 2 functions
+- delete mutex rework
+- Link to v1: https://lore.kernel.org/r/20250220-losd-3-inv-icm42600-add-wom-support-v1-0-9b937f986954@tdk.com
 
 ---
-base-commit: 01c6df60d5d4ae00cd5c1648818744838bba7763
-change-id: 20250411-ktd-fix-7a5e5d8657b8
+Jean-Baptiste Maneyrol (2):
+      iio: imu: inv_icm42600: add WoM support
+      iio: imu: inv_icm42600: add wakeup functionality for Wake-on-Motion
+
+ drivers/iio/imu/inv_icm42600/inv_icm42600.h        |  56 +++-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c  | 282 ++++++++++++++++++++-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c |   2 +-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_core.c   |  97 ++++++-
+ 4 files changed, 423 insertions(+), 14 deletions(-)
+---
+base-commit: 3159d40a2ca0ae14e69e1cae8b12f04c933d0445
+change-id: 20250220-losd-3-inv-icm42600-add-wom-support-0620fef9db23
 
 Best regards,
 -- 
-Duje Mihanović <duje.mihanovic@skole.hr>
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
