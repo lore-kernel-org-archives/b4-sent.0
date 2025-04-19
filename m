@@ -1,16 +1,12 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v5 0/2] Add support for sound profile switching and
- leverage for OnePlus 6 slider
-Date: Sat, 19 Apr 2025 21:46:23 +0200
-Message-Id: <20250419-op6-tri-state-v5-0-443127078517@ixit.cz>
+Date: Sat, 19 Apr 2025 21:46:24 +0200
+Subject: [PATCH v5 1/2] Input: add ABS_SND_PROFILE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAI/9A2gC/22MywrCMBBFf0VmbUISkz5c+R/iIrRjOyBNmcRgK
- f130+4El+dyz1khIhNGuJ5WYMwUKUwF3PkE3einAQX1hcEo45TVrQhzJRKTiMknFNhrr5zXWhs
- HxZkZn/Q5evdH4ZFiCrwc+Wz3FbqQkaWu6loZY7WVAyUZw4J8I37J8Q27mC+/56pxqtHtn/O2b
- V9r8B5LxgAAAA==
-X-Change-ID: 20250419-op6-tri-state-ed1a05a11125
+Message-Id: <20250419-op6-tri-state-v5-1-443127078517@ixit.cz>
+References: <20250419-op6-tri-state-v5-0-443127078517@ixit.cz>
+In-Reply-To: <20250419-op6-tri-state-v5-0-443127078517@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Jonathan Corbet <corbet@lwn.net>, Jiri Kosina <jikos@kernel.org>, 
  Benjamin Tissoires <bentiss@kernel.org>, 
@@ -21,78 +17,99 @@ To: Dmitry Torokhov <dmitry.torokhov@gmail.com>,
 Cc: linux-input@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  devicetree@vger.kernel.org, Gergo Koteles <soyer@irl.hu>, 
- David Heidelberg <david@ixit.cz>, Casey Connolly <casey@connolly.tech>, 
- Konrad Dybcio <konradybcio@kernel.org>
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1873; i=david@ixit.cz;
- h=from:subject:message-id; bh=74mO15uFIckJUXnXnTZxaEJt7loiHy0xGNx6hkYoLZA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBoA/2SkOtINWWfOxhOqR6NZROxrKFHxdFskpbDu
- FNfy0HVQp+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaAP9kgAKCRBgAj/E00kg
- ch7gD/429cSbsyDMFzlPEAsnkV+EoxRbi5H+Z04vttfsz+8YGmbLxZg5h3i99laliyXP1HJMBAT
- 3zU/FYdRCH9O1xGML3n/I4Wb44Eno8gXsIcVdD5cZ5VQD+GBo7yEG2IWOoin+spVc9jjCr4oSmA
- E0JoGJdlzKuGJ8K0Anf4XenzGfkzo7gOBms9e4qCWOoyrxzXIlBBpJJGP+cwkBYW/tSYEsRb3On
- tcTElPPAIH98+2W35Q31o/3FKPZBejQfDGkR0g0H+fhC7zlpdwpVJ6FhXhAzr+O5scECjnA46nA
- 3s/n0ZWsaI7CREY9BQnfqOrGXTbe4/rnQgFymttWICI5HIZmQp6dE1h4xxKX8Oo1hDPpSN/ofSf
- jW0trUt4jp++VLAMdRn1sQp1gpidEwzfQR4u1WaUuImEh6UK4wPA+hwf1VPuAXBzlmDuPUBGgJU
- w4YEv23EuurQkX0UEbj2GRT0DQakl+t9fdKjDRRm24Z80dBKuJ2rSJ0ve/kjJ1mbj8AhT3a9BkD
- 0stv+1V3vmWx/EH31W7fojf6KWwfBsjcoPhjMmv6t+DBc3NQlILPBuknrDcYb9ulA33zdfYYV2A
- 1yKnNX/IoI8NTaAvWG3VJivL9wIJXx7i4rlFAdVI9I9aaHwxxUkDGUO5+Xei7eW399gF9x8AnLV
- bd6PX14Edlsf4jQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2583; i=david@ixit.cz;
+ h=from:subject:message-id; bh=i5QacdZ/EVh5SDiiH8BXaqoyY6PRnf1bq8efvVTS4uk=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBoA/2SLFWFP6SwaDTbbhtXi/nY8CtVGPNDNxepf
+ +rx00VGsByJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaAP9kgAKCRBgAj/E00kg
+ cvU0EACxLXN1Bs8kSN4lpWS/FMjVCiqiOc0elNecLFBakDSaHbUMSAw4z7UFJSg+MfNzbXhnr7S
+ AzEsYRhcUfvCmhvMUSOfhi0DGYpG1zdFztM6FmGRTqFNBMo5PunougTmXSZJG5satKEYipfXG1O
+ g1pJK4pibcnZN3ijF9X+QUb6rBjeHHOGvOdnIx/WvjruBPJ6iSVF/SVIDP0Bmud49lpGa1GR2aE
+ NSObUWdPWVxib0DgR4I8q9Z1D8AK3oSjl63J9OX6pESXO2fCjtOfokp2yU8jrKG/qLB4mdo5hio
+ mFJxevAyafkFfWKCDJhrbFyJAzNinOG0u3D9T1XGVpdf9rZKR5/E49hgRe7age9xOVBYDzCDcuo
+ Kpo3pe2yv/s4JTwXylRte1F6xfD7OSnuEqNitAYlhCSa0XwqTpZF85sHE/qBRSrhio3zCYyGBG+
+ KccPiPxhhrKll8DZgnbvS3/JVF3doqaKDC9zYA2fIcRoLLjc2jQell+nB4tt/ZjnK5csDCRyRP6
+ +YD25FOGcLutxzGEpssIVLY5Tex52S8ks4L+3lNt33TfBZkXvSHQALJd+OmCGimtz67/ufuiocI
+ aBNgqKHzwNn1nTP/oQY219HhGiLIm1gyjSxvCXXay8l0y2VhljF1U7k4PKQMmM5Hzz5ELmAz9B8
+ zELlvHrQ3LoulIg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This code was tested for two years within the downstream Snapdragon 845 tree.
-It is now perfectly integrated with feedbackd in the Phosh environment.
+From: Gergo Koteles <soyer@irl.hu>
 
-Changes in v5:
-- Dropped merged
-  "Input: gpio-keys - add support for linux,input-value DTS property"
-- Link to v4: https://lore.kernel.org/all/cover.1677022414.git.soyer@irl.hu/
+ABS_SND_PROFILE used to describe the state of a multi-value sound profile
+switch. This will be used for the alert-slider on OnePlus phones or other
+phones.
 
-Changes in v4:
-- DTS: use default debounce-interval, order alphabetically
-- Link to v3: https://lore.kernel.org/lkml/cover.1676850819.git.soyer@irl.hu/
+Profile values added as SND_PROFLE_(SILENT|VIBRATE|RING) identifiers
+to input-event-codes.h so they can be used from DTS.
 
-Changes in v3:
-- rename tri-state-key to alert-slider, fix DTS warnings,
-
-Changes in v2:
-- rebase to qcom/for-next
-add SND_PROFILE_* identifiers to input-event-codes.h
-
-Gergo Koteles (3):
-  Input: gpio-keys - add support for linux,input-value DTS property
-  Input: add ABS_SND_PROFILE
-  arm64: dts: qcom: sdm845-oneplus: add alert-slider
-
- Documentation/input/event-codes.rst           |  6 +++
- .../boot/dts/qcom/sdm845-oneplus-common.dtsi  | 39 ++++++++++++++++++-
- drivers/hid/hid-debug.c                       |  1 +
- drivers/input/keyboard/gpio_keys.c            |  3 ++
- include/uapi/linux/input-event-codes.h        |  9 +++++
- 5 files changed, 56 insertions(+), 2 deletions(-)
-
---
-2.39.2
-
-base-commit: 02ac8d2a011b630481d959298a1cc76ca0717f3e
+Signed-off-by: Gergo Koteles <soyer@irl.hu>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Gergo Koteles (2):
-      Input: add ABS_SND_PROFILE
-      arm64: dts: qcom: sdm845-oneplus: Add alert-slider
+ Documentation/input/event-codes.rst    | 6 ++++++
+ drivers/hid/hid-debug.c                | 1 +
+ include/uapi/linux/input-event-codes.h | 9 +++++++++
+ 3 files changed, 16 insertions(+)
 
- Documentation/input/event-codes.rst                |  6 ++++
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 39 ++++++++++++++++++++--
- drivers/hid/hid-debug.c                            |  1 +
- include/uapi/linux/input-event-codes.h             |  9 +++++
- 4 files changed, 53 insertions(+), 2 deletions(-)
----
-base-commit: bc8aa6cdadcc00862f2b5720e5de2e17f696a081
-change-id: 20250419-op6-tri-state-ed1a05a11125
+diff --git a/Documentation/input/event-codes.rst b/Documentation/input/event-codes.rst
+index b4557462edd7b3fef9e9cd6c2c3cb2d05bb531ab..d43336e64d6aa4fe8a41b7e9947f4f214df6e1ab 100644
+--- a/Documentation/input/event-codes.rst
++++ b/Documentation/input/event-codes.rst
+@@ -241,6 +241,12 @@ A few EV_ABS codes have special meanings:
+     emitted only when the selected profile changes, indicating the newly
+     selected profile value.
+ 
++* ABS_SND_PROFILE:
++
++  - Used to describe the state of a multi-value sound profile switch.
++    An event is emitted only when the selected profile changes,
++    indicating the newly selected profile value.
++
+ * ABS_MT_<name>:
+ 
+   - Used to describe multitouch input events. Please see
+diff --git a/drivers/hid/hid-debug.c b/drivers/hid/hid-debug.c
+index 8433306148d57887f855578b8386bd0473cad612..2ccbae40c47cbca73df90b69e236830ff0fe4f3e 100644
+--- a/drivers/hid/hid-debug.c
++++ b/drivers/hid/hid-debug.c
+@@ -3511,6 +3511,7 @@ static const char *absolutes[ABS_CNT] = {
+ 	[ABS_DISTANCE] = "Distance",	[ABS_TILT_X] = "XTilt",
+ 	[ABS_TILT_Y] = "YTilt",		[ABS_TOOL_WIDTH] = "ToolWidth",
+ 	[ABS_VOLUME] = "Volume",	[ABS_PROFILE] = "Profile",
++	[ABS_SND_PROFILE] = "SoundProfile",
+ 	[ABS_MISC] = "Misc",
+ 	[ABS_MT_SLOT] = "MTSlot",
+ 	[ABS_MT_TOUCH_MAJOR] = "MTMajor",
+diff --git a/include/uapi/linux/input-event-codes.h b/include/uapi/linux/input-event-codes.h
+index 3b2524e4b667d1e7cc02ff5cb674e7c2ac069a66..7b10c97d13fb8d346a836f6c90c5964895856776 100644
+--- a/include/uapi/linux/input-event-codes.h
++++ b/include/uapi/linux/input-event-codes.h
+@@ -870,6 +870,7 @@
+ 
+ #define ABS_VOLUME		0x20
+ #define ABS_PROFILE		0x21
++#define ABS_SND_PROFILE		0x22
+ 
+ #define ABS_MISC		0x28
+ 
+@@ -979,4 +980,12 @@
+ #define SND_MAX			0x07
+ #define SND_CNT			(SND_MAX+1)
+ 
++/*
++ * ABS_SND_PROFILE values
++ */
++
++#define SND_PROFILE_SILENT	0x00
++#define SND_PROFILE_VIBRATE	0x01
++#define SND_PROFILE_RING	0x02
++
+ #endif
 
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.49.0
 
