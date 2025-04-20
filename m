@@ -1,118 +1,120 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sat, 19 Apr 2025 21:46:25 +0200
-Subject: [PATCH v5 2/2] arm64: dts: qcom: sdm845-oneplus: Add alert-slider
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Sat, 19 Apr 2025 19:30:02 -0500
+Subject: [PATCH] drm/tegra: Assign plane type before registration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250419-op6-tri-state-v5-2-443127078517@ixit.cz>
-References: <20250419-op6-tri-state-v5-0-443127078517@ixit.cz>
-In-Reply-To: <20250419-op6-tri-state-v5-0-443127078517@ixit.cz>
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Jonathan Corbet <corbet@lwn.net>, Jiri Kosina <jikos@kernel.org>, 
- Benjamin Tissoires <bentiss@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, Gergo Koteles <soyer@irl.hu>, 
- Casey Connolly <casey@connolly.tech>, David Heidelberg <david@ixit.cz>, 
- Konrad Dybcio <konradybcio@kernel.org>
+Message-Id: <20250419-tegra-drm-primary-v1-1-b91054fb413f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAlABGgC/x3MOwqAMBBF0a3I1A5EUUS3IhbRvOgUfpiIKJK9G
+ yxPce9LASoI1GUvKS4Jsm8JRZ7RtNhtBotLptKUtamKlk/MatnpyofKavXhCVXjMcI76yl1h8L
+ L/T/7IcYPfS/jYGMAAAA=
+X-Change-ID: 20250419-tegra-drm-primary-ce47febefdaf
+To: Thierry Reding <thierry.reding@gmail.com>, 
+ Mikko Perttunen <mperttunen@nvidia.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, Jonathan Hunter <jonathanh@nvidia.com>
+Cc: dri-devel@lists.freedesktop.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Thierry Reding <treding@nvidia.com>, 
+ Aaron Kling <webgeek1234@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2333; i=david@ixit.cz;
- h=from:subject:message-id; bh=QhCUbDmUHcz4RzxVc6XbeZUejFzQoncYw+4pfYDvJbY=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBoA/2SXNUW9FmCVx/sofCVR1893e6A0Pgi0fk2t
- /vlzsdqOCOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaAP9kgAKCRBgAj/E00kg
- clf8D/9u8uPCDLrbj2Z6HGbMlLcVBRPLnOb//zm6tNBBYYlkWtuSbIA4+ziaEy7T7v9mYMzPyVy
- L0lRRx62HtcjCdCaOvfebpZUh8tJ0xOJ/5wzORGEsHbsBVseMdjZi7cddRm0FXw//3e3tPdlqfX
- J+MmSRz2RDYsavYWjVdcnmSXmIni9aLGBWTg+hAY2WK+8Cn003wZ5E5wi02KMhprT36HNVVQsWK
- 994To8W4xb/LMsUmYf0LD3ImbBYVyEAixDeIW2Ondy7TtuQN80KH9Dzzw2KDBj0j35mWjJWUuzs
- 96htMIWpmGPuUsQoaR05EmetYyynt6eHdnEs0LeWLxtpGbacZwJSIZRXqnsGDEDpqCIv3M3atqH
- +Fbsa2vgJSeH4AJgGsUM62WIdXWCs9bgez5JuwsZsV3f5nYiNgTrR6Wa+6btvPNTKaVG0zJK3Qc
- nGMILNV0iaeCpbjby8Z+6rQOagCNa31ELCp4UUun7wPmFX6N6fIWrKlvos+mccgOluIcl1n3/+A
- +6BqBxepc/MC6tYCiGGg+wqvokSUY9i5YLHsCk3NVLtUH8qmIbbPXs1raRaS0K+LGTdggQu4Kc4
- XFUsiABTxGtUw0vWH8NLYUJajZIqiBv2Hbf/4LU0MITDguUfmwjiBTFEXDnVld1N/oooKnZqIEz
- TO1xwGF/KlLHmTA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745109011; l=3395;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=2G8UkSlgwDeChFlfMMABWHEAXMgLzztWjpyaOPbKpVg=;
+ b=5SgytgEJbkPisD/RHBHH6irE+mqOTQ2Ld0kkRR7fsi+WTpG1T6fpPWy5RZKmNCanrOc94c8fx
+ G/84KB4qIX9CHhOZagae0TMnmaUU7Qvy9Eb2UPx5Y/LUL8lFNeRhTUk
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Gergo Koteles <soyer@irl.hu>
+From: Thierry Reding <treding@nvidia.com>
 
-The alert-slider is a tri-state sound profile switch found on the
-OnePlus 6, Android maps the states to "silent", "vibrate" and "ring".
-Expose them as ABS_SND_PROFILE events.
-The previous GPIO numbers were wrong. Update them to the correct ones.
+Changes to a plane's type after it has been registered aren't propagated
+to userspace automatically. This could possibly be achieved by updating
+the property, but since we can already determine which type this should
+be before the registration, passing in the right type from the start is
+a much better solution.
 
-Co-developed-by: Casey Connolly <casey@connolly.tech>
-Signed-off-by: Casey Connolly <casey@connolly.tech>
-Signed-off-by: Gergo Koteles <soyer@irl.hu>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Suggested-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: Thierry Reding <treding@nvidia.com>
+Cc: stable@vger.kernel.org
 ---
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 39 ++++++++++++++++++++--
- 1 file changed, 37 insertions(+), 2 deletions(-)
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+---
+ drivers/gpu/drm/tegra/dc.c  | 12 ++++++++----
+ drivers/gpu/drm/tegra/hub.c |  4 ++--
+ drivers/gpu/drm/tegra/hub.h |  3 ++-
+ 3 files changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index 8a0f154bffc3d55ae2134ef28cb7653dde702552..9a508b3149bef50c0ed897dec3c01a3f08712e85 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -21,6 +21,41 @@
- /delete-node/ &rmtfs_mem;
+diff --git a/drivers/gpu/drm/tegra/dc.c b/drivers/gpu/drm/tegra/dc.c
+index 798507a8ae56d6789feb95dccdd23b2e63d9c148..56f12dbcee3e93ff5e4804e5fe9b23f160073ebf 100644
+--- a/drivers/gpu/drm/tegra/dc.c
++++ b/drivers/gpu/drm/tegra/dc.c
+@@ -1321,10 +1321,16 @@ static struct drm_plane *tegra_dc_add_shared_planes(struct drm_device *drm,
+ 		if (wgrp->dc == dc->pipe) {
+ 			for (j = 0; j < wgrp->num_windows; j++) {
+ 				unsigned int index = wgrp->windows[j];
++				enum drm_plane_type type;
++
++				if (primary)
++					type = DRM_PLANE_TYPE_OVERLAY;
++				else
++					type = DRM_PLANE_TYPE_PRIMARY;
  
- / {
-+	alert-slider {
-+		compatible = "gpio-keys";
-+		label = "Alert slider";
-+
-+		pinctrl-0 = <&alert_slider_default>;
-+		pinctrl-names = "default";
-+
-+		switch-top {
-+			label = "Silent";
-+			linux,input-type = <EV_ABS>;
-+			linux,code = <ABS_SND_PROFILE>;
-+			linux,input-value = <SND_PROFILE_SILENT>;
-+			gpios = <&tlmm 126 GPIO_ACTIVE_LOW>;
-+			linux,can-disable;
-+		};
-+
-+		switch-middle {
-+			label = "Vibrate";
-+			linux,input-type = <EV_ABS>;
-+			linux,code = <ABS_SND_PROFILE>;
-+			linux,input-value = <SND_PROFILE_VIBRATE>;
-+			gpios = <&tlmm 52 GPIO_ACTIVE_LOW>;
-+			linux,can-disable;
-+		};
-+
-+		switch-bottom {
-+			label = "Ring";
-+			linux,input-type = <EV_ABS>;
-+			linux,code = <ABS_SND_PROFILE>;
-+			linux,input-value = <SND_PROFILE_RING>;
-+			gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
-+			linux,can-disable;
-+		};
-+	};
-+
- 	aliases {
- 		serial0 = &uart9;
- 		serial1 = &uart6;
-@@ -799,8 +834,8 @@ hall_sensor_default: hall-sensor-default-state {
- 		bias-disable;
- 	};
+ 				plane = tegra_shared_plane_create(drm, dc,
+ 								  wgrp->index,
+-								  index);
++								  index, type);
+ 				if (IS_ERR(plane))
+ 					return plane;
  
--	tri_state_key_default: tri-state-key-default-state {
--		pins = "gpio40", "gpio42", "gpio26";
-+	alert_slider_default: alert-slider-default-state {
-+		pins = "gpio126", "gpio52", "gpio24";
- 		function = "gpio";
- 		drive-strength = <2>;
- 		bias-disable;
+@@ -1332,10 +1338,8 @@ static struct drm_plane *tegra_dc_add_shared_planes(struct drm_device *drm,
+ 				 * Choose the first shared plane owned by this
+ 				 * head as the primary plane.
+ 				 */
+-				if (!primary) {
+-					plane->type = DRM_PLANE_TYPE_PRIMARY;
++				if (!primary)
+ 					primary = plane;
+-				}
+ 			}
+ 		}
+ 	}
+diff --git a/drivers/gpu/drm/tegra/hub.c b/drivers/gpu/drm/tegra/hub.c
+index fa6140fc37fb16df4b150e5ae9d8148f8f446cd7..8f779f23dc0904d38b14d3f3a928a07fc9e601ad 100644
+--- a/drivers/gpu/drm/tegra/hub.c
++++ b/drivers/gpu/drm/tegra/hub.c
+@@ -755,9 +755,9 @@ static const struct drm_plane_helper_funcs tegra_shared_plane_helper_funcs = {
+ struct drm_plane *tegra_shared_plane_create(struct drm_device *drm,
+ 					    struct tegra_dc *dc,
+ 					    unsigned int wgrp,
+-					    unsigned int index)
++					    unsigned int index,
++					    enum drm_plane_type type)
+ {
+-	enum drm_plane_type type = DRM_PLANE_TYPE_OVERLAY;
+ 	struct tegra_drm *tegra = drm->dev_private;
+ 	struct tegra_display_hub *hub = tegra->hub;
+ 	struct tegra_shared_plane *plane;
+diff --git a/drivers/gpu/drm/tegra/hub.h b/drivers/gpu/drm/tegra/hub.h
+index 23c4b2115ed1e36e8d2d6ed614a6ead97eb4c441..a66f18c4facc9df96ea8b9f54239b52f06536d12 100644
+--- a/drivers/gpu/drm/tegra/hub.h
++++ b/drivers/gpu/drm/tegra/hub.h
+@@ -80,7 +80,8 @@ void tegra_display_hub_cleanup(struct tegra_display_hub *hub);
+ struct drm_plane *tegra_shared_plane_create(struct drm_device *drm,
+ 					    struct tegra_dc *dc,
+ 					    unsigned int wgrp,
+-					    unsigned int index);
++					    unsigned int index,
++					    enum drm_plane_type type);
+ 
+ int tegra_display_hub_atomic_check(struct drm_device *drm,
+ 				   struct drm_atomic_state *state);
 
+---
+base-commit: 119009db267415049182774196e3cce9e13b52ef
+change-id: 20250419-tegra-drm-primary-ce47febefdaf
+
+Best regards,
 -- 
-2.49.0
+Aaron Kling <webgeek1234@gmail.com>
 
