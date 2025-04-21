@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 21 Apr 2025 03:13:31 -0500
-Subject: [PATCH v2 1/2] cpufreq: tegra124: Remove use of disable_cpufreq
+Date: Mon, 21 Apr 2025 03:13:32 -0500
+Subject: [PATCH v2 2/2] cpufreq: tegra124: Allow building as a module
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250421-tegra124-cpufreq-v2-1-2f148cefa418@gmail.com>
+Message-Id: <20250421-tegra124-cpufreq-v2-2-2f148cefa418@gmail.com>
 References: <20250421-tegra124-cpufreq-v2-0-2f148cefa418@gmail.com>
 In-Reply-To: <20250421-tegra124-cpufreq-v2-0-2f148cefa418@gmail.com>
 To: "Rafael J. Wysocki" <rafael@kernel.org>, 
@@ -14,37 +14,112 @@ To: "Rafael J. Wysocki" <rafael@kernel.org>,
 Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-tegra@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745223214; l=809;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745223214; l=3413;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=goje1oshiHYjUzzYAZp/ybbJMpcm4IHxhykHgvfR+Oc=;
- b=zrAuRuIUwzyI6uIM3MhkgAZ+6ROLi1vFgqv8Sk4EMvUi9Zqepv7HlDGnaWhsZs46kSAmFkgdL
- BToHCPx+MTnBDbBAJhhRxldkFlc8T1IC4JkodoLavXEvdAJoRfpo2sv
+ bh=vRnmrx8VjMy/a3Ap0/hznM3tiqHp5F21n3zSs/FfWWw=;
+ b=Xilx1II1g1/gQpjQeJrfGcr1RM4Pok+g+IjZLN1zHFbU72TalqpReLFhtNLGgcTjMAarsoCfU
+ jPuPjFdQVLrBXfMgia0NpPGjZhH1zMrwyoi4GIXMv4jpbMmwoveMqyq
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Instead, unregister the cpufreq device for this fatal fail case.
+This requires three changes:
+* A soft dependency on cpufreq-dt as this driver only handles power
+  management and cpufreq-dt does the real operations
+* Adding a remove routine to remove the cpufreq-dt device
+* Adding a exit routine to handle cleaning up the driver
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/cpufreq/tegra124-cpufreq.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ drivers/cpufreq/Kconfig.arm        |  2 +-
+ drivers/cpufreq/tegra124-cpufreq.c | 28 ++++++++++++++++++++++++----
+ 2 files changed, 25 insertions(+), 5 deletions(-)
 
+diff --git a/drivers/cpufreq/Kconfig.arm b/drivers/cpufreq/Kconfig.arm
+index 4f9cb943d945c244eb2b29f543d14df6cac4e5d4..625f6fbdaaf5fd774e3b0bb996eb7ce980da41ee 100644
+--- a/drivers/cpufreq/Kconfig.arm
++++ b/drivers/cpufreq/Kconfig.arm
+@@ -238,7 +238,7 @@ config ARM_TEGRA20_CPUFREQ
+ 	  This adds the CPUFreq driver support for Tegra20/30 SOCs.
+ 
+ config ARM_TEGRA124_CPUFREQ
+-	bool "Tegra124 CPUFreq support"
++	tristate "Tegra124 CPUFreq support"
+ 	depends on ARCH_TEGRA || COMPILE_TEST
+ 	depends on CPUFREQ_DT
+ 	default y
 diff --git a/drivers/cpufreq/tegra124-cpufreq.c b/drivers/cpufreq/tegra124-cpufreq.c
-index 514146d98bca2d8aa59980a14dff3487cd8045f6..dc83b1631b13ec428f3b6bbea89462448a62adb4 100644
+index dc83b1631b13ec428f3b6bbea89462448a62adb4..17f51592bf9fe75921ab4fc4125908e5d941e468 100644
 --- a/drivers/cpufreq/tegra124-cpufreq.c
 +++ b/drivers/cpufreq/tegra124-cpufreq.c
-@@ -168,7 +168,8 @@ static int __maybe_unused tegra124_cpufreq_resume(struct device *dev)
- disable_dfll:
- 	clk_disable_unprepare(priv->dfll_clk);
- disable_cpufreq:
--	disable_cpufreq();
-+	if (!IS_ERR(priv->cpufreq_dt_pdev))
-+		platform_device_unregister(priv->cpufreq_dt_pdev);
+@@ -16,6 +16,8 @@
+ #include <linux/pm_opp.h>
+ #include <linux/types.h>
  
++static struct platform_device *platform_device;
++
+ struct tegra124_cpufreq_priv {
+ 	struct clk *cpu_clk;
+ 	struct clk *pllp_clk;
+@@ -174,6 +176,14 @@ static int __maybe_unused tegra124_cpufreq_resume(struct device *dev)
  	return err;
  }
+ 
++static void tegra124_cpufreq_remove(struct platform_device *pdev)
++{
++	struct tegra124_cpufreq_priv *priv = dev_get_drvdata(&pdev->dev);
++
++	if (!IS_ERR(priv->cpufreq_dt_pdev))
++		platform_device_unregister(priv->cpufreq_dt_pdev);
++}
++
+ static const struct dev_pm_ops tegra124_cpufreq_pm_ops = {
+ 	SET_SYSTEM_SLEEP_PM_OPS(tegra124_cpufreq_suspend,
+ 				tegra124_cpufreq_resume)
+@@ -183,12 +193,12 @@ static struct platform_driver tegra124_cpufreq_platdrv = {
+ 	.driver.name	= "cpufreq-tegra124",
+ 	.driver.pm	= &tegra124_cpufreq_pm_ops,
+ 	.probe		= tegra124_cpufreq_probe,
++	.remove		= tegra124_cpufreq_remove,
+ };
+ 
+ static int __init tegra_cpufreq_init(void)
+ {
+ 	int ret;
+-	struct platform_device *pdev;
+ 
+ 	if (!(of_machine_is_compatible("nvidia,tegra124") ||
+ 		of_machine_is_compatible("nvidia,tegra210")))
+@@ -202,15 +212,25 @@ static int __init tegra_cpufreq_init(void)
+ 	if (ret)
+ 		return ret;
+ 
+-	pdev = platform_device_register_simple("cpufreq-tegra124", -1, NULL, 0);
+-	if (IS_ERR(pdev)) {
++	platform_device = platform_device_register_simple("cpufreq-tegra124", -1, NULL, 0);
++	if (IS_ERR(platform_device)) {
+ 		platform_driver_unregister(&tegra124_cpufreq_platdrv);
+-		return PTR_ERR(pdev);
++		return PTR_ERR(platform_device);
+ 	}
+ 
+ 	return 0;
+ }
+ module_init(tegra_cpufreq_init);
+ 
++static void __exit tegra_cpufreq_module_exit(void)
++{
++	if (!IS_ERR(platform_device))
++		platform_device_unregister(platform_device);
++	platform_driver_unregister(&tegra124_cpufreq_platdrv);
++}
++module_exit(tegra_cpufreq_module_exit);
++
++MODULE_SOFTDEP("pre: cpufreq-dt");
+ MODULE_AUTHOR("Tuomas Tynkkynen <ttynkkynen@nvidia.com>");
+ MODULE_DESCRIPTION("cpufreq driver for NVIDIA Tegra124");
++MODULE_LICENSE("GPL");
 
 -- 
 2.48.1
