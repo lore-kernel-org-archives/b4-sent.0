@@ -1,126 +1,185 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 21 Apr 2025 03:13:32 -0500
-Subject: [PATCH v2 2/2] cpufreq: tegra124: Allow building as a module
+From: David Heidelberg <david@ixit.cz>
+Date: Mon, 21 Apr 2025 10:20:15 +0200
+Subject: [PATCH v4] media: dt-bindings: Convert Analog Devices ad5820 to DT
+ schema
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250421-tegra124-cpufreq-v2-2-2f148cefa418@gmail.com>
-References: <20250421-tegra124-cpufreq-v2-0-2f148cefa418@gmail.com>
-In-Reply-To: <20250421-tegra124-cpufreq-v2-0-2f148cefa418@gmail.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-tegra@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20250421-b4-ad5820-dt-yaml-v4-1-cc026ce316c6@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAL//BWgC/23NywrCMBQE0F+RrI3c3CQ0ceV/iIu8ai/4oilBL
+ f13U10UocsZODMjy6mnlNl+M7I+Fcp0v9WgthsWOnc7J06xZoaAGqRQ3CvuojYIPA785a4XLhH
+ Bt9iKpIBV9+hTS8/v5vFUc0d5uPev70URc/tbQ7AI0irYCW3BGC54dIXigZ407MKbzbjgAtbvC
+ 1aIprHaBBmgCf9eLl6te1m9tN57HX3j0S9+mqYPmA+rwCEBAAA=
+X-Change-ID: 20250314-b4-ad5820-dt-yaml-3220bf2f1e40
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: Pavel Machek <pavel@ucw.cz>, linux-media@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745223214; l=3413;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=vRnmrx8VjMy/a3Ap0/hznM3tiqHp5F21n3zSs/FfWWw=;
- b=Xilx1II1g1/gQpjQeJrfGcr1RM4Pok+g+IjZLN1zHFbU72TalqpReLFhtNLGgcTjMAarsoCfU
- jPuPjFdQVLrBXfMgia0NpPGjZhH1zMrwyoi4GIXMv4jpbMmwoveMqyq
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4451; i=david@ixit.cz;
+ h=from:subject:message-id; bh=CF3DZGYBahplVU8yiF0C7k1jZnNIBq7jSEDJSUBVBls=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBoBf+/kvKKdKmDnTex9fGSTvWvmVBjGMz/0Ulji
+ A1Oj4fvTg+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaAX/vwAKCRBgAj/E00kg
+ csb/EAC3831AqeWjuqifFw45sS3zES2VZGICEIOIU5VUg3VSj7+wirBHe45I/jGLCS//0lEuZUT
+ R5A8JbY8tnc26uT1qgnk90Ntm2BwS5S2+hAu3AgjqPaTNEMGe35d/wcl+e7O4jI+F+hzNKDUF1/
+ G0wWRtv9DEU6yA4jSnmTxjMVfnp+LW5zD7L2f9PEJ2+w0t+DHSjWBbcH1hpLLYnX9cJ7oisIY0e
+ pAUwK61wmZtR9pRASLdlmvyax8SUiVpAaGsRIqpxlbuZyXh/M5dWZif7pTUMRzeGKoiHPwCOhU2
+ pYjI3Yb3XhgBsBOWJZYyR/VC+6UjbbrIWgEP4SH82VUUcKVAESFCgKegBxBodKooOg2LHt5esZJ
+ mXVGg2qsfMx2qhTP8op3Jj9NFxpOFScMjp+3j4ZZYf4SCG2rXfyLIEYLnAovhiQ3qKETxIDEzvQ
+ YLkR8kCx3OiDlARndylgaZ/9d+F1AJKC3rUPkvHgPnBe3mVhpHpgz4Lp6UWlj2K1VaOqEMFqfD7
+ gI4b4dzdP/DQA0sCExey7nfkXnn1a9o3Oc016t3RU+dCU1UWOc27uKa38nS6mbqtx3QI0crrhX2
+ fnhYXpexIglQiGUiM21vv+nVGTRYsbwIzEF4qHXi7dPD6vGJt7rTX49HhamDhP4DBb4lpHB/6/j
+ 67OWoshfU4g9yRg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This requires three changes:
-* A soft dependency on cpufreq-dt as this driver only handles power
-  management and cpufreq-dt does the real operations
-* Adding a remove routine to remove the cpufreq-dt device
-* Adding a exit routine to handle cleaning up the driver
+Convert the Analog Devices ad5820 to DT schema format.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Acked-by: Pavel Machek <pavel@ucw.cz>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/cpufreq/Kconfig.arm        |  2 +-
- drivers/cpufreq/tegra124-cpufreq.c | 28 ++++++++++++++++++++++++----
- 2 files changed, 25 insertions(+), 5 deletions(-)
+Changes in v4:
+- Drop remaining pieces of iio-channel-cells introduced in previous
+  revisions.
+- Link to v3: https://lore.kernel.org/r/20250414-b4-ad5820-dt-yaml-v3-1-39bbb5db7b2b@ixit.cz
 
-diff --git a/drivers/cpufreq/Kconfig.arm b/drivers/cpufreq/Kconfig.arm
-index 4f9cb943d945c244eb2b29f543d14df6cac4e5d4..625f6fbdaaf5fd774e3b0bb996eb7ce980da41ee 100644
---- a/drivers/cpufreq/Kconfig.arm
-+++ b/drivers/cpufreq/Kconfig.arm
-@@ -238,7 +238,7 @@ config ARM_TEGRA20_CPUFREQ
- 	  This adds the CPUFreq driver support for Tegra20/30 SOCs.
- 
- config ARM_TEGRA124_CPUFREQ
--	bool "Tegra124 CPUFreq support"
-+	tristate "Tegra124 CPUFreq support"
- 	depends on ARCH_TEGRA || COMPILE_TEST
- 	depends on CPUFREQ_DT
- 	default y
-diff --git a/drivers/cpufreq/tegra124-cpufreq.c b/drivers/cpufreq/tegra124-cpufreq.c
-index dc83b1631b13ec428f3b6bbea89462448a62adb4..17f51592bf9fe75921ab4fc4125908e5d941e468 100644
---- a/drivers/cpufreq/tegra124-cpufreq.c
-+++ b/drivers/cpufreq/tegra124-cpufreq.c
-@@ -16,6 +16,8 @@
- #include <linux/pm_opp.h>
- #include <linux/types.h>
- 
-+static struct platform_device *platform_device;
-+
- struct tegra124_cpufreq_priv {
- 	struct clk *cpu_clk;
- 	struct clk *pllp_clk;
-@@ -174,6 +176,14 @@ static int __maybe_unused tegra124_cpufreq_resume(struct device *dev)
- 	return err;
- }
- 
-+static void tegra124_cpufreq_remove(struct platform_device *pdev)
-+{
-+	struct tegra124_cpufreq_priv *priv = dev_get_drvdata(&pdev->dev);
-+
-+	if (!IS_ERR(priv->cpufreq_dt_pdev))
-+		platform_device_unregister(priv->cpufreq_dt_pdev);
-+}
-+
- static const struct dev_pm_ops tegra124_cpufreq_pm_ops = {
- 	SET_SYSTEM_SLEEP_PM_OPS(tegra124_cpufreq_suspend,
- 				tegra124_cpufreq_resume)
-@@ -183,12 +193,12 @@ static struct platform_driver tegra124_cpufreq_platdrv = {
- 	.driver.name	= "cpufreq-tegra124",
- 	.driver.pm	= &tegra124_cpufreq_pm_ops,
- 	.probe		= tegra124_cpufreq_probe,
-+	.remove		= tegra124_cpufreq_remove,
- };
- 
- static int __init tegra_cpufreq_init(void)
- {
- 	int ret;
--	struct platform_device *pdev;
- 
- 	if (!(of_machine_is_compatible("nvidia,tegra124") ||
- 		of_machine_is_compatible("nvidia,tegra210")))
-@@ -202,15 +212,25 @@ static int __init tegra_cpufreq_init(void)
- 	if (ret)
- 		return ret;
- 
--	pdev = platform_device_register_simple("cpufreq-tegra124", -1, NULL, 0);
--	if (IS_ERR(pdev)) {
-+	platform_device = platform_device_register_simple("cpufreq-tegra124", -1, NULL, 0);
-+	if (IS_ERR(platform_device)) {
- 		platform_driver_unregister(&tegra124_cpufreq_platdrv);
--		return PTR_ERR(pdev);
-+		return PTR_ERR(platform_device);
- 	}
- 
- 	return 0;
- }
- module_init(tegra_cpufreq_init);
- 
-+static void __exit tegra_cpufreq_module_exit(void)
-+{
-+	if (!IS_ERR(platform_device))
-+		platform_device_unregister(platform_device);
-+	platform_driver_unregister(&tegra124_cpufreq_platdrv);
-+}
-+module_exit(tegra_cpufreq_module_exit);
-+
-+MODULE_SOFTDEP("pre: cpufreq-dt");
- MODULE_AUTHOR("Tuomas Tynkkynen <ttynkkynen@nvidia.com>");
- MODULE_DESCRIPTION("cpufreq driver for NVIDIA Tegra124");
-+MODULE_LICENSE("GPL");
+Changes in v3:
+- Removed documentation of io-channel-cells property. Now it's 1:1 to
+  the original binding. The reference to it from the Nokia N900 dts
+  was removed in the -next.
+- Link to v2: https://lore.kernel.org/r/20250314-b4-ad5820-dt-yaml-v2-1-287958c3c07c@ixit.cz
 
+Changes in v2:
+- added MAINTAINERS entry for the binding
+- documented why io-channel-cells got added into the binding.
+- dropped io-channel-cells in required properties.
+- adjusted example indentation to 4 spaces.
+- Link to v1: https://lore.kernel.org/r/20250209203940.159088-1-david@ixit.cz
+---
+ .../devicetree/bindings/media/i2c/ad5820.txt       | 28 -----------
+ .../devicetree/bindings/media/i2c/adi,ad5820.yaml  | 56 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 3 files changed, 57 insertions(+), 28 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/media/i2c/ad5820.txt b/Documentation/devicetree/bindings/media/i2c/ad5820.txt
+deleted file mode 100644
+index 5764cbedf9b73387ad1bfa9acf99c643f959b84a..0000000000000000000000000000000000000000
+--- a/Documentation/devicetree/bindings/media/i2c/ad5820.txt
++++ /dev/null
+@@ -1,28 +0,0 @@
+-* Analog Devices AD5820 autofocus coil
+-
+-Required Properties:
+-
+-  - compatible: Must contain one of:
+-		- "adi,ad5820"
+-		- "adi,ad5821"
+-		- "adi,ad5823"
+-
+-  - reg: I2C slave address
+-
+-  - VANA-supply: supply of voltage for VANA pin
+-
+-Optional properties:
+-
+-   - enable-gpios : GPIO spec for the XSHUTDOWN pin. The XSHUTDOWN signal is
+-active low, a high level on the pin enables the device.
+-
+-Example:
+-
+-       ad5820: coil@c {
+-               compatible = "adi,ad5820";
+-               reg = <0x0c>;
+-
+-               VANA-supply = <&vaux4>;
+-               enable-gpios = <&msmgpio 26 GPIO_ACTIVE_HIGH>;
+-       };
+-
+diff --git a/Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml b/Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..0c8f24f692cac37fc565f3ec770acfc63eecbda4
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml
+@@ -0,0 +1,56 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/i2c/adi,ad5820.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Analog Devices AD5820 autofocus coil
++
++maintainers:
++  - Pavel Machek <pavel@ucw.cz>
++
++description:
++  The AD5820 is a current sink driver designed for precise control of
++  voice coil motors (VCMs) in camera autofocus systems.
++
++properties:
++  compatible:
++    enum:
++      - adi,ad5820
++      - adi,ad5821
++      - adi,ad5823
++
++  reg:
++    maxItems: 1
++
++  enable-gpios:
++    maxItems: 1
++    description:
++      GPIO spec for the XSHUTDOWN pin. The XSHUTDOWN signal is active low,
++      a high level on the pin enables the device.
++
++  VANA-supply:
++    description: supply of voltage for VANA pin
++
++required:
++  - compatible
++  - reg
++  - VANA-supply
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++        coil@c {
++            compatible = "adi,ad5820";
++            reg = <0x0c>;
++
++            enable-gpios = <&msmgpio 26 GPIO_ACTIVE_HIGH>;
++            VANA-supply = <&vaux4>;
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 17ed0b5ffdd203db658f9bedb990bd58a3ffcb91..c060a7ca103d2a9252fcb4b2bcd6e1a35d94f2d7 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -17295,6 +17295,7 @@ M:	Pavel Machek <pavel@kernel.org>
+ M:	Sakari Ailus <sakari.ailus@iki.fi>
+ L:	linux-media@vger.kernel.org
+ S:	Maintained
++F:	Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml
+ F:	drivers/media/i2c/ad5820.c
+ F:	drivers/media/i2c/et8ek8
+ 
+
+---
+base-commit: bc8aa6cdadcc00862f2b5720e5de2e17f696a081
+change-id: 20250314-b4-ad5820-dt-yaml-3220bf2f1e40
+
+Best regards,
 -- 
-2.48.1
+David Heidelberg <david@ixit.cz>
 
