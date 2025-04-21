@@ -1,185 +1,73 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 21 Apr 2025 10:20:15 +0200
-Subject: [PATCH v4] media: dt-bindings: Convert Analog Devices ad5820 to DT
- schema
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH RESEND v3 0/6] clk: clk-axi-clkgen: improvements and some
+ fixes
+Date: Mon, 21 Apr 2025 15:58:01 +0100
+Message-Id: <20250421-dev-axi-clkgen-limits-v3-0-4203b4fed2c9@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250421-b4-ad5820-dt-yaml-v4-1-cc026ce316c6@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAL//BWgC/23NywrCMBQE0F+RrI3c3CQ0ceV/iIu8ai/4oilBL
- f13U10UocsZODMjy6mnlNl+M7I+Fcp0v9WgthsWOnc7J06xZoaAGqRQ3CvuojYIPA785a4XLhH
- Bt9iKpIBV9+hTS8/v5vFUc0d5uPev70URc/tbQ7AI0irYCW3BGC54dIXigZ407MKbzbjgAtbvC
- 1aIprHaBBmgCf9eLl6te1m9tN57HX3j0S9+mqYPmA+rwCEBAAA=
-X-Change-ID: 20250314-b4-ad5820-dt-yaml-3220bf2f1e40
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Pavel Machek <pavel@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: Pavel Machek <pavel@ucw.cz>, linux-media@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAPlcBmgC/3XNQYvCMBAF4L8iOW+WJFMb68mDXvewe1w8xMmkH
+ aytNCW4SP+7oQgiS49vHvO9u4g0MEWxXd3FQIkj910O8LES2LiuJsk+Z2GUWSujN9JTku7GEtt
+ zTZ1s+cJjlCWEk8I1IWxOIv9eBwp8m91f8X34OXztxTHfG45jP/zNc0nP7VOuFuSkpZKmDJaCL
+ tBXuHOda/v6E/vLTCbzYkDDEmMyoy04Ms6XoPU/Bl5MoewSA5kBQBuMxcqX1RszTdMDweSwjVE
+ BAAA=
+X-Change-ID: 20250218-dev-axi-clkgen-limits-63fb0c5ec38b
+To: linux-clk@vger.kernel.org, linux-fpga@vger.kernel.org
+Cc: Stephen Boyd <sboyd@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Moritz Fischer <mdf@kernel.org>, Wu Hao <hao.wu@intel.com>, 
+ Xu Yilun <yilun.xu@intel.com>, Tom Rix <trix@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4451; i=david@ixit.cz;
- h=from:subject:message-id; bh=CF3DZGYBahplVU8yiF0C7k1jZnNIBq7jSEDJSUBVBls=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBoBf+/kvKKdKmDnTex9fGSTvWvmVBjGMz/0Ulji
- A1Oj4fvTg+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaAX/vwAKCRBgAj/E00kg
- csb/EAC3831AqeWjuqifFw45sS3zES2VZGICEIOIU5VUg3VSj7+wirBHe45I/jGLCS//0lEuZUT
- R5A8JbY8tnc26uT1qgnk90Ntm2BwS5S2+hAu3AgjqPaTNEMGe35d/wcl+e7O4jI+F+hzNKDUF1/
- G0wWRtv9DEU6yA4jSnmTxjMVfnp+LW5zD7L2f9PEJ2+w0t+DHSjWBbcH1hpLLYnX9cJ7oisIY0e
- pAUwK61wmZtR9pRASLdlmvyax8SUiVpAaGsRIqpxlbuZyXh/M5dWZif7pTUMRzeGKoiHPwCOhU2
- pYjI3Yb3XhgBsBOWJZYyR/VC+6UjbbrIWgEP4SH82VUUcKVAESFCgKegBxBodKooOg2LHt5esZJ
- mXVGg2qsfMx2qhTP8op3Jj9NFxpOFScMjp+3j4ZZYf4SCG2rXfyLIEYLnAovhiQ3qKETxIDEzvQ
- YLkR8kCx3OiDlARndylgaZ/9d+F1AJKC3rUPkvHgPnBe3mVhpHpgz4Lp6UWlj2K1VaOqEMFqfD7
- gI4b4dzdP/DQA0sCExey7nfkXnn1a9o3Oc016t3RU+dCU1UWOc27uKa38nS6mbqtx3QI0crrhX2
- fnhYXpexIglQiGUiM21vv+nVGTRYsbwIzEF4qHXi7dPD6vGJt7rTX49HhamDhP4DBb4lpHB/6/j
- 67OWoshfU4g9yRg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745247490; l=1653;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=yjlz1+aLlRQYQhpF4+uSLLx9jArQyUOmwqytKlg1KfE=;
+ b=arhBxZrC43kWNaK2hEX8qiJ3ugamENsnGipAbaj+I8fnsQGe4NHChb6MT04cclc6aVScZENSd
+ beRSHN9hLukCuJbZx3WJ+CwKgu2xnac8YpDlNUmJyqpvRLuPbHmhUMt
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert the Analog Devices ad5820 to DT schema format.
+This series starts with a small fix and then a bunch of small
+improvements. The main change though is to allow detecting of
+struct axi_clkgen_limits during probe().
 
-Acked-by: Pavel Machek <pavel@ucw.cz>
-Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
 Changes in v4:
-- Drop remaining pieces of iio-channel-cells introduced in previous
-  revisions.
-- Link to v3: https://lore.kernel.org/r/20250414-b4-ad5820-dt-yaml-v3-1-39bbb5db7b2b@ixit.cz
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v3: https://lore.kernel.org/r/20250407-dev-axi-clkgen-limits-v3-0-33c7f27c9d69@analog.com
 
 Changes in v3:
-- Removed documentation of io-channel-cells property. Now it's 1:1 to
-  the original binding. The reference to it from the Nokia N900 dts
-  was removed in the -next.
-- Link to v2: https://lore.kernel.org/r/20250314-b4-ad5820-dt-yaml-v2-1-287958c3c07c@ixit.cz
+- Patch 6:
+    * Revert change and parenthesis back on 'if (((params->edge == 0) ^
+      (frac_divider == 1))'. While checkpatch complains, it's more
+      readable like this and in some configs we might even get -Wparentheses.
+- Link to v2: https://lore.kernel.org/r/20250313-dev-axi-clkgen-limits-v2-0-173ae2ad6311@analog.com
 
 Changes in v2:
-- added MAINTAINERS entry for the binding
-- documented why io-channel-cells got added into the binding.
-- dropped io-channel-cells in required properties.
-- adjusted example indentation to 4 spaces.
-- Link to v1: https://lore.kernel.org/r/20250209203940.159088-1-david@ixit.cz
----
- .../devicetree/bindings/media/i2c/ad5820.txt       | 28 -----------
- .../devicetree/bindings/media/i2c/adi,ad5820.yaml  | 56 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 3 files changed, 57 insertions(+), 28 deletions(-)
+- Patch 3
+   * Rename adi_axi_fgpa_technology -> adi_axi_fpga_technology.
 
-diff --git a/Documentation/devicetree/bindings/media/i2c/ad5820.txt b/Documentation/devicetree/bindings/media/i2c/ad5820.txt
-deleted file mode 100644
-index 5764cbedf9b73387ad1bfa9acf99c643f959b84a..0000000000000000000000000000000000000000
---- a/Documentation/devicetree/bindings/media/i2c/ad5820.txt
-+++ /dev/null
-@@ -1,28 +0,0 @@
--* Analog Devices AD5820 autofocus coil
--
--Required Properties:
--
--  - compatible: Must contain one of:
--		- "adi,ad5820"
--		- "adi,ad5821"
--		- "adi,ad5823"
--
--  - reg: I2C slave address
--
--  - VANA-supply: supply of voltage for VANA pin
--
--Optional properties:
--
--   - enable-gpios : GPIO spec for the XSHUTDOWN pin. The XSHUTDOWN signal is
--active low, a high level on the pin enables the device.
--
--Example:
--
--       ad5820: coil@c {
--               compatible = "adi,ad5820";
--               reg = <0x0c>;
--
--               VANA-supply = <&vaux4>;
--               enable-gpios = <&msmgpio 26 GPIO_ACTIVE_HIGH>;
--       };
--
-diff --git a/Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml b/Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..0c8f24f692cac37fc565f3ec770acfc63eecbda4
---- /dev/null
-+++ b/Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml
-@@ -0,0 +1,56 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/media/i2c/adi,ad5820.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Analog Devices AD5820 autofocus coil
-+
-+maintainers:
-+  - Pavel Machek <pavel@ucw.cz>
-+
-+description:
-+  The AD5820 is a current sink driver designed for precise control of
-+  voice coil motors (VCMs) in camera autofocus systems.
-+
-+properties:
-+  compatible:
-+    enum:
-+      - adi,ad5820
-+      - adi,ad5821
-+      - adi,ad5823
-+
-+  reg:
-+    maxItems: 1
-+
-+  enable-gpios:
-+    maxItems: 1
-+    description:
-+      GPIO spec for the XSHUTDOWN pin. The XSHUTDOWN signal is active low,
-+      a high level on the pin enables the device.
-+
-+  VANA-supply:
-+    description: supply of voltage for VANA pin
-+
-+required:
-+  - compatible
-+  - reg
-+  - VANA-supply
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+
-+    i2c {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+        coil@c {
-+            compatible = "adi,ad5820";
-+            reg = <0x0c>;
-+
-+            enable-gpios = <&msmgpio 26 GPIO_ACTIVE_HIGH>;
-+            VANA-supply = <&vaux4>;
-+        };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 17ed0b5ffdd203db658f9bedb990bd58a3ffcb91..c060a7ca103d2a9252fcb4b2bcd6e1a35d94f2d7 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -17295,6 +17295,7 @@ M:	Pavel Machek <pavel@kernel.org>
- M:	Sakari Ailus <sakari.ailus@iki.fi>
- L:	linux-media@vger.kernel.org
- S:	Maintained
-+F:	Documentation/devicetree/bindings/media/i2c/adi,ad5820.yaml
- F:	drivers/media/i2c/ad5820.c
- F:	drivers/media/i2c/et8ek8
- 
+- Link to v1: https://lore.kernel.org/r/20250219-dev-axi-clkgen-limits-v1-0-26f7ef14cd9c@analog.com
 
 ---
-base-commit: bc8aa6cdadcc00862f2b5720e5de2e17f696a081
-change-id: 20250314-b4-ad5820-dt-yaml-3220bf2f1e40
+Nuno Sá (6):
+      clk: clk-axi-clkgen: fix fpfd_max frequency for zynq
+      clk: clk-axi-clkgen: make sure to include mod_devicetable.h
+      include: fpga: adi-axi-common: add new helper macros
+      clk: clk-axi-clkgen: detect axi_clkgen_limits at runtime
+      clk: clk-axi-clkgen move to min/max()
+      clk: clk-axi-clkgen: fix coding style issues
 
-Best regards,
--- 
-David Heidelberg <david@ixit.cz>
+ drivers/clk/clk-axi-clkgen.c        | 147 +++++++++++++++++++++++++-----------
+ include/linux/fpga/adi-axi-common.h |  35 +++++++++
+ 2 files changed, 140 insertions(+), 42 deletions(-)
+---
+base-commit: 82f69876ef45ad66c0b114b786c7c6ac0f6a4580
+change-id: 20250218-dev-axi-clkgen-limits-63fb0c5ec38b
+--
+
+Thanks!
+- Nuno Sá
 
