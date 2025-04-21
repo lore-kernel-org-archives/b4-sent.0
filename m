@@ -1,65 +1,56 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 20 Apr 2025 21:59:06 -0500
-Subject: [PATCH 2/2] PCI: tegra: Allow building as a module
+Subject: [PATCH v2 0/2] Support building tegra124-cpufreq as a module
+Date: Mon, 21 Apr 2025 03:13:30 -0500
+Message-Id: <20250421-tegra124-cpufreq-v2-0-2f148cefa418@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250420-pci-tegra-module-v1-2-c0a1f831354a@gmail.com>
-References: <20250420-pci-tegra-module-v1-0-c0a1f831354a@gmail.com>
-In-Reply-To: <20250420-pci-tegra-module-v1-0-c0a1f831354a@gmail.com>
-To: Thomas Gleixner <tglx@linutronix.de>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+X-B4-Tracking: v=1; b=H4sIACr+BWgC/2WNywrCMBBFf6XM2shkiJW68j+ki5BM0gH7MKlFK
+ f13Y3Hn8hy4566QOQlnuFQrJF4kyzgUoEMFrrNDZCW+MBDSCQ1qNXNMVpNRbnqGxA8VfGNM8I5
+ rclBmU+Igrz15awt3kucxvfeHRX/tL0b4H1u0QoXWnANrqrHR19hbuR/d2EO7bdsHIB6aDbAAA
+ AA=
+X-Change-ID: 20250401-tegra124-cpufreq-fd944fdce62c
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Viresh Kumar <viresh.kumar@linaro.org>, 
  Thierry Reding <thierry.reding@gmail.com>, 
  Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
+Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-tegra@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745204358; l=1330;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745223214; l=947;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=wWrPTvwS8jQlrXtSz5cnnPOard6fs6fh1GhK5NDgNmg=;
- b=8J8tPTGbIDW4YOXuDJAJ/wlyLdpEM1EeTtjZPwF65RK2+uyH0nkKpYQvXP6gbatkV/CONBrRA
- n9uf9hDTxFRBjxFEMCiBqcQbyS1MaVzFb2dT8x3MNUniublfOF/gMAi
+ bh=YKZ1FL0fNS0oYeN9YSlOYG2O01H5uqXci4arY1uaZ4M=;
+ b=r+t8R12J9K6HoVxKRR1im5Q3oEBYOPWgY2nTw6QjMOaZYNb4fLfpmyaStn2uE2lIvZlQGr7Ss
+ BVfvN+pG2YaAW0pQIMWkoPzX6j/LZiZlaQ2ZVEZiXwiTDw7LKIdlVgO
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver works fine as a module, so allow building as such.
+This adds remove and exit routines that were not previously needed when
+this was only available builtin. It also converts use of an unexported
+function to a more sane alternative.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/pci/controller/Kconfig     | 2 +-
- drivers/pci/controller/pci-tegra.c | 3 +++
- 2 files changed, 4 insertions(+), 1 deletion(-)
+Changes in v2:
+- Replace patch 1 with a patch to not use the unexported function
+- Update patch 2 to add remove and exit routines
+- Link to v1: https://lore.kernel.org/r/20250420-tegra124-cpufreq-v1-0-0a47fe126091@gmail.com
 
-diff --git a/drivers/pci/controller/Kconfig b/drivers/pci/controller/Kconfig
-index 9800b768105402d6dd1ba4b134c2ec23da6e4201..a9164dd2eccaead5ae9348c24a5ad75fcb40f507 100644
---- a/drivers/pci/controller/Kconfig
-+++ b/drivers/pci/controller/Kconfig
-@@ -224,7 +224,7 @@ config PCI_HYPERV_INTERFACE
- 	  driver.
- 
- config PCI_TEGRA
--	bool "NVIDIA Tegra PCIe controller"
-+	tristate "NVIDIA Tegra PCIe controller"
- 	depends on ARCH_TEGRA || COMPILE_TEST
- 	depends on PCI_MSI
- 	help
-diff --git a/drivers/pci/controller/pci-tegra.c b/drivers/pci/controller/pci-tegra.c
-index b3cdbc5927de3742161310610dc5dcb836f5dd69..c260842695f2e983ae48fd52b43f62dbb9fb5dd3 100644
---- a/drivers/pci/controller/pci-tegra.c
-+++ b/drivers/pci/controller/pci-tegra.c
-@@ -2803,3 +2803,6 @@ static struct platform_driver tegra_pcie_driver = {
- 	.remove = tegra_pcie_remove,
- };
- module_platform_driver(tegra_pcie_driver);
-+MODULE_AUTHOR("Thierry Reding <treding@nvidia.com>");
-+MODULE_DESCRIPTION("NVIDIA PCI host controller driver");
-+MODULE_LICENSE("GPL");
+---
+Aaron Kling (2):
+      cpufreq: tegra124: Remove use of disable_cpufreq
+      cpufreq: tegra124: Allow building as a module
 
+ drivers/cpufreq/Kconfig.arm        |  2 +-
+ drivers/cpufreq/tegra124-cpufreq.c | 31 ++++++++++++++++++++++++++-----
+ 2 files changed, 27 insertions(+), 6 deletions(-)
+---
+base-commit: 91e5bfe317d8f8471fbaa3e70cf66cae1314a516
+change-id: 20250401-tegra124-cpufreq-fd944fdce62c
+
+Best regards,
 -- 
-2.48.1
+Aaron Kling <webgeek1234@gmail.com>
 
