@@ -1,11 +1,11 @@
 From: Mahesh Rao <mahesh.rao@altera.com>
-Date: Tue, 22 Apr 2025 12:07:11 +0800
-Subject: [PATCH 4/7] dt-bindings: firmware: Add interrupt specification for
- Intel Stratix 10 Service Layer.
+Date: Tue, 22 Apr 2025 12:07:12 +0800
+Subject: [PATCH 5/7] dts: agilex: Add support for SDM mailbox interrupt for
+ Intel Agilex SoC FPGA.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250422-sip_svc_upstream-v1-4-088059190f31@altera.com>
+Message-Id: <20250422-sip_svc_upstream-v1-5-088059190f31@altera.com>
 References: <20250422-sip_svc_upstream-v1-0-088059190f31@altera.com>
 In-Reply-To: <20250422-sip_svc_upstream-v1-0-088059190f31@altera.com>
 To: Dinh Nguyen <dinguyen@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -14,60 +14,39 @@ To: Dinh Nguyen <dinguyen@kernel.org>, Rob Herring <robh@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Matthew Gerlach <matthew.gerlach@altera.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745294834; l=1801;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745294834; l=956;
  i=mahesh.rao@altera.com; s=20250107; h=from:subject:message-id;
- bh=SNGxaxaQ7O8Am109rLMAgnrv4HKXic5pX5a15IoblFE=;
- b=AEZm/9bzNBzTC4xWUbctZ/8jIPwHlWZ1T3vBKor/RQDuT0sRxBLQeLLDFh643g9l2gfD5KaaJ
- vOgCQ/4m/QIDnqMv8JxPG4QVNQByd6+OC+bxgash1bBAQ0XAcGYOgw9
+ bh=Qju5FftDEBjY7mgDWEHoQiNo3ptWBPQcrDs6T4v7xUo=;
+ b=/TKi6mT3CU83b72t7wQU4nEbOmAGkmGYsZE9F12SLmIq7ogBH86cX3hZxrdn5Ap1IEUwLMpCb
+ 4CCI6ZZYI+dCEmqAbdGgEHcFz0ECM1nL8k2X9uO6boeTFkX9401KqYX
 X-Developer-Key: i=mahesh.rao@altera.com; a=ed25519;
  pk=tQiFUzoKxHrQLDtWeEeaeTeJTl/UfclUHWZy1fjSiyg=
 X-Endpoint-Received: by B4 Relay for mahesh.rao@altera.com/20250107 with auth_id=337
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add interrupt specification for Intel Stratix10 Service
-layer for asynchronous communication.
+Add support for Secure Device Manager (SDM) mailbox
+doorbell interrupt on Agilex SoC FPGA for supporting
+asynchronous transactions.
 
 Signed-off-by: Mahesh Rao <mahesh.rao@altera.com>
 Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
 ---
- .../devicetree/bindings/firmware/intel,stratix10-svc.yaml      | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ arch/arm64/boot/dts/intel/socfpga_agilex.dtsi | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/firmware/intel,stratix10-svc.yaml b/Documentation/devicetree/bindings/firmware/intel,stratix10-svc.yaml
-index fac1e955852e4f9b966c991dcfac56222c5f7315..656cc50fd08217f270f95ae39010152423315ed1 100644
---- a/Documentation/devicetree/bindings/firmware/intel,stratix10-svc.yaml
-+++ b/Documentation/devicetree/bindings/firmware/intel,stratix10-svc.yaml
-@@ -54,6 +54,12 @@ properties:
-       reserved memory region for the service layer driver to
-       communicate with the secure device manager.
+diff --git a/arch/arm64/boot/dts/intel/socfpga_agilex.dtsi b/arch/arm64/boot/dts/intel/socfpga_agilex.dtsi
+index 1235ba5a9865a175001fd3ef2bad710842f93be4..bd8c386a2ee31b85d6ee9be2dff6176565a85077 100644
+--- a/arch/arm64/boot/dts/intel/socfpga_agilex.dtsi
++++ b/arch/arm64/boot/dts/intel/socfpga_agilex.dtsi
+@@ -65,6 +65,8 @@ svc {
+ 			compatible = "intel,agilex-svc";
+ 			method = "smc";
+ 			memory-region = <&service_reserved>;
++			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-parent = <&intc>;
  
-+  interrupts:
-+    maxItems: 1
-+    description:
-+      This interrupt is used by the Secure Device Manager (SDM) to signal
-+      completion of an asynchronous operation to service layer driver.
-+
-   fpga-mgr:
-     $ref: /schemas/fpga/intel,stratix10-soc-fpga-mgr.yaml
-     description: Optional child node for fpga manager to perform fabric configuration.
-@@ -67,6 +73,8 @@ additionalProperties: false
- 
- examples:
-   - |
-+    #include <dt-bindings/interrupt-controller/arm-gic.h>
-+
-     reserved-memory {
-       #address-cells = <2>;
-       #size-cells = <2>;
-@@ -84,6 +92,8 @@ examples:
-         compatible = "intel,stratix10-svc";
-         method = "smc";
-         memory-region = <&service_reserved>;
-+        interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
-+        interrupt-parent = <&intc0>;
- 
-         fpga-mgr {
-           compatible = "intel,stratix10-soc-fpga-mgr";
+ 			fpga_mgr: fpga-mgr {
+ 				compatible = "intel,agilex-soc-fpga-mgr";
 
 -- 
 2.35.3
