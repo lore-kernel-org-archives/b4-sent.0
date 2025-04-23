@@ -1,16 +1,12 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Subject: [PATCH v3 0/3] Apple PMIC NVMEM cell driver (Formerly: Generic
- SPMI NVMEM cell driver)
-Date: Wed, 23 Apr 2025 19:55:12 +0200
-Message-Id: <20250423-spmi-nvmem-v3-0-2985aa722ddc@gmail.com>
+Date: Wed, 23 Apr 2025 19:55:13 +0200
+Subject: [PATCH v3 1/3] dt-bindings: spmi: Add Apple SPMI NVMEM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIApCWgC/23MQQqDMBCF4avIrJuSTIyGrnqP0oWmow40KkkJL
- eLdG11Z6PI9+P4FIgWmCJdigUCJI09jHvpUgBuasSfBj7wBJRpZKiPi7FmMyZMXJG2ljVaVqg1
- kMAfq+L3Hbve8B46vKXz2dlLb+zeTlJACUVZ1S2i06669b/h5dpOHLZPwSOsfipm21lqjSJdN1
- x7puq5fOHbWGN8AAAA=
-X-Change-ID: 20250415-spmi-nvmem-e08635316175
+Message-Id: <20250423-spmi-nvmem-v3-1-2985aa722ddc@gmail.com>
+References: <20250423-spmi-nvmem-v3-0-2985aa722ddc@gmail.com>
+In-Reply-To: <20250423-spmi-nvmem-v3-0-2985aa722ddc@gmail.com>
 To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
  Srinivas Kandagatla <srinivas.kandagatla@linaro.org>, 
@@ -18,63 +14,100 @@ To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>,
  Conor Dooley <conor+dt@kernel.org>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, Hector Martin <marcan@marcan.st>, 
- Nick Chan <towinchenmi@gmail.com>
+ Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745430928; l=1822;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745430928; l=2603;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=/LVwP2J7phmJo5xUbPuYBsq73NOkQB14cAElXzkBoks=;
- b=DYImOHdO3m2rCslcCrmKq+Ure36xtXDMfMi0nYTg6CXkPtjKnUVyEChYMW8gOT5qVYqXuThMd
- Ci910bPQ5VpCr/YdCgRCnRTDLNFysECw1DxHkbLO6gFHVJK4qBZ/w7M
+ bh=EOBP3/6Xq4lPlQdYDYaxZLEyni+8kaQhO4JuDxWVIpA=;
+ b=mj4HNQR5aytv5l7hHefmxiR1avN1zBOqmCF3exgY6qJZC54rZ+d7n2l8vHNqLIAXmfKNZb3Zk
+ FTdkXhhhwR6C9eY2SlMb3QfsIxwsum+0J3MaW2JRjXP9gzimxmp+PRS
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi.
+Add bindings for exposing SPMI registers of Apple PMICs as NVMEM cells
 
-This patch series adds a driver for exposing a set of registers
-as NVMEM cells on a SPMI-attached PMIC on Apple ARM platforms.
-Those are used to store the RTC offset and to communicate platform
-power state between the OS and boot firmware.
-
-The NVMEM cell consumer drivers will be sent in a further series.
-
+Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
-Changes in v3:
-- No longer try to make it generic, use for the 3 relevant PMICs only
-- Link to v2: https://lore.kernel.org/r/20250417-spmi-nvmem-v2-0-b88851e34afb@gmail.com
+ .../bindings/nvmem/apple,spmi-nvmem.yaml           | 54 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 2 files changed, 55 insertions(+)
 
-Changes in v2:
-- s/pmu/pmic/
-- Sort dts in unit-order, instead of t600x-unit-order
-- Link to v1: https://lore.kernel.org/r/20250415-spmi-nvmem-v1-0-22067be253cf@gmail.com
+diff --git a/Documentation/devicetree/bindings/nvmem/apple,spmi-nvmem.yaml b/Documentation/devicetree/bindings/nvmem/apple,spmi-nvmem.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..80b5a6cdcec91c8eed8b66f745e91ee07ba9683d
+--- /dev/null
++++ b/Documentation/devicetree/bindings/nvmem/apple,spmi-nvmem.yaml
+@@ -0,0 +1,54 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/nvmem/apple,spmi-nvmem.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple SPMI NVMEM
++
++description: Exports a series of SPMI registers as NVMEM cells
++
++maintainers:
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++allOf:
++  - $ref: nvmem.yaml#
++
++properties:
++  compatible:
++    items:
++      - enum:
++          - apple,maverick-pmic
++          - apple,sera-pmic
++          - apple,stowe-pmic
++      - const: apple,spmi-nvmem
++
++  reg:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/spmi/spmi.h>
++
++    pmic@f {
++        compatible = "apple,maverick-pmic", "apple,spmi-nvmem";
++        reg = <0xf SPMI_USID>;
++
++        nvmem-layout {
++            compatible = "fixed-layout";
++            #address-cells = <1>;
++            #size-cells = <1>;
++
++            boot_stage: boot-stage@6001 {
++                reg = <0x6001 0x1>;
++            };
++        };
++    };
++
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 96b82704950184bd71623ff41fc4df31e4c7fe87..f462545c54c55d4bdc22651e07a4c8e155e83016 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2277,6 +2277,7 @@ F:	Documentation/devicetree/bindings/mailbox/apple,mailbox.yaml
+ F:	Documentation/devicetree/bindings/net/bluetooth/brcm,bcm4377-bluetooth.yaml
+ F:	Documentation/devicetree/bindings/nvme/apple,nvme-ans.yaml
+ F:	Documentation/devicetree/bindings/nvmem/apple,efuses.yaml
++F:	Documentation/devicetree/bindings/nvmem/apple,spmi-nvmem.yaml
+ F:	Documentation/devicetree/bindings/pci/apple,pcie.yaml
+ F:	Documentation/devicetree/bindings/pinctrl/apple,pinctrl.yaml
+ F:	Documentation/devicetree/bindings/power/apple*
 
----
-Hector Martin (2):
-      nvmem: Add apple-spmi-nvmem driver
-      arm64: dts: apple: Add PMIC NVMEM
-
-Sasha Finkelstein (1):
-      dt-bindings: spmi: Add Apple SPMI NVMEM
-
- .../bindings/nvmem/apple,spmi-nvmem.yaml           | 54 +++++++++++++++++++
- MAINTAINERS                                        |  2 +
- arch/arm64/boot/dts/apple/t6001.dtsi               |  1 +
- arch/arm64/boot/dts/apple/t6002.dtsi               |  1 +
- arch/arm64/boot/dts/apple/t600x-die0.dtsi          | 50 +++++++++++++++++
- arch/arm64/boot/dts/apple/t8103.dtsi               | 50 +++++++++++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi               | 50 +++++++++++++++++
- drivers/nvmem/Kconfig                              | 13 +++++
- drivers/nvmem/Makefile                             |  2 +
- drivers/nvmem/apple-spmi-nvmem.c                   | 62 ++++++++++++++++++++++
- 10 files changed, 285 insertions(+)
----
-base-commit: 2e0e70c95077172b29a5b13716c4b159d578e82c
-change-id: 20250415-spmi-nvmem-e08635316175
-
-Best regards,
 -- 
-Sasha Finkelstein <fnkl.kernel@gmail.com>
+2.49.0
 
