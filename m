@@ -1,257 +1,68 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Wed, 23 Apr 2025 19:55:15 +0200
-Subject: [PATCH v3 3/3] arm64: dts: apple: Add PMIC NVMEM
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Wed, 23 Apr 2025 21:03:03 -0500
+Subject: [PATCH] spi: tegra114: Don't fail set_cs_timing when delays are
+ zero
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250423-spmi-nvmem-v3-3-2985aa722ddc@gmail.com>
-References: <20250423-spmi-nvmem-v3-0-2985aa722ddc@gmail.com>
-In-Reply-To: <20250423-spmi-nvmem-v3-0-2985aa722ddc@gmail.com>
-To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
- Srinivas Kandagatla <srinivas.kandagatla@linaro.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, Hector Martin <marcan@marcan.st>, 
- Nick Chan <towinchenmi@gmail.com>
+Message-Id: <20250423-spi-tegra114-v1-1-2d608bcc12f9@gmail.com>
+X-B4-Tracking: v=1; b=H4sIANabCWgC/x3MTQqAIBBA4avIrBP8Bekq0cJstNmYaEQg3T1p+
+ S3e69CwEjaYWYeKNzU684CcGITD54Sc9mFQQllhlOatEL8wVS+l4ZtzTrlgg4gaRlIqRnr+3bK
+ +7wfRnhCvXgAAAA==
+X-Change-ID: 20250423-spi-tegra114-b88828c5c0f3
+To: Laxman Dewangan <ldewangan@nvidia.com>, Mark Brown <broonie@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, 
+ Mason Zhang <Mason.Zhang@mediatek.com>
+Cc: linux-spi@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745430928; l=6241;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=DeM6S5yU1Q9D23iuqXSnII2ozGmlxUQVX++5KZ42rPY=;
- b=Ai7Nln+DzzV3GQSsmZ+tI5PCZmUQAQ4amLuRHrvvziuYtd41qu5TH5212WbhtJhuxcbbTd2w+
- F+Y+V3vr6+BBScoWU/r6wjWSvU8GpOYw3oktJIod+SQhSLjTZXgSDsV
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745460211; l=1447;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=6Ntl3heYOtSRo+SbZlaWWlJ/8sphcbur4awnUfzmiKk=;
+ b=UngeTiHC4/irfiREWVxaOQlDY8BZIa8YqVXnNAGy9+5094zQFFqJTZfL0x7LsHsqt4Xzi66Qi
+ /gjS63hepyMAYsfBK0t3ZXzr3Aqn7BW9OywpDOqR/OVYdI1zkQ1Jluu
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+The original code would skip null delay pointers, but when the pointers
+were converted to point within the spi_device struct, the check was not
+updated to skip delays of zero. Hence all spi devices that didn't set
+delays would fail to probe.
 
-Add device tree entries for NVMEM cells present on the PMIC
-
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Reviewed-by: Nick Chan <towinchenmi@gmail.com>
-Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
-Co-developed-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Fixes: 04e6bb0d6bb1 ("spi: modify set_cs_timing parameter")
+Cc: stable@vger.kernel.org
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/apple/t6001.dtsi      |  1 +
- arch/arm64/boot/dts/apple/t6002.dtsi      |  1 +
- arch/arm64/boot/dts/apple/t600x-die0.dtsi | 50 +++++++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8103.dtsi      | 50 +++++++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi      | 50 +++++++++++++++++++++++++++++++
- 5 files changed, 152 insertions(+)
+ drivers/spi/spi-tegra114.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/apple/t6001.dtsi b/arch/arm64/boot/dts/apple/t6001.dtsi
-index 620b17e4031f069874aaabadbf06b7b29ec4031e..d2cf81926f284ccf7627701cc82edff31d4d72d6 100644
---- a/arch/arm64/boot/dts/apple/t6001.dtsi
-+++ b/arch/arm64/boot/dts/apple/t6001.dtsi
-@@ -11,6 +11,7 @@
- #include <dt-bindings/interrupt-controller/apple-aic.h>
- #include <dt-bindings/interrupt-controller/irq.h>
- #include <dt-bindings/pinctrl/apple.h>
-+#include <dt-bindings/spmi/spmi.h>
+diff --git a/drivers/spi/spi-tegra114.c b/drivers/spi/spi-tegra114.c
+index 3822d7c8d8edb9730e937df50d1c75e095dd18ec..2a8bb798e95b954fe573f1c50445ed2e7fcbfd78 100644
+--- a/drivers/spi/spi-tegra114.c
++++ b/drivers/spi/spi-tegra114.c
+@@ -728,9 +728,9 @@ static int tegra_spi_set_hw_cs_timing(struct spi_device *spi)
+ 	u32 inactive_cycles;
+ 	u8 cs_state;
  
- #include "multi-die-cpp.h"
- 
-diff --git a/arch/arm64/boot/dts/apple/t6002.dtsi b/arch/arm64/boot/dts/apple/t6002.dtsi
-index a963a5011799a0480f88688fb4372a31f0bbf806..e36f422d257d8fe3a62bfa6e0f0e0dc6c34608a4 100644
---- a/arch/arm64/boot/dts/apple/t6002.dtsi
-+++ b/arch/arm64/boot/dts/apple/t6002.dtsi
-@@ -11,6 +11,7 @@
- #include <dt-bindings/interrupt-controller/apple-aic.h>
- #include <dt-bindings/interrupt-controller/irq.h>
- #include <dt-bindings/pinctrl/apple.h>
-+#include <dt-bindings/spmi/spmi.h>
- 
- #include "multi-die-cpp.h"
- 
-diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-index 4c224e686ffe5602329f7f394d3354559c4130ab..110bc6719512e334e04b496fb157cb4368679957 100644
---- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-@@ -50,6 +50,56 @@ nub_spmi0: spmi@2920a1300 {
- 		reg = <0x2 0x920a1300 0x0 0x100>;
- 		#address-cells = <2>;
- 		#size-cells = <0>;
-+
-+		pmic1: pmic@f {
-+			compatible = "apple,maverick-pmic", "apple,spmi-nvmem";
-+			reg = <0xf SPMI_USID>;
-+
-+			nvmem-layout {
-+				compatible = "fixed-layout";
-+				#address-cells = <1>;
-+				#size-cells = <1>;
-+
-+				pm_setting: pm-setting@1405 {
-+					reg = <0x1405 0x1>;
-+				};
-+
-+				rtc_offset: rtc-offset@1411 {
-+					reg = <0x1411 0x6>;
-+				};
-+
-+				boot_stage: boot-stage@6001 {
-+					reg = <0x6001 0x1>;
-+				};
-+
-+				boot_error_count: boot-error-count@6002 {
-+					reg = <0x6002 0x1>;
-+					bits = <0 4>;
-+				};
-+
-+				panic_count: panic-count@6002 {
-+					reg = <0x6002 0x1>;
-+					bits = <4 4>;
-+				};
-+
-+				boot_error_stage: boot-error-stage@6003 {
-+					reg = <0x6003 0x1>;
-+				};
-+
-+				shutdown_flag: shutdown-flag@600f {
-+					reg = <0x600f 0x1>;
-+					bits = <3 1>;
-+				};
-+
-+				fault_shadow: fault-shadow@867b {
-+					reg = <0x867b 0x10>;
-+				};
-+
-+				socd: socd@8b00 {
-+					reg = <0x8b00 0x400>;
-+				};
-+			};
-+		};
- 	};
- 
- 	wdt: watchdog@2922b0000 {
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index bdb1cb9e406a441e458b1c735359b0148146e91b..20faf0c0d80927b2e18dd966a61b5507b322c72f 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -747,6 +747,56 @@ nub_spmi: spmi@23d0d9300 {
- 			reg = <0x2 0x3d0d9300 0x0 0x100>;
- 			#address-cells = <2>;
- 			#size-cells = <0>;
-+
-+			pmic1: pmic@f {
-+				compatible = "apple,sera-pmic", "apple,spmi-nvmem";
-+				reg = <0xf SPMI_USID>;
-+
-+				nvmem-layout {
-+					compatible = "fixed-layout";
-+					#address-cells = <1>;
-+					#size-cells = <1>;
-+
-+					boot_stage: boot-stage@9f01 {
-+						reg = <0x9f01 0x1>;
-+					};
-+
-+					boot_error_count: boot-error-count@9f02 {
-+						reg = <0x9f02 0x1>;
-+						bits = <0 4>;
-+					};
-+
-+					panic_count: panic-count@9f02 {
-+						reg = <0x9f02 0x1>;
-+						bits = <4 4>;
-+					};
-+
-+					boot_error_stage: boot-error-stage@9f03 {
-+						reg = <0x9f03 0x1>;
-+					};
-+
-+					shutdown_flag: shutdown-flag@9f0f {
-+						reg = <0x9f0f 0x1>;
-+						bits = <3 1>;
-+					};
-+
-+					fault_shadow: fault-shadow@a67b {
-+						reg = <0xa67b 0x10>;
-+					};
-+
-+					socd: socd@ab00 {
-+						reg = <0xab00 0x400>;
-+					};
-+
-+					pm_setting: pm-setting@d001 {
-+						reg = <0xd001 0x1>;
-+					};
-+
-+					rtc_offset: rtc-offset@d100 {
-+						reg = <0xd100 0x6>;
-+					};
-+				};
-+			};
- 		};
- 
- 		pinctrl_nub: pinctrl@23d1f0000 {
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index 950d1f906ba3023c1d118179207a2099345aae94..e95711d8337f6cea898e88a3d564caf2c4f94404 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -787,6 +787,56 @@ nub_spmi: spmi@23d714000 {
- 			reg = <0x2 0x3d714000 0x0 0x100>;
- 			#address-cells = <2>;
- 			#size-cells = <0>;
-+
-+			pmic1: pmic@e {
-+				compatible = "apple,stowe-pmic", "apple,spmi-nvmem";
-+				reg = <0xe SPMI_USID>;
-+
-+				nvmem-layout {
-+					compatible = "fixed-layout";
-+					#address-cells = <1>;
-+					#size-cells = <1>;
-+
-+					fault_shadow: fault-shadow@867b {
-+						reg = <0x867b 0x10>;
-+					};
-+
-+					socd: socd@8b00 {
-+						reg = <0x8b00 0x400>;
-+					};
-+
-+					boot_stage: boot-stage@f701 {
-+						reg = <0xf701 0x1>;
-+					};
-+
-+					boot_error_count: boot-error-count@f702 {
-+						reg = <0xf702 0x1>;
-+						bits = <0 4>;
-+					};
-+
-+					panic_count: panic-count@f702 {
-+						reg = <0xf702 0x1>;
-+						bits = <4 4>;
-+					};
-+
-+					boot_error_stage: boot-error-stage@f703 {
-+						reg = <0xf703 0x1>;
-+					};
-+
-+					shutdown_flag: shutdown-flag@f70f {
-+						reg = <0xf70f 0x1>;
-+						bits = <3 1>;
-+					};
-+
-+					pm_setting: pm-setting@f801 {
-+						reg = <0xf801 0x1>;
-+					};
-+
-+					rtc_offset: rtc-offset@f900 {
-+						reg = <0xf900 0x6>;
-+					};
-+				};
-+			};
- 		};
- 
- 		pinctrl_smc: pinctrl@23e820000 {
+-	if (setup->unit != SPI_DELAY_UNIT_SCK ||
+-	    hold->unit != SPI_DELAY_UNIT_SCK ||
+-	    inactive->unit != SPI_DELAY_UNIT_SCK) {
++	if ((setup->unit && setup->unit != SPI_DELAY_UNIT_SCK) ||
++	    (hold->unit && hold->unit != SPI_DELAY_UNIT_SCK) ||
++	    (inactive->unit && inactive->unit != SPI_DELAY_UNIT_SCK)) {
+ 		dev_err(&spi->dev,
+ 			"Invalid delay unit %d, should be SPI_DELAY_UNIT_SCK\n",
+ 			SPI_DELAY_UNIT_SCK);
 
+---
+base-commit: a79be02bba5c31f967885c7f3bf3a756d77d11d9
+change-id: 20250423-spi-tegra114-b88828c5c0f3
+
+Best regards,
 -- 
-2.49.0
+Aaron Kling <webgeek1234@gmail.com>
 
