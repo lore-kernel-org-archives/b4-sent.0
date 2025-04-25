@@ -1,124 +1,49 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 25 Apr 2025 16:00:03 +0400
-Subject: [PATCH v8 2/2] arm64: dts: qcom: ipq5018: Enable PCIe
+From: Kurt Borja <kuurtb@gmail.com>
+Subject: [PATCH 0/2] platform/x86: alienware-wmi-wmax: Fix unitialized
+ variables in awcc_hwmon_fans_init()
+Date: Fri, 25 Apr 2025 12:45:05 -0300
+Message-Id: <20250425-temp-id-fix-v1-0-372d71f732bf@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250425-ipq5018-pcie-v8-2-03ee75c776dc@outlook.com>
-References: <20250425-ipq5018-pcie-v8-0-03ee75c776dc@outlook.com>
-In-Reply-To: <20250425-ipq5018-pcie-v8-0-03ee75c776dc@outlook.com>
-To: Vinod Koul <vkoul@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Nitheesh Sekar <quic_nsekar@quicinc.com>, 
- Varadarajan Narayanan <quic_varada@quicinc.com>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Praveenkumar I <quic_ipkumar@quicinc.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-pci@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>, 
- 20250317100029.881286-1-quic_varada@quicinc.com, 
- 20250317100029.881286-2-quic_varada@quicinc.com, 
- Sricharan Ramabadhran <quic_srichara@quicinc.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAAGuC2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDEyNT3ZLU3AKgmG5aZoWuYaJRanKKuUGqsaWhElBHQVEqUBhsWnRsbS0
+ AyTz+110AAAA=
+X-Change-ID: 20250425-temp-id-fix-1a2ecd70e391
+To: =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Hans de Goede <hdegoede@redhat.com>, Armin Wolf <W_Armin@gmx.de>
+Cc: platform-driver-x86@vger.kernel.org, Dell.Client.Kernel@dell.com, 
+ linux-kernel@vger.kernel.org, Kurt Borja <kuurtb@gmail.com>, 
+ kernel test robot <lkp@intel.com>, Dan Carpenter <dan.carpenter@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745582405; l=2062;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=OKmTrcmt0ksiQwz9dz8aVIs/K+GfvvlMVFo78Mfk/ZA=;
- b=+137/GCaAT7ubZFhqQklFN+Rd9+5E/4VFpKdySIcu/ch3VlbezJ+sgTrO3oxNyfEVNWGj4JS/
- n/vVcHMeSeOCLlFsOhWiIIBnKyLQAs6L+M+xtcJyoHFfAU0QQNT17r1
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=openpgp-sha256; l=564; i=kuurtb@gmail.com;
+ h=from:subject:message-id; bh=pDgkUVe28oVTN5MSvErUnjN2xGQ1drBuKrCY7rObOoM=;
+ b=owGbwMvMwCUmluBs8WX+lTTG02pJDBnc6wQUP6yZWv3Ef6PHuuCqd9GXp4kvti0SsF4cL5t+d
+ vUyK/3WjlIWBjEuBlkxRZb2hEXfHkXlvfU7EHofZg4rE8gQBi5OAZiIRwLDfz+vXE6Opt/pB3Tt
+ vCWluxV4qpY8WbpiQoPZj/MtARPun2X4X8BYu36mXpiiy4cJpx61Tjjwzbr+wIfa/a5z8sP/T5N
+ s4wcA
+X-Developer-Key: i=kuurtb@gmail.com; a=openpgp;
+ fpr=54D3BE170AEF777983C3C63B57E3B6585920A69A
+X-Endpoint-Received: by B4 Relay for kuurtb@gmail.com/default with auth_id=387
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Nitheesh Sekar <quic_nsekar@quicinc.com>
+Hi Ilpo,
 
-Enable the PCIe controller and PHY nodes for RDP 432-c2.
+These are based on the for-next branch. Thanks!
 
-Signed-off-by: Nitheesh Sekar <quic_nsekar@quicinc.com>
-Signed-off-by: Sricharan Ramabadhran <quic_srichara@quicinc.com>
-Acked-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Signed-off-by: Kurt Borja <kuurtb@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts | 40 ++++++++++++++++++++++++++
- 1 file changed, 40 insertions(+)
+Kurt Borja (2):
+      platform/x86: alienware-wmi-wmax: Fix uninitialized bitmap in awcc_hwmon_fans_init()
+      platform/x86: alienware-wmi-wmax: Fix awcc_hwmon_fans_init() label logic
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-index 8460b538eb6a3e2d6b971bd9637309809e0c0f0c..43def95e9275258041e7522ba4098a3767be3df1 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-+++ b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-@@ -9,6 +9,8 @@
- 
- #include "ipq5018.dtsi"
- 
-+#include <dt-bindings/gpio/gpio.h>
-+
- / {
- 	model = "Qualcomm Technologies, Inc. IPQ5018/AP-RDP432.1-C2";
- 	compatible = "qcom,ipq5018-rdp432-c2", "qcom,ipq5018";
-@@ -28,6 +30,20 @@ &blsp1_uart1 {
- 	status = "okay";
- };
- 
-+&pcie0 {
-+	pinctrl-0 = <&pcie0_default>;
-+	pinctrl-names = "default";
-+
-+	perst-gpios = <&tlmm 15 GPIO_ACTIVE_LOW>;
-+	wake-gpios = <&tlmm 16 GPIO_ACTIVE_LOW>;
-+
-+	status = "okay";
-+};
-+
-+&pcie0_phy {
-+	status = "okay";
-+};
-+
- &sdhc_1 {
- 	pinctrl-0 = <&sdc_default_state>;
- 	pinctrl-names = "default";
-@@ -43,6 +59,30 @@ &sleep_clk {
- };
- 
- &tlmm {
-+	pcie0_default: pcie0-default-state {
-+		clkreq-n-pins {
-+			pins = "gpio14";
-+			function = "pcie0_clk";
-+			drive-strength = <8>;
-+			bias-pull-up;
-+		};
-+
-+		perst-n-pins {
-+			pins = "gpio15";
-+			function = "gpio";
-+			drive-strength = <8>;
-+			bias-pull-up;
-+			output-low;
-+		};
-+
-+		wake-n-pins {
-+			pins = "gpio16";
-+			function = "pcie0_wake";
-+			drive-strength = <8>;
-+			bias-pull-up;
-+		};
-+	};
-+
- 	sdc_default_state: sdc-default-state {
- 		clk-pins {
- 			pins = "gpio9";
+ drivers/platform/x86/dell/alienware-wmi-wmax.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
+---
+base-commit: 981527828c301644bc4014faa9c523e8a5e32a32
+change-id: 20250425-temp-id-fix-1a2ecd70e391
 
+Best regards,
 -- 
-2.49.0
+ ~ Kurt
 
