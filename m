@@ -1,95 +1,224 @@
-From: Kurt Borja <kuurtb@gmail.com>
-Date: Fri, 25 Apr 2025 12:45:07 -0300
-Subject: [PATCH 2/2] platform/x86: alienware-wmi-wmax: Fix
- awcc_hwmon_fans_init() label logic
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Date: Sat, 26 Apr 2025 10:43:02 +0200
+Subject: [PATCH] arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: add
+ Bluetooth support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250425-temp-id-fix-v1-2-372d71f732bf@gmail.com>
-References: <20250425-temp-id-fix-v1-0-372d71f732bf@gmail.com>
-In-Reply-To: <20250425-temp-id-fix-v1-0-372d71f732bf@gmail.com>
-To: =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Hans de Goede <hdegoede@redhat.com>, Armin Wolf <W_Armin@gmx.de>
-Cc: platform-driver-x86@vger.kernel.org, Dell.Client.Kernel@dell.com, 
- linux-kernel@vger.kernel.org, Kurt Borja <kuurtb@gmail.com>, 
- kernel test robot <lkp@intel.com>, Dan Carpenter <dan.carpenter@linaro.org>
+Message-Id: <20250426-slim7x-bt-v1-1-d68f961af886@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAJWcDGgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDEyMz3eKczFzzCt2kEl2zFANDQyNzI0vDFEMloPqCotS0zAqwWdGxtbU
+ AsijX1lsAAAA=
+X-Change-ID: 20250426-slim7x-bt-6d01127291d1
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2435; i=kuurtb@gmail.com;
- h=from:subject:message-id; bh=hl7NOezBX65uzKnMSgj3738hCgwWWjttXsdb5CJ1YU4=;
- b=owGbwMvMwCUmluBs8WX+lTTG02pJDBnc6wRc2D68PZlfxXZuvmjk/DnC3xlunnWc5PU6ddHEz
- u4Dr++xdpSyMIhxMciKKbK0Jyz69igq763fgdD7MHNYmUCGMHBxCsBEHDwYGZq4Wc2SFLNXfNll
- FzrfOHLaf9PlJ7enx5891/xnoZ1d8kOG//kPMh9e/7G7iPnXzKV8flZlGscWupsqGa/KXqfGPbu
- zmBEA
-X-Developer-Key: i=kuurtb@gmail.com; a=openpgp;
- fpr=54D3BE170AEF777983C3C63B57E3B6585920A69A
-X-Endpoint-Received: by B4 Relay for kuurtb@gmail.com/default with auth_id=387
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745656989; l=5031;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=fZY+VhA1blNrTgyvbyjiGPWrn1nJCjJyTv1dlv+p2lo=;
+ b=mASlIzI9oKv+x14hqs8kCB4xEfP2AE+CdIqTyYQ74WGNTWYPs39FCch9NiJzygI4mocRt82hj
+ OVAX98vC8DyBlLyNdQr0FWVrjY4HOEnSHbGwEDxEVD0eUFEypDpaLOa
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To avoid passing an uninitialized `temp_id` to awcc_get_fan_label(),
-pass the `fan_temps` bitmap instead, to work only on set bits.
+To enable Bluetooth pwrseq appears to be required for the WCN7850.
+Add the nodes from QCP.
+Add uart14 for the BT interface.
 
-Additionally, awcc_get_fan_label() leaves `dev` unused, so remove it
-from it's signature and it does not fail, so remove error handling.
-
-Reported-by: kernel test robot <lkp@intel.com>
-Reported-by: Dan Carpenter <dan.carpenter@linaro.org>
-Closes: https://lore.kernel.org/r/202504250521.HEkFK1Jy-lkp@intel.com/
-Fixes: d69990783495 ("platform/x86: alienware-wmi-wmax: Add HWMON support")
-Signed-off-by: Kurt Borja <kuurtb@gmail.com>
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/platform/x86/dell/alienware-wmi-wmax.c | 13 ++++++-------
- 1 file changed, 6 insertions(+), 7 deletions(-)
+This patch adds the Bluetooth support for the WCN7850 card on this laptop.
+Since WCN7850 is supposed to need pwrseq, also added this from the QCP.
 
-diff --git a/drivers/platform/x86/dell/alienware-wmi-wmax.c b/drivers/platform/x86/dell/alienware-wmi-wmax.c
-index 27e5b0b23c27356cd5d72dbc5d3b5b4bdb03e8af..f3ad47c9edfac47fae181046acae2190e388306c 100644
---- a/drivers/platform/x86/dell/alienware-wmi-wmax.c
-+++ b/drivers/platform/x86/dell/alienware-wmi-wmax.c
-@@ -958,15 +958,19 @@ static int awcc_hwmon_temps_init(struct wmi_device *wdev)
- 	return 0;
- }
+This is also part of my tree [1] for the Yoga Slim 7X, although with an older
+definition for the pwrseq and regulators.
+
+[1] https://github.com/jglathe/linux_ms_dev_kit/blob/jg/ubuntu-qcom-x1e-6.15.0-rc3-jg-2/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts 
+---
+ .../boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts  | 136 +++++++++++++++++++++
+ 1 file changed, 136 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
+index 445d97d67d325853b7dcd2060523e7469ed4e6ea..a91d63508f65efea3786686f0f86a89a4355e0f1 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
+@@ -18,6 +18,7 @@ / {
  
--static char *awcc_get_fan_label(struct device *dev, u32 temp_count, u8 temp_id)
-+static char *awcc_get_fan_label(unsigned long *fan_temps)
- {
-+	unsigned int temp_count = bitmap_weight(fan_temps, AWCC_ID_BITMAP_SIZE);
- 	char *label;
-+	u8 temp_id;
+ 	aliases {
+ 		serial0 = &uart21;
++		serial1 = &uart14;
+ 	};
  
- 	switch (temp_count) {
- 	case 0:
- 		label = "Independent Fan";
- 		break;
- 	case 1:
-+		temp_id = find_first_bit(fan_temps, AWCC_ID_BITMAP_SIZE);
+ 	chosen {
+@@ -236,6 +237,101 @@ vph_pwr: regulator-vph-pwr {
+ 		regulator-always-on;
+ 		regulator-boot-on;
+ 	};
 +
- 		switch (temp_id) {
- 		case AWCC_TEMP_SENSOR_CPU:
- 			label = "Processor Fan";
-@@ -996,7 +1000,6 @@ static int awcc_hwmon_fans_init(struct wmi_device *wdev)
- 	u32 min_rpm, max_rpm, temp_count, temp_id;
- 	struct awcc_fan_data *fan_data;
- 	unsigned int i, j;
--	char *label;
- 	int ret;
- 	u8 id;
++	vreg_wcn_0p95: regulator-wcn-0p95 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_WCN_0P95";
++		regulator-min-microvolt = <950000>;
++		regulator-max-microvolt = <950000>;
++
++		vin-supply = <&vreg_wcn_3p3>;
++	};
++
++	vreg_wcn_1p9: regulator-wcn-1p9 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_WCN_1P9";
++		regulator-min-microvolt = <1900000>;
++		regulator-max-microvolt = <1900000>;
++
++		vin-supply = <&vreg_wcn_3p3>;
++	};
++
++	vreg_wcn_3p3: regulator-wcn-3p3 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_WCN_3P3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&tlmm 214 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&wcn_sw_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	wcn7850-pmu {
++		compatible = "qcom,wcn7850-pmu";
++
++		vdd-supply = <&vreg_wcn_0p95>;
++		vddio-supply = <&vreg_l15b_1p8>;
++		vddaon-supply = <&vreg_wcn_0p95>;
++		vdddig-supply = <&vreg_wcn_0p95>;
++		vddrfa1p2-supply = <&vreg_wcn_1p9>;
++		vddrfa1p8-supply = <&vreg_wcn_1p9>;
++
++		wlan-enable-gpios = <&tlmm 117 GPIO_ACTIVE_HIGH>;
++		bt-enable-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
++
++		pinctrl-0 = <&wcn_wlan_bt_en>;
++		pinctrl-names = "default";
++
++		regulators {
++			vreg_pmu_rfa_cmn: ldo0 {
++				regulator-name = "vreg_pmu_rfa_cmn";
++			};
++
++			vreg_pmu_aon_0p59: ldo1 {
++				regulator-name = "vreg_pmu_aon_0p59";
++			};
++
++			vreg_pmu_wlcx_0p8: ldo2 {
++				regulator-name = "vreg_pmu_wlcx_0p8";
++			};
++
++			vreg_pmu_wlmx_0p85: ldo3 {
++				regulator-name = "vreg_pmu_wlmx_0p85";
++			};
++
++			vreg_pmu_btcmx_0p85: ldo4 {
++				regulator-name = "vreg_pmu_btcmx_0p85";
++			};
++
++			vreg_pmu_rfa_0p8: ldo5 {
++				regulator-name = "vreg_pmu_rfa_0p8";
++			};
++
++			vreg_pmu_rfa_1p2: ldo6 {
++				regulator-name = "vreg_pmu_rfa_1p2";
++			};
++
++			vreg_pmu_rfa_1p8: ldo7 {
++				regulator-name = "vreg_pmu_rfa_1p8";
++			};
++
++			vreg_pmu_pcie_0p9: ldo8 {
++				regulator-name = "vreg_pmu_pcie_0p9";
++			};
++
++			vreg_pmu_pcie_1p8: ldo9 {
++				regulator-name = "vreg_pmu_pcie_1p8";
++			};
++		};
++	};
+ };
  
-@@ -1039,14 +1042,10 @@ static int awcc_hwmon_fans_init(struct wmi_device *wdev)
- 			__set_bit(temp_id, fan_temps);
- 		}
+ &apps_rsc {
+@@ -679,6 +775,16 @@ &pcie4_port0 {
+ 	wifi@0 {
+ 		compatible = "pci17cb,1107";
+ 		reg = <0x10000 0x0 0x0 0x0 0x0>;
++
++		vddaon-supply = <&vreg_pmu_aon_0p59>;
++		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
++		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
++		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
++		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
++		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
++		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
++		vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
++		vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
+ 	};
+ };
  
--		label = awcc_get_fan_label(&wdev->dev, temp_count, temp_id);
--		if (!label)
--			return -ENOMEM;
--
- 		fan_data->id = id;
- 		fan_data->min_rpm = min_rpm;
- 		fan_data->max_rpm = max_rpm;
--		fan_data->label = label;
-+		fan_data->label = awcc_get_fan_label(fan_temps);
- 		bitmap_gather(gather, fan_temps, priv->temp_sensors, AWCC_ID_BITMAP_SIZE);
- 		bitmap_copy(&fan_data->auto_channels_temp, gather, BITS_PER_LONG);
- 		priv->fan_data[i] = fan_data;
+@@ -940,6 +1046,36 @@ reset-n-pins {
+ 		};
+ 	};
+ 
++	wcn_sw_en: wcn-sw-en-state {
++		pins = "gpio214";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	wcn_wlan_bt_en: wcn-wlan-bt-en-state {
++		pins = "gpio116", "gpio117";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++};
++
++&uart14 {
++	status = "okay";
++
++	bluetooth {
++		compatible = "qcom,wcn7850-bt";
++		max-speed = <3200000>;
++
++		vddaon-supply = <&vreg_pmu_aon_0p59>;
++		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
++		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
++		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
++		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
++		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
++		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
++	};
+ };
+ 
+ &uart21 {
 
+---
+base-commit: 393d0c54cae31317deaa9043320c5fd9454deabc
+change-id: 20250426-slim7x-bt-6d01127291d1
+
+Best regards,
 -- 
-2.49.0
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
