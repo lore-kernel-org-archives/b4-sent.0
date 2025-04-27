@@ -1,206 +1,93 @@
-From: Keke Li <keke.li@amlogic.com>
-Date: Sun, 27 Apr 2025 14:27:18 +0800
-Subject: [PATCH v9 10/10] Documentation: media: add documentation file
- c3-isp.rst
+From: George Chan <gchan9527@gmail.com>
+Subject: [PATCH 0/3] u-boot chain-loading LineageOS bootimg
+Date: Sun, 27 Apr 2025 19:25:19 +0800
+Message-Id: <20250427-android-boot-v1-0-bb6b37c9c9f1@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250427-c3isp-v9-10-e0fe09433d94@amlogic.com>
-References: <20250427-c3isp-v9-0-e0fe09433d94@amlogic.com>
-In-Reply-To: <20250427-c3isp-v9-0-e0fe09433d94@amlogic.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, kieran.bingham@ideasonboard.com, 
- laurent.pinchart@ideasonboard.com, dan.scally@ideasonboard.com, 
- jacopo.mondi@ideasonboard.com, Keke Li <keke.li@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745735242; l=8064;
- i=keke.li@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=+qgXJevpfResF3gzd9+bsMteto6Ioe7ohnvu5EA8FeY=;
- b=L1GiFGfOGSh4t7UdgMWHpdfzM+uNicpwZ8QmOE/dHDUDIafTSMkgEmY3QU2N/BBqnnqZRt9Mu
- VDFquY6pVm6DhmByZIF1Zfe1wujepuQUeYtc4Y93GXHQ8QMY4kuXBPC
-X-Developer-Key: i=keke.li@amlogic.com; a=ed25519;
- pk=XxNPTsQ0YqMJLLekV456eoKV5gbSlxnViB1k1DhfRmU=
-X-Endpoint-Received: by B4 Relay for keke.li@amlogic.com/20240902 with auth_id=204
+X-B4-Tracking: v=1; b=H4sIAB8UDmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDEyNz3cS8lKL8zBTdpPz8Et3U5KQkczOL5JREcyMloJaCotS0zAqwcdG
+ xtbUACT5Sf14AAAA=
+To: Tom Rini <trini@konsulko.com>, 
+ Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Simon Glass <sjg@chromium.org>, Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Sumit Garg <sumit.garg@kernel.org>
+Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, 
+ George Chan <gchan9527@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745753127; l=2260;
+ i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
+ bh=TpB6jitJMIGVpdwdy7qxgOqOgCBFafe139KZgj6iPf4=;
+ b=PKQFLxaHwapPNwtomlArsob6qBCMQHL6B86lp2XxK/EhHNCStBp4W4NCLvPWrZAV1CNYBV/F+
+ KfDauO/9OPvDzFBfoihz347uBkPcXmxXIjM6PQCOQ/xDE2XXcGoygmu
+X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
+ pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
+X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the file 'c3-isp.rst' that documents the c3-isp driver.
+This is a series of patches to enable chainloading LineageOS on qcom SOC.
 
-Signed-off-by: Keke Li <keke.li@amlogic.com>
+First patch is to workaround kernel/ramdisk invalid addr by identify
+its physical memory address out-of-range. Since qcom SOC usually have
+0x80000000 as start/base/real memory address but androidboot img
+specified to around 0x0. If other vendor bootloader behave similar then
+this patch can also workaround it as well.
+
+Second patch is enable bootmeth-android to have chance for extra mem block.
+Usually the fastboot mem block, to hold androidboot img, and loadaddr for
+unzipped kernel. If other SOC have extra mem block available but
+fastboot block, we can add extra logic to take care of it.
+
+Third patch is optional to enable snapdragon board to have extra cmdline
+found from original bootloader that is required for LineageOS boot init. 
+An alternate method is to put the append string into a dummy device-tree
+file, as /chosen/bootarg ofnode porperty, that also contain msm-id. Then
+encapsulate as androidboot img and let u-boot as kernel binary. Below is
+an example for Xiaomi Miatoll device.
+
+/dts-v1/;
+
+/ {
+        qcom,msm-id = <443 0x0>;
+        qcom,board-id = <0 0>, 
+			<0x10022 1>,
+			<0x20022 1>,
+			<0x30022 1>,
+			<0x40022 1>,
+			<0x50022 1>;
+
+        #address-cells = <2>;
+        #size-cells = <2>;
+
+        memory {
+                ddr_device_type = <0x07>;
+                /* We expect the bootloader to fill in the size */
+                reg = <0 0 0 0>;
+        };
+
+	chosen {
+		bootargs = "";
+	};
+};
+
+Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- Documentation/admin-guide/media/c3-isp.dot      |  26 ++++++
- Documentation/admin-guide/media/c3-isp.rst      | 101 ++++++++++++++++++++++++
- Documentation/admin-guide/media/v4l-drivers.rst |   1 +
- MAINTAINERS                                     |   2 +
+George Chan (3):
+      boot/image-android.c: Workaround androidboot kernel/ramdisk addr
+      boot/bootmeth-android.c: Reuse fastboot memory block for unzip kernel
+      mach-snapdragon: Add support to append string to kernel cmdline
+
+ arch/arm/mach-snapdragon/Kconfig | 11 +++++
+ arch/arm/mach-snapdragon/board.c | 97 ++++++++++++++++++++++++++++++++++++++++
+ boot/bootmeth_android.c          | 12 +++++
+ boot/image-android.c             | 10 +++++
  4 files changed, 130 insertions(+)
+---
+base-commit: 5a0a93a768487e55ebe50a34cc90d751bf99cc56
+change-id: 20250427-android-boot-ecbb768cda72
 
-diff --git a/Documentation/admin-guide/media/c3-isp.dot b/Documentation/admin-guide/media/c3-isp.dot
-new file mode 100644
-index 000000000000..42dc931ee84a
---- /dev/null
-+++ b/Documentation/admin-guide/media/c3-isp.dot
-@@ -0,0 +1,26 @@
-+digraph board {
-+	rankdir=TB
-+	n00000001 [label="{{<port0> 0 | <port1> 1} | c3-isp-core\n/dev/v4l-subdev0 | {<port2> 2 | <port3> 3 | <port4> 4 | <port5> 5}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000001:port3 -> n00000008:port0
-+	n00000001:port4 -> n0000000b:port0
-+	n00000001:port5 -> n0000000e:port0
-+	n00000001:port2 -> n00000027
-+	n00000008 [label="{{<port0> 0} | c3-isp-resizer0\n/dev/v4l-subdev1 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000008:port1 -> n00000016 [style=bold]
-+	n0000000b [label="{{<port0> 0} | c3-isp-resizer1\n/dev/v4l-subdev2 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000000b:port1 -> n0000001a [style=bold]
-+	n0000000e [label="{{<port0> 0} | c3-isp-resizer2\n/dev/v4l-subdev3 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000000e:port1 -> n00000023 [style=bold]
-+	n00000011 [label="{{<port0> 0} | c3-mipi-adapter\n/dev/v4l-subdev4 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n00000011:port1 -> n00000001:port0 [style=bold]
-+	n00000016 [label="c3-isp-cap0\n/dev/video0", shape=box, style=filled, fillcolor=yellow]
-+	n0000001a [label="c3-isp-cap1\n/dev/video1", shape=box, style=filled, fillcolor=yellow]
-+	n0000001e [label="{{<port0> 0} | c3-mipi-csi2\n/dev/v4l-subdev5 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000001e:port1 -> n00000011:port0 [style=bold]
-+	n00000023 [label="c3-isp-cap2\n/dev/video2", shape=box, style=filled, fillcolor=yellow]
-+	n00000027 [label="c3-isp-stats\n/dev/video3", shape=box, style=filled, fillcolor=yellow]
-+	n0000002b [label="c3-isp-params\n/dev/video4", shape=box, style=filled, fillcolor=yellow]
-+	n0000002b -> n00000001:port1
-+	n0000003f [label="{{} | imx290 2-001a\n/dev/v4l-subdev6 | {<port0> 0}}", shape=Mrecord, style=filled, fillcolor=green]
-+	n0000003f:port0 -> n0000001e:port0 [style=bold]
-+}
-diff --git a/Documentation/admin-guide/media/c3-isp.rst b/Documentation/admin-guide/media/c3-isp.rst
-new file mode 100644
-index 000000000000..ac508b8c6831
---- /dev/null
-+++ b/Documentation/admin-guide/media/c3-isp.rst
-@@ -0,0 +1,101 @@
-+.. SPDX-License-Identifier: (GPL-2.0-only OR MIT)
-+
-+.. include:: <isonum.txt>
-+
-+=================================================
-+Amlogic C3 Image Signal Processing (C3ISP) driver
-+=================================================
-+
-+Introduction
-+============
-+
-+This file documents the Amlogic C3ISP driver located under
-+drivers/media/platform/amlogic/c3/isp.
-+
-+The current version of the driver supports the C3ISP found on
-+Amlogic C308L processor.
-+
-+The driver implements V4L2, Media controller and V4L2 subdev interfaces.
-+Camera sensor using V4L2 subdev interface in the kernel is supported.
-+
-+The driver has been tested on AW419-C308L-Socket platform.
-+
-+Amlogic C3 ISP
-+==============
-+
-+The Camera hardware found on C308L processors and supported by
-+the driver consists of:
-+
-+- 1 MIPI-CSI-2 module: handles the physical layer of the MIPI CSI-2 receiver and
-+  receives data from the connected camera sensor.
-+- 1 MIPI-ADAPTER module: organizes MIPI data to meet ISP input requirements and
-+  send MIPI data to ISP.
-+- 1 ISP (Image Signal Processing) module: contains a pipeline of image processing
-+  hardware blocks. The ISP pipeline contains three resizers at the end each of
-+  them connected to a DMA interface which writes the output data to memory.
-+
-+A high-level functional view of the C3 ISP is presented below.::
-+
-+                                                                   +----------+    +-------+
-+                                                                   | Resizer  |--->| WRMIF |
-+  +---------+    +------------+    +--------------+    +-------+   |----------+    +-------+
-+  | Sensor  |--->| MIPI CSI-2 |--->| MIPI ADAPTER |--->|  ISP  |---|----------+    +-------+
-+  +---------+    +------------+    +--------------+    +-------+   | Resizer  |--->| WRMIF |
-+                                                                   +----------+    +-------+
-+                                                                   |----------+    +-------+
-+                                                                   | Resizer  |--->| WRMIF |
-+                                                                   +----------+    +-------+
-+
-+Driver architecture and design
-+==============================
-+
-+With the goal to model the hardware links between the modules and to expose a
-+clean, logical and usable interface, the driver registers the following V4L2
-+sub-devices:
-+
-+- 1 `c3-mipi-csi2` sub-device - the MIPI CSI-2 receiver
-+- 1 `c3-mipi-adapter` sub-device - the MIPI adapter
-+- 1 `c3-isp-core` sub-device - the ISP core
-+- 3 `c3-isp-resizer` sub-devices - the ISP resizers
-+
-+The `c3-isp-core` sub-device is linked to 2 video device nodes for statistics
-+capture and parameters programming:
-+
-+- the `c3-isp-stats` capture video device node for statistics capture
-+- the `c3-isp-params` output video device for parameters programming
-+
-+Each `c3-isp-resizer` sub-device is linked to a capture video device node where
-+frames are captured from:
-+
-+- `c3-isp-resizer0` is linked to the `c3-isp-cap0` capture video device
-+- `c3-isp-resizer1` is linked to the `c3-isp-cap1` capture video device
-+- `c3-isp-resizer2` is linked to the `c3-isp-cap2` capture video device
-+
-+The media controller pipeline graph is as follows (with connected a
-+IMX290 camera sensor):
-+
-+.. _isp_topology_graph:
-+
-+.. kernel-figure:: c3-isp.dot
-+    :alt:   c3-isp.dot
-+    :align: center
-+
-+    Media pipeline topology
-+
-+Implementation
-+==============
-+
-+Runtime configuration of the ISP hardware is performed on the `c3-isp-params`
-+video device node using the :ref:`V4L2_META_FMT_C3ISP_PARAMS
-+<v4l2-meta-fmt-c3isp-params>` as data format. The buffer structure is defined by
-+:c:type:`c3_isp_params_cfg`.
-+
-+Statistics are captured from the `c3-isp-stats` video device node using the
-+:ref:`V4L2_META_FMT_C3ISP_STATS <v4l2-meta-fmt-c3isp-stats>` data format.
-+
-+The final picture size and format is configured using the V4L2 video
-+capture interface on the `c3-isp-cap[0, 2]` video device nodes.
-+
-+The Amlogic C3 ISP is supported by `libcamera <https://libcamera.org>`_ with a
-+dedicated pipeline handler and algorithms that perform run-time image correction
-+and enhancement.
-diff --git a/Documentation/admin-guide/media/v4l-drivers.rst b/Documentation/admin-guide/media/v4l-drivers.rst
-index e8761561b2fe..3bac5165b134 100644
---- a/Documentation/admin-guide/media/v4l-drivers.rst
-+++ b/Documentation/admin-guide/media/v4l-drivers.rst
-@@ -10,6 +10,7 @@ Video4Linux (V4L) driver-specific documentation
- 	:maxdepth: 2
- 
- 	bttv
-+	c3-isp
- 	cafe_ccic
- 	cx88
- 	fimc
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 5bbfda5662b3..e6f66a240917 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1262,6 +1262,8 @@ AMLOGIC ISP DRIVER
- M:	Keke Li <keke.li@amlogic.com>
- L:	linux-media@vger.kernel.org
- S:	Maintained
-+F:	Documentation/admin-guide/media/c3-isp.dot
-+F:	Documentation/admin-guide/media/c3-isp.rst
- F:	Documentation/devicetree/bindings/media/amlogic,c3-isp.yaml
- F:	Documentation/userspace-api/media/v4l/metafmt-c3-isp.rst
- F:	drivers/media/platform/amlogic/c3/isp/
-
+Best regards,
 -- 
-2.49.0
+George Chan <gchan9527@gmail.com>
 
