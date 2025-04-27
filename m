@@ -1,80 +1,69 @@
-From: Sven Peter <sven@svenpeter.dev>
-Date: Sun, 27 Apr 2025 11:30:46 +0000
-Subject: [PATCH v3 4/4] i2c: pasemi: Log bus reset causes
+From: Levi Zim <rsworktech@outlook.com>
+Date: Sun, 27 Apr 2025 22:36:59 +0800
+Subject: [PATCH net] docs: tproxy: fix code block style
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250427-pasemi-fixes-v3-4-af28568296c0@svenpeter.dev>
-References: <20250427-pasemi-fixes-v3-0-af28568296c0@svenpeter.dev>
-In-Reply-To: <20250427-pasemi-fixes-v3-0-af28568296c0@svenpeter.dev>
-To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- Christophe Leroy <christophe.leroy@csgroup.eu>, 
- Naveen N Rao <naveen@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
- Neal Gompa <neal@gompa.dev>, Hector Martin <marcan@marcan.st>
-Cc: linuxppc-dev@lists.ozlabs.org, asahi@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sven Peter <sven@svenpeter.dev>
+Message-Id: <20250427-tproxy-docs-fix-v1-1-988e94844ccb@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAtBDmgC/x2MQQqAIBAAvyJ7bqHEiPpKdEhbay8qKmGEf086z
+ sDMC4kiU4JFvBDp5sTeNRg6Aeba3UnIR2OQvRx7JSfMIfry4OFNQssFjdFaWyVHNVtoVYjU9H9
+ cwVGGrdYPkk9mnmYAAAA=
+X-Change-ID: 20250427-tproxy-docs-fix-ccbbbf42549f
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: netdev@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Levi Zim <rsworktech@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1721; i=sven@svenpeter.dev;
- h=from:subject:message-id; bh=nRlmnXOqgPKLCOyL2YLd20qO5WoVbBnMs4FETTpxuT0=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQwafaNkZs3Xm+Uc2HqnaujX3wlmuf03pS3wKklQ7jgs8V
- BEKbgzuKGVhEONgkBVTZNm+3970ycM3gks3XXoPM4eVCWQIAxenAEwkSoCRoe3lrfgzK9alnTzR
- d2rmUuMbDCpCXdXT70tf3vTUUX9q0yxGhlNHouR9UuSX7eNuUgib6ON3wELfcflEo8f23nPvry0
- 9wAAA
-X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1174;
+ i=rsworktech@outlook.com; s=not_default; h=from:subject:message-id;
+ bh=cby+1jVkm77u6wkNVFnwY7Zel5ns9SwCbUFjdQo23d8=;
+ b=owEBbQKS/ZANAwAIAW87mNQvxsnYAcsmYgBoDkEMC9YQa4pYiRQ4m8eDAv3pFcvx3SdQvUtxA
+ t5FkHu8dVyJAjMEAAEIAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCaA5BDAAKCRBvO5jUL8bJ
+ 2KgHEADOuGO9cGsSUh1JGInQtQK/Nj56a2IhHlhvZbMELaEFp7sz389+1psGnMqwmAtijjz311F
+ ScH6yNQ01ox8XzUj/zHbhP7+5d3yXT1KMuyArrVWYwWkQ/3rPfOqtNxNNBTNCWVdqaW5RzT9Y+f
+ u2BdaEPreaXeVkTsu5ze6vTout+y31EDzPihMqgKu5NZL6XsHt9QDSCSi9MeBCCFDpSZKzKGjrP
+ 9zwR17lLhc37Z92qsSKVl+p5LOdXwAzFM/XqTTFHji1p6HUME/ygaR2RyeAfU8D1tq0Q5bSsXfm
+ av6DyFc+rLqnlFAiEYA3gmjS6yndiWJOkMLPYv91+qPYAJr0pa47DCtJeH9VpXOrZhRJXlZVpNI
+ 4aTZsHYqPLYPYHxecSGDJlE1v7m4jq/X2wrogJRqr/9AOES0OyRkWbtW22XPYKvW250yW+LrNB/
+ Z/sY7utlfFRSLxPBVBHBMB24bxoeornVdZUwYV75RrtiSHCspMbgq/T3phsT2lj5+t8s2Ti0wRA
+ 2XBXggkU5sPTaJDdqeei6a9GoAYNWlykcG+9/wU6LFx/CDDKFJS7t3pbPoW2oFINQMHjucyAsIY
+ A2HVmOQ5+2x/jKEpgyjIG10C28uZDKp0YWCp1McjMBHaQahP2kXS0PQE2t+Q7GxTfLR/09LvjfQ
+ IchJaG0Q92+xFyQ==
+X-Developer-Key: i=rsworktech@outlook.com; a=openpgp;
+ fpr=17AADD6726DDC58B8EE5881757670CCFA42CCF0A
+X-Endpoint-Received: by B4 Relay for rsworktech@outlook.com/not_default with auth_id=390
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+The last command is not indented thus does not show as code block when
+rendered. This patch fixes it.
 
-This ensures we get all information we need to debug issues when users
-forward us their logs.
-
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Reviewed-by: Neal Gompa <neal@gompa.dev>
-Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
-Signed-off-by: Sven Peter <sven@svenpeter.dev>
+Fixes: 4ac0b122ee63 ("docs: networking: convert tproxy.txt to ReST")
+Signed-off-by: Levi Zim <rsworktech@outlook.com>
 ---
- drivers/i2c/busses/i2c-pasemi-core.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ Documentation/networking/tproxy.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/i2c/busses/i2c-pasemi-core.c b/drivers/i2c/busses/i2c-pasemi-core.c
-index dad20ee0c6689eda309cb0374aa75b42669cbcdc..f4eca44ed18395331a366537bd06f2eb3ba08e21 100644
---- a/drivers/i2c/busses/i2c-pasemi-core.c
-+++ b/drivers/i2c/busses/i2c-pasemi-core.c
-@@ -22,6 +22,7 @@
- /* Register offsets */
- #define REG_MTXFIFO	0x00
- #define REG_MRXFIFO	0x04
-+#define REG_XFSTA	0x0c
- #define REG_SMSTA	0x14
- #define REG_IMASK	0x18
- #define REG_CTL		0x1c
-@@ -99,14 +100,18 @@ static int pasemi_smb_clear(struct pasemi_smbus *smbus)
- 				 USEC_PER_MSEC * PASEMI_TRANSFER_TIMEOUT_MS);
+diff --git a/Documentation/networking/tproxy.rst b/Documentation/networking/tproxy.rst
+index 7f7c1ff6f159ed98d96c63d99c98ddbaefd47124..102c030e3cf06d6e9607f7668b417b99a3a62300 100644
+--- a/Documentation/networking/tproxy.rst
++++ b/Documentation/networking/tproxy.rst
+@@ -71,7 +71,7 @@ add rules like this to the iptables ruleset above::
  
- 	if (ret < 0) {
--		dev_err(smbus->dev, "Bus is still stuck (status 0x%08x)\n", status);
-+		dev_err(smbus->dev, "Bus is still stuck (status 0x%08x xfstatus 0x%08x)\n",
-+			 status, reg_read(smbus, REG_XFSTA));
- 		return -EIO;
- 	}
+ Or the following rule to nft:
  
- 	/* If any badness happened or there is data in the FIFOs, reset the FIFOs */
- 	if ((status & (SMSTA_MRNE | SMSTA_JMD | SMSTA_MTO | SMSTA_TOM | SMSTA_MTN | SMSTA_MTA)) ||
--	    !(status & SMSTA_MTE))
-+	    !(status & SMSTA_MTE)) {
-+		dev_warn(smbus->dev, "Issuing reset due to status 0x%08x (xfstatus 0x%08x)\n",
-+			 status, reg_read(smbus, REG_XFSTA));
- 		pasemi_reset(smbus);
-+	}
+-# nft add rule filter divert tcp dport 80 tproxy to :50080 meta mark set 1 accept
++    # nft add rule filter divert tcp dport 80 tproxy to :50080 meta mark set 1 accept
  
- 	/* Clear the flags */
- 	reg_write(smbus, REG_SMSTA, status);
+ Note that for this to work you'll have to modify the proxy to enable (SOL_IP,
+ IP_TRANSPARENT) for the listening socket.
 
+---
+base-commit: f73f05c6f711fd1628c7565441b9febc0c4d6c58
+change-id: 20250427-tproxy-docs-fix-ccbbbf42549f
+
+Best regards,
 -- 
-2.34.1
+Levi Zim <rsworktech@outlook.com>
 
