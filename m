@@ -1,62 +1,72 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 26 Apr 2025 19:45:32 -0500
-Subject: [PATCH] arm64: tegra: p3310: Explicitly enable GPU
+From: Kurt Borja <kuurtb@gmail.com>
+Subject: [PATCH v2 0/2] platform/x86: alienware-wmi-wmax: Add support for
+ GPIO methods
+Date: Sun, 27 Apr 2025 03:24:47 -0300
+Message-Id: <20250427-awcc-gpio-v2-0-c731373b5d02@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250426-tx2-gpu-v1-1-fa1c78dcdbdc@gmail.com>
-X-B4-Tracking: v=1; b=H4sIACt+DWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDEyMz3ZIKI930glJdw5S0lBQLE0OLJENDJaDqgqLUtMwKsEnRsbW1AHc
- nTzZZAAAA
-X-Change-ID: 20250426-tx2-gpu-1dfdd8418b11
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAK/NDWgC/03MQQ7CIBCF4as0sxbDUGiiK+/RdEEp0ElsacCgp
+ uHuYuPC5f/y8u2QbCSb4NrsEG2mRGGtIU4NmFmv3jKaaoPgQnGJLdNPY5jfKDAhR3TKKNlNAup
+ /i9bR67D6ofZM6RHi+6AzftefIv6VjIwz7LhGHE3rLvrmF033swkLDKWUD5r/8sGiAAAA
+X-Change-ID: 20250413-awcc-gpio-24b1f5c546d2
+To: Hans de Goede <hdegoede@redhat.com>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Armin Wolf <W_Armin@gmx.de>
+Cc: Gabriel Marcano <gabemarcano@yahoo.com>, 
+ platform-driver-x86@vger.kernel.org, Dell.Client.Kernel@dell.com, 
+ linux-kernel@vger.kernel.org, Kurt Borja <kuurtb@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745714735; l=1085;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=1qwq1cir+VfwVl8dxdzM8N5/93zGvcNjh8ZMxb/dTUA=;
- b=/3z+hRDAhqVhbJV7GtS0ycYT8SD07OitzJS9dZ0VpCAlSDVL13n+LmOziCze6bnicQ5Io0DDN
- he4ClbHSx2YA1sOUozlsS8qjeR/rhh6ql13r1nOWL3VI+WjQuigWeyd
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1473; i=kuurtb@gmail.com;
+ h=from:subject:message-id; bh=SnRI4E+XNy8GG/C2Rg6Ulr3oImnQQogQ6gtX19wzy+g=;
+ b=owGbwMvMwCUmluBs8WX+lTTG02pJDBm8Zw9//5QTbaPZ1HxRxurjnuzSKWL7n5pcWO+x7QvT3
+ OKemSbRHaUsDGJcDLJiiiztCYu+PYrKe+t3IPQ+zBxWJpAhDFycAjCRCbUM/zN1edYYK16XShHd
+ rGk2d+KJfd9mXrkRL/DpN/sJjvl/3NYyMjzvPab+Za9hoNG5+N8cxbaBSdsD2WcY3lj3+51RR+z
+ zMAYA
+X-Developer-Key: i=kuurtb@gmail.com; a=openpgp;
+ fpr=54D3BE170AEF777983C3C63B57E3B6585920A69A
+X-Endpoint-Received: by B4 Relay for kuurtb@gmail.com/default with auth_id=387
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The gpu node originally was explicitly left disabled as it was expected
-for the bootloader to enable it. However, this is only done in u-boot.
-If u-boot is not in the boot chain, this will never be enabled. Other
-Tegra186 devices already explicitly enable the gpu, so make p3310 match.
+Hi all,
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+I found a great blog post [1], which described the reverse engineering
+process of the GPIO control methods present on this device.
+
+In summary, these methods expose some debugging capabilities of the RGB
+lighting controller present on Dell gaming laptops. See [Patch 2] for
+more info.
+
+Exposing these methods to DebugFS is useful for developers exploring
+this RGB controllers (myself included).
+
+Thanks for your feedback!
+
+[1] https://gabriel.marcanobrady.family/blog/2024/12/16/dell-g5-5505-se-acpi-or-figuring-out-how-to-reset-the-rgb-controller/
+
+Signed-off-by: Kurt Borja <kuurtb@gmail.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi | 4 ++++
- 1 file changed, 4 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi b/arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi
-index e2d6857a37097c5acc38dcbfd12800d59510f1c6..8aec6999603059107ba05cdbbe8bb497e3824a06 100644
---- a/arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi
-@@ -191,6 +191,10 @@ pmc@c360000 {
- 		nvidia,invert-interrupt;
- 	};
- 
-+	gpu@17000000 {
-+		status = "okay";
-+	};
-+
- 	bpmp {
- 		i2c {
- 			status = "okay";
+Changes in v2:
+- Dropped module parameter
+- Added ABI documentation to Patch 1
+- Small improvements to documentation based on Armin's comments
+- Improved Pin description table format
+- Link to v1: https://lore.kernel.org/r/20250423-awcc-gpio-v1-0-160a11bc3f9a@gmail.com
 
 ---
-base-commit: 5bc1018675ec28a8a60d83b378d8c3991faa5a27
-change-id: 20250426-tx2-gpu-1dfdd8418b11
+Kurt Borja (2):
+      platform/x86: alienware-wmi-wmax: Expose GPIO debug methods
+      Documentation: wmi: alienware-wmi: Add GPIO control documentation
+
+ Documentation/ABI/testing/debugfs-alienware-wmi |  20 +++++
+ Documentation/wmi/devices/alienware-wmi.rst     |  78 ++++++++++++++++-
+ drivers/platform/x86/dell/alienware-wmi-wmax.c  | 108 +++++++++++++++++++++++-
+ 3 files changed, 201 insertions(+), 5 deletions(-)
+---
+base-commit: 981527828c301644bc4014faa9c523e8a5e32a32
+change-id: 20250413-awcc-gpio-24b1f5c546d2
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+ ~ Kurt
 
