@@ -1,124 +1,62 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Sat, 26 Apr 2025 12:47:21 +0400
-Subject: [PATCH v9 2/2] arm64: dts: qcom: ipq5018: Enable PCIe
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Sat, 26 Apr 2025 19:45:32 -0500
+Subject: [PATCH] arm64: tegra: p3310: Explicitly enable GPU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250426-ipq5018-pcie-v9-2-1f0dca6c205b@outlook.com>
-References: <20250426-ipq5018-pcie-v9-0-1f0dca6c205b@outlook.com>
-In-Reply-To: <20250426-ipq5018-pcie-v9-0-1f0dca6c205b@outlook.com>
-To: Vinod Koul <vkoul@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+Message-Id: <20250426-tx2-gpu-v1-1-fa1c78dcdbdc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACt+DWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDEyMz3ZIKI930glJdw5S0lBQLE0OLJENDJaDqgqLUtMwKsEnRsbW1AHc
+ nTzZZAAAA
+X-Change-ID: 20250426-tx2-gpu-1dfdd8418b11
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Nitheesh Sekar <quic_nsekar@quicinc.com>, 
- Varadarajan Narayanan <quic_varada@quicinc.com>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Praveenkumar I <quic_ipkumar@quicinc.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-pci@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>, 
- 20250317100029.881286-1-quic_varada@quicinc.com, 
- 20250317100029.881286-2-quic_varada@quicinc.com, 
- Sricharan Ramabadhran <quic_srichara@quicinc.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745657268; l=2062;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=OKmTrcmt0ksiQwz9dz8aVIs/K+GfvvlMVFo78Mfk/ZA=;
- b=rV0etEqqpSlZRcytneg10NcKG8RAOvyDsfbwXwAY97bz9Nj6HGPetzIPY8+RBPQsDtlKI8Q/t
- cKs3ntwbB2ADl5MmOQ2qSpeide1bVr2mNbwcpwcCVt5+flGX6QTrxrx
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745714735; l=1085;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=1qwq1cir+VfwVl8dxdzM8N5/93zGvcNjh8ZMxb/dTUA=;
+ b=/3z+hRDAhqVhbJV7GtS0ycYT8SD07OitzJS9dZ0VpCAlSDVL13n+LmOziCze6bnicQ5Io0DDN
+ he4ClbHSx2YA1sOUozlsS8qjeR/rhh6ql13r1nOWL3VI+WjQuigWeyd
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Nitheesh Sekar <quic_nsekar@quicinc.com>
+The gpu node originally was explicitly left disabled as it was expected
+for the bootloader to enable it. However, this is only done in u-boot.
+If u-boot is not in the boot chain, this will never be enabled. Other
+Tegra186 devices already explicitly enable the gpu, so make p3310 match.
 
-Enable the PCIe controller and PHY nodes for RDP 432-c2.
-
-Signed-off-by: Nitheesh Sekar <quic_nsekar@quicinc.com>
-Signed-off-by: Sricharan Ramabadhran <quic_srichara@quicinc.com>
-Acked-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts | 40 ++++++++++++++++++++++++++
- 1 file changed, 40 insertions(+)
+ arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-index 8460b538eb6a3e2d6b971bd9637309809e0c0f0c..43def95e9275258041e7522ba4098a3767be3df1 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-+++ b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-@@ -9,6 +9,8 @@
+diff --git a/arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi b/arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi
+index e2d6857a37097c5acc38dcbfd12800d59510f1c6..8aec6999603059107ba05cdbbe8bb497e3824a06 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi
++++ b/arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi
+@@ -191,6 +191,10 @@ pmc@c360000 {
+ 		nvidia,invert-interrupt;
+ 	};
  
- #include "ipq5018.dtsi"
- 
-+#include <dt-bindings/gpio/gpio.h>
-+
- / {
- 	model = "Qualcomm Technologies, Inc. IPQ5018/AP-RDP432.1-C2";
- 	compatible = "qcom,ipq5018-rdp432-c2", "qcom,ipq5018";
-@@ -28,6 +30,20 @@ &blsp1_uart1 {
- 	status = "okay";
- };
- 
-+&pcie0 {
-+	pinctrl-0 = <&pcie0_default>;
-+	pinctrl-names = "default";
-+
-+	perst-gpios = <&tlmm 15 GPIO_ACTIVE_LOW>;
-+	wake-gpios = <&tlmm 16 GPIO_ACTIVE_LOW>;
-+
-+	status = "okay";
-+};
-+
-+&pcie0_phy {
-+	status = "okay";
-+};
-+
- &sdhc_1 {
- 	pinctrl-0 = <&sdc_default_state>;
- 	pinctrl-names = "default";
-@@ -43,6 +59,30 @@ &sleep_clk {
- };
- 
- &tlmm {
-+	pcie0_default: pcie0-default-state {
-+		clkreq-n-pins {
-+			pins = "gpio14";
-+			function = "pcie0_clk";
-+			drive-strength = <8>;
-+			bias-pull-up;
-+		};
-+
-+		perst-n-pins {
-+			pins = "gpio15";
-+			function = "gpio";
-+			drive-strength = <8>;
-+			bias-pull-up;
-+			output-low;
-+		};
-+
-+		wake-n-pins {
-+			pins = "gpio16";
-+			function = "pcie0_wake";
-+			drive-strength = <8>;
-+			bias-pull-up;
-+		};
++	gpu@17000000 {
++		status = "okay";
 +	};
 +
- 	sdc_default_state: sdc-default-state {
- 		clk-pins {
- 			pins = "gpio9";
+ 	bpmp {
+ 		i2c {
+ 			status = "okay";
 
+---
+base-commit: 5bc1018675ec28a8a60d83b378d8c3991faa5a27
+change-id: 20250426-tx2-gpu-1dfdd8418b11
+
+Best regards,
 -- 
-2.49.0
+Aaron Kling <webgeek1234@gmail.com>
 
