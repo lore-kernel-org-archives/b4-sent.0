@@ -1,14 +1,13 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Subject: [PATCH v2 0/4] Board support for Fernsehfee 3.0
-Date: Mon, 28 Apr 2025 12:44:27 +0200
-Message-Id: <20250428-fernsehfee-v2-0-293b98a43a91@posteo.net>
+Date: Mon, 28 Apr 2025 12:44:28 +0200
+Subject: [PATCH v2 1/4] dt-bindings: vendor-prefixes: Add TC
+ Unterhaltungselektronik AG
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAtcD2gC/03MTQ7CIBiE4as031oMP2KjK+9husB2EDbQACGah
- ruLjQuX7yTzbJSRPDJdh40Sqs8+hh7yMNDsTHiC+aU3SS41V0IzixQynAXYQxvYi+KzGUH9sCZ
- Y/9qx+9Tb+Vxieu92Fd/1x0j1z1TBOJNnKdRJzIsazW2NuSAeAwpNrbUPE2O1saUAAAA=
-X-Change-ID: 20250315-fernsehfee-b5aef930ca7e
+Message-Id: <20250428-fernsehfee-v2-1-293b98a43a91@posteo.net>
+References: <20250428-fernsehfee-v2-0-293b98a43a91@posteo.net>
+In-Reply-To: <20250428-fernsehfee-v2-0-293b98a43a91@posteo.net>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -19,47 +18,39 @@ Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745837069; l=1421;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745837069; l=1023;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=zoNoOQu9Fld7LEIioJ+wlApw7JJtAWg9ZZxxQWQdkQ0=;
- b=sloiws7PjerztavFOh+WRSwUGtcJ8z57ukYOGobwKBpWoMWMkPQdnhNLJFGvr24RatYRu5di8
- GLTh5fOlEknAphpjgeeMJ/wjmSSrkPR/7ufDGiz/ou72uuoN0GwH3MD
+ bh=lhW1S1FqMGlohP33kbMw1Pv6brNFdpf4vK4RYn9L2Ow=;
+ b=FTY9CmJ9n2ohyDbO/qJZqosFFn7U14VWhCnco0IzGh6Gm4JAfeBCIiuq5vK/IPab3X0l9f6Sa
+ Ihm0gJtX4+jAcTLq+jgTYmqgc0uFaRXuQcRIgnZuzJPM326GFPDN3k9
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fernsehfee[1] ("TV fairy") is a family of set-top boxes marketed as
-ad-blocking appliances. This patchset adds board support in the form of
-a device tree for the third generation, Fernsehfee 3.0.
+TC Unterhaltungselektronik is the company behind Fernsehfee branded
+set-top boxes.
 
-[1]: https://fernsehfee.de/ (German), https://www.telefairy.com/ (English)
-
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-Changes in v2:
-- Apply ACKs from Krzysztof Kozlowski and R-b from Neil Armstrong and Martin Blumenstingl
-- New patch 4/4 to describe PMIC regulators, after discussion with Martin Blumenstingl
-- Link to v1: https://lore.kernel.org/r/20250323-fernsehfee-v1-0-2621341cd37a@posteo.net
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
----
-J. Neuschäfer (4):
-      dt-bindings: vendor-prefixes: Add TC Unterhaltungselektronik AG
-      dt-bindings: arm: amlogic: Add TCU Fernsehfee 3.0 board
-      ARM: dts: amlogic: Add TCU Fernsehfee 3.0
-      ARM: dts: amlogic: meson8-fernsehfee3: Describe regulators
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index 86f6a19b28ae217643bf7a63a471f74819d18238..c61c5e11ff5472acb8a6ebdd6d1a66cfa07ae7af 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -1494,6 +1494,8 @@ patternProperties:
+     description: Toby Churchill Ltd.
+   "^tcs,.*":
+     description: Shenzhen City Tang Cheng Technology Co., Ltd.
++  "^tcu,.*":
++    description: TC Unterhaltungselektronik AG
+   "^tdo,.*":
+     description: Shangai Top Display Optoelectronics Co., Ltd
+   "^team-source-display,.*":
 
- Documentation/devicetree/bindings/arm/amlogic.yaml |   1 +
- .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
- arch/arm/boot/dts/amlogic/Makefile                 |   1 +
- arch/arm/boot/dts/amlogic/meson8-fernsehfee3.dts   | 306 +++++++++++++++++++++
- arch/arm/boot/dts/amlogic/meson8.dtsi              |  18 ++
- 5 files changed, 328 insertions(+)
----
-base-commit: 9c8bd75378d70cd6087d503eb8317d1eea67164a
-change-id: 20250315-fernsehfee-b5aef930ca7e
-
-Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+2.48.0.rc1.219.gb6b6757d772
 
