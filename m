@@ -1,146 +1,65 @@
-From: Daniel Braunwarth <daniel.braunwarth@kuka.com>
-Date: Mon, 28 Apr 2025 09:09:07 +0200
-Subject: [PATCH net-next] net: phy: realtek: Add support for WOL magic
- packet on RTL8211F
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH v2 0/4] Board support for Fernsehfee 3.0
+Date: Mon, 28 Apr 2025 12:44:27 +0200
+Message-Id: <20250428-fernsehfee-v2-0-293b98a43a91@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250428-realtek_wol-v1-1-15de3139d488@kuka.com>
-X-B4-Tracking: v=1; b=H4sIAJMpD2gC/x3M0QpAMBSH8VfRubbihORVJC3+40SjbbGSd7dc/
- i6+7yEPJ/DUZQ85XOLlsAllntG0artAyZxMXHBdVFwrB70HbON97KoBz6aFbifDlIrTwUj8bz1
- ZBGURAw3v+wGUun0/ZwAAAA==
-X-Change-ID: 20250425-realtek_wol-6e2df8ea8cf2
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Daniel Braunwarth <daniel.braunwarth@kuka.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAtcD2gC/03MTQ7CIBiE4as031oMP2KjK+9husB2EDbQACGah
+ ruLjQuX7yTzbJSRPDJdh40Sqs8+hh7yMNDsTHiC+aU3SS41V0IzixQynAXYQxvYi+KzGUH9sCZ
+ Y/9qx+9Tb+Vxieu92Fd/1x0j1z1TBOJNnKdRJzIsazW2NuSAeAwpNrbUPE2O1saUAAAA=
+X-Change-ID: 20250315-fernsehfee-b5aef930ca7e
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745824177; l=3620;
- i=daniel.braunwarth@kuka.com; s=20250425; h=from:subject:message-id;
- bh=gwVptqcSBToB7LxapLAcdpkwFvRzQXaqfiCXknN+ioA=;
- b=aAVHeljm7rXfuaeD+CRsjGEUjPEMIKxdF078yC+p/gTJpu9UzyKz9FJhSpwdFUf4Ohq7SUQb3
- nXyrXk0y3ToC6k5LKYsG77hr67h8Qllu1iHiLVFlb5OJwemO1LoCIN/
-X-Developer-Key: i=daniel.braunwarth@kuka.com; a=ed25519;
- pk=fTSYKvKU5SCGGLHVz5NaznQ2MbXNWUZzdqPihgCfYms=
-X-Endpoint-Received: by B4 Relay for daniel.braunwarth@kuka.com/20250425 with auth_id=388
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745837069; l=1421;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=zoNoOQu9Fld7LEIioJ+wlApw7JJtAWg9ZZxxQWQdkQ0=;
+ b=sloiws7PjerztavFOh+WRSwUGtcJ8z57ukYOGobwKBpWoMWMkPQdnhNLJFGvr24RatYRu5di8
+ GLTh5fOlEknAphpjgeeMJ/wjmSSrkPR/7ufDGiz/ou72uuoN0GwH3MD
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RTL8211F supports multiple WOL modes. This patch adds support for
-magic packets.
+Fernsehfee[1] ("TV fairy") is a family of set-top boxes marketed as
+ad-blocking appliances. This patchset adds board support in the form of
+a device tree for the third generation, Fernsehfee 3.0.
 
-The PHY notifies the system via the INTB/PMEB pin when a WOL event
-occurs.
+[1]: https://fernsehfee.de/ (German), https://www.telefairy.com/ (English)
 
-Signed-off-by: Daniel Braunwarth <daniel.braunwarth@kuka.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- drivers/net/phy/realtek/realtek_main.c | 58 ++++++++++++++++++++++++++++++++++
- 1 file changed, 58 insertions(+)
-
-diff --git a/drivers/net/phy/realtek/realtek_main.c b/drivers/net/phy/realtek/realtek_main.c
-index 893c824796715a905bab99646a474c3bea95ec11..ed2fd6a0d7466e9638ab988efb03934556f52794 100644
---- a/drivers/net/phy/realtek/realtek_main.c
-+++ b/drivers/net/phy/realtek/realtek_main.c
-@@ -10,6 +10,7 @@
- #include <linux/bitops.h>
- #include <linux/of.h>
- #include <linux/phy.h>
-+#include <linux/netdevice.h>
- #include <linux/module.h>
- #include <linux/delay.h>
- #include <linux/clk.h>
-@@ -38,6 +39,10 @@
- 
- #define RTL8211F_INSR				0x1d
- 
-+#define RTL8211F_WOL_MAGIC			BIT(12)
-+#define RTL8211F_WOL_CLEAR			(BIT(15) | 0x1fff)
-+#define RTL8211F_WOL_INT_ENABLE			BIT(5)
-+
- #define RTL8211F_LEDCR				0x10
- #define RTL8211F_LEDCR_MODE			BIT(15)
- #define RTL8211F_LEDCR_ACT_TXRX			BIT(4)
-@@ -123,6 +128,7 @@ struct rtl821x_priv {
- 	u16 phycr2;
- 	bool has_phycr2;
- 	struct clk *clk;
-+	u32 saved_wolopts;
- };
- 
- static int rtl821x_read_page(struct phy_device *phydev)
-@@ -354,6 +360,56 @@ static irqreturn_t rtl8211f_handle_interrupt(struct phy_device *phydev)
- 	return IRQ_HANDLED;
- }
- 
-+static void rtl8211f_get_wol(struct phy_device *dev, struct ethtool_wolinfo *wol)
-+{
-+	struct rtl821x_priv *priv = dev->priv;
-+
-+	wol->supported = WAKE_MAGIC;
-+	wol->wolopts = priv->saved_wolopts;
-+}
-+
-+static int rtl8211f_set_wol(struct phy_device *dev, struct ethtool_wolinfo *wol)
-+{
-+	struct rtl821x_priv *priv = dev->priv;
-+	const u8 *mac_addr = dev->attached_dev->dev_addr;
-+	int oldpage;
-+
-+	oldpage = phy_save_page(dev);
-+	if (oldpage < 0)
-+		goto err;
-+
-+	if (wol->wolopts & WAKE_MAGIC) {
-+		/* Store the device address for the magic packet */
-+		rtl821x_write_page(dev, 0xd8c);
-+		__phy_write(dev, 16, mac_addr[1] << 8 | (mac_addr[0]));
-+		__phy_write(dev, 17, mac_addr[3] << 8 | (mac_addr[2]));
-+		__phy_write(dev, 18, mac_addr[5] << 8 | (mac_addr[4]));
-+
-+		/* Clear WOL status and enable magic packet matching */
-+		rtl821x_write_page(dev, 0xd8a);
-+		__phy_write(dev, 16, RTL8211F_WOL_MAGIC);
-+		__phy_write(dev, 17, RTL8211F_WOL_CLEAR);
-+
-+		/* Enable the WOL interrupt */
-+		rtl821x_write_page(dev, 0xd40);
-+		__phy_set_bits(dev, 0x16, RTL8211F_WOL_INT_ENABLE);
-+	} else {
-+		/* Disable the WOL interrupt */
-+		rtl821x_write_page(dev, 0xd40);
-+		__phy_clear_bits(dev, 0x16, RTL8211F_WOL_INT_ENABLE);
-+
-+		/* Clear WOL status and disable magic packet matching */
-+		rtl821x_write_page(dev, 0xd8a);
-+		__phy_write(dev, 16, 0x0);
-+		__phy_write(dev, 17, RTL8211F_WOL_CLEAR);
-+	}
-+
-+	priv->saved_wolopts = wol->wolopts;
-+
-+err:
-+	return phy_restore_page(dev, oldpage, 0);
-+}
-+
- static int rtl8211_config_aneg(struct phy_device *phydev)
- {
- 	int ret;
-@@ -1400,6 +1456,8 @@ static struct phy_driver realtek_drvs[] = {
- 		.read_status	= rtlgen_read_status,
- 		.config_intr	= &rtl8211f_config_intr,
- 		.handle_interrupt = rtl8211f_handle_interrupt,
-+		.set_wol	= rtl8211f_set_wol,
-+		.get_wol	= rtl8211f_get_wol,
- 		.suspend	= rtl821x_suspend,
- 		.resume		= rtl821x_resume,
- 		.read_page	= rtl821x_read_page,
+Changes in v2:
+- Apply ACKs from Krzysztof Kozlowski and R-b from Neil Armstrong and Martin Blumenstingl
+- New patch 4/4 to describe PMIC regulators, after discussion with Martin Blumenstingl
+- Link to v1: https://lore.kernel.org/r/20250323-fernsehfee-v1-0-2621341cd37a@posteo.net
 
 ---
-base-commit: 4acf6d4f6afc3478753e49c495132619667549d9
-change-id: 20250425-realtek_wol-6e2df8ea8cf2
+J. Neuschäfer (4):
+      dt-bindings: vendor-prefixes: Add TC Unterhaltungselektronik AG
+      dt-bindings: arm: amlogic: Add TCU Fernsehfee 3.0 board
+      ARM: dts: amlogic: Add TCU Fernsehfee 3.0
+      ARM: dts: amlogic: meson8-fernsehfee3: Describe regulators
+
+ Documentation/devicetree/bindings/arm/amlogic.yaml |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ arch/arm/boot/dts/amlogic/Makefile                 |   1 +
+ arch/arm/boot/dts/amlogic/meson8-fernsehfee3.dts   | 306 +++++++++++++++++++++
+ arch/arm/boot/dts/amlogic/meson8.dtsi              |  18 ++
+ 5 files changed, 328 insertions(+)
+---
+base-commit: 9c8bd75378d70cd6087d503eb8317d1eea67164a
+change-id: 20250315-fernsehfee-b5aef930ca7e
 
 Best regards,
 -- 
-Daniel Braunwarth <daniel.braunwarth@kuka.com>
+J. Neuschäfer <j.ne@posteo.net>
 
