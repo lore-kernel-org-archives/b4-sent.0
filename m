@@ -1,15 +1,13 @@
 From: Chen Linxuan <chenlinxuan@uniontech.com>
-Subject: [PATCH RFC v3 0/8] kernel-hacking: introduce CONFIG_NO_AUTO_INLINE
-Date: Tue, 29 Apr 2025 12:06:04 +0800
-Message-Id: <20250429-noautoinline-v3-0-4c49f28ea5b5@uniontech.com>
+Date: Tue, 29 Apr 2025 12:06:05 +0800
+Subject: [PATCH RFC v3 1/8] nvme: add __always_inline for
+ nvme_pci_npages_prp
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACxQEGgC/22OzQ6CMBCEX4X0qiXdpQXqyQTCA3g1HhBXaaKt4
- S8YwrtbG0/G48xkvpmF9dQZ6tkuWlhHk+mNs14k24g1bW1vxM3Fa4YClZCQcuvqcXDG3o0lnpM
- +a1KJkgqZrzw7upo54I7sUBXs5M3W9IPrXmFighAlUEksc5BQlCWWYvPFAwgFEuNco0458Kalz
- 9A81nY/Wn9toKaNG/cI4AkD7P+1CbnglOoaM8hUIq6/gHVd37l4dtL+AAAA
-X-Change-ID: 20250416-noautoinline-8e9b9e535452
+Message-Id: <20250429-noautoinline-v3-1-4c49f28ea5b5@uniontech.com>
+References: <20250429-noautoinline-v3-0-4c49f28ea5b5@uniontech.com>
+In-Reply-To: <20250429-noautoinline-v3-0-4c49f28ea5b5@uniontech.com>
 To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
  Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
  Andrew Morton <akpm@linux-foundation.org>, 
@@ -43,95 +41,89 @@ Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org,
  Chen Linxuan <chenlinxuan@uniontech.com>, 
  Changbin Du <changbin.du@intel.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2639;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2975;
  i=chenlinxuan@uniontech.com; h=from:subject:message-id;
- bh=V+YDfvUyGy5qM6nqWNSGKKulp2fwuDLB1gLxIkj/Hno=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoEFAt1A5qQ0LESAzipTR7awHbnQPj78n5atow0
- tiwIctZ69yJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBBQLQAKCRB2HuYUOZmu
- ixgVD/9iV08f+Vs6eS/LbQDJ7q+zM9yfQ97NvSrbN+MQtFOdOOX/B9DDWjz07bMvwZeoSrnuWD8
- Hp2NCMdUMvn/XAg8tY/cC0FeuznQPAg5DIqOw8e+jaILOgWNROimjgixLuhTr6WiaM0KrcZDHBL
- OCFiXr8cJEoV5nmHDZpwmsRyfhwIkYxKUiqVZvxYPnX5Mq0jdE9cE129yrf++c0rJHV7tiA9m3m
- 3Dgfo4EYCqhLMhujPTgQnqrtD260ZB/BDOIDT/4pmvjfuO7SVexQMqaZ6VD9Zv6g3IpgG//tHdW
- YqgmY8n2rOMhJaDXULwLGpK32HY5uEPSykT3U8ytrJs1vPonlNQ+Yl1jBUOMiJd28s6gMWhAfNF
- 7DhrCdUVPQITzQ3hp7+hMavCnibw1bsO70Q1Jyoe/HbpVw+jgqinhhqNY/q95Z3kUEjgZ70wbQz
- J4+fpvQceoLTw3aPUBwT4AgmFYItGhMG/oWciNlmNPDr/PkMdez2OuxVUBnKvMvmy4yNtOyF82f
- vhAi9OSPoii6ldf1OcZLCU7qEMXlU9dM1KhX437xOQ4ZbW31J0vPnuqxW9b5BE8+hsNfWWLyt/z
- sTJSwkwcY3PBvFzx6dDyI4Q7JC83rCdQ6Bpw8f+o9IgK2kSIMrG0t4mrxG3OSfZB8NXalFg40yK
- bumZ9NWzca7x0hA==
+ bh=Z0QiTYLHzEeebaywUqCSW16Ny4EMqCsjjX+KS5KBMNU=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoEFAukhIgTV0U3xfinuIjd2L0FB1AExqdCchlv
+ A3ri9QFLWiJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBBQLgAKCRB2HuYUOZmu
+ i9PbD/0bxMLZB/tZ4Ta8gMq1WIv38DYhUP3aWnHRrfHrBmcZmF3pYKgj7U3bQhz1rGgW21/5jLf
+ O6iQHC8JkszMXt7z43locXuD3D2XLaMzfIjJ4SYSBJJCUhLDwTO0hXO+SgM8VdRdhmjZUc1WhnK
+ MotrwNb7+YScOJV7UKO27QZ4mEX9QtP1og5KDtG4fX2A4elJ/oUz5VyPu1ZVWaZIPGpR6UfQu2W
+ 3V96onZcmtcYOTu7m+Q4YYn57iocabwdiYGXp9u6+muG1V36fqjgCWLFdJ87b10fBGpqSdLd78K
+ Np/ZrE3r79VyFTS10nLQwcH5emDVtRsUooPidOTFB5RbtCiWZVwNXbzPXeUAOlpo1fud6r4VWu6
+ qQumY8DgxrRS5yYkJuqNuYsyMje5EqNF0cT9ACHUWaiTx2mc4D4GMZxmlK0Gb/i6H6b5Nn2r2Xj
+ wAaoImxclHPRalFdhXU+KjoIiAQ+6sz9E+8WePUUrBdVGKfCKQPnIoZrmz83bxpZtjB8fQ0tEQM
+ iAAaovwAWgBfxfbUHIa8VeSzTs5I5aHhO+aY/5Sd1k2ttkBswHZJumET7aNiQoPsJoewmJYilGQ
+ jL21aH2TLLnbAvvZ8tf8QpXJtxzRSYrmcdb8wsQqvI0rVPoHUhioggOtX3jm+SKC+ApmPIpQr8u
+ b//ZkECSNX3jkKQ==
 X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series introduces a new kernel configuration option NO_AUTO_INLINE,
-which can be used to disable the automatic inlining of functions.
+From: Winston Wen <wentao@uniontech.com>
 
-This will allow the function tracer to trace more functions
-because it only traces functions that the compiler has not inlined.
+On x86_64 with gcc version 13.3.0, I build drivers/nvme/host/pci.c
+with:
 
-Previous discussions can be found at
+  make defconfig
+  ./scripts/kconfig/merge_config.sh .config <(
+    echo CONFIG_BLK_DEV_NVME=m
+  )
+  make KCFLAGS="-fno-inline-small-functions -fno-inline-functions-called-once" \
+    drivers/nvme/host/pci.o
 
-Link: https://lore.kernel.org/all/20181028130945.23581-3-changbin.du@gmail.com/
+Then I get a compile error:
 
-This patch depends on
+    CALL    scripts/checksyscalls.sh
+    DESCEND objtool
+    INSTALL libsubcmd_headers
+    CC      drivers/nvme/host/pci.o
+  In file included from <command-line>:
+  drivers/nvme/host/pci.c: In function 'nvme_init':
+  ././include/linux/compiler_types.h:557:45: error: call to '__compiletime_assert_878' declared with attribute error: BUILD_BUG_ON failed: nvme_pci_npages_prp() > NVME_MAX_NR_ALLOCATIONS
+    557 |         _compiletime_assert(condition, msg, __compiletime_assert_, __COUNTER__)
+        |                                             ^
+  ././include/linux/compiler_types.h:538:25: note: in definition of macro '__compiletime_assert'
+    538 |                         prefix ## suffix();                             \
+        |                         ^~~~~~
+  ././include/linux/compiler_types.h:557:9: note: in expansion of macro '_compiletime_assert'
+    557 |         _compiletime_assert(condition, msg, __compiletime_assert_, __COUNTER__)
+        |         ^~~~~~~~~~~~~~~~~~~
+  ./include/linux/build_bug.h:39:37: note: in expansion of macro 'compiletime_assert'
+     39 | #define BUILD_BUG_ON_MSG(cond, msg) compiletime_assert(!(cond), msg)
+        |                                     ^~~~~~~~~~~~~~~~~~
+  ./include/linux/build_bug.h:50:9: note: in expansion of macro 'BUILD_BUG_ON_MSG'
+     50 |         BUILD_BUG_ON_MSG(condition, "BUILD_BUG_ON failed: " #condition)
+        |         ^~~~~~~~~~~~~~~~
+  drivers/nvme/host/pci.c:3804:9: note: in expansion of macro 'BUILD_BUG_ON'
+   3804 |         BUILD_BUG_ON(nvme_pci_npages_prp() > NVME_MAX_NR_ALLOCATIONS);
+        |         ^~~~~~~~~~~~
 
-  [PATCH] drm/i915/pxp: fix undefined reference to
-          `intel_pxp_gsccs_is_ready_for_sessions'
+Mark nvme_pci_npages_prp() with __always_inline make it can be computed
+at compile time.
 
-which can be found at
-
-  https://lore.kernel.org/all/20250415090616.2649889-1-jani.nikula@intel.com/
-
-as well as
-
-  [RFC PATCH 5/7] RDMA/hns: initialize db in update_srq_db()
-
-which can be found at
-
-  https://lore.kernel.org/all/FF922C77946229B6+20250411105459.90782-5-chenlinxuan@uniontech.com/
-
+Co-developed-by: Chen Linxuan <chenlinxuan@uniontech.com>
 Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
+Signed-off-by: Winston Wen <wentao@uniontech.com>
 ---
-Changes in v3:
-- Fix some modpost and objtool warnings
-- Try support clang as Bart Van Assche suggested.
-- Remove architecture depends as Bart Van Assche suggested.
-- Link to v2: https://lore.kernel.org/r/20250416-noautoinline-v2-0-e69a2717530f@uniontech.com
+ drivers/nvme/host/pci.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Changes in v2:
-- Resend via b4 to correct Message-ID and recipients.
-- Update commit message following suggestions from Jarkko Sakkinen 
-- Link to v1: https://lore.kernel.org/r/31F42D8141CDD2D0+20250411105142.89296-1-chenlinxuan@uniontech.com
+diff --git a/drivers/nvme/host/pci.c b/drivers/nvme/host/pci.c
+index b178d52eac1b7f7286e217226b9b3686d07b7b6c..9ab070a9f0372bc6595c29a884ee9f2ffe5ae8e9 100644
+--- a/drivers/nvme/host/pci.c
++++ b/drivers/nvme/host/pci.c
+@@ -390,7 +390,7 @@ static bool nvme_dbbuf_update_and_check_event(u16 value, __le32 *dbbuf_db,
+  * as it only leads to a small amount of wasted memory for the lifetime of
+  * the I/O.
+  */
+-static int nvme_pci_npages_prp(void)
++static __always_inline int nvme_pci_npages_prp(void)
+ {
+ 	unsigned max_bytes = (NVME_MAX_KB_SZ * 1024) + NVME_CTRL_PAGE_SIZE;
+ 	unsigned nprps = DIV_ROUND_UP(max_bytes, NVME_CTRL_PAGE_SIZE);
 
----
-Chen Linxuan (4):
-      rseq: add __always_inline for rseq_kernel_fields
-      kcov: add __always_inline for canonicalize_ip
-      x86/xen: add __init for xen_pgd_walk
-      lib/Kconfig.debug: introduce CONFIG_NO_AUTO_INLINE
-
-Winston Wen (4):
-      nvme: add __always_inline for nvme_pci_npages_prp
-      mm: add __always_inline for page_contains_unaccepted
-      vfio/virtio: add __always_inline for virtiovf_get_device_config_size
-      tpm: add __always_inline for tpm_is_hwrng_enabled
-
- Makefile                            | 16 ++++++++++++++++
- arch/x86/xen/mmu_pv.c               |  2 +-
- drivers/char/tpm/tpm-chip.c         |  2 +-
- drivers/nvme/host/pci.c             |  2 +-
- drivers/vfio/pci/virtio/legacy_io.c |  2 +-
- kernel/kcov.c                       |  2 +-
- kernel/rseq.c                       |  2 +-
- lib/Kconfig.debug                   | 21 +++++++++++++++++++++
- lib/Makefile                        |  3 +++
- mm/page_alloc.c                     |  2 +-
- 10 files changed, 47 insertions(+), 7 deletions(-)
----
-base-commit: ca91b9500108d4cf083a635c2e11c884d5dd20ea
-change-id: 20250416-noautoinline-8e9b9e535452
-
-Best regards,
 -- 
-Chen Linxuan <chenlinxuan@uniontech.com>
+2.43.0
 
