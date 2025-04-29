@@ -1,170 +1,137 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Tue, 29 Apr 2025 11:35:51 +0800
-Subject: [PATCH] iso: add BT_ISO_TS optional to enable ISO timestamp
+From: Chen Linxuan <chenlinxuan@uniontech.com>
+Subject: [PATCH RFC v3 0/8] kernel-hacking: introduce CONFIG_NO_AUTO_INLINE
+Date: Tue, 29 Apr 2025 12:06:04 +0800
+Message-Id: <20250429-noautoinline-v3-0-4c49f28ea5b5@uniontech.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250429-iso_ts-v1-1-e586f30de6cb@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIABZJEGgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDEyND3czi/PiSYt1kC6NEYwODxFRzCxMloOKCotS0zAqwQdGxtbUARtp
- HWlgAAAA=
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745897770; l=3821;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=7V3ep2vGxaAYLV1WXhSaBss+Dq4jK4u8OsBDNgsTPZg=;
- b=CPGdUZ6fjHNrQEwv0zuBPrpvP20XmSn1aYRNkQnZBqX2gPuk3O+sgQbMt2vn4WodgQrrcaLoA
- fJESvmPeLMZCypa8d2dtx6YwmGUF/Jjwg2mvWDkok1OBAaNtNaC8xCy
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+X-B4-Tracking: v=1; b=H4sIACxQEGgC/22OzQ6CMBCEX4X0qiXdpQXqyQTCA3g1HhBXaaKt4
+ S8YwrtbG0/G48xkvpmF9dQZ6tkuWlhHk+mNs14k24g1bW1vxM3Fa4YClZCQcuvqcXDG3o0lnpM
+ +a1KJkgqZrzw7upo54I7sUBXs5M3W9IPrXmFighAlUEksc5BQlCWWYvPFAwgFEuNco0458Kalz
+ 9A81nY/Wn9toKaNG/cI4AkD7P+1CbnglOoaM8hUIq6/gHVd37l4dtL+AAAA
+X-Change-ID: 20250416-noautoinline-8e9b9e535452
+To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
+ Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Yishai Hadas <yishaih@nvidia.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
+ Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>, 
+ Kevin Tian <kevin.tian@intel.com>, 
+ Alex Williamson <alex.williamson@redhat.com>, 
+ Peter Huewe <peterhuewe@gmx.de>, Jarkko Sakkinen <jarkko@kernel.org>, 
+ Masahiro Yamada <masahiroy@kernel.org>, 
+ Nathan Chancellor <nathan@kernel.org>, 
+ Nicolas Schier <nicolas.schier@linux.dev>, 
+ Nick Desaulniers <nick.desaulniers+lkml@gmail.com>, 
+ Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>, 
+ Vlastimil Babka <vbabka@suse.cz>, Suren Baghdasaryan <surenb@google.com>, 
+ Michal Hocko <mhocko@suse.com>, Brendan Jackman <jackmanb@google.com>, 
+ Johannes Weiner <hannes@cmpxchg.org>, Zi Yan <ziy@nvidia.com>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Peter Zijlstra <peterz@infradead.org>, 
+ "Paul E. McKenney" <paulmck@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
+ Dmitry Vyukov <dvyukov@google.com>, Andrey Konovalov <andreyknvl@gmail.com>, 
+ Juergen Gross <jgross@suse.com>, 
+ Boris Ostrovsky <boris.ostrovsky@oracle.com>, 
+ Thomas Gleixner <tglx@linutronix.de>, Ingo Molnar <mingo@redhat.com>, 
+ Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, 
+ x86@kernel.org, "H. Peter Anvin" <hpa@zytor.com>
+Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-mm@kvack.org, kvm@vger.kernel.org, virtualization@lists.linux.dev, 
+ linux-integrity@vger.kernel.org, linux-kbuild@vger.kernel.org, 
+ llvm@lists.linux.dev, Winston Wen <wentao@uniontech.com>, 
+ kasan-dev@googlegroups.com, xen-devel@lists.xenproject.org, 
+ Chen Linxuan <chenlinxuan@uniontech.com>, 
+ Changbin Du <changbin.du@intel.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2639;
+ i=chenlinxuan@uniontech.com; h=from:subject:message-id;
+ bh=V+YDfvUyGy5qM6nqWNSGKKulp2fwuDLB1gLxIkj/Hno=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoEFAt1A5qQ0LESAzipTR7awHbnQPj78n5atow0
+ tiwIctZ69yJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBBQLQAKCRB2HuYUOZmu
+ ixgVD/9iV08f+Vs6eS/LbQDJ7q+zM9yfQ97NvSrbN+MQtFOdOOX/B9DDWjz07bMvwZeoSrnuWD8
+ Hp2NCMdUMvn/XAg8tY/cC0FeuznQPAg5DIqOw8e+jaILOgWNROimjgixLuhTr6WiaM0KrcZDHBL
+ OCFiXr8cJEoV5nmHDZpwmsRyfhwIkYxKUiqVZvxYPnX5Mq0jdE9cE129yrf++c0rJHV7tiA9m3m
+ 3Dgfo4EYCqhLMhujPTgQnqrtD260ZB/BDOIDT/4pmvjfuO7SVexQMqaZ6VD9Zv6g3IpgG//tHdW
+ YqgmY8n2rOMhJaDXULwLGpK32HY5uEPSykT3U8ytrJs1vPonlNQ+Yl1jBUOMiJd28s6gMWhAfNF
+ 7DhrCdUVPQITzQ3hp7+hMavCnibw1bsO70Q1Jyoe/HbpVw+jgqinhhqNY/q95Z3kUEjgZ70wbQz
+ J4+fpvQceoLTw3aPUBwT4AgmFYItGhMG/oWciNlmNPDr/PkMdez2OuxVUBnKvMvmy4yNtOyF82f
+ vhAi9OSPoii6ldf1OcZLCU7qEMXlU9dM1KhX437xOQ4ZbW31J0vPnuqxW9b5BE8+hsNfWWLyt/z
+ sTJSwkwcY3PBvFzx6dDyI4Q7JC83rCdQ6Bpw8f+o9IgK2kSIMrG0t4mrxG3OSfZB8NXalFg40yK
+ bumZ9NWzca7x0hA==
+X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Application layer programs (like pipewire) need to use
-iso timestamp information for audio synchronization.
+This series introduces a new kernel configuration option NO_AUTO_INLINE,
+which can be used to disable the automatic inlining of functions.
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+This will allow the function tracer to trace more functions
+because it only traces functions that the compiler has not inlined.
+
+Previous discussions can be found at
+
+Link: https://lore.kernel.org/all/20181028130945.23581-3-changbin.du@gmail.com/
+
+This patch depends on
+
+  [PATCH] drm/i915/pxp: fix undefined reference to
+          `intel_pxp_gsccs_is_ready_for_sessions'
+
+which can be found at
+
+  https://lore.kernel.org/all/20250415090616.2649889-1-jani.nikula@intel.com/
+
+as well as
+
+  [RFC PATCH 5/7] RDMA/hns: initialize db in update_srq_db()
+
+which can be found at
+
+  https://lore.kernel.org/all/FF922C77946229B6+20250411105459.90782-5-chenlinxuan@uniontech.com/
+
+Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
 ---
- include/net/bluetooth/bluetooth.h |  4 ++-
- net/bluetooth/iso.c               | 58 +++++++++++++++++++++++++++++++++------
- 2 files changed, 52 insertions(+), 10 deletions(-)
+Changes in v3:
+- Fix some modpost and objtool warnings
+- Try support clang as Bart Van Assche suggested.
+- Remove architecture depends as Bart Van Assche suggested.
+- Link to v2: https://lore.kernel.org/r/20250416-noautoinline-v2-0-e69a2717530f@uniontech.com
 
-diff --git a/include/net/bluetooth/bluetooth.h b/include/net/bluetooth/bluetooth.h
-index bbefde319f95..a102bd76647c 100644
---- a/include/net/bluetooth/bluetooth.h
-+++ b/include/net/bluetooth/bluetooth.h
-@@ -242,6 +242,7 @@ struct bt_codecs {
- #define BT_CODEC_MSBC		0x05
- 
- #define BT_ISO_BASE		20
-+#define BT_ISO_TS		21
- 
- __printf(1, 2)
- void bt_info(const char *fmt, ...);
-@@ -390,7 +391,8 @@ struct bt_sock {
- enum {
- 	BT_SK_DEFER_SETUP,
- 	BT_SK_SUSPEND,
--	BT_SK_PKT_STATUS
-+	BT_SK_PKT_STATUS,
-+	BT_SK_ISO_TS
- };
- 
- struct bt_sock_list {
-diff --git a/net/bluetooth/iso.c b/net/bluetooth/iso.c
-index 2f348f48e99d..2c1fdea4b8c1 100644
---- a/net/bluetooth/iso.c
-+++ b/net/bluetooth/iso.c
-@@ -1718,7 +1718,21 @@ static int iso_sock_setsockopt(struct socket *sock, int level, int optname,
- 		iso_pi(sk)->base_len = optlen;
- 
- 		break;
-+	case BT_ISO_TS:
-+		if (optlen != sizeof(opt)) {
-+			err = -EINVAL;
-+			break;
-+		}
- 
-+		err = copy_safe_from_sockptr(&opt, sizeof(opt), optval, optlen);
-+		if (err)
-+			break;
-+
-+		if (opt)
-+			set_bit(BT_SK_ISO_TS, &bt_sk(sk)->flags);
-+		else
-+			clear_bit(BT_SK_ISO_TS, &bt_sk(sk)->flags);
-+		break;
- 	default:
- 		err = -ENOPROTOOPT;
- 		break;
-@@ -1789,7 +1803,16 @@ static int iso_sock_getsockopt(struct socket *sock, int level, int optname,
- 			err = -EFAULT;
- 
- 		break;
-+	case BT_ISO_TS:
-+		if (len < sizeof(u32)) {
-+			err = -EINVAL;
-+			break;
-+		}
- 
-+		if (put_user(test_bit(BT_SK_ISO_TS, &bt_sk(sk)->flags),
-+			    (u32 __user *)optval))
-+			err = -EFAULT;
-+		break;
- 	default:
- 		err = -ENOPROTOOPT;
- 		break;
-@@ -2271,13 +2294,21 @@ static void iso_disconn_cfm(struct hci_conn *hcon, __u8 reason)
- void iso_recv(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
- {
- 	struct iso_conn *conn = hcon->iso_data;
-+	struct sock *sk;
- 	__u16 pb, ts, len;
- 
- 	if (!conn)
- 		goto drop;
- 
--	pb     = hci_iso_flags_pb(flags);
--	ts     = hci_iso_flags_ts(flags);
-+	iso_conn_lock(conn);
-+	sk = conn->sk;
-+	iso_conn_unlock(conn);
-+
-+	if (!sk)
-+		goto drop;
-+
-+	pb = hci_iso_flags_pb(flags);
-+	ts = hci_iso_flags_ts(flags);
- 
- 	BT_DBG("conn %p len %d pb 0x%x ts 0x%x", conn, skb->len, pb, ts);
- 
-@@ -2294,17 +2325,26 @@ void iso_recv(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
- 		if (ts) {
- 			struct hci_iso_ts_data_hdr *hdr;
- 
--			/* TODO: add timestamp to the packet? */
--			hdr = skb_pull_data(skb, HCI_ISO_TS_DATA_HDR_SIZE);
--			if (!hdr) {
--				BT_ERR("Frame is too short (len %d)", skb->len);
--				goto drop;
--			}
-+			if (test_bit(BT_SK_ISO_TS, &bt_sk(sk)->flags)) {
-+				hdr = (struct hci_iso_ts_data_hdr *)skb->data;
-+				len = hdr->slen + HCI_ISO_TS_DATA_HDR_SIZE;
-+			} else {
-+				hdr = skb_pull_data(skb, HCI_ISO_TS_DATA_HDR_SIZE);
-+				if (!hdr) {
-+					BT_ERR("Frame is too short (len %d)", skb->len);
-+					goto drop;
-+				}
- 
--			len = __le16_to_cpu(hdr->slen);
-+				len = __le16_to_cpu(hdr->slen);
-+			}
- 		} else {
- 			struct hci_iso_data_hdr *hdr;
- 
-+			if (test_bit(BT_SK_ISO_TS, &bt_sk(sk)->flags)) {
-+				BT_ERR("Invalid option BT_SK_ISO_TS");
-+				clear_bit(BT_SK_ISO_TS, &bt_sk(sk)->flags);
-+			}
-+
- 			hdr = skb_pull_data(skb, HCI_ISO_DATA_HDR_SIZE);
- 			if (!hdr) {
- 				BT_ERR("Frame is too short (len %d)", skb->len);
+Changes in v2:
+- Resend via b4 to correct Message-ID and recipients.
+- Update commit message following suggestions from Jarkko Sakkinen 
+- Link to v1: https://lore.kernel.org/r/31F42D8141CDD2D0+20250411105142.89296-1-chenlinxuan@uniontech.com
 
 ---
-base-commit: 16b4f97defefd93cfaea017a7c3e8849322f7dde
-change-id: 20250421-iso_ts-c82a300ae784
+Chen Linxuan (4):
+      rseq: add __always_inline for rseq_kernel_fields
+      kcov: add __always_inline for canonicalize_ip
+      x86/xen: add __init for xen_pgd_walk
+      lib/Kconfig.debug: introduce CONFIG_NO_AUTO_INLINE
+
+Winston Wen (4):
+      nvme: add __always_inline for nvme_pci_npages_prp
+      mm: add __always_inline for page_contains_unaccepted
+      vfio/virtio: add __always_inline for virtiovf_get_device_config_size
+      tpm: add __always_inline for tpm_is_hwrng_enabled
+
+ Makefile                            | 16 ++++++++++++++++
+ arch/x86/xen/mmu_pv.c               |  2 +-
+ drivers/char/tpm/tpm-chip.c         |  2 +-
+ drivers/nvme/host/pci.c             |  2 +-
+ drivers/vfio/pci/virtio/legacy_io.c |  2 +-
+ kernel/kcov.c                       |  2 +-
+ kernel/rseq.c                       |  2 +-
+ lib/Kconfig.debug                   | 21 +++++++++++++++++++++
+ lib/Makefile                        |  3 +++
+ mm/page_alloc.c                     |  2 +-
+ 10 files changed, 47 insertions(+), 7 deletions(-)
+---
+base-commit: ca91b9500108d4cf083a635c2e11c884d5dd20ea
+change-id: 20250416-noautoinline-8e9b9e535452
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Chen Linxuan <chenlinxuan@uniontech.com>
 
