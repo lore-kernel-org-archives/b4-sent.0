@@ -1,81 +1,62 @@
-From: Janne Grunau <j@jannau.net>
-Date: Mon, 28 Apr 2025 13:37:16 +0200
-Subject: [PATCH v2 4/4] drm: adp: Remove pointless irq_lock spin lock
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v2 0/3] PCI: tegra: Allow building as a module
+Date: Mon, 28 Apr 2025 20:05:45 -0500
+Message-Id: <20250428-pci-tegra-module-v2-0-c11a4b912446@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250428-drm_adp_fixes-v2-4-912e081e55d8@jannau.net>
-References: <20250428-drm_adp_fixes-v2-0-912e081e55d8@jannau.net>
-In-Reply-To: <20250428-drm_adp_fixes-v2-0-912e081e55d8@jannau.net>
-To: Sasha Finkelstein <fnkl.kernel@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Neal Gompa <neal@gompa.dev>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
- Dmitry Baryshkov <lumag@kernel.org>, Janne Grunau <j@jannau.net>
-Cc: dri-devel@lists.freedesktop.org, asahi@lists.linux.dev, 
- linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAOklEGgC/2WNQQ6CMBBFr0Jm7Zi20GBceQ/DorZDmYRS0iLRE
+ O5uxaXL95P/3gaZElOGa7VBopUzx6mAOlVgBzN5QnaFQQmlRS1rnC3jQj4ZDNE9R8LWPpy0mlp
+ heii3OVHPr0N57woPnJeY3kdhld/1J2uU+JetEgVaYWR/KTHdmJsPhsezjQG6fd8/5O+7HrAAA
+ AA=
+X-Change-ID: 20250313-pci-tegra-module-7cbd1c5e70af
+To: Thomas Gleixner <tglx@linutronix.de>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>
+Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1433; i=j@jannau.net;
- s=yk2024; h=from:subject:message-id;
- bh=NJRXEZ01TAGoH4kfPTd7Rr3rCRNebD9LmKwrPczu484=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhgz+jNL3dnL6YaKRWyTupDIISnVNq0sOv7ScI4ZZcoJPX
- 7X0MtWOUhYGMS4GWTFFliTtlx0Mq2sUY2ofhMHMYWUCGcLAxSkAEzn2j+Gf2jHL9u0/t+uuXaC5
- 1LWz57zxH7W3a5ad+vzmTe+u3CcPtRn+53JUtNQ4FnuZpSVWLctUv+J3fq7bbf/Hwsdf37bZlhX
- KAwA=
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745888749; l=921;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=azkGwqj5YKIYK7EJNW3OFVdb6KdfeAoqBb9yl+/OaqA=;
+ b=ZE/GiDvh1iRFBMpZV3wJ/hJ4XtBiP7ap/31NXwh8msKIu/JPbjEzCAm0yNaxzMEM7GnGBDgt0
+ 48lt2rC4jZJDvgW/BX2FCRLedq4JgJ1UqRcJA7H6qV6HKatawbWRQEl
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Interrupt handlers run with interrupts disabled so it is not necessary
-to protect them against reentrancy.
-
-Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
-Signed-off-by: Janne Grunau <j@jannau.net>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/gpu/drm/adp/adp_drv.c | 6 ------
- 1 file changed, 6 deletions(-)
+Changes in v2:
+- Add patch to export tegra_cpuidle_pcie_irqs_in_use as required when
+  building pci-tegra as a module for arm
+- Drop module exit to prevent module unloading, as requested
+- Link to v1: https://lore.kernel.org/r/20250420-pci-tegra-module-v1-0-c0a1f831354a@gmail.com
 
-diff --git a/drivers/gpu/drm/adp/adp_drv.c b/drivers/gpu/drm/adp/adp_drv.c
-index 50d26c73301c02e4a2f22b776ad8d8e9407565c9..54cde090c3f42a344478b794a32eb57afc182735 100644
---- a/drivers/gpu/drm/adp/adp_drv.c
-+++ b/drivers/gpu/drm/adp/adp_drv.c
-@@ -121,7 +121,6 @@ struct adp_drv_private {
- 	dma_addr_t mask_iova;
- 	int be_irq;
- 	int fe_irq;
--	spinlock_t irq_lock;
- 	struct drm_pending_vblank_event *event;
- };
- 
-@@ -490,8 +489,6 @@ static irqreturn_t adp_fe_irq(int irq, void *arg)
- 	u32 int_status;
- 	u32 int_ctl;
- 
--	spin_lock(&adp->irq_lock);
--
- 	int_status = readl(adp->fe + ADP_INT_STATUS);
- 	if (int_status & ADP_INT_STATUS_VBLANK) {
- 		drm_crtc_handle_vblank(&adp->crtc);
-@@ -509,7 +506,6 @@ static irqreturn_t adp_fe_irq(int irq, void *arg)
- 
- 	writel(int_status, adp->fe + ADP_INT_STATUS);
- 
--	spin_unlock(&adp->irq_lock);
- 
- 	return IRQ_HANDLED;
- }
-@@ -574,8 +570,6 @@ static int adp_probe(struct platform_device *pdev)
- 	if (IS_ERR(adp))
- 		return PTR_ERR(adp);
- 
--	spin_lock_init(&adp->irq_lock);
--
- 	dev_set_drvdata(&pdev->dev, &adp->drm);
- 
- 	err = adp_parse_of(pdev, adp);
+---
+Aaron Kling (3):
+      irqdomain: Export irq_domain_free_irqs
+      cpuidle: tegra: Export tegra_cpuidle_pcie_irqs_in_use
+      PCI: tegra: Allow building as a module
 
+ drivers/cpuidle/cpuidle-tegra.c    | 1 +
+ drivers/pci/controller/Kconfig     | 2 +-
+ drivers/pci/controller/pci-tegra.c | 5 ++++-
+ kernel/irq/irqdomain.c             | 1 +
+ 4 files changed, 7 insertions(+), 2 deletions(-)
+---
+base-commit: 18352e73612d60b81790d2437845276ae499b64a
+change-id: 20250313-pci-tegra-module-7cbd1c5e70af
+
+Best regards,
 -- 
-2.49.0
+Aaron Kling <webgeek1234@gmail.com>
 
