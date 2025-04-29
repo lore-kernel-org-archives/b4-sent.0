@@ -1,67 +1,79 @@
-From: Richard Leitner <richard.leitner@linux.dev>
-Date: Tue, 29 Apr 2025 14:59:14 +0200
-Subject: [PATCH v3 9/9] media: i2c: ov9282: add strobe_source v4l2 control
+From: Levi Zim <rsworktech@outlook.com>
+Date: Tue, 29 Apr 2025 22:49:37 +0800
+Subject: [PATCH net v2] docs: tproxy: fix code block style
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250429-ov9282-flash-strobe-v3-9-2105ce179952@linux.dev>
-References: <20250429-ov9282-flash-strobe-v3-0-2105ce179952@linux.dev>
-In-Reply-To: <20250429-ov9282-flash-strobe-v3-0-2105ce179952@linux.dev>
-To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Dave Stevenson <dave.stevenson@raspberrypi.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Lee Jones <lee@kernel.org>, 
- Pavel Machek <pavel@kernel.org>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-Cc: Hans Verkuil <hverkuil@xs4all.nl>, linux-media@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
- Richard Leitner <richard.leitner@linux.dev>
+Message-Id: <20250429-tproxy-docs-fix-v2-1-20cbe0d91827@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAADnEGgC/3WNwQ7CIBBEf6XZs2taQiP15H+YHoQulqjdBpC0a
+ fh3CXeP8ybz5oBA3lGAa3OAp+SC46UEcWrAzI/lSeimkkG0om+luGBcPW87TmwCWrehMVprK0U
+ vBwtltXoquBrvsFCEscDZhch+ry+pq9VfYeqww0EpGqSSsuhv/I1v5tfZ8AfGnPMP4NGXbbUAA
+ AA=
+X-Change-ID: 20250427-tproxy-docs-fix-ccbbbf42549f
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Jonathan Corbet <corbet@lwn.net>, 
+ Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+Cc: netdev@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Bagas Sanjaya <bagasdotme@gmail.com>, 
+ Levi Zim <rsworktech@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745931554; l=1520;
- i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=XEA7eOKnFQPnS5jigwSOQXrETAAO0hBpVmtM8cu5xnQ=;
- b=G943Q5rMrjMVhETxHQsNfxhFguRPkjvBIpdTCRSMAOGxjlQcMv3+Boxr4o2GjWUhOBi9+5JZ6
- Ltei845X9whB6qJ45gzW850L1g4sbaFIqm312RqHYxMIOgZdS6cl8hf
-X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
- pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
-X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1513;
+ i=rsworktech@outlook.com; s=not_default; h=from:subject:message-id;
+ bh=NKjV0mTkVlgZ5Qae4uXgQi5NGdHyS6jBKgNza+UO9ck=;
+ b=owEBbQKS/ZANAwAIAW87mNQvxsnYAcsmYgBoEOcaFCexvq7uGJB1WvGKOAK/+N2YlYX7U4MvE
+ Xj/h1GjLKuJAjMEAAEIAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCaBDnGgAKCRBvO5jUL8bJ
+ 2GzgD/9ioRWNEeQIjH1V0ALiE+1n0soTvI/Ck2yvHO7h9Byser86y8ZveLp5TV2+jvQME2HtupI
+ UecwXF/GWFqM3aWN3+D3j4bzW72yxxP+9EtL90PIiZWdB48sgGae02oMFnQIH45gISVANiWwg8Q
+ 5E/sCCopJEObePMgvy6FHgoRk6l4Qh+nxqGMYfbgpBIHoWloWy89s/+r5OFc9jJ9y5i4qkqtvZf
+ IIJH9Wm/qDX3W2gY9Q8RzIAedV2LXI44dGGEMaA5AUA8o//PvMSOjyTi1bQ9QcvIYgoS2sWVKjn
+ arViX4i3ZgTNDxcXyeE2oYNrrQ4OOQjKuAlyIkMIXWuVimRTnAvpPKBaj6h8O0iJQAJupDhhZVi
+ gfn1gpLrqENeq5nSqNrn853Bt1dU3ui+gH5xKa4vJrMckhl/R00YAXwUVNpzetuWHbvtkUxdMH6
+ qlRZxgr05Pzsursh/JK9smWnwW18I4NFfz+kjfiWrcuHgVvdzcLE4M+PKeihWxkgGKgkZSz3QIS
+ 95/wypwNELvyBbP5zgyJ+h9b7ph7mAc9dzmo+W4+Y/TBk0uKyvZV5a8bW8GGciudPG4kkhjLoRa
+ 4qEUMZAiPyWKWMSFmoLTpyY3U2RjvxJjKbNy5+cJSZmyyPBxtTbeu7BKE7qwq5CJ3Y0ziSYB1nR
+ Nt7QWQk4zLEhCtA==
+X-Developer-Key: i=rsworktech@outlook.com; a=openpgp;
+ fpr=17AADD6726DDC58B8EE5881757670CCFA42CCF0A
+X-Endpoint-Received: by B4 Relay for rsworktech@outlook.com/not_default with auth_id=390
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add read-only V4L2_CID_FLASH_STROBE_SOURCE control. Its value is fixed
-to V4L2_FLASH_STROBE_SOURCE_EXTERNAL as the camera sensor triggers the
-strobe based on its register settings.
+The last command is not indented thus does not show as code block when
+rendered. This patch fixes it.
 
-Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
+Fixes: 4ac0b122ee63 ("docs: networking: convert tproxy.txt to ReST")
+Signed-off-by: Levi Zim <rsworktech@outlook.com>
 ---
- drivers/media/i2c/ov9282.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Changes in v2:
+- Add double colons to the end of paragraph before the code block
+- Link to v1: https://lore.kernel.org/r/20250427-tproxy-docs-fix-v1-1-988e94844ccb@outlook.com
+---
+ Documentation/networking/tproxy.rst | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/media/i2c/ov9282.c b/drivers/media/i2c/ov9282.c
-index 5ddbfc51586111fbd2e17b739fb3d28bfb0aee1e..34ea903a18dadeeebd497a4a8858abf12b598717 100644
---- a/drivers/media/i2c/ov9282.c
-+++ b/drivers/media/i2c/ov9282.c
-@@ -1367,6 +1367,7 @@ static int ov9282_init_controls(struct ov9282 *ov9282)
- 	struct v4l2_ctrl_handler *ctrl_hdlr = &ov9282->ctrl_handler;
- 	const struct ov9282_mode *mode = ov9282->cur_mode;
- 	struct v4l2_fwnode_device_properties props;
-+	struct v4l2_ctrl *ctrl;
- 	u32 hblank_min;
- 	u32 lpfr;
- 	int ret;
-@@ -1446,6 +1447,13 @@ static int ov9282_init_controls(struct ov9282 *ov9282)
- 	v4l2_ctrl_new_std(ctrl_hdlr, &ov9282_ctrl_ops, V4L2_CID_FLASH_DURATION,
- 			  0, 13900, 1, 8);
+diff --git a/Documentation/networking/tproxy.rst b/Documentation/networking/tproxy.rst
+index 7f7c1ff6f159ed98d96c63d99c98ddbaefd47124..72ba41a10bb22b1f1054af55702423fa8086d98d 100644
+--- a/Documentation/networking/tproxy.rst
++++ b/Documentation/networking/tproxy.rst
+@@ -69,9 +69,9 @@ add rules like this to the iptables ruleset above::
+     # iptables -t mangle -A PREROUTING -p tcp --dport 80 -j TPROXY \
+       --tproxy-mark 0x1/0x1 --on-port 50080
  
-+	ctrl = v4l2_ctrl_new_std_menu(ctrl_hdlr, &ov9282_ctrl_ops,
-+				      V4L2_CID_FLASH_STROBE_SOURCE,
-+				      V4L2_FLASH_STROBE_SOURCE_EXTERNAL,
-+				      ~(1 << V4L2_FLASH_STROBE_SOURCE_EXTERNAL),
-+				      V4L2_FLASH_STROBE_SOURCE_EXTERNAL);
-+	ctrl->flags |= V4L2_CTRL_FLAG_READ_ONLY;
-+
- 	ret = v4l2_fwnode_device_parse(ov9282->dev, &props);
- 	if (!ret) {
- 		/* Failure sets ctrl_hdlr->error, which we check afterwards anyway */
+-Or the following rule to nft:
++Or the following rule to nft:::
+ 
+-# nft add rule filter divert tcp dport 80 tproxy to :50080 meta mark set 1 accept
++    # nft add rule filter divert tcp dport 80 tproxy to :50080 meta mark set 1 accept
+ 
+ Note that for this to work you'll have to modify the proxy to enable (SOL_IP,
+ IP_TRANSPARENT) for the listening socket.
 
+---
+base-commit: f73f05c6f711fd1628c7565441b9febc0c4d6c58
+change-id: 20250427-tproxy-docs-fix-ccbbbf42549f
+
+Best regards,
 -- 
-2.47.2
+Levi Zim <rsworktech@outlook.com>
 
