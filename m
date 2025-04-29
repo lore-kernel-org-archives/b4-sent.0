@@ -1,79 +1,57 @@
-From: Levi Zim <rsworktech@outlook.com>
-Date: Tue, 29 Apr 2025 22:49:37 +0800
-Subject: [PATCH net v2] docs: tproxy: fix code block style
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/4] pinctrl: tegra: Add Tegra186 pinmux driver
+Date: Tue, 29 Apr 2025 16:33:29 -0500
+Message-Id: <20250429-tegra186-pinctrl-v1-0-722c7c42394e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250429-tproxy-docs-fix-v2-1-20cbe0d91827@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAADnEGgC/3WNwQ7CIBBEf6XZs2taQiP15H+YHoQulqjdBpC0a
- fh3CXeP8ybz5oBA3lGAa3OAp+SC46UEcWrAzI/lSeimkkG0om+luGBcPW87TmwCWrehMVprK0U
- vBwtltXoquBrvsFCEscDZhch+ry+pq9VfYeqww0EpGqSSsuhv/I1v5tfZ8AfGnPMP4NGXbbUAA
- AA=
-X-Change-ID: 20250427-tproxy-docs-fix-ccbbbf42549f
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, 
- Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-Cc: netdev@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Bagas Sanjaya <bagasdotme@gmail.com>, 
- Levi Zim <rsworktech@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAKlFEWgC/x3MQQqAIBBA0avIrBO0UKSrRIu0sQbCYowIxLsnL
+ d/i/wIZmTDDKAowPpTpTA26ExD2JW0oaW2GXvVGDcrJGzdetLPyohRuPqQ1OkbvPTptoWUXY6T
+ 3X05zrR/vH5J7YgAAAA==
+X-Change-ID: 20250308-tegra186-pinctrl-651ffbbbe816
+To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, Bartosz Golaszewski <brgl@bgdev.pl>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1513;
- i=rsworktech@outlook.com; s=not_default; h=from:subject:message-id;
- bh=NKjV0mTkVlgZ5Qae4uXgQi5NGdHyS6jBKgNza+UO9ck=;
- b=owEBbQKS/ZANAwAIAW87mNQvxsnYAcsmYgBoEOcaFCexvq7uGJB1WvGKOAK/+N2YlYX7U4MvE
- Xj/h1GjLKuJAjMEAAEIAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCaBDnGgAKCRBvO5jUL8bJ
- 2GzgD/9ioRWNEeQIjH1V0ALiE+1n0soTvI/Ck2yvHO7h9Byser86y8ZveLp5TV2+jvQME2HtupI
- UecwXF/GWFqM3aWN3+D3j4bzW72yxxP+9EtL90PIiZWdB48sgGae02oMFnQIH45gISVANiWwg8Q
- 5E/sCCopJEObePMgvy6FHgoRk6l4Qh+nxqGMYfbgpBIHoWloWy89s/+r5OFc9jJ9y5i4qkqtvZf
- IIJH9Wm/qDX3W2gY9Q8RzIAedV2LXI44dGGEMaA5AUA8o//PvMSOjyTi1bQ9QcvIYgoS2sWVKjn
- arViX4i3ZgTNDxcXyeE2oYNrrQ4OOQjKuAlyIkMIXWuVimRTnAvpPKBaj6h8O0iJQAJupDhhZVi
- gfn1gpLrqENeq5nSqNrn853Bt1dU3ui+gH5xKa4vJrMckhl/R00YAXwUVNpzetuWHbvtkUxdMH6
- qlRZxgr05Pzsursh/JK9smWnwW18I4NFfz+kjfiWrcuHgVvdzcLE4M+PKeihWxkgGKgkZSz3QIS
- 95/wypwNELvyBbP5zgyJ+h9b7ph7mAc9dzmo+W4+Y/TBk0uKyvZV5a8bW8GGciudPG4kkhjLoRa
- 4qEUMZAiPyWKWMSFmoLTpyY3U2RjvxJjKbNy5+cJSZmyyPBxtTbeu7BKE7qwq5CJ3Y0ziSYB1nR
- Nt7QWQk4zLEhCtA==
-X-Developer-Key: i=rsworktech@outlook.com; a=openpgp;
- fpr=17AADD6726DDC58B8EE5881757670CCFA42CCF0A
-X-Endpoint-Received: by B4 Relay for rsworktech@outlook.com/not_default with auth_id=390
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745962426; l=1088;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=sqgl5y8PVkwCo9nS/VR1ZpFSL6mY1lIOi7iBfe47K3E=;
+ b=82IwiueRLIua0SuZBRzUSmXl81Zbv2b6djBSxHxKnI8T6smApO86ykTTBxfRIbDo3CWdWaQnn
+ Rgx+JNwb27wBcGEP1lIIXapKtz6Fm9bK5pOrMWtsDNSV0qZaNfcKb6f
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The last command is not indented thus does not show as code block when
-rendered. This patch fixes it.
+This series adds support for Tegra186 pin control, based on a downstream
+driver, updated to match the existing Tegra194 driver.
 
-Fixes: 4ac0b122ee63 ("docs: networking: convert tproxy.txt to ReST")
-Signed-off-by: Levi Zim <rsworktech@outlook.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Changes in v2:
-- Add double colons to the end of paragraph before the code block
-- Link to v1: https://lore.kernel.org/r/20250427-tproxy-docs-fix-v1-1-988e94844ccb@outlook.com
----
- Documentation/networking/tproxy.rst | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Aaron Kling (4):
+      dt-bindings: pinctrl: Document Tegra186 pin controllers
+      dt-bindings: gpio: tegra186: Add gpio-ranges
+      pinctrl: tegra: Add Tegra186 pinmux driver
+      arm64: tegra: Add Tegra186 pin controllers
 
-diff --git a/Documentation/networking/tproxy.rst b/Documentation/networking/tproxy.rst
-index 7f7c1ff6f159ed98d96c63d99c98ddbaefd47124..72ba41a10bb22b1f1054af55702423fa8086d98d 100644
---- a/Documentation/networking/tproxy.rst
-+++ b/Documentation/networking/tproxy.rst
-@@ -69,9 +69,9 @@ add rules like this to the iptables ruleset above::
-     # iptables -t mangle -A PREROUTING -p tcp --dport 80 -j TPROXY \
-       --tproxy-mark 0x1/0x1 --on-port 50080
- 
--Or the following rule to nft:
-+Or the following rule to nft:::
- 
--# nft add rule filter divert tcp dport 80 tproxy to :50080 meta mark set 1 accept
-+    # nft add rule filter divert tcp dport 80 tproxy to :50080 meta mark set 1 accept
- 
- Note that for this to work you'll have to modify the proxy to enable (SOL_IP,
- IP_TRANSPARENT) for the listening socket.
-
+ .../bindings/gpio/nvidia,tegra186-gpio.yaml        |    3 +
+ .../bindings/pinctrl/nvidia,tegra186-pinmux.yaml   |  285 ++++
+ arch/arm64/boot/dts/nvidia/tegra186.dtsi           |   12 +
+ drivers/pinctrl/tegra/Kconfig                      |    4 +
+ drivers/pinctrl/tegra/Makefile                     |    1 +
+ drivers/pinctrl/tegra/pinctrl-tegra186.c           | 1784 ++++++++++++++++++++
+ drivers/soc/tegra/Kconfig                          |    1 +
+ 7 files changed, 2090 insertions(+)
 ---
-base-commit: f73f05c6f711fd1628c7565441b9febc0c4d6c58
-change-id: 20250427-tproxy-docs-fix-ccbbbf42549f
+base-commit: 1110ce6a1e34fe1fdc1bfe4ad52405f327d5083b
+change-id: 20250308-tegra186-pinctrl-651ffbbbe816
 
 Best regards,
 -- 
-Levi Zim <rsworktech@outlook.com>
+Aaron Kling <webgeek1234@gmail.com>
 
