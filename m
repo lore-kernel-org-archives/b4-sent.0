@@ -1,11 +1,10 @@
 From: Richard Leitner <richard.leitner@linux.dev>
-Date: Tue, 29 Apr 2025 14:59:06 +0200
-Subject: [PATCH v3 1/9] media: v4l: ctrls: add a control for flash/strobe
- duration
+Date: Tue, 29 Apr 2025 14:59:07 +0200
+Subject: [PATCH v3 2/9] leds: flash: add support for flash/stobe duration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250429-ov9282-flash-strobe-v3-1-2105ce179952@linux.dev>
+Message-Id: <20250429-ov9282-flash-strobe-v3-2-2105ce179952@linux.dev>
 References: <20250429-ov9282-flash-strobe-v3-0-2105ce179952@linux.dev>
 In-Reply-To: <20250429-ov9282-flash-strobe-v3-0-2105ce179952@linux.dev>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -17,54 +16,90 @@ Cc: Hans Verkuil <hverkuil@xs4all.nl>, linux-media@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
  Richard Leitner <richard.leitner@linux.dev>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745931554; l=1793;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745931554; l=2827;
  i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=0nzpfTzsTCcWDqac7ZTk2BZgJrXNm8rZpSw6OMimBsU=;
- b=q0HdotQ1a3Lpu50SYXXrSIedy34zGRbVP85oeqT3uX74IjThduRjeyIdqv7WKOAQl3DpQ5spv
- a9RTte8pwtUAH8OaPV3ZJBAk66Dz2jwehtJHkJGzaBMI8/zwriVjhUX
+ bh=HDEsgaluUKEPdxixqt/Aekf5T3lFNnaVwddtdEWptfw=;
+ b=6M/61HmZntl6x9awtwRbQFDQpMX+zbdz7fFVJ+CjaQLXInH1bRos1VW9t5D31eRmSUYhwouXc
+ Gn9Y9mGn5X2A1cPjJxiEGSaLbzsnf9Ob5ImmdvMY2IkG8hN1YC+O7L+
 X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
  pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
 X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a control V4L2_CID_FLASH_DURATION to set the duration of a
-flash/strobe pulse. This is different to the V4L2_CID_FLASH_TIMEOUT
-control, as the timeout defines a limit after which the flash is
-"forcefully" turned off again.
-
-On the other hand the new V4L2_CID_FLASH_DURATION is the desired length
-of the flash/strobe pulse.
+Add support for the new V4L2_CID_FLASH_DURATION control to the leds
+driver.
 
 Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- drivers/media/v4l2-core/v4l2-ctrls-defs.c | 1 +
- include/uapi/linux/v4l2-controls.h        | 1 +
- 2 files changed, 2 insertions(+)
+ drivers/leds/led-class-flash.c  | 15 +++++++++++++++
+ include/linux/led-class-flash.h | 16 ++++++++++++++++
+ 2 files changed, 31 insertions(+)
 
-diff --git a/drivers/media/v4l2-core/v4l2-ctrls-defs.c b/drivers/media/v4l2-core/v4l2-ctrls-defs.c
-index 1ea52011247accc51d0261f56eab1cf13c0624a0..f9ed7273a9f3eafe01c31b638e1c8d9fcf5424af 100644
---- a/drivers/media/v4l2-core/v4l2-ctrls-defs.c
-+++ b/drivers/media/v4l2-core/v4l2-ctrls-defs.c
-@@ -1135,6 +1135,7 @@ const char *v4l2_ctrl_get_name(u32 id)
- 	case V4L2_CID_FLASH_FAULT:		return "Faults";
- 	case V4L2_CID_FLASH_CHARGE:		return "Charge";
- 	case V4L2_CID_FLASH_READY:		return "Ready to Strobe";
-+	case V4L2_CID_FLASH_DURATION:		return "Strobe Duration";
+diff --git a/drivers/leds/led-class-flash.c b/drivers/leds/led-class-flash.c
+index f4e26ce84862c05092a9598e63ed301967852f13..165035a8826ca7d44a5cd265a5130a76c6e94347 100644
+--- a/drivers/leds/led-class-flash.c
++++ b/drivers/leds/led-class-flash.c
+@@ -440,6 +440,21 @@ int led_update_flash_brightness(struct led_classdev_flash *fled_cdev)
+ }
+ EXPORT_SYMBOL_GPL(led_update_flash_brightness);
  
- 	/* JPEG encoder controls */
- 	/* Keep the order of the 'case's the same as in v4l2-controls.h! */
-diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
-index 72e32814ea83dee5f1202c1249eac7cf3b85a22a..72c6bd26e2dfa23a0224e745e5cd07c9fca0c8b5 100644
---- a/include/uapi/linux/v4l2-controls.h
-+++ b/include/uapi/linux/v4l2-controls.h
-@@ -1180,6 +1180,7 @@ enum v4l2_flash_strobe_source {
++int led_set_flash_duration(struct led_classdev_flash *fled_cdev, u32 duration)
++{
++	struct led_classdev *led_cdev = &fled_cdev->led_cdev;
++	struct led_flash_setting *s = &fled_cdev->duration;
++
++	s->val = duration;
++	led_clamp_align(s);
++
++	if (!(led_cdev->flags & LED_SUSPENDED))
++		return call_flash_op(fled_cdev, duration_set, s->val);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(led_set_flash_duration);
++
+ MODULE_AUTHOR("Jacek Anaszewski <j.anaszewski@samsung.com>");
+ MODULE_DESCRIPTION("LED Flash class interface");
+ MODULE_LICENSE("GPL v2");
+diff --git a/include/linux/led-class-flash.h b/include/linux/led-class-flash.h
+index 36df927ec4b7dcaf9074c6ef32ac8ce83a87a79d..21ec856c36bc67decda46aa8ff1c040ffdcf1181 100644
+--- a/include/linux/led-class-flash.h
++++ b/include/linux/led-class-flash.h
+@@ -45,6 +45,8 @@ struct led_flash_ops {
+ 	int (*timeout_set)(struct led_classdev_flash *fled_cdev, u32 timeout);
+ 	/* get the flash LED fault */
+ 	int (*fault_get)(struct led_classdev_flash *fled_cdev, u32 *fault);
++	/* set flash duration */
++	int (*duration_set)(struct led_classdev_flash *fled_cdev, u32 duration);
+ };
  
- #define V4L2_CID_FLASH_CHARGE			(V4L2_CID_FLASH_CLASS_BASE + 11)
- #define V4L2_CID_FLASH_READY			(V4L2_CID_FLASH_CLASS_BASE + 12)
-+#define V4L2_CID_FLASH_DURATION			(V4L2_CID_FLASH_CLASS_BASE + 13)
+ /*
+@@ -75,6 +77,9 @@ struct led_classdev_flash {
+ 	/* flash timeout value in microseconds along with its constraints */
+ 	struct led_flash_setting timeout;
  
++	/* flash timeout value in microseconds along with its constraints */
++	struct led_flash_setting duration;
++
+ 	/* LED Flash class sysfs groups */
+ 	const struct attribute_group *sysfs_groups[LED_FLASH_SYSFS_GROUPS_SIZE];
+ };
+@@ -209,4 +214,15 @@ int led_set_flash_timeout(struct led_classdev_flash *fled_cdev, u32 timeout);
+  */
+ int led_get_flash_fault(struct led_classdev_flash *fled_cdev, u32 *fault);
  
- /* JPEG-class control IDs */
++/**
++ * led_set_flash_duration - set flash LED duration
++ * @fled_cdev: the flash LED to set
++ * @timeout: the flash duration to set it to
++ *
++ * Set the flash strobe duration.
++ *
++ * Returns: 0 on success or negative error value on failure
++ */
++int led_set_flash_duration(struct led_classdev_flash *fled_cdev, u32 duration);
++
+ #endif	/* __LINUX_FLASH_LEDS_H_INCLUDED */
 
 -- 
 2.47.2
