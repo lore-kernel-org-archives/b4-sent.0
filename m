@@ -1,11 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 28 Apr 2025 20:05:47 -0500
-Subject: [PATCH v2 2/3] cpuidle: tegra: Export
- tegra_cpuidle_pcie_irqs_in_use
+Date: Mon, 28 Apr 2025 20:05:48 -0500
+Subject: [PATCH v2 3/3] PCI: tegra: Allow building as a module
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250428-pci-tegra-module-v2-2-c11a4b912446@gmail.com>
+Message-Id: <20250428-pci-tegra-module-v2-3-c11a4b912446@gmail.com>
 References: <20250428-pci-tegra-module-v2-0-c11a4b912446@gmail.com>
 In-Reply-To: <20250428-pci-tegra-module-v2-0-c11a4b912446@gmail.com>
 To: Thomas Gleixner <tglx@linutronix.de>, 
@@ -21,36 +20,53 @@ Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org,
  linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745888749; l=830;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745888749; l=1592;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=xVyHjzSr7wHYXMLNGdp54ReYaOCWfcLl7SzVd0MbeFs=;
- b=gIud+Pwnuh30AZATYddoB8kGlcEmY/P9Nw0DW7/uOyryc78z11uWGMo9bZX3IGoqdTjnxY2mH
- yeby/7GMn7+CowD+fN5sc9KPPJ89qdEWjbHPF6D/bEfFopMgG7F56jJ
+ bh=ediBwXdejZJpog3kftYSmvTQosQLVWrtV7PiuRz9nKw=;
+ b=m9W78dnWcanFrYMp5fS7WOsXZuHtgrFt1gpLhdBIcQWzPtFoq+OeMKHchTx1OgwDTdZp1dsjd
+ Lxn+9KzULRkDjR3Df+rurmKJ9s4X64G03RmlKl+ncjg3gow5juYZGy8
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add export for tegra_cpuidle_pcie_irqs_in_use() so that we can allow
-drivers like the pci-tegra driver to be loadable as a module.
+This changes the module macro back to builtin, which does not define an
+exit function. This will prevent the module from being unloaded. There
+are concerns with modules not cleaning up IRQs on unload, thus this
+needs specifically disallowed.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/cpuidle/cpuidle-tegra.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/pci/controller/Kconfig     | 2 +-
+ drivers/pci/controller/pci-tegra.c | 5 ++++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/cpuidle/cpuidle-tegra.c b/drivers/cpuidle/cpuidle-tegra.c
-index b203a93deac5f378572be90e22c73e7417adb99e..aca907a62bb5de4ee4c71c1900eacedd4b90bc0a 100644
---- a/drivers/cpuidle/cpuidle-tegra.c
-+++ b/drivers/cpuidle/cpuidle-tegra.c
-@@ -336,6 +336,7 @@ void tegra_cpuidle_pcie_irqs_in_use(void)
- 	pr_info("disabling CC6 state, since PCIe IRQs are in use\n");
- 	tegra_cpuidle_disable_state(TEGRA_CC6);
- }
-+EXPORT_SYMBOL_GPL(tegra_cpuidle_pcie_irqs_in_use);
+diff --git a/drivers/pci/controller/Kconfig b/drivers/pci/controller/Kconfig
+index 9800b768105402d6dd1ba4b134c2ec23da6e4201..a9164dd2eccaead5ae9348c24a5ad75fcb40f507 100644
+--- a/drivers/pci/controller/Kconfig
++++ b/drivers/pci/controller/Kconfig
+@@ -224,7 +224,7 @@ config PCI_HYPERV_INTERFACE
+ 	  driver.
  
- static void tegra_cpuidle_setup_tegra114_c7_state(void)
- {
+ config PCI_TEGRA
+-	bool "NVIDIA Tegra PCIe controller"
++	tristate "NVIDIA Tegra PCIe controller"
+ 	depends on ARCH_TEGRA || COMPILE_TEST
+ 	depends on PCI_MSI
+ 	help
+diff --git a/drivers/pci/controller/pci-tegra.c b/drivers/pci/controller/pci-tegra.c
+index b3cdbc5927de3742161310610dc5dcb836f5dd69..1539d172d708c11c3d085721ab9416be3dea6b12 100644
+--- a/drivers/pci/controller/pci-tegra.c
++++ b/drivers/pci/controller/pci-tegra.c
+@@ -2802,4 +2802,7 @@ static struct platform_driver tegra_pcie_driver = {
+ 	.probe = tegra_pcie_probe,
+ 	.remove = tegra_pcie_remove,
+ };
+-module_platform_driver(tegra_pcie_driver);
++builtin_platform_driver(tegra_pcie_driver);
++MODULE_AUTHOR("Thierry Reding <treding@nvidia.com>");
++MODULE_DESCRIPTION("NVIDIA PCI host controller driver");
++MODULE_LICENSE("GPL");
 
 -- 
 2.48.1
