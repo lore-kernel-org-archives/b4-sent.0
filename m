@@ -1,73 +1,54 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 28 Apr 2025 20:05:48 -0500
-Subject: [PATCH v2 3/3] PCI: tegra: Allow building as a module
+Subject: [PATCH 0/2] arm64: tegra: Clean up serial nodes
+Date: Mon, 28 Apr 2025 20:51:46 -0500
+Message-Id: <20250428-tegra-serial-fixes-v1-0-4f47c5d85bf6@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250428-pci-tegra-module-v2-3-c11a4b912446@gmail.com>
-References: <20250428-pci-tegra-module-v2-0-c11a4b912446@gmail.com>
-In-Reply-To: <20250428-pci-tegra-module-v2-0-c11a4b912446@gmail.com>
-To: Thomas Gleixner <tglx@linutronix.de>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+X-B4-Tracking: v=1; b=H4sIALIwEGgC/x3LQQqAIBBA0avErBswSbCuEi1ERxsIC40IxLtnL
+ T+fVyBTYsowdwUS3Zz5iC2GvgO7mRgI2bUGKaQSo9R4UUgGP2V29PxQxslbZ7V3SkgBDZ6J/tH
+ cstb6AtJhidpkAAAA
+X-Change-ID: 20250428-tegra-serial-fixes-9fcdc8fd5020
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
  Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>
-Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Thierry Reding <treding@nvidia.com>, devicetree@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1745888749; l=1592;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1745891537; l=989;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=ediBwXdejZJpog3kftYSmvTQosQLVWrtV7PiuRz9nKw=;
- b=m9W78dnWcanFrYMp5fS7WOsXZuHtgrFt1gpLhdBIcQWzPtFoq+OeMKHchTx1OgwDTdZp1dsjd
- Lxn+9KzULRkDjR3Df+rurmKJ9s4X64G03RmlKl+ncjg3gow5juYZGy8
+ bh=3rBhkmDwlkecphkN0Dy6r3jKKnMCRAC/bfxsVRUq1Fg=;
+ b=XgXqQ+/gz4QT8jWarYRYNvBu3k28rMjaarAS+Pssbc5Lkd9qeoyB89au3NfrY6IasBFIFuAhX
+ H0Ttx7rJ6QdBg47ALj40ZFDx9qct4/GWVIW394GCu6BbYI9UIN+iNm8
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This changes the module macro back to builtin, which does not define an
-exit function. This will prevent the module from being unloaded. There
-are concerns with modules not cleaning up IRQs on unload, thus this
-needs specifically disallowed.
+Several Tegra186 and Tegra194 serial nodes still have invalid properties
+and/or are missing dma properties. This series corrects those.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/pci/controller/Kconfig     | 2 +-
- drivers/pci/controller/pci-tegra.c | 5 ++++-
- 2 files changed, 5 insertions(+), 2 deletions(-)
+Aaron Kling (2):
+      arm64: tegra: Drop remaining serial clock-names and reset-names
+      arm64: tegra: Add DMA properties for Tegra186 and Tegra194 UARTs
 
-diff --git a/drivers/pci/controller/Kconfig b/drivers/pci/controller/Kconfig
-index 9800b768105402d6dd1ba4b134c2ec23da6e4201..a9164dd2eccaead5ae9348c24a5ad75fcb40f507 100644
---- a/drivers/pci/controller/Kconfig
-+++ b/drivers/pci/controller/Kconfig
-@@ -224,7 +224,7 @@ config PCI_HYPERV_INTERFACE
- 	  driver.
- 
- config PCI_TEGRA
--	bool "NVIDIA Tegra PCIe controller"
-+	tristate "NVIDIA Tegra PCIe controller"
- 	depends on ARCH_TEGRA || COMPILE_TEST
- 	depends on PCI_MSI
- 	help
-diff --git a/drivers/pci/controller/pci-tegra.c b/drivers/pci/controller/pci-tegra.c
-index b3cdbc5927de3742161310610dc5dcb836f5dd69..1539d172d708c11c3d085721ab9416be3dea6b12 100644
---- a/drivers/pci/controller/pci-tegra.c
-+++ b/drivers/pci/controller/pci-tegra.c
-@@ -2802,4 +2802,7 @@ static struct platform_driver tegra_pcie_driver = {
- 	.probe = tegra_pcie_probe,
- 	.remove = tegra_pcie_remove,
- };
--module_platform_driver(tegra_pcie_driver);
-+builtin_platform_driver(tegra_pcie_driver);
-+MODULE_AUTHOR("Thierry Reding <treding@nvidia.com>");
-+MODULE_DESCRIPTION("NVIDIA PCI host controller driver");
-+MODULE_LICENSE("GPL");
+ arch/arm64/boot/dts/nvidia/tegra186-p3310.dtsi     |  2 ++
+ .../dts/nvidia/tegra186-p3509-0000+p3636-0001.dts  |  2 ++
+ arch/arm64/boot/dts/nvidia/tegra186.dtsi           | 26 ++++++++++----------
+ arch/arm64/boot/dts/nvidia/tegra194-p2888.dtsi     |  2 ++
+ arch/arm64/boot/dts/nvidia/tegra194-p3668.dtsi     |  2 ++
+ arch/arm64/boot/dts/nvidia/tegra194.dtsi           | 28 ++++++++++++----------
+ 6 files changed, 38 insertions(+), 24 deletions(-)
+---
+base-commit: ca91b9500108d4cf083a635c2e11c884d5dd20ea
+change-id: 20250428-tegra-serial-fixes-9fcdc8fd5020
 
+Best regards,
 -- 
-2.48.1
+Aaron Kling <webgeek1234@gmail.com>
 
