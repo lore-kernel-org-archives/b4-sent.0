@@ -1,11 +1,11 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Date: Wed, 30 Apr 2025 11:16:01 +0200
-Subject: [PATCH v6 12/13] arm64: dts: rockchip: add mipi csi receiver node
- to rk356x
+Date: Wed, 30 Apr 2025 11:16:02 +0200
+Subject: [PATCH v6 13/13] arm64: dts: rockchip: enable vicap dvp on
+ wolfvision pf5 io expander
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240220-rk3568-vicap-v6-12-d2f5fbee1551@collabora.com>
+Message-Id: <20240220-rk3568-vicap-v6-13-d2f5fbee1551@collabora.com>
 References: <20240220-rk3568-vicap-v6-0-d2f5fbee1551@collabora.com>
 In-Reply-To: <20240220-rk3568-vicap-v6-0-d2f5fbee1551@collabora.com>
 To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
@@ -32,11 +32,11 @@ Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org,
  Michael Riesch <michael.riesch@wolfvision.net>, 
  Michael Riesch <michael.riesch@collabora.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746004564; l=1513;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746004564; l=1541;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=n7SsQ0Jm8O3DWkSGx7UsFwouL+EV1n9f6o7pvgBiZes=;
- b=lzw29BwM3tPkfOdfKBg86jtDgvUqZAFVH/p8kgRrW4iML8dcwBQh6mVMnW27scM/bIG9zX2J2
- s9auiD0AejAD5isRCKPOV6ATrHZZvxyjxfjIP1mGH33LkSZiAvadxkV
+ bh=A46w67oMbroxqAcXCMQ9mjlreHO/teIN06ITNLENh64=;
+ b=DNjWNIQuisPD8Z6OqpGmpAqpPC0hDoXzJO04Ec7Kajm4EErb2OOIEfBS83cMC0SVrDN6bR/cX
+ OeR7cHJDynmB0Jnmki/i35gIkGyEoVsfqQl26P3BNbj7r8uEp4cHMhU
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
@@ -44,63 +44,52 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Michael Riesch <michael.riesch@wolfvision.net>
 
-Add the device tree node for the RK356x MIPI CSI-2 Receiver.
+The Digital Video Port (DVP, the 16-bit variant) of the RK3568 VICAP
+is broken out to the PF5 mainboard expansion header.
+Enable it in the device tree overlay for the WolfVision PF5 IO
+Expander board.
 
 Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- arch/arm64/boot/dts/rockchip/rk356x-base.dtsi | 31 +++++++++++++++++++++++++++
- 1 file changed, 31 insertions(+)
+ .../rockchip/rk3568-wolfvision-pf5-io-expander.dtso  | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk356x-base.dtsi b/arch/arm64/boot/dts/rockchip/rk356x-base.dtsi
-index e0e4dc85a3a9..a1eab57003f6 100644
---- a/arch/arm64/boot/dts/rockchip/rk356x-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk356x-base.dtsi
-@@ -564,6 +564,33 @@ gpu: gpu@fde60000 {
- 		status = "disabled";
- 	};
+diff --git a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
+index 048933de2943..8cfce71dd318 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
++++ b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
+@@ -11,6 +11,7 @@
+ #include <dt-bindings/clock/rk3568-cru.h>
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/media/video-interfaces.h>
+ #include <dt-bindings/pinctrl/rockchip.h>
  
-+	csi: csi@fdfb0000 {
-+		compatible = "rockchip,rk3568-mipi-csi";
-+		reg = <0x0 0xfdfb0000 0x0 0x10000>;
-+		clocks = <&cru PCLK_CSI2HOST1>;
-+		phys = <&csi_dphy>;
-+		power-domains = <&power RK3568_PD_VI>;
-+		resets = <&cru SRST_P_CSI2HOST1>;
-+		status = "disabled";
+ &{/} {
+@@ -134,3 +135,22 @@ &usb2phy0_host {
+ 	phy-supply = <&usb_host_vbus>;
+ 	status = "okay";
+ };
 +
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
++&vicap {
++	pinctrl-names = "default";
++	pinctrl-0 = <&cif_clk &cif_dvp_clk &cif_dvp_bus16>;
++	status = "okay";
++};
 +
-+			csi_in: port@0 {
-+				reg = <0>;
-+			};
-+
-+			csi_out: port@1 {
-+				reg = <1>;
-+
-+				csi_output: endpoint {
-+					remote-endpoint = <&vicap_mipi_input>;
-+				};
-+			};
-+		};
++&vicap_dvp {
++	vicap_dvp_input: endpoint {
++		bus-type = <MEDIA_BUS_TYPE_BT656>;
++		bus-width = <16>;
++		pclk-sample = <MEDIA_PCLK_SAMPLE_DUAL_EDGE>;
++		rockchip,dvp-clk-delay = <10>;
 +	};
++};
 +
- 	vicap: video-capture@fdfe0000 {
- 		compatible = "rockchip,rk3568-vicap";
- 		reg = <0x0 0xfdfe0000 0x0 0x200>;
-@@ -592,6 +619,10 @@ vicap_dvp: port@0 {
- 
- 			vicap_mipi: port@1 {
- 				reg = <1>;
-+
-+				vicap_mipi_input: endpoint {
-+					remote-endpoint = <&csi_output>;
-+				};
- 			};
- 		};
- 	};
++&vicap_mmu {
++	status = "okay";
++};
 
 -- 
 2.39.5
