@@ -1,14 +1,13 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Subject: [PATCH 0/2] Add QPIC SPI NAND support for IPQ5018
-Date: Thu, 01 May 2025 13:20:50 +0400
-Message-Id: <20250501-ipq5018-spi-qpic-snand-v1-0-31e01fbb606f@outlook.com>
+Date: Thu, 01 May 2025 13:20:51 +0400
+Subject: [PATCH 1/2] dt-bindings: spi: spi-qpic-snand: Add IPQ5018
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPI8E2gC/x2MQQqAIBAAvxJ7bkEtQ/tKdAjdai9mLkQQ/T3pN
- Mxh5gGhwiQwNg8Uulj4SFV020DYl7QRcqwORhmrrNLI+axwKJnxzBxQ0pIi+t4Plpz3puugxrn
- Qyvc/nub3/QClA3oLaAAAAA==
-X-Change-ID: 20250501-ipq5018-spi-qpic-snand-94965e899233
+Message-Id: <20250501-ipq5018-spi-qpic-snand-v1-1-31e01fbb606f@outlook.com>
+References: <20250501-ipq5018-spi-qpic-snand-v1-0-31e01fbb606f@outlook.com>
+In-Reply-To: <20250501-ipq5018-spi-qpic-snand-v1-0-31e01fbb606f@outlook.com>
 To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, sadre Alam <quic_mdalam@quicinc.com>, 
@@ -18,33 +17,45 @@ Cc: linux-arm-msm@vger.kernel.org, linux-spi@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746091263; l=712;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746091263; l=1065;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=sSsvDIDiTu5nOi19ywpZdxlp3ipgkMJ6o2Ryy/qOOTo=;
- b=dPiMz7NRt1koz/E3E/avUsHajxPy09iBfUN43fwRdISRwABYDTJr4dqvb1UlWfJAWwqysI8fx
- hK+kUXl/TWWAyNs74JEmoWmcAILR3YMmZKqKBEFJJ6ySjpizF5uXSbS
+ bh=Vn57KyOsNu/ySFd+C3/QjJQvANGt6ZH80rH1wCZ1tT8=;
+ b=3RrQmearoVavPvbKtCI1KwwwSX1OTyhq6rOVklLPGZFGFKhyVqAfnJoUZCOids4dHNnILQ1AZ
+ 2W6MX43xx7PAi+38BpFmh99VvSWL/OLtdiAl9MDE8yRrH95LgCMBm/q
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the QPIC SPI NAND controller found in IPQ5018 which is 
-the same as the one found in IPQ5018.
+IPQ5018 contains the QPIC-SPI-NAND flash controller which is the same as
+the one found in IPQ9574. So let's document the IPQ5018 compatible and
+use IPQ9574 as the fallback.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-George Moussalem (2):
-      dt-bindings: spi: spi-qpic-snand: Add IPQ5018 compatible
-      arm64: dts: qcom: ipq5018: Add SPI nand support
+ Documentation/devicetree/bindings/spi/qcom,spi-qpic-snand.yaml | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
- .../bindings/spi/qcom,spi-qpic-snand.yaml          |  8 +++--
- arch/arm64/boot/dts/qcom/ipq5018.dtsi              | 38 ++++++++++++++++++++++
- 2 files changed, 44 insertions(+), 2 deletions(-)
----
-base-commit: 8a2d53ce3c5f82683ad3df9a9a55822816fe64e7
-change-id: 20250501-ipq5018-spi-qpic-snand-94965e899233
+diff --git a/Documentation/devicetree/bindings/spi/qcom,spi-qpic-snand.yaml b/Documentation/devicetree/bindings/spi/qcom,spi-qpic-snand.yaml
+index aa3f933192034fe6d54d6149373d50c31ec4aa96..cb1f15224b45574a3c3d603566c859a9bec41937 100644
+--- a/Documentation/devicetree/bindings/spi/qcom,spi-qpic-snand.yaml
++++ b/Documentation/devicetree/bindings/spi/qcom,spi-qpic-snand.yaml
+@@ -21,8 +21,12 @@ allOf:
+ 
+ properties:
+   compatible:
+-    enum:
+-      - qcom,ipq9574-snand
++    oneOf:
++      - items:
++          - enum:
++              - qcom,ipq5018-snand
++          - const: qcom,ipq9574-snand
++      - const: qcom,ipq9574-snand
+ 
+   reg:
+     maxItems: 1
 
-Best regards,
 -- 
-George Moussalem <george.moussalem@outlook.com>
+2.49.0
 
