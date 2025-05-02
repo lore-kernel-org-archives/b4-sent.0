@@ -1,68 +1,73 @@
-From: Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
-Date: Fri, 02 May 2025 11:31:41 +0200
-Subject: [PATCH] mm: mmap: map MAP_STACK to VM_NOHUGEPAGE only if THP is
- enabled
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH 0/6] Add CMN PLL clock controller support for IPQ5018
+Date: Fri, 02 May 2025 14:15:42 +0400
+Message-Id: <20250502-ipq5018-cmn-pll-v1-0-27902c1c4071@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250502-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-v1-1-113cc634cd51@kuka.com>
-X-B4-Tracking: v=1; b=H4sIAPyQFGgC/x2NQQqDMBBFryKz7kAMCm2vUopMk9EM1SQkqSji3
- Zt28RYPHv8fkDkJZ7g3ByReJUvwVdpLA8aRnxjFVgetdK86fcWF4o8hFzJvLAHXZfDBfSaOVOv
- g5x1lxOIiSkb29JrZouFOUWtZ3XoLdTsmHmX7/z6e5/kF78HTM4cAAAA=
-X-Change-ID: 20250428-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-ce40a1de095d
-To: Liam.Howlett@oracle.com, lorenzo.stoakes@oracle.com
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
+X-B4-Tracking: v=1; b=H4sIAE6bFGgC/02OXQqDMBAGryL73EB+jK5epYikyaYNqNVopSDev
+ VFf+rTMwjfMBjPFQDPU2QaR1jCH95BA3DKwLzM8iQWXGCSXmmsuWBindJDZfmBj1zEkLUpHWCq
+ PkFZjJB++p/HeXBxp+iTxcj3hYWZi9t33YakzNNJpZUlZ7VEWqIxTzlemMlqjlCgKT0VOJfwH1
+ dmZkwvBpiRqj6Zc5m1qOpKqghv0uiq5UvUqodn3H/kC1FroAAAA
+X-Change-ID: 20250501-ipq5018-cmn-pll-8e517de873f8
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Luo Jie <quic_luoj@quicinc.com>, 
+ Lee Jones <lee@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746178308; l=1800;
- i=Ignacio.MorenoGonzalez@kuka.com; s=20220915; h=from:subject:message-id;
- bh=fqHEYzRVTDCWtppau7rpnlBqweJIa/e1V5D0pJG1Pm8=;
- b=sORPxW2hJtjJRkgQLgAA4J9V8d632Q5Nhca5+LarntPGbh2i3oJLgDVba4c3Dnq3bRs7F2MT6
- n8GBzNgtAK9Dz0klHvfVo09O3Pi8Ku2/OtzI2vIl3lJerwPHelJQUJg
-X-Developer-Key: i=Ignacio.MorenoGonzalez@kuka.com; a=ed25519;
- pk=j7nClQnc5Q1IDuT4eS/rYkcLHXzxszu2jziMcJaFdBQ=
-X-Endpoint-Received: by B4 Relay for Ignacio.MorenoGonzalez@kuka.com/20220915 with auth_id=391
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746180945; l=1972;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=3c3+5z27CJFct2aKCPDEIOAcWESjT7K/nmpBVR7j1XA=;
+ b=4vvd5Svjyxb5OLpkhk7VVUVphoiGh7arQX79G3tzygL39SN53iPp0e+3DY/IKAX/+oN2XMX94
+ tommmv5sfSDB2awRhaeCYC55VYwNSQN/DLfIO8IgljvxL9sa5tfb7Di
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-commit c4608d1bf7c6 ("mm: mmap: map MAP_STACK to VM_NOHUGEPAGE") maps
-the mmap option MAP_STACK to VM_NOHUGEPAGE. This is also done if
-CONFIG_TRANSPARENT_HUGETABLES is not defined. But in that case, the
-VM_NOHUGEPAGE does not make sense. For instance, when calling madvise()
-with MADV_NOHUGEPAGE, an error is always returned.
+The CMN PLL block of IPQ5018 supplies output clocks for XO at 24 MHZ,
+sleep at 32KHZ, and the ethernet block at 50MHZ.
 
-Signed-off-by: Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
----
-I discovered this issue when trying to use the tool CRIU to checkpoint
-and restore a container. Our running kernel is compiled without
-CONFIG_TRANSPARENT_HUGETABLES. CRIU parses the output of
-/proc/<pid>/smaps and saves the "nh" flag. When trying to restore the
-container, CRIU fails to restore the "nh" mappings, since madvise()
-MADV_NOHUGEPAGE always returns an error because
-CONFIG_TRANSPARENT_HUGETABLES is not defined.
----
- include/linux/mman.h | 2 ++
- 1 file changed, 2 insertions(+)
+This patch series extends the CMN PLL driver to support IPQ5018.
+It also adds the SoC specific header file to export the CMN PLL
+output clock specifiers for IPQ5018. The new table of output
+clocks is added for the CMN PLL of IPQ5018, which is acquired
+from the device according to the compatible.
 
-diff --git a/include/linux/mman.h b/include/linux/mman.h
-index bce214fece16b9af3791a2baaecd6063d0481938..1e83bc0e3db670b04743f5208826e87455a05325 100644
---- a/include/linux/mman.h
-+++ b/include/linux/mman.h
-@@ -155,7 +155,9 @@ calc_vm_flag_bits(struct file *file, unsigned long flags)
- 	return _calc_vm_trans(flags, MAP_GROWSDOWN,  VM_GROWSDOWN ) |
- 	       _calc_vm_trans(flags, MAP_LOCKED,     VM_LOCKED    ) |
- 	       _calc_vm_trans(flags, MAP_SYNC,	     VM_SYNC      ) |
-+#if defined(CONFIG_TRANSPARENT_HUGEPAGE)
- 	       _calc_vm_trans(flags, MAP_STACK,	     VM_NOHUGEPAGE) |
-+#endif
- 	       arch_calc_vm_flag_bits(file, flags);
- }
- 
-
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-base-commit: fc96b232f8e7c0a6c282f47726b2ff6a5fb341d2
-change-id: 20250428-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-ce40a1de095d
+George Moussalem (6):
+      dt-bindings: clock: qcom: Add CMN PLL support for IPQ5018 SoC
+      clk: qcom: ipq5018: mark XO clock as critical
+      clk: qcom: ipq-cmn-pll: Add IPQ5018 SoC support
+      dt-bindings: mfd: qcom,tcsr: Add compatible for IPQ5018
+      arm64: dts: ipq5018: Add CMN PLL node
+      arm64: dts: qcom: Update IPQ5018 xo_board_clk to use fixed factor clock
+
+ .../bindings/clock/qcom,ipq9574-cmn-pll.yaml       | 11 +++-
+ .../devicetree/bindings/mfd/qcom,tcsr.yaml         |  1 +
+ arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts     |  3 +-
+ .../dts/qcom/ipq5018-tplink-archer-ax55-v1.dts     |  3 +-
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              | 40 +++++++++++-
+ drivers/clk/qcom/gcc-ipq5018.c                     |  2 +-
+ drivers/clk/qcom/ipq-cmn-pll.c                     | 72 ++++++++++++++++++----
+ include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h   | 16 +++++
+ 8 files changed, 129 insertions(+), 19 deletions(-)
+---
+base-commit: 8a2d53ce3c5f82683ad3df9a9a55822816fe64e7
+change-id: 20250501-ipq5018-cmn-pll-8e517de873f8
+prerequisite-change-id: 20250411-qcom_ipq5424_cmnpll-960a8f597033:v2
+prerequisite-patch-id: dc3949e10baf58f8c28d24bb3ffd347a78a1a2ee
+prerequisite-patch-id: da645619780de3186a3cccf25beedd4fefab36df
+prerequisite-patch-id: 4b5d81954f1f43d450a775bcabc1a18429933aaa
+prerequisite-patch-id: 541f835fb279f83e6eb2405c531bd7da9aacf4bd
 
 Best regards,
 -- 
-Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
+George Moussalem <george.moussalem@outlook.com>
 
