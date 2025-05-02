@@ -1,83 +1,78 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 02 May 2025 14:15:48 +0400
-Subject: [PATCH 6/6] arm64: dts: qcom: Update IPQ5018 xo_board_clk to use
- fixed factor clock
+From: Paul Cacheux <paulcacheux@gmail.com>
+Subject: [PATCH v2 0/2] tracing: fix race when creating trace probe log
+ error message
+Date: Fri, 02 May 2025 15:15:51 +0200
+Message-Id: <20250502-fix-trace-probe-log-race-v2-0-511ecc1521ec@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250502-ipq5018-cmn-pll-v1-6-27902c1c4071@outlook.com>
-References: <20250502-ipq5018-cmn-pll-v1-0-27902c1c4071@outlook.com>
-In-Reply-To: <20250502-ipq5018-cmn-pll-v1-0-27902c1c4071@outlook.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Luo Jie <quic_luoj@quicinc.com>, 
- Lee Jones <lee@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAIfFFGgC/3WNwQqDMBBEf0X23C1mUWp76n+Ih7hZdUGNJCIt4
+ r83FXrs8Q0zb3aIElQiPLIdgmwa1c8J6JIBD3buBdUlBsqpzAvKsdMXrsGy4BJ8Kzj6Hk9kru6
+ ukrJrTQlpvgRJ3VNdN4kHjasP7/NpM9/0J6X/0s2gQUc3qlxBbLl99pPV8cp+guY4jg+FG8taw
+ AAAAA==
+X-Change-ID: 20250420-fix-trace-probe-log-race-cc89d8e5fb15
+To: Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Namhyung Kim <namhyung@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
+ Paul Cacheux <paulcacheux@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746180946; l=1998;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=LxxatdRb90i4on9YIidoVQJCRrrcChIjg+ks5OFGzsg=;
- b=qCfczu/hRv/nE0TSXTdWP0CI16lOIV3RTDfLOzPPumJyG3yT7ydLhYyjcaXLKICiDDgcr+qFA
- CdI3ZL5c5YuCAHgmMJF6Tl86pdjVRSigL5rd0vjWq6ufBaUyD7sh4aL
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746191767; l=1762;
+ i=paulcacheux@gmail.com; s=20250422; h=from:subject:message-id;
+ bh=KpVvY39bTMtM8+XE+uRP1OauAipaWPrZAaSpJuBqdO0=;
+ b=s8QdfrlRuuLv1kCYAOYbz7sqfW+OGlxZHlYqubZkhTMzCambp3fmi+4UXmyPonECg6Tmq5sz6
+ uBRkEVWeSKwAS9oLzA5Dy20Rx4Dh6VcEST8GzIp3WzBUADunE+GSC3D
+X-Developer-Key: i=paulcacheux@gmail.com; a=ed25519;
+ pk=8UguSecyECHKHp0YLS7hTEDob0ctFMr3ygBTeAmrFHs=
+X-Endpoint-Received: by B4 Relay for paulcacheux@gmail.com/20250422 with auth_id=386
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The xo_board_clk is fixed to 24 MHZ, which is routed from WiFi output
-clock 96 MHZ (also being the reference clock of CMN PLL) divided by 4
-to the analog block routing channel.
+Hello,
 
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+As reported in [1] a race exists in the shared trace probe log
+used to build error messages. This can cause kernel crashes
+when building the actual error message, but the race happens
+even for non-error tracefs uses, it's just not visible.
+
+Reproducer first reported that is still crashing:
+
+  # 'p4' is invalid command which make kernel run into trace_probe_log_err()
+  cd /sys/kernel/debug/tracing
+  while true; do
+    echo 'p4:myprobe1 do_sys_openat2 dfd=%ax filename=%dx flags=%cx mode=+4($stack)' >> kprobe_events &
+    echo 'p4:myprobe2 do_sys_openat2' >> kprobe_events &
+    echo 'p4:myprobe3 do_sys_openat2 dfd=%ax filename=%dx' >> kprobe_events &
+  done;
+
+The original email suggested to use a mutex or to allocate the
+trace_probe_log on the stack. This patch implements a simpler
+solution suggest during the review of the v1 where we only protect
+access to the shared trace_probe_log with a mutex. This will prevent
+any crash from happening.
+
+[1] https://lore.kernel.org/all/20221121081103.3070449-1-zhengyejian1@huawei.com/T/
+
+Signed-off-by: Paul Cacheux <paulcacheux@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts             | 3 ++-
- arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts | 3 ++-
- arch/arm64/boot/dts/qcom/ipq5018.dtsi                      | 3 ++-
- 3 files changed, 6 insertions(+), 3 deletions(-)
+Changes in v2:
+- change approach, and use the mutex based solution suggested during
+  review
+- Link to v1: https://lore.kernel.org/r/20250422-fix-trace-probe-log-race-v1-1-d2728d42cacb@gmail.com
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-index 8460b538eb6a3e2d6b971bd9637309809e0c0f0c..abb629678c023a2eb387ebf229f6dd1c30133b19 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-+++ b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-@@ -80,5 +80,6 @@ &usbphy0 {
- };
- 
- &xo_board_clk {
--	clock-frequency = <24000000>;
-+	clock-div = <4>;
-+	clock-mult = <1>;
- };
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts b/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts
-index 5bb021cb29cd39cb95035bfac1bdbc976439838b..7a25af57749c8e8c9a6a185437886b04b0d99e8e 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts
-+++ b/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts
-@@ -124,5 +124,6 @@ uart_pins: uart-pins-state {
- };
- 
- &xo_board_clk {
--	clock-frequency = <24000000>;
-+	clock-div = <4>;
-+	clock-mult = <1>;
- };
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 78368600ba44825b38f737a6d7837a80dc32efb6..7e40f80e4795de25d55b5a19c1beb98e5abcdef3 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -31,7 +31,8 @@ sleep_clk: sleep-clk {
- 		};
- 
- 		xo_board_clk: xo-board-clk {
--			compatible = "fixed-clock";
-+			compatible = "fixed-factor-clock";
-+			clocks = <&ref_96mhz_clk>;
- 			#clock-cells = <0>;
- 		};
- 
+---
+Paul Cacheux (2):
+      tracing: add missing trace_probe_log_clear for eprobes
+      tracing: protect trace_probe_log with mutex
 
+ kernel/trace/trace_eprobe.c | 3 +++
+ kernel/trace/trace_probe.c  | 6 ++++++
+ 2 files changed, 9 insertions(+)
+---
+base-commit: ebd297a2affadb6f6f4d2e5d975c1eda18ac762d
+change-id: 20250420-fix-trace-probe-log-race-cc89d8e5fb15
+
+Best regards,
 -- 
-2.49.0
+Paul Cacheux <paulcacheux@gmail.com>
 
