@@ -1,144 +1,91 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Thu, 01 May 2025 17:32:23 -0500
-Subject: [PATCH v2] arm64: tegra: Enable PWM fan on the Jetson TX1 Devkit
+From: Sung-Chi Li <lschyi@chromium.org>
+Subject: [PATCH v2 0/3] Export fan control and register fans as cooling
+ devices
+Date: Fri, 02 May 2025 13:34:44 +0800
+Message-Id: <20250502-cros_ec_fan-v2-0-4d588504a01f@chromium.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250501-tx1-therm-v2-1-abdb1922c001@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAHb2E2gC/23MSw7CIBSF4a00dyyGp1pH7sN0gAjlJlIMEFLTs
- HexY4f/ycm3QbYJbYbrsEGyFTPGpQc/DGC8XmZL8NkbOOWKSk5JWRkp3qZARvcQRlCnpXDQ/+9
- kHa67dZ96e8wlps9OV/Zb/ymVEUbURbGTOTsj+Xibg8bX0cQAU2vtC4GbZxyiAAAA
-X-Change-ID: 20250420-tx1-therm-9fb3c30fa43f
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAHRZFGgC/23MQQ6CMBCF4auQWVvTFjTWlfcwhAxloLOAmqkSD
+ endraxd/i953waJhCnBtdpAaOXEcSlhDxX4gMtEiofSYLU96cY65SWmjnw34qIGrPtzg955o6E
+ 8HkIjv3ft3pYOnJ5RPju+mt/631mN0govg6Oaxr43ePNB4syv+Rhlgjbn/AX3TPOvqQAAAA==
+X-Change-ID: 20250429-cros_ec_fan-da3b64ac9c10
+To: Benson Leung <bleung@chromium.org>, Guenter Roeck <groeck@chromium.org>, 
+ =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>, 
+ Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: chrome-platform@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Sung-Chi Li <lschyi@google.com>, Sung-Chi Li <lschyi@chromium.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746138746; l=3058;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=5WwXIILW7h6PVNyGMb5HuC90et+tCHw6bRcXa5HcJ8g=;
- b=cdAMKSijdEpZU1K5DfekxqFfLwNz+5PfWhWRkyosUCSkP4J0nShnN5pYqwPAIkGJrkI9IzSow
- eaTFIF278T1DXzlUlLLu5TobhfV55hLm6MHCLIVBWI5fQG7ESqdFqEl
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746164092; l=2642;
+ i=lschyi@chromium.org; s=20250429; h=from:subject:message-id;
+ bh=KLyWWIpNFhDYUhaND9qD9RHoBDrHRDJMdlpTn12gGg4=;
+ b=aNL/Qtmvl8LnJJ+DCJb69VFm2O7Bo7Gqjv27A2d/4mlCa7IxVqSntzbQM4M9O+HBFVCm8HXo5
+ cTLVn8k2zK4ANZOiqhsphzynlWGE8+RuK9k0YwFLrds/3WFiql3q8Ur
+X-Developer-Key: i=lschyi@chromium.org; a=ed25519;
+ pk=9gCZPRJmYyHDt6VN9FV2UreFcUr73JFrwYvmsltW9Y8=
+X-Endpoint-Received: by B4 Relay for lschyi@chromium.org/20250429 with auth_id=392
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is based on 6f78a94, which enabled added the fan and thermal zones
-for the Jetson Nano Devkit. The fan and thermal characteristics of the
-two devkits are similar, so using the same configuration.
+This is a continuation of the previous series "Export the target RPM fan
+control by ChromeOS EC under hwmon"
+(https://lore.kernel.org/lkml/20250313-extend_ec_hwmon_fan-v1-0-5c566776f2c4@chromium.org/T/#t).
+There is a change from controlling the target fan RPM value to control
+the PWM value.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+We anticipate to involve fans connected to EC as thermal cooling
+devices, so we can utilize the thermal framework to have further thermal
+control strategies.
+
+This series updates the required EC controls definitions, implements the
+mechanism for controlling fan PWM values, and registers these fans under
+thermal framework as cooling devices.
+
+Adapting comments from the previous series, the driver probes the host
+command capability at beginning to see whether a fan is controllable:
+  - if command `EC_CMD_PWM_GET_FAN_DUTY` is supported (v0, this is a
+    new command).
+  - if command `EC_CMD_THERMAL_AUTO_FAN_CTRL` v2 is supported.
+  - if command `EC_CMD_PWM_SET_FAN_DUTY` v1 is supported.
+
+This combination is selected as this is the minimum requirement for a
+fan to be fully controllable under hwmon framework.
+
+The driver supports changing the fan control mode, and allows to change
+the fan PWM value only if the fan is in manual control mode. The power
+management hook is implemented as well for keeping the fan control
+settings, as EC will automatically restore the control method to auto
+when device is suspended.
+
+Change-Id: I4e2fdc8c4bc50778c0d04cfbefeaab7088d3181e
+Signed-off-by: Sung-Chi Li <lschyi@google.com>
 ---
 Changes in v2:
-- Add fan regulator
-- Add interrupt for tachometer
-- Reverse cooling map to account for inverse polarity
-- Rename cooling map nodes to map# as tht is all the schema allows
-- Link to v1: https://lore.kernel.org/r/20250420-tx1-therm-v1-1-58516c7fc429@gmail.com
----
- arch/arm64/boot/dts/nvidia/tegra210-p2597.dtsi | 75 ++++++++++++++++++++++++++
- 1 file changed, 75 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210-p2597.dtsi b/arch/arm64/boot/dts/nvidia/tegra210-p2597.dtsi
-index 83ed6ac2a8d8f403fb588edce83dc401065c162f..584461f3a6196c4327e958b424dfd2139cd43965 100644
---- a/arch/arm64/boot/dts/nvidia/tegra210-p2597.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra210-p2597.dtsi
-@@ -1623,6 +1623,18 @@ key-volume-up {
- 		};
- 	};
- 
-+	fan: pwm-fan {
-+		compatible = "pwm-fan";
-+		pwms = <&pwm 3 45334>;
-+		fan-supply = <&vdd_fan>;
-+		interrupt-parent = <&gpio>;
-+		interrupts = <TEGRA_GPIO(K, 7) IRQ_TYPE_EDGE_RISING>;
-+
-+		/* cooling level (0, 1, 2, 3) - pwm inverted */
-+		cooling-levels = <255 128 64 0>;
-+		#cooling-cells = <2>;
-+	};
-+
- 	vdd_sys_mux: regulator-vdd-sys-mux {
- 		compatible = "regulator-fixed";
- 		regulator-name = "VDD_SYS_MUX";
-@@ -1778,4 +1790,67 @@ vdd_usb_vbus_otg: regulator-vdd-usb-vbus-otg {
- 		enable-active-high;
- 		vin-supply = <&vdd_5v0_sys>;
- 	};
-+
-+	vdd_fan: regulator-vdd-fan {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VDD_FAN";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		gpio = <&exp1 4 GPIO_ACTIVE_LOW>;
-+		vin-supply = <&vdd_5v0_sys>;
-+
-+		regulator-enable-ramp-delay = <284>;
-+	};
-+
-+	thermal-zones {
-+		cpu-thermal {
-+			trips {
-+				cpu_trip_critical: critical {
-+					temperature = <96500>;
-+					hysteresis = <0>;
-+					type = "critical";
-+				};
-+
-+				cpu_trip_hot: hot {
-+					temperature = <70000>;
-+					hysteresis = <2000>;
-+					type = "hot";
-+				};
-+
-+				cpu_trip_active: active {
-+					temperature = <50000>;
-+					hysteresis = <2000>;
-+					type = "active";
-+				};
-+
-+				cpu_trip_passive: passive {
-+					temperature = <30000>;
-+					hysteresis = <2000>;
-+					type = "passive";
-+				};
-+			};
-+
-+			cooling-maps {
-+				map0 {
-+					cooling-device = <&fan 3 3>;
-+					trip = <&cpu_trip_critical>;
-+				};
-+
-+				map1 {
-+					cooling-device = <&fan 2 2>;
-+					trip = <&cpu_trip_hot>;
-+				};
-+
-+				map2 {
-+					cooling-device = <&fan 1 1>;
-+					trip = <&cpu_trip_active>;
-+				};
-+
-+				map3 {
-+					cooling-device = <&fan 0 0>;
-+					trip = <&cpu_trip_passive>;
-+				};
-+			};
-+		};
-+	};
- };
+- Change column from 80 to 100 and fix styles.
+- Directly store driver data into platform dev with
+  platform_set_drvdata.
+- Unify the PWM unit (from 0 ~ 255) between hwmon and thermal cooling
+  devices.
+- Only fetch the fan control mode and PWM value when suspending rather
+  than caching values when writing. The suspend hook is thus added.
+- Link to v1: https://lore.kernel.org/r/20250429-cros_ec_fan-v1-0-a8d9e3efbb1a@chromium.org
 
 ---
-base-commit: 9c32cda43eb78f78c73aee4aa344b777714e259b
-change-id: 20250420-tx1-therm-9fb3c30fa43f
+Sung-Chi Li (3):
+      platform/chrome: update pwm fan control host commands
+      hwmon: (cros_ec) add PWM control over fans
+      hwmon: (cros_ec) register fans into thermal framework cooling devices
+
+ Documentation/hwmon/cros_ec_hwmon.rst          |   7 +-
+ drivers/hwmon/cros_ec_hwmon.c                  | 267 +++++++++++++++++++++++++
+ include/linux/platform_data/cros_ec_commands.h |  29 ++-
+ 3 files changed, 301 insertions(+), 2 deletions(-)
+---
+base-commit: 33035b665157558254b3c21c3f049fd728e72368
+change-id: 20250429-cros_ec_fan-da3b64ac9c10
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Sung-Chi Li <lschyi@chromium.org>
 
