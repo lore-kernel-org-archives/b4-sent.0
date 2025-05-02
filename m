@@ -1,16 +1,13 @@
 From: Kurt Borja <kuurtb@gmail.com>
-Subject: [PATCH v3 0/2] platform/x86: alienware-wmi-wmax: Add support for
- GPIO methods
-Date: Fri, 02 May 2025 05:08:59 -0300
-Message-Id: <20250502-awcc-gpio-v3-0-ea9a932d1124@gmail.com>
+Date: Fri, 02 May 2025 05:09:00 -0300
+Subject: [PATCH v3 1/2] platform/x86: alienware-wmi-wmax: Expose GPIO debug
+ methods
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJt9FGgC/02MwQ6DIBAFf8VwLg27gKY99T+aHhBRN6lioKFtj
- P9eND1wnJc3s7LoArnIrtXKgksUyc8Z5KlidjTz4Dh1mRkK1EKB5OZtLR8W8hxVC722WtUdsvx
- fguvpc7Tuj8wjxZcP3yOdYF//FSwrCbjgUAsD0FrZX8xtmAw9z9ZPbK8kLM2mNDGbtpEgG9nqT
- mBpbtv2A7a35ITcAAAA
-X-Change-ID: 20250413-awcc-gpio-24b1f5c546d2
+Message-Id: <20250502-awcc-gpio-v3-1-ea9a932d1124@gmail.com>
+References: <20250502-awcc-gpio-v3-0-ea9a932d1124@gmail.com>
+In-Reply-To: <20250502-awcc-gpio-v3-0-ea9a932d1124@gmail.com>
 To: Hans de Goede <hdegoede@redhat.com>, 
  =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
  Armin Wolf <W_Armin@gmx.de>
@@ -18,61 +15,219 @@ Cc: Gabriel Marcano <gabemarcano@yahoo.com>,
  platform-driver-x86@vger.kernel.org, Dell.Client.Kernel@dell.com, 
  linux-kernel@vger.kernel.org, Kurt Borja <kuurtb@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1694; i=kuurtb@gmail.com;
- h=from:subject:message-id; bh=L/55x76jq/qiQEmKk7ejxbxAQIAOe3h5IfdGTNBl5v0=;
- b=owGbwMvMwCUmluBs8WX+lTTG02pJDBkitav2S5pG/troxzWzYR6HlKjlk5650qGtl/VCJ0xs0
- cr/9om1o5SFQYyLQVZMkaU9YdG3R1F5b/0OhN6HmcPKBDKEgYtTACbiYszIcNLy0cZoIbkV6TF7
- r1xyWV3K/XdyTYZsRIKnr033TKPb1gx/hSqeZS5/mPMrTdKr045nXh3Du9vGl1mEp7w5skxcYeI
- 6ZgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6403; i=kuurtb@gmail.com;
+ h=from:subject:message-id; bh=PwPqgrtl1yTz1rK1jiR06nkew+jFDjS+SiLFbNoiWo4=;
+ b=owGbwMvMwCUmluBs8WX+lTTG02pJDBkitau3d/W9W7/j4+ujO67EqUfVZUx7Wf/IZf//Cr7uI
+ w3T1u7931HKwiDGxSArpsjSnrDo26OovLd+B0Lvw8xhZQIZwsDFKQATufqa4X+R3Nqeh9Hst346
+ 6l/9vfzsv9MP98fdmnCv3GlrzpMdT4pEGRkOiWwRSi9SXxUWxbSgJsL3ukKO82ttTXaZPR67Phh
+ 1zGMGAA==
 X-Developer-Key: i=kuurtb@gmail.com; a=openpgp;
  fpr=54D3BE170AEF777983C3C63B57E3B6585920A69A
 X-Endpoint-Received: by B4 Relay for kuurtb@gmail.com/default with auth_id=387
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi all,
+Devices with the AWCC interface come with a USB RGB-lighting STM32 MCU,
+which has two GPIO pins with debug capabilities:
 
-I found a great blog post [1], which described the reverse engineering
-process of the GPIO control methods present on this device.
+ - Device Firmware Update mode (DFU)
+ - Negative Reset (NRST)
 
-In summary, these methods expose some debugging capabilities of the RGB
-lighting controller present on Dell gaming laptops. See [Patch 2] for
-more info.
+The WMAX device has methods to toggle or read the state of these GPIO
+pins. Expose these methods through DebugFS, hidden behind an unsafe
+module parameter to avoid common users from toying with these without
+consideration.
 
-Exposing these methods to DebugFS is useful for developers exploring
-this RGB controllers (myself included).
-
-Thanks for your feedback!
-
-[1] https://gabriel.marcanobrady.family/blog/2024/12/16/dell-g5-5505-se-acpi-or-figuring-out-how-to-reset-the-rgb-controller/
-
+Suggested-by: Gabriel Marcano <gabemarcano@yahoo.com>
+Reviewed-by: Armin Wolf <W_Armin@gmx.de>
 Signed-off-by: Kurt Borja <kuurtb@gmail.com>
 ---
-Changes in v3:
-- Create pinX files dynamically, based on GPIO pin count
-- Added note on dummy input arguments in Documentation
-- Link to v2: https://lore.kernel.org/r/20250427-awcc-gpio-v2-0-c731373b5d02@gmail.com
-
-Changes in v2:
-- Dropped module parameter
-- Added ABI documentation to Patch 1
-- Small improvements to documentation based on Armin's comments
-- Improved Pin description table format
-- Link to v1: https://lore.kernel.org/r/20250423-awcc-gpio-v1-0-160a11bc3f9a@gmail.com
-
----
-Kurt Borja (2):
-      platform/x86: alienware-wmi-wmax: Expose GPIO debug methods
-      Documentation: wmi: alienware-wmi: Add GPIO control documentation
-
  Documentation/ABI/testing/debugfs-alienware-wmi |  20 +++++
- Documentation/wmi/devices/alienware-wmi.rst     |  82 +++++++++++++++++-
  drivers/platform/x86/dell/alienware-wmi-wmax.c  | 105 +++++++++++++++++++++++-
- 3 files changed, 201 insertions(+), 6 deletions(-)
----
-base-commit: f618f1b298d3195d363b20f158ccb3facf553f0d
-change-id: 20250413-awcc-gpio-24b1f5c546d2
+ 2 files changed, 123 insertions(+), 2 deletions(-)
 
-Best regards,
+diff --git a/Documentation/ABI/testing/debugfs-alienware-wmi b/Documentation/ABI/testing/debugfs-alienware-wmi
+index 48cfd4d0b002efd7b68d9c1d3aa91a3a05f49db5..c7f525d6baac962be82780608f8da5c0368600cc 100644
+--- a/Documentation/ABI/testing/debugfs-alienware-wmi
++++ b/Documentation/ABI/testing/debugfs-alienware-wmi
+@@ -42,3 +42,23 @@ Description:
+ 		details.
+ 
+ 		RO
++
++What:		/sys/kernel/debug/alienware-wmi-<wmi_device_name>/gpio_ctl/total_gpios
++Date:		May 2025
++KernelVersion:	6.16
++Contact:	Kurt Borja <kuurtb@gmail.com>
++Description:
++		Total number of GPIO pins reported by the device.
++
++		RO
++
++What:		/sys/kernel/debug/alienware-wmi-<wmi_device_name>/gpio_ctl/pinX
++Date:		May 2025
++KernelVersion:	6.16
++Contact:	Kurt Borja <kuurtb@gmail.com>
++Description:
++		This file controls GPIO pin X status.
++
++		See Documentation/wmi/devices/alienware-wmi.rst for details.
++
++		RW
+diff --git a/drivers/platform/x86/dell/alienware-wmi-wmax.c b/drivers/platform/x86/dell/alienware-wmi-wmax.c
+index faeddfe3b79e0aa51e7c8c6b23aa4ac5c7218706..2bf9d85426b8f2cc5482be48050c81f9b6a30d00 100644
+--- a/drivers/platform/x86/dell/alienware-wmi-wmax.c
++++ b/drivers/platform/x86/dell/alienware-wmi-wmax.c
+@@ -38,6 +38,9 @@
+ #define AWCC_METHOD_GET_FAN_SENSORS		0x13
+ #define AWCC_METHOD_THERMAL_INFORMATION		0x14
+ #define AWCC_METHOD_THERMAL_CONTROL		0x15
++#define AWCC_METHOD_FWUP_GPIO_CONTROL		0x20
++#define AWCC_METHOD_READ_TOTAL_GPIOS		0x21
++#define AWCC_METHOD_READ_GPIO_STATUS		0x22
+ #define AWCC_METHOD_GAME_SHIFT_STATUS		0x25
+ 
+ #define AWCC_FAILURE_CODE			0xFFFFFFFF
+@@ -281,6 +284,8 @@ struct awcc_priv {
+ 	struct device *hwdev;
+ 	struct awcc_fan_data **fan_data;
+ 	unsigned long temp_sensors[AWCC_ID_BITMAP_LONGS];
++
++	u32 gpio_count;
+ };
+ 
+ static const enum platform_profile_option awcc_mode_to_platform_profile[AWCC_PROFILE_LAST] = {
+@@ -571,6 +576,38 @@ static int awcc_thermal_information(struct wmi_device *wdev, u8 operation, u8 ar
+ 	return awcc_wmi_command(wdev, AWCC_METHOD_THERMAL_INFORMATION, &args, out);
+ }
+ 
++static int awcc_fwup_gpio_control(struct wmi_device *wdev, u8 pin, u8 status)
++{
++	struct wmax_u32_args args = {
++		.operation = pin,
++		.arg1 = status,
++		.arg2 = 0,
++		.arg3 = 0,
++	};
++	u32 out;
++
++	return awcc_wmi_command(wdev, AWCC_METHOD_FWUP_GPIO_CONTROL, &args, &out);
++}
++
++static int awcc_read_total_gpios(struct wmi_device *wdev, u32 *count)
++{
++	struct wmax_u32_args args = {};
++
++	return awcc_wmi_command(wdev, AWCC_METHOD_READ_TOTAL_GPIOS, &args, count);
++}
++
++static int awcc_read_gpio_status(struct wmi_device *wdev, u8 pin, u32 *status)
++{
++	struct wmax_u32_args args = {
++		.operation = pin,
++		.arg1 = 0,
++		.arg2 = 0,
++		.arg3 = 0,
++	};
++
++	return awcc_wmi_command(wdev, AWCC_METHOD_READ_GPIO_STATUS, &args, status);
++}
++
+ static int awcc_game_shift_status(struct wmi_device *wdev, u8 operation,
+ 				  u32 *out)
+ {
+@@ -1318,6 +1355,47 @@ static int awcc_debugfs_pprof_data_read(struct seq_file *seq, void *data)
+ 	return 0;
+ }
+ 
++static int awcc_gpio_pin_show(struct seq_file *seq, void *data)
++{
++	unsigned long pin = debugfs_get_aux_num(seq->file);
++	struct wmi_device *wdev = seq->private;
++	u32 status;
++	int ret;
++
++	ret = awcc_read_gpio_status(wdev, pin, &status);
++	if (ret)
++		return ret;
++
++	seq_printf(seq, "%u\n", status);
++
++	return 0;
++}
++
++static ssize_t awcc_gpio_pin_write(struct file *file, const char __user *buf,
++				   size_t count, loff_t *ppos)
++{
++	unsigned long pin = debugfs_get_aux_num(file);
++	struct seq_file *seq = file->private_data;
++	struct wmi_device *wdev = seq->private;
++	bool status;
++	int ret;
++
++	if (!ppos || *ppos)
++		return -EINVAL;
++
++	ret = kstrtobool_from_user(buf, count, &status);
++	if (ret)
++		return ret;
++
++	ret = awcc_fwup_gpio_control(wdev, pin, status);
++	if (ret)
++		return ret;
++
++	return count;
++}
++
++DEFINE_SHOW_STORE_ATTRIBUTE(awcc_gpio_pin);
++
+ static void awcc_debugfs_remove(void *data)
+ {
+ 	struct dentry *root = data;
+@@ -1327,11 +1405,15 @@ static void awcc_debugfs_remove(void *data)
+ 
+ static void awcc_debugfs_init(struct wmi_device *wdev)
+ {
+-	struct dentry *root;
+-	char name[64];
++	struct awcc_priv *priv = dev_get_drvdata(&wdev->dev);
++	struct dentry *root, *gpio_ctl;
++	char pin_name[8], name[64];
++	u32 gpio_count;
++	int ret;
+ 
+ 	scnprintf(name, sizeof(name), "%s-%s", "alienware-wmi", dev_name(&wdev->dev));
+ 	root = debugfs_create_dir(name, NULL);
++	gpio_ctl = debugfs_create_dir("gpio_ctl", root);
+ 
+ 	debugfs_create_devm_seqfile(&wdev->dev, "system_description", root,
+ 				    awcc_debugfs_system_description_read);
+@@ -1344,6 +1426,25 @@ static void awcc_debugfs_init(struct wmi_device *wdev)
+ 		debugfs_create_devm_seqfile(&wdev->dev, "pprof_data", root,
+ 					    awcc_debugfs_pprof_data_read);
+ 
++	ret = awcc_read_total_gpios(wdev, &gpio_count);
++	if (ret) {
++		dev_dbg(&wdev->dev, "Failed to get total GPIO Pin count\n");
++		goto out_add_action;
++	} else if (gpio_count > AWCC_MAX_RES_COUNT) {
++		dev_dbg(&wdev->dev, "Reported GPIO Pin count may be corrupted: %u\n", gpio_count);
++		goto out_add_action;
++	}
++
++	priv->gpio_count = gpio_count;
++	debugfs_create_u32("total_gpios", 0444, gpio_ctl, &priv->gpio_count);
++
++	for (unsigned int i = 0; i < gpio_count; i++) {
++		scnprintf(pin_name, sizeof(pin_name), "pin%u", i);
++		debugfs_create_file_aux_num(pin_name, 0644, gpio_ctl, wdev, i,
++					    &awcc_gpio_pin_fops);
++	}
++
++out_add_action:
+ 	devm_add_action_or_reset(&wdev->dev, awcc_debugfs_remove, root);
+ }
+ 
+
 -- 
- ~ Kurt
+2.49.0
 
