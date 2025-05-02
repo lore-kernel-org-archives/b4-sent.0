@@ -1,140 +1,68 @@
-From: Kurt Borja <kuurtb@gmail.com>
-Date: Fri, 02 May 2025 05:09:01 -0300
-Subject: [PATCH v3 2/2] Documentation: wmi: alienware-wmi: Add GPIO control
- documentation
+From: Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
+Date: Fri, 02 May 2025 11:31:41 +0200
+Subject: [PATCH] mm: mmap: map MAP_STACK to VM_NOHUGEPAGE only if THP is
+ enabled
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250502-awcc-gpio-v3-2-ea9a932d1124@gmail.com>
-References: <20250502-awcc-gpio-v3-0-ea9a932d1124@gmail.com>
-In-Reply-To: <20250502-awcc-gpio-v3-0-ea9a932d1124@gmail.com>
-To: Hans de Goede <hdegoede@redhat.com>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Armin Wolf <W_Armin@gmx.de>
-Cc: Gabriel Marcano <gabemarcano@yahoo.com>, 
- platform-driver-x86@vger.kernel.org, Dell.Client.Kernel@dell.com, 
- linux-kernel@vger.kernel.org, Kurt Borja <kuurtb@gmail.com>
+Message-Id: <20250502-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-v1-1-113cc634cd51@kuka.com>
+X-B4-Tracking: v=1; b=H4sIAPyQFGgC/x2NQQqDMBBFryKz7kAMCm2vUopMk9EM1SQkqSji3
+ Zt28RYPHv8fkDkJZ7g3ByReJUvwVdpLA8aRnxjFVgetdK86fcWF4o8hFzJvLAHXZfDBfSaOVOv
+ g5x1lxOIiSkb29JrZouFOUWtZ3XoLdTsmHmX7/z6e5/kF78HTM4cAAAA=
+X-Change-ID: 20250428-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-ce40a1de095d
+To: Liam.Howlett@oracle.com, lorenzo.stoakes@oracle.com
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5479; i=kuurtb@gmail.com;
- h=from:subject:message-id; bh=E4gkeRIqe9/4ceUXqpKcpLW0DOBvrYPY99p6cCu4H4U=;
- b=owGbwMvMwCUmluBs8WX+lTTG02pJDBkitas33Wpax7vO/vsO0Z+r3/C2PTH6evzfVsu1txJvR
- JYHaQbP6yhlYRDjYpAVU2RpT1j07VFU3lu/A6H3YeawMoEMYeDiFICJXDvEyPCHp6bqjYCasOVS
- oZ5qY7d9k9ezm1+1lQoOfb3qveZ/Q15Ghp677y2PvPnCbTfffMkkLW3BOKOiZe84bs48bKa5KIB
- RjxEA
-X-Developer-Key: i=kuurtb@gmail.com; a=openpgp;
- fpr=54D3BE170AEF777983C3C63B57E3B6585920A69A
-X-Endpoint-Received: by B4 Relay for kuurtb@gmail.com/default with auth_id=387
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746178308; l=1800;
+ i=Ignacio.MorenoGonzalez@kuka.com; s=20220915; h=from:subject:message-id;
+ bh=fqHEYzRVTDCWtppau7rpnlBqweJIa/e1V5D0pJG1Pm8=;
+ b=sORPxW2hJtjJRkgQLgAA4J9V8d632Q5Nhca5+LarntPGbh2i3oJLgDVba4c3Dnq3bRs7F2MT6
+ n8GBzNgtAK9Dz0klHvfVo09O3Pi8Ku2/OtzI2vIl3lJerwPHelJQUJg
+X-Developer-Key: i=Ignacio.MorenoGonzalez@kuka.com; a=ed25519;
+ pk=j7nClQnc5Q1IDuT4eS/rYkcLHXzxszu2jziMcJaFdBQ=
+X-Endpoint-Received: by B4 Relay for Ignacio.MorenoGonzalez@kuka.com/20220915 with auth_id=391
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add documentation for the GPIO control methods.
+commit c4608d1bf7c6 ("mm: mmap: map MAP_STACK to VM_NOHUGEPAGE") maps
+the mmap option MAP_STACK to VM_NOHUGEPAGE. This is also done if
+CONFIG_TRANSPARENT_HUGETABLES is not defined. But in that case, the
+VM_NOHUGEPAGE does not make sense. For instance, when calling madvise()
+with MADV_NOHUGEPAGE, an error is always returned.
 
-Reviewed-by: Armin Wolf <W_Armin@gmx.de>
-Signed-off-by: Kurt Borja <kuurtb@gmail.com>
+Signed-off-by: Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
 ---
- Documentation/wmi/devices/alienware-wmi.rst | 82 +++++++++++++++++++++++++++--
- 1 file changed, 78 insertions(+), 4 deletions(-)
+I discovered this issue when trying to use the tool CRIU to checkpoint
+and restore a container. Our running kernel is compiled without
+CONFIG_TRANSPARENT_HUGETABLES. CRIU parses the output of
+/proc/<pid>/smaps and saves the "nh" flag. When trying to restore the
+container, CRIU fails to restore the "nh" mappings, since madvise()
+MADV_NOHUGEPAGE always returns an error because
+CONFIG_TRANSPARENT_HUGETABLES is not defined.
+---
+ include/linux/mman.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/wmi/devices/alienware-wmi.rst b/Documentation/wmi/devices/alienware-wmi.rst
-index 79238051b18bc5de9b502325017cd5c5fcf41748..1d9d43e2e314b03c134e6c63a0f9124036939e32 100644
---- a/Documentation/wmi/devices/alienware-wmi.rst
-+++ b/Documentation/wmi/devices/alienware-wmi.rst
-@@ -231,6 +231,74 @@ WMI method MemoryOCControl([in] uint32 arg2, [out] uint32 argr)
- AWCC supports memory overclocking, but this method is very intricate and has
- not been deciphered yet.
+diff --git a/include/linux/mman.h b/include/linux/mman.h
+index bce214fece16b9af3791a2baaecd6063d0481938..1e83bc0e3db670b04743f5208826e87455a05325 100644
+--- a/include/linux/mman.h
++++ b/include/linux/mman.h
+@@ -155,7 +155,9 @@ calc_vm_flag_bits(struct file *file, unsigned long flags)
+ 	return _calc_vm_trans(flags, MAP_GROWSDOWN,  VM_GROWSDOWN ) |
+ 	       _calc_vm_trans(flags, MAP_LOCKED,     VM_LOCKED    ) |
+ 	       _calc_vm_trans(flags, MAP_SYNC,	     VM_SYNC      ) |
++#if defined(CONFIG_TRANSPARENT_HUGEPAGE)
+ 	       _calc_vm_trans(flags, MAP_STACK,	     VM_NOHUGEPAGE) |
++#endif
+ 	       arch_calc_vm_flag_bits(file, flags);
+ }
  
-+GPIO control Methods
-+====================
-+
-+Alienware and Dell G Series devices with the AWCC interface usually have an
-+embedded STM32 RGB lighting controller with USB/HID capabilities. It's vendor ID
-+is ``187c`` while it's product ID may vary from model to model.
-+
-+The control of two GPIO pins of this MCU is exposed as WMI methods for debugging
-+purposes.
-+
-++--------------+--------------------------------------------------------------+
-+| Pin          | Description                                                  |
-++==============+===============================+==============================+
-+| 0            | Device Firmware Update (DFU)  | **HIGH**: Enables DFU mode   |
-+|              | mode pin.                     | on next MCU boot.            |
-+|              |                               +------------------------------+
-+|              |                               | **LOW**: Disables DFU mode   |
-+|              |                               | on next MCU boot.            |
-++--------------+-------------------------------+------------------------------+
-+| 1            | Negative Reset (NRST) pin.    | **HIGH**: MCU is ON.         |
-+|              |                               |                              |
-+|              |                               +------------------------------+
-+|              |                               | **LOW**: MCU is OFF.         |
-+|              |                               |                              |
-++--------------+-------------------------------+------------------------------+
-+
-+See :ref:`acknowledgements` for more information on this MCU.
-+
-+.. note::
-+   Some GPIO control methods break the usual argument structure and take a
-+   **Pin number** instead of an operation on the first byte.
-+
-+WMI method FWUpdateGPIOtoggle([in] uint32 arg2, [out] uint32 argr)
-+------------------------------------------------------------------
-+
-++--------------------+------------------------------------+--------------------+
-+| Operation (Byte 0) | Description                        | Arguments          |
-++====================+====================================+====================+
-+| Pin number         | Set the pin status                 | - Byte 1: Pin      |
-+|                    |                                    |   status           |
-++--------------------+------------------------------------+--------------------+
-+
-+WMI method ReadTotalofGPIOs([out] uint32 argr)
-+----------------------------------------------
-+
-++--------------------+------------------------------------+--------------------+
-+| Operation (Byte 0) | Description                        | Arguments          |
-++====================+====================================+====================+
-+| N/A                | Get the total number of GPIOs      | - None             |
-++--------------------+------------------------------------+--------------------+
-+
-+.. note::
-+   Due to how WMI methods are implemented on the firmware level, this method
-+   requires a dummy uint32 input argument when invoked.
-+
-+WMI method ReadGPIOpPinStatus([in] uint32 arg2, [out] uint32 argr)
-+------------------------------------------------------------------
-+
-++--------------------+------------------------------------+--------------------+
-+| Operation (Byte 0) | Description                        | Arguments          |
-++====================+====================================+====================+
-+| Pin number         | Get the pin status                 | - None             |
-++--------------------+------------------------------------+--------------------+
-+
-+.. note::
-+   There known firmware bug in some laptops where reading the status of a pin
-+   also flips it.
-+
- Other information Methods
- =========================
- 
-@@ -239,10 +307,16 @@ WMI method ReadChassisColor([out] uint32 argr)
- 
- Returns the chassis color internal ID.
- 
-+.. _acknowledgements:
-+
- Acknowledgements
- ================
- 
--Kudos to `AlexIII <https://github.com/AlexIII/tcc-g15>`_ and
--`T-Troll <https://github.com/T-Troll/alienfx-tools/>`_ for documenting and
--testing some of this device's functionality, making it possible to generalize
--this driver.
-+Kudos to
-+
-+* `AlexIII <https://github.com/AlexIII/tcc-g15>`_
-+* `T-Troll <https://github.com/T-Troll/alienfx-tools/>`_
-+* `Gabriel Marcano <https://gabriel.marcanobrady.family/blog/2024/12/16/dell-g5-5505-se-acpi-or-figuring-out-how-to-reset-the-rgb-controller/>`_
-+
-+for documenting and testing some of this device's functionality, making it
-+possible to generalize this driver.
 
+---
+base-commit: fc96b232f8e7c0a6c282f47726b2ff6a5fb341d2
+change-id: 20250428-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-ce40a1de095d
+
+Best regards,
 -- 
-2.49.0
+Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
 
