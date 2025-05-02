@@ -1,84 +1,67 @@
-From: Paul Cacheux <paulcacheux@gmail.com>
-Date: Fri, 02 May 2025 15:15:53 +0200
-Subject: [PATCH v2 2/2] tracing: protect trace_probe_log with mutex
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v3 0/4] PCI: tegra: Allow building as a module
+Date: Fri, 02 May 2025 14:00:28 -0500
+Message-Id: <20250502-pci-tegra-module-v3-0-556a49732d70@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250502-fix-trace-probe-log-race-v2-2-511ecc1521ec@gmail.com>
-References: <20250502-fix-trace-probe-log-race-v2-0-511ecc1521ec@gmail.com>
-In-Reply-To: <20250502-fix-trace-probe-log-race-v2-0-511ecc1521ec@gmail.com>
-To: Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Namhyung Kim <namhyung@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
- Paul Cacheux <paulcacheux@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAEwWFWgC/23NQQ6CMBCF4auQrq3plCLIynsYF6UMMAlQ0mKjI
+ dzdghsSXf6TzPcW5tERelYmC3MYyJMdY6SnhJlOjy1yqmMzKWQmUkj5ZIjP2DrNB1s/e+S5qWo
+ wGeZCNyy+TQ4beu3k/RG7Iz9b994XAmzXL6ak+MUCcMGN0NAUcSxT+tYOmvqzsQPbsCCPQPEHk
+ BsAoFV1BanU5Qis6/oBPXKM7PEAAAA=
+X-Change-ID: 20250313-pci-tegra-module-7cbd1c5e70af
+To: Thomas Gleixner <tglx@linutronix.de>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>
+Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746191767; l=1822;
- i=paulcacheux@gmail.com; s=20250422; h=from:subject:message-id;
- bh=JoafqU4uAGl3ydwos4FNrWPAGaAC2MqNPKDgQHWMZCs=;
- b=KcHSfL163DKlJ1NliuUUMQWzwqr+MsVP+H2ve6fE7oWXWJIIhlwtWCk5QHPT/9rTaAJKOXtz9
- bdzZoYkn6hnDJpyf2/hgWq0lNlOdrSgxB9BIXHG4TaBqtYSIu27wspw
-X-Developer-Key: i=paulcacheux@gmail.com; a=ed25519;
- pk=8UguSecyECHKHp0YLS7hTEDob0ctFMr3ygBTeAmrFHs=
-X-Endpoint-Received: by B4 Relay for paulcacheux@gmail.com/20250422 with auth_id=386
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746212443; l=1155;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=so9xiW1S4t/puW+TSopXdW0I81Cxz+S5s0PV6OPTll8=;
+ b=jzbeQQRcoQ48RuQVHs8LZsVlZt97xOuoIiLY7mWldxO2XwgDv7bAYx6iCFKObhSCmBYyE5M51
+ sYUM+fvmnBcAY+OCeefnCILMrYh42bVKd5IoTmfeBmEnRt7bSZRAahy
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The shared trace_probe_log variable can be accessed and modified
-by multiple processes using tracefs at the same time, this new
-mutex will guarantee it's always in a coherent state.
-
-There is no guarantee that multiple errors happening at the same
-time will each have the correct error message, but at least this
-won't crash.
-
-Fixes: ab105a4fb894 ("tracing: Use tracing error_log with probe events")
-
-Signed-off-by: Paul Cacheux <paulcacheux@gmail.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- kernel/trace/trace_probe.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Changes in v3:
+- Add patch to drop remove callback, per request
+- Link to v2: https://lore.kernel.org/r/20250428-pci-tegra-module-v2-0-c11a4b912446@gmail.com
 
-diff --git a/kernel/trace/trace_probe.c b/kernel/trace/trace_probe.c
-index 2eeecb6c95eea55502b83af6775b7b6f0cc5ab94..14a7a0b59cd20a8bc43e3e7c653e986081f924c8 100644
---- a/kernel/trace/trace_probe.c
-+++ b/kernel/trace/trace_probe.c
-@@ -154,9 +154,11 @@ static const struct fetch_type *find_fetch_type(const char *type, unsigned long
- }
- 
- static struct trace_probe_log trace_probe_log;
-+static DEFINE_MUTEX(trace_probe_log_lock);
- 
- void trace_probe_log_init(const char *subsystem, int argc, const char **argv)
- {
-+	guard(mutex)(&trace_probe_log_lock);
- 	trace_probe_log.subsystem = subsystem;
- 	trace_probe_log.argc = argc;
- 	trace_probe_log.argv = argv;
-@@ -165,11 +167,13 @@ void trace_probe_log_init(const char *subsystem, int argc, const char **argv)
- 
- void trace_probe_log_clear(void)
- {
-+	guard(mutex)(&trace_probe_log_lock);
- 	memset(&trace_probe_log, 0, sizeof(trace_probe_log));
- }
- 
- void trace_probe_log_set_index(int index)
- {
-+	guard(mutex)(&trace_probe_log_lock);
- 	trace_probe_log.index = index;
- }
- 
-@@ -178,6 +182,8 @@ void __trace_probe_log_err(int offset, int err_type)
- 	char *command, *p;
- 	int i, len = 0, pos = 0;
- 
-+	guard(mutex)(&trace_probe_log_lock);
-+
- 	if (!trace_probe_log.argv)
- 		return;
- 
+Changes in v2:
+- Add patch to export tegra_cpuidle_pcie_irqs_in_use as required when
+  building pci-tegra as a module for arm
+- Drop module exit to prevent module unloading, as requested
+- Link to v1: https://lore.kernel.org/r/20250420-pci-tegra-module-v1-0-c0a1f831354a@gmail.com
 
+---
+Aaron Kling (4):
+      irqdomain: Export irq_domain_free_irqs
+      cpuidle: tegra: Export tegra_cpuidle_pcie_irqs_in_use
+      PCI: tegra: Allow building as a module
+      PCI: tegra: Drop unused remove callback
+
+ drivers/cpuidle/cpuidle-tegra.c    |  1 +
+ drivers/pci/controller/Kconfig     |  2 +-
+ drivers/pci/controller/pci-tegra.c | 24 ++++++------------------
+ kernel/irq/irqdomain.c             |  1 +
+ 4 files changed, 9 insertions(+), 19 deletions(-)
+---
+base-commit: 18352e73612d60b81790d2437845276ae499b64a
+change-id: 20250313-pci-tegra-module-7cbd1c5e70af
+
+Best regards,
 -- 
-2.49.0
+Aaron Kling <webgeek1234@gmail.com>
 
