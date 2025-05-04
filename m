@@ -1,90 +1,61 @@
-From: Sven Peter <sven@svenpeter.dev>
-Date: Sat, 03 May 2025 10:06:56 +0000
-Subject: [PATCH v4 9/9] arm64: dts: apple: t600x: Add SMC node
+From: Alban Kurti <kurti@invicto.ai>
+Subject: [PATCH v4 0/2] rust: samples: add missing newlines to printing
+ calls
+Date: Sun, 04 May 2025 17:41:13 +0200
+Message-Id: <20250504-pr_info-newline-fix-v4-0-53467c401eb6@invicto.ai>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250503-smc-6-15-v4-9-500b9b6546fc@svenpeter.dev>
-References: <20250503-smc-6-15-v4-0-500b9b6546fc@svenpeter.dev>
-In-Reply-To: <20250503-smc-6-15-v4-0-500b9b6546fc@svenpeter.dev>
-To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
- Hector Martin <marcan@marcan.st>, Linus Walleij <linus.walleij@linaro.org>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Sebastian Reichel <sre@kernel.org>, 
- Lee Jones <lee@kernel.org>, Marc Zyngier <maz@kernel.org>, 
- "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAJmKF2gC/x2MQQqAMAzAviI9W5hju/gVEdlmpwWpsoEK4t8tH
+ hNIHqhUmCr0zQOFTq68i4JrG0hrkIWQZ2WwxnrjjcOjTCx5R6FrYyHMfCNF3+VgjY8hgZZHIdX
+ /dRjf9wOdsi4mZQAAAA==
+X-Change-ID: 20250504-pr_info-newline-fix-eb51fa205bac
+To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <benno.lossin@proton.me>, 
+ Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>, 
+ Vincenzo Palazzo <vincenzopalazzodev@gmail.com>, 
+ Xiangfei Ding <dingxiangfei2009@gmail.com>
+Cc: Fiona Behrens <me@kloenk.dev>, Alban Kurti <kurti@invicto.ai>, 
+ rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1851; i=sven@svenpeter.dev;
- h=from:subject:message-id; bh=asgFHWE+Y4/VDiSrToyfl0Yn74umJgKBLDT/bgdqN0Y=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4boqwv9W1hXrXl85egORZ91dt9vt2mWbwp2t1jwcpbQo
- iZtZbvlHaUsDGIcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJ7E1h+O/0KJ1lw8S3t4Sn
- nIqs/utTsnt9fvKpI6eui0U/2xy7WW4Kwz/lCyVLRDfu6pJbtsBpXnWb75mKshP8apu79c7MOjk
- 7fCoHAA==
-X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746373294; l=1007;
+ i=kurti@invicto.ai; s=20250504; h=from:subject:message-id;
+ bh=vvngYuf/ckQdGCMZX1hN44ueg1Iy36aEVBTa5YONnsA=;
+ b=Va9mPD+1N1ACX78IuRwJoM0OwWAKEGDVLBUw753hij1yoByanyBs8J5m/Y0G9SGU8+kp/RTMA
+ GucJ1PPsn+YCYZa7OFFk8RlOQeySbmyZaGxwS7yzHAECsPSDcGZkXzS
+X-Developer-Key: i=kurti@invicto.ai; a=ed25519;
+ pk=7724GF1zrN6rA3Z2xkyAmVGkoOQxv7bMUvXB4IsIPUs=
+X-Endpoint-Received: by B4 Relay for kurti@invicto.ai/20250504 with auth_id=398
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+Adding newline at the end of all Rust pr_* and dev_* macro
+calls that miss a newline.
+`pr_*!` and `dev_*!` macros are supposed to be called
+with a newline at the end, just like in the C side
+such that independent lines are not visually missed.
+There were no dev_*! cases with a missing newline found.
 
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Sven Peter <sven@svenpeter.dev>
+Signed-off-by: Alban Kurti <kurti@invicto.ai>
 ---
- arch/arm64/boot/dts/apple/t600x-die0.dtsi | 35 +++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+Changes in v4:
+- Split into two patches the 6th patch from v3 addressing separate fixes
+- Link to v3: https://lore.kernel.org/rust-for-linux/20250206-printing_fix-v3-0-a85273b501ae@invicto.ai/
 
-diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-index 110bc6719512e334e04b496fb157cb4368679957..4993a8ace87b2fc7e645b08c19fcd9b0c21896aa 100644
---- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-@@ -24,6 +24,41 @@ aic: interrupt-controller@28e100000 {
- 		power-domains = <&ps_aic>;
- 	};
- 
-+	smc: smc@290400000 {
-+		compatible = "apple,t6000-smc", "apple,smc";
-+		reg = <0x2 0x90400000 0x0 0x4000>,
-+			<0x2 0x91e00000 0x0 0x100000>;
-+		reg-names = "smc", "sram";
-+		mboxes = <&smc_mbox>;
-+
-+		smc_gpio: gpio {
-+			compatible = "apple,smc-gpio";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+		};
-+
-+		smc_reboot: reboot {
-+			compatible = "apple,smc-reboot";
-+			nvmem-cells = <&shutdown_flag>, <&boot_stage>,
-+				<&boot_error_count>, <&panic_count>, <&pm_setting>;
-+			nvmem-cell-names = "shutdown_flag", "boot_stage",
-+				"boot_error_count", "panic_count", "pm_setting";
-+		};
-+	};
-+
-+	smc_mbox: mbox@290408000 {
-+		compatible = "apple,t6000-asc-mailbox", "apple,asc-mailbox-v4";
-+		reg = <0x2 0x90408000 0x0 0x4000>;
-+		interrupt-parent = <&aic>;
-+		interrupts = <AIC_IRQ 0 754 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 755 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 756 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 757 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "send-empty", "send-not-empty",
-+			"recv-empty", "recv-not-empty";
-+		#mbox-cells = <0>;
-+	};
-+
- 	pinctrl_smc: pinctrl@290820000 {
- 		compatible = "apple,t6000-pinctrl", "apple,pinctrl";
- 		reg = <0x2 0x90820000 0x0 0x4000>;
+---
+Alban Kurti (2):
+      rust: samples: add missing newline to pr_info! calls in rust_print_main
+      rust: samples: add missing newline to pr_info! calls in rust_print_main
 
+ samples/rust/rust_print_main.rs | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+---
+base-commit: b4432656b36e5cc1d50a1f2dc15357543add530e
+change-id: 20250504-pr_info-newline-fix-eb51fa205bac
+
+Best regards,
 -- 
-2.34.1
+Alban Kurti <kurti@invicto.ai>
 
