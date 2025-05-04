@@ -1,80 +1,82 @@
-From: Mark Dietzer <git@doridian.net>
-Date: Sun, 04 May 2025 10:54:52 -0700
-Subject: [PATCH] Add GPD Pocket 2 04/17/2020 BIOS to drm_orientation_quirks
+From: Paul Cacheux <paulcacheux@gmail.com>
+Subject: [PATCH v3 0/2] tracing: fix race when creating trace probe log
+ error message
+Date: Sun, 04 May 2025 20:27:51 +0200
+Message-Id: <20250504-fix-trace-probe-log-race-v3-0-9e99fec7eddc@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250504-gpd_pocket2_biosver-v1-1-7e2506ea723f@doridian.net>
-X-B4-Tracking: v=1; b=H4sIAOupF2gC/x3MQQqAIBBA0avErBNs0IKuEhFlow1BikYE4t2Tl
- m/xf4ZEkSnB2GSI9HBif1V0bQPmWC9HgvdqQIlaaqmEC/sSvDnpxmVjnx6Kou/REio5aG2hliG
- S5fe/TnMpH9GxRTtlAAAA
-X-Change-ID: 20250504-gpd_pocket2_biosver-662fe240755f
-To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Mark Dietzer <git@doridian.net>
+X-B4-Tracking: v=1; b=H4sIAKexF2gC/33NwQrCMAyA4VcZPRtp44rTk+8hHro0boVtHe0oy
+ ti72w1EL3oqf0i+ziJycBzFuZhF4OSi80OOw64Q1JqhYXA2t0CJWpYo4e4eMAVDDGPwNUPnG9i
+ SqDrZivW9Vlrk8zFw3t3o6y136+Lkw3P7Kal1+kbxN5oUKLB4xMqWSIbqS9Mb1+3J92JFE34gL
+ f9BCBK0UkykNObnG1qW5QXIPi82CQEAAA==
+X-Change-ID: 20250420-fix-trace-probe-log-race-cc89d8e5fb15
+To: Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Namhyung Kim <namhyung@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
+ Paul Cacheux <paulcacheux@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746381419; l=1794;
- i=git@doridian.net; s=20250228; h=from:subject:message-id;
- bh=qciSeWWt/KY5XJWHB5Z6wuF+QWqEbYgWc54AWkioEmA=;
- b=4FpyCa8WlZkfO2LABvQC2VkZUqoA4A8W4lNk+VU7GoRvA7U974YvF3Ogua5cDTtwOdxChU6IY
- BtL8JQrhZjtAUxg8xOS45hL/Qsrq7HHO+TUmPrznJ0d0i1QhL6aIPMa
-X-Developer-Key: i=git@doridian.net; a=ed25519;
- pk=XY9bZ7EBhoLNoRt6zd2/vutpAXC3tsX6OytpZHjbUsQ=
-X-Endpoint-Received: by B4 Relay for git@doridian.net/20250228 with auth_id=353
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746383319; l=1945;
+ i=paulcacheux@gmail.com; s=20250422; h=from:subject:message-id;
+ bh=BIeAtAmNY2HmAC4pfdofUHiWDpOKu8mzigM6HzNEzFo=;
+ b=xGxrPxvCphgAewDOXLHC8XN7I8v1vK7/vyUTeb9HpH5EMpsKRzLIhG6xiTsmujyg6xBBQPu1w
+ a3NjLOFgooyCAkeADwReTtAI8DNscn4hm02jRhxdBxZSzmhbEB0L+h1
+X-Developer-Key: i=paulcacheux@gmail.com; a=ed25519;
+ pk=8UguSecyECHKHp0YLS7hTEDob0ctFMr3ygBTeAmrFHs=
+X-Endpoint-Received: by B4 Relay for paulcacheux@gmail.com/20250422 with auth_id=386
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add missing BIOS version to drm_orientation_quirks for the
-GPD Pocket 2
+Hello,
+
+As reported in [1] a race exists in the shared trace probe log
+used to build error messages. This can cause kernel crashes
+when building the actual error message, but the race happens
+even for non-error tracefs uses, it's just not visible.
+
+Reproducer first reported that is still crashing:
+
+  # 'p4' is invalid command which make kernel run into trace_probe_log_err()
+  cd /sys/kernel/debug/tracing
+  while true; do
+    echo 'p4:myprobe1 do_sys_openat2 dfd=%ax filename=%dx flags=%cx mode=+4($stack)' >> kprobe_events &
+    echo 'p4:myprobe2 do_sys_openat2' >> kprobe_events &
+    echo 'p4:myprobe3 do_sys_openat2 dfd=%ax filename=%dx' >> kprobe_events &
+  done;
+
+The original email suggested to use a mutex or to allocate the
+trace_probe_log on the stack. This patch implements a simpler
+solution suggest during the review of the v1 where we only protect
+access to the shared trace_probe_log with a mutex. This will prevent
+any crash from happening.
+
+[1] https://lore.kernel.org/all/20221121081103.3070449-1-zhengyejian1@huawei.com/T/
+
+Signed-off-by: Paul Cacheux <paulcacheux@gmail.com>
+---
+Changes in v3:
+- add some comment around the new mutex definition
+- Link to v2: https://lore.kernel.org/r/20250502-fix-trace-probe-log-race-v2-0-511ecc1521ec@gmail.com
+
+Changes in v2:
+- change approach, and use the mutex based solution suggested during
+  review
+- Link to v1: https://lore.kernel.org/r/20250422-fix-trace-probe-log-race-v1-1-d2728d42cacb@gmail.com
 
 ---
-This seems to be the latest available offical BIOS for this machine.
-I can no longer find it hosted by GPD themselves, but did find it
-at least archived (on archive.org) here:
-https://archive.org/download/gpd-pocket-2-drivers-and-os/driver-and-bios/
+Paul Cacheux (2):
+      tracing: add missing trace_probe_log_clear for eprobes
+      tracing: protect trace_probe_log with mutex
 
-Testing and confirmed working on my own GPD Pocket 2.
-
-Below is the output of "dmideocde", specifically the BIOS section
-
-Handle 0x0000, DMI type 0, 24 bytes
-BIOS Information
-        Vendor: American Megatrends Inc.
-        Version: 0.27
-        Release Date: 04/17/2020
-        Address: 0xF0000
-        Runtime Size: 64 kB
-        ROM Size: 16 MB
-        Characteristics:
-                [left out for clarity]
-        BIOS Revision: 0.27
-        Firmware Revision: 0.18
-
-Signed-off-by: Mark Dietzer <git@doridian.net>
+ kernel/trace/trace_eprobe.c |  3 +++
+ kernel/trace/trace_probe.c  | 13 +++++++++++++
+ 2 files changed, 16 insertions(+)
 ---
- drivers/gpu/drm/drm_panel_orientation_quirks.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/gpu/drm/drm_panel_orientation_quirks.c b/drivers/gpu/drm/drm_panel_orientation_quirks.c
-index c554ad8f246b65a1d20237d6d52c699c8afd2329..a90ada0c7adf4f25bc58c335d1920ccd5e690a71 100644
---- a/drivers/gpu/drm/drm_panel_orientation_quirks.c
-+++ b/drivers/gpu/drm/drm_panel_orientation_quirks.c
-@@ -58,7 +58,7 @@ static const struct drm_dmi_panel_orientation_data gpd_pocket2 = {
- 	.width = 1200,
- 	.height = 1920,
- 	.bios_dates = (const char * const []){ "06/28/2018", "08/28/2018",
--		"12/07/2018", NULL },
-+		"12/07/2018", "04/17/2020", NULL },
- 	.orientation = DRM_MODE_PANEL_ORIENTATION_RIGHT_UP,
- };
- 
-
----
-base-commit: 593bde4ca9b1991e81ccf98b0baf8499cab6cab9
-change-id: 20250504-gpd_pocket2_biosver-662fe240755f
+base-commit: 95d3481af6dc90fd7175a7643fd108cdcb808ce5
+change-id: 20250420-fix-trace-probe-log-race-cc89d8e5fb15
 
 Best regards,
 -- 
-Mark Dietzer <git@doridian.net>
+Paul Cacheux <paulcacheux@gmail.com>
 
