@@ -1,11 +1,11 @@
 From: George Chan <gchan9527@gmail.com>
-Date: Mon, 05 May 2025 17:17:12 +0800
-Subject: [PATCH v2 4/5] qcom-phone.env: Example of new env var
- legacy_os_boot_param
+Date: Mon, 05 May 2025 17:17:13 +0800
+Subject: [PATCH v2 5/5] mach-snapdragon: Enable workaround of ignoring
+ androidboot addr
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250505-android-boot-v2-4-92dcb5bf59c8@gmail.com>
+Message-Id: <20250505-android-boot-v2-5-92dcb5bf59c8@gmail.com>
 References: <20250505-android-boot-v2-0-92dcb5bf59c8@gmail.com>
 In-Reply-To: <20250505-android-boot-v2-0-92dcb5bf59c8@gmail.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -17,39 +17,36 @@ To: Tom Rini <trini@konsulko.com>,
 Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, 
  George Chan <gchan9527@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746436629; l=839;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746436630; l=640;
  i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
- bh=HgRzW0yhUc8yhUeP4sq42vjx20KOLqwxVwT8pR9drO4=;
- b=qjYIz76A+Y9bedhQNSPUtQKJkaK9mTv/t3Im1mf0QwgcskFVkTqyrKIXGYuGYASmLrPUY1aVT
- SiBYNbR28OMADjBIEKhI/NuhHR4iMtIc44X4il29B/irQbtAKBWqaBV
+ bh=khgh6feuD1wxYZwtRfQW3mssUaZ3a8MPHiwC7OlndHU=;
+ b=hZUzjlzexW6VblObDPHJD83/KQORJd66b46gLA0VWr3CzFhRYe4fwZk/zj3o5EILiziqAuOgz
+ Zafk6yU1AlxC80VWgA7tYqcWu86gNl4HtfkeLoBQigmTlKomHLkX+By
 X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
  pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
 X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is an example for newly introduced env_var legacy_os_boot_param
-that will append 'console=ramoops' to fdt bootargs.
+Enable the workaround for whole snapdragon family.
 
+Suggested-by: Casey Connolly <casey.connolly@linaro.org>
 Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- board/qualcomm/qcom-phone.env | 4 ++++
- 1 file changed, 4 insertions(+)
+ arch/arm/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/board/qualcomm/qcom-phone.env b/board/qualcomm/qcom-phone.env
-index e91ae3ecdfb..536467921d8 100644
---- a/board/qualcomm/qcom-phone.env
-+++ b/board/qualcomm/qcom-phone.env
-@@ -4,6 +4,10 @@ stdin=serial,button-kbd
- stdout=serial,vidconsole
- stderr=serial,vidconsole
- 
-+# Introduce var to hold legacy boot param, it will be append 
-+# to bootargs automatically
-+legacy_os_boot_param=console=ramoops
-+
- # Fastboot is keen to use the address from kconfig, but we
- # allocate its buffer at runtime.
- fastboot=fastboot -l $fastboot_addr_r usb 0
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index df373d38a55..249bd4b5bf3 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -1124,6 +1124,7 @@ config ARCH_SNAPDRAGON
+ 	select LINUX_KERNEL_IMAGE_HEADER if !ENABLE_ARM_SOC_BOOT0_HOOK
+ 	select SYSRESET
+ 	select SYSRESET_PSCI
++	select ANDROID_BOOT_IMAGE_IGNORE_BLOB_ADDR
+ 	imply OF_UPSTREAM
+ 	imply CMD_DM
+ 	imply DM_USB_GADGET
 
 -- 
 2.43.0
