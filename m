@@ -1,140 +1,69 @@
-From: Kurt Borja <kuurtb@gmail.com>
-Date: Mon, 05 May 2025 15:43:32 -0300
-Subject: [PATCH v4 2/2] Documentation: wmi: alienware-wmi: Add GPIO control
- documentation
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH v2 0/4] media: i2c: imx214: Add support for more clock
+ frequencies
+Date: Mon, 05 May 2025 23:05:52 +0200
+Message-Id: <20250505-imx214_ccs_pll-v2-0-f50452061ff1@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250505-awcc-gpio-v4-2-edda44c3a0dc@gmail.com>
-References: <20250505-awcc-gpio-v4-0-edda44c3a0dc@gmail.com>
-In-Reply-To: <20250505-awcc-gpio-v4-0-edda44c3a0dc@gmail.com>
-To: Hans de Goede <hdegoede@redhat.com>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Armin Wolf <W_Armin@gmx.de>
-Cc: Gabriel Marcano <gabemarcano@yahoo.com>, 
- platform-driver-x86@vger.kernel.org, Dell.Client.Kernel@dell.com, 
- linux-kernel@vger.kernel.org, Kurt Borja <kuurtb@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIADEoGWgC/13MQQ6CMBCF4auQWVvTllbUlfcwhNR2kEkQmhYbl
+ HB3K3Hl8n/J+xaIGAgjnIsFAiaKNA455K4A25nhjoxcbpBcaq74gdFjlkI11sbG9z1DZdBxPKE
+ uJeSTD9jSvIHXOndHcRrDa/OT+K4/Suh/KgnGmStdVakj6vbmLsbT9I622+MT6nVdP2IoWlquA
+ AAA
+X-Change-ID: 20250406-imx214_ccs_pll-e4aed0e9e532
+To: Ricardo Ribalda <ribalda@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
+ Ricardo Ribalda <ribalda@chromium.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5479; i=kuurtb@gmail.com;
- h=from:subject:message-id; bh=E4gkeRIqe9/4ceUXqpKcpLW0DOBvrYPY99p6cCu4H4U=;
- b=owGbwMvMwCUmluBs8WX+lTTG02pJDBmSbC84Lm5vcFxpVPt8ofD6M7/v5WQn2514oyLZo6Jgf
- MmhP8Sxo5SFQYyLQVZMkaU9YdG3R1F5b/0OhN6HmcPKBDKEgYtTACZS3s7IcDTKnffWPkEF3vQ1
- G6ymGX3PXh4dF9915pZwXkKoltWTDwx/xUIiT8cuWjP3ogBj5KRGI6nG8DsODxc8X5scLMzG8z6
- SAwA=
-X-Developer-Key: i=kuurtb@gmail.com; a=openpgp;
- fpr=54D3BE170AEF777983C3C63B57E3B6585920A69A
-X-Endpoint-Received: by B4 Relay for kuurtb@gmail.com/default with auth_id=387
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746479179; l=1442;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=am5E7+Utqe8zi5JH7YG5Vf5BHDNKW2H7Tn3z0DNQRQU=;
+ b=NvbuxybdvAAlUaRuGYo/IWVQESiEcW3K0U/sph25LQlmsSTSxh0MGK5u6cA+i4fcaHMmDTGp5
+ 2pAPo+eHXqnC10E+3d8D0hG3TP/wgT0FJVhiZKTGEeeOKNAYuQyt/Kg
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add documentation for the GPIO control methods.
+The imx214 driver currently supports only a 24 MHz external clock. But
+there are devices, like Qualcomm-MSM8916-based phones, which cannot
+provide this frequency. To make the sensor usable by those devices, add
+support for additional clock frequencies.
 
-Reviewed-by: Armin Wolf <W_Armin@gmx.de>
-Signed-off-by: Kurt Borja <kuurtb@gmail.com>
+This series supersedes
+https://lore.kernel.org/linux-media/20250308-imx214_clk_freq-v1-0-467a4c083c35@apitzsch.eu/
+
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- Documentation/wmi/devices/alienware-wmi.rst | 82 +++++++++++++++++++++++++++--
- 1 file changed, 78 insertions(+), 4 deletions(-)
+Changes in v2:
+- Add A-b tags
+- Switch to v4l2_ctrl_s_ctrl_int64() to acquire the control handler mutex
+- Add error handling for v4l2_ctrl_s_ctrl_int64() and
+  imx214_pll_update()
+- Replace "read clock frequency from dt" patch by "remove hard-coded
+  external clock frequency" patch
+- Link to v1:
+  https://lore.kernel.org/r/20250415-imx214_ccs_pll-v1-0-d3d7748e5fbd@apitzsch.eu
 
-diff --git a/Documentation/wmi/devices/alienware-wmi.rst b/Documentation/wmi/devices/alienware-wmi.rst
-index 79238051b18bc5de9b502325017cd5c5fcf41748..1d9d43e2e314b03c134e6c63a0f9124036939e32 100644
---- a/Documentation/wmi/devices/alienware-wmi.rst
-+++ b/Documentation/wmi/devices/alienware-wmi.rst
-@@ -231,6 +231,74 @@ WMI method MemoryOCControl([in] uint32 arg2, [out] uint32 argr)
- AWCC supports memory overclocking, but this method is very intricate and has
- not been deciphered yet.
- 
-+GPIO control Methods
-+====================
-+
-+Alienware and Dell G Series devices with the AWCC interface usually have an
-+embedded STM32 RGB lighting controller with USB/HID capabilities. It's vendor ID
-+is ``187c`` while it's product ID may vary from model to model.
-+
-+The control of two GPIO pins of this MCU is exposed as WMI methods for debugging
-+purposes.
-+
-++--------------+--------------------------------------------------------------+
-+| Pin          | Description                                                  |
-++==============+===============================+==============================+
-+| 0            | Device Firmware Update (DFU)  | **HIGH**: Enables DFU mode   |
-+|              | mode pin.                     | on next MCU boot.            |
-+|              |                               +------------------------------+
-+|              |                               | **LOW**: Disables DFU mode   |
-+|              |                               | on next MCU boot.            |
-++--------------+-------------------------------+------------------------------+
-+| 1            | Negative Reset (NRST) pin.    | **HIGH**: MCU is ON.         |
-+|              |                               |                              |
-+|              |                               +------------------------------+
-+|              |                               | **LOW**: MCU is OFF.         |
-+|              |                               |                              |
-++--------------+-------------------------------+------------------------------+
-+
-+See :ref:`acknowledgements` for more information on this MCU.
-+
-+.. note::
-+   Some GPIO control methods break the usual argument structure and take a
-+   **Pin number** instead of an operation on the first byte.
-+
-+WMI method FWUpdateGPIOtoggle([in] uint32 arg2, [out] uint32 argr)
-+------------------------------------------------------------------
-+
-++--------------------+------------------------------------+--------------------+
-+| Operation (Byte 0) | Description                        | Arguments          |
-++====================+====================================+====================+
-+| Pin number         | Set the pin status                 | - Byte 1: Pin      |
-+|                    |                                    |   status           |
-++--------------------+------------------------------------+--------------------+
-+
-+WMI method ReadTotalofGPIOs([out] uint32 argr)
-+----------------------------------------------
-+
-++--------------------+------------------------------------+--------------------+
-+| Operation (Byte 0) | Description                        | Arguments          |
-++====================+====================================+====================+
-+| N/A                | Get the total number of GPIOs      | - None             |
-++--------------------+------------------------------------+--------------------+
-+
-+.. note::
-+   Due to how WMI methods are implemented on the firmware level, this method
-+   requires a dummy uint32 input argument when invoked.
-+
-+WMI method ReadGPIOpPinStatus([in] uint32 arg2, [out] uint32 argr)
-+------------------------------------------------------------------
-+
-++--------------------+------------------------------------+--------------------+
-+| Operation (Byte 0) | Description                        | Arguments          |
-++====================+====================================+====================+
-+| Pin number         | Get the pin status                 | - None             |
-++--------------------+------------------------------------+--------------------+
-+
-+.. note::
-+   There known firmware bug in some laptops where reading the status of a pin
-+   also flips it.
-+
- Other information Methods
- =========================
- 
-@@ -239,10 +307,16 @@ WMI method ReadChassisColor([out] uint32 argr)
- 
- Returns the chassis color internal ID.
- 
-+.. _acknowledgements:
-+
- Acknowledgements
- ================
- 
--Kudos to `AlexIII <https://github.com/AlexIII/tcc-g15>`_ and
--`T-Troll <https://github.com/T-Troll/alienfx-tools/>`_ for documenting and
--testing some of this device's functionality, making it possible to generalize
--this driver.
-+Kudos to
-+
-+* `AlexIII <https://github.com/AlexIII/tcc-g15>`_
-+* `T-Troll <https://github.com/T-Troll/alienfx-tools/>`_
-+* `Gabriel Marcano <https://gabriel.marcanobrady.family/blog/2024/12/16/dell-g5-5505-se-acpi-or-figuring-out-how-to-reset-the-rgb-controller/>`_
-+
-+for documenting and testing some of this device's functionality, making it
-+possible to generalize this driver.
+---
+André Apitzsch (4):
+      media: i2c: imx214: Reorder imx214_parse_fwnode call
+      media: i2c: imx214: Prepare for variable clock frequency
+      media: i2c: imx214: Make use of CCS PLL calculator
+      media: i2c: imx214: Remove hard-coded external clock frequency
 
+ drivers/media/i2c/Kconfig  |   1 +
+ drivers/media/i2c/imx214.c | 266 ++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 204 insertions(+), 63 deletions(-)
+---
+base-commit: 4d4cc73d2632e07451c98c77fdb04aead3f78b00
+change-id: 20250406-imx214_ccs_pll-e4aed0e9e532
+
+Best regards,
 -- 
-2.49.0
+André Apitzsch <git@apitzsch.eu>
 
