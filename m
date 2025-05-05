@@ -1,91 +1,59 @@
-From: Paul Cacheux <paulcacheux@gmail.com>
-Date: Sun, 04 May 2025 20:27:53 +0200
-Subject: [PATCH v3 2/2] tracing: protect trace_probe_log with mutex
+From: =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
+Subject: [PATCH v2 0/2] Add support for the DFRobot SEN0322 oxygen sensor
+Date: Mon, 05 May 2025 09:52:57 +0200
+Message-Id: <20250505-iio-chemical-sen0322-v2-0-217473983b42@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250504-fix-trace-probe-log-race-v3-2-9e99fec7eddc@gmail.com>
-References: <20250504-fix-trace-probe-log-race-v3-0-9e99fec7eddc@gmail.com>
-In-Reply-To: <20250504-fix-trace-probe-log-race-v3-0-9e99fec7eddc@gmail.com>
-To: Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Namhyung Kim <namhyung@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
- Paul Cacheux <paulcacheux@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746383319; l=2188;
- i=paulcacheux@gmail.com; s=20250422; h=from:subject:message-id;
- bh=JLwkOJEumGD7YD+nexmmI4MTQQL+hh9/f9FKhif6SKY=;
- b=fVewTZB5G2vWsu+/Kz4Ut/he1vI/StVN88Rdda3rjXLMq6aLMqZRKzi5Julu87MoiHFUqbwGK
- KXnbai+dRHTD56OINMEWdcXKsCdj4mMvmKKgRuU/nETJv2mSlto3Dho
-X-Developer-Key: i=paulcacheux@gmail.com; a=ed25519;
- pk=8UguSecyECHKHp0YLS7hTEDob0ctFMr3ygBTeAmrFHs=
-X-Endpoint-Received: by B4 Relay for paulcacheux@gmail.com/20250422 with auth_id=386
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAFluGGgC/4WNTQ6CMBBGr0Jm7Zh2+BFdeQ/DgtYpTAItaQ3RE
+ O5u5QIu30u+922QOAonuBUbRF4lSfAZ6FSAHXs/MMozM5CiWlXUokhAO/Istp8wsVclEVrXOmM
+ MX+qqgTxdIjt5H9lHl3mU9Arxc7ys+mf/BFeNCq9Gt2VTOscV3Ye5l+lswwzdvu9fIFMUBbgAA
+ AA=
+To: Jonathan Cameron <jic23@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?T=C3=B3th_J=C3=A1nos?= <gomba007@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746431586; l=1057;
+ i=gomba007@gmail.com; s=20230706; h=from:subject:message-id;
+ bh=HoVwgT0i6eQ5F0/UMVrAUgnAI8MgPO+NzAAD51dIqnU=;
+ b=XO542HNnKgid7hj9NoQ+7o+FzzeC5MmDo6ymU7S/zh5narQlm6FOtiUtWlvP7SwqEbdGKljGa
+ giu/oVLF0aDDmfU3ACwuNKlTSBu2+/vmVthiVtgXhDk6IVour77yTg5
+X-Developer-Key: i=gomba007@gmail.com; a=ed25519;
+ pk=iY9MjPCbud82ULS2PQJIq3QwjKyP/Sg730I6T2M8Y5U=
+X-Endpoint-Received: by B4 Relay for gomba007@gmail.com/20230706 with auth_id=60
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The shared trace_probe_log variable can be accessed and modified
-by multiple processes using tracefs at the same time, this new
-mutex will guarantee it's always in a coherent state.
+This patchset adds a driver and the documentation for the
+DFRobot SEN0322 oxygen sensor.
 
-There is no guarantee that multiple errors happening at the same
-time will each have the correct error message, but at least this
-won't crash.
-
-Fixes: ab105a4fb894 ("tracing: Use tracing error_log with probe events")
-Signed-off-by: Paul Cacheux <paulcacheux@gmail.com>
+Signed-off-by: Tóth János <gomba007@gmail.com>
 ---
- kernel/trace/trace_probe.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Changes in v2:
+- Add SEN0322 to trivial-devices.
+- Use _RAW and _SCALE instead of fixed-point math.
+- Refactor based on reviewer's suggestions.
+- Link to v1: https://lore.kernel.org/r/20250428-iio-chemical-sen0322-v1-0-9b18363ffe42@gmail.com
 
-diff --git a/kernel/trace/trace_probe.c b/kernel/trace/trace_probe.c
-index 2eeecb6c95eea55502b83af6775b7b6f0cc5ab94..d538964c87a52b06646ec1b8c3469be7399f04fa 100644
---- a/kernel/trace/trace_probe.c
-+++ b/kernel/trace/trace_probe.c
-@@ -153,10 +153,19 @@ static const struct fetch_type *find_fetch_type(const char *type, unsigned long
- 	return NULL;
- }
- 
-+/*
-+ * The trace_probe_log_lock only protects against the individual
-+ * modification of the trace_probe_log. It does not protect against
-+ * the log from producing garbage if two probes use it at the same
-+ * time. That would only happen if two admins were trying to add
-+ * probes simultaneously which they shouldn't be doing.
-+ */
-+static DEFINE_MUTEX(trace_probe_log_lock);
- static struct trace_probe_log trace_probe_log;
- 
- void trace_probe_log_init(const char *subsystem, int argc, const char **argv)
- {
-+	guard(mutex)(&trace_probe_log_lock);
- 	trace_probe_log.subsystem = subsystem;
- 	trace_probe_log.argc = argc;
- 	trace_probe_log.argv = argv;
-@@ -165,11 +174,13 @@ void trace_probe_log_init(const char *subsystem, int argc, const char **argv)
- 
- void trace_probe_log_clear(void)
- {
-+	guard(mutex)(&trace_probe_log_lock);
- 	memset(&trace_probe_log, 0, sizeof(trace_probe_log));
- }
- 
- void trace_probe_log_set_index(int index)
- {
-+	guard(mutex)(&trace_probe_log_lock);
- 	trace_probe_log.index = index;
- }
- 
-@@ -178,6 +189,8 @@ void __trace_probe_log_err(int offset, int err_type)
- 	char *command, *p;
- 	int i, len = 0, pos = 0;
- 
-+	guard(mutex)(&trace_probe_log_lock);
-+
- 	if (!trace_probe_log.argv)
- 		return;
- 
+---
+Tóth János (2):
+      dt-bindings: trivial-devices: Document SEN0322
+      iio: chemical: Add driver for SEN0322
 
+ .../devicetree/bindings/trivial-devices.yaml       |   2 +
+ MAINTAINERS                                        |   6 +
+ drivers/iio/chemical/Kconfig                       |  10 ++
+ drivers/iio/chemical/Makefile                      |   1 +
+ drivers/iio/chemical/sen0322.c                     | 167 +++++++++++++++++++++
+ 5 files changed, 186 insertions(+)
+---
+base-commit: b4432656b36e5cc1d50a1f2dc15357543add530e
+change-id: 20250428-iio-chemical-sen0322-cf8fbbbe7546
+
+Best regards,
 -- 
-2.49.0
+Tóth János <gomba007@gmail.com>
 
