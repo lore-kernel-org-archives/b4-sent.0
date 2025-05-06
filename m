@@ -1,11 +1,11 @@
 From: Joel Selvaraj <foss@joelselvaraj.com>
-Date: Tue, 06 May 2025 13:18:38 -0500
-Subject: [PATCH RESEND v4 1/4] dt-bindings: input: touchscreen: edt-ft5x06:
- use unevaluatedProperties
+Date: Tue, 06 May 2025 13:18:39 -0500
+Subject: [PATCH RESEND v4 2/4] arm64: dts: qcom:
+ sdm845-xiaomi-beryllium-common: add touchscreen related nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250506-pocof1-touchscreen-support-v4-1-bfb53da52945@joelselvaraj.com>
+Message-Id: <20250506-pocof1-touchscreen-support-v4-2-bfb53da52945@joelselvaraj.com>
 References: <20250506-pocof1-touchscreen-support-v4-0-bfb53da52945@joelselvaraj.com>
 In-Reply-To: <20250506-pocof1-touchscreen-support-v4-0-bfb53da52945@joelselvaraj.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -16,55 +16,98 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
  Joel Selvaraj <foss@joelselvaraj.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746555528; l=1632;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746555528; l=2153;
  i=foss@joelselvaraj.com; s=20250506; h=from:subject:message-id;
- bh=VdNFQQYZg3DtBiz7djqa47zvKcz3+ph7toNxgsM7vNg=;
- b=ckbNOn8YgQSIWuQzufuxsyNDrsvMYBvd/mXNqEEz63m0XnDuNEydiO7g0dyLTH9YPo5D9tTrv
- p0SN8gd78bGDTsoK1GMKsjwQK9vsyalp0PtKpLpR4VliqE4761qbogM
+ bh=ogqFejWPe9Mh62xxDZD39Gia/pg/UEL4oDRQ0rgvLdk=;
+ b=LucKALOxQFPrCrpheTgcRdQB46QwtgpnJ7jHR0Ua8vgNCspN8NEVTdrwlxcBgdzqRYnQS2kAW
+ ErYQCHh5Eq9BKd9m8FL9OKtUvZBBmQ1kPmrfixBZSOl4GPiuLglGpPq
 X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
  pk=/jk63vyofgC3YCat+t/kcBv+rlSEVcI4PLN/LN0SQlQ=
 X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20250506 with auth_id=399
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In Xiaomi Poco F1 (qcom/sdm845-xiaomi-beryllium-ebbg.dts), the FocalTech
-FT8719 touchscreen is integrally connected to the display panel
-(EBBG FT8719) and thus should be power sequenced together with display
-panel using the panel property. Since the edt-ft5x06 touchscreen binding
-uses almost all the properties present in touchscreen.yaml, let's remove
-additionalProperties: false and use unevaluatedProperties to include all
-the properties, including the needed panel property.
+Enable qupv3_id_1 and gpi_dma1 as they are required for configuring
+touchscreen. Also add pinctrl configurations needed for touchscreen.
+These are common for both the tianma and ebbg touchscreen variant.
+In the subsequent patches, we will enable support for the Novatek NT36672a
+touchscreen and FocalTech FT8719 touchscreen that are used in the Poco F1
+Tianma and EBBG panel variant respectively. This is done in preparation
+for that.
 
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Acked-by: Dmitry Torokhov <dmitry.torokhov@gmail.com>
 Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
 ---
- .../devicetree/bindings/input/touchscreen/edt-ft5x06.yaml        | 9 +--------
- 1 file changed, 1 insertion(+), 8 deletions(-)
+ .../dts/qcom/sdm845-xiaomi-beryllium-common.dtsi   | 39 ++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml b/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml
-index 70a922e213f2a62e3d0bd403e24ed9c3ccffd2d5..ab821490284ac0ea13568cb9ee357aea3faaa1b7 100644
---- a/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml
-+++ b/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml
-@@ -103,16 +103,9 @@ properties:
-     minimum: 0
-     maximum: 255
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+index 617b17b2d7d9dfb686445e02cfc8f97de5b6f7a6..e93ed6effdd7384c750e671a2bc1be3a472c54f8 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+@@ -243,6 +243,10 @@ &gmu {
+ 	status = "okay";
+ };
  
--  touchscreen-size-x: true
--  touchscreen-size-y: true
--  touchscreen-fuzz-x: true
--  touchscreen-fuzz-y: true
--  touchscreen-inverted-x: true
--  touchscreen-inverted-y: true
--  touchscreen-swapped-x-y: true
-   interrupt-controller: true
++&gpi_dma1 {
++	status = "okay";
++};
++
+ &gpu {
+ 	status = "okay";
  
--additionalProperties: false
-+unevaluatedProperties: false
+@@ -408,6 +412,10 @@ &qupv3_id_0 {
+ 	status = "okay";
+ };
  
- required:
-   - compatible
++&qupv3_id_1 {
++	status = "okay";
++};
++
+ &sdhc_2 {
+ 	status = "okay";
+ 
+@@ -513,6 +521,37 @@ sdc2_card_det_n: sd-card-det-n-state {
+ 		function = "gpio";
+ 		bias-pull-up;
+ 	};
++
++	ts_int_default: ts-int-default-state {
++		pins = "gpio31";
++		function = "gpio";
++		drive-strength = <16>;
++		bias-pull-down;
++		output-disable;
++	};
++
++	ts_reset_default: ts-reset-default-state {
++		pins = "gpio32";
++		function = "gpio";
++		drive-strength = <16>;
++		output-high;
++	};
++
++	ts_int_sleep: ts-int-sleep-state {
++		pins = "gpio31";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-down;
++		output-disable;
++	};
++
++	ts_reset_sleep: ts-reset-sleep-state {
++		pins = "gpio32";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++		output-low;
++	};
+ };
+ 
+ &uart6 {
 
 -- 
 2.49.0
