@@ -1,16 +1,12 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Subject: [PATCH v2 0/6] Add CMN PLL clock controller support for IPQ5018
-Date: Tue, 06 May 2025 09:43:32 +0400
-Message-Id: <20250506-ipq5018-cmn-pll-v2-0-c0a9fcced114@outlook.com>
+Date: Tue, 06 May 2025 09:43:33 +0400
+Subject: [PATCH v2 1/6] clk: qcom: ipq5018: keep XO clock always on
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIahGWgC/2XPTW7DIBQE4KtYrEsFDzDgVe5RRRGBR4NqG//Fa
- hT57sVOF5W6QoPE8M2TzDglnElTPcmEa5pT7kuAt4r4m+s/kaZQMgEGiinGaRrGchjqu54ObUs
- NKq4DGi2iIeXVMGFM30fjx/mVJxzvpXh5XZKrm5H63HVpaSrjICjhUXgVDdRGuCBCtM46pQyA4
- XXEWqImf0HFt3Mk53QsRZfdJEFeimkn2Zo5E5XVTIhmBbIzbmle8vQ4dq78cPxOgn+TVk4ZBW0
- ZeO4l0/yU70ub89d7+Yyct237Ac1IXig3AQAA
-X-Change-ID: 20250501-ipq5018-cmn-pll-8e517de873f8
+Message-Id: <20250506-ipq5018-cmn-pll-v2-1-c0a9fcced114@outlook.com>
+References: <20250506-ipq5018-cmn-pll-v2-0-c0a9fcced114@outlook.com>
+In-Reply-To: <20250506-ipq5018-cmn-pll-v2-0-c0a9fcced114@outlook.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -20,72 +16,158 @@ To: Bjorn Andersson <andersson@kernel.org>,
  Arnd Bergmann <arnd@arndb.de>
 Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+ George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746510258; l=2754;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746510258; l=5615;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=2NkLnqttrZXSf8SWaugytk/+yucbZgZWEFVhTkqXWZk=;
- b=KT8bfCZpRZG0yAxDIuRdyr+wR3RoqYQJbOGdRL9x0F0FBYHbXUB0138ML0E+Js0krTXKqME0Q
- mmxMW3dy65/A6EsWUXObFqZZLWNqMYAImd0c759EgmQJOXSs9TJTXVN
+ bh=Y1JlY5oRKJOTEFrLvYYyqkZKWEAjiaHbxNE3QfYsj7s=;
+ b=7CAurtbrS7p+d9AmNJBBdWw47Qgb4EgUhnD0StVBj9e6Zk5wLuUQdqTjmk33RhcD7G9omq0dG
+ XBXKG7O/8QJDQK4vSx9gJexdYrsA2h4YWsS0dZofuiIag9LGG/h8u40
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The CMN PLL block of IPQ5018 supplies output clocks for XO at 24 MHZ,
-sleep at 32KHZ, and the ethernet block at 50MHZ.
+The XO clock must not be disabled to avoid the kernel trying to disable
+the it (when parenting it under the CMN PLL reference clock), else the
+kernel will panic and the below message will appear in the kernel logs.
+So let's enable the XO and its source CLK and keep them always on.
 
-This patch series extends the CMN PLL driver to support IPQ5018.
-It also adds the SoC specific header file to export the CMN PLL
-output clock specifiers for IPQ5018. The new table of output
-clocks is added for the CMN PLL of IPQ5018, which is acquired
-from the device according to the compatible.
+[    0.916515] ------------[ cut here ]------------
+[    0.918890] gcc_xo_clk_src status stuck at 'on'
+[    0.918944] WARNING: CPU: 0 PID: 8 at drivers/clk/qcom/clk-branch.c:86 clk_branch_wait+0x114/0x124
+[    0.927926] Modules linked in:
+[    0.936945] CPU: 0 PID: 8 Comm: kworker/0:0 Not tainted 6.6.74 #0
+[    0.939982] Hardware name: Linksys MX2000 (DT)
+[    0.946151] Workqueue: pm pm_runtime_work
+[    0.950489] pstate: 604000c5 (nZCv daIF +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+[    0.954566] pc : clk_branch_wait+0x114/0x124
+[    0.961335] lr : clk_branch_wait+0x114/0x124
+[    0.965849] sp : ffffffc08181bb50
+[    0.970101] x29: ffffffc08181bb50 x28: 0000000000000000 x27: 61c8864680b583eb
+[    0.973317] x26: ffffff801fec2168 x25: ffffff800000abc0 x24: 0000000000000002
+[    0.980437] x23: ffffffc0809f6fd8 x22: 0000000000000000 x21: ffffffc08044193c
+[    0.985276] loop: module loaded
+[    0.987554] x20: 0000000000000000 x19: ffffffc081749278 x18: 000000000000007c
+[    0.987573] x17: 0000000091706274 x16: 000000001985c4f7 x15: ffffffc0816bbdf0
+[    0.987587] x14: 0000000000000174 x13: 000000000000007c x12: 00000000ffffffea
+[    0.987601] x11: 00000000ffffefff x10: ffffffc081713df0 x9 : ffffffc0816bbd98
+[    0.987615] x8 : 0000000000017fe8 x7 : c0000000ffffefff x6 : 0000000000057fa8
+[    1.026268] x5 : 0000000000000fff x4 : 0000000000000000 x3 : ffffffc08181b950
+[    1.033385] x2 : ffffffc0816bbd30 x1 : ffffffc0816bbd30 x0 : 0000000000000023
+[    1.040507] Call trace:
+[    1.047618]  clk_branch_wait+0x114/0x124
+[    1.049875]  clk_branch2_disable+0x2c/0x3c
+[    1.054043]  clk_core_disable+0x60/0xac
+[    1.057948]  clk_core_disable+0x68/0xac
+[    1.061681]  clk_disable+0x30/0x4c
+[    1.065499]  pm_clk_suspend+0xd4/0xfc
+[    1.068971]  pm_generic_runtime_suspend+0x2c/0x44
+[    1.072705]  __rpm_callback+0x40/0x1bc
+[    1.077392]  rpm_callback+0x6c/0x78
+[    1.081038]  rpm_suspend+0xf0/0x5c0
+[    1.084423]  pm_runtime_work+0xf0/0xfc
+[    1.087895]  process_one_work+0x17c/0x2f8
+[    1.091716]  worker_thread+0x2e8/0x4d4
+[    1.095795]  kthread+0xdc/0xe0
+[    1.099440]  ret_from_fork+0x10/0x20
+[    1.102480] ---[ end trace 0000000000000000 ]---
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-Changes in v2:
-- Moved up commit documenting ipq5018 in qcom,tcsr bindings
-- Fixed binding issues reported by Rob's bot
-- Undone accidental deletion of reg property in cmn pll bindings
-- Fixed register address and size based on address and size cells of 1
-- Removed XO and XO_SRC clock structs from GCC and enabled them as
-  always-on as suggested by Konrad
-- Removed bindings for XO and XO_SRC clocks
-- Removed qcom,tscr-cmn-pll-eth-enable property from bindings and will 
-  move logic to ipq5018 internal phy driver as per Jie's recommendation.
-- Removed addition of tcsr node and its bindings from this patch set
-- Corrected spelling mistakes
-- Link to v1: https://lore.kernel.org/r/20250502-ipq5018-cmn-pll-v1-0-27902c1c4071@outlook.com
+ drivers/clk/qcom/gcc-ipq5018.c | 50 +++++-------------------------------------
+ 1 file changed, 6 insertions(+), 44 deletions(-)
 
----
-George Moussalem (6):
-      clk: qcom: ipq5018: keep XO clock always on
-      dt-bindings: clock: qcom: ipq5018: remove bindings for XO clock
-      dt-bindings: clock: qcom: Add CMN PLL support for IPQ5018 SoC
-      clk: qcom: ipq-cmn-pll: Add IPQ5018 SoC support
-      arm64: dts: ipq5018: Add CMN PLL node
-      arm64: dts: qcom: Update IPQ5018 xo_board_clk to use fixed factor clock
+diff --git a/drivers/clk/qcom/gcc-ipq5018.c b/drivers/clk/qcom/gcc-ipq5018.c
+index 70f5dcb96700f55da1fb19fc893d22350a7e63bf..32c3e72429039dfb7adb1e956fba18bd2bc06557 100644
+--- a/drivers/clk/qcom/gcc-ipq5018.c
++++ b/drivers/clk/qcom/gcc-ipq5018.c
+@@ -1345,38 +1345,6 @@ static struct clk_branch gcc_sleep_clk_src = {
+ 	},
+ };
+ 
+-static struct clk_branch gcc_xo_clk_src = {
+-	.halt_reg = 0x30018,
+-	.clkr = {
+-		.enable_reg = 0x30018,
+-		.enable_mask = BIT(1),
+-		.hw.init = &(struct clk_init_data) {
+-			.name = "gcc_xo_clk_src",
+-			.parent_data = gcc_xo_data,
+-			.num_parents = ARRAY_SIZE(gcc_xo_data),
+-			.flags = CLK_SET_RATE_PARENT,
+-			.ops = &clk_branch2_ops,
+-		},
+-	},
+-};
+-
+-static struct clk_branch gcc_xo_clk = {
+-	.halt_reg = 0x30030,
+-	.clkr = {
+-		.enable_reg = 0x30030,
+-		.enable_mask = BIT(0),
+-		.hw.init = &(struct clk_init_data) {
+-			.name = "gcc_xo_clk",
+-			.parent_hws = (const struct clk_hw *[]) {
+-				&gcc_xo_clk_src.clkr.hw,
+-			},
+-			.num_parents = 1,
+-			.flags = CLK_SET_RATE_PARENT,
+-			.ops = &clk_branch2_ops,
+-		},
+-	},
+-};
+-
+ static struct clk_branch gcc_adss_pwm_clk = {
+ 	.halt_reg = 0x1f020,
+ 	.clkr = {
+@@ -1584,11 +1552,7 @@ static struct clk_branch gcc_cmn_blk_sys_clk = {
+ 		.enable_mask = BIT(0),
+ 		.hw.init = &(struct clk_init_data) {
+ 			.name = "gcc_cmn_blk_sys_clk",
+-			.parent_hws = (const struct clk_hw *[]) {
+-				&gcc_xo_clk_src.clkr.hw,
+-			},
+-			.num_parents = 1,
+-			.flags = CLK_SET_RATE_PARENT,
++			.num_parents = 0,
+ 			.ops = &clk_branch2_ops,
+ 		},
+ 	},
+@@ -2980,11 +2944,7 @@ static struct clk_branch gcc_uniphy_sys_clk = {
+ 		.enable_mask = BIT(0),
+ 		.hw.init = &(struct clk_init_data) {
+ 			.name = "gcc_uniphy_sys_clk",
+-			.parent_hws = (const struct clk_hw *[]) {
+-				&gcc_xo_clk_src.clkr.hw,
+-			},
+-			.num_parents = 1,
+-			.flags = CLK_SET_RATE_PARENT,
++			.num_parents = 0,
+ 			.ops = &clk_branch2_ops,
+ 		},
+ 	},
+@@ -3504,8 +3464,6 @@ static struct clk_regmap *gcc_ipq5018_clks[] = {
+ 	[GCC_WCSS_DBG_IFC_NTS_BDG_CLK] = &gcc_wcss_dbg_ifc_nts_bdg_clk.clkr,
+ 	[GCC_WCSS_DBG_IFC_NTS_CLK] = &gcc_wcss_dbg_ifc_nts_clk.clkr,
+ 	[GCC_WCSS_ECAHB_CLK] = &gcc_wcss_ecahb_clk.clkr,
+-	[GCC_XO_CLK] = &gcc_xo_clk.clkr,
+-	[GCC_XO_CLK_SRC] = &gcc_xo_clk_src.clkr,
+ 	[GMAC0_RX_CLK_SRC] = &gmac0_rx_clk_src.clkr,
+ 	[GMAC0_RX_DIV_CLK_SRC] = &gmac0_rx_div_clk_src.clkr,
+ 	[GMAC0_TX_CLK_SRC] = &gmac0_tx_clk_src.clkr,
+@@ -3696,6 +3654,10 @@ static int gcc_ipq5018_probe(struct platform_device *pdev)
+ 	if (IS_ERR(regmap))
+ 		return PTR_ERR(regmap);
+ 
++	/* Keep some clocks always-on */
++	qcom_branch_set_clk_en(regmap, 0x30018); /* GCC_XO_CLK_SRC */
++	qcom_branch_set_clk_en(regmap, 0x30030); /* GCC_XO_CLK */
++
+ 	clk_alpha_pll_configure(&ubi32_pll_main, regmap, &ubi32_pll_config);
+ 
+ 	return qcom_cc_really_probe(&pdev->dev, &ipq5018_desc, regmap);
 
- .../bindings/clock/qcom,ipq9574-cmn-pll.yaml       |  1 +
- arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts     |  3 +-
- .../dts/qcom/ipq5018-tplink-archer-ax55-v1.dts     |  3 +-
- arch/arm64/boot/dts/qcom/ipq5018.dtsi              | 34 ++++++++++++++-
- drivers/clk/qcom/gcc-ipq5018.c                     | 50 +++-------------------
- drivers/clk/qcom/ipq-cmn-pll.c                     | 37 ++++++++++------
- include/dt-bindings/clock/qcom,gcc-ipq5018.h       |  2 -
- include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h   | 16 +++++++
- 8 files changed, 82 insertions(+), 64 deletions(-)
----
-base-commit: 8a2d53ce3c5f82683ad3df9a9a55822816fe64e7
-change-id: 20250501-ipq5018-cmn-pll-8e517de873f8
-prerequisite-change-id: 20250411-qcom_ipq5424_cmnpll-960a8f597033:v2
-prerequisite-patch-id: dc3949e10baf58f8c28d24bb3ffd347a78a1a2ee
-prerequisite-patch-id: da645619780de3186a3cccf25beedd4fefab36df
-prerequisite-patch-id: 4b5d81954f1f43d450a775bcabc1a18429933aaa
-prerequisite-patch-id: 541f835fb279f83e6eb2405c531bd7da9aacf4bd
-
-Best regards,
 -- 
-George Moussalem <george.moussalem@outlook.com>
+2.49.0
 
