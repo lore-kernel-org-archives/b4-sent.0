@@ -1,11 +1,11 @@
 From: Joel Selvaraj <foss@joelselvaraj.com>
-Date: Tue, 06 May 2025 13:18:39 -0500
-Subject: [PATCH RESEND v4 2/4] arm64: dts: qcom:
- sdm845-xiaomi-beryllium-common: add touchscreen related nodes
+Date: Tue, 06 May 2025 13:18:40 -0500
+Subject: [PATCH RESEND v4 3/4] arm64: dts: qcom:
+ sdm845-xiaomi-beryllium-tianma: introduce touchscreen support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250506-pocof1-touchscreen-support-v4-2-bfb53da52945@joelselvaraj.com>
+Message-Id: <20250506-pocof1-touchscreen-support-v4-3-bfb53da52945@joelselvaraj.com>
 References: <20250506-pocof1-touchscreen-support-v4-0-bfb53da52945@joelselvaraj.com>
 In-Reply-To: <20250506-pocof1-touchscreen-support-v4-0-bfb53da52945@joelselvaraj.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,95 +19,57 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746555528; l=2153;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746555528; l=1446;
  i=foss@joelselvaraj.com; s=20250506; h=from:subject:message-id;
- bh=ogqFejWPe9Mh62xxDZD39Gia/pg/UEL4oDRQ0rgvLdk=;
- b=LucKALOxQFPrCrpheTgcRdQB46QwtgpnJ7jHR0Ua8vgNCspN8NEVTdrwlxcBgdzqRYnQS2kAW
- ErYQCHh5Eq9BKd9m8FL9OKtUvZBBmQ1kPmrfixBZSOl4GPiuLglGpPq
+ bh=omu9P9eNkNZRMqW32xW8epBAdb+JJlQ1CwabUVCs0a0=;
+ b=IKLIA+eY60v5DxWy29ZulcLaAjMplEPPHuWWmcXLoMH4fq0kazvusUe4kBKT16+oSmQ74pRdi
+ HrlFDtqbGjGAwPT+cOqg2fJ1e4yyW9uLJ1Cc4bibe6ZlQhHi9zWAaWB
 X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
  pk=/jk63vyofgC3YCat+t/kcBv+rlSEVcI4PLN/LN0SQlQ=
 X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20250506 with auth_id=399
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable qupv3_id_1 and gpi_dma1 as they are required for configuring
-touchscreen. Also add pinctrl configurations needed for touchscreen.
-These are common for both the tianma and ebbg touchscreen variant.
-In the subsequent patches, we will enable support for the Novatek NT36672a
-touchscreen and FocalTech FT8719 touchscreen that are used in the Poco F1
-Tianma and EBBG panel variant respectively. This is done in preparation
-for that.
+Enable the Novatek NT36672A touchscreen controller used in the Poco F1
+(Tianma) panel variant.
 
 Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
 ---
- .../dts/qcom/sdm845-xiaomi-beryllium-common.dtsi   | 39 ++++++++++++++++++++++
- 1 file changed, 39 insertions(+)
+ .../dts/qcom/sdm845-xiaomi-beryllium-tianma.dts    | 23 ++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-index 617b17b2d7d9dfb686445e02cfc8f97de5b6f7a6..e93ed6effdd7384c750e671a2bc1be3a472c54f8 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-@@ -243,6 +243,10 @@ &gmu {
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts
+index e9427851ebaae13389f394c06eaae339a63fcad9..b58964cde834221baf1a7e52c002c8394668dd99 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts
+@@ -13,3 +13,26 @@ &display_panel {
+ 	compatible = "tianma,fhd-video", "novatek,nt36672a";
  	status = "okay";
  };
- 
-+&gpi_dma1 {
++
++&i2c14 {
 +	status = "okay";
++
++	touchscreen@1 {
++		compatible = "novatek,nt36672a-ts";
++		reg = <0x01>;
++
++		interrupts-extended = <&tlmm 31 IRQ_TYPE_EDGE_RISING>;
++		reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
++		panel = <&display_panel>;
++
++		iovcc-supply = <&vreg_l14a_1p8>;
++		vcc-supply = <&lab>;
++
++		pinctrl-0 = <&ts_int_default &ts_reset_default>;
++		pinctrl-1 = <&ts_int_sleep &ts_reset_sleep>;
++		pinctrl-names = "default", "sleep";
++
++		touchscreen-size-x = <1080>;
++		touchscreen-size-y = <2246>;
++	};
 +};
-+
- &gpu {
- 	status = "okay";
- 
-@@ -408,6 +412,10 @@ &qupv3_id_0 {
- 	status = "okay";
- };
- 
-+&qupv3_id_1 {
-+	status = "okay";
-+};
-+
- &sdhc_2 {
- 	status = "okay";
- 
-@@ -513,6 +521,37 @@ sdc2_card_det_n: sd-card-det-n-state {
- 		function = "gpio";
- 		bias-pull-up;
- 	};
-+
-+	ts_int_default: ts-int-default-state {
-+		pins = "gpio31";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		bias-pull-down;
-+		output-disable;
-+	};
-+
-+	ts_reset_default: ts-reset-default-state {
-+		pins = "gpio32";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		output-high;
-+	};
-+
-+	ts_int_sleep: ts-int-sleep-state {
-+		pins = "gpio31";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-down;
-+		output-disable;
-+	};
-+
-+	ts_reset_sleep: ts-reset-sleep-state {
-+		pins = "gpio32";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+		output-low;
-+	};
- };
- 
- &uart6 {
 
 -- 
 2.49.0
