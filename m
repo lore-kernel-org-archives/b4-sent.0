@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Tue, 06 May 2025 09:43:34 +0400
-Subject: [PATCH v2 2/6] dt-bindings: clock: qcom: ipq5018: remove bindings
- for XO clock
+Date: Tue, 06 May 2025 09:43:35 +0400
+Subject: [PATCH v2 3/6] dt-bindings: clock: qcom: Add CMN PLL support for
+ IPQ5018 SoC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250506-ipq5018-cmn-pll-v2-2-c0a9fcced114@outlook.com>
+Message-Id: <20250506-ipq5018-cmn-pll-v2-3-c0a9fcced114@outlook.com>
 References: <20250506-ipq5018-cmn-pll-v2-0-c0a9fcced114@outlook.com>
 In-Reply-To: <20250506-ipq5018-cmn-pll-v2-0-c0a9fcced114@outlook.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,37 +19,60 @@ Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746510258; l=916;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746510258; l=1805;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=JupKX6iwdtJMe4ecLVTA0mWjAGvKoKV28P3vMGpTlG0=;
- b=7p+yVQvKj5aQQRuj+czk6aiSi45ggNA8QFh8VJwga282xblu/OE1PGOvTXbw3Bj8u5hJmcLBj
- J5Cy+BBjW7MDWf5qvb38Bg7e8V4cI2apve30eAPFN79ZcDPH1FwxgBJ
+ bh=8ErFwBb8LXa01ct7/Tl+4mrJDAJ15D3Sw41xcCkSs/4=;
+ b=oA5CQA6Mwh7Ty3WViEfqrAci7NX4dm4nnvnWOgQ/jUopT4a5cT/Du/swtu91VgSnuRJAV7xOm
+ 8Y7tDi4LDaqA/+NtXOqeseDGBlUVwvFAmgF05EuJGV8xpxz7p9c/7SE
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The XO and its source clock must be always-on and is enabled in the GCC
-during probe. As such, remove the bindings for them.
+The CMN PLL block in the IPQ5018 SoC takes 96 MHZ as the reference
+input clock. Its output clocks are the XO (24Mhz), sleep (32Khz), and
+ethernet (50Mhz) clocks.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- include/dt-bindings/clock/qcom,gcc-ipq5018.h | 2 --
- 1 file changed, 2 deletions(-)
+ .../devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml  |  1 +
+ include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h         | 16 ++++++++++++++++
+ 2 files changed, 17 insertions(+)
 
-diff --git a/include/dt-bindings/clock/qcom,gcc-ipq5018.h b/include/dt-bindings/clock/qcom,gcc-ipq5018.h
-index f3de2fdfeea11f4b8832b75a05e424ca347b3634..d4de5eaffee7b4cb81e0ff2dcbf9e6669c3da8f8 100644
---- a/include/dt-bindings/clock/qcom,gcc-ipq5018.h
-+++ b/include/dt-bindings/clock/qcom,gcc-ipq5018.h
-@@ -140,8 +140,6 @@
- #define GCC_WCSS_DBG_IFC_NTS_BDG_CLK			131
- #define GCC_WCSS_DBG_IFC_NTS_CLK			132
- #define GCC_WCSS_ECAHB_CLK				133
--#define GCC_XO_CLK					134
--#define GCC_XO_CLK_SRC					135
- #define GMAC0_RX_CLK_SRC				136
- #define GMAC0_TX_CLK_SRC				137
- #define GMAC1_RX_CLK_SRC				138
+diff --git a/Documentation/devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml b/Documentation/devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml
+index cb6e09f4247f4b25105b25f4ae746c0b3ef47616..817d51135fbfdf0f518af1007ec7d6b120a91818 100644
+--- a/Documentation/devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml
++++ b/Documentation/devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml
+@@ -24,6 +24,7 @@ description:
+ properties:
+   compatible:
+     enum:
++      - qcom,ipq5018-cmn-pll
+       - qcom,ipq5424-cmn-pll
+       - qcom,ipq9574-cmn-pll
+ 
+diff --git a/include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h b/include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..586d1c9b33b374331bef413f543c526212c18494
+--- /dev/null
++++ b/include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h
+@@ -0,0 +1,16 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
++/*
++ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
++ */
++
++#ifndef _DT_BINDINGS_CLK_QCOM_IPQ5018_CMN_PLL_H
++#define _DT_BINDINGS_CLK_QCOM_IPQ5018_CMN_PLL_H
++
++/* CMN PLL core clock. */
++#define IPQ5018_CMN_PLL_CLK			0
++
++/* The output clocks from CMN PLL of IPQ5018. */
++#define IPQ5018_XO_24MHZ_CLK			1
++#define IPQ5018_SLEEP_32KHZ_CLK			2
++#define IPQ5018_ETH_50MHZ_CLK			3
++#endif
 
 -- 
 2.49.0
