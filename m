@@ -1,175 +1,105 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Wed, 07 May 2025 15:30:56 +0800
-Subject: [PATCH] Bluetooth: fix socket matching ambiguity between BIS and
- CIS
+From: Richard Leitner <richard.leitner@linux.dev>
+Subject: [PATCH v4 00/10] Add strobe/flash duration v4l2 ctrl & use it for
+ ov9282
+Date: Wed, 07 May 2025 09:51:29 +0200
+Message-Id: <20250507-ov9282-flash-strobe-v4-0-72b299c1b7c9@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250507-iso-v1-1-6f60d243e037@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAC8MG2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDUwMz3czifF0zU0NTC0vjJNOkJGMloMqCotS0zAqwKdGxtbUAg+V1wVU
- AAAA=
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746603064; l=4561;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=F5kAD2zHyjtSPLX9UO5WP1fJNupB7Q6k0ku1w7r+7fY=;
- b=ZrtT5WhZSkJVo95q/O4ABo2SS8pUZLvw9p+1Fa4MU4TBf3F9aiFzakWs7Wd54axY3F3Gq56uw
- RNj6p0I4UyGAINbidfcV0sIZJgljxoN1J40X3G2Xc3pxWgCA5BAd6gI
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAERG2gC/33OzYrCMBQF4FcpWZshuUla09W8x+AiPzc2IO1MU
+ oMiffeJFVFEXJ4D5+NcSMYUMZO+uZCEJeY4jTXITUPcYMY90uhrJsBAMcEEnYqGLdBwMHmgeU6
+ TRWpcaz1jTntsSV3+JgzxtKo/u1tO+Hes+HwrH3bfrDKAolbe8b2JI8XAnTfWKBt8Xzi5QkPM8
+ 5TO69taXaWPxwqnjLLgVWe4aqU134c4Hk9fHsvqFXgyuHxvQDW49J2BLRcS/KshHoYE/d4Q1QD
+ OlEPeaa3g2ViW5R+zeMRvhwEAAA==
+X-Change-ID: 20250303-ov9282-flash-strobe-ac6bd00c9de6
+To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Dave Stevenson <dave.stevenson@raspberrypi.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Lee Jones <lee@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Cc: Hans Verkuil <hverkuil@xs4all.nl>, linux-media@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
+ Richard Leitner <richard.leitner@linux.dev>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746604340; l=3478;
+ i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
+ bh=eeEVorPJN0nXCrBRZypjiRCYewlw7IZRHx4JfomHnDs=;
+ b=E1Lase4cSqMwUx7/+BwSD9ViFiV2pxg8SyjeuLN7PPr5X9TL5us8oRJaMUSpFckDImpAEdnd2
+ p3lokN+U1W0AN5gWe7WjZxB/yYDDt5eDLTyR+Z7g50YZp0M8j1QSVLb
+X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
+ pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
+X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The iso_get_sock function adds dst address matching to
-distinguish BIS and CIS sockets.
+This series adds a new v4l2 controls named "strobe duration" with id
+V4L2_CID_FLASH_DURATION. This control enables setting a desired
+flash/strobe length/duration in µs.
 
-Link: https://github.com/bluez/bluez/issues/1224
+As a first user of this new control add basic flash/strobe support for
+ov9282 sensors using their "hardware strobe output". The duration
+calculation is only interpolated from various measurements, as no
+documentation was found.
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+Further flash/strobe-related controls as well as a migration to v4l2-cci
+helpers for ov9282 will likely be implemented in future series.
+
+All register addresses/values are based on the OV9281 datasheet v1.53
+(january 2019). This series was tested using an ov9281 VisionComponents
+camera module.
+
+Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- net/bluetooth/hci_event.c | 35 ++++++++++++++++++++---------------
- net/bluetooth/iso.c       | 12 +++++++++---
- 2 files changed, 29 insertions(+), 18 deletions(-)
+Changes in v4:
+- Fix FLASH_DURATION implementation in v4l2-flash-led-class.c by adding a
+  missing brace and enum entry (thanks Sakari)
+- Fix format of multiline comment in ov9282.c (thanks Sakari)
+- Add missing NULL check in ov9282.c (thanks Sakari)
+- Adapt nr_of_controls_hint for v4l2 handler in ov9282.c (thanks Sakari)
+- Add patch for implementing try_ctrl for strobe_duration (thanks Sakari)
+- Link to v3: https://lore.kernel.org/r/20250429-ov9282-flash-strobe-v3-0-2105ce179952@linux.dev
 
-diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
-index 66052d6aaa1d..c1f32e98ef8a 100644
---- a/net/bluetooth/hci_event.c
-+++ b/net/bluetooth/hci_event.c
-@@ -6413,6 +6413,8 @@ static void hci_le_pa_sync_estabilished_evt(struct hci_dev *hdev, void *data,
- 
- 	conn->sync_handle = le16_to_cpu(ev->handle);
- 	conn->sid = HCI_SID_INVALID;
-+	conn->dst = ev->bdaddr;
-+	conn->dst_type = ev->bdaddr_type;
- 
- 	mask |= hci_proto_connect_ind(hdev, &ev->bdaddr, BIS_LINK,
- 				      &flags);
-@@ -6425,7 +6427,8 @@ static void hci_le_pa_sync_estabilished_evt(struct hci_dev *hdev, void *data,
- 		goto unlock;
- 
- 	/* Add connection to indicate PA sync event */
--	pa_sync = hci_conn_add_unset(hdev, BIS_LINK, BDADDR_ANY,
-+
-+	pa_sync = hci_conn_add_unset(hdev, BIS_LINK, &ev->bdaddr,
- 				     HCI_ROLE_SLAVE);
- 
- 	if (IS_ERR(pa_sync))
-@@ -6456,13 +6459,6 @@ static void hci_le_per_adv_report_evt(struct hci_dev *hdev, void *data,
- 
- 	hci_dev_lock(hdev);
- 
--	mask |= hci_proto_connect_ind(hdev, BDADDR_ANY, BIS_LINK, &flags);
--	if (!(mask & HCI_LM_ACCEPT))
--		goto unlock;
--
--	if (!(flags & HCI_PROTO_DEFER))
--		goto unlock;
--
- 	pa_sync = hci_conn_hash_lookup_pa_sync_handle
- 			(hdev,
- 			le16_to_cpu(ev->sync_handle));
-@@ -6470,6 +6466,13 @@ static void hci_le_per_adv_report_evt(struct hci_dev *hdev, void *data,
- 	if (!pa_sync)
- 		goto unlock;
- 
-+	mask |= hci_proto_connect_ind(hdev, &pa_sync->dst, ISO_LINK, &flags);
-+	if (!(mask & HCI_LM_ACCEPT))
-+		goto unlock;
-+
-+	if (!(flags & HCI_PROTO_DEFER))
-+		goto unlock;
-+
- 	if (ev->data_status == LE_PA_DATA_COMPLETE &&
- 	    !test_and_set_bit(HCI_CONN_PA_SYNC, &pa_sync->flags)) {
- 		/* Notify iso layer */
-@@ -6993,6 +6996,8 @@ static void hci_le_big_sync_established_evt(struct hci_dev *hdev, void *data,
- 			set_bit(HCI_CONN_PA_SYNC, &bis->flags);
- 
- 		bis->sync_handle = conn->sync_handle;
-+		bis->dst = conn->dst;
-+		bis->dst_type = conn->dst_type;
- 		bis->iso_qos.bcast.big = ev->handle;
- 		memset(&interval, 0, sizeof(interval));
- 		memcpy(&interval, ev->latency, sizeof(ev->latency));
-@@ -7038,13 +7043,6 @@ static void hci_le_big_info_adv_report_evt(struct hci_dev *hdev, void *data,
- 
- 	hci_dev_lock(hdev);
- 
--	mask |= hci_proto_connect_ind(hdev, BDADDR_ANY, BIS_LINK, &flags);
--	if (!(mask & HCI_LM_ACCEPT))
--		goto unlock;
--
--	if (!(flags & HCI_PROTO_DEFER))
--		goto unlock;
--
- 	pa_sync = hci_conn_hash_lookup_pa_sync_handle
- 			(hdev,
- 			le16_to_cpu(ev->sync_handle));
-@@ -7054,6 +7052,13 @@ static void hci_le_big_info_adv_report_evt(struct hci_dev *hdev, void *data,
- 
- 	pa_sync->iso_qos.bcast.encryption = ev->encryption;
- 
-+	mask |= hci_proto_connect_ind(hdev, &pa_sync->dst, ISO_LINK, &flags);
-+	if (!(mask & HCI_LM_ACCEPT))
-+		goto unlock;
-+
-+	if (!(flags & HCI_PROTO_DEFER))
-+		goto unlock;
-+
- 	/* Notify iso layer */
- 	hci_connect_cfm(pa_sync, 0);
- 
-diff --git a/net/bluetooth/iso.c b/net/bluetooth/iso.c
-index 6e2c752aaa8f..1dc233f04dbe 100644
---- a/net/bluetooth/iso.c
-+++ b/net/bluetooth/iso.c
-@@ -641,11 +641,12 @@ static struct sock *iso_get_sock(bdaddr_t *src, bdaddr_t *dst,
- 			continue;
- 
- 		/* Exact match. */
--		if (!bacmp(&iso_pi(sk)->src, src)) {
-+		if (!bacmp(&iso_pi(sk)->src, src)
-+		     && !bacmp(&iso_pi(sk)->dst, dst)
-+			){
- 			sock_hold(sk);
- 			break;
- 		}
--
- 		/* Closest match */
- 		if (!bacmp(&iso_pi(sk)->src, BDADDR_ANY)) {
- 			if (sk1)
-@@ -1962,7 +1963,7 @@ static void iso_conn_ready(struct iso_conn *conn)
- 		}
- 
- 		if (!parent)
--			parent = iso_get_sock(&hcon->src, BDADDR_ANY,
-+			parent = iso_get_sock(&hcon->src, &hcon->dst,
- 					      BT_LISTEN, NULL, NULL);
- 
- 		if (!parent)
-@@ -2203,6 +2204,11 @@ int iso_connect_ind(struct hci_dev *hdev, bdaddr_t *bdaddr, __u8 *flags)
- 	} else {
- 		sk = iso_get_sock(&hdev->bdaddr, BDADDR_ANY,
- 				  BT_LISTEN, NULL, NULL);
-+		if (!sk)
-+			sk = iso_get_sock(&hdev->bdaddr, bdaddr,
-+					  BT_LISTEN, NULL, NULL);
-+		else
-+			iso_pi(sk)->dst = *bdaddr;
- 	}
- 
- done:
+Changes in v3:
+- create separate patch for leds driver changes (thanks Lee)
+- Link to v2: https://lore.kernel.org/r/20250314-ov9282-flash-strobe-v2-0-14d7a281342d@linux.dev
+
+Changes in v2:
+- remove not needed controls in struct ov9282 (thanks Dave)
+- Fix commit message of 3/3 regarding framerate get/set (thanks Dave)
+- Add V4L2_CID_FLASH_STROBE_SOURCE impementation to ov9282
+- Add new V4L2_CID_FLASH_DURATION control (as suggested by Laurent)
+- Use FLASH_DURATION instead of FLASH_TIMEOUT for ov9282
+- Link to v1: https://lore.kernel.org/r/20250303-ov9282-flash-strobe-v1-0-0fd57a1564ba@linux.dev
 
 ---
-base-commit: f3daca9b490154fbb0459848cc2ed61e8367bddc
-change-id: 20250506-iso-6515893b5bb3
+Richard Leitner (10):
+      media: v4l: ctrls: add a control for flash/strobe duration
+      leds: flash: add support for flash/stobe duration
+      media: v4l2-flash: add support for flash/strobe duration
+      media: v4l2-flash: fix flash_timeout comment
+      Documentation: uAPI: media: add V4L2_CID_FLASH_DURATION
+      media: i2c: ov9282: add output enable register definitions
+      media: i2c: ov9282: add led_mode v4l2 control
+      media: i2c: ov9282: add strobe_duration v4l2 control
+      media: i2c: ov9282: add strobe_source v4l2 control
+      media: i2c: ov9282: implement try_ctrl for strobe_duration
+
+ .../userspace-api/media/v4l/ext-ctrls-flash.rst    |   5 +
+ drivers/leds/led-class-flash.c                     |  15 +++
+ drivers/media/i2c/ov9282.c                         | 148 ++++++++++++++++++++-
+ drivers/media/v4l2-core/v4l2-ctrls-defs.c          |   1 +
+ drivers/media/v4l2-core/v4l2-flash-led-class.c     |  25 ++++
+ include/linux/led-class-flash.h                    |  18 ++-
+ include/uapi/linux/v4l2-controls.h                 |   1 +
+ 7 files changed, 208 insertions(+), 5 deletions(-)
+---
+base-commit: 92a09c47464d040866cf2b4cd052bc60555185fb
+change-id: 20250303-ov9282-flash-strobe-ac6bd00c9de6
+prerequisite-change-id: 20250225-b4-ov9282-gain-ef1cdaba5bfd:v1
+prerequisite-patch-id: 86f2582378ff7095ab65ce4bb25a143eb639e840
+prerequisite-patch-id: b06eb6ec697aaf0b3155b4b2370f171d0d304ae2
+prerequisite-patch-id: b123047d71bfb9b93f743bbdd6893d5a98495801
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Richard Leitner <richard.leitner@linux.dev>
 
