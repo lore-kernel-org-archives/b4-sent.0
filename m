@@ -1,65 +1,61 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Tue, 06 May 2025 13:36:59 -0500
-Subject: [PATCH] spi: tegra114: Use value to check for invalid delays
+From: Chen Linxuan <chenlinxuan@uniontech.com>
+Subject: [PATCH 0/2] Add a documentation for FUSE passthrough
+Date: Wed, 07 May 2025 13:16:40 +0800
+Message-Id: <20250507-fuse-passthrough-doc-v1-0-cc06af79c722@uniontech.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250506-spi-tegra114-fixup-v1-1-136dc2f732f3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMtWGmgC/x2MQQ5AMBAAv9Ls2SbbohVfEQd0sReaFpGIv2scJ
- 5OZBxJH4QSteiDyJUn2LYMuFEzrsC2M4jODIVNTTRZTEDx4iYPWFc5ynwH9OFtXkh+pcZDDEDm
- Lf9r17/sBsguP3GQAAAA=
-X-Change-ID: 20250506-spi-tegra114-fixup-dbf6730db087
-To: Laxman Dewangan <ldewangan@nvidia.com>, Mark Brown <broonie@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-spi@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALjsGmgC/x3MPQqAMAxA4atIZgO1Wv+uIg6lRpvFSmNFEO9uc
+ fyG9x4QikwCY/FApIuFw55RlQU4b/eNkJds0EobZVSHaxLCw4qcPoa0eVyCQzNQ5fqm1ratIad
+ HpJXvfzvN7/sBdraXHmYAAAA=
+X-Change-ID: 20250507-fuse-passthrough-doc-59e1c8432a63
+To: Miklos Szeredi <miklos@szeredi.hu>, Jonathan Corbet <corbet@lwn.net>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ linux-doc@vger.kernel.org, Chen Linxuan <chenlinxuan@uniontech.com>, 
+ Amir Goldstein <amir73il@gmail.com>, 
+ Bernd Schubert <bernd.schubert@fastmail.fm>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746556624; l=1451;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=Hw03YaXk/WZ6EX96VNFe6W5UJoy0p3RB6GhwI2lDOas=;
- b=CEGKjV7XRxmWJqtCmKGXcQ1HRrEygIotyDIVa2P8UldIcnnCCRRgM51WuUQ6TYSNQoHyZ0ZnP
- mzcTFoaFAUQCEtiHeb0NckUCgy8uofM8thOYzVHLVLhG2C2EQN9sG7r
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=openpgp-sha256; l=856;
+ i=chenlinxuan@uniontech.com; h=from:subject:message-id;
+ bh=cCqunWSORWZI8+ZRM7yH3lgkp1MPBBW/HJ0FseqYOb8=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoGuzGnXpdf4wjT49f5TuSBlWPOSu46SsfICKlq
+ coRoJzg4HmJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBrsxgAKCRB2HuYUOZmu
+ i/yWEADblVtLmhPYCzinPo/tpVOfHQdsnQyolkhroTZGXwKLDUtsCD9uiXMjvhDgmMaOXknb1j+
+ /L3hstwT8BKOa3O2LHEUWgXWJiZxUahQYD4q2mTbtnE5DwSR/ykrRGzueUAZ161cOyZM0wbgw61
+ 8akuzKEmi6rVkNshJ4mx/nYi4yW3YXBLzCioMRX/aCdyMM4BrKg8OTWFSYCHOGxB9LAJs+/XiZP
+ j49wZbn+JXjB9/iPB6owXXB8CyniuN+js24AxdtekDzUWxPokzFbatZ53Y4LpojvIzAkPtTUxgP
+ EtIYg8uQ8w3QetHf6nMv8lhf1Re1zd9FWpxH4SKCL/GlVApmqXwlS/LZcHaZK5wkGCfYJt3m/9z
+ 3xO0o6K40CkVPd69Xj+Xoff0/lc5vwQ4H2+vm2j+yS++eCTVC0OVntT7g6bkzs0XRfxmM90suU3
+ Peh5EESw1WnURXuvrQwLzjj2Y7FjYPnWqNF9sxXFWQd22xaQ3jD9pGfaBMWwcxUul3kPCPchFmz
+ b5z0DVi1aEVPtBizxOmpwdYAbiS/IQNPMLnNHCpZ1q4jqDZWMGdj2s1We43AzFp45mygnDbjJjo
+ nuabXUjOuDST2SEp3y7e+lFkdIYYMu6oK9xtq8id8AB6YPgCl35/iJmIDIHLg5y9QlUYBNKDop1
+ MgU/7DszgZrhGXg==
+X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A delay unit of 0 is a valid entry, thus it is not valid to check for
-unused delays. Instead, check the value field; if that is zero, the
-given delay is unset.
+This series adds a new file,
+Documentation/filesystems/fuse-passthrough.rst, which documents why
+FUSE passthrough functionality requires CAP_SYS_ADMIN capabilities.
 
-Fixes: 4426e6b4ecf6 ("spi: tegra114: Don't fail set_cs_timing when delays are zero")
-Cc: stable@vger.kernel.org
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+The series also updates the MAINTAINERS file to ensure
+scripts/get_maintainer.pl works correctly with FUSE documentation.
+
+Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
 ---
- drivers/spi/spi-tegra114.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Chen Linxuan (2):
+      MAINTAINERS: update filter of FUSE documentation
+      docs: filesystems: add fuse-passthrough.rst
 
-diff --git a/drivers/spi/spi-tegra114.c b/drivers/spi/spi-tegra114.c
-index 2a8bb798e95b954fe573f1c50445ed2e7fcbfd78..795a8482c2c700c3768bd50bf59971256893a486 100644
---- a/drivers/spi/spi-tegra114.c
-+++ b/drivers/spi/spi-tegra114.c
-@@ -728,9 +728,9 @@ static int tegra_spi_set_hw_cs_timing(struct spi_device *spi)
- 	u32 inactive_cycles;
- 	u8 cs_state;
- 
--	if ((setup->unit && setup->unit != SPI_DELAY_UNIT_SCK) ||
--	    (hold->unit && hold->unit != SPI_DELAY_UNIT_SCK) ||
--	    (inactive->unit && inactive->unit != SPI_DELAY_UNIT_SCK)) {
-+	if ((setup->value && setup->unit != SPI_DELAY_UNIT_SCK) ||
-+	    (hold->value && hold->unit != SPI_DELAY_UNIT_SCK) ||
-+	    (inactive->value && inactive->unit != SPI_DELAY_UNIT_SCK)) {
- 		dev_err(&spi->dev,
- 			"Invalid delay unit %d, should be SPI_DELAY_UNIT_SCK\n",
- 			SPI_DELAY_UNIT_SCK);
-
+ Documentation/filesystems/fuse-passthrough.rst | 139 +++++++++++++++++++++++++
+ MAINTAINERS                                    |   2 +-
+ 2 files changed, 140 insertions(+), 1 deletion(-)
 ---
 base-commit: 0d8d44db295ccad20052d6301ef49ff01fb8ae2d
-change-id: 20250506-spi-tegra114-fixup-dbf6730db087
+change-id: 20250507-fuse-passthrough-doc-59e1c8432a63
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Chen Linxuan <chenlinxuan@uniontech.com>
 
