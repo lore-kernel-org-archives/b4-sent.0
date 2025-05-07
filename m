@@ -1,195 +1,175 @@
-From: Chen Linxuan <chenlinxuan@uniontech.com>
-Date: Wed, 07 May 2025 13:16:42 +0800
-Subject: [PATCH 2/2] docs: filesystems: add fuse-passthrough.rst
+From: Yang Li <yang.li@amlogic.com>
+Date: Wed, 07 May 2025 15:30:56 +0800
+Subject: [PATCH] Bluetooth: fix socket matching ambiguity between BIS and
+ CIS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250507-fuse-passthrough-doc-v1-2-cc06af79c722@uniontech.com>
-References: <20250507-fuse-passthrough-doc-v1-0-cc06af79c722@uniontech.com>
-In-Reply-To: <20250507-fuse-passthrough-doc-v1-0-cc06af79c722@uniontech.com>
-To: Miklos Szeredi <miklos@szeredi.hu>, Jonathan Corbet <corbet@lwn.net>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- linux-doc@vger.kernel.org, Chen Linxuan <chenlinxuan@uniontech.com>, 
- Amir Goldstein <amir73il@gmail.com>, 
- Bernd Schubert <bernd.schubert@fastmail.fm>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7979;
- i=chenlinxuan@uniontech.com; h=from:subject:message-id;
- bh=Q99iNM7uiYR5brGKTUprcxMDvkBIBBO8n5B+ovq6PUU=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoGuzaBt/X7l1SdFXurzyC8VmMRUtniNh+DFJcy
- yhgGgWelDSJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBrs2gAKCRB2HuYUOZmu
- iy2HD/0QHucwDMRke0GnVoonqiIXC7Au0b99qe2mFbKVhOSViY13dJ7k+4gy+494bk+NBL+y5Sg
- fDSP0N2DAK9ivzsM1Evz+LpYbFxrrhY0lEEp7HosOEgO0dMyep7ORb8GaPKSdOOvtlh9cYcAM5+
- K6P/zC+GC/pHrPyW9e7j0Zif2PvEttkI9Pf38X4XhUnBYhyM6cd+Kqlb1I+G3PZgDNeJYzm7Swh
- aTBA4Cm39NU+JQ7mQ15mZFtL0M3gnYfGfIW5HHUfGRsKdc2b+Q5gsfLLE0e7g3LOzodjCNlLvdz
- zRpwcFjFZuAuQPFmovnj9lX4nSBO4t4tKbTv8mkACEbuD0gi4lwNmxM4PnPhGJI4if5w2fUza0f
- G2sMw5Q9KHtgkgoVryoOWgQ+tZn3bPMFLjwkdVwKl/Et2eGj82R60g96BiqrVEgtHF8mQV0tcKW
- 6bLDaXHmXDfb3iP0xijNHggXMK3seYturO8Qg81S/wJ6AOQ+3reRmi3D2jCDxpIliCayhslIVqu
- IWHNKLtAm8Qtq8uYqK3+JftCuqcJ9wZd9foOGBaJnF+uLnCNA/vjUrN1KHtC/xQ4G+BDr+8HE6h
- iqM2CIS1mQziWh8rHIyQTTuuBA3sSFakLeFVXBSCwtb0v3xglvnJLo3EqFwjv2RxsppSXovd2hl
- l/xnODBDmUkKKlg==
-X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
- fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
-X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
+Message-Id: <20250507-iso-v1-1-6f60d243e037@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAC8MG2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDUwMz3czifF0zU0NTC0vjJNOkJGMloMqCotS0zAqwKdGxtbUAg+V1wVU
+ AAAA=
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Johan Hedberg <johan.hedberg@gmail.com>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>
+Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746603064; l=4561;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=F5kAD2zHyjtSPLX9UO5WP1fJNupB7Q6k0ku1w7r+7fY=;
+ b=ZrtT5WhZSkJVo95q/O4ABo2SS8pUZLvw9p+1Fa4MU4TBf3F9aiFzakWs7Wd54axY3F3Gq56uw
+ RNj6p0I4UyGAINbidfcV0sIZJgljxoN1J40X3G2Xc3pxWgCA5BAd6gI
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a documentation about FUSE passthrough.
+The iso_get_sock function adds dst address matching to
+distinguish BIS and CIS sockets.
 
-It's mainly about why FUSE passthrough needs CAP_SYS_ADMIN.
+Link: https://github.com/bluez/bluez/issues/1224
 
-Cc: Amir Goldstein <amir73il@gmail.com>
-Cc: Bernd Schubert <bernd.schubert@fastmail.fm>
-Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- Documentation/filesystems/fuse-passthrough.rst | 139 +++++++++++++++++++++++++
- 1 file changed, 139 insertions(+)
+ net/bluetooth/hci_event.c | 35 ++++++++++++++++++++---------------
+ net/bluetooth/iso.c       | 12 +++++++++---
+ 2 files changed, 29 insertions(+), 18 deletions(-)
 
-diff --git a/Documentation/filesystems/fuse-passthrough.rst b/Documentation/filesystems/fuse-passthrough.rst
-new file mode 100644
-index 0000000000000000000000000000000000000000..f7c3b3ac08c255906ed7c909229107ff15cdb223
---- /dev/null
-+++ b/Documentation/filesystems/fuse-passthrough.rst
-@@ -0,0 +1,139 @@
-+.. SPDX-License-Identifier: GPL-2.0
+diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
+index 66052d6aaa1d..c1f32e98ef8a 100644
+--- a/net/bluetooth/hci_event.c
++++ b/net/bluetooth/hci_event.c
+@@ -6413,6 +6413,8 @@ static void hci_le_pa_sync_estabilished_evt(struct hci_dev *hdev, void *data,
+ 
+ 	conn->sync_handle = le16_to_cpu(ev->handle);
+ 	conn->sid = HCI_SID_INVALID;
++	conn->dst = ev->bdaddr;
++	conn->dst_type = ev->bdaddr_type;
+ 
+ 	mask |= hci_proto_connect_ind(hdev, &ev->bdaddr, BIS_LINK,
+ 				      &flags);
+@@ -6425,7 +6427,8 @@ static void hci_le_pa_sync_estabilished_evt(struct hci_dev *hdev, void *data,
+ 		goto unlock;
+ 
+ 	/* Add connection to indicate PA sync event */
+-	pa_sync = hci_conn_add_unset(hdev, BIS_LINK, BDADDR_ANY,
 +
-+================
-+FUSE Passthrough
-+================
++	pa_sync = hci_conn_add_unset(hdev, BIS_LINK, &ev->bdaddr,
+ 				     HCI_ROLE_SLAVE);
+ 
+ 	if (IS_ERR(pa_sync))
+@@ -6456,13 +6459,6 @@ static void hci_le_per_adv_report_evt(struct hci_dev *hdev, void *data,
+ 
+ 	hci_dev_lock(hdev);
+ 
+-	mask |= hci_proto_connect_ind(hdev, BDADDR_ANY, BIS_LINK, &flags);
+-	if (!(mask & HCI_LM_ACCEPT))
+-		goto unlock;
+-
+-	if (!(flags & HCI_PROTO_DEFER))
+-		goto unlock;
+-
+ 	pa_sync = hci_conn_hash_lookup_pa_sync_handle
+ 			(hdev,
+ 			le16_to_cpu(ev->sync_handle));
+@@ -6470,6 +6466,13 @@ static void hci_le_per_adv_report_evt(struct hci_dev *hdev, void *data,
+ 	if (!pa_sync)
+ 		goto unlock;
+ 
++	mask |= hci_proto_connect_ind(hdev, &pa_sync->dst, ISO_LINK, &flags);
++	if (!(mask & HCI_LM_ACCEPT))
++		goto unlock;
 +
-+Introduction
-+============
++	if (!(flags & HCI_PROTO_DEFER))
++		goto unlock;
 +
-+FUSE (Filesystem in Userspace) passthrough is a feature designed to improve the
-+performance of FUSE filesystems for I/O operations. Typically, FUSE operations
-+involve communication between the kernel and a userspace FUSE daemon, which can
-+introduce overhead. Passthrough allows certain operations on a FUSE file to
-+bypass the userspace daemon and be executed directly by the kernel on an
-+underlying "backing file".
+ 	if (ev->data_status == LE_PA_DATA_COMPLETE &&
+ 	    !test_and_set_bit(HCI_CONN_PA_SYNC, &pa_sync->flags)) {
+ 		/* Notify iso layer */
+@@ -6993,6 +6996,8 @@ static void hci_le_big_sync_established_evt(struct hci_dev *hdev, void *data,
+ 			set_bit(HCI_CONN_PA_SYNC, &bis->flags);
+ 
+ 		bis->sync_handle = conn->sync_handle;
++		bis->dst = conn->dst;
++		bis->dst_type = conn->dst_type;
+ 		bis->iso_qos.bcast.big = ev->handle;
+ 		memset(&interval, 0, sizeof(interval));
+ 		memcpy(&interval, ev->latency, sizeof(ev->latency));
+@@ -7038,13 +7043,6 @@ static void hci_le_big_info_adv_report_evt(struct hci_dev *hdev, void *data,
+ 
+ 	hci_dev_lock(hdev);
+ 
+-	mask |= hci_proto_connect_ind(hdev, BDADDR_ANY, BIS_LINK, &flags);
+-	if (!(mask & HCI_LM_ACCEPT))
+-		goto unlock;
+-
+-	if (!(flags & HCI_PROTO_DEFER))
+-		goto unlock;
+-
+ 	pa_sync = hci_conn_hash_lookup_pa_sync_handle
+ 			(hdev,
+ 			le16_to_cpu(ev->sync_handle));
+@@ -7054,6 +7052,13 @@ static void hci_le_big_info_adv_report_evt(struct hci_dev *hdev, void *data,
+ 
+ 	pa_sync->iso_qos.bcast.encryption = ev->encryption;
+ 
++	mask |= hci_proto_connect_ind(hdev, &pa_sync->dst, ISO_LINK, &flags);
++	if (!(mask & HCI_LM_ACCEPT))
++		goto unlock;
 +
-+This is achieved by the FUSE daemon registering a file descriptor (pointing to
-+the backing file on a lower filesystem) with the FUSE kernel module. The kernel
-+then receives an identifier (`backing_id`) for this registered backing file.
-+When a FUSE file is subsequently opened, the FUSE daemon can, in its response to
-+the ``OPEN`` request, include this ``backing_id`` and set the
-+``FOPEN_PASSTHROUGH`` flag. This establishes a direct link for specific
-+operations.
++	if (!(flags & HCI_PROTO_DEFER))
++		goto unlock;
 +
-+Currently, passthrough is supported for operations like ``read(2)``/``write(2)``
-+(via ``read_iter``/``write_iter``), ``splice(2)``, and ``mmap(2)``.
-+
-+Enabling Passthrough
-+====================
-+
-+To use FUSE passthrough:
-+
-+  1. The FUSE filesystem must be compiled with ``CONFIG_FUSE_PASSTHROUGH``
-+     enabled.
-+  2. The FUSE daemon, during the ``FUSE_INIT`` handshake, must negotiate the
-+     ``FUSE_PASSTHROUGH`` capability and specify its desired
-+     ``max_stack_depth``.
-+  3. The (privileged) FUSE daemon uses the ``FUSE_DEV_IOC_BACKING_OPEN`` ioctl
-+     on its connection file descriptor (e.g., ``/dev/fuse``) to register a
-+     backing file descriptor and obtain a ``backing_id``.
-+  4. When handling an ``OPEN`` or ``CREATE`` request for a FUSE file, the daemon
-+     replies with the ``FOPEN_PASSTHROUGH`` flag set in
-+     ``fuse_open_out::open_flags`` and provides the corresponding ``backing_id``
-+     in ``fuse_open_out::backing_id``.
-+  5. The FUSE daemon should eventually call ``FUSE_DEV_IOC_BACKING_CLOSE`` with
-+     the ``backing_id`` to release the kernel's reference to the backing file
-+     when it's no longer needed for passthrough setups.
-+
-+Privilege Requirements
-+======================
-+
-+Setting up passthrough functionality currently requires the FUSE daemon to
-+possess the ``CAP_SYS_ADMIN`` capability. This requirement stems from several
-+security and resource management considerations that are actively being
-+discussed and worked on. The primary reasons for this restriction are detailed
-+below.
-+
-+Resource Accounting and Visibility
-+----------------------------------
-+
-+The core mechanism for passthrough involves the FUSE daemon opening a file
-+descriptor to a backing file and registering it with the FUSE kernel module via
-+the ``FUSE_DEV_IOC_BACKING_OPEN`` ioctl. This ioctl returns a ``backing_id``
-+associated with a kernel-internal ``struct fuse_backing`` object, which holds a
-+reference to the backing ``struct file``.
-+
-+A significant concern arises because the FUSE daemon can close its own file
-+descriptor to the backing file after registration. The kernel, however, will
-+still hold a reference to the ``struct file`` via the ``struct fuse_backing``
-+object as long as it's associated with a ``backing_id`` (or subsequently, with
-+an open FUSE file in passthrough mode).
-+
-+This behavior leads to two main issues for unprivileged FUSE daemons:
-+
-+  1. **Invisibility to lsof and other inspection tools**: Once the FUSE
-+     daemon closes its file descriptor, the open backing file held by the kernel
-+     becomes "hidden." Standard tools like ``lsof``, which typically inspect
-+     process file descriptor tables, would not be able to identify that this
-+     file is still open by the system on behalf of the FUSE filesystem. This
-+     makes it difficult for system administrators to track resource usage or
-+     debug issues related to open files (e.g., preventing unmounts).
-+
-+  2. **Bypassing RLIMIT_NOFILE**: The FUSE daemon process is subject to
-+     resource limits, including the maximum number of open file descriptors
-+     (``RLIMIT_NOFILE``). If an unprivileged daemon could register backing files
-+     and then close its own FDs, it could potentially cause the kernel to hold
-+     an unlimited number of open ``struct file`` references without these being
-+     accounted against the daemon's ``RLIMIT_NOFILE``. This could lead to a
-+     denial-of-service (DoS) by exhausting system-wide file resources.
-+
-+The ``CAP_SYS_ADMIN`` requirement acts as a safeguard against these issues,
-+restricting this powerful capability to trusted processes. As noted in the
-+kernel code (``fs/fuse/passthrough.c`` in ``fuse_backing_open()``):
-+
-+Discussions suggest that exposing information about these backing files, perhaps
-+through a dedicated interface under ``/sys/fs/fuse/connections/``, could be a
-+step towards relaxing this capability. This would be analogous to how
-+``io_uring`` exposes its "fixed files", which are also visible via ``fdinfo``
-+and accounted under the registering user's ``RLIMIT_NOFILE``.
-+
-+Filesystem Stacking and Shutdown Loops
-+--------------------------------------
-+
-+Another concern relates to the potential for creating complex and problematic
-+filesystem stacking scenarios if unprivileged users could set up passthrough.
-+A FUSE passthrough filesystem might use a backing file that resides:
-+
-+  * On the *same* FUSE filesystem.
-+  * On another filesystem (like OverlayFS) which itself might have an upper or
-+    lower layer that is a FUSE filesystem.
-+
-+These configurations could create dependency loops, particularly during
-+filesystem shutdown or unmount sequences, leading to deadlocks or system
-+instability. This is conceptually similar to the risks associated with the
-+``LOOP_SET_FD`` ioctl, which also requires ``CAP_SYS_ADMIN``.
-+
-+To mitigate this, FUSE passthrough already incorporates checks based on
-+filesystem stacking depth (``sb->s_stack_depth`` and ``fc->max_stack_depth``).
-+For example, during the ``FUSE_INIT`` handshake, the FUSE daemon can negotiate
-+the ``max_stack_depth`` it supports. When a backing file is registered via
-+``FUSE_DEV_IOC_BACKING_OPEN``, the kernel checks if the backing file's
-+filesystem stack depth is within the allowed limit.
-+
-+The ``CAP_SYS_ADMIN`` requirement provides an additional layer of security,
-+ensuring that only privileged users can create these potentially complex
-+stacking arrangements.
-+
-+General Security Posture
-+------------------------
-+
-+As a general principle for new kernel features that allow userspace to instruct
-+the kernel to perform direct operations on its behalf based on user-provided
-+file descriptors, starting with a higher privilege requirement (like
-+``CAP_SYS_ADMIN``) is a conservative and common security practice. This allows
-+the feature to be used and tested while further security implications are
-+evaluated and addressed. As Amir Goldstein mentioned in one of the discussions,
-+there was "no proof that this is the only potential security risk" when the
-+initial privilege checks were put in place.
-+
+ 	/* Notify iso layer */
+ 	hci_connect_cfm(pa_sync, 0);
+ 
+diff --git a/net/bluetooth/iso.c b/net/bluetooth/iso.c
+index 6e2c752aaa8f..1dc233f04dbe 100644
+--- a/net/bluetooth/iso.c
++++ b/net/bluetooth/iso.c
+@@ -641,11 +641,12 @@ static struct sock *iso_get_sock(bdaddr_t *src, bdaddr_t *dst,
+ 			continue;
+ 
+ 		/* Exact match. */
+-		if (!bacmp(&iso_pi(sk)->src, src)) {
++		if (!bacmp(&iso_pi(sk)->src, src)
++		     && !bacmp(&iso_pi(sk)->dst, dst)
++			){
+ 			sock_hold(sk);
+ 			break;
+ 		}
+-
+ 		/* Closest match */
+ 		if (!bacmp(&iso_pi(sk)->src, BDADDR_ANY)) {
+ 			if (sk1)
+@@ -1962,7 +1963,7 @@ static void iso_conn_ready(struct iso_conn *conn)
+ 		}
+ 
+ 		if (!parent)
+-			parent = iso_get_sock(&hcon->src, BDADDR_ANY,
++			parent = iso_get_sock(&hcon->src, &hcon->dst,
+ 					      BT_LISTEN, NULL, NULL);
+ 
+ 		if (!parent)
+@@ -2203,6 +2204,11 @@ int iso_connect_ind(struct hci_dev *hdev, bdaddr_t *bdaddr, __u8 *flags)
+ 	} else {
+ 		sk = iso_get_sock(&hdev->bdaddr, BDADDR_ANY,
+ 				  BT_LISTEN, NULL, NULL);
++		if (!sk)
++			sk = iso_get_sock(&hdev->bdaddr, bdaddr,
++					  BT_LISTEN, NULL, NULL);
++		else
++			iso_pi(sk)->dst = *bdaddr;
+ 	}
+ 
+ done:
 
+---
+base-commit: f3daca9b490154fbb0459848cc2ed61e8367bddc
+change-id: 20250506-iso-6515893b5bb3
+
+Best regards,
 -- 
-2.43.0
+Yang Li <yang.li@amlogic.com>
 
