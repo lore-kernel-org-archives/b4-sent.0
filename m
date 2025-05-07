@@ -1,58 +1,194 @@
 From: Chen Linxuan <chenlinxuan@uniontech.com>
-Date: Wed, 07 May 2025 13:16:41 +0800
-Subject: [PATCH 1/2] MAINTAINERS: update filter of FUSE documentation
+Date: Wed, 07 May 2025 13:16:42 +0800
+Subject: [PATCH 2/2] docs: filesystems: add fuse-passthrough.rst
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250507-fuse-passthrough-doc-v1-1-cc06af79c722@uniontech.com>
+Message-Id: <20250507-fuse-passthrough-doc-v1-2-cc06af79c722@uniontech.com>
 References: <20250507-fuse-passthrough-doc-v1-0-cc06af79c722@uniontech.com>
 In-Reply-To: <20250507-fuse-passthrough-doc-v1-0-cc06af79c722@uniontech.com>
 To: Miklos Szeredi <miklos@szeredi.hu>, Jonathan Corbet <corbet@lwn.net>
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- linux-doc@vger.kernel.org, Chen Linxuan <chenlinxuan@uniontech.com>
+ linux-doc@vger.kernel.org, Chen Linxuan <chenlinxuan@uniontech.com>, 
+ Amir Goldstein <amir73il@gmail.com>, 
+ Bernd Schubert <bernd.schubert@fastmail.fm>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=765;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7979;
  i=chenlinxuan@uniontech.com; h=from:subject:message-id;
- bh=P4ex4ef6eoPig/ZnjlaXABq/hCbg/0h544yo4BjXjlo=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoGuzZSHEV6MyFNTei3rnABGWONK5m6STtjTshr
- jQKp2xUFKKJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBrs2QAKCRB2HuYUOZmu
- i6/UEACcakG+wlHZWpeHpcX3EraI3QxJN9nqyfzFLNBcPL1UaaSiD/z/lm/ar++ujtxTLKwASrV
- jL9iduRXWt5WdTc/I97Ssrs+d35LbS+7ehacMBZUOow78d6JHtWTrZL/Y5gpMc62EcE+bEkunyF
- VGePbYz8BMQxB7c2pvQSY7aFUomtLa6aXgizf5FOvcfL3WnmwYT/GOsUl2Kch4sG2ctSlFeOs5c
- YhN1bxeunBBwVC3JZ4ixaTr9cQqherl8rXk0GvSZSalfN5em1bofUWIg0U5lH0ag3CGjOTlMJrJ
- t01yrpFE7jv3S0aAZ2HgiDyqs2hVSBH5JeLo7gSht8Hbkpw3uKA4kmhcPtkaSFreGPsUjfE0JvQ
- iPuPd48C+MBjpD+yICwhjwBm1PpqPUewXmS2c3cM4cePwxExoS+MFBuLEwz7rZziejhWqjFQF3E
- hK0D6hQM1UrQ+XbBTFqgBskaWAU6WqoplI6rf+vpPDVwkOpNCPlNshW+oJSD1ORbRgL6kqVHH1n
- ZV8IE1mQc2Oejb1s/Ps+u37/lFNEIK+u8b/IKQMRYwjidNE9dtpRx1tGOc1/OF12CC/LJ/jNYiA
- I/0IGCLfjv0LZjq/SPynk6w80NJQPLXbOvOwZuSAgH8mnYrGtcC0pkH4jAtB4DurObI7u42w/6K
- rlh0YdSKuLsvlFQ==
+ bh=Q99iNM7uiYR5brGKTUprcxMDvkBIBBO8n5B+ovq6PUU=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoGuzaBt/X7l1SdFXurzyC8VmMRUtniNh+DFJcy
+ yhgGgWelDSJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBrs2gAKCRB2HuYUOZmu
+ iy2HD/0QHucwDMRke0GnVoonqiIXC7Au0b99qe2mFbKVhOSViY13dJ7k+4gy+494bk+NBL+y5Sg
+ fDSP0N2DAK9ivzsM1Evz+LpYbFxrrhY0lEEp7HosOEgO0dMyep7ORb8GaPKSdOOvtlh9cYcAM5+
+ K6P/zC+GC/pHrPyW9e7j0Zif2PvEttkI9Pf38X4XhUnBYhyM6cd+Kqlb1I+G3PZgDNeJYzm7Swh
+ aTBA4Cm39NU+JQ7mQ15mZFtL0M3gnYfGfIW5HHUfGRsKdc2b+Q5gsfLLE0e7g3LOzodjCNlLvdz
+ zRpwcFjFZuAuQPFmovnj9lX4nSBO4t4tKbTv8mkACEbuD0gi4lwNmxM4PnPhGJI4if5w2fUza0f
+ G2sMw5Q9KHtgkgoVryoOWgQ+tZn3bPMFLjwkdVwKl/Et2eGj82R60g96BiqrVEgtHF8mQV0tcKW
+ 6bLDaXHmXDfb3iP0xijNHggXMK3seYturO8Qg81S/wJ6AOQ+3reRmi3D2jCDxpIliCayhslIVqu
+ IWHNKLtAm8Qtq8uYqK3+JftCuqcJ9wZd9foOGBaJnF+uLnCNA/vjUrN1KHtC/xQ4G+BDr+8HE6h
+ iqM2CIS1mQziWh8rHIyQTTuuBA3sSFakLeFVXBSCwtb0v3xglvnJLo3EqFwjv2RxsppSXovd2hl
+ l/xnODBDmUkKKlg==
 X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There are some fuse-*.rst files in Documentation directory,
-let's make get_mantainers.pl work on those file instead of only
-fuse.rst.
+Add a documentation about FUSE passthrough.
 
+It's mainly about why FUSE passthrough needs CAP_SYS_ADMIN.
+
+Cc: Amir Goldstein <amir73il@gmail.com>
+Cc: Bernd Schubert <bernd.schubert@fastmail.fm>
 Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
 ---
- MAINTAINERS | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Documentation/filesystems/fuse-passthrough.rst | 139 +++++++++++++++++++++++++
+ 1 file changed, 139 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 5f8688630c014d2639ed9023ba5a256bc1c28e25..08cedaa87eb3f7047ca49d0e6f946dbd8e7ad793 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -9736,7 +9736,7 @@ L:	linux-fsdevel@vger.kernel.org
- S:	Maintained
- W:	https://github.com/libfuse/
- T:	git git://git.kernel.org/pub/scm/linux/kernel/git/mszeredi/fuse.git
--F:	Documentation/filesystems/fuse.rst
-+F:	Documentation/filesystems/fuse*
- F:	fs/fuse/
- F:	include/uapi/linux/fuse.h
- 
+diff --git a/Documentation/filesystems/fuse-passthrough.rst b/Documentation/filesystems/fuse-passthrough.rst
+new file mode 100644
+index 0000000000000000000000000000000000000000..f7c3b3ac08c255906ed7c909229107ff15cdb223
+--- /dev/null
++++ b/Documentation/filesystems/fuse-passthrough.rst
+@@ -0,0 +1,139 @@
++.. SPDX-License-Identifier: GPL-2.0
++
++================
++FUSE Passthrough
++================
++
++Introduction
++============
++
++FUSE (Filesystem in Userspace) passthrough is a feature designed to improve the
++performance of FUSE filesystems for I/O operations. Typically, FUSE operations
++involve communication between the kernel and a userspace FUSE daemon, which can
++introduce overhead. Passthrough allows certain operations on a FUSE file to
++bypass the userspace daemon and be executed directly by the kernel on an
++underlying "backing file".
++
++This is achieved by the FUSE daemon registering a file descriptor (pointing to
++the backing file on a lower filesystem) with the FUSE kernel module. The kernel
++then receives an identifier (`backing_id`) for this registered backing file.
++When a FUSE file is subsequently opened, the FUSE daemon can, in its response to
++the ``OPEN`` request, include this ``backing_id`` and set the
++``FOPEN_PASSTHROUGH`` flag. This establishes a direct link for specific
++operations.
++
++Currently, passthrough is supported for operations like ``read(2)``/``write(2)``
++(via ``read_iter``/``write_iter``), ``splice(2)``, and ``mmap(2)``.
++
++Enabling Passthrough
++====================
++
++To use FUSE passthrough:
++
++  1. The FUSE filesystem must be compiled with ``CONFIG_FUSE_PASSTHROUGH``
++     enabled.
++  2. The FUSE daemon, during the ``FUSE_INIT`` handshake, must negotiate the
++     ``FUSE_PASSTHROUGH`` capability and specify its desired
++     ``max_stack_depth``.
++  3. The (privileged) FUSE daemon uses the ``FUSE_DEV_IOC_BACKING_OPEN`` ioctl
++     on its connection file descriptor (e.g., ``/dev/fuse``) to register a
++     backing file descriptor and obtain a ``backing_id``.
++  4. When handling an ``OPEN`` or ``CREATE`` request for a FUSE file, the daemon
++     replies with the ``FOPEN_PASSTHROUGH`` flag set in
++     ``fuse_open_out::open_flags`` and provides the corresponding ``backing_id``
++     in ``fuse_open_out::backing_id``.
++  5. The FUSE daemon should eventually call ``FUSE_DEV_IOC_BACKING_CLOSE`` with
++     the ``backing_id`` to release the kernel's reference to the backing file
++     when it's no longer needed for passthrough setups.
++
++Privilege Requirements
++======================
++
++Setting up passthrough functionality currently requires the FUSE daemon to
++possess the ``CAP_SYS_ADMIN`` capability. This requirement stems from several
++security and resource management considerations that are actively being
++discussed and worked on. The primary reasons for this restriction are detailed
++below.
++
++Resource Accounting and Visibility
++----------------------------------
++
++The core mechanism for passthrough involves the FUSE daemon opening a file
++descriptor to a backing file and registering it with the FUSE kernel module via
++the ``FUSE_DEV_IOC_BACKING_OPEN`` ioctl. This ioctl returns a ``backing_id``
++associated with a kernel-internal ``struct fuse_backing`` object, which holds a
++reference to the backing ``struct file``.
++
++A significant concern arises because the FUSE daemon can close its own file
++descriptor to the backing file after registration. The kernel, however, will
++still hold a reference to the ``struct file`` via the ``struct fuse_backing``
++object as long as it's associated with a ``backing_id`` (or subsequently, with
++an open FUSE file in passthrough mode).
++
++This behavior leads to two main issues for unprivileged FUSE daemons:
++
++  1. **Invisibility to lsof and other inspection tools**: Once the FUSE
++     daemon closes its file descriptor, the open backing file held by the kernel
++     becomes "hidden." Standard tools like ``lsof``, which typically inspect
++     process file descriptor tables, would not be able to identify that this
++     file is still open by the system on behalf of the FUSE filesystem. This
++     makes it difficult for system administrators to track resource usage or
++     debug issues related to open files (e.g., preventing unmounts).
++
++  2. **Bypassing RLIMIT_NOFILE**: The FUSE daemon process is subject to
++     resource limits, including the maximum number of open file descriptors
++     (``RLIMIT_NOFILE``). If an unprivileged daemon could register backing files
++     and then close its own FDs, it could potentially cause the kernel to hold
++     an unlimited number of open ``struct file`` references without these being
++     accounted against the daemon's ``RLIMIT_NOFILE``. This could lead to a
++     denial-of-service (DoS) by exhausting system-wide file resources.
++
++The ``CAP_SYS_ADMIN`` requirement acts as a safeguard against these issues,
++restricting this powerful capability to trusted processes. As noted in the
++kernel code (``fs/fuse/passthrough.c`` in ``fuse_backing_open()``):
++
++Discussions suggest that exposing information about these backing files, perhaps
++through a dedicated interface under ``/sys/fs/fuse/connections/``, could be a
++step towards relaxing this capability. This would be analogous to how
++``io_uring`` exposes its "fixed files", which are also visible via ``fdinfo``
++and accounted under the registering user's ``RLIMIT_NOFILE``.
++
++Filesystem Stacking and Shutdown Loops
++--------------------------------------
++
++Another concern relates to the potential for creating complex and problematic
++filesystem stacking scenarios if unprivileged users could set up passthrough.
++A FUSE passthrough filesystem might use a backing file that resides:
++
++  * On the *same* FUSE filesystem.
++  * On another filesystem (like OverlayFS) which itself might have an upper or
++    lower layer that is a FUSE filesystem.
++
++These configurations could create dependency loops, particularly during
++filesystem shutdown or unmount sequences, leading to deadlocks or system
++instability. This is conceptually similar to the risks associated with the
++``LOOP_SET_FD`` ioctl, which also requires ``CAP_SYS_ADMIN``.
++
++To mitigate this, FUSE passthrough already incorporates checks based on
++filesystem stacking depth (``sb->s_stack_depth`` and ``fc->max_stack_depth``).
++For example, during the ``FUSE_INIT`` handshake, the FUSE daemon can negotiate
++the ``max_stack_depth`` it supports. When a backing file is registered via
++``FUSE_DEV_IOC_BACKING_OPEN``, the kernel checks if the backing file's
++filesystem stack depth is within the allowed limit.
++
++The ``CAP_SYS_ADMIN`` requirement provides an additional layer of security,
++ensuring that only privileged users can create these potentially complex
++stacking arrangements.
++
++General Security Posture
++------------------------
++
++As a general principle for new kernel features that allow userspace to instruct
++the kernel to perform direct operations on its behalf based on user-provided
++file descriptors, starting with a higher privilege requirement (like
++``CAP_SYS_ADMIN``) is a conservative and common security practice. This allows
++the feature to be used and tested while further security implications are
++evaluated and addressed. As Amir Goldstein mentioned in one of the discussions,
++there was "no proof that this is the only potential security risk" when the
++initial privilege checks were put in place.
++
 
 -- 
 2.43.0
