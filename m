@@ -1,70 +1,61 @@
 From: Chen Linxuan <chenlinxuan@uniontech.com>
-Subject: [PATCH v2 0/2] Add a documentation for FUSE passthrough
-Date: Wed, 07 May 2025 16:42:15 +0800
-Message-Id: <20250507-fuse-passthrough-doc-v2-0-ae7c0dd8bba6@uniontech.com>
+Date: Wed, 07 May 2025 16:42:16 +0800
+Subject: [PATCH v2 1/2] MAINTAINERS: update filter of FUSE documentation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOccG2gC/4WOQQ6CMBBFr0Jm7ZhShAor72FYNMOUdiElHSAaw
- t2tXMDl+8l//+8gnAILdMUOibcgIU4Z9KUA8nYaGcOQGbTStaqVQbcK42xFFp/iOnocImHdckn
- 3W6VtU0GuzoldeJ/aZ5/ZB1li+pwrW/lL/wi3EhUSqcY605LR+rFO+dnC5K8UX9Afx/EF8xcvO
- LwAAAA=
-X-Change-ID: 20250507-fuse-passthrough-doc-59e1c8432a63
+Message-Id: <20250507-fuse-passthrough-doc-v2-1-ae7c0dd8bba6@uniontech.com>
+References: <20250507-fuse-passthrough-doc-v2-0-ae7c0dd8bba6@uniontech.com>
+In-Reply-To: <20250507-fuse-passthrough-doc-v2-0-ae7c0dd8bba6@uniontech.com>
 To: Miklos Szeredi <miklos@szeredi.hu>, Jonathan Corbet <corbet@lwn.net>
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  linux-doc@vger.kernel.org, Chen Linxuan <chenlinxuan@uniontech.com>, 
- Amir Goldstein <amir73il@gmail.com>, 
- Bernd Schubert <bernd.schubert@fastmail.fm>
+ Amir Goldstein <amir73il@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1186;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=815;
  i=chenlinxuan@uniontech.com; h=from:subject:message-id;
- bh=/R+75EXS++vi//z+1SE3h0ZzDGQB+HQ9Cv8vh4zOTX8=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoGxz08UAUIZR6/4SH1If+HbA3AraI/ye151KBQ
- oserKHb6WqJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBsc9AAKCRB2HuYUOZmu
- i4foEAC9iKIDp/SNoaR4Oy+tAn6abLtNXfzF+xrs1TAxhpPfOVL7kv5IdTQqryJVDg5U7wlt3zK
- Oex4unqgJt+jjjcQHvddqoVhODYcIcvDTrAiR9DN9SrvIGzZOA9qoFcWeU64p+yRKgr7VLU/XQN
- 4Vtj7gdgM3+fe6HRcSZNq/zHG31Rq+1jyTuGnOw/eXMMaJ0KtxWIzZLcPRkXMXFPs3EOFuhGTYf
- P1m/5fU5A7HksXF/0+E20jbsf90yUQjS+wY2xEiLcZoGWAFgQ2QzyGszQOA53OB0GS6aWB0eONo
- kcR2Myxx1D1H8H7D6C1/atombXmg58hdlb9MHyzaC9F6G0J9UV140RyZ+H63MGhV7hn3BPO7Bqo
- 2A7LCbyHMLMIGDffKO2021AK79/0Pi6moyizRssu/fOrGIdFBtpcShyKNeCxM0r5jAGs+vn/X2z
- k8PwWjnatpFEOWx36D+A0PMnZYO6sLjQM3gPa4E/NK4beBTBjI8pZFZLnq3WxeuUW1u9vZ5E/xY
- qeYQT4a0Qq5o5rYLlAoP9caENQ1lk79kllLEyDh6lesJffH9Z9iNfxt+jV7vyo+AzL8GeqMFb+j
- n4c02FJAhSCKt0u7bGYxEkDwiP38jHiwFAU2oVG8+N6RH0wP2XWDCyv4tNwM4Bbpd4PehB/5rf8
- 8oQJ3BOuKKOYk+w==
+ bh=y42qoLgQli2vjKWNdl397i8EcidQOg+VhEWweGEDgMQ=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoGx0D4Lng+/PWfbuRBECYjR3GOdxRrrem5npZO
+ RxvyFHnioKJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBsdAwAKCRB2HuYUOZmu
+ i4WEEACEiCfgkn/+Uh4aJp1ZgralHr+/z3NAEsQiarUZgLTRWT47ShbUYw603AdA8FOb8x8b9LV
+ bWnDA5t5gM85bpgMpnjxi7lR6cQJwGKuhU3e4ErM3q2vm0Ab2xxMOw4tOo+X9zcXWSB4gBCpz3u
+ cnVGkp6qxUgcpNY4Wicg5v3D3IBSOjWWDMaH3i1GU7TSs842ixqTeXM0E9wUCanN4eRm1LGDzm+
+ cOxIFyKKyXuEP4pbmuCnvZRCMJdEpodgmhBWIKicMf8ggWd2KwF7gL0o611KFMnv4FGWWFWJjxm
+ 7SwvyekAaFhhvoNvxnHNNwUvAPak2PPtWBVa5R7adp8Tg/AwohX5grOy3dqNSVntRVsaTl07iBZ
+ aleSnassOaKzJzl13tHELjK2iRBw0G3QZn1/CjfKWVV5XLaa39GxSu1PsY/kUxdLI6UYk/ZDoCL
+ 8X1UdYfp/jsbtfd1c+I2aQbBvTFqqXLaAq9uaN8LeP3Fgwm28ib28xkxdf1Og2rX1ZUrjHNEyxC
+ Wt58ChOL7v6FGBHo30wZzpolwMOl4RCC4FF4r2d+ok1W1bUKlrWJQxrLuN3GH12lNIeHJqALezX
+ shJDQcNX+vPRCGLIHouni2aplzsGMHbgKP/nU3ZHDaTwJp6HZKlojYMBf2NHLlj4N/i1zlXUuSG
+ HJqUX3M9koNMynQ==
 X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds a new file,
-Documentation/filesystems/fuse-passthrough.rst, which documents why
-FUSE passthrough functionality requires CAP_SYS_ADMIN capabilities.
+There are some fuse-*.rst files in Documentation directory,
+let's make get_mantainers.pl work on those file instead of only
+fuse.rst.
 
-The series also updates the MAINTAINERS file to ensure
-scripts/get_maintainer.pl works correctly with FUSE documentation.
-
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
 ---
-Changes in v2:
-- Add the docs to Documentation/filesystems/index.rst toctree as Bagas
-  Sanjaya suggested
-- Remove some paragraphs as Amir Goldstein suggested
-- Link to v1: https://lore.kernel.org/r/20250507-fuse-passthrough-doc-v1-0-cc06af79c722@uniontech.com
+ MAINTAINERS | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
----
-Chen Linxuan (2):
-      MAINTAINERS: update filter of FUSE documentation
-      docs: filesystems: add fuse-passthrough.rst
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 5f8688630c014d2639ed9023ba5a256bc1c28e25..08cedaa87eb3f7047ca49d0e6f946dbd8e7ad793 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -9736,7 +9736,7 @@ L:	linux-fsdevel@vger.kernel.org
+ S:	Maintained
+ W:	https://github.com/libfuse/
+ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/mszeredi/fuse.git
+-F:	Documentation/filesystems/fuse.rst
++F:	Documentation/filesystems/fuse*
+ F:	fs/fuse/
+ F:	include/uapi/linux/fuse.h
+ 
 
- Documentation/filesystems/fuse-passthrough.rst | 133 +++++++++++++++++++++++++
- Documentation/filesystems/index.rst            |   1 +
- MAINTAINERS                                    |   2 +-
- 3 files changed, 135 insertions(+), 1 deletion(-)
----
-base-commit: 0d8d44db295ccad20052d6301ef49ff01fb8ae2d
-change-id: 20250507-fuse-passthrough-doc-59e1c8432a63
-
-Best regards,
 -- 
-Chen Linxuan <chenlinxuan@uniontech.com>
+2.43.0
 
