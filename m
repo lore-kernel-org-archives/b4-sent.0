@@ -1,208 +1,97 @@
-From: Chen Linxuan <chenlinxuan@uniontech.com>
-Date: Wed, 07 May 2025 16:42:17 +0800
-Subject: [PATCH v2 2/2] docs: filesystems: add fuse-passthrough.rst
+From: Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
+Date: Wed, 07 May 2025 11:11:48 +0200
+Subject: [PATCH v3] mm: mmap: map MAP_STACK to VM_NOHUGEPAGE only if THP is
+ enabled
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250507-fuse-passthrough-doc-v2-2-ae7c0dd8bba6@uniontech.com>
-References: <20250507-fuse-passthrough-doc-v2-0-ae7c0dd8bba6@uniontech.com>
-In-Reply-To: <20250507-fuse-passthrough-doc-v2-0-ae7c0dd8bba6@uniontech.com>
-To: Miklos Szeredi <miklos@szeredi.hu>, Jonathan Corbet <corbet@lwn.net>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- linux-doc@vger.kernel.org, Chen Linxuan <chenlinxuan@uniontech.com>, 
- Amir Goldstein <amir73il@gmail.com>, 
- Bernd Schubert <bernd.schubert@fastmail.fm>
+Message-Id: <20250507-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-v3-1-80929f30df7f@kuka.com>
+X-B4-Tracking: v=1; b=H4sIANMjG2gC/53OwQ6CMAwG4FcxO1uzjYHiyfcwhsytkwXYCINFQ
+ nh3B148m6aHv2n6dSEBB4uBXA8LGTDaYL1LITseiKqleyFYnTLhlOdU8At0st+6CqNUDYweYlc
+ 5X08v7GXa9q6dwRoY6x5sAHTy2aIGhYJKppGWuSbpdj+gse/dvT9Srm0Y/TDvb0S2Tb9iTvmfY
+ mSQimVKFZlQOme3ZmrkSfmObGDkv0jxL8KBgmHMUHUuxeXMf5B1XT9iL/yTXgEAAA==
+X-Change-ID: 20250428-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-ce40a1de095d
+To: lorenzo.stoakes@oracle.com
+Cc: Liam.Howlett@oracle.com, akpm@linux-foundation.org, 
+ yang@os.amperecomputing.com, linux-mm@kvack.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8328;
- i=chenlinxuan@uniontech.com; h=from:subject:message-id;
- bh=S1S/zXu1TEYabzgcjMgPUBwM81VJ+LsPv62zpTlym7Q=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoGx0E+Cu2teiatZ0ivGwbqh+nbaftpODrq0cz3
- H99DlmhVISJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBsdBAAKCRB2HuYUOZmu
- i9t/EAD5pgLS4hShoS0Aen0M3UnbeV1Wppnn8I1jVHRUppPLeZZovXnMEIOzGj712Aq/kNEy9mn
- al8q5mmEhhTE9KvQeUzqlTlLHcVc1SO9CaLhSsHgi5Y009GhQptLfM/pHQI9ZyMbWtOqKGVMx7K
- WgZ9wIQ4SAqVMyQgJ1q2P0rtknkv+5hPR92RaBqGaHqK5ilNBeg3GKY53JWCMXyqoGJjcE0FlO9
- 8n+Ltu114UliLAtE+8hHAXV3daAKJ7Hqh/OfBpOUKD+w4VNuOGdpSL6LQcCLo/Y2dFG4DEMbAse
- H49n8qmIZEH0hF8JF2FMStfdbAqf8rcGZAyGfQ7ffR9Zz7TnH8adlALCqASUB0M4m75TmzgruLn
- yJRQRecjN3Hdf2Z7TCCXnMizK2vHzkmRM+9NT4caFLx66F/jj8uu4j9Q19K/E0LkbFJwstATFGD
- kH3uE7ZxVzxP1B04nIgGGGvwOOB7V9qkDmrNSeKHtfiYQpAlKjBEnwVS8izwD+ex3Udx/k4g6zJ
- /lq2W0MR6FJC/eUHE0g2Uufq03k02O7qV8v2nDPwIpW71J7wsI1NRyKP7ELSJQFvNSakBArkLjn
- fqKnciCdqAXNMaetF6l7Q4DghknzPDfcGGBCP4ZXzcwiTsgv/xtaHA49eUMxLLdsRC9qqP8gQz0
- REI/+GCtR31cSjQ==
-X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
- fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
-X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746609108; l=3053;
+ i=Ignacio.MorenoGonzalez@kuka.com; s=20220915; h=from:subject:message-id;
+ bh=/MtKRql7ItkYcZxcaRWd5jbyLrdw5wLAjEr52LPM+gk=;
+ b=QGykkmGizMl/Qs3eTfiT7sngvK4B8FBhNaATEoCQbvxX6Nuvwk5NPySUYzBi0gxfIqG0hYTr1
+ AOf+mrM9ExTDqPXoFHTEP4x+UunC8r3hoqB7IKDj3P3snYN864keY91
+X-Developer-Key: i=Ignacio.MorenoGonzalez@kuka.com; a=ed25519;
+ pk=j7nClQnc5Q1IDuT4eS/rYkcLHXzxszu2jziMcJaFdBQ=
+X-Endpoint-Received: by B4 Relay for Ignacio.MorenoGonzalez@kuka.com/20220915 with auth_id=391
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a documentation about FUSE passthrough.
+commit c4608d1bf7c6 ("mm: mmap: map MAP_STACK to VM_NOHUGEPAGE") maps
+the mmap option MAP_STACK to VM_NOHUGEPAGE. This is also done if
+CONFIG_TRANSPARENT_HUGETABLES is not defined. But in that case, the
+VM_NOHUGEPAGE does not make sense.
 
-It's mainly about why FUSE passthrough needs CAP_SYS_ADMIN.
-
-Some related discussions:
-
-Link: https://lore.kernel.org/all/4b64a41c-6167-4c02-8bae-3021270ca519@fastmail.fm/T/#mc73e04df56b8830b1d7b06b5d9f22e594fba423e
-Link: https://lore.kernel.org/linux-fsdevel/CAOQ4uxhAY1m7ubJ3p-A3rSufw_53WuDRMT1Zqe_OC0bP_Fb3Zw@mail.gmail.com/
-
-Cc: Amir Goldstein <amir73il@gmail.com>
-Cc: Bernd Schubert <bernd.schubert@fastmail.fm>
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
+Fixes: c4608d1bf7c6 ("mm: mmap: map MAP_STACK to VM_NOHUGEPAGE")
+Cc: stable@vger.kernel.org
+Reviewed-by: Lorenzo Stoakes <lorenzo.stoakes@oracle.com>
+Reviewed-by: Yang Shi <yang@os.amperecomputing.com>
+Reviewed-by: Liam R. Howlett <Liam.Howlett@oracle.com>
+Signed-off-by: Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
 ---
- Documentation/filesystems/fuse-passthrough.rst | 133 +++++++++++++++++++++++++
- Documentation/filesystems/index.rst            |   1 +
- 2 files changed, 134 insertions(+)
+I discovered this issue when trying to use the tool CRIU to checkpoint
+and restore a container. Our running kernel is compiled without
+CONFIG_TRANSPARENT_HUGETABLES. CRIU parses the output of
+/proc/<pid>/smaps and saves the "nh" flag. When trying to restore the
+container, CRIU fails to restore the "nh" mappings, since madvise()
+MADV_NOHUGEPAGE always returns an error because
+CONFIG_TRANSPARENT_HUGETABLES is not defined.
 
-diff --git a/Documentation/filesystems/fuse-passthrough.rst b/Documentation/filesystems/fuse-passthrough.rst
-new file mode 100644
-index 0000000000000000000000000000000000000000..2b0e7c2da54acde4d48fd91ecece27256c4e04fd
---- /dev/null
-+++ b/Documentation/filesystems/fuse-passthrough.rst
-@@ -0,0 +1,133 @@
-+.. SPDX-License-Identifier: GPL-2.0
-+
-+================
-+FUSE Passthrough
-+================
-+
-+Introduction
-+============
-+
-+FUSE (Filesystem in Userspace) passthrough is a feature designed to improve the
-+performance of FUSE filesystems for I/O operations. Typically, FUSE operations
-+involve communication between the kernel and a userspace FUSE daemon, which can
-+incur overhead. Passthrough allows certain operations on a FUSE file to bypass
-+the userspace daemon and be executed directly by the kernel on an underlying
-+"backing file".
-+
-+This is achieved by the FUSE daemon registering a file descriptor (pointing to
-+the backing file on a lower filesystem) with the FUSE kernel module. The kernel
-+then receives an identifier (``backing_id``) for this registered backing file.
-+When a FUSE file is subsequently opened, the FUSE daemon can, in its response to
-+the ``OPEN`` request, include this ``backing_id`` and set the
-+``FOPEN_PASSTHROUGH`` flag. This establishes a direct link for specific
-+operations.
-+
-+Currently, passthrough is supported for operations like ``read(2)``/``write(2)``
-+(via ``read_iter``/``write_iter``), ``splice(2)``, and ``mmap(2)``.
-+
-+Enabling Passthrough
-+====================
-+
-+To use FUSE passthrough:
-+
-+  1. The FUSE filesystem must be compiled with ``CONFIG_FUSE_PASSTHROUGH``
-+     enabled.
-+  2. The FUSE daemon, during the ``FUSE_INIT`` handshake, must negotiate the
-+     ``FUSE_PASSTHROUGH`` capability and specify its desired
-+     ``max_stack_depth``.
-+  3. The (privileged) FUSE daemon uses the ``FUSE_DEV_IOC_BACKING_OPEN`` ioctl
-+     on its connection file descriptor (e.g., ``/dev/fuse``) to register a
-+     backing file descriptor and obtain a ``backing_id``.
-+  4. When handling an ``OPEN`` or ``CREATE`` request for a FUSE file, the daemon
-+     replies with the ``FOPEN_PASSTHROUGH`` flag set in
-+     ``fuse_open_out::open_flags`` and provides the corresponding ``backing_id``
-+     in ``fuse_open_out::backing_id``.
-+  5. The FUSE daemon should eventually call ``FUSE_DEV_IOC_BACKING_CLOSE`` with
-+     the ``backing_id`` to release the kernel's reference to the backing file
-+     when it's no longer needed for passthrough setups.
-+
-+Privilege Requirements
-+======================
-+
-+Setting up passthrough functionality currently requires the FUSE daemon to
-+possess the ``CAP_SYS_ADMIN`` capability. This requirement stems from several
-+security and resource management considerations that are actively being
-+discussed and worked on. The primary reasons for this restriction are detailed
-+below.
-+
-+Resource Accounting and Visibility
-+----------------------------------
-+
-+The core mechanism for passthrough involves the FUSE daemon opening a file
-+descriptor to a backing file and registering it with the FUSE kernel module via
-+the ``FUSE_DEV_IOC_BACKING_OPEN`` ioctl. This ioctl returns a ``backing_id``
-+associated with a kernel-internal ``struct fuse_backing`` object, which holds a
-+reference to the backing ``struct file``.
-+
-+A significant concern arises because the FUSE daemon can close its own file
-+descriptor to the backing file after registration. The kernel, however, will
-+still hold a reference to the ``struct file`` via the ``struct fuse_backing``
-+object as long as it's associated with a ``backing_id`` (or subsequently, with
-+an open FUSE file in passthrough mode).
-+
-+This behavior leads to two main issues for unprivileged FUSE daemons:
-+
-+  1. **Invisibility to lsof and other inspection tools**: Once the FUSE
-+     daemon closes its file descriptor, the open backing file held by the kernel
-+     becomes "hidden." Standard tools like ``lsof``, which typically inspect
-+     process file descriptor tables, would not be able to identify that this
-+     file is still open by the system on behalf of the FUSE filesystem. This
-+     makes it difficult for system administrators to track resource usage or
-+     debug issues related to open files (e.g., preventing unmounts).
-+
-+  2. **Bypassing RLIMIT_NOFILE**: The FUSE daemon process is subject to
-+     resource limits, including the maximum number of open file descriptors
-+     (``RLIMIT_NOFILE``). If an unprivileged daemon could register backing files
-+     and then close its own FDs, it could potentially cause the kernel to hold
-+     an unlimited number of open ``struct file`` references without these being
-+     accounted against the daemon's ``RLIMIT_NOFILE``. This could lead to a
-+     denial-of-service (DoS) by exhausting system-wide file resources.
-+
-+The ``CAP_SYS_ADMIN`` requirement acts as a safeguard against these issues,
-+restricting this powerful capability to trusted processes.
-+
-+**NOTE**: ``io_uring`` solves this similar issue by exposing its "fixed files",
-+which are visible via ``fdinfo`` and accounted under the registering user's
-+``RLIMIT_NOFILE``.
-+
-+Filesystem Stacking and Shutdown Loops
-+--------------------------------------
-+
-+Another concern relates to the potential for creating complex and problematic
-+filesystem stacking scenarios if unprivileged users could set up passthrough.
-+A FUSE passthrough filesystem might use a backing file that resides:
-+
-+  * On the *same* FUSE filesystem.
-+  * On another filesystem (like OverlayFS) which itself might have an upper or
-+    lower layer that is a FUSE filesystem.
-+
-+These configurations could create dependency loops, particularly during
-+filesystem shutdown or unmount sequences, leading to deadlocks or system
-+instability. This is conceptually similar to the risks associated with the
-+``LOOP_SET_FD`` ioctl, which also requires ``CAP_SYS_ADMIN``.
-+
-+To mitigate this, FUSE passthrough already incorporates checks based on
-+filesystem stacking depth (``sb->s_stack_depth`` and ``fc->max_stack_depth``).
-+For example, during the ``FUSE_INIT`` handshake, the FUSE daemon can negotiate
-+the ``max_stack_depth`` it supports. When a backing file is registered via
-+``FUSE_DEV_IOC_BACKING_OPEN``, the kernel checks if the backing file's
-+filesystem stack depth is within the allowed limit.
-+
-+The ``CAP_SYS_ADMIN`` requirement provides an additional layer of security,
-+ensuring that only privileged users can create these potentially complex
-+stacking arrangements.
-+
-+General Security Posture
-+------------------------
-+
-+As a general principle for new kernel features that allow userspace to instruct
-+the kernel to perform direct operations on its behalf based on user-provided
-+file descriptors, starting with a higher privilege requirement (like
-+``CAP_SYS_ADMIN``) is a conservative and common security practice. This allows
-+the feature to be used and tested while further security implications are
-+evaluated and addressed.
-diff --git a/Documentation/filesystems/index.rst b/Documentation/filesystems/index.rst
-index a9cf8e950b15ad68a021d5f214b07f58d752f4e3..2913f4f2e00ccc466563aba5692e2f95699cb674 100644
---- a/Documentation/filesystems/index.rst
-+++ b/Documentation/filesystems/index.rst
-@@ -99,6 +99,7 @@ Documentation for filesystem implementations.
-    fuse
-    fuse-io
-    fuse-io-uring
-+   fuse-passthrough
-    inotify
-    isofs
-    nilfs2
+The mapping MAP_STACK -> VM_NOHUGEPAGE was introduced by commit
+c4608d1bf7c6 ("mm: mmap: map MAP_STACK to VM_NOHUGEPAGE") in order to
+fix a regression introduced by commit efa7df3e3bb5 ("mm: align larger
+anonymous mappings on THP boundaries"). The change introducing the
+regression (efa7df3e3bb5) was limited to THP kernels, but its fix
+(c4608d1bf7c6) is applied without checking if THP is set.
 
+The mapping MAP_STACK -> VM_NOHUGEPAGE should only be applied if THP is
+enabled.
+---
+Changes in v3:
+- Exclude non-stable patch (for huge_mm.h) from this series to avoid mixing stable and non-stable patches, as suggested by Andrew.
+- Extend description in cover letter.
+- Link to v2: https://lore.kernel.org/r/20250506-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-v2-0-f11f0c794872@kuka.com
+
+Changes in v2:
+- [Patch 1/2] Use '#ifdef' instead of '#if defined(...)'
+- [Patch 1/2] Add 'Fixes: c4608d1bf7c6...'
+- Create [Patch 2/2]
+
+- Link to v1: https://lore.kernel.org/r/20250502-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-v1-1-113cc634cd51@kuka.com
+---
+ include/linux/mman.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/linux/mman.h b/include/linux/mman.h
+index bce214fece16b9af3791a2baaecd6063d0481938..f4c6346a8fcd29b08d43f7cd9158c3eddc3383e1 100644
+--- a/include/linux/mman.h
++++ b/include/linux/mman.h
+@@ -155,7 +155,9 @@ calc_vm_flag_bits(struct file *file, unsigned long flags)
+ 	return _calc_vm_trans(flags, MAP_GROWSDOWN,  VM_GROWSDOWN ) |
+ 	       _calc_vm_trans(flags, MAP_LOCKED,     VM_LOCKED    ) |
+ 	       _calc_vm_trans(flags, MAP_SYNC,	     VM_SYNC      ) |
++#ifdef CONFIG_TRANSPARENT_HUGEPAGE
+ 	       _calc_vm_trans(flags, MAP_STACK,	     VM_NOHUGEPAGE) |
++#endif
+ 	       arch_calc_vm_flag_bits(file, flags);
+ }
+ 
+
+---
+base-commit: fc96b232f8e7c0a6c282f47726b2ff6a5fb341d2
+change-id: 20250428-map-map_stack-to-vm_nohugepage-only-if-thp-is-enabled-ce40a1de095d
+
+Best regards,
 -- 
-2.43.0
+Ignacio Moreno Gonzalez <Ignacio.MorenoGonzalez@kuka.com>
 
