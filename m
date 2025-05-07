@@ -1,135 +1,70 @@
-From: Richard Leitner <richard.leitner@linux.dev>
-Date: Wed, 07 May 2025 09:51:39 +0200
-Subject: [PATCH v4 10/10] media: i2c: ov9282: implement try_ctrl for
- strobe_duration
+From: Chen Linxuan <chenlinxuan@uniontech.com>
+Subject: [PATCH v2 0/2] Add a documentation for FUSE passthrough
+Date: Wed, 07 May 2025 16:42:15 +0800
+Message-Id: <20250507-fuse-passthrough-doc-v2-0-ae7c0dd8bba6@uniontech.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250507-ov9282-flash-strobe-v4-10-72b299c1b7c9@linux.dev>
-References: <20250507-ov9282-flash-strobe-v4-0-72b299c1b7c9@linux.dev>
-In-Reply-To: <20250507-ov9282-flash-strobe-v4-0-72b299c1b7c9@linux.dev>
-To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Dave Stevenson <dave.stevenson@raspberrypi.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Lee Jones <lee@kernel.org>, 
- Pavel Machek <pavel@kernel.org>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-Cc: Hans Verkuil <hverkuil@xs4all.nl>, linux-media@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
- Richard Leitner <richard.leitner@linux.dev>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAOccG2gC/4WOQQ6CMBBFr0Jm7ZhShAor72FYNMOUdiElHSAaw
+ t2tXMDl+8l//+8gnAILdMUOibcgIU4Z9KUA8nYaGcOQGbTStaqVQbcK42xFFp/iOnocImHdckn
+ 3W6VtU0GuzoldeJ/aZ5/ZB1li+pwrW/lL/wi3EhUSqcY605LR+rFO+dnC5K8UX9Afx/EF8xcvO
+ LwAAAA=
+X-Change-ID: 20250507-fuse-passthrough-doc-59e1c8432a63
+To: Miklos Szeredi <miklos@szeredi.hu>, Jonathan Corbet <corbet@lwn.net>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ linux-doc@vger.kernel.org, Chen Linxuan <chenlinxuan@uniontech.com>, 
+ Amir Goldstein <amir73il@gmail.com>, 
+ Bernd Schubert <bernd.schubert@fastmail.fm>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746604340; l=3563;
- i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=u2k9w+GukQmHB16zuirE+3M5ybc3Bh0/CkI9yc+9KRw=;
- b=N5Qmr+jFg9FjDlbZPon+ZQts18zYI0WCVHVozEDdHbQTS+N8S4mLLpcHEynAYMyRxvZCfOkkx
- sv0W2fUIVQdDc7j/UkTO8T9vZ5WoKZGXuomklIuDUEcAj9TxglnjqqO
-X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
- pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
-X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1186;
+ i=chenlinxuan@uniontech.com; h=from:subject:message-id;
+ bh=/R+75EXS++vi//z+1SE3h0ZzDGQB+HQ9Cv8vh4zOTX8=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBoGxz08UAUIZR6/4SH1If+HbA3AraI/ye151KBQ
+ oserKHb6WqJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaBsc9AAKCRB2HuYUOZmu
+ i4foEAC9iKIDp/SNoaR4Oy+tAn6abLtNXfzF+xrs1TAxhpPfOVL7kv5IdTQqryJVDg5U7wlt3zK
+ Oex4unqgJt+jjjcQHvddqoVhODYcIcvDTrAiR9DN9SrvIGzZOA9qoFcWeU64p+yRKgr7VLU/XQN
+ 4Vtj7gdgM3+fe6HRcSZNq/zHG31Rq+1jyTuGnOw/eXMMaJ0KtxWIzZLcPRkXMXFPs3EOFuhGTYf
+ P1m/5fU5A7HksXF/0+E20jbsf90yUQjS+wY2xEiLcZoGWAFgQ2QzyGszQOA53OB0GS6aWB0eONo
+ kcR2Myxx1D1H8H7D6C1/atombXmg58hdlb9MHyzaC9F6G0J9UV140RyZ+H63MGhV7hn3BPO7Bqo
+ 2A7LCbyHMLMIGDffKO2021AK79/0Pi6moyizRssu/fOrGIdFBtpcShyKNeCxM0r5jAGs+vn/X2z
+ k8PwWjnatpFEOWx36D+A0PMnZYO6sLjQM3gPa4E/NK4beBTBjI8pZFZLnq3WxeuUW1u9vZ5E/xY
+ qeYQT4a0Qq5o5rYLlAoP9caENQ1lk79kllLEyDh6lesJffH9Z9iNfxt+jV7vyo+AzL8GeqMFb+j
+ n4c02FJAhSCKt0u7bGYxEkDwiP38jHiwFAU2oVG8+N6RH0wP2XWDCyv4tNwM4Bbpd4PehB/5rf8
+ 8oQJ3BOuKKOYk+w==
+X-Developer-Key: i=chenlinxuan@uniontech.com; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for chenlinxuan@uniontech.com/default with auth_id=380
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As the granularity of the hardware supported values is lower than the
-control value, implement a try_ctrl() function for
-V4L2_CID_FLASH_DURATION. This function calculates the nearest possible
-µs strobe duration for the given value and returns it back to the
-caller.
+This series adds a new file,
+Documentation/filesystems/fuse-passthrough.rst, which documents why
+FUSE passthrough functionality requires CAP_SYS_ADMIN capabilities.
 
-Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
+The series also updates the MAINTAINERS file to ensure
+scripts/get_maintainer.pl works correctly with FUSE documentation.
+
+Signed-off-by: Chen Linxuan <chenlinxuan@uniontech.com>
 ---
- drivers/media/i2c/ov9282.c | 56 ++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 54 insertions(+), 2 deletions(-)
+Changes in v2:
+- Add the docs to Documentation/filesystems/index.rst toctree as Bagas
+  Sanjaya suggested
+- Remove some paragraphs as Amir Goldstein suggested
+- Link to v1: https://lore.kernel.org/r/20250507-fuse-passthrough-doc-v1-0-cc06af79c722@uniontech.com
 
-diff --git a/drivers/media/i2c/ov9282.c b/drivers/media/i2c/ov9282.c
-index 09d522d5977ec6fb82028ddb6015f05c9328191d..f75882dcb73bea0e00e2cb37ffc19ec3c3a8b126 100644
---- a/drivers/media/i2c/ov9282.c
-+++ b/drivers/media/i2c/ov9282.c
-@@ -128,6 +128,8 @@
- #define OV9282_REG_MIN		0x00
- #define OV9282_REG_MAX		0xfffff
- 
-+#define OV9282_STROBE_SPAN_FACTOR	192
-+
- static const char * const ov9282_supply_names[] = {
- 	"avdd",		/* Analog power */
- 	"dovdd",	/* Digital I/O power */
-@@ -691,7 +693,7 @@ static int ov9282_set_ctrl_flash_led_mode(struct ov9282 *ov9282, int mode)
- 				current_val);
- }
- 
--static int ov9282_set_ctrl_flash_duration(struct ov9282 *ov9282, int value)
-+static u32 ov9282_us_to_flash_duration(struct ov9282 *ov9282, u32 value)
- {
- 	/*
- 	 * Calculate "strobe_frame_span" increments from a given value (µs).
-@@ -702,7 +704,31 @@ static int ov9282_set_ctrl_flash_duration(struct ov9282 *ov9282, int value)
- 	 * The formula below is interpolated from different modes/framerates
- 	 * and should work quite well for most settings.
- 	 */
--	u32 val = value * 192 / (ov9282->cur_mode->width + ov9282->hblank_ctrl->val);
-+	u32 frame_width = ov9282->cur_mode->width + ov9282->hblank_ctrl->val;
-+
-+	return value * OV9282_STROBE_SPAN_FACTOR / frame_width;
-+}
-+
-+static u32 ov9282_flash_duration_to_us(struct ov9282 *ov9282, u32 value)
-+{
-+	/*
-+	 * As the calculation in ov9282_us_to_flash_duration uses an integer
-+	 * divison calculate in ns here to get more precision. Then check if
-+	 * we need to compensate that divison by incrementing the µs result.
-+	 */
-+	u32 frame_width = ov9282->cur_mode->width + ov9282->hblank_ctrl->val;
-+	u64 ns = value * 1000 * frame_width / OV9282_STROBE_SPAN_FACTOR;
-+	u32 us = ns / 1000;
-+	u32 remainder = ns % 1000;
-+
-+	if (remainder > 0)
-+		us++;
-+	return us;
-+}
-+
-+static int ov9282_set_ctrl_flash_duration(struct ov9282 *ov9282, int value)
-+{
-+	u32 val = ov9282_us_to_flash_duration(ov9282, value);
- 
- 	ov9282_write_reg(ov9282, OV9282_REG_FLASH_DURATION, 1, (val >> 24) & 0xff);
- 	ov9282_write_reg(ov9282, OV9282_REG_FLASH_DURATION + 1, 1, (val >> 16) & 0xff);
-@@ -792,9 +818,35 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
- 	return ret;
- }
- 
-+static int ov9282_try_ctrl(struct v4l2_ctrl *ctrl)
-+{
-+	struct ov9282 *ov9282 =
-+		container_of(ctrl->handler, struct ov9282, ctrl_handler);
-+
-+	if (ctrl->id == V4L2_CID_FLASH_DURATION) {
-+		u32 fd = ov9282_us_to_flash_duration(ov9282, ctrl->val);
-+		u32 us = ctrl->val;
-+		u32 us0 = ov9282_flash_duration_to_us(ov9282, fd);
-+		u32 us1 = ov9282_flash_duration_to_us(ov9282, (fd + 1));
-+
-+		if ((us1 - us) < (us - us0))
-+			ctrl->val = us1;
-+		else
-+			ctrl->val = us0;
-+
-+		if (us != ctrl->val) {
-+			dev_dbg(ov9282->dev, "using next valid strobe_duration %u instead of %u\n",
-+				ctrl->val, us);
-+		}
-+	}
-+
-+	return 0;
-+}
-+
- /* V4l2 subdevice control ops*/
- static const struct v4l2_ctrl_ops ov9282_ctrl_ops = {
- 	.s_ctrl = ov9282_set_ctrl,
-+	.try_ctrl = ov9282_try_ctrl,
- };
- 
- /**
+---
+Chen Linxuan (2):
+      MAINTAINERS: update filter of FUSE documentation
+      docs: filesystems: add fuse-passthrough.rst
 
+ Documentation/filesystems/fuse-passthrough.rst | 133 +++++++++++++++++++++++++
+ Documentation/filesystems/index.rst            |   1 +
+ MAINTAINERS                                    |   2 +-
+ 3 files changed, 135 insertions(+), 1 deletion(-)
+---
+base-commit: 0d8d44db295ccad20052d6301ef49ff01fb8ae2d
+change-id: 20250507-fuse-passthrough-doc-59e1c8432a63
+
+Best regards,
 -- 
-2.47.2
+Chen Linxuan <chenlinxuan@uniontech.com>
 
