@@ -1,239 +1,81 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Wed, 07 May 2025 18:00:26 -0700
-Subject: [PATCH v2 5/5] usb: typec: tcpm: Add support for Battery Cap
- response message
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v6 0/3] PCI: tegra: Allow building as a module
+Date: Wed, 07 May 2025 22:25:51 -0500
+Message-Id: <20250507-pci-tegra-module-v6-0-5fe363eaa302@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250507-batt_ops-v2-5-8d06130bffe6@google.com>
-References: <20250507-batt_ops-v2-0-8d06130bffe6@google.com>
-In-Reply-To: <20250507-batt_ops-v2-0-8d06130bffe6@google.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Sebastian Reichel <sre@kernel.org>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <len.brown@intel.com>, 
- Pavel Machek <pavel@kernel.org>
-Cc: Kyle Tso <kyletso@google.com>, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-pm@vger.kernel.org, Amit Sunil Dhamne <amitsd@google.com>
+X-B4-Tracking: v=1; b=H4sIAD8kHGgC/4XPQW7CMBAF0KsgrzEajz2x01XvUXUxdpxgiRDk0
+ KgVyt3rwKIUIrH8X5r3NRcxxpziKN42F5HjlMY0HEuothsR9nzsokxNyQIBCbTS8hSSPMcus+y
+ H5usQpQ2+UYGiBW5FOTvl2KbvK/nxWfI+jech/1wXJrW0N8wgPGOTkiADsGpdGSPD713P6bALQ
+ y8WbMJ7wK0AuABKsfG1QmOqR0D/AQS4AugCEFVsaquxsfAImHuAVgBTAHDOE2EwXj29QK8AKoB
+ Dy8yhrp3/B8zz/AuxzBD0tAEAAA==
+X-Change-ID: 20250313-pci-tegra-module-7cbd1c5e70af
+To: Thomas Gleixner <tglx@linutronix.de>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>
+Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746666154; l=6782;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=B5Z1TgNEutKpwFmhUKlqLMwh2csQDHuFOD4jLxln/2I=;
- b=aJc/rEl2IzAJabyp4WcVnvPNkacPjz5hhoAO38TwyUp386o6LnogwRsEycR5NxPDx/tq9Jpip
- 4vzR/FQ7YWAA/tem+HTZiQyBanjk83x6bwtzOj5Fn988g9X5wZMYgTw
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746674753; l=1783;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=0pcAJu24LCSnOoE0alnDTb7LX09SzOwDg3pSbDn2Ii8=;
+ b=5vI6/OkRPTKlzXe3vVbMLbMax/WLtUua8eriSFeb3LmCylg7E0sqz4CFjwIwr0huTUaKGwQA6
+ x5guMxskE33BGyaQTk/iUqrLiuhTyRck/5TsXnB7nfr24uc/0wnRJ+y
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for responding to Get_Battery_Cap (extended) request with a
-a Battery_Capabilities (extended) msg. The requester will request
-Battery Cap for a specific battery using an index in Get_Battery_Cap. In
-case of failure to identify battery, TCPM shall reply with an
-appropriate message indicating so.
-
-Support has been added only for fixed batteries and not hot swappable
-ones.
-
-As the Battery Cap Data Block size is 9 Bytes (lesser than
-MaxExtendedMsgChunkLen of 26B), only a single chunk is required to
-complete the AMS.
-
-Support for Battery_Capabilities message is required for sinks that
-contain battery as specified in USB PD Rev3.1 v1.8
-("Applicability of Data Messages" section).
-
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
-Reviewed-by: Kyle Tso <kyletso@google.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 96 +++++++++++++++++++++++++++++++++++++++++--
- include/linux/usb/pd.h        | 31 ++++++++++++++
- 2 files changed, 123 insertions(+), 4 deletions(-)
+Changes in v6:
+- Remove unused debugfs cleanup function, as caught by kernel ci
+- Link to v5: https://lore.kernel.org/r/20250505-pci-tegra-module-v5-0-827aaac998ba@gmail.com
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index 98df0c7ce00e43f6c95ab49237a414e1b4413369..4731126fbf19a50178be0cf8867b3fe08595724c 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -228,7 +228,8 @@ enum pd_msg_request {
- 	PD_MSG_DATA_SINK_CAP,
- 	PD_MSG_DATA_SOURCE_CAP,
- 	PD_MSG_DATA_REV,
--	PD_MSG_DATA_BATT_STATUS
-+	PD_MSG_DATA_BATT_STATUS,
-+	PD_MSG_EXT_BATT_CAP,
- };
- 
- enum adev_actions {
-@@ -597,8 +598,8 @@ struct tcpm_port {
- 	u8 fixed_batt_cnt;
- 
- 	/*
--	 * Variable used to store battery_ref from the Get_Battery_Status
--	 * request to process Battery_Status messages.
-+	 * Variable used to store battery_ref from the Get_Battery_Status &
-+	 * Get_Battery_Caps request to process Battery_Status messages.
- 	 */
- 	u8 batt_request;
- #ifdef CONFIG_DEBUG_FS
-@@ -1414,6 +1415,81 @@ static int tcpm_pd_send_batt_status(struct tcpm_port *port)
- 	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
- }
- 
-+static int tcpm_pd_send_batt_cap(struct tcpm_port *port)
-+{
-+	struct pd_message msg;
-+	struct power_supply *batt;
-+	struct batt_cap_ext_msg bcdb;
-+	u32 batt_id = port->batt_request;
-+	int ret;
-+	union power_supply_propval val;
-+	bool batt_present = false;
-+	u16 batt_design_cap = BATTERY_PROPERTY_UNKNOWN;
-+	u16 batt_charge_cap = BATTERY_PROPERTY_UNKNOWN;
-+	u8 data_obj_cnt;
-+	/*
-+	 * As per USB PD Rev3.1 v1.8, if battery reference is incorrect,
-+	 * then set the VID field to 0xffff.
-+	 * If VID field is set to 0xffff, always set the PID field to
-+	 * 0x0000.
-+	 */
-+	u16 vid = BATTERY_PROPERTY_UNKNOWN;
-+	u16 pid = 0x0;
-+
-+	memset(&msg, 0, sizeof(msg));
-+
-+	if (batt_id < MAX_NUM_FIXED_BATT && port->fixed_batt[batt_id]) {
-+		batt_present = true;
-+		batt = port->fixed_batt[batt_id];
-+		ret = power_supply_get_property(batt,
-+						POWER_SUPPLY_PROP_USBIF_VENDOR_ID,
-+						&val);
-+		if (!ret)
-+			vid = val.intval;
-+
-+		if (vid != BATTERY_PROPERTY_UNKNOWN) {
-+			ret = power_supply_get_property(batt,
-+							POWER_SUPPLY_PROP_USBIF_PRODUCT_ID,
-+							&val);
-+			if (!ret)
-+				pid = val.intval;
-+		}
-+
-+		ret = power_supply_get_property(batt,
-+						POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN,
-+						&val);
-+		if (!ret)
-+			batt_design_cap = (u16)UWH_TO_WH(val.intval * 10);
-+
-+		ret = power_supply_get_property(batt,
-+						POWER_SUPPLY_PROP_ENERGY_FULL,
-+						&val);
-+		if (!ret)
-+			batt_charge_cap = (u16)UWH_TO_WH(val.intval * 10);
-+	}
-+
-+	bcdb.vid = cpu_to_le16(vid);
-+	bcdb.pid = cpu_to_le16(pid);
-+	bcdb.batt_design_cap = cpu_to_le16(batt_design_cap);
-+	bcdb.batt_last_chg_cap = cpu_to_le16(batt_charge_cap);
-+	bcdb.batt_type = !batt_present ? BATT_CAP_BATT_TYPE_INVALID_REF : 0;
-+	memcpy(msg.ext_msg.data, &bcdb, sizeof(bcdb));
-+	msg.ext_msg.header = PD_EXT_HDR_LE(sizeof(bcdb),
-+					   0, /* Denotes if request chunk */
-+					   0, /* Chunk number */
-+					   1  /* Chunked */);
-+
-+	data_obj_cnt = count_chunked_data_objs(sizeof(bcdb));
-+	msg.header = cpu_to_le16(PD_HEADER(PD_EXT_BATT_CAP,
-+					   port->pwr_role,
-+					   port->data_role,
-+					   port->negotiated_rev,
-+					   port->message_id,
-+					   data_obj_cnt,
-+					   1 /* Denotes if ext header */));
-+	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
-+}
-+
- static void mod_tcpm_delayed_work(struct tcpm_port *port, unsigned int delay_ms)
- {
- 	if (delay_ms) {
-@@ -3711,8 +3787,12 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
- 		tcpm_pd_handle_msg(port, PD_MSG_DATA_BATT_STATUS,
- 				   GETTING_BATTERY_STATUS);
- 		break;
--	case PD_EXT_SOURCE_CAP_EXT:
- 	case PD_EXT_GET_BATT_CAP:
-+		port->batt_request = ext_msg->data[0];
-+		tcpm_pd_handle_msg(port, PD_MSG_EXT_BATT_CAP,
-+				   GETTING_BATTERY_CAPABILITIES);
-+		break;
-+	case PD_EXT_SOURCE_CAP_EXT:
- 	case PD_EXT_BATT_CAP:
- 	case PD_EXT_GET_MANUFACTURER_INFO:
- 	case PD_EXT_MANUFACTURER_INFO:
-@@ -3921,6 +4001,14 @@ static bool tcpm_send_queued_message(struct tcpm_port *port)
- 					 ret);
- 			tcpm_ams_finish(port);
- 			break;
-+		case PD_MSG_EXT_BATT_CAP:
-+			ret = tcpm_pd_send_batt_cap(port);
-+			if (ret)
-+				tcpm_log(port,
-+					 "Failed to send battery cap ret=%d",
-+					 ret);
-+			tcpm_ams_finish(port);
-+			break;
- 		default:
- 			break;
- 		}
-diff --git a/include/linux/usb/pd.h b/include/linux/usb/pd.h
-index 4efa7bfd9863915dfc8048da264116d9b05a447b..c89594177da57f4398b75c89c1991b4937614a70 100644
---- a/include/linux/usb/pd.h
-+++ b/include/linux/usb/pd.h
-@@ -204,6 +204,37 @@ struct pd_message {
- 	};
- } __packed;
- 
-+/*
-+ * count_chunked_data_objs: Helper to calculate number of Data Objects on a 4
-+ *   byte boundary.
-+ * @size: Size of data block for extended message. Should *not* include extended
-+ *   header size.
-+ */
-+static inline u8 count_chunked_data_objs(u32 size)
-+{
-+	size += offsetof(struct pd_chunked_ext_message_data, data);
-+	return ((size / 4) + (size % 4 ? 1 : 0));
-+}
-+
-+/**
-+ * batt_cap_ext_msg - Battery capability extended PD message
-+ * @vid: Battery Vendor ID (assigned by USB-IF)
-+ * @pid: Battery Product ID (assigned by battery or device vendor)
-+ * @batt_design_cap: Battery design capacity in 0.1Wh
-+ * @batt_last_chg_cap: Battery last full charge capacity in 0.1Wh
-+ * @batt_type: Battery Type. bit0 when set indicates invalid battery reference.
-+ *             Rest of the bits are reserved.
-+ */
-+struct batt_cap_ext_msg {
-+	__le16 vid;
-+	__le16 pid;
-+	__le16 batt_design_cap;
-+	__le16 batt_last_chg_cap;
-+	u8 batt_type;
-+} __packed;
-+
-+#define BATT_CAP_BATT_TYPE_INVALID_REF			BIT(0)
-+
- /* PDO: Power Data Object */
- #define PDO_MAX_OBJECTS		7
- 
+Changes in v5:
+- Copy commit message exactly word for word on patch 1, as required by reviewer
+- Delete remove callback in patch 3, per request
+- Don't clean up debugfs, per request, which drops patch 4 entirely
+- Link to v4: https://lore.kernel.org/r/20250505-pci-tegra-module-v4-0-088b552c4b1a@gmail.com
 
+Changes in v4:
+- Updated commit messages for patches 1 and 2, per review
+- Link to v3: https://lore.kernel.org/r/20250502-pci-tegra-module-v3-0-556a49732d70@gmail.com
+
+Changes in v3:
+- Add patch to drop remove callback, per request
+- Link to v2: https://lore.kernel.org/r/20250428-pci-tegra-module-v2-0-c11a4b912446@gmail.com
+
+Changes in v2:
+- Add patch to export tegra_cpuidle_pcie_irqs_in_use as required when
+  building pci-tegra as a module for arm
+- Drop module exit to prevent module unloading, as requested
+- Link to v1: https://lore.kernel.org/r/20250420-pci-tegra-module-v1-0-c0a1f831354a@gmail.com
+
+---
+Aaron Kling (3):
+      irqdomain: Export irq_domain_free_irqs
+      cpuidle: tegra: Export tegra_cpuidle_pcie_irqs_in_use
+      PCI: tegra: Allow building as a module
+
+ drivers/cpuidle/cpuidle-tegra.c    |  1 +
+ drivers/pci/controller/Kconfig     |  2 +-
+ drivers/pci/controller/pci-tegra.c | 35 ++++-------------------------------
+ kernel/irq/irqdomain.c             |  1 +
+ 4 files changed, 7 insertions(+), 32 deletions(-)
+---
+base-commit: 18352e73612d60b81790d2437845276ae499b64a
+change-id: 20250313-pci-tegra-module-7cbd1c5e70af
+
+Best regards,
 -- 
-2.49.0.987.g0cc8ee98dc-goog
+Aaron Kling <webgeek1234@gmail.com>
 
