@@ -1,119 +1,94 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 07 May 2025 22:25:54 -0500
-Subject: [PATCH v6 3/3] PCI: tegra: Allow building as a module
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Date: Thu, 08 May 2025 11:28:42 +0800
+Subject: [PATCH] mtd: rawnand: loongson1: Fix inconsistent refcounting in
+ ls1x_nand_chip_init()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250507-pci-tegra-module-v6-3-5fe363eaa302@gmail.com>
-References: <20250507-pci-tegra-module-v6-0-5fe363eaa302@gmail.com>
-In-Reply-To: <20250507-pci-tegra-module-v6-0-5fe363eaa302@gmail.com>
-To: Thomas Gleixner <tglx@linutronix.de>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kw@linux.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>
-Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746674753; l=2980;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=tWH6XnYSJoKkGmqKp04RuLk3D4LqSklOTfArIboe1ug=;
- b=of4e30l6Q5p6L2vyQe1n44ANBVQOEv1tT4Zvbhb4bdV9bB16+KqpcfevsAoHq7s9Mm512MqkZ
- jZJ0dsZSmCSDZ6kKdTNI/ccqUKvlBXpZBgunztzBhuuC7RrwHmP/vGV
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+Message-Id: <20250508-loongson1-nand-fix-v1-1-27b26234c62c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOkkHGgC/x2MQQqAMAzAvjJ6tjAHOvQr4mHaqgXpZAMRZH93e
+ EwgeSFzEs4wmhcS35IlaoW2MbAeQXdGocrgrOtsZz2eMeqeo7aoQQk3edD5YfErUb8Fghpeiav
+ +p9NcygcEQdaqZAAAAA==
+To: Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>
+Cc: linux-mips@vger.kernel.org, linux-mtd@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Dan Carpenter <dan.carpenter@linaro.org>, 
+ Keguang Zhang <keguang.zhang@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746674928; l=2384;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=Enffpow1/oAmcpIlxb54XqOtVEib/iLdUuIMLpplTqs=;
+ b=fYD8HRpmUt1FmYMRV3iW1cBEn4niKD1j8KhX3W660f8g/vV9SUM9UJ2xm+x1vbLINlw0u8KKW
+ vHC+7SwNRNmAPW6deUZAEbq+C+iM1dGovTg/E7gfvQniSTIjeTEuiSr
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This changes the module macro back to builtin, which does not define an
-exit function. This will prevent the module from being unloaded. There
-are concerns with modules not cleaning up IRQs on unload, thus this
-needs specifically disallowed. The remove callback is also dropped as it
-is unused.
+As reported by Dan,
+commit d2d10ede04b1 ("mtd: rawnand: Add Loongson-1 NAND Controller
+Driver"), leads to the following Smatch static checker warning:
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+drivers/mtd/nand/raw/loongson1-nand-controller.c:730 ls1x_nand_chip_init()
+warn: inconsistent refcounting 'chip_np->kobj.kref.refcount.refs.counter':
+
+Fix this issue by calling of_node_put() immediately after using chip_np.
+In addition, remove all unnecessary of_node_put(chip_np) calls.
+
+Reported-by: Dan Carpenter <dan.carpenter@linaro.org>
+Closes: https://lore.kernel.org/all/aBR535RZZT-sa6QZ@stanley.mountain/
+Fixes: d2d10ede04b1 ("mtd: rawnand: Add Loongson-1 NAND Controller Driver")
+Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- drivers/pci/controller/Kconfig     |  2 +-
- drivers/pci/controller/pci-tegra.c | 35 ++++-------------------------------
- 2 files changed, 5 insertions(+), 32 deletions(-)
+ drivers/mtd/nand/raw/loongson1-nand-controller.c | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/pci/controller/Kconfig b/drivers/pci/controller/Kconfig
-index 9800b768105402d6dd1ba4b134c2ec23da6e4201..a9164dd2eccaead5ae9348c24a5ad75fcb40f507 100644
---- a/drivers/pci/controller/Kconfig
-+++ b/drivers/pci/controller/Kconfig
-@@ -224,7 +224,7 @@ config PCI_HYPERV_INTERFACE
- 	  driver.
+diff --git a/drivers/mtd/nand/raw/loongson1-nand-controller.c b/drivers/mtd/nand/raw/loongson1-nand-controller.c
+index 6a369b1c7d86..5f1bde21c8fc 100644
+--- a/drivers/mtd/nand/raw/loongson1-nand-controller.c
++++ b/drivers/mtd/nand/raw/loongson1-nand-controller.c
+@@ -703,27 +703,25 @@ static int ls1x_nand_chip_init(struct ls1x_nand_host *host)
+ 	if (!chip_np)
+ 		return dev_err_probe(dev, -ENODEV, "failed to get child node for NAND chip\n");
  
- config PCI_TEGRA
--	bool "NVIDIA Tegra PCIe controller"
-+	tristate "NVIDIA Tegra PCIe controller"
- 	depends on ARCH_TEGRA || COMPILE_TEST
- 	depends on PCI_MSI
- 	help
-diff --git a/drivers/pci/controller/pci-tegra.c b/drivers/pci/controller/pci-tegra.c
-index b3cdbc5927de3742161310610dc5dcb836f5dd69..b902c696f63310f8f70651976d0fa2d9337134a2 100644
---- a/drivers/pci/controller/pci-tegra.c
-+++ b/drivers/pci/controller/pci-tegra.c
-@@ -2595,12 +2595,6 @@ static const struct seq_operations tegra_pcie_ports_sops = {
+-	chip->controller = &host->controller;
+-	chip->options = NAND_NO_SUBPAGE_WRITE | NAND_USES_DMA | NAND_BROKEN_XD;
+-	chip->buf_align = 16;
+-	nand_set_controller_data(chip, host);
+ 	nand_set_flash_node(chip, chip_np);
++	of_node_put(chip_np);
+ 	if (!mtd->name)
+ 		return dev_err_probe(dev, -EINVAL, "Missing MTD label\n");
  
- DEFINE_SEQ_ATTRIBUTE(tegra_pcie_ports);
++	nand_set_controller_data(chip, host);
++	chip->controller = &host->controller;
++	chip->options = NAND_NO_SUBPAGE_WRITE | NAND_USES_DMA | NAND_BROKEN_XD;
++	chip->buf_align = 16;
+ 	mtd->dev.parent = dev;
+ 	mtd->owner = THIS_MODULE;
  
--static void tegra_pcie_debugfs_exit(struct tegra_pcie *pcie)
--{
--	debugfs_remove_recursive(pcie->debugfs);
--	pcie->debugfs = NULL;
--}
--
- static void tegra_pcie_debugfs_init(struct tegra_pcie *pcie)
- {
- 	pcie->debugfs = debugfs_create_dir("pcie", NULL);
-@@ -2674,29 +2668,6 @@ static int tegra_pcie_probe(struct platform_device *pdev)
- 	return err;
- }
+ 	ret = nand_scan(chip, 1);
+-	if (ret) {
+-		of_node_put(chip_np);
++	if (ret)
+ 		return dev_err_probe(dev, ret, "failed to scan NAND chip\n");
+-	}
  
--static void tegra_pcie_remove(struct platform_device *pdev)
--{
--	struct tegra_pcie *pcie = platform_get_drvdata(pdev);
--	struct pci_host_bridge *host = pci_host_bridge_from_priv(pcie);
--	struct tegra_pcie_port *port, *tmp;
--
--	if (IS_ENABLED(CONFIG_DEBUG_FS))
--		tegra_pcie_debugfs_exit(pcie);
--
--	pci_stop_root_bus(host->bus);
--	pci_remove_root_bus(host->bus);
--	pm_runtime_put_sync(pcie->dev);
--	pm_runtime_disable(pcie->dev);
--
--	if (IS_ENABLED(CONFIG_PCI_MSI))
--		tegra_pcie_msi_teardown(pcie);
--
--	tegra_pcie_put_resources(pcie);
--
--	list_for_each_entry_safe(port, tmp, &pcie->ports, list)
--		tegra_pcie_port_free(port);
--}
--
- static int tegra_pcie_pm_suspend(struct device *dev)
- {
- 	struct tegra_pcie *pcie = dev_get_drvdata(dev);
-@@ -2800,6 +2771,8 @@ static struct platform_driver tegra_pcie_driver = {
- 		.pm = &tegra_pcie_pm_ops,
- 	},
- 	.probe = tegra_pcie_probe,
--	.remove = tegra_pcie_remove,
- };
--module_platform_driver(tegra_pcie_driver);
-+builtin_platform_driver(tegra_pcie_driver);
-+MODULE_AUTHOR("Thierry Reding <treding@nvidia.com>");
-+MODULE_DESCRIPTION("NVIDIA PCI host controller driver");
-+MODULE_LICENSE("GPL");
+ 	ret = mtd_device_register(mtd, NULL, 0);
+ 	if (ret) {
+ 		nand_cleanup(chip);
+-		of_node_put(chip_np);
+ 		return dev_err_probe(dev, ret, "failed to register MTD device\n");
+ 	}
+ 
 
+---
+base-commit: 08710e696081d58163c8078e0e096be6d35c5fad
+change-id: 20250507-loongson1-nand-fix-279b7cdd6fad
+
+Best regards,
 -- 
-2.48.1
+Keguang Zhang <keguang.zhang@gmail.com>
 
