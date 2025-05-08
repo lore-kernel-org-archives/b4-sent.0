@@ -1,94 +1,61 @@
-From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Thu, 08 May 2025 11:28:42 +0800
-Subject: [PATCH] mtd: rawnand: loongson1: Fix inconsistent refcounting in
- ls1x_nand_chip_init()
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v2 0/4] memory: tegra210-emc: Support Device Tree EMC
+ Tables
+Date: Thu, 08 May 2025 01:07:37 -0500
+Message-Id: <20250508-tegra210-emc-dt-v2-0-d33dc20a1123@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250508-loongson1-nand-fix-v1-1-27b26234c62c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAOkkHGgC/x2MQQqAMAzAvjJ6tjAHOvQr4mHaqgXpZAMRZH93e
- EwgeSFzEs4wmhcS35IlaoW2MbAeQXdGocrgrOtsZz2eMeqeo7aoQQk3edD5YfErUb8Fghpeiav
- +p9NcygcEQdaqZAAAAA==
-To: Miquel Raynal <miquel.raynal@bootlin.com>, 
- Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>
-Cc: linux-mips@vger.kernel.org, linux-mtd@lists.infradead.org, 
- linux-kernel@vger.kernel.org, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Dan Carpenter <dan.carpenter@linaro.org>, 
- Keguang Zhang <keguang.zhang@gmail.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746674928; l=2384;
- i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=Enffpow1/oAmcpIlxb54XqOtVEib/iLdUuIMLpplTqs=;
- b=fYD8HRpmUt1FmYMRV3iW1cBEn4niKD1j8KhX3W660f8g/vV9SUM9UJ2xm+x1vbLINlw0u8KKW
- vHC+7SwNRNmAPW6deUZAEbq+C+iM1dGovTg/E7gfvQniSTIjeTEuiSr
-X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
- pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
-X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
+X-B4-Tracking: v=1; b=H4sIAClKHGgC/2WNQQ6CMBBFr0Jm7Zi2IDquvIdh0bQDTGKpaQnRE
+ O5uJe5cvpf891fInIQzXKsVEi+SJU4FzKECN9ppYBRfGIwyJ9UYwpmHZI1WyMGhn5HO3nFLyvq
+ GoayeiXt57cV7V3iUPMf03g8W/bW/Vq3+WotGjUQXanvbUt3o2xCsPI4uBui2bfsAPz21Hq4AA
+ AA=
+X-Change-ID: 20250429-tegra210-emc-dt-97dce690ad4e
+To: Krzysztof Kozlowski <krzk@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, Rob Herring <robh@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ devicetree@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1746684461; l=1217;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=h+pfeE2YEuEkhstsQ/EywIS3qHB3FnGPIcU0/7ZAPTU=;
+ b=2sbjpz0NHNUxabBRxSPI3YxFl2lApicoZ+XOPwEzfS+fRBYBmvSKFAQVP6HGDOZW4jdMz3iCh
+ WEfRWwRIuxGBjZoADeWJnDqLPX8JjbqochzUpo/8/ZcN2dOBOHsDUR2
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As reported by Dan,
-commit d2d10ede04b1 ("mtd: rawnand: Add Loongson-1 NAND Controller
-Driver"), leads to the following Smatch static checker warning:
-
-drivers/mtd/nand/raw/loongson1-nand-controller.c:730 ls1x_nand_chip_init()
-warn: inconsistent refcounting 'chip_np->kobj.kref.refcount.refs.counter':
-
-Fix this issue by calling of_node_put() immediately after using chip_np.
-In addition, remove all unnecessary of_node_put(chip_np) calls.
-
-Reported-by: Dan Carpenter <dan.carpenter@linaro.org>
-Closes: https://lore.kernel.org/all/aBR535RZZT-sa6QZ@stanley.mountain/
-Fixes: d2d10ede04b1 ("mtd: rawnand: Add Loongson-1 NAND Controller Driver")
-Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/mtd/nand/raw/loongson1-nand-controller.c | 14 ++++++--------
- 1 file changed, 6 insertions(+), 8 deletions(-)
-
-diff --git a/drivers/mtd/nand/raw/loongson1-nand-controller.c b/drivers/mtd/nand/raw/loongson1-nand-controller.c
-index 6a369b1c7d86..5f1bde21c8fc 100644
---- a/drivers/mtd/nand/raw/loongson1-nand-controller.c
-+++ b/drivers/mtd/nand/raw/loongson1-nand-controller.c
-@@ -703,27 +703,25 @@ static int ls1x_nand_chip_init(struct ls1x_nand_host *host)
- 	if (!chip_np)
- 		return dev_err_probe(dev, -ENODEV, "failed to get child node for NAND chip\n");
- 
--	chip->controller = &host->controller;
--	chip->options = NAND_NO_SUBPAGE_WRITE | NAND_USES_DMA | NAND_BROKEN_XD;
--	chip->buf_align = 16;
--	nand_set_controller_data(chip, host);
- 	nand_set_flash_node(chip, chip_np);
-+	of_node_put(chip_np);
- 	if (!mtd->name)
- 		return dev_err_probe(dev, -EINVAL, "Missing MTD label\n");
- 
-+	nand_set_controller_data(chip, host);
-+	chip->controller = &host->controller;
-+	chip->options = NAND_NO_SUBPAGE_WRITE | NAND_USES_DMA | NAND_BROKEN_XD;
-+	chip->buf_align = 16;
- 	mtd->dev.parent = dev;
- 	mtd->owner = THIS_MODULE;
- 
- 	ret = nand_scan(chip, 1);
--	if (ret) {
--		of_node_put(chip_np);
-+	if (ret)
- 		return dev_err_probe(dev, ret, "failed to scan NAND chip\n");
--	}
- 
- 	ret = mtd_device_register(mtd, NULL, 0);
- 	if (ret) {
- 		nand_cleanup(chip);
--		of_node_put(chip_np);
- 		return dev_err_probe(dev, ret, "failed to register MTD device\n");
- 	}
- 
+Changes in v2:
+- Add patch to describe the emc table bindings
+- Add patch to allow a fallback compatible on the tegra210 emc device to
+  match firmware expectations
+- Add a patch to include the baseline emc tables on p2180
+- Link to v1: https://lore.kernel.org/r/20250430-tegra210-emc-dt-v1-1-99896fa69341@gmail.com
 
 ---
-base-commit: 08710e696081d58163c8078e0e096be6d35c5fad
-change-id: 20250507-loongson1-nand-fix-279b7cdd6fad
+Aaron Kling (4):
+      dt-bindings: memory-controllers: Describe Tegra210 EMC Tables
+      dt-bindings: memory-controllers: tegra210: Allow fallback compatible
+      arm64: tegra: Add EMC timings to P2180
+      memory: tegra210-emc: Support Device Tree EMC Tables
+
+ .../nvidia,tegra21-emc-table.yaml                  |  1692 +
+ .../memory-controllers/nvidia,tegra210-emc.yaml    |    44 +-
+ arch/arm64/boot/dts/nvidia/tegra210-p2180-emc.dtsi | 49749 +++++++++++++++++++
+ arch/arm64/boot/dts/nvidia/tegra210-p2180.dtsi     |     1 +
+ drivers/memory/tegra/tegra210-emc-core.c           |   246 +-
+ 5 files changed, 51721 insertions(+), 11 deletions(-)
+---
+base-commit: 8bac8898fe398ffa3e09075ecea2be511725fb0b
+change-id: 20250429-tegra210-emc-dt-97dce690ad4e
 
 Best regards,
 -- 
-Keguang Zhang <keguang.zhang@gmail.com>
+Aaron Kling <webgeek1234@gmail.com>
 
