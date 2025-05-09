@@ -1,11 +1,10 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 09 May 2025 14:54:14 +0200
-Subject: [PATCH 10/12] sysctl: Move sysctl_panic_on_stackoverflow to
- kernel/panic.c
+Date: Fri, 09 May 2025 14:54:15 +0200
+Subject: [PATCH 11/12] sysctl: Remove (very) old file changelog
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250509-jag-mv_ctltables_iter2-v1-10-d0ad83f5f4c3@kernel.org>
+Message-Id: <20250509-jag-mv_ctltables_iter2-v1-11-d0ad83f5f4c3@kernel.org>
 References: <20250509-jag-mv_ctltables_iter2-v1-0-d0ad83f5f4c3@kernel.org>
 In-Reply-To: <20250509-jag-mv_ctltables_iter2-v1-0-d0ad83f5f4c3@kernel.org>
 To: Luis Chamberlain <mcgrof@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>, 
@@ -31,76 +30,60 @@ Cc: linux-modules@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-parisc@vger.kernel.org, linux-serial@vger.kernel.org, 
  Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1738;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1555;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=iBWZYDpQ2juAjhx5pX1DbD1nKbOZE742NSDAPf/9QSo=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGgd+yZVZlAJvlSFeIOK7ZUIBFeRAqCzIUtq1
- EXP6L0iac8e6okBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJoHfsmAAoJELqXzVK3
- lkFPKsUL/34wrM9l0suCAomA6YIWhJCQFnrdoNObwQnmqYlomYI6m+y92V0xy+ltvIjej2DhMm9
- Zo7HqxRyRmRFfsvqc5OGeZkQQgCiKriH3QMnOiEt7ZNXZZWWura6lhop2H5YVmONmix6awBu8ok
- n6UWQ+lQG8Gg3b+l8Rs+ON5FCfDrM5pFk1VyQnpQ+qKQY8Jz17Isp/gJxz1hPUdCLgWEhuW9kD5
- MTnu4NTj8f7+ZDkSF/2sfIm5O0umKl+BNzXhJ8APNvw9PW2tuX/jD5tTYDxbGfBr1BOchy5eJZe
- DOEJAuJ1fUxNfP4HlZ6OD7TpYvLKsUTEA6cF9YrsqW/TThUbv52ajFr/LHzxj2KbUx9+QTnf3u1
- HdU2RSmv9uKIcVnQBvI80bJftXsSVI2fUQqQfwongGBHQLG4r51JY4KivxNZrgg7qS2CsWccQF9
- 73RaPh70zGvXKDXnO7oh+GVcexPplGQ853rGTC8tjEiG6hO9FnaUG2fGqoWkB9/dH2Pn8Cuz8X8
- 0A=
+ bh=l7y3Jbe+VuDhW87xA14zc8M32/viN+V++/E2JThvO9k=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGgd+yYzKzJgtt4ntTpokN6y9XDIsXdhgoqX5
+ F7WhF8VlYCeSokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJoHfsmAAoJELqXzVK3
+ lkFPjG0L/j8GaLr9ywOQsgvVv5Xw8VoMDZucw17xsIkwa74dooJuP9ZQVCakXlhPXB01I+E+zf3
+ aIMBrvOgTKo6Dznr0CNidgX9rcGPeCqQBm1WNeCzPzuu9OPwSblcK0EQW8d9pyF/wLryQK6Wkbc
+ bo4TxGSyK/8Lwd1hn5SX/2Yd93Z2kSvP0lQluV52q/pRUnSgG0qtOaJYx0qb9HBOfZu/2vTWNsj
+ UfCTtfKFJKGdCFF7oQcdtsjFEiicRoKDPxr+k9x4VqGfZvNaIv696bu4gAxC/LerRqjeZXPjbcA
+ 8qM7Sp7gkRABoxRqT/BSQdTCkGqtagv64NcHDdMunCXa+XrVm7rWspSwzwZQpTcqKyDZT6ndewr
+ 58cU4skHP3FxIGDvB499kFVSiZmYHjvngFgvBYrDepXsWdrZqlpnfwE2LERTqNIT+KB5WMkWudT
+ txlECQUXV5CRvQmWSPFxr1Vc5bvZrHm4hsOvJn3EPCdOCSNEV7maDS/tVypyYKkJE2TQQKIh907
+ EE=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is part of a greater effort to move ctl tables into their
-respective subsystems which will reduce the merge conflicts in
-kernel/sysctl.c.
+These comments are older than 2003 and therefore do not bare any
+relevance on the current state of the sysctl.c file. Remove them as they
+confuse more than clarify.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- kernel/panic.c  | 10 ++++++++++
- kernel/sysctl.c | 10 ----------
- 2 files changed, 10 insertions(+), 10 deletions(-)
+ kernel/sysctl.c | 16 ----------------
+ 1 file changed, 16 deletions(-)
 
-diff --git a/kernel/panic.c b/kernel/panic.c
-index 213c6c9d6a750ff3d17f3cf530b37c619cd816f4..401f0997f654797acc3351040bbbda1845ce00c1 100644
---- a/kernel/panic.c
-+++ b/kernel/panic.c
-@@ -183,6 +183,16 @@ static const struct ctl_table kern_panic_table[] = {
- 		.mode           = 0644,
- 		.proc_handler   = proc_douintvec,
- 	},
-+#if (defined(CONFIG_X86_32) || defined(CONFIG_PARISC)) && \
-+	defined(CONFIG_DEBUG_STACKOVERFLOW)
-+	{
-+		.procname	= "panic_on_stackoverflow",
-+		.data		= &sysctl_panic_on_stackoverflow,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+#endif
- };
- 
- static __init int kernel_panic_sysctls_init(void)
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index d5bebdd02cd4f1def7d9dd2b85454a9022b600b7..446d77ec44f57a4929389b64fc23d3b180f550b4 100644
+index 446d77ec44f57a4929389b64fc23d3b180f550b4..dee9a818a9bbc8b1ecd17b8ac1ae533ce15c2029 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -1552,16 +1552,6 @@ static const struct ctl_table kern_table[] = {
- 		.mode		= 0444,
- 		.proc_handler	= proc_dointvec,
- 	},
--#if (defined(CONFIG_X86_32) || defined(CONFIG_PARISC)) && \
--	defined(CONFIG_DEBUG_STACKOVERFLOW)
--	{
--		.procname	= "panic_on_stackoverflow",
--		.data		= &sysctl_panic_on_stackoverflow,
--		.maxlen		= sizeof(int),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
--	},
--#endif
- #ifdef CONFIG_SYSCTL_ARCH_UNALIGN_NO_WARN
- 	{
- 		.procname	= "ignore-unaligned-usertrap",
+@@ -1,22 +1,6 @@
+ // SPDX-License-Identifier: GPL-2.0-only
+ /*
+  * sysctl.c: General linux system control interface
+- *
+- * Begun 24 March 1995, Stephen Tweedie
+- * Added /proc support, Dec 1995
+- * Added bdflush entry and intvec min/max checking, 2/23/96, Tom Dyas.
+- * Added hooks for /proc/sys/net (minor, minor patch), 96/4/1, Mike Shaver.
+- * Added kernel/java-{interpreter,appletviewer}, 96/5/10, Mike Shaver.
+- * Dynamic registration fixes, Stephen Tweedie.
+- * Added kswapd-interval, ctrl-alt-del, printk stuff, 1/8/97, Chris Horn.
+- * Made sysctl support optional via CONFIG_SYSCTL, 1/10/97, Chris
+- *  Horn.
+- * Added proc_doulongvec_ms_jiffies_minmax, 09/08/99, Carlos H. Bauer.
+- * Added proc_doulongvec_minmax, 09/08/99, Carlos H. Bauer.
+- * Changed linked lists to use list.h instead of lists.h, 02/24/00, Bill
+- *  Wendling.
+- * The list_for_each() macro wasn't appropriate for the sysctl loop.
+- *  Removed it and replaced it with older style, 03/23/00, Bill Wendling
+  */
+ 
+ #include <linux/sysctl.h>
 
 -- 
 2.47.2
