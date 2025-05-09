@@ -1,186 +1,157 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Fri, 09 May 2025 18:17:04 +0800
-Subject: [PATCH v2] Bluetooth: fix socket matching ambiguity between BIS
- and CIS
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH 00/12] sysctl: Move sysctls to their respective subsystems
+ (second batch)
+Date: Fri, 09 May 2025 14:54:04 +0200
+Message-Id: <20250509-jag-mv_ctltables_iter2-v1-0-d0ad83f5f4c3@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250509-iso-v2-1-da53bd18c193@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAB/WHWgC/zWMyw6CMBBFf4XM2po+bFFX/gdhQcsAkwg1rWkwp
- P9ubeLy3NxzDogYCCPcmwMCJorktwLy1IBbhm1GRmNhkFxqrrlhFD0zWujrTVltrYLyfAWcaK+
- Vri+8UHz78KnRJH7r32+rnwQTzEyGj/KikKv2MaxPP5M7O79Cn3P+Ah83fIGYAAAA
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1746785845; l=5072;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=VjVfZ4Q3GK4UA1LAAiFeOM2PfRNRZQCaap54bHro5Y0=;
- b=+duwP9MYf9CGYkQ3dquP8kyUihl8OoaF+YWsMEaJkbD4+niMYXCKvUIp+J79RNyDzSajNaMC8
- TcxAZ2TYNCPBvjqcxsaD93F/itBYSKzFzfG46ydodr2H29obmHEMgob
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+X-B4-Tracking: v=1; b=H4sIAO36HWgC/x3M3QpAQBBA4VfRXNtaI7ReRdJYg5G/djcpeXeby
+ +/inAc8O2EPdfKA40u8HHtEliZgZ9onVjJEA2osdKGNWmhS29XZsAbqV/adBHaoDGVVSTmiNQP
+ E+HQ8yv2Pm/Z9Pxv//uxoAAAA
+X-Change-ID: 20250509-jag-mv_ctltables_iter2-9a176a322c9d
+To: Luis Chamberlain <mcgrof@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>, 
+ Sami Tolvanen <samitolvanen@google.com>, 
+ Daniel Gomez <da.gomez@samsung.com>, Kees Cook <kees@kernel.org>, 
+ Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Will Deacon <will@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
+ Waiman Long <longman@redhat.com>, "Paul E. McKenney" <paulmck@kernel.org>, 
+ Frederic Weisbecker <frederic@kernel.org>, 
+ Neeraj Upadhyay <neeraj.upadhyay@kernel.org>, 
+ Joel Fernandes <joel@joelfernandes.org>, 
+ Josh Triplett <josh@joshtriplett.org>, Uladzislau Rezki <urezki@gmail.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Lai Jiangshan <jiangshanlai@gmail.com>, Zqiang <qiang.zhang1211@gmail.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ Helge Deller <deller@gmx.de>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>
+Cc: linux-modules@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-fsdevel@vger.kernel.org, rcu@vger.kernel.org, linux-mm@kvack.org, 
+ linux-parisc@vger.kernel.org, linux-serial@vger.kernel.org, 
+ Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4502;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=c3c94OjA1q5qb8EGSYnHVBVy8iOw9HUdPL9oEFYfxLk=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGgd+xMW7Hzi52CWL9iWR+Z70SJ7b24h1VVTE
+ 9+RcZ6N+tkWRYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJoHfsTAAoJELqXzVK3
+ lkFP/6IL/jqzfrkpLBdybK4gjSc6ouWp4ieAHXYsQp1S7DOTMfmtKoA3WGZiaS/e09VycqVxmV7
+ QL7bIphe5aOAGsKRfnzXH/Hw7gCvdsJ7wIDxjbXyoEZUvdZyAOe8ZXj/dvFWk1mTifku+SVY/tF
+ 0nAq1rIlLyFh8p7/3PU7knC9Chtj+lelUov03LWHsB7O1+aFpCDy2GRqkhDAeuYFPdE/iQes9mw
+ 2NJXuX6auIitRw64qZDDYLrbz2ZhcXKmYkc1m5h4tcIdJPhMOcI5jBaz+xT709w9P0ojGopy/I4
+ iRU6Cpv3crKjS07AYXf0mSucoF//u0OalGFPsTMJkN5usP8JcRovnwFrPa+cLE8uC09Z+WXtXIV
+ InsEjNTX8XjAZFZ07Z3Im0b4DJaT8bb0HUN1qHPR/smJbhD5qy6XjyWAZ6v1GgsYF1No+2YtLVm
+ 74Y6dZPLQqguGo8y7ok+l1LnUwN3yTYUlKz8oHZs4bVH3wIwcgGgmSjJ/E8AWrV+umAJ97WKW55
+ TI=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the DUT acts as a sink device, and a BIS already exists,
-creating a CIS connection can cause the kernel to incorrectly
-reference the BIS socket. This occurs because the socket
-lookup only checks for state == BT_LISTEN, without
-distinguishing between BIS and CIS socket types.
+This series relocates sysctl tables from kern_table to their respective
+subsystems. It is mostly moves to core kernel subsystems but also
+includes mm/memory.c and 2 drivers (parisc and tty). With this series we
+are left with 8 ctl_tables out of the original 50 that existed within
+the kern_table array. With all this activity in kernel/sysctl.c, I took
+the liberty of removing unneeded include headers as well as outdated
+changelog comments.
 
-To fix this, match the destination address (dst addr) during
-ISO socket lookup to differentiate between BIS and CIS sockets
-properly.
+By decentralizing sysctl registrations, subsystem maintainers regain
+control over their sysctl interfaces, improving maintainability and
+reducing the likelihood of merge conflicts. All this is made possible by
+the work done to reduce the ctl_table memory footprint in commit
+d7a76ec87195 ("sysctl: Remove check for sentinel element in ctl_table
+arrays").
 
-Link: https://github.com/bluez/bluez/issues/1224
+A few comments on the process:
+1. If you see that the change is good and want to push it through a tree
+   different than sysctl, please tell me so I can remove it from this
+   series and try to avoid conflicts in linux-next.
+2. Apologies if you have received this in error. Please tell me if you
+   want to be removed from recipient list and note that it is difficult
+   to actually know who is interested in these "treewide" changes.
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+Testing done by running sysctl selftests on x86_64 and 0-day.
+
+You can find the first batch here [1], if you are curious.
+
+Comments are greatly appreciated
+
+[1] https://lore.kernel.org/20250313-jag-mv_ctltables-v3-0-91f3bb434d27@kernel.org
+
+To: Luis Chamberlain <mcgrof@kernel.org>
+To: Petr Pavlu <petr.pavlu@suse.com>
+To: Sami Tolvanen <samitolvanen@google.com>
+To: Daniel Gomez <da.gomez@samsung.com>
+To: Kees Cook <kees@kernel.org>
+To: Peter Zijlstra <peterz@infradead.org>
+To: Ingo Molnar <mingo@redhat.com>
+To: Will Deacon <will@kernel.org>
+To: Boqun Feng <boqun.feng@gmail.com>
+To: Waiman Long <longman@redhat.com>
+To: Paul E. McKenney <paulmck@kernel.org>
+To: Frederic Weisbecker <frederic@kernel.org>
+To: Neeraj Upadhyay <neeraj.upadhyay@kernel.org>
+To: Joel Fernandes <joel@joelfernandes.org>
+To: Josh Triplett <josh@joshtriplett.org>
+To: Uladzislau Rezki <urezki@gmail.com>
+To: Steven Rostedt <rostedt@goodmis.org>
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Lai Jiangshan <jiangshanlai@gmail.com>
+To: Zqiang <qiang.zhang1211@gmail.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+To: James E.J. Bottomley <James.Bottomley@HansenPartnership.com>
+To: Helge Deller <deller@gmx.de>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: Jiri Slaby <jirislaby@kernel.org>
+Cc: linux-modules@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org
+Cc: rcu@vger.kernel.org
+Cc: linux-mm@kvack.org
+Cc: linux-parisc@vger.kernel.org
+Cc: linux-serial@vger.kernel.org
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-Changes in v2:
-- Fix compilation errors
-- Improved the problem description for clarity.
-- Link to v1: https://lore.kernel.org/r/20250507-iso-v1-1-6f60d243e037@amlogic.com
----
- net/bluetooth/hci_event.c | 34 +++++++++++++++++++---------------
- net/bluetooth/iso.c       | 12 +++++++++---
- 2 files changed, 28 insertions(+), 18 deletions(-)
+Joel Granados (12):
+      module: Move modprobe_path and modules_disabled ctl_tables into the module subsys
+      locking/rtmutex: Move max_lock_depth into rtmutex.c
+      rcu: Move rcu_stall related sysctls into rcu/tree_stall.h
+      mm: move randomize_va_space into memory.c
+      parisc/power: Move soft-power into power.c
+      fork: mv threads-max into kernel/fork.c
+      Input: sysrq: mv sysrq into drivers/tty/sysrq.c
+      sysctl: Move tainted ctl_table into kernel/panic.c
+      sysctl: move cad_pid into kernel/pid.c
+      sysctl: Move sysctl_panic_on_stackoverflow to kernel/panic.c
+      sysctl: Remove (very) old file changelog
+      sysctl: Remove superfluous includes from kernel/sysctl.c
 
-diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
-index 66052d6aaa1d..6b26344ad69f 100644
---- a/net/bluetooth/hci_event.c
-+++ b/net/bluetooth/hci_event.c
-@@ -6413,6 +6413,8 @@ static void hci_le_pa_sync_estabilished_evt(struct hci_dev *hdev, void *data,
- 
- 	conn->sync_handle = le16_to_cpu(ev->handle);
- 	conn->sid = HCI_SID_INVALID;
-+	conn->dst = ev->bdaddr;
-+	conn->dst_type = ev->bdaddr_type;
- 
- 	mask |= hci_proto_connect_ind(hdev, &ev->bdaddr, BIS_LINK,
- 				      &flags);
-@@ -6425,7 +6427,7 @@ static void hci_le_pa_sync_estabilished_evt(struct hci_dev *hdev, void *data,
- 		goto unlock;
- 
- 	/* Add connection to indicate PA sync event */
--	pa_sync = hci_conn_add_unset(hdev, BIS_LINK, BDADDR_ANY,
-+	pa_sync = hci_conn_add_unset(hdev, BIS_LINK, &ev->bdaddr,
- 				     HCI_ROLE_SLAVE);
- 
- 	if (IS_ERR(pa_sync))
-@@ -6456,13 +6458,6 @@ static void hci_le_per_adv_report_evt(struct hci_dev *hdev, void *data,
- 
- 	hci_dev_lock(hdev);
- 
--	mask |= hci_proto_connect_ind(hdev, BDADDR_ANY, BIS_LINK, &flags);
--	if (!(mask & HCI_LM_ACCEPT))
--		goto unlock;
--
--	if (!(flags & HCI_PROTO_DEFER))
--		goto unlock;
--
- 	pa_sync = hci_conn_hash_lookup_pa_sync_handle
- 			(hdev,
- 			le16_to_cpu(ev->sync_handle));
-@@ -6470,6 +6465,13 @@ static void hci_le_per_adv_report_evt(struct hci_dev *hdev, void *data,
- 	if (!pa_sync)
- 		goto unlock;
- 
-+	mask |= hci_proto_connect_ind(hdev, &pa_sync->dst, BIS_LINK, &flags);
-+	if (!(mask & HCI_LM_ACCEPT))
-+		goto unlock;
-+
-+	if (!(flags & HCI_PROTO_DEFER))
-+		goto unlock;
-+
- 	if (ev->data_status == LE_PA_DATA_COMPLETE &&
- 	    !test_and_set_bit(HCI_CONN_PA_SYNC, &pa_sync->flags)) {
- 		/* Notify iso layer */
-@@ -6993,6 +6995,8 @@ static void hci_le_big_sync_established_evt(struct hci_dev *hdev, void *data,
- 			set_bit(HCI_CONN_PA_SYNC, &bis->flags);
- 
- 		bis->sync_handle = conn->sync_handle;
-+		bis->dst = conn->dst;
-+		bis->dst_type = conn->dst_type;
- 		bis->iso_qos.bcast.big = ev->handle;
- 		memset(&interval, 0, sizeof(interval));
- 		memcpy(&interval, ev->latency, sizeof(ev->latency));
-@@ -7038,13 +7042,6 @@ static void hci_le_big_info_adv_report_evt(struct hci_dev *hdev, void *data,
- 
- 	hci_dev_lock(hdev);
- 
--	mask |= hci_proto_connect_ind(hdev, BDADDR_ANY, BIS_LINK, &flags);
--	if (!(mask & HCI_LM_ACCEPT))
--		goto unlock;
--
--	if (!(flags & HCI_PROTO_DEFER))
--		goto unlock;
--
- 	pa_sync = hci_conn_hash_lookup_pa_sync_handle
- 			(hdev,
- 			le16_to_cpu(ev->sync_handle));
-@@ -7054,6 +7051,13 @@ static void hci_le_big_info_adv_report_evt(struct hci_dev *hdev, void *data,
- 
- 	pa_sync->iso_qos.bcast.encryption = ev->encryption;
- 
-+	mask |= hci_proto_connect_ind(hdev, &pa_sync->dst, BIS_LINK, &flags);
-+	if (!(mask & HCI_LM_ACCEPT))
-+		goto unlock;
-+
-+	if (!(flags & HCI_PROTO_DEFER))
-+		goto unlock;
-+
- 	/* Notify iso layer */
- 	hci_connect_cfm(pa_sync, 0);
- 
-diff --git a/net/bluetooth/iso.c b/net/bluetooth/iso.c
-index 6e2c752aaa8f..1dc233f04dbe 100644
---- a/net/bluetooth/iso.c
-+++ b/net/bluetooth/iso.c
-@@ -641,11 +641,12 @@ static struct sock *iso_get_sock(bdaddr_t *src, bdaddr_t *dst,
- 			continue;
- 
- 		/* Exact match. */
--		if (!bacmp(&iso_pi(sk)->src, src)) {
-+		if (!bacmp(&iso_pi(sk)->src, src)
-+		     && !bacmp(&iso_pi(sk)->dst, dst)
-+			){
- 			sock_hold(sk);
- 			break;
- 		}
--
- 		/* Closest match */
- 		if (!bacmp(&iso_pi(sk)->src, BDADDR_ANY)) {
- 			if (sk1)
-@@ -1962,7 +1963,7 @@ static void iso_conn_ready(struct iso_conn *conn)
- 		}
- 
- 		if (!parent)
--			parent = iso_get_sock(&hcon->src, BDADDR_ANY,
-+			parent = iso_get_sock(&hcon->src, &hcon->dst,
- 					      BT_LISTEN, NULL, NULL);
- 
- 		if (!parent)
-@@ -2203,6 +2204,11 @@ int iso_connect_ind(struct hci_dev *hdev, bdaddr_t *bdaddr, __u8 *flags)
- 	} else {
- 		sk = iso_get_sock(&hdev->bdaddr, BDADDR_ANY,
- 				  BT_LISTEN, NULL, NULL);
-+		if (!sk)
-+			sk = iso_get_sock(&hdev->bdaddr, bdaddr,
-+					  BT_LISTEN, NULL, NULL);
-+		else
-+			iso_pi(sk)->dst = *bdaddr;
- 	}
- 
- done:
-
+ drivers/parisc/power.c       |  20 +++-
+ drivers/tty/sysrq.c          |  38 +++++++
+ include/linux/kmod.h         |   1 -
+ include/linux/panic.h        |   2 -
+ include/linux/rtmutex.h      |   2 -
+ include/linux/sysctl.h       |   4 -
+ kernel/fork.c                |  20 +++-
+ kernel/locking/rtmutex.c     |  23 +++++
+ kernel/locking/rtmutex_api.c |   5 -
+ kernel/module/kmod.c         |  32 +++++-
+ kernel/panic.c               |  60 +++++++++++
+ kernel/pid.c                 |  32 ++++++
+ kernel/rcu/tree_stall.h      |  33 +++++-
+ kernel/sysctl.c              | 233 -------------------------------------------
+ mm/memory.c                  |  18 ++++
+ 15 files changed, 271 insertions(+), 252 deletions(-)
 ---
-base-commit: f3daca9b490154fbb0459848cc2ed61e8367bddc
-change-id: 20250506-iso-6515893b5bb3
+base-commit: 7a94ff386a4a0d9322c56c0e998dd20468d869b1
+change-id: 20250509-jag-mv_ctltables_iter2-9a176a322c9d
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Joel Granados <joel.granados@kernel.org>
 
