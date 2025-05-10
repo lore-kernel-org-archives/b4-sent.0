@@ -1,10 +1,10 @@
 From: Sven Peter <sven@svenpeter.dev>
-Date: Sat, 10 May 2025 07:44:45 +0000
-Subject: [PATCH 5/7] arm64: dts: apple: t8103: Add eFuses node
+Date: Sat, 10 May 2025 07:44:46 +0000
+Subject: [PATCH 6/7] arm64: dts: apple: t600x: Add eFuses node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250510-nvmem-dt-v1-5-eccfa6e33f6a@svenpeter.dev>
+Message-Id: <20250510-nvmem-dt-v1-6-eccfa6e33f6a@svenpeter.dev>
 References: <20250510-nvmem-dt-v1-0-eccfa6e33f6a@svenpeter.dev>
 In-Reply-To: <20250510-nvmem-dt-v1-0-eccfa6e33f6a@svenpeter.dev>
 To: Srinivas Kandagatla <srinivas.kandagatla@linaro.org>, 
@@ -14,140 +14,228 @@ To: Srinivas Kandagatla <srinivas.kandagatla@linaro.org>,
  Conor Dooley <conor+dt@kernel.org>
 Cc: linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
  linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
- Sven Peter <sven@svenpeter.dev>
+ Sven Peter <sven@svenpeter.dev>, R <rqou@berkeley.edu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2966; i=sven@svenpeter.dev;
- h=from:subject:message-id; bh=hvAqTufzhOojxJ9ZjRR62jKrJGngJmyVl4diuLr5gAM=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4Y8C6PszTcHJsasFHb3y2r5eUBXdZ3l+biMmvdXn/NGr
- A526FTuKGVhEONgkBVTZNm+3970ycM3gks3XXoPM4eVCWQIAxenAEzEz4GRYXPxw/MHpnEdzz83
- xXvuhzVvCiLf954QmCH2um/q4dmLarIY/sfzVcZsXxx79s9Pww0MTHvv3Cmp3rMgY9vq/X7bTJe
- n2zMCAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5131; i=sven@svenpeter.dev;
+ h=from:subject:message-id; bh=UXt9Kftl5StUn3CgxMRa9JeMUPLGniuUQZkGLH1xy4Y=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ4Y8C5O+3b/+NZ/yFSe/v8x6XSOscu3l7y2i51SlC57ce
+ 1w6j+NURykLgxgHg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAiS2oZGe592LK5uNGzPT7a
+ 6pPlApXby//appyWfWnNwhfb0PzwzleGf7rKts26OSliNzpmiqj8/7k/+WZbhvsuu0Xawm+4pk5
+ czAsA
 X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the eFuse controller and the nvmem cells required for both Type-C
-PHYs.
+From: R <rqou@berkeley.edu>
 
+Add the eFuse controller and the nvmem cells required for all Type-C
+PHYs
+
+Signed-off-by: R <rqou@berkeley.edu>
 Signed-off-by: Sven Peter <sven@svenpeter.dev>
 ---
- arch/arm64/boot/dts/apple/t8103.dtsi | 102 +++++++++++++++++++++++++++++++++++
- 1 file changed, 102 insertions(+)
+ arch/arm64/boot/dts/apple/t600x-dieX.dtsi | 187 ++++++++++++++++++++++++++++++
+ 1 file changed, 187 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index 97b6a067394e311ed19392a34237c74936dbb7d7..e7ca9204a9a2fedc70111fdd8ed3f7e8e4f8d266 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -854,6 +854,108 @@ nvme@27bcc0000 {
- 			resets = <&ps_ans2>;
- 		};
+diff --git a/arch/arm64/boot/dts/apple/t600x-dieX.dtsi b/arch/arm64/boot/dts/apple/t600x-dieX.dtsi
+index a32ff0c9d7b0c2ec720e9d4cf8e769da6431fbba..22deae50864c88cc7ede73946778c5157e836c9e 100644
+--- a/arch/arm64/boot/dts/apple/t600x-dieX.dtsi
++++ b/arch/arm64/boot/dts/apple/t600x-dieX.dtsi
+@@ -74,6 +74,193 @@ DIE_NODE(pmgr_mini): power-management@292280000 {
+ 		reg = <0x2 0x92280000 0 0x4000>;
+ 	};
  
-+		efuse@23d2bc000 {
-+			compatible = "apple,t8103-efuses", "apple,efuses";
-+			reg = <0x2 0x3d2bc000 0x0 0x1000>;
-+			#address-cells = <1>;
-+			#size-cells = <1>;
++	DIE_NODE(efuse): efuse@2922bc000 {
++		compatible = "apple,t6000-efuses", "apple,efuses";
++		reg = <0x2 0x922bc000 0x0 0x2000>;
++		#address-cells = <1>;
++		#size-cells = <1>;
 +
-+			atcphy0_auspll_rodco_bias_adjust: efuse@430,26 {
-+				reg = <0x430 4>;
-+				bits = <26 3>;
-+			};
-+
-+			atcphy0_auspll_rodco_encap: efuse@430,29 {
-+				reg = <0x430 4>;
-+				bits = <29 2>;
-+			};
-+
-+			atcphy0_auspll_dtc_vreg_adjust: efuse@430,31 {
-+				reg = <0x430 8>;
-+				bits = <31 3>;
-+			};
-+
-+			atcphy0_auspll_fracn_dll_start_capcode: efuse@434,2 {
-+				reg = <0x434 4>;
-+				bits = <2 2>;
-+			};
-+
-+			atcphy0_aus_cmn_shm_vreg_trim: efuse@434,4 {
-+				reg = <0x434 4>;
-+				bits = <4 5>;
-+			};
-+
-+			atcphy0_cio3pll_dco_coarsebin0: efuse@434,9 {
-+				reg = <0x434 4>;
-+				bits = <9 6>;
-+			};
-+
-+			atcphy0_cio3pll_dco_coarsebin1: efuse@434,15 {
-+				reg = <0x434 4>;
-+				bits = <15 6>;
-+			};
-+
-+			atcphy0_cio3pll_dll_start_capcode: efuse@434,21 {
-+				reg = <0x434 4>;
-+				bits = <21 2>;
-+			};
-+
-+			atcphy0_cio3pll_dtc_vreg_adjust: efuse@434,23 {
-+				reg = <0x434 0x4>;
-+				bits = <23 3>;
-+			};
-+
-+			atcphy1_auspll_rodco_bias_adjust: efuse@438,4 {
-+				reg = <0x438 4>;
-+				bits = <4 3>;
-+			};
-+
-+			atcphy1_auspll_rodco_encap: efuse@438,7 {
-+				reg = <0x438 4>;
-+				bits = <7 2>;
-+			};
-+
-+			atcphy1_auspll_dtc_vreg_adjust: efuse@438,9 {
-+				reg = <0x438 4>;
-+				bits = <9 3>;
-+			};
-+
-+			atcphy1_auspll_fracn_dll_start_capcode: efuse@438,12 {
-+				reg = <0x438 4>;
-+				bits = <12 2>;
-+			};
-+
-+			atcphy1_aus_cmn_shm_vreg_trim: efuse@438,14 {
-+				reg = <0x438 4>;
-+				bits = <14 5>;
-+			};
-+
-+			atcphy1_cio3pll_dco_coarsebin0: efuse@438,19 {
-+				reg = <0x438 4>;
-+				bits = <19 6>;
-+			};
-+
-+			atcphy1_cio3pll_dco_coarsebin1: efuse@438,25 {
-+				reg = <0x438 4>;
-+				bits = <25 6>;
-+			};
-+
-+			atcphy1_cio3pll_dll_start_capcode: efuse@438,31 {
-+				reg = <0x438 4>;
-+				bits = <31 1>;
-+			};
-+
-+			atcphy1_cio3pll_dll_start_capcode_workaround: efuse@43c,0 {
-+				reg = <0x43c 0x4>;
-+				bits = <0 1>;
-+			};
-+
-+			atcphy1_cio3pll_dtc_vreg_adjust: efuse@43c,1 {
-+				reg = <0x43c 0x4>;
-+				bits = <1 3>;
-+			};
++		DIE_NODE(atcphy0_auspll_rodco_bias_adjust): efuse@a10,22 {
++			reg = <0xa10 4>;
++			bits = <22 3>;
 +		};
 +
- 		pcie0_dart_0: iommu@681008000 {
- 			compatible = "apple,t8103-dart";
- 			reg = <0x6 0x81008000 0x0 0x4000>;
++		DIE_NODE(atcphy0_auspll_rodco_encap): efuse@a10,25 {
++			reg = <0xa10 4>;
++			bits = <25 2>;
++		};
++
++		DIE_NODE(atcphy0_auspll_dtc_vreg_adjust): efuse@a10,27 {
++			reg = <0xa10 4>;
++			bits = <27 3>;
++		};
++
++		DIE_NODE(atcphy0_auspll_fracn_dll_start_capcode): efuse@a10,30 {
++			reg = <0xa10 4>;
++			bits = <30 2>;
++		};
++
++		DIE_NODE(atcphy0_aus_cmn_shm_vreg_trim): efuse@a14,0 {
++			reg = <0xa14 4>;
++			bits = <0 5>;
++		};
++
++		DIE_NODE(atcphy0_cio3pll_dco_coarsebin0): efuse@a14,5 {
++			reg = <0xa14 4>;
++			bits = <5 6>;
++		};
++
++		DIE_NODE(atcphy0_cio3pll_dco_coarsebin1): efuse@a14,11 {
++			reg = <0xa14 4>;
++			bits = <11 6>;
++		};
++
++		DIE_NODE(atcphy0_cio3pll_dll_start_capcode): efuse@a14,17 {
++			reg = <0xa14 4>;
++			bits = <17 2>;
++		};
++
++		DIE_NODE(atcphy0_cio3pll_dtc_vreg_adjust): efuse@a14,19 {
++			reg = <0xa14 4>;
++			bits = <19 3>;
++		};
++
++		DIE_NODE(atcphy1_auspll_rodco_bias_adjust): efuse@a18,0 {
++			reg = <0xa18 4>;
++			bits = <0 3>;
++		};
++
++		DIE_NODE(atcphy1_auspll_rodco_encap): efuse@a18,3 {
++			reg = <0xa18 4>;
++			bits = <3 2>;
++		};
++
++		DIE_NODE(atcphy1_auspll_dtc_vreg_adjust): efuse@a18,5 {
++			reg = <0xa18 4>;
++			bits = <5 3>;
++		};
++
++		DIE_NODE(atcphy1_auspll_fracn_dll_start_capcode): efuse@a18,8 {
++			reg = <0xa18 4>;
++			bits = <8 2>;
++		};
++
++		DIE_NODE(atcphy1_aus_cmn_shm_vreg_trim): efuse@a18,10 {
++			reg = <0xa18 4>;
++			bits = <10 5>;
++		};
++
++		DIE_NODE(atcphy1_cio3pll_dco_coarsebin0): efuse@a18,15 {
++			reg = <0xa18 4>;
++			bits = <15 6>;
++		};
++
++		DIE_NODE(atcphy1_cio3pll_dco_coarsebin1): efuse@a18,21 {
++			reg = <0xa18 4>;
++			bits = <21 6>;
++		};
++
++		DIE_NODE(atcphy1_cio3pll_dll_start_capcode): efuse@a18,27 {
++			reg = <0xa18 4>;
++			bits = <27 2>;
++		};
++
++		DIE_NODE(atcphy1_cio3pll_dtc_vreg_adjust): efuse@a18,29 {
++			reg = <0xa18 4>;
++			bits = <29 3>;
++		};
++
++		DIE_NODE(atcphy2_auspll_rodco_bias_adjust): efuse@a1c,10 {
++			reg = <0xa1c 4>;
++			bits = <10 3>;
++		};
++
++		DIE_NODE(atcphy2_auspll_rodco_encap): efuse@a1c,13 {
++			reg = <0xa1c 4>;
++			bits = <13 2>;
++		};
++
++		DIE_NODE(atcphy2_auspll_dtc_vreg_adjust): efuse@a1c,15 {
++			reg = <0xa1c 4>;
++			bits = <15 3>;
++		};
++
++		DIE_NODE(atcphy2_auspll_fracn_dll_start_capcode): efuse@a1c,18 {
++			reg = <0xa1c 4>;
++			bits = <18 2>;
++		};
++
++		DIE_NODE(atcphy2_aus_cmn_shm_vreg_trim): efuse@a1c,20 {
++			reg = <0xa1c 4>;
++			bits = <20 5>;
++		};
++
++		DIE_NODE(atcphy2_cio3pll_dco_coarsebin0): efuse@a1c,25 {
++			reg = <0xa1c 4>;
++			bits = <25 6>;
++		};
++
++		DIE_NODE(atcphy2_cio3pll_dco_coarsebin1): efuse@a1c,31 {
++			reg = <0xa1c 8>;
++			bits = <31 6>;
++		};
++
++		DIE_NODE(atcphy2_cio3pll_dll_start_capcode): efuse@a20,5 {
++			reg = <0xa20 4>;
++			bits = <5 2>;
++		};
++
++		DIE_NODE(atcphy2_cio3pll_dtc_vreg_adjust): efuse@a20,7 {
++			reg = <0xa20 4>;
++			bits = <7 3>;
++		};
++
++		DIE_NODE(atcphy3_auspll_rodco_bias_adjust): efuse@a20,20 {
++			reg = <0xa20 4>;
++			bits = <20 3>;
++		};
++
++		DIE_NODE(atcphy3_auspll_rodco_encap): efuse@a20,23 {
++			reg = <0xa20 4>;
++			bits = <23 2>;
++		};
++
++		DIE_NODE(atcphy3_auspll_dtc_vreg_adjust): efuse@a20,25 {
++			reg = <0xa20 4>;
++			bits = <25 3>;
++		};
++
++		DIE_NODE(atcphy3_auspll_fracn_dll_start_capcode): efuse@a20,28 {
++			reg = <0xa20 4>;
++			bits = <28 2>;
++		};
++
++		DIE_NODE(atcphy3_aus_cmn_shm_vreg_trim): efuse@a20,30 {
++			reg = <0xa20 8>;
++			bits = <30 5>;
++		};
++
++		DIE_NODE(atcphy3_cio3pll_dco_coarsebin0): efuse@a24,3 {
++			reg = <0xa24 4>;
++			bits = <3 6>;
++		};
++
++		DIE_NODE(atcphy3_cio3pll_dco_coarsebin1): efuse@a24,9 {
++			reg = <0xa24 4>;
++			bits = <9 6>;
++		};
++
++		DIE_NODE(atcphy3_cio3pll_dll_start_capcode): efuse@a24,15 {
++			reg = <0xa24 4>;
++			bits = <15 2>;
++		};
++
++		DIE_NODE(atcphy3_cio3pll_dtc_vreg_adjust): efuse@a24,17 {
++			reg = <0xa24 4>;
++			bits = <17 3>;
++		};
++	};
++
+ 	DIE_NODE(pinctrl_aop): pinctrl@293820000 {
+ 		compatible = "apple,t6000-pinctrl", "apple,pinctrl";
+ 		reg = <0x2 0x93820000 0x0 0x4000>;
 
 -- 
 2.34.1
