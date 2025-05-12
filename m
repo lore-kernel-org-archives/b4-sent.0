@@ -1,10 +1,11 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Mon, 12 May 2025 15:46:47 +0100
-Subject: [PATCH v5 4/7] include: adi-axi-common: add new helper macros
+Date: Mon, 12 May 2025 15:46:48 +0100
+Subject: [PATCH v5 5/7] clk: clk-axi-clkgen: detect axi_clkgen_limits at
+ runtime
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250512-dev-axi-clkgen-limits-v5-4-a86b9a368e05@analog.com>
+Message-Id: <20250512-dev-axi-clkgen-limits-v5-5-a86b9a368e05@analog.com>
 References: <20250512-dev-axi-clkgen-limits-v5-0-a86b9a368e05@analog.com>
 In-Reply-To: <20250512-dev-axi-clkgen-limits-v5-0-a86b9a368e05@analog.com>
 To: linux-clk@vger.kernel.org, linux-fpga@vger.kernel.org, 
@@ -23,73 +24,130 @@ Cc: Stephen Boyd <sboyd@kernel.org>,
  David Lechner <dlechner@baylibre.com>, Mark Brown <broonie@kernel.org>, 
  Mike Turquette <mturquette@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747061206; l=1930;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747061206; l=3945;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=F9rmW1Daru1sdf4SDLslhcn5FXhJbwH5zOEXykHR5J4=;
- b=RL40ZqwVKCMftUpUVUVgcB7+lodS1B7BzIYaxsbSCPrOZMcuKO4g08kHe2EorCIrVXXy+SuiK
- h/O1j/19jlxDQjp84tNIllgYVchRzzWSVX88cGnGHGL8yNN2JJE0qda
+ bh=ugZMRO1dPrXHmp3+RiQIGackyLAEiu2u1ndvgeX4+5w=;
+ b=6xvkfVxe14XOyDy+SuTnsz5BbEbuS+W0dFTpE9ghCWcnBU8tDBUBvT3KEx1Har3U4t3lCsCHc
+ ElYEg+xo7fbAIfcf9I2FERVFIQotGrZVMlJyqZj81Wzd6jWzpnIvqG6
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add new helper macros and enums to help identifying the platform and some
-characteristics of it at runtime.
+This patch adds support for setting the limits in struct
+axi_clkgen_limits  in accordance with fpga speed grade, voltage,
+technology and family. This new information is extracted from
+two new registers implemented in the ip core that are only available
+for core versions higher or equal to 4.
 
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- include/linux/adi-axi-common.h | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+ drivers/clk/clk-axi-clkgen.c | 64 +++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 63 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/adi-axi-common.h b/include/linux/adi-axi-common.h
-index 141ac3f251e6f256526812b9d55cd440a2a46e76..f64f4ad4bedae312ec450bd5fed09ceaedd5397e 100644
---- a/include/linux/adi-axi-common.h
-+++ b/include/linux/adi-axi-common.h
-@@ -12,6 +12,7 @@
- #define ADI_AXI_COMMON_H_
+diff --git a/drivers/clk/clk-axi-clkgen.c b/drivers/clk/clk-axi-clkgen.c
+index 31915f8f5565f2ef5d17c0b4a0c91a648005b3e6..a611451eae9dda1aa21ea269899a510994ecd42e 100644
+--- a/drivers/clk/clk-axi-clkgen.c
++++ b/drivers/clk/clk-axi-clkgen.c
+@@ -6,6 +6,7 @@
+  *  Author: Lars-Peter Clausen <lars@metafoo.de>
+  */
  
- #define ADI_AXI_REG_VERSION			0x0000
-+#define ADI_AXI_REG_FPGA_INFO			0x001C
++#include <linux/bits.h>
+ #include <linux/platform_device.h>
+ #include <linux/clk.h>
+ #include <linux/clk-provider.h>
+@@ -31,6 +32,9 @@
  
- #define ADI_AXI_PCORE_VER(major, minor, patch)	\
- 	(((major) << 16) | ((minor) << 8) | (patch))
-@@ -20,4 +21,36 @@
- #define ADI_AXI_PCORE_VER_MINOR(version)	(((version) >> 8) & 0xff)
- #define ADI_AXI_PCORE_VER_PATCH(version)	((version) & 0xff)
+ #define AXI_CLKGEN_V2_DRP_STATUS_BUSY	BIT(16)
  
-+#define ADI_AXI_INFO_FPGA_TECH(info)            (((info) >> 24) & 0xff)
-+#define ADI_AXI_INFO_FPGA_FAMILY(info)          (((info) >> 16) & 0xff)
-+#define ADI_AXI_INFO_FPGA_SPEED_GRADE(info)     (((info) >> 8) & 0xff)
++#define ADI_CLKGEN_REG_FPGA_VOLTAGE		0x0140
++#define ADI_CLKGEN_INFO_FPGA_VOLTAGE(val)	((val) & GENMASK(15, 0))
 +
-+enum adi_axi_fpga_technology {
-+	ADI_AXI_FPGA_TECH_UNKNOWN = 0,
-+	ADI_AXI_FPGA_TECH_SERIES7,
-+	ADI_AXI_FPGA_TECH_ULTRASCALE,
-+	ADI_AXI_FPGA_TECH_ULTRASCALE_PLUS,
-+};
+ #define MMCM_REG_CLKOUT5_2	0x07
+ #define MMCM_REG_CLKOUT0_1	0x08
+ #define MMCM_REG_CLKOUT0_2	0x09
+@@ -499,6 +503,54 @@ static u8 axi_clkgen_get_parent(struct clk_hw *clk_hw)
+ 	return parent;
+ }
+ 
++static int axi_clkgen_setup_limits(struct axi_clkgen *axi_clkgen,
++				   struct device *dev)
++{
++	unsigned int tech, family, speed_grade, reg_value;
 +
-+enum adi_axi_fpga_family {
-+	ADI_AXI_FPGA_FAMILY_UNKNOWN = 0,
-+	ADI_AXI_FPGA_FAMILY_ARTIX,
-+	ADI_AXI_FPGA_FAMILY_KINTEX,
-+	ADI_AXI_FPGA_FAMILY_VIRTEX,
-+	ADI_AXI_FPGA_FAMILY_ZYNQ,
-+};
++	axi_clkgen_read(axi_clkgen, ADI_AXI_REG_FPGA_INFO, &reg_value);
++	tech = ADI_AXI_INFO_FPGA_TECH(reg_value);
++	family = ADI_AXI_INFO_FPGA_FAMILY(reg_value);
++	speed_grade = ADI_AXI_INFO_FPGA_SPEED_GRADE(reg_value);
 +
-+enum adi_axi_fpga_speed_grade {
-+	ADI_AXI_FPGA_SPEED_UNKNOWN      = 0,
-+	ADI_AXI_FPGA_SPEED_1    = 10,
-+	ADI_AXI_FPGA_SPEED_1L   = 11,
-+	ADI_AXI_FPGA_SPEED_1H   = 12,
-+	ADI_AXI_FPGA_SPEED_1HV  = 13,
-+	ADI_AXI_FPGA_SPEED_1LV  = 14,
-+	ADI_AXI_FPGA_SPEED_2    = 20,
-+	ADI_AXI_FPGA_SPEED_2L   = 21,
-+	ADI_AXI_FPGA_SPEED_2LV  = 22,
-+	ADI_AXI_FPGA_SPEED_3    = 30,
-+};
++	axi_clkgen->limits.fpfd_min = 10000;
++	axi_clkgen->limits.fvco_min = 600000;
 +
- #endif /* ADI_AXI_COMMON_H_ */
++	switch (speed_grade) {
++	case ADI_AXI_FPGA_SPEED_1 ... ADI_AXI_FPGA_SPEED_1LV:
++		axi_clkgen->limits.fvco_max = 1200000;
++		axi_clkgen->limits.fpfd_max = 450000;
++		break;
++	case ADI_AXI_FPGA_SPEED_2 ... ADI_AXI_FPGA_SPEED_2LV:
++		axi_clkgen->limits.fvco_max = 1440000;
++		axi_clkgen->limits.fpfd_max = 500000;
++		if (family == ADI_AXI_FPGA_FAMILY_KINTEX || family == ADI_AXI_FPGA_FAMILY_ARTIX) {
++			axi_clkgen_read(axi_clkgen, ADI_CLKGEN_REG_FPGA_VOLTAGE,
++					&reg_value);
++			if (ADI_CLKGEN_INFO_FPGA_VOLTAGE(reg_value) < 950) {
++				axi_clkgen->limits.fvco_max = 1200000;
++				axi_clkgen->limits.fpfd_max = 450000;
++			}
++		}
++		break;
++	case ADI_AXI_FPGA_SPEED_3:
++		axi_clkgen->limits.fvco_max = 1600000;
++		axi_clkgen->limits.fpfd_max = 550000;
++		break;
++	default:
++		return dev_err_probe(dev, -ENODEV, "Unknown speed grade %d\n",
++				     speed_grade);
++	};
++
++	/* Overwrite vco limits for ultrascale+ */
++	if (tech == ADI_AXI_FPGA_TECH_ULTRASCALE_PLUS) {
++		axi_clkgen->limits.fvco_max = 1600000;
++		axi_clkgen->limits.fvco_min = 800000;
++	}
++
++	return 0;
++}
++
+ static const struct clk_ops axi_clkgen_ops = {
+ 	.recalc_rate = axi_clkgen_recalc_rate,
+ 	.determine_rate = axi_clkgen_determine_rate,
+@@ -513,6 +565,7 @@ static int axi_clkgen_probe(struct platform_device *pdev)
+ {
+ 	const struct axi_clkgen_limits *dflt_limits;
+ 	struct axi_clkgen *axi_clkgen;
++	unsigned int pcore_version;
+ 	struct clk_init_data init;
+ 	const char *parent_names[2];
+ 	const char *clk_name;
+@@ -558,7 +611,16 @@ static int axi_clkgen_probe(struct platform_device *pdev)
+ 			return -EINVAL;
+ 	}
+ 
+-	memcpy(&axi_clkgen->limits, dflt_limits, sizeof(axi_clkgen->limits));
++	axi_clkgen_read(axi_clkgen, ADI_AXI_REG_VERSION, &pcore_version);
++
++	if (ADI_AXI_PCORE_VER_MAJOR(pcore_version) > 0x04) {
++		ret = axi_clkgen_setup_limits(axi_clkgen, &pdev->dev);
++		if (ret)
++			return ret;
++	} else {
++		memcpy(&axi_clkgen->limits, dflt_limits,
++		       sizeof(axi_clkgen->limits));
++	}
+ 
+ 	clk_name = pdev->dev.of_node->name;
+ 	of_property_read_string(pdev->dev.of_node, "clock-output-names",
 
 -- 
 2.49.0
