@@ -1,56 +1,49 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Mon, 12 May 2025 13:39:14 +0100
-Subject: [PATCH v3 22/22] pwm: adp5585: make sure to include
- mod_devicetable.h
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH 0/2] Add the download mode support for IPQ5018
+Date: Mon, 12 May 2025 18:36:45 +0400
+Message-Id: <20250512-ipq5018-syscon-v1-0-eb1ad2414c3c@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250512-dev-adp5589-fw-v3-22-092b14b79a88@analog.com>
-References: <20250512-dev-adp5589-fw-v3-0-092b14b79a88@analog.com>
-In-Reply-To: <20250512-dev-adp5589-fw-v3-0-092b14b79a88@analog.com>
-To: linux-gpio@vger.kernel.org, linux-pwm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-input@vger.kernel.org
-Cc: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAH0HImgC/x3MQQqAIBBA0avIrBN0UqiuEi3KppqNlQNRSHdPW
+ r7F/xmEEpNApzIkulh4jwW2UhC2Ma6keS4GNOiNt6j5OL2xjZZHwh61pdq1ZCZEt0CJjkQL3/+
+ wH973A+Wa8HtgAAAA
+X-Change-ID: 20250512-ipq5018-syscon-1e349e0b224f
+To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Linus Walleij <linus.walleij@linaro.org>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Liu Ying <victor.liu@nxp.com>
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747053537; l=739;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=7qqRv2NdSBhPS6hh0D7Nz9u+Cn76QfW1seayq7g6/eY=;
- b=m76GUvHoTQlZX5KCbaOfpmAJncrdRkO1u7jE9HGDp0wCD87D3ER3qdJhrhF6kVIjLuXh1rkjV
- vO9qmQCKn9WDjYtyKrb+OvWiEiBCjg7H2rR6OeYuWhEcDN55erJyePv
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747060624; l=688;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=FRmP3zLT6FTZhFpt8JSH7YRQTJkpK8mvEacJW0127co=;
+ b=7mdpqeObKkJaAt9nkPLr/duLkUQjbUXO55r4rKC7MnLxbjeWHV1sQU4E9i12e1UULN0MHRg0i
+ Ht4fIDzdmiIBy3ryICDE+BXcqBh5cdreqpysu2HP3zaJBgXU1l5bAhR
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Explicitly include mod_devicetable.h for struct platform_device_id.
+Enable support for download mode to collect the RAM dumps in case of
+system crashes, to perform post mortem analysis.
 
-Reviewed-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/pwm/pwm-adp5585.c | 1 +
- 1 file changed, 1 insertion(+)
+George Moussalem (2):
+      dt-bindings: mfd: qcom,tcsr: Add compatible for ipq5018
+      arm64: dts: qcom: ipq5018: enable the download mode support
 
-diff --git a/drivers/pwm/pwm-adp5585.c b/drivers/pwm/pwm-adp5585.c
-index f26054c19c2e154d05780af09aee1b2431eba2eb..93d0294d048abfe1a009161025e658b58b669cd9 100644
---- a/drivers/pwm/pwm-adp5585.c
-+++ b/drivers/pwm/pwm-adp5585.c
-@@ -20,6 +20,7 @@
- #include <linux/mfd/adp5585.h>
- #include <linux/minmax.h>
- #include <linux/module.h>
-+#include <linux/mod_devicetable.h>
- #include <linux/platform_device.h>
- #include <linux/pwm.h>
- #include <linux/regmap.h>
+ Documentation/devicetree/bindings/mfd/qcom,tcsr.yaml | 1 +
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi                | 6 ++++++
+ 2 files changed, 7 insertions(+)
+---
+base-commit: edef457004774e598fc4c1b7d1d4f0bcd9d0bb30
+change-id: 20250512-ipq5018-syscon-1e349e0b224f
 
+Best regards,
 -- 
-2.49.0
+George Moussalem <george.moussalem@outlook.com>
 
