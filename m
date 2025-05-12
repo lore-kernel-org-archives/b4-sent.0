@@ -1,91 +1,108 @@
-From: Sven Peter <sven@svenpeter.dev>
-Date: Sun, 11 May 2025 08:18:45 +0000
-Subject: [PATCH v5 10/10] arm64: dts: apple: t600x: Add SMC node
+From: Sung-Chi Li <lschyi@chromium.org>
+Subject: [PATCH v3 0/3] Export fan control and register fans as cooling
+ devices
+Date: Mon, 12 May 2025 15:11:54 +0800
+Message-Id: <20250512-cros_ec_fan-v3-0-a9f2b255f0cd@chromium.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250511-smc-6-15-v5-10-f5980bdb18bd@svenpeter.dev>
-References: <20250511-smc-6-15-v5-0-f5980bdb18bd@svenpeter.dev>
-In-Reply-To: <20250511-smc-6-15-v5-0-f5980bdb18bd@svenpeter.dev>
-To: Sven Peter <sven@svenpeter.dev>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
- Hector Martin <marcan@marcan.st>, Linus Walleij <linus.walleij@linaro.org>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Sebastian Reichel <sre@kernel.org>, 
- Lee Jones <lee@kernel.org>, Marc Zyngier <maz@kernel.org>, 
- "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIADqfIWgC/23MQQ6CMBCF4auYrq1pCxhw5T2MIUM7hVlAzVQbD
+ eHuFjZG4/K95P9mEZEJozjtZsGYKFKY8ij2O2EHmHqU5PIWRplKlaaRlkNs0bYeJumg6I4l2MZ
+ qJXJxY/T03LTLNe+B4j3wa8OTXt//TtJSSahdgwX6rtNwtgOHkR7jIXAvViqZT14p852bnJeuq
+ utMg9L+J1+W5Q0Luz3p6AAAAA==
+X-Change-ID: 20250429-cros_ec_fan-da3b64ac9c10
+To: Benson Leung <bleung@chromium.org>, Guenter Roeck <groeck@chromium.org>, 
+ =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>, 
+ Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: chrome-platform@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Sung-Chi Li <lschyi@google.com>, Sung-Chi Li <lschyi@chromium.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1906; i=sven@svenpeter.dev;
- h=from:subject:message-id; bh=92m9tjkE/9fmIrwCKyHzSWjjFycxwyBc2n6Mji86KpA=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4ZCbNX/meHWDVVVucqnriznUl5kzrDinn9/j4zdasbNl
- 5StDaQ6SlkYxDgYZMUUWbbvtzd98vCN4NJNl97DzGFlAhnCwMUpABN5f4aR4VbwjPpv98IVwjZx
- xW91NTbNb2deJLmmYrZR537FUyf5jRj+WT94s3fJVpc0j91Wy6+fnKv7uvbFFsOPahw3ls4Lkuv
- XZQEA
-X-Developer-Key: i=sven@svenpeter.dev; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@svenpeter.dev/default with auth_id=167
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747033920; l=3417;
+ i=lschyi@chromium.org; s=20250429; h=from:subject:message-id;
+ bh=UWaHpy3tnuk3FHkK9ajulVDIc6cTkMBqJq892XSpDJ8=;
+ b=EQQGXva2ZZS8B7c6+//f34iGTwDkWEWiJYknBjz7FXnCpBoYGtn0gOLAtaIXoHIvnx5LRG97E
+ Y4wuF7ijplXBlacBRO/kZ3ALLzh/sTiap7mvYUCqRWkDgnu+hgDoJ2k
+X-Developer-Key: i=lschyi@chromium.org; a=ed25519;
+ pk=9gCZPRJmYyHDt6VN9FV2UreFcUr73JFrwYvmsltW9Y8=
+X-Endpoint-Received: by B4 Relay for lschyi@chromium.org/20250429 with auth_id=392
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+This is a continuation of the previous series "Export the target RPM fan
+control by ChromeOS EC under hwmon"
+(https://lore.kernel.org/lkml/20250313-extend_ec_hwmon_fan-v1-0-5c566776f2c4@chromium.org/T/#t).
+There is a change from controlling the target fan RPM value to control
+the PWM value.
 
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
-Signed-off-by: Sven Peter <sven@svenpeter.dev>
+We anticipate to involve fans connected to EC as thermal cooling
+devices, so we can utilize the thermal framework to have further thermal
+control strategies.
+
+This series updates the required EC controls definitions, implements the
+mechanism for controlling fan PWM values, and registers these fans under
+thermal framework as cooling devices.
+
+Adapting comments from the previous series, the driver probes the host
+command capability at beginning to see whether a fan is controllable:
+  - if command `EC_CMD_PWM_GET_FAN_DUTY` is supported (v0, this is a
+    new command).
+  - if command `EC_CMD_THERMAL_AUTO_FAN_CTRL` v2 is supported.
+  - if command `EC_CMD_PWM_SET_FAN_DUTY` v1 is supported.
+
+This combination is selected as this is the minimum requirement for a
+fan to be fully controllable under hwmon framework.
+
+The driver supports changing the fan control mode, and allows to change
+the fan PWM value only if the fan is in manual control mode. The power
+management hook is implemented as well for keeping the fan control
+settings, as EC will automatically restore the control method to auto
+when device is suspended.
+
+Change-Id: I4e2fdc8c4bc50778c0d04cfbefeaab7088d3181e
+Signed-off-by: Sung-Chi Li <lschyi@google.com>
 ---
- arch/arm64/boot/dts/apple/t600x-die0.dtsi | 35 +++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+Changes in v3:
+- Make required EC command versions macros.
+- Add `CONFIG_THERMAL` guarding for registering as thermal fan cooling
+  devices.
+- Add error handling during registering thermal cooling devices, and
+  immediately abort the registration if any error occurred to align with
+  the thermal sensor registration in hwmon core.
+- Add error handling for EC fan communication during suspend and resume.
+- Add `CONFIG_PM` guarding for checking whether the EC supports a
+  complete fan control in hwmon driver.
+- Sort variables order in declaration.
+- Separate declaration and logic to different sections.
+- Move `cros_ec_thermal_cooling_ops` next right after the operation
+  functions declaration.
+- Improve describing the resume behavior in documentation.
 
-diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-index 110bc6719512e334e04b496fb157cb4368679957..4993a8ace87b2fc7e645b08c19fcd9b0c21896aa 100644
---- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-@@ -24,6 +24,41 @@ aic: interrupt-controller@28e100000 {
- 		power-domains = <&ps_aic>;
- 	};
- 
-+	smc: smc@290400000 {
-+		compatible = "apple,t6000-smc", "apple,smc";
-+		reg = <0x2 0x90400000 0x0 0x4000>,
-+			<0x2 0x91e00000 0x0 0x100000>;
-+		reg-names = "smc", "sram";
-+		mboxes = <&smc_mbox>;
-+
-+		smc_gpio: gpio {
-+			compatible = "apple,smc-gpio";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+		};
-+
-+		smc_reboot: reboot {
-+			compatible = "apple,smc-reboot";
-+			nvmem-cells = <&shutdown_flag>, <&boot_stage>,
-+				<&boot_error_count>, <&panic_count>, <&pm_setting>;
-+			nvmem-cell-names = "shutdown_flag", "boot_stage",
-+				"boot_error_count", "panic_count", "pm_setting";
-+		};
-+	};
-+
-+	smc_mbox: mbox@290408000 {
-+		compatible = "apple,t6000-asc-mailbox", "apple,asc-mailbox-v4";
-+		reg = <0x2 0x90408000 0x0 0x4000>;
-+		interrupt-parent = <&aic>;
-+		interrupts = <AIC_IRQ 0 754 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 755 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 756 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 757 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "send-empty", "send-not-empty",
-+			"recv-empty", "recv-not-empty";
-+		#mbox-cells = <0>;
-+	};
-+
- 	pinctrl_smc: pinctrl@290820000 {
- 		compatible = "apple,t6000-pinctrl", "apple,pinctrl";
- 		reg = <0x2 0x90820000 0x0 0x4000>;
+Changes in v2:
+- Change column from 80 to 100 and fix styles.
+- Directly store driver data into platform dev with
+  platform_set_drvdata.
+- Unify the PWM unit (from 0 ~ 255) between hwmon and thermal cooling
+  devices.
+- Only fetch the fan control mode and PWM value when suspending rather
+  than caching values when writing. The suspend hook is thus added.
+- Link to v1: https://lore.kernel.org/r/20250429-cros_ec_fan-v1-0-a8d9e3efbb1a@chromium.org
 
+---
+Sung-Chi Li (3):
+      platform/chrome: update pwm fan control host commands
+      hwmon: (cros_ec) add PWM control over fans
+      hwmon: (cros_ec) register fans into thermal framework cooling devices
+
+ Documentation/hwmon/cros_ec_hwmon.rst          |   7 +-
+ drivers/hwmon/cros_ec_hwmon.c                  | 306 +++++++++++++++++++++++++
+ include/linux/platform_data/cros_ec_commands.h |  29 ++-
+ 3 files changed, 340 insertions(+), 2 deletions(-)
+---
+base-commit: 33035b665157558254b3c21c3f049fd728e72368
+change-id: 20250429-cros_ec_fan-da3b64ac9c10
+
+Best regards,
 -- 
-2.34.1
+Sung-Chi Li <lschyi@chromium.org>
 
