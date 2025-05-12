@@ -1,10 +1,10 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Mon, 12 May 2025 13:39:07 +0100
-Subject: [PATCH v3 15/22] mfd: adp5585: add support for input devices
+Date: Mon, 12 May 2025 13:39:08 +0100
+Subject: [PATCH v3 16/22] gpio: adp5585: support gpi events
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250512-dev-adp5589-fw-v3-15-092b14b79a88@analog.com>
+Message-Id: <20250512-dev-adp5589-fw-v3-16-092b14b79a88@analog.com>
 References: <20250512-dev-adp5589-fw-v3-0-092b14b79a88@analog.com>
 In-Reply-To: <20250512-dev-adp5589-fw-v3-0-092b14b79a88@analog.com>
 To: linux-gpio@vger.kernel.org, linux-pwm@vger.kernel.org, 
@@ -17,239 +17,331 @@ Cc: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>,
  Bartosz Golaszewski <brgl@bgdev.pl>, 
  Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Liu Ying <victor.liu@nxp.com>
+ Liu Ying <victor.liu@nxp.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747053537; l=7419;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747053537; l=10351;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=Acf/SFtJuCm4ngLcUnCyKGNGIisJrBnN19rrm+oyrU0=;
- b=mhkzc6Rt+yTCopbOJmtn5MJ/e6npN/uIGbWyMRmJOntWnaKZNDaJ0i45bTOUUkO9PyrL4JYpt
- Wucb3Q7wuNuCEHpHgGC3r4otbN474MzrMY5wB5SpvF0FgnSE+7eCI9A
+ bh=UfJ/QHtRHge0c0E99x+02SfGt2SUDADcJP2e64mEtQA=;
+ b=FH8Qf6J9wzsrCVA95V+mVbf5PL0DrH/p8Rv12LtG7CEcnXzQt1DyN/cGuZN22wLI5hfVFn0no
+ CUkGWqG/le4BGnDJ7jn8OOwHzjMhor29SjxEfSHmWIF0tHblpJiT740
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ADP558x family supports a built in keypad matrix decoder which can
-be added as an Input device. In order to both support the Input and the
-GPIO device, we need to create a bitmap of the supported pins and track
-their usage since they can either be used as GPIOs (GPIs) or as part of
-the keymap.
+Add support for adding GPIs to the event FIFO. This is done by adding
+irq_chip support. Like this, one can use the input gpio_keys driver as a
+"frontend" device and input handler.
 
-We also need to mark special pins busy in case some features are being
-used (ex: pwm or reset events).
+As part of this change, we now implement .request() and .free() as we can't
+blindly consume all available pins as GPIOs (example: some pins can be
+used for forming a keymap matrix).
 
+Also note that the number of pins can now be obtained from the parent,
+top level device. Hence the 'max_gpio' variable can be removed.
+
+Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
+Acked-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/mfd/adp5585.c       | 38 +++++++++++++++++++++++++++++++++-----
- include/linux/mfd/adp5585.h | 11 +++++++++++
- 2 files changed, 44 insertions(+), 5 deletions(-)
+ drivers/gpio/Kconfig        |   1 +
+ drivers/gpio/gpio-adp5585.c | 205 +++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 202 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/mfd/adp5585.c b/drivers/mfd/adp5585.c
-index b1227a390fe2f932ba8060b0d722f53f45ec3b4b..5a4a24593a83271e8a8df40022b73dfa9c15a114 100644
---- a/drivers/mfd/adp5585.c
-+++ b/drivers/mfd/adp5585.c
-@@ -21,17 +21,20 @@
- enum {
- 	ADP5585_DEV_GPIO,
- 	ADP5585_DEV_PWM,
-+	ADP5585_DEV_INPUT,
- 	ADP5585_DEV_MAX
+diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
+index 9ae806f45e19c1494d156b7f04b1882be68d3e3f..0b85d07ccb0b8a41f33fd3d930eb74f70787355d 100644
+--- a/drivers/gpio/Kconfig
++++ b/drivers/gpio/Kconfig
+@@ -1259,6 +1259,7 @@ config GPIO_ADP5520
+ config GPIO_ADP5585
+ 	tristate "GPIO Support for ADP5585"
+ 	depends on MFD_ADP5585
++	select GPIOLIB_IRQCHIP
+ 	help
+ 	  This option enables support for the GPIO function found in the Analog
+ 	  Devices ADP5585.
+diff --git a/drivers/gpio/gpio-adp5585.c b/drivers/gpio/gpio-adp5585.c
+index cdf107742579cb44d73cc030646358ba5a23fd97..cd0ddddae7db1f4634680b412b8fcbfa295e87eb 100644
+--- a/drivers/gpio/gpio-adp5585.c
++++ b/drivers/gpio/gpio-adp5585.c
+@@ -7,10 +7,13 @@
+  * Copyright 2025 Analog Devices, Inc.
+  */
+ 
++#include <linux/bitmap.h>
++#include <linux/bitops.h>
+ #include <linux/device.h>
+ #include <linux/gpio/driver.h>
+ #include <linux/mfd/adp5585.h>
+ #include <linux/module.h>
++#include <linux/mutex.h>
+ #include <linux/platform_device.h>
+ #include <linux/regmap.h>
+ #include <linux/types.h>
+@@ -36,20 +39,29 @@
+ struct adp5585_gpio_chip {
+ 	int (*bank)(unsigned int off);
+ 	int (*bit)(unsigned int off);
+-	unsigned int max_gpio;
+ 	unsigned int debounce_dis_a;
+ 	unsigned int rpull_cfg_a;
+ 	unsigned int gpo_data_a;
+ 	unsigned int gpo_out_a;
+ 	unsigned int gpio_dir_a;
+ 	unsigned int gpi_stat_a;
++	unsigned int gpi_int_lvl_a;
++	unsigned int gpi_ev_a;
++	unsigned int gpi_ev_min;
++	unsigned int gpi_ev_max;
+ 	bool has_bias_hole;
  };
  
- static const struct mfd_cell adp5585_devs[ADP5585_DEV_MAX] = {
- 	MFD_CELL_NAME("adp5585-gpio"),
- 	MFD_CELL_NAME("adp5585-pwm"),
-+	MFD_CELL_NAME("adp5585-keys"),
- };
- 
- static const struct mfd_cell adp5589_devs[] = {
- 	MFD_CELL_NAME("adp5589-gpio"),
- 	MFD_CELL_NAME("adp5589-pwm"),
-+	MFD_CELL_NAME("adp5589-keys"),
- };
- 
- static const struct regmap_range adp5585_volatile_ranges[] = {
-@@ -160,6 +163,7 @@ static const struct adp5585_regs adp5585_regs = {
- 	.reset_cfg = ADP5585_RESET_CFG,
- 	.reset1_event_a = ADP5585_RESET1_EVENT_A,
- 	.reset2_event_a = ADP5585_RESET2_EVENT_A,
-+	.pin_cfg_a = ADP5585_PIN_CONFIG_A,
- };
- 
- static const struct adp5585_regs adp5589_regs = {
-@@ -170,6 +174,7 @@ static const struct adp5585_regs adp5589_regs = {
- 	.reset_cfg = ADP5589_RESET_CFG,
- 	.reset1_event_a = ADP5589_RESET1_EVENT_A,
- 	.reset2_event_a = ADP5589_RESET2_EVENT_A,
-+	.pin_cfg_a = ADP5589_PIN_CONFIG_A,
- };
- 
- static int adp5585_validate_event(const struct adp5585_dev *adp5585,
-@@ -228,12 +233,16 @@ static int adp5585_fill_chip_configs(struct adp5585_dev *adp5585,
- 		*regmap_config = adp5585_regmap_config_template;
- 		info->regs = &adp5585_regs;
- 		info->validate_event = adp5585_validate_event;
-+		info->n_pins = ADP5585_PIN_MAX;
-+		info->reset2_out = ADP5585_RESET2_OUT;
- 		break;
- 	case ADP5589_MAN_ID_VALUE:
- 		*regmap_config = adp5589_regmap_config_template;
- 		info->regs = &adp5589_regs;
- 		info->validate_event = adp5589_validate_event;
- 		info->has_unlock = true;
-+		info->n_pins = ADP5589_PIN_MAX;
-+		info->reset2_out = ADP5589_RESET2_OUT;
- 		break;
- 	default:
- 		return -ENODEV;
-@@ -431,7 +440,7 @@ static int adp5585_reset_ev_parse(struct adp5585_dev *adp5585, bool has_pin5)
- static int adp5585_parse_fw(struct device *dev, struct adp5585_dev *adp5585,
- 			    struct mfd_cell **devs)
- {
--	unsigned int has_pwm = 0, has_gpio = 0, rc = 0;
-+	unsigned int has_pwm = 0, has_gpio = 0, has_input = 0, rc = 0;
- 	const struct mfd_cell *cells;
- 	bool has_pin5 = false;
- 	unsigned int prop_val;
-@@ -443,11 +452,16 @@ static int adp5585_parse_fw(struct device *dev, struct adp5585_dev *adp5585,
- 	if (device_property_present(dev, "#gpio-cells"))
- 		has_gpio = 1;
- 
--	if (!has_pwm && !has_gpio)
-+	if (device_property_present(dev, "adi,keypad-pins"))
-+		has_input = 1;
-+
-+	if (!has_pwm && !has_gpio && !has_input)
- 		return -ENODEV;
- 
- 	if (!device_property_present(dev, "gpio-reserved-ranges"))
- 		has_pin5 = true;
-+	else
-+		__set_bit(5, adp5585->pin_usage);
- 
- 	ret = adp5585_unlock_ev_parse(adp5585, has_pin5);
- 	if (ret)
-@@ -476,8 +490,8 @@ static int adp5585_parse_fw(struct device *dev, struct adp5585_dev *adp5585,
- 		}
- 	}
- 
--	*devs = devm_kcalloc(dev, has_pwm + has_gpio, sizeof(struct mfd_cell),
--			     GFP_KERNEL);
-+	*devs = devm_kcalloc(dev, has_pwm + has_gpio + has_input,
-+			     sizeof(struct mfd_cell), GFP_KERNEL);
- 	if (!*devs)
- 		return -ENOMEM;
- 
-@@ -486,10 +500,14 @@ static int adp5585_parse_fw(struct device *dev, struct adp5585_dev *adp5585,
- 	else
- 		cells = adp5589_devs;
- 
--	if (has_pwm)
-+	if (has_pwm) {
-+		__set_bit(ADP5585_PWM_OUT, adp5585->pin_usage);
- 		(*devs)[rc++] = cells[ADP5585_DEV_PWM];
-+	}
- 	if (has_gpio)
- 		(*devs)[rc++] = cells[ADP5585_DEV_GPIO];
-+	if (has_input)
-+		(*devs)[rc++] = cells[ADP5585_DEV_INPUT];
- 
- 	return rc;
- }
-@@ -594,6 +612,9 @@ static int adp5585_setup(struct adp5585_dev *adp5585)
- 				   adp5585->reset1_keys[i] | ADP5585_RESET_EV_PRESS);
- 		if (ret)
- 			return ret;
-+
-+		/* mark that pin as not usable for the input and gpio devices */
-+		__set_bit(ADP5585_RESET1_OUT, adp5585->pin_usage);
- 	}
- 
- 	for (i = 0; i < adp5585->nkeys_reset2; i++) {
-@@ -601,6 +622,8 @@ static int adp5585_setup(struct adp5585_dev *adp5585)
- 				   adp5585->reset2_keys[i] | ADP5585_RESET_EV_PRESS);
- 		if (ret)
- 			return ret;
-+
-+		__set_bit(adp5585->info->reset2_out, adp5585->pin_usage);
- 	}
- 
- 	if (adp5585->nkeys_reset1 || adp5585->nkeys_reset2) {
-@@ -721,6 +744,11 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
- 	adp5585->irq = i2c->irq;
- 	INIT_LIST_HEAD(&adp5585->ev_handlers);
- 
-+	adp5585->pin_usage = devm_bitmap_zalloc(&i2c->dev, adp5585->info->n_pins,
-+						GFP_KERNEL);
-+	if (!adp5585->pin_usage)
-+		return -ENOMEM;
-+
- 	n_devs = adp5585_parse_fw(&i2c->dev, adp5585, &devs);
- 	if (n_devs < 0)
- 		return n_devs;
-diff --git a/include/linux/mfd/adp5585.h b/include/linux/mfd/adp5585.h
-index 034b7c18af83b1e801860ed4fca1755ff59faed1..1cec7f72781999ae81e179c7eefd4539de59bc97 100644
---- a/include/linux/mfd/adp5585.h
-+++ b/include/linux/mfd/adp5585.h
-@@ -129,12 +129,17 @@
- #define ADP5585_GPI_EVENT_END		47
- #define ADP5585_ROW5_KEY_EVENT_START	1
- #define ADP5585_ROW5_KEY_EVENT_END	30
-+#define ADP5585_PWM_OUT			3
-+#define ADP5585_RESET1_OUT		4
-+#define ADP5585_RESET2_OUT		9
- 
- /* ADP5589 */
- #define		ADP5589_MAN_ID_VALUE		0x10
- #define ADP5589_GPI_STATUS_A		0x16
- #define ADP5589_GPI_STATUS_C		0x18
- #define ADP5589_RPULL_CONFIG_A		0x19
-+#define ADP5589_GPI_INT_LEVEL_A		0x1e
-+#define ADP5589_GPI_EVENT_EN_A		0x21
- #define ADP5589_DEBOUNCE_DIS_A		0x27
- #define ADP5589_GPO_DATA_OUT_A		0x2a
- #define ADP5589_GPO_OUT_MODE_A		0x2d
-@@ -157,6 +162,7 @@
- #define ADP5589_PWM_ONT_LOW		0x40
- #define ADP5589_PWM_CFG			0x42
- #define ADP5589_POLL_PTIME_CFG		0x48
-+#define ADP5589_PIN_CONFIG_A		0x49
- #define ADP5589_PIN_CONFIG_D		0x4C
- #define ADP5589_GENERAL_CFG		0x4d
- #define ADP5589_INT_EN			0x4e
-@@ -167,6 +173,7 @@
- #define ADP5589_KEY_EVENT_END		88
- #define ADP5589_GPI_EVENT_START		97
- #define ADP5589_GPI_EVENT_END		115
-+#define ADP5589_RESET2_OUT		12
- 
- struct regmap;
- struct adp5585_dev;
-@@ -195,6 +202,7 @@ struct adp5585_regs {
- 	unsigned int reset_cfg;
- 	unsigned int reset1_event_a;
- 	unsigned int reset2_event_a;
-+	unsigned int pin_cfg_a;
- };
- 
- struct adp5585_info {
-@@ -203,6 +211,8 @@ struct adp5585_info {
- 			      unsigned int ev, bool has_pin5);
- 	enum adp5585_regmap_type regmap_type;
- 	unsigned int id;
-+	unsigned int n_pins;
-+	unsigned int reset2_out;
- 	bool has_unlock;
- };
- 
-@@ -210,6 +220,7 @@ struct adp5585_dev {
+ struct adp5585_gpio_dev {
+ 	struct gpio_chip gpio_chip;
++	struct adp5585_ev_handler ev_handler;
+ 	const struct adp5585_gpio_chip *info;
  	struct regmap *regmap;
- 	struct device *dev;
- 	const struct adp5585_info *info;
-+	unsigned long *pin_usage;
- 	/* Used to synchronize the availability of the event handlers */
- 	struct mutex ev_lock;
- 	struct list_head ev_handlers;
++	unsigned long irq_mask;
++	unsigned long irq_en;
++	unsigned long irq_active_high;
++	/* used for irqchip bus locking */
++	struct mutex bus_lock;
+ };
+ 
+ static int adp5585_gpio_bank(unsigned int off)
+@@ -224,12 +236,163 @@ static int adp5585_gpio_set_config(struct gpio_chip *chip, unsigned int off,
+ 	};
+ }
+ 
++static int adp5585_gpio_request(struct gpio_chip *chip, unsigned int off)
++{
++	struct adp5585_gpio_dev *adp5585_gpio = gpiochip_get_data(chip);
++	const struct adp5585_gpio_chip *info = adp5585_gpio->info;
++	struct device *dev = chip->parent;
++	struct adp5585_dev *adp5585 = dev_get_drvdata(dev->parent);
++	const struct adp5585_regs *regs = adp5585->info->regs;
++	int ret;
++
++	ret = test_and_set_bit(off, adp5585->pin_usage);
++	if (ret)
++		return -EBUSY;
++
++	/* make sure it's configured for GPIO */
++	return regmap_clear_bits(adp5585_gpio->regmap,
++				 regs->pin_cfg_a + info->bank(off),
++				 info->bit(off));
++}
++
++static void adp5585_gpio_free(struct gpio_chip *chip, unsigned int off)
++{
++	struct device *dev = chip->parent;
++	struct adp5585_dev *adp5585 = dev_get_drvdata(dev->parent);
++
++	clear_bit(off, adp5585->pin_usage);
++}
++
++static int adp5585_gpio_key_event(struct device *dev, unsigned int key,
++				  unsigned int key_press)
++{
++	struct adp5585_gpio_dev *adp5585_gpio = dev_get_drvdata(dev);
++	unsigned int irq, irq_type;
++	struct irq_data *irqd;
++	bool active_high;
++	unsigned int off;
++
++	/* make sure the event is for me */
++	if (key < adp5585_gpio->info->gpi_ev_min || key > adp5585_gpio->info->gpi_ev_max)
++		return -EINVAL;
++
++	off = key - adp5585_gpio->info->gpi_ev_min;
++	active_high = test_bit(off, &adp5585_gpio->irq_active_high);
++
++	irq = irq_find_mapping(adp5585_gpio->gpio_chip.irq.domain, off);
++	if (!irq)
++		return 0;
++
++	irqd = irq_get_irq_data(irq);
++	if (!irqd) {
++		dev_err(dev, "Could not get irq(%u) data\n", irq);
++		return 0;
++	}
++
++	dev_dbg_ratelimited(dev, "gpio-keys event(%u) press=%u, a_high=%u\n",
++			    off, key_press, active_high);
++
++	if (!active_high)
++		key_press = !key_press;
++
++	irq_type = irqd_get_trigger_type(irqd);
++
++	if ((irq_type & IRQ_TYPE_EDGE_RISING && key_press) ||
++	    (irq_type & IRQ_TYPE_EDGE_FALLING && !key_press))
++		handle_nested_irq(irq);
++
++	return 0;
++}
++
++static void adp5585_irq_bus_lock(struct irq_data *d)
++{
++	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
++	struct adp5585_gpio_dev *adp5585_gpio = gpiochip_get_data(gc);
++
++	mutex_lock(&adp5585_gpio->bus_lock);
++}
++
++static void adp5585_irq_bus_sync_unlock(struct irq_data *d)
++{
++	struct gpio_chip *chip = irq_data_get_irq_chip_data(d);
++	struct adp5585_gpio_dev *adp5585_gpio = gpiochip_get_data(chip);
++	const struct adp5585_gpio_chip *info = adp5585_gpio->info;
++	irq_hw_number_t hwirq = irqd_to_hwirq(d);
++	bool active_high = test_bit(hwirq, &adp5585_gpio->irq_active_high);
++	bool enabled = test_bit(hwirq, &adp5585_gpio->irq_en);
++	bool masked = test_bit(hwirq, &adp5585_gpio->irq_mask);
++	unsigned int bank = adp5585_gpio->info->bank(hwirq);
++	unsigned int bit = adp5585_gpio->info->bit(hwirq);
++
++	if (masked && !enabled)
++		goto out_unlock;
++	if (!masked && enabled)
++		goto out_unlock;
++
++	regmap_update_bits(adp5585_gpio->regmap, info->gpi_int_lvl_a + bank, bit,
++			   active_high ? bit : 0);
++	regmap_update_bits(adp5585_gpio->regmap, info->gpi_ev_a + bank, bit,
++			   masked ? 0 : bit);
++	assign_bit(hwirq, &adp5585_gpio->irq_en, !masked);
++
++out_unlock:
++	mutex_unlock(&adp5585_gpio->bus_lock);
++}
++
++static void adp5585_irq_mask(struct irq_data *d)
++{
++	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
++	struct adp5585_gpio_dev *adp5585_gpio = gpiochip_get_data(gc);
++	irq_hw_number_t hwirq = irqd_to_hwirq(d);
++
++	__set_bit(hwirq, &adp5585_gpio->irq_mask);
++	gpiochip_disable_irq(gc, hwirq);
++}
++
++static void adp5585_irq_unmask(struct irq_data *d)
++{
++	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
++	struct adp5585_gpio_dev *adp5585_gpio = gpiochip_get_data(gc);
++	irq_hw_number_t hwirq = irqd_to_hwirq(d);
++
++	gpiochip_enable_irq(gc, hwirq);
++	__clear_bit(hwirq, &adp5585_gpio->irq_mask);
++}
++
++static int adp5585_irq_set_type(struct irq_data *d, unsigned int type)
++{
++	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
++	struct adp5585_gpio_dev *adp5585_gpio = gpiochip_get_data(gc);
++	irq_hw_number_t hwirq = irqd_to_hwirq(d);
++
++	if (!(type & IRQ_TYPE_EDGE_BOTH))
++		return -EINVAL;
++
++	assign_bit(hwirq, &adp5585_gpio->irq_active_high,
++		   type == IRQ_TYPE_EDGE_RISING);
++
++	irq_set_handler_locked(d, handle_edge_irq);
++	return 0;
++}
++
++static const struct irq_chip adp5585_irq_chip = {
++	.name = "adp5585",
++	.irq_mask = adp5585_irq_mask,
++	.irq_unmask = adp5585_irq_unmask,
++	.irq_bus_lock = adp5585_irq_bus_lock,
++	.irq_bus_sync_unlock = adp5585_irq_bus_sync_unlock,
++	.irq_set_type = adp5585_irq_set_type,
++	.flags = IRQCHIP_SKIP_SET_WAKE | IRQCHIP_IMMUTABLE,
++	GPIOCHIP_IRQ_RESOURCE_HELPERS,
++};
++
+ static int adp5585_gpio_probe(struct platform_device *pdev)
+ {
+ 	struct adp5585_dev *adp5585 = dev_get_drvdata(pdev->dev.parent);
+ 	const struct platform_device_id *id = platform_get_device_id(pdev);
+ 	struct adp5585_gpio_dev *adp5585_gpio;
+ 	struct device *dev = &pdev->dev;
++	struct gpio_irq_chip *girq;
+ 	struct gpio_chip *gc;
+ 	int ret;
+ 
+@@ -253,13 +416,41 @@ static int adp5585_gpio_probe(struct platform_device *pdev)
+ 	gc->get = adp5585_gpio_get_value;
+ 	gc->set_rv = adp5585_gpio_set_value;
+ 	gc->set_config = adp5585_gpio_set_config;
++	gc->request = adp5585_gpio_request;
++	gc->free = adp5585_gpio_free;
+ 	gc->can_sleep = true;
+ 
+ 	gc->base = -1;
+-	gc->ngpio = adp5585_gpio->info->max_gpio;
++	gc->ngpio = adp5585->info->n_pins;
+ 	gc->label = pdev->name;
+ 	gc->owner = THIS_MODULE;
+ 
++	if (device_property_present(dev->parent, "interrupt-controller")) {
++		if (!adp5585->irq)
++			return dev_err_probe(dev, -EINVAL,
++					     "Unable to serve as interrupt controller without IRQ\n");
++
++		girq = &adp5585_gpio->gpio_chip.irq;
++		gpio_irq_chip_set_chip(girq, &adp5585_irq_chip);
++		girq->handler = handle_bad_irq;
++		girq->threaded = true;
++
++		adp5585_gpio->ev_handler.dev = dev;
++		adp5585_gpio->ev_handler.handler = adp5585_gpio_key_event;
++		platform_set_drvdata(pdev, adp5585_gpio);
++
++		ret = devm_adp5585_ev_handler_add(adp5585,
++						  &adp5585_gpio->ev_handler);
++		if (ret)
++			return ret;
++	}
++
++	/* everything masked by default */
++	adp5585_gpio->irq_mask = ~0UL;
++
++	ret = devm_mutex_init(dev, &adp5585_gpio->bus_lock);
++	if (ret)
++		return ret;
+ 	ret = devm_gpiochip_add_data(dev, &adp5585_gpio->gpio_chip,
+ 				     adp5585_gpio);
+ 	if (ret)
+@@ -277,8 +468,11 @@ static const struct adp5585_gpio_chip adp5585_gpio_chip_info = {
+ 	.gpo_out_a = ADP5585_GPO_OUT_MODE_A,
+ 	.gpio_dir_a = ADP5585_GPIO_DIRECTION_A,
+ 	.gpi_stat_a = ADP5585_GPI_STATUS_A,
+-	.max_gpio = ADP5585_PIN_MAX,
+ 	.has_bias_hole = true,
++	.gpi_ev_min = ADP5585_GPI_EVENT_START,
++	.gpi_ev_max = ADP5585_GPI_EVENT_END,
++	.gpi_int_lvl_a = ADP5585_GPI_INT_LEVEL_A,
++	.gpi_ev_a = ADP5585_GPI_EVENT_EN_A,
+ };
+ 
+ static const struct adp5585_gpio_chip adp5589_gpio_chip_info = {
+@@ -290,7 +484,10 @@ static const struct adp5585_gpio_chip adp5589_gpio_chip_info = {
+ 	.gpo_out_a = ADP5589_GPO_OUT_MODE_A,
+ 	.gpio_dir_a = ADP5589_GPIO_DIRECTION_A,
+ 	.gpi_stat_a = ADP5589_GPI_STATUS_A,
+-	.max_gpio = ADP5589_PIN_MAX,
++	.gpi_ev_min = ADP5589_GPI_EVENT_START,
++	.gpi_ev_max = ADP5589_GPI_EVENT_END,
++	.gpi_int_lvl_a = ADP5589_GPI_INT_LEVEL_A,
++	.gpi_ev_a = ADP5589_GPI_EVENT_EN_A,
+ };
+ 
+ static const struct platform_device_id adp5585_gpio_id_table[] = {
 
 -- 
 2.49.0
