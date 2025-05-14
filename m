@@ -1,14 +1,12 @@
 From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Subject: [PATCH v4 0/2] Use GCR.U timer device as clocksource
-Date: Wed, 14 May 2025 10:51:49 +0200
-Message-Id: <20250514-riscv-time-mmio-v4-0-cb0cf2922d66@htecgroup.com>
+Date: Wed, 14 May 2025 10:51:50 +0200
+Subject: [PATCH v4 1/2] dt-bindings: timer: mti,gcru
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKVZJGgC/x3MQQqAIBBA0avIrBsQ0ZCuEi3ExpqFGhoShHdPW
- r7F/y9UKkwVFvFCocaVcxrQkwB/unQQ8j4MSiojtdJYuPqGN0fCGDmjmZUlGbyzLsCorkKBn/+
- 4br1/N1+qi2EAAAA=
-X-Change-ID: 20250424-riscv-time-mmio-5628e0fca8af
+Message-Id: <20250514-riscv-time-mmio-v4-1-cb0cf2922d66@htecgroup.com>
+References: <20250514-riscv-time-mmio-v4-0-cb0cf2922d66@htecgroup.com>
+In-Reply-To: <20250514-riscv-time-mmio-v4-0-cb0cf2922d66@htecgroup.com>
 To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
  Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -21,46 +19,70 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
  Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747212741; l=1393;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747212741; l=1731;
  i=aleksa.paunovic@htecgroup.com; s=20250514; h=from:subject:message-id;
- bh=pn79s5/J/P9TNe+3hLy3s/qDtoOXGxNKcDbvTKLxHq0=;
- b=rlPq6swwSQfvouul8tW+SJQHbhgJ9bLJXKSNximZEzgFJegjutl9e61P7ng8+xa0j9c7BERNl
- peYI8pd6S8tAMlHpGC/INhUOvEzV/JOrTCoHCBvvxYC+8x1rhWP5QuQ
+ bh=bavSLGIvQI52iBpPwSEEg1jcYvhis52EMItmcd2/Qlo=;
+ b=g89qj4IiCI3QUes9/qSdtJSGECHU1IQBnqo4tR1iKJGDCUEP+o96M4G01g92qOz4ZjiH3qmBX
+ gnd8g3ieVr/BCvXawkU3WUt4LtIP7G3gjQca6sfVPJOMUCkKaMPFu2H
 X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
  pk=gFVSVYLKAgJiS5qCnDyUMGOFuczv8C6o0UmRs+fgisA=
 X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250514 with auth_id=403
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds bindings for the GCR.U timer device and corresponding
-driver support. Accessing the memory mapped mtime register in the GCR.U
-region should be faster than trapping to M mode each time the timer
-needs to be read.
-
-Changes in v4:
-- Remove "select" from mti,gcru.yaml.
-- Refactor the driver to use function pointers instead of static keys.
-
-Previous versions:
-v1: https://lore.kernel.org/lkml/20241227150056.191794-1-arikalo@gmail.com/#t
-v2: https://lore.kernel.org/linux-riscv/20250409143816.15802-1-aleksa.paunovic@htecgroup.com/
-v3: https://lore.kernel.org/linux-riscv/DU0PR09MB61968695A2A3146EE83B7708F6BA2@DU0PR09MB6196.eurprd09.prod.outlook.com/
+Add dt-bindings for the GCR.U memory mapped timer device for RISC-V
+platforms. The GCR.U memory region contains shadow copies of the RISC-V
+mtime register and the hrtime Global Configuration Register.
 
 Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
-Aleksa Paunovic (2):
-      dt-bindings: timer: mti,gcru
-      Allow for riscv-clock to pick up mmio address.
+ .../devicetree/bindings/timer/mti,gcru.yaml        | 38 ++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
 
- .../devicetree/bindings/timer/mti,gcru.yaml        | 38 ++++++++++++++
- arch/riscv/include/asm/timex.h                     | 48 ++++++-----------
- drivers/clocksource/Kconfig                        | 12 +++++
- drivers/clocksource/timer-riscv.c                  | 61 ++++++++++++++++++++++
- 4 files changed, 126 insertions(+), 33 deletions(-)
----
-base-commit: 9c32cda43eb78f78c73aee4aa344b777714e259b
-change-id: 20250424-riscv-time-mmio-5628e0fca8af
+diff --git a/Documentation/devicetree/bindings/timer/mti,gcru.yaml b/Documentation/devicetree/bindings/timer/mti,gcru.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..ceaf90bad5332b64f3c1f28bebdc28d78443898a
+--- /dev/null
++++ b/Documentation/devicetree/bindings/timer/mti,gcru.yaml
+@@ -0,0 +1,38 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/timer/mti,gcru.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: GCR.U timer device for RISC-V platforms
++
++maintainers:
++  - Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
++
++description:
++  The GCR.U memory region contains memory mapped shadow copies of
++  mtime and hrtime Global Configuration Registers,
++  which software can choose to make accessible from user mode.
++
++properties:
++  compatible:
++    const: mti,gcru
++
++  reg:
++    items:
++      - description: Read-only shadow copy of the RISC-V mtime register.
++      - description: Read-only shadow copy of the high resolution timer register.
++
++required:
++  - compatible
++  - reg
++
++additionalProperties: false
++
++examples:
++  - |
++    timer@1617f000 {
++        compatible = "mti,gcru";
++        reg = <0x1617f050 0x8>,
++              <0x1617f090 0x8>;
++    };
 
-Best regards,
 -- 
-Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+2.34.1
 
