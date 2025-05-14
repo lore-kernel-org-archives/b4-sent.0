@@ -1,11 +1,11 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 14 May 2025 15:01:28 +0800
-Subject: [PATCH 1/8] dt-bindings: pinctl: amlogic,pinctrl-a4: Add
- compatible string for S7
+Date: Wed, 14 May 2025 15:01:29 +0800
+Subject: [PATCH 2/8] dt-bindings: pinctl: amlogic,pinctrl-a4: Add
+ compatible string for S7D
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250514-s6-s7-pinctrl-v1-1-39d368cad250@amlogic.com>
+Message-Id: <20250514-s6-s7-pinctrl-v1-2-39d368cad250@amlogic.com>
 References: <20250514-s6-s7-pinctrl-v1-0-39d368cad250@amlogic.com>
 In-Reply-To: <20250514-s6-s7-pinctrl-v1-0-39d368cad250@amlogic.com>
 To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
@@ -19,38 +19,42 @@ Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747206100; l=857;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747206100; l=1044;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=GTxtiAQGmCYOsgbEQ6EOKgzNKF5l16qDKM+F3b/U1zI=;
- b=Tss7kkbHInMJD70OvuMcwhicWga68wC2NtehbOPKsGQ2z8FEc6GRKYVYIE88fkviKSXt9HCpG
- 9Oe4CQ+Je/1AWPaRSy0cahmKIGRXxbF94t7lAUnZmL4+Dlvb1L4NChm
+ bh=SRGfN0xHu7rPLyCZFtaZT28fxmetKbOy0Gk6C4ftPKQ=;
+ b=3PHyXSoGV95skhliBDZMXH0l8EuvpG+EqyHCmUwBq2UV0lVqWG3FLCfhsTMVqMVVP8Ru2jAVz
+ s83N7u82Sp/A5O1bSI4WQMyrSDP8znh40QyaIPL9cu/bGH2f6sCQB/K
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update dt-binding document for pinctrl of Amlogic S7.
+Update dt-binding document for pinctrl of Amlogic S7D SoC.
+
+Amlogic S7D SoCs uses the same pintrl controller as S7 SoCs. There is
+no need for an extra compatible line in the driver, but add S7D
+compatible line for documentation.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- Documentation/devicetree/bindings/pinctrl/amlogic,pinctrl-a4.yaml | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ Documentation/devicetree/bindings/pinctrl/amlogic,pinctrl-a4.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/Documentation/devicetree/bindings/pinctrl/amlogic,pinctrl-a4.yaml b/Documentation/devicetree/bindings/pinctrl/amlogic,pinctrl-a4.yaml
-index c36b6fe377ad..8a6981e9f873 100644
+index 8a6981e9f873..96a7c5646c13 100644
 --- a/Documentation/devicetree/bindings/pinctrl/amlogic,pinctrl-a4.yaml
 +++ b/Documentation/devicetree/bindings/pinctrl/amlogic,pinctrl-a4.yaml
-@@ -15,7 +15,9 @@ allOf:
- properties:
-   compatible:
-     oneOf:
--      - const: amlogic,pinctrl-a4
-+      - enum:
-+          - amlogic,pinctrl-a4
-+          - amlogic,pinctrl-s7
-       - items:
+@@ -22,6 +22,10 @@ properties:
            - enum:
                - amlogic,pinctrl-a5
+           - const: amlogic,pinctrl-a4
++      - items:
++          - enum:
++              - amlogic,pinctrl-s7d
++          - const: amlogic,pinctrl-s7
+ 
+   "#address-cells":
+     const: 2
 
 -- 
 2.37.1
