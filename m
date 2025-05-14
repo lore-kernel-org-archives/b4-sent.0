@@ -1,10 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 14 May 2025 15:01:34 +0800
-Subject: [PATCH 7/8] dts: arm64: amlogic: add S7D pinctrl node
+Date: Wed, 14 May 2025 15:01:35 +0800
+Subject: [PATCH 8/8] dts: arm64: amlogic: add S6 pinctrl node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250514-s6-s7-pinctrl-v1-7-39d368cad250@amlogic.com>
+Message-Id: <20250514-s6-s7-pinctrl-v1-8-39d368cad250@amlogic.com>
 References: <20250514-s6-s7-pinctrl-v1-0-39d368cad250@amlogic.com>
 In-Reply-To: <20250514-s6-s7-pinctrl-v1-0-39d368cad250@amlogic.com>
 To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
@@ -18,43 +18,42 @@ Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747206100; l=3396;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747206100; l=3610;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=aT13wp7utfZt17yM5w7BMgo+z9/dQ9PDbViGUVlLZus=;
- b=5tfeiZNABChrE/HjXy92wSrWmtbhFa2QQw4K95Ftsg6X6v3om6qOyW5BZFdbtCpmrWvWFe8/b
- 0KGElMPiZQ7DfCGoQhlXmW9yi1Doi3qi7h4+aSf8/j5Zpbl7ddJ6kRx
+ bh=LQtEhTH+4eGkcgIF+Vwy2luHuUbtEoQ8YiYPmKbSysk=;
+ b=S8+ebZFd/3aLdScnhUNT2oKPoPi/XIvUCU86CBgbhCRKe7b7J6FzLOMCx5QjOuvMj9DIUAUUw
+ Lz+sz4JJ1dwBZz+LtWhw6/woTdNSztnNVqS3qabFwUDOx1uSBwibmHm
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add pinctrl device to support Amlogic S7D.
+Add pinctrl device to support Amlogic S6.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi | 90 ++++++++++++++++++++++++++++
- 1 file changed, 90 insertions(+)
+ arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi | 97 +++++++++++++++++++++++++++++
+ 1 file changed, 97 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-index e1099bc1535d..4de889bf291b 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi
+index a8c90245c42a..5324079808c4 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi
 @@ -6,6 +6,7 @@
  #include <dt-bindings/interrupt-controller/irq.h>
  #include <dt-bindings/interrupt-controller/arm-gic.h>
  #include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/pinctrl/amlogic,pinctrl.h>
- 
  / {
  	cpus {
-@@ -94,6 +95,95 @@ uart_b: serial@7a000 {
+ 		#address-cells = <2>;
+@@ -92,6 +93,102 @@ uart_b: serial@7a000 {
  				clock-names = "xtal", "pclk", "baud";
  				status = "disabled";
  			};
 +
 +			periphs_pinctrl: pinctrl {
-+				compatible = "amlogic,pinctrl-s7d",
-+					     "amlogic,pinctrl-s7";
++				compatible = "amlogic,pinctrl-s6";
 +				#address-cells = <2>;
 +				#size-cells = <2>;
 +				ranges = <0x0 0x0 0x0 0x4000 0x0 0x340>;
@@ -64,7 +63,7 @@ index e1099bc1535d..4de889bf291b 100644
 +					reg-names = "gpio", "mux";
 +					gpio-controller;
 +					#gpio-cells = <2>;
-+					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_Z<<8) 13>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_Z<<8) 16>;
 +				};
 +
 +				gpiox: gpio@100 {
@@ -80,15 +79,23 @@ index e1099bc1535d..4de889bf291b 100644
 +					reg-names = "gpio", "mux";
 +					gpio-controller;
 +					#gpio-cells = <2>;
-+					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_H<<8) 12>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_H<<8) 9>;
 +				};
 +
 +				gpiod: gpio@180 {
-+					reg = <0 0x180 0 0x20>, <0 0x40 0 0x4>;
++					reg = <0 0x180 0 0x20>, <0 0x8 0 0x4>;
 +					reg-names = "gpio", "mux";
 +					gpio-controller;
 +					#gpio-cells = <2>;
-+					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_D<<8) 5>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_D<<8) 7>;
++				};
++
++				gpiof: gpio@1a0 {
++					reg = <0 0x1a0 0 0x20>, <0 0x20 0 0x4>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_F<<8) 5>;
 +				};
 +
 +				gpioe: gpio@1c0 {
@@ -96,7 +103,7 @@ index e1099bc1535d..4de889bf291b 100644
 +					reg-names = "gpio", "mux";
 +					gpio-controller;
 +					#gpio-cells = <2>;
-+					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_E<<8) 2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_E<<8) 3>;
 +				};
 +
 +				gpioc: gpio@200 {
@@ -115,12 +122,12 @@ index e1099bc1535d..4de889bf291b 100644
 +					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_B<<8) 14>;
 +				};
 +
-+				gpiodv: gpio@280 {
-+					reg = <0 0x280 0 0x20>, <0 0x8 0 0x4>;
++				gpioa: gpio@280 {
++					reg = <0 0x280 0 0x20>, <0 0x40 0 0x8>;
 +					reg-names = "gpio", "mux";
 +					gpio-controller;
 +					#gpio-cells = <2>;
-+					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_DV<<8) 7>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_A<<8) 16>;
 +				};
 +
 +				test_n: gpio@2c0 {
