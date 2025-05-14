@@ -1,10 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 14 May 2025 15:01:31 +0800
-Subject: [PATCH 4/8] pinctrl: meson: a4: remove special data processing
+Date: Wed, 14 May 2025 15:01:32 +0800
+Subject: [PATCH 5/8] pinctrl: meson: support amlogic S6/S7/S7D SoC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250514-s6-s7-pinctrl-v1-4-39d368cad250@amlogic.com>
+Message-Id: <20250514-s6-s7-pinctrl-v1-5-39d368cad250@amlogic.com>
 References: <20250514-s6-s7-pinctrl-v1-0-39d368cad250@amlogic.com>
 In-Reply-To: <20250514-s6-s7-pinctrl-v1-0-39d368cad250@amlogic.com>
 To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
@@ -18,82 +18,194 @@ Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747206100; l=1982;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747206100; l=5229;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=FRMEmxN5zjpQVQOxtUKSm3GQm/lC+q2P8YsijCrDdRM=;
- b=+6hLKSp0TODk9+4jPyX0PxesuamsmX2QcK+x5esdSc3SYblzTFKWXatB/oAB2U0+Tfv5MEg6X
- ZWVfF23ZwRGA4BhIn08ObpMSlwTK3z44oHVT+iB42n7EHzbE+Qh2xO9
+ bh=gBld46AxkELbpQvuVxx+JAeuTI0Fp+bQupU9PRwGIaM=;
+ b=O0H7JfjGniNuecua7TnPLDc7MaS7+00eIT5GXbEd2wGaDL8q8He4wQek3RADn0VfcH6+uskOK
+ dXygW6aEOgqABPsJ3fMmyGH4oFflTnEVQs1wThzAI05bwrQeZVC7B+n
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-According to the data specifications of Amlogic's existing SoCs,
-the function register offset and the bit offset are the same
-value among various chips. Therefore, general processing can
-be carried out without the need for private data modification.
-Drop special data processing.
+In some Amlogic SoCs, to save register space or due to some
+abnormal arrangements, two sets of pins share one mux register.
+
+A group starting from pin0 is the main pin group, which acquires
+the register address through DTS and has management permissions,
+but the register bit offset is undetermined.
+
+Another GPIO group as a subordinate group. Some pins mux use share
+register and bit offset from bit0 . But this group do not have
+register management permissions.
+
+This submission implements this situation.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/pinctrl/meson/pinctrl-amlogic-a4.c | 33 +++---------------------------
- 1 file changed, 3 insertions(+), 30 deletions(-)
+ drivers/pinctrl/meson/pinctrl-amlogic-a4.c | 94 +++++++++++++++++++++++++++++-
+ 1 file changed, 92 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
-index a76f266b4b94..90d4d10ca10b 100644
+index 90d4d10ca10b..f2c98ee9cdb1 100644
 --- a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
 +++ b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
-@@ -50,15 +50,8 @@ struct aml_pio_control {
+@@ -50,8 +50,23 @@ struct aml_pio_control {
  	u32 bit_offset[AML_NUM_REG];
  };
  
--struct aml_reg_bit {
--	u32 bank_id;
--	u32 reg_offs[AML_NUM_REG];
--	u32 bit_offs[AML_NUM_REG];
--};
--
++/*
++ * partial bank(subordinate) pins mux config use other bank(main) mux registgers
++ * m_bank_id:	the main bank which pin_id from 0, but register bit not from bit 0
++ * m_bit_offs:	bit offset the main bank mux register
++ * sid:         start pin_id of subordinate bank
++ * eid:         end pin_id of subordinate bank
++ */
++struct multi_mux {
++	unsigned int m_bank_id;
++	unsigned int m_bit_offs;
++	unsigned int sid;
++	unsigned int eid;
++};
++
  struct aml_pctl_data {
  	unsigned int number;
--	struct aml_reg_bit rb_offs[];
++	struct multi_mux multi_data[];
  };
  
  struct aml_pmx_func {
-@@ -843,31 +836,11 @@ static const struct gpio_chip aml_gpio_template = {
+@@ -71,10 +86,12 @@ struct aml_gpio_bank {
+ 	struct gpio_chip		gpio_chip;
+ 	struct aml_pio_control		pc;
+ 	u32				bank_id;
++	u32				mux_bit_offs;
+ 	unsigned int			pin_base;
+ 	struct regmap			*reg_mux;
+ 	struct regmap			*reg_gpio;
+ 	struct regmap			*reg_ds;
++	const struct multi_mux		*p_mux;
+ };
+ 
+ struct aml_pinctrl {
+@@ -106,13 +123,39 @@ static const char *aml_bank_name[31] = {
+ "GPIOCC", "TEST_N", "ANALOG"
+ };
+ 
++const struct aml_pctl_data s7_priv_data = {
++	.number = 1,
++	.multi_data[0] = {
++		.m_bank_id = AMLOGIC_GPIO_CC,
++		.m_bit_offs = 24,
++		.sid = (AMLOGIC_GPIO_X << 8) + 16,
++		.eid = (AMLOGIC_GPIO_X << 8) + 19,
++	},
++};
++
++const struct aml_pctl_data s6_priv_data = {
++	.number = 2,
++	.multi_data[0] = {
++		.m_bank_id = AMLOGIC_GPIO_CC,
++		.m_bit_offs = 24,
++		.sid = (AMLOGIC_GPIO_X << 8) + 16,
++		.eid = (AMLOGIC_GPIO_X << 8) + 19,
++	},
++	.multi_data[1] = {
++		.m_bank_id = AMLOGIC_GPIO_F,
++		.m_bit_offs = 4,
++		.sid = (AMLOGIC_GPIO_D << 8) + 6,
++		.eid = (AMLOGIC_GPIO_D << 8) + 6,
++	},
++};
++
+ static int aml_pmx_calc_reg_and_offset(struct pinctrl_gpio_range *range,
+ 				       unsigned int pin, unsigned int *reg,
+ 				       unsigned int *offset)
+ {
+ 	unsigned int shift;
+ 
+-	shift = (pin - range->pin_base) << 2;
++	shift = ((pin - range->pin_base) << 2) + *offset;
+ 	*reg = (shift / 32) * 4;
+ 	*offset = shift % 32;
+ 
+@@ -124,9 +167,36 @@ static int aml_pctl_set_function(struct aml_pinctrl *info,
+ 				 int pin_id, int func)
+ {
+ 	struct aml_gpio_bank *bank = gpio_chip_to_bank(range->gc);
++	unsigned int shift;
+ 	int reg;
+-	int offset;
++	int i;
++	unsigned int offset = bank->mux_bit_offs;
++	const struct multi_mux	*p_mux;
++
++	/* peculiar mux reg set */
++	if (bank->p_mux) {
++		p_mux = bank->p_mux;
++		if (pin_id >= p_mux->sid && pin_id <= p_mux->eid) {
++			bank = NULL;
++			for (i = 0; i < info->nbanks; i++) {
++				if (info->banks[i].bank_id == p_mux->m_bank_id) {
++					bank = &info->banks[i];
++						break;
++				}
++			}
++
++			if (!bank || !bank->reg_mux)
++				return -EINVAL;
++
++			shift = (pin_id - p_mux->sid) << 2;
++			reg = (shift / 32) * 4;
++			offset = shift % 32;
++			return regmap_update_bits(bank->reg_mux, reg,
++					0xf << offset, (func & 0xf) << offset);
++		}
++	}
+ 
++	/* normal mux reg set */
+ 	if (!bank->reg_mux)
+ 		return 0;
+ 
+@@ -836,12 +906,30 @@ static const struct gpio_chip aml_gpio_template = {
  static void init_bank_register_bit(struct aml_pinctrl *info,
  				   struct aml_gpio_bank *bank)
  {
--	const struct aml_pctl_data *data = info->data;
--	const struct aml_reg_bit *aml_rb;
--	bool def_offs = true;
++	const struct aml_pctl_data *data = info->data;
++	const struct multi_mux *multi_data;
  	int i;
  
--	if (data) {
--		for (i = 0; i < data->number; i++) {
--			aml_rb = &data->rb_offs[i];
--			if (bank->bank_id == aml_rb->bank_id) {
--				def_offs = false;
--				break;
--			}
--		}
--	}
--
--	if (def_offs) {
--		for (i = 0; i < AML_NUM_REG; i++) {
--			bank->pc.reg_offset[i] = aml_def_regoffs[i];
--			bank->pc.bit_offset[i] = 0;
--		}
--	} else {
--		for (i = 0; i < AML_NUM_REG; i++) {
--			bank->pc.reg_offset[i] = aml_rb->reg_offs[i];
--			bank->pc.bit_offset[i] = aml_rb->bit_offs[i];
--		}
-+	for (i = 0; i < AML_NUM_REG; i++) {
-+		bank->pc.reg_offset[i] = aml_def_regoffs[i];
-+		bank->pc.bit_offset[i] = 0;
+ 	for (i = 0; i < AML_NUM_REG; i++) {
+ 		bank->pc.reg_offset[i] = aml_def_regoffs[i];
+ 		bank->pc.bit_offset[i] = 0;
  	}
++
++	bank->mux_bit_offs = 0;
++
++	if (data) {
++		for (i = 0; i < data->number; i++) {
++			multi_data = &data->multi_data[i];
++			if (bank->bank_id == multi_data->m_bank_id) {
++				bank->mux_bit_offs = multi_data->m_bit_offs;
++				break;
++			}
++			if (multi_data->sid >> 8 == bank->bank_id) {
++				bank->p_mux = multi_data;
++				break;
++			}
++		}
++	}
  }
  
+ static int aml_gpiolib_register_bank(struct aml_pinctrl *info,
+@@ -1008,6 +1096,8 @@ static int aml_pctl_probe(struct platform_device *pdev)
+ 
+ static const struct of_device_id aml_pctl_of_match[] = {
+ 	{ .compatible = "amlogic,pinctrl-a4", },
++	{ .compatible = "amlogic,pinctrl-s7", .data = &s7_priv_data, },
++	{ .compatible = "amlogic,pinctrl-s6", .data = &s6_priv_data, },
+ 	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, aml_pctl_dt_match);
 
 -- 
 2.37.1
