@@ -1,16 +1,13 @@
 From: Per Larsen <perlarsen@google.com>
-Subject: [PATCH v4 0/5] KVM: arm64: Support FF-A 1.2 and SEND_DIRECT2 ABI
-Date: Fri, 16 May 2025 12:13:59 +0000
-Message-Id: <20250516-virtio-msg-ffa-v4-0-580ee70e5081@google.com>
+Date: Fri, 16 May 2025 12:14:00 +0000
+Subject: [PATCH v4 1/5] KVM: arm64: Restrict FF-A host version
+ renegotiation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAgsJ2gC/2WOQW7DIBAAvxJx7kawGOLklH9UPVC82CsFE4GLW
- kX+e7GlSml7nMOM5iEKZaYiLoeHyFS5cJobdC8H4Sc3jwQ8NBYo0UgjLVTOCyeIZYQQHCC6cEJ
- /RmWkaNI9U+DPPfj61jjkFGGZMrnnDMomyP6oETvdKVBwp3y7cowfs5uXo09xi01clpS/9rmKW
- /In0P/9qAgSaOi70Eujz9Zcx5TGG+2pbaTqJ1/pf75u/mCtP9kQ1Dv6X/66rt/O9UQQKgEAAA=
- =
-X-Change-ID: 20250506-virtio-msg-ffa-22af72c92150
+Message-Id: <20250516-virtio-msg-ffa-v4-1-580ee70e5081@google.com>
+References: <20250516-virtio-msg-ffa-v4-0-580ee70e5081@google.com>
+In-Reply-To: <20250516-virtio-msg-ffa-v4-0-580ee70e5081@google.com>
 To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
  Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
  Zenghui Yu <yuzenghui@huawei.com>, 
@@ -21,108 +18,46 @@ Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev,
  qwandor@google.com, arve@android.com, perl@immunant.com, 
  lpieralisi@kernel.org, kernel-team@android.com, tabba@google.com, 
  james.morse@arm.com, armellel@google.com, jean-philippe@linaro.org, 
- ahomescu@google.com, Per Larsen <perlarsen@google.com>, 
- Ayrton Munoz <ayrton@google.com>
+ ahomescu@google.com, Per Larsen <perlarsen@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747397650; l=3725;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747397650; l=1116;
  i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=y+mm5weWo+9kNZUrNcHd1yv3c9QMyVj137bK/yu+2IQ=;
- b=YzR/YMJmP2O7HT5umZO1tXDefZXVOIPW3ZjT4X/487ou9ZmBRtFIlzlCHKeURiH7NXnrHvjh+
- AAqajWtMT4DDZqFxrcC7Cys3ubzFbX+mFNYnYzaTAfcbfXtEPsWX6Ic
+ bh=KE0l+d+r+QSm1fqDkNHRHhbIpv9VyyzBoa1V1b9tCZk=;
+ b=LpJQ30mDqqHwDjaicF57PfEsiV7MpwOBSa0ddOhXxE84Qd3wunEL4UivPaPq6LT+HD2GHuv3p
+ j+jb5zbBL7OCb+5b7E/fOyA9HFK3/8f8HvTAypL/tv+h04OrdDwtmbL
 X-Developer-Key: i=perlarsen@google.com; a=ed25519;
  pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
 X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+Prevent the host from re-negotiating a lesser minor version with the
+hypervisor. Once the hypervisor negotiates a version, that should
+remain locked in. Fix the current behaviour by returning NOT_SUPPORTED
+to avoid the FF-A interoperability rules with lesser minor versions that
+allow the host version to downgrade.
 
-The FF-A 1.2 specification introduces a new SEND_DIRECT2 ABI which
-allows registers x4-x17 to be used for the message payload. This patch
-set prevents the host from using a lower FF-A version than what has
-already been negotiated with the hypervisor. This is necessary because
-the hypervisor does not have the necessary compatibility paths to
-translate from the hypervisor FF-A version to a previous version.
-
-Support for FF-A 1.2 in the hypervisor is added as a precursor to the
-addition of the FFA_MSG_SEND_DIRECT_REQ2 messaging interface. The bulk
-of this change has to do with the upgrade to SMCCC 1.2 required by
-FF-A 1.2. Additionally, unimplemented FF-A 1.2 interfaces are added to
-the list of unsupported functions.
-
-Tested by booting Android under QEMU and loading Trusty as the guest
-VM and observing the SEND_DIRECT2 ABI being used successfully during
-guest boot.
-
-Changes since v3:
-- all:        Remove Signed-off-by: Per Larsen <perl@immunant.com>
-- 2/5:        Split out from 2/3, zero x4-x7 in set_ffa_retval
-- 3/5:        Split out from 2/3, Mark FFA_NOTIFICATION_* calls as
-              unsupported
-- 2/3 -> 4/5: Drop ffa_get_hypervisor_version, access hyp_ffa_version
-              directly when version negotiation is complete.
-- 3/3 -> 5/5: Call ffa_to_smccc_1_2_error directly in
-              do_do_ffa_direct_msg2
-              Push call to ffa_call_needs_smccc_1_2 lower down by adding
-              ffa_get_func_id and ffa_set_retval_smccc_1_x.
-              Drop ffa_to_smccc_1_2_regs and ffa_to_smccc_1_2_regs_prop
-              as they are no longer used.
-- Link to v3: https://lore.kernel.org/r/20250513-virtio-msg-ffa-v3-0-d66c76ff1b2c@google.com 
-
-Changes since v2:
-- 2/3: Removed files added by mistake.
-       Add and use ffa_get_hypervisor_version to access hyp_ffa_version
-- 3/3: Use ffa_get_hypervisor_version to access hyp_ffa_version safely
-- Link to v2: https://lore.kernel.org/r/20250508-virtio-msg-ffa-v2-0-ed84f8053965@google.com
-
-Changes since v1:
-- 1/3: Simplify commit message; drop long comment in do_ffa_version
-- 2/3: Correct use of Co-developed-by: footer
-       s/arm_smccc_1_2_smc_fallback/arm_smccc_1_x_smc/
-       Always access hyp_ffa_version w/lock held
-       Remove superfluous comments in ffa_call_supported
-       Add and use FFA_FEAT_RXTX_MIN_SZ_MASK instead of constant
-       Add FFA_PARTITION_INFO_GET_REGS to calls that require SMCCC 1.2
-- 3/3: Always access hyp_ffa_version w/lock held
-       Correct formatting
-
-Thanks,
-Per Larsen
-
---
-2.49.0
-
+Signed-off-by: Per Larsen <perlarsen@google.com>
 ---
-To: Marc Zyngier <maz@kernel.org>
-To: Oliver Upton <oliver.upton@linux.dev>
-To: Joey Gouly <joey.gouly@arm.com>
-To: Suzuki K Poulose <suzuki.poulose@arm.com>
-To: Zenghui Yu <yuzenghui@huawei.com>
-To: Catalin Marinas <catalin.marinas@arm.com>
-To: Will Deacon <will@kernel.org>
-To: Sudeep Holla <sudeep.holla@arm.com>
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: kvmarm@lists.linux.dev
-Cc: linux-kernel@vger.kernel.org
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
----
+diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
+index 3369dd0c4009f84ad3cf9481c747bdc57a162370..2c199d40811efb5bfae199c4a67d8ae3d9307357 100644
+--- a/arch/arm64/kvm/hyp/nvhe/ffa.c
++++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
+@@ -712,7 +712,10 @@ static void do_ffa_version(struct arm_smccc_res *res,
+ 
+ 	hyp_spin_lock(&version_lock);
+ 	if (has_version_negotiated) {
+-		res->a0 = hyp_ffa_version;
++		if (FFA_MINOR_VERSION(ffa_req_version) < FFA_MINOR_VERSION(hyp_ffa_version))
++			res->a0 = FFA_RET_NOT_SUPPORTED;
++		else
++			res->a0 = hyp_ffa_version;
+ 		goto unlock;
+ 	}
+ 
 
----
-Per Larsen (5):
-      KVM: arm64: Restrict FF-A host version renegotiation
-      KVM: arm64: Zero x4-x7 in ffa_set_retval
-      KVM: arm64: Mark FFA_NOTIFICATION_* calls as unsupported
-      KVM: arm64: Bump the supported version of FF-A to 1.2
-      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in host handler
-
- arch/arm64/kvm/hyp/nvhe/Makefile |   1 +
- arch/arm64/kvm/hyp/nvhe/ffa.c    | 186 +++++++++++++++++++++++++++++++++++++--
- include/linux/arm_ffa.h          |   3 +
- 3 files changed, 182 insertions(+), 8 deletions(-)
----
-base-commit: fee3e843b309444f48157e2188efa6818bae85cf
-change-id: 20250506-virtio-msg-ffa-22af72c92150
-
-Best regards,
 -- 
-Per Larsen <perlarsen@google.com>
+2.49.0.1101.gccaa498523-goog
 
