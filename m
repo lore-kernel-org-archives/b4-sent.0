@@ -1,11 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 16 May 2025 15:43:05 +0400
-Subject: [PATCH v3 2/5] dt-bindings: clock: qcom: Add CMN PLL support for
- IPQ5018 SoC
+Date: Fri, 16 May 2025 15:43:06 +0400
+Subject: [PATCH v3 3/5] clk: qcom: ipq-cmn-pll: Add IPQ5018 SoC support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250516-ipq5018-cmn-pll-v3-2-f3867c5a2076@outlook.com>
+Message-Id: <20250516-ipq5018-cmn-pll-v3-3-f3867c5a2076@outlook.com>
 References: <20250516-ipq5018-cmn-pll-v3-0-f3867c5a2076@outlook.com>
 In-Reply-To: <20250516-ipq5018-cmn-pll-v3-0-f3867c5a2076@outlook.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,61 +18,111 @@ Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747395784; l=1855;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747395784; l=4052;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=aD8B+18ScDcHtu0wgN3a3xFwWsO42AOs4yTmUEt8w/0=;
- b=ggusxMAiNh1P6l+yIUj0dmH5Os8r/sWqU5XPHACRD/cF4pzbLw0cctLk1clr6ipW8ItEiHCYe
- yuzi8BSLpy/AEpj2ZYmbxYA5lH4GzXcGAHJ7DDNg8S8FuPOJlCnFKht
+ bh=S1ht5tbqwChz5d/8M60AjKhgKOu4DbMAJtGD2WfstW0=;
+ b=Hi+M4YQe40Iv0r8LXUpsPGkIzCPL0+6ho7VpJ9E+kfYL3jn4K9YWzVr9jgYkpRubgnKKqsVzN
+ ruOkaOZS07dDHpJxdy7+aGx8DZVHgF8rBX9cbPeki5bDks+b4vKYDTB
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The CMN PLL block in the IPQ5018 SoC takes 96 MHZ as the reference
-input clock. Its output clocks are the XO (24Mhz), sleep (32Khz), and
-ethernet (50Mhz) clocks.
+The CMN PLL in IPQ5018 SoC supplies fixed clocks to XO, sleep, and the
+ethernet block.
 
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- .../devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml  |  1 +
- include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h         | 16 ++++++++++++++++
- 2 files changed, 17 insertions(+)
+ drivers/clk/qcom/ipq-cmn-pll.c | 37 +++++++++++++++++++++++--------------
+ 1 file changed, 23 insertions(+), 14 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml b/Documentation/devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml
-index cb6e09f4247f4b25105b25f4ae746c0b3ef47616..817d51135fbfdf0f518af1007ec7d6b120a91818 100644
---- a/Documentation/devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml
-+++ b/Documentation/devicetree/bindings/clock/qcom,ipq9574-cmn-pll.yaml
-@@ -24,6 +24,7 @@ description:
- properties:
-   compatible:
-     enum:
-+      - qcom,ipq5018-cmn-pll
-       - qcom,ipq5424-cmn-pll
-       - qcom,ipq9574-cmn-pll
+diff --git a/drivers/clk/qcom/ipq-cmn-pll.c b/drivers/clk/qcom/ipq-cmn-pll.c
+index b34d6faf67b8dd74402fabdb8dfe5ea52edd52f4..b3d7169c63e5fa7638fee80094a47746a0b6845e 100644
+--- a/drivers/clk/qcom/ipq-cmn-pll.c
++++ b/drivers/clk/qcom/ipq-cmn-pll.c
+@@ -50,6 +50,7 @@
+ #include <linux/regmap.h>
  
-diff --git a/include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h b/include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..586d1c9b33b374331bef413f543c526212c18494
---- /dev/null
-+++ b/include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h
-@@ -0,0 +1,16 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
-+/*
-+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
-+ */
+ #include <dt-bindings/clock/qcom,ipq-cmn-pll.h>
++#include <dt-bindings/clock/qcom,ipq5018-cmn-pll.h>
+ #include <dt-bindings/clock/qcom,ipq5424-cmn-pll.h>
+ 
+ #define CMN_PLL_REFCLK_SRC_SELECTION		0x28
+@@ -110,16 +111,10 @@ static const struct regmap_config ipq_cmn_pll_regmap_config = {
+ 	.fast_io = true,
+ };
+ 
+-static const struct cmn_pll_fixed_output_clk ipq9574_output_clks[] = {
+-	CLK_PLL_OUTPUT(XO_24MHZ_CLK, "xo-24mhz", 24000000UL),
+-	CLK_PLL_OUTPUT(SLEEP_32KHZ_CLK, "sleep-32khz", 32000UL),
+-	CLK_PLL_OUTPUT(PCS_31P25MHZ_CLK, "pcs-31p25mhz", 31250000UL),
+-	CLK_PLL_OUTPUT(NSS_1200MHZ_CLK, "nss-1200mhz", 1200000000UL),
+-	CLK_PLL_OUTPUT(PPE_353MHZ_CLK, "ppe-353mhz", 353000000UL),
+-	CLK_PLL_OUTPUT(ETH0_50MHZ_CLK, "eth0-50mhz", 50000000UL),
+-	CLK_PLL_OUTPUT(ETH1_50MHZ_CLK, "eth1-50mhz", 50000000UL),
+-	CLK_PLL_OUTPUT(ETH2_50MHZ_CLK, "eth2-50mhz", 50000000UL),
+-	CLK_PLL_OUTPUT(ETH_25MHZ_CLK, "eth-25mhz", 25000000UL),
++static const struct cmn_pll_fixed_output_clk ipq5018_output_clks[] = {
++	CLK_PLL_OUTPUT(IPQ5018_XO_24MHZ_CLK, "xo-24mhz", 24000000UL),
++	CLK_PLL_OUTPUT(IPQ5018_SLEEP_32KHZ_CLK, "sleep-32khz", 32000UL),
++	CLK_PLL_OUTPUT(IPQ5018_ETH_50MHZ_CLK, "eth-50mhz", 50000000UL),
+ 	{ /* Sentinel */ }
+ };
+ 
+@@ -136,6 +131,19 @@ static const struct cmn_pll_fixed_output_clk ipq5424_output_clks[] = {
+ 	{ /* Sentinel */ }
+ };
+ 
++static const struct cmn_pll_fixed_output_clk ipq9574_output_clks[] = {
++	CLK_PLL_OUTPUT(XO_24MHZ_CLK, "xo-24mhz", 24000000UL),
++	CLK_PLL_OUTPUT(SLEEP_32KHZ_CLK, "sleep-32khz", 32000UL),
++	CLK_PLL_OUTPUT(PCS_31P25MHZ_CLK, "pcs-31p25mhz", 31250000UL),
++	CLK_PLL_OUTPUT(NSS_1200MHZ_CLK, "nss-1200mhz", 1200000000UL),
++	CLK_PLL_OUTPUT(PPE_353MHZ_CLK, "ppe-353mhz", 353000000UL),
++	CLK_PLL_OUTPUT(ETH0_50MHZ_CLK, "eth0-50mhz", 50000000UL),
++	CLK_PLL_OUTPUT(ETH1_50MHZ_CLK, "eth1-50mhz", 50000000UL),
++	CLK_PLL_OUTPUT(ETH2_50MHZ_CLK, "eth2-50mhz", 50000000UL),
++	CLK_PLL_OUTPUT(ETH_25MHZ_CLK, "eth-25mhz", 25000000UL),
++	{ /* Sentinel */ }
++};
 +
-+#ifndef _DT_BINDINGS_CLK_QCOM_IPQ5018_CMN_PLL_H
-+#define _DT_BINDINGS_CLK_QCOM_IPQ5018_CMN_PLL_H
-+
-+/* CMN PLL core clock. */
-+#define IPQ5018_CMN_PLL_CLK			0
-+
-+/* The output clocks from CMN PLL of IPQ5018. */
-+#define IPQ5018_XO_24MHZ_CLK			1
-+#define IPQ5018_SLEEP_32KHZ_CLK			2
-+#define IPQ5018_ETH_50MHZ_CLK			3
-+#endif
+ /*
+  * CMN PLL has the single parent clock, which supports the several
+  * possible parent clock rates, each parent clock rate is reflected
+@@ -399,11 +407,11 @@ static int ipq_cmn_pll_clk_probe(struct platform_device *pdev)
+ 	 */
+ 	ret = pm_clk_add(dev, "ahb");
+ 	if (ret)
+-		return dev_err_probe(dev, ret, "Fail to add AHB clock\n");
++		return dev_err_probe(dev, ret, "Failed to add AHB clock\n");
+ 
+ 	ret = pm_clk_add(dev, "sys");
+ 	if (ret)
+-		return dev_err_probe(dev, ret, "Fail to add SYS clock\n");
++		return dev_err_probe(dev, ret, "Failed to add SYS clock\n");
+ 
+ 	ret = pm_runtime_resume_and_get(dev);
+ 	if (ret)
+@@ -414,7 +422,7 @@ static int ipq_cmn_pll_clk_probe(struct platform_device *pdev)
+ 	pm_runtime_put(dev);
+ 	if (ret)
+ 		return dev_err_probe(dev, ret,
+-				     "Fail to register CMN PLL clocks\n");
++				     "Failed to register CMN PLL clocks\n");
+ 
+ 	return 0;
+ }
+@@ -439,8 +447,9 @@ static const struct dev_pm_ops ipq_cmn_pll_pm_ops = {
+ };
+ 
+ static const struct of_device_id ipq_cmn_pll_clk_ids[] = {
+-	{ .compatible = "qcom,ipq9574-cmn-pll", .data = &ipq9574_output_clks },
++	{ .compatible = "qcom,ipq5018-cmn-pll", .data = &ipq5018_output_clks },
+ 	{ .compatible = "qcom,ipq5424-cmn-pll", .data = &ipq5424_output_clks },
++	{ .compatible = "qcom,ipq9574-cmn-pll", .data = &ipq9574_output_clks },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, ipq_cmn_pll_clk_ids);
 
 -- 
 2.49.0
