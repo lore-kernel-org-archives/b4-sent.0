@@ -1,227 +1,102 @@
-From: Per Larsen <perlarsen@google.com>
-Date: Fri, 16 May 2025 12:14:04 +0000
-Subject: [PATCH v4 5/5] KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in
- host handler
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v4 0/5] Add CMN PLL clock controller support for IPQ5018
+Date: Fri, 16 May 2025 16:36:07 +0400
+Message-Id: <20250516-ipq5018-cmn-pll-v4-0-389a6b30e504@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250516-virtio-msg-ffa-v4-5-580ee70e5081@google.com>
-References: <20250516-virtio-msg-ffa-v4-0-580ee70e5081@google.com>
-In-Reply-To: <20250516-virtio-msg-ffa-v4-0-580ee70e5081@google.com>
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
- Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Sudeep Holla <sudeep.holla@arm.com>
-Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, sebastianene@google.com, qperret@google.com, 
- qwandor@google.com, arve@android.com, perl@immunant.com, 
- lpieralisi@kernel.org, kernel-team@android.com, tabba@google.com, 
- james.morse@arm.com, armellel@google.com, jean-philippe@linaro.org, 
- ahomescu@google.com, Per Larsen <perlarsen@google.com>
+X-B4-Tracking: v=1; b=H4sIADcxJ2gC/23P207EIBCA4VdpuBYDw7G98j2M2SAdXGJbetpGs
+ +m7S7te1NQrMiR8/HMnE44RJ1IVdzLiEqeYujzIp4L4q+s+kMY6zwQYKKYYp7Ef8mGpbzvaNw2
+ 1qLip0RoRLMmv+hFD/NrF17fHPOJwy/D8uCTvbkLqU9vGuSqsg1oJj8KrYEFb4WpRh9KVTikLY
+ LkOqCUacgyqij1Hck6HDF22Jgnykpu2pFIzZ4MqDROiWoBsGdc4zWn83vdc+N7xuxKcVlo4ZRR
+ MycBzL5nhL+k2Nyl9PufPdi2jB0GfBciCZ64M3mPNuTwL4iDwfwSRhSCsNl45YEb/FdZ1/QF3W
+ Ql4uwEAAA==
+X-Change-ID: 20250501-ipq5018-cmn-pll-8e517de873f8
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Luo Jie <quic_luoj@quicinc.com>, 
+ Lee Jones <lee@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>, 
+ Arnd Bergmann <arnd@arndb.de>
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747397650; l=6287;
- i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=hU7p4PRxZqf05XqHITft3GvP1fgJbAOODTG2NRdcdeA=;
- b=iqh8j3zsh8Sg9ZxHsL1pNDrvJXbbRkE3cDt2V0ruu86Mope78hrZsh3HSQqO2P3NgAOp8kAQh
- RF/+ph1MMUwAjs0uFLWFuzPlOTSVvtlp6zZHrE/fuiO9HC+glkCgb9R
-X-Developer-Key: i=perlarsen@google.com; a=ed25519;
- pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
-X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747398968; l=3223;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=rJpXVxnBUus4bk7EUo2JlBe6LQiEcnBeH8nz+pXrakQ=;
+ b=pKS14h5cIqFL3O7chlnYPrt4EAhFndx8NMyqGPpq9twY7tnGDTTLFIa79fBe6nG6AgkkEVfOY
+ 5JaWJxFXKHSAJqwh82GMkV8fUC+1epTSwpa9X6Up18uV503oclsV7E6
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FF-A 1.2 adds the DIRECT_REQ2 messaging interface which is similar to
-the existing FFA_MSG_SEND_DIRECT_{REQ,RESP} functions except that it
-uses the SMC calling convention v1.2 which allows calls to use x4-x17 as
-argument and return registers. Add support for FFA_MSG_SEND_DIRECT_REQ2
-in the host ffa handler.
+The CMN PLL block of IPQ5018 supplies output clocks for XO at 24 MHZ,
+sleep at 32KHZ, and the ethernet block at 50MHZ.
 
-Signed-off-by: Per Larsen <perlarsen@google.com>
+This patch series extends the CMN PLL driver to support IPQ5018. It also
+adds the SoC specific header file to export the CMN PLL output clock
+specifiers for IPQ5018. A new table of output clocks is added for the
+CMN PLL of IPQ5018, which is acquired from the device according to the
+compatible.
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 110 +++++++++++++++++++++++++++++++++++++++++-
- include/linux/arm_ffa.h       |   2 +
- 2 files changed, 110 insertions(+), 2 deletions(-)
+Changes in v4:
+- Re-add missing CMN PLL node after git pull and rebase on linux-next
+- Link to v3: https://lore.kernel.org/r/20250516-ipq5018-cmn-pll-v3-0-f3867c5a2076@outlook.com
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index 0b952ace29f6847b4e941262c4c1b05a5bc13e5a..cd75f98bffdb75abd41f9ddc944b8426b93056e4 100644
---- a/arch/arm64/kvm/hyp/nvhe/ffa.c
-+++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -79,6 +79,14 @@ static void ffa_to_smccc_error(struct arm_smccc_res *res, u64 ffa_errno)
- 	};
- }
- 
-+static void ffa_to_smccc_1_2_error(struct arm_smccc_1_2_regs *regs, u64 ffa_errno)
-+{
-+	*regs = (struct arm_smccc_1_2_regs) {
-+		.a0	= FFA_ERROR,
-+		.a2	= ffa_errno,
-+	};
-+}
-+
- static void ffa_to_smccc_res_prop(struct arm_smccc_res *res, int ret, u64 prop)
- {
- 	if (ret == FFA_RET_SUCCESS) {
-@@ -94,6 +102,12 @@ static void ffa_to_smccc_res(struct arm_smccc_res *res, int ret)
- 	ffa_to_smccc_res_prop(res, ret, 0);
- }
- 
-+static u32 ffa_get_func_id(struct kvm_cpu_context *ctxt)
-+{
-+	DECLARE_REG(u32, func_id, ctxt, 0);
-+	return func_id;
-+}
-+
- static void ffa_set_retval(struct kvm_cpu_context *ctxt,
- 			   struct arm_smccc_res *res)
- {
-@@ -128,6 +142,54 @@ static void ffa_set_retval(struct kvm_cpu_context *ctxt,
- 	}
- }
- 
-+static void ffa_set_retval_smccc_1_2(struct kvm_cpu_context *ctxt,
-+				     struct arm_smccc_1_2_regs *regs)
-+{
-+	cpu_reg(ctxt, 0) = regs->a0;
-+	cpu_reg(ctxt, 1) = regs->a1;
-+	cpu_reg(ctxt, 2) = regs->a2;
-+	cpu_reg(ctxt, 3) = regs->a3;
-+	cpu_reg(ctxt, 4) = regs->a4;
-+	cpu_reg(ctxt, 5) = regs->a5;
-+	cpu_reg(ctxt, 6) = regs->a6;
-+	cpu_reg(ctxt, 7) = regs->a7;
-+	cpu_reg(ctxt, 8) = regs->a8;
-+	cpu_reg(ctxt, 9) = regs->a9;
-+	cpu_reg(ctxt, 10) = regs->a10;
-+	cpu_reg(ctxt, 11) = regs->a11;
-+	cpu_reg(ctxt, 12) = regs->a12;
-+	cpu_reg(ctxt, 13) = regs->a13;
-+	cpu_reg(ctxt, 14) = regs->a14;
-+	cpu_reg(ctxt, 15) = regs->a15;
-+	cpu_reg(ctxt, 16) = regs->a16;
-+	cpu_reg(ctxt, 17) = regs->a17;
-+}
-+
-+/*
-+ * Must a given FFA function use the SMC calling convention v1.2?
-+ */
-+static bool ffa_call_needs_smccc_1_2(u64 func_id)
-+{
-+	switch (func_id) {
-+	case FFA_MSG_SEND_DIRECT_REQ2:
-+	case FFA_MSG_SEND_DIRECT_RESP2:
-+	case FFA_PARTITION_INFO_GET_REGS:
-+		return true;
-+	}
-+
-+	return false;
-+}
-+
-+static void ffa_set_retval_smccc_1_x(struct kvm_cpu_context *ctxt,
-+				     struct arm_smccc_res *res,
-+				     struct arm_smccc_1_2_regs *regs)
-+{
-+	if (ffa_call_needs_smccc_1_2(ffa_get_func_id(ctxt)))
-+		ffa_set_retval_smccc_1_2(ctxt, regs);
-+	else
-+		ffa_set_retval(ctxt, res);
-+}
-+
- /* Call SMC64 using SMCCC 1.2 if hyp negotiated FF-A 1.2 falling back to 1.1 */
- static void arm_smccc_1_x_smc(u64 func_id, u64 a1, u64 a2, u64 a3,
- 			      u64 a4, u64 a5, u64 a6, u64 a7,
-@@ -683,7 +745,6 @@ static bool ffa_call_supported(u64 func_id)
- 	case FFA_NOTIFICATION_GET:
- 	case FFA_NOTIFICATION_INFO_GET:
- 	/* Unimplemented interfaces added in FF-A 1.2 */
--	case FFA_MSG_SEND_DIRECT_REQ2:
- 	case FFA_MSG_SEND_DIRECT_RESP2:
- 	case FFA_CONSOLE_LOG:
- 	case FFA_PARTITION_INFO_GET_REGS:
-@@ -852,9 +913,47 @@ static void do_ffa_part_get(struct arm_smccc_res *res,
- 	hyp_spin_unlock(&host_buffers.lock);
- }
- 
-+static void do_ffa_direct_msg2(struct arm_smccc_1_2_regs *regs,
-+			       struct kvm_cpu_context *ctxt,
-+			       u64 vm_handle)
-+{
-+	DECLARE_REG(u32, func_id, ctxt, 0);
-+	DECLARE_REG(u32, endp, ctxt, 1);
-+	DECLARE_REG(u64, uuid_lo, ctxt, 2);
-+	DECLARE_REG(u64, uuid_hi, ctxt, 3);
-+	DECLARE_REG(u64, x4, ctxt, 4);
-+	DECLARE_REG(u64, x5, ctxt, 5);
-+	DECLARE_REG(u64, x6, ctxt, 6);
-+	DECLARE_REG(u64, x7, ctxt, 7);
-+	DECLARE_REG(u64, x8, ctxt, 8);
-+	DECLARE_REG(u64, x9, ctxt, 9);
-+	DECLARE_REG(u64, x10, ctxt, 10);
-+	DECLARE_REG(u64, x11, ctxt, 11);
-+	DECLARE_REG(u64, x12, ctxt, 12);
-+	DECLARE_REG(u64, x13, ctxt, 13);
-+	DECLARE_REG(u64, x14, ctxt, 14);
-+	DECLARE_REG(u64, x15, ctxt, 15);
-+	DECLARE_REG(u64, x16, ctxt, 16);
-+	DECLARE_REG(u64, x17, ctxt, 17);
-+
-+	if (FIELD_GET(FFA_SRC_ENDPOINT_MASK, endp) != vm_handle) {
-+		ffa_to_smccc_1_2_error(regs, FFA_RET_INVALID_PARAMETERS);
-+		return;
-+	}
-+
-+	struct arm_smccc_1_2_regs args = {
-+		func_id, endp, uuid_lo, uuid_hi,
-+		 x4,  x5,  x6,  x7,  x8,  x9, x10,
-+		x11, x12, x13, x14, x15, x16, x17
-+	};
-+
-+	arm_smccc_1_2_smc(&args, regs);
-+}
-+
- bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- {
- 	struct arm_smccc_res res;
-+	struct arm_smccc_1_2_regs regs;
- 
- 	/*
- 	 * There's no way we can tell what a non-standard SMC call might
-@@ -910,14 +1009,21 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- 	case FFA_PARTITION_INFO_GET:
- 		do_ffa_part_get(&res, host_ctxt);
- 		goto out_handled;
-+	case FFA_MSG_SEND_DIRECT_REQ2:
-+		if (hyp_ffa_version >= FFA_VERSION_1_2) {
-+			do_ffa_direct_msg2(&regs, host_ctxt, HOST_FFA_ID);
-+			goto out_handled;
-+		}
-+		goto out_not_supported;
- 	}
- 
- 	if (ffa_call_supported(func_id))
- 		return false; /* Pass through */
- 
-+out_not_supported:
- 	ffa_to_smccc_error(&res, FFA_RET_NOT_SUPPORTED);
- out_handled:
--	ffa_set_retval(host_ctxt, &res);
-+	ffa_set_retval_smccc_1_x(host_ctxt, &res, &regs);
- 	return true;
- }
- 
-diff --git a/include/linux/arm_ffa.h b/include/linux/arm_ffa.h
-index c0dd6183d956043192114a522b7eef465e7078ac..82a35a3b22de426f7e9a8894e76fdf1e933b3d6b 100644
---- a/include/linux/arm_ffa.h
-+++ b/include/linux/arm_ffa.h
-@@ -269,6 +269,8 @@ bool ffa_partition_check_property(struct ffa_device *dev, u32 property)
- 	(ffa_partition_check_property(dev, FFA_PARTITION_DIRECT_REQ2_RECV) && \
- 	 !dev->mode_32bit)
- 
-+#define FFA_SRC_ENDPOINT_MASK	GENMASK(31, 16)
-+
- /* For use with FFA_MSG_SEND_DIRECT_{REQ,RESP} which pass data via registers */
- struct ffa_send_direct_data {
- 	unsigned long data0; /* w3/x3 */
+Changes in v3:
+- After further testing and evaluating different solutions, reverted to
+  marking the XO clock in the GCC as critical as agreed with Konrad
+- Moved kernel traces out of commit message of patch 1 to under the
+  diffstat separator and updated commit message accordingly
+- Updated commit message of patch 3
+- Link to v2: https://lore.kernel.org/r/20250506-ipq5018-cmn-pll-v2-0-c0a9fcced114@outlook.com
 
+Changes in v2:
+- Moved up commit documenting ipq5018 in qcom,tcsr bindings
+- Fixed binding issues reported by Rob's bot
+- Undone accidental deletion of reg property in cmn pll bindings
+- Fixed register address and size based on address and size cells of 1
+- Removed XO and XO_SRC clock structs from GCC and enabled them as
+  always-on as suggested by Konrad
+- Removed bindings for XO and XO_SRC clocks
+- Removed qcom,tscr-cmn-pll-eth-enable property from bindings and will 
+  move logic to ipq5018 internal phy driver as per Jie's recommendation.
+- Removed addition of tcsr node and its bindings from this patch set
+- Corrected spelling mistakes
+- Link to v1: https://lore.kernel.org/r/20250502-ipq5018-cmn-pll-v1-0-27902c1c4071@outlook.com
+
+---
+George Moussalem (5):
+      clk: qcom: ipq5018: keep XO clock always on
+      dt-bindings: clock: qcom: Add CMN PLL support for IPQ5018 SoC
+      clk: qcom: ipq-cmn-pll: Add IPQ5018 SoC support
+      arm64: dts: ipq5018: Add CMN PLL node
+      arm64: dts: qcom: Update IPQ5018 xo_board_clk to use fixed factor clock
+
+ .../bindings/clock/qcom,ipq9574-cmn-pll.yaml       |  1 +
+ arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts     |  3 +-
+ .../dts/qcom/ipq5018-tplink-archer-ax55-v1.dts     |  3 +-
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              | 34 ++++++++++++++++++--
+ drivers/clk/qcom/gcc-ipq5018.c                     |  2 +-
+ drivers/clk/qcom/ipq-cmn-pll.c                     | 37 ++++++++++++++--------
+ include/dt-bindings/clock/qcom,ipq5018-cmn-pll.h   | 16 ++++++++++
+ 7 files changed, 77 insertions(+), 19 deletions(-)
+---
+base-commit: 8a2d53ce3c5f82683ad3df9a9a55822816fe64e7
+change-id: 20250501-ipq5018-cmn-pll-8e517de873f8
+prerequisite-change-id: 20250411-qcom_ipq5424_cmnpll-960a8f597033:v2
+prerequisite-patch-id: dc3949e10baf58f8c28d24bb3ffd347a78a1a2ee
+prerequisite-patch-id: da645619780de3186a3cccf25beedd4fefab36df
+prerequisite-patch-id: 4b5d81954f1f43d450a775bcabc1a18429933aaa
+prerequisite-patch-id: 541f835fb279f83e6eb2405c531bd7da9aacf4bd
+
+Best regards,
 -- 
-2.49.0.1101.gccaa498523-goog
+George Moussalem <george.moussalem@outlook.com>
 
