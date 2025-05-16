@@ -1,10 +1,11 @@
 From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Fri, 16 May 2025 08:42:59 +0200
-Subject: [PATCH v2 1/4] dt-bindings: arm: qcom: Add Lenovo TB16 support
+Date: Fri, 16 May 2025 08:43:00 +0200
+Subject: [PATCH v2 2/4] firmware: qcom: scm: Allow QSEECOM on Lenovo
+ Thinkbook 16
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250516-tb16-dt-v2-1-7c4996d58ed6@oldschoolsolutions.biz>
+Message-Id: <20250516-tb16-dt-v2-2-7c4996d58ed6@oldschoolsolutions.biz>
 References: <20250516-tb16-dt-v2-0-7c4996d58ed6@oldschoolsolutions.biz>
 In-Reply-To: <20250516-tb16-dt-v2-0-7c4996d58ed6@oldschoolsolutions.biz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -16,37 +17,35 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  Aleksandrs Vinarskis <alex.vinarskis@gmail.com>, 
  Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747377794; l=905;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747377794; l=871;
  i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=2g8SM9lGMgdWyCMNBhCp6KQKXsIP6Oe0w1ibkHBucW4=;
- b=h6tG7viVd62+cKVlQedXEoqvWnK8OYr5ipRT5xA9cT29DlhMNwLa+FI6aDUnQ6AyIn9CU2A7F
- 42U1OAkqrq6Btt5itOxzhqXkRlSjeVquIsnr5HV83F16IiIv5U5srYq
+ bh=SqyOjM4lFCEsz5Ib0lcU303VTifLpUJsBJ9F9U5GZRI=;
+ b=LSBskCbhnBnbN47ZFiZAB5dGmIVdTiSZtujGvvo6I7siwvxScHDybhxM1Us+yWqCV2ZBF+sIw
+ MqeS7EZ1XqdCNgfr6l9LKPPXO/GaKo5B6D8OavuyPjJuj2tjQ5Y4j8E
 X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
  pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
 X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the x1p-42-100/x1-26-100 variants of the Thinkbook 16 G7 QOY.
-
-[1]: https://psref.lenovo.com/syspool/Sys/PDF/ThinkBook/ThinkBook_16_G7_QOY/ThinkBook_16_G7_QOY_Spec.pdf
+Allow particular machine accessing eg. efivars.
 
 Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- Documentation/devicetree/bindings/arm/qcom.yaml | 1 +
+ drivers/firmware/qcom/qcom_scm.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
-index 56f78f0f3803fedcb6422efd6adec3bbc81c2e03..5654aaf825955f8000355600c0ae35b74676273e 100644
---- a/Documentation/devicetree/bindings/arm/qcom.yaml
-+++ b/Documentation/devicetree/bindings/arm/qcom.yaml
-@@ -1153,6 +1153,7 @@ properties:
-       - items:
-           - enum:
-               - asus,zenbook-a14-ux3407qa
-+              - lenovo,thinkbook-16
-               - qcom,x1p42100-crd
-           - const: qcom,x1p42100
- 
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+index f63b716be5b027550ae3a987e784f0814ea6d678..171cc2a6502463e3445919ef77a129563ea233a4 100644
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -1993,6 +1993,7 @@ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
+ 	{ .compatible = "hp,omnibook-x14" },
+ 	{ .compatible = "huawei,gaokun3" },
+ 	{ .compatible = "lenovo,flex-5g" },
++	{ .compatible = "lenovo,thinkbook-16" },
+ 	{ .compatible = "lenovo,thinkpad-t14s" },
+ 	{ .compatible = "lenovo,thinkpad-x13s", },
+ 	{ .compatible = "lenovo,yoga-slim7x" },
 
 -- 
 2.48.1
