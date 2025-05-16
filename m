@@ -1,10 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 16 May 2025 16:36:11 +0400
-Subject: [PATCH v4 4/5] arm64: dts: ipq5018: Add CMN PLL node
+Date: Fri, 16 May 2025 16:36:12 +0400
+Subject: [PATCH v4 5/5] arm64: dts: qcom: Update IPQ5018 xo_board_clk to
+ use fixed factor clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250516-ipq5018-cmn-pll-v4-4-389a6b30e504@outlook.com>
+Message-Id: <20250516-ipq5018-cmn-pll-v4-5-389a6b30e504@outlook.com>
 References: <20250516-ipq5018-cmn-pll-v4-0-389a6b30e504@outlook.com>
 In-Reply-To: <20250516-ipq5018-cmn-pll-v4-0-389a6b30e504@outlook.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -16,99 +17,70 @@ To: Bjorn Andersson <andersson@kernel.org>,
  Arnd Bergmann <arnd@arndb.de>
 Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
+ George Moussalem <george.moussalem@outlook.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747398968; l=2487;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747398968; l=2156;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=/8MkwsA8tkiEOngrTa6pfTHAzpGz2h90R2FK3FYJTt8=;
- b=XYGqWejlJkkk2QOrQ4iHC4vWGyTQHibWeBLP+ybPHgM+4pWwEHKPBsAsi+8tB1JI7Fzf+TmZu
- mEDeGuE2AtGCDD6oxgjgNAXdj7UMQ2bsRXsZ+UAQFwPLVDgyV9huMHe
+ bh=58pP2s4zb8WJ+mE2mDMygGM8IPCe9qeMD2Y23FgyIbQ=;
+ b=FrSDQbOUgaNz6XJgeVsJrqrOzsAP/Gx3Bvptqc1MTQZ25bxlsplT7WTiNYh5xjzGEOyEirs9h
+ OQrb5PrZBcHA1VmV+tRgvM/4VOr2ca+pwWtRi1YDadeAAqslHVyAg81
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add CMN PLL node for enabling output clocks to the networking
-hardware blocks on IPQ5018 devices.
+The xo_board_clk is fixed to 24 MHZ, which is routed from WiFi output
+clock 96 MHZ (also being the reference clock of CMN PLL) divided by 4
+to the analog block routing channel. Update the xo_board_clk nodes in
+the board DTS files to use clock-div/clock-mult accordingly.
 
-The reference clock of CMN PLL is routed from XO to the CMN PLL
-through the internal WiFi block.
-.XO (48 MHZ) --> WiFi (multiplier/divider)--> 96 MHZ to CMN PLL.
-
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 33 +++++++++++++++++++++++++++++++--
- 1 file changed, 31 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts             | 3 ++-
+ arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts | 3 ++-
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi                      | 3 ++-
+ 3 files changed, 6 insertions(+), 3 deletions(-)
 
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
+index 43def95e9275258041e7522ba4098a3767be3df1..df3cbb7c79c4e6c58cba7695691827fb8b84e451 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
++++ b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
+@@ -120,5 +120,6 @@ &usbphy0 {
+ };
+ 
+ &xo_board_clk {
+-	clock-frequency = <24000000>;
++	clock-div = <4>;
++	clock-mult = <1>;
+ };
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts b/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts
+index 5bb021cb29cd39cb95035bfac1bdbc976439838b..7a25af57749c8e8c9a6a185437886b04b0d99e8e 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts
++++ b/arch/arm64/boot/dts/qcom/ipq5018-tplink-archer-ax55-v1.dts
+@@ -124,5 +124,6 @@ uart_pins: uart-pins-state {
+ };
+ 
+ &xo_board_clk {
+-	clock-frequency = <24000000>;
++	clock-div = <4>;
++	clock-mult = <1>;
+ };
 diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 130360014c5e14c778e348d37e601f60325b0b14..632caa94df51197ddaa85d172412553e87cf89f3 100644
+index 632caa94df51197ddaa85d172412553e87cf89f3..8b5203554b170619f0c796c832ba688ed45e656d 100644
 --- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
 +++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -2,12 +2,13 @@
- /*
-  * IPQ5018 SoC device tree source
-  *
-- * Copyright (c) 2023 The Linux Foundation. All rights reserved.
-+ * Copyright (c) 2023-2025 The Linux Foundation. All rights reserved.
-  */
+@@ -31,7 +31,8 @@ sleep_clk: sleep-clk {
+ 		};
  
- #include <dt-bindings/clock/qcom,apss-ipq.h>
--#include <dt-bindings/interrupt-controller/arm-gic.h>
- #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
-+#include <dt-bindings/clock/qcom,ipq5018-cmn-pll.h>
-+#include <dt-bindings/interrupt-controller/arm-gic.h>
- #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
- 
- / {
-@@ -16,6 +17,14 @@ / {
- 	#size-cells = <2>;
- 
- 	clocks {
-+		ref_96mhz_clk: ref-96mhz-clk {
+ 		xo_board_clk: xo-board-clk {
+-			compatible = "fixed-clock";
 +			compatible = "fixed-factor-clock";
-+			clocks = <&xo_clk>;
-+			#clock-cells = <0>;
-+			clock-div = <1>;
-+			clock-mult = <2>;
-+		};
-+
- 		sleep_clk: sleep-clk {
- 			compatible = "fixed-clock";
- 			#clock-cells = <0>;
-@@ -25,6 +34,12 @@ xo_board_clk: xo-board-clk {
- 			compatible = "fixed-clock";
++			clocks = <&ref_96mhz_clk>;
  			#clock-cells = <0>;
  		};
-+
-+		xo_clk: xo-clk {
-+			compatible = "fixed-clock";
-+			#clock-cells = <0>;
-+			clock-frequency = <48000000>;
-+		};
- 	};
  
- 	cpus {
-@@ -182,6 +197,20 @@ pcie0_phy: phy@86000 {
- 			status = "disabled";
- 		};
- 
-+		cmn_pll: clock-controller@9b000 {
-+			compatible = "qcom,ipq5018-cmn-pll";
-+			reg = <0x0009b000 0x800>;
-+			clocks = <&ref_96mhz_clk>,
-+				 <&gcc GCC_CMN_BLK_AHB_CLK>,
-+				 <&gcc GCC_CMN_BLK_SYS_CLK>;
-+			clock-names = "ref",
-+				      "ahb",
-+				      "sys";
-+			#clock-cells = <1>;
-+			assigned-clocks = <&cmn_pll IPQ5018_CMN_PLL_CLK>;
-+			assigned-clock-rates-u64 = /bits/ 64 <9600000000>;
-+		};
-+
- 		tlmm: pinctrl@1000000 {
- 			compatible = "qcom,ipq5018-tlmm";
- 			reg = <0x01000000 0x300000>;
 
 -- 
 2.49.0
