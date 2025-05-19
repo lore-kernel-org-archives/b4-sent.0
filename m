@@ -1,64 +1,85 @@
-From: George Chan <gchan9527@gmail.com>
-Date: Sun, 18 May 2025 19:16:20 +0800
-Subject: [PATCH v3 3/3] mach-snapdragon: Enhance android image handling
- memory footprint
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v6 0/7] clk: clk-axi-clkgen: improvements and some fixes
+Date: Mon, 19 May 2025 16:41:05 +0100
+Message-Id: <20250519-dev-axi-clkgen-limits-v6-0-bc4b3b61d1d4@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250518-android-boot-v3-3-02c8768e131f@gmail.com>
-References: <20250518-android-boot-v3-0-02c8768e131f@gmail.com>
-In-Reply-To: <20250518-android-boot-v3-0-02c8768e131f@gmail.com>
-To: Tom Rini <trini@konsulko.com>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, 
- Simon Glass <sjg@chromium.org>, Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Sumit Garg <sumit.garg@kernel.org>, 
- Rayagonda Kokatanur <rayagonda.kokatanur@broadcom.com>
-Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, 
- George Chan <gchan9527@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747567000; l=1406;
- i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
- bh=5MqcY4oWRA3jIaJEq5nkPbwYGfD84Cne/Fh6c5pNYFE=;
- b=kM72fwbnxGSS+CWmwN35xxVHn79/0cZdm5Qx9v0mUjQRuuK5Q0s8xvdzV37FMnZ9lsyfgsDuJ
- VZ3EXYjZOcRAV3mApE/fcLZj+LZka7PR4yhSymp5wAO9Eo/DBhQbwiy
-X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
- pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
-X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIABFRK2gC/33QQW6DMBAF0KtEXseVZ8Y2OKveo+rC2AOxSqCCC
+ KWKuHtN1IpUiMqrb2me//guRh4Sj+J0uIuBpzSmvsvBHg8inH3XsEwxZ4EKjUIoZeRJ+luSof1
+ ouJNtuqTrKC3VlQqGA5WVyLOfA9fp9nDf3nM+p/HaD1+PZyZYbn9FtyNOIJVEWxdcgw7RhVff+
+ bZvXkJ/EQs54coQ0B6DmYGCPKOPlgA2DK2MVsUeQ5khCkWNRXDRumfm+PM9GuG/cY2KKl1zxOA
+ 2LfTaIp89Ri8tfDSAmsHxdhnzxADuMSYzvrSV82RLVuYPM8/zN3zgUU8WAgAA
+X-Change-ID: 20250218-dev-axi-clkgen-limits-63fb0c5ec38b
+To: linux-clk@vger.kernel.org, linux-fpga@vger.kernel.org, 
+ dmaengine@vger.kernel.org, linux-hwmon@vger.kernel.org, 
+ linux-iio@vger.kernel.org, linux-pwm@vger.kernel.org, 
+ linux-spi@vger.kernel.org
+Cc: Stephen Boyd <sboyd@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Moritz Fischer <mdf@kernel.org>, Wu Hao <hao.wu@intel.com>, 
+ Xu Yilun <yilun.xu@intel.com>, Tom Rix <trix@redhat.com>, 
+ Vinod Koul <vkoul@kernel.org>, Jean Delvare <jdelvare@suse.com>, 
+ Guenter Roeck <linux@roeck-us.net>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, Trevor Gamblin <tgamblin@baylibre.com>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Mark Brown <broonie@kernel.org>, 
+ Mike Turquette <mturquette@linaro.org>, Xu Yilun <yilun.xu@linux.intel.com>, 
+ Jonathan Cameron <Jonathan.Cameron@huawei.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747669828; l=1918;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=7f0ImEZdmQ4sVUUr9o8k+aVzij3X3LUT7iulVIHgJHQ=;
+ b=N4/7QPa94o9EyM9f/xBKR/7JgbVeaFY327xya7hTMLcla4UekqHjzjjybKnA67iuvwLOcB0qQ
+ 9W4h93MDTXVAoyRtir588nRc2q1f9XpEB/sNogId0cu3hwH9+MoKWHL
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In order to unzipped kernel from androidboot img, extra memory for
-loadaddr is needed. So once fastboot is enabled fastboot memory also
-share with loadaddr.
+This series starts with a small fix and then a bunch of small
+improvements. The main change though is to allow detecting of
+struct axi_clkgen_limits during probe().
 
-That can balance with memory constrain soc and android usecase.
-
-Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
-Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- arch/arm/mach-snapdragon/board.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+Changes in v6:
+- Patch 3:
+ * Don't add adi-axi-common.h in axi-clkgen (not needed at this point);
+- Patch 5: 
+ * Add adi-axi-common.h now.
 
-diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
-index 3ab75f0fce0..e39973c62f6 100644
---- a/arch/arm/mach-snapdragon/board.c
-+++ b/arch/arm/mach-snapdragon/board.c
-@@ -499,8 +499,12 @@ int board_late_init(void)
- 	status |= env_set_hex("ramdisk_addr_r", addr_alloc(SZ_128M));
- 	status |= env_set_hex("kernel_comp_addr_r", addr_alloc(KERNEL_COMP_SIZE));
- 	status |= env_set_hex("kernel_comp_size", KERNEL_COMP_SIZE);
--	if (IS_ENABLED(CONFIG_FASTBOOT))
--		status |= env_set_hex("fastboot_addr_r", addr_alloc(FASTBOOT_BUF_SIZE));
-+	if (IS_ENABLED(CONFIG_FASTBOOT)) {
-+		addr = addr_alloc(FASTBOOT_BUF_SIZE);
-+		status |= env_set_hex("fastboot_addr_r", addr);
-+		/* override loadaddr for memory rich soc */
-+		status |= env_set_hex("loadaddr", addr);
-+	}
- 	status |= env_set_hex("scriptaddr", addr_alloc(SZ_4M));
- 	status |= env_set_hex("pxefile_addr_r", addr_alloc(SZ_4M));
- 	addr = addr_alloc(SZ_2M);
+- Link to v5: https://lore.kernel.org/r/20250512-dev-axi-clkgen-limits-v5-0-a86b9a368e05@analog.com
+- Link to v4: https://lore.kernel.org/r/20250505-dev-axi-clkgen-limits-v4-0-3ad5124e19e1@analog.com
+- Link to v3: https://lore.kernel.org/r/20250421-dev-axi-clkgen-limits-v3-0-4203b4fed2c9@analog.com
+- Link to v2: https://lore.kernel.org/r/20250313-dev-axi-clkgen-limits-v2-0-173ae2ad6311@analog.com
+- Link to v1: https://lore.kernel.org/r/20250219-dev-axi-clkgen-limits-v1-0-26f7ef14cd9c@analog.com
 
--- 
-2.43.0
+---
+Nuno Sá (7):
+      clk: clk-axi-clkgen: fix fpfd_max frequency for zynq
+      clk: clk-axi-clkgen: make sure to include mod_devicetable.h
+      include: linux: move adi-axi-common.h out of fpga
+      include: adi-axi-common: add new helper macros
+      clk: clk-axi-clkgen: detect axi_clkgen_limits at runtime
+      clk: clk-axi-clkgen move to min/max()
+      clk: clk-axi-clkgen: fix coding style issues
+
+ drivers/clk/clk-axi-clkgen.c        | 159 +++++++++++++++++++++++++-----------
+ drivers/dma/dma-axi-dmac.c          |   2 +-
+ drivers/hwmon/axi-fan-control.c     |   2 +-
+ drivers/iio/adc/adi-axi-adc.c       |   3 +-
+ drivers/iio/dac/adi-axi-dac.c       |   2 +-
+ drivers/pwm/pwm-axi-pwmgen.c        |   2 +-
+ drivers/spi/spi-axi-spi-engine.c    |   2 +-
+ include/linux/adi-axi-common.h      |  56 +++++++++++++
+ include/linux/fpga/adi-axi-common.h |  23 ------
+ 9 files changed, 174 insertions(+), 77 deletions(-)
+---
+base-commit: 82f69876ef45ad66c0b114b786c7c6ac0f6a4580
+change-id: 20250218-dev-axi-clkgen-limits-63fb0c5ec38b
+--
+
+Thanks!
+- Nuno Sá
 
