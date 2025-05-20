@@ -1,112 +1,119 @@
-From: Janne Grunau <j@jannau.net>
-Date: Mon, 19 May 2025 22:49:20 +0200
-Subject: [PATCH v2] HID: lenovo: Remove CONFIG_ACPI dependency
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v7 0/8] arm64: dts: freescale: Add support for the
+ GOcontroll Moduline Display
+Date: Tue, 20 May 2025 08:34:49 +0200
+Message-Id: <20250520-initial_display-v7-0-a8f0195420aa@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250519-hid_lenovo_acpi_dependency-v2-1-124760ddd6f7@jannau.net>
-X-B4-Tracking: v=1; b=H4sIAE+ZK2gC/43NTQ6CMBCG4auQWVvTovzoynsYQgY6yBgzJS02E
- sLdrZzA5fMt3m+FQJ4pwDVbwVPkwE4S8kMG/YjyIMU2GXKdF7owtRrZti8SF12L/cStpYnEkvS
- L0oRVjWVnq7OGFJg8DfzZ4/cmeeQwO7/sX9H81r+y0SitcLDd5dQV1mB5e6IIvo9CMzTbtn0Be
- /HAJ8UAAAA=
-X-Change-ID: 20250518-hid_lenovo_acpi_dependency-0ea78a6bd740
-To: Arnd Bergmann <arnd@arndb.de>, Jiri Kosina <jikos@kernel.org>, 
- Benjamin Tissoires <bentiss@kernel.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>, 
- Armin Wolf <W_Armin@gmx.de>
-Cc: linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
- linux-acpi@vger.kernel.org, Janne Grunau <j@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAIkiLGgC/3XPzWoDIRDA8VcJnmvR8TunvkcJxXU1EbZr0GVJC
+ PvuNblkQXv8D8xvmAcqPkdf0PHwQNmvscQ011AfB+Qudj57HMfaCAgIAsBxnOMS7fQzxnKd7B0
+ HqwGo9kR6gerWNfsQby/x+1T7EsuS8v11YKXP6f/WSjHBwrlhCJIywdnXObk0LzlN06dLv+gJr
+ rBHZItARYAFGyxlRFPVRdgbYaBahFWEe228pVJJO3QR/kY4gRbhFTFBG62ZtlryLiJ2CBUtIio
+ SGKnOqCg3povIPdJ5R1aEORnkCNwpGxpk27Y/1jJmPAwCAAA=
+X-Change-ID: 20250224-initial_display-fa82218e06e5
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>, Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3410; i=j@jannau.net;
- s=yk2024; h=from:subject:message-id;
- bh=Bitucw1yaCIqyRa0nTR6FoFtUSPlCwvKN7PBGDQsgTI=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhgztmUExzVNNrU5d+bm3lbGH47zQsumf/q/xWLvAVuj7v
- O/RDNryHaUsDGJcDLJiiixJ2i87GFbXKMbUPgiDmcPKBDKEgYtTACbSWMTwz2zLpDfhYuc+nd8z
- 8ey8xtLHm34VlUcLuHLIe/iJJPx0i2Nk+LihpPzlXO/eZ41OytO+76pWv3ki6GuymkXI1KNPTl9
- dyAYA
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747722892; l=4059;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=MaCkDQE8U2QDmRDmED4Ce+Q4F2+F5eALbfrUvn+NHJQ=;
+ b=sX+e/W5gyP6cgDk/CGRsehxUQzRmluCed7s/xWuO4IpWq/A+pT52Q8KmJd8MFSG8m0B0qMgvr
+ 6YIkBKGll72DcN0w5iCr0PQxDJyPiKtUmBD03WVzk9IXMaGsqNLVSH9
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The hid-lenovo driver supports external Bluetooth and USB devices which
-can be used with non-ACPI systems/kernels. Call platform_profile_cycle()
-only if CONFIG_ACPI_PLATFORM_PROFILE is enabled and select
-CONFIG_ACPI_PLATFORM_PROFILE only if ACPI is enabled.
-This should not affect functionality since only the detachable keyboard
-of a x86 tablet with a custom connector has an hotkey for cycling
-through power profiles.
+Add inital support for 2 variants of the Moduline Display controller.
+This system is powered by the Ka-Ro Electronics tx8p-ml81 COM, which
+features an imx8mp SoC.
 
-Fixes: 52572cde8b4a4 ("HID: lenovo: select CONFIG_ACPI_PLATFORM_PROFILE")
-Signed-off-by: Janne Grunau <j@jannau.net>
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
-hid-lenovo supports external generic USB and Bluetooth devices and
-should be buildable and usable on non-ACPI kernels and systems. Commit
-84c9d2a968c82 ("HID: lenovo: Support for ThinkPad-X12-TAB-1/2 Kbd Fn
-keys") added a hot key to cycle through power profiles using ACPI's
-platform_profile. This resulted in adding a dependency on ACPI and
-selecting CONFIG_ACPI_PLATFORM_PROFILE to fix build an link errors in
-commit 52572cde8b4a ("HID: lenovo: select
-CONFIG_ACPI_PLATFORM_PROFILE"). This is undesirable for HID drivers
-supporting generic USB and Bluetooth devices. So instead call
-platform_profile_cycle() only CONFIG_ACPI_PLATFORM_PROFILE is enabled
-and select the latter only if ACPI is enabled.
+Changes in v7:
+- Fix indentation as requested by Shawn
+- Set alias for fec to ethernet1 so eqos actually becomes end0 throught
+  systemd, without that alias eqos was both ethernet0 and ethernet1, and
+  it would become end1 instead of the desired end0.
+- Link to v6: https://lore.kernel.org/r/20250417-initial_display-v6-0-3c6f6d24c7af@gocontroll.com
 
-Supercedes with Armin Wolf's "ACPI: platform_profile: Add support for
-non-ACPI platforms" [1] the earlier removel in "HID: lenovo: Unbreak
-USB/BT keyboards on non-ACPI platforms" [2].
+Changes in v6:
+- Fix spi cs formatting in baseboard dts
+- Add model to baseboard dts
+- Fix commit typo in karo tx8p ml81 dtsi
+- Link to v5: https://lore.kernel.org/r/20250415-initial_display-v5-0-f309f8d71499@gocontroll.com
 
-[1]: https://lore.kernel.org/linux-acpi/20250518185111.3560-1-W_Armin@gmx.de/
-[2]: https://lore.kernel.org/linux-input/20250512-hid_lenovo_unbreak_non_acpi-v1-1-e9e37ecbfbfe@jannau.net/
----
+Changes in v5:
+- Merge the makefile patch into the two dtso patches
+- Fix references to the root node in the dtso patches
+- Enable the USB bus going to the adapter board in the mainboard dts
+- Fix some formatting issues in the mainboard dts
+- Fix some formatting issues in the COM dts
+- Change a clock as suggested in the COM dts
+- Fix the maintainers entries, remove devicetree list and imx list
+- Rebase on latest linux-next
+- Link to v4: https://lore.kernel.org/r/20250402-initial_display-v4-0-9f898838a864@gocontroll.com
+
+Changes in v4:
+- Add imx mailing list to ka-ro tx8p maintainer entry
+- Fix several small indentation and ordering issues in devicetrees
+- Change the two display adapter boards to overlays
+- Add the missing patch for the Makefile to actually be able to build
+  the new devicetrees
+- Link to v3: https://lore.kernel.org/r/20250327-initial_display-v3-0-4e89ea1676ab@gocontroll.com
+
+Changes in v3:
+- Set regulator-boot-on and always-on on LDO5 of the pmic, after 20 ish
+  seconds it auto disabled this LDO causing weird behaviour like
+  ethernet droping out, wifi not working anymore. This LDO can control
+  the IO voltage level of certain pins, just let it keep the u-boot
+  value.
+- Fix the comment style in imx8mp-pinfunc.h
+- Rebase on newest next tag
+- Link to v2: https://lore.kernel.org/r/20250226-initial_display-v2-0-23fafa130817@gocontroll.com
+
 Changes in v2:
-- drop stub platform_profile_cycle()
-- call platform_profile_cycle() conditioanlly
-- drop 'depends on ACPI || !ACPI'
-- Link to v1: https://lore.kernel.org/r/20250518-hid_lenovo_acpi_dependency-v1-0-afdb93b5d1a6@jannau.net
----
- drivers/hid/Kconfig      | 3 +--
- drivers/hid/hid-lenovo.c | 6 ++++--
- 2 files changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/hid/Kconfig b/drivers/hid/Kconfig
-index a503252702b7b43c332a12b14bc8b23b83e9f028..1656bb1504f750d73011d3f008e27b4436a58678 100644
---- a/drivers/hid/Kconfig
-+++ b/drivers/hid/Kconfig
-@@ -595,8 +595,7 @@ config HID_LED
- 
- config HID_LENOVO
- 	tristate "Lenovo / Thinkpad devices"
--	depends on ACPI
--	select ACPI_PLATFORM_PROFILE
-+	select ACPI_PLATFORM_PROFILE if ACPI
- 	select NEW_LEDS
- 	select LEDS_CLASS
- 	help
-diff --git a/drivers/hid/hid-lenovo.c b/drivers/hid/hid-lenovo.c
-index af29ba840522f99bc2f426d4753f70d442cef3af..73c6a26638a22ad1c8368112e8ab185232a9df12 100644
---- a/drivers/hid/hid-lenovo.c
-+++ b/drivers/hid/hid-lenovo.c
-@@ -728,9 +728,11 @@ static int lenovo_raw_event_TP_X12_tab(struct hid_device *hdev, u32 raw_data)
- 			if (hdev->product == USB_DEVICE_ID_LENOVO_X12_TAB) {
- 				report_key_event(input, KEY_RFKILL);
- 				return 1;
-+			} else if (IS_ENABLED(CONFIG_ACPI_PLATFORM_PROFILE)) {
-+				platform_profile_cycle();
-+				return 1;
- 			}
--			platform_profile_cycle();
--			return 1;
-+			return 0;
- 		case TP_X12_RAW_HOTKEY_FN_F10:
- 			/* TAB1 has PICKUP Phone and TAB2 use Snipping tool*/
- 			(hdev->product == USB_DEVICE_ID_LENOVO_X12_TAB) ?
+- Dropped the trivial-devices patch
+- Added a patch with bindings for the gocontroll,moduline-module-slot
+- Added a patch to spidev.c to enable the spidev driver for the module
+  slot
+- Added a missing usb-c connector in the av101hdt-a10 variant dts
+- Switched to the new bindings for the module slots in the base dts
+- Fixed some commit typos
+- Link to v1: https://lore.kernel.org/r/20250224-initial_display-v1-0-5ccbbf613543@gocontroll.com
 
 ---
-base-commit: 0af2f6be1b4281385b618cb86ad946eded089ac8
-change-id: 20250518-hid_lenovo_acpi_dependency-0ea78a6bd740
+Maud Spierings (8):
+      dt-bindings: arm: fsl: Add GOcontroll Moduline Display
+      arm64: dts: imx8mp: Add pinctrl config definitions
+      MAINTAINERS: add maintainer for the Ka-Ro tx8p-ml81 COM module
+      MAINTAINERS: add maintainer for the GOcontroll Moduline controllers
+      arm64: dts: freescale: add Ka-Ro Electronics tx8p-ml81 COM
+      arm64: dts: freescale: Add the GOcontroll Moduline Display baseboard
+      arm64: dts: freescale: Add the BOE av101hdt-a10 variant of the Moduline Display
+      arm64: dts: freescale: Add the BOE av123z7m-n17 variant of the Moduline Display
+
+ Documentation/devicetree/bindings/arm/fsl.yaml     |   1 +
+ MAINTAINERS                                        |  12 +
+ arch/arm64/boot/dts/freescale/Makefile             |   8 +
+ arch/arm64/boot/dts/freescale/imx8mp-pinfunc.h     |  33 ++
+ ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso |  94 ++++
+ ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso | 139 ++++++
+ .../imx8mp-tx8p-ml81-moduline-display-106.dts      | 527 ++++++++++++++++++++
+ .../arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi | 548 +++++++++++++++++++++
+ 8 files changed, 1362 insertions(+)
+---
+base-commit: fb44e19e78df2950877a9f7b4f24b58db790d293
+change-id: 20250224-initial_display-fa82218e06e5
 
 Best regards,
 -- 
-Janne Grunau <j@jannau.net>
+Maud Spierings <maudspierings@gocontroll.com>
 
