@@ -1,208 +1,71 @@
-From: Shashank Balaji <shashank.mahadasyam@sony.com>
-Date: Tue, 20 May 2025 23:07:47 +0900
-Subject: [PATCH v2 3/3] cgroup, docs: cpu controller interaction with
- various scheduling policies
+From: George Chan <gchan9527@gmail.com>
+Subject: [PATCH 0/4] A series of patch for enable sc7180 android boot
+Date: Tue, 20 May 2025 22:25:55 +0800
+Message-Id: <20250520-sc7180-android-boot-v1-0-3075a84ea094@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250520-rt-and-cpu-controller-doc-v2-3-70a2b6a1b703@sony.com>
-References: <20250520-rt-and-cpu-controller-doc-v2-0-70a2b6a1b703@sony.com>
-In-Reply-To: <20250520-rt-and-cpu-controller-doc-v2-0-70a2b6a1b703@sony.com>
-To: Tejun Heo <tj@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>, 
- =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>, 
- Jonathan Corbet <corbet@lwn.net>
-Cc: cgroups@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Shinya Takumi <shinya.takumi@sony.com>, 
- Shashank Balaji <shashank.mahadasyam@sony.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7702;
- i=shashank.mahadasyam@sony.com; h=from:subject:message-id;
- bh=MmQ9GGMqJKCPP6MCEAtfk55g9AJEIdzdq8BB1ZmAe8w=;
- b=owGbwMvMwCV2mPH4Ij++H1mMp9WSGDJ0eh7ENrL9PsGcxHRim8rHPVJBFawlZuq3ff/O8m2o5
- pEIYJLsKGVhEONikBVTZHkns+7CQSvLpq/HGb7BzGFlAhnCwMUpABNhaGFkWL5Nq7J37ecczdBu
- DsM5Cg9Nr58xf7o0y2yT32y9Rv7KrQz/K7a2Bu84/iZ9pbN/4M5svZYZD38lf0hx2RAydRLD7Kv
- +bAA=
-X-Developer-Key: i=shashank.mahadasyam@sony.com; a=openpgp;
- fpr=EE1CAED0C13A3982F5C700F6C301C7A24E0EF86A
-X-Endpoint-Received: by B4 Relay for shashank.mahadasyam@sony.com/default with auth_id=354
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAPSQLGgC/x3MQQqAIBBA0avErBtQUZKuEi1Mx5qNhkYE0t2Tl
+ m/xf4NKhanCPDQodHPlnDrkOIA/XNoJOXSDEsoIowRWP0kr0KVQMgfccr7QWW3IR22dttDLs1D
+ k578u6/t+A/ESvGUAAAA=
+To: Tom Rini <trini@konsulko.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Sumit Garg <sumit.garg@kernel.org>, Simon Glass <sjg@chromium.org>, 
+ Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Lukasz Majewski <lukma@denx.de>, Marek Vasut <marex@denx.de>
+Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, 
+ George Chan <gchan9527@gmail.com>, Vitalii Skorkin <nikroks@mainlining.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747751157; l=1755;
+ i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
+ bh=FGMvhL5VzJ+FRv+Wa1Xojc0aHPnOaZO+iDim/8NByws=;
+ b=KC/bYCrZM7IzlfMx9GLPIzy29T/JQFMbkMdexijPcjYu4Jrf9GIkEraj+qyOhBTW8RPxf3NSX
+ VEfjmCEtIqCBCODX71AxzMlTvNLYhsNKbit+cF0hbb0qNgJAdcsJrJt
+X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
+ pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
+X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The cpu controller interface files account for or affect processes
-differently based on their scheduling policy, and the underlying
-scheduler used (fair-class vs. BPF scheduler). Document these
-differences
+Since attempt[1] to embed android specific boot param into fdt bootargs,
+a new idea is formed as to make use of env file to contain default param
+value. Current code logic is already working fine, unless the priority
+of param at begining is higher than at tail. From env file, bootargs is
+treated important, and prepend at begining. So there is a need to
+reverse the logic, and make sure default bootargs value at the end, and
+let androidboot img bootargs value sit at begining. 
 
-Signed-off-by: Shashank Balaji <shashank.mahadasyam@sony.com>
+So a new kconfig item is introduced. Once enabled, the bootargs strcat
+param will get reversed.
+
+Some one-liners patch is included to enable device driver for sc7180
+soc. It is about iommu for usb, usb gadget vendor/product id, and
+abootimg dependency.
+
+Worth mentioning is as always, the EL1 jump_linux[2] logic to boot.
+
+[1]https://lists.denx.de/pipermail/u-boot/2025-May/588828.html
+[2]https://lists.denx.de/pipermail/u-boot/2025-April/585995.html
+
+Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- Documentation/admin-guide/cgroup-v2.rst | 98 +++++++++++++++++++++++++--------
- 1 file changed, 75 insertions(+), 23 deletions(-)
+George Chan (4):
+      image-android: Prepend/postpend default bootargs value with given bootcmd
+      iommu: qcom-smmu: Introduce sc7180 compatible string
+      boot: bootmeth_android: Conditionally dependent on abootimg
+      usb: gadget: Introduce usb gadget vendor/product default id for ARCH_QCOM
 
-diff --git a/Documentation/admin-guide/cgroup-v2.rst b/Documentation/admin-guide/cgroup-v2.rst
-index 3b3685736fe9b12e96a273248dfb4a8c62a4b698..0f79bf42a3e3b2fcbe6409f9e182ba9de1fbb79c 100644
---- a/Documentation/admin-guide/cgroup-v2.rst
-+++ b/Documentation/admin-guide/cgroup-v2.rst
-@@ -1095,19 +1095,50 @@ realtime processes irrespective of CONFIG_RT_GROUP_SCHED.
- CPU Interface Files
- ~~~~~~~~~~~~~~~~~~~
- 
--All time durations are in microseconds.
-+The interaction of a process with the cpu controller depends on its scheduling
-+policy. We have the following scheduling policies: ``SCHED_IDLE``, ``SCHED_BATCH``,
-+``SCHED_OTHER``, ``SCHED_EXT`` (if ``CONFIG_SCHED_CLASS_EXT`` is enabled), ``SCHED_FIFO``,
-+``SCHED_RR``, and ``SCHED_DEADLINE``. ``SCHED_{IDLE,BATCH,OTHER,EXT}`` can be scheduled
-+either by the fair-class scheduler or by a BPF scheduler::
-+
-+    CONFIG_SCHED_CLASS_EXT
-+    ├─ Disabled
-+    |   └─ SCHED_{IDLE,BATCH,OTHER} -> fair-class scheduler
-+    └─ Enabled
-+        ├─ BPF scheduler disabled
-+        |   └─ SCHED_{IDLE,BATCH,OTHER,EXT} -> fair-class scheduler
-+        ├─ BPF scheduler without SCX_OPS_SWITCH_PARTIAL enabled
-+        |   └─ SCHED_{IDLE,BATCH,OTHER,EXT} -> BPF scheduler
-+        └─ BPF scheduler with SCX_OPS_SWITCH_PARTIAL enabled
-+            ├─ SCHED_{IDLE,BATCH,OTHER} -> fair-class scheduler
-+            └─ SCHED_EXT -> BPF scheduler
-+
-+For more details on ``SCHED_EXT``, check out :ref:`Documentation/scheduler/sched-ext.rst. <sched-ext>`
-+From the point of view of the cpu controller, processes can be categorized as
-+follows:
-+
-+* Processes under the fair-class scheduler
-+* Processes under a BPF scheduler with the ``cgroup_set_weight`` callback
-+* Everything else: ``SCHED_{FIFO,RR,DEADLINE}`` and processes under a BPF scheduler
-+  without the ``cgroup_set_weight`` callback
-+
-+Note that the ``cgroup_*`` family of callbacks require ``CONFIG_EXT_GROUP_SCHED``
-+to be enabled. For each of the following interface files, the above categories
-+will be referred to. All time durations are in microseconds.
- 
-   cpu.stat
- 	A read-only flat-keyed file.
- 	This file exists whether the controller is enabled or not.
- 
--	It always reports the following three stats:
-+	It always reports the following three stats, which account for all the
-+	processes in the cgroup:
- 
- 	- usage_usec
- 	- user_usec
- 	- system_usec
- 
--	and the following five when the controller is enabled:
-+	and the following five when the controller is enabled, which account for
-+	only the processes under the fair-class scheduler:
- 
- 	- nr_periods
- 	- nr_throttled
-@@ -1125,6 +1156,10 @@ All time durations are in microseconds.
- 	If the cgroup has been configured to be SCHED_IDLE (cpu.idle = 1),
- 	then the weight will show as a 0.
- 
-+	This file affects only processes under the fair-class scheduler and a BPF
-+	scheduler with the ``cgroup_set_weight`` callback depending on what the
-+	callback actually does.
-+
-   cpu.weight.nice
- 	A read-write single value file which exists on non-root
- 	cgroups.  The default is "0".
-@@ -1137,6 +1172,10 @@ All time durations are in microseconds.
- 	granularity is coarser for the nice values, the read value is
- 	the closest approximation of the current weight.
- 
-+	This file affects only processes under the fair-class scheduler and a BPF
-+	scheduler with the ``cgroup_set_weight`` callback depending on what the
-+	callback actually does.
-+
-   cpu.max
- 	A read-write two value file which exists on non-root cgroups.
- 	The default is "max 100000".
-@@ -1149,43 +1188,56 @@ All time durations are in microseconds.
- 	$PERIOD duration.  "max" for $MAX indicates no limit.  If only
- 	one number is written, $MAX is updated.
- 
-+	This file affects only processes under the fair-class scheduler.
-+
-   cpu.max.burst
- 	A read-write single value file which exists on non-root
- 	cgroups.  The default is "0".
- 
- 	The burst in the range [0, $MAX].
- 
-+	This file affects only processes under the fair-class scheduler.
-+
-   cpu.pressure
- 	A read-write nested-keyed file.
- 
--	Shows pressure stall information for CPU. See
--	:ref:`Documentation/accounting/psi.rst <psi>` for details.
-+	Shows pressure stall information for CPU, including the contribution of
-+	realtime processes. See :ref:`Documentation/accounting/psi.rst <psi>`
-+	for details.
-+
-+	This file accounts for all the processes in the cgroup.
- 
-   cpu.uclamp.min
--        A read-write single value file which exists on non-root cgroups.
--        The default is "0", i.e. no utilization boosting.
-+	A read-write single value file which exists on non-root cgroups.
-+	The default is "0", i.e. no utilization boosting.
- 
--        The requested minimum utilization (protection) as a percentage
--        rational number, e.g. 12.34 for 12.34%.
-+	The requested minimum utilization (protection) as a percentage
-+	rational number, e.g. 12.34 for 12.34%.
- 
--        This interface allows reading and setting minimum utilization clamp
--        values similar to the sched_setattr(2). This minimum utilization
--        value is used to clamp the task specific minimum utilization clamp.
-+	This interface allows reading and setting minimum utilization clamp
-+	values similar to the sched_setattr(2). This minimum utilization
-+	value is used to clamp the task specific minimum utilization clamp,
-+	including those of realtime processes.
- 
--        The requested minimum utilization (protection) is always capped by
--        the current value for the maximum utilization (limit), i.e.
--        `cpu.uclamp.max`.
-+	The requested minimum utilization (protection) is always capped by
-+	the current value for the maximum utilization (limit), i.e.
-+	`cpu.uclamp.max`.
-+
-+	This file affects all the processes in the cgroup.
- 
-   cpu.uclamp.max
--        A read-write single value file which exists on non-root cgroups.
--        The default is "max". i.e. no utilization capping
-+	A read-write single value file which exists on non-root cgroups.
-+	The default is "max". i.e. no utilization capping
- 
--        The requested maximum utilization (limit) as a percentage rational
--        number, e.g. 98.76 for 98.76%.
-+	The requested maximum utilization (limit) as a percentage rational
-+	number, e.g. 98.76 for 98.76%.
- 
--        This interface allows reading and setting maximum utilization clamp
--        values similar to the sched_setattr(2). This maximum utilization
--        value is used to clamp the task specific maximum utilization clamp.
-+	This interface allows reading and setting maximum utilization clamp
-+	values similar to the sched_setattr(2). This maximum utilization
-+	value is used to clamp the task specific maximum utilization clamp,
-+	including those of realtime processes.
-+
-+	This file affects all the processes in the cgroup.
- 
-   cpu.idle
- 	A read-write single value file which exists on non-root cgroups.
-@@ -1197,7 +1249,7 @@ All time durations are in microseconds.
- 	own relative priorities, but the cgroup itself will be treated as
- 	very low priority relative to its peers.
- 
--
-+	This file affects only processes under the fair-class scheduler.
- 
- Memory
- ------
+ boot/Kconfig                  |  8 ++++++++
+ boot/bootmeth_android.c       |  4 +++-
+ boot/image-android.c          | 10 ++++++++--
+ drivers/iommu/qcom-hyp-smmu.c |  1 +
+ drivers/usb/gadget/Kconfig    |  2 ++
+ 5 files changed, 22 insertions(+), 3 deletions(-)
+---
+base-commit: 126a88d49bcae04bbfc0d6723097cd6341355ade
+change-id: 20250520-sc7180-android-boot-a845ecf48a48
 
+Best regards,
 -- 
-2.43.0
+George Chan <gchan9527@gmail.com>
 
