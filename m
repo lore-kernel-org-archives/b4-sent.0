@@ -1,61 +1,76 @@
-From: George Chan <gchan9527@gmail.com>
-Date: Tue, 20 May 2025 22:25:59 +0800
-Subject: [PATCH 4/4] usb: gadget: Introduce usb gadget vendor/product
- default id for ARCH_QCOM
+From: Vincent Knecht <vincent.knecht@mailoo.org>
+Subject: [PATCH 0/4] CAMSS support for MSM8939
+Date: Tue, 20 May 2025 20:39:05 +0200
+Message-Id: <20250520-camss-8x39-vbif-v1-0-a12cd6006af9@mailoo.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250520-sc7180-android-boot-v1-4-3075a84ea094@gmail.com>
-References: <20250520-sc7180-android-boot-v1-0-3075a84ea094@gmail.com>
-In-Reply-To: <20250520-sc7180-android-boot-v1-0-3075a84ea094@gmail.com>
-To: Tom Rini <trini@konsulko.com>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Sumit Garg <sumit.garg@kernel.org>, Simon Glass <sjg@chromium.org>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, 
- Lukasz Majewski <lukma@denx.de>, Marek Vasut <marex@denx.de>
-Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, 
- George Chan <gchan9527@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747751157; l=1027;
- i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
- bh=GqK0WVCZk8iWoMSZ7t6DB+MXl/Suedu5OgUA7VOZdkY=;
- b=m75ZHwpBDrOXQt1BQ50jI8/9zrWEC9EUDQZdwngm3zUNOOwTQ2DkkUCwIe4W7b4vicYBdMjfU
- FXj3aaPGzyADmeiGCpyDTgI1VgzxgkSCnteYRiycvCONtJDfU/fDSjR
-X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
- pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
-X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
+X-B4-Tracking: v=1; b=H4sIAEnMLGgC/x3MTQqAIBBA4avIrBvIQtKuEi3MxppFPzggQnT3p
+ OW3eO8BocQkMKoHEmUWvs4K3SgIuz83Ql6roWs70xo9YPCHCNrSO8wLR3SDidFY7bSzUKs7UeT
+ yH6f5fT90dfVBYQAAAA==
+X-Change-ID: 20250517-camss-8x39-vbif-975ff5819198
+To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
+ phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ Vincent Knecht <vincent.knecht@mailoo.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747766350; l=1864;
+ i=vincent.knecht@mailoo.org; s=20250414; h=from:subject:message-id;
+ bh=xMPftx8ZL1Fdnrn6+/pTmp8ZHvl/LtV3wjYxJ7nWMjM=;
+ b=5H7zBjpE6EwMk9Sh/1Pi/8cs5I+ouMQ1J7iMQUdhHso+sTYEs++vKgH9X8U3SGo33FuYp91mQ
+ GCar79nboIjBR4ZHi08sXW1mU4+lxCynxQF5Hmqv6ZK187DgriOJ8Wp
+X-Developer-Key: i=vincent.knecht@mailoo.org; a=ed25519;
+ pk=MFCVQkhL3+d3NHDzNPWpyZ4isxJvT+QTqValj5gSkm4=
+X-Endpoint-Received: by B4 Relay for vincent.knecht@mailoo.org/20250414 with auth_id=377
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently vendor/product id are both 0, and that might not as we want.
-Set to some arbitary known value that we can make it work more smoothly.
+This series adds CAMSS support for MSM8939.
+It's mostly identical to MSM8916, except for some clocks
+and an additional CSI.
 
-Signed-off-by: George Chan <gchan9527@gmail.com>
+To fix black stripes across sensor output, and garbage in
+CSID TPG output, 2 VFE VBIF register settings are needed.
+So the 1st patch adds helper functions to do just that.
+
+Patch 1: adds helper for VFE VBIF settings
+Patch 2: adds CAMSS_8x39 version in CAMSS driver
+Patch 3: documents qcom,msm8939-camss DT bindings
+Patch 4: adds camss and cci in msm8939.dtsi
+
+Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
 ---
- drivers/usb/gadget/Kconfig | 2 ++
- 1 file changed, 2 insertions(+)
+Vincent Knecht (4):
+      media: qcom: camss: vfe: Add VBIF setting support
+      media: qcom: camss: Add support for MSM8939
+      media: dt-bindings: Add qcom,msm8939-camss
+      arm64: dts: qcom: msm8939: Add camss and cci
 
-diff --git a/drivers/usb/gadget/Kconfig b/drivers/usb/gadget/Kconfig
-index 46a83141481..2a56e360b5f 100644
---- a/drivers/usb/gadget/Kconfig
-+++ b/drivers/usb/gadget/Kconfig
-@@ -60,6 +60,7 @@ config USB_GADGET_VENDOR_NUM
- 	default 0x0955 if ARCH_TEGRA
- 	default 0x1f3a if ARCH_SUNXI
- 	default 0x2207 if ARCH_ROCKCHIP
-+	default 0x18d1 if ARCH_QCOM
- 	default 0x0
- 	help
- 	  Vendor ID of the USB device emulated, reported to the host device.
-@@ -86,6 +87,7 @@ config USB_GADGET_PRODUCT_NUM
- 	default 0x350a if ROCKCHIP_RK3568
- 	default 0x350b if ROCKCHIP_RK3588
- 	default 0x350c if ROCKCHIP_RK3528
-+	default 0x4ee0 if ARCH_QCOM
- 	default 0x0
- 	help
- 	  Product ID of the USB device emulated, reported to the host device.
+ .../bindings/media/qcom,msm8939-camss.yaml         | 269 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi       |   4 +
+ arch/arm64/boot/dts/qcom/msm8939.dtsi              | 152 ++++++++++++
+ drivers/media/platform/qcom/camss/Makefile         |   1 +
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |   1 +
+ drivers/media/platform/qcom/camss/camss-ispif.c    |   8 +-
+ drivers/media/platform/qcom/camss/camss-vfe-4-1.c  |  11 +
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.c |  37 +++
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.h |  19 ++
+ drivers/media/platform/qcom/camss/camss-vfe.c      |  10 +
+ drivers/media/platform/qcom/camss/camss-vfe.h      |   3 +
+ drivers/media/platform/qcom/camss/camss.c          | 157 ++++++++++++
+ drivers/media/platform/qcom/camss/camss.h          |   1 +
+ 13 files changed, 671 insertions(+), 2 deletions(-)
+---
+base-commit: 8566fc3b96539e3235909d6bdda198e1282beaed
+change-id: 20250517-camss-8x39-vbif-975ff5819198
 
+Best regards,
 -- 
-2.43.0
+Vincent Knecht <vincent.knecht@mailoo.org>
 
