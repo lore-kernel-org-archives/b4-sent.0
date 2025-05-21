@@ -1,10 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 21 May 2025 11:20:00 +0800
-Subject: [PATCH v2 6/8] dts: arm64: amlogic: add S7 pinctrl node
+Date: Wed, 21 May 2025 11:20:01 +0800
+Subject: [PATCH v2 7/8] dts: arm64: amlogic: add S7D pinctrl node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250521-s6-s7-pinctrl-v2-6-0ce5e3728404@amlogic.com>
+Message-Id: <20250521-s6-s7-pinctrl-v2-7-0ce5e3728404@amlogic.com>
 References: <20250521-s6-s7-pinctrl-v2-0-0ce5e3728404@amlogic.com>
 In-Reply-To: <20250521-s6-s7-pinctrl-v2-0-0ce5e3728404@amlogic.com>
 To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
@@ -18,27 +18,27 @@ Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747797595; l=3129;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747797595; l=3401;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=fjCfY1jseWaBwy2ltob7mgikXcrVQkc9RawMyG1Dk4I=;
- b=L8ZMYTQOjtVZCs8goewOzpjby9CPsZsGv82xLFuzqFPqLBLZj/98aRkcRGDtSQYSgW0uJTH1W
- cj9CsA/QQrAD2PJNJwrN99KKJqnKWl0ZiiENaoPWqKjilMX+MTVnKcV
+ bh=TkCzL2tpFVGFSar0wGinjtXWgNKBSbV+l775+YV5x9c=;
+ b=ttM8jO5nGDymX1YFRUcxMmwbQSMx0Wqdxry5szVp8au4nIv8BJ5KrPKgSvBRsRK0f29NKillG
+ l0SMQu2vIcVC6DuUPtVvrPHkiexCOvr33QLai7NDvwFf8tFXkrGXbwn
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add pinctrl device to support Amlogic S7.
+Add pinctrl device to support Amlogic S7D.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi | 81 +++++++++++++++++++++++++++++
- 1 file changed, 81 insertions(+)
+ arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi | 90 ++++++++++++++++++++++++++++
+ 1 file changed, 90 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
-index f0c172681bd1..260918b37b9a 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
+index e1099bc1535d..c4d260d5bb58 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
 @@ -6,6 +6,7 @@
  #include <dt-bindings/interrupt-controller/irq.h>
  #include <dt-bindings/interrupt-controller/arm-gic.h>
@@ -47,13 +47,14 @@ index f0c172681bd1..260918b37b9a 100644
  
  / {
  	cpus {
-@@ -94,6 +95,86 @@ uart_b: serial@7a000 {
+@@ -94,6 +95,95 @@ uart_b: serial@7a000 {
  				clock-names = "xtal", "pclk", "baud";
  				status = "disabled";
  			};
 +
 +			periphs_pinctrl: pinctrl@4000 {
-+				compatible = "amlogic,pinctrl-s7";
++				compatible = "amlogic,pinctrl-s7d",
++					     "amlogic,pinctrl-s7";
 +				#address-cells = <2>;
 +				#size-cells = <2>;
 +				ranges = <0x0 0x0 0x0 0x4000 0x0 0x340>;
@@ -83,11 +84,11 @@ index f0c172681bd1..260918b37b9a 100644
 +				};
 +
 +				gpiod: gpio@180 {
-+					reg = <0 0x180 0 0x20>, <0 0x40 0 0x8>;
++					reg = <0 0x180 0 0x20>, <0 0x40 0 0x4>;
 +					reg-names = "gpio", "mux";
 +					gpio-controller;
 +					#gpio-cells = <2>;
-+					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_D<<8) 12>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_D<<8) 5>;
 +				};
 +
 +				gpioe: gpio@1c0 {
@@ -112,6 +113,14 @@ index f0c172681bd1..260918b37b9a 100644
 +					gpio-controller;
 +					#gpio-cells = <2>;
 +					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_B<<8) 14>;
++				};
++
++				gpiodv: gpio@280 {
++					reg = <0 0x280 0 0x20>, <0 0x8 0 0x4>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_DV<<8) 7>;
 +				};
 +
 +				test_n: gpio@2c0 {
