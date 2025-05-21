@@ -1,10 +1,10 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Wed, 21 May 2025 14:03:08 +0100
-Subject: [PATCH v4 18/20] mfd: adp5585: support getting vdd regulator
+Date: Wed, 21 May 2025 14:03:09 +0100
+Subject: [PATCH v4 19/20] dt-bindings: mfd: adp5585: document reset gpio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250521-dev-adp5589-fw-v4-18-f2c988d7a7a0@analog.com>
+Message-Id: <20250521-dev-adp5589-fw-v4-19-f2c988d7a7a0@analog.com>
 References: <20250521-dev-adp5589-fw-v4-0-f2c988d7a7a0@analog.com>
 In-Reply-To: <20250521-dev-adp5589-fw-v4-0-f2c988d7a7a0@analog.com>
 To: linux-gpio@vger.kernel.org, linux-pwm@vger.kernel.org, 
@@ -17,48 +17,51 @@ Cc: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>,
  Bartosz Golaszewski <brgl@bgdev.pl>, 
  Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Liu Ying <victor.liu@nxp.com>
+ Liu Ying <victor.liu@nxp.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747832589; l=953;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747832589; l=1179;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=ECrqfs75aV73lVCEhCx23/27fcILAFWXOdDurxKe3R4=;
- b=40L8MgUgFvGQ3R/fe/TEc19W6HrNBriA3nvY9hEokwa8qCVNJn9gS0QQ8MkR0qbWQtcYOAjar
- BVKZws+ofgqB9t2tc2IfdIhCdwAqX6pkNcwv82bzYpvcUKDJDChxxGR
+ bh=xIIvyKCR09Vnww1LWnAAGLhq9ll42BMKiYjeqCeEyLI=;
+ b=ve10s7piIlulUWTxl7XFzZmGPHhRexblgWIOEDdKR4sxWDQPghGcrzwa4QjweQYjVMa2OWCI4
+ UzSfmKpdcO2Dq6deR8kVHGdVi+fsiFxkImR9jYoHvNrzOIJFYs7AXQj
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make sure we get and enable the VDD supply (if available).
+Add a reset gpio property. Note that for the adp5585-01 models, the
+reset pin is used as the additional ROW5 which means there's no reset.
 
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Reviewed-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/mfd/adp5585.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ Documentation/devicetree/bindings/mfd/adi,adp5585.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/drivers/mfd/adp5585.c b/drivers/mfd/adp5585.c
-index 122e2c95385f8d5cbd7839db78dda77ad7ba4ae4..e8b9a0ef4ee654ac1abc4042152fe0933f1d9f0d 100644
---- a/drivers/mfd/adp5585.c
-+++ b/drivers/mfd/adp5585.c
-@@ -17,6 +17,7 @@
- #include <linux/mod_devicetable.h>
- #include <linux/module.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <linux/types.h>
+diff --git a/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml b/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml
+index b3bf2ed586104303fd078bd06683e4f0d3383575..2d4ecee3f2547ad07a0ab8fcbe96f42f526d1619 100644
+--- a/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml
++++ b/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml
+@@ -39,6 +39,9 @@ properties:
  
- enum {
-@@ -713,6 +714,10 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
- 	if (ret)
- 		return ret;
+   vdd-supply: true
  
-+	ret = devm_regulator_get_enable(&i2c->dev, "vdd");
-+	if (ret)
-+		return ret;
++  reset-gpios:
++    maxItems: 1
 +
- 	adp5585->regmap = devm_regmap_init_i2c(i2c, &regmap_config);
- 	if (IS_ERR(adp5585->regmap))
- 		return dev_err_probe(&i2c->dev, PTR_ERR(adp5585->regmap),
+   gpio-controller: true
+ 
+   '#gpio-cells':
+@@ -166,6 +169,7 @@ allOf:
+         adi,unlock-events: false
+         adi,unlock-trigger-sec: false
+         gpio-reserved-ranges: false
++        reset-gpios: false
+         adi,keypad-pins:
+           minItems: 2
+           maxItems: 11
 
 -- 
 2.49.0
