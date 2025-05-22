@@ -1,14 +1,14 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Thu, 22 May 2025 11:34:20 +0200
-Subject: [PATCH] iio: common: st_sensors: Fix use of uninitialize device
+Date: Thu, 22 May 2025 13:18:55 +0200
+Subject: [PATCH v2] iio: common: st_sensors: Fix use of uninitialize device
  structs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250522-st_iio_fix-v1-1-d689b35f1612@gocontroll.com>
-X-B4-Tracking: v=1; b=H4sIAJvvLmgC/x2MQQqAIBAAvyJ7TtBFIfpKhISutRcNjQjEvycdZ
- 2CmQaXCVGERDQo9XDmnAXoS4M89HSQ5DAZUaJVFlPV2zNlFfqX2do4hmGBQwQiuQkP/s3Xr/QP
- 0XjgnXAAAAA==
+Message-Id: <20250522-st_iio_fix-v2-1-07a32655a996@gocontroll.com>
+X-B4-Tracking: v=1; b=H4sIAB4IL2gC/22MywrCMBAAf6Xs2UiyNqV68j+kFM2jXahZSUJQS
+ v/d2LPHGZhZIblILsGlWSG6Qok4VMBDA2a+h8kJspUBJWqpEUXKIxGPnt5CGd17a1vbooQavKK
+ rep/dhsozpczxs7+L+tm/m6KEErbrz4+T9qpTeJ3YcMiRl+Vo+AnDtm1fcJxpz6kAAAA=
 X-Change-ID: 20250522-st_iio_fix-1c58fdd4d420
 To: Jonathan Cameron <jic23@kernel.org>, 
  David Lechner <dlechner@baylibre.com>, 
@@ -18,11 +18,11 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747906463; l=10759;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747912736; l=10903;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=Mdj2WfRjKzTBET/uFBcIR1a0EOi/GvllTkbb92crl9w=;
- b=UpaCA0nqrYIws4zb0iA5LinivK852Q8vvz2NyyjZMtTtPE7oTKBn2WDCZ5MCM7BjC7hOxRQ1f
- WIbnuPH2E2/B8jPsbrl8t4yZcKYxYy2UyDBC0CX5LCcPPqaiTvcO28F
+ bh=APnMHoj+TfkHT0STPSKBZxD7+b2G+KxvTYujirrX1D0=;
+ b=66+hio8ym81pr1ZrXMT7/QSZWK+a+fHt4270M/hM2K7dhFAFxO7zXBany3dx9tWhYPx3WMjaU
+ yUdY4EtMrlzAXOOFsQ+PGT83VAGFh8vUf/VfuvSLXyoyO13ihr0mfS2
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
@@ -37,6 +37,7 @@ This seems to only cause a panic with dev_err_probe(), dev_err,
 dev_warn and dev_info don't seem to cause a panic, but are fixed
 as well.
 
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
 When I search for general &indio_dev->dev usage, I see quite a lot more
 hits, but I am not sure if there are issues with those too.
@@ -49,8 +50,10 @@ believe the patch should apply without conflicts.
 The investigation into this issue can be found in this thread [1]
 
 [1]: https://lore.kernel.org/all/AM7P189MB100986A83D2F28AF3FFAF976E39EA@AM7P189MB1009.EURP189.PROD.OUTLOOK.COM/
-
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+---
+Changes in v2:
+- Added SoB in commit message
+- Link to v1: https://lore.kernel.org/r/20250522-st_iio_fix-v1-1-d689b35f1612@gocontroll.com
 ---
  drivers/iio/accel/st_accel_core.c                  | 10 +++----
  drivers/iio/common/st_sensors/st_sensors_core.c    | 35 +++++++++++-----------
