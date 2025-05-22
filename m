@@ -1,70 +1,89 @@
-From: Alejandro Enrique <alejandroe1@geotab.com>
-Date: Thu, 22 May 2025 18:51:05 +0200
-Subject: [PATCH v2 2/2] gnss: ubx: add support for the safeboot gpio
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Thu, 22 May 2025 17:22:20 -0500
+Subject: [PATCH v2] gpio: palmas: Allow building as a module
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250522-ubx-safeboot-v2-2-08c22378b8c9@geotab.com>
-References: <20250522-ubx-safeboot-v2-0-08c22378b8c9@geotab.com>
-In-Reply-To: <20250522-ubx-safeboot-v2-0-08c22378b8c9@geotab.com>
-To: Johan Hovold <johan@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Alejandro Enrique <alejandroe1@geotab.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Message-Id: <20250522-gpio-palmas-gpio-v2-1-89f209d4a949@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJujL2gC/2WNyw7CIBREf6W5azGAUlJX/ofpAnm0NymFgCGah
+ n8Xa1y5mzPJnNkg24Q2w6XbINmCGcPagB860LNaJ0vQNAZOuaCCUzJFDCSqxav8zWoYnKbn3mj
+ poM1isg6fu/I2Np4xP0J67Q+FfdqfjP/LCiOMmP7O1EnK3jpxnbzC5aiDh7HW+gbqsFKLsAAAA
+ A==
+X-Change-ID: 20250520-gpio-palmas-gpio-a99fc046dc7f
+To: Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>
+Cc: linux-gpio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747932696; l=1402;
- i=alejandroe1@geotab.com; s=20250514; h=from:subject:message-id;
- bh=5q+UP/BRI1cuC24cDBux+9AkjID15/gPXOINM1Yuf4o=;
- b=5l9yKE0744FlWyjZWyv0I/rGEgSlfrWCWO9JaUxMKa/w2pJIuY/I4S9p741rcGvVtBn4q06gW
- IsojkHvqaFkBsAIEzR0fVQPZzqlLwWKqYHLSHWYahxURpkUliwLnj2L
-X-Developer-Key: i=alejandroe1@geotab.com; a=ed25519;
- pk=xzHMPbqczL/tMsjXr26iLoHwIzLveHVnT+GIU4p1k38=
-X-Endpoint-Received: by B4 Relay for alejandroe1@geotab.com/20250514 with auth_id=404
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747952541; l=2236;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=tHJHuNFICwcMsJaMONFWu87HoiCqqBLOs7mW/BwS8Qs=;
+ b=wjo5VcVlO2btnmfx0266CVRxnVr1EpSH6HyMKfW2hpC4VXMan3s9ZypYctSCT+tCWz4yi8aqg
+ N+8dKltnCWxAF3STuQg0hntmj4lnmaEht1kCuZ6Ls976WNF/fjzsSJZ
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-U-Blox 8/M8/M9 chip have a pin to start it in safeboot mode, to be
-used to recover from situations where the flash content has become
-corrupted and needs to be restored. If this pin is asserted at power
-up/reset, the receiver starts in safeboot mode and GNSS operation is
-disabled.
+The driver works fine as a module, so allowing building as such. This
+drops the driver specific init in favor of the module macro which does
+the same, plus handling exit.
 
-Deassert the safeboot pin when probing this driver.
-
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Signed-off-by: Alejandro Enrique <alejandroe1@geotab.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/gnss/ubx.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Changes in v2:
+- Drop module alias and add module device table
+- Link to v1: https://lore.kernel.org/r/20250522-gpio-palmas-gpio-v1-1-d6b1a3776ef5@gmail.com
+---
+ drivers/gpio/Kconfig       |  2 +-
+ drivers/gpio/gpio-palmas.c | 10 +++++-----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/gnss/ubx.c b/drivers/gnss/ubx.c
-index 92402f6082c415c7b9051338eef5406b09e09455..1d6acace84f76f8d5d2eacdbbf5ab7a934b33486 100644
---- a/drivers/gnss/ubx.c
-+++ b/drivers/gnss/ubx.c
-@@ -67,6 +67,7 @@ static int ubx_probe(struct serdev_device *serdev)
+diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
+index f2c39bbff83a33dcb12b2d32aa3ebc358a0dd949..be5d823516d0e2bff4b4231dac6a82bf10887118 100644
+--- a/drivers/gpio/Kconfig
++++ b/drivers/gpio/Kconfig
+@@ -1464,7 +1464,7 @@ config GPIO_MAX77650
+ 	  These chips have a single pin that can be configured as GPIO.
+ 
+ config GPIO_PALMAS
+-	bool "TI PALMAS series PMICs GPIO"
++	tristate "TI PALMAS series PMICs GPIO"
+ 	depends on MFD_PALMAS
+ 	help
+ 	  Select this option to enable GPIO driver for the TI PALMAS
+diff --git a/drivers/gpio/gpio-palmas.c b/drivers/gpio/gpio-palmas.c
+index 28dba7048509a3ef9c7972c1be53ea30adddabb0..eaef29f59292de5281f31e196961d90974e65b75 100644
+--- a/drivers/gpio/gpio-palmas.c
++++ b/drivers/gpio/gpio-palmas.c
+@@ -140,6 +140,7 @@ static const struct of_device_id of_palmas_gpio_match[] = {
+ 	{ .compatible = "ti,tps80036-gpio", .data = &tps80036_dev_data,},
+ 	{ },
+ };
++MODULE_DEVICE_TABLE(of, of_palmas_gpio_match);
+ 
+ static int palmas_gpio_probe(struct platform_device *pdev)
  {
- 	struct gnss_serial *gserial;
- 	struct gpio_desc *reset;
-+	struct gpio_desc *safeboot;
- 	struct ubx_data *data;
- 	int ret;
+@@ -191,9 +192,8 @@ static struct platform_driver palmas_gpio_driver = {
+ 	.driver.of_match_table = of_palmas_gpio_match,
+ 	.probe		= palmas_gpio_probe,
+ };
++module_platform_driver(palmas_gpio_driver);
  
-@@ -82,6 +83,13 @@ static int ubx_probe(struct serdev_device *serdev)
- 
- 	data = gnss_serial_get_drvdata(gserial);
- 
-+	/* Deassert safeboot */
-+	safeboot = devm_gpiod_get_optional(&serdev->dev, "safeboot", GPIOD_OUT_LOW);
-+	if (IS_ERR(safeboot)) {
-+		ret = PTR_ERR(safeboot);
-+		goto err_free_gserial;
-+	}
-+
- 	data->vcc = devm_regulator_get(&serdev->dev, "vcc");
- 	if (IS_ERR(data->vcc)) {
- 		ret = PTR_ERR(data->vcc);
+-static int __init palmas_gpio_init(void)
+-{
+-	return platform_driver_register(&palmas_gpio_driver);
+-}
+-subsys_initcall(palmas_gpio_init);
++MODULE_DESCRIPTION("TI PALMAS series GPIO driver");
++MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
++MODULE_LICENSE("GPL");
 
+---
+base-commit: b36ddb9210e6812eb1c86ad46b66cc46aa193487
+change-id: 20250520-gpio-palmas-gpio-a99fc046dc7f
+
+Best regards,
 -- 
-2.34.1
+Aaron Kling <webgeek1234@gmail.com>
 
