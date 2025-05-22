@@ -1,90 +1,60 @@
 From: Alejandro Enrique <alejandroe1@geotab.com>
-Date: Thu, 22 May 2025 18:18:53 +0200
-Subject: [PATCH v2] dt-bindings: gnss: add u-blox,neo-9m compatible
+Subject: [PATCH v2 0/2] Add support for safeboot pin to UBlox GNSS driver
+Date: Thu, 22 May 2025 18:51:03 +0200
+Message-Id: <20250522-ubx-safeboot-v2-0-08c22378b8c9@geotab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250522-ubx-m9-v2-1-6ecd470527bc@geotab.com>
-X-B4-Tracking: v=1; b=H4sIAGxOL2gC/2XMSw6DIBSF4a2YOy4NL6N05D4aB4AXZaA0YImNY
- e+lTjv8T06+ExJGjwkezQkRs08+bDX4rQG76G1G4qfawClvacskeZuDrIp0dHLUTb2VvYF6fkV
- 0/rig51h78WkP8XO5mf3WPyIzQglTQnVCSyesHmYMuzZ3G1YYSylfcOKvU50AAAA=
-X-Change-ID: 20250514-ubx-m9-70df0fd8c48b
+X-B4-Tracking: v=1; b=H4sIAPdVL2gC/3WMyw7CIBBFf6WZtRgeIsaV/2G6ABzaWVgMIKlp+
+ Hexe+/u3OScDTImwgzXYYOElTLFpYM8DOBnu0zI6NEZJJeaa3Fib7eybAO6GAtTRl+C7NPooSu
+ vhIHWPXcfO8+US0yfvV7F7/0TqoJxJiwaI5TSSp9vE8Zi3dHHJ4yttS/3WLvXqQAAAA==
+X-Change-ID: 20250514-ubx-safeboot-3758f22225ec
 To: Johan Hovold <johan@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Alejandro Enrique <alejandroe1@geotab.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Alejandro Enrique <alejandroe1@geotab.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747930772; l=2006;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747932696; l=1275;
  i=alejandroe1@geotab.com; s=20250514; h=from:subject:message-id;
- bh=t0h9nv36tZoG6bCZ31dIAWWzsXZFdgQLmDpUFpX3zjs=;
- b=EhlRZpfjBQLxmdyD8lQdg6w8IHy+r4AlzNb+4MatuJ3P0EVtYYbxqRBPgFdJfFxnOxavcDWEH
- hmJj0sr1djpDg9WMCqanO1aja/WbhQUJt7KJ4MT1i+xqUdV6lcE6w0l
+ bh=NTC0IA2p9IVr/9NBNvhyqzF1HsQf3uhDF7IQNaKS+Nc=;
+ b=/xUEI5CH82z+BjvENsXdv2Gu8D0Ag1Bwpln0iGToIIi67PC0xGOCnD9W4pOm84FPUy01A9YCh
+ KADPVHqp0/nAfS+4Q2nuDqmD8qEZEUxzUL4BG2IMgYmxydhmd742xlY
 X-Developer-Key: i=alejandroe1@geotab.com; a=ed25519;
  pk=xzHMPbqczL/tMsjXr26iLoHwIzLveHVnT+GIU4p1k38=
 X-Endpoint-Received: by B4 Relay for alejandroe1@geotab.com/20250514 with auth_id=404
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add compatible for u-blox NEO-9M GPS module.
+U-Blox 8/M8 and M9 chips have a pin to start it in safeboot mode, to
+be used to recover from situations where the flash content has become
+corrupted and needs to be restored. If this pin is asserted at power
+up or reset, the receiver starts in safeboot mode and GNSS operation
+is disabled.
+
+If this pin is wired to a GPIO in the host it should be deasserted
+before powering up or resetting the GNSS.
+
+This series adds support for handling the safeboot pin when probing
+the driver.
 
 Signed-off-by: Alejandro Enrique <alejandroe1@geotab.com>
 ---
-This series just add the compatible string for u-blox NEO-9M module,
-using neo-m8 as fallback. I have tested the driver with such a module
-and it is working fine.
----
 Changes in v2:
-- Modify the binding to allow falling back to neo-m8
-- Remove compatible string from u-blox driver
-- Link to v1: https://lore.kernel.org/r/20250514-ubx-m9-v1-0-193973a4f3ca@geotab.com
+- Add if/then to dt binding to disallow safeboot-gpios property for neo-6m
+- Link to v1: https://lore.kernel.org/r/20250514-ubx-safeboot-v1-0-1ae771335356@geotab.com
+
 ---
- Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml | 25 +++++++++++++++++++++----
- 1 file changed, 21 insertions(+), 4 deletions(-)
+Alejandro Enrique (2):
+      dt-bindings: gnss: u-blox: add "safeboot-gpios" binding
+      gnss: ubx: add support for the safeboot gpio
 
-diff --git a/Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml b/Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml
-index 7d4b6d49e5eea2201ac05ba6d54b1c1721172f26..215f8931ca08c1b0954fc2f70eabe3ec8d89edea 100644
---- a/Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml
-+++ b/Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml
-@@ -18,10 +18,16 @@ description: >
- 
- properties:
-   compatible:
--    enum:
--      - u-blox,neo-6m
--      - u-blox,neo-8
--      - u-blox,neo-m8
-+    oneOf:
-+      - items:
-+          - enum:
-+              - u-blox,neo-6m
-+              - u-blox,neo-8
-+              - u-blox,neo-m8
-+
-+      - items:
-+          - const: u-blox,neo-m9
-+          - const: u-blox,neo-m8
- 
-   reg:
-     description: >
-@@ -63,3 +69,14 @@ examples:
-             reset-gpios = <&gpio 1 GPIO_ACTIVE_LOW>;
-         };
-     };
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+
-+    serial {
-+        gnss {
-+            compatible = "u-blox,neo-m9", "u-blox,neo-m8";
-+            v-bckp-supply = <&gnss_v_bckp_reg>;
-+            vcc-supply = <&gnss_vcc_reg>;
-+            reset-gpios = <&gpio 1 GPIO_ACTIVE_LOW>;
-+        };
-+    };
-
+ Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml | 20 ++++++++++++++++----
+ drivers/gnss/ubx.c                                        |  8 ++++++++
+ 2 files changed, 24 insertions(+), 4 deletions(-)
 ---
 base-commit: 9c32cda43eb78f78c73aee4aa344b777714e259b
-change-id: 20250514-ubx-m9-70df0fd8c48b
+change-id: 20250514-ubx-safeboot-3758f22225ec
 
 Best regards,
 -- 
