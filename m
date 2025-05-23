@@ -1,89 +1,64 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Thu, 22 May 2025 17:22:20 -0500
-Subject: [PATCH v2] gpio: palmas: Allow building as a module
+From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+Subject: [PATCH 0/5] power: supply: Add several features support in
+ qcom-battmgr driver
+Date: Fri, 23 May 2025 09:39:17 +0800
+Message-Id: <20250523-qcom_battmgr_update-v1-0-2bb6d4e0a56e@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250522-gpio-palmas-gpio-v2-1-89f209d4a949@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJujL2gC/2WNyw7CIBREf6W5azGAUlJX/ofpAnm0NymFgCGah
- n8Xa1y5mzPJnNkg24Q2w6XbINmCGcPagB860LNaJ0vQNAZOuaCCUzJFDCSqxav8zWoYnKbn3mj
- poM1isg6fu/I2Np4xP0J67Q+FfdqfjP/LCiOMmP7O1EnK3jpxnbzC5aiDh7HW+gbqsFKLsAAAA
- A==
-X-Change-ID: 20250520-gpio-palmas-gpio-a99fc046dc7f
-To: Linus Walleij <linus.walleij@linaro.org>, 
- Bartosz Golaszewski <brgl@bgdev.pl>
-Cc: linux-gpio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMXRL2gC/x3MTQqAIBBA4avErBPMmBZdJSJMJ5uF/ahFIN09a
+ fkt3ssQKTBF6KsMgW6OvG8FTV2BWfXmSLAtBiUVSlRSnGb306xT8i5M12F1ItFi11iDqjMSoZR
+ HoIWf/zqM7/sBQy+3umUAAAA=
+X-Change-ID: 20250520-qcom_battmgr_update-3561dc526c05
+To: Sebastian Reichel <sre@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>
+Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>, 
+ David Collins <david.collins@oss.qualcomm.com>, linux-pm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ kernel@oss.qualcomm.com, Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747952541; l=2236;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=tHJHuNFICwcMsJaMONFWu87HoiCqqBLOs7mW/BwS8Qs=;
- b=wjo5VcVlO2btnmfx0266CVRxnVr1EpSH6HyMKfW2hpC4VXMan3s9ZypYctSCT+tCWz4yi8aqg
- N+8dKltnCWxAF3STuQg0hntmj4lnmaEht1kCuZ6Ls976WNF/fjzsSJZ
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1747964381; l=1544;
+ i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
+ bh=BuAnjRUfiZkIyG1T0GsVaYITt5f2u03IOqolF0n/F0o=;
+ b=c0WUixK9b9fxeYtk5G88417BMhrAC/WNVf04Y+Xs7UgkXbCBJZefFaiBnKKxhqb2ADCpBfIkQ
+ b8fjIrU7KaFD3ZGGC2oK+RB+4pY62m630Uw+prokvzuyEhtOSnBzv3h
+X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
+ pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
+X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver works fine as a module, so allowing building as such. This
-drops the driver specific init in favor of the module macro which does
-the same, plus handling exit.
+Add following features in qcom-battmgr drivers as the battery management
+firmware has provided such capabilities:
+ - Add resistance power supply property in core driver and qcom-battmgr
+   driver to get battery resistance
+ - Add state_of_health power supply property in core driver and
+   qcom-battmgr driver to get battery health percentage
+ - Add charge control start/end threshold control by using
+   charge_control_start_threshold and charge_control_end_threshold power
+   supply properties
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
----
-Changes in v2:
-- Drop module alias and add module device table
-- Link to v1: https://lore.kernel.org/r/20250522-gpio-palmas-gpio-v1-1-d6b1a3776ef5@gmail.com
----
- drivers/gpio/Kconfig       |  2 +-
- drivers/gpio/gpio-palmas.c | 10 +++++-----
- 2 files changed, 6 insertions(+), 6 deletions(-)
+The changes have been tested on QRD8650 device based on qcom/linux.git
+for-next commit f8d04825b12f42ec8198dee1ab4654792f9ac231.
 
-diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index f2c39bbff83a33dcb12b2d32aa3ebc358a0dd949..be5d823516d0e2bff4b4231dac6a82bf10887118 100644
---- a/drivers/gpio/Kconfig
-+++ b/drivers/gpio/Kconfig
-@@ -1464,7 +1464,7 @@ config GPIO_MAX77650
- 	  These chips have a single pin that can be configured as GPIO.
- 
- config GPIO_PALMAS
--	bool "TI PALMAS series PMICs GPIO"
-+	tristate "TI PALMAS series PMICs GPIO"
- 	depends on MFD_PALMAS
- 	help
- 	  Select this option to enable GPIO driver for the TI PALMAS
-diff --git a/drivers/gpio/gpio-palmas.c b/drivers/gpio/gpio-palmas.c
-index 28dba7048509a3ef9c7972c1be53ea30adddabb0..eaef29f59292de5281f31e196961d90974e65b75 100644
---- a/drivers/gpio/gpio-palmas.c
-+++ b/drivers/gpio/gpio-palmas.c
-@@ -140,6 +140,7 @@ static const struct of_device_id of_palmas_gpio_match[] = {
- 	{ .compatible = "ti,tps80036-gpio", .data = &tps80036_dev_data,},
- 	{ },
- };
-+MODULE_DEVICE_TABLE(of, of_palmas_gpio_match);
- 
- static int palmas_gpio_probe(struct platform_device *pdev)
- {
-@@ -191,9 +192,8 @@ static struct platform_driver palmas_gpio_driver = {
- 	.driver.of_match_table = of_palmas_gpio_match,
- 	.probe		= palmas_gpio_probe,
- };
-+module_platform_driver(palmas_gpio_driver);
- 
--static int __init palmas_gpio_init(void)
--{
--	return platform_driver_register(&palmas_gpio_driver);
--}
--subsys_initcall(palmas_gpio_init);
-+MODULE_DESCRIPTION("TI PALMAS series GPIO driver");
-+MODULE_AUTHOR("Laxman Dewangan <ldewangan@nvidia.com>");
-+MODULE_LICENSE("GPL");
-
+Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
-base-commit: b36ddb9210e6812eb1c86ad46b66cc46aa193487
-change-id: 20250520-gpio-palmas-gpio-a99fc046dc7f
+Fenglin Wu (5):
+      power: supply: core: add resistance power supply property
+      power: supply: core: Add state_of_health power supply property
+      power: supply: qcom_battmgr: Add resistance power supply property
+      power: supply: qcom-battmgr: Add state_of_health power supply property
+      power: supply: qcom-battmgr: Add charge control support
+
+ Documentation/ABI/testing/sysfs-class-power |  20 +++
+ drivers/power/supply/power_supply_sysfs.c   |   2 +
+ drivers/power/supply/qcom_battmgr.c         | 213 +++++++++++++++++++++++++++-
+ include/linux/power_supply.h                |   2 +
+ 4 files changed, 236 insertions(+), 1 deletion(-)
+---
+base-commit: b1d8766052eb0534b27edda8af1865d53621bd6a
+change-id: 20250520-qcom_battmgr_update-3561dc526c05
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 
