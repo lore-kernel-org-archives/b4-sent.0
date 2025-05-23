@@ -1,80 +1,87 @@
-From: Alejandro Enrique <alejandroe1@geotab.com>
-Date: Fri, 23 May 2025 13:19:52 +0200
-Subject: [PATCH v3] dt-bindings: gnss: add u-blox,neo-9m compatible
+From: George Moussalem <george.moussalem@outlook.com>
+Date: Fri, 23 May 2025 16:30:57 +0400
+Subject: [PATCH] arm64: dts: qcom: ipq5018: Add crypto nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250523-ubx-m9-v3-1-6fa4ef5b7d4a@geotab.com>
-X-B4-Tracking: v=1; b=H4sIANdZMGgC/2WMyw6CMBQFf4V07TV9YcGV/2Fc9AldQEmLDYbw7
- xYWRuNyTs7MipKN3iZ0rVYUbfbJh7EAO1VI93LsLHhTGFFMa1wTDk+1wNCCwMZhZxrNG4XKeYr
- W+eUI3R+Fe5/mEF9HN5N9/UtkAhhIy1rBJHdMy1tnwyzVWYcB7Y1MvzxKPx4FAherDRdlFkr/e
- Nu2vQHtTfcU1QAAAA==
-X-Change-ID: 20250514-ubx-m9-70df0fd8c48b
-To: Johan Hovold <johan@kernel.org>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20250523-ipq5018-crypto-v1-1-0818047d8a18@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAIBqMGgC/x3MQQ5AMBBA0avIrDUZZaRxFbGgBrOpakWI9O4ay
+ 7f4/4XIQThCV7wQ+JIou8uoygLsNrqVlczZoFETkq6V+IOwMsqGx5+7Qt3SZAw1E1rIkQ+8yP0
+ P+yGlDy8IbJVgAAAA
+X-Change-ID: 20250523-ipq5018-crypto-0265b8854b0c
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Alejandro Enrique <alejandroe1@geotab.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1747999205; l=1718;
- i=alejandroe1@geotab.com; s=20250514; h=from:subject:message-id;
- bh=doxoiCk7P2mD0vfGqzFeF8yrTBUMxR+jt9Z2K94wDD4=;
- b=/FniEjMYT4HUGKi6YLK4fVVjq4Uh7w5MrpsQeLBA00m98WF+KxQzG6w2buE8MCN8U0WUrKVIH
- dujb/Ra05yeDURpFKUF/pGOgcB2VCc1u7Dd3F8zif8Utd383x7Y67eF
-X-Developer-Key: i=alejandroe1@geotab.com; a=ed25519;
- pk=xzHMPbqczL/tMsjXr26iLoHwIzLveHVnT+GIU4p1k38=
-X-Endpoint-Received: by B4 Relay for alejandroe1@geotab.com/20250514 with auth_id=404
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748003464; l=1660;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=ineOdeuF7pypv/3WmasEmTw596e4Gn4lKAa9inTMryA=;
+ b=NkSy9lIFJDZAYFs5H2LeInXpsalg4huxzmDYBVApJ6Qg0iSTNfZ6sHmmT6l6ct7LwsuC5DDuP
+ 9FQRgSDZfSNDwC+QOnfs5uB2/sNWO/xlUd4JQudZZAqqh+IMmc/b5+R
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add compatible for u-blox NEO-9M GPS module.
+IPQ5018 uses Qualcom QCE crypto engine v5.1 which is already supported.
+So let's add the dts nodes for its DMA and QCE itself.
 
-Signed-off-by: Alejandro Enrique <alejandroe1@geotab.com>
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-This series just add the compatible string for u-blox NEO-9M module,
-using neo-m8 as fallback. I have tested the driver with such a module
-and it is working fine.
----
-Changes in v3:
-- Remove unnecessary example, 'items', and blank line in the devicetree binding
-- Link to v2: https://lore.kernel.org/r/20250522-ubx-m9-v2-1-6ecd470527bc@geotab.com
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
-Changes in v2:
-- Modify the binding to allow falling back to neo-m8
-- Remove compatible string from u-blox driver
-- Link to v1: https://lore.kernel.org/r/20250514-ubx-m9-v1-0-193973a4f3ca@geotab.com
----
- Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
-
-diff --git a/Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml b/Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml
-index 7d4b6d49e5eea2201ac05ba6d54b1c1721172f26..c0c2bfaa606fb01f7efee1ce7e5d30b1640783f3 100644
---- a/Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml
-+++ b/Documentation/devicetree/bindings/gnss/u-blox,neo-6m.yaml
-@@ -18,10 +18,14 @@ description: >
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+index 130360014c5e14c778e348d37e601f60325b0b14..09ed9c34c1c6129174143ae770f8542dbf61128b 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+@@ -182,6 +182,36 @@ pcie0_phy: phy@86000 {
+ 			status = "disabled";
+ 		};
  
- properties:
-   compatible:
--    enum:
--      - u-blox,neo-6m
--      - u-blox,neo-8
--      - u-blox,neo-m8
-+    oneOf:
-+      - enum:
-+          - u-blox,neo-6m
-+          - u-blox,neo-8
-+          - u-blox,neo-m8
-+      - items:
-+          - const: u-blox,neo-m9
-+          - const: u-blox,neo-m8
- 
-   reg:
-     description: >
++		cryptobam: dma-controller@704000 {
++			compatible = "qcom,bam-v1.7.0";
++			reg = <0x00704000 0x20000>;
++			interrupts = <GIC_SPI 207 IRQ_TYPE_LEVEL_HIGH>;
++
++			clocks = <&gcc GCC_CRYPTO_AHB_CLK>;
++			clock-names = "bam_clk";
++
++			#dma-cells = <1>;
++			qcom,ee = <1>;
++			qcom,controlled-remotely;
++		};
++
++		crypto: crypto@73a000 {
++			compatible = "qcom,crypto-v5.1";
++			reg = <0x0073a000 0x6000>;
++
++			clocks = <&gcc GCC_CRYPTO_AHB_CLK>,
++				 <&gcc GCC_CRYPTO_AXI_CLK>,
++				 <&gcc GCC_CRYPTO_CLK>;
++			clock-names = "iface",
++				      "bus",
++				      "core";
++
++			dmas = <&cryptobam 2>,
++			       <&cryptobam 3>;
++			dma-names = "rx",
++				    "tx";
++		};
++
+ 		tlmm: pinctrl@1000000 {
+ 			compatible = "qcom,ipq5018-tlmm";
+ 			reg = <0x01000000 0x300000>;
 
 ---
-base-commit: 9c32cda43eb78f78c73aee4aa344b777714e259b
-change-id: 20250514-ubx-m9-70df0fd8c48b
+base-commit: 176e917e010cb7dcc605f11d2bc33f304292482b
+change-id: 20250523-ipq5018-crypto-0265b8854b0c
 
 Best regards,
 -- 
-Alejandro Enrique <alejandroe1@geotab.com>
+George Moussalem <george.moussalem@outlook.com>
 
