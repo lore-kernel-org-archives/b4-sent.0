@@ -1,11 +1,11 @@
 From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Sat, 24 May 2025 13:48:37 +0200
-Subject: [PATCH v4 2/5] drm/panel-edp: add N160JCE-ELL CMN panel for Lenovo
- Thinkbook 16
+Date: Sat, 24 May 2025 13:48:38 +0200
+Subject: [PATCH v4 3/5] usb: misc: onboard_usb_dev: Add Bison Electronics
+ Inc. Integrated Camera
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250524-tb16-dt-v4-2-2c1e6018d3f0@oldschoolsolutions.biz>
+Message-Id: <20250524-tb16-dt-v4-3-2c1e6018d3f0@oldschoolsolutions.biz>
 References: <20250524-tb16-dt-v4-0-2c1e6018d3f0@oldschoolsolutions.biz>
 In-Reply-To: <20250524-tb16-dt-v4-0-2c1e6018d3f0@oldschoolsolutions.biz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -25,47 +25,74 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  dri-devel@lists.freedesktop.org, 
  Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748087323; l=1516;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748087323; l=2558;
  i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=tHgac9hVQDbAaXNwsVj/n84C1GFybdnTbmVUs8xBXGE=;
- b=1ZjJ7Y5UlZNMsSAGj2MtBsDXfjwkhKrJBOvbM8dvuzOe2b4WF58oG0zya/uSWWB7iD2M2Q/eS
- qusuOrxaDAXBzqLjt0WHiw6J8AJ2RLu8NuRIbKMI5UebZuNB9uo5xNq
+ bh=Nf3v/6LRLg57RjwhplrovE4DP5a0Ez2PkQJ5KdkIkUk=;
+ b=eUSx1oThLWzJ16fgshk3BgufrCsmXTBs5m9vj+ePcwaZDn3TEyjLMCaZ4ZOgxX/8yk9R4ZqQa
+ bC5JEtVtETuBqjEYFDAzS1oQ3Yrk7HPwd+JMfSHjw+gshubaXWcNiyd
 X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
  pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
 X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Panel is widely used in 16" laptops, and also in my Thinkbook 16 G7 QOY.
+The Camera is built into the Thinkbook 16 G7 QOY and directly attached on the
+usb_2 controller (dwc3 USB2 only). It has a separate power supply that needs
+to be controlled for PM.
 
-CMN N160JCE-ELL EDID
-edid-decode (hex):
-
-00 ff ff ff ff ff ff 00 0d ae 2b 16 00 00 00 00
-20 20 01 04 a5 22 16 78 03 28 65 97 59 54 8e 27
-1e 50 54 00 00 00 01 01 01 01 01 01 01 01 01 01
-01 01 01 01 01 01 42 3c 80 a0 70 b0 24 40 30 20
-a6 00 58 d7 10 00 00 18 35 30 80 a0 70 b0 24 40
-30 20 a6 00 58 d7 10 00 00 18 00 00 00 fd 00 28
-3c 4b 4b 10 01 0a 20 20 20 20 20 20 00 00 00 fe
-00 4e 31 36 30 4a 43 45 2d 45 4c 4c 0a 20 00 95
+Add the support for this device for the power supply.
 
 Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/gpu/drm/panel/panel-edp.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/usb/misc/onboard_usb_dev.c | 2 ++
+ drivers/usb/misc/onboard_usb_dev.h | 8 ++++++++
+ 2 files changed, 10 insertions(+)
 
-diff --git a/drivers/gpu/drm/panel/panel-edp.c b/drivers/gpu/drm/panel/panel-edp.c
-index 90e8c154a9788ad40e2101fdf39cbd92f2e0773a..ec9622e0a313f4a228618f119e2aaa812f63d5a4 100644
---- a/drivers/gpu/drm/panel/panel-edp.c
-+++ b/drivers/gpu/drm/panel/panel-edp.c
-@@ -1973,6 +1973,7 @@ static const struct edp_panel_entry edp_panels[] = {
- 	EDP_PANEL_ENTRY('C', 'M', 'N', 0x14d4, &delay_200_500_e80_d50, "N140HCA-EAC"),
- 	EDP_PANEL_ENTRY('C', 'M', 'N', 0x14d6, &delay_200_500_e80_d50, "N140BGA-EA4"),
- 	EDP_PANEL_ENTRY('C', 'M', 'N', 0x14e5, &delay_200_500_e80_d50, "N140HGA-EA1"),
-+	EDP_PANEL_ENTRY('C', 'M', 'N', 0x162b, &delay_200_500_e80_d50, "N160JCE-ELL"),
+diff --git a/drivers/usb/misc/onboard_usb_dev.c b/drivers/usb/misc/onboard_usb_dev.c
+index 1048e3912068ced166c76838cf7306d86e192fe4..17b1f345b6b65bf25e68e77b0a345936825e1d04 100644
+--- a/drivers/usb/misc/onboard_usb_dev.c
++++ b/drivers/usb/misc/onboard_usb_dev.c
+@@ -569,6 +569,7 @@ static struct platform_driver onboard_dev_driver = {
+ #define VENDOR_ID_TI		0x0451
+ #define VENDOR_ID_VIA		0x2109
+ #define VENDOR_ID_XMOS		0x20B1
++#define VENDOR_ID_BISON		0x5986
  
- 	EDP_PANEL_ENTRY('C', 'S', 'O', 0x1200, &delay_200_500_e50_p2e200, "MNC207QS1-1"),
- 	EDP_PANEL_ENTRY('C', 'S', 'O', 0x1413, &delay_200_500_e50_p2e200, "MNE007JA1-2"),
+ /*
+  * Returns the onboard_dev platform device that is associated with the USB
+@@ -677,6 +678,7 @@ static const struct usb_device_id onboard_dev_id_table[] = {
+ 	{ USB_DEVICE(VENDOR_ID_VIA, 0x0817) }, /* VIA VL817 3.1 HUB */
+ 	{ USB_DEVICE(VENDOR_ID_VIA, 0x2817) }, /* VIA VL817 2.0 HUB */
+ 	{ USB_DEVICE(VENDOR_ID_XMOS, 0x0013) }, /* XMOS XVF3500 Voice Processor */
++	{ USB_DEVICE(VENDOR_ID_BISON, 0x1198) }, /* Bison Electronics Inc. Integrated Camera */
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(usb, onboard_dev_id_table);
+diff --git a/drivers/usb/misc/onboard_usb_dev.h b/drivers/usb/misc/onboard_usb_dev.h
+index e017b8e22f936be66da73789abb4f620e6af4d6a..816d9ce71eaddc7ab0cb4517558dd44a591d6c28 100644
+--- a/drivers/usb/misc/onboard_usb_dev.h
++++ b/drivers/usb/misc/onboard_usb_dev.h
+@@ -115,6 +115,13 @@ static const struct onboard_dev_pdata xmos_xvf3500_data = {
+ 	.is_hub = false,
+ };
+ 
++static const struct onboard_dev_pdata bison_intcamera_data = {
++	.reset_us = 1000,
++	.num_supplies = 1,
++	.supply_names = { "vdd" },
++	.is_hub = false,
++};
++
+ static const struct of_device_id onboard_dev_match[] = {
+ 	{ .compatible = "usb424,2412", .data = &microchip_usb424_data, },
+ 	{ .compatible = "usb424,2514", .data = &microchip_usb2514_data, },
+@@ -144,6 +151,7 @@ static const struct of_device_id onboard_dev_match[] = {
+ 	{ .compatible = "usb2109,817", .data = &vialab_vl817_data, },
+ 	{ .compatible = "usb2109,2817", .data = &vialab_vl817_data, },
+ 	{ .compatible = "usb20b1,0013", .data = &xmos_xvf3500_data, },
++	{ .compatible = "usb5986,1198", .data = &bison_intcamera_data, },
+ 	{}
+ };
+ 
 
 -- 
 2.48.1
