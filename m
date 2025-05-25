@@ -1,11 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Sun, 25 May 2025 21:56:04 +0400
-Subject: [PATCH 1/5] dt-bindings: net: qca,ar803x: Add IPQ5018 Internal GE
- PHY support
+Date: Sun, 25 May 2025 21:56:05 +0400
+Subject: [PATCH 2/5] clk: qcom: gcc-ipq5018: fix GE PHY reset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250525-ipq5018-ge-phy-v1-1-ddab8854e253@outlook.com>
+Message-Id: <20250525-ipq5018-ge-phy-v1-2-ddab8854e253@outlook.com>
 References: <20250525-ipq5018-ge-phy-v1-0-ddab8854e253@outlook.com>
 In-Reply-To: <20250525-ipq5018-ge-phy-v1-0-ddab8854e253@outlook.com>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -23,69 +22,41 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  linux-clk@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748195765; l=2331;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748195765; l=1149;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=ayUL3wYd9rvR/ur2nGKYm+iV8WIysnk8OxJFKcrz/ig=;
- b=Aekb7yvWZ5o9Vu+/YejmG2dcGjSGGiy0sUVTXRtXoAARJBX9e0Yh53Df5khsfiuiuTzfUWXMp
- 7UerUABr5A2AgqMJGulb8w/DKe1Rhx1gyp/R1pqYNddLikeBxoT0d9b
+ bh=oIkUIGsEO4IxSACM3i9ZzN1oSf3eDEKLwbaKL+SIoYs=;
+ b=02XFO8KJUlDf/GQd0oZSxvLXGTZYrGzhEljPdbdnmF3LQkWU+O1zbHOfU5UYGN6hY3jyv7wMk
+ IdbCEfGcfhPBaDz4Y5AKdRWodS3NgeHf5YGFoZkJgwCqcH0fCYGK81c
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the IPQ5018 Internal Gigabit Ethernet PHY found in the IPQ5018
-SoC. Its output pins provide an MDI interface to either an external
-switch in a PHY to PHY link scenario or is directly attached to an RJ45
-connector.
+The MISC reset is supposed to trigger a resets across the MDC, DSP, and
+RX & TX clocks of the IPQ5018 internal GE PHY. So let's set the bitmask
+of the reset definition accordingly in the GCC as per the downstream
+driver.
 
-In a phy to phy architecture, DAC values need to be set to accommodate
-for the short cable length. As such, add an optional property to do so.
-
-In addition, the LDO controller found in the IPQ5018 SoC needs to be
-enabled to driver low voltages to the CMN Ethernet Block (CMN BLK) which
-the GE PHY depends on. The LDO must be enabled in TCSR by writing to a
-specific register. So, adding a property that takes a phandle to the
-TCSR node and the register offset.
+Link: https://git.codelinaro.org/clo/qsdk/oss/kernel/linux-ipq-5.4/-/commit/00743c3e82fa87cba4460e7a2ba32f473a9ce932
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- .../devicetree/bindings/net/qca,ar803x.yaml        | 23 ++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ drivers/clk/qcom/gcc-ipq5018.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/net/qca,ar803x.yaml b/Documentation/devicetree/bindings/net/qca,ar803x.yaml
-index 3acd09f0da863137f8a05e435a1fd28a536c2acd..a9e94666ff0af107db4f358b144bf8644c6597e8 100644
---- a/Documentation/devicetree/bindings/net/qca,ar803x.yaml
-+++ b/Documentation/devicetree/bindings/net/qca,ar803x.yaml
-@@ -60,6 +60,29 @@ properties:
-     minimum: 1
-     maximum: 255
+diff --git a/drivers/clk/qcom/gcc-ipq5018.c b/drivers/clk/qcom/gcc-ipq5018.c
+index 70f5dcb96700f55da1fb19fc893d22350a7e63bf..02d6f08f389f24eccc961b9a4271288c6b635bbc 100644
+--- a/drivers/clk/qcom/gcc-ipq5018.c
++++ b/drivers/clk/qcom/gcc-ipq5018.c
+@@ -3660,7 +3660,7 @@ static const struct qcom_reset_map gcc_ipq5018_resets[] = {
+ 	[GCC_WCSS_AXI_S_ARES] = { 0x59008, 6 },
+ 	[GCC_WCSS_Q6_BCR] = { 0x18004, 0 },
+ 	[GCC_WCSSAON_RESET] = { 0x59010, 0},
+-	[GCC_GEPHY_MISC_ARES] = { 0x56004, 0 },
++	[GCC_GEPHY_MISC_ARES] = { 0x56004, .bitmask = 0xf },
+ };
  
-+  qca,dac:
-+    description:
-+      Values for MDAC and EDAC to adjust amplitude, bias current settings,
-+      and error detection and correction algorithm. Only set in a PHY to PHY
-+      link architecture to accommodate for short cable length.
-+    $ref: /schemas/types.yaml#/definitions/uint32-array
-+    items:
-+      - items:
-+          - description: value for MDAC. Expected 0x10, if set
-+          - description: value for EDAC. Expected 0x10, if set
-+      - maxItems: 1
-+
-+  qca,eth-ldo-enable:
-+    description:
-+      Register in TCSR to enable the LDO controller to supply
-+      low voltages to the common ethernet block (CMN BLK).
-+    $ref: /schemas/types.yaml#/definitions/phandle-array
-+    items:
-+      - items:
-+          - description: phandle of TCSR syscon
-+          - description: offset of TCSR register to enable the LDO controller
-+      - maxItems: 1
-+
-   vddio-supply:
-     description: |
-       RGMII I/O voltage regulator (see regulator/regulator.yaml).
+ static const struct of_device_id gcc_ipq5018_match_table[] = {
 
 -- 
 2.49.0
