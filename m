@@ -1,84 +1,100 @@
-From: Ye He <ye.he@amlogic.com>
-Date: Tue, 27 May 2025 16:12:59 +0800
-Subject: [PATCH bluez v2] shared/gatt-db: Add read offset to record the
- progress of att read blob request
+From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+Subject: [PATCH v3 0/6] add support for pf1550 PMIC MFD-based drivers
+Date: Tue, 27 May 2025 18:25:32 -0400
+Message-Id: <20250527-pf1550-v3-0-45f69453cd51@savoirfairelinux.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250527-att-read-blob-rsp-err-v2-1-23c7f749e8d8@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAAp0NWgC/4WNTQ6CMBCFr0Jm7Zi2WEFX3sOw6M8ATYCSKRKVc
- HcbLuDyey/vexsk4kAJ7sUGTGtIIU4Z1KkA15upIww+MyihtNCqQrMsyGQ82iFa5DQjMaMrhbd
- SU+tLAXk7M7XhfXifYIcXfaHJcR/SEvlzvK3yKP+IV4kSK+1L6y63ur6qhxmH2AV3dnGEZt/3H
- /1clUTDAAAA
-X-Change-ID: 20250527-att-read-blob-rsp-err-c30db15efd30
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Ye He <ye.he@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIANw7NmgC/yXMywqDMBCF4VcJs27KJHZq8VUkCzWTdhZemqgI4
+ rsbdPkdDv8OiaNwgkrtEHmVJOOQUTwUdL9m+LIWnw0WLSHZUk/BEKH2LzQBPZbtByGfp8hBtit
+ Uu9uR/0vuzfcIbZNYd2Pfy1yp9f00BO44Tjto7KWBAAAA
+X-Change-ID: 20250527-pf1550-d401f0d07b80
+To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Sebastian Reichel <sre@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-input@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Samuel Kayode <samuel.kayode@savoirfairelinux.com>, eballetbo@gmail.com, 
+ abelvesa@linux.com, b38343@freescale.com, yibin.gong@nxp.com, 
+ Abel Vesa <abelvesa@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748333579; l=1844;
- i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
- bh=QBewF9n7q8M+QSBW+utFpCumWyJUTCjQVXc/v2VXmeQ=;
- b=RzCIs/F0DNe+eH8D3yuztRCawPXqNwmLYW9r1DoZPGvkD5qJvdNd04gyIQ5zRXIOgS8DqbvfX
- 8H47Pyf9uMOAY6lwcDTAI/P2PLL5PRw6I7D+2jujmEe/FcWXmQEmDIl
-X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
- pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
-X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748384783; l=3259;
+ i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
+ bh=URe9IVrGZGJyILeVZBhhwONAzc69qPxN2OjxE6CJZ4E=;
+ b=UJ4AcJwLfK4DFqRBhE//y7QyL/NeE6MGisDxCq6MHlHpahCh8CYZPc0hk8Qp9pNPhav7nSXPv
+ w1jN1WnfbY6ARElc+dw0DpA8Pp7zaBt/T5Xn4VERhp5hVe3NC4klhf2
+X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
+ pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
+X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When processing the att read blob request packet sent
-by the mobile phone, Bluez ignores the offset and the
-payload of each att read blob response is the same.
+This series adds support for pf1550 PMIC. It provides the core mfd driver and a
+set of three sub-drivers for the regulator, power supply and input subsystems.
 
-This patch add read offset to record the progress of
-att read blob request.
+Patch 1 adds the DT binding document for the PMIC. Patches 2-5 adds the
+pertinent drivers. Last patch adds a MAINTAINERS entry for the drivers.
 
-Fixes: https://github.com/bluez/bluez/issues/1294
+Changes since v1:
+   - DT bindings for all devices included
+   - Add onkey driver
+   - Add driver for the regulators
+   - Ensure charger is activated as some variants have it off by default
+   - Update mfd and charger driver per feedback from eballetbo@gmail.com
+   - Add myself as maintainer for these drivers
+   - Link to v1: https://lore.kernel.org/1523974819-8711-1-git-send-email-abel.vesa@nxp.com/
 
-Signed-off-by: Ye He <ye.he@amlogic.com>
+Changes since v2:
+   - Rebase on recent mainline kernel v6.15
+   - Single yaml file containing dt bindings for all pf1550 devices
+   - irq mapping done in MFD driver as suggested by Dmitry Torokhov
+   - Drop unnecessary includes in drivers
+   - Replace dev_err with dev_err_probe in probe method of drivers
+   - Drop compatible string from drivers of the sub-devices
+   - Remove dependency on OF from drivers of the sub-devices
+   - onkey: move driver from input/keyboard into input/misc
+   - onkey: remove dependency on OF
+   - onkey: use onkey virqs instead of central irq
+   - onkey: fix integer overflow for regmap_write when unmasking
+     interrupts during pf1550_onkey_resume
+   - charger: add support for monitored-battery which is used in setting
+     a constant voltage for the charger.
+   - Address other feedback from Dmitry Torokhov and Krzysztof Kozlowski
+   - Link to v2: https://lore.kernel.org/cover.1747409892.git.samuel.kayode@savoirfairelinux.com/
+
+Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 ---
-Changes in v2:
-- Fix build error.
-- Link to v1: https://patch.msgid.link/20250527-att-read-blob-rsp-err-v1-1-75d3bc498862@amlogic.com
----
- src/shared/gatt-db.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Samuel Kayode (6):
+      dt-bindings: mfd: add pf1550
+      mfd: pf1550: add core mfd driver
+      regulator: pf1550: add support for regulator
+      input: pf1550: add onkey support
+      power: supply: pf1550: add battery charger support
+      MAINTAINERS: add an entry for pf1550 mfd driver
 
-diff --git a/src/shared/gatt-db.c b/src/shared/gatt-db.c
-index 8951079beef1a8af7e46e87043f320640d4109f7..06af4f65bacaac39cdf9641e40fac902653c4b9c 100644
---- a/src/shared/gatt-db.c
-+++ b/src/shared/gatt-db.c
-@@ -109,6 +109,7 @@ struct gatt_db_attribute {
- 	uint32_t permissions;
- 	uint16_t value_len;
- 	uint8_t *value;
-+	uint16_t read_offset;
- 
- 	gatt_db_read_t read_func;
- 	gatt_db_write_t write_func;
-@@ -151,7 +152,8 @@ static void pending_read_result(struct pending_read *p, int err,
- 	if (p->timeout_id > 0)
- 		timeout_remove(p->timeout_id);
- 
--	p->func(p->attrib, err, data, length, p->user_data);
-+	p->func(p->attrib, err, data + p->attrib->read_offset,
-+			length - p->attrib->read_offset, p->user_data);
- 
- 	free(p);
- }
-@@ -2126,6 +2128,8 @@ bool gatt_db_attribute_read(struct gatt_db_attribute *attrib, uint16_t offset,
- 	if (!attrib || !func)
- 		return false;
- 
-+	attrib->read_offset = offset;
-+
- 	/* Check boundaries if value_len is set */
- 	if (attrib->value_len && offset > attrib->value_len) {
- 		func(attrib, BT_ATT_ERROR_INVALID_OFFSET, NULL, 0, user_data);
-
+ Documentation/devicetree/bindings/mfd/pf1550.yaml | 139 +++++
+ MAINTAINERS                                       |  10 +
+ drivers/input/misc/Kconfig                        |  11 +
+ drivers/input/misc/Makefile                       |   1 +
+ drivers/input/misc/pf1550-onkey.c                 | 202 +++++++
+ drivers/mfd/Kconfig                               |  14 +
+ drivers/mfd/Makefile                              |   2 +
+ drivers/mfd/pf1550.c                              | 277 ++++++++++
+ drivers/power/supply/Kconfig                      |  11 +
+ drivers/power/supply/Makefile                     |   1 +
+ drivers/power/supply/pf1550-charger.c             | 639 ++++++++++++++++++++++
+ drivers/regulator/Kconfig                         |   9 +
+ drivers/regulator/Makefile                        |   1 +
+ drivers/regulator/pf1550-regulator.c              | 353 ++++++++++++
+ include/linux/mfd/pf1550.h                        | 241 ++++++++
+ 15 files changed, 1911 insertions(+)
 ---
-base-commit: c888c682fbd4e02dce6bf4c1f9a47328ceb02716
-change-id: 20250527-att-read-blob-rsp-err-c30db15efd30
+base-commit: 0a4b866d08c6adaea2f4592d31edac6deeb4dcbd
+change-id: 20250527-pf1550-d401f0d07b80
 
 Best regards,
 -- 
-Ye He <ye.he@amlogic.com>
+Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 
