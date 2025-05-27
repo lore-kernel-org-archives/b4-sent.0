@@ -1,59 +1,82 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 26 May 2025 20:22:26 -0500
-Subject: [PATCH] arm64: tegra: Set usb micro-b port to otg mode on P3450
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v3 0/6] Add support for Amlogic S7/S7D/S6 pinctrl
+Date: Tue, 27 May 2025 13:23:27 +0800
+Message-Id: <20250527-s6-s7-pinctrl-v3-0-44f6a0451519@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250526-p3450-otg-v1-1-acb80ca2dc63@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANETNWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDU0Nj3QJjE1MD3fySdN0kSxPzNGNDCxPjFAsloPqCotS0zAqwWdGxtbU
- Awu937VsAAAA=
-X-Change-ID: 20250513-p3450-otg-b947f31843d8
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAE9MNWgC/3WMyw6CMBQFf4V0bU1fQGXlfxgXtb3ATYCSljQaw
+ r9bWKmJyzk5MyuJEBAiaYqVBEgY0U8Z5KkgtjdTBxRdZiKYKFnJFY0VjTWdcbJLGKhpOTyc0do
+ oINmZA7T4PHq3e+Ye4+LD68gnvq//SolTRuXFyUpb4/LlasbBd2jP1o9kbyXx4Qv+64vsMwsly
+ FpoxdS3v23bGxChhL/sAAAA
+To: Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748308948; l=1025;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=1JUbkjCUHsRo77ibOj1eVsP3iKgmrocVJ93H88m4fC0=;
- b=1B6zbjxZikNUuRqKQI3D6EJGN/aUM7kbA1Qip2nE4pcdfC923tP0mgJaqiq5sRK2mtEL1XTvK
- nY0YsXz6I3pAgCQgN3Gy/cWNxJFqlP3aqDLdK//zfVEScAXCHCuL6jP
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748323408; l=2141;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=1GCpqYieVMUjZiRR1spl6SkovVlonsGalWojCmfHnU8=;
+ b=wtHOhFlqk718sG5FN2taveblE9/ol8PL4CgX+7110oCYLvkhagcOQvvyZlh/2hYLAbg5nfqF6
+ kzUF/U7ytpjB39z+NSCAiwFHG+f+LreRrPkI6u1+I4Ox2xUJfSwIYWp
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The usb micro-b port on p3450 is capable of otg and doesn't need
-hardcoded to peripheral. No other supported tegra device is set up like
-this, so align for consistency.
+In some Amlogic SoCs, to save register space or due to some
+abnormal arrangements, two sets of pins share one mux register.
+A group starting from pin0 is the main pin group, which acquires
+the register address through DTS and has management permissions,
+but the register bit offset is undetermined.
+Another GPIO group as a subordinate group. Some pins mux use share
+register and bit offset from bit0 . But this group do not have
+register management permissions.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+In SoC S7 and S7D, GPIOX(16~19) mux share with GPIOCC mux register.
+
+In SoC S6, GPIOX(16~19) mux share with GPIOCC mux register, and GPIOD(6)
+mux share with GPIOF mux register.
+
+Add S7/S7D/S6 pinctrl compatible string and device node.
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v3:
+- Squash three submissons of bindings into one.
+- Link to v2: https://lore.kernel.org/r/20250521-s6-s7-pinctrl-v2-0-0ce5e3728404@amlogic.com
 
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts b/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts
-index 0ecdd7243b2eb1abba9adbe9a404b226c29b85ef..019484a271c396edc30200e8592c713455a8e1a4 100644
---- a/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts
-+++ b/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts
-@@ -514,7 +514,7 @@ pcie-6 {
- 		ports {
- 			usb2-0 {
- 				status = "okay";
--				mode = "peripheral";
-+				mode = "otg";
- 				usb-role-switch;
- 
- 				vbus-supply = <&vdd_5v0_usb>;
+Changes in v2:
+- Add a unit address for pinctrl node.
+- Use pointer instead of flexible array to solve the problem tested by kernel test robot.
+- Link to v1: https://lore.kernel.org/r/20250514-s6-s7-pinctrl-v1-0-39d368cad250@amlogic.com
 
 ---
-base-commit: 405e6c37c89ef0df2bfc7a988820a3df22dacb1b
-change-id: 20250513-p3450-otg-b947f31843d8
+Xianwei Zhao (6):
+      dt-bindings: pinctl: amlogic,pinctrl-a4: Add compatible string for S7/S7D/S6
+      pinctrl: meson: a4: remove special data processing
+      pinctrl: meson: support amlogic S6/S7/S7D SoC
+      dts: arm64: amlogic: add S7 pinctrl node
+      dts: arm64: amlogic: add S7D pinctrl node
+      dts: arm64: amlogic: add S6 pinctrl node
+
+ .../bindings/pinctrl/amlogic,pinctrl-a4.yaml       |   9 +-
+ arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi        |  97 +++++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi        |  81 ++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi       |  90 ++++++++++++++++
+ drivers/pinctrl/meson/pinctrl-amlogic-a4.c         | 118 ++++++++++++++++-----
+ 5 files changed, 370 insertions(+), 25 deletions(-)
+---
+base-commit: 176e917e010cb7dcc605f11d2bc33f304292482b
+change-id: 20250514-s6-s7-pinctrl-af1ebda88a4e
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
