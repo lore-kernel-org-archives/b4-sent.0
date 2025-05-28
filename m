@@ -1,116 +1,66 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 28 May 2025 18:45:51 +0400
-Subject: [PATCH v2 5/5] arm64: dts: qcom: ipq5018: Add GE PHY to internal
- mdio bus
+From: meowmeowbeanz <meowmeowbeanz@gmx.com>
+Date: Wed, 28 May 2025 10:56:58 -0700
+Subject: [PATCH] ASoC: amd: yc: Add support for Lenovo Yoga 7 16ARP8
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250528-ipq5018-ge-phy-v2-5-dd063674c71c@outlook.com>
-References: <20250528-ipq5018-ge-phy-v2-0-dd063674c71c@outlook.com>
-In-Reply-To: <20250528-ipq5018-ge-phy-v2-0-dd063674c71c@outlook.com>
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-clk@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>
+Message-Id: <20250528-yoga-7-16arp8-microphone-fix-v1-1-bfeed2ecd0c2@gmx.com>
+X-B4-Tracking: v=1; b=H4sIAGlON2gC/x3MTQqAIBBA4avIrBsw+6WrRAvRqWaRyghRRHdPW
+ n5v8R7IJEwZJvWA0MmZYyioKwVut2EjZF8MRptOd2bEO24WB6x7K2nEg53EtMdAuPKFpAfv2r5
+ tSBsoiyRU8r+fl/f9AJXfnF1uAAAA
+X-Change-ID: 20250528-yoga-7-16arp8-microphone-fix-e07dc4643e02
+To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ mario.limonciello@amd.com, alsa-devel@alsa-project.org, 
+ meowmeowbeanz <meowmeowbeanz@gmx.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748443549; l=2303;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=y1umjiNASV+etOSubDvR4l343800ONATOPkAQu4T8kA=;
- b=kcj8aIQFIt/fW5UDnVZlEfilk6D5Bz84KOgRmYFPp4kkSwV9MLqq/D9RGVOla8XY9WTcrI+uB
- EYMY9578cqCBb8V/l36iuGVB4YIVhdxWUZunRRJr1jwWxv0USERltjR
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748455029; l=1199;
+ i=meowmeowbeanz@gmx.com; s=20250528; h=from:subject:message-id;
+ bh=pwC5yCZaXPRUyPuizllISjCOfre1eAHhzXvSoc3WKtk=;
+ b=JdOuKTlrwAqDQaZnvlonVdIhlTPvxaOs7dr5et2hG5rqVyEKcXes5mNivLjLvz99mNAPqMp06
+ KB/7zo6ufxxBiPBOsw3yUubthEW1aCB2WNPc+VfsoGaaUcvddWrzXJn
+X-Developer-Key: i=meowmeowbeanz@gmx.com; a=ed25519;
+ pk=gUBt2QAUfouneGh4/++G7dhBBU8WNcaw4woqB/QUV5M=
+X-Endpoint-Received: by B4 Relay for meowmeowbeanz@gmx.com/20250528 with auth_id=415
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The IPQ5018 SoC contains an internal GE PHY, always at phy address 7.
-As such, let's add the GE PHY node to the SoC dtsi.
+Add DMI quirk entry for Lenovo Yoga 7 16ARP8 (83BS) to enable
+digital microphone support via ACP driver.
 
-The LDO controller found in the SoC must be enabled to provide constant
-low voltages to the PHY. The mdio-ipq4019 driver already has support
-for this, so adding the appropriate TCSR register offset.
+Fixes microphone detection on this specific model which was
+previously falling back to non-functional generic audio paths.
 
-In addition, the GE PHY outputs both the RX and TX clocks to the GCC
-which gate controls them and routes them back to the PHY itself.
-So let's create two DT fixed clocks and register them in the GCC node.
-
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Tested-by: meowmeowbeanz <meowmeowbeanz@gmx.com>
+Signed-off-by: meowmeowbeanz <meowmeowbeanz@gmx.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 29 ++++++++++++++++++++++++++---
- 1 file changed, 26 insertions(+), 3 deletions(-)
+ sound/soc/amd/yc/acp6x-mach.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 03ebc3e305b267c98a034c41ce47a39269afce75..6c42ed826c3c60960b08afb0b324cfb89f02329d 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -16,6 +16,18 @@ / {
- 	#size-cells = <2>;
- 
- 	clocks {
-+		gephy_rx_clk: gephy-rx-clk {
-+			compatible = "fixed-clock";
-+			clock-frequency = <125000000>;
-+			#clock-cells = <0>;
-+		};
-+
-+		gephy_tx_clk: gephy-tx-clk {
-+			compatible = "fixed-clock";
-+			clock-frequency = <125000000>;
-+			#clock-cells = <0>;
-+		};
-+
- 		sleep_clk: sleep-clk {
- 			compatible = "fixed-clock";
- 			#clock-cells = <0>;
-@@ -184,7 +196,8 @@ pcie0_phy: phy@86000 {
- 
- 		mdio0: mdio@88000 {
- 			compatible = "qcom,ipq5018-mdio";
--			reg = <0x00088000 0x64>;
-+			reg = <0x00088000 0x64>,
-+			      <0x019475c4 0x4>;
- 			#address-cells = <1>;
- 			#size-cells = <0>;
- 
-@@ -192,6 +205,16 @@ mdio0: mdio@88000 {
- 			clock-names = "gcc_mdio_ahb_clk";
- 
- 			status = "disabled";
-+
-+			ge_phy: ethernet-phy@7 {
-+				compatible = "ethernet-phy-id004d.d0c0";
-+				reg = <7>;
-+
-+				clocks = <&gcc GCC_GEPHY_RX_CLK>,
-+					 <&gcc GCC_GEPHY_TX_CLK>;
-+
-+				resets = <&gcc GCC_GEPHY_MISC_ARES>;
-+			};
- 		};
- 
- 		mdio1: mdio@90000 {
-@@ -232,8 +255,8 @@ gcc: clock-controller@1800000 {
- 				 <&pcie0_phy>,
- 				 <&pcie1_phy>,
- 				 <0>,
--				 <0>,
--				 <0>,
-+				 <&gephy_rx_clk>,
-+				 <&gephy_tx_clk>,
- 				 <0>,
- 				 <0>;
- 			#clock-cells = <1>;
+diff --git a/sound/soc/amd/yc/acp6x-mach.c b/sound/soc/amd/yc/acp6x-mach.c
+index 3d9da93d22ee84914a92cfdc1de7b977dfd3bfa4..7e62445e02c1d0632f5f5e35cf97265f42829ba0 100644
+--- a/sound/soc/amd/yc/acp6x-mach.c
++++ b/sound/soc/amd/yc/acp6x-mach.c
+@@ -311,6 +311,13 @@ static const struct dmi_system_id yc_acp_quirk_table[] = {
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "83AS"),
+ 		}
+ 	},
++	{
++		.driver_data = &acp6x_card,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "LENOVO"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "83BS"),
++		}
++	},
+ 	{
+ 		.driver_data = &acp6x_card,
+ 		.matches = {
 
+---
+base-commit: 76f8d35964e4de1b464de22e4f3fdc14937ed854
+change-id: 20250528-yoga-7-16arp8-microphone-fix-e07dc4643e02
+
+Best regards,
 -- 
-2.49.0
+meowmeowbeanz <meowmeowbeanz@gmx.com>
 
