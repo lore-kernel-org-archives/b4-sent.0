@@ -1,63 +1,66 @@
-From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-Date: Tue, 27 May 2025 18:25:38 -0400
-Subject: [PATCH v3 6/6] MAINTAINERS: add an entry for pf1550 mfd driver
+From: Lorenzo Stoakes <lorenzo.stoakes@oracle.com>
+Date: Wed, 28 May 2025 15:15:39 +0100
+Subject: [PATCH] tools/testing/vma: add missing function stub
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250527-pf1550-v3-6-45f69453cd51@savoirfairelinux.com>
-References: <20250527-pf1550-v3-0-45f69453cd51@savoirfairelinux.com>
-In-Reply-To: <20250527-pf1550-v3-0-45f69453cd51@savoirfairelinux.com>
-To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Sebastian Reichel <sre@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-input@vger.kernel.org, linux-pm@vger.kernel.org, 
- Samuel Kayode <samuel.kayode@savoirfairelinux.com>, eballetbo@gmail.com, 
- abelvesa@linux.com, b38343@freescale.com, yibin.gong@nxp.com, 
- Abel Vesa <abelvesa@kernel.org>
+Message-Id: <20250528-fix-vma-test-v1-1-c8a5f533b38f@oracle.com>
+X-B4-Tracking: v=1; b=H4sIAIoaN2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDUyML3bTMCt2y3ETdktTiEl1T8yRDY4s0I4s0EzMloJaColSgPNi46Nj
+ aWgBi0eRgXgAAAA==
+X-Change-ID: 20250528-fix-vma-test-57b138f28f46
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
+ Vlastimil Babka <vbabka@suse.cz>, Jann Horn <jannh@google.com>, 
+ Pedro Falcato <pfalcato@suse.de>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Lorenzo Stoakes <lorenzo.stoakes@oracle.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748384783; l=966;
- i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
- bh=P6wBCq9GpDy9ARq/1XDkixCcTLLaGUgI/CZwwZXFs4U=;
- b=CMM65Np1ztt3CDZ3fr0531DlK7o56shRW0QR18RIdCbHunxQHohl+CRzQyfw4eqtad36pcNA4
- phTgtEvDAJqAacrrbw5sE8JntLuWRivHi1X8f9j+5lqHuUJf59VCn1x
-X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
- pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
-X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1135;
+ i=lorenzo.stoakes@oracle.com; h=from:subject:message-id;
+ bh=/hWcNyu2zzVdPtWKaUfZnsHVgBszi7eCqsh7pAsYZzg=;
+ b=owGbwMvMwCUmzHegU0pdXZrxtFoSQ4a51Iwc4TXuqSqOcrbiiccWGMd4nwi7cCZ+zctrbQE/v
+ ldHFU/sKGVhEONikBVTZDlcaRzdE7ii7ojXo0yYOaxMIEMYuDgFYCLbNzEyrLyw98zFvw9i+V4G
+ vqiOOf/6x7RIl2cvmMVWS8k0nG179IGR4Z/AucNunizR/YtdqrsjOWUl3s0703VzacOL3RIxQnb
+ z+QE=
+X-Developer-Key: i=lorenzo.stoakes@oracle.com; a=openpgp;
+ fpr=5BEF5562908102FB56727B7CC52D7AFE85F25509
+X-Endpoint-Received: by B4 Relay for lorenzo.stoakes@oracle.com/default with auth_id=414
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MAINTAINERS entry for pf1550 PMIC.
+The hugetlb fix introduced in commit ee40c9920ac2 ("mm: fix copy_vma()
+error handling for hugetlb mappings") mistakenly did not provide a stub for
+the VMA userland testing, which results in a compile error when trying to
+build this.
 
-Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+Provide this stub to resolve the issue.
+
 ---
- MAINTAINERS | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Signed-off-by: Lorenzo Stoakes <lorenzo.stoakes@oracle.com>
+---
+ tools/testing/vma/vma_internal.h | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 830ef5f9d86487a599236a2392e422f0e424a313..2be65383c3c7b1c1487577d23bff483aa437c4c8 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -17688,6 +17688,16 @@ F:	Documentation/devicetree/bindings/clock/imx*
- F:	drivers/clk/imx/
- F:	include/dt-bindings/clock/imx*
+diff --git a/tools/testing/vma/vma_internal.h b/tools/testing/vma/vma_internal.h
+index f6e45e62da3a6ee007b7431573f27ef5c2533865..441feb21aa5a92b7edddb07258c7f368171de15b 100644
+--- a/tools/testing/vma/vma_internal.h
++++ b/tools/testing/vma/vma_internal.h
+@@ -1461,4 +1461,9 @@ static inline int __call_mmap_prepare(struct file *file,
+ 	return file->f_op->mmap_prepare(desc);
+ }
  
-+NXP PF1550 PMIC MFD DRIVER
-+M:	Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/mfd/pf1550.yaml
-+F:	drivers/input/misc/pf1550-onkey.c
-+F:	drivers/mfd/pf1550.c
-+F:	drivers/power/supply/pf1550-charger.c
-+F:	drivers/regulator/pf1550-regulator.c
-+F:	include/linux/mfd/pfd1550.h
++static inline void fixup_hugetlb_reservations(struct vm_area_struct *vma)
++{
++	(void)vma;
++}
 +
- NXP PF8100/PF8121A/PF8200 PMIC REGULATOR DEVICE DRIVER
- M:	Jagan Teki <jagan@amarulasolutions.com>
- S:	Maintained
+ #endif	/* __MM_VMA_INTERNAL_H */
 
+---
+base-commit: 1637eadc7fdf2fa4069a149b1e836656a3b64150
+change-id: 20250528-fix-vma-test-57b138f28f46
+
+Best regards,
 -- 
-2.49.0
+Lorenzo Stoakes <lorenzo.stoakes@oracle.com>
 
