@@ -1,11 +1,11 @@
 From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-Date: Fri, 30 May 2025 15:35:06 +0800
-Subject: [PATCH v2 1/8] power: supply: core: Add resistance power supply
- property
+Date: Fri, 30 May 2025 15:35:07 +0800
+Subject: [PATCH v2 2/8] power: supply: core: Add state_of_health power
+ supply property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250530-qcom_battmgr_update-v2-1-9e377193a656@oss.qualcomm.com>
+Message-Id: <20250530-qcom_battmgr_update-v2-2-9e377193a656@oss.qualcomm.com>
 References: <20250530-qcom_battmgr_update-v2-0-9e377193a656@oss.qualcomm.com>
 In-Reply-To: <20250530-qcom_battmgr_update-v2-0-9e377193a656@oss.qualcomm.com>
 To: Sebastian Reichel <sre@kernel.org>, 
@@ -21,18 +21,18 @@ Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>,
  kernel@oss.qualcomm.com, devicetree@vger.kernel.org, 
  linux-usb@vger.kernel.org, Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748590538; l=2414;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748590538; l=2318;
  i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
- bh=f6uhUoiZgOE/CV2wIB6Vwbi/lg0mxjoGmX0Qx7uMFHM=;
- b=bRRnA/Ob9AaILBJiPUmZMjq9yJNhHxR/BgxQEaXQ+Zz51RXd/ECxaLQIjQG3VyJtVVxb07cYj
- dxo45CcU6J3DFYf9f7zsg1pJ9F2EZH8VvtqQhbDoex3eJbzw4X4DeD+
+ bh=4T4hHb+n7mzpuwhjLl1QDUEn8r857rZ0TUShtny5/Kc=;
+ b=YbVEwriCt6SIvmGBzCu2fiJXySFAMVooeEyW/zfsRtCBxRiW5LTqZ4qaR39GefZ36IW7ojGfx
+ 4tfWtez1vVlC/D6HguOVILhZzmGXCmGGncHNDs+OrdtO/X23/1bbszk
 X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
  pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
 X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some battery drivers provide the ability to export resistance as a
-parameter. Add resistance power supply property for that purpose.
+Add state_of_health power supply property to represent battery
+health percentage.
 
 Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
@@ -42,47 +42,47 @@ Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
  3 files changed, 12 insertions(+)
 
 diff --git a/Documentation/ABI/testing/sysfs-class-power b/Documentation/ABI/testing/sysfs-class-power
-index 560124cc31770cde03bcdbbba0d85a5bd78b15a0..22a565a6a1c509461b8c483e12975295765121d6 100644
+index 22a565a6a1c509461b8c483e12975295765121d6..74e0d4d67467500c3cd62da3ae0b2e4a67e77680 100644
 --- a/Documentation/ABI/testing/sysfs-class-power
 +++ b/Documentation/ABI/testing/sysfs-class-power
-@@ -552,6 +552,16 @@ Description:
- 			Integer > 0: representing full cycles
- 			Integer = 0: cycle_count info is not available
+@@ -562,6 +562,16 @@ Description:
  
-+What:		/sys/class/power_supply/<supply_name>/resistance
+ 		Valid values: Represented in microohms
+ 
++What:		/sys/class/power_supply/<supply_name>/state_of_health
 +Date:		May 2025
 +Contact:	linux-arm-msm@vger.kernel.org
 +Description:
-+		Reports the resistance of the battery power supply.
++		Reports battery power supply state of health in percentage.
 +
 +		Access: Read
 +
-+		Valid values: Represented in microohms
++		Valid values: 0 - 100 (percent)
 +
  **USB Properties**
  
  What:		/sys/class/power_supply/<supply_name>/input_current_limit
 diff --git a/drivers/power/supply/power_supply_sysfs.c b/drivers/power/supply/power_supply_sysfs.c
-index a438f7983d4f6a832e9d479184c7c35453e1757c..dd829148eb6fda5dcd7eab53fc70f99081763714 100644
+index dd829148eb6fda5dcd7eab53fc70f99081763714..12af0d0398822ff23d8970f6bdc8e3ef68081a1d 100644
 --- a/drivers/power/supply/power_supply_sysfs.c
 +++ b/drivers/power/supply/power_supply_sysfs.c
-@@ -220,6 +220,7 @@ static struct power_supply_attr power_supply_attrs[] __ro_after_init = {
- 	POWER_SUPPLY_ATTR(MANUFACTURE_YEAR),
+@@ -221,6 +221,7 @@ static struct power_supply_attr power_supply_attrs[] __ro_after_init = {
  	POWER_SUPPLY_ATTR(MANUFACTURE_MONTH),
  	POWER_SUPPLY_ATTR(MANUFACTURE_DAY),
-+	POWER_SUPPLY_ATTR(RESISTANCE),
+ 	POWER_SUPPLY_ATTR(RESISTANCE),
++	POWER_SUPPLY_ATTR(STATE_OF_HEALTH),
  	/* Properties of type `const char *' */
  	POWER_SUPPLY_ATTR(MODEL_NAME),
  	POWER_SUPPLY_ATTR(MANUFACTURER),
 diff --git a/include/linux/power_supply.h b/include/linux/power_supply.h
-index c4cb854971f53a244ba7742a15ce7a5515da6199..de3e88810e322546470b21258913abc7707c86a7 100644
+index de3e88810e322546470b21258913abc7707c86a7..dd0108940231352ac6c6f0fa962d1ea904d81c7a 100644
 --- a/include/linux/power_supply.h
 +++ b/include/linux/power_supply.h
-@@ -174,6 +174,7 @@ enum power_supply_property {
- 	POWER_SUPPLY_PROP_MANUFACTURE_YEAR,
+@@ -175,6 +175,7 @@ enum power_supply_property {
  	POWER_SUPPLY_PROP_MANUFACTURE_MONTH,
  	POWER_SUPPLY_PROP_MANUFACTURE_DAY,
-+	POWER_SUPPLY_PROP_RESISTANCE,
+ 	POWER_SUPPLY_PROP_RESISTANCE,
++	POWER_SUPPLY_PROP_STATE_OF_HEALTH,
  	/* Properties of type `const char *' */
  	POWER_SUPPLY_PROP_MODEL_NAME,
  	POWER_SUPPLY_PROP_MANUFACTURER,
