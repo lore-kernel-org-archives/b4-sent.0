@@ -1,16 +1,13 @@
 From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-Subject: [PATCH v2 0/8] power: supply: Add several features support in
- qcom-battmgr driver
-Date: Fri, 30 May 2025 15:35:05 +0800
-Message-Id: <20250530-qcom_battmgr_update-v2-0-9e377193a656@oss.qualcomm.com>
+Date: Fri, 30 May 2025 15:35:06 +0800
+Subject: [PATCH v2 1/8] power: supply: core: Add resistance power supply
+ property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKlfOWgC/22NywqDMBBFf0Vm3UgSmyy66n8UkTymGqhGkxgs4
- r83FbrrZuBc7j2zQ8TgMMKt2iFgdtH5qQC/VGAGNfVInC0MnHJBBadkMX7stEpp7EO3zlYlJI2
- QzBrBpaECynIO+HTbaX20hQcXkw/v80lm3/Tna/76MiOUcK2lvSJVQuLdx1gvq3qV8liXA+1xH
- B9fkFb7vQAAAA==
-X-Change-ID: 20250520-qcom_battmgr_update-3561dc526c05
+Message-Id: <20250530-qcom_battmgr_update-v2-1-9e377193a656@oss.qualcomm.com>
+References: <20250530-qcom_battmgr_update-v2-0-9e377193a656@oss.qualcomm.com>
+In-Reply-To: <20250530-qcom_battmgr_update-v2-0-9e377193a656@oss.qualcomm.com>
 To: Sebastian Reichel <sre@kernel.org>, 
  Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -24,77 +21,72 @@ Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>,
  kernel@oss.qualcomm.com, devicetree@vger.kernel.org, 
  linux-usb@vger.kernel.org, Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748590538; l=3179;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748590538; l=2414;
  i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
- bh=5HxqNMeD1/f7YQnN7xhf+npL6xt1LWEI9PtEr8GuJRs=;
- b=hSy5b3n5jlNd/kBYUZ6n/phnURJVIB+JxwC6vo/qUrAwrhgsODUlTHSxJc7W9F0InrD/xTjvh
- CXxmRPTdk/yAsgwmuk4UXFkgVQriEH+2NbQ/9eyZl4mZS2kWgssyRIc
+ bh=f6uhUoiZgOE/CV2wIB6Vwbi/lg0mxjoGmX0Qx7uMFHM=;
+ b=bRRnA/Ob9AaILBJiPUmZMjq9yJNhHxR/BgxQEaXQ+Zz51RXd/ECxaLQIjQG3VyJtVVxb07cYj
+ dxo45CcU6J3DFYf9f7zsg1pJ9F2EZH8VvtqQhbDoex3eJbzw4X4DeD+
 X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
  pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
 X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add following features in qcom-battmgr drivers as the battery management
-firmware has provided such capabilities:
- - Add resistance power supply property in core driver and qcom-battmgr
-   driver to get battery resistance
- - Add state_of_health power supply property in core driver and
-   qcom-battmgr driver to get battery health percentage
- - Add charge control start/end threshold control by using
-   charge_control_start_threshold and charge_control_end_threshold power
-   supply properties
-
-The changes have been tested on QRD8650 and X1E80100-CRD devices based on
-qcom/linux.git for-next commit f8d04825b12f42ec8198dee1ab4654792f9ac231.
+Some battery drivers provide the ability to export resistance as a
+parameter. Add resistance power supply property for that purpose.
 
 Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
-Changes in v2:
-- Corrected "qcom-battmgr" to "qcom_battmgr" in the commit subject of
-  patch 4/5.
-- Added charge control support for X1E80100 platform in patch 5.
-- X1E80100 is no longer a fallback of SM8550 in pmic-glink battmgr support,
-  hence added patch 6 in the pmic-glink binding to move X1E80100 out of the
-  fallbacks.
-- Added patch 7 in glink-ucsi driver to include UCSI quirk for X1E80100
-  platform
-- Added patch 8 to remove "qcom,sm8550-pmic-glink" compatible string in
-  x1* board files.
-- Rebased the changes on qcom/linux.git for-next commit 44ef9ab4baaf496d227ab98d368016700f0b9300.
-- Link to v1: https://lore.kernel.org/r/20250523-qcom_battmgr_update-v1-0-2bb6d4e0a56e@oss.qualcomm.com
+ Documentation/ABI/testing/sysfs-class-power | 10 ++++++++++
+ drivers/power/supply/power_supply_sysfs.c   |  1 +
+ include/linux/power_supply.h                |  1 +
+ 3 files changed, 12 insertions(+)
 
----
-Fenglin Wu (8):
-      power: supply: core: Add resistance power supply property
-      power: supply: core: Add state_of_health power supply property
-      power: supply: qcom_battmgr: Add resistance power supply property
-      power: supply: qcom_battmgr: Add state_of_health property
-      power: supply: qcom_battmgr: Add charge control support
-      dt-bindings: soc: qcom: pmic-glink: Move X1E80100 out of fallbacks
-      usb: typec: ucsi_glink: Add UCSI quirk for X1E80100 platform
-      arm64: dts: qcom: x1*: Remove qcom,sm8550-pmic-glink fallback
+diff --git a/Documentation/ABI/testing/sysfs-class-power b/Documentation/ABI/testing/sysfs-class-power
+index 560124cc31770cde03bcdbbba0d85a5bd78b15a0..22a565a6a1c509461b8c483e12975295765121d6 100644
+--- a/Documentation/ABI/testing/sysfs-class-power
++++ b/Documentation/ABI/testing/sysfs-class-power
+@@ -552,6 +552,16 @@ Description:
+ 			Integer > 0: representing full cycles
+ 			Integer = 0: cycle_count info is not available
+ 
++What:		/sys/class/power_supply/<supply_name>/resistance
++Date:		May 2025
++Contact:	linux-arm-msm@vger.kernel.org
++Description:
++		Reports the resistance of the battery power supply.
++
++		Access: Read
++
++		Valid values: Represented in microohms
++
+ **USB Properties**
+ 
+ What:		/sys/class/power_supply/<supply_name>/input_current_limit
+diff --git a/drivers/power/supply/power_supply_sysfs.c b/drivers/power/supply/power_supply_sysfs.c
+index a438f7983d4f6a832e9d479184c7c35453e1757c..dd829148eb6fda5dcd7eab53fc70f99081763714 100644
+--- a/drivers/power/supply/power_supply_sysfs.c
++++ b/drivers/power/supply/power_supply_sysfs.c
+@@ -220,6 +220,7 @@ static struct power_supply_attr power_supply_attrs[] __ro_after_init = {
+ 	POWER_SUPPLY_ATTR(MANUFACTURE_YEAR),
+ 	POWER_SUPPLY_ATTR(MANUFACTURE_MONTH),
+ 	POWER_SUPPLY_ATTR(MANUFACTURE_DAY),
++	POWER_SUPPLY_ATTR(RESISTANCE),
+ 	/* Properties of type `const char *' */
+ 	POWER_SUPPLY_ATTR(MODEL_NAME),
+ 	POWER_SUPPLY_ATTR(MANUFACTURER),
+diff --git a/include/linux/power_supply.h b/include/linux/power_supply.h
+index c4cb854971f53a244ba7742a15ce7a5515da6199..de3e88810e322546470b21258913abc7707c86a7 100644
+--- a/include/linux/power_supply.h
++++ b/include/linux/power_supply.h
+@@ -174,6 +174,7 @@ enum power_supply_property {
+ 	POWER_SUPPLY_PROP_MANUFACTURE_YEAR,
+ 	POWER_SUPPLY_PROP_MANUFACTURE_MONTH,
+ 	POWER_SUPPLY_PROP_MANUFACTURE_DAY,
++	POWER_SUPPLY_PROP_RESISTANCE,
+ 	/* Properties of type `const char *' */
+ 	POWER_SUPPLY_PROP_MODEL_NAME,
+ 	POWER_SUPPLY_PROP_MANUFACTURER,
 
- Documentation/ABI/testing/sysfs-class-power        |  20 ++
- .../bindings/soc/qcom/qcom,pmic-glink.yaml         |   4 +-
- arch/arm64/boot/dts/qcom/x1-crd.dtsi               |   1 -
- arch/arm64/boot/dts/qcom/x1e001de-devkit.dts       |   1 -
- .../dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi    |   1 -
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   |   1 -
- .../boot/dts/qcom/x1e80100-dell-xps13-9345.dts     |   1 -
- .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     |   1 -
- .../boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts  |   1 -
- .../boot/dts/qcom/x1e80100-microsoft-romulus.dtsi  |   1 -
- arch/arm64/boot/dts/qcom/x1e80100-qcp.dts          |   1 -
- drivers/power/supply/power_supply_sysfs.c          |   2 +
- drivers/power/supply/qcom_battmgr.c                | 275 ++++++++++++++++++++-
- drivers/usb/typec/ucsi/ucsi_glink.c                |   1 +
- include/linux/power_supply.h                       |   2 +
- 15 files changed, 295 insertions(+), 18 deletions(-)
----
-base-commit: abbf1025002e4966bfcbf8a069234e485d49edf1
-change-id: 20250520-qcom_battmgr_update-3561dc526c05
-
-Best regards,
 -- 
-Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+2.34.1
 
