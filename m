@@ -1,162 +1,109 @@
-From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-Date: Fri, 30 May 2025 15:35:13 +0800
-Subject: [PATCH v2 8/8] arm64: dts: qcom: x1*: Remove
- qcom,sm8550-pmic-glink fallback
+From: Vincent Knecht <vincent.knecht@mailoo.org>
+Subject: [PATCH v3 0/4] CAMSS support for MSM8939
+Date: Fri, 30 May 2025 11:00:03 +0200
+Message-Id: <20250530-camss-8x39-vbif-v3-0-fc91d15bb5d6@mailoo.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250530-qcom_battmgr_update-v2-8-9e377193a656@oss.qualcomm.com>
-References: <20250530-qcom_battmgr_update-v2-0-9e377193a656@oss.qualcomm.com>
-In-Reply-To: <20250530-qcom_battmgr_update-v2-0-9e377193a656@oss.qualcomm.com>
-To: Sebastian Reichel <sre@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAJNzOWgC/2XNTQ7CIBCG4as0rMUAdWhx5T2MC+SnncQWA4bUN
+ L27tHGh6fL9knlmJslFdImcq5lElzFhGEvUh4qYXo+do2hLE8EEMOANNXpIibZTrWi+o6eqAe+
+ h5YqrlpSrZ3Qep0283kr3mF4hvrcHma/r1xJsZ2VOGdVcGCsZk9qry6DxEcIxxI6sWBa/AOwBU
+ QBpawsGtD+B/AOWZfkA7xH++vAAAAA=
+X-Change-ID: 20250517-camss-8x39-vbif-975ff5819198
+To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>, 
- David Collins <david.collins@oss.qualcomm.com>, linux-pm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- kernel@oss.qualcomm.com, devicetree@vger.kernel.org, 
- linux-usb@vger.kernel.org, Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
+ phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ Vincent Knecht <vincent.knecht@mailoo.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748590538; l=5982;
- i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
- bh=X+TxGqrGeFrGC5fjW0b/Inx80/aw7X040xs1XjnqxDs=;
- b=qHgEdC5OU8ylreHSrnO+egnVmDr9kOZjDds1IVuJodwglo7n4ia5wFKiddXxdkBJOd4TRLVh9
- 8/brQverAAhBj5C76rTsuAtOsC+J8ctUGyATyP0MA/vPbEcj5D+ja17
-X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
- pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
-X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748595607; l=3197;
+ i=vincent.knecht@mailoo.org; s=20250414; h=from:subject:message-id;
+ bh=lo6cRx9o+drjhg7VDcWUgYxFCl5gvqd6ftI3ofIqaGo=;
+ b=2X3nAXxC8dgDav+pjFV0VCY7vdzHiuDugWFeHPbY2DgmfB9LSI8gdoKUNb3qsZVgFxqhKThwg
+ U6UJ6gCc4WvDHphyHfTrmcYpV0wYiyI/4yNqtGFbleHytxoqh3jlTfs
+X-Developer-Key: i=vincent.knecht@mailoo.org; a=ed25519;
+ pk=MFCVQkhL3+d3NHDzNPWpyZ4isxJvT+QTqValj5gSkm4=
+X-Endpoint-Received: by B4 Relay for vincent.knecht@mailoo.org/20250414 with auth_id=377
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The "qcom,x1e80100-pmic-glink" is not longer a fallback compatible
-string of "qcom,sm8550-pmic-glink", so remove "qcom,sm8550-pmic-glink"
-in x1* platform pmic-glink device nodes.
+This series adds CAMSS support for MSM8939.
+It's mostly identical to MSM8916, except for some clocks
+and an additional CSI.
 
-Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+To fix black stripes across sensor output, and garbage in
+CSID TPG output, 2 VFE VBIF register settings are needed.
+So the 1st patch adds helper functions to do just that.
+
+Patch 1: adds helper for VFE VBIF settings
+Patch 2: adds CAMSS_8x39 version in CAMSS driver
+Patch 3: documents qcom,msm8939-camss DT bindings
+Patch 4: adds camss and cci in msm8939.dtsi
+
+Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
 ---
- arch/arm64/boot/dts/qcom/x1-crd.dtsi                        | 1 -
- arch/arm64/boot/dts/qcom/x1e001de-devkit.dts                | 1 -
- arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi | 1 -
- arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts     | 1 -
- arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts       | 1 -
- arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts       | 1 -
- arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts    | 1 -
- arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus.dtsi    | 1 -
- arch/arm64/boot/dts/qcom/x1e80100-qcp.dts                   | 1 -
- 9 files changed, 9 deletions(-)
+Changes in v3:
+- Patch 1:
+  - Use braces around multiline (Bryan)
+  - Rename vfe_vbif_reg_write to vfe_vbif_write_reg (Bryan)
+  - Get rid of switch block on CAMSS version (Bryan)
+- Patch 2:
+  - Get rid of switch block on CAMSS version (Bryan)
+- Patch 3: no change
+- Patch 4: no change
+  - Tried to get rid of CCI camss_ahb but this resulted in device
+    freeze+reboot (Konrad)
+- Link to v2: https://lore.kernel.org/r/20250525-camss-8x39-vbif-v2-0-6d3d5c5af456@mailoo.org
 
-diff --git a/arch/arm64/boot/dts/qcom/x1-crd.dtsi b/arch/arm64/boot/dts/qcom/x1-crd.dtsi
-index c9f0d505267081af66b0973fe6c1e33832a2c86b..33d908c8011abe7bbbaca539bb9724f12c679c68 100644
---- a/arch/arm64/boot/dts/qcom/x1-crd.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1-crd.dtsi
-@@ -74,7 +74,6 @@ switch-lid {
- 
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
--			     "qcom,sm8550-pmic-glink",
- 			     "qcom,pmic-glink";
- 		#address-cells = <1>;
- 		#size-cells = <0>;
-diff --git a/arch/arm64/boot/dts/qcom/x1e001de-devkit.dts b/arch/arm64/boot/dts/qcom/x1e001de-devkit.dts
-index 2d9627e6c7983daedba87619ba01074ee22b43c9..d6ad762b8f30cc586761fc75ba95608301b3f599 100644
---- a/arch/arm64/boot/dts/qcom/x1e001de-devkit.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e001de-devkit.dts
-@@ -51,7 +51,6 @@ chosen {
- 
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
--			     "qcom,sm8550-pmic-glink",
- 			     "qcom,pmic-glink";
- 		#address-cells = <1>;
- 		#size-cells = <0>;
-diff --git a/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi b/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi
-index ac1dddf27da30e6a9f7e1d1ecbd5192bf2d0671e..00e6009e3e4e89e4ca45c2d1b1f20e8caaa85bbf 100644
---- a/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi
-@@ -64,7 +64,6 @@ switch-lid {
- 
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
--			     "qcom,sm8550-pmic-glink",
- 			     "qcom,pmic-glink";
- 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
- 				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-index 71b2cc6c392fef9edd19477e4aab6e28699e1eb7..e278997c98e99b1791eb2e0a9dd25ec01b40563b 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-@@ -39,7 +39,6 @@ switch-lid {
- 
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
--			     "qcom,sm8550-pmic-glink",
- 			     "qcom,pmic-glink";
- 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
- 				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts b/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts
-index 967f6dba0878b51a985fd7c9570b8c4e71afe57d..e6f1f72505a8dff5b1ffed5f93614973f649e275 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts
-@@ -59,7 +59,6 @@ led-camera-indicator {
- 
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
--			     "qcom,sm8550-pmic-glink",
- 			     "qcom,pmic-glink";
- 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
- 				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts b/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
-index 10b3af5e79fb6493cd6b6c661de6a801e40092f7..8057a5dadabcbf16426ba0088a13eb9c35ffff61 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
-@@ -83,7 +83,6 @@ switch-lid {
- 
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
--			     "qcom,sm8550-pmic-glink",
- 			     "qcom,pmic-glink";
- 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
- 				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-index dad0f11e8e8583df6fd8aeec5be2af86739d85fb..aee38ead38a94ddca525b55004d8b8655e8484df 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-@@ -41,7 +41,6 @@ switch-lid {
- 
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
--			     "qcom,sm8550-pmic-glink",
- 			     "qcom,pmic-glink";
- 		#address-cells = <1>;
- 		#size-cells = <0>;
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus.dtsi b/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus.dtsi
-index 0fd8516580b2679ee425438cb73fd4078cb20581..d2bce79c4a4146c57602cf48fbb42446004f48e2 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus.dtsi
-@@ -94,7 +94,6 @@ led-camera-indicator {
- 
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
--			     "qcom,sm8550-pmic-glink",
- 			     "qcom,pmic-glink";
- 		#address-cells = <1>;
- 		#size-cells = <0>;
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-qcp.dts b/arch/arm64/boot/dts/qcom/x1e80100-qcp.dts
-index 4dfba835af6a064dbc5ad65671cb8a6e4df79758..2845a8929f80f9f9921568fb76cba79e60ebcd42 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-qcp.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-qcp.dts
-@@ -52,7 +52,6 @@ chosen {
- 
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
--			     "qcom,sm8550-pmic-glink",
- 			     "qcom,pmic-glink";
- 		#address-cells = <1>;
- 		#size-cells = <0>;
+Changes in v2:
+- Patch 1:
+  - Fix devm_platform_ioremap_resource_byname line to not end with
+    opening parenthesis (media-ci/1-checkpatch)
+  - Move camss-vfe-4-1.c handling of VBIF previously in patch 2 here
+    (Dmitry)
+- Patch 2:
+  - Declare regulators in PHY entries, not CSID ones (Bryan)
+- Patch 3: (bindings)
+  - Fix bindings checks for new errors (Rob)
+  - Fix properties ordering, code-style and example (Krzysztof)
+  - Sort reg-names, clock-names and interrupt-names alphanumerically (Bryan)
+- Patch 4: (dtsi)
+  - Move #address/#size cells before status (Konrad)
+  - Aligned CCI with msm8916, thus removing ispif_ahb mention (Konrad)
+    If "camss_ahb should be unnecessary", it's still required by qcom,i2c-cci.yaml
+- Link to v1: https://lore.kernel.org/r/20250520-camss-8x39-vbif-v1-0-a12cd6006af9@mailoo.org
 
+---
+Vincent Knecht (4):
+      media: qcom: camss: vfe: Add VBIF setting support
+      media: qcom: camss: Add support for MSM8939
+      media: dt-bindings: Add qcom,msm8939-camss
+      arm64: dts: qcom: msm8939: Add camss and cci
+
+ .../bindings/media/qcom,msm8939-camss.yaml         | 253 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi       |   4 +
+ arch/arm64/boot/dts/qcom/msm8939.dtsi              | 146 ++++++++++++
+ drivers/media/platform/qcom/camss/Makefile         |   1 +
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |   1 +
+ drivers/media/platform/qcom/camss/camss-ispif.c    |   8 +-
+ drivers/media/platform/qcom/camss/camss-vfe-4-1.c  |  12 +
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.c |  31 +++
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.h |  19 ++
+ drivers/media/platform/qcom/camss/camss-vfe.c      |  10 +
+ drivers/media/platform/qcom/camss/camss-vfe.h      |   3 +
+ drivers/media/platform/qcom/camss/camss.c          | 157 +++++++++++++
+ drivers/media/platform/qcom/camss/camss.h          |   1 +
+ 13 files changed, 644 insertions(+), 2 deletions(-)
+---
+base-commit: 8566fc3b96539e3235909d6bdda198e1282beaed
+change-id: 20250517-camss-8x39-vbif-975ff5819198
+
+Best regards,
 -- 
-2.34.1
+Vincent Knecht <vincent.knecht@mailoo.org>
 
