@@ -1,266 +1,139 @@
-From: Shmuel Leib Melamud <smelamud@redhat.com>
-Date: Tue, 03 Jun 2025 06:06:05 +0300
-Subject: [PATCH v3 2/2] renesas: Renesas R-Car Gen4 watchdog driver
+From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+Subject: [PATCH v4 0/6] add support for pf1550 PMIC MFD-based drivers
+Date: Tue, 03 Jun 2025 14:27:44 -0400
+Message-Id: <20250603-pf1550-v4-0-bfdf51ee59cc@savoirfairelinux.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250603-us-renesas-watchdog-v3-2-af3a65afd03e@redhat.com>
-References: <20250603-us-renesas-watchdog-v3-0-af3a65afd03e@redhat.com>
-In-Reply-To: <20250603-us-renesas-watchdog-v3-0-af3a65afd03e@redhat.com>
-To: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>, 
- Marek Vasut <marek.vasut+renesas@mailbox.org>, 
- Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>, 
- Tom Rini <trini@konsulko.com>, Stefan Roese <sr@denx.de>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>
-Cc: u-boot@lists.denx.de, Shmuel Leib Melamud <smelamud@redhat.com>
+X-B4-Tracking: v=1; b=H4sIAKA+P2gC/12OQQ6CMBBFr0JmbUmBDigr72FYFNrKJEKxhQZDu
+ LsVdi7f5OX92cBrR9pDnWzgdCBPdowgLgl0vRyfmpGKDDnPkWNesclkiJwpwTPDFa/aK4coT04
+ bWo/QoznZ6fcSe/N5hFZ6zTo7DDTXSSjTDOEn9uRn6z7HA6E4zP+tUDDOBJryJrDoFGZ3L4MlZ
+ yQ5/aJxWdPYhWbf9y/t8l9Z0AAAAA==
+X-Change-ID: 20250527-pf1550-d401f0d07b80
+To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Sebastian Reichel <sre@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-input@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Abel Vesa <abelvesa@kernel.org>, Abel Vesa <abelvesa@linux.com>, 
+ Robin Gong <b38343@freescale.com>, 
+ Enric Balletbo i Serra <eballetbo@gmail.com>, 
+ Samuel Kayode <samuel.kayode@savoirfairelinux.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748919978; l=6707;
- i=smelamud@redhat.com; s=20250530; h=from:subject:message-id;
- bh=M84lGBKzusPrU66hMGIM/BxdGeyibzjDZh1dn75PnTk=;
- b=cQGAMSsuaStmGNSQucMdyZPmZP51BDyK6iTFbeN5lnagJqnNdm7JyF+k6GrFYonbmh2fVSTFD
- 2jRXvI3CwhSCAymsYKTNqESk0G342r1JLWJcQcpiiukKBQOTAIqWg+q
-X-Developer-Key: i=smelamud@redhat.com; a=ed25519;
- pk=B1DFtpdxDPQudtnqMHSFRRSJziu3zB49J6oZUBo0qI8=
-X-Endpoint-Received: by B4 Relay for smelamud@redhat.com/20250530 with auth_id=418
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748975277; l=4890;
+ i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
+ bh=wsUfhvnq5OFTsdC4hfMvdgqsUI4J7n85xA5R/cCvMOk=;
+ b=B4kysBQMyDUvbTUn6Tc3Rw9pUYvq22xVuuBMri75JHKMU45qnyB6mIeJqhSgeRKCG7dPZJQOG
+ VXQEOwmbmauBD1I/IEZy+u29jf+sYZp5/aJ4uprb1ntw3GJxSjhW2IV
+X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
+ pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
+X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support of Renesas R-Car Gen4 watchdog timer. Timeouts up to
-8184.0s are supported (CKS1 register is not involved). The watchdog
-uses the clock of type CLK_TYPE_GEN4_MDSEL.
+This series adds support for pf1550 PMIC. It provides the core mfd driver and a
+set of three sub-drivers for the regulator, power supply and input subsystems.
 
-The timeout is set in
-dts/upstream/src/arm64/renesas/r8a779f0-spider-cpu.dtsi section &rwdt.
+Patch 1 adds the DT binding document for the PMIC. Patches 2-5 adds the
+pertinent drivers. Last patch adds a MAINTAINERS entry for the drivers.
 
-This driver is based on upstream linux commit:
-e70140ba0d2b("Get rid of 'remove_new' relic from platform driver struct")
+Changes since v1:
+   - DT bindings for all devices included
+   - Add onkey driver
+   - Add driver for the regulators
+   - Ensure charger is activated as some variants have it off by default
+   - Update mfd and charger driver per feedback from eballetbo@gmail.com
+   - Add myself as maintainer for these drivers
+   - Link to v1: https://lore.kernel.org/1523974819-8711-1-git-send-email-abel.vesa@nxp.com/
 
-Signed-off-by: Shmuel Leib Melamud <smelamud@redhat.com>
+Changes since v2:
+   - Rebase on recent mainline kernel v6.15
+   - Single yaml file containing dt bindings for all pf1550 devices
+   - irq mapping done in MFD driver as suggested by Dmitry Torokhov
+   - Drop unnecessary includes in drivers
+   - Replace dev_err with dev_err_probe in probe method of drivers
+   - Drop compatible string from drivers of the sub-devices
+   - Remove dependency on OF from drivers of the sub-devices
+   - onkey: move driver from input/keyboard into input/misc
+   - onkey: remove dependency on OF
+   - onkey: use onkey virqs instead of central irq
+   - onkey: fix integer overflow for regmap_write when unmasking
+     interrupts during pf1550_onkey_resume
+   - charger: add support for monitored-battery which is used in setting
+     a constant voltage for the charger.
+   - Address other feedback from Dmitry Torokhov and Krzysztof Kozlowski
+   - Link to v2: https://lore.kernel.org/cover.1747409892.git.samuel.kayode@savoirfairelinux.com/
+
+Changes since v3:
+   - Update manufacturer from Freescale to NXP in compatible,
+     dt-binding and Kconfigs
+   - Use C++ style comments for SPDX license in .c code
+   - Add portions copyright to source code
+   - irqs are defined as struct resource in mfd cell such that
+     platform_get_irq is used in the sub-devices
+   - Make struct pf1550_dev of type const in sub-device driver
+   - irq variable dropped from sub-device driver struct
+   - EXPORT_SYMBOL of global pf1550_read_otp function for use in
+     regulator driver
+   - Drop unneeded info in driver_data when defining device table id
+   - regulator: validate ramp_delay
+   - regulator: report overcurrent and over temperature events
+   - onkey: drop unnecessary keycode variable
+   - onkey: change wakeup variable to type bool
+   - onkey: replace (error < 0) with error in if statement when possible
+   - onkey: use pm_sleep_ptr when defining driver.pm
+   - charger: finish handling of some interrupts in threaded irq handler
+   - Link to v3: https://lore.kernel.org/20250527-pf1550-v3-0-45f69453cd51@savoirfairelinux.com/
+
+Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 ---
- drivers/watchdog/Kconfig       |   8 ++
- drivers/watchdog/Makefile      |   1 +
- drivers/watchdog/renesas_wdt.c | 182 +++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 191 insertions(+)
+To: Lee Jones <lee@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+To: Liam Girdwood <lgirdwood@gmail.com>
+To: Mark Brown <broonie@kernel.org>
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+To: Sebastian Reichel <sre@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-input@vger.kernel.org
+Cc: linux-pm@vger.kernel.org
 
-diff --git a/drivers/watchdog/Kconfig b/drivers/watchdog/Kconfig
-index 1bb67f5035231df9f6ce01adb08d074855393143..a0f2948335f9c3b74b7823f039e578ff4030e97c 100644
---- a/drivers/watchdog/Kconfig
-+++ b/drivers/watchdog/Kconfig
-@@ -335,6 +335,14 @@ config WDT_K3_RTI_FW_FILE
- 
- endif
- 
-+config WDT_RENESAS
-+	bool "Renesas watchdog timer support"
-+	depends on WDT && R8A779F0
-+	select CLK
-+	select CLK_RENESAS
-+	help
-+	  Enables Renesas SoC R8A779F0 watchdog timer support.
-+
- config WDT_SANDBOX
- 	bool "Enable Watchdog Timer support for Sandbox"
- 	depends on SANDBOX && WDT
-diff --git a/drivers/watchdog/Makefile b/drivers/watchdog/Makefile
-index e6bd4c587af6133c405dde6dbada8050debc781c..c4467d6e126d0c3e119bf8014b302e5b1432f541 100644
---- a/drivers/watchdog/Makefile
-+++ b/drivers/watchdog/Makefile
-@@ -43,6 +43,7 @@ obj-$(CONFIG_WDT_MTK) += mtk_wdt.o
- obj-$(CONFIG_WDT_NPCM) += npcm_wdt.o
- obj-$(CONFIG_WDT_OCTEONTX) += octeontx_wdt.o
- obj-$(CONFIG_WDT_OMAP3) += omap_wdt.o
-+obj-$(CONFIG_WDT_RENESAS) += renesas_wdt.o
- obj-$(CONFIG_WDT_SBSA) += sbsa_gwdt.o
- obj-$(CONFIG_WDT_K3_RTI) += rti_wdt.o
- obj-$(CONFIG_WDT_SIEMENS_PMIC) += siemens_pmic_wdt.o
-diff --git a/drivers/watchdog/renesas_wdt.c b/drivers/watchdog/renesas_wdt.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..5dc5b0b51e0d19589ea96e7a66d4b790d377e7f8
---- /dev/null
-+++ b/drivers/watchdog/renesas_wdt.c
-@@ -0,0 +1,182 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+// Copyright 2025 Red Hat, Inc., Shmuel Leib Melamud <smelamud@redhat.com>
-+
-+#include <clk.h>
-+#include <dm.h>
-+#include <wdt.h>
-+#include <asm/io.h>
-+#include <dm/device_compat.h>
-+#include <linux/delay.h>
-+#include <linux/iopoll.h>
-+
-+#define usleep_range(a, b) udelay((b))
-+
-+struct rwdt {
-+	u32 cnt;
-+	u32 csra;
-+	u32 csrb;
-+};
-+
-+#define RWTCSRA_WOVF	BIT(4)
-+#define RWTCSRA_WRFLG	BIT(5)
-+#define RWTCSRA_TME		BIT(7)
-+
-+#define CSR_MASK	0xA5A5A500
-+#define CNT_MASK	0x5A5A0000
-+
-+/*
-+ * In probe, clk_rate is checked to be not more than 16 bit * biggest clock
-+ * divider (12 bits). d is only a factor to fully utilize the WDT counter and
-+ * will not exceed its 16 bits. Thus, no overflow, we stay below 32 bits.
-+ */
-+#define MUL_BY_CLKS_PER_SEC(p, d) \
-+	DIV_ROUND_UP((d) * (p)->clk_rate, clk_divs[(p)->cks])
-+
-+/* d is 16 bit, clk_divs 12 bit -> no 32 bit overflow */
-+#define DIV_BY_CLKS_PER_SEC(p, d) ((d) * clk_divs[(p)->cks] / (p)->clk_rate)
-+
-+static const unsigned int clk_divs[] = { 1, 4, 16, 32, 64, 128, 1024, 4096 };
-+
-+struct rwdt_priv {
-+	struct rwdt __iomem *wdt;
-+	unsigned long clk_rate;
-+	u8 cks;
-+	struct clk clk;
-+};
-+
-+static void rwdt_wait_cycles(struct rwdt_priv *priv, unsigned int cycles)
-+{
-+	unsigned int delay;
-+
-+	delay = DIV_ROUND_UP(cycles * 1000000, priv->clk_rate);
-+
-+	usleep_range(delay, 2 * delay);
-+}
-+
-+static int rwdt_start(struct udevice *dev, u64 timeout, ulong flags)
-+{
-+	struct rwdt_priv *priv = dev_get_priv(dev);
-+	u64 max_timeout;
-+	u8 val;
-+
-+	max_timeout = DIV_BY_CLKS_PER_SEC(priv, 65536);
-+	timeout = min(max_timeout, timeout / 1000);
-+
-+	/* Stop the timer before we modify any register */
-+	val = readb_relaxed(&priv->wdt->csra) & ~RWTCSRA_TME;
-+	writel_relaxed(val | CSR_MASK, &priv->wdt->csra);
-+	/* Delay 2 cycles before setting watchdog counter */
-+	rwdt_wait_cycles(priv, 2);
-+
-+	while (readb_relaxed(&priv->wdt->csra) & RWTCSRA_WRFLG)
-+		cpu_relax();
-+
-+	writel_relaxed((65536 - MUL_BY_CLKS_PER_SEC(priv, timeout)) | CNT_MASK,
-+		       &priv->wdt->cnt);
-+
-+	writel_relaxed(priv->cks | RWTCSRA_TME | CSR_MASK, &priv->wdt->csra);
-+
-+	return 0;
-+}
-+
-+static int rwdt_stop(struct udevice *dev)
-+{
-+	struct rwdt_priv *priv = dev_get_priv(dev);
-+
-+	writel_relaxed(priv->cks | CSR_MASK, &priv->wdt->csra);
-+
-+	return 0;
-+}
-+
-+static int rwdt_reset(struct udevice *dev)
-+{
-+	struct rwdt_priv *priv = dev_get_priv(dev);
-+	u8 val;
-+
-+	/* Stop the timer before we modify any register */
-+	val = readb_relaxed(&priv->wdt->csra) & ~RWTCSRA_TME;
-+	writel_relaxed(val | CSR_MASK, &priv->wdt->csra);
-+	/* Delay 2 cycles before setting watchdog counter */
-+	rwdt_wait_cycles(priv, 2);
-+
-+	writel_relaxed(0xffff | CNT_MASK, &priv->wdt->cnt);
-+	/* smallest divider to reboot soon */
-+	writel_relaxed(0 | CSR_MASK, &priv->wdt->csra);
-+
-+	readb_poll_timeout(&priv->wdt->csra, val, !(val & RWTCSRA_WRFLG), 100);
-+
-+	writel_relaxed(RWTCSRA_TME | CSR_MASK, &priv->wdt->csra);
-+
-+	/* wait 2 cycles, so watchdog will trigger */
-+	rwdt_wait_cycles(priv, 2);
-+
-+	return 0;
-+}
-+
-+static int rwdt_probe(struct udevice *dev)
-+{
-+	struct rwdt_priv *priv = dev_get_priv(dev);
-+	unsigned long clks_per_sec;
-+	int ret, i;
-+
-+	priv->wdt = dev_remap_addr(dev);
-+	if (!priv->wdt)
-+		return -EINVAL;
-+
-+	ret = clk_get_by_index(dev, 0, &priv->clk);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = clk_enable(&priv->clk);
-+	if (ret)
-+		return ret;
-+
-+	priv->clk_rate = clk_get_rate(&priv->clk);
-+	if (!priv->clk_rate) {
-+		ret = -ENOENT;
-+		goto err_clk_disable;
-+	}
-+
-+	for (i = ARRAY_SIZE(clk_divs) - 1; i >= 0; i--) {
-+		clks_per_sec = priv->clk_rate / clk_divs[i];
-+		if (clks_per_sec && clks_per_sec < 65536) {
-+			priv->cks = i;
-+			break;
-+		}
-+	}
-+
-+	/* can't find a suitable clock divider */
-+	if (i < 0) {
-+		ret = -ERANGE;
-+		goto err_clk_disable;
-+	}
-+
-+	return 0;
-+
-+err_clk_disable:
-+	clk_disable(&priv->clk);
-+
-+	return ret;
-+}
-+
-+static const struct wdt_ops rwdt_ops = {
-+	.start = rwdt_start,
-+	.reset = rwdt_reset,
-+	.stop = rwdt_stop,
-+};
-+
-+static const struct udevice_id rwdt_ids[] = {
-+	{ .compatible = "renesas,rcar-gen2-wdt" },
-+	{ .compatible = "renesas,rcar-gen3-wdt" },
-+	{ .compatible = "renesas,rcar-gen4-wdt" },
-+	{}
-+};
-+
-+U_BOOT_DRIVER(wdt_renesas) = {
-+	.name = "wdt_renesas",
-+	.id = UCLASS_WDT,
-+	.of_match = rwdt_ids,
-+	.ops = &rwdt_ops,
-+	.probe	= rwdt_probe,
-+	.priv_auto = sizeof(struct rwdt_priv),
-+};
+---
+Samuel Kayode (6):
+      dt-bindings: mfd: add pf1550
+      mfd: pf1550: add core mfd driver
+      regulator: pf1550: add support for regulator
+      input: pf1550: add onkey support
+      power: supply: pf1550: add battery charger support
+      MAINTAINERS: add an entry for pf1550 mfd driver
 
+ .../devicetree/bindings/mfd/nxp,pf1550.yaml        | 139 +++++
+ MAINTAINERS                                        |  10 +
+ drivers/input/misc/Kconfig                         |  11 +
+ drivers/input/misc/Makefile                        |   1 +
+ drivers/input/misc/pf1550-onkey.c                  | 184 ++++++
+ drivers/mfd/Kconfig                                |  14 +
+ drivers/mfd/Makefile                               |   2 +
+ drivers/mfd/pf1550.c                               | 305 ++++++++++
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/pf1550-charger.c              | 654 +++++++++++++++++++++
+ drivers/regulator/Kconfig                          |   9 +
+ drivers/regulator/Makefile                         |   1 +
+ drivers/regulator/pf1550-regulator.c               | 361 ++++++++++++
+ include/linux/mfd/pf1550.h                         | 244 ++++++++
+ 15 files changed, 1947 insertions(+)
+---
+base-commit: 0a4b866d08c6adaea2f4592d31edac6deeb4dcbd
+change-id: 20250527-pf1550-d401f0d07b80
+
+Best regards,
 -- 
-2.49.0
+Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 
