@@ -1,225 +1,70 @@
-From: Vincent Knecht <vincent.knecht@mailoo.org>
-Date: Mon, 02 Jun 2025 19:27:30 +0200
-Subject: [PATCH v4 4/4] arm64: dts: qcom: msm8939: Add camss and cci
+From: Shmuel Leib Melamud <smelamud@redhat.com>
+Subject: [PATCH v3 0/2] renesas: Renesas R-Car Gen4 watchdog driver
+Date: Tue, 03 Jun 2025 06:06:03 +0300
+Message-Id: <20250603-us-renesas-watchdog-v3-0-af3a65afd03e@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250602-camss-8x39-vbif-v4-4-32c277d8f9bf@mailoo.org>
-References: <20250602-camss-8x39-vbif-v4-0-32c277d8f9bf@mailoo.org>
-In-Reply-To: <20250602-camss-8x39-vbif-v4-0-32c277d8f9bf@mailoo.org>
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
- phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- Vincent Knecht <vincent.knecht@mailoo.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAJtmPmgC/32NQQ6CMBBFr0Jm7ZhaBMWV9zAsysxAu5CaDqKGc
+ HcrB3D5XvLfX0AlBVG4FAskmYOGOGYodwWQd+MgGDgzWGMrU5UGn4pJRlGn+HITeY4DWjo13HV
+ cEVvIy0eSPry36q3N7INOMX22k9n+7P/ebPGAneFz39RUH5muSdi7aU/xDu26rl9bqop8twAAA
+ A==
+X-Change-ID: 20250530-us-renesas-watchdog-2c79dbbd5cd2
+To: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>, 
+ Marek Vasut <marek.vasut+renesas@mailbox.org>, 
+ Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>, 
+ Tom Rini <trini@konsulko.com>, Stefan Roese <sr@denx.de>, 
+ Mattijs Korpershoek <mkorpershoek@kernel.org>
+Cc: u-boot@lists.denx.de, Shmuel Leib Melamud <smelamud@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1748885254; l=5488;
- i=vincent.knecht@mailoo.org; s=20250414; h=from:subject:message-id;
- bh=5p1p0R/aaMrHpxB3z9krUa7Xk1pgghKa87CxjRkiJx4=;
- b=BGxkyb2SRP93XuRtoMHCjEVHnriU8nZ34ThRCTUrRAbq4CjNugtgaKi7uMEC+F6cq140J1Shp
- la6APvz4nwHDQkJjxo9hVlY7M4PdJ3dJNMEYl72G6hHtx8D9dzbeU6h
-X-Developer-Key: i=vincent.knecht@mailoo.org; a=ed25519;
- pk=MFCVQkhL3+d3NHDzNPWpyZ4isxJvT+QTqValj5gSkm4=
-X-Endpoint-Received: by B4 Relay for vincent.knecht@mailoo.org/20250414 with auth_id=377
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1748919978; l=1660;
+ i=smelamud@redhat.com; s=20250530; h=from:subject:message-id;
+ bh=1jLyNp9OLZlEl3G2bx9eOEVl4koCn3TPWeSL6l4fnbQ=;
+ b=JWLFX1cWBEAfQb+hiMKFVfIicYofSQHtIkxZz2ZYBzpa2jVakZ0KA1sY0OKwFNSlcokBdY43o
+ 8UzEeCQ0YL0C4NX+Ob7zTw5IowNekl6wTVjyh1ubuLUtS/vK43/ExWJ
+X-Developer-Key: i=smelamud@redhat.com; a=ed25519;
+ pk=B1DFtpdxDPQudtnqMHSFRRSJziu3zB49J6oZUBo0qI8=
+X-Endpoint-Received: by B4 Relay for smelamud@redhat.com/20250530 with auth_id=418
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the camera subsystem and CCI used to interface with cameras on the
-Snapdragon 615.
+These series add support of Renesas R-Car Gen4 watchdog timer.
+Timeouts up to 8184.0s are supported (CKS1 register is not involved).
+The watchdog uses the clock type CLK_TYPE_GEN4_MDSEL, so a separate
+patch adds handling of this constant to gen3_clk_get_rate64() function.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
+The series were tested on real Renesas R8A779F0 hardware. If the
+watchdog driver is enabled at the build time, the watchdog timer is
+initialized when U-Boot starts. Under normal circumstances, U-Boot loads
+the kernel, it starts systemd and systemd continues to pet the watchdog.
+If systemd is not started before the timeout expires, the watchdog
+resets the board.
+
+Signed-off-by: Shmuel Leib Melamud <smelamud@redhat.com>
+
 ---
- arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi |   4 +
- arch/arm64/boot/dts/qcom/msm8939.dtsi        | 146 +++++++++++++++++++++++++++
- 2 files changed, 150 insertions(+)
+Changes in v3:
+- Reference to the Linux driver added.
+- Clock driver change moved to a separate patch.
+- rwdt_ prefix used everywhere instead of renesas_wdt_.
+- Disable the clock if rwdt_probe() fails.
+- List of compatibles updated.
+- Link to v2: https://lore.kernel.org/r/20250530-us-renesas-watchdog-v2-1-b0d8f96c64dc@redhat.com
 
-diff --git a/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi b/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-index adb96cd8d643e5fde1ac95c0fc3c9c3c3efb07e8..659d127b1bc3570d137ca986e4eacf600c183e5e 100644
---- a/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-+++ b/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-@@ -11,6 +11,10 @@
- #include "msm8939.dtsi"
- #include "pm8916.dtsi"
- 
-+&camss {
-+	vdda-supply = <&pm8916_l2>;
-+};
-+
- &mdss_dsi0 {
- 	vdda-supply = <&pm8916_l2>;
- 	vddio-supply = <&pm8916_l6>;
-diff --git a/arch/arm64/boot/dts/qcom/msm8939.dtsi b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-index 68b92fdb996c26e7a1aadedf0f52e1afca85c4ab..082542b54d96adaed3e6b49bc3682005ea018a72 100644
---- a/arch/arm64/boot/dts/qcom/msm8939.dtsi
-+++ b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-@@ -1434,6 +1434,145 @@ mdss_dsi1_phy: phy@1aa0300 {
- 			};
- 		};
- 
-+		camss: isp@1b08000 {
-+			compatible = "qcom,msm8939-camss";
-+			reg = <0x01b08000 0x100>,
-+			      <0x01b08400 0x100>,
-+			      <0x01b08800 0x100>,
-+			      <0x01b0ac00 0x200>,
-+			      <0x01b00030 0x4>,
-+			      <0x01b0b000 0x200>,
-+			      <0x01b00038 0x4>,
-+			      <0x01b00020 0x10>,
-+			      <0x01b0a000 0x500>,
-+			      <0x01b10000 0x1000>,
-+			      <0x01b40000 0x200>;
-+			reg-names = "csid0",
-+				    "csid1",
-+				    "csid2",
-+				    "csiphy0",
-+				    "csiphy0_clk_mux",
-+				    "csiphy1",
-+				    "csiphy1_clk_mux",
-+				    "csi_clk_mux",
-+				    "ispif",
-+				    "vfe0",
-+				    "vfe0_vbif";
-+
-+			clocks = <&gcc GCC_CAMSS_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0RDI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1RDI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2RDI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PHYTIMER_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PHYTIMER_CLK>,
-+				 <&gcc GCC_CAMSS_CSI_VFE0_CLK>,
-+				 <&gcc GCC_CAMSS_ISPIF_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_TOP_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_VFE0_CLK>,
-+				 <&gcc GCC_CAMSS_VFE_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_VFE_AXI_CLK>;
-+			clock-names = "ahb",
-+				      "csi0",
-+				      "csi0_ahb",
-+				      "csi0_phy",
-+				      "csi0_pix",
-+				      "csi0_rdi",
-+				      "csi1",
-+				      "csi1_ahb",
-+				      "csi1_phy",
-+				      "csi1_pix",
-+				      "csi1_rdi",
-+				      "csi2",
-+				      "csi2_ahb",
-+				      "csi2_phy",
-+				      "csi2_pix",
-+				      "csi2_rdi",
-+				      "csiphy0_timer",
-+				      "csiphy1_timer",
-+				      "csi_vfe0",
-+				      "ispif_ahb",
-+				      "top_ahb",
-+				      "vfe0",
-+				      "vfe_ahb",
-+				      "vfe_axi";
-+
-+			interrupts = <GIC_SPI 51 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 52 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 153 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 78 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 79 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 55 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 57 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "csid0",
-+					  "csid1",
-+					  "csid2",
-+					  "csiphy0",
-+					  "csiphy1",
-+					  "ispif",
-+					  "vfe0";
-+
-+			iommus = <&apps_iommu 3>;
-+
-+			power-domains = <&gcc VFE_GDSC>;
-+
-+			status = "disabled";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+				};
-+			};
-+		};
-+
-+		cci: cci@1b0c000 {
-+			compatible = "qcom,msm8916-cci", "qcom,msm8226-cci";
-+			reg = <0x01b0c000 0x1000>;
-+			interrupts = <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>;
-+			clocks = <&gcc GCC_CAMSS_TOP_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CCI_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CCI_CLK>,
-+				 <&gcc GCC_CAMSS_AHB_CLK>;
-+			clock-names = "camss_top_ahb",
-+				      "cci_ahb",
-+				      "cci",
-+				      "camss_ahb";
-+			assigned-clocks = <&gcc GCC_CAMSS_CCI_AHB_CLK>,
-+					  <&gcc GCC_CAMSS_CCI_CLK>;
-+			assigned-clock-rates = <80000000>,
-+					       <19200000>;
-+			pinctrl-0 = <&cci0_default>;
-+			pinctrl-names = "default";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			status = "disabled";
-+
-+			cci_i2c0: i2c-bus@0 {
-+				reg = <0>;
-+				clock-frequency = <400000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+		};
-+
- 		gpu: gpu@1c00000 {
- 			compatible = "qcom,adreno-405.0", "qcom,adreno";
- 			reg = <0x01c00000 0x10000>;
-@@ -1498,6 +1637,13 @@ apps_iommu: iommu@1ef0000 {
- 			#iommu-cells = <1>;
- 			qcom,iommu-secure-id = <17>;
- 
-+			/* vfe */
-+			iommu-ctx@3000 {
-+				compatible = "qcom,msm-iommu-v1-sec";
-+				reg = <0x3000 0x1000>;
-+				interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
-+			};
-+
- 			/* mdp_0: */
- 			iommu-ctx@4000 {
- 				compatible = "qcom,msm-iommu-v1-ns";
+---
+Shmuel Leib Melamud (2):
+      renesas: Handle CLK_TYPE_GEN4_MDSEL in gen3_clk_get_rate64()
+      renesas: Renesas R-Car Gen4 watchdog driver
 
+ drivers/clk/renesas/clk-rcar-gen3.c |   4 +-
+ drivers/watchdog/Kconfig            |   8 ++
+ drivers/watchdog/Makefile           |   1 +
+ drivers/watchdog/renesas_wdt.c      | 182 ++++++++++++++++++++++++++++++++++++
+ 4 files changed, 194 insertions(+), 1 deletion(-)
+---
+base-commit: 3b6760ddeb4ef940226921017cd9088c89784b01
+change-id: 20250530-us-renesas-watchdog-2c79dbbd5cd2
+
+Best regards,
 -- 
-2.49.0
+Shmuel Leib Melamud <smelamud@redhat.com>
 
