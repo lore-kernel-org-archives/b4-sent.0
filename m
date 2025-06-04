@@ -1,101 +1,56 @@
-From: Mingcong Bai <jeffbai@aosc.io>
-Date: Wed, 04 Jun 2025 10:57:59 +0800
-Subject: [PATCH v2 5/5] drm/xe/query: use PAGE_SIZE as the minimum page
- alignment
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH 0/3] support for amlogic the new SPI IP
+Date: Wed, 04 Jun 2025 15:40:50 +0800
+Message-Id: <20250604-spisg-v1-0-5893dbe9d953@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250604-upstream-xe-non-4k-v2-v2-5-ce7905da7b08@aosc.io>
-References: <20250604-upstream-xe-non-4k-v2-v2-0-ce7905da7b08@aosc.io>
-In-Reply-To: <20250604-upstream-xe-non-4k-v2-v2-0-ce7905da7b08@aosc.io>
-To: Lucas De Marchi <lucas.demarchi@intel.com>, 
- =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Francois Dugast <francois.dugast@intel.com>, 
- =?utf-8?q?Zbigniew_Kempczy=C5=84ski?= <zbigniew.kempczynski@intel.com>, 
- =?utf-8?q?Jos=C3=A9_Roberto_de_Souza?= <jose.souza@intel.com>, 
- Mauro Carvalho Chehab <mauro.chehab@linux.intel.com>, 
- Matthew Brost <matthew.brost@intel.com>, 
- Zhanjun Dong <zhanjun.dong@intel.com>, 
- Matt Roper <matthew.d.roper@intel.com>, 
- Alan Previn <alan.previn.teres.alexis@intel.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Mateusz Naklicki <mateusz.naklicki@intel.com>
-Cc: intel-xe@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Kexy Biscuit <kexybiscuit@aosc.io>, Shang Yatsen <429839446@qq.com>, 
- Mingcong Bai <jeffbai@aosc.io>, Wenbin Fang <fangwenbin@vip.qq.com>, 
- Haien Liang <27873200@qq.com>, Jianfeng Liu <liujianfeng1994@gmail.com>, 
- Shirong Liu <lsr1024@qq.com>, Haofeng Wu <s2600cw2@126.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749005878; l=3034;
- i=jeffbai@aosc.io; s=20250604; h=from:subject:message-id;
- bh=gWL8RWOcZ+T5Uids7FBARXCOIx0PC8BeNHiC9X6HMCs=;
- b=SYj4MCax89jyQea100fjLf4kZD36vhAK0FGEdfap8OjkmEqmBIJy1U6DSXpbD8+A6LNaB4VOa
- HFLJ8fi3pqUCLJqcyuS8rHEFY0aR/tgQFeec9DKh2shI8/4m+0UoZyq
-X-Developer-Key: i=jeffbai@aosc.io; a=ed25519;
- pk=MJdgklflDF+Xz9x2Lp+ogEnEyk8HRosMGiqLgWbFctY=
-X-Endpoint-Received: by B4 Relay for jeffbai@aosc.io/20250604 with auth_id=422
+X-B4-Tracking: v=1; b=H4sIAIL4P2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDMwNj3eKCzOJ0XXOLNCNDMwuj1KTEZCWg2oKi1LTMCrA50bG1tQCIsWq
+ JVwAAAA==
+To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749022851; l=1058;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=pHr+iNzLv9GxJXJt/p1c4oLkaW7OLQQwQD2ifOprTdk=;
+ b=zYbYWKMNv3d0lQCjOkN7LVwChi6psdws+UWgSlWO/xtLIY8JcHtqxIaHqmCGEcRkP5u6l4uxN
+ mPd/KhjEPTcBNK2OHN9ffH7JR2kD8r/8Mo2jJr8HnFlCej2L0E4QD0C
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As this component hooks into userspace API, it should be assumed that it
-will play well with non-4KiB/64KiB pages.
+Introduced support for the new SPI IP (SPISG). The SPISG is
+a communication-oriented SPI controller from Amlogic,supporting
+three operation modes: PIO, block DMA, and scatter-gather DMA.
 
-Use `PAGE_SIZE' as the final reference for page alignment instead.
+Add the drivers and device tree bindings corresponding to the SPISG.
 
-Cc: stable@vger.kernel.org
-Fixes: dd08ebf6c352 ("drm/xe: Introduce a new DRM driver for Intel GPUs")
-Fixes: 801989b08aff ("drm/xe/uapi: Make constant comments visible in kernel doc")
-Tested-by: Mingcong Bai <jeffbai@aosc.io>
-Tested-by: Wenbin Fang <fangwenbin@vip.qq.com>
-Tested-by: Haien Liang <27873200@qq.com>
-Tested-by: Jianfeng Liu <liujianfeng1994@gmail.com>
-Tested-by: Shirong Liu <lsr1024@qq.com>
-Tested-by: Haofeng Wu <s2600cw2@126.com>
-Link: https://github.com/FanFansfan/loongson-linux/commit/22c55ab3931c32410a077b3ddb6dca3f28223360
-Link: https://t.me/c/1109254909/768552
-Co-developed-by: Shang Yatsen <429839446@qq.com>
-Signed-off-by: Shang Yatsen <429839446@qq.com>
-Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/gpu/drm/xe/xe_query.c | 2 +-
- include/uapi/drm/xe_drm.h     | 7 +++++--
- 2 files changed, 6 insertions(+), 3 deletions(-)
+Sunny Luo (2):
+      dt-bindings: spi: Add binding document of Amlogic SPISG controller
+      spi: Add Amlogic SPISG driver
 
-diff --git a/drivers/gpu/drm/xe/xe_query.c b/drivers/gpu/drm/xe/xe_query.c
-index 2dbf4066d86ff225eee002d352e1233c8d9519b9..fe94a7781fa04fb277d5cc8b973b145293d3d066 100644
---- a/drivers/gpu/drm/xe/xe_query.c
-+++ b/drivers/gpu/drm/xe/xe_query.c
-@@ -346,7 +346,7 @@ static int query_config(struct xe_device *xe, struct drm_xe_device_query *query)
- 	config->info[DRM_XE_QUERY_CONFIG_FLAGS] |=
- 			DRM_XE_QUERY_CONFIG_FLAG_HAS_LOW_LATENCY;
- 	config->info[DRM_XE_QUERY_CONFIG_MIN_ALIGNMENT] =
--		xe->info.vram_flags & XE_VRAM_FLAGS_NEED64K ? SZ_64K : SZ_4K;
-+		xe->info.vram_flags & XE_VRAM_FLAGS_NEED64K ? SZ_64K : PAGE_SIZE;
- 	config->info[DRM_XE_QUERY_CONFIG_VA_BITS] = xe->info.va_bits;
- 	config->info[DRM_XE_QUERY_CONFIG_MAX_EXEC_QUEUE_PRIORITY] =
- 		xe_exec_queue_device_get_max_priority(xe);
-diff --git a/include/uapi/drm/xe_drm.h b/include/uapi/drm/xe_drm.h
-index 9c08738c3b918ee387f51a68ba080057c6d5716f..f92eb8c3317a09baad4550024bb3beea02850010 100644
---- a/include/uapi/drm/xe_drm.h
-+++ b/include/uapi/drm/xe_drm.h
-@@ -397,8 +397,11 @@ struct drm_xe_query_mem_regions {
-  *      has low latency hint support
-  *    - %DRM_XE_QUERY_CONFIG_FLAG_HAS_CPU_ADDR_MIRROR - Flag is set if the
-  *      device has CPU address mirroring support
-- *  - %DRM_XE_QUERY_CONFIG_MIN_ALIGNMENT - Minimal memory alignment
-- *    required by this device, typically SZ_4K or SZ_64K
-+ *  - %DRM_XE_QUERY_CONFIG_MIN_ALIGNMENT - Minimal memory alignment required
-+ *    by this device and the CPU. The minimum page size for the device is
-+ *    usually SZ_4K or SZ_64K, while for the CPU, it is PAGE_SIZE. This value
-+ *    is calculated by max(min_gpu_page_size, PAGE_SIZE). This alignment is
-+ *    enforced on buffer object allocations and VM binds.
-  *  - %DRM_XE_QUERY_CONFIG_VA_BITS - Maximum bits of a virtual address
-  *  - %DRM_XE_QUERY_CONFIG_MAX_EXEC_QUEUE_PRIORITY - Value of the highest
-  *    available exec queue priority
+Xianwei Zhao (1):
+      MAINTAINERS: Add an entry for Amlogic spi driver
 
+ .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  |  55 ++
+ MAINTAINERS                                        |   9 +
+ drivers/spi/Kconfig                                |   9 +
+ drivers/spi/Makefile                               |   1 +
+ drivers/spi/spi-amlogic-spisg.c                    | 944 +++++++++++++++++++++
+ 5 files changed, 1018 insertions(+)
+---
+base-commit: 57cf46cd1fe351846e1b065ca9546eef66675ecd
+change-id: 20250603-spisg-78f21682ebac
+
+Best regards,
 -- 
-2.49.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
