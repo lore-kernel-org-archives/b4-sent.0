@@ -1,83 +1,73 @@
-From: Max Shevchenko <wctrl@proton.me>
-Date: Fri, 06 Jun 2025 14:03:51 +0300
-Subject: [PATCH] ARM: dts: qcom: msm8960: use macros for interrupts
+From: =?utf-8?q?F=C3=A9lix_Pi=C3=A9dallu?= <felix.piedallu@non.se.com>
+Subject: [PATCH 0/2] SPI: omap2-mcspi: Fix SPI CS behaviour around
+ cs_change in SPI transfers
+Date: Fri, 06 Jun 2025 15:37:23 +0200
+Message-Id: <20250606-cs_change_fix-v1-0-27191a98a2e5@non.se.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250606-msm8960-irq-macros-v1-1-03e573ba26d6@proton.me>
-X-B4-Tracking: v=1; b=H4sIABbLQmgC/x3MOQqAQAxA0atIagOj4rhcRSyGGDXFuCQggnh3B
- 8tX/P+AsQob9NkDypeY7FtCkWdAa9gWRpmSoXRl7byrMFpsO+9Q9MQYSHdDP4U5NFVNTAQpPJR
- nuf/pML7vB7fCB+pkAAAA
-X-Change-ID: 20250603-msm8960-irq-macros-6dafa735cecc
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
- Max Shevchenko <wctrl@proton.me>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749207931; l=1869;
- i=wctrl@proton.me; s=20250603; h=from:subject:message-id;
- bh=l1evEWFE+2Uf0Gr0r6+BEZUpSHC16rDD8Dp6L4gRpfc=;
- b=iXp2CCnLaRMORs4EWNbaiKAzYZqjClpnHL9udO16ISe6xbWYOTjTHMcvkK0RQ7eu2tV5lZumC
- AxH6g0l/f/sCI9FB0bbAtIGTHQDFnd44Kpt1E8qadSy7WMFfoM73DdJ
-X-Developer-Key: i=wctrl@proton.me; a=ed25519;
- pk=JXUx3mL/OrnRvbK57HXgugBjEBKq4QgDKJqp7BALm74=
-X-Endpoint-Received: by B4 Relay for wctrl@proton.me/20250603 with auth_id=421
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIABPvQmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDMwMz3eTieIhEfFpmhW5SkqlhYrJBmlFScpISUE9BUSpQGGxedGxtLQA
+ Snt9UXwAAAA==
+To: Mark Brown <broonie@kernel.org>, 
+ Louis Chauvet <louis.chauvet@bootlin.com>
+Cc: linux-spi@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?F=C3=A9lix_Pi=C3=A9dallu?= <felix.piedallu@non.se.com>, 
+ pascal.eberhard@se.com
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749217048; l=1712;
+ i=felix.piedallu@non.se.com; s=20250606; h=from:subject:message-id;
+ bh=X7XpGECVvpMPfrkP+mW0VHeflAdnttqoI0luHFxrs/0=;
+ b=9Gw88HDO4sOl5Z78eu6YPKIanAs+oYZtHOlWMd9EmPytklBEmMBgCvnt1fSFcAa6kJI1g5fCD
+ Zdpio3XEFzRCInG9+sOcIfofNgoy2S5aZKyyLSLqJOf8U/dgj36Hsvv
+X-Developer-Key: i=felix.piedallu@non.se.com; a=ed25519;
+ pk=Xe1dw6DIV7hmFbzuJfvaioG+S30kGix0QpIi5qPg99w=
+X-Endpoint-Received: by B4 Relay for felix.piedallu@non.se.com/20250606 with auth_id=427
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the raw values with macros. No changes to the output
+These patches fix the behaviour of the SPI Chip Select of the OMAP2 MCSPI
+driver used on TI SoCs.
 
-Tested-by: Rudraksha Gupta <guptarud@gmail.com>
-Signed-off-by: Max Shevchenko <wctrl@proton.me>
----
-Replace the raw values with macros. No changes to the output
----
- arch/arm/boot/dts/qcom/qcom-msm8960.dtsi | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+The omap2-mcspi driver supports the use of multi mode (multichannel in TI
+documentation). In this mode, the CS is asserted and deasserted by the
+hardware.
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-index 865fe7cc39511d7cb9ec5c4b12100404f77e2989..13572d0b1d5572cc5b9c3a136a6ea6267b8625da 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-@@ -18,7 +18,7 @@ / {
- 	cpus {
- 		#address-cells = <1>;
- 		#size-cells = <0>;
--		interrupts = <GIC_PPI 14 0x304>;
-+		interrupts = <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
- 
- 		cpu@0 {
- 			compatible = "qcom,krait";
-@@ -54,7 +54,7 @@ memory@80000000 {
- 
- 	cpu-pmu {
- 		compatible = "qcom,krait-pmu";
--		interrupts = <GIC_PPI 10 0x304>;
-+		interrupts = <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
- 		qcom,no-pc-write;
- 	};
- 
-@@ -107,9 +107,9 @@ intc: interrupt-controller@2000000 {
- 		timer@200a000 {
- 			compatible = "qcom,kpss-wdt-msm8960", "qcom,kpss-timer",
- 				     "qcom,msm-timer";
--			interrupts = <GIC_PPI 1 0x301>,
--				     <GIC_PPI 2 0x301>,
--				     <GIC_PPI 3 0x301>;
-+			interrupts = <GIC_PPI 1 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_EDGE_RISING)>,
-+				     <GIC_PPI 2 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_EDGE_RISING)>,
-+				     <GIC_PPI 3 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_EDGE_RISING)>;
- 			reg = <0x0200a000 0x100>;
- 			clock-frequency = <27000000>;
- 			cpu-offset = <0x80000>;
+The multi mode is disabled for messages when cs_change=0 for all transfers
+(e.g when CS is kept asserted between transfers of a same message).
 
+The multi mode also needs to be disabled for messages when cs_change=1 on the
+last transfer (e.g when CS is kept asserted after the WHOLE message), and the
+message right after.
+
+Currently, that is not the case and it CS is deasserted by hardware when it
+shouldn't.
+This breaks peripheral drivers that send multiple messages with the CS asserted
+in between.
+
+Patch 1 ensures that multi mode is disabled when cs_change=1 on the last
+transfer of the message.
+
+Patch 2 ensures that multi mode is disable on a message following one with
+cs_change=1 on the last transfer.
+
+This is the case for the TPM TIS SPI driver that uses this logic for flow
+control purposes.
+
+Tested on an AM6442 platform with a TPM ST33HTPH2X32AHE4.
+
+Signed-off-by: Félix Piédallu <felix.piedallu@non.se.com>
 ---
-base-commit: 0ff41df1cb268fc69e703a08a57ee14ae967d0ca
-change-id: 20250603-msm8960-irq-macros-6dafa735cecc
+Félix Piédallu (2):
+      spi: omap2-mcspi: Disable multi mode when CS should be kept asserted after message
+      spi: omap2-mcspi: Disable multi-mode when the previous message kept CS asserted
+
+ drivers/spi/spi-omap2-mcspi.c | 30 ++++++++++++++++++------------
+ 1 file changed, 18 insertions(+), 12 deletions(-)
+---
+base-commit: c46b66be7eb595e66e93eda13149e0d4f90924ea
+change-id: 20250606-cs_change_fix-bb51ac0f2bcb
 
 Best regards,
 -- 
-Max Shevchenko <wctrl@proton.me>
+Félix Piédallu <felix.piedallu@non.se.com>
 
