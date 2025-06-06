@@ -1,57 +1,83 @@
-From: Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
-Date: Thu, 05 Jun 2025 19:06:06 -0500
-Subject: [PATCH] arm64: defconfig: Enable Qualcomm CPUCP mailbox driver
+From: Max Shevchenko <wctrl@proton.me>
+Date: Fri, 06 Jun 2025 14:03:51 +0300
+Subject: [PATCH] ARM: dts: qcom: msm8960: use macros for interrupts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250605-enable-cpucp-v1-1-111ecef7e4c9@oss.qualcomm.com>
-X-B4-Tracking: v=1; b=H4sIAO0wQmgC/x3MQQqAIBBA0avIrBNGw6CuEi3UxhoIE6UIpLsnL
- d/i/wqFMlOBSVTIdHPhMzaoToDfbdxI8toMGrXBAY2kaN1B0qfLJzkqa9D0AV1Q0JKUKfDz7+b
- lfT8Vhg+VXgAAAA==
-X-Change-ID: 20250605-enable-cpucp-91a5053f0bf1
+Message-Id: <20250606-msm8960-irq-macros-v1-1-03e573ba26d6@proton.me>
+X-B4-Tracking: v=1; b=H4sIABbLQmgC/x3MOQqAQAxA0atIagOj4rhcRSyGGDXFuCQggnh3B
+ 8tX/P+AsQob9NkDypeY7FtCkWdAa9gWRpmSoXRl7byrMFpsO+9Q9MQYSHdDP4U5NFVNTAQpPJR
+ nuf/pML7vB7fCB+pkAAAA
+X-Change-ID: 20250603-msm8960-irq-macros-6dafa735cecc
 To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: Catalin Marinas <catalin.marinas@arm.com>, 
- Will Deacon <will@kernel.org>, linux-arm-msm@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
+ Max Shevchenko <wctrl@proton.me>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749168367; l=931;
- i=bjorn.andersson@oss.qualcomm.com; s=20250318; h=from:subject:message-id;
- bh=mwZCvU5SjPvj2kO7B5ZfonxzycfZ+NOz+VGaDsi0ueE=;
- b=L05l4pr3UPZUZ5Tco/EHocmMvBvnHuoV/CG26hOOlmpoGvi0y/J50xiVyWHqBhKDtLGRRVJKx
- 4BWrg4OWuZ6ByYUBCzvI5YNd+uPCN6J6cirhNYCrvDjo7wT9Z4C8hnI
-X-Developer-Key: i=bjorn.andersson@oss.qualcomm.com; a=ed25519;
- pk=rD3O9C9Erg+mUPBRBNw91AGaIaDVqquHZbnn6N6xh6s=
-X-Endpoint-Received: by B4 Relay for bjorn.andersson@oss.qualcomm.com/20250318 with auth_id=362
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749207931; l=1869;
+ i=wctrl@proton.me; s=20250603; h=from:subject:message-id;
+ bh=l1evEWFE+2Uf0Gr0r6+BEZUpSHC16rDD8Dp6L4gRpfc=;
+ b=iXp2CCnLaRMORs4EWNbaiKAzYZqjClpnHL9udO16ISe6xbWYOTjTHMcvkK0RQ7eu2tV5lZumC
+ AxH6g0l/f/sCI9FB0bbAtIGTHQDFnd44Kpt1E8qadSy7WMFfoM73DdJ
+X-Developer-Key: i=wctrl@proton.me; a=ed25519;
+ pk=JXUx3mL/OrnRvbK57HXgugBjEBKq4QgDKJqp7BALm74=
+X-Endpoint-Received: by B4 Relay for wctrl@proton.me/20250603 with auth_id=421
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Qualcomm CPUCP mailbox driver needs to be enabled for CPU frequency
-scaling to work on the X Elite platform, so enable this driver.
+Replace the raw values with macros. No changes to the output
 
-Signed-off-by: Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+Tested-by: Rudraksha Gupta <guptarud@gmail.com>
+Signed-off-by: Max Shevchenko <wctrl@proton.me>
 ---
- arch/arm64/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Replace the raw values with macros. No changes to the output
+---
+ arch/arm/boot/dts/qcom/qcom-msm8960.dtsi | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index 62d3c87858e1817bac291780dff3823dacd72510..d3ef95df7b2770ac1c7a6022a9ec22d1fb4c25da 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -1447,6 +1447,7 @@ CONFIG_PLATFORM_MHU=y
- CONFIG_BCM2835_MBOX=y
- CONFIG_QCOM_APCS_IPC=y
- CONFIG_MTK_ADSP_MBOX=m
-+CONFIG_QCOM_CPUCP_MBOX=m
- CONFIG_QCOM_IPCC=y
- CONFIG_ROCKCHIP_IOMMU=y
- CONFIG_TEGRA_IOMMU_SMMU=y
+diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
+index 865fe7cc39511d7cb9ec5c4b12100404f77e2989..13572d0b1d5572cc5b9c3a136a6ea6267b8625da 100644
+--- a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
++++ b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
+@@ -18,7 +18,7 @@ / {
+ 	cpus {
+ 		#address-cells = <1>;
+ 		#size-cells = <0>;
+-		interrupts = <GIC_PPI 14 0x304>;
++		interrupts = <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
+ 
+ 		cpu@0 {
+ 			compatible = "qcom,krait";
+@@ -54,7 +54,7 @@ memory@80000000 {
+ 
+ 	cpu-pmu {
+ 		compatible = "qcom,krait-pmu";
+-		interrupts = <GIC_PPI 10 0x304>;
++		interrupts = <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
+ 		qcom,no-pc-write;
+ 	};
+ 
+@@ -107,9 +107,9 @@ intc: interrupt-controller@2000000 {
+ 		timer@200a000 {
+ 			compatible = "qcom,kpss-wdt-msm8960", "qcom,kpss-timer",
+ 				     "qcom,msm-timer";
+-			interrupts = <GIC_PPI 1 0x301>,
+-				     <GIC_PPI 2 0x301>,
+-				     <GIC_PPI 3 0x301>;
++			interrupts = <GIC_PPI 1 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_EDGE_RISING)>,
++				     <GIC_PPI 2 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_EDGE_RISING)>,
++				     <GIC_PPI 3 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_EDGE_RISING)>;
+ 			reg = <0x0200a000 0x100>;
+ 			clock-frequency = <27000000>;
+ 			cpu-offset = <0x80000>;
 
 ---
-base-commit: 4f27f06ec12190c7c62c722e99ab6243dea81a94
-change-id: 20250605-enable-cpucp-91a5053f0bf1
+base-commit: 0ff41df1cb268fc69e703a08a57ee14ae967d0ca
+change-id: 20250603-msm8960-irq-macros-6dafa735cecc
 
 Best regards,
 -- 
-Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+Max Shevchenko <wctrl@proton.me>
 
