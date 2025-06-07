@@ -1,98 +1,94 @@
-From: Haochen Tong <i@hexchain.org>
-Date: Fri, 06 Jun 2025 23:33:03 +0800
-Subject: [PATCH] Bluetooth: btusb: Add a new VID/PID 2c7c/7009 for MT7925
+From: George Chan <gchan9527@gmail.com>
+Subject: [PATCH v2 0/5] A series of patch for enable sc7180 android boot
+Date: Sat, 07 Jun 2025 13:24:55 +0800
+Message-Id: <20250607-sc7180-android-boot-v2-0-2df5d7f61124@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250606-btusb-mt7925-add-v1-1-9b64bfa86ea4@hexchain.org>
-X-B4-Tracking: v=1; b=H4sIAC4KQ2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDMwMz3aSS0uIk3dwSc0sjU93ElBRd4yRL00RLM3NjCzNLJaC2gqLUtMw
- KsJHRsbW1ANE/BQhiAAAA
-X-Change-ID: 20250606-btusb-mt7925-add-3b95a9673869
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749223989; l=3127;
- i=i@hexchain.org; s=hitori; h=from:subject:message-id;
- bh=l1pzEMSqiCKHnCKcovE0KP8Jz664l6WVWK2Fa8hLWhY=;
- b=CXITlyYQ4OL76dWZM3RLlobupw/4ikv4zkqcYbPCxMnlwLo6C0qf5KFCMg924Z6zYq5zmg51+
- +GB8fdHiO1XBU4Yks3v2bf6/a60SPfjdM01L8feI2uV6+vVDDF2r2mB
-X-Developer-Key: i=i@hexchain.org; a=ed25519;
- pk=PyxHSC4BlFPXyw6JBia4ophgQYawC9AZWZKF9uDPsz0=
-X-Endpoint-Received: by B4 Relay for i@hexchain.org/hitori with auth_id=428
+X-B4-Tracking: v=1; b=H4sIACfNQ2gC/32NQQ6CMBBFr0Jm7ZihtqG68h6GRW0HmEQoaQnRE
+ O5u5QAu30v++xtkTsIZbtUGiVfJEqcC6lSBH9zUM0ooDIqUIaMIs29qS+imkKIEfMa4oLPasO+
+ 0ddpCWc6JO3kf1UdbeJC8xPQ5Ttb6Z//31hoJL9SYEmZHV33vRyevs48jtPu+fwFb2uv3tgAAA
+ A==
+To: Tom Rini <trini@konsulko.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Sumit Garg <sumit.garg@kernel.org>, Simon Glass <sjg@chromium.org>, 
+ Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Lukasz Majewski <lukma@denx.de>, Marek Vasut <marex@denx.de>
+Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, gchan9527@gmail.com, 
+ Vitalii Skorkin <nikroks@mainlining.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749273923; l=2810;
+ i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
+ bh=o6Dc3OjZTQDblXuNtvbL5BLeplo2kqAnNlOHfk1Scdk=;
+ b=7nRmVit32kUOw/XBQJdkE3NFGuId3d2kxa2dPxkihwQTbDuki8bPZnxFdkMMTDPNgA1Mcub4q
+ KSRrcSOglbYBUr0yRnYELBJDzb793RbimVfVKRdIVhlzw5PLgvEIFub
+X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
+ pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
+X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds a new entry with VID 2c7c and PID 7009 for MediaTek MT7925
-Bluetooth chip.
+Since attempt[1] to embed android specific boot param into fdt bootargs,
+a new idea is formed as to make use of env file to contain default param
+value. Current code logic is already working fine, unless the priority
+of param at begining is higher than at tail. From env file, bootargs is
+treated important, and prepend at begining. So there is a need to
+reverse the logic, and make sure default bootargs value at the end, and
+let androidboot img bootargs value sit at begining.
 
-The device information from /sys/kernel/debug/usb/devices is provided
-below.
+So a new kconfig item is introduced. Once enabled, the bootargs strcat
+param will get reversed.
 
-T:  Bus=03 Lev=01 Prnt=01 Port=04 Cnt=02 Dev#=  3 Spd=480  MxCh= 0
-D:  Ver= 2.10 Cls=ef(misc ) Sub=02 Prot=01 MxPS=64 #Cfgs=  1
-P:  Vendor=2c7c ProdID=7009 Rev= 1.00
-S:  Manufacturer=MediaTek Inc.
-S:  Product=Wireless_Device
-S:  SerialNumber=000000000
-C:* #Ifs= 3 Cfg#= 1 Atr=e0 MxPwr=100mA
-A:  FirstIf#= 0 IfCount= 3 Cls=e0(wlcon) Sub=01 Prot=01
-I:* If#= 0 Alt= 0 #EPs= 3 Cls=e0(wlcon) Sub=01 Prot=01 Driver=btusb
-E:  Ad=81(I) Atr=03(Int.) MxPS=  16 Ivl=125us
-E:  Ad=82(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-E:  Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-I:* If#= 1 Alt= 0 #EPs= 2 Cls=e0(wlcon) Sub=01 Prot=01 Driver=btusb
-E:  Ad=83(I) Atr=01(Isoc) MxPS=   0 Ivl=1ms
-E:  Ad=03(O) Atr=01(Isoc) MxPS=   0 Ivl=1ms
-I:  If#= 1 Alt= 1 #EPs= 2 Cls=e0(wlcon) Sub=01 Prot=01 Driver=btusb
-E:  Ad=83(I) Atr=01(Isoc) MxPS=   9 Ivl=1ms
-E:  Ad=03(O) Atr=01(Isoc) MxPS=   9 Ivl=1ms
-I:  If#= 1 Alt= 2 #EPs= 2 Cls=e0(wlcon) Sub=01 Prot=01 Driver=btusb
-E:  Ad=83(I) Atr=01(Isoc) MxPS=  17 Ivl=1ms
-E:  Ad=03(O) Atr=01(Isoc) MxPS=  17 Ivl=1ms
-I:  If#= 1 Alt= 3 #EPs= 2 Cls=e0(wlcon) Sub=01 Prot=01 Driver=btusb
-E:  Ad=83(I) Atr=01(Isoc) MxPS=  25 Ivl=1ms
-E:  Ad=03(O) Atr=01(Isoc) MxPS=  25 Ivl=1ms
-I:  If#= 1 Alt= 4 #EPs= 2 Cls=e0(wlcon) Sub=01 Prot=01 Driver=btusb
-E:  Ad=83(I) Atr=01(Isoc) MxPS=  33 Ivl=1ms
-E:  Ad=03(O) Atr=01(Isoc) MxPS=  33 Ivl=1ms
-I:  If#= 1 Alt= 5 #EPs= 2 Cls=e0(wlcon) Sub=01 Prot=01 Driver=btusb
-E:  Ad=83(I) Atr=01(Isoc) MxPS=  49 Ivl=1ms
-E:  Ad=03(O) Atr=01(Isoc) MxPS=  49 Ivl=1ms
-I:  If#= 1 Alt= 6 #EPs= 2 Cls=e0(wlcon) Sub=01 Prot=01 Driver=btusb
-E:  Ad=83(I) Atr=01(Isoc) MxPS=  63 Ivl=1ms
-E:  Ad=03(O) Atr=01(Isoc) MxPS=  63 Ivl=1ms
-I:* If#= 2 Alt= 0 #EPs= 2 Cls=e0(wlcon) Sub=01 Prot=01 Driver=(none)
-E:  Ad=8a(I) Atr=03(Int.) MxPS=  64 Ivl=125us
-E:  Ad=0a(O) Atr=03(Int.) MxPS=  64 Ivl=125us
-I:  If#= 2 Alt= 1 #EPs= 2 Cls=e0(wlcon) Sub=01 Prot=01 Driver=(none)
-E:  Ad=8a(I) Atr=03(Int.) MxPS= 512 Ivl=125us
-E:  Ad=0a(O) Atr=03(Int.) MxPS= 512 Ivl=125us
+A similar logic is needed for fastboot->bootm glue function, so apply
+same trick to glue function too.
 
-Signed-off-by: Haochen Tong <i@hexchain.org>
+Some one-liners patch is included to enable device driver for sc7180
+soc. It is about iommu for usb, usb gadget vendor/product id.
+
+Reduce dependency on abootimg when androidboot v3 or greater is not
+needed. Since Tom suggested to reduce __maybe_unused directive and 
+use IS_ENABLE() instead; two __weak func proto need to add into image.h
+
+This series is independent, but modified boot/Kconfig that roughly same
+location to another patch series[2], so directly apply both would fail.
+Please let me know if maintainer wanna to let the one gets applied
+first and rebase _OR_ combine two series as one.
+
+[1]https://lists.denx.de/pipermail/u-boot/2025-May/588828.html
+[2]https://lists.denx.de/pipermail/u-boot/2025-May/589926.html
+
+Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- drivers/bluetooth/btusb.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
-index 9ab661d2d1e69028061fa3accd5106f481094100..e4a45596762f8c7d8ba10b4107d6e6f2203188e2 100644
---- a/drivers/bluetooth/btusb.c
-+++ b/drivers/bluetooth/btusb.c
-@@ -725,6 +725,8 @@ static const struct usb_device_id quirks_table[] = {
- 						     BTUSB_WIDEBAND_SPEECH },
- 	{ USB_DEVICE(0x13d3, 0x3630), .driver_info = BTUSB_MEDIATEK |
- 						     BTUSB_WIDEBAND_SPEECH },
-+	{ USB_DEVICE(0x2c7c, 0x7009), .driver_info = BTUSB_MEDIATEK |
-+						     BTUSB_WIDEBAND_SPEECH },
- 
- 	/* Additional Realtek 8723AE Bluetooth devices */
- 	{ USB_DEVICE(0x0930, 0x021d), .driver_info = BTUSB_REALTEK },
+Changes in v2:
+- Add new patch #2 that is same trick as #1 to fastboot->bootm glue layer.
+- Remove default n to patch #1, suggested by Tom.
+- Use IS_ENABLE() instead, suggested by Tom.
+- Collect review-by from Casey and Neil.
+- Rebase to u-boot/next branch.
+- CCing myself too.
+- Link to v1: https://lore.kernel.org/r/20250520-sc7180-android-boot-v1-0-3075a84ea094@gmail.com
 
 ---
-base-commit: e271ed52b344ac02d4581286961d0c40acc54c03
-change-id: 20250606-btusb-mt7925-add-3b95a9673869
+George Chan (5):
+      image-android: Prepend/postpend default bootargs value with given bootcmd
+      bootm: Append bootargs value when bootmeth_android provide cmdline
+      boot: bootmeth_android: Conditionally dependent on abootimg
+      iommu: qcom-smmu: Introduce sc7180 compatible string
+      usb: gadget: Introduce usb gadget vendor/product default id for ARCH_QCOM
+
+ boot/Kconfig                  |  7 +++++++
+ boot/bootm.c                  | 29 ++++++++++++++++++++++++++++-
+ boot/bootmeth_android.c       |  2 +-
+ boot/image-android.c          | 10 ++++++++--
+ drivers/iommu/qcom-hyp-smmu.c |  1 +
+ drivers/usb/gadget/Kconfig    |  2 ++
+ include/image.h               |  3 ++-
+ 7 files changed, 49 insertions(+), 5 deletions(-)
+---
+base-commit: a822b95da4b799bdc2a42c06923af4359238dc9e
+change-id: 20250520-sc7180-android-boot-a845ecf48a48
 
 Best regards,
 -- 
-Haochen Tong <i@hexchain.org>
+George Chan <gchan9527@gmail.com>
 
