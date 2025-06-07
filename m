@@ -1,11 +1,11 @@
 From: George Chan <gchan9527@gmail.com>
-Date: Sat, 07 Jun 2025 13:24:56 +0800
-Subject: [PATCH v2 1/5] image-android: Prepend/postpend default bootargs
- value with given bootcmd
+Date: Sat, 07 Jun 2025 13:24:57 +0800
+Subject: [PATCH v2 2/5] bootm: Append bootargs value when bootmeth_android
+ provide cmdline
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250607-sc7180-android-boot-v2-1-2df5d7f61124@gmail.com>
+Message-Id: <20250607-sc7180-android-boot-v2-2-2df5d7f61124@gmail.com>
 References: <20250607-sc7180-android-boot-v2-0-2df5d7f61124@gmail.com>
 In-Reply-To: <20250607-sc7180-android-boot-v2-0-2df5d7f61124@gmail.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -16,77 +16,68 @@ To: Tom Rini <trini@konsulko.com>,
  Lukasz Majewski <lukma@denx.de>, Marek Vasut <marex@denx.de>
 Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, gchan9527@gmail.com
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749273923; l=2238;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749273923; l=1531;
  i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
- bh=0MyFt94/oKWd2BvVUCEfX1gGvkDWRar9NEK3NeltmRw=;
- b=1IXUPPhTK++Ub18Scj4PcBr0ELAAyG4qU66THn5U6T8PVtjRBrt4bs0wP4A3APyXx5tkP8Iql
- SA9QKiVNUkPCndvL1E2D3pxm5HcYOw61vliI3ozAdyJ0V4cn0Zzp8/I
+ bh=QzAXV3TUQetJKh/4eaQeq6FcGlY9YPKgygVu64gQGpI=;
+ b=6ZvEpk2UuUnhKluGqJBf8KOch/v8uzE/QQO7dJmDhv97U6CZDmjP8pjq9IlL1ZH8qM9vMYYv3
+ UlqPnk5vWa2BtOU8BYFD0OTrHNBex545DECprBAsh2kntL8kYiCIEl3
 X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
  pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
 X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Control how default bootargs is prepended or postpended to boot param found
-from androidboot img.
+Old logic wipe bootargs env with cmdline, new logic maintain the
+value by prepending cmdline value to bootargs.
 
 Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- boot/Kconfig         |  7 +++++++
- boot/image-android.c | 10 ++++++++--
- 2 files changed, 15 insertions(+), 2 deletions(-)
+ boot/bootm.c | 29 ++++++++++++++++++++++++++++-
+ 1 file changed, 28 insertions(+), 1 deletion(-)
 
-diff --git a/boot/Kconfig b/boot/Kconfig
-index 30eb5b328d7..7b71a340620 100644
---- a/boot/Kconfig
-+++ b/boot/Kconfig
-@@ -11,6 +11,13 @@ config ANDROID_BOOT_IMAGE
- 	  This enables support for booting images which use the Android
- 	  image format header.
+diff --git a/boot/bootm.c b/boot/bootm.c
+index f6aa32746b7..888684a91f5 100644
+--- a/boot/bootm.c
++++ b/boot/bootm.c
+@@ -1152,11 +1152,38 @@ int bootm_boot_start(ulong addr, const char *cmdline)
  
-+config ANDROID_BOOT_IMAGE_PREPEND_ENV_BOOTARGS
-+	bool "Android Boot Image boot cmd param will prepend to env bootargs"
-+	help
-+	  This control how androidboot img with bootcmd param integrate with u-boot
-+	  env bootargs. By enable this, androidboot boot param will prepend to
-+	  head of bootargs env.
+ 	snprintf(addr_str, sizeof(addr_str), "%lx", addr);
+ 
+-	ret = env_set("bootargs", cmdline);
++	if (IS_ENABLED(CONFIG_ANDROID_BOOT_IMAGE_PREPEND_ENV_BOOTARGS)) {
++		char *bootargs;
++		char *newbootargs;
++		bootargs = env_get("bootargs");
++		ret = strlen(bootargs) + strlen(cmdline) + 2;
 +
- config TIMESTAMP
- 	bool "Show image date and time when displaying image information"
- 	default y if CMD_DATE
-diff --git a/boot/image-android.c b/boot/image-android.c
-index 1746b018900..fbcd2682a5e 100644
---- a/boot/image-android.c
-+++ b/boot/image-android.c
-@@ -347,14 +347,14 @@ int android_image_get_kernel(const void *hdr,
- 		len += strlen(img_data.kcmdline_extra) + (len ? 1 : 0); /* +1 for extra space */
- 	}
- 
--	char *newbootargs = malloc(len + 1); /* +1 for the '\0' */
-+	char *newbootargs = malloc(len + 2); /* +2 for 2x '\0' */
- 	if (!newbootargs) {
- 		puts("Error: malloc in android_image_get_kernel failed!\n");
- 		return -ENOMEM;
- 	}
- 	*newbootargs = '\0'; /* set to Null in case no components below are present */
- 
--	if (bootargs)
-+	if (bootargs && !IS_ENABLED(CONFIG_ANDROID_BOOT_IMAGE_PREPEND_ENV_BOOTARGS))
- 		strcpy(newbootargs, bootargs);
- 
- 	if (img_data.kcmdline && *img_data.kcmdline) {
-@@ -369,6 +369,12 @@ int android_image_get_kernel(const void *hdr,
- 		strcat(newbootargs, img_data.kcmdline_extra);
- 	}
- 
-+	if (bootargs && IS_ENABLED(CONFIG_ANDROID_BOOT_IMAGE_PREPEND_ENV_BOOTARGS)) {
++		newbootargs = malloc(ret);
++
++		*newbootargs = '\0';
++
++		if (*newbootargs) /* If there is something in newbootargs, a space is needed */
++			strcat(newbootargs, " ");
++		strcat(newbootargs, cmdline);
++
 +		if (*newbootargs) /* If there is something in newbootargs, a space is needed */
 +			strcat(newbootargs, " ");
 +		strcat(newbootargs, bootargs);
-+	}
 +
- 	env_set("bootargs", newbootargs);
- 	free(newbootargs);
- 
++		/* force to terminate the string */
++		memset(newbootargs + MAX_CMDLINE_SIZE - 2, '\0', 1);
++
++		ret = env_set("bootargs", newbootargs);
++
++		free(newbootargs);
++	} else
++		ret = env_set("bootargs", cmdline);
++
+ 	if (ret) {
+ 		printf("Failed to set cmdline\n");
+ 		return ret;
+ 	}
++
+ 	bootm_init(&bmi);
+ 	bmi.addr_img = addr_str;
+ 	bmi.cmd_name = "bootm";
 
 -- 
 2.43.0
