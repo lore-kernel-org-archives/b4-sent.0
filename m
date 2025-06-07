@@ -1,11 +1,11 @@
 From: George Chan <gchan9527@gmail.com>
-Date: Sat, 07 Jun 2025 13:24:58 +0800
-Subject: [PATCH v2 3/5] boot: bootmeth_android: Conditionally dependent on
- abootimg
+Date: Sat, 07 Jun 2025 13:24:59 +0800
+Subject: [PATCH v2 4/5] iommu: qcom-smmu: Introduce sc7180 compatible
+ string
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250607-sc7180-android-boot-v2-3-2df5d7f61124@gmail.com>
+Message-Id: <20250607-sc7180-android-boot-v2-4-2df5d7f61124@gmail.com>
 References: <20250607-sc7180-android-boot-v2-0-2df5d7f61124@gmail.com>
 In-Reply-To: <20250607-sc7180-android-boot-v2-0-2df5d7f61124@gmail.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -14,66 +14,41 @@ To: Tom Rini <trini@konsulko.com>,
  Sumit Garg <sumit.garg@kernel.org>, Simon Glass <sjg@chromium.org>, 
  Mattijs Korpershoek <mkorpershoek@kernel.org>, 
  Lukasz Majewski <lukma@denx.de>, Marek Vasut <marex@denx.de>
-Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, gchan9527@gmail.com
+Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, gchan9527@gmail.com, 
+ Vitalii Skorkin <nikroks@mainlining.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749273923; l=1934;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749273923; l=870;
  i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
- bh=Pw+fB+o7H8WqB3aWCUfny/w8rA6W42UU9qxo/DLLHPE=;
- b=UZVMmk1xn6W8c52JzaBqlo/qeLoCqlpKCjN9Qae/pihn/+TWNISOxWgxxXJXIMEnYor+ytJIR
- cR6N2pUMzsxDewEHeYsfrDvO6HHoXFNZLLskGTUUCJ0+ShSJ3sOWbDF
+ bh=jHr2VerS2shSVgdFBvM78HoeM11NXrop9lMSboNBekI=;
+ b=cV8zKB8Vp9gIjNiPZ6RbBGb61AkJ/lXR1kKIhIJ6PUC1LPaUfLZdFHzOumc9069qzjCwas2ur
+ e+RCY1ntKtiCTyCb23RVgFRYPrb0UDNNJEmGx29vOkdpDisw3cmbyef
 X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
  pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
 X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If target u-boot img do not support androidboot v3 or greater,
-abootimg might not be necessary.
+Add basic compatible string for sc7180 family soc.
 
-aarch64-linux-gnu-ld.bfd: boot/bootmeth_android.o: in function `boot_android_normal':
-/home/user/sources/u-boot-next/boot/bootmeth_android.c:541:(.text.boot_android_normal+0xd0): undefined reference to `set_avendor_bootimg_addr'
-aarch64-linux-gnu-ld.bfd: /home/user/sources/u-boot-next/boot/bootmeth_android.c:543:(.text.boot_android_normal+0xd8): undefined reference to `set_abootimg_addr'
-Segmentation fault (core dumped)
-
+Signed-off-by: Vitalii Skorkin <nikroks@mainlining.org>
+Co-developed-by: George Chan <gchan9527@gmail.com>
 Signed-off-by: George Chan <gchan9527@gmail.com>
+Reviewed-by: Casey Connolly <casey.connolly@linaro.org>
 ---
- boot/bootmeth_android.c | 2 +-
- include/image.h         | 3 ++-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ drivers/iommu/qcom-hyp-smmu.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/boot/bootmeth_android.c b/boot/bootmeth_android.c
-index 8c2bde10e17..d7740b86d67 100644
---- a/boot/bootmeth_android.c
-+++ b/boot/bootmeth_android.c
-@@ -534,7 +534,7 @@ static int boot_android_normal(struct bootflow *bflow)
- 	if (ret < 0)
- 		return log_msg_ret("read boot", ret);
+diff --git a/drivers/iommu/qcom-hyp-smmu.c b/drivers/iommu/qcom-hyp-smmu.c
+index c1b95bc8b8c..2a356613a26 100644
+--- a/drivers/iommu/qcom-hyp-smmu.c
++++ b/drivers/iommu/qcom-hyp-smmu.c
+@@ -388,6 +388,7 @@ static struct iommu_ops qcom_smmu_ops = {
  
--	if (priv->header_version >= 3) {
-+	if (IS_ENABLED(CONFIG_CMD_ABOOTIMG) && priv->header_version >= 3) {
- 		ret = read_slotted_partition(desc, "vendor_boot", priv->slot,
- 					     priv->vendor_boot_img_size, vloadaddr);
- 		if (ret < 0)
-diff --git a/include/image.h b/include/image.h
-index 1e1bded690b..2c03dde768d 100644
---- a/include/image.h
-+++ b/include/image.h
-@@ -2038,7 +2038,7 @@ ulong get_abootimg_addr(void);
-  * Return: no returned results
-  */
- void set_abootimg_addr(ulong addr);
--
-+void __weak set_abootimg_addr(ulong addr) {}
- /**
-  * get_ainit_bootimg_addr() - Get Android init boot image address
-  *
-@@ -2059,6 +2059,7 @@ ulong get_avendor_bootimg_addr(void);
-  * Return: no returned results
-  */
- void set_avendor_bootimg_addr(ulong addr);
-+void __weak set_avendor_bootimg_addr(ulong addr) {}
- 
- /**
-  * board_fit_config_name_match() - Check for a matching board name
+ static const struct udevice_id qcom_smmu500_ids[] = {
+ 	{ .compatible = "qcom,sdm845-smmu-500" },
++	{ .compatible = "qcom,sc7180-smmu-500" },
+ 	{ .compatible = "qcom,sc7280-smmu-500" },
+ 	{ .compatible = "qcom,smmu-500", },
+ 	{ /* sentinel */ }
 
 -- 
 2.43.0
