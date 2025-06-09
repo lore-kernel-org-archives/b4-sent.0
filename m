@@ -1,15 +1,12 @@
 From: Koakuma <koachan@protonmail.com>
-Subject: [PATCH 0/2] sparc/module: R_SPARC_UA64 handling to help with LLVM
- IAS enablement
-Date: Mon, 09 Jun 2025 20:53:10 +0700
-Message-Id: <20250609-b4-sparc-relocs-v1-0-aa52631735af@protonmail.com>
+Date: Mon, 09 Jun 2025 20:53:11 +0700
+Subject: [PATCH 1/2] sparc/module: Add R_SPARC_UA64 relocation handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEbnRmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDYwNT3SQT3eKCxKJk3aLUnPzkYl0z08Rkc/PkRAtLIwMloK6CotS0zAq
- widGxtbUA0+z9X2EAAAA=
-X-Change-ID: 20250305-b4-sparc-relocs-65ac77ca8920
+Message-Id: <20250609-b4-sparc-relocs-v1-1-aa52631735af@protonmail.com>
+References: <20250609-b4-sparc-relocs-v1-0-aa52631735af@protonmail.com>
+In-Reply-To: <20250609-b4-sparc-relocs-v1-0-aa52631735af@protonmail.com>
 To: "David S. Miller" <davem@davemloft.net>, 
  Andreas Larsson <andreas@gaisler.com>, 
  Nathan Chancellor <nathan@kernel.org>, 
@@ -18,43 +15,50 @@ To: "David S. Miller" <davem@davemloft.net>,
 Cc: sparclinux@vger.kernel.org, linux-kernel@vger.kernel.org, 
  llvm@lists.linux.dev, Koakuma <koachan@protonmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749477207; l=971;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749477207; l=1232;
  i=koachan@protonmail.com; s=20240620; h=from:subject:message-id;
- bh=V+mythbreill/uQ07oLyN3AK3aHIgulv4FDYTI1Uhu0=;
- b=DTvScNJYKi4QCDIPcpVUpBhr7cM6oJp4mKjnD++hSRipZtVeyLWgyFUFxyKQf9lO9wr1ZXLX/
- If7HLxjnZ17CZkF0EP2ln29vZ5SNMbXjYH4DjbHtv1Qe5VpcxAzLRhq
+ bh=zZw7JuY1ThhmEZ0ymDbJ7RVlj2O2wrZSNN0ELhatlwE=;
+ b=pHlzGFwzlR+zbyyljMmoJCIWTRSZ1KYty5KLvm70wsrv8QhaNHteqxP6kWlGWfp2pGhYWm5bF
+ YgNEPBUbhgXBD3RU8jEfojmrWWyKjf72glTLmx/evMhRBhF2V5aqBCf
 X-Developer-Key: i=koachan@protonmail.com; a=ed25519;
  pk=UA59FS3yiAA1cnAAUZ1rehTmr6skh95PgkNRBLcoKCg=
 X-Endpoint-Received: by B4 Relay for koachan@protonmail.com/20240620 with auth_id=174
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello~
-
-This series lets the module loader handle R_SPARC_UA64, which is emitted
-by LLVM's IAS in certain conditions. Additionally, I put on a small change
-to the error log to make it clearer that the printed relocation number
-is in hex.
-
-The intention is to get both the kernel and LLVM in a state where
-doing a clang+IAS build is possible.
-
-As with before, on the LLVM side the project is tracked here:
-https://github.com/llvm/llvm-project/issues/40792
+This is needed so that the kernel can handle R_SPARC_UA64 relocations,
+which is emitted by LLVM's IAS.
 
 Signed-off-by: Koakuma <koachan@protonmail.com>
 ---
-Koakuma (2):
-      sparc/module: Add R_SPARC_UA64 relocation handling
-      sparc/module: Make it clear that relocation numbers are shown in hex
-
  arch/sparc/include/asm/elf_64.h | 1 +
- arch/sparc/kernel/module.c      | 3 ++-
- 2 files changed, 3 insertions(+), 1 deletion(-)
----
-base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
-change-id: 20250305-b4-sparc-relocs-65ac77ca8920
+ arch/sparc/kernel/module.c      | 1 +
+ 2 files changed, 2 insertions(+)
 
-Best regards,
+diff --git a/arch/sparc/include/asm/elf_64.h b/arch/sparc/include/asm/elf_64.h
+index 8fb09eec8c3e796a9a79aa0a7877842ceb7ea6d3..694ed081cf8d99adf70be25e5dc0e30a45f70398 100644
+--- a/arch/sparc/include/asm/elf_64.h
++++ b/arch/sparc/include/asm/elf_64.h
+@@ -58,6 +58,7 @@
+ #define R_SPARC_7		43
+ #define R_SPARC_5		44
+ #define R_SPARC_6		45
++#define R_SPARC_UA64		54
+ 
+ /* Bits present in AT_HWCAP, primarily for Sparc32.  */
+ #define HWCAP_SPARC_FLUSH       0x00000001
+diff --git a/arch/sparc/kernel/module.c b/arch/sparc/kernel/module.c
+index b8c51cc23d96944037494f13d2d65a43bb187729..6e3d4dde4f9ab33040b300c40d5fd5d0584e166d 100644
+--- a/arch/sparc/kernel/module.c
++++ b/arch/sparc/kernel/module.c
+@@ -87,6 +87,7 @@ int apply_relocate_add(Elf_Shdr *sechdrs,
+ 			break;
+ #ifdef CONFIG_SPARC64
+ 		case R_SPARC_64:
++		case R_SPARC_UA64:
+ 			location[0] = v >> 56;
+ 			location[1] = v >> 48;
+ 			location[2] = v >> 40;
+
 -- 
-Koakuma <koachan@protonmail.com>
+2.49.0
 
