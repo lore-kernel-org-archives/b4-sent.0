@@ -1,53 +1,85 @@
-From: Koakuma <koachan@protonmail.com>
-Date: Mon, 09 Jun 2025 20:53:12 +0700
-Subject: [PATCH 2/2] sparc/module: Make it clear that relocation numbers
- are shown in hex
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Date: Mon, 09 Jun 2025 22:53:56 +0200
+Subject: [PATCH] dt: arm64: qcom: sc8280xp-blackrock: amend usb0-sbu-mux
+ enable gpio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250609-b4-sparc-relocs-v1-2-aa52631735af@protonmail.com>
-References: <20250609-b4-sparc-relocs-v1-0-aa52631735af@protonmail.com>
-In-Reply-To: <20250609-b4-sparc-relocs-v1-0-aa52631735af@protonmail.com>
-To: "David S. Miller" <davem@davemloft.net>, 
- Andreas Larsson <andreas@gaisler.com>, 
- Nathan Chancellor <nathan@kernel.org>, 
- Nick Desaulniers <nick.desaulniers+lkml@gmail.com>, 
- Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>
-Cc: sparclinux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- llvm@lists.linux.dev, Koakuma <koachan@protonmail.com>
+Message-Id: <20250609-blackrock-usb0-mux-v1-1-7903c3b071e4@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAONJR2gC/x3MSQqAMAxA0atI1gZicUCvIi5sjBocaakI4t0tL
+ t/i/we8OBUPTfKAk0u9HntElibAc79PgjpEgyFTUEk12rXnxR28YPCWcAs3mqEiZku1zXKI4el
+ k1Puftt37fj0IVTVkAAAA
+X-Change-ID: 20250609-blackrock-usb0-mux-2d70ccb09b14
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Aleksandrs Vinarskis <alex.vinarskis@gmail.com>, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749477207; l=784;
- i=koachan@protonmail.com; s=20240620; h=from:subject:message-id;
- bh=7SKx1LyVSxb9rnPPXP8b4RhjM/ieyIDEQGTuXHHGuv0=;
- b=7wx6sVYWxVRMZKF1bCXsTh6PwiVpWEyHcpD7XVsKksAbsttXnXku6ruD/sZvYyV3JbeaW8z2W
- nVXopwnT6LFCTJSTfvAdw+TKa0kXc+dB2AxFV+Y5Uj9WJPMrNaP5xNS
-X-Developer-Key: i=koachan@protonmail.com; a=ed25519;
- pk=UA59FS3yiAA1cnAAUZ1rehTmr6skh95PgkNRBLcoKCg=
-X-Endpoint-Received: by B4 Relay for koachan@protonmail.com/20240620 with auth_id=174
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749502444; l=2173;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=0U1VNm6UEDUZ5+luOdhF4fqviPgQfWkNGEy/dPW1eC4=;
+ b=e9Byf0rEru5w6V5DwJCO6BifuGo/PjwSHJviqRtqjj9xTZOSR/IGL6aRyqrFXKqTdZgHCDBps
+ 6T/ZEP8N0TyBVghdGNSqevtKq0CuNJykE7Y9SecA+ZBTchfkzNvFIQd
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is to ease debugging by removing the ambiguity of the shown
-number base.
+The usb0 port didn't switch to dp altmode, investigation into DSDT
+UCS0 device resulted into GPIO 100.
 
-Signed-off-by: Koakuma <koachan@protonmail.com>
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- arch/sparc/kernel/module.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+This patch amends the enable gpio for the usb0-sbu-mux to the one
+found in the DSDT file for this box. It shows a list of GPIOs in 
+a certain order, and it has 2 buffers with conflicting values. 
+The one deviating is in the second buffer, at the place where one 
+would expect the GPIO for the select pin of USB0 (by pattern 
+application from USB1). The GPIO previously used is also there, but 
+at the end of the UCS0 buffer structure). Changing it resulted in 
+a working dp altmode functionality on usb0.
 
-diff --git a/arch/sparc/kernel/module.c b/arch/sparc/kernel/module.c
-index 6e3d4dde4f9ab33040b300c40d5fd5d0584e166d..49740450a6859fda566459ee4679869f9854b760 100644
---- a/arch/sparc/kernel/module.c
-+++ b/arch/sparc/kernel/module.c
-@@ -142,7 +142,7 @@ int apply_relocate_add(Elf_Shdr *sechdrs,
- 			break;
+This debug effort is a result of work / testing of the 4-lanes patch
+[1] on all available devices. Independent of it, it enables dp 
+altmode on usb0, and with it, also 4 lanes, making it even more useful.
+
+[1]: https://lore.kernel.org/all/20250527-topic-4ln_dp_respin-v3-0-f9a0763ec289@oss.qualcomm.com/
+---
+ arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
+index 812251324002b50f3b48845b6c244f692d42b9b2..b8cbef0ebce76acf9d1e841e613646119dc400ff 100644
+--- a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
++++ b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
+@@ -243,7 +243,7 @@ linux,cma {
+ 	usb0-sbu-mux {
+ 		compatible = "pericom,pi3usb102", "gpio-sbu-mux";
  
- 		default:
--			printk(KERN_ERR "module %s: Unknown relocation: %x\n",
-+			printk(KERN_ERR "module %s: Unknown relocation: 0x%x\n",
- 			       me->name,
- 			       (int) (ELF_R_TYPE(rel[i].r_info) & 0xff));
- 			return -ENOEXEC;
+-		enable-gpios = <&tlmm 101 GPIO_ACTIVE_LOW>;
++		enable-gpios = <&tlmm 100 GPIO_ACTIVE_LOW>;
+ 		select-gpios = <&tlmm 164 GPIO_ACTIVE_HIGH>;
+ 
+ 		pinctrl-0 = <&usb0_sbu_default>;
+@@ -1267,7 +1267,7 @@ tx-pins {
+ 
+ 	usb0_sbu_default: usb0-sbu-state {
+ 		oe-n-pins {
+-			pins = "gpio101";
++			pins = "gpio100";
+ 			function = "gpio";
+ 			bias-disable;
+ 			drive-strength = <16>;
 
+---
+base-commit: 475c850a7fdd0915b856173186d5922899d65686
+change-id: 20250609-blackrock-usb0-mux-2d70ccb09b14
+
+Best regards,
 -- 
-2.49.0
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
