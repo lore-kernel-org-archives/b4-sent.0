@@ -1,132 +1,47 @@
-From: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Date: Mon, 09 Jun 2025 11:45:47 +0900
-Subject: [PATCH v2 3/3] test_bits: add tests for __GENMASK() and
- __GENMASK_ULL()
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH RFC 0/2] arm64: tegra: Add NVIDIA Jetson Nano 2GB Developer
+ Kit support
+Date: Sun, 08 Jun 2025 23:24:34 -0500
+Message-Id: <20250608-p3452-v1-0-4c2c1d7e4310@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250609-consolidate-genmask-v2-3-b8cce8107e49@wanadoo.fr>
-References: <20250609-consolidate-genmask-v2-0-b8cce8107e49@wanadoo.fr>
-In-Reply-To: <20250609-consolidate-genmask-v2-0-b8cce8107e49@wanadoo.fr>
-To: Yury Norov <yury.norov@gmail.com>, 
- Lucas De Marchi <lucas.demarchi@intel.com>, 
- Rasmus Villemoes <linux@rasmusvillemoes.dk>, 
- Jani Nikula <jani.nikula@linux.intel.com>, 
- Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, 
- Tvrtko Ursulin <tursulin@ursulin.net>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, intel-gfx@lists.freedesktop.org, 
- dri-devel@lists.freedesktop.org, Andi Shyti <andi.shyti@linux.intel.com>, 
- David Laight <David.Laight@ACULAB.COM>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, 
- Anshuman Khandual <anshuman.khandual@arm.com>, 
- linux-arm-kernel@lists.infradead.org, 
- Vincent Mailhol <mailhol.vincent@wanadoo.fr>
+X-B4-Tracking: v=1; b=H4sIAAJiRmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDU0Nj3QJjE1MjXQNTS3MDi+RES0tLYyWg2oKi1LTMCrA50UpBbs5KsbW
+ 1ABmodlpcAAAA
+X-Change-ID: 20250513-p3452-059708ca9993
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2912;
- i=mailhol.vincent@wanadoo.fr; h=from:subject:message-id;
- bh=3zlQdv4EFCMg/HesmXq1vpsLUuJL8L+7u7ycJRCz2oM=;
- b=owGbwMvMwCV2McXO4Xp97WbG02pJDBluXj+OROcksv85HMKzRf9qy/3Vp7btD5RqkRfo7bDiD
- szL6TjUUcLCIMbFICumyLKsnJNboaPQO+zQX0uYOaxMIEMYuDgFYCJCPxh+HMpYoMy2mZO9Yxm3
- 9XG1VF3Zs6rm7K+jJ+g+Vjn6NVeV4Z+OmdwBZZfycL89YZtEf153lHjC8Sqvdv0+M2GXC7a3Kvg B
-X-Developer-Key: i=mailhol.vincent@wanadoo.fr; a=openpgp;
- fpr=ED8F700574E67F20E574E8E2AB5FEB886DBB99C2
-X-Endpoint-Received: by B4 Relay for mailhol.vincent@wanadoo.fr/default with auth_id=291
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749443083; l=606;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=nA4pr8rR8GdTPJG1GEj2FJ2dYpGn+ljhMBTSZXnCjfw=;
+ b=3whLJDhEmZEwU8CgXuejrd87bVi5K1GSxA2ybAQz6muihICLk3igRj4rBsRDHAJUSejhtoOZs
+ lKQcri3FujqByhHbo5T43vkhqLy7BhYxw7ZvjIKUHsSHIcUq9AXbprh
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The definitions of GENMASK() and GENMASK_ULL() do not depend any more
-on __GENMASK() and __GENMASK_ULL(). Duplicate the existing unit tests
-so that __GENMASK{,ULL}() are still covered.
-
-Because __GENMASK() and __GENMASK_ULL() do use GENMASK_INPUT_CHECK(),
-drop the TEST_GENMASK_FAILURES negative tests.
-
-It would be good to have a small assembly test case for GENMASK*() in
-case somebody decides to unify both in the future. However, I lack
-expertise in assembly to do so. Instead add a FIXME message to
-highlight the absence of the asm unit test.
-
-Signed-off-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-Reviewed-by: Lucas De Marchi <lucas.demarchi@intel.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Changelog:
+Aaron Kling (2):
+      dt-bindings: arm: tegra: Document Jetson Nano Devkits
+      arm64: tegra: Add NVIDIA Jetson Nano 2GB Developer Kit support
 
-  v1 -> v2:
-
-    - No changes
-
-This patch previously belonged to this series:
-
-  bits: Fixed-type GENMASK_U*() and BIT_U*()
-  Link: https://lore.kernel.org/r/20250308-fixed-type-genmasks-v6-0-f59315e73c29@wanadoo.fr
-
-Below changelog contains the history from the previous series.
-
-Changelog:
-
-  v6 (previous series) -> v1 (new series):
-
-    - Add a message in the commit description to explain why the
-      negative tests are dropped.
-
-    - Add Lucas's Reviewed-by tag.
-
-  v5 -> v6:
-
-    - Add a FIXME message to highlight the absence of the asm
-      GENMASK*() unit tests.
-
-  v4 -> v5:
-
-    - No changes.
-
-  v3 -> v4:
-
-    - New patch.
+ Documentation/devicetree/bindings/arm/tegra.yaml   |  5 +++
+ arch/arm64/boot/dts/nvidia/Makefile                |  2 +
+ arch/arm64/boot/dts/nvidia/tegra210-p3541-0000.dts | 43 ++++++++++++++++++++++
+ 3 files changed, 50 insertions(+)
 ---
- lib/tests/test_bits.c | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
+change-id: 20250513-p3452-059708ca9993
 
-diff --git a/lib/tests/test_bits.c b/lib/tests/test_bits.c
-index 47325b41515fde2c3ed434ed6f4094925c98886b..ab88e50d2edfa2b011f07d50460ac8ea6ff99923 100644
---- a/lib/tests/test_bits.c
-+++ b/lib/tests/test_bits.c
-@@ -26,6 +26,23 @@ static_assert(assert_type(u16, GENMASK_U16(15, 0)) == U16_MAX);
- static_assert(assert_type(u32, GENMASK_U32(31, 0)) == U32_MAX);
- static_assert(assert_type(u64, GENMASK_U64(63, 0)) == U64_MAX);
- 
-+/* FIXME: add a test case written in asm for GENMASK() and GENMASK_ULL() */
-+
-+static void __genmask_test(struct kunit *test)
-+{
-+	KUNIT_EXPECT_EQ(test, 1ul, __GENMASK(0, 0));
-+	KUNIT_EXPECT_EQ(test, 3ul, __GENMASK(1, 0));
-+	KUNIT_EXPECT_EQ(test, 6ul, __GENMASK(2, 1));
-+	KUNIT_EXPECT_EQ(test, 0xFFFFFFFFul, __GENMASK(31, 0));
-+}
-+
-+static void __genmask_ull_test(struct kunit *test)
-+{
-+	KUNIT_EXPECT_EQ(test, 1ull, __GENMASK_ULL(0, 0));
-+	KUNIT_EXPECT_EQ(test, 3ull, __GENMASK_ULL(1, 0));
-+	KUNIT_EXPECT_EQ(test, 0x000000ffffe00000ull, __GENMASK_ULL(39, 21));
-+	KUNIT_EXPECT_EQ(test, 0xffffffffffffffffull, __GENMASK_ULL(63, 0));
-+}
- 
- static void genmask_test(struct kunit *test)
- {
-@@ -123,6 +140,8 @@ static void genmask_input_check_test(struct kunit *test)
- 
- 
- static struct kunit_case bits_test_cases[] = {
-+	KUNIT_CASE(__genmask_test),
-+	KUNIT_CASE(__genmask_ull_test),
- 	KUNIT_CASE(genmask_test),
- 	KUNIT_CASE(genmask_ull_test),
- 	KUNIT_CASE(genmask_u128_test),
-
+Best regards,
 -- 
-2.49.0
+Aaron Kling <webgeek1234@gmail.com>
 
