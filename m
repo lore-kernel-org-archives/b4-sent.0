@@ -1,110 +1,115 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 08 Jun 2025 23:24:36 -0500
-Subject: [PATCH RFC 2/2] arm64: tegra: Add NVIDIA Jetson Nano 2GB Developer
- Kit support
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v4 0/5] Add support for the IPQ5018 Internal GE PHY
+Date: Mon, 09 Jun 2025 15:44:33 +0400
+Message-Id: <20250609-ipq5018-ge-phy-v4-0-1d3a125282c3@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250608-p3452-v1-2-4c2c1d7e4310@gmail.com>
-References: <20250608-p3452-v1-0-4c2c1d7e4310@gmail.com>
-In-Reply-To: <20250608-p3452-v1-0-4c2c1d7e4310@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACHJRmgC/2XMSw7CIBSF4a0YxmLg8mjjyH0YBxSoJWqpUIlN0
+ 71L68BHh/+9Od+Iog3ORrTfjCjY5KLzbQ6+3SDdqPZssTO5ERAQhDOCXXcXhJY4f7pmwKaSgqt
+ acW0NyqMu2No9F/B4yt242PswLH6i8/VNCRD/VKKYYGNUVZaCWxDs4B/91fvLTvsbmrEE30C5A
+ mABiGSy4Lqgeg2wDyAJrACWAQ6UsUIRRiv4BaZpegFHN/WCMAEAAA==
+X-Change-ID: 20250430-ipq5018-ge-phy-db654afa4ced
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-clk@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749443083; l=2561;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=YLiFsraUkGmyKrqoL/QLWSsEB+CXYWPoUrGhnNqenxg=;
- b=HBksLzvtJ5hPiZPk9cOzoPhlG3v0IACSpZhKFibj4Lrp0nhkGDw9BpdVfNsFWxjYCM2K8KbB7
- 3Ie4LXe2ttgAF9/S6ZZV1ErEkzP4yfHAgb2JFovvmnDSx4LKCYA/XAU
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749469488; l=3740;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=72ROgsceAbh3vMokXfXqWXOso7SCfFxFePbiSzbwxwQ=;
+ b=FrUjWNPAJ+ft1zj4iRHjMYysifyvX6IyEx87r+1fOkerDyfPpYARB2b2A7Y0NIJjX6QpanxyM
+ 0fbPO62nQBQBtpGpKBrB3NOHFG9hhNURPHnvngCTi2FBVHH8UZRFP3Z
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This devkit is very similar to P3450, except it has less ram, no display
-port, and only 3 usb host ports. Derive from P3450 and disable the
-hardware that is unavailable.
+The IPQ5018 SoC contains an internal Gigabit Ethernet PHY with its
+output pins that provide an MDI interface to either an external switch
+in a PHY to PHY link architecture or directly to an attached RJ45
+connector.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+The PHY supports 10/100/1000 mbps link modes, CDT, auto-negotiation and
+802.3az EEE.
+
+The LDO controller found in the IPQ5018 SoC needs to be enabled to drive
+power to the CMN Ethernet Block (CMN BLK) which the GE PHY depends on.
+The LDO must be enabled in TCSR by writing to a specific register.
+
+In a phy to phy architecture, DAC values need to be set to accommodate
+for the short cable length.
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/nvidia/Makefile                |  2 +
- arch/arm64/boot/dts/nvidia/tegra210-p3541-0000.dts | 43 ++++++++++++++++++++++
- 2 files changed, 45 insertions(+)
+Changes in v4:
+- Updated description of qcom,dac-preset-short-cable property in
+  accordance with Andrew's recommendation to indicate that if the
+  property is not set, no DAC values will be modified.
+- Added newlines between properties
+- Added PHY ID as compatible in DT bindings for conditional check to
+  evaluate correctly. Did a 'git grep' on all other PHY IDs defined in
+  the driver but none are explicitly referenced so I haven't added them
+- Link to v3: https://lore.kernel.org/r/20250602-ipq5018-ge-phy-v3-0-421337a031b2@outlook.com
 
-diff --git a/arch/arm64/boot/dts/nvidia/Makefile b/arch/arm64/boot/dts/nvidia/Makefile
-index 0fbb8a494dba5089d9b7243e766bd6028b7f3744..2989550e0d482e0dde09c1ff89930f7eb7b5b644 100644
---- a/arch/arm64/boot/dts/nvidia/Makefile
-+++ b/arch/arm64/boot/dts/nvidia/Makefile
-@@ -3,6 +3,7 @@
- # Enables support for device-tree overlays
- DTC_FLAGS_tegra210-p2371-2180 := -@
- DTC_FLAGS_tegra210-p3450-0000 := -@
-+DTC_FLAGS_tegra210-p3541-0000 := -@
- DTC_FLAGS_tegra186-p2771-0000 := -@
- DTC_FLAGS_tegra186-p3509-0000+p3636-0001 := -@
- DTC_FLAGS_tegra194-p2972-0000 := -@
-@@ -18,6 +19,7 @@ dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2371-0000.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2371-2180.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2571.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3450-0000.dtb
-+dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3541-0000.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-smaug.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2894-0050-a08.dtb
- dtb-$(CONFIG_ARCH_TEGRA_186_SOC) += tegra186-p2771-0000.dtb
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210-p3541-0000.dts b/arch/arm64/boot/dts/nvidia/tegra210-p3541-0000.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..b86bd7f411088df1e48f4c2a61deaeae1f35d23e
---- /dev/null
-+++ b/arch/arm64/boot/dts/nvidia/tegra210-p3541-0000.dts
-@@ -0,0 +1,43 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/dts-v1/;
-+
-+#include "tegra210-p3450-0000.dts"
-+
-+/ {
-+	model = "NVIDIA Jetson Nano 2GB Developer Kit";
-+	compatible = "nvidia,p3541-0000", "nvidia,p3450-0000", "nvidia,tegra210";
-+
-+	memory@80000000 {
-+		reg = <0x0 0x80000000 0x0 0x80000000>;
-+	};
-+
-+	host1x@50000000 {
-+		sor@54540000 {
-+			status = "disabled";
-+		};
-+
-+		dpaux@545c0000 {
-+			status = "disabled";
-+		};
-+	};
-+
-+	padctl@7009f000 {
-+		ports {
-+			usb2-0 {
-+				vbus-supply = <&vdd_5v0_sys>;
-+			};
-+
-+			usb2-1 {
-+				vbus-supply = <&vdd_5v0_usb>;
-+			};
-+
-+			usb2-2 {
-+				vbus-supply = <&vdd_5v0_usb>;
-+			};
-+
-+			usb3-0 {
-+				/delete-property/ vbus-supply;
-+			};
-+		};
-+	};
-+};
+Changes in v3:
+- Replace bitmask of GEPHY_MISC_ARES with GENMASK as suggested by Konrad
+- Removed references to RX and TX clocks as the driver need not
+  explicitly enable them. The GCC gatecontrols and routes the PHY's
+  output clocks, registered in the DT as fixed clocks, back to the PHY.
+  The bindings file has been updated accordingly.
+- Removed acquisition and enablement of RX and TX clocks from the driver
+- Link to v2: https://lore.kernel.org/r/20250528-ipq5018-ge-phy-v2-0-dd063674c71c@outlook.com
 
+Changes in v2:
+- Moved values for MDAC and EDAC into the driver and converted DT
+  property qca,dac to a new boolean: qcom,dac-preset-short-cable as per
+  discussion.
+- Added compatible string along with a condition with a description of
+  properties including clocks, resets, and qcom,dac-preset-short-cable
+  in the bindings to address bindings issues reported by Rob and to
+  bypass restrictions on nr of clocks and resets in ethernet-phy.yaml
+- Added example to bindings file
+- Renamed all instances of IPQ5018_PHY_MMD3* macros to IPQ5018_PHY_PCS*
+- Removed qca,eth-ldo-ready property and moved the TCSR register to the
+  mdio bus the phy is on as there's already support for setting this reg
+  property in the mdio-ipq4019 driver as per commit:
+  23a890d493e3ec1e957bc925fabb120962ae90a7
+- Explicitly probe on PHY ID as otherwise the PHY wouldn't come up and
+  initialize as found during further testing when the kernel is flashed
+  to NAND
+- Link to v1: https://lore.kernel.org/r/20250525-ipq5018-ge-phy-v1-0-ddab8854e253@outlook.com
+
+---
+George Moussalem (5):
+      clk: qcom: gcc-ipq5018: fix GE PHY reset
+      dt-bindings: net: qca,ar803x: Add IPQ5018 Internal GE PHY support
+      net: phy: qcom: at803x: Add Qualcomm IPQ5018 Internal PHY support
+      arm64: dts: qcom: ipq5018: Add MDIO buses
+      arm64: dts: qcom: ipq5018: Add GE PHY to internal mdio bus
+
+ .../devicetree/bindings/net/qca,ar803x.yaml        |  44 +++++
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              |  48 +++++-
+ drivers/clk/qcom/gcc-ipq5018.c                     |   2 +-
+ drivers/net/phy/qcom/Kconfig                       |   2 +-
+ drivers/net/phy/qcom/at803x.c                      | 185 ++++++++++++++++++++-
+ 5 files changed, 269 insertions(+), 12 deletions(-)
+---
+base-commit: ebfff09f63e3efb6b75b0328b3536d3ce0e26565
+change-id: 20250430-ipq5018-ge-phy-db654afa4ced
+
+Best regards,
 -- 
-2.49.0
+George Moussalem <george.moussalem@outlook.com>
 
