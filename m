@@ -1,85 +1,58 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Mon, 09 Jun 2025 22:53:56 +0200
-Subject: [PATCH] dt: arm64: qcom: sc8280xp-blackrock: amend usb0-sbu-mux
- enable gpio
+From: Daniel Palmer <daniel.palmer@sony.com>
+Date: Tue, 10 Jun 2025 08:37:38 +0900
+Subject: [PATCH] doc: Remove misleading reference to brd in dax.rst
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250609-blackrock-usb0-mux-v1-1-7903c3b071e4@oldschoolsolutions.biz>
-X-B4-Tracking: v=1; b=H4sIAONJR2gC/x3MSQqAMAxA0atI1gZicUCvIi5sjBocaakI4t0tL
- t/i/we8OBUPTfKAk0u9HntElibAc79PgjpEgyFTUEk12rXnxR28YPCWcAs3mqEiZku1zXKI4el
- k1Puftt37fj0IVTVkAAAA
-X-Change-ID: 20250609-blackrock-usb0-mux-2d70ccb09b14
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Aleksandrs Vinarskis <alex.vinarskis@gmail.com>, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749502444; l=2173;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=0U1VNm6UEDUZ5+luOdhF4fqviPgQfWkNGEy/dPW1eC4=;
- b=e9Byf0rEru5w6V5DwJCO6BifuGo/PjwSHJviqRtqjj9xTZOSR/IGL6aRyqrFXKqTdZgHCDBps
- 6T/ZEP8N0TyBVghdGNSqevtKq0CuNJykE7Y9SecA+ZBTchfkzNvFIQd
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+Message-Id: <20250610-fixdasrstbrd20250610-v1-1-4abe3b7f381a@sony.com>
+X-B4-Tracking: v=1; b=H4sIAEFwR2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDM0MD3bTMipTE4qLikqSiFLiggblJikVqiqmZkXGKElBrQVEqUB3Y2Oj
+ Y2loAn/ifM2YAAAA=
+To: Jonathan Corbet <corbet@lwn.net>, 
+ Dan Williams <dan.j.williams@intel.com>
+Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Daniel Palmer <daniel.palmer@sony.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749512271; l=1013;
+ i=daniel.palmer@sony.com; s=20250610; h=from:subject:message-id;
+ bh=bneb9TzHhD7XIfcboMGGWopLiATbX15rmlqAcruoZnw=;
+ b=LmEVIPJtVyUCpQuvYeq1sHgZr+XqcOro4z/qlbTF3O5uDLfJPq2SbLBt4AoXhKgV3OOt8qI2N
+ 5NMPTIdcnuXBPOlk9JMHouKtL5vWPg8623aHGOV9ETf0yTI/N042nIo
+X-Developer-Key: i=daniel.palmer@sony.com; a=ed25519;
+ pk=dbwvNAF3zvjUZOTEPBh6uYWrBnOi7OPuXkoDcmmS8aY=
+X-Endpoint-Received: by B4 Relay for daniel.palmer@sony.com/20250610 with auth_id=430
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The usb0 port didn't switch to dp altmode, investigation into DSDT
-UCS0 device resulted into GPIO 100.
+brd hasn't supported DAX for a long time but dax.rst
+still suggests it as an example of how to write a DAX
+supporting block driver.
 
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Remove the reference, confuse less people.
+
+Fixes: 7a862fbbdec6 ("brd: remove dax support")
+Signed-off-by: Daniel Palmer <daniel.palmer@sony.com>
 ---
-This patch amends the enable gpio for the usb0-sbu-mux to the one
-found in the DSDT file for this box. It shows a list of GPIOs in 
-a certain order, and it has 2 buffers with conflicting values. 
-The one deviating is in the second buffer, at the place where one 
-would expect the GPIO for the select pin of USB0 (by pattern 
-application from USB1). The GPIO previously used is also there, but 
-at the end of the UCS0 buffer structure). Changing it resulted in 
-a working dp altmode functionality on usb0.
+ Documentation/filesystems/dax.rst | 1 -
+ 1 file changed, 1 deletion(-)
 
-This debug effort is a result of work / testing of the 4-lanes patch
-[1] on all available devices. Independent of it, it enables dp 
-altmode on usb0, and with it, also 4 lanes, making it even more useful.
-
-[1]: https://lore.kernel.org/all/20250527-topic-4ln_dp_respin-v3-0-f9a0763ec289@oss.qualcomm.com/
----
- arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-index 812251324002b50f3b48845b6c244f692d42b9b2..b8cbef0ebce76acf9d1e841e613646119dc400ff 100644
---- a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-+++ b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-@@ -243,7 +243,7 @@ linux,cma {
- 	usb0-sbu-mux {
- 		compatible = "pericom,pi3usb102", "gpio-sbu-mux";
+diff --git a/Documentation/filesystems/dax.rst b/Documentation/filesystems/dax.rst
+index 08dd5e254cc5..5b283f3d1eb1 100644
+--- a/Documentation/filesystems/dax.rst
++++ b/Documentation/filesystems/dax.rst
+@@ -206,7 +206,6 @@ stall the CPU for an extended period, you should also not attempt to
+ implement direct_access.
  
--		enable-gpios = <&tlmm 101 GPIO_ACTIVE_LOW>;
-+		enable-gpios = <&tlmm 100 GPIO_ACTIVE_LOW>;
- 		select-gpios = <&tlmm 164 GPIO_ACTIVE_HIGH>;
+ These block devices may be used for inspiration:
+-- brd: RAM backed block device driver
+ - pmem: NVDIMM persistent memory driver
  
- 		pinctrl-0 = <&usb0_sbu_default>;
-@@ -1267,7 +1267,7 @@ tx-pins {
  
- 	usb0_sbu_default: usb0-sbu-state {
- 		oe-n-pins {
--			pins = "gpio101";
-+			pins = "gpio100";
- 			function = "gpio";
- 			bias-disable;
- 			drive-strength = <16>;
 
 ---
-base-commit: 475c850a7fdd0915b856173186d5922899d65686
-change-id: 20250609-blackrock-usb0-mux-2d70ccb09b14
+base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
+change-id: 20250610-fixdasrstbrd20250610-074d8ed5623d
 
 Best regards,
 -- 
-Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Daniel Palmer <daniel.palmer@sony.com>
 
