@@ -1,10 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 09 Jun 2025 15:44:37 +0400
-Subject: [PATCH v4 4/5] arm64: dts: qcom: ipq5018: Add MDIO buses
+Date: Mon, 09 Jun 2025 15:44:38 +0400
+Subject: [PATCH v4 5/5] arm64: dts: qcom: ipq5018: Add GE PHY to internal
+ mdio bus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250609-ipq5018-ge-phy-v4-4-1d3a125282c3@outlook.com>
+Message-Id: <20250609-ipq5018-ge-phy-v4-5-1d3a125282c3@outlook.com>
 References: <20250609-ipq5018-ge-phy-v4-0-1d3a125282c3@outlook.com>
 In-Reply-To: <20250609-ipq5018-ge-phy-v4-0-1d3a125282c3@outlook.com>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -23,64 +24,91 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  linux-clk@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>, 
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749469488; l=1519;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749469488; l=2285;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=jA4BQsaw0tlEf36IZrwvZtR6C1am2pcwyAdrevsj4Hk=;
- b=vImvIeQwzSwUc+rbiclCTz4Ys4pHteCBdtldlzs5ipJTlIiIvTGmq3hTylA091FSc8v6+PRoO
- Ry38DIV1pZ6Auh20FpJlRjcB5C7M6aG1AmrR1nGPa409Zs17X5QzWTN
+ bh=hFpy0osU/0n+A52muRC0D3Drst6JCZAX5hmtJZDrLks=;
+ b=xF58fHaVe5CdBWFWgt/+XyW54YYT7Y+h9PffZNYc34X3UhJbm3MdOio9g8b+5Sr0s/pUDINcH
+ o0iDVafNj+YDHqToxyrAFB/0nJDAiZkxDgdECVJ12CUfALaUIiFwUbX
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IPQ5018 contains two mdio buses of which one bus is used to control the
-SoC's internal GE PHY, while the other bus is connected to external PHYs
-or switches.
+The IPQ5018 SoC contains an internal GE PHY, always at phy address 7.
+As such, let's add the GE PHY node to the SoC dtsi.
 
-There's already support for IPQ5018 in the mdio-ipq4019 driver, so let's
-simply add the mdio nodes for them.
+The LDO controller found in the SoC must be enabled to provide constant
+low voltages to the PHY. The mdio-ipq4019 driver already has support
+for this, so adding the appropriate TCSR register offset.
+
+In addition, the GE PHY outputs both the RX and TX clocks to the GCC
+which gate controls them and routes them back to the PHY itself.
+So let's create two DT fixed clocks and register them in the GCC node.
 
 Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 26 +++++++++++++++++++++++---
+ 1 file changed, 23 insertions(+), 3 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 130360014c5e14c778e348d37e601f60325b0b14..03ebc3e305b267c98a034c41ce47a39269afce75 100644
+index 03ebc3e305b267c98a034c41ce47a39269afce75..d47ad62b01991fafa51e7082bd1fcf6670d9b0bc 100644
 --- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
 +++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -182,6 +182,30 @@ pcie0_phy: phy@86000 {
+@@ -16,6 +16,18 @@ / {
+ 	#size-cells = <2>;
+ 
+ 	clocks {
++		gephy_rx_clk: gephy-rx-clk {
++			compatible = "fixed-clock";
++			clock-frequency = <125000000>;
++			#clock-cells = <0>;
++		};
++
++		gephy_tx_clk: gephy-tx-clk {
++			compatible = "fixed-clock";
++			clock-frequency = <125000000>;
++			#clock-cells = <0>;
++		};
++
+ 		sleep_clk: sleep-clk {
+ 			compatible = "fixed-clock";
+ 			#clock-cells = <0>;
+@@ -184,7 +196,8 @@ pcie0_phy: phy@86000 {
+ 
+ 		mdio0: mdio@88000 {
+ 			compatible = "qcom,ipq5018-mdio";
+-			reg = <0x00088000 0x64>;
++			reg = <0x00088000 0x64>,
++			      <0x019475c4 0x4>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
+ 
+@@ -192,6 +205,13 @@ mdio0: mdio@88000 {
+ 			clock-names = "gcc_mdio_ahb_clk";
+ 
  			status = "disabled";
++
++			ge_phy: ethernet-phy@7 {
++				compatible = "ethernet-phy-id004d.d0c0";
++				reg = <7>;
++
++				resets = <&gcc GCC_GEPHY_MISC_ARES>;
++			};
  		};
  
-+		mdio0: mdio@88000 {
-+			compatible = "qcom,ipq5018-mdio";
-+			reg = <0x00088000 0x64>;
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			clocks = <&gcc GCC_MDIO0_AHB_CLK>;
-+			clock-names = "gcc_mdio_ahb_clk";
-+
-+			status = "disabled";
-+		};
-+
-+		mdio1: mdio@90000 {
-+			compatible = "qcom,ipq5018-mdio";
-+			reg = <0x00090000 0x64>;
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			clocks = <&gcc GCC_MDIO1_AHB_CLK>;
-+			clock-names = "gcc_mdio_ahb_clk";
-+
-+			status = "disabled";
-+		};
-+
- 		tlmm: pinctrl@1000000 {
- 			compatible = "qcom,ipq5018-tlmm";
- 			reg = <0x01000000 0x300000>;
+ 		mdio1: mdio@90000 {
+@@ -232,8 +252,8 @@ gcc: clock-controller@1800000 {
+ 				 <&pcie0_phy>,
+ 				 <&pcie1_phy>,
+ 				 <0>,
+-				 <0>,
+-				 <0>,
++				 <&gephy_rx_clk>,
++				 <&gephy_tx_clk>,
+ 				 <0>,
+ 				 <0>;
+ 			#clock-cells = <1>;
 
 -- 
 2.49.0
