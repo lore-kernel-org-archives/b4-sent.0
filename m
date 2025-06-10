@@ -1,255 +1,87 @@
-From: Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
-Date: Mon, 09 Jun 2025 22:06:22 -0500
-Subject: [PATCH] wifi: ath12k: Avoid CPU busy-wait by handling VDEV_STAT
- and BCN_STAT
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Date: Tue, 10 Jun 2025 06:57:27 +0200
+Subject: [PATCH] t: arm64: qcom: sc8280xp-x13s: amend usb0-sbu-mux enable
+ gpio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250609-ath12k-fw-stats-done-v1-1-2b3624656697@oss.qualcomm.com>
-X-B4-Tracking: v=1; b=H4sIAC2hR2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDMwNL3cSSDEOjbN20ct3iksSSYt2U/LxU3ZTkRIukNHPzRPOURCWg1oK
- i1LTMCrCx0bG1tQAE2LaZZgAAAA==
-X-Change-ID: 20250609-ath12k-fw-stats-done-dca8bf77a7da
-To: Jeff Johnson <jjohnson@kernel.org>, 
- Aditya Kumar Singh <aditya.kumar.singh@oss.qualcomm.com>, 
- Mahendran P <quic_mahep@quicinc.com>, 
- Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, 
- Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
- linux-wireless@vger.kernel.org, ath12k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, 
- Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+Message-Id: <20250610-x13s-usb0-mux-v1-1-683213580ff1@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIADe7R2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDM0MD3QpD42Ld0uIkA93c0gpdC6NEy1QDI0tLi2QLJaCegqLUtMwKsHn
+ RsbW1AOYMTIFfAAAA
+X-Change-ID: 20250610-x13s-usb0-mux-82a9e02998c8
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Johan Hovold <johan+linaro@kernel.org>, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749524783; l=7583;
- i=bjorn.andersson@oss.qualcomm.com; s=20250318; h=from:subject:message-id;
- bh=4ab2pBSyw77wiRpufdGeMp8wcqCAzZr9bUoFTeou1RE=;
- b=XZRCzCTURtCBkIL9HPyWVc/+jQFZXV9YNjI1Sy0fn1SVZHZoKi101zfOA3aHUXaqviDqMX869
- evaNCoyIKhQB4UPZAlRy/WMe/VJor5UgjV6CQicgYpEjbjv4gF/oNlp
-X-Developer-Key: i=bjorn.andersson@oss.qualcomm.com; a=ed25519;
- pk=rD3O9C9Erg+mUPBRBNw91AGaIaDVqquHZbnn6N6xh6s=
-X-Endpoint-Received: by B4 Relay for bjorn.andersson@oss.qualcomm.com/20250318 with auth_id=362
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749531449; l=2326;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=RNPTb2CXyFgoc1osarAq8drSEBAlFXeDnXM/Y1PKLRk=;
+ b=gknX1VlOlFvkMWg89JLOgVMiR9vFSMfZibp4Iavjh2JljKRABcLJz2V3xuhFSwuOBWq9CBxqy
+ TETqA7ieXb0ClC+emCFuLrT7eRV+TVbftN+bulmalAJzAm9pOj2u5iK
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the ath12k driver is built without CONFIG_ATH12K_DEBUG, the
-recently refactored stats code can cause any user space application
-(such at NetworkManager) to consume 100% CPU for 3 seconds, every time
-stats are read.
+The usb0 port didn't switch to dp altmode, investigation into DSDT
+UCS0 device resulted in GPIO 165.
 
-Commit 'b8a0d83fe4c7 ("wifi: ath12k: move firmware stats out of
-debugfs")' moved ath12k_debugfs_fw_stats_request() out of debugfs, by
-merging the additional logic into ath12k_mac_get_fw_stats().
-
-Among the added responsibility of ath12k_mac_get_fw_stats() was the
-busy-wait for `fw_stats_done`.
-
-Signalling of `fw_stats_done` happens when one of the
-WMI_REQUEST_PDEV_STAT, WMI_REQUEST_VDEV_STAT, and WMI_REQUEST_BCN_STAT
-messages are received, but the handling of the latter two commands remained
-in the debugfs code. As `fw_stats_done` isn't signalled, the calling
-processes will spin until the timeout (3 seconds) is reached.
-
-Moving the handling of these two additional responses out of debugfs
-resolves the issue.
-
-Fixes: b8a0d83fe4c7 ("wifi: ath12k: move firmware stats out of debugfs")
-Signed-off-by: Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/net/wireless/ath/ath12k/debugfs.c | 58 --------------------------
- drivers/net/wireless/ath/ath12k/debugfs.h |  7 ----
- drivers/net/wireless/ath/ath12k/wmi.c     | 67 +++++++++++++++++++++++++++----
- 3 files changed, 60 insertions(+), 72 deletions(-)
+This patch amends the enable gpio for the usb0-sbu-mux to the one
+found in the DSDT file for this laptop. UCS0 shows a list of GPIOs in 
+a certain order, and it has 2 buffers with slightly different length. 
+At the place where one would expect the GPIO for the select pin of USB0 
+(by pattern application from USB1) is a deviating value (165 instead of 
+101). This value is the same in both buffers. The GPIO previously used
+is also there, but at the end of the UCS0 buffer structure. Changing it
+resulted in a working dp altmode functionality on usb0.
 
-diff --git a/drivers/net/wireless/ath/ath12k/debugfs.c b/drivers/net/wireless/ath/ath12k/debugfs.c
-index dd624d73b8b2714e77c9d89b5a52f7b3fcb02951..23da93afaa5c25e806c9859dbbdd796afd23d78a 100644
---- a/drivers/net/wireless/ath/ath12k/debugfs.c
-+++ b/drivers/net/wireless/ath/ath12k/debugfs.c
-@@ -1251,64 +1251,6 @@ void ath12k_debugfs_soc_destroy(struct ath12k_base *ab)
- 	 */
- }
+Since the X13s dt looks derived from the SC8280XP CRD, it is likely that
+the change also needs to be done there. 
+
+This debug effort is a result of work / testing of the 4-lanes patch
+[1] on all available devices. Independent of it, it enables dp 
+altmode on usb0, and with it, also 4 lanes, making it even more useful.
+
+[1]: https://lore.kernel.org/all/20250527-topic-4ln_dp_respin-v3-0-f9a0763ec289@oss.qualcomm.com/
+---
+ arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts b/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
+index ae7a275fd2236a2c71808b003fbcb66687e6e45e..abb742337359e88b7db62a3ea2d7cf3f8ab71c53 100644
+--- a/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
++++ b/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
+@@ -366,7 +366,7 @@ map1 {
+ 	usb0-sbu-mux {
+ 		compatible = "pericom,pi3usb102", "gpio-sbu-mux";
  
--void
--ath12k_debugfs_fw_stats_process(struct ath12k *ar,
--				struct ath12k_fw_stats *stats)
--{
--	struct ath12k_base *ab = ar->ab;
--	struct ath12k_pdev *pdev;
--	bool is_end;
--	static unsigned int num_vdev, num_bcn;
--	size_t total_vdevs_started = 0;
--	int i;
--
--	if (stats->stats_id == WMI_REQUEST_VDEV_STAT) {
--		if (list_empty(&stats->vdevs)) {
--			ath12k_warn(ab, "empty vdev stats");
--			return;
--		}
--		/* FW sends all the active VDEV stats irrespective of PDEV,
--		 * hence limit until the count of all VDEVs started
--		 */
--		rcu_read_lock();
--		for (i = 0; i < ab->num_radios; i++) {
--			pdev = rcu_dereference(ab->pdevs_active[i]);
--			if (pdev && pdev->ar)
--				total_vdevs_started += pdev->ar->num_started_vdevs;
--		}
--		rcu_read_unlock();
--
--		is_end = ((++num_vdev) == total_vdevs_started);
--
--		list_splice_tail_init(&stats->vdevs,
--				      &ar->fw_stats.vdevs);
--
--		if (is_end) {
--			ar->fw_stats.fw_stats_done = true;
--			num_vdev = 0;
--		}
--		return;
--	}
--	if (stats->stats_id == WMI_REQUEST_BCN_STAT) {
--		if (list_empty(&stats->bcn)) {
--			ath12k_warn(ab, "empty beacon stats");
--			return;
--		}
--		/* Mark end until we reached the count of all started VDEVs
--		 * within the PDEV
--		 */
--		is_end = ((++num_bcn) == ar->num_started_vdevs);
--
--		list_splice_tail_init(&stats->bcn,
--				      &ar->fw_stats.bcn);
--
--		if (is_end) {
--			ar->fw_stats.fw_stats_done = true;
--			num_bcn = 0;
--		}
--	}
--}
--
- static int ath12k_open_vdev_stats(struct inode *inode, struct file *file)
- {
- 	struct ath12k *ar = inode->i_private;
-diff --git a/drivers/net/wireless/ath/ath12k/debugfs.h b/drivers/net/wireless/ath/ath12k/debugfs.h
-index ebef7dace3448e4bdf2d6cb155d089267315172c..21641a8a03460c6cc1b34929a353e5605bb834ce 100644
---- a/drivers/net/wireless/ath/ath12k/debugfs.h
-+++ b/drivers/net/wireless/ath/ath12k/debugfs.h
-@@ -12,8 +12,6 @@ void ath12k_debugfs_soc_create(struct ath12k_base *ab);
- void ath12k_debugfs_soc_destroy(struct ath12k_base *ab);
- void ath12k_debugfs_register(struct ath12k *ar);
- void ath12k_debugfs_unregister(struct ath12k *ar);
--void ath12k_debugfs_fw_stats_process(struct ath12k *ar,
--				     struct ath12k_fw_stats *stats);
- void ath12k_debugfs_op_vif_add(struct ieee80211_hw *hw,
- 			       struct ieee80211_vif *vif);
- void ath12k_debugfs_pdev_create(struct ath12k_base *ab);
-@@ -126,11 +124,6 @@ static inline void ath12k_debugfs_unregister(struct ath12k *ar)
- {
- }
+-		enable-gpios = <&tlmm 101 GPIO_ACTIVE_LOW>;
++		enable-gpios = <&tlmm 165 GPIO_ACTIVE_LOW>;
+ 		select-gpios = <&tlmm 164 GPIO_ACTIVE_HIGH>;
  
--static inline void ath12k_debugfs_fw_stats_process(struct ath12k *ar,
--						   struct ath12k_fw_stats *stats)
--{
--}
--
- static inline bool ath12k_debugfs_is_extd_rx_stats_enabled(struct ath12k *ar)
- {
- 	return false;
-diff --git a/drivers/net/wireless/ath/ath12k/wmi.c b/drivers/net/wireless/ath/ath12k/wmi.c
-index 60e2444fe08cefa39ae218d07eb9736d2a0c982b..2d2444417e2b2d9281754d113f2b073034e27739 100644
---- a/drivers/net/wireless/ath/ath12k/wmi.c
-+++ b/drivers/net/wireless/ath/ath12k/wmi.c
-@@ -7626,6 +7626,63 @@ static int ath12k_wmi_pull_fw_stats(struct ath12k_base *ab, struct sk_buff *skb,
- 				   &parse);
- }
+ 		pinctrl-names = "default";
+@@ -1781,7 +1781,7 @@ tx-pins {
  
-+static void ath12k_wmi_fw_stats_process(struct ath12k *ar,
-+					struct ath12k_fw_stats *stats)
-+{
-+	struct ath12k_base *ab = ar->ab;
-+	struct ath12k_pdev *pdev;
-+	bool is_end;
-+	static unsigned int num_vdev, num_bcn;
-+	size_t total_vdevs_started = 0;
-+	int i;
-+
-+	if (stats->stats_id == WMI_REQUEST_VDEV_STAT) {
-+		if (list_empty(&stats->vdevs)) {
-+			ath12k_warn(ab, "empty vdev stats");
-+			return;
-+		}
-+		/* FW sends all the active VDEV stats irrespective of PDEV,
-+		 * hence limit until the count of all VDEVs started
-+		 */
-+		rcu_read_lock();
-+		for (i = 0; i < ab->num_radios; i++) {
-+			pdev = rcu_dereference(ab->pdevs_active[i]);
-+			if (pdev && pdev->ar)
-+				total_vdevs_started += pdev->ar->num_started_vdevs;
-+		}
-+		rcu_read_unlock();
-+
-+		is_end = ((++num_vdev) == total_vdevs_started);
-+
-+		list_splice_tail_init(&stats->vdevs,
-+				      &ar->fw_stats.vdevs);
-+
-+		if (is_end) {
-+			ar->fw_stats.fw_stats_done = true;
-+			num_vdev = 0;
-+		}
-+		return;
-+	}
-+	if (stats->stats_id == WMI_REQUEST_BCN_STAT) {
-+		if (list_empty(&stats->bcn)) {
-+			ath12k_warn(ab, "empty beacon stats");
-+			return;
-+		}
-+		/* Mark end until we reached the count of all started VDEVs
-+		 * within the PDEV
-+		 */
-+		is_end = ((++num_bcn) == ar->num_started_vdevs);
-+
-+		list_splice_tail_init(&stats->bcn,
-+				      &ar->fw_stats.bcn);
-+
-+		if (is_end) {
-+			ar->fw_stats.fw_stats_done = true;
-+			num_bcn = 0;
-+		}
-+	}
-+}
-+
- static void ath12k_update_stats_event(struct ath12k_base *ab, struct sk_buff *skb)
- {
- 	struct ath12k_fw_stats stats = {};
-@@ -7655,19 +7712,15 @@ static void ath12k_update_stats_event(struct ath12k_base *ab, struct sk_buff *sk
- 
- 	spin_lock_bh(&ar->data_lock);
- 
--	/* WMI_REQUEST_PDEV_STAT can be requested via .get_txpower mac ops or via
--	 * debugfs fw stats. Therefore, processing it separately.
--	 */
-+	/* Handle WMI_REQUEST_PDEV_STAT status update */
- 	if (stats.stats_id == WMI_REQUEST_PDEV_STAT) {
- 		list_splice_tail_init(&stats.pdevs, &ar->fw_stats.pdevs);
- 		ar->fw_stats.fw_stats_done = true;
- 		goto complete;
- 	}
- 
--	/* WMI_REQUEST_VDEV_STAT and WMI_REQUEST_BCN_STAT are currently requested only
--	 * via debugfs fw stats. Hence, processing these in debugfs context.
--	 */
--	ath12k_debugfs_fw_stats_process(ar, &stats);
-+	/* Handle WMI_REQUEST_VDEV_STAT and WMI_REQUEST_BCN_STAT updates. */
-+	ath12k_wmi_fw_stats_process(ar, &stats);
- 
- complete:
- 	complete(&ar->fw_stats_complete);
+ 	usb0_sbu_default: usb0-sbu-state {
+ 		oe-n-pins {
+-			pins = "gpio101";
++			pins = "gpio165";
+ 			function = "gpio";
+ 			bias-disable;
+ 			drive-strength = <16>;
 
 ---
-base-commit: 4f27f06ec12190c7c62c722e99ab6243dea81a94
-change-id: 20250609-ath12k-fw-stats-done-dca8bf77a7da
+base-commit: 475c850a7fdd0915b856173186d5922899d65686
+change-id: 20250610-x13s-usb0-mux-82a9e02998c8
 
 Best regards,
 -- 
-Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
