@@ -1,10 +1,11 @@
 From: Sven Peter <sven@kernel.org>
-Date: Tue, 10 Jun 2025 15:29:42 +0000
-Subject: [PATCH v7 01/10] dt-bindings: gpio: Add Apple Mac SMC GPIO block
+Date: Tue, 10 Jun 2025 15:29:43 +0000
+Subject: [PATCH v7 02/10] dt-bindings: power: reboot: Add Apple Mac SMC
+ Reboot Controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250610-smc-6-15-v7-1-556cafd771d3@kernel.org>
+Message-Id: <20250610-smc-6-15-v7-2-556cafd771d3@kernel.org>
 References: <20250610-smc-6-15-v7-0-556cafd771d3@kernel.org>
 In-Reply-To: <20250610-smc-6-15-v7-0-556cafd771d3@kernel.org>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
@@ -19,79 +20,88 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2261; i=sven@kernel.org;
- h=from:subject:message-id; bh=Dle4XqGGzX04NP6gmHjHUQRP+Y2skcv80CBrmz9twWY=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4aHf2FxrPtsXTfRtF9zLz97Kjp3MbOF5JIFWtfZo/0r1
- L9IdUV3lLIwiHEwyIopsmzfb2/65OEbwaWbLr2HmcPKBDKEgYtTACaSMI2R4VW24cJNwnt/hBxU
- aeIp8jb7vXZzVKTTV4Y61ymzzMU+eDAytFS+z+e/J7JwtaxUi5STrOVchvxP+/K6jthZHfy0rlW
- TEQA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2766; i=sven@kernel.org;
+ h=from:subject:message-id; bh=QLsFhzpHRYmA1ajW0KypVDBYFMUVDXC7AICzYhpICrc=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ4aHf9Hn32suSFhNTdyT4XxIdtv/vq9WUZ8t3ito7c3md
+ lU8sWtRRykLgxgHg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAiS1YyMrxafbupQ+HVTJml
+ H3eWNJ/Z/VrT3bPr9/6dTx+WvvJMkMpnZFiwed2Gbx5mE+9u3arxZd6EnX5xrZFzvSarHTncdlh
+ ymhIfAA==
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
+On Apple Silicon machines a clean shutdown or reboot requires
+talking to SMC and writing to NVMEM cells. Add a binding for
+this MFD sub-device.
 
-Add the DT binding for the Apple Mac System Management Controller GPIOs.
-
-Signed-off-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
-Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
 Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
 Reviewed-by: Neal Gompa <neal@gompa.dev>
 Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- .../devicetree/bindings/gpio/apple,smc-gpio.yaml   | 29 ++++++++++++++++++++++
+ .../bindings/power/reset/apple,smc-reboot.yaml     | 40 ++++++++++++++++++++++
  MAINTAINERS                                        |  1 +
- 2 files changed, 30 insertions(+)
+ 2 files changed, 41 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/gpio/apple,smc-gpio.yaml b/Documentation/devicetree/bindings/gpio/apple,smc-gpio.yaml
+diff --git a/Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml b/Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml
 new file mode 100644
-index 0000000000000000000000000000000000000000..42b1bc0a10c97a5586c435413b3c3ef1bb9fc797
+index 0000000000000000000000000000000000000000..ce5ed88493cdb60bfc8b444cd9e1d36714890ffe
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/gpio/apple,smc-gpio.yaml
-@@ -0,0 +1,29 @@
++++ b/Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml
+@@ -0,0 +1,40 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/gpio/apple,smc-gpio.yaml#
++$id: http://devicetree.org/schemas/power/reset/apple,smc-reboot.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Apple Mac System Management Controller GPIO
++title: Apple SMC Reboot Controller
++
++description:
++  The Apple System Management Controller (SMC) provides reboot functionality
++  on Apple Silicon SoCs. It uses NVMEM cells to store and track various
++  system state information related to boot, shutdown, and panic events.
 +
 +maintainers:
 +  - Sven Peter <sven@kernel.org>
 +
-+description:
-+  Apple Mac System Management Controller GPIO block.
-+
 +properties:
 +  compatible:
-+    const: apple,smc-gpio
++    const: apple,smc-reboot
 +
-+  gpio-controller: true
++  nvmem-cells:
++    items:
++      - description: Flag indicating shutdown (as opposed to reboot)
++      - description: Stage at which the boot process stopped (0x30 for normal boot)
++      - description: Counter for boot errors
++      - description: Counter for system panics
 +
-+  '#gpio-cells':
-+    const: 2
++  nvmem-cell-names:
++    items:
++      - const: shutdown_flag
++      - const: boot_stage
++      - const: boot_error_count
++      - const: panic_count
 +
 +required:
 +  - compatible
-+  - gpio-controller
-+  - '#gpio-cells'
++  - nvmem-cells
++  - nvmem-cell-names
 +
 +additionalProperties: false
 diff --git a/MAINTAINERS b/MAINTAINERS
-index a92290fffa163f9fe8fe3f04bf66426f9a894409..68097b1a44251b076bfd55cc07cffa5d0e3e83c5 100644
+index 68097b1a44251b076bfd55cc07cffa5d0e3e83c5..1dd004f7dff669e3a3609e5f1702887129d8ff35 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -2331,6 +2331,7 @@ F:	Documentation/devicetree/bindings/arm/apple/*
- F:	Documentation/devicetree/bindings/clock/apple,nco.yaml
- F:	Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
- F:	Documentation/devicetree/bindings/dma/apple,admac.yaml
-+F:	Documentation/devicetree/bindings/gpio/apple,smc-gpio.yaml
- F:	Documentation/devicetree/bindings/i2c/apple,i2c.yaml
- F:	Documentation/devicetree/bindings/input/touchscreen/apple,z2-multitouch.yaml
- F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
+@@ -2346,6 +2346,7 @@ F:	Documentation/devicetree/bindings/nvmem/apple,spmi-nvmem.yaml
+ F:	Documentation/devicetree/bindings/pci/apple,pcie.yaml
+ F:	Documentation/devicetree/bindings/pinctrl/apple,pinctrl.yaml
+ F:	Documentation/devicetree/bindings/power/apple*
++F:	Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml
+ F:	Documentation/devicetree/bindings/pwm/apple,s5l-fpwm.yaml
+ F:	Documentation/devicetree/bindings/spi/apple,spi.yaml
+ F:	Documentation/devicetree/bindings/spmi/apple,spmi.yaml
 
 -- 
 2.34.1
