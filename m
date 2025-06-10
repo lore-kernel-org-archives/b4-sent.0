@@ -1,92 +1,220 @@
-From: Sven Peter <sven@kernel.org>
-Date: Tue, 10 Jun 2025 15:29:51 +0000
-Subject: [PATCH v7 10/10] arm64: dts: apple: t600x: Add SMC node
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Date: Tue, 10 Jun 2025 18:50:57 +0200
+Subject: [PATCH RESEND] arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: add
+ Bluetooth support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250610-smc-6-15-v7-10-556cafd771d3@kernel.org>
-References: <20250610-smc-6-15-v7-0-556cafd771d3@kernel.org>
-In-Reply-To: <20250610-smc-6-15-v7-0-556cafd771d3@kernel.org>
-To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
- Hector Martin <marcan@marcan.st>, Linus Walleij <linus.walleij@linaro.org>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20250610-slim7x-bt-v1-1-49656d165695@oldschoolsolutions.biz>
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Sebastian Reichel <sre@kernel.org>, 
- Lee Jones <lee@kernel.org>, Marc Zyngier <maz@kernel.org>, 
- "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1916; i=sven@kernel.org;
- h=from:subject:message-id; bh=d8mVq62H2zbw5gGICFsvhQIy6YecpVCZ77lCLDSqOcw=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4aHf7Xmm8vulmtud8lsO1CmsHu10GnvyYerXR5GJgaz7
- tr5IjWro5SFQYyDQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjCRRGVGhh8v3rkm6f5/JP3w
- wBO+tq9hKctyLe2M47JVmIxSbrccMmRkWHBy5+cCl4eblr1InP2f7ajs802XfnbeubX0wrV9xTL
- bZ/AAAA==
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749574261; l=5030;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=0Fmazzk3EbSz1yHBEpZ7VAUobYqkmhK7AiK9drzU7dY=;
+ b=BYeLqc+cBe5CEQafJBeb9qOyJu80AK15xvVyoUmhrrUWvuM25JPhgEsgdqdX06P6MpbjuSMwv
+ DWY6VGLPCdTBIov0r8rzj3h+6kluv+AWhcv8hlJ62KkkonzyVBfhsp3
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+To enable Bluetooth pwrseq appears to be required for the WCN7850.
+Add the nodes from QCP.
+Add uart14 for the BT interface.
 
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
-Reviewed-by: Neal Gompa <neal@gompa.dev>
-Signed-off-by: Sven Peter <sven@kernel.org>
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- arch/arm64/boot/dts/apple/t600x-die0.dtsi | 35 +++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+This patch adds the Bluetooth support for the WCN7850 card on this laptop.
+Since WCN7850 is supposed to need pwrseq, also added this from the QCP.
 
-diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-index 110bc6719512e334e04b496fb157cb4368679957..9eb9b0656bf9c570983c90e360795b7a7c71cf90 100644
---- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-@@ -24,6 +24,41 @@ aic: interrupt-controller@28e100000 {
- 		power-domains = <&ps_aic>;
+This is also part of my tree [1] for the Yoga Slim 7X, although with an older
+definition for the pwrseq and regulators.
+
+[1] https://github.com/jglathe/linux_ms_dev_kit/blob/jg/ubuntu-qcom-x1e-6.15.0-rc3-jg-2/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
+---
+ .../boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts  | 136 +++++++++++++++++++++
+ 1 file changed, 136 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
+index 445d97d67d325853b7dcd2060523e7469ed4e6ea..a91d63508f65efea3786686f0f86a89a4355e0f1 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
+@@ -18,6 +18,7 @@ / {
+ 
+ 	aliases {
+ 		serial0 = &uart21;
++		serial1 = &uart14;
  	};
  
-+	smc: smc@290400000 {
-+		compatible = "apple,t6000-smc", "apple,smc";
-+		reg = <0x2 0x90400000 0x0 0x4000>,
-+			<0x2 0x91e00000 0x0 0x100000>;
-+		reg-names = "smc", "sram";
-+		mboxes = <&smc_mbox>;
+ 	chosen {
+@@ -236,6 +237,101 @@ vph_pwr: regulator-vph-pwr {
+ 		regulator-always-on;
+ 		regulator-boot-on;
+ 	};
 +
-+		smc_gpio: gpio {
-+			compatible = "apple,smc-gpio";
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+		};
++	vreg_wcn_0p95: regulator-wcn-0p95 {
++		compatible = "regulator-fixed";
 +
-+		smc_reboot: reboot {
-+			compatible = "apple,smc-reboot";
-+			nvmem-cells = <&shutdown_flag>, <&boot_stage>,
-+				<&boot_error_count>, <&panic_count>;
-+			nvmem-cell-names = "shutdown_flag", "boot_stage",
-+				"boot_error_count", "panic_count";
-+		};
++		regulator-name = "VREG_WCN_0P95";
++		regulator-min-microvolt = <950000>;
++		regulator-max-microvolt = <950000>;
++
++		vin-supply = <&vreg_wcn_3p3>;
 +	};
 +
-+	smc_mbox: mbox@290408000 {
-+		compatible = "apple,t6000-asc-mailbox", "apple,asc-mailbox-v4";
-+		reg = <0x2 0x90408000 0x0 0x4000>;
-+		interrupt-parent = <&aic>;
-+		interrupts = <AIC_IRQ 0 754 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 755 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 756 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 757 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "send-empty", "send-not-empty",
-+			"recv-empty", "recv-not-empty";
-+		#mbox-cells = <0>;
++	vreg_wcn_1p9: regulator-wcn-1p9 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_WCN_1P9";
++		regulator-min-microvolt = <1900000>;
++		regulator-max-microvolt = <1900000>;
++
++		vin-supply = <&vreg_wcn_3p3>;
 +	};
 +
- 	pinctrl_smc: pinctrl@290820000 {
- 		compatible = "apple,t6000-pinctrl", "apple,pinctrl";
- 		reg = <0x2 0x90820000 0x0 0x4000>;
++	vreg_wcn_3p3: regulator-wcn-3p3 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_WCN_3P3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&tlmm 214 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&wcn_sw_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	wcn7850-pmu {
++		compatible = "qcom,wcn7850-pmu";
++
++		vdd-supply = <&vreg_wcn_0p95>;
++		vddio-supply = <&vreg_l15b_1p8>;
++		vddaon-supply = <&vreg_wcn_0p95>;
++		vdddig-supply = <&vreg_wcn_0p95>;
++		vddrfa1p2-supply = <&vreg_wcn_1p9>;
++		vddrfa1p8-supply = <&vreg_wcn_1p9>;
++
++		wlan-enable-gpios = <&tlmm 117 GPIO_ACTIVE_HIGH>;
++		bt-enable-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
++
++		pinctrl-0 = <&wcn_wlan_bt_en>;
++		pinctrl-names = "default";
++
++		regulators {
++			vreg_pmu_rfa_cmn: ldo0 {
++				regulator-name = "vreg_pmu_rfa_cmn";
++			};
++
++			vreg_pmu_aon_0p59: ldo1 {
++				regulator-name = "vreg_pmu_aon_0p59";
++			};
++
++			vreg_pmu_wlcx_0p8: ldo2 {
++				regulator-name = "vreg_pmu_wlcx_0p8";
++			};
++
++			vreg_pmu_wlmx_0p85: ldo3 {
++				regulator-name = "vreg_pmu_wlmx_0p85";
++			};
++
++			vreg_pmu_btcmx_0p85: ldo4 {
++				regulator-name = "vreg_pmu_btcmx_0p85";
++			};
++
++			vreg_pmu_rfa_0p8: ldo5 {
++				regulator-name = "vreg_pmu_rfa_0p8";
++			};
++
++			vreg_pmu_rfa_1p2: ldo6 {
++				regulator-name = "vreg_pmu_rfa_1p2";
++			};
++
++			vreg_pmu_rfa_1p8: ldo7 {
++				regulator-name = "vreg_pmu_rfa_1p8";
++			};
++
++			vreg_pmu_pcie_0p9: ldo8 {
++				regulator-name = "vreg_pmu_pcie_0p9";
++			};
++
++			vreg_pmu_pcie_1p8: ldo9 {
++				regulator-name = "vreg_pmu_pcie_1p8";
++			};
++		};
++	};
+ };
+ 
+ &apps_rsc {
+@@ -679,6 +775,16 @@ &pcie4_port0 {
+ 	wifi@0 {
+ 		compatible = "pci17cb,1107";
+ 		reg = <0x10000 0x0 0x0 0x0 0x0>;
++
++		vddaon-supply = <&vreg_pmu_aon_0p59>;
++		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
++		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
++		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
++		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
++		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
++		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
++		vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
++		vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
+ 	};
+ };
+ 
+@@ -940,6 +1046,36 @@ reset-n-pins {
+ 		};
+ 	};
+ 
++	wcn_sw_en: wcn-sw-en-state {
++		pins = "gpio214";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	wcn_wlan_bt_en: wcn-wlan-bt-en-state {
++		pins = "gpio116", "gpio117";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++};
++
++&uart14 {
++	status = "okay";
++
++	bluetooth {
++		compatible = "qcom,wcn7850-bt";
++		max-speed = <3200000>;
++
++		vddaon-supply = <&vreg_pmu_aon_0p59>;
++		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
++		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
++		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
++		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
++		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
++		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
++	};
+ };
+ 
+ &uart21 {
 
+---
+base-commit: 393d0c54cae31317deaa9043320c5fd9454deabc
+change-id: 20250426-slim7x-bt-6d01127291d1
+
+Best regards,
 -- 
-2.34.1
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
