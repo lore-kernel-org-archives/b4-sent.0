@@ -1,79 +1,63 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Tue, 10 Jun 2025 19:25:41 +0200
-Subject: [PATCH v3 3/3] arm64: dts: qcom: x1e80100-hp-x14: amend order of
- nodes
+From: Sven Peter <sven@kernel.org>
+Date: Tue, 10 Jun 2025 19:19:24 +0000
+Subject: [PATCH] arm64: dts: apple: Drop {address,size}-cells from SPI NOR
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250610-hp-x14-v3-3-35d5b50efae0@oldschoolsolutions.biz>
-References: <20250610-hp-x14-v3-0-35d5b50efae0@oldschoolsolutions.biz>
-In-Reply-To: <20250610-hp-x14-v3-0-35d5b50efae0@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20250610-apple-dts-warnings-v1-1-70b53e8108a0@kernel.org>
+X-B4-Tracking: v=1; b=H4sIADuFSGgC/x3MQQ5AMBBA0avIrE1SqoiriEXLYBKppiNIxN01l
+ m/x/wNCkUmgyx6IdLLw7hOKPINxtX4h5CkZSlUaZbRCG8JGOB2Cl42e/SLYOqcbrevGmQpSGCL
+ NfP/TfnjfD0gomXdkAAAA
+X-Change-ID: 20250530-apple-dts-warnings-8bb373367b54
+To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Neal Gompa <neal@gompa.dev>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749576339; l=1222;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=dzrW5h8pJ8/2hv2ut9pqkEtS5SFQ8Go1URDVD/Cy3k8=;
- b=hEBRh0gq01ab5O2lESzPy6g7gHcF4XGYGcJh8IpddSjdJZM5FLzbokfqvJjH3fO95iyFBOY0d
- WNjy823F8qOD1SwCWoQKHLjL6T/goaLa37x2N+8B7Y0CGEmBYI3A/Ml
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1243; i=sven@kernel.org;
+ h=from:subject:message-id; bh=I7LIFG9CUURK/xCFq/gHrynuB0+CqswX9qvQ7HEglvA=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ4ZHq73vyvzpddl7Td89/J323EP/7satR+MffagOLGIOf
+ jJHK21xRykLgxgHg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAiWVGMDGe4rxsafox+V3e5
+ TNBZWf31hBIWH7fSc+c/vTaed+N7yW6GX0znghs1Xjwy+cx0J03vVqF8p0DsrLf1FQnLPJ3fXuC
+ fwAEA
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-amend the order of pmk8550_* nodes afte pmc8380_*
+Fix the following warning by dropping #{address,size}-cells from the SPI
+NOR node which only has a single child node without reg property:
 
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+spi1-nvram.dtsi:19.10-38.4: Warning (avoid_unnecessary_addr_size): /soc/spi@235104000/flash@0: unnecessary #address-cells/#size-cells without "ranges", "dma-ranges" or child "reg" property
+
+Fixes: 3febe9de5ca5 ("arm64: dts: apple: Add SPI NOR nvram partition to all devices")
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ arch/arm64/boot/dts/apple/spi1-nvram.dtsi | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts b/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
-index 3071ed8e192616be797d30d72c21d56b72afc608..8d2a9b7f4730783bbaa81e488a0e99cc195a195f 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dts
-@@ -1195,17 +1195,6 @@ edp_bl_reg_en: edp-bl-reg-en-state {
+diff --git a/arch/arm64/boot/dts/apple/spi1-nvram.dtsi b/arch/arm64/boot/dts/apple/spi1-nvram.dtsi
+index 3df2fd3993b52884d7c00b65099c88d830a7a4c3..9740fbf200f0bcd0e7d1b81885fe9d9ff8f04fdc 100644
+--- a/arch/arm64/boot/dts/apple/spi1-nvram.dtsi
++++ b/arch/arm64/boot/dts/apple/spi1-nvram.dtsi
+@@ -20,8 +20,6 @@ flash@0 {
+ 		compatible = "jedec,spi-nor";
+ 		reg = <0x0>;
+ 		spi-max-frequency = <25000000>;
+-		#address-cells = <1>;
+-		#size-cells = <1>;
  
- };
- 
--&pmk8550_gpios {
--	edp_bl_pwm: edp-bl-pwm-state {
--		pins = "gpio5";
--		function = "func3";
--	};
--};
--
--&pmk8550_pwm {
--	status = "okay";
--};
--
- &pmc8380_5_gpios {
- 	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
- 		pins = "gpio8";
-@@ -1217,6 +1206,17 @@ usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
- 	};
- };
- 
-+&pmk8550_gpios {
-+	edp_bl_pwm: edp-bl-pwm-state {
-+		pins = "gpio5";
-+		function = "func3";
-+	};
-+};
-+
-+&pmk8550_pwm {
-+	status = "okay";
-+};
-+
- &qupv3_0 {
- 	status = "okay";
- };
+ 		partitions {
+ 			compatible = "fixed-partitions";
 
+---
+base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
+change-id: 20250530-apple-dts-warnings-8bb373367b54
+
+Best regards,
 -- 
-2.48.1
+Sven Peter <sven@kernel.org>
 
