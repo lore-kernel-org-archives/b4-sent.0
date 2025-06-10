@@ -1,58 +1,255 @@
-From: Daniel Palmer <daniel.palmer@sony.com>
-Date: Tue, 10 Jun 2025 08:37:38 +0900
-Subject: [PATCH] doc: Remove misleading reference to brd in dax.rst
+From: Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+Date: Mon, 09 Jun 2025 22:06:22 -0500
+Subject: [PATCH] wifi: ath12k: Avoid CPU busy-wait by handling VDEV_STAT
+ and BCN_STAT
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250610-fixdasrstbrd20250610-v1-1-4abe3b7f381a@sony.com>
-X-B4-Tracking: v=1; b=H4sIAEFwR2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDM0MD3bTMipTE4qLikqSiFLiggblJikVqiqmZkXGKElBrQVEqUB3Y2Oj
- Y2loAn/ifM2YAAAA=
-To: Jonathan Corbet <corbet@lwn.net>, 
- Dan Williams <dan.j.williams@intel.com>
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Daniel Palmer <daniel.palmer@sony.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749512271; l=1013;
- i=daniel.palmer@sony.com; s=20250610; h=from:subject:message-id;
- bh=bneb9TzHhD7XIfcboMGGWopLiATbX15rmlqAcruoZnw=;
- b=LmEVIPJtVyUCpQuvYeq1sHgZr+XqcOro4z/qlbTF3O5uDLfJPq2SbLBt4AoXhKgV3OOt8qI2N
- 5NMPTIdcnuXBPOlk9JMHouKtL5vWPg8623aHGOV9ETf0yTI/N042nIo
-X-Developer-Key: i=daniel.palmer@sony.com; a=ed25519;
- pk=dbwvNAF3zvjUZOTEPBh6uYWrBnOi7OPuXkoDcmmS8aY=
-X-Endpoint-Received: by B4 Relay for daniel.palmer@sony.com/20250610 with auth_id=430
+Message-Id: <20250609-ath12k-fw-stats-done-v1-1-2b3624656697@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAC2hR2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDMwNL3cSSDEOjbN20ct3iksSSYt2U/LxU3ZTkRIukNHPzRPOURCWg1oK
+ i1LTMCrCx0bG1tQAE2LaZZgAAAA==
+X-Change-ID: 20250609-ath12k-fw-stats-done-dca8bf77a7da
+To: Jeff Johnson <jjohnson@kernel.org>, 
+ Aditya Kumar Singh <aditya.kumar.singh@oss.qualcomm.com>, 
+ Mahendran P <quic_mahep@quicinc.com>, 
+ Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org, 
+ Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
+ linux-wireless@vger.kernel.org, ath12k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749524783; l=7583;
+ i=bjorn.andersson@oss.qualcomm.com; s=20250318; h=from:subject:message-id;
+ bh=4ab2pBSyw77wiRpufdGeMp8wcqCAzZr9bUoFTeou1RE=;
+ b=XZRCzCTURtCBkIL9HPyWVc/+jQFZXV9YNjI1Sy0fn1SVZHZoKi101zfOA3aHUXaqviDqMX869
+ evaNCoyIKhQB4UPZAlRy/WMe/VJor5UgjV6CQicgYpEjbjv4gF/oNlp
+X-Developer-Key: i=bjorn.andersson@oss.qualcomm.com; a=ed25519;
+ pk=rD3O9C9Erg+mUPBRBNw91AGaIaDVqquHZbnn6N6xh6s=
+X-Endpoint-Received: by B4 Relay for bjorn.andersson@oss.qualcomm.com/20250318 with auth_id=362
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-brd hasn't supported DAX for a long time but dax.rst
-still suggests it as an example of how to write a DAX
-supporting block driver.
+When the ath12k driver is built without CONFIG_ATH12K_DEBUG, the
+recently refactored stats code can cause any user space application
+(such at NetworkManager) to consume 100% CPU for 3 seconds, every time
+stats are read.
 
-Remove the reference, confuse less people.
+Commit 'b8a0d83fe4c7 ("wifi: ath12k: move firmware stats out of
+debugfs")' moved ath12k_debugfs_fw_stats_request() out of debugfs, by
+merging the additional logic into ath12k_mac_get_fw_stats().
 
-Fixes: 7a862fbbdec6 ("brd: remove dax support")
-Signed-off-by: Daniel Palmer <daniel.palmer@sony.com>
+Among the added responsibility of ath12k_mac_get_fw_stats() was the
+busy-wait for `fw_stats_done`.
+
+Signalling of `fw_stats_done` happens when one of the
+WMI_REQUEST_PDEV_STAT, WMI_REQUEST_VDEV_STAT, and WMI_REQUEST_BCN_STAT
+messages are received, but the handling of the latter two commands remained
+in the debugfs code. As `fw_stats_done` isn't signalled, the calling
+processes will spin until the timeout (3 seconds) is reached.
+
+Moving the handling of these two additional responses out of debugfs
+resolves the issue.
+
+Fixes: b8a0d83fe4c7 ("wifi: ath12k: move firmware stats out of debugfs")
+Signed-off-by: Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
 ---
- Documentation/filesystems/dax.rst | 1 -
- 1 file changed, 1 deletion(-)
+ drivers/net/wireless/ath/ath12k/debugfs.c | 58 --------------------------
+ drivers/net/wireless/ath/ath12k/debugfs.h |  7 ----
+ drivers/net/wireless/ath/ath12k/wmi.c     | 67 +++++++++++++++++++++++++++----
+ 3 files changed, 60 insertions(+), 72 deletions(-)
 
-diff --git a/Documentation/filesystems/dax.rst b/Documentation/filesystems/dax.rst
-index 08dd5e254cc5..5b283f3d1eb1 100644
---- a/Documentation/filesystems/dax.rst
-+++ b/Documentation/filesystems/dax.rst
-@@ -206,7 +206,6 @@ stall the CPU for an extended period, you should also not attempt to
- implement direct_access.
+diff --git a/drivers/net/wireless/ath/ath12k/debugfs.c b/drivers/net/wireless/ath/ath12k/debugfs.c
+index dd624d73b8b2714e77c9d89b5a52f7b3fcb02951..23da93afaa5c25e806c9859dbbdd796afd23d78a 100644
+--- a/drivers/net/wireless/ath/ath12k/debugfs.c
++++ b/drivers/net/wireless/ath/ath12k/debugfs.c
+@@ -1251,64 +1251,6 @@ void ath12k_debugfs_soc_destroy(struct ath12k_base *ab)
+ 	 */
+ }
  
- These block devices may be used for inspiration:
--- brd: RAM backed block device driver
- - pmem: NVDIMM persistent memory driver
+-void
+-ath12k_debugfs_fw_stats_process(struct ath12k *ar,
+-				struct ath12k_fw_stats *stats)
+-{
+-	struct ath12k_base *ab = ar->ab;
+-	struct ath12k_pdev *pdev;
+-	bool is_end;
+-	static unsigned int num_vdev, num_bcn;
+-	size_t total_vdevs_started = 0;
+-	int i;
+-
+-	if (stats->stats_id == WMI_REQUEST_VDEV_STAT) {
+-		if (list_empty(&stats->vdevs)) {
+-			ath12k_warn(ab, "empty vdev stats");
+-			return;
+-		}
+-		/* FW sends all the active VDEV stats irrespective of PDEV,
+-		 * hence limit until the count of all VDEVs started
+-		 */
+-		rcu_read_lock();
+-		for (i = 0; i < ab->num_radios; i++) {
+-			pdev = rcu_dereference(ab->pdevs_active[i]);
+-			if (pdev && pdev->ar)
+-				total_vdevs_started += pdev->ar->num_started_vdevs;
+-		}
+-		rcu_read_unlock();
+-
+-		is_end = ((++num_vdev) == total_vdevs_started);
+-
+-		list_splice_tail_init(&stats->vdevs,
+-				      &ar->fw_stats.vdevs);
+-
+-		if (is_end) {
+-			ar->fw_stats.fw_stats_done = true;
+-			num_vdev = 0;
+-		}
+-		return;
+-	}
+-	if (stats->stats_id == WMI_REQUEST_BCN_STAT) {
+-		if (list_empty(&stats->bcn)) {
+-			ath12k_warn(ab, "empty beacon stats");
+-			return;
+-		}
+-		/* Mark end until we reached the count of all started VDEVs
+-		 * within the PDEV
+-		 */
+-		is_end = ((++num_bcn) == ar->num_started_vdevs);
+-
+-		list_splice_tail_init(&stats->bcn,
+-				      &ar->fw_stats.bcn);
+-
+-		if (is_end) {
+-			ar->fw_stats.fw_stats_done = true;
+-			num_bcn = 0;
+-		}
+-	}
+-}
+-
+ static int ath12k_open_vdev_stats(struct inode *inode, struct file *file)
+ {
+ 	struct ath12k *ar = inode->i_private;
+diff --git a/drivers/net/wireless/ath/ath12k/debugfs.h b/drivers/net/wireless/ath/ath12k/debugfs.h
+index ebef7dace3448e4bdf2d6cb155d089267315172c..21641a8a03460c6cc1b34929a353e5605bb834ce 100644
+--- a/drivers/net/wireless/ath/ath12k/debugfs.h
++++ b/drivers/net/wireless/ath/ath12k/debugfs.h
+@@ -12,8 +12,6 @@ void ath12k_debugfs_soc_create(struct ath12k_base *ab);
+ void ath12k_debugfs_soc_destroy(struct ath12k_base *ab);
+ void ath12k_debugfs_register(struct ath12k *ar);
+ void ath12k_debugfs_unregister(struct ath12k *ar);
+-void ath12k_debugfs_fw_stats_process(struct ath12k *ar,
+-				     struct ath12k_fw_stats *stats);
+ void ath12k_debugfs_op_vif_add(struct ieee80211_hw *hw,
+ 			       struct ieee80211_vif *vif);
+ void ath12k_debugfs_pdev_create(struct ath12k_base *ab);
+@@ -126,11 +124,6 @@ static inline void ath12k_debugfs_unregister(struct ath12k *ar)
+ {
+ }
  
+-static inline void ath12k_debugfs_fw_stats_process(struct ath12k *ar,
+-						   struct ath12k_fw_stats *stats)
+-{
+-}
+-
+ static inline bool ath12k_debugfs_is_extd_rx_stats_enabled(struct ath12k *ar)
+ {
+ 	return false;
+diff --git a/drivers/net/wireless/ath/ath12k/wmi.c b/drivers/net/wireless/ath/ath12k/wmi.c
+index 60e2444fe08cefa39ae218d07eb9736d2a0c982b..2d2444417e2b2d9281754d113f2b073034e27739 100644
+--- a/drivers/net/wireless/ath/ath12k/wmi.c
++++ b/drivers/net/wireless/ath/ath12k/wmi.c
+@@ -7626,6 +7626,63 @@ static int ath12k_wmi_pull_fw_stats(struct ath12k_base *ab, struct sk_buff *skb,
+ 				   &parse);
+ }
  
++static void ath12k_wmi_fw_stats_process(struct ath12k *ar,
++					struct ath12k_fw_stats *stats)
++{
++	struct ath12k_base *ab = ar->ab;
++	struct ath12k_pdev *pdev;
++	bool is_end;
++	static unsigned int num_vdev, num_bcn;
++	size_t total_vdevs_started = 0;
++	int i;
++
++	if (stats->stats_id == WMI_REQUEST_VDEV_STAT) {
++		if (list_empty(&stats->vdevs)) {
++			ath12k_warn(ab, "empty vdev stats");
++			return;
++		}
++		/* FW sends all the active VDEV stats irrespective of PDEV,
++		 * hence limit until the count of all VDEVs started
++		 */
++		rcu_read_lock();
++		for (i = 0; i < ab->num_radios; i++) {
++			pdev = rcu_dereference(ab->pdevs_active[i]);
++			if (pdev && pdev->ar)
++				total_vdevs_started += pdev->ar->num_started_vdevs;
++		}
++		rcu_read_unlock();
++
++		is_end = ((++num_vdev) == total_vdevs_started);
++
++		list_splice_tail_init(&stats->vdevs,
++				      &ar->fw_stats.vdevs);
++
++		if (is_end) {
++			ar->fw_stats.fw_stats_done = true;
++			num_vdev = 0;
++		}
++		return;
++	}
++	if (stats->stats_id == WMI_REQUEST_BCN_STAT) {
++		if (list_empty(&stats->bcn)) {
++			ath12k_warn(ab, "empty beacon stats");
++			return;
++		}
++		/* Mark end until we reached the count of all started VDEVs
++		 * within the PDEV
++		 */
++		is_end = ((++num_bcn) == ar->num_started_vdevs);
++
++		list_splice_tail_init(&stats->bcn,
++				      &ar->fw_stats.bcn);
++
++		if (is_end) {
++			ar->fw_stats.fw_stats_done = true;
++			num_bcn = 0;
++		}
++	}
++}
++
+ static void ath12k_update_stats_event(struct ath12k_base *ab, struct sk_buff *skb)
+ {
+ 	struct ath12k_fw_stats stats = {};
+@@ -7655,19 +7712,15 @@ static void ath12k_update_stats_event(struct ath12k_base *ab, struct sk_buff *sk
+ 
+ 	spin_lock_bh(&ar->data_lock);
+ 
+-	/* WMI_REQUEST_PDEV_STAT can be requested via .get_txpower mac ops or via
+-	 * debugfs fw stats. Therefore, processing it separately.
+-	 */
++	/* Handle WMI_REQUEST_PDEV_STAT status update */
+ 	if (stats.stats_id == WMI_REQUEST_PDEV_STAT) {
+ 		list_splice_tail_init(&stats.pdevs, &ar->fw_stats.pdevs);
+ 		ar->fw_stats.fw_stats_done = true;
+ 		goto complete;
+ 	}
+ 
+-	/* WMI_REQUEST_VDEV_STAT and WMI_REQUEST_BCN_STAT are currently requested only
+-	 * via debugfs fw stats. Hence, processing these in debugfs context.
+-	 */
+-	ath12k_debugfs_fw_stats_process(ar, &stats);
++	/* Handle WMI_REQUEST_VDEV_STAT and WMI_REQUEST_BCN_STAT updates. */
++	ath12k_wmi_fw_stats_process(ar, &stats);
+ 
+ complete:
+ 	complete(&ar->fw_stats_complete);
 
 ---
-base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
-change-id: 20250610-fixdasrstbrd20250610-074d8ed5623d
+base-commit: 4f27f06ec12190c7c62c722e99ab6243dea81a94
+change-id: 20250609-ath12k-fw-stats-done-dca8bf77a7da
 
 Best regards,
 -- 
-Daniel Palmer <daniel.palmer@sony.com>
+Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
 
