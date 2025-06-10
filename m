@@ -1,11 +1,11 @@
 From: Sven Peter <sven@kernel.org>
-Date: Tue, 10 Jun 2025 15:29:43 +0000
-Subject: [PATCH v7 02/10] dt-bindings: power: reboot: Add Apple Mac SMC
- Reboot Controller
+Date: Tue, 10 Jun 2025 15:29:44 +0000
+Subject: [PATCH v7 03/10] dt-bindings: mfd: Add Apple Mac System Management
+ Controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250610-smc-6-15-v7-2-556cafd771d3@kernel.org>
+Message-Id: <20250610-smc-6-15-v7-3-556cafd771d3@kernel.org>
 References: <20250610-smc-6-15-v7-0-556cafd771d3@kernel.org>
 In-Reply-To: <20250610-smc-6-15-v7-0-556cafd771d3@kernel.org>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
@@ -18,90 +18,132 @@ To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>,
  "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
 Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org
+ linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2766; i=sven@kernel.org;
- h=from:subject:message-id; bh=QLsFhzpHRYmA1ajW0KypVDBYFMUVDXC7AICzYhpICrc=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4aHf9Hn32suSFhNTdyT4XxIdtv/vq9WUZ8t3ito7c3md
- lU8sWtRRykLgxgHg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAiS1YyMrxafbupQ+HVTJml
- H3eWNJ/Z/VrT3bPr9/6dTx+WvvJMkMpnZFiwed2Gbx5mE+9u3arxZd6EnX5xrZFzvSarHTncdlh
- ymhIfAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3512; i=sven@kernel.org;
+ h=from:subject:message-id; bh=MBhTLFSa+MA8vJScnTlr0fsDm4OGdrB/SyplsXOEjuQ=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ4aHf3FjV13HK+arrw96pNce/r7x/cGsvjkNtx8+Uhadv
+ C//ftfSjlIWBjEOBlkxRZbt++1Nnzx8I7h006X3MHNYmUCGMHBxCsBE7B4x/Pdgd2xU5+ll2ytw
+ bi6L02P2DtejZy2WvgieKndy2jo77i2MDCe+LGPj3LOmoH0e//eDD1Qni87zyQ3JSo83eaFZXnW
+ 5kBEA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On Apple Silicon machines a clean shutdown or reboot requires
-talking to SMC and writing to NVMEM cells. Add a binding for
-this MFD sub-device.
+From: "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>
 
+Add a DT binding for the Apple Mac System Management Controller.
+
+Signed-off-by: Russell King (Oracle) <rmk+kernel@armlinux.org.uk>
+Reviewed-by: Linus Walleij <linus.walleij@linaro.org>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
 Reviewed-by: Neal Gompa <neal@gompa.dev>
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- .../bindings/power/reset/apple,smc-reboot.yaml     | 40 ++++++++++++++++++++++
+ .../devicetree/bindings/mfd/apple,smc.yaml         | 79 ++++++++++++++++++++++
  MAINTAINERS                                        |  1 +
- 2 files changed, 41 insertions(+)
+ 2 files changed, 80 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml b/Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml
+diff --git a/Documentation/devicetree/bindings/mfd/apple,smc.yaml b/Documentation/devicetree/bindings/mfd/apple,smc.yaml
 new file mode 100644
-index 0000000000000000000000000000000000000000..ce5ed88493cdb60bfc8b444cd9e1d36714890ffe
+index 0000000000000000000000000000000000000000..8a10e270d421ecd703848f64af597de351fcfd74
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml
-@@ -0,0 +1,40 @@
++++ b/Documentation/devicetree/bindings/mfd/apple,smc.yaml
+@@ -0,0 +1,79 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/power/reset/apple,smc-reboot.yaml#
++$id: http://devicetree.org/schemas/mfd/apple,smc.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Apple SMC Reboot Controller
-+
-+description:
-+  The Apple System Management Controller (SMC) provides reboot functionality
-+  on Apple Silicon SoCs. It uses NVMEM cells to store and track various
-+  system state information related to boot, shutdown, and panic events.
++title: Apple Mac System Management Controller
 +
 +maintainers:
 +  - Sven Peter <sven@kernel.org>
 +
++description:
++  Apple Mac System Management Controller implements various functions
++  such as GPIO, RTC, power, reboot.
++
 +properties:
 +  compatible:
-+    const: apple,smc-reboot
-+
-+  nvmem-cells:
 +    items:
-+      - description: Flag indicating shutdown (as opposed to reboot)
-+      - description: Stage at which the boot process stopped (0x30 for normal boot)
-+      - description: Counter for boot errors
-+      - description: Counter for system panics
++      - enum:
++          - apple,t6000-smc
++          - apple,t8103-smc
++          - apple,t8112-smc
++      - const: apple,smc
 +
-+  nvmem-cell-names:
++  reg:
 +    items:
-+      - const: shutdown_flag
-+      - const: boot_stage
-+      - const: boot_error_count
-+      - const: panic_count
++      - description: SMC area
++      - description: SRAM area
++
++  reg-names:
++    items:
++      - const: smc
++      - const: sram
++
++  mboxes:
++    maxItems: 1
++
++  gpio:
++    $ref: /schemas/gpio/apple,smc-gpio.yaml
++
++  reboot:
++    $ref: /schemas/power/reset/apple,smc-reboot.yaml
++
++additionalProperties: false
 +
 +required:
 +  - compatible
-+  - nvmem-cells
-+  - nvmem-cell-names
++  - reg
++  - reg-names
++  - mboxes
 +
-+additionalProperties: false
++examples:
++  - |
++    soc {
++      #address-cells = <2>;
++      #size-cells = <2>;
++
++      smc@23e400000 {
++        compatible = "apple,t8103-smc", "apple,smc";
++        reg = <0x2 0x3e400000 0x0 0x4000>,
++               <0x2 0x3fe00000 0x0 0x100000>;
++        reg-names = "smc", "sram";
++        mboxes = <&smc_mbox>;
++
++        smc_gpio: gpio {
++          compatible = "apple,smc-gpio";
++          gpio-controller;
++          #gpio-cells = <2>;
++        };
++
++        reboot {
++          compatible = "apple,smc-reboot";
++          nvmem-cells = <&shutdown_flag>, <&boot_stage>,
++                        <&boot_error_count>, <&panic_count>;
++          nvmem-cell-names = "shutdown_flag", "boot_stage",
++                             "boot_error_count", "panic_count";
++        };
++      };
++    };
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 68097b1a44251b076bfd55cc07cffa5d0e3e83c5..1dd004f7dff669e3a3609e5f1702887129d8ff35 100644
+index 1dd004f7dff669e3a3609e5f1702887129d8ff35..329b2df08d4b1039948e54353c5815e23ae65e77 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
-@@ -2346,6 +2346,7 @@ F:	Documentation/devicetree/bindings/nvmem/apple,spmi-nvmem.yaml
- F:	Documentation/devicetree/bindings/pci/apple,pcie.yaml
- F:	Documentation/devicetree/bindings/pinctrl/apple,pinctrl.yaml
- F:	Documentation/devicetree/bindings/power/apple*
-+F:	Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml
- F:	Documentation/devicetree/bindings/pwm/apple,s5l-fpwm.yaml
- F:	Documentation/devicetree/bindings/spi/apple,spi.yaml
- F:	Documentation/devicetree/bindings/spmi/apple,spmi.yaml
+@@ -2339,6 +2339,7 @@ F:	Documentation/devicetree/bindings/iommu/apple,dart.yaml
+ F:	Documentation/devicetree/bindings/iommu/apple,sart.yaml
+ F:	Documentation/devicetree/bindings/leds/backlight/apple,dwi-bl.yaml
+ F:	Documentation/devicetree/bindings/mailbox/apple,mailbox.yaml
++F:	Documentation/devicetree/bindings/mfd/apple,smc.yaml
+ F:	Documentation/devicetree/bindings/net/bluetooth/brcm,bcm4377-bluetooth.yaml
+ F:	Documentation/devicetree/bindings/nvme/apple,nvme-ans.yaml
+ F:	Documentation/devicetree/bindings/nvmem/apple,efuses.yaml
 
 -- 
 2.34.1
