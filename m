@@ -1,24 +1,29 @@
 From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Tue, 10 Jun 2025 18:50:57 +0200
-Subject: [PATCH RESEND] arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: add
+Date: Tue, 10 Jun 2025 18:59:56 +0200
+Subject: [PATCH v2] arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: add
  Bluetooth support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250610-slim7x-bt-v1-1-49656d165695@oldschoolsolutions.biz>
+Message-Id: <20250610-slim7x-bt-v2-1-0dcd9d6576e9@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAItkSGgC/22OQQ6CMBBFr0JmbQ3TaAFX3sOwANrKJJWaTm1Q0
+ rtbWbt8Lz8vfwM2gQzDpdogmERMfikgDxVM87DcjSBdGGQtz/VJKsGOHs0qxiiUrhFlIzvUCGX
+ /DMbSurdufeGZOPrw3tMJf/ZfJaFAoVVrO4WDbVt19U7zNHvv2LtXLH/4ONIH+pzzF7vGQOCvA
+ AAA
+X-Change-ID: 20250426-slim7x-bt-6d01127291d1
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Anthony Ruhier <aruhier@mailbox.org>, 
  Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749574261; l=5030;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749574798; l=5316;
  i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=0Fmazzk3EbSz1yHBEpZ7VAUobYqkmhK7AiK9drzU7dY=;
- b=BYeLqc+cBe5CEQafJBeb9qOyJu80AK15xvVyoUmhrrUWvuM25JPhgEsgdqdX06P6MpbjuSMwv
- DWY6VGLPCdTBIov0r8rzj3h+6kluv+AWhcv8hlJ62KkkonzyVBfhsp3
+ bh=MEFwA6FS4gwwcixWXBosonpMOiLeohbMEMi1CPsp0QM=;
+ b=y7xcS6Txh6A6Wq8tfLtmGxLh8ddheXK1OTYAIHAoACNEzrgozpG0iogF4XrC7XPFyeghRuBHa
+ /xcbaTKA0JGBKjWsm3n+fJpHSe4JpctCmKcRx+ssdEj2t85uKxpbbLM
 X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
  pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
 X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
@@ -28,21 +33,27 @@ To enable Bluetooth pwrseq appears to be required for the WCN7850.
 Add the nodes from QCP.
 Add uart14 for the BT interface.
 
+Tested-by: Anthony Ruhier <aruhier@mailbox.org>
 Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
 This patch adds the Bluetooth support for the WCN7850 card on this laptop.
 Since WCN7850 is supposed to need pwrseq, also added this from the QCP.
 
-This is also part of my tree [1] for the Yoga Slim 7X, although with an older
+This is also part of my tree [1] for the Yoga Slim 7X.
 definition for the pwrseq and regulators.
 
-[1] https://github.com/jglathe/linux_ms_dev_kit/blob/jg/ubuntu-qcom-x1e-6.15.0-rc3-jg-2/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
+[1] https://github.com/jglathe/linux_ms_dev_kit/blob/jg/ubuntu-qcom-x1e-6.15.0-jg-6/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts 
 ---
- .../boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts  | 136 +++++++++++++++++++++
- 1 file changed, 136 insertions(+)
+Changes in v2:
+- rebased to next-20250610
+- added tested-by from Anthony Ruhier
+- Link to v1: https://lore.kernel.org/r/20250426-slim7x-bt-v1-1-d68f961af886@oldschoolsolutions.biz
+---
+ .../boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts  | 137 +++++++++++++++++++++
+ 1 file changed, 137 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-index 445d97d67d325853b7dcd2060523e7469ed4e6ea..a91d63508f65efea3786686f0f86a89a4355e0f1 100644
+index dad0f11e8e8583df6fd8aeec5be2af86739d85fb..720a514611248bb3d6d9518c2920a11631888e5d 100644
 --- a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
 +++ b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
 @@ -18,6 +18,7 @@ / {
@@ -53,7 +64,7 @@ index 445d97d67d325853b7dcd2060523e7469ed4e6ea..a91d63508f65efea3786686f0f86a89a
  	};
  
  	chosen {
-@@ -236,6 +237,101 @@ vph_pwr: regulator-vph-pwr {
+@@ -404,6 +405,101 @@ vph_pwr: regulator-vph-pwr {
  		regulator-always-on;
  		regulator-boot-on;
  	};
@@ -155,7 +166,7 @@ index 445d97d67d325853b7dcd2060523e7469ed4e6ea..a91d63508f65efea3786686f0f86a89a
  };
  
  &apps_rsc {
-@@ -679,6 +775,16 @@ &pcie4_port0 {
+@@ -1045,6 +1141,16 @@ &pcie4_port0 {
  	wifi@0 {
  		compatible = "pci17cb,1107";
  		reg = <0x10000 0x0 0x0 0x0 0x0>;
@@ -172,10 +183,11 @@ index 445d97d67d325853b7dcd2060523e7469ed4e6ea..a91d63508f65efea3786686f0f86a89a
  	};
  };
  
-@@ -940,6 +1046,36 @@ reset-n-pins {
- 		};
+@@ -1403,6 +1509,37 @@ usb2_pwr_3p3_reg_en: usb2-pwr-3p3-reg-en-state {
+ 		drive-strength = <2>;
+ 		bias-disable;
  	};
- 
++
 +	wcn_sw_en: wcn-sw-en-state {
 +		pins = "gpio214";
 +		function = "gpio";
@@ -211,7 +223,7 @@ index 445d97d67d325853b7dcd2060523e7469ed4e6ea..a91d63508f65efea3786686f0f86a89a
  &uart21 {
 
 ---
-base-commit: 393d0c54cae31317deaa9043320c5fd9454deabc
+base-commit: b27cc623e01be9de1580eaa913508b237a7a9673
 change-id: 20250426-slim7x-bt-6d01127291d1
 
 Best regards,
