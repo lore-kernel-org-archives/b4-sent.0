@@ -1,14 +1,15 @@
 From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Tue, 10 Jun 2025 06:57:27 +0200
-Subject: [PATCH] t: arm64: qcom: sc8280xp-x13s: amend usb0-sbu-mux enable
- gpio
+Date: Tue, 10 Jun 2025 07:04:46 +0200
+Subject: [PATCH v2] dt: arm64: qcom: sc8280xp-x13s: amend usb0-sbu-mux
+ enable gpio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250610-x13s-usb0-mux-v1-1-683213580ff1@oldschoolsolutions.biz>
-X-B4-Tracking: v=1; b=H4sIADe7R2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDM0MD3QpD42Ld0uIkA93c0gpdC6NEy1QDI0tLi2QLJaCegqLUtMwKsHn
- RsbW1AOYMTIFfAAAA
+Message-Id: <20250610-x13s-usb0-mux-v2-1-598454e6ad64@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAO28R2gC/3WOywqDMBBFf0Vm3SmZiJJ01f8QFz5iHUhNyajYi
+ v/e1H2X58A93B3ERXYCt2yH6FYWDlMCfcmgG5vp4ZD7xKCVLlRJCjfKBRdpFT6XDY1urFPaWtM
+ ZSJtXdANvZ6+qE48sc4jvM7/Sz/4rrYSEpck15YVRw0D34HvpxhC8BL/M6ZdcW/5AfRzHF3GV0
+ J63AAAA
 X-Change-ID: 20250610-x13s-usb0-mux-82a9e02998c8
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -18,11 +19,11 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, Johan Hovold <johan+linaro@kernel.org>, 
  Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749531449; l=2326;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749531892; l=2468;
  i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=RNPTb2CXyFgoc1osarAq8drSEBAlFXeDnXM/Y1PKLRk=;
- b=gknX1VlOlFvkMWg89JLOgVMiR9vFSMfZibp4Iavjh2JljKRABcLJz2V3xuhFSwuOBWq9CBxqy
- TETqA7ieXb0ClC+emCFuLrT7eRV+TVbftN+bulmalAJzAm9pOj2u5iK
+ bh=+fHxGsezod2hEeG+axdz1s5DRcNydWWr3ZMst7FzCRc=;
+ b=sYHR8d1UsEpY6QT+trLpS2TdB9JDof3zKVA5L5Hpa6JzTE7F5s5bCsYI3ce9PgGhsPkZ71XIn
+ gmEIfiRQaI4Awe/O5V+Z/NOcrLK9xQE65c5xGZVayjvCRsPQC4PKydj
 X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
  pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
 X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
@@ -50,6 +51,10 @@ This debug effort is a result of work / testing of the 4-lanes patch
 altmode on usb0, and with it, also 4 lanes, making it even more useful.
 
 [1]: https://lore.kernel.org/all/20250527-topic-4ln_dp_respin-v3-0-f9a0763ec289@oss.qualcomm.com/
+---
+Changes in v2:
+- Fixed typos.
+- Link to v1: https://lore.kernel.org/r/20250610-x13s-usb0-mux-v1-1-683213580ff1@oldschoolsolutions.biz
 ---
  arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
