@@ -1,132 +1,75 @@
-From: Sven Peter <sven@kernel.org>
-Date: Tue, 10 Jun 2025 17:17:35 +0000
-Subject: [PATCH 2/2] arm64: dts: apple: Add bit offset to PMIC NVMEM node
- names
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v3 0/3] arm64: dts: qcom: x1e80100-hp-x14: add
+ usb-1-ss1-sbu-mux
+Date: Tue, 10 Jun 2025 19:25:38 +0200
+Message-Id: <20250610-hp-x14-v3-0-35d5b50efae0@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250610-nvmem-bit-pattern-v1-2-55ed5c1b369c@kernel.org>
-References: <20250610-nvmem-bit-pattern-v1-0-55ed5c1b369c@kernel.org>
-In-Reply-To: <20250610-nvmem-bit-pattern-v1-0-55ed5c1b369c@kernel.org>
-To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAJJqSGgC/3XOTQ7CIBCG4asY1mIGSqu48h7GBX+VSZrSQCXVp
+ neXNrrT5ftl8mRmklxEl8h5N5PoMiYMfYlqvyPGq/7uKNrShAOvQYCkfqATExRaZk+NNrqRkpT
+ jIboWpw263kp7TGOIz83NbF0/BIMvkRkFqoWrjeJ15Yy8hM4m40PoUugeY/kkHTS+yOpl/tvgx
+ bBVI5g4glCg/hrLsrwBkQJkce0AAAA=
+X-Change-ID: 20250409-hp-x14-0f1d86bcb699
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
- Hector Martin <marcan@marcan.st>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, asahi@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, Sven Peter <sven@kernel.org>
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3530; i=sven@kernel.org;
- h=from:subject:message-id; bh=/oOOPnbIZun7zpCdcWpErbK1hHRhmjF7RqBExrZ88vw=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4ZHxkauiXzqc+TuxG9Y+u/i3ydbn4he/GKjfTL0xdydy
- 6tO77G82lHKwiDGwSArpsiyfb+96ZOHbwSXbrr0HmYOKxPIEAYuTgGYyNT7jAwfPr+SKNtcZnCF
- ReX+VWv2nyLvOxqdHpbvlTDtqtL995aFkWGKv8ujpB5dodI/Nm1P2jmb/y3fOaujIDuh78AGq0c
- CiXwA
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749576339; l=1600;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=tF8XhYd/zphv9FFb9CjA8PI63MvoFCSonZ/lwafrBzk=;
+ b=cGo+fNh3F4SqVGlTj+EZCHgyUM2pP7V+Zi0yY/OdweAwkTCKuoS2CafOqCLXfFr3arZ4pX9pP
+ GM4ykBwAzupC5jaZxMiV+jE9uXnARhoAIaKqrJBokZag8NSbyyJ4nbA
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that the dt-binding has been extended to allow indicating the bit
-position the following warning about a duplicate unit address with W=1
-can be fixed:
+The usb_1_1 port doesn't have the PS8830 repeater, but apparently some
+MUX for DP altmode control. After a suggestion from sgerhold on
+'#aarch64-laptops' I added gpio-sbu-mux nodes from the x1e80100-QCP
+tree, and this appears to work well. It is still guesswork, but
+working guesswork.
 
-arch/arm64/boot/dts/apple/t8103.dtsi:764.46-767.8: Warning (unique_unit_address_if_enabled): /soc/spmi@23d0d9300/pmic@f/nvmem-layout/boot-error-count@9f02: duplicate unit-address (also used in node /soc/spmi@23d0d9300/pmic@f/nvmem-layout/panic-count@9f02)
+Added and rewired for usb_1_1
 
-Fixes: 14b7178a76e2 ("arm64: dts: apple: Add PMIC NVMEM")
-Signed-off-by: Sven Peter <sven@kernel.org>
+Also, did some more changes as tested here:
+
+- remove unused i2c buses
+- amend order of nodes.
+
+The series is based on [1] from Johan.
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- arch/arm64/boot/dts/apple/t600x-die0.dtsi | 6 +++---
- arch/arm64/boot/dts/apple/t8103.dtsi      | 6 +++---
- arch/arm64/boot/dts/apple/t8112.dtsi      | 6 +++---
- 3 files changed, 9 insertions(+), 9 deletions(-)
+Changes in v3:
+- rebased to next-20250610 in preparation for X1P42100 variant support
+- Link to v2: https://lore.kernel.org/r/20250410-hp-x14-v2-0-d36414704a0a@oldschoolsolutions.biz
 
-diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-index 110bc6719512e334e04b496fb157cb4368679957..17ad9328baa14de66ff0f0fdf9e26b3f4a80524a 100644
---- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-@@ -72,12 +72,12 @@ boot_stage: boot-stage@6001 {
- 					reg = <0x6001 0x1>;
- 				};
- 
--				boot_error_count: boot-error-count@6002 {
-+				boot_error_count: boot-error-count@6002,0 {
- 					reg = <0x6002 0x1>;
- 					bits = <0 4>;
- 				};
- 
--				panic_count: panic-count@6002 {
-+				panic_count: panic-count@6002,4 {
- 					reg = <0x6002 0x1>;
- 					bits = <4 4>;
- 				};
-@@ -86,7 +86,7 @@ boot_error_stage: boot-error-stage@6003 {
- 					reg = <0x6003 0x1>;
- 				};
- 
--				shutdown_flag: shutdown-flag@600f {
-+				shutdown_flag: shutdown-flag@600f,3 {
- 					reg = <0x600f 0x1>;
- 					bits = <3 1>;
- 				};
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index 20faf0c0d80927b2e18dd966a61b5507b322c72f..76bab19f99c89d5c0a025fb313b53bac1f703bc9 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -761,12 +761,12 @@ boot_stage: boot-stage@9f01 {
- 						reg = <0x9f01 0x1>;
- 					};
- 
--					boot_error_count: boot-error-count@9f02 {
-+					boot_error_count: boot-error-count@9f02,0 {
- 						reg = <0x9f02 0x1>;
- 						bits = <0 4>;
- 					};
- 
--					panic_count: panic-count@9f02 {
-+					panic_count: panic-count@9f02,4 {
- 						reg = <0x9f02 0x1>;
- 						bits = <4 4>;
- 					};
-@@ -775,7 +775,7 @@ boot_error_stage: boot-error-stage@9f03 {
- 						reg = <0x9f03 0x1>;
- 					};
- 
--					shutdown_flag: shutdown-flag@9f0f {
-+					shutdown_flag: shutdown-flag@9f0f,3 {
- 						reg = <0x9f0f 0x1>;
- 						bits = <3 1>;
- 					};
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index e95711d8337f6cea898e88a3d564caf2c4f94404..a27e2312b0c73d5352a80dd050c7b314786add4a 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -809,12 +809,12 @@ boot_stage: boot-stage@f701 {
- 						reg = <0xf701 0x1>;
- 					};
- 
--					boot_error_count: boot-error-count@f702 {
-+					boot_error_count: boot-error-count@f702,0 {
- 						reg = <0xf702 0x1>;
- 						bits = <0 4>;
- 					};
- 
--					panic_count: panic-count@f702 {
-+					panic_count: panic-count@f702,4 {
- 						reg = <0xf702 0x1>;
- 						bits = <4 4>;
- 					};
-@@ -823,7 +823,7 @@ boot_error_stage: boot-error-stage@f703 {
- 						reg = <0xf703 0x1>;
- 					};
- 
--					shutdown_flag: shutdown-flag@f70f {
-+					shutdown_flag: shutdown-flag@f70f,3 {
- 						reg = <0xf70f 0x1>;
- 						bits = <3 1>;
- 					};
+Changes in v2:
+- removed overlapping patches with [1] and [2] - thanks Johan
+- Link to v1: https://lore.kernel.org/r/20250410-hp-x14-v1-0-b4e5ca253ec9@oldschoolsolutions.biz
 
+[1] https://lore.kernel.org/lkml/20250328084154.16759-1-johan+linaro@kernel.org/
+[2] https://lore.kernel.org/r/20250319160509.1812805-1-juerg.haefliger@canonical.com
+
+---
+Jens Glathe (3):
+      arm64: dts: qcom: x1e80100-hp-x14: add usb-1-ss1-sbu-mux
+      arm64: dts: qcom: x1e80100-hp-x14: remove unused i2c buses
+      arm64: dts: qcom: x1e80100-hp-x14: amend order of nodes
+
+ .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 98 ++++++++++++++--------
+ 1 file changed, 62 insertions(+), 36 deletions(-)
+---
+base-commit: b27cc623e01be9de1580eaa913508b237a7a9673
+change-id: 20250409-hp-x14-0f1d86bcb699
+
+Best regards,
 -- 
-2.34.1
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
