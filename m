@@ -1,14 +1,12 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Subject: [PATCH 0/2] Bindings and DTS for Apple SoC GPUs
-Date: Wed, 11 Jun 2025 19:32:15 +0200
-Message-Id: <20250611-sgx-dt-v1-0-7a11f3885c60@gmail.com>
+Date: Wed, 11 Jun 2025 19:32:16 +0200
+Subject: [PATCH 1/2] dt-bindings: Add Apple SoC GPU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJ+9SWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDU2ND3eL0Ct2UEl2TRMMkIDJOMjJIUwIqLihKTcusABsUHVtbCwAIRPi
- FWAAAAA==
-X-Change-ID: 20250531-sgx-dt-4a1ba1b3b20f
+Message-Id: <20250611-sgx-dt-v1-1-7a11f3885c60@gmail.com>
+References: <20250611-sgx-dt-v1-0-7a11f3885c60@gmail.com>
+In-Reply-To: <20250611-sgx-dt-v1-0-7a11f3885c60@gmail.com>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
  Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
  David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
@@ -20,44 +18,138 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749663157; l=1440;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749663157; l=3999;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=I4HXo0ATSJ/hdYPbDOMk7Ra3is0bb13Y9rAP/aptRgY=;
- b=a/YPKcThE02rkRwTyp+2PWA/Znv8r+ZwFTmoNq9NkcjUgxXGHJoltLqMOGX5qRLEf4jZ6KO9L
- a7wGQotkZnHAE5MWdWThd6RMmfvdh3TUiWPOhTM2vktnPdo+qNV5750
+ bh=fi+oFwK6grJuET9s6/XgeNUQBtm3aO0V1TI3cLg1XnI=;
+ b=4rOCqcuSkCjByfXaVGa1rq66T4eyMIn9G13fhEP67cMYbjEegt7HIvdyosrmn19Exxa0b3VKC
+ pOjhh0AHclmDaUU8QD/412/FnmibHIF5nfPnZlRLOmsDEFBQsRde4pC
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi.
-
-This patch series adds the DT bindings and tree entries for the GPU
-present in Apple M-series SoCs. The driver itself is in Rust and
-upstream is currently missing several prerequisite bindings, so will
-be sent later.
+Add bindings for the GPU present in Apple SoCs
 
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
-Sasha Finkelstein (2):
-      dt-bindings: Add Apple SoC GPU
-      arm64: dts: Add Apple SoC GPU
-
  Documentation/devicetree/bindings/gpu/apple,agx.yaml | 95 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  MAINTAINERS                                          |  1 +
- arch/arm64/boot/dts/apple/t6000.dtsi                 |  4 ++++
- arch/arm64/boot/dts/apple/t6001.dtsi                 |  4 ++++
- arch/arm64/boot/dts/apple/t6002.dtsi                 |  4 ++++
- arch/arm64/boot/dts/apple/t600x-common.dtsi          | 34 ++++++++++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t600x-die0.dtsi            | 28 ++++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8103.dtsi                 | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi                 | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 9 files changed, 294 insertions(+)
----
-base-commit: aef17cb3d3c43854002956f24c24ec8e1a0e3546
-change-id: 20250531-sgx-dt-4a1ba1b3b20f
+ 2 files changed, 96 insertions(+)
 
-Best regards,
+diff --git a/Documentation/devicetree/bindings/gpu/apple,agx.yaml b/Documentation/devicetree/bindings/gpu/apple,agx.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..23df3ebd689b1e885eb99ca573343fe7f2d09dc4
+--- /dev/null
++++ b/Documentation/devicetree/bindings/gpu/apple,agx.yaml
+@@ -0,0 +1,95 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/gpu/apple,agx.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple SoC GPU
++
++maintainers:
++  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++
++properties:
++  compatible:
++    oneOf:
++      - items:
++          - const: apple,agx-g13g
++      - items:
++          - enum:
++              - apple,agx-g13s
++              - apple,agx-g13c
++              - apple,agx-g13d
++          - const: apple,agx-g13x
++      - items:
++          - const: apple,agx-g14g
++  reg:
++    items:
++      - description: ASC coprocessor control
++      - description: GPU block MMIO registers
++
++  reg-names:
++    items:
++      - const: asc
++      - const: sgx
++
++  power-domains:
++    maxItems: 1
++
++  mboxes:
++    maxItems: 1
++
++  memory-region:
++    items:
++      - description: Region containing GPU MMU TTBs
++      - description: Region containing GPU MMU page tables
++      - description:
++          Region containing a shared handoff structure for VM
++          management coordination
++      - description: Driver-opaque calibration blob
++      - description: Calibration blob
++      - description: Shared global variables with GPU firmware
++
++  memory-region-names:
++    items:
++      - const: ttbs
++      - const: pagetables
++      - const: handoff
++      - const: hw-cal-a
++      - const: hw-cal-b
++      - const: globals
++
++  apple,firmware-compat:
++    $ref: /schemas/types.yaml#/definitions/uint32-array
++    minItems: 3
++    description:
++      MacOS version the current firmware is paired with, used to pick
++      the version of firmware ABI to be used.
++      Bootloader will overwrite this
++
++required:
++  - compatible
++  - reg
++  - mboxes
++  - memory-region
++  - apple,firmware-compat
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/apple-aic.h>
++    gpu@6400000 {
++        compatible = "apple,agx-g13g";
++        reg = <0x6400000 0x40000>,
++              <0x4000000 0x1000000>;
++        reg-names = "asc", "sgx";
++        mboxes = <&agx_mbox>;
++        power-domains = <&ps_gfx>;
++        memory-region = <&uat_ttbs>, <&uat_pagetables>, <&uat_handoff>,
++                        <&gpu_hw_cal_a>, <&gpu_hw_cal_b>, <&gpu_globals>;
++        memory-region-names = "ttbs", "pagetables", "handoff",
++                              "hw-cal-a", "hw-cal-b", "globals";
++
++        apple,firmware-compat = <0 0 0>;
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index a92290fffa163f9fe8fe3f04bf66426f9a894409..2a32c9c4ee355a1109a3e2031ea3663c39cc8c68 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2331,6 +2331,7 @@ F:	Documentation/devicetree/bindings/arm/apple/*
+ F:	Documentation/devicetree/bindings/clock/apple,nco.yaml
+ F:	Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
+ F:	Documentation/devicetree/bindings/dma/apple,admac.yaml
++F:	Documentation/devicetree/bindings/gpu/apple,agx.yaml
+ F:	Documentation/devicetree/bindings/i2c/apple,i2c.yaml
+ F:	Documentation/devicetree/bindings/input/touchscreen/apple,z2-multitouch.yaml
+ F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
+
 -- 
-Sasha Finkelstein <fnkl.kernel@gmail.com>
+2.49.0
 
