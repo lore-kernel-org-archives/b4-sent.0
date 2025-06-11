@@ -1,59 +1,155 @@
-From: Nikhil Jha <njha@janestreet.com>
-Date: Wed, 11 Jun 2025 15:46:39 -0400
-Subject: [PATCH] sunrpc: fix loop in gss seqno cache
+From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+Subject: [PATCH v6 0/6] add support for pf1550 PMIC MFD-based drivers
+Date: Wed, 11 Jun 2025 16:02:57 -0400
+Message-Id: <20250611-pf1550-v6-0-34f2ddfe045e@savoirfairelinux.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250611-fix-loop-in-seqno-cache-v1-1-9f9214d60dbf@janestreet.com>
-X-B4-Tracking: v=1; b=H4sIAB7dSWgC/x2MSwqAMBDFriKzdsCKH/Qq4qKMTx2QVlsQoXh3i
- 8tAkkQRQRFpLBIF3BrVuwymLEh26zawLpmpruq26ozhVR8+vD9ZHUdczrNY2cGdrL2RxmKApVy
- fAVn9z9P8vh/ZbBoTaQAAAA==
-X-Change-ID: 20250611-fix-loop-in-seqno-cache-6cf71c4ae9ea
-To: Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, Nikhil Jha <njha@janestreet.com>
+X-B4-Tracking: v=1; b=H4sIAPHgSWgC/33OQW7CMBAF0KtEXmM0jj0JYcU9EAvHHpeRSgJ2s
+ KhQ7l4TJKgqtcs/+np/7iJRZEpiW91FpMyJx6GEZlUJd7TDB0n2JYsaagSsW3kOChGkN6ACeGj
+ 7DYhSPkcKfFug/eGZI12uxZueR9HbRNKNpxNP2yo3a4XiUTxymsb4tTyQ9dL8vZW1BGkwNJ1B7
+ TyqXbJ55BgsR/rk4XpbF3fRsnkLDeiXYIrQBx9QEWHn3D8C/hAUvAQsAnnwHWlrrWv/EOZ5/gZ
+ ThFDFVAEAAA==
+X-Change-ID: 20250527-pf1550-d401f0d07b80
+To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Sebastian Reichel <sre@kernel.org>, Frank Li <Frank.li@nxp.com>
+Cc: imx@lists.linux.dev, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
+ linux-pm@vger.kernel.org, Abel Vesa <abelvesa@kernel.org>, 
+ Abel Vesa <abelvesa@linux.com>, Robin Gong <b38343@freescale.com>, 
+ Robin Gong <yibin.gong@nxp.com>, 
+ Enric Balletbo i Serra <eballetbo@gmail.com>, 
+ Samuel Kayode <samuel.kayode@savoirfairelinux.com>, 
+ Abel Vesa <abelvesa@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749671220; l=1544;
- i=njha@janestreet.com; s=20250314; h=from:subject:message-id;
- bh=9sWz8NPFHiKr5lOYqBHxNwkYPRmoCG3mDz0qaSDWR0w=;
- b=5JfBNmFl00aFr2bigOweLPqYoaLoGSSxsYkIHnxGUMfe2YfbJrflSJfBxrGXHSY0dc1piph2Y
- vzhcaadtJIVBMmJy554OOcuMOdHbUKFh8QdJ9z/7/8JHbbrq/yMlrHj
-X-Developer-Key: i=njha@janestreet.com; a=ed25519;
- pk=92gWYi0ImmcatlW+pFEFh9viqpRf/PE8phYeWuNeGaA=
-X-Endpoint-Received: by B4 Relay for njha@janestreet.com/20250314 with auth_id=360
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749672178; l=5702;
+ i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
+ bh=Y91AIqXiYb2KFSBw95LNtXg6HYm3TMJd6I6LrNYm+hU=;
+ b=KhQKypj8p61lIPfOxcvU2HW0f7+RjCrKcWknRH21uY3VXARHYJ5hKE780E1ymPx2g+TWxPxKi
+ Btp3YoyEidaCagdEBKtIEywWlB9NZxEzNgwfcJhzWegimhPlyogC/Og
+X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
+ pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
+X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There was a silly bug in the initial implementation where a loop
-variable was not incremented. This commit increments the loop variable.
+This series adds support for pf1550 PMIC. It provides the core mfd driver and a
+set of three sub-drivers for the regulator, power supply and input subsystems.
 
-This bug is somewhat tricky to catch because it can only happen on loops
-of two or more. If it is hit, it locks up a kernel thread in an infinite
-loop.
+Patch 1 adds the DT binding document for the PMIC. Patches 2-5 adds the
+pertinent drivers. Last patch adds a MAINTAINERS entry for the drivers.
 
-Signed-off-by: Nikhil Jha <njha@janestreet.com>
-Tested-by: Nikhil Jha <njha@janestreet.com>
+Changes since v1:
+   - DT bindings for all devices included
+   - Add onkey driver
+   - Add driver for the regulators
+   - Ensure charger is activated as some variants have it off by default
+   - Update mfd and charger driver per feedback from eballetbo@gmail.com
+   - Add myself as maintainer for these drivers
+   - Link to v1: https://lore.kernel.org/1523974819-8711-1-git-send-email-abel.vesa@nxp.com/
+
+Changes since v2:
+   - Rebase on recent mainline kernel v6.15
+   - Single yaml file containing dt bindings for all pf1550 devices
+   - irq mapping done in MFD driver as suggested by Dmitry Torokhov
+   - Drop unnecessary includes in drivers
+   - Replace dev_err with dev_err_probe in probe method of drivers
+   - Drop compatible string from drivers of the sub-devices
+   - Remove dependency on OF from drivers of the sub-devices
+   - onkey: move driver from input/keyboard into input/misc
+   - onkey: remove dependency on OF
+   - onkey: use onkey virqs instead of central irq
+   - onkey: fix integer overflow for regmap_write when unmasking
+     interrupts during pf1550_onkey_resume
+   - charger: add support for monitored-battery which is used in setting
+     a constant voltage for the charger.
+   - Address other feedback from Dmitry Torokhov and Krzysztof Kozlowski
+   - Link to v2: https://lore.kernel.org/cover.1747409892.git.samuel.kayode@savoirfairelinux.com/
+
+Changes since v3:
+   - Update manufacturer from Freescale to NXP in compatible,
+     dt-binding and Kconfigs
+   - Use C++ style comments for SPDX license in .c code
+   - Add portions copyright to source code
+   - irqs are defined as struct resource in mfd cell such that
+     platform_get_irq is used in the sub-devices
+   - Make struct pf1550_dev of type const in sub-device driver
+   - irq variable dropped from sub-device driver struct
+   - EXPORT_SYMBOL of global pf1550_read_otp function for use in
+     regulator driver
+   - Drop unneeded info in driver_data when defining device table id
+   - regulator: validate ramp_delay
+   - regulator: report overcurrent and over temperature events
+   - onkey: drop unnecessary keycode variable
+   - onkey: change wakeup variable to type bool
+   - onkey: replace (error < 0) with error in if statement when possible
+   - onkey: use pm_sleep_ptr when defining driver.pm
+   - charger: finish handling of some interrupts in threaded irq handler
+   - Link to v3: https://lore.kernel.org/20250527-pf1550-v3-0-45f69453cd51@savoirfairelinux.com/
+
+Changes since v4:
+   - Use top level interrupt to minimize number of registers checked on
+     each interrupt
+   - Fix bad offset for temperature interrupts of regulator irq chip
+   - Address Krzysztof's comments for dt-binding
+   - regulator: add comments to clarify difference in its interrupts
+   - regulator: issue warn event for _LS interrupt and error event for
+     _HS interrupt
+   - regulator: validate maximum and minimum ramp_delay
+   - charger: drop lock in battery and charger delayed_work
+   - charger: more conservative locking for vbus delayed_work
+   - charger: apply lock when setting power_supply type during register
+     intialization
+   - Link to v4: https://lore.kernel.org/r/20250603-pf1550-v4-0-bfdf51ee59cc@savoirfairelinux.com
+
+Changes since v5:
+   - Ensure lowercase when assigning hex values
+   - Add imx@lists.linux.dev to relevant mailing list in MAINTAINERS file
+   - Use GENMASK macro
+   - Drop unused chips variable
+   - Read the OTP in the mfd driver probe for new dvs_enb variable
+   - Hardcode IRQ flags in pf1550_add_child function
+   - charger: drop the mutex entirely
+   - charger: reverse christmas tree style local variable definition in
+     probe
+   - Link to v5: https://lore.kernel.org/r/20250610-pf1550-v5-0-ed0d9e3aaac7@savoirfairelinux.com
+
+Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 0fa244f16876f3c434fd507b4d53c5eefd748ce4..7b943fbafcc38ba79a685589d696017e8cdc694a 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1724,7 +1724,7 @@ gss_validate(struct rpc_task *task, struct xdr_stream *xdr)
- 	maj_stat = gss_validate_seqno_mic(ctx, task->tk_rqstp->rq_seqnos[0], seq, p, len);
- 	/* RFC 2203 5.3.3.1 - compute the checksum of each sequence number in the cache */
- 	while (unlikely(maj_stat == GSS_S_BAD_SIG && i < task->tk_rqstp->rq_seqno_count))
--		maj_stat = gss_validate_seqno_mic(ctx, task->tk_rqstp->rq_seqnos[i], seq, p, len);
-+		maj_stat = gss_validate_seqno_mic(ctx, task->tk_rqstp->rq_seqnos[i++], seq, p, len);
- 	if (maj_stat == GSS_S_CONTEXT_EXPIRED)
- 		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
- 	if (maj_stat)
-
 ---
-base-commit: 488ef3560196ee10fc1c5547e1574a87068c3494
-change-id: 20250611-fix-loop-in-seqno-cache-6cf71c4ae9ea
+Samuel Kayode (6):
+      dt-bindings: mfd: add pf1550
+      mfd: pf1550: add core mfd driver
+      regulator: pf1550: add support for regulator
+      input: pf1550: add onkey support
+      power: supply: pf1550: add battery charger support
+      MAINTAINERS: add an entry for pf1550 mfd driver
+
+ .../devicetree/bindings/mfd/nxp,pf1550.yaml        | 137 +++++
+ MAINTAINERS                                        |  11 +
+ drivers/input/misc/Kconfig                         |  11 +
+ drivers/input/misc/Makefile                        |   1 +
+ drivers/input/misc/pf1550-onkey.c                  | 183 ++++++
+ drivers/mfd/Kconfig                                |  14 +
+ drivers/mfd/Makefile                               |   2 +
+ drivers/mfd/pf1550.c                               | 339 +++++++++++
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/pf1550-charger.c              | 633 +++++++++++++++++++++
+ drivers/regulator/Kconfig                          |   9 +
+ drivers/regulator/Makefile                         |   1 +
+ drivers/regulator/pf1550-regulator.c               | 362 ++++++++++++
+ include/linux/mfd/pf1550.h                         | 254 +++++++++
+ 15 files changed, 1969 insertions(+)
+---
+base-commit: 0a4b866d08c6adaea2f4592d31edac6deeb4dcbd
+change-id: 20250527-pf1550-d401f0d07b80
 
 Best regards,
 -- 
-Nikhil Jha <njha@janestreet.com>
+Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 
