@@ -1,275 +1,191 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 11 Jun 2025 09:12:46 +0400
-Subject: [PATCH v11 2/2] arm64: dts: qcom: ipq5018: Add tsens node
+From: Yang Li <yang.li@amlogic.com>
+Date: Wed, 11 Jun 2025 16:57:13 +0800
+Subject: [PATCH BlueZ bluez] BASS: support for encrypted broadcast source
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250611-ipq5018-tsens-v11-2-266566bfd16a@outlook.com>
-References: <20250611-ipq5018-tsens-v11-0-266566bfd16a@outlook.com>
-In-Reply-To: <20250611-ipq5018-tsens-v11-0-266566bfd16a@outlook.com>
-To: Amit Kucheria <amitk@kernel.org>, 
- Thara Gopinath <thara.gopinath@gmail.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sricharan Ramabadhran <quic_srichara@quicinc.com>, 
- George Moussalem <george.moussalem@outlook.com>, 
- Dmitry Baryshkov <lumag@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749618782; l=5540;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=8VbrGnbVEEGlTeBi9Ev67z9HvHAIvHkO/H7Vls/aG78=;
- b=uOrwg1pLM1xnBOdSnqUhLxR/M9QsRaBVSVdexIJRe/jspGlxZe9X9D+Ky/iFCkoTrB9DS2Uoh
- 1QMLjyVpQXhBjoCEFc7DMSCUq4nLNgsG5mzSrx5QD6QiYB3nkLJ4WO0
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+Message-Id: <20250611-bass_for_encrypted_broadcast_source-v1-1-69b8b156488c@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAOhESWgC/x3NWwrCMBBG4a2UeTbQVG3FrUgJufzRgCRlppXW0
+ r0bfPxeztlJwAlC92YnxidJKrlCnxryL5ufUClUU9d217bXWjkrYmJhg+x5m2YE47jY4K3MRsr
+ CHir2t4seYgCGM9XSxIhp/V8e5N4LvjQexw/e+SF/fAAAAA==
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749632250; l=5506;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=Qfr9QC5ZGvbsMLaSO57OdwNCExOnVLKS7nkRdPG4ThE=;
+ b=frlrfPqIABDhR2naauWJWphL0CHGqb3Zr+Qx3HRwusCJvjUxzL9rC+Do356caIoHbAafc3p1w
+ BG9DnBO6cZmDKdCda1xrXziWVi6GzfIrZJSEM6Y/QhqUKEolcW241O7
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sricharan Ramabadhran <quic_srichara@quicinc.com>
+If the BIS is encrypted as indicated in the BIG Info Report, the
+broadcast code needs to be requested from the Assistant.
 
-IPQ5018 has tsens V1.0 IP with 5 sensors, though 4 are in use.
-There is no RPM, so tsens has to be manually enabled. Adding the tsens
-and nvmem nodes and adding 4 thermal sensors (zones). The critical trip
-temperature is set to 120'C with an action to reboot.
+step 1: Broadcast_Code required
+  > HCI Event: LE Meta Event (0x3e) plen 20                 #631 [hci0] 27.176606
+        LE Broadcast Isochronous Group Info Advertising Report (0x22)
+          Sync Handle: 0x0000
+          Number BIS: 2
+          NSE: 8
+          ISO Interval: 20.00 msec (0x0010)
+          BN: 2
+          PTO: 2
+          IRC: 2
+          Maximum PDU: 60
+          SDU Interval: 10000 us (0x002710)
+          Maximum SDU: 60
+          PHY: LE 2M (0x02)
+          Framing: Unframed (0x00)
+          Encryption: 0x01
+  < ACL Data TX: Handle 16 flags 0x00 dlen 44               #633 [hci0] 27.184478
+        ATT: Handle Value Notification (0x1b) len 39
+          Handle: 0x005f Type: Broadcast Receive State (0x2bc8)
+            Data[37]: 01016698a411bb13019f103b02010100000000110d03506978656c20395f32303938020502
+            Source_ID: 1
+            Source_Address_Type: 1
+            Source_Address: 13:BB:11:A4:98:66
+            Source_Adv_SID: 1
+            Broadcast_ID: 0x3b109f
+            PA_Sync_State: Synchronized to PA
+            BIG_Encryption: Broadcast_Code required
+            Num_Subgroups: 1
+            Subgroup #0:
+              BIS_Sync State: 0x00000000
+              Metadata: #0: len 0x0d type 0x03
+              Metadata:   50 69 78 65 6c 20 39 5f 32 30 39 38              Pixel 9_2098
+              Metadata: #1: len 0x02 type 0x05
+              Metadata:   02
+  > ACL Data RX: Handle 16 flags 0x02 dlen 25               #636 [hci0] 27.455744
+        ATT: Write Command (0x52) len 20
+          Handle: 0x0065 Type: Broadcast Audio Scan Control Point (0x2bc7)
+            Data[18]: 04013a4931614b3a2b7c4b7431722b666724
+              Opcode: Set Broadcast_Code (0x04)
+              Source_ID: 1
+              Broadcast_Code[16]: 3a4931614b3a2b7c4b7431722b666724
 
-In addition, adding a cooling device to the CPU thermal zone which uses
-CPU frequency scaling.
+step 2: Set Broadcast Code when BIG Create Sync
+  < HCI Command: LE Broadcast Isoc.. (0x08|0x006b) plen 26  #641 [hci0] 27.669211
+          BIG Handle: 0x00
+          BIG Sync Handle: 0x0000
+          Encryption: Encrypted (0x01)
+          Broadcast Code[16]: 3a4931614b3a2b7c4b7431722b666724
+          Maximum Number Subevents: 0x00
+          Timeout: 20000 ms (0x07d0)
+          Number of BIS: 2
+          BIS ID: 0x01
+          BIS ID: 0x02
 
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Signed-off-by: Sricharan Ramabadhran <quic_srichara@quicinc.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Fixes: https://github.com/bluez/bluez/issues/1306
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 182 ++++++++++++++++++++++++++++++++++
- 1 file changed, 182 insertions(+)
+Signed-off-by: Yang Li <yang.li@amlogic.com>
+---
+ profiles/audio/bass.c | 29 +++++++++++++++++++++++++++++
+ src/shared/bass.c     | 29 ++++++++++++++---------------
+ 2 files changed, 43 insertions(+), 15 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 130360014c5e14c778e348d37e601f60325b0b14..defeb697c8d89686e3aaf2e6f7b6cb7493219336 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -9,6 +9,7 @@
- #include <dt-bindings/interrupt-controller/arm-gic.h>
- #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
- #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
-+#include <dt-bindings/thermal/thermal.h>
+diff --git a/profiles/audio/bass.c b/profiles/audio/bass.c
+index b27a3fc12..53fde43d6 100644
+--- a/profiles/audio/bass.c
++++ b/profiles/audio/bass.c
+@@ -427,13 +427,42 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
+ 	}
+ }
  
- / {
- 	interrupt-parent = <&intc>;
-@@ -39,6 +40,7 @@ cpu0: cpu@0 {
- 			next-level-cache = <&l2_0>;
- 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
- 			operating-points-v2 = <&cpu_opp_table>;
-+			#cooling-cells = <2>;
- 		};
++static void bass_req_bcode_cb(void *user_data, int err)
++{
++	struct bass_setup *setup = user_data;
++
++	if (!err) {
++		if (asprintf(&setup->path, "%s/bis%d",
++			device_get_path(setup->dg->device),
++			setup->bis) < 0)
++			return;
++
++		bt_bap_stream_set_user_data(setup->stream, setup->path);
++
++		bt_bap_stream_config(setup->stream, &setup->qos,
++				setup->config, NULL, NULL);
++		bt_bap_stream_metadata(setup->stream, setup->meta,
++				NULL, NULL);
++	}
++}
++
+ static void setup_configure_stream(struct bass_setup *setup)
+ {
++	uint8_t empty_bcode[BT_BASS_BCAST_CODE_SIZE] = {0};
++
+ 	setup->stream = bt_bap_stream_new(setup->dg->bap, setup->lpac, NULL,
+ 					&setup->qos, setup->config);
+ 	if (!setup->stream)
+ 		return;
  
- 		cpu1: cpu@1 {
-@@ -49,6 +51,7 @@ cpu1: cpu@1 {
- 			next-level-cache = <&l2_0>;
- 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
- 			operating-points-v2 = <&cpu_opp_table>;
-+			#cooling-cells = <2>;
- 		};
++	if ((setup->qos.bcast.encryption) &&
++	    (!memcmp(setup->qos.bcast.bcode->iov_base,
++		  empty_bcode,
++		  sizeof(empty_bcode)))) {
++		bass_req_bcode(setup->stream, bass_req_bcode_cb, setup, NULL);
++		return;
++	}
++
+ 	if (asprintf(&setup->path, "%s/bis%d",
+ 			device_get_path(setup->dg->device),
+ 			setup->bis) < 0)
+diff --git a/src/shared/bass.c b/src/shared/bass.c
+index 7b9e0da63..11ad59e3b 100644
+--- a/src/shared/bass.c
++++ b/src/shared/bass.c
+@@ -964,6 +964,20 @@ static void bass_handle_set_bcast_code_op(struct bt_bass *bass,
  
- 		l2_0: l2-cache {
-@@ -182,6 +185,117 @@ pcie0_phy: phy@86000 {
- 			status = "disabled";
- 		};
+ 	gatt_db_attribute_write_result(attrib, id, 0x00);
  
-+		qfprom: qfprom@a0000 {
-+			compatible = "qcom,ipq5018-qfprom", "qcom,qfprom";
-+			reg = <0x000a0000 0x1000>;
-+			#address-cells = <1>;
-+			#size-cells = <1>;
++	for (entry = queue_get_entries(bass->cp_handlers); entry;
++						entry = entry->next) {
++		struct bt_bass_cp_handler *cb = entry->data;
 +
-+			tsens_mode: mode@249 {
-+				reg = <0x249 0x1>;
-+				bits = <0 3>;
-+			};
++		if (cb->handler) {
++			ret = cb->handler(bcast_src,
++					BT_BASS_SET_BCAST_CODE,
++					params, cb->data);
++			if (ret)
++				DBG(bass, "Unable to handle Set "
++						"Broadcast Code operation");
++		}
++	}
 +
-+			tsens_base1: base1@249 {
-+				reg = <0x249 0x2>;
-+				bits = <3 8>;
-+			};
-+
-+			tsens_base2: base2@24a {
-+				reg = <0x24a 0x2>;
-+				bits = <3 8>;
-+			};
-+
-+			tsens_s0_p1: s0-p1@24b {
-+				reg = <0x24b 0x2>;
-+				bits = <2 6>;
-+			};
-+
-+			tsens_s0_p2: s0-p2@24c {
-+				reg = <0x24c 0x1>;
-+				bits = <1 6>;
-+			};
-+
-+			tsens_s1_p1: s1-p1@24c {
-+				reg = <0x24c 0x2>;
-+				bits = <7 6>;
-+			};
-+
-+			tsens_s1_p2: s1-p2@24d {
-+				reg = <0x24d 0x2>;
-+				bits = <5 6>;
-+			};
-+
-+			tsens_s2_p1: s2-p1@24e {
-+				reg = <0x24e 0x2>;
-+				bits = <3 6>;
-+			};
-+
-+			tsens_s2_p2: s2-p2@24f {
-+				reg = <0x24f 0x1>;
-+				bits = <1 6>;
-+			};
-+
-+			tsens_s3_p1: s3-p1@24f {
-+				reg = <0x24f 0x2>;
-+				bits = <7 6>;
-+			};
-+
-+			tsens_s3_p2: s3-p2@250 {
-+				reg = <0x250 0x2>;
-+				bits = <5 6>;
-+			};
-+
-+			tsens_s4_p1: s4-p1@251 {
-+				reg = <0x251 0x2>;
-+				bits = <3 6>;
-+			};
-+
-+			tsens_s4_p2: s4-p2@254 {
-+				reg = <0x254 0x1>;
-+				bits = <0 6>;
-+			};
-+		};
-+
-+		tsens: thermal-sensor@4a9000 {
-+			compatible = "qcom,ipq5018-tsens";
-+			reg = <0x004a9000 0x1000>,
-+			      <0x004a8000 0x1000>;
-+
-+			nvmem-cells = <&tsens_mode>,
-+				      <&tsens_base1>,
-+				      <&tsens_base2>,
-+				      <&tsens_s0_p1>,
-+				      <&tsens_s0_p2>,
-+				      <&tsens_s1_p1>,
-+				      <&tsens_s1_p2>,
-+				      <&tsens_s2_p1>,
-+				      <&tsens_s2_p2>,
-+				      <&tsens_s3_p1>,
-+				      <&tsens_s3_p2>,
-+				      <&tsens_s4_p1>,
-+				      <&tsens_s4_p2>;
-+
-+			nvmem-cell-names = "mode",
-+					   "base1",
-+					   "base2",
-+					   "s0_p1",
-+					   "s0_p2",
-+					   "s1_p1",
-+					   "s1_p2",
-+					   "s2_p1",
-+					   "s2_p2",
-+					   "s3_p1",
-+					   "s3_p2",
-+					   "s4_p1",
-+					   "s4_p2";
-+
-+			interrupts = <GIC_SPI 184 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "uplow";
-+			#qcom,sensors = <5>;
-+			#thermal-sensor-cells = <1>;
-+		};
-+
- 		tlmm: pinctrl@1000000 {
- 			compatible = "qcom,ipq5018-tlmm";
- 			reg = <0x01000000 0x300000>;
-@@ -631,6 +745,74 @@ pcie@0 {
- 		};
- 	};
+ 	if (!bass_trigger_big_sync(bcast_src)) {
+ 		bcast_src->enc = BT_BASS_BIG_ENC_STATE_DEC;
  
-+	thermal-zones {
-+		cpu-thermal {
-+			polling-delay-passive = <0>;
-+			thermal-sensors = <&tsens 2>;
-+
-+			trips {
-+				cpu-critical {
-+					temperature = <120000>;
-+					hysteresis = <2>;
-+					type = "critical";
-+				};
-+
-+				cpu_alert: cpu-passive {
-+					temperature = <100000>;
-+					hysteresis = <2>;
-+					type = "passive";
-+				};
-+			};
-+
-+			cooling-maps {
-+				map0 {
-+					trip = <&cpu_alert>;
-+					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
-+							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
-+				};
-+			};
-+		};
-+
-+		gephy-thermal {
-+			polling-delay-passive = <0>;
-+			thermal-sensors = <&tsens 4>;
-+
-+			trips {
-+				gephy-critical {
-+					temperature = <120000>;
-+					hysteresis = <2>;
-+					type = "critical";
-+				};
-+			};
-+		};
-+
-+		top-glue-thermal {
-+			polling-delay-passive = <0>;
-+			thermal-sensors = <&tsens 3>;
-+
-+			trips {
-+				top-glue-critical {
-+					temperature = <120000>;
-+					hysteresis = <2>;
-+					type = "critical";
-+				};
-+			};
-+		};
-+
-+		ubi32-thermal {
-+			polling-delay-passive = <0>;
-+			thermal-sensors = <&tsens 1>;
-+
-+			trips {
-+				ubi32-critical {
-+					temperature = <120000>;
-+					hysteresis = <2>;
-+					type = "critical";
-+				};
-+			};
-+		};
-+	};
-+
- 	timer {
- 		compatible = "arm,armv8-timer";
- 		interrupts = <GIC_PPI 2 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+@@ -977,21 +991,6 @@ static void bass_handle_set_bcast_code_op(struct bt_bass *bass,
+ 
+ 		free(notif->iov_base);
+ 		free(notif);
+-		return;
+-	}
+-
+-	for (entry = queue_get_entries(bass->cp_handlers); entry;
+-						entry = entry->next) {
+-		struct bt_bass_cp_handler *cb = entry->data;
+-
+-		if (cb->handler) {
+-			ret = cb->handler(bcast_src,
+-					BT_BASS_SET_BCAST_CODE,
+-					params, cb->data);
+-			if (ret)
+-				DBG(bass, "Unable to handle Set "
+-						"Broadcast Code operation");
+-		}
+ 	}
+ }
+ 
 
+---
+base-commit: 95b72bbf1fe42216d02a5ebb99bd18e9b69b6064
+change-id: 20250611-bass_for_encrypted_broadcast_source-f68417fdee73
+
+Best regards,
 -- 
-2.49.0
+Yang Li <yang.li@amlogic.com>
 
