@@ -1,275 +1,347 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 11 Jun 2025 13:33:22 +0400
-Subject: [PATCH v12 2/2] arm64: dts: qcom: ipq5018: Add tsens node
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Wed, 11 Jun 2025 11:42:09 +0200
+Subject: [PATCH v2] dt-bindings: interrupt-controller: Convert fsl,mpic-msi
+ to YAML
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250611-ipq5018-tsens-v12-2-a61374a5517d@outlook.com>
-References: <20250611-ipq5018-tsens-v12-0-a61374a5517d@outlook.com>
-In-Reply-To: <20250611-ipq5018-tsens-v12-0-a61374a5517d@outlook.com>
-To: Amit Kucheria <amitk@kernel.org>, 
- Thara Gopinath <thara.gopinath@gmail.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250611-msipic-yaml-v2-1-f2e174c48802@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAHBPSWgC/1XMQQ7CIBCF4as0sxYDFIpx1XuYLmod7CS2ECDEp
+ uHuYl25/F/yvh0iBsII12aHgJkiubWGPDUwzeP6REaP2iC51FzKji2RPE1sG5cXMx22lvO71Yh
+ QHz6gpfeh3YbaM8XkwnbgWXzXn6N4++dkwQSzSqqLMtoIZXvvYkJ3XjHBUEr5ANtsRX6nAAAA
+X-Change-ID: 20250226-msipic-yaml-76e3f00bf5ee
+To: Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Sricharan Ramabadhran <quic_srichara@quicinc.com>, 
- George Moussalem <george.moussalem@outlook.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dmitry Baryshkov <lumag@kernel.org>, Dmitry Baryshkov <lumag@kernel.org>
+ Conor Dooley <conor+dt@kernel.org>, Crystal Wood <oss@buserror.net>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Naveen N Rao <naveen@kernel.org>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ linuxppc-dev@lists.ozlabs.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749634406; l=5540;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=8VbrGnbVEEGlTeBi9Ev67z9HvHAIvHkO/H7Vls/aG78=;
- b=zOlvLASLbZRV6aQmyd1XNl5LHAn0Ynoz4pQvZyTDfjrUW1bRaF+HVymXg0yjlmU4dOYWadTK7
- 4YN5He6yOuwAv5T6tIhAhure5IoUI1Dq3VlHgzlC6IY7yn/DEeWn9he
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749634936; l=12697;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=93Rhmig5L5zB9a0kXFywVlymV8E3tuGkGjN+qrmRYXs=;
+ b=WgwFZpfj419E3pvGAJeIH8mxbS4ecOCGH3SgnDGBj44TW4SzTp907y0qLD83/fZkKKKaNUNmr
+ J7Lmzs7OPXrCALZKQ8P2bp7XWx5T3tO6Cy3cigQCAajIn8OpCX8Pr6Y
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sricharan Ramabadhran <quic_srichara@quicinc.com>
+As part of a larger effort to bring various PowerPC-related bindings
+into the YAML world, this patch converts msi-pic.txt to YAML and moves
+it into the bindings/interrupt-controller/ directory. The conversion may
+necessarily be a bit hard to read because the binding is quite verbose.
 
-IPQ5018 has tsens V1.0 IP with 5 sensors, though 4 are in use.
-There is no RPM, so tsens has to be manually enabled. Adding the tsens
-and nvmem nodes and adding 4 thermal sensors (zones). The critical trip
-temperature is set to 120'C with an action to reboot.
-
-In addition, adding a cooling device to the CPU thermal zone which uses
-CPU frequency scaling.
-
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Signed-off-by: Sricharan Ramabadhran <quic_srichara@quicinc.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 182 ++++++++++++++++++++++++++++++++++
- 1 file changed, 182 insertions(+)
+Changes in v2:
+- Rebase on v6.16-rc1
+- Address Conor Dooley's review comments:
+  - Add multiline marker (|) to preserve formatting
+  - Split 'reg' list in second example
+  - Rewrite version dependent information as an if/else schema
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 130360014c5e14c778e348d37e601f60325b0b14..defeb697c8d89686e3aaf2e6f7b6cb7493219336 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -9,6 +9,7 @@
- #include <dt-bindings/interrupt-controller/arm-gic.h>
- #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
- #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
-+#include <dt-bindings/thermal/thermal.h>
- 
- / {
- 	interrupt-parent = <&intc>;
-@@ -39,6 +40,7 @@ cpu0: cpu@0 {
- 			next-level-cache = <&l2_0>;
- 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
- 			operating-points-v2 = <&cpu_opp_table>;
-+			#cooling-cells = <2>;
- 		};
- 
- 		cpu1: cpu@1 {
-@@ -49,6 +51,7 @@ cpu1: cpu@1 {
- 			next-level-cache = <&l2_0>;
- 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
- 			operating-points-v2 = <&cpu_opp_table>;
-+			#cooling-cells = <2>;
- 		};
- 
- 		l2_0: l2-cache {
-@@ -182,6 +185,117 @@ pcie0_phy: phy@86000 {
- 			status = "disabled";
- 		};
- 
-+		qfprom: qfprom@a0000 {
-+			compatible = "qcom,ipq5018-qfprom", "qcom,qfprom";
-+			reg = <0x000a0000 0x1000>;
-+			#address-cells = <1>;
-+			#size-cells = <1>;
-+
-+			tsens_mode: mode@249 {
-+				reg = <0x249 0x1>;
-+				bits = <0 3>;
-+			};
-+
-+			tsens_base1: base1@249 {
-+				reg = <0x249 0x2>;
-+				bits = <3 8>;
-+			};
-+
-+			tsens_base2: base2@24a {
-+				reg = <0x24a 0x2>;
-+				bits = <3 8>;
-+			};
-+
-+			tsens_s0_p1: s0-p1@24b {
-+				reg = <0x24b 0x2>;
-+				bits = <2 6>;
-+			};
-+
-+			tsens_s0_p2: s0-p2@24c {
-+				reg = <0x24c 0x1>;
-+				bits = <1 6>;
-+			};
-+
-+			tsens_s1_p1: s1-p1@24c {
-+				reg = <0x24c 0x2>;
-+				bits = <7 6>;
-+			};
-+
-+			tsens_s1_p2: s1-p2@24d {
-+				reg = <0x24d 0x2>;
-+				bits = <5 6>;
-+			};
-+
-+			tsens_s2_p1: s2-p1@24e {
-+				reg = <0x24e 0x2>;
-+				bits = <3 6>;
-+			};
-+
-+			tsens_s2_p2: s2-p2@24f {
-+				reg = <0x24f 0x1>;
-+				bits = <1 6>;
-+			};
-+
-+			tsens_s3_p1: s3-p1@24f {
-+				reg = <0x24f 0x2>;
-+				bits = <7 6>;
-+			};
-+
-+			tsens_s3_p2: s3-p2@250 {
-+				reg = <0x250 0x2>;
-+				bits = <5 6>;
-+			};
-+
-+			tsens_s4_p1: s4-p1@251 {
-+				reg = <0x251 0x2>;
-+				bits = <3 6>;
-+			};
-+
-+			tsens_s4_p2: s4-p2@254 {
-+				reg = <0x254 0x1>;
-+				bits = <0 6>;
-+			};
-+		};
-+
-+		tsens: thermal-sensor@4a9000 {
-+			compatible = "qcom,ipq5018-tsens";
-+			reg = <0x004a9000 0x1000>,
-+			      <0x004a8000 0x1000>;
-+
-+			nvmem-cells = <&tsens_mode>,
-+				      <&tsens_base1>,
-+				      <&tsens_base2>,
-+				      <&tsens_s0_p1>,
-+				      <&tsens_s0_p2>,
-+				      <&tsens_s1_p1>,
-+				      <&tsens_s1_p2>,
-+				      <&tsens_s2_p1>,
-+				      <&tsens_s2_p2>,
-+				      <&tsens_s3_p1>,
-+				      <&tsens_s3_p2>,
-+				      <&tsens_s4_p1>,
-+				      <&tsens_s4_p2>;
-+
-+			nvmem-cell-names = "mode",
-+					   "base1",
-+					   "base2",
-+					   "s0_p1",
-+					   "s0_p2",
-+					   "s1_p1",
-+					   "s1_p2",
-+					   "s2_p1",
-+					   "s2_p2",
-+					   "s3_p1",
-+					   "s3_p2",
-+					   "s4_p1",
-+					   "s4_p2";
-+
-+			interrupts = <GIC_SPI 184 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "uplow";
-+			#qcom,sensors = <5>;
-+			#thermal-sensor-cells = <1>;
-+		};
-+
- 		tlmm: pinctrl@1000000 {
- 			compatible = "qcom,ipq5018-tlmm";
- 			reg = <0x01000000 0x300000>;
-@@ -631,6 +745,74 @@ pcie@0 {
- 		};
- 	};
- 
-+	thermal-zones {
-+		cpu-thermal {
-+			polling-delay-passive = <0>;
-+			thermal-sensors = <&tsens 2>;
-+
-+			trips {
-+				cpu-critical {
-+					temperature = <120000>;
-+					hysteresis = <2>;
-+					type = "critical";
-+				};
-+
-+				cpu_alert: cpu-passive {
-+					temperature = <100000>;
-+					hysteresis = <2>;
-+					type = "passive";
-+				};
-+			};
-+
-+			cooling-maps {
-+				map0 {
-+					trip = <&cpu_alert>;
-+					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
-+							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
-+				};
-+			};
-+		};
-+
-+		gephy-thermal {
-+			polling-delay-passive = <0>;
-+			thermal-sensors = <&tsens 4>;
-+
-+			trips {
-+				gephy-critical {
-+					temperature = <120000>;
-+					hysteresis = <2>;
-+					type = "critical";
-+				};
-+			};
-+		};
-+
-+		top-glue-thermal {
-+			polling-delay-passive = <0>;
-+			thermal-sensors = <&tsens 3>;
-+
-+			trips {
-+				top-glue-critical {
-+					temperature = <120000>;
-+					hysteresis = <2>;
-+					type = "critical";
-+				};
-+			};
-+		};
-+
-+		ubi32-thermal {
-+			polling-delay-passive = <0>;
-+			thermal-sensors = <&tsens 1>;
-+
-+			trips {
-+				ubi32-critical {
-+					temperature = <120000>;
-+					hysteresis = <2>;
-+					type = "critical";
-+				};
-+			};
-+		};
-+	};
-+
- 	timer {
- 		compatible = "arm,armv8-timer";
- 		interrupts = <GIC_PPI 2 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+Link to v1: https://lore.kernel.org/r/20250403-msipic-yaml-v1-1-f4248475714f@posteo.net
+---
+---
+ .../interrupt-controller/fsl,mpic-msi.yaml         | 161 +++++++++++++++++++++
+ .../devicetree/bindings/powerpc/fsl/msi-pic.txt    | 111 --------------
+ 2 files changed, 161 insertions(+), 111 deletions(-)
 
+diff --git a/Documentation/devicetree/bindings/interrupt-controller/fsl,mpic-msi.yaml b/Documentation/devicetree/bindings/interrupt-controller/fsl,mpic-msi.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..89db7742c28b3650207b361bfa6fbaf4e69ccc45
+--- /dev/null
++++ b/Documentation/devicetree/bindings/interrupt-controller/fsl,mpic-msi.yaml
+@@ -0,0 +1,161 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/interrupt-controller/fsl,mpic-msi.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Freescale MSI interrupt controller
++
++description: |
++  The Freescale hypervisor and msi-address-64
++  -------------------------------------------
++
++  Normally, PCI devices have access to all of CCSR via an ATMU mapping.  The
++  Freescale MSI driver calculates the address of MSIIR (in the MSI register
++  block) and sets that address as the MSI message address.
++
++  In a virtualized environment, the hypervisor may need to create an IOMMU
++  mapping for MSIIR.  The Freescale ePAPR hypervisor has this requirement
++  because of hardware limitations of the Peripheral Access Management Unit
++  (PAMU), which is currently the only IOMMU that the hypervisor supports.
++  The ATMU is programmed with the guest physical address, and the PAMU
++  intercepts transactions and reroutes them to the true physical address.
++
++  In the PAMU, each PCI controller is given only one primary window.  The
++  PAMU restricts DMA operations so that they can only occur within a window.
++  Because PCI devices must be able to DMA to memory, the primary window must
++  be used to cover all of the guest's memory space.
++
++  PAMU primary windows can be divided into 256 subwindows, and each
++  subwindow can have its own address mapping ("guest physical" to "true
++  physical").  However, each subwindow has to have the same alignment, which
++  means they cannot be located at just any address.  Because of these
++  restrictions, it is usually impossible to create a 4KB subwindow that
++  covers MSIIR where it's normally located.
++
++  Therefore, the hypervisor has to create a subwindow inside the same
++  primary window used for memory, but mapped to the MSIR block (where MSIIR
++  lives).  The first subwindow after the end of guest memory is used for
++  this.  The address specified in the msi-address-64 property is the PCI
++  address of MSIIR.  The hypervisor configures the PAMU to map that address to
++  the true physical address of MSIIR.
++
++maintainers:
++  - J. Neuschäfer <j.ne@posteo.net>
++
++properties:
++  compatible:
++    oneOf:
++      - enum:
++          - fsl,mpic-msi
++          - fsl,mpic-msi-v4.3
++          - fsl,ipic-msi
++          - fsl,vmpic-msi
++          - fsl,vmpic-msi-v4.3
++      - items:
++          - enum:
++              - fsl,mpc8572-msi
++              - fsl,mpc8610-msi
++              - fsl,mpc8641-msi
++          - const: fsl,mpic-msi
++
++  reg:
++    minItems: 1
++    items:
++      - description: Address and length of the shared message interrupt
++          register set
++      - description: Address of aliased MSIIR or MSIIR1 register for platforms
++          that have such an alias. If using MSIIR1, the second region must be
++          added because different MSI group has different MSIIR1 offset.
++
++  interrupts:
++    minItems: 1
++    maxItems: 16
++    description:
++      Each one of the interrupts here is one entry per 32 MSIs, and routed to
++      the host interrupt controller. The interrupts should be set as edge
++      sensitive. If msi-available-ranges is present, only the interrupts that
++      correspond to available ranges shall be present.
++
++  msi-available-ranges:
++    $ref: /schemas/types.yaml#/definitions/uint32-matrix
++    items:
++      items:
++        - description: First MSI interrupt in this range
++        - description: Number of MSI interrupts in this range
++    description:
++      Define which MSI interrupt can be used in the 256 MSI interrupts.
++      If not specified, all the MSI interrupts can be used.
++      Each available range must begin and end on a multiple of 32 (i.e. no
++      splitting an individual MSI register or the associated PIC interrupt).
++
++  msi-address-64:
++    $ref: /schemas/types.yaml#/definitions/uint64
++    description:
++      64-bit PCI address of the MSIIR register. The MSIIR register is used for
++      MSI messaging.  The address of MSIIR in PCI address space is the MSI
++      message address.
++
++      This property may be used in virtualized environments where the hypervisor
++      has created an alternate mapping for the MSIR block.  See the top-level
++      description for an explanation.
++
++required:
++  - compatible
++  - reg
++  - interrupts
++
++anyOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - fsl,mpic-msi-v4.3
++              - fsl,vmpic-msi-v4.3
++    then:
++      properties:
++        interrupts:
++          maxItems: 16
++          description:
++            Version 4.3 implies that there are 16 shared interrupts, and they
++            are configured through MSIIR1.
++
++        # MPIC v4.3 does not support this property because the 32 interrupts of
++        # an individual register are not continuous when using MSIIR1.
++        msi-available-ranges: false
++
++        reg:
++          minItems: 2
++
++    else:
++      properties:
++        interrupts:
++          maxItems: 8
++          description:
++            In versions before 4.3, only 8 shared interrupts are available, and
++            they are configured through MSIIR.
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    msi@41600 {
++            compatible = "fsl,mpc8610-msi", "fsl,mpic-msi";
++            reg = <0x41600 0x80>;
++            msi-available-ranges = <0 0x100>;
++            interrupts = <0xe0 0>, <0xe1 0>, <0xe2 0>, <0xe3 0>,
++                         <0xe4 0>, <0xe5 0>, <0xe6 0>, <0xe7 0>;
++    };
++
++  - |
++    msi@41600 {
++            compatible = "fsl,mpic-msi-v4.3";
++            reg = <0x41600 0x200>, <0x44148 4>;
++            interrupts = <0xe0 0 0 0>, <0xe1 0 0 0>, <0xe2 0 0 0>, <0xe3 0 0 0>,
++                         <0xe4 0 0 0>, <0xe5 0 0 0>, <0xe6 0 0 0>, <0xe7 0 0 0>,
++                         <0x100 0 0 0>, <0x101 0 0 0>, <0x102 0 0 0>, <0x103 0 0 0>,
++                         <0x104 0 0 0>, <0x105 0 0 0>, <0x106 0 0 0>, <0x107 0 0 0>;
++    };
++
++...
+diff --git a/Documentation/devicetree/bindings/powerpc/fsl/msi-pic.txt b/Documentation/devicetree/bindings/powerpc/fsl/msi-pic.txt
+deleted file mode 100644
+index f8d2b7fe06d695971d48ba21ab67e5b72a212fe9..0000000000000000000000000000000000000000
+--- a/Documentation/devicetree/bindings/powerpc/fsl/msi-pic.txt
++++ /dev/null
+@@ -1,111 +0,0 @@
+-* Freescale MSI interrupt controller
+-
+-Required properties:
+-- compatible : compatible list, may contain one or two entries
+-  The first is "fsl,CHIP-msi", where CHIP is the processor(mpc8610, mpc8572,
+-  etc.) and the second is "fsl,mpic-msi" or "fsl,ipic-msi" or
+-  "fsl,mpic-msi-v4.3" depending on the parent type and version. If mpic
+-  version is 4.3, the number of MSI registers is increased to 16, MSIIR1 is
+-  provided to access these 16 registers, and compatible "fsl,mpic-msi-v4.3"
+-  should be used. The first entry is optional; the second entry is
+-  required.
+-
+-- reg : It may contain one or two regions. The first region should contain
+-  the address and the length of the shared message interrupt register set.
+-  The second region should contain the address of aliased MSIIR or MSIIR1
+-  register for platforms that have such an alias, if using MSIIR1, the second
+-  region must be added because different MSI group has different MSIIR1 offset.
+-
+-- interrupts : each one of the interrupts here is one entry per 32 MSIs,
+-  and routed to the host interrupt controller. the interrupts should
+-  be set as edge sensitive.  If msi-available-ranges is present, only
+-  the interrupts that correspond to available ranges shall be present.
+-
+-Optional properties:
+-- msi-available-ranges: use <start count> style section to define which
+-  msi interrupt can be used in the 256 msi interrupts. This property is
+-  optional, without this, all the MSI interrupts can be used.
+-  Each available range must begin and end on a multiple of 32 (i.e.
+-  no splitting an individual MSI register or the associated PIC interrupt).
+-  MPIC v4.3 does not support this property because the 32 interrupts of an
+-  individual register are not continuous when using MSIIR1.
+-
+-- msi-address-64: 64-bit PCI address of the MSIIR register. The MSIIR register
+-  is used for MSI messaging.  The address of MSIIR in PCI address space is
+-  the MSI message address.
+-
+-  This property may be used in virtualized environments where the hypervisor
+-  has created an alternate mapping for the MSIR block.  See below for an
+-  explanation.
+-
+-
+-Example:
+-	msi@41600 {
+-		compatible = "fsl,mpc8610-msi", "fsl,mpic-msi";
+-		reg = <0x41600 0x80>;
+-		msi-available-ranges = <0 0x100>;
+-		interrupts = <
+-			0xe0 0
+-			0xe1 0
+-			0xe2 0
+-			0xe3 0
+-			0xe4 0
+-			0xe5 0
+-			0xe6 0
+-			0xe7 0>;
+-		interrupt-parent = <&mpic>;
+-	};
+-
+-	msi@41600 {
+-		compatible = "fsl,mpic-msi-v4.3";
+-		reg = <0x41600 0x200 0x44148 4>;
+-		interrupts = <
+-			0xe0 0 0 0
+-			0xe1 0 0 0
+-			0xe2 0 0 0
+-			0xe3 0 0 0
+-			0xe4 0 0 0
+-			0xe5 0 0 0
+-			0xe6 0 0 0
+-			0xe7 0 0 0
+-			0x100 0 0 0
+-			0x101 0 0 0
+-			0x102 0 0 0
+-			0x103 0 0 0
+-			0x104 0 0 0
+-			0x105 0 0 0
+-			0x106 0 0 0
+-			0x107 0 0 0>;
+-	};
+-
+-The Freescale hypervisor and msi-address-64
+--------------------------------------------
+-Normally, PCI devices have access to all of CCSR via an ATMU mapping.  The
+-Freescale MSI driver calculates the address of MSIIR (in the MSI register
+-block) and sets that address as the MSI message address.
+-
+-In a virtualized environment, the hypervisor may need to create an IOMMU
+-mapping for MSIIR.  The Freescale ePAPR hypervisor has this requirement
+-because of hardware limitations of the Peripheral Access Management Unit
+-(PAMU), which is currently the only IOMMU that the hypervisor supports.
+-The ATMU is programmed with the guest physical address, and the PAMU
+-intercepts transactions and reroutes them to the true physical address.
+-
+-In the PAMU, each PCI controller is given only one primary window.  The
+-PAMU restricts DMA operations so that they can only occur within a window.
+-Because PCI devices must be able to DMA to memory, the primary window must
+-be used to cover all of the guest's memory space.
+-
+-PAMU primary windows can be divided into 256 subwindows, and each
+-subwindow can have its own address mapping ("guest physical" to "true
+-physical").  However, each subwindow has to have the same alignment, which
+-means they cannot be located at just any address.  Because of these
+-restrictions, it is usually impossible to create a 4KB subwindow that
+-covers MSIIR where it's normally located.
+-
+-Therefore, the hypervisor has to create a subwindow inside the same
+-primary window used for memory, but mapped to the MSIR block (where MSIIR
+-lives).  The first subwindow after the end of guest memory is used for
+-this.  The address specified in the msi-address-64 property is the PCI
+-address of MSIIR.  The hypervisor configures the PAMU to map that address to
+-the true physical address of MSIIR.
+
+---
+base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
+change-id: 20250226-msipic-yaml-76e3f00bf5ee
+
+Best regards,
 -- 
-2.49.0
+J. Neuschäfer <j.ne@posteo.net>
 
