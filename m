@@ -1,72 +1,67 @@
-From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-Date: Wed, 11 Jun 2025 16:03:03 -0400
-Subject: [PATCH v6 6/6] MAINTAINERS: add an entry for pf1550 mfd driver
+From: Janne Grunau <j@jannau.net>
+Date: Wed, 11 Jun 2025 22:30:31 +0200
+Subject: [PATCH] arm64: dts: apple: t8103: Fix PCIe BCM4377 nodename
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250611-pf1550-v6-6-34f2ddfe045e@savoirfairelinux.com>
-References: <20250611-pf1550-v6-0-34f2ddfe045e@savoirfairelinux.com>
-In-Reply-To: <20250611-pf1550-v6-0-34f2ddfe045e@savoirfairelinux.com>
-To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20250611-arm64_dts_apple_wifi-v1-1-fb959d8e1eb4@jannau.net>
+X-B4-Tracking: v=1; b=H4sIAGbnSWgC/x3MTQqAIBBA4avErBMaM4OuEiGSUw30IxoVhHdPW
+ n6L916IFJgidMULgS6OfOwZWBYwLnafSbDLBlnJptKIwoZNK+POaKz3K5mbJxZOYSNRtbImDTn
+ 1gSZ+/m0/pPQBKqY7WGYAAAA=
+X-Change-ID: 20250611-arm64_dts_apple_wifi-d415214723e6
+To: Sven Peter <sven@kernel.org>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Neal Gompa <neal@gompa.dev>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Sebastian Reichel <sre@kernel.org>, Frank Li <Frank.li@nxp.com>
-Cc: imx@lists.linux.dev, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
- linux-pm@vger.kernel.org, Abel Vesa <abelvesa@kernel.org>, 
- Abel Vesa <abelvesa@linux.com>, Robin Gong <b38343@freescale.com>, 
- Robin Gong <yibin.gong@nxp.com>, 
- Enric Balletbo i Serra <eballetbo@gmail.com>, 
- Samuel Kayode <samuel.kayode@savoirfairelinux.com>, 
- Abel Vesa <abelvesa@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ Conor Dooley <conor+dt@kernel.org>, Mark Kettenis <kettenis@openbsd.org>, 
+ Marc Zyngier <maz@kernel.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749672179; l=1098;
- i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
- bh=A2g1QBfQcrzU9z5M8QRFE0Nrt7Jq7rU2GZY3TiYW/3Y=;
- b=JLty8CjMJicQq1reFnjgmqLmWRGsUdUZlD70w5L2JJ3/RqbojqxbuEUJOX0m75y2zOKN/pV4s
- lyEuI8o+X63CZJH7qjkQDz0W/lu85XMSm4bI6Ix/uK/ycokLGQ2CEBF
-X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
- pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
-X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1444; i=j@jannau.net;
+ s=yk2024; h=from:subject:message-id;
+ bh=wHLTjbA+ZQtpL0eNy1zcPArF/Oix96dlxYfH46ebBpY=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhgzP51kRH8Mu3v4jEB23riR0deCkgE6+c2cMvr65PcVSe
+ 0ccb9X0jlIWBjEuBlkxRZYk7ZcdDKtrFGNqH4TBzGFlAhnCwMUpABMJ2MzIcLts4jqju75O01+L
+ W7AzLZr3XaNW7reybOvtzn/v4/9UeDP8D1O7tNy9eNnCJpMtf/9daq65scqR77nMzOoP0rJxOVf
+ 4GQE=
+X-Developer-Key: i=j@jannau.net; a=openpgp;
+ fpr=8B336A6BE4E5695E89B8532B81E806F586338419
+X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MAINTAINERS entry for pf1550 PMIC.
+Fix the following `make dtbs_check` warnings for all t8103 based devices:
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+arch/arm64/boot/dts/apple/t8103-j274.dtb: network@0,0: $nodename:0: 'network@0,0' does not match '^wifi(@.*)?$'
+        from schema $id: http://devicetree.org/schemas/net/wireless/brcm,bcm4329-fmac.yaml#
+arch/arm64/boot/dts/apple/t8103-j274.dtb: network@0,0: Unevaluated properties are not allowed ('local-mac-address' was unexpected)
+        from schema $id: http://devicetree.org/schemas/net/wireless/brcm,bcm4329-fmac.yaml#
+
+Fixes: bf2c05b619ff ("arm64: dts: apple: t8103: Expose PCI node for the WiFi MAC address")
+Signed-off-by: Janne Grunau <j@jannau.net>
 ---
-v6:
- - Add imx mailing list
+ arch/arm64/boot/dts/apple/t8103-jxxx.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi b/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
+index 8e82231acab59ca0bffdcecfb6681f59661fcd96..0c8206156bfefda8a32c869787b2e0c8e67a9d17 100644
+--- a/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
++++ b/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
+@@ -71,7 +71,7 @@ hpm1: usb-pd@3f {
+  */
+ &port00 {
+ 	bus-range = <1 1>;
+-	wifi0: network@0,0 {
++	wifi0: wifi@0,0 {
+ 		compatible = "pci14e4,4425";
+ 		reg = <0x10000 0x0 0x0 0x0 0x0>;
+ 		/* To be filled by the loader */
+
 ---
- MAINTAINERS | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
+change-id: 20250611-arm64_dts_apple_wifi-d415214723e6
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 98201e1f4ab5908ff49d32d19275e123cedb4b66..5547fdafa7e1bb11903d5d5bef246c2e1a20fbca 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -17853,6 +17853,17 @@ F:	Documentation/devicetree/bindings/clock/imx*
- F:	drivers/clk/imx/
- F:	include/dt-bindings/clock/imx*
- 
-+NXP PF1550 PMIC MFD DRIVER
-+M:	Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-+L:	imx@lists.linux.dev
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/mfd/nxp,pf1550.yaml
-+F:	drivers/input/misc/pf1550-onkey.c
-+F:	drivers/mfd/pf1550.c
-+F:	drivers/power/supply/pf1550-charger.c
-+F:	drivers/regulator/pf1550-regulator.c
-+F:	include/linux/mfd/pfd1550.h
-+
- NXP PF8100/PF8121A/PF8200 PMIC REGULATOR DEVICE DRIVER
- M:	Jagan Teki <jagan@amarulasolutions.com>
- S:	Maintained
-
+Best regards,
 -- 
-2.49.0
+Janne Grunau <j@jannau.net>
 
