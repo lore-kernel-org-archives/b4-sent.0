@@ -1,67 +1,77 @@
-From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-Date: Tue, 10 Jun 2025 15:47:34 -0400
-Subject: [PATCH v5 6/6] MAINTAINERS: add an entry for pf1550 mfd driver
+From: Shmuel Leib Melamud <smelamud@redhat.com>
+Subject: [PATCH v4 0/2] renesas: Renesas R-Car Gen4 watchdog driver
+Date: Wed, 11 Jun 2025 03:25:50 +0300
+Message-Id: <20250611-us-renesas-watchdog-v4-0-24f1da3e0dc9@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250610-pf1550-v5-6-ed0d9e3aaac7@savoirfairelinux.com>
-References: <20250610-pf1550-v5-0-ed0d9e3aaac7@savoirfairelinux.com>
-In-Reply-To: <20250610-pf1550-v5-0-ed0d9e3aaac7@savoirfairelinux.com>
-To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Sebastian Reichel <sre@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-input@vger.kernel.org, linux-pm@vger.kernel.org, 
- Abel Vesa <abelvesa@kernel.org>, Abel Vesa <abelvesa@linux.com>, 
- Robin Gong <b38343@freescale.com>, Robin Gong <yibin.gong@nxp.com>, 
- Enric Balletbo i Serra <eballetbo@gmail.com>, 
- Samuel Kayode <samuel.kayode@savoirfairelinux.com>, 
- Abel Vesa <abelvesa@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-B4-Tracking: v=1; b=H4sIAA/NSGgC/33NQQ7CIBCF4as0rB2DUNC68h7GBWWGwsJioFZN0
+ 7tLuzEmxuX/kvlmYplSoMyO1cQSjSGH2JeoNxWz3vQdQcDSTHChuJIc7hkS9ZRNhocZrMfYgbD
+ 7BtsWlUXByuUtkQvPVT1fSvuQh5he65NRLOt/bxSwg5bjwTXa6hrtKRF6M2xtvLIFHOUH0Vz+R
+ iRwME4arYxDLukLmef5DaL0/Hz8AAAA
+X-Change-ID: 20250530-us-renesas-watchdog-2c79dbbd5cd2
+To: Nobuhiro Iwamatsu <iwamatsu@nigauri.org>, 
+ Marek Vasut <marek.vasut+renesas@mailbox.org>, 
+ Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>, 
+ Tom Rini <trini@konsulko.com>, Stefan Roese <sr@denx.de>, 
+ Mattijs Korpershoek <mkorpershoek@kernel.org>
+Cc: u-boot@lists.denx.de, Shmuel Leib Melamud <smelamud@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749584885; l=1037;
- i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
- bh=1qhTIEsmPLxNuuFFSqYxrKKKek2sC5avXrd07642loc=;
- b=Fx/CMj3bOIeSkwdj6q4aKIZjFw7ZmMdCnD2yZ9n4JOLquOmEEbFcX0ZrsF/9tRDc7LEH46aUq
- sFSc3bKbdGpCUvlZdiBKUR5GHYNlYqE1qYOXBUQtTbwKznBiulo0xuO
-X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
- pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
-X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749601573; l=1971;
+ i=smelamud@redhat.com; s=20250530; h=from:subject:message-id;
+ bh=3cGQv7h93+C85X4o3m+NwCt6wOgiautS6JWUPj8Ltw4=;
+ b=InsTxnJ01swP27YOjRMJ9dXUmtp4bh0Yr6ZfHALmiV5yhzy/cg5xE5heLEM1iG2pt56ZdVUi+
+ owHfznPjiKbAnr+pAZVe/1rd+CFqLgHGX73WbY4HLMvqJHDnuWtpOiN
+X-Developer-Key: i=smelamud@redhat.com; a=ed25519;
+ pk=B1DFtpdxDPQudtnqMHSFRRSJziu3zB49J6oZUBo0qI8=
+X-Endpoint-Received: by B4 Relay for smelamud@redhat.com/20250530 with auth_id=418
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MAINTAINERS entry for pf1550 PMIC.
+These series add support of Renesas R-Car Gen4 watchdog timer.
+Timeouts up to 8184.0s are supported (CKS1 register is not involved).
+The watchdog uses the clock type CLK_TYPE_GEN4_MDSEL, so a separate
+patch adds handling of this constant to gen3_clk_get_rate64() function.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+The series were tested on real Renesas R8A779F0 hardware. If the
+watchdog driver is enabled at the build time, the watchdog timer is
+initialized when U-Boot starts. Under normal circumstances, U-Boot loads
+the kernel, it starts systemd and systemd continues to pet the watchdog.
+If systemd is not started before the timeout expires, the watchdog
+resets the board.
+
+Signed-off-by: Shmuel Leib Melamud <smelamud@redhat.com>
+
 ---
- MAINTAINERS | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Changes in v4:
+- Added #define for the maximal counter value.
+- Sorted list of #includes.
+- Prefer (a) parameter of usleep_range(a, b)
+- Added a comment to the loop that finds the best clock divider.
+- Link to v3: https://lore.kernel.org/r/20250603-us-renesas-watchdog-v3-0-af3a65afd03e@redhat.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 98201e1f4ab5908ff49d32d19275e123cedb4b66..29287ab3c9d00240ecb0ac9793aa908ec75a9bd0 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -17853,6 +17853,16 @@ F:	Documentation/devicetree/bindings/clock/imx*
- F:	drivers/clk/imx/
- F:	include/dt-bindings/clock/imx*
- 
-+NXP PF1550 PMIC MFD DRIVER
-+M:	Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/mfd/nxp,pf1550.yaml
-+F:	drivers/input/misc/pf1550-onkey.c
-+F:	drivers/mfd/pf1550.c
-+F:	drivers/power/supply/pf1550-charger.c
-+F:	drivers/regulator/pf1550-regulator.c
-+F:	include/linux/mfd/pfd1550.h
-+
- NXP PF8100/PF8121A/PF8200 PMIC REGULATOR DEVICE DRIVER
- M:	Jagan Teki <jagan@amarulasolutions.com>
- S:	Maintained
+Changes in v3:
+- Reference to the Linux driver added.
+- Clock driver change moved to a separate patch.
+- rwdt_ prefix used everywhere instead of renesas_wdt_.
+- Disable the clock if rwdt_probe() fails.
+- List of compatibles updated.
+- Link to v2: https://lore.kernel.org/r/20250530-us-renesas-watchdog-v2-1-b0d8f96c64dc@redhat.com
 
+---
+Shmuel Leib Melamud (2):
+      clk: renesas: Handle CLK_TYPE_GEN4_MDSEL in gen3_clk_get_rate64()
+      renesas: Renesas R-Car Gen4 watchdog driver
+
+ drivers/clk/renesas/clk-rcar-gen3.c |   4 +-
+ drivers/watchdog/Kconfig            |   8 ++
+ drivers/watchdog/Makefile           |   1 +
+ drivers/watchdog/renesas_wdt.c      | 189 ++++++++++++++++++++++++++++++++++++
+ 4 files changed, 201 insertions(+), 1 deletion(-)
+---
+base-commit: 3b6760ddeb4ef940226921017cd9088c89784b01
+change-id: 20250530-us-renesas-watchdog-2c79dbbd5cd2
+
+Best regards,
 -- 
-2.49.0
+Shmuel Leib Melamud <smelamud@redhat.com>
 
