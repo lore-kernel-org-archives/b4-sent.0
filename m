@@ -1,131 +1,76 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 11 Jun 2025 13:53:38 -0500
-Subject: [PATCH v2 2/2] arm64: tegra: Add NVIDIA Jetson Nano 2GB Developer
- Kit support
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Wed, 11 Jun 2025 21:01:01 +0200
+Subject: [PATCH RESEND] powerpc: dts: mpc8315erdb: Add GPIO controller node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250611-p3452-v2-2-fd2679706c63@gmail.com>
-References: <20250611-p3452-v2-0-fd2679706c63@gmail.com>
-In-Reply-To: <20250611-p3452-v2-0-fd2679706c63@gmail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250611-mpc-gpio-v1-1-02d1f75336e2@posteo.net>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Naveen N Rao <naveen@kernel.org>
+Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749668025; l=3203;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=42OimoFJFrvH09yIqaz1jWdoda8v/mnkO8i3GiH9JpM=;
- b=s9iva6uoq+uW+o+2KkN3I/3FReqx2GkSwk5aFp5eApaNzLaZxXMZdb9o6G5SFcQyryaIz6W4u
- hJeNJRTC1A3DPtrb7saPzfe9Bq4TIacnCWDgeuliVkSm52C6EnDKWeU
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749668466; l=1409;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=yIo4OMFzwIHk/Y7Ad7fIh7vacgPJLYwfWJ8zjzP38HI=;
+ b=t2XtzKk2H7rwfNQdpvWOKJG4VX8BR/rxKH6Dz6UQMgVFtZru+BUuVAF8xZp/evmj28KZWpxgG
+ JgO+ojw6KFlC8hwxoeHM7YdVVX7H+wqjB0xhsUl8KqDVM9xAD42Bznx
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This devkit is very similar to P3450, except it has less ram, no display
-port, and only 3 usb host ports. Derive from P3450 and disable the
-hardware that is unavailable.
+The MPC8315E SoC and variants have a GPIO controller at IMMR + 0xc00.
+This node was previously missing from the device tree.
 
-Gpio PA6 is used to control the hdmi power rail and needs to be on for
-hotplug detect to work. This is mapped to the 3.3V usb hub on P3450.
-That usb rail is not used here, so delete the regulator to avoid
-conflicts.
-
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- arch/arm64/boot/dts/nvidia/Makefile                |  2 +
- arch/arm64/boot/dts/nvidia/tegra210-p3541-0000.dts | 59 ++++++++++++++++++++++
- 2 files changed, 61 insertions(+)
+A version of this patch was previously part of the series "powerpc:
+MPC83xx cleanup and LANCOM NWAPP2 board", but I'm splitting it out to
+reduce the size of that series.
+---
+ arch/powerpc/boot/dts/mpc8315erdb.dts | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/nvidia/Makefile b/arch/arm64/boot/dts/nvidia/Makefile
-index 0fbb8a494dba5089d9b7243e766bd6028b7f3744..2989550e0d482e0dde09c1ff89930f7eb7b5b644 100644
---- a/arch/arm64/boot/dts/nvidia/Makefile
-+++ b/arch/arm64/boot/dts/nvidia/Makefile
-@@ -3,6 +3,7 @@
- # Enables support for device-tree overlays
- DTC_FLAGS_tegra210-p2371-2180 := -@
- DTC_FLAGS_tegra210-p3450-0000 := -@
-+DTC_FLAGS_tegra210-p3541-0000 := -@
- DTC_FLAGS_tegra186-p2771-0000 := -@
- DTC_FLAGS_tegra186-p3509-0000+p3636-0001 := -@
- DTC_FLAGS_tegra194-p2972-0000 := -@
-@@ -18,6 +19,7 @@ dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2371-0000.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2371-2180.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2571.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3450-0000.dtb
-+dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3541-0000.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-smaug.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2894-0050-a08.dtb
- dtb-$(CONFIG_ARCH_TEGRA_186_SOC) += tegra186-p2771-0000.dtb
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210-p3541-0000.dts b/arch/arm64/boot/dts/nvidia/tegra210-p3541-0000.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..b86e271dde0bee7ceb70f16113eba5cf06da98e2
---- /dev/null
-+++ b/arch/arm64/boot/dts/nvidia/tegra210-p3541-0000.dts
-@@ -0,0 +1,59 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/dts-v1/;
+diff --git a/arch/powerpc/boot/dts/mpc8315erdb.dts b/arch/powerpc/boot/dts/mpc8315erdb.dts
+index e09b37d7489d01bfd16a26e9786868f630fa0262..a89cb3139ca8c3d4f22e43838a4b7d2dd5109aa5 100644
+--- a/arch/powerpc/boot/dts/mpc8315erdb.dts
++++ b/arch/powerpc/boot/dts/mpc8315erdb.dts
+@@ -6,6 +6,7 @@
+  */
+ 
+ /dts-v1/;
++#include <dt-bindings/interrupt-controller/irq.h>
+ 
+ / {
+ 	compatible = "fsl,mpc8315erdb";
+@@ -358,6 +359,15 @@ pmc: power@b00 {
+ 			interrupt-parent = <&ipic>;
+ 			fsl,mpc8313-wakeup-timer = <&gtm1>;
+ 		};
 +
-+#include "tegra210-p3450-0000.dts"
-+
-+/ {
-+	model = "NVIDIA Jetson Nano 2GB Developer Kit";
-+	compatible = "nvidia,p3541-0000", "nvidia,p3450-0000", "nvidia,tegra210";
-+
-+	memory@80000000 {
-+		reg = <0x0 0x80000000 0x0 0x80000000>;
-+	};
-+
-+	host1x@50000000 {
-+		sor@54540000 {
-+			status = "disabled";
++		gpio: gpio-controller@c00 {
++			compatible = "fsl,mpc8314-gpio";
++			reg = <0xc00 0x100>;
++			interrupts = <74 IRQ_TYPE_LEVEL_LOW>;
++			interrupt-parent = <&ipic>;
++			gpio-controller;
++			#gpio-cells = <2>;
 +		};
-+
-+		dpaux@545c0000 {
-+			status = "disabled";
-+		};
-+	};
-+
-+	padctl@7009f000 {
-+		ports {
-+			usb2-1 {
-+				vbus-supply = <&vdd_hub_5v0>;
-+			};
-+
-+			usb2-2 {
-+				vbus-supply = <&vdd_hub_5v0>;
-+			};
-+
-+			usb3-0 {
-+				/delete-property/ vbus-supply;
-+			};
-+		};
-+	};
-+
-+	regulator-vdd-hdmi-5v0 {
-+		gpio = <&gpio TEGRA_GPIO(A, 6) GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	/delete-node/ regulator-vdd-hub-3v3;
-+
-+	vdd_hub_5v0: regulator-vdd-hub-5v0 {
-+		compatible = "regulator-fixed";
-+
-+		regulator-name = "VDD_HUB_5V0";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+
-+		gpio = <&gpio TEGRA_GPIO(I, 2) GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+
-+		vin-supply = <&vdd_5v0_sys>;
-+	};
-+};
+ 	};
+ 
+ 	pci0: pci@e0008500 {
 
+---
+base-commit: 0af2f6be1b4281385b618cb86ad946eded089ac8
+change-id: 20250418-mpc-gpio-79dca9f70546
+
+Best regards,
 -- 
-2.49.0
+J. Neuschäfer <j.ne@posteo.net>
 
