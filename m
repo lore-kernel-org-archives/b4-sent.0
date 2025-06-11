@@ -1,74 +1,41 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Wed, 11 Jun 2025 17:16:58 +0100
-Subject: [PATCH RESEND 4/4] dma: dma-axi-dmac: simplify axi_dmac_parse_dt()
+Subject: [PATCH 0/2] hwmon: ltc4282: small fixes
+Date: Wed, 11 Jun 2025 17:26:11 +0100
+Message-Id: <20250611-fix-ltc4282-repetead-write-v1-0-fe46edd08cf1@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250611-dev-axi-dmac-fixes-v1-4-d30af52a2af5@analog.com>
-References: <20250611-dev-axi-dmac-fixes-v1-0-d30af52a2af5@analog.com>
-In-Reply-To: <20250611-dev-axi-dmac-fixes-v1-0-d30af52a2af5@analog.com>
-To: dmaengine@vger.kernel.org
-Cc: Paul Cercueil <paul@crapouillou.net>, 
- Lars-Peter Clausen <lars@metafoo.de>, Vinod Koul <vkoul@kernel.org>
+X-B4-Tracking: v=1; b=H4sIACOuSWgC/x3MQQrCMBBG4auUWTswnaoEr1JchPSPDkgtk9AWS
+ u9ucPnB4x1U4IZCj+4gx2rFvnNDf+koveP8AtvUTCp6k7soZ9v5U9NVg7JjQUWceHOr4CBJVGL
+ ucxioDRZHq//z8XmeP98dWsZsAAAA
+X-Change-ID: 20250602-fix-ltc4282-repetead-write-80c020af1f83
+To: linux-hwmon@vger.kernel.org
+Cc: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749658620; l=1521;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749659172; l=443;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=dIUKoGAAnK7SSnlSFeEcmY/rlMpKq1hPjDfYUQ18lCk=;
- b=z2ZShpxiwI5dwmb0KXv8nPbvPPuTKlxAf7AAj6A7JQOCkfImGrVgg1OvXkwr3T63/5fjIOru2
- EKl3LQQpfIZBfj4m6BXatNQ0ZWjeGLcuWHtqjdHIsUVduv4dHMci42U
+ bh=4qoIdVZqskHdh9gXoHDe3uhAq3b9ORl/KtK3XxjIt68=;
+ b=73msCQlKQtx9+rG7Ftg6n3wZIVtb0TxjARxVIqZsFEe2RW9vlPmnHdyMLQiB20Xlu94CqkFmT
+ 7Vi+/FNXUrLBpe3EVFfqcS2iyy8S+vvSGZht/qL8RGASsu9HawM/hiK
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Simplify axi_dmac_parse_dt() by using the cleanup device_node class for
-automatically releasing the of_node reference when going out of scope.
+Simple series fixing a repeated register write and bad variable name.
 
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/dma/dma-axi-dmac.c | 13 +++++--------
- 1 file changed, 5 insertions(+), 8 deletions(-)
+Nuno Sá (2):
+      hwmon: ltc4282: avoid repeated register write
+      hwmon: ltc4282: fix copy past on variable name
 
-diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
-index 25717a6ea9848b6c591a3ab6adb27c6f21f002b9..035fc703506977ad59fd0b6ee8a8e5858d2c120e 100644
---- a/drivers/dma/dma-axi-dmac.c
-+++ b/drivers/dma/dma-axi-dmac.c
-@@ -7,6 +7,7 @@
-  */
- 
- #include <linux/bitfield.h>
-+#include <linux/cleanup.h>
- #include <linux/clk.h>
- #include <linux/device.h>
- #include <linux/dma-mapping.h>
-@@ -927,22 +928,18 @@ static int axi_dmac_parse_chan_dt(struct device_node *of_chan,
- 
- static int axi_dmac_parse_dt(struct device *dev, struct axi_dmac *dmac)
- {
--	struct device_node *of_channels, *of_chan;
- 	int ret;
- 
--	of_channels = of_get_child_by_name(dev->of_node, "adi,channels");
-+	struct device_node *of_channels __free(device_node) = of_get_child_by_name(dev->of_node,
-+										   "adi,channels");
- 	if (of_channels == NULL)
- 		return -ENODEV;
- 
--	for_each_child_of_node(of_channels, of_chan) {
-+	for_each_child_of_node_scoped(of_channels, of_chan) {
- 		ret = axi_dmac_parse_chan_dt(of_chan, &dmac->chan);
--		if (ret) {
--			of_node_put(of_chan);
--			of_node_put(of_channels);
-+		if (ret)
- 			return -EINVAL;
--		}
- 	}
--	of_node_put(of_channels);
- 
- 	return 0;
- }
+ drivers/hwmon/ltc4282.c | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
+---
+base-commit: 4f89db249aab8c9887821b54e1571408e65246f2
+change-id: 20250602-fix-ltc4282-repetead-write-80c020af1f83
+--
 
--- 
-2.49.0
+Thanks!
+- Nuno Sá
 
