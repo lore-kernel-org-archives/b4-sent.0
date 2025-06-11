@@ -1,109 +1,84 @@
-From: Sven Peter <sven@kernel.org>
-Date: Wed, 11 Jun 2025 15:18:53 +0000
-Subject: [PATCH] arm64: dts: apple: Move touchbar mipi {address,size}-cells
- from dtsi to dts
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v7 0/7] clk: clk-axi-clkgen: improvements and some fixes
+Date: Wed, 11 Jun 2025 17:15:32 +0100
+Message-Id: <20250611-dev-axi-clkgen-limits-v7-0-3e7ff89dc366@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250611-display-pipe-mipi-warning-v1-1-bd80ba2c0eea@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAFyeSWgC/x3MQQqDMBBG4avIrB1ILEnRq4iLoKP+UOOQgG0R7
- 25w+S3eOylLgmTqqpOSHMjYY4GtKxrXEBdhTMXUmMYZby1PyPoJf1ao8AYFf0OKiAt7b1pnX0H
- c+KbSa5IZv+fdD9d1A4feWKhrAAAA
-X-Change-ID: 20250611-display-pipe-mipi-warning-6609513ae5c7
-To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
- Neal Gompa <neal@gompa.dev>
-Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Sasha Finkelstein <fnkl.kernel@gmail.com>, 
- Nick Chan <towinchenmi@gmail.com>, asahi@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sven Peter <sven@kernel.org>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAKSrSWgC/33RTWrDMBAF4KsEraOimZFlK6veo3Shn7EjmtjFD
+ iYl+O6VQ4tdjItWTzCfnqSHGLhPPIjT4SF6HtOQujaH8ngQ4ezahmWKOQtUWCiESkYepbsnGS4
+ fDbfykq7pNkhDtVeh4ECVF3n2s+c63Z/u23vO5zTcuv7recwI8+6vaHfEEaSSaOqSa9Ah2vDqW
+ nfpmpfQXcVMjrgwBLTHYGagJMfooiGADUMLo1W5x1BmiEJZYxlsNHbNHH+eRyP8N65Rkdc1Rwx
+ 200IvLfLaY/TcwsUCUDNY3l6mWDGAe0yRGVcZbx2ZilWxYcya2f0hkxkftCdvIELUf5hpmr4BX
+ uAVi10CAAA=
+X-Change-ID: 20250218-dev-axi-clkgen-limits-63fb0c5ec38b
+To: linux-clk@vger.kernel.org, linux-fpga@vger.kernel.org, 
+ dmaengine@vger.kernel.org, linux-hwmon@vger.kernel.org, 
+ linux-iio@vger.kernel.org, linux-pwm@vger.kernel.org, 
+ linux-spi@vger.kernel.org
+Cc: Stephen Boyd <sboyd@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Moritz Fischer <mdf@kernel.org>, Wu Hao <hao.wu@intel.com>, 
+ Xu Yilun <yilun.xu@intel.com>, Tom Rix <trix@redhat.com>, 
+ Vinod Koul <vkoul@kernel.org>, Jean Delvare <jdelvare@suse.com>, 
+ Guenter Roeck <linux@roeck-us.net>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, Trevor Gamblin <tgamblin@baylibre.com>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Mark Brown <broonie@kernel.org>, 
+ Mike Turquette <mturquette@linaro.org>, Xu Yilun <yilun.xu@linux.intel.com>, 
+ Jonathan Cameron <Jonathan.Cameron@huawei.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3299; i=sven@kernel.org;
- h=from:subject:message-id; bh=wB4gN/vQqwxjlQjrCtsB7lnBgH7W5zGItspRFqPIMtc=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4bnvHjGqnmsFYtcpfM3uQiaifDP/CVvzX/vUirjh5e1L
- UVTP/R0lLIwiHEwyIopsmzfb2/65OEbwaWbLr2HmcPKBDKEgYtTACZywJKRYW3m9ZkZebyHPeMX
- BE6M03PdX7svdr3TLqOjuR4/T3Sk1zD8Mz4VtmI+z/eIP3X7vOt8prbqaVSFcPxylD7B6tTSsCK
- MAQA=
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749658534; l=1918;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=LcRIuFbM1cuh0iJM4xeVjUdgUfBnzrnn8Y4VYEQkqDg=;
+ b=UdP/tocAWz8o+9vYBOVduAReLpWi575YBu7LlGCJxEas2urPks4ef/H+i0LSNSVjLCJvlmMfs
+ CZHRMcT+yNOBy9thdxlzV4LX7k51YJ9uWydk/iUC0fi9v9DAaff1mIm
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the {address,size}-cells property from the (disabled) touchbar screen
-mipi node inside the dtsi file to the model-specific dts file where it's
-enabled to fix the following W=1 warnings:
-
-t8103.dtsi:404.34-433.5: Warning (avoid_unnecessary_addr_size): /soc/dsi@228600000: unnecessary #address-cells/#size-cells without "ranges", "dma-ranges" or child "reg" property
-t8112.dtsi:419.34-448.5: Warning (avoid_unnecessary_addr_size): /soc/dsi@228600000: unnecessary #address-cells/#size-cells without "ranges", "dma-ranges" or child "reg" property
-
-Fixes: 7275e795e520 ("arm64: dts: apple: Add touchbar screen nodes")
-Signed-off-by: Sven Peter <sven@kernel.org>
----
- arch/arm64/boot/dts/apple/t8103-j293.dts | 2 ++
- arch/arm64/boot/dts/apple/t8103.dtsi     | 2 --
- arch/arm64/boot/dts/apple/t8112-j493.dts | 2 ++
- arch/arm64/boot/dts/apple/t8112.dtsi     | 2 --
- 4 files changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/arch/arm64/boot/dts/apple/t8103-j293.dts b/arch/arm64/boot/dts/apple/t8103-j293.dts
-index e2d9439397f71a93c28b75a7eea589f4bcb3e374..5b3c42e9f0e6776241bf746d3458766e44e3639a 100644
---- a/arch/arm64/boot/dts/apple/t8103-j293.dts
-+++ b/arch/arm64/boot/dts/apple/t8103-j293.dts
-@@ -100,6 +100,8 @@ dfr_mipi_out_panel: endpoint@0 {
- 
- &displaydfr_mipi {
- 	status = "okay";
-+	#address-cells = <1>;
-+	#size-cells = <0>;
- 
- 	dfr_panel: panel@0 {
- 		compatible = "apple,j293-summit", "apple,summit";
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index 20faf0c0d80927b2e18dd966a61b5507b322c72f..3a204845b85befb093dd470b4280e778c2894b09 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -405,8 +405,6 @@ displaydfr_mipi: dsi@228600000 {
- 			compatible = "apple,t8103-display-pipe-mipi", "apple,h7-display-pipe-mipi";
- 			reg = <0x2 0x28600000 0x0 0x100000>;
- 			power-domains = <&ps_mipi_dsi>;
--			#address-cells = <1>;
--			#size-cells = <0>;
- 			status = "disabled";
- 
- 			ports {
-diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
-index be86d34c6696cb47d31696541266e504cee8ce10..fb8ad7d4c65a8fe7966f5541f24f03a379143cfb 100644
---- a/arch/arm64/boot/dts/apple/t8112-j493.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
-@@ -63,6 +63,8 @@ dfr_mipi_out_panel: endpoint@0 {
- 
- &displaydfr_mipi {
- 	status = "okay";
-+	#address-cells = <1>;
-+	#size-cells = <0>;
- 
- 	dfr_panel: panel@0 {
- 		compatible = "apple,j493-summit", "apple,summit";
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index e95711d8337f6cea898e88a3d564caf2c4f94404..f68354194355807dae9b5922bb8aff74da3c29e6 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -420,8 +420,6 @@ displaydfr_mipi: dsi@228600000 {
- 			compatible = "apple,t8112-display-pipe-mipi", "apple,h7-display-pipe-mipi";
- 			reg = <0x2 0x28600000 0x0 0x100000>;
- 			power-domains = <&ps_mipi_dsi>;
--			#address-cells = <1>;
--			#size-cells = <0>;
- 			status = "disabled";
- 
- 			ports {
+This series starts with a small fix and then a bunch of small
+improvements. The main change though is to allow detecting of
+struct axi_clkgen_limits during probe().
 
 ---
-base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
-change-id: 20250611-display-pipe-mipi-warning-6609513ae5c7
+Changes in v7:
+ - Just include new tags.
 
-Best regards,
--- 
-Sven Peter <sven@kernel.org>
+- Link to v6: https://lore.kernel.org/r/20250519-dev-axi-clkgen-limits-v6-0-bc4b3b61d1d4@analog.com
+- Link to v5: https://lore.kernel.org/r/20250512-dev-axi-clkgen-limits-v5-0-a86b9a368e05@analog.com
+- Link to v4: https://lore.kernel.org/r/20250505-dev-axi-clkgen-limits-v4-0-3ad5124e19e1@analog.com
+- Link to v3: https://lore.kernel.org/r/20250421-dev-axi-clkgen-limits-v3-0-4203b4fed2c9@analog.com
+- Link to v2: https://lore.kernel.org/r/20250313-dev-axi-clkgen-limits-v2-0-173ae2ad6311@analog.com
+- Link to v1: https://lore.kernel.org/r/20250219-dev-axi-clkgen-limits-v1-0-26f7ef14cd9c@analog.com
+
+---
+Nuno Sá (7):
+      clk: clk-axi-clkgen: fix fpfd_max frequency for zynq
+      clk: clk-axi-clkgen: make sure to include mod_devicetable.h
+      include: linux: move adi-axi-common.h out of fpga
+      include: adi-axi-common: add new helper macros
+      clk: clk-axi-clkgen: detect axi_clkgen_limits at runtime
+      clk: clk-axi-clkgen move to min/max()
+      clk: clk-axi-clkgen: fix coding style issues
+
+ drivers/clk/clk-axi-clkgen.c        | 159 +++++++++++++++++++++++++-----------
+ drivers/dma/dma-axi-dmac.c          |   2 +-
+ drivers/hwmon/axi-fan-control.c     |   2 +-
+ drivers/iio/adc/adi-axi-adc.c       |   3 +-
+ drivers/iio/dac/adi-axi-dac.c       |   2 +-
+ drivers/pwm/pwm-axi-pwmgen.c        |   2 +-
+ drivers/spi/spi-axi-spi-engine.c    |   2 +-
+ include/linux/adi-axi-common.h      |  56 +++++++++++++
+ include/linux/fpga/adi-axi-common.h |  23 ------
+ 9 files changed, 174 insertions(+), 77 deletions(-)
+---
+base-commit: 82f69876ef45ad66c0b114b786c7c6ac0f6a4580
+change-id: 20250218-dev-axi-clkgen-limits-63fb0c5ec38b
+--
+
+Thanks!
+- Nuno Sá
 
