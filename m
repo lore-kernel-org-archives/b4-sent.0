@@ -1,11 +1,10 @@
 From: Sven Peter <sven@kernel.org>
-Date: Thu, 12 Jun 2025 21:11:33 +0000
-Subject: [PATCH 09/11] dmaengine: apple-admac: Drop default ARCH_APPLE in
- Kconfig
+Date: Thu, 12 Jun 2025 21:11:34 +0000
+Subject: [PATCH 10/11] ASoC: apple: mca: Drop default ARCH_APPLE in Kconfig
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250612-apple-kconfig-defconfig-v1-9-0e6f9cb512c1@kernel.org>
+Message-Id: <20250612-apple-kconfig-defconfig-v1-10-0e6f9cb512c1@kernel.org>
 References: <20250612-apple-kconfig-defconfig-v1-0-0e6f9cb512c1@kernel.org>
 In-Reply-To: <20250612-apple-kconfig-defconfig-v1-0-0e6f9cb512c1@kernel.org>
 To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
@@ -26,12 +25,12 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-input@vger.kernel.org, dmaengine@vger.kernel.org, 
  linux-sound@vger.kernel.org, Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=902; i=sven@kernel.org;
- h=from:subject:message-id; bh=ruZ9l1GNZAWRjeIQuv4Eiiv8m1R9HWDfcuBW5YhBHWM=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4a30+yvLqee38l/3b2+TeeU+BRuhg/bhM9OmvNhrnPh8
- 4Rmc6OmjlIWBjEOBlkxRZbt++1Nnzx8I7h006X3MHNYmUCGMHBxCsBEhCcxMmzW9M1cf8np0cE1
- pR9NG5wf8W1dvvb9E2HhRYWqX8+wBn9h+F++lP2HRZOaqvN7Vq9jOYt0H+4X6X/J0LI4dtbFx0f
- e2HADAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=964; i=sven@kernel.org;
+ h=from:subject:message-id; bh=B+ULNUySL/tycF45z4MninBMMkdPrQZ7s9hDSWM0yxs=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ4a30xydBbpqq5VXvmSptO66k2MZp11785gtr2j91R8CB
+ z+4Rst0lLIwiHEwyIopsmzfb2/65OEbwaWbLr2HmcPKBDKEgYtTACZy4A0jw98cpg0xd0T3ip64
+ w7XKZO5Mrz1FD550BPhdlurgZ9hxqY+RYebbP+6/fRZ9VZJTvKSwN+B0xcNfM58VqXYtWZGu86s
+ 9mhsA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
@@ -45,21 +44,21 @@ Thus, drop `default ARCH_APPLE` from Kconfig.
 
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/dma/Kconfig | 1 -
+ sound/soc/apple/Kconfig | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/drivers/dma/Kconfig b/drivers/dma/Kconfig
-index db87dd2a07f7606e40dc26ea41d26fcdd1fad979..7f387157e3c57d8c1517b55d86aa6d6e660dcce5 100644
---- a/drivers/dma/Kconfig
-+++ b/drivers/dma/Kconfig
-@@ -89,7 +89,6 @@ config APPLE_ADMAC
- 	tristate "Apple ADMAC support"
+diff --git a/sound/soc/apple/Kconfig b/sound/soc/apple/Kconfig
+index 793f7782e0d721a1778a82e3515665c3f9f14ede..e9c777cdb6e39c5446f00faea0e617e51b318000 100644
+--- a/sound/soc/apple/Kconfig
++++ b/sound/soc/apple/Kconfig
+@@ -2,7 +2,6 @@ config SND_SOC_APPLE_MCA
+ 	tristate "Apple Silicon MCA driver"
  	depends on ARCH_APPLE || COMPILE_TEST
- 	select DMA_ENGINE
+ 	select SND_DMAENGINE_PCM
 -	default ARCH_APPLE
  	help
- 	  Enable support for Audio DMA Controller found on Apple Silicon SoCs.
- 
+ 	  This option enables an ASoC platform driver for MCA peripherals found
+ 	  on Apple Silicon SoCs.
 
 -- 
 2.34.1
