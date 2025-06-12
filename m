@@ -1,193 +1,62 @@
-From: Sven Peter <sven@kernel.org>
-Date: Thu, 12 Jun 2025 21:11:35 +0000
-Subject: [PATCH 11/11] arm64: defconfig: Enable Apple Silicon drivers
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH 0/3] arm64: dts: qcom: msm8976-longcheer-l9360: Add initial
+ device tree
+Date: Fri, 13 Jun 2025 00:37:17 +0200
+Message-Id: <20250613-bqx5plus-v1-0-2bc2d43707a6@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250612-apple-kconfig-defconfig-v1-11-0e6f9cb512c1@kernel.org>
-References: <20250612-apple-kconfig-defconfig-v1-0-0e6f9cb512c1@kernel.org>
-In-Reply-To: <20250612-apple-kconfig-defconfig-v1-0-0e6f9cb512c1@kernel.org>
-To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
- Neal Gompa <neal@gompa.dev>, Ulf Hansson <ulf.hansson@linaro.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Srinivas Kandagatla <srini@kernel.org>, 
- Andi Shyti <andi.shyti@kernel.org>, "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, Vinod Koul <vkoul@kernel.org>, 
- =?utf-8?q?Martin_Povi=C5=A1er?= <povik+lin@cutebit.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Arnd Bergmann <arnd@arndb.de>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-clk@vger.kernel.org, linux-i2c@vger.kernel.org, iommu@lists.linux.dev, 
- linux-input@vger.kernel.org, dmaengine@vger.kernel.org, 
- linux-sound@vger.kernel.org, Sven Peter <sven@kernel.org>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAJ1WS2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDM0Mj3aTCCtOCnNJi3RRzo1RDwzRTC3PzZCWg8oKi1LTMCrBR0bG1tQB
+ 7QwS5WgAAAA==
+X-Change-ID: 20250612-bqx5plus-d72e11f5877c
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4568; i=sven@kernel.org;
- h=from:subject:message-id; bh=Li+xnd3OfWbFujc9g4zCLODzu8bXDFZr8M+WXuiOQm8=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4a307zLLFdFnr3dPbepTfuP5dHZ1nrR2+SPHVY53Cm6W
- XRX3eGjHaUsDGIcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJrOti+O/+5turv6cj0pJ4
- /hfOazRxXDaxXeoAe8nEiIylzdJePtIMf7h7X2/QEN277twWqQ+rj+z3n7L136uMzLv1P/P6TCy
- a1jEAAA==
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749767846; l=936;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=GQ+Xtv/R4Cazn0jTLW14AKKOtVPMuLFroC6FY7/Wwwc=;
+ b=BtpIaq4MHJ8rHJvyS2zi/RJdzpn0Y5hUwKIBUabE0oANdzbtLtlnAFfyhN8FV0nA/zsmrtwIJ
+ mFDzJBdJFIMAItGto0WhQsmWZW+wMJfVb/cUtTWU1Eqz/JYjUrcoT6l
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable drivers for hardware present on Apple Silicon machines.
-The power domain and interrupt driver should be built-it since these are
-critical for the system to boot, the rest can be build as modules.
+This dts adds support for BQ Aquaris X5 Plus (Longcheer L9360) released
+in 2016.
 
-Previously, many of these drivers were accidentally configured as y
-such that this actually decreases the size of the kernel image:
+Add a device tree with initial support for:
 
-vmlinux 163628520 -> 163330632 (-297888)
-Image    48388608 ->  48384512 (-  4096)
+- GPIO keys
+- NFC
+- SDHCI
+- Status LED
+- Touchscreen
 
-Signed-off-by: Sven Peter <sven@kernel.org>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- arch/arm64/configs/defconfig | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+André Apitzsch (3):
+      arm64: dts: qcom: msm8976: Make blsp_dma controlled-remotely
+      dt-bindings: arm: qcom: Add MSM8976 BQ Aquaris X5 Plus
+      arm64: dts: qcom: msm8976-longcheer-l9360: Add initial device tree
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index 897fc686e6a91b79770639d3eb15beb3ee48ef77..8ebebfc2fa1293bd16332858d6e6694e1a6f3088 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -97,6 +97,7 @@ CONFIG_CPU_FREQ_GOV_CONSERVATIVE=m
- CONFIG_CPUFREQ_DT=y
- CONFIG_ACPI_CPPC_CPUFREQ=m
- CONFIG_ARM_ALLWINNER_SUN50I_CPUFREQ_NVMEM=m
-+CONFIG_ARM_APPLE_SOC_CPUFREQ=m
- CONFIG_ARM_ARMADA_37XX_CPUFREQ=y
- CONFIG_ARM_SCPI_CPUFREQ=y
- CONFIG_ARM_IMX_CPUFREQ_DT=m
-@@ -218,6 +219,7 @@ CONFIG_HOTPLUG_PCI_ACPI=y
- CONFIG_PCI_AARDVARK=y
- CONFIG_PCIE_ALTERA=y
- CONFIG_PCIE_ALTERA_MSI=y
-+CONFIG_PCIE_APPLE=m
- CONFIG_PCIE_BRCMSTB=m
- CONFIG_PCI_HOST_THUNDER_PEM=y
- CONFIG_PCI_HOST_THUNDER_ECAM=y
-@@ -294,6 +296,7 @@ CONFIG_BLK_DEV_LOOP=y
- CONFIG_BLK_DEV_NBD=m
- CONFIG_VIRTIO_BLK=y
- CONFIG_BLK_DEV_NVME=m
-+CONFIG_NVME_APPLE=m
- CONFIG_QCOM_COINCELL=m
- CONFIG_QCOM_FASTRPC=m
- CONFIG_SRAM=y
-@@ -454,6 +457,7 @@ CONFIG_KEYBOARD_CROS_EC=y
- CONFIG_KEYBOARD_MTK_PMIC=m
- CONFIG_MOUSE_ELAN_I2C=m
- CONFIG_INPUT_TOUCHSCREEN=y
-+CONFIG_TOUCHSCREEN_APPLE_Z2=m
- CONFIG_TOUCHSCREEN_ATMEL_MXT=m
- CONFIG_TOUCHSCREEN_GOODIX=m
- CONFIG_TOUCHSCREEN_GOODIX_BERLIN_SPI=m
-@@ -538,6 +542,7 @@ CONFIG_I2C_MT65XX=y
- CONFIG_I2C_MV64XXX=y
- CONFIG_I2C_OMAP=y
- CONFIG_I2C_OWL=y
-+CONFIG_I2C_APPLE=m
- CONFIG_I2C_PXA=y
- CONFIG_I2C_QCOM_CCI=m
- CONFIG_I2C_QCOM_GENI=m
-@@ -552,6 +557,7 @@ CONFIG_I2C_UNIPHIER_F=y
- CONFIG_I2C_RCAR=y
- CONFIG_I2C_CROS_EC_TUNNEL=y
- CONFIG_SPI=y
-+CONFIG_SPI_APPLE=m
- CONFIG_SPI_ARMADA_3700=y
- CONFIG_SPI_BCM2835=m
- CONFIG_SPI_BCM2835AUX=m
-@@ -586,7 +592,9 @@ CONFIG_SPI_TEGRA210_QUAD=m
- CONFIG_SPI_TEGRA114=m
- CONFIG_SPI_SPIDEV=m
- CONFIG_SPMI=y
-+CONFIG_SPMI_APPLE=m
- CONFIG_SPMI_MTK_PMIF=m
-+CONFIG_PINCTRL_APPLE_GPIO=m
- CONFIG_PINCTRL_DA9062=m
- CONFIG_PINCTRL_MAX77620=y
- CONFIG_PINCTRL_RK805=m
-@@ -757,6 +765,7 @@ CONFIG_RENESAS_RZG2LWDT=y
- CONFIG_RENESAS_RZV2HWDT=y
- CONFIG_UNIPHIER_WATCHDOG=y
- CONFIG_PM8916_WATCHDOG=m
-+CONFIG_APPLE_WATCHDOG=m
- CONFIG_BCM2835_WDT=y
- CONFIG_BCM7038_WDT=m
- CONFIG_MFD_ADP5585=m
-@@ -983,6 +992,7 @@ CONFIG_SND_ALOOP=m
- CONFIG_SND_HDA_TEGRA=m
- CONFIG_SND_HDA_CODEC_HDMI=m
- CONFIG_SND_SOC=y
-+CONFIG_SND_SOC_APPLE_MCA=m
- CONFIG_SND_BCM2835_SOC_I2S=m
- CONFIG_SND_SOC_FSL_ASRC=m
- CONFIG_SND_SOC_FSL_MICFIL=m
-@@ -1266,6 +1276,7 @@ CONFIG_RTC_DRV_XGENE=y
- CONFIG_RTC_DRV_TI_K3=m
- CONFIG_RTC_DRV_RENESAS_RTCA3=m
- CONFIG_DMADEVICES=y
-+CONFIG_APPLE_ADMAC=m
- CONFIG_DMA_BCM2835=y
- CONFIG_DMA_SUN6I=m
- CONFIG_FSL_EDMA=y
-@@ -1310,6 +1321,7 @@ CONFIG_CROS_EC_RPMSG=m
- CONFIG_CROS_EC_SPI=y
- CONFIG_CROS_KBD_LED_BACKLIGHT=m
- CONFIG_CROS_EC_CHARDEV=m
-+CONFIG_COMMON_CLK_APPLE_NCO=m
- CONFIG_COMMON_CLK_RK808=y
- CONFIG_COMMON_CLK_SCMI=y
- CONFIG_COMMON_CLK_SCPI=y
-@@ -1451,6 +1463,7 @@ CONFIG_ARM_SMMU=y
- CONFIG_ARM_SMMU_V3=y
- CONFIG_MTK_IOMMU=y
- CONFIG_QCOM_IOMMU=y
-+CONFIG_APPLE_DART=m
- CONFIG_REMOTEPROC=y
- CONFIG_IMX_REMOTEPROC=y
- CONFIG_MTK_SCP=m
-@@ -1470,6 +1483,9 @@ CONFIG_RPMSG_QCOM_SMD=y
- CONFIG_RPMSG_VIRTIO=y
- CONFIG_SOUNDWIRE=m
- CONFIG_SOUNDWIRE_QCOM=m
-+CONFIG_APPLE_MAILBOX=m
-+CONFIG_APPLE_RTKIT=m
-+CONFIG_APPLE_SART=m
- CONFIG_FSL_DPAA=y
- CONFIG_FSL_MC_DPIO=y
- CONFIG_FSL_RCPM=y
-@@ -1504,6 +1520,7 @@ CONFIG_ARCH_TEGRA_194_SOC=y
- CONFIG_ARCH_TEGRA_234_SOC=y
- CONFIG_TI_PRUSS=m
- CONFIG_OWL_PM_DOMAINS=y
-+CONFIG_APPLE_PMGR_PWRSTATE=y
- CONFIG_RASPBERRYPI_POWER=y
- CONFIG_IMX_SCU_PD=y
- CONFIG_QCOM_CPR=y
-@@ -1567,6 +1584,7 @@ CONFIG_QCOM_PDC=y
- CONFIG_QCOM_MPM=y
- CONFIG_TI_SCI_INTR_IRQCHIP=y
- CONFIG_TI_SCI_INTA_IRQCHIP=y
-+CONFIG_APPLE_AIC=y
- CONFIG_RESET_GPIO=m
- CONFIG_RESET_IMX7=y
- CONFIG_RESET_QCOM_AOSS=y
-@@ -1640,6 +1658,7 @@ CONFIG_ARM_CORESIGHT_PMU_ARCH_SYSTEM_PMU=m
- CONFIG_NVIDIA_CORESIGHT_PMU_ARCH_SYSTEM_PMU=m
- CONFIG_MESON_DDR_PMU=m
- CONFIG_NVMEM_LAYOUT_SL28_VPD=m
-+CONFIG_NVMEM_APPLE_EFUSES=m
- CONFIG_NVMEM_IMX_OCOTP=y
- CONFIG_NVMEM_IMX_OCOTP_ELE=m
- CONFIG_NVMEM_IMX_OCOTP_SCU=y
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   5 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../boot/dts/qcom/msm8976-longcheer-l9360.dts      | 532 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/msm8976.dtsi              |   2 +
+ 4 files changed, 540 insertions(+)
+---
+base-commit: 0bb71d301869446810a0b13d3da290bd455d7c78
+change-id: 20250612-bqx5plus-d72e11f5877c
 
+Best regards,
 -- 
-2.34.1
+André Apitzsch <git@apitzsch.eu>
 
