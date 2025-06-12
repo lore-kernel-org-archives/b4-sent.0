@@ -1,10 +1,11 @@
 From: Sven Peter <sven@kernel.org>
-Date: Thu, 12 Jun 2025 21:11:32 +0000
-Subject: [PATCH 08/11] Input: apple_z2: Drop default ARCH_APPLE in Kconfig
+Date: Thu, 12 Jun 2025 21:11:33 +0000
+Subject: [PATCH 09/11] dmaengine: apple-admac: Drop default ARCH_APPLE in
+ Kconfig
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250612-apple-kconfig-defconfig-v1-8-0e6f9cb512c1@kernel.org>
+Message-Id: <20250612-apple-kconfig-defconfig-v1-9-0e6f9cb512c1@kernel.org>
 References: <20250612-apple-kconfig-defconfig-v1-0-0e6f9cb512c1@kernel.org>
 In-Reply-To: <20250612-apple-kconfig-defconfig-v1-0-0e6f9cb512c1@kernel.org>
 To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
@@ -25,12 +26,12 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-input@vger.kernel.org, dmaengine@vger.kernel.org, 
  linux-sound@vger.kernel.org, Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=977; i=sven@kernel.org;
- h=from:subject:message-id; bh=YLmWDKsoMcAj1FZaEwVkOxK9EAmBzZd5KoPvpjLJcOY=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ4a308x5ms0KdxX5tjYJ+Vj+5Z5Y0a+jEJPxyPLHDGfmt
- WoFV1d0lLIwiHEwyIopsmzfb2/65OEbwaWbLr2HmcPKBDKEgYtTACayJYDhn5p5R+rBA11SHwMi
- Nsu6Gr/++XbFTaMtTNlxm/kPzgiKFWT4719YvrYm885Mtqi0lv7rPbL+R2V+MDMtXcYevXvGWll
- LFgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=902; i=sven@kernel.org;
+ h=from:subject:message-id; bh=ruZ9l1GNZAWRjeIQuv4Eiiv8m1R9HWDfcuBW5YhBHWM=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ4a30+yvLqee38l/3b2+TeeU+BRuhg/bhM9OmvNhrnPh8
+ 4Rmc6OmjlIWBjEOBlkxRZbt++1Nnzx8I7h006X3MHNYmUCGMHBxCsBEhCcxMmzW9M1cf8np0cE1
+ pR9NG5wf8W1dvvb9E2HhRYWqX8+wBn9h+F++lP2HRZOaqvN7Vq9jOYt0H+4X6X/J0LI4dtbFx0f
+ e2HADAA==
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
@@ -44,21 +45,21 @@ Thus, drop `default ARCH_APPLE` from Kconfig.
 
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/input/touchscreen/Kconfig | 1 -
+ drivers/dma/Kconfig | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/drivers/input/touchscreen/Kconfig b/drivers/input/touchscreen/Kconfig
-index 91a2b584dab1469a3c907c0f1accfa10c4c4a3ca..196905162945d59e775c3e0bff6540a82842229a 100644
---- a/drivers/input/touchscreen/Kconfig
-+++ b/drivers/input/touchscreen/Kconfig
-@@ -105,7 +105,6 @@ config TOUCHSCREEN_ADC
- 
- config TOUCHSCREEN_APPLE_Z2
- 	tristate "Apple Z2 touchscreens"
+diff --git a/drivers/dma/Kconfig b/drivers/dma/Kconfig
+index db87dd2a07f7606e40dc26ea41d26fcdd1fad979..7f387157e3c57d8c1517b55d86aa6d6e660dcce5 100644
+--- a/drivers/dma/Kconfig
++++ b/drivers/dma/Kconfig
+@@ -89,7 +89,6 @@ config APPLE_ADMAC
+ 	tristate "Apple ADMAC support"
+ 	depends on ARCH_APPLE || COMPILE_TEST
+ 	select DMA_ENGINE
 -	default ARCH_APPLE
- 	depends on SPI && (ARCH_APPLE || COMPILE_TEST)
  	help
- 	  Say Y here if you have an ARM Apple device with
+ 	  Enable support for Audio DMA Controller found on Apple Silicon SoCs.
+ 
 
 -- 
 2.34.1
