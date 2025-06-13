@@ -1,600 +1,198 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Fri, 13 Jun 2025 00:37:20 +0200
-Subject: [PATCH 3/3] arm64: dts: qcom: msm8976-longcheer-l9360: Add initial
- device tree
+From: Mingcong Bai <jeffbai@aosc.io>
+Subject: [PATCH v2 0/5] drm/xe: enable driver usage on non-4KiB kernels
+Date: Fri, 13 Jun 2025 09:11:28 +0800
+Message-Id: <20250613-upstream-xe-non-4k-v2-v2-0-934f82249f8a@aosc.io>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250613-bqx5plus-v1-3-2bc2d43707a6@apitzsch.eu>
-References: <20250613-bqx5plus-v1-0-2bc2d43707a6@apitzsch.eu>
-In-Reply-To: <20250613-bqx5plus-v1-0-2bc2d43707a6@apitzsch.eu>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+X-B4-Tracking: v=1; b=H4sIAMB6S2gC/3WNwQqDMBBEf0X23C1hjbX21P8oHmJc61KaSGLFI
+ vn3pkKPhbm8gXmzQeQgHOFSbBB4kSjeZaBDAXY07s4ofWYgRZU6qRJfU5wDmyeujM471A9cCLW
+ xA1Wlbbqhh7ydAg+y7t5bm3mUOPvw3m8W+rY/o/5jzFFouW5U1Zu6U+er8dEexUObUvoA6Y9wD
+ rgAAAA=
+X-Change-ID: 20250603-upstream-xe-non-4k-v2-4acf253c9bfd
+To: Lucas De Marchi <lucas.demarchi@intel.com>, 
+ =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
+ Rodrigo Vivi <rodrigo.vivi@intel.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Francois Dugast <francois.dugast@intel.com>, 
+ =?utf-8?q?Zbigniew_Kempczy=C5=84ski?= <zbigniew.kempczynski@intel.com>, 
+ =?utf-8?q?Jos=C3=A9_Roberto_de_Souza?= <jose.souza@intel.com>, 
+ Mauro Carvalho Chehab <mauro.chehab@linux.intel.com>, 
+ Matthew Brost <matthew.brost@intel.com>, 
+ Zhanjun Dong <zhanjun.dong@intel.com>, 
+ Matt Roper <matthew.d.roper@intel.com>, 
+ Alan Previn <alan.previn.teres.alexis@intel.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Mateusz Naklicki <mateusz.naklicki@intel.com>
+Cc: intel-xe@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Kexy Biscuit <kexybiscuit@aosc.io>, Shang Yatsen <429839446@qq.com>, 
+ Mingcong Bai <jeffbai@aosc.io>, Wenbin Fang <fangwenbin@vip.qq.com>, 
+ Haien Liang <27873200@qq.com>, Jianfeng Liu <liujianfeng1994@gmail.com>, 
+ Shirong Liu <lsr1024@qq.com>, Haofeng Wu <s2600cw2@126.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749767846; l=13022;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=0zZRc6MvI627wnzmatoEQv8oJVJLweVpxrFTgdR6QCc=;
- b=2hcG3l3xp+yGSMosPH4+fRiGucq8V6JP5ey5aaDBAnZzQ50PRQrOTUHXDsQ8D8qFja0MEK6Zc
- 6fGmUx9bR21A54L3CS+mkqM3f7A0AoDs8JVqUcYenljJhQw4OpRwt2+
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749777090; l=6957;
+ i=jeffbai@aosc.io; s=20250604; h=from:subject:message-id;
+ bh=+kWzTcHBzf1aWzkd8t80rJRxvNyHpEOLoaEfIgMWrfE=;
+ b=sfMadsBOWvQZtHJFbzFINzmXJbqQH4BLkmDZrXblOs826TkG3/RgX7wPcSGvm974KzswWO2d/
+ 2qaYfONfchqCY1E3n92Yt9lZY+2KYRZPhc2CYNiG59fZLyI/hz1qVOc
+X-Developer-Key: i=jeffbai@aosc.io; a=ed25519;
+ pk=MJdgklflDF+Xz9x2Lp+ogEnEyk8HRosMGiqLgWbFctY=
+X-Endpoint-Received: by B4 Relay for jeffbai@aosc.io/20250604 with auth_id=422
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This dts adds support for BQ Aquaris X5 Plus (Longcheer L9360) released
-in 2016.
+This patch series attempts to enable the use of xe DRM driver on non-4KiB
+kernel page platforms. This involves fixing the ttm/bo interface, as well
+as parts of the userspace API to make use of kernel `PAGE_SIZE' for
+alignment instead of the assumed `SZ_4K', it also fixes incorrect usage of
+`PAGE_SIZE' in the GuC and ring buffer interface code to make sure all
+instructions/commands were aligned to 4KiB barriers (per the Programmer's
+Manual for the GPUs covered by this DRM driver).
 
-Add a device tree with initial support for:
+This issue was first discovered and reported by members of the LoongArch
+user communities, whose hardware commonly ran on 16KiB-page kernels. The
+patch series began on an unassuming branch of a downstream kernel tree
+maintained by Shang Yatsen.[^1]
 
-- GPIO keys
-- NFC
-- SDHCI
-- Status LED
-- Touchscreen
+It worked well but remained sparsely documented, a lot of the work done
+here relied on Shang Yatsen's original patch.
 
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+AOSC OS then picked it up[^2] to provide Intel Xe/Arc support for users of
+its LoongArch port, for which I worked extensively on. After months of
+positive user feedback and from encouragement from Kexy Biscuit, my
+colleague at the community, I decided to examine its potential for
+upstreaming, cross-reference kernel and Intel documentation to better
+document and revise this patch.
+
+Now that this series has been tested good (for boot up, OpenGL, and
+playback of a standardised set of video samples[^3] on the following
+platforms (motherboard + GPU model):
+
+- x86-64, 4KiB kernel page:
+    - MS-7D42 + Intel Arc A580
+    - COLORFIRE B760M-MEOW WIFI D5 + Intel Arc B580
+- LoongArch, 16KiB kernel page:
+    - XA61200 + GUNNIR DG1 Blue Halberd (Intel DG1)
+    - XA61200 + GUNNIR Iris Xe Index 4 (Intel DG1)
+    - XA61200 + GUNNIR Intel Iris Xe Max Index V2 (Intel DG1)
+    - XA61200 + GUNNIR Intel Arc A380 Index 6G (Intel Arc A380)
+    - XA61200 + ASRock Arc A380 Challenger ITX OC (Intel Arc A380)
+    - XA61200 + Intel Arc A580
+    - XA61200 + GUNNIR Intel Arc A750 Photon 8G OC (Intel Arc A750)
+    - XA61200 + Intel Arc B580
+    - XB612B0 + GUNNIR Intel Iris Xe Max Index V2 (Intel DG1)
+    - XB612B0 + GUNNIR Intel Arc A380 Index 6G (Intel Arc A380)
+    - ASUS XC-LS3A6M + GUNNIR Intel Arc B580 INDEX 12G (Intel Arc B580)
+
+On these platforms, basic functionalities tested good but the driver was
+unstable with occasional resets (I do suspect however, that this platform
+suffers from PCIe coherence issues, as instability only occurs under heavy
+VRAM I/O load):
+
+- AArch64, 4KiB/64KiB kernel pages:
+    - ERUN-FD3000 (Phytium D3000) + GUNNIR Intel Iris Xe Max Index V2
+      (Intel DG1)
+    - ERUN-FD3000 (Phytium D3000) + GUNNIR Intel Arc A380 Index 6G
+      (Intel Arc A380)
+    - ERUN-FD3000 (Phytium D3000) + GUNNIR Intel Arc A750 Photon 8G OC
+      (Intel Arc A750)
+
+I think that this patch series is now ready for your comment and review.
+Please forgive me if I made any simple mistake or used wrong terminologies,
+but I have never worked on a patch for the DRM subsystem and my experience
+is still quite thin.
+
+But anyway, just letting you all know that Intel Xe/Arc works on non-4KiB
+kernel page platforms (and honestly, it's great to use, especially for
+games and media playback)!
+
+[^1]: https://github.com/FanFansfan/loongson-linux/tree/loongarch-xe
+[^2]: We maintained Shang Yatsen's patch until our v6.13.3 tree, until
+      we decided to test and send this series upstream,
+      https://github.com/AOSC-Tracking/linux/tree/aosc/v6.13.3
+[^3]: Delicious hot pot!
+      https://repo.aosc.io/ahvl/sample-videos-20250223.tar.zst
+
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/msm8976-longcheer-l9360.dts      | 532 +++++++++++++++++++++
- 2 files changed, 533 insertions(+)
+Matthew(s), Lucas, and Francois:
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 669b888b27a1daa93ac15f47e8b9a302bb0922c2..80fd9a910af478558bb840f7ce5aa52948912be0 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -77,6 +77,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-xiaomi-tissot.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-xiaomi-vince.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8956-sony-xperia-loire-kugo.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8956-sony-xperia-loire-suzu.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= msm8976-longcheer-l9360.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8992-lg-bullhead-rev-10.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8992-lg-bullhead-rev-101.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8992-lg-h815.dtb
-diff --git a/arch/arm64/boot/dts/qcom/msm8976-longcheer-l9360.dts b/arch/arm64/boot/dts/qcom/msm8976-longcheer-l9360.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..b7040973f85972fabde3b6b50cb2eb323b645537
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/msm8976-longcheer-l9360.dts
-@@ -0,0 +1,532 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2025, André Apitzsch <git@apitzsch.eu>
-+ */
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/leds/common.h>
-+
-+#include "msm8976.dtsi"
-+#include "pm8004.dtsi"
-+#include "pm8950.dtsi"
-+
-+/ {
-+	model = "BQ Aquaris X5 Plus (Longcheer L9360)";
-+	compatible = "longcheer,l9360", "qcom,msm8976";
-+	chassis-type = "handset";
-+
-+	aliases {
-+		mmc0 = &sdhc_1; /* SDC1 eMMC slot */
-+		mmc1 = &sdhc_2; /* SDC2 SD card slot */
-+	};
-+
-+	chosen {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		framebuffer0: framebuffer@83200000 {
-+			compatible = "simple-framebuffer";
-+			reg = <0x0 0x83200000 0x0 (1080 * 1920 * 3)>;
-+			width = <1080>;
-+			height = <1920>;
-+			stride = <(1080 * 3)>;
-+			format = "r8g8b8";
-+
-+			power-domains = <&gcc MDSS_GDSC>;
-+
-+			clocks = <&gcc GCC_MDSS_AHB_CLK>,
-+				 <&gcc GCC_MDSS_AXI_CLK>,
-+				 <&gcc GCC_MDSS_VSYNC_CLK>,
-+				 <&gcc GCC_MDSS_MDP_CLK>,
-+				 <&gcc GCC_MDSS_BYTE0_CLK>,
-+				 <&gcc GCC_MDSS_PCLK0_CLK>,
-+				 <&gcc GCC_MDSS_ESC0_CLK>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		pinctrl-0 = <&hall_sensor_default>, <&volume_up_default>;
-+		pinctrl-names = "default";
-+
-+		event-hall-sensor {
-+			label = "Hall Effect Sensor";
-+			gpios = <&tlmm 107 GPIO_ACTIVE_HIGH>;
-+			linux,input-type = <EV_SW>;
-+			linux,code = <SW_LID>;
-+			linux,can-disable;
-+			wakeup-source;
-+		};
-+
-+		key-volume-up {
-+			label = "Volume Up";
-+			gpios = <&tlmm 113 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_VOLUMEUP>;
-+		};
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+
-+		led-0 {
-+			gpios = <&tlmm 101 GPIO_ACTIVE_HIGH>;
-+			color = <LED_COLOR_ID_WHITE>;
-+			default-state = "off";
-+			function = LED_FUNCTION_KBD_BACKLIGHT;
-+
-+			pinctrl-0 = <&button_backlight_default>;
-+			pinctrl-names = "default";
-+		};
-+	};
-+
-+	reg_ts_vdd: regulator-vdd-ts {
-+		compatible = "regulator-fixed";
-+		regulator-name = "regulator-vdd-ts";
-+
-+		gpio = <&tlmm 33 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	reserved-memory {
-+		framebuffer@83000000 {
-+			reg = <0x0 0x83000000 0x0 0x2800000>;
-+			no-map;
-+		};
-+
-+		/delete-node/ tz-apps@8dd00000;
-+		tzapp@8dd00000 {
-+			reg = <0x0 0x8dd00000 0x0 0x1900000>;
-+			no-map;
-+		};
-+	};
-+
-+	vph_pwr: regulator-vph-pwr {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vph-pwr";
-+		regulator-always-on;
-+		regulator-boot-on;
-+	};
-+};
-+
-+&blsp1_i2c2 {
-+	status = "okay";
-+
-+	led-controller@30 {
-+		compatible = "kinetic,ktd2026";
-+		reg = <0x30>;
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		multi-led {
-+			color = <LED_COLOR_ID_RGB>;
-+			function = LED_FUNCTION_STATUS;
-+
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			led@0 {
-+				reg = <0>;
-+				color = <LED_COLOR_ID_RED>;
-+			};
-+
-+			led@1 {
-+				reg = <1>;
-+				color = <LED_COLOR_ID_GREEN>;
-+			};
-+
-+			led@2 {
-+				reg = <2>;
-+				color = <LED_COLOR_ID_BLUE>;
-+			};
-+		};
-+	};
-+};
-+
-+&blsp1_i2c4 {
-+	status = "okay";
-+
-+	nfc@28 {
-+		compatible = "nxp,pn547", "nxp,nxp-nci-i2c";
-+		reg = <0x28>;
-+
-+		interrupts-extended = <&tlmm 140 IRQ_TYPE_EDGE_RISING>;
-+
-+		enable-gpios = <&tlmm 122 GPIO_ACTIVE_HIGH>;
-+		firmware-gpios = <&tlmm 109 GPIO_ACTIVE_HIGH>;
-+
-+		pinctrl-0 = <&nfc_default>;
-+		pinctrl-1 = <&nfc_sleep>;
-+		pinctrl-names = "default", "sleep";
-+	};
-+};
-+
-+&blsp2_i2c2 {
-+	status = "okay";
-+
-+	touchscreen@20 {
-+		reg = <0x20>;
-+		compatible = "syna,rmi4-i2c";
-+
-+		interrupts-extended = <&tlmm 65 IRQ_TYPE_EDGE_FALLING>;
-+
-+		pinctrl-0 = <&ts_int_default>, <&ts_reset_default>;
-+		pinctrl-1 = <&ts_int_sleep>, <&ts_reset_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		vdd-supply = <&pm8950_l6>;
-+		vio-supply = <&reg_ts_vdd>;
-+
-+		reset-gpios = <&tlmm 64 GPIO_ACTIVE_LOW>;
-+
-+		syna,reset-delay-ms = <200>;
-+		syna,startup-delay-ms = <200>;
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		rmi4-f01@1 {
-+			reg = <0x1>;
-+			syna,nosleep-mode = <1>; /* Allow sleeping */
-+		};
-+
-+		rmi4-f12@12 {
-+			reg = <0x12>;
-+			syna,sensor-type = <1>; /* Touchscreen */
-+		};
-+	};
-+};
-+
-+&blsp2_uart2 {
-+	status = "okay";
-+};
-+
-+&gcc {
-+	vdd_gfx-supply = <&pm8004_s5>;
-+};
-+
-+&pm8004_spmi_regulators {
-+	vdd_s2-supply = <&vph_pwr>;
-+	vdd_s5-supply = <&vph_pwr>;
-+
-+	/* Cluster 1 supply */
-+	pm8004_s2: s2 {
-+		/* regulator-min-microvolt = <500000>; */
-+		/* Set .95V to prevent unstabilities until CPR for this SoC is done */
-+		regulator-min-microvolt = <950000>;
-+		regulator-max-microvolt = <1165000>;
-+		regulator-name = "vdd_apc1";
-+		/* Set always on until the CPU PLL is done */
-+		regulator-always-on;
-+		regulator-boot-on;
-+	};
-+
-+	pm8004_s5: s5 {
-+		regulator-min-microvolt = <950000>;
-+		regulator-max-microvolt = <1165000>;
-+		regulator-enable-ramp-delay = <500>;
-+		regulator-name = "vdd_gfx";
-+		/* Hack this on until the gpu driver is ready for it */
-+		regulator-always-on;
-+	};
-+};
-+
-+&pm8950_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+	status = "okay";
-+};
-+
-+&pm8950_spmi_regulators {
-+	vdd_s5-supply = <&vph_pwr>;
-+
-+	/* Cluster 0 supply */
-+	pm8950_spmi_s5: s5 {
-+		/* Set .95V to prevent unstabilities until CPR for this SoC is done */
-+		/* regulator-min-microvolt = <500000>; */
-+		regulator-min-microvolt = <950000>;
-+		regulator-max-microvolt = <1165000>;
-+		regulator-name = "vdd_apc0";
-+		/* Set always on until the CPU PLL is done */
-+		regulator-always-on;
-+		regulator-boot-on;
-+	};
-+};
-+
-+&rpm_requests {
-+	pm8950_regulators: regulators {
-+		compatible = "qcom,rpm-pm8950-regulators";
-+
-+		vdd_s1-supply = <&vph_pwr>;
-+		vdd_s2-supply = <&vph_pwr>;
-+		vdd_s3-supply = <&vph_pwr>;
-+		vdd_s4-supply = <&vph_pwr>;
-+		vdd_s6-supply = <&vph_pwr>;
-+		vdd_l1_l19-supply = <&pm8950_s3>;
-+		vdd_l2_l23-supply = <&pm8950_s3>;
-+		vdd_l3-supply = <&pm8950_s3>;
-+		vdd_l5_l6_l7_l16-supply = <&pm8950_s4>;
-+		vdd_l8_l11_l12_l17_l22-supply = <&vph_pwr>;
-+
-+		pm8950_s1: s1 {
-+			regulator-min-microvolt = <1000000>;
-+			regulator-max-microvolt = <1162500>;
-+		};
-+
-+		pm8950_s3: s3 {
-+			regulator-min-microvolt = <1325000>;
-+			regulator-max-microvolt = <1325000>;
-+		};
-+
-+		pm8950_s4: s4 {
-+			regulator-min-microvolt = <2050000>;
-+			regulator-max-microvolt = <2050000>;
-+		};
-+
-+		pm8950_l1: l1 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+		};
-+
-+		pm8950_l2: l2 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+		};
-+
-+		pm8950_l3: l3 {
-+			regulator-min-microvolt = <1000000>;
-+			regulator-max-microvolt = <1100000>;
-+		};
-+
-+		pm8950_l5: l5 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l6: l6 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l7: l7 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l8: l8 {
-+			regulator-min-microvolt = <2900000>;
-+			regulator-max-microvolt = <2900000>;
-+		};
-+
-+		pm8950_l9: l9 {
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8950_l10: l10 {
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+		};
-+
-+		pm8950_l11: l11 {
-+			regulator-min-microvolt = <2950000>;
-+			regulator-max-microvolt = <2950000>;
-+		};
-+
-+		pm8950_l12: l12 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <2950000>;
-+		};
-+
-+		pm8950_l13: l13 {
-+			regulator-min-microvolt = <3075000>;
-+			regulator-max-microvolt = <3075000>;
-+		};
-+
-+		pm8950_l14: l14 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8950_l15: l15 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8950_l16: l16 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l17: l17 {
-+			regulator-min-microvolt = <2850000>;
-+			regulator-max-microvolt = <2850000>;
-+		};
-+
-+		pm8950_l19: l19 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1350000>;
-+		};
-+
-+		pm8950_l22: l22 {
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+		};
-+
-+		pm8950_l23: l23 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+		};
-+	};
-+};
-+
-+&sdhc_1 {
-+	bus-width = <8>;
-+	non-removable;
-+	vmmc-supply = <&pm8950_l8>;
-+	vqmmc-supply = <&pm8950_l5>;
-+	status = "okay";
-+};
-+
-+&sdhc_2 {
-+	bus-width = <4>;
-+	cd-gpios = <&tlmm 100 GPIO_ACTIVE_LOW>;
-+	vmmc-supply = <&pm8950_l11>;
-+	vqmmc-supply = <&pm8950_l12>;
-+
-+	pinctrl-0 = <&sdc2_default>, <&sdc2_cd_default>;
-+	pinctrl-1 = <&sdc2_sleep>, <&sdc2_cd_sleep>;
-+	pinctrl-names = "default", "sleep";
-+
-+	status = "okay";
-+};
-+
-+&tlmm {
-+	gpio-reserved-ranges = <0 4>;
-+
-+	button_backlight_default: button-backlight-default-state {
-+		pins = "gpio101";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	hall_sensor_default: hall-sensor-default-state {
-+		pins = "gpio107";
-+		function = "gpio";
-+		drive-strength = <6>;
-+		bias-pull-up;
-+	};
-+
-+	nfc_default: nfc-default-state {
-+		pins = "gpio122", "gpio140";
-+		function = "gpio";
-+		drive-strength = <6>;
-+		bias-pull-up;
-+	};
-+
-+	nfc_sleep: nfc-sleep-state {
-+		int-pins {
-+			pins = "gpio140";
-+			function = "gpio";
-+			drive-strength = <6>;
-+			bias-pull-up;
-+		};
-+		ven-pins {
-+			pins = "gpio122";
-+			function = "gpio";
-+			drive-strength = <6>;
-+			bias-disable;
-+		};
-+	};
-+
-+	sdc2_default: sdc2-default-state {
-+		clk-pins {
-+			pins = "sdc2_clk";
-+			bias-disable;
-+			drive-strength = <16>;
-+		};
-+		cmd-pins {
-+			pins = "sdc2_cmd";
-+			bias-pull-up;
-+			drive-strength = <10>;
-+		};
-+		data-pins {
-+			pins = "sdc2_data";
-+			bias-pull-up;
-+			drive-strength = <10>;
-+		};
-+	};
-+
-+	sdc2_sleep: sdc2-sleep-state {
-+		clk-pins {
-+			pins = "sdc2_clk";
-+			bias-disable;
-+			drive-strength = <2>;
-+		};
-+		cmd-pins {
-+			pins = "sdc2_cmd";
-+			bias-pull-up;
-+			drive-strength = <2>;
-+		};
-+		data-pins {
-+			pins = "sdc2_data";
-+			bias-pull-up;
-+			drive-strength = <2>;
-+		};
-+	};
-+
-+	sdc2_cd_default: sdc2-cd-default-state {
-+		pins = "gpio100";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-up;
-+	};
-+
-+	sdc2_cd_sleep: sdc2-cd-sleep-state {
-+		pins = "gpio100";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	ts_int_default: ts-int-state {
-+		pins = "gpio65";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-down;
-+	};
-+
-+	ts_int_sleep: ts-int-state {
-+		pins = "gpio65";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-up;
-+	};
-+
-+	ts_reset_default: ts-reset-state {
-+		pins = "gpio64";
-+		function = "gpio";
-+		drive-strength = <8>;
-+		bias-pull-up;
-+	};
-+
-+	ts_reset_sleep: ts-sleep-state {
-+		pins = "gpio64";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-down;
-+	};
-+
-+	volume_up_default: volume-up-default-state {
-+		pins = "gpio113";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-up;
-+	};
-+};
-+
-+&xo_board {
-+	clock-frequency = <19200000>;
-+};
+Thanks again for your patience and review.
 
+I recently had a job change and it put me off this series for months, but
+I'm back (and should be a lot more responsive now) - sorry! Let's get this
+ball rolling again.
+
+I was unfortunately unable to revise 1/5 from v1 as you requested, neither
+of your suggestions to allow allocation of VRAM smaller than page size
+worked... So I kept that part as is.
+
+As for the your comment in 5/5, I'm not sure about what the right approach
+to implement a SZ_64K >= PAGE_SIZE assert was, as there are many other
+instances of similar ternary conditional operators in the xe code. Correct
+me if I'm wrong but I felt that it might be better handled in a separate
+patch series?
+
+---
+Changes in v2:
+
+- Define `GUC_ALIGN' and use them in GuC code to improve clarity.
+- Update documentation on `DRM_XE_QUERY_CONFIG_MIN_ALIGNMENT'.
+- Rebase, and other minor changes.
+- Link to v1:
+  https://lore.kernel.org/all/20250226-xe-non-4k-fix-v1-0-80f23b5ee40e@aosc.io/
+
+To: Lucas De Marchi <lucas.demarchi@intel.com>
+To: Thomas Hellström <thomas.hellstrom@linux.intel.com>
+To: Rodrigo Vivi <rodrigo.vivi@intel.com>
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+To: Maxime Ripard <mripard@kernel.org>
+To: Thomas Zimmermann <tzimmermann@suse.de>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+To: José Roberto de Souza <jose.souza@intel.com>
+To: Francois Dugast <francois.dugast@intel.com>
+To: Matthew Brost <matthew.brost@intel.com>
+To: Alan Previn <alan.previn.teres.alexis@intel.com>
+To: Zhanjun Dong <zhanjun.dong@intel.com>
+To: Matt Roper <matthew.d.roper@intel.com>
+To: Mateusz Naklicki <mateusz.naklicki@intel.com>
+Cc: Mauro Carvalho Chehab <mauro.chehab@linux.intel.com>
+Cc: Zbigniew Kempczyński <zbigniew.kempczynski@intel.com>
+Cc: intel-xe@lists.freedesktop.org
+Cc: dri-devel@lists.freedesktop.org
+Cc: linux-kernel@vger.kernel.org
+Suggested-by: Kexy Biscuit <kexybiscuit@aosc.io>
+Co-developed-by: Shang Yatsen <429839446@qq.com>
+Signed-off-by: Shang Yatsen <429839446@qq.com>
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+
+---
+Mingcong Bai (5):
+      drm/xe/bo: fix alignment with non-4KiB kernel page sizes
+      drm/xe/guc: use GUC_SIZE (SZ_4K) for alignment
+      drm/xe/regs: fix RING_CTL_SIZE(size) calculation
+      drm/xe: use 4KiB alignment for cursor jumps
+      drm/xe/query: use PAGE_SIZE as the minimum page alignment
+
+ drivers/gpu/drm/xe/regs/xe_engine_regs.h |  2 +-
+ drivers/gpu/drm/xe/xe_bo.c               |  8 ++++----
+ drivers/gpu/drm/xe/xe_guc.c              |  4 ++--
+ drivers/gpu/drm/xe/xe_guc.h              |  3 +++
+ drivers/gpu/drm/xe/xe_guc_ads.c          | 32 ++++++++++++++++----------------
+ drivers/gpu/drm/xe/xe_guc_capture.c      |  8 ++++----
+ drivers/gpu/drm/xe/xe_guc_ct.c           |  2 +-
+ drivers/gpu/drm/xe/xe_guc_log.c          |  5 +++--
+ drivers/gpu/drm/xe/xe_guc_pc.c           |  4 ++--
+ drivers/gpu/drm/xe/xe_migrate.c          |  4 ++--
+ drivers/gpu/drm/xe/xe_query.c            |  2 +-
+ include/uapi/drm/xe_drm.h                |  7 +++++--
+ 12 files changed, 44 insertions(+), 37 deletions(-)
+---
+base-commit: 546b1c9e93c2bb8cf5ed24e0be1c86bb089b3253
+change-id: 20250603-upstream-xe-non-4k-v2-4acf253c9bfd
+
+Best regards,
 -- 
-2.49.0
+Mingcong Bai <jeffbai@aosc.io>
 
