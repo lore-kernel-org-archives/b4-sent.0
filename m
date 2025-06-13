@@ -1,226 +1,59 @@
-From: Vincent Knecht <vincent.knecht@mailoo.org>
-Date: Fri, 13 Jun 2025 11:33:30 +0200
-Subject: [PATCH v5 4/4] arm64: dts: qcom: msm8939: Add camss and cci
+From: Raven Black <ravenblack@gmail.com>
+Date: Fri, 13 Jun 2025 07:51:25 -0400
+Subject: [PATCH] ASoC: amd: yc: update quirk data for HP Victus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250613-camss-8x39-vbif-v5-4-a002301a7730@mailoo.org>
-References: <20250613-camss-8x39-vbif-v5-0-a002301a7730@mailoo.org>
-In-Reply-To: <20250613-camss-8x39-vbif-v5-0-a002301a7730@mailoo.org>
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
- phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Vincent Knecht <vincent.knecht@mailoo.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749807216; l=5488;
- i=vincent.knecht@mailoo.org; s=20250414; h=from:subject:message-id;
- bh=ZimyahboifmgT0C9CYBF5gb72zgrjzxOJHAIUWO96Fw=;
- b=sOtHpqaNs9wQivRYpfV2CwEjQl4xWKQipC148VlO9zLz3aYzgAohwxs5Zoz/fSUy2Uefi8bpR
- 4TwUFg7CrYmCZq8ahrXZrywUSlFZTyShz+7A43h3nnyKdLUkrzlloY7
-X-Developer-Key: i=vincent.knecht@mailoo.org; a=ed25519;
- pk=MFCVQkhL3+d3NHDzNPWpyZ4isxJvT+QTqValj5gSkm4=
-X-Endpoint-Received: by B4 Relay for vincent.knecht@mailoo.org/20250414 with auth_id=377
+Message-Id: <20250613-support-hp-victus-microphone-v1-1-bebc4c3a2041@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALwQTGgC/x3MwQqDMAwA0F+RnBeodQ7Zr4wdShvXHGxDoiKI/
+ 27Z8V3eCUbKZPDuTlDa2biWhv7RQcyh/Ag5NYN3fnSvfkDbRKqumAV3jutmuHDUKrkWwtm5NKX
+ RP0MM0ApRmvn495/vdd2ZeuRYbgAAAA==
+To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Raven Black <ravenblack@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749815492; l=967;
+ i=ravenblack@gmail.com; s=20250613; h=from:subject:message-id;
+ bh=/bACXv58cmQwq8+BzTLIvAZpJC8AGmmTuOuCZ0+0UMk=;
+ b=xTamQF7Ox7AfzVbSqdl2WJ2aehKA1sXLoBYMMIHt4t5lDQBvpUfTfzF3uR3CmlDPtjct7mg0i
+ oEdrNV2z+uMA3v04due/xp8ttfSkDZA1ZPneno5EuviXCV1ZrN4poCo
+X-Developer-Key: i=ravenblack@gmail.com; a=ed25519;
+ pk=8ECM1VXVU5AHsXWVPR5Gs6qmW8kY07IYbgnWZDe+ddY=
+X-Endpoint-Received: by B4 Relay for ravenblack@gmail.com/20250613 with auth_id=431
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the camera subsystem and CCI used to interface with cameras on the
-Snapdragon 615.
+Make the internal microphone work on HP Victus laptops.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
+Signed-off-by: Raven Black <ravenblack@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi |   4 +
- arch/arm64/boot/dts/qcom/msm8939.dtsi        | 146 +++++++++++++++++++++++++++
- 2 files changed, 150 insertions(+)
+ sound/soc/amd/yc/acp6x-mach.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi b/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-index adb96cd8d643e5fde1ac95c0fc3c9c3c3efb07e8..659d127b1bc3570d137ca986e4eacf600c183e5e 100644
---- a/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-+++ b/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-@@ -11,6 +11,10 @@
- #include "msm8939.dtsi"
- #include "pm8916.dtsi"
- 
-+&camss {
-+	vdda-supply = <&pm8916_l2>;
-+};
-+
- &mdss_dsi0 {
- 	vdda-supply = <&pm8916_l2>;
- 	vddio-supply = <&pm8916_l6>;
-diff --git a/arch/arm64/boot/dts/qcom/msm8939.dtsi b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-index 68b92fdb996c26e7a1aadedf0f52e1afca85c4ab..8ac9bed4e6dbf6c8ee1e1c90a919de88a2c20e3e 100644
---- a/arch/arm64/boot/dts/qcom/msm8939.dtsi
-+++ b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-@@ -1434,6 +1434,145 @@ mdss_dsi1_phy: phy@1aa0300 {
- 			};
- 		};
- 
-+		camss: isp@1b00020 {
-+			compatible = "qcom,msm8939-camss";
-+			reg = <0x01b00020 0x10>,
-+			      <0x01b08000 0x100>,
-+			      <0x01b08400 0x100>,
-+			      <0x01b08800 0x100>,
-+			      <0x01b0ac00 0x200>,
-+			      <0x01b00030 0x4>,
-+			      <0x01b0b000 0x200>,
-+			      <0x01b00038 0x4>,
-+			      <0x01b0a000 0x500>,
-+			      <0x01b10000 0x1000>,
-+			      <0x01b40000 0x200>;
-+			reg-names = "csi_clk_mux",
-+				    "csid0",
-+				    "csid1",
-+				    "csid2",
-+				    "csiphy0",
-+				    "csiphy0_clk_mux",
-+				    "csiphy1",
-+				    "csiphy1_clk_mux",
-+				    "ispif",
-+				    "vfe0",
-+				    "vfe0_vbif";
-+
-+			clocks = <&gcc GCC_CAMSS_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0RDI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1RDI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2RDI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI_VFE0_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PHYTIMER_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PHYTIMER_CLK>,
-+				 <&gcc GCC_CAMSS_ISPIF_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_TOP_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_VFE0_CLK>,
-+				 <&gcc GCC_CAMSS_VFE_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_VFE_AXI_CLK>;
-+			clock-names = "ahb",
-+				      "csi0",
-+				      "csi0_ahb",
-+				      "csi0_phy",
-+				      "csi0_pix",
-+				      "csi0_rdi",
-+				      "csi1",
-+				      "csi1_ahb",
-+				      "csi1_phy",
-+				      "csi1_pix",
-+				      "csi1_rdi",
-+				      "csi2",
-+				      "csi2_ahb",
-+				      "csi2_phy",
-+				      "csi2_pix",
-+				      "csi2_rdi",
-+				      "csi_vfe0",
-+				      "csiphy0_timer",
-+				      "csiphy1_timer",
-+				      "ispif_ahb",
-+				      "top_ahb",
-+				      "vfe0",
-+				      "vfe_ahb",
-+				      "vfe_axi";
-+
-+			interrupts = <GIC_SPI 51 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 52 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 153 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 78 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 79 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 55 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 57 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "csid0",
-+					  "csid1",
-+					  "csid2",
-+					  "csiphy0",
-+					  "csiphy1",
-+					  "ispif",
-+					  "vfe0";
-+
-+			iommus = <&apps_iommu 3>;
-+
-+			power-domains = <&gcc VFE_GDSC>;
-+
-+			status = "disabled";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+				};
-+			};
-+		};
-+
-+		cci: cci@1b0c000 {
-+			compatible = "qcom,msm8916-cci", "qcom,msm8226-cci";
-+			reg = <0x01b0c000 0x1000>;
-+			interrupts = <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>;
-+			clocks = <&gcc GCC_CAMSS_TOP_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CCI_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CCI_CLK>,
-+				 <&gcc GCC_CAMSS_AHB_CLK>;
-+			clock-names = "camss_top_ahb",
-+				      "cci_ahb",
-+				      "cci",
-+				      "camss_ahb";
-+			assigned-clocks = <&gcc GCC_CAMSS_CCI_AHB_CLK>,
-+					  <&gcc GCC_CAMSS_CCI_CLK>;
-+			assigned-clock-rates = <80000000>,
-+					       <19200000>;
-+			pinctrl-0 = <&cci0_default>;
-+			pinctrl-names = "default";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			status = "disabled";
-+
-+			cci_i2c0: i2c-bus@0 {
-+				reg = <0>;
-+				clock-frequency = <400000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+		};
-+
- 		gpu: gpu@1c00000 {
- 			compatible = "qcom,adreno-405.0", "qcom,adreno";
- 			reg = <0x01c00000 0x10000>;
-@@ -1498,6 +1637,13 @@ apps_iommu: iommu@1ef0000 {
- 			#iommu-cells = <1>;
- 			qcom,iommu-secure-id = <17>;
- 
-+			/* vfe */
-+			iommu-ctx@3000 {
-+				compatible = "qcom,msm-iommu-v1-sec";
-+				reg = <0x3000 0x1000>;
-+				interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
-+			};
-+
- 			/* mdp_0: */
- 			iommu-ctx@4000 {
- 				compatible = "qcom,msm-iommu-v1-ns";
+diff --git a/sound/soc/amd/yc/acp6x-mach.c b/sound/soc/amd/yc/acp6x-mach.c
+index 7e62445e02c1..3451d2f9c9ba 100644
+--- a/sound/soc/amd/yc/acp6x-mach.c
++++ b/sound/soc/amd/yc/acp6x-mach.c
+@@ -514,6 +514,13 @@ static const struct dmi_system_id yc_acp_quirk_table[] = {
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "OMEN by HP Gaming Laptop 16z-n000"),
+ 		}
+ 	},
++	{
++		.driver_data = &acp6x_card,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "HP"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "Victus by HP Gaming Laptop 15-fb2xxx"),
++		}
++	},
+ 	{
+ 		.driver_data = &acp6x_card,
+ 		.matches = {
 
+---
+base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
+change-id: 20250613-support-hp-victus-microphone-f00d8d524aca
+
+Best regards,
 -- 
-2.49.0
+Raven Black <ravenblack@gmail.com>
 
