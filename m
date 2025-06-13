@@ -1,10 +1,10 @@
 From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Fri, 13 Jun 2025 23:17:07 +0200
-Subject: [PATCH v2 1/2] dt-bindings: gpu: Add Apple SoC GPU
+Date: Fri, 13 Jun 2025 23:17:08 +0200
+Subject: [PATCH v2 2/2] arm64: dts: Add Apple SoC GPU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250613-sgx-dt-v2-1-fb2b7d1c3ff7@gmail.com>
+Message-Id: <20250613-sgx-dt-v2-2-fb2b7d1c3ff7@gmail.com>
 References: <20250613-sgx-dt-v2-0-fb2b7d1c3ff7@gmail.com>
 In-Reply-To: <20250613-sgx-dt-v2-0-fb2b7d1c3ff7@gmail.com>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
@@ -18,136 +18,330 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749849431; l=3960;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749849431; l=9228;
  i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=3r2IVrL38qapDPG/5iQRSW6ZZ0cbJ6URhg9pEUW+SNk=;
- b=585Ssxh53I/dFrq96K6/8DikvQkcX8QUs4kakByC0QwcJeI3Cay2QQC7ddIkVHz7cE6h62nb4
- 74YGnDIWqUyBcdqSKyMVfb5tr56Nj9g+4hGiRc2a3ORETvj3DfAwSGm
+ bh=LNEGg5XDHc8p74YN3j3fHmCXpQuoilJu/BPjhAcYKSQ=;
+ b=oDbpu+5LuPgGuGv4kfiFkaP9DQm+2xr+8YsXOJqzdtiCq6Lcs9r0dfiKGmCQe5A8+09VbPh5E
+ zuMXFPkSMq0CZhP30XnfFNGtjKydx+RcW54Gqh00V8yMcfd3H1YIPPP
 X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
  pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
 X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bindings for the GPU present in Apple SoCs
+Add device tree entries for GPUs in M-series SoCs
 
+Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
+Reviewed-by: Sven Peter <sven@kernel.org>
 Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- Documentation/devicetree/bindings/gpu/apple,agx.yaml | 94 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- MAINTAINERS                                          |  1 +
- 2 files changed, 95 insertions(+)
+ arch/arm64/boot/dts/apple/t6000.dtsi        |  4 ++++
+ arch/arm64/boot/dts/apple/t6001.dtsi        |  4 ++++
+ arch/arm64/boot/dts/apple/t6002.dtsi        |  4 ++++
+ arch/arm64/boot/dts/apple/t600x-common.dtsi | 34 ++++++++++++++++++++++++++++++++++
+ arch/arm64/boot/dts/apple/t600x-die0.dtsi   | 28 ++++++++++++++++++++++++++++
+ arch/arm64/boot/dts/apple/t8103.dtsi        | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ arch/arm64/boot/dts/apple/t8112.dtsi        | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 198 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/gpu/apple,agx.yaml b/Documentation/devicetree/bindings/gpu/apple,agx.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..51629b3833b0a8c296eaccdfd6d9eeef02a5bc63
---- /dev/null
-+++ b/Documentation/devicetree/bindings/gpu/apple,agx.yaml
-@@ -0,0 +1,94 @@
-+# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/gpu/apple,agx.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/arch/arm64/boot/dts/apple/t6000.dtsi b/arch/arm64/boot/dts/apple/t6000.dtsi
+index 89c3b211b116e96ee0a5ea0c923c3ab824008307..0ad77c98073fe65ddde7736acaece9acd5f3111e 100644
+--- a/arch/arm64/boot/dts/apple/t6000.dtsi
++++ b/arch/arm64/boot/dts/apple/t6000.dtsi
+@@ -16,3 +16,7 @@ / {
+ };
+ 
+ /delete-node/ &pmgr_south;
 +
-+title: Apple SoC GPU
++&gpu {
++	compatible = "apple,agx-g13s";
++};
+diff --git a/arch/arm64/boot/dts/apple/t6001.dtsi b/arch/arm64/boot/dts/apple/t6001.dtsi
+index d2cf81926f284ccf7627701cc82edff31d4d72d6..ffbe823b71bc8d9c0975524aa04efa9bf520a89e 100644
+--- a/arch/arm64/boot/dts/apple/t6001.dtsi
++++ b/arch/arm64/boot/dts/apple/t6001.dtsi
+@@ -62,3 +62,7 @@ p-core-pmu-affinity {
+ 		};
+ 	};
+ };
 +
-+maintainers:
-+  - Sasha Finkelstein <fnkl.kernel@gmail.com>
++&gpu {
++	compatible = "apple,agx-g13c", "apple,agx-g13s";
++};
+diff --git a/arch/arm64/boot/dts/apple/t6002.dtsi b/arch/arm64/boot/dts/apple/t6002.dtsi
+index e36f422d257d8fe3a62bfa6e0f0e0dc6c34608a4..8fb648836b538bbd9efdccd6cec5d08d868a0d39 100644
+--- a/arch/arm64/boot/dts/apple/t6002.dtsi
++++ b/arch/arm64/boot/dts/apple/t6002.dtsi
+@@ -300,3 +300,7 @@ &ps_gfx {
+ 	// On t6002, the die0 GPU power domain needs both AFR power domains
+ 	power-domains = <&ps_afr>, <&ps_afr_die1>;
+ };
 +
-+properties:
-+  compatible:
-+    oneOf:
-+      - enum:
-+          - apple,agx-g13g
-+          - apple,agx-g13s
-+          - apple,agx-g14g
-+      - items:
-+          - enum:
-+              - apple,agx-g13c
-+              - apple,agx-g13d
-+          - const: apple,agx-g13s
++&gpu {
++	compatible = "apple,agx-g13d", "apple,agx-g13s";
++};
+diff --git a/arch/arm64/boot/dts/apple/t600x-common.dtsi b/arch/arm64/boot/dts/apple/t600x-common.dtsi
+index 87dfc13d74171f62bf3087401918d9d41eaac560..e20234ef213538f851d9da0dbd11b318831668b1 100644
+--- a/arch/arm64/boot/dts/apple/t600x-common.dtsi
++++ b/arch/arm64/boot/dts/apple/t600x-common.dtsi
+@@ -11,6 +11,10 @@ / {
+ 	#address-cells = <2>;
+ 	#size-cells = <2>;
+ 
++	aliases {
++		gpu = &gpu;
++	};
 +
-+  reg:
-+    items:
-+      - description: GPU coprocessor control registers
-+      - description: GPU block MMIO registers
+ 	cpus {
+ 		#address-cells = <2>;
+ 		#size-cells = <0>;
+@@ -378,4 +382,34 @@ nco_clkref: clock-ref-nco {
+ 		#clock-cells = <0>;
+ 		clock-output-names = "nco_ref";
+ 	};
 +
-+  reg-names:
-+    items:
-+      - const: asc
-+      - const: sgx
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
 +
-+  power-domains:
-+    maxItems: 1
++		gpu_globals: globals {
++			status = "disabled";
++		};
 +
-+  mboxes:
-+    maxItems: 1
++		gpu_hw_cal_a: hw-cal-a {
++			status = "disabled";
++		};
 +
-+  memory-region:
-+    items:
-+      - description: Region containing GPU MMU TTBs
-+      - description: Region containing GPU MMU page tables
-+      - description:
-+          Region containing a shared handoff structure for VM
-+          management coordination
-+      - description: Calibration blob. Mostly power-related configuration
-+      - description: Calibration blob. Mostly GPU-related configuration
-+      - description: Shared global variables with GPU firmware
++		gpu_hw_cal_b: hw-cal-b {
++			status = "disabled";
++		};
 +
-+  memory-region-names:
-+    items:
-+      - const: ttbs
-+      - const: pagetables
-+      - const: handoff
-+      - const: hw-cal-a
-+      - const: hw-cal-b
-+      - const: globals
++		uat_handoff: uat-handoff {
++			status = "disabled";
++		};
 +
-+  apple,firmware-abi:
-+    $ref: /schemas/types.yaml#/definitions/uint32-array
-+    minItems: 3
-+    description:
-+      macOS version the current firmware is paired with, used to pick
-+      the version of firmware ABI to be used.
-+      Bootloader will overwrite this
++		uat_pagetables: uat-pagetables {
++			status = "disabled";
++		};
 +
-+required:
-+  - compatible
-+  - reg
-+  - mboxes
-+  - memory-region
-+  - apple,firmware-abi
++		uat_ttbs: uat-ttbs {
++			status = "disabled";
++		};
++	};
+ };
+diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
+index 110bc6719512e334e04b496fb157cb4368679957..341307330bfaa17b276d9c23a87931dbe71bd186 100644
+--- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
++++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
+@@ -302,6 +302,34 @@ mca: mca@39b600000 {
+ 		#sound-dai-cells = <1>;
+ 	};
+ 
++	gpu: gpu@406400000 {
++		compatible = "apple,agx-g13s";
++		reg = <0x4 0x6400000 0 0x40000>,
++			<0x4 0x4000000 0 0x1000000>;
++		reg-names = "asc", "sgx";
++		mboxes = <&agx_mbox>;
++		power-domains = <&ps_gfx>;
++		memory-region = <&uat_ttbs>, <&uat_pagetables>, <&uat_handoff>,
++				<&gpu_hw_cal_a>, <&gpu_hw_cal_b>, <&gpu_globals>;
++		memory-region-names = "ttbs", "pagetables", "handoff",
++				      "hw-cal-a", "hw-cal-b", "globals";
 +
-+additionalProperties: false
++		apple,firmware-abi = <0 0 0>;
++	};
 +
-+examples:
-+  - |
-+    gpu@6400000 {
-+        compatible = "apple,agx-g13g";
-+        reg = <0x6400000 0x40000>,
-+              <0x4000000 0x1000000>;
-+        reg-names = "asc", "sgx";
-+        mboxes = <&agx_mbox>;
-+        power-domains = <&ps_gfx>;
-+        memory-region = <&uat_ttbs>, <&uat_pagetables>, <&uat_handoff>,
-+                        <&gpu_hw_cal_a>, <&gpu_hw_cal_b>, <&gpu_globals>;
-+        memory-region-names = "ttbs", "pagetables", "handoff",
-+                              "hw-cal-a", "hw-cal-b", "globals";
++	agx_mbox: mbox@406408000 {
++		compatible = "apple,t6000-asc-mailbox", "apple,asc-mailbox-v4";
++		reg = <0x4 0x6408000 0x0 0x4000>;
++		interrupt-parent = <&aic>;
++		interrupts = <AIC_IRQ 0 1059 IRQ_TYPE_LEVEL_HIGH>,
++			<AIC_IRQ 0 1060 IRQ_TYPE_LEVEL_HIGH>,
++			<AIC_IRQ 0 1061 IRQ_TYPE_LEVEL_HIGH>,
++			<AIC_IRQ 0 1062 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "send-empty", "send-not-empty",
++			"recv-empty", "recv-not-empty";
++		#mbox-cells = <0>;
++	};
 +
-+        apple,firmware-abi = <0 0 0>;
-+    };
-+...
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a92290fffa163f9fe8fe3f04bf66426f9a894409..2a32c9c4ee355a1109a3e2031ea3663c39cc8c68 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2331,6 +2331,7 @@ F:	Documentation/devicetree/bindings/arm/apple/*
- F:	Documentation/devicetree/bindings/clock/apple,nco.yaml
- F:	Documentation/devicetree/bindings/cpufreq/apple,cluster-cpufreq.yaml
- F:	Documentation/devicetree/bindings/dma/apple,admac.yaml
-+F:	Documentation/devicetree/bindings/gpu/apple,agx.yaml
- F:	Documentation/devicetree/bindings/i2c/apple,i2c.yaml
- F:	Documentation/devicetree/bindings/input/touchscreen/apple,z2-multitouch.yaml
- F:	Documentation/devicetree/bindings/interrupt-controller/apple,*
+ 	pcie0_dart_0: iommu@581008000 {
+ 		compatible = "apple,t6000-dart";
+ 		reg = <0x5 0x81008000 0x0 0x4000>;
+diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
+index 20faf0c0d80927b2e18dd966a61b5507b322c72f..531cfcd463ae6d8701dec67cde8c953b8865eef6 100644
+--- a/arch/arm64/boot/dts/apple/t8103.dtsi
++++ b/arch/arm64/boot/dts/apple/t8103.dtsi
+@@ -19,6 +19,10 @@ / {
+ 	#address-cells = <2>;
+ 	#size-cells = <2>;
+ 
++	aliases {
++		gpu = &gpu;
++	};
++
+ 	cpus {
+ 		#address-cells = <2>;
+ 		#size-cells = <0>;
+@@ -351,6 +355,36 @@ nco_clkref: clock-ref-nco {
+ 		clock-output-names = "nco_ref";
+ 	};
+ 
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		gpu_globals: globals {
++			status = "disabled";
++		};
++
++		gpu_hw_cal_a: hw-cal-a {
++			status = "disabled";
++		};
++
++		gpu_hw_cal_b: hw-cal-b {
++			status = "disabled";
++		};
++
++		uat_handoff: uat-handoff {
++			status = "disabled";
++		};
++
++		uat_pagetables: uat-pagetables {
++			status = "disabled";
++		};
++
++		uat_ttbs: uat-ttbs {
++			status = "disabled";
++		};
++	};
++
+ 	soc {
+ 		compatible = "simple-bus";
+ 		#address-cells = <2>;
+@@ -359,6 +393,34 @@ soc {
+ 		ranges;
+ 		nonposted-mmio;
+ 
++		gpu: gpu@206400000 {
++			compatible = "apple,agx-g13g";
++			reg = <0x2 0x6400000 0 0x40000>,
++				<0x2 0x4000000 0 0x1000000>;
++			reg-names = "asc", "sgx";
++			mboxes = <&agx_mbox>;
++			power-domains = <&ps_gfx>;
++			memory-region = <&uat_ttbs>, <&uat_pagetables>, <&uat_handoff>,
++					<&gpu_hw_cal_a>, <&gpu_hw_cal_b>, <&gpu_globals>;
++			memory-region-names = "ttbs", "pagetables", "handoff",
++					      "hw-cal-a", "hw-cal-b", "globals";
++
++			apple,firmware-abi = <0 0 0>;
++		};
++
++		agx_mbox: mbox@206408000 {
++			compatible = "apple,t8103-asc-mailbox", "apple,asc-mailbox-v4";
++			reg = <0x2 0x6408000 0x0 0x4000>;
++			interrupt-parent = <&aic>;
++			interrupts = <AIC_IRQ 575 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 576 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 577 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 578 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "send-empty", "send-not-empty",
++				"recv-empty", "recv-not-empty";
++			#mbox-cells = <0>;
++		};
++
+ 		cpufreq_e: performance-controller@210e20000 {
+ 			compatible = "apple,t8103-cluster-cpufreq", "apple,cluster-cpufreq";
+ 			reg = <0x2 0x10e20000 0 0x1000>;
+diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
+index e95711d8337f6cea898e88a3d564caf2c4f94404..b41b9f8fa122b13b9bf20dcb7135049e11e1819f 100644
+--- a/arch/arm64/boot/dts/apple/t8112.dtsi
++++ b/arch/arm64/boot/dts/apple/t8112.dtsi
+@@ -19,6 +19,10 @@ / {
+ 	#address-cells = <2>;
+ 	#size-cells = <2>;
+ 
++	aliases {
++		gpu = &gpu;
++	};
++
+ 	cpus {
+ 		#address-cells = <2>;
+ 		#size-cells = <0>;
+@@ -366,6 +370,36 @@ nco_clkref: clock-ref-nco {
+ 		clock-output-names = "nco_ref";
+ 	};
+ 
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		gpu_globals: globals {
++			status = "disabled";
++		};
++
++		gpu_hw_cal_a: hw-cal-a {
++			status = "disabled";
++		};
++
++		gpu_hw_cal_b: hw-cal-b {
++			status = "disabled";
++		};
++
++		uat_handoff: uat-handoff {
++			status = "disabled";
++		};
++
++		uat_pagetables: uat-pagetables {
++			status = "disabled";
++		};
++
++		uat_ttbs: uat-ttbs {
++			status = "disabled";
++		};
++	};
++
+ 	soc {
+ 		compatible = "simple-bus";
+ 		#address-cells = <2>;
+@@ -374,6 +408,34 @@ soc {
+ 		ranges;
+ 		nonposted-mmio;
+ 
++		gpu: gpu@206400000 {
++			compatible = "apple,agx-g14g";
++			reg = <0x2 0x6400000 0 0x40000>,
++				<0x2 0x4000000 0 0x1000000>;
++			reg-names = "asc", "sgx";
++			mboxes = <&agx_mbox>;
++			power-domains = <&ps_gfx>;
++			memory-region = <&uat_ttbs>, <&uat_pagetables>, <&uat_handoff>,
++					<&gpu_hw_cal_a>, <&gpu_hw_cal_b>, <&gpu_globals>;
++			memory-region-names = "ttbs", "pagetables", "handoff",
++					      "hw-cal-a", "hw-cal-b", "globals";
++
++			apple,firmware-abi = <0 0 0>;
++		};
++
++		agx_mbox: mbox@206408000 {
++			compatible = "apple,t8103-asc-mailbox", "apple,asc-mailbox-v4";
++			reg = <0x2 0x6408000 0x0 0x4000>;
++			interrupt-parent = <&aic>;
++			interrupts = <AIC_IRQ 709 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 710 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 711 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 712 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "send-empty", "send-not-empty",
++				"recv-empty", "recv-not-empty";
++			#mbox-cells = <0>;
++		};
++
+ 		cpufreq_e: cpufreq@210e20000 {
+ 			compatible = "apple,t8112-cluster-cpufreq", "apple,cluster-cpufreq";
+ 			reg = <0x2 0x10e20000 0 0x1000>;
 
 -- 
 2.49.0
