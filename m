@@ -1,177 +1,136 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Fri, 13 Jun 2025 09:34:27 +0200
-Subject: [PATCH v4 2/2] iio: imu: inv_icm42600: add wakeup functionality
- for Wake-on-Motion
+From: Vincent Knecht <vincent.knecht@mailoo.org>
+Subject: [PATCH v5 0/4] CAMSS support for MSM8939
+Date: Fri, 13 Jun 2025 11:33:26 +0200
+Message-Id: <20250613-camss-8x39-vbif-v5-0-a002301a7730@mailoo.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250613-losd-3-inv-icm42600-add-wom-support-v4-2-7e5f554201bf@tdk.com>
-References: <20250613-losd-3-inv-icm42600-add-wom-support-v4-0-7e5f554201bf@tdk.com>
-In-Reply-To: <20250613-losd-3-inv-icm42600-add-wom-support-v4-0-7e5f554201bf@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAGbwS2gC/23OwY4CIQyA4VcxnMVAmTKDJ99jswcGqJKoGNgQN
+ 2beXTQmumGPf5N+7Y2VkGMobLu6sRxqLDGdW+B6xdzBnveBR9+agQAUKEfu7KkUPl2V4XWOxM2
+ IRDhJI83E2tYlB4rXp/j13foQy0/Kv88DVT6mLwtEZ1XJBbcSnNdCaEtmd7LxmNIm5T17YBU+A
+ ewBaID2yqNDSwPqDlAfgPrnA9UAckZ6ifOMvgeGN6AF9MDQAAUOxtFPZGb6AyzLcgenXWBgcgE
+ AAA==
+X-Change-ID: 20250517-camss-8x39-vbif-975ff5819198
+To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
+ phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Vincent Knecht <vincent.knecht@mailoo.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749800071; l=5290;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=KDCTv7gpEv39CHX+r2t6f3t7cUBXM4lGf6ce0mTmS5s=;
- b=R95RMBpi7F8u7Ndrqsm2evDBTuHKFYPyd6cQKR7GCzDK8vNe+M67j7xxE6Jmp722V/UCjFhYj
- eMy52BA3rDaCQPEgnQCsaQ2zum9ZVUYakH7CO1AZZivKiVODhS8P1Ti
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749807215; l=4058;
+ i=vincent.knecht@mailoo.org; s=20250414; h=from:subject:message-id;
+ bh=i5Pf6Oznv55GrsWogxX5kmhEiTAMxh9TsID82AiML3Q=;
+ b=2pRtnf6EQ/OQ0rv2g+LD7BCVUlddoVZtLWAlJgAXmQi/uvheBpGb5hAsvhNvE4i03Fsfcx0HD
+ H8/70EE2cIwAphRYXLu2fxtY96H0MxJveM8HjAycouveQS2GilaJeV3
+X-Developer-Key: i=vincent.knecht@mailoo.org; a=ed25519;
+ pk=MFCVQkhL3+d3NHDzNPWpyZ4isxJvT+QTqValj5gSkm4=
+X-Endpoint-Received: by B4 Relay for vincent.knecht@mailoo.org/20250414 with auth_id=377
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When Wake-on-Motion is on, enable system wakeup and keep the chip on
-for waking up the system with an interrupt.
+This series adds CAMSS support for MSM8939.
+It's mostly identical to MSM8916, except for some clocks
+and an additional CSI.
 
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+To fix black stripes across sensor output, and garbage in
+CSID TPG output, 2 VFE VBIF register settings are needed.
+So the 1st patch adds helper functions to do just that.
+
+Patch 1: adds helper for VFE VBIF settings
+Patch 2: adds CAMSS_8x39 version in CAMSS driver
+Patch 3: documents qcom,msm8939-camss DT bindings
+Patch 4: adds camss and cci in msm8939.dtsi
+
+Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600.h       |  2 +
- drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c |  3 ++
- drivers/iio/imu/inv_icm42600/inv_icm42600_core.c  | 53 +++++++++++++++++------
- 3 files changed, 45 insertions(+), 13 deletions(-)
+Changes in v5:
+- Patch 1: no change
+- Patch 2: no change
+- Patch 3: (bindings)
+  - Fix alphanumerical ordering wrt. underscore (Vladimir)
+  - Add 1.2V mention to vdda-supply description (Vladimir)
+  - Correct vdda-supply regulator name for 1.2V in example
+  - Add empty line between properties and child node (Vladimir)
+  - Remove clock-lanes property in example (Vladimir)
+- Patch 4: (dtsi)
+  - Apply ordering and isp node unit address changes from patch 3.
+- Link to v4: https://lore.kernel.org/r/20250602-camss-8x39-vbif-v4-0-32c277d8f9bf@mailoo.org
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-index 413a15493bcb880dc00b20da3b3168d5addd32a9..67f5c1a611988776d0bdf4d43a46f2fda43e3e44 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-@@ -151,6 +151,7 @@ struct inv_icm42600_apex {
-  *  @map:		regmap pointer.
-  *  @vdd_supply:	VDD voltage regulator for the chip.
-  *  @vddio_supply:	I/O voltage regulator for the chip.
-+ *  @irq:		chip irq, required to enable/disable and set wakeup
-  *  @orientation:	sensor chip orientation relative to main hardware.
-  *  @conf:		chip sensors configurations.
-  *  @suspended:		suspended sensors configuration.
-@@ -168,6 +169,7 @@ struct inv_icm42600_state {
- 	struct regmap *map;
- 	struct regulator *vdd_supply;
- 	struct regulator *vddio_supply;
-+	int irq;
- 	struct iio_mount_matrix orientation;
- 	struct inv_icm42600_conf conf;
- 	struct inv_icm42600_suspended suspended;
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-index 9a2089527a9426b70eb796d4e9c234d8804c508b..ddc04fdf1d4ed3afaa8c0c9385ed9739cec39a4b 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-@@ -1171,6 +1171,9 @@ struct iio_dev *inv_icm42600_accel_init(struct inv_icm42600_state *st)
- 	if (ret)
- 		return ERR_PTR(ret);
- 
-+	/* accel events are wakeup capable */
-+	devm_device_init_wakeup(&indio_dev->dev);
-+
- 	return indio_dev;
- }
- 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-index 9a2150ab9e874f17d7fda731cb131c3f688a75a3..0809561b8119d1ff5cf4b36ff571f9c8dc4050a0 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-@@ -765,6 +765,7 @@ int inv_icm42600_core_probe(struct regmap *regmap, int chip,
- 	mutex_init(&st->lock);
- 	st->chip = chip;
- 	st->map = regmap;
-+	st->irq = irq;
- 
- 	ret = iio_read_mount_matrix(dev, &st->orientation);
- 	if (ret) {
-@@ -843,6 +844,9 @@ EXPORT_SYMBOL_NS_GPL(inv_icm42600_core_probe, "IIO_ICM42600");
- static int inv_icm42600_suspend(struct device *dev)
- {
- 	struct inv_icm42600_state *st = dev_get_drvdata(dev);
-+	struct device *accel_dev;
-+	bool wakeup;
-+	int accel_conf;
- 	int ret;
- 
- 	mutex_lock(&st->lock);
-@@ -863,20 +867,32 @@ static int inv_icm42600_suspend(struct device *dev)
- 			goto out_unlock;
- 	}
- 
--	/* disable APEX features */
--	if (st->apex.wom.enable) {
--		ret = inv_icm42600_disable_wom(st);
--		if (ret)
--			goto out_unlock;
-+	/* keep chip on and wake-up capable if APEX and wakeup on */
-+	accel_dev = &st->indio_accel->dev;
-+	wakeup = st->apex.on && device_may_wakeup(accel_dev);
-+	if (wakeup) {
-+		/* keep accel on and setup irq for wakeup */
-+		accel_conf = st->conf.accel.mode;
-+		enable_irq_wake(st->irq);
-+		disable_irq(st->irq);
-+	} else {
-+		/* disable APEX features and accel if wakeup disabled */
-+		if (st->apex.wom.enable) {
-+			ret = inv_icm42600_disable_wom(st);
-+			if (ret)
-+				goto out_unlock;
-+		}
-+		accel_conf = INV_ICM42600_SENSOR_MODE_OFF;
- 	}
- 
- 	ret = inv_icm42600_set_pwr_mgmt0(st, INV_ICM42600_SENSOR_MODE_OFF,
--					 INV_ICM42600_SENSOR_MODE_OFF, false,
--					 NULL);
-+					 accel_conf, false, NULL);
- 	if (ret)
- 		goto out_unlock;
- 
--	regulator_disable(st->vddio_supply);
-+	/* disable vddio regulator if chip is sleeping */
-+	if (!wakeup)
-+		regulator_disable(st->vddio_supply);
- 
- out_unlock:
- 	mutex_unlock(&st->lock);
-@@ -892,13 +908,24 @@ static int inv_icm42600_resume(struct device *dev)
- 	struct inv_icm42600_state *st = dev_get_drvdata(dev);
- 	struct inv_icm42600_sensor_state *gyro_st = iio_priv(st->indio_gyro);
- 	struct inv_icm42600_sensor_state *accel_st = iio_priv(st->indio_accel);
-+	struct device *accel_dev;
-+	bool wakeup;
- 	int ret;
- 
- 	mutex_lock(&st->lock);
- 
--	ret = inv_icm42600_enable_regulator_vddio(st);
--	if (ret)
--		goto out_unlock;
-+	/* check wakeup capability */
-+	accel_dev = &st->indio_accel->dev;
-+	wakeup = st->apex.on && device_may_wakeup(accel_dev);
-+	/* restore irq state or vddio if cut off */
-+	if (wakeup) {
-+		enable_irq(st->irq);
-+		disable_irq_wake(st->irq);
-+	} else {
-+		ret = inv_icm42600_enable_regulator_vddio(st);
-+		if (ret)
-+			goto out_unlock;
-+	}
- 
- 	pm_runtime_disable(dev);
- 	pm_runtime_set_active(dev);
-@@ -911,8 +938,8 @@ static int inv_icm42600_resume(struct device *dev)
- 	if (ret)
- 		goto out_unlock;
- 
--	/* restore APEX features */
--	if (st->apex.wom.enable) {
-+	/* restore APEX features if disabled */
-+	if (!wakeup && st->apex.wom.enable) {
- 		ret = inv_icm42600_enable_wom(st);
- 		if (ret)
- 			goto out_unlock;
+Changes in v4:
+- Picked up tags
+- Patch 1:
+  - Fix alignment to match opening parenthesis (Bryan)
+- Patch 2: no change
+- Patch 3:
+  - Wrap line at 80 chars (Krzysztof)
+- Patch 4: no change
+- Link to v3: https://lore.kernel.org/r/20250530-camss-8x39-vbif-v3-0-fc91d15bb5d6@mailoo.org
 
+Changes in v3:
+- Patch 1:
+  - Use braces around multiline (Bryan)
+  - Rename vfe_vbif_reg_write to vfe_vbif_write_reg (Bryan)
+  - Get rid of switch block on CAMSS version (Bryan)
+- Patch 2:
+  - Get rid of switch block on CAMSS version (Bryan)
+- Patch 3: no change
+- Patch 4: no change
+  - Tried to get rid of CCI camss_ahb but this resulted in device
+    freeze+reboot (Konrad)
+- Link to v2: https://lore.kernel.org/r/20250525-camss-8x39-vbif-v2-0-6d3d5c5af456@mailoo.org
+
+Changes in v2:
+- Patch 1:
+  - Fix devm_platform_ioremap_resource_byname line to not end with
+    opening parenthesis (media-ci/1-checkpatch)
+  - Move camss-vfe-4-1.c handling of VBIF previously in patch 2 here
+    (Dmitry)
+- Patch 2:
+  - Declare regulators in PHY entries, not CSID ones (Bryan)
+- Patch 3: (bindings)
+  - Fix bindings checks for new errors (Rob)
+  - Fix properties ordering, code-style and example (Krzysztof)
+  - Sort reg-names, clock-names and interrupt-names alphanumerically (Bryan)
+- Patch 4: (dtsi)
+  - Move #address/#size cells before status (Konrad)
+  - Aligned CCI with msm8916, thus removing ispif_ahb mention (Konrad)
+    If "camss_ahb should be unnecessary", it's still required by qcom,i2c-cci.yaml
+- Link to v1: https://lore.kernel.org/r/20250520-camss-8x39-vbif-v1-0-a12cd6006af9@mailoo.org
+
+---
+Vincent Knecht (4):
+      media: qcom: camss: vfe: Add VBIF setting support
+      media: qcom: camss: Add support for MSM8939
+      media: dt-bindings: Add qcom,msm8939-camss
+      arm64: dts: qcom: msm8939: Add camss and cci
+
+ .../bindings/media/qcom,msm8939-camss.yaml         | 254 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi       |   4 +
+ arch/arm64/boot/dts/qcom/msm8939.dtsi              | 146 ++++++++++++
+ drivers/media/platform/qcom/camss/Makefile         |   1 +
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |   1 +
+ drivers/media/platform/qcom/camss/camss-ispif.c    |   8 +-
+ drivers/media/platform/qcom/camss/camss-vfe-4-1.c  |  12 +
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.c |  31 +++
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.h |  19 ++
+ drivers/media/platform/qcom/camss/camss-vfe.c      |  10 +
+ drivers/media/platform/qcom/camss/camss-vfe.h      |   3 +
+ drivers/media/platform/qcom/camss/camss.c          | 157 +++++++++++++
+ drivers/media/platform/qcom/camss/camss.h          |   1 +
+ 13 files changed, 645 insertions(+), 2 deletions(-)
+---
+base-commit: 8566fc3b96539e3235909d6bdda198e1282beaed
+change-id: 20250517-camss-8x39-vbif-975ff5819198
+
+Best regards,
 -- 
-2.49.0
+Vincent Knecht <vincent.knecht@mailoo.org>
 
