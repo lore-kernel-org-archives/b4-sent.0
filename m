@@ -1,59 +1,66 @@
-From: Raven Black <ravenblack@gmail.com>
-Date: Fri, 13 Jun 2025 07:51:25 -0400
-Subject: [PATCH] ASoC: amd: yc: update quirk data for HP Victus
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH v3 0/2] arm64: Device Tree for Ugoos AM3 board
+Date: Fri, 13 Jun 2025 15:39:12 +0200
+Message-Id: <20250613-ugoos-am3-v3-0-f8a43e6bbfdb@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250613-support-hp-victus-microphone-v1-1-bebc4c3a2041@gmail.com>
-X-B4-Tracking: v=1; b=H4sIALwQTGgC/x3MwQqDMAwA0F+RnBeodQ7Zr4wdShvXHGxDoiKI/
- 27Z8V3eCUbKZPDuTlDa2biWhv7RQcyh/Ag5NYN3fnSvfkDbRKqumAV3jutmuHDUKrkWwtm5NKX
- RP0MM0ApRmvn495/vdd2ZeuRYbgAAAA==
-To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Raven Black <ravenblack@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749815492; l=967;
- i=ravenblack@gmail.com; s=20250613; h=from:subject:message-id;
- bh=/bACXv58cmQwq8+BzTLIvAZpJC8AGmmTuOuCZ0+0UMk=;
- b=xTamQF7Ox7AfzVbSqdl2WJ2aehKA1sXLoBYMMIHt4t5lDQBvpUfTfzF3uR3CmlDPtjct7mg0i
- oEdrNV2z+uMA3v04due/xp8ttfSkDZA1ZPneno5EuviXCV1ZrN4poCo
-X-Developer-Key: i=ravenblack@gmail.com; a=ed25519;
- pk=8ECM1VXVU5AHsXWVPR5Gs6qmW8kY07IYbgnWZDe+ddY=
-X-Endpoint-Received: by B4 Relay for ravenblack@gmail.com/20250613 with auth_id=431
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAqTGgC/1WMwQ6CMBAFf4X0bM122wJy8j+Mh1IX6EFKWmw0h
+ H+34AWP8/JmFhYpOIqsKRYWKLno/JhBngpmBzP2xN0jM0NADYjIX733kZun5F1ZKSHrEpRULP+
+ nQJ17763bPfPg4uzDZ08nsa2/ioTLoZIEBy5ra1ptVIW6vU4+zuTPI81syyQ8qEIdVcyqQhSgW
+ rBk9Z+6rusXqA2RL94AAAA=
+X-Change-ID: 20250222-ugoos-am3-f67413860434
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749821956; l=1175;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=1u10lZ+utTwxzfHAXk4guA8HgqMHAOiC6CKTXRm79YQ=;
+ b=SxYO8wSB80jUzrAAMi6t4PKUg8Vs2RmSY7vfkjEHbcD44oPU0WnDbBoKTy9Nia6EIglQApBsU
+ RAzhx+UYwTsD9W7Tugw9rDB9KnqbqJ+S/TrTRIK6dUcsT0TB8qIFm9B
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make the internal microphone work on HP Victus laptops.
+This patchset adds a device tree for Ugoos AM3, an Android TV box from
+2018. Most hardware functionality has been tested, as noted in patch 2/2.
 
-Signed-off-by: Raven Black <ravenblack@gmail.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- sound/soc/amd/yc/acp6x-mach.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v3:
+- Rebase on v6.16-rc1
+- Add a few Reviewed-by tags
+- Link to v2: https://lore.kernel.org/r/20250314-ugoos-am3-v2-0-422104b0cec5@posteo.net
 
-diff --git a/sound/soc/amd/yc/acp6x-mach.c b/sound/soc/amd/yc/acp6x-mach.c
-index 7e62445e02c1..3451d2f9c9ba 100644
---- a/sound/soc/amd/yc/acp6x-mach.c
-+++ b/sound/soc/amd/yc/acp6x-mach.c
-@@ -514,6 +514,13 @@ static const struct dmi_system_id yc_acp_quirk_table[] = {
- 			DMI_MATCH(DMI_PRODUCT_NAME, "OMEN by HP Gaming Laptop 16z-n000"),
- 		}
- 	},
-+	{
-+		.driver_data = &acp6x_card,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_VENDOR, "HP"),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "Victus by HP Gaming Laptop 15-fb2xxx"),
-+		}
-+	},
- 	{
- 		.driver_data = &acp6x_card,
- 		.matches = {
+Changes in v2:
+- fix vendor name in patch subjects
+- fix mistake that made wifi not work
+- apply Krzysztof's ACK to patch 1/2
+- Link to v1: https://lore.kernel.org/r/20250309-ugoos-am3-v1-0-38cab5a4725b@posteo.net
 
+---
+J. Neuschäfer (2):
+      dt-bindings: arm: amlogic: Add Ugoos AM3
+      arm64: dts: amlogic: Add Ugoos AM3
+
+ Documentation/devicetree/bindings/arm/amlogic.yaml |  1 +
+ arch/arm64/boot/dts/amlogic/Makefile               |  1 +
+ .../arm64/boot/dts/amlogic/meson-gx-p23x-q20x.dtsi |  2 +-
+ .../arm64/boot/dts/amlogic/meson-gxm-ugoos-am3.dts | 91 ++++++++++++++++++++++
+ 4 files changed, 94 insertions(+), 1 deletion(-)
 ---
 base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
-change-id: 20250613-support-hp-victus-microphone-f00d8d524aca
+change-id: 20250222-ugoos-am3-f67413860434
 
 Best regards,
 -- 
-Raven Black <ravenblack@gmail.com>
+J. Neuschäfer <j.ne@posteo.net>
 
