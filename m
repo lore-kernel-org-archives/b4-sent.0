@@ -1,10 +1,10 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Sat, 14 Jun 2025 15:36:09 +0100
-Subject: [PATCH v5 18/20] mfd: adp5585: support getting vdd regulator
+Date: Sat, 14 Jun 2025 15:36:10 +0100
+Subject: [PATCH v5 19/20] dt-bindings: mfd: adp5585: document reset gpio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250614-dev-adp5589-fw-v5-18-7e9d84906268@analog.com>
+Message-Id: <20250614-dev-adp5589-fw-v5-19-7e9d84906268@analog.com>
 References: <20250614-dev-adp5589-fw-v5-0-7e9d84906268@analog.com>
 In-Reply-To: <20250614-dev-adp5589-fw-v5-0-7e9d84906268@analog.com>
 To: linux-gpio@vger.kernel.org, linux-pwm@vger.kernel.org, 
@@ -17,57 +17,51 @@ Cc: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>,
  Bartosz Golaszewski <brgl@bgdev.pl>, 
  Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Liu Ying <victor.liu@nxp.com>
+ Liu Ying <victor.liu@nxp.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1749911835; l=1292;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1749911835; l=1179;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=YHxZoknRry0Hvk65sFGbz6N2xfvPc6b8ZJ/D4iQv1WE=;
- b=0hM2FsIW6Az+gChfSNnyXhFkFS73Ok6JojvajuTuwM37Q8I9Hj+36R8H3GefYF4TgUIp6Yjxf
- jx8qmSVylyKBtXZApkm/XEbl+j+QdqzudGDMj1ruFXNMtGYRAxnBZgZ
+ bh=xIIvyKCR09Vnww1LWnAAGLhq9ll42BMKiYjeqCeEyLI=;
+ b=WqN9OhZCa+vu4BCXbDyaykMu2vLEAG212hissDCyPAosTCf92tVh0J/u0VxGZ0xzKnFNOPO6Z
+ 0aFAlD/pxjBANXacC92qx0053TcTGXejlg3uEam7uMpnlbvJAb05YAO
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make sure we get and enable the VDD supply (if available).
+Add a reset gpio property. Note that for the adp5585-01 models, the
+reset pin is used as the additional ROW5 which means there's no reset.
 
-Reviewed-by: Lee Jones <lee@kernel.org>
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Reviewed-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/mfd/adp5585.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ Documentation/devicetree/bindings/mfd/adi,adp5585.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/drivers/mfd/adp5585.c b/drivers/mfd/adp5585.c
-index 3a53bc895e60e6a10f797aebcc29b722906ff087..e4a725b9e1475be03cd26898faa7a7bb8de4319b 100644
---- a/drivers/mfd/adp5585.c
-+++ b/drivers/mfd/adp5585.c
-@@ -17,6 +17,7 @@
- #include <linux/mod_devicetable.h>
- #include <linux/module.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <linux/types.h>
+diff --git a/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml b/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml
+index b3bf2ed586104303fd078bd06683e4f0d3383575..2d4ecee3f2547ad07a0ab8fcbe96f42f526d1619 100644
+--- a/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml
++++ b/Documentation/devicetree/bindings/mfd/adi,adp5585.yaml
+@@ -39,6 +39,9 @@ properties:
  
- enum {
-@@ -710,6 +711,10 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
- 	if (IS_ERR(regmap_config))
- 		return PTR_ERR(regmap_config);
+   vdd-supply: true
  
-+	ret = devm_regulator_get_enable(&i2c->dev, "vdd");
-+	if (ret)
-+		return ret;
++  reset-gpios:
++    maxItems: 1
 +
- 	adp5585->regmap = devm_regmap_init_i2c(i2c, regmap_config);
- 	if (IS_ERR(adp5585->regmap))
- 		return dev_err_probe(&i2c->dev, PTR_ERR(adp5585->regmap),
-@@ -726,6 +731,7 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
- 				     "Invalid device ID 0x%02x\n", id);
+   gpio-controller: true
  
- 	adp5585->pin_usage = devm_bitmap_zalloc(&i2c->dev, adp5585->n_pins, GFP_KERNEL);
-+
- 	if (!adp5585->pin_usage)
- 		return -ENOMEM;
- 
+   '#gpio-cells':
+@@ -166,6 +169,7 @@ allOf:
+         adi,unlock-events: false
+         adi,unlock-trigger-sec: false
+         gpio-reserved-ranges: false
++        reset-gpios: false
+         adi,keypad-pins:
+           minItems: 2
+           maxItems: 11
 
 -- 
 2.49.0
