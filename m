@@ -1,66 +1,76 @@
-From: Yang Xiwen <forbidden405@outlook.com>
-Date: Mon, 16 Jun 2025 00:01:10 +0800
-Subject: [PATCH] i2c: qup: jump out of the loop in case of timeout
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH v2 0/4] arm64: dts: qcom: msm8976-longcheer-l9360: Add
+ initial device tree
+Date: Sun, 15 Jun 2025 22:35:02 +0200
+Message-Id: <20250615-bqx5plus-v2-0-72b45c84237d@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250616-qca-i2c-v1-1-2a8d37ee0a30@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAEbuTmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDM0NT3cLkRN1Mo2TdFBPDpCQzw8REU8tUJaDqgqLUtMwKsEnRsbW1ACh
- PBhNZAAAA
-To: Andi Shyti <andi.shyti@kernel.org>, 
- Stephan Gerhold <stephan.gerhold@kernkonzept.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-i2c@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Yang Xiwen <forbidden405@outlook.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750003271; l=1276;
- i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=7A4MyX2wBo/3swedAnLq8MA5y/hamSq89OQJdzuf1oA=;
- b=TYce6RfqS10iEeMra5WRsEso/JZvK/1nNmpkB8vrnFU1IEaN1FN/sM8Acao00LTn63aEfJj7x
- M/7eiwbqmFDAE+0bJ6f3myfi92GEKMeyGL+3pN2T7gKsicrMi3I+wvc
-X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
- pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
-X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAHYuT2gC/0XMQQ6CMBCF4auQWVvTDkKNK+9hWEAZZBID2IEGJ
+ b27lcS4/F9evg2EPJPAJdvAU2DhcUiBhwxcXw93UtymBtRY6NKgap5rMT0WUa1FMqYrztY6SPf
+ JU8frTt2q1D3LPPrXLgfzXX9I/keCUVph47A95VbburzWE89vcf2RFqhijB9P0WBxogAAAA==
+X-Change-ID: 20250612-bqx5plus-d72e11f5877c
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Marijn Suijten <marijn.suijten@somainline.org>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750019747; l=1306;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=SBC2qdWRPcC2wPKUJVvs1+BF12UOwaCCeZuIbZRDQZg=;
+ b=OHSlQmNFjvIRKLd4dGtpIC39Fiza3MjyiAjR8nEKqyJxjjXzYoNLnhhxuEosVwmXYi/LozfHd
+ 1wDqJ3NJr3CD60afO8lKntyR2bmhTs/sgS5PhM5WTaPz8nINmB8XCFu
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Original logic only sets the return value but doesn't jump out of the
-loop if the bus is kept active by a client. This is not expected. A
-malicious or buggy i2c client can hang the kernel in this case and
-should be avoided. This is observed during a long time test with a
-PCA953x GPIO extender.
+This dts adds support for BQ Aquaris X5 Plus (Longcheer L9360) released
+in 2016.
 
-Fix it by changing the logic to not only sets the return value, but also
-jumps out of the loop and return to the caller with -ETIMEDOUT.
+Add a device tree with initial support for:
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
+- GPIO keys
+- NFC
+- SDHCI
+- Status LED
+- Touchscreen
+
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/i2c/busses/i2c-qup.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/i2c/busses/i2c-qup.c b/drivers/i2c/busses/i2c-qup.c
-index 3a36d682ed57..5b053e51f4c9 100644
---- a/drivers/i2c/busses/i2c-qup.c
-+++ b/drivers/i2c/busses/i2c-qup.c
-@@ -452,8 +452,10 @@ static int qup_i2c_bus_active(struct qup_i2c_dev *qup, int len)
- 		if (!(status & I2C_STATUS_BUS_ACTIVE))
- 			break;
- 
--		if (time_after(jiffies, timeout))
-+		if (time_after(jiffies, timeout)) {
- 			ret = -ETIMEDOUT;
-+			break;
-+		}
- 
- 		usleep_range(len, len * 2);
- 	}
+Changes in v2:
+- Add Fixes and R-b tag
+- Move sdc2 GPIO definitions into msm8976.dtsi (new patch)
+- Remove comments from rmi4 nodes
+- Don't touch tz-app memory region. Currently, the bigger size seems
+  not necessary.
+- Link to v1: https://lore.kernel.org/r/20250613-bqx5plus-v1-0-2bc2d43707a6@apitzsch.eu
 
 ---
-base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
-change-id: 20250615-qca-i2c-d41bb61aa59e
+André Apitzsch (4):
+      arm64: dts: qcom: msm8976: Make blsp_dma controlled-remotely
+      dt-bindings: arm: qcom: Add MSM8976 BQ Aquaris X5 Plus
+      arm64: dts: qcom: msm8976: Add sdc2 GPIOs
+      arm64: dts: qcom: msm8976-longcheer-l9360: Add initial device tree
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   5 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../boot/dts/qcom/msm8976-longcheer-l9360.dts      | 490 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/msm8976.dtsi              |  38 ++
+ 4 files changed, 534 insertions(+)
+---
+base-commit: 0bb71d301869446810a0b13d3da290bd455d7c78
+change-id: 20250612-bqx5plus-d72e11f5877c
 
 Best regards,
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+André Apitzsch <git@apitzsch.eu>
 
