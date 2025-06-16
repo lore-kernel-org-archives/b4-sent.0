@@ -1,24 +1,25 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Tue, 17 Jun 2025 00:54:18 +0800
-Subject: [PATCH v2] pinctrl: meson: support gpio toggle command
+Date: Tue, 17 Jun 2025 01:01:17 +0800
+Subject: [PATCH v3] pinctrl: meson: support gpio toggle command
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250617-meson_ppinctrl-v2-1-16d1cb294ef4@outlook.com>
-X-B4-Tracking: v=1; b=H4sIADpMUGgC/3XMQQ7CIBCF4as0sxYDNFTqqvcwjUGkdmLLEKhE0
- /TuYvcu/5e8b4XkIroE52qF6DImJF9CHiqwo/EPx/BeGiSXijfixGaXyF9DQG+XODEl6tYa3ty
- 01FBOIboB3zt46UuPmBaKn93P4rf+pbJggqm2NkaoQWptOnotE9HzaGmGftu2L16ytlCuAAAA
+Message-Id: <20250617-meson_ppinctrl-v3-1-218d9321a8d2@outlook.com>
+X-B4-Tracking: v=1; b=H4sIANxNUGgC/33MQQ6CMBCF4auYrq1hBorFlfcwxpQySCO0pMVGQ
+ 7i7hZ0LXf4ved/MAnlDgZ12M/MUTTDOpsj3O6Y7Ze/ETZOaYYYiK+HIBwrO3sbRWD35ngvIK62
+ yspYoWTqNnlrz2sDLNXVnwuT8e/MjrOtPKgIHLqpcKRAtSqnO7jn1zj0O2g1sxSL+BzABUDaga
+ 6wKaotvYFmWD3siz33vAAAA
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Tom Rini <trini@konsulko.com>, Beniamino Galvani <b.galvani@gmail.com>, 
  Simon Glass <sjg@chromium.org>
 Cc: u-boot-amlogic@groups.io, u-boot@lists.denx.de, 
  Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750092858; l=1883;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750093277; l=2010;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=n1NxGPz25mjE6sn5SPwOnwXC/7z2WlqqqHu3FwgTAz8=;
- b=Pd126MT2YPZ+iRbVo/npCvdrUvOuAXgMgQFDI2iOX5boCelKxph6YPe6KBMYQ2ZDFtrsdwbKs
- Qo3usmDBq/NBFkwIFG6z3HXHXQ3+cQuZjrc/AHtmKl+57m6oA4+YrA0
+ bh=mxEAH2HvvvTNVZBSJXBVuHoaV1oekBHxb7P51f0Nz5U=;
+ b=fNHW5rKhDt8VsiZdJnJclRdAFYcv8vj9psCaoCKlAXbLGuLXp+pwcOzljkhTJSJ9AUhG2vFY9
+ kSV/KvqUb9kAYHhsFw3Gc+c3hXLVEhMXMBSlzKamyfP9vleC1vULvnd
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
@@ -35,18 +36,22 @@ Fix it by adding the logic to handle both input and output mode.
 Fixes: 2009a8d03fe5 ("pinctrl: meson: add GPIO support")
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
+Changes in v3:
+- remove unused reg_type assignment.
+- Link to v2: https://lore.kernel.org/r/20250617-meson_ppinctrl-v2-1-16d1cb294ef4@outlook.com
+
 Changes in v2:
 - return -EINVAL directly in case of error. (Neil Armstrong <neil.armstrong@linaro.org>)
 - Link to v1: https://lore.kernel.org/r/20250617-meson_ppinctrl-v1-1-593aa15f288a@outlook.com
 ---
- drivers/pinctrl/meson/pinctrl-meson.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+ drivers/pinctrl/meson/pinctrl-meson.c | 20 +++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/pinctrl/meson/pinctrl-meson.c b/drivers/pinctrl/meson/pinctrl-meson.c
-index babf1bccc969..7d59855c4b14 100644
+index babf1bccc969..7dbaf966f93f 100644
 --- a/drivers/pinctrl/meson/pinctrl-meson.c
 +++ b/drivers/pinctrl/meson/pinctrl-meson.c
-@@ -117,8 +117,27 @@ int meson_gpio_get(struct udevice *dev, unsigned int offset)
+@@ -117,8 +117,26 @@ int meson_gpio_get(struct udevice *dev, unsigned int offset)
  	struct meson_pinctrl *priv = dev_get_priv(dev->parent);
  	unsigned int reg, bit;
  	int ret;
@@ -66,7 +71,6 @@ index babf1bccc969..7d59855c4b14 100644
 +		break;
 +
 +	default:
-+		reg_type = REG_IN;
 +		dev_warn(dev, "Failed to get current direction of Pin %u\n", offset);
 +		return -EINVAL;
 +	}
