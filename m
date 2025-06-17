@@ -1,90 +1,64 @@
-From: Yang Xiwen <forbidden405@outlook.com>
-Date: Tue, 17 Jun 2025 01:01:17 +0800
-Subject: [PATCH v3] pinctrl: meson: support gpio toggle command
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v2 0/3] support for amlogic the new SPI IP
+Date: Tue, 17 Jun 2025 10:48:35 +0800
+Message-Id: <20250617-spisg-v2-0-51a605a84bd5@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250617-meson_ppinctrl-v3-1-218d9321a8d2@outlook.com>
-X-B4-Tracking: v=1; b=H4sIANxNUGgC/33MQQ6CMBCF4auYrq1hBorFlfcwxpQySCO0pMVGQ
- 7i7hZ0LXf4ved/MAnlDgZ12M/MUTTDOpsj3O6Y7Ze/ETZOaYYYiK+HIBwrO3sbRWD35ngvIK62
- yspYoWTqNnlrz2sDLNXVnwuT8e/MjrOtPKgIHLqpcKRAtSqnO7jn1zj0O2g1sxSL+BzABUDaga
- 6wKaotvYFmWD3siz33vAAAA
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Tom Rini <trini@konsulko.com>, Beniamino Galvani <b.galvani@gmail.com>, 
- Simon Glass <sjg@chromium.org>
-Cc: u-boot-amlogic@groups.io, u-boot@lists.denx.de, 
- Yang Xiwen <forbidden405@outlook.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750093277; l=2010;
- i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=mxEAH2HvvvTNVZBSJXBVuHoaV1oekBHxb7P51f0Nz5U=;
- b=fNHW5rKhDt8VsiZdJnJclRdAFYcv8vj9psCaoCKlAXbLGuLXp+pwcOzljkhTJSJ9AUhG2vFY9
- kSV/KvqUb9kAYHhsFw3Gc+c3hXLVEhMXMBSlzKamyfP9vleC1vULvnd
-X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
- pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
-X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
+X-B4-Tracking: v=1; b=H4sIAIPXUGgC/zXMQQ6DIBCF4auYWZcGsFh11Xs0LhBGnKSKgYa0M
+ dy91LTL/+Xl2yFiIIzQVzsETBTJryXkqQIz69UhI1saJJeKN7xmcaPo2LWdpGhaiaM2UL5bwIl
+ eh3MfSs8Unz68DzaJ7/oXLj8hCcaZarvajtjZTtU3vTy8I3M2foEh5/wBvye3UZwAAAA=
+To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750128521; l=1440;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=DklztjJ2Mw4DZTzCJXFIusPWDE6iqwE0hRAVc+zb/5M=;
+ b=8h9iC9im/B3MsOYxsjoF/SsNde6GwLGzHa0m3zbNfwkanuyQJc2YiiDB/4mkEiGbxoWFHVw3a
+ mrUv4z5DSneBIlVg5e9geBhXGLt5rG9DeNZfOReOCIDhe1z5P9+zp4m
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-meson_gpio_get() always assumes gpio is configured to input mode. This
-is incorrect and breaks `gpio toggle` command:
+Introduced support for the new SPI IP (SPISG). The SPISG is
+a communication-oriented SPI controller from Amlogic,supporting
+three operation modes: PIO, block DMA, and scatter-gather DMA.
 
-gpio: pin aobus-banks2 (gpio 2) value is 0
-   Warning: value of pin is still 1
+Add the drivers and device tree bindings corresponding to the SPISG.
 
-Fix it by adding the logic to handle both input and output mode.
-
-Fixes: 2009a8d03fe5 ("pinctrl: meson: add GPIO support")
-Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v3:
-- remove unused reg_type assignment.
-- Link to v2: https://lore.kernel.org/r/20250617-meson_ppinctrl-v2-1-16d1cb294ef4@outlook.com
-
 Changes in v2:
-- return -EINVAL directly in case of error. (Neil Armstrong <neil.armstrong@linaro.org>)
-- Link to v1: https://lore.kernel.org/r/20250617-meson_ppinctrl-v1-1-593aa15f288a@outlook.com
----
- drivers/pinctrl/meson/pinctrl-meson.c | 20 +++++++++++++++++++-
- 1 file changed, 19 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/pinctrl/meson/pinctrl-meson.c b/drivers/pinctrl/meson/pinctrl-meson.c
-index babf1bccc969..7dbaf966f93f 100644
---- a/drivers/pinctrl/meson/pinctrl-meson.c
-+++ b/drivers/pinctrl/meson/pinctrl-meson.c
-@@ -117,8 +117,26 @@ int meson_gpio_get(struct udevice *dev, unsigned int offset)
- 	struct meson_pinctrl *priv = dev_get_priv(dev->parent);
- 	unsigned int reg, bit;
- 	int ret;
-+	enum gpio_func_t direction;
-+	enum meson_reg_type reg_type;
- 
--	ret = meson_gpio_calc_reg_and_bit(dev->parent, offset, REG_IN, &reg,
-+	direction = meson_gpio_get_direction(dev, offset);
-+
-+	switch (direction) {
-+	case GPIOF_INPUT:
-+		reg_type = REG_IN;
-+		break;
-+
-+	case GPIOF_OUTPUT:
-+		reg_type = REG_OUT;
-+		break;
-+
-+	default:
-+		dev_warn(dev, "Failed to get current direction of Pin %u\n", offset);
-+		return -EINVAL;
-+	}
-+
-+	ret = meson_gpio_calc_reg_and_bit(dev->parent, offset, reg_type, &reg,
- 					  &bit);
- 	if (ret)
- 		return ret;
+- Use regmap to operation register and drop bitfied define.
+- Use "SPISG" prefix intead of "SPICC", and declare clock div table in the spisg_device. 
+- Delete other power operation functions except for runtime_supspend and runtime_resume.
+- Fix some format corrections.
+- Link to v1: https://lore.kernel.org/r/20250604-spisg-v1-0-5893dbe9d953@amlogic.com
 
 ---
-base-commit: c5afa1fef49f55146e78d6157470520391c40eca
-change-id: 20250617-meson_ppinctrl-5139ca06b828
+Sunny Luo (2):
+      dt-bindings: spi: Add binding document of Amlogic SPISG controller
+      spi: Add Amlogic SPISG driver
+
+Xianwei Zhao (1):
+      MAINTAINERS: Add an entry for Amlogic spi driver
+
+ .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  |  55 ++
+ MAINTAINERS                                        |   9 +
+ drivers/spi/Kconfig                                |   9 +
+ drivers/spi/Makefile                               |   1 +
+ drivers/spi/spi-amlogic-spisg.c                    | 878 +++++++++++++++++++++
+ 5 files changed, 952 insertions(+)
+---
+base-commit: bd30b995df8fd053e13d10f78dbc7b2fa5ed1aae
+change-id: 20250603-spisg-78f21682ebac
 
 Best regards,
 -- 
-Yang Xiwen <forbidden405@outlook.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
