@@ -1,10 +1,11 @@
 From: Richard Leitner <richard.leitner@linux.dev>
-Date: Tue, 17 Jun 2025 09:31:37 +0200
-Subject: [PATCH v5 03/10] media: v4l2-flash: fix flash_timeout comment
+Date: Tue, 17 Jun 2025 09:31:38 +0200
+Subject: [PATCH v5 04/10] Documentation: uAPI: media: add
+ V4L2_CID_FLASH_DURATION
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250617-ov9282-flash-strobe-v5-3-9762da74d065@linux.dev>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250617-ov9282-flash-strobe-v5-4-9762da74d065@linux.dev>
 References: <20250617-ov9282-flash-strobe-v5-0-9762da74d065@linux.dev>
 In-Reply-To: <20250617-ov9282-flash-strobe-v5-0-9762da74d065@linux.dev>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -16,37 +17,36 @@ Cc: Hans Verkuil <hverkuil@xs4all.nl>, linux-media@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
  Richard Leitner <richard.leitner@linux.dev>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750145501; l=878;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750145501; l=1038;
  i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=8XoXfLI3glbsttjIv49MTkNU8w73Ts/XjbKrGmMzkd0=;
- b=nPouAY8N5zq1XIMQ6rZ1Q6GzebMfWi0D9HB7LZ8Xg6r4imr5Qm6mrjxTs9/UdOwDbDXkp1HJu
- W2Ze+5AQ3w7Ax3ibt1oJ/EgVjSr7MfgqeyTvsYMveLRaGLiDCNQ1LyF
+ bh=16N0ehkJWytFD5jx5wDbSTZhtNf5Qf6vx2SOhlkAC1Y=;
+ b=DVSTCYqNJufAJ3eLL86OJ8J58+xjr+B8yJkFVS4dnrxT53dv3Po4+gGFv81Z2jtJs1PWzSllW
+ aOcTeZmAgFCAt8ZqtbtsOFUemwNxb+Wi1pxyh4nONJ4MIdO/ea56VsE
 X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
  pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
 X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The comment for the flash_timeout setter mentioned it is the "flash
-duration". Fix this by changing it to "flash timeout".
+Add the new strobe_duration control to v4l uAPI documentation.
 
 Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- include/linux/led-class-flash.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/include/linux/led-class-flash.h b/include/linux/led-class-flash.h
-index 21ec856c36bc67decda46aa8ff1c040ffdcf1181..775a96217518936633541c7a5d394502dbf04f83 100644
---- a/include/linux/led-class-flash.h
-+++ b/include/linux/led-class-flash.h
-@@ -197,7 +197,7 @@ int led_update_flash_brightness(struct led_classdev_flash *fled_cdev);
-  * @fled_cdev: the flash LED to set
-  * @timeout: the flash timeout to set it to
-  *
-- * Set the flash strobe duration.
-+ * Set the flash strobe timeout.
-  *
-  * Returns: 0 on success or negative error value on failure
-  */
+diff --git a/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst b/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst
+index d22c5efb806a183a3ad67ec3e6550b002a51659a..03a58ef94be7c870f55d5a9bb09503995dbfb402 100644
+--- a/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst
++++ b/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst
+@@ -186,3 +186,8 @@ Flash Control IDs
+     charged before strobing. LED flashes often require a cooldown period
+     after strobe during which another strobe will not be possible. This
+     is a read-only control.
++
++``V4L2_CID_FLASH_DURATION (integer)``
++    Duration the flash should be on when the flash LED is in flash mode
++    (V4L2_FLASH_LED_MODE_FLASH). The unit should be microseconds (µs)
++    if possible.
 
 -- 
 2.47.2
