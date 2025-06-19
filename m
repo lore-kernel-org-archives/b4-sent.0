@@ -1,98 +1,93 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Wed, 18 Jun 2025 17:38:08 +0200
-Subject: [PATCH v9 13/13] arm64: dts: rockchip: enable vicap dvp on
- wolfvision pf5 io expander
+From: Yang Li <yang.li@amlogic.com>
+Date: Thu, 19 Jun 2025 11:01:07 +0800
+Subject: [PATCH v2] Bluetooth: Prevent unintended pause by checking if
+ advertising is active
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240220-rk3568-vicap-v9-13-ace1e5cc4a82@collabora.com>
-References: <20240220-rk3568-vicap-v9-0-ace1e5cc4a82@collabora.com>
-In-Reply-To: <20240220-rk3568-vicap-v9-0-ace1e5cc4a82@collabora.com>
-To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
- Thomas Petazzoni <thomas.petazzoni@bootlin.com>, 
- Gerald Loacker <gerald.loacker@wolfvision.net>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Markus Elfring <Markus.Elfring@web.de>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh+dt@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Paul Kocialkowski <paulk@sys-base.io>, 
- Alexander Shiyan <eagle.alexander923@gmail.com>, 
- Val Packett <val@packett.cool>, Rob Herring <robh@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, 
- Michael Riesch <michael.riesch@collabora.com>, 
- Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750261092; l=1661;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=tkvGHWW1RXCremqXv1+qTo26zNWU0UHQFUaztf+p/DI=;
- b=XqyCIQ3Brf1VeGWUXB+ZXIaeF0HDCkqFjyzkAVTcbxsYQT6o+KVZ7DSahoLdPWniN9fuO2SrZ
- aAma1XwO2PBBwfkRWmUvBr2IFBmfUSJ6KrDj5usbF8U0wbYcjf3xD5N
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+Message-Id: <20250619-bluetooth_adv-v2-1-4bfc32941e53@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAHJ9U2gC/3WMQQ6CMBBFr0JmbQ1tSkVX3sMQ05YBJgGGtNhoC
+ He3snf5/s97G0QMhBFuxQYBE0XiOYM6FeAHO/coqM0MqlRVaaQRbnzhyrwOT9smYfTVoPQ2PxV
+ kZwnY0fvoPZrMA8WVw+fIJ/lb/5WSFFKY+mJcp7GunL7baeSe/NnzBM2+718eiJMYrAAAAA==
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Johan Hedberg <johan.hedberg@gmail.com>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>
+Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750302090; l=2205;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=zqpWcoSKZb3WumuLKkTEfxcwWCSRId/gZHkwKVrcGKU=;
+ b=24TQwijOi7LIMktrRdEmqkKnfohxW0SdB+kh0ufia9f6OhSuTtcAncI121uI/gMll0TfkIENj
+ Z0M47/loVqKBTjnjWjh0UwOByAp9UC9gntmKIMTojJIq9iKFQnlzRmr
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Digital Video Port (DVP, the 16-bit variant) of the RK3568 VICAP
-is broken out to the PF5 mainboard expansion header.
-Enable it in the device tree overlay for the WolfVision PF5 IO
-Expander board.
+When PA Create Sync is enabled, advertising resumes unexpectedly.
+Therefore, it's necessary to check whether advertising is currently
+active before attempting to pause it.
 
-Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
-Reviewed-by: Gerald Loacker <gerald.loacker@wolfvision.net>
-Tested-by: Gerald Loacker <gerald.loacker@wolfvision.net>
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+  < HCI Command: LE Add Device To... (0x08|0x0011) plen 7  #1345 [hci0] 48.306205
+  		Address type: Random (0x01)
+  		Address: 4F:84:84:5F:88:17 (Resolvable)
+  		Identity type: Random (0x01)
+  		Identity: FC:5B:8C:F7:5D:FB (Static)
+  < HCI Command: LE Set Address Re.. (0x08|0x002d) plen 1  #1347 [hci0] 48.308023
+  		Address resolution: Enabled (0x01)
+  ...
+  < HCI Command: LE Set Extended A.. (0x08|0x0039) plen 6  #1349 [hci0] 48.309650
+  		Extended advertising: Enabled (0x01)
+  		Number of sets: 1 (0x01)
+  		Entry 0
+  		Handle: 0x01
+  		Duration: 0 ms (0x00)
+  		Max ext adv events: 0
+  ...
+  < HCI Command: LE Periodic Adve.. (0x08|0x0044) plen 14  #1355 [hci0] 48.314575
+  		Options: 0x0000
+  		Use advertising SID, Advertiser Address Type and address
+  		Reporting initially enabled
+  		SID: 0x02
+  		Adv address type: Random (0x01)
+  		Adv address: 4F:84:84:5F:88:17 (Resolvable)
+  		Identity type: Random (0x01)
+  		Identity: FC:5B:8C:F7:5D:FB (Static)
+  		Skip: 0x0000
+  		Sync timeout: 20000 msec (0x07d0)
+  		Sync CTE type: 0x0000
+
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- .../rockchip/rk3568-wolfvision-pf5-io-expander.dtso  | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+Changes in v2:
+- Replace HCI_ADVERTISING with HCI_LE_ADV
+- Link to v1: https://lore.kernel.org/r/20250616-bluetooth_adv-v1-1-6876bf4e85b4@amlogic.com
+---
+ net/bluetooth/hci_sync.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-index 048933de2943..8cfce71dd318 100644
---- a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-@@ -11,6 +11,7 @@
- #include <dt-bindings/clock/rk3568-cru.h>
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/pinctrl/rockchip.h>
+diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c
+index 6687f2a4d1eb..42d3696227af 100644
+--- a/net/bluetooth/hci_sync.c
++++ b/net/bluetooth/hci_sync.c
+@@ -2481,6 +2481,10 @@ static int hci_pause_advertising_sync(struct hci_dev *hdev)
+ 	int err;
+ 	int old_state;
  
- &{/} {
-@@ -134,3 +135,22 @@ &usb2phy0_host {
- 	phy-supply = <&usb_host_vbus>;
- 	status = "okay";
- };
++	/* If controller is not advertising we are done. */
++	if (!hci_dev_test_flag(hdev, HCI_LE_ADV))
++		return 0;
 +
-+&vicap {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&cif_clk &cif_dvp_clk &cif_dvp_bus16>;
-+	status = "okay";
-+};
-+
-+&vicap_dvp {
-+	vicap_dvp_input: endpoint {
-+		bus-type = <MEDIA_BUS_TYPE_BT656>;
-+		bus-width = <16>;
-+		pclk-sample = <MEDIA_PCLK_SAMPLE_DUAL_EDGE>;
-+		rockchip,dvp-clk-delay = <10>;
-+	};
-+};
-+
-+&vicap_mmu {
-+	status = "okay";
-+};
+ 	/* If already been paused there is nothing to do. */
+ 	if (hdev->advertising_paused)
+ 		return 0;
 
+---
+base-commit: 6c31dab4ff1e1f4e0f3412efb1cfc88033358d1f
+change-id: 20250616-bluetooth_adv-6496e1ca6165
+
+Best regards,
 -- 
-2.39.5
+Yang Li <yang.li@amlogic.com>
 
