@@ -1,268 +1,118 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Thu, 19 Jun 2025 19:32:42 +0200
-Subject: [PATCH v3] pwm: mc33xs2410: add support for temperature sensors
+From: Dominique Martinet <asmadeus@codewreck.org>
+Date: Fri, 20 Jun 2025 06:22:03 +0900
+Subject: [PATCH v2] net/9p: Fix buffer overflow in USB transport layer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250619-mc33xs2410-hwmon-v3-1-301731e49f8f@liebherr.com>
-X-B4-Tracking: v=1; b=H4sIALlJVGgC/23NTQ7CIBCG4auYWYvhR0LrynsYFxQGIbHFgMGap
- neXNi6Munwn+Z6ZIGMKmOGwmSBhCTnEoYbYbsB4PVyQBFsbOOWSSqpIb4QYM98zSvyjjwPR0rk
- WHRpKJdTZLaEL40qezrV9yPeYnuuHwpbrG2P8FyuMMKKt7bRSRjWuPV4Ddh5T2pnYw+IV/mnIP
- wavRmM51r1CQe2XMc/zC8Ihew73AAAA
-X-Change-ID: 20250507-mc33xs2410-hwmon-a5ff9efec005
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>
-Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-hwmon@vger.kernel.org, Dimitri Fedrau <dima.fedrau@gmail.com>, 
- Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750354364; l=7025;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=chFN37L9O7y4mdyrp4nItchTv0oIed/TseetXA611Fo=;
- b=kfd6CKMxOJQJScg0EBtmYX8toVsXmo1D9G4NW7PcEXs4LmORqKgSmLWX0Z3y1xq9y83T+EFsN
- qScsBTvNEhzAiioEv358vVFbMo9p8EmLvKHYCPdMYht4Vss44Ey1lyc
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250620-9p-usb_overflow-v2-1-026c6109c7a1@codewreck.org>
+X-B4-Tracking: v=1; b=H4sIAHp/VGgC/y2NWw6CMBQFt0LutyV90Cb45T4MMQVu4RqgpFXUk
+ O7dSvyck5yZHSIGwgjnYoeAG0XySwZ5KqAb7TIgoz4zSC41N5KzemXP2N78hsFN/sWkbl2nsW7
+ RKcivNaCj92G8NplHig8fPkdgE7/17xJGKKlVXRpVqYoJ1tuF4p1y9DLMlqay8zM0KaUvVTFZO
+ 6UAAAA=
+X-Change-ID: 20250620-9p-usb_overflow-25bfc5e9bef3
+To: Eric Van Hensbergen <ericvh@kernel.org>, 
+ Latchesar Ionkov <lucho@ionkov.net>, 
+ Christian Schoenebeck <linux_oss@crudebyte.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Michael Grzeschik <m.grzeschik@pengutronix.de>
+Cc: stable@vger.kernel.org, Yuhao Jiang <danisjiang@gmail.com>, 
+ security@kernel.org, v9fs@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ Dominique Martinet <asmadeus@codewreck.org>
+X-Mailer: b4 0.15-dev-7be4f
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2874;
+ i=asmadeus@codewreck.org; h=from:subject:message-id;
+ bh=sd75KIQYdSHcNYSxHvOsd/ZrBkByS+On5VAz8Wg9id0=;
+ b=owEBbQKS/ZANAwAKAatOm+xqmOZwAcsmYgBoVH98nfmseHzKhOwth426LG3xCNHGuKrMrPYIS
+ 6knofnzWnuJAjMEAAEKAB0WIQT8g9txgG5a3TOhiE6rTpvsapjmcAUCaFR/fAAKCRCrTpvsapjm
+ cKyeD/oCJfejbpmPwkb/cnIW8YPsRFbmsDmvntEQHaill6n6KcyQB3v3oKHUGopejHFtiUl8TYQ
+ NToXHtB3AKIWS7xpi4nHpHT+0QBUKW8TADf4peHz6SC9Mtnz3tUGLcrDMEFEjOBz9z+dQMfzEXT
+ cLulWcIkJfGJQzNr0WON4ekRHI/EH0KSETffLJ5uedpG15CJPSypltjzs2RYIBtHyYiR6rcfSx6
+ /snUGfZrEbSz/XfTLB3LOdxrFPEk6Ue/lJ7i2A4ANJGxL9SNKoF7iOnzPBjqhvgENnn/XgWi1Td
+ +eq24+g3eeygU8qsaYnmtRHZYGa9Tm6ea8a1yG7wBS234sgRNMOfKTjH5nbLmvTDM9uQrbYdb+W
+ vMeOdDJfeTh9ebLmRxdHGBkdZvliQKm/l0uU6G/wJ8DRmprt+sun73E7h90Zd53/u39mH3kj/3i
+ i1l2jIGgVbBCjbxa9Nhdo0cfQcv1EdYRviS7m5azPRYRwKrRxaVXEc0sx9ef3X/iYNpZiewb6J9
+ hxTVpZIe+YgQ1CTyAUlMWpv79xb/B8Ondu6yAX83B1+bfoZlJCRoThx2jtyR10yNjvRg11gY4Bj
+ EDmfB3Zd6juPxcftwIgFSKK8fE1WgtERblihLOmKiO7xz+qjINPl/nurkKs7eF+xY7Zju1y4GX0
+ Vq4Nxjjs6kH9Neg==
+X-Developer-Key: i=asmadeus@codewreck.org; a=openpgp;
+ fpr=B894379F662089525B3FB1B9333F1F391BBBB00A
+X-Endpoint-Received: by B4 Relay for asmadeus@codewreck.org/default with auth_id=435
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MC33XS2410 provides temperature sensors for the central die temperature
-and the four outputs. Additionally a common temperature warning threshold
-can be configured for the outputs. Add hwmon support for the sensors.
+A buffer overflow vulnerability exists in the USB 9pfs transport layer
+where inconsistent size validation between packet header parsing and
+actual data copying allows a malicious USB host to overflow heap buffers.
 
-Acked-by: Guenter Roeck <linux@roeck-us.net>
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+The issue occurs because:
+- usb9pfs_rx_header() validates only the declared size in packet header
+- usb9pfs_rx_complete() uses req->actual (actual received bytes) for
+memcpy
+
+This allows an attacker to craft packets with small declared size
+(bypassing validation) but large actual payload (triggering overflow
+in memcpy).
+
+Add validation in usb9pfs_rx_complete() to ensure req->actual does not
+exceed the buffer capacity before copying data.
+
+Reported-by: Yuhao Jiang <danisjiang@gmail.com>
+Closes: https://lkml.kernel.org/r/20250616132539.63434-1-danisjiang@gmail.com
+Fixes: a3be076dc174 ("net/9p/usbg: Add new usb gadget function transport")
+Cc: stable@vger.kernel.org
+Signed-off-by: Dominique Martinet <asmadeus@codewreck.org>
 ---
-Changes in v3:
-- Add changes suggested by Uwe Kleine-König.
-  Remove "#if IS_ENABLED(CONFIG_HWMON)" and add
-  "if (IS_REACHABLE(CONFIG_HWMON))" in mc33xs2410_hwmon_probe.
-- Link to v2: https://lore.kernel.org/r/20250515-mc33xs2410-hwmon-v2-1-8d2e78f7e30d@liebherr.com
+Not actually tested, I'll try to find time to figure out how to run with
+qemu for real this time...
 
 Changes in v2:
-- Remove helper mc33xs2410_hwmon_read_out_status and report the last
-  latched status.
-- Link to v1: https://lore.kernel.org/r/20250512-mc33xs2410-hwmon-v1-1-addba77c78f9@liebherr.com
+- run through p9_client_cb() on error
+- Link to v1: https://lore.kernel.org/r/20250616132539.63434-1-danisjiang@gmail.com
 ---
- drivers/pwm/pwm-mc33xs2410.c | 164 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 164 insertions(+)
+ net/9p/trans_usbg.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/pwm/pwm-mc33xs2410.c b/drivers/pwm/pwm-mc33xs2410.c
-index a1ac3445ccdb4709d92e0075d424a8abc1416eee..6a0a1e50d9584dbca751748143669ee1ebefb7e3 100644
---- a/drivers/pwm/pwm-mc33xs2410.c
-+++ b/drivers/pwm/pwm-mc33xs2410.c
-@@ -21,6 +21,7 @@
- #include <linux/bitfield.h>
- #include <linux/delay.h>
- #include <linux/err.h>
-+#include <linux/hwmon.h>
- #include <linux/math64.h>
- #include <linux/minmax.h>
- #include <linux/module.h>
-@@ -29,6 +30,8 @@
+diff --git a/net/9p/trans_usbg.c b/net/9p/trans_usbg.c
+index 6b694f117aef296a66419fed5252305e7a1d0936..43078e0d4ca3f4063660f659d28452c81bef10b4 100644
+--- a/net/9p/trans_usbg.c
++++ b/net/9p/trans_usbg.c
+@@ -231,6 +231,8 @@ static void usb9pfs_rx_complete(struct usb_ep *ep, struct usb_request *req)
+ 	struct f_usb9pfs *usb9pfs = ep->driver_data;
+ 	struct usb_composite_dev *cdev = usb9pfs->function.config->cdev;
+ 	struct p9_req_t *p9_rx_req;
++	unsigned int req_size = req->actual;
++	int status = REQ_STATUS_RCVD;
  
- #include <linux/spi/spi.h>
+ 	if (req->status) {
+ 		dev_err(&cdev->gadget->dev, "%s usb9pfs complete --> %d, %d/%d\n",
+@@ -242,11 +244,19 @@ static void usb9pfs_rx_complete(struct usb_ep *ep, struct usb_request *req)
+ 	if (!p9_rx_req)
+ 		return;
  
-+/* ctrl registers */
-+
- #define MC33XS2410_GLB_CTRL			0x00
- #define MC33XS2410_GLB_CTRL_MODE		GENMASK(7, 6)
- #define MC33XS2410_GLB_CTRL_MODE_NORMAL		FIELD_PREP(MC33XS2410_GLB_CTRL_MODE, 1)
-@@ -51,6 +54,21 @@
- 
- #define MC33XS2410_WDT				0x14
- 
-+#define MC33XS2410_TEMP_WT			0x29
-+#define MC33XS2410_TEMP_WT_MASK			GENMASK(7, 0)
-+
-+/* diag registers */
-+
-+/* chan in { 1 ... 4 } */
-+#define MC33XS2410_OUT_STA(chan)		(0x02 + (chan) - 1)
-+#define MC33XS2410_OUT_STA_OTW			BIT(8)
-+
-+#define MC33XS2410_TS_TEMP_DIE			0x26
-+#define MC33XS2410_TS_TEMP_MASK			GENMASK(9, 0)
-+
-+/* chan in { 1 ... 4 } */
-+#define MC33XS2410_TS_TEMP(chan)		(0x2f + (chan) - 1)
-+
- #define MC33XS2410_PWM_MIN_PERIOD		488282
- /* step in { 0 ... 3 } */
- #define MC33XS2410_PWM_MAX_PERIOD(step)		(2000000000 >> (2 * (step)))
-@@ -125,6 +143,11 @@ static int mc33xs2410_read_reg_ctrl(struct spi_device *spi, u8 reg, u16 *val)
- 	return mc33xs2410_read_reg(spi, reg, val, MC33XS2410_FRAME_IN_DATA_RD);
- }
- 
-+static int mc33xs2410_read_reg_diag(struct spi_device *spi, u8 reg, u16 *val)
-+{
-+	return mc33xs2410_read_reg(spi, reg, val, 0);
-+}
-+
- static int mc33xs2410_modify_reg(struct spi_device *spi, u8 reg, u8 mask, u8 val)
- {
- 	u16 tmp;
-@@ -140,6 +163,143 @@ static int mc33xs2410_modify_reg(struct spi_device *spi, u8 reg, u8 mask, u8 val
- 	return mc33xs2410_write_reg(spi, reg, tmp);
- }
- 
-+static const struct hwmon_channel_info * const mc33xs2410_hwmon_info[] = {
-+	HWMON_CHANNEL_INFO(temp,
-+			   HWMON_T_LABEL | HWMON_T_INPUT,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM),
-+	NULL,
-+};
-+
-+static umode_t mc33xs2410_hwmon_is_visible(const void *data,
-+					   enum hwmon_sensor_types type,
-+					   u32 attr, int channel)
-+{
-+	switch (attr) {
-+	case hwmon_temp_input:
-+	case hwmon_temp_alarm:
-+	case hwmon_temp_label:
-+		return 0444;
-+	case hwmon_temp_max:
-+		return 0644;
-+	default:
-+		return 0;
+-	memcpy(p9_rx_req->rc.sdata, req->buf, req->actual);
++	if (req_size > p9_rx_req->rc.capacity) {
++		dev_err(&cdev->gadget->dev,
++			"%s received data size %u exceeds buffer capacity %zu\n",
++			ep->name, req_size, p9_rx_req->rc.capacity);
++		req_size = 0;
++		status = REQ_STATUS_ERROR;
 +	}
-+}
-+
-+static int mc33xs2410_hwmon_read(struct device *dev,
-+				 enum hwmon_sensor_types type,
-+				 u32 attr, int channel, long *val)
-+{
-+	struct spi_device *spi = dev_get_drvdata(dev);
-+	u16 reg_val;
-+	int ret;
-+	u8 reg;
-+
-+	switch (attr) {
-+	case hwmon_temp_input:
-+		reg = (channel == 0) ? MC33XS2410_TS_TEMP_DIE :
-+				       MC33XS2410_TS_TEMP(channel);
-+		ret = mc33xs2410_read_reg_diag(spi, reg, &reg_val);
-+		if (ret < 0)
-+			return ret;
-+
-+		/* LSB is 0.25 degree celsius */
-+		*val = FIELD_GET(MC33XS2410_TS_TEMP_MASK, reg_val) * 250 - 40000;
-+		return 0;
-+	case hwmon_temp_alarm:
-+		ret = mc33xs2410_read_reg_diag(spi, MC33XS2410_OUT_STA(channel),
-+					       &reg_val);
-+		if (ret < 0)
-+			return ret;
-+
-+		*val = FIELD_GET(MC33XS2410_OUT_STA_OTW, reg_val);
-+		return 0;
-+	case hwmon_temp_max:
-+		ret = mc33xs2410_read_reg_ctrl(spi, MC33XS2410_TEMP_WT, &reg_val);
-+		if (ret < 0)
-+			return ret;
-+
-+		/* LSB is 1 degree celsius */
-+		*val = FIELD_GET(MC33XS2410_TEMP_WT_MASK, reg_val) * 1000 - 40000;
-+		return 0;
-+	default:
-+		return -EOPNOTSUPP;
-+	}
-+}
-+
-+static int mc33xs2410_hwmon_write(struct device *dev,
-+				  enum hwmon_sensor_types type, u32 attr,
-+				  int channel, long val)
-+{
-+	struct spi_device *spi = dev_get_drvdata(dev);
-+
-+	switch (attr) {
-+	case hwmon_temp_max:
-+		val = clamp_val(val, -40000, 215000);
-+
-+		/* LSB is 1 degree celsius */
-+		val = (val / 1000) + 40;
-+		return mc33xs2410_modify_reg(spi, MC33XS2410_TEMP_WT,
-+					     MC33XS2410_TEMP_WT_MASK, val);
-+	default:
-+		return -EOPNOTSUPP;
-+	}
-+}
-+
-+static const char *const mc33xs2410_temp_label[] = {
-+	"Central die temperature",
-+	"Channel 1 temperature",
-+	"Channel 2 temperature",
-+	"Channel 3 temperature",
-+	"Channel 4 temperature",
-+};
-+
-+static int mc33xs2410_read_string(struct device *dev,
-+				  enum hwmon_sensor_types type,
-+				  u32 attr, int channel, const char **str)
-+{
-+	*str = mc33xs2410_temp_label[channel];
-+
-+	return 0;
-+}
-+
-+static const struct hwmon_ops mc33xs2410_hwmon_hwmon_ops = {
-+	.is_visible = mc33xs2410_hwmon_is_visible,
-+	.read = mc33xs2410_hwmon_read,
-+	.read_string = mc33xs2410_read_string,
-+	.write = mc33xs2410_hwmon_write,
-+};
-+
-+static const struct hwmon_chip_info mc33xs2410_hwmon_chip_info = {
-+	.ops = &mc33xs2410_hwmon_hwmon_ops,
-+	.info = mc33xs2410_hwmon_info,
-+};
-+
-+static int mc33xs2410_hwmon_probe(struct spi_device *spi)
-+{
-+	struct device *dev = &spi->dev;
-+
-+	if (IS_REACHABLE(CONFIG_HWMON)) {
-+		struct device *hwmon;
-+
-+		hwmon = devm_hwmon_device_register_with_info(dev, NULL, spi,
-+							     &mc33xs2410_hwmon_chip_info,
-+							     NULL);
-+		return PTR_ERR_OR_ZERO(hwmon);
-+	}
-+
-+	dev_dbg(dev, "Not registering hwmon sensors\n");
-+
-+	return 0;
-+}
-+
- static u8 mc33xs2410_pwm_get_freq(u64 period)
- {
- 	u8 step, count;
-@@ -361,6 +521,10 @@ static int mc33xs2410_probe(struct spi_device *spi)
- 	if (ret < 0)
- 		return dev_err_probe(dev, ret, "Failed to add pwm chip\n");
  
-+	ret = mc33xs2410_hwmon_probe(spi);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "Failed to register hwmon sensors\n");
-+
- 	return 0;
- }
+-	p9_rx_req->rc.size = req->actual;
++	memcpy(p9_rx_req->rc.sdata, req->buf, req_size);
  
+-	p9_client_cb(usb9pfs->client, p9_rx_req, REQ_STATUS_RCVD);
++	p9_rx_req->rc.size = req_sizel;
++
++	p9_client_cb(usb9pfs->client, p9_rx_req, status);
+ 	p9_req_put(usb9pfs->client, p9_rx_req);
+ 
+ 	complete(&usb9pfs->received);
 
 ---
-base-commit: 446d36aa71b56e8a926e6ff066d83b12130fda59
-change-id: 20250507-mc33xs2410-hwmon-a5ff9efec005
+base-commit: 74b4cc9b8780bfe8a3992c9ac0033bf22ac01f19
+change-id: 20250620-9p-usb_overflow-25bfc5e9bef3
 
 Best regards,
 -- 
-Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Dominique Martinet <asmadeus@codewreck.org>
 
