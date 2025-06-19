@@ -1,182 +1,137 @@
-From: Sung-Chi Li <lschyi@chromium.org>
-Date: Thu, 19 Jun 2025 15:42:56 +0800
-Subject: [PATCH v4 3/3] hwmon: (cros_ec) register fans into thermal
- framework cooling devices
+From: Per Larsen <perlarsen@google.com>
+Subject: [PATCH v5 0/6] KVM: arm64: Support FF-A 1.2 and SEND_DIRECT2 ABI
+Date: Thu, 19 Jun 2025 09:02:53 +0000
+Message-Id: <20250619-virtio-msg-ffa-v5-0-412c98558807@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250619-cros_ec_fan-v4-3-ca11548ce449@chromium.org>
-References: <20250619-cros_ec_fan-v4-0-ca11548ce449@chromium.org>
-In-Reply-To: <20250619-cros_ec_fan-v4-0-ca11548ce449@chromium.org>
-To: Benson Leung <bleung@chromium.org>, Guenter Roeck <groeck@chromium.org>, 
- =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>, 
- Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
- Jonathan Corbet <corbet@lwn.net>, 
- =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <thomas@weissschuh.net>
-Cc: chrome-platform@lists.linux.dev, linux-kernel@vger.kernel.org, 
- linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
- Sung-Chi Li <lschyi@google.com>, Sung-Chi Li <lschyi@chromium.org>
+X-B4-Tracking: v=1; b=H4sIAD3SU2gC/2XQTW7DIBCG4atErEsEw49JV7lH1AXFg40UTAQuS
+ hX57sWWKrn1chbPq0/zIgVzwELeTy+SsYYS0tQO9XYibrTTgDT07SbAQDHFNK0hzyHRWAbqvaU
+ A1nfgLsAVIw09Mvrw3IK3j3b7nCKdx4x2nwHWADNnASCF5JTTB+b7NcT4NdlpPrsU19gYypzy9
+ zauwpr8DZj/OypQRrE30humxEWr65DScMcttQ6pYue5OHjRfK+167T3/BPcwcu9P/yhyuaVYYg
+ dw7aP//HLsvwA+P8cZ2oBAAA=
+X-Change-ID: 20250506-virtio-msg-ffa-22af72c92150
+To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
+ Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Zenghui Yu <yuzenghui@huawei.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Sudeep Holla <sudeep.holla@arm.com>
+Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>, 
+ Ayrton Munoz <ayrton@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750318976; l=5521;
- i=lschyi@chromium.org; s=20250429; h=from:subject:message-id;
- bh=dGrNQjFZmAqqQuLX31fi6rvA+UA6e5udimOyMjEIouo=;
- b=0dwadgCMsVUj2zNX3LAZTyaW6PXKOphWxSH6/DPNS5uCEwqeWx63ZWVIgvgYoHCvDsHjphEi1
- L4uaCbewRHCA9AiGKf2p1+FNA5FaKMC2pN+rrjROQ6BHBtWACsiXCfq
-X-Developer-Key: i=lschyi@chromium.org; a=ed25519;
- pk=9gCZPRJmYyHDt6VN9FV2UreFcUr73JFrwYvmsltW9Y8=
-X-Endpoint-Received: by B4 Relay for lschyi@chromium.org/20250429 with auth_id=392
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750323807; l=4385;
+ i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
+ bh=JDMcRyLLeYcFRVBAt6QvueCzaPAy/7MNgWJNDM2A3wo=;
+ b=malgCl1TuMWj2eQg3bYUOakJFv3JTuy39cNzNEoqz2BENpNeCbzMdEneYwr0JG/zh4bHHjFef
+ 5ZaYt1YbG+mDZEbNZcyaAG+MscMgOv3/v8Qwb0RLnX1YRZ8sBoCzc8H
+X-Developer-Key: i=perlarsen@google.com; a=ed25519;
+ pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
+X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Register fans connected under EC as thermal cooling devices as well, so
-these fans can then work with the thermal framework.
+Hi,
 
-During the driver probing phase, we will also try to register each fan
-as a thermal cooling device based on previous probe result (whether the
-there are fans connected on that channel, and whether EC supports fan
-control). The basic get max state, get current state, and set current
-state methods are then implemented as well.
+The FF-A 1.2 specification introduces a new SEND_DIRECT2 ABI which
+allows registers x4-x17 to be used for the message payload. This patch
+set prevents the host from using a lower FF-A version than what has
+already been negotiated with the hypervisor. This is necessary because
+the hypervisor does not have the necessary compatibility paths to
+translate from the hypervisor FF-A version to a previous version.
 
-Signed-off-by: Sung-Chi Li <lschyi@chromium.org>
+Support for FF-A 1.2 in the hypervisor is added as a precursor to the
+addition of the FFA_MSG_SEND_DIRECT_REQ2 messaging interface. The bulk
+of this change has to do with the upgrade to SMCCC 1.2 required by
+FF-A 1.2. Additionally, unimplemented FF-A 1.2 interfaces are added to
+the list of unsupported functions.
+
+Tested by booting Android under QEMU and loading Trusty as the guest
+VM and observing the SEND_DIRECT2 ABI being used successfully during
+guest boot.
+
+Changes since v4:
+- 1/5 -> 1/6: Added Acked-by: Will Deacon <will@kernel.org>
+              Reworded patch subject and description
+- 2/5:        Dropped patch: zero x4-x7 in ffa_set_retval
+-        2/6: New: use SMCCC 1.2 during hyp init
+-        3/6: New: use SMCCC 1.2 in host FF-A handler
+- 3/5 -> 4/6: No change; can revisit denylist design in later patchset
+              Added Acked-by: Will Deacon <will@kernel.org>
+- 4/5 -> 5/6: No change
+- 5/5 -> 6/6: No change
+- Link to v4: https://lore.kernel.org/r/20250516-virtio-msg-ffa-v4-0-580ee70e5081@google.com
+
+Changes since v3:
+- all:        Remove Signed-off-by: Per Larsen <perl@immunant.com>
+- 2/5:        Split out from 2/3, zero x4-x7 in set_ffa_retval
+- 3/5:        Split out from 2/3, Mark FFA_NOTIFICATION_* calls as
+              unsupported
+- 2/3 -> 4/5: Drop ffa_get_hypervisor_version, access hyp_ffa_version
+              directly when version negotiation is complete.
+- 3/3 -> 5/5: Call ffa_to_smccc_1_2_error directly in
+              do_do_ffa_direct_msg2
+              Push call to ffa_call_needs_smccc_1_2 lower down by adding
+              ffa_get_func_id and ffa_set_retval_smccc_1_x.
+              Drop ffa_to_smccc_1_2_regs and ffa_to_smccc_1_2_regs_prop
+              as they are no longer used.
+- Link to v3: https://lore.kernel.org/r/20250513-virtio-msg-ffa-v3-0-d66c76ff1b2c@google.com 
+
+Changes since v2:
+- 2/3: Removed files added by mistake.
+       Add and use ffa_get_hypervisor_version to access hyp_ffa_version
+- 3/3: Use ffa_get_hypervisor_version to access hyp_ffa_version safely
+- Link to v2: https://lore.kernel.org/r/20250508-virtio-msg-ffa-v2-0-ed84f8053965@google.com
+
+Changes since v1:
+- 1/3: Simplify commit message; drop long comment in do_ffa_version
+- 2/3: Correct use of Co-developed-by: footer
+       s/arm_smccc_1_2_smc_fallback/arm_smccc_1_x_smc/
+       Always access hyp_ffa_version w/lock held
+       Remove superfluous comments in ffa_call_supported
+       Add and use FFA_FEAT_RXTX_MIN_SZ_MASK instead of constant
+       Add FFA_PARTITION_INFO_GET_REGS to calls that require SMCCC 1.2
+- 3/3: Always access hyp_ffa_version w/lock held
+       Correct formatting
+
+Thanks,
+Per Larsen
+
+--
+2.49.0
+
 ---
- Documentation/hwmon/cros_ec_hwmon.rst |  2 +
- drivers/hwmon/cros_ec_hwmon.c         | 85 +++++++++++++++++++++++++++++++++++
- 2 files changed, 87 insertions(+)
+To: Marc Zyngier <maz@kernel.org>
+To: Oliver Upton <oliver.upton@linux.dev>
+To: Joey Gouly <joey.gouly@arm.com>
+To: Suzuki K Poulose <suzuki.poulose@arm.com>
+To: Zenghui Yu <yuzenghui@huawei.com>
+To: Catalin Marinas <catalin.marinas@arm.com>
+To: Will Deacon <will@kernel.org>
+To: Sudeep Holla <sudeep.holla@arm.com>
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: kvmarm@lists.linux.dev
+Cc: linux-kernel@vger.kernel.org
 
-diff --git a/Documentation/hwmon/cros_ec_hwmon.rst b/Documentation/hwmon/cros_ec_hwmon.rst
-index 355557a08c9a54b4c177bafde3743e7dc02218be..6db812708325f7abb6d319af3312b4079e6923c6 100644
---- a/Documentation/hwmon/cros_ec_hwmon.rst
-+++ b/Documentation/hwmon/cros_ec_hwmon.rst
-@@ -27,3 +27,5 @@ Fan and temperature readings are supported. PWM fan control is also supported if
- the EC also supports setting fan PWM values and fan mode. Note that EC will
- switch fan control mode back to auto when suspended. This driver will restore
- the fan state to what they were before suspended when resumed.
-+If a fan is controllable, this driver will register that fan as a cooling device
-+in the thermal framework as well.
-diff --git a/drivers/hwmon/cros_ec_hwmon.c b/drivers/hwmon/cros_ec_hwmon.c
-index c0c4ffa6f85419edf5dacd730192e7f1c28e2e5c..572b194e51fb1a05fa5151abb0826d1c8ba2948d 100644
---- a/drivers/hwmon/cros_ec_hwmon.c
-+++ b/drivers/hwmon/cros_ec_hwmon.c
-@@ -13,6 +13,7 @@
- #include <linux/platform_device.h>
- #include <linux/platform_data/cros_ec_commands.h>
- #include <linux/platform_data/cros_ec_proto.h>
-+#include <linux/thermal.h>
- #include <linux/types.h>
- #include <linux/units.h>
- 
-@@ -31,6 +32,11 @@ struct cros_ec_hwmon_priv {
- 	u8 manual_fan_pwm[EC_FAN_SPEED_ENTRIES];
- };
- 
-+struct cros_ec_hwmon_cooling_priv {
-+	struct cros_ec_hwmon_priv *hwmon_priv;
-+	u8 index;
-+};
-+
- static int cros_ec_hwmon_read_fan_speed(struct cros_ec_device *cros_ec, u8 index, u16 *speed)
- {
- 	int ret;
-@@ -306,6 +312,42 @@ static const struct hwmon_channel_info * const cros_ec_hwmon_info[] = {
- 	NULL
- };
- 
-+static int cros_ec_hwmon_cooling_get_max_state(struct thermal_cooling_device *cdev,
-+					       unsigned long *val)
-+{
-+	*val = 255;
-+	return 0;
-+}
-+
-+static int cros_ec_hwmon_cooling_get_cur_state(struct thermal_cooling_device *cdev,
-+					       unsigned long *val)
-+{
-+	const struct cros_ec_hwmon_cooling_priv *priv = cdev->devdata;
-+	u8 read_val;
-+	int ret;
-+
-+	ret = cros_ec_hwmon_read_pwm_value(priv->hwmon_priv->cros_ec, priv->index, &read_val);
-+	if (ret)
-+		return ret;
-+
-+	*val = read_val;
-+	return ret;
-+}
-+
-+static int cros_ec_hwmon_cooling_set_cur_state(struct thermal_cooling_device *cdev,
-+					       unsigned long val)
-+{
-+	const struct cros_ec_hwmon_cooling_priv *priv = cdev->devdata;
-+
-+	return cros_ec_hwmon_write_pwm_input(priv->hwmon_priv->cros_ec, priv->index, val);
-+}
-+
-+static const struct thermal_cooling_device_ops cros_ec_thermal_cooling_ops = {
-+	.get_max_state = cros_ec_hwmon_cooling_get_max_state,
-+	.get_cur_state = cros_ec_hwmon_cooling_get_cur_state,
-+	.set_cur_state = cros_ec_hwmon_cooling_set_cur_state,
-+};
-+
- static const struct hwmon_ops cros_ec_hwmon_ops = {
- 	.read = cros_ec_hwmon_read,
- 	.read_string = cros_ec_hwmon_read_string,
-@@ -381,6 +423,48 @@ static bool cros_ec_hwmon_probe_fan_control_supported(struct cros_ec_device *cro
- 	       is_cros_ec_cmd_available(cros_ec, EC_CMD_THERMAL_AUTO_FAN_CTRL, CROS_EC_HWMON_THERMAL_AUTO_FAN_CTRL_CMD_VERSION);
- }
- 
-+static void cros_ec_hwmon_register_fan_cooling_devices(struct device *dev,
-+						       struct cros_ec_hwmon_priv *priv)
-+{
-+	struct cros_ec_hwmon_cooling_priv *cpriv;
-+	struct thermal_cooling_device *cdev;
-+	char *type;
-+	size_t i;
-+
-+	if (!IS_ENABLED(CONFIG_THERMAL))
-+		return;
-+
-+	if (!priv->fan_control_supported)
-+		return;
-+
-+	for (i = 0; i < EC_FAN_SPEED_ENTRIES; i++) {
-+		if (!(priv->usable_fans & BIT(i)))
-+			continue;
-+
-+		cpriv = devm_kzalloc(dev, sizeof(*cpriv), GFP_KERNEL);
-+		if (!cpriv) {
-+			dev_warn(dev, "no memory for registering fan %zu as a cooling device\n", i);
-+			continue;
-+		}
-+
-+		type = devm_kasprintf(dev, GFP_KERNEL, "%s-fan%zu", dev_name(dev), i);
-+		if (!type) {
-+			dev_warn(dev, "no memory to compose cooling device type for fan %zu\n", i);
-+			continue;
-+		}
-+
-+		cpriv->hwmon_priv = priv;
-+		cpriv->index = i;
-+		cdev = devm_thermal_of_cooling_device_register(dev, NULL, type, cpriv,
-+							       &cros_ec_thermal_cooling_ops);
-+		if (IS_ERR(cdev)) {
-+			dev_warn(dev, "failed to register fan %zu as a cooling device: %pe\n", i,
-+				 cdev);
-+			continue;
-+		}
-+	}
-+}
-+
- static int cros_ec_hwmon_probe(struct platform_device *pdev)
- {
- 	struct device *dev = &pdev->dev;
-@@ -408,6 +492,7 @@ static int cros_ec_hwmon_probe(struct platform_device *pdev)
- 	cros_ec_hwmon_probe_temp_sensors(dev, priv, thermal_version);
- 	cros_ec_hwmon_probe_fans(priv);
- 	priv->fan_control_supported = cros_ec_hwmon_probe_fan_control_supported(priv->cros_ec);
-+	cros_ec_hwmon_register_fan_cooling_devices(dev, priv);
- 
- 	hwmon_dev = devm_hwmon_device_register_with_info(dev, "cros_ec", priv,
- 							 &cros_ec_hwmon_chip_info, NULL);
+---
 
+---
+Per Larsen (6):
+      KVM: arm64: Correct return value on host version downgrade attempt
+      KVM: arm64: Use SMCCC 1.2 in hyp_ffa_{init,post_init}
+      KVM: arm64: Use SMCCC 1.2 in host FF-A handler
+      KVM: arm64: Mark FFA_NOTIFICATION_* calls as unsupported
+      KVM: arm64: Bump the supported version of FF-A to 1.2
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in host handler
+
+ arch/arm64/kvm/hyp/nvhe/Makefile |   1 +
+ arch/arm64/kvm/hyp/nvhe/ffa.c    | 373 ++++++++++++++++++++++++---------------
+ include/linux/arm_ffa.h          |   3 +
+ 3 files changed, 239 insertions(+), 138 deletions(-)
+---
+base-commit: fb4d33ab452ea254e2c319bac5703d1b56d895bf
+change-id: 20250506-virtio-msg-ffa-22af72c92150
+
+Best regards,
 -- 
-2.50.0.rc2.701.gf1e915cc24-goog
+Per Larsen <perlarsen@google.com>
 
