@@ -1,111 +1,268 @@
-From: Per Larsen <perlarsen@google.com>
-Date: Thu, 19 Jun 2025 09:02:59 +0000
-Subject: [PATCH v5 6/6] KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in
- host handler
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Date: Thu, 19 Jun 2025 19:32:42 +0200
+Subject: [PATCH v3] pwm: mc33xs2410: add support for temperature sensors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250619-virtio-msg-ffa-v5-6-412c98558807@google.com>
-References: <20250619-virtio-msg-ffa-v5-0-412c98558807@google.com>
-In-Reply-To: <20250619-virtio-msg-ffa-v5-0-412c98558807@google.com>
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
- Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Sudeep Holla <sudeep.holla@arm.com>
-Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250619-mc33xs2410-hwmon-v3-1-301731e49f8f@liebherr.com>
+X-B4-Tracking: v=1; b=H4sIALlJVGgC/23NTQ7CIBCG4auYWYvhR0LrynsYFxQGIbHFgMGap
+ neXNi6Munwn+Z6ZIGMKmOGwmSBhCTnEoYbYbsB4PVyQBFsbOOWSSqpIb4QYM98zSvyjjwPR0rk
+ WHRpKJdTZLaEL40qezrV9yPeYnuuHwpbrG2P8FyuMMKKt7bRSRjWuPV4Ddh5T2pnYw+IV/mnIP
+ wavRmM51r1CQe2XMc/zC8Ihew73AAAA
+X-Change-ID: 20250507-mc33xs2410-hwmon-a5ff9efec005
+To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>
+Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, Dimitri Fedrau <dima.fedrau@gmail.com>, 
+ Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750323807; l=3017;
- i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=HXzQ4CaUHWWMpyY/fRFoKzEJfIwG9a4ZofQnutHpvGA=;
- b=4cj1xT/yvSKWn7LH3R9ElZpkJgBallN/yBzIeSNnFooAZVK25CJMAYj3iNIJ1vblefywm3rUG
- 1uW6+sSeE/fAVFFOyGEV6zZm3fRb5LwJFN+Oap1ucWCpT739fTzT6sK
-X-Developer-Key: i=perlarsen@google.com; a=ed25519;
- pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
-X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750354364; l=7025;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=chFN37L9O7y4mdyrp4nItchTv0oIed/TseetXA611Fo=;
+ b=kfd6CKMxOJQJScg0EBtmYX8toVsXmo1D9G4NW7PcEXs4LmORqKgSmLWX0Z3y1xq9y83T+EFsN
+ qScsBTvNEhzAiioEv358vVFbMo9p8EmLvKHYCPdMYht4Vss44Ey1lyc
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FF-A 1.2 adds the DIRECT_REQ2 messaging interface which is similar to
-the existing FFA_MSG_SEND_DIRECT_{REQ,RESP} functions except that it
-uses the SMC calling convention v1.2 which allows calls to use x4-x17 as
-argument and return registers. Add support for FFA_MSG_SEND_DIRECT_REQ2
-in the host ffa handler.
+The MC33XS2410 provides temperature sensors for the central die temperature
+and the four outputs. Additionally a common temperature warning threshold
+can be configured for the outputs. Add hwmon support for the sensors.
 
-Signed-off-by: Per Larsen <perlarsen@google.com>
+Acked-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 24 +++++++++++++++++++++++-
- include/linux/arm_ffa.h       |  2 ++
- 2 files changed, 25 insertions(+), 1 deletion(-)
+Changes in v3:
+- Add changes suggested by Uwe Kleine-König.
+  Remove "#if IS_ENABLED(CONFIG_HWMON)" and add
+  "if (IS_REACHABLE(CONFIG_HWMON))" in mc33xs2410_hwmon_probe.
+- Link to v2: https://lore.kernel.org/r/20250515-mc33xs2410-hwmon-v2-1-8d2e78f7e30d@liebherr.com
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index 7b43279aded7d7ef4cce2c294d208c5a66b684e3..37bde2ea2219e37ea68f859e6f211c868585285d 100644
---- a/arch/arm64/kvm/hyp/nvhe/ffa.c
-+++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -678,7 +678,6 @@ static bool ffa_call_supported(u64 func_id)
- 	case FFA_NOTIFICATION_GET:
- 	case FFA_NOTIFICATION_INFO_GET:
- 	/* Unimplemented interfaces added in FF-A 1.2 */
--	case FFA_MSG_SEND_DIRECT_REQ2:
- 	case FFA_MSG_SEND_DIRECT_RESP2:
- 	case FFA_CONSOLE_LOG:
- 	case FFA_PARTITION_INFO_GET_REGS:
-@@ -860,6 +859,22 @@ static void do_ffa_part_get(struct arm_smccc_1_2_regs *regs,
- 	hyp_spin_unlock(&host_buffers.lock);
+Changes in v2:
+- Remove helper mc33xs2410_hwmon_read_out_status and report the last
+  latched status.
+- Link to v1: https://lore.kernel.org/r/20250512-mc33xs2410-hwmon-v1-1-addba77c78f9@liebherr.com
+---
+ drivers/pwm/pwm-mc33xs2410.c | 164 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 164 insertions(+)
+
+diff --git a/drivers/pwm/pwm-mc33xs2410.c b/drivers/pwm/pwm-mc33xs2410.c
+index a1ac3445ccdb4709d92e0075d424a8abc1416eee..6a0a1e50d9584dbca751748143669ee1ebefb7e3 100644
+--- a/drivers/pwm/pwm-mc33xs2410.c
++++ b/drivers/pwm/pwm-mc33xs2410.c
+@@ -21,6 +21,7 @@
+ #include <linux/bitfield.h>
+ #include <linux/delay.h>
+ #include <linux/err.h>
++#include <linux/hwmon.h>
+ #include <linux/math64.h>
+ #include <linux/minmax.h>
+ #include <linux/module.h>
+@@ -29,6 +30,8 @@
+ 
+ #include <linux/spi/spi.h>
+ 
++/* ctrl registers */
++
+ #define MC33XS2410_GLB_CTRL			0x00
+ #define MC33XS2410_GLB_CTRL_MODE		GENMASK(7, 6)
+ #define MC33XS2410_GLB_CTRL_MODE_NORMAL		FIELD_PREP(MC33XS2410_GLB_CTRL_MODE, 1)
+@@ -51,6 +54,21 @@
+ 
+ #define MC33XS2410_WDT				0x14
+ 
++#define MC33XS2410_TEMP_WT			0x29
++#define MC33XS2410_TEMP_WT_MASK			GENMASK(7, 0)
++
++/* diag registers */
++
++/* chan in { 1 ... 4 } */
++#define MC33XS2410_OUT_STA(chan)		(0x02 + (chan) - 1)
++#define MC33XS2410_OUT_STA_OTW			BIT(8)
++
++#define MC33XS2410_TS_TEMP_DIE			0x26
++#define MC33XS2410_TS_TEMP_MASK			GENMASK(9, 0)
++
++/* chan in { 1 ... 4 } */
++#define MC33XS2410_TS_TEMP(chan)		(0x2f + (chan) - 1)
++
+ #define MC33XS2410_PWM_MIN_PERIOD		488282
+ /* step in { 0 ... 3 } */
+ #define MC33XS2410_PWM_MAX_PERIOD(step)		(2000000000 >> (2 * (step)))
+@@ -125,6 +143,11 @@ static int mc33xs2410_read_reg_ctrl(struct spi_device *spi, u8 reg, u16 *val)
+ 	return mc33xs2410_read_reg(spi, reg, val, MC33XS2410_FRAME_IN_DATA_RD);
  }
  
-+static void do_ffa_direct_msg2(struct arm_smccc_1_2_regs *regs,
-+			       struct kvm_cpu_context *ctxt,
-+			       u64 vm_handle)
++static int mc33xs2410_read_reg_diag(struct spi_device *spi, u8 reg, u16 *val)
 +{
-+	DECLARE_REG(u32, endp, ctxt, 1);
-+
-+	struct arm_smccc_1_2_regs *args = (void *)&ctxt->regs.regs[0];
-+
-+	if (FIELD_GET(FFA_SRC_ENDPOINT_MASK, endp) != vm_handle) {
-+		ffa_to_smccc_1_2_error(regs, FFA_RET_INVALID_PARAMETERS);
-+		return;
-+	}
-+
-+	arm_smccc_1_2_smc(args, regs);
++	return mc33xs2410_read_reg(spi, reg, val, 0);
 +}
 +
- bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
+ static int mc33xs2410_modify_reg(struct spi_device *spi, u8 reg, u8 mask, u8 val)
  {
- 	struct arm_smccc_1_2_regs regs;
-@@ -918,11 +933,18 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- 	case FFA_PARTITION_INFO_GET:
- 		do_ffa_part_get(&regs, host_ctxt);
- 		goto out_handled;
-+	case FFA_MSG_SEND_DIRECT_REQ2:
-+		if (hyp_ffa_version >= FFA_VERSION_1_2) {
-+			do_ffa_direct_msg2(&regs, host_ctxt, HOST_FFA_ID);
-+			goto out_handled;
-+		}
-+		goto out_not_supported;
- 	}
+ 	u16 tmp;
+@@ -140,6 +163,143 @@ static int mc33xs2410_modify_reg(struct spi_device *spi, u8 reg, u8 mask, u8 val
+ 	return mc33xs2410_write_reg(spi, reg, tmp);
+ }
  
- 	if (ffa_call_supported(func_id))
- 		return false; /* Pass through */
- 
-+out_not_supported:
- 	ffa_to_smccc_1_2_error(&regs, FFA_RET_NOT_SUPPORTED);
- out_handled:
- 	ffa_set_retval(host_ctxt, &regs);
-diff --git a/include/linux/arm_ffa.h b/include/linux/arm_ffa.h
-index c0dd6183d956043192114a522b7eef465e7078ac..82a35a3b22de426f7e9a8894e76fdf1e933b3d6b 100644
---- a/include/linux/arm_ffa.h
-+++ b/include/linux/arm_ffa.h
-@@ -269,6 +269,8 @@ bool ffa_partition_check_property(struct ffa_device *dev, u32 property)
- 	(ffa_partition_check_property(dev, FFA_PARTITION_DIRECT_REQ2_RECV) && \
- 	 !dev->mode_32bit)
- 
-+#define FFA_SRC_ENDPOINT_MASK	GENMASK(31, 16)
++static const struct hwmon_channel_info * const mc33xs2410_hwmon_info[] = {
++	HWMON_CHANNEL_INFO(temp,
++			   HWMON_T_LABEL | HWMON_T_INPUT,
++			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
++			   HWMON_T_ALARM,
++			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
++			   HWMON_T_ALARM,
++			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
++			   HWMON_T_ALARM,
++			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
++			   HWMON_T_ALARM),
++	NULL,
++};
 +
- /* For use with FFA_MSG_SEND_DIRECT_{REQ,RESP} which pass data via registers */
- struct ffa_send_direct_data {
- 	unsigned long data0; /* w3/x3 */
++static umode_t mc33xs2410_hwmon_is_visible(const void *data,
++					   enum hwmon_sensor_types type,
++					   u32 attr, int channel)
++{
++	switch (attr) {
++	case hwmon_temp_input:
++	case hwmon_temp_alarm:
++	case hwmon_temp_label:
++		return 0444;
++	case hwmon_temp_max:
++		return 0644;
++	default:
++		return 0;
++	}
++}
++
++static int mc33xs2410_hwmon_read(struct device *dev,
++				 enum hwmon_sensor_types type,
++				 u32 attr, int channel, long *val)
++{
++	struct spi_device *spi = dev_get_drvdata(dev);
++	u16 reg_val;
++	int ret;
++	u8 reg;
++
++	switch (attr) {
++	case hwmon_temp_input:
++		reg = (channel == 0) ? MC33XS2410_TS_TEMP_DIE :
++				       MC33XS2410_TS_TEMP(channel);
++		ret = mc33xs2410_read_reg_diag(spi, reg, &reg_val);
++		if (ret < 0)
++			return ret;
++
++		/* LSB is 0.25 degree celsius */
++		*val = FIELD_GET(MC33XS2410_TS_TEMP_MASK, reg_val) * 250 - 40000;
++		return 0;
++	case hwmon_temp_alarm:
++		ret = mc33xs2410_read_reg_diag(spi, MC33XS2410_OUT_STA(channel),
++					       &reg_val);
++		if (ret < 0)
++			return ret;
++
++		*val = FIELD_GET(MC33XS2410_OUT_STA_OTW, reg_val);
++		return 0;
++	case hwmon_temp_max:
++		ret = mc33xs2410_read_reg_ctrl(spi, MC33XS2410_TEMP_WT, &reg_val);
++		if (ret < 0)
++			return ret;
++
++		/* LSB is 1 degree celsius */
++		*val = FIELD_GET(MC33XS2410_TEMP_WT_MASK, reg_val) * 1000 - 40000;
++		return 0;
++	default:
++		return -EOPNOTSUPP;
++	}
++}
++
++static int mc33xs2410_hwmon_write(struct device *dev,
++				  enum hwmon_sensor_types type, u32 attr,
++				  int channel, long val)
++{
++	struct spi_device *spi = dev_get_drvdata(dev);
++
++	switch (attr) {
++	case hwmon_temp_max:
++		val = clamp_val(val, -40000, 215000);
++
++		/* LSB is 1 degree celsius */
++		val = (val / 1000) + 40;
++		return mc33xs2410_modify_reg(spi, MC33XS2410_TEMP_WT,
++					     MC33XS2410_TEMP_WT_MASK, val);
++	default:
++		return -EOPNOTSUPP;
++	}
++}
++
++static const char *const mc33xs2410_temp_label[] = {
++	"Central die temperature",
++	"Channel 1 temperature",
++	"Channel 2 temperature",
++	"Channel 3 temperature",
++	"Channel 4 temperature",
++};
++
++static int mc33xs2410_read_string(struct device *dev,
++				  enum hwmon_sensor_types type,
++				  u32 attr, int channel, const char **str)
++{
++	*str = mc33xs2410_temp_label[channel];
++
++	return 0;
++}
++
++static const struct hwmon_ops mc33xs2410_hwmon_hwmon_ops = {
++	.is_visible = mc33xs2410_hwmon_is_visible,
++	.read = mc33xs2410_hwmon_read,
++	.read_string = mc33xs2410_read_string,
++	.write = mc33xs2410_hwmon_write,
++};
++
++static const struct hwmon_chip_info mc33xs2410_hwmon_chip_info = {
++	.ops = &mc33xs2410_hwmon_hwmon_ops,
++	.info = mc33xs2410_hwmon_info,
++};
++
++static int mc33xs2410_hwmon_probe(struct spi_device *spi)
++{
++	struct device *dev = &spi->dev;
++
++	if (IS_REACHABLE(CONFIG_HWMON)) {
++		struct device *hwmon;
++
++		hwmon = devm_hwmon_device_register_with_info(dev, NULL, spi,
++							     &mc33xs2410_hwmon_chip_info,
++							     NULL);
++		return PTR_ERR_OR_ZERO(hwmon);
++	}
++
++	dev_dbg(dev, "Not registering hwmon sensors\n");
++
++	return 0;
++}
++
+ static u8 mc33xs2410_pwm_get_freq(u64 period)
+ {
+ 	u8 step, count;
+@@ -361,6 +521,10 @@ static int mc33xs2410_probe(struct spi_device *spi)
+ 	if (ret < 0)
+ 		return dev_err_probe(dev, ret, "Failed to add pwm chip\n");
+ 
++	ret = mc33xs2410_hwmon_probe(spi);
++	if (ret < 0)
++		return dev_err_probe(dev, ret, "Failed to register hwmon sensors\n");
++
+ 	return 0;
+ }
+ 
 
+---
+base-commit: 446d36aa71b56e8a926e6ff066d83b12130fda59
+change-id: 20250507-mc33xs2410-hwmon-a5ff9efec005
+
+Best regards,
 -- 
-2.50.0.rc2.701.gf1e915cc24-goog
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
