@@ -1,10 +1,10 @@
 From: Max Shevchenko <wctrl@proton.me>
-Date: Fri, 20 Jun 2025 18:40:46 +0300
-Subject: [PATCH 07/11] ARM: mediatek: show the hardware name for the MT6572
+Date: Fri, 20 Jun 2025 18:40:47 +0300
+Subject: [PATCH 08/11] ARM: mediatek: add MT6572 smp bring up code
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250620-mt6572-v1-7-e2d47820f042@proton.me>
+Message-Id: <20250620-mt6572-v1-8-e2d47820f042@proton.me>
 References: <20250620-mt6572-v1-0-e2d47820f042@proton.me>
 In-Reply-To: <20250620-mt6572-v1-0-e2d47820f042@proton.me>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -23,35 +23,64 @@ Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org,
  linux-mediatek@lists.infradead.org, linux-watchdog@vger.kernel.org, 
  Max Shevchenko <wctrl@proton.me>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750434231; l=692;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750434231; l=1857;
  i=wctrl@proton.me; s=20250603; h=from:subject:message-id;
- bh=rvoGWdqv2dSMmfg1LUoO8gwzH9kguQfgav6FpmmRDKI=;
- b=nNMbs5zJQLhpvdSJJKi/yGGVZeDkYGDkjeiXJDReJgWtS1NTPEzGxUCKW4O4tcSkxrG1bIzE3
- UJdouGOoePyClnORUtCLwsqvZzsYQ4bqCml/qnPubIdUn8ju1nwwA7E
+ bh=T8VXT+/gkb+tLiu+YbfKUS6YHMSUIjr+TS94R7QyjLU=;
+ b=gaVOQG/JP38ntFBWyX8QqYCp36/uojX4tLGegknkDl4SPhVEeGu2m0ySgQlrNY+MWL3qoU0m1
+ wx/W1N8/ohvDJCC7EeRtd8/ZTvbXyZ/pqKdOLHs2HlNyvUn32hpmEjs
 X-Developer-Key: i=wctrl@proton.me; a=ed25519;
  pk=JXUx3mL/OrnRvbK57HXgugBjEBKq4QgDKJqp7BALm74=
 X-Endpoint-Received: by B4 Relay for wctrl@proton.me/20250603 with auth_id=421
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a compatible string for the MT6572 SoC.
+Add support for booting the secondary CPU on the MT6572 SoC.
 
 Signed-off-by: Max Shevchenko <wctrl@proton.me>
 ---
- arch/arm/mach-mediatek/mediatek.c | 1 +
- 1 file changed, 1 insertion(+)
+ arch/arm/mach-mediatek/Kconfig   | 4 ++++
+ arch/arm/mach-mediatek/platsmp.c | 7 +++++++
+ 2 files changed, 11 insertions(+)
 
-diff --git a/arch/arm/mach-mediatek/mediatek.c b/arch/arm/mach-mediatek/mediatek.c
-index e6e9f93a1f01c7d043cf4312b9406b25c8897198..5c28124bd0078b31665fef647e496f4131b82c8d 100644
---- a/arch/arm/mach-mediatek/mediatek.c
-+++ b/arch/arm/mach-mediatek/mediatek.c
-@@ -38,6 +38,7 @@ static void __init mediatek_timer_init(void)
+diff --git a/arch/arm/mach-mediatek/Kconfig b/arch/arm/mach-mediatek/Kconfig
+index 35a3430c7942d897106bb32916df78347113798a..638eabad2dd37ee56244fc036cb76af135aee416 100644
+--- a/arch/arm/mach-mediatek/Kconfig
++++ b/arch/arm/mach-mediatek/Kconfig
+@@ -15,6 +15,10 @@ config MACH_MT2701
+ 	bool "MediaTek MT2701 SoCs support"
+ 	default ARCH_MEDIATEK
  
- static const char * const mediatek_board_dt_compat[] = {
- 	"mediatek,mt2701",
-+	"mediatek,mt6572",
- 	"mediatek,mt6589",
- 	"mediatek,mt6592",
- 	"mediatek,mt7623",
++config MACH_MT6572
++	bool "MediaTek MT6572 SoCs support"
++	default ARCH_MEDIATEK
++
+ config MACH_MT6589
+ 	bool "MediaTek MT6589 SoCs support"
+ 	default ARCH_MEDIATEK
+diff --git a/arch/arm/mach-mediatek/platsmp.c b/arch/arm/mach-mediatek/platsmp.c
+index 16a4ee6c959050474c5535ac6a65d92b29482d53..bbd26d423bdef23629ec5ca9d9c61903748988b7 100644
+--- a/arch/arm/mach-mediatek/platsmp.c
++++ b/arch/arm/mach-mediatek/platsmp.c
+@@ -29,6 +29,12 @@ static const struct mtk_smp_boot_info mtk_mt8135_tz_boot = {
+ 	{ 0x3f8, 0x3f8, 0x3f8 },
+ };
+ 
++static const struct mtk_smp_boot_info mtk_mt6572_boot = {
++	0x10001400, 0x08,
++	{ 0x534c4131 },
++	{ 0x0c },
++};
++
+ static const struct mtk_smp_boot_info mtk_mt6589_boot = {
+ 	0x10002000, 0x34,
+ 	{ 0x534c4131, 0x4c415332, 0x41534c33 },
+@@ -49,6 +55,7 @@ static const struct of_device_id mtk_tz_smp_boot_infos[] __initconst = {
+ };
+ 
+ static const struct of_device_id mtk_smp_boot_infos[] __initconst = {
++	{ .compatible   = "mediatek,mt6572", .data = &mtk_mt6572_boot },
+ 	{ .compatible   = "mediatek,mt6589", .data = &mtk_mt6589_boot },
+ 	{ .compatible   = "mediatek,mt7623", .data = &mtk_mt7623_boot },
+ 	{ .compatible   = "mediatek,mt7629", .data = &mtk_mt7623_boot },
 
 -- 
 2.50.0
