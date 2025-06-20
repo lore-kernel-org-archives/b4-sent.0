@@ -1,125 +1,60 @@
-From: Max Shevchenko <wctrl@proton.me>
-Date: Fri, 20 Jun 2025 18:40:50 +0300
-Subject: [PATCH 11/11] ARM: dts: mediatek: add basic support for Lenovo
- A369i board
+From: Cristian Cozzolino <cristian_ci@protonmail.com>
+Subject: [PATCH 0/3] Add initial device tree for Billion Capture+
+Date: Fri, 20 Jun 2025 23:51:38 +0200
+Message-Id: <20250620-rimob-initial-devicetree-v1-0-8e667ea21f82@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250620-mt6572-v1-11-e2d47820f042@proton.me>
-References: <20250620-mt6572-v1-0-e2d47820f042@proton.me>
-In-Reply-To: <20250620-mt6572-v1-0-e2d47820f042@proton.me>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Thomas Gleixner <tglx@linutronix.de>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, 
- Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>, Sean Wang <sean.wang@mediatek.com>, 
- Russell King <linux@armlinux.org.uk>
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, linux-watchdog@vger.kernel.org, 
- Max Shevchenko <wctrl@proton.me>
+X-B4-Tracking: v=1; b=H4sIAOrXVWgC/x3MywqDMBBG4VeRWXcgDSihryJd5DKpP9goEymC5
+ N0NXZ7Fdy6qopBKr+EilR8qttLj+RgoLr58hJF6kzV2NJM1rPhugVFwwK+cOolyqAgn7yY/hpy
+ jC9T5rpJx/tfzu7UbtZER4WoAAAA=
+X-Change-ID: 20250620-rimob-initial-devicetree-da86a5bffc8b
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ phone-devel@vger.kernel.org, 
+ Cristian Cozzolino <cristian_ci@protonmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750434231; l=2299;
- i=wctrl@proton.me; s=20250603; h=from:subject:message-id;
- bh=lTjo3ihR3gUlpL1GW0vPSnD1O+oT6SyQn7cpI3Gt7SU=;
- b=AJjRsHDZP2J6V9EgEJwBSC0mqa9ApUP+Ke6oP/dYMgZ8GuD8lxcVsUuCuG0TjHk29w5JOc3sR
- L2O+R7DD6/3CnY8tLfMAxbq+ollMI5/867XTIes34t+guE0rQF2NjyT
-X-Developer-Key: i=wctrl@proton.me; a=ed25519;
- pk=JXUx3mL/OrnRvbK57HXgugBjEBKq4QgDKJqp7BALm74=
-X-Endpoint-Received: by B4 Relay for wctrl@proton.me/20250603 with auth_id=421
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750456316; l=1013;
+ i=cristian_ci@protonmail.com; s=20250620; h=from:subject:message-id;
+ bh=enGQ4aWwrJ6GnlC2/iNO0rknwLb2cAAwftwuvIy8kpA=;
+ b=9txIvSHhHEff/6GqSaMoOwr+L9cgzhapHpcRzFbRMjtpQXNqtHkSJOJecH9NswPb+Y57xrruw
+ qSws9wi5tJfCTEzhu8K/JLW0WqiGoQM3klV98Gq1RQFD2gbc5CuloTx
+X-Developer-Key: i=cristian_ci@protonmail.com; a=ed25519;
+ pk=xH5IvIPUNHV1Q8R0/pq2CfuVFR/wTiAyuyi6IwedjZY=
+X-Endpoint-Received: by B4 Relay for cristian_ci@protonmail.com/20250620 with auth_id=438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This smartphone uses a MediaTek MT6572 system-on-chip with 512MB of RAM.
-It can currently boot into initramfs with a working UART and
-Simple Framebuffer using already initialized panel by the bootloader.
+Billion Capture+ is a handset using the MSM8953 SoC released in 2017
+and sold by Flipkart.
 
-Signed-off-by: Max Shevchenko <wctrl@proton.me>
+Add a device tree with initial support for:
+
+- GPIO keys
+- SDHCI (internal and external storage)
+- USB Device Mode
+- Regulators
+- Simple framebuffer
+
+Signed-off-by: Cristian Cozzolino <cristian_ci@protonmail.com>
 ---
- arch/arm/boot/dts/mediatek/Makefile                |  1 +
- arch/arm/boot/dts/mediatek/mt6572-lenovo-a369i.dts | 57 ++++++++++++++++++++++
- 2 files changed, 58 insertions(+)
+Cristian Cozzolino (3):
+      dt-bindings: vendor-prefixes: Add Flipkart
+      dt-bindings: arm: qcom: Add Billion Capture+
+      arm64: dts: qcom: msm8953: Add device tree for Billion Capture+
 
-diff --git a/arch/arm/boot/dts/mediatek/Makefile b/arch/arm/boot/dts/mediatek/Makefile
-index cb869a1aaec21a1d99f7f2a829b84672a3f52726..e48de3efeb3b9ab00108cc28afa8da525d0ec14a 100644
---- a/arch/arm/boot/dts/mediatek/Makefile
-+++ b/arch/arm/boot/dts/mediatek/Makefile
-@@ -2,6 +2,7 @@
- dtb-$(CONFIG_ARCH_MEDIATEK) += \
- 	mt2701-evb.dtb \
- 	mt6572-jty-d101.dtb \
-+	mt6572-lenovo-a369i.dtb \
- 	mt6580-evbp1.dtb \
- 	mt6582-prestigio-pmt5008-3g.dtb \
- 	mt6589-aquaris5.dtb \
-diff --git a/arch/arm/boot/dts/mediatek/mt6572-lenovo-a369i.dts b/arch/arm/boot/dts/mediatek/mt6572-lenovo-a369i.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..da8865a6b7e4f0e346f42504b3f8a4db61cb240e
---- /dev/null
-+++ b/arch/arm/boot/dts/mediatek/mt6572-lenovo-a369i.dts
-@@ -0,0 +1,57 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2025 Max Shevchenko <wctrl@proton.me>
-+ */
-+
-+/dts-v1/;
-+#include "mt6572.dtsi"
-+
-+/ {
-+	model = "Lenovo A369i";
-+	compatible = "lenovo,a369i", "mediatek,mt6572";
-+
-+	aliases {
-+		serial0 = &uart0;
-+	};
-+
-+	chosen {
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		stdout-path = "serial0:921600n8";
-+
-+		framebuffer: framebuffer@9fa00000 {
-+			compatible = "simple-framebuffer";
-+			memory-region = <&framebuffer_reserved>;
-+			width = <480>;
-+			height = <800>;
-+			stride = <(480 * 2)>;
-+			format = "r5g6b5";
-+			status = "okay";
-+		};
-+	};
-+
-+	memory {
-+		device_type = "memory";
-+		reg = <0x80000000 0x20000000>;
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		ranges;
-+
-+		connsys@80000000 {
-+			reg = <0x80000000 0x100000>;
-+			no-map;
-+		};
-+
-+		framebuffer_reserved: framebuffer@9fa00000 {
-+			reg = <0x9fa00000 0x600000>;
-+			no-map;
-+		};
-+	};
-+};
-+
-+&uart0 {
-+	status = "okay";
-+};
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 251 +++++++++++++++++++++
+ 4 files changed, 255 insertions(+)
+---
+base-commit: 0ff41df1cb268fc69e703a08a57ee14ae967d0ca
+change-id: 20250620-rimob-initial-devicetree-da86a5bffc8b
 
+Best regards,
 -- 
-2.50.0
+Cristian Cozzolino <cristian_ci@protonmail.com>
 
