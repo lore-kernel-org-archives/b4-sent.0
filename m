@@ -1,72 +1,62 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sat, 21 Jun 2025 11:37:29 +0200
-Subject: [PATCH RESEND v4 5/5] media: i2c: imx214: Remove hard-coded
- external clock frequency
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH RFC 0/3] clk: support arbitrary clk_register() sequence
+Date: Sat, 21 Jun 2025 18:54:17 +0800
+Message-Id: <20250621-clk-reparent-v1-0-48a7f2f31c59@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250621-imx214_ccs_pll-v4-5-12178e5eb989@apitzsch.eu>
-References: <20250621-imx214_ccs_pll-v4-0-12178e5eb989@apitzsch.eu>
-In-Reply-To: <20250621-imx214_ccs_pll-v4-0-12178e5eb989@apitzsch.eu>
-To: Ricardo Ribalda <ribalda@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- devicetree@vger.kernel.org, imx@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750498689; l=1261;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=ZCk329jfG7imBAJxPQK2Y7DPdg0WFnmIjBabbY8xuwc=;
- b=7u9/iEoHxGIF46EnZNgbPzTOeQMipucoawzdnk0Uu4+ERMs4QK/gbqXh6Ux3QTPvvLPnWHk0n
- nUmvF7eV3MnAbUxpZe/RbDaXAbU31N/8oTZemUb3gdaFHgw8psuYmCI
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAFmPVmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDMyND3eScbN2i1ILEotS8El0LyxRz0zSzRItUA0sloJaCotS0zAqwcdF
+ KQW7OSrG1tQC96b0OYwAAAA==
+To: Simon Glass <sjg@chromium.org>, Tom Rini <trini@konsulko.com>, 
+ Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750503258; l=1543;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=Kr1PMFMv+JN+0XmDqx/X45C5BEyo9RXyrT7a22SKlgE=;
+ b=ZJ9Jd2KUh17Kt6cHU2G3Pc8ks2gIVIIUm10ruOh1X7mskFWALArzUdZUulDcnUBLXiTCbAxGY
+ 0dmzedxsuDhBE7j85wL8HLmkw/t1MwjgF6FwGRuA9azbxuXSOYBCBSK
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Instead rely on the rate set on the clock (using assigned-clock-rates
-etc.)
+Currently U-Boot clk framework mandates the sequence of registering clks
+to begin from root, and then its children. This is an addtional
+requirement that doesn't exist in Linux kernel, which makes clk driver
+porting more difficult.
 
-Reviewed-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+Let's handle this entirely in clk framework and give driver the freedom
+to register clocks in any order.
+
+This is done by assigning the parent "lazily". It will cache the parent
+name in the core clk struct and try to refresh it when clk consumers
+call clk_get_parent(). It's transparent to clk consumers as long as they
+only use APIs provided by clk framework.
+
+I've ran `ut dm clk*` and verified these commits does not break any
+existing testcases. Though no new testcase is added because I think
+existing testcases already test the logic very well.
+
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/media/i2c/imx214.c | 6 ------
- 1 file changed, 6 deletions(-)
+Yang Xiwen (3):
+      drivers: core: device: set new parent when old parent is NULL
+      clk: allow assigning parent lazily
+      clk: sandbox: reverse the order to register clk i2c_root and i2c
 
-diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
-index fd03650a5b2bbdbbc677d5797380285f1832baa5..a0cef9e61b41be8ea76a6d6e4b8c9fc4060cfa0f 100644
---- a/drivers/media/i2c/imx214.c
-+++ b/drivers/media/i2c/imx214.c
-@@ -32,7 +32,6 @@
- 
- #define IMX214_REG_FAST_STANDBY_CTRL	CCI_REG8(0x0106)
- 
--#define IMX214_DEFAULT_CLK_FREQ	24000000
- #define IMX214_DEFAULT_LINK_FREQ	600000000
- /* Keep wrong link frequency for backward compatibility */
- #define IMX214_DEFAULT_LINK_FREQ_LEGACY	480000000
-@@ -1402,11 +1401,6 @@ static int imx214_probe(struct i2c_client *client)
- 		return dev_err_probe(dev, PTR_ERR(imx214->xclk),
- 				     "failed to get xclk\n");
- 
--	ret = clk_set_rate(imx214->xclk, IMX214_DEFAULT_CLK_FREQ);
--	if (ret)
--		return dev_err_probe(dev, ret,
--				     "failed to set xclk frequency\n");
--
- 	ret = imx214_get_regulators(dev, imx214);
- 	if (ret < 0)
- 		return dev_err_probe(dev, ret, "failed to get regulators\n");
+ drivers/clk/clk-uclass.c      | 47 +++++++++++++++++++++++++++++++------------
+ drivers/clk/clk.c             | 14 +++++++++++--
+ drivers/clk/clk_sandbox_ccf.c |  6 +++---
+ drivers/core/device.c         |  5 +++++
+ include/clk.h                 |  2 ++
+ 5 files changed, 56 insertions(+), 18 deletions(-)
+---
+base-commit: 721eecd9cbf2cc59c5230abd37d02d4a02f75cc7
+change-id: 20250621-clk-reparent-89d75f6a8e09
 
+Best regards,
 -- 
-2.50.0
+Yang Xiwen <forbidden405@outlook.com>
 
