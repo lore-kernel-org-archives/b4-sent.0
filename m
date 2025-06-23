@@ -1,14 +1,13 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v3 0/3] support for amlogic the new SPI IP
-Date: Mon, 23 Jun 2025 16:53:26 +0800
-Message-Id: <20250623-spisg-v3-0-c731f57e289c@amlogic.com>
+Date: Mon, 23 Jun 2025 16:53:27 +0800
+Subject: [PATCH v3 1/3] dt-bindings: spi: Add binding document of Amlogic
+ SPISG controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAYWWWgC/1WMywqDMBQFf0Xuuil5GI1d9T9KFzGJeqEaSUpoE
- f+9USq0yzmcmQWiC+giXIoFgksY0U8ZxKkAM+ipdwRtZuCUS1pRQeKMsSe16jirFHetNpC/c3A
- dvvbO7Z55wPj04b1nE9vWo1B+C4kRSqRqhG1dYxsprnp8+B7N2fgRtkbiPx6rD49vHtMVlVqVr
- ZX/3rquH0emp13UAAAA
+Message-Id: <20250623-spisg-v3-1-c731f57e289c@amlogic.com>
+References: <20250623-spisg-v3-0-c731f57e289c@amlogic.com>
+In-Reply-To: <20250623-spisg-v3-0-c731f57e289c@amlogic.com>
 To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
@@ -17,55 +16,90 @@ Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org,
  Xianwei Zhao <xianwei.zhao@amlogic.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750668807; l=1629;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750668807; l=1879;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=p18CvQGKMdeKcKL07AwNst72I3d+5bFuKEFexGALk3U=;
- b=tUWAfZEfn6V1qOrLffkQ6+jtjMIJ8GSQGkSDtZa3pD8b3NE9PFhjslDCBCXSmbHrP1rPK1I5g
- y2vNtyOW+8hDK/2v8d+rgFyhL7vnYs3Qhllh1TjbVGWVBzO2Vm/7fhd
+ bh=13MP5z5DFFJsG8DGKO1bHTVm7KiuWGBoe/rppEzsqCI=;
+ b=b/wq+TddKbNmrGl9KidTJei3VmEY0V1Sb4mLMBADfIkMl9mazUWzmmnQunyUUQys4THlvLKzD
+ adFlc5DBETjCKWN/zwL97YEpAKhwD/udfruKCzuxR0fU4TEmhzQh1M9
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduced support for the new SPI IP (SPISG). The SPISG is
-a communication-oriented SPI controller from Amlogic,supporting
-three operation modes: PIO, block DMA, and scatter-gather DMA.
+From: Sunny Luo <sunny.luo@amlogic.com>
 
-Add the drivers and device tree bindings corresponding to the SPISG.
+The SPISG is a new communication oriented SPI controller of Amlogic, which
+supports PIO, block DMA and scatter-gather DMA three operation modes.
 
+Signed-off-by: Sunny Luo <sunny.luo@amlogic.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v3:
-- Rename of bit definition and fix some issues.
-- Enable runtime_suspend function.
-- Link to v2: https://lore.kernel.org/r/20250617-spisg-v2-0-51a605a84bd5@amlogic.com
+ .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  | 55 ++++++++++++++++++++++
+ 1 file changed, 55 insertions(+)
 
-Changes in v2:
-- Use regmap to operation register and drop bitfied define.
-- Use "SPISG" prefix intead of "SPICC", and declare clock div table in the spisg_device. 
-- Delete other power operation functions except for runtime_supspend and runtime_resume.
-- Fix some format corrections.
-- Link to v1: https://lore.kernel.org/r/20250604-spisg-v1-0-5893dbe9d953@amlogic.com
+diff --git a/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml b/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml
+new file mode 100644
+index 000000000000..8d4d4606ff48
+--- /dev/null
++++ b/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml
+@@ -0,0 +1,55 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++# Copyright (C) 2025 Amlogic, Inc. All rights reserved
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/spi/amlogic,a4-spisg.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Amlogic SPI Scatter-Gather Controller
++
++maintainers:
++  - Xianwei Zhao <xianwei.zhao@amlogic.com>
++  - Sunny Luo <sunny.luo@amlogic.com>
++
++allOf:
++  - $ref: spi-controller.yaml#
++
++properties:
++  compatible:
++    const: amlogic,a4-spisg
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  clocks:
++    minItems: 2
++
++  clock-names:
++    items:
++      - const: core
++      - const: pclk
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - clocks
++  - clock-names
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    spi@50000 {
++        compatible = "amlogic,a4-spisg";
++        reg = <0x50000 0x38>;
++        interrupts = <0 183 4>;
++        clocks = <&clkc 37>,
++                 <&clkc 93>;
++        clock-names = "core", "pclk";
++        #address-cells = <1>;
++        #size-cells = <0>;
++    };
 
----
-Sunny Luo (2):
-      dt-bindings: spi: Add binding document of Amlogic SPISG controller
-      spi: Add Amlogic SPISG driver
-
-Xianwei Zhao (1):
-      MAINTAINERS: Add an entry for Amlogic spi driver
-
- .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  |  55 ++
- MAINTAINERS                                        |   9 +
- drivers/spi/Kconfig                                |   9 +
- drivers/spi/Makefile                               |   1 +
- drivers/spi/spi-amlogic-spisg.c                    | 876 +++++++++++++++++++++
- 5 files changed, 950 insertions(+)
----
-base-commit: bd30b995df8fd053e13d10f78dbc7b2fa5ed1aae
-change-id: 20250603-spisg-78f21682ebac
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
