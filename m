@@ -1,105 +1,95 @@
 From: Yang Li <yang.li@amlogic.com>
-Date: Tue, 24 Jun 2025 13:20:44 +0800
-Subject: [PATCH] Bluetooth: hci_event: Add support for handling LE BIG Sync
- Lost event
+Date: Tue, 24 Jun 2025 14:04:17 +0800
+Subject: [PATCH BlueZ bluez] shared/bap: Set stream to idle when I/O is
+ disconnected
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250624-handle_big_sync_lost_event-v1-1-c32ce37dd6a5@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAKs1WmgC/x3M0QpAMBSA4VfRubaaGeJVpMV2cEqjHYm0d7dcf
- v/F/wJjIGToshcCXsS0+4Qiz8Cuo19QkEsGJVUl60KJFN2GZqLF8OOt2XY+DV7oT6Ft42yty1a
- OCtLgCDjT/c/7IcYPVSYaKGwAAAA=
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Yang Li <yang.li@amlogic.com>
+Message-Id: <20250624-bap_for_big_sync_lost-v1-1-0df90a0f55d0@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAOA/WmgC/x3MQQqDMBBA0avIrA1oqpF6FSkhE0c7IIlkbNGKd
+ 29w+Rb/nyCUmAT64oREXxaOIaMuC/BvF2ZSPGaDrnRbGd0odKudYrLIs5UjeLtE2ZR5NJ3xpnu
+ OiJDbNdHE+/0dAJcP/eB1XX8TtvK4bgAAAA==
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
 X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750742454; l=2539;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750745059; l=3551;
  i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=3xOWybT0hvFSOiNGPz4vVsSCR2isMoJtxxrE8KhFyic=;
- b=32qzfmyTCP2aM6DgE1emIRrsb577fcGy9Zd752E4k1VUKQgvSU5vECllJAWiESugLEAJre9dX
- db2PB9JhMGYB8NfmtCzmzs1PRBu1I5oMxPdATGC1snm6pvrCx1BJyRz
+ bh=NnW6oCsp7Gte23sNn8PxIxPN0k6NBhSjprOBezp/bpQ=;
+ b=geP9VZMgorkMMNCVVZ1CXDo8OloIkJzCS1Q0kLPEe+L3ZiQEcvFbr5nd36JFz39kRaelW9Znl
+ dXAf08jHfhsArzKB8bcb4CNZi8qrhsei18iMKyEY8AS8DArPujqleIz
 X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
  pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
 X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the BIS source stops, the controller sends an LE BIG Sync Lost
-event (subevent 0x1E). Currently, this event is not handled, causing
-the BIS stream to remain active in BlueZ and preventing recovery.
+When the CIS link is disconnected, the ASE status transitions from Releasing to
+Idle.
+
+  > HCI Event: Disconnect Complete (0x05) plen 4           #1484 [hci0] 67.947425
+  		Status: Success (0x00)
+  		Handle: 512 Address: 5C:B1:E1:2F:01:B9 (Resolvable)
+  		Identity type: Random (0x01)
+  		Identity: E8:D5:2B:59:57:A6 (Static)
+  		Reason: Remote User Terminated Connection (0x13)
+  = bluetoothd: src/shared/bap.c:stream_io_disconnected() stream 0x..   67.948018
+  = bluetoothd: src/shared/bap.c:bap_ucast_set_state() stream 0xdff..   67.948145
+  = bluetoothd: src/shared/bap.c:stream_notify() stream 0xdffda8 st..   67.948275
+  = bluetoothd: src/gatt-database.c:send_notification_to_device() G..   67.948525
+  = bluetoothd: profiles/audio/bap.c:bap_state() stream 0xdffda8: r..   67.948679
+  = bluetoothd: profiles/audio/transport.c:bap_state_changed() stre..   67.948967
+  = bluetoothd: profiles/audio/transport.c:transport_update_playing..   67.949061
+  = bluetoothd: profiles/audio/transport.c:media_transport_remove_o..   67.949106
+  = bluetoothd: profiles/audio/transport.c:media_owner_free() Owner..   67.949149
+  = bluetoothd: profiles/audio/transport.c:media_transport_suspend(..   67.949375
+  = bluetoothd: profiles/audio/transport.c:transport_set_state() St..   67.949423
+  = bluetoothd: src/shared/bap.c:bap_ucast_detach() stream 0xdffda8..   67.949574
+  = bluetoothd: profiles/audio/media.c:pac_clear() endpoint 0xdd2d2..   67.949710
+
+When BIG sync is lost, the stream status transitions from Streaming to Idle.
+
+  > HCI Event: LE Meta Event (0x3e) plen 3                #3189 [hci0] 118.870863
+  	LE Broadcast Isochronous Group Sync Lost (0x1e)
+  		BIG Handle: 0x00
+  		Reason: Remote User Terminated Connection (0x13)
+  = bluetoothd: src/shared/bap.c:stream_io_disconnected() stream 0..   118.871183
+  = bluetoothd: src/shared/bap.c:bap_bcast_set_state() stream 0xdf..   118.871227
+  = bluetoothd: profiles/audio/bap.c:bap_state_bcast_sink() stream..   118.871258
+  = bluetoothd: profiles/audio/bass.c:bap_state_changed() stream 0..   118.871307
+  = bluetoothd: src/gatt-database.c:send_notification_to_device()...   118.871384
+  = bluetoothd: profiles/audio/transport.c:bap_state_changed() str..   118.871452
+  = bluetoothd: profiles/audio/transport.c:transport_bap_update_li..   118.871509
+  = bluetoothd: profiles/audio/transport.c:transport_update_playin..   118.871555
+  = bluetoothd: profiles/audio/transport.c:transport_set_state() S..   118.871610
+  = bluetoothd: src/shared/bap.c:bap_bcast_sink_detach() stream 0x..   118.871660
+  = bluetoothd: profiles/audio/media.c:pac_clear() endpoint 0xdd25..   118.871689
+
+Fixes: https://github.com/bluez/bluez/issues/1343
 
 Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- include/net/bluetooth/hci.h |  6 ++++++
- net/bluetooth/hci_event.c   | 23 +++++++++++++++++++++++
- 2 files changed, 29 insertions(+)
+ src/shared/bap.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/include/net/bluetooth/hci.h b/include/net/bluetooth/hci.h
-index 82cbd54443ac..48389a64accb 100644
---- a/include/net/bluetooth/hci.h
-+++ b/include/net/bluetooth/hci.h
-@@ -2849,6 +2849,12 @@ struct hci_evt_le_big_sync_estabilished {
- 	__le16  bis[];
- } __packed;
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index bccbc73ff..d51f3106e 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -6584,10 +6584,8 @@ static bool stream_io_disconnected(struct io *io, void *user_data)
  
-+#define HCI_EVT_LE_BIG_SYNC_LOST 0x1e
-+struct hci_evt_le_big_sync_lost {
-+	__u8    handle;
-+	__u8    reason;
-+} __packed;
-+
- #define HCI_EVT_LE_BIG_INFO_ADV_REPORT	0x22
- struct hci_evt_le_big_info_adv_report {
- 	__le16  sync_handle;
-diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
-index 66052d6aaa1d..730deaf1851f 100644
---- a/net/bluetooth/hci_event.c
-+++ b/net/bluetooth/hci_event.c
-@@ -7026,6 +7026,24 @@ static void hci_le_big_sync_established_evt(struct hci_dev *hdev, void *data,
- 	hci_dev_unlock(hdev);
+ 	DBG(stream->bap, "stream %p io disconnected", stream);
+ 
+-	if (stream->ep->state == BT_ASCS_ASE_STATE_RELEASING)
+-		stream_set_state(stream, BT_BAP_STREAM_STATE_CONFIG);
++	stream_set_state(stream, BT_BAP_STREAM_STATE_IDLE);
+ 
+-	bt_bap_stream_set_io(stream, -1);
+ 	return false;
  }
  
-+static void hci_le_big_sync_lost_evt(struct hci_dev *hdev, void *data,
-+					    struct sk_buff *skb)
-+{
-+	struct hci_evt_le_big_sync_lost *ev = data;
-+	struct hci_conn *conn;
-+
-+	bt_dev_dbg(hdev, "BIG Sync Lost: big_handle 0x%2.2x", ev->handle);
-+
-+	hci_dev_lock(hdev);
-+
-+	list_for_each_entry(conn, &hdev->conn_hash.list, list) {
-+		if (test_bit(HCI_CONN_BIG_SYNC, &conn->flags))
-+			hci_disconn_cfm(conn, HCI_ERROR_REMOTE_USER_TERM);
-+	}
-+
-+	hci_dev_unlock(hdev);
-+}
-+
- static void hci_le_big_info_adv_report_evt(struct hci_dev *hdev, void *data,
- 					   struct sk_buff *skb)
- {
-@@ -7149,6 +7167,11 @@ static const struct hci_le_ev {
- 		     hci_le_big_sync_established_evt,
- 		     sizeof(struct hci_evt_le_big_sync_estabilished),
- 		     HCI_MAX_EVENT_SIZE),
-+	/* [0x1e = HCI_EVT_LE_BIG_SYNC_LOST] */
-+	HCI_LE_EV_VL(HCI_EVT_LE_BIG_SYNC_LOST,
-+		     hci_le_big_sync_lost_evt,
-+		     sizeof(struct hci_evt_le_big_sync_lost),
-+		     HCI_MAX_EVENT_SIZE),
- 	/* [0x22 = HCI_EVT_LE_BIG_INFO_ADV_REPORT] */
- 	HCI_LE_EV_VL(HCI_EVT_LE_BIG_INFO_ADV_REPORT,
- 		     hci_le_big_info_adv_report_evt,
 
 ---
-base-commit: bd35cd12d915bc410c721ba28afcada16f0ebd16
-change-id: 20250612-handle_big_sync_lost_event-4c7dc64390a2
+base-commit: ae1b7f6ba805f82742bbc32ff275e268248ef9f8
+change-id: 20250624-bap_for_big_sync_lost-63476c679dbb
 
 Best regards,
 -- 
