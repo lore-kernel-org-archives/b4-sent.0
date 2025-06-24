@@ -1,217 +1,155 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Tue, 24 Jun 2025 22:05:50 +0200
-Subject: [PATCH RFC 3/7] nvme: Add file descriptor to read CDQs
+Date: Tue, 24 Jun 2025 22:05:51 +0200
+Subject: [PATCH RFC 4/7] nvme: Add function to create a CDQ
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250624-jag-cdq-v1-3-6d88476c9165@kernel.org>
+Message-Id: <20250624-jag-cdq-v1-4-6d88476c9165@kernel.org>
 References: <20250624-jag-cdq-v1-0-6d88476c9165@kernel.org>
 In-Reply-To: <20250624-jag-cdq-v1-0-6d88476c9165@kernel.org>
 To: joshi.k@samsung.com
 Cc: Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5473;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3913;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=VpEiKje7pYbIaUqTR1qpen3fjJouahq56YuI9Z/pLlE=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGhbBR7b2/6NIozIGcgACsgGxTUF8rP2U2Cz7
- xg2dmn+7WCikIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJoWwUeAAoJELqXzVK3
- lkFPoQcL/34cbj/KWSWKMcWJBqagfFPiojPIPokL/+LJMueY7O/8sjNwTU23H0pY+MMahMVAgmS
- Hfj5aT1K6VQfOuHZh+LLwxt60GdkybqDOypA+2dJbneHbJ637CDfUqe3lCDnKkeO9Wy3/D/D7Q3
- IIh5+f/xhx4dzDWuDz0cIuICOY8LWElbRe4HOpjSF70rrS3o8/UYZeQLKhauaWhBX1vy65bOSEq
- kHdfKfnk4XvsBD2KIc/H7Mnw5Ka0JsHwNloK9rxtCFMd08j6Nn6ITvwGEuKv5wowUmXxKoSKrgT
- kYOEEZKID9ZcwJM6JIWlVRtZR+xg7UtUDXzMx64NcMWBTVNAsKtb0k8RO70wwfCAwm6DTmJLJUD
- gimic7B0RPkkA7/0sACbM4ik7zO6LzCSUpB3nEBv5MKzeq65vto/ZLDR6THvx2dmuPy/7xfS9Rf
- /mao3r7n0eMNbPxq14bsc1DM+DrDVsXrB5xxgFPKptBkJEDKuasBZ0z2DwfFDeza9Ka9dcceLT8
- w4=
+ bh=5T4wQYOae7YNgVSRghoozLUTA5utfIc03ICqA7bo9kY=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGhbBR+KwFGDR39Z4lAf4H4oXj7AbAceR6n6u
+ 72rrkj2MDJkTIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJoWwUfAAoJELqXzVK3
+ lkFPoooL/3fqpIr9ymovD27aY71yJhJ7bsGgMTtG6dzaH/nQF8uHKFBV/0yLjpWOEoITZb33AOE
+ mnLsmYo3b6QNAjiuhci4TD7dxEuA9DTYD4RlLpQthqXVy+7uXab/ipaLeMmTRk3y/0hEhsAu2d/
+ dkmrBdhlukQlhcozAmMtJKj8lAcgoMFxysA22w+FSa55erkQnZ+/xPQUOAv0U739WlCmlkegItc
+ emj1gNXSgyMBqCwNPnJRuB2NKFI99MzRibRhE2b3vCx52JxLfeOu3V3PdcVX7tRZez3VhQEHJdP
+ rcLwAsI8ayyp3gE0fsnwUCWlhbODh23mbUI9KE6TZDm0Q3bVdNQvoHl4jp6/79DUh7oteKuGRvx
+ BH9qoajhfu8cdZTBnjiTNTwTWccESLSnEEDYop835MD5cY133zZHepcirteaB6HxBgX41Sh9aXg
+ LkAasg3ovDiO7ZYXZuZNRx+cKjfI/AZw3c+HO1E9te8kMORfGW+ZSdKFc7ggoc6KtyGTAaAUqQ5
+ Ik=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The file descriptor provided by nvme_cdq_fd is to be used to consume the
-entries in the newly created CDQ. This commit both adds the creation of
-the file descriptor as well as the mechanism to read and copy entry data
-back to user space.
+CDQ creation allocates DMAable memory and forwards the address to
+the NVME controller for queue creation. After the NVME admin command
+returns the CDQ id, the CDQ object is stored in the controller CDQ
+xarray and the file descriptor is setup ready to be used.
 
-All available entries are consumed on every read. Phase bits and current
-head are updated before sending the cdq feature id which tells the
-controller the entries have been cosumed.
-
-The nvme_cdq_fd is not called anywhere yet as this is a preparation
-commit for when the CDQ create and delete are added.
+The CDQ id is returned in cdq_id and the file descriptor is set in
+cdq_fd.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- drivers/nvme/host/core.c | 149 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 149 insertions(+)
+ drivers/nvme/host/core.c | 82 ++++++++++++++++++++++++++++++++++++++++++++++++
+ drivers/nvme/host/nvme.h |  4 +++
+ 2 files changed, 86 insertions(+)
 
 diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index 9b2de74d62f7a65aea2d28bbbed6681195d9afcd..bffeb329b5c95e74d2b255296dcacfb683030867 100644
+index bffeb329b5c95e74d2b255296dcacfb683030867..710ad14fbab5849f06b0bc2190f3f905aacd039c 100644
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
-@@ -23,6 +23,7 @@
- #include <linux/pm_qos.h>
- #include <linux/ratelimit.h>
- #include <linux/unaligned.h>
-+#include <linux/anon_inodes.h>
- 
- #include "nvme.h"
- #include "fabrics.h"
-@@ -1228,6 +1229,154 @@ u32 nvme_passthru_start(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u8 opcode)
+@@ -1377,6 +1377,88 @@ static int nvme_cdq_fd(struct cdq_nvme_queue *cdq, int *fdno)
+ 	return ret;
  }
- EXPORT_SYMBOL_NS_GPL(nvme_passthru_start, "NVME_TARGET_PASSTHRU");
  
-+static int nvme_cdq_is_tip_new(const struct cdq_nvme_queue *cdq)
++static int nvme_cdq_alloc(struct nvme_ctrl *ctrl, struct cdq_nvme_queue **cdq,
++			  u32 entry_nr, u32 entry_nbyte)
 +{
-+	void *tip = cdq->entries + (cdq->curr_entry * cdq->entry_nbyte);
-+	/* if different, then its new! */
-+	return (*(u8 *)(tip + cdq->cdqp_offset) & cdq->cdqp_mask) != cdq->curr_cdqp;
-+}
++	struct cdq_nvme_queue *ret_cdq = kzalloc(sizeof(*ret_cdq), GFP_KERNEL);
 +
-+static void nvme_cdq_next(struct cdq_nvme_queue *cdq)
-+{
-+	if (cdq->curr_entry + 1 == cdq->entry_nr) {
-+		cdq->curr_entry = 0;
-+		cdq->curr_cdqp = ~cdq->curr_cdqp & 0x1;
-+	} else {
-+		cdq->curr_entry++;
++	if (!ret_cdq)
++		return -ENOMEM;
++
++	ret_cdq->entries = dma_alloc_coherent(ctrl->dev,
++					      entry_nr * entry_nbyte,
++					      &ret_cdq->entries_dma_addr,
++					      GFP_KERNEL);
++	if (!ret_cdq->entries) {
++		kfree(ret_cdq);
++		return -ENOMEM;
 +	}
++
++	*cdq = ret_cdq;
++
++	return 0;
 +}
 +
-+static int nvme_cdq_send_feature_id(struct cdq_nvme_queue *cdq)
++static void nvme_cdq_free(struct nvme_ctrl *ctrl, struct cdq_nvme_queue *cdq)
 +{
-+	struct nvme_command c = { };
-+
-+	c.features.opcode = nvme_admin_set_features;
-+	c.features.fid = cpu_to_le32(NVME_FEAT_CDQ);
-+	c.features.dword11 = cdq->cdq_id;
-+	c.features.dword12 = cpu_to_le32(cdq->curr_entry);
-+
-+	return nvme_submit_sync_cmd(cdq->ctrl->admin_q, &c, NULL, 0);
++	dma_free_coherent(ctrl->dev, cdq->entry_nr * cdq->entry_nbyte,
++			  cdq->entries, cdq->entries_dma_addr);
++	kfree(cdq);
 +}
 +
-+/*
-+ * Traverse the CDQ until max entries are reached or until the entry phase
-+ * bit is the same as the current phase bit.
-+ *
-+ * cdq : Controller Data Queue
-+ * max_nentry : Max entries to "traverse" before sending feature id
-+ * consume : Executed after exhausting traversal and before seinding the nvme feature id
-+ * priv_data : argument for consume
-+ */
-+static ssize_t nvme_cdq_traverse(struct cdq_nvme_queue *cdq, size_t max_nentry,
-+				     ssize_t (*consume)(const u32 init_entry,
-+							const size_t tx_nentry,
-+							struct cdq_nvme_queue *cdq,
-+							void *priv_data),
-+				     void *priv_data)
++
++int nvme_cdq_create(struct nvme_ctrl *ctrl, struct nvme_command *c,
++		    const u32 entry_nr, const u32 entry_nbyte,
++		    uint cdqp_offset, uint cdqp_mask,
++		    u16 *cdq_id, int *cdq_fd)
 +{
-+	int ret;
-+	ssize_t tx_nentry = 0; /* transferred num entries */
-+	size_t target_nentry = 0; /* target num entries */
-+	u32 init_entry = cdq->curr_entry;
++	int ret, fdno;
++	struct cdq_nvme_queue *cdq, *xa_ret;
++	union nvme_result result = { };
 +
-+	for (; target_nentry < max_nentry && nvme_cdq_is_tip_new(cdq);
-+	     ++target_nentry) {
-+		nvme_cdq_next(cdq);
-+	}
-+	tx_nentry = consume(init_entry, target_nentry, cdq, priv_data);
-+	if (tx_nentry < 0)
-+		return tx_nentry;
-+	if (tx_nentry != target_nentry)
-+		return -EIO;
-+
-+	ret = nvme_cdq_send_feature_id(cdq);
-+	if (ret < 0)
++	ret = nvme_cdq_alloc(ctrl, &cdq, entry_nr, entry_nbyte);
++	if (ret)
 +		return ret;
++	c->cdq.prp1 = cdq->entries_dma_addr;
 +
-+	return tx_nentry;
-+}
++	ret = __nvme_submit_sync_cmd(ctrl->admin_q, c, &result, NULL, 0, NVME_QID_ANY, 0);
++	if (ret)
++		goto err_cdq_free;
 +
-+static ssize_t nvme_cdq_consume_fops_read(const u32 init_entry, const size_t tx_nentry,
-+					  struct cdq_nvme_queue *cdq, void *priv)
-+{
-+	char __user *buf = priv;
-+	void *entries_start;
-+	size_t copy_nentry = min(cdq->entry_nr - init_entry, tx_nentry);
++	cdq->cdq_id = le16_to_cpu(result.u16);
++	cdq->entry_nbyte = entry_nbyte;
++	cdq->entry_nr = entry_nr;
++	cdq->ctrl = ctrl;
++	cdq->cdqp_offset = cdqp_offset;
++	cdq->cdqp_mask = cdqp_mask;
 +
-+	entries_start = cdq->entries + (init_entry * cdq->entry_nbyte);
-+	if (copy_to_user(buf, entries_start, copy_nentry * cdq->entry_nbyte))
-+		return -EFAULT;
-+
-+	if (copy_nentry == tx_nentry)
-+		return tx_nentry;
-+
-+	/* Copy the entries that have been wrapped around */
-+	buf += (copy_nentry * cdq->entry_nbyte);
-+	copy_nentry = tx_nentry - copy_nentry;
-+	if (copy_to_user(buf, cdq->entries, copy_nentry * cdq->entry_nbyte))
-+		return -EFAULT;
-+
-+	return tx_nentry;
-+}
-+
-+static ssize_t nvme_cdq_fops_read(struct file *filep, char __user *buf,
-+				  size_t count, loff_t *ppos)
-+{
-+	struct cdq_nvme_queue *cdq = filep->private_data;
-+	size_t max_nentry = count / cdq->entry_nbyte;
-+
-+	if (*ppos)
-+		return -ESPIPE;
-+
-+	if (count < cdq->entry_nbyte)
-+		return -EINVAL;
-+
-+	if (max_nentry > cdq->entry_nr)
-+		return -EINVAL;
-+
-+	return nvme_cdq_traverse(cdq, max_nentry, nvme_cdq_consume_fops_read, buf);
-+}
-+
-+static const struct file_operations cdq_fops = {
-+	.owner		= THIS_MODULE,
-+	.open		= nonseekable_open,
-+	.read		= nvme_cdq_fops_read,
-+};
-+
-+static int nvme_cdq_fd(struct cdq_nvme_queue *cdq, int *fdno)
-+{
-+	int ret = 0;
-+	struct file *filep;
-+
-+	*fdno = -1;
-+
-+	if (cdq->filep)
-+		return -EINVAL;
-+
-+	filep = anon_inode_getfile("[cdq-readfd]", &cdq_fops, cdq, O_RDWR);
-+	if (IS_ERR(filep)) {
-+		ret = PTR_ERR(filep);
-+		goto out;
++	xa_ret = xa_store(&ctrl->cdqs, cdq->cdq_id, cdq, GFP_KERNEL);
++	if (xa_is_err(xa_ret)) {
++		ret = xa_err(xa_ret);
++		goto err_cdq_free;
 +	}
 +
-+	*fdno = get_unused_fd_flags(O_CLOEXEC | O_RDONLY | O_DIRECT);
-+	if (*fdno < 0) {
-+		ret = *fdno;
-+		goto out_fput;
-+	}
++	ret = nvme_cdq_fd(cdq, &fdno);
++	if (ret)
++		goto err_cdq_erase;
 +
-+	fd_install(*fdno, filep);
-+	cdq->filep = filep;
++	*cdq_id = cdq->cdq_id;
++	*cdq_fd = fdno;
 +
 +	return 0;
 +
-+out_fput:
-+	put_unused_fd(*fdno);
-+	fput(filep);
-+out:
++err_cdq_erase:
++	xa_erase(&ctrl->cdqs, cdq->cdq_id);
++
++err_cdq_free:
++	cdq_id = NULL;
++	cdq_fd = NULL;
++	nvme_cdq_free(ctrl, cdq);
++
 +	return ret;
 +}
++EXPORT_SYMBOL_GPL(nvme_cdq_create);
 +
  void nvme_passthru_end(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u32 effects,
  		       struct nvme_command *cmd, int status)
  {
+diff --git a/drivers/nvme/host/nvme.h b/drivers/nvme/host/nvme.h
+index 800970a0bb87f7a3b6e855f56a2493a7deed1ecd..ddec5b44fe022831280458ed9fc1cb1ed11633b7 100644
+--- a/drivers/nvme/host/nvme.h
++++ b/drivers/nvme/host/nvme.h
+@@ -1207,6 +1207,10 @@ u32 nvme_passthru_start(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u8 opcode);
+ int nvme_execute_rq(struct request *rq, bool at_head);
+ void nvme_passthru_end(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u32 effects,
+ 		       struct nvme_command *cmd, int status);
++int nvme_cdq_create(struct nvme_ctrl *ctrl, struct nvme_command *c,
++		    const u32 entry_nr, const u32 entry_nbyte,
++		    uint cdqp_offset, uint cdqp_mask,
++		    u16 *cdq_id, int *cdq_fd);
+ struct nvme_ctrl *nvme_ctrl_from_file(struct file *file);
+ struct nvme_ns *nvme_find_get_ns(struct nvme_ctrl *ctrl, unsigned nsid);
+ bool nvme_get_ns(struct nvme_ns *ns);
 
 -- 
 2.47.2
