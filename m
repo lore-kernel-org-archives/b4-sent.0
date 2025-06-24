@@ -1,99 +1,119 @@
 From: Joel Granados <joel.granados@kernel.org>
-Subject: [PATCH RFC 0/7] nvme: Add Controller Data Queue to the nvme driver
-Date: Tue, 24 Jun 2025 22:05:47 +0200
-Message-Id: <20250624-jag-cdq-v1-0-6d88476c9165@kernel.org>
+Date: Tue, 24 Jun 2025 22:05:48 +0200
+Subject: [PATCH RFC 1/7] nvme: Add nvme_cdq to the nmve_command union
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIABsFW2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDMyMT3azEdN3klEJdM0vD1BTzVDOLZMNkJaDqgqLUtMwKsEnRSkFuzkq
- xtbUAORdail4AAAA=
-X-Change-ID: 20250624-jag-cdq-691ed7e68c1c
+Message-Id: <20250624-jag-cdq-v1-1-6d88476c9165@kernel.org>
+References: <20250624-jag-cdq-v1-0-6d88476c9165@kernel.org>
+In-Reply-To: <20250624-jag-cdq-v1-0-6d88476c9165@kernel.org>
 To: joshi.k@samsung.com
 Cc: Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2747;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2623;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=jbWWD1pLgHeYqhKcNvINarVNKzJxigdVrwCGBaNoVcM=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGhbBR06F07xGhgVoBHfghcxUQoU6cyyQHF4B
- urmYUy/FbxRdokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJoWwUdAAoJELqXzVK3
- lkFP9SkL/jZenv5kFPAPO/TcD30hccGhxXi0/d1HiJN8NcizJY4NLbODQbqxrVmDTL7qCgY37Lj
- NPZgmkTSrfnfGZtxZzAuO6AsTFmEJe7d8xdy+YPpMNisfxHtWBS7cML9YVpYcr1/fOEcAxZHaqM
- N1INMY726NvQSjLjbVDKmHTAmrmjvdhro/MTbv2Wh+ijq6/ElM5LBGp0Y7eEar/81sYUliBaDo7
- JE45bqySsPjel4fzU5LNztku0s4wbMePWoJNIVUuse+h+RAteqEznCIismTVwf2EIApBiPd0yvQ
- DXgYcIILNMimvG+07llCj8kTO5mw0TfbH2/SD5oAebjyqkRgcGaXiHdNBYItVBi1Ua+wE5mw1Ny
- zO9iv2ry1YCZh7Y//E0x1dVeQjV3Xig6GQtGw85GP3zAQENZIGynvVA4JR/nmNV5bcUWs+8wyFF
- gYzHScRqtAcz5ADSaedtv72zeUr89GLMjRYeI1B0gpHk9L+6Vu6dtN1IJJx2LZq4BhnlCuipUI4
- cU=
+ bh=d/8dK4a7KdwxbCg4t0hMR1pGLVUx/BbppFI+idgJpw4=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGhbBR22QfLtuBPskOld9mFjWjSFcnQG2eRZ1
+ 4mjiRH1M0bwXIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJoWwUdAAoJELqXzVK3
+ lkFPxigL/0//ASPhoT9Qcn3dqqvfih6/xRwGLwQ78GS0xuxu3G5uiPRyUKgQaaw7JQ9ocsSrWr9
+ OXSsnVCE2NVO8hWCyQt384MlQinxnFb1DQZ1hPGBIbaCnIaQbHrVm1YRjrGc8baNP6jCy8o18m7
+ DvggcYwbtUwfRDV96SiIJow2nl0vBz/yAoJJ/k0fG3F7tshGuRjin0mi1qsZ62zMC/fZpyzG6rq
+ NhcxkpcwWV2vPXGLZ1qEyrrLbR7KCwmrNziw7vc06GrANTlOV8TQZhusvRhVrvo8thsmZieGqWo
+ dxSus7OfUL959RmJbEtinUvevU/tAnjTr9Jhi1fUUZg+DOW4XrpW0Hlu7LiBSKKgfH+W46gcruy
+ 8WqevUUDy1hIUlOyKyKCwbYliFkXqsPFIeaO8Rfav4KOtvdtw1WPn53gRAPWUXGuCKHpenvUBrv
+ fQDCWncMgO2EXTpowqH+JfWJj0/4d5qRJcCd+WXSOEBh5Bd0wKJwMwEdsxD65YHs2saJXZCWRY8
+ aQ=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-@kanchan:
-Thx for agreeing to the review. I'll quickly describe what I'm doing and
-then list some questions. If you have any doubts or you want to include
-anyone else in thread, please get back to me.
-
-Add a cdq xarray into the struct nvme_ctrl that will house all the
-Controller Data Queues related to that controller. Use struct
-cdq_nvme_queue to hold all relevant state of the CDQ; here you will find
-the pointer to the queue head (curr_entry) as well as the entry memory
-(entries) and DMA addr (entries_dma_addr). For now all this needs to be
-contiguous memory.
-
-A new ioctl has been added to nvme_ioctl.h (NVME_IOCTL_ADMIN_CDQ).
-Caller from user space can create and delete CDQs. When creating, the
-CDQ id and the CDQ file descriptor will be returned so the user can
-interact with the CDQ.
-
-CDQ creation will allocate queue memory, send an NVME command to the
-controller to create the CDQ, put the cdq pointer into the xarray and
-initialize the file descriptor infrastructure so user space can read the
-entries.
-
-The Controller Data Queue is different from regular IO queues in that it
-is not a pair. You can think about it as just a completion queue. The
-controller fills entries and the host (the kernel) consumes them. There
-is not submission queue.
-
-questions:
-1. Where do I put the NVME command that terminates the CDQ? ATM it is in
-   nvme_free_ctrl with the nvme_free_cdqs call; but I believe that
-   sending an NVME command at this point (nvme_free_ctrl) is too late,
-   but where else can I put it? Does it have to be in one of the working
-   queues? which one?
-
-2. I have a call to dma_alloc_coherent in core.c. which seems a bit
-   out of place because there are no others in that file. Is there a
-   unspoken rule to not have these there?
-
-Comments and questions are appreciated.
-
-Best
+Add a new type of nvme_command (nvme_cdq) to the list. With it comes a
+new CDQ feature identifier value (0x21) and an admin code (0x45). Only
+consider the case where the memory is contiguous even though the
+specification allows for non-contiguous PRPs.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-Joel Granados (7):
-      nvme: Add nvme_cdq to the nmve_command union
-      nvme: Add cdq data structure to nvme_ctrl
-      nvme: Add file descriptor to read CDQs
-      nvme: Add function to create a CDQ
-      nvme: Add function to delete CDQ
-      nvme: Add Controller Data Queue (CDQ) ioctl command
-      nvme: Connect CDQ ioctl to nvme driver
+ drivers/nvme/host/core.c |  1 +
+ include/linux/nvme.h     | 30 ++++++++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+)
 
- drivers/nvme/host/core.c        | 269 ++++++++++++++++++++++++++++++++++++++++
- drivers/nvme/host/ioctl.c       |  59 ++++++++-
- drivers/nvme/host/nvme.h        |  20 +++
- include/linux/nvme.h            |  30 +++++
- include/uapi/linux/nvme_ioctl.h |  18 +++
- 5 files changed, 395 insertions(+), 1 deletion(-)
----
-base-commit: 0ff41df1cb268fc69e703a08a57ee14ae967d0ca
-change-id: 20250624-jag-cdq-691ed7e68c1c
+diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
+index 6b04473c0ab73c61e208bb8fc230c2f9b65c69bc..7be6b42a1adcc3fdb3cec2e2d0e73fcf74244590 100644
+--- a/drivers/nvme/host/core.c
++++ b/drivers/nvme/host/core.c
+@@ -5133,6 +5133,7 @@ static inline void _nvme_check_size(void)
+ 	BUILD_BUG_ON(sizeof(struct nvme_rotational_media_log) != 512);
+ 	BUILD_BUG_ON(sizeof(struct nvme_dbbuf) != 64);
+ 	BUILD_BUG_ON(sizeof(struct nvme_directive_cmd) != 64);
++	BUILD_BUG_ON(sizeof(struct nvme_cdq) != 64);
+ 	BUILD_BUG_ON(sizeof(struct nvme_feat_host_behavior) != 512);
+ }
+ 
+diff --git a/include/linux/nvme.h b/include/linux/nvme.h
+index 2479ed10f53e37055973ea3c899060913923fa62..a2012ec00e60c2f0de1b06599ba39481eebe4263 100644
+--- a/include/linux/nvme.h
++++ b/include/linux/nvme.h
+@@ -1240,6 +1240,7 @@ enum nvme_admin_opcode {
+ 	nvme_admin_virtual_mgmt		= 0x1c,
+ 	nvme_admin_nvme_mi_send		= 0x1d,
+ 	nvme_admin_nvme_mi_recv		= 0x1e,
++	nvme_admin_cdq			= 0x45,
+ 	nvme_admin_dbbuf		= 0x7C,
+ 	nvme_admin_format_nvm		= 0x80,
+ 	nvme_admin_security_send	= 0x81,
+@@ -1309,6 +1310,7 @@ enum {
+ 	NVME_FEAT_PLM_WINDOW	= 0x14,
+ 	NVME_FEAT_HOST_BEHAVIOR	= 0x16,
+ 	NVME_FEAT_SANITIZE	= 0x17,
++	NVME_FEAT_CDQ		= 0x21,
+ 	NVME_FEAT_SW_PROGRESS	= 0x80,
+ 	NVME_FEAT_HOST_ID	= 0x81,
+ 	NVME_FEAT_RESV_MASK	= 0x82,
+@@ -1514,6 +1516,33 @@ struct nvme_directive_cmd {
+ 	__u32			rsvd16[3];
+ };
+ 
++struct nvme_cdq {
++	__u8			opcode;
++	__u8			flags;
++	__u16			command_id;
++	__u32			rsvd1[5];
++	__le64			prp1;
++	__u32			rsvd8[2];
++#define NVME_CDQ_SEL_CREATE_CDQ	0x0
++#define NVME_CDQ_SEL_DELETE_CDQ	0x1
++	__u8			sel;
++	__u8			rsvd10;
++	__le16			mos;
++	union {
++		struct {
++#define NVME_CDQ_CFG_PC_CONT	(1 << 0)
++			__le16	cdq_flags;
++			__le16	cqs;
++		} create;
++		struct {
++			__le16	cdqid;
++			__le16	rsvd;
++		} delete;
++	};
++	__le32			cdqsize;
++	__u32			rsvd13[2];
++};
++
+ /*
+  * Fabrics subcommands.
+  */
+@@ -1923,6 +1952,7 @@ struct nvme_command {
+ 		struct nvmf_auth_receive_command auth_receive;
+ 		struct nvme_dbbuf dbbuf;
+ 		struct nvme_directive_cmd directive;
++		struct nvme_cdq cdq;
+ 	};
+ };
+ 
 
-Best regards,
 -- 
-Joel Granados <joel.granados@kernel.org>
+2.47.2
 
