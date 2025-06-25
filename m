@@ -1,340 +1,89 @@
-From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Wed, 25 Jun 2025 16:21:02 +0200
-Subject: [PATCH v4 7/7] riscv: errata: Fix the PAUSE Opcode for MIPS P8700
+From: "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>
+Date: Wed, 25 Jun 2025 11:01:24 -0500
+Subject: [PATCH] bonding: don't force LACPDU tx to ~333 ms boundaries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250625-p8700-pause-v4-7-6c7dd7f85756@htecgroup.com>
-References: <20250625-p8700-pause-v4-0-6c7dd7f85756@htecgroup.com>
-In-Reply-To: <20250625-p8700-pause-v4-0-6c7dd7f85756@htecgroup.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>, Jonathan Corbet <corbet@lwn.net>
-Cc: Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
- devicetree@vger.kernel.org, linux-riscv@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
- Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
- Aleksandar Rikalo <arikalo@gmail.com>, 
- Raj Vishwanathan4 <rvishwanathan@mips.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250625-fix-lacpdu-jitter-v1-1-4d0ee627e1ba@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAFMdXGgC/x2MQQqAIBAAvxJ7bsEkg/pKdDDdaiNK1CIQ/550H
+ JiZBIE8U4ChSuDp4cDXWaCpKzCbPldCtoVBCqlEJxUu/OKhjbM37hwjeWyUam2/dELoGUrnPBX
+ pf45Tzh8MiugxYwAAAA==
+X-Change-ID: 20250625-fix-lacpdu-jitter-1554d9f600ab
+To: Jay Vosburgh <jv@jvosburgh.net>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Carlos Bilbao <carlos.bilbao@kernel.org>, 
+ Tonghao Zhang <tonghao@bamaicloud.com>, 
+ "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750861258; l=10530;
- i=aleksa.paunovic@htecgroup.com; s=20250514; h=from:subject:message-id;
- bh=ieaO9S2ok/je5oJYp/rO2uITgquZ3AoPbwIaliUX7A8=;
- b=IZVDL0F4scFZTJalYI0TYrVZXOsLbMhASsUCMkJXhVwDDNtRwXCVJlGpIxKDZruxXEm715Pgd
- g1xbL4grb5uB65/KEZZtQTsow2QtiBZgJuX41VBFVHem8v72cTn4dqS
-X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
- pk=gFVSVYLKAgJiS5qCnDyUMGOFuczv8C6o0UmRs+fgisA=
-X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250514 with auth_id=403
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2095; i=sforshee@kernel.org;
+ s=work-laptop; h=from:subject:message-id;
+ bh=poQN7rmBS+yUXsOsn4VAFtDKgpo5yI6MwxPt0bzi4IM=;
+ b=owEBbQGS/pANAwAKAVMDma7l9DHJAcsmYgBoXB1lQp17Gf1LirhQlvBSdI2ZLqNEM7w/vsSg5
+ cfVOtzlT9WJATMEAAEKAB0WIQSQnt+rKAvnETy4Hc9TA5mu5fQxyQUCaFwdZQAKCRBTA5mu5fQx
+ ySB5B/9LePzS7mIeDtBqSqKz7Z3zSCIM3/t/x0zlVjjRdmit0mL+1u22lcECAHnu4gZCp2gwMYf
+ UJwZs8zTrr7o4hFA7ERNeyqDlKuDpvdC4ieyZxyBkrBVKJIc9WPw650p2uyfzqWpQMcvJM82gwU
+ fqxAG0z6bRfoLeNkG5ORTwyi9D+v/oeNsGnLCID5YiD28tPaNoi8yTfbEF4MOsYo+xcoZx5imZd
+ z/jsviebEn6H/JCdKbFmzvzLdmcSz6SNRDGhdlJRSrIp+uIdL/yjxAoKsOWCTp5t0N9FcHe8IYU
+ 5A44wy8c7LNzhBAKqS+Q46olGG0CnKJ63QpiphgBy4UrYcwi
+X-Developer-Key: i=sforshee@kernel.org; a=openpgp;
+ fpr=2ABCA7498D83E1D32D51D3B5AB4800A62DB9F73A
+X-Endpoint-Received: by B4 Relay for sforshee@kernel.org/work-laptop with auth_id=442
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Djordje Todorovic <djordje.todorovic@htecgroup.com>
+The timer which ensures that no more than 3 LACPDUs are transmitted in
+a second rearms itself every 333ms regardless of whether an LACPDU is
+transmitted when the timer expires. This causes LACPDU tx to be delayed
+until the next expiration of the timer, which effectively aligns LACPDUs
+to ~333ms boundaries. This results in a variable amount of jitter in the
+timing of periodic LACPDUs.
 
-Add ERRATA_MIPS and ERRATA_MIPS_P8700_PAUSE_OPCODE configs.
-Handle errata for the MIPS PAUSE instruction.
+Change this to only rearm the timer when an LACPDU is actually sent,
+allowing tx at any point after the timer has expired.
 
-Signed-off-by: Djordje Todorovic <djordje.todorovic@htecgroup.com>
-Signed-off-by: Aleksandar Rikalo <arikalo@gmail.com>
-Signed-off-by: Raj Vishwanathan4 <rvishwanathan@mips.com>
-Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Signed-off-by: Seth Forshee (DigitalOcean) <sforshee@kernel.org>
 ---
- arch/riscv/Kconfig.errata               | 23 +++++++++++
- arch/riscv/errata/Makefile              |  1 +
- arch/riscv/errata/mips/Makefile         |  5 +++
- arch/riscv/errata/mips/errata.c         | 67 +++++++++++++++++++++++++++++++++
- arch/riscv/include/asm/alternative.h    |  3 ++
- arch/riscv/include/asm/cmpxchg.h        |  3 +-
- arch/riscv/include/asm/errata_list.h    | 17 ++++++++-
- arch/riscv/include/asm/vdso/processor.h |  4 +-
- arch/riscv/include/asm/vendorid_list.h  |  1 +
- arch/riscv/kernel/alternative.c         |  5 +++
- arch/riscv/kernel/entry.S               |  2 +
- arch/riscv/mm/init.c                    |  1 +
- 12 files changed, 129 insertions(+), 3 deletions(-)
+ drivers/net/bonding/bond_3ad.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/arch/riscv/Kconfig.errata b/arch/riscv/Kconfig.errata
-index e318119d570de0acc0850a2e1a2505ecb71bea08..aca9b0cfcfecf91d4d1910f294ee109ed15f2d6c 100644
---- a/arch/riscv/Kconfig.errata
-+++ b/arch/riscv/Kconfig.errata
-@@ -21,6 +21,29 @@ config ERRATA_ANDES_CMO
- 
- 	  If you don't know what to do here, say "Y".
- 
-+config ERRATA_MIPS
-+	bool "MIPS errata"
-+	depends on RISCV_ALTERNATIVE
-+	help
-+	  All MIPS errata Kconfig depend on this Kconfig. Disabling
-+	  this Kconfig will disable all MIPS errata. Please say "Y"
-+	  here if your platform uses MIPS CPU cores.
-+
-+	  Otherwise, please say "N" here to avoid unnecessary overhead.
-+
-+config ERRATA_MIPS_P8700_PAUSE_OPCODE
-+	bool "Fix the PAUSE Opcode for MIPS P8700"
-+	depends on ERRATA_MIPS && 64BIT
-+	default n
-+	help
-+	   The RISCV MIPS P8700 uses a different opcode for PAUSE.
-+	   It is a 'hint' encoding of the SLLI instruction,
-+	   with rd=0, rs1=0 and imm=5. It will behave as a NOP
-+	   instruction if no additional behavior beyond that of
-+	   SLLI is implemented.
-+
-+	   If you are not using the P8700 processor, say n.
-+
- config ERRATA_SIFIVE
- 	bool "SiFive errata"
- 	depends on RISCV_ALTERNATIVE
-diff --git a/arch/riscv/errata/Makefile b/arch/riscv/errata/Makefile
-index bc6c77ba837d2da4c98dabab18083d27f46629c7..02a7a3335b1d557933e04cd6d0cf7bf4260b8c40 100644
---- a/arch/riscv/errata/Makefile
-+++ b/arch/riscv/errata/Makefile
-@@ -13,5 +13,6 @@ endif
- endif
- 
- obj-$(CONFIG_ERRATA_ANDES) += andes/
-+obj-$(CONFIG_ERRATA_MIPS) += mips/
- obj-$(CONFIG_ERRATA_SIFIVE) += sifive/
- obj-$(CONFIG_ERRATA_THEAD) += thead/
-diff --git a/arch/riscv/errata/mips/Makefile b/arch/riscv/errata/mips/Makefile
-new file mode 100644
-index 0000000000000000000000000000000000000000..6278c389b801ee6e54e808c80e6e236c026329c7
---- /dev/null
-+++ b/arch/riscv/errata/mips/Makefile
-@@ -0,0 +1,5 @@
-+ifdef CONFIG_RISCV_ALTERNATIVE_EARLY
-+CFLAGS_errata.o := -mcmodel=medany
-+endif
-+
-+obj-y += errata.o
-diff --git a/arch/riscv/errata/mips/errata.c b/arch/riscv/errata/mips/errata.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..e984a8152208c34690f89d8101571b097485c360
---- /dev/null
-+++ b/arch/riscv/errata/mips/errata.c
-@@ -0,0 +1,67 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2025 MIPS.
-+ */
-+
-+#include <linux/memory.h>
-+#include <linux/module.h>
-+#include <asm/text-patching.h>
-+#include <asm/alternative.h>
-+#include <asm/errata_list.h>
-+#include <asm/vendorid_list.h>
-+#include <asm/vendor_extensions.h>
-+#include <asm/vendor_extensions/mips.h>
-+
-+static inline bool errata_probe_pause(void)
-+{
-+	if (!IS_ENABLED(CONFIG_ERRATA_MIPS_P8700_PAUSE_OPCODE))
-+		return false;
-+
-+	if (!riscv_isa_vendor_extension_available(MIPS_VENDOR_ID, XMIPSEXECTL))
-+		return false;
-+
-+	return true;
-+}
-+
-+static u32 mips_errata_probe(void)
-+{
-+	u32 cpu_req_errata = 0;
-+
-+	if (errata_probe_pause())
-+		cpu_req_errata |= BIT(ERRATA_MIPS_P8700_PAUSE_OPCODE);
-+
-+	return cpu_req_errata;
-+}
-+
-+void mips_errata_patch_func(struct alt_entry *begin, struct alt_entry *end,
-+			    unsigned long archid, unsigned long impid,
-+			    unsigned int stage)
-+{
-+	struct alt_entry *alt;
-+	u32 cpu_req_errata = mips_errata_probe();
-+	u32 tmp;
-+
-+	BUILD_BUG_ON(ERRATA_MIPS_NUMBER >= RISCV_VENDOR_EXT_ALTERNATIVES_BASE);
-+
-+	if (stage == RISCV_ALTERNATIVES_EARLY_BOOT)
-+		return;
-+
-+	for (alt = begin; alt < end; alt++) {
-+		if (alt->vendor_id != MIPS_VENDOR_ID)
-+			continue;
-+
-+		if (alt->patch_id >= ERRATA_MIPS_NUMBER) {
-+			WARN(1, "MIPS errata id:%d not in kernel errata list\n",
-+			     alt->patch_id);
-+			continue;
-+		}
-+
-+		tmp = (1U << alt->patch_id);
-+		if (cpu_req_errata && tmp) {
-+			mutex_lock(&text_mutex);
-+			patch_text_nosync(ALT_OLD_PTR(alt), ALT_ALT_PTR(alt),
-+					  alt->alt_len);
-+			mutex_unlock(&text_mutex);
-+		}
-+	}
-+}
-diff --git a/arch/riscv/include/asm/alternative.h b/arch/riscv/include/asm/alternative.h
-index 3c2b59b25017929df92b4e6741ac1a9308bfec54..bc3ada8190a9e7dc7d904aeb3174c78329e4d8d7 100644
---- a/arch/riscv/include/asm/alternative.h
-+++ b/arch/riscv/include/asm/alternative.h
-@@ -48,6 +48,9 @@ struct alt_entry {
- void andes_errata_patch_func(struct alt_entry *begin, struct alt_entry *end,
- 			     unsigned long archid, unsigned long impid,
- 			     unsigned int stage);
-+void mips_errata_patch_func(struct alt_entry *begin, struct alt_entry *end,
-+			      unsigned long archid, unsigned long impid,
-+			      unsigned int stage);
- void sifive_errata_patch_func(struct alt_entry *begin, struct alt_entry *end,
- 			      unsigned long archid, unsigned long impid,
- 			      unsigned int stage);
-diff --git a/arch/riscv/include/asm/cmpxchg.h b/arch/riscv/include/asm/cmpxchg.h
-index 0b749e7102162477432f7cf9a34768fbdf2e8cc7..80bd52363c68690f33bfd54e0cc40399cd60b57b 100644
---- a/arch/riscv/include/asm/cmpxchg.h
-+++ b/arch/riscv/include/asm/cmpxchg.h
-@@ -14,6 +14,7 @@
- #include <asm/insn-def.h>
- #include <asm/cpufeature-macros.h>
- #include <asm/processor.h>
-+#include <asm/errata_list.h>
- 
- #define __arch_xchg_masked(sc_sfx, swap_sfx, prepend, sc_append,		\
- 			   swap_append, r, p, n)				\
-@@ -438,7 +439,7 @@ static __always_inline void __cmpwait(volatile void *ptr,
- 	return;
- 
- no_zawrs:
--	asm volatile(RISCV_PAUSE : : : "memory");
-+	ALT_RISCV_PAUSE();
- }
- 
- #define __cmpwait_relaxed(ptr, val) \
-diff --git a/arch/riscv/include/asm/errata_list.h b/arch/riscv/include/asm/errata_list.h
-index 6e426ed7919a4acd997b60b723c0d5cfddb4cff6..618dee38d8d1347711fd46a459bfc8d2cb7bf42b 100644
---- a/arch/riscv/include/asm/errata_list.h
-+++ b/arch/riscv/include/asm/errata_list.h
-@@ -5,7 +5,6 @@
- #ifndef ASM_ERRATA_LIST_H
- #define ASM_ERRATA_LIST_H
- 
--#include <asm/alternative.h>
- #include <asm/csr.h>
- #include <asm/insn-def.h>
- #include <asm/hwcap.h>
-@@ -29,6 +28,11 @@
- #define	ERRATA_THEAD_NUMBER 3
- #endif
- 
-+#ifdef CONFIG_ERRATA_MIPS
-+#define ERRATA_MIPS_P8700_PAUSE_OPCODE 0
-+#define ERRATA_MIPS_NUMBER 1
-+#endif
-+
- #ifdef __ASSEMBLY__
- 
- #define ALT_INSN_FAULT(x)						\
-@@ -59,6 +63,17 @@ asm(ALTERNATIVE("sfence.vma %0, %1", "sfence.vma", SIFIVE_VENDOR_ID,	\
- 		ERRATA_SIFIVE_CIP_1200, CONFIG_ERRATA_SIFIVE_CIP_1200)	\
- 		: : "r" (addr), "r" (asid) : "memory")
- 
-+#define ALT_RISCV_PAUSE()					\
-+asm(ALTERNATIVE(	\
-+		RISCV_PAUSE, /* Original RISC‑V pause insn */	\
-+		".4byte 0x00501013", /* Replacement for MIPS P8700 */	\
-+		MIPS_VENDOR_ID, /* Vendor ID to match */	\
-+		ERRATA_MIPS_P8700_PAUSE_OPCODE, /* patch_id */	\
-+		CONFIG_ERRATA_MIPS_P8700_PAUSE_OPCODE)	\
-+	: /* no outputs */	\
-+	: /* no inputs */	\
-+	: "memory")
-+
- /*
-  * _val is marked as "will be overwritten", so need to set it to 0
-  * in the default case.
-diff --git a/arch/riscv/include/asm/vdso/processor.h b/arch/riscv/include/asm/vdso/processor.h
-index 8f383f05a290f123d941226b5dd975381d7d8536..8f749552ecfe6220bbc35f1c4677c6de8f7abdec 100644
---- a/arch/riscv/include/asm/vdso/processor.h
-+++ b/arch/riscv/include/asm/vdso/processor.h
-@@ -5,6 +5,8 @@
- #ifndef __ASSEMBLY__
- 
- #include <asm/barrier.h>
-+
-+#include <asm/errata_list.h>
- #include <asm/insn-def.h>
- 
- static inline void cpu_relax(void)
-@@ -19,7 +21,7 @@ static inline void cpu_relax(void)
- 	 * Reduce instruction retirement.
- 	 * This assumes the PC changes.
+diff --git a/drivers/net/bonding/bond_3ad.c b/drivers/net/bonding/bond_3ad.c
+index c6807e473ab706afed9560bcdb5e6eca1934f5b7..a8d8aaa169fc09d7d5c201ff298b37b3f11a7ded 100644
+--- a/drivers/net/bonding/bond_3ad.c
++++ b/drivers/net/bonding/bond_3ad.c
+@@ -1378,7 +1378,7 @@ static void ad_tx_machine(struct port *port)
+ 	/* check if tx timer expired, to verify that we do not send more than
+ 	 * 3 packets per second
  	 */
--	__asm__ __volatile__ (RISCV_PAUSE);
-+	ALT_RISCV_PAUSE();
- 	barrier();
+-	if (port->sm_tx_timer_counter && !(--port->sm_tx_timer_counter)) {
++	if (!port->sm_tx_timer_counter || !(--port->sm_tx_timer_counter)) {
+ 		/* check if there is something to send */
+ 		if (port->ntt && (port->sm_vars & AD_PORT_LACP_ENABLED)) {
+ 			__update_lacpdu_from_port(port);
+@@ -1393,12 +1393,13 @@ static void ad_tx_machine(struct port *port)
+ 				 * again until demanded
+ 				 */
+ 				port->ntt = false;
++
++				/* restart tx timer(to verify that we will not
++				 * exceed AD_MAX_TX_IN_SECOND
++				 */
++				port->sm_tx_timer_counter = ad_ticks_per_sec / AD_MAX_TX_IN_SECOND;
+ 			}
+ 		}
+-		/* restart tx timer(to verify that we will not exceed
+-		 * AD_MAX_TX_IN_SECOND
+-		 */
+-		port->sm_tx_timer_counter = ad_ticks_per_sec/AD_MAX_TX_IN_SECOND;
+ 	}
  }
  
-diff --git a/arch/riscv/include/asm/vendorid_list.h b/arch/riscv/include/asm/vendorid_list.h
-index a5150cdf34d87f01baf6d3ef843bc2d6d8d54095..3b09874d7a6dfb8f8aa45b0be41c20711d539e78 100644
---- a/arch/riscv/include/asm/vendorid_list.h
-+++ b/arch/riscv/include/asm/vendorid_list.h
-@@ -9,5 +9,6 @@
- #define MICROCHIP_VENDOR_ID	0x029
- #define SIFIVE_VENDOR_ID	0x489
- #define THEAD_VENDOR_ID		0x5b7
-+#define MIPS_VENDOR_ID		0x722
- 
- #endif
-diff --git a/arch/riscv/kernel/alternative.c b/arch/riscv/kernel/alternative.c
-index 7eb3cb1215c62130c63a72fc650cddff6bae62af..7642704c7f1841f67fc23738063f22b4ecf58194 100644
---- a/arch/riscv/kernel/alternative.c
-+++ b/arch/riscv/kernel/alternative.c
-@@ -47,6 +47,11 @@ static void riscv_fill_cpu_mfr_info(struct cpu_manufacturer_info_t *cpu_mfr_info
- 		cpu_mfr_info->patch_func = andes_errata_patch_func;
- 		break;
- #endif
-+#ifdef CONFIG_ERRATA_MIPS
-+	case MIPS_VENDOR_ID:
-+		cpu_mfr_info->patch_func = mips_errata_patch_func;
-+		break;
-+#endif
- #ifdef CONFIG_ERRATA_SIFIVE
- 	case SIFIVE_VENDOR_ID:
- 		cpu_mfr_info->patch_func = sifive_errata_patch_func;
-diff --git a/arch/riscv/kernel/entry.S b/arch/riscv/kernel/entry.S
-index 75656afa2d6be8ca5f2c4711455567c7f8fc0b97..b18373ed23d65df0dc828246269e9039bb0b0c6b 100644
---- a/arch/riscv/kernel/entry.S
-+++ b/arch/riscv/kernel/entry.S
-@@ -15,6 +15,8 @@
- #include <asm/thread_info.h>
- #include <asm/asm-offsets.h>
- #include <asm/errata_list.h>
-+#include <asm/alternative.h>
-+
- #include <linux/sizes.h>
- 
- 	.section .irqentry.text, "ax"
-diff --git a/arch/riscv/mm/init.c b/arch/riscv/mm/init.c
-index 8d0374d7ce8ed72320f58e4cea212d0e2bce8fd4..7ee95ebadc258a3a46e59698cd143266f6797a0c 100644
---- a/arch/riscv/mm/init.c
-+++ b/arch/riscv/mm/init.c
-@@ -33,6 +33,7 @@
- #include <asm/soc.h>
- #include <asm/sparsemem.h>
- #include <asm/tlbflush.h>
-+#include <asm/alternative.h>
- 
- #include "../kernel/head.h"
- 
 
+---
+base-commit: 86731a2a651e58953fc949573895f2fa6d456841
+change-id: 20250625-fix-lacpdu-jitter-1554d9f600ab
+
+Best regards,
 -- 
-2.34.1
+Seth Forshee (DigitalOcean) <sforshee@kernel.org>
 
