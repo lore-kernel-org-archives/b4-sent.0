@@ -1,136 +1,123 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Tue, 24 Jun 2025 22:05:54 +0200
-Subject: [PATCH RFC 7/7] nvme: Connect CDQ ioctl to nvme driver
+From: Yang Li <yang.li@amlogic.com>
+Date: Wed, 25 Jun 2025 16:42:49 +0800
+Subject: [PATCH v2] Bluetooth: hci_event: Add support for handling LE BIG
+ Sync Lost event
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250624-jag-cdq-v1-7-6d88476c9165@kernel.org>
-References: <20250624-jag-cdq-v1-0-6d88476c9165@kernel.org>
-In-Reply-To: <20250624-jag-cdq-v1-0-6d88476c9165@kernel.org>
-To: joshi.k@samsung.com
-Cc: Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3354;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=8Uc5Kt3YKwvBpMl0ckKhTD03paROsmdOBY9mZi6DXFQ=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGhbBSFE8zqyHPQcHSPusr8+jpIdaEKFQ9+Sj
- DryNNXNPEu0QokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJoWwUhAAoJELqXzVK3
- lkFPudIL/iNir1MmshOHf/ebESR+Wid03zAa81fXyIRnAqbUsXGH6kXE6QgsyiivRhZrDewnoEI
- 01BU2wqJ6bYy8rxbdKgHTrSHv2vOu1Py/lMs4V2pCv85Oc8mQNKjydco8vl7XC66/tpuD6dEZby
- GOf/tegsGDkiHqlzRtlf1Wjkkb+R/h3cM95y15U3JDi5G9uFbe3cjDc+F/i0/iTR+7Cbl6HpQtD
- /lYTordde3GJjGt66hxY9PLtsGaZ6Au+uOXG9s9PS+nKFF6qVUQaXY3iVYAz00jrgj2iYzuaef/
- TnDM07T3kJCkjt/cXdHzn3+Sb+RDO+J210qYRCaAa7yf2xEt9k8440V+w5yfGSIZkcx362rgkU0
- fVT9S0h3rYwq4IB2vD1uBEPPKLX5IMtN8McGaND/a5+d5MxcV0wc5MQBy6Eh7u96u0MwpDBTiNy
- hlnGVeCEX8QZb4aAPsjAZedNpZnuCVWqvRHzWJyioLPqMF0jCrMAsO0U/bFMoVihgUini3jopu6
- Kg=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+Message-Id: <20250625-handle_big_sync_lost_event-v2-1-81f163057a21@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAIi2W2gC/33NywrCMBCF4VcpWRtppjd05XtICXEytgNtIkkJl
+ tJ3NxbXLv+z+M4mIgWmKK7FJgIljuxdDjgVAkfjBpJscwsooSlbBTKPdiL94EHH1aGefFw0JXK
+ LrLGz2NbVpTQgMvAK9OT3gd/73CPHxYf1+Erqu/5YqP+xSUklsQKkqrO2Nc3NzJMfGM/oZ9Hv+
+ /4B3kTbpMYAAAA=
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Johan Hedberg <johan.hedberg@gmail.com>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750840971; l=3131;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=+z+dUqdDyldE5nsJD9/hOCyoQSkymotIIMTtOBNS5rQ=;
+ b=adqKAGMBBzMjHlYTHEQ8EceIJGHCS/cRUiqWAz/PvVVp+OFw2uzyYJdzKA9vYV14Jf4AZLuai
+ j6eY1JBCXx5AdJKvtPM892IgAmUYV47Cw+z4SiHEKQ2th6MAvm5nKPK
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When deleting, call the nvme_cdq_delete directly as there is no
-additional preparation needed. Construct the nvme admin command to
-create before sending it down to the driver; this effectively sets mos
-and cqs among other variables. Once the controller has returned, set the
-cdq_id and cdq_fd for the ioctl caller.
+When the BIS source stops, the controller sends an LE BIG Sync Lost
+event (subevent 0x1E). Currently, this event is not handled, causing
+the BIS stream to remain active in BlueZ and preventing recovery.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- drivers/nvme/host/ioctl.c | 59 ++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 58 insertions(+), 1 deletion(-)
+Changes in v2:
+- Matching the BIG handle is required when looking up a BIG connection.
+- Use ev->reason to determine the cause of disconnection.
+- Call hci_conn_del after hci_disconnect_cfm to remove the connection entry
+- Delete the big connection
+- Link to v1: https://lore.kernel.org/r/20250624-handle_big_sync_lost_event-v1-1-c32ce37dd6a5@amlogic.com
+---
+ include/net/bluetooth/hci.h |  6 ++++++
+ net/bluetooth/hci_event.c   | 31 +++++++++++++++++++++++++++++++
+ 2 files changed, 37 insertions(+)
 
-diff --git a/drivers/nvme/host/ioctl.c b/drivers/nvme/host/ioctl.c
-index ca86d3bf7ea49d0ec812640a6c0267a5aad40b79..e9758aef47f4ffe97d843580de63c8a9c9cbf555 100644
---- a/drivers/nvme/host/ioctl.c
-+++ b/drivers/nvme/host/ioctl.c
-@@ -378,6 +378,58 @@ static int nvme_user_cmd64(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
- 	return status;
+diff --git a/include/net/bluetooth/hci.h b/include/net/bluetooth/hci.h
+index 82cbd54443ac..48389a64accb 100644
+--- a/include/net/bluetooth/hci.h
++++ b/include/net/bluetooth/hci.h
+@@ -2849,6 +2849,12 @@ struct hci_evt_le_big_sync_estabilished {
+ 	__le16  bis[];
+ } __packed;
+ 
++#define HCI_EVT_LE_BIG_SYNC_LOST 0x1e
++struct hci_evt_le_big_sync_lost {
++	__u8    handle;
++	__u8    reason;
++} __packed;
++
+ #define HCI_EVT_LE_BIG_INFO_ADV_REPORT	0x22
+ struct hci_evt_le_big_info_adv_report {
+ 	__le16  sync_handle;
+diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
+index 66052d6aaa1d..d0b9c8dca891 100644
+--- a/net/bluetooth/hci_event.c
++++ b/net/bluetooth/hci_event.c
+@@ -7026,6 +7026,32 @@ static void hci_le_big_sync_established_evt(struct hci_dev *hdev, void *data,
+ 	hci_dev_unlock(hdev);
  }
  
-+static int nvme_user_cdq_create(struct nvme_ctrl *ctrl,
-+				struct nvme_cdq_cmd *cmd,
-+				struct nvme_cdq_cmd __user *ucmd)
++static void hci_le_big_sync_lost_evt(struct hci_dev *hdev, void *data,
++					    struct sk_buff *skb)
 +{
-+	int status;
-+	u16 cdq_id = 0;
-+	int cdq_fd = 0;
-+	struct nvme_command c = {};
++	struct hci_evt_le_big_sync_lost *ev = data;
++	struct hci_conn *bis, *conn;
 +
-+	c.cdq.opcode = nvme_admin_cdq;
-+	c.cdq.sel = NVME_CDQ_SEL_CREATE_CDQ;
-+	c.cdq.mos = cpu_to_le16(cmd->mos);
-+	c.cdq.create.cdq_flags = cpu_to_le16(NVME_CDQ_CFG_PC_CONT);
-+	c.cdq.create.cqs = cpu_to_le16(cmd->cqs);
-+	/* >>2: size is in dwords */
-+	c.cdq.cdqsize = (cmd->entry_nbyte * cmd->entry_nr) >> 2;
++	bt_dev_dbg(hdev, "big handle 0x%2.2x", ev->handle);
 +
-+	status = nvme_cdq_create(ctrl, &c,
-+				 cmd->entry_nr, cmd->entry_nbyte,
-+				 cmd->cdqp_offset, cmd->cdqp_mask,
-+				 &cdq_id, &cdq_fd);
-+	if (status)
-+		return status;
++	hci_dev_lock(hdev);
 +
-+	cmd->cdq_id = cdq_id;
-+	cmd->read_fd = cdq_fd;
++	list_for_each_entry(bis, &hdev->conn_hash.list, list) {
++		if (test_and_clear_bit(HCI_CONN_BIG_SYNC, &bis->flags) &&
++		    (bis->iso_qos.bcast.big == ev->handle)) {
++			hci_disconn_cfm(bis, ev->reason);
++			hci_conn_del(bis);
 +
-+	if (copy_to_user(ucmd, cmd, sizeof(*cmd)))
-+		return -EFAULT;
-+
-+	return status;
-+}
-+
-+static int nvme_user_cdq(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
-+		struct nvme_cdq_cmd __user *ucmd, unsigned int flags,
-+		bool open_for_write)
-+{
-+	struct nvme_cdq_cmd cmd;
-+
-+	if (copy_from_user(&cmd, ucmd, sizeof(cmd)))
-+		return -EFAULT;
-+
-+	switch (cmd.flags) {
-+	case NVME_CDQ_ADM_FLAGS_CREATE:
-+		return nvme_user_cdq_create(ctrl, &cmd, ucmd);
-+	case NVME_CDQ_ADM_FLAGS_DELETE:
-+		return nvme_cdq_delete(ctrl, cmd.cdq_id);
++			/* Delete the big connection */
++			conn = hci_conn_hash_lookup_pa_sync_handle(hdev, bis->sync_handle);
++			if (conn)
++				hci_conn_del(conn);
++		}
 +	}
 +
-+	return -EPERM;
++	hci_dev_unlock(hdev);
 +}
 +
- struct nvme_uring_data {
- 	__u64	metadata;
- 	__u64	addr;
-@@ -541,7 +593,8 @@ static int nvme_uring_cmd_io(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
- 
- static bool is_ctrl_ioctl(unsigned int cmd)
+ static void hci_le_big_info_adv_report_evt(struct hci_dev *hdev, void *data,
+ 					   struct sk_buff *skb)
  {
--	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD)
-+	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD ||
-+	    cmd == NVME_IOCTL_ADMIN_CDQ)
- 		return true;
- 	if (is_sed_ioctl(cmd))
- 		return true;
-@@ -556,6 +609,8 @@ static int nvme_ctrl_ioctl(struct nvme_ctrl *ctrl, unsigned int cmd,
- 		return nvme_user_cmd(ctrl, NULL, argp, 0, open_for_write);
- 	case NVME_IOCTL_ADMIN64_CMD:
- 		return nvme_user_cmd64(ctrl, NULL, argp, 0, open_for_write);
-+	case NVME_IOCTL_ADMIN_CDQ:
-+		return nvme_user_cdq(ctrl, NULL, argp, 0, open_for_write);
- 	default:
- 		return sed_ioctl(ctrl->opal_dev, cmd, argp);
- 	}
-@@ -874,6 +929,8 @@ long nvme_dev_ioctl(struct file *file, unsigned int cmd,
- 			return -EACCES;
- 		nvme_queue_scan(ctrl);
- 		return 0;
-+	case NVME_IOCTL_ADMIN_CDQ:
-+		return nvme_user_cdq(ctrl, NULL, argp, 0, open_for_write);
- 	default:
- 		return -ENOTTY;
- 	}
+@@ -7149,6 +7175,11 @@ static const struct hci_le_ev {
+ 		     hci_le_big_sync_established_evt,
+ 		     sizeof(struct hci_evt_le_big_sync_estabilished),
+ 		     HCI_MAX_EVENT_SIZE),
++	/* [0x1e = HCI_EVT_LE_BIG_SYNC_LOST] */
++	HCI_LE_EV_VL(HCI_EVT_LE_BIG_SYNC_LOST,
++		     hci_le_big_sync_lost_evt,
++		     sizeof(struct hci_evt_le_big_sync_lost),
++		     HCI_MAX_EVENT_SIZE),
+ 	/* [0x22 = HCI_EVT_LE_BIG_INFO_ADV_REPORT] */
+ 	HCI_LE_EV_VL(HCI_EVT_LE_BIG_INFO_ADV_REPORT,
+ 		     hci_le_big_info_adv_report_evt,
 
+---
+base-commit: bd35cd12d915bc410c721ba28afcada16f0ebd16
+change-id: 20250612-handle_big_sync_lost_event-4c7dc64390a2
+
+Best regards,
 -- 
-2.47.2
+Yang Li <yang.li@amlogic.com>
 
