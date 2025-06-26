@@ -1,10 +1,11 @@
 From: Max Shevchenko <wctrl@proton.me>
-Date: Thu, 26 Jun 2025 11:53:58 +0300
-Subject: [PATCH v2 05/11] dt-bindings: vendor-prefixes: add JTY
+Date: Thu, 26 Jun 2025 11:53:59 +0300
+Subject: [PATCH v2 06/11] dt-bindings: arm: mediatek: add boards based on
+ the MT6572 SoC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250626-mt6572-v2-5-f7f842196986@proton.me>
+Message-Id: <20250626-mt6572-v2-6-f7f842196986@proton.me>
 References: <20250626-mt6572-v2-0-f7f842196986@proton.me>
 In-Reply-To: <20250626-mt6572-v2-0-f7f842196986@proton.me>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -23,38 +24,40 @@ Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org,
  linux-mediatek@lists.infradead.org, linux-watchdog@vger.kernel.org, 
  Max Shevchenko <wctrl@proton.me>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1750928035; l=891;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1750928035; l=995;
  i=wctrl@proton.me; s=20250603; h=from:subject:message-id;
- bh=f6I5lpvscqwzHCTgXJqDcC9IxNIHsBHQxvSbgtRH4Jo=;
- b=PzPH4fvxc+Q680V4FruDOeASw2yE6Gfs++tzHWhA5D0HUa9Fo+1x/5ZtV+xtxvPHxGczWHBDy
- k+eKBMV+tAeAnSxtVe18b10bLGpGMxEwUp73Hi1cg/cZjLlRd/hzP7i
+ bh=9aUXHuNvHaXvQkrisfy954nmLPBRtgbu4/kIQzXjqPk=;
+ b=zitJojHs4XEqtVPoIFwkaqtXDGM6igKRes//Su7pRROBXjAlIhPy5GXXTGx7+tOTYYBzFat6C
+ luBZ8jHjoCfDs3TaOOTppEuSnJswvMrX/cqUN/aUi4MOqZGuy19FEfu
 X-Developer-Key: i=wctrl@proton.me; a=ed25519;
  pk=JXUx3mL/OrnRvbK57HXgugBjEBKq4QgDKJqp7BALm74=
 X-Endpoint-Received: by B4 Relay for wctrl@proton.me/20250603 with auth_id=421
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-JTY produced low-cost Android tablets based on various
-MediaTek MT65xx SoCs.
+Add entries for the JTY D101 tablet and the Lenovo A369i smartphone.
 
 Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Signed-off-by: Max Shevchenko <wctrl@proton.me>
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/arm/mediatek.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 86f6a19b28ae217643bf7a63a471f74819d18238..517bd129288c96483ffe358127ce8e16f60d902b 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -782,6 +782,8 @@ patternProperties:
-     description: Jide Tech
-   "^joz,.*":
-     description: JOZ BV
-+  "^jty,.*":
-+    description: JTY
-   "^kam,.*":
-     description: Kamstrup A/S
-   "^karo,.*":
+diff --git a/Documentation/devicetree/bindings/arm/mediatek.yaml b/Documentation/devicetree/bindings/arm/mediatek.yaml
+index 108ae5e0185d93976556a03768595961961bcc33..d5cb133b8a75fb5325f201f10c83bbe434a1da89 100644
+--- a/Documentation/devicetree/bindings/arm/mediatek.yaml
++++ b/Documentation/devicetree/bindings/arm/mediatek.yaml
+@@ -27,6 +27,11 @@ properties:
+           - enum:
+               - mediatek,mt2712-evb
+           - const: mediatek,mt2712
++      - items:
++          - enum:
++              - jty,d101
++              - lenovo,a369i
++          - const: mediatek,mt6572
+       - items:
+           - enum:
+               - mediatek,mt6580-evbp1
 
 -- 
 2.50.0
