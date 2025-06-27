@@ -1,62 +1,57 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Fri, 27 Jun 2025 16:00:19 +0100
-Subject: [PATCH RESEND 1/4] dma: dma-axi-dmac: fix SW cyclic transfers
+Date: Fri, 27 Jun 2025 16:00:20 +0100
+Subject: [PATCH RESEND 2/4] dma: dma-axi-dmac: fix HW scatter-gather not
+ looking at the queue
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250627-dev-axi-dmac-fixes-v1-1-2453674c5b78@analog.com>
+Message-Id: <20250627-dev-axi-dmac-fixes-v1-2-2453674c5b78@analog.com>
 References: <20250627-dev-axi-dmac-fixes-v1-0-2453674c5b78@analog.com>
 In-Reply-To: <20250627-dev-axi-dmac-fixes-v1-0-2453674c5b78@analog.com>
 To: dmaengine@vger.kernel.org
 Cc: Paul Cercueil <paul@crapouillou.net>, 
  Lars-Peter Clausen <lars@metafoo.de>, Vinod Koul <vkoul@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751036430; l=1461;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751036430; l=1232;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=V0XKZ+QEAXJ9KwAnrqaiZV0RfwiwQrqkI/wdD2sRznA=;
- b=aVdA1X9f5u0zhtxQ5BXmM+krPpOS03MwfxAqePT0ANLogFuFmfFp49N4BC5+2yHRHV+Y8rASa
- wBnlmq/otSpB255bGbYG0PldQ9GrX5Y8dM7xOTLLfS4Y4hgcuEQCfd3
+ bh=VnP62GBHna2SYg1YsUNFGvTHFdm1Tb7CGDCA6I3LeD4=;
+ b=Y0BZ4/XMUGjxSwYJ8vDomseFkr2XLowp9EMEmTTuPljLU6pZLtzw5fxhFrAOkiJDS0i97eYgX
+ 6K5uXiOOEWQDugobn3qitlfTK8HlAsF06D3Dja9hvPnww+0IXd8FPno
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If 'hw_cyclic' is false we should still be able to do cyclic transfers in
-"software". That was not working for the case where 'desc->num_sgs' is 1
-because 'chan->next_desc' is never set with the current desc which means
-that the cyclic transfer only runs once and in the next SOT interrupt we
-do nothing since vchan_next_desc() will return NULL.
+For HW scatter gather transfers we still need to look for the queue. The
+HW is capable of queueing 3 concurrent transfers and if we try more than
+that we'll get the submit queue full and should return. Otherwise, if we
+go ahead and program the new transfer, we end up discarding it.
 
-Fix it by setting 'chan->next_desc' as soon as we get a new desc via
-vchan_next_desc().
-
-Fixes: 0e3b67b348b8 ("dmaengine: Add support for the Analog Devices AXI-DMAC DMA controller")
+Fixes: e97dc7435972 ("dmaengine: axi-dmac: Add support for scatter-gather transfers")
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/dma/dma-axi-dmac.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/dma/dma-axi-dmac.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
-index 36943b0c6d603cbe38606b0d7bde02535f529a9a..2aa06f66624ba5749e7e7f24b55416f96064b82f 100644
+index 2aa06f66624ba5749e7e7f24b55416f96064b82f..47d95d2d743b1b939ed0ec79ee29763843bcdc09 100644
 --- a/drivers/dma/dma-axi-dmac.c
 +++ b/drivers/dma/dma-axi-dmac.c
-@@ -247,6 +247,7 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
- 			return;
- 		list_move_tail(&vdesc->node, &chan->active_descs);
- 		desc = to_axi_dmac_desc(vdesc);
-+		chan->next_desc = desc;
- 	}
- 	sg = &desc->sg[desc->num_submitted];
+@@ -233,11 +233,9 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
+ 	unsigned int flags = 0;
+ 	unsigned int val;
  
-@@ -265,8 +266,6 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
- 		else
- 			chan->next_desc = NULL;
- 		flags |= AXI_DMAC_FLAG_LAST;
--	} else {
--		chan->next_desc = desc;
- 	}
+-	if (!chan->hw_sg) {
+-		val = axi_dmac_read(dmac, AXI_DMAC_REG_START_TRANSFER);
+-		if (val) /* Queue is full, wait for the next SOT IRQ */
+-			return;
+-	}
++	val = axi_dmac_read(dmac, AXI_DMAC_REG_START_TRANSFER);
++	if (val) /* Queue is full, wait for the next SOT IRQ */
++		return;
  
- 	sg->hw->id = axi_dmac_read(dmac, AXI_DMAC_REG_TRANSFER_ID);
+ 	desc = chan->next_desc;
+ 
 
 -- 
 2.49.0
