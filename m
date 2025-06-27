@@ -1,11 +1,11 @@
 From: Per Larsen <perlarsen@google.com>
-Date: Fri, 27 Jun 2025 07:12:28 +0000
-Subject: [PATCH v6 4/5] KVM: arm64: Bump the supported version of FF-A to
- 1.2
+Date: Fri, 27 Jun 2025 07:12:29 +0000
+Subject: [PATCH v6 5/5] KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in
+ host handler
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250627-virtio-msg-ffa-v6-4-8c02fd94edac@google.com>
+Message-Id: <20250627-virtio-msg-ffa-v6-5-8c02fd94edac@google.com>
 References: <20250627-virtio-msg-ffa-v6-0-8c02fd94edac@google.com>
 In-Reply-To: <20250627-virtio-msg-ffa-v6-0-8c02fd94edac@google.com>
 To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
@@ -19,95 +19,95 @@ Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev,
  sebastianene@google.com, qwandor@google.com, 
  Per Larsen <perlarsen@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751008380; l=2907;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751008380; l=2999;
  i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=7rEMvl8SoHWGrwsNRCeFHM4pJ2DEx095GGBAAYP+euA=;
- b=QnK7PyFg+Sp9K6Dvzow+2ecO2qkpCoOzOMEHl/0e83G3yL4lNUY+S4v5SH+Ij7bEHDL4HwwGk
- x3mbjSjVhOkC41qM06xylFeNwkfA+dNHlMPJqkD9QyOCWcBsxd9IFIY
+ bh=Hltr6esYXys/fifuX4LJaE69K+4zBEQKpm9B+c1zcxQ=;
+ b=3eyayw173eIS/U1YOT+pKH7Ed66MiRS9vDdxdwYsb5K9W5IEqrqub9hlfkRlkmLBHCm4nZ49W
+ oCXO/uYF60hCMYXVCEeNHIw3tJZYAAeamsu38z42BsD5auTmlovJ35E
 X-Developer-Key: i=perlarsen@google.com; a=ed25519;
  pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
 X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FF-A version 1.2 introduces the DIRECT_REQ2 ABI. Bump the FF-A version
-preferred by the hypervisor as a precursor to implementing the 1.2-only
-FFA_MSG_SEND_DIRECT_REQ2 and FFA_MSG_SEND_RESP2 messaging interfaces.
+FF-A 1.2 adds the DIRECT_REQ2 messaging interface which is similar to
+the existing FFA_MSG_SEND_DIRECT_{REQ,RESP} functions except that it
+uses the SMC calling convention v1.2 which allows calls to use x4-x17 as
+argument and return registers. Add support for FFA_MSG_SEND_DIRECT_REQ2
+in the host ffa handler.
 
-We must also use SMCCC 1.2 for 64-bit SMCs if hypervisor negotiated FF-A
-1.2, so ffa_set_retval is updated and a new function to call 64-bit smcs
-using SMCCC 1.2 with fallback to SMCCC 1.1 is introduced.
-
-Update ffa_call_supported to mark FF-A 1.2 interfaces as unsupported
-lest they get forwarded.
-
-Co-developed-by: Ayrton Munoz <ayrton@google.com>
-Signed-off-by: Ayrton Munoz <ayrton@google.com>
 Signed-off-by: Per Larsen <perlarsen@google.com>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 14 ++++++++++----
- include/linux/arm_ffa.h       |  1 +
- 2 files changed, 11 insertions(+), 4 deletions(-)
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 24 +++++++++++++++++++++++-
+ include/linux/arm_ffa.h       |  2 ++
+ 2 files changed, 25 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index 5fd6474d96ae4b90d99796ee81bb36373219afc4..d543d1f5ddd62fb15f8d39f4ff7d5bb0006da4a1 100644
+index d543d1f5ddd62fb15f8d39f4ff7d5bb0006da4a1..348c5aa93ab8ade2b26fc86ed2169d801784a892 100644
 --- a/arch/arm64/kvm/hyp/nvhe/ffa.c
 +++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -678,6 +678,12 @@ static bool ffa_call_supported(u64 func_id)
- 	case FFA_NOTIFICATION_SET:
+@@ -679,7 +679,6 @@ static bool ffa_call_supported(u64 func_id)
  	case FFA_NOTIFICATION_GET:
  	case FFA_NOTIFICATION_INFO_GET:
-+	/* Unimplemented interfaces added in FF-A 1.2 */
+ 	/* Unimplemented interfaces added in FF-A 1.2 */
+-	case FFA_MSG_SEND_DIRECT_REQ2:
+ 	case FFA_MSG_SEND_DIRECT_RESP2:
+ 	case FFA_CONSOLE_LOG:
+ 	case FFA_PARTITION_INFO_GET_REGS:
+@@ -858,6 +857,22 @@ static void do_ffa_part_get(struct arm_smccc_1_2_regs *res,
+ 	hyp_spin_unlock(&host_buffers.lock);
+ }
+ 
++static void do_ffa_direct_msg2(struct arm_smccc_1_2_regs *regs,
++			       struct kvm_cpu_context *ctxt,
++			       u64 vm_handle)
++{
++	DECLARE_REG(u32, endp, ctxt, 1);
++
++	struct arm_smccc_1_2_regs *args = (void *)&ctxt->regs.regs[0];
++
++	if (FIELD_GET(FFA_SRC_ENDPOINT_MASK, endp) != vm_handle) {
++		ffa_to_smccc_error(regs, FFA_RET_INVALID_PARAMETERS);
++		return;
++	}
++
++	arm_smccc_1_2_smc(args, regs);
++}
++
+ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
+ {
+ 	struct arm_smccc_1_2_regs res;
+@@ -916,11 +931,18 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
+ 	case FFA_PARTITION_INFO_GET:
+ 		do_ffa_part_get(&res, host_ctxt);
+ 		goto out_handled;
 +	case FFA_MSG_SEND_DIRECT_REQ2:
-+	case FFA_MSG_SEND_DIRECT_RESP2:
-+	case FFA_CONSOLE_LOG:
-+	case FFA_PARTITION_INFO_GET_REGS:
-+	case FFA_EL3_INTR_HANDLE:
- 		return false;
++		if (hyp_ffa_version >= FFA_VERSION_1_2) {
++			do_ffa_direct_msg2(&res, host_ctxt, HOST_FFA_ID);
++			goto out_handled;
++		}
++		goto out_not_supported;
  	}
  
-@@ -734,7 +740,7 @@ static int hyp_ffa_post_init(void)
- 	if (res.a0 != FFA_SUCCESS)
- 		return -EOPNOTSUPP;
+ 	if (ffa_call_supported(func_id))
+ 		return false; /* Pass through */
  
--	switch (res.a2) {
-+	switch (res.a2 & FFA_FEAT_RXTX_MIN_SZ_MASK) {
- 	case FFA_FEAT_RXTX_MIN_SZ_4K:
- 		min_rxtx_sz = SZ_4K;
- 		break;
-@@ -931,7 +937,7 @@ int hyp_ffa_init(void *pages)
- 
- 	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
- 		.a0 = FFA_VERSION,
--		.a1 = FFA_VERSION_1_1,
-+		.a1 = FFA_VERSION_1_2,
- 	}, &res);
- 	if (res.a0 == FFA_RET_NOT_SUPPORTED)
- 		return 0;
-@@ -952,10 +958,10 @@ int hyp_ffa_init(void *pages)
- 	if (FFA_MAJOR_VERSION(res.a0) != 1)
- 		return -EOPNOTSUPP;
- 
--	if (FFA_MINOR_VERSION(res.a0) < FFA_MINOR_VERSION(FFA_VERSION_1_1))
-+	if (FFA_MINOR_VERSION(res.a0) < FFA_MINOR_VERSION(FFA_VERSION_1_2))
- 		hyp_ffa_version = res.a0;
- 	else
--		hyp_ffa_version = FFA_VERSION_1_1;
-+		hyp_ffa_version = FFA_VERSION_1_2;
- 
- 	tx = pages;
- 	pages += KVM_FFA_MBOX_NR_PAGES * PAGE_SIZE;
++out_not_supported:
+ 	ffa_to_smccc_error(&res, FFA_RET_NOT_SUPPORTED);
+ out_handled:
+ 	ffa_set_retval(host_ctxt, &res);
 diff --git a/include/linux/arm_ffa.h b/include/linux/arm_ffa.h
-index 5bded24dc24fea8cdcbe42bf79c7c025c3fa5f4b..c0dd6183d956043192114a522b7eef465e7078ac 100644
+index c0dd6183d956043192114a522b7eef465e7078ac..82a35a3b22de426f7e9a8894e76fdf1e933b3d6b 100644
 --- a/include/linux/arm_ffa.h
 +++ b/include/linux/arm_ffa.h
-@@ -128,6 +128,7 @@
- #define FFA_FEAT_RXTX_MIN_SZ_4K		0
- #define FFA_FEAT_RXTX_MIN_SZ_64K	1
- #define FFA_FEAT_RXTX_MIN_SZ_16K	2
-+#define FFA_FEAT_RXTX_MIN_SZ_MASK	3
+@@ -269,6 +269,8 @@ bool ffa_partition_check_property(struct ffa_device *dev, u32 property)
+ 	(ffa_partition_check_property(dev, FFA_PARTITION_DIRECT_REQ2_RECV) && \
+ 	 !dev->mode_32bit)
  
- /* FFA Bus/Device/Driver related */
- struct ffa_device {
++#define FFA_SRC_ENDPOINT_MASK	GENMASK(31, 16)
++
+ /* For use with FFA_MSG_SEND_DIRECT_{REQ,RESP} which pass data via registers */
+ struct ffa_send_direct_data {
+ 	unsigned long data0; /* w3/x3 */
 
 -- 
 2.50.0.727.gbf7dc18ff4-goog
