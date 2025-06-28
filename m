@@ -1,98 +1,100 @@
-From: Janne Grunau <j@jannau.net>
-Date: Sat, 28 Jun 2025 13:36:00 +0200
-Subject: [PATCH] rust: init: Fix generics in *_init! macros
+From: George Chan <gchan9527@gmail.com>
+Subject: [PATCH v3 0/7] A series of patch for enable sc7180 android boot
+Date: Sat, 28 Jun 2025 20:25:18 +0800
+Message-Id: <20250628-sc7180-android-boot-v3-0-105098a19165@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250628-rust_init_trailing_comma-v1-1-2d162ae1a757@jannau.net>
-X-B4-Tracking: v=1; b=H4sIAJ/TX2gC/x3MQQqDMBBG4avIrBvQYILtVUoJIY76g8YySYsgu
- bvB5bd476TEAk70ak4S/iNhjxXdo6Gw+DizwlhNutWmtXpQ8kvZISK7LB4r4uzCvm1ecT914Tk
- Y01tNNf8KTzju9ftTygUsesLIagAAAA==
-X-Change-ID: 20250628-rust_init_trailing_comma-e4f1c9855462
-To: Benno Lossin <lossin@kernel.org>, Miguel Ojeda <ojeda@kernel.org>, 
- Alex Gaynor <alex.gaynor@gmail.com>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>, 
- Fiona Behrens <me@kloenk.dev>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Janne Grunau <j@jannau.net>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2610; i=j@jannau.net;
- s=yk2024; h=from:subject:message-id;
- bh=7atD46KJRl40fGYVlD5kwQ0vw0wyITw/tnQszJMm3g8=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhoz4y1sb472uKUWHfsi06d7q9OLYmrlCtWIxXGKFa69ef
- /zRNEWqo5SFQYyLQVZMkSVJ+2UHw+oaxZjaB2Ewc1iZQIYwcHEKwEROvWJkeDlZyXrKCe55EoXH
- H7sIVsffV5m61YnZvEUtloHzVlWPEcP/6D4/oYbH7baCz+8fte1YeqBrT6SVSVNS3I4yJdvsDBl
- GAA==
-X-Developer-Key: i=j@jannau.net; a=openpgp;
- fpr=8B336A6BE4E5695E89B8532B81E806F586338419
-X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
+X-B4-Tracking: v=1; b=H4sIAC7fX2gC/33NTQrCMBCG4auUrI1M0qSJrryHuIj5aQe0kaQEp
+ fTupt2IIC7fD+aZmWSf0GdybGaSfMGMcazR7hpiBzP2nqKrTThwCZIDzVYxDdSMLkV09BrjRI0
+ W0tsgtBGa1MtH8gGfm3q+1B4wTzG9tieFret/rzAKtAUlK+wNHMSpvxu87W28k9Ur/GN0oH4bv
+ BrcBelU6BjjX8ayLG9/BZh9+gAAAA==
+To: Tom Rini <trini@konsulko.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Sumit Garg <sumit.garg@kernel.org>, Simon Glass <sjg@chromium.org>, 
+ Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Lukasz Majewski <lukma@denx.de>, Marek Vasut <marex@denx.de>
+Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, gchan9527@gmail.com, 
+ Vitalii Skorkin <nikroks@mainlining.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751113519; l=3144;
+ i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
+ bh=gCSljJ75fN3p+b6XSSkDiC+DB7wH6kriXptRXxQrOFI=;
+ b=tDAFTr0b3S6JGxxIm41af5HVQUa33b272JWLBQISmBMg1wD6EmCMMWkQRx6rqfBjCBb0w3G9Y
+ 2oxeEPqz6xiBaJQIS2Z7W/ygplKDT53hdawatFbbnPA0xfNRqvR4Y1n
+X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
+ pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
+X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The match pattern for a optional trailing comma in the list of generics
-is erroneously repeated in the code block resulting in following error:
+Since attempt[1] to embed android specific boot param into fdt bootargs,
+a new idea is formed as to make use of env file to contain default param
+value. Current code logic is already working fine, unless the priority
+of param at begining is higher than at tail. From env file, bootargs is
+treated important, and prepend at begining. So there is a need to
+reverse the logic, and make sure default bootargs value at the end, and
+let androidboot img bootargs value sit at begining.
 
-| error: attempted to repeat an expression containing no syntax variables matched as repeating at this depth
-|    --> rust/kernel/init.rs:301:73
-|     |
-| 301 |         ::pin_init::try_pin_init!($(&$this in)? $t $(::<$($generics),* $(,)?>)? {
-|     |                                                                         ^^^
+So a new kconfig item is introduced. Once enabled, the bootargs strcat
+param will get reversed.
 
-Remove "$(,)?" from all code blocks in the try_init! and try_pin_init!
-definitions.
+A similar logic is needed for fastboot->bootm glue function, so split 
+function of patch #1 into 2 functions as #2, fixed some issues #3, and 
+apply #4 with same trick to glue function too.
 
-Fixes: 578eb8b6db13 ("rust: pin-init: move the default error behavior of `try_[pin_]init`")
-Signed-off-by: Janne Grunau <j@jannau.net>
+Some one-liners patch is included to enable device driver for sc7180
+soc. It is about iommu for usb, usb gadget vendor/product id.
+
+Reduce dependency on abootimg when androidboot v3 or greater is not
+needed. Since Tom suggested to reduce __maybe_unused directive and 
+use IS_ENABLE() instead; two __weak func proto need to add into image.h
+
+[1]https://lists.denx.de/pipermail/u-boot/2025-May/588828.html
+[2]https://lists.denx.de/pipermail/u-boot/2025-May/589926.html
+
+Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
- rust/kernel/init.rs | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Changes in v3:
+- Collect acks-by and review-by.
+- Split function and replace old #2 into #2-#4, code reuse in #4
+- Modify changelog and Kconfig description of #1, suggested by Mattijs
+- Slightly modify #5, add back line break.
+- Rebase to latest next
+- Link to v2: https://lore.kernel.org/r/20250607-sc7180-android-boot-v2-0-2df5d7f61124@gmail.com
 
-diff --git a/rust/kernel/init.rs b/rust/kernel/init.rs
-index 8d228c23795445e379b40f662e1c355a934cbd13..21ef202ab0dbfa3cb28cd20d29d9bfdba4f1f97f 100644
---- a/rust/kernel/init.rs
-+++ b/rust/kernel/init.rs
-@@ -231,14 +231,14 @@ macro_rules! try_init {
-     ($(&$this:ident in)? $t:ident $(::<$($generics:ty),* $(,)?>)? {
-         $($fields:tt)*
-     }) => {
--        ::pin_init::try_init!($(&$this in)? $t $(::<$($generics),* $(,)?>)? {
-+        ::pin_init::try_init!($(&$this in)? $t $(::<$($generics),*>)? {
-             $($fields)*
-         }? $crate::error::Error)
-     };
-     ($(&$this:ident in)? $t:ident $(::<$($generics:ty),* $(,)?>)? {
-         $($fields:tt)*
-     }? $err:ty) => {
--        ::pin_init::try_init!($(&$this in)? $t $(::<$($generics),* $(,)?>)? {
-+        ::pin_init::try_init!($(&$this in)? $t $(::<$($generics),*>)? {
-             $($fields)*
-         }? $err)
-     };
-@@ -291,14 +291,14 @@ macro_rules! try_pin_init {
-     ($(&$this:ident in)? $t:ident $(::<$($generics:ty),* $(,)?>)? {
-         $($fields:tt)*
-     }) => {
--        ::pin_init::try_pin_init!($(&$this in)? $t $(::<$($generics),* $(,)?>)? {
-+        ::pin_init::try_pin_init!($(&$this in)? $t $(::<$($generics),*>)? {
-             $($fields)*
-         }? $crate::error::Error)
-     };
-     ($(&$this:ident in)? $t:ident $(::<$($generics:ty),* $(,)?>)? {
-         $($fields:tt)*
-     }? $err:ty) => {
--        ::pin_init::try_pin_init!($(&$this in)? $t $(::<$($generics),* $(,)?>)? {
-+        ::pin_init::try_pin_init!($(&$this in)? $t $(::<$($generics),*>)? {
-             $($fields)*
-         }? $err)
-     };
+Changes in v2:
+- Add new patch #2 that is same trick as #1 to fastboot->bootm glue layer.
+- Remove default n to patch #1, suggested by Tom.
+- Use IS_ENABLE() instead, suggested by Tom.
+- Collect review-by from Casey and Neil.
+- Rebase to u-boot/next branch.
+- CCing myself too.
+- Link to v1: https://lore.kernel.org/r/20250520-sc7180-android-boot-v1-0-3075a84ea094@gmail.com
 
 ---
-base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
-change-id: 20250628-rust_init_trailing_comma-e4f1c9855462
+George Chan (7):
+      image-android: Prepend/postpend default bootargs value with given bootcmd
+      boot/image-android.c: Split android_image_get_kernel into two functions
+      image-android.c: Add null check to bootargs and cmdline
+      bootm: Append bootargs value when bootmeth_android provide cmdline
+      boot: bootmeth_android: Conditionally dependent on abootimg
+      iommu: qcom-smmu: Introduce sc7180 compatible string
+      usb: gadget: Introduce usb gadget vendor/product default id for ARCH_QCOM
+
+ boot/Kconfig                  |   9 ++++
+ boot/bootm.c                  |   2 +-
+ boot/bootmeth_android.c       |   2 +-
+ boot/image-android.c          | 107 +++++++++++++++++++++++++++++-------------
+ drivers/iommu/qcom-hyp-smmu.c |   1 +
+ drivers/usb/gadget/Kconfig    |   2 +
+ include/image.h               |  14 ++++++
+ 7 files changed, 102 insertions(+), 35 deletions(-)
+---
+base-commit: 490ae8ceae2d5999c9de863e014e463f5c1495a6
+change-id: 20250520-sc7180-android-boot-a845ecf48a48
 
 Best regards,
 -- 
-Janne Grunau <j@jannau.net>
+George Chan <gchan9527@gmail.com>
 
