@@ -1,63 +1,79 @@
-From: George Chan <gchan9527@gmail.com>
-Date: Sat, 28 Jun 2025 20:25:25 +0800
-Subject: [PATCH v3 7/7] usb: gadget: Introduce usb gadget vendor/product
- default id for ARCH_QCOM
+From: Cristian Cozzolino <cristian_ci@protonmail.com>
+Subject: [PATCH v4 0/3] Add initial device tree for Billion Capture+
+Date: Sun, 29 Jun 2025 08:44:36 +0200
+Message-Id: <20250629-rimob-initial-devicetree-v4-0-7cf84fa142af@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250628-sc7180-android-boot-v3-7-105098a19165@gmail.com>
-References: <20250628-sc7180-android-boot-v3-0-105098a19165@gmail.com>
-In-Reply-To: <20250628-sc7180-android-boot-v3-0-105098a19165@gmail.com>
-To: Tom Rini <trini@konsulko.com>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Sumit Garg <sumit.garg@kernel.org>, Simon Glass <sjg@chromium.org>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, 
- Lukasz Majewski <lukma@denx.de>, Marek Vasut <marex@denx.de>
-Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, gchan9527@gmail.com
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751113519; l=1201;
- i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
- bh=i3CjPUv7tDnbX1a1ToJTqfyheK3BG5MGFTksS5RV3ig=;
- b=YnSjMN9JANNzhO6Dw39jPFqBfyZuE2RWIcliSKsCf6i1laCc2JjQKz3FRMalpBBaZzgXaIQ4I
- yIMTLjLEQSnCc0p4yzp9bkpKfwucr+idVKNEpvWPf7cNdedlLTiO34K
-X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
- pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
-X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
+X-B4-Tracking: v=1; b=H4sIANTgYGgC/43NQQqDMBCF4atI1k2JSYy2q96jdBGTSR1QI4lIi
+ 3j3RldCi3T5D7xvZhIhIERyzWYSYMKIvk8hTxkxje6fQNGmJpzxginOaMDO1xR7HFG31KaJgTE
+ AUKsrpYvaOVPVJM2HAA5fG31/pG4wjj68t09Tvl7/QKecMlqBUiVonruK34bgR993Gtuz8R1Z5
+ YnvNXmg8aQJ6RSTBdRGsJ+a2GvqQBNJkywvtbk4exH2S1uW5QP44IVpYQEAAA==
+X-Change-ID: 20250620-rimob-initial-devicetree-da86a5bffc8b
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ phone-devel@vger.kernel.org, 
+ Cristian Cozzolino <cristian_ci@protonmail.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751179514; l=1750;
+ i=cristian_ci@protonmail.com; s=20250620; h=from:subject:message-id;
+ bh=zSHtudQhspfSSyLk8tdd0fX3l7uamn9t+KhKu8UZiCY=;
+ b=rhvxuydmL5s0TYucKsFuKoDAlvODOBD28ksHeqhEra0+S99uWxSS14Nd9I66CJ80e30IjdeJq
+ nxAhVzNGdp5C/W/iMeacQD994ZJE+ffXsAScpapDKT7TawejYIEFNp3
+X-Developer-Key: i=cristian_ci@protonmail.com; a=ed25519;
+ pk=xH5IvIPUNHV1Q8R0/pq2CfuVFR/wTiAyuyi6IwedjZY=
+X-Endpoint-Received: by B4 Relay for cristian_ci@protonmail.com/20250620 with auth_id=438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently vendor/product id are both 0, and that might not as we want.
-Set to some arbitary known value that we can make it work more smoothly.
+Billion Capture+ is a handset using the MSM8953 SoC released in 2017
+and sold by Flipkart.
 
-Reviewed-by: Mattijs Korpershoek <mkorpershoek@kernel.org>
-Acked-by: Mattijs Korpershoek <mkorpershoek@kernel.org>
-Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
-Signed-off-by: George Chan <gchan9527@gmail.com>
+Add a device tree with initial support for:
+
+- GPIO keys
+- SDHCI (internal and external storage)
+- USB Device Mode
+- Regulators
+- Simple framebuffer
+
+Signed-off-by: Cristian Cozzolino <cristian_ci@protonmail.com>
 ---
- drivers/usb/gadget/Kconfig | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v4:
+- pick up tags (Rob);
+- Link to v3: https://lore.kernel.org/r/20250626-rimob-initial-devicetree-v3-0-4017ac9fd93d@protonmail.com
 
-diff --git a/drivers/usb/gadget/Kconfig b/drivers/usb/gadget/Kconfig
-index 46a83141481..2a56e360b5f 100644
---- a/drivers/usb/gadget/Kconfig
-+++ b/drivers/usb/gadget/Kconfig
-@@ -60,6 +60,7 @@ config USB_GADGET_VENDOR_NUM
- 	default 0x0955 if ARCH_TEGRA
- 	default 0x1f3a if ARCH_SUNXI
- 	default 0x2207 if ARCH_ROCKCHIP
-+	default 0x18d1 if ARCH_QCOM
- 	default 0x0
- 	help
- 	  Vendor ID of the USB device emulated, reported to the host device.
-@@ -86,6 +87,7 @@ config USB_GADGET_PRODUCT_NUM
- 	default 0x350a if ROCKCHIP_RK3568
- 	default 0x350b if ROCKCHIP_RK3588
- 	default 0x350c if ROCKCHIP_RK3528
-+	default 0x4ee0 if ARCH_QCOM
- 	default 0x0
- 	help
- 	  Product ID of the USB device emulated, reported to the host device.
+Changes in v3:
+- (patch 3/3): pick up tag (Konrad);
+- Link to v2: https://lore.kernel.org/r/20250624-rimob-initial-devicetree-v2-0-34f6045ebc30@protonmail.com
 
+Changes in v2:
+- (patch 3/3):
+  - add unit address and label to qseecom (Luca);
+  - reorder properties alphabetically in gpio-keys node (Konrad);
+  - fix hex values in reg address and size cells: from 0x00 to 0x0 (Konrad);
+  - add regulator-allow-set-load property to regulators supplying sdhc1/sdhc2. 
+- Link to v1: https://lore.kernel.org/r/20250620-rimob-initial-devicetree-v1-0-8e667ea21f82@protonmail.com
+
+---
+Cristian Cozzolino (3):
+      dt-bindings: vendor-prefixes: Add Flipkart
+      dt-bindings: arm: qcom: Add Billion Capture+
+      arm64: dts: qcom: msm8953: Add device tree for Billion Capture+
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 255 +++++++++++++++++++++
+ 4 files changed, 259 insertions(+)
+---
+base-commit: 0ff41df1cb268fc69e703a08a57ee14ae967d0ca
+change-id: 20250620-rimob-initial-devicetree-da86a5bffc8b
+
+Best regards,
 -- 
-2.43.0
+Cristian Cozzolino <cristian_ci@protonmail.com>
 
