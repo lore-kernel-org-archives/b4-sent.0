@@ -1,65 +1,172 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sun, 29 Jun 2025 16:49:24 +0200
-Subject: [PATCH 5/5] media: i2c: imx214: Separat legacy link frequency
- check from PLL calculation
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v7 0/4] arm64: dts: qcom: Add Lenovo ThinkBook 16 device
+ tree
+Date: Sun, 29 Jun 2025 19:25:21 +0200
+Message-Id: <20250629-tb16-dt-v7-0-35276341338f@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250629-imx214_fixes-v1-5-873eb94ad635@apitzsch.eu>
-References: <20250629-imx214_fixes-v1-0-873eb94ad635@apitzsch.eu>
-In-Reply-To: <20250629-imx214_fixes-v1-0-873eb94ad635@apitzsch.eu>
-To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Ricardo Ribalda <ribalda@kernel.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAF3YWgC/33OwUrEMBDG8VdZcjaSSSaT1JPvIR7aZGoDZbM0t
+ ahL393sgnYv7fH/MfyYqyg8JS7i5XQVEy+ppHyu4Z5OIgzt+YNlirWFVtoqCyDnDkjGWbLHgMZ
+ E7zoQ9foycZ++7tLbe+0hlTlP33d4gdv6Z9h/YwGpZAzWI7XaBvSveYwlDDmPJY+fc/2lPHfpR
+ 9zART8itCG6Ii5g01C0niMdIuYB0bghpiLgWFNsjGVnDhHcQbAiOgCTAh9Nrw4RuyGk3IbYirS
+ MjTGEvdX2EKEdhCpC0BpoAJmd3kXWdf0FKNqAEwQCAAA=
+X-Change-ID: 20250511-tb16-dt-e84c433d87b1
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Matthias Kaehlcke <mka@chromium.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Aleksandrs Vinarskis <alex.vinarskis@gmail.com>, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751208572; l=1164;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=fAmGDmfadAfG2+q/PfRs357Eh8ZGt/KKlqJTNCdh9uA=;
- b=uTy7Vr/Wz2r8Keavv7B3f00oF7RQ7FpLgLFTJhRmo6PbYIKYRQRaqolNWwFhwB02ms5fT36hg
- Ge/EdJ4CWRTDi5tqC0TuF3R/r9PdImnqhA41F9GWjPXNmrncMFfKk8y
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751217923; l=5870;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=T3i5nz/Q+wpJG//VJNZO4mD6Ybgyh26IwcwG2ujrvp8=;
+ b=J2cmcH1U4J876TsSb+2f2c1DC3yqe5IhZA8GC8AdU1xuZO81Zq/4hpDQrvm+EaQve+C4h5WMd
+ yeTPtXkL5SJBtKQ5sFYk0t7diUgJe1acZjN0nGCvo32IWrj56bh76J0
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This makes it easier to drop this legacy support from the driver later.
+Device tree for the Lenovo Thinkbook 16 G7 QOY
 
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+The Laptop is a Snapdragon X1 / X1 Plus (Purwa) based device [1].
+
+Supported features:
+
+- USB type-c and type-a ports
+- Keyboard
+- Touchpad (all that are described in the dsdt)
+- Touchscreen (described in the dsdt, no known SKUss)
+- Display including PWM backlight control
+- PCIe devices
+- nvme
+- SDHC card reader
+- ath12k WCN7850 Wifi and Bluetooth
+- ADSP and CDSP
+- GPIO keys (Lid switch)
+- Sound via internal speakers / DMIC / USB / headphone jack
+- DP Altmode with 2 lanes (as all of these still do)
+- Integrated fingerprint reader (FPC)
+- Integrated UVC camera
+- X1-45 GPU
+
+Not supported yet:
+
+- HDMI port.
+- EC and some fn hotkeys.
+
+Limited support yet:
+
+- SDHC card reader is based on the on-chip sdhc_2 controller, but the driver from
+the Snapdragon Dev Kit is only a partial match. It can do normal slow sd cards,
+but not UHS-I (SD104) and UHS-II.
+
+Notes:
+
+- Putting the camera behind usb_2_dwc3 results in the camera switched off after 30
+seconds. With the stand-alone node as previously defined it stays usable and
+suspends, as intended. Sincethe sole reason for the USB camera to be in the
+devicetree is the required extra supply (which is guessed, as mentioned), and
+its handling by power management, I would propose to keep it this way.
+
+- The gpi_dma nodes appear to be implicitly enabled when a serial device is used.
+I added them, no change in behaviour, though. Since this would be the only X1
+device adding them afaik, I left them out.
+
+- The cma-memory is removed, it is not on all x1 devices as I assumed.
+Haven't found a case where it is required.
+
+- i2c2 defines the keyboard and 4 different touchpad interfaces. With the bundling
+of the pinctrl it seems to work better. I've had issues with only clock and touchpad
+pinctrl on the i2c2 node, and not keyboard.
+
+This work was done without any schematics or non-public knowledge of the device.
+So, it is based on the existing x1 device trees, dsdt analysis, using HWInfo
+ARM64, and pure guesswork. It has been confirmed, however, that the device really
+has 4 NXP PTN3222 eUSB2 repeaters, one of which doesn't have a reset GPIO (eusb5
+@43).
+
+I have brought up the Thinkbook over the last 5 months since the x1p42100-crd
+patches were available. The laptop is very usable now, and quite solid as a dev/
+test platform.
+
+Big thanks to Aleksandrs Vinarskis for helping (and sort of persisting) on the
+fingerprint, camera and HDMI issues.
+
+[1]: https://psref.lenovo.com/syspool/Sys/PDF/ThinkBook/ThinkBook_16_G7_QOY/ThinkBook_16_G7_QOY_Spec.pdf
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/media/i2c/imx214.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+Changes in v7:
+- amended pinctrl order and indents where needed
+- interchanged enable-gpios and select-gpios for usb-sbu-mux as they are
+  defined in the dsdt - dp altmode function confirmed in both orientations
+- picked up reviewed-by and acked-by from Dmitry Baryshkob and Rob Herring
+- Link to v6: https://lore.kernel.org/r/20250607-tb16-dt-v6-0-61a31914ee72@oldschoolsolutions.biz
 
-diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
-index 63cf30acdc241de2f9ab3db339590da4af3d5102..52433775e9baddd8ab988e866a83387d53c1fd5c 100644
---- a/drivers/media/i2c/imx214.c
-+++ b/drivers/media/i2c/imx214.c
-@@ -1362,18 +1362,16 @@ static int imx214_parse_fwnode(struct imx214 *imx214)
- 		u64 freq = bus_cfg->link_frequencies[i];
- 		struct ccs_pll pll;
- 
--		if (!imx214_pll_calculate(imx214, &pll, freq))
--			break;
- 		if (freq == IMX214_DEFAULT_LINK_FREQ_LEGACY) {
- 			dev_warn(dev,
- 				 "link-frequencies %d not supported, please review your DT. Continuing anyway\n",
- 				 IMX214_DEFAULT_LINK_FREQ);
- 			freq = IMX214_DEFAULT_LINK_FREQ;
--			if (imx214_pll_calculate(imx214, &pll, freq))
--				continue;
- 			bus_cfg->link_frequencies[i] = freq;
--			break;
- 		}
-+
-+		if (!imx214_pll_calculate(imx214, &pll, freq))
-+			break;
- 	}
- 
- 	if (i == bus_cfg->nr_of_link_frequencies)
+Changes in v6:
+- removed compatible for qcom,sm8550-pmic-glink" in pmic-glink
+- fixed malformed gpu node
+- Link to v5: https://lore.kernel.org/r/20250607-tb16-dt-v5-0-ae493364f525@oldschoolsolutions.biz
 
+Changes in v5:
+- removed patch for the CMN N160JCE-ELL panel, got reviewed
+- re-ordered code in onboard_usb_dev as requested by Dmitry Baryshkov
+- amended device tree with review notes from Dmitry Baryshkov where possible
+  and resuting in a working laptop - added notes section
+- Link to v4: https://lore.kernel.org/r/20250524-tb16-dt-v4-0-2c1e6018d3f0@oldschoolsolutions.biz
+
+Changes in v4:
+- squashed Makefile and dts commits to one
+- picked up r-b from Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+- Link to v3: https://lore.kernel.org/r/20250524-tb16-dt-v3-0-17e26d935e73@oldschoolsolutions.biz
+
+Changes in v3:
+- removed changes in x1e80100.dtsi and x1p42100.dtsi - resolved with [2]
+- fixed schema errors with correct compatible string for the model
+- added power management for the camera via onboard_usb_dev.c
+- amended node ordering
+- changed the panel driver used to edp-panel, added panel in the driver
+- amended x1e80100.dtsi for exposing PM8010: This one is not present in the design,
+  added /delete-node/ for it.
+- removed commented-out lines for sdhc, specified which don't work.
+- corrected ZAP shader firmware name
+- Link to v2: https://lore.kernel.org/r/20250516-tb16-dt-v2-0-7c4996d58ed6@oldschoolsolutions.biz
+
+Changes in v2:
+- removed nodes that gave DTC compile errors (pm8010_thermal, edp0_hpd_active)
+- amended qcom.yaml
+- shortened the commit titles to fit 75 chars
+- Link to v1: https://lore.kernel.org/r/20250515-tb16-dt-v1-0-dc5846a25c48@oldschoolsolutions.biz
+
+[2]: 20250520-topic-x1p4_tsens-v2-1-9687b789a4fb@oss.qualcomm.com
+
+---
+Jens Glathe (4):
+      dt-bindings: arm: qcom: Add Lenovo TB16 support
+      usb: misc: onboard_usb_dev: Add Bison Electronics Inc. Integrated Camera
+      firmware: qcom: scm: Allow QSEECOM on Lenovo Thinkbook 16
+      arm64: dts: qcom: Add Lenovo ThinkBook 16 G7 QOY device tree
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    2 +
+ arch/arm64/boot/dts/qcom/x1e80100-pmics.dtsi       |    2 +-
+ .../boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts | 1676 ++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ drivers/usb/misc/onboard_usb_dev.c                 |    2 +
+ drivers/usb/misc/onboard_usb_dev.h                 |    8 +
+ 7 files changed, 1691 insertions(+), 1 deletion(-)
+---
+base-commit: 2aeda9592360c200085898a258c4754bfe879921
+change-id: 20250511-tb16-dt-e84c433d87b1
+
+Best regards,
 -- 
-2.50.0
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
