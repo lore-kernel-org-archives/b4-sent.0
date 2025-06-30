@@ -1,63 +1,47 @@
-From: George Chan <gchan9527@gmail.com>
-Date: Mon, 30 Jun 2025 15:56:55 +0800
-Subject: [PATCH v4 6/6] usb: gadget: Introduce usb gadget vendor/product
- default id for ARCH_QCOM
+From: Yang Li <yang.li@amlogic.com>
+Subject: [PATCH BlueZ bluez v2 0/2] bap for big sync lost
+Date: Mon, 30 Jun 2025 16:02:38 +0800
+Message-Id: <20250630-bap_for_big_sync_lost-v2-0-1491b608cda5@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250630-sc7180-android-boot-v4-6-24cdb50e860f@gmail.com>
-References: <20250630-sc7180-android-boot-v4-0-24cdb50e860f@gmail.com>
-In-Reply-To: <20250630-sc7180-android-boot-v4-0-24cdb50e860f@gmail.com>
-To: Tom Rini <trini@konsulko.com>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Sumit Garg <sumit.garg@kernel.org>, Simon Glass <sjg@chromium.org>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, 
- Lukasz Majewski <lukma@denx.de>, Marek Vasut <marex@denx.de>
-Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, gchan9527@gmail.com
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751270223; l=1201;
- i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
- bh=i3CjPUv7tDnbX1a1ToJTqfyheK3BG5MGFTksS5RV3ig=;
- b=xA6zlJ6wvxC0BUq/qprXc1BOQF01W51hnrkZSn7rn6eZtKGyVHf9IYB108aYkmCcV9VS0qDdL
- H8VYaIj6r28CdZDSEtEq8SBq0MBOho+KDf+fxOB1Xa6rwkarSrT4WF8
-X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
- pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
-X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
+X-B4-Tracking: v=1; b=H4sIAJ5EYmgC/4WNWwqDMBREtyL3uykx1Yj9ch9FQp56QY0kVmole
+ 29wA/08M8yZE6INaCM8ixOC3TGiXzKwWwF6lMtgCZrMwCirKWcVUXIVzgehcBDxWLSYfNwIf1Q
+ N17xpjVKQt2uwDj+X9wVqetsv9DkeMW4+HNfbXl7lH/FekpJQ41oqqatrQzs5T35Afdd+hj6l9
+ AMfd+6XwwAAAA==
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751270571; l=707;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=X2unKFiKul4A0ubbaCDf/GNKDuc8drVAb6uE9Rr7Jsk=;
+ b=0LAxtze6T/2DlZKt8pESJfdlSgjmbaocRFZTJnakISWf8jrMoFt1lyeE/wQfL/dzo0SOOOar5
+ Zba1HjeBs8BAohAsGMiFX6sZo7is/ftD3+w5NVqHsHgAuzPOuE0D0hz
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently vendor/product id are both 0, and that might not as we want.
-Set to some arbitary known value that we can make it work more smoothly.
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 
-Reviewed-by: Mattijs Korpershoek <mkorpershoek@kernel.org>
-Acked-by: Mattijs Korpershoek <mkorpershoek@kernel.org>
-Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
-Signed-off-by: George Chan <gchan9527@gmail.com>
+Changes in v2:
+- Add state check in stream_disable.
+- Add type check in stream_io_disconnected.
+- Link to v1: https://patch.msgid.link/20250624-bap_for_big_sync_lost-v1-1-0df90a0f55d0@amlogic.com
+
 ---
- drivers/usb/gadget/Kconfig | 2 ++
- 1 file changed, 2 insertions(+)
+Yang Li (2):
+      shared/bap: Set stream to idle when I/O is disconnected
+      shared/bap: Add stream state check in stream_disable
 
-diff --git a/drivers/usb/gadget/Kconfig b/drivers/usb/gadget/Kconfig
-index 46a83141481..2a56e360b5f 100644
---- a/drivers/usb/gadget/Kconfig
-+++ b/drivers/usb/gadget/Kconfig
-@@ -60,6 +60,7 @@ config USB_GADGET_VENDOR_NUM
- 	default 0x0955 if ARCH_TEGRA
- 	default 0x1f3a if ARCH_SUNXI
- 	default 0x2207 if ARCH_ROCKCHIP
-+	default 0x18d1 if ARCH_QCOM
- 	default 0x0
- 	help
- 	  Vendor ID of the USB device emulated, reported to the host device.
-@@ -86,6 +87,7 @@ config USB_GADGET_PRODUCT_NUM
- 	default 0x350a if ROCKCHIP_RK3568
- 	default 0x350b if ROCKCHIP_RK3588
- 	default 0x350c if ROCKCHIP_RK3528
-+	default 0x4ee0 if ARCH_QCOM
- 	default 0x0
- 	help
- 	  Product ID of the USB device emulated, reported to the host device.
+ src/shared/bap.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+---
+base-commit: ae1b7f6ba805f82742bbc32ff275e268248ef9f8
+change-id: 20250624-bap_for_big_sync_lost-63476c679dbb
 
+Best regards,
 -- 
-2.43.0
+Yang Li <yang.li@amlogic.com>
 
