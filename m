@@ -1,109 +1,67 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 30 Jun 2025 16:35:02 +0400
-Subject: [PATCH v6 3/3] arm64: dts: qcom: ipq5018: Add GE PHY to internal
- mdio bus
+From: Dave Marquardt <davemarq@linux.ibm.com>
+Date: Mon, 30 Jun 2025 11:23:53 -0500
+Subject: [PATCH RESEND net-next v3] Fixed typo in netdevsim documentation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250630-ipq5018-ge-phy-v6-3-01be06378c15@outlook.com>
-References: <20250630-ipq5018-ge-phy-v6-0-01be06378c15@outlook.com>
-In-Reply-To: <20250630-ipq5018-ge-phy-v6-0-01be06378c15@outlook.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751286906; l=2285;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=hFpy0osU/0n+A52muRC0D3Drst6JCZAX5hmtJZDrLks=;
- b=IbGpuJzXMc5BTx2N1rUvDYbw3TZRyzsQvQdssmrmVKxNooxUSRgWjgh4ug1nAPUDTG89lVvt1
- 4/MbsLOMbeADHLvXCxRNLeck65T452aoe/sE0r8U3a2ZISQfq7/fig9
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+Message-Id: <20250630-netdevsim-typo-fix-v3-1-e1eae3a5f018@linux.ibm.com>
+To: Jiri Pirko <jiri@resnulli.us>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: netdev@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Breno Leitao <leitao@debian.org>, Joe Damato <joe@dama.to>, 
+ Dave Marquardt <davemarq@linux.ibm.com>
+X-Mailer: b4 0.15-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751300637; l=1398;
+ i=davemarq@linux.ibm.com; s=20250630; h=from:subject:message-id;
+ bh=MEqm3SmnFyL3ZtTfgUhX+syORhLhO4nWf1g250ldrQk=;
+ b=sKFlgQ61hUnJi37MriXk8na7tgyFykkCypzTtPzeAojpPug9LzA2wBcvywGsx7BZFOOCeNGPd
+ hPcC1lX1+5zC0EbJtNACbjKigx5rypxjNDXOR0vA/bOdcZlGcm/7cz5
+X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
+ pk=eCwwhqOykPrqNNTH1uSGAhXUfNQI0Zlz7hb8uGTjPVU=
+X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20250630 with auth_id=447
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The IPQ5018 SoC contains an internal GE PHY, always at phy address 7.
-As such, let's add the GE PHY node to the SoC dtsi.
+Fixed a typographical error in "Rate objects" section
 
-The LDO controller found in the SoC must be enabled to provide constant
-low voltages to the PHY. The mdio-ipq4019 driver already has support
-for this, so adding the appropriate TCSR register offset.
-
-In addition, the GE PHY outputs both the RX and TX clocks to the GCC
-which gate controls them and routes them back to the PHY itself.
-So let's create two DT fixed clocks and register them in the GCC node.
-
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Reviewed-by: Joe Damato <joe@dama.to>
+Reviewed-by: Breno Leitao <leitao@debian.org>
+Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 26 +++++++++++++++++++++++---
- 1 file changed, 23 insertions(+), 3 deletions(-)
+Fixed a typographical error in "Rate objects" section
+---
+Changes in v3:
+- Retargeted from net to net-next
+- Included Reviewed-by headers
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 03ebc3e305b267c98a034c41ce47a39269afce75..d47ad62b01991fafa51e7082bd1fcf6670d9b0bc 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -16,6 +16,18 @@ / {
- 	#size-cells = <2>;
- 
- 	clocks {
-+		gephy_rx_clk: gephy-rx-clk {
-+			compatible = "fixed-clock";
-+			clock-frequency = <125000000>;
-+			#clock-cells = <0>;
-+		};
-+
-+		gephy_tx_clk: gephy-tx-clk {
-+			compatible = "fixed-clock";
-+			clock-frequency = <125000000>;
-+			#clock-cells = <0>;
-+		};
-+
- 		sleep_clk: sleep-clk {
- 			compatible = "fixed-clock";
- 			#clock-cells = <0>;
-@@ -184,7 +196,8 @@ pcie0_phy: phy@86000 {
- 
- 		mdio0: mdio@88000 {
- 			compatible = "qcom,ipq5018-mdio";
--			reg = <0x00088000 0x64>;
-+			reg = <0x00088000 0x64>,
-+			      <0x019475c4 0x4>;
- 			#address-cells = <1>;
- 			#size-cells = <0>;
- 
-@@ -192,6 +205,13 @@ mdio0: mdio@88000 {
- 			clock-names = "gcc_mdio_ahb_clk";
- 
- 			status = "disabled";
-+
-+			ge_phy: ethernet-phy@7 {
-+				compatible = "ethernet-phy-id004d.d0c0";
-+				reg = <7>;
-+
-+				resets = <&gcc GCC_GEPHY_MISC_ARES>;
-+			};
- 		};
- 
- 		mdio1: mdio@90000 {
-@@ -232,8 +252,8 @@ gcc: clock-controller@1800000 {
- 				 <&pcie0_phy>,
- 				 <&pcie1_phy>,
- 				 <0>,
--				 <0>,
--				 <0>,
-+				 <&gephy_rx_clk>,
-+				 <&gephy_tx_clk>,
- 				 <0>,
- 				 <0>;
- 			#clock-cells = <1>;
+Changes in v2:
+- Targeted patch to net
+---
+ Documentation/networking/devlink/netdevsim.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/Documentation/networking/devlink/netdevsim.rst b/Documentation/networking/devlink/netdevsim.rst
+index 88482725422c..3932004eae82 100644
+--- a/Documentation/networking/devlink/netdevsim.rst
++++ b/Documentation/networking/devlink/netdevsim.rst
+@@ -62,7 +62,7 @@ Rate objects
+ 
+ The ``netdevsim`` driver supports rate objects management, which includes:
+ 
+-- registerging/unregistering leaf rate objects per VF devlink port;
++- registering/unregistering leaf rate objects per VF devlink port;
+ - creation/deletion node rate objects;
+ - setting tx_share and tx_max rate values for any rate object type;
+ - setting parent node for any rate object type.
+
+---
+base-commit: 8909f5f4ecd551c2299b28e05254b77424c8c7dc
+change-id: 20250616-netdevsim-typo-fix-6e5e3113f49b
+
+Best regards,
+--
+Dave Marquardt <davemarq@linux.ibm.com>
 -- 
-2.49.0
+Dave Marquardt <davemarq@linux.ibm.com>
 
