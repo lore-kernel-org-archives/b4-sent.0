@@ -1,207 +1,104 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Mon, 30 Jun 2025 14:45:10 +0800
-Subject: [PATCH v3] Bluetooth: hci_event: Add support for handling LE BIG
- Sync Lost event
+From: George Chan <gchan9527@gmail.com>
+Subject: [PATCH v4 0/6] A series of patch for enable sc7180 android boot
+Date: Mon, 30 Jun 2025 15:56:49 +0800
+Message-Id: <20250630-sc7180-android-boot-v4-0-24cdb50e860f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250630-handle_big_sync_lost_event-v3-1-a4cf5bf6ec82@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAHUyYmgC/33NSw6CMBSF4a2Qjq2htzzUkfswhtTbCzTB1rSkk
- RD2biEOdMLwP4PvzCyQNxTYJZuZp2iCcTaFPGQMe2U74kanZpBDmVcCeBr1QM3DdE2YLDaDC2N
- DkezIC6w1VoU85wpYAl6eWvPe8Ns9dW/C6Py0fUWxrl8Wij02Ci44SkCStdaVKq/qObjO4BHdk
- 61whF+s3MUgYSfRikrmZa1A/GPLsnwA7EQyyhMBAAA=
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751265911; l=6290;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=hd2J731iIuIotatLug2vmpMnVpPpDXpNF9inZ5U4hT0=;
- b=5dZKeucKuuFJr62uUw25C8Veatiw9E6VYmhqqRy9cGZ8xGyDLXD65tzfu/x7jT8NoeN7tfg5r
- /+cNZ9wSp1YC1O29aCnQbe1oFsi+tnO941S3B53XlpZHW/giU7pOwEr
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+X-B4-Tracking: v=1; b=H4sIAEFDYmgC/33NTQ7CIBCG4asY1mIGCoW68h7GBfLTkthioCGap
+ neXdmMTG5fvl8wzE0o2epvQ+TChaLNPPgwl2PGAdKeG1mJvSiMKlAOngJMWRAJWg4nBG3wPYcR
+ KMm61Y1IxicrlM1rnX6t6vZXufBpDfK9PMlnW/14mGHAFghfYKmjYpe2Vf5x06NHiZfo1ahD7B
+ i0GNY4b4WpC6I9RbQwq942qGAQ4NFKRhtR8a8zz/AF6aLvaPgEAAA==
+To: Tom Rini <trini@konsulko.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Sumit Garg <sumit.garg@kernel.org>, Simon Glass <sjg@chromium.org>, 
+ Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Lukasz Majewski <lukma@denx.de>, Marek Vasut <marex@denx.de>
+Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, gchan9527@gmail.com, 
+ Vitalii Skorkin <nikroks@mainlining.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751270223; l=3271;
+ i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
+ bh=TEIhbyiLASh+uLslJ10eWzVDzNJXy0lerC1nZOO4DwY=;
+ b=VcB1DrC1z5YA7NYypQ1BBBPkQ/pgjWM2hYFmugGt7fIHykt48bIzEnfqhDlBiB/8Ro037Ofuu
+ XRtZ2++HajED7UBbaojROQ6jKbVloMuch+kuF1pDfdf01IOzeRnOjiW
+X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
+ pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
+X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the BIS source stops, the controller sends an LE BIG Sync Lost
-event (subevent 0x1E). Currently, this event is not handled, causing
-the BIS stream to remain active in BlueZ and preventing recovery.
+Since attempt[1] to embed android specific boot param into fdt bootargs,
+a new idea is formed as to make use of env file to contain default param
+value. Current code logic is already working fine, unless the priority
+of param at begining is higher than at tail. From env file, bootargs is
+treated important, and prepend at begining. So there is a need to
+reverse the logic, and make sure default bootargs value at the end, and
+let androidboot img bootargs value sit at begining.
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+So a new kconfig item is introduced. Once enabled, the bootargs strcat
+param will get reversed.
+
+A similar logic is needed for fastboot->bootm glue function, so split 
+function of patch #1 into 2 functions as #2, fixed some issues #3, and 
+apply #4 with same trick to glue function too.
+
+Some one-liners patch is included to enable device driver for sc7180
+soc. It is about iommu for usb, usb gadget vendor/product id.
+
+Reduce dependency on abootimg when androidboot v3 or greater is not
+needed. Since Tom suggested to reduce __maybe_unused directive and 
+use IS_ENABLE() instead; two __weak func proto need to add into image.h
+
+[1]https://lists.denx.de/pipermail/u-boot/2025-May/588828.html
+[2]https://lists.denx.de/pipermail/u-boot/2025-May/589926.html
+
+Signed-off-by: George Chan <gchan9527@gmail.com>
 ---
+Changes in v4:
+- Drop patch #3.
+- Refine #2 to remove intermediate variables and code style.
+- Link to v3: https://lore.kernel.org/r/20250628-sc7180-android-boot-v3-0-105098a19165@gmail.com
+
 Changes in v3:
-- Delete the PA sync connection separately.
-- Add state and role check when lookup BIS connections
-- Link to v2: https://lore.kernel.org/r/20250625-handle_big_sync_lost_event-v2-1-81f163057a21@amlogic.com
+- Collect acks-by and review-by.
+- Split function and replace old #2 into #2-#4, code reuse in #4
+- Modify changelog and Kconfig description of #1, suggested by Mattijs
+- Slightly modify #5, add back line break.
+- Rebase to latest next
+- Link to v2: https://lore.kernel.org/r/20250607-sc7180-android-boot-v2-0-2df5d7f61124@gmail.com
 
 Changes in v2:
-- Matching the BIG handle is required when looking up a BIG connection.
-- Use ev->reason to determine the cause of disconnection.
-- Call hci_conn_del after hci_disconnect_cfm to remove the connection entry
-- Delete the big connection
-- Link to v1: https://lore.kernel.org/r/20250624-handle_big_sync_lost_event-v1-1-c32ce37dd6a5@amlogic.com
----
- include/net/bluetooth/hci.h      |  6 ++++++
- include/net/bluetooth/hci_core.h | 16 ++++++++++++----
- net/bluetooth/hci_conn.c         |  3 ++-
- net/bluetooth/hci_event.c        | 39 ++++++++++++++++++++++++++++++++++++++-
- 4 files changed, 58 insertions(+), 6 deletions(-)
-
-diff --git a/include/net/bluetooth/hci.h b/include/net/bluetooth/hci.h
-index 82cbd54443ac..48389a64accb 100644
---- a/include/net/bluetooth/hci.h
-+++ b/include/net/bluetooth/hci.h
-@@ -2849,6 +2849,12 @@ struct hci_evt_le_big_sync_estabilished {
- 	__le16  bis[];
- } __packed;
- 
-+#define HCI_EVT_LE_BIG_SYNC_LOST 0x1e
-+struct hci_evt_le_big_sync_lost {
-+	__u8    handle;
-+	__u8    reason;
-+} __packed;
-+
- #define HCI_EVT_LE_BIG_INFO_ADV_REPORT	0x22
- struct hci_evt_le_big_info_adv_report {
- 	__le16  sync_handle;
-diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
-index a760f05fa3fb..5ab19d4fef93 100644
---- a/include/net/bluetooth/hci_core.h
-+++ b/include/net/bluetooth/hci_core.h
-@@ -1340,7 +1340,8 @@ hci_conn_hash_lookup_big_sync_pend(struct hci_dev *hdev,
- }
- 
- static inline struct hci_conn *
--hci_conn_hash_lookup_big_state(struct hci_dev *hdev, __u8 handle,  __u16 state)
-+hci_conn_hash_lookup_big_state(struct hci_dev *hdev, __u8 handle,
-+			       __u16 state, __u8 role)
- {
- 	struct hci_conn_hash *h = &hdev->conn_hash;
- 	struct hci_conn  *c;
-@@ -1348,9 +1349,16 @@ hci_conn_hash_lookup_big_state(struct hci_dev *hdev, __u8 handle,  __u16 state)
- 	rcu_read_lock();
- 
- 	list_for_each_entry_rcu(c, &h->list, list) {
--		if (c->type != BIS_LINK || bacmp(&c->dst, BDADDR_ANY) ||
--		    c->state != state)
--			continue;
-+		if (role == HCI_ROLE_MASTER) {
-+			if (c->type != BIS_LINK || bacmp(&c->dst, BDADDR_ANY) ||
-+				c->state != state || c->role != role)
-+				continue;
-+		} else {
-+			if (c->type != BIS_LINK ||
-+				c->state != state ||
-+				c->role != role)
-+				continue;
-+		}
- 
- 		if (handle == c->iso_qos.bcast.big) {
- 			rcu_read_unlock();
-diff --git a/net/bluetooth/hci_conn.c b/net/bluetooth/hci_conn.c
-index 4f379184df5b..6bb1ab42db39 100644
---- a/net/bluetooth/hci_conn.c
-+++ b/net/bluetooth/hci_conn.c
-@@ -2146,7 +2146,8 @@ struct hci_conn *hci_bind_bis(struct hci_dev *hdev, bdaddr_t *dst, __u8 sid,
- 	struct hci_link *link;
- 
- 	/* Look for any BIS that is open for rebinding */
--	conn = hci_conn_hash_lookup_big_state(hdev, qos->bcast.big, BT_OPEN);
-+	conn = hci_conn_hash_lookup_big_state(hdev, qos->bcast.big,
-+					     BT_OPEN, HCI_ROLE_MASTER);
- 	if (conn) {
- 		memcpy(qos, &conn->iso_qos, sizeof(*qos));
- 		conn->state = BT_CONNECTED;
-diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
-index 66052d6aaa1d..f3e3e4964677 100644
---- a/net/bluetooth/hci_event.c
-+++ b/net/bluetooth/hci_event.c
-@@ -3903,6 +3903,8 @@ static u8 hci_cc_le_setup_iso_path(struct hci_dev *hdev, void *data,
- 		goto unlock;
- 	}
- 
-+	conn->state = BT_CONNECTED;
-+
- 	switch (cp->direction) {
- 	/* Input (Host to Controller) */
- 	case 0x00:
-@@ -6913,7 +6915,7 @@ static void hci_le_create_big_complete_evt(struct hci_dev *hdev, void *data,
- 
- 	/* Connect all BISes that are bound to the BIG */
- 	while ((conn = hci_conn_hash_lookup_big_state(hdev, ev->handle,
--						      BT_BOUND))) {
-+					BT_BOUND, HCI_ROLE_MASTER))) {
- 		if (ev->status) {
- 			hci_connect_cfm(conn, ev->status);
- 			hci_conn_del(conn);
-@@ -6968,6 +6970,7 @@ static void hci_le_big_sync_established_evt(struct hci_dev *hdev, void *data,
- 	}
- 
- 	clear_bit(HCI_CONN_CREATE_BIG_SYNC, &conn->flags);
-+	conn->state = BT_CONNECTED;
- 
- 	conn->num_bis = 0;
- 	memset(conn->bis, 0, sizeof(conn->num_bis));
-@@ -7026,6 +7029,35 @@ static void hci_le_big_sync_established_evt(struct hci_dev *hdev, void *data,
- 	hci_dev_unlock(hdev);
- }
- 
-+static void hci_le_big_sync_lost_evt(struct hci_dev *hdev, void *data,
-+				     struct sk_buff *skb)
-+{
-+	struct hci_evt_le_big_sync_lost *ev = data;
-+	struct hci_conn *bis, *conn;
-+
-+	bt_dev_dbg(hdev, "big handle 0x%2.2x", ev->handle);
-+
-+	hci_dev_lock(hdev);
-+
-+	/* Delete the pa sync connection */
-+	bis = hci_conn_hash_lookup_pa_sync_big_handle(hdev, ev->handle);
-+	if (bis) {
-+		conn = hci_conn_hash_lookup_pa_sync_handle(hdev, bis->sync_handle);
-+		if (conn)
-+			hci_conn_del(conn);
-+	}
-+
-+	/* Delete each bis connection */
-+	while ((bis = hci_conn_hash_lookup_big_state(hdev, ev->handle,
-+						BT_CONNECTED, HCI_ROLE_SLAVE))) {
-+		clear_bit(HCI_CONN_BIG_SYNC, &bis->flags);
-+		hci_disconn_cfm(bis, ev->reason);
-+		hci_conn_del(bis);
-+	}
-+
-+	hci_dev_unlock(hdev);
-+}
-+
- static void hci_le_big_info_adv_report_evt(struct hci_dev *hdev, void *data,
- 					   struct sk_buff *skb)
- {
-@@ -7149,6 +7181,11 @@ static const struct hci_le_ev {
- 		     hci_le_big_sync_established_evt,
- 		     sizeof(struct hci_evt_le_big_sync_estabilished),
- 		     HCI_MAX_EVENT_SIZE),
-+	/* [0x1e = HCI_EVT_LE_BIG_SYNC_LOST] */
-+	HCI_LE_EV_VL(HCI_EVT_LE_BIG_SYNC_LOST,
-+		     hci_le_big_sync_lost_evt,
-+		     sizeof(struct hci_evt_le_big_sync_lost),
-+		     HCI_MAX_EVENT_SIZE),
- 	/* [0x22 = HCI_EVT_LE_BIG_INFO_ADV_REPORT] */
- 	HCI_LE_EV_VL(HCI_EVT_LE_BIG_INFO_ADV_REPORT,
- 		     hci_le_big_info_adv_report_evt,
+- Add new patch #2 that is same trick as #1 to fastboot->bootm glue layer.
+- Remove default n to patch #1, suggested by Tom.
+- Use IS_ENABLE() instead, suggested by Tom.
+- Collect review-by from Casey and Neil.
+- Rebase to u-boot/next branch.
+- CCing myself too.
+- Link to v1: https://lore.kernel.org/r/20250520-sc7180-android-boot-v1-0-3075a84ea094@gmail.com
 
 ---
-base-commit: bd35cd12d915bc410c721ba28afcada16f0ebd16
-change-id: 20250612-handle_big_sync_lost_event-4c7dc64390a2
+George Chan (6):
+      image-android: Prepend/postpend default bootargs value with given bootcmd
+      boot/image-android.c: Split android_image_get_kernel into two functions
+      bootm: Append bootargs value when bootmeth_android provide cmdline
+      boot: bootmeth_android: Conditionally dependent on abootimg
+      iommu: qcom-smmu: Introduce sc7180 compatible string
+      usb: gadget: Introduce usb gadget vendor/product default id for ARCH_QCOM
+
+ boot/Kconfig                  |  9 ++++
+ boot/bootm.c                  |  2 +-
+ boot/bootmeth_android.c       |  2 +-
+ boot/image-android.c          | 97 ++++++++++++++++++++++++++++---------------
+ drivers/iommu/qcom-hyp-smmu.c |  1 +
+ drivers/usb/gadget/Kconfig    |  2 +
+ include/image.h               | 14 +++++++
+ 7 files changed, 92 insertions(+), 35 deletions(-)
+---
+base-commit: 490ae8ceae2d5999c9de863e014e463f5c1495a6
+change-id: 20250520-sc7180-android-boot-a845ecf48a48
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+George Chan <gchan9527@gmail.com>
 
