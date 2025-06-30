@@ -1,10 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 30 Jun 2025 16:35:00 +0400
-Subject: [PATCH v6 1/3] clk: qcom: gcc-ipq5018: fix GE PHY reset
+Date: Mon, 30 Jun 2025 16:35:01 +0400
+Subject: [PATCH v6 2/3] arm64: dts: qcom: ipq5018: Add MDIO buses
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250630-ipq5018-ge-phy-v6-1-01be06378c15@outlook.com>
+Message-Id: <20250630-ipq5018-ge-phy-v6-2-01be06378c15@outlook.com>
 References: <20250630-ipq5018-ge-phy-v6-0-01be06378c15@outlook.com>
 In-Reply-To: <20250630-ipq5018-ge-phy-v6-0-01be06378c15@outlook.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -17,42 +17,64 @@ Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org,
  George Moussalem <george.moussalem@outlook.com>, 
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751286906; l=1220;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751286906; l=1519;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=y65n0Od6u+x9wP3HKotpTyPdgu84le/dyFb7G8W0t/E=;
- b=8GFFdXl2KAWvcdLAfio5sbRql6URuWxu1LrF2UScWzaP2crAPzgbOSYYGfwb2CyAvqVN6HQvG
- cKUzsL4FKfOCe0qZu/cImN6p6estTR7yvV1/7E6WEQD7X3ZhI9T9Gqf
+ bh=jA4BQsaw0tlEf36IZrwvZtR6C1am2pcwyAdrevsj4Hk=;
+ b=zhpJIuMeUf1JRn427l7eFVhR1EPJ/rB+EyanEchKtvoBAEd02pDGr8SV7up81RN8ZX1b8UOCT
+ M6NL0ziSVpKD8aqeexhAp9s85HOEOYu/sAO7joD8qvnnoS3/CqoFWaI
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MISC reset is supposed to trigger a resets across the MDC, DSP, and
-RX & TX clocks of the IPQ5018 internal GE PHY. So let's set the bitmask
-of the reset definition accordingly in the GCC as per the downstream
-driver.
+IPQ5018 contains two mdio buses of which one bus is used to control the
+SoC's internal GE PHY, while the other bus is connected to external PHYs
+or switches.
 
-Link: https://git.codelinaro.org/clo/qsdk/oss/kernel/linux-ipq-5.4/-/commit/00743c3e82fa87cba4460e7a2ba32f473a9ce932
+There's already support for IPQ5018 in the mdio-ipq4019 driver, so let's
+simply add the mdio nodes for them.
 
 Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/clk/qcom/gcc-ipq5018.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
-diff --git a/drivers/clk/qcom/gcc-ipq5018.c b/drivers/clk/qcom/gcc-ipq5018.c
-index 70f5dcb96700f55da1fb19fc893d22350a7e63bf..6eb86c034fda18c38dcd9726f0903841252381da 100644
---- a/drivers/clk/qcom/gcc-ipq5018.c
-+++ b/drivers/clk/qcom/gcc-ipq5018.c
-@@ -3660,7 +3660,7 @@ static const struct qcom_reset_map gcc_ipq5018_resets[] = {
- 	[GCC_WCSS_AXI_S_ARES] = { 0x59008, 6 },
- 	[GCC_WCSS_Q6_BCR] = { 0x18004, 0 },
- 	[GCC_WCSSAON_RESET] = { 0x59010, 0},
--	[GCC_GEPHY_MISC_ARES] = { 0x56004, 0 },
-+	[GCC_GEPHY_MISC_ARES] = { 0x56004, .bitmask = GENMASK(3, 0) },
- };
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+index 130360014c5e14c778e348d37e601f60325b0b14..03ebc3e305b267c98a034c41ce47a39269afce75 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+@@ -182,6 +182,30 @@ pcie0_phy: phy@86000 {
+ 			status = "disabled";
+ 		};
  
- static const struct of_device_id gcc_ipq5018_match_table[] = {
++		mdio0: mdio@88000 {
++			compatible = "qcom,ipq5018-mdio";
++			reg = <0x00088000 0x64>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			clocks = <&gcc GCC_MDIO0_AHB_CLK>;
++			clock-names = "gcc_mdio_ahb_clk";
++
++			status = "disabled";
++		};
++
++		mdio1: mdio@90000 {
++			compatible = "qcom,ipq5018-mdio";
++			reg = <0x00090000 0x64>;
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			clocks = <&gcc GCC_MDIO1_AHB_CLK>;
++			clock-names = "gcc_mdio_ahb_clk";
++
++			status = "disabled";
++		};
++
+ 		tlmm: pinctrl@1000000 {
+ 			compatible = "qcom,ipq5018-tlmm";
+ 			reg = <0x01000000 0x300000>;
 
 -- 
 2.49.0
