@@ -1,15 +1,12 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Subject: [PATCH v2 0/5] media: i2c: imx214: Add some style improvements
-Date: Mon, 30 Jun 2025 21:05:20 +0200
-Message-Id: <20250630-imx214_fixes-v2-0-cd1a76c412c0@apitzsch.eu>
+Date: Mon, 30 Jun 2025 21:05:21 +0200
+Subject: [PATCH v2 1/5] media: i2c: imx214: Remove unneeded parentheses
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAPDfYmgC/1WMyw6CMBBFf4XM2pp2ShFc+R+GGB5TmYVAOkhQw
- r9bSVy4PPfmnBWEApPAOVkh0MzCQx8BDwk0XdXfSXEbGVCj0xlaxY8FTXrzvJAog9Zj7ryrM4S
- ojIH2IxrXMnLHMg3htddn811/oeI/NBulVX6yVBdp1WbWXaqRp7c03ZGeUG7b9gESRQKlqgAAA
- A==
-X-Change-ID: 20250623-imx214_fixes-123f285f5b62
+Message-Id: <20250630-imx214_fixes-v2-1-cd1a76c412c0@apitzsch.eu>
+References: <20250630-imx214_fixes-v2-0-cd1a76c412c0@apitzsch.eu>
+In-Reply-To: <20250630-imx214_fixes-v2-0-cd1a76c412c0@apitzsch.eu>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
  Ricardo Ribalda <ribalda@kernel.org>, 
  Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -19,46 +16,40 @@ Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751310420; l=1246;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751310420; l=950;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=CsLioO4S0UhSQ7xBbQqFYY0bp80O1MggCmDLd/9lJc8=;
- b=xY/S9YNCYbMxswSn24N7cArYaza0xKkgnfeEQCugtMHm+SSemOAnDrPx5aS1f6dP47z1nF3Ey
- 5ZQuK//kTsYBh+u/a5dcuBvhu2e1OW646Gfd0S9bZSzY0hw47WGNoFJ
+ bh=e5+tRksV+Fgl0BxWMBz64V6Vf1Cb5OmGU/GImJC7m7A=;
+ b=8tixpZey59d010cuk2qUfM6JIln2FMlXURuGTGQANKhAnO3Kx+0wtuCINSlZn1eCDTxJsMsa1
+ FY2l+SxzSTxDcQlwMrxqCtdWjOyIemQ9rIFmFJom0R4PhbJa45ptRZ4
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The following changes have be suggested by Laurent in [1]. But the
-related series had already be applied. That's why they are addressed in
-this series.
+The parentheses are not needed to calculate bit_rate_mbps.
 
-[1] https://lore.kernel.org/linux-media/20250621181751.GA9125@pendragon.ideasonboard.com/
-
+Reviewed-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
-Changes in v2:
-- Drop unnecessary sentence from commit message (patch 3/5)
-- Fix typo in summary (patch 5/5)
-- Use imperative mood for commit message (patch 5/5)
-- Add R-b tags
-- Link to v1: https://lore.kernel.org/r/20250629-imx214_fixes-v1-0-873eb94ad635@apitzsch.eu
+ drivers/media/i2c/imx214.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
----
-André Apitzsch (5):
-      media: i2c: imx214: Remove unneeded parentheses
-      media: i2c: imx214: Drop dev argument from imx214_parse_fwnode()
-      media: i2c: imx214: Use __free(fwnode_handle)
-      media: i2c: imx214: Move imx214_pll_update to imx214_ctrls_init
-      media: i2c: imx214: Separate legacy link frequency check from PLL calculation
+diff --git a/drivers/media/i2c/imx214.c b/drivers/media/i2c/imx214.c
+index a0cef9e61b41be8ea76a6d6e4b8c9fc4060cfa0f..8e9b5c9c93b0888f3d6be857168711edaf050db3 100644
+--- a/drivers/media/i2c/imx214.c
++++ b/drivers/media/i2c/imx214.c
+@@ -1029,8 +1029,8 @@ static int imx214_start_streaming(struct imx214 *imx214)
+ 		return ret;
+ 	}
+ 
+-	bit_rate_mbps = (imx214->pll.pixel_rate_csi / 1000000)
+-			* imx214->pll.bits_per_pixel;
++	bit_rate_mbps = imx214->pll.pixel_rate_csi / 1000000
++		      * imx214->pll.bits_per_pixel;
+ 	ret = cci_write(imx214->regmap, IMX214_REG_REQ_LINK_BIT_RATE,
+ 			IMX214_LINK_BIT_RATE_MBPS(bit_rate_mbps), NULL);
+ 	if (ret) {
 
- drivers/media/i2c/imx214.c | 245 ++++++++++++++++++++++-----------------------
- 1 file changed, 121 insertions(+), 124 deletions(-)
----
-base-commit: 5e2562c1e46d3623fbdef77693f374eade075840
-change-id: 20250623-imx214_fixes-123f285f5b62
-
-Best regards,
 -- 
-André Apitzsch <git@apitzsch.eu>
+2.50.0
 
