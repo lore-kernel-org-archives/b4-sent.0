@@ -1,11 +1,10 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Tue, 01 Jul 2025 15:32:01 +0100
-Subject: [PATCH v7 06/20] mfd: adp5585: Refactor how regmap defaults are
- handled
+Date: Tue, 01 Jul 2025 15:32:02 +0100
+Subject: [PATCH v7 07/20] mfd: adp5585: Add support for adp5589
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250701-dev-adp5589-fw-v7-6-b1fcfe9e9826@analog.com>
+Message-Id: <20250701-dev-adp5589-fw-v7-7-b1fcfe9e9826@analog.com>
 References: <20250701-dev-adp5589-fw-v7-0-b1fcfe9e9826@analog.com>
 In-Reply-To: <20250701-dev-adp5589-fw-v7-0-b1fcfe9e9826@analog.com>
 To: linux-gpio@vger.kernel.org, linux-pwm@vger.kernel.org, 
@@ -20,186 +19,267 @@ Cc: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>,
  Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
  Liu Ying <victor.liu@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751380320; l=5864;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751380320; l=9101;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=UO5w/tteYU3uYLB2wc7DT4RJtC6dsVPkWb3aSqEBZ6U=;
- b=XDJQNNLJZYEpzo2dMf3YWNMcAFV4G+pxvnAWTxqCyNk1IG6PzrL8W7Nx5gQQ806b7ka5TdRi6
- BLFfCD3WF2HCoZLjUmebNtEuHxSo9lbrFaZH/BsTk1VO0nv8mczSQjz
+ bh=RJt07nEki9HKnMs3jvuPES7fZWUGCpZJ2fFKJRnKBF0=;
+ b=ZzUGMivCMCQvwTxlcr4qsjqrnX70mzNexLoEMnulJ/sg51z0Z2PRpz2/rUddKnLZsGWDSp+Y+
+ k82/6UU0UCvDiwSSR5JxmVJS8kT57uu0GsEpLzT503vJvxpqy4JFWsi
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The only thing changing between variants is the regmap default
-registers. Hence, instead of having a regmap configuration for every
-variant (duplicating lots of fields), add a chip info type of structure
-with a regmap ID to identify which defaults to use and populate
-regmap_config at runtime given a template plus the id. Also note that
-between variants, the defaults can be the same which means the chip info
-structure can be used in more than one compatible.
-
-This will also make it simpler adding new chips with more variants.
-
-Also note that the chip info structures are deliberately not const as
-they will also contain lots of members that are the same between the
-different devices variants and so we will fill those at runtime.
+The ADP5589 is a 19 I/O port expander with built-in keypad matrix decoder,
+programmable logic, reset generator, and PWM generator.
 
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
-Changes in v6:
- - Use sizeof(*regmap_config);
- - Remove unneeded comment.
----
- drivers/mfd/adp5585.c       | 80 +++++++++++++++++++++++----------------------
- include/linux/mfd/adp5585.h | 11 +++++++
- 2 files changed, 52 insertions(+), 39 deletions(-)
+ drivers/mfd/adp5585.c       | 123 ++++++++++++++++++++++++++++++++++++++++----
+ include/linux/mfd/adp5585.h |  10 ++++
+ 2 files changed, 124 insertions(+), 9 deletions(-)
 
 diff --git a/drivers/mfd/adp5585.c b/drivers/mfd/adp5585.c
-index c764f481875831ff55bccb8cdc59421719afbedd..4d92b63629289c816bc46b70d3171ce16b1ee33e 100644
+index 4d92b63629289c816bc46b70d3171ce16b1ee33e..00996571ef900bece2d634cd9d05394fa04d550a 100644
 --- a/drivers/mfd/adp5585.c
 +++ b/drivers/mfd/adp5585.c
-@@ -81,42 +81,36 @@ static const u8 adp5585_regmap_defaults_04[ADP5585_MAX_REG + 1] = {
+@@ -29,6 +29,11 @@ static const struct mfd_cell adp5585_devs[ADP5585_DEV_MAX] = {
+ 	MFD_CELL_NAME("adp5585-pwm"),
+ };
+ 
++static const struct mfd_cell adp5589_devs[] = {
++	MFD_CELL_NAME("adp5589-gpio"),
++	MFD_CELL_NAME("adp5589-pwm"),
++};
++
+ static const struct regmap_range adp5585_volatile_ranges[] = {
+ 	regmap_reg_range(ADP5585_ID, ADP5585_GPI_STATUS_B),
+ };
+@@ -38,6 +43,15 @@ static const struct regmap_access_table adp5585_volatile_regs = {
+ 	.n_yes_ranges = ARRAY_SIZE(adp5585_volatile_ranges),
+ };
+ 
++static const struct regmap_range adp5589_volatile_ranges[] = {
++	regmap_reg_range(ADP5585_ID, ADP5589_GPI_STATUS_C),
++};
++
++static const struct regmap_access_table adp5589_volatile_regs = {
++	.yes_ranges = adp5589_volatile_ranges,
++	.n_yes_ranges = ARRAY_SIZE(adp5589_volatile_ranges),
++};
++
+ /*
+  * Chip variants differ in the default configuration of pull-up and pull-down
+  * resistors, and therefore have different default register values:
+@@ -81,12 +95,54 @@ static const u8 adp5585_regmap_defaults_04[ADP5585_MAX_REG + 1] = {
  	/* 0x38 */ 0x00, 0x00, 0x00, 0x00, 0x00,
  };
  
--enum adp5585_regmap_type {
--	ADP5585_REGMAP_00,
--	ADP5585_REGMAP_02,
--	ADP5585_REGMAP_04,
-+static const u8 *adp5585_regmap_defaults[ADP5585_MAX] = {
-+	[ADP5585_00] = adp5585_regmap_defaults_00,
-+	[ADP5585_01] = adp5585_regmap_defaults_00,
-+	[ADP5585_02] = adp5585_regmap_defaults_02,
-+	[ADP5585_03] = adp5585_regmap_defaults_00,
-+	[ADP5585_04] = adp5585_regmap_defaults_04,
++static const u8 adp5589_regmap_defaults_00[ADP5589_MAX_REG + 1] = {
++	/* 0x00 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x08 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x10 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x18 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x20 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x28 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x30 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x38 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x40 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x48 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++};
++
++static const u8 adp5589_regmap_defaults_01[ADP5589_MAX_REG + 1] = {
++	/* 0x00 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x08 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x10 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x18 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x20 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x28 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x30 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x38 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00,
++	/* 0x40 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x48 */ 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00,
++};
++
++static const u8 adp5589_regmap_defaults_02[ADP5589_MAX_REG + 1] = {
++	/* 0x00 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x08 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x10 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x18 */ 0x00, 0x41, 0x01, 0x00, 0x11, 0x04, 0x00, 0x00,
++	/* 0x20 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x28 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x30 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x38 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x40 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++	/* 0x48 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++};
++
+ static const u8 *adp5585_regmap_defaults[ADP5585_MAX] = {
+ 	[ADP5585_00] = adp5585_regmap_defaults_00,
+ 	[ADP5585_01] = adp5585_regmap_defaults_00,
+ 	[ADP5585_02] = adp5585_regmap_defaults_02,
+ 	[ADP5585_03] = adp5585_regmap_defaults_00,
+ 	[ADP5585_04] = adp5585_regmap_defaults_04,
++	[ADP5589_00] = adp5589_regmap_defaults_00,
++	[ADP5589_01] = adp5589_regmap_defaults_01,
++	[ADP5589_02] = adp5589_regmap_defaults_02,
  };
  
--static const struct regmap_config adp5585_regmap_configs[] = {
--	[ADP5585_REGMAP_00] = {
--		.reg_bits = 8,
--		.val_bits = 8,
--		.max_register = ADP5585_MAX_REG,
--		.volatile_table = &adp5585_volatile_regs,
--		.cache_type = REGCACHE_MAPLE,
--		.reg_defaults_raw = adp5585_regmap_defaults_00,
--		.num_reg_defaults_raw = sizeof(adp5585_regmap_defaults_00),
--	},
--	[ADP5585_REGMAP_02] = {
--		.reg_bits = 8,
--		.val_bits = 8,
--		.max_register = ADP5585_MAX_REG,
--		.volatile_table = &adp5585_volatile_regs,
--		.cache_type = REGCACHE_MAPLE,
--		.reg_defaults_raw = adp5585_regmap_defaults_02,
--		.num_reg_defaults_raw = sizeof(adp5585_regmap_defaults_02),
--	},
--	[ADP5585_REGMAP_04] = {
--		.reg_bits = 8,
--		.val_bits = 8,
--		.max_register = ADP5585_MAX_REG,
--		.volatile_table = &adp5585_volatile_regs,
--		.cache_type = REGCACHE_MAPLE,
--		.reg_defaults_raw = adp5585_regmap_defaults_04,
--		.num_reg_defaults_raw = sizeof(adp5585_regmap_defaults_04),
--	},
-+static const struct regmap_config adp5585_regmap_config_template = {
+ static const struct regmap_config adp5585_regmap_config_template = {
+@@ -98,33 +154,69 @@ static const struct regmap_config adp5585_regmap_config_template = {
+ 	.num_reg_defaults_raw = ADP5585_MAX_REG + 1,
+ };
+ 
+-static struct regmap_config *adp5585_fill_regmap_config(const struct adp5585_dev *adp5585)
++static const struct regmap_config adp5589_regmap_config_template = {
 +	.reg_bits = 8,
 +	.val_bits = 8,
-+	.max_register = ADP5585_MAX_REG,
-+	.volatile_table = &adp5585_volatile_regs,
++	.max_register = ADP5589_MAX_REG,
++	.volatile_table = &adp5589_volatile_regs,
 +	.cache_type = REGCACHE_MAPLE,
-+	.num_reg_defaults_raw = ADP5585_MAX_REG + 1,
- };
- 
-+static struct regmap_config *adp5585_fill_regmap_config(const struct adp5585_dev *adp5585)
-+{
-+	struct regmap_config *regmap_config;
++	.num_reg_defaults_raw = ADP5589_MAX_REG + 1,
++};
 +
-+	regmap_config = devm_kmemdup(adp5585->dev, &adp5585_regmap_config_template,
-+				     sizeof(*regmap_config), GFP_KERNEL);
-+	if (!regmap_config)
-+		return ERR_PTR(-ENOMEM);
-+
-+	regmap_config->reg_defaults_raw = adp5585_regmap_defaults[adp5585->variant];
-+	return regmap_config;
-+}
-+
- static int adp5585_add_devices(struct device *dev)
++static struct regmap_config *adp5585_fill_variant_config(struct adp5585_dev *adp5585)
  {
- 	int ret;
-@@ -147,7 +141,7 @@ static void adp5585_osc_disable(void *data)
+ 	struct regmap_config *regmap_config;
  
- static int adp5585_i2c_probe(struct i2c_client *i2c)
+-	regmap_config = devm_kmemdup(adp5585->dev, &adp5585_regmap_config_template,
+-				     sizeof(*regmap_config), GFP_KERNEL);
++	switch (adp5585->variant) {
++	case ADP5585_00:
++	case ADP5585_01:
++	case ADP5585_02:
++	case ADP5585_03:
++	case ADP5585_04:
++		adp5585->id = ADP5585_MAN_ID_VALUE;
++		regmap_config = devm_kmemdup(adp5585->dev, &adp5585_regmap_config_template,
++					     sizeof(*regmap_config), GFP_KERNEL);
++		break;
++	case ADP5589_00:
++	case ADP5589_01:
++	case ADP5589_02:
++		adp5585->id = ADP5589_MAN_ID_VALUE;
++		regmap_config = devm_kmemdup(adp5585->dev, &adp5589_regmap_config_template,
++					     sizeof(*regmap_config), GFP_KERNEL);
++		break;
++	default:
++		return ERR_PTR(-ENODEV);
++	}
++
+ 	if (!regmap_config)
+ 		return ERR_PTR(-ENOMEM);
+ 
+ 	regmap_config->reg_defaults_raw = adp5585_regmap_defaults[adp5585->variant];
++
+ 	return regmap_config;
+ }
+ 
+-static int adp5585_add_devices(struct device *dev)
++static int adp5585_add_devices(const struct adp5585_dev *adp5585)
  {
--	const struct regmap_config *regmap_config;
-+	struct regmap_config *regmap_config;
- 	struct adp5585_dev *adp5585;
- 	unsigned int id;
++	struct device *dev = adp5585->dev;
++	const struct mfd_cell *cells;
  	int ret;
-@@ -157,8 +151,16 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
- 		return -ENOMEM;
  
- 	i2c_set_clientdata(i2c, adp5585);
-+	adp5585->dev = &i2c->dev;
++	if (adp5585->id == ADP5585_MAN_ID_VALUE)
++		cells = adp5585_devs;
++	else
++		cells = adp5589_devs;
 +
-+	adp5585->variant = (enum adp5585_variant)(uintptr_t)i2c_get_match_data(i2c);
-+	if (!adp5585->variant)
-+		return -ENODEV;
-+
-+	regmap_config = adp5585_fill_regmap_config(adp5585);
-+	if (IS_ERR(regmap_config))
-+		return PTR_ERR(regmap_config);
+ 	if (device_property_present(dev, "#pwm-cells")) {
+ 		ret = devm_mfd_add_devices(dev, PLATFORM_DEVID_AUTO,
+-					   &adp5585_devs[ADP5585_DEV_PWM], 1, NULL, 0, NULL);
++					   &cells[ADP5585_DEV_PWM], 1, NULL, 0, NULL);
+ 		if (ret)
+ 			return dev_err_probe(dev, ret, "Failed to add PWM device\n");
+ 	}
  
--	regmap_config = i2c_get_match_data(i2c);
- 	adp5585->regmap = devm_regmap_init_i2c(i2c, regmap_config);
- 	if (IS_ERR(adp5585->regmap))
- 		return dev_err_probe(&i2c->dev, PTR_ERR(adp5585->regmap),
-@@ -212,19 +214,19 @@ static DEFINE_SIMPLE_DEV_PM_OPS(adp5585_pm, adp5585_suspend, adp5585_resume);
- static const struct of_device_id adp5585_of_match[] = {
- 	{
- 		.compatible = "adi,adp5585-00",
--		.data = &adp5585_regmap_configs[ADP5585_REGMAP_00],
-+		.data = (void *)ADP5585_00,
- 	}, {
- 		.compatible = "adi,adp5585-01",
--		.data = &adp5585_regmap_configs[ADP5585_REGMAP_00],
-+		.data = (void *)ADP5585_01,
- 	}, {
- 		.compatible = "adi,adp5585-02",
--		.data = &adp5585_regmap_configs[ADP5585_REGMAP_02],
-+		.data = (void *)ADP5585_02,
- 	}, {
- 		.compatible = "adi,adp5585-03",
--		.data = &adp5585_regmap_configs[ADP5585_REGMAP_00],
-+		.data = (void *)ADP5585_03,
+ 	if (device_property_present(dev, "#gpio-cells")) {
+ 		ret = devm_mfd_add_devices(dev, PLATFORM_DEVID_AUTO,
+-					   &adp5585_devs[ADP5585_DEV_GPIO], 1, NULL, 0, NULL);
++					   &cells[ADP5585_DEV_GPIO], 1, NULL, 0, NULL);
+ 		if (ret)
+ 			return dev_err_probe(dev, ret, "Failed to add GPIO device\n");
+ 	}
+@@ -157,7 +249,7 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
+ 	if (!adp5585->variant)
+ 		return -ENODEV;
+ 
+-	regmap_config = adp5585_fill_regmap_config(adp5585);
++	regmap_config = adp5585_fill_variant_config(adp5585);
+ 	if (IS_ERR(regmap_config))
+ 		return PTR_ERR(regmap_config);
+ 
+@@ -171,7 +263,8 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
+ 		return dev_err_probe(&i2c->dev, ret,
+ 				     "Failed to read device ID\n");
+ 
+-	if ((id & ADP5585_MAN_ID_MASK) != ADP5585_MAN_ID_VALUE)
++	id &= ADP5585_MAN_ID_MASK;
++	if (id != adp5585->id)
+ 		return dev_err_probe(&i2c->dev, -ENODEV,
+ 				     "Invalid device ID 0x%02x\n", id);
+ 
+@@ -187,7 +280,7 @@ static int adp5585_i2c_probe(struct i2c_client *i2c)
+ 	if (ret)
+ 		return ret;
+ 
+-	return adp5585_add_devices(&i2c->dev);
++	return adp5585_add_devices(adp5585);
+ }
+ 
+ static int adp5585_suspend(struct device *dev)
+@@ -227,6 +320,18 @@ static const struct of_device_id adp5585_of_match[] = {
  	}, {
  		.compatible = "adi,adp5585-04",
--		.data = &adp5585_regmap_configs[ADP5585_REGMAP_04],
-+		.data = (void *)ADP5585_04,
+ 		.data = (void *)ADP5585_04,
++	}, {
++		.compatible = "adi,adp5589-00",
++		.data = (void *)ADP5589_00,
++	}, {
++		.compatible = "adi,adp5589-01",
++		.data = (void *)ADP5589_01,
++	}, {
++		.compatible = "adi,adp5589-02",
++		.data = (void *)ADP5589_02,
++	}, {
++		.compatible = "adi,adp5589",
++		.data = (void *)ADP5589_00,
  	},
  	{ /* sentinel */ }
  };
 diff --git a/include/linux/mfd/adp5585.h b/include/linux/mfd/adp5585.h
-index 016033cd68e46757aca86d21dd37025fd354b801..c56af8d8d76c4ebc0ede1ee4769ca059de29f53c 100644
+index c56af8d8d76c4ebc0ede1ee4769ca059de29f53c..70e58122a36a7321dc95d095b806f06fa57c97c9 100644
 --- a/include/linux/mfd/adp5585.h
 +++ b/include/linux/mfd/adp5585.h
-@@ -119,8 +119,19 @@
+@@ -117,6 +117,12 @@
+ #define ADP5585_BANK(n)			((n) >= 6 ? 1 : 0)
+ #define ADP5585_BIT(n)			((n) >= 6 ? BIT((n) - 6) : BIT(n))
  
++/* ADP5589 */
++#define		ADP5589_MAN_ID_VALUE		0x10
++#define ADP5589_GPI_STATUS_C		0x18
++#define ADP5589_INT_EN			0x4e
++#define ADP5589_MAX_REG			ADP5589_INT_EN
++
  struct regmap;
  
-+enum adp5585_variant {
-+	ADP5585_00 = 1,
-+	ADP5585_01,
-+	ADP5585_02,
-+	ADP5585_03,
-+	ADP5585_04,
-+	ADP5585_MAX
-+};
-+
- struct adp5585_dev {
-+	struct device *dev;
+ enum adp5585_variant {
+@@ -125,6 +131,9 @@ enum adp5585_variant {
+ 	ADP5585_02,
+ 	ADP5585_03,
+ 	ADP5585_04,
++	ADP5589_00,
++	ADP5589_01,
++	ADP5589_02,
+ 	ADP5585_MAX
+ };
+ 
+@@ -132,6 +141,7 @@ struct adp5585_dev {
+ 	struct device *dev;
  	struct regmap *regmap;
-+	enum adp5585_variant variant;
+ 	enum adp5585_variant variant;
++	unsigned int id;
  };
  
  #endif
