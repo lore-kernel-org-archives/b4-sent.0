@@ -1,160 +1,98 @@
-From: Jack Cheng <Cheng.JackHY@inventec.com>
-Date: Tue, 01 Jul 2025 12:03:46 +0000
-Subject: [PATCH 2/2] hwmon: (pmbus/q54sj108a2) Add support for q50sn12072
- and q54sn120a1
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v7 00/20] mfd: adp5585: support keymap events and drop
+ legacy Input driver
+Date: Tue, 01 Jul 2025 15:31:55 +0100
+Message-Id: <20250701-dev-adp5589-fw-v7-0-b1fcfe9e9826@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250701-add-support-for-q50sn12072-and-q54sn120a1-v1-2-c387baf928cb@inventec.com>
-References: <20250701-add-support-for-q50sn12072-and-q54sn120a1-v1-0-c387baf928cb@inventec.com>
-In-Reply-To: <20250701-add-support-for-q50sn12072-and-q54sn120a1-v1-0-c387baf928cb@inventec.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jean Delvare <jdelvare@suse.com>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-hwmon@vger.kernel.org, Jack Cheng <Cheng.JackHY@inventec.com>, 
- Jack Cheng <cheng.jackhy@inventec.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751371491; l=4040;
- i=Cheng.JackHY@inventec.com; s=20250701; h=from:subject:message-id;
- bh=zA/Fyy6uru6kWhlC/CVZ1MMPpQZdr70m76wF9y8wM0E=;
- b=QlcIod5aR81TXWHqlkwVyvOkCRY/AtaejFlk3i22kPJkuiboUBmK/08hqeqhxGwLTA0PRDLNe
- 5p8ab4oEfHcDWbfGUziBEVK5/oK3VtBAkhHAxKR7QkHymIkHyaKILOT
-X-Developer-Key: i=Cheng.JackHY@inventec.com; a=ed25519;
- pk=L+GNI15NJXj7JAu9YqFXp9hL3rwZWbBbjlEeDjPvm68=
-X-Endpoint-Received: by B4 Relay for Cheng.JackHY@inventec.com/20250701 with auth_id=449
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAFzxY2gC/2XQ3UoDMRCG4VspOTYymfyOR96HeDCbZNuA7pZdi
+ UrZezctyFZz+AWedyAXseal5FU8HS5iybWsZZ7a8A8HEU88HbMsqW2BgBa0UjLlKjmdrQ0kx0+
+ ZwcQxkbEYnGjovOSxfN2CL69tn8r6MS/ft35V19fflP6fqkqCRMgBkhmSyfzME7/Nx8c4v4trq
+ +LujbKdx+Y1e6KocwoKO693bxV2XjcPhIMygycOofPmzmP3FdU0P2KkEJJnz9B5u3unTOdt8z5
+ TCobAoevvuzuvofOueYZREzIMTOqP37btB2Uk0RztAQAA
+X-Change-ID: 20250311-dev-adp5589-fw-e04cfd945286
+To: linux-gpio@vger.kernel.org, linux-pwm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-input@vger.kernel.org
+Cc: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Liu Ying <victor.liu@nxp.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@linaro.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751380320; l=2789;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=rqJXkoluTBUb8/TC3f6BkLvnwz9KDd39/fIEKWYuoQ8=;
+ b=kdpaPC6QvTEVwYqCdDRCXSZVZxESkOXpnXuXJRkJ980kTIWXdAyFO/WBXgXMk05xtioAStEU1
+ 3z00gUZ7yi3AVcgA1+03fBy17Ya+OwUo4MQen3OvYLAtHAckqxsqJAF
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Jack Cheng <cheng.jackhy@inventec.com>
+Hi all,
 
-The Q54SN12072 and Q54SN120A1 are high-efficiency, high-density DC-DC power
-module from Delta Power Modules.
+Here it goes v7 with proper changelogs. Also took opportunity to fix
+some spelling issues brought by Uwe.
 
-The Q54SN12072, quarter brick, single output 12V. This product provides up
-to 1200 watts of output power at 38~60V. The Q54SN12072 offers peak
-efficiency up to 98.3%@54Vin.
+Thanks!
+- Nuno Sá
 
-The Q54SN120A1, quarter brick, single output 12V. This product provides up
-to 1300 watts of output power at 40~60V. The Q54SN120A1 offers peak
-efficiency up to 98.1%@54Vin.
-
-Add support for them to q54sj108a2 driver.
-
-Signed-off-by: Jack Cheng <cheng.jackhy@inventec.com>
 ---
- drivers/hwmon/pmbus/q54sj108a2.c | 51 ++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 49 insertions(+), 2 deletions(-)
+- Link to v5: https://lore.kernel.org/r/20250614-dev-adp5589-fw-v5-0-7e9d84906268@analog.com
+- Link to v4: https://lore.kernel.org/r/20250521-dev-adp5589-fw-v4-0-f2c988d7a7a0@analog.com
+- Link to v3: https://lore.kernel.org/r/20250512-dev-adp5589-fw-v3-0-092b14b79a88@analog.com
+- Link to v2: https://lore.kernel.org/r/20250415-dev-adp5589-fw-v2-0-3a799c3ed812@analog.com
+- Link to v1: https://lore.kernel.org/r/20250313-dev-adp5589-fw-v1-0-20e80d4bd4ea@analog.com
+- Link to v6: https://lore.kernel.org/r/20250630-dev-adp5589-fw-v6-0-a0f392a0ba91@analog.com
 
-diff --git a/drivers/hwmon/pmbus/q54sj108a2.c b/drivers/hwmon/pmbus/q54sj108a2.c
-index 4d7086d83aa3..34233d955c48 100644
---- a/drivers/hwmon/pmbus/q54sj108a2.c
-+++ b/drivers/hwmon/pmbus/q54sj108a2.c
-@@ -21,11 +21,14 @@
- #define PMBUS_FLASH_KEY_WRITE		0xEC
- 
- enum chips {
--	q54sj108a2
-+	q50sn12072,
-+	q54sj108a2,
-+	q54sn120a1
- };
- 
- enum {
--	Q54SJ108A2_DEBUGFS_OPERATION = 0,
-+	Q50SN12072_DEBUGFS_VOUT_COMMAND = 0,
-+	Q54SJ108A2_DEBUGFS_OPERATION,
- 	Q54SJ108A2_DEBUGFS_CLEARFAULT,
- 	Q54SJ108A2_DEBUGFS_WRITEPROTECT,
- 	Q54SJ108A2_DEBUGFS_STOREDEFAULT,
-@@ -54,6 +57,20 @@ struct q54sj108a2_data {
- #define to_psu(x, y) container_of((x), struct q54sj108a2_data, debugfs_entries[(y)])
- 
- static struct pmbus_driver_info q54sj108a2_info[] = {
-+	[q50sn12072] = {
-+		.pages = 1,
-+
-+		/* Source : Delta Q50SN12072 */
-+		.format[PSC_TEMPERATURE] = linear,
-+		.format[PSC_VOLTAGE_IN] = linear,
-+		.format[PSC_CURRENT_OUT] = linear,
-+
-+		.func[0] = PMBUS_HAVE_VIN | PMBUS_HAVE_IIN | PMBUS_HAVE_PIN |
-+		PMBUS_HAVE_VOUT | PMBUS_HAVE_STATUS_VOUT |
-+		PMBUS_HAVE_IOUT | PMBUS_HAVE_STATUS_IOUT |
-+		PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP |
-+		PMBUS_HAVE_STATUS_INPUT | PMBUS_HAVE_POUT,
-+	},
- 	[q54sj108a2] = {
- 		.pages = 1,
- 
-@@ -68,6 +85,20 @@ static struct pmbus_driver_info q54sj108a2_info[] = {
- 		PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP |
- 		PMBUS_HAVE_STATUS_INPUT,
- 	},
-+	[q54sn120a1] = {
-+		.pages = 1,
-+
-+		/* Source : Delta Q54SN120A1 */
-+		.format[PSC_TEMPERATURE] = linear,
-+		.format[PSC_VOLTAGE_IN] = linear,
-+		.format[PSC_CURRENT_OUT] = linear,
-+
-+		.func[0] = PMBUS_HAVE_VIN | PMBUS_HAVE_IIN | PMBUS_HAVE_PIN |
-+		PMBUS_HAVE_VOUT | PMBUS_HAVE_STATUS_VOUT |
-+		PMBUS_HAVE_IOUT | PMBUS_HAVE_STATUS_IOUT |
-+		PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP |
-+		PMBUS_HAVE_STATUS_INPUT | PMBUS_HAVE_POUT,
-+	},
- };
- 
- static ssize_t q54sj108a2_debugfs_read(struct file *file, char __user *buf,
-@@ -177,6 +208,7 @@ static ssize_t q54sj108a2_debugfs_write(struct file *file, const char __user *bu
- {
- 	u8 flash_key[4];
- 	u8 dst_data;
-+	u16 val;
- 	ssize_t rc;
- 	int *idxp = file->private_data;
- 	int idx = *idxp;
-@@ -187,6 +219,17 @@ static ssize_t q54sj108a2_debugfs_write(struct file *file, const char __user *bu
- 		return rc;
- 
- 	switch (idx) {
-+	case Q50SN12072_DEBUGFS_VOUT_COMMAND:
-+		rc = kstrtou16_from_user(buf, count, 0, &val);
-+		if (rc < 0)
-+			return rc;
-+
-+		rc = pmbus_write_word_data(psu->client, 0x00,
-+					   PMBUS_VOUT_COMMAND, (const u16)val);
-+		if (rc < 0)
-+			return rc;
-+
-+		break;
- 	case Q54SJ108A2_DEBUGFS_OPERATION:
- 		rc = kstrtou8_from_user(buf, count, 0, &dst_data);
- 		if (rc < 0)
-@@ -268,7 +311,9 @@ static const struct file_operations q54sj108a2_fops = {
- };
- 
- static const struct i2c_device_id q54sj108a2_id[] = {
-+	{ "q50sn12072", q50sn12072 },
- 	{ "q54sj108a2", q54sj108a2 },
-+	{ "q54sn120a1", q54sn120a1 },
- 	{ },
- };
- 
-@@ -401,7 +446,9 @@ static int q54sj108a2_probe(struct i2c_client *client)
- }
- 
- static const struct of_device_id q54sj108a2_of_match[] = {
-+	{ .compatible = "delta,q50sn12072", .data = (void *)q50sn12072 },
- 	{ .compatible = "delta,q54sj108a2", .data = (void *)q54sj108a2 },
-+	{ .compatible = "delta,q54sn120a1", .data = (void *)q54sn120a1 },
- 	{ },
- };
- 
+---
+Nuno Sá (20):
+      dt-bindings: mfd: adp5585: ease on the required properties
+      mfd: adp5585: Only add devices given in FW
+      mfd: adp5585: Enable oscillator during probe
+      mfd: adp5585: Make use of MFD_CELL_NAME()
+      dt-bindings: mfd: adp5585: document adp5589 I/O expander
+      mfd: adp5585: Refactor how regmap defaults are handled
+      mfd: adp5585: Add support for adp5589
+      mfd: adp5585: Add a per chip reg struture
+      gpio: adp5585: add support for the adp5589 expander
+      pwm: adp5585: add support for adp5589
+      dt-bindings: mfd: adp5585: add properties for input events
+      mfd: adp5585: Add support for event handling
+      mfd: adp5585: Support reset and unlock events
+      mfd: adp5585: Add support for input devices
+      gpio: adp5585: support gpi events
+      Input: adp5585: Add Analog Devices ADP5585/89 support
+      Input: adp5589: remove the driver
+      mfd: adp5585: Support getting vdd regulator
+      dt-bindings: mfd: adp5585: document reset gpio
+      mfd: adp5585: Add support for a reset pin
 
--- 
-2.43.0
+ .../devicetree/bindings/mfd/adi,adp5585.yaml       |  240 ++++-
+ .../devicetree/bindings/trivial-devices.yaml       |    2 -
+ MAINTAINERS                                        |    1 +
+ drivers/gpio/Kconfig                               |    1 +
+ drivers/gpio/gpio-adp5585.c                        |  364 ++++++-
+ drivers/input/keyboard/Kconfig                     |   21 +-
+ drivers/input/keyboard/Makefile                    |    2 +-
+ drivers/input/keyboard/adp5585-keys.c              |  371 +++++++
+ drivers/input/keyboard/adp5589-keys.c              | 1066 --------------------
+ drivers/mfd/adp5585.c                              |  741 +++++++++++++-
+ drivers/pwm/pwm-adp5585.c                          |   78 +-
+ include/linux/mfd/adp5585.h                        |  118 ++-
+ 12 files changed, 1797 insertions(+), 1208 deletions(-)
+---
+base-commit: 407f60a151df3c44397e5afc0111eb9b026c38d3
+change-id: 20250311-dev-adp5589-fw-e04cfd945286
+--
+
+Thanks!
+- Nuno Sá
 
