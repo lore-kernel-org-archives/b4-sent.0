@@ -1,11 +1,10 @@
 From: Max Shevchenko <wctrl@proton.me>
-Date: Wed, 02 Jul 2025 13:50:39 +0300
-Subject: [PATCH v4 02/11] dt-bindings: interrupt-controller:
- mediatek,mt6577-sysirq: add MT6572
+Date: Wed, 02 Jul 2025 13:50:40 +0300
+Subject: [PATCH v4 03/11] dt-bindings: timer: mediatek: add MT6572
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250702-mt6572-v4-2-bde75b7ed445@proton.me>
+Message-Id: <20250702-mt6572-v4-3-bde75b7ed445@proton.me>
 References: <20250702-mt6572-v4-0-bde75b7ed445@proton.me>
 In-Reply-To: <20250702-mt6572-v4-0-bde75b7ed445@proton.me>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -24,37 +23,37 @@ Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org,
  linux-mediatek@lists.infradead.org, linux-watchdog@vger.kernel.org, 
  Max Shevchenko <wctrl@proton.me>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751453439; l=1128;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751453439; l=993;
  i=wctrl@proton.me; s=20250603; h=from:subject:message-id;
- bh=ctmiRMyUECT6RxIRfZlrUhBmOSzsSLv8C2rWtsE6Z0w=;
- b=U2rD1Db76tUh0loLEQuBHItVbuPV3gX9NmgbpztFUtZbhmIJHx2Xo80+cYkvgOU9Lp3qT+uNS
- dcf8/MbMbEZDUkNmElIDDTcV1+ejOdqjS9ixQ8XP5dD06oG5nEogOfb
+ bh=o0ix7fgxDyGX/dNwoXME14P/IebZ5vKxE9iUMbF1tQw=;
+ b=amv00U355j9dLUWM14qE1AjbqQF2fAaA8KA7fZbuF1DWJRrA9eS3DzLOhKkH1XotygEA5L8PC
+ lKMU2/pvoJcBSdzjuma0IYP4HgjO0Lf8RWDyAuEYvrnnBlEwGXAhuUs
 X-Developer-Key: i=wctrl@proton.me; a=ed25519;
  pk=JXUx3mL/OrnRvbK57HXgugBjEBKq4QgDKJqp7BALm74=
 X-Endpoint-Received: by B4 Relay for wctrl@proton.me/20250603 with auth_id=421
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a compatible string for sysirq on the MT6572 SoC.
+Add a compatible string for timer on the MT6572 SoC.
 
 Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Max Shevchenko <wctrl@proton.me>
 ---
- .../devicetree/bindings/interrupt-controller/mediatek,mt6577-sysirq.yaml | 1 +
+ Documentation/devicetree/bindings/timer/mediatek,timer.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/interrupt-controller/mediatek,mt6577-sysirq.yaml b/Documentation/devicetree/bindings/interrupt-controller/mediatek,mt6577-sysirq.yaml
-index 123d24b05556c67374fbb87abe5e16c65031d2ed..30d76692ca87b507900076cd2f7d2e7ed2605b33 100644
---- a/Documentation/devicetree/bindings/interrupt-controller/mediatek,mt6577-sysirq.yaml
-+++ b/Documentation/devicetree/bindings/interrupt-controller/mediatek,mt6577-sysirq.yaml
-@@ -21,6 +21,7 @@ properties:
+diff --git a/Documentation/devicetree/bindings/timer/mediatek,timer.yaml b/Documentation/devicetree/bindings/timer/mediatek,timer.yaml
+index f68fc7050c5687930e2ca6b6fa8f0b7a208803da..d5b574bfd2caad1bc54ef6bd1768d94055383727 100644
+--- a/Documentation/devicetree/bindings/timer/mediatek,timer.yaml
++++ b/Documentation/devicetree/bindings/timer/mediatek,timer.yaml
+@@ -26,6 +26,7 @@ properties:
+       - items:
            - enum:
-               - mediatek,mt2701-sysirq
-               - mediatek,mt2712-sysirq
-+              - mediatek,mt6572-sysirq
-               - mediatek,mt6580-sysirq
-               - mediatek,mt6582-sysirq
-               - mediatek,mt6589-sysirq
+               - mediatek,mt2701-timer
++              - mediatek,mt6572-timer
+               - mediatek,mt6580-timer
+               - mediatek,mt6582-timer
+               - mediatek,mt6589-timer
 
 -- 
 2.50.0
