@@ -1,119 +1,113 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Wed, 02 Jul 2025 20:59:09 +0200
-Subject: [PATCH 3/3] arm64: dts: qcom: x1-hp-x14: Add support for X1P42100
- HP Omnibook X14
+From: "Christoph Lameter (Ampere)" <cl@gentwo.org>
+Date: Wed, 02 Jul 2025 12:42:00 -0700
+Subject: [PATCH] Skew tick for systems with a large number of processors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250702-hp-x14-x1p-v1-3-219356e83207@oldschoolsolutions.biz>
-References: <20250702-hp-x14-x1p-v1-0-219356e83207@oldschoolsolutions.biz>
-In-Reply-To: <20250702-hp-x14-x1p-v1-0-219356e83207@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751482749; l=3024;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=4qMZRflZvpbOAQk9PzwxdZC2Sz1ND1a5zbEF77TvE3E=;
- b=PBDhD5Cmu3OX5b7d4hrsrMnIQPNHYlmcY7nT7/SGC8W4Wqjx2ZKP5ow6o9VKyuHJv3LXNDosI
- vuw0gwiiRtSArX/IfoSzbLSRijI01iO5TDbGun+44BfcpDJwiET6NyL
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+Message-Id: <20250702-tick_skew-v1-1-ff8d73035b02@gentwo.org>
+X-B4-Tracking: v=1; b=H4sIAIeLZWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDcwMj3ZLM5Oz44uzUcl2DVHMLU4tkQwMjEzMloPqCotS0zAqwWdGxtbU
+ AxXCWRVsAAAA=
+To: Anna-Maria Behnsen <anna-maria@linutronix.de>, 
+ Frederic Weisbecker <frederic@kernel.org>, Ingo Molnar <mingo@kernel.org>, 
+ Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org, sh@gentwo.org, 
+ Darren Hart <dvhart@infradead.org>, 
+ "Christoph Lameter (Ampere)" <cl@gentwo.org>
+X-Mailer: b4 0.15-dev-37811
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751485333; l=2920;
+ i=cl@gentwo.org; s=20240811; h=from:subject:message-id;
+ bh=mEaXrgWVXMVIAxP7Q84RMJ+OwIeyomVfgVzW4N0MT4E=;
+ b=2AYl5EUugdW/v8u1pbUcoYBfQ9I+PSRag4ISQvJfh69fvIZcVJ+jx1B2XIzXC+CZTqg3g9cqh
+ bLRSsyBQrWnDD6bfaFXPywKA2+6y50ataeDkou12LfHQoNYMxpJwP1o
+X-Developer-Key: i=cl@gentwo.org; a=ed25519;
+ pk=I7gqGwDi9drzCReFIuf2k9de1FI1BGibsshXI0DIvq8=
+X-Endpoint-Received: by B4 Relay for cl@gentwo.org/20240811 with auth_id=194
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These laptops are the same as the already known 14-fe0xxx models, but
-with a Purwa SoC, SKU number 14-fe1xxx. [1]
+Synchronized ticks mean that all processors will simultaneously process
+ticks and enter the scheduler. So the contention increases as the number
+of cpu increases. The contention causes latency jitter that scales with
+the number of processors.
 
-The supported features are the same as for the original Omnibook X14:
+Staggering the timer interrupt also helps mitigate voltage droop related
+issues that may be observed in SOCs with large core counts.
+See https://semiengineering.com/mitigating-voltage-droop/ for a more
+detailed explanation.
 
-- Keyboard (no function keys though)
-- Display
-- PWM brightness control
-- Touchpad
-- Touchscreen
-- PCIe ports (pcie4, pcie6a)
-- USB type-c, type-a
-- WCN6855 Wifi-6E
-- WCN6855 Bluetooth
-- ADSP and CDSP
-- X1 GPU
-- GPIO Keys (Lid switch)
-- Audio definition (works via USB and with internal speakers)
+Switch to skewed tick for systems with more than 64 processors.
 
-https://www.hp.com/us-en/shop/pdp/hp-omnibook-x-laptop-next-gen-ai-pc-14-fe100-14-a4nd1av-1#techSpecs
-
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Signed-off-by: Christoph Lameter (Ampere) <cl@gentwo.org>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |  2 +
- .../boot/dts/qcom/x1p42100-hp-omnibook-x14.dts     | 44 ++++++++++++++++++++++
- 2 files changed, 46 insertions(+)
+ kernel/Kconfig.hz        | 10 ++++++++++
+ kernel/time/tick-sched.c | 16 ++++++++++++++--
+ 2 files changed, 24 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 4bfa926b6a0850c3c459bcba28129c559d50a7cf..63bf3ccc11124a70efb09782b57970b274d80d49 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -333,3 +333,5 @@ x1p42100-asus-zenbook-a14-el2-dtbs	:= x1p42100-asus-zenbook-a14.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-asus-zenbook-a14.dtb x1p42100-asus-zenbook-a14-el2.dtb
- x1p42100-crd-el2-dtbs	:= x1p42100-crd.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-crd.dtb x1p42100-crd-el2.dtb
-+x1p42100-hp-omnibook-x14-el2-dtbs := x1p42100-hp-omnibook-x14.dtb x1-el2.dtbo
-+dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-hp-omnibook-x14.dtb x1p42100-hp-omnibook-x14-el2.dtb
-diff --git a/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts b/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..a6b5faeae27aa69ef07d8b2846ff9e6ffb43c954
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts
-@@ -0,0 +1,44 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
-+ * Copyright (c) 2024, Xilin Wu <wuxilin123@gmail.com>
-+ * Copyright (c) 2025 Jens Glathe
-+ */
+diff --git a/kernel/Kconfig.hz b/kernel/Kconfig.hz
+index ce1435cb08b1..245d938d446b 100644
+--- a/kernel/Kconfig.hz
++++ b/kernel/Kconfig.hz
+@@ -57,3 +57,13 @@ config HZ
+ 
+ config SCHED_HRTICK
+ 	def_bool HIGH_RES_TIMERS
 +
-+/dts-v1/;
++config TICK_SKEW_LIMIT
++	int
++	default 64
++	help
++	  If the kernel is booted on systems with a large number of cpus then the
++	  concurrent execution of timer ticks causes long holdoffs due to
++	  serialization. Synchrononous executions of interrupts can also cause
++	  voltage droop in SOCs. So switch to skewed mode. This mechanism
++	  can be overridden by specifying "tick_skew=x" on the kernel command line.
+diff --git a/kernel/time/tick-sched.c b/kernel/time/tick-sched.c
+index c527b421c865..aab7a1cc25c7 100644
+--- a/kernel/time/tick-sched.c
++++ b/kernel/time/tick-sched.c
+@@ -1554,7 +1554,7 @@ void tick_irq_enter(void)
+ 	tick_nohz_irq_enter();
+ }
+ 
+-static int sched_skew_tick;
++static int sched_skew_tick = -1;
+ 
+ static int __init skew_tick(char *str)
+ {
+@@ -1572,6 +1572,16 @@ void tick_setup_sched_timer(bool hrtimer)
+ {
+ 	struct tick_sched *ts = this_cpu_ptr(&tick_cpu_sched);
+ 
++	/* Figure out if we should skew the tick */
++	if (sched_skew_tick < 0) {
++		if (num_possible_cpus() >= CONFIG_TICK_SKEW_LIMIT) {
++			sched_skew_tick = 1;
++			pr_info("Tick skewed mode enabled. Possible cpus %u > %u\n",
++				num_possible_cpus(), CONFIG_TICK_SKEW_LIMIT);
++		} else
++			sched_skew_tick = 0;
++	}
 +
-+#include "x1p42100.dtsi"
-+#include "x1e80100-pmics.dtsi"
-+#include "x1-hp-omnibook-x14.dtsi"
-+/delete-node/ &pmc8380_6;
-+/delete-node/ &pmc8380_6_thermal;
-+/delete-node/ &pm8010;
-+/delete-node/ &pm8010_thermal;
+ 	/* Emulate tick processing via per-CPU hrtimers: */
+ 	hrtimer_setup(&ts->sched_timer, tick_nohz_handler, CLOCK_MONOTONIC, HRTIMER_MODE_ABS_HARD);
+ 
+@@ -1587,7 +1597,9 @@ void tick_setup_sched_timer(bool hrtimer)
+ 		do_div(offset, num_possible_cpus());
+ 		offset *= smp_processor_id();
+ 		hrtimer_add_expires_ns(&ts->sched_timer, offset);
+-	}
++	} else
++		pr_info("Tick operating in synchronized mode.\n");
 +
-+/ {
-+	model = "HP Omnibook X 14-fe1";
-+	compatible = "hp,omnibook-x14-fe1", "qcom,x1p42100";
-+	chassis-type = "laptop";
-+};
-+
-+&gpu {
-+	status = "okay";
-+
-+	zap-shader {
-+		firmware-name = "qcom/x1p42100/hp/omnibook-x14/qcdxkmsucpurwa.mbn";
-+	};
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qcadsp8380.mbn",
-+			"qcom/x1p42100/hp/omnibook-x14/adsp_dtbs.elf";
-+
-+	status = "okay";
-+};
-+
-+&remoteproc_cdsp {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qccdsp8380.mbn",
-+			"qcom/x1p42100/hp/omnibook-x14/cdsp_dtbs.elf";
-+
-+	status = "okay";
-+};
+ 
+ 	hrtimer_forward_now(&ts->sched_timer, TICK_NSEC);
+ 	if (IS_ENABLED(CONFIG_HIGH_RES_TIMERS) && hrtimer)
 
+---
+base-commit: 66701750d5565c574af42bef0b789ce0203e3071
+change-id: 20250702-tick_skew-0e7858c10246
+
+Best regards,
 -- 
-2.48.1
+Christoph Lameter <cl@gentwo.org>
 
