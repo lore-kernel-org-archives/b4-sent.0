@@ -1,156 +1,95 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 02 Jul 2025 02:46:26 -0500
-Subject: [PATCH v5 3/3] cpufreq: tegra124: Allow building as a module
+From: Max Shevchenko <wctrl@proton.me>
+Subject: [PATCH v4 00/11] ARM: Add support for MediaTek MT6572 SoC
+Date: Wed, 02 Jul 2025 13:50:37 +0300
+Message-Id: <20250702-mt6572-v4-0-bde75b7ed445@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250702-tegra124-cpufreq-v5-3-66ab3640a570@gmail.com>
-References: <20250702-tegra124-cpufreq-v5-0-66ab3640a570@gmail.com>
-In-Reply-To: <20250702-tegra124-cpufreq-v5-0-66ab3640a570@gmail.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-tegra@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAP0OZWgC/13MTQ6CMBCG4auQrq1pp/+uvIdxQaCVLqCkJY2Gc
+ HcLUSQuv8k874ySjd4mdKlmFG32yYehDH6qUNPVw8Ni35aNgIAgkhrcT1IowNYpXbOWCyo1Ks9
+ jtM4/t9DtXnbn0xTia+tmul4/CSDfRKaYYAstVxqIIxyuYwxTGM69RWsiw5HJnUFhTjnNgRppt
+ Pxn7McUoTtjhWnDVONqxpwRR7YsyxtVyahhCgEAAA==
+X-Change-ID: 20250619-mt6572-ef78a3d45168
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Thomas Gleixner <tglx@linutronix.de>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>, 
+ Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Sean Wang <sean.wang@mediatek.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, linux-watchdog@vger.kernel.org, 
+ Max Shevchenko <wctrl@proton.me>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751442407; l=4356;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=9YZ0nqGE5aiW/b0NHl7GJtHyqEJaSop9yzdt0kviJuE=;
- b=jgSpInoztgv7fEM71kFrbW8fbsIyKN/iuw2frQLeJN0xB3/tYBdYcyPpz1yQ58NIcGyWlMjYm
- JXdU31Ah099ClQZBb8E69C1pv0Kvd8mS/QiXbcZP3VrgX0UkVeYmxv3
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751453439; l=2538;
+ i=wctrl@proton.me; s=20250603; h=from:subject:message-id;
+ bh=MV2mMqrsywSQ8XEX8eIYyfXz5q6RId1u/Dc6AHhTFO4=;
+ b=fx0ojaT7IM1H7gtp9SN7htFt8MTf0CWYRzHJOJDypSd22BTlhRLBTF3nK1kDkThQVJtwPe6NQ
+ ZpJ1aDGzhChBGaSPTPEeodQlvmGW1xp9P/foi8vLGauPHKdJ3Z6AVpF
+X-Developer-Key: i=wctrl@proton.me; a=ed25519;
+ pk=JXUx3mL/OrnRvbK57HXgugBjEBKq4QgDKJqp7BALm74=
+X-Endpoint-Received: by B4 Relay for wctrl@proton.me/20250603 with auth_id=421
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This requires three changes:
-* Using the cpufreq-dt register helper to establish a hard dependency
-  for depmod to track
-* Adding a remove routine to remove the cpufreq-dt device
-* Adding a exit routine to handle cleaning up the driver
+This series of patches adds support for the MT6572 SoC and
+the JTY D101 tablet and Lenovo A369i smartphone based on it.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: Max Shevchenko <wctrl@proton.me>
 ---
- drivers/cpufreq/Kconfig.arm        |  2 +-
- drivers/cpufreq/tegra124-cpufreq.c | 44 +++++++++++++++++++++++++++++---------
- 2 files changed, 35 insertions(+), 11 deletions(-)
+Changes in v4:
+- Specify the unit-address for the memory node
+- Link to v3: https://lore.kernel.org/r/20250701-mt6572-v3-0-8937cfa33f95@proton.me
 
-diff --git a/drivers/cpufreq/Kconfig.arm b/drivers/cpufreq/Kconfig.arm
-index 4f9cb943d945c244eb2b29f543d14df6cac4e5d4..625f6fbdaaf5fd774e3b0bb996eb7ce980da41ee 100644
---- a/drivers/cpufreq/Kconfig.arm
-+++ b/drivers/cpufreq/Kconfig.arm
-@@ -238,7 +238,7 @@ config ARM_TEGRA20_CPUFREQ
- 	  This adds the CPUFreq driver support for Tegra20/30 SOCs.
- 
- config ARM_TEGRA124_CPUFREQ
--	bool "Tegra124 CPUFreq support"
-+	tristate "Tegra124 CPUFreq support"
- 	depends on ARCH_TEGRA || COMPILE_TEST
- 	depends on CPUFREQ_DT
- 	default y
-diff --git a/drivers/cpufreq/tegra124-cpufreq.c b/drivers/cpufreq/tegra124-cpufreq.c
-index 514146d98bca2d8aa59980a14dff3487cd8045f6..ebce62be9a9c17724d50dadeea1bb2ec81538421 100644
---- a/drivers/cpufreq/tegra124-cpufreq.c
-+++ b/drivers/cpufreq/tegra124-cpufreq.c
-@@ -16,6 +16,10 @@
- #include <linux/pm_opp.h>
- #include <linux/types.h>
- 
-+#include "cpufreq-dt.h"
-+
-+static struct platform_device *platform_device;
-+
- struct tegra124_cpufreq_priv {
- 	struct clk *cpu_clk;
- 	struct clk *pllp_clk;
-@@ -55,7 +59,6 @@ static int tegra124_cpufreq_probe(struct platform_device *pdev)
- 	struct device_node *np __free(device_node) = of_cpu_device_node_get(0);
- 	struct tegra124_cpufreq_priv *priv;
- 	struct device *cpu_dev;
--	struct platform_device_info cpufreq_dt_devinfo = {};
- 	int ret;
- 
- 	if (!np)
-@@ -95,11 +98,7 @@ static int tegra124_cpufreq_probe(struct platform_device *pdev)
- 	if (ret)
- 		goto out_put_pllp_clk;
- 
--	cpufreq_dt_devinfo.name = "cpufreq-dt";
--	cpufreq_dt_devinfo.parent = &pdev->dev;
--
--	priv->cpufreq_dt_pdev =
--		platform_device_register_full(&cpufreq_dt_devinfo);
-+	priv->cpufreq_dt_pdev = cpufreq_dt_pdev_register(&pdev->dev);
- 	if (IS_ERR(priv->cpufreq_dt_pdev)) {
- 		ret = PTR_ERR(priv->cpufreq_dt_pdev);
- 		goto out_put_pllp_clk;
-@@ -173,6 +172,21 @@ static int __maybe_unused tegra124_cpufreq_resume(struct device *dev)
- 	return err;
- }
- 
-+static void tegra124_cpufreq_remove(struct platform_device *pdev)
-+{
-+	struct tegra124_cpufreq_priv *priv = dev_get_drvdata(&pdev->dev);
-+
-+	if (!IS_ERR(priv->cpufreq_dt_pdev)) {
-+		platform_device_unregister(priv->cpufreq_dt_pdev);
-+		priv->cpufreq_dt_pdev = ERR_PTR(-ENODEV);
-+	}
-+
-+	clk_put(priv->pllp_clk);
-+	clk_put(priv->pllx_clk);
-+	clk_put(priv->dfll_clk);
-+	clk_put(priv->cpu_clk);
-+}
-+
- static const struct dev_pm_ops tegra124_cpufreq_pm_ops = {
- 	SET_SYSTEM_SLEEP_PM_OPS(tegra124_cpufreq_suspend,
- 				tegra124_cpufreq_resume)
-@@ -182,12 +196,12 @@ static struct platform_driver tegra124_cpufreq_platdrv = {
- 	.driver.name	= "cpufreq-tegra124",
- 	.driver.pm	= &tegra124_cpufreq_pm_ops,
- 	.probe		= tegra124_cpufreq_probe,
-+	.remove		= tegra124_cpufreq_remove,
- };
- 
- static int __init tegra_cpufreq_init(void)
- {
- 	int ret;
--	struct platform_device *pdev;
- 
- 	if (!(of_machine_is_compatible("nvidia,tegra124") ||
- 		of_machine_is_compatible("nvidia,tegra210")))
-@@ -201,15 +215,25 @@ static int __init tegra_cpufreq_init(void)
- 	if (ret)
- 		return ret;
- 
--	pdev = platform_device_register_simple("cpufreq-tegra124", -1, NULL, 0);
--	if (IS_ERR(pdev)) {
-+	platform_device = platform_device_register_simple("cpufreq-tegra124", -1, NULL, 0);
-+	if (IS_ERR(platform_device)) {
- 		platform_driver_unregister(&tegra124_cpufreq_platdrv);
--		return PTR_ERR(pdev);
-+		return PTR_ERR(platform_device);
- 	}
- 
- 	return 0;
- }
- module_init(tegra_cpufreq_init);
- 
-+static void __exit tegra_cpufreq_module_exit(void)
-+{
-+	if (platform_device && !IS_ERR(platform_device))
-+		platform_device_unregister(platform_device);
-+
-+	platform_driver_unregister(&tegra124_cpufreq_platdrv);
-+}
-+module_exit(tegra_cpufreq_module_exit);
-+
- MODULE_AUTHOR("Tuomas Tynkkynen <ttynkkynen@nvidia.com>");
- MODULE_DESCRIPTION("cpufreq driver for NVIDIA Tegra124");
-+MODULE_LICENSE("GPL");
+Changes in v3:
+- Remove the compatible property from the SoC devicetree
+- Link to v2: https://lore.kernel.org/r/20250626-mt6572-v2-0-f7f842196986@proton.me
 
+Changes in v2:
+- Drop the status property for the board devicetrees
+- Add an soc node for the MT6572 and reorder the nodes and properties
+- Change the commit title to a more descriptive one
+- Change the cover title to the correct one
+- Link to v1: https://lore.kernel.org/r/20250620-mt6572-v1-0-e2d47820f042@proton.me
+
+---
+Max Shevchenko (11):
+      dt-bindings: serial: mediatek,uart: add MT6572
+      dt-bindings: interrupt-controller: mediatek,mt6577-sysirq: add MT6572
+      dt-bindings: timer: mediatek: add MT6572
+      dt-bindings: watchdog: mediatek,mtk-wdt: add MT6572
+      dt-bindings: vendor-prefixes: add JTY
+      dt-bindings: arm: mediatek: add boards based on the MT6572 SoC
+      ARM: mediatek: add board_dt_compat entry for the MT6572 SoC
+      ARM: mediatek: add MT6572 smp bring up code
+      ARM: dts: mediatek: add basic support for MT6572 SoC
+      ARM: dts: mediatek: add basic support for JTY D101 board
+      ARM: dts: mediatek: add basic support for Lenovo A369i board
+
+ .../devicetree/bindings/arm/mediatek.yaml          |   5 +
+ .../mediatek,mt6577-sysirq.yaml                    |   1 +
+ .../devicetree/bindings/serial/mediatek,uart.yaml  |   1 +
+ .../devicetree/bindings/timer/mediatek,timer.yaml  |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ .../bindings/watchdog/mediatek,mtk-wdt.yaml        |   1 +
+ arch/arm/boot/dts/mediatek/Makefile                |   2 +
+ arch/arm/boot/dts/mediatek/mt6572-jty-d101.dts     |  61 ++++++++++++
+ arch/arm/boot/dts/mediatek/mt6572-lenovo-a369i.dts |  56 +++++++++++
+ arch/arm/boot/dts/mediatek/mt6572.dtsi             | 108 +++++++++++++++++++++
+ arch/arm/mach-mediatek/Kconfig                     |   4 +
+ arch/arm/mach-mediatek/mediatek.c                  |   1 +
+ arch/arm/mach-mediatek/platsmp.c                   |   7 ++
+ 13 files changed, 250 insertions(+)
+---
+base-commit: 0ff41df1cb268fc69e703a08a57ee14ae967d0ca
+change-id: 20250619-mt6572-ef78a3d45168
+
+Best regards,
 -- 
-2.50.0
+Max Shevchenko <wctrl@proton.me>
 
