@@ -1,59 +1,88 @@
-From: Nikita Ofitserov <himikof@gmail.com>
-Date: Thu, 03 Jul 2025 02:59:11 +0300
-Subject: [PATCH] bcachefs: Suppress unnecessary inode_i_sectors_wrong fsck
- error
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v3 0/3] arm64: dts: qcom: x1-hp-x14: Add support for
+ X1P42100 HP Omnibook X14
+Date: Thu, 03 Jul 2025 08:59:10 +0200
+Message-Id: <20250703-hp-x14-x1p-v3-0-affe103b4356@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250703-isectors-not-wrong-v1-1-37002be151e0@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAM7HZWgC/x3MPQqAMAxA4atIZgO14g9eRRxKTWuWVhJRQby7x
- fEb3ntASZgUpuoBoZOVcypo6gr85lIk5LUYrLGdGUyLrOSPLIopH3hJThFHGl1jex9aM0AJd6H
- A9z+dl/f9AN1vRPtkAAAA
-X-Change-ID: 20250703-isectors-not-wrong-8e8a126cf307
-To: Kent Overstreet <kent.overstreet@linux.dev>
-Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAD4qZmgC/3XOwQ6DIAyA4VcxnMcCRVB22nssO6jgIDFiwBE34
+ 7uvep6HHv4m/dKVJBu9TeRWrCTa7JMPI4a4FKRzzfiy1BtsAgwkqxhQN9GFlzgTta2AvlRaGa0
+ IHkzR9n45sMcT2/k0h/g57Mz37V8mc8oocC2ksrUAVt3DYFLnQhhSGN4zfpSurf+S3cxw7gA6T
+ S9bWdeG60qfOtu2/QDJ7uTo+QAAAA==
+X-Change-ID: 20250702-hp-x14-x1p-eb32f4696d96
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1208; i=himikof@gmail.com;
- h=from:subject:message-id; bh=2wcJM/AavbId1UzNMVMhmkxxIl8bglzMr8gbV3nXSjw=;
- b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSkHv/veldg3gHD2C8hoV436lYaT/r0/lBo2yrHWR6Z6
- 3Q/LrHb3lHKwiDGxSArpsjyYcnXP2syrf9YCu01hJnDygQyhIGLUwAmclOC4X+Zj9najUWHPt3P
- EXruNUHu7POZ82sPtmgWZ+/Zu12w/doURoZ5rZxfBNkm/Zsj4XvBKPtoya9SZtd/sXJcFmtsLPo
- Nq1gA
-X-Developer-Key: i=himikof@gmail.com; a=openpgp;
- fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
-X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751525956; l=2124;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=tQJdnJYlTNIs5lgbSl8DiVHPrsh3z/fqveMuaTC90Og=;
+ b=IYn8bd9kGEwYlsibDlmnND/7ucFXPmAwIBpJYyW+D9VKz+iOMZp/t1SKVxeyH+VMnaWrftfCr
+ Xp7lo6zh01pB3ck+4C2aOJDK6zT3EkXhNnoc3r15KUSwJTY0YSrttqH
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It is possible that fsck first miscounted the expected sector count (due
-to applying other fixes at the same time, for example) and then
-corrected itself using extents. No need to log an fsck error and
-write the inode in this case.
+This patch series adds support for the HP Omnibook X Laptop 14-fe1xxx. [1]
 
-Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
+Since this is actually the same model as the 14-fe0xxx, but with an
+X1P-42-100 SoC (Purwa), it needs a slightly different device tree.
+To have as minimal duplicate definition as possible, the hp X14 gets 
+commonalized into a dtsi (and it stays compatible to the derived 
+device trees, like the Ultrabook G1q). 
+
+The supported features are the same as for the original Omnibook X14:
+
+- Keyboard (no function keys though)
+- Display
+- PWM brightness control
+- Touchpad
+- Touchscreen
+- PCIe ports (pcie4, pcie6a)
+- USB type-c, type-a
+- WCN6855 Wifi-6E
+- WCN6855 Bluetooth
+- ADSP and CDSP
+- X1 GPU
+- GPIO Keys (Lid switch)
+- Audio definition (works via USB and with internal speakers)
+
+[1]: https://www.hp.com/us-en/shop/pdp/hp-omnibook-x-laptop-next-gen-ai-pc-14-fe100-14-a4nd1av-1#techSpecs
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- fs/bcachefs/fsck.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Changes in v3:
+- removed copyright strings
+- amended changed commit message  
+- Link to v2: https://lore.kernel.org/r/20250702-hp-x14-x1p-v2-0-af5b588d1979@oldschoolsolutions.biz
 
-diff --git a/fs/bcachefs/fsck.c b/fs/bcachefs/fsck.c
-index 1ceca63c87a3bf3eb75d396f7a10949c502b0e8d..471e93a3f00c637050b5c485d72b27cfb284282d 100644
---- a/fs/bcachefs/fsck.c
-+++ b/fs/bcachefs/fsck.c
-@@ -1638,7 +1638,8 @@ static int check_i_sectors_notnested(struct btree_trans *trans, struct inode_wal
- 			i->count = count2;
- 		}
- 
--		if (fsck_err_on(!(i->inode.bi_flags & BCH_INODE_i_sectors_dirty),
-+		if (fsck_err_on(!(i->inode.bi_flags & BCH_INODE_i_sectors_dirty) &&
-+				i->inode.bi_sectors != i->count,
- 				trans, inode_i_sectors_wrong,
- 				"inode %llu:%u has incorrect i_sectors: got %llu, should be %llu",
- 				w->last_pos.inode, i->inode.bi_snapshot,
+Changes in v2:
+- remove pm8010 handling
+- Link to v1: https://lore.kernel.org/r/20250702-hp-x14-x1p-v1-0-219356e83207@oldschoolsolutions.biz
 
 ---
-base-commit: 14a12362bb22b3735c51ecdb712570a12992a695
-change-id: 20250703-isectors-not-wrong-8e8a126cf307
+Jens Glathe (3):
+      dt-bindings: arm: qcom: Split HP Omnibook X14 AI in SoC variants
+      arm64: dts: qcom: x1-hp-x14: Commonalize HP Omnibook X14 device tree
+      arm64: dts: qcom: x1-hp-x14: Add support for X1P42100 HP Omnibook X14
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    3 +-
+ arch/arm64/boot/dts/qcom/Makefile                  |    2 +
+ arch/arm64/boot/dts/qcom/x1-hp-omnibook-x14.dtsi   | 1549 ++++++++++++++++++++
+ .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 1544 +------------------
+ .../boot/dts/qcom/x1p42100-hp-omnibook-x14.dts     |   40 +
+ 5 files changed, 1596 insertions(+), 1542 deletions(-)
+---
+base-commit: 3f804361f3b9af33e00b90ec9cb5afcc96831e60
+change-id: 20250702-hp-x14-x1p-eb32f4696d96
 
 Best regards,
 -- 
-Nikita Ofitserov
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
