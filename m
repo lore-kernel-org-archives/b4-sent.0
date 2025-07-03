@@ -1,71 +1,54 @@
-From: Louis Rannou <louis.rannou@non.se.com>
-Date: Thu, 03 Jul 2025 14:14:36 +0200
-Subject: [PATCH] openssh: limit read access to sshd_config
+From: Benjamin Missey <benjamin.missey@non.se.com>
+Date: Thu, 03 Jul 2025 15:21:55 +0200
+Subject: [PATCH] kernel-fit-image: fix symbolic link fit-image.its
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250703-sshd_perm-v1-1-f92e5fbb18c7@non.se.com>
-X-B4-Tracking: v=1; b=H4sIACt0ZmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDcwNj3eLijJT4gtSiXF0z42QLEwPzNEszozQloPqCotS0zAqwWdGxtbU
- ATVsoOFsAAAA=
+Message-Id: <20250703-fix_typo_kernel_fit_image_bbclass-v1-1-2f1857f1466b@non.se.com>
+X-B4-Tracking: v=1; b=H4sIAPKDZmgC/x2NzQrCMBAGX6Xs2UBsDP68ipQlTb/UxZqWbBGl9
+ N0NHucwMxspikDp1mxU8BaVOVc4HhqKj5BHGBkqU2tbb8/WmSQfXr/LzE+UjImTrCyvMIL7Pk5
+ B1USHIZ2uwbuLp9pZCqr0f9y7ff8Bw5pDjXMAAAA=
 To: openembedded-core@lists.openembedded.org
-Cc: pascal.eberhard@se.com, Louis Rannou <louis.rannou@non.se.com>
+Cc: pascal.eberhard@se.com, Benjamin Missey <benjamin.missey@non.se.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751544878; l=1954;
- i=louis.rannou@non.se.com; s=20250630; h=from:subject:message-id;
- bh=MWC55oMq0pjTiIOMWdI0f51vNbs/kU196thLmSduxzk=;
- b=moAZvwR50+72UCDA3DbXm/eCJbbdO4jxGYDNA29Ok6ql7i0mHM4a/9xvWktnwhbQWcwc6t1zO
- 9kKSvR6Ls03CCCr8vwVKcLrKzKZWL9Ev167Xmkaah2FxNP8n0r9+J+0
-X-Developer-Key: i=louis.rannou@non.se.com; a=ed25519;
- pk=WWYN5/DFKqyCKdv6oTYNuq0gROqwZVfNfw2OMI3tUlc=
-X-Endpoint-Received: by B4 Relay for louis.rannou@non.se.com/20250630 with auth_id=446
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751548929; l=1205;
+ i=benjamin.missey@non.se.com; s=20250620; h=from:subject:message-id;
+ bh=VZXY6XMGgfZM2Ki6yfw6FoZm+iOjyCZSwwTwDNidL6c=;
+ b=lR9ROplyeyuepZysfNXHF90cQD8mz5cvVcKGgh9RXEUAaYPEFiW5Ue4EUos6czDTDdGlwLEqT
+ 1urRAMmg9pKCMCb0Mv78Hy1hitPoyopMWLJ1mXP2ZzjPvnzJYdmjyFW
+X-Developer-Key: i=benjamin.missey@non.se.com; a=ed25519;
+ pk=HehU6MOmKShwMy0xbM2FC7HuoJnsSlKtZKWSTRRy1Do=
+X-Endpoint-Received: by B4 Relay for benjamin.missey@non.se.com/20250620 with auth_id=437
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enhance security by limiting read access for /etc/sshd_config to user root as it
-may reveal unsecure configurations.
+Bad symbolic link is used for kernel-fit-image. fit-image-its used
+instead of fit-image.its.
+Fix bad typo.
 
-Reading access is limited in the install append as the default value 0644 is
-hardcoded in the openssh makefile and is not configurable. Therefore the
-permissions are modified in the install append.
-
-Signed-off-by: Louis Rannou <louis.rannou@non.se.com>
+Signed-off-by: Benjamin Missey <benjamin.missey@non.se.com>
 ---
- meta/recipes-connectivity/openssh/openssh_10.0p1.bb | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ meta/classes-recipe/kernel-fit-image.bbclass | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/meta/recipes-connectivity/openssh/openssh_10.0p1.bb b/meta/recipes-connectivity/openssh/openssh_10.0p1.bb
-index a044aec063..2f446b5540 100644
---- a/meta/recipes-connectivity/openssh/openssh_10.0p1.bb
-+++ b/meta/recipes-connectivity/openssh/openssh_10.0p1.bb
-@@ -102,7 +102,7 @@ CACHED_CONFIGUREVARS += "ac_cv_header_maillock_h=no"
+diff --git a/meta/classes-recipe/kernel-fit-image.bbclass b/meta/classes-recipe/kernel-fit-image.bbclass
+index 39845997ed..fd4c6a30fe 100644
+--- a/meta/classes-recipe/kernel-fit-image.bbclass
++++ b/meta/classes-recipe/kernel-fit-image.bbclass
+@@ -173,7 +173,7 @@ do_deploy() {
+     fi
  
- do_configure:prepend () {
- 	export LD="${CC}"
--	install -m 0644 ${UNPACKDIR}/sshd_config ${B}/
-+	install -m 0600 ${UNPACKDIR}/sshd_config ${B}/
- 	install -m 0644 ${UNPACKDIR}/ssh_config ${B}/
- }
- 
-@@ -153,9 +153,12 @@ do_install:append () {
- 	install -m 644 ${UNPACKDIR}/volatiles.99_sshd ${D}/${sysconfdir}/default/volatiles/99_sshd
- 	install -m 0755 ${S}/contrib/ssh-copy-id ${D}${bindir}
- 
-+	# Limit sshd_config access to the owner (default is 0644)
-+	chmod 0600 ${D}${sysconfdir}/ssh/sshd_config
-+
- 	# Create config files for read-only rootfs
- 	install -d ${D}${sysconfdir}/ssh
--	install -m 644 ${D}${sysconfdir}/ssh/sshd_config ${D}${sysconfdir}/ssh/sshd_config_readonly
-+	install -m 0600 ${D}${sysconfdir}/ssh/sshd_config ${D}${sysconfdir}/ssh/sshd_config_readonly
- 
- 	install -d ${D}${systemd_system_unitdir}
- 	if ${@bb.utils.contains('PACKAGECONFIG','systemd-sshd-socket-mode','true','false',d)}; then
+     if [ -n "${INITRAMFS_IMAGE}" ]; then
+-        ln -snf fit-image-its "$deploy_dir/fitImage-its-${INITRAMFS_IMAGE_NAME}-${KERNEL_FIT_NAME}.its"
++        ln -snf fit-image.its "$deploy_dir/fitImage-its-${INITRAMFS_IMAGE_NAME}-${KERNEL_FIT_NAME}.its"
+         if [ -n "${KERNEL_FIT_LINK_NAME}" ]; then
+             ln -snf fit-image.its "$deploy_dir/fitImage-its-${INITRAMFS_IMAGE_NAME}-${KERNEL_FIT_LINK_NAME}"
+         fi
 
 ---
-base-commit: 77a93e8cf1da4231341c56f64f9d4d474f9f2bb7
-change-id: 20250703-sshd_perm-63c8407f962f
+base-commit: d1c39b29f21719b349072c51a761fa19770a49ea
+change-id: 20250703-fix_typo_kernel_fit_image_bbclass-c3edf49a5385
 
 Best regards,
 -- 
-Louis Rannou <louis.rannou@non.se.com>
+Benjamin Missey <benjamin.missey@non.se.com>
 
