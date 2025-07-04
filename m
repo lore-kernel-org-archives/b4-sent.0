@@ -1,152 +1,76 @@
-From: Frank Li <Frank.Li@nxp.com>
-Date: Thu, 03 Jul 2025 14:33:09 -0400
-Subject: [PATCH v2 4/4] arm64: dts: imx8qxp-mek: add parallel ov5640 camera
- support
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v4 0/3] support for amlogic the new SPI IP
+Date: Fri, 04 Jul 2025 10:59:31 +0800
+Message-Id: <20250704-spisg-v4-0-6b731dfbe610@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250703-imx8qxp_pcam-v2-4-188be85f06f1@nxp.com>
-References: <20250703-imx8qxp_pcam-v2-0-188be85f06f1@nxp.com>
-In-Reply-To: <20250703-imx8qxp_pcam-v2-0-188be85f06f1@nxp.com>
-To: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rui Miguel Silva <rmfrfs@gmail.com>, 
- Martin Kepplinger <martink@posteo.de>, Purism Kernel Team <kernel@puri.sm>, 
+X-B4-Tracking: v=1; b=H4sIAJNDZ2gC/2XO3wqDIBiH4VsJj+fwT6btaPcxdmD6VcLK0CEb0
+ b3PYkFjh78PnxdnFCE4iOhSzChActH5MY/yVCDT67ED7GzeiBEmSEU4jpOLHZaqZbRSDBptUH4
+ 7BWjda+vc7nn3Lj59eG/ZRNfrXii/hUQxwULV3DZQ21rwqx4evnPmbPyA1kZiB0fl7tjqqK6I0
+ KpsrPh3/ODY/uPEszOS01ZIYKo2v25Zlg+IQNAaDAEAAA==
+To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-media@vger.kernel.org, imx@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Frank Li <Frank.Li@nxp.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751567591; l=3715;
- i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
- bh=xrlatQtLaiuinBwAmL4cEzL3pNe437Uvr/YWmYMVyX4=;
- b=OrYhgbxp0mxYiuvD4zwpejFQ9E/eldojxDR2ZfCT44z4t7F/rAzD6h8/JvNn4OeWKbkLfnHiQ
- jMyCzGG8e6aCOEQMci3BgiDtLjGFLAEhTs1FhhzET3OdH5wncSPru8A
-X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
- pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
-X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751597972; l=1846;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=AN3zYOg/SC8p0HEnNd2sFLzv/mQYAsIfsucNFSrf+Ac=;
+ b=YOtuMj0B9H0vJgflB6YDqgr4DZR8xDKRQE+zqr8EJGDkPns+8Wx77xxiHz6G5IWKC70LWsVFx
+ SjJfINMCWdxDlZ4ZFu0uZcOT2TMP9aDOFCIZ4t90KAKctq0KAI8cb+d
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add parallel ov5640 nodes in imx8qxp-mek and create overlay file to enable
-it because it can work at two mode: MIPI and parallel mode.
+Introduced support for the new SPI IP (SPISG). The SPISG is
+a communication-oriented SPI controller from Amlogic,supporting
+three operation modes: PIO, block DMA, and scatter-gather DMA.
 
-Signed-off-by: Frank Li <Frank.Li@nxp.com>
+Add the drivers and device tree bindings corresponding to the SPISG.
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-change in v2
-- move ov5640 part to overlay file
-- rename to imx8qxp-mek-ov5640-parallel.dtso
-- remove data-lanes
+Changes in v4:
+- Add resets prop and modify some formats for bindings.
+- Remove irrelevant headers files and fix some issues.
+- Link to v3: https://lore.kernel.org/r/20250623-spisg-v3-0-c731f57e289c@amlogic.com
+
+Changes in v3:
+- Rename of bit definition and fix some issues.
+- Enable runtime_suspend function.
+- Link to v2: https://lore.kernel.org/r/20250617-spisg-v2-0-51a605a84bd5@amlogic.com
+
+Changes in v2:
+- Use regmap to operation register and drop bitfied define.
+- Use "SPISG" prefix intead of "SPICC", and declare clock div table in the spisg_device. 
+- Delete other power operation functions except for runtime_supspend and runtime_resume.
+- Fix some format corrections.
+- Link to v1: https://lore.kernel.org/r/20250604-spisg-v1-0-5893dbe9d953@amlogic.com
+
 ---
- arch/arm64/boot/dts/freescale/Makefile             |  3 +
- .../dts/freescale/imx8qxp-mek-ov5640-parallel.dtso | 82 ++++++++++++++++++++++
- 2 files changed, 85 insertions(+)
+Sunny Luo (2):
+      spi: dt-bindings: Add binding document of Amlogic SPISG controller
+      spi: Add Amlogic SPISG driver
 
-diff --git a/arch/arm64/boot/dts/freescale/Makefile b/arch/arm64/boot/dts/freescale/Makefile
-index 02ef35578dbc7e05b35b781dbfca0f0bc124ead1..25787fc7143f36301f8b334d4b0d84d543e1f320 100644
---- a/arch/arm64/boot/dts/freescale/Makefile
-+++ b/arch/arm64/boot/dts/freescale/Makefile
-@@ -330,6 +330,9 @@ dtb-$(CONFIG_ARCH_MXC) += imx8qxp-mek-pcie-ep.dtb
- imx8qxp-mek-ov5640-csi-dtbs := imx8qxp-mek.dtb imx8qxp-mek-ov5640-csi.dtbo
- dtb-${CONFIG_ARCH_MXC} += imx8qxp-mek-ov5640-csi.dtb
- 
-+imx8qxp-mek-ov5640-parallel-dtbs := imx8qxp-mek.dtb imx8qxp-mek-ov5640-parallel.dtbo
-+dtb-${CONFIG_ARCH_MXC} += imx8qxp-mek-ov5640-parallel.dtb
-+
- dtb-$(CONFIG_ARCH_MXC) += imx8qxp-tqma8xqp-mba8xx.dtb
- dtb-$(CONFIG_ARCH_MXC) += imx8qxp-tqma8xqps-mb-smarc-2.dtb
- dtb-$(CONFIG_ARCH_MXC) += imx8ulp-evk.dtb
-diff --git a/arch/arm64/boot/dts/freescale/imx8qxp-mek-ov5640-parallel.dtso b/arch/arm64/boot/dts/freescale/imx8qxp-mek-ov5640-parallel.dtso
-new file mode 100644
-index 0000000000000000000000000000000000000000..e184a5beb5c835e6801495ae2adc3b14cfcde2e5
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/imx8qxp-mek-ov5640-parallel.dtso
-@@ -0,0 +1,82 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Copyright 2025 NXP
-+ */
-+
-+/dts-v1/;
-+/plugin/;
-+
-+#include <dt-bindings/clock/imx8-lpcg.h>
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/media/video-interfaces.h>
-+#include <dt-bindings/pinctrl/pads-imx8qxp.h>
-+
-+&cm40_i2c {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	ov5640_pi: camera@3c {
-+		compatible = "ovti,ov5640";
-+		reg = <0x3c>;
-+		clocks = <&pi0_misc_lpcg IMX_LPCG_CLK_0>;
-+		clock-names = "xclk";
-+		assigned-clocks = <&pi0_misc_lpcg IMX_LPCG_CLK_0>;
-+		assigned-clock-rates = <24000000>;
-+		AVDD-supply = <&reg_2v8>;
-+		DOVDD-supply = <&reg_1v8>;
-+		DVDD-supply = <&reg_1v5>;
-+		pinctrl-0 = <&pinctrl_parallel_csi>;
-+		pinctrl-names = "default";
-+		powerdown-gpios = <&lsio_gpio3 2 GPIO_ACTIVE_HIGH>;
-+		reset-gpios = <&lsio_gpio3 3 GPIO_ACTIVE_LOW>;
-+
-+		port {
-+			ov5640_pi_ep: endpoint {
-+				bus-type = <MEDIA_BUS_TYPE_PARALLEL>;
-+				bus-width = <8>;
-+				hsync-active = <1>;
-+				pclk-sample = <1>;
-+				remote-endpoint = <&parallel_csi_in>;
-+				vsync-active = <0>;
-+			};
-+		};
-+	};
-+};
-+
-+&iomuxc {
-+	pinctrl_parallel_csi: parallelcsigrp {
-+		fsl,pins = <
-+			IMX8QXP_CSI_D00_CI_PI_D02		0xc0000041
-+			IMX8QXP_CSI_D01_CI_PI_D03		0xc0000041
-+			IMX8QXP_CSI_D02_CI_PI_D04		0xc0000041
-+			IMX8QXP_CSI_D03_CI_PI_D05		0xc0000041
-+			IMX8QXP_CSI_D04_CI_PI_D06		0xc0000041
-+			IMX8QXP_CSI_D05_CI_PI_D07		0xc0000041
-+			IMX8QXP_CSI_D06_CI_PI_D08		0xc0000041
-+			IMX8QXP_CSI_D07_CI_PI_D09		0xc0000041
-+
-+			IMX8QXP_CSI_MCLK_CI_PI_MCLK		0xc0000041
-+			IMX8QXP_CSI_PCLK_CI_PI_PCLK		0xc0000041
-+			IMX8QXP_CSI_HSYNC_CI_PI_HSYNC		0xc0000041
-+			IMX8QXP_CSI_VSYNC_CI_PI_VSYNC		0xc0000041
-+			IMX8QXP_CSI_EN_LSIO_GPIO3_IO02		0xc0000041
-+			IMX8QXP_CSI_RESET_LSIO_GPIO3_IO03	0xc0000041
-+		>;
-+	};
-+};
-+
-+&isi {
-+	status = "okay";
-+};
-+
-+&parallel_csi {
-+	status = "okay";
-+
-+	ports {
-+		port@0 {
-+			parallel_csi_in: endpoint {
-+				remote-endpoint = <&ov5640_pi_ep>;
-+			};
-+		};
-+	};
-+};
+Xianwei Zhao (1):
+      MAINTAINERS: Add an entry for Amlogic spi driver
 
+ .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  |  59 ++
+ MAINTAINERS                                        |   9 +
+ drivers/spi/Kconfig                                |   9 +
+ drivers/spi/Makefile                               |   1 +
+ drivers/spi/spi-amlogic-spisg.c                    | 871 +++++++++++++++++++++
+ 5 files changed, 949 insertions(+)
+---
+base-commit: bd30b995df8fd053e13d10f78dbc7b2fa5ed1aae
+change-id: 20250603-spisg-78f21682ebac
+
+Best regards,
 -- 
-2.34.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
