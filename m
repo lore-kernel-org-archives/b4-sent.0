@@ -1,82 +1,54 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Fri, 04 Jul 2025 13:36:04 +0800
-Subject: [PATCH v3] Bluetooth: ISO: Support SCM_TIMESTAMPING for ISO TS
+From: Benjamin Missey <benjamin.missey@non.se.com>
+Date: Fri, 04 Jul 2025 11:20:31 +0200
+Subject: [PATCH] kernel-fit-image: fix symbolic link fit-image.its
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250704-iso_ts-v3-1-2328bc602961@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAENoZ2gC/1WMWwrCMBQFt1LybSS56SP1y32ISExv2wu2kaQEp
- XTvpoUqfs7hzMwsoCcM7JTNzGOkQG5MoA4Zs70ZO+TUJGYgoBA5SE7B3abArQajhDBY6Zyl89N
- jS68tdLkm7ilMzr+3bpTruifqPREllxwLXbZKNFja+9kMD9eRPVo3sDUS4SdWAr4iJLEC1ci6t
- lqU+l9cluUDtrm4ztcAAAA=
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751607364; l=1653;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=C5WSe4xpxMywiJVuo177OZ9NkV8vydxLCuzzPLrDJ70=;
- b=BPvz/HGiu+RRd/d7DdT0qoLzNUl91lP8saypFLqpEV6DymwgKZT1fwShR0X0vedw8VkPV0hbt
- AsNh/CPpqm9BRqPmei3UxNyNxB7NtYKTfAimIss2qLjyLM4t+n2AXpV
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250704-fix_typo_kernel_fit_image_bbclass-v1-1-b30b07126469@non.se.com>
+X-B4-Tracking: v=1; b=H4sIAN6cZ2gC/x2NQQqDMBAAvyJ7biCmitqvlLLEuNFFGyUrooh/N
+ 3icw8ycIBSZBD7ZCZE2Fp5DgvyVgRts6ElxlxiMNqWudKE877gey4wjxUATel6R/7YnbFs3WRF
+ lC+N0U9dl5d+QOkukJD2P7++6bnpL7fRzAAAA
+To: openembedded-core@lists.openembedded.org
+Cc: pascal.eberhard@se.com, Benjamin Missey <benjamin.missey@non.se.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751620841; l=1205;
+ i=benjamin.missey@non.se.com; s=20250620; h=from:subject:message-id;
+ bh=TON0k6AXlo565FrIe2ZnTiaFCI8bZoW2lQ6EtL8r3fQ=;
+ b=02ypVho0/c1npgZrwzklevxn1hewt8+QbPJEr2vW0uEQWZykNY9wmQttVnMsrc1ZBZ/N8DSHb
+ JQOmkSydYXcAkLDO+QCDD380bLzOnC2wC17cOwT8XTCFK1epoygobvP
+X-Developer-Key: i=benjamin.missey@non.se.com; a=ed25519;
+ pk=HehU6MOmKShwMy0xbM2FC7HuoJnsSlKtZKWSTRRy1Do=
+X-Endpoint-Received: by B4 Relay for benjamin.missey@non.se.com/20250620 with auth_id=437
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-User-space applications (e.g., PipeWire) depend on
-ISO-formatted timestamps for precise audio sync.
+Bad symbolic link is used for kernel-fit-image. fit-image-its used
+instead of fit-image.its.
+Fix bad typo.
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+Signed-off-by: Benjamin Missey <benjamin.missey@non.se.com>
 ---
-Changes in v3:
-- Change to use hwtimestamp
-- Link to v2: https://lore.kernel.org/r/20250702-iso_ts-v2-1-723d199c8068@amlogic.com
+ meta/classes-recipe/kernel-fit-image.bbclass | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Changes in v2:
-- Support SOCK_RCVTSTAMPNS via CMSG for ISO sockets
-- Link to v1: https://lore.kernel.org/r/20250429-iso_ts-v1-1-e586f30de6cb@amlogic.com
----
- net/bluetooth/iso.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
-
-diff --git a/net/bluetooth/iso.c b/net/bluetooth/iso.c
-index fc22782cbeeb..67ff355167d8 100644
---- a/net/bluetooth/iso.c
-+++ b/net/bluetooth/iso.c
-@@ -2301,13 +2301,21 @@ void iso_recv(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
- 		if (ts) {
- 			struct hci_iso_ts_data_hdr *hdr;
+diff --git a/meta/classes-recipe/kernel-fit-image.bbclass b/meta/classes-recipe/kernel-fit-image.bbclass
+index 39845997ed..fd4c6a30fe 100644
+--- a/meta/classes-recipe/kernel-fit-image.bbclass
++++ b/meta/classes-recipe/kernel-fit-image.bbclass
+@@ -173,7 +173,7 @@ do_deploy() {
+     fi
  
--			/* TODO: add timestamp to the packet? */
- 			hdr = skb_pull_data(skb, HCI_ISO_TS_DATA_HDR_SIZE);
- 			if (!hdr) {
- 				BT_ERR("Frame is too short (len %d)", skb->len);
- 				goto drop;
- 			}
- 
-+			/* The ISO ts is based on the controller’s clock domain,
-+			 * so hardware timestamping (hwtimestamp) must be used.
-+			 * Ref: Documentation/networking/timestamping.rst,
-+			 * chapter 3.1 Hardware Timestamping.
-+ 			 */
-+			struct skb_shared_hwtstamps *hwts = skb_hwtstamps(skb);
-+			if (hwts)
-+				hwts->hwtstamp = us_to_ktime(le32_to_cpu(hdr->ts));
-+
- 			len = __le16_to_cpu(hdr->slen);
- 		} else {
- 			struct hci_iso_data_hdr *hdr;
+     if [ -n "${INITRAMFS_IMAGE}" ]; then
+-        ln -snf fit-image-its "$deploy_dir/fitImage-its-${INITRAMFS_IMAGE_NAME}-${KERNEL_FIT_NAME}.its"
++        ln -snf fit-image.its "$deploy_dir/fitImage-its-${INITRAMFS_IMAGE_NAME}-${KERNEL_FIT_NAME}.its"
+         if [ -n "${KERNEL_FIT_LINK_NAME}" ]; then
+             ln -snf fit-image.its "$deploy_dir/fitImage-its-${INITRAMFS_IMAGE_NAME}-${KERNEL_FIT_LINK_NAME}"
+         fi
 
 ---
-base-commit: 3bc46213b81278f3a9df0324768e152de71eb9fe
-change-id: 20250421-iso_ts-c82a300ae784
+base-commit: 77a93e8cf1da4231341c56f64f9d4d474f9f2bb7
+change-id: 20250704-fix_typo_kernel_fit_image_bbclass-a42c098857f3
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Benjamin Missey <benjamin.missey@non.se.com>
 
