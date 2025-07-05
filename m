@@ -1,63 +1,91 @@
 From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Sat, 05 Jul 2025 17:52:50 +0200
-Subject: [PATCH b4] git_range_to_patches: add git options to better
- represent renames and copies
+Subject: [PATCH v4 0/3] arm64: dts: qcom: x1-hp-x14: Add support for
+ X1P42100 HP Omnibook X14
+Date: Sat, 05 Jul 2025 22:31:53 +0200
+Message-Id: <20250705-hp-x14-x1p-v4-0-1c351dbeaf18@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250705-format-harder-v1-1-55c5342be55c@oldschoolsolutions.biz>
-X-B4-Tracking: v=1; b=H4sIAFFKaWgC/x3MQQqAIBBA0avErBNUtKCrRAu1KWeRxhgRSHdPW
- r7F/xUKMmGBqavAeFOhnBpU30GILu0oaG0GLbWVo7Riy3y4S0THK7LAAb13VhsfFLTmZNzo+X8
- zeAPL+37mxBT6YwAAAA==
-X-Change-ID: 20250705-format-harder-e6ebba524bc1
-To: "Kernel.org Tools" <tools@kernel.org>
-Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
+X-B4-Tracking: v=1; b=H4sIAL+LaWgC/33OTQ7CIBQE4Ks0rMXw3+LKexgXpYCQNNJAJdWmd
+ 5d2pYl18RbzkvkyM0gmepPAqZpBNNknH+4lsEMFOtfebwZ6XTIgiHBUIwLdACfMyg3QKEosE1J
+ oKUApDNFYP23Y5Vqy82kM8bnZGa/fn0zGEEGCJeXCNJSg+hx6nToXQp9C/xjLonRU/gVWM5N9h
+ xSntVzxptFY1vKvQz8d+uXQzbEGI6pYWbXrLMvyBvL/7DdBAQAA
+X-Change-ID: 20250702-hp-x14-x1p-eb32f4696d96
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
  Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751730778; l=1370;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751747534; l=2465;
  i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=gAdssHnCF0Xwb2viD/hFmFPVBFIzEo1trVnupy4j+qs=;
- b=CGk1Kn4svxaYySSCryr5OC+kOkZ91Ox1QtsYvoxvqMEqKv3n2W0zj09G5qYAsoDXYaY4okVuJ
- FswehaJQhZkAOiDauxz+noj2BPWjcFBicl1n8YOUSocNjRsAbLW1TIu
+ bh=T315NsZpD0PY64MoVHiLfFXWMu8FJAXT9C23gwraGvk=;
+ b=9SQH6RXV6gUVN4z6ZlxStjsbRix6VdOv4nfUVyD9Omp8wABWkK4cpmchArWR542I038mpoAST
+ uOeNQUsZW/YAcc9lsXVti+coNiRYdn1kCABM+ePUe05B4yVrLvyb7f0
 X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
  pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
 X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As remarked in [1] and [2], add the necessary options to get better and more
-terse output.
+This patch series adds support for the HP Omnibook X Laptop 14-fe1xxx. [1]
 
-[1]: https://lore.kernel.org/all/7tejkof2kec7ugpz6xugkjrcpzab27lsjpnkphj3vd3xoc4ly7@x3otjziiehju/
-[2]: https://lore.kernel.org/all/369fc807-f05e-4837-b623-b718e47fd840@kernel.org/
+Since this is actually the same model as the 14-fe0xxx, but with an
+X1P-42-100 SoC (Purwa), it needs a slightly different device tree.
+To have as minimal duplicate definition as possible, the hp X14 gets 
+commonalized into a dtsi (and it stays compatible to the derived 
+device trees, like the Ultrabook G1q). 
+
+The supported features are the same as for the original Omnibook X14:
+
+- Keyboard (no function keys though)
+- Display
+- PWM brightness control
+- Touchpad
+- Touchscreen
+- PCIe ports (pcie4, pcie6a)
+- USB type-c, type-a
+- WCN6855 Wifi-6E
+- WCN6855 Bluetooth
+- ADSP and CDSP
+- X1 GPU
+- GPIO Keys (Lid switch)
+- Audio definition (works via USB and with internal speakers)
+
+[1]: https://www.hp.com/us-en/shop/pdp/hp-omnibook-x-laptop-next-gen-ai-pc-14-fe100-14-a4nd1av-1#techSpecs
 
 Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
-This is an attempt at mitigating the real-world issue of file renames
-in patches due to code restructuring. I have a few of these, and would 
-like to keep using b4 for patch management.
----
- src/b4/__init__.py | 4 ++++
- 1 file changed, 4 insertions(+)
+Changes in v4:
+- leave the qcom,jp-omnibook-x14 ABI unchanged, reuse it for the -fe0 variant
+- hacked b4 to create an easier reviewable patch: https://lore.kernel.org/all/20250705-format-harder-v1-1-55c5342be55c@oldschoolsolutions.biz
+- Link to v3: https://lore.kernel.org/r/20250703-hp-x14-x1p-v3-0-affe103b4356@oldschoolsolutions.biz
 
-diff --git a/src/b4/__init__.py b/src/b4/__init__.py
-index ff6075e3a95e0df5f8ba3f717b12ae2bbce03432..93cf016bd705584ace4d61c4968be365a25f2502 100644
---- a/src/b4/__init__.py
-+++ b/src/b4/__init__.py
-@@ -3594,6 +3594,10 @@ def git_range_to_patches(gitdir: Optional[str], start: str, end: str,
-             '--encoding=utf-8',
-             '--default-prefix',
-             '--find-renames',
-+			'-M',
-+			'-B',
-+			'-C',
-+			'--find-copies-harder',
-         ]
-         smcfg = get_sendemail_config()
-         if not get_git_bool(str(smcfg.get('mailmap', 'false'))):
+Changes in v3:
+- removed copyright strings
+- amended changed commit message  
+- Link to v2: https://lore.kernel.org/r/20250702-hp-x14-x1p-v2-0-af5b588d1979@oldschoolsolutions.biz
+
+Changes in v2:
+- remove pm8010 handling
+- Link to v1: https://lore.kernel.org/r/20250702-hp-x14-x1p-v1-0-219356e83207@oldschoolsolutions.biz
 
 ---
-base-commit: a9b2aba54be85ea2933c43b8a6d71c1611230b59
-change-id: 20250705-format-harder-e6ebba524bc1
+Jens Glathe (3):
+      dt-bindings: arm: qcom: Split HP Omnibook X14 AI in SoC variants
+      arm64: dts: qcom: x1-hp-x14: Commonalize HP Omnibook X14 device tree
+      arm64: dts: qcom: x1-hp-x14: Add support for X1P42100 HP Omnibook X14
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    2 +
+ arch/arm64/boot/dts/qcom/x1-hp-omnibook-x14.dtsi   | 1549 ++++++++++++++++++++
+ .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 1542 +------------------
+ .../boot/dts/qcom/x1p42100-hp-omnibook-x14.dts     |   40 +
+ 5 files changed, 1594 insertions(+), 1540 deletions(-)
+---
+base-commit: 26ffb3d6f02cd0935fb9fa3db897767beee1cb2a
+change-id: 20250702-hp-x14-x1p-eb32f4696d96
 
 Best regards,
 -- 
