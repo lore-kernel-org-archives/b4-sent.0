@@ -1,115 +1,65 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Sat, 05 Jul 2025 22:31:56 +0200
-Subject: [PATCH v4 3/3] arm64: dts: qcom: x1-hp-x14: Add support for
- X1P42100 HP Omnibook X14
+From: Frank Li <Frank.Li@nxp.com>
+Subject: [PATCH 00/11] ARM: dts: nxp: clean lpc18xx DTB check warning
+Date: Sun, 06 Jul 2025 14:46:56 -0400
+Message-Id: <20250706-lpc18xxx_dts-v1-0-7ae8cdfe8d7d@nxp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250705-hp-x14-x1p-v4-3-1c351dbeaf18@oldschoolsolutions.biz>
-References: <20250705-hp-x14-x1p-v4-0-1c351dbeaf18@oldschoolsolutions.biz>
-In-Reply-To: <20250705-hp-x14-x1p-v4-0-1c351dbeaf18@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAKDEamgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDcwMz3ZyCZEOLioqK+JSSYt0kI0NjcyNDs1SzZAMloJaCotS0zAqwcdG
+ xtbUAqorP3V4AAAA=
+X-Change-ID: 20250706-lpc18xxx_dts-b2137216e6c0
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Vladimir Zapolskiy <vz@mleia.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, imx@lists.linux.dev, vz@mleia.com, 
+ Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751747534; l=2874;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=+/n8Tbsm5YJtg0RptZgmN0A+zt0dLm93i5/1fSfNp+M=;
- b=fTuak5SJ2cX/cmE4Yn61RQTkYW3Czz3oDyx2xEH73UIH7bTqHasv7ubgwcO9ZnKQn5SFkZyD4
- OrQlwN6TulKB2J9mS4fbOTjv2iIr3dMJJfrjxq+v6zYufUyuliQ1tH5
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751827628; l=1879;
+ i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
+ bh=F01Zl2KLwJZEJs0qPrL6t3cMCxuqK7s2DTQP4dCVqcU=;
+ b=Y44sZ3YsNp/IVrlrnvKtROO939BSVTW6WmqJDHFZ8OzLPEspu1u3iBWJ8qukYTqtKbLiW+fNR
+ 6+5hPmY9vrpDnEJLlArm74FP/V1e9PqGTeDkmqGWIPjxgFh5t5hSHCt
+X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
+ pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
+X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These laptops are the same as the already known 14-fe0xxx models, but
-with a Purwa SoC, SKU number 14-fe1xxx. [1]
+There are 3 dt-binding patch wait for pick.
+[1] https://lore.kernel.org/imx/20250617-hound-of-improbable-intensity-e7c3c9@kuoka/
+[2] https://lore.kernel.org/imx/174916907717.3619367.3745642154654809311.robh@kernel.org/
+[3] https://lore.kernel.org/imx/175087864578.2055525.4510390315154712025.robh@kernel.org/
 
-The supported features are the same as for the original Omnibook X14:
+lpc18xx related DTB warnings reduce to 0.
 
-- Keyboard (no function keys though)
-- Display
-- PWM brightness control
-- Touchpad
-- Touchscreen
-- PCIe ports (pcie4, pcie6a)
-- USB type-c, type-a
-- WCN6855 Wifi-6E
-- WCN6855 Bluetooth
-- ADSP and CDSP
-- X1 GPU
-- GPIO Keys (Lid switch)
-- Audio definition (works via USB and with internal speakers)
-
-https://www.hp.com/us-en/shop/pdp/hp-omnibook-x-laptop-next-gen-ai-pc-14-fe100-14-a4nd1av-1#techSpecs
-
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Signed-off-by: Frank Li <Frank.Li@nxp.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |  2 ++
- .../boot/dts/qcom/x1p42100-hp-omnibook-x14.dts     | 40 ++++++++++++++++++++++
- 2 files changed, 42 insertions(+)
+Frank Li (11):
+      ARM: dts: lpc18xx: rename node name flash-controller to spi
+      ARM: dts: lpc18xx: rename node name mmcsd to mmc
+      ARM: dts: lpc4350-hitex-eval: change node name flash to flash@0
+      ARM: dts: lpc18xx: swap clock-names bic and cui
+      ARM: dts: lpc: add #address-cells and #size-cells for sram node
+      ARM: dts: lpc: add cfg surfix in pinctrl child node
+      ARM: dts: lpc4357-myd-lpc4357: add power-supply for innolux,at070tn92
+      ARM: dts: lpc: change node name 'button[0-9]' to button-[0-9]'
+      ARM: dts: lpc4357-myd-lpc4357: change node name mdio0 to mdio
+      ARM: dts: lpc18xx: add #address-cell and #szie-cell for spi flash controller
+      ARM: dts: lpc18xx: add missed arm,num-irq-priority-bits
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 4bfa926b6a0850c3c459bcba28129c559d50a7cf..63bf3ccc11124a70efb09782b57970b274d80d49 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -333,3 +333,5 @@ x1p42100-asus-zenbook-a14-el2-dtbs	:= x1p42100-asus-zenbook-a14.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-asus-zenbook-a14.dtb x1p42100-asus-zenbook-a14-el2.dtb
- x1p42100-crd-el2-dtbs	:= x1p42100-crd.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-crd.dtb x1p42100-crd-el2.dtb
-+x1p42100-hp-omnibook-x14-el2-dtbs := x1p42100-hp-omnibook-x14.dtb x1-el2.dtbo
-+dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-hp-omnibook-x14.dtb x1p42100-hp-omnibook-x14-el2.dtb
-diff --git a/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts b/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..12e467aa0ee3dc24d77c28dfdcffafb6ef922c14
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts
-@@ -0,0 +1,40 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
-+ */
-+
-+/dts-v1/;
-+
-+#include "x1p42100.dtsi"
-+#include "x1e80100-pmics.dtsi"
-+#include "x1-hp-omnibook-x14.dtsi"
-+/delete-node/ &pmc8380_6;
-+/delete-node/ &pmc8380_6_thermal;
-+
-+/ {
-+	model = "HP Omnibook X 14-fe1";
-+	compatible = "hp,omnibook-x14-fe1", "qcom,x1p42100";
-+	chassis-type = "laptop";
-+};
-+
-+&gpu {
-+	status = "okay";
-+
-+	zap-shader {
-+		firmware-name = "qcom/x1p42100/hp/omnibook-x14/qcdxkmsucpurwa.mbn";
-+	};
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qcadsp8380.mbn",
-+			"qcom/x1p42100/hp/omnibook-x14/adsp_dtbs.elf";
-+
-+	status = "okay";
-+};
-+
-+&remoteproc_cdsp {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qccdsp8380.mbn",
-+			"qcom/x1p42100/hp/omnibook-x14/cdsp_dtbs.elf";
-+
-+	status = "okay";
-+};
+ arch/arm/boot/dts/nxp/lpc/lpc18xx.dtsi             | 14 ++++++++++----
+ arch/arm/boot/dts/nxp/lpc/lpc4337-ciaa.dts         |  6 +++---
+ arch/arm/boot/dts/nxp/lpc/lpc4350-hitex-eval.dts   | 22 +++++++++++++---------
+ arch/arm/boot/dts/nxp/lpc/lpc4350.dtsi             |  9 +++++++++
+ .../arm/boot/dts/nxp/lpc/lpc4357-ea4357-devkit.dts | 21 +++++++++++----------
+ arch/arm/boot/dts/nxp/lpc/lpc4357-myd-lpc4357.dts  |  6 ++++--
+ arch/arm/boot/dts/nxp/lpc/lpc4357.dtsi             |  9 +++++++++
+ 7 files changed, 59 insertions(+), 28 deletions(-)
+---
+base-commit: bb0fde92b56b76f7a0c90a6e9d9f050919fa835e
+change-id: 20250706-lpc18xxx_dts-b2137216e6c0
 
--- 
-2.48.1
+Best regards,
+--
+Frank Li <Frank.Li@nxp.com>
 
