@@ -1,157 +1,176 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 07 Jul 2025 16:17:15 -0500
-Subject: [PATCH v6 3/3] cpufreq: tegra124: Allow building as a module
+From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+Subject: [PATCH v8 0/6] add support for pf1550 PMIC MFD-based drivers
+Date: Mon, 07 Jul 2025 17:37:19 -0400
+Message-Id: <20250707-pf1550-v8-0-6b6eb67c03a0@savoirfairelinux.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250707-tegra124-cpufreq-v6-3-fe69c0f9bbab@gmail.com>
-References: <20250707-tegra124-cpufreq-v6-0-fe69c0f9bbab@gmail.com>
-In-Reply-To: <20250707-tegra124-cpufreq-v6-0-fe69c0f9bbab@gmail.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-tegra@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAA8+bGgC/33OTWrDMBAF4KsYrasw+hk7zqr3KFnI0qgRNHYiO
+ SIh+O5VHXBNoV6+4fHNe7JEMVBih+rJIuWQwtCXsH+rmD2Z/pN4cCUzCRIBZcMvXiACdxqEBwd
+ NtwdWypdIPtxn6OP4ypGut+KNryPrTCJuh/M5jIcq1zuB7Kd4Cmkc4mMekNXc/PsrKw5co69bj
+ co6FO/J5CFEb0Kkr9Df7rvizlrWv0INahF0ETrvPAoibK3dEHAlCFgELAI5cC0pY4xtNoR6LYh
+ FqIugtJfOeQKNtCE0a0EuQlMEINWqDrxG99+GaZq+AWxBktbYAQAA
+X-Change-ID: 20250527-pf1550-d401f0d07b80
+To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Sebastian Reichel <sre@kernel.org>, Frank Li <Frank.li@nxp.com>
+Cc: imx@lists.linux.dev, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
+ linux-pm@vger.kernel.org, Abel Vesa <abelvesa@kernel.org>, 
+ Abel Vesa <abelvesa@linux.com>, Robin Gong <b38343@freescale.com>, 
+ Robin Gong <yibin.gong@nxp.com>, 
+ Enric Balletbo i Serra <eballetbo@gmail.com>, 
+ Samuel Kayode <samuel.kayode@savoirfairelinux.com>, 
+ Abel Vesa <abelvesa@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751923039; l=4409;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=ZKgE/EyIvhxsmDDP8cQEfrMMLR3Gs2c7Yzk8IoNf/gU=;
- b=6bjn+2RLCediVwC+wZESfmF16dryHZKRdOf6L2BL+5DI01hEAww/CxGJ2zmSC5nchrKLwGGf7
- c3O9fTdC55YDWoelMjR/RaC49B7i6hYwYSYTqspdSy5ncoKwEc9AdaR
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751924244; l=6606;
+ i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
+ bh=9nGbV5pz1KaNqlzP8COliGl9Au+D7xMYCmJAgqDzN90=;
+ b=/ZFl5h3DXjhAPD2gyLJp3KP8KK8XAYzST2sa8y9XSHqPFFPaW+9uOmOIEu5L8KaIGIykhUA1o
+ nGyoNdGAmthA9opsdJmbgYmdOjazTRqBrSeu7UFGYxt7AAH5jSdjHUY
+X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
+ pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
+X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This requires four changes:
-* Using the cpufreq-dt register helper to establish a hard dependency
-  for depmod to track
-* Adding a remove routine to remove the cpufreq-dt device
-* Adding a exit routine to handle cleaning up the driver
-* Populating module license
+This series adds support for pf1550 PMIC. It provides the core driver and a
+three sub-drivers for the regulator, power supply and input subsystems.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Patch 1 adds the DT binding document for the PMIC. Patches 2-5 adds the
+pertinent drivers. Last patch adds a MAINTAINERS entry for the drivers.
+
+The patches 3-5 depend on the core driver provided in patch 2.
+
+Changes since v1:
+   - DT bindings for all devices included
+   - Add onkey driver
+   - Add driver for the regulators
+   - Ensure charger is activated as some variants have it off by default
+   - Update mfd and charger driver per feedback from eballetbo@gmail.com
+   - Add myself as maintainer for these drivers
+   - Link to v1: https://lore.kernel.org/1523974819-8711-1-git-send-email-abel.vesa@nxp.com/
+
+Changes since v2:
+   - Rebase on recent mainline kernel v6.15
+   - Single yaml file containing dt bindings for all pf1550 devices
+   - irq mapping done in MFD driver as suggested by Dmitry Torokhov
+   - Drop unnecessary includes in drivers
+   - Replace dev_err with dev_err_probe in probe method of drivers
+   - Drop compatible string from drivers of the sub-devices
+   - Remove dependency on OF from drivers of the sub-devices
+   - onkey: move driver from input/keyboard into input/misc
+   - onkey: remove dependency on OF
+   - onkey: use onkey virqs instead of central irq
+   - onkey: fix integer overflow for regmap_write when unmasking
+     interrupts during pf1550_onkey_resume
+   - charger: add support for monitored-battery which is used in setting
+     a constant voltage for the charger.
+   - Address other feedback from Dmitry Torokhov and Krzysztof Kozlowski
+   - Link to v2: https://lore.kernel.org/cover.1747409892.git.samuel.kayode@savoirfairelinux.com/
+
+Changes since v3:
+   - Update manufacturer from Freescale to NXP in compatible,
+     dt-binding and Kconfigs
+   - Use C++ style comments for SPDX license in .c code
+   - Add portions copyright to source code
+   - irqs are defined as struct resource in mfd cell such that
+     platform_get_irq is used in the sub-devices
+   - Make struct pf1550_dev of type const in sub-device driver
+   - irq variable dropped from sub-device driver struct
+   - EXPORT_SYMBOL of global pf1550_read_otp function for use in
+     regulator driver
+   - Drop unneeded info in driver_data when defining device table id
+   - regulator: validate ramp_delay
+   - regulator: report overcurrent and over temperature events
+   - onkey: drop unnecessary keycode variable
+   - onkey: change wakeup variable to type bool
+   - onkey: replace (error < 0) with error in if statement when possible
+   - onkey: use pm_sleep_ptr when defining driver.pm
+   - charger: finish handling of some interrupts in threaded irq handler
+   - Link to v3: https://lore.kernel.org/20250527-pf1550-v3-0-45f69453cd51@savoirfairelinux.com/
+
+Changes since v4:
+   - Use top level interrupt to minimize number of registers checked on
+     each interrupt
+   - Fix bad offset for temperature interrupts of regulator irq chip
+   - Address Krzysztof's comments for dt-binding
+   - regulator: add comments to clarify difference in its interrupts
+   - regulator: issue warn event for _LS interrupt and error event for
+     _HS interrupt
+   - regulator: validate maximum and minimum ramp_delay
+   - charger: drop lock in battery and charger delayed_work
+   - charger: more conservative locking for vbus delayed_work
+   - charger: apply lock when setting power_supply type during register
+     intialization
+   - Link to v4: https://lore.kernel.org/r/20250603-pf1550-v4-0-bfdf51ee59cc@savoirfairelinux.com
+
+Changes since v5:
+   - Ensure lowercase when assigning hex values
+   - Add imx@lists.linux.dev to relevant mailing list in MAINTAINERS file
+   - Use GENMASK macro
+   - Drop unused chips variable
+   - Read the OTP in the mfd driver probe for new dvs_enb variable
+   - Hardcode IRQ flags in pf1550_add_child function
+   - charger: drop the mutex entirely
+   - charger: reverse christmas tree style local variable definition in
+     probe
+   - Link to v5: https://lore.kernel.org/r/20250610-pf1550-v5-0-ed0d9e3aaac7@savoirfairelinux.com
+
+Changes since v6:
+   - Use reverse christmas tree order
+   - Drop 0 in table id's driver data
+   - charger: store virq to avoid reinvoking platform_get_irq in ISR
+   - Link to v6: https://lore.kernel.org/r/20250611-pf1550-v6-0-34f2ddfe045e@savoirfairelinux.com
+
+Changes since v7:
+  - Thanks everyone for the reviews
+  - Use C++ comment only for SPDX license header in core, charger and
+    onkey drivers
+  - Drop filenames from comments
+  - Rename pf1550_dev to pf1550_ddata
+  - Define OTP register for accessing status of DVS
+  - core: rename from `mfd driver` to `core driver`
+  - core: add child devices in a cleaner manner
+  - charger: define two power supplies: battery and external power
+  - charger: use devm_delayed_work_autocancel
+  - Link to v7: https://lore.kernel.org/r/20250612-pf1550-v7-0-0e393b0f45d7@savoirfairelinux.com
+
+Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 ---
- drivers/cpufreq/Kconfig.arm        |  2 +-
- drivers/cpufreq/tegra124-cpufreq.c | 44 +++++++++++++++++++++++++++++---------
- 2 files changed, 35 insertions(+), 11 deletions(-)
+Samuel Kayode (6):
+      dt-bindings: mfd: add pf1550
+      mfd: pf1550: add core driver
+      regulator: pf1550: add support for regulator
+      input: pf1550: add onkey support
+      power: supply: pf1550: add battery charger support
+      MAINTAINERS: add an entry for pf1550 mfd driver
 
-diff --git a/drivers/cpufreq/Kconfig.arm b/drivers/cpufreq/Kconfig.arm
-index 4f9cb943d945c244eb2b29f543d14df6cac4e5d4..625f6fbdaaf5fd774e3b0bb996eb7ce980da41ee 100644
---- a/drivers/cpufreq/Kconfig.arm
-+++ b/drivers/cpufreq/Kconfig.arm
-@@ -238,7 +238,7 @@ config ARM_TEGRA20_CPUFREQ
- 	  This adds the CPUFreq driver support for Tegra20/30 SOCs.
- 
- config ARM_TEGRA124_CPUFREQ
--	bool "Tegra124 CPUFreq support"
-+	tristate "Tegra124 CPUFreq support"
- 	depends on ARCH_TEGRA || COMPILE_TEST
- 	depends on CPUFREQ_DT
- 	default y
-diff --git a/drivers/cpufreq/tegra124-cpufreq.c b/drivers/cpufreq/tegra124-cpufreq.c
-index 514146d98bca2d8aa59980a14dff3487cd8045f6..b8bccde8b298a4920bfe6dc0d4c4a92704ecfcf5 100644
---- a/drivers/cpufreq/tegra124-cpufreq.c
-+++ b/drivers/cpufreq/tegra124-cpufreq.c
-@@ -16,6 +16,10 @@
- #include <linux/pm_opp.h>
- #include <linux/types.h>
- 
-+#include "cpufreq-dt.h"
-+
-+static struct platform_device *tegra124_cpufreq_pdev;
-+
- struct tegra124_cpufreq_priv {
- 	struct clk *cpu_clk;
- 	struct clk *pllp_clk;
-@@ -55,7 +59,6 @@ static int tegra124_cpufreq_probe(struct platform_device *pdev)
- 	struct device_node *np __free(device_node) = of_cpu_device_node_get(0);
- 	struct tegra124_cpufreq_priv *priv;
- 	struct device *cpu_dev;
--	struct platform_device_info cpufreq_dt_devinfo = {};
- 	int ret;
- 
- 	if (!np)
-@@ -95,11 +98,7 @@ static int tegra124_cpufreq_probe(struct platform_device *pdev)
- 	if (ret)
- 		goto out_put_pllp_clk;
- 
--	cpufreq_dt_devinfo.name = "cpufreq-dt";
--	cpufreq_dt_devinfo.parent = &pdev->dev;
--
--	priv->cpufreq_dt_pdev =
--		platform_device_register_full(&cpufreq_dt_devinfo);
-+	priv->cpufreq_dt_pdev = cpufreq_dt_pdev_register(&pdev->dev);
- 	if (IS_ERR(priv->cpufreq_dt_pdev)) {
- 		ret = PTR_ERR(priv->cpufreq_dt_pdev);
- 		goto out_put_pllp_clk;
-@@ -173,6 +172,21 @@ static int __maybe_unused tegra124_cpufreq_resume(struct device *dev)
- 	return err;
- }
- 
-+static void tegra124_cpufreq_remove(struct platform_device *pdev)
-+{
-+	struct tegra124_cpufreq_priv *priv = dev_get_drvdata(&pdev->dev);
-+
-+	if (!IS_ERR(priv->cpufreq_dt_pdev)) {
-+		platform_device_unregister(priv->cpufreq_dt_pdev);
-+		priv->cpufreq_dt_pdev = ERR_PTR(-ENODEV);
-+	}
-+
-+	clk_put(priv->pllp_clk);
-+	clk_put(priv->pllx_clk);
-+	clk_put(priv->dfll_clk);
-+	clk_put(priv->cpu_clk);
-+}
-+
- static const struct dev_pm_ops tegra124_cpufreq_pm_ops = {
- 	SET_SYSTEM_SLEEP_PM_OPS(tegra124_cpufreq_suspend,
- 				tegra124_cpufreq_resume)
-@@ -182,12 +196,12 @@ static struct platform_driver tegra124_cpufreq_platdrv = {
- 	.driver.name	= "cpufreq-tegra124",
- 	.driver.pm	= &tegra124_cpufreq_pm_ops,
- 	.probe		= tegra124_cpufreq_probe,
-+	.remove		= tegra124_cpufreq_remove,
- };
- 
- static int __init tegra_cpufreq_init(void)
- {
- 	int ret;
--	struct platform_device *pdev;
- 
- 	if (!(of_machine_is_compatible("nvidia,tegra124") ||
- 		of_machine_is_compatible("nvidia,tegra210")))
-@@ -201,15 +215,25 @@ static int __init tegra_cpufreq_init(void)
- 	if (ret)
- 		return ret;
- 
--	pdev = platform_device_register_simple("cpufreq-tegra124", -1, NULL, 0);
--	if (IS_ERR(pdev)) {
-+	tegra124_cpufreq_pdev = platform_device_register_simple("cpufreq-tegra124", -1, NULL, 0);
-+	if (IS_ERR(tegra124_cpufreq_pdev)) {
- 		platform_driver_unregister(&tegra124_cpufreq_platdrv);
--		return PTR_ERR(pdev);
-+		return PTR_ERR(tegra124_cpufreq_pdev);
- 	}
- 
- 	return 0;
- }
- module_init(tegra_cpufreq_init);
- 
-+static void __exit tegra_cpufreq_module_exit(void)
-+{
-+	if (!IS_ERR_OR_NULL(tegra124_cpufreq_pdev))
-+		platform_device_unregister(tegra124_cpufreq_pdev);
-+
-+	platform_driver_unregister(&tegra124_cpufreq_platdrv);
-+}
-+module_exit(tegra_cpufreq_module_exit);
-+
- MODULE_AUTHOR("Tuomas Tynkkynen <ttynkkynen@nvidia.com>");
- MODULE_DESCRIPTION("cpufreq driver for NVIDIA Tegra124");
-+MODULE_LICENSE("GPL");
+ .../devicetree/bindings/mfd/nxp,pf1550.yaml        | 137 +++++
+ MAINTAINERS                                        |  11 +
+ drivers/input/misc/Kconfig                         |  11 +
+ drivers/input/misc/Makefile                        |   1 +
+ drivers/input/misc/pf1550-onkey.c                  | 183 ++++++
+ drivers/mfd/Kconfig                                |  16 +
+ drivers/mfd/Makefile                               |   2 +
+ drivers/mfd/pf1550.c                               | 365 ++++++++++++
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/pf1550-charger.c              | 632 +++++++++++++++++++++
+ drivers/regulator/Kconfig                          |   9 +
+ drivers/regulator/Makefile                         |   1 +
+ drivers/regulator/pf1550-regulator.c               | 360 ++++++++++++
+ include/linux/mfd/pf1550.h                         | 266 +++++++++
+ 15 files changed, 2006 insertions(+)
+---
+base-commit: 0a4b866d08c6adaea2f4592d31edac6deeb4dcbd
+change-id: 20250527-pf1550-d401f0d07b80
 
+Best regards,
 -- 
-2.50.0
+Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 
