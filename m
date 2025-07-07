@@ -1,51 +1,95 @@
-From: Frank Li <Frank.Li@nxp.com>
-Date: Sun, 06 Jul 2025 14:47:07 -0400
-Subject: [PATCH 11/11] ARM: dts: lpc18xx: add missed
- arm,num-irq-priority-bits
+From: Yang Li <yang.li@amlogic.com>
+Date: Mon, 07 Jul 2025 10:38:17 +0800
+Subject: [PATCH v4] Bluetooth: ISO: Support SCM_TIMESTAMPING for ISO TS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250706-lpc18xxx_dts-v1-11-7ae8cdfe8d7d@nxp.com>
-References: <20250706-lpc18xxx_dts-v1-0-7ae8cdfe8d7d@nxp.com>
-In-Reply-To: <20250706-lpc18xxx_dts-v1-0-7ae8cdfe8d7d@nxp.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Vladimir Zapolskiy <vz@mleia.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, imx@lists.linux.dev, vz@mleia.com, 
- Frank Li <Frank.Li@nxp.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751827628; l=846;
- i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
- bh=4fOjzjyuG5LcIby6pMbBo34EQluojfYnUqvpnhe6tYs=;
- b=U4ZGB18/725NcA20uH867GM0vXODJAffGPp5Nsh4hFcW7DdZ7HVPXiKDHemOdimHvz+joXaF6
- vg2989NPBcZBhuc5QIRBhHsEqCP/P1g+3r3TTeBkFmh4X/Zc7+NfgXX
-X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
- pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
-X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250707-iso_ts-v4-1-0f0bb162a182@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIABgza2gC/2XM0Q6CIBTG8VdxXEeDgyJ01Xu01hBR2VIaOFZzv
+ nvoptW6/M7O7z+hYLw1AZ2yCXkTbbBuSCM/ZEh3amgNtnXaCAgUJAeKbXC3MWAtQDFClClFjtL
+ zw5vGPtfQ5Zp2Z8Po/GvtRrpct4TcEpFiik0heMNIbbiuzqq/u9bqo3Y9WiIRPrAksENIsARWU
+ ym1IFz8Q/YN8x2yBIGBqDQnIDn9hfM8vwEQFcK3EAEAAA==
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Johan Hedberg <johan.hedberg@gmail.com>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751855898; l=2017;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=qgUJFn3trnlHdIpSsRIi/lqpwsE0ic/VXvHX/T3pPD0=;
+ b=zGf02G9TNaUyf7AUHDel5TePBmF/SbbYQWX7X849oQ6I/tGvyPElaI8e+fsoFmd2x0K33eRP3
+ 5JFDaZh67h3DLRD18THLJO/jQJci9dO7xnfy87onJmYzw8UB8FM3KCW
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add missed arm,num-irq-priority-bits to fix below CHECK_DTBS warning:
-arm/boot/dts/nxp/lpc/lpc4337-ciaa.dtb: interrupt-controller@e000e100 (arm,armv7m-nvic): 'arm,num-irq-priority-bits' is a required property
-	from schema $id: http://devicetree.org/schemas/interrupt-controller/arm,nvic.yaml#
+User-space applications (e.g. PipeWire) depend on
+ISO-formatted timestamps for precise audio sync.
 
-Signed-off-by: Frank Li <Frank.Li@nxp.com>
+The ISO ts is based on the controller’s clock domain,
+so hardware timestamping (hwtimestamp) must be used.
+
+Ref: Documentation/networking/timestamping.rst,
+section 3.1 Hardware Timestamping.
+
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- arch/arm/boot/dts/nxp/lpc/lpc18xx.dtsi | 4 ++++
- 1 file changed, 4 insertions(+)
+Changes in v4:
+- Optimizing the code
+- Link to v3: https://lore.kernel.org/r/20250704-iso_ts-v3-1-2328bc602961@amlogic.com
 
-diff --git a/arch/arm/boot/dts/nxp/lpc/lpc18xx.dtsi b/arch/arm/boot/dts/nxp/lpc/lpc18xx.dtsi
-index d212ca252b06dc97a0cdbe5ecff42780b51a02dd..152e98cf0c4e2a3eb4f2c989600698a93b3084a3 100644
---- a/arch/arm/boot/dts/nxp/lpc/lpc18xx.dtsi
-+++ b/arch/arm/boot/dts/nxp/lpc/lpc18xx.dtsi
-@@ -537,3 +537,7 @@ gpio: gpio@400f4000 {
- 		};
- 	};
- };
+Changes in v3:
+- Change to use hwtimestamp
+- Link to v2: https://lore.kernel.org/r/20250702-iso_ts-v2-1-723d199c8068@amlogic.com
+
+Changes in v2:
+- Support SOCK_RCVTSTAMPNS via CMSG for ISO sockets
+- Link to v1: https://lore.kernel.org/r/20250429-iso_ts-v1-1-e586f30de6cb@amlogic.com
+---
+ net/bluetooth/iso.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/net/bluetooth/iso.c b/net/bluetooth/iso.c
+index fc22782cbeeb..677144bb6b94 100644
+--- a/net/bluetooth/iso.c
++++ b/net/bluetooth/iso.c
+@@ -2278,6 +2278,7 @@ static void iso_disconn_cfm(struct hci_conn *hcon, __u8 reason)
+ void iso_recv(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
+ {
+ 	struct iso_conn *conn = hcon->iso_data;
++	struct skb_shared_hwtstamps *hwts;
+ 	__u16 pb, ts, len;
+ 
+ 	if (!conn)
+@@ -2301,13 +2302,16 @@ void iso_recv(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
+ 		if (ts) {
+ 			struct hci_iso_ts_data_hdr *hdr;
+ 
+-			/* TODO: add timestamp to the packet? */
+ 			hdr = skb_pull_data(skb, HCI_ISO_TS_DATA_HDR_SIZE);
+ 			if (!hdr) {
+ 				BT_ERR("Frame is too short (len %d)", skb->len);
+ 				goto drop;
+ 			}
+ 
++			/*  Record the timestamp to skb*/
++			hwts = skb_hwtstamps(skb);
++			hwts->hwtstamp = us_to_ktime(le32_to_cpu(hdr->ts));
 +
-+&nvic {
-+	arm,num-irq-priority-bits = <3>;
-+};
+ 			len = __le16_to_cpu(hdr->slen);
+ 		} else {
+ 			struct hci_iso_data_hdr *hdr;
 
+---
+base-commit: b8db3a9d4daeb7ff6a56c605ad6eca24e4da78ed
+change-id: 20250421-iso_ts-c82a300ae784
+
+Best regards,
 -- 
-2.34.1
+Yang Li <yang.li@amlogic.com>
 
