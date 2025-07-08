@@ -1,259 +1,92 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Tue, 08 Jul 2025 18:13:04 +0200
-Subject: [PATCH v4 2/2] hwmon: add support for MC33XS2410 hardware
- monitoring
+From: Frank Li <Frank.Li@nxp.com>
+Subject: [PATCH v3 0/4] media: imx8qxp: add parallel camera support
+Date: Tue, 08 Jul 2025 13:48:41 -0400
+Message-Id: <20250708-imx8qxp_pcam-v3-0-c8533e405df1@nxp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250708-mc33xs2410-hwmon-v4-2-95b9e3ea5f5c@liebherr.com>
-References: <20250708-mc33xs2410-hwmon-v4-0-95b9e3ea5f5c@liebherr.com>
-In-Reply-To: <20250708-mc33xs2410-hwmon-v4-0-95b9e3ea5f5c@liebherr.com>
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>
-Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-hwmon@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPpZbWgC/13MSw7CIBSF4a00jMUA11bqyH0YYyrc2jtoi2AIp
+ unepY2Jj+E5yf9NLKAnDOxQTMxjpEDjkAdsCma6ZrghJ5s3U0KVolIVpz7pe3IXZ5qeW11KBRp
+ 2YIDlxHlsKa3c6Zx3R+Ex+ueqR7m8bwjELxQlFxyNsaBtXSshj0NyWzP2bGGi+qR7AX+pyqnU+
+ oq6bEXVfqXzPL8A8gzFXuEAAAA=
+X-Change-ID: 20250626-imx8qxp_pcam-d851238343c3
+To: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Rui Miguel Silva <rmfrfs@gmail.com>, 
+ Martin Kepplinger <martink@posteo.de>, Purism Kernel Team <kernel@puri.sm>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-media@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Frank Li <Frank.Li@nxp.com>, 
+ Alice Yuan <alice.yuan@nxp.com>, Robert Chiras <robert.chiras@nxp.com>, 
+ Zhipeng Wang <zhipeng.wang_1@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1751991187; l=7071;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=Y3gflseXUc2ZtNcSajbTMZmapBy8gGu7sjRri5Ir/7k=;
- b=rhiQBQ1jiYgC0eUlIXyJZdhiX3DO1TkCuW01ZHxsS0qHstBN/EotDivM3F03wjXg9dxky2HHq
- 255K9CUDqfnBweg/a4TehVDOZ6okm5faHA9FwyIBfAXJYLAnzgr/Raa
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1751996966; l=2236;
+ i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
+ bh=vyzr1Cp3VW/MJrLr8Vd9Cd8+qdk5yXeJaAIf72BHAvA=;
+ b=pLkoCOPxcG5H2BqKndFzFcZrU81lbL29lhmoCGOa3QjiD2Tf8/6ldvTR9I4iEwUT7ta5zz1ZQ
+ ecsvl/wP0NWAkHAFqjn2k/TZRc4T3nFIINrcvgp3Okk/Elz+pyPwJk0
+X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
+ pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
+X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The device is able to monitor temperature, voltage and current of each of
-the four outputs. Add basic support for monitoring the temperature of the
-four outputs and the die temperature.
+Add parallel camera support for i.MX8 chips.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+The below patch to add new format support to test ov5640 sensor
+   media: nxp: isi: add support for UYVY8_2X8 and YUYV8_2X8 bus codes
+
+The bindings and driver for parallel CSI
+   dt-bindings: media: add i.MX parallel csi support
+   media: nxp: add V4L2 subdev driver for parallel CSI
+
+DTS part need depend on previous MIPI CSI patches.
+  https://lore.kernel.org/imx/20250522-8qxp_camera-v5-13-d4be869fdb7e@nxp.com/
+
+  arm64: dts: imx8: add parellel csi nodes
+  arm64: dts: imx8qxp-mek: add parallel ov5640 camera support
+
+Signed-off-by: Frank Li <Frank.Li@nxp.com>
 ---
- drivers/hwmon/Kconfig            |  10 +++
- drivers/hwmon/Makefile           |   1 +
- drivers/hwmon/mc33xs2410_hwmon.c | 179 +++++++++++++++++++++++++++++++++++++++
- 3 files changed, 190 insertions(+)
+Changes in v3:
+- replace CSI with CPI.
+- detail change see each patch's change logs
+- Link to v2: https://lore.kernel.org/r/20250703-imx8qxp_pcam-v2-0-188be85f06f1@nxp.com
 
-diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
-index 079620dd42862ef5e026697e9e1b1fcd5b8be298..9d28fcf7cd2a6f9e2f54694a717bd85ff4047b46 100644
---- a/drivers/hwmon/Kconfig
-+++ b/drivers/hwmon/Kconfig
-@@ -700,6 +700,16 @@ config SENSORS_MC13783_ADC
-         help
-           Support for the A/D converter on MC13783 and MC13892 PMIC.
- 
-+config SENSORS_MC33XS2410
-+	tristate "MC33XS2410 HWMON support"
-+	depends on PWM_MC33XS2410
-+	help
-+	  If you say yes here you get hardware monitoring support for
-+	  MC33XS2410.
-+
-+	  This driver can also be built as a module. If so, the module
-+	  will be called mc33xs2410_hwmon.
-+
- config SENSORS_FSCHMD
- 	tristate "Fujitsu Siemens Computers sensor chips"
- 	depends on (X86 || COMPILE_TEST) && I2C
-diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
-index 48e5866c0c9a7677089d1001a9c5ae4adebff5d5..cd8bc4752b4dbf015c6eb46157626f4e8f87dfae 100644
---- a/drivers/hwmon/Makefile
-+++ b/drivers/hwmon/Makefile
-@@ -165,6 +165,7 @@ obj-$(CONFIG_SENSORS_MAX31790)	+= max31790.o
- obj-$(CONFIG_MAX31827) += max31827.o
- obj-$(CONFIG_SENSORS_MAX77705) += max77705-hwmon.o
- obj-$(CONFIG_SENSORS_MC13783_ADC)+= mc13783-adc.o
-+obj-$(CONFIG_SENSORS_MC33XS2410) += mc33xs2410_hwmon.o
- obj-$(CONFIG_SENSORS_MC34VR500)	+= mc34vr500.o
- obj-$(CONFIG_SENSORS_MCP3021)	+= mcp3021.o
- obj-$(CONFIG_SENSORS_TC654)	+= tc654.o
-diff --git a/drivers/hwmon/mc33xs2410_hwmon.c b/drivers/hwmon/mc33xs2410_hwmon.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..71a14932c6ccaf8d15b045b55093238d924160ea
---- /dev/null
-+++ b/drivers/hwmon/mc33xs2410_hwmon.c
-@@ -0,0 +1,179 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (C) 2025 Liebherr-Electronics and Drives GmbH
-+ */
-+
-+#include <linux/auxiliary_bus.h>
-+#include <linux/bitfield.h>
-+#include <linux/bitops.h>
-+#include <linux/hwmon.h>
-+#include <linux/mc33xs2410.h>
-+#include <linux/module.h>
-+
-+/* ctrl registers */
-+
-+#define MC33XS2410_TEMP_WT			0x29
-+#define MC33XS2410_TEMP_WT_MASK			GENMASK(7, 0)
-+
-+/* diag registers */
-+
-+/* chan in { 1 ... 4 } */
-+#define MC33XS2410_OUT_STA(chan)		(0x02 + (chan) - 1)
-+#define MC33XS2410_OUT_STA_OTW			BIT(8)
-+
-+#define MC33XS2410_TS_TEMP_DIE			0x26
-+#define MC33XS2410_TS_TEMP_MASK			GENMASK(9, 0)
-+
-+/* chan in { 1 ... 4 } */
-+#define MC33XS2410_TS_TEMP(chan)		(0x2f + (chan) - 1)
-+
-+static const struct hwmon_channel_info * const mc33xs2410_hwmon_info[] = {
-+	HWMON_CHANNEL_INFO(temp,
-+			   HWMON_T_LABEL | HWMON_T_INPUT,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM),
-+	NULL,
-+};
-+
-+static umode_t mc33xs2410_hwmon_is_visible(const void *data,
-+					   enum hwmon_sensor_types type,
-+					   u32 attr, int channel)
-+{
-+	switch (attr) {
-+	case hwmon_temp_input:
-+	case hwmon_temp_alarm:
-+	case hwmon_temp_label:
-+		return 0444;
-+	case hwmon_temp_max:
-+		return 0644;
-+	default:
-+		return 0;
-+	}
-+}
-+
-+static int mc33xs2410_hwmon_read(struct device *dev,
-+				 enum hwmon_sensor_types type,
-+				 u32 attr, int channel, long *val)
-+{
-+	struct spi_device *spi = dev_get_drvdata(dev);
-+	u16 reg_val;
-+	int ret;
-+	u8 reg;
-+
-+	switch (attr) {
-+	case hwmon_temp_input:
-+		reg = (channel == 0) ? MC33XS2410_TS_TEMP_DIE :
-+				       MC33XS2410_TS_TEMP(channel);
-+		ret = mc33xs2410_read_reg_diag(spi, reg, &reg_val);
-+		if (ret < 0)
-+			return ret;
-+
-+		/* LSB is 0.25 degree celsius */
-+		*val = FIELD_GET(MC33XS2410_TS_TEMP_MASK, reg_val) * 250 - 40000;
-+		return 0;
-+	case hwmon_temp_alarm:
-+		ret = mc33xs2410_read_reg_diag(spi, MC33XS2410_OUT_STA(channel),
-+					       &reg_val);
-+		if (ret < 0)
-+			return ret;
-+
-+		*val = FIELD_GET(MC33XS2410_OUT_STA_OTW, reg_val);
-+		return 0;
-+	case hwmon_temp_max:
-+		ret = mc33xs2410_read_reg_ctrl(spi, MC33XS2410_TEMP_WT, &reg_val);
-+		if (ret < 0)
-+			return ret;
-+
-+		/* LSB is 1 degree celsius */
-+		*val = FIELD_GET(MC33XS2410_TEMP_WT_MASK, reg_val) * 1000 - 40000;
-+		return 0;
-+	default:
-+		return -EOPNOTSUPP;
-+	}
-+}
-+
-+static int mc33xs2410_hwmon_write(struct device *dev,
-+				  enum hwmon_sensor_types type, u32 attr,
-+				  int channel, long val)
-+{
-+	struct spi_device *spi = dev_get_drvdata(dev);
-+
-+	switch (attr) {
-+	case hwmon_temp_max:
-+		val = clamp_val(val, -40000, 215000);
-+
-+		/* LSB is 1 degree celsius */
-+		val = (val / 1000) + 40;
-+		return mc33xs2410_modify_reg(spi, MC33XS2410_TEMP_WT,
-+					     MC33XS2410_TEMP_WT_MASK, val);
-+	default:
-+		return -EOPNOTSUPP;
-+	}
-+}
-+
-+static const char *const mc33xs2410_temp_label[] = {
-+	"Central die temperature",
-+	"Channel 1 temperature",
-+	"Channel 2 temperature",
-+	"Channel 3 temperature",
-+	"Channel 4 temperature",
-+};
-+
-+static int mc33xs2410_read_string(struct device *dev,
-+				  enum hwmon_sensor_types type,
-+				  u32 attr, int channel, const char **str)
-+{
-+	*str = mc33xs2410_temp_label[channel];
-+
-+	return 0;
-+}
-+
-+static const struct hwmon_ops mc33xs2410_hwmon_hwmon_ops = {
-+	.is_visible = mc33xs2410_hwmon_is_visible,
-+	.read = mc33xs2410_hwmon_read,
-+	.read_string = mc33xs2410_read_string,
-+	.write = mc33xs2410_hwmon_write,
-+};
-+
-+static const struct hwmon_chip_info mc33xs2410_hwmon_chip_info = {
-+	.ops = &mc33xs2410_hwmon_hwmon_ops,
-+	.info = mc33xs2410_hwmon_info,
-+};
-+
-+static int mc33xs2410_hwmon_probe(struct auxiliary_device *adev,
-+				  const struct auxiliary_device_id *id)
-+{
-+	struct device *dev = &adev->dev;
-+	struct spi_device *spi = container_of(dev->parent, struct spi_device, dev);
-+	struct device *hwmon;
-+
-+	hwmon = devm_hwmon_device_register_with_info(dev, NULL, spi,
-+						     &mc33xs2410_hwmon_chip_info,
-+						     NULL);
-+	return PTR_ERR_OR_ZERO(hwmon);
-+}
-+
-+static const struct auxiliary_device_id mc33xs2410_hwmon_ids[] = {
-+	{
-+		.name = "pwm_mc33xs2410.hwmon",
-+	},
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(auxiliary, mc33xs2410_hwmon_ids);
-+
-+static struct auxiliary_driver mc33xs2410_hwmon_driver = {
-+	.probe = mc33xs2410_hwmon_probe,
-+	.id_table = mc33xs2410_hwmon_ids,
-+};
-+module_auxiliary_driver(mc33xs2410_hwmon_driver);
-+
-+MODULE_DESCRIPTION("NXP MC33XS2410 hwmon driver");
-+MODULE_AUTHOR("Dimitri Fedrau <dimitri.fedrau@liebherr.com>");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS("PWM_MC33XS2410");
+Changes in v2:
+- remove patch media: nxp: isi: add support for UYVY8_2X8 and YUYV8_2X8 bus codes
+  because pcif controller convert 2x8 to 1x16 to match isi's input
+- rename comaptible string to fsl,imx8qxp-pcif
+- See each patches's change log for detail
+- Link to v1: https://lore.kernel.org/r/20250630-imx8qxp_pcam-v1-0-eccd38d99201@nxp.com
 
--- 
-2.39.5
+---
+Alice Yuan (2):
+      dt-bindings: media: add i.MX parallel CPI support
+      media: nxp: add V4L2 subdev driver for camera parallel interface (CPI)
+
+Frank Li (2):
+      arm64: dts: imx8: add camera parallel interface (CPI) node
+      arm64: dts: imx8qxp-mek: add parallel ov5640 camera support
+
+ .../devicetree/bindings/media/fsl,imx93-pcif.yaml  | 126 +++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/freescale/Makefile             |   3 +
+ arch/arm64/boot/dts/freescale/imx8-ss-img.dtsi     |  13 +
+ .../boot/dts/freescale/imx8qxp-mek-ov5640-cpi.dtso |  82 ++
+ arch/arm64/boot/dts/freescale/imx8qxp-ss-img.dtsi  |  27 +
+ drivers/media/platform/nxp/Kconfig                 |  11 +
+ drivers/media/platform/nxp/Makefile                |   1 +
+ drivers/media/platform/nxp/imx-parallel-cpi.c      | 920 +++++++++++++++++++++
+ 9 files changed, 1185 insertions(+)
+---
+base-commit: 93355cfe8aec9e47fc93fbc940f1bbeedd62e249
+change-id: 20250626-imx8qxp_pcam-d851238343c3
+
+Best regards,
+--
+Frank Li <Frank.Li@nxp.com>
 
