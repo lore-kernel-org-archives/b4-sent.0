@@ -1,10 +1,10 @@
 From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Wed, 09 Jul 2025 19:05:54 +0800
-Subject: [PATCH v2 3/9] MIPS: dts: loongson: Add LS1B-DEMO board
+Date: Wed, 09 Jul 2025 19:05:55 +0800
+Subject: [PATCH v2 4/9] MIPS: dts: loongson: Add LSGZ_1B_DEV board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250709-loongson1-arch-v2-3-bcff6e518c09@gmail.com>
+Message-Id: <20250709-loongson1-arch-v2-4-bcff6e518c09@gmail.com>
 References: <20250709-loongson1-arch-v2-0-bcff6e518c09@gmail.com>
 In-Reply-To: <20250709-loongson1-arch-v2-0-bcff6e518c09@gmail.com>
 To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
@@ -14,422 +14,40 @@ To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>,
 Cc: linux-mips@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752059245; l=12501;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752059245; l=3407;
  i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=bENfGtPkxVzhCwroAHjzYfqgSUmOVdrbITPBeF8ppKQ=;
- b=DsiedWrdBq6vZnBPN9cNuQP+OHVR8re0n0Ml91k0OFkIsfO/kP/vtR8FIr4jATyOveShdB5Rw
- LsJReYGorWqAsz89pE8/qhUkE2Lyi0PLs8Pm5hlF1OW46ab+Vrlpzdq
+ bh=2bhEPmFaIZuk42qpq2GGxygw19k6CrRSCdaYJDRk9is=;
+ b=meTphHFzCDa4sXNbWgmR8uaXFl26PDn5U4zGF38hz0eGSxixOOa8SzdGvJq15eR/NnIaPj/Q6
+ HQdD4zZpox2CWU4FNsrzg6LD/gSnwmOy2u+e9YRRZbM5AVwDuxAabZC
 X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
  pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
 X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a device tree for LS1B-DEMO board, supporting CPU, clock, INTC,
-UART, Ethernet, GPIO, USB host, RTC, watchdog, DMA, NAND, and AC97.
-
-Additionally, since the current bootloader for Loongson1 does not support
-FDT, introduce CONFIG_BUILTIN_DTB_NAME to enable a built-in DTB.
+Add a device tree for LSGZ_1B_DEV board.
 
 Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- MAINTAINERS                                 |   1 +
- arch/mips/boot/dts/Makefile                 |   1 +
- arch/mips/boot/dts/loongson/Makefile        |   6 +
- arch/mips/boot/dts/loongson/loongson1.dtsi  | 136 +++++++++++++++++++
- arch/mips/boot/dts/loongson/loongson1b.dtsi | 198 ++++++++++++++++++++++++++++
- arch/mips/boot/dts/loongson/ls1b-demo.dts   | 108 +++++++++++++++
- 6 files changed, 450 insertions(+)
+ arch/mips/boot/dts/loongson/Makefile        |   1 +
+ arch/mips/boot/dts/loongson/lsgz_1b_dev.dts | 145 ++++++++++++++++++++++++++++
+ 2 files changed, 146 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index c3f7fbd0d67a..0089ebca31cf 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -16683,6 +16683,7 @@ M:	Keguang Zhang <keguang.zhang@gmail.com>
- L:	linux-mips@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/*/loongson,ls1*.yaml
-+F:	arch/mips/boot/dts/loongson/loongson1*
- F:	arch/mips/include/asm/mach-loongson32/
- F:	arch/mips/loongson32/
- F:	drivers/*/*loongson1*
-diff --git a/arch/mips/boot/dts/Makefile b/arch/mips/boot/dts/Makefile
-index 7375c6ced82b..6d9dbe945541 100644
---- a/arch/mips/boot/dts/Makefile
-+++ b/arch/mips/boot/dts/Makefile
-@@ -8,6 +8,7 @@ subdir-$(CONFIG_FIT_IMAGE_FDT_BOSTON)	+= img
- subdir-$(CONFIG_MACH_INGENIC)		+= ingenic
- subdir-$(CONFIG_LANTIQ)			+= lantiq
- subdir-$(CONFIG_MACH_LOONGSON64)	+= loongson
-+subdir-$(CONFIG_MACH_LOONGSON32)	+= loongson
- subdir-$(CONFIG_SOC_VCOREIII)		+= mscc
- subdir-$(CONFIG_MIPS_MALTA)		+= mti
- subdir-$(CONFIG_LEGACY_BOARD_SEAD3)	+= mti
 diff --git a/arch/mips/boot/dts/loongson/Makefile b/arch/mips/boot/dts/loongson/Makefile
-index 5e3ab984d70f..2facf251fb6a 100644
+index 2facf251fb6a..1123d08dbfbe 100644
 --- a/arch/mips/boot/dts/loongson/Makefile
 +++ b/arch/mips/boot/dts/loongson/Makefile
-@@ -5,3 +5,9 @@ dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64c_4core_rs780e.dtb
- dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64c_8core_rs780e.dtb
- dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64g_4core_ls7a.dtb
- dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64v_4core_virtio.dtb
-+
-+ifneq ($(CONFIG_BUILTIN_DTB_NAME),)
-+dtb-y	:= $(addsuffix .dtb, $(CONFIG_BUILTIN_DTB_NAME))
-+else
-+dtb-$(CONFIG_MACH_LOONGSON32)	+= ls1b-demo.dtb
-+endif
-diff --git a/arch/mips/boot/dts/loongson/loongson1.dtsi b/arch/mips/boot/dts/loongson/loongson1.dtsi
+@@ -10,4 +10,5 @@ ifneq ($(CONFIG_BUILTIN_DTB_NAME),)
+ dtb-y	:= $(addsuffix .dtb, $(CONFIG_BUILTIN_DTB_NAME))
+ else
+ dtb-$(CONFIG_MACH_LOONGSON32)	+= ls1b-demo.dtb
++dtb-$(CONFIG_MACH_LOONGSON32)	+= lsgz_1b_dev.dtb
+ endif
+diff --git a/arch/mips/boot/dts/loongson/lsgz_1b_dev.dts b/arch/mips/boot/dts/loongson/lsgz_1b_dev.dts
 new file mode 100644
-index 000000000000..5ba5a5d131ba
+index 000000000000..c4f9a4499fad
 --- /dev/null
-+++ b/arch/mips/boot/dts/loongson/loongson1.dtsi
-@@ -0,0 +1,136 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2023-2025 Keguang Zhang <keguang.zhang@gmail.com>
-+ */
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/clock/loongson,ls1x-clk.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+
-+/ {
-+	#address-cells = <1>;
-+	#size-cells = <1>;
-+
-+	xtal: clock {
-+		compatible = "fixed-clock";
-+		clock-output-names = "xtal";
-+		#clock-cells = <0>;
-+	};
-+
-+	cpus {
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		cpu0: cpu@0 {
-+			reg = <0>;
-+			device_type = "cpu";
-+			clocks = <&clkc LS1X_CLKID_CPU>;
-+			#clock-cells = <1>;
-+		};
-+	};
-+
-+	cpu_intc: interrupt-controller {
-+		compatible = "mti,cpu-interrupt-controller";
-+		interrupt-controller;
-+		#interrupt-cells = <1>;
-+		#address-cells = <0>;
-+	};
-+
-+	soc: bus@1fd00000 {
-+		compatible = "simple-bus";
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		ranges = <0x0 0x1fd00000 0x130000>;
-+
-+		intc0: interrupt-controller@1040 {
-+			compatible = "loongson,ls1x-intc";
-+			reg = <0x1040 0x18>;
-+			interrupt-controller;
-+			interrupt-parent = <&cpu_intc>;
-+			interrupts = <2>;
-+			#interrupt-cells = <2>;
-+		};
-+
-+		intc1: interrupt-controller@1058 {
-+			compatible = "loongson,ls1x-intc";
-+			reg = <0x1058 0x18>;
-+			interrupt-controller;
-+			interrupt-parent = <&cpu_intc>;
-+			interrupts = <3>;
-+			#interrupt-cells = <2>;
-+		};
-+
-+		intc2: interrupt-controller@1070 {
-+			compatible = "loongson,ls1x-intc";
-+			reg = <0x1070 0x18>;
-+			interrupt-controller;
-+			interrupt-parent = <&cpu_intc>;
-+			interrupts = <4>;
-+			#interrupt-cells = <2>;
-+		};
-+
-+		intc3: interrupt-controller@1088 {
-+			compatible = "loongson,ls1x-intc";
-+			reg = <0x1088 0x18>;
-+			interrupt-controller;
-+			interrupt-parent = <&cpu_intc>;
-+			interrupts = <5>;
-+			#interrupt-cells = <2>;
-+		};
-+
-+		gpio0: gpio@10c0 {
-+			compatible = "loongson,ls1x-gpio";
-+			reg = <0x10c0 0x4>;
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+		};
-+
-+		gpio1: gpio@10c4 {
-+			compatible = "loongson,ls1x-gpio";
-+			reg = <0x10c4 0x4>;
-+			gpio-controller;
-+			#gpio-cells = <2>;
-+		};
-+	};
-+
-+	apb: bus@1fe40000 {
-+		compatible = "simple-bus";
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		ranges = <0x0 0x1fe40000 0xc0000>;
-+
-+		uart0: serial@0 {
-+			compatible = "ns16550a";
-+			reg = <0x0 0x8>;
-+			clocks = <&clkc LS1X_CLKID_APB>;
-+			interrupt-parent = <&intc0>;
-+			interrupts = <2 IRQ_TYPE_LEVEL_HIGH>;
-+			status = "disabled";
-+		};
-+
-+		uart1: serial@4000 {
-+			compatible = "ns16550a";
-+			reg = <0x4000 0x8>;
-+			clocks = <&clkc LS1X_CLKID_APB>;
-+			interrupt-parent = <&intc0>;
-+			status = "disabled";
-+		};
-+
-+		uart2: serial@8000 {
-+			compatible = "ns16550a";
-+			reg = <0x8000 0x8>;
-+			clocks = <&clkc LS1X_CLKID_APB>;
-+			interrupt-parent = <&intc0>;
-+			status = "disabled";
-+		};
-+
-+		uart3: serial@c000 {
-+			compatible = "ns16550a";
-+			reg = <0xc000 0x8>;
-+			clocks = <&clkc LS1X_CLKID_APB>;
-+			interrupt-parent = <&intc0>;
-+			status = "disabled";
-+		};
-+	};
-+};
-diff --git a/arch/mips/boot/dts/loongson/loongson1b.dtsi b/arch/mips/boot/dts/loongson/loongson1b.dtsi
-new file mode 100644
-index 000000000000..9fd3bc676706
---- /dev/null
-+++ b/arch/mips/boot/dts/loongson/loongson1b.dtsi
-@@ -0,0 +1,198 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2023-2025 Keguang Zhang <keguang.zhang@gmail.com>
-+ */
-+
-+/dts-v1/;
-+#include "loongson1.dtsi"
-+
-+/ {
-+	cpu_opp_table: opp-table {
-+		compatible = "operating-points-v2";
-+		opp-shared;
-+
-+		opp-44000000 {
-+			opp-hz = /bits/ 64 <44000000>;
-+		};
-+		opp-47142000 {
-+			opp-hz = /bits/ 64 <47142000>;
-+		};
-+		opp-50769000 {
-+			opp-hz = /bits/ 64 <50769000>;
-+		};
-+		opp-55000000 {
-+			opp-hz = /bits/ 64 <55000000>;
-+		};
-+		opp-60000000 {
-+			opp-hz = /bits/ 64 <60000000>;
-+		};
-+		opp-66000000 {
-+			opp-hz = /bits/ 64 <66000000>;
-+		};
-+		opp-73333000 {
-+			opp-hz = /bits/ 64 <73333000>;
-+		};
-+		opp-82500000 {
-+			opp-hz = /bits/ 64 <82500000>;
-+		};
-+		opp-94285000 {
-+			opp-hz = /bits/ 64 <94285000>;
-+		};
-+		opp-110000000 {
-+			opp-hz = /bits/ 64 <110000000>;
-+		};
-+		opp-132000000 {
-+			opp-hz = /bits/ 64 <132000000>;
-+		};
-+		opp-165000000 {
-+			opp-hz = /bits/ 64 <165000000>;
-+		};
-+		opp-220000000 {
-+			opp-hz = /bits/ 64 <220000000>;
-+		};
-+	};
-+
-+	clocksource: timer@1fe5c030 {
-+		compatible = "loongson,ls1b-pwmtimer";
-+		reg = <0x1fe5c030 0x10>;
-+		clocks = <&clkc LS1X_CLKID_APB>;
-+		interrupt-parent = <&intc0>;
-+		interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
-+	};
-+
-+	clkc: clock-controller@1fe78030 {
-+		compatible = "loongson,ls1b-clk";
-+		reg = <0x1fe78030 0x8>;
-+		clocks = <&xtal>;
-+		#clock-cells = <1>;
-+	};
-+};
-+
-+&soc {
-+	syscon: syscon@420 {
-+		compatible = "loongson,ls1b-syscon", "syscon";
-+		reg = <0x420 0x8>;
-+	};
-+
-+	dma: dma-controller@1160 {
-+		compatible = "loongson,ls1b-apbdma";
-+		reg = <0x1160 0x4>;
-+		interrupt-parent = <&intc0>;
-+		interrupts = <13 IRQ_TYPE_EDGE_RISING>,
-+			     <14 IRQ_TYPE_EDGE_RISING>,
-+			     <15 IRQ_TYPE_EDGE_RISING>;
-+		interrupt-names = "ch0", "ch1", "ch2";
-+		#dma-cells = <1>;
-+	};
-+
-+	ehci: usb@100000 {
-+		compatible = "generic-ehci";
-+		reg = <0x100000 0x100>;
-+		interrupt-parent = <&intc1>;
-+		interrupts = <0 IRQ_TYPE_LEVEL_HIGH>;
-+		status = "disabled";
-+	};
-+
-+	ohci: usb@108000 {
-+		compatible = "generic-ohci";
-+		reg = <0x108000 0x100>;
-+		interrupt-parent = <&intc1>;
-+		interrupts = <1 IRQ_TYPE_LEVEL_HIGH>;
-+		status = "disabled";
-+	};
-+
-+	gmac0: ethernet@110000 {
-+		compatible = "loongson,ls1b-gmac", "snps,dwmac-3.50a";
-+		reg = <0x110000 0x10000>;
-+		clocks = <&clkc LS1X_CLKID_AHB>;
-+		clock-names = "stmmaceth";
-+		interrupt-parent = <&intc1>;
-+		interrupts = <2 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "macirq";
-+		loongson,ls1-syscon = <&syscon>;
-+		snps,pbl = <1>;
-+		status = "disabled";
-+	};
-+
-+	gmac1: ethernet@120000 {
-+		compatible = "loongson,ls1b-gmac", "snps,dwmac-3.50a";
-+		reg = <0x120000 0x10000>;
-+		clocks = <&clkc LS1X_CLKID_AHB>;
-+		clock-names = "stmmaceth";
-+		interrupt-parent = <&intc1>;
-+		interrupts = <3 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "macirq";
-+		loongson,ls1-syscon = <&syscon>;
-+		snps,pbl = <1>;
-+		status = "disabled";
-+	};
-+};
-+
-+&apb {
-+	watchdog: watchdog@1c060 {
-+		compatible = "loongson,ls1b-wdt";
-+		reg = <0x1c060 0xc>;
-+		clocks = <&clkc LS1X_CLKID_APB>;
-+		status = "disabled";
-+	};
-+
-+	rtc: rtc@24000 {
-+		compatible = "loongson,ls1b-rtc";
-+		reg = <0x24000 0x78>;
-+		interrupt-parent = <&intc0>;
-+		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;
-+		status = "disabled";
-+	};
-+
-+	ac97: audio-controller@34000 {
-+		compatible = "loongson,ls1b-ac97";
-+		reg = <0x34000 0x60>, <0x32420 0x4>, <0x34c4c 0x4>;
-+		reg-names = "ac97", "audio-tx", "audio-rx";
-+		dmas = <&dma 1>, <&dma 2>;
-+		dma-names = "tx", "rx";
-+		#sound-dai-cells = <0>;
-+		status = "disabled";
-+	};
-+
-+	nand: nand-controller@38000 {
-+		compatible = "loongson,ls1b-nand-controller";
-+		reg = <0x38000 0x24>, <0x38040 0x4>;
-+		reg-names = "nand", "nand-dma";
-+		dmas = <&dma 0>;
-+		dma-names = "rxtx";
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+		status = "disabled";
-+
-+		nand@0 {
-+			reg = <0>;
-+			label = "ls1x-nand";
-+			nand-use-soft-ecc-engine;
-+			nand-ecc-algo = "hamming";
-+		};
-+	};
-+};
-+
-+&cpu0 {
-+	operating-points-v2 = <&cpu_opp_table>;
-+};
-+
-+&gpio0 {
-+	ngpios = <31>;
-+};
-+
-+&gpio1 {
-+	ngpios = <30>;
-+};
-+
-+&uart1 {
-+	interrupts = <3 IRQ_TYPE_LEVEL_HIGH>;
-+};
-+
-+&uart2 {
-+	interrupts = <4 IRQ_TYPE_LEVEL_HIGH>;
-+};
-+
-+&uart3 {
-+	interrupts = <5 IRQ_TYPE_LEVEL_HIGH>;
-+};
-diff --git a/arch/mips/boot/dts/loongson/ls1b-demo.dts b/arch/mips/boot/dts/loongson/ls1b-demo.dts
-new file mode 100644
-index 000000000000..19ea772e6649
---- /dev/null
-+++ b/arch/mips/boot/dts/loongson/ls1b-demo.dts
-@@ -0,0 +1,108 @@
++++ b/arch/mips/boot/dts/loongson/lsgz_1b_dev.dts
+@@ -0,0 +1,145 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (c) 2023-2025 Keguang Zhang <keguang.zhang@gmail.com>
@@ -442,12 +60,12 @@ index 000000000000..19ea772e6649
 +#include "loongson1b.dtsi"
 +
 +/ {
-+	compatible = "loongson,ls1b-demo", "loongson,ls1b";
-+	model = "LS1B-DEMO Board";
++	compatible = "loongson,lsgz-1b-dev", "loongson,ls1b";
++	model = "LSGZ_1B_DEV Board";
 +
 +	memory@0 {
 +		device_type = "memory";
-+		reg = <0x0 0x10000000>;
++		reg = <0x0 0x4000000>;
 +	};
 +
 +	aliases {
@@ -455,12 +73,29 @@ index 000000000000..19ea772e6649
 +		ethernet1 = &gmac1;
 +		gpio0 = &gpio0;
 +		gpio1 = &gpio1;
-+		serial0 = &uart0;
++		serial0 = &uart2;
++		serial1 = &uart3;
 +	};
 +
 +	chosen {
-+		bootargs = "console=ttyS0,38400";
-+		stdout-path = "serial0:38400n8";
++		bootargs = "mtdparts=ls1x-nand:16m(kernel),-(rootfs)";
++		stdout-path = "serial0:115200n8";
++	};
++
++	leds {
++		compatible = "gpio-leds";
++
++		led9 {
++			label = "led9";
++			gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
++			linux,default-trigger = "heartbeat";
++		};
++
++		led6 {
++			label = "led6";
++			gpios = <&gpio1 7 GPIO_ACTIVE_LOW>;
++			linux,default-trigger = "nand-disk";
++		};
 +	};
 +
 +	codec: audio-codec {
@@ -470,15 +105,15 @@ index 000000000000..19ea772e6649
 +
 +	sound {
 +		compatible = "simple-audio-card";
-+		simple-audio-card,name = "ls1b-alc203";
++		simple-audio-card,name = "ls1b-alc655";
 +		simple-audio-card,format = "ac97";
 +		simple-audio-card,widgets =
 +			"Speaker", "Line Out Jack",
-+			"Headphone", "Headphone Jack",
++			"Line", "Line In Jack",
 +			"Microphone", "Microphone Jack";
 +		simple-audio-card,routing =
 +			"Line Out Jack", "TX",
-+			"Headphone Jack", "TX",
++			"RX", "Line In Jack",
 +			"RX", "Microphone Jack";
 +
 +		simple-audio-card,cpu {
@@ -493,7 +128,23 @@ index 000000000000..19ea772e6649
 +
 +&gmac0 {
 +	phy-handle = <&phy0>;
-+	phy-mode = "rgmii-id";
++	phy-mode = "mii";
++	status = "okay";
++
++	mdio {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "snps,dwmac-mdio";
++
++		phy0: ethernet-phy@0 {
++			reg = <0x0>;
++		};
++	};
++};
++
++&gmac1 {
++	phy-handle = <&phy1>;
++	phy-mode = "mii";
 +	status = "okay";
 +
 +	mdio {
@@ -501,7 +152,7 @@ index 000000000000..19ea772e6649
 +		#address-cells = <1>;
 +		#size-cells = <0>;
 +
-+		phy0: ethernet-phy@0 {
++		phy1: ethernet-phy@0 {
 +			reg = <0x0>;
 +		};
 +	};
@@ -531,7 +182,11 @@ index 000000000000..19ea772e6649
 +	status = "okay";
 +};
 +
-+&uart0 {
++&uart2 {
++	status = "okay";
++};
++
++&uart3 {
 +	status = "okay";
 +};
 +
