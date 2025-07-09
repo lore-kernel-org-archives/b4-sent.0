@@ -1,132 +1,110 @@
-From: Richard Leitner <richard.leitner@linux.dev>
-Date: Wed, 09 Jul 2025 16:57:03 +0200
-Subject: [PATCH] media: nxp: imx8-isi: fix streaming cleanup on release
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v6 0/3] arm64: dts: qcom: x1-hp-x14: Add support for
+ X1P42100 HP Omnibook X14
+Date: Wed, 09 Jul 2025 21:26:51 +0200
+Message-Id: <20250709-hp-x14-x1p-v6-0-f45cc186a62d@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250709-imx8-isi-release-fix-v1-1-c47c659ce1a6@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAD6DbmgC/x2MSQqAMBAEvyJzdiBGxOhXxEPQVgfcSEACkr87e
- Kymul6KCIJIffFSwCNRrlOhKguaNn+uYJmVyRrbmNZ0LEdyrBoH7PARvEjiylnMgPOoLen1DtD
- 5zw5jzh9kkIZNZgAAAA==
-X-Change-ID: 20250709-imx8-isi-release-fix-182edee8ae32
-To: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: linux-media@vger.kernel.org, imx@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Richard Leitner <richard.leitner@linux.dev>
+X-B4-Tracking: v=1; b=H4sIAIHCbmgC/33OTWrDMBAF4KsEraui0Z+lrnqPkoVljWqBiYyVm
+ qTBd+/EKxsaL2bxBt7He7CKU8bKPk4PNuGcay4XCvbtxLq+vXwjz5Eyk0Ia0QjJ+5HfQNONHIO
+ SSVtvo7eMCuOEKd9W7OtMuc/1Wqb7as/w/P7LzMAFl+CVseiUFM1nGWLt+lKGWoafKy2q7yH/s
+ qc5y9eOJKdNJhjnIvjGHzpq66ido1YnIQgVNK06dPTWMTtHkwOdMhADtgncoWO2jts5hhytOw8
+ WU+sb9dJZluUP5Fj5vdEBAAA=
+X-Change-ID: 20250702-hp-x14-x1p-eb32f4696d96
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752073024; l=4824;
- i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=ImDgPg2/JzwFt9Jc7QkkgiYZwTTl0nxtFtgT+n58JK0=;
- b=xYpJrqbKcrpcFVR42vsMBBvZHktNZ2HTww5a6d9d96WIinoHhl+FZ6V5LlsrBlCwq+jXpVqOo
- sbtEDW9DqJKC6DhWybn+Eu35EWd9BGUYz7ZFQ1AKZ6Mg2gC2kayKxHP
-X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
- pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
-X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752089228; l=3154;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=9xgq7Yye1wmMDCjeCn2l/VYFm3PkgPlGRaN6phVB+SY=;
+ b=G9GipB54aRQHawnqgL67IVL0d0u7HSYkPxlXnAxUFPMRHePz6LRumPKjql1MYb/5hy5clLfJR
+ 4Ducc3Lsu4IB1ydeildbOyJhhST+BLYAcXJhSI/1/731zhbBHvB7QII
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The current implementation unconditionally calls
-mxc_isi_video_cleanup_streaming() in mxc_isi_video_release(). This can
-lead to situations where any release call (like from a simple
-"v4l2-ctl -l") may release a currently streaming queue when called on
-such a device.
+This patch series adds support for the HP Omnibook X Laptop 14-fe1xxx. [1]
 
-Address this issue by calling mxc_isi_video_cleanup_streaming() only if
-the queue owner is NULL (which is set by vb2_fop_release() when called
-by the current owner).
+Since this is actually the same model as the 14-fe0xxx, but with an
+X1P-42-100 SoC (Purwa), it needs a slightly different device tree.
+To have as minimal duplicate definition as possible, the hp X14 gets 
+commonalized into a dtsi (and it stays compatible to the derived 
+device trees, like the Ultrabook G1q). 
 
-This was reproducible on an i.MX8MP board by streaming from an ISI
-capture device using gstreamer:
+The supported features are the same as for the original Omnibook X14:
 
-	gst-launch-1.0 -v v4l2src device=/dev/videoX ! \
-	    video/x-raw,format=GRAY8,width=1280,height=800,framerate=1/120 ! \
-	    fakesink
+- Keyboard (no function keys though)
+- Display
+- PWM brightness control
+- Touchpad
+- Touchscreen
+- PCIe ports (pcie4, pcie6a)
+- USB type-c, type-a
+- WCN6855 Wifi-6E
+- WCN6855 Bluetooth
+- ADSP and CDSP
+- X1 GPU
+- GPIO Keys (Lid switch)
+- Audio definition (works via USB and with internal speakers)
 
-While this stream is running, querying the caps of the same device
-provokes the error state:
+[1]: https://www.hp.com/us-en/shop/pdp/hp-omnibook-x-laptop-next-gen-ai-pc-14-fe100-14-a4nd1av-1#techSpecs
 
-	v4l2-ctl -l -d /dev/videoX
-
-This resulted in the following trace:
-
-[  155.452152] ------------[ cut here ]------------
-[  155.452163] WARNING: CPU: 0 PID: 1708 at /drivers/media/platform/nxp/imx8-isi/imx8-isi-pipe.c:713 mxc_isi_pipe_irq_handler+0x19c/0x1b0 [imx8_isi]
-[  157.004248] Modules linked in: cfg80211 rpmsg_ctrl rpmsg_char rpmsg_tty virtio_rpmsg_bus rpmsg_ns rpmsg_core rfkill nft_ct nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 nf_tables mcp251x6
-[  157.053499] CPU: 0 UID: 0 PID: 1708 Comm: python3 Not tainted 6.15.4-00114-g1f61ca5cad76 #1 PREEMPT
-[  157.064369] Hardware name: imx8mp_board_01 (DT)
-[  157.068205] pstate: 400000c5 (nZcv daIF -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
-[  157.075169] pc : mxc_isi_pipe_irq_handler+0x19c/0x1b0 [imx8_isi]
-[  157.081195] lr : mxc_isi_pipe_irq_handler+0x38/0x1b0 [imx8_isi]
-[  157.087126] sp : ffff800080003ee0
-[  157.090438] x29: ffff800080003ee0 x28: ffff0000c3688000 x27: 0000000000000000
-[  157.097580] x26: 0000000000000000 x25: ffff0000c1e7ac00 x24: ffff800081b5ad50
-[  157.104723] x23: 00000000000000d1 x22: 0000000000000000 x21: ffff0000c25e4000
-[  157.111866] x20: 0000000060000200 x19: ffff80007a0608d0 x18: 0000000000000000
-[  157.119008] x17: ffff80006a4e3000 x16: ffff800080000000 x15: 0000000000000000
-[  157.126146] x14: 0000000000000000 x13: 0000000000000000 x12: 0000000000000000
-[  157.133287] x11: 0000000000000040 x10: ffff0000c01445f0 x9 : ffff80007a053a38
-[  157.140425] x8 : ffff0000c04004b8 x7 : 0000000000000000 x6 : 0000000000000000
-[  157.147567] x5 : ffff0000c0400490 x4 : ffff80006a4e3000 x3 : ffff0000c25e4000
-[  157.154706] x2 : 0000000000000000 x1 : ffff8000825c0014 x0 : 0000000060000200
-[  157.161850] Call trace:
-[  157.164296]  mxc_isi_pipe_irq_handler+0x19c/0x1b0 [imx8_isi] (P)
-[  157.170319]  __handle_irq_event_percpu+0x58/0x218
-[  157.175029]  handle_irq_event+0x54/0xb8
-[  157.178867]  handle_fasteoi_irq+0xac/0x248
-[  157.182968]  handle_irq_desc+0x48/0x68
-[  157.186723]  generic_handle_domain_irq+0x24/0x38
-[  157.191346]  gic_handle_irq+0x54/0x120
-[  157.195098]  call_on_irq_stack+0x24/0x30
-[  157.199027]  do_interrupt_handler+0x88/0x98
-[  157.203212]  el0_interrupt+0x44/0xc0
-[  157.206792]  __el0_irq_handler_common+0x18/0x28
-[  157.211328]  el0t_64_irq_handler+0x10/0x20
-[  157.215429]  el0t_64_irq+0x198/0x1a0
-[  157.219009] ---[ end trace 0000000000000000 ]---
-
-Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/media/platform/nxp/imx8-isi/imx8-isi-video.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+Changes in v6:
+- rebased to next-20250709.
+- picked up reviewed-by for patch #1 (thanks)
+- corrected typo in patch #1
+- removed model, compatible, chassis nodes from x1-hp-omnibook-x14.dtsi
+- amended copyright strings as discussed
+- Link to v5: https://lore.kernel.org/r/20250708-hp-x14-x1p-v5-0-44c916efa973@oldschoolsolutions.biz
 
-diff --git a/drivers/media/platform/nxp/imx8-isi/imx8-isi-video.c b/drivers/media/platform/nxp/imx8-isi/imx8-isi-video.c
-index 8654150728a8692b480cfbfebdc0f2596c172a00..bf1b6bd42ef77c98fdacba7bff3b5dd6c048883f 100644
---- a/drivers/media/platform/nxp/imx8-isi/imx8-isi-video.c
-+++ b/drivers/media/platform/nxp/imx8-isi/imx8-isi-video.c
-@@ -1207,6 +1207,11 @@ static int mxc_isi_video_streamon(struct file *file, void *priv,
- 	return ret;
- }
- 
-+/*
-+ * Stop streaming, discard buffers and release the pipeline without further
-+ * checking if we are or there is any queue owner. This function asserts the
-+ * &video->lock is held.
-+ */
- static void mxc_isi_video_cleanup_streaming(struct mxc_isi_video *video)
- {
- 	lockdep_assert_held(&video->lock);
-@@ -1333,7 +1338,11 @@ static int mxc_isi_video_release(struct file *file)
- 		dev_err(video->pipe->isi->dev, "%s fail\n", __func__);
- 
- 	mutex_lock(&video->lock);
--	mxc_isi_video_cleanup_streaming(video);
-+	/* cleanup streaming if there's no queue owner (if we were queue
-+	 * owner this was cleaned already by vb2_fop_release())
-+	 */
-+	if (!video->vdev.queue->owner)
-+		mxc_isi_video_cleanup_streaming(video);
- 	mutex_unlock(&video->lock);
- 
- 	pm_runtime_put(video->pipe->isi->dev);
+Changes in v5:
+- rebased to next-20250708.
+- changed commit message for patch #1 to reflect what happens
+- moved gpu node into the common dtsi part (always supported now)
+- switched over to gpu_zap_shader definition in the individual parts
+- Link to v4: https://lore.kernel.org/r/20250705-hp-x14-x1p-v4-0-1c351dbeaf18@oldschoolsolutions.biz
+
+Changes in v4:
+- leave the qcom,jp-omnibook-x14 ABI unchanged, reuse it for the -fe0 variant
+- hacked b4 to create an easier reviewable patch: https://lore.kernel.org/all/20250705-format-harder-v1-1-55c5342be55c@oldschoolsolutions.biz
+- Link to v3: https://lore.kernel.org/r/20250703-hp-x14-x1p-v3-0-affe103b4356@oldschoolsolutions.biz
+
+Changes in v3:
+- removed copyright strings
+- amended changed commit message  
+- Link to v2: https://lore.kernel.org/r/20250702-hp-x14-x1p-v2-0-af5b588d1979@oldschoolsolutions.biz
+
+Changes in v2:
+- remove pm8010 handling
+- Link to v1: https://lore.kernel.org/r/20250702-hp-x14-x1p-v1-0-219356e83207@oldschoolsolutions.biz
 
 ---
-base-commit: 733923397fd95405a48f165c9b1fbc8c4b0a4681
-change-id: 20250709-imx8-isi-release-fix-182edee8ae32
+Jens Glathe (3):
+      dt-bindings: arm: qcom: Add HP Omnibook X14 AI X1P4200 variant
+      arm64: dts: qcom: x1-hp-x14: Commonalize HP Omnibook X14 device tree
+      arm64: dts: qcom: x1-hp-x14: Add support for X1P42100 HP Omnibook X14
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    2 +
+ arch/arm64/boot/dts/qcom/x1-hp-omnibook-x14.dtsi   | 1549 ++++++++++++++++++++
+ .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 1549 +-------------------
+ .../boot/dts/qcom/x1p42100-hp-omnibook-x14.dts     |   33 +
+ 5 files changed, 1589 insertions(+), 1545 deletions(-)
+---
+base-commit: 835244aba90de290b4b0b1fa92b6734f3ee7b3d9
+change-id: 20250702-hp-x14-x1p-eb32f4696d96
 
 Best regards,
 -- 
-Richard Leitner <richard.leitner@linux.dev>
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
