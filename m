@@ -1,111 +1,98 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Tue, 08 Jul 2025 22:34:08 +0200
-Subject: [PATCH v5 3/3] arm64: dts: qcom: x1-hp-x14: Add support for
- X1P42100 HP Omnibook X14
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Subject: [PATCH v2 0/9] MIPS: loongson32: Convert all platform devices to
+ DT
+Date: Wed, 09 Jul 2025 19:05:51 +0800
+Message-Id: <20250709-loongson1-arch-v2-0-bcff6e518c09@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250708-hp-x14-x1p-v5-3-44c916efa973@oldschoolsolutions.biz>
-References: <20250708-hp-x14-x1p-v5-0-44c916efa973@oldschoolsolutions.biz>
-In-Reply-To: <20250708-hp-x14-x1p-v5-0-44c916efa973@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAA9NbmgC/zWNSw7CIBQAr9K8tY8ApR9ceQ/jgtBXILZgQI2x6
+ d1FE5ezmJkNCuVABY7NBpmeoYQUK8hDA9ab6AjDVBkklx1XQuGSUnQlRYEmW48dmdHSpKw2Gqp
+ 0yzSH1y94vlSec1rx7jOZf6blg9SiVa0Ymei1Uv2AAq/kHnXH3t/pya0mLMymFfb9A3byxBqjA
+ AAA
+To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jiaxun Yang <jiaxun.yang@flygoat.com>, 
+ Keguang Zhang <keguang.zhang@gmail.com>
+Cc: linux-mips@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752006901; l=2839;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=SS1iW7oT4myJxVc38sK5YLbfh87l/qiCbuk6ODbzS0s=;
- b=VbYC6pml2/dS06SPQTNIQYXoHxSz6hLJKBdxRaUnyktpQkre6jJ/aTER1xe6bLVN9fgPvc9Ry
- 2a7jwNJIaDyDaKpMNb5838j+1OGkikg1Z7lx2x8Fit9n6Cg5QxxwXES
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+ =?utf-8?q?Philippe_Mathieu-Daud=C3=A9?= <philmd@linaro.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752059245; l=3440;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=9xgK+fBhA8h6jU2nAkgquJvvHtf3UTyu5jZV7nmkulY=;
+ b=H+G1PpJx5Jx4sLoMA0qdN+92ka3q+Vr90XkUJakkUx8pUHiGmrDHCKGJh7ShbhBrmbFWrjXRi
+ kfMkC6BMBMcCQx97SH4ple36WcC5lWv6ymHDOBlFDRjzU3bHkabn0bF
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These laptops are the same as the already known 14-fe0xxx models, but
-with a Purwa SoC, SKU number 14-fe1xxx. [1]
+Convert all platform devices to Device Tree.  
+Remove all obsolete platform device code.  
+Switch to the generic MIPS kernel.  
+Update Kconfig and Makefile accordingly.  
+Update and rename the defconfig.
 
-The supported features are the same as for the original Omnibook X14:
+Changes in v2:
+- Document two new boards: loongson,ls1b-demo and loongson,cq-t300b.
+- Submit complete DTS files for each board.
+- Switch to the generic MIPS kernel.
+- Consolidate Loongson1 defconfigs.
+- Link to v1: https://lore.kernel.org/all/20230729134318.1694467-1-keguang.zhang@gmail.com/
 
-- Keyboard (no function keys though)
-- Display
-- PWM brightness control
-- Touchpad
-- Touchscreen
-- PCIe ports (pcie4, pcie6a)
-- USB type-c, type-a
-- WCN6855 Wifi-6E
-- WCN6855 Bluetooth
-- ADSP and CDSP
-- X1 GPU
-- GPIO Keys (Lid switch)
-- Audio definition (works via USB and with internal speakers)
-
-https://www.hp.com/us-en/shop/pdp/hp-omnibook-x-laptop-next-gen-ai-pc-14-fe100-14-a4nd1av-1#techSpecs
-
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |  2 ++
- .../boot/dts/qcom/x1p42100-hp-omnibook-x14.dts     | 36 ++++++++++++++++++++++
- 2 files changed, 38 insertions(+)
+Keguang Zhang (9):
+      dt-bindings: mips: loongson: Add LS1B demo board
+      dt-bindings: mips: loongson: Add CQ-T300B board
+      MIPS: dts: loongson: Add LS1B-DEMO board
+      MIPS: dts: loongson: Add LSGZ_1B_DEV board
+      MIPS: dts: loongson: Add Smartloong-1C board
+      MIPS: dts: loongson: Add CQ-T300B board
+      MIPS: loongson32: Switch to generic kernel
+      MIPS: Unify Loongson1 PRID_REV
+      MIPS: configs: Consolidate Loongson1 defconfigs
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 4bfa926b6a0850c3c459bcba28129c559d50a7cf..63bf3ccc11124a70efb09782b57970b274d80d49 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -333,3 +333,5 @@ x1p42100-asus-zenbook-a14-el2-dtbs	:= x1p42100-asus-zenbook-a14.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-asus-zenbook-a14.dtb x1p42100-asus-zenbook-a14-el2.dtb
- x1p42100-crd-el2-dtbs	:= x1p42100-crd.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-crd.dtb x1p42100-crd-el2.dtb
-+x1p42100-hp-omnibook-x14-el2-dtbs := x1p42100-hp-omnibook-x14.dtb x1-el2.dtbo
-+dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-hp-omnibook-x14.dtb x1p42100-hp-omnibook-x14-el2.dtb
-diff --git a/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts b/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..4ec975f9acec30dc8a2383a4c6c15c3e1ee754e1
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts
-@@ -0,0 +1,36 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
-+ */
-+
-+/dts-v1/;
-+
-+#include "x1p42100.dtsi"
-+#include "x1e80100-pmics.dtsi"
-+#include "x1-hp-omnibook-x14.dtsi"
-+/delete-node/ &pmc8380_6;
-+/delete-node/ &pmc8380_6_thermal;
-+
-+/ {
-+	model = "HP Omnibook X 14-fe1";
-+	compatible = "hp,omnibook-x14-fe1", "qcom,x1p42100";
-+	chassis-type = "laptop";
-+};
-+
-+&gpu_zap_shader {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qcdxkmsucpurwa.mbn";
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qcadsp8380.mbn",
-+			"qcom/x1p42100/hp/omnibook-x14/adsp_dtbs.elf";
-+
-+	status = "okay";
-+};
-+
-+&remoteproc_cdsp {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qccdsp8380.mbn",
-+			"qcom/x1p42100/hp/omnibook-x14/cdsp_dtbs.elf";
-+
-+	status = "okay";
-+};
+ .../devicetree/bindings/mips/loongson/devices.yaml |   2 +
+ MAINTAINERS                                        |   3 +-
+ arch/mips/Kconfig                                  |  64 ++---
+ arch/mips/boot/dts/Makefile                        |   1 +
+ arch/mips/boot/dts/loongson/Makefile               |   9 +
+ arch/mips/boot/dts/loongson/cq-t300b.dts           |  93 +++++++
+ arch/mips/boot/dts/loongson/loongson1.dtsi         | 136 ++++++++++
+ arch/mips/boot/dts/loongson/loongson1b.dtsi        | 198 ++++++++++++++
+ arch/mips/boot/dts/loongson/loongson1c.dtsi        | 141 ++++++++++
+ arch/mips/boot/dts/loongson/ls1b-demo.dts          | 108 ++++++++
+ arch/mips/boot/dts/loongson/lsgz_1b_dev.dts        | 145 +++++++++++
+ arch/mips/boot/dts/loongson/smartloong-1c.dts      |  93 +++++++
+ .../{loongson1b_defconfig => loongson1_defconfig}  |  94 +++++--
+ arch/mips/configs/loongson1c_defconfig             | 121 ---------
+ arch/mips/include/asm/cpu-type.h                   |   3 +-
+ arch/mips/include/asm/cpu.h                        |   3 +-
+ arch/mips/include/asm/mach-loongson32/irq.h        | 107 --------
+ arch/mips/include/asm/mach-loongson32/loongson1.h  |  50 ----
+ arch/mips/include/asm/mach-loongson32/platform.h   |  23 --
+ arch/mips/include/asm/mach-loongson32/regs-mux.h   | 124 ---------
+ arch/mips/kernel/cpu-probe.c                       |   6 +-
+ arch/mips/loongson32/Kconfig                       |  43 +---
+ arch/mips/loongson32/Makefile                      |  17 --
+ arch/mips/loongson32/Platform                      |   1 -
+ arch/mips/loongson32/common/Makefile               |   6 -
+ arch/mips/loongson32/common/irq.c                  | 191 --------------
+ arch/mips/loongson32/common/platform.c             | 285 ---------------------
+ arch/mips/loongson32/common/prom.c                 |  42 ---
+ arch/mips/loongson32/common/setup.c                |  26 --
+ arch/mips/loongson32/common/time.c                 |  23 --
+ arch/mips/loongson32/ls1b/Makefile                 |   6 -
+ arch/mips/loongson32/ls1b/board.c                  |  55 ----
+ arch/mips/loongson32/ls1c/Makefile                 |   6 -
+ arch/mips/loongson32/ls1c/board.c                  |  23 --
+ 34 files changed, 1049 insertions(+), 1199 deletions(-)
+---
+base-commit: b5a1f9870f9828bd6625d6c946c66be4983d56f6
+change-id: 20250414-loongson1-arch-5ea8ced4c9a9
 
+Best regards,
 -- 
-2.48.1
+Keguang Zhang <keguang.zhang@gmail.com>
 
