@@ -1,10 +1,10 @@
 From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Wed, 09 Jul 2025 19:05:52 +0800
-Subject: [PATCH v2 1/9] dt-bindings: mips: loongson: Add LS1B demo board
+Date: Wed, 09 Jul 2025 19:05:53 +0800
+Subject: [PATCH v2 2/9] dt-bindings: mips: loongson: Add CQ-T300B board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250709-loongson1-arch-v2-1-bcff6e518c09@gmail.com>
+Message-Id: <20250709-loongson1-arch-v2-2-bcff6e518c09@gmail.com>
 References: <20250709-loongson1-arch-v2-0-bcff6e518c09@gmail.com>
 In-Reply-To: <20250709-loongson1-arch-v2-0-bcff6e518c09@gmail.com>
 To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
@@ -14,17 +14,17 @@ To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>,
 Cc: linux-mips@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752059245; l=780;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752059245; l=783;
  i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=a0j9vy3+NQEGotdsDECWGxL/pwdxlHQjjCW2egT2QVw=;
- b=Htc3m2YzyEGebXWNYyqRvTq034ikKfHNn+tSyoJTWaTKJbHjs7MsWIWPtbi2Lo29oisdIuMkt
- tpigow9am1nAMj6OkXPOzybf20e2+Lca5MoVEafVtnTjJ92hOWGKotQ
+ bh=4UnKtWWBR/lKpvKPk/u0S68OurozbQkpD8iTBCm47UM=;
+ b=0pK1mnfNtYwyiRNlPdI32qFp3B/GCl0CfXWiOwNNBujCg0mBx/EkdOymfczQuooGj3BdtCMYS
+ 9VSlPCMTXYkA67DBa7so5SQscm/QjiIH4yuulnZgP3qK2emqh8pvaki
 X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
  pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
 X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document loongson,ls1b-demo, a board based on Loongson-1B.
+Document loongson,cq-t300b, a board based on Loongson-1C.
 
 Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
@@ -32,16 +32,16 @@ Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/Documentation/devicetree/bindings/mips/loongson/devices.yaml b/Documentation/devicetree/bindings/mips/loongson/devices.yaml
-index 099e40e1482d..8736eb9fe224 100644
+index 8736eb9fe224..4532b774c0eb 100644
 --- a/Documentation/devicetree/bindings/mips/loongson/devices.yaml
 +++ b/Documentation/devicetree/bindings/mips/loongson/devices.yaml
-@@ -40,6 +40,7 @@ properties:
-       - description: LS1B based boards
+@@ -47,6 +47,7 @@ properties:
+       - description: LS1C based boards
          items:
            - enum:
-+              - loongson,ls1b-demo
-               - loongson,lsgz-1b-dev
-           - const: loongson,ls1b
++              - loongson,cq-t300b
+               - loongmasses,smartloong-1c
+           - const: loongson,ls1c
  
 
 -- 
