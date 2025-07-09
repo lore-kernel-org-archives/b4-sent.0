@@ -1,74 +1,137 @@
 From: Vincent Whitchurch <vincent.whitchurch@datadoghq.com>
-Subject: [PATCH bpf-next v3 0/5] sockmap: Fix reading with splice(2)
-Date: Wed, 09 Jul 2025 14:47:56 +0200
-Message-Id: <20250709-sockmap-splice-v3-0-b23f345a67fc@datadoghq.com>
+Date: Wed, 09 Jul 2025 14:47:57 +0200
+Subject: [PATCH bpf-next v3 1/5] net: Add splice_read to prot
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPxkbmgC/3XNTQ6CMBCG4auQWVtTSgFx5T2Mi+kP0Ci0tqTBE
- O5u08SNxuWXN/PMBkF7owOciw28jiYYO6dRHQqQI86DJkalDYwyThvakGDlfUJHgnsYqYmq2hI
- lbVUrOKQj53Vv1gxeQbiezHpd4JbKaMJi/St/imXu/9BYEkr4iVFkKEou6ovCBZUdxudR2ilzk
- X2IOhHdD8ES0cnUeC17rNg3se/7G4l8liz9AAAA
+Message-Id: <20250709-sockmap-splice-v3-1-b23f345a67fc@datadoghq.com>
+References: <20250709-sockmap-splice-v3-0-b23f345a67fc@datadoghq.com>
+In-Reply-To: <20250709-sockmap-splice-v3-0-b23f345a67fc@datadoghq.com>
 To: John Fastabend <john.fastabend@gmail.com>, 
  Jakub Sitnicki <jakub@cloudflare.com>
 Cc: Kuniyuki Iwashima <kuniyu@google.com>, Jakub Kicinski <kuba@kernel.org>, 
  netdev@vger.kernel.org, bpf@vger.kernel.org, 
  Vincent Whitchurch <vincent.whitchurch@datadoghq.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752065284; l=1938;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752065284; l=4154;
  i=vincent.whitchurch@datadoghq.com; s=20240606; h=from:subject:message-id;
- bh=pqv9y2+ysL7+9uOQF2f7M0nQEyHKQ5MFTUOC7/mQbII=;
- b=yePySAAhZt7yPjoxYZV+zzSkF/Ty4wntcYWGVd67nBFIWrSC2bquTXQ6BV9Jc2dYl5X+hgyBM
- UTd61t25t9wDaP3pZcK8RkoZKirweVg4IyCCsc0ZdwN7yh/ScCd18D6
+ bh=MX07gpJft1w5h9XhrFFgz8O3lEqjXdCYvlOAyuF5jJw=;
+ b=7e+7dZgosMa14Ks7QdouUpkxxgAByp1GnnTwqe37WK9LmQlZGpb9/ZXYaNczhnThqbjEeLgy7
+ wXi0wzRgUDnBIDBd7VcIwASt/J0MqH/ExPsLBhKyQ+33wtwcysTTONy
 X-Developer-Key: i=vincent.whitchurch@datadoghq.com; a=ed25519;
  pk=GwUiPK96WuxbUAD4UjapyK7TOt+aX0EqABOZ/BOj+/M=
 X-Endpoint-Received: by B4 Relay for vincent.whitchurch@datadoghq.com/20240606 with auth_id=170
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-I noticed that if the verdict callback returns SK_PASS, using splice(2)
-to read from a socket in a sockmap does not work since it never sees the
-data queued on to it.  As far as I can see, this is not a regression but
-just something that has never worked, but it does make sockmap unusable
-if you can't guarantee that the programs using the socket will not use
-splice(2).
+The TCP BPF code will need to override splice_read(), so add it to prot.
 
-This series attempts to fix it and add a test for it.
-
+Signed-off-by: Vincent Whitchurch <vincent.whitchurch@datadoghq.com>
 ---
-Changes in v3:
-- Rebase on latest bpf-next/master
-- Link to v2: https://lore.kernel.org/r/20250609-sockmap-splice-v2-0-9c50645cfa32@datadoghq.com
+ include/net/inet_common.h |  3 +++
+ include/net/sock.h        |  3 +++
+ net/ipv4/af_inet.c        | 13 ++++++++++++-
+ net/ipv4/tcp_ipv4.c       |  1 +
+ net/ipv6/af_inet6.c       |  2 +-
+ net/ipv6/tcp_ipv6.c       |  1 +
+ 6 files changed, 21 insertions(+), 2 deletions(-)
 
-Changes in v2:
-- Rebase on latest bpf-next/master
-- Remove unnecessary change in inet_dgram_ops
-- Remove ->splice_read NULL check in inet_splice_read()
-- Use INDIRECT_CALL_1() in inet_splice_read()
-- Include test case in default test suite in test_sockmap
-- Link to v1: https://lore.kernel.org/r/20240606-sockmap-splice-v1-0-4820a2ab14b5@datadoghq.com
+diff --git a/include/net/inet_common.h b/include/net/inet_common.h
+index c17a6585d0b0..2a6480d0d575 100644
+--- a/include/net/inet_common.h
++++ b/include/net/inet_common.h
+@@ -35,6 +35,9 @@ void __inet_accept(struct socket *sock, struct socket *newsock,
+ 		   struct sock *newsk);
+ int inet_send_prepare(struct sock *sk);
+ int inet_sendmsg(struct socket *sock, struct msghdr *msg, size_t size);
++ssize_t inet_splice_read(struct socket *sk, loff_t *ppos,
++			 struct pipe_inode_info *pipe, size_t len,
++			 unsigned int flags);
+ void inet_splice_eof(struct socket *sock);
+ int inet_recvmsg(struct socket *sock, struct msghdr *msg, size_t size,
+ 		 int flags);
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 4c37015b7cf7..4bdebcbcca38 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -1280,6 +1280,9 @@ struct proto {
+ 					   size_t len);
+ 	int			(*recvmsg)(struct sock *sk, struct msghdr *msg,
+ 					   size_t len, int flags, int *addr_len);
++	ssize_t			(*splice_read)(struct socket *sock,  loff_t *ppos,
++					       struct pipe_inode_info *pipe, size_t len,
++					       unsigned int flags);
+ 	void			(*splice_eof)(struct socket *sock);
+ 	int			(*bind)(struct sock *sk,
+ 					struct sockaddr *addr, int addr_len);
+diff --git a/net/ipv4/af_inet.c b/net/ipv4/af_inet.c
+index 76e38092cd8a..9c521d252f66 100644
+--- a/net/ipv4/af_inet.c
++++ b/net/ipv4/af_inet.c
+@@ -868,6 +868,17 @@ void inet_splice_eof(struct socket *sock)
+ }
+ EXPORT_SYMBOL_GPL(inet_splice_eof);
+ 
++ssize_t inet_splice_read(struct socket *sock, loff_t *ppos,
++			 struct pipe_inode_info *pipe, size_t len,
++			 unsigned int flags)
++{
++	struct sock *sk = sock->sk;
++
++	return INDIRECT_CALL_1(sk->sk_prot->splice_read, tcp_splice_read, sock,
++			       ppos, pipe, len, flags);
++}
++EXPORT_SYMBOL_GPL(inet_splice_read);
++
+ INDIRECT_CALLABLE_DECLARE(int udp_recvmsg(struct sock *, struct msghdr *,
+ 					  size_t, int, int *));
+ int inet_recvmsg(struct socket *sock, struct msghdr *msg, size_t size,
+@@ -1071,7 +1082,7 @@ const struct proto_ops inet_stream_ops = {
+ 	.mmap		   = tcp_mmap,
+ #endif
+ 	.splice_eof	   = inet_splice_eof,
+-	.splice_read	   = tcp_splice_read,
++	.splice_read	   = inet_splice_read,
+ 	.set_peek_off      = sk_set_peek_off,
+ 	.read_sock	   = tcp_read_sock,
+ 	.read_skb	   = tcp_read_skb,
+diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
+index 6a14f9e6fef6..0391b6bef35b 100644
+--- a/net/ipv4/tcp_ipv4.c
++++ b/net/ipv4/tcp_ipv4.c
+@@ -3375,6 +3375,7 @@ struct proto tcp_prot = {
+ 	.keepalive		= tcp_set_keepalive,
+ 	.recvmsg		= tcp_recvmsg,
+ 	.sendmsg		= tcp_sendmsg,
++	.splice_read		= tcp_splice_read,
+ 	.splice_eof		= tcp_splice_eof,
+ 	.backlog_rcv		= tcp_v4_do_rcv,
+ 	.release_cb		= tcp_release_cb,
+diff --git a/net/ipv6/af_inet6.c b/net/ipv6/af_inet6.c
+index acaff1296783..2d6a1d669452 100644
+--- a/net/ipv6/af_inet6.c
++++ b/net/ipv6/af_inet6.c
+@@ -705,7 +705,7 @@ const struct proto_ops inet6_stream_ops = {
+ #endif
+ 	.splice_eof	   = inet_splice_eof,
+ 	.sendmsg_locked    = tcp_sendmsg_locked,
+-	.splice_read	   = tcp_splice_read,
++	.splice_read	   = inet_splice_read,
+ 	.set_peek_off      = sk_set_peek_off,
+ 	.read_sock	   = tcp_read_sock,
+ 	.read_skb	   = tcp_read_skb,
+diff --git a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
+index e8e68a142649..f7558e443de6 100644
+--- a/net/ipv6/tcp_ipv6.c
++++ b/net/ipv6/tcp_ipv6.c
+@@ -2342,6 +2342,7 @@ struct proto tcpv6_prot = {
+ 	.keepalive		= tcp_set_keepalive,
+ 	.recvmsg		= tcp_recvmsg,
+ 	.sendmsg		= tcp_sendmsg,
++	.splice_read		= tcp_splice_read,
+ 	.splice_eof		= tcp_splice_eof,
+ 	.backlog_rcv		= tcp_v6_do_rcv,
+ 	.release_cb		= tcp_release_cb,
 
----
-Vincent Whitchurch (5):
-      net: Add splice_read to prot
-      tcp_bpf: Fix reading with splice(2)
-      selftests/bpf: sockmap: Exit with error on failure
-      selftests/bpf: sockmap: Allow SK_PASS in verdict
-      selftests/bpf: sockmap: Add splice + SK_PASS regression test
-
- include/net/inet_common.h                  |  3 +
- include/net/sock.h                         |  3 +
- net/ipv4/af_inet.c                         | 13 ++++-
- net/ipv4/tcp_bpf.c                         |  9 +++
- net/ipv4/tcp_ipv4.c                        |  1 +
- net/ipv6/af_inet6.c                        |  2 +-
- net/ipv6/tcp_ipv6.c                        |  1 +
- tools/testing/selftests/bpf/test_sockmap.c | 90 +++++++++++++++++++++++++++++-
- 8 files changed, 118 insertions(+), 4 deletions(-)
----
-base-commit: ad97cb2ed06a6ba9025fd8bd14fa24369550cbb5
-change-id: 20240606-sockmap-splice-d371ac07d7b4
-
-Best regards,
 -- 
-Vincent Whitchurch <vincent.whitchurch@datadoghq.com>
+2.34.1
 
