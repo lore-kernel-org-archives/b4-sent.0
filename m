@@ -1,10 +1,10 @@
 From: Frank Li <Frank.Li@nxp.com>
-Date: Thu, 10 Jul 2025 15:13:54 -0400
-Subject: [PATCH v21 8/9] selftests: pci_endpoint: Add doorbell test case
+Date: Thu, 10 Jul 2025 15:13:55 -0400
+Subject: [PATCH v21 9/9] arm64: dts: imx95: Add msi-map for pci-ep device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250710-ep-msi-v21-8-57683fc7fb25@nxp.com>
+Message-Id: <20250710-ep-msi-v21-9-57683fc7fb25@nxp.com>
 References: <20250710-ep-msi-v21-0-57683fc7fb25@nxp.com>
 In-Reply-To: <20250710-ep-msi-v21-0-57683fc7fb25@nxp.com>
 To: Kishon Vijay Abraham I <kishon@kernel.org>, 
@@ -28,94 +28,48 @@ Cc: Niklas Cassel <cassel@kernel.org>, dlemoal@kernel.org, jdmason@kudzu.us,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-pci@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  imx@lists.linux.dev, devicetree@vger.kernel.org, 
- Niklas Cassel <cassel@kernel.org>, Frank Li <Frank.Li@nxp.com>
+ Niklas Cassel <cassel@kernel.org>, Frank Li <Frank.Li@nxp.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752174836; l=2413;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752174836; l=973;
  i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
- bh=DF/gzaI0MKU27j4SEtbbhXRg9y3PEJqjIqoano8U714=;
- b=6FIBzlhLvKK9PMtRFgv9fQ0u15RhOYaMaf9U560iK36vP7lgw6gVapL02c73Pu/nxmQww9moK
- MkPvMxbACpZBtrbLyQv46qo1NUMvbpVFKhdkfpsbE14aoTCK68v2+Op
+ bh=wW9Nwm5vAKtBf5Pux9lo/+uSvITxDxxhF8J82uPpSQ8=;
+ b=VtcLSyohMB2FbPRKwdeAd1gT+yHIS4yjiZLuRPs9oX0oesyANEabrauubaRWQWZI0Hoa9Tyqq
+ pt88S7wZQTQB5u0CTEtvjMU/70Lk/gnk03eIJ59F7pIgZX/e5D2tHlw
 X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
  pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
 X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add doorbell test case.
+Add msi-map for pci-ep device.
 
+Acked-by: Manivannan Sadhasivam <mani@kernel.org>
 Signed-off-by: Frank Li <Frank.Li@nxp.com>
 ---
 change in v20
-- update document
+- add Manivannan's ACK
 
 change from v14 to v16
-- Add set IRQ type
+- none
 
 change from v13 to v14
-- merge to selftests framework
+- new patch
 ---
- Documentation/PCI/endpoint/pci-test-howto.rst      | 14 +++++++++++
- .../selftests/pci_endpoint/pci_endpoint_test.c     | 28 ++++++++++++++++++++++
- 2 files changed, 42 insertions(+)
+ arch/arm64/boot/dts/freescale/imx95.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/PCI/endpoint/pci-test-howto.rst b/Documentation/PCI/endpoint/pci-test-howto.rst
-index aafc17ef3fd31f6ada38c82c8df133b87f7a1ae1..0cee35dcb29cc938823de53ef6e1a1cd81d49d52 100644
---- a/Documentation/PCI/endpoint/pci-test-howto.rst
-+++ b/Documentation/PCI/endpoint/pci-test-howto.rst
-@@ -203,3 +203,17 @@ controllers, it is advisable to skip this testcase using this
- command::
- 
- 	# pci_endpoint_test -f pci_ep_bar -f pci_ep_basic -v memcpy -T COPY_TEST -v dma
-+
-+Kselftest EP Doorbell
-+~~~~~~~~~~~~~~~~~~~~~
-+
-+If EP side have MSI controller, run below command to test doorbell function.
-+
-+	# pci_endpoint_test -f pcie_ep_doorbell
-+
-+	# Starting 1 tests from 1 test cases.
-+	#  RUN           pcie_ep_doorbell.DOORBELL_TEST ...
-+	#            OK  pcie_ep_doorbell.DOORBELL_TEST
-+	ok 1 pcie_ep_doorbell.DOORBELL_TEST
-+	# PASSED: 1 / 1 tests passed.
-+	# Totals: pass:1 fail:0 xfail:0 xpass:0 skip:0 error:0
-diff --git a/tools/testing/selftests/pci_endpoint/pci_endpoint_test.c b/tools/testing/selftests/pci_endpoint/pci_endpoint_test.c
-index ac26481d29d9dce5d07de563048850c55c58c22d..da0db0e7c9693f11b4975ca0e6830174229983ba 100644
---- a/tools/testing/selftests/pci_endpoint/pci_endpoint_test.c
-+++ b/tools/testing/selftests/pci_endpoint/pci_endpoint_test.c
-@@ -229,4 +229,32 @@ TEST_F(pci_ep_data_transfer, COPY_TEST)
- 					 test_size[i]);
- 	}
- }
-+
-+FIXTURE(pcie_ep_doorbell)
-+{
-+	int fd;
-+};
-+
-+FIXTURE_SETUP(pcie_ep_doorbell)
-+{
-+	self->fd = open(test_device, O_RDWR);
-+
-+	ASSERT_NE(-1, self->fd) TH_LOG("Can't open PCI Endpoint Test device");
-+};
-+
-+FIXTURE_TEARDOWN(pcie_ep_doorbell)
-+{
-+	close(self->fd);
-+};
-+
-+TEST_F(pcie_ep_doorbell, DOORBELL_TEST)
-+{
-+	int ret;
-+
-+	pci_ep_ioctl(PCITEST_SET_IRQTYPE, PCITEST_IRQ_TYPE_AUTO);
-+	ASSERT_EQ(0, ret) TH_LOG("Can't set AUTO IRQ type");
-+
-+	pci_ep_ioctl(PCITEST_DOORBELL, 0);
-+	EXPECT_FALSE(ret) TH_LOG("Test failed for Doorbell\n");
-+}
- TEST_HARNESS_MAIN
+diff --git a/arch/arm64/boot/dts/freescale/imx95.dtsi b/arch/arm64/boot/dts/freescale/imx95.dtsi
+index 632631a2911224cadc16a943cdb467e091e43384..c59d11eb7a581a500d381ef96f1e44533052c2a2 100644
+--- a/arch/arm64/boot/dts/freescale/imx95.dtsi
++++ b/arch/arm64/boot/dts/freescale/imx95.dtsi
+@@ -1797,6 +1797,7 @@ pcie1_ep: pcie-ep@4c380000 {
+ 			assigned-clock-rates = <3600000000>, <100000000>, <10000000>;
+ 			assigned-clock-parents = <0>, <0>,
+ 						 <&scmi_clk IMX95_CLK_SYSPLL1_PFD1_DIV2>;
++			msi-map = <0x0 &its 0x98 0x1>;
+ 			power-domains = <&scmi_devpd IMX95_PD_HSIO_TOP>;
+ 			status = "disabled";
+ 		};
 
 -- 
 2.34.1
