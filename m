@@ -1,348 +1,106 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Thu, 10 Jul 2025 00:21:45 +0200
-Subject: [PATCH v3 2/2] arm64: dts: Add Apple SoC GPU
+From: jiebing chen <jiebing.chen@amlogic.com>
+Subject: [PATCH v5 0/6] Add support for S4 audio
+Date: Thu, 10 Jul 2025 11:35:36 +0800
+Message-Id: <20250710-audio_drvier-v5-0-d4155f1e7464@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250710-sgx-dt-v3-2-299bb3a65109@gmail.com>
-References: <20250710-sgx-dt-v3-0-299bb3a65109@gmail.com>
-In-Reply-To: <20250710-sgx-dt-v3-0-299bb3a65109@gmail.com>
-To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>, Neal Gompa <neal@gompa.dev>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+X-B4-Tracking: v=1; b=H4sIAAk1b2gC/2XM3WoCMRCG4VuRHDdlJpM1WY96HyIl5kcH6qZkN
+ Siy994oFHVljr6B572KMRaOo1gtrqLEyiPnoY3uYyH83g27KDm0LRSoDhBBulPg/B1K5VgkGNe
+ RRa97vRWN/JaY+HzPrTdt73k85nK51yvevv8heg1VlCCtR20MJLIOvtzhJ+/Yf/p8ELdUVQ+uU
+ M+4apyMtZgcGd/Hd05PXNkZp8bDNgWCDkzU/p3rByfsZ1w3vrTtTHLBYP/Kp2n6A3i68TRnAQA
+ A
+X-Change-ID: 20250110-audio_drvier-07a5381c494b
+To: Jerome Brunet <jbrunet@baylibre.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>
+ Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
+ Takashi Iwai <tiwai@suse.com>, Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ jian.xu@amlogic.com, shuai.li@amlogic.com, zhe.wang@amlogic.com, 
+ jiebing chen <jiebing.chen@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752099708; l=9228;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=K6K14UmmEMDGmK5+9wuNs1Mi4fwHRoanhZcBO8g9SnA=;
- b=lGoxzSJqwgctVwWzlLIVAN1JTfGOcYn2TGjIbCwp8FjHilhP80NzOlPsQ1KiyqwZQ3qZd7y//
- XJUh3SYHIiLAlyuXqOC3zHsrWeQMRIDozJbiEB0a+qvI5Qb3vpa+T/V
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752118569; l=2849;
+ i=jiebing.chen@amlogic.com; s=20250110; h=from:subject:message-id;
+ bh=J9IHr1KctOiK5uQHZbL/z3dzePJcspSYALMm97MYSQ4=;
+ b=rqiq0Hm8pHRGBFSUb4QfYzyj05BRkcTHYujviz7z7Z/l5KLn0NWIymzBLMeVCmcJ3cqtxuVOm
+ LGEhApJJnhPD/vCifRnMFRD2RT6AyICY0sQw5MuzIpTVJl80EgjXfNv
+X-Developer-Key: i=jiebing.chen@amlogic.com; a=ed25519;
+ pk=6rFvvF45A84pLNRy03hfUHeROxHCnZ+1KAGw/DoqKic=
+X-Endpoint-Received: by B4 Relay for jiebing.chen@amlogic.com/20250110 with auth_id=316
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device tree entries for GPUs in M-series SoCs
+This series completes the end-to-end audio support
+for S4 SoC from hardware bindings to driver implementation
+and system integration.
 
-Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
-Reviewed-by: Sven Peter <sven@kernel.org>
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+1 Device Tree Bindings Updates 
+Added audio power domain support for S4 SoC.Defined mclk/sclk pad clock IDs in AXG audio bindings.
+Add S4 audio tocodec binding support.
+
+2 Driver Implementation
+Implemented S4 tocodec driver for G12A architecture.
+Add mclk pad divider support for S4 in AXG audio clock.
+
+3 Device Tree Integration
+Add Amlogic S4 audio subsystem support in arm64 DTS.
+
+Signed-off-by: jiebing chen <jiebing.chen@amlogic.com>
 ---
- arch/arm64/boot/dts/apple/t6000.dtsi        |  4 ++++
- arch/arm64/boot/dts/apple/t6001.dtsi        |  4 ++++
- arch/arm64/boot/dts/apple/t6002.dtsi        |  4 ++++
- arch/arm64/boot/dts/apple/t600x-common.dtsi | 34 ++++++++++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t600x-die0.dtsi   | 28 ++++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8103.dtsi        | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112.dtsi        | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 198 insertions(+)
+Changes in v5:
+- Fix warning Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yam when make dt_binding_check
+- The audio reg is mounted below the APB bus in dts file.
+- Deal with pad clock in a distinct controller.
+- Fix warning for sound/soc/meson/g12a-toacodec.c
+- Link to v4: https://lore.kernel.org/r/20250319-audio_drvier-v4-0-686867fad719@amlogic.com
 
-diff --git a/arch/arm64/boot/dts/apple/t6000.dtsi b/arch/arm64/boot/dts/apple/t6000.dtsi
-index 89c3b211b116e96ee0a5ea0c923c3ab824008307..0ad77c98073fe65ddde7736acaece9acd5f3111e 100644
---- a/arch/arm64/boot/dts/apple/t6000.dtsi
-+++ b/arch/arm64/boot/dts/apple/t6000.dtsi
-@@ -16,3 +16,7 @@ / {
- };
- 
- /delete-node/ &pmgr_south;
-+
-+&gpu {
-+	compatible = "apple,agx-g13s";
-+};
-diff --git a/arch/arm64/boot/dts/apple/t6001.dtsi b/arch/arm64/boot/dts/apple/t6001.dtsi
-index d2cf81926f284ccf7627701cc82edff31d4d72d6..ffbe823b71bc8d9c0975524aa04efa9bf520a89e 100644
---- a/arch/arm64/boot/dts/apple/t6001.dtsi
-+++ b/arch/arm64/boot/dts/apple/t6001.dtsi
-@@ -62,3 +62,7 @@ p-core-pmu-affinity {
- 		};
- 	};
- };
-+
-+&gpu {
-+	compatible = "apple,agx-g13c", "apple,agx-g13s";
-+};
-diff --git a/arch/arm64/boot/dts/apple/t6002.dtsi b/arch/arm64/boot/dts/apple/t6002.dtsi
-index e36f422d257d8fe3a62bfa6e0f0e0dc6c34608a4..8fb648836b538bbd9efdccd6cec5d08d868a0d39 100644
---- a/arch/arm64/boot/dts/apple/t6002.dtsi
-+++ b/arch/arm64/boot/dts/apple/t6002.dtsi
-@@ -300,3 +300,7 @@ &ps_gfx {
- 	// On t6002, the die0 GPU power domain needs both AFR power domains
- 	power-domains = <&ps_afr>, <&ps_afr_die1>;
- };
-+
-+&gpu {
-+	compatible = "apple,agx-g13d", "apple,agx-g13s";
-+};
-diff --git a/arch/arm64/boot/dts/apple/t600x-common.dtsi b/arch/arm64/boot/dts/apple/t600x-common.dtsi
-index 87dfc13d74171f62bf3087401918d9d41eaac560..e20234ef213538f851d9da0dbd11b318831668b1 100644
---- a/arch/arm64/boot/dts/apple/t600x-common.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-common.dtsi
-@@ -11,6 +11,10 @@ / {
- 	#address-cells = <2>;
- 	#size-cells = <2>;
- 
-+	aliases {
-+		gpu = &gpu;
-+	};
-+
- 	cpus {
- 		#address-cells = <2>;
- 		#size-cells = <0>;
-@@ -378,4 +382,34 @@ nco_clkref: clock-ref-nco {
- 		#clock-cells = <0>;
- 		clock-output-names = "nco_ref";
- 	};
-+
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		gpu_globals: globals {
-+			status = "disabled";
-+		};
-+
-+		gpu_hw_cal_a: hw-cal-a {
-+			status = "disabled";
-+		};
-+
-+		gpu_hw_cal_b: hw-cal-b {
-+			status = "disabled";
-+		};
-+
-+		uat_handoff: uat-handoff {
-+			status = "disabled";
-+		};
-+
-+		uat_pagetables: uat-pagetables {
-+			status = "disabled";
-+		};
-+
-+		uat_ttbs: uat-ttbs {
-+			status = "disabled";
-+		};
-+	};
- };
-diff --git a/arch/arm64/boot/dts/apple/t600x-die0.dtsi b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-index 110bc6719512e334e04b496fb157cb4368679957..341307330bfaa17b276d9c23a87931dbe71bd186 100644
---- a/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-die0.dtsi
-@@ -302,6 +302,34 @@ mca: mca@39b600000 {
- 		#sound-dai-cells = <1>;
- 	};
- 
-+	gpu: gpu@406400000 {
-+		compatible = "apple,agx-g13s";
-+		reg = <0x4 0x6400000 0 0x40000>,
-+			<0x4 0x4000000 0 0x1000000>;
-+		reg-names = "asc", "sgx";
-+		mboxes = <&agx_mbox>;
-+		power-domains = <&ps_gfx>;
-+		memory-region = <&uat_ttbs>, <&uat_pagetables>, <&uat_handoff>,
-+				<&gpu_hw_cal_a>, <&gpu_hw_cal_b>, <&gpu_globals>;
-+		memory-region-names = "ttbs", "pagetables", "handoff",
-+				      "hw-cal-a", "hw-cal-b", "globals";
-+
-+		apple,firmware-abi = <0 0 0>;
-+	};
-+
-+	agx_mbox: mbox@406408000 {
-+		compatible = "apple,t6000-asc-mailbox", "apple,asc-mailbox-v4";
-+		reg = <0x4 0x6408000 0x0 0x4000>;
-+		interrupt-parent = <&aic>;
-+		interrupts = <AIC_IRQ 0 1059 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 1060 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 1061 IRQ_TYPE_LEVEL_HIGH>,
-+			<AIC_IRQ 0 1062 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "send-empty", "send-not-empty",
-+			"recv-empty", "recv-not-empty";
-+		#mbox-cells = <0>;
-+	};
-+
- 	pcie0_dart_0: iommu@581008000 {
- 		compatible = "apple,t6000-dart";
- 		reg = <0x5 0x81008000 0x0 0x4000>;
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index 20faf0c0d80927b2e18dd966a61b5507b322c72f..531cfcd463ae6d8701dec67cde8c953b8865eef6 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -19,6 +19,10 @@ / {
- 	#address-cells = <2>;
- 	#size-cells = <2>;
- 
-+	aliases {
-+		gpu = &gpu;
-+	};
-+
- 	cpus {
- 		#address-cells = <2>;
- 		#size-cells = <0>;
-@@ -351,6 +355,36 @@ nco_clkref: clock-ref-nco {
- 		clock-output-names = "nco_ref";
- 	};
- 
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		gpu_globals: globals {
-+			status = "disabled";
-+		};
-+
-+		gpu_hw_cal_a: hw-cal-a {
-+			status = "disabled";
-+		};
-+
-+		gpu_hw_cal_b: hw-cal-b {
-+			status = "disabled";
-+		};
-+
-+		uat_handoff: uat-handoff {
-+			status = "disabled";
-+		};
-+
-+		uat_pagetables: uat-pagetables {
-+			status = "disabled";
-+		};
-+
-+		uat_ttbs: uat-ttbs {
-+			status = "disabled";
-+		};
-+	};
-+
- 	soc {
- 		compatible = "simple-bus";
- 		#address-cells = <2>;
-@@ -359,6 +393,34 @@ soc {
- 		ranges;
- 		nonposted-mmio;
- 
-+		gpu: gpu@206400000 {
-+			compatible = "apple,agx-g13g";
-+			reg = <0x2 0x6400000 0 0x40000>,
-+				<0x2 0x4000000 0 0x1000000>;
-+			reg-names = "asc", "sgx";
-+			mboxes = <&agx_mbox>;
-+			power-domains = <&ps_gfx>;
-+			memory-region = <&uat_ttbs>, <&uat_pagetables>, <&uat_handoff>,
-+					<&gpu_hw_cal_a>, <&gpu_hw_cal_b>, <&gpu_globals>;
-+			memory-region-names = "ttbs", "pagetables", "handoff",
-+					      "hw-cal-a", "hw-cal-b", "globals";
-+
-+			apple,firmware-abi = <0 0 0>;
-+		};
-+
-+		agx_mbox: mbox@206408000 {
-+			compatible = "apple,t8103-asc-mailbox", "apple,asc-mailbox-v4";
-+			reg = <0x2 0x6408000 0x0 0x4000>;
-+			interrupt-parent = <&aic>;
-+			interrupts = <AIC_IRQ 575 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 576 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 577 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 578 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "send-empty", "send-not-empty",
-+				"recv-empty", "recv-not-empty";
-+			#mbox-cells = <0>;
-+		};
-+
- 		cpufreq_e: performance-controller@210e20000 {
- 			compatible = "apple,t8103-cluster-cpufreq", "apple,cluster-cpufreq";
- 			reg = <0x2 0x10e20000 0 0x1000>;
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index e95711d8337f6cea898e88a3d564caf2c4f94404..b41b9f8fa122b13b9bf20dcb7135049e11e1819f 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -19,6 +19,10 @@ / {
- 	#address-cells = <2>;
- 	#size-cells = <2>;
- 
-+	aliases {
-+		gpu = &gpu;
-+	};
-+
- 	cpus {
- 		#address-cells = <2>;
- 		#size-cells = <0>;
-@@ -366,6 +370,36 @@ nco_clkref: clock-ref-nco {
- 		clock-output-names = "nco_ref";
- 	};
- 
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		gpu_globals: globals {
-+			status = "disabled";
-+		};
-+
-+		gpu_hw_cal_a: hw-cal-a {
-+			status = "disabled";
-+		};
-+
-+		gpu_hw_cal_b: hw-cal-b {
-+			status = "disabled";
-+		};
-+
-+		uat_handoff: uat-handoff {
-+			status = "disabled";
-+		};
-+
-+		uat_pagetables: uat-pagetables {
-+			status = "disabled";
-+		};
-+
-+		uat_ttbs: uat-ttbs {
-+			status = "disabled";
-+		};
-+	};
-+
- 	soc {
- 		compatible = "simple-bus";
- 		#address-cells = <2>;
-@@ -374,6 +408,34 @@ soc {
- 		ranges;
- 		nonposted-mmio;
- 
-+		gpu: gpu@206400000 {
-+			compatible = "apple,agx-g14g";
-+			reg = <0x2 0x6400000 0 0x40000>,
-+				<0x2 0x4000000 0 0x1000000>;
-+			reg-names = "asc", "sgx";
-+			mboxes = <&agx_mbox>;
-+			power-domains = <&ps_gfx>;
-+			memory-region = <&uat_ttbs>, <&uat_pagetables>, <&uat_handoff>,
-+					<&gpu_hw_cal_a>, <&gpu_hw_cal_b>, <&gpu_globals>;
-+			memory-region-names = "ttbs", "pagetables", "handoff",
-+					      "hw-cal-a", "hw-cal-b", "globals";
-+
-+			apple,firmware-abi = <0 0 0>;
-+		};
-+
-+		agx_mbox: mbox@206408000 {
-+			compatible = "apple,t8103-asc-mailbox", "apple,asc-mailbox-v4";
-+			reg = <0x2 0x6408000 0x0 0x4000>;
-+			interrupt-parent = <&aic>;
-+			interrupts = <AIC_IRQ 709 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 710 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 711 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 712 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "send-empty", "send-not-empty",
-+				"recv-empty", "recv-not-empty";
-+			#mbox-cells = <0>;
-+		};
-+
- 		cpufreq_e: cpufreq@210e20000 {
- 			compatible = "apple,t8112-cluster-cpufreq", "apple,cluster-cpufreq";
- 			reg = <0x2 0x10e20000 0 0x1000>;
+Changes in v4:
+- fix dtb check warning 
+- add maxItems of power domain for dt-bindings
+- fixed audio clock pads regmap base and reg offset 
+- use dapm widget to control tocodec bclk and mclk enable
+- Link to v3: https://lore.kernel.org/r/20250228-audio_drvier-v3-0-dbfd30507e4c@amlogic.com
 
+Changes in v3:
+- remove g12a tocodec switch event
+- Modify the incorrect title for dt-bindings
+- Link to v2: https://lore.kernel.org/r/20250214-audio_drvier-v2-0-37881fa37c9e@amlogic.com
+
+Changes in v2:
+- remove tdm pad control and change tocodec base on g12a
+- change hifipll rate to support 24bit
+- add s4 audio clock
+- Link to v1: https://lore.kernel.org/r/20250113-audio_drvier-v1-0-8c14770f38a0@amlogic.com
+
+---
+jiebing chen (6):
+      dt-bindings: clock: meson: Add audio power domain for s4 soc
+      dt-bindings: clock: axg-audio: Add mclk and sclk pad clock ids
+      dt-bindings: Asoc: axg-audio: Add s4 audio tocodec
+      ASoC: meson: g12a-toacodec: Add s4 tocodec driver
+      clk: meson: axg-audio: Add the mclk pad div for s4 chip
+      arm64: dts: amlogic: Add Amlogic S4 Audio
+
+ .../bindings/clock/amlogic,axg-audio-clkc.yaml     |  55 ++-
+ .../bindings/sound/amlogic,g12a-toacodec.yaml      |   1 +
+ .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     | 218 +++++++++++
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 387 ++++++++++++++++++
+ drivers/clk/meson/axg-audio.c                      | 435 ++++++++++++++++++++-
+ drivers/clk/meson/axg-audio.h                      |   6 +
+ include/dt-bindings/clock/axg-audio-clkc.h         |  11 +
+ sound/soc/meson/g12a-toacodec.c                    |  42 ++
+ 8 files changed, 1152 insertions(+), 3 deletions(-)
+---
+base-commit: 6ecd20965bdc21b265a0671ccf36d9ad8043f5ab
+change-id: 20250110-audio_drvier-07a5381c494b
+
+Best regards,
 -- 
-2.50.1
+Jiebing Chen <jiebing.chen@amlogic.com>
 
