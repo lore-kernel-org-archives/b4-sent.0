@@ -1,11 +1,11 @@
 From: Frank Li <Frank.Li@nxp.com>
-Date: Thu, 10 Jul 2025 15:13:47 -0400
-Subject: [PATCH v21 1/9] PCI: imx6: Add helper function
- imx_pcie_add_lut_by_rid()
+Date: Thu, 10 Jul 2025 15:13:48 -0400
+Subject: [PATCH v21 2/9] PCI: imx6: Add LUT configuration for MSI/IOMMU in
+ Endpoint mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250710-ep-msi-v21-1-57683fc7fb25@nxp.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250710-ep-msi-v21-2-57683fc7fb25@nxp.com>
 References: <20250710-ep-msi-v21-0-57683fc7fb25@nxp.com>
 In-Reply-To: <20250710-ep-msi-v21-0-57683fc7fb25@nxp.com>
 To: Kishon Vijay Abraham I <kishon@kernel.org>, 
@@ -31,23 +31,28 @@ Cc: Niklas Cassel <cassel@kernel.org>, dlemoal@kernel.org, jdmason@kudzu.us,
  imx@lists.linux.dev, devicetree@vger.kernel.org, 
  Niklas Cassel <cassel@kernel.org>, Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752174836; l=1939;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752174836; l=1837;
  i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
- bh=FTsRKbmGJkqXdF0l3uL9gIhRFF4JXE9vNw1HW1VASns=;
- b=pl4q2ntiFNC+d0WkC3fXBmdd1gqe/CxBTx1BZqQJEmeumRTScrSLvt3T8awwwY9n6HD/z7skj
- 3YNPpGXey6rAS+uVXG9/oWf2slSD0psgmFdz42M2s6eWD2I+0J7wxqM
+ bh=undgD4r0xoItEmBKrD+Vrj1bBDbTL2OdUvPEHbj/82U=;
+ b=l+XFGUURzdxzcmkKjct4/0IkcPsOSWsD8L8ONKwjhtN98Cagqt/z/sosYt8lYSneyYhenkY94
+ WoOhFqexlkKCMETvGGhnYSvxKxjeW2v/K+qewEnrGs6JSOBN/ZdF3FV
 X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
  pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
 X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add helper function imx_pcie_add_lut_by_rid(), which will be used for MSI
-doorbell support in endpoint mode in the future. No functional change.
+Add LUT entry for Endpoint mode by calling imx_pcie_add_lut_by_rid(0),
+since only one physical function is supported. This sets up a single LUT
+entry required for MSI or IOMMU.
+
+The Endpoint function can operate without LUT if neither IOMMU nor MSI is
+used. This LUT setup enables the EP doorbell feature by allowing the Root
+Complex to trigger the EP’s MSI controller.
 
 Signed-off-by: Frank Li <Frank.Li@nxp.com>
 ---
-- change in v20
-- update commit message.
+change in v20
+- update commit message
 
 change from v14 to v16
 - none
@@ -55,49 +60,35 @@ change from v14 to v16
 change from v13 to v14
 - new patch
 ---
- drivers/pci/controller/dwc/pci-imx6.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+ drivers/pci/controller/dwc/pci-imx6.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/pci/controller/dwc/pci-imx6.c b/drivers/pci/controller/dwc/pci-imx6.c
-index 5a38cfaf989b1c9606660f2e0bcd10d88fa2d6b1..032b906c44dfaa374a32f511098402a494ef5677 100644
+index 032b906c44dfaa374a32f511098402a494ef5677..3123bf49e209cc0fc448d6e02a472e280d538033 100644
 --- a/drivers/pci/controller/dwc/pci-imx6.c
 +++ b/drivers/pci/controller/dwc/pci-imx6.c
-@@ -1096,18 +1096,14 @@ static void imx_pcie_remove_lut(struct imx_pcie *imx_pcie, u16 rid)
- 	}
- }
+@@ -1063,7 +1063,10 @@ static int imx_pcie_add_lut(struct imx_pcie *imx_pcie, u16 rid, u8 sid)
+ 	data1 |= IMX95_PE0_LUT_VLD;
+ 	regmap_write(imx_pcie->iomuxc_gpr, IMX95_PE0_LUT_DATA1, data1);
  
--static int imx_pcie_enable_device(struct pci_host_bridge *bridge,
--				  struct pci_dev *pdev)
-+static int imx_pcie_add_lut_by_rid(struct imx_pcie *imx_pcie, u32 rid)
- {
--	struct imx_pcie *imx_pcie = to_imx_pcie(to_dw_pcie_from_pp(bridge->sysdata));
--	u32 sid_i, sid_m, rid = pci_dev_id(pdev);
-+	struct device *dev = imx_pcie->pci->dev;
- 	struct device_node *target;
--	struct device *dev;
-+	u32 sid_i, sid_m;
- 	int err_i, err_m;
- 	u32 sid = 0;
+-	data2 = IMX95_PE0_LUT_MASK; /* Match all bits of RID */
++	if (imx_pcie->drvdata->mode == DW_PCIE_EP_TYPE)
++		data2 = 0x7; /* EP side's RID from RC, only 'D' is meansful */
++	else
++		data2 = IMX95_PE0_LUT_MASK; /* Match all bits of RID */
+ 	data2 |= FIELD_PREP(IMX95_PE0_LUT_REQID, rid);
+ 	regmap_write(imx_pcie->iomuxc_gpr, IMX95_PE0_LUT_DATA2, data2);
  
--	dev = imx_pcie->pci->dev;
--
- 	target = NULL;
- 	err_i = of_map_id(dev->of_node, rid, "iommu-map", "iommu-map-mask",
- 			  &target, &sid_i);
-@@ -1182,6 +1178,13 @@ static int imx_pcie_enable_device(struct pci_host_bridge *bridge,
- 	return imx_pcie_add_lut(imx_pcie, rid, sid);
- }
- 
-+static int imx_pcie_enable_device(struct pci_host_bridge *bridge, struct pci_dev *pdev)
-+{
-+	struct imx_pcie *imx_pcie = to_imx_pcie(to_dw_pcie_from_pp(bridge->sysdata));
+@@ -1767,6 +1770,9 @@ static int imx_pcie_probe(struct platform_device *pdev)
+ 		ret = imx_add_pcie_ep(imx_pcie, pdev);
+ 		if (ret < 0)
+ 			return ret;
 +
-+	return imx_pcie_add_lut_by_rid(imx_pcie, pci_dev_id(pdev));
-+}
-+
- static void imx_pcie_disable_device(struct pci_host_bridge *bridge,
- 				    struct pci_dev *pdev)
- {
++		/* Only support one physical function */
++		imx_pcie_add_lut_by_rid(imx_pcie, 0);
+ 	} else {
+ 		pci->pp.use_atu_msg = true;
+ 		ret = dw_pcie_host_init(&pci->pp);
 
 -- 
 2.34.1
