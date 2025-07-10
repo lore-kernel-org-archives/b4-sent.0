@@ -1,433 +1,316 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Thu, 10 Jul 2025 18:52:47 +0800
-Subject: [PATCH] Bluetooth: Add PA_LINK to distinguish BIG sync and PA sync
- connections
+From: Frank Li <Frank.Li@nxp.com>
+Subject: [PATCH v21 0/9] PCI: EP: Add RC-to-EP doorbell with platform MSI
+ controller
+Date: Thu, 10 Jul 2025 15:13:46 -0400
+Message-Id: <20250710-ep-msi-v21-0-57683fc7fb25@nxp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250710-pa_link-v1-1-88cac0c0b776@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAH6bb2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDc0MD3YLE+JzMvGxdS5NUI0ujVCNzM4tUJaDqgqLUtMwKsEnRsbW1AAZ
- IvH1ZAAAA
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752144769; l=14122;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=kQ4GbUtOkJ7tUT4OgPVDiJ1mrZufI2zvpG1vvRJz7ic=;
- b=KCiOiyexTPM61jBMhbDFbGMvzir6VcYizQgJ/TesjgqnKnTVPnX+gk1rqzAFzq5Xux8Tc7r12
- R3+6KIeZXmrCb+5ZG/p0DdFwRQweaDbOQjWrIioyPypEglrf/nxHgzt
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAOoQcGgC/2XSS44bIRAG4KuMep2OqAcFzCr3iLLgmenF2JY7s
+ iYa+e4BS9NgsgTxlYqq/3PZ83XL+/L68rlc823bt/OpHhC+vSzxzZ9+53VL9WJBhQwK1Jov6/u
+ +rTZw9IEoQMhLfXy55rJ9PCr9/FXPb9v+53z9+yh8o3b7VUJ/lbjRqtaYU7TOg0TwP04fl+/x/
+ L60AjceEMGBuCIDJnlMzgW0z0h3BMoeSFfkgZ2GqJJS5hnJgAAPJBWxLs4gZoo4tWdGxAcyFSX
+ 20XhfQsL4jOyI5EC2IilQxJaSIIRn5DpCRQdy7U+iUohUQKf0jECNqvdXN6hWayIZW2WSmcHIX
+ GfQxs7ExVtyJswMBwZ9WXWaaiVKrAmL16gmRiPr64KWDGHJCA5TRJ7YEQ2tUJnOWjacGAhAUjB
+ M2QA9sLHJlo4QfYxQEXg3MemMx0nKY9UOXBLbYjUxM7KhyZYQIfKBtSf4j9mBDbmClpEiLrBzY
+ FjmkbjOZNxbS4kxJJi9Z1umEKPqzAwMW0qYkpbiQtI8sPv9/g9K6275NgQAAA==
+X-Change-ID: 20241010-ep-msi-8b4cab33b1be
+To: Kishon Vijay Abraham I <kishon@kernel.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Thomas Gleixner <tglx@linutronix.de>, Anup Patel <apatel@ventanamicro.com>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, Marc Zyngier <maz@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, Arnd Bergmann <arnd@arndb.de>, 
+ Shuah Khan <shuah@kernel.org>, Richard Zhu <hongxing.zhu@nxp.com>, 
+ Lucas Stach <l.stach@pengutronix.de>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>
+Cc: Niklas Cassel <cassel@kernel.org>, dlemoal@kernel.org, jdmason@kudzu.us, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-pci@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ imx@lists.linux.dev, devicetree@vger.kernel.org, 
+ Niklas Cassel <cassel@kernel.org>, Frank Li <Frank.Li@nxp.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752174836; l=12498;
+ i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
+ bh=RHPw+mzqn4fNV+JTiLhAhP+hp+hIHxxWVGkrR9ghdzQ=;
+ b=SFLRFUj2d9FSwrYDdWvRPnrM42iYakQN5tsh+soiw5WD5hi/PvnstmtLm2RR79S0BKxv3Ogx/
+ ZRWPtN9Tg2gDkAAGtH/c1pUSQahcT4cf2t74+Tb5D/E97Lq7ezOIs8Q
+X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
+ pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
+X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, BIS_LINK is used for both BIG sync and PA sync connections,
-which makes it impossible to distinguish them when searching for a PA
-sync connection.
+┌────────────┐   ┌───────────────────────────────────┐   ┌────────────────┐
+│            │   │                                   │   │                │
+│            │   │ PCI Endpoint                      │   │ PCI Host       │
+│            │   │                                   │   │                │
+│            │◄──┤ 1.platform_msi_domain_alloc_irqs()│   │                │
+│            │   │                                   │   │                │
+│ MSI        ├──►│ 2.write_msi_msg()                 ├──►├─BAR<n>         │
+│ Controller │   │   update doorbell register address│   │                │
+│            │   │   for BAR                         │   │                │
+│            │   │                                   │   │ 3. Write BAR<n>│
+│            │◄──┼───────────────────────────────────┼───┤                │
+│            │   │                                   │   │                │
+│            ├──►│ 4.Irq Handle                      │   │                │
+│            │   │                                   │   │                │
+│            │   │                                   │   │                │
+└────────────┘   └───────────────────────────────────┘   └────────────────┘
 
-Adding PA_LINK will make the distinction clearer and simplify future
-extensions for PA-related features.
+This patches based on old https://lore.kernel.org/imx/20221124055036.1630573-1-Frank.Li@nxp.com/
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+Original patch only target to vntb driver. But actually it is common
+method.
+
+This patches add new API to pci-epf-core, so any EP driver can use it.
+
+Previous v2 discussion here.
+https://lore.kernel.org/imx/20230911220920.1817033-1-Frank.Li@nxp.com/
+
+Changes in v21:
+- Align to bar size, try to fix Niklas reported problem.
+- Rebase to v6.16-rc5
+- Link to v20: https://lore.kernel.org/r/20250709-ep-msi-v20-0-43d56f9bd54a@nxp.com
+
+Changes in v20:
+- remove set epf of_node's patch and only support one epf now.
+- move imx6's patch to first
+- detail change see each patches' change log
+- Link to v19: https://lore.kernel.org/r/20250609-ep-msi-v19-0-77362eaa48fa@nxp.com
+
+Changes in v19:
+- irq part already in v6.16-rc1, only missed pcie/dts part
+- rebase to v6.16-rc1
+- update commit message for patch IMMUTABLE check.
+- Link to v18: https://lore.kernel.org/r/20250414-ep-msi-v18-0-f69b49917464@nxp.com
+
+Changes in v18:
+- pci-ep.yaml: sort property order, fix maxvalue to 0x7ffff for msi-map-mask and
+iommu-map-mask
+- Link to v17: https://lore.kernel.org/r/20250407-ep-msi-v17-0-633ab45a31d0@nxp.com
+
+Changes in v17:
+- move document part to pci-ep.yaml
+- Link to v16: https://lore.kernel.org/r/20250404-ep-msi-v16-0-d4919d68c0d0@nxp.com
+
+Changes in v16:
+- remove arm64: dts: imx95-19x19-evk: Add PCIe1 endpoint function overlay file
+because there are better patches, which under review.
+- Add document for pcie-ep msi-map usage
+- other change to see each patch's change log
+About IMMUTABLE (No change for this part, tglx provide feedback)
+> - This IMMUTABLE thing serves no purpose, because you don't randomly
+>   plug this end-point block on any MSI controller. They come as part
+>   of an SoC.
+
+"Yes and no. The problem is that the EP implementation is meant to be a
+generic library and while GIC-ITS guarantees immutability of the
+address/data pair after setup, there are architectures (x86, loongson,
+riscv) where the base MSI controller does not and immutability is only
+achieved when interrupt remapping is enabled. The latter can be disabled
+at boot-time and then the EP implementation becomes a lottery across
+affinity changes.
+
+That was my concern about this library implementation and that's why I
+asked for a mechanism to ensure that the underlying irqdomain provides a
+immutable address/data pair.
+
+So it does not matter for GIC-ITS, but in the larger picture it matters.
+
+Thanks,
+
+        tglx
+"
+
+So it does not matter for GIC-ITS, but in the larger picture it matters.
+
+- Link to v15: https://lore.kernel.org/r/20250211-ep-msi-v15-0-bcacc1f2b1a9@nxp.com
+
+Changes in v15:
+- rebase to v6.14-rc1
+- fix build issue find by kernel test robot
+- Link to v14: https://lore.kernel.org/r/20250207-ep-msi-v14-0-9671b136f2b8@nxp.com
+
+Changes in v14:
+Marc Zyngier raised concerns about adding DOMAIN_BUS_DEVICE_PCI_EP_MSI. As
+a result, the approach has been reverted to the v9 method. However, there
+are several improvements:
+
+MSI now supports msi-map in addition to msi-parent.
+  - The struct device: id is used as the endpoint function (EPF) device
+identity to map to the stream ID (sideband information).
+  - The EPC device tree source (DTS) utilizes msi-map to provide such
+information.
+  - The EPF device's of_node is set to the EPC controller’s node. This
+approach is commonly used for multi-function device (MFD) platform child
+devices, allowing them to inherit properties from the MFD device’s DTS,
+such as reset-cells and gpio-cells. This method is well-suited for the
+current case, as the EPF is inherently created/binded to the EPC and
+should inherit the EPC’s DTS node properties.
+
+Additionally:
+
+Since the basic IMX95 LUT support has already been merged into the
+mainline, a DTS and driver increment patch is added to complete the
+solution. The patch is rebased onto the latest linux-next tree and
+aligned with the new pcitest framework.
+
+- Link to v13: https://lore.kernel.org/r/20241218-ep-msi-v13-0-646e2192dc24@nxp.com
+
+Changes in v13:
+- Change to use DOMAIN_BUS_PCI_DEVICE_EP_MSI
+- Change request id as  func | vfunc << 3
+- Remove IRQ_DOMAIN_MSI_IMMUTABLE
+
+Thomas Gleixner:
+
+I hope capture all your points in review comments. If missed, let me know.
+
+- Link to v12: https://lore.kernel.org/r/20241211-ep-msi-v12-0-33d4532fa520@nxp.com
+
+Changes in v12:
+- Change to use IRQ_DOMAIN_MSI_IMMUTABLE and add help function
+irq_domain_msi_is_immuatble().
+- split PCI: endpoint: pci-ep-msi: Add MSI address/data pair mutable check to 3 patches
+- Link to v11: https://lore.kernel.org/r/20241209-ep-msi-v11-0-7434fa8397bd@nxp.com
+
+Changes in v11:
+- Change to use MSI_FLAG_MSG_IMMUTABLE
+- Link to v10: https://lore.kernel.org/r/20241204-ep-msi-v10-0-87c378dbcd6d@nxp.com
+
+Changes in v10:
+
+Thomas Gleixner:
+	There are big change in pci-ep-msi.c. I am sure if go on the
+corrent path. The key improvement is remove only 1 function devices's
+limitation.
+
+	I use new patch for imutable check, which relative additional
+feature compared to base enablement patch.
+
+- Remove patch Add msi_remove_device_irq_domain() in platform_device_msi_free_irqs_all()
+- Add new patch irqchip/gic-v3-its: Avoid overwriting msi_prepare callback if provided by msi_domain_info
+- Remove only support 1 endpoint function limiation.
+- Create one MSI domain for each endpoint function devices.
+- Use "msi-map" in pci ep controler node, instead of of msi-parent. first
+argument is
+	(func_no << 8 | vfunc_no)
+
+- Link to v9: https://lore.kernel.org/r/20241203-ep-msi-v9-0-a60dbc3f15dd@nxp.com
+
+Changes in v9
+- Add patch platform-msi: Add msi_remove_device_irq_domain() in platform_device_msi_free_irqs_all()
+- Remove patch PCI: endpoint: Add pci_epc_get_fn() API for customizable filtering
+- Remove API pci_epf_align_inbound_addr_lo_hi
+- Move doorbell_alloc in to doorbell_enable function.
+- Link to v8: https://lore.kernel.org/r/20241116-ep-msi-v8-0-6f1f68ffd1bb@nxp.com
+
+Changes in v8:
+- update helper function name to pci_epf_align_inbound_addr()
+- Link to v7: https://lore.kernel.org/r/20241114-ep-msi-v7-0-d4ac7aafbd2c@nxp.com
+
+Changes in v7:
+- Add helper function pci_epf_align_addr();
+- Link to v6: https://lore.kernel.org/r/20241112-ep-msi-v6-0-45f9722e3c2a@nxp.com
+
+Changes in v6:
+- change doorbell_addr to doorbell_offset
+- use round_down()
+- add Niklas's test by tag
+- rebase to pci/endpoint
+- Link to v5: https://lore.kernel.org/r/20241108-ep-msi-v5-0-a14951c0d007@nxp.com
+
+Changes in v5:
+- Move request_irq to epf test function driver for more flexiable user case
+- Add fixed size bar handler
+- Some minor improvememtn to see each patches's changelog.
+- Link to v4: https://lore.kernel.org/r/20241031-ep-msi-v4-0-717da2d99b28@nxp.com
+
+Changes in v4:
+- Remove patch genirq/msi: Add cleanup guard define for msi_lock_descs()/msi_unlock_descs()
+- Use new method to avoid compatible problem.
+  Add new command DOORBELL_ENABLE and DOORBELL_DISABLE.
+  pcitest -B send DOORBELL_ENABLE first, EP test function driver try to
+remap one of BAR_N (except test register bar) to ITS MSI MMIO space. Old
+driver don't support new command, so failure return, not side effect.
+  After test, DOORBELL_DISABLE command send out to recover original map, so
+pcitest bar test can pass as normal.
+- Other detail change see each patches's change log
+- Link to v3: https://lore.kernel.org/r/20241015-ep-msi-v3-0-cedc89a16c1a@nxp.com
+
+Change from v2 to v3
+- Fixed manivannan's comments
+- Move common part to pci-ep-msi.c and pci-ep-msi.h
+- rebase to 6.12-rc1
+- use RevID to distingiush old version
+
+mkdir /sys/kernel/config/pci_ep/functions/pci_epf_test/func1
+echo 16 > /sys/kernel/config/pci_ep/functions/pci_epf_test/func1/msi_interrupts
+echo 0x080c > /sys/kernel/config/pci_ep/functions/pci_epf_test/func1/deviceid
+echo 0x1957 > /sys/kernel/config/pci_ep/functions/pci_epf_test/func1/vendorid
+echo 1 > /sys/kernel/config/pci_ep/functions/pci_epf_test/func1/revid
+^^^^^^ to enable platform msi support.
+ln -s /sys/kernel/config/pci_ep/functions/pci_epf_test/func1 /sys/kernel/config/pci_ep/controllers/4c380000.pcie-ep
+
+- use new device ID, which identify support doorbell to avoid broken
+compatility.
+
+    Enable doorbell support only for PCI_DEVICE_ID_IMX8_DB, while other devices
+    keep the same behavior as before.
+
+           EP side             RC with old driver      RC with new driver
+    PCI_DEVICE_ID_IMX8_DB          no probe              doorbell enabled
+    Other device ID             doorbell disabled*       doorbell disabled*
+
+    * Behavior remains unchanged.
+
+Change from v1 to v2
+- Add missed patch for endpont/pci-epf-test.c
+- Move alloc and free to epc driver from epf.
+- Provide general help function for EPC driver to alloc platform msi irq.
+- Fixed manivannan's comments.
+
+Signed-off-by: Frank Li <Frank.Li@nxp.com>
 ---
- include/net/bluetooth/hci.h      |  1 +
- include/net/bluetooth/hci_core.h | 10 +++++++---
- net/bluetooth/hci_conn.c         | 14 +++++++++-----
- net/bluetooth/hci_core.c         | 27 +++++++++++++++------------
- net/bluetooth/hci_event.c        |  7 ++++---
- net/bluetooth/hci_sync.c         | 10 +++++-----
- net/bluetooth/iso.c              |  6 ++++--
- net/bluetooth/mgmt.c             |  1 +
- 8 files changed, 46 insertions(+), 30 deletions(-)
+Frank Li (9):
+      PCI: imx6: Add helper function imx_pcie_add_lut_by_rid()
+      PCI: imx6: Add LUT configuration for MSI/IOMMU in Endpoint mode
+      PCI: endpoint: Add RC-to-EP doorbell support using platform MSI controller
+      PCI: endpoint: pci-ep-msi: Add MSI address/data pair mutable check
+      PCI: endpoint: Add pci_epf_align_inbound_addr() helper for address alignment
+      PCI: endpoint: pci-epf-test: Add doorbell test support
+      misc: pci_endpoint_test: Add doorbell test case
+      selftests: pci_endpoint: Add doorbell test case
+      arm64: dts: imx95: Add msi-map for pci-ep device
 
-diff --git a/include/net/bluetooth/hci.h b/include/net/bluetooth/hci.h
-index 19248d326cb2..50134b48b828 100644
---- a/include/net/bluetooth/hci.h
-+++ b/include/net/bluetooth/hci.h
-@@ -560,6 +560,7 @@ enum {
- #define LE_LINK		0x80
- #define CIS_LINK	0x82
- #define BIS_LINK	0x83
-+#define PA_LINK		0x84
- #define INVALID_LINK	0xff
- 
- /* LMP features */
-diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
-index 3ce1fb6f5822..2ebadd45fabb 100644
---- a/include/net/bluetooth/hci_core.h
-+++ b/include/net/bluetooth/hci_core.h
-@@ -1005,6 +1005,7 @@ static inline void hci_conn_hash_add(struct hci_dev *hdev, struct hci_conn *c)
- 		break;
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 		h->iso_num++;
- 		break;
- 	}
-@@ -1032,6 +1033,7 @@ static inline void hci_conn_hash_del(struct hci_dev *hdev, struct hci_conn *c)
- 		break;
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 		h->iso_num--;
- 		break;
- 	}
-@@ -1050,6 +1052,7 @@ static inline unsigned int hci_conn_num(struct hci_dev *hdev, __u8 type)
- 		return h->sco_num;
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 		return h->iso_num;
- 	default:
- 		return 0;
-@@ -1132,7 +1135,7 @@ hci_conn_hash_lookup_create_pa_sync(struct hci_dev *hdev)
- 	rcu_read_lock();
- 
- 	list_for_each_entry_rcu(c, &h->list, list) {
--		if (c->type != BIS_LINK)
-+		if (c->type != PA_LINK)
- 			continue;
- 
- 		if (!test_bit(HCI_CONN_CREATE_PA_SYNC, &c->flags))
-@@ -1327,7 +1330,7 @@ hci_conn_hash_lookup_big_sync_pend(struct hci_dev *hdev,
- 	rcu_read_lock();
- 
- 	list_for_each_entry_rcu(c, &h->list, list) {
--		if (c->type != BIS_LINK)
-+		if (c->type != PA_LINK)
- 			continue;
- 
- 		if (handle == c->iso_qos.bcast.big && num_bis == c->num_bis) {
-@@ -1397,7 +1400,7 @@ hci_conn_hash_lookup_pa_sync_handle(struct hci_dev *hdev, __u16 sync_handle)
- 	rcu_read_lock();
- 
- 	list_for_each_entry_rcu(c, &h->list, list) {
--		if (c->type != BIS_LINK)
-+		if (c->type != PA_LINK)
- 			continue;
- 
- 		/* Ignore the listen hcon, we are looking
-@@ -1996,6 +1999,7 @@ static inline int hci_proto_connect_ind(struct hci_dev *hdev, bdaddr_t *bdaddr,
- 
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 		return iso_connect_ind(hdev, bdaddr, flags);
- 
- 	default:
-diff --git a/net/bluetooth/hci_conn.c b/net/bluetooth/hci_conn.c
-index f5cd935490ad..4042e75c33a6 100644
---- a/net/bluetooth/hci_conn.c
-+++ b/net/bluetooth/hci_conn.c
-@@ -785,7 +785,7 @@ static int hci_le_big_terminate(struct hci_dev *hdev, u8 big, struct hci_conn *c
- 	d->sync_handle = conn->sync_handle;
- 
- 	if (test_and_clear_bit(HCI_CONN_PA_SYNC, &conn->flags)) {
--		hci_conn_hash_list_flag(hdev, find_bis, BIS_LINK,
-+		hci_conn_hash_list_flag(hdev, find_bis, PA_LINK,
- 					HCI_CONN_PA_SYNC, d);
- 
- 		if (!d->count)
-@@ -914,6 +914,7 @@ static struct hci_conn *__hci_conn_add(struct hci_dev *hdev, int type, bdaddr_t
- 		break;
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 		if (hdev->iso_mtu)
- 			/* Dedicated ISO Buffer exists */
- 			break;
-@@ -979,6 +980,7 @@ static struct hci_conn *__hci_conn_add(struct hci_dev *hdev, int type, bdaddr_t
- 		break;
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 		/* conn->src should reflect the local identity address */
- 		hci_copy_identity_address(hdev, &conn->src, &conn->src_type);
- 
-@@ -1033,7 +1035,6 @@ static struct hci_conn *__hci_conn_add(struct hci_dev *hdev, int type, bdaddr_t
- 	}
- 
- 	hci_conn_init_sysfs(conn);
--
- 	return conn;
- }
- 
-@@ -1077,6 +1078,7 @@ static void hci_conn_cleanup_child(struct hci_conn *conn, u8 reason)
- 		break;
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 		if ((conn->state != BT_CONNECTED &&
- 		    !test_bit(HCI_CONN_CREATE_CIS, &conn->flags)) ||
- 		    test_bit(HCI_CONN_BIG_CREATED, &conn->flags))
-@@ -1152,7 +1154,8 @@ void hci_conn_del(struct hci_conn *conn)
- 	} else {
- 		/* Unacked ISO frames */
- 		if (conn->type == CIS_LINK ||
--		    conn->type == BIS_LINK) {
-+		    conn->type == BIS_LINK ||
-+		    conn->type == PA_LINK) {
- 			if (hdev->iso_pkts)
- 				hdev->iso_cnt += conn->sent;
- 			else if (hdev->le_pkts)
-@@ -2081,7 +2084,7 @@ struct hci_conn *hci_pa_create_sync(struct hci_dev *hdev, bdaddr_t *dst,
- 
- 	bt_dev_dbg(hdev, "dst %pMR type %d sid %d", dst, dst_type, sid);
- 
--	conn = hci_conn_add_unset(hdev, BIS_LINK, dst, HCI_ROLE_SLAVE);
-+	conn = hci_conn_add_unset(hdev, PA_LINK, dst, HCI_ROLE_SLAVE);
- 	if (IS_ERR(conn))
- 		return conn;
- 
-@@ -2246,7 +2249,7 @@ struct hci_conn *hci_connect_bis(struct hci_dev *hdev, bdaddr_t *dst,
- 	 * the start periodic advertising and create BIG commands have
- 	 * been queued
- 	 */
--	hci_conn_hash_list_state(hdev, bis_mark_per_adv, BIS_LINK,
-+	hci_conn_hash_list_state(hdev, bis_mark_per_adv, PA_LINK,
- 				 BT_BOUND, &data);
- 
- 	/* Queue start periodic advertising and create BIG */
-@@ -2980,6 +2983,7 @@ void hci_conn_tx_queue(struct hci_conn *conn, struct sk_buff *skb)
- 	switch (conn->type) {
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 	case ACL_LINK:
- 	case LE_LINK:
- 		break;
-diff --git a/net/bluetooth/hci_core.c b/net/bluetooth/hci_core.c
-index 42f597cb0941..d1c7becb0953 100644
---- a/net/bluetooth/hci_core.c
-+++ b/net/bluetooth/hci_core.c
-@@ -2936,12 +2936,14 @@ int hci_recv_frame(struct hci_dev *hdev, struct sk_buff *skb)
- 	case HCI_ACLDATA_PKT:
- 		/* Detect if ISO packet has been sent as ACL */
- 		if (hci_conn_num(hdev, CIS_LINK) ||
--		    hci_conn_num(hdev, BIS_LINK)) {
-+		    hci_conn_num(hdev, BIS_LINK) ||
-+			hci_conn_num(hdev, PA_LINK)) {
- 			__u16 handle = __le16_to_cpu(hci_acl_hdr(skb)->handle);
- 			__u8 type;
- 
- 			type = hci_conn_lookup_type(hdev, hci_handle(handle));
--			if (type == CIS_LINK || type == BIS_LINK)
-+			if (type == CIS_LINK || type == BIS_LINK ||
-+			    type == PA_LINK)
- 				hci_skb_pkt_type(skb) = HCI_ISODATA_PKT;
- 		}
- 		break;
-@@ -3396,6 +3398,7 @@ static inline void hci_quote_sent(struct hci_conn *conn, int num, int *quote)
- 		break;
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 		cnt = hdev->iso_mtu ? hdev->iso_cnt :
- 			hdev->le_mtu ? hdev->le_cnt : hdev->acl_cnt;
- 		break;
-@@ -3409,7 +3412,7 @@ static inline void hci_quote_sent(struct hci_conn *conn, int num, int *quote)
- }
- 
- static struct hci_conn *hci_low_sent(struct hci_dev *hdev, __u8 type,
--				     __u8 type2, int *quote)
-+				     int *quote)
- {
- 	struct hci_conn_hash *h = &hdev->conn_hash;
- 	struct hci_conn *conn = NULL, *c;
-@@ -3421,7 +3424,7 @@ static struct hci_conn *hci_low_sent(struct hci_dev *hdev, __u8 type,
- 	rcu_read_lock();
- 
- 	list_for_each_entry_rcu(c, &h->list, list) {
--		if ((c->type != type && c->type != type2) ||
-+		if (c->type != type ||
- 		    skb_queue_empty(&c->data_q))
- 			continue;
- 
-@@ -3625,7 +3628,7 @@ static void hci_sched_sco(struct hci_dev *hdev, __u8 type)
- 	else
- 		cnt = &hdev->sco_cnt;
- 
--	while (*cnt && (conn = hci_low_sent(hdev, type, type, &quote))) {
-+	while (*cnt && (conn = hci_low_sent(hdev, type, &quote))) {
- 		while (quote-- && (skb = skb_dequeue(&conn->data_q))) {
- 			BT_DBG("skb %p len %d", skb, skb->len);
- 			hci_send_conn_frame(hdev, conn, skb);
-@@ -3744,8 +3747,8 @@ static void hci_sched_le(struct hci_dev *hdev)
- 		hci_prio_recalculate(hdev, LE_LINK);
- }
- 
--/* Schedule CIS */
--static void hci_sched_iso(struct hci_dev *hdev)
-+/* Schedule iso */
-+static void hci_sched_iso(struct hci_dev *hdev, __u8 type)
- {
- 	struct hci_conn *conn;
- 	struct sk_buff *skb;
-@@ -3753,14 +3756,12 @@ static void hci_sched_iso(struct hci_dev *hdev)
- 
- 	BT_DBG("%s", hdev->name);
- 
--	if (!hci_conn_num(hdev, CIS_LINK) &&
--	    !hci_conn_num(hdev, BIS_LINK))
-+	if (!hci_conn_num(hdev, type))
- 		return;
- 
- 	cnt = hdev->iso_pkts ? &hdev->iso_cnt :
- 		hdev->le_pkts ? &hdev->le_cnt : &hdev->acl_cnt;
--	while (*cnt && (conn = hci_low_sent(hdev, CIS_LINK, BIS_LINK,
--					    &quote))) {
-+	while (*cnt && (conn = hci_low_sent(hdev, type, &quote))) {
- 		while (quote-- && (skb = skb_dequeue(&conn->data_q))) {
- 			BT_DBG("skb %p len %d", skb, skb->len);
- 			hci_send_conn_frame(hdev, conn, skb);
-@@ -3785,7 +3786,9 @@ static void hci_tx_work(struct work_struct *work)
- 		/* Schedule queues and send stuff to HCI driver */
- 		hci_sched_sco(hdev, SCO_LINK);
- 		hci_sched_sco(hdev, ESCO_LINK);
--		hci_sched_iso(hdev);
-+		hci_sched_iso(hdev, CIS_LINK);
-+		hci_sched_iso(hdev, BIS_LINK);
-+		hci_sched_iso(hdev, PA_LINK);
- 		hci_sched_acl(hdev);
- 		hci_sched_le(hdev);
- 	}
-diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
-index 2c14e9daa199..d1e77dfe9edf 100644
---- a/net/bluetooth/hci_event.c
-+++ b/net/bluetooth/hci_event.c
-@@ -4433,6 +4433,7 @@ static void hci_num_comp_pkts_evt(struct hci_dev *hdev, void *data,
- 
- 		case CIS_LINK:
- 		case BIS_LINK:
-+		case PA_LINK:
- 			if (hdev->iso_pkts) {
- 				hdev->iso_cnt += count;
- 				if (hdev->iso_cnt > hdev->iso_pkts)
-@@ -6378,7 +6379,7 @@ static void hci_le_pa_sync_established_evt(struct hci_dev *hdev, void *data,
- 	conn->sync_handle = le16_to_cpu(ev->handle);
- 	conn->sid = HCI_SID_INVALID;
- 
--	mask |= hci_proto_connect_ind(hdev, &ev->bdaddr, BIS_LINK,
-+	mask |= hci_proto_connect_ind(hdev, &ev->bdaddr, PA_LINK,
- 				      &flags);
- 	if (!(mask & HCI_LM_ACCEPT)) {
- 		hci_le_pa_term_sync(hdev, ev->handle);
-@@ -6389,7 +6390,7 @@ static void hci_le_pa_sync_established_evt(struct hci_dev *hdev, void *data,
- 		goto unlock;
- 
- 	/* Add connection to indicate PA sync event */
--	pa_sync = hci_conn_add_unset(hdev, BIS_LINK, BDADDR_ANY,
-+	pa_sync = hci_conn_add_unset(hdev, PA_LINK, BDADDR_ANY,
- 				     HCI_ROLE_SLAVE);
- 
- 	if (IS_ERR(pa_sync))
-@@ -6420,7 +6421,7 @@ static void hci_le_per_adv_report_evt(struct hci_dev *hdev, void *data,
- 
- 	hci_dev_lock(hdev);
- 
--	mask |= hci_proto_connect_ind(hdev, BDADDR_ANY, BIS_LINK, &flags);
-+	mask |= hci_proto_connect_ind(hdev, BDADDR_ANY, PA_LINK, &flags);
- 	if (!(mask & HCI_LM_ACCEPT))
- 		goto unlock;
- 
-diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c
-index 4ea172a26ccc..d9bb543063fa 100644
---- a/net/bluetooth/hci_sync.c
-+++ b/net/bluetooth/hci_sync.c
-@@ -2929,7 +2929,7 @@ static int hci_le_set_ext_scan_param_sync(struct hci_dev *hdev, u8 type,
- 		if (sent) {
- 			struct hci_conn *conn;
- 
--			conn = hci_conn_hash_lookup_ba(hdev, BIS_LINK,
-+			conn = hci_conn_hash_lookup_ba(hdev, PA_LINK,
- 						       &sent->bdaddr);
- 			if (conn) {
- 				struct bt_iso_qos *qos = &conn->iso_qos;
-@@ -5493,7 +5493,7 @@ static int hci_disconnect_sync(struct hci_dev *hdev, struct hci_conn *conn,
- {
- 	struct hci_cp_disconnect cp;
- 
--	if (conn->type == BIS_LINK) {
-+	if (conn->type == BIS_LINK || conn->type == PA_LINK) {
- 		/* This is a BIS connection, hci_conn_del will
- 		 * do the necessary cleanup.
- 		 */
-@@ -5562,7 +5562,7 @@ static int hci_connect_cancel_sync(struct hci_dev *hdev, struct hci_conn *conn,
- 		return HCI_ERROR_LOCAL_HOST_TERM;
- 	}
- 
--	if (conn->type == BIS_LINK) {
-+	if (conn->type == BIS_LINK || conn->type == PA_LINK) {
- 		/* There is no way to cancel a BIS without terminating the BIG
- 		 * which is done later on connection cleanup.
- 		 */
-@@ -5627,7 +5627,7 @@ static int hci_reject_conn_sync(struct hci_dev *hdev, struct hci_conn *conn,
- 	if (conn->type == CIS_LINK)
- 		return hci_le_reject_cis_sync(hdev, conn, reason);
- 
--	if (conn->type == BIS_LINK)
-+	if (conn->type == BIS_LINK || conn->type == PA_LINK)
- 		return -EINVAL;
- 
- 	if (conn->type == SCO_LINK || conn->type == ESCO_LINK)
-@@ -6995,7 +6995,7 @@ static void create_pa_complete(struct hci_dev *hdev, void *data, int err)
- 		goto unlock;
- 
- 	/* Add connection to indicate PA sync error */
--	pa_sync = hci_conn_add_unset(hdev, BIS_LINK, BDADDR_ANY,
-+	pa_sync = hci_conn_add_unset(hdev, PA_LINK, BDADDR_ANY,
- 				     HCI_ROLE_SLAVE);
- 
- 	if (IS_ERR(pa_sync))
-diff --git a/net/bluetooth/iso.c b/net/bluetooth/iso.c
-index fc22782cbeeb..dff99de98042 100644
---- a/net/bluetooth/iso.c
-+++ b/net/bluetooth/iso.c
-@@ -2226,7 +2226,8 @@ int iso_connect_ind(struct hci_dev *hdev, bdaddr_t *bdaddr, __u8 *flags)
- 
- static void iso_connect_cfm(struct hci_conn *hcon, __u8 status)
- {
--	if (hcon->type != CIS_LINK && hcon->type != BIS_LINK) {
-+	if (hcon->type != CIS_LINK && hcon->type != BIS_LINK &&
-+	    hcon->type != PA_LINK) {
- 		if (hcon->type != LE_LINK)
- 			return;
- 
-@@ -2267,7 +2268,8 @@ static void iso_connect_cfm(struct hci_conn *hcon, __u8 status)
- 
- static void iso_disconn_cfm(struct hci_conn *hcon, __u8 reason)
- {
--	if (hcon->type != CIS_LINK && hcon->type != BIS_LINK)
-+	if (hcon->type != CIS_LINK && hcon->type !=  BIS_LINK &&
-+	    hcon->type != PA_LINK)
- 		return;
- 
- 	BT_DBG("hcon %p reason %d", hcon, reason);
-diff --git a/net/bluetooth/mgmt.c b/net/bluetooth/mgmt.c
-index 1485b455ade4..f90c53f7885b 100644
---- a/net/bluetooth/mgmt.c
-+++ b/net/bluetooth/mgmt.c
-@@ -3239,6 +3239,7 @@ static u8 link_to_bdaddr(u8 link_type, u8 addr_type)
- 	switch (link_type) {
- 	case CIS_LINK:
- 	case BIS_LINK:
-+	case PA_LINK:
- 	case LE_LINK:
- 		switch (addr_type) {
- 		case ADDR_LE_DEV_PUBLIC:
-
+ Documentation/PCI/endpoint/pci-test-howto.rst      |  14 +++
+ arch/arm64/boot/dts/freescale/imx95.dtsi           |   1 +
+ drivers/misc/pci_endpoint_test.c                   |  85 ++++++++++++-
+ drivers/pci/controller/dwc/pci-imx6.c              |  25 ++--
+ drivers/pci/endpoint/Kconfig                       |   8 ++
+ drivers/pci/endpoint/Makefile                      |   1 +
+ drivers/pci/endpoint/functions/pci-epf-test.c      | 136 +++++++++++++++++++++
+ drivers/pci/endpoint/pci-ep-msi.c                  |  98 +++++++++++++++
+ drivers/pci/endpoint/pci-epf-core.c                |  36 ++++++
+ include/linux/pci-ep-msi.h                         |  28 +++++
+ include/linux/pci-epf.h                            |  18 +++
+ include/uapi/linux/pcitest.h                       |   1 +
+ .../selftests/pci_endpoint/pci_endpoint_test.c     |  28 +++++
+ 13 files changed, 470 insertions(+), 9 deletions(-)
 ---
-base-commit: 98b3f8ecdd57baff41dceccf4cba5edff3b9c010
-change-id: 20250710-pa_link-94e292e2768e
+base-commit: d7b8f8e20813f0179d8ef519541a3527e7661d3a
+change-id: 20241010-ep-msi-8b4cab33b1be
 
 Best regards,
--- 
-Yang Li <yang.li@amlogic.com>
+--
+Frank Li <Frank.Li@nxp.com>
 
