@@ -1,68 +1,57 @@
 From: Louis Rannou <louis.rannou@non.se.com>
-Date: Fri, 11 Jul 2025 14:48:17 +0200
-Subject: [PATCH RFC 1/2] Fix usage of PATCH in prefixes
+Date: Fri, 11 Jul 2025 14:48:18 +0200
+Subject: [PATCH RFC 2/2] send-receive: accept bracket-prefix before
+ '[PATCH'
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250711-prefixes-v1-1-c8d5715cc521@non.se.com>
+Message-Id: <20250711-prefixes-v1-2-c8d5715cc521@non.se.com>
 References: <20250711-prefixes-v1-0-c8d5715cc521@non.se.com>
 In-Reply-To: <20250711-prefixes-v1-0-c8d5715cc521@non.se.com>
 To: "Kernel.org Tools" <tools@kernel.org>
 Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
  Louis Rannou <louis.rannou@non.se.com>, pascal.eberhard@se.com
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752238101; l=1639;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752238101; l=1336;
  i=louis.rannou@non.se.com; s=20250630; h=from:subject:message-id;
- bh=CfLpz8qB6gnvrEky8wC9S3UK+CoOrRvn6rKhhoHGcko=;
- b=3l2BSZQ6tdticVdHEH43zJpdiUd2q4g+BqF7XzxTl0ZGAw5lkv0I8xJHxakpejbqLn3uLXQdy
- xFtq6HdlkdpDE7nYdEdL0DtWKWdSG3OPMTZI071ICJE7cLKAGOZ7hi9
+ bh=kAkV02g7Gz/O8wHv7cuyXl69EEnMYrXcM4k+aRHsAxI=;
+ b=bS9FSGK2w6Ti+7BUnPJHacOyTEnYq2QX4P6Jp7PJwHLioHnHd6veCTqEwi/ttiWS9vIsid1wI
+ NfLYbC0dsxCDVBu4+gCNj32mctEIECYBJxGYmAwjZOnu4VZeTpeIYJP
 X-Developer-Key: i=louis.rannou@non.se.com; a=ed25519;
  pk=WWYN5/DFKqyCKdv6oTYNuq0gROqwZVfNfw2OMI3tUlc=
 X-Endpoint-Received: by B4 Relay for louis.rannou@non.se.com/20250630 with auth_id=446
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Several projects have a '[prefix]' before '[PATCH]'. While git-send-email
-supports having prefixes before 'PATCH' using a 'prefix][PATCH' syntax, b4 still
-prepends prefixes with '[PATCH '.
+Change how send-receive checks the subject is well-formatted by accepting
+bracket prefixes before [PATCH.
 
-Including 'PATCH' in prefixes is not sufficient as it will keep an extra space
-before the 'PATCH' keyword.
-
-Before:
-b4 prep --set-prefix 'prefix][PATCH' gave [PATCH prefix][PATCH]
-b4 prep --set-prefixes prefix PATCH  gave [prefix][ PATCH]
-
-After:
-b4 prep --set-prefix 'prefix][PATCH' gives [prefix][PATCH]
+All opened bracket must be closed and text is only accepted in brackets.
 
 Signed-off-by: Louis Rannou <louis.rannou@non.se.com>
 ---
- src/b4/__init__.py | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ misc/send-receive.py | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/src/b4/__init__.py b/src/b4/__init__.py
-index ff6075e..72ef79b 100644
---- a/src/b4/__init__.py
-+++ b/src/b4/__init__.py
-@@ -2568,14 +2568,16 @@ class LoreSubject:
- 
-     def get_rebuilt_subject(self, eprefixes: Optional[List[str]] = None) -> str:
-         exclude = None
--        if eprefixes and 'PATCH' in eprefixes:
-+        rpatch = re.compile(r'.*\[PATCH', re.IGNORECASE)
-+
-+        if eprefixes and list(filter(rpatch.match, eprefixes)):
-             exclude = ['patch']
-         _pfx = self.get_extra_prefixes(exclude=exclude)
-         if eprefixes:
-             for _epfx in eprefixes:
-                 if _epfx.lower() not in [x.lower() for x in _pfx]:
-                     _pfx.append(_epfx)
--        if 'patch' not in [x.lower() for x in _pfx]:
-+        if not list(filter(rpatch.match, [x for x in _pfx])):
-             _pfx.insert(0, 'PATCH')
-         if self.revision > 1:
-             _pfx.append(f'v{self.revision}')
+diff --git a/misc/send-receive.py b/misc/send-receive.py
+index bb65aaa..d574054 100644
+--- a/misc/send-receive.py
++++ b/misc/send-receive.py
+@@ -433,12 +433,13 @@ class SendReceiveListener(object):
+             msg = email.message_from_bytes(bdata, policy=emlpolicy)
+             logger.debug('Checking sanity on message: %s', msg.get('Subject'))
+             # Some quick sanity checking:
+-            # - Subject has to start with [PATCH
++            # - Subject has to start with [PATCH or has only bracket-prefixes
++            #   such as [prefix][PATCH
+             # - Content-type may ONLY be text/plain
+             # - Has to include a diff or a diffstat
+             passes = True
+             subject = self.clean_header(msg.get('Subject', ''))
+-            if not subject.startswith('[PATCH'):
++            if not re.match(r'(\[.*\])*[PATCH.*', subject):
+                 passes = False
+             if passes:
+                 cte = msg.get_content_type()
 
 -- 
 2.43.0
