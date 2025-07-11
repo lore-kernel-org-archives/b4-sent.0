@@ -1,58 +1,76 @@
-From: Louis Rannou <louis.rannou@non.se.com>
-Date: Fri, 11 Jul 2025 14:48:18 +0200
-Subject: [PATCH RFC 2/2] send-receive: accept bracket-prefix before
- '[PATCH'
+From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Subject: [PATCH v5 0/2] riscv: Use GCR.U timer device as clocksource
+Date: Fri, 11 Jul 2025 23:56:44 +0200
+Message-Id: <20250711-riscv-time-mmio-v5-0-9ed1f825ad5e@htecgroup.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250711-prefixes-v1-2-c8d5715cc521@non.se.com>
-References: <20250711-prefixes-v1-0-c8d5715cc521@non.se.com>
-In-Reply-To: <20250711-prefixes-v1-0-c8d5715cc521@non.se.com>
-To: "Kernel.org Tools" <tools@kernel.org>
-Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
- Louis Rannou <louis.rannou@non.se.com>, pascal.eberhard@se.com
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752238101; l=1336;
- i=louis.rannou@non.se.com; s=20250630; h=from:subject:message-id;
- bh=kAkV02g7Gz/O8wHv7cuyXl69EEnMYrXcM4k+aRHsAxI=;
- b=bS9FSGK2w6Ti+7BUnPJHacOyTEnYq2QX4P6Jp7PJwHLioHnHd6veCTqEwi/ttiWS9vIsid1wI
- NfLYbC0dsxCDVBu4+gCNj32mctEIECYBJxGYmAwjZOnu4VZeTpeIYJP
-X-Developer-Key: i=louis.rannou@non.se.com; a=ed25519;
- pk=WWYN5/DFKqyCKdv6oTYNuq0gROqwZVfNfw2OMI3tUlc=
-X-Endpoint-Received: by B4 Relay for louis.rannou@non.se.com/20250630 with auth_id=446
+X-B4-Tracking: v=1; b=H4sIAJyIcWgC/2WNQQ6CMBBFr0K6dkydtARdeQ/CAocpzKKUtNhoC
+ He34tLle8l/f1OJo3BSt2pTkbMkCXMBe6oUTf08MshQWKFGqw0aiJIowyqewXsJYGtsWDvqm96
+ psloiO3kdxbYrPElaQ3wfB9l87a9lL/+tbEADPTQ5vCIOdX2fVqYxhudypuBVt+/7BzH0MY6yA
+ AAA
+X-Change-ID: 20250424-riscv-time-mmio-5628e0fca8af
+To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
+ Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-riscv@lists.infradead.org, 
+ Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752271040; l=1798;
+ i=aleksa.paunovic@htecgroup.com; s=20250514; h=from:subject:message-id;
+ bh=rKK6/zAeDGlf2Rcw+XgRGzGg1wLNDrZiOXO05uwH78I=;
+ b=KytOxScst8FlcaqhCNUXLNgl4U+YRyv7Yo59CwjWeu9RGKO7KU14DknmC2ThSZqyiN+EJWQ1u
+ i925hQY2QoLCIseXEBHReLzdPoZyna1zQlpJcjdIQHTIeO/BV4wy6H7
+X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
+ pk=gFVSVYLKAgJiS5qCnDyUMGOFuczv8C6o0UmRs+fgisA=
+X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250514 with auth_id=403
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Change how send-receive checks the subject is well-formatted by accepting
-bracket prefixes before [PATCH.
+This series adds bindings for the GCR.U timer device and corresponding
+driver support. Accessing the memory mapped mtime register in the GCR.U
+region should be faster than trapping to M mode each time the timer
+needs to be read.
 
-All opened bracket must be closed and text is only accepted in brackets.
-
-Signed-off-by: Louis Rannou <louis.rannou@non.se.com>
+Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
- misc/send-receive.py | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Changes in v5:
+- Fixed build issues on 32-bit RISC-V and sparse warnings
+- Remove clint_time_val and clint.h, replace with riscv_time_val
+- Depend on RISCV_TIMER in Kconfig
+Changes in v4:
+- Remove "select" from mti,gcru.yaml.
+- Refactor the driver to use function pointers instead of static keys.
 
-diff --git a/misc/send-receive.py b/misc/send-receive.py
-index bb65aaa..d574054 100644
---- a/misc/send-receive.py
-+++ b/misc/send-receive.py
-@@ -433,12 +433,13 @@ class SendReceiveListener(object):
-             msg = email.message_from_bytes(bdata, policy=emlpolicy)
-             logger.debug('Checking sanity on message: %s', msg.get('Subject'))
-             # Some quick sanity checking:
--            # - Subject has to start with [PATCH
-+            # - Subject has to start with [PATCH or has only bracket-prefixes
-+            #   such as [prefix][PATCH
-             # - Content-type may ONLY be text/plain
-             # - Has to include a diff or a diffstat
-             passes = True
-             subject = self.clean_header(msg.get('Subject', ''))
--            if not subject.startswith('[PATCH'):
-+            if not re.match(r'(\[.*\])*[PATCH.*', subject):
-                 passes = False
-             if passes:
-                 cte = msg.get_content_type()
+Previous versions:
+v1: https://lore.kernel.org/lkml/20241227150056.191794-1-arikalo@gmail.com/#t
+v2: https://lore.kernel.org/linux-riscv/20250409143816.15802-1-aleksa.paunovic@htecgroup.com/
+v3: https://lore.kernel.org/linux-riscv/DU0PR09MB61968695A2A3146EE83B7708F6BA2@DU0PR09MB6196.eurprd09.prod.outlook.com/
+v4: https://lore.kernel.org/r/20250514-riscv-time-mmio-v4-0-cb0cf2922d66@htecgroup.com
 
+---
+Aleksa Paunovic (2):
+      dt-bindings: timer: mti,gcru
+      riscv: Allow for riscv-clock to pick up mmio address.
+
+ .../devicetree/bindings/timer/mti,gcru.yaml        | 38 +++++++++++++
+ arch/riscv/include/asm/clint.h                     | 26 ---------
+ arch/riscv/include/asm/timex.h                     | 63 ++++++++++++----------
+ drivers/clocksource/Kconfig                        | 12 +++++
+ drivers/clocksource/timer-clint.c                  | 20 ++++---
+ drivers/clocksource/timer-riscv.c                  | 34 ++++++++++++
+ 6 files changed, 128 insertions(+), 65 deletions(-)
+---
+base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
+change-id: 20250424-riscv-time-mmio-5628e0fca8af
+
+Best regards,
 -- 
-2.43.0
+Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 
