@@ -1,76 +1,61 @@
-From: Frank Li <Frank.Li@nxp.com>
-Date: Thu, 10 Jul 2025 15:13:55 -0400
-Subject: [PATCH v21 9/9] arm64: dts: imx95: Add msi-map for pci-ep device
+From: Louis Rannou <louis.rannou@non.se.com>
+Subject: [PATCH RFC 0/2] RFC: bracket prefixes
+Date: Fri, 11 Jul 2025 14:48:16 +0200
+Message-Id: <20250711-prefixes-v1-0-c8d5715cc521@non.se.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250710-ep-msi-v21-9-57683fc7fb25@nxp.com>
-References: <20250710-ep-msi-v21-0-57683fc7fb25@nxp.com>
-In-Reply-To: <20250710-ep-msi-v21-0-57683fc7fb25@nxp.com>
-To: Kishon Vijay Abraham I <kishon@kernel.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Thomas Gleixner <tglx@linutronix.de>, Anup Patel <apatel@ventanamicro.com>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, Marc Zyngier <maz@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>, Arnd Bergmann <arnd@arndb.de>, 
- Shuah Khan <shuah@kernel.org>, Richard Zhu <hongxing.zhu@nxp.com>, 
- Lucas Stach <l.stach@pengutronix.de>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, Rob Herring <robh@kernel.org>, 
- Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>
-Cc: Niklas Cassel <cassel@kernel.org>, dlemoal@kernel.org, jdmason@kudzu.us, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-pci@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- imx@lists.linux.dev, devicetree@vger.kernel.org, 
- Niklas Cassel <cassel@kernel.org>, Frank Li <Frank.Li@nxp.com>, 
- Manivannan Sadhasivam <mani@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752174836; l=973;
- i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
- bh=wW9Nwm5vAKtBf5Pux9lo/+uSvITxDxxhF8J82uPpSQ8=;
- b=VtcLSyohMB2FbPRKwdeAd1gT+yHIS4yjiZLuRPs9oX0oesyANEabrauubaRWQWZI0Hoa9Tyqq
- pt88S7wZQTQB5u0CTEtvjMU/70Lk/gnk03eIJ59F7pIgZX/e5D2tHlw
-X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
- pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
-X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
+X-B4-Tracking: v=1; b=H4sIABAIcWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDc0ND3YKi1LTMitRiXWNzo2Tj5DSDxDTLFCWgcpgEUHW0UpCbs1JsbS0
+ Agrz8718AAAA=
+To: "Kernel.org Tools" <tools@kernel.org>
+Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
+ Louis Rannou <louis.rannou@non.se.com>, pascal.eberhard@se.com
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752238101; l=1336;
+ i=louis.rannou@non.se.com; s=20250630; h=from:subject:message-id;
+ bh=fwHScP4CevQU44aZ824iYyYiSKY4ybSWzP82Z/1iJQQ=;
+ b=AAEBZm9aTojfcEHgmSZjwg2mPaGCwECfIK28a5R73Kqpz/7IX85dOr1FBAZGCtwR5LVD1x80a
+ fjupTRCcFXBDpp6wgcr9/7rsrBtLfxJ0fNBOwSe9qUTyRVpO8vYMkiw
+X-Developer-Key: i=louis.rannou@non.se.com; a=ed25519;
+ pk=WWYN5/DFKqyCKdv6oTYNuq0gROqwZVfNfw2OMI3tUlc=
+X-Endpoint-Received: by B4 Relay for louis.rannou@non.se.com/20250630 with auth_id=446
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add msi-map for pci-ep device.
+Several projects such as meta-openembedded [1] or meta-security [2] require some
+bracket-prefixes before '[PATCH]'. The issue is that prefixes are always
+appended with spaces and the automatic '[PATCH]' prefix is excluded only if we
+have a prefix 'PATCH'.
 
-Acked-by: Manivannan Sadhasivam <mani@kernel.org>
-Signed-off-by: Frank Li <Frank.Li@nxp.com>
+The first patch suggests to exclude the automatic prefix whenever we have a
+prefix that ends with '[PATCH'.
+
+However, it gets an error when sending:
+
+  Reflecting via web endpoint https://lkml.kernel.org/_b4_submit
+  Error from endpoint: This service only accepts patches
+
+I suppose this comes from 'send-receive.py' ran by the server. Therefore comes
+the second patch to make it accept any bracket-prefix. I was not able to test
+that part.
+
+[1]: https://git.openembedded.org/meta-openembedded/tree/meta-networking/MAINTAINERS#n3
+[2]: https://git.yoctoproject.org/meta-security/tree/README.md#n77
+
+Signed-off-by: Louis Rannou <louis.rannou@non.se.com>
 ---
-change in v20
-- add Manivannan's ACK
+Louis Rannou (2):
+      Fix usage of PATCH in prefixes
+      send-receive: accept bracket-prefix before '[PATCH'
 
-change from v14 to v16
-- none
-
-change from v13 to v14
-- new patch
+ misc/send-receive.py | 5 +++--
+ src/b4/__init__.py   | 6 ++++--
+ 2 files changed, 7 insertions(+), 4 deletions(-)
 ---
- arch/arm64/boot/dts/freescale/imx95.dtsi | 1 +
- 1 file changed, 1 insertion(+)
+base-commit: a9b2aba54be85ea2933c43b8a6d71c1611230b59
+change-id: 20250711-prefixes-372c3cf0af9d
 
-diff --git a/arch/arm64/boot/dts/freescale/imx95.dtsi b/arch/arm64/boot/dts/freescale/imx95.dtsi
-index 632631a2911224cadc16a943cdb467e091e43384..c59d11eb7a581a500d381ef96f1e44533052c2a2 100644
---- a/arch/arm64/boot/dts/freescale/imx95.dtsi
-+++ b/arch/arm64/boot/dts/freescale/imx95.dtsi
-@@ -1797,6 +1797,7 @@ pcie1_ep: pcie-ep@4c380000 {
- 			assigned-clock-rates = <3600000000>, <100000000>, <10000000>;
- 			assigned-clock-parents = <0>, <0>,
- 						 <&scmi_clk IMX95_CLK_SYSPLL1_PFD1_DIV2>;
-+			msi-map = <0x0 &its 0x98 0x1>;
- 			power-domains = <&scmi_devpd IMX95_PD_HSIO_TOP>;
- 			status = "disabled";
- 		};
-
+Best regards,
 -- 
-2.34.1
+Louis Rannou <louis.rannou@non.se.com>
 
