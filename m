@@ -1,66 +1,57 @@
-From: Ye He <ye.he@amlogic.com>
-Date: Sat, 12 Jul 2025 17:23:42 +0800
-Subject: [PATCH bluez] src/adapter: Fix RemoveDevice timeout when device
- already disconnected
+From: Christoph Paasch <cpaasch@openai.com>
+Subject: [PATCH net-next 0/2] net/mlx5: Avoid payload in skb's linear part
+ for better GRO-processing
+Date: Sun, 13 Jul 2025 16:33:05 -0700
+Message-Id: <20250713-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v1-0-ecaed8c2844e@openai.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250712-adapter-rm-device-v1-1-808603331f92@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAJ0pcmgC/x2MwQrCQAwFf6XkbKAJrIK/UjzE7qsGbC1ZLWLpv
- 3fpcWBmVioIR6Frs1Jg8eLvqYKcGuqfNj3AniuTtpraiyhbtvmD4Bg5V78Hi5ohnZNoEqrdHBj
- 8dzw7ur+++NNt23bErRXXagAAAA==
-X-Change-ID: 20250712-adapter-rm-device-12aae5651251
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Ye He <ye.he@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIADFCdGgC/x3OQQqEMAyF4atI1hPQYhXnKsMsQhs1UNvSFlHEu
+ 1tcfpv/vQsyJ+EM3+aCxLtkCb6i+zRgVvILo9hqUK3S7dgpNJEomxXjjJMa0XPZ3KGR9iAWTYi
+ n+AXLyhjpdIEslvByI+eCYYuUmHDQqp+6sdeaBqhbMfEsx/vjB7VZu0eB/30/m1TZQ6EAAAA=
+X-Change-ID: 20250712-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-6524917455a6
+To: Saeed Mahameed <saeedm@nvidia.com>, Leon Romanovsky <leon@kernel.org>, 
+ Tariq Toukan <tariqt@nvidia.com>, Mark Bloch <mbloch@nvidia.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: linux-rdma@vger.kernel.org, netdev@vger.kernel.org, 
+ Christoph Paasch <cpaasch@openai.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752312224; l=1576;
- i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
- bh=DARVIHJtGfNwayJXs1VwNVtAfrL1/3+G/NK64yrR1eo=;
- b=8cOsQ+c0aVHpyDp/4ySaNDXnI3/7X/KIIz5KvpSSAK2v2HywmteDz2wZTy9WDEux9qNs9Kin6
- +MFwjRIITV7BPpZqZGQ43ciEhg5X1wPVgLbZ42xQOvLb6zDJliO5o8A
-X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
- pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
-X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752449639; l=1053;
+ i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
+ bh=lOoncje2oUnyFV/y0B2u8ZzppYxKn2zAB68qVvRIoRk=;
+ b=ioSnehR5e7kuMAxE7uGeb0XuNvhZbFt+x+kCs6WgJ0hnHyokukeq66J0XA+CPcBqGtDJ9tYT3
+ k5pJQM5vm0fAUzFjHKeHNyaJHwkiB3yLpaohwd75Qin5sDSaDHm6E4M
+X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
+ pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
+X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When attempting to use RemoveDevice to delete a BIS source device that
-was synchronized by the BIS sink scan delegator, the kernel marks the
-device as disconnected due to PA sync termination. However, BlueZ is not
-notified of this disconnection and still proceeds to send MGMT Disconnect
-command. The kernel responds with MGMT_STATUS_DISCONNECTED, which BlueZ
-does not currently handle as a successful case. As a result, the RemoveDevice
-call never completes and no D-Bus reply is returned.
+When LRO is enabled on the MLX, mlx5e_skb_from_cqe_mpwrq_nonlinear
+copies parts of the payload to the linear part of the skb.
 
-Fixes: https://github.com/bluez/bluez/issues/1421
+This triggers suboptimal processing in GRO, causing slow throughput,...
 
-Signed-off-by: Ye He <ye.he@amlogic.com>
+This patch series addresses this by copying a lower-bound estimate of
+the protocol headers - trying to avoid the payload part. This results in
+a significant throughput improvement (detailled results in the specific
+patch).
+
+Signed-off-by: Christoph Paasch <cpaasch@openai.com>
 ---
-This patch fix org.bluez.Adapter1.RemoveDevice method call timeout
-when device already disconnected.
----
- src/adapter.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Christoph Paasch (2):
+      net/mlx5: Bring back get_cqe_l3_hdr_type
+      net/mlx5: Avoid copying payload to the skb's linear part
 
-diff --git a/src/adapter.c b/src/adapter.c
-index 79802300bedf4b25cb7c6bc3ea659c122a01efcb..5d68fa4c7dea251af4ff3b05a1ad66204c847c37 100644
---- a/src/adapter.c
-+++ b/src/adapter.c
-@@ -8619,7 +8619,8 @@ static void disconnect_complete(uint8_t status, uint16_t length,
- 	const struct mgmt_rp_disconnect *rp = param;
- 	struct btd_adapter *adapter = user_data;
- 
--	if (status == MGMT_STATUS_NOT_CONNECTED) {
-+	if (status == MGMT_STATUS_NOT_CONNECTED ||
-+		status == MGMT_STATUS_DISCONNECTED) {
- 		btd_warn(adapter->dev_id,
- 				"Disconnecting failed: already disconnected");
- 	} else if (status != MGMT_STATUS_SUCCESS) {
-
+ drivers/net/ethernet/mellanox/mlx5/core/en_rx.c | 33 ++++++++++++++++++++++++-
+ include/linux/mlx5/device.h                     | 12 ++++++++-
+ 2 files changed, 43 insertions(+), 2 deletions(-)
 ---
-base-commit: 806dd732fcda584fa6c44322a74373d2b739c781
-change-id: 20250712-adapter-rm-device-12aae5651251
+base-commit: a52f9f0d77f20efc285908a28b5697603b6597c7
+change-id: 20250712-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-6524917455a6
 
 Best regards,
 -- 
-Ye He <ye.he@amlogic.com>
+Christoph Paasch <cpaasch@openai.com>
 
