@@ -1,56 +1,104 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Mon, 14 Jul 2025 16:39:08 +0100
-Subject: [PATCH RESEND 2/4] dma: dma-axi-dmac: fix HW scatter-gather not
- looking at the queue
+Date: Mon, 14 Jul 2025 16:39:09 +0100
+Subject: [PATCH RESEND 3/4] dma: dma-axi-dmac: support bigger than 32bits
+ addresses
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250714-dev-axi-dmac-fixes-v1-2-c3888b0d671b@analog.com>
+Message-Id: <20250714-dev-axi-dmac-fixes-v1-3-c3888b0d671b@analog.com>
 References: <20250714-dev-axi-dmac-fixes-v1-0-c3888b0d671b@analog.com>
 In-Reply-To: <20250714-dev-axi-dmac-fixes-v1-0-c3888b0d671b@analog.com>
 To: dmaengine@vger.kernel.org
 Cc: Paul Cercueil <paul@crapouillou.net>, 
  Lars-Peter Clausen <lars@metafoo.de>, Vinod Koul <vkoul@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752507553; l=1232;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752507553; l=3179;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=qODL1NlzaztSF9p9vRP44mRlOQRklh3MwhgK7VeiTxQ=;
- b=acsfjOmWxJquRKjJp26gvsSQ3DUPZ5tbC45kUPsRSQOzlZ7MySmFyBOzszethQ6NtEjsIIADq
- wbShJ2fkvKICjLeYjuO5ROwUBzM/TW6/TQgMcWWvyzE5FEaoxpB3HaN
+ bh=ZsikNgN4By3w8azbKVO4HqwHd6u+j+7UKUaZJJOjNQY=;
+ b=i39+6JUvy02+I44qP1XxCrO2egsVXN4EpQ4sffbyz0W0+HtepHAlmNq9C+8hrTK6GSccAorK6
+ PHHhOODE2ERC6I/n3YQ+24n2eOyMGW0iozUQwESzX1MCo74X6hcISlb
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For HW scatter gather transfers we still need to look for the queue. The
-HW is capable of queueing 3 concurrent transfers and if we try more than
-that we'll get the submit queue full and should return. Otherwise, if we
-go ahead and program the new transfer, we end up discarding it.
+In some supported platforms as ARCH_ZYNQMP, part of the memory is mapped
+above 32bit addresses and since the DMA mask, by default, is set to 32bits,
+we would need to rely on swiotlb (which incurs a performance penalty)
+for the DMA mappings. Thus, we can write either the SRC or DEST high
+addresses with 1's and read them back. The last bit set on the return
+value will reflect the IP address bus width and so we can update the
+device DMA mask accordingly.
 
-Fixes: e97dc7435972 ("dmaengine: axi-dmac: Add support for scatter-gather transfers")
+While at it, support bigger that 32 bits transfers in IP without HW
+scatter gather support.
+
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/dma/dma-axi-dmac.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+ drivers/dma/dma-axi-dmac.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
 diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
-index 2aa06f66624ba5749e7e7f24b55416f96064b82f..47d95d2d743b1b939ed0ec79ee29763843bcdc09 100644
+index 47d95d2d743b1b939ed0ec79ee29763843bcdc09..25717a6ea9848b6c591a3ab6adb27c6f21f002b9 100644
 --- a/drivers/dma/dma-axi-dmac.c
 +++ b/drivers/dma/dma-axi-dmac.c
-@@ -233,11 +233,9 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
- 	unsigned int flags = 0;
- 	unsigned int val;
+@@ -69,7 +69,9 @@
+ #define AXI_DMAC_REG_START_TRANSFER	0x408
+ #define AXI_DMAC_REG_FLAGS		0x40c
+ #define AXI_DMAC_REG_DEST_ADDRESS	0x410
++#define AXI_DMAC_REG_DEST_ADDRESS_HIGH	0x490
+ #define AXI_DMAC_REG_SRC_ADDRESS	0x414
++#define AXI_DMAC_REG_SRC_ADDRESS_HIGH	0x494
+ #define AXI_DMAC_REG_X_LENGTH		0x418
+ #define AXI_DMAC_REG_Y_LENGTH		0x41c
+ #define AXI_DMAC_REG_DEST_STRIDE	0x420
+@@ -271,11 +273,14 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
+ 	if (!chan->hw_sg) {
+ 		if (axi_dmac_dest_is_mem(chan)) {
+ 			axi_dmac_write(dmac, AXI_DMAC_REG_DEST_ADDRESS, sg->hw->dest_addr);
++			axi_dmac_write(dmac, AXI_DMAC_REG_DEST_ADDRESS_HIGH,
++				       sg->hw->dest_addr >> 32);
+ 			axi_dmac_write(dmac, AXI_DMAC_REG_DEST_STRIDE, sg->hw->dst_stride);
+ 		}
  
--	if (!chan->hw_sg) {
--		val = axi_dmac_read(dmac, AXI_DMAC_REG_START_TRANSFER);
--		if (val) /* Queue is full, wait for the next SOT IRQ */
--			return;
--	}
-+	val = axi_dmac_read(dmac, AXI_DMAC_REG_START_TRANSFER);
-+	if (val) /* Queue is full, wait for the next SOT IRQ */
-+		return;
+ 		if (axi_dmac_src_is_mem(chan)) {
+ 			axi_dmac_write(dmac, AXI_DMAC_REG_SRC_ADDRESS, sg->hw->src_addr);
++			axi_dmac_write(dmac, AXI_DMAC_REG_SRC_ADDRESS_HIGH, sg->hw->src_addr >> 32);
+ 			axi_dmac_write(dmac, AXI_DMAC_REG_SRC_STRIDE, sg->hw->src_stride);
+ 		}
+ 	}
+@@ -990,6 +995,9 @@ static int axi_dmac_read_chan_config(struct device *dev, struct axi_dmac *dmac)
+ static int axi_dmac_detect_caps(struct axi_dmac *dmac, unsigned int version)
+ {
+ 	struct axi_dmac_chan *chan = &dmac->chan;
++	struct device *dev = dmac->dma_dev.dev;
++	u32 mask;
++	int ret;
  
- 	desc = chan->next_desc;
+ 	axi_dmac_write(dmac, AXI_DMAC_REG_FLAGS, AXI_DMAC_FLAG_CYCLIC);
+ 	if (axi_dmac_read(dmac, AXI_DMAC_REG_FLAGS) == AXI_DMAC_FLAG_CYCLIC)
+@@ -1024,6 +1032,22 @@ static int axi_dmac_detect_caps(struct axi_dmac *dmac, unsigned int version)
+ 		return -ENODEV;
+ 	}
+ 
++	if (axi_dmac_dest_is_mem(chan)) {
++		axi_dmac_write(dmac, AXI_DMAC_REG_DEST_ADDRESS_HIGH, 0xffffffff);
++		mask = axi_dmac_read(dmac, AXI_DMAC_REG_DEST_ADDRESS_HIGH);
++	} else {
++		axi_dmac_write(dmac, AXI_DMAC_REG_SRC_ADDRESS_HIGH, 0xffffffff);
++		mask = axi_dmac_read(dmac, AXI_DMAC_REG_SRC_ADDRESS_HIGH);
++	}
++
++	mask = 32 + fls(mask);
++
++	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(mask));
++	if (ret) {
++		dev_err(dev, "DMA mask set error %d\n", ret);
++		return ret;
++	}
++
+ 	if (version >= ADI_AXI_PCORE_VER(4, 2, 'a'))
+ 		chan->hw_partial_xfer = true;
  
 
 -- 
