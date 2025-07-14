@@ -1,11 +1,10 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Mon, 14 Jul 2025 11:15:38 +0200
-Subject: [PATCH RFC 7/8] nvme: Add Controller Data Queue (CDQ) ioctl
- command
+Date: Mon, 14 Jul 2025 11:15:39 +0200
+Subject: [PATCH RFC 8/8] nvme: Connect CDQ ioctl to nvme driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250714-jag-cdq-v1-7-01e027d256d5@kernel.org>
+Message-Id: <20250714-jag-cdq-v1-8-01e027d256d5@kernel.org>
 References: <20250714-jag-cdq-v1-0-01e027d256d5@kernel.org>
 In-Reply-To: <20250714-jag-cdq-v1-0-01e027d256d5@kernel.org>
 To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
@@ -13,73 +12,114 @@ To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
 Cc: Klaus Jensen <k.jensen@samsung.com>, linux-nvme@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1721;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3054;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=dv2xzXC+6TJZt9TJ3U/97Y9njM2Cu8lc2Jl+hxwFXTg=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGh0yuzaV4yProMruCg+StvkS6ozjmlyR+D12
- 60MLLqag8RnjokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJodMrsAAoJELqXzVK3
- lkFPhosL/10webJ+d9JVE+imM2vxDxzAqBP41TUHUEaBoxiWc5QMF2R1JzIGW6HrfyPN3JXplP8
- RAiqMmOBG28z+vGVt2c/BUKIlSN+X/ba7vXkGWIWjLqB+lMcr62mJDmf20cTjKa2pgZ1udbqd5G
- WuH1VkC4tDeGyvIy+qmgecW+zQOjUlTfeKz2e2KIhDgErp7m1GvTRXmQO0fsgFTIEhM5MEkoVsU
- U0VyNf/rp/QOKCrpBZaMapENcrGpmKv2U5uPQwPnQ0jNl2Ixp7Wq7xpVbMPB9JA9bdnlM4CFAHd
- A/oEsc7Ihe6HskrIrtsm+xziTjFUoPp3/qPyy7y1Y8cgMajjES9TZHKAH+G3KAOYHnvVDIklrCf
- Oo39RvqgS2nPGuakkWb1i4RR/D1NvAuJqMpZcsi+UinuTPgKlE3hn7Yg9fSdEnrH+ow4TeEV8lR
- qMQDd5+xskxvFw01WKi3VbpOeMhrKx+X1VQm1WvdjFN9sUlnpsTNUs5QsEmQFjxrE0Wx9kCe7v5
+ bh=El37Gj/bO4g5zQC6jForLJm2KfkQjW+oJE5NpN3BFes=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGh0yu1QDNzxro8uFOrjz5Om6eL02tjmaGJu5
+ aLz1ZtA3CJvJIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJodMrtAAoJELqXzVK3
+ lkFPKYcL/Aj/dE4mCCSzsfDlmLZU5vG9LCjMgMNhbWmVgR1IikffXCVuR95AW50beEaxpCO6FpL
+ WK1u0mq6NGFl2m+TL7VzOFZefVQecM01MKSUtmKS5G+aigVL8qpkdMY36cHEd5HBr0bPN1sMpIQ
+ 6QnIUxpDFntnTtBapJaHqof42yxORjUq7gFbi0jKgrL5UZ6spXnV7aQ0+Dl+QpOdyRJBg1HxSO3
+ +br6NweNXKCOJ9BJCZrNXrz79sT8dIwmWh252JUDz++ifiJ2soO4czczOocyHzG8ebgVHtTmUg5
+ uunhZFf+cpwVR1ImceGMvwGDE8uuFnqirmYW+1DAzuTbteOIlZBZYulJ1y9uGvORgRlQj7Pymnf
+ PmMj7KpRXwx8LWEcPhH71fJFEqX0R9ZtbRhkuI3qqEM8OyBB+p2zFUWno1kPruI5BJVVDj+65T9
+ 0BdD93axnX4v8CYxlXO715PwNSQ3Z9XqVY5PnvBDE5T3Boz6kX54C+OrQcgl0rbfY8J35G1Q1q7
  6o=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-New ioctl to create a CDQ.
-
-Creating a CDQ:
-  Set the following memebers:
-    * entry_nr: Number of CDQ entries
-    * entry_nbytes: size in bytes of each CDQ entry
-    * cqs: Create Queue Specific. Value depends on CDQ type
-    * mos: Management Operation Specific. Value depends on CDQ type
-    * cdqp_{offset,mask}: Location of CDQ Phase tag bit within an entry
-
-Return:
-    * cdq_id: The ID set by the controller for the created CDQ
-    * read_fd: The file descriptor that can be used to read the CDQ
+When deleting, call the nvme_cdq_delete directly as there is no
+additional preparation needed. Construct the nvme admin command to
+create before sending it down to the driver; this effectively sets mos
+and cqs among other variables. Once the controller has returned, set the
+cdq_id and cdq_fd for the ioctl caller.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- include/uapi/linux/nvme_ioctl.h | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/nvme/host/ioctl.c | 47 ++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 46 insertions(+), 1 deletion(-)
 
-diff --git a/include/uapi/linux/nvme_ioctl.h b/include/uapi/linux/nvme_ioctl.h
-index 2f76cba6716637baff53e167a6141b68420d75c3..dc434628acc8462877e774a1eec9242a5df8a08a 100644
---- a/include/uapi/linux/nvme_ioctl.h
-+++ b/include/uapi/linux/nvme_ioctl.h
-@@ -92,6 +92,17 @@ struct nvme_uring_cmd {
- 	__u32   rsvd2;
- };
+diff --git a/drivers/nvme/host/ioctl.c b/drivers/nvme/host/ioctl.c
+index ca86d3bf7ea49d0ec812640a6c0267a5aad40b79..6ab42381b6fe4e88bae341874b111ed4b7ade397 100644
+--- a/drivers/nvme/host/ioctl.c
++++ b/drivers/nvme/host/ioctl.c
+@@ -378,6 +378,46 @@ static int nvme_user_cmd64(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
+ 	return status;
+ }
  
-+struct nvme_cdq_cmd {
-+	__u32	entry_nr;
-+	__u32	entry_nbyte;
-+	__u16	cdq_id;
-+	__u16	cqs;
-+	__u16	mos;
-+	__u32	cdqp_offset;
-+	__u32	cdqp_mask;
-+	int	read_fd;
-+};
++static int nvme_user_cdq(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
++		struct nvme_cdq_cmd __user *ucmd, unsigned int flags,
++		bool open_for_write)
++{
++	int status;
++	u16 cdq_id = 0;
++	int cdq_fd = 0;
++	struct nvme_command c = {};
++	struct nvme_cdq_cmd cmd = {};
 +
- #define nvme_admin_cmd nvme_passthru_cmd
++	if (copy_from_user(&cmd, ucmd, sizeof(cmd)))
++		return -EFAULT;
++
++	if (cmd.cdqp_offset >= cmd.entry_nbyte)
++		return -EINVAL;
++
++	c.cdq.opcode = nvme_admin_cdq;
++	c.cdq.sel = NVME_CDQ_SEL_CREATE_CDQ;
++	c.cdq.mos = cpu_to_le16(cmd.mos);
++	c.cdq.create.cdq_flags = cpu_to_le16(NVME_CDQ_CFG_PC_CONT);
++	c.cdq.create.cqs = cpu_to_le16(cmd.cqs);
++	/* >>2: size is in dwords */
++	c.cdq.cdqsize = (cmd.entry_nbyte * cmd.entry_nr) >> 2;
++
++	status = nvme_cdq_create(ctrl, &c,
++				 cmd.entry_nr, cmd.entry_nbyte,
++				 cmd.cdqp_offset, cmd.cdqp_mask,
++				 &cdq_id, &cdq_fd);
++	if (status)
++		return status;
++
++	cmd.cdq_id = cdq_id;
++	cmd.read_fd = cdq_fd;
++
++	if (copy_to_user(ucmd, &cmd, sizeof(cmd)))
++		return -EFAULT;
++
++	return status;
++}
++
+ struct nvme_uring_data {
+ 	__u64	metadata;
+ 	__u64	addr;
+@@ -541,7 +581,8 @@ static int nvme_uring_cmd_io(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
  
- #define NVME_IOCTL_ID		_IO('N', 0x40)
-@@ -104,6 +115,7 @@ struct nvme_uring_cmd {
- #define NVME_IOCTL_ADMIN64_CMD	_IOWR('N', 0x47, struct nvme_passthru_cmd64)
- #define NVME_IOCTL_IO64_CMD	_IOWR('N', 0x48, struct nvme_passthru_cmd64)
- #define NVME_IOCTL_IO64_CMD_VEC	_IOWR('N', 0x49, struct nvme_passthru_cmd64)
-+#define NVME_IOCTL_ADMIN_CDQ	_IOR('N', 0x50, struct nvme_cdq_cmd)
- 
- /* io_uring async commands: */
- #define NVME_URING_CMD_IO	_IOWR('N', 0x80, struct nvme_uring_cmd)
+ static bool is_ctrl_ioctl(unsigned int cmd)
+ {
+-	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD)
++	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD ||
++	    cmd == NVME_IOCTL_ADMIN_CDQ)
+ 		return true;
+ 	if (is_sed_ioctl(cmd))
+ 		return true;
+@@ -556,6 +597,8 @@ static int nvme_ctrl_ioctl(struct nvme_ctrl *ctrl, unsigned int cmd,
+ 		return nvme_user_cmd(ctrl, NULL, argp, 0, open_for_write);
+ 	case NVME_IOCTL_ADMIN64_CMD:
+ 		return nvme_user_cmd64(ctrl, NULL, argp, 0, open_for_write);
++	case NVME_IOCTL_ADMIN_CDQ:
++		return nvme_user_cdq(ctrl, NULL, argp, 0, open_for_write);
+ 	default:
+ 		return sed_ioctl(ctrl->opal_dev, cmd, argp);
+ 	}
+@@ -874,6 +917,8 @@ long nvme_dev_ioctl(struct file *file, unsigned int cmd,
+ 			return -EACCES;
+ 		nvme_queue_scan(ctrl);
+ 		return 0;
++	case NVME_IOCTL_ADMIN_CDQ:
++		return nvme_user_cdq(ctrl, NULL, argp, 0, open_for_write);
+ 	default:
+ 		return -ENOTTY;
+ 	}
 
 -- 
 2.47.2
