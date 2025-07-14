@@ -1,11 +1,11 @@
 From: Rohan G Thomas <rohan.g.thomas@altera.com>
-Date: Mon, 14 Jul 2025 15:59:18 +0800
-Subject: [PATCH net-next 2/3] net: stmmac: xgmac: Correct supported speed
- modes
+Date: Mon, 14 Jul 2025 15:59:19 +0800
+Subject: [PATCH net-next 3/3] net: stmmac: Set CIC bit only for TX queues
+ with COE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250714-xgmac-minor-fixes-v1-2-c34092a88a72@altera.com>
+Message-Id: <20250714-xgmac-minor-fixes-v1-3-c34092a88a72@altera.com>
 References: <20250714-xgmac-minor-fixes-v1-0-c34092a88a72@altera.com>
 In-Reply-To: <20250714-xgmac-minor-fixes-v1-0-c34092a88a72@altera.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -20,84 +20,68 @@ Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  Rohan G Thomas <rohan.g.thomas@altera.com>, 
  Matthew Gerlach <matthew.gerlach@altera.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752480026; l=3261;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752480026; l=2519;
  i=rohan.g.thomas@altera.com; s=20250415; h=from:subject:message-id;
- bh=VG2Dfp/g/YHOIG/+Mje0Iha3SvShc7S+fE/4uX6Rxa8=;
- b=29subWKkHTxTo19LkKQVvEstduVel5NjOed85DdVpVPrwfoUX/brn1WLcLhYZQ6vSGC/oJi4Z
- gyR00E9wtRHB/2xExpa7WovLQbH+oFfvQeuK18Mpca1mKfEL9fNfuOx
+ bh=LvG0a5gBZ5g9VJhz1xFTiPD3FiH+GWS8NxcWQcWl6tc=;
+ b=fVE9HlJaErdbIModd8D71uXp7Ny7wlJiiE+7BHU4coROJ/HaDD30Ly3V5zU8VBfqhYvYFE9wP
+ g7WemhMLVucCOrtR+ZTEuvc3FgAK2dfr1Dr9e90L76eE7gmhl75xTAw
 X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
  pk=TLFM1xzY5sPOABaIaXHDNxCAiDwRegVWoy1tP842z5E=
 X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250415 with auth_id=460
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Correct supported speed modes as per the XGMAC databook.
-Commit 9cb54af214a7 ("net: stmmac: Fix IP-cores specific
-MAC capabilities") removes support for 10M, 100M and
-1000HD. 1000HD is not supported by XGMAC IP, but it does
-support 10M and 100M FD mode, and it also supports 10M and
-100M HD mode if the HDSEL bit is set in the MAC_HW_FEATURE0
-reg. This commit adds support for 10M and 100M speed modes
-for XGMAC IP.
+Currently, in the AF_XDP transmit paths, the CIC bit of
+TX Desc3 is set for all packets. Setting this bit for
+packets transmitting through queues that don't support
+checksum offloading causes the TX DMA to get stuck after
+transmitting some packets. This patch ensures the CIC bit
+of TX Desc3 is set only if the TX queue supports checksum
+offloading.
 
-Fixes: 9cb54af214a7 ("net: stmmac: Fix IP-cores specific MAC capabilities")
 Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
 Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c | 14 ++++++++++++--
- drivers/net/ethernet/stmicro/stmmac/dwxgmac2_dma.c  |  1 +
- 2 files changed, 13 insertions(+), 2 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c
-index 6cadf8de4fdfdb18af1a112b883b3d33a53da638..3cef8ba5a7f6c1b02881b8a4ac1eadb18ecfece4 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c
-@@ -49,6 +49,15 @@ static void dwxgmac2_core_init(struct mac_device_info *hw,
- 	writel(XGMAC_INT_DEFAULT_EN, ioaddr + XGMAC_INT_EN);
- }
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index f350a6662880a230a32ad6785c475cce4e950322..d9f7435a44fac695899e0b4ffd0dc7851c4e759f 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -2584,6 +2584,7 @@ static bool stmmac_xdp_xmit_zc(struct stmmac_priv *priv, u32 queue, u32 budget)
+ 	struct netdev_queue *nq = netdev_get_tx_queue(priv->dev, queue);
+ 	struct stmmac_tx_queue *tx_q = &priv->dma_conf.tx_queue[queue];
+ 	struct stmmac_txq_stats *txq_stats = &priv->xstats.txq_stats[queue];
++	bool csum = !priv->plat->tx_queues_cfg[queue].coe_unsupported;
+ 	struct xsk_buff_pool *pool = tx_q->xsk_pool;
+ 	unsigned int entry = tx_q->cur_tx;
+ 	struct dma_desc *tx_desc = NULL;
+@@ -2671,7 +2672,7 @@ static bool stmmac_xdp_xmit_zc(struct stmmac_priv *priv, u32 queue, u32 budget)
+ 		}
  
-+static void dwxgmac2_update_caps(struct stmmac_priv *priv)
-+{
-+	/* If HDSEL bit is set in MAC_HW_Feature0 register then XGMAC supports
-+	 * half duplex mode but only for 10Mbps and 100Mbps speed modes.
-+	 */
-+	if (priv->dma_cap.half_duplex)
-+		priv->hw->link.caps |= (MAC_10HD | MAC_100HD);
-+}
-+
- static void dwxgmac2_set_mac(void __iomem *ioaddr, bool enable)
+ 		stmmac_prepare_tx_desc(priv, tx_desc, 1, xdp_desc.len,
+-				       true, priv->mode, true, true,
++				       csum, priv->mode, true, true,
+ 				       xdp_desc.len);
+ 
+ 		stmmac_enable_dma_transmission(priv, priv->ioaddr, queue);
+@@ -4983,6 +4984,7 @@ static int stmmac_xdp_xmit_xdpf(struct stmmac_priv *priv, int queue,
  {
- 	u32 tx = readl(ioaddr + XGMAC_TX_CONFIG);
-@@ -1424,6 +1433,7 @@ static void dwxgmac2_set_arp_offload(struct mac_device_info *hw, bool en,
+ 	struct stmmac_txq_stats *txq_stats = &priv->xstats.txq_stats[queue];
+ 	struct stmmac_tx_queue *tx_q = &priv->dma_conf.tx_queue[queue];
++	bool csum = !priv->plat->tx_queues_cfg[queue].coe_unsupported;
+ 	unsigned int entry = tx_q->cur_tx;
+ 	struct dma_desc *tx_desc;
+ 	dma_addr_t dma_addr;
+@@ -5034,7 +5036,7 @@ static int stmmac_xdp_xmit_xdpf(struct stmmac_priv *priv, int queue,
+ 	stmmac_set_desc_addr(priv, tx_desc, dma_addr);
  
- const struct stmmac_ops dwxgmac210_ops = {
- 	.core_init = dwxgmac2_core_init,
-+	.update_caps = dwxgmac2_update_caps,
- 	.set_mac = dwxgmac2_set_mac,
- 	.rx_ipc = dwxgmac2_rx_ipc,
- 	.rx_queue_enable = dwxgmac2_rx_queue_enable,
-@@ -1532,8 +1542,8 @@ int dwxgmac2_setup(struct stmmac_priv *priv)
- 		mac->mcast_bits_log2 = ilog2(mac->multicast_filter_bins);
+ 	stmmac_prepare_tx_desc(priv, tx_desc, 1, xdpf->len,
+-			       true, priv->mode, true, true,
++			       csum, priv->mode, true, true,
+ 			       xdpf->len);
  
- 	mac->link.caps = MAC_ASYM_PAUSE | MAC_SYM_PAUSE |
--			 MAC_1000FD | MAC_2500FD | MAC_5000FD |
--			 MAC_10000FD;
-+			 MAC_10FD | MAC_100FD | MAC_1000FD |
-+			 MAC_2500FD | MAC_5000FD | MAC_10000FD;
- 	mac->link.duplex = 0;
- 	mac->link.speed10 = XGMAC_CONFIG_SS_10_MII;
- 	mac->link.speed100 = XGMAC_CONFIG_SS_100_MII;
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_dma.c b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_dma.c
-index 7201a38842651a865493fce0cefe757d6ae9bafa..76a98d28f9de693ef6cb4c115e38f69c9a965b54 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_dma.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_dma.c
-@@ -405,6 +405,7 @@ static int dwxgmac2_get_hw_feature(void __iomem *ioaddr,
- 	dma_cap->sma_mdio = (hw_cap & XGMAC_HWFEAT_SMASEL) >> 5;
- 	dma_cap->vlhash = (hw_cap & XGMAC_HWFEAT_VLHASH) >> 4;
- 	dma_cap->half_duplex = (hw_cap & XGMAC_HWFEAT_HDSEL) >> 3;
-+	dma_cap->mbps_10_100 = (hw_cap & XGMAC_HWFEAT_GMIISEL) >> 1;
- 	dma_cap->mbps_1000 = (hw_cap & XGMAC_HWFEAT_GMIISEL) >> 1;
- 
- 	/* MAC HW feature 1 */
+ 	tx_q->tx_count_frames++;
 
 -- 
 2.25.1
