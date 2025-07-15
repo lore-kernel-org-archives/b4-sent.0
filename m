@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Tue, 15 Jul 2025 13:49:00 +0200
-Subject: [PATCH RESEND v5 1/7] dt-bindings: input: syna,rmi4: Document
- syna,rmi4-s3706b
+Date: Tue, 15 Jul 2025 13:49:01 +0200
+Subject: [PATCH RESEND v5 2/7] Input: synaptics-rmi4 - handle
+ duplicate/unknown PDT entries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250715-synaptics-rmi4-v5-1-ca255962c122@ixit.cz>
+Message-Id: <20250715-synaptics-rmi4-v5-2-ca255962c122@ixit.cz>
 References: <20250715-synaptics-rmi4-v5-0-ca255962c122@ixit.cz>
 In-Reply-To: <20250715-synaptics-rmi4-v5-0-ca255962c122@ixit.cz>
 To: Kaustabh Chakraborty <kauschluss@disroot.org>, 
@@ -17,63 +17,151 @@ To: Kaustabh Chakraborty <kauschluss@disroot.org>,
 Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Caleb Connolly <caleb.connolly@linaro.org>, 
  phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1304; i=david@ixit.cz;
- h=from:subject:message-id; bh=jlm0TtzM+qwlqfeZi52UxUZv7l7Eivv2BkocqxTGAHc=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBodkA0542TUS1GhEXdCACJaU7dwt2BzADN4kt+k
- 0XQwmfV/6mJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaHZANAAKCRBgAj/E00kg
- cjmwD/wJ+i9YGl/wWRC/JpI6fnwMtVKc2sBAhlgJ0QwZrjR5Y9aI+RT6TzPQ/RoFrBkLyj+6aIm
- R937UWS4QiTRk0nibiWQa5xMsAW8zbe8sQaYoc6IXRQCni8SuzmKCA/VWvaab57DXvimSbs4o/D
- AQZy+hQ90rRJRRqUdLM3JqC3tH9316wMVlY9Sew7pRi7qjOJJ6eZr+tdCHnIa3yKJZhZ2nYQJS1
- 5bRU9LNrmkv1XP3CqXrE3+OItNc+qfC495RKjZ/bC1y/GIcz/hdxktwnyFffUx4C7RPAiSmJ7Wl
- 9F1oxbWj1HNbObIChuA493I4QZJySlzNH+7/GlazlooLlc7zEdFSsriZrubPYA+5dDorMK9h0eb
- Z9Qw8rcLT7UBWL1IizDBlVGP4CgIM8iPjmPDLsQMhSxDdcAAlRd2zgj0HGuoF0vi4dCk1iR4P4k
- DfG5IfGyuL0cYttEmvLC8SqmXZzxNtV7aCSIAB/0Qra9qzuMaHhs4Owwv/tIL3eLPrrLatPOOk1
- /JjI1YYDw/+vg7idiB+KviPUA8+95aSUoF9iBEyXIJzJsj3S7d6mB03bAVBqEZFxyhgaQVUZ9kl
- TsJwl1AnkH5ziUVhOnEDUdxo5GvjwB94QZX0kQj08cx+Y+SeKpzyHH5SwZsPW83zLsbA60scNCx
- tEqZjdPcsvnvDlw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3909; i=david@ixit.cz;
+ h=from:subject:message-id; bh=DMyfmGUjTKWkjf5dJQfenW4XErBynGEc7q5TZ856CIQ=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBodkA0uoNTZ5PIKCSrNjx/8FWKCpvGOHd1NLk8/
+ a5zI8/WhnyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaHZANAAKCRBgAj/E00kg
+ cuhFD/9KrJPjQxFYJXITh9nq4LzZhLCkJyy0RMyk438mS+17jD3iAoYVpVgJnSNoyLeY9gqSUb7
+ nhR4+LsVLmyQICgGw6ykGjFxc16Q4NUQJzvln2IkRgmcz8U7ZFg3cDDXJ6Tmxnb1GuyGo7xyT9p
+ kvFjw1YoxA1AYkw8wxMXMAr5AnrF7KbxnKvFyCQlpdHo3MbqDu7CFsdWUCjHX/dSHbiN7BcaiQG
+ 7Bd26T0f9nYxV68VpFiWunYRojavSWk0lmv8qnkXXTkHXTDKu/kw3Lwqs3a2I7EEn06mKOt4fST
+ 7LlrzBW9PO5pws5cKWtFTk+b/ZFtVrN9xOWlOKQFq43zNNZ4znnbyKKc2VJ/KJQeCGMCHqHpZnK
+ TQIlWIYxE77AOl7IOonCCLTKsKJhlhJ1CRbkDJlRyBh8np4m1fSJa1TTLzdurfyyIersQ29yx/H
+ ZjdZ6dfRH8MKq6QicfmcIDOGi+iWQmkXJGrJSuDqWJuWjAuwg3Ek9OlWVHjZInaL957ZW7aSxoc
+ rTnxDh0PQwKJOfRtu8FNF46Gx8atfE70pFxLZ2zlbOi46InUzKSqnUnbwXPA0HR2BHV+PAKOWdH
+ mAQZZYyxLRtGcK9wJ68+wLhABEyUN4ksyYeM/uDwy0zE8TawI0SwwHDPW08TjoScDKqX5oCUyTx
+ eSBRgv0blvUY6xg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Mostly irrelevant for authentic Synaptics touchscreens, but very important
-for applying workarounds to cheap TS knockoffs.
+From: Caleb Connolly <caleb.connolly@linaro.org>
 
-These knockoffs work well with the downstream driver, and since the user
-has no way to distinguish them, later in this patch set, we introduce
-workarounds to ensure they function as well as possible.
+Some third party rmi4-compatible ICs don't expose their PDT entries
+very well. Add a few checks to skip duplicate entries as well as entries
+for unsupported functions.
 
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+This is required to support some phones with third party displays.
+
+Validated on a stock OnePlus 6T (original parts):
+manufacturer: Synaptics, product: S3706B, fw id: 2852315
+
+Co-developed-by: Kaustabh Chakraborty <kauschluss@disroot.org>
+Signed-off-by: Kaustabh Chakraborty <kauschluss@disroot.org>
+Signed-off-by: Caleb Connolly <caleb.connolly@linaro.org>
+Co-developed-by: David Heidelberg <david@ixit.cz>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- Documentation/devicetree/bindings/input/syna,rmi4.yaml | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ drivers/input/rmi4/rmi_driver.c | 42 +++++++++++++++++++++++++++++++++++------
+ drivers/input/rmi4/rmi_driver.h |  8 ++++++++
+ 2 files changed, 44 insertions(+), 6 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/input/syna,rmi4.yaml b/Documentation/devicetree/bindings/input/syna,rmi4.yaml
-index b522c8d3ce0db719ff379f2fefbdca79e73d027c..d5d0225e3826fa5a0559cbd99115c505ab113aa0 100644
---- a/Documentation/devicetree/bindings/input/syna,rmi4.yaml
-+++ b/Documentation/devicetree/bindings/input/syna,rmi4.yaml
-@@ -18,9 +18,14 @@ description: |
+diff --git a/drivers/input/rmi4/rmi_driver.c b/drivers/input/rmi4/rmi_driver.c
+index 2168b6cd7167334d44553c9c566f870a4e034179..0f6dbe586c652d641178f43ec27df3613126ca66 100644
+--- a/drivers/input/rmi4/rmi_driver.c
++++ b/drivers/input/rmi4/rmi_driver.c
+@@ -493,12 +493,39 @@ static void rmi_driver_copy_pdt_to_fd(const struct pdt_entry *pdt,
+ 	fd->function_version = pdt->function_version;
+ }
  
- properties:
-   compatible:
--    enum:
--      - syna,rmi4-i2c
--      - syna,rmi4-spi
-+    oneOf:
-+      - enum:
-+          - syna,rmi4-i2c
-+          - syna,rmi4-spi
-+      - items:
-+          - enum:
-+              - syna,rmi4-s3706b  # OnePlus 6/6T
-+          - const: syna,rmi4-i2c
++static bool rmi_pdt_entry_is_valid(struct rmi_device *rmi_dev,
++				   struct pdt_scan_state *state, u8 fn)
++{
++	switch (fn) {
++	case 0x01:
++	case 0x03:
++	case 0x11:
++	case 0x12:
++	case 0x30:
++	case 0x34:
++	case 0x3a:
++	case 0x54:
++	case 0x55:
++		if (state->pdts[fn] == true)
++			return false;
++		break;
++	default:
++		rmi_dbg(RMI_DEBUG_CORE, &rmi_dev->dev,
++			"PDT has unknown function number %#02x\n", fn);
++		return false;
++	}
++
++	state->pdts[fn] = true;
++	state->pdt_count++;
++	return true;
++}
++
+ #define RMI_SCAN_CONTINUE	0
+ #define RMI_SCAN_DONE		1
  
-   reg:
-     maxItems: 1
+ static int rmi_scan_pdt_page(struct rmi_device *rmi_dev,
+ 			     int page,
+-			     int *empty_pages,
++			     struct pdt_scan_state *state,
+ 			     void *ctx,
+ 			     int (*callback)(struct rmi_device *rmi_dev,
+ 					     void *ctx,
+@@ -521,6 +548,9 @@ static int rmi_scan_pdt_page(struct rmi_device *rmi_dev,
+ 		if (RMI4_END_OF_PDT(pdt_entry.function_number))
+ 			break;
+ 
++		if (!rmi_pdt_entry_is_valid(rmi_dev, state, pdt_entry.function_number))
++			continue;
++
+ 		retval = callback(rmi_dev, ctx, &pdt_entry);
+ 		if (retval != RMI_SCAN_CONTINUE)
+ 			return retval;
+@@ -531,11 +561,11 @@ static int rmi_scan_pdt_page(struct rmi_device *rmi_dev,
+ 	 * or more is found, stop scanning.
+ 	 */
+ 	if (addr == pdt_start)
+-		++*empty_pages;
++		++state->empty_pages;
+ 	else
+-		*empty_pages = 0;
++		state->empty_pages = 0;
+ 
+-	return (data->bootloader_mode || *empty_pages >= 2) ?
++	return (data->bootloader_mode || state->empty_pages >= 2) ?
+ 					RMI_SCAN_DONE : RMI_SCAN_CONTINUE;
+ }
+ 
+@@ -544,11 +574,11 @@ int rmi_scan_pdt(struct rmi_device *rmi_dev, void *ctx,
+ 		 void *ctx, const struct pdt_entry *entry))
+ {
+ 	int page;
+-	int empty_pages = 0;
++	struct pdt_scan_state state = {0, 0, {0}};
+ 	int retval = RMI_SCAN_DONE;
+ 
+ 	for (page = 0; page <= RMI4_MAX_PAGE; page++) {
+-		retval = rmi_scan_pdt_page(rmi_dev, page, &empty_pages,
++		retval = rmi_scan_pdt_page(rmi_dev, page, &state,
+ 					   ctx, callback);
+ 		if (retval != RMI_SCAN_CONTINUE)
+ 			break;
+diff --git a/drivers/input/rmi4/rmi_driver.h b/drivers/input/rmi4/rmi_driver.h
+index 3bfe9013043ef3dff46249095a5b3116c8f7d9a6..cb1cacd013a3f39db96935f705f18018bf15adff 100644
+--- a/drivers/input/rmi4/rmi_driver.h
++++ b/drivers/input/rmi4/rmi_driver.h
+@@ -46,6 +46,14 @@ struct pdt_entry {
+ 	u8 function_number;
+ };
+ 
++#define RMI_PDT_MAX 0x55
++
++struct pdt_scan_state {
++	u8 empty_pages;
++	u8 pdt_count;
++	bool pdts[RMI_PDT_MAX];
++};
++
+ #define RMI_REG_DESC_PRESENSE_BITS	(32 * BITS_PER_BYTE)
+ #define RMI_REG_DESC_SUBPACKET_BITS	(37 * BITS_PER_BYTE)
+ 
 
 -- 
 2.50.0
