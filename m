@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 14 Jul 2025 23:02:47 -0500
-Subject: [PATCH 04/17] dt-bindings: usb: tegra-xudc: Document Tegra210B01
+Date: Mon, 14 Jul 2025 23:02:48 -0500
+Subject: [PATCH 05/17] dt-bindings: thermal: tegra: Document Tegra210B01
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250714-t210b01-v1-4-e3f5f7de5dce@gmail.com>
+Message-Id: <20250714-t210b01-v1-5-e3f5f7de5dce@gmail.com>
 References: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
 In-Reply-To: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -27,41 +27,40 @@ Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org,
  linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752552229; l=1146;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752552229; l=1090;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=Jyy45qLdZDq9DiQVnsxM/Qp0gR79KFt6neXymT4FCWQ=;
- b=TcCa6TVpGjZW7jzTH8gjJ6dgjSh/2EdBKGUTbaM2ZDtD0kBy23zs1eI/CDye8JwKO2xOUgB31
- lQDc77DFvRuA+nPAP4zJoCewfmgWm9F49iS26kbUgAvOq9BDkIfHDPO
+ bh=05phOL1Dk7sts/Zv8aPXcMDWKmJ0zvrejtZlUljALbM=;
+ b=ERUZlXkxLtaEh2lh/a0ee4xRcCMkPQla+rmLuy5X/T5En0QI7paPtwQZk20opHhYzl/JlsWrB
+ 64PIupUlki9AD0MPObudtulmcSzNSVz8o/rJqeU45DlCIDorqcLcZzP
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extend the Tegra XUSB controller device tree binding with Tegra210B01
-support.
+Add the compatible string for Tegra210B01 SOC_THERM
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- Documentation/devicetree/bindings/usb/nvidia,tegra-xudc.yaml | 2 ++
+ Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/usb/nvidia,tegra-xudc.yaml b/Documentation/devicetree/bindings/usb/nvidia,tegra-xudc.yaml
-index c6e661e8915ca4d3e905331299d981f4d3964314..4574e66e7c1d3d3c918991920bbf4f3ea0ee6ab2 100644
---- a/Documentation/devicetree/bindings/usb/nvidia,tegra-xudc.yaml
-+++ b/Documentation/devicetree/bindings/usb/nvidia,tegra-xudc.yaml
-@@ -20,6 +20,7 @@ properties:
-     items:
-       - enum:
-           - nvidia,tegra210-xudc # For Tegra210
-+          - nvidia,tegra210b01-xudc # For Tegra210B01
-           - nvidia,tegra186-xudc # For Tegra186
-           - nvidia,tegra194-xudc # For Tegra194
-           - nvidia,tegra234-xudc # For Tegra234
-@@ -130,6 +131,7 @@ allOf:
-           contains:
+diff --git a/Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml b/Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml
+index 19bb1f324183bb22bc75630798da67fc834920b8..cf47a1f3b3847d4a0371d0bc711638fc5e3b6cd3 100644
+--- a/Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml
++++ b/Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml
+@@ -21,6 +21,7 @@ properties:
+       - nvidia,tegra124-soctherm
+       - nvidia,tegra132-soctherm
+       - nvidia,tegra210-soctherm
++      - nvidia,tegra210b01-soctherm
+ 
+   reg:
+     maxItems: 2
+@@ -207,6 +208,7 @@ allOf:
              enum:
-               - nvidia,tegra210-xudc
-+              - nvidia,tegra210b01-xudc
+               - nvidia,tegra124-soctherm
+               - nvidia,tegra210-soctherm
++              - nvidia,tegra210b01-soctherm
      then:
        properties:
          reg:
