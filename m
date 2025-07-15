@@ -1,161 +1,129 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 14 Jul 2025 23:03:00 -0500
-Subject: [PATCH 17/17] arm64: tegra: Add support for NVIDIA Shield TV Pro
- 2019
+From: Miao Wang <shankerwangmiao@gmail.com>
+Date: Tue, 15 Jul 2025 16:54:38 +0800
+Subject: [PATCH] lib: Enable checks and compilation on LoongArch
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250714-t210b01-v1-17-e3f5f7de5dce@gmail.com>
-References: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
-In-Reply-To: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, Vinod Koul <vkoul@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Nagarjuna Kristam <nkristam@nvidia.com>, JC Kuo <jckuo@nvidia.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Mathias Nyman <mathias.nyman@intel.com>, 
- Peter De Schrijver <pdeschrijver@nvidia.com>, 
- Prashant Gaikwad <pgaikwad@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-phy@lists.infradead.org, 
- linux-usb@vger.kernel.org, Thierry Reding <treding@nvidia.com>, 
- linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20250715-add-loongarch-v1-1-8c1867179cc4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAE0XdmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDc0NT3cSUFN2c/Py89MSi5AxdC2NjA7NUE6NUY4s0JaCegqLUtMwKsHn
+ RsbW1AFkWbRZfAAAA
+X-Change-ID: 20250715-add-loongarch-83306e42e38f
+To: fwts-devel@lists.ubuntu.com
+Cc: Ivan Hu <ivan.hu@canonical.com>, b4-sent@lore.kernel.org, 
+ Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752552229; l=3522;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=EdWmD7c7kf19WARtvl7KhoiByIIwFTP6OAORo97ZbDc=;
- b=hU4JQpTVPlnql0F2O6v680Z46sPUs+HCYeJ0AlSADGcA2h4/FbpIN2ljlyhqzxraQ2zKbtjpd
- 2MoYW37DS0gCrNbP4Nv+kn92hDb6nmaT85cEEWUPVxsKAyy/rkKMyEq
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3636;
+ i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
+ bh=lXQi4ZLZDtUoQn4UllC87kAunSyWtHhTrna6xJTtEhM=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBodhdObW2IKV6RA5ws0u68wQPhYdIO4Dbl0YEFf
+ WX21ZTRogeJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCaHYXTgAKCRCwMePKe/7Z
+ bgRaD/0RSNGHZm96NJDdx1GqRGxRwAA9JerDr61r2CLUIh2PUZ2i/J2o/Cdi4XcRv1cyhp2HL0y
+ liQDYuk747pgukhZtdfK8lGVtMjTwdVMdrh9F7FZkjgnJkF+W923kJpTlq0EpgnldQCCHSM7hED
+ U7snwqH/DZLFRkImV8nFkD4hxfeA/gHr/wYMmJ1UYj1kybvyHL3a3Gq7YEvuRomfoM3XrjosR1P
+ p6oe46jRMgL8vV84AinkhkhLUJ+Coo/hxSYaNVVHbmFCRbJRAxLjIWRfWisja07/YJ2u/wIeIpg
+ 5Tkl3Ti8n+PhH5Jxp+ug9YrjI67Amyscnjr0eoaeDqr+uwqEJWQ5NBLqnoYMXWqj564+glZnx2y
+ FAKwU4ydNrucM98KPv9iLw3pFDWTeHMvwOK7GR3J0jmHongSKzNne9YudJU/BOkQVzDut7lsHFn
+ v7Z0WD+YXcct6f0lQxkNv03i7OHHf2cBReIwR2ToowJcBJJ54We7ywPlTJJuYgO7TaVm0IKp/xy
+ NCkni24uH/yhTA6T2m4mTq0t9z2jPVD+4HX8bMSpOS5NINKhqA9NvYRjp9qpDvlOuR0BSOkX1Zt
+ 1eKIezgnc04hr+D+lBrZUf7WFqEwqX419jysRbeQiBNgiVSg75eK8vU7rYqNTC5A9eb7mV7g1b8
+ 6VI0RU8ikHvVIxQ==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add initial device-tree support for NVIDIA Shield TV Pro 2019 (a.k.a
-MDarcy) based up the Tegra210B01 SoC with 3 GiB of LPDDR4 RAM.
+LoogArch64 has been included in UEFI spec. This patch enables checks for
+LoongArch.
 
-This is very basic, intended for checking initial Tegra210B01 support.
-More complete support for the device will be added later.
-
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- arch/arm64/boot/dts/nvidia/Makefile                |  1 +
- .../boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts | 10 ++++
- arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi  | 70 ++++++++++++++++++++++
- 3 files changed, 81 insertions(+)
+ debian/control         | 12 ++++++------
+ src/lib/include/fwts.h |  7 +++++++
+ 2 files changed, 13 insertions(+), 6 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/nvidia/Makefile b/arch/arm64/boot/dts/nvidia/Makefile
-index 0fbb8a494dba5089d9b7243e766bd6028b7f3744..bc6f3e268020b6fdbc90b2fb2ec1daf30c80af0e 100644
---- a/arch/arm64/boot/dts/nvidia/Makefile
-+++ b/arch/arm64/boot/dts/nvidia/Makefile
-@@ -20,6 +20,7 @@ dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2571.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3450-0000.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-smaug.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2894-0050-a08.dtb
-+dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210b01-p2894-0050-a08.dtb
- dtb-$(CONFIG_ARCH_TEGRA_186_SOC) += tegra186-p2771-0000.dtb
- dtb-$(CONFIG_ARCH_TEGRA_186_SOC) += tegra186-p3509-0000+p3636-0001.dtb
- dtb-$(CONFIG_ARCH_TEGRA_194_SOC) += tegra194-p2972-0000.dtb
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..f18266b3d8ae341feaef5a1a911752f6a5ce2d0f
---- /dev/null
-+++ b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts
-@@ -0,0 +1,10 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/dts-v1/;
+diff --git a/debian/control b/debian/control
+index c3a2e607d8a2529fc10a313b9d4e3fdff713d2ac..4edfbd0c4ed11051aee8aa492a6f7b08fbd6cc47 100644
+--- a/debian/control
++++ b/debian/control
+@@ -19,7 +19,7 @@ Build-Depends: debhelper-compat (= 13),
+                libbsd-dev
+ 
+ Package: fwts
+-Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64
++Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64 loong64
+ Depends: libfwtsiasl1 (= ${binary:Version}),
+          libfwtsacpica1 (= ${binary:Version}),
+          libfwts1 (= ${binary:Version}),
+@@ -37,7 +37,7 @@ Description: FirmWare Test Suite
+  be a Linux-centric firmware troubleshooting tool.
+ 
+ Package: libfwtsiasl1
+-Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64
++Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64 loong64
+ Depends: ${shlibs:Depends},
+          ${misc:Depends}
+ Description: FirmWare Test Suite ACPICA core built for iasl functionality
+@@ -48,7 +48,7 @@ Description: FirmWare Test Suite ACPICA core built for iasl functionality
+  interface with fwts.
+ 
+ Package: libfwtsacpica1
+-Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64
++Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64 loong64
+ Depends: ${shlibs:Depends},
+          ${misc:Depends}
+ Description: FirmWare Test Suite ACPICA core built for acpiexec functionality
+@@ -58,7 +58,7 @@ Description: FirmWare Test Suite ACPICA core built for acpiexec functionality
+  contains this code with a thin fwts specific API to interface with fwts.
+ 
+ Package: libfwts1
+-Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64
++Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64 loong64
+ Depends: ${shlibs:Depends},
+          ${misc:Depends}
+ Description: FirmWare Test Suite core support library
+@@ -67,7 +67,7 @@ Description: FirmWare Test Suite core support library
+  various fwts tests.
+ 
+ Package: fwts-frontend
+-Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64
++Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el s390x riscv64 loong64
+ Priority: optional
+ Depends: ${misc:Depends},
+          dialog,
+@@ -78,7 +78,7 @@ Description: Firmware Test Suite frontend interface
+  interface within Firmware Test Suite live images.
+ 
+ Package: fwts-efi-runtime-dkms
+-Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el
++Architecture: i386 amd64 armel armhf arm64 ppc64 ppc64el loong64
+ Priority: optional
+ Depends: ${misc:Depends},
+          dkms
+diff --git a/src/lib/include/fwts.h b/src/lib/include/fwts.h
+index 70d185bd95b8048cfacb3f156910e998c46f1acd..0fd1c37ba082d71759ac63517d37c93be9dd92e8 100644
+--- a/src/lib/include/fwts.h
++++ b/src/lib/include/fwts.h
+@@ -127,6 +127,13 @@
+ #define FWTS_USE_DEVMEM 1
+ #endif
+ 
++#if defined(__loongarch__)
++#define FWTS_ARCH_LOONGARCH	1
++#define FWTS_HAS_ACPI	1
++#define FWTS_HAS_UEFI	1
++#define FWTS_USE_DEVMEM	1
++#endif
 +
-+#include "tegra210b01-p2894.dtsi"
-+
-+/ {
-+	model = "NVIDIA Shield TV Pro 2019";
-+	compatible = "nvidia,p2894-0050-a08", "nvidia,darcy", "nvidia,tegra210b01",
-+		"nvidia,tegra210";
-+};
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi
-new file mode 100644
-index 0000000000000000000000000000000000000000..97c9bd8f293539e76d57b6cfee49c60fb482d6ab
---- /dev/null
-+++ b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi
-@@ -0,0 +1,70 @@
-+// SPDX-License-Identifier: GPL-2.0
-+#include "tegra210b01.dtsi"
-+
-+/ {
-+	aliases {
-+		serial0 = &uarta;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	memory@80000000 {
-+		device_type = "memory";
-+		reg = <0x0 0x80000000 0x0 0xc0000000>;
-+	};
-+
-+	serial@70006000 {
-+		/delete-property/ dmas;
-+		/delete-property/ dma-names;
-+		status = "okay";
-+	};
-+
-+	pmc@7000e400 {
-+		nvidia,invert-interrupt;
-+		nvidia,suspend-mode = <0>;
-+		nvidia,cpu-pwr-good-time = <0>;
-+		nvidia,cpu-pwr-off-time = <0>;
-+		nvidia,core-pwr-good-time = <4587 3876>;
-+		nvidia,core-pwr-off-time = <39065>;
-+		nvidia,core-power-req-active-high;
-+		nvidia,sys-clock-req-active-high;
-+		status = "okay";
-+	};
-+
-+	mmc@700b0600 {
-+		bus-width = <8>;
-+		non-removable;
-+		status = "okay";
-+	};
-+
-+	clk32k_in: clock-32k {
-+		compatible = "fixed-clock";
-+		clock-frequency = <32768>;
-+		#clock-cells = <0>;
-+	};
-+
-+	cpus {
-+		cpu@0 {
-+			enable-method = "psci";
-+		};
-+
-+		cpu@1 {
-+			enable-method = "psci";
-+		};
-+
-+		cpu@2 {
-+			enable-method = "psci";
-+		};
-+
-+		cpu@3 {
-+			enable-method = "psci";
-+		};
-+	};
-+
-+	psci {
-+		compatible = "arm,psci-1.0";
-+		method = "smc";
-+	};
-+};
+ /* version 3-tuple into integer */
+ #define _VER_(major, minor, patchlevel)                 \
+ 	((major * 10000) + (minor * 100) + patchlevel)
 
+---
+base-commit: 72a8243073204858c79d809903f1a6926c736911
+change-id: 20250715-add-loongarch-83306e42e38f
+
+Best regards,
 -- 
-2.50.0
+Miao Wang <shankerwangmiao@gmail.com>
 
