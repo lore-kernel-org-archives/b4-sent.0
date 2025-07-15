@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 14 Jul 2025 23:02:45 -0500
-Subject: [PATCH 02/17] dt-bindings: phy: tegra-xusb: Document Tegra210B01
+Date: Mon, 14 Jul 2025 23:02:46 -0500
+Subject: [PATCH 03/17] dt-bindings: usb: tegra-xusb: Document Tegra210B01
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250714-t210b01-v1-2-e3f5f7de5dce@gmail.com>
+Message-Id: <20250714-t210b01-v1-3-e3f5f7de5dce@gmail.com>
 References: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
 In-Reply-To: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -27,38 +27,38 @@ Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org,
  linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752552229; l=902;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752552229; l=897;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=S+xEmmaI7KPQCg4icSZetTrJ6HEmpTYmTyrR9BWm6U4=;
- b=oFAYJgiq5zAewIvcvuf2FVbJYPXeLMkouUk1sQppnwgw8GP0DTIrtP2bwtLmOSpRKHsvaNZaE
- YHG8qgf5IE+C6GHWWbEeQ8srk1JoAam+kCy8+ezrtbNQqD7GXnW960V
+ bh=SJeTsauuKP0+H7jkmqGKY8VKb/OI6/mySaMOj0+bvYI=;
+ b=yP0lTSFS+l0N6akf6j/Cx5vcgWxbeDL25VLHkBqPLHnPqGgYP7JniA3VxMZeSd3vKOtlkIUzs
+ QsCWwkRQTthAZcI5/X4dFlCPXtsob+ynCYeNWGvmCj7J3v6PypT99tp
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the compatible string for the Tegra210B01 XUSB PHY
+Add the compatible string for Tegra210B01 XUSB
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- .../devicetree/bindings/phy/nvidia,tegra210-xusb-padctl.yaml          | 4 +++-
+ Documentation/devicetree/bindings/usb/nvidia,tegra210-xusb.yaml | 4 +++-
  1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/phy/nvidia,tegra210-xusb-padctl.yaml b/Documentation/devicetree/bindings/phy/nvidia,tegra210-xusb-padctl.yaml
-index e9237c58ce45df7fa25cac861891b3fe76efe83d..e876be8058d6a37cf006351f478d29e6b981c672 100644
---- a/Documentation/devicetree/bindings/phy/nvidia,tegra210-xusb-padctl.yaml
-+++ b/Documentation/devicetree/bindings/phy/nvidia,tegra210-xusb-padctl.yaml
-@@ -42,7 +42,9 @@ description: |
+diff --git a/Documentation/devicetree/bindings/usb/nvidia,tegra210-xusb.yaml b/Documentation/devicetree/bindings/usb/nvidia,tegra210-xusb.yaml
+index c0e313c70bbaba4f5da9cb090ab6f3027d274a2d..543355118282f52b276a087185709320dd8e09d6 100644
+--- a/Documentation/devicetree/bindings/usb/nvidia,tegra210-xusb.yaml
++++ b/Documentation/devicetree/bindings/usb/nvidia,tegra210-xusb.yaml
+@@ -15,7 +15,9 @@ description: The Tegra xHCI controller supports both USB2 and USB3 interfaces
  
  properties:
    compatible:
--    const: nvidia,tegra210-xusb-padctl
+-    const: nvidia,tegra210-xusb
 +    enum:
-+      - nvidia,tegra210-xusb-padctl
-+      - nvidia,tegra210b01-xusb-padctl
++      - nvidia,tegra210-xusb
++      - nvidia,tegra210b01-xusb
  
    reg:
-     maxItems: 1
+     items:
 
 -- 
 2.50.0
