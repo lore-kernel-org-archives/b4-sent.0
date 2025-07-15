@@ -1,10 +1,11 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 14 Jul 2025 23:02:49 -0500
-Subject: [PATCH 06/17] dt-bindings: clock: tegra: Document Tegra210B01
+Date: Mon, 14 Jul 2025 23:02:50 -0500
+Subject: [PATCH 07/17] dt-bindings: clock: tegra124-dfll: Document
+ Tegra210B01
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250714-t210b01-v1-6-e3f5f7de5dce@gmail.com>
+Message-Id: <20250714-t210b01-v1-7-e3f5f7de5dce@gmail.com>
 References: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
 In-Reply-To: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -27,52 +28,35 @@ Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org,
  linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752552229; l=1553;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752552229; l=989;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=v/eU4/Zbau/0drZs69pubd0H4hdpQftQ1XoOMJlu6DM=;
- b=G9Twzppau8KbstCQKxzCRCRpTGrNB+antQiJeq1WCfUYuIE6VYKSzvermTojlmY9fOLbOKvrA
- WJK9KxQiJzIBU/91EcyplXqJVkjI2JGdQ3/KQpL8FfgFl3wusseWPNu
+ bh=fUgyjpOO75XKaaHCsWtsX8Af/k0zbHG3wyrbsvFHw+c=;
+ b=HbtMGcj5C6VwNwqhghI57HKpV3VgiQhaNStx1cWF70IDveVcO2t81scUJfvX5T15T/YYF2Mlb
+ yCn7vOLv+9wAxj6RKxYTWah7YhBV0miIjvGUKRN+FKk+L/mIuFOiZMx
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-* Add the compatible string for Tegra210B01 clock and reset
-* Add Tegra210B01 specific clock bindings
+Add Tegra210B01 support for DFLL clock.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml | 1 +
- include/dt-bindings/clock/tegra210-car.h                        | 5 ++++-
- 2 files changed, 5 insertions(+), 1 deletion(-)
+ Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml b/Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml
-index bee2dd4b29bfe391caee346aa5afad49772c2c41..88cce500bbc43de934f6c56152e5b2d006f8a8bb 100644
---- a/Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml
-+++ b/Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml
-@@ -32,6 +32,7 @@ properties:
-       - nvidia,tegra30-car
-       - nvidia,tegra114-car
-       - nvidia,tegra210-car
-+      - nvidia,tegra210b01-car
- 
-   reg:
-     maxItems: 1
-diff --git a/include/dt-bindings/clock/tegra210-car.h b/include/dt-bindings/clock/tegra210-car.h
-index 9cfcc3baa52c6eef0439c859200cf44446a1cd17..27485d9b80f68fc0e7668a8abbd1b821f62035dd 100644
---- a/include/dt-bindings/clock/tegra210-car.h
-+++ b/include/dt-bindings/clock/tegra210-car.h
-@@ -409,6 +409,9 @@
- #define TEGRA210_CLK_DMIC3_SYNC_CLK 392
- #define TEGRA210_CLK_DMIC3_SYNC_CLK_MUX 393
- 
--#define TEGRA210_CLK_CLK_MAX 394
-+#define TEGRA210_CLK_UTMIPLL_60M 531
-+#define TEGRA210_CLK_PLL_P_UPHY_OUT 532
-+
-+#define TEGRA210_CLK_CLK_MAX 533
- 
- #endif	/* _DT_BINDINGS_CLOCK_TEGRA210_CAR_H */
+diff --git a/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt b/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt
+index f7d347385b5775ddd702ecbb9821acfc9d4b9ff2..aa7d50d4fe6f2c1c2500c53e3421355ce2b67599 100644
+--- a/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt
++++ b/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt
+@@ -13,6 +13,7 @@ Required properties:
+ - compatible : should be one of:
+   - "nvidia,tegra124-dfll": for Tegra124
+   - "nvidia,tegra210-dfll": for Tegra210
++  - "nvidia,tegra210b01-dfll": for Tegra210B01
+ - reg : Defines the following set of registers, in the order listed:
+         - registers for the DFLL control logic.
+         - registers for the I2C output logic.
 
 -- 
 2.50.0
