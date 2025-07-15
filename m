@@ -1,11 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 14 Jul 2025 23:02:50 -0500
-Subject: [PATCH 07/17] dt-bindings: clock: tegra124-dfll: Document
- Tegra210B01
+Date: Mon, 14 Jul 2025 23:02:51 -0500
+Subject: [PATCH 08/17] dt-bindings: tegra: Document Shield TV 2019
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250714-t210b01-v1-7-e3f5f7de5dce@gmail.com>
+Message-Id: <20250714-t210b01-v1-8-e3f5f7de5dce@gmail.com>
 References: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
 In-Reply-To: <20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -28,35 +27,39 @@ Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org,
  linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752552229; l=989;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752552229; l=980;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=fUgyjpOO75XKaaHCsWtsX8Af/k0zbHG3wyrbsvFHw+c=;
- b=HbtMGcj5C6VwNwqhghI57HKpV3VgiQhaNStx1cWF70IDveVcO2t81scUJfvX5T15T/YYF2Mlb
- yCn7vOLv+9wAxj6RKxYTWah7YhBV0miIjvGUKRN+FKk+L/mIuFOiZMx
+ bh=qdGW2Lg8dZdwx0alyGvGFA7+660C1HUDmyePy1D+md4=;
+ b=S2PTUB/zf2IzeQX6yEqIQJkLRJrmL1/dRCadc41EMtdoNwo0FZSfNfRDxT7ByMhUatLgP63gz
+ a22coA1mYziDW0QdbRTkwBAuWn7/u5qWMNnACzwmAGxBojKRRZsF8RB
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Tegra210B01 support for DFLL clock.
+Add the device tree binding documentation for NVIDIA Shield TV 2019
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/devicetree/bindings/arm/tegra.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt b/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt
-index f7d347385b5775ddd702ecbb9821acfc9d4b9ff2..aa7d50d4fe6f2c1c2500c53e3421355ce2b67599 100644
---- a/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt
-+++ b/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt
-@@ -13,6 +13,7 @@ Required properties:
- - compatible : should be one of:
-   - "nvidia,tegra124-dfll": for Tegra124
-   - "nvidia,tegra210-dfll": for Tegra210
-+  - "nvidia,tegra210b01-dfll": for Tegra210B01
- - reg : Defines the following set of registers, in the order listed:
-         - registers for the DFLL control logic.
-         - registers for the I2C output logic.
+diff --git a/Documentation/devicetree/bindings/arm/tegra.yaml b/Documentation/devicetree/bindings/arm/tegra.yaml
+index 9cae3268a8274fd3a38580939c79a6f21de48a3f..806190233b9859ad573fe43ac5104887fbadf428 100644
+--- a/Documentation/devicetree/bindings/arm/tegra.yaml
++++ b/Documentation/devicetree/bindings/arm/tegra.yaml
+@@ -174,6 +174,11 @@ properties:
+               - nvidia,p2571
+               - nvidia,p2894-0050-a08
+           - const: nvidia,tegra210
++      - items:
++          - const: nvidia,p2894-0050-a08
++          - const: nvidia,darcy
++          - const: nvidia,tegra210b01
++          - const: nvidia,tegra210
+       - description: Jetson TX2 Developer Kit
+         items:
+           - const: nvidia,p2771-0000
 
 -- 
 2.50.0
