@@ -1,343 +1,137 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Tue, 15 Jul 2025 20:51:39 +0800
-Subject: [PATCH 2/2] clk: amlogic: add video-related clocks for S4 SoC
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v6 0/4] PCI: Add support for resetting the Root Ports in a
+ platform specific way
+Date: Tue, 15 Jul 2025 19:51:03 +0530
+Message-Id: <20250715-pci-port-reset-v6-0-6f9cce94e7bb@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250715-add_video_clk-v1-2-40e7f633f361@amlogic.com>
-References: <20250715-add_video_clk-v1-0-40e7f633f361@amlogic.com>
-In-Reply-To: <20250715-add_video_clk-v1-0-40e7f633f361@amlogic.com>
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752583900; l=8635;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=Krtad04/LG3f+yownUO/6hPuVzIprI6Y8mPsJSZ7oMw=;
- b=jMVksC6mymjR/byiSiIbxFAfx7pwBYMaXcaQETql3fxq9FmaUM3nN9ryk8syF2Odt2oCBZWxJ
- RjEY4HOiEX0BWIlX5Euy1Nr9fgwZqRu9fMde0pvZjR6DRkHeT2LdkmL
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+X-B4-Tracking: v=1; b=H4sIANBjdmgC/3WMQQ6CQAxFr0K6tmQYKQgr72FYIFOliTA4RaIh3
+ N2RvZufvJ+8t4JyEFaokxUCL6LixwjFIYGub8c7o7jIYI0lU2aEUyc4+TBjYOUZc1dRVlFpMnu
+ EKE2Bb/Leg5cmci86+/DZ+wv93r+phdCgLVpytjy5a27OXjV9vtpH54chjQPNtm1fRDtzprMAA
+ AA=
+X-Change-ID: 20250715-pci-port-reset-4d9519570123
+To: Bjorn Helgaas <bhelgaas@google.com>, 
+ Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
+ Oliver O'Halloran <oohall@gmail.com>, Will Deacon <will@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linuxppc-dev@lists.ozlabs.org, linux-arm-kernel@lists.infradead.org, 
+ linux-arm-msm@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ Niklas Cassel <cassel@kernel.org>, 
+ Wilfred Mallawa <wilfred.mallawa@wdc.com>, 
+ Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
+ mani@kernel.org, Lukas Wunner <lukas@wunner.de>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4632;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=zVWl88t69qvQmJNOvzdu2b/qBUVRE3wqytBfM1uLa58=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBodmPTpP68PeP7S5mOvihNYGZRu6k0UgqJY+bSa
+ wL0Q1raTaCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaHZj0wAKCRBVnxHm/pHO
+ 9VrVB/sEOpRz2jWfexpNikVYAvlqnyV+VsE/hzfg9+9mkMJYFMgNFPJsfEVbeY0aUttZ2LAVAww
+ 9MddGux+8kU7nT0VGLY7iSFSK3Fv4knmzzPko07sVZlkFLb8Dwd5TnO9Czmcfrw8/giROuJizsX
+ HjOUGxsR0uVIAbYHKTJH7LBXf/cY9stFc5Mran7/fIDOJ3igthjnnYZsKA8tYd4ojiz+Ow/LtZ2
+ P8IpC3GgQ6zeoYz0OCVBuyxtcBMlE+WW4y9g23+AgI6+f+3uvlw+wgS3sS7f4FywokyToEMABdq
+ mFgDl2cPx3QBIOFhCdKVwia609sG4ESLZpX27ALw8Obj7gSv
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add video encoder, demodulator and CVBS clocks.
+Hi,
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Currently, in the event of AER/DPC, PCI core will try to reset the slot (Root
+Port) and its subordinate devices by invoking bridge control reset and FLR. But
+in some cases like AER Fatal error, it might be necessary to reset the Root
+Ports using the PCI host bridge drivers in a platform specific way (as indicated
+by the TODO in the pcie_do_recovery() function in drivers/pci/pcie/err.c).
+Otherwise, the PCI link won't be recovered successfully.
+
+So this series adds a new callback 'pci_host_bridge::reset_root_port' for the
+host bridge drivers to reset the Root Port when a fatal error happens.
+
+Also, this series allows the host bridge drivers to handle PCI link down event
+by resetting the Root Ports and recovering the bus. This is accomplished by the
+help of the new 'pci_host_handle_link_down()' API. Host bridge drivers are
+expected to call this API (preferrably from a threaded IRQ handler) with
+relevant Root Port 'pci_dev' when a link down event is detected for the port.
+The API will reuse the pcie_do_recovery() function to recover the link if AER
+support is enabled, otherwise it will directly call the reset_root_port()
+callback of the host bridge driver (if exists).
+
+For reference, I've modified the pcie-qcom driver to call
+pci_host_handle_link_down() API with Root Port 'pci_dev' after receiving the
+LINK_DOWN global_irq event and populated 'pci_host_bridge::reset_root_port()'
+callback to reset the Root Port. Since the Qcom PCIe controllers support only
+a single Root Port (slot) per controller instance, the API is going to be
+invoked only once. For multi Root Port controllers, the controller driver is
+expected to detect the Root Port that received the link down event and call
+the pci_host_handle_link_down() API with 'pci_dev' of that Root Port.
+
+Testing
+-------
+
+I've lost access to my test setup now. So Krishna (Cced) will help with testing
+on the Qcom platform and Wilfred or Niklas should be able to test it on Rockchip
+platform. For the moment, this series is compile tested only.
+
+Changes in v6:
+- Incorporated the patch: https://lore.kernel.org/all/20250524185304.26698-2-manivannan.sadhasivam@linaro.org/
+- Link to v5: https://lore.kernel.org/r/20250715-pci-port-reset-v5-0-26a5d278db40@oss.qualcomm.com
+
+Changes in v5:
+* Reworked the pci_host_handle_link_down() to accept Root Port instead of
+  resetting all Root Ports in the event of link down.
+* Renamed 'reset_slot' to 'reset_root_port' to avoid confusion as both terms
+  were used interchangibly and the series is intended to reset Root Port only.
+* Added the Rockchip driver change to this series.
+* Dropped the applied patches and review/tested tags due to rework.
+* Rebased on top of v6.16-rc1.
+
+Changes in v4:
+- Handled link down first in the irq handler
+- Updated ICC & OPP bandwidth after link up in reset_slot() callback
+- Link to v3: https://lore.kernel.org/r/20250417-pcie-reset-slot-v3-0-59a10811c962@linaro.org
+
+Changes in v3:
+- Made the pci-host-common driver as a common library for host controller
+  drivers
+- Moved the reset slot code to pci-host-common library
+- Link to v2: https://lore.kernel.org/r/20250416-pcie-reset-slot-v2-0-efe76b278c10@linaro.org
+
+Changes in v2:
+- Moved calling reset_slot() callback from pcie_do_recovery() to pcibios_reset_secondary_bus()
+- Link to v1: https://lore.kernel.org/r/20250404-pcie-reset-slot-v1-0-98952918bf90@linaro.org
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/clk/meson/s4-peripherals.c | 256 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 256 insertions(+)
+Manivannan Sadhasivam (3):
+      PCI/ERR: Add support for resetting the Root Ports in a platform specific way
+      PCI: host-common: Add link down handling for Root Ports
+      PCI: qcom: Add support for resetting the Root Port due to link down event
 
-diff --git a/drivers/clk/meson/s4-peripherals.c b/drivers/clk/meson/s4-peripherals.c
-index c9400cf54c84..f43526d506b1 100644
---- a/drivers/clk/meson/s4-peripherals.c
-+++ b/drivers/clk/meson/s4-peripherals.c
-@@ -44,6 +44,7 @@
- #define CLKCTRL_VDIN_MEAS_CLK_CTRL                 0x0f8
- #define CLKCTRL_VAPBCLK_CTRL                       0x0fc
- #define CLKCTRL_HDCP22_CTRL                        0x100
-+#define CLKCTRL_CDAC_CLK_CTRL                      0x108
- #define CLKCTRL_VDEC_CLK_CTRL                      0x140
- #define CLKCTRL_VDEC2_CLK_CTRL                     0x144
- #define CLKCTRL_VDEC3_CLK_CTRL                     0x148
-@@ -1117,6 +1118,22 @@ static struct clk_regmap s4_cts_encp_sel = {
- 	},
- };
- 
-+static struct clk_regmap s4_cts_encl_sel = {
-+	.data = &(struct clk_regmap_mux_data){
-+		.offset = CLKCTRL_VIID_CLK_DIV,
-+		.mask = 0xf,
-+		.shift = 12,
-+		.table = mux_table_cts_sel,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cts_encl_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_hws = s4_cts_parent_hws,
-+		.num_parents = ARRAY_SIZE(s4_cts_parent_hws),
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- static struct clk_regmap s4_cts_vdac_sel = {
- 	.data = &(struct clk_regmap_mux_data){
- 		.offset = CLKCTRL_VIID_CLK_DIV,
-@@ -1196,6 +1213,22 @@ static struct clk_regmap s4_cts_encp = {
- 	},
- };
- 
-+static struct clk_regmap s4_cts_encl = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = CLKCTRL_VID_CLK_CTRL2,
-+		.bit_idx = 3,
-+	},
-+	.hw.init = &(struct clk_init_data) {
-+		.name = "cts_encl",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_cts_encl_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- static struct clk_regmap s4_cts_vdac = {
- 	.data = &(struct clk_regmap_gate_data){
- 		.offset = CLKCTRL_VID_CLK_CTRL2,
-@@ -1228,6 +1261,56 @@ static struct clk_regmap s4_hdmi_tx = {
- 	},
- };
- 
-+static struct clk_regmap s4_lcd_an_sel = {
-+	.data = &(struct clk_regmap_mux_data){
-+		.offset = CLKCTRL_VIID_CLK_DIV,
-+		.mask = 0x1,
-+		.shift = 11,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "lcd_an_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_vclk_div6.hw,
-+			&s4_vclk_div12.hw,
-+		},
-+		.num_parents = 2,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_lcd_an_ph2 = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = CLKCTRL_VID_CLK_CTRL2,
-+		.bit_idx = 7,
-+	},
-+	.hw.init = &(struct clk_init_data) {
-+		.name = "lcd_an_ph2",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_lcd_an_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_lcd_an_ph3 = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = CLKCTRL_VID_CLK_CTRL2,
-+		.bit_idx = 7,
-+	},
-+	.hw.init = &(struct clk_init_data) {
-+		.name = "lcd_an_ph3",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_lcd_an_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- /* HDMI Clocks */
- static const struct clk_parent_data s4_hdmi_parent_data[] = {
- 	{ .fw_name = "xtal", },
-@@ -3174,6 +3257,165 @@ static struct clk_regmap s4_gen_clk = {
- 	},
- };
- 
-+/* CVBS DAC */
-+static struct clk_regmap s4_cdac_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = CLKCTRL_CDAC_CLK_CTRL,
-+		.mask = 0x3,
-+		.shift = 16,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cdac_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_data = (const struct clk_parent_data []) {
-+			{ .fw_name = "xtal", },
-+			{ .fw_name = "fclk_div5" },
-+		},
-+		.num_parents = 2,
-+	},
-+};
-+
-+static struct clk_regmap s4_cdac_div = {
-+	.data = &(struct clk_regmap_div_data) {
-+		.offset = CLKCTRL_CDAC_CLK_CTRL,
-+		.shift = 0,
-+		.width = 16,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cdac_div",
-+		.ops = &clk_regmap_divider_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_cdac_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_cdac = {
-+	.data = &(struct clk_regmap_gate_data) {
-+		.offset = CLKCTRL_CDAC_CLK_CTRL,
-+		.bit_idx = 20,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cdac",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_cdac_div.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_demod_core_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.mask = 0x3,
-+		.shift = 9,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "demod_core_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_data = (const struct clk_parent_data []) {
-+			{ .fw_name = "xtal" },
-+			{ .fw_name = "fclk_div7" },
-+			{ .fw_name = "fclk_div4" }
-+		},
-+		.num_parents = 3,
-+	},
-+};
-+
-+static struct clk_regmap s4_demod_core_div = {
-+	.data = &(struct clk_regmap_div_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.shift = 0,
-+		.width = 7,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "demod_core_div",
-+		.ops = &clk_regmap_divider_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_demod_core_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_demod_core = {
-+	.data = &(struct clk_regmap_gate_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.bit_idx = 8
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "demod_core",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_demod_core_div.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+/* CVBS ADC */
-+static struct clk_regmap s4_adc_extclk_in_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.mask = 0x7,
-+		.shift = 25,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "adc_extclk_in_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_data = (const struct clk_parent_data []) {
-+			{ .fw_name = "xtal" },
-+			{ .fw_name = "fclk_div4" },
-+			{ .fw_name = "fclk_div3" },
-+			{ .fw_name = "fclk_div5" },
-+			{ .fw_name = "fclk_div7" },
-+			{ .fw_name = "mpll2" },
-+			{ .fw_name = "gp0_pll" },
-+			{ .fw_name = "hifi_pll" }
-+		},
-+		.num_parents = 8,
-+	},
-+};
-+
-+static struct clk_regmap s4_adc_extclk_in_div = {
-+	.data = &(struct clk_regmap_div_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.shift = 16,
-+		.width = 7,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "adc_extclk_in_div",
-+		.ops = &clk_regmap_divider_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_adc_extclk_in_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_adc_extclk_in = {
-+	.data = &(struct clk_regmap_gate_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.bit_idx = 24
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "adc_extclk_in",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_adc_extclk_in_div.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- #define MESON_GATE(_name, _reg, _bit) \
- 	MESON_PCLK(_name, _reg, _bit, &s4_sys_clk.hw)
- 
-@@ -3453,6 +3695,20 @@ static struct clk_hw *s4_periphs_hw_clks[] = {
- 	[CLKID_HDCP22_SKPCLK_SEL]	= &s4_hdcp22_skpclk_mux.hw,
- 	[CLKID_HDCP22_SKPCLK_DIV]	= &s4_hdcp22_skpclk_div.hw,
- 	[CLKID_HDCP22_SKPCLK]		= &s4_hdcp22_skpclk_gate.hw,
-+	[CLKID_CTS_ENCL_SEL]		= &s4_cts_encl_sel.hw,
-+	[CLKID_CTS_ENCL]		= &s4_cts_encl.hw,
-+	[CLKID_LCD_AN_SEL]		= &s4_lcd_an_sel.hw,
-+	[CLKID_LCD_AN_PH2]		= &s4_lcd_an_ph2.hw,
-+	[CLKID_LCD_AN_PH3]		= &s4_lcd_an_ph3.hw,
-+	[CLKID_CDAC_SEL]		= &s4_cdac_sel.hw,
-+	[CLKID_CDAC_DIV]		= &s4_cdac_div.hw,
-+	[CLKID_CDAC]			= &s4_cdac.hw,
-+	[CLKID_DEMOD_CORE_SEL]		= &s4_demod_core_sel.hw,
-+	[CLKID_DEMOD_CORE_DIV]		= &s4_demod_core_div.hw,
-+	[CLKID_DEMOD_CORE]		= &s4_demod_core.hw,
-+	[CLKID_ADC_EXTCLK_IN_SEL]	= &s4_adc_extclk_in_sel.hw,
-+	[CLKID_ADC_EXTCLK_IN_DIV]	= &s4_adc_extclk_in_div.hw,
-+	[CLKID_ADC_EXTCLK_IN]		= &s4_adc_extclk_in.hw,
- };
- 
- static const struct regmap_config clkc_regmap_config = {
+Wilfred Mallawa (1):
+      PCI: dw-rockchip: Add support to reset Root Port upon link down event
 
+ drivers/pci/controller/dwc/Kconfig            |   2 +
+ drivers/pci/controller/dwc/pcie-dw-rockchip.c |  91 ++++++++++++++++++-
+ drivers/pci/controller/dwc/pcie-qcom.c        | 120 ++++++++++++++++++++++++--
+ drivers/pci/controller/pci-host-common.c      |  33 +++++++
+ drivers/pci/controller/pci-host-common.h      |   1 +
+ drivers/pci/pci.c                             |  21 +++++
+ drivers/pci/pcie/err.c                        |   6 +-
+ include/linux/pci.h                           |   1 +
+ 8 files changed, 260 insertions(+), 15 deletions(-)
+---
+base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
+change-id: 20250715-pci-port-reset-4d9519570123
+
+Best regards,
 -- 
-2.42.0
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
