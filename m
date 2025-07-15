@@ -1,227 +1,106 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Tue, 15 Jul 2025 19:51:07 +0530
-Subject: [PATCH v6 4/4] PCI: dw-rockchip: Add support to reset Root Port
- upon link down event
+From: Christoph Paasch <cpaasch@openai.com>
+Date: Tue, 15 Jul 2025 13:20:53 -0700
+Subject: [PATCH net v2] net/mlx5: Correctly set gso_size when LRO is used
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250715-pci-port-reset-v6-4-6f9cce94e7bb@oss.qualcomm.com>
-References: <20250715-pci-port-reset-v6-0-6f9cce94e7bb@oss.qualcomm.com>
-In-Reply-To: <20250715-pci-port-reset-v6-0-6f9cce94e7bb@oss.qualcomm.com>
-To: Bjorn Helgaas <bhelgaas@google.com>, 
- Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
- Oliver O'Halloran <oohall@gmail.com>, Will Deacon <will@kernel.org>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linuxppc-dev@lists.ozlabs.org, linux-arm-kernel@lists.infradead.org, 
- linux-arm-msm@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- Niklas Cassel <cassel@kernel.org>, 
- Wilfred Mallawa <wilfred.mallawa@wdc.com>, 
- Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- mani@kernel.org, Lukas Wunner <lukas@wunner.de>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Message-Id: <20250715-cpaasch-pf-925-investigate-incorrect-gso_size-on-cx-7-nic-v2-1-e06c3475f3ac@openai.com>
+X-B4-Tracking: v=1; b=H4sIACS4dmgC/x2N0QqDMAwAf0XyvIArFt1+ZQzpYqx5SUtTRCb++
+ 8oeD467E4yLsMGzO6HwLiZJG7hbB7QFjYyyNAbXO9+P9wEph2C0YV7x4TyK7mxVYqjNVEqlMFW
+ MlmaTL2NSpANHVCGcvPsMvg/TEhZo/Vx4leP/foFyhfd1/QDj4EQQkAAAAA==
+X-Change-ID: 20250714-cpaasch-pf-925-investigate-incorrect-gso_size-on-cx-7-nic-852b450a8dad
+To: Saeed Mahameed <saeedm@nvidia.com>, Tariq Toukan <tariqt@nvidia.com>, 
+ Mark Bloch <mbloch@nvidia.com>, Leon Romanovsky <leon@kernel.org>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Gal Pressman <gal@nvidia.com>
+Cc: netdev@vger.kernel.org, linux-rdma@vger.kernel.org, 
+ Christoph Paasch <cpaasch@openai.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6494;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=qm+3CMghWKFd+O3bZU1o020L8vQ/E6aH1MlFdMAO6mw=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBodmPUEht58g/m1MEl9CiEJpYG+gEPLb6qZmkLg
- 17gt0+/UWKJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaHZj1AAKCRBVnxHm/pHO
- 9bcvCACog/qU6v0/olHy9NV34E/7u439Cz/PsWLzz23mGRR95QAEtPckJ29Y1ReoXl9kRlBdEId
- s/ovkySUmIURZga8nOC7zVHFfFr23wBEF97zAJgyYKqRATv2x3wb2/OleIMcB6PgDH5arice5yO
- ZpIK7nMHSLoiqFBcPhdxbb/niu6d86Zqohw9mWyqObF9PweBctF/wXkvdg5Bh8JXyiOEH5VEQnK
- W69HHb4lv+/0WcQBvHfMuzFtzYb0wfcSLKzvzn1r9p48kJvfNjL1QdGxDHa8CXYybbkaWtgDvUX
- i0JqWYZjdOHMBKHRC9J+wqRHnGJyk238VRQsipjpNPJN4rxk
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752610867; l=3259;
+ i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
+ bh=+zux3SKfHs3vKZon0w9riKpNcRAgFX0sLiVki6c1lMw=;
+ b=yhoowKJGwpVa5ITYjE0xwLhyxs8867DSSeKO3J423J8X0y7cPV8oOTJZ/r6H/GXg9HhtTT4eN
+ ljKX+BSfcQgCu/OsWUgDx2za891lZgCPk5MF7coVRhZ6rMm+sHf0Wq0
+X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
+ pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
+X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Wilfred Mallawa <wilfred.mallawa@wdc.com>
+gso_size is expected by the networking stack to be the size of the
+payload (thus, not including ethernet/IP/TCP-headers). However, cqe_bcnt
+is the full sized frame (including the headers). Dividing cqe_bcnt by
+lro_num_seg will then give incorrect results.
 
-The PCIe link may go down in cases like firmware crashes or unstable
-connections. When this occurs, the PCIe Root Port must be reset to restore
-the functionality. However, the current driver lacks link down handling,
-forcing users to reboot the system to recover.
+For example, running a bpftrace higher up in the TCP-stack
+(tcp_event_data_recv), we commonly have gso_size set to 1450 or 1451 even
+though in reality the payload was only 1448 bytes.
 
-This patch implements the `reset_root_port` callback for link down handling
-for Rockchip DWC PCIe host controller. In which, the RC is reset,
-reconfigured and link training initiated to recover from the link down
-event.
+This can have unintended consequences:
+- In tcp_measure_rcv_mss() len will be for example 1450, but. rcv_mss
+will be 1448 (because tp->advmss is 1448). Thus, we will always
+recompute scaling_ratio each time an LRO-packet is received.
+- In tcp_gro_receive(), it will interfere with the decision whether or
+not to flush and thus potentially result in less gro'ed packets.
 
-This also by extension fixes issues with sysfs initiated bus resets. In
-that, currently, when a sysfs initiated bus reset is issued, the endpoint
-device is non-functional after (may link up with downgraded link status).
-With the link down handling support, a sysfs initiated bus reset works as
-intended. Testing conducted on a ROCK5B board with an M.2 NVMe drive.
+So, we need to discount the protocol headers from cqe_bcnt so we can
+actually divide the payload by lro_num_seg to get the real gso_size.
 
-Signed-off-by: Wilfred Mallawa <wilfred.mallawa@wdc.com>
-[mani: rebased on top of the new version of reset_root_port series]
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+v2:
+ - Use "(unsigned char *)tcp + tcp->doff * 4 - skb->data)" to compute header-len
+   (Tariq Toukan <tariqt@nvidia.com>)
+ - Improve commit-message (Gal Pressman <gal@nvidia.com>)
+
+Fixes: e586b3b0baee ("net/mlx5: Ethernet Datapath files")
+Signed-off-by: Christoph Paasch <cpaasch@openai.com>
 ---
- drivers/pci/controller/dwc/Kconfig            |  1 +
- drivers/pci/controller/dwc/pcie-dw-rockchip.c | 91 ++++++++++++++++++++++++++-
- 2 files changed, 90 insertions(+), 2 deletions(-)
+ drivers/net/ethernet/mellanox/mlx5/core/en_rx.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/pci/controller/dwc/Kconfig b/drivers/pci/controller/dwc/Kconfig
-index ce04ee6fbd99cbcce5d2f3a75ebd72a17070b7b7..01e2650242ccc345bdd0568d08219527f00ed395 100644
---- a/drivers/pci/controller/dwc/Kconfig
-+++ b/drivers/pci/controller/dwc/Kconfig
-@@ -348,6 +348,7 @@ config PCIE_ROCKCHIP_DW_HOST
- 	depends on OF
- 	select PCIE_DW_HOST
- 	select PCIE_ROCKCHIP_DW
-+	select PCI_HOST_COMMON
- 	help
- 	  Enables support for the DesignWare PCIe controller in the
- 	  Rockchip SoC (except RK3399) to work in host mode.
-diff --git a/drivers/pci/controller/dwc/pcie-dw-rockchip.c b/drivers/pci/controller/dwc/pcie-dw-rockchip.c
-index 93171a3928794915ad1e8c03c017ce0afc1f9169..8f1a34c5fbabaacbd9624048ca4c4f8dc29f2171 100644
---- a/drivers/pci/controller/dwc/pcie-dw-rockchip.c
-+++ b/drivers/pci/controller/dwc/pcie-dw-rockchip.c
-@@ -23,6 +23,7 @@
- #include <linux/reset.h>
- 
- #include "../../pci.h"
-+#include "../pci-host-common.h"
- #include "pcie-designware.h"
- 
- /*
-@@ -84,6 +85,9 @@ struct rockchip_pcie_of_data {
- 	const struct pci_epc_features *epc_features;
- };
- 
-+static int rockchip_pcie_rc_reset_root_port(struct pci_host_bridge *bridge,
-+				       struct pci_dev *pdev);
-+
- static int rockchip_pcie_readl_apb(struct rockchip_pcie *rockchip, u32 reg)
- {
- 	return readl_relaxed(rockchip->apb_base + reg);
-@@ -257,6 +261,7 @@ static int rockchip_pcie_host_init(struct dw_pcie_rp *pp)
- 					 rockchip);
- 
- 	rockchip_pcie_enable_l0s(pci);
-+	pp->bridge->reset_root_port = rockchip_pcie_rc_reset_root_port;
- 
- 	return 0;
- }
-@@ -448,6 +453,7 @@ static irqreturn_t rockchip_pcie_rc_sys_irq_thread(int irq, void *arg)
- 	struct dw_pcie *pci = &rockchip->pci;
- 	struct dw_pcie_rp *pp = &pci->pp;
- 	struct device *dev = pci->dev;
-+	struct pci_dev *port;
- 	u32 reg;
- 
- 	reg = rockchip_pcie_readl_apb(rockchip, PCIE_CLIENT_INTR_STATUS_MISC);
-@@ -456,6 +462,14 @@ static irqreturn_t rockchip_pcie_rc_sys_irq_thread(int irq, void *arg)
- 	dev_dbg(dev, "PCIE_CLIENT_INTR_STATUS_MISC: %#x\n", reg);
- 	dev_dbg(dev, "LTSSM_STATUS: %#x\n", rockchip_pcie_get_ltssm(rockchip));
- 
-+	if (reg & PCIE_LINK_REQ_RST_NOT_INT) {
-+		dev_dbg(dev, "hot reset or link-down reset\n");
-+		for_each_pci_bridge(port, pp->bridge->bus) {
-+			if (pci_pcie_type(port) == PCI_EXP_TYPE_ROOT_PORT)
-+				pci_host_handle_link_down(port);
-+		}
-+	}
-+
- 	if (reg & PCIE_RDLH_LINK_UP_CHGED) {
- 		if (rockchip_pcie_link_up(pci)) {
- 			dev_dbg(dev, "Received Link up event. Starting enumeration!\n");
-@@ -537,8 +551,8 @@ static int rockchip_pcie_configure_rc(struct platform_device *pdev,
- 		return ret;
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
+index 84b1ab8233b8107f0d954ea29c33601b279a2c27..7462514c7f3d1606339ede13a6207c1629ab65a3 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
+@@ -1154,8 +1154,9 @@ static void mlx5e_lro_update_tcp_hdr(struct mlx5_cqe64 *cqe, struct tcphdr *tcp)
  	}
- 
--	/* unmask DLL up/down indicator */
--	val = HIWORD_UPDATE(PCIE_RDLH_LINK_UP_CHGED, 0);
-+	/* unmask DLL up/down indicator and hot reset/link-down reset irq */
-+	val = HIWORD_UPDATE(PCIE_RDLH_LINK_UP_CHGED | PCIE_LINK_REQ_RST_NOT_INT, 0);
- 	rockchip_pcie_writel_apb(rockchip, val, PCIE_CLIENT_INTR_MASK_MISC);
- 
- 	return ret;
-@@ -689,6 +703,79 @@ static int rockchip_pcie_probe(struct platform_device *pdev)
- 	return ret;
  }
  
-+static int rockchip_pcie_rc_reset_root_port(struct pci_host_bridge *bridge,
-+					    struct pci_dev *pdev)
-+{
-+	struct pci_bus *bus = bridge->bus;
-+	struct dw_pcie_rp *pp = bus->sysdata;
-+	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
-+	struct rockchip_pcie *rockchip = to_rockchip_pcie(pci);
-+	struct device *dev = rockchip->pci.dev;
-+	u32 val;
-+	int ret;
+-static void mlx5e_lro_update_hdr(struct sk_buff *skb, struct mlx5_cqe64 *cqe,
+-				 u32 cqe_bcnt)
++static unsigned int mlx5e_lro_update_hdr(struct sk_buff *skb,
++					 struct mlx5_cqe64 *cqe,
++					 u32 cqe_bcnt)
+ {
+ 	struct ethhdr	*eth = (struct ethhdr *)(skb->data);
+ 	struct tcphdr	*tcp;
+@@ -1205,6 +1206,8 @@ static void mlx5e_lro_update_hdr(struct sk_buff *skb, struct mlx5_cqe64 *cqe,
+ 		tcp->check = tcp_v6_check(payload_len, &ipv6->saddr,
+ 					  &ipv6->daddr, check);
+ 	}
 +
-+	dw_pcie_stop_link(pci);
-+	clk_bulk_disable_unprepare(rockchip->clk_cnt, rockchip->clks);
-+	rockchip_pcie_phy_deinit(rockchip);
++	return (unsigned int)((unsigned char *)tcp + tcp->doff * 4 - skb->data);
+ }
+ 
+ static void *mlx5e_shampo_get_packet_hd(struct mlx5e_rq *rq, u16 header_index)
+@@ -1561,8 +1564,9 @@ static inline void mlx5e_build_rx_skb(struct mlx5_cqe64 *cqe,
+ 		mlx5e_macsec_offload_handle_rx_skb(netdev, skb, cqe);
+ 
+ 	if (lro_num_seg > 1) {
+-		mlx5e_lro_update_hdr(skb, cqe, cqe_bcnt);
+-		skb_shinfo(skb)->gso_size = DIV_ROUND_UP(cqe_bcnt, lro_num_seg);
++		unsigned int hdrlen = mlx5e_lro_update_hdr(skb, cqe, cqe_bcnt);
 +
-+	ret = reset_control_assert(rockchip->rst);
-+	if (ret)
-+		return ret;
-+
-+	ret = rockchip_pcie_phy_init(rockchip);
-+	if (ret)
-+		goto disable_regulator;
-+
-+	ret = reset_control_deassert(rockchip->rst);
-+	if (ret)
-+		goto deinit_phy;
-+
-+	ret = rockchip_pcie_clk_init(rockchip);
-+	if (ret)
-+		goto deinit_phy;
-+
-+	ret = pp->ops->init(pp);
-+	if (ret) {
-+		dev_err(dev, "Host init failed: %d\n", ret);
-+		goto deinit_clk;
-+	}
-+
-+	/* LTSSM enable control mode */
-+	val = HIWORD_UPDATE_BIT(PCIE_LTSSM_ENABLE_ENHANCE);
-+	rockchip_pcie_writel_apb(rockchip, val, PCIE_CLIENT_HOT_RESET_CTRL);
-+
-+	rockchip_pcie_writel_apb(rockchip, PCIE_CLIENT_RC_MODE, PCIE_CLIENT_GENERAL_CON);
-+
-+	ret = dw_pcie_setup_rc(pp);
-+	if (ret) {
-+		dev_err(dev, "Failed to setup RC: %d\n", ret);
-+		goto deinit_clk;
-+	}
-+
-+	/* unmask DLL up/down indicator and hot reset/link-down reset irq */
-+	val = HIWORD_UPDATE(PCIE_RDLH_LINK_UP_CHGED | PCIE_LINK_REQ_RST_NOT_INT, 0);
-+	rockchip_pcie_writel_apb(rockchip, val, PCIE_CLIENT_INTR_MASK_MISC);
-+
-+	ret = dw_pcie_start_link(pci);
-+	if (ret)
-+		goto deinit_clk;
-+
-+	/* Ignore errors, the link may come up later */
-+	dw_pcie_wait_for_link(pci);
-+	dev_dbg(dev, "Root Port reset completed\n");
-+	return ret;
-+
-+deinit_clk:
-+	clk_bulk_disable_unprepare(rockchip->clk_cnt, rockchip->clks);
-+deinit_phy:
-+	rockchip_pcie_phy_deinit(rockchip);
-+disable_regulator:
-+	if (rockchip->vpcie3v3)
-+		regulator_disable(rockchip->vpcie3v3);
-+
-+	return ret;
-+}
-+
- static const struct rockchip_pcie_of_data rockchip_pcie_rc_of_data_rk3568 = {
- 	.mode = DW_PCIE_RC_TYPE,
- };
++		skb_shinfo(skb)->gso_size = DIV_ROUND_UP(cqe_bcnt - hdrlen, lro_num_seg);
+ 		/* Subtract one since we already counted this as one
+ 		 * "regular" packet in mlx5e_complete_rx_cqe()
+ 		 */
 
+---
+base-commit: 0e9418961f897be59b1fab6e31ae1b09a0bae902
+change-id: 20250714-cpaasch-pf-925-investigate-incorrect-gso_size-on-cx-7-nic-852b450a8dad
+
+Best regards,
 -- 
-2.45.2
+Christoph Paasch <cpaasch@openai.com>
 
