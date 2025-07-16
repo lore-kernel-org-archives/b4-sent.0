@@ -1,14 +1,13 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Subject: [PATCH 0/6] PCI/ASPM: Fix pci_enable_link_state*() APIs behavior
-Date: Wed, 16 Jul 2025 18:26:19 +0530
-Message-Id: <20250716-ath-aspm-fix-v1-0-dd3e62c1b692@oss.qualcomm.com>
+Date: Wed, 16 Jul 2025 18:26:20 +0530
+Subject: [PATCH 1/6] PCI/ASPM: Fix the behavior of pci_enable_link_state*()
+ APIs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHOhd2gC/x2MQQqAMAzAviI9W7BjMvQr4qFodT04ZRURxL87P
- CaQPGCSVQz66oEsl5ruqQDVFUyR0yqoc2FwjWubQIR8RmQ7Nlz0xomC945b7ligJEeWov/dML7
- vBxDLtA5eAAAA
-X-Change-ID: 20250711-ath-aspm-fix-c17442a5a9ae
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250716-ath-aspm-fix-v1-1-dd3e62c1b692@oss.qualcomm.com>
+References: <20250716-ath-aspm-fix-v1-0-dd3e62c1b692@oss.qualcomm.com>
+In-Reply-To: <20250716-ath-aspm-fix-v1-0-dd3e62c1b692@oss.qualcomm.com>
 To: Jeff Johnson <jjohnson@kernel.org>, 
  Manivannan Sadhasivam <mani@kernel.org>, 
  Lorenzo Pieralisi <lpieralisi@kernel.org>, 
@@ -22,81 +21,133 @@ Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org,
  ilpo.jarvinen@linux.intel.com, linux-arm-msm@vger.kernel.org, 
  linux-pci@vger.kernel.org, 
  Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Qiang Yu <qiang.yu@oss.qualcomm.com>
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2631;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4956;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=XJHu0BU6B2oAYGh4zlJhKIwWPQugh47Z5AJ6yeiT7Z4=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBod6F2iDbObtlH1SjC+CqMAksFgzOriAQ1Avz7v
- IVgkpT7eMSJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaHehdgAKCRBVnxHm/pHO
- 9YnKB/wIw+Evh74fkz1+e3zKFQWHQKJJSazZGHS5g4sICCMPZ/4M93vTf+iLF4Blp3veDJhLy1B
- BGe8V3AJq+xqMdOOWmaPj/fEy7ukevvMlLZHnS5yHIrebv9ehwe60fjePHZ+kkwke2JXgh5SMn2
- aoNSydN026Nm+C+XW0IVVbZqMpsq3pFyN5MLTUVKM9zREWmmg/RAd75jPZ0oWkNiqzEj2C4XoVV
- M3swsNxSU7uFYHGzLxGFSLk3zf3Sm1Tl48owufc1zv9xTnXYeobMvQIsx4hvQSBACG7gwFxjUmc
- 4epgfpo4UEHaA5y6LDHB/oAZex/9Q6hTaG0SGH/st9KFUCxN
+ bh=txWReBCozsV6K3h+AVzcC8X3bIUcFoipF2Mk8WMybVc=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBod6F2nYK94za955ZeieEJ9Ez0Y2Av6XhQrppa5
+ ebXFfv0PFmJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaHehdgAKCRBVnxHm/pHO
+ 9SHlB/90r+TtbKMkBbNeCDEVH/Jrf7o4re2piyrrsGCzh0idctS+oYCCeeT7jgzfq7ggdznpMMU
+ mQr0I4UlVAchEjmViMQIM08lI3ua2e6agBSoTRvDOHv7nV14qK//rdbd6R2qvzrr3/Cp0G2XZAP
+ A8w3Zxfv6fi5ggd68SOJj4IywptCrpisEU1IlZqjOAXzWsjWtKSsitJLWhgunEFfCNWymj0y4qz
+ /Rga/kB3tRfYTfyFYxws1/DimAikv81gVwwh3IUwZqY8a0t5Po8SPP34YhBYIhWkGv0iKT/n+Fw
+ RvxtKMfnFTDvKDABbaNKGVchiHyVSO5beEi5Oh6ETnWzwiR8
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+pci_enable_link_state() and pci_enable_link_state_locked() APIs are
+supposed to be symmectric with pci_disable_link_state() and
+pci_disable_link_state_locked() APIs.
 
-This series fixes the behavior of the pci_enable_link_state() and
-pci_enable_link_state_locked() APIs to be in symmetry with
-pci_disable_link_state*() couterparts.
+But unfortunately, they are not symmetric. This behavior was mentioned in
+the kernel-doc of these APIs:
 
-First 3 patches fixes and cleans up the ASPM code and the last 3 patches
-modifies the atheros drivers to use the pci{enable/disable}_link_state() APIs
-instead of modifying the LNKCTL register directly for enabling ASPM.
+" Clear and set the default device link state..."
 
-NOTE: The current callers of the pci_enable_link_state_locked() APIs (vmd and
-pcie-qcom) drivers doesn't look like depending on the old behavior of the API. I
-can atleast assure that for pcie-qcom. For VMD, it would be great if VMD folks
-CCed could provide their review tags for patch 1/6.
+and
 
-Testing
-=======
+"Also note that this does not enable states disabled by
+pci_disable_link_state()"
 
-I've tested this series on Lenovo Thinkpad T14s with WCN7850 chipset (so that's
-just ath12k driver). Rest of the drivers are compile tested only.
+These APIs won't enable all the states specified by the 'state' parameter,
+but only enable the ones not previously disabled by the
+pci_disable_link_state*() APIs. But this behavior doesn't align with the
+naming of these APIs, as they give the impression that these APIs will
+enable all the specified states.
 
-Merging Strategy
-================
+To resolve this ambiguity, allow these APIs to enable the specified states,
+regardeless of whether they were previously disabled or not. This is
+accomplished by clearing the previously disabled states from the
+'link::aspm_disable' parameter in __pci_enable_link_state() helper. Also,
+reword the kernel-doc to reflect this behavior.
 
-Even though there is no build dependency between PCI core and atheros patches,
-there is a functional dependency. So I'd recommend creating an immutable branch
-with PCI patches and merging that branch into both PCI and linux-wireless trees
-and finally merging the atheros patches into linux-wireless tree.
+The current callers of pci_enable_link_state_locked() APIs (vmd and
+pcie-qcom) did not disable the ASPM states before calling this API. So it
+is evident that they do not depend on the previous behavior of this API and
+intend to enable all the specified states.
 
-If immutable branch seems like a hassle, then PCI core patches could get merged
-for 6.17 and atheros patches can wait for 6.18.
+And the other API, pci_enable_link_state() doesn't have a caller for now,
+but will be used by the 'atheros' WLAN drivers in the subsequent commits.
 
-- Mani
-
+Suggested-by: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Co-developed-by: Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
+Signed-off-by: Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
-Manivannan Sadhasivam (6):
-      PCI/ASPM: Fix the behavior of pci_enable_link_state*() APIs
-      PCI/ASPM: Transition the device to D0 (if required) inside pci_enable_link_state_locked() API
-      PCI/ASPM: Improve the kernel-doc for pci_disable_link_state*() APIs
-      wifi: ath12k: Use pci_{enable/disable}_link_state() APIs to enable/disable ASPM states
-      wifi: ath11k: Use pci_{enable/disable}_link_state() APIs to enable/disable ASPM states
-      wifi: ath10k: Use pci_{enable/disable}_link_state() APIs to enable/disable ASPM states
+ drivers/pci/pcie/aspm.c | 33 ++++++++++++++++++---------------
+ 1 file changed, 18 insertions(+), 15 deletions(-)
 
- drivers/net/wireless/ath/ath.h         | 14 ++++++
- drivers/net/wireless/ath/ath10k/pci.c  |  7 +--
- drivers/net/wireless/ath/ath11k/pci.c  | 10 ++---
- drivers/net/wireless/ath/ath12k/pci.c  | 10 ++---
- drivers/pci/controller/dwc/pcie-qcom.c |  5 ---
- drivers/pci/controller/vmd.c           |  5 ---
- drivers/pci/pcie/aspm.c                | 78 ++++++++++++++++++++++++----------
- 7 files changed, 79 insertions(+), 50 deletions(-)
----
-base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
-change-id: 20250711-ath-aspm-fix-c17442a5a9ae
+diff --git a/drivers/pci/pcie/aspm.c b/drivers/pci/pcie/aspm.c
+index 29fcb0689a918f9cb123691e1680de5a1af2c115..ec63880057942cef9ffbf3f67dcd87ee3d2df17d 100644
+--- a/drivers/pci/pcie/aspm.c
++++ b/drivers/pci/pcie/aspm.c
+@@ -1453,6 +1453,7 @@ static int __pci_enable_link_state(struct pci_dev *pdev, int state, bool locked)
+ 		down_read(&pci_bus_sem);
+ 	mutex_lock(&aspm_lock);
+ 	link->aspm_default = pci_calc_aspm_enable_mask(state);
++	link->aspm_disable &= ~state;
+ 	pcie_config_aspm_link(link, policy_to_aspm_state(link));
+ 
+ 	link->clkpm_default = (state & PCIE_LINK_STATE_CLKPM) ? 1 : 0;
+@@ -1465,17 +1466,18 @@ static int __pci_enable_link_state(struct pci_dev *pdev, int state, bool locked)
+ }
+ 
+ /**
+- * pci_enable_link_state - Clear and set the default device link state so that
+- * the link may be allowed to enter the specified states. Note that if the
+- * BIOS didn't grant ASPM control to the OS, this does nothing because we can't
+- * touch the LNKCTL register. Also note that this does not enable states
+- * disabled by pci_disable_link_state(). Return 0 or a negative errno.
++ * pci_enable_link_state - Enable device's link state
++ * @pdev: PCI device
++ * @state: Mask of ASPM link states to enable
++ *
++ * Enable device's link state, so the link will enter the specified states.
++ * Note that if the BIOS didn't grant ASPM control to the OS, this does
++ * nothing because we can't touch the LNKCTL register.
+  *
+  * Note: Ensure devices are in D0 before enabling PCI-PM L1 PM Substates, per
+  * PCIe r6.0, sec 5.5.4.
+  *
+- * @pdev: PCI device
+- * @state: Mask of ASPM link states to enable
++ * Return: 0 on success, a negative errno otherwise.
+  */
+ int pci_enable_link_state(struct pci_dev *pdev, int state)
+ {
+@@ -1484,19 +1486,20 @@ int pci_enable_link_state(struct pci_dev *pdev, int state)
+ EXPORT_SYMBOL(pci_enable_link_state);
+ 
+ /**
+- * pci_enable_link_state_locked - Clear and set the default device link state
+- * so that the link may be allowed to enter the specified states. Note that if
+- * the BIOS didn't grant ASPM control to the OS, this does nothing because we
+- * can't touch the LNKCTL register. Also note that this does not enable states
+- * disabled by pci_disable_link_state(). Return 0 or a negative errno.
++ * pci_enable_link_state_locked - Enable device's link state
++ * @pdev: PCI device
++ * @state: Mask of ASPM link states to enable
++ *
++ * Enable device's link state, so the link will enter the specified states.
++ * Note that if the BIOS didn't grant ASPM control to the OS, this does
++ * nothing because we can't touch the LNKCTL register.
+  *
+  * Note: Ensure devices are in D0 before enabling PCI-PM L1 PM Substates, per
+  * PCIe r6.0, sec 5.5.4.
+  *
+- * @pdev: PCI device
+- * @state: Mask of ASPM link states to enable
+- *
+  * Context: Caller holds pci_bus_sem read lock.
++ *
++ * Return: 0 on success, a negative errno otherwise.
+  */
+ int pci_enable_link_state_locked(struct pci_dev *pdev, int state)
+ {
 
-Best regards,
 -- 
-Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+2.45.2
 
