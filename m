@@ -1,378 +1,102 @@
-From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Wed, 16 Jul 2025 19:25:18 +0800
-Subject: [PATCH v3 9/9] MIPS: configs: Consolidate Loongson1 defconfigs
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH 0/6] PCI/ASPM: Fix pci_enable_link_state*() APIs behavior
+Date: Wed, 16 Jul 2025 18:26:19 +0530
+Message-Id: <20250716-ath-aspm-fix-v1-0-dd3e62c1b692@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250716-loongson1-arch-v3-9-d160974d696b@gmail.com>
-References: <20250716-loongson1-arch-v3-0-d160974d696b@gmail.com>
-In-Reply-To: <20250716-loongson1-arch-v3-0-d160974d696b@gmail.com>
-To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jiaxun Yang <jiaxun.yang@flygoat.com>, 
- Keguang Zhang <keguang.zhang@gmail.com>
-Cc: linux-mips@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752665136; l=10713;
- i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=vXaIa8N3GToUGpAmk80FkzsQAYrU6OjHna1ZLvsKN7s=;
- b=TXulWvlekYH10mgmEKNMpSHZTHGFm8BteCB79xroD70KiFpzV6qJYpFNDO4DVjYMiYCQT6p54
- l/U+F+LkfKeCuzSnNVe6ArwGVVhXuauePC+GKQ9Eh7eA2OAgW939W17
-X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
- pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
-X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
+X-B4-Tracking: v=1; b=H4sIAHOhd2gC/x2MQQqAMAzAviI9W7BjMvQr4qFodT04ZRURxL87P
+ CaQPGCSVQz66oEsl5ruqQDVFUyR0yqoc2FwjWubQIR8RmQ7Nlz0xomC945b7ligJEeWov/dML7
+ vBxDLtA5eAAAA
+X-Change-ID: 20250711-ath-aspm-fix-c17442a5a9ae
+To: Jeff Johnson <jjohnson@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Nirmal Patel <nirmal.patel@linux.intel.com>, 
+ Jonathan Derrick <jonathan.derrick@linux.dev>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ ath12k@lists.infradead.org, ath11k@lists.infradead.org, 
+ ath10k@lists.infradead.org, Bjorn Helgaas <helgaas@kernel.org>, 
+ ilpo.jarvinen@linux.intel.com, linux-arm-msm@vger.kernel.org, 
+ linux-pci@vger.kernel.org, 
+ Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Qiang Yu <qiang.yu@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2631;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=XJHu0BU6B2oAYGh4zlJhKIwWPQugh47Z5AJ6yeiT7Z4=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBod6F2iDbObtlH1SjC+CqMAksFgzOriAQ1Avz7v
+ IVgkpT7eMSJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaHehdgAKCRBVnxHm/pHO
+ 9YnKB/wIw+Evh74fkz1+e3zKFQWHQKJJSazZGHS5g4sICCMPZ/4M93vTf+iLF4Blp3veDJhLy1B
+ BGe8V3AJq+xqMdOOWmaPj/fEy7ukevvMlLZHnS5yHIrebv9ehwe60fjePHZ+kkwke2JXgh5SMn2
+ aoNSydN026Nm+C+XW0IVVbZqMpsq3pFyN5MLTUVKM9zREWmmg/RAd75jPZ0oWkNiqzEj2C4XoVV
+ M3swsNxSU7uFYHGzLxGFSLk3zf3Sm1Tl48owufc1zv9xTnXYeobMvQIsx4hvQSBACG7gwFxjUmc
+ 4epgfpo4UEHaA5y6LDHB/oAZex/9Q6hTaG0SGH/st9KFUCxN
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Unify loongson{1b,1c}_defconfig into a single loongson1_defconfig.
+Hi,
 
-Enable the following options by default:
- - CONFIG_SERIAL_OF_PLATFORM
- - CONFIG_RTC_DRV_LOONGSON
- - CONFIG_LOONGSON1_APB_DMA
- - CONFIG_MTD_NAND_LOONGSON1
- - CONFIG_SND_LOONGSON1_AC97
+This series fixes the behavior of the pci_enable_link_state() and
+pci_enable_link_state_locked() APIs to be in symmetry with
+pci_disable_link_state*() couterparts.
 
-Also disable unnecessary options.
+First 3 patches fixes and cleans up the ASPM code and the last 3 patches
+modifies the atheros drivers to use the pci{enable/disable}_link_state() APIs
+instead of modifying the LNKCTL register directly for enabling ASPM.
 
-Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
+NOTE: The current callers of the pci_enable_link_state_locked() APIs (vmd and
+pcie-qcom) drivers doesn't look like depending on the old behavior of the API. I
+can atleast assure that for pcie-qcom. For VMD, it would be great if VMD folks
+CCed could provide their review tags for patch 1/6.
+
+Testing
+=======
+
+I've tested this series on Lenovo Thinkpad T14s with WCN7850 chipset (so that's
+just ath12k driver). Rest of the drivers are compile tested only.
+
+Merging Strategy
+================
+
+Even though there is no build dependency between PCI core and atheros patches,
+there is a functional dependency. So I'd recommend creating an immutable branch
+with PCI patches and merging that branch into both PCI and linux-wireless trees
+and finally merging the atheros patches into linux-wireless tree.
+
+If immutable branch seems like a hassle, then PCI core patches could get merged
+for 6.17 and atheros patches can wait for 6.18.
+
+- Mani
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- MAINTAINERS                                        |   1 +
- .../{loongson1b_defconfig => loongson1_defconfig}  |  94 +++++++++++++---
- arch/mips/configs/loongson1c_defconfig             | 121 ---------------------
- 3 files changed, 78 insertions(+), 138 deletions(-)
+Manivannan Sadhasivam (6):
+      PCI/ASPM: Fix the behavior of pci_enable_link_state*() APIs
+      PCI/ASPM: Transition the device to D0 (if required) inside pci_enable_link_state_locked() API
+      PCI/ASPM: Improve the kernel-doc for pci_disable_link_state*() APIs
+      wifi: ath12k: Use pci_{enable/disable}_link_state() APIs to enable/disable ASPM states
+      wifi: ath11k: Use pci_{enable/disable}_link_state() APIs to enable/disable ASPM states
+      wifi: ath10k: Use pci_{enable/disable}_link_state() APIs to enable/disable ASPM states
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index d42a83656879..c73e25af147c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -16684,6 +16684,7 @@ L:	linux-mips@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/*/loongson,ls1*.yaml
- F:	arch/mips/boot/dts/loongson/loongson1*
-+F:	arch/mips/configs/loongson1_defconfig
- F:	arch/mips/loongson32/
- F:	drivers/*/*loongson1*
- F:	drivers/mtd/nand/raw/loongson1-nand-controller.c
-diff --git a/arch/mips/configs/loongson1b_defconfig b/arch/mips/configs/loongson1_defconfig
-similarity index 51%
-rename from arch/mips/configs/loongson1b_defconfig
-rename to arch/mips/configs/loongson1_defconfig
-index 68207b31dc20..81acae6f61c8 100644
---- a/arch/mips/configs/loongson1b_defconfig
-+++ b/arch/mips/configs/loongson1_defconfig
-@@ -1,7 +1,6 @@
- # CONFIG_LOCALVERSION_AUTO is not set
- CONFIG_KERNEL_XZ=y
- CONFIG_SYSVIPC=y
--CONFIG_HIGH_RES_TIMERS=y
- CONFIG_PREEMPT=y
- CONFIG_BSD_PROCESS_ACCT=y
- CONFIG_BSD_PROCESS_ACCT_V3=y
-@@ -12,15 +11,16 @@ CONFIG_NAMESPACES=y
- CONFIG_CC_OPTIMIZE_FOR_SIZE=y
- CONFIG_EXPERT=y
- CONFIG_PERF_EVENTS=y
--# CONFIG_COMPAT_BRK is not set
- CONFIG_MACH_LOONGSON32=y
--# CONFIG_SECCOMP is not set
- # CONFIG_SUSPEND is not set
-+# CONFIG_SECCOMP is not set
-+# CONFIG_GCC_PLUGINS is not set
- CONFIG_MODULES=y
- CONFIG_MODULE_UNLOAD=y
- CONFIG_MODVERSIONS=y
--# CONFIG_BLK_DEV_BSG is not set
-+# CONFIG_BLOCK_LEGACY_AUTOLOAD is not set
- # CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS is not set
-+# CONFIG_COMPAT_BRK is not set
- CONFIG_NET=y
- CONFIG_PACKET=y
- CONFIG_UNIX=y
-@@ -31,6 +31,7 @@ CONFIG_SYN_COOKIES=y
- # CONFIG_INET_DIAG is not set
- # CONFIG_IPV6 is not set
- # CONFIG_WIRELESS is not set
-+# CONFIG_ETHTOOL_NETLINK is not set
- CONFIG_DEVTMPFS=y
- CONFIG_DEVTMPFS_MOUNT=y
- # CONFIG_STANDALONE is not set
-@@ -38,32 +39,75 @@ CONFIG_MTD=y
- CONFIG_MTD_CMDLINE_PARTS=y
- CONFIG_MTD_BLOCK=y
- CONFIG_MTD_RAW_NAND=y
-+CONFIG_MTD_NAND_LOONGSON1=y
- CONFIG_MTD_UBI=y
- CONFIG_BLK_DEV_LOOP=y
- CONFIG_SCSI=m
- # CONFIG_SCSI_PROC_FS is not set
- CONFIG_BLK_DEV_SD=m
-+# CONFIG_BLK_DEV_BSG is not set
- # CONFIG_SCSI_LOWLEVEL is not set
- CONFIG_NETDEVICES=y
-+# CONFIG_NET_VENDOR_ALACRITECH is not set
-+# CONFIG_NET_VENDOR_AMAZON is not set
-+# CONFIG_NET_VENDOR_AQUANTIA is not set
-+# CONFIG_NET_VENDOR_ARC is not set
-+# CONFIG_NET_VENDOR_ASIX is not set
- # CONFIG_NET_VENDOR_BROADCOM is not set
-+# CONFIG_NET_VENDOR_CADENCE is not set
-+# CONFIG_NET_VENDOR_CAVIUM is not set
-+# CONFIG_NET_VENDOR_CORTINA is not set
-+# CONFIG_NET_VENDOR_DAVICOM is not set
-+# CONFIG_NET_VENDOR_ENGLEDER is not set
-+# CONFIG_NET_VENDOR_EZCHIP is not set
-+# CONFIG_NET_VENDOR_FUNGIBLE is not set
-+# CONFIG_NET_VENDOR_GOOGLE is not set
-+# CONFIG_NET_VENDOR_HISILICON is not set
-+# CONFIG_NET_VENDOR_HUAWEI is not set
- # CONFIG_NET_VENDOR_INTEL is not set
-+# CONFIG_NET_VENDOR_LITEX is not set
- # CONFIG_NET_VENDOR_MARVELL is not set
-+# CONFIG_NET_VENDOR_META is not set
- # CONFIG_NET_VENDOR_MICREL is not set
-+# CONFIG_NET_VENDOR_MICROCHIP is not set
-+# CONFIG_NET_VENDOR_MICROSEMI is not set
-+# CONFIG_NET_VENDOR_MICROSOFT is not set
-+# CONFIG_NET_VENDOR_NI is not set
- # CONFIG_NET_VENDOR_NATSEMI is not set
-+# CONFIG_NET_VENDOR_NETRONOME is not set
-+# CONFIG_NET_VENDOR_PENSANDO is not set
-+# CONFIG_NET_VENDOR_QUALCOMM is not set
-+# CONFIG_NET_VENDOR_RENESAS is not set
-+# CONFIG_NET_VENDOR_ROCKER is not set
-+# CONFIG_NET_VENDOR_SAMSUNG is not set
- # CONFIG_NET_VENDOR_SEEQ is not set
-+# CONFIG_NET_VENDOR_SOLARFLARE is not set
- # CONFIG_NET_VENDOR_SMSC is not set
-+# CONFIG_NET_VENDOR_SOCIONEXT is not set
- CONFIG_STMMAC_ETH=y
-+# CONFIG_DWMAC_GENERIC is not set
-+# CONFIG_NET_VENDOR_SYNOPSYS is not set
-+# CONFIG_NET_VENDOR_VERTEXCOM is not set
-+# CONFIG_NET_VENDOR_VIA is not set
-+# CONFIG_NET_VENDOR_WANGXUN is not set
- # CONFIG_NET_VENDOR_WIZNET is not set
-+# CONFIG_NET_VENDOR_XILINX is not set
-+CONFIG_DAVICOM_PHY=y
-+CONFIG_REALTEK_PHY=y
-+# CONFIG_USB_NET_DRIVERS is not set
- # CONFIG_WLAN is not set
- CONFIG_INPUT_EVDEV=y
- # CONFIG_INPUT_KEYBOARD is not set
- # CONFIG_INPUT_MOUSE is not set
- # CONFIG_SERIO is not set
-+# CONFIG_VT_CONSOLE is not set
- CONFIG_VT_HW_CONSOLE_BINDING=y
- CONFIG_LEGACY_PTY_COUNT=8
- CONFIG_SERIAL_8250=y
- CONFIG_SERIAL_8250_CONSOLE=y
-+CONFIG_SERIAL_OF_PLATFORM=y
- # CONFIG_HW_RANDOM is not set
-+# CONFIG_PTP_1588_CLOCK is not set
- CONFIG_GPIOLIB=y
- CONFIG_GPIO_LOONGSON1=y
- # CONFIG_HWMON is not set
-@@ -71,7 +115,15 @@ CONFIG_WATCHDOG=y
- CONFIG_WATCHDOG_NOWAYOUT=y
- CONFIG_WATCHDOG_SYSFS=y
- CONFIG_LOONGSON1_WDT=y
--# CONFIG_VGA_CONSOLE is not set
-+CONFIG_SOUND=y
-+CONFIG_SND=y
-+# CONFIG_SND_SUPPORT_OLD_API is not set
-+# CONFIG_SND_DRIVERS is not set
-+# CONFIG_SND_MIPS is not set
-+# CONFIG_SND_USB is not set
-+CONFIG_SND_SOC=y
-+CONFIG_SND_LOONGSON1_AC97=y
-+CONFIG_SND_SIMPLE_CARD=y
- CONFIG_HID_GENERIC=m
- CONFIG_USB_HID=m
- CONFIG_USB=y
-@@ -86,17 +138,20 @@ CONFIG_NEW_LEDS=y
- CONFIG_LEDS_CLASS=y
- CONFIG_LEDS_GPIO=y
- CONFIG_LEDS_TRIGGERS=y
-+CONFIG_LEDS_TRIGGER_MTD=y
- CONFIG_LEDS_TRIGGER_HEARTBEAT=y
- CONFIG_RTC_CLASS=y
--CONFIG_RTC_DRV_LOONGSON1=y
-+# CONFIG_RTC_NVMEM is not set
-+CONFIG_RTC_DRV_LOONGSON=y
-+CONFIG_DMADEVICES=y
-+CONFIG_LOONGSON1_APB_DMA=y
-+# CONFIG_VIRTIO_MENU is not set
-+# CONFIG_VHOST_MENU is not set
-+# CONFIG_MIPS_PLATFORM_DEVICES is not set
- # CONFIG_IOMMU_SUPPORT is not set
--CONFIG_EXT2_FS=y
--CONFIG_EXT2_FS_XATTR=y
--CONFIG_EXT2_FS_POSIX_ACL=y
--CONFIG_EXT2_FS_SECURITY=y
--CONFIG_EXT3_FS=y
--CONFIG_EXT3_FS_POSIX_ACL=y
--CONFIG_EXT3_FS_SECURITY=y
-+# CONFIG_NVMEM is not set
-+CONFIG_EXT4_FS=y
-+CONFIG_EXT4_FS_POSIX_ACL=y
- # CONFIG_DNOTIFY is not set
- CONFIG_VFAT_FS=y
- CONFIG_PROC_KCORE=y
-@@ -105,16 +160,21 @@ CONFIG_TMPFS_POSIX_ACL=y
- CONFIG_UBIFS_FS=y
- CONFIG_UBIFS_FS_ADVANCED_COMPR=y
- CONFIG_UBIFS_ATIME_SUPPORT=y
-+# CONFIG_UBIFS_FS_SECURITY is not set
- CONFIG_NFS_FS=y
- CONFIG_ROOT_NFS=y
- CONFIG_NLS_CODEPAGE_437=m
- CONFIG_NLS_ISO8859_1=m
--# CONFIG_CRYPTO_ECHAINIV is not set
- # CONFIG_CRYPTO_HW is not set
-+# CONFIG_XZ_DEC_X86 is not set
-+# CONFIG_XZ_DEC_POWERPC is not set
-+# CONFIG_XZ_DEC_ARM is not set
-+# CONFIG_XZ_DEC_ARMTHUMB is not set
-+# CONFIG_XZ_DEC_ARM64 is not set
-+# CONFIG_XZ_DEC_SPARC is not set
-+# CONFIG_XZ_DEC_RISCV is not set
- CONFIG_DYNAMIC_DEBUG=y
--CONFIG_DEBUG_FS=y
-+# CONFIG_DEBUG_MISC is not set
- CONFIG_MAGIC_SYSRQ=y
--# CONFIG_SCHED_DEBUG is not set
--# CONFIG_DEBUG_PREEMPT is not set
- # CONFIG_FTRACE is not set
- # CONFIG_EARLY_PRINTK is not set
-diff --git a/arch/mips/configs/loongson1c_defconfig b/arch/mips/configs/loongson1c_defconfig
-deleted file mode 100644
-index c3910a9dee9e..000000000000
---- a/arch/mips/configs/loongson1c_defconfig
-+++ /dev/null
-@@ -1,121 +0,0 @@
--# CONFIG_LOCALVERSION_AUTO is not set
--CONFIG_KERNEL_XZ=y
--CONFIG_SYSVIPC=y
--CONFIG_HIGH_RES_TIMERS=y
--CONFIG_PREEMPT=y
--CONFIG_BSD_PROCESS_ACCT=y
--CONFIG_BSD_PROCESS_ACCT_V3=y
--CONFIG_IKCONFIG=y
--CONFIG_IKCONFIG_PROC=y
--CONFIG_LOG_BUF_SHIFT=16
--CONFIG_NAMESPACES=y
--CONFIG_CC_OPTIMIZE_FOR_SIZE=y
--CONFIG_EXPERT=y
--CONFIG_PERF_EVENTS=y
--# CONFIG_COMPAT_BRK is not set
--CONFIG_MACH_LOONGSON32=y
--CONFIG_LOONGSON1_LS1C=y
--# CONFIG_SECCOMP is not set
--# CONFIG_SUSPEND is not set
--CONFIG_MODULES=y
--CONFIG_MODULE_UNLOAD=y
--CONFIG_MODVERSIONS=y
--# CONFIG_BLK_DEV_BSG is not set
--# CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS is not set
--CONFIG_NET=y
--CONFIG_PACKET=y
--CONFIG_UNIX=y
--CONFIG_INET=y
--CONFIG_IP_PNP=y
--CONFIG_IP_PNP_DHCP=y
--CONFIG_SYN_COOKIES=y
--# CONFIG_INET_DIAG is not set
--# CONFIG_IPV6 is not set
--# CONFIG_WIRELESS is not set
--CONFIG_DEVTMPFS=y
--CONFIG_DEVTMPFS_MOUNT=y
--# CONFIG_STANDALONE is not set
--CONFIG_MTD=y
--CONFIG_MTD_CMDLINE_PARTS=y
--CONFIG_MTD_BLOCK=y
--CONFIG_MTD_RAW_NAND=y
--CONFIG_MTD_UBI=y
--CONFIG_BLK_DEV_LOOP=y
--CONFIG_SCSI=m
--# CONFIG_SCSI_PROC_FS is not set
--CONFIG_BLK_DEV_SD=m
--# CONFIG_SCSI_LOWLEVEL is not set
--CONFIG_NETDEVICES=y
--# CONFIG_NET_VENDOR_BROADCOM is not set
--# CONFIG_NET_VENDOR_INTEL is not set
--# CONFIG_NET_VENDOR_MARVELL is not set
--# CONFIG_NET_VENDOR_MICREL is not set
--# CONFIG_NET_VENDOR_NATSEMI is not set
--# CONFIG_NET_VENDOR_SEEQ is not set
--# CONFIG_NET_VENDOR_SMSC is not set
--CONFIG_STMMAC_ETH=y
--# CONFIG_NET_VENDOR_WIZNET is not set
--# CONFIG_WLAN is not set
--CONFIG_INPUT_EVDEV=y
--# CONFIG_INPUT_KEYBOARD is not set
--# CONFIG_INPUT_MOUSE is not set
--# CONFIG_SERIO is not set
--CONFIG_VT_HW_CONSOLE_BINDING=y
--CONFIG_LEGACY_PTY_COUNT=8
--CONFIG_SERIAL_8250=y
--CONFIG_SERIAL_8250_CONSOLE=y
--# CONFIG_HW_RANDOM is not set
--CONFIG_GPIOLIB=y
--CONFIG_GPIO_LOONGSON1=y
--# CONFIG_HWMON is not set
--CONFIG_WATCHDOG=y
--CONFIG_WATCHDOG_NOWAYOUT=y
--CONFIG_WATCHDOG_SYSFS=y
--CONFIG_LOONGSON1_WDT=y
--# CONFIG_VGA_CONSOLE is not set
--CONFIG_HID_GENERIC=m
--CONFIG_USB_HID=m
--CONFIG_USB=y
--CONFIG_USB_ANNOUNCE_NEW_DEVICES=y
--CONFIG_USB_EHCI_HCD=y
--# CONFIG_USB_EHCI_TT_NEWSCHED is not set
--CONFIG_USB_EHCI_HCD_PLATFORM=y
--CONFIG_USB_STORAGE=m
--CONFIG_USB_SERIAL=m
--CONFIG_USB_SERIAL_PL2303=m
--CONFIG_NEW_LEDS=y
--CONFIG_LEDS_CLASS=y
--CONFIG_LEDS_GPIO=y
--CONFIG_LEDS_TRIGGERS=y
--CONFIG_LEDS_TRIGGER_HEARTBEAT=y
--CONFIG_RTC_CLASS=y
--CONFIG_RTC_DRV_LOONGSON1=y
--# CONFIG_IOMMU_SUPPORT is not set
--CONFIG_EXT2_FS=y
--CONFIG_EXT2_FS_XATTR=y
--CONFIG_EXT2_FS_POSIX_ACL=y
--CONFIG_EXT2_FS_SECURITY=y
--CONFIG_EXT3_FS=y
--CONFIG_EXT3_FS_POSIX_ACL=y
--CONFIG_EXT3_FS_SECURITY=y
--# CONFIG_DNOTIFY is not set
--CONFIG_VFAT_FS=y
--CONFIG_PROC_KCORE=y
--CONFIG_TMPFS=y
--CONFIG_TMPFS_POSIX_ACL=y
--CONFIG_UBIFS_FS=y
--CONFIG_UBIFS_FS_ADVANCED_COMPR=y
--CONFIG_UBIFS_ATIME_SUPPORT=y
--CONFIG_NFS_FS=y
--CONFIG_ROOT_NFS=y
--CONFIG_NLS_CODEPAGE_437=m
--CONFIG_NLS_ISO8859_1=m
--# CONFIG_CRYPTO_ECHAINIV is not set
--# CONFIG_CRYPTO_HW is not set
--CONFIG_DYNAMIC_DEBUG=y
--CONFIG_DEBUG_FS=y
--CONFIG_MAGIC_SYSRQ=y
--# CONFIG_SCHED_DEBUG is not set
--# CONFIG_DEBUG_PREEMPT is not set
--# CONFIG_FTRACE is not set
--# CONFIG_EARLY_PRINTK is not set
+ drivers/net/wireless/ath/ath.h         | 14 ++++++
+ drivers/net/wireless/ath/ath10k/pci.c  |  7 +--
+ drivers/net/wireless/ath/ath11k/pci.c  | 10 ++---
+ drivers/net/wireless/ath/ath12k/pci.c  | 10 ++---
+ drivers/pci/controller/dwc/pcie-qcom.c |  5 ---
+ drivers/pci/controller/vmd.c           |  5 ---
+ drivers/pci/pcie/aspm.c                | 78 ++++++++++++++++++++++++----------
+ 7 files changed, 79 insertions(+), 50 deletions(-)
+---
+base-commit: 19272b37aa4f83ca52bdf9c16d5d81bdd1354494
+change-id: 20250711-ath-aspm-fix-c17442a5a9ae
 
+Best regards,
 -- 
-2.43.0
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
