@@ -1,79 +1,61 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 16 Jul 2025 18:26:25 +0530
-Subject: [PATCH 6/6] wifi: ath10k: Use pci_{enable/disable}_link_state()
- APIs to enable/disable ASPM states
+From: Louis Rannou <louis.rannou@non.se.com>
+Subject: [PATCH RFC 0/2] RFC: bracket prefixes
+Date: Wed, 16 Jul 2025 16:04:08 +0200
+Message-Id: <20250716-prefixes-v1-0-b8652d4de0a6@non.se.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250716-ath-aspm-fix-v1-6-dd3e62c1b692@oss.qualcomm.com>
-References: <20250716-ath-aspm-fix-v1-0-dd3e62c1b692@oss.qualcomm.com>
-In-Reply-To: <20250716-ath-aspm-fix-v1-0-dd3e62c1b692@oss.qualcomm.com>
-To: Jeff Johnson <jjohnson@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- Nirmal Patel <nirmal.patel@linux.intel.com>, 
- Jonathan Derrick <jonathan.derrick@linux.dev>
-Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
- ath12k@lists.infradead.org, ath11k@lists.infradead.org, 
- ath10k@lists.infradead.org, Bjorn Helgaas <helgaas@kernel.org>, 
- ilpo.jarvinen@linux.intel.com, linux-arm-msm@vger.kernel.org, 
- linux-pci@vger.kernel.org, 
- Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1518;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=Fx4ej/EicH41+mIOpWKF1WcnMWq9PYq0rbjy+/KSq0Q=;
- b=kA0DAAoBVZ8R5v6RzvUByyZiAGh3oXbIxqk80Tgh+RxdditU6/SfcGzUbtEKyagt0528i4qmg
- okBMwQAAQoAHRYhBGelQyqBSMvYpFgnl1WfEeb+kc71BQJod6F2AAoJEFWfEeb+kc71+zwH/j9g
- 77XQ+TyQtXbct+iV57W9c8g3ZQmgOtKIHRMLu+mcrcqHfSxz/V/4OcFnyjatqAbs33eteSiCZ55
- LoVeVbo3qOjovyINbJXFwgSGgb7MrPELoEBPbwyZvr7H6mp2v1GP3XUzZsi6NwIHjh1J7BQUqHV
- aDnAaoWlbmAChlKp0tbmRkWVN2LpMwTe6EfcYqrCmz7nBm1x0QLTpGPJkNYzV/HgleNa8aMEQFV
- eQP3tLVUolrRr8ZS4IJHlOEVQus5Ub4hqfKpnW3BFAvywjtvLCovpSp6Diwn0zkfZ0WLLS5Xk0R
- 6jeK1WBsuL8Emy0OHC085U9qIOq5psdkZ9ca4Pc=
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-B4-Tracking: v=1; b=H4sIAFixd2gC/2WMQQrCMBBFr1JmbUomJURdCYIHcCtdlMnEZmEiG
+ SlKyd0NBVcu33+Pv4JwiSxw7FYovESJOTXAXQc0T+nOKvrGYLSx2iGqZ+EQ3yxqcIYGCnoKBw8
+ t/4lW3+B6OcPYxjnKK5fPdr/gpv6fFlRa0d5bh5bIGjylnHrhnvIDxlrrFzKWJbemAAAA
+To: "Kernel.org Tools" <tools@kernel.org>
+Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
+ Louis Rannou <louis.rannou@non.se.com>, pascal.eberhard@se.com
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752674650; l=1336;
+ i=louis.rannou@non.se.com; s=20250630; h=from:subject:message-id;
+ bh=fwHScP4CevQU44aZ824iYyYiSKY4ybSWzP82Z/1iJQQ=;
+ b=q1bjDwnkeffm0gPp7MySx2ReHsIWKodoYy3U3HcS3R+DUUZhZKvqyypunHPSpy8cImPOyaPDE
+ OxQSFWwnRlRBSkuVaP2H2Y90yumCoizAUiwMJAn3dsuc9kx00wx9JnB
+X-Developer-Key: i=louis.rannou@non.se.com; a=ed25519;
+ pk=WWYN5/DFKqyCKdv6oTYNuq0gROqwZVfNfw2OMI3tUlc=
+X-Endpoint-Received: by B4 Relay for louis.rannou@non.se.com/20250630 with auth_id=446
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It is not recommended to enable/disable the ASPM states on the back of the
-PCI core directly using the LNKCTL register. It will break the PCI core's
-knowledge about the device ASPM states. So use the APIs exposed by the PCI
-core to enable/disable ASPM states.
+Several projects such as meta-openembedded [1] or meta-security [2] require some
+bracket-prefixes before '[PATCH]'. The issue is that prefixes are always
+appended with spaces and the automatic '[PATCH]' prefix is excluded only if we
+have a prefix 'PATCH'.
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+The first patch suggests to exclude the automatic prefix whenever we have a
+prefix that ends with '[PATCH'.
+
+However, it gets an error when sending:
+
+  Reflecting via web endpoint https://lkml.kernel.org/_b4_submit
+  Error from endpoint: This service only accepts patches
+
+I suppose this comes from 'send-receive.py' ran by the server. Therefore comes
+the second patch to make it accept any bracket-prefix. I was not able to test
+that part.
+
+[1]: https://git.openembedded.org/meta-openembedded/tree/meta-networking/MAINTAINERS#n3
+[2]: https://git.yoctoproject.org/meta-security/tree/README.md#n77
+
+Signed-off-by: Louis Rannou <louis.rannou@non.se.com>
 ---
- drivers/net/wireless/ath/ath10k/pci.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+Louis Rannou (2):
+      Fix usage of PATCH in prefixes
+      send-receive: accept bracket-prefix before '[PATCH'
 
-diff --git a/drivers/net/wireless/ath/ath10k/pci.c b/drivers/net/wireless/ath/ath10k/pci.c
-index 1e6d43285138ece619b9d7dc49f113a439e2085d..b20ab535a850ef1f5fe606bd7e7a230ebcd894c8 100644
---- a/drivers/net/wireless/ath/ath10k/pci.c
-+++ b/drivers/net/wireless/ath/ath10k/pci.c
-@@ -1965,9 +1965,7 @@ static int ath10k_pci_hif_start(struct ath10k *ar)
- 	ath10k_pci_irq_enable(ar);
- 	ath10k_pci_rx_post(ar);
- 
--	pcie_capability_clear_and_set_word(ar_pci->pdev, PCI_EXP_LNKCTL,
--					   PCI_EXP_LNKCTL_ASPMC,
--					   ar_pci->link_ctl & PCI_EXP_LNKCTL_ASPMC);
-+	pci_enable_link_state(ar_pci->pdev, ath_pci_aspm_state(ar_pci->link_ctl));
- 
- 	return 0;
- }
-@@ -2824,8 +2822,7 @@ static int ath10k_pci_hif_power_up(struct ath10k *ar,
- 
- 	pcie_capability_read_word(ar_pci->pdev, PCI_EXP_LNKCTL,
- 				  &ar_pci->link_ctl);
--	pcie_capability_clear_word(ar_pci->pdev, PCI_EXP_LNKCTL,
--				   PCI_EXP_LNKCTL_ASPMC);
-+	pci_disable_link_state(ar_pci->pdev, PCIE_LINK_STATE_L0S | PCIE_LINK_STATE_L1);
- 
- 	/*
- 	 * Bring the target up cleanly.
+ misc/send-receive.py | 5 +++--
+ src/b4/__init__.py   | 6 ++++--
+ 2 files changed, 7 insertions(+), 4 deletions(-)
+---
+base-commit: a9b2aba54be85ea2933c43b8a6d71c1611230b59
+change-id: 20250711-prefixes-372c3cf0af9d
 
+Best regards,
 -- 
-2.45.2
+Louis Rannou <louis.rannou@non.se.com>
 
