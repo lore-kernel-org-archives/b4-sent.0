@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 16 Jul 2025 18:26:24 +0530
-Subject: [PATCH 5/6] wifi: ath11k: Use pci_{enable/disable}_link_state()
+Date: Wed, 16 Jul 2025 18:26:25 +0530
+Subject: [PATCH 6/6] wifi: ath10k: Use pci_{enable/disable}_link_state()
  APIs to enable/disable ASPM states
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250716-ath-aspm-fix-v1-5-dd3e62c1b692@oss.qualcomm.com>
+Message-Id: <20250716-ath-aspm-fix-v1-6-dd3e62c1b692@oss.qualcomm.com>
 References: <20250716-ath-aspm-fix-v1-0-dd3e62c1b692@oss.qualcomm.com>
 In-Reply-To: <20250716-ath-aspm-fix-v1-0-dd3e62c1b692@oss.qualcomm.com>
 To: Jeff Johnson <jjohnson@kernel.org>, 
@@ -23,16 +23,16 @@ Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org,
  Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1863;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1518;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=kXpW2mQuCN8+CNqdT+kLur7VSEl5MgZkBtsfbPtL7RY=;
- b=owEBbAGT/pANAwAKAVWfEeb+kc71AcsmYgBod6F22QPsndaD+8odr4XoI0/ocyp1ircoReHgt
- YGA0cbP6aCJATIEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaHehdgAKCRBVnxHm/pHO
- 9Sb9B/i3iAtipHaPFAxLp2zZTxGLgKyKliJu5K7gSsTqxmv7SltOMJyZmnTaGZYLk6v3zQnRcg6
- sw2o2uIH9fSmM8+4XO79TkWTmnh6trf1HQAgJs02XVm8x90kChSY3mH+1mglMtfm1Z5wZsMFXMD
- 6d2HdNNBDBi7DvWJnPlv3kjjhOQa6eBwGh9J0tCBghOy2ZOsg27sEwItnHNfsCEpPNpi4zMluiq
- 3zhfrwOB3g3t8SfYyX+0Zs1X2Rv2MVfl8EahkwZra0x7yV32Ina7XpSomJ1UGz46Atp4b61+BFT
- FRYW9/TtiB1XC9iicOaEtvo4z7d87s1a+ypf/M1h6fxvkfE=
+ bh=Fx4ej/EicH41+mIOpWKF1WcnMWq9PYq0rbjy+/KSq0Q=;
+ b=kA0DAAoBVZ8R5v6RzvUByyZiAGh3oXbIxqk80Tgh+RxdditU6/SfcGzUbtEKyagt0528i4qmg
+ okBMwQAAQoAHRYhBGelQyqBSMvYpFgnl1WfEeb+kc71BQJod6F2AAoJEFWfEeb+kc71+zwH/j9g
+ 77XQ+TyQtXbct+iV57W9c8g3ZQmgOtKIHRMLu+mcrcqHfSxz/V/4OcFnyjatqAbs33eteSiCZ55
+ LoVeVbo3qOjovyINbJXFwgSGgb7MrPELoEBPbwyZvr7H6mp2v1GP3XUzZsi6NwIHjh1J7BQUqHV
+ aDnAaoWlbmAChlKp0tbmRkWVN2LpMwTe6EfcYqrCmz7nBm1x0QLTpGPJkNYzV/HgleNa8aMEQFV
+ eQP3tLVUolrRr8ZS4IJHlOEVQus5Ub4hqfKpnW3BFAvywjtvLCovpSp6Diwn0zkfZ0WLLS5Xk0R
+ 6jeK1WBsuL8Emy0OHC085U9qIOq5psdkZ9ca4Pc=
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -45,44 +45,34 @@ core to enable/disable ASPM states.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/net/wireless/ath/ath11k/pci.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+ drivers/net/wireless/ath/ath10k/pci.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath11k/pci.c b/drivers/net/wireless/ath/ath11k/pci.c
-index 78444f8ea15356f1f4c90a496efd52780499bfb2..cec399765e04104ddcfcee5003c209e14c7d4ca0 100644
---- a/drivers/net/wireless/ath/ath11k/pci.c
-+++ b/drivers/net/wireless/ath/ath11k/pci.c
-@@ -19,6 +19,8 @@
- #include "pcic.h"
- #include "qmi.h"
+diff --git a/drivers/net/wireless/ath/ath10k/pci.c b/drivers/net/wireless/ath/ath10k/pci.c
+index 1e6d43285138ece619b9d7dc49f113a439e2085d..b20ab535a850ef1f5fe606bd7e7a230ebcd894c8 100644
+--- a/drivers/net/wireless/ath/ath10k/pci.c
++++ b/drivers/net/wireless/ath/ath10k/pci.c
+@@ -1965,9 +1965,7 @@ static int ath10k_pci_hif_start(struct ath10k *ar)
+ 	ath10k_pci_irq_enable(ar);
+ 	ath10k_pci_rx_post(ar);
  
-+#include "../ath.h"
-+
- #define ATH11K_PCI_BAR_NUM		0
- #define ATH11K_PCI_DMA_MASK		36
- #define ATH11K_PCI_COHERENT_DMA_MASK	32
-@@ -597,8 +599,7 @@ static void ath11k_pci_aspm_disable(struct ath11k_pci *ab_pci)
- 		   u16_get_bits(ab_pci->link_ctl, PCI_EXP_LNKCTL_ASPM_L1));
+-	pcie_capability_clear_and_set_word(ar_pci->pdev, PCI_EXP_LNKCTL,
+-					   PCI_EXP_LNKCTL_ASPMC,
+-					   ar_pci->link_ctl & PCI_EXP_LNKCTL_ASPMC);
++	pci_enable_link_state(ar_pci->pdev, ath_pci_aspm_state(ar_pci->link_ctl));
  
- 	/* disable L0s and L1 */
--	pcie_capability_clear_word(ab_pci->pdev, PCI_EXP_LNKCTL,
+ 	return 0;
+ }
+@@ -2824,8 +2822,7 @@ static int ath10k_pci_hif_power_up(struct ath10k *ar,
+ 
+ 	pcie_capability_read_word(ar_pci->pdev, PCI_EXP_LNKCTL,
+ 				  &ar_pci->link_ctl);
+-	pcie_capability_clear_word(ar_pci->pdev, PCI_EXP_LNKCTL,
 -				   PCI_EXP_LNKCTL_ASPMC);
-+	pci_disable_link_state(ab_pci->pdev, PCIE_LINK_STATE_L0S | PCIE_LINK_STATE_L1);
++	pci_disable_link_state(ar_pci->pdev, PCIE_LINK_STATE_L0S | PCIE_LINK_STATE_L1);
  
- 	set_bit(ATH11K_PCI_ASPM_RESTORE, &ab_pci->flags);
- }
-@@ -606,10 +607,7 @@ static void ath11k_pci_aspm_disable(struct ath11k_pci *ab_pci)
- static void ath11k_pci_aspm_restore(struct ath11k_pci *ab_pci)
- {
- 	if (test_and_clear_bit(ATH11K_PCI_ASPM_RESTORE, &ab_pci->flags))
--		pcie_capability_clear_and_set_word(ab_pci->pdev, PCI_EXP_LNKCTL,
--						   PCI_EXP_LNKCTL_ASPMC,
--						   ab_pci->link_ctl &
--						   PCI_EXP_LNKCTL_ASPMC);
-+		pci_enable_link_state(ab_pci->pdev, ath_pci_aspm_state(ab_pci->link_ctl));
- }
- 
- #ifdef CONFIG_DEV_COREDUMP
+ 	/*
+ 	 * Bring the target up cleanly.
 
 -- 
 2.45.2
