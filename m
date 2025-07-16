@@ -1,10 +1,10 @@
 From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Wed, 16 Jul 2025 19:25:14 +0800
-Subject: [PATCH v3 5/9] MIPS: dts: loongson: Add CQ-T300B board
+Date: Wed, 16 Jul 2025 19:25:15 +0800
+Subject: [PATCH v3 6/9] MIPS: loongson: Add built-in DTB support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250716-loongson1-arch-v3-5-d160974d696b@gmail.com>
+Message-Id: <20250716-loongson1-arch-v3-6-d160974d696b@gmail.com>
 References: <20250716-loongson1-arch-v3-0-d160974d696b@gmail.com>
 In-Reply-To: <20250716-loongson1-arch-v3-0-d160974d696b@gmail.com>
 To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
@@ -14,152 +14,59 @@ To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>,
 Cc: linux-mips@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752665136; l=2858;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752665136; l=1673;
  i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=XttapQaz5tbqpiYUJ3NCDcmUjVIV/5rxCCiXN6plXoU=;
- b=3FcqK53IOcHkSeCcRK5D7QswnYAyrHfUyM/W4DqaGTMaRfgTZoSsfscsHBt2gXFirZXrDkeLU
- AY7TSZ+VMxpCwPkzCInQuBthXhKgTBclawyaC6HS6GF+7VqBNVtzC7O
+ bh=31SQDWI+tNppoJhNVuSV6AMxuxSd2DNTM292TR9KcKg=;
+ b=L+LoNxrEHQl2Mx+K+EVi55An15Kt4JUfoUjnUxlLuX2OLJMHqpJ61OBLIkj4O8uqrNDnvVUGa
+ s7m4DrreF/bAw+lOUx3wM7mh26FovUCvITkzkdAqWLcVeFbTiYG4T3t
 X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
  pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
 X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a device tree for CQ-T300B board.
+Since the current bootloader for Loongson-1 does not support FDT,
+introduce CONFIG_BUILTIN_DTB_NAME to enable a built-in DTB.
 
 Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- arch/mips/boot/dts/loongson/Makefile     |   1 +
- arch/mips/boot/dts/loongson/cq-t300b.dts | 110 +++++++++++++++++++++++++++++++
- 2 files changed, 111 insertions(+)
+ arch/mips/boot/dts/loongson/Makefile | 5 +++++
+ arch/mips/loongson32/Kconfig         | 8 ++++++++
+ 2 files changed, 13 insertions(+)
 
 diff --git a/arch/mips/boot/dts/loongson/Makefile b/arch/mips/boot/dts/loongson/Makefile
-index de4570380c3e..e8f76e7ac303 100644
+index e8f76e7ac303..8ee12504d353 100644
 --- a/arch/mips/boot/dts/loongson/Makefile
 +++ b/arch/mips/boot/dts/loongson/Makefile
-@@ -6,6 +6,7 @@ dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64c_8core_rs780e.dtb
- dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64g_4core_ls7a.dtb
- dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64v_4core_virtio.dtb
- 
-+dtb-$(CONFIG_MACH_LOONGSON32)	+= cq-t300b.dtb
+@@ -1,4 +1,8 @@
+ # SPDX-License-Identifier: GPL-2.0
++
++ifneq ($(CONFIG_BUILTIN_DTB_NAME),)
++dtb-y	:= $(addsuffix .dtb, $(CONFIG_BUILTIN_DTB_NAME))
++else
+ dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64_2core_2k1000.dtb
+ dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64c_4core_ls7a.dtb
+ dtb-$(CONFIG_MACH_LOONGSON64)	+= loongson64c_4core_rs780e.dtb
+@@ -10,3 +14,4 @@ dtb-$(CONFIG_MACH_LOONGSON32)	+= cq-t300b.dtb
  dtb-$(CONFIG_MACH_LOONGSON32)	+= ls1b-demo.dtb
  dtb-$(CONFIG_MACH_LOONGSON32)	+= lsgz_1b_dev.dtb
  dtb-$(CONFIG_MACH_LOONGSON32)	+= smartloong-1c.dtb
-diff --git a/arch/mips/boot/dts/loongson/cq-t300b.dts b/arch/mips/boot/dts/loongson/cq-t300b.dts
-new file mode 100644
-index 000000000000..5244fab2496d
---- /dev/null
-+++ b/arch/mips/boot/dts/loongson/cq-t300b.dts
-@@ -0,0 +1,110 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2023-2025 Keguang Zhang <keguang.zhang@gmail.com>
-+ */
++endif
+diff --git a/arch/mips/loongson32/Kconfig b/arch/mips/loongson32/Kconfig
+index a7c500959577..52e925309f15 100644
+--- a/arch/mips/loongson32/Kconfig
++++ b/arch/mips/loongson32/Kconfig
+@@ -36,3 +36,11 @@ config LOONGSON1_LS1C
+ endchoice
+ 
+ endif # MACH_LOONGSON32
 +
-+/dts-v1/;
-+
-+#include <dt-bindings/gpio/gpio.h>
-+
-+#include "loongson1c.dtsi"
-+
-+/ {
-+	compatible = "loongson,cq-t300b", "loongson,ls1c";
-+	model = "CQ-T300B Board";
-+
-+	memory@0 {
-+		device_type = "memory";
-+		reg = <0x0 0x8000000>;
-+	};
-+
-+	aliases {
-+		gpio0 = &gpio0;
-+		gpio1 = &gpio1;
-+		gpio2 = &gpio2;
-+		gpio3 = &gpio3;
-+		serial0 = &uart2;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+
-+		led0 {
-+			label = "led0";
-+			gpios = <&gpio1 20 GPIO_ACTIVE_LOW>;
-+			linux,default-trigger = "heartbeat";
-+		};
-+
-+		led1 {
-+			label = "led1";
-+			gpios = <&gpio1 21 GPIO_ACTIVE_LOW>;
-+			linux,default-trigger = "nand-disk";
-+		};
-+	};
-+};
-+
-+&xtal {
-+	clock-frequency = <24000000>;
-+};
-+
-+&emac {
-+	phy-handle = <&phy0>;
-+	phy-mode = "rmii";
-+	status = "okay";
-+
-+	mdio {
-+		compatible = "snps,dwmac-mdio";
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		phy0: ethernet-phy@13 {
-+			reg = <0x13>;
-+		};
-+	};
-+};
-+
-+&nand {
-+	status = "okay";
-+
-+	nand@0 {
-+		partitions {
-+			compatible = "fixed-partitions";
-+			#address-cells = <1>;
-+			#size-cells = <1>;
-+
-+			partition@0 {
-+				label = "kernel";
-+				reg = <0x0 0x1000000>;
-+			};
-+
-+			partition@1000000 {
-+				label = "rootfs";
-+				reg = <0x1000000 0x3f000000>;
-+			};
-+		};
-+	};
-+};
-+
-+&ehci {
-+	status = "okay";
-+};
-+
-+&ohci {
-+	status = "okay";
-+};
-+
-+&rtc {
-+	status = "okay";
-+};
-+
-+&uart2 {
-+	status = "okay";
-+};
-+
-+&watchdog {
-+	status = "okay";
-+};
++config BUILTIN_DTB_NAME
++	string "Source file for built-in DTB"
++	depends on BUILTIN_DTB
++	help
++	  Base name (without suffix, relative to arch/mips/boot/dts/loongson)
++	  for the DTS file that will be used to produce the DTB linked into
++	  the kernel.
 
 -- 
 2.43.0
