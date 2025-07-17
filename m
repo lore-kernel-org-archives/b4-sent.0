@@ -1,76 +1,127 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 17 Jul 2025 17:38:38 +0800
-Subject: [PATCH 2/2] arm64: dts: amlogic: C3: Add RTC controller node
+From: Remi Buisson <remi.buisson@tdk.com>
+Subject: [PATCH v3 0/8] iio: imu: new inv_icm45600 driver
+Date: Thu, 17 Jul 2025 13:25:52 +0000
+Message-Id: <20250717-add_newport_driver-v3-0-c6099e02c562@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250717-rtc-c3-node-v1-2-4f9ae059b8e6@amlogic.com>
-References: <20250717-rtc-c3-node-v1-0-4f9ae059b8e6@amlogic.com>
-In-Reply-To: <20250717-rtc-c3-node-v1-0-4f9ae059b8e6@amlogic.com>
-To: Yiting Deng <yiting.deng@amlogic.com>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-amlogic@lists.infradead.org, linux-rtc@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752745121; l=1224;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=oDscrQnwBWleM1lKXYkem+gVGQrkocRvej4i/VO/Lqk=;
- b=7H03TvHXdNylCWXWrMbEeTI+1PGuh2L1B8KhKOjjIqk3FuLzkDI3KcY81WNs5ECGqlqxiWdfV
- +2Dzk3/7U5AD+mOxUE1rQSUSR9ra0skTfhMbvFoRVyJMmhsKAMqGKaL
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+X-B4-Tracking: v=1; b=H4sIAOD5eGgC/33NTQ6CMBCG4auQrq3pjJQfV97DGAJ0Ko2xJS2pG
+ sLdLWzYGJfvl8wzMwvkDQV2zmbmKZpgnE1xOmSsH1p7J25UaoYCpcgBeKtUY+k1Oj81yptInku
+ sey27EqitWDocPWnz3tDrLfVgwuT8Z/sRYV3/chG44CBFhVCITkB9mdTj2LsnW7GIO1CC+AlgA
+ jpdFqqCHEnjDizL8gX3/66W8wAAAA==
+X-Change-ID: 20250411-add_newport_driver-529cf5b71ea8
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, Remi Buisson <remi.buisson@tdk.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752758762; l=4957;
+ i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
+ bh=xiST/0tFbj3wkN1Bt6VeFoMC8jlzdI9atHh74hSqjyI=;
+ b=rxRjbWuEQSYj6mo9BV1HiZv9ZPMsPV/44fOdtt9OacKRZavLJvt1TwU/LRVat8OSsq/wcV65H
+ xw/0XrMgWJAD3Ai21zY21xrPkR0U+KiGl8VvseTdkS31CujLs280gXV
+X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
+ pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
+X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the RTC controller node for C3 SoC family.
+This series add a new driver for managing InvenSense ICM-456xx 6-axis IMUs.
+This next generation of chips includes new generations of 3-axis gyroscope
+and 3-axis accelerometer, support of I3C in addition to I2C and SPI, and
+intelligent MotionTracking features like pedometer, tilt detection, and
+tap detection.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+This series is delivering a driver supporting gyroscope, accelerometer and
+temperature data, with polling and buffering using hwfifo and watermark,
+on I2C, SPI and I3C busses.
+
+Gyroscope and accelerometer sensors are completely independent and can have
+different ODRs. Since there is only a single FIFO a specific value is used to
+mark invalid data. For keeping the device standard we are de-multiplexing data
+from the FIFO to 2 IIO devices with 2 buffers, 1 for the accelerometer and 1
+for the gyroscope. This architecture also enables to easily turn each sensor
+on/off without impacting the other. The device interrupt is used to read the
+FIFO and launch parsing of accelerometer and gyroscope data. This driver
+relies on the common Invensense timestamping mechanism to handle correctly
+FIFO watermark and dynamic changes of settings.
+
+The structure of the driver is quite similar to the inv_icm42600 driver,
+however there are significant reasons for adding a different driver for
+inv_icm45600, such as:
+- A completely different register map.
+- Different FIFO management, based on number of samples instead of bytes.
+- Different indirect register access mechanism.
+
+Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Changes in v3:
+- Macros renamed and added to the patch using it.
+- Using unsigned for sensor configuration parameters.
+- Using sizeof instead of raw values.
+- Using fsleep instead of usleep.
+- Simplified dt-bindings examples, setting supplies as mandatory
+- Fix bad or useless casts.
+- Partially aligned power management following 20250709-icm42pmreg-v1-0-3d0e793c99b2@geanix.com
+- Fix "uninitialized symbols" warnings.
+- Link to v2: https://lore.kernel.org/r/20250710-add_newport_driver-v2-0-bf76d8142ef2@tdk.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-index cb9ea3ca6ee0..b81bffac7732 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-@@ -53,6 +53,13 @@ xtal: xtal-clk {
- 		#clock-cells = <0>;
- 	};
- 
-+	xtal_32k: xtal-clk-32k {
-+		compatible = "fixed-clock";
-+		clock-frequency = <32768>;
-+		clock-output-names = "xtal_32k";
-+		#clock-cells = <0>;
-+	};
-+
- 	sm: secure-monitor {
- 		compatible = "amlogic,meson-gxbb-sm";
- 
-@@ -967,6 +974,15 @@ nand: nand-controller@8d000 {
- 				clock-names = "core", "device";
- 				status = "disabled";
- 			};
-+
-+			rtc@9a000 {
-+				compatible = "amlogic,c3-rtc",
-+					     "amlogic,a5-rtc";
-+				reg = <0x0 0x9a000 0x0 0x38>;
-+				interrupts = <GIC_SPI 131 IRQ_TYPE_EDGE_RISING>;
-+				clocks = <&xtal_32k>, <&clkc_periphs CLKID_SYS_RTC>;
-+				clock-names = "osc", "sys";
-+			};
- 		};
- 
- 		ethmac: ethernet@fdc00000 {
+Changes in v2:
+- Reworked patches order and content to ease review and make sure everything compiles
+- Reworked gyro and accel FSR as 2D arrays
+- Moved temperature processed sensor to core module
+- Use latest API to claim/release device
+- Implemented chip_info structure instead of relying on an enum
+- Removed power-mode ABI, only relying on ODR to switch power_mode
+- Reworked regulator control to use devm_ API where relevant
+- Reworked inv_icm45600_state.buffer as a union to avoid casts, using getter/setter instead of memcpy
+- Fixed dt-binding error and moved patch at the beginning of the patch-set
+- Reworked macros to use FIELD_PREP inline instead of inside the header
+- Fixed comment's grammar
+- Removed extra blank lines
+- Reordered part numbers alphanumerically
+- Removed useless default/error fallbacks
+- Typed accel, gyro and timestamp data when parsing FIFO
+- Fixed I2C module return code
+- Use Linux types instead of C standard
+- Reviewed headers inclusion to remove useless #include and to add missing ones
+- Link to v1: https://lore.kernel.org/r/20250411-add_newport_driver-v1-0-15082160b019@tdk.com
 
+---
+Remi Buisson (8):
+      dt-bindings: iio: imu: Add inv_icm45600
+      iio: imu: inv_icm45600: add new inv_icm45600 driver
+      iio: imu: inv_icm45600: add buffer support in iio devices
+      iio: imu: inv_icm45600: add IMU IIO devices
+      iio: imu: inv_icm45600: add I2C driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add SPI driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add I3C driver for inv_icm45600 driver
+      MAINTAINERS: add entry for inv_icm45600 6-axis imu sensor
+
+ .../bindings/iio/imu/invensense,icm45600.yaml      |  97 ++
+ MAINTAINERS                                        |   8 +
+ drivers/iio/imu/Kconfig                            |   1 +
+ drivers/iio/imu/Makefile                           |   1 +
+ drivers/iio/imu/inv_icm45600/Kconfig               |  70 ++
+ drivers/iio/imu/inv_icm45600/Makefile              |  16 +
+ drivers/iio/imu/inv_icm45600/inv_icm45600.h        | 379 ++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c  | 798 +++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 585 ++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.h | 101 +++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_core.c   | 994 +++++++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c   | 809 +++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c    |  98 ++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c    |  82 ++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c    | 106 +++
+ 15 files changed, 4145 insertions(+)
+---
+base-commit: f8f559752d573a051a984adda8d2d1464f92f954
+change-id: 20250411-add_newport_driver-529cf5b71ea8
+
+Best regards,
 -- 
-2.37.1
+Remi Buisson <remi.buisson@tdk.com>
 
