@@ -1,63 +1,49 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 17 Jul 2025 17:29:54 +0800
-Subject: [PATCH v2] dts: arm: amlogic: fix pwm node for c3
+Subject: [PATCH 0/2] rtc: add amlogic C3 RTC node
+Date: Thu, 17 Jul 2025 17:38:36 +0800
+Message-Id: <20250717-rtc-c3-node-v1-0-4f9ae059b8e6@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250717-fix-pwm-node-v2-1-7365ac7d5320@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAJHCeGgC/3WMQQ6CMBBFr0Jm7ZhOY2lw5T0IiwoDTCKUtKZqS
- O9uZe/y/Z/3dogchCNcqx0CJ4ni1wL6VEE/u3VilKEwaKWNsmRxlDdurwVXPzDWxKO2d9fUykB
- RtsDlP3JtV3iW+PThc9QT/dY/oURIeDFKk7WWR9fc3PLwk/Tn3i/Q5Zy/MEzEaKoAAAA=
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+X-B4-Tracking: v=1; b=H4sIAJzEeGgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDc0Nz3aKSZN1kY928/JRU3aQkcwtTS4sUS8MkYyWgjoKi1LTMCrBp0bG
+ 1tQD5coUqXQAAAA==
+To: Yiting Deng <yiting.deng@amlogic.com>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chuan Liu <chuan.liu@amlogic.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-rtc@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752744595; l=1176;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752745121; l=635;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=Gl5aQb1KI68vaz1xI6GSSxa1gnslD6ZLVXgkTOwj19o=;
- b=ndz6krIm5rTHcF0VCgZszdjiIhZ9+NkgcPqV41Y1+BuN0ax4ZI3OVdxiPxYwolQ3HkunwrNXV
- jRLiAD5X/tdAi+pBzR4xvpRvheVKtmMezVlUdfm5OusW9s+D9+EZ2ya
+ bh=SSrptMa19AA/XTd/MCF/BLG2gYrgYjh0sTQ0u3DDHqU=;
+ b=1Jqgf8NPSE7AO66ZMlpxMqW+iQaU9ydrgRT4qpUFi1Uv4UGyEUcAN6agdhwHQqm9FqRSysslV
+ k2tboqtelnLAnleh9ywMSUYZjh+K/q1JBXMPnZy73WrgbjpraPQhO18
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix reg address for c3 pwm node.
+Add C3 rtc compatible string and device node.
 
-Fixes: be90cd4bd422 ("arm64: dts: amlogic: Add Amlogic C3 PWM")
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Fix c3 pwm node reg.
----
-Changes in v2:
-- Fix commit change-id about Fixes.
-- Link to v1: https://lore.kernel.org/r/20250717-fix-pwm-node-v1-1-45021777efa9@amlogic.com
----
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Xianwei Zhao (2):
+      dt-bindings: rtc: amlogic,a4-rtc: Add compatible string for C3
+      arm64: dts: amlogic: C3: Add RTC controller node
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-index cb9ea3ca6ee0..71b2b3b547f7 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-@@ -792,7 +792,7 @@ spicc1: spi@52000 {
- 			pwm_mn: pwm@54000 {
- 				compatible = "amlogic,c3-pwm",
- 					     "amlogic,meson-s4-pwm";
--				reg = <0x0 54000 0x0 0x24>;
-+				reg = <0x0 0x54000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_M>,
- 					 <&clkc_periphs CLKID_PWM_N>;
- 				#pwm-cells = <3>;
-
+ .../devicetree/bindings/rtc/amlogic,a4-rtc.yaml          | 11 ++++++++---
+ arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi              | 16 ++++++++++++++++
+ 2 files changed, 24 insertions(+), 3 deletions(-)
 ---
-base-commit: 58abdca0eb653c1a2e755ba9ba406ee475d87636
-change-id: 20250717-fix-pwm-node-61ef27ba9605
+base-commit: 0bafe291cb429d39b5ff70bcf7b2f3ab026dcb02
+change-id: 20250717-rtc-c3-node-bb78598d91b3
 
 Best regards,
 -- 
