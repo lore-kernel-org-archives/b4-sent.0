@@ -1,167 +1,114 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Thu, 17 Jul 2025 11:08:06 +0800
-Subject: [PATCH] soc: amlogic: clk-measure: Optimize measurement accuracy
+From: Miao Wang <shankerwangmiao@gmail.com>
+Date: Thu, 17 Jul 2025 16:27:37 +0800
+Subject: [PATCH iptables v2] extensions: libebt_redirect: prevent
+ translation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250717-optimize_clk-measure_accuracy-v1-1-3b82d7ccd743@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIABVpeGgC/x3MywqDMBAF0F+RWTeg8QH6K1IkTK52qC8mtbSK/
- 25weTbnoAAVBGqSgxRfCbLMEdkjIX65eYARH002tWVa2tws60cm2dHx+DYTXNgUnWPe1PHf1Mg
- qIC8q7y3FY1X08rv/9nmeF2IYvtRvAAAA
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752721686; l=5665;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=N/3vlGG77ppUoldRn7mPDqs/Hb4HNtWv9DnFUzoDwtI=;
- b=G3dQuHvUVUhhE01nAgkCx1Jt5YmO8wMiDGj6Wgqen4aLCwVYmY/SBQ+xhKvn1XBhd/zWh9yDz
- qH6T4KFQQTUC/T1P15jA2eUb5E7cUIo9jrtuAttVgOH2m/4UrgN0D1Q
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250717-xlat-ebt-redir-v2-1-74fe39757369@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPizeGgC/3WNywqDMBBFf0Vm3SkmNVK76n8UF6OOOuCLJASL5
+ N8bsu/ycLjnXuDYCjt4FRdYDuJk3xLoWwH9TNvEKENi0KU2ZaUNngt55M6j5UEsElVlo59jPRJ
+ DGh2WRzlz8ANyeOqWBG0yszi/229+Cir7f9GgUOGDlSLTaGPq5j2tJMu931doY4w/pv0ntLYAA
+ AA=
+X-Change-ID: 20250425-xlat-ebt-redir-aa40928f6fae
+To: netfilter-devel@vger.kernel.org
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, phil@nwl.cc, 
+ Miao Wang <shankerwangmiao@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3134;
+ i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
+ bh=TSPPr1F5AtRVaecHZO/IgT4eoPQHgBuUtWAoAvnRlGs=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBoeLP8wEE0c/18izVGT+LDndfeDnTPbTkhJXLOY
+ 6r9mgt9qWCJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCaHiz/AAKCRCwMePKe/7Z
+ blzVEADaTNNkrjjlmoLHx4ANUo2XnIuZlp0ddWP2gHkRNcus1wfvt5CnxMTggSIVP8nX7gjOzCb
+ yEeImIdTZ4loVn+onfBA+s6WjzeBEu36bN+nV4iV6r/GACmqO3FU+8TS6fQQZu5pRWg5O0S8VA2
+ AsPrCvfbvB/DQMZr6/lGVrbubFfU1W5IM7V6AWfGj9Gn4Ebwz3zCNd6j3UoRXCb4UcncgCfPKtP
+ c5NTqWWaK3r1PqnKbUNEOTtjEHKJK06SdPzdro45sl3D/f3T/DKBc/ORDJ/b0155eW8pmFrAly5
+ gaXbrBNmiB/DpJWnrtc4U72lVYhF5pa9GDWGCGes8QipEK5Lm+67I7HvHDs0Z+deSCA/lkYV6cC
+ shi3wWyaXcaiTaMRqcht37EqPQJxhXh+jyuOBy6G9YF1rRYyB8pq9+Djq/YpJK80Wzcn9Axw96V
+ i+KPHQjTOp6kGwtSJlmVPUwDORXDN+EDXXFKtk3ookbkq4HxHoiDfkoBEwBhkCQi0H9M748dlOm
+ OTVxNOgcu9tfqTANuOwRIli3Dwn/13FKR5u14HjBXV8Dq2i17i8ZsuLuvocFkKbbFV0Nq8riKDK
+ yAnpmwsP+GqxJQGo27MS0Y9SZQUjkunDglPadssMfCGgQa+qV5IdBCzv0Mivy1zDUN4f1pGsFHb
+ eJDRC3gxOZBPl4g==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The cycle count register has a 20-bit effective width, but the driver
-only utilizes 16 bits. This reduces the sampling window when measuring
-high-frequency clocks, resulting in (slightly) degraded measurement
-accuracy.
+The redirect target in ebtables do two things: 1. set skb->pkt_type to
+PACKET_HOST, and 2. set the destination mac address to the address of
+the receiving bridge device (when not used in BROUTING chain), or the
+receiving physical device (otherwise). However, the later cannot be
+implemented in nftables not given the translated mac address. So it is
+not appropriate to give a specious translation.
 
-The input clock signal path from gate (Controlled by MSR_RUN) to internal
-sampling circuit in clk-measure has a propagation delay requirement: 24
-clock cycles must elapse after mux selection before sampling.
+This patch disables the translation to prevent possible misunderstanding.
 
-The measurement circuit employs single-edge sampling for clock frequency
-detection, resulting in a ±1 cycle count error within the measurement window.
-
-+1 cycle: 3 rising edges captured in 2-cycle measurement window.
-    __    __    __
- __↑  |__↑  |__↑  |__
-  ^             ^
-
--1 cycle: 2 rising edges captured in 3-cycle measurement window.
-    __    __    __
- __↑  |__↑  |__↑  |__↑
-    ^               ^
-
-Change-Id: If367c013fe2a8d0c8f5f06888bb8f30a1e46b927
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Fixes: 24ce7465056ae ("ebtables-compat: add redirect match extension")
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
-Improve measurement accuracy by increasing the bit width of the cycle
-counter register and adding delay during measurement.
-
-The 800μs delay between enabling the input clock gate and activating
-sampling is determined by the minimum sampling frequency of 30kHz (the
-lowest commonly used frequency in applications is 32.768kHz).
-
-Here are the test comparisons based on C3:
-
-Pre-optimization:
-cat /sys/kernel/debug/meson-clk-msr/measure_summary 
-  clock                     rate    precision
----------------------------------------------
- sys_clk               166664063    +/-5208Hz
- axi_clk               499968750    +/-15625Hz
- rtc_clk                23982813    +/-3125Hz
- p20_usb2_ckout        479968750    +/-15625Hz
- eth_mpll_test         499992188    +/-15625Hz
- sys_pll              1919875000    +/-62500Hz
- cpu_clk_div16         119998162    +/-3676Hz
- ts_pll                        0    +/-3125Hz
- fclk_div2             999843750    +/-31250Hz
- fclk_div2p5           799953125    +/-31250Hz
- fclk_div3             666625000    +/-20833Hz
- fclk_div4             499914063    +/-15625Hz
- fclk_div5             399987500    +/-12500Hz
- fclk_div7             285709821    +/-8928Hz
- fclk_50m               49982813    +/-3125Hz
- sys_oscin32k_i            26563    +/-3125Hz
-
-Post-optimization:
-cat /sys/kernel/debug/meson-clk-msr/measure_summary 
-  clock                     rate    precision
----------------------------------------------
- sys_clk               166665625    +/-1562Hz
- axi_clk               499996875    +/-1562Hz
- rtc_clk                24000000    +/-1562Hz
- p20_usb2_ckout        479996875    +/-1562Hz
- eth_mpll_test         499996875    +/-1562Hz
- sys_pll              1919987132    +/-1838Hz
- cpu_clk_div16         119998438    +/-1562Hz
- ts_pll                        0    +/-1562Hz
- fclk_div2             999993750    +/-1562Hz
- fclk_div2p5           799995313    +/-1562Hz
- fclk_div3             666656250    +/-1562Hz
- fclk_div4             499996875    +/-1562Hz
- fclk_div5             399993750    +/-1562Hz
- fclk_div7             285712500    +/-1562Hz
- fclk_50m               49998438    +/-1562Hz
- sys_oscin32k_i            32813    +/-1562Hz
+Changes in v2:
+- Completely remove the translation from the ebtables redirect target to
+  nft rule according to Pablo's suggestion.
+- Link to v1: https://lore.kernel.org/r/20250425-xlat-ebt-redir-v1-1-3e11a5925569@gmail.com
 ---
- drivers/soc/amlogic/meson-clk-measure.c | 27 ++++++++++++++++++---------
- 1 file changed, 18 insertions(+), 9 deletions(-)
+ extensions/libebt_redirect.c      | 19 +------------------
+ extensions/libebt_redirect.txlate |  8 --------
+ 2 files changed, 1 insertion(+), 26 deletions(-)
 
-diff --git a/drivers/soc/amlogic/meson-clk-measure.c b/drivers/soc/amlogic/meson-clk-measure.c
-index d862e30a244e..82acd8635bf8 100644
---- a/drivers/soc/amlogic/meson-clk-measure.c
-+++ b/drivers/soc/amlogic/meson-clk-measure.c
-@@ -22,7 +22,7 @@ static DEFINE_MUTEX(measure_lock);
- #define MSR_CLK_SRC		GENMASK(26, 20)
- #define MSR_BUSY		BIT(31)
+diff --git a/extensions/libebt_redirect.c b/extensions/libebt_redirect.c
+index a44dbaec6cc8b12f20acd31dcb1360ac7245e349..12d87f93df6386cacf4fe257070933cc552b41f4 100644
+--- a/extensions/libebt_redirect.c
++++ b/extensions/libebt_redirect.c
+@@ -60,27 +60,10 @@ static void brredir_print(const void *ip, const struct xt_entry_target *target,
+ 	printf("--redirect-target %s", ebt_target_name(redirectinfo->target));
+ }
  
--#define MSR_VAL_MASK		GENMASK(15, 0)
-+#define MSR_VAL_MASK		GENMASK(19, 0)
+-static const char* brredir_verdict(int verdict)
+-{
+-	switch (verdict) {
+-	case EBT_ACCEPT: return "accept";
+-	case EBT_DROP: return "drop";
+-	case EBT_CONTINUE: return "continue";
+-	case EBT_RETURN: return "return";
+-	}
+-
+-	return "";
+-}
+-
+ static int brredir_xlate(struct xt_xlate *xl,
+ 			 const struct xt_xlate_tg_params *params)
+ {
+-	const struct ebt_redirect_info *red = (const void*)params->target->data;
+-
+-	xt_xlate_add(xl, "meta pkttype set host");
+-	if (red->target != EBT_CONTINUE)
+-		xt_xlate_add(xl, " %s ", brredir_verdict(red->target));
+-	return 1;
++	return 0;
+ }
  
- #define DIV_MIN			32
- #define DIV_STEP		32
-@@ -805,14 +805,23 @@ static int meson_measure_id(struct meson_msr_id *clk_msr_id,
- 	regmap_update_bits(priv->regmap, reg->freq_ctrl, MSR_DURATION,
- 			   FIELD_PREP(MSR_DURATION, duration - 1));
- 
--	/* Set ID */
--	regmap_update_bits(priv->regmap, reg->freq_ctrl, MSR_CLK_SRC,
--			   FIELD_PREP(MSR_CLK_SRC, clk_msr_id->id));
-+	/* Set the clock channel ID and enable the input clock gate. */
-+	regmap_update_bits(priv->regmap, reg->freq_ctrl, MSR_CLK_SRC | MSR_RUN,
-+			   FIELD_PREP(MSR_CLK_SRC, clk_msr_id->id) | MSR_RUN);
- 
--	/* Enable & Start */
--	regmap_update_bits(priv->regmap, reg->freq_ctrl,
--			   MSR_RUN | MSR_ENABLE,
--			   MSR_RUN | MSR_ENABLE);
-+	/*
-+	 * HACK: The input clock signal path from gate (Controlled by MSR_RUN)
-+	 * to internal sampling circuit in clk-measure has a propagation delay
-+	 * requirement: 24 clock cycles must elapse after mux selection before
-+	 * sampling.
-+	 *
-+	 * For a 30kHz measurement clock, this translates to an 800μs delay:
-+	 * 800us = 24 / 30000Hz.
-+	 */
-+	fsleep(800);
-+
-+	/* Enable the internal sampling circuit and start clock measurement. */
-+	regmap_update_bits(priv->regmap, reg->freq_ctrl, MSR_ENABLE, MSR_ENABLE);
- 
- 	ret = regmap_read_poll_timeout(priv->regmap, reg->freq_ctrl,
- 				       val, !(val & MSR_BUSY), 10, 10000);
-@@ -846,7 +855,7 @@ static int meson_measure_best_id(struct meson_msr_id *clk_msr_id,
- 	do {
- 		ret = meson_measure_id(clk_msr_id, duration);
- 		if (ret >= 0)
--			*precision = (2 * 1000000) / duration;
-+			*precision = 1000000 / duration;
- 		else
- 			duration -= DIV_STEP;
- 	} while (duration >= DIV_MIN && ret == -EINVAL);
+ static struct xtables_target brredirect_target = {
+diff --git a/extensions/libebt_redirect.txlate b/extensions/libebt_redirect.txlate
+deleted file mode 100644
+index d073ec774c4fa817e48422fb99aaf095dd9eab65..0000000000000000000000000000000000000000
+--- a/extensions/libebt_redirect.txlate
++++ /dev/null
+@@ -1,8 +0,0 @@
+-ebtables-translate -t nat -A PREROUTING -d de:ad:00:00:be:ef -j redirect
+-nft 'add rule bridge nat PREROUTING ether daddr de:ad:00:00:be:ef counter meta pkttype set host accept'
+-
+-ebtables-translate -t nat -A PREROUTING -d de:ad:00:00:be:ef -j redirect --redirect-target RETURN
+-nft 'add rule bridge nat PREROUTING ether daddr de:ad:00:00:be:ef counter meta pkttype set host return'
+-
+-ebtables-translate -t nat -A PREROUTING -d de:ad:00:00:be:ef -j redirect --redirect-target CONTINUE
+-nft 'add rule bridge nat PREROUTING ether daddr de:ad:00:00:be:ef counter meta pkttype set host'
 
 ---
-base-commit: 87b480e04af45833deb5af1584694b0077805ea6
-change-id: 20250523-optimize_clk-measure_accuracy-9e16ee346dd2
+base-commit: 192c3a6bc18f206895ec5e38812d648ccfe7e281
+change-id: 20250425-xlat-ebt-redir-aa40928f6fae
 
 Best regards,
 -- 
-Chuan Liu <chuan.liu@amlogic.com>
+Miao Wang <shankerwangmiao@gmail.com>
 
