@@ -1,15 +1,12 @@
 From: Remi Buisson <remi.buisson@tdk.com>
-Subject: [PATCH v3 0/8] iio: imu: new inv_icm45600 driver
-Date: Thu, 17 Jul 2025 13:25:52 +0000
-Message-Id: <20250717-add_newport_driver-v3-0-c6099e02c562@tdk.com>
+Date: Thu, 17 Jul 2025 13:25:53 +0000
+Subject: [PATCH v3 1/8] dt-bindings: iio: imu: Add inv_icm45600
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOD5eGgC/33NTQ6CMBCG4auQrq3pjJQfV97DGAJ0Ko2xJS2pG
- sLdLWzYGJfvl8wzMwvkDQV2zmbmKZpgnE1xOmSsH1p7J25UaoYCpcgBeKtUY+k1Oj81yptInku
- sey27EqitWDocPWnz3tDrLfVgwuT8Z/sRYV3/chG44CBFhVCITkB9mdTj2LsnW7GIO1CC+AlgA
- jpdFqqCHEnjDizL8gX3/66W8wAAAA==
-X-Change-ID: 20250411-add_newport_driver-529cf5b71ea8
+Message-Id: <20250717-add_newport_driver-v3-1-c6099e02c562@tdk.com>
+References: <20250717-add_newport_driver-v3-0-c6099e02c562@tdk.com>
+In-Reply-To: <20250717-add_newport_driver-v3-0-c6099e02c562@tdk.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -19,109 +16,127 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
  devicetree@vger.kernel.org, Remi Buisson <remi.buisson@tdk.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752758762; l=4957;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752758762; l=3305;
  i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
- bh=xiST/0tFbj3wkN1Bt6VeFoMC8jlzdI9atHh74hSqjyI=;
- b=rxRjbWuEQSYj6mo9BV1HiZv9ZPMsPV/44fOdtt9OacKRZavLJvt1TwU/LRVat8OSsq/wcV65H
- xw/0XrMgWJAD3Ai21zY21xrPkR0U+KiGl8VvseTdkS31CujLs280gXV
+ bh=h1J88JN1g/YReQtGVeLTKGjC/sJtA2uL0J0HESlzSgg=;
+ b=Y39qiNyNZToqLF5HZW+Y4m8BW6+vy6Z0GvTqUO3Kj7hyNY0y8cGGh12BltwrlOTfgciRzZaBB
+ HOVA8hkUAZ9BrbRmmgCMPBMvZhfHdNJh9xp25cQ2iAwttfUttX4xmjf
 X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
  pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
 X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series add a new driver for managing InvenSense ICM-456xx 6-axis IMUs.
-This next generation of chips includes new generations of 3-axis gyroscope
-and 3-axis accelerometer, support of I3C in addition to I2C and SPI, and
-intelligent MotionTracking features like pedometer, tilt detection, and
-tap detection.
-
-This series is delivering a driver supporting gyroscope, accelerometer and
-temperature data, with polling and buffering using hwfifo and watermark,
-on I2C, SPI and I3C busses.
-
-Gyroscope and accelerometer sensors are completely independent and can have
-different ODRs. Since there is only a single FIFO a specific value is used to
-mark invalid data. For keeping the device standard we are de-multiplexing data
-from the FIFO to 2 IIO devices with 2 buffers, 1 for the accelerometer and 1
-for the gyroscope. This architecture also enables to easily turn each sensor
-on/off without impacting the other. The device interrupt is used to read the
-FIFO and launch parsing of accelerometer and gyroscope data. This driver
-relies on the common Invensense timestamping mechanism to handle correctly
-FIFO watermark and dynamic changes of settings.
-
-The structure of the driver is quite similar to the inv_icm42600 driver,
-however there are significant reasons for adding a different driver for
-inv_icm45600, such as:
-- A completely different register map.
-- Different FIFO management, based on number of samples instead of bytes.
-- Different indirect register access mechanism.
+Document the ICM-45600 devices devicetree bindings.
 
 Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
-Changes in v3:
-- Macros renamed and added to the patch using it.
-- Using unsigned for sensor configuration parameters.
-- Using sizeof instead of raw values.
-- Using fsleep instead of usleep.
-- Simplified dt-bindings examples, setting supplies as mandatory
-- Fix bad or useless casts.
-- Partially aligned power management following 20250709-icm42pmreg-v1-0-3d0e793c99b2@geanix.com
-- Fix "uninitialized symbols" warnings.
-- Link to v2: https://lore.kernel.org/r/20250710-add_newport_driver-v2-0-bf76d8142ef2@tdk.com
+ .../bindings/iio/imu/invensense,icm45600.yaml      | 97 ++++++++++++++++++++++
+ 1 file changed, 97 insertions(+)
 
-Changes in v2:
-- Reworked patches order and content to ease review and make sure everything compiles
-- Reworked gyro and accel FSR as 2D arrays
-- Moved temperature processed sensor to core module
-- Use latest API to claim/release device
-- Implemented chip_info structure instead of relying on an enum
-- Removed power-mode ABI, only relying on ODR to switch power_mode
-- Reworked regulator control to use devm_ API where relevant
-- Reworked inv_icm45600_state.buffer as a union to avoid casts, using getter/setter instead of memcpy
-- Fixed dt-binding error and moved patch at the beginning of the patch-set
-- Reworked macros to use FIELD_PREP inline instead of inside the header
-- Fixed comment's grammar
-- Removed extra blank lines
-- Reordered part numbers alphanumerically
-- Removed useless default/error fallbacks
-- Typed accel, gyro and timestamp data when parsing FIFO
-- Fixed I2C module return code
-- Use Linux types instead of C standard
-- Reviewed headers inclusion to remove useless #include and to add missing ones
-- Link to v1: https://lore.kernel.org/r/20250411-add_newport_driver-v1-0-15082160b019@tdk.com
+diff --git a/Documentation/devicetree/bindings/iio/imu/invensense,icm45600.yaml b/Documentation/devicetree/bindings/iio/imu/invensense,icm45600.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..f43258124c32ebf850fc29b2e97643885e6f8480
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/imu/invensense,icm45600.yaml
+@@ -0,0 +1,97 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/imu/invensense,icm45600.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: InvenSense ICM-45600 Inertial Measurement Unit
++
++maintainers:
++  - Remi Buisson <remi.buisson@tdk.com>
++
++description: |
++  6-axis MotionTracking device that combines a 3-axis gyroscope and a 3-axis
++  accelerometer.
++
++  It has a configurable host interface that supports I3C, I2C and SPI serial
++  communication, features up to 8kB FIFO and 2 programmable interrupts with
++  ultra-low-power wake-on-motion support to minimize system power consumption.
++
++  Other industry-leading features include InvenSense on-chip APEX Motion
++  Processing engine for gesture recognition, activity classification, and
++  pedometer, along with programmable digital filters, and an embedded
++  temperature sensor.
++
++  https://invensense.tdk.com/wp-content/uploads/documentation/DS-000576_ICM-45605.pdf
++
++properties:
++  compatible:
++    enum:
++      - invensense,icm45605
++      - invensense,icm45606
++      - invensense,icm45608
++      - invensense,icm45634
++      - invensense,icm45686
++      - invensense,icm45687
++      - invensense,icm45688p
++      - invensense,icm45689
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    minItems: 1
++    maxItems: 2
++
++  interrupt-names:
++    minItems: 1
++    maxItems: 2
++    items:
++      enum:
++        - INT1
++        - INT2
++    description: Choose chip interrupt pin to be used as interrupt input.
++
++  drive-open-drain:
++    type: boolean
++
++  vdd-supply:
++    description: Regulator that provides power to the sensor
++
++  vddio-supply:
++    description: Regulator that provides power to the bus
++
++  mount-matrix:
++    description: an optional 3x3 mounting rotation matrix
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - interrupt-names
++  - vdd-supply
++  - vddio-supply
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        imu@68 {
++            compatible = "invensense,icm45605";
++            reg = <0x68>;
++            interrupt-parent = <&gpio2>;
++            interrupt-names = "INT1";
++            interrupts = <7 IRQ_TYPE_EDGE_RISING>;
++            vdd-supply = <&vdd>;
++            vddio-supply = <&vddio>;
++            mount-matrix = "0", "-1", "0",
++                           "1", "0", "0",
++                           "0", "0", "1";
++        };
++    };
 
----
-Remi Buisson (8):
-      dt-bindings: iio: imu: Add inv_icm45600
-      iio: imu: inv_icm45600: add new inv_icm45600 driver
-      iio: imu: inv_icm45600: add buffer support in iio devices
-      iio: imu: inv_icm45600: add IMU IIO devices
-      iio: imu: inv_icm45600: add I2C driver for inv_icm45600 driver
-      iio: imu: inv_icm45600: add SPI driver for inv_icm45600 driver
-      iio: imu: inv_icm45600: add I3C driver for inv_icm45600 driver
-      MAINTAINERS: add entry for inv_icm45600 6-axis imu sensor
-
- .../bindings/iio/imu/invensense,icm45600.yaml      |  97 ++
- MAINTAINERS                                        |   8 +
- drivers/iio/imu/Kconfig                            |   1 +
- drivers/iio/imu/Makefile                           |   1 +
- drivers/iio/imu/inv_icm45600/Kconfig               |  70 ++
- drivers/iio/imu/inv_icm45600/Makefile              |  16 +
- drivers/iio/imu/inv_icm45600/inv_icm45600.h        | 379 ++++++++
- drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c  | 798 +++++++++++++++++
- drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 585 ++++++++++++
- drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.h | 101 +++
- drivers/iio/imu/inv_icm45600/inv_icm45600_core.c   | 994 +++++++++++++++++++++
- drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c   | 809 +++++++++++++++++
- drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c    |  98 ++
- drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c    |  82 ++
- drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c    | 106 +++
- 15 files changed, 4145 insertions(+)
----
-base-commit: f8f559752d573a051a984adda8d2d1464f92f954
-change-id: 20250411-add_newport_driver-529cf5b71ea8
-
-Best regards,
 -- 
-Remi Buisson <remi.buisson@tdk.com>
+2.34.1
 
