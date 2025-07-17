@@ -1,59 +1,75 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 17 Jul 2025 16:59:17 +0800
-Subject: [PATCH] dts: arm: amlogic: fix pwm node for c3
+Date: Thu, 17 Jul 2025 17:19:35 +0800
+Subject: [PATCH] rtc: amlogic-a4: Optimize global variables
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250717-fix-pwm-node-v1-1-45021777efa9@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAGS7eGgC/x2MQQqAIBAAvxJ7bkEFlfpKdLBcaw9ZKFQg/j3pO
- AwzBTIlpgxjVyDRzZnP2ED2Hay7ixsh+8aghNLCSouBX7yeA+PpCY2koOziBiM0tORK1Py/m+Z
- aP+a/zN9eAAAA
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chuan Liu <chuan.liu@amlogic.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
+Message-Id: <20250717-rtc-regmap-v1-1-ad19736ccb09@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIACbAeGgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDc0Nz3aKSZN2i1PTcxAJdQxOD1FRjiyTzpDRzJaCGgqLUtMwKsGHRsbW
+ 1AOcNBfZcAAAA
+To: Yiting Deng <yiting.deng@amlogic.com>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>
+Cc: linux-amlogic@lists.infradead.org, linux-rtc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752742757; l=1025;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752743990; l=1406;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=o5anEexAdJpsa2RWVePMFRWkvLxzPjZ8flBM5Edgoco=;
- b=WiA8ozMtVIYrzvTWtrwaxBiYQ1SRzjW6Ye/Tg8+39l0g9LF2BvFGboskS2qOMR+lmFFa8W+jL
- Wo+31HvFNR4DFp7Ch5eHYMjU1LfkqNrvMUZSOaxphRUWBHalHX/VvNz
+ bh=Tn5lD1nQJpDiw1LSnQ4GALbhpMqAH3g7E7P1O0bGP2E=;
+ b=6VRmWFfex68uuBzChVw66cU/9X5dt11KTQvIdrMbsj4WkyCFYWXYXIZvfZTDWe7uAJOPDLj+4
+ 6ugN6hxm9PqDYRlB2eeuo2y9hMAw5x1LeQ1rHEUgcnkc7g6tRa3zkZg
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix reg address for c3 pwm node.
+Use local variables struct regmap_config instread of global
+variables. The goal of saving memory has been achieve.
 
-Fixes: 431a5281e701 ("arm64: dts: amlogic: Add Amlogic C3 PWM")
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Fix c3 pwm node reg.
+Use local variables struct regmap_config instread of global
+variables. 
 ---
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/rtc/rtc-amlogic-a4.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-index cb9ea3ca6ee0..71b2b3b547f7 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-@@ -792,7 +792,7 @@ spicc1: spi@52000 {
- 			pwm_mn: pwm@54000 {
- 				compatible = "amlogic,c3-pwm",
- 					     "amlogic,meson-s4-pwm";
--				reg = <0x0 54000 0x0 0x24>;
-+				reg = <0x0 0x54000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_M>,
- 					 <&clkc_periphs CLKID_PWM_N>;
- 				#pwm-cells = <3>;
+diff --git a/drivers/rtc/rtc-amlogic-a4.c b/drivers/rtc/rtc-amlogic-a4.c
+index 09d78c2cc691..1928b29c1045 100644
+--- a/drivers/rtc/rtc-amlogic-a4.c
++++ b/drivers/rtc/rtc-amlogic-a4.c
+@@ -72,13 +72,6 @@ struct aml_rtc_data {
+ 	const struct aml_rtc_config *config;
+ };
+ 
+-static const struct regmap_config aml_rtc_regmap_config = {
+-	.reg_bits = 32,
+-	.val_bits = 32,
+-	.reg_stride = 4,
+-	.max_register = RTC_REAL_TIME,
+-};
+-
+ static inline u32 gray_to_binary(u32 gray)
+ {
+ 	u32 bcd = gray;
+@@ -328,6 +321,13 @@ static int aml_rtc_probe(struct platform_device *pdev)
+ 	void __iomem *base;
+ 	int ret = 0;
+ 
++	const struct regmap_config aml_rtc_regmap_config = {
++		.reg_bits = 32,
++		.val_bits = 32,
++		.reg_stride = 4,
++		.max_register = RTC_REAL_TIME,
++	};
++
+ 	rtc = devm_kzalloc(dev, sizeof(*rtc), GFP_KERNEL);
+ 	if (!rtc)
+ 		return -ENOMEM;
 
 ---
-base-commit: 58abdca0eb653c1a2e755ba9ba406ee475d87636
-change-id: 20250717-fix-pwm-node-61ef27ba9605
+base-commit: 0bafe291cb429d39b5ff70bcf7b2f3ab026dcb02
+change-id: 20250717-rtc-regmap-140ee38b7bf7
 
 Best regards,
 -- 
