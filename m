@@ -1,57 +1,57 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 18 Jul 2025 09:52:18 +0800
-Subject: [PATCH v5 3/3] MAINTAINERS: Add an entry for Amlogic spi driver
+Subject: [PATCH 0/3] thermal: Support Amlogic C3 thermal
+Date: Fri, 18 Jul 2025 14:37:40 +0800
+Message-Id: <20250718-c3-thermal-v1-0-674f9a991690@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250718-spisg-v5-3-b8f0f1eb93a2@amlogic.com>
-References: <20250718-spisg-v5-0-b8f0f1eb93a2@amlogic.com>
-In-Reply-To: <20250718-spisg-v5-0-b8f0f1eb93a2@amlogic.com>
-To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIALTreWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDc0ML3WRj3ZKM1KLcxBzd5LSUNINEo6SkNFMjJaCGgqLUtMwKsGHRsbW
+ 1AKyiQAxcAAAA
+To: Guillaume La Roque <glaroque@baylibre.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-pm@vger.kernel.org, linux-amlogic@lists.infradead.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
+ linux-arm-kernel@lists.infradead.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Liming Xue <liming.xue@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752803537; l=878;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752820661; l=796;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=d96hwpa3CUOhnffR2RHeVgOJAkVgtVaxxsoYbBLIdso=;
- b=wIO4Nvl9SJ9G6w63S2Qsm2HFkMy6Cc1zIelD4Mo/R+YrpDo73uUsGMmRIhKoUwzOiUN5FSuOj
- AduBJFto1h+Cy+N9Vri6FycrGoemxypZwHeCY41BYJY+zzHFs0OfQkq
+ bh=zVwBnOBXZNVDZp8+mClSq+Wz1HDJCHk36NiLbL59xXk=;
+ b=f2ZEHyZc0eY/iGCAhjC75mGOUf1dT5uPNYGLrZJlrqSW9d8wpn88WbDDKbX/o+Nu9e6sLvQQq
+ mK90zlJfD/0CV/AGldhcGn9ZEozYGCwKlNAZwk2Ni0u2D/3Q0hccY20
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Amlogic spi entry to MAINTAINERS to clarify the maintainers.
+Add Amlogic C3 thermal compatible string, private_data
+of driver and device node.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- MAINTAINERS | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Xianwei Zhao (3):
+      dt-bindings: thermal: amlogic: Add compatible string for C3
+      thermal: amlogic: Support C3 thermal controller driver
+      arm64: dts: amlogic: c3: Add tempsensor controller node
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a92290fffa16..8225df5ede74 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1307,6 +1307,15 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/rtc/amlogic,a4-rtc.yaml
- F:	drivers/rtc/rtc-amlogic-a4.c
- 
-+AMLOGIC SPISG DRIVER
-+M:	Sunny Luo <sunny.luo@amlogic.com>
-+M:	Xianwei Zhao <xianwei.zhao@amlogic.com>
-+L:	linux-amlogic@lists.infradead.org
-+L:	linux-spi@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml
-+F:	drivers/spi/spi-amlogic-spisg.c
-+
- AMPHENOL CHIPCAP 2 DRIVER
- M:	Javier Carrasco <javier.carrasco.cruz@gmail.com>
- L:	linux-hwmon@vger.kernel.org
+ .../devicetree/bindings/thermal/amlogic,thermal.yaml          |  1 +
+ arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi                   | 11 +++++++++++
+ drivers/thermal/amlogic_thermal.c                             | 10 ++++++++++
+ 3 files changed, 22 insertions(+)
+---
+base-commit: 58abdca0eb653c1a2e755ba9ba406ee475d87636
+change-id: 20250718-c3-thermal-cfdf0a2bbf52
 
+Best regards,
 -- 
-2.37.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
