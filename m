@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 18 Jul 2025 11:38:03 +0400
-Subject: [PATCH v14 1/2] dt-bindings: thermal: qcom-tsens: make ipq5018
- tsens standalone compatible
+Date: Fri, 18 Jul 2025 11:38:04 +0400
+Subject: [PATCH v14 2/2] arm64: dts: qcom: ipq5018: Update tsens node and
+ thermal zones
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250718-ipq5018-tsens-v14-1-28d8a2472418@outlook.com>
+Message-Id: <20250718-ipq5018-tsens-v14-2-28d8a2472418@outlook.com>
 References: <20250718-ipq5018-tsens-v14-0-28d8a2472418@outlook.com>
 In-Reply-To: <20250718-ipq5018-tsens-v14-0-28d8a2472418@outlook.com>
 To: Amit Kucheria <amitk@kernel.org>, 
@@ -21,53 +21,156 @@ To: Amit Kucheria <amitk@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Dmitry Baryshkov <lumag@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752824290; l=1548;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752824290; l=3848;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=N7b74cdo1JSNQJiBtizyhIJQsUtwECsbNozKY9HUsoQ=;
- b=CO6LksY2VIBLgRhDrZEuvg4ZEP/NQNwULQa6+XfO1yHoTPA70QUp4VHkeopfCluOUSiSZn8qn
- n+5Z8BT7epgCmC6FCpe7so5sg1HS/Mu3T8c8PJwItOYxjz94mNDH4yj
+ bh=SwJcY4cCvc+nIankAMt5+SCPwBFBGOQVItGhlf/eWGU=;
+ b=GTCG1e6Toew3AUfHJHm9fwJ3pdtIkfCn7Hc6H/MDUo7DhW7lN6TNtlWiBmnIszihuvS55+XRT
+ QC8elkaStAMAQ2KryJ8HLRI+nrydf4RXeSzSECjxfKU9qW6V/ucn/9q
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IPQ5018 tsens should not use qcom,tsens-v1 as fallback since it has no RPM
-and, as such, must deviates from the standard v1 init routine in the
-driver as this version of tsens needs to be explicitly reset and enabled
-in the driver.
+From: Sricharan Ramabadhran <quic_srichara@quicinc.com>
 
-So let's make qcom,ipq5018-tsens a standalone compatible in the bindings.
+Remove qcom,tsens-v1 as fallback since this IP has no RPM and, as such,
+must use its own init routine available in the driver.
+Also adding a cooling device to the CPU thermal zone which uses CPU
+frequency scaling.
+In addition, remove superfluous polling-delay properties for which the
+default is already set to zero, correctly set hysteresis properties
+measured in milli Celsius as opposed to Celsius, and replace an
+underscore in an alias with a hyphen to align with device tree coding
+guidelines.
 
-Fixes: 77c6d28192ef ("dt-bindings: thermal: qcom-tsens: Add ipq5018 compatible")
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Signed-off-by: Sricharan Ramabadhran <quic_srichara@quicinc.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- Documentation/devicetree/bindings/thermal/qcom-tsens.yaml | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 41 +++++++++++++++++++++--------------
+ 1 file changed, 25 insertions(+), 16 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
-index 0e653bbe9884953b58c4d8569b8d096db47fd54f..3cf16f6734fcfee20735d3da2cfb0f708a11bca4 100644
---- a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
-+++ b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
-@@ -36,10 +36,15 @@ properties:
-               - qcom,msm8974-tsens
-           - const: qcom,tsens-v0_1
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+index ee0001741d211b187e89a39a3caaa576251aff03..1b33ccf1a1b1af721b9690ae2c35eb82985205f5 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+@@ -9,6 +9,7 @@
+ #include <dt-bindings/interrupt-controller/arm-gic.h>
+ #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
+ #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
++#include <dt-bindings/thermal/thermal.h>
  
-+      - description:
-+          v1 of TSENS without RPM which requires to be explicitly reset
-+          and enabled in the driver.
-+        enum:
-+          - qcom,ipq5018-tsens
+ / {
+ 	interrupt-parent = <&intc>;
+@@ -39,6 +40,7 @@ cpu0: cpu@0 {
+ 			next-level-cache = <&l2_0>;
+ 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+ 			operating-points-v2 = <&cpu_opp_table>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu1: cpu@1 {
+@@ -49,6 +51,7 @@ cpu1: cpu@1 {
+ 			next-level-cache = <&l2_0>;
+ 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+ 			operating-points-v2 = <&cpu_opp_table>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		l2_0: l2-cache {
+@@ -255,9 +258,9 @@ tsens_s4_p2: s4-p2@254 {
+ 		};
+ 
+ 		tsens: thermal-sensor@4a9000 {
+-			compatible = "qcom,ipq5018-tsens", "qcom,tsens-v1";
+-			reg = <0x004a9000 0x1000>, /* TM */
+-			      <0x004a8000 0x1000>; /* SROT */
++			compatible = "qcom,ipq5018-tsens";
++			reg = <0x004a9000 0x1000>,
++			      <0x004a8000 0x1000>;
+ 
+ 			nvmem-cells = <&tsens_mode>,
+ 				      <&tsens_base1>,
+@@ -744,56 +747,62 @@ pcie@0 {
+ 
+ 	thermal-zones {
+ 		cpu-thermal {
+-			polling-delay-passive = <0>;
+-			polling-delay = <0>;
+ 			thermal-sensors = <&tsens 2>;
+ 
+ 			trips {
+ 				cpu-critical {
+ 					temperature = <120000>;
+-					hysteresis = <2>;
++					hysteresis = <1000>;
+ 					type = "critical";
+ 				};
 +
-       - description: v1 of TSENS
-         items:
-           - enum:
--              - qcom,ipq5018-tsens
-               - qcom,msm8937-tsens
-               - qcom,msm8956-tsens
-               - qcom,msm8976-tsens
++				cpu_alert: cpu-passive {
++					temperature = <100000>;
++					hysteresis = <1000>;
++					type = "passive";
++				};
++			};
++
++			cooling-maps {
++				map0 {
++					trip = <&cpu_alert>;
++					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
+ 			};
+ 		};
+ 
+ 		gephy-thermal {
+-			polling-delay-passive = <0>;
+-			polling-delay = <0>;
+ 			thermal-sensors = <&tsens 4>;
+ 
+ 			trips {
+ 				gephy-critical {
+ 					temperature = <120000>;
+-					hysteresis = <2>;
++					hysteresis = <1000>;
+ 					type = "critical";
+ 				};
+ 			};
+ 		};
+ 
+ 		top-glue-thermal {
+-			polling-delay-passive = <0>;
+-			polling-delay = <0>;
+ 			thermal-sensors = <&tsens 3>;
+ 
+ 			trips {
+-				top_glue-critical {
++				top-glue-critical {
+ 					temperature = <120000>;
+-					hysteresis = <2>;
++					hysteresis = <1000>;
+ 					type = "critical";
+ 				};
+ 			};
+ 		};
+ 
+ 		ubi32-thermal {
+-			polling-delay-passive = <0>;
+-			polling-delay = <0>;
+ 			thermal-sensors = <&tsens 1>;
+ 
+ 			trips {
+ 				ubi32-critical {
+ 					temperature = <120000>;
+-					hysteresis = <2>;
++					hysteresis = <1000>;
+ 					type = "critical";
+ 				};
+ 			};
 
 -- 
 2.50.1
