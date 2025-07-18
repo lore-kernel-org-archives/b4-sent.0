@@ -1,10 +1,11 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 18 Jul 2025 14:37:42 +0800
-Subject: [PATCH 2/3] thermal: amlogic: Support C3 thermal controller driver
+Date: Fri, 18 Jul 2025 14:37:43 +0800
+Subject: [PATCH 3/3] arm64: dts: amlogic: c3: Add tempsensor controller
+ node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250718-c3-thermal-v1-2-674f9a991690@amlogic.com>
+Message-Id: <20250718-c3-thermal-v1-3-674f9a991690@amlogic.com>
 References: <20250718-c3-thermal-v1-0-674f9a991690@amlogic.com>
 In-Reply-To: <20250718-c3-thermal-v1-0-674f9a991690@amlogic.com>
 To: Guillaume La Roque <glaroque@baylibre.com>, 
@@ -22,56 +23,46 @@ Cc: linux-pm@vger.kernel.org, linux-amlogic@lists.infradead.org,
  Xianwei Zhao <xianwei.zhao@amlogic.com>, 
  Liming Xue <liming.xue@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752820661; l=1528;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752820661; l=1117;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=EsEZYshflk3g07X2o9lFN7MMXDrdVa6llyBRleDL6iE=;
- b=/WJc7hFo5hGlnBG5sOuV9xXaq9rc39za+LE5BXslsQe764jgsKJcE/hgckai+SJimk1E6wbLq
- ucy7yt1rCD8CAtyajT6DfX1+ZGTWOzE0SuDw9purCTxIw38g3vkU0Tq
+ bh=vWhNDYyE9xSECm6+/EYb548/qKTRV6MGziQpMJtR/5A=;
+ b=GfoyeV+CAv/f/E7OEN1Tz3QApTOrFtWdFN5Z5fCvJjhDvbhe1bPYlFP48Z45K0KrxlaDpsS2P
+ Ibg/ocitfAYCay1tzVjxBphiYRlbiSXlUKkB0nSscl7y3h139ZVkMri
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the thermal controller driver for the C3 SoC family.
-
-The main difference compared to other Amlogic chips lies in the
-offset of the sec_ao base (referred to as u_efuse_off), which is
-handled differently. Everything else remains consistent.
+Add the Tempsensor controller node for C3 SoC family.
 
 Signed-off-by: Liming Xue <liming.xue@amlogic.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/thermal/amlogic_thermal.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/drivers/thermal/amlogic_thermal.c b/drivers/thermal/amlogic_thermal.c
-index 5448d772db12..d1b08119c818 100644
---- a/drivers/thermal/amlogic_thermal.c
-+++ b/drivers/thermal/amlogic_thermal.c
-@@ -226,6 +226,12 @@ static const struct amlogic_thermal_data amlogic_thermal_a1_cpu_param = {
- 	.regmap_config = &amlogic_thermal_regmap_config_g12a,
- };
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
+index cb9ea3ca6ee0..c853390eca6c 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
+@@ -727,6 +727,17 @@ clkc_pll: clock-controller@8000 {
+ 					      "fix";
+ 			};
  
-+static const struct amlogic_thermal_data amlogic_thermal_c3_cpu_param = {
-+	.u_efuse_off = 0x108,
-+	.calibration_parameters = &amlogic_thermal_g12a,
-+	.regmap_config = &amlogic_thermal_regmap_config_g12a,
-+};
++			temperature-sensor@20000 {
++				compatible = "amlogic,c3-cpu-thermal";
++				reg = <0x0 0x20000 0x0 0x50>;
++				interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>;
++				clocks = <&clkc_periphs CLKID_TS>;
++				assigned-clocks = <&clkc_periphs CLKID_TS>;
++				assigned-clock-rates = <500000>;
++				amlogic,ao-secure = <&sec_ao>;
++				#thermal-sensor-cells = <0>;
++			};
 +
- static const struct of_device_id of_amlogic_thermal_match[] = {
- 	{
- 		.compatible = "amlogic,g12a-ddr-thermal",
-@@ -239,6 +245,10 @@ static const struct of_device_id of_amlogic_thermal_match[] = {
- 		.compatible = "amlogic,a1-cpu-thermal",
- 		.data = &amlogic_thermal_a1_cpu_param,
- 	},
-+	{
-+		.compatible = "amlogic,c3-cpu-thermal",
-+		.data = &amlogic_thermal_c3_cpu_param,
-+	},
- 	{ /* sentinel */ }
- };
- MODULE_DEVICE_TABLE(of, of_amlogic_thermal_match);
+ 			eth_phy: mdio-multiplexer@28000 {
+ 				compatible = "amlogic,g12a-mdio-mux";
+ 				reg = <0x0 0x28000 0x0 0xa4>;
 
 -- 
 2.37.1
