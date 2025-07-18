@@ -1,177 +1,92 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 18 Jul 2025 11:38:04 +0400
-Subject: [PATCH v14 2/2] arm64: dts: qcom: ipq5018: Update tsens node and
- thermal zones
+From: Mathieu Anquetin <mathieu.anquetin@groupe-cahors.com>
+Date: Fri, 18 Jul 2025 20:12:42 +0200
+Subject: [PATCH] ddr: imx9: fix DRAM PLL bypass
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250718-ipq5018-tsens-v14-2-28d8a2472418@outlook.com>
-References: <20250718-ipq5018-tsens-v14-0-28d8a2472418@outlook.com>
-In-Reply-To: <20250718-ipq5018-tsens-v14-0-28d8a2472418@outlook.com>
-To: Amit Kucheria <amitk@kernel.org>, 
- Thara Gopinath <thara.gopinath@gmail.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Sricharan Ramabadhran <quic_srichara@quicinc.com>, 
- George Moussalem <george.moussalem@outlook.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250718-fix_imx9_ddr_init-v1-1-b52def9e7ee5@groupe-cahors.com>
+X-B4-Tracking: v=1; b=H4sIAJmOemgC/x2MQQqAIBAAvxJ7TtDAyr4SIalr7SELjRCkvycdB
+ 2amQMJImGBqCkR8KNEZKoi2AbuvYUNGrjJ0vJN8ECPzlDUdWWnnoqZAN+ut9coZoaRBqN0VsUr
+ /c17e9wMDltsGYwAAAA==
+X-Change-ID: 20250718-fix_imx9_ddr_init-6ccf9db195be
+To: Sascha Hauer <s.hauer@pengutronix.de>, 
+ BAREBOX <barebox@lists.infradead.org>
+Cc: Fabian Pflug <f.pflug@pengutronix.de>, 
+ Jonas Rebmann <jre@pengutronix.de>, 
+ Mathieu Anquetin <mathieu.anquetin@groupe-cahors.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752824290; l=3848;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=SwJcY4cCvc+nIankAMt5+SCPwBFBGOQVItGhlf/eWGU=;
- b=GTCG1e6Toew3AUfHJHm9fwJ3pdtIkfCn7Hc6H/MDUo7DhW7lN6TNtlWiBmnIszihuvS55+XRT
- QC8elkaStAMAQ2KryJ8HLRI+nrydf4RXeSzSECjxfKU9qW6V/ucn/9q
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1752862374; l=2373;
+ i=mathieu.anquetin@groupe-cahors.com; s=20250718; h=from:subject:message-id;
+ bh=HowQP+torUhauTWq0kKmO0H7oJKz/aam9Q83yTfB5TY=;
+ b=gk92oCgWs2HRtgMgtVngljc/32/dHQ8jCTD3jgb2NeTcZ0hMX5S+nrI26cdeWpuOHJIN/Nvp6
+ KeRNrUdxxpRDtn44TEo2reQ+sD5a13jsEd1+hC+L99cdo7lCjaT6Efg
+X-Developer-Key: i=mathieu.anquetin@groupe-cahors.com; a=ed25519;
+ pk=nJFDztEGb9FZien6U0hPMKsmzbuAD/RxZ05w64dA5U8=
+X-Endpoint-Received: by B4 Relay for mathieu.anquetin@groupe-cahors.com/20250718 with auth_id=464
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sricharan Ramabadhran <quic_srichara@quicinc.com>
+On i.MX9, clock selection for DDR PHY is done by setting/clearing bit 0
+of GPR_SHARED2 register.
 
-Remove qcom,tsens-v1 as fallback since this IP has no RPM and, as such,
-must use its own init routine available in the driver.
-Also adding a cooling device to the CPU thermal zone which uses CPU
-frequency scaling.
-In addition, remove superfluous polling-delay properties for which the
-default is already set to zero, correctly set hysteresis properties
-measured in milli Celsius as opposed to Celsius, and replace an
-underscore in an alias with a hyphen to align with device tree coding
-guidelines.
+This is done using the generic function ccm_shared_gpr_set() which takes
+two arguments, the GPR number and the value to set. However, this
+function did not use the GPR number to calculate the offset of the
+GPR_SHAREDn register to set in the CCM.
 
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Sricharan Ramabadhran <quic_srichara@quicinc.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Therefore, it was not possible to enable/disable DRAM PLL bypass
+correctly and this led to hangs when training the DDR PHY with some
+frequencies (like 625MT/s).
+
+Fixes: e6234f907416 ("ddr: Initial i.MX9 support")
+Signed-off-by: Mathieu Anquetin <mathieu.anquetin@groupe-cahors.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 41 +++++++++++++++++++++--------------
- 1 file changed, 25 insertions(+), 16 deletions(-)
+Some DRAM timing configurations require to change the input clock signal
+and to bypass the DRAM PLL. This is done by setting bit 0 of the
+GPR_SHARED2 register of the CLock Controller Module. However, the
+register offset to set was not calculated correctly, leading to hangs
+during PHY training when PLL bypass was required.
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index ee0001741d211b187e89a39a3caaa576251aff03..1b33ccf1a1b1af721b9690ae2c35eb82985205f5 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -9,6 +9,7 @@
- #include <dt-bindings/interrupt-controller/arm-gic.h>
- #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
- #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
-+#include <dt-bindings/thermal/thermal.h>
- 
- / {
- 	interrupt-parent = <&intc>;
-@@ -39,6 +40,7 @@ cpu0: cpu@0 {
- 			next-level-cache = <&l2_0>;
- 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
- 			operating-points-v2 = <&cpu_opp_table>;
-+			#cooling-cells = <2>;
- 		};
- 
- 		cpu1: cpu@1 {
-@@ -49,6 +51,7 @@ cpu1: cpu@1 {
- 			next-level-cache = <&l2_0>;
- 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
- 			operating-points-v2 = <&cpu_opp_table>;
-+			#cooling-cells = <2>;
- 		};
- 
- 		l2_0: l2-cache {
-@@ -255,9 +258,9 @@ tsens_s4_p2: s4-p2@254 {
- 		};
- 
- 		tsens: thermal-sensor@4a9000 {
--			compatible = "qcom,ipq5018-tsens", "qcom,tsens-v1";
--			reg = <0x004a9000 0x1000>, /* TM */
--			      <0x004a8000 0x1000>; /* SROT */
-+			compatible = "qcom,ipq5018-tsens";
-+			reg = <0x004a9000 0x1000>,
-+			      <0x004a8000 0x1000>;
- 
- 			nvmem-cells = <&tsens_mode>,
- 				      <&tsens_base1>,
-@@ -744,56 +747,62 @@ pcie@0 {
- 
- 	thermal-zones {
- 		cpu-thermal {
--			polling-delay-passive = <0>;
--			polling-delay = <0>;
- 			thermal-sensors = <&tsens 2>;
- 
- 			trips {
- 				cpu-critical {
- 					temperature = <120000>;
--					hysteresis = <2>;
-+					hysteresis = <1000>;
- 					type = "critical";
- 				};
-+
-+				cpu_alert: cpu-passive {
-+					temperature = <100000>;
-+					hysteresis = <1000>;
-+					type = "passive";
-+				};
-+			};
-+
-+			cooling-maps {
-+				map0 {
-+					trip = <&cpu_alert>;
-+					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
-+							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
-+				};
- 			};
- 		};
- 
- 		gephy-thermal {
--			polling-delay-passive = <0>;
--			polling-delay = <0>;
- 			thermal-sensors = <&tsens 4>;
- 
- 			trips {
- 				gephy-critical {
- 					temperature = <120000>;
--					hysteresis = <2>;
-+					hysteresis = <1000>;
- 					type = "critical";
- 				};
- 			};
- 		};
- 
- 		top-glue-thermal {
--			polling-delay-passive = <0>;
--			polling-delay = <0>;
- 			thermal-sensors = <&tsens 3>;
- 
- 			trips {
--				top_glue-critical {
-+				top-glue-critical {
- 					temperature = <120000>;
--					hysteresis = <2>;
-+					hysteresis = <1000>;
- 					type = "critical";
- 				};
- 			};
- 		};
- 
- 		ubi32-thermal {
--			polling-delay-passive = <0>;
--			polling-delay = <0>;
- 			thermal-sensors = <&tsens 1>;
- 
- 			trips {
- 				ubi32-critical {
- 					temperature = <120000>;
--					hysteresis = <2>;
-+					hysteresis = <1000>;
- 					type = "critical";
- 				};
- 			};
+In particular, this was the case for the configuration setting the FSP
+to 625MT/s.
+---
+ drivers/ddr/imx/imx9_ddr_init.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
+diff --git a/drivers/ddr/imx/imx9_ddr_init.c b/drivers/ddr/imx/imx9_ddr_init.c
+index cdee18e4ad0e4cee1b13bd2aab4b53ffcb537e49..086827d9b34c49a76426289b707aad6fa474d065 100644
+--- a/drivers/ddr/imx/imx9_ddr_init.c
++++ b/drivers/ddr/imx/imx9_ddr_init.c
+@@ -352,6 +352,8 @@ static void save_trained_mr12_14(struct dram_cfg_param *cfg, u32 cfg_num, u32 mr
+ 
+ #define MHZ(x)        ((x) * 1000000UL)
+ 
++#define SHARED_GPR(n) (0x4800 + ((n) * 0x20))
++
+ #define SHARED_GPR_DRAM_CLK 2
+ #define SHARED_GPR_DRAM_CLK_SEL_PLL 0
+ #define SHARED_GPR_DRAM_CLK_SEL_CCM BIT(0)
+@@ -376,7 +378,7 @@ static int dram_pll_init(u32 freq)
+ 
+ static void ccm_shared_gpr_set(u32 gpr, u32 val)
+ {
+-	writel(val, IOMEM(MX9_CCM_BASE_ADDR + 0x4800));
++	writel(val, IOMEM(MX9_CCM_BASE_ADDR + SHARED_GPR(gpr)));
+ }
+ 
+ #define DRAM_ALT_CLK_ROOT	76
+
+---
+base-commit: f49c873d7ec78a2df7bd3c7a86f5372fb1666517
+change-id: 20250718-fix_imx9_ddr_init-6ccf9db195be
+
+Best regards,
 -- 
-2.50.1
+*Mathieu ANQUETIN*
+/Software Developer/
+
+CRDE -- Groupe Cahors   | http://www.groupe-cahors.com
+ZI des Grands Camps     | Phone: +33 (0)5 65 30 38 77
+46090 Mercuès -- France |
+
+*GROUPE CAHORS* is a member of the UN Global Compact.
 
