@@ -1,161 +1,91 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 20 Jul 2025 21:15:11 -0500
-Subject: [PATCH v2 17/17] arm64: tegra: Add support for NVIDIA Shield TV
- Pro 2019
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v5 0/2] Add CMN PLL clock controller support for IPQ5018
+Date: Mon, 21 Jul 2025 10:04:34 +0400
+Message-Id: <20250721-ipq5018-cmn-pll-v5-0-4cbf3479af65@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250720-t210b01-v2-17-9cb209f1edfc@gmail.com>
-References: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
-In-Reply-To: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, Vinod Koul <vkoul@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Nagarjuna Kristam <nkristam@nvidia.com>, JC Kuo <jckuo@nvidia.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Mathias Nyman <mathias.nyman@intel.com>, 
- Peter De Schrijver <pdeschrijver@nvidia.com>, 
- Prashant Gaikwad <pgaikwad@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-phy@lists.infradead.org, 
- linux-usb@vger.kernel.org, Thierry Reding <treding@nvidia.com>, 
- linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAHLYfWgC/4XOwW7CMAwG4FdBOS/ITpom5cR7TDsU14VopWnTU
+ m1CfXcCaBqiSJys35K/32cxcPQ8iM3qLCJPfvChTcF8rAQdynbP0lcpCwXKgAGUvuvTcJKOrey
+ aRjo2aCt2VtdOpKsucu1/buLn1z1H7k8JHv+XBz+MIf7eWie8bv8K1KJgQglS2QIUIWVgcRtOY
+ xPC95rCUVy1ST0K+VJQSSAoi5qIK8RsKegHAV8IOgm1drklUyqw+VLI3ghZErQrynyngQ08/TD
+ P8wWuNuGpiwEAAA==
+X-Change-ID: 20250501-ipq5018-cmn-pll-8e517de873f8
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=3522;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=lBbPA4YnfIve2RzYnMMZrMuioshaXo0K/YzU1CSGgG0=;
- b=uZ18x9hPOETwB5r3x1VYui41gkdHxgunkMehPDkapwffmjyk9Z9GL845wi0QzejmISzNQ7Qte
- Wh8pVLrwHUIC3gw1diFucLnJPehp2XDs65AuWnzCj/LV+jaGFCmrF1V
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753077887; l=2648;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=GJGKJkD0S9i1I48RnIhVN+NDQEpwg+vdqVOw66GHbhc=;
+ b=cKuDzYsoKrIQCumB61hsrkVupRSRJ1IFEeC02V/6gpFapF6av5n4m4+ZRUXJlJB2RpN1ONsD6
+ Tr9IGbuRMEpDNl5ykmXmWUBiDSklyJ1DboA0HmvIYB+osCfRP2ms/KV
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add initial device-tree support for NVIDIA Shield TV Pro 2019 (a.k.a
-MDarcy) based up the Tegra210B01 SoC with 3 GiB of LPDDR4 RAM.
+The CMN PLL block of IPQ5018 supplies output clocks for XO at 24 MHZ,
+sleep at 32KHZ, and the ethernet block at 50MHZ.
 
-This is very basic, intended for checking initial Tegra210B01 support.
-More complete support for the device will be added later.
+This patch series extends the CMN PLL driver to support IPQ5018. It also
+adds the SoC specific header file to export the CMN PLL output clock
+specifiers for IPQ5018. A new table of output clocks is added for the
+CMN PLL of IPQ5018, which is acquired from the device according to the
+compatible.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/nvidia/Makefile                |  1 +
- .../boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts | 10 ++++
- arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi  | 70 ++++++++++++++++++++++
- 3 files changed, 81 insertions(+)
+Changes in v5:
+- Rebased on tip of master for patches to cleanly apply
+- Picked up Konrad's RB tag
+- Link to v4: https://lore.kernel.org/r/20250516-ipq5018-cmn-pll-v4-0-389a6b30e504@outlook.com
 
-diff --git a/arch/arm64/boot/dts/nvidia/Makefile b/arch/arm64/boot/dts/nvidia/Makefile
-index 0fbb8a494dba5089d9b7243e766bd6028b7f3744..bc6f3e268020b6fdbc90b2fb2ec1daf30c80af0e 100644
---- a/arch/arm64/boot/dts/nvidia/Makefile
-+++ b/arch/arm64/boot/dts/nvidia/Makefile
-@@ -20,6 +20,7 @@ dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2571.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3450-0000.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-smaug.dtb
- dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2894-0050-a08.dtb
-+dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210b01-p2894-0050-a08.dtb
- dtb-$(CONFIG_ARCH_TEGRA_186_SOC) += tegra186-p2771-0000.dtb
- dtb-$(CONFIG_ARCH_TEGRA_186_SOC) += tegra186-p3509-0000+p3636-0001.dtb
- dtb-$(CONFIG_ARCH_TEGRA_194_SOC) += tegra194-p2972-0000.dtb
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..f18266b3d8ae341feaef5a1a911752f6a5ce2d0f
---- /dev/null
-+++ b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts
-@@ -0,0 +1,10 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/dts-v1/;
-+
-+#include "tegra210b01-p2894.dtsi"
-+
-+/ {
-+	model = "NVIDIA Shield TV Pro 2019";
-+	compatible = "nvidia,p2894-0050-a08", "nvidia,darcy", "nvidia,tegra210b01",
-+		"nvidia,tegra210";
-+};
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi
-new file mode 100644
-index 0000000000000000000000000000000000000000..97c9bd8f293539e76d57b6cfee49c60fb482d6ab
---- /dev/null
-+++ b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi
-@@ -0,0 +1,70 @@
-+// SPDX-License-Identifier: GPL-2.0
-+#include "tegra210b01.dtsi"
-+
-+/ {
-+	aliases {
-+		serial0 = &uarta;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	memory@80000000 {
-+		device_type = "memory";
-+		reg = <0x0 0x80000000 0x0 0xc0000000>;
-+	};
-+
-+	serial@70006000 {
-+		/delete-property/ dmas;
-+		/delete-property/ dma-names;
-+		status = "okay";
-+	};
-+
-+	pmc@7000e400 {
-+		nvidia,invert-interrupt;
-+		nvidia,suspend-mode = <0>;
-+		nvidia,cpu-pwr-good-time = <0>;
-+		nvidia,cpu-pwr-off-time = <0>;
-+		nvidia,core-pwr-good-time = <4587 3876>;
-+		nvidia,core-pwr-off-time = <39065>;
-+		nvidia,core-power-req-active-high;
-+		nvidia,sys-clock-req-active-high;
-+		status = "okay";
-+	};
-+
-+	mmc@700b0600 {
-+		bus-width = <8>;
-+		non-removable;
-+		status = "okay";
-+	};
-+
-+	clk32k_in: clock-32k {
-+		compatible = "fixed-clock";
-+		clock-frequency = <32768>;
-+		#clock-cells = <0>;
-+	};
-+
-+	cpus {
-+		cpu@0 {
-+			enable-method = "psci";
-+		};
-+
-+		cpu@1 {
-+			enable-method = "psci";
-+		};
-+
-+		cpu@2 {
-+			enable-method = "psci";
-+		};
-+
-+		cpu@3 {
-+			enable-method = "psci";
-+		};
-+	};
-+
-+	psci {
-+		compatible = "arm,psci-1.0";
-+		method = "smc";
-+	};
-+};
+Changes in v4:
+- Re-add missing CMN PLL node after git pull and rebase on linux-next
+- Link to v3: https://lore.kernel.org/r/20250516-ipq5018-cmn-pll-v3-0-f3867c5a2076@outlook.com
 
+Changes in v3:
+- After further testing and evaluating different solutions, reverted to
+  marking the XO clock in the GCC as critical as agreed with Konrad
+- Moved kernel traces out of commit message of patch 1 to under the
+  diffstat separator and updated commit message accordingly
+- Updated commit message of patch 3
+- Link to v2: https://lore.kernel.org/r/20250506-ipq5018-cmn-pll-v2-0-c0a9fcced114@outlook.com
+
+Changes in v2:
+- Moved up commit documenting ipq5018 in qcom,tcsr bindings
+- Fixed binding issues reported by Rob's bot
+- Undone accidental deletion of reg property in cmn pll bindings
+- Fixed register address and size based on address and size cells of 1
+- Removed XO and XO_SRC clock structs from GCC and enabled them as
+  always-on as suggested by Konrad
+- Removed bindings for XO and XO_SRC clocks
+- Removed qcom,tscr-cmn-pll-eth-enable property from bindings and will 
+  move logic to ipq5018 internal phy driver as per Jie's recommendation.
+- Removed addition of tcsr node and its bindings from this patch set
+- Corrected spelling mistakes
+- Link to v1: https://lore.kernel.org/r/20250502-ipq5018-cmn-pll-v1-0-27902c1c4071@outlook.com
+
+---
+George Moussalem (2):
+      arm64: dts: ipq5018: Add CMN PLL node
+      arm64: dts: qcom: Update IPQ5018 xo_board_clk to use fixed factor clock
+
+ arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts     |  3 +-
+ .../dts/qcom/ipq5018-tplink-archer-ax55-v1.dts     |  3 +-
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              | 34 ++++++++++++++++++++--
+ 3 files changed, 36 insertions(+), 4 deletions(-)
+---
+base-commit: 098738b001e2e6944805f8ea53e9bc711f13d47f
+change-id: 20250501-ipq5018-cmn-pll-8e517de873f8
+
+Best regards,
 -- 
-2.50.1
+George Moussalem <george.moussalem@outlook.com>
 
