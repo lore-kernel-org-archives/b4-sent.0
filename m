@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 20 Jul 2025 21:14:59 -0500
-Subject: [PATCH v2 05/17] dt-bindings: thermal: tegra: Document Tegra210B01
+Date: Sun, 20 Jul 2025 21:15:00 -0500
+Subject: [PATCH v2 06/17] dt-bindings: clock: tegra: Document Tegra210B01
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250720-t210b01-v2-5-9cb209f1edfc@gmail.com>
+Message-Id: <20250720-t210b01-v2-6-9cb209f1edfc@gmail.com>
 References: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 In-Reply-To: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -27,44 +27,53 @@ Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org,
  linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=1137;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=1600;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=k5R1tghQgg5zWHMrFL8NyxLEhTBC0sAbF1cM0lIByUU=;
- b=PN58npPb+8Yb2p863wVe7T8c3F+xHHfiVNyEIiqJO9Galpibr1KdvL9MTQtkYWbv5kHw7LBbF
- 6so15kGV/tcBgffSpqCQFcIttSw2jpTIm90rM9NVMQWSYkcCzfbonx3
+ bh=Cj+m/fB3eeAdMaIIZwt0Ih/S0OtnqsxT3QW3PAC9JvE=;
+ b=O5KPaGIZppqEfJdwPtQFnaBWV/PmQMESQEbEt9SVW75ehrbBGKx4tBjt6LsmYFYVAhrZrzYt1
+ F2AWSf1yZb5CKSciKkv3G48Q1pv9oKkZNv8G7/JGs753OKwa5Wpqa/A
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the compatible string for Tegra210B01 SOC_THERM
+* Add the compatible string for Tegra210B01 clock and reset
+* Add Tegra210B01 specific clock bindings
 
 Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml | 1 +
+ include/dt-bindings/clock/tegra210-car.h                        | 5 ++++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml b/Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml
-index 19bb1f324183bb22bc75630798da67fc834920b8..cf47a1f3b3847d4a0371d0bc711638fc5e3b6cd3 100644
---- a/Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml
-+++ b/Documentation/devicetree/bindings/thermal/nvidia,tegra124-soctherm.yaml
-@@ -21,6 +21,7 @@ properties:
-       - nvidia,tegra124-soctherm
-       - nvidia,tegra132-soctherm
-       - nvidia,tegra210-soctherm
-+      - nvidia,tegra210b01-soctherm
+diff --git a/Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml b/Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml
+index bee2dd4b29bfe391caee346aa5afad49772c2c41..88cce500bbc43de934f6c56152e5b2d006f8a8bb 100644
+--- a/Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml
++++ b/Documentation/devicetree/bindings/clock/nvidia,tegra20-car.yaml
+@@ -32,6 +32,7 @@ properties:
+       - nvidia,tegra30-car
+       - nvidia,tegra114-car
+       - nvidia,tegra210-car
++      - nvidia,tegra210b01-car
  
    reg:
-     maxItems: 2
-@@ -207,6 +208,7 @@ allOf:
-             enum:
-               - nvidia,tegra124-soctherm
-               - nvidia,tegra210-soctherm
-+              - nvidia,tegra210b01-soctherm
-     then:
-       properties:
-         reg:
+     maxItems: 1
+diff --git a/include/dt-bindings/clock/tegra210-car.h b/include/dt-bindings/clock/tegra210-car.h
+index 9cfcc3baa52c6eef0439c859200cf44446a1cd17..27485d9b80f68fc0e7668a8abbd1b821f62035dd 100644
+--- a/include/dt-bindings/clock/tegra210-car.h
++++ b/include/dt-bindings/clock/tegra210-car.h
+@@ -409,6 +409,9 @@
+ #define TEGRA210_CLK_DMIC3_SYNC_CLK 392
+ #define TEGRA210_CLK_DMIC3_SYNC_CLK_MUX 393
+ 
+-#define TEGRA210_CLK_CLK_MAX 394
++#define TEGRA210_CLK_UTMIPLL_60M 531
++#define TEGRA210_CLK_PLL_P_UPHY_OUT 532
++
++#define TEGRA210_CLK_CLK_MAX 533
+ 
+ #endif	/* _DT_BINDINGS_CLOCK_TEGRA210_CAR_H */
 
 -- 
 2.50.1
