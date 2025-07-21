@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 20 Jul 2025 21:15:04 -0500
-Subject: [PATCH v2 10/17] phy: tegra: xusb: Add Tegra201B01 Support
+Date: Sun, 20 Jul 2025 21:15:05 -0500
+Subject: [PATCH v2 11/17] usb: xhci: tegra: Add Tegra210B01 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250720-t210b01-v2-10-9cb209f1edfc@gmail.com>
+Message-Id: <20250720-t210b01-v2-11-9cb209f1edfc@gmail.com>
 References: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 In-Reply-To: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -27,125 +27,65 @@ Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org,
  linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=4435;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=1932;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=DyjvlYeFWjuF8INqah0YPKPBr520ThqIor4dBP2TbD8=;
- b=n/W32LZg64avh0iv4/SI5gHqvkoR3TYgbJPm4iyJuxFUc7bJjMw1fyIEu7XBWnyZpy1ZlfPrr
- Bb430hLd5usBkFeTjOWXYpFZkZoRzRa2zzVJh1EWmy4DFjTYywY0GTZ
+ bh=u4MyJKHAAFOoAMSOmgjeS/X4Ejtyfwszu/1wKGnsxoU=;
+ b=tA5ONdEvrWoKhcaOrjdxpAymCR/aSkTi7yRM2gWunDmn7Rfg89bxZ6y9P9BZUVGXYItGvdMIK
+ THthuPCQNTZDg9m/LCrcMj5i8gKD9gNXwhqI4lIdLRhxYhZM+8sjUYJ
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It has slightly different lanes compared to the original Tegra210.
-
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+This uses a different firmware, but is otherwise compatible with
+Tegra210.
 ---
- drivers/phy/tegra/xusb-tegra210.c | 41 +++++++++++++++++++++++++++++++++++++++
- drivers/phy/tegra/xusb.c          |  4 ++++
- drivers/phy/tegra/xusb.h          |  1 +
- 3 files changed, 46 insertions(+)
+ drivers/usb/host/xhci-tegra.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
-diff --git a/drivers/phy/tegra/xusb-tegra210.c b/drivers/phy/tegra/xusb-tegra210.c
-index ebc8a7e21a318160b162113eea8a6c97b7ed7966..06b587f84270cdea2ea397e55e1e326e270d4caa 100644
---- a/drivers/phy/tegra/xusb-tegra210.c
-+++ b/drivers/phy/tegra/xusb-tegra210.c
-@@ -2559,6 +2559,15 @@ static const struct tegra_xusb_lane_soc tegra210_pcie_lanes[] = {
- 	TEGRA210_UPHY_LANE("pcie-6", 0x028, 24, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(6)),
+diff --git a/drivers/usb/host/xhci-tegra.c b/drivers/usb/host/xhci-tegra.c
+index 0c7af44d4dae5066e66bd29c961510892b6e1301..aef100415f453fdd95c83cf511a914cf62e3e775 100644
+--- a/drivers/usb/host/xhci-tegra.c
++++ b/drivers/usb/host/xhci-tegra.c
+@@ -2547,6 +2547,30 @@ static const struct tegra_xusb_soc tegra210_soc = {
  };
+ MODULE_FIRMWARE("nvidia/tegra210/xusb.bin");
  
-+static const struct tegra_xusb_lane_soc tegra210b01_pcie_lanes[] = {
-+	TEGRA210_UPHY_LANE("pcie-0", 0x028, 12, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(0)),
-+	TEGRA210_UPHY_LANE("pcie-1", 0x028, 14, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(1)),
-+	TEGRA210_UPHY_LANE("pcie-2", 0x028, 16, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(2)),
-+	TEGRA210_UPHY_LANE("pcie-3", 0x028, 18, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(3)),
-+	TEGRA210_UPHY_LANE("pcie-4", 0x028, 20, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(4)),
-+	TEGRA210_UPHY_LANE("pcie-5", 0x028, 22, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(5)),
-+};
-+
- static struct tegra_xusb_usb3_port *
- tegra210_lane_to_usb3_port(struct tegra_xusb_lane *lane)
- {
-@@ -2847,6 +2856,13 @@ static const struct tegra_xusb_pad_soc tegra210_pcie_pad = {
- 	.ops = &tegra210_pcie_ops,
- };
- 
-+static const struct tegra_xusb_pad_soc tegra210b01_pcie_pad = {
-+	.name = "pcie",
-+	.num_lanes = ARRAY_SIZE(tegra210b01_pcie_lanes),
-+	.lanes = tegra210b01_pcie_lanes,
-+	.ops = &tegra210_pcie_ops,
-+};
-+
- static const struct tegra_xusb_lane_soc tegra210_sata_lanes[] = {
- 	TEGRA210_UPHY_LANE("sata-0", 0x028, 30, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2),
- };
-@@ -3016,6 +3032,11 @@ static const struct tegra_xusb_pad_soc * const tegra210_pads[] = {
- 	&tegra210_sata_pad,
- };
- 
-+static const struct tegra_xusb_pad_soc * const tegra210b01_pads[] = {
-+	&tegra210_usb2_pad,
-+	&tegra210b01_pcie_pad,
-+};
-+
- static int tegra210_usb2_port_enable(struct tegra_xusb_port *port)
- {
- 	return 0;
-@@ -3290,6 +3311,26 @@ const struct tegra_xusb_padctl_soc tegra210_xusb_padctl_soc = {
- };
- EXPORT_SYMBOL_GPL(tegra210_xusb_padctl_soc);
- 
-+const struct tegra_xusb_padctl_soc tegra210b01_xusb_padctl_soc = {
-+	.num_pads = ARRAY_SIZE(tegra210b01_pads),
-+	.pads = tegra210b01_pads,
++static const struct tegra_xusb_soc tegra210b01_soc = {
++	.firmware = "nvidia/tegra210b01/xusb.bin",
++	.supply_names = tegra210_supply_names,
++	.num_supplies = ARRAY_SIZE(tegra210_supply_names),
++	.phy_types = tegra210_phy_types,
++	.num_types = ARRAY_SIZE(tegra210_phy_types),
++	.context = &tegra124_xusb_context,
 +	.ports = {
-+		.usb2 = {
-+			.ops = &tegra210_usb2_port_ops,
-+			.count = 4,
-+		},
-+		.usb3 = {
-+			.ops = &tegra210_usb3_port_ops,
-+			.count = 4,
-+		},
++		.usb2 = { .offset = 4, .count = 4, },
++		.hsic = { .offset = 8, .count = 1, },
++		.usb3 = { .offset = 0, .count = 4, },
 +	},
-+	.ops = &tegra210_xusb_padctl_ops,
-+	.supply_names = tegra210_xusb_padctl_supply_names,
-+	.num_supplies = ARRAY_SIZE(tegra210_xusb_padctl_supply_names),
-+	.need_fake_usb3_port = true,
++	.scale_ss_clock = false,
++	.has_ipfs = true,
++	.otg_reset_sspi = true,
++	.mbox = {
++		.cmd = 0xe4,
++		.data_in = 0xe8,
++		.data_out = 0xec,
++		.owner = 0xf0,
++	},
 +};
-+EXPORT_SYMBOL_GPL(tegra210b01_xusb_padctl_soc);
++MODULE_FIRMWARE("nvidia/tegra210b01/xusb.bin");
 +
- MODULE_AUTHOR("Andrew Bresticker <abrestic@chromium.org>");
- MODULE_DESCRIPTION("NVIDIA Tegra 210 XUSB Pad Controller driver");
- MODULE_LICENSE("GPL v2");
-diff --git a/drivers/phy/tegra/xusb.c b/drivers/phy/tegra/xusb.c
-index c89df95aa6ca988ea02df6220061be5c7f2c9a46..4a55f1dde660a502d3ff1ab4a275a3f97f19632d 100644
---- a/drivers/phy/tegra/xusb.c
-+++ b/drivers/phy/tegra/xusb.c
-@@ -59,6 +59,10 @@ static const struct of_device_id tegra_xusb_padctl_of_match[] = {
- 		.compatible = "nvidia,tegra210-xusb-padctl",
- 		.data = &tegra210_xusb_padctl_soc,
- 	},
-+	{
-+		.compatible = "nvidia,tegra210b01-xusb-padctl",
-+		.data = &tegra210b01_xusb_padctl_soc,
-+	},
- #endif
- #if defined(CONFIG_ARCH_TEGRA_186_SOC)
- 	{
-diff --git a/drivers/phy/tegra/xusb.h b/drivers/phy/tegra/xusb.h
-index 6e45d194c68947618778dc132720ae757f5fd656..a2074dd3770449c64157e60ef230cefc27238ceb 100644
---- a/drivers/phy/tegra/xusb.h
-+++ b/drivers/phy/tegra/xusb.h
-@@ -503,6 +503,7 @@ extern const struct tegra_xusb_padctl_soc tegra124_xusb_padctl_soc;
- #endif
- #if defined(CONFIG_ARCH_TEGRA_210_SOC)
- extern const struct tegra_xusb_padctl_soc tegra210_xusb_padctl_soc;
-+extern const struct tegra_xusb_padctl_soc tegra210b01_xusb_padctl_soc;
- #endif
- #if defined(CONFIG_ARCH_TEGRA_186_SOC)
- extern const struct tegra_xusb_padctl_soc tegra186_xusb_padctl_soc;
+ static const char * const tegra186_supply_names[] = {
+ };
+ MODULE_FIRMWARE("nvidia/tegra186/xusb.bin");
+@@ -2659,6 +2683,7 @@ static const struct tegra_xusb_soc tegra234_soc = {
+ static const struct of_device_id tegra_xusb_of_match[] = {
+ 	{ .compatible = "nvidia,tegra124-xusb", .data = &tegra124_soc },
+ 	{ .compatible = "nvidia,tegra210-xusb", .data = &tegra210_soc },
++	{ .compatible = "nvidia,tegra210b01-xusb", .data = &tegra210b01_soc },
+ 	{ .compatible = "nvidia,tegra186-xusb", .data = &tegra186_soc },
+ 	{ .compatible = "nvidia,tegra194-xusb", .data = &tegra194_soc },
+ 	{ .compatible = "nvidia,tegra234-xusb", .data = &tegra234_soc },
 
 -- 
 2.50.1
