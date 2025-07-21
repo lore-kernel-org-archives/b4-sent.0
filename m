@@ -1,85 +1,125 @@
-From: Per Larsen <perlarsen@google.com>
-Date: Sat, 19 Jul 2025 02:11:29 +0000
-Subject: [PATCH v8 7/7] KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in
- host handler
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v2 00/17] arm64: tegra: Add Tegra210B01 support
+Date: Sun, 20 Jul 2025 21:14:54 -0500
+Message-Id: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250719-virtio-msg-ffa-v8-7-03e8e8dbe856@google.com>
-References: <20250719-virtio-msg-ffa-v8-0-03e8e8dbe856@google.com>
-In-Reply-To: <20250719-virtio-msg-ffa-v8-0-03e8e8dbe856@google.com>
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
- Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Sudeep Holla <sudeep.holla@arm.com>
-Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, ahomescu@google.com, armellel@google.com, 
- arve@android.com, ayrton@google.com, qperret@google.com, 
- sebastianene@google.com, qwandor@google.com, 
- Per Larsen <perlarsen@google.com>
+X-B4-Tracking: v=1; b=H4sIAJ6ifWgC/z3MQQrCMBCF4auUWRuZxIZaV95DuojJpB2wjSQlK
+ CV3N1Zw+T8e3waJIlOCS7NBpMyJw1JDHRqwk1lGEuxqg0KlUWMvViXxjlJYqVtr0J/7voX6fkb
+ y/Nql21B74rSG+N7hLL/rz+hk+zeyFCjo5LXvHGln6TrOhh9HG2YYSikffXBOt54AAAA=
+X-Change-ID: 20250509-t210b01-c154ca0f8994
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, Vinod Koul <vkoul@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Nagarjuna Kristam <nkristam@nvidia.com>, JC Kuo <jckuo@nvidia.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Mathias Nyman <mathias.nyman@intel.com>, 
+ Peter De Schrijver <pdeschrijver@nvidia.com>, 
+ Prashant Gaikwad <pgaikwad@nvidia.com>
+Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-phy@lists.infradead.org, 
+ linux-usb@vger.kernel.org, Thierry Reding <treding@nvidia.com>, 
+ linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>, Azkali Manad <a.ffcc7@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1752891112; l=1826;
- i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=XKLIrLx+xVZkKFUyrkWFNAg3jN3LAX8G3drs7Zg0LpU=;
- b=bAFm8MojrTV0HWjRNrhEW7+sivMya8UgN2MnWTQD8h9xbMw8WrO+9bYJ7E6lzG9tF2K5n+Xux
- wriZLkODV0ZDCFwoyKRat6h5JRoPq6c1NwRiFbJwu04nzWiREVYMTbv
-X-Developer-Key: i=perlarsen@google.com; a=ed25519;
- pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
-X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=4059;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=D4slPNc6Z1U3EWga2c4poJ3saIhVXP1H0Ye4x3zfpK8=;
+ b=DAg8YVEDqTLQjcwuGcianfkqSUmfcS0Zt9XbFE7poCGvB5cdaqLa6Dwleey9xMIk7ZRthnWlE
+ 2UO3dC5JJOgAgmFuWAAj0r1loGajcqrqWgEqfgRZJtPbjmK7ltJP6Kw
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FF-A 1.2 adds the DIRECT_REQ2 messaging interface which is similar to
-the existing FFA_MSG_SEND_DIRECT_{REQ,RESP} functions except that it
-uses the SMC calling convention v1.2 which allows calls to use x4-x17 as
-argument and return registers. Add support for FFA_MSG_SEND_DIRECT_REQ2
-in the host ffa handler.
+Also known as Tegra X1+, the Tegra210B01 has higher CPU and GPU clocks
+than the original Tegra210.
 
-Signed-off-by: Per Larsen <perlarsen@google.com>
+This series adds Tegra210B01 support to several drivers, as a slight
+extension to the existing Tegra210 support. Then adds a generic soc dtsi
+in the same vein as other tegra archs. And finally adds a barebones
+device dts to be used for dt checks. Further device support will be
+submitted in later series.
+
+Earlier internal revisions of this series included changes to the dfll
+driver to support Tegra210B01, but those did not work in testing, thus
+was dropped from the series. A bindings update to match is still in the
+series so the soc dtsi can declare a separate compatible from Tegra210,
+preventing the driver from attempting incorrect initialization on
+Tegra210B01.
+
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Changes in v2:
+- Fix patch 1 subject
+- Add descriptive name in patch 8
+- Fix copy-paste error in patch 13, discovered by kernel ci
+- Link to v1: https://lore.kernel.org/r/20250714-t210b01-v1-0-e3f5f7de5dce@gmail.com
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index f6d964df53c3e21ba85984f35cc7b6859012d1b0..363374408b354a5d65861b9cf140974d8914ff40 100644
---- a/arch/arm64/kvm/hyp/nvhe/ffa.c
-+++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -851,6 +851,15 @@ static void do_ffa_part_get(struct arm_smccc_1_2_regs *res,
- 	hyp_spin_unlock(&host_buffers.lock);
- }
- 
-+static void do_ffa_direct_msg2(struct arm_smccc_1_2_regs *regs,
-+			       struct kvm_cpu_context *ctxt,
-+			       u64 vm_handle)
-+{
-+	struct arm_smccc_1_2_regs *args = (void *)&ctxt->regs.regs[0];
-+
-+	arm_smccc_1_2_smc(args, regs);
-+}
-+
- bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- {
- 	struct arm_smccc_1_2_regs res;
-@@ -909,11 +918,18 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- 	case FFA_PARTITION_INFO_GET:
- 		do_ffa_part_get(&res, host_ctxt);
- 		goto out_handled;
-+	case FFA_MSG_SEND_DIRECT_REQ2:
-+		if (hyp_ffa_version >= FFA_VERSION_1_2) {
-+			do_ffa_direct_msg2(&res, host_ctxt, HOST_FFA_ID);
-+			goto out_handled;
-+		}
-+		goto out_not_supported;
- 	}
- 
- 	if (ffa_call_supported(func_id))
- 		return false; /* Pass through */
- 
-+out_not_supported:
- 	ffa_to_smccc_error(&res, FFA_RET_NOT_SUPPORTED);
- out_handled:
- 	ffa_set_retval(host_ctxt, &res);
+---
+Aaron Kling (16):
+      dt-bindings: soc: tegra: pmc: Document Tegra210B01
+      dt-bindings: phy: tegra-xusb: Document Tegra210B01
+      dt-bindings: usb: tegra-xusb: Document Tegra210B01
+      dt-bindings: usb: tegra-xudc: Document Tegra210B01
+      dt-bindings: thermal: tegra: Document Tegra210B01
+      dt-bindings: clock: tegra: Document Tegra210B01
+      dt-bindings: clock: tegra124-dfll: Document Tegra210B01
+      dt-bindings: tegra: Document Shield TV 2019
+      phy: tegra: xusb: Add Tegra201B01 Support
+      usb: xhci: tegra: Add Tegra210B01 support
+      usb: gadget: tegra-xudc: Add Tegra210B01 Support
+      thermal: tegra: Add Tegra210B01 Support
+      clk: tegra: Add Tegra210B01 support
+      arm64: tegra: Add BPMP node for Tegra210
+      arm64: tegra: Add Tegra210B01 support
+      arm64: tegra: Add support for NVIDIA Shield TV Pro 2019
 
+Azkali Manad (1):
+      soc/tegra: pmc: Add Tegra210B01 support
+
+ Documentation/devicetree/bindings/arm/tegra.yaml   |    6 +
+ .../bindings/clock/nvidia,tegra124-dfll.txt        |    1 +
+ .../bindings/clock/nvidia,tegra20-car.yaml         |    1 +
+ .../bindings/phy/nvidia,tegra210-xusb-padctl.yaml  |    4 +-
+ .../bindings/soc/tegra/nvidia,tegra20-pmc.yaml     |    5 +-
+ .../bindings/thermal/nvidia,tegra124-soctherm.yaml |    2 +
+ .../devicetree/bindings/usb/nvidia,tegra-xudc.yaml |    2 +
+ .../bindings/usb/nvidia,tegra210-xusb.yaml         |    4 +-
+ arch/arm64/boot/dts/nvidia/Makefile                |    1 +
+ arch/arm64/boot/dts/nvidia/tegra210.dtsi           |   11 +
+ .../boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts |   10 +
+ arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi  |   70 +
+ arch/arm64/boot/dts/nvidia/tegra210b01.dtsi        |   64 +
+ drivers/clk/tegra/Makefile                         |    1 +
+ drivers/clk/tegra/clk-tegra-periph.c               |    3 +
+ drivers/clk/tegra/clk-tegra210b01.c                | 3758 ++++++++++++++++++++
+ drivers/clk/tegra/clk-utils.c                      |    5 +-
+ drivers/clk/tegra/clk.c                            |   19 +-
+ drivers/clk/tegra/clk.h                            |    6 +
+ drivers/phy/tegra/xusb-tegra210.c                  |   41 +
+ drivers/phy/tegra/xusb.c                           |    4 +
+ drivers/phy/tegra/xusb.h                           |    1 +
+ drivers/soc/tegra/pmc.c                            |  117 +
+ drivers/thermal/tegra/soctherm.c                   |    4 +
+ drivers/thermal/tegra/soctherm.h                   |    1 +
+ drivers/thermal/tegra/tegra210-soctherm.c          |   78 +
+ drivers/usb/gadget/udc/tegra-xudc.c                |   20 +
+ drivers/usb/host/xhci-tegra.c                      |   25 +
+ include/dt-bindings/clock/tegra210-car.h           |    5 +-
+ 29 files changed, 4262 insertions(+), 7 deletions(-)
+---
+base-commit: 347e9f5043c89695b01e66b3ed111755afcf1911
+change-id: 20250509-t210b01-c154ca0f8994
+
+Best regards,
 -- 
-2.50.0.727.gbf7dc18ff4-goog
+Aaron Kling <webgeek1234@gmail.com>
 
