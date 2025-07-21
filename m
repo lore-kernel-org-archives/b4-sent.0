@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 20 Jul 2025 21:15:03 -0500
-Subject: [PATCH v2 09/17] soc/tegra: pmc: Add Tegra210B01 support
+Date: Sun, 20 Jul 2025 21:15:04 -0500
+Subject: [PATCH v2 10/17] phy: tegra: xusb: Add Tegra201B01 Support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250720-t210b01-v2-9-9cb209f1edfc@gmail.com>
+Message-Id: <20250720-t210b01-v2-10-9cb209f1edfc@gmail.com>
 References: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 In-Reply-To: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -25,159 +25,127 @@ Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org, Thierry Reding <treding@nvidia.com>, 
  linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>, Azkali Manad <a.ffcc7@gmail.com>
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=7406;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=4435;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=v2EHSP1hOunXXW1PT0V+1LWhmRxko09yrzRXPz95FzM=;
- b=y82WX/7KaKy37B3q6ZJHRgHbZKP28zOHOTQIenMfAGVuiYWLrKYVLuqW3CPGF5QsFzM3VGdWi
- s78fMBXZEe/A4+QNIBorcDaqWkkWJSisejNC7h0r4+P9tnxUd0orJBA
+ bh=DyjvlYeFWjuF8INqah0YPKPBr520ThqIor4dBP2TbD8=;
+ b=n/W32LZg64avh0iv4/SI5gHqvkoR3TYgbJPm4iyJuxFUc7bJjMw1fyIEu7XBWnyZpy1ZlfPrr
+ Bb430hLd5usBkFeTjOWXYpFZkZoRzRa2zzVJh1EWmy4DFjTYywY0GTZ
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Azkali Manad <a.ffcc7@gmail.com>
+It has slightly different lanes compared to the original Tegra210.
 
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/soc/tegra/pmc.c | 117 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 117 insertions(+)
+ drivers/phy/tegra/xusb-tegra210.c | 41 +++++++++++++++++++++++++++++++++++++++
+ drivers/phy/tegra/xusb.c          |  4 ++++
+ drivers/phy/tegra/xusb.h          |  1 +
+ 3 files changed, 46 insertions(+)
 
-diff --git a/drivers/soc/tegra/pmc.c b/drivers/soc/tegra/pmc.c
-index e0d67bfe955cdea6b4703952741b0b9970084d66..689354c280883f7096f007ae714dad1b379a2852 100644
---- a/drivers/soc/tegra/pmc.c
-+++ b/drivers/soc/tegra/pmc.c
-@@ -3732,6 +3732,122 @@ static const struct tegra_pmc_soc tegra210_pmc_soc = {
- 	.has_single_mmio_aperture = true,
+diff --git a/drivers/phy/tegra/xusb-tegra210.c b/drivers/phy/tegra/xusb-tegra210.c
+index ebc8a7e21a318160b162113eea8a6c97b7ed7966..06b587f84270cdea2ea397e55e1e326e270d4caa 100644
+--- a/drivers/phy/tegra/xusb-tegra210.c
++++ b/drivers/phy/tegra/xusb-tegra210.c
+@@ -2559,6 +2559,15 @@ static const struct tegra_xusb_lane_soc tegra210_pcie_lanes[] = {
+ 	TEGRA210_UPHY_LANE("pcie-6", 0x028, 24, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(6)),
  };
  
-+static const struct tegra_io_pad_soc tegra210b01_io_pads[] = {
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_AUDIO, 17, 0x1b8, 0x1bc, 5, "audio"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_AUDIO_HV, 29, 0x1c0, 0x1c4, 18, "audio-hv"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CAM, 4, 0x1c0, 0x1c4, 10, "cam"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIA, 0, 0x1b8, 0x1bc, UINT_MAX, "csia"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIB, 1, 0x1b8, 0x1bc, UINT_MAX, "csib"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIC, 10, 0x1c0, 0x1c4, UINT_MAX, "csic"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSID, 11, 0x1c0, 0x1c4, UINT_MAX, "csid"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIE, 12, 0x1c0, 0x1c4, UINT_MAX, "csie"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIF, 13, 0x1c0, 0x1c4, UINT_MAX, "csif"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DBG, 25, 0x1b8, 0x1bc, 19, "dbg"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DEBUG_NONAO, 26, 0x1b8, 0x1bc, UINT_MAX, "debug-nonao"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DMIC, 18, 0x1c0, 0x1c4, 20, "dmic"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DP, 19, 0x1c0, 0x1c4, UINT_MAX, "dp"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DSI, 2, 0x1b8, 0x1bc, UINT_MAX, "dsi"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DSIB, 7, 0x1c0, 0x1c4, UINT_MAX, "dsib"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DSIC, 8, 0x1c0, 0x1c4, UINT_MAX, "dsic"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DSID, 9, 0x1c0, 0x1c4, UINT_MAX, "dsid"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_EMMC, 3, 0x1c0, 0x1c4, UINT_MAX, "emmc"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_EMMC2, 5, 0x1c0, 0x1c4, UINT_MAX, "emmc2"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_GPIO, 27, 0x1b8, 0x1bc, 21, "gpio"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_HDMI, 28, 0x1b8, 0x1bc, UINT_MAX, "hdmi"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_HSIC, 19, 0x1b8, 0x1bc, UINT_MAX, "hsic"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_LVDS, 25, 0x1c0, 0x1c4, UINT_MAX, "lvds"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_MIPI_BIAS, 3, 0x1b8, 0x1bc, UINT_MAX, "mipi-bias"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_PEX_BIAS, 4, 0x1b8, 0x1bc, UINT_MAX, "pex-bias"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_PEX_CLK1, 5, 0x1b8, 0x1bc, UINT_MAX, "pex-clk1"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_PEX_CLK2, 6, 0x1b8, 0x1bc, UINT_MAX, "pex-clk2"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_PEX_CNTRL, UINT_MAX, UINT_MAX, UINT_MAX, 11, "pex-cntrl"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_SDMMC1, 1, 0x1c0, 0x1c4, 12, "sdmmc1"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_SDMMC3, 2, 0x1c0, 0x1c4, 13, "sdmmc3"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_SPI, 14, 0x1c0, 0x1c4, 22, "spi"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_SPI_HV, 15, 0x1c0, 0x1c4, 23, "spi-hv"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_UART, 14, 0x1b8, 0x1bc, 2, "uart"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB0, 9, 0x1b8, 0x1bc, UINT_MAX, "usb0"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB1, 10, 0x1b8, 0x1bc, UINT_MAX, "usb1"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB2, 11, 0x1b8, 0x1bc, UINT_MAX, "usb2"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB3, 18, 0x1b8, 0x1bc, UINT_MAX, "usb3"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB_BIAS, 12, 0x1b8, 0x1bc, UINT_MAX, "usb-bias"),
++static const struct tegra_xusb_lane_soc tegra210b01_pcie_lanes[] = {
++	TEGRA210_UPHY_LANE("pcie-0", 0x028, 12, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(0)),
++	TEGRA210_UPHY_LANE("pcie-1", 0x028, 14, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(1)),
++	TEGRA210_UPHY_LANE("pcie-2", 0x028, 16, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(2)),
++	TEGRA210_UPHY_LANE("pcie-3", 0x028, 18, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(3)),
++	TEGRA210_UPHY_LANE("pcie-4", 0x028, 20, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(4)),
++	TEGRA210_UPHY_LANE("pcie-5", 0x028, 22, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_PX_CTL2(5)),
 +};
 +
-+static const struct pinctrl_pin_desc tegra210b01_pin_descs[] = {
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_AUDIO, "audio"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_AUDIO_HV, "audio-hv"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CAM, "cam"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIA, "csia"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIB, "csib"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIC, "csic"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSID, "csid"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIE, "csie"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIF, "csif"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DBG, "dbg"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DEBUG_NONAO, "debug-nonao"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DMIC, "dmic"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DP, "dp"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DSI, "dsi"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DSIB, "dsib"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DSIC, "dsic"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DSID, "dsid"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_EMMC, "emmc"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_EMMC2, "emmc2"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_GPIO, "gpio"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_HDMI, "hdmi"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_HSIC, "hsic"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_LVDS, "lvds"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_MIPI_BIAS, "mipi-bias"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_PEX_BIAS, "pex-bias"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_PEX_CLK1, "pex-clk1"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_PEX_CLK2, "pex-clk2"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_PEX_CNTRL, "pex-cntrl"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_SDMMC1, "sdmmc1"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_SDMMC3, "sdmmc3"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_SPI, "spi"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_SPI_HV, "spi-hv"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_UART, "uart"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB0, "usb0"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB1, "usb1"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB2, "usb2"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB3, "usb3"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB_BIAS, "usb-bias"),
+ static struct tegra_xusb_usb3_port *
+ tegra210_lane_to_usb3_port(struct tegra_xusb_lane *lane)
+ {
+@@ -2847,6 +2856,13 @@ static const struct tegra_xusb_pad_soc tegra210_pcie_pad = {
+ 	.ops = &tegra210_pcie_ops,
+ };
+ 
++static const struct tegra_xusb_pad_soc tegra210b01_pcie_pad = {
++	.name = "pcie",
++	.num_lanes = ARRAY_SIZE(tegra210b01_pcie_lanes),
++	.lanes = tegra210b01_pcie_lanes,
++	.ops = &tegra210_pcie_ops,
 +};
 +
-+static const struct tegra_pmc_soc tegra210b01_pmc_soc = {
-+	.supports_core_domain = false,
-+	.num_powergates = ARRAY_SIZE(tegra210_powergates),
-+	.powergates = tegra210_powergates,
-+	.num_cpu_powergates = ARRAY_SIZE(tegra210_cpu_powergates),
-+	.cpu_powergates = tegra210_cpu_powergates,
-+	.has_tsense_reset = true,
-+	.has_gpu_clamps = true,
-+	.needs_mbist_war = true,
-+	.has_impl_33v_pwr = false,
-+	.maybe_tz_only = true,
-+	.num_io_pads = ARRAY_SIZE(tegra210b01_io_pads),
-+	.io_pads = tegra210b01_io_pads,
-+	.num_pin_descs = ARRAY_SIZE(tegra210b01_pin_descs),
-+	.pin_descs = tegra210b01_pin_descs,
-+	.regs = &tegra20_pmc_regs,
-+	.init = tegra20_pmc_init,
-+	.setup_irq_polarity = tegra20_pmc_setup_irq_polarity,
-+	.powergate_set = tegra114_powergate_set,
-+	.irq_set_wake = tegra210_pmc_irq_set_wake,
-+	.irq_set_type = tegra210_pmc_irq_set_type,
-+	.reset_sources = tegra210_reset_sources,
-+	.num_reset_sources = ARRAY_SIZE(tegra210_reset_sources),
-+	.reset_levels = NULL,
-+	.num_reset_levels = 0,
-+	.num_wake_events = ARRAY_SIZE(tegra210_wake_events),
-+	.wake_events = tegra210_wake_events,
-+	.pmc_clks_data = tegra_pmc_clks_data,
-+	.num_pmc_clks = ARRAY_SIZE(tegra_pmc_clks_data),
-+	.has_blink_output = true,
-+	.has_usb_sleepwalk = true,
-+	.has_single_mmio_aperture = true,
+ static const struct tegra_xusb_lane_soc tegra210_sata_lanes[] = {
+ 	TEGRA210_UPHY_LANE("sata-0", 0x028, 30, 0x3, pcie, XUSB_PADCTL_UPHY_MISC_PAD_S0_CTL2),
+ };
+@@ -3016,6 +3032,11 @@ static const struct tegra_xusb_pad_soc * const tegra210_pads[] = {
+ 	&tegra210_sata_pad,
+ };
+ 
++static const struct tegra_xusb_pad_soc * const tegra210b01_pads[] = {
++	&tegra210_usb2_pad,
++	&tegra210b01_pcie_pad,
 +};
 +
- static const struct tegra_io_pad_soc tegra186_io_pads[] = {
- 	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIA, 0, 0x74, 0x78, UINT_MAX, "csia"),
- 	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIB, 1, 0x74, 0x78, UINT_MAX, "csib"),
-@@ -4253,6 +4369,7 @@ static const struct of_device_id tegra_pmc_match[] = {
- 	{ .compatible = "nvidia,tegra194-pmc", .data = &tegra194_pmc_soc },
- 	{ .compatible = "nvidia,tegra186-pmc", .data = &tegra186_pmc_soc },
- 	{ .compatible = "nvidia,tegra210-pmc", .data = &tegra210_pmc_soc },
-+	{ .compatible = "nvidia,tegra210b01-pmc", .data = &tegra210b01_pmc_soc },
- 	{ .compatible = "nvidia,tegra132-pmc", .data = &tegra124_pmc_soc },
- 	{ .compatible = "nvidia,tegra124-pmc", .data = &tegra124_pmc_soc },
- 	{ .compatible = "nvidia,tegra114-pmc", .data = &tegra114_pmc_soc },
+ static int tegra210_usb2_port_enable(struct tegra_xusb_port *port)
+ {
+ 	return 0;
+@@ -3290,6 +3311,26 @@ const struct tegra_xusb_padctl_soc tegra210_xusb_padctl_soc = {
+ };
+ EXPORT_SYMBOL_GPL(tegra210_xusb_padctl_soc);
+ 
++const struct tegra_xusb_padctl_soc tegra210b01_xusb_padctl_soc = {
++	.num_pads = ARRAY_SIZE(tegra210b01_pads),
++	.pads = tegra210b01_pads,
++	.ports = {
++		.usb2 = {
++			.ops = &tegra210_usb2_port_ops,
++			.count = 4,
++		},
++		.usb3 = {
++			.ops = &tegra210_usb3_port_ops,
++			.count = 4,
++		},
++	},
++	.ops = &tegra210_xusb_padctl_ops,
++	.supply_names = tegra210_xusb_padctl_supply_names,
++	.num_supplies = ARRAY_SIZE(tegra210_xusb_padctl_supply_names),
++	.need_fake_usb3_port = true,
++};
++EXPORT_SYMBOL_GPL(tegra210b01_xusb_padctl_soc);
++
+ MODULE_AUTHOR("Andrew Bresticker <abrestic@chromium.org>");
+ MODULE_DESCRIPTION("NVIDIA Tegra 210 XUSB Pad Controller driver");
+ MODULE_LICENSE("GPL v2");
+diff --git a/drivers/phy/tegra/xusb.c b/drivers/phy/tegra/xusb.c
+index c89df95aa6ca988ea02df6220061be5c7f2c9a46..4a55f1dde660a502d3ff1ab4a275a3f97f19632d 100644
+--- a/drivers/phy/tegra/xusb.c
++++ b/drivers/phy/tegra/xusb.c
+@@ -59,6 +59,10 @@ static const struct of_device_id tegra_xusb_padctl_of_match[] = {
+ 		.compatible = "nvidia,tegra210-xusb-padctl",
+ 		.data = &tegra210_xusb_padctl_soc,
+ 	},
++	{
++		.compatible = "nvidia,tegra210b01-xusb-padctl",
++		.data = &tegra210b01_xusb_padctl_soc,
++	},
+ #endif
+ #if defined(CONFIG_ARCH_TEGRA_186_SOC)
+ 	{
+diff --git a/drivers/phy/tegra/xusb.h b/drivers/phy/tegra/xusb.h
+index 6e45d194c68947618778dc132720ae757f5fd656..a2074dd3770449c64157e60ef230cefc27238ceb 100644
+--- a/drivers/phy/tegra/xusb.h
++++ b/drivers/phy/tegra/xusb.h
+@@ -503,6 +503,7 @@ extern const struct tegra_xusb_padctl_soc tegra124_xusb_padctl_soc;
+ #endif
+ #if defined(CONFIG_ARCH_TEGRA_210_SOC)
+ extern const struct tegra_xusb_padctl_soc tegra210_xusb_padctl_soc;
++extern const struct tegra_xusb_padctl_soc tegra210b01_xusb_padctl_soc;
+ #endif
+ #if defined(CONFIG_ARCH_TEGRA_186_SOC)
+ extern const struct tegra_xusb_padctl_soc tegra186_xusb_padctl_soc;
 
 -- 
 2.50.1
