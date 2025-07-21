@@ -1,10 +1,11 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 20 Jul 2025 21:15:10 -0500
-Subject: [PATCH v2 16/17] arm64: tegra: Add Tegra210B01 support
+Date: Sun, 20 Jul 2025 21:15:11 -0500
+Subject: [PATCH v2 17/17] arm64: tegra: Add support for NVIDIA Shield TV
+ Pro 2019
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250720-t210b01-v2-16-9cb209f1edfc@gmail.com>
+Message-Id: <20250720-t210b01-v2-17-9cb209f1edfc@gmail.com>
 References: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 In-Reply-To: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -27,96 +28,131 @@ Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org,
  linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=1982;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=3522;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=49OX805LYoy4B3LF8skuT6ywroy9Cv9R181cjDO5IEQ=;
- b=oMVw8JtuhnOyL5sYPqAD8v+W7FmFHchQmwUYJ7IgbcGTDm7t/8Wop5PETkYVy1RjMNHclfNxh
- u0XFXiUhd/2CUs0Ipn+o0vaXkzLHwjiABqWIKxODj92Ph3IVLOzfPl/
+ bh=lBbPA4YnfIve2RzYnMMZrMuioshaXo0K/YzU1CSGgG0=;
+ b=uZ18x9hPOETwB5r3x1VYui41gkdHxgunkMehPDkapwffmjyk9Z9GL845wi0QzejmISzNQ7Qte
+ Wh8pVLrwHUIC3gw1diFucLnJPehp2XDs65AuWnzCj/LV+jaGFCmrF1V
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Also known as Tegra X1+, the Tegra210B01 has higher CPU and GPU clocks
-than the original Tegra210.
+Add initial device-tree support for NVIDIA Shield TV Pro 2019 (a.k.a
+MDarcy) based up the Tegra210B01 SoC with 3 GiB of LPDDR4 RAM.
 
-Add a SoC-level device tree file that describes most of the hardware
-available on the SoC. This is derived from the Tegra210 dtsi, as they
-share a lot.
+This is very basic, intended for checking initial Tegra210B01 support.
+More complete support for the device will be added later.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra210b01.dtsi | 64 +++++++++++++++++++++++++++++
- 1 file changed, 64 insertions(+)
+ arch/arm64/boot/dts/nvidia/Makefile                |  1 +
+ .../boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts | 10 ++++
+ arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi  | 70 ++++++++++++++++++++++
+ 3 files changed, 81 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210b01.dtsi b/arch/arm64/boot/dts/nvidia/tegra210b01.dtsi
+diff --git a/arch/arm64/boot/dts/nvidia/Makefile b/arch/arm64/boot/dts/nvidia/Makefile
+index 0fbb8a494dba5089d9b7243e766bd6028b7f3744..bc6f3e268020b6fdbc90b2fb2ec1daf30c80af0e 100644
+--- a/arch/arm64/boot/dts/nvidia/Makefile
++++ b/arch/arm64/boot/dts/nvidia/Makefile
+@@ -20,6 +20,7 @@ dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2571.dtb
+ dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p3450-0000.dtb
+ dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-smaug.dtb
+ dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210-p2894-0050-a08.dtb
++dtb-$(CONFIG_ARCH_TEGRA_210_SOC) += tegra210b01-p2894-0050-a08.dtb
+ dtb-$(CONFIG_ARCH_TEGRA_186_SOC) += tegra186-p2771-0000.dtb
+ dtb-$(CONFIG_ARCH_TEGRA_186_SOC) += tegra186-p3509-0000+p3636-0001.dtb
+ dtb-$(CONFIG_ARCH_TEGRA_194_SOC) += tegra194-p2972-0000.dtb
+diff --git a/arch/arm64/boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts
 new file mode 100644
-index 0000000000000000000000000000000000000000..87e55af3ed2466c5d353dbd8706230aef97b90f7
+index 0000000000000000000000000000000000000000..f18266b3d8ae341feaef5a1a911752f6a5ce2d0f
 --- /dev/null
-+++ b/arch/arm64/boot/dts/nvidia/tegra210b01.dtsi
-@@ -0,0 +1,64 @@
++++ b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894-0050-a08.dts
+@@ -0,0 +1,10 @@
 +// SPDX-License-Identifier: GPL-2.0
-+#include "tegra210.dtsi"
++/dts-v1/;
++
++#include "tegra210b01-p2894.dtsi"
 +
 +/ {
-+	compatible = "nvidia,tegra210b01", "nvidia,tegra210";
++	model = "NVIDIA Shield TV Pro 2019";
++	compatible = "nvidia,p2894-0050-a08", "nvidia,darcy", "nvidia,tegra210b01",
++		"nvidia,tegra210";
++};
+diff --git a/arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi
+new file mode 100644
+index 0000000000000000000000000000000000000000..97c9bd8f293539e76d57b6cfee49c60fb482d6ab
+--- /dev/null
++++ b/arch/arm64/boot/dts/nvidia/tegra210b01-p2894.dtsi
+@@ -0,0 +1,70 @@
++// SPDX-License-Identifier: GPL-2.0
++#include "tegra210b01.dtsi"
 +
-+	host1x@50000000 {
-+		/delete-node/ sor@54540000;
-+		/delete-node/ dpaux@545c0000;
-+
-+		dc@54200000 {
-+			nvidia,outputs = <&dsia &dsib &sor1>;
-+		};
-+
-+		dc@54240000 {
-+			nvidia,outputs = <&dsia &dsib &sor1>;
-+		};
++/ {
++	aliases {
++		serial0 = &uarta;
 +	};
 +
-+	clock@60006000 {
-+		compatible = "nvidia,tegra210b01-car";
++	chosen {
++		stdout-path = "serial0:115200n8";
 +	};
 +
-+	i2c@7000d100 {
-+		/delete-property/ pinctrl-0;
-+		/delete-property/ pinctrl-1;
-+		/delete-property/ pinctrl-names;
++	memory@80000000 {
++		device_type = "memory";
++		reg = <0x0 0x80000000 0x0 0xc0000000>;
 +	};
 +
-+	pmc@7000e400 {
-+		compatible = "nvidia,tegra210b01-pmc";
-+	};
-+
-+	bpmp@70016000 {
++	serial@70006000 {
++		/delete-property/ dmas;
++		/delete-property/ dma-names;
 +		status = "okay";
 +	};
 +
-+	usb@70090000 {
-+		compatible = "nvidia,tegra210b01-xusb";
++	pmc@7000e400 {
++		nvidia,invert-interrupt;
++		nvidia,suspend-mode = <0>;
++		nvidia,cpu-pwr-good-time = <0>;
++		nvidia,cpu-pwr-off-time = <0>;
++		nvidia,core-pwr-good-time = <4587 3876>;
++		nvidia,core-pwr-off-time = <39065>;
++		nvidia,core-power-req-active-high;
++		nvidia,sys-clock-req-active-high;
++		status = "okay";
 +	};
 +
-+	padctl@7009f000 {
-+		compatible = "nvidia,tegra210b01-xusb-padctl";
++	mmc@700b0600 {
++		bus-width = <8>;
++		non-removable;
++		status = "okay";
 +	};
 +
-+	usb@700d0000 {
-+		compatible = "nvidia,tegra210b01-xudc";
++	clk32k_in: clock-32k {
++		compatible = "fixed-clock";
++		clock-frequency = <32768>;
++		#clock-cells = <0>;
 +	};
 +
-+	thermal-sensor@700e2000 {
-+		compatible = "nvidia,tegra210b01-soctherm";
++	cpus {
++		cpu@0 {
++			enable-method = "psci";
++		};
 +
-+		throttle-cfgs {
-+			heavy {
-+				nvidia,cpu-throt-percent = <0>;
-+				nvidia,gpu-throt-level = <TEGRA_SOCTHERM_THROT_LEVEL_NONE>;
-+			};
++		cpu@1 {
++			enable-method = "psci";
++		};
++
++		cpu@2 {
++			enable-method = "psci";
++		};
++
++		cpu@3 {
++			enable-method = "psci";
 +		};
 +	};
 +
-+	clock@70110000 {
-+		compatible = "nvidia,tegra210b01-dfll";
++	psci {
++		compatible = "arm,psci-1.0";
++		method = "smc";
 +	};
 +};
 
