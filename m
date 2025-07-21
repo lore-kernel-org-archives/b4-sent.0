@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 20 Jul 2025 21:15:09 -0500
-Subject: [PATCH v2 15/17] arm64: tegra: Add BPMP node for Tegra210
+Date: Sun, 20 Jul 2025 21:15:10 -0500
+Subject: [PATCH v2 16/17] arm64: tegra: Add Tegra210B01 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250720-t210b01-v2-15-9cb209f1edfc@gmail.com>
+Message-Id: <20250720-t210b01-v2-16-9cb209f1edfc@gmail.com>
 References: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 In-Reply-To: <20250720-t210b01-v2-0-9cb209f1edfc@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -27,50 +27,98 @@ Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org,
  linux-pm@vger.kernel.org, linux-clk@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=1355;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753064238; l=1982;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=Hy6C9irOt/10mikaBceHy3GtlZHG/JQi0cSRGeXarHY=;
- b=EfHg7uCuTKPxSk0yEqtg1tdc8FokfNrH8aTGAsexCfz0kAHF4YypdOpv+MuIC8f81hsYMrDlp
- IZ/nwyRzRXeDveBxKSISA5ao0hXZ9iMk5PH60qtWJwALZHzNE1O/kwh
+ bh=49OX805LYoy4B3LF8skuT6ywroy9Cv9R181cjDO5IEQ=;
+ b=oMVw8JtuhnOyL5sYPqAD8v+W7FmFHchQmwUYJ7IgbcGTDm7t/8Wop5PETkYVy1RjMNHclfNxh
+ u0XFXiUhd/2CUs0Ipn+o0vaXkzLHwjiABqWIKxODj92Ph3IVLOzfPl/
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Tegra210 soc supports bpmp offload for power management among other
-things. This was considered insecure partway through the soc's lifecycle
-and support was removed in the bootloader. However, Tegra210B01 returned
-to using the bpmp. Plus old bootloaders on the original Tegra210 still
-work with the existing driver. So add the node to the common Tegra210
-soc dtsi, but disabled by default.
+Also known as Tegra X1+, the Tegra210B01 has higher CPU and GPU clocks
+than the original Tegra210.
+
+Add a SoC-level device tree file that describes most of the hardware
+available on the SoC. This is derived from the Tegra210 dtsi, as they
+share a lot.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra210.dtsi | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ arch/arm64/boot/dts/nvidia/tegra210b01.dtsi | 64 +++++++++++++++++++++++++++++
+ 1 file changed, 64 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210.dtsi b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-index 402b0ede1472af625d9d9e811f5af306d436cc98..3361de1ab41b37e430d399df2bf77d64226f33e8 100644
---- a/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-@@ -968,6 +968,17 @@ cec@70015000 {
- 		status = "disabled";
- 	};
- 
-+	bpmp: bpmp@70016000 {
-+		compatible = "nvidia,tegra210-bpmp";
-+		reg = <0x0 0x70016000 0x0 0x2000
-+		       0x0 0x60001000 0x0 0x1000>;
-+		status = "disabled";
+diff --git a/arch/arm64/boot/dts/nvidia/tegra210b01.dtsi b/arch/arm64/boot/dts/nvidia/tegra210b01.dtsi
+new file mode 100644
+index 0000000000000000000000000000000000000000..87e55af3ed2466c5d353dbd8706230aef97b90f7
+--- /dev/null
++++ b/arch/arm64/boot/dts/nvidia/tegra210b01.dtsi
+@@ -0,0 +1,64 @@
++// SPDX-License-Identifier: GPL-2.0
++#include "tegra210.dtsi"
 +
-+		interrupts = <GIC_SPI 6 IRQ_TYPE_EDGE_RISING>,
-+			     <GIC_SPI 4 IRQ_TYPE_EDGE_RISING>;
-+		interrupt-names = "tx", "rx";
++/ {
++	compatible = "nvidia,tegra210b01", "nvidia,tegra210";
++
++	host1x@50000000 {
++		/delete-node/ sor@54540000;
++		/delete-node/ dpaux@545c0000;
++
++		dc@54200000 {
++			nvidia,outputs = <&dsia &dsib &sor1>;
++		};
++
++		dc@54240000 {
++			nvidia,outputs = <&dsia &dsib &sor1>;
++		};
 +	};
 +
- 	mc: memory-controller@70019000 {
- 		compatible = "nvidia,tegra210-mc";
- 		reg = <0x0 0x70019000 0x0 0x1000>;
++	clock@60006000 {
++		compatible = "nvidia,tegra210b01-car";
++	};
++
++	i2c@7000d100 {
++		/delete-property/ pinctrl-0;
++		/delete-property/ pinctrl-1;
++		/delete-property/ pinctrl-names;
++	};
++
++	pmc@7000e400 {
++		compatible = "nvidia,tegra210b01-pmc";
++	};
++
++	bpmp@70016000 {
++		status = "okay";
++	};
++
++	usb@70090000 {
++		compatible = "nvidia,tegra210b01-xusb";
++	};
++
++	padctl@7009f000 {
++		compatible = "nvidia,tegra210b01-xusb-padctl";
++	};
++
++	usb@700d0000 {
++		compatible = "nvidia,tegra210b01-xudc";
++	};
++
++	thermal-sensor@700e2000 {
++		compatible = "nvidia,tegra210b01-soctherm";
++
++		throttle-cfgs {
++			heavy {
++				nvidia,cpu-throt-percent = <0>;
++				nvidia,gpu-throt-level = <TEGRA_SOCTHERM_THROT_LEVEL_NONE>;
++			};
++		};
++	};
++
++	clock@70110000 {
++		compatible = "nvidia,tegra210b01-dfll";
++	};
++};
 
 -- 
 2.50.1
