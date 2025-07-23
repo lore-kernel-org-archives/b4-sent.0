@@ -1,330 +1,82 @@
-From: leqi <quic_leqi@quicinc.com>
-Date: Wed, 23 Jul 2025 16:29:29 +0800
-Subject: [PATCH] arm64: dts: qcom: Add initial audio support for
- Hamoa-IOT-EVK
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Subject: [PATCH v5 0/2] hwmon: add support for MC33XS2410 hardware
+Date: Wed, 23 Jul 2025 19:34:55 +0200
+Message-Id: <20250723-mc33xs2410-hwmon-v5-0-f62aab71cd59@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250723-initial_audio_support_for_qualcomm_hamoa_iot_evk_board-v1-1-816991701952@quicinc.com>
-X-B4-Tracking: v=1; b=H4sIAHqdgGgC/zWO2wqDMBBEf0Xy3IgXVJRS+h9Fwmo2dWl1NVEpi
- P/eoO3LwJmHObMJh5bQiSrYhMWVHPHgIb4Eou1geKIk7VkkUZJFRZJKGmgmeCtYNLFyyziynZV
- hq6YF3i33veqgZ1DEs8L1pRoGq2Ua52mCugDdlMKPjxYNfQ7xoz7Z4rR4/3yWokfn4PBXwfXUx
- 7n8bZ8n5BrLSJrcZDoyJXjFnZ0L/0dCHzdR7/sXxSGqNOYAAAA=
-X-Change-ID: 20250723-initial_audio_support_for_qualcomm_hamoa_iot_evk_board-31632ed7adb9
-To: kernel@oss.qualcomm.com
-Cc: linux-kernel@vger.kernel.org, kernel@quicinc.com, 
- leqi <quic_leqi@quicinc.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAD8dgWgC/23Q0QrCIBQG4FcJrzOOOnN21XtEF5sem9C20FiLs
+ XfPjaAoL/8D//fDmUjE4DGSw2YiAQcffd+lILcbYpqquyD1NmXCgUuQoGhrhBgjLxjQ5tH2Ha2
+ kcxodGgBJUu0W0PlxJU/nlBsf7314rgsDW65vjPF/bGCU0craulLKqNLp49Vj3WAIO9O3ZPEG/
+ m3IjMGTUVqOqa9QgM0Y4mPsmc4YIhkCmBIMC+1KlzGKj6GgzBgFBaplrVFgepI0P8Y8zy99T6x
+ EfwEAAA==
+X-Change-ID: 20250507-mc33xs2410-hwmon-a5ff9efec005
+To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753259402; l=7930;
- i=quic_leqi@quicinc.com; s=20250723; h=from:subject:message-id;
- bh=a2svwikEYCyvL62ztRMaDH16IYFKiZybi/L8fuaDPN8=;
- b=qLLOkSPB5dda+w7KLGnBobNLNBp0YqM/dsAq09z6J3ZLB2SZSoAZHvDW7bF1Iyh3BEPwjSj/5
- UOTZ23VbbMEB0KROVDmpL18K7bHSOkN0aYWyYebBSnn+SNcY34+AYgw
-X-Developer-Key: i=quic_leqi@quicinc.com; a=ed25519;
- pk=zFi/rGGqo+G9Nw0VmaL7OqH7uu58kmZCRPPUqE9PH64=
-X-Endpoint-Received: by B4 Relay for quic_leqi@quicinc.com/20250723 with auth_id=465
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753292105; l=2083;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=DxP/8U/gv179+30ubQutejfBAUlzcxofPDI//uz2+R4=;
+ b=w2jsYEX3F4tizmo5c8iQbF8fCJeuHjAOI2yQlfmaW1ngd4BN8okSmhyujLKXgFy+3yMnJifrF
+ AsQ/iBYkl/QC5eDneSi+Vzq27UhkWc3o1+06/u5pAfbmjZ84VIjJedp
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds initial audio codec support for the Hamoa-IOT-EVK board,
-including WCD9385 configuration, micbias voltage settings, GPIO reset,
-and power supply bindings. It enables basic audio functionality for
-testing and development.
+The device is able to monitor temperature, voltage and current of each of
+the four outputs. Add basic support for monitoring the temperature of the
+four outputs and the die temperature.
 
-Signed-off-by: leqi <quic_leqi@quicinc.com>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
-This patch adds initial audio codec support for the Qualcomm Hamoa-IOT-EVK board.
-It brings up the WCD9385 codec with basic configuration, including micbias voltage
-settings, GPIO reset handling, and power supply bindings.
+Changes in v5:
+- Define DEFAULT_SYMBOL_NAMESPACE
+- Replace mc33xs2410_hwmon_register with devm_auxiliary_device_create
+- Add MODULE_IMPORT_NS("PWM_MC33XS2410") to mc33xs2410.h
+- Add documentation for HWMON driver
+- Link to v4: https://lore.kernel.org/r/20250708-mc33xs2410-hwmon-v4-0-95b9e3ea5f5c@liebherr.com
 
-The DTS changes are adapted from the existing X1 CRD DTS and have not yet been
-validated on Hamoa-IOT-EVK hardware. They are intended to enable initial bring-up
-and provide a foundation for further testing and development.
----
- arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts | 232 +++++++++++++++++++++++++++++
- 1 file changed, 232 insertions(+)
+Changes in v4:
+- Move hwmon functionality into separate driver residing in hwmon subsystem
+  (auxiliary device)
+- Link to v3: https://lore.kernel.org/r/20250619-mc33xs2410-hwmon-v3-1-301731e49f8f@liebherr.com
 
-diff --git a/arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts b/arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts
-index 843f39c9d59286a9303a545411b2518d7649a059..91618e22e86c46c698b3639f60bc19314705b391 100644
---- a/arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts
-+++ b/arch/arm64/boot/dts/qcom/hamoa-iot-evk.dts
-@@ -124,6 +124,94 @@ pmic_glink_ss2_con_sbu_in: endpoint {
- 		};
- 	};
- 
-+	sound {
-+		compatible = "qcom,x1e80100-sndcard";
-+		model = "X1E80100-EVK";
-+		audio-routing = "WooferLeft IN", "WSA WSA_SPK1 OUT",
-+				"TweeterLeft IN", "WSA WSA_SPK2 OUT",
-+				"WooferRight IN", "WSA2 WSA_SPK2 OUT",
-+				"TweeterRight IN", "WSA2 WSA_SPK2 OUT",
-+				"IN1_HPHL", "HPHL_OUT",
-+				"IN2_HPHR", "HPHR_OUT",
-+				"AMIC2", "MIC BIAS2",
-+				"VA DMIC0", "MIC BIAS3",
-+				"VA DMIC1", "MIC BIAS3",
-+				"VA DMIC2", "MIC BIAS1",
-+				"VA DMIC3", "MIC BIAS1",
-+				"VA DMIC0", "VA MIC BIAS3",
-+				"VA DMIC1", "VA MIC BIAS3",
-+				"VA DMIC2", "VA MIC BIAS1",
-+				"VA DMIC3", "VA MIC BIAS1",
-+				"TX SWR_INPUT1", "ADC2_OUTPUT";
-+
-+		wcd-playback-dai-link {
-+			link-name = "WCD Playback";
-+
-+			cpu {
-+				sound-dai = <&q6apmbedai RX_CODEC_DMA_RX_0>;
-+			};
-+
-+			codec {
-+				sound-dai = <&wcd938x 0>, <&swr1 0>, <&lpass_rxmacro 0>;
-+			};
-+
-+			platform {
-+				sound-dai = <&q6apm>;
-+			};
-+		};
-+
-+		wcd-capture-dai-link {
-+			link-name = "WCD Capture";
-+
-+			cpu {
-+				sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>;
-+			};
-+
-+			codec {
-+				sound-dai = <&wcd938x 1>, <&swr2 1>, <&lpass_txmacro 0>;
-+			};
-+
-+			platform {
-+				sound-dai = <&q6apm>;
-+			};
-+		};
-+
-+		wsa-dai-link {
-+			link-name = "WSA Playback";
-+
-+			cpu {
-+				sound-dai = <&q6apmbedai WSA_CODEC_DMA_RX_0>;
-+			};
-+
-+			codec {
-+				sound-dai = <&left_woofer>, <&left_tweeter>,
-+					    <&swr0 0>, <&lpass_wsamacro 0>,
-+					    <&right_woofer>, <&right_tweeter>,
-+					    <&swr3 0>, <&lpass_wsa2macro 0>;
-+			};
-+
-+			platform {
-+				sound-dai = <&q6apm>;
-+			};
-+		};
-+
-+		va-dai-link {
-+			link-name = "VA Capture";
-+
-+			cpu {
-+				sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
-+			};
-+
-+			codec {
-+				sound-dai = <&lpass_vamacro 0>;
-+			};
-+
-+			platform {
-+				sound-dai = <&q6apm>;
-+			};
-+		};
-+	};
-+
- 	vph_pwr: regulator-vph-pwr {
- 		compatible = "regulator-fixed";
- 
-@@ -353,6 +441,33 @@ vreg_wwan: regulator-wwan {
- 		regulator-boot-on;
- 	};
- 
-+	wcd938x: audio-codec {
-+		compatible = "qcom,wcd9385-codec";
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&wcd_default>;
-+
-+		reset-gpios = <&tlmm 191 GPIO_ACTIVE_LOW>;
-+
-+		qcom,micbias1-microvolt = <1800000>;
-+		qcom,micbias2-microvolt = <1800000>;
-+		qcom,micbias3-microvolt = <1800000>;
-+		qcom,micbias4-microvolt = <1800000>;
-+		qcom,mbhc-buttons-vthreshold-microvolt = <75000 150000 237000 500000
-+							  500000 500000 500000 500000>;
-+		qcom,mbhc-headset-vthreshold-microvolt = <1700000>;
-+		qcom,mbhc-headphone-vthreshold-microvolt = <50000>;
-+		qcom,rx-device = <&wcd_rx>;
-+		qcom,tx-device = <&wcd_tx>;
-+
-+		vdd-buck-supply = <&vreg_l15b_1p8>;
-+		vdd-rxtx-supply = <&vreg_l15b_1p8>;
-+		vdd-io-supply = <&vreg_l15b_1p8>;
-+		vdd-mic-bias-supply = <&vreg_bob1>;
-+
-+		#sound-dai-cells = <1>;
-+	};
-+
- 	wcn7850-pmu {
- 		compatible = "qcom,wcn7850-pmu";
- 
-@@ -572,6 +687,32 @@ retimer_ss1_con_sbu_out: endpoint {
- 	};
- };
- 
-+&lpass_tlmm {
-+	spkr_01_sd_n_active: spkr-01-sd-n-active-state {
-+		pins = "gpio12";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		bias-disable;
-+		output-low;
-+	};
-+
-+	spkr_23_sd_n_active: spkr-23-sd-n-active-state {
-+		pins = "gpio13";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		bias-disable;
-+		output-low;
-+	};
-+};
-+
-+&lpass_vamacro {
-+	pinctrl-0 = <&dmic01_default>, <&dmic23_default>;
-+	pinctrl-names = "default";
-+
-+	vdd-micb-supply = <&vreg_l1b_1p8>;
-+	qcom,dmic-sample-rate = <4800000>;
-+};
-+
- &pcie6a {
- 	vddpe-3v3-supply = <&vreg_nvme>;
- };
-@@ -645,6 +786,90 @@ &smb2360_2_eusb2_repeater {
- 	vdd3-supply = <&vreg_l8b_3p0>;
- };
- 
-+&swr0 {
-+	status = "okay";
-+
-+	pinctrl-0 = <&wsa_swr_active>, <&spkr_01_sd_n_active>;
-+	pinctrl-names = "default";
-+
-+	/* WSA8845, Left Woofer */
-+	left_woofer: speaker@0,0 {
-+		compatible = "sdw20217020400";
-+		reg = <0 0>;
-+		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "WooferLeft";
-+		vdd-1p8-supply = <&vreg_l15b_1p8>;
-+		vdd-io-supply = <&vreg_l12b_1p2>;
-+		qcom,port-mapping = <1 2 3 7 10 13>;
-+	};
-+
-+	/* WSA8845, Left Tweeter */
-+	left_tweeter: speaker@0,1 {
-+		compatible = "sdw20217020400";
-+		reg = <0 1>;
-+		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "TweeterLeft";
-+		vdd-1p8-supply = <&vreg_l15b_1p8>;
-+		vdd-io-supply = <&vreg_l12b_1p2>;
-+		qcom,port-mapping = <4 5 6 7 11 13>;
-+	};
-+};
-+
-+&swr1 {
-+	status = "okay";
-+
-+	/* WCD9385 RX */
-+	wcd_rx: codec@0,4 {
-+		compatible = "sdw20217010d00";
-+		reg = <0 4>;
-+		qcom,rx-port-mapping = <1 2 3 4 5>;
-+	};
-+};
-+
-+&swr2 {
-+	status = "okay";
-+
-+	/* WCD9385 TX */
-+	wcd_tx: codec@0,3 {
-+		compatible = "sdw20217010d00";
-+		reg = <0 3>;
-+		qcom,tx-port-mapping = <2 2 3 4>;
-+	};
-+};
-+
-+&swr3 {
-+	status = "okay";
-+
-+	pinctrl-0 = <&wsa2_swr_active>, <&spkr_23_sd_n_active>;
-+	pinctrl-names = "default";
-+
-+	/* WSA8845, Right Woofer */
-+	right_woofer: speaker@0,0 {
-+		compatible = "sdw20217020400";
-+		reg = <0 0>;
-+		reset-gpios = <&lpass_tlmm 13 GPIO_ACTIVE_LOW>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "WooferRight";
-+		vdd-1p8-supply = <&vreg_l15b_1p8>;
-+		vdd-io-supply = <&vreg_l12b_1p2>;
-+		qcom,port-mapping = <1 2 3 7 10 13>;
-+	};
-+
-+	/* WSA8845, Right Tweeter */
-+	right_tweeter: speaker@0,1 {
-+		compatible = "sdw20217020400";
-+		reg = <0 1>;
-+		reset-gpios = <&lpass_tlmm 13 GPIO_ACTIVE_LOW>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "TweeterRight";
-+		vdd-1p8-supply = <&vreg_l15b_1p8>;
-+		vdd-io-supply = <&vreg_l12b_1p2>;
-+		qcom,port-mapping = <4 5 6 7 11 13>;
-+	};
-+};
-+
- &tlmm {
- 	eusb3_reset_n: eusb3-reset-n-state {
- 		pins = "gpio6";
-@@ -733,6 +958,13 @@ usb2_pwr_3p3_reg_en: usb2-pwr-3p3-reg-en-state {
- 		bias-disable;
- 	};
- 
-+	wcd_default: wcd-reset-n-active-state {
-+		pins = "gpio191";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		bias-disable;
-+		output-low;
-+	};
- 
- 	wcn_bt_en: wcn-bt-en-state {
- 		pins = "gpio116";
+Changes in v3:
+- Add changes suggested by Uwe Kleine-König.
+  Remove "#if IS_ENABLED(CONFIG_HWMON)" and add
+  "if (IS_REACHABLE(CONFIG_HWMON))" in mc33xs2410_hwmon_probe.
+- Link to v2: https://lore.kernel.org/r/20250515-mc33xs2410-hwmon-v2-1-8d2e78f7e30d@liebherr.com
+
+Changes in v2:
+- Remove helper mc33xs2410_hwmon_read_out_status and report the last
+  latched status.
+- Link to v1: https://lore.kernel.org/r/20250512-mc33xs2410-hwmon-v1-1-addba77c78f9@liebherr.com
 
 ---
-base-commit: 3b28da3245e8c43f3f5948513b4e859a3d0fa820
-change-id: 20250723-initial_audio_support_for_qualcomm_hamoa_iot_evk_board-31632ed7adb9
-prerequisite-message-id: <20250716-hamoa_initial-v1-0-f6f5d0f9a163@oss.qualcomm.com>
-prerequisite-patch-id: 3c553b55d143eafc1036ce2e88df558ec61c4e83
-prerequisite-patch-id: a4b2dabd376d32ecb159141c17113a8f3fc4ddfa
-prerequisite-patch-id: 24bf2ada12dc10f9980ed2c56347e5b6f7964ebd
-prerequisite-patch-id: c764e86c94055e56aaf9e701341bba52a54a998b
+Dimitri Fedrau (2):
+      pwm: mc33xs2410: add hwmon support
+      hwmon: add support for MC33XS2410 hardware monitoring
+
+ Documentation/hwmon/index.rst            |   1 +
+ Documentation/hwmon/mc33xs2410_hwmon.rst |  34 ++++++
+ drivers/hwmon/Kconfig                    |  10 ++
+ drivers/hwmon/Makefile                   |   1 +
+ drivers/hwmon/mc33xs2410_hwmon.c         | 178 +++++++++++++++++++++++++++++++
+ drivers/pwm/Kconfig                      |   1 +
+ drivers/pwm/pwm-mc33xs2410.c             |  20 +++-
+ include/linux/mc33xs2410.h               |  16 +++
+ 8 files changed, 259 insertions(+), 2 deletions(-)
+---
+base-commit: 3b85883a9a7751ab198696f33f94afa428b43722
+change-id: 20250507-mc33xs2410-hwmon-a5ff9efec005
 
 Best regards,
 -- 
-leqi <quic_leqi@quicinc.com>
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
