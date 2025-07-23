@@ -1,287 +1,179 @@
-From: Mahesh Rao <mahesh.rao@altera.com>
-Date: Tue, 22 Jul 2025 23:07:54 +0800
-Subject: [PATCH 4/4] firmware: stratix10-svc: Add for SDM mailbox doorbell
- interrupt
+From: Chuan Liu <chuan.liu@amlogic.com>
+Date: Wed, 23 Jul 2025 10:57:49 +0800
+Subject: [PATCH v3] soc: amlogic: clk-measure: Optimize measurement
+ accuracy
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250722-sip_svc_irq-v1-4-c5b9e02c1ce6@altera.com>
-References: <20250722-sip_svc_irq-v1-0-c5b9e02c1ce6@altera.com>
-In-Reply-To: <20250722-sip_svc_irq-v1-0-c5b9e02c1ce6@altera.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Dinh Nguyen <dinguyen@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mahesh Rao <mahesh.rao@altera.com>, 
- Matthew Gerlach <matthew.gerlach@altera.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753196946; l=10436;
- i=mahesh.rao@altera.com; s=20250107; h=from:subject:message-id;
- bh=hx3/zwBUt7WiXtNLJ8gUWse7GWY5YI8ZYnNkxjxE7Gw=;
- b=oXJ2P+IcUmUc3pLrK5YCDxDKYP80B3eGzt7A9Bh6zb1VWvp7MnjrM+FiCGYnHtZonepDgfhPr
- 5IvfIyLswJ+DWbU3r0DFXuEra0O9Uo0SlBAaaO/Q1grsX3oPPu/cmrB
-X-Developer-Key: i=mahesh.rao@altera.com; a=ed25519;
- pk=tQiFUzoKxHrQLDtWeEeaeTeJTl/UfclUHWZy1fjSiyg=
-X-Endpoint-Received: by B4 Relay for mahesh.rao@altera.com/20250107 with auth_id=337
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250723-optimize_clk-measure_accuracy-v3-1-d56269de7335@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAKxPgGgC/4XNQQ6CMBCF4auYrq2xU6HqynsYQ+p0kIlATQtEN
+ Nzdqhtdsfzf4ntPESkwRbFfPEWggSP7NoVeLgRWtr2QZJdawBqydQZa+lvHDT+owPoqG7KxD1R
+ YxD5YHOWOVE6kN7lzIJJxC1Ty/eMfT6krjp0P4+duUO/1KxtlZuRBSSX1eQvOIDqz0Qfb1P7Cu
+ ELfiLc9wI8HMOdB8vCsQJUuM5S7f2+aphcesulAHAEAAA==
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Chuan Liu <chuan.liu@amlogic.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753239500; l=6160;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=vJWmpNtcOXlkoFv9Cp1Rrilgfgh79zA1b26tZqiToCY=;
+ b=NW5FxwYhv/eaTWUj1TZji3jsNq8VPlkJB6UliYLm+8DKq+3FuGYafUU/9m9VpBoomKPSVPUhP
+ nVZoQQM0k/HBA2aQNRl9acUNw4S+UB9iPmUeNXiDHI+uleYj5J9PwzV
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for SDM (Secure Device Manager) mailbox
-doorbell interrupt for async transactions. On interrupt,
-a workqueue is triggered which polls the ATF for
-pending responses and retrieves the bitmap of all
-retrieved and unprocessed transaction ids of mailbox
-responses from SDM. It then triggers the corresponding
-registered callbacks.
+The cycle count register has a 20-bit effective width, but the driver
+only utilizes 16 bits. This reduces the sampling window when measuring
+high-frequency clocks, resulting in (slightly) degraded measurement
+accuracy.
 
-Signed-off-by: Mahesh Rao <mahesh.rao@altera.com>
-Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
+The input clock signal path from gate (Controlled by MSR_RUN) to internal
+sampling circuit in clk-measure has a propagation delay requirement: 24
+clock cycles must elapse after mux selection before sampling.
+
+The measurement circuit employs single-edge sampling for clock frequency
+detection, resulting in a ±1 cycle count error within the measurement window.
+
++1 cycle: 3 rising edges captured in 2-cycle measurement window.
+    __    __    __
+ __↑  |__↑  |__↑  |__
+  ^             ^
+
+-1 cycle: 2 rising edges captured in 3-cycle measurement window.
+    __    __    __
+ __↑  |__↑  |__↑  |__↑
+    ^               ^
+
+Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
+Tested-by: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Reviewed-by: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- drivers/firmware/stratix10-svc.c             | 117 ++++++++++++++++++++++++---
- include/linux/firmware/intel/stratix10-smc.h |  23 ++++++
- 2 files changed, 130 insertions(+), 10 deletions(-)
+Improve measurement accuracy by increasing the bit width of the cycle
+counter register and adding delay during measurement.
 
-diff --git a/drivers/firmware/stratix10-svc.c b/drivers/firmware/stratix10-svc.c
-index 491a8149033f975d515444f025723658c51aa1fe..807226d5ec53bffe7e7f31b60718703434e94c90 100644
---- a/drivers/firmware/stratix10-svc.c
-+++ b/drivers/firmware/stratix10-svc.c
-@@ -9,12 +9,14 @@
- #include <linux/delay.h>
- #include <linux/genalloc.h>
- #include <linux/hashtable.h>
-+#include <linux/interrupt.h>
- #include <linux/io.h>
- #include <linux/kfifo.h>
- #include <linux/kthread.h>
- #include <linux/module.h>
- #include <linux/mutex.h>
- #include <linux/of.h>
-+#include <linux/of_irq.h>
- #include <linux/of_platform.h>
- #include <linux/platform_device.h>
- #include <linux/slab.h>
-@@ -22,6 +24,7 @@
- #include <linux/firmware/intel/stratix10-smc.h>
- #include <linux/firmware/intel/stratix10-svc-client.h>
- #include <linux/types.h>
-+#include <linux/workqueue.h>
- 
- /**
-  * SVC_NUM_DATA_IN_FIFO - number of struct stratix10_svc_data in the FIFO
-@@ -213,6 +216,7 @@ struct stratix10_async_chan {
-  *                               asynchronous operations
-  * @initialized: Flag indicating whether the control structure has
-  *               been initialized
-+ * @irq: Interrupt request number associated with the asynchronous control
-  * @invoke_fn: Function pointer for invoking Stratix10 service calls
-  *             to EL3 secure firmware
-  * @async_id_pool: Pointer to the ID pool used for asynchronous
-@@ -223,11 +227,13 @@ struct stratix10_async_chan {
-  *                     structure
-  * @trx_list_wr_lock: Spinlock for protecting the transaction list
-  *                    write operations
-+ * @async_work: Work structure for scheduling asynchronous work
-  * @trx_list: Hash table for managing asynchronous transactions
-  */
- 
- struct stratix10_async_ctrl {
- 	bool initialized;
-+	int irq;
- 	void (*invoke_fn)(struct stratix10_async_ctrl *actrl,
- 			  const struct arm_smccc_1_2_regs *args,
- 			  struct arm_smccc_1_2_regs *res);
-@@ -236,6 +242,7 @@ struct stratix10_async_ctrl {
- 	struct stratix10_async_chan *common_async_chan;
- 	/* spinlock to protect the writes to trx_list hash table */
- 	spinlock_t trx_list_wr_lock;
-+	struct work_struct async_work;
- 	DECLARE_HASHTABLE(trx_list, ASYNC_TRX_HASH_BITS);
- };
- 
-@@ -1709,14 +1716,81 @@ static inline void stratix10_smc_1_2(struct stratix10_async_ctrl *actrl,
- 	arm_smccc_1_2_smc(args, res);
- }
- 
-+static irqreturn_t stratix10_svc_async_irq_handler(int irq, void *dev_id)
-+{
-+	struct stratix10_async_ctrl *actrl = &ctrl->actrl;
-+	struct stratix10_svc_controller *ctrl = dev_id;
-+
-+	queue_work(system_bh_wq, &actrl->async_work);
-+	disable_irq_nosync(actrl->irq);
-+	return IRQ_HANDLED;
-+}
-+/**
-+ * stratix10_async_workqueue_handler - Handler for the asynchronous
-+ * workqueue in Stratix10 service controller.
-+ * @work: Pointer to the work structure that contains the asynchronous
-+ *        workqueue handler.
-+ * This function is the handler for the asynchronous workqueue. It performs
-+ * the following tasks:
-+ * - Invokes the asynchronous polling on interrupt supervisory call.
-+ * - On success,it retrieves the bitmap of pending transactions from mailbox
-+ *   fifo in ATF.
-+ * - It processes each pending transaction by calling the corresponding
-+ *   callback function.
-+ *
-+ * The function ensures that the IRQ is enabled after processing the transactions
-+ * and logs the total time taken to handle the transactions along with the number
-+ * of transactions handled and the CPU on which the handler ran.
-+ */
-+static void stratix10_async_workqueue_handler(struct work_struct *work)
-+{
-+	struct stratix10_async_ctrl *actrl =
-+		container_of(work, struct stratix10_async_ctrl, async_work);
-+	struct arm_smccc_1_2_regs
-+		args = { .a0 = INTEL_SIP_SMC_ASYNC_POLL_ON_IRQ }, res;
-+	DECLARE_BITMAP(pend_on_irq, TOTAL_TRANSACTION_IDS);
-+	struct stratix10_svc_async_handler *handler;
-+	unsigned long transaction_id = 0;
-+	u64 bitmap_array[4];
-+
-+	actrl->invoke_fn(actrl, &args, &res);
-+	if (res.a0 == INTEL_SIP_SMC_STATUS_OK) {
-+		bitmap_array[0] = res.a1;
-+		bitmap_array[1] = res.a2;
-+		bitmap_array[2] = res.a3;
-+		bitmap_array[3] = res.a4;
-+		bitmap_from_arr64(pend_on_irq, bitmap_array, TOTAL_TRANSACTION_IDS);
-+		rcu_read_lock();
-+		do {
-+			transaction_id = find_next_bit(pend_on_irq,
-+						       TOTAL_TRANSACTION_IDS,
-+						       transaction_id);
-+			if (transaction_id >= TOTAL_TRANSACTION_IDS)
-+				break;
-+			hash_for_each_possible_rcu_notrace(actrl->trx_list,
-+							   handler, next,
-+							   transaction_id) {
-+				if (handler->transaction_id == transaction_id) {
-+					handler->cb(handler->cb_arg);
-+					break;
-+				}
-+			}
-+			transaction_id++;
-+		} while (transaction_id < TOTAL_TRANSACTION_IDS);
-+		rcu_read_unlock();
-+	}
-+	enable_irq(actrl->irq);
-+}
-+
- /**
-  * stratix10_svc_async_init - Initialize the Stratix10 service
-  *                            controller for asynchronous operations.
-  * @controller: Pointer to the Stratix10 service controller structure.
-  *
-  * This function initializes the asynchronous service controller by
-- * setting up the necessary data structures and initializing the
-- * transaction list.
-+ * setting up the necessary data structures ,initializing the
-+ * transaction list and registering the IRQ handler for asynchronous
-+ * transactions.
-  *
-  * Return: 0 on success, -EINVAL if the controller is NULL or already
-  *         initialized, -ENOMEM if memory allocation fails,
-@@ -1728,7 +1802,7 @@ static int stratix10_svc_async_init(struct stratix10_svc_controller *controller)
- 	struct stratix10_async_ctrl *actrl;
- 	struct arm_smccc_res res;
- 	struct device *dev;
--	int ret;
-+	int ret, irq;
- 
- 	if (!controller)
- 		return -EINVAL;
-@@ -1775,6 +1849,22 @@ static int stratix10_svc_async_init(struct stratix10_svc_controller *controller)
- 	hash_init(actrl->trx_list);
- 	atomic_set(&actrl->common_achan_refcount, 0);
- 
-+	irq = of_irq_get(dev_of_node(dev), 0);
-+	if (irq < 0) {
-+		dev_warn(dev, "Failed to get IRQ, falling back to polling mode\n");
-+	} else {
-+		ret = devm_request_any_context_irq(dev, irq, stratix10_svc_async_irq_handler,
-+						   IRQF_NO_AUTOEN, "stratix10_svc", controller);
-+		if (ret == 0) {
-+			dev_alert(dev,
-+				  "Registered IRQ %d for sip async operations\n",
-+				irq);
-+			actrl->irq = irq;
-+			INIT_WORK(&actrl->async_work, stratix10_async_workqueue_handler);
-+			enable_irq(actrl->irq);
-+		}
-+	}
-+
- 	actrl->initialized = true;
- 	return 0;
- }
-@@ -1784,13 +1874,14 @@ static int stratix10_svc_async_init(struct stratix10_svc_controller *controller)
-  *                            service controller
-  * @ctrl: Pointer to the stratix10_svc_controller structure
-  *
-- * This function performs the necessary cleanup for the asynchronous
-- * service controller. It checks if the controller is valid and if it
-- * has been initialized. It then locks the transaction list and safely
-- * removes and deallocates each handler in the list. The function also
-- * removes any asynchronous clients associated with the controller's
-- * channels and destroys the asynchronous ID pool. Finally, it resets
-- * the asynchronous ID pool and invoke function pointers to NULL.
-+ * This function performs the necessary cleanup for the asynchronous service
-+ * controller. It checks if the controller is valid and if it has been
-+ * initialized. Also If the controller has an IRQ assigned, it frees the IRQ
-+ * and flushes any pending asynchronous work. It then locks the transaction
-+ * list and safely removes and deallocates each handler in the list.
-+ * The function also removes any asynchronous clients associated with the
-+ * controller's channels and destroys the asynchronous ID pool. Finally, it
-+ * resets the asynchronous ID pool and invoke function pointers to NULL.
-  *
-  * Return: 0 on success, -EINVAL if the controller is invalid or not
-  *         initialized.
-@@ -1812,6 +1903,12 @@ static int stratix10_svc_async_exit(struct stratix10_svc_controller *ctrl)
- 
- 	actrl->initialized = false;
- 
-+	if (actrl->irq > 0) {
-+		free_irq(actrl->irq, ctrl);
-+		flush_work(&actrl->async_work);
-+		actrl->irq = 0;
-+	}
-+
- 	spin_lock(&actrl->trx_list_wr_lock);
- 	hash_for_each_safe(actrl->trx_list, i, tmp, handler, next) {
- 		stratix10_deallocate_id(handler->achan->job_id_pool,
-diff --git a/include/linux/firmware/intel/stratix10-smc.h b/include/linux/firmware/intel/stratix10-smc.h
-index f87273af5e284b8912d87eb9d7179eb3d43e40e1..45e9dd4211f4994d67e5a6e00a5a817e96d42a8d 100644
---- a/include/linux/firmware/intel/stratix10-smc.h
-+++ b/include/linux/firmware/intel/stratix10-smc.h
-@@ -645,6 +645,29 @@ INTEL_SIP_SMC_FAST_CALL_VAL(INTEL_SIP_SMC_FUNCID_FPGA_CONFIG_COMPLETED_WRITE)
- #define INTEL_SIP_SMC_ASYNC_POLL \
- 	INTEL_SIP_SMC_ASYNC_VAL(INTEL_SIP_SMC_ASYNC_FUNC_ID_POLL)
- 
-+/**
-+ * Request INTEL_SIP_SMC_ASYNC_POLL_ON_IRQ
-+ * Async call used by service driver at EL1 to read response from SDM
-+ * mailbox and to retrieve the transaction id's of the read response's.
-+ *
-+ * Call register usage:
-+ * a0 INTEL_SIP_SMC_ASYNC_POLL_ON_IRQ
-+ * a1 transaction job id
-+ * a2-7 will be used to return the response data
-+ *
-+ * Return status
-+ * a0 INTEL_SIP_SMC_STATUS_OK
-+ * a1-a4 will contain bitmap of available responses's transaction id as set
-+ *  bit position.
-+ * a5-17 not used
-+ * Or
-+ * a0 INTEL_SIP_SMC_STATUS_NO_RESPONSE
-+ * a1-17 not used
-+ */
-+#define INTEL_SIP_SMC_ASYNC_FUNC_ID_IRQ_POLL (0xC9)
-+#define INTEL_SIP_SMC_ASYNC_POLL_ON_IRQ \
-+	INTEL_SIP_SMC_ASYNC_VAL(INTEL_SIP_SMC_ASYNC_FUNC_ID_IRQ_POLL)
-+
- /**
-  * Request INTEL_SIP_SMC_ASYNC_RSU_GET_SPT
-  * Async call to get RSU SPT from SDM.
+The 800μs delay between enabling the input clock gate and activating
+sampling is determined by the minimum sampling frequency of 30kHz (the
+lowest commonly used frequency in applications is 32.768kHz).
 
+Here are the test comparisons based on C3:
+
+Pre-optimization:
+cat /sys/kernel/debug/meson-clk-msr/measure_summary 
+  clock                     rate    precision
+---------------------------------------------
+ sys_clk               166664063    +/-5208Hz
+ axi_clk               499968750    +/-15625Hz
+ rtc_clk                23982813    +/-3125Hz
+ p20_usb2_ckout        479968750    +/-15625Hz
+ eth_mpll_test         499992188    +/-15625Hz
+ sys_pll              1919875000    +/-62500Hz
+ cpu_clk_div16         119998162    +/-3676Hz
+ ts_pll                        0    +/-3125Hz
+ fclk_div2             999843750    +/-31250Hz
+ fclk_div2p5           799953125    +/-31250Hz
+ fclk_div3             666625000    +/-20833Hz
+ fclk_div4             499914063    +/-15625Hz
+ fclk_div5             399987500    +/-12500Hz
+ fclk_div7             285709821    +/-8928Hz
+ fclk_50m               49982813    +/-3125Hz
+ sys_oscin32k_i            26563    +/-3125Hz
+
+Post-optimization:
+cat /sys/kernel/debug/meson-clk-msr/measure_summary 
+  clock                     rate    precision
+---------------------------------------------
+ sys_clk               166665625    +/-1562Hz
+ axi_clk               499996875    +/-1562Hz
+ rtc_clk                24000000    +/-1562Hz
+ p20_usb2_ckout        479996875    +/-1562Hz
+ eth_mpll_test         499996875    +/-1562Hz
+ sys_pll              1919987132    +/-1838Hz
+ cpu_clk_div16         119998438    +/-1562Hz
+ ts_pll                        0    +/-1562Hz
+ fclk_div2             999993750    +/-1562Hz
+ fclk_div2p5           799995313    +/-1562Hz
+ fclk_div3             666656250    +/-1562Hz
+ fclk_div4             499996875    +/-1562Hz
+ fclk_div5             399993750    +/-1562Hz
+ fclk_div7             285712500    +/-1562Hz
+ fclk_50m               49998438    +/-1562Hz
+ sys_oscin32k_i            32813    +/-1562Hz
+---
+Changes in v3:
+- Drop Change-Id. 
+- Link to v2: https://lore.kernel.org/r/20250722-optimize_clk-measure_accuracy-v2-1-cb121fd57e6d@amlogic.com
+
+Changes in v2:
+- Change "HACK" in comments to "NOTE" according to Martin's suggestion.
+- Link to v1: https://lore.kernel.org/r/20250717-optimize_clk-measure_accuracy-v1-1-3b82d7ccd743@amlogic.com
+---
+ drivers/soc/amlogic/meson-clk-measure.c | 27 ++++++++++++++++++---------
+ 1 file changed, 18 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/soc/amlogic/meson-clk-measure.c b/drivers/soc/amlogic/meson-clk-measure.c
+index d862e30a244e..df395e015f26 100644
+--- a/drivers/soc/amlogic/meson-clk-measure.c
++++ b/drivers/soc/amlogic/meson-clk-measure.c
+@@ -22,7 +22,7 @@ static DEFINE_MUTEX(measure_lock);
+ #define MSR_CLK_SRC		GENMASK(26, 20)
+ #define MSR_BUSY		BIT(31)
+ 
+-#define MSR_VAL_MASK		GENMASK(15, 0)
++#define MSR_VAL_MASK		GENMASK(19, 0)
+ 
+ #define DIV_MIN			32
+ #define DIV_STEP		32
+@@ -805,14 +805,23 @@ static int meson_measure_id(struct meson_msr_id *clk_msr_id,
+ 	regmap_update_bits(priv->regmap, reg->freq_ctrl, MSR_DURATION,
+ 			   FIELD_PREP(MSR_DURATION, duration - 1));
+ 
+-	/* Set ID */
+-	regmap_update_bits(priv->regmap, reg->freq_ctrl, MSR_CLK_SRC,
+-			   FIELD_PREP(MSR_CLK_SRC, clk_msr_id->id));
++	/* Set the clock channel ID and enable the input clock gate. */
++	regmap_update_bits(priv->regmap, reg->freq_ctrl, MSR_CLK_SRC | MSR_RUN,
++			   FIELD_PREP(MSR_CLK_SRC, clk_msr_id->id) | MSR_RUN);
+ 
+-	/* Enable & Start */
+-	regmap_update_bits(priv->regmap, reg->freq_ctrl,
+-			   MSR_RUN | MSR_ENABLE,
+-			   MSR_RUN | MSR_ENABLE);
++	/*
++	 * NOTE: The input clock signal path from gate (Controlled by MSR_RUN)
++	 * to internal sampling circuit in clk-measure has a propagation delay
++	 * requirement: 24 clock cycles must elapse after mux selection before
++	 * sampling.
++	 *
++	 * For a 30kHz measurement clock, this translates to an 800μs delay:
++	 * 800us = 24 / 30000Hz.
++	 */
++	fsleep(800);
++
++	/* Enable the internal sampling circuit and start clock measurement. */
++	regmap_update_bits(priv->regmap, reg->freq_ctrl, MSR_ENABLE, MSR_ENABLE);
+ 
+ 	ret = regmap_read_poll_timeout(priv->regmap, reg->freq_ctrl,
+ 				       val, !(val & MSR_BUSY), 10, 10000);
+@@ -846,7 +855,7 @@ static int meson_measure_best_id(struct meson_msr_id *clk_msr_id,
+ 	do {
+ 		ret = meson_measure_id(clk_msr_id, duration);
+ 		if (ret >= 0)
+-			*precision = (2 * 1000000) / duration;
++			*precision = 1000000 / duration;
+ 		else
+ 			duration -= DIV_STEP;
+ 	} while (duration >= DIV_MIN && ret == -EINVAL);
+
+---
+base-commit: 58abdca0eb653c1a2e755ba9ba406ee475d87636
+change-id: 20250523-optimize_clk-measure_accuracy-9e16ee346dd2
+
+Best regards,
 -- 
-2.35.3
+Chuan Liu <chuan.liu@amlogic.com>
 
