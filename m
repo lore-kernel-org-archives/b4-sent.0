@@ -1,314 +1,109 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Wed, 23 Jul 2025 19:34:57 +0200
-Subject: [PATCH v5 2/2] hwmon: add support for MC33XS2410 hardware
- monitoring
+From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Subject: [PATCH v5 0/7] riscv: Add support for xmipsexectl
+Date: Thu, 24 Jul 2025 17:23:24 +0200
+Message-Id: <20250724-p8700-pause-v5-0-a6cbbe1c3412@htecgroup.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250723-mc33xs2410-hwmon-v5-2-f62aab71cd59@liebherr.com>
-References: <20250723-mc33xs2410-hwmon-v5-0-f62aab71cd59@liebherr.com>
-In-Reply-To: <20250723-mc33xs2410-hwmon-v5-0-f62aab71cd59@liebherr.com>
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
- Jonathan Corbet <corbet@lwn.net>
-Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
- Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOxPgmgC/1XMSw6DIBSF4a2YOy4NIbzsqPswDixchUGFgJI2h
+ r2X2lGH/0nOd0DG5DHDrTsgYfHZh7WFuHRg3LQuSLxtDYwyQTnjJGpFKYnTnpFY85C876VGxqE
+ 9YsLZv05tGFs7n7eQ3ide+Hf9OZKJP6dwQok0ylo1a6GEvLsNzZLCHq8mPGGstX4AeZlCiqoAA
+ AA=
+X-Change-ID: 20250424-p8700-pause-dcb649968e24
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>, Jonathan Corbet <corbet@lwn.net>
+Cc: Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
+ Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
+ devicetree@vger.kernel.org, linux-riscv@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Alexandre Ghiti <alexghiti@rivosinc.com>, 
+ Aleksandar Rikalo <arikalo@gmail.com>, 
+ Raj Vishwanathan4 <rvishwanathan@mips.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753292105; l=8847;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=YCCOttXZ9iOZy8OoouzxY5slMvI1RSmNaE/50XP8LQ8=;
- b=q2Q9U7owpZSCdSikq27SLgh4CUvrElB2yDXwFneDlqJUgIi8lt8r6Po+B6eTs3724EZE2U4H+
- hcHPAQZ8FiQBLV2lNat1ufVeWGcO++gm6E9Qv49ENBdWSbu2s0RTIeE
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753370612; l=3458;
+ i=aleksa.paunovic@htecgroup.com; s=20250514; h=from:subject:message-id;
+ bh=yOZQ+GI825AT4Y9e0GYEa/xkkwvxuVvBv4OUaPISJY0=;
+ b=8sv1pYiJyHX9Ir2MqQDmuaDGp5IItTyI1Q74xTDUYU67WFrZyJTy0rOANBrhUcUPV1BdZrmL6
+ Z7DoXZG8AMmBqkrWvbRDVaHs8M5HJSmaYR2esPqHrzX36LObGdCgI1T
+X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
+ pk=gFVSVYLKAgJiS5qCnDyUMGOFuczv8C6o0UmRs+fgisA=
+X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250514 with auth_id=403
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The device is able to monitor temperature, voltage and current of each of
-the four outputs. Add basic support for monitoring the temperature of the
-four outputs and the die temperature.
+This patch series adds support for the xmipsexectl vendor extension.
+A new hardware probe key has also been added to allow userspace to probe for MIPS vendor extensions.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Additionally, since the standard Zihintpause PAUSE instruction encoding is not supported on some MIPS CPUs,
+an errata was implemented for replacing this instruction with the xmipsexectl MIPS.PAUSE alternative encoding.
+
+Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
- Documentation/hwmon/index.rst            |   1 +
- Documentation/hwmon/mc33xs2410_hwmon.rst |  34 ++++++
- drivers/hwmon/Kconfig                    |  10 ++
- drivers/hwmon/Makefile                   |   1 +
- drivers/hwmon/mc33xs2410_hwmon.c         | 178 +++++++++++++++++++++++++++++++
- 5 files changed, 224 insertions(+)
+Changes in v5:
+- Add MIPS.IHB and MIPS.EHB instructions
+- Rebase on alex-for-next
+- Address other smaller comments pointed out by Alexandre
+- Link to v4: https://lore.kernel.org/r/20250625-p8700-pause-v4-0-6c7dd7f85756@htecgroup.com
 
-diff --git a/Documentation/hwmon/index.rst b/Documentation/hwmon/index.rst
-index b45bfb4ebf30823094fe82726d2237f90be17642..d292a86ac5da902cad02c1965c90f5de530489df 100644
---- a/Documentation/hwmon/index.rst
-+++ b/Documentation/hwmon/index.rst
-@@ -167,6 +167,7 @@ Hardware Monitoring Kernel Drivers
-    max77705
-    max8688
-    mc13783-adc
-+   mc33xs2410_hwmon
-    mc34vr500
-    mcp3021
-    menf21bmc
-diff --git a/Documentation/hwmon/mc33xs2410_hwmon.rst b/Documentation/hwmon/mc33xs2410_hwmon.rst
-new file mode 100644
-index 0000000000000000000000000000000000000000..8a2136ef913911851874179620815f4e74e6e5e9
---- /dev/null
-+++ b/Documentation/hwmon/mc33xs2410_hwmon.rst
-@@ -0,0 +1,34 @@
-+.. SPDX-License-Identifier: GPL-2.0
-+
-+Kernel driver mc33xs2410_hwmon
-+==============================
-+
-+Supported devices:
-+
-+  * NXPs MC33XS2410
-+
-+    Datasheet: https://www.nxp.com/docs/en/data-sheet/MC33XS2410.pdf
-+
-+Authors:
-+
-+	Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-+
-+Description
-+-----------
-+
-+The MC33XS2410 is a four channel self-protected high-side switch featuring
-+hardware monitoring functions such as temperature, current and voltages for each
-+of the four channels.
-+
-+Sysfs entries
-+-------------
-+
-+======================= ======================================================
-+temp1_label		"Central die temperature"
-+temp1_input		Measured temperature of central die
-+
-+temp[2-5]_label		"Channel [1-4] temperature"
-+temp[2-5]_input		Measured temperature of a single channel
-+temp[2-5]_alarm		Temperature alarm
-+temp[2-5]_max		Maximal temperature
-+======================= ======================================================
-diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
-index 079620dd42862ef5e026697e9e1b1fcd5b8be298..9d28fcf7cd2a6f9e2f54694a717bd85ff4047b46 100644
---- a/drivers/hwmon/Kconfig
-+++ b/drivers/hwmon/Kconfig
-@@ -700,6 +700,16 @@ config SENSORS_MC13783_ADC
-         help
-           Support for the A/D converter on MC13783 and MC13892 PMIC.
- 
-+config SENSORS_MC33XS2410
-+	tristate "MC33XS2410 HWMON support"
-+	depends on PWM_MC33XS2410
-+	help
-+	  If you say yes here you get hardware monitoring support for
-+	  MC33XS2410.
-+
-+	  This driver can also be built as a module. If so, the module
-+	  will be called mc33xs2410_hwmon.
-+
- config SENSORS_FSCHMD
- 	tristate "Fujitsu Siemens Computers sensor chips"
- 	depends on (X86 || COMPILE_TEST) && I2C
-diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
-index 48e5866c0c9a7677089d1001a9c5ae4adebff5d5..cd8bc4752b4dbf015c6eb46157626f4e8f87dfae 100644
---- a/drivers/hwmon/Makefile
-+++ b/drivers/hwmon/Makefile
-@@ -165,6 +165,7 @@ obj-$(CONFIG_SENSORS_MAX31790)	+= max31790.o
- obj-$(CONFIG_MAX31827) += max31827.o
- obj-$(CONFIG_SENSORS_MAX77705) += max77705-hwmon.o
- obj-$(CONFIG_SENSORS_MC13783_ADC)+= mc13783-adc.o
-+obj-$(CONFIG_SENSORS_MC33XS2410) += mc33xs2410_hwmon.o
- obj-$(CONFIG_SENSORS_MC34VR500)	+= mc34vr500.o
- obj-$(CONFIG_SENSORS_MCP3021)	+= mcp3021.o
- obj-$(CONFIG_SENSORS_TC654)	+= tc654.o
-diff --git a/drivers/hwmon/mc33xs2410_hwmon.c b/drivers/hwmon/mc33xs2410_hwmon.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..23eb90e337091724c5562703df7d77a5fae6253b
---- /dev/null
-+++ b/drivers/hwmon/mc33xs2410_hwmon.c
-@@ -0,0 +1,178 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (C) 2025 Liebherr-Electronics and Drives GmbH
-+ */
-+
-+#include <linux/auxiliary_bus.h>
-+#include <linux/bitfield.h>
-+#include <linux/bitops.h>
-+#include <linux/hwmon.h>
-+#include <linux/mc33xs2410.h>
-+#include <linux/module.h>
-+
-+/* ctrl registers */
-+
-+#define MC33XS2410_TEMP_WT			0x29
-+#define MC33XS2410_TEMP_WT_MASK			GENMASK(7, 0)
-+
-+/* diag registers */
-+
-+/* chan in { 1 ... 4 } */
-+#define MC33XS2410_OUT_STA(chan)		(0x02 + (chan) - 1)
-+#define MC33XS2410_OUT_STA_OTW			BIT(8)
-+
-+#define MC33XS2410_TS_TEMP_DIE			0x26
-+#define MC33XS2410_TS_TEMP_MASK			GENMASK(9, 0)
-+
-+/* chan in { 1 ... 4 } */
-+#define MC33XS2410_TS_TEMP(chan)		(0x2f + (chan) - 1)
-+
-+static const struct hwmon_channel_info * const mc33xs2410_hwmon_info[] = {
-+	HWMON_CHANNEL_INFO(temp,
-+			   HWMON_T_LABEL | HWMON_T_INPUT,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM,
-+			   HWMON_T_LABEL | HWMON_T_INPUT | HWMON_T_MAX |
-+			   HWMON_T_ALARM),
-+	NULL,
-+};
-+
-+static umode_t mc33xs2410_hwmon_is_visible(const void *data,
-+					   enum hwmon_sensor_types type,
-+					   u32 attr, int channel)
-+{
-+	switch (attr) {
-+	case hwmon_temp_input:
-+	case hwmon_temp_alarm:
-+	case hwmon_temp_label:
-+		return 0444;
-+	case hwmon_temp_max:
-+		return 0644;
-+	default:
-+		return 0;
-+	}
-+}
-+
-+static int mc33xs2410_hwmon_read(struct device *dev,
-+				 enum hwmon_sensor_types type,
-+				 u32 attr, int channel, long *val)
-+{
-+	struct spi_device *spi = dev_get_drvdata(dev);
-+	u16 reg_val;
-+	int ret;
-+	u8 reg;
-+
-+	switch (attr) {
-+	case hwmon_temp_input:
-+		reg = (channel == 0) ? MC33XS2410_TS_TEMP_DIE :
-+				       MC33XS2410_TS_TEMP(channel);
-+		ret = mc33xs2410_read_reg_diag(spi, reg, &reg_val);
-+		if (ret < 0)
-+			return ret;
-+
-+		/* LSB is 0.25 degree celsius */
-+		*val = FIELD_GET(MC33XS2410_TS_TEMP_MASK, reg_val) * 250 - 40000;
-+		return 0;
-+	case hwmon_temp_alarm:
-+		ret = mc33xs2410_read_reg_diag(spi, MC33XS2410_OUT_STA(channel),
-+					       &reg_val);
-+		if (ret < 0)
-+			return ret;
-+
-+		*val = FIELD_GET(MC33XS2410_OUT_STA_OTW, reg_val);
-+		return 0;
-+	case hwmon_temp_max:
-+		ret = mc33xs2410_read_reg_ctrl(spi, MC33XS2410_TEMP_WT, &reg_val);
-+		if (ret < 0)
-+			return ret;
-+
-+		/* LSB is 1 degree celsius */
-+		*val = FIELD_GET(MC33XS2410_TEMP_WT_MASK, reg_val) * 1000 - 40000;
-+		return 0;
-+	default:
-+		return -EOPNOTSUPP;
-+	}
-+}
-+
-+static int mc33xs2410_hwmon_write(struct device *dev,
-+				  enum hwmon_sensor_types type, u32 attr,
-+				  int channel, long val)
-+{
-+	struct spi_device *spi = dev_get_drvdata(dev);
-+
-+	switch (attr) {
-+	case hwmon_temp_max:
-+		val = clamp_val(val, -40000, 215000);
-+
-+		/* LSB is 1 degree celsius */
-+		val = (val / 1000) + 40;
-+		return mc33xs2410_modify_reg(spi, MC33XS2410_TEMP_WT,
-+					     MC33XS2410_TEMP_WT_MASK, val);
-+	default:
-+		return -EOPNOTSUPP;
-+	}
-+}
-+
-+static const char *const mc33xs2410_temp_label[] = {
-+	"Central die temperature",
-+	"Channel 1 temperature",
-+	"Channel 2 temperature",
-+	"Channel 3 temperature",
-+	"Channel 4 temperature",
-+};
-+
-+static int mc33xs2410_read_string(struct device *dev,
-+				  enum hwmon_sensor_types type,
-+				  u32 attr, int channel, const char **str)
-+{
-+	*str = mc33xs2410_temp_label[channel];
-+
-+	return 0;
-+}
-+
-+static const struct hwmon_ops mc33xs2410_hwmon_hwmon_ops = {
-+	.is_visible = mc33xs2410_hwmon_is_visible,
-+	.read = mc33xs2410_hwmon_read,
-+	.read_string = mc33xs2410_read_string,
-+	.write = mc33xs2410_hwmon_write,
-+};
-+
-+static const struct hwmon_chip_info mc33xs2410_hwmon_chip_info = {
-+	.ops = &mc33xs2410_hwmon_hwmon_ops,
-+	.info = mc33xs2410_hwmon_info,
-+};
-+
-+static int mc33xs2410_hwmon_probe(struct auxiliary_device *adev,
-+				  const struct auxiliary_device_id *id)
-+{
-+	struct device *dev = &adev->dev;
-+	struct spi_device *spi = container_of(dev->parent, struct spi_device, dev);
-+	struct device *hwmon;
-+
-+	hwmon = devm_hwmon_device_register_with_info(dev, NULL, spi,
-+						     &mc33xs2410_hwmon_chip_info,
-+						     NULL);
-+	return PTR_ERR_OR_ZERO(hwmon);
-+}
-+
-+static const struct auxiliary_device_id mc33xs2410_hwmon_ids[] = {
-+	{
-+		.name = "pwm_mc33xs2410.hwmon",
-+	},
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(auxiliary, mc33xs2410_hwmon_ids);
-+
-+static struct auxiliary_driver mc33xs2410_hwmon_driver = {
-+	.probe = mc33xs2410_hwmon_probe,
-+	.id_table = mc33xs2410_hwmon_ids,
-+};
-+module_auxiliary_driver(mc33xs2410_hwmon_driver);
-+
-+MODULE_DESCRIPTION("NXP MC33XS2410 hwmon driver");
-+MODULE_AUTHOR("Dimitri Fedrau <dimitri.fedrau@liebherr.com>");
-+MODULE_LICENSE("GPL");
+This is a continuation of a previous series, which did not implement the full
+xmipsexectl vendor extension. The title was updated accordingly.
 
+Changes in v4:
+- Add support for the xmipsexectl vendor extension
+- Remove the ifdef/else from errata_list.h
+- Replace the ifdef/else with a hwprobe call in the userspace code.
+
+Link to v3:
+https://lore.kernel.org/linux-riscv/20250129131703.733098-1-arikalo@gmail.com/
+
+---
+Aleksa Paunovic (6):
+      dt-bindings: riscv: Add xmipsexectl ISA extension description
+      riscv: Add xmipsexectl as a vendor extension
+      riscv: Add xmipsexectl instructions
+      riscv: hwprobe: Add MIPS vendor extension probing
+      riscv: hwprobe: Document MIPS xmipsexectl vendor extension
+      riscv: Add tools support for xmipsexectl
+
+Djordje Todorovic (1):
+      riscv: errata: Fix the PAUSE Opcode for MIPS P8700
+
+ Documentation/arch/riscv/hwprobe.rst               |  9 +++
+ .../devicetree/bindings/riscv/extensions.yaml      |  6 ++
+ arch/riscv/Kconfig.errata                          | 23 ++++++++
+ arch/riscv/Kconfig.vendor                          | 13 +++++
+ arch/riscv/errata/Makefile                         |  1 +
+ arch/riscv/errata/mips/Makefile                    |  5 ++
+ arch/riscv/errata/mips/errata.c                    | 67 ++++++++++++++++++++++
+ arch/riscv/include/asm/alternative.h               |  3 +
+ arch/riscv/include/asm/cmpxchg.h                   |  3 +-
+ arch/riscv/include/asm/errata_list.h               | 13 ++++-
+ arch/riscv/include/asm/errata_list_vendors.h       |  5 ++
+ arch/riscv/include/asm/hwprobe.h                   |  3 +-
+ arch/riscv/include/asm/vdso/processor.h            |  3 +-
+ arch/riscv/include/asm/vendor_extensions/mips.h    | 37 ++++++++++++
+ .../include/asm/vendor_extensions/mips_hwprobe.h   | 22 +++++++
+ arch/riscv/include/asm/vendorid_list.h             |  1 +
+ arch/riscv/include/uapi/asm/hwprobe.h              |  1 +
+ arch/riscv/include/uapi/asm/vendor/mips.h          |  3 +
+ arch/riscv/kernel/alternative.c                    |  5 ++
+ arch/riscv/kernel/sys_hwprobe.c                    |  4 ++
+ arch/riscv/kernel/vendor_extensions.c              | 10 ++++
+ arch/riscv/kernel/vendor_extensions/Makefile       |  2 +
+ arch/riscv/kernel/vendor_extensions/mips.c         | 22 +++++++
+ arch/riscv/kernel/vendor_extensions/mips_hwprobe.c | 23 ++++++++
+ arch/riscv/mm/init.c                               |  1 +
+ tools/arch/riscv/include/asm/vdso/processor.h      | 27 +++++----
+ 26 files changed, 298 insertions(+), 14 deletions(-)
+---
+base-commit: b6a4bae2f16162876842127d7507dad84e404f8f
+change-id: 20250424-p8700-pause-dcb649968e24
+
+Best regards,
 -- 
-2.39.5
+Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 
