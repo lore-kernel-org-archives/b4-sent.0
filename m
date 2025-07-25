@@ -1,88 +1,69 @@
-From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-Date: Fri, 25 Jul 2025 18:04:04 +0800
-Subject: [PATCH 2/2] leds: flash: leds-qcom-flash: add a separate register
- map for PMI8998
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH 0/4] backlight: add new max25014 backlight driver
+Date: Fri, 25 Jul 2025 13:09:22 +0200
+Message-Id: <20250725-max25014-v1-0-0e8cce92078e@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250725-fix-torch-clamp-issue-v1-2-4cf3ebaa4c67@oss.qualcomm.com>
-References: <20250725-fix-torch-clamp-issue-v1-0-4cf3ebaa4c67@oss.qualcomm.com>
-In-Reply-To: <20250725-fix-torch-clamp-issue-v1-0-4cf3ebaa4c67@oss.qualcomm.com>
-To: kernel@oss.qualcomm.com, Lee Jones <lee@kernel.org>, 
- Pavel Machek <pavel@kernel.org>, Fenglin Wu <quic_fenglinw@quicinc.com>
-Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>, 
- linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAOJlg2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDMyMz3dzECiDL0ETXxMjA3NTSMNUwMc1UCai8oCg1LbMCbFR0bG0tAB3
+ YAxhaAAAA
+X-Change-ID: 20250626-max25014-4207591e1af5
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>, 
+ Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-fbdev@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>, 
+ "Maud Spierings maudspierings"@gocontroll.com
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753437856; l=2388;
- i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
- bh=apUF2dH/Mll13q6/mMcrFJ2TYLuscFy4mzUCJJ0pxQU=;
- b=/Pv9fB6kxS8Qb1XuKdnLLN5YWv3jJq9NW8gfeSe5ZJrha8fsNAvd3wefCoyUgX8OVMCGTOZmy
- FZaOiwx0RxTD5nrsgRpmUx8wqJBPtFLHXtCOlHR3Og7NnTaZQCtqeWH
-X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
- pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
-X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753441765; l=1452;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=KbANwn4NmNO7jNz4SGe7SAKLtyBDL4GI6/j143/N1/E=;
+ b=PjTusrgPlZupmtwnWn9StKXy2DkRV3eFf5M+adbF+rEkvyz1mG3L2XP9PPZrorFH+PUwg5zR7
+ EKaU2GeBddlCmwwgOer6BZEklYbXnOarE4DYHFsHnMYmH89T2htQs71
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The 3-channel flash module in PMI8998 has several registers different
-than the others, such as: torch_clamp. Add different register fields
-for it.
+The Maxim MAX25014 is an automotive grade backlight driver IC. Its
+datasheet can be found at [1].
 
-Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+With its integrated boost controller, it can power 4 channels (led
+strings) and has a number of different modes using pwm and or i2c.
+Currently implemented is only i2c control.
+
+link: https://www.analog.com/media/en/technical-documentation/data-sheets/MAX25014.pdf [1]
+
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- drivers/leds/flash/leds-qcom-flash.c | 25 ++++++++++++++++++++++++-
- 1 file changed, 24 insertions(+), 1 deletion(-)
+Maud Spierings (4):
+      dt-bindings: backlight: Add max25014 bindings
+      backlight: add max25014atg backlight
+      arm64: dts: freescale: moduline-display-av101hdt-a10: add backlight
+      arm64: dts: freescale: moduline-display-av123z7m-n17: add backlight
 
-diff --git a/drivers/leds/flash/leds-qcom-flash.c b/drivers/leds/flash/leds-qcom-flash.c
-index 9c2e41cfddcf2d50d5a633cb157084371a631d74..2554ef7bcae6bc8f66edbffc7c885a9386b263ad 100644
---- a/drivers/leds/flash/leds-qcom-flash.c
-+++ b/drivers/leds/flash/leds-qcom-flash.c
-@@ -118,6 +118,22 @@ enum {
- 	REG_MAX_COUNT,
- };
- 
-+static const struct reg_field mvflash_3ch_pmi8998_regs[REG_MAX_COUNT] = {
-+	REG_FIELD(0x08, 0, 7),			/* status1	*/
-+	REG_FIELD(0x09, 0, 7),			/* status2	*/
-+	REG_FIELD(0x0a, 0, 7),			/* status3	*/
-+	REG_FIELD_ID(0x40, 0, 7, 3, 1),		/* chan_timer	*/
-+	REG_FIELD_ID(0x43, 0, 6, 3, 1),		/* itarget	*/
-+	REG_FIELD(0x46, 7, 7),			/* module_en	*/
-+	REG_FIELD(0x47, 0, 5),			/* iresolution	*/
-+	REG_FIELD_ID(0x49, 0, 2, 3, 1),		/* chan_strobe	*/
-+	REG_FIELD(0x4c, 0, 2),			/* chan_en	*/
-+	REG_FIELD(0xea, 0, 6),			/* torch_clamp	*/
-+	REG_FIELD(0x56, 0, 2),			/* therm_thrsh1 */
-+	REG_FIELD(0x57, 0, 2),			/* therm_thrsh2 */
-+	REG_FIELD(0x58, 0, 2),			/* therm_thrsh3 */
-+};
-+
- static const struct reg_field mvflash_3ch_regs[REG_MAX_COUNT] = {
- 	REG_FIELD(0x08, 0, 7),			/* status1	*/
- 	REG_FIELD(0x09, 0, 7),                  /* status2	*/
-@@ -862,13 +878,20 @@ static int qcom_flash_led_probe(struct platform_device *pdev)
- 		return rc;
- 	}
- 
--	if (val == FLASH_SUBTYPE_3CH_PM8150_VAL || val == FLASH_SUBTYPE_3CH_PMI8998_VAL) {
-+	if (val == FLASH_SUBTYPE_3CH_PM8150_VAL) {
- 		flash_data->hw_type = QCOM_MVFLASH_3CH;
- 		flash_data->max_channels = 3;
- 		regs = devm_kmemdup(dev, mvflash_3ch_regs, sizeof(mvflash_3ch_regs),
- 				    GFP_KERNEL);
- 		if (!regs)
- 			return -ENOMEM;
-+	} else if (val == FLASH_SUBTYPE_3CH_PMI8998_VAL) {
-+		flash_data->hw_type = QCOM_MVFLASH_3CH;
-+		flash_data->max_channels = 3;
-+		regs = devm_kmemdup(dev, mvflash_3ch_pmi8998_regs,
-+				    sizeof(mvflash_3ch_pmi8998_regs), GFP_KERNEL);
-+		if (!regs)
-+			return -ENOMEM;
- 	} else if (val == FLASH_SUBTYPE_4CH_VAL) {
- 		flash_data->hw_type = QCOM_MVFLASH_4CH;
- 		flash_data->max_channels = 4;
+ .../bindings/leds/backlight/maxim,max25014.yaml    |  78 ++++
+ MAINTAINERS                                        |   7 +
+ ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso |  21 +
+ ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso |  19 +-
+ drivers/video/backlight/Kconfig                    |   7 +
+ drivers/video/backlight/Makefile                   |   1 +
+ drivers/video/backlight/max25014.c                 | 449 +++++++++++++++++++++
+ include/linux/platform_data/max25014.h             |  24 ++
+ 8 files changed, 605 insertions(+), 1 deletion(-)
+---
+base-commit: d7af19298454ed155f5cf67201a70f5cf836c842
+change-id: 20250626-max25014-4207591e1af5
 
+Best regards,
 -- 
-2.34.1
+Maud Spierings <maudspierings@gocontroll.com>
 
