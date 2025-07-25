@@ -1,53 +1,54 @@
-From: Daniel Palmer <daniel.palmer@sony.com>
-Date: Fri, 25 Jul 2025 14:30:57 +0900
-Subject: [PATCH] fbdev: Fix typo in Kconfig text for FB_DEVICE
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Date: Fri, 25 Jul 2025 07:32:55 +0100
+Subject: [PATCH] iio: buffer: buffer-cb: drop double initialization of
+ demux list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250725-fbdev-typo-v1-1-f9fd1418cb51@sony.com>
-X-B4-Tracking: v=1; b=H4sIAJAWg2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDcyNT3bSklNQy3ZLKgnxdSwMDE9NkoyTDlORUJaCGgqLUtMwKsGHRsbW
- 1AGLSkX1cAAAA
-To: Simona Vetter <simona@ffwll.ch>, Helge Deller <deller@gmx.de>
-Cc: linux-fbdev@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Daniel Palmer <daniel.palmer@sony.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250725-iio-minor-cleanup-v1-1-4e561372142e@analog.com>
+X-B4-Tracking: v=1; b=H4sIABYlg2gC/x3MQQqAIBBA0avErBtIS6yuEi3EphooFaUIwrsnL
+ d/i/xcSRaYEY/VCpJsTe1cg6grsbtxGyEsxyEaqRkuFzB5Pdj6iPci4K+DQmVborqfVKihdiLT
+ y8z+nOecPkuAZ8mMAAAA=
+To: linux-iio@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753421457; l=983;
- i=daniel.palmer@sony.com; s=20250610; h=from:subject:message-id;
- bh=ExcVPhfNsQdjthV2mryqOJJS7Mv9bAw31RooTp1/9aE=;
- b=K1ZHosEZoz9tKEb4ZtvEiu5I9COHbZQUNZ1Ax+1a5WQiczG05QpKkNOLMfVNUM1Rnp9eQB2Jb
- JoGBo9hTltABbyO7ZRyv1Z6BAYpNMwHkC3qN2PPCiAON80fYIPGOBbE
-X-Developer-Key: i=daniel.palmer@sony.com; a=ed25519;
- pk=dbwvNAF3zvjUZOTEPBh6uYWrBnOi7OPuXkoDcmmS8aY=
-X-Endpoint-Received: by B4 Relay for daniel.palmer@sony.com/20250610 with auth_id=430
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753425190; l=967;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=WZdMjbzA4w28HJI0E9xLfu9MeSAA6z1IDKHR/cf1+5c=;
+ b=gE/XGhhk+L8zJrKCpXfbW+99Q0fn3VQa9EBMCNVE6FmNUMi3kjmb6ltwqsze1pt/tqk2J/KTq
+ Vqado82/cNVClS+x7a72OMK4Dn6J/6golhyuQX0diavTTeMA6d8pkDS
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Seems like someone hit 'c' when they meant to hit 'd'.
+Drop the call to INIT_LIST_HEAD(&cb_buff->buffer.demux_list). That's
+already done in iio_buffer_init(&cb_buff->buffer).
 
-Signed-off-by: Daniel Palmer <daniel.palmer@sony.com>
+Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/video/fbdev/core/Kconfig | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/iio/buffer/industrialio-buffer-cb.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/drivers/video/fbdev/core/Kconfig b/drivers/video/fbdev/core/Kconfig
-index 4abe12db7594..413cbfac569d 100644
---- a/drivers/video/fbdev/core/Kconfig
-+++ b/drivers/video/fbdev/core/Kconfig
-@@ -31,7 +31,7 @@ config FB_DEVICE
- 	default FB
- 	help
- 	  Say Y here if you want the legacy /dev/fb* device file and
--	  interfaces within sysfs anc procfs. It is only required if you
-+	  interfaces within sysfs and procfs. It is only required if you
- 	  have userspace programs that depend on fbdev for graphics output.
- 	  This does not affect the framebuffer console. If unsure, say N.
+diff --git a/drivers/iio/buffer/industrialio-buffer-cb.c b/drivers/iio/buffer/industrialio-buffer-cb.c
+index 4befc9f55201e..3e27385069edb 100644
+--- a/drivers/iio/buffer/industrialio-buffer-cb.c
++++ b/drivers/iio/buffer/industrialio-buffer-cb.c
+@@ -68,7 +68,6 @@ struct iio_cb_buffer *iio_channel_get_all_cb(struct device *dev,
+ 	cb_buff->private = private;
+ 	cb_buff->cb = cb;
+ 	cb_buff->buffer.access = &iio_cb_access;
+-	INIT_LIST_HEAD(&cb_buff->buffer.demux_list);
  
+ 	cb_buff->channels = iio_channel_get_all(dev);
+ 	if (IS_ERR(cb_buff->channels)) {
 
 ---
-base-commit: e04c78d86a9699d136910cfc0bdcf01087e3267e
-change-id: 20250725-fbdev-typo-90045c2b1dce
+base-commit: a10185367eccb4d79efdeb09eb59c964ca7659f7
+change-id: 20250725-iio-minor-cleanup-94a31748efc5
+--
 
-Best regards,
--- 
-Daniel Palmer <daniel.palmer@sony.com>
+Thanks!
+- Nuno Sá
 
