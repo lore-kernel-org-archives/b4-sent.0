@@ -1,266 +1,58 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Mon, 28 Jul 2025 17:39:30 +0200
-Subject: [PATCH 2/2] phy: add basic support for NXPs TJA1145 CAN
- transceiver
+From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+Subject: [PATCH v2 0/2] leds: flash: leds-qcom-flash: update torch current
+ clamp setting
+Date: Tue, 29 Jul 2025 12:51:21 +0800
+Message-Id: <20250729-fix-torch-clamp-issue-v2-0-9b83816437a3@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250728-tja1145-support-v1-2-ebd8494d545c@liebherr.com>
-References: <20250728-tja1145-support-v1-0-ebd8494d545c@liebherr.com>
-In-Reply-To: <20250728-tja1145-support-v1-0-ebd8494d545c@liebherr.com>
-To: Vinod Koul <vkoul@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-phy@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Dimitri Fedrau <dima.fedrau@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAElTiGgC/4WNTQ6CQAyFr0JmbQlUkMSV9zAs6likCTA4FaIhc
+ 3crF3Dzku/l/WxOOQqrO2ebi7yKSpgM8JA539P0YJC7scMC66LBGjp5wytE34MfaJxBVBcGT1h
+ jiUSIlbPuHNmC++61Ne5FrfTZb9by5/5bXEsooPLdkW9ElT81l6CaPxcafBjH3MS1KaUvXmf1f
+ sEAAAA=
+X-Change-ID: 20250725-fix-torch-clamp-issue-ca25212aa224
+To: kernel@oss.qualcomm.com, Lee Jones <lee@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>, 
+ linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753717177; l=7261;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=xQm1ZMNyyki2fr/Z9Lg4N4qqLulA01+okhg1FBDHbTI=;
- b=q1Yjlb9vh+DnMv54ZDY3F/knMVixj141CVkcp3bXqda8uSp4GVGy+TibUE1ICSIPjtHFKhy3t
- ivoIWOZJfjXC1Cl11jTrpvGBmYcAqeZRzbXFLUvRqqo7t5L1YGVhOqc
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753764686; l=1056;
+ i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
+ bh=dKYGSCbks/KUDflV6ussEDmTnM88IuSNnO/6SfSJ1v4=;
+ b=p9Dd8qj3QnbN00t2Peuil908E+TcycfB7gOqALi/uoCKxFI5+XdLiGUtTL2g7bhMGPcekUA2B
+ V7TY8+rRf1GA86fo54pMZ1XRpqjVV2ljD9Ol9VD0QtVMOMQwpz2lWbH
+X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
+ pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
+X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add basic driver support for NXPs TJA1145 CAN transceiver which brings the
-PHY up/down by switching to normal/standby mode using SPI commands.
+There is a current clamp register needs to be updated when enabling
+torch LED, and the register address is different between different
+PMIC flash LED modules. Add changes to address it.
 
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
- drivers/phy/Kconfig           |  10 +++
- drivers/phy/Makefile          |   1 +
- drivers/phy/phy-nxp-tja1145.c | 185 ++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 196 insertions(+)
+Changes in v2:
+- Update the register mapping to use designated initializers and ensure
+  they are sorted by register address.
+- Update the 'msb' of 'status1' register to 5 for pmi8998 flash LED
+  module
+- Link to v1: https://lore.kernel.org/r/20250725-fix-torch-clamp-issue-v1-0-4cf3ebaa4c67@oss.qualcomm.com
 
-diff --git a/drivers/phy/Kconfig b/drivers/phy/Kconfig
-index 58c911e1b2d20a0398f02550e938ce62633230d4..c47e2b62fa6279ee610493b028d3c14f6499ca85 100644
---- a/drivers/phy/Kconfig
-+++ b/drivers/phy/Kconfig
-@@ -101,6 +101,16 @@ config PHY_NXP_PTN3222
- 	  schemes. It supports all three USB 2.0 data rates: Low Speed, Full
- 	  Speed and High Speed.
- 
-+config PHY_NXP_TJA1145
-+	tristate "NXP TJA1145 CAN transceiver PHY"
-+	select GENERIC_PHY
-+	select REGMAP_SPI
-+	depends on SPI
-+	help
-+	  This option enables support for NXPs TJA1145 CAN transceiver as a PHY.
-+	  This driver provides function for putting the transceiver in various
-+	  functional modes using SPI commands.
-+
- source "drivers/phy/allwinner/Kconfig"
- source "drivers/phy/amlogic/Kconfig"
- source "drivers/phy/broadcom/Kconfig"
-diff --git a/drivers/phy/Makefile b/drivers/phy/Makefile
-index c670a8dac46807863c9ef990beb149082238ad16..16da564c74b0f14befb486366dcd10cd5fc67741 100644
---- a/drivers/phy/Makefile
-+++ b/drivers/phy/Makefile
-@@ -13,6 +13,7 @@ obj-$(CONFIG_PHY_SNPS_EUSB2)		+= phy-snps-eusb2.o
- obj-$(CONFIG_USB_LGM_PHY)		+= phy-lgm-usb.o
- obj-$(CONFIG_PHY_AIROHA_PCIE)		+= phy-airoha-pcie.o
- obj-$(CONFIG_PHY_NXP_PTN3222)		+= phy-nxp-ptn3222.o
-+obj-$(CONFIG_PHY_NXP_TJA1145)		+= phy-nxp-tja1145.o
- obj-y					+= allwinner/	\
- 					   amlogic/	\
- 					   broadcom/	\
-diff --git a/drivers/phy/phy-nxp-tja1145.c b/drivers/phy/phy-nxp-tja1145.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..fa8f588f84913ec3d49533d7be540b3d61b6b304
---- /dev/null
-+++ b/drivers/phy/phy-nxp-tja1145.c
-@@ -0,0 +1,185 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (C) 2025 Liebherr-Electronics and Drives GmbH
-+ */
-+#include <linux/bitfield.h>
-+#include <linux/module.h>
-+#include <linux/regmap.h>
-+
-+#include <linux/phy/phy.h>
-+#include <linux/spi/spi.h>
-+
-+#define TJA1145_MODE_CTRL		0x01
-+#define TJA1145_MODE_CTRL_MC		GENMASK(2, 0)
-+#define TJA1145_MODE_CRTL_STBY		BIT(2)
-+#define TJA1145_MODE_CRTL_NORMAL	TJA1145_MODE_CTRL_MC
-+
-+#define TJA1145_CAN_CTRL		0x20
-+#define TJA1145_CAN_CTRL_CMC		GENMASK(1, 0)
-+#define TJA1145_CAN_CTRL_ACTIVE		BIT(1)
-+
-+#define TJA1145_IDENT			0x7e
-+#define TJA1145_IDENT_TJA1145T		0x70
-+
-+#define TJA1145_SPI_READ_BIT		BIT(0)
-+#define TJA1145T_MAX_BITRATE		1000000
-+
-+static int tja1145_phy_power_on(struct phy *phy)
-+{
-+	struct regmap *map = phy_get_drvdata(phy);
-+	int ret;
-+
-+	/*
-+	 * Switch operating mode to normal which is the active operating mode.
-+	 * In this mode, the device is fully operational.
-+	 */
-+	ret = regmap_update_bits(map, TJA1145_MODE_CTRL, TJA1145_MODE_CTRL_MC,
-+				 TJA1145_MODE_CRTL_NORMAL);
-+	if (ret)
-+		return ret;
-+
-+	/*
-+	 * Switch to CAN operating mode active where the PHY can transmit and
-+	 * receive data.
-+	 */
-+	return regmap_update_bits(map, TJA1145_CAN_CTRL, TJA1145_CAN_CTRL_CMC,
-+				  TJA1145_CAN_CTRL_ACTIVE);
-+}
-+
-+static int tja1145_phy_power_off(struct phy *phy)
-+{
-+	struct regmap *map = phy_get_drvdata(phy);
-+
-+	/*
-+	 * Switch to operating mode standby, the PHY is unable to transmit or
-+	 * receive data in standby mode.
-+	 */
-+	return regmap_update_bits(map, TJA1145_MODE_CTRL, TJA1145_MODE_CTRL_MC,
-+				  TJA1145_MODE_CRTL_STBY);
-+}
-+
-+static const struct phy_ops tja1145_phy_ops = {
-+	.power_on = tja1145_phy_power_on,
-+	.power_off = tja1145_phy_power_off,
-+};
-+
-+static const struct regmap_range tja1145_wr_holes_ranges[] = {
-+	regmap_reg_range(0x00, 0x00),
-+	regmap_reg_range(0x02, 0x03),
-+	regmap_reg_range(0x05, 0x05),
-+	regmap_reg_range(0x0b, 0x1f),
-+	regmap_reg_range(0x21, 0x22),
-+	regmap_reg_range(0x24, 0x25),
-+	regmap_reg_range(0x30, 0x4b),
-+	regmap_reg_range(0x4d, 0x60),
-+	regmap_reg_range(0x62, 0x62),
-+	regmap_reg_range(0x65, 0x67),
-+	regmap_reg_range(0x70, 0xff),
-+};
-+
-+static const struct regmap_access_table tja1145_wr_table = {
-+	.no_ranges = tja1145_wr_holes_ranges,
-+	.n_no_ranges = ARRAY_SIZE(tja1145_wr_holes_ranges),
-+};
-+
-+static const struct regmap_range tja1145_rd_holes_ranges[] = {
-+	regmap_reg_range(0x00, 0x00),
-+	regmap_reg_range(0x02, 0x02),
-+	regmap_reg_range(0x05, 0x05),
-+	regmap_reg_range(0x0b, 0x1f),
-+	regmap_reg_range(0x21, 0x21),
-+	regmap_reg_range(0x24, 0x25),
-+	regmap_reg_range(0x30, 0x4a),
-+	regmap_reg_range(0x4d, 0x5f),
-+	regmap_reg_range(0x62, 0x62),
-+	regmap_reg_range(0x65, 0x67),
-+	regmap_reg_range(0x70, 0x7d),
-+	regmap_reg_range(0x7f, 0xff),
-+};
-+
-+static const struct regmap_access_table tja1145_rd_table = {
-+	.no_ranges = tja1145_rd_holes_ranges,
-+	.n_no_ranges = ARRAY_SIZE(tja1145_rd_holes_ranges),
-+};
-+
-+
-+static const struct regmap_config tja1145_regmap_config = {
-+	.reg_bits = 8,
-+	.reg_shift = -1,
-+	.val_bits = 8,
-+	.wr_table = &tja1145_wr_table,
-+	.rd_table = &tja1145_rd_table,
-+	.read_flag_mask = TJA1145_SPI_READ_BIT,
-+	.max_register = TJA1145_IDENT,
-+};
-+
-+static int tja1145_check_ident(struct device *dev, struct regmap *map)
-+{
-+	unsigned int val;
-+	int ret;
-+
-+	ret = regmap_read(map, TJA1145_IDENT, &val);
-+	if (ret)
-+		return ret;
-+
-+	if (val != TJA1145_IDENT_TJA1145T) {
-+		dev_err(dev, "Expected device id: 0x%02x, got: 0x%02x\n",
-+			TJA1145_IDENT_TJA1145T, val);
-+		return -ENODEV;
-+	}
-+
-+	return 0;
-+}
-+
-+static int tja1145_probe(struct spi_device *spi)
-+{
-+	struct phy_provider *phy_provider;
-+	struct device *dev = &spi->dev;
-+	struct regmap *map;
-+	struct phy *phy;
-+	int ret;
-+
-+	map = devm_regmap_init_spi(spi, &tja1145_regmap_config);
-+	if (IS_ERR(map))
-+		return dev_err_probe(dev, PTR_ERR(map), "failed to init regmap\n");
-+
-+	ret = tja1145_check_ident(dev, map);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to identify device\n");
-+
-+	phy = devm_phy_create(dev, dev->of_node, &tja1145_phy_ops);
-+	if (IS_ERR(phy))
-+		return dev_err_probe(dev, PTR_ERR(phy), "failed to create PHY\n");
-+
-+	phy->attrs.max_link_rate = TJA1145T_MAX_BITRATE;
-+	phy_set_drvdata(phy, map);
-+	phy_provider = devm_of_phy_provider_register(dev, of_phy_simple_xlate);
-+
-+	return PTR_ERR_OR_ZERO(phy_provider);
-+}
-+
-+static const struct spi_device_id tja1145_spi_id[] = {
-+	{ "tja1145" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(spi, tja1145_spi_id);
-+
-+static const struct of_device_id tja1145_of_match[] = {
-+	{ .compatible = "nxp,tja1145" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, tja1145_of_match);
-+
-+static struct spi_driver tja1145_driver = {
-+	.driver = {
-+		.name = "tja1145",
-+		.of_match_table = tja1145_of_match,
-+	},
-+	.probe = tja1145_probe,
-+	.id_table = tja1145_spi_id,
-+};
-+module_spi_driver(tja1145_driver);
-+
-+MODULE_DESCRIPTION("NXP TJA1145 CAN transceiver PHY driver");
-+MODULE_AUTHOR("Dimitri Fedrau <dimitri.fedrau@liebherr.com>");
-+MODULE_LICENSE("GPL");
+---
+Fenglin Wu (2):
+      leds: flash: leds-qcom-flash: update torch current clamp setting
+      leds: flash: leds-qcom-flash: add a separate register map for PMI8998
 
+ drivers/leds/flash/leds-qcom-flash.c | 87 +++++++++++++++++++++++++-----------
+ 1 file changed, 60 insertions(+), 27 deletions(-)
+---
+base-commit: 4903924ac7ef31fbbe48b3261b1bc86ce6cd7e97
+change-id: 20250725-fix-torch-clamp-issue-ca25212aa224
+
+Best regards,
 -- 
-2.39.5
+Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 
