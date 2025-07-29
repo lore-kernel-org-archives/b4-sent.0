@@ -1,89 +1,81 @@
-From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-Date: Tue, 29 Jul 2025 12:51:23 +0800
-Subject: [PATCH v2 2/2] leds: flash: leds-qcom-flash: add a separate
- register map for PMI8998
+From: Christoph Paasch <cpaasch@openai.com>
+Date: Tue, 29 Jul 2025 11:34:00 -0700
+Subject: [PATCH net] net/mlx5: Correctly set gso_segs when LRO is used
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250729-fix-torch-clamp-issue-v2-2-9b83816437a3@oss.qualcomm.com>
-References: <20250729-fix-torch-clamp-issue-v2-0-9b83816437a3@oss.qualcomm.com>
-In-Reply-To: <20250729-fix-torch-clamp-issue-v2-0-9b83816437a3@oss.qualcomm.com>
-To: kernel@oss.qualcomm.com, Lee Jones <lee@kernel.org>, 
- Pavel Machek <pavel@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>, 
- linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+Message-Id: <20250729-mlx5_gso_segs-v1-1-b48c480c1c12@openai.com>
+X-B4-Tracking: v=1; b=H4sIABcUiWgC/x3MSQqAMBAF0atIrw3EYHC4iog4fGODRkmLCOLdD
+ S7fouohQWAI1clDARcL7z4iSxMal947KJ6iyWhjdWEqta237ZzsncCJKmHRmykfqkFTbI6Ame/
+ /15DHSe37fvYiHwdkAAAA
+X-Change-ID: 20250729-mlx5_gso_segs-8e5ea2d4b9b0
+To: Saeed Mahameed <saeedm@nvidia.com>, Tariq Toukan <tariqt@nvidia.com>, 
+ Mark Bloch <mbloch@nvidia.com>, Leon Romanovsky <leon@kernel.org>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Amir Vadai <amirv@mellanox.com>
+Cc: netdev@vger.kernel.org, linux-rdma@vger.kernel.org, 
+ Gal Pressman <gal@nvidia.com>, Christoph Paasch <cpaasch@openai.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753764686; l=2384;
- i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
- bh=veBh7fJK3dHgrg1LPo1zZL/xU/qWzZ1meNlhvMaeZoo=;
- b=RdUWZ3ghKPMCnmxWq1BYbZyTm0Tt42RiAfPEZBXbyyd+BWxxM1zpVbV41Z5o6N9jxhFo7cIlR
- 5POYivvrf7HD8WauNaGHnXzcKyJ6NfJTI3cAZG57mR0ejlSrj6IUB15
-X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
- pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
-X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753814051; l=2293;
+ i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
+ bh=BEl29bER/lvNXl8OFGctWB+GNXoUpmP6lKzTKh8mgKg=;
+ b=yG4Ad4zj5YUqZ8aVs2erdhWF4rIFYiTUjcQ5GjoBH6yq2o/jWDsZQQKaa5fOXpKT2toAU1YBc
+ BIRIRVF3CTBAzabqecpVEuwaesH5SNP3pEififo1w7jqr08AnCvRt9H
+X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
+ pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
+X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The 3-channel flash module in PMI8998 has several registers different
-than the others, such as: torch_clamp. Add different register fields
-for it.
+When gso_segs is left at 0, a number of assumptions will end up being
+incorrect throughout the stack.
 
-Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+For example, in the GRO-path, we set NAPI_GRO_CB()->count to gso_segs.
+So, if a non-LRO'ed packet followed by an LRO'ed packet is being
+processed in GRO, the first one will have NAPI_GRO_CB()->count set to 1 and
+the next one to 0 (in dev_gro_receive()).
+Since commit 531d0d32de3e
+("net/mlx5: Correctly set gso_size when LRO is used")
+these packets will get merged (as their gso_size now matches).
+So, we end up in gro_complete() with NAPI_GRO_CB()->count == 1 and thus
+don't call inet_gro_complete(). Meaning, checksum-validation in
+tcp_checksum_complete() will fail with a "hw csum failure".
+
+Even before the above mentioned commit, incorrect gso_segs means that other
+things like TCP's accounting of incoming packets (tp->segs_in,
+data_segs_in, rcv_ooopack) will be incorrect. Which means that if one
+does bytes_received/data_segs_in, the result will be bigger than the
+MTU.
+
+Fix this by initializing gso_segs correctly when LRO is used.
+
+Fixes: e586b3b0baee ("net/mlx5: Ethernet Datapath files")
+Reported-by: Gal Pressman <gal@nvidia.com>
+Closes: https://lore.kernel.org/netdev/6583783f-f0fb-4fb1-a415-feec8155bc69@nvidia.com/
+Signed-off-by: Christoph Paasch <cpaasch@openai.com>
 ---
- drivers/leds/flash/leds-qcom-flash.c | 25 ++++++++++++++++++++++++-
- 1 file changed, 24 insertions(+), 1 deletion(-)
+ drivers/net/ethernet/mellanox/mlx5/core/en_rx.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/leds/flash/leds-qcom-flash.c b/drivers/leds/flash/leds-qcom-flash.c
-index db7c2c743adc755244f387febce663738bf3c0bd..b03a6833e3e3a076980bfcb46d5bbde4f4183a19 100644
---- a/drivers/leds/flash/leds-qcom-flash.c
-+++ b/drivers/leds/flash/leds-qcom-flash.c
-@@ -118,6 +118,22 @@ enum {
- 	REG_MAX_COUNT,
- };
+diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
+index 7462514c7f3d1606339ede13a6207c1629ab65a3..da3e340c99b72ce27861cccaa5bd722c1b446a55 100644
+--- a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
++++ b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
+@@ -1567,6 +1567,7 @@ static inline void mlx5e_build_rx_skb(struct mlx5_cqe64 *cqe,
+ 		unsigned int hdrlen = mlx5e_lro_update_hdr(skb, cqe, cqe_bcnt);
  
-+static const struct reg_field mvflash_3ch_pmi8998_regs[REG_MAX_COUNT] = {
-+	[REG_STATUS1]		= REG_FIELD(0x08, 0, 5),
-+	[REG_STATUS2]		= REG_FIELD(0x09, 0, 7),
-+	[REG_STATUS3]		= REG_FIELD(0x0a, 0, 7),
-+	[REG_CHAN_TIMER]	= REG_FIELD_ID(0x40, 0, 7, 3, 1),
-+	[REG_ITARGET]		= REG_FIELD_ID(0x43, 0, 6, 3, 1),
-+	[REG_MODULE_EN]		= REG_FIELD(0x46, 7, 7),
-+	[REG_IRESOLUTION]	= REG_FIELD(0x47, 0, 5),
-+	[REG_CHAN_STROBE]	= REG_FIELD_ID(0x49, 0, 2, 3, 1),
-+	[REG_CHAN_EN]		= REG_FIELD(0x4c, 0, 2),
-+	[REG_THERM_THRSH1]	= REG_FIELD(0x56, 0, 2),
-+	[REG_THERM_THRSH2]	= REG_FIELD(0x57, 0, 2),
-+	[REG_THERM_THRSH3]	= REG_FIELD(0x58, 0, 2),
-+	[REG_TORCH_CLAMP]	= REG_FIELD(0xea, 0, 6),
-+};
-+
- static const struct reg_field mvflash_3ch_regs[REG_MAX_COUNT] = {
- 	[REG_STATUS1]		= REG_FIELD(0x08, 0, 7),
- 	[REG_STATUS2]		= REG_FIELD(0x09, 0, 7),
-@@ -862,13 +878,20 @@ static int qcom_flash_led_probe(struct platform_device *pdev)
- 		return rc;
- 	}
- 
--	if (val == FLASH_SUBTYPE_3CH_PM8150_VAL || val == FLASH_SUBTYPE_3CH_PMI8998_VAL) {
-+	if (val == FLASH_SUBTYPE_3CH_PM8150_VAL) {
- 		flash_data->hw_type = QCOM_MVFLASH_3CH;
- 		flash_data->max_channels = 3;
- 		regs = devm_kmemdup(dev, mvflash_3ch_regs, sizeof(mvflash_3ch_regs),
- 				    GFP_KERNEL);
- 		if (!regs)
- 			return -ENOMEM;
-+	} else if (val == FLASH_SUBTYPE_3CH_PMI8998_VAL) {
-+		flash_data->hw_type = QCOM_MVFLASH_3CH;
-+		flash_data->max_channels = 3;
-+		regs = devm_kmemdup(dev, mvflash_3ch_pmi8998_regs,
-+				    sizeof(mvflash_3ch_pmi8998_regs), GFP_KERNEL);
-+		if (!regs)
-+			return -ENOMEM;
- 	} else if (val == FLASH_SUBTYPE_4CH_VAL) {
- 		flash_data->hw_type = QCOM_MVFLASH_4CH;
- 		flash_data->max_channels = 4;
+ 		skb_shinfo(skb)->gso_size = DIV_ROUND_UP(cqe_bcnt - hdrlen, lro_num_seg);
++		skb_shinfo(skb)->gso_segs = lro_num_seg;
+ 		/* Subtract one since we already counted this as one
+ 		 * "regular" packet in mlx5e_complete_rx_cqe()
+ 		 */
 
+---
+base-commit: afd8c2c9e2e29c6c7705635bea2960593976dacc
+change-id: 20250729-mlx5_gso_segs-8e5ea2d4b9b0
+
+Best regards,
 -- 
-2.34.1
+Christoph Paasch <cpaasch@openai.com>
 
