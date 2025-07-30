@@ -1,11 +1,10 @@
 From: Per Larsen <perlarsen@google.com>
-Date: Wed, 30 Jul 2025 21:15:07 +0000
-Subject: [PATCH v9 4/6] KVM: arm64: Mark optional FF-A 1.2 interfaces as
- unsupported
+Date: Wed, 30 Jul 2025 21:15:08 +0000
+Subject: [PATCH v9 5/6] KVM: arm64: Mask response to FFA_FEATURE call
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250730-virtio-msg-ffa-v9-4-7f1b55c8d149@google.com>
+Message-Id: <20250730-virtio-msg-ffa-v9-5-7f1b55c8d149@google.com>
 References: <20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com>
 In-Reply-To: <20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com>
 To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
@@ -19,43 +18,52 @@ Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev,
  sebastianene@google.com, qwandor@google.com, 
  Per Larsen <perlarsen@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753910116; l=1210;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753910116; l=1404;
  i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=vsxUjiUKITemxut7aihGZIJXjAQ850iOOIHve4ASG3E=;
- b=gKWwH6ozG59iqR56sr71aowlsg5jb48PB7dhsPM3n2+nBl+wpjlo4dJv8qRVxTZz7bvHNPEDt
- uDKRggaQq+mD4c4yB9+43JIcp2dm573jv1UsAVQbkMgyDHO60vkhUyg
+ bh=dmZ1vWZl/Z8DB9SSRWT99aiqcW400QLvm9waNv1o6lM=;
+ b=sRoCHIfQXsIH2vwYvzb57woXK8E/mk/95HlK7n8HCQXbVfmha00ufq2QGwvnBeuZDY+siyh6W
+ BliUlx3XlYvAVWOk3fx7g0CEYqej7aqLgCnp+PGIOOxfI3WlJFAhr1l
 X-Developer-Key: i=perlarsen@google.com; a=ed25519;
  pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
 X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Mark FF-A 1.2 interfaces as unsupported lest they get proxied. Also mark
-FFA_EL3_INTR_HANDLE as unsupported as it is only valid for physical
-instances.
+The minimum size and alignment boundary for FFA_RXTX_MAP is returned in
+bit[1:0]. Mask off any other bits in w2 when reading the minimum buffer
+size in hyp_ffa_post_init.
 
+Acked-by: Will Deacon <will@kernel.org>
 Signed-off-by: Per Larsen <perlarsen@google.com>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 2 +-
+ include/linux/arm_ffa.h       | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index 48183fa78014e420372c4fb5e489519bc652bf53..7fe96fe626d630a9009551e8dec1683617acafbd 100644
+index 7fe96fe626d630a9009551e8dec1683617acafbd..6afc7e97a1e1e5e23ccf9cc11553b3fdaf8a51e7 100644
 --- a/arch/arm64/kvm/hyp/nvhe/ffa.c
 +++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -674,6 +674,13 @@ static bool ffa_call_supported(u64 func_id)
- 	case FFA_NOTIFICATION_SET:
- 	case FFA_NOTIFICATION_GET:
- 	case FFA_NOTIFICATION_INFO_GET:
-+	/* Optional interfaces added in FF-A 1.2 */
-+	case FFA_MSG_SEND_DIRECT_REQ2:		/* Optional per 7.5.1 */
-+	case FFA_MSG_SEND_DIRECT_RESP2:		/* Optional per 7.5.1 */
-+	case FFA_CONSOLE_LOG:			/* Optional per 13.1: not in Table 13.1 */
-+	case FFA_PARTITION_INFO_GET_REGS:	/* Optional for virtual instances per 13.1 */
-+	/* Unsupported interfaces added in FF-A 1.2 */
-+	case FFA_EL3_INTR_HANDLE:		/* Only valid for secure physical instances */
- 		return false;
- 	}
+@@ -737,7 +737,7 @@ static int hyp_ffa_post_init(void)
+ 	if (res.a0 != FFA_SUCCESS)
+ 		return -EOPNOTSUPP;
  
+-	switch (res.a2) {
++	switch (res.a2 & FFA_FEAT_RXTX_MIN_SZ_MASK) {
+ 	case FFA_FEAT_RXTX_MIN_SZ_4K:
+ 		min_rxtx_sz = SZ_4K;
+ 		break;
+diff --git a/include/linux/arm_ffa.h b/include/linux/arm_ffa.h
+index e1634897e159cdc208931938649eb0fb04d5a070..cd7ee4df9045dceca1c4e0dca2d533b770b1b056 100644
+--- a/include/linux/arm_ffa.h
++++ b/include/linux/arm_ffa.h
+@@ -128,6 +128,7 @@
+ #define FFA_FEAT_RXTX_MIN_SZ_4K		0
+ #define FFA_FEAT_RXTX_MIN_SZ_64K	1
+ #define FFA_FEAT_RXTX_MIN_SZ_16K	2
++#define FFA_FEAT_RXTX_MIN_SZ_MASK	GENMASK(1, 0)
+ 
+ /* FFA Bus/Device/Driver related */
+ struct ffa_device {
 
 -- 
 2.50.1.552.g942d659e1b-goog
