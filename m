@@ -1,73 +1,94 @@
-From: Per Larsen <perlarsen@google.com>
-Date: Wed, 30 Jul 2025 21:15:09 +0000
-Subject: [PATCH v9 6/6] KVM: arm64: Bump the supported version of FF-A to
- 1.2
+From: Yang Li <yang.li@amlogic.com>
+Date: Thu, 31 Jul 2025 15:59:48 +0800
+Subject: [PATCH v3] Bluetooth: iso: fix socket matching ambiguity between
+ BIS and CIS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250730-virtio-msg-ffa-v9-6-7f1b55c8d149@google.com>
-References: <20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com>
-In-Reply-To: <20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com>
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
- Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Sudeep Holla <sudeep.holla@arm.com>
-Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, ahomescu@google.com, armellel@google.com, 
- arve@android.com, ayrton@google.com, qperret@google.com, 
- sebastianene@google.com, qwandor@google.com, 
- Per Larsen <perlarsen@google.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753910116; l=1481;
- i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=P0vUAR0qDySqTxDDflFhrWZ3pm+eWYd6FxsAvZfn6qs=;
- b=Uz8YatvRCoyf30WVMnYmDCyh1423xGoL0y2Mwx58zD9islDa5g4SWpNsHFCY/S29KYqX8+/88
- Yoo+MJNcEIwDDHcyk8gV0e4EDyTQZ6SjKfdACko6GpOSGmTNztCz2sC
-X-Developer-Key: i=perlarsen@google.com; a=ed25519;
- pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
-X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
+Message-Id: <20250731-bis_cis_coexist-v3-1-1f9bd60ef712@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAHMii2gC/0XMywrCMBCF4Vcps3YkV2Jd+R4ikibTdsA2kpRSK
+ H13oxsXZ/Etzr9DocxU4NrskGnlwmmu0KcGwujngZBjNSihrHBaYsflGb5LtHFZ0EnnjVHRBqO
+ gvt6Zet5+xfujus9pwmXM5P8dK1rkknBVKDF6q7soL0G2+uanVxo4nEOa4Dg+siMdaZ4AAAA=
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Johan Hedberg <johan.hedberg@gmail.com>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>
+Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1753948799; l=2024;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=+Emn1CseXuQvh2qlK9A1nweKtqNCFRhwr83xHhi4y1I=;
+ b=YjKHMd0TaKuzpNAD7T0TbF4kgTx5P7oXIlhOZ6UqkTzFLqUilmcEyvVlUHgc9kBxisD+wBqGe
+ 881mMK2N52RDLiB3litZzn+2cUo3+SEEakmVlJtyBFvHdMlWWWbkDwp
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FF-A version 1.2 introduces the DIRECT_REQ2 ABI. Bump the FF-A version
-preferred by the hypervisor to enable implementation of the 1.2-only
-FFA_MSG_SEND_DIRECT_REQ2 and FFA_MSG_SEND_RESP2 messaging interfaces.
+When both BIS and CIS links exist, their sockets are in
+the BT_LISTEN state.
+dump sock:
+  sk 000000001977ef51 state 6
+  src 10:a5:62:31:05:cf dst 00:00:00:00:00:00
+  sk 0000000031d28700 state 7
+  src 10:a5:62:31:05:cf dst00:00:00:00:00:00
+  sk 00000000613af00e state 4   # listen sock of bis
+  src 10:a5:62:31:05:cf dst 54:00:00:d4:99:30
+  sk 000000001710468c state 9
+  src 10:a5:62:31:05:cf dst 54:00:00:d4:99:30
+  sk 000000005d97dfde state 4   #listen sock of cis
+  src 10:a5:62:31:05:cf dst 00:00:00:00:00:00
 
-Co-developed-by: Ayrton Munoz <ayrton@google.com>
-Signed-off-by: Ayrton Munoz <ayrton@google.com>
-Acked-by: Will Deacon <will@kernel.org>
-Signed-off-by: Per Larsen <perlarsen@google.com>
+To locate the CIS socket correctly, check both the BT_LISTEN
+state and whether dst addr is BDADDR_ANY.
+
+Link: https://github.com/bluez/bluez/issues/1224
+
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ net/bluetooth/iso.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index 6afc7e97a1e1e5e23ccf9cc11553b3fdaf8a51e7..a9d827ec5a11743c86ba3f36bf3671cbecd4f3c1 100644
---- a/arch/arm64/kvm/hyp/nvhe/ffa.c
-+++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -934,7 +934,7 @@ int hyp_ffa_init(void *pages)
+diff --git a/net/bluetooth/iso.c b/net/bluetooth/iso.c
+index eaffd25570e3..9a4dea03af8c 100644
+--- a/net/bluetooth/iso.c
++++ b/net/bluetooth/iso.c
+@@ -1919,6 +1919,11 @@ static bool iso_match_pa_sync_flag(struct sock *sk, void *data)
+ 	return test_bit(BT_SK_PA_SYNC, &iso_pi(sk)->flags);
+ }
  
- 	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
- 		.a0 = FFA_VERSION,
--		.a1 = FFA_VERSION_1_1,
-+		.a1 = FFA_VERSION_1_2,
- 	}, &res);
- 	if (res.a0 == FFA_RET_NOT_SUPPORTED)
- 		return 0;
-@@ -955,10 +955,10 @@ int hyp_ffa_init(void *pages)
- 	if (FFA_MAJOR_VERSION(res.a0) != 1)
- 		return -EOPNOTSUPP;
++static bool iso_match_dst(struct sock *sk, void *data)
++{
++	return !bacmp(&iso_pi(sk)->dst, (bdaddr_t *)data);
++}
++
+ static void iso_conn_ready(struct iso_conn *conn)
+ {
+ 	struct sock *parent = NULL;
+@@ -1981,7 +1986,7 @@ static void iso_conn_ready(struct iso_conn *conn)
  
--	if (FFA_MINOR_VERSION(res.a0) < FFA_MINOR_VERSION(FFA_VERSION_1_1))
-+	if (FFA_MINOR_VERSION(res.a0) < FFA_MINOR_VERSION(FFA_VERSION_1_2))
- 		hyp_ffa_version = res.a0;
- 	else
--		hyp_ffa_version = FFA_VERSION_1_1;
-+		hyp_ffa_version = FFA_VERSION_1_2;
+ 		if (!parent)
+ 			parent = iso_get_sock(&hcon->src, BDADDR_ANY,
+-					      BT_LISTEN, NULL, NULL);
++					      BT_LISTEN, iso_match_dst, BDADDR_ANY);
  
- 	tx = pages;
- 	pages += KVM_FFA_MBOX_NR_PAGES * PAGE_SIZE;
+ 		if (!parent)
+ 			return;
+@@ -2220,7 +2225,7 @@ int iso_connect_ind(struct hci_dev *hdev, bdaddr_t *bdaddr, __u8 *flags)
+ 		}
+ 	} else {
+ 		sk = iso_get_sock(&hdev->bdaddr, BDADDR_ANY,
+-				  BT_LISTEN, NULL, NULL);
++				  BT_LISTEN, iso_match_dst, BDADDR_ANY);
+ 	}
+ 
+ done:
 
+---
+base-commit: 9c533991fe15be60ad9f9a7629c25dbc5b09788d
+change-id: 20250731-bis_cis_coexist-717a442d5c42
+
+Best regards,
 -- 
-2.50.1.552.g942d659e1b-goog
+Yang Li <yang.li@amlogic.com>
 
