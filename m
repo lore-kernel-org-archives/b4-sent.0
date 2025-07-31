@@ -1,120 +1,153 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Thu, 31 Jul 2025 16:59:26 -0500
-Subject: [PATCH v7 3/3] PCI: tegra: Allow building as a module
+From: Demi Marie Obenour <demiobenour@gmail.com>
+Date: Thu, 31 Jul 2025 19:03:29 -0400
+Subject: [PATCH RFC net] af_unix: allow disabling connections to abstract
+ sockets
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250731-pci-tegra-module-v7-3-cad4b088b8fb@gmail.com>
-References: <20250731-pci-tegra-module-v7-0-cad4b088b8fb@gmail.com>
-In-Reply-To: <20250731-pci-tegra-module-v7-0-cad4b088b8fb@gmail.com>
-To: Thomas Gleixner <tglx@linutronix.de>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, Rob Herring <robh@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20250731-no-abstract-v1-1-a4e6e23521a3@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAED2i2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDc2ND3bx83cSk4pKixOQSXTMzc6NUi8QUA+NUQyWgjoKi1LTMCrBp0Up
+ Bbs4gsbzUEqXY2loAaxSdmmkAAAA=
+X-Change-ID: 20250731-no-abstract-6672e8ad03e1
+To: Kuniyuki Iwashima <kuniyu@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Demi Marie Obenour <demiobenour@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1753999168; l=2994;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=NwL1zgJJcNaVJMzJ4xbw0cEqWe0gRrA6/IT+IAjXFD0=;
- b=Hx8LT+bsI6wEqRQWtMV1xj/rCHIxQHr0EGrVFgqMOAZ06cbWwoRRXKHoXQuYwJimkhWxRNDBq
- zBC82thbtqnBHEyBd9EIgxwJqnKoUfNVULsJGILBhNI5JvNIZQr8JGJ
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754003009; l=4404;
+ i=demiobenour@gmail.com; s=20250731; h=from:subject:message-id;
+ bh=P7P0D821FG7jnQ4Yv8OJFhXxaN7sjGrTD1AHkxfAEfw=;
+ b=7rRHXR7v2m3QdnngMduiUvvCOD7xiUK8I0VSnsA1PQXg1x317xH0h1h7Aw1zso3eSG6JCaPHR
+ LJ9H4IVrLe9C20Soet8Ggre9zg2ki4UH9APzOL0+LwTZSzFg/5wwDcL
+X-Developer-Key: i=demiobenour@gmail.com; a=ed25519;
+ pk=4iGY+ynEKxIfs+fIUK9EzsvZ44yGE0GvXLeLTPKKPhI=
+X-Endpoint-Received: by B4 Relay for demiobenour@gmail.com/20250731 with auth_id=473
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This changes the module macro back to builtin, which does not define an
-exit function. This will prevent the module from being unloaded. There
-are concerns with modules not cleaning up IRQs on unload, thus this
-needs specifically disallowed. The remove callback is also dropped as it
-is unused.
+Abstract sockets have been a security risk in the past.  Since they
+aren't associated with filesystem paths, they bypass all filesystem
+access controls.  This means that they can allow file descriptors to be
+passed out of sandboxes that do not allow connecting to named sockets.
+On systems using the Nix daemon, this allowed privilege escalation to
+root, and fixing the bug required Nix to use a complete user-mode
+network stack.  Furthermore, anyone can bind to any abstract socket
+path, so anyone connecting to an abstract socket has no idea who they
+are connecting to.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+This allows disabling the security hole by preventing all connections to
+abstract sockets.  For compatibility, it is still possible to bind to
+abstract socket paths, but such sockets will never receive any
+connections or datagrams.
+
+Signed-off-by: Demi Marie Obenour <demiobenour@gmail.com>
 ---
- drivers/pci/controller/Kconfig     |  2 +-
- drivers/pci/controller/pci-tegra.c | 35 ++++-------------------------------
- 2 files changed, 5 insertions(+), 32 deletions(-)
+ net/unix/Kconfig   | 12 ++++++++++++
+ net/unix/af_unix.c | 18 +++++++++++++-----
+ 2 files changed, 25 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/pci/controller/Kconfig b/drivers/pci/controller/Kconfig
-index 886f6f43a895f8f56ce3bcabbea382b6cd3b15c2..abdc17ff7b8f54c6b1cd3ee6556753f68ae546e9 100644
---- a/drivers/pci/controller/Kconfig
-+++ b/drivers/pci/controller/Kconfig
-@@ -225,7 +225,7 @@ config PCI_HYPERV_INTERFACE
- 	  driver.
+diff --git a/net/unix/Kconfig b/net/unix/Kconfig
+index 6f1783c1659b81c3c3c89cb7634a9ce780144f26..c34f222f21b097ce4a735ce02d8ce11fc71bde19 100644
+--- a/net/unix/Kconfig
++++ b/net/unix/Kconfig
+@@ -16,6 +16,18 @@ config UNIX
  
- config PCI_TEGRA
--	bool "NVIDIA Tegra PCIe controller"
-+	tristate "NVIDIA Tegra PCIe controller"
- 	depends on ARCH_TEGRA || COMPILE_TEST
- 	depends on PCI_MSI
- 	select IRQ_MSI_LIB
-diff --git a/drivers/pci/controller/pci-tegra.c b/drivers/pci/controller/pci-tegra.c
-index 467ddc701adce28c5edeb6d1b423ce56068f069a..c020822bdf0b72c4cc56817a9e689256b964e9cd 100644
---- a/drivers/pci/controller/pci-tegra.c
-+++ b/drivers/pci/controller/pci-tegra.c
-@@ -2546,12 +2546,6 @@ static const struct seq_operations tegra_pcie_ports_sops = {
+ 	  Say Y unless you know what you are doing.
  
- DEFINE_SEQ_ATTRIBUTE(tegra_pcie_ports);
++config UNIX_ABSTRACT
++	bool "UNIX: abstract sockets"
++	depends on UNIX
++	default y
++	help
++	  Support for "abstract" sockets (those not bound to a path).
++	  These have been used in the past, but they can also represent
++	  a security risk because anyone can bind to any abstract
++	  socket.  If you disable this option, programs can still bind
++	  to abstract sockets, but any attempt to connect to one fails
++	  with -ECONNREFUSED.
++
+ config	AF_UNIX_OOB
+ 	bool "UNIX: out-of-bound messages"
+ 	depends on UNIX
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index 52b155123985a18632fc12dc986150e38f2fee70..81d55849dac58e4e68c28ed03a9bc978777cfe4f 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -332,7 +332,8 @@ static inline void unix_release_addr(struct unix_address *addr)
+  *		- if started by zero, it is abstract name.
+  */
  
--static void tegra_pcie_debugfs_exit(struct tegra_pcie *pcie)
--{
--	debugfs_remove_recursive(pcie->debugfs);
--	pcie->debugfs = NULL;
--}
--
- static void tegra_pcie_debugfs_init(struct tegra_pcie *pcie)
+-static int unix_validate_addr(struct sockaddr_un *sunaddr, int addr_len)
++static int unix_validate_addr(struct sockaddr_un *sunaddr, int addr_len,
++			      bool bind)
  {
- 	pcie->debugfs = debugfs_create_dir("pcie", NULL);
-@@ -2625,29 +2619,6 @@ static int tegra_pcie_probe(struct platform_device *pdev)
- 	return err;
+ 	if (addr_len <= offsetof(struct sockaddr_un, sun_path) ||
+ 	    addr_len > sizeof(*sunaddr))
+@@ -341,6 +342,9 @@ static int unix_validate_addr(struct sockaddr_un *sunaddr, int addr_len)
+ 	if (sunaddr->sun_family != AF_UNIX)
+ 		return -EINVAL;
+ 
++	if (!bind && !IS_ENABLED(CONFIG_UNIX_ABSTRACT) && !sunaddr->sun_path[0])
++		return -ECONNREFUSED; /* pretend nobody is listening */
++
+ 	return 0;
  }
  
--static void tegra_pcie_remove(struct platform_device *pdev)
--{
--	struct tegra_pcie *pcie = platform_get_drvdata(pdev);
--	struct pci_host_bridge *host = pci_host_bridge_from_priv(pcie);
--	struct tegra_pcie_port *port, *tmp;
--
--	if (IS_ENABLED(CONFIG_DEBUG_FS))
--		tegra_pcie_debugfs_exit(pcie);
--
--	pci_stop_root_bus(host->bus);
--	pci_remove_root_bus(host->bus);
--	pm_runtime_put_sync(pcie->dev);
--	pm_runtime_disable(pcie->dev);
--
--	if (IS_ENABLED(CONFIG_PCI_MSI))
--		tegra_pcie_msi_teardown(pcie);
--
--	tegra_pcie_put_resources(pcie);
--
--	list_for_each_entry_safe(port, tmp, &pcie->ports, list)
--		tegra_pcie_port_free(port);
--}
--
- static int tegra_pcie_pm_suspend(struct device *dev)
- {
- 	struct tegra_pcie *pcie = dev_get_drvdata(dev);
-@@ -2751,6 +2722,8 @@ static struct platform_driver tegra_pcie_driver = {
- 		.pm = &tegra_pcie_pm_ops,
- 	},
- 	.probe = tegra_pcie_probe,
--	.remove = tegra_pcie_remove,
- };
--module_platform_driver(tegra_pcie_driver);
-+builtin_platform_driver(tegra_pcie_driver);
-+MODULE_AUTHOR("Thierry Reding <treding@nvidia.com>");
-+MODULE_DESCRIPTION("NVIDIA PCI host controller driver");
-+MODULE_LICENSE("GPL");
+@@ -1253,6 +1257,8 @@ static struct sock *unix_find_other(struct net *net,
+ 
+ 	if (sunaddr->sun_path[0])
+ 		sk = unix_find_bsd(sunaddr, addr_len, type, flags);
++	else if (!IS_ENABLED(CONFIG_UNIX_ABSTRACT))
++		sk = ERR_PTR(-EPERM);
+ 	else
+ 		sk = unix_find_abstract(net, sunaddr, addr_len, type);
+ 
+@@ -1444,7 +1450,7 @@ static int unix_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
+ 	    sunaddr->sun_family == AF_UNIX)
+ 		return unix_autobind(sk);
+ 
+-	err = unix_validate_addr(sunaddr, addr_len);
++	err = unix_validate_addr(sunaddr, addr_len, true);
+ 	if (err)
+ 		return err;
+ 
+@@ -1493,7 +1499,7 @@ static int unix_dgram_connect(struct socket *sock, struct sockaddr *addr,
+ 		goto out;
+ 
+ 	if (addr->sa_family != AF_UNSPEC) {
+-		err = unix_validate_addr(sunaddr, alen);
++		err = unix_validate_addr(sunaddr, alen, false);
+ 		if (err)
+ 			goto out;
+ 
+@@ -1612,7 +1618,7 @@ static int unix_stream_connect(struct socket *sock, struct sockaddr *uaddr,
+ 	long timeo;
+ 	int err;
+ 
+-	err = unix_validate_addr(sunaddr, addr_len);
++	err = unix_validate_addr(sunaddr, addr_len, false);
+ 	if (err)
+ 		goto out;
+ 
+@@ -2048,7 +2054,9 @@ static int unix_dgram_sendmsg(struct socket *sock, struct msghdr *msg,
+ 	}
+ 
+ 	if (msg->msg_namelen) {
+-		err = unix_validate_addr(msg->msg_name, msg->msg_namelen);
++		err = unix_validate_addr(msg->msg_name,
++					 msg->msg_namelen,
++					 false);
+ 		if (err)
+ 			goto out;
+ 
 
+---
+base-commit: 038d61fd642278bab63ee8ef722c50d10ab01e8f
+change-id: 20250731-no-abstract-6672e8ad03e1
+
+Best regards,
 -- 
-2.50.1
+Demi Marie Obenour <demiobenour@gmail.com>
 
