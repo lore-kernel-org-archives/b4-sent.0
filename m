@@ -1,146 +1,67 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Fri, 01 Aug 2025 15:59:21 +0800
-Subject: [PATCH v7 2/2] hwmon: document: add gpd-fan
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v2 0/2] sdm845: Use definitions and deduplicate
+Date: Fri, 01 Aug 2025 10:21:38 +0200
+Message-Id: <20250801-sdm845-msmid-v2-0-9f44d125ee44@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250801-gpd_fan-v7-2-548b9d8f57d7@uniontech.com>
-References: <20250801-gpd_fan-v7-0-548b9d8f57d7@uniontech.com>
-In-Reply-To: <20250801-gpd_fan-v7-0-548b9d8f57d7@uniontech.com>
-To: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
- Jonathan Corbet <corbet@lwn.net>, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
-Cc: linux-kernel@vger.kernel.org, linux-hwmon@vger.kernel.org, 
- linux-doc@vger.kernel.org, Celeste Liu <CoelacanthusHex@gmail.com>, 
- Yao Zi <ziyao@disroot.org>, Derek John Clark <derekjohn.clark@gmail.com>, 
- WangYuli <wangyuli@uniontech.com>, Jun Zhan <zhanjun@uniontech.com>, 
- =?utf-8?q?Marcin_Str=C4=85gowski?= <marcin@stragowski.com>, 
- someone5678 <someone5678.dev@gmail.com>, 
- Justin Weiss <justin@justinweiss.com>, 
- Antheas Kapenekakis <lkml@antheas.dev>, command_block <mtf@ik.me>, 
- derjohn <himself@derjohn.de>
+X-B4-Tracking: v=1; b=H4sIABJ5jGgC/3XMQQ7CIBCF4as0sxYDSGXqynuYLhRGOwvaBhpSb
+ bi72L3L/yXv2yBRZEpwaTaIlDnxNNbQhwbccB9fJNjXBi11K+1JieQDmlaEFNgL85CIVlmN3kG
+ 9zJGevO7cra89cFqm+N71rH7rHygrIUWHBjtyZPFMV155OboP9KWUL3uzLwSmAAAA
+X-Change-ID: 20250731-sdm845-msmid-4b08871728dc
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754035167; l=3233;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=YeZ2S1Xd3SzI2j73X7MPaeHtszEUNsz3Uuv4BXy3AyA=;
- b=/HfULSeyuj1YoBPbO5SksgzxxgGNRcmuqH9se1nB6oBtbGdX4YbSJClAdd+s3Qd4yuGVabURr
- ggH/4bAvzfFA8HLcClUoeW4VmuFVs8KGRZccTp6LmtEYQsXd6KEPNbp
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1145; i=david@ixit.cz;
+ h=from:subject:message-id; bh=cbKMaeNFnC7Uv8CxN51Vo7VVhMeUMuTAk7cQCsUiu9g=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBojHkSBWvNXNdLcMUpN8bt8KueWCleQmK/GcdTZ
+ AlZM4DI2COJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaIx5EgAKCRBgAj/E00kg
+ cqNrD/4hy2MAe4IilwbDSw1HeXkm2bI8unrs3isoiJmmVRVohN0QVFHgKno1CJZAi1AXBwVVNAT
+ LOMVtL6EvdmTOh+fwmEv88bBcbQhsevS0AJ9i+FgCPmV0WluT2anXH0ouuW3dLMiceMrhLfxbKW
+ COdP6fTALRJRog+G4dIvN9lgdSsLGdjs1cDmZnxFO6sZdUmLES8K1n2eMUS7Up3HbGmHUykgxh8
+ 9fYnEMEj3REFY/mKQMPmjUUn9yOrSGPjttHRm6yEt844yNIKdbbkfc8DzB79/F6joNM4WCux61o
+ f3o/mPGda/XALNqb/SYX+4GvwLQ71JwsRA9c2k/cvlriwx8ExRU7MdPMS2IE5q16UhQr0bXAyOF
+ LwQSpcqf/PmRl5/8LLDtrgIpHmFJxkR/jzfC9Yk6kly/kIVKBa+5UGN71Mn5A3GftKUpJ0DpGXH
+ FY6W0l+xFgjlBOW+b6WPN01vzdOhuHmpeA4yVeM/Dr4m/PGng6/+SP9H+zm+50fimr3WDjWXgkf
+ 0oflYoKUssidXxQqxxbJ126sv2c7k4KjsHmjUE0ZT0SV8CVDLIzk/1UBX/+8qNQbzMJdVs8k1Rg
+ 6cSsO2i1O3CCXF7e999mynmI71HFdjE8gRGYFNZcyrPUPJhs7KSA/9gxcEuK2o09POMY3SCmUtQ
+ Rgcz+kfLUVwXuGQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add GPD fan driver document
+Small cleanup.
 
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- Documentation/hwmon/gpd-fan.rst | 71 +++++++++++++++++++++++++++++++++++++++++
- Documentation/hwmon/index.rst   |  1 +
- MAINTAINERS                     |  1 +
- 3 files changed, 73 insertions(+)
+Changes in v2:
+- Added missing include.
+- Link to v1: https://lore.kernel.org/r/20250731-sdm845-msmid-v1-0-98489ece786e@ixit.cz
 
-diff --git a/Documentation/hwmon/gpd-fan.rst b/Documentation/hwmon/gpd-fan.rst
-new file mode 100644
-index 0000000000000000000000000000000000000000..82f064c80aac485348f7c5179a9c4104fd6a4745
---- /dev/null
-+++ b/Documentation/hwmon/gpd-fan.rst
-@@ -0,0 +1,71 @@
-+.. SPDX-License-Identifier: GPL-2.0-or-later
-+
-+Kernel driver gpd-fan
-+=========================
-+
-+Author:
-+    - Cryolitia PukNgae <cryolitia@uniontech.com>
-+
-+Description
-+------------
-+
-+Handheld devices from Shenzhen GPD Technology Co., Ltd. provide fan readings and fan control through
-+their embedded controllers.
-+
-+Supported devices
-+-----------------
-+
-+Currently the driver supports the following handhelds:
-+
-+ - GPD Win Mini (7840U)
-+ - GPD Win Mini (8840U)
-+ - GPD Win Mini (HX370)
-+ - GPD Pocket 4
-+ - GPD Duo
-+ - GPD Win Max 2 (6800U)
-+ - GPD Win Max 2 2023 (7840U)
-+ - GPD Win Max 2 2024 (8840U)
-+ - GPD Win Max 2 2025 (HX370)
-+ - GPD Win 4 (6800U)
-+ - GPD Win 4 (7840U)
-+
-+Module parameters
-+-----------------
-+
-+gpd_fan_board
-+  Force specific which module quirk should be used.
-+  Use it like "gpd_fan_board=wm2".
-+
-+   - wm2
-+       - GPD Win 4 (7840U)
-+       - GPD Win Max 2 (6800U)
-+       - GPD Win Max 2 2023 (7840U)
-+       - GPD Win Max 2 2024 (8840U)
-+       - GPD Win Max 2 2025 (HX370)
-+   - win4
-+       - GPD Win 4 (6800U)
-+   - win_mini
-+       - GPD Win Mini (7840U)
-+       - GPD Win Mini (8840U)
-+       - GPD Win Mini (HX370)
-+       - GPD Pocket 4
-+       - GPD Duo
-+
-+Sysfs entries
-+-------------
-+
-+The following attributes are supported:
-+
-+fan1_input
-+  Read Only. Reads current fan RPM.
-+
-+pwm1_enable
-+  Read/Write. Enable manual fan control. Write "0" to disable control and run at
-+  full speed. Write "1" to set to manual, write "2" to let the EC control decide
-+  fan speed. Read this attribute to see current status.
-+
-+pwm1
-+  Read/Write. Read this attribute to see current duty cycle in the range [0-255].
-+  When pwm1_enable is set to "1" (manual) write any value in the range [0-255]
-+  to set fan speed.
-+
-diff --git a/Documentation/hwmon/index.rst b/Documentation/hwmon/index.rst
-index d292a86ac5da902cad02c1965c90f5de530489df..ce4419f064e1368740387af70af38a85cadd952d 100644
---- a/Documentation/hwmon/index.rst
-+++ b/Documentation/hwmon/index.rst
-@@ -82,6 +82,7 @@ Hardware Monitoring Kernel Drivers
-    gigabyte_waterforce
-    gsc-hwmon
-    gl518sm
-+   gpd-fan
-    gxp-fan-ctrl
-    hih6130
-    hp-wmi-sensors
-diff --git a/MAINTAINERS b/MAINTAINERS
-index e81eeb61d49b282a5a2dc701f1c932c3a82d8b85..26da2b93173477716fe3abc525078eebeaed3f45 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -10338,6 +10338,7 @@ GPD FAN DRIVER
- M:	Cryolitia PukNgae <cryolitia@uniontech.com>
- L:	linux-hwmon@vger.kernel.org
- S:	Maintained
-+F:	Documentation/hwmon/gpd-fan.rst
- F:	drivers/hwmon/gpd-fan.c
- 
- GPD POCKET FAN DRIVER
+---
+David Heidelberg (2):
+      arm64: dts: qcom: sdm845*: Use definition for msm-id
+      arm64: dts: qcom: sdm845-oneplus: Deduplicate shared entries
 
+ arch/arm64/boot/dts/qcom/sdm845-db845c.dts                   | 3 ++-
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi          | 4 ++++
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts        | 2 --
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts           | 2 --
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts            | 3 ++-
+ arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi        | 3 ++-
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 3 ++-
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts           | 3 ++-
+ 8 files changed, 14 insertions(+), 9 deletions(-)
+---
+base-commit: 84b92a499e7eca54ba1df6f6c6e01766025943f1
+change-id: 20250731-sdm845-msmid-4b08871728dc
+
+Best regards,
 -- 
-2.50.1
+David Heidelberg <david@ixit.cz>
 
