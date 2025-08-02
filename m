@@ -1,97 +1,45 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Fri, 01 Aug 2025 10:21:40 +0200
-Subject: [PATCH v2 2/2] arm64: dts: qcom: sdm845-oneplus: Deduplicate
- shared entries
+From: Christoph Paasch <cpaasch@openai.com>
+Subject: [PATCH mptcp-next 0/2] mptcp: Add support for SO_MAX_PACING_RATE
+Date: Sat, 02 Aug 2025 16:52:21 -0700
+Message-Id: <20250802-b4-mptcp_setsockopt-v1-0-50d4905a4c2b@openai.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250801-sdm845-msmid-v2-2-9f44d125ee44@ixit.cz>
-References: <20250801-sdm845-msmid-v2-0-9f44d125ee44@ixit.cz>
-In-Reply-To: <20250801-sdm845-msmid-v2-0-9f44d125ee44@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIALWkjmgC/x2MQQqDMBAAvyJ7diFqS7RfESk22dRFmoRsKIL4d
+ 0OOAzNzglBiEng1JyT6s3DwBbq2AbOt/kvItjD0qn8qPXT4eeAvZhPfQlmC2UPMaAft3DRaO6k
+ RShkTOT7qdYZqo6cjw3JdN61yQuFxAAAA
+X-Change-ID: 20250731-b4-mptcp_setsockopt-d37ff98dd908
+To: MPTCP Upstream <mptcp@lists.linux.dev>, 
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>
+Cc: Christoph Paasch <cpaasch@openai.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2251; i=david@ixit.cz;
- h=from:subject:message-id; bh=ZJywnoUp3uvB3aKb5+Bvj63no54fBuuORi0qPRukfHI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBojHkS0aszmT0r1lv705M3GHf3q3UeTInv1J0Hj
- 7xFX7oWI7SJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaIx5EgAKCRBgAj/E00kg
- cv2rD/9CHE4cDtJn3+z/h05RzJ1b8vmIHMrSj5jE1WuEDCeSh5Vq98jfSd7vzj8dqKP3H9+XFOH
- 7L0AULrDXhsb9L9GyKl0ATpPeJs7O0eD4v0eV30eQFtSngbVq9XhPNpWSn2jbhUq30cx7M0v2bw
- zQ4IEL0U8pUFEiL+S29kXgaSquxtxuwSyrA17dDc+O+ve468nbAC3Fd7YAZOH9rdy5elbVN8imh
- 6cWshAvCBLxyY7Rr2SbCN+342Z+JSarsJtsJC5uFEZOA/EmwlPA9nwcVSvG0nqAIGkzdGqBxyCE
- /C3r+VuR4112+IoK6gGibeznr6g1EGwDNkYLH+wSduWdshoh+THNyeaGYHEoVgV8bslRu1Sy6KN
- E+GDquRVpjUNhpN9kLmaiDJGjqdyrajSY9WReWgnUQPY7lsoDWd3HhL25GZd2fXO0UbgqvYyjFR
- qxzDffeRwWPfFYiDD3rky1lyJbPNHtap26RCDBK+75Y1mMeRQUpcGdzsAUY0nKflcqdNGAgC7JK
- qtPcRlmgsovbwaGNRzxv7hrYy212SqS4GeIhbcHCS3seugDe7//eWhKFS4g2HGMySBpld3i/vpS
- 5vLbUQdbbri1gSKKygCGqS9PS5Uh4tntFWGpEHklLcoO+j9hE70mL8CS+4YkKe7YrlHNWyc3CRM
- M9S3c+II2GLSliQ==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754178751; l=610;
+ i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
+ bh=7wVYYYqU8hSQqetWg1mmRyE9YdNzO1iyrlX3LlU2MSw=;
+ b=Ca2j/JLbxGLv8ata9QbPz48m/ekJWzWctVviGnhOCETcUqW7TjrzR1G5mubeQdHL6NVV1ARYh
+ 7F1zMDCSXegBCAr1JPnw7fq2smqoyaGUp+5v6u4qVBMP55QdBWgWzrc
+X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
+ pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
+X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use the definition for qcom,msm-id and put them into the common dtsi.
+Pass it to all subflows. Also, add a selftest.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Christoph Paasch <cpaasch@openai.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi   | 4 ++++
- arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts | 2 --
- arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts    | 2 --
- 3 files changed, 4 insertions(+), 4 deletions(-)
+Christoph Paasch (2):
+      mptcp: Add support for SO_MAX_PACING_RATE
+      selftests: Add tests for SO_MAX_PACING_RATE
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index b118d666e535a433f44b66c71b36e55df2ce5c80..dcfffb271fcf3146aeabda8fc19e61b456b76887 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -7,6 +7,7 @@
- 
- /dts-v1/;
- 
-+#include <dt-bindings/arm/qcom,ids.h>
- #include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/leds/common.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-@@ -21,6 +22,9 @@
- /delete-node/ &rmtfs_mem;
- 
- / {
-+	chassis-type = "handset";
-+	qcom,msm-id = <QCOM_ID_SDM845 0x20001>;
-+
- 	aliases {
- 		serial0 = &uart9;
- 		serial1 = &uart6;
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts b/arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts
-index 4005e04d998a40d25a64d652a526bf93efc20332..cd5546b69d13d8d7f29373aebab1cfda79666900 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts
-@@ -10,8 +10,6 @@
- / {
- 	model = "OnePlus 6";
- 	compatible = "oneplus,enchilada", "qcom,sdm845";
--	chassis-type = "handset";
--	qcom,msm-id = <0x141 0x20001>;
- 	qcom,board-id = <8 0 17819 22>;
- 
- 	battery: battery {
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-index 9471ada0d6ad8bd44cc58a6efa07f7eb27921af9..b4212626b42954e10974ec087db2b42b07979f72 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-@@ -10,8 +10,6 @@
- / {
- 	model = "OnePlus 6T";
- 	compatible = "oneplus,fajita", "qcom,sdm845";
--	chassis-type = "handset";
--	qcom,msm-id = <0x141 0x20001>;
- 	qcom,board-id = <8 0 18801 41>;
- 
- 	battery: battery {
+ net/mptcp/sockopt.c                               | 31 +++++++++-
+ tools/testing/selftests/net/mptcp/mptcp_sockopt.c | 74 +++++++++++++++++++++++
+ 2 files changed, 104 insertions(+), 1 deletion(-)
+---
+base-commit: 9a3f9440d3f1ba4d323e6dc3f503e453b15a4edc
+change-id: 20250731-b4-mptcp_setsockopt-d37ff98dd908
 
+Best regards,
 -- 
-2.50.1
+Christoph Paasch <cpaasch@openai.com>
 
