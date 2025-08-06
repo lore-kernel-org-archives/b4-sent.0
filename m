@@ -1,75 +1,81 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Wed, 06 Aug 2025 15:08:02 +0800
-Subject: [PATCH] cpupower: repair mangled powercap comment
+From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Subject: [PATCH v6 0/2] riscv: Use GCR.U timer device as clocksource
+Date: Wed, 06 Aug 2025 14:26:38 +0200
+Message-Id: <20250806-riscv-time-mmio-v6-0-2df0e8219998@htecgroup.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250806-mangled_cpupower-v1-1-1a559130326b@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAFH/kmgC/x2MWwqAIBAAryL7naBCZV0lIsq2WigVpQeEd0/6n
- IGZFyIGwggteyHgRZGczSALBmYb7Yqc5syghCqFFhU/stxxHow/vbsx8FLqqtbNoic1Qc58wIW
- ef9n1KX0jUQ8aYgAAAA==
-X-Change-ID: 20250806-mangled_cpupower-5186789f8b2b
-To: Thomas Renninger <trenn@suse.com>, Shuah Khan <shuah@kernel.org>, 
- "John B. Wyatt IV" <jwyatt@redhat.com>, John Kacur <jkacur@redhat.com>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Wangyuli@uniontech.com, Guanwentao@uniontech.com, Zhanjun@uniontech.com, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAP5Jk2gC/2XNQQ7CIBCF4asY1mKAALauvIdxgTC0s6A0UImm6
+ d2ldWFil/9L5puZZEgImVwOM0lQMGMcaujjgdjeDB1QdLWJYEIxKSRNmG2hEwagIWCkSosGmLe
+ mMZ7UqzGBx9cm3u61e8xTTO/tQZHr+rUU31tFUkbtg1kvWiGc1td+Atul+BxPNgayekX9jDPne
+ 0NVowXHfSOUcQr+jWVZPgdTiCT2AAAA
+X-Change-ID: 20250424-riscv-time-mmio-5628e0fca8af
+To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
+ Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-riscv@lists.infradead.org, 
+ Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754464082; l=1836;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=z8rySj9NTsoDFQbVKMmerKhopsqj2e1f45A+CAKIILE=;
- b=EPWBB+fmsrLX1f39+XlFGZVEiToICCSR/A6CF96dUJ1/N3zHxAYwSC6iBslGKvtIxG0jSlxwe
- tufnSpkl2mHDyJnptQnHm/rwA0jmLlP31QewFSc0jEaQLddbEIWCX3v
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754483238; l=2047;
+ i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
+ bh=doBgBoI1eDAhaG6OMnM5npExQ5Xq3oY1DJugrOTICDs=;
+ b=9DPdV5c9qizD7HjzGYQ8LKXMZ8Fn/tvCYTz34vZBapVKFt+CdKe2JKRgd4pIoZ8l/X4tZUFPb
+ 99CMc541WKPC/CYMLlzCWsSAC3wwKlWrsVhrmL2gAi6thDEqvJr/eKW
+X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
+ pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
+X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The current comment exhibits clear patch application artifacts:
-1. A stray '-' prefix indicating failed line removal
-2. Broken sentence structure from improper context patching
+This series adds bindings for the GCR.U timer device and corresponding
+driver support. Accessing the memory mapped mtime register in the GCR.U
+region should be faster than trapping to M mode each time the timer
+needs to be read.
 
-What appears to be version control residue has persisted since its
-initial introduction and through the 2022 kernel submission[1]. While
-my archaeological efforts only trace back to the 2017 openSUSE patch[2],
-the corrupted syntax suggests even older origins that remain elusive -
-perhaps maintainers with longer institutional memory could shed light
-on its provenance.
-
-Restore grammatical sanity by:
-- Removing the redundant second line with its leading '-'
-- Preserving only the primary statement about RAPL hardcoding
-- Eliminating the fragmented "should show up" clause
-
-The result reflects reality without speculative future-proofing.
-
-1. https://lore.kernel.org/all/20221123111810.16017-2-trenn@suse.de/
-2. https://build.opensuse.org/request/show/535512
-
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
- tools/power/cpupower/lib/powercap.c | 2 --
- 1 file changed, 2 deletions(-)
+Changes in v6:
+- Rename mti,gcru to mips,p8700-gcru
+- Link to v5: https://lore.kernel.org/r/20250711-riscv-time-mmio-v5-0-9ed1f825ad5e@htecgroup.com
 
-diff --git a/tools/power/cpupower/lib/powercap.c b/tools/power/cpupower/lib/powercap.c
-index 94a0c69e55ef5e4291b13a4218e706fa8d14e6a7..609943c829efce8045d97097b5f5e9ec86d0f519 100644
---- a/tools/power/cpupower/lib/powercap.c
-+++ b/tools/power/cpupower/lib/powercap.c
-@@ -87,8 +87,6 @@ int powercap_set_enabled(int mode)
- 
- /*
-  * Hardcoded, because rapl is the only powercap implementation
--- * this needs to get more generic if more powercap implementations
-- * should show up
-  */
- int powercap_get_driver(char *driver, int buflen)
- {
+Changes in v5:
+- Fixed build issues on 32-bit RISC-V and sparse warnings
+- Remove clint_time_val and clint.h, replace with riscv_time_val
+- Depend on RISCV_TIMER in Kconfig
+Changes in v4:
+- Remove "select" from mti,gcru.yaml.
+- Refactor the driver to use function pointers instead of static keys.
+
+Previous versions:
+v1: https://lore.kernel.org/lkml/20241227150056.191794-1-arikalo@gmail.com/#t
+v2: https://lore.kernel.org/linux-riscv/20250409143816.15802-1-aleksa.paunovic@htecgroup.com/
+v3: https://lore.kernel.org/linux-riscv/DU0PR09MB61968695A2A3146EE83B7708F6BA2@DU0PR09MB6196.eurprd09.prod.outlook.com/
+v4: https://lore.kernel.org/r/20250514-riscv-time-mmio-v4-0-cb0cf2922d66@htecgroup.com
+v5: https://lore.kernel.org/r/20250711-riscv-time-mmio-v5-0-9ed1f825ad5e@htecgroup.com
 
 ---
-base-commit: 6bcdbd62bd56e6d7383f9e06d9d148935b3c9b73
-change-id: 20250806-mangled_cpupower-5186789f8b2b
+Aleksa Paunovic (2):
+      dt-bindings: timer: mips,p8700-gcru
+      riscv: Allow for riscv-clock to pick up mmio address.
+
+ .../devicetree/bindings/timer/mips,p8700-gcru.yaml | 38 +++++++++++++
+ arch/riscv/include/asm/clint.h                     | 26 ---------
+ arch/riscv/include/asm/timex.h                     | 63 ++++++++++++----------
+ drivers/clocksource/Kconfig                        | 12 +++++
+ drivers/clocksource/timer-clint.c                  | 20 ++++---
+ drivers/clocksource/timer-riscv.c                  | 34 ++++++++++++
+ 6 files changed, 128 insertions(+), 65 deletions(-)
+---
+base-commit: 038d61fd642278bab63ee8ef722c50d10ab01e8f
+change-id: 20250424-riscv-time-mmio-5628e0fca8af
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia@uniontech.com>
+Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 
