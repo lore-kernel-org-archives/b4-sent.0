@@ -1,15 +1,12 @@
 From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Subject: [PATCH v6 0/2] riscv: Use GCR.U timer device as clocksource
-Date: Wed, 06 Aug 2025 14:26:38 +0200
-Message-Id: <20250806-riscv-time-mmio-v6-0-2df0e8219998@htecgroup.com>
+Date: Wed, 06 Aug 2025 14:26:39 +0200
+Subject: [PATCH v6 1/2] dt-bindings: timer: mips,p8700-gcru
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAP5Jk2gC/2XNQQ7CIBCF4asY1mKAALauvIdxgTC0s6A0UImm6
- d2ldWFil/9L5puZZEgImVwOM0lQMGMcaujjgdjeDB1QdLWJYEIxKSRNmG2hEwagIWCkSosGmLe
- mMZ7UqzGBx9cm3u61e8xTTO/tQZHr+rUU31tFUkbtg1kvWiGc1td+Atul+BxPNgayekX9jDPne
- 0NVowXHfSOUcQr+jWVZPgdTiCT2AAAA
-X-Change-ID: 20250424-riscv-time-mmio-5628e0fca8af
+Message-Id: <20250806-riscv-time-mmio-v6-1-2df0e8219998@htecgroup.com>
+References: <20250806-riscv-time-mmio-v6-0-2df0e8219998@htecgroup.com>
+In-Reply-To: <20250806-riscv-time-mmio-v6-0-2df0e8219998@htecgroup.com>
 To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
  Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,59 +20,71 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754483238; l=2047;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754483238; l=1839;
  i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=doBgBoI1eDAhaG6OMnM5npExQ5Xq3oY1DJugrOTICDs=;
- b=9DPdV5c9qizD7HjzGYQ8LKXMZ8Fn/tvCYTz34vZBapVKFt+CdKe2JKRgd4pIoZ8l/X4tZUFPb
- 99CMc541WKPC/CYMLlzCWsSAC3wwKlWrsVhrmL2gAi6thDEqvJr/eKW
+ bh=qlCmLDBO1Y2Dd5pfYZ/Ggi2QMtMAGxo3h0341eF3VPk=;
+ b=56m9JHl4s+2niceVarV1ds9YTUDNqZYPSY0MKzOiiWT6b+U4cVwZajDZSWDVvSepqWQmUbqq5
+ UefHGtyZpD9CshfqOwaN3w94Ov49XPBmPLiLOqmhlt8k+DNNvMMIa2A
 X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
  pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
 X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds bindings for the GCR.U timer device and corresponding
-driver support. Accessing the memory mapped mtime register in the GCR.U
-region should be faster than trapping to M mode each time the timer
-needs to be read.
+Add dt-bindings for the GCR.U memory mapped timer device for RISC-V
+platforms. The GCR.U memory region contains shadow copies of the RISC-V
+mtime register and the hrtime Global Configuration Register.
 
 Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 ---
-Changes in v6:
-- Rename mti,gcru to mips,p8700-gcru
-- Link to v5: https://lore.kernel.org/r/20250711-riscv-time-mmio-v5-0-9ed1f825ad5e@htecgroup.com
+ .../devicetree/bindings/timer/mips,p8700-gcru.yaml | 38 ++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
 
-Changes in v5:
-- Fixed build issues on 32-bit RISC-V and sparse warnings
-- Remove clint_time_val and clint.h, replace with riscv_time_val
-- Depend on RISCV_TIMER in Kconfig
-Changes in v4:
-- Remove "select" from mti,gcru.yaml.
-- Refactor the driver to use function pointers instead of static keys.
+diff --git a/Documentation/devicetree/bindings/timer/mips,p8700-gcru.yaml b/Documentation/devicetree/bindings/timer/mips,p8700-gcru.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..3498255762cce6b3f491292d340d9639bb573e6d
+--- /dev/null
++++ b/Documentation/devicetree/bindings/timer/mips,p8700-gcru.yaml
+@@ -0,0 +1,38 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/timer/mips,p8700-gcru.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: GCR.U timer device for the MIPS P8700 platform
++
++maintainers:
++  - Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
++
++description:
++  The GCR.U memory region contains memory mapped shadow copies of
++  mtime and hrtime Global Configuration Registers,
++  which software can choose to make accessible from user mode.
++
++properties:
++  compatible:
++    const: mips,p8700-gcru
++
++  reg:
++    items:
++      - description: Read-only shadow copy of the RISC-V mtime register.
++      - description: Read-only shadow copy of the P8700 high resolution timer register.
++
++required:
++  - compatible
++  - reg
++
++additionalProperties: false
++
++examples:
++  - |
++    timer@1617f000 {
++        compatible = "mips,p8700-gcru";
++        reg = <0x1617f050 0x8>,
++              <0x1617f090 0x8>;
++    };
 
-Previous versions:
-v1: https://lore.kernel.org/lkml/20241227150056.191794-1-arikalo@gmail.com/#t
-v2: https://lore.kernel.org/linux-riscv/20250409143816.15802-1-aleksa.paunovic@htecgroup.com/
-v3: https://lore.kernel.org/linux-riscv/DU0PR09MB61968695A2A3146EE83B7708F6BA2@DU0PR09MB6196.eurprd09.prod.outlook.com/
-v4: https://lore.kernel.org/r/20250514-riscv-time-mmio-v4-0-cb0cf2922d66@htecgroup.com
-v5: https://lore.kernel.org/r/20250711-riscv-time-mmio-v5-0-9ed1f825ad5e@htecgroup.com
-
----
-Aleksa Paunovic (2):
-      dt-bindings: timer: mips,p8700-gcru
-      riscv: Allow for riscv-clock to pick up mmio address.
-
- .../devicetree/bindings/timer/mips,p8700-gcru.yaml | 38 +++++++++++++
- arch/riscv/include/asm/clint.h                     | 26 ---------
- arch/riscv/include/asm/timex.h                     | 63 ++++++++++++----------
- drivers/clocksource/Kconfig                        | 12 +++++
- drivers/clocksource/timer-clint.c                  | 20 ++++---
- drivers/clocksource/timer-riscv.c                  | 34 ++++++++++++
- 6 files changed, 128 insertions(+), 65 deletions(-)
----
-base-commit: 038d61fd642278bab63ee8ef722c50d10ab01e8f
-change-id: 20250424-riscv-time-mmio-5628e0fca8af
-
-Best regards,
 -- 
-Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+2.43.0
 
