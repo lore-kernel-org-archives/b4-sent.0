@@ -1,96 +1,85 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Thu, 07 Aug 2025 15:56:03 +0800
-Subject: [PATCH] Bluetooth: hci_sync: Prevent unintended PA sync when SID
- is 0xFF
+From: Christoph Paasch <cpaasch@openai.com>
+Date: Thu, 07 Aug 2025 11:00:43 -0700
+Subject: [PATCH mptcp-net] mptcp: drop skb if MPTCP skb extension
+ allocation fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250807-sid_invalid-v1-1-94b3902a49e3@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIABJclGgC/x3MQQqAIBBA0avIrBNsIJOuEhGmYw2EhYIE4d2Tl
- m/x/wuZElOGSbyQqHDmKzb0nQB32LiTZN8MqHBQRo0ys185Fnuyl+jMplHbgBSgFXeiwM9/m5d
- aP661q7FdAAAA
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754553364; l=2518;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=CtzsG6OQjFbI3wHcVoNvKNs7wHlNBWzJw+zuy9bA75s=;
- b=ETEyq1rB1JGnX2oJgwsj6kgqPnLa65UEjLLIkyn2hV7modUsnow39Wh8EqiU4f2YaEViwC/HV
- 6qM4SraBE3vARqgqVRrjGO9n13Ti6NdV6+nXLRN8wRtvZwpCW/Zm6Wk
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Message-Id: <20250807-mptcp_fixes-v1-1-adfd79a88b5e@openai.com>
+X-B4-Tracking: v=1; b=H4sIAMrplGgC/x2LQQqAIBAAvyJ7TjBLkr4SEaFr7SETjQjEvyceh
+ 5nJkDASJphZhogvJbp9hb5jYM7dH8jJVgYppBJaKH6Fx4TN0YeJWzuhGJXUbpBQjxCxiTos0EL
+ u8YG1lB/ElEvRaAAAAA==
+X-Change-ID: 20250805-mptcp_fixes-dd7e04528f32
+To: MPTCP Upstream <mptcp@lists.linux.dev>, 
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>
+Cc: Christoph Paasch <cpaasch@openai.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754589655; l=2141;
+ i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
+ bh=cDu7fm+K+qrA4QGkMHR4UGKNLCJ4l1vGPJHGz1BXj7Q=;
+ b=3IVigu2/vvnoS3I1uCE6On7M7tERMd7/bqlrx5kIQ0TNLhuAGZSONyadaxBt+kZIF8qwD3vtT
+ B18jy5Mr60cCNomt+Mr3i12HPPZ49mPxkZCdba9KpeJ9BK72bfDqaAc
+X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
+ pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
+X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After LE Extended Scan times out, conn->sid remains 0xFF,
-so the PA sync creation process should be aborted.
+When skb_ext_add(skb, SKB_EXT_MPTCP) fails in mptcp_incoming_options(),
+we used to return true, letting the segment proceed through the TCP
+receive path without a DSS mapping. Such segments can leave inconsistent
+mapping state and trigger a mid-stream fallback to TCP, which in testing
+collapsed (by artificially forcing failures in skb_ext_add) throughput
+to zero.
 
-Btmon snippet from PA sync with SID=0xFF:
+Return false instead so the TCP input path drops the skb (see
+tcp_data_queue() and step-7 processing). This is the safer choice
+under memory pressure: it preserves MPTCP correctness and provides
+backpressure to the sender.
 
-< HCI Command: LE Set Extended.. (0x08|0x0042) plen 6  #74726 [hci0] 863.107927
-        Extended scan: Enabled (0x01)
-        Filter duplicates: Enabled (0x01)
-        Duration: 0 msec (0x0000)
-        Period: 0.00 sec (0x0000)
-> HCI Event: Command Complete (0x0e) plen 4            #74727 [hci0] 863.109389
-      LE Set Extended Scan Enable (0x08|0x0042) ncmd 1
-        Status: Success (0x00)
-< HCI Command: LE Periodic Ad.. (0x08|0x0044) plen 14  #74728 [hci0] 865.141168
-        Options: 0x0000
-        Use advertising SID, Advertiser Address Type and address
-        Reporting initially enabled
-        SID: 0xff
-        Adv address type: Random (0x01)
-        Adv address: 0D:D7:2C:E7:42:46 (Non-Resolvable)
-        Skip: 0x0000
-        Sync timeout: 20000 msec (0x07d0)
-        Sync CTE type: 0x0000
-> HCI Event: Command Status (0x0f) plen 4              #74729 [hci0] 865.143223
-      LE Periodic Advertising Create Sync (0x08|0x0044) ncmd 1
-        Status: Success (0x00)
+Control packets remain unaffected: ACK updates and DATA_FIN handling
+happen before attempting the extension allocation, and tcp_reset()
+continues to ignore the return value.
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+With this change, MPTCP continues to work at high throughput if we
+artificially inject failures into skb_ext_add.
+
+Fixes: 6787b7e350d3 ("mptcp: avoid processing packet if a subflow reset")
+Signed-off-by: Christoph Paasch <cpaasch@openai.com>
 ---
- net/bluetooth/hci_sync.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ net/mptcp/options.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c
-index 387c128f2ba0..540794a4495f 100644
---- a/net/bluetooth/hci_sync.c
-+++ b/net/bluetooth/hci_sync.c
-@@ -7045,10 +7045,13 @@ static int hci_le_pa_create_sync(struct hci_dev *hdev, void *data)
- 	/* SID has not been set listen for HCI_EV_LE_EXT_ADV_REPORT to update
- 	 * it.
- 	 */
--	if (conn->sid == HCI_SID_INVALID)
--		__hci_cmd_sync_status_sk(hdev, HCI_OP_NOP, 0, NULL,
-+	if (conn->sid == HCI_SID_INVALID) {
-+		err = __hci_cmd_sync_status_sk(hdev, HCI_OP_NOP, 0, NULL,
- 					 HCI_EV_LE_EXT_ADV_REPORT,
- 					 conn->conn_timeout, NULL);
-+		if (err == -ETIMEDOUT)
-+			goto done;
-+	}
+diff --git a/net/mptcp/options.c b/net/mptcp/options.c
+index 3c08beffbfea13597f14df17b1636b154e471398..d47b8a9bc2df2f14645b1b3d3e10fea1b38567b1 100644
+--- a/net/mptcp/options.c
++++ b/net/mptcp/options.c
+@@ -1119,7 +1119,9 @@ static bool add_addr_hmac_valid(struct mptcp_sock *msk,
+ 	return hmac == mp_opt->ahmac;
+ }
  
- 	memset(&cp, 0, sizeof(cp));
- 	cp.options = qos->bcast.options;
-@@ -7078,6 +7081,7 @@ static int hci_le_pa_create_sync(struct hci_dev *hdev, void *data)
- 		__hci_cmd_sync_status(hdev, HCI_OP_LE_PA_CREATE_SYNC_CANCEL,
- 				      0, NULL, HCI_CMD_TIMEOUT);
+-/* Return false if a subflow has been reset, else return true */
++/* Return false in case of error (or subflow has been reset),
++ * else return true.
++ */
+ bool mptcp_incoming_options(struct sock *sk, struct sk_buff *skb)
+ {
+ 	struct mptcp_subflow_context *subflow = mptcp_subflow_ctx(sk);
+@@ -1223,7 +1225,7 @@ bool mptcp_incoming_options(struct sock *sk, struct sk_buff *skb)
  
-+done:
- 	hci_dev_clear_flag(hdev, HCI_PA_SYNC);
+ 	mpext = skb_ext_add(skb, SKB_EXT_MPTCP);
+ 	if (!mpext)
+-		return true;
++		return false;
  
- 	/* Update passive scan since HCI_PA_SYNC flag has been cleared */
+ 	memset(mpext, 0, sizeof(*mpext));
+ 
 
 ---
-base-commit: df18778595f9423542f38784749feca5471f9de7
-change-id: 20250807-sid_invalid-2c8b626af2ef
+base-commit: dc818e7d153ed5ff81b9fcec7baa3b4b78725f89
+change-id: 20250805-mptcp_fixes-dd7e04528f32
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Christoph Paasch <cpaasch@openai.com>
 
