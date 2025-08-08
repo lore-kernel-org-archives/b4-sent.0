@@ -1,73 +1,90 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Fri, 08 Aug 2025 09:40:10 +0200
-Subject: [PATCH] iio: imu: inv_icm42600: change invalid data error to EBUSY
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Date: Fri, 08 Aug 2025 17:09:42 +0100
+Subject: [PATCH] iio: frequency: adf4350: Fix prescaler usage.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250808-inv-icm42600-change-temperature-error-code-v1-1-986fbf63b77d@tdk.com>
-X-B4-Tracking: v=1; b=H4sIANmplWgC/y2NwQqDMBAFf0X23IUkaGr7K6WHkLy2ezCRjUpB/
- HdD6XFgmNmpQgWV7t1Oik2qlNzAXjqKn5DfYEmNyRk3mNFcWfLGEqfeeWP4ryyYZmhYVgVDtSj
- HksB+SNaH2xg9LLXgrHjJ9zd7PI/jBD+8oqZ8AAAA
-X-Change-ID: 20250807-inv-icm42600-change-temperature-error-code-65d16a98c6e1
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250808-adf4350-fix-v1-1-58eed5c07359@analog.com>
+X-B4-Tracking: v=1; b=H4sIAEUhlmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDCwML3cSUNBNjUwPdtMwKXeNUgyTLJPNkYxMjAyWgjoKiVKAw2LTo2Np
+ aAAL/BKhdAAAA
+X-Change-ID: 20250808-adf4350-fix-3e0b9b7c3420
+To: linux-iio@vger.kernel.org
+Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
  Andy Shevchenko <andy@kernel.org>
-Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
- Jonathan Cameron <Jonathan.Cameron@huawei.com>, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>, 
- stable@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754638810; l=1568;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=NpeRL441DPZ1rC1rEkgDPmcWmaZUMbzkqnfYNLrMji8=;
- b=EPMyM5pzy8BkOiqIAuGm4MBI6sE8S7x+CcXBqShuVr25CsSsqrrzPnoiR5Nq0tEH5xd4Ivn8B
- M1Bjef2/BL/C2SkgfYqYreeV0aECEBlblVdSc4X409EmjW8Sx3FSa/g
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754669382; l=1975;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=cHVai96PjFNOGjoTgFHrKbrwRfCUNqOlh5ER9e9oWHQ=;
+ b=ISIHb5W8ZRu5AH1W+JKS7aYmlDzKC4EFN2LtgPZ3ZRcxZaUJVW47FRWVrPfLnCocrhzwo8L9z
+ vZf6B3SAg/HA9RyITswzWb0dukl0Y9IQp3pk97zl9P+IALzVuE63FAF
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Temperature sensor returns the temperature of the mechanical parts
-of the chip. If both accel and gyro are off, temperature sensor is
-also automatically turned off and return invalid data.
+From: Michael Hennerich <michael.hennerich@analog.com>
 
-In this case, returning EBUSY error code is better then EINVAL and
-indicates userspace that it needs to retry reading temperature in
-another context.
+The ADF4350/1 features a programmable dual-modulus prescaler of 4/5 or 8/9.
+When set to 4/5, the maximum RF frequency allowed is 3 GHz.
+Therefore, when operating the ADF4351 above 3 GHz, this must be set to 8/9.
+In this context not the RF output frequency is meant
+- it's the VCO frequency.
 
-Fixes: bc3eb0207fb5 ("iio: imu: inv_icm42600: add temperature sensor support")
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Cc: stable@vger.kernel.org
+Therefore move the prescaler selection after we derived the VCO frequency
+from the desired RF output frequency.
+
+This BUG may have caused PLL lock instabilities when operating the VCO at
+the very high range close to 4.4 GHz.
+
+Signed-off-by: Michael Hennerich <michael.hennerich@analog.com>
+Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+The Signed-off is because I'm just carrying Michael's patch without any
+change from me.
+---
+ drivers/iio/frequency/adf4350.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c
-index 8b15afca498cb5dfa7e056a60d3c78e419f11b29..1756f3d07049a26038776a35d9242f3dd1320354 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c
-@@ -32,8 +32,12 @@ static int inv_icm42600_temp_read(struct inv_icm42600_state *st, s16 *temp)
- 		goto exit;
+diff --git a/drivers/iio/frequency/adf4350.c b/drivers/iio/frequency/adf4350.c
+index 47f1c7e9efa9f425a4c7cf82be930234e2c18434..2b8b935965ed4536bda835844ed6c7d0a7b88330 100644
+--- a/drivers/iio/frequency/adf4350.c
++++ b/drivers/iio/frequency/adf4350.c
+@@ -149,6 +149,13 @@ static int adf4350_set_freq(struct adf4350_state *st, unsigned long long freq)
+ 	if (freq > ADF4350_MAX_OUT_FREQ || freq < st->min_out_freq)
+ 		return -EINVAL;
  
- 	*temp = (s16)be16_to_cpup(raw);
-+	/*
-+	 * Temperature data is invalid if both accel and gyro are off.
-+	 * Return EBUSY in this case.
-+	 */
- 	if (*temp == INV_ICM42600_DATA_INVALID)
--		ret = -EINVAL;
-+		ret = -EBUSY;
++	st->r4_rf_div_sel = 0;
++
++	while (freq < ADF4350_MIN_VCO_FREQ) {
++		freq <<= 1;
++		st->r4_rf_div_sel++;
++	}
++
+ 	if (freq > ADF4350_MAX_FREQ_45_PRESC) {
+ 		prescaler = ADF4350_REG1_PRESCALER;
+ 		mdiv = 75;
+@@ -157,13 +164,6 @@ static int adf4350_set_freq(struct adf4350_state *st, unsigned long long freq)
+ 		mdiv = 23;
+ 	}
  
- exit:
- 	mutex_unlock(&st->lock);
+-	st->r4_rf_div_sel = 0;
+-
+-	while (freq < ADF4350_MIN_VCO_FREQ) {
+-		freq <<= 1;
+-		st->r4_rf_div_sel++;
+-	}
+-
+ 	/*
+ 	 * Allow a predefined reference division factor
+ 	 * if not set, compute our own
 
 ---
 base-commit: 6408dba154079656d069a6a25fb3a8954959474c
-change-id: 20250807-inv-icm42600-change-temperature-error-code-65d16a98c6e1
+change-id: 20250808-adf4350-fix-3e0b9b7c3420
+--
 
-Best regards,
--- 
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Thanks!
+- Nuno Sá
 
