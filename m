@@ -1,104 +1,59 @@
-From: Christoph Paasch <cpaasch@openai.com>
-Date: Thu, 07 Aug 2025 11:14:37 -0700
-Subject: [PATCH mptcp-next] mptcp: record subflows in RPS table
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH 0/3] support for Amlogic SPI Flash Controller IP
+Date: Fri, 08 Aug 2025 10:00:33 +0800
+Message-Id: <20250808-spifc-v1-0-ff4e30e26a6b@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250807-b4-mptcp_perf-v1-1-e89cc14179cc@openai.com>
-X-B4-Tracking: v=1; b=H4sIAAztlGgC/x2MWwqAIBAArxL73YLai7pKRFSutR+ZaEQg3T3xc
- 2BmIgTyTAGGIoKnhwNfNoEsC9iOxe6ErBODEqoRXSVxrfF09+ZmR96gUL1UWtembVZIjfNk+M2
- /EbKHlt4bpu/7AQZ4m2lrAAAA
-X-Change-ID: 20250731-b4-mptcp_perf-02912dd4f65b
-To: MPTCP Upstream <mptcp@lists.linux.dev>, 
- Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
- Geliang Tang <geliang@kernel.org>
-Cc: Christoph Paasch <cpaasch@openai.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754590482; l=2520;
- i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
- bh=FJ3ox47iJ4biHGad51VRAfWRAzrLGfltGE4gslXghQ8=;
- b=wv+rXLZfbxXWuVn+Z5RG6Yr5X/2CwyFJGbOm3Q7T21GnBH1dRLaklEBCbSjLsgVY2Swr0uRaE
- eQKOZewkOAcAeyjdgOxJC3xROIGezplcDt2blATh4r/DK1xZwT5GO3q
-X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
- pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
-X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
+X-B4-Tracking: v=1; b=H4sIAEFalWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDCwMT3eKCzLRkXVNzM8NUY9O0pFTDNCWg2oKi1LTMCrA50bG1tQBFzYk
+ 0VwAAAA==
+To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Liang Yang <liang.yang@amlogic.com>, 
+ Feng Chen <feng.chen@amlogic.com>
+Cc: linux-spi@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-amlogic@lists.infradead.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754618434; l=1178;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=Q9TvXkCZZFK5X+atV+OgJiaaH15TABP2XLM2/bN3sx4=;
+ b=0P/Gz33Pfi1wslGAfGII4PqKRTTYGefeUIhLu62F6trfQX8GwyFjb3ZT1BSiGIS4QiVjJ6FFb
+ 1eXhkxn4fdWDMSRI5/MsRJG9DnEXScg1SETR5SvYmi7hzyOyDZo3wHl
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Accelerated Receive Flow Steering (aRFS) relies on sockets recording
-their RX flow hash into the rps_sock_flow_table so that incoming packets
-are steered to the CPU where the application runs.
+This Flash Controller is derived by adding an SPI path to the original
+raw NAND controller. This controller supports two modes: raw mode and
+SPI mode. The raw mode has already been implemented in the community
+(drivers/mtd/nand/raw/meson_nand.c).
+This submission supports the SPI mode.
 
-With MPTCP, the application interacts with the parent MPTCP socket while
-data is carried over per-subflow TCP sockets. Without recording these
-subflows, aRFS cannot steer interrupts and RX processing for the flows
-to the desired CPU.
+Add the drivers and bindings corresponding to the SPI Flash Controller.
 
-Record all subflows in the RPS table by calling sock_rps_record_flow()
-for each subflow at the start of mptcp_sendmsg() and mptcp_recvmsg().
-
-It does not by itself improve throughput, but ensures that IRQ and RX
-processing are directed to the right CPU, which is a
-prerequisite for effective aRFS.
-
-Signed-off-by: Christoph Paasch <cpaasch@openai.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- net/mptcp/protocol.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Feng Chen (2):
+      spi: dt-bindings: add doc for Amlogic A113L2 SFC
+      spi: amlogic: add driver for Amlogic SPI Flash Controller
 
-diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
-index 4b510e04724f5c8be08a00a1cc03093bcd031905..86f1fc5be47bd5f6dc8bf40a488de32f253c1beb 100644
---- a/net/mptcp/protocol.c
-+++ b/net/mptcp/protocol.c
-@@ -12,6 +12,7 @@
- #include <linux/sched/signal.h>
- #include <linux/atomic.h>
- #include <net/aligned_data.h>
-+#include <net/rps.h>
- #include <net/sock.h>
- #include <net/inet_common.h>
- #include <net/inet_hashtables.h>
-@@ -1740,6 +1741,17 @@ static u32 mptcp_send_limit(const struct sock *sk)
- 	return limit - not_sent;
- }
- 
-+static void mptcp_rps_record_subflows(const struct mptcp_sock *msk)
-+{
-+	struct mptcp_subflow_context *subflow;
-+
-+	mptcp_for_each_subflow(msk, subflow) {
-+		struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
-+
-+		sock_rps_record_flow(ssk);
-+	}
-+}
-+
- static int mptcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
- {
- 	struct mptcp_sock *msk = mptcp_sk(sk);
-@@ -1753,6 +1765,8 @@ static int mptcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
- 
- 	lock_sock(sk);
- 
-+	mptcp_rps_record_subflows(msk);
-+
- 	if (unlikely(inet_test_bit(DEFER_CONNECT, sk) ||
- 		     msg->msg_flags & MSG_FASTOPEN)) {
- 		int copied_syn = 0;
-@@ -2131,6 +2145,8 @@ static int mptcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 		goto out_err;
- 	}
- 
-+	mptcp_rps_record_subflows(msk);
-+
- 	timeo = sock_rcvtimeo(sk, flags & MSG_DONTWAIT);
- 
- 	len = min_t(size_t, len, INT_MAX);
+Xianwei Zhao (1):
+      MAINTAINERS: Add an entry for Amlogic spifc driver
 
+ .../devicetree/bindings/spi/amlogic,a4-spifc.yaml  |  104 ++
+ MAINTAINERS                                        |   10 +
+ drivers/spi/Kconfig                                |   10 +
+ drivers/spi/Makefile                               |    1 +
+ drivers/spi/spi-amlogic-spifc-a4.c                 | 1328 ++++++++++++++++++++
+ 5 files changed, 1453 insertions(+)
 ---
-base-commit: f756e5bb29fa59378c111a2401fc64e44cd53442
-change-id: 20250731-b4-mptcp_perf-02912dd4f65b
+base-commit: 60fcf916e06250108143a993bd803c6b12ad8d02
+change-id: 20250804-spifc-5761e35fbe1f
 
 Best regards,
 -- 
-Christoph Paasch <cpaasch@openai.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
