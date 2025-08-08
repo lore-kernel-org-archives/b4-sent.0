@@ -1,60 +1,73 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 08 Aug 2025 10:00:36 +0800
-Subject: [PATCH 3/3] MAINTAINERS: Add an entry for Amlogic spifc driver
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Date: Fri, 08 Aug 2025 09:40:10 +0200
+Subject: [PATCH] iio: imu: inv_icm42600: change invalid data error to EBUSY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250808-spifc-v1-3-ff4e30e26a6b@amlogic.com>
-References: <20250808-spifc-v1-0-ff4e30e26a6b@amlogic.com>
-In-Reply-To: <20250808-spifc-v1-0-ff4e30e26a6b@amlogic.com>
-To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Liang Yang <liang.yang@amlogic.com>, 
- Feng Chen <feng.chen@amlogic.com>
-Cc: linux-spi@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754618434; l=935;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=waH2I+tfwvOLzp50Qi+Yg091qChCxHO4Mz5PuoGKYLg=;
- b=pt8fY1G/lcSGV9NWVVM0+SdckNX9lIjxyH6De4Mko+XH9MX4KmlwhnTvU3rFhLQDzzYsNua4B
- x6jOFm3jasND8sm4nNscPvS/7vXNV2fHQHmgHmuBtS6PBdQWPUQENNd
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Message-Id: <20250808-inv-icm42600-change-temperature-error-code-v1-1-986fbf63b77d@tdk.com>
+X-B4-Tracking: v=1; b=H4sIANmplWgC/y2NwQqDMBAFf0X23IUkaGr7K6WHkLy2ezCRjUpB/
+ HdD6XFgmNmpQgWV7t1Oik2qlNzAXjqKn5DfYEmNyRk3mNFcWfLGEqfeeWP4ryyYZmhYVgVDtSj
+ HksB+SNaH2xg9LLXgrHjJ9zd7PI/jBD+8oqZ8AAAA
+X-Change-ID: 20250807-inv-icm42600-change-temperature-error-code-65d16a98c6e1
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
+ Jonathan Cameron <Jonathan.Cameron@huawei.com>, linux-iio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>, 
+ stable@vger.kernel.org
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754638810; l=1568;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=NpeRL441DPZ1rC1rEkgDPmcWmaZUMbzkqnfYNLrMji8=;
+ b=EPMyM5pzy8BkOiqIAuGm4MBI6sE8S7x+CcXBqShuVr25CsSsqrrzPnoiR5Nq0tEH5xd4Ivn8B
+ M1Bjef2/BL/C2SkgfYqYreeV0aECEBlblVdSc4X409EmjW8Sx3FSa/g
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Amlogic spi flash controller entry to MAINTAINERS
-to clarify the maintainers.
+Temperature sensor returns the temperature of the mechanical parts
+of the chip. If both accel and gyro are off, temperature sensor is
+also automatically turned off and return invalid data.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+In this case, returning EBUSY error code is better then EINVAL and
+indicates userspace that it needs to retry reading temperature in
+another context.
+
+Fixes: bc3eb0207fb5 ("iio: imu: inv_icm42600: add temperature sensor support")
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Cc: stable@vger.kernel.org
 ---
- MAINTAINERS | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index b1c081f9c567..9f1f337e9b6d 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1306,6 +1306,16 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/rtc/amlogic,a4-rtc.yaml
- F:	drivers/rtc/rtc-amlogic-a4.c
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c
+index 8b15afca498cb5dfa7e056a60d3c78e419f11b29..1756f3d07049a26038776a35d9242f3dd1320354 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c
+@@ -32,8 +32,12 @@ static int inv_icm42600_temp_read(struct inv_icm42600_state *st, s16 *temp)
+ 		goto exit;
  
-+AMLOGIC SPIFC DRIVER
-+M:	Liang Yang <liang.yang@amlogic.com>
-+M:	Feng Chen <feng.chen@amlogic.com>
-+M:	Xianwei Zhao <xianwei.zhao@amlogic.com>
-+L:	linux-amlogic@lists.infradead.org
-+L:	linux-spi@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/spi/amlogic,a4-spifc.yaml
-+F:	drivers/spi/spi-amlogic-spifc-a4.c
-+
- AMLOGIC SPISG DRIVER
- M:	Sunny Luo <sunny.luo@amlogic.com>
- M:	Xianwei Zhao <xianwei.zhao@amlogic.com>
+ 	*temp = (s16)be16_to_cpup(raw);
++	/*
++	 * Temperature data is invalid if both accel and gyro are off.
++	 * Return EBUSY in this case.
++	 */
+ 	if (*temp == INV_ICM42600_DATA_INVALID)
+-		ret = -EINVAL;
++		ret = -EBUSY;
+ 
+ exit:
+ 	mutex_unlock(&st->lock);
 
+---
+base-commit: 6408dba154079656d069a6a25fb3a8954959474c
+change-id: 20250807-inv-icm42600-change-temperature-error-code-65d16a98c6e1
+
+Best regards,
 -- 
-2.37.1
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
