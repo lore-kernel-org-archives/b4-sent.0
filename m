@@ -1,73 +1,56 @@
-From: Per Larsen <perlarsen@google.com>
-Date: Sat, 09 Aug 2025 02:33:24 +0000
-Subject: [PATCH v10 6/6] KVM: arm64: Bump the supported version of FF-A to
- 1.2
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH v2 0/3] Audio and other peripherals on Orange Pi Zero
+Date: Sat, 09 Aug 2025 18:18:05 +0200
+Message-Id: <20250809-opz-audio-v2-0-f4fd15552a82@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250809-virtio-msg-ffa-v10-6-189eeecf8ae8@google.com>
-References: <20250809-virtio-msg-ffa-v10-0-189eeecf8ae8@google.com>
-In-Reply-To: <20250809-virtio-msg-ffa-v10-0-189eeecf8ae8@google.com>
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
- Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Sudeep Holla <sudeep.holla@arm.com>
-Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, ahomescu@google.com, armellel@google.com, 
- arve@android.com, ayrton@google.com, qperret@google.com, 
- sebastianene@google.com, qwandor@google.com, 
- Per Larsen <perlarsen@google.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAL10l2gC/03MQQ7CIBCF4as0sxYDSC3tynuYLgod7WyAQCVqw
+ 93FJiYu/5eXb4OEkTDB0GwQMVMi72rIQwN2mdwdGc21QXLZciU65sObTY+ZPNM916q32hiJUP8
+ h4o2eu3Uday+UVh9fO53Fd/0p+k/JggmmUJ+NaY3tTuoSfFrRHx2uMJZSPpkBRDSjAAAA
+X-Change-ID: 20250417-opz-audio-890849c8bb2e
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@csie.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754706812; l=1485;
- i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=rli6Os3TRNMcjM1Tg+jZU9NsfEjaWrpVPYJg1zkUw64=;
- b=X2RNV1idUQq0rqDRDkahKbNK+IHDHq4CSzOIfKKcWhLavNLE8079ljldJGBNHc3FIXCzoL/GL
- o5K9qPjfyGDBUCjeyRuVyG229qoxNXUOr2IMAErkgcjZoUi9xepxer5
-X-Developer-Key: i=perlarsen@google.com; a=ed25519;
- pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
-X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754756302; l=1005;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=Bwb6t2YuRUfjH9rtbL/iknXzFlmnm4YAv6kHXJJPfCc=;
+ b=M7EvQXq4AITTYxKXjvWKmbdYsFY8YmBweMFkH+7/uCjZJtk5oXQhfg7cjblavaI1YXjCEMJfv
+ 7Qn+cYdiikoA1sq1BfTl9mPzw6SGataXmHp07VPaQvx189eg50rM062
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FF-A version 1.2 introduces the DIRECT_REQ2 ABI. Bump the FF-A version
-preferred by the hypervisor to enable implementation of the 1.2-only
-FFA_MSG_SEND_DIRECT_REQ2 and FFA_MSG_SEND_RESP2 messaging interfaces.
-
-Co-developed-by: Ayrton Munoz <ayrton@google.com>
-Signed-off-by: Ayrton Munoz <ayrton@google.com>
-Acked-by: Will Deacon <will@kernel.org>
-Signed-off-by: Per Larsen <perlarsen@google.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Changes in v2:
+- Rebase on (almost) 6.17-rc1
+- Disable audio pins by default
+- Provide separate DT overlay for the Orange Pi Zero Interface Board
+- Link to v1: https://lore.kernel.org/r/20250418-opz-audio-v1-1-4e86bb5bc734@posteo.net
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index 22a369f8d1d8edcde45d77377e29dc08256c0bcc..68a7798857dfea9c93dd66069b0f99fb0a030c15 100644
---- a/arch/arm64/kvm/hyp/nvhe/ffa.c
-+++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -931,7 +931,7 @@ int hyp_ffa_init(void *pages)
- 
- 	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
- 		.a0 = FFA_VERSION,
--		.a1 = FFA_VERSION_1_1,
-+		.a1 = FFA_VERSION_1_2,
- 	}, &res);
- 	if (res.a0 == FFA_RET_NOT_SUPPORTED)
- 		return 0;
-@@ -952,10 +952,10 @@ int hyp_ffa_init(void *pages)
- 	if (FFA_MAJOR_VERSION(res.a0) != 1)
- 		return -EOPNOTSUPP;
- 
--	if (FFA_MINOR_VERSION(res.a0) < FFA_MINOR_VERSION(FFA_VERSION_1_1))
-+	if (FFA_MINOR_VERSION(res.a0) < FFA_MINOR_VERSION(FFA_VERSION_1_2))
- 		hyp_ffa_version = res.a0;
- 	else
--		hyp_ffa_version = FFA_VERSION_1_1;
-+		hyp_ffa_version = FFA_VERSION_1_2;
- 
- 	tx = pages;
- 	pages += KVM_FFA_MBOX_NR_PAGES * PAGE_SIZE;
+---
+J. Neuschäfer (3):
+      ARM: dts: allwinner: orangepi-zero: Add default audio routing
+      ARM: dts: allwinner: orangepi-zero2: Add default audio routing
+      ARM: dts: allwinner: Add Orange Pi Zero Interface Board overlay
 
+ arch/arm/boot/dts/allwinner/Makefile               |  7 ++++
+ .../dts/allwinner/sun8i-h2-plus-orangepi-zero.dts  | 14 +++++++
+ .../dts/allwinner/sun8i-h3-orangepi-zero-plus2.dts | 14 +++++++
+ .../sun8i-orangepi-zero-interface-board.dtso       | 46 ++++++++++++++++++++++
+ 4 files changed, 81 insertions(+)
+---
+base-commit: 36c31984cca32c5d9720c8c1eb5bd17fa915419f
+change-id: 20250417-opz-audio-890849c8bb2e
+
+Best regards,
 -- 
-2.51.0.rc0.155.g4a0f42376b-goog
+J. Neuschäfer <j.ne@posteo.net>
 
