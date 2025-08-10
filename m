@@ -1,143 +1,203 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sat, 09 Aug 2025 18:18:08 +0200
-Subject: [PATCH v2 3/3] ARM: dts: allwinner: Add Orange Pi Zero Interface
- Board overlay
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v10 0/3] arm64: dts: qcom: Add Lenovo ThinkBook 16 device
+ tree
+Date: Sun, 10 Aug 2025 19:37:41 +0200
+Message-Id: <20250810-tb16-dt-v10-0-0bfed6d75c69@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250809-opz-audio-v2-3-f4fd15552a82@posteo.net>
-References: <20250809-opz-audio-v2-0-f4fd15552a82@posteo.net>
-In-Reply-To: <20250809-opz-audio-v2-0-f4fd15552a82@posteo.net>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@csie.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAOnYmGgC/33T227cIBAG4FexfF1WDMPRiqq8R5QLDOMsqg9b4
+ 1hpo7x72V2l9s36EoQ+YOafzzrTnCjXTfVZz7SmnKaxLID/qOpw9uMbsRTLRi24UFwBsKUFzeL
+ CyMogEaM1LdTl9GWmLn3cqJfXsj6nvEzzn5u8wnX321D/jRUYZzEoK7UXKkj7PPUxh/M09Xnq3
+ 5fymHxq09/6Cq5ij+gNEQUxQTqno7IU9SGCO0TIDcGCgCGho0NFBg8R+QCRBREBSHOwETt+iKg
+ N0dxsiCqIJ+kQteyUUIeIfoDogmjwCA4kkRGHiNkhwm2IKQgqYTRKQLTdIWJ3CPINsQUJnRQen
+ S51Pe6O2xDDt6yt7tri6EhYbtG0j2vydU/iTL/fS5aXexzrgXL2tyg31dO3Dha1UCdw2gqpGTD
+ f08dpTaOf86+Un98Gn/pTmIaf9X4YmuoOlL4P00qM4oXRGC9TGpfMOh8pRO9j9NCst8FofSZWm
+ CEtTdWCkk5dL7chOGq9QRGEanmZpM54hSGEUu2u/OTrH+AzbQadAwAA
+X-Change-ID: 20250511-tb16-dt-e84c433d87b1
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Matthias Kaehlcke <mka@chromium.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Aleksandrs Vinarskis <alex.vinarskis@gmail.com>, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754756302; l=3705;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=rwwErTSLr++MWzr7FBwd2E7U9pR2ndpNt4EaJnJ0gxI=;
- b=UNB0zJG+JHbx/WEK9byBYkwHKR96kwXklUN3q3nyKKIbldkKzClVLmTI1r5YqJlV0SG59huMg
- oaeZ8XxD19UAbQAumRnof7/2vAsqpFTvu8yb1oijYquR5OP9ludnPBz
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754847490; l=7261;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=UtC1eyVbnD6Dxf1r+UMQ1SfmdtF+J5BaFqbq83twDHw=;
+ b=p3gGT4/Iz3PEqemGCe2QuEG3o7eVN2i9DFdi7MQBZCBFpWGxyXD7+nqBnD+RIKhAi9778OBDa
+ GktWoMTHlbHDyt4xGhNKT5ak6wBZkgJuIY0VF5TtcbRqqQfqbp2j9Hc
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Orange Pi Zero interface board is a (mostly) passive adapter from the
-13-pin header of the Orange Pi Zero and Orange Pi Zero Plus2 to standard
-connectors (2x USB A, 1x Audio/Video output, 1x built-in microphone, 1x
-infrared input). Headphones, microphone, infrared (CIR) input, and USB
-have been tested with the Orange Pi Zero.
+Device tree for the Lenovo Thinkbook 16 G7 QOY
 
-CVBS output is currently not supported.
+The Laptop is a Snapdragon X1 / X1 Plus (Purwa) based device [1].
 
-  https://orangepi.com/index.php?route=product/product&product_id=871
+Supported features:
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+- USB type-c and type-a ports
+- Keyboard
+- Touchpad (all that are described in the dsdt)
+- Touchscreen (described in the dsdt, no known SKUss)
+- Display including PWM backlight control
+- PCIe devices
+- nvme
+- SDHC card reader
+- ath12k WCN7850 Wifi and Bluetooth
+- ADSP and CDSP
+- GPIO keys (Lid switch)
+- Sound via internal speakers / DMIC / USB / headphone jack
+- DP Altmode with 2 lanes (as all of these still do)
+- Integrated fingerprint reader (FPC)
+- Integrated UVC camera
+- X1-45 GPU
+
+Not supported yet:
+
+- HDMI port.
+- EC and some fn hotkeys.
+
+Limited support yet:
+
+- SDHC card reader is based on the on-chip sdhc_2 controller, but the driver from
+the Snapdragon Dev Kit is only a partial match. It can do normal slow sd cards,
+but not UHS-I (SD104) and UHS-II.
+
+Notes:
+
+- Putting the camera behind usb_2_dwc3 results in the camera switched off after 30
+seconds. With the stand-alone node as previously defined it stays usable and
+suspends, as intended. Since the sole reason for the USB camera to be in the
+devicetree is the required extra supply (which is guessed, as mentioned), and
+its handling by power management, I would propose to keep it this way.
+
+- The gpi_dma nodes appear to be implicitly enabled when a serial device is used.
+I added them, no change in behaviour, though. Since this would be the only X1
+device adding them afaik, I left them out.
+
+- The cma-memory is removed, it is not on all x1 devices as I assumed.
+Haven't found a case where it is required.
+
+- i2c2 defines the keyboard and 4 different touchpad interfaces. With the bundling
+of the pinctrl it seems to work better. I've had issues with only clock and touchpad
+pinctrl on the i2c2 node, and not keyboard.
+
+This work was done without any schematics or non-public knowledge of the device.
+So, it is based on the existing x1 device trees, dsdt analysis, using HWInfo
+ARM64, and pure guesswork. It has been confirmed, however, that the device really
+has 4 NXP PTN3222 eUSB2 repeaters, one of which doesn't have a reset GPIO (eusb5
+@43).
+
+I have brought up the Thinkbook over the last 5 months since the x1p42100-crd
+patches were available. The laptop is very usable now, and quite solid as a dev/
+test platform.
+
+Big thanks to Aleksandrs Vinarskis for helping (and sort of persisting) on the
+fingerprint, camera and HDMI issues.
+
+[1]: https://psref.lenovo.com/syspool/Sys/PDF/ThinkBook/ThinkBook_16_G7_QOY/ThinkBook_16_G7_QOY_Spec.pdf
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
+Changes in v10:
+- rebased as recommended onto 20250701183625.1968246-1-alex.vinarskis@gmail.com and
+  20250724-move-edp-endpoints-v1-3-6ca569812838@oss.qualcomm.com (whole series)
+- rebased onto next-20250808
+- amended node order
+- checked occurrence of touchpad variants: current users have eiher @2c (like mine) or @38
+- removed 4 lanes definition from mdss_dp0_out and mdss_dp_1_out. The required patches for
+  it are not yet upstream, as it seems.
+- removed UFS reset from reserved ranges
+- removed commented-out lines 
+- Link to v9: https://lore.kernel.org/r/20250701-tb16-dt-v9-0-7d9e280837b5@oldschoolsolutions.biz
 
-v2:
-- new patch
+Changes in v9:
+- rebase to next-20250701
+- fix errors listed from Rob Herrings dts check script - one typo, one missing 
+  pmic-glink compatible string
+- Link to v8: https://lore.kernel.org/r/20250630-tb16-dt-v8-0-cf42a396e736@oldschoolsolutions.biz
+
+Changes in v8:
+- rebase to next-20250630
+- fix bleed-over of edp0_hpd_active - not in linux-next yet
+- fix bleed-over of hdmi definition 
+- Link to v7: https://lore.kernel.org/r/20250629-tb16-dt-v7-0-35276341338f@oldschoolsolutions.biz
+
+Changes in v7:
+- amended pinctrl order and indents where needed
+- interchanged enable-gpios and select-gpios for usb-sbu-mux as they are
+  defined in the dsdt - dp altmode function confirmed in both orientations
+- picked up reviewed-by and acked-by from Dmitry Baryshkob and Rob Herring
+- Link to v6: https://lore.kernel.org/r/20250607-tb16-dt-v6-0-61a31914ee72@oldschoolsolutions.biz
+
+Changes in v6:
+- removed compatible for qcom,sm8550-pmic-glink" in pmic-glink
+- fixed malformed gpu node
+- Link to v5: https://lore.kernel.org/r/20250607-tb16-dt-v5-0-ae493364f525@oldschoolsolutions.biz
+
+Changes in v5:
+- removed patch for the CMN N160JCE-ELL panel, got reviewed
+- re-ordered code in onboard_usb_dev as requested by Dmitry Baryshkov
+- amended device tree with review notes from Dmitry Baryshkov where possible
+  and resuting in a working laptop - added notes section
+- Link to v4: https://lore.kernel.org/r/20250524-tb16-dt-v4-0-2c1e6018d3f0@oldschoolsolutions.biz
+
+Changes in v4:
+- squashed Makefile and dts commits to one
+- picked up r-b from Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+- Link to v3: https://lore.kernel.org/r/20250524-tb16-dt-v3-0-17e26d935e73@oldschoolsolutions.biz
+
+Changes in v3:
+- removed changes in x1e80100.dtsi and x1p42100.dtsi - resolved with [2]
+- fixed schema errors with correct compatible string for the model
+- added power management for the camera via onboard_usb_dev.c
+- amended node ordering
+- changed the panel driver used to edp-panel, added panel in the driver
+- amended x1e80100.dtsi for exposing PM8010: This one is not present in the design,
+  added /delete-node/ for it.
+- removed commented-out lines for sdhc, specified which don't work.
+- corrected ZAP shader firmware name
+- Link to v2: https://lore.kernel.org/r/20250516-tb16-dt-v2-0-7c4996d58ed6@oldschoolsolutions.biz
+
+Changes in v2:
+- removed nodes that gave DTC compile errors (pm8010_thermal, edp0_hpd_active)
+- amended qcom.yaml
+- shortened the commit titles to fit 75 chars
+- Link to v1: https://lore.kernel.org/r/20250515-tb16-dt-v1-0-dc5846a25c48@oldschoolsolutions.biz
+
+[2]: 20250520-topic-x1p4_tsens-v2-1-9687b789a4fb@oss.qualcomm.com
+
 ---
- arch/arm/boot/dts/allwinner/Makefile               |  7 ++++
- .../sun8i-orangepi-zero-interface-board.dtso       | 46 ++++++++++++++++++++++
- 2 files changed, 53 insertions(+)
+Jens Glathe (3):
+      dt-bindings: arm: qcom: Add Lenovo TB16 support
+      firmware: qcom: scm: Allow QSEECOM on Lenovo Thinkbook 16
+      arm64: dts: qcom: Add Lenovo ThinkBook 16 G7 QOY device tree
 
-diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
-index d799ad153b37b917d1e1c091fb051140398a574b..97d0a205493f40ba5969b5c8f4708a817ae725c5 100644
---- a/arch/arm/boot/dts/allwinner/Makefile
-+++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -182,6 +182,7 @@ dtb-$(CONFIG_MACH_SUN7I) += \
- 	sun7i-a20-wits-pro-a20-dkt.dtb
- 
- # Enables support for device-tree overlays for all pis
-+DTC_FLAGS_sun8i-h2-plus-orangepi-zero := -@
- DTC_FLAGS_sun8i-h3-orangepi-lite := -@
- DTC_FLAGS_sun8i-h3-bananapi-m2-plus := -@
- DTC_FLAGS_sun8i-h3-nanopi-m1-plus := -@
-@@ -225,6 +226,7 @@ dtb-$(CONFIG_MACH_SUN8I) += \
- 	sun8i-h2-plus-libretech-all-h3-cc.dtb \
- 	sun8i-h2-plus-orangepi-r1.dtb \
- 	sun8i-h2-plus-orangepi-zero.dtb \
-+	sun8i-h2-plus-orangepi-zero-interface-board.dtb \
- 	sun8i-h3-bananapi-m2-plus.dtb \
- 	sun8i-h3-bananapi-m2-plus-v1.2.dtb \
- 	sun8i-h3-beelink-x2.dtb \
-@@ -244,6 +246,7 @@ dtb-$(CONFIG_MACH_SUN8I) += \
- 	sun8i-h3-orangepi-plus.dtb \
- 	sun8i-h3-orangepi-plus2e.dtb \
- 	sun8i-h3-orangepi-zero-plus2.dtb \
-+	sun8i-h3-orangepi-zero-plus2-interface-board.dtb \
- 	sun8i-h3-rervision-dvk.dtb \
- 	sun8i-h3-zeropi.dtb \
- 	sun8i-h3-emlid-neutis-n5h3-devboard.dtb \
-@@ -264,6 +267,10 @@ dtb-$(CONFIG_MACH_SUN8I) += \
- 	sun8i-v3s-licheepi-zero-dock.dtb \
- 	sun8i-v3s-netcube-kumquat.dtb \
- 	sun8i-v40-bananapi-m2-berry.dtb
-+sun8i-h2-plus-orangepi-zero-interface-board-dtbs += \
-+	sun8i-h2-plus-orangepi-zero.dtb sun8i-orangepi-zero-interface-board.dtbo
-+sun8i-h3-orangepi-zero-plus2-interface-board-dtbs += \
-+	sun8i-h3-orangepi-zero-plus2.dtb sun8i-orangepi-zero-interface-board.dtbo
- dtb-$(CONFIG_MACH_SUN9I) += \
- 	sun9i-a80-optimus.dtb \
- 	sun9i-a80-cubieboard4.dtb
-diff --git a/arch/arm/boot/dts/allwinner/sun8i-orangepi-zero-interface-board.dtso b/arch/arm/boot/dts/allwinner/sun8i-orangepi-zero-interface-board.dtso
-new file mode 100644
-index 0000000000000000000000000000000000000000..e137eefee34163752372d442c22179b1fa41615a
---- /dev/null
-+++ b/arch/arm/boot/dts/allwinner/sun8i-orangepi-zero-interface-board.dtso
-@@ -0,0 +1,46 @@
-+// SPDX-License-Identifier: (GPL-2.0-or-later OR X11)
-+/*
-+ * Copyright (C) 2025 J. Neuschäfer <j.ne@posteo.net>
-+ *
-+ * Devicetree overlay for the Orange Pi Zero Interface board (OP0014).
-+ *
-+ *   https://orangepi.com/index.php?route=product/product&product_id=871
-+ *
-+ * This overlay applies to the following base files:
-+ *
-+ * - arch/arm/boot/dts/allwinner/sun8i-h2-plus-orangepi-zero.dts
-+ * - arch/arm/boot/dts/allwinner/sun8i-h3-orangepi-zero-plus2.dts
-+ */
-+
-+/dts-v1/;
-+/plugin/;
-+
-+&codec {
-+	status = "okay";
-+};
-+
-+&de {
-+	status = "okay";
-+};
-+
-+&ehci2 {
-+	status = "okay";
-+};
-+
-+&ehci3 {
-+	status = "okay";
-+};
-+
-+&ir {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&r_ir_rx_pin>;
-+	status = "okay";
-+};
-+
-+&ohci2 {
-+	status = "okay";
-+};
-+
-+&ohci3 {
-+	status = "okay";
-+};
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    2 +
+ .../boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts | 1629 ++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ 4 files changed, 1633 insertions(+)
+---
+base-commit: b1549501188cc9eba732c25b033df7a53ccc341f
+change-id: 20250511-tb16-dt-e84c433d87b1
+prerequisite-message-id: <20250701183625.1968246-1-alex.vinarskis@gmail.com>
+prerequisite-patch-id: b35889814152fca77b3822bce5418358924fe9f7
+prerequisite-change-id: 20250724-move-edp-endpoints-fadecdaadda1:v1
+prerequisite-patch-id: c536bf9ec7fd22af9b05b695272997615dfd675f
+prerequisite-patch-id: d513e5a08d3be585b9b6a737ef3a1ad275d7caad
+prerequisite-patch-id: 605ef6f89dd84f810df11be9d11ee6803a6bf289
+prerequisite-patch-id: 2ab2430624acbdd9011f6c0c2a77469fd19fc75a
+prerequisite-patch-id: bfbb562513763ce75f2bb5da7f12e7b54ff3919d
 
+Best regards,
 -- 
-2.48.0.rc1.219.gb6b6757d772
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
