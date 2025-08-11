@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:49 -0400
-Subject: [PATCH 057/114] clk: stm32f4: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:18:50 -0400
+Subject: [PATCH 058/114] clk: stm32: stm32-core: convert from round_rate()
+ to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-57-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-58-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2998;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2520;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=AumK8BwNqzO627oEWWSfUxrEbI4mV0KAS1s9UAxn9TA=;
- b=pNrNmNIcyX36FbFqMWLlv3eoG6G/f+nT9NUyvbIM67aj47jQla4WbcCgNFVyBGKoRc6fMJY9g
- /Hc08HVRHA4Bnhh/vlJMd14EV3TINDDYbL4KIb3mILPMqr9tATZabYE
+ bh=EFl/g1nawDK+Bbrvg/8BWvf13GhRuLxKvqfdomWdmoo=;
+ b=2CfVOIfyHzTw3vT1nnMx4ETPsUuwtAyMl1XtZV19VqeNnfwLnyed0EAk4QKOgkd0A6hZdlq7z
+ HelA6LLBmSWA2ODCNYFlWd4dnlESc3c0qOPT98BZyMKhm0X+45f0/+J
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,86 +87,67 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-stm32f4.c | 26 +++++++++++++++-----------
- 1 file changed, 15 insertions(+), 11 deletions(-)
+ drivers/clk/stm32/clk-stm32-core.c | 28 ++++++++++++++++++----------
+ 1 file changed, 18 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/clk/clk-stm32f4.c b/drivers/clk/clk-stm32f4.c
-index 719cddc82ae6f8f706716e5ba91a69759c066415..b5d4d48432a0be0a416d628667893e7165caaf0a 100644
---- a/drivers/clk/clk-stm32f4.c
-+++ b/drivers/clk/clk-stm32f4.c
-@@ -443,8 +443,8 @@ static unsigned long clk_apb_mul_recalc_rate(struct clk_hw *hw,
- 	return parent_rate;
+diff --git a/drivers/clk/stm32/clk-stm32-core.c b/drivers/clk/stm32/clk-stm32-core.c
+index 933e3cde0795386c3e5e6902aa0989cf3dffc01e..72825b9c36a4d3b8ba3f7615b9026c09ffaf88d1 100644
+--- a/drivers/clk/stm32/clk-stm32-core.c
++++ b/drivers/clk/stm32/clk-stm32-core.c
+@@ -351,14 +351,14 @@ static int clk_stm32_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+ 	return ret;
  }
  
--static long clk_apb_mul_round_rate(struct clk_hw *hw, unsigned long rate,
--				   unsigned long *prate)
-+static int clk_apb_mul_determine_rate(struct clk_hw *hw,
-+				      struct clk_rate_request *req)
+-static long clk_stm32_divider_round_rate(struct clk_hw *hw, unsigned long rate,
+-					 unsigned long *prate)
++static int clk_stm32_divider_determine_rate(struct clk_hw *hw,
++					    struct clk_rate_request *req)
  {
- 	struct clk_apb_mul *am = to_clk_apb_mul(hw);
- 	unsigned long mult = 1;
-@@ -453,12 +453,14 @@ static long clk_apb_mul_round_rate(struct clk_hw *hw, unsigned long rate,
- 		mult = 2;
+ 	struct clk_stm32_div *div = to_clk_stm32_divider(hw);
+ 	const struct stm32_div_cfg *divider;
  
- 	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) {
--		unsigned long best_parent = rate / mult;
-+		unsigned long best_parent = req->rate / mult;
+ 	if (div->div_id == NO_STM32_DIV)
+-		return rate;
++		return 0;
  
--		*prate = clk_hw_round_rate(clk_hw_get_parent(hw), best_parent);
-+		req->best_parent_rate = clk_hw_round_rate(clk_hw_get_parent(hw), best_parent);
+ 	divider = &div->clock_data->dividers[div->div_id];
+ 
+@@ -369,14 +369,22 @@ static long clk_stm32_divider_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		val =  readl(div->base + divider->offset) >> divider->shift;
+ 		val &= clk_div_mask(divider->width);
+ 
+-		return divider_ro_round_rate(hw, rate, prate, divider->table,
+-				divider->width, divider->flags,
+-				val);
++		req->rate = divider_ro_round_rate(hw, req->rate,
++						  &req->best_parent_rate,
++						  divider->table,
++						  divider->width,
++						  divider->flags, val);
++
++		return 0;
  	}
  
--	return *prate * mult;
-+	req->rate = req->best_parent_rate * mult;
+-	return divider_round_rate_parent(hw, clk_hw_get_parent(hw),
+-					 rate, prate, divider->table,
+-					 divider->width, divider->flags);
++	req->rate = divider_round_rate_parent(hw, clk_hw_get_parent(hw),
++					      req->rate,
++					      &req->best_parent_rate,
++					      divider->table,
++					      divider->width, divider->flags);
 +
 +	return 0;
  }
  
- static int clk_apb_mul_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -474,7 +476,7 @@ static int clk_apb_mul_set_rate(struct clk_hw *hw, unsigned long rate,
- }
+ static unsigned long clk_stm32_divider_recalc_rate(struct clk_hw *hw,
+@@ -392,7 +400,7 @@ static unsigned long clk_stm32_divider_recalc_rate(struct clk_hw *hw,
  
- static const struct clk_ops clk_apb_mul_factor_ops = {
--	.round_rate = clk_apb_mul_round_rate,
-+	.determine_rate = clk_apb_mul_determine_rate,
- 	.set_rate = clk_apb_mul_set_rate,
- 	.recalc_rate = clk_apb_mul_recalc_rate,
- };
-@@ -670,21 +672,23 @@ static unsigned long stm32f4_pll_recalc(struct clk_hw *hw,
- 	return parent_rate * n;
- }
- 
--static long stm32f4_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--		unsigned long *prate)
-+static int stm32f4_pll_determine_rate(struct clk_hw *hw,
-+				      struct clk_rate_request *req)
- {
- 	struct clk_gate *gate = to_clk_gate(hw);
- 	struct stm32f4_pll *pll = to_stm32f4_pll(gate);
- 	unsigned long n;
- 
--	n = rate / *prate;
-+	n = req->rate / req->best_parent_rate;
- 
- 	if (n < pll->n_start)
- 		n = pll->n_start;
- 	else if (n > 432)
- 		n = 432;
- 
--	return *prate * n;
-+	req->rate = req->best_parent_rate * n;
-+
-+	return 0;
- }
- 
- static void stm32f4_pll_set_ssc(struct clk_hw *hw, unsigned long parent_rate,
-@@ -749,7 +753,7 @@ static const struct clk_ops stm32f4_pll_gate_ops = {
- 	.disable	= stm32f4_pll_disable,
- 	.is_enabled	= stm32f4_pll_is_enabled,
- 	.recalc_rate	= stm32f4_pll_recalc,
--	.round_rate	= stm32f4_pll_round_rate,
-+	.determine_rate = stm32f4_pll_determine_rate,
- 	.set_rate	= stm32f4_pll_set_rate,
+ const struct clk_ops clk_stm32_divider_ops = {
+ 	.recalc_rate	= clk_stm32_divider_recalc_rate,
+-	.round_rate	= clk_stm32_divider_round_rate,
++	.determine_rate = clk_stm32_divider_determine_rate,
+ 	.set_rate	= clk_stm32_divider_set_rate,
  };
  
 
