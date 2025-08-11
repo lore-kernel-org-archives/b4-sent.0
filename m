@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:19 -0400
-Subject: [PATCH 027/114] clk: max9485: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:20 -0400
+Subject: [PATCH 028/114] clk: milbeaut: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-27-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-28-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2448;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2218;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=ACn7Vzsmdgc+NbDAa3T2dL1GhpryIFxMBrKCCE3Hka4=;
- b=OH/TJn3POMBI1RZ7OuWCF052s7ausTtnOWsJMmihrPM2qsKOSmjfBDkfMqICJ5bu7wjHjW7Fd
- vPIX9InPWBxDR3TMeX7PJ9YYwvobQIWrICCRcdOgZLyIa+xzx9WVjKV
+ bh=5TdaCYdNCxvtkvciw+iLI7X0B3hQqFVvjJmg7rSFzmU=;
+ b=e/NyMnffsCwpeedyIkqkgkajSKAMa4dsuRJNgY+hbjCH1vZeUN/Z2aGHGhUDQNmD4KDP64ttS
+ hAypdkGK3uHCv6C6A9OVfoqzT9uwhDOYr9qD1oeu/ATPAEsOUa15Z3T
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,83 +87,58 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-max9485.c | 27 +++++++++++++++++----------
- 1 file changed, 17 insertions(+), 10 deletions(-)
+ drivers/clk/clk-milbeaut.c | 22 ++++++++++++++--------
+ 1 file changed, 14 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/clk/clk-max9485.c b/drivers/clk/clk-max9485.c
-index be9020b6c789642e6d63065aa905088e01929147..0515e3e41162e38fb31809e7cb3116257204f2c0 100644
---- a/drivers/clk/clk-max9485.c
-+++ b/drivers/clk/clk-max9485.c
-@@ -159,29 +159,32 @@ static unsigned long max9485_clkout_recalc_rate(struct clk_hw *hw,
- 	return 0;
+diff --git a/drivers/clk/clk-milbeaut.c b/drivers/clk/clk-milbeaut.c
+index 18c20aff45f7698ac40451ef8000ec4fc4efc96b..b4f9b7143eaa658a7f2a14ff3cc9d91d8aa071c6 100644
+--- a/drivers/clk/clk-milbeaut.c
++++ b/drivers/clk/clk-milbeaut.c
+@@ -386,8 +386,8 @@ static unsigned long m10v_clk_divider_recalc_rate(struct clk_hw *hw,
+ 				   divider->flags, divider->width);
  }
  
--static long max9485_clkout_round_rate(struct clk_hw *hw, unsigned long rate,
--				      unsigned long *parent_rate)
-+static int max9485_clkout_determine_rate(struct clk_hw *hw,
-+					 struct clk_rate_request *req)
+-static long m10v_clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
+-				unsigned long *prate)
++static int m10v_clk_divider_determine_rate(struct clk_hw *hw,
++					   struct clk_rate_request *req)
  {
- 	const struct max9485_rate *curr, *prev = NULL;
+ 	struct m10v_clk_divider *divider = to_m10v_div(hw);
  
- 	for (curr = max9485_rates; curr->out != 0; curr++) {
- 		/* Exact matches */
--		if (curr->out == rate)
--			return rate;
-+		if (curr->out == req->rate)
-+			return 0;
+@@ -398,13 +398,19 @@ static long m10v_clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		val = readl(divider->reg) >> divider->shift;
+ 		val &= clk_div_mask(divider->width);
  
- 		/*
- 		 * Find the first entry that has a frequency higher than the
- 		 * requested one.
- 		 */
--		if (curr->out > rate) {
-+		if (curr->out > req->rate) {
- 			unsigned int mid;
- 
- 			/*
- 			 * If this is the first entry, clamp the value to the
- 			 * lowest possible frequency.
- 			 */
--			if (!prev)
--				return curr->out;
-+			if (!prev) {
-+				req->rate = curr->out;
+-		return divider_ro_round_rate(hw, rate, prate, divider->table,
+-					     divider->width, divider->flags,
+-					     val);
++		req->rate = divider_ro_round_rate(hw, req->rate,
++						  &req->best_parent_rate,
++						  divider->table,
++						  divider->width,
++						  divider->flags, val);
 +
-+				return 0;
-+			}
- 
- 			/*
- 			 * Otherwise, determine whether the previous entry or
-@@ -189,14 +192,18 @@ static long max9485_clkout_round_rate(struct clk_hw *hw, unsigned long rate,
- 			 */
- 			mid = prev->out + ((curr->out - prev->out) / 2);
- 
--			return (mid > rate) ? prev->out : curr->out;
-+			req->rate = mid > req->rate ? prev->out : curr->out;
-+
-+			return 0;
- 		}
- 
- 		prev = curr;
++		return 0;
  	}
  
- 	/* If the last entry was still too high, clamp the value */
--	return prev->out;
-+	req->rate = prev->out;
+-	return divider_round_rate(hw, rate, prate, divider->table,
+-				  divider->width, divider->flags);
++	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate,
++				       divider->table, divider->width, divider->flags);
 +
 +	return 0;
  }
  
- struct max9485_clk {
-@@ -221,7 +228,7 @@ static const struct max9485_clk max9485_clks[MAX9485_NUM_CLKS] = {
- 		.parent_index = -1,
- 		.ops = {
- 			.set_rate	= max9485_clkout_set_rate,
--			.round_rate	= max9485_clkout_round_rate,
-+			.determine_rate = max9485_clkout_determine_rate,
- 			.recalc_rate	= max9485_clkout_recalc_rate,
- 		},
- 	},
+ static int m10v_clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -450,7 +456,7 @@ static int m10v_clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+ 
+ static const struct clk_ops m10v_clk_divider_ops = {
+ 	.recalc_rate = m10v_clk_divider_recalc_rate,
+-	.round_rate = m10v_clk_divider_round_rate,
++	.determine_rate = m10v_clk_divider_determine_rate,
+ 	.set_rate = m10v_clk_divider_set_rate,
+ };
+ 
 
 -- 
 2.50.1
