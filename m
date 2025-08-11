@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:26 -0400
-Subject: [PATCH 034/114] clk: mxs: ref: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:18:27 -0400
+Subject: [PATCH 035/114] clk: nuvoton: ma35d1-divider: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-34-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-35-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1644;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1810;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=HSL90JXdRKRXivf3nwmi4ecUykYfxrFHyCgnT0MMhnk=;
- b=sl5F1dpOftQg7x/ZyLz6UYkrWuxuYr8Xcb4TA+fOa5NxVHG0eoaotP6aIYEXVlND2mn82QJg/
- QVDN20wu2bQBDqViJ4nJAx9rItmmn/9frnj2slbsgqHGGktASyl674D
+ bh=kg08atohLFewl0jOxOzsnjF5Gymt0yX/f+cIJ8dXOXA=;
+ b=qFmcgAGLaBbDRycLB4coxbfj8Y/JJhKjcTMkrnwQ8lSeQqTuZDivXIMPyNJd/3F4h55Wx4ELW
+ JJMgwNs4wUQDxH29+4RDewAMGj/vwO0jCE2Qaw/XbgNoLrraUg/Jg5i
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,51 +87,40 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/mxs/clk-ref.c | 16 +++++++++-------
- 1 file changed, 9 insertions(+), 7 deletions(-)
+ drivers/clk/nuvoton/clk-ma35d1-divider.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/clk/mxs/clk-ref.c b/drivers/clk/mxs/clk-ref.c
-index 2297259da89ab0bce2a00536a00e1c7aa7a9729d..a99ee4cd2ece008e87bf659dec959ae51242ba72 100644
---- a/drivers/clk/mxs/clk-ref.c
-+++ b/drivers/clk/mxs/clk-ref.c
-@@ -57,22 +57,24 @@ static unsigned long clk_ref_recalc_rate(struct clk_hw *hw,
- 	return tmp;
+diff --git a/drivers/clk/nuvoton/clk-ma35d1-divider.c b/drivers/clk/nuvoton/clk-ma35d1-divider.c
+index bb8c23d2b895ff1975165443b4bd2541e9d6e272..e39f53d5bf4578c628d34b05233c8e8da317c4d4 100644
+--- a/drivers/clk/nuvoton/clk-ma35d1-divider.c
++++ b/drivers/clk/nuvoton/clk-ma35d1-divider.c
+@@ -39,12 +39,16 @@ static unsigned long ma35d1_clkdiv_recalc_rate(struct clk_hw *hw, unsigned long
+ 				   CLK_DIVIDER_ROUND_CLOSEST, dclk->width);
  }
  
--static long clk_ref_round_rate(struct clk_hw *hw, unsigned long rate,
--			       unsigned long *prate)
-+static int clk_ref_determine_rate(struct clk_hw *hw,
-+				  struct clk_rate_request *req)
+-static long ma35d1_clkdiv_round_rate(struct clk_hw *hw, unsigned long rate, unsigned long *prate)
++static int ma35d1_clkdiv_determine_rate(struct clk_hw *hw,
++					struct clk_rate_request *req)
  {
--	unsigned long parent_rate = *prate;
-+	unsigned long parent_rate = req->best_parent_rate;
- 	u64 tmp = parent_rate;
- 	u8 frac;
+ 	struct ma35d1_adc_clk_div *dclk = to_ma35d1_adc_clk_div(hw);
  
--	tmp = tmp * 18 + rate / 2;
--	do_div(tmp, rate);
-+	tmp = tmp * 18 + req->rate / 2;
-+	do_div(tmp, req->rate);
- 	frac = clamp(tmp, 18, 35);
- 
- 	tmp = parent_rate;
- 	tmp *= 18;
- 	do_div(tmp, frac);
- 
--	return tmp;
-+	req->rate = tmp;
+-	return divider_round_rate(hw, rate, prate, dclk->table,
+-				  dclk->width, CLK_DIVIDER_ROUND_CLOSEST);
++	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate,
++				       dclk->table, dclk->width,
++				       CLK_DIVIDER_ROUND_CLOSEST);
 +
 +	return 0;
  }
  
- static int clk_ref_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -104,7 +106,7 @@ static const struct clk_ops clk_ref_ops = {
- 	.enable		= clk_ref_enable,
- 	.disable	= clk_ref_disable,
- 	.recalc_rate	= clk_ref_recalc_rate,
--	.round_rate	= clk_ref_round_rate,
-+	.determine_rate = clk_ref_determine_rate,
- 	.set_rate	= clk_ref_set_rate,
+ static int ma35d1_clkdiv_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long parent_rate)
+@@ -71,7 +75,7 @@ static int ma35d1_clkdiv_set_rate(struct clk_hw *hw, unsigned long rate, unsigne
+ 
+ static const struct clk_ops ma35d1_adc_clkdiv_ops = {
+ 	.recalc_rate = ma35d1_clkdiv_recalc_rate,
+-	.round_rate = ma35d1_clkdiv_round_rate,
++	.determine_rate = ma35d1_clkdiv_determine_rate,
+ 	.set_rate = ma35d1_clkdiv_set_rate,
  };
  
 
