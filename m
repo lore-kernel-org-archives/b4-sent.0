@@ -1,148 +1,74 @@
-From: Gregory Fuchedgi <gfuchedgi@gmail.com>
-Date: Mon, 11 Aug 2025 09:13:16 -0700
-Subject: [PATCH v2 2/2] dt-bindings: hwmon: update TI TPS23861 bindings
- with per-port schema
+From: Cristian Cozzolino <cristian_ci@protonmail.com>
+Subject: [PATCH RESEND v4 0/3] Add initial device tree for Billion Capture+
+Date: Mon, 11 Aug 2025 23:08:08 +0200
+Message-Id: <20250811-rimob-initial-devicetree-v4-0-b3194f14aa33@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-hwmon-tps23861-add-class-restrictions-v2-2-ebd122ec5e3b@gmail.com>
-References: <20250811-hwmon-tps23861-add-class-restrictions-v2-0-ebd122ec5e3b@gmail.com>
-In-Reply-To: <20250811-hwmon-tps23861-add-class-restrictions-v2-0-ebd122ec5e3b@gmail.com>
-To: Robert Marko <robert.marko@sartura.hr>, 
- Luka Perkov <luka.perkov@sartura.hr>, Jean Delvare <jdelvare@suse.com>, 
- Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Gregory Fuchedgi <gfuchedgi@gmail.com>
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ phone-devel@vger.kernel.org, 
+ Cristian Cozzolino <cristian_ci@protonmail.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754928795; l=3382;
- i=gfuchedgi@gmail.com; s=20250811; h=from:subject:message-id;
- bh=xpxZZVQduuI8ZuEwYXxZY5dWL1ZqA8Vhj1NRk9pc398=;
- b=m5Lxo8KQLpI997ER/UiJ0xI+2VYJHDsJ2jPXs0/xlemcSbFSNwbzrZoWx4dDYFdjq1q4uE6ve
- l3OImKrhu0KA1/5bHCH47MTf4EbQlfBUO1UkgJQg5uzrlwDRuvQmCqp
-X-Developer-Key: i=gfuchedgi@gmail.com; a=ed25519;
- pk=J3o48+1a2mUIebH8K4S3SPuR5bmamUvjlsf8onoIccA=
-X-Endpoint-Received: by B4 Relay for gfuchedgi@gmail.com/20250811 with auth_id=484
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754946504; l=1749;
+ i=cristian_ci@protonmail.com; s=20250620; h=from:subject:message-id;
+ bh=iGpOrPiTcjSqjaJKYglayvOHuHZxT9a26u3piPV43Cc=;
+ b=oa3QBVoZJAN/3rVhLcTZ0V7gnSVN1N86UmgFi3RK8fR+G6jrEQxwN7ELV8pDcO38mOmjDAVCu
+ ZjcZPYShCtsBeEaYCOSj/kxEG9WyAgA8XY1R4BIBBGIqfK6bQLNQy89
+X-Developer-Key: i=cristian_ci@protonmail.com; a=ed25519;
+ pk=xH5IvIPUNHV1Q8R0/pq2CfuVFR/wTiAyuyi6IwedjZY=
+X-Endpoint-Received: by B4 Relay for cristian_ci@protonmail.com/20250620 with auth_id=438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update schema after per-port poe class restrictions and a few other options
-were implemented.
+Billion Capture+ is a handset using the MSM8953 SoC released in 2017
+and sold by Flipkart.
 
-Signed-off-by: Gregory Fuchedgi <gfuchedgi@gmail.com>
+Add a device tree with initial support for:
+
+- GPIO keys
+- SDHCI (internal and external storage)
+- USB Device Mode
+- Regulators
+- Simple framebuffer
+
+Signed-off-by: Cristian Cozzolino <cristian_ci@protonmail.com>
 ---
- .../devicetree/bindings/hwmon/ti,tps23861.yaml     | 86 ++++++++++++++++++++++
- 1 file changed, 86 insertions(+)
+Changes in v4:
+- pick up tags (Rob);
+- Link to v3: https://lore.kernel.org/r/20250626-rimob-initial-devicetree-v3-0-4017ac9fd93d@protonmail.com
 
-diff --git a/Documentation/devicetree/bindings/hwmon/ti,tps23861.yaml b/Documentation/devicetree/bindings/hwmon/ti,tps23861.yaml
-index ee7de53e19184d4c3df7564624532306d885f6e4..578f4dad7eab630b218e9e30b23fc611a760d332 100644
---- a/Documentation/devicetree/bindings/hwmon/ti,tps23861.yaml
-+++ b/Documentation/devicetree/bindings/hwmon/ti,tps23861.yaml
-@@ -24,12 +24,62 @@ properties:
-   reg:
-     maxItems: 1
- 
-+  '#address-cells':
-+    const: 1
-+
-+  '#size-cells':
-+    const: 0
-+
-   shunt-resistor-micro-ohms:
-     description: The value of current sense resistor in microohms.
-     default: 255000
-     minimum: 250000
-     maximum: 255000
- 
-+  reset-gpios:
-+    description: Optional GPIO for the reset pin.
-+    maxItems: 1
-+
-+  shutdown-gpios:
-+    description: |
-+      Optional GPIO for the shutdown pin. Used to prevent PoE activity before
-+      the driver had a chance to configure the chip.
-+    maxItems: 1
-+
-+  interrupts:
-+    description: |
-+      The interrupt specifier. Only required if PoE class is restricted to less
-+      than class 4 in the device tree.
-+    maxItems: 1
-+
-+patternProperties:
-+  "^port@[0-3]$":
-+    type: object
-+    description: Port specific nodes.
-+    unevaluatedProperties: false
-+    required:
-+      - reg
-+
-+    properties:
-+      reg:
-+        description: Port index.
-+        items:
-+          minimum: 0
-+          maximum: 3
-+
-+      class:
-+        description: The maximum power class a port should accept.
-+        $ref: /schemas/types.yaml#/definitions/uint32
-+        minimum: 0
-+        maximum: 4
-+
-+      off-by-default:
-+        description: Indicates the port is off by default.
-+        type: boolean
-+
-+      label:
-+        description: Optional port label
-+
- required:
-   - compatible
-   - reg
-@@ -51,3 +101,39 @@ examples:
-             shunt-resistor-micro-ohms = <255000>;
-         };
-     };
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+    i2c {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+        tps23861@28 {
-+            #address-cells = <1>;
-+            #size-cells = <0>;
-+            compatible = "ti,tps23861";
-+            reg = <0x28>;
-+            shunt-resistor-micro-ohms = <255000>;
-+            reset-gpios = <&gpio1 13 GPIO_ACTIVE_LOW>;
-+            shutdown-gpios = <&gpio1 12 GPIO_ACTIVE_LOW>;
-+            interrupt-parent = <&gpio1>;
-+            interrupts = <14 0>;
-+            label = "my_poe_controller";
-+            port@0 {
-+                    reg = <0>;
-+                    class = <2>; // Max PoE class allowed.
-+                    off-by-default;
-+                    label = "myport";
-+            };
-+            port@1 {
-+                    reg = <1>;
-+                    status = "disabled";
-+            };
-+            port@2 {
-+                    reg = <2>;
-+                    status = "disabled";
-+            };
-+            port@3 {
-+                    reg = <3>;
-+                    status = "disabled";
-+            };
-+        };
-+    };
+Changes in v3:
+- (patch 3/3): pick up tag (Konrad);
+- Link to v2: https://lore.kernel.org/r/20250624-rimob-initial-devicetree-v2-0-34f6045ebc30@protonmail.com
 
+Changes in v2:
+- (patch 3/3):
+  - add unit address and label to qseecom (Luca);
+  - reorder properties alphabetically in gpio-keys node (Konrad);
+  - fix hex values in reg address and size cells: from 0x00 to 0x0 (Konrad);
+  - add regulator-allow-set-load property to regulators supplying sdhc1/sdhc2.
+- Link to v1: https://lore.kernel.org/r/20250620-rimob-initial-devicetree-v1-0-8e667ea21f82@protonmail.com
+
+---
+Cristian Cozzolino (3):
+      dt-bindings: vendor-prefixes: Add Flipkart
+      dt-bindings: arm: qcom: Add Billion Capture+
+      arm64: dts: qcom: msm8953: Add device tree for Billion Capture+
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 255 +++++++++++++++++++++
+ 4 files changed, 259 insertions(+)
+---
+base-commit: 0ff41df1cb268fc69e703a08a57ee14ae967d0ca
+change-id: 20250620-rimob-initial-devicetree-da86a5bffc8b
+
+Best regards,
 -- 
-2.43.0
+Cristian Cozzolino <cristian_ci@protonmail.com>
 
