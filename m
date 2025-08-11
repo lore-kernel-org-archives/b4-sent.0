@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:07 -0400
-Subject: [PATCH 015/114] clk: fractional-divider: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:18:08 -0400
+Subject: [PATCH 016/114] clk: gemini: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-15-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-16-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2318;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1540;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=/o+cz3JnxAohEBFk0Q6flk11ZK2B5GlFanpUK6pxSB0=;
- b=cv7K+VUcxLaSvuke6V5+DTyW7HLszBz+TY7aN6vsOtNEEGx1L+zhSi4oLVYgIkl7XliPU9rBx
- LoYTZHQJWnRAdHuJhabFXxUJ9BDe7IVMv681j2Qwg0CMh3KGRIw+tcG
+ bh=fq61zK+hq54hhS03I3X0iQmUgqsM8bf2Q3LlVo5dgDc=;
+ b=rtW4321gwOW415w/7adzhjZpRSYwAPRPbfIBGymJgkqkHjmJFinLSZagckdwk9CGS/Whm2ro9
+ Oo/e7TAaGJfAptjw1DozTI1vZLvNPMyE/XzlJUpu3eqO237Vzmn2zpo
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,63 +87,44 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-fractional-divider.c | 25 ++++++++++++++++---------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+ drivers/clk/clk-gemini.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/clk/clk-fractional-divider.c b/drivers/clk/clk-fractional-divider.c
-index da057172cc90f145743a4f7dfd71870bd63b564b..cd36a6e27f251f88c5fdf06e7de4bd8cbe332c24 100644
---- a/drivers/clk/clk-fractional-divider.c
-+++ b/drivers/clk/clk-fractional-divider.c
-@@ -151,25 +151,32 @@ void clk_fractional_divider_general_approximation(struct clk_hw *hw,
+diff --git a/drivers/clk/clk-gemini.c b/drivers/clk/clk-gemini.c
+index 856b008e07c6b7e967b01c4ef43af838f7f18fe2..e94589c385688e0c48e047b2fde87304b0a1150f 100644
+--- a/drivers/clk/clk-gemini.c
++++ b/drivers/clk/clk-gemini.c
+@@ -126,13 +126,16 @@ static unsigned long gemini_pci_recalc_rate(struct clk_hw *hw,
+ 	return 33000000;
  }
- EXPORT_SYMBOL_GPL(clk_fractional_divider_general_approximation);
  
--static long clk_fd_round_rate(struct clk_hw *hw, unsigned long rate,
--			      unsigned long *parent_rate)
-+static int clk_fd_determine_rate(struct clk_hw *hw,
-+				 struct clk_rate_request *req)
+-static long gemini_pci_round_rate(struct clk_hw *hw, unsigned long rate,
+-				  unsigned long *prate)
++static int gemini_pci_determine_rate(struct clk_hw *hw,
++				     struct clk_rate_request *req)
  {
- 	struct clk_fractional_divider *fd = to_clk_fd(hw);
- 	unsigned long m, n;
- 	u64 ret;
- 
--	if (!rate || (!clk_hw_can_set_rate_parent(hw) && rate >= *parent_rate))
--		return *parent_rate;
-+	if (!req->rate || (!clk_hw_can_set_rate_parent(hw) && req->rate >= req->best_parent_rate)) {
-+		req->rate = req->best_parent_rate;
-+
-+		return 0;
-+	}
- 
- 	if (fd->approximation)
--		fd->approximation(hw, rate, parent_rate, &m, &n);
-+		fd->approximation(hw, req->rate, &req->best_parent_rate, &m, &n);
- 	else
--		clk_fractional_divider_general_approximation(hw, rate, parent_rate, &m, &n);
-+		clk_fractional_divider_general_approximation(hw, req->rate,
-+							     &req->best_parent_rate,
-+							     &m, &n);
- 
--	ret = (u64)*parent_rate * m;
-+	ret = (u64)req->best_parent_rate * m;
- 	do_div(ret, n);
- 
--	return ret;
-+	req->rate = ret;
+ 	/* We support 33 and 66 MHz */
+-	if (rate < 48000000)
+-		return 33000000;
+-	return 66000000;
++	if (req->rate < 48000000)
++		req->rate = 33000000;
++	else
++		req->rate = 66000000;
 +
 +	return 0;
  }
  
- static int clk_fd_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -250,7 +257,7 @@ static void clk_fd_debug_init(struct clk_hw *hw, struct dentry *dentry)
+ static int gemini_pci_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -179,7 +182,7 @@ static int gemini_pci_is_enabled(struct clk_hw *hw)
  
- const struct clk_ops clk_fractional_divider_ops = {
- 	.recalc_rate = clk_fd_recalc_rate,
--	.round_rate = clk_fd_round_rate,
-+	.determine_rate = clk_fd_determine_rate,
- 	.set_rate = clk_fd_set_rate,
- #ifdef CONFIG_DEBUG_FS
- 	.debug_init = clk_fd_debug_init,
+ static const struct clk_ops gemini_pci_clk_ops = {
+ 	.recalc_rate = gemini_pci_recalc_rate,
+-	.round_rate = gemini_pci_round_rate,
++	.determine_rate = gemini_pci_determine_rate,
+ 	.set_rate = gemini_pci_set_rate,
+ 	.enable = gemini_pci_enable,
+ 	.disable = gemini_pci_disable,
 
 -- 
 2.50.1
