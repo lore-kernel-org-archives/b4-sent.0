@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:59 -0400
-Subject: [PATCH 067/114] clk: xilinx: xlnx_vcu: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:19:00 -0400
+Subject: [PATCH 068/114] clk: zynqmp: divider: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-67-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-68-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1864;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2557;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=82qR/ZRJSeYXbGnr0soHZMhXD3A3PwOES4maoFV30vY=;
- b=4jol9sapsSWNpZQnMHZgNxJnIWie1Lf+ASszpOwTPb8maLgVdzwNCJLnNjrPrjUaEcQPmqeNe
- wqWkD0ziSEsDs2R71hWmkSKjy/0GDB5nHX3k9i30q4oR/mDUJlH7PKn
+ bh=Zs0u4KFiPgOdtobNVPTqPSjbiFnfpZhsHHTaehaZD6k=;
+ b=Ukt1Oh4/kXrvpMcn8AxKhVmUskoT9oWQ/HPlFC+1vBuz3JBrwb+pctgJdDh3v7rNLkZLUhzih
+ 5P/QzAkefeZDy0kv01bVpkrPRNcNZF8U3RFg566FCgF0lHOOEp6eJJt
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,49 +87,68 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/xilinx/xlnx_vcu.c | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
+ drivers/clk/zynqmp/divider.c | 23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/clk/xilinx/xlnx_vcu.c b/drivers/clk/xilinx/xlnx_vcu.c
-index 1ded67bee06c3903b14bd32af36238ee02661b07..02699bc0f82c6b37d7d373a90160a63aa5df52a2 100644
---- a/drivers/clk/xilinx/xlnx_vcu.c
-+++ b/drivers/clk/xilinx/xlnx_vcu.c
-@@ -311,18 +311,21 @@ static int xvcu_pll_set_div(struct vcu_pll *pll, int div)
- 	return 0;
- }
- 
--static long xvcu_pll_round_rate(struct clk_hw *hw,
--				unsigned long rate, unsigned long *parent_rate)
-+static int xvcu_pll_determine_rate(struct clk_hw *hw,
-+				   struct clk_rate_request *req)
+diff --git a/drivers/clk/zynqmp/divider.c b/drivers/clk/zynqmp/divider.c
+index 5a00487ae408be4ffd586704859b232e934c1f6e..8470b22948252b83567925c704716a027b841562 100644
+--- a/drivers/clk/zynqmp/divider.c
++++ b/drivers/clk/zynqmp/divider.c
+@@ -118,9 +118,8 @@ static unsigned long zynqmp_clk_divider_recalc_rate(struct clk_hw *hw,
+  *
+  * Return: 0 on success else error+reason
+  */
+-static long zynqmp_clk_divider_round_rate(struct clk_hw *hw,
+-					  unsigned long rate,
+-					  unsigned long *prate)
++static int zynqmp_clk_divider_determine_rate(struct clk_hw *hw,
++					     struct clk_rate_request *req)
  {
- 	struct vcu_pll *pll = to_vcu_pll(hw);
- 	unsigned int feedback_div;
+ 	struct zynqmp_clk_divider *divider = to_zynqmp_clk_divider(hw);
+ 	const char *clk_name = clk_hw_get_name(hw);
+@@ -145,17 +144,21 @@ static long zynqmp_clk_divider_round_rate(struct clk_hw *hw,
+ 		if (divider->flags & CLK_DIVIDER_POWER_OF_TWO)
+ 			bestdiv = 1 << bestdiv;
  
--	rate = clamp_t(unsigned long, rate, pll->fvco_min, pll->fvco_max);
-+	req->rate = clamp_t(unsigned long, req->rate, pll->fvco_min,
-+			    pll->fvco_max);
- 
--	feedback_div = DIV_ROUND_CLOSEST_ULL(rate, *parent_rate);
-+	feedback_div = DIV_ROUND_CLOSEST_ULL(req->rate, req->best_parent_rate);
- 	feedback_div = clamp_t(unsigned int, feedback_div, 25, 125);
- 
--	return *parent_rate * feedback_div;
-+	req->rate = req->best_parent_rate * feedback_div;
+-		return DIV_ROUND_UP_ULL((u64)*prate, bestdiv);
++		req->rate = DIV_ROUND_UP_ULL((u64) req->best_parent_rate, bestdiv);
 +
++		return 0;
+ 	}
+ 
+ 	width = fls(divider->max_div);
+ 
+-	rate = divider_round_rate(hw, rate, prate, NULL, width, divider->flags);
++	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate,
++				       NULL, width, divider->flags);
+ 
+-	if (divider->is_frac && (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) && (rate % *prate))
+-		*prate = rate;
++	if (divider->is_frac && (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) &&
++	    (req->rate % req->best_parent_rate))
++		req->best_parent_rate = req->rate;
+ 
+-	return rate;
 +	return 0;
  }
  
- static unsigned long xvcu_pll_recalc_rate(struct clk_hw *hw,
-@@ -394,7 +397,7 @@ static void xvcu_pll_disable(struct clk_hw *hw)
- static const struct clk_ops vcu_pll_ops = {
- 	.enable = xvcu_pll_enable,
- 	.disable = xvcu_pll_disable,
--	.round_rate = xvcu_pll_round_rate,
-+	.determine_rate = xvcu_pll_determine_rate,
- 	.recalc_rate = xvcu_pll_recalc_rate,
- 	.set_rate = xvcu_pll_set_rate,
+ /**
+@@ -199,13 +202,13 @@ static int zynqmp_clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+ 
+ static const struct clk_ops zynqmp_clk_divider_ops = {
+ 	.recalc_rate = zynqmp_clk_divider_recalc_rate,
+-	.round_rate = zynqmp_clk_divider_round_rate,
++	.determine_rate = zynqmp_clk_divider_determine_rate,
+ 	.set_rate = zynqmp_clk_divider_set_rate,
  };
+ 
+ static const struct clk_ops zynqmp_clk_divider_ro_ops = {
+ 	.recalc_rate = zynqmp_clk_divider_recalc_rate,
+-	.round_rate = zynqmp_clk_divider_round_rate,
++	.determine_rate = zynqmp_clk_divider_determine_rate,
+ };
+ 
+ /**
 
 -- 
 2.50.1
