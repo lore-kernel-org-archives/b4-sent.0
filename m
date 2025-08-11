@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:10 -0400
-Subject: [PATCH 078/114] clk: bcm: iproc-asiu: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:19:11 -0400
+Subject: [PATCH 079/114] clk: bm1880: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-78-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-79-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1957;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2146;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=6ioMu4+9UAItFS7H+eBG3CyIWro6x44XklxAacg3uaw=;
- b=vLu64vwwALh+I9RSN6KksddaCwCNlfEXyI3Fcmya/ds2RbS7mGsDALrDSl5rC7ne7egWrNKVD
- npXIYcWo63FAuTzcQ0NBiAuy5N6L2TJdOnfq6b8kKP3Tw/W3gYlf+xc
+ bh=i4/zUwvMmSNXthJvzQxhg+vS/kwTrhaPDh6vzaYBr/Y=;
+ b=R+e0rJ26ayqoVsrbB80+wdnnEe+4dIQYa/IcZLbwrsXzdPK+R+VX4dAXHJbr5Hhl2egxnKejt
+ HsnRyFQazBNC+2TZhSPqsBcma/hpbZwiz4PdxTAPM1chEOBtUaxmNG3
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,57 +87,55 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/bcm/clk-iproc-asiu.c | 25 +++++++++++++++----------
- 1 file changed, 15 insertions(+), 10 deletions(-)
+ drivers/clk/clk-bm1880.c | 21 +++++++++++++--------
+ 1 file changed, 13 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/clk/bcm/clk-iproc-asiu.c b/drivers/clk/bcm/clk-iproc-asiu.c
-index dcacf55c55ae06bc45fd5585265084075353b379..83ec13da9b2e1de9438ee4fb23b8e2e1852d59f2 100644
---- a/drivers/clk/bcm/clk-iproc-asiu.c
-+++ b/drivers/clk/bcm/clk-iproc-asiu.c
-@@ -98,22 +98,27 @@ static unsigned long iproc_asiu_clk_recalc_rate(struct clk_hw *hw,
- 	return clk->rate;
+diff --git a/drivers/clk/clk-bm1880.c b/drivers/clk/clk-bm1880.c
+index 002f7360b1c6c6e3058606a0808115b48fd3147a..dac190bc6e19a6dd4be413ea52d41f74934a1aa9 100644
+--- a/drivers/clk/clk-bm1880.c
++++ b/drivers/clk/clk-bm1880.c
+@@ -608,8 +608,8 @@ static unsigned long bm1880_clk_div_recalc_rate(struct clk_hw *hw,
+ 	return rate;
  }
  
--static long iproc_asiu_clk_round_rate(struct clk_hw *hw, unsigned long rate,
--				      unsigned long *parent_rate)
-+static int iproc_asiu_clk_determine_rate(struct clk_hw *hw,
+-static long bm1880_clk_div_round_rate(struct clk_hw *hw, unsigned long rate,
+-				      unsigned long *prate)
++static int bm1880_clk_div_determine_rate(struct clk_hw *hw,
 +					 struct clk_rate_request *req)
  {
- 	unsigned int div;
+ 	struct bm1880_div_hw_clock *div_hw = to_bm1880_div_clk(hw);
+ 	struct bm1880_div_clock *div = &div_hw->div;
+@@ -621,13 +621,18 @@ static long bm1880_clk_div_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		val = readl(reg_addr) >> div->shift;
+ 		val &= clk_div_mask(div->width);
  
--	if (rate == 0 || *parent_rate == 0)
-+	if (req->rate == 0 || req->best_parent_rate == 0)
- 		return -EINVAL;
- 
--	if (rate == *parent_rate)
--		return *parent_rate;
-+	if (req->rate == req->best_parent_rate)
-+		return 0;
- 
--	div = DIV_ROUND_CLOSEST(*parent_rate, rate);
--	if (div < 2)
--		return *parent_rate;
-+	div = DIV_ROUND_CLOSEST(req->best_parent_rate, req->rate);
-+	if (div < 2) {
-+		req->rate = req->best_parent_rate;
- 
--	return *parent_rate / div;
-+		return 0;
-+	}
+-		return divider_ro_round_rate(hw, rate, prate, div->table,
+-					     div->width, div->flags,
+-					     val);
++		req->rate = divider_ro_round_rate(hw, req->rate,
++						  &req->best_parent_rate,
++						  div->table,
++						  div->width, div->flags, val);
 +
-+	req->rate = req->best_parent_rate / div;
++		return 0;
+ 	}
+ 
+-	return divider_round_rate(hw, rate, prate, div->table,
+-				  div->width, div->flags);
++	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate,
++				       div->table, div->width, div->flags);
 +
 +	return 0;
  }
  
- static int iproc_asiu_clk_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -168,7 +173,7 @@ static const struct clk_ops iproc_asiu_ops = {
- 	.enable = iproc_asiu_clk_enable,
- 	.disable = iproc_asiu_clk_disable,
- 	.recalc_rate = iproc_asiu_clk_recalc_rate,
--	.round_rate = iproc_asiu_clk_round_rate,
-+	.determine_rate = iproc_asiu_clk_determine_rate,
- 	.set_rate = iproc_asiu_clk_set_rate,
+ static int bm1880_clk_div_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -665,7 +670,7 @@ static int bm1880_clk_div_set_rate(struct clk_hw *hw, unsigned long rate,
+ 
+ static const struct clk_ops bm1880_clk_div_ops = {
+ 	.recalc_rate = bm1880_clk_div_recalc_rate,
+-	.round_rate = bm1880_clk_div_round_rate,
++	.determine_rate = bm1880_clk_div_determine_rate,
+ 	.set_rate = bm1880_clk_div_set_rate,
  };
  
 
