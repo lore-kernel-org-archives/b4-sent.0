@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:32 -0400
-Subject: [PATCH 100/114] clk: sp7021: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:19:33 -0400
+Subject: [PATCH 101/114] clk: spear: aux-synth: convert from round_rate()
+ to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-100-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-101-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1961;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1618;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=83siigDgElU7FqWleUU9IM12P9ymZvPWIUf1vsjwjv8=;
- b=4DY/vRjmlVCFDKUCXNIA9Ns89LQVD88Si/kjdjbIM7teu2NWiMJmxa2/4qNATLPRoV+DVZ6N/
- ALPMaIHijxdCUkfNA1BHx3FhxvR17L8Q8Lw62MBES1g8RW2hOqsQqZp
+ bh=ebzequVdWLQxGl4ExcK9BX4qhm1zOZjsM7IqFxsLdPM=;
+ b=/NmyUG8ayKEcRByOJYA6XSvpBcLXeeM7+rsGQQYMrFyYKTzM+46BE/jQGJmbQWZzMx430sPse
+ VnXsrHVGSjNDKfbJJDoMReVDhlSh3HdRpwVEPBuUKAyakGp9+UrU3cr
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,59 +87,43 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-sp7021.c | 22 ++++++++++++----------
- 1 file changed, 12 insertions(+), 10 deletions(-)
+ drivers/clk/spear/clk-aux-synth.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/clk-sp7021.c b/drivers/clk/clk-sp7021.c
-index 95d66191df4bdb3609128ea097be896ef3a1038a..445e3da50e29f931b73f05fe956d9d38affe0ca7 100644
---- a/drivers/clk/clk-sp7021.c
-+++ b/drivers/clk/clk-sp7021.c
-@@ -412,25 +412,27 @@ static long sp_pll_calc_div(struct sp_pll *clk, unsigned long rate)
- 	return fbdiv;
+diff --git a/drivers/clk/spear/clk-aux-synth.c b/drivers/clk/spear/clk-aux-synth.c
+index 637938e804f875e9416f9546bab0bd8681f00337..d0d063147af8c4f81bfa9b2a8446e1a56455fe39 100644
+--- a/drivers/clk/spear/clk-aux-synth.c
++++ b/drivers/clk/spear/clk-aux-synth.c
+@@ -49,14 +49,16 @@ static unsigned long aux_calc_rate(struct clk_hw *hw, unsigned long prate,
+ 			(rtbl[index].yscale * eq)) * 10000;
  }
  
--static long sp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--			      unsigned long *prate)
-+static int sp_pll_determine_rate(struct clk_hw *hw,
-+				 struct clk_rate_request *req)
+-static long clk_aux_round_rate(struct clk_hw *hw, unsigned long drate,
+-		unsigned long *prate)
++static int clk_aux_determine_rate(struct clk_hw *hw,
++				  struct clk_rate_request *req)
  {
- 	struct sp_pll *clk = to_sp_pll(hw);
- 	long ret;
+ 	struct clk_aux *aux = to_clk_aux(hw);
+ 	int unused;
  
--	if (rate == *prate) {
--		ret = *prate; /* bypass */
-+	if (req->rate == req->best_parent_rate) {
-+		ret = req->best_parent_rate; /* bypass */
- 	} else if (clk->div_width == DIV_A) {
--		ret = plla_round_rate(clk, rate);
-+		ret = plla_round_rate(clk, req->rate);
- 	} else if (clk->div_width == DIV_TV) {
--		ret = plltv_div(clk, rate);
-+		ret = plltv_div(clk, req->rate);
- 		if (ret < 0)
--			ret = *prate;
-+			ret = req->best_parent_rate;
- 	} else {
--		ret = sp_pll_calc_div(clk, rate) * clk->brate;
-+		ret = sp_pll_calc_div(clk, req->rate) * clk->brate;
- 	}
- 
--	return ret;
-+	req->rate = ret;
+-	return clk_round_rate_index(hw, drate, *prate, aux_calc_rate,
+-			aux->rtbl_cnt, &unused);
++	req->rate = clk_round_rate_index(hw, req->rate, req->best_parent_rate,
++					 aux_calc_rate, aux->rtbl_cnt, &unused);
 +
 +	return 0;
  }
  
- static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
-@@ -535,7 +537,7 @@ static const struct clk_ops sp_pll_ops = {
- 	.enable = sp_pll_enable,
- 	.disable = sp_pll_disable,
- 	.is_enabled = sp_pll_is_enabled,
--	.round_rate = sp_pll_round_rate,
-+	.determine_rate = sp_pll_determine_rate,
- 	.recalc_rate = sp_pll_recalc_rate,
- 	.set_rate = sp_pll_set_rate
+ static unsigned long clk_aux_recalc_rate(struct clk_hw *hw,
+@@ -127,7 +129,7 @@ static int clk_aux_set_rate(struct clk_hw *hw, unsigned long drate,
+ 
+ static const struct clk_ops clk_aux_ops = {
+ 	.recalc_rate = clk_aux_recalc_rate,
+-	.round_rate = clk_aux_round_rate,
++	.determine_rate = clk_aux_determine_rate,
+ 	.set_rate = clk_aux_set_rate,
  };
+ 
 
 -- 
 2.50.1
