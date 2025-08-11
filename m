@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:37 -0400
-Subject: [PATCH 045/114] clk: si570: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:18:38 -0400
+Subject: [PATCH 046/114] clk: sifive: sifive-prci: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-45-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-46-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2083;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=3917;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=u1OMhMwXuV7+/nhwfF+uE+ysp+6puvUWRn+/hBv686M=;
- b=zpWpLy+2xiSBJ6LH++CWDJRg9CmksGcCmVV92O/D6wLJsbE+fqWNn7gTXf4hZ8lkhalu8vaHJ
- PIgZEXW+ERCCeTAnIfuj3No+uaGXP+qj9mx5ugWj7Hvgybp28YzzirP
+ bh=hC/ZgUTIYom+i1g3YO1lyOW6iNGVl9CAm5qy5dkubO4=;
+ b=z2VfzP5IclC6Zx5WAOeSvxHcXjD4O9gmA0kgupAYF9wzqgy1oa+JdN4ESoVCcchwH4iaYC0oG
+ 0CqL2NxLU7tCFZuqsttBkxwWhWS+NFWCTGJmsl/ynr4hC6Lqq/zTxXH
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -85,73 +85,87 @@ The round_rate() clk ops is deprecated, so migrate this driver from
 round_rate() to determine_rate() using the Coccinelle semantic patch
 on the cover letter of this series.
 
+Note that the changes to the three header files were done by hand.
+
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-si570.c | 24 +++++++++++++++---------
- 1 file changed, 15 insertions(+), 9 deletions(-)
+ drivers/clk/sifive/fu540-prci.h  |  2 +-
+ drivers/clk/sifive/fu740-prci.h  |  2 +-
+ drivers/clk/sifive/sifive-prci.c | 11 ++++++-----
+ drivers/clk/sifive/sifive-prci.h |  4 ++--
+ 4 files changed, 10 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/clk/clk-si570.c b/drivers/clk/clk-si570.c
-index e97fe90443a645c905465ad37cb5490c0c096834..b0b1830dd4302f9ad92023de2e0276cd8ea02639 100644
---- a/drivers/clk/clk-si570.c
-+++ b/drivers/clk/clk-si570.c
-@@ -246,34 +246,40 @@ static unsigned long si570_recalc_rate(struct clk_hw *hw,
- 	return rate;
+diff --git a/drivers/clk/sifive/fu540-prci.h b/drivers/clk/sifive/fu540-prci.h
+index e0173324f3c52adf128b65c02afcd94069af8ccb..d45193c210b4be658ee8c1fb81b3be612d19772f 100644
+--- a/drivers/clk/sifive/fu540-prci.h
++++ b/drivers/clk/sifive/fu540-prci.h
+@@ -49,7 +49,7 @@ static struct __prci_wrpll_data sifive_fu540_prci_gemgxlpll_data = {
+ 
+ static const struct clk_ops sifive_fu540_prci_wrpll_clk_ops = {
+ 	.set_rate = sifive_prci_wrpll_set_rate,
+-	.round_rate = sifive_prci_wrpll_round_rate,
++	.determine_rate = sifive_prci_wrpll_determine_rate,
+ 	.recalc_rate = sifive_prci_wrpll_recalc_rate,
+ 	.enable = sifive_prci_clock_enable,
+ 	.disable = sifive_prci_clock_disable,
+diff --git a/drivers/clk/sifive/fu740-prci.h b/drivers/clk/sifive/fu740-prci.h
+index f31cd30fc3951e0c8a9f9c01c7abc7b7ad39c057..c605a899d97de76a03c58b7c1209292e7acebbb0 100644
+--- a/drivers/clk/sifive/fu740-prci.h
++++ b/drivers/clk/sifive/fu740-prci.h
+@@ -55,7 +55,7 @@ static struct __prci_wrpll_data sifive_fu740_prci_cltxpll_data = {
+ 
+ static const struct clk_ops sifive_fu740_prci_wrpll_clk_ops = {
+ 	.set_rate = sifive_prci_wrpll_set_rate,
+-	.round_rate = sifive_prci_wrpll_round_rate,
++	.determine_rate = sifive_prci_wrpll_determine_rate,
+ 	.recalc_rate = sifive_prci_wrpll_recalc_rate,
+ 	.enable = sifive_prci_clock_enable,
+ 	.disable = sifive_prci_clock_disable,
+diff --git a/drivers/clk/sifive/sifive-prci.c b/drivers/clk/sifive/sifive-prci.c
+index caba0400f8a2cf97446a7722c28f6b2eb627dcf5..4d1cc7adb2b32d99a2187ca80dbdef7f90124309 100644
+--- a/drivers/clk/sifive/sifive-prci.c
++++ b/drivers/clk/sifive/sifive-prci.c
+@@ -183,9 +183,8 @@ unsigned long sifive_prci_wrpll_recalc_rate(struct clk_hw *hw,
+ 	return wrpll_calc_output_rate(&pwd->c, parent_rate);
  }
  
--static long si570_round_rate(struct clk_hw *hw, unsigned long rate,
--		unsigned long *parent_rate)
-+static int si570_determine_rate(struct clk_hw *hw,
-+				struct clk_rate_request *req)
+-long sifive_prci_wrpll_round_rate(struct clk_hw *hw,
+-				  unsigned long rate,
+-				  unsigned long *parent_rate)
++int sifive_prci_wrpll_determine_rate(struct clk_hw *hw,
++				     struct clk_rate_request *req)
  {
- 	int err;
- 	u64 rfreq;
- 	unsigned int n1, hs_div;
- 	struct clk_si570 *data = to_clk_si570(hw);
+ 	struct __prci_clock *pc = clk_hw_to_prci_clock(hw);
+ 	struct __prci_wrpll_data *pwd = pc->pwd;
+@@ -193,9 +192,11 @@ long sifive_prci_wrpll_round_rate(struct clk_hw *hw,
  
--	if (!rate)
-+	if (!req->rate) {
-+		req->rate = 0;
+ 	memcpy(&c, &pwd->c, sizeof(c));
+ 
+-	wrpll_configure_for_rate(&c, rate, *parent_rate);
++	wrpll_configure_for_rate(&c, req->rate, req->best_parent_rate);
+ 
+-	return wrpll_calc_output_rate(&c, *parent_rate);
++	req->rate = wrpll_calc_output_rate(&c, req->best_parent_rate);
 +
- 		return 0;
-+	}
- 
--	if (div64_u64(abs(rate - data->frequency) * 10000LL,
-+	if (div64_u64(abs(req->rate - data->frequency) * 10000LL,
- 				data->frequency) < 35) {
--		rfreq = div64_u64((data->rfreq * rate) +
--				div64_u64(data->frequency, 2), data->frequency);
-+		rfreq = div64_u64((data->rfreq * req->rate) +
-+				  div64_u64(data->frequency, 2),
-+				  data->frequency);
- 		n1 = data->n1;
- 		hs_div = data->hs_div;
- 
- 	} else {
--		err = si570_calc_divs(rate, data, &rfreq, &n1, &hs_div);
-+		err = si570_calc_divs(req->rate, data, &rfreq, &n1, &hs_div);
- 		if (err) {
- 			dev_err(&data->i2c_client->dev,
- 					"unable to round rate\n");
-+			req->rate = 0;
-+
- 			return 0;
- 		}
- 	}
- 
--	return rate;
 +	return 0;
  }
  
- /**
-@@ -368,7 +374,7 @@ static int si570_set_rate(struct clk_hw *hw, unsigned long rate,
+ int sifive_prci_wrpll_set_rate(struct clk_hw *hw,
+diff --git a/drivers/clk/sifive/sifive-prci.h b/drivers/clk/sifive/sifive-prci.h
+index 91658a88af4ef6157563846399e4857ba83c8645..d74b2bddd08a0753409e0040b493bba1497593eb 100644
+--- a/drivers/clk/sifive/sifive-prci.h
++++ b/drivers/clk/sifive/sifive-prci.h
+@@ -291,8 +291,8 @@ void sifive_prci_hfpclkpllsel_use_hfclk(struct __prci_data *pd);
+ void sifive_prci_hfpclkpllsel_use_hfpclkpll(struct __prci_data *pd);
  
- static const struct clk_ops si570_clk_ops = {
- 	.recalc_rate = si570_recalc_rate,
--	.round_rate = si570_round_rate,
-+	.determine_rate = si570_determine_rate,
- 	.set_rate = si570_set_rate,
- };
- 
+ /* Linux clock framework integration */
+-long sifive_prci_wrpll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				  unsigned long *parent_rate);
++int sifive_prci_wrpll_determine_rate(struct clk_hw *hw,
++				     struct clk_rate_request *req);
+ int sifive_prci_wrpll_set_rate(struct clk_hw *hw, unsigned long rate,
+ 			       unsigned long parent_rate);
+ int sifive_clk_is_enabled(struct clk_hw *hw);
 
 -- 
 2.50.1
