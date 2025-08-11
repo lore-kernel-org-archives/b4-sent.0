@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:08 -0400
-Subject: [PATCH 016/114] clk: gemini: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:09 -0400
+Subject: [PATCH 017/114] clk: highbank: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-16-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-17-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1540;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2589;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=fq61zK+hq54hhS03I3X0iQmUgqsM8bf2Q3LlVo5dgDc=;
- b=rtW4321gwOW415w/7adzhjZpRSYwAPRPbfIBGymJgkqkHjmJFinLSZagckdwk9CGS/Whm2ro9
- Oo/e7TAaGJfAptjw1DozTI1vZLvNPMyE/XzlJUpu3eqO237Vzmn2zpo
+ bh=4kM2G8lmXIq8f/rptTCj8H1Z7BmYydKr4+RK65Q7a2Q=;
+ b=Unobj/z44iIvTVGDpAAEKOYpl2LDGk2cMLUv+Vh6fTJPrFof4G2uw1fpbCc5pgpgX8a5EW+56
+ m8l8Ojw5ESJBw6hB8neXHuT2nrji9HV50nPNkUIPHQZypTiJJhTdtTm
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,44 +87,77 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-gemini.c | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
+ drivers/clk/clk-highbank.c | 26 +++++++++++++++-----------
+ 1 file changed, 15 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/clk/clk-gemini.c b/drivers/clk/clk-gemini.c
-index 856b008e07c6b7e967b01c4ef43af838f7f18fe2..e94589c385688e0c48e047b2fde87304b0a1150f 100644
---- a/drivers/clk/clk-gemini.c
-+++ b/drivers/clk/clk-gemini.c
-@@ -126,13 +126,16 @@ static unsigned long gemini_pci_recalc_rate(struct clk_hw *hw,
- 	return 33000000;
+diff --git a/drivers/clk/clk-highbank.c b/drivers/clk/clk-highbank.c
+index 6e68a41a70a1b7160359c98138de76fb30535e68..cc583934ecf2481f481f470a185afb1fc6064760 100644
+--- a/drivers/clk/clk-highbank.c
++++ b/drivers/clk/clk-highbank.c
+@@ -130,15 +130,17 @@ static void clk_pll_calc(unsigned long rate, unsigned long ref_freq,
+ 	*pdivf = divf;
  }
  
--static long gemini_pci_round_rate(struct clk_hw *hw, unsigned long rate,
--				  unsigned long *prate)
-+static int gemini_pci_determine_rate(struct clk_hw *hw,
-+				     struct clk_rate_request *req)
+-static long clk_pll_round_rate(struct clk_hw *hwclk, unsigned long rate,
+-			       unsigned long *parent_rate)
++static int clk_pll_determine_rate(struct clk_hw *hw,
++				  struct clk_rate_request *req)
  {
- 	/* We support 33 and 66 MHz */
--	if (rate < 48000000)
--		return 33000000;
--	return 66000000;
-+	if (req->rate < 48000000)
-+		req->rate = 33000000;
-+	else
-+		req->rate = 66000000;
+ 	u32 divq, divf;
+-	unsigned long ref_freq = *parent_rate;
++	unsigned long ref_freq = req->best_parent_rate;
+ 
+-	clk_pll_calc(rate, ref_freq, &divq, &divf);
++	clk_pll_calc(req->rate, ref_freq, &divq, &divf);
+ 
+-	return (ref_freq * (divf + 1)) / (1 << divq);
++	req->rate = (ref_freq * (divf + 1)) / (1 << divq);
 +
 +	return 0;
  }
  
- static int gemini_pci_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -179,7 +182,7 @@ static int gemini_pci_is_enabled(struct clk_hw *hw)
+ static int clk_pll_set_rate(struct clk_hw *hwclk, unsigned long rate,
+@@ -185,7 +187,7 @@ static const struct clk_ops clk_pll_ops = {
+ 	.enable = clk_pll_enable,
+ 	.disable = clk_pll_disable,
+ 	.recalc_rate = clk_pll_recalc_rate,
+-	.round_rate = clk_pll_round_rate,
++	.determine_rate = clk_pll_determine_rate,
+ 	.set_rate = clk_pll_set_rate,
+ };
  
- static const struct clk_ops gemini_pci_clk_ops = {
- 	.recalc_rate = gemini_pci_recalc_rate,
--	.round_rate = gemini_pci_round_rate,
-+	.determine_rate = gemini_pci_determine_rate,
- 	.set_rate = gemini_pci_set_rate,
- 	.enable = gemini_pci_enable,
- 	.disable = gemini_pci_disable,
+@@ -227,16 +229,18 @@ static unsigned long clk_periclk_recalc_rate(struct clk_hw *hwclk,
+ 	return parent_rate / div;
+ }
+ 
+-static long clk_periclk_round_rate(struct clk_hw *hwclk, unsigned long rate,
+-				   unsigned long *parent_rate)
++static int clk_periclk_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
+ {
+ 	u32 div;
+ 
+-	div = *parent_rate / rate;
++	div = req->best_parent_rate / req->rate;
+ 	div++;
+ 	div &= ~0x1;
+ 
+-	return *parent_rate / div;
++	req->rate = req->best_parent_rate / div;
++
++	return 0;
+ }
+ 
+ static int clk_periclk_set_rate(struct clk_hw *hwclk, unsigned long rate,
+@@ -255,7 +259,7 @@ static int clk_periclk_set_rate(struct clk_hw *hwclk, unsigned long rate,
+ 
+ static const struct clk_ops periclk_ops = {
+ 	.recalc_rate = clk_periclk_recalc_rate,
+-	.round_rate = clk_periclk_round_rate,
++	.determine_rate = clk_periclk_determine_rate,
+ 	.set_rate = clk_periclk_set_rate,
+ };
+ 
 
 -- 
 2.50.1
