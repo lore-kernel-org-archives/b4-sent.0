@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:11 -0400
-Subject: [PATCH 019/114] clk: hisilicon: hi3660-stub: move comma from
- declaration of DEFINE_CLK_STUB()
+Date: Mon, 11 Aug 2025 11:18:12 -0400
+Subject: [PATCH 020/114] clk: hisilicon: hi3660-stub: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-19-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-20-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,56 +71,56 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1857;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1551;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=pA5mClIAqWRD8xr23+LW8paHRk4bx6Ip6j+lR6gsEH4=;
- b=/4xa+9ZPbf1YpEA8q63RlWiisStSIhIqYd5eTHQrEvH3tDR3ww5drLjmHYBPoDFxS5vVEOwzG
- iA8xPx+82hLBFeEgQKvF4kjQtv0Kp39kEqcfrO9GEkgnniXf6kRNkKx
+ bh=6UTh0dIQL57zhArW6pUJUUnKhOv52WqLYBPPtPsHJPE=;
+ b=efQfCr8ZiBp+0aC1CR/qipAQ7+XU/FW1LIHm4YkzmRisiafYEi27kb8NVlDYx/+AzlvhF+Muc
+ ThqT+EdaQl4C/axmqTzq+mhTm9DxklOY/MxGTfQWCF6VNVPIAfj3GQE
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When trying to use Coccinelle to make changes inside drivers/clk/, it
-really does not like the trailing comma at the end of the declaration
-of DEFINE_CLK_STUB, and fails to process this file. It also looks weird
-to not have commas to separate the various array members of
-hi3660_stub_clks. Let's move the trailing comma out of the define so
-that Coccinelle can be ran against this source file.
+The round_rate() clk ops is deprecated, so migrate this driver from
+round_rate() to determine_rate() using the Coccinelle semantic patch
+on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/hisilicon/clk-hi3660-stub.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ drivers/clk/hisilicon/clk-hi3660-stub.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/clk/hisilicon/clk-hi3660-stub.c b/drivers/clk/hisilicon/clk-hi3660-stub.c
-index 3a653d54bee0562d26d0de1dd31525786d05d40d..b0a996385301af7bcce231be9e7d5092dd21c3ac 100644
+index b0a996385301af7bcce231be9e7d5092dd21c3ac..7c8b00ee60195e94f3b414bbf79ee5ec3cbf6c79 100644
 --- a/drivers/clk/hisilicon/clk-hi3660-stub.c
 +++ b/drivers/clk/hisilicon/clk-hi3660-stub.c
-@@ -34,7 +34,7 @@
- 			.num_parents = 0,			\
- 			.flags = CLK_GET_RATE_NOCACHE,		\
- 		},						\
--	},
-+	}
+@@ -67,14 +67,14 @@ static unsigned long hi3660_stub_clk_recalc_rate(struct clk_hw *hw,
+ 	return stub_clk->rate;
+ }
  
- #define to_stub_clk(_hw) container_of(_hw, struct hi3660_stub_clk, hw)
+-static long hi3660_stub_clk_round_rate(struct clk_hw *hw, unsigned long rate,
+-				       unsigned long *prate)
++static int hi3660_stub_clk_determine_rate(struct clk_hw *hw,
++					  struct clk_rate_request *req)
+ {
+ 	/*
+ 	 * LPM3 handles rate rounding so just return whatever
+ 	 * rate is requested.
+ 	 */
+-	return rate;
++	return 0;
+ }
  
-@@ -102,10 +102,10 @@ static const struct clk_ops hi3660_stub_clk_ops = {
+ static int hi3660_stub_clk_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -97,7 +97,7 @@ static int hi3660_stub_clk_set_rate(struct clk_hw *hw, unsigned long rate,
+ 
+ static const struct clk_ops hi3660_stub_clk_ops = {
+ 	.recalc_rate    = hi3660_stub_clk_recalc_rate,
+-	.round_rate     = hi3660_stub_clk_round_rate,
++	.determine_rate = hi3660_stub_clk_determine_rate,
+ 	.set_rate       = hi3660_stub_clk_set_rate,
  };
  
- static struct hi3660_stub_clk hi3660_stub_clks[HI3660_CLK_STUB_NUM] = {
--	DEFINE_CLK_STUB(HI3660_CLK_STUB_CLUSTER0, 0x0001030A, "cpu-cluster.0")
--	DEFINE_CLK_STUB(HI3660_CLK_STUB_CLUSTER1, 0x0002030A, "cpu-cluster.1")
--	DEFINE_CLK_STUB(HI3660_CLK_STUB_GPU, 0x0003030A, "clk-g3d")
--	DEFINE_CLK_STUB(HI3660_CLK_STUB_DDR, 0x00040309, "clk-ddrc")
-+	DEFINE_CLK_STUB(HI3660_CLK_STUB_CLUSTER0, 0x0001030A, "cpu-cluster.0"),
-+	DEFINE_CLK_STUB(HI3660_CLK_STUB_CLUSTER1, 0x0002030A, "cpu-cluster.1"),
-+	DEFINE_CLK_STUB(HI3660_CLK_STUB_GPU, 0x0003030A, "clk-g3d"),
-+	DEFINE_CLK_STUB(HI3660_CLK_STUB_DDR, 0x00040309, "clk-ddrc"),
- };
- 
- static struct clk_hw *hi3660_stub_clk_hw_get(struct of_phandle_args *clkspec,
 
 -- 
 2.50.1
