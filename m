@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:22 -0400
-Subject: [PATCH 030/114] clk: mmp: frac: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:23 -0400
+Subject: [PATCH 031/114] clk: multiplier: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-30-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-31-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2117;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1714;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=nbS+lfseW4POf+7BKNGCbFuuk4z3vqh5brFU07BCWjY=;
- b=TxNZDlVqAB/rK83cdrpvc0jn++UNNk6hgPv5sXh/3OQ/S/DFzXtYhHVM02DhfEqyVBbsnp9jF
- eO6x4YmPLY1AOuCF7wFj/UUbs3nsp+tbfFitys89bDtBMo8m2AYgHiW
+ bh=+668ZUtHpGANNovPdx9OV1bvFCvaGyUOqf4lqBcLjgc=;
+ b=zLRLG/xT2nhe5iBbtiNgTIOz8oNX10lEWCnK4DvRXBdymNXEQhz4zNqHo2X/UICLst0pwhRlW
+ 9E3d5nLngFmAeiHgd1vSz0w+KOs+JL8ZnmoB9e4/VWDp1XPGuuPGS+b
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,64 +87,43 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/mmp/clk-frac.c | 27 ++++++++++++++-------------
- 1 file changed, 14 insertions(+), 13 deletions(-)
+ drivers/clk/clk-multiplier.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/mmp/clk-frac.c b/drivers/clk/mmp/clk-frac.c
-index 6556f6ada2e830178b9525462f684bad683db454..0b1bb01346f0d7b450e85b805f6c84da6f803f56 100644
---- a/drivers/clk/mmp/clk-frac.c
-+++ b/drivers/clk/mmp/clk-frac.c
-@@ -21,8 +21,8 @@
+diff --git a/drivers/clk/clk-multiplier.c b/drivers/clk/clk-multiplier.c
+index e507aa958da91683ec83837df28fc48be4b7bafa..6f2955d408b651d5c0b943f7c14f83a2974df3e7 100644
+--- a/drivers/clk/clk-multiplier.c
++++ b/drivers/clk/clk-multiplier.c
+@@ -112,14 +112,16 @@ static unsigned long __bestmult(struct clk_hw *hw, unsigned long rate,
+ 	return bestmult;
+ }
  
- #define to_clk_factor(hw) container_of(hw, struct mmp_clk_factor, hw)
- 
--static long clk_factor_round_rate(struct clk_hw *hw, unsigned long drate,
--		unsigned long *prate)
-+static int clk_factor_determine_rate(struct clk_hw *hw,
-+				     struct clk_rate_request *req)
+-static long clk_multiplier_round_rate(struct clk_hw *hw, unsigned long rate,
+-				  unsigned long *parent_rate)
++static int clk_multiplier_determine_rate(struct clk_hw *hw,
++					 struct clk_rate_request *req)
  {
- 	struct mmp_clk_factor *factor = to_clk_factor(hw);
- 	u64 rate = 0, prev_rate;
-@@ -33,19 +33,20 @@ static long clk_factor_round_rate(struct clk_hw *hw, unsigned long drate,
- 		d = &factor->ftbl[i];
+ 	struct clk_multiplier *mult = to_clk_multiplier(hw);
+-	unsigned long factor = __bestmult(hw, rate, parent_rate,
++	unsigned long factor = __bestmult(hw, req->rate, &req->best_parent_rate,
+ 					  mult->width, mult->flags);
  
- 		prev_rate = rate;
--		rate = (u64)(*prate) * d->denominator;
-+		rate = (u64)(req->best_parent_rate) * d->denominator;
- 		do_div(rate, d->numerator * factor->masks->factor);
--		if (rate > drate)
-+		if (rate > req->rate)
- 			break;
- 	}
--	if ((i == 0) || (i == factor->ftbl_cnt)) {
--		return rate;
--	} else {
--		if ((drate - prev_rate) > (rate - drate))
--			return rate;
--		else
--			return prev_rate;
--	}
-+
-+	if ((i == 0) || (i == factor->ftbl_cnt))
-+		req->rate = rate;
-+	else if ((req->rate - prev_rate) > (rate - req->rate))
-+		req->rate = rate;
-+	else
-+		req->rate = prev_rate;
+-	return *parent_rate * factor;
++	req->rate = req->best_parent_rate * factor;
 +
 +	return 0;
  }
  
- static unsigned long clk_factor_recalc_rate(struct clk_hw *hw,
-@@ -160,7 +161,7 @@ static int clk_factor_init(struct clk_hw *hw)
+ static int clk_multiplier_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -150,7 +152,7 @@ static int clk_multiplier_set_rate(struct clk_hw *hw, unsigned long rate,
  
- static const struct clk_ops clk_factor_ops = {
- 	.recalc_rate = clk_factor_recalc_rate,
--	.round_rate = clk_factor_round_rate,
-+	.determine_rate = clk_factor_determine_rate,
- 	.set_rate = clk_factor_set_rate,
- 	.init = clk_factor_init,
+ const struct clk_ops clk_multiplier_ops = {
+ 	.recalc_rate	= clk_multiplier_recalc_rate,
+-	.round_rate	= clk_multiplier_round_rate,
++	.determine_rate = clk_multiplier_determine_rate,
+ 	.set_rate	= clk_multiplier_set_rate,
  };
+ EXPORT_SYMBOL_GPL(clk_multiplier_ops);
 
 -- 
 2.50.1
