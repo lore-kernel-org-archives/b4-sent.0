@@ -1,66 +1,70 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Mon, 11 Aug 2025 17:13:33 +0100
-Subject: [PATCH] iio: dac: ad5791: drop unused member of struct
- ad5791_state
+From: Gregory Fuchedgi <gfuchedgi@gmail.com>
+Subject: [PATCH v2 0/2] hwmon: (tps23861) add class restrictions and
+ semi-auto mode support
+Date: Mon, 11 Aug 2025 09:13:14 -0700
+Message-Id: <20250811-hwmon-tps23861-add-class-restrictions-v2-0-ebd122ec5e3b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250811-ad5791-drop-unused-v1-1-3412fbf3ba36@analog.com>
-X-B4-Tracking: v=1; b=H4sIAKwWmmgC/x3MQQqAIBBA0avIrBtQSayuEi1Mp5qNiWIE0d2Tl
- m/x/wOFMlOBSTyQ6eLCZ2xQnQB/uLgTcmgGLbWRg1LogrGjwpDPhDXWQgGt9/1gVzIkJbQwZdr
- 4/qfz8r4f0pcWf2QAAAA=
-X-Change-ID: 20250811-ad5791-drop-unused-7cc487be5e00
-To: linux-iio@vger.kernel.org
-Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAJoWmmgC/03NywrDIBBA0V8JrjvBBzG2q/5H6UJ0okKMxbEPC
+ Pn3Sldd3s25OyOsCYldhp1VfCVKZeshTwNz0W4BIfneTHI5ccMNxHcuG7QHSWW0AOs9uNUSQUV
+ qNbnWAQKjHCrHpTdmYt16VFzS5/e53XsvtWRosaL912cpJq7mUZiz0FqDgLA8XUQf0jVkm9bRl
+ cyO4wt5ZQr0tgAAAA==
+X-Change-ID: 20250808-hwmon-tps23861-add-class-restrictions-83ce3c02d885
+To: Robert Marko <robert.marko@sartura.hr>, 
+ Luka Perkov <luka.perkov@sartura.hr>, Jean Delvare <jdelvare@suse.com>, 
+ Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Gregory Fuchedgi <gfuchedgi@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754928813; l=1147;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=eEVAzCPM7yfEsfF5RWo92Lj/29oz7CO8jQ0lqSzGt/A=;
- b=h/WxbWTKo0SfKADn1E9AkucLND6zkmB1FG7AWrfXQ5ewRsj3no4KwyQdS0dn+b3Ns3+BDVDhC
- f48vZ4EZwNjAnE5D2yIHMq2glYMG1wGkG4zowjhPMcNhTrb3KwyYxO3
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754928795; l=1529;
+ i=gfuchedgi@gmail.com; s=20250811; h=from:subject:message-id;
+ bh=BngNvQtxxPHzANuXTDA6edjPk7rZAtFM5WdYLG3It70=;
+ b=A72Hmv6jDYqCbccWDuiRCxTupDmvpCXwUE2eoETQvNLrJQNL5w6+BIGbMk+WNvBkYuVhDX720
+ cNF2R9o2EbaD5qiS0viNzdjDD0LmUssBk2/F8wmBY4GRJ1ATYsevy8X
+X-Developer-Key: i=gfuchedgi@gmail.com; a=ed25519;
+ pk=J3o48+1a2mUIebH8K4S3SPuR5bmamUvjlsf8onoIccA=
+X-Endpoint-Received: by B4 Relay for gfuchedgi@gmail.com/20250811 with auth_id=484
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The regulator pointers reg_vdd and reg_vss are no longer used. So drop
-them.
+This patch series introduces per-port device tree configuration with poe class
+restrictions. Also adds optional reset/shutdown gpios.
 
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Tested with hw poe tester:
+ - Auto mode tested with no per-port DT settings as well as explicit port DT
+   class=4. Tested that no IRQ is required in this case.
+ - Semi-Auto mode with class restricted to 0, 1, 2 or 3. IRQ required.
+ - Tested current cut-offs in Semi-Auto mode.
+ - On/off by default setting tested for both Auto and Semi-Auto modes.
+ - Tested fully disabling the ports in DT.
+ - Tested with both reset and shutdown gpios defined, as well as with reset
+   only, as well as with neither reset nor shutdown.
+
+V1->V2:
+ - code cleanup
+ - split bindings into separate patch
+ - use patternProperties
+ - use labels instead of DT node names
+ - add few comments for clarity
+
+Signed-off-by: Gregory Fuchedgi <gfuchedgi@gmail.com>
 ---
- drivers/iio/dac/ad5791.c | 4 ----
- 1 file changed, 4 deletions(-)
+Gregory Fuchedgi (2):
+      hwmon: (tps23861) add class restrictions and semi-auto mode support
+      dt-bindings: hwmon: update TI TPS23861 bindings with per-port schema
 
-diff --git a/drivers/iio/dac/ad5791.c b/drivers/iio/dac/ad5791.c
-index 41582f2b90fb9d83ff82ccb27a0eea92d9d9b431..ae7297f083983bb606fa3763370c05da7c2fd6f3 100644
---- a/drivers/iio/dac/ad5791.c
-+++ b/drivers/iio/dac/ad5791.c
-@@ -80,8 +80,6 @@ struct ad5791_chip_info {
- /**
-  * struct ad5791_state - driver instance specific data
-  * @spi:			spi_device
-- * @reg_vdd:		positive supply regulator
-- * @reg_vss:		negative supply regulator
-  * @gpio_reset:		reset gpio
-  * @gpio_clear:		clear gpio
-  * @gpio_ldac:		load dac gpio
-@@ -100,8 +98,6 @@ struct ad5791_chip_info {
-  */
- struct ad5791_state {
- 	struct spi_device		*spi;
--	struct regulator		*reg_vdd;
--	struct regulator		*reg_vss;
- 	struct gpio_desc		*gpio_reset;
- 	struct gpio_desc		*gpio_clear;
- 	struct gpio_desc		*gpio_ldac;
-
+ .../devicetree/bindings/hwmon/ti,tps23861.yaml     |  86 +++++++
+ Documentation/hwmon/tps23861.rst                   |   6 +-
+ drivers/hwmon/tps23861.c                           | 249 ++++++++++++++++++++-
+ 3 files changed, 335 insertions(+), 6 deletions(-)
 ---
-base-commit: 856d7be7f3c459a6d646b1f8432c6f616ade0d10
-change-id: 20250811-ad5791-drop-unused-7cc487be5e00
---
+base-commit: b1549501188cc9eba732c25b033df7a53ccc341f
+change-id: 20250808-hwmon-tps23861-add-class-restrictions-83ce3c02d885
 
-Thanks!
-- Nuno Sá
+Best regards,
+-- 
+Gregory Fuchedgi <gfuchedgi@gmail.com>
 
