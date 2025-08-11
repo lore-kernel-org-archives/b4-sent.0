@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:20 -0400
-Subject: [PATCH 088/114] clk: mvebu: cpu: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:19:21 -0400
+Subject: [PATCH 089/114] clk: mvebu: dove-divider: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-88-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-89-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1588;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1944;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=OokNVgkRjbnKoQ5w/W5Ca7W4UGOMZKX1UYUaStmr/DY=;
- b=vAC+dhO0kijuJtanVnu+ohRpU9KsfSjVpkI97ouYggo3T3ugsJgM4O7SXkUCLs0VbV70HQ9NO
- jlxyYltDx3gAJhRYmSE8yYRmyBaTVjWje72NEJG9gqk1vPOp5tF7Ni6
+ bh=oV0L5pMbnuZkTYfF/ENUrwPv2qnrSE+KwezXJZqTf5o=;
+ b=z5YAGbnnIfP8tmH1fAIJfEAzFrdo1ho+qJgzsp+GA6lQ+bPMwed35cDDYIinKL/+duQ/lEln4
+ yueROUQJxkqDln8CE70UWMlcaXy3iFRwwxeYtzv+Kcqln7gguFaV2Z0
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,46 +87,51 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/mvebu/clk-cpu.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ drivers/clk/mvebu/dove-divider.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/clk/mvebu/clk-cpu.c b/drivers/clk/mvebu/clk-cpu.c
-index db2b38c21304ecb8cc0bad0ff7de5a0a3c868516..0de7660e73d20b5e2fba349544001f200d859b2d 100644
---- a/drivers/clk/mvebu/clk-cpu.c
-+++ b/drivers/clk/mvebu/clk-cpu.c
-@@ -56,19 +56,21 @@ static unsigned long clk_cpu_recalc_rate(struct clk_hw *hwclk,
- 	return parent_rate / div;
+diff --git a/drivers/clk/mvebu/dove-divider.c b/drivers/clk/mvebu/dove-divider.c
+index 0a90452ee808b6bf2f1f9f815624b99720c3a81f..47cc49e4cd9992ce32c7215fdda42762f2caff39 100644
+--- a/drivers/clk/mvebu/dove-divider.c
++++ b/drivers/clk/mvebu/dove-divider.c
+@@ -108,23 +108,23 @@ static unsigned long dove_recalc_rate(struct clk_hw *hw, unsigned long parent)
+ 	return rate;
  }
  
--static long clk_cpu_round_rate(struct clk_hw *hwclk, unsigned long rate,
--			       unsigned long *parent_rate)
-+static int clk_cpu_determine_rate(struct clk_hw *hw,
-+				  struct clk_rate_request *req)
+-static long dove_round_rate(struct clk_hw *hw, unsigned long rate,
+-			    unsigned long *parent)
++static int dove_determine_rate(struct clk_hw *hw,
++			       struct clk_rate_request *req)
  {
- 	/* Valid ratio are 1:1, 1:2 and 1:3 */
- 	u32 div;
+ 	struct dove_clk *dc = to_dove_clk(hw);
+-	unsigned long parent_rate = *parent;
++	unsigned long parent_rate = req->best_parent_rate;
+ 	int divider;
  
--	div = *parent_rate / rate;
-+	div = req->best_parent_rate / req->rate;
- 	if (div == 0)
- 		div = 1;
- 	else if (div > 3)
- 		div = 3;
+-	divider = dove_calc_divider(dc, rate, parent_rate, false);
++	divider = dove_calc_divider(dc, req->rate, parent_rate, false);
+ 	if (divider < 0)
+ 		return divider;
  
--	return *parent_rate / div;
-+	req->rate = req->best_parent_rate / div;
-+
+-	rate = DIV_ROUND_CLOSEST(parent_rate, divider);
++	req->rate = DIV_ROUND_CLOSEST(parent_rate, divider);
+ 
+ 	pr_debug("%s(): %s divider=%u parent=%lu rate=%lu\n",
+-		 __func__, dc->name, divider, parent_rate, rate);
++		 __func__, dc->name, divider, parent_rate, req->rate);
+ 
+-	return rate;
 +	return 0;
  }
  
- static int clk_cpu_off_set_rate(struct clk_hw *hwclk, unsigned long rate,
-@@ -159,7 +161,7 @@ static int clk_cpu_set_rate(struct clk_hw *hwclk, unsigned long rate,
+ static int dove_set_clock(struct clk_hw *hw, unsigned long rate,
+@@ -154,7 +154,7 @@ static int dove_set_clock(struct clk_hw *hw, unsigned long rate,
  
- static const struct clk_ops cpu_ops = {
- 	.recalc_rate = clk_cpu_recalc_rate,
--	.round_rate = clk_cpu_round_rate,
-+	.determine_rate = clk_cpu_determine_rate,
- 	.set_rate = clk_cpu_set_rate,
+ static const struct clk_ops dove_divider_ops = {
+ 	.set_rate	= dove_set_clock,
+-	.round_rate	= dove_round_rate,
++	.determine_rate = dove_determine_rate,
+ 	.recalc_rate	= dove_recalc_rate,
  };
  
 
