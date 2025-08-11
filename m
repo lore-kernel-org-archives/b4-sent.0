@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:43 -0400
-Subject: [PATCH 051/114] clk: spacemit: ccu_pll: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:18:44 -0400
+Subject: [PATCH 052/114] clk: sparx5: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-51-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-52-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1453;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1326;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=JXsYqWAZacHUxbqEN/QSlzjO7xfIkLVymVGyN2m0Kok=;
- b=3yr2J6oHop0Uso5LDpsWb2tuayKtN1WKSr7lGPg11kl+jDdQHhmig3zQ0OJ4h6D9Mc9hrxTFd
- KeJIH/fHqBbDVpNgiZ/BH3y3MtOe4vsVXun2Fy/KHaoFYvIrAlDBywK
+ bh=gxjArEqxuHEiRJKmFC2eMx/7JZ/9idK7N52lqJS4NY0=;
+ b=uFBSLfLmM6GQ/q1J/NfCM8THsAhPROfG6VEt/fGBKWaz5ECEoK6E7x9y+vsx99kkMYVOzB2Pf
+ B7zF3RJHWIAAS/k14wyXgkRFdcvdM52uVClwrW83KmxYff6sxusWX/h
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,39 +87,39 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/spacemit/ccu_pll.c | 10 ++++++----
+ drivers/clk/clk-sparx5.c | 10 ++++++----
  1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/clk/spacemit/ccu_pll.c b/drivers/clk/spacemit/ccu_pll.c
-index 45f540073a656c0edc341a903acc3f2405971fc9..d92f0dae65a490e9db52f25a538a518baa487ea8 100644
---- a/drivers/clk/spacemit/ccu_pll.c
-+++ b/drivers/clk/spacemit/ccu_pll.c
-@@ -125,12 +125,14 @@ static unsigned long ccu_pll_recalc_rate(struct clk_hw *hw,
- 	return entry ? entry->rate : 0;
+diff --git a/drivers/clk/clk-sparx5.c b/drivers/clk/clk-sparx5.c
+index 0fad0c1a01862be221b4a53b2deb9239c335479a..b2facc9c95d471ee515c439cee83ab43187ff967 100644
+--- a/drivers/clk/clk-sparx5.c
++++ b/drivers/clk/clk-sparx5.c
+@@ -213,19 +213,21 @@ static unsigned long s5_pll_recalc_rate(struct clk_hw *hw,
+ 	return conf.freq;
  }
  
--static long ccu_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--			       unsigned long *prate)
-+static int ccu_pll_determine_rate(struct clk_hw *hw,
-+				  struct clk_rate_request *req)
+-static long s5_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-			      unsigned long *parent_rate)
++static int s5_pll_determine_rate(struct clk_hw *hw,
++				 struct clk_rate_request *req)
  {
- 	struct ccu_pll *pll = hw_to_ccu_pll(hw);
+ 	struct s5_pll_conf conf;
  
--	return ccu_pll_lookup_best_rate(pll, rate)->rate;
-+	req->rate = ccu_pll_lookup_best_rate(pll, req->rate)->rate;
+-	return s5_calc_params(rate, *parent_rate, &conf);
++	req->rate = s5_calc_params(req->rate, req->best_parent_rate, &conf);
 +
 +	return 0;
  }
  
- static int ccu_pll_init(struct clk_hw *hw)
-@@ -152,6 +154,6 @@ const struct clk_ops spacemit_ccu_pll_ops = {
- 	.disable	= ccu_pll_disable,
- 	.set_rate	= ccu_pll_set_rate,
- 	.recalc_rate	= ccu_pll_recalc_rate,
--	.round_rate	= ccu_pll_round_rate,
-+	.determine_rate = ccu_pll_determine_rate,
- 	.is_enabled	= ccu_pll_is_enabled,
+ static const struct clk_ops s5_pll_ops = {
+ 	.enable		= s5_pll_enable,
+ 	.disable	= s5_pll_disable,
+ 	.set_rate	= s5_pll_set_rate,
+-	.round_rate	= s5_pll_round_rate,
++	.determine_rate = s5_pll_determine_rate,
+ 	.recalc_rate	= s5_pll_recalc_rate,
  };
+ 
 
 -- 
 2.50.1
