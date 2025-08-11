@@ -1,324 +1,81 @@
-From: Cristian Cozzolino <cristian_ci@protonmail.com>
-Date: Mon, 11 Aug 2025 23:08:11 +0200
-Subject: [PATCH RESEND v4 3/3] arm64: dts: qcom: msm8953: Add device tree
- for Billion Capture+
+From: Dominique Martinet <asmadeus@codewreck.org>
+Subject: [PATCH v2 0/2] iterate_folioq bug when offset==size (Was:
+ [REGRESSION] 9pfs issues on 6.12-rc1)
+Date: Tue, 12 Aug 2025 06:28:00 +0900
+Message-Id: <20250812-iot_iter_folio-v2-0-f99423309478@codewreck.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-rimob-initial-devicetree-v4-3-b3194f14aa33@protonmail.com>
-References: <20250811-rimob-initial-devicetree-v4-0-b3194f14aa33@protonmail.com>
-In-Reply-To: <20250811-rimob-initial-devicetree-v4-0-b3194f14aa33@protonmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- phone-devel@vger.kernel.org, 
- Cristian Cozzolino <cristian_ci@protonmail.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754946504; l=7327;
- i=cristian_ci@protonmail.com; s=20250620; h=from:subject:message-id;
- bh=qtnuNmfCBsjsZNE4PsKOQQMDD+xe/GZt7WSU7ruu8fI=;
- b=vD0w4BoLf8k7QH+aA9amV6HCAoaMUmpgEZsqNlARPSGiu7M2FXMUNdGDHJkWP+RX2KqKtqlmZ
- pEm/tBu8zsnD0EuvhaRBU6mDRYDX+xxrvTxSW60wlCLiou9bK2vx3dE
-X-Developer-Key: i=cristian_ci@protonmail.com; a=ed25519;
- pk=xH5IvIPUNHV1Q8R0/pq2CfuVFR/wTiAyuyi6IwedjZY=
-X-Endpoint-Received: by B4 Relay for cristian_ci@protonmail.com/20250620 with auth_id=438
+X-B4-Tracking: v=1; b=H4sIAGFgmmgC/3XMQQrCMBCF4auUWRtJUsXElfeQUmoyaQelI5NSl
+ dK7G7t3+T943wIZhTDDuVpAcKZMPJawuwrC0I09KoqlwWp71M4YRTy1NKG0iR/EytxO7uCTcwk
+ jlNNTMNF7A69N6YHyxPLZ/Nn81r/UbJRW0Qdr6y4mX4dL4IgvwXDfs/TQrOv6BfvAsCqwAAAA
+X-Change-ID: 20250811-iot_iter_folio-1b7849f88fed
+To: "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
+ Christian Brauner <brauner@kernel.org>, David Howells <dhowells@redhat.com>, 
+ Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: Maximilian Bosch <maximilian@mbosch.me>, Ryan Lahfa <ryan@lahfa.xyz>, 
+ Christian Theune <ct@flyingcircus.io>, Arnout Engelen <arnout@bzzt.net>, 
+ linux-kernel@vger.kernel.org, linux-block@vger.kernel.org, 
+ linux-fsdevel@vger.kernel.org, Dominique Martinet <asmadeus@codewreck.org>, 
+ stable@vger.kernel.org
+X-Mailer: b4 0.15-dev-7be4f
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1490;
+ i=asmadeus@codewreck.org; h=from:subject:message-id;
+ bh=dY1PVAFd9XEs8e/MJYNCi7ex0lhE7IhODRbVQ4vJeGI=;
+ b=owEBbQKS/ZANAwAKAatOm+xqmOZwAcsmYgBommByYS/YEkj57+WHP3pSNmFCbk5gUi4C/eEcq
+ Qz+AJKrqiaJAjMEAAEKAB0WIQT8g9txgG5a3TOhiE6rTpvsapjmcAUCaJpgcgAKCRCrTpvsapjm
+ cM6MD/4lU4rtTTqXPBt8LPIaaV3RWYyUSuJ3w8i5LG0SG27gznjJiWiSut1JeWPBMf14hL93kpj
+ WD+w6+GPZAQCd7neQ0twT82jLzyGHHhftQTeC660NweGuy1oTzQwKE8Ggs09IT9BFR9i5mKt/zm
+ wp/tGRFAtzgvle3Qk997aLtcKW3d5pAK43HwKVOuVtnRyCP3rycYnIJHuPXDiMno9OSK5AMsOik
+ ktASMuTu5+mVjDcRQ4LGVktoBoysVj4iez0+cyTtwWpFBrzpdLcLDl2l7OA6SsXGoDgs52i+Y65
+ amDu1gUYZJCZZVnrb9nHX1H1+o0vGi1LiHU3FnHbnjbc2BOYydY+DfCfWW7/dAOytmSn1d1qCF3
+ NMn06PXJPTud8n50ojkpxxSKwfid7crUZI9mQqbHGaxN4hx2CotSWmKWRLKrTum3rNIt+UH6nbd
+ S74wjVMr/tw/iXHjOpoHry1Dr5JKxjHSIay6VKvKsoF9UpLXejXG7hb4+Q98LggGq7HiP6A3xnY
+ 5tZF/jJrSoOT3ILP4HSInsnJEIUmBZEqIBXAp8FOOijy7HeeaQ9ok2do58XuH2C4DnTVVZiba4Q
+ PTUIjq2iXTy3JqG2M39ECbKe+Qx6DkyyJf88Yi7NebxHjR1/C6g9WVgsuFyTJZ7lBs+NarqtQwO
+ oUa4jKvFsnafd5g==
+X-Developer-Key: i=asmadeus@codewreck.org; a=openpgp;
+ fpr=B894379F662089525B3FB1B9333F1F391BBBB00A
+X-Endpoint-Received: by B4 Relay for asmadeus@codewreck.org/default with auth_id=435
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Billion Capture+ (flipkart,rimob) is a smartphone released in 2017, based
-on Snapdragon 625 (MSM8953) SoC.
+So we've had this regression in 9p for.. almost a year, which is way too
+long, but there was no "easy" reproducer until yesterday (thank you
+again!!)
 
-Add a device tree with initial support for:
+It turned out to be a bug with iov_iter on folios,
+iov_iter_get_pages_alloc2() would advance the iov_iter correctly up to
+the end edge of a folio and the later copy_to_iter() fails on the
+iterate_folioq() bug.
 
-- GPIO keys
-- SDHCI (internal and external storage)
-- USB Device Mode
-- Regulators
-- Simple framebuffer
+Happy to consider alternative ways of fixing this, now there's a
+reproducer it's all much clearer; for the bug to be visible we basically
+need to make and IO with non-contiguous folios in the iov_iter which is
+not obvious to test with synthetic VMs, with size that triggers a
+zero-copy read followed by a non-zero-copy read.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Cristian Cozzolino <cristian_ci@protonmail.com>
+Signed-off-by: Dominique Martinet <asmadeus@codewreck.org>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 255 +++++++++++++++++++++
- 2 files changed, 256 insertions(+)
+Changes in v2:
+- Fixed 'remain' being used uninitialized in iterate_folioq when going
+  through the goto
+- s/forwarded/advanced in commit message
+- Link to v1: https://lore.kernel.org/r/20250811-iot_iter_folio-v1-0-d9c223adf93c@codewreck.org
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 140b0b2abfb555b8ef61bd9ed0217d8997800809..af3757ca017b6e3d8c579e43f647a71fc64c62b3 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -70,6 +70,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-samsung-a7.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-sony-xperia-kanuti-tulip.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-wingtech-wt82918.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-wingtech-wt82918hd.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-flipkart-rimob.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-motorola-potter.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-xiaomi-daisy.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-xiaomi-mido.dtb
-diff --git a/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts b/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..ef4faf7631327ba3f7d954cef57bb1ebfc09a1cc
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
-@@ -0,0 +1,255 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2025, Cristian Cozzolino
-+ */
-+/dts-v1/;
-+
-+#include "msm8953.dtsi"
-+#include "pm8953.dtsi"
-+#include "pmi8950.dtsi"
-+
-+/delete-node/ &cont_splash_mem;
-+/delete-node/ &qseecom_mem;
-+
-+/ {
-+	model = "Billion Capture+";
-+	compatible = "flipkart,rimob", "qcom,msm8953";
-+	chassis-type = "handset";
-+	qcom,msm-id = <293 0>;
-+	qcom,board-id = <0x340008 0>;
-+
-+	chosen {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		framebuffer@90001000 {
-+			compatible = "simple-framebuffer";
-+			reg = <0 0x90001000 0 (1920 * 1080 * 3)>;
-+
-+			width = <1080>;
-+			height = <1920>;
-+			stride = <(1080 * 3)>;
-+			format = "r8g8b8";
-+
-+			power-domains = <&gcc MDSS_GDSC>;
-+
-+			clocks = <&gcc GCC_MDSS_AHB_CLK>,
-+				 <&gcc GCC_MDSS_AXI_CLK>,
-+				 <&gcc GCC_MDSS_VSYNC_CLK>,
-+				 <&gcc GCC_MDSS_MDP_CLK>,
-+				 <&gcc GCC_MDSS_BYTE0_CLK>,
-+				 <&gcc GCC_MDSS_PCLK0_CLK>,
-+				 <&gcc GCC_MDSS_ESC0_CLK>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		pinctrl-0 = <&gpio_key_default>;
-+		pinctrl-names = "default";
-+
-+		key-volume-up {
-+			label = "Volume Up";
-+			gpios = <&tlmm 85 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_VOLUMEUP>;
-+			debounce-interval = <15>;
-+		};
-+	};
-+
-+	reserved-memory {
-+		qseecom_mem: qseecom@84a00000 {
-+			reg = <0x0 0x84a00000 0x0 0x1900000>;
-+			no-map;
-+		};
-+
-+		cont_splash_mem: cont-splash@90001000 {
-+			reg = <0x0 0x90001000 0x0 (1080 * 1920 * 3)>;
-+			no-map;
-+		};
-+	};
-+
-+	vph_pwr: vph-pwr-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vph_pwr";
-+		regulator-always-on;
-+		regulator-boot-on;
-+	};
-+};
-+
-+
-+&hsusb_phy {
-+	vdd-supply = <&pm8953_l3>;
-+	vdda-pll-supply = <&pm8953_l7>;
-+	vdda-phy-dpdm-supply = <&pm8953_l13>;
-+
-+	status = "okay";
-+};
-+
-+&pm8953_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+	status = "okay";
-+};
-+
-+&rpm_requests {
-+	regulators {
-+		compatible = "qcom,rpm-pm8953-regulators";
-+		vdd_s1-supply = <&vph_pwr>;
-+		vdd_s2-supply = <&vph_pwr>;
-+		vdd_s3-supply = <&vph_pwr>;
-+		vdd_s4-supply = <&vph_pwr>;
-+		vdd_s5-supply = <&vph_pwr>;
-+		vdd_s6-supply = <&vph_pwr>;
-+		vdd_s7-supply = <&vph_pwr>;
-+		vdd_l1-supply = <&pm8953_s3>;
-+		vdd_l2_l3-supply = <&pm8953_s3>;
-+		vdd_l4_l5_l6_l7_l16_l19-supply = <&pm8953_s4>;
-+		vdd_l8_l11_l12_l13_l14_l15-supply = <&vph_pwr>;
-+		vdd_l9_l10_l17_l18_l22-supply = <&vph_pwr>;
-+		vdd_l23-supply = <&pm8953_s3>;
-+
-+		pm8953_s1: s1 {
-+			regulator-min-microvolt = <870000>;
-+			regulator-max-microvolt = <1156000>;
-+		};
-+
-+		pm8953_s3: s3 {
-+			regulator-min-microvolt = <1224000>;
-+			regulator-max-microvolt = <1224000>;
-+		};
-+
-+		pm8953_s4: s4 {
-+			regulator-min-microvolt = <1900000>;
-+			regulator-max-microvolt = <2050000>;
-+		};
-+
-+		pm8953_l1: l1 {
-+			regulator-min-microvolt = <1000000>;
-+			regulator-max-microvolt = <1000000>;
-+		};
-+
-+		pm8953_l2: l2 {
-+			regulator-min-microvolt = <975000>;
-+			regulator-max-microvolt = <1225000>;
-+		};
-+
-+		pm8953_l3: l3 {
-+			regulator-min-microvolt = <925000>;
-+			regulator-max-microvolt = <925000>;
-+		};
-+
-+		pm8953_l5: l5 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-allow-set-load;
-+		};
-+
-+		pm8953_l6: l6 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8953_l7: l7 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1900000>;
-+		};
-+
-+		pm8953_l8: l8 {
-+			regulator-min-microvolt = <2900000>;
-+			regulator-max-microvolt = <2900000>;
-+			regulator-allow-set-load;
-+		};
-+
-+		pm8953_l9: l9 {
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8953_l10: l10 {
-+			regulator-min-microvolt = <2850000>;
-+			regulator-max-microvolt = <2850000>;
-+		};
-+
-+		pm8953_l11: l11 {
-+			regulator-min-microvolt = <2950000>;
-+			regulator-max-microvolt = <2950000>;
-+			regulator-allow-set-load;
-+		};
-+
-+		pm8953_l12: l12 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <2950000>;
-+			regulator-allow-set-load;
-+		};
-+
-+		pm8953_l13: l13 {
-+			regulator-min-microvolt = <3125000>;
-+			regulator-max-microvolt = <3125000>;
-+		};
-+
-+		pm8953_l16: l16 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8953_l17: l17 {
-+			regulator-min-microvolt = <2850000>;
-+			regulator-max-microvolt = <2850000>;
-+		};
-+
-+		pm8953_l19: l19 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1350000>;
-+		};
-+
-+		pm8953_l22: l22 {
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+		};
-+
-+		pm8953_l23: l23 {
-+			regulator-min-microvolt = <975000>;
-+			regulator-max-microvolt = <1225000>;
-+		};
-+	};
-+};
-+
-+&sdhc_1 {
-+	vmmc-supply = <&pm8953_l8>;
-+	vqmmc-supply = <&pm8953_l5>;
-+
-+	status = "okay";
-+};
-+
-+&sdhc_2 {
-+	vmmc-supply = <&pm8953_l11>;
-+	vqmmc-supply = <&pm8953_l12>;
-+
-+	cd-gpios = <&tlmm 133 GPIO_ACTIVE_HIGH>;
-+
-+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
-+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off>;
-+	pinctrl-names = "default", "sleep";
-+
-+	status = "okay";
-+};
-+
-+&tlmm {
-+	gpio-reserved-ranges = <0 4>, <135 4>;
-+
-+	gpio_key_default: gpio-key-default-state {
-+		pins = "gpio85";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-up;
-+	};
-+};
-+
-+&usb3 {
-+	status = "okay";
-+};
-+
-+&usb3_dwc3 {
-+	dr_mode = "peripheral";
-+};
+---
+Dominique Martinet (2):
+      iov_iter: iterate_folioq: fix handling of offset >= folio size
+      iov_iter: iov_folioq_get_pages: don't leave empty slot behind
 
+ include/linux/iov_iter.h | 5 ++++-
+ lib/iov_iter.c           | 6 +++---
+ 2 files changed, 7 insertions(+), 4 deletions(-)
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250811-iot_iter_folio-1b7849f88fed
+
+Best regards,
 -- 
-2.49.0
+Dominique Martinet <asmadeus@codewreck.org>
 
