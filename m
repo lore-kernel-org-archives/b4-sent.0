@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:17:57 -0400
-Subject: [PATCH 005/114] clk: at91: h32mx: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:17:58 -0400
+Subject: [PATCH 006/114] clk: at91: pll: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-5-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-6-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1996;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1623;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=+Gy4fG2AJvROWxLhbBjQuuilZZnIYreI5B1/XGUumAw=;
- b=bddnmfr4Qq1udz7evPQmYKx0VTkqElCn38ZpoP64EqHSc8I+tppgsKu0InDLdio46Q6TiYUZ2
- DhMOktZu9bvDKJ96MsnGmtOMrcr/Nv5jIn3B5BUb3PZfzg+8EZLKNzL
+ bh=vfsDxiC2IUHSzZtKUSDsaKTcB8+E7YIHSMdXPK9DC4M=;
+ b=1tVdQO0+g32jeinRamf1aU4AQ3DAUsqxNp/uXni/3ausTrQyJaqHkDziXDBr1WSUAE3bWGYja
+ wVbxog6lOoSBLVI9mjVziVOvfH6ldLKbK5E2u0a5do1lqdtwXx2Dx9v
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,65 +87,42 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/at91/clk-h32mx.c | 33 ++++++++++++++++++++++-----------
- 1 file changed, 22 insertions(+), 11 deletions(-)
+ drivers/clk/at91/clk-pll.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/at91/clk-h32mx.c b/drivers/clk/at91/clk-h32mx.c
-index 1e6c12eeda10c4abb51c2046ea27b238db2560cb..a9aa93b5a870988677ad4609a210ed9570295228 100644
---- a/drivers/clk/at91/clk-h32mx.c
-+++ b/drivers/clk/at91/clk-h32mx.c
-@@ -40,21 +40,32 @@ static unsigned long clk_sama5d4_h32mx_recalc_rate(struct clk_hw *hw,
- 	return parent_rate;
+diff --git a/drivers/clk/at91/clk-pll.c b/drivers/clk/at91/clk-pll.c
+index 249d6a53cedf5da1c2d877762474592e4b3fda40..5c5f7398effee1447ff86516c2cec1ddc1adc542 100644
+--- a/drivers/clk/at91/clk-pll.c
++++ b/drivers/clk/at91/clk-pll.c
+@@ -231,13 +231,15 @@ static long clk_pll_get_best_div_mul(struct clk_pll *pll, unsigned long rate,
+ 	return bestrate;
  }
  
--static long clk_sama5d4_h32mx_round_rate(struct clk_hw *hw, unsigned long rate,
--				       unsigned long *parent_rate)
-+static int clk_sama5d4_h32mx_determine_rate(struct clk_hw *hw,
-+					    struct clk_rate_request *req)
+-static long clk_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-					unsigned long *parent_rate)
++static int clk_pll_determine_rate(struct clk_hw *hw,
++				  struct clk_rate_request *req)
  {
- 	unsigned long div;
+ 	struct clk_pll *pll = to_clk_pll(hw);
  
--	if (rate > *parent_rate)
--		return *parent_rate;
--	div = *parent_rate / 2;
--	if (rate < div)
--		return div;
-+	if (req->rate > req->best_parent_rate) {
-+		req->rate = req->best_parent_rate;
- 
--	if (rate - div < *parent_rate - rate)
--		return div;
-+		return 0;
-+	}
-+	div = req->best_parent_rate / 2;
-+	if (req->rate < div) {
-+		req->rate = div;
-+
-+		return 0;
-+	}
-+
-+	if (req->rate - div < req->best_parent_rate - req->rate) {
-+		req->rate = div;
- 
--	return *parent_rate;
-+		return 0;
-+	}
-+
-+	req->rate = req->best_parent_rate;
+-	return clk_pll_get_best_div_mul(pll, rate, *parent_rate,
+-					NULL, NULL, NULL);
++	req->rate = clk_pll_get_best_div_mul(pll, req->rate, req->best_parent_rate,
++					     NULL, NULL, NULL);
 +
 +	return 0;
  }
  
- static int clk_sama5d4_h32mx_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -77,7 +88,7 @@ static int clk_sama5d4_h32mx_set_rate(struct clk_hw *hw, unsigned long rate,
- 
- static const struct clk_ops h32mx_ops = {
- 	.recalc_rate = clk_sama5d4_h32mx_recalc_rate,
--	.round_rate = clk_sama5d4_h32mx_round_rate,
-+	.determine_rate = clk_sama5d4_h32mx_determine_rate,
- 	.set_rate = clk_sama5d4_h32mx_set_rate,
- };
- 
+ static int clk_pll_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -302,7 +304,7 @@ static const struct clk_ops pll_ops = {
+ 	.unprepare = clk_pll_unprepare,
+ 	.is_prepared = clk_pll_is_prepared,
+ 	.recalc_rate = clk_pll_recalc_rate,
+-	.round_rate = clk_pll_round_rate,
++	.determine_rate = clk_pll_determine_rate,
+ 	.set_rate = clk_pll_set_rate,
+ 	.save_context = clk_pll_save_context,
+ 	.restore_context = clk_pll_restore_context,
 
 -- 
 2.50.1
