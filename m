@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:26 -0400
-Subject: [PATCH 094/114] clk: rockchip: ddr: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:19:27 -0400
+Subject: [PATCH 095/114] clk: rockchip: half-divider: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-94-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-95-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1666;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1836;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=+mTNNaA/Rw26i0WQAx+OIQblwc90KAUsuFHwu0lEWj8=;
- b=rTl0OqGx+j74m+r7f4wrHisEEDRwWTntvTo+iCDJVcKHw2awCwJ9lKPHIWuR7jm5OOl41r7C+
- ghPrb9Sfv2NDz2WVpcs21qKgRU7FQnBQSxyD5/9wqvK9Fd71FNgBTUA
+ bh=YJ5qRGtKy+PYdLzCDf6JAeMVzggDh8R3D46sp1+Jnrc=;
+ b=ydzmTNVRKUbUy2VpApmPx3/AncA/s66Rfhr6pTaw6ZF1DRQbJAeerleA+4LAp0Bwul7DEiDSu
+ Yxd6kAXIIlCA/d+U7gLmLdSdQtESfXnf/zF6Qdh5gpaxuREOju1DAoj
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,44 +87,44 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/rockchip/clk-ddr.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ drivers/clk/rockchip/clk-half-divider.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/rockchip/clk-ddr.c b/drivers/clk/rockchip/clk-ddr.c
-index 86718c54e56b3ff52ee6ea9f209159de91e9da39..8866a65982a0489f1aacd546bda60af1d30278ee 100644
---- a/drivers/clk/rockchip/clk-ddr.c
-+++ b/drivers/clk/rockchip/clk-ddr.c
-@@ -55,17 +55,18 @@ rockchip_ddrclk_sip_recalc_rate(struct clk_hw *hw,
- 	return res.a0;
+diff --git a/drivers/clk/rockchip/clk-half-divider.c b/drivers/clk/rockchip/clk-half-divider.c
+index 64f7faad2148f27099d1ace36da45207e2315a1c..e94e39442d0c0cfb9370f9386a0da16eb3c5fc5b 100644
+--- a/drivers/clk/rockchip/clk-half-divider.c
++++ b/drivers/clk/rockchip/clk-half-divider.c
+@@ -92,17 +92,19 @@ static int clk_half_divider_bestdiv(struct clk_hw *hw, unsigned long rate,
+ 	return bestdiv;
  }
  
--static long rockchip_ddrclk_sip_round_rate(struct clk_hw *hw,
--					   unsigned long rate,
--					   unsigned long *prate)
-+static int rockchip_ddrclk_sip_determine_rate(struct clk_hw *hw,
-+					      struct clk_rate_request *req)
+-static long clk_half_divider_round_rate(struct clk_hw *hw, unsigned long rate,
+-					unsigned long *prate)
++static int clk_half_divider_determine_rate(struct clk_hw *hw,
++					   struct clk_rate_request *req)
  {
- 	struct arm_smccc_res res;
+ 	struct clk_divider *divider = to_clk_divider(hw);
+ 	int div;
  
--	arm_smccc_smc(ROCKCHIP_SIP_DRAM_FREQ, rate, 0,
-+	arm_smccc_smc(ROCKCHIP_SIP_DRAM_FREQ, req->rate, 0,
- 		      ROCKCHIP_SIP_CONFIG_DRAM_ROUND_RATE,
- 		      0, 0, 0, 0, &res);
+-	div = clk_half_divider_bestdiv(hw, rate, prate,
++	div = clk_half_divider_bestdiv(hw, req->rate, &req->best_parent_rate,
+ 				       divider->width,
+ 				       divider->flags);
  
--	return res.a0;
-+	req->rate = res.a0;
+-	return DIV_ROUND_UP_ULL(((u64)*prate * 2), div * 2 + 3);
++	req->rate = DIV_ROUND_UP_ULL(((u64) req->best_parent_rate * 2), div * 2 + 3);
 +
 +	return 0;
  }
  
- static u8 rockchip_ddrclk_get_parent(struct clk_hw *hw)
-@@ -83,7 +84,7 @@ static u8 rockchip_ddrclk_get_parent(struct clk_hw *hw)
- static const struct clk_ops rockchip_ddrclk_sip_ops = {
- 	.recalc_rate = rockchip_ddrclk_sip_recalc_rate,
- 	.set_rate = rockchip_ddrclk_sip_set_rate,
--	.round_rate = rockchip_ddrclk_sip_round_rate,
-+	.determine_rate = rockchip_ddrclk_sip_determine_rate,
- 	.get_parent = rockchip_ddrclk_get_parent,
+ static int clk_half_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -141,7 +143,7 @@ static int clk_half_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+ 
+ static const struct clk_ops clk_half_divider_ops = {
+ 	.recalc_rate = clk_half_divider_recalc_rate,
+-	.round_rate = clk_half_divider_round_rate,
++	.determine_rate = clk_half_divider_determine_rate,
+ 	.set_rate = clk_half_divider_set_rate,
  };
  
 
