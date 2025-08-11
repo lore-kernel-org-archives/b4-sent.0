@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:12 -0400
-Subject: [PATCH 020/114] clk: hisilicon: hi3660-stub: convert from
+Date: Mon, 11 Aug 2025 11:18:13 -0400
+Subject: [PATCH 021/114] clk: hisilicon: hi6220-stub: convert from
  round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-20-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-21-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1551;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1642;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=6UTh0dIQL57zhArW6pUJUUnKhOv52WqLYBPPtPsHJPE=;
- b=efQfCr8ZiBp+0aC1CR/qipAQ7+XU/FW1LIHm4YkzmRisiafYEi27kb8NVlDYx/+AzlvhF+Muc
- ThqT+EdaQl4C/axmqTzq+mhTm9DxklOY/MxGTfQWCF6VNVPIAfj3GQE
+ bh=e2OVtyr3sWH4fXdNlCM9p9d5GYfBN48B++2MLeRnYhc=;
+ b=UWv9utHt6wbmXcSerNUtZQ46BUF8QgIw0Xf0z14cBEkL7zfWJ/zAQ+KXwELOXjfAH3xHutz25
+ U+25ao9L/fRBVMiFNc5apjEUTTSGrlOOPGivQ/d2wQvG6Z6HNlj77r6
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,38 +87,43 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/hisilicon/clk-hi3660-stub.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ drivers/clk/hisilicon/clk-hi6220-stub.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/hisilicon/clk-hi3660-stub.c b/drivers/clk/hisilicon/clk-hi3660-stub.c
-index b0a996385301af7bcce231be9e7d5092dd21c3ac..7c8b00ee60195e94f3b414bbf79ee5ec3cbf6c79 100644
---- a/drivers/clk/hisilicon/clk-hi3660-stub.c
-+++ b/drivers/clk/hisilicon/clk-hi3660-stub.c
-@@ -67,14 +67,14 @@ static unsigned long hi3660_stub_clk_recalc_rate(struct clk_hw *hw,
- 	return stub_clk->rate;
+diff --git a/drivers/clk/hisilicon/clk-hi6220-stub.c b/drivers/clk/hisilicon/clk-hi6220-stub.c
+index a8319795ed1cc349a53ce977881620a11ec650ed..bf99cfafafa0133d64f3fbb09f14242fbabac3a1 100644
+--- a/drivers/clk/hisilicon/clk-hi6220-stub.c
++++ b/drivers/clk/hisilicon/clk-hi6220-stub.c
+@@ -161,11 +161,11 @@ static int hi6220_stub_clk_set_rate(struct clk_hw *hw, unsigned long rate,
+ 	return ret;
  }
  
--static long hi3660_stub_clk_round_rate(struct clk_hw *hw, unsigned long rate,
--				       unsigned long *prate)
-+static int hi3660_stub_clk_determine_rate(struct clk_hw *hw,
+-static long hi6220_stub_clk_round_rate(struct clk_hw *hw, unsigned long rate,
+-		unsigned long *parent_rate)
++static int hi6220_stub_clk_determine_rate(struct clk_hw *hw,
 +					  struct clk_rate_request *req)
  {
- 	/*
- 	 * LPM3 handles rate rounding so just return whatever
- 	 * rate is requested.
- 	 */
--	return rate;
+ 	struct hi6220_stub_clk *stub_clk = to_stub_clk(hw);
+-	unsigned long new_rate = rate / 1000;  /* kHz */
++	unsigned long new_rate = req->rate / 1000;  /* kHz */
+ 
+ 	switch (stub_clk->id) {
+ 	case HI6220_STUB_ACPU0:
+@@ -181,12 +181,14 @@ static long hi6220_stub_clk_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		break;
+ 	}
+ 
+-	return new_rate;
++	req->rate = new_rate;
++
 +	return 0;
  }
  
- static int hi3660_stub_clk_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -97,7 +97,7 @@ static int hi3660_stub_clk_set_rate(struct clk_hw *hw, unsigned long rate,
- 
- static const struct clk_ops hi3660_stub_clk_ops = {
- 	.recalc_rate    = hi3660_stub_clk_recalc_rate,
--	.round_rate     = hi3660_stub_clk_round_rate,
-+	.determine_rate = hi3660_stub_clk_determine_rate,
- 	.set_rate       = hi3660_stub_clk_set_rate,
+ static const struct clk_ops hi6220_stub_clk_ops = {
+ 	.recalc_rate	= hi6220_stub_clk_recalc_rate,
+-	.round_rate	= hi6220_stub_clk_round_rate,
++	.determine_rate = hi6220_stub_clk_determine_rate,
+ 	.set_rate	= hi6220_stub_clk_set_rate,
  };
  
 
