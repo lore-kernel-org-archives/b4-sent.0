@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:20 -0400
-Subject: [PATCH 028/114] clk: milbeaut: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:21 -0400
+Subject: [PATCH 029/114] clk: mmp: audio: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-28-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-29-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2218;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2085;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=5TdaCYdNCxvtkvciw+iLI7X0B3hQqFVvjJmg7rSFzmU=;
- b=e/NyMnffsCwpeedyIkqkgkajSKAMa4dsuRJNgY+hbjCH1vZeUN/Z2aGHGhUDQNmD4KDP64ttS
- hAypdkGK3uHCv6C6A9OVfoqzT9uwhDOYr9qD1oeu/ATPAEsOUa15Z3T
+ bh=+yJFa5zFEUdNyjiEQPxFKaRY/PiG96TT1vlVYCT3CIE=;
+ b=1q+FolOnvR2myVfUyWKDb+ibNzbIQfpr6SWmkMEVEG6fb5kEbV/XpQl6dEyLJKWSPsgld0L7u
+ 0hemjN7BaYtD46ZSFWC89VYR0/EjoOyDSI4MO7q9iEzUnMCEXWmw+k7
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,56 +87,61 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-milbeaut.c | 22 ++++++++++++++--------
- 1 file changed, 14 insertions(+), 8 deletions(-)
+ drivers/clk/mmp/clk-audio.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/clk/clk-milbeaut.c b/drivers/clk/clk-milbeaut.c
-index 18c20aff45f7698ac40451ef8000ec4fc4efc96b..b4f9b7143eaa658a7f2a14ff3cc9d91d8aa071c6 100644
---- a/drivers/clk/clk-milbeaut.c
-+++ b/drivers/clk/clk-milbeaut.c
-@@ -386,8 +386,8 @@ static unsigned long m10v_clk_divider_recalc_rate(struct clk_hw *hw,
- 				   divider->flags, divider->width);
+diff --git a/drivers/clk/mmp/clk-audio.c b/drivers/clk/mmp/clk-audio.c
+index 88d798d510cdbe950a61a0bbb312dc546a6853fb..ed27fc796c941d8cf5b3297573db84a7830b7e4f 100644
+--- a/drivers/clk/mmp/clk-audio.c
++++ b/drivers/clk/mmp/clk-audio.c
+@@ -164,23 +164,23 @@ static unsigned long audio_pll_recalc_rate(struct clk_hw *hw,
+ 	return 0;
  }
  
--static long m10v_clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
--				unsigned long *prate)
-+static int m10v_clk_divider_determine_rate(struct clk_hw *hw,
-+					   struct clk_rate_request *req)
+-static long audio_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				 unsigned long *parent_rate)
++static int audio_pll_determine_rate(struct clk_hw *hw,
++				    struct clk_rate_request *req)
  {
- 	struct m10v_clk_divider *divider = to_m10v_div(hw);
+ 	unsigned int prediv;
+ 	unsigned int postdiv;
+ 	long rounded = 0;
  
-@@ -398,13 +398,19 @@ static long m10v_clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
- 		val = readl(divider->reg) >> divider->shift;
- 		val &= clk_div_mask(divider->width);
+ 	for (prediv = 0; prediv < ARRAY_SIZE(predivs); prediv++) {
+-		if (predivs[prediv].parent_rate != *parent_rate)
++		if (predivs[prediv].parent_rate != req->best_parent_rate)
+ 			continue;
+ 		for (postdiv = 0; postdiv < ARRAY_SIZE(postdivs); postdiv++) {
+ 			long freq = predivs[prediv].freq_vco;
  
--		return divider_ro_round_rate(hw, rate, prate, divider->table,
--					     divider->width, divider->flags,
--					     val);
-+		req->rate = divider_ro_round_rate(hw, req->rate,
-+						  &req->best_parent_rate,
-+						  divider->table,
-+						  divider->width,
-+						  divider->flags, val);
-+
-+		return 0;
+ 			freq /= postdivs[postdiv].divisor;
+-			if (freq == rate)
+-				return rate;
+-			if (freq < rate)
++			if (freq == req->rate)
++				return 0;
++			if (freq < req->rate)
+ 				continue;
+ 			if (rounded && freq > rounded)
+ 				continue;
+@@ -188,7 +188,9 @@ static long audio_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		}
  	}
  
--	return divider_round_rate(hw, rate, prate, divider->table,
--				  divider->width, divider->flags);
-+	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate,
-+				       divider->table, divider->width, divider->flags);
+-	return rounded;
++	req->rate = rounded;
 +
 +	return 0;
  }
  
- static int m10v_clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -450,7 +456,7 @@ static int m10v_clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+ static int audio_pll_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -228,7 +230,7 @@ static int audio_pll_set_rate(struct clk_hw *hw, unsigned long rate,
  
- static const struct clk_ops m10v_clk_divider_ops = {
- 	.recalc_rate = m10v_clk_divider_recalc_rate,
--	.round_rate = m10v_clk_divider_round_rate,
-+	.determine_rate = m10v_clk_divider_determine_rate,
- 	.set_rate = m10v_clk_divider_set_rate,
+ static const struct clk_ops audio_pll_ops = {
+ 	.recalc_rate = audio_pll_recalc_rate,
+-	.round_rate = audio_pll_round_rate,
++	.determine_rate = audio_pll_determine_rate,
+ 	.set_rate = audio_pll_set_rate,
  };
  
 
