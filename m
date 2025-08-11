@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:03 -0400
-Subject: [PATCH 011/114] clk: baikal-t1: ccu-pll: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:18:04 -0400
+Subject: [PATCH 012/114] clk: cdce925: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-11-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-12-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1959;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=4117;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=Rir3EwEBie1sPj5NCtSVFsGCoQCOIrz/9MT2zbH+7Pc=;
- b=01t51IygvBOWZ2CKoHAJ0HkUooFlr6DFhgjoMi4GucTkeVEIgTfMzBHL3emzcRIFfdOQ28Avr
- Yz+s8f6VL5lAsPxL+LRfhPHs8KFDsuUC8ZrmpAf/Ww2psKAv+/7QMBL
+ bh=mLxtPz4K1JQXjrMRMOJ4qFaMMnmNFAZE+gNOLsYKYyc=;
+ b=j6GkpR0WY5JRaQ5XaSrii+/y3khi7YcIEkrih2qQ54+o1rhl7fwcEU1Nzv8rakTLfcnOFSyt8
+ vr/RoOkOAAFDCMO9z37B2S6gm0OkX4uwFgfanLcH7ZqTcbYqSTQMNvs
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,52 +87,116 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/baikal-t1/ccu-pll.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+ drivers/clk/clk-cdce925.c | 50 +++++++++++++++++++++++++++--------------------
+ 1 file changed, 29 insertions(+), 21 deletions(-)
 
-diff --git a/drivers/clk/baikal-t1/ccu-pll.c b/drivers/clk/baikal-t1/ccu-pll.c
-index 13ef28001439e37ff4c5230a82fd4a81728861cc..357269f41cdcf5772ee56fc55f1fdb3e67d823e6 100644
---- a/drivers/clk/baikal-t1/ccu-pll.c
-+++ b/drivers/clk/baikal-t1/ccu-pll.c
-@@ -228,14 +228,16 @@ static void ccu_pll_calc_factors(unsigned long rate, unsigned long parent_rate,
+diff --git a/drivers/clk/clk-cdce925.c b/drivers/clk/clk-cdce925.c
+index c51818c1af982619265306bbd418929a948a4c72..0b2ad21e6e4d34ea1297de489b2e226ff2af40c4 100644
+--- a/drivers/clk/clk-cdce925.c
++++ b/drivers/clk/clk-cdce925.c
+@@ -128,13 +128,15 @@ static void cdce925_pll_find_rate(unsigned long rate,
  	}
  }
  
--static long ccu_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--			       unsigned long *parent_rate)
-+static int ccu_pll_determine_rate(struct clk_hw *hw,
-+				  struct clk_rate_request *req)
+-static long cdce925_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-		unsigned long *parent_rate)
++static int cdce925_pll_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
  {
- 	unsigned long nr = 1, nf = 1, od = 1;
+ 	u16 n, m;
  
--	ccu_pll_calc_factors(rate, *parent_rate, &nr, &nf, &od);
-+	ccu_pll_calc_factors(req->rate, req->best_parent_rate, &nr, &nf, &od);
- 
--	return ccu_pll_calc_freq(*parent_rate, nr, nf, od);
-+	req->rate = ccu_pll_calc_freq(req->best_parent_rate, nr, nf, od);
+-	cdce925_pll_find_rate(rate, *parent_rate, &n, &m);
+-	return (long)cdce925_pll_calculate_rate(*parent_rate, n, m);
++	cdce925_pll_find_rate(req->rate, req->best_parent_rate, &n, &m);
++	req->rate = (long)cdce925_pll_calculate_rate(req->best_parent_rate, n, m);
 +
 +	return 0;
  }
  
- /*
-@@ -481,7 +483,7 @@ static const struct clk_ops ccu_pll_gate_to_set_ops = {
- 	.disable = ccu_pll_disable,
- 	.is_enabled = ccu_pll_is_enabled,
- 	.recalc_rate = ccu_pll_recalc_rate,
--	.round_rate = ccu_pll_round_rate,
-+	.determine_rate = ccu_pll_determine_rate,
- 	.set_rate = ccu_pll_set_rate_norst,
- 	.debug_init = ccu_pll_debug_init
+ static int cdce925_pll_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -266,7 +268,7 @@ static const struct clk_ops cdce925_pll_ops = {
+ 	.prepare = cdce925_pll_prepare,
+ 	.unprepare = cdce925_pll_unprepare,
+ 	.recalc_rate = cdce925_pll_recalc_rate,
+-	.round_rate = cdce925_pll_round_rate,
++	.determine_rate = cdce925_pll_determine_rate,
+ 	.set_rate = cdce925_pll_set_rate,
  };
-@@ -491,7 +493,7 @@ static const struct clk_ops ccu_pll_straight_set_ops = {
- 	.disable = ccu_pll_disable,
- 	.is_enabled = ccu_pll_is_enabled,
- 	.recalc_rate = ccu_pll_recalc_rate,
--	.round_rate = ccu_pll_round_rate,
-+	.determine_rate = ccu_pll_determine_rate,
- 	.set_rate = ccu_pll_set_rate_reset,
- 	.debug_init = ccu_pll_debug_init
+ 
+@@ -420,20 +422,23 @@ static unsigned long cdce925_clk_best_parent_rate(
+ 	return rate * pdiv_best;
+ }
+ 
+-static long cdce925_clk_round_rate(struct clk_hw *hw, unsigned long rate,
+-		unsigned long *parent_rate)
++static int cdce925_clk_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
+ {
+-	unsigned long l_parent_rate = *parent_rate;
+-	u16 divider = cdce925_calc_divider(rate, l_parent_rate);
++	unsigned long l_parent_rate = req->best_parent_rate;
++	u16 divider = cdce925_calc_divider(req->rate, l_parent_rate);
+ 
+-	if (l_parent_rate / divider != rate) {
+-		l_parent_rate = cdce925_clk_best_parent_rate(hw, rate);
+-		divider = cdce925_calc_divider(rate, l_parent_rate);
+-		*parent_rate = l_parent_rate;
++	if (l_parent_rate / divider != req->rate) {
++		l_parent_rate = cdce925_clk_best_parent_rate(hw, req->rate);
++		divider = cdce925_calc_divider(req->rate, l_parent_rate);
++		req->best_parent_rate = l_parent_rate;
+ 	}
+ 
+ 	if (divider)
+-		return (long)(l_parent_rate / divider);
++		req->rate = (long)(l_parent_rate / divider);
++	else
++		req->rate = 0;
++
+ 	return 0;
+ }
+ 
+@@ -451,7 +456,7 @@ static const struct clk_ops cdce925_clk_ops = {
+ 	.prepare = cdce925_clk_prepare,
+ 	.unprepare = cdce925_clk_unprepare,
+ 	.recalc_rate = cdce925_clk_recalc_rate,
+-	.round_rate = cdce925_clk_round_rate,
++	.determine_rate = cdce925_clk_determine_rate,
+ 	.set_rate = cdce925_clk_set_rate,
  };
+ 
+@@ -473,14 +478,17 @@ static u16 cdce925_y1_calc_divider(unsigned long rate,
+ 	return (u16)divider;
+ }
+ 
+-static long cdce925_clk_y1_round_rate(struct clk_hw *hw, unsigned long rate,
+-		unsigned long *parent_rate)
++static int cdce925_clk_y1_determine_rate(struct clk_hw *hw,
++					 struct clk_rate_request *req)
+ {
+-	unsigned long l_parent_rate = *parent_rate;
+-	u16 divider = cdce925_y1_calc_divider(rate, l_parent_rate);
++	unsigned long l_parent_rate = req->best_parent_rate;
++	u16 divider = cdce925_y1_calc_divider(req->rate, l_parent_rate);
+ 
+ 	if (divider)
+-		return (long)(l_parent_rate / divider);
++		req->rate = (long)(l_parent_rate / divider);
++	else
++		req->rate = 0;
++
+ 	return 0;
+ }
+ 
+@@ -498,7 +506,7 @@ static const struct clk_ops cdce925_clk_y1_ops = {
+ 	.prepare = cdce925_clk_prepare,
+ 	.unprepare = cdce925_clk_unprepare,
+ 	.recalc_rate = cdce925_clk_recalc_rate,
+-	.round_rate = cdce925_clk_y1_round_rate,
++	.determine_rate = cdce925_clk_y1_determine_rate,
+ 	.set_rate = cdce925_clk_y1_set_rate,
+ };
+ 
 
 -- 
 2.50.1
