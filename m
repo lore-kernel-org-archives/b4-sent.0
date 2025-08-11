@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:14 -0400
-Subject: [PATCH 022/114] clk: ingenic: cgu: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:18:15 -0400
+Subject: [PATCH 023/114] clk: ingenic: jz4780-cgu: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-22-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-23-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1643;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1813;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=HtI1wvPz+5VdtS2qexqe2gHJW0XaSbgytBsDxFNInmk=;
- b=I/ftK0zO5KhfvWSspMM0n3T2XFtDNqi7KJXM5VDoHnMC3O9R8uaRBcQXlqQXM8RSKKFShUBUy
- KuGS3/JXiDxCQH6WtfJ9PL2VP8I7ckSpcvVp7q4O7vVmAi2h4M2G/rB
+ bh=MPzcrBPQGuTfy56c5U5WcclOdTxeqPehVwkouGqu3Y4=;
+ b=fmvYy9drD5J5zVeuCA/o62mRsAJKEF9i+yF7AEdh4jKSXBdGTuOFIpHpll7aYhS8aCTB6bTPn
+ O9N7kQvZyOzCAZkEfXW5xZFF+SWrOkWWqFNMrkcqg32x9FVx+8pAVZX
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,43 +87,53 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/ingenic/cgu.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ drivers/clk/ingenic/jz4780-cgu.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/clk/ingenic/cgu.c b/drivers/clk/ingenic/cgu.c
-index 0c9c8344ad1103b13337a26e14b0d5d5c340d705..91e7ac0cc3342e3552acb9d2ec00865a5234ad4f 100644
---- a/drivers/clk/ingenic/cgu.c
-+++ b/drivers/clk/ingenic/cgu.c
-@@ -174,14 +174,16 @@ ingenic_pll_calc(const struct ingenic_cgu_clk_info *clk_info,
- 		n * od);
+diff --git a/drivers/clk/ingenic/jz4780-cgu.c b/drivers/clk/ingenic/jz4780-cgu.c
+index b1dadc0a5e7556a8570286344818c2d1157bf9e8..07e2f3c5c4549e28726b2dccd5f465f56aa9e694 100644
+--- a/drivers/clk/ingenic/jz4780-cgu.c
++++ b/drivers/clk/ingenic/jz4780-cgu.c
+@@ -128,19 +128,19 @@ static unsigned long jz4780_otg_phy_recalc_rate(struct clk_hw *hw,
+ 	return parent_rate;
  }
  
--static long
--ingenic_pll_round_rate(struct clk_hw *hw, unsigned long req_rate,
--		       unsigned long *prate)
-+static int ingenic_pll_determine_rate(struct clk_hw *hw,
-+				      struct clk_rate_request *req)
+-static long jz4780_otg_phy_round_rate(struct clk_hw *hw, unsigned long req_rate,
+-				      unsigned long *parent_rate)
++static int jz4780_otg_phy_determine_rate(struct clk_hw *hw,
++					 struct clk_rate_request *req)
  {
- 	struct ingenic_clk *ingenic_clk = to_ingenic_clk(hw);
- 	const struct ingenic_cgu_clk_info *clk_info = to_clk_info(ingenic_clk);
+-	if (req_rate < 15600000)
+-		return 12000000;
+-
+-	if (req_rate < 21600000)
+-		return 19200000;
++	if (req->rate < 15600000)
++		req->rate = 12000000;
++	else if (req->rate < 21600000)
++		req->rate = 19200000;
++	else if (req->rate < 36000000)
++		req->rate = 24000000;
++	else
++		req->rate = 48000000;
  
--	return ingenic_pll_calc(clk_info, req_rate, *prate, NULL, NULL, NULL);
-+	req->rate = ingenic_pll_calc(clk_info, req->rate, req->best_parent_rate,
-+				     NULL, NULL, NULL);
-+
+-	if (req_rate < 36000000)
+-		return 24000000;
+-
+-	return 48000000;
 +	return 0;
  }
  
- static inline int ingenic_pll_check_stable(struct ingenic_cgu *cgu,
-@@ -317,7 +319,7 @@ static int ingenic_pll_is_enabled(struct clk_hw *hw)
+ static int jz4780_otg_phy_set_rate(struct clk_hw *hw, unsigned long req_rate,
+@@ -212,7 +212,7 @@ static int jz4780_otg_phy_is_enabled(struct clk_hw *hw)
  
- static const struct clk_ops ingenic_pll_ops = {
- 	.recalc_rate = ingenic_pll_recalc_rate,
--	.round_rate = ingenic_pll_round_rate,
-+	.determine_rate = ingenic_pll_determine_rate,
- 	.set_rate = ingenic_pll_set_rate,
+ static const struct clk_ops jz4780_otg_phy_ops = {
+ 	.recalc_rate = jz4780_otg_phy_recalc_rate,
+-	.round_rate = jz4780_otg_phy_round_rate,
++	.determine_rate = jz4780_otg_phy_determine_rate,
+ 	.set_rate = jz4780_otg_phy_set_rate,
  
- 	.enable = ingenic_pll_enable,
+ 	.enable		= jz4780_otg_phy_enable,
 
 -- 
 2.50.1
