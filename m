@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:48 -0400
-Subject: [PATCH 056/114] clk: st: clkgen-pll: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:49 -0400
+Subject: [PATCH 057/114] clk: stm32f4: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-56-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-57-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=3742;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2998;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=DJwN7TJEr1OocxSY3Z1pVTjDxUr8XVH+extNRlOeEW4=;
- b=MjOGu58JaAdED95YxFBxhEu7hVCzagXGHoLz7U+b8TPrq9voM+ZfA+Cmdzu2S0hB52FuGFxSF
- IPHNudtfn2qC0qrjt5lARsQWfxH/vXDw66iTVJPoSCURdxji4e9uNjz
+ bh=AumK8BwNqzO627oEWWSfUxrEbI4mV0KAS1s9UAxn9TA=;
+ b=pNrNmNIcyX36FbFqMWLlv3eoG6G/f+nT9NUyvbIM67aj47jQla4WbcCgNFVyBGKoRc6fMJY9g
+ /Hc08HVRHA4Bnhh/vlJMd14EV3TINDDYbL4KIb3mILPMqr9tATZabYE
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -85,108 +85,88 @@ The round_rate() clk ops is deprecated, so migrate this driver from
 round_rate() to determine_rate() using the Coccinelle semantic patch
 on the cover letter of this series.
 
-Note that prior to running the Coccinelle:
-
-- round_rate_stm_pll4600c28() was renamed to stm_pll4600c28_round_rate()
-- round_rate_stm_pll3200c32() was renamed to stm_pll3200c32_round_rate()
-
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/st/clkgen-pll.c | 38 ++++++++++++++++++++++----------------
- 1 file changed, 22 insertions(+), 16 deletions(-)
+ drivers/clk/clk-stm32f4.c | 26 +++++++++++++++-----------
+ 1 file changed, 15 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/clk/st/clkgen-pll.c b/drivers/clk/st/clkgen-pll.c
-index b36e4d8036364a126fea3afdd8b936fb93de27f2..c258ff87a17127b872fb5591503e171571866a0e 100644
---- a/drivers/clk/st/clkgen-pll.c
-+++ b/drivers/clk/st/clkgen-pll.c
-@@ -395,25 +395,28 @@ static unsigned long recalc_stm_pll3200c32(struct clk_hw *hw,
- 	return rate;
+diff --git a/drivers/clk/clk-stm32f4.c b/drivers/clk/clk-stm32f4.c
+index 719cddc82ae6f8f706716e5ba91a69759c066415..b5d4d48432a0be0a416d628667893e7165caaf0a 100644
+--- a/drivers/clk/clk-stm32f4.c
++++ b/drivers/clk/clk-stm32f4.c
+@@ -443,8 +443,8 @@ static unsigned long clk_apb_mul_recalc_rate(struct clk_hw *hw,
+ 	return parent_rate;
  }
  
--static long round_rate_stm_pll3200c32(struct clk_hw *hw, unsigned long rate,
--		unsigned long *prate)
-+static int stm_pll3200c32_determine_rate(struct clk_hw *hw,
-+					 struct clk_rate_request *req)
+-static long clk_apb_mul_round_rate(struct clk_hw *hw, unsigned long rate,
+-				   unsigned long *prate)
++static int clk_apb_mul_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
  {
- 	struct stm_pll params;
+ 	struct clk_apb_mul *am = to_clk_apb_mul(hw);
+ 	unsigned long mult = 1;
+@@ -453,12 +453,14 @@ static long clk_apb_mul_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		mult = 2;
  
--	if (!clk_pll3200c32_get_params(*prate, rate, &params))
--		clk_pll3200c32_get_rate(*prate, &params, &rate);
-+	if (!clk_pll3200c32_get_params(req->best_parent_rate, req->rate, &params))
-+		clk_pll3200c32_get_rate(req->best_parent_rate, &params,
-+					&req->rate);
- 	else {
- 		pr_debug("%s: %s rate %ld Invalid\n", __func__,
--			 __clk_get_name(hw->clk), rate);
-+			 __clk_get_name(hw->clk), req->rate);
-+		req->rate = 0;
-+
- 		return 0;
+ 	if (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) {
+-		unsigned long best_parent = rate / mult;
++		unsigned long best_parent = req->rate / mult;
+ 
+-		*prate = clk_hw_round_rate(clk_hw_get_parent(hw), best_parent);
++		req->best_parent_rate = clk_hw_round_rate(clk_hw_get_parent(hw), best_parent);
  	}
  
- 	pr_debug("%s: %s new rate %ld [ndiv=%u] [idf=%u]\n",
- 		 __func__, __clk_get_name(hw->clk),
--		 rate, (unsigned int)params.ndiv,
-+		 req->rate, (unsigned int)params.ndiv,
- 		 (unsigned int)params.idf);
- 
--	return rate;
+-	return *prate * mult;
++	req->rate = req->best_parent_rate * mult;
++
 +	return 0;
  }
  
- static int set_rate_stm_pll3200c32(struct clk_hw *hw, unsigned long rate,
-@@ -549,25 +552,28 @@ static unsigned long recalc_stm_pll4600c28(struct clk_hw *hw,
- 	return rate;
+ static int clk_apb_mul_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -474,7 +476,7 @@ static int clk_apb_mul_set_rate(struct clk_hw *hw, unsigned long rate,
  }
  
--static long round_rate_stm_pll4600c28(struct clk_hw *hw, unsigned long rate,
--				      unsigned long *prate)
-+static int stm_pll4600c28_determine_rate(struct clk_hw *hw,
-+					 struct clk_rate_request *req)
- {
- 	struct stm_pll params;
- 
--	if (!clk_pll4600c28_get_params(*prate, rate, &params)) {
--		clk_pll4600c28_get_rate(*prate, &params, &rate);
-+	if (!clk_pll4600c28_get_params(req->best_parent_rate, req->rate, &params)) {
-+		clk_pll4600c28_get_rate(req->best_parent_rate, &params,
-+					&req->rate);
- 	} else {
- 		pr_debug("%s: %s rate %ld Invalid\n", __func__,
--			 __clk_get_name(hw->clk), rate);
-+			 __clk_get_name(hw->clk), req->rate);
-+		req->rate = 0;
-+
- 		return 0;
- 	}
- 
- 	pr_debug("%s: %s new rate %ld [ndiv=%u] [idf=%u]\n",
- 		 __func__, __clk_get_name(hw->clk),
--		 rate, (unsigned int)params.ndiv,
-+		 req->rate, (unsigned int)params.ndiv,
- 		 (unsigned int)params.idf);
- 
--	return rate;
-+	return 0;
- }
- 
- static int set_rate_stm_pll4600c28(struct clk_hw *hw, unsigned long rate,
-@@ -628,7 +634,7 @@ static const struct clk_ops stm_pll3200c32_a9_ops = {
- 	.disable	= clkgen_pll_disable,
- 	.is_enabled	= clkgen_pll_is_enabled,
- 	.recalc_rate	= recalc_stm_pll3200c32,
--	.round_rate	= round_rate_stm_pll3200c32,
-+	.determine_rate = stm_pll3200c32_determine_rate,
- 	.set_rate	= set_rate_stm_pll3200c32,
+ static const struct clk_ops clk_apb_mul_factor_ops = {
+-	.round_rate = clk_apb_mul_round_rate,
++	.determine_rate = clk_apb_mul_determine_rate,
+ 	.set_rate = clk_apb_mul_set_rate,
+ 	.recalc_rate = clk_apb_mul_recalc_rate,
  };
+@@ -670,21 +672,23 @@ static unsigned long stm32f4_pll_recalc(struct clk_hw *hw,
+ 	return parent_rate * n;
+ }
  
-@@ -637,7 +643,7 @@ static const struct clk_ops stm_pll4600c28_ops = {
- 	.disable	= clkgen_pll_disable,
- 	.is_enabled	= clkgen_pll_is_enabled,
- 	.recalc_rate	= recalc_stm_pll4600c28,
--	.round_rate	= round_rate_stm_pll4600c28,
-+	.determine_rate = stm_pll4600c28_determine_rate,
- 	.set_rate	= set_rate_stm_pll4600c28,
+-static long stm32f4_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-		unsigned long *prate)
++static int stm32f4_pll_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
+ {
+ 	struct clk_gate *gate = to_clk_gate(hw);
+ 	struct stm32f4_pll *pll = to_stm32f4_pll(gate);
+ 	unsigned long n;
+ 
+-	n = rate / *prate;
++	n = req->rate / req->best_parent_rate;
+ 
+ 	if (n < pll->n_start)
+ 		n = pll->n_start;
+ 	else if (n > 432)
+ 		n = 432;
+ 
+-	return *prate * n;
++	req->rate = req->best_parent_rate * n;
++
++	return 0;
+ }
+ 
+ static void stm32f4_pll_set_ssc(struct clk_hw *hw, unsigned long parent_rate,
+@@ -749,7 +753,7 @@ static const struct clk_ops stm32f4_pll_gate_ops = {
+ 	.disable	= stm32f4_pll_disable,
+ 	.is_enabled	= stm32f4_pll_is_enabled,
+ 	.recalc_rate	= stm32f4_pll_recalc,
+-	.round_rate	= stm32f4_pll_round_rate,
++	.determine_rate = stm32f4_pll_determine_rate,
+ 	.set_rate	= stm32f4_pll_set_rate,
  };
  
 
