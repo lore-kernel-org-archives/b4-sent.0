@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:43 -0400
-Subject: [PATCH 111/114] clk: divider: remove round_rate() in favor of
+Date: Mon, 11 Aug 2025 11:19:44 -0400
+Subject: [PATCH 112/114] clk: scmi: remove round_rate() in favor of
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-111-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-112-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2270;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2063;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=ZIHCAEVSfzUYC7gs59802c9M/dWpJRCFCvoeCSAJWOI=;
- b=ers9IA4nnmWnnnlCVnGasS5HZexaGz09F3l7/rT15n8N76akhVQx+IBd+lMd2sYJN9EmVlJIO
- EA9yeUIhJDwCG7q6iVGduu4D+JEwojIkaqCdALlK7pEQrY/rFTNhJ3U
+ bh=zZPy/VQuXPb4ErTr6RHlPvCDkU/aIn0KlEdetDNPWuc=;
+ b=RbVBCL4Yb1c1v4HxaBdoa/kYbRkOS2Y6t/+bUny/+2wf4rLkx4p0bZdhgkd0UiaREXOUg1KBe
+ 1pW7ayR0qpkC4jyB+yADVFuwFQhWffG3muvex6OgDsSZjfM1zfF6tC0
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -84,63 +84,62 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 This driver implements both the determine_rate() and round_rate() clk
 ops, and the round_rate() clk ops is deprecated. When both are defined,
 clk_core_determine_round_nolock() from the clk core will only use the
-determine_rate() clk ops. Also all clk drivers that directly calls
-divider's round_rate() have been migrated over to determine_rate(). So
-let's remove the round_rate() clk ops.
+determine_rate() clk ops, so let's remove the round_rate() clk ops since
+it's unused.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-divider.c | 23 -----------------------
- 1 file changed, 23 deletions(-)
+ drivers/clk/clk-scmi.c | 30 ------------------------------
+ 1 file changed, 30 deletions(-)
 
-diff --git a/drivers/clk/clk-divider.c b/drivers/clk/clk-divider.c
-index c1f426b8a5043cb5a1de08e1da385928ec54a2ed..2601b6155afb7391c6a0ffb91c58fa66cde98197 100644
---- a/drivers/clk/clk-divider.c
-+++ b/drivers/clk/clk-divider.c
-@@ -431,27 +431,6 @@ long divider_ro_round_rate_parent(struct clk_hw *hw, struct clk_hw *parent,
+diff --git a/drivers/clk/clk-scmi.c b/drivers/clk/clk-scmi.c
+index d2408403283fc72f0cf902e65f4c08bcbc7b4b0b..6c6ddb92e7cf6a0cfac2c7e19c0f15f777bb8c51 100644
+--- a/drivers/clk/clk-scmi.c
++++ b/drivers/clk/clk-scmi.c
+@@ -54,35 +54,6 @@ static unsigned long scmi_clk_recalc_rate(struct clk_hw *hw,
+ 	return rate;
  }
- EXPORT_SYMBOL_GPL(divider_ro_round_rate_parent);
  
--static long clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
--				unsigned long *prate)
+-static long scmi_clk_round_rate(struct clk_hw *hw, unsigned long rate,
+-				unsigned long *parent_rate)
 -{
--	struct clk_divider *divider = to_clk_divider(hw);
+-	u64 fmin, fmax, ftmp;
+-	struct scmi_clk *clk = to_scmi_clk(hw);
 -
--	/* if read only, just return current value */
--	if (divider->flags & CLK_DIVIDER_READ_ONLY) {
--		u32 val;
+-	/*
+-	 * We can't figure out what rate it will be, so just return the
+-	 * rate back to the caller. scmi_clk_recalc_rate() will be called
+-	 * after the rate is set and we'll know what rate the clock is
+-	 * running at then.
+-	 */
+-	if (clk->info->rate_discrete)
+-		return rate;
 -
--		val = clk_div_readl(divider) >> divider->shift;
--		val &= clk_div_mask(divider->width);
+-	fmin = clk->info->range.min_rate;
+-	fmax = clk->info->range.max_rate;
+-	if (rate <= fmin)
+-		return fmin;
+-	else if (rate >= fmax)
+-		return fmax;
 -
--		return divider_ro_round_rate(hw, rate, prate, divider->table,
--					     divider->width, divider->flags,
--					     val);
--	}
+-	ftmp = rate - fmin;
+-	ftmp += clk->info->range.step_size - 1; /* to round up */
+-	do_div(ftmp, clk->info->range.step_size);
 -
--	return divider_round_rate(hw, rate, prate, divider->table,
--				  divider->width, divider->flags);
+-	return ftmp * clk->info->range.step_size + fmin;
 -}
 -
- static int clk_divider_determine_rate(struct clk_hw *hw,
- 				      struct clk_rate_request *req)
+ static int scmi_clk_set_rate(struct clk_hw *hw, unsigned long rate,
+ 			     unsigned long parent_rate)
  {
-@@ -527,7 +506,6 @@ static int clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -300,7 +271,6 @@ scmi_clk_ops_alloc(struct device *dev, unsigned long feats_key)
  
- const struct clk_ops clk_divider_ops = {
- 	.recalc_rate = clk_divider_recalc_rate,
--	.round_rate = clk_divider_round_rate,
- 	.determine_rate = clk_divider_determine_rate,
- 	.set_rate = clk_divider_set_rate,
- };
-@@ -535,7 +513,6 @@ EXPORT_SYMBOL_GPL(clk_divider_ops);
- 
- const struct clk_ops clk_divider_ro_ops = {
- 	.recalc_rate = clk_divider_recalc_rate,
--	.round_rate = clk_divider_round_rate,
- 	.determine_rate = clk_divider_determine_rate,
- };
- EXPORT_SYMBOL_GPL(clk_divider_ro_ops);
+ 	/* Rate ops */
+ 	ops->recalc_rate = scmi_clk_recalc_rate;
+-	ops->round_rate = scmi_clk_round_rate;
+ 	ops->determine_rate = scmi_clk_determine_rate;
+ 	if (feats_key & BIT(SCMI_CLK_RATE_CTRL_SUPPORTED))
+ 		ops->set_rate = scmi_clk_set_rate;
 
 -- 
 2.50.1
