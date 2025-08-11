@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:25 -0400
-Subject: [PATCH 033/114] clk: mxs: frac: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:26 -0400
+Subject: [PATCH 034/114] clk: mxs: ref: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-33-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-34-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1902;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1644;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=0/Bpo/91/6j37KFABTNfZnt6KuCfaX73g0Ji8rBEBLM=;
- b=Dt7u37BfGK3Us9/hCOPyDMriis1li2id2do/OdtdRGgZx7PPUlfIr/ZFY3VTE5hW+HMno1wub
- 1kOKEzO+6Z1DTZGLWUUlSStkvCLw1/YKNLBoyuMUUaio5by7moKX9UZ
+ bh=HSL90JXdRKRXivf3nwmi4ecUykYfxrFHyCgnT0MMhnk=;
+ b=sl5F1dpOftQg7x/ZyLz6UYkrWuxuYr8Xcb4TA+fOa5NxVHG0eoaotP6aIYEXVlND2mn82QJg/
+ QVDN20wu2bQBDqViJ4nJAx9rItmmn/9frnj2slbsgqHGGktASyl674D
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,55 +87,51 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/mxs/clk-frac.c | 16 +++++++++-------
+ drivers/clk/mxs/clk-ref.c | 16 +++++++++-------
  1 file changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/clk/mxs/clk-frac.c b/drivers/clk/mxs/clk-frac.c
-index bba0d840dd76c78c1eb88f4f30a9c431a40522c4..73f514fb84ffb9a680bab2711d16b282b71bf7b6 100644
---- a/drivers/clk/mxs/clk-frac.c
-+++ b/drivers/clk/mxs/clk-frac.c
-@@ -44,18 +44,18 @@ static unsigned long clk_frac_recalc_rate(struct clk_hw *hw,
- 	return tmp_rate >> frac->width;
+diff --git a/drivers/clk/mxs/clk-ref.c b/drivers/clk/mxs/clk-ref.c
+index 2297259da89ab0bce2a00536a00e1c7aa7a9729d..a99ee4cd2ece008e87bf659dec959ae51242ba72 100644
+--- a/drivers/clk/mxs/clk-ref.c
++++ b/drivers/clk/mxs/clk-ref.c
+@@ -57,22 +57,24 @@ static unsigned long clk_ref_recalc_rate(struct clk_hw *hw,
+ 	return tmp;
  }
  
--static long clk_frac_round_rate(struct clk_hw *hw, unsigned long rate,
--				unsigned long *prate)
-+static int clk_frac_determine_rate(struct clk_hw *hw,
-+				   struct clk_rate_request *req)
+-static long clk_ref_round_rate(struct clk_hw *hw, unsigned long rate,
+-			       unsigned long *prate)
++static int clk_ref_determine_rate(struct clk_hw *hw,
++				  struct clk_rate_request *req)
  {
- 	struct clk_frac *frac = to_clk_frac(hw);
 -	unsigned long parent_rate = *prate;
 +	unsigned long parent_rate = req->best_parent_rate;
- 	u32 div;
- 	u64 tmp, tmp_rate, result;
+ 	u64 tmp = parent_rate;
+ 	u8 frac;
  
--	if (rate > parent_rate)
-+	if (req->rate > parent_rate)
- 		return -EINVAL;
+-	tmp = tmp * 18 + rate / 2;
+-	do_div(tmp, rate);
++	tmp = tmp * 18 + req->rate / 2;
++	do_div(tmp, req->rate);
+ 	frac = clamp(tmp, 18, 35);
  
--	tmp = rate;
-+	tmp = req->rate;
- 	tmp <<= frac->width;
- 	do_div(tmp, parent_rate);
- 	div = tmp;
-@@ -67,7 +67,9 @@ static long clk_frac_round_rate(struct clk_hw *hw, unsigned long rate,
- 	result = tmp_rate >> frac->width;
- 	if ((result << frac->width) < tmp_rate)
- 		result += 1;
--	return result;
-+	req->rate = result;
+ 	tmp = parent_rate;
+ 	tmp *= 18;
+ 	do_div(tmp, frac);
+ 
+-	return tmp;
++	req->rate = tmp;
 +
 +	return 0;
  }
  
- static int clk_frac_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -103,7 +105,7 @@ static int clk_frac_set_rate(struct clk_hw *hw, unsigned long rate,
- 
- static const struct clk_ops clk_frac_ops = {
- 	.recalc_rate = clk_frac_recalc_rate,
--	.round_rate = clk_frac_round_rate,
-+	.determine_rate = clk_frac_determine_rate,
- 	.set_rate = clk_frac_set_rate,
+ static int clk_ref_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -104,7 +106,7 @@ static const struct clk_ops clk_ref_ops = {
+ 	.enable		= clk_ref_enable,
+ 	.disable	= clk_ref_disable,
+ 	.recalc_rate	= clk_ref_recalc_rate,
+-	.round_rate	= clk_ref_round_rate,
++	.determine_rate = clk_ref_determine_rate,
+ 	.set_rate	= clk_ref_set_rate,
  };
  
 
