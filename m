@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:44 -0400
-Subject: [PATCH 052/114] clk: sparx5: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:45 -0400
+Subject: [PATCH 053/114] clk: sprd: div: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-52-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-53-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1326;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1521;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=gxjArEqxuHEiRJKmFC2eMx/7JZ/9idK7N52lqJS4NY0=;
- b=uFBSLfLmM6GQ/q1J/NfCM8THsAhPROfG6VEt/fGBKWaz5ECEoK6E7x9y+vsx99kkMYVOzB2Pf
- B7zF3RJHWIAAS/k14wyXgkRFdcvdM52uVClwrW83KmxYff6sxusWX/h
+ bh=k3pms/XRU1mNa9tg+/+IC7mp+Tyl74X/Bc0zkHgzvtw=;
+ b=drK9ZeTSL+Vu3bHNx/1pSM4otvnZZYtWL6bsGu4xhHMdQqdlnpChUHORtZCT/l06o2OkC7d0u
+ OMP27NgZZU9AoN8xV+PrHOmeH5vox/A6KvfYR2l5Gc4hlWJ2WzxVxk3
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,39 +87,43 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-sparx5.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ drivers/clk/sprd/div.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/clk-sparx5.c b/drivers/clk/clk-sparx5.c
-index 0fad0c1a01862be221b4a53b2deb9239c335479a..b2facc9c95d471ee515c439cee83ab43187ff967 100644
---- a/drivers/clk/clk-sparx5.c
-+++ b/drivers/clk/clk-sparx5.c
-@@ -213,19 +213,21 @@ static unsigned long s5_pll_recalc_rate(struct clk_hw *hw,
- 	return conf.freq;
- }
+diff --git a/drivers/clk/sprd/div.c b/drivers/clk/sprd/div.c
+index 936782c241271832c0a1957c99cbecc287351d1b..013423881968002d29c4e9536e7cd7b944779196 100644
+--- a/drivers/clk/sprd/div.c
++++ b/drivers/clk/sprd/div.c
+@@ -9,13 +9,16 @@
  
--static long s5_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--			      unsigned long *parent_rate)
-+static int s5_pll_determine_rate(struct clk_hw *hw,
-+				 struct clk_rate_request *req)
+ #include "div.h"
+ 
+-static long sprd_div_round_rate(struct clk_hw *hw, unsigned long rate,
+-				unsigned long *parent_rate)
++static int sprd_div_determine_rate(struct clk_hw *hw,
++				   struct clk_rate_request *req)
  {
- 	struct s5_pll_conf conf;
+ 	struct sprd_div *cd = hw_to_sprd_div(hw);
  
--	return s5_calc_params(rate, *parent_rate, &conf);
-+	req->rate = s5_calc_params(req->rate, req->best_parent_rate, &conf);
+-	return divider_round_rate(&cd->common.hw, rate, parent_rate, NULL,
+-				  cd->div.width, 0);
++	req->rate = divider_round_rate(&cd->common.hw, req->rate,
++				       &req->best_parent_rate,
++				       NULL, cd->div.width, 0);
 +
 +	return 0;
  }
  
- static const struct clk_ops s5_pll_ops = {
- 	.enable		= s5_pll_enable,
- 	.disable	= s5_pll_disable,
- 	.set_rate	= s5_pll_set_rate,
--	.round_rate	= s5_pll_round_rate,
-+	.determine_rate = s5_pll_determine_rate,
- 	.recalc_rate	= s5_pll_recalc_rate,
- };
+ unsigned long sprd_div_helper_recalc_rate(struct sprd_clk_common *common,
+@@ -75,7 +78,7 @@ static int sprd_div_set_rate(struct clk_hw *hw, unsigned long rate,
  
+ const struct clk_ops sprd_div_ops = {
+ 	.recalc_rate = sprd_div_recalc_rate,
+-	.round_rate = sprd_div_round_rate,
++	.determine_rate = sprd_div_determine_rate,
+ 	.set_rate = sprd_div_set_rate,
+ };
+ EXPORT_SYMBOL_GPL(sprd_div_ops);
 
 -- 
 2.50.1
