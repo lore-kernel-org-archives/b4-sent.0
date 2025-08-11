@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:23 -0400
-Subject: [PATCH 091/114] clk: qcom: regmap-divider: convert from
- round_rate() to determine_rate()
+Date: Mon, 11 Aug 2025 11:19:24 -0400
+Subject: [PATCH 092/114] clk: renesas: rzg2l-cpg: convert from round_rate()
+ to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-91-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-92-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2812;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1381;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=EQCcwOFdygM4Y4d5xyMVYQW7q18iqFwUE0YbNXBmzY0=;
- b=XHOYVo78vIlv+7J6x7VNcONXwhptYWQD6H+jm0MjN4IKO4htNVGtDAXSqsdhOHa7ktB0ujiSg
- D4k1hBYtxSKAJOoyoDXDyi2WEHu7ioerLgWEHkgbjX9En2IqQGPvP1W
+ bh=4eocXIeBrIAhEAYoEiq6nvsnUaeIIvGe3yw0SgJVNeA=;
+ b=pvzcWflSX2kzk2EFzNqx9GSBidtzEcq5UEB2YYqhdQKabwT3/B3vFcO8DHrM4EKcP/5OQh28Z
+ 7TbB9dM7lWHCX8nkET78PQpCBdN5trdlhCUBPND7MCzuQl+/658c9sB
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -85,77 +85,39 @@ The round_rate() clk ops is deprecated, so migrate this driver from
 round_rate() to determine_rate() using the Coccinelle semantic patch
 on the cover letter of this series.
 
-Note that prior to running the Coccinelle, div_round_ro_rate() was
-renamed to div_ro_round_rate().
-
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/qcom/clk-regmap-divider.c | 27 +++++++++++++++++----------
- 1 file changed, 17 insertions(+), 10 deletions(-)
+ drivers/clk/renesas/rzg2l-cpg.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/qcom/clk-regmap-divider.c b/drivers/clk/qcom/clk-regmap-divider.c
-index 63c9fca0d65d7436db4fe45c17d347baea922900..4f5395f0ab6d0ed8cebbb32cc231063932ba85a1 100644
---- a/drivers/clk/qcom/clk-regmap-divider.c
-+++ b/drivers/clk/qcom/clk-regmap-divider.c
-@@ -15,8 +15,8 @@ static inline struct clk_regmap_div *to_clk_regmap_div(struct clk_hw *hw)
- 	return container_of(to_clk_regmap(hw), struct clk_regmap_div, clkr);
+diff --git a/drivers/clk/renesas/rzg2l-cpg.c b/drivers/clk/renesas/rzg2l-cpg.c
+index 187233302818a66a763daefdd1c982b2a6e4e71f..b508823f9723c27678aafb46eb28e3b04f011636 100644
+--- a/drivers/clk/renesas/rzg2l-cpg.c
++++ b/drivers/clk/renesas/rzg2l-cpg.c
+@@ -824,11 +824,10 @@ static unsigned long rzg2l_cpg_sipll5_recalc_rate(struct clk_hw *hw,
+ 	return pll5_rate;
  }
  
--static long div_round_ro_rate(struct clk_hw *hw, unsigned long rate,
--			      unsigned long *prate)
-+static int div_ro_determine_rate(struct clk_hw *hw,
-+				 struct clk_rate_request *req)
+-static long rzg2l_cpg_sipll5_round_rate(struct clk_hw *hw,
+-					unsigned long rate,
+-					unsigned long *parent_rate)
++static int rzg2l_cpg_sipll5_determine_rate(struct clk_hw *hw,
++					   struct clk_rate_request *req)
  {
- 	struct clk_regmap_div *divider = to_clk_regmap_div(hw);
- 	struct clk_regmap *clkr = &divider->clkr;
-@@ -26,17 +26,24 @@ static long div_round_ro_rate(struct clk_hw *hw, unsigned long rate,
- 	val >>= divider->shift;
- 	val &= BIT(divider->width) - 1;
- 
--	return divider_ro_round_rate(hw, rate, prate, NULL, divider->width,
--				     CLK_DIVIDER_ROUND_CLOSEST, val);
-+	req->rate = divider_ro_round_rate(hw, req->rate,
-+					  &req->best_parent_rate, NULL,
-+					  divider->width,
-+					  CLK_DIVIDER_ROUND_CLOSEST, val);
-+
+-	return rate;
 +	return 0;
  }
  
--static long div_round_rate(struct clk_hw *hw, unsigned long rate,
--			   unsigned long *prate)
-+static int div_determine_rate(struct clk_hw *hw, struct clk_rate_request *req)
- {
- 	struct clk_regmap_div *divider = to_clk_regmap_div(hw);
+ static int rzg2l_cpg_sipll5_set_rate(struct clk_hw *hw,
+@@ -902,7 +901,7 @@ static int rzg2l_cpg_sipll5_set_rate(struct clk_hw *hw,
  
--	return divider_round_rate(hw, rate, prate, NULL, divider->width,
--				  CLK_DIVIDER_ROUND_CLOSEST);
-+	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate,
-+				       NULL,
-+				       divider->width,
-+				       CLK_DIVIDER_ROUND_CLOSEST);
-+
-+	return 0;
- }
- 
- static int div_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -70,14 +77,14 @@ static unsigned long div_recalc_rate(struct clk_hw *hw,
- }
- 
- const struct clk_ops clk_regmap_div_ops = {
--	.round_rate = div_round_rate,
-+	.determine_rate = div_determine_rate,
- 	.set_rate = div_set_rate,
- 	.recalc_rate = div_recalc_rate,
+ static const struct clk_ops rzg2l_cpg_sipll5_ops = {
+ 	.recalc_rate = rzg2l_cpg_sipll5_recalc_rate,
+-	.round_rate = rzg2l_cpg_sipll5_round_rate,
++	.determine_rate = rzg2l_cpg_sipll5_determine_rate,
+ 	.set_rate = rzg2l_cpg_sipll5_set_rate,
  };
- EXPORT_SYMBOL_GPL(clk_regmap_div_ops);
  
- const struct clk_ops clk_regmap_div_ro_ops = {
--	.round_rate = div_round_ro_rate,
-+	.determine_rate = div_ro_determine_rate,
- 	.recalc_rate = div_recalc_rate,
- };
- EXPORT_SYMBOL_GPL(clk_regmap_div_ro_ops);
 
 -- 
 2.50.1
