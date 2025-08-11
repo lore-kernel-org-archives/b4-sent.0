@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:35 -0400
-Subject: [PATCH 103/114] clk: spear: gpt-synth: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:19:36 -0400
+Subject: [PATCH 104/114] clk: spear: vco-pll: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-103-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-104-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1594;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2525;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=3EPhFpUbwwIaXQRHOGCwBMvdxScReadCJMAlA8s3U9w=;
- b=eHgF5npubAkVlGRQbb/9b8jxvdvlrqbhFOe9oQL+YIv/fPqzK/8SMk8YX1Ii95v2t6diuOQ9p
- JPc+NNMe9v0AM8cVWkBCEdzdWMitEknsfAEt3b9wzqc3m9aFYvO8Hv1
+ bh=zLhm2hmgKtJF0mfd4zTdLRLxNEcmEaU3VWtu0xst3KI=;
+ b=B5FqQuXRuSCAkJx5S+zvfVOEBAgrSBK/em/txvKRQsw+zZyvOT9W2wWhYYPysRgrm6rCdWhN8
+ L9fndDL/8VuDhZRA3fKQ2m5FknViti3l5+Hn2bvVAfXM4YM1HSiiU19
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,41 +87,69 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/spear/clk-gpt-synth.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ drivers/clk/spear/clk-vco-pll.c | 23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/clk/spear/clk-gpt-synth.c b/drivers/clk/spear/clk-gpt-synth.c
-index 4ef747c2abbb0374bec6d6541fa6b8b8904e6c08..cf9659dc9073cba903a0e2a9cef9629ae7f97022 100644
---- a/drivers/clk/spear/clk-gpt-synth.c
-+++ b/drivers/clk/spear/clk-gpt-synth.c
-@@ -39,14 +39,16 @@ static unsigned long gpt_calc_rate(struct clk_hw *hw, unsigned long prate,
- 	return prate;
+diff --git a/drivers/clk/spear/clk-vco-pll.c b/drivers/clk/spear/clk-vco-pll.c
+index 348eeab0a906bfc3b6291e723a23e26d5eb142dc..723a6eb677540cd643caa02a91307cdd2f842aca 100644
+--- a/drivers/clk/spear/clk-vco-pll.c
++++ b/drivers/clk/spear/clk-vco-pll.c
+@@ -110,12 +110,15 @@ static long clk_pll_round_rate_index(struct clk_hw *hw, unsigned long drate,
+ 	return rate;
  }
  
--static long clk_gpt_round_rate(struct clk_hw *hw, unsigned long drate,
--		unsigned long *prate)
-+static int clk_gpt_determine_rate(struct clk_hw *hw,
+-static long clk_pll_round_rate(struct clk_hw *hw, unsigned long drate,
+-				unsigned long *prate)
++static int clk_pll_determine_rate(struct clk_hw *hw,
 +				  struct clk_rate_request *req)
  {
- 	struct clk_gpt *gpt = to_clk_gpt(hw);
  	int unused;
  
--	return clk_round_rate_index(hw, drate, *prate, gpt_calc_rate,
--			gpt->rtbl_cnt, &unused);
-+	req->rate = clk_round_rate_index(hw, req->rate, req->best_parent_rate,
-+					 gpt_calc_rate, gpt->rtbl_cnt, &unused);
+-	return clk_pll_round_rate_index(hw, drate, prate, &unused);
++	req->rate = clk_pll_round_rate_index(hw, req->rate,
++					     &req->best_parent_rate, &unused);
 +
 +	return 0;
  }
  
- static unsigned long clk_gpt_recalc_rate(struct clk_hw *hw,
-@@ -104,7 +106,7 @@ static int clk_gpt_set_rate(struct clk_hw *hw, unsigned long drate,
+ static unsigned long clk_pll_recalc_rate(struct clk_hw *hw, unsigned long
+@@ -164,7 +167,7 @@ static int clk_pll_set_rate(struct clk_hw *hw, unsigned long drate,
  
- static const struct clk_ops clk_gpt_ops = {
- 	.recalc_rate = clk_gpt_recalc_rate,
--	.round_rate = clk_gpt_round_rate,
-+	.determine_rate = clk_gpt_determine_rate,
- 	.set_rate = clk_gpt_set_rate,
+ static const struct clk_ops clk_pll_ops = {
+ 	.recalc_rate = clk_pll_recalc_rate,
+-	.round_rate = clk_pll_round_rate,
++	.determine_rate = clk_pll_determine_rate,
+ 	.set_rate = clk_pll_set_rate,
+ };
+ 
+@@ -176,14 +179,16 @@ static inline unsigned long vco_calc_rate(struct clk_hw *hw,
+ 	return pll_calc_rate(vco->rtbl, prate, index, NULL);
+ }
+ 
+-static long clk_vco_round_rate(struct clk_hw *hw, unsigned long drate,
+-		unsigned long *prate)
++static int clk_vco_determine_rate(struct clk_hw *hw,
++				  struct clk_rate_request *req)
+ {
+ 	struct clk_vco *vco = to_clk_vco(hw);
+ 	int unused;
+ 
+-	return clk_round_rate_index(hw, drate, *prate, vco_calc_rate,
+-			vco->rtbl_cnt, &unused);
++	req->rate = clk_round_rate_index(hw, req->rate, req->best_parent_rate,
++					 vco_calc_rate, vco->rtbl_cnt, &unused);
++
++	return 0;
+ }
+ 
+ static unsigned long clk_vco_recalc_rate(struct clk_hw *hw,
+@@ -265,7 +270,7 @@ static int clk_vco_set_rate(struct clk_hw *hw, unsigned long drate,
+ 
+ static const struct clk_ops clk_vco_ops = {
+ 	.recalc_rate = clk_vco_recalc_rate,
+-	.round_rate = clk_vco_round_rate,
++	.determine_rate = clk_vco_determine_rate,
+ 	.set_rate = clk_vco_set_rate,
  };
  
 
