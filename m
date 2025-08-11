@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:08 -0400
-Subject: [PATCH 076/114] clk: axs10x: i2s_pll_clock: convert from
- round_rate() to determine_rate()
+Date: Mon, 11 Aug 2025 11:19:09 -0400
+Subject: [PATCH 077/114] clk: axs10x: pll_clock: convert from round_rate()
+ to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-76-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-77-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1817;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1754;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=+FK9LgHGXyQGGBSuKsYmGY0ad82VKpfsWPKq5cr8Ky0=;
- b=4I4qzLfvBXGWv1gBj0awBFVRJ6GU0raJMhE98aQB0e3Ey7YZ36DyHuoPKBRcBWuNwCpLg+4P4
- p3bkeEj+q4zC8OBsQklbj+kv8XBYWUnjHqHyrxMcTUYzvp7FMuo3K7z
+ bh=tJrefzaCIDHByIhDmSEbTFNo+MefLj7nMaGKSK6K6Kw=;
+ b=m/812GTBmvOl/yXEoIRoY72Q2sCPGjSyIZ0zetPLMAujCyyipwCyUqF8+bQbyT504uREIcJX6
+ Iy59Ks71TLEAws3xxupdrOq2zkLiYBEYQNSKs0r9amPdTNJKylARqU3
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,48 +87,47 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/axs10x/i2s_pll_clock.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ drivers/clk/axs10x/pll_clock.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/axs10x/i2s_pll_clock.c b/drivers/clk/axs10x/i2s_pll_clock.c
-index 9667ce898428032f6db4070bd0e8ba92c074f277..6f3e1151b354e0a0d001b3241695f992df3b8711 100644
---- a/drivers/clk/axs10x/i2s_pll_clock.c
-+++ b/drivers/clk/axs10x/i2s_pll_clock.c
-@@ -108,21 +108,21 @@ static unsigned long i2s_pll_recalc_rate(struct clk_hw *hw,
- 	return ((parent_rate / idiv) * fbdiv) / odiv;
+diff --git a/drivers/clk/axs10x/pll_clock.c b/drivers/clk/axs10x/pll_clock.c
+index 6c7a2b62b406379279b1aab71ac0759f3c5fc64a..c7ca473ee76c83a52e924651046414f60736d542 100644
+--- a/drivers/clk/axs10x/pll_clock.c
++++ b/drivers/clk/axs10x/pll_clock.c
+@@ -149,8 +149,8 @@ static unsigned long axs10x_pll_recalc_rate(struct clk_hw *hw,
+ 	return rate;
  }
  
--static long i2s_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--			unsigned long *prate)
-+static int i2s_pll_determine_rate(struct clk_hw *hw,
-+				  struct clk_rate_request *req)
+-static long axs10x_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				  unsigned long *prate)
++static int axs10x_pll_determine_rate(struct clk_hw *hw,
++				     struct clk_rate_request *req)
  {
- 	struct i2s_pll_clk *clk = to_i2s_pll_clk(hw);
--	const struct i2s_pll_cfg *pll_cfg = i2s_pll_get_cfg(*prate);
-+	const struct i2s_pll_cfg *pll_cfg = i2s_pll_get_cfg(req->best_parent_rate);
  	int i;
+ 	long best_rate;
+@@ -163,11 +163,13 @@ static long axs10x_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+ 	best_rate = pll_cfg[0].rate;
  
- 	if (!pll_cfg) {
--		dev_err(clk->dev, "invalid parent rate=%ld\n", *prate);
-+		dev_err(clk->dev, "invalid parent rate=%ld\n", req->best_parent_rate);
- 		return -EINVAL;
+ 	for (i = 1; pll_cfg[i].rate != 0; i++) {
+-		if (abs(rate - pll_cfg[i].rate) < abs(rate - best_rate))
++		if (abs(req->rate - pll_cfg[i].rate) < abs(req->rate - best_rate))
+ 			best_rate = pll_cfg[i].rate;
  	}
  
- 	for (i = 0; pll_cfg[i].rate != 0; i++)
--		if (pll_cfg[i].rate == rate)
--			return rate;
-+		if (pll_cfg[i].rate == req->rate)
-+			return 0;
- 
- 	return -EINVAL;
+-	return best_rate;
++	req->rate = best_rate;
++
++	return 0;
  }
-@@ -156,7 +156,7 @@ static int i2s_pll_set_rate(struct clk_hw *hw, unsigned long rate,
  
- static const struct clk_ops i2s_pll_ops = {
- 	.recalc_rate = i2s_pll_recalc_rate,
--	.round_rate = i2s_pll_round_rate,
-+	.determine_rate = i2s_pll_determine_rate,
- 	.set_rate = i2s_pll_set_rate,
+ static int axs10x_pll_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -208,7 +210,7 @@ static int axs10x_pll_set_rate(struct clk_hw *hw, unsigned long rate,
+ 
+ static const struct clk_ops axs10x_pll_ops = {
+ 	.recalc_rate = axs10x_pll_recalc_rate,
+-	.round_rate = axs10x_pll_round_rate,
++	.determine_rate = axs10x_pll_determine_rate,
+ 	.set_rate = axs10x_pll_set_rate,
  };
  
 
