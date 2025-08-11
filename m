@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:25 -0400
-Subject: [PATCH 093/114] clk: renesas: rzv2h-cpg: remove round_rate() in
- favor of determine_rate()
+Date: Mon, 11 Aug 2025 11:19:26 -0400
+Subject: [PATCH 094/114] clk: rockchip: ddr: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-93-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-94-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,55 +71,62 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1554;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1666;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=APn7O7zMPX6aeEUA+RAPdR2wRd1vkjrFD49a6YMzPV4=;
- b=MJL8aeF4D/4kz5WhunkiOL7Dpp+qwONXwdncq6aBmbuXWI5Y1ZAcFa/06fJpmb/J1uLFTyqxP
- 35qRmO9rw8SC/cRzaiV+HbjMDrXRZhTRH6uyk5C+6oN1t64dqODhpxJ
+ bh=+mTNNaA/Rw26i0WQAx+OIQblwc90KAUsuFHwu0lEWj8=;
+ b=rTl0OqGx+j74m+r7f4wrHisEEDRwWTntvTo+iCDJVcKHw2awCwJ9lKPHIWuR7jm5OOl41r7C+
+ ghPrb9Sfv2NDz2WVpcs21qKgRU7FQnBQSxyD5/9wqvK9Fd71FNgBTUA
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This driver implements both the determine_rate() and round_rate() clk
-ops, and the round_rate() clk ops is deprecated. When both are defined,
-clk_core_determine_round_nolock() from the clk core will only use the
-determine_rate() clk ops, so let's remove the round_rate() clk ops since
-it's unused.
+The round_rate() clk ops is deprecated, so migrate this driver from
+round_rate() to determine_rate() using the Coccinelle semantic patch
+on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/renesas/rzv2h-cpg.c | 10 ----------
- 1 file changed, 10 deletions(-)
+ drivers/clk/rockchip/clk-ddr.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/clk/renesas/rzv2h-cpg.c b/drivers/clk/renesas/rzv2h-cpg.c
-index f468afbb54e2d192c094e0048a698664ae99bd00..58ccbae0f9046388e568f7da0b8a890dfa001c47 100644
---- a/drivers/clk/renesas/rzv2h-cpg.c
-+++ b/drivers/clk/renesas/rzv2h-cpg.c
-@@ -294,15 +294,6 @@ static unsigned long rzv2h_ddiv_recalc_rate(struct clk_hw *hw,
- 				   divider->flags, divider->width);
+diff --git a/drivers/clk/rockchip/clk-ddr.c b/drivers/clk/rockchip/clk-ddr.c
+index 86718c54e56b3ff52ee6ea9f209159de91e9da39..8866a65982a0489f1aacd546bda60af1d30278ee 100644
+--- a/drivers/clk/rockchip/clk-ddr.c
++++ b/drivers/clk/rockchip/clk-ddr.c
+@@ -55,17 +55,18 @@ rockchip_ddrclk_sip_recalc_rate(struct clk_hw *hw,
+ 	return res.a0;
  }
  
--static long rzv2h_ddiv_round_rate(struct clk_hw *hw, unsigned long rate,
--				  unsigned long *prate)
--{
--	struct clk_divider *divider = to_clk_divider(hw);
--
--	return divider_round_rate(hw, rate, prate, divider->table,
--				  divider->width, divider->flags);
--}
--
- static int rzv2h_ddiv_determine_rate(struct clk_hw *hw,
- 				     struct clk_rate_request *req)
+-static long rockchip_ddrclk_sip_round_rate(struct clk_hw *hw,
+-					   unsigned long rate,
+-					   unsigned long *prate)
++static int rockchip_ddrclk_sip_determine_rate(struct clk_hw *hw,
++					      struct clk_rate_request *req)
  {
-@@ -359,7 +350,6 @@ static int rzv2h_ddiv_set_rate(struct clk_hw *hw, unsigned long rate,
+ 	struct arm_smccc_res res;
  
- static const struct clk_ops rzv2h_ddiv_clk_divider_ops = {
- 	.recalc_rate = rzv2h_ddiv_recalc_rate,
--	.round_rate = rzv2h_ddiv_round_rate,
- 	.determine_rate = rzv2h_ddiv_determine_rate,
- 	.set_rate = rzv2h_ddiv_set_rate,
+-	arm_smccc_smc(ROCKCHIP_SIP_DRAM_FREQ, rate, 0,
++	arm_smccc_smc(ROCKCHIP_SIP_DRAM_FREQ, req->rate, 0,
+ 		      ROCKCHIP_SIP_CONFIG_DRAM_ROUND_RATE,
+ 		      0, 0, 0, 0, &res);
+ 
+-	return res.a0;
++	req->rate = res.a0;
++
++	return 0;
+ }
+ 
+ static u8 rockchip_ddrclk_get_parent(struct clk_hw *hw)
+@@ -83,7 +84,7 @@ static u8 rockchip_ddrclk_get_parent(struct clk_hw *hw)
+ static const struct clk_ops rockchip_ddrclk_sip_ops = {
+ 	.recalc_rate = rockchip_ddrclk_sip_recalc_rate,
+ 	.set_rate = rockchip_ddrclk_sip_set_rate,
+-	.round_rate = rockchip_ddrclk_sip_round_rate,
++	.determine_rate = rockchip_ddrclk_sip_determine_rate,
+ 	.get_parent = rockchip_ddrclk_get_parent,
  };
+ 
 
 -- 
 2.50.1
