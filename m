@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:13 -0400
-Subject: [PATCH 021/114] clk: hisilicon: hi6220-stub: convert from
- round_rate() to determine_rate()
+Date: Mon, 11 Aug 2025 11:18:14 -0400
+Subject: [PATCH 022/114] clk: ingenic: cgu: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-21-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-22-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1642;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1643;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=e2OVtyr3sWH4fXdNlCM9p9d5GYfBN48B++2MLeRnYhc=;
- b=UWv9utHt6wbmXcSerNUtZQ46BUF8QgIw0Xf0z14cBEkL7zfWJ/zAQ+KXwELOXjfAH3xHutz25
- U+25ao9L/fRBVMiFNc5apjEUTTSGrlOOPGivQ/d2wQvG6Z6HNlj77r6
+ bh=HtI1wvPz+5VdtS2qexqe2gHJW0XaSbgytBsDxFNInmk=;
+ b=I/ftK0zO5KhfvWSspMM0n3T2XFtDNqi7KJXM5VDoHnMC3O9R8uaRBcQXlqQXM8RSKKFShUBUy
+ KuGS3/JXiDxCQH6WtfJ9PL2VP8I7ckSpcvVp7q4O7vVmAi2h4M2G/rB
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,45 +87,43 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/hisilicon/clk-hi6220-stub.c | 12 +++++++-----
+ drivers/clk/ingenic/cgu.c | 12 +++++++-----
  1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/hisilicon/clk-hi6220-stub.c b/drivers/clk/hisilicon/clk-hi6220-stub.c
-index a8319795ed1cc349a53ce977881620a11ec650ed..bf99cfafafa0133d64f3fbb09f14242fbabac3a1 100644
---- a/drivers/clk/hisilicon/clk-hi6220-stub.c
-+++ b/drivers/clk/hisilicon/clk-hi6220-stub.c
-@@ -161,11 +161,11 @@ static int hi6220_stub_clk_set_rate(struct clk_hw *hw, unsigned long rate,
- 	return ret;
+diff --git a/drivers/clk/ingenic/cgu.c b/drivers/clk/ingenic/cgu.c
+index 0c9c8344ad1103b13337a26e14b0d5d5c340d705..91e7ac0cc3342e3552acb9d2ec00865a5234ad4f 100644
+--- a/drivers/clk/ingenic/cgu.c
++++ b/drivers/clk/ingenic/cgu.c
+@@ -174,14 +174,16 @@ ingenic_pll_calc(const struct ingenic_cgu_clk_info *clk_info,
+ 		n * od);
  }
  
--static long hi6220_stub_clk_round_rate(struct clk_hw *hw, unsigned long rate,
--		unsigned long *parent_rate)
-+static int hi6220_stub_clk_determine_rate(struct clk_hw *hw,
-+					  struct clk_rate_request *req)
+-static long
+-ingenic_pll_round_rate(struct clk_hw *hw, unsigned long req_rate,
+-		       unsigned long *prate)
++static int ingenic_pll_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
  {
- 	struct hi6220_stub_clk *stub_clk = to_stub_clk(hw);
--	unsigned long new_rate = rate / 1000;  /* kHz */
-+	unsigned long new_rate = req->rate / 1000;  /* kHz */
+ 	struct ingenic_clk *ingenic_clk = to_ingenic_clk(hw);
+ 	const struct ingenic_cgu_clk_info *clk_info = to_clk_info(ingenic_clk);
  
- 	switch (stub_clk->id) {
- 	case HI6220_STUB_ACPU0:
-@@ -181,12 +181,14 @@ static long hi6220_stub_clk_round_rate(struct clk_hw *hw, unsigned long rate,
- 		break;
- 	}
- 
--	return new_rate;
-+	req->rate = new_rate;
+-	return ingenic_pll_calc(clk_info, req_rate, *prate, NULL, NULL, NULL);
++	req->rate = ingenic_pll_calc(clk_info, req->rate, req->best_parent_rate,
++				     NULL, NULL, NULL);
 +
 +	return 0;
  }
  
- static const struct clk_ops hi6220_stub_clk_ops = {
- 	.recalc_rate	= hi6220_stub_clk_recalc_rate,
--	.round_rate	= hi6220_stub_clk_round_rate,
-+	.determine_rate = hi6220_stub_clk_determine_rate,
- 	.set_rate	= hi6220_stub_clk_set_rate,
- };
+ static inline int ingenic_pll_check_stable(struct ingenic_cgu *cgu,
+@@ -317,7 +319,7 @@ static int ingenic_pll_is_enabled(struct clk_hw *hw)
  
+ static const struct clk_ops ingenic_pll_ops = {
+ 	.recalc_rate = ingenic_pll_recalc_rate,
+-	.round_rate = ingenic_pll_round_rate,
++	.determine_rate = ingenic_pll_determine_rate,
+ 	.set_rate = ingenic_pll_set_rate,
+ 
+ 	.enable = ingenic_pll_enable,
 
 -- 
 2.50.1
