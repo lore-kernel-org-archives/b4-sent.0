@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:33 -0400
-Subject: [PATCH 041/114] clk: si514: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:34 -0400
+Subject: [PATCH 042/114] clk: si521xx: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-41-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-42-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1615;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1821;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=dagTZ8T2ZWlrRPVjhpPlS47bP85AKVvJF75/1IUEHCk=;
- b=1G8W5arP5g5axnUnhxSv5YFklILV589JL7kyFbnUXIZgHs6LZyzSE1SQAd6sETEfbnA0vagtV
- TgNeOblAgxGB6iJ3x8RECdptL4wESj05RTuXKsNZL/ykW5cKJ0IGgBZ
+ bh=IYfcBgwkQpHDyc8q2RV5A5vv1udYTKTPHUiTmW2Cwno=;
+ b=waUAjIfKrQAV57XrANvP9EEjChBsr6Yt07UIfnBK3ZshiRnoCJySmfzJCRr5NSot/62ay4Kev
+ 5PzOKFX1ommBOmvXhrcksOjRNQwgxc2iotqiGVZtfsSVOH+sJncYevs
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,58 +87,45 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-si514.c | 24 ++++++++++++++++--------
- 1 file changed, 16 insertions(+), 8 deletions(-)
+ drivers/clk/clk-si521xx.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/clk/clk-si514.c b/drivers/clk/clk-si514.c
-index 1127c35ce57d70f93fb77feb6a971dae98e871d7..f61590d70575bca52d0255ba114ba6ab381e6f54 100644
---- a/drivers/clk/clk-si514.c
-+++ b/drivers/clk/clk-si514.c
-@@ -227,20 +227,28 @@ static unsigned long si514_recalc_rate(struct clk_hw *hw,
- 	return si514_calc_rate(&settings);
+diff --git a/drivers/clk/clk-si521xx.c b/drivers/clk/clk-si521xx.c
+index 4f7b74f889f1e7e9400a61f15d1e6671408bb1fc..4ed4e1a5f4f2b3b9fe063d79fc5140f1b41c4ace 100644
+--- a/drivers/clk/clk-si521xx.c
++++ b/drivers/clk/clk-si521xx.c
+@@ -164,15 +164,17 @@ static unsigned long si521xx_diff_recalc_rate(struct clk_hw *hw,
+ 	return (unsigned long)rate;
  }
  
--static long si514_round_rate(struct clk_hw *hw, unsigned long rate,
--		unsigned long *parent_rate)
-+static int si514_determine_rate(struct clk_hw *hw,
-+				struct clk_rate_request *req)
+-static long si521xx_diff_round_rate(struct clk_hw *hw, unsigned long rate,
+-				    unsigned long *prate)
++static int si521xx_diff_determine_rate(struct clk_hw *hw,
++				       struct clk_rate_request *req)
  {
- 	struct clk_si514_muldiv settings;
- 	int err;
+ 	unsigned long best_parent;
  
--	if (!rate)
-+	if (!req->rate) {
-+		req->rate = 0;
-+
- 		return 0;
-+	}
+-	best_parent = (rate / SI521XX_DIFF_MULT) * SI521XX_DIFF_DIV;
+-	*prate = clk_hw_round_rate(clk_hw_get_parent(hw), best_parent);
++	best_parent = (req->rate / SI521XX_DIFF_MULT) * SI521XX_DIFF_DIV;
++	req->best_parent_rate = clk_hw_round_rate(clk_hw_get_parent(hw), best_parent);
  
--	err = si514_calc_muldiv(&settings, rate);
--	if (err)
--		return err;
-+	err = si514_calc_muldiv(&settings, req->rate);
-+	if (err) {
-+		req->rate = err;
- 
--	return si514_calc_rate(&settings);
-+		return 0;
-+	}
-+
-+	req->rate = si514_calc_rate(&settings);
+-	return (*prate / SI521XX_DIFF_DIV) * SI521XX_DIFF_MULT;
++	req->rate = (req->best_parent_rate / SI521XX_DIFF_DIV) * SI521XX_DIFF_MULT;
 +
 +	return 0;
  }
  
- /*
-@@ -289,7 +297,7 @@ static const struct clk_ops si514_clk_ops = {
- 	.unprepare = si514_unprepare,
- 	.is_prepared = si514_is_prepared,
- 	.recalc_rate = si514_recalc_rate,
--	.round_rate = si514_round_rate,
-+	.determine_rate = si514_determine_rate,
- 	.set_rate = si514_set_rate,
- };
+ static int si521xx_diff_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -208,7 +210,7 @@ static void si521xx_diff_unprepare(struct clk_hw *hw)
+ }
  
+ static const struct clk_ops si521xx_diff_clk_ops = {
+-	.round_rate	= si521xx_diff_round_rate,
++	.determine_rate = si521xx_diff_determine_rate,
+ 	.set_rate	= si521xx_diff_set_rate,
+ 	.recalc_rate	= si521xx_diff_recalc_rate,
+ 	.prepare	= si521xx_diff_prepare,
 
 -- 
 2.50.1
