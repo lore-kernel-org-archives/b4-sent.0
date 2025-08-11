@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:06 -0400
-Subject: [PATCH 074/114] clk: actions: owl-pll: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:19:07 -0400
+Subject: [PATCH 075/114] clk: apple-nco: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-74-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-75-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2031;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1712;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=sPT71oy/nWfZWaCZ7el7QuoJ5ywx213EbLL8JhnT798=;
- b=IDpLSapmJO7PXGkC7plnr+o3NMSOGWmV/eJXMUiAXrlNF8HuVybNrfzkKp237krZ1OQLKwfma
- Reujd9fb10CBJ2DdQyK7WJxk2x6RExm5QnmSYYCR1C8ckWx/0GcYV4t
+ bh=6h2xxwGEdK+Wqe4OGkdQF+YuCDgQOB1uNjeimgHHxDs=;
+ b=GzFETmQ8VLKjT+mYaxzbS2sPx4d1/254ZhtTZRz5jRInTKHnyUcJbXAPDOt34cI1WGcpcU0P7
+ RZ0Ve+f7ARsCKVlLe63f0XM/7NRMtZOv/L4h2vtQ1TrfZGQ8yrTuEpb
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,64 +87,43 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/actions/owl-pll.c | 25 ++++++++++++++++---------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+ drivers/clk/clk-apple-nco.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/clk/actions/owl-pll.c b/drivers/clk/actions/owl-pll.c
-index 155f313986b40f15b7c426f4d49b1ed560acf9c3..869690b79cc16f05d63383b965ae5fc96deee79f 100644
---- a/drivers/clk/actions/owl-pll.c
-+++ b/drivers/clk/actions/owl-pll.c
-@@ -56,8 +56,8 @@ static const struct clk_pll_table *_get_pll_table(
- 	return table;
+diff --git a/drivers/clk/clk-apple-nco.c b/drivers/clk/clk-apple-nco.c
+index 457a48d4894128fff24d50eb7c9a3cbd7d35f245..d3ced4a0f029ec0440ff42d49d31e314fdf86846 100644
+--- a/drivers/clk/clk-apple-nco.c
++++ b/drivers/clk/clk-apple-nco.c
+@@ -212,13 +212,15 @@ static unsigned long applnco_recalc_rate(struct clk_hw *hw,
+ 			((u64) div) * incbase + inc1);
  }
  
--static long owl_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--		unsigned long *parent_rate)
-+static int owl_pll_determine_rate(struct clk_hw *hw,
+-static long applnco_round_rate(struct clk_hw *hw, unsigned long rate,
+-				unsigned long *parent_rate)
++static int applnco_determine_rate(struct clk_hw *hw,
 +				  struct clk_rate_request *req)
  {
- 	struct owl_pll *pll = hw_to_owl_pll(hw);
- 	struct owl_pll_hw *pll_hw = &pll->pll_hw;
-@@ -65,17 +65,24 @@ static long owl_pll_round_rate(struct clk_hw *hw, unsigned long rate,
- 	u32 mul;
+-	unsigned long lo = *parent_rate / (COARSE_DIV_OFFSET + LFSR_TBLSIZE) + 1;
+-	unsigned long hi = *parent_rate / COARSE_DIV_OFFSET;
++	unsigned long lo = req->best_parent_rate / (COARSE_DIV_OFFSET + LFSR_TBLSIZE) + 1;
++	unsigned long hi = req->best_parent_rate / COARSE_DIV_OFFSET;
  
- 	if (pll_hw->table) {
--		clkt = _get_pll_table(pll_hw->table, rate);
--		return clkt->rate;
-+		clkt = _get_pll_table(pll_hw->table, req->rate);
-+		req->rate = clkt->rate;
-+
-+		return 0;
- 	}
- 
- 	/* fixed frequency */
--	if (pll_hw->width == 0)
--		return pll_hw->bfreq;
-+	if (pll_hw->width == 0) {
-+		req->rate = pll_hw->bfreq;
- 
--	mul = owl_pll_calculate_mul(pll_hw, rate);
-+		return 0;
-+	}
-+
-+	mul = owl_pll_calculate_mul(pll_hw, req->rate);
- 
--	return pll_hw->bfreq * mul;
-+	req->rate = pll_hw->bfreq * mul;
+-	return clamp(rate, lo, hi);
++	req->rate = clamp(req->rate, lo, hi);
 +
 +	return 0;
  }
  
- static unsigned long owl_pll_recalc_rate(struct clk_hw *hw,
-@@ -188,7 +195,7 @@ const struct clk_ops owl_pll_ops = {
- 	.enable = owl_pll_enable,
- 	.disable = owl_pll_disable,
- 	.is_enabled = owl_pll_is_enabled,
--	.round_rate = owl_pll_round_rate,
-+	.determine_rate = owl_pll_determine_rate,
- 	.recalc_rate = owl_pll_recalc_rate,
- 	.set_rate = owl_pll_set_rate,
- };
+ static int applnco_enable(struct clk_hw *hw)
+@@ -246,7 +248,7 @@ static void applnco_disable(struct clk_hw *hw)
+ static const struct clk_ops applnco_ops = {
+ 	.set_rate = applnco_set_rate,
+ 	.recalc_rate = applnco_recalc_rate,
+-	.round_rate = applnco_round_rate,
++	.determine_rate = applnco_determine_rate,
+ 	.enable = applnco_enable,
+ 	.disable = applnco_disable,
+ 	.is_enabled = applnco_is_enabled,
 
 -- 
 2.50.1
