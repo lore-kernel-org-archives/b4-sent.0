@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:09 -0400
-Subject: [PATCH 077/114] clk: axs10x: pll_clock: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:19:10 -0400
+Subject: [PATCH 078/114] clk: bcm: iproc-asiu: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-77-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-78-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1754;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1957;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=tJrefzaCIDHByIhDmSEbTFNo+MefLj7nMaGKSK6K6Kw=;
- b=m/812GTBmvOl/yXEoIRoY72Q2sCPGjSyIZ0zetPLMAujCyyipwCyUqF8+bQbyT504uREIcJX6
- Iy59Ks71TLEAws3xxupdrOq2zkLiYBEYQNSKs0r9amPdTNJKylARqU3
+ bh=6ioMu4+9UAItFS7H+eBG3CyIWro6x44XklxAacg3uaw=;
+ b=vLu64vwwALh+I9RSN6KksddaCwCNlfEXyI3Fcmya/ds2RbS7mGsDALrDSl5rC7ne7egWrNKVD
+ npXIYcWo63FAuTzcQ0NBiAuy5N6L2TJdOnfq6b8kKP3Tw/W3gYlf+xc
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,47 +87,57 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/axs10x/pll_clock.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ drivers/clk/bcm/clk-iproc-asiu.c | 25 +++++++++++++++----------
+ 1 file changed, 15 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/clk/axs10x/pll_clock.c b/drivers/clk/axs10x/pll_clock.c
-index 6c7a2b62b406379279b1aab71ac0759f3c5fc64a..c7ca473ee76c83a52e924651046414f60736d542 100644
---- a/drivers/clk/axs10x/pll_clock.c
-+++ b/drivers/clk/axs10x/pll_clock.c
-@@ -149,8 +149,8 @@ static unsigned long axs10x_pll_recalc_rate(struct clk_hw *hw,
- 	return rate;
+diff --git a/drivers/clk/bcm/clk-iproc-asiu.c b/drivers/clk/bcm/clk-iproc-asiu.c
+index dcacf55c55ae06bc45fd5585265084075353b379..83ec13da9b2e1de9438ee4fb23b8e2e1852d59f2 100644
+--- a/drivers/clk/bcm/clk-iproc-asiu.c
++++ b/drivers/clk/bcm/clk-iproc-asiu.c
+@@ -98,22 +98,27 @@ static unsigned long iproc_asiu_clk_recalc_rate(struct clk_hw *hw,
+ 	return clk->rate;
  }
  
--static long axs10x_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--				  unsigned long *prate)
-+static int axs10x_pll_determine_rate(struct clk_hw *hw,
-+				     struct clk_rate_request *req)
+-static long iproc_asiu_clk_round_rate(struct clk_hw *hw, unsigned long rate,
+-				      unsigned long *parent_rate)
++static int iproc_asiu_clk_determine_rate(struct clk_hw *hw,
++					 struct clk_rate_request *req)
  {
- 	int i;
- 	long best_rate;
-@@ -163,11 +163,13 @@ static long axs10x_pll_round_rate(struct clk_hw *hw, unsigned long rate,
- 	best_rate = pll_cfg[0].rate;
+ 	unsigned int div;
  
- 	for (i = 1; pll_cfg[i].rate != 0; i++) {
--		if (abs(rate - pll_cfg[i].rate) < abs(rate - best_rate))
-+		if (abs(req->rate - pll_cfg[i].rate) < abs(req->rate - best_rate))
- 			best_rate = pll_cfg[i].rate;
- 	}
+-	if (rate == 0 || *parent_rate == 0)
++	if (req->rate == 0 || req->best_parent_rate == 0)
+ 		return -EINVAL;
  
--	return best_rate;
-+	req->rate = best_rate;
+-	if (rate == *parent_rate)
+-		return *parent_rate;
++	if (req->rate == req->best_parent_rate)
++		return 0;
+ 
+-	div = DIV_ROUND_CLOSEST(*parent_rate, rate);
+-	if (div < 2)
+-		return *parent_rate;
++	div = DIV_ROUND_CLOSEST(req->best_parent_rate, req->rate);
++	if (div < 2) {
++		req->rate = req->best_parent_rate;
+ 
+-	return *parent_rate / div;
++		return 0;
++	}
++
++	req->rate = req->best_parent_rate / div;
 +
 +	return 0;
  }
  
- static int axs10x_pll_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -208,7 +210,7 @@ static int axs10x_pll_set_rate(struct clk_hw *hw, unsigned long rate,
- 
- static const struct clk_ops axs10x_pll_ops = {
- 	.recalc_rate = axs10x_pll_recalc_rate,
--	.round_rate = axs10x_pll_round_rate,
-+	.determine_rate = axs10x_pll_determine_rate,
- 	.set_rate = axs10x_pll_set_rate,
+ static int iproc_asiu_clk_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -168,7 +173,7 @@ static const struct clk_ops iproc_asiu_ops = {
+ 	.enable = iproc_asiu_clk_enable,
+ 	.disable = iproc_asiu_clk_disable,
+ 	.recalc_rate = iproc_asiu_clk_recalc_rate,
+-	.round_rate = iproc_asiu_clk_round_rate,
++	.determine_rate = iproc_asiu_clk_determine_rate,
+ 	.set_rate = iproc_asiu_clk_set_rate,
  };
  
 
