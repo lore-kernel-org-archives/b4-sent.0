@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:12 -0400
-Subject: [PATCH 080/114] clk: cdce706: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:19:13 -0400
+Subject: [PATCH 081/114] clk: hsdk-pll: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-80-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-81-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2194;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1775;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=UaSvd89DwndfC/Jfkrn5bzm2mpom1d/OQ5nJ7RnMUek=;
- b=52jSnCcEU3HNMp6ESkgp6tuWFfcF+PbyIJFATB0+VXkng/zgF+/My8bTw5/tY5zZHKN2t3E+z
- XVO7I4hD8OzCm+1WTmWt5wcqgyDU2Valob+3GveF/gswEN7vxFCa20H
+ bh=TJCcmTPIfcqDNWyPlfz2+hWMSIL+PkPer6sF7Oq6eV0=;
+ b=R6lxIvvrdJ1fOtlXJ61Vp82b1cXEy+x59sp7x7gz6PV5/3mufRECPYuGPYTOQP3XSQNc+o6Ww
+ csmlgol94qUDr7jau/y1+Mmu1JPOeOho2oqijGik2agNrBmv5p9oQY2
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,57 +87,49 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-cdce706.c | 16 +++++++++-------
- 1 file changed, 9 insertions(+), 7 deletions(-)
+ drivers/clk/clk-hsdk-pll.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/clk-cdce706.c b/drivers/clk/clk-cdce706.c
-index d0705bb03a2aae2c2a1abc7031183ee0a9ec053e..a495d313b02f39840b4ad0242758db06f1715e28 100644
---- a/drivers/clk/clk-cdce706.c
-+++ b/drivers/clk/clk-cdce706.c
-@@ -183,8 +183,8 @@ static unsigned long cdce706_pll_recalc_rate(struct clk_hw *hw,
- 	return 0;
+diff --git a/drivers/clk/clk-hsdk-pll.c b/drivers/clk/clk-hsdk-pll.c
+index 921523fc26f2ece89b581006e115661575fc693a..7d56a47c2aa7f049de9de3077f861b275f8b61ca 100644
+--- a/drivers/clk/clk-hsdk-pll.c
++++ b/drivers/clk/clk-hsdk-pll.c
+@@ -197,8 +197,8 @@ static unsigned long hsdk_pll_recalc_rate(struct clk_hw *hw,
+ 	return rate;
  }
  
--static long cdce706_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--				   unsigned long *parent_rate)
-+static int cdce706_pll_determine_rate(struct clk_hw *hw,
-+				      struct clk_rate_request *req)
+-static long hsdk_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				unsigned long *prate)
++static int hsdk_pll_determine_rate(struct clk_hw *hw,
++				   struct clk_rate_request *req)
  {
- 	struct cdce706_hw_data *hwd = to_hw_data(hw);
- 	unsigned long mul, div;
-@@ -192,9 +192,9 @@ static long cdce706_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+ 	int i;
+ 	unsigned long best_rate;
+@@ -211,13 +211,15 @@ static long hsdk_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+ 	best_rate = pll_cfg[0].rate;
  
- 	dev_dbg(&hwd->dev_data->client->dev,
- 		"%s, rate: %lu, parent_rate: %lu\n",
--		__func__, rate, *parent_rate);
-+		__func__, req->rate, req->best_parent_rate);
+ 	for (i = 1; pll_cfg[i].rate != 0; i++) {
+-		if (abs(rate - pll_cfg[i].rate) < abs(rate - best_rate))
++		if (abs(req->rate - pll_cfg[i].rate) < abs(req->rate - best_rate))
+ 			best_rate = pll_cfg[i].rate;
+ 	}
  
--	rational_best_approximation(rate, *parent_rate,
-+	rational_best_approximation(req->rate, req->best_parent_rate,
- 				    CDCE706_PLL_N_MAX, CDCE706_PLL_M_MAX,
- 				    &mul, &div);
- 	hwd->mul = mul;
-@@ -204,9 +204,11 @@ static long cdce706_pll_round_rate(struct clk_hw *hw, unsigned long rate,
- 		"%s, pll: %d, mul: %lu, div: %lu\n",
- 		__func__, hwd->idx, mul, div);
+ 	dev_dbg(clk->dev, "chosen best rate: %lu\n", best_rate);
  
--	res = (u64)*parent_rate * hwd->mul;
-+	res = (u64)req->best_parent_rate * hwd->mul;
- 	do_div(res, hwd->div);
--	return res;
-+	req->rate = res;
+-	return best_rate;
++	req->rate = best_rate;
 +
 +	return 0;
  }
  
- static int cdce706_pll_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -251,7 +253,7 @@ static int cdce706_pll_set_rate(struct clk_hw *hw, unsigned long rate,
+ static int hsdk_pll_comm_update_rate(struct hsdk_pll_clk *clk,
+@@ -296,7 +298,7 @@ static int hsdk_pll_set_rate(struct clk_hw *hw, unsigned long rate,
  
- static const struct clk_ops cdce706_pll_ops = {
- 	.recalc_rate = cdce706_pll_recalc_rate,
--	.round_rate = cdce706_pll_round_rate,
-+	.determine_rate = cdce706_pll_determine_rate,
- 	.set_rate = cdce706_pll_set_rate,
+ static const struct clk_ops hsdk_pll_ops = {
+ 	.recalc_rate = hsdk_pll_recalc_rate,
+-	.round_rate = hsdk_pll_round_rate,
++	.determine_rate = hsdk_pll_determine_rate,
+ 	.set_rate = hsdk_pll_set_rate,
  };
  
 
