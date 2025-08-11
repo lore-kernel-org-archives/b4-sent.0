@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:02 -0400
-Subject: [PATCH 070/114] clk: zynq: pll: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:19:03 -0400
+Subject: [PATCH 071/114] clk: actions: owl-composite: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-70-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-71-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1562;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1656;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=kHYDukxTLqovZfFFZRWmPk/yykkjNqzhxlxn2g+x0hk=;
- b=+Cioel3LCsjfoQHWWSGLvlkzRC5NKnfKEeMKplTY11MtMez6VioQKa1BFVdCN82TuNGcu1Uav
- Myi4BUiRO6HCcRHdCA6+HhG4BMd1GouJkwMA8GkfAV6BArbW4EF47xO
+ bh=rppRbGPELjN20Eg42v9ZOmEzkkXGAODN+hzSiKR7wPQ=;
+ b=xqF1eoy8nHktQVdHk5LO771dB8JtR/uR1+DrGu0qXqdC3Dh1OaHMmzI021ud72YEIUAVMcsip
+ yJ9zJyIpo0xBV21DL1imLpWgwybiD2R1/gDavVwe+SW73X3FEfrUZSf
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,47 +87,39 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/zynq/pll.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ drivers/clk/actions/owl-composite.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/clk/zynq/pll.c b/drivers/clk/zynq/pll.c
-index e5f8fb704df24e9c6e87854ce2c43fb86fa98cd3..5eca1c14981aceb95801cd000c6c7b30b9830696 100644
---- a/drivers/clk/zynq/pll.c
-+++ b/drivers/clk/zynq/pll.c
-@@ -48,18 +48,20 @@ struct zynq_pll {
-  * @prate:	Clock frequency of parent clock
-  * Return:	frequency closest to @rate the hardware can generate.
-  */
--static long zynq_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--		unsigned long *prate)
-+static int zynq_pll_determine_rate(struct clk_hw *hw,
-+				   struct clk_rate_request *req)
- {
- 	u32 fbdiv;
- 
--	fbdiv = DIV_ROUND_CLOSEST(rate, *prate);
-+	fbdiv = DIV_ROUND_CLOSEST(req->rate, req->best_parent_rate);
- 	if (fbdiv < PLL_FBDIV_MIN)
- 		fbdiv = PLL_FBDIV_MIN;
- 	else if (fbdiv > PLL_FBDIV_MAX)
- 		fbdiv = PLL_FBDIV_MAX;
- 
--	return *prate * fbdiv;
-+	req->rate = req->best_parent_rate * fbdiv;
-+
-+	return 0;
+diff --git a/drivers/clk/actions/owl-composite.c b/drivers/clk/actions/owl-composite.c
+index 48f177f6ce9cfacda80b4809b52a24f4fcd30871..00b74f8bc4375a8f42e9b54c7bf1affe91e1074a 100644
+--- a/drivers/clk/actions/owl-composite.c
++++ b/drivers/clk/actions/owl-composite.c
+@@ -122,13 +122,13 @@ static int owl_comp_fact_set_rate(struct clk_hw *hw, unsigned long rate,
+ 					rate, parent_rate);
  }
  
- /**
-@@ -167,7 +169,7 @@ static const struct clk_ops zynq_pll_ops = {
- 	.enable = zynq_pll_enable,
- 	.disable = zynq_pll_disable,
- 	.is_enabled = zynq_pll_is_enabled,
--	.round_rate = zynq_pll_round_rate,
-+	.determine_rate = zynq_pll_determine_rate,
- 	.recalc_rate = zynq_pll_recalc_rate
- };
+-static long owl_comp_fix_fact_round_rate(struct clk_hw *hw, unsigned long rate,
+-			unsigned long *parent_rate)
++static int owl_comp_fix_fact_determine_rate(struct clk_hw *hw,
++					    struct clk_rate_request *req)
+ {
+ 	struct owl_composite *comp = hw_to_owl_comp(hw);
+ 	struct clk_fixed_factor *fix_fact_hw = &comp->rate.fix_fact_hw;
  
+-	return comp->fix_fact_ops->round_rate(&fix_fact_hw->hw, rate, parent_rate);
++	return comp->fix_fact_ops->determine_rate(&fix_fact_hw->hw, req);
+ }
+ 
+ static unsigned long owl_comp_fix_fact_recalc_rate(struct clk_hw *hw,
+@@ -193,7 +193,7 @@ const struct clk_ops owl_comp_fix_fact_ops = {
+ 	.is_enabled	= owl_comp_is_enabled,
+ 
+ 	/* fix_fact_ops */
+-	.round_rate	= owl_comp_fix_fact_round_rate,
++	.determine_rate = owl_comp_fix_fact_determine_rate,
+ 	.recalc_rate	= owl_comp_fix_fact_recalc_rate,
+ 	.set_rate	= owl_comp_fix_fact_set_rate,
+ };
 
 -- 
 2.50.1
