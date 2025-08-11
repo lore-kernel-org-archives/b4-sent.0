@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:01 -0400
-Subject: [PATCH 009/114] clk: at91: usb: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:18:02 -0400
+Subject: [PATCH 010/114] clk: baikal-t1: ccu-div: convert from round_rate()
+ to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-9-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-10-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2365;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=3389;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=CkFMBEvlwfAF/1cEEy4Ux9bAaDiae91CQftu/7tBiVg=;
- b=vpTO7eOQYukHmLekMXIJSVYs3w9GG4/WssMKC/2mI2HAxwcIzMt0GCj6VUqJnxzFixBn/JvKm
- Esu7k+ZiHvXDrtocEhKF/UU1z0pLz8UQpLpHbc07PNiXyK8vJhCFEyF
+ bh=nym5XjLemEq228LpveT5/ErTWDImRURr5JDDhbNCaL4=;
+ b=0DjaR6QeYFxaDSfXoLB4Aix+g0nTT6SM4/R0Dv/DY/yjG/canwRVCudYkR3wHhI7WlX+hA0kw
+ 4DoiM292XomCrmp7d4tu+5my/w0Aqv5x0RdRRKBTga+DlCAK2UZP2pT
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,67 +87,89 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/at91/clk-usb.c | 20 +++++++++++---------
- 1 file changed, 11 insertions(+), 9 deletions(-)
+ drivers/clk/baikal-t1/ccu-div.c | 27 ++++++++++++++++-----------
+ 1 file changed, 16 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/clk/at91/clk-usb.c b/drivers/clk/at91/clk-usb.c
-index b0696a928aa98d6fd75c3f2e1911aa9b6d1827e6..e906928cfbf05143a1fa4fc69cd7004a30824b6b 100644
---- a/drivers/clk/at91/clk-usb.c
-+++ b/drivers/clk/at91/clk-usb.c
-@@ -319,8 +319,8 @@ static unsigned long at91rm9200_clk_usb_recalc_rate(struct clk_hw *hw,
- 	return 0;
+diff --git a/drivers/clk/baikal-t1/ccu-div.c b/drivers/clk/baikal-t1/ccu-div.c
+index 8d5fc7158f33f9c5f8a04241cb62f1ec6ced6e5d..849d1f55765f503c23954754b994d1c28fe3f525 100644
+--- a/drivers/clk/baikal-t1/ccu-div.c
++++ b/drivers/clk/baikal-t1/ccu-div.c
+@@ -228,15 +228,18 @@ static inline unsigned long ccu_div_var_calc_divider(unsigned long rate,
+ 		       CCU_DIV_CLKDIV_MAX(mask));
  }
  
--static long at91rm9200_clk_usb_round_rate(struct clk_hw *hw, unsigned long rate,
--					  unsigned long *parent_rate)
-+static int at91rm9200_clk_usb_determine_rate(struct clk_hw *hw,
-+					     struct clk_rate_request *req)
+-static long ccu_div_var_round_rate(struct clk_hw *hw, unsigned long rate,
+-				   unsigned long *parent_rate)
++static int ccu_div_var_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
  {
- 	struct at91rm9200_clk_usb *usb = to_at91rm9200_clk_usb(hw);
- 	struct clk_hw *parent = clk_hw_get_parent(hw);
-@@ -336,25 +336,27 @@ static long at91rm9200_clk_usb_round_rate(struct clk_hw *hw, unsigned long rate,
- 		if (!usb->divisors[i])
- 			continue;
+ 	struct ccu_div *div = to_ccu_div(hw);
+ 	unsigned long divider;
  
--		tmp_parent_rate = rate * usb->divisors[i];
-+		tmp_parent_rate = req->rate * usb->divisors[i];
- 		tmp_parent_rate = clk_hw_round_rate(parent, tmp_parent_rate);
- 		tmprate = DIV_ROUND_CLOSEST(tmp_parent_rate, usb->divisors[i]);
--		if (tmprate < rate)
--			tmpdiff = rate - tmprate;
-+		if (tmprate < req->rate)
-+			tmpdiff = req->rate - tmprate;
- 		else
--			tmpdiff = tmprate - rate;
-+			tmpdiff = tmprate - req->rate;
+-	divider = ccu_div_var_calc_divider(rate, *parent_rate, div->mask);
++	divider = ccu_div_var_calc_divider(req->rate, req->best_parent_rate,
++					   div->mask);
  
- 		if (bestdiff < 0 || bestdiff > tmpdiff) {
- 			bestrate = tmprate;
- 			bestdiff = tmpdiff;
--			*parent_rate = tmp_parent_rate;
-+			req->best_parent_rate = tmp_parent_rate;
- 		}
- 
- 		if (!bestdiff)
- 			break;
- 	}
- 
--	return bestrate;
-+	req->rate = bestrate;
+-	return ccu_div_calc_freq(*parent_rate, divider);
++	req->rate = ccu_div_calc_freq(req->best_parent_rate, divider);
 +
 +	return 0;
  }
  
- static int at91rm9200_clk_usb_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -384,7 +386,7 @@ static int at91rm9200_clk_usb_set_rate(struct clk_hw *hw, unsigned long rate,
+ /*
+@@ -308,12 +311,14 @@ static unsigned long ccu_div_fixed_recalc_rate(struct clk_hw *hw,
+ 	return ccu_div_calc_freq(parent_rate, div->divider);
+ }
  
- static const struct clk_ops at91rm9200_usb_ops = {
- 	.recalc_rate = at91rm9200_clk_usb_recalc_rate,
--	.round_rate = at91rm9200_clk_usb_round_rate,
-+	.determine_rate = at91rm9200_clk_usb_determine_rate,
- 	.set_rate = at91rm9200_clk_usb_set_rate,
+-static long ccu_div_fixed_round_rate(struct clk_hw *hw, unsigned long rate,
+-				     unsigned long *parent_rate)
++static int ccu_div_fixed_determine_rate(struct clk_hw *hw,
++					struct clk_rate_request *req)
+ {
+ 	struct ccu_div *div = to_ccu_div(hw);
+ 
+-	return ccu_div_calc_freq(*parent_rate, div->divider);
++	req->rate = ccu_div_calc_freq(req->best_parent_rate, div->divider);
++
++	return 0;
+ }
+ 
+ static int ccu_div_fixed_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -534,14 +539,14 @@ static const struct clk_ops ccu_div_var_gate_to_set_ops = {
+ 	.disable = ccu_div_gate_disable,
+ 	.is_enabled = ccu_div_gate_is_enabled,
+ 	.recalc_rate = ccu_div_var_recalc_rate,
+-	.round_rate = ccu_div_var_round_rate,
++	.determine_rate = ccu_div_var_determine_rate,
+ 	.set_rate = ccu_div_var_set_rate_fast,
+ 	.debug_init = ccu_div_var_debug_init
  };
  
+ static const struct clk_ops ccu_div_var_nogate_ops = {
+ 	.recalc_rate = ccu_div_var_recalc_rate,
+-	.round_rate = ccu_div_var_round_rate,
++	.determine_rate = ccu_div_var_determine_rate,
+ 	.set_rate = ccu_div_var_set_rate_slow,
+ 	.debug_init = ccu_div_var_debug_init
+ };
+@@ -551,7 +556,7 @@ static const struct clk_ops ccu_div_gate_ops = {
+ 	.disable = ccu_div_gate_disable,
+ 	.is_enabled = ccu_div_gate_is_enabled,
+ 	.recalc_rate = ccu_div_fixed_recalc_rate,
+-	.round_rate = ccu_div_fixed_round_rate,
++	.determine_rate = ccu_div_fixed_determine_rate,
+ 	.set_rate = ccu_div_fixed_set_rate,
+ 	.debug_init = ccu_div_gate_debug_init
+ };
+@@ -565,7 +570,7 @@ static const struct clk_ops ccu_div_buf_ops = {
+ 
+ static const struct clk_ops ccu_div_fixed_ops = {
+ 	.recalc_rate = ccu_div_fixed_recalc_rate,
+-	.round_rate = ccu_div_fixed_round_rate,
++	.determine_rate = ccu_div_fixed_determine_rate,
+ 	.set_rate = ccu_div_fixed_set_rate,
+ 	.debug_init = ccu_div_fixed_debug_init
+ };
 
 -- 
 2.50.1
