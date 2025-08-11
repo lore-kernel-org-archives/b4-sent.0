@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:05 -0400
-Subject: [PATCH 013/114] clk: cs2000-cp: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:06 -0400
+Subject: [PATCH 014/114] clk: ep93xx: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-13-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-14-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1787;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1914;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=UvrHRYRUxYuk67DeJ+BpwAUoKfafzxXGpd5nwpRerDw=;
- b=fDAJAnMViOEmt/8f9KCjYUUh9pvmB1LYo7aMsJDlpj8/brXkcPxnDhngHVSEAGqFWM1LGT+LE
- 6nhpWQIm00QB34irXdnHIulkoqg6QTZCVYDJATKKqb7eX0tY6Hgo221
+ bh=3JP7dMYtLoQxtBGjPwMKi6Ir7YT5pdLPUf8GaJMmFa0=;
+ b=RRCll3J7L/rjd6JsMM5HD2UsZX1rJmfKm0oTSK0t+2WmkbpOkSN1u9mQMZrVpW2oJoAudterD
+ vhIUygylIuMDhqOiTY3Z/K2otVUyyEa9LQb6/eEcV55ZqFLC7ZCetu5
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,46 +87,55 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-cs2000-cp.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ drivers/clk/clk-ep93xx.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/clk/clk-cs2000-cp.c b/drivers/clk/clk-cs2000-cp.c
-index 35cb93ad298a7188ada8548a9e5995676d72e49f..8800472ba63f297c94b293323770ebb97999e12e 100644
---- a/drivers/clk/clk-cs2000-cp.c
-+++ b/drivers/clk/clk-cs2000-cp.c
-@@ -305,15 +305,19 @@ static unsigned long cs2000_recalc_rate(struct clk_hw *hw,
- 	return cs2000_ratio_to_rate(ratio, parent_rate, priv->lf_ratio);
+diff --git a/drivers/clk/clk-ep93xx.c b/drivers/clk/clk-ep93xx.c
+index 4bd8d6ecf6a2bde26287e4e949b062a5660139e6..b081ef920e250dd99134af6845c443ee11266da8 100644
+--- a/drivers/clk/clk-ep93xx.c
++++ b/drivers/clk/clk-ep93xx.c
+@@ -389,23 +389,25 @@ static unsigned long ep93xx_div_recalc_rate(struct clk_hw *hw,
+ 	return DIV_ROUND_CLOSEST(parent_rate, clk->div[index]);
  }
  
--static long cs2000_round_rate(struct clk_hw *hw, unsigned long rate,
--			      unsigned long *parent_rate)
-+static int cs2000_determine_rate(struct clk_hw *hw,
-+				 struct clk_rate_request *req)
+-static long ep93xx_div_round_rate(struct clk_hw *hw, unsigned long rate,
+-				   unsigned long *parent_rate)
++static int ep93xx_div_determine_rate(struct clk_hw *hw,
++				     struct clk_rate_request *req)
  {
- 	struct cs2000_priv *priv = hw_to_priv(hw);
- 	u32 ratio;
+ 	struct ep93xx_clk *clk = ep93xx_clk_from(hw);
+ 	unsigned long best = 0, now;
+ 	unsigned int i;
  
--	ratio = cs2000_rate_to_ratio(*parent_rate, rate, priv->lf_ratio);
-+	ratio = cs2000_rate_to_ratio(req->best_parent_rate, req->rate,
-+				     priv->lf_ratio);
+ 	for (i = 0; i < clk->num_div; i++) {
+-		if ((rate * clk->div[i]) == *parent_rate)
+-			return rate;
++		if (req->rate * clk->div[i] == req->best_parent_rate)
++			return 0;
  
--	return cs2000_ratio_to_rate(ratio, *parent_rate, priv->lf_ratio);
-+	req->rate = cs2000_ratio_to_rate(ratio, req->best_parent_rate,
-+					 priv->lf_ratio);
+-		now = DIV_ROUND_CLOSEST(*parent_rate, clk->div[i]);
+-		if (!best || is_best(rate, now, best))
++		now = DIV_ROUND_CLOSEST(req->best_parent_rate, clk->div[i]);
++		if (!best || is_best(req->rate, now, best))
+ 			best = now;
+ 	}
+ 
+-	return best;
++	req->rate = best;
 +
 +	return 0;
  }
  
- static int cs2000_select_ratio_mode(struct cs2000_priv *priv,
-@@ -430,7 +434,7 @@ static u8 cs2000_get_parent(struct clk_hw *hw)
- static const struct clk_ops cs2000_ops = {
- 	.get_parent	= cs2000_get_parent,
- 	.recalc_rate	= cs2000_recalc_rate,
--	.round_rate	= cs2000_round_rate,
-+	.determine_rate = cs2000_determine_rate,
- 	.set_rate	= cs2000_set_rate,
- 	.prepare	= cs2000_enable,
- 	.unprepare	= cs2000_disable,
+ static int ep93xx_div_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -437,7 +439,7 @@ static const struct clk_ops ep93xx_div_ops = {
+ 	.disable = ep93xx_clk_disable,
+ 	.is_enabled = ep93xx_clk_is_enabled,
+ 	.recalc_rate = ep93xx_div_recalc_rate,
+-	.round_rate = ep93xx_div_round_rate,
++	.determine_rate = ep93xx_div_determine_rate,
+ 	.set_rate = ep93xx_div_set_rate,
+ };
+ 
 
 -- 
 2.50.1
