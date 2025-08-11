@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:00 -0400
-Subject: [PATCH 068/114] clk: zynqmp: divider: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:19:01 -0400
+Subject: [PATCH 069/114] clk: zynqmp: pll: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-68-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-69-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2557;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2224;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=Zs0u4KFiPgOdtobNVPTqPSjbiFnfpZhsHHTaehaZD6k=;
- b=Ukt1Oh4/kXrvpMcn8AxKhVmUskoT9oWQ/HPlFC+1vBuz3JBrwb+pctgJdDh3v7rNLkZLUhzih
- 5P/QzAkefeZDy0kv01bVpkrPRNcNZF8U3RFg566FCgF0lHOOEp6eJJt
+ bh=lskpKNDz5PXgHwG043xSBBoY9L3jCf8IYdbJMbo+pqY=;
+ b=6K32Cq3AtxddqDEswKIewVZ6ixls6cXq38xWyGnT4SPjLfcqb9QH4+emafqpKpp6DcKj8YU2k
+ djHjbLNcQJUCBZxr2eRk+dQ8L6FLPKL1KwiFgtRDg7HTIkbp7gMoxm/
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,68 +87,63 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/zynqmp/divider.c | 23 +++++++++++++----------
- 1 file changed, 13 insertions(+), 10 deletions(-)
+ drivers/clk/zynqmp/pll.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/clk/zynqmp/divider.c b/drivers/clk/zynqmp/divider.c
-index 5a00487ae408be4ffd586704859b232e934c1f6e..8470b22948252b83567925c704716a027b841562 100644
---- a/drivers/clk/zynqmp/divider.c
-+++ b/drivers/clk/zynqmp/divider.c
-@@ -118,9 +118,8 @@ static unsigned long zynqmp_clk_divider_recalc_rate(struct clk_hw *hw,
+diff --git a/drivers/clk/zynqmp/pll.c b/drivers/clk/zynqmp/pll.c
+index 7411a7fd50acf7b718f789074598c25bec509aa1..630a3936c97c348c1d36252cb93c5551b2469969 100644
+--- a/drivers/clk/zynqmp/pll.c
++++ b/drivers/clk/zynqmp/pll.c
+@@ -98,29 +98,29 @@ static inline void zynqmp_pll_set_mode(struct clk_hw *hw, bool on)
   *
-  * Return: 0 on success else error+reason
+  * Return: Frequency closest to @rate the hardware can generate
   */
--static long zynqmp_clk_divider_round_rate(struct clk_hw *hw,
--					  unsigned long rate,
--					  unsigned long *prate)
-+static int zynqmp_clk_divider_determine_rate(struct clk_hw *hw,
-+					     struct clk_rate_request *req)
+-static long zynqmp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				  unsigned long *prate)
++static int zynqmp_pll_determine_rate(struct clk_hw *hw,
++				     struct clk_rate_request *req)
  {
- 	struct zynqmp_clk_divider *divider = to_zynqmp_clk_divider(hw);
- 	const char *clk_name = clk_hw_get_name(hw);
-@@ -145,17 +144,21 @@ static long zynqmp_clk_divider_round_rate(struct clk_hw *hw,
- 		if (divider->flags & CLK_DIVIDER_POWER_OF_TWO)
- 			bestdiv = 1 << bestdiv;
+ 	u32 fbdiv;
+ 	u32 mult, div;
  
--		return DIV_ROUND_UP_ULL((u64)*prate, bestdiv);
-+		req->rate = DIV_ROUND_UP_ULL((u64) req->best_parent_rate, bestdiv);
-+
-+		return 0;
+ 	/* Let rate fall inside the range PS_PLL_VCO_MIN ~ PS_PLL_VCO_MAX */
+-	if (rate > PS_PLL_VCO_MAX) {
+-		div = DIV_ROUND_UP(rate, PS_PLL_VCO_MAX);
+-		rate = rate / div;
++	if (req->rate > PS_PLL_VCO_MAX) {
++		div = DIV_ROUND_UP(req->rate, PS_PLL_VCO_MAX);
++		req->rate = req->rate / div;
+ 	}
+-	if (rate < PS_PLL_VCO_MIN) {
+-		mult = DIV_ROUND_UP(PS_PLL_VCO_MIN, rate);
+-		rate = rate * mult;
++	if (req->rate < PS_PLL_VCO_MIN) {
++		mult = DIV_ROUND_UP(PS_PLL_VCO_MIN, req->rate);
++		req->rate = req->rate * mult;
  	}
  
- 	width = fls(divider->max_div);
- 
--	rate = divider_round_rate(hw, rate, prate, NULL, width, divider->flags);
-+	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate,
-+				       NULL, width, divider->flags);
- 
--	if (divider->is_frac && (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) && (rate % *prate))
--		*prate = rate;
-+	if (divider->is_frac && (clk_hw_get_flags(hw) & CLK_SET_RATE_PARENT) &&
-+	    (req->rate % req->best_parent_rate))
-+		req->best_parent_rate = req->rate;
+-	fbdiv = DIV_ROUND_CLOSEST(rate, *prate);
++	fbdiv = DIV_ROUND_CLOSEST(req->rate, req->best_parent_rate);
+ 	if (fbdiv < PLL_FBDIV_MIN || fbdiv > PLL_FBDIV_MAX) {
+ 		fbdiv = clamp_t(u32, fbdiv, PLL_FBDIV_MIN, PLL_FBDIV_MAX);
+-		rate = *prate * fbdiv;
++		req->rate = req->best_parent_rate * fbdiv;
+ 	}
  
 -	return rate;
 +	return 0;
  }
  
  /**
-@@ -199,13 +202,13 @@ static int zynqmp_clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
- 
- static const struct clk_ops zynqmp_clk_divider_ops = {
- 	.recalc_rate = zynqmp_clk_divider_recalc_rate,
--	.round_rate = zynqmp_clk_divider_round_rate,
-+	.determine_rate = zynqmp_clk_divider_determine_rate,
- 	.set_rate = zynqmp_clk_divider_set_rate,
+@@ -294,7 +294,7 @@ static const struct clk_ops zynqmp_pll_ops = {
+ 	.enable = zynqmp_pll_enable,
+ 	.disable = zynqmp_pll_disable,
+ 	.is_enabled = zynqmp_pll_is_enabled,
+-	.round_rate = zynqmp_pll_round_rate,
++	.determine_rate = zynqmp_pll_determine_rate,
+ 	.recalc_rate = zynqmp_pll_recalc_rate,
+ 	.set_rate = zynqmp_pll_set_rate,
  };
- 
- static const struct clk_ops zynqmp_clk_divider_ro_ops = {
- 	.recalc_rate = zynqmp_clk_divider_recalc_rate,
--	.round_rate = zynqmp_clk_divider_round_rate,
-+	.determine_rate = zynqmp_clk_divider_determine_rate,
- };
- 
- /**
 
 -- 
 2.50.1
