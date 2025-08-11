@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:46 -0400
-Subject: [PATCH 054/114] clk: sprd: pll: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:47 -0400
+Subject: [PATCH 055/114] clk: st: clkgen-fsyn: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-54-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-55-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1161;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=3173;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=lv1lhsl/a8OxY1tiKL0xS+d+op9x/12Aq3JoNd7BS7E=;
- b=zo8ewzTH+KwzagVE45LlzkRrxuBW/ePLl8c8CQNyi/dDl5yZB2XaATj5AsSgX4Uho9lkIEex1
- eHeq0Lpv7twDpncvySz25WRRnef/xMckhybKi9EhW/DbohKyb/ZKWnI
+ bh=gUSLbeZHr73B/I2fV9jotoRj8MmBd1lu8kA4ol+iIJ0=;
+ b=G6k4uh/JRAn4/1Td8h7erdt/dHCXUCAhiA0vLqRrFWA9B+Z4UG8OeJjyBbv4xxj66+p+h/rCk
+ 7Ok2dvXQYtwDl/u4bPzZSai6M4gKpoLwoMpcJ2RakLzXW4yhmR6iimb
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,34 +87,89 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/sprd/pll.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ drivers/clk/st/clkgen-fsyn.c | 33 +++++++++++++++++----------------
+ 1 file changed, 17 insertions(+), 16 deletions(-)
 
-diff --git a/drivers/clk/sprd/pll.c b/drivers/clk/sprd/pll.c
-index 13a322b2535ac37ecb17f2c39d17d2c03532cfcb..bc6610d5fcb72faa7406ea78dca4cd9b848e9392 100644
---- a/drivers/clk/sprd/pll.c
-+++ b/drivers/clk/sprd/pll.c
-@@ -254,16 +254,16 @@ static int sprd_pll_clk_prepare(struct clk_hw *hw)
+diff --git a/drivers/clk/st/clkgen-fsyn.c b/drivers/clk/st/clkgen-fsyn.c
+index 40df1db102a77bbe5144d42f6e05361b66634e9a..e06e7e5cc1a56192cceeea20343c292423015bbe 100644
+--- a/drivers/clk/st/clkgen-fsyn.c
++++ b/drivers/clk/st/clkgen-fsyn.c
+@@ -375,22 +375,21 @@ static int clk_fs660c32_vco_get_params(unsigned long input,
  	return 0;
  }
  
--static long sprd_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--				unsigned long *prate)
-+static int sprd_pll_determine_rate(struct clk_hw *hw,
-+				   struct clk_rate_request *req)
+-static long quadfs_pll_fs660c32_round_rate(struct clk_hw *hw,
+-					   unsigned long rate,
+-					   unsigned long *prate)
++static int quadfs_pll_fs660c32_determine_rate(struct clk_hw *hw,
++					      struct clk_rate_request *req)
  {
+ 	struct stm_fs params;
+ 
+-	if (clk_fs660c32_vco_get_params(*prate, rate, &params))
+-		return rate;
++	if (clk_fs660c32_vco_get_params(req->best_parent_rate, req->rate, &params))
++		return 0;
+ 
+-	clk_fs660c32_vco_get_rate(*prate, &params, &rate);
++	clk_fs660c32_vco_get_rate(req->best_parent_rate, &params, &req->rate);
+ 
+ 	pr_debug("%s: %s new rate %ld [ndiv=%u]\n",
+ 		 __func__, clk_hw_get_name(hw),
+-		 rate, (unsigned int)params.ndiv);
++		 req->rate, (unsigned int)params.ndiv);
+ 
 -	return rate;
 +	return 0;
  }
  
- const struct clk_ops sprd_pll_ops = {
- 	.prepare = sprd_pll_clk_prepare,
- 	.recalc_rate = sprd_pll_recalc_rate,
--	.round_rate = sprd_pll_round_rate,
-+	.determine_rate = sprd_pll_determine_rate,
- 	.set_rate = sprd_pll_set_rate,
+ static int quadfs_pll_fs660c32_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -436,7 +435,7 @@ static const struct clk_ops st_quadfs_pll_c32_ops = {
+ 	.disable	= quadfs_pll_disable,
+ 	.is_enabled	= quadfs_pll_is_enabled,
+ 	.recalc_rate	= quadfs_pll_fs660c32_recalc_rate,
+-	.round_rate	= quadfs_pll_fs660c32_round_rate,
++	.determine_rate = quadfs_pll_fs660c32_determine_rate,
+ 	.set_rate	= quadfs_pll_fs660c32_set_rate,
  };
- EXPORT_SYMBOL_GPL(sprd_pll_ops);
+ 
+@@ -814,19 +813,21 @@ static unsigned long quadfs_recalc_rate(struct clk_hw *hw,
+ 	return rate;
+ }
+ 
+-static long quadfs_round_rate(struct clk_hw *hw, unsigned long rate,
+-				     unsigned long *prate)
++static int quadfs_determine_rate(struct clk_hw *hw,
++				 struct clk_rate_request *req)
+ {
+ 	struct stm_fs params;
+ 
+-	rate = quadfs_find_best_rate(hw, rate, *prate, &params);
++	req->rate = quadfs_find_best_rate(hw, req->rate,
++					  req->best_parent_rate, &params);
+ 
+ 	pr_debug("%s: %s new rate %ld [sdiv=0x%x,md=0x%x,pe=0x%x,nsdiv3=%u]\n",
+ 		 __func__, clk_hw_get_name(hw),
+-		 rate, (unsigned int)params.sdiv, (unsigned int)params.mdiv,
+-			 (unsigned int)params.pe, (unsigned int)params.nsdiv);
++		 req->rate, (unsigned int)params.sdiv,
++		 (unsigned int)params.mdiv,
++		 (unsigned int)params.pe, (unsigned int)params.nsdiv);
+ 
+-	return rate;
++	return 0;
+ }
+ 
+ 
+@@ -873,7 +874,7 @@ static const struct clk_ops st_quadfs_ops = {
+ 	.enable		= quadfs_fsynth_enable,
+ 	.disable	= quadfs_fsynth_disable,
+ 	.is_enabled	= quadfs_fsynth_is_enabled,
+-	.round_rate	= quadfs_round_rate,
++	.determine_rate = quadfs_determine_rate,
+ 	.set_rate	= quadfs_set_rate,
+ 	.recalc_rate	= quadfs_recalc_rate,
+ };
 
 -- 
 2.50.1
