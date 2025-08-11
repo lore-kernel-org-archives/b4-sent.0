@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:15 -0400
-Subject: [PATCH 083/114] clk: microchip: core: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:19:16 -0400
+Subject: [PATCH 084/114] clk: mstar: msc313-cpupll: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-83-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-84-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=4230;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2154;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=YMDl5Dg1ebY0oa3yJn1kDt9B+GTjRRC9X+mnPj0mD4I=;
- b=xu1TDAVDPkAH51Z+kE+nyZyIn7jkJ+ucnQ6UYpyM4dhn8XGohcz6jVtEkAirsskvNjAeAUjcu
- blgPTKZ0CHUBpnEIuyWGuaS+gDAb1GA14gDpIqpHXimnvaVyNxaeZl0
+ bh=VigQquSgUXe8PpjXC72p1zlfSb/Ud8e1iNRnORzurXs=;
+ b=0eBUqFcCOeAp1+esnZj/S2p/f8fZWVLmKH10c8zB3mypBCQoNBSEFI9b04eP497+mb6pIoVwU
+ qo9oUve18EJAulvfM2HdM+ake//UXBIu5rkT5OccHzmyiiBiiayu02P
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,117 +87,52 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/microchip/clk-core.c | 44 ++++++++++++++++++++++++----------------
- 1 file changed, 27 insertions(+), 17 deletions(-)
+ drivers/clk/mstar/clk-msc313-cpupll.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/clk/microchip/clk-core.c b/drivers/clk/microchip/clk-core.c
-index 6fbc6dc50ca3d9f1f0aecc5e43f4d41f23cb371a..3e03e10539c72cc28e53401093e37409c2ea3d08 100644
---- a/drivers/clk/microchip/clk-core.c
-+++ b/drivers/clk/microchip/clk-core.c
-@@ -155,11 +155,13 @@ static unsigned long pbclk_recalc_rate(struct clk_hw *hw,
- 	return parent_rate / pbclk_read_pbdiv(pb);
+diff --git a/drivers/clk/mstar/clk-msc313-cpupll.c b/drivers/clk/mstar/clk-msc313-cpupll.c
+index a93e2dba09d3523199263494efd2bf6987bb4156..3e643be02fe2a79c043c1b79a5e95c869b757ba1 100644
+--- a/drivers/clk/mstar/clk-msc313-cpupll.c
++++ b/drivers/clk/mstar/clk-msc313-cpupll.c
+@@ -140,20 +140,22 @@ static unsigned long msc313_cpupll_recalc_rate(struct clk_hw *hw, unsigned long
+ 					     parent_rate);
  }
  
--static long pbclk_round_rate(struct clk_hw *hw, unsigned long rate,
--			     unsigned long *parent_rate)
-+static int pbclk_determine_rate(struct clk_hw *hw,
-+				struct clk_rate_request *req)
+-static long msc313_cpupll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				     unsigned long *parent_rate)
++static int msc313_cpupll_determine_rate(struct clk_hw *hw,
++					struct clk_rate_request *req)
  {
--	return calc_best_divided_rate(rate, *parent_rate,
--				      PB_DIV_MAX, PB_DIV_MIN);
-+	req->rate = calc_best_divided_rate(req->rate, req->best_parent_rate,
-+					   PB_DIV_MAX, PB_DIV_MIN);
+-	u32 reg = msc313_cpupll_regforfrequecy(rate, *parent_rate);
+-	long rounded = msc313_cpupll_frequencyforreg(reg, *parent_rate);
++	u32 reg = msc313_cpupll_regforfrequecy(req->rate, req->best_parent_rate);
++	long rounded = msc313_cpupll_frequencyforreg(reg, req->best_parent_rate);
+ 
+ 	/*
+ 	 * This is my poor attempt at making sure the resulting
+ 	 * rate doesn't overshoot the requested rate.
+ 	 */
+-	for (; rounded >= rate && reg > 0; reg--)
+-		rounded = msc313_cpupll_frequencyforreg(reg, *parent_rate);
++	for (; rounded >= req->rate && reg > 0; reg--)
++		rounded = msc313_cpupll_frequencyforreg(reg, req->best_parent_rate);
+ 
+-	return rounded;
++	req->rate = rounded;
 +
 +	return 0;
  }
  
- static int pbclk_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -207,7 +209,7 @@ const struct clk_ops pic32_pbclk_ops = {
- 	.disable	= pbclk_disable,
- 	.is_enabled	= pbclk_is_enabled,
- 	.recalc_rate	= pbclk_recalc_rate,
--	.round_rate	= pbclk_round_rate,
-+	.determine_rate = pbclk_determine_rate,
- 	.set_rate	= pbclk_set_rate,
+ static int msc313_cpupll_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long parent_rate)
+@@ -168,7 +170,7 @@ static int msc313_cpupll_set_rate(struct clk_hw *hw, unsigned long rate, unsigne
+ 
+ static const struct clk_ops msc313_cpupll_ops = {
+ 	.recalc_rate	= msc313_cpupll_recalc_rate,
+-	.round_rate	= msc313_cpupll_round_rate,
++	.determine_rate = msc313_cpupll_determine_rate,
+ 	.set_rate	= msc313_cpupll_set_rate,
  };
  
-@@ -372,16 +374,18 @@ static unsigned long roclk_recalc_rate(struct clk_hw *hw,
- 	return roclk_calc_rate(parent_rate, rodiv, rotrim);
- }
- 
--static long roclk_round_rate(struct clk_hw *hw, unsigned long rate,
--			     unsigned long *parent_rate)
-+static int roclk_determine_rate(struct clk_hw *hw,
-+				struct clk_rate_request *req)
- {
- 	u32 rotrim, rodiv;
- 
- 	/* calculate dividers for new rate */
--	roclk_calc_div_trim(rate, *parent_rate, &rodiv, &rotrim);
-+	roclk_calc_div_trim(req->rate, req->best_parent_rate, &rodiv, &rotrim);
- 
- 	/* caclulate new rate (rounding) based on new rodiv & rotrim */
--	return roclk_calc_rate(*parent_rate, rodiv, rotrim);
-+	req->rate = roclk_calc_rate(req->best_parent_rate, rodiv, rotrim);
-+
-+	return 0;
- }
- 
- static int roclk_determine_rate(struct clk_hw *hw,
-@@ -665,12 +669,15 @@ static unsigned long spll_clk_recalc_rate(struct clk_hw *hw,
- 	return rate64;
- }
- 
--static long spll_clk_round_rate(struct clk_hw *hw, unsigned long rate,
--				unsigned long *parent_rate)
-+static int spll_clk_determine_rate(struct clk_hw *hw,
-+				   struct clk_rate_request *req)
- {
- 	struct pic32_sys_pll *pll = clkhw_to_spll(hw);
- 
--	return spll_calc_mult_div(pll, rate, *parent_rate, NULL, NULL);
-+	req->rate = spll_calc_mult_div(pll, req->rate, req->best_parent_rate,
-+				       NULL, NULL);
-+
-+	return 0;
- }
- 
- static int spll_clk_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -725,7 +732,7 @@ static int spll_clk_set_rate(struct clk_hw *hw, unsigned long rate,
- /* SPLL clock operation */
- const struct clk_ops pic32_spll_ops = {
- 	.recalc_rate	= spll_clk_recalc_rate,
--	.round_rate	= spll_clk_round_rate,
-+	.determine_rate = spll_clk_determine_rate,
- 	.set_rate	= spll_clk_set_rate,
- };
- 
-@@ -780,10 +787,13 @@ static unsigned long sclk_get_rate(struct clk_hw *hw, unsigned long parent_rate)
- 	return parent_rate / div;
- }
- 
--static long sclk_round_rate(struct clk_hw *hw, unsigned long rate,
--			    unsigned long *parent_rate)
-+static int sclk_determine_rate(struct clk_hw *hw,
-+			       struct clk_rate_request *req)
- {
--	return calc_best_divided_rate(rate, *parent_rate, SLEW_SYSDIV, 1);
-+	req->rate = calc_best_divided_rate(req->rate, req->best_parent_rate,
-+					   SLEW_SYSDIV, 1);
-+
-+	return 0;
- }
- 
- static int sclk_set_rate(struct clk_hw *hw,
-@@ -909,7 +919,7 @@ static int sclk_init(struct clk_hw *hw)
- const struct clk_ops pic32_sclk_ops = {
- 	.get_parent	= sclk_get_parent,
- 	.set_parent	= sclk_set_parent,
--	.round_rate	= sclk_round_rate,
-+	.determine_rate = sclk_determine_rate,
- 	.set_rate	= sclk_set_rate,
- 	.recalc_rate	= sclk_get_rate,
- 	.init		= sclk_init,
 
 -- 
 2.50.1
