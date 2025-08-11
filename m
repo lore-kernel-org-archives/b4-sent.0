@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:42 -0400
-Subject: [PATCH 110/114] clk: visconti: pll: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:19:43 -0400
+Subject: [PATCH 111/114] clk: divider: remove round_rate() in favor of
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-110-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-111-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,69 +71,76 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1976;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2270;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=r0wZpG3a0OGoiWWOr5otP68Bbfx3lAgII/aJOFlzSdg=;
- b=k8KX5ycT4h+UD6Ldn+nVMm4CPQVIS/kfEwZv0cAIgiTd/uDJjAfgTwd1RRiqR3Paz0ywOWfvw
- Ps307wc4OEfBYUcvIzgQljpxLU2s8HVxlxD56X2u8DKuTuSP9uNJRuh
+ bh=ZIHCAEVSfzUYC7gs59802c9M/dWpJRCFCvoeCSAJWOI=;
+ b=ers9IA4nnmWnnnlCVnGasS5HZexaGz09F3l7/rT15n8N76akhVQx+IBd+lMd2sYJN9EmVlJIO
+ EA9yeUIhJDwCG7q6iVGduu4D+JEwojIkaqCdALlK7pEQrY/rFTNhJ3U
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The round_rate() clk ops is deprecated, so migrate this driver from
-round_rate() to determine_rate() using the Coccinelle semantic patch
-on the cover letter of this series.
+This driver implements both the determine_rate() and round_rate() clk
+ops, and the round_rate() clk ops is deprecated. When both are defined,
+clk_core_determine_round_nolock() from the clk core will only use the
+determine_rate() clk ops. Also all clk drivers that directly calls
+divider's round_rate() have been migrated over to determine_rate(). So
+let's remove the round_rate() clk ops.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/visconti/pll.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+ drivers/clk/clk-divider.c | 23 -----------------------
+ 1 file changed, 23 deletions(-)
 
-diff --git a/drivers/clk/visconti/pll.c b/drivers/clk/visconti/pll.c
-index 8ca1bad61864204027b7aff9020f1cb9e7d198d3..681721d8503203de9ac49ac3207e121bb5bf2163 100644
---- a/drivers/clk/visconti/pll.c
-+++ b/drivers/clk/visconti/pll.c
-@@ -100,8 +100,8 @@ static unsigned long visconti_get_pll_rate_from_data(struct visconti_pll *pll,
- 	return rate_table[0].rate;
+diff --git a/drivers/clk/clk-divider.c b/drivers/clk/clk-divider.c
+index c1f426b8a5043cb5a1de08e1da385928ec54a2ed..2601b6155afb7391c6a0ffb91c58fa66cde98197 100644
+--- a/drivers/clk/clk-divider.c
++++ b/drivers/clk/clk-divider.c
+@@ -431,27 +431,6 @@ long divider_ro_round_rate_parent(struct clk_hw *hw, struct clk_hw *parent,
  }
+ EXPORT_SYMBOL_GPL(divider_ro_round_rate_parent);
  
--static long visconti_pll_round_rate(struct clk_hw *hw,
--				    unsigned long rate, unsigned long *prate)
-+static int visconti_pll_determine_rate(struct clk_hw *hw,
-+				       struct clk_rate_request *req)
+-static long clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
+-				unsigned long *prate)
+-{
+-	struct clk_divider *divider = to_clk_divider(hw);
+-
+-	/* if read only, just return current value */
+-	if (divider->flags & CLK_DIVIDER_READ_ONLY) {
+-		u32 val;
+-
+-		val = clk_div_readl(divider) >> divider->shift;
+-		val &= clk_div_mask(divider->width);
+-
+-		return divider_ro_round_rate(hw, rate, prate, divider->table,
+-					     divider->width, divider->flags,
+-					     val);
+-	}
+-
+-	return divider_round_rate(hw, rate, prate, divider->table,
+-				  divider->width, divider->flags);
+-}
+-
+ static int clk_divider_determine_rate(struct clk_hw *hw,
+ 				      struct clk_rate_request *req)
  {
- 	struct visconti_pll *pll = to_visconti_pll(hw);
- 	const struct visconti_pll_rate_table *rate_table = pll->rate_table;
-@@ -109,11 +109,16 @@ static long visconti_pll_round_rate(struct clk_hw *hw,
+@@ -527,7 +506,6 @@ static int clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
  
- 	/* Assuming rate_table is in descending order */
- 	for (i = 0; i < pll->rate_count; i++)
--		if (rate >= rate_table[i].rate)
--			return rate_table[i].rate;
-+		if (req->rate >= rate_table[i].rate) {
-+			req->rate = rate_table[i].rate;
-+
-+			return 0;
-+		}
- 
- 	/* return minimum supported value */
--	return rate_table[i - 1].rate;
-+	req->rate = rate_table[i - 1].rate;
-+
-+	return 0;
- }
- 
- static unsigned long visconti_pll_recalc_rate(struct clk_hw *hw,
-@@ -232,7 +237,7 @@ static const struct clk_ops visconti_pll_ops = {
- 	.enable = visconti_pll_enable,
- 	.disable = visconti_pll_disable,
- 	.is_enabled = visconti_pll_is_enabled,
--	.round_rate = visconti_pll_round_rate,
-+	.determine_rate = visconti_pll_determine_rate,
- 	.recalc_rate = visconti_pll_recalc_rate,
- 	.set_rate = visconti_pll_set_rate,
+ const struct clk_ops clk_divider_ops = {
+ 	.recalc_rate = clk_divider_recalc_rate,
+-	.round_rate = clk_divider_round_rate,
+ 	.determine_rate = clk_divider_determine_rate,
+ 	.set_rate = clk_divider_set_rate,
  };
+@@ -535,7 +513,6 @@ EXPORT_SYMBOL_GPL(clk_divider_ops);
+ 
+ const struct clk_ops clk_divider_ro_ops = {
+ 	.recalc_rate = clk_divider_recalc_rate,
+-	.round_rate = clk_divider_round_rate,
+ 	.determine_rate = clk_divider_determine_rate,
+ };
+ EXPORT_SYMBOL_GPL(clk_divider_ro_ops);
 
 -- 
 2.50.1
