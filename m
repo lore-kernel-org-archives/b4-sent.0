@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:34 -0400
-Subject: [PATCH 102/114] clk: spear: frac-synth: convert from round_rate()
+Date: Mon, 11 Aug 2025 11:19:35 -0400
+Subject: [PATCH 103/114] clk: spear: gpt-synth: convert from round_rate()
  to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-102-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-103-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1617;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1594;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=dlGqPj1Kyky3xPUHDC2QVeSTz756WzDrgb+lE3vcR50=;
- b=j3DVclA5y+7p6gaxtJkKJ7V/N1a2QuaywL9vUrpUq1fXutk1+k9tYQnlKOYMNmrXrkSFShZT4
- a9qcB42P3L/Cm00so3W4Cub+2EEhAK7l2s7eBRyEgXGNzW9jexhMmFw
+ bh=3EPhFpUbwwIaXQRHOGCwBMvdxScReadCJMAlA8s3U9w=;
+ b=eHgF5npubAkVlGRQbb/9b8jxvdvlrqbhFOe9oQL+YIv/fPqzK/8SMk8YX1Ii95v2t6diuOQ9p
+ JPc+NNMe9v0AM8cVWkBCEdzdWMitEknsfAEt3b9wzqc3m9aFYvO8Hv1
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,41 +87,41 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/spear/clk-frac-synth.c | 12 +++++++-----
+ drivers/clk/spear/clk-gpt-synth.c | 12 +++++++-----
  1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/spear/clk-frac-synth.c b/drivers/clk/spear/clk-frac-synth.c
-index 2380df293a2c7052db6f165755ff611402ddbf91..150f051d28e0eb0574653b980396285c89943e24 100644
---- a/drivers/clk/spear/clk-frac-synth.c
-+++ b/drivers/clk/spear/clk-frac-synth.c
-@@ -52,14 +52,16 @@ static unsigned long frac_calc_rate(struct clk_hw *hw, unsigned long prate,
+diff --git a/drivers/clk/spear/clk-gpt-synth.c b/drivers/clk/spear/clk-gpt-synth.c
+index 4ef747c2abbb0374bec6d6541fa6b8b8904e6c08..cf9659dc9073cba903a0e2a9cef9629ae7f97022 100644
+--- a/drivers/clk/spear/clk-gpt-synth.c
++++ b/drivers/clk/spear/clk-gpt-synth.c
+@@ -39,14 +39,16 @@ static unsigned long gpt_calc_rate(struct clk_hw *hw, unsigned long prate,
  	return prate;
  }
  
--static long clk_frac_round_rate(struct clk_hw *hw, unsigned long drate,
+-static long clk_gpt_round_rate(struct clk_hw *hw, unsigned long drate,
 -		unsigned long *prate)
-+static int clk_frac_determine_rate(struct clk_hw *hw,
-+				   struct clk_rate_request *req)
++static int clk_gpt_determine_rate(struct clk_hw *hw,
++				  struct clk_rate_request *req)
  {
- 	struct clk_frac *frac = to_clk_frac(hw);
+ 	struct clk_gpt *gpt = to_clk_gpt(hw);
  	int unused;
  
--	return clk_round_rate_index(hw, drate, *prate, frac_calc_rate,
--			frac->rtbl_cnt, &unused);
+-	return clk_round_rate_index(hw, drate, *prate, gpt_calc_rate,
+-			gpt->rtbl_cnt, &unused);
 +	req->rate = clk_round_rate_index(hw, req->rate, req->best_parent_rate,
-+					 frac_calc_rate, frac->rtbl_cnt, &unused);
++					 gpt_calc_rate, gpt->rtbl_cnt, &unused);
 +
 +	return 0;
  }
  
- static unsigned long clk_frac_recalc_rate(struct clk_hw *hw,
-@@ -115,7 +117,7 @@ static int clk_frac_set_rate(struct clk_hw *hw, unsigned long drate,
+ static unsigned long clk_gpt_recalc_rate(struct clk_hw *hw,
+@@ -104,7 +106,7 @@ static int clk_gpt_set_rate(struct clk_hw *hw, unsigned long drate,
  
- static const struct clk_ops clk_frac_ops = {
- 	.recalc_rate = clk_frac_recalc_rate,
--	.round_rate = clk_frac_round_rate,
-+	.determine_rate = clk_frac_determine_rate,
- 	.set_rate = clk_frac_set_rate,
+ static const struct clk_ops clk_gpt_ops = {
+ 	.recalc_rate = clk_gpt_recalc_rate,
+-	.round_rate = clk_gpt_round_rate,
++	.determine_rate = clk_gpt_determine_rate,
+ 	.set_rate = clk_gpt_set_rate,
  };
  
 
