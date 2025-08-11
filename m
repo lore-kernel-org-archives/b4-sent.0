@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:11 -0400
-Subject: [PATCH 079/114] clk: bm1880: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:19:12 -0400
+Subject: [PATCH 080/114] clk: cdce706: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-79-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-80-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2146;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2194;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=i4/zUwvMmSNXthJvzQxhg+vS/kwTrhaPDh6vzaYBr/Y=;
- b=R+e0rJ26ayqoVsrbB80+wdnnEe+4dIQYa/IcZLbwrsXzdPK+R+VX4dAXHJbr5Hhl2egxnKejt
- HsnRyFQazBNC+2TZhSPqsBcma/hpbZwiz4PdxTAPM1chEOBtUaxmNG3
+ bh=UaSvd89DwndfC/Jfkrn5bzm2mpom1d/OQ5nJ7RnMUek=;
+ b=52jSnCcEU3HNMp6ESkgp6tuWFfcF+PbyIJFATB0+VXkng/zgF+/My8bTw5/tY5zZHKN2t3E+z
+ XVO7I4hD8OzCm+1WTmWt5wcqgyDU2Valob+3GveF/gswEN7vxFCa20H
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,55 +87,57 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-bm1880.c | 21 +++++++++++++--------
- 1 file changed, 13 insertions(+), 8 deletions(-)
+ drivers/clk/clk-cdce706.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/clk/clk-bm1880.c b/drivers/clk/clk-bm1880.c
-index 002f7360b1c6c6e3058606a0808115b48fd3147a..dac190bc6e19a6dd4be413ea52d41f74934a1aa9 100644
---- a/drivers/clk/clk-bm1880.c
-+++ b/drivers/clk/clk-bm1880.c
-@@ -608,8 +608,8 @@ static unsigned long bm1880_clk_div_recalc_rate(struct clk_hw *hw,
- 	return rate;
+diff --git a/drivers/clk/clk-cdce706.c b/drivers/clk/clk-cdce706.c
+index d0705bb03a2aae2c2a1abc7031183ee0a9ec053e..a495d313b02f39840b4ad0242758db06f1715e28 100644
+--- a/drivers/clk/clk-cdce706.c
++++ b/drivers/clk/clk-cdce706.c
+@@ -183,8 +183,8 @@ static unsigned long cdce706_pll_recalc_rate(struct clk_hw *hw,
+ 	return 0;
  }
  
--static long bm1880_clk_div_round_rate(struct clk_hw *hw, unsigned long rate,
--				      unsigned long *prate)
-+static int bm1880_clk_div_determine_rate(struct clk_hw *hw,
-+					 struct clk_rate_request *req)
+-static long cdce706_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				   unsigned long *parent_rate)
++static int cdce706_pll_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
  {
- 	struct bm1880_div_hw_clock *div_hw = to_bm1880_div_clk(hw);
- 	struct bm1880_div_clock *div = &div_hw->div;
-@@ -621,13 +621,18 @@ static long bm1880_clk_div_round_rate(struct clk_hw *hw, unsigned long rate,
- 		val = readl(reg_addr) >> div->shift;
- 		val &= clk_div_mask(div->width);
+ 	struct cdce706_hw_data *hwd = to_hw_data(hw);
+ 	unsigned long mul, div;
+@@ -192,9 +192,9 @@ static long cdce706_pll_round_rate(struct clk_hw *hw, unsigned long rate,
  
--		return divider_ro_round_rate(hw, rate, prate, div->table,
--					     div->width, div->flags,
--					     val);
-+		req->rate = divider_ro_round_rate(hw, req->rate,
-+						  &req->best_parent_rate,
-+						  div->table,
-+						  div->width, div->flags, val);
-+
-+		return 0;
- 	}
+ 	dev_dbg(&hwd->dev_data->client->dev,
+ 		"%s, rate: %lu, parent_rate: %lu\n",
+-		__func__, rate, *parent_rate);
++		__func__, req->rate, req->best_parent_rate);
  
--	return divider_round_rate(hw, rate, prate, div->table,
--				  div->width, div->flags);
-+	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate,
-+				       div->table, div->width, div->flags);
+-	rational_best_approximation(rate, *parent_rate,
++	rational_best_approximation(req->rate, req->best_parent_rate,
+ 				    CDCE706_PLL_N_MAX, CDCE706_PLL_M_MAX,
+ 				    &mul, &div);
+ 	hwd->mul = mul;
+@@ -204,9 +204,11 @@ static long cdce706_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		"%s, pll: %d, mul: %lu, div: %lu\n",
+ 		__func__, hwd->idx, mul, div);
+ 
+-	res = (u64)*parent_rate * hwd->mul;
++	res = (u64)req->best_parent_rate * hwd->mul;
+ 	do_div(res, hwd->div);
+-	return res;
++	req->rate = res;
 +
 +	return 0;
  }
  
- static int bm1880_clk_div_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -665,7 +670,7 @@ static int bm1880_clk_div_set_rate(struct clk_hw *hw, unsigned long rate,
+ static int cdce706_pll_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -251,7 +253,7 @@ static int cdce706_pll_set_rate(struct clk_hw *hw, unsigned long rate,
  
- static const struct clk_ops bm1880_clk_div_ops = {
- 	.recalc_rate = bm1880_clk_div_recalc_rate,
--	.round_rate = bm1880_clk_div_round_rate,
-+	.determine_rate = bm1880_clk_div_determine_rate,
- 	.set_rate = bm1880_clk_div_set_rate,
+ static const struct clk_ops cdce706_pll_ops = {
+ 	.recalc_rate = cdce706_pll_recalc_rate,
+-	.round_rate = cdce706_pll_round_rate,
++	.determine_rate = cdce706_pll_determine_rate,
+ 	.set_rate = cdce706_pll_set_rate,
  };
  
 
