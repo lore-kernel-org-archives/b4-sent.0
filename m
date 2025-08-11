@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:39 -0400
-Subject: [PATCH 047/114] clk: sophgo: cv18xx-ip: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:18:40 -0400
+Subject: [PATCH 048/114] clk: sophgo: sg2042-clkgen: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-47-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-48-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1334;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2414;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=aI/p31/cNZH1KkFnW7+NWEpLSa7fUPR9iBXDG5TMugc=;
- b=YazoAEF/yVcII3EcEN8PobdI+1Vp9eraWAmHwjaJbMtEgGUW08d30TaaxJt9Cd0dCADvtkX5Z
- mNmIljjjqVYBE9q+NF2YjZQldQxEaLgtfcTCu7w8O2zHtMjD2hkCyuK
+ bh=WakJL2SorLn8f12eiJrmBTcs+madt35adpNUwkQ75KE=;
+ b=+tpAnh+QV7SLecJ2w+x7Pk61cQTHuoqMyk6KYwEsokY1RB+s7EDzXBIEGG3wykBiPPU4N5yvX
+ XQygIbUeXdsA37+QwiM/SyFZ9ewZHKOFeO/vEZxqIfPx2c9yCIoG2Va
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,38 +87,62 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/sophgo/clk-cv18xx-ip.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ drivers/clk/sophgo/clk-sg2042-clkgen.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/clk/sophgo/clk-cv18xx-ip.c b/drivers/clk/sophgo/clk-cv18xx-ip.c
-index b186e64d4813e2701b17520e544c453fc13d0e77..c2b58faf0938b7d537dc3a81aef59c549b9c9c79 100644
---- a/drivers/clk/sophgo/clk-cv18xx-ip.c
-+++ b/drivers/clk/sophgo/clk-cv18xx-ip.c
-@@ -45,10 +45,12 @@ static unsigned long gate_recalc_rate(struct clk_hw *hw,
- 	return parent_rate;
+diff --git a/drivers/clk/sophgo/clk-sg2042-clkgen.c b/drivers/clk/sophgo/clk-sg2042-clkgen.c
+index 9e61288d34f3757315702c355f2669577b29676f..1d3b1656bcf2e6655e0299e68ab39f32189744dc 100644
+--- a/drivers/clk/sophgo/clk-sg2042-clkgen.c
++++ b/drivers/clk/sophgo/clk-sg2042-clkgen.c
+@@ -176,9 +176,8 @@ static unsigned long sg2042_clk_divider_recalc_rate(struct clk_hw *hw,
+ 	return ret_rate;
  }
  
--static long gate_round_rate(struct clk_hw *hw, unsigned long rate,
--			    unsigned long *parent_rate)
-+static int gate_determine_rate(struct clk_hw *hw,
-+			       struct clk_rate_request *req)
+-static long sg2042_clk_divider_round_rate(struct clk_hw *hw,
+-					  unsigned long rate,
+-					  unsigned long *prate)
++static int sg2042_clk_divider_determine_rate(struct clk_hw *hw,
++					     struct clk_rate_request *req)
  {
--	return *parent_rate;
-+	req->rate = req->best_parent_rate;
+ 	struct sg2042_divider_clock *divider = to_sg2042_clk_divider(hw);
+ 	unsigned long ret_rate;
+@@ -192,15 +191,17 @@ static long sg2042_clk_divider_round_rate(struct clk_hw *hw,
+ 			bestdiv = readl(divider->reg) >> divider->shift;
+ 			bestdiv &= clk_div_mask(divider->width);
+ 		}
+-		ret_rate = DIV_ROUND_UP_ULL((u64)*prate, bestdiv);
++		ret_rate = DIV_ROUND_UP_ULL((u64)*&req->best_parent_rate, bestdiv);
+ 	} else {
+-		ret_rate = divider_round_rate(hw, rate, prate, NULL,
++		ret_rate = divider_round_rate(hw, req->rate, &req->best_parent_rate, NULL,
+ 					      divider->width, divider->div_flags);
+ 	}
+ 
+ 	pr_debug("--> %s: divider_round_rate: val = %ld\n",
+ 		 clk_hw_get_name(hw), ret_rate);
+-	return ret_rate;
++	req->rate = ret_rate;
 +
 +	return 0;
  }
  
- static int gate_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -63,7 +65,7 @@ const struct clk_ops cv1800_clk_gate_ops = {
- 	.is_enabled = gate_is_enabled,
+ static int sg2042_clk_divider_set_rate(struct clk_hw *hw,
+@@ -258,13 +259,13 @@ static int sg2042_clk_divider_set_rate(struct clk_hw *hw,
  
- 	.recalc_rate = gate_recalc_rate,
--	.round_rate = gate_round_rate,
-+	.determine_rate = gate_determine_rate,
- 	.set_rate = gate_set_rate,
+ static const struct clk_ops sg2042_clk_divider_ops = {
+ 	.recalc_rate = sg2042_clk_divider_recalc_rate,
+-	.round_rate = sg2042_clk_divider_round_rate,
++	.determine_rate = sg2042_clk_divider_determine_rate,
+ 	.set_rate = sg2042_clk_divider_set_rate,
  };
  
+ static const struct clk_ops sg2042_clk_divider_ro_ops = {
+ 	.recalc_rate = sg2042_clk_divider_recalc_rate,
+-	.round_rate = sg2042_clk_divider_round_rate,
++	.determine_rate = sg2042_clk_divider_determine_rate,
+ };
+ 
+ /*
 
 -- 
 2.50.1
