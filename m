@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:54 -0400
-Subject: [PATCH 062/114] clk: vt8500: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:55 -0400
+Subject: [PATCH 063/114] clk: wm831x: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-62-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-63-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=4942;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1764;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=jZ22CUcrOjD9ewjvCFdGvPS2YTij7PZfRU8lYtOhk2M=;
- b=gxljePog34SFWKNyz8PmTAiXpvxW8K7cHFeeEFaEsIOALnOyd0Jp0sOAfN+WFPjC78GBeB8N3
- QOMTV4c8pNMCqPc4nr4EShNddG4g4aGy6GhvNJgP/eVjQY7P46ecqEk
+ bh=i3mGQJOb3sx5V+uesOSQVIfVUYnnH5uB5xAx+9cEFco=;
+ b=aidwsVEIvZ+L+XneRcHzWbpXu94vZIAi7Yj2KRjHRri8gKtW0c35Ea1zgQaMMkInRQPd/tOVx
+ 9oCiKSbQHxUBeyDV1JzfSaCerGqesbxDPGJP4z48iYQ/SSe7+qsc6RO
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,146 +87,48 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-vt8500.c | 59 ++++++++++++++++++++++++++++--------------------
- 1 file changed, 35 insertions(+), 24 deletions(-)
+ drivers/clk/clk-wm831x.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/clk/clk-vt8500.c b/drivers/clk/clk-vt8500.c
-index 2a74a713ad5954de578f43972a6243f22dd2c0d6..eae5b3fbfb823f77e6cd9601bd221382d4eccf42 100644
---- a/drivers/clk/clk-vt8500.c
-+++ b/drivers/clk/clk-vt8500.c
-@@ -128,30 +128,31 @@ static unsigned long vt8500_dclk_recalc_rate(struct clk_hw *hw,
- 	return parent_rate / div;
+diff --git a/drivers/clk/clk-wm831x.c b/drivers/clk/clk-wm831x.c
+index 34e9d4d541e25c1adf766b48333f11c2d5b219fb..263e927138c2ead84d9f154d5e0f2d7b068f1c1f 100644
+--- a/drivers/clk/clk-wm831x.c
++++ b/drivers/clk/clk-wm831x.c
+@@ -133,18 +133,20 @@ static unsigned long wm831x_fll_recalc_rate(struct clk_hw *hw,
+ 	return 0;
  }
  
--static long vt8500_dclk_round_rate(struct clk_hw *hw, unsigned long rate,
--				unsigned long *prate)
-+static int vt8500_dclk_determine_rate(struct clk_hw *hw,
-+				      struct clk_rate_request *req)
+-static long wm831x_fll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				  unsigned long *unused)
++static int wm831x_fll_determine_rate(struct clk_hw *hw,
++				     struct clk_rate_request *req)
  {
- 	struct clk_device *cdev = to_clk_device(hw);
- 	u32 divisor;
+ 	int best = 0;
+ 	int i;
  
--	if (rate == 0)
-+	if (req->rate == 0)
- 		return 0;
+ 	for (i = 0; i < ARRAY_SIZE(wm831x_fll_auto_rates); i++)
+-		if (abs(wm831x_fll_auto_rates[i] - rate) <
+-		    abs(wm831x_fll_auto_rates[best] - rate))
++		if (abs(wm831x_fll_auto_rates[i] - req->rate) <
++		    abs(wm831x_fll_auto_rates[best] - req->rate))
+ 			best = i;
  
--	divisor = *prate / rate;
-+	divisor = req->best_parent_rate / req->rate;
- 
- 	/* If prate / rate would be decimal, incr the divisor */
--	if (rate * divisor < *prate)
-+	if (req->rate * divisor < req->best_parent_rate)
- 		divisor++;
- 
- 	/*
- 	 * If this is a request for SDMMC we have to adjust the divisor
- 	 * when >31 to use the fixed predivisor
- 	 */
--	if ((cdev->div_mask == 0x3F) && (divisor > 31)) {
-+	if ((cdev->div_mask == 0x3F) && (divisor > 31))
- 		divisor = 64 * ((divisor / 64) + 1);
--	}
- 
--	return *prate / divisor;
-+	req->rate = req->best_parent_rate / divisor;
+-	return wm831x_fll_auto_rates[best];
++	req->rate = wm831x_fll_auto_rates[best];
 +
 +	return 0;
  }
  
- static int vt8500_dclk_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -202,7 +203,7 @@ static const struct clk_ops vt8500_gated_clk_ops = {
- };
- 
- static const struct clk_ops vt8500_divisor_clk_ops = {
--	.round_rate = vt8500_dclk_round_rate,
-+	.determine_rate = vt8500_dclk_determine_rate,
- 	.set_rate = vt8500_dclk_set_rate,
- 	.recalc_rate = vt8500_dclk_recalc_rate,
- };
-@@ -211,7 +212,7 @@ static const struct clk_ops vt8500_gated_divisor_clk_ops = {
- 	.enable = vt8500_dclk_enable,
- 	.disable = vt8500_dclk_disable,
- 	.is_enabled = vt8500_dclk_is_enabled,
--	.round_rate = vt8500_dclk_round_rate,
-+	.determine_rate = vt8500_dclk_determine_rate,
- 	.set_rate = vt8500_dclk_set_rate,
- 	.recalc_rate = vt8500_dclk_recalc_rate,
- };
-@@ -594,8 +595,8 @@ static int vtwm_pll_set_rate(struct clk_hw *hw, unsigned long rate,
- 	return 0;
- }
- 
--static long vtwm_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--				unsigned long *prate)
-+static int vtwm_pll_determine_rate(struct clk_hw *hw,
-+				   struct clk_rate_request *req)
- {
- 	struct clk_pll *pll = to_clk_pll(hw);
- 	u32 filter, mul, div1, div2;
-@@ -604,33 +605,43 @@ static long vtwm_pll_round_rate(struct clk_hw *hw, unsigned long rate,
- 
- 	switch (pll->type) {
- 	case PLL_TYPE_VT8500:
--		ret = vt8500_find_pll_bits(rate, *prate, &mul, &div1);
-+		ret = vt8500_find_pll_bits(req->rate, req->best_parent_rate,
-+					   &mul, &div1);
- 		if (!ret)
--			round_rate = VT8500_BITS_TO_FREQ(*prate, mul, div1);
-+			round_rate = VT8500_BITS_TO_FREQ(req->best_parent_rate,
-+							 mul, div1);
- 		break;
- 	case PLL_TYPE_WM8650:
--		ret = wm8650_find_pll_bits(rate, *prate, &mul, &div1, &div2);
-+		ret = wm8650_find_pll_bits(req->rate, req->best_parent_rate,
-+					   &mul, &div1, &div2);
- 		if (!ret)
--			round_rate = WM8650_BITS_TO_FREQ(*prate, mul, div1, div2);
-+			round_rate = WM8650_BITS_TO_FREQ(req->best_parent_rate,
-+							 mul, div1, div2);
- 		break;
- 	case PLL_TYPE_WM8750:
--		ret = wm8750_find_pll_bits(rate, *prate, &filter, &mul, &div1, &div2);
-+		ret = wm8750_find_pll_bits(req->rate, req->best_parent_rate,
-+					   &filter, &mul, &div1, &div2);
- 		if (!ret)
--			round_rate = WM8750_BITS_TO_FREQ(*prate, mul, div1, div2);
-+			round_rate = WM8750_BITS_TO_FREQ(req->best_parent_rate,
-+							 mul, div1, div2);
- 		break;
- 	case PLL_TYPE_WM8850:
--		ret = wm8850_find_pll_bits(rate, *prate, &mul, &div1, &div2);
-+		ret = wm8850_find_pll_bits(req->rate, req->best_parent_rate,
-+					   &mul, &div1, &div2);
- 		if (!ret)
--			round_rate = WM8850_BITS_TO_FREQ(*prate, mul, div1, div2);
-+			round_rate = WM8850_BITS_TO_FREQ(req->best_parent_rate,
-+							 mul, div1, div2);
- 		break;
- 	default:
--		ret = -EINVAL;
-+		return -EINVAL;
- 	}
- 
- 	if (ret)
--		return ret;
-+		req->rate = ret;
-+	else
-+		req->rate = round_rate;
- 
--	return round_rate;
-+	return 0;
- }
- 
- static unsigned long vtwm_pll_recalc_rate(struct clk_hw *hw,
-@@ -665,7 +676,7 @@ static unsigned long vtwm_pll_recalc_rate(struct clk_hw *hw,
- }
- 
- static const struct clk_ops vtwm_pll_ops = {
--	.round_rate = vtwm_pll_round_rate,
-+	.determine_rate = vtwm_pll_determine_rate,
- 	.set_rate = vtwm_pll_set_rate,
- 	.recalc_rate = vtwm_pll_recalc_rate,
- };
+ static int wm831x_fll_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -214,7 +216,7 @@ static const struct clk_ops wm831x_fll_ops = {
+ 	.is_prepared = wm831x_fll_is_prepared,
+ 	.prepare = wm831x_fll_prepare,
+ 	.unprepare = wm831x_fll_unprepare,
+-	.round_rate = wm831x_fll_round_rate,
++	.determine_rate = wm831x_fll_determine_rate,
+ 	.recalc_rate = wm831x_fll_recalc_rate,
+ 	.set_rate = wm831x_fll_set_rate,
+ 	.get_parent = wm831x_fll_get_parent,
 
 -- 
 2.50.1
