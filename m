@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:31 -0400
-Subject: [PATCH 039/114] clk: pistachio: pll: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:18:32 -0400
+Subject: [PATCH 040/114] clk: scpi: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-39-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-40-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2146;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2456;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=+1V8g819DjGvzEtSfNNXylx/juLgkkEkLmGzMnrjKxk=;
- b=zLWZ69AM98C3GotJh43hKXsmUseBKcv/FKBh6Bvp80TXqKOvqDECFY/rBAjmqzAF/3LuE38dI
- Fo+bO703n+zDeIzqQhm7F8aIb/hhu9z6CApkMZ3IIOCIZxU/4tIsg+F
+ bh=i3OzFCzWIu+3CNTyPqrnC3B/fnrjfsI1+Trm/rpL92U=;
+ b=FENhA7e/HJ5XZKpYqLEVYyyNlipzXrux4wgwSxe3R2p3IpPoHzG+b37zRGolXL6DACb5Kb+sQ
+ 4X5ICnW38r1ByNyVl4QFWdyb6jIdtgyU1UVPoSPHPZxCFBO//oAmiVn
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,59 +87,67 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/pistachio/clk-pll.c | 20 ++++++++++++--------
- 1 file changed, 12 insertions(+), 8 deletions(-)
+ drivers/clk/clk-scpi.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/clk/pistachio/clk-pll.c b/drivers/clk/pistachio/clk-pll.c
-index 025b9df76cdbdb338b3653f8ff60b6225da27034..d05337915e2b4514d031d15ed41aa75ed1fdae2c 100644
---- a/drivers/clk/pistachio/clk-pll.c
-+++ b/drivers/clk/pistachio/clk-pll.c
-@@ -139,19 +139,23 @@ pll_get_params(struct pistachio_clk_pll *pll, unsigned long fref,
- 	return NULL;
+diff --git a/drivers/clk/clk-scpi.c b/drivers/clk/clk-scpi.c
+index 19d530d52e647be3337225aa7c662d8ecee9ce0f..0b592de7bdb2a07d58a867e4ab00d493927b0b53 100644
+--- a/drivers/clk/clk-scpi.c
++++ b/drivers/clk/clk-scpi.c
+@@ -32,8 +32,8 @@ static unsigned long scpi_clk_recalc_rate(struct clk_hw *hw,
+ 	return clk->scpi_ops->clk_get_val(clk->id);
  }
  
--static long pll_round_rate(struct clk_hw *hw, unsigned long rate,
--			   unsigned long *parent_rate)
-+static int pll_determine_rate(struct clk_hw *hw, struct clk_rate_request *req)
+-static long scpi_clk_round_rate(struct clk_hw *hw, unsigned long rate,
+-				unsigned long *parent_rate)
++static int scpi_clk_determine_rate(struct clk_hw *hw,
++				   struct clk_rate_request *req)
  {
- 	struct pistachio_clk_pll *pll = to_pistachio_pll(hw);
- 	unsigned int i;
+ 	/*
+ 	 * We can't figure out what rate it will be, so just return the
+@@ -41,7 +41,7 @@ static long scpi_clk_round_rate(struct clk_hw *hw, unsigned long rate,
+ 	 * after the rate is set and we'll know what rate the clock is
+ 	 * running at then.
+ 	 */
+-	return rate;
++	return 0;
+ }
  
- 	for (i = 0; i < pll->nr_rates; i++) {
--		if (i > 0 && pll->rates[i].fref == *parent_rate &&
--		    pll->rates[i].fout <= rate)
--			return pll->rates[i - 1].fout;
-+		if (i > 0 && pll->rates[i].fref == req->best_parent_rate &&
-+		    pll->rates[i].fout <= req->rate) {
-+			req->rate = pll->rates[i - 1].fout;
-+
-+			return 0;
-+		}
- 	}
+ static int scpi_clk_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -54,7 +54,7 @@ static int scpi_clk_set_rate(struct clk_hw *hw, unsigned long rate,
  
--	return pll->rates[0].fout;
-+	req->rate = pll->rates[0].fout;
+ static const struct clk_ops scpi_clk_ops = {
+ 	.recalc_rate = scpi_clk_recalc_rate,
+-	.round_rate = scpi_clk_round_rate,
++	.determine_rate = scpi_clk_determine_rate,
+ 	.set_rate = scpi_clk_set_rate,
+ };
+ 
+@@ -92,12 +92,14 @@ static unsigned long scpi_dvfs_recalc_rate(struct clk_hw *hw,
+ 	return opp->freq;
+ }
+ 
+-static long scpi_dvfs_round_rate(struct clk_hw *hw, unsigned long rate,
+-				 unsigned long *parent_rate)
++static int scpi_dvfs_determine_rate(struct clk_hw *hw,
++				    struct clk_rate_request *req)
+ {
+ 	struct scpi_clk *clk = to_scpi_clk(hw);
+ 
+-	return __scpi_dvfs_round_rate(clk, rate);
++	req->rate = __scpi_dvfs_round_rate(clk, req->rate);
 +
 +	return 0;
  }
  
- static int pll_gf40lp_frac_enable(struct clk_hw *hw)
-@@ -300,7 +304,7 @@ static const struct clk_ops pll_gf40lp_frac_ops = {
- 	.disable = pll_gf40lp_frac_disable,
- 	.is_enabled = pll_gf40lp_frac_is_enabled,
- 	.recalc_rate = pll_gf40lp_frac_recalc_rate,
--	.round_rate = pll_round_rate,
-+	.determine_rate = pll_determine_rate,
- 	.set_rate = pll_gf40lp_frac_set_rate,
- };
+ static int __scpi_find_dvfs_index(struct scpi_clk *clk, unsigned long rate)
+@@ -124,7 +126,7 @@ static int scpi_dvfs_set_rate(struct clk_hw *hw, unsigned long rate,
  
-@@ -432,7 +436,7 @@ static const struct clk_ops pll_gf40lp_laint_ops = {
- 	.disable = pll_gf40lp_laint_disable,
- 	.is_enabled = pll_gf40lp_laint_is_enabled,
- 	.recalc_rate = pll_gf40lp_laint_recalc_rate,
--	.round_rate = pll_round_rate,
-+	.determine_rate = pll_determine_rate,
- 	.set_rate = pll_gf40lp_laint_set_rate,
+ static const struct clk_ops scpi_dvfs_ops = {
+ 	.recalc_rate = scpi_dvfs_recalc_rate,
+-	.round_rate = scpi_dvfs_round_rate,
++	.determine_rate = scpi_dvfs_determine_rate,
+ 	.set_rate = scpi_dvfs_set_rate,
  };
  
 
