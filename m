@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:28 -0400
-Subject: [PATCH 036/114] clk: nuvoton: ma35d1-pll: convert from
- round_rate() to determine_rate()
+Date: Mon, 11 Aug 2025 11:18:29 -0400
+Subject: [PATCH 037/114] clk: nxp: lpc18xx-cgu: convert from round_rate()
+ to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-36-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-37-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2856;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1936;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=le7opsxs0SynMMO1WbjAmxEq9McwQ2/93Evsw++xuwQ=;
- b=Kxhwjvdno7BQdbPOQ6FQwluBNf+pBvM1qs5Lxn/nxYkyMDPwVqnZbrDrRrQRloIFcBfsoB6Fk
- Ue2Yz4cZOJrAE4dZQ3/gEwhrcGfLfhaNTnBzchHnHAV2J+2OfHmaoFG
+ bh=7+pnPbY7cuQ5PYsk3IbcKoOQM+F5jpxGsyWD4NmKrOI=;
+ b=2CYDs7UWJUrQVULGpgHPyLjmWtowvYhrp/701SxKOl+INemzPePSp5hw9dqlircw9sj4TvXbY
+ fhMl+kKVxBaC367/6zKkOIgKTZNZdOorHgc4dyaqi2oXW6AJpJj5INi
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,80 +87,54 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/nuvoton/clk-ma35d1-pll.c | 28 ++++++++++++++++++----------
- 1 file changed, 18 insertions(+), 10 deletions(-)
+ drivers/clk/nxp/clk-lpc18xx-cgu.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/clk/nuvoton/clk-ma35d1-pll.c b/drivers/clk/nuvoton/clk-ma35d1-pll.c
-index ff3fb8b87c24b0fc0823cbd2e3cf311137fa56db..4620acfe47e85f7982325bb5610a23888c7a9cf2 100644
---- a/drivers/clk/nuvoton/clk-ma35d1-pll.c
-+++ b/drivers/clk/nuvoton/clk-ma35d1-pll.c
-@@ -244,35 +244,43 @@ static unsigned long ma35d1_clk_pll_recalc_rate(struct clk_hw *hw, unsigned long
+diff --git a/drivers/clk/nxp/clk-lpc18xx-cgu.c b/drivers/clk/nxp/clk-lpc18xx-cgu.c
+index 81efa885069b2af3d2ea5d71f4db5e3d94561cc6..30e0b283ca6081abbc469f80eeeac009a3c3edaf 100644
+--- a/drivers/clk/nxp/clk-lpc18xx-cgu.c
++++ b/drivers/clk/nxp/clk-lpc18xx-cgu.c
+@@ -370,23 +370,25 @@ static unsigned long lpc18xx_pll0_recalc_rate(struct clk_hw *hw,
  	return 0;
  }
  
--static long ma35d1_clk_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--				      unsigned long *parent_rate)
-+static int ma35d1_clk_pll_determine_rate(struct clk_hw *hw,
-+					 struct clk_rate_request *req)
+-static long lpc18xx_pll0_round_rate(struct clk_hw *hw, unsigned long rate,
+-				    unsigned long *prate)
++static int lpc18xx_pll0_determine_rate(struct clk_hw *hw,
++				       struct clk_rate_request *req)
  {
- 	struct ma35d1_clk_pll *pll = to_ma35d1_clk_pll(hw);
- 	u32 reg_ctl[3] = { 0 };
- 	unsigned long pll_freq;
- 	long ret;
+ 	unsigned long m;
  
--	if (*parent_rate < PLL_FREF_MIN_FREQ || *parent_rate > PLL_FREF_MAX_FREQ)
-+	if (req->best_parent_rate < PLL_FREF_MIN_FREQ || req->best_parent_rate > PLL_FREF_MAX_FREQ)
+-	if (*prate < rate) {
++	if (req->best_parent_rate < req->rate) {
+ 		pr_warn("%s: pll dividers not supported\n", __func__);
  		return -EINVAL;
- 
--	ret = ma35d1_pll_find_closest(pll, rate, *parent_rate, reg_ctl, &pll_freq);
-+	ret = ma35d1_pll_find_closest(pll, req->rate, req->best_parent_rate,
-+				      reg_ctl, &pll_freq);
- 	if (ret < 0)
- 		return ret;
- 
- 	switch (pll->id) {
- 	case CAPLL:
- 		reg_ctl[0] = readl_relaxed(pll->ctl0_base);
--		pll_freq = ma35d1_calc_smic_pll_freq(reg_ctl[0], *parent_rate);
--		return pll_freq;
-+		pll_freq = ma35d1_calc_smic_pll_freq(reg_ctl[0], req->best_parent_rate);
-+		req->rate = pll_freq;
-+
-+		return 0;
- 	case DDRPLL:
- 	case APLL:
- 	case EPLL:
- 	case VPLL:
- 		reg_ctl[0] = readl_relaxed(pll->ctl0_base);
- 		reg_ctl[1] = readl_relaxed(pll->ctl1_base);
--		pll_freq = ma35d1_calc_pll_freq(pll->mode, reg_ctl, *parent_rate);
--		return pll_freq;
-+		pll_freq = ma35d1_calc_pll_freq(pll->mode, reg_ctl, req->best_parent_rate);
-+		req->rate = pll_freq;
-+
-+		return 0;
  	}
+ 
+-	m = DIV_ROUND_UP_ULL(*prate, rate * 2);
++	m = DIV_ROUND_UP_ULL(req->best_parent_rate, req->rate * 2);
+ 	if (m <= 0 && m > LPC18XX_PLL0_MSEL_MAX) {
+-		pr_warn("%s: unable to support rate %lu\n", __func__, rate);
++		pr_warn("%s: unable to support rate %lu\n", __func__, req->rate);
+ 		return -EINVAL;
+ 	}
+ 
+-	return 2 * *prate * m;
++	req->rate = 2 * req->best_parent_rate * m;
 +
-+	req->rate = 0;
-+
- 	return 0;
++	return 0;
  }
  
-@@ -311,12 +319,12 @@ static const struct clk_ops ma35d1_clk_pll_ops = {
- 	.unprepare = ma35d1_clk_pll_unprepare,
- 	.set_rate = ma35d1_clk_pll_set_rate,
- 	.recalc_rate = ma35d1_clk_pll_recalc_rate,
--	.round_rate = ma35d1_clk_pll_round_rate,
-+	.determine_rate = ma35d1_clk_pll_determine_rate,
+ static int lpc18xx_pll0_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -443,7 +445,7 @@ static int lpc18xx_pll0_set_rate(struct clk_hw *hw, unsigned long rate,
+ 
+ static const struct clk_ops lpc18xx_pll0_ops = {
+ 	.recalc_rate	= lpc18xx_pll0_recalc_rate,
+-	.round_rate	= lpc18xx_pll0_round_rate,
++	.determine_rate = lpc18xx_pll0_determine_rate,
+ 	.set_rate	= lpc18xx_pll0_set_rate,
  };
  
- static const struct clk_ops ma35d1_clk_fixed_pll_ops = {
- 	.recalc_rate = ma35d1_clk_pll_recalc_rate,
--	.round_rate = ma35d1_clk_pll_round_rate,
-+	.determine_rate = ma35d1_clk_pll_determine_rate,
- };
- 
- struct clk_hw *ma35d1_reg_clk_pll(struct device *dev, u32 id, u8 u8mode, const char *name,
 
 -- 
 2.50.1
