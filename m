@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:09 -0400
-Subject: [PATCH 017/114] clk: highbank: convert from round_rate() to
- determine_rate()
+Date: Mon, 11 Aug 2025 11:18:10 -0400
+Subject: [PATCH 018/114] clk: hisilicon: clkdivider-hi6220: convert from
+ round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-17-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-18-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2589;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1756;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=4kM2G8lmXIq8f/rptTCj8H1Z7BmYydKr4+RK65Q7a2Q=;
- b=Unobj/z44iIvTVGDpAAEKOYpl2LDGk2cMLUv+Vh6fTJPrFof4G2uw1fpbCc5pgpgX8a5EW+56
- m8l8Ojw5ESJBw6hB8neXHuT2nrji9HV50nPNkUIPHQZypTiJJhTdtTm
+ bh=YuAb/9WMhB5mgliqR9lEgRQWllZcQDXdJ4bdDgpH2vs=;
+ b=OStIu9YLY/3p0vlTi5r6PsxiaGoJeTFbM8AV/IEyDt2QnmfNZWsRkvf0Apct10RgpVV26PI5e
+ YMNijXglbZhBmFMLCOHBcq5xXg3S3k1GnwV3TTxCg17KRPaAfQhYAAG
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,75 +87,40 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-highbank.c | 26 +++++++++++++++-----------
- 1 file changed, 15 insertions(+), 11 deletions(-)
+ drivers/clk/hisilicon/clkdivider-hi6220.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/clk-highbank.c b/drivers/clk/clk-highbank.c
-index 6e68a41a70a1b7160359c98138de76fb30535e68..cc583934ecf2481f481f470a185afb1fc6064760 100644
---- a/drivers/clk/clk-highbank.c
-+++ b/drivers/clk/clk-highbank.c
-@@ -130,15 +130,17 @@ static void clk_pll_calc(unsigned long rate, unsigned long ref_freq,
- 	*pdivf = divf;
+diff --git a/drivers/clk/hisilicon/clkdivider-hi6220.c b/drivers/clk/hisilicon/clkdivider-hi6220.c
+index 5348bafe694f0dacf30a59af92606c56efdb443b..6bae18a84cb6c0e19dd00762613fd9051849fdd0 100644
+--- a/drivers/clk/hisilicon/clkdivider-hi6220.c
++++ b/drivers/clk/hisilicon/clkdivider-hi6220.c
+@@ -55,13 +55,15 @@ static unsigned long hi6220_clkdiv_recalc_rate(struct clk_hw *hw,
+ 				   CLK_DIVIDER_ROUND_CLOSEST, dclk->width);
  }
  
--static long clk_pll_round_rate(struct clk_hw *hwclk, unsigned long rate,
--			       unsigned long *parent_rate)
-+static int clk_pll_determine_rate(struct clk_hw *hw,
-+				  struct clk_rate_request *req)
+-static long hi6220_clkdiv_round_rate(struct clk_hw *hw, unsigned long rate,
+-					unsigned long *prate)
++static int hi6220_clkdiv_determine_rate(struct clk_hw *hw,
++					struct clk_rate_request *req)
  {
- 	u32 divq, divf;
--	unsigned long ref_freq = *parent_rate;
-+	unsigned long ref_freq = req->best_parent_rate;
+ 	struct hi6220_clk_divider *dclk = to_hi6220_clk_divider(hw);
  
--	clk_pll_calc(rate, ref_freq, &divq, &divf);
-+	clk_pll_calc(req->rate, ref_freq, &divq, &divf);
- 
--	return (ref_freq * (divf + 1)) / (1 << divq);
-+	req->rate = (ref_freq * (divf + 1)) / (1 << divq);
+-	return divider_round_rate(hw, rate, prate, dclk->table,
+-				  dclk->width, CLK_DIVIDER_ROUND_CLOSEST);
++	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate, dclk->table,
++				       dclk->width, CLK_DIVIDER_ROUND_CLOSEST);
 +
 +	return 0;
  }
  
- static int clk_pll_set_rate(struct clk_hw *hwclk, unsigned long rate,
-@@ -185,7 +187,7 @@ static const struct clk_ops clk_pll_ops = {
- 	.enable = clk_pll_enable,
- 	.disable = clk_pll_disable,
- 	.recalc_rate = clk_pll_recalc_rate,
--	.round_rate = clk_pll_round_rate,
-+	.determine_rate = clk_pll_determine_rate,
- 	.set_rate = clk_pll_set_rate,
- };
+ static int hi6220_clkdiv_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -93,7 +95,7 @@ static int hi6220_clkdiv_set_rate(struct clk_hw *hw, unsigned long rate,
  
-@@ -227,16 +229,18 @@ static unsigned long clk_periclk_recalc_rate(struct clk_hw *hwclk,
- 	return parent_rate / div;
- }
- 
--static long clk_periclk_round_rate(struct clk_hw *hwclk, unsigned long rate,
--				   unsigned long *parent_rate)
-+static int clk_periclk_determine_rate(struct clk_hw *hw,
-+				      struct clk_rate_request *req)
- {
- 	u32 div;
- 
--	div = *parent_rate / rate;
-+	div = req->best_parent_rate / req->rate;
- 	div++;
- 	div &= ~0x1;
- 
--	return *parent_rate / div;
-+	req->rate = req->best_parent_rate / div;
-+
-+	return 0;
- }
- 
- static int clk_periclk_set_rate(struct clk_hw *hwclk, unsigned long rate,
-@@ -255,7 +259,7 @@ static int clk_periclk_set_rate(struct clk_hw *hwclk, unsigned long rate,
- 
- static const struct clk_ops periclk_ops = {
- 	.recalc_rate = clk_periclk_recalc_rate,
--	.round_rate = clk_periclk_round_rate,
-+	.determine_rate = clk_periclk_determine_rate,
- 	.set_rate = clk_periclk_set_rate,
+ static const struct clk_ops hi6220_clkdiv_ops = {
+ 	.recalc_rate = hi6220_clkdiv_recalc_rate,
+-	.round_rate = hi6220_clkdiv_round_rate,
++	.determine_rate = hi6220_clkdiv_determine_rate,
+ 	.set_rate = hi6220_clkdiv_set_rate,
  };
  
 
