@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:00 -0400
-Subject: [PATCH 008/114] clk: at91: sam9x60-pll: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:18:01 -0400
+Subject: [PATCH 009/114] clk: at91: usb: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-8-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-9-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=4302;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=2365;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=OxQaMcKTSkwjmYKLw5h5eyKDpcwcRbzdzL1bNRAhzHc=;
- b=eCz2rWzNoc6MDhDi3s+TtzEA+KkyxL6IXQXbFJ/7MIWOAaNmzMp2adyhQdWMW4LTINxEeWF7j
- 80rtY2sTPZOBj0C3cFGU+2bqg238C4+uti4HvqwqtW5xEUni6asYwj+
+ bh=CkFMBEvlwfAF/1cEEy4Ux9bAaDiae91CQftu/7tBiVg=;
+ b=vpTO7eOQYukHmLekMXIJSVYs3w9GG4/WssMKC/2mI2HAxwcIzMt0GCj6VUqJnxzFixBn/JvKm
+ Esu7k+ZiHvXDrtocEhKF/UU1z0pLz8UQpLpHbc07PNiXyK8vJhCFEyF
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,97 +87,67 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/at91/clk-sam9x60-pll.c | 29 ++++++++++++++++++-----------
- 1 file changed, 18 insertions(+), 11 deletions(-)
+ drivers/clk/at91/clk-usb.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/clk/at91/clk-sam9x60-pll.c b/drivers/clk/at91/clk-sam9x60-pll.c
-index cefd9948e10393e4762f8a1f5f2ca0a7e1180a87..bc1498c5704ad9dadbef4e990156602f2dd0bfea 100644
---- a/drivers/clk/at91/clk-sam9x60-pll.c
-+++ b/drivers/clk/at91/clk-sam9x60-pll.c
-@@ -230,12 +230,16 @@ static long sam9x60_frac_pll_compute_mul_frac(struct sam9x60_pll_core *core,
- 	return tmprate;
+diff --git a/drivers/clk/at91/clk-usb.c b/drivers/clk/at91/clk-usb.c
+index b0696a928aa98d6fd75c3f2e1911aa9b6d1827e6..e906928cfbf05143a1fa4fc69cd7004a30824b6b 100644
+--- a/drivers/clk/at91/clk-usb.c
++++ b/drivers/clk/at91/clk-usb.c
+@@ -319,8 +319,8 @@ static unsigned long at91rm9200_clk_usb_recalc_rate(struct clk_hw *hw,
+ 	return 0;
  }
  
--static long sam9x60_frac_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--					unsigned long *parent_rate)
-+static int sam9x60_frac_pll_determine_rate(struct clk_hw *hw,
-+					   struct clk_rate_request *req)
+-static long at91rm9200_clk_usb_round_rate(struct clk_hw *hw, unsigned long rate,
+-					  unsigned long *parent_rate)
++static int at91rm9200_clk_usb_determine_rate(struct clk_hw *hw,
++					     struct clk_rate_request *req)
  {
- 	struct sam9x60_pll_core *core = to_sam9x60_pll_core(hw);
+ 	struct at91rm9200_clk_usb *usb = to_at91rm9200_clk_usb(hw);
+ 	struct clk_hw *parent = clk_hw_get_parent(hw);
+@@ -336,25 +336,27 @@ static long at91rm9200_clk_usb_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		if (!usb->divisors[i])
+ 			continue;
  
--	return sam9x60_frac_pll_compute_mul_frac(core, rate, *parent_rate, false);
-+	req->rate = sam9x60_frac_pll_compute_mul_frac(core, req->rate,
-+						      req->best_parent_rate,
-+						      false);
+-		tmp_parent_rate = rate * usb->divisors[i];
++		tmp_parent_rate = req->rate * usb->divisors[i];
+ 		tmp_parent_rate = clk_hw_round_rate(parent, tmp_parent_rate);
+ 		tmprate = DIV_ROUND_CLOSEST(tmp_parent_rate, usb->divisors[i]);
+-		if (tmprate < rate)
+-			tmpdiff = rate - tmprate;
++		if (tmprate < req->rate)
++			tmpdiff = req->rate - tmprate;
+ 		else
+-			tmpdiff = tmprate - rate;
++			tmpdiff = tmprate - req->rate;
+ 
+ 		if (bestdiff < 0 || bestdiff > tmpdiff) {
+ 			bestrate = tmprate;
+ 			bestdiff = tmpdiff;
+-			*parent_rate = tmp_parent_rate;
++			req->best_parent_rate = tmp_parent_rate;
+ 		}
+ 
+ 		if (!bestdiff)
+ 			break;
+ 	}
+ 
+-	return bestrate;
++	req->rate = bestrate;
 +
 +	return 0;
  }
  
- static int sam9x60_frac_pll_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -321,7 +325,7 @@ static const struct clk_ops sam9x60_frac_pll_ops = {
- 	.unprepare = sam9x60_frac_pll_unprepare,
- 	.is_prepared = sam9x60_frac_pll_is_prepared,
- 	.recalc_rate = sam9x60_frac_pll_recalc_rate,
--	.round_rate = sam9x60_frac_pll_round_rate,
-+	.determine_rate = sam9x60_frac_pll_determine_rate,
- 	.set_rate = sam9x60_frac_pll_set_rate,
- 	.save_context = sam9x60_frac_pll_save_context,
- 	.restore_context = sam9x60_frac_pll_restore_context,
-@@ -332,7 +336,7 @@ static const struct clk_ops sam9x60_frac_pll_ops_chg = {
- 	.unprepare = sam9x60_frac_pll_unprepare,
- 	.is_prepared = sam9x60_frac_pll_is_prepared,
- 	.recalc_rate = sam9x60_frac_pll_recalc_rate,
--	.round_rate = sam9x60_frac_pll_round_rate,
-+	.determine_rate = sam9x60_frac_pll_determine_rate,
- 	.set_rate = sam9x60_frac_pll_set_rate_chg,
- 	.save_context = sam9x60_frac_pll_save_context,
- 	.restore_context = sam9x60_frac_pll_restore_context,
-@@ -487,12 +491,15 @@ static long sam9x60_div_pll_compute_div(struct sam9x60_pll_core *core,
- 	return best_rate;
- }
+ static int at91rm9200_clk_usb_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -384,7 +386,7 @@ static int at91rm9200_clk_usb_set_rate(struct clk_hw *hw, unsigned long rate,
  
--static long sam9x60_div_pll_round_rate(struct clk_hw *hw, unsigned long rate,
--				       unsigned long *parent_rate)
-+static int sam9x60_div_pll_determine_rate(struct clk_hw *hw,
-+					  struct clk_rate_request *req)
- {
- 	struct sam9x60_pll_core *core = to_sam9x60_pll_core(hw);
- 
--	return sam9x60_div_pll_compute_div(core, parent_rate, rate);
-+	req->rate = sam9x60_div_pll_compute_div(core, &req->best_parent_rate,
-+						req->rate);
-+
-+	return 0;
- }
- 
- static int sam9x60_div_pll_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -601,7 +608,7 @@ static const struct clk_ops sam9x60_div_pll_ops = {
- 	.unprepare = sam9x60_div_pll_unprepare,
- 	.is_prepared = sam9x60_div_pll_is_prepared,
- 	.recalc_rate = sam9x60_div_pll_recalc_rate,
--	.round_rate = sam9x60_div_pll_round_rate,
-+	.determine_rate = sam9x60_div_pll_determine_rate,
- 	.set_rate = sam9x60_div_pll_set_rate,
- 	.save_context = sam9x60_div_pll_save_context,
- 	.restore_context = sam9x60_div_pll_restore_context,
-@@ -612,7 +619,7 @@ static const struct clk_ops sam9x60_div_pll_ops_chg = {
- 	.unprepare = sam9x60_div_pll_unprepare,
- 	.is_prepared = sam9x60_div_pll_is_prepared,
- 	.recalc_rate = sam9x60_div_pll_recalc_rate,
--	.round_rate = sam9x60_div_pll_round_rate,
-+	.determine_rate = sam9x60_div_pll_determine_rate,
- 	.set_rate = sam9x60_div_pll_set_rate_chg,
- 	.save_context = sam9x60_div_pll_save_context,
- 	.restore_context = sam9x60_div_pll_restore_context,
-@@ -623,7 +630,7 @@ static const struct clk_ops sam9x60_fixed_div_pll_ops = {
- 	.unprepare = sam9x60_div_pll_unprepare,
- 	.is_prepared = sam9x60_div_pll_is_prepared,
- 	.recalc_rate = sam9x60_fixed_div_pll_recalc_rate,
--	.round_rate = sam9x60_div_pll_round_rate,
-+	.determine_rate = sam9x60_div_pll_determine_rate,
- 	.save_context = sam9x60_div_pll_save_context,
- 	.restore_context = sam9x60_div_pll_restore_context,
+ static const struct clk_ops at91rm9200_usb_ops = {
+ 	.recalc_rate = at91rm9200_clk_usb_recalc_rate,
+-	.round_rate = at91rm9200_clk_usb_round_rate,
++	.determine_rate = at91rm9200_clk_usb_determine_rate,
+ 	.set_rate = at91rm9200_clk_usb_set_rate,
  };
+ 
 
 -- 
 2.50.1
