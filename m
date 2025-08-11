@@ -1,10 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:17:53 -0400
-Subject: [PATCH 001/114] clk: at91: peripheral: fix return value
+Date: Mon, 11 Aug 2025 11:17:54 -0400
+Subject: [PATCH 002/114] clk: at91: peripheral: convert from round_rate()
+ to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-1-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-2-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -70,45 +71,123 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=1242;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925497; l=3764;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=YDaru8NKwF1RrGzFnGDGBIGGQ7vzTx7xnsU79XG8/hU=;
- b=o3nykMfjA0nvC2Pj+Fs9ck0fGBH2SVd4bUG7DnDIK3o4g/hxcVLbJNIpCuWx2Jl3F0gOdDjLJ
- 7YjKI7D7u91Bkah4yiNYKbc1GheZA8NXY93rcAhA3tHh92Yj+QVUE3n
+ bh=zyirca0yClNWaEsyA4yRgSm6IFANUNOLKtijue+IPEE=;
+ b=xHxpbiLsoHOJfs6e9F9K2fRn+qjwW0kTAOujiN6+xnAyQ/u85/MgOQbCfuxXUqagPg+DhuFsi
+ tjlaNX3CkRnDuZ/BhKkfkxulkwqkrNMislS7D8M4mmchajF/BU1U3yg
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-determine_rate() is expected to return an error code, or 0 on success.
-clk_sam9x5_peripheral_determine_rate() has a branch that returns the
-parent rate on a certain case. This is the behavior of round_rate(),
-so let's go ahead and fix this by setting req->rate.
+The round_rate() clk ops is deprecated, so migrate this driver from
+round_rate() to determine_rate() using the Coccinelle semantic patch
+on the cover letter of this series.
 
-Fixes: b4c115c76184f ("clk: at91: clk-peripheral: add support for changeable parent rate")
+This driver already has a clk_sam9x5_peripheral_determine_rate()
+implementation, however it can change the parent rate. The existing
+round rate does not have this functionality. I could add a check
+for CLK_SET_RATE_PARENT, and combine the two functions, however there
+are some other minor differences in the two implementations. I don't
+have access to this particular hardware. I believe that they could
+be combined, however it would need to be tested on real hardware.
+So, let's play it safe and convert the existing round rate
+implementation to ensure that the driver keeps the same functionality
+as before.
+
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/at91/clk-peripheral.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ drivers/clk/at91/clk-peripheral.c | 41 +++++++++++++++++++++++----------------
+ 1 file changed, 24 insertions(+), 17 deletions(-)
 
 diff --git a/drivers/clk/at91/clk-peripheral.c b/drivers/clk/at91/clk-peripheral.c
-index c173a44c800aa8cc6970c266995f4a60b0a38554..629f050a855aaebfd1a03ff87c2b016cd2284a5a 100644
+index 629f050a855aaebfd1a03ff87c2b016cd2284a5a..e700f40fd87f9327365f250366f7f7bde01f5987 100644
 --- a/drivers/clk/at91/clk-peripheral.c
 +++ b/drivers/clk/at91/clk-peripheral.c
-@@ -279,8 +279,11 @@ static int clk_sam9x5_peripheral_determine_rate(struct clk_hw *hw,
- 	long best_diff = LONG_MIN;
- 	u32 shift;
+@@ -335,50 +335,57 @@ static int clk_sam9x5_peripheral_determine_rate(struct clk_hw *hw,
+ 	return 0;
+ }
+ 
+-static long clk_sam9x5_peripheral_round_rate(struct clk_hw *hw,
+-					     unsigned long rate,
+-					     unsigned long *parent_rate)
++static int clk_sam9x5_peripheral_no_parent_determine_rate(struct clk_hw *hw,
++							  struct clk_rate_request *req)
+ {
+ 	int shift = 0;
+ 	unsigned long best_rate;
+ 	unsigned long best_diff;
+-	unsigned long cur_rate = *parent_rate;
++	unsigned long cur_rate = req->best_parent_rate;
+ 	unsigned long cur_diff;
+ 	struct clk_sam9x5_peripheral *periph = to_clk_sam9x5_peripheral(hw);
  
 -	if (periph->id < PERIPHERAL_ID_MIN || !periph->range.max)
--		return parent_rate;
+-		return *parent_rate;
 +	if (periph->id < PERIPHERAL_ID_MIN || !periph->range.max) {
-+		req->rate = parent_rate;
++		req->rate = req->best_parent_rate;
 +
 +		return 0;
 +	}
  
- 	/* Fist step: check the available dividers. */
- 	for (shift = 0; shift <= PERIPHERAL_MAX_SHIFT; shift++) {
+ 	if (periph->range.max) {
+ 		for (; shift <= PERIPHERAL_MAX_SHIFT; shift++) {
+-			cur_rate = *parent_rate >> shift;
++			cur_rate = req->best_parent_rate >> shift;
+ 			if (cur_rate <= periph->range.max)
+ 				break;
+ 		}
+ 	}
+ 
+-	if (rate >= cur_rate)
+-		return cur_rate;
++	if (req->rate >= cur_rate) {
++		req->rate = cur_rate;
++
++		return 0;
++	}
+ 
+-	best_diff = cur_rate - rate;
++	best_diff = cur_rate - req->rate;
+ 	best_rate = cur_rate;
+ 	for (; shift <= PERIPHERAL_MAX_SHIFT; shift++) {
+-		cur_rate = *parent_rate >> shift;
+-		if (cur_rate < rate)
+-			cur_diff = rate - cur_rate;
++		cur_rate = req->best_parent_rate >> shift;
++		if (cur_rate < req->rate)
++			cur_diff = req->rate - cur_rate;
+ 		else
+-			cur_diff = cur_rate - rate;
++			cur_diff = cur_rate - req->rate;
+ 
+ 		if (cur_diff < best_diff) {
+ 			best_diff = cur_diff;
+ 			best_rate = cur_rate;
+ 		}
+ 
+-		if (!best_diff || cur_rate < rate)
++		if (!best_diff || cur_rate < req->rate)
+ 			break;
+ 	}
+ 
+-	return best_rate;
++	req->rate = best_rate;
++
++	return 0;
+ }
+ 
+ static int clk_sam9x5_peripheral_set_rate(struct clk_hw *hw,
+@@ -430,7 +437,7 @@ static const struct clk_ops sam9x5_peripheral_ops = {
+ 	.disable = clk_sam9x5_peripheral_disable,
+ 	.is_enabled = clk_sam9x5_peripheral_is_enabled,
+ 	.recalc_rate = clk_sam9x5_peripheral_recalc_rate,
+-	.round_rate = clk_sam9x5_peripheral_round_rate,
++	.determine_rate = clk_sam9x5_peripheral_no_parent_determine_rate,
+ 	.set_rate = clk_sam9x5_peripheral_set_rate,
+ 	.save_context = clk_sam9x5_peripheral_save_context,
+ 	.restore_context = clk_sam9x5_peripheral_restore_context,
 
 -- 
 2.50.1
