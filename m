@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:18 -0400
-Subject: [PATCH 086/114] clk: mvebu: armada-37xx-periph: convert from
- round_rate() to determine_rate()
+Date: Mon, 11 Aug 2025 11:19:19 -0400
+Subject: [PATCH 087/114] clk: mvebu: corediv: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-86-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-87-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2154;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2796;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=zwDunKg0lpAhFaodOmT22ze6HLMcfBssPgf6TXDOiXk=;
- b=6ad8PB3l2Nqn41bpE9FA76MGUBvzXCTk75xig2LzUCXVw2TZeb0QVl/EU9/lw5/jOOW6ZBq2f
- UlWdPGJ6/PXD81Z+ls3NBipmAVeQZq+jdD/LYSNDNYntA5JsZjymEU+
+ bh=NS9zgUZ/lkWw958Faw/x74CjsEPIvLlB4+FSKZAsyx8=;
+ b=nZ53u2dYSOTsFRAIdh3yMPgJZh9VCXPHelYAsSZINROYBNVpBhjrqlzP90BgrmJNP+n6QGLLT
+ V4L2PUdSQwCBZJiiUco50Koj59cdo0HIDYsE2R7HozKZBoeaF+fwyI1
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,57 +87,75 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/mvebu/armada-37xx-periph.c | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
+ drivers/clk/mvebu/clk-corediv.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/clk/mvebu/armada-37xx-periph.c b/drivers/clk/mvebu/armada-37xx-periph.c
-index 13906e31bef8691c59631e7f1940e6cab82549a6..bd0bc8e7b1e7781c6ddeff2a00aab50e57ae30e2 100644
---- a/drivers/clk/mvebu/armada-37xx-periph.c
-+++ b/drivers/clk/mvebu/armada-37xx-periph.c
-@@ -454,12 +454,12 @@ static unsigned long clk_pm_cpu_recalc_rate(struct clk_hw *hw,
- 	return DIV_ROUND_UP_ULL((u64)parent_rate, div);
+diff --git a/drivers/clk/mvebu/clk-corediv.c b/drivers/clk/mvebu/clk-corediv.c
+index 818b175391fadb9dbfd2ea7950598741b008d0ba..628032341cbb879628f1e0219689801d26d10f7f 100644
+--- a/drivers/clk/mvebu/clk-corediv.c
++++ b/drivers/clk/mvebu/clk-corediv.c
+@@ -135,19 +135,21 @@ static unsigned long clk_corediv_recalc_rate(struct clk_hw *hwclk,
+ 	return parent_rate / div;
  }
  
--static long clk_pm_cpu_round_rate(struct clk_hw *hw, unsigned long rate,
--				  unsigned long *parent_rate)
-+static int clk_pm_cpu_determine_rate(struct clk_hw *hw,
-+				     struct clk_rate_request *req)
+-static long clk_corediv_round_rate(struct clk_hw *hwclk, unsigned long rate,
+-			       unsigned long *parent_rate)
++static int clk_corediv_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
  {
- 	struct clk_pm_cpu *pm_cpu = to_clk_pm_cpu(hw);
- 	struct regmap *base = pm_cpu->nb_pm_base;
--	unsigned int div = *parent_rate / rate;
-+	unsigned int div = req->best_parent_rate / req->rate;
- 	unsigned int load_level;
- 	/* only available when DVFS is enabled */
- 	if (!armada_3700_pm_dvfs_is_enabled(base))
-@@ -474,13 +474,16 @@ static long clk_pm_cpu_round_rate(struct clk_hw *hw, unsigned long rate,
+ 	/* Valid ratio are 1:4, 1:5, 1:6 and 1:8 */
+ 	u32 div;
  
- 		val >>= offset;
- 		val &= ARMADA_37XX_NB_TBG_DIV_MASK;
--		if (val == div)
-+		if (val == div) {
- 			/*
- 			 * We found a load level matching the target
- 			 * divider, switch to this load level and
- 			 * return.
- 			 */
--			return *parent_rate / div;
-+			req->rate = req->best_parent_rate / div;
+-	div = *parent_rate / rate;
++	div = req->best_parent_rate / req->rate;
+ 	if (div < 4)
+ 		div = 4;
+ 	else if (div > 6)
+ 		div = 8;
+ 
+-	return *parent_rate / div;
++	req->rate = req->best_parent_rate / div;
 +
-+			return 0;
-+		}
- 	}
++	return 0;
+ }
  
- 	/* We didn't find any valid divider */
-@@ -600,7 +603,7 @@ static int clk_pm_cpu_set_rate(struct clk_hw *hw, unsigned long rate,
- 
- static const struct clk_ops clk_pm_cpu_ops = {
- 	.get_parent = clk_pm_cpu_get_parent,
--	.round_rate = clk_pm_cpu_round_rate,
-+	.determine_rate = clk_pm_cpu_determine_rate,
- 	.set_rate = clk_pm_cpu_set_rate,
- 	.recalc_rate = clk_pm_cpu_recalc_rate,
- };
+ static int clk_corediv_set_rate(struct clk_hw *hwclk, unsigned long rate,
+@@ -199,7 +201,7 @@ static const struct clk_corediv_soc_desc armada370_corediv_soc = {
+ 		.disable = clk_corediv_disable,
+ 		.is_enabled = clk_corediv_is_enabled,
+ 		.recalc_rate = clk_corediv_recalc_rate,
+-		.round_rate = clk_corediv_round_rate,
++		.determine_rate = clk_corediv_determine_rate,
+ 		.set_rate = clk_corediv_set_rate,
+ 	},
+ 	.ratio_reload = BIT(8),
+@@ -215,7 +217,7 @@ static const struct clk_corediv_soc_desc armada380_corediv_soc = {
+ 		.disable = clk_corediv_disable,
+ 		.is_enabled = clk_corediv_is_enabled,
+ 		.recalc_rate = clk_corediv_recalc_rate,
+-		.round_rate = clk_corediv_round_rate,
++		.determine_rate = clk_corediv_determine_rate,
+ 		.set_rate = clk_corediv_set_rate,
+ 	},
+ 	.ratio_reload = BIT(8),
+@@ -228,7 +230,7 @@ static const struct clk_corediv_soc_desc armada375_corediv_soc = {
+ 	.ndescs = ARRAY_SIZE(mvebu_corediv_desc),
+ 	.ops = {
+ 		.recalc_rate = clk_corediv_recalc_rate,
+-		.round_rate = clk_corediv_round_rate,
++		.determine_rate = clk_corediv_determine_rate,
+ 		.set_rate = clk_corediv_set_rate,
+ 	},
+ 	.ratio_reload = BIT(8),
+@@ -240,7 +242,7 @@ static const struct clk_corediv_soc_desc mv98dx3236_corediv_soc = {
+ 	.ndescs = ARRAY_SIZE(mv98dx3236_corediv_desc),
+ 	.ops = {
+ 		.recalc_rate = clk_corediv_recalc_rate,
+-		.round_rate = clk_corediv_round_rate,
++		.determine_rate = clk_corediv_determine_rate,
+ 		.set_rate = clk_corediv_set_rate,
+ 	},
+ 	.ratio_reload = BIT(10),
 
 -- 
 2.50.1
