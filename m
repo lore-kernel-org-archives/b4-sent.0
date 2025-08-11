@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:27 -0400
-Subject: [PATCH 095/114] clk: rockchip: half-divider: convert from
- round_rate() to determine_rate()
+Date: Mon, 11 Aug 2025 11:19:28 -0400
+Subject: [PATCH 096/114] clk: rockchip: pll: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-95-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-96-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1836;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=3272;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=YJ5qRGtKy+PYdLzCDf6JAeMVzggDh8R3D46sp1+Jnrc=;
- b=ydzmTNVRKUbUy2VpApmPx3/AncA/s66Rfhr6pTaw6ZF1DRQbJAeerleA+4LAp0Bwul7DEiDSu
- Yxd6kAXIIlCA/d+U7gLmLdSdQtESfXnf/zF6Qdh5gpaxuREOju1DAoj
+ bh=ozLcWHNUlN5cz95mC8kyE0nFxgESg5zBVnr4Uv4HoiI=;
+ b=1VudDsoEbAYTazTrlleaAasjo4cGf70uuPQ168XfNmrz6GbLa819j6V8dhAxLadWHvB5C9mgf
+ NvwT5p8PJV8C3UtgF4lj1b1oLNKXkn/4gwXC8Xkf4rHdbcmkDEvbHNf
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,46 +87,81 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/rockchip/clk-half-divider.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ drivers/clk/rockchip/clk-pll.c | 23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/clk/rockchip/clk-half-divider.c b/drivers/clk/rockchip/clk-half-divider.c
-index 64f7faad2148f27099d1ace36da45207e2315a1c..e94e39442d0c0cfb9370f9386a0da16eb3c5fc5b 100644
---- a/drivers/clk/rockchip/clk-half-divider.c
-+++ b/drivers/clk/rockchip/clk-half-divider.c
-@@ -92,17 +92,19 @@ static int clk_half_divider_bestdiv(struct clk_hw *hw, unsigned long rate,
- 	return bestdiv;
+diff --git a/drivers/clk/rockchip/clk-pll.c b/drivers/clk/rockchip/clk-pll.c
+index c9d599c31923fc6a7f6a25a2296cd5853c881c60..86dba3826a77ef303c18c5a7b1ea1a54531786be 100644
+--- a/drivers/clk/rockchip/clk-pll.c
++++ b/drivers/clk/rockchip/clk-pll.c
+@@ -61,8 +61,8 @@ static const struct rockchip_pll_rate_table *rockchip_get_pll_settings(
+ 	return NULL;
  }
  
--static long clk_half_divider_round_rate(struct clk_hw *hw, unsigned long rate,
--					unsigned long *prate)
-+static int clk_half_divider_determine_rate(struct clk_hw *hw,
-+					   struct clk_rate_request *req)
+-static long rockchip_pll_round_rate(struct clk_hw *hw,
+-			    unsigned long drate, unsigned long *prate)
++static int rockchip_pll_determine_rate(struct clk_hw *hw,
++				       struct clk_rate_request *req)
  {
- 	struct clk_divider *divider = to_clk_divider(hw);
- 	int div;
+ 	struct rockchip_clk_pll *pll = to_rockchip_clk_pll(hw);
+ 	const struct rockchip_pll_rate_table *rate_table = pll->rate_table;
+@@ -70,12 +70,17 @@ static long rockchip_pll_round_rate(struct clk_hw *hw,
  
--	div = clk_half_divider_bestdiv(hw, rate, prate,
-+	div = clk_half_divider_bestdiv(hw, req->rate, &req->best_parent_rate,
- 				       divider->width,
- 				       divider->flags);
+ 	/* Assuming rate_table is in descending order */
+ 	for (i = 0; i < pll->rate_count; i++) {
+-		if (drate >= rate_table[i].rate)
+-			return rate_table[i].rate;
++		if (req->rate >= rate_table[i].rate) {
++			req->rate = rate_table[i].rate;
++
++			return 0;
++		}
+ 	}
  
--	return DIV_ROUND_UP_ULL(((u64)*prate * 2), div * 2 + 3);
-+	req->rate = DIV_ROUND_UP_ULL(((u64) req->best_parent_rate * 2), div * 2 + 3);
+ 	/* return minimum supported value */
+-	return rate_table[i - 1].rate;
++	req->rate = rate_table[i - 1].rate;
 +
 +	return 0;
  }
  
- static int clk_half_divider_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -141,7 +143,7 @@ static int clk_half_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+ /*
+@@ -352,7 +357,7 @@ static const struct clk_ops rockchip_rk3036_pll_clk_norate_ops = {
  
- static const struct clk_ops clk_half_divider_ops = {
- 	.recalc_rate = clk_half_divider_recalc_rate,
--	.round_rate = clk_half_divider_round_rate,
-+	.determine_rate = clk_half_divider_determine_rate,
- 	.set_rate = clk_half_divider_set_rate,
- };
+ static const struct clk_ops rockchip_rk3036_pll_clk_ops = {
+ 	.recalc_rate = rockchip_rk3036_pll_recalc_rate,
+-	.round_rate = rockchip_pll_round_rate,
++	.determine_rate = rockchip_pll_determine_rate,
+ 	.set_rate = rockchip_rk3036_pll_set_rate,
+ 	.enable = rockchip_rk3036_pll_enable,
+ 	.disable = rockchip_rk3036_pll_disable,
+@@ -571,7 +576,7 @@ static const struct clk_ops rockchip_rk3066_pll_clk_norate_ops = {
  
+ static const struct clk_ops rockchip_rk3066_pll_clk_ops = {
+ 	.recalc_rate = rockchip_rk3066_pll_recalc_rate,
+-	.round_rate = rockchip_pll_round_rate,
++	.determine_rate = rockchip_pll_determine_rate,
+ 	.set_rate = rockchip_rk3066_pll_set_rate,
+ 	.enable = rockchip_rk3066_pll_enable,
+ 	.disable = rockchip_rk3066_pll_disable,
+@@ -836,7 +841,7 @@ static const struct clk_ops rockchip_rk3399_pll_clk_norate_ops = {
+ 
+ static const struct clk_ops rockchip_rk3399_pll_clk_ops = {
+ 	.recalc_rate = rockchip_rk3399_pll_recalc_rate,
+-	.round_rate = rockchip_pll_round_rate,
++	.determine_rate = rockchip_pll_determine_rate,
+ 	.set_rate = rockchip_rk3399_pll_set_rate,
+ 	.enable = rockchip_rk3399_pll_enable,
+ 	.disable = rockchip_rk3399_pll_disable,
+@@ -1036,7 +1041,7 @@ static const struct clk_ops rockchip_rk3588_pll_clk_norate_ops = {
+ 
+ static const struct clk_ops rockchip_rk3588_pll_clk_ops = {
+ 	.recalc_rate = rockchip_rk3588_pll_recalc_rate,
+-	.round_rate = rockchip_pll_round_rate,
++	.determine_rate = rockchip_pll_determine_rate,
+ 	.set_rate = rockchip_rk3588_pll_set_rate,
+ 	.enable = rockchip_rk3588_pll_enable,
+ 	.disable = rockchip_rk3588_pll_disable,
 
 -- 
 2.50.1
