@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:18:29 -0400
-Subject: [PATCH 037/114] clk: nxp: lpc18xx-cgu: convert from round_rate()
- to determine_rate()
+Date: Mon, 11 Aug 2025 11:18:30 -0400
+Subject: [PATCH 038/114] clk: nxp: lpc32xx: convert from round_rate() to
+ determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-37-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-38-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1936;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=6059;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=7+pnPbY7cuQ5PYsk3IbcKoOQM+F5jpxGsyWD4NmKrOI=;
- b=2CYDs7UWJUrQVULGpgHPyLjmWtowvYhrp/701SxKOl+INemzPePSp5hw9dqlircw9sj4TvXbY
- fhMl+kKVxBaC367/6zKkOIgKTZNZdOorHgc4dyaqi2oXW6AJpJj5INi
+ bh=YxynVzkyPZRrZ82G9A83/RABd7O8AIkJ8pb4WFyD5hw=;
+ b=PGO7la2BB8ew31Vs/bwIlzD2D0ymX1Q1+3u1m0r5eZkYODY7SUcVTAdbIeJLQKiY/Jb3tvW6T
+ 6KaOJUyUzoUAlcq+gW8KJdYX5NoT3nKQRp+KUcYc9WNfrCsVXwdqCWp
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -85,54 +85,168 @@ The round_rate() clk ops is deprecated, so migrate this driver from
 round_rate() to determine_rate() using the Coccinelle semantic patch
 on the cover letter of this series.
 
+Note that the changes involving LPC32XX_DEFINE_PLL_OPS were done
+by hand.
+
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/nxp/clk-lpc18xx-cgu.c | 16 +++++++++-------
- 1 file changed, 9 insertions(+), 7 deletions(-)
+ drivers/clk/nxp/clk-lpc32xx.c | 59 ++++++++++++++++++++++++-------------------
+ 1 file changed, 33 insertions(+), 26 deletions(-)
 
-diff --git a/drivers/clk/nxp/clk-lpc18xx-cgu.c b/drivers/clk/nxp/clk-lpc18xx-cgu.c
-index 81efa885069b2af3d2ea5d71f4db5e3d94561cc6..30e0b283ca6081abbc469f80eeeac009a3c3edaf 100644
---- a/drivers/clk/nxp/clk-lpc18xx-cgu.c
-+++ b/drivers/clk/nxp/clk-lpc18xx-cgu.c
-@@ -370,23 +370,25 @@ static unsigned long lpc18xx_pll0_recalc_rate(struct clk_hw *hw,
- 	return 0;
+diff --git a/drivers/clk/nxp/clk-lpc32xx.c b/drivers/clk/nxp/clk-lpc32xx.c
+index e00f270bc6aa813b395d9fddb15c6bcb2ded0936..9df8183cf24972fda3aea30166c628880af7f474 100644
+--- a/drivers/clk/nxp/clk-lpc32xx.c
++++ b/drivers/clk/nxp/clk-lpc32xx.c
+@@ -579,17 +579,17 @@ static int clk_pll_set_rate(struct clk_hw *hw, unsigned long rate,
+ 	return regmap_update_bits(clk_regmap, clk->reg, 0x1FFFF, val);
  }
  
--static long lpc18xx_pll0_round_rate(struct clk_hw *hw, unsigned long rate,
--				    unsigned long *prate)
-+static int lpc18xx_pll0_determine_rate(struct clk_hw *hw,
+-static long clk_hclk_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				    unsigned long *parent_rate)
++static int clk_hclk_pll_determine_rate(struct clk_hw *hw,
 +				       struct clk_rate_request *req)
  {
- 	unsigned long m;
+ 	struct lpc32xx_pll_clk *clk = to_lpc32xx_pll_clk(hw);
+-	u64 m_i, o = rate, i = *parent_rate, d = (u64)rate << 6;
++	u64 m_i, o = req->rate, i = req->best_parent_rate, d = (u64) req->rate << 6;
+ 	u64 m = 0, n = 0, p = 0;
+ 	int p_i, n_i;
  
--	if (*prate < rate) {
-+	if (req->best_parent_rate < req->rate) {
- 		pr_warn("%s: pll dividers not supported\n", __func__);
+-	pr_debug("%s: %lu/%lu\n", clk_hw_get_name(hw), *parent_rate, rate);
++	pr_debug("%s: %lu/%lu\n", clk_hw_get_name(hw), req->best_parent_rate, req->rate);
+ 
+-	if (rate > 266500000)
++	if (req->rate > 266500000)
+ 		return -EINVAL;
+ 
+ 	/* Have to check all 20 possibilities to find the minimal M */
+@@ -614,9 +614,9 @@ static long clk_hclk_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		}
+ 	}
+ 
+-	if (d == (u64)rate << 6) {
++	if (d == (u64) req->rate << 6) {
+ 		pr_err("%s: %lu: no valid PLL parameters are found\n",
+-		       clk_hw_get_name(hw), rate);
++		       clk_hw_get_name(hw), req->rate);
  		return -EINVAL;
  	}
  
--	m = DIV_ROUND_UP_ULL(*prate, rate * 2);
-+	m = DIV_ROUND_UP_ULL(req->best_parent_rate, req->rate * 2);
- 	if (m <= 0 && m > LPC18XX_PLL0_MSEL_MAX) {
--		pr_warn("%s: unable to support rate %lu\n", __func__, rate);
-+		pr_warn("%s: unable to support rate %lu\n", __func__, req->rate);
- 		return -EINVAL;
- 	}
+@@ -634,22 +634,25 @@ static long clk_hclk_pll_round_rate(struct clk_hw *hw, unsigned long rate,
  
--	return 2 * *prate * m;
-+	req->rate = 2 * req->best_parent_rate * m;
+ 	if (!d)
+ 		pr_debug("%s: %lu: found exact match: %llu/%llu/%llu\n",
+-			 clk_hw_get_name(hw), rate, m, n, p);
++			 clk_hw_get_name(hw), req->rate, m, n, p);
+ 	else
+ 		pr_debug("%s: %lu: found closest: %llu/%llu/%llu - %llu\n",
+-			 clk_hw_get_name(hw), rate, m, n, p, o);
++			 clk_hw_get_name(hw), req->rate, m, n, p, o);
+ 
+-	return o;
++	req->rate = o;
 +
 +	return 0;
  }
  
- static int lpc18xx_pll0_set_rate(struct clk_hw *hw, unsigned long rate,
-@@ -443,7 +445,7 @@ static int lpc18xx_pll0_set_rate(struct clk_hw *hw, unsigned long rate,
+-static long clk_usb_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-				   unsigned long *parent_rate)
++static int clk_usb_pll_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
+ {
+ 	struct lpc32xx_pll_clk *clk = to_lpc32xx_pll_clk(hw);
+ 	struct clk_hw *usb_div_hw, *osc_hw;
+ 	u64 d_i, n_i, m, o;
  
- static const struct clk_ops lpc18xx_pll0_ops = {
- 	.recalc_rate	= lpc18xx_pll0_recalc_rate,
--	.round_rate	= lpc18xx_pll0_round_rate,
-+	.determine_rate = lpc18xx_pll0_determine_rate,
- 	.set_rate	= lpc18xx_pll0_set_rate,
+-	pr_debug("%s: %lu/%lu\n", clk_hw_get_name(hw), *parent_rate, rate);
++	pr_debug("%s: %lu/%lu\n", clk_hw_get_name(hw), req->best_parent_rate,
++		 req->rate);
+ 
+ 	/*
+ 	 * The only supported USB clock is 48MHz, with PLL internal constraints
+@@ -657,7 +660,7 @@ static long clk_usb_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+ 	 * and post-divider must be 4, this slightly simplifies calculation of
+ 	 * USB divider, USB PLL N and M parameters.
+ 	 */
+-	if (rate != 48000000)
++	if (req->rate != 48000000)
+ 		return -EINVAL;
+ 
+ 	/* USB divider clock */
+@@ -685,30 +688,30 @@ static long clk_usb_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+ 			clk->m_div = m;
+ 			clk->p_div = 2;
+ 			clk->mode = PLL_NON_INTEGER;
+-			*parent_rate = div64_u64(o, d_i);
++			req->best_parent_rate = div64_u64(o, d_i);
+ 
+-			return rate;
++			return 0;
+ 		}
+ 	}
+ 
+ 	return -EINVAL;
+ }
+ 
+-#define LPC32XX_DEFINE_PLL_OPS(_name, _rc, _sr, _rr)			\
++#define LPC32XX_DEFINE_PLL_OPS(_name, _rc, _sr, _dr)			\
+ 	static const struct clk_ops clk_ ##_name ## _ops = {		\
+ 		.enable = clk_pll_enable,				\
+ 		.disable = clk_pll_disable,				\
+ 		.is_enabled = clk_pll_is_enabled,			\
+ 		.recalc_rate = _rc,					\
+ 		.set_rate = _sr,					\
+-		.round_rate = _rr,					\
++		.determine_rate = _dr,					\
+ 	}
+ 
+ LPC32XX_DEFINE_PLL_OPS(pll_397x, clk_pll_397x_recalc_rate, NULL, NULL);
+ LPC32XX_DEFINE_PLL_OPS(hclk_pll, clk_pll_recalc_rate,
+-		       clk_pll_set_rate, clk_hclk_pll_round_rate);
++		       clk_pll_set_rate, clk_hclk_pll_determine_rate);
+ LPC32XX_DEFINE_PLL_OPS(usb_pll,  clk_pll_recalc_rate,
+-		       clk_pll_set_rate, clk_usb_pll_round_rate);
++		       clk_pll_set_rate, clk_usb_pll_determine_rate);
+ 
+ static int clk_ddram_is_enabled(struct clk_hw *hw)
+ {
+@@ -955,8 +958,8 @@ static unsigned long clk_divider_recalc_rate(struct clk_hw *hw,
+ 				   divider->flags, divider->width);
+ }
+ 
+-static long clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
+-				unsigned long *prate)
++static int clk_divider_determine_rate(struct clk_hw *hw,
++				      struct clk_rate_request *req)
+ {
+ 	struct lpc32xx_clk_div *divider = to_lpc32xx_div(hw);
+ 	unsigned int bestdiv;
+@@ -968,11 +971,15 @@ static long clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
+ 		bestdiv &= div_mask(divider->width);
+ 		bestdiv = _get_div(divider->table, bestdiv, divider->flags,
+ 			divider->width);
+-		return DIV_ROUND_UP(*prate, bestdiv);
++		req->rate = DIV_ROUND_UP(req->best_parent_rate, bestdiv);
++
++		return 0;
+ 	}
+ 
+-	return divider_round_rate(hw, rate, prate, divider->table,
+-				  divider->width, divider->flags);
++	req->rate = divider_round_rate(hw, req->rate, &req->best_parent_rate,
++				       divider->table, divider->width, divider->flags);
++
++	return 0;
+ }
+ 
+ static int clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+@@ -991,7 +998,7 @@ static int clk_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+ 
+ static const struct clk_ops lpc32xx_clk_divider_ops = {
+ 	.recalc_rate = clk_divider_recalc_rate,
+-	.round_rate = clk_divider_round_rate,
++	.determine_rate = clk_divider_determine_rate,
+ 	.set_rate = clk_divider_set_rate,
  };
  
 
