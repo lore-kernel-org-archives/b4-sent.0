@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:28 -0400
-Subject: [PATCH 096/114] clk: rockchip: pll: convert from round_rate() to
+Date: Mon, 11 Aug 2025 11:19:29 -0400
+Subject: [PATCH 097/114] clk: rp1: convert from round_rate() to
  determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-96-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-97-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=3272;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=4461;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=ozLcWHNUlN5cz95mC8kyE0nFxgESg5zBVnr4Uv4HoiI=;
- b=1VudDsoEbAYTazTrlleaAasjo4cGf70uuPQ168XfNmrz6GbLa819j6V8dhAxLadWHvB5C9mgf
- NvwT5p8PJV8C3UtgF4lj1b1oLNKXkn/4gwXC8Xkf4rHdbcmkDEvbHNf
+ bh=rdxgpdA+5LOZ/7CHakL5ki1icj7gNHfthuGcJ7vBYJk=;
+ b=yt/m+CsjZ2sdii1+ZCBUSFlC7Hfk3mz5ymDXaz2sgWd/cE4Nyh/h9+AJD/8y+hn/vG5XBHOBw
+ GNti/3o14ZSBQhvTCB4TmL3xyG6EVakz6hYA8E2hIypKOOVRqrrCOr5
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,81 +87,124 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/rockchip/clk-pll.c | 23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+ drivers/clk/clk-rp1.c | 45 ++++++++++++++++++++++++++-------------------
+ 1 file changed, 26 insertions(+), 19 deletions(-)
 
-diff --git a/drivers/clk/rockchip/clk-pll.c b/drivers/clk/rockchip/clk-pll.c
-index c9d599c31923fc6a7f6a25a2296cd5853c881c60..86dba3826a77ef303c18c5a7b1ea1a54531786be 100644
---- a/drivers/clk/rockchip/clk-pll.c
-+++ b/drivers/clk/rockchip/clk-pll.c
-@@ -61,8 +61,8 @@ static const struct rockchip_pll_rate_table *rockchip_get_pll_settings(
- 	return NULL;
+diff --git a/drivers/clk/clk-rp1.c b/drivers/clk/clk-rp1.c
+index afff90d487341cee0463e62e4066ff0eb723bd07..8d985c431d9e35a5bfe48b45a24bf26555659b7c 100644
+--- a/drivers/clk/clk-rp1.c
++++ b/drivers/clk/clk-rp1.c
+@@ -530,13 +530,15 @@ static unsigned long rp1_pll_core_recalc_rate(struct clk_hw *hw,
+ 	return calc_rate;
  }
  
--static long rockchip_pll_round_rate(struct clk_hw *hw,
--			    unsigned long drate, unsigned long *prate)
-+static int rockchip_pll_determine_rate(struct clk_hw *hw,
+-static long rp1_pll_core_round_rate(struct clk_hw *hw, unsigned long rate,
+-				    unsigned long *parent_rate)
++static int rp1_pll_core_determine_rate(struct clk_hw *hw,
 +				       struct clk_rate_request *req)
  {
- 	struct rockchip_clk_pll *pll = to_rockchip_clk_pll(hw);
- 	const struct rockchip_pll_rate_table *rate_table = pll->rate_table;
-@@ -70,12 +70,17 @@ static long rockchip_pll_round_rate(struct clk_hw *hw,
+ 	u32 fbdiv_int, fbdiv_frac;
  
- 	/* Assuming rate_table is in descending order */
- 	for (i = 0; i < pll->rate_count; i++) {
--		if (drate >= rate_table[i].rate)
--			return rate_table[i].rate;
-+		if (req->rate >= rate_table[i].rate) {
-+			req->rate = rate_table[i].rate;
-+
-+			return 0;
-+		}
- 	}
- 
- 	/* return minimum supported value */
--	return rate_table[i - 1].rate;
-+	req->rate = rate_table[i - 1].rate;
+-	return get_pll_core_divider(hw, rate, *parent_rate,
+-				    &fbdiv_int, &fbdiv_frac);
++	req->rate = get_pll_core_divider(hw, req->rate, req->best_parent_rate,
++					 &fbdiv_int, &fbdiv_frac);
 +
 +	return 0;
  }
  
- /*
-@@ -352,7 +357,7 @@ static const struct clk_ops rockchip_rk3036_pll_clk_norate_ops = {
+ static void get_pll_prim_dividers(unsigned long rate, unsigned long parent_rate,
+@@ -614,14 +616,16 @@ static unsigned long rp1_pll_recalc_rate(struct clk_hw *hw,
+ 	return DIV_ROUND_CLOSEST(parent_rate, prim_div1 * prim_div2);
+ }
  
- static const struct clk_ops rockchip_rk3036_pll_clk_ops = {
- 	.recalc_rate = rockchip_rk3036_pll_recalc_rate,
--	.round_rate = rockchip_pll_round_rate,
-+	.determine_rate = rockchip_pll_determine_rate,
- 	.set_rate = rockchip_rk3036_pll_set_rate,
- 	.enable = rockchip_rk3036_pll_enable,
- 	.disable = rockchip_rk3036_pll_disable,
-@@ -571,7 +576,7 @@ static const struct clk_ops rockchip_rk3066_pll_clk_norate_ops = {
+-static long rp1_pll_round_rate(struct clk_hw *hw, unsigned long rate,
+-			       unsigned long *parent_rate)
++static int rp1_pll_determine_rate(struct clk_hw *hw,
++				  struct clk_rate_request *req)
+ {
+ 	u32 div1, div2;
  
- static const struct clk_ops rockchip_rk3066_pll_clk_ops = {
- 	.recalc_rate = rockchip_rk3066_pll_recalc_rate,
--	.round_rate = rockchip_pll_round_rate,
-+	.determine_rate = rockchip_pll_determine_rate,
- 	.set_rate = rockchip_rk3066_pll_set_rate,
- 	.enable = rockchip_rk3066_pll_enable,
- 	.disable = rockchip_rk3066_pll_disable,
-@@ -836,7 +841,7 @@ static const struct clk_ops rockchip_rk3399_pll_clk_norate_ops = {
+-	get_pll_prim_dividers(rate, *parent_rate, &div1, &div2);
++	get_pll_prim_dividers(req->rate, req->best_parent_rate, &div1, &div2);
  
- static const struct clk_ops rockchip_rk3399_pll_clk_ops = {
- 	.recalc_rate = rockchip_rk3399_pll_recalc_rate,
--	.round_rate = rockchip_pll_round_rate,
-+	.determine_rate = rockchip_pll_determine_rate,
- 	.set_rate = rockchip_rk3399_pll_set_rate,
- 	.enable = rockchip_rk3399_pll_enable,
- 	.disable = rockchip_rk3399_pll_disable,
-@@ -1036,7 +1041,7 @@ static const struct clk_ops rockchip_rk3588_pll_clk_norate_ops = {
+-	return DIV_ROUND_CLOSEST(*parent_rate, div1 * div2);
++	req->rate = DIV_ROUND_CLOSEST(req->best_parent_rate, div1 * div2);
++
++	return 0;
+ }
  
- static const struct clk_ops rockchip_rk3588_pll_clk_ops = {
- 	.recalc_rate = rockchip_rk3588_pll_recalc_rate,
--	.round_rate = rockchip_pll_round_rate,
-+	.determine_rate = rockchip_pll_determine_rate,
- 	.set_rate = rockchip_rk3588_pll_set_rate,
- 	.enable = rockchip_rk3588_pll_enable,
- 	.disable = rockchip_rk3588_pll_disable,
+ static int rp1_pll_ph_is_on(struct clk_hw *hw)
+@@ -671,13 +675,15 @@ static unsigned long rp1_pll_ph_recalc_rate(struct clk_hw *hw,
+ 	return parent_rate / data->fixed_divider;
+ }
+ 
+-static long rp1_pll_ph_round_rate(struct clk_hw *hw, unsigned long rate,
+-				  unsigned long *parent_rate)
++static int rp1_pll_ph_determine_rate(struct clk_hw *hw,
++				     struct clk_rate_request *req)
+ {
+ 	struct rp1_clk_desc *pll_ph = container_of(hw, struct rp1_clk_desc, hw);
+ 	const struct rp1_pll_ph_data *data = pll_ph->data;
+ 
+-	return *parent_rate / data->fixed_divider;
++	req->rate = req->best_parent_rate / data->fixed_divider;
++
++	return 0;
+ }
+ 
+ static int rp1_pll_divider_is_on(struct clk_hw *hw)
+@@ -754,11 +760,12 @@ static unsigned long rp1_pll_divider_recalc_rate(struct clk_hw *hw,
+ 	return clk_divider_ops.recalc_rate(hw, parent_rate);
+ }
+ 
+-static long rp1_pll_divider_round_rate(struct clk_hw *hw,
+-				       unsigned long rate,
+-				       unsigned long *parent_rate)
++static int rp1_pll_divider_determine_rate(struct clk_hw *hw,
++					  struct clk_rate_request *req)
+ {
+-	return clk_divider_ops.round_rate(hw, rate, parent_rate);
++	req->rate = clk_divider_ops.determine_rate(hw, req);
++
++	return 0;
+ }
+ 
+ static int rp1_clock_is_on(struct clk_hw *hw)
+@@ -1068,13 +1075,13 @@ static const struct clk_ops rp1_pll_core_ops = {
+ 	.unprepare = rp1_pll_core_off,
+ 	.set_rate = rp1_pll_core_set_rate,
+ 	.recalc_rate = rp1_pll_core_recalc_rate,
+-	.round_rate = rp1_pll_core_round_rate,
++	.determine_rate = rp1_pll_core_determine_rate,
+ };
+ 
+ static const struct clk_ops rp1_pll_ops = {
+ 	.set_rate = rp1_pll_set_rate,
+ 	.recalc_rate = rp1_pll_recalc_rate,
+-	.round_rate = rp1_pll_round_rate,
++	.determine_rate = rp1_pll_determine_rate,
+ };
+ 
+ static const struct clk_ops rp1_pll_ph_ops = {
+@@ -1082,7 +1089,7 @@ static const struct clk_ops rp1_pll_ph_ops = {
+ 	.prepare = rp1_pll_ph_on,
+ 	.unprepare = rp1_pll_ph_off,
+ 	.recalc_rate = rp1_pll_ph_recalc_rate,
+-	.round_rate = rp1_pll_ph_round_rate,
++	.determine_rate = rp1_pll_ph_determine_rate,
+ };
+ 
+ static const struct clk_ops rp1_pll_divider_ops = {
+@@ -1091,7 +1098,7 @@ static const struct clk_ops rp1_pll_divider_ops = {
+ 	.unprepare = rp1_pll_divider_off,
+ 	.set_rate = rp1_pll_divider_set_rate,
+ 	.recalc_rate = rp1_pll_divider_recalc_rate,
+-	.round_rate = rp1_pll_divider_round_rate,
++	.determine_rate = rp1_pll_divider_determine_rate,
+ };
+ 
+ static const struct clk_ops rp1_clk_ops = {
 
 -- 
 2.50.1
