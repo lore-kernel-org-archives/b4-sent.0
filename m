@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:04 -0400
-Subject: [PATCH 072/114] clk: actions: owl-divider: convert from
+Date: Mon, 11 Aug 2025 11:19:05 -0400
+Subject: [PATCH 073/114] clk: actions: owl-factor: convert from
  round_rate() to determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-72-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-73-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1651;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=1689;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=6TLio8bK2u/5BWyPOuTBs7pxbCYENT1TzWhbgYDGl1M=;
- b=AJ2YBi1H7opEMTvu68HEFYbEJsf9y3u6hmpdAKQUz6ucFwpBAItDhSbhQ3Iiiiv8fk6//PpBV
- g9/gItkpQdJD7TvlAeVW9+2rBx26k9R+wAFmQRpUophEdJtX6nRi6pf
+ bh=6PNa8WpcC6mwv4TEYVw3W71jmOw2oyJa+wUKGlL4bJg=;
+ b=3YAQ+lVynoDRQ3P56dl8a0kTnOGOKAsNQGcchZluvQmI5w/V10cLszFMgYXmfJ6duxXbwit8e
+ 0pDVwHELrBICutrQ3LGeMRmMZAqZwgcoZTqzU7XOkXSBtj3Z7tdrk1s
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,41 +87,42 @@ on the cover letter of this series.
 
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/actions/owl-divider.c | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+ drivers/clk/actions/owl-factor.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/clk/actions/owl-divider.c b/drivers/clk/actions/owl-divider.c
-index cddac00fe324aef0c2dd723df280bade9728d07d..118f1393c6780f287d26736b2547a8b43751655a 100644
---- a/drivers/clk/actions/owl-divider.c
-+++ b/drivers/clk/actions/owl-divider.c
-@@ -23,13 +23,16 @@ long owl_divider_helper_round_rate(struct owl_clk_common *common,
- 				  div_hw->div_flags);
+diff --git a/drivers/clk/actions/owl-factor.c b/drivers/clk/actions/owl-factor.c
+index 64f316cf7cfcc3d05d59522b347cf4e17f80e9e2..12f41f6bacd66d9b31323b1fe41236fb4655b24f 100644
+--- a/drivers/clk/actions/owl-factor.c
++++ b/drivers/clk/actions/owl-factor.c
+@@ -130,14 +130,16 @@ long owl_factor_helper_round_rate(struct owl_clk_common *common,
+ 	return *parent_rate * mul / div;
  }
  
--static long owl_divider_round_rate(struct clk_hw *hw, unsigned long rate,
--				unsigned long *parent_rate)
-+static int owl_divider_determine_rate(struct clk_hw *hw,
-+				      struct clk_rate_request *req)
+-static long owl_factor_round_rate(struct clk_hw *hw, unsigned long rate,
+-			unsigned long *parent_rate)
++static int owl_factor_determine_rate(struct clk_hw *hw,
++				     struct clk_rate_request *req)
  {
- 	struct owl_divider *div = hw_to_owl_divider(hw);
+ 	struct owl_factor *factor = hw_to_owl_factor(hw);
+ 	struct owl_factor_hw *factor_hw = &factor->factor_hw;
  
--	return owl_divider_helper_round_rate(&div->common, &div->div_hw,
--					     rate, parent_rate);
-+	req->rate = owl_divider_helper_round_rate(&div->common, &div->div_hw,
-+						  req->rate,
-+						  &req->best_parent_rate);
+-	return owl_factor_helper_round_rate(&factor->common, factor_hw,
+-					rate, parent_rate);
++	req->rate = owl_factor_helper_round_rate(&factor->common, factor_hw,
++						 req->rate, &req->best_parent_rate);
 +
 +	return 0;
  }
  
- unsigned long owl_divider_helper_recalc_rate(struct owl_clk_common *common,
-@@ -89,6 +92,6 @@ static int owl_divider_set_rate(struct clk_hw *hw, unsigned long rate,
+ unsigned long owl_factor_helper_recalc_rate(struct owl_clk_common *common,
+@@ -214,7 +216,7 @@ static int owl_factor_set_rate(struct clk_hw *hw, unsigned long rate,
+ }
  
- const struct clk_ops owl_divider_ops = {
- 	.recalc_rate = owl_divider_recalc_rate,
--	.round_rate = owl_divider_round_rate,
-+	.determine_rate = owl_divider_determine_rate,
- 	.set_rate = owl_divider_set_rate,
+ const struct clk_ops owl_factor_ops = {
+-	.round_rate	= owl_factor_round_rate,
++	.determine_rate = owl_factor_determine_rate,
+ 	.recalc_rate	= owl_factor_recalc_rate,
+ 	.set_rate	= owl_factor_set_rate,
  };
 
 -- 
