@@ -1,11 +1,11 @@
 From: Brian Masney <bmasney@redhat.com>
-Date: Mon, 11 Aug 2025 11:19:44 -0400
-Subject: [PATCH 112/114] clk: scmi: remove round_rate() in favor of
- determine_rate()
+Date: Mon, 11 Aug 2025 11:19:45 -0400
+Subject: [PATCH 113/114] clk: sophgo: sg2042-pll: remove round_rate() in
+ favor of determine_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250811-clk-for-stephen-round-rate-v1-112-b3bf97b038dc@redhat.com>
+Message-Id: <20250811-clk-for-stephen-round-rate-v1-113-b3bf97b038dc@redhat.com>
 References: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 In-Reply-To: <20250811-clk-for-stephen-round-rate-v1-0-b3bf97b038dc@redhat.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -71,11 +71,11 @@ Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-samsung-soc@vger.kernel.org, soc@lists.linux.dev, 
  Brian Masney <bmasney@redhat.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2063;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1754925498; l=2810;
  i=bmasney@redhat.com; s=20250528; h=from:subject:message-id;
- bh=zZPy/VQuXPb4ErTr6RHlPvCDkU/aIn0KlEdetDNPWuc=;
- b=RbVBCL4Yb1c1v4HxaBdoa/kYbRkOS2Y6t/+bUny/+2wf4rLkx4p0bZdhgkd0UiaREXOUg1KBe
- 1pW7ayR0qpkC4jyB+yADVFuwFQhWffG3muvex6OgDsSZjfM1zfF6tC0
+ bh=SAaxalPFij/Aa8yutppYc0iHEe9K1j91UJmXhC4ocwg=;
+ b=QC7RaXdyPuWFyBHkdqOh3yCRjAr7To61SiqojrOogCGecuzntDJByhjInsSBSdrskm2rWz/Gi
+ xtTti+RH+WtB0sMPzo0hWq+Y6P57rPXUHsqkrxMIS+xUGu4t0K40+Uw
 X-Developer-Key: i=bmasney@redhat.com; a=ed25519;
  pk=x20f2BQYftANnik+wvlm4HqLqAlNs/npfVcbhHPOK2U=
 X-Endpoint-Received: by B4 Relay for bmasney@redhat.com/20250528 with auth_id=472
@@ -87,59 +87,80 @@ clk_core_determine_round_nolock() from the clk core will only use the
 determine_rate() clk ops, so let's remove the round_rate() clk ops since
 it's unused.
 
+The implementation of sg2042_clk_pll_determine_rate() calls
+sg2042_clk_pll_round_rate(), so this folds the two into a single
+function.
+
 Signed-off-by: Brian Masney <bmasney@redhat.com>
 ---
- drivers/clk/clk-scmi.c | 30 ------------------------------
- 1 file changed, 30 deletions(-)
+ drivers/clk/sophgo/clk-sg2042-pll.c | 24 ++++++++----------------
+ 1 file changed, 8 insertions(+), 16 deletions(-)
 
-diff --git a/drivers/clk/clk-scmi.c b/drivers/clk/clk-scmi.c
-index d2408403283fc72f0cf902e65f4c08bcbc7b4b0b..6c6ddb92e7cf6a0cfac2c7e19c0f15f777bb8c51 100644
---- a/drivers/clk/clk-scmi.c
-+++ b/drivers/clk/clk-scmi.c
-@@ -54,35 +54,6 @@ static unsigned long scmi_clk_recalc_rate(struct clk_hw *hw,
+diff --git a/drivers/clk/sophgo/clk-sg2042-pll.c b/drivers/clk/sophgo/clk-sg2042-pll.c
+index e5fb0bb7ac4f97616f3b472fcab45e5729eb653e..b2cbd50ac73c7538b1acbca517f4259cba885fcc 100644
+--- a/drivers/clk/sophgo/clk-sg2042-pll.c
++++ b/drivers/clk/sophgo/clk-sg2042-pll.c
+@@ -346,37 +346,30 @@ static unsigned long sg2042_clk_pll_recalc_rate(struct clk_hw *hw,
  	return rate;
  }
  
--static long scmi_clk_round_rate(struct clk_hw *hw, unsigned long rate,
--				unsigned long *parent_rate)
--{
--	u64 fmin, fmax, ftmp;
--	struct scmi_clk *clk = to_scmi_clk(hw);
--
--	/*
--	 * We can't figure out what rate it will be, so just return the
--	 * rate back to the caller. scmi_clk_recalc_rate() will be called
--	 * after the rate is set and we'll know what rate the clock is
--	 * running at then.
--	 */
--	if (clk->info->rate_discrete)
--		return rate;
--
--	fmin = clk->info->range.min_rate;
--	fmax = clk->info->range.max_rate;
--	if (rate <= fmin)
--		return fmin;
--	else if (rate >= fmax)
--		return fmax;
--
--	ftmp = rate - fmin;
--	ftmp += clk->info->range.step_size - 1; /* to round up */
--	do_div(ftmp, clk->info->range.step_size);
--
--	return ftmp * clk->info->range.step_size + fmin;
--}
--
- static int scmi_clk_set_rate(struct clk_hw *hw, unsigned long rate,
- 			     unsigned long parent_rate)
+-static long sg2042_clk_pll_round_rate(struct clk_hw *hw,
+-				      unsigned long req_rate,
+-				      unsigned long *prate)
++static int sg2042_clk_pll_determine_rate(struct clk_hw *hw,
++					 struct clk_rate_request *req)
  {
-@@ -300,7 +271,6 @@ scmi_clk_ops_alloc(struct device *dev, unsigned long feats_key)
+ 	struct sg2042_pll_ctrl pctrl_table;
+ 	unsigned int value;
+ 	long proper_rate;
+ 	int ret;
  
- 	/* Rate ops */
- 	ops->recalc_rate = scmi_clk_recalc_rate;
--	ops->round_rate = scmi_clk_round_rate;
- 	ops->determine_rate = scmi_clk_determine_rate;
- 	if (feats_key & BIT(SCMI_CLK_RATE_CTRL_SUPPORTED))
- 		ops->set_rate = scmi_clk_set_rate;
+-	ret = sg2042_get_pll_ctl_setting(&pctrl_table, req_rate, *prate);
++	ret = sg2042_get_pll_ctl_setting(&pctrl_table,
++					 min(req->rate, req->max_rate),
++					 req->best_parent_rate);
+ 	if (ret) {
+ 		proper_rate = 0;
+ 		goto out;
+ 	}
+ 
+ 	value = sg2042_pll_ctrl_encode(&pctrl_table);
+-	proper_rate = (long)sg2042_pll_recalc_rate(value, *prate);
++	proper_rate = (long)sg2042_pll_recalc_rate(value, req->best_parent_rate);
+ 
+ out:
+ 	pr_debug("--> %s: pll_round_rate: val = %ld\n",
+ 		 clk_hw_get_name(hw), proper_rate);
+-	return proper_rate;
+-}
++	req->rate = proper_rate;
+ 
+-static int sg2042_clk_pll_determine_rate(struct clk_hw *hw,
+-					 struct clk_rate_request *req)
+-{
+-	req->rate = sg2042_clk_pll_round_rate(hw, min(req->rate, req->max_rate),
+-					      &req->best_parent_rate);
+-	pr_debug("--> %s: pll_determine_rate: val = %ld\n",
+-		 clk_hw_get_name(hw), req->rate);
+ 	return 0;
+ }
+ 
+@@ -417,14 +410,13 @@ static int sg2042_clk_pll_set_rate(struct clk_hw *hw,
+ 
+ static const struct clk_ops sg2042_clk_pll_ops = {
+ 	.recalc_rate = sg2042_clk_pll_recalc_rate,
+-	.round_rate = sg2042_clk_pll_round_rate,
+ 	.determine_rate = sg2042_clk_pll_determine_rate,
+ 	.set_rate = sg2042_clk_pll_set_rate,
+ };
+ 
+ static const struct clk_ops sg2042_clk_pll_ro_ops = {
+ 	.recalc_rate = sg2042_clk_pll_recalc_rate,
+-	.round_rate = sg2042_clk_pll_round_rate,
++	.determine_rate = sg2042_clk_pll_determine_rate,
+ };
+ 
+ /*
 
 -- 
 2.50.1
