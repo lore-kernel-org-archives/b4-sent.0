@@ -1,79 +1,81 @@
-From: Dominique Martinet <asmadeus@codewreck.org>
-Date: Tue, 12 Aug 2025 06:28:02 +0900
-Subject: [PATCH v2 2/2] iov_iter: iov_folioq_get_pages: don't leave empty
- slot behind
+From: Mahesh Rao <mahesh.rao@altera.com>
+Subject: [PATCH RESEND v2 0/4] stratix10: Add Interrupt support for
+ asynchronous communication with SDM
+Date: Tue, 12 Aug 2025 20:59:23 +0800
+Message-Id: <20250812-sip_svc_irq-v2-0-53098e11705a@altera.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250812-iot_iter_folio-v2-2-f99423309478@codewreck.org>
-References: <20250812-iot_iter_folio-v2-0-f99423309478@codewreck.org>
-In-Reply-To: <20250812-iot_iter_folio-v2-0-f99423309478@codewreck.org>
-To: "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
- Christian Brauner <brauner@kernel.org>, David Howells <dhowells@redhat.com>, 
- Alexander Viro <viro@zeniv.linux.org.uk>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: Maximilian Bosch <maximilian@mbosch.me>, Ryan Lahfa <ryan@lahfa.xyz>, 
- Christian Theune <ct@flyingcircus.io>, Arnout Engelen <arnout@bzzt.net>, 
- linux-kernel@vger.kernel.org, linux-block@vger.kernel.org, 
- linux-fsdevel@vger.kernel.org, Dominique Martinet <asmadeus@codewreck.org>
-X-Mailer: b4 0.15-dev-7be4f
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1129;
- i=asmadeus@codewreck.org; h=from:subject:message-id;
- bh=hWtTUCvGG0PvbE6UasHSB7hwyWcYL54anMdr7Xzd+hY=;
- b=owEBbQKS/ZANAwAKAatOm+xqmOZwAcsmYgBommB1jlBau7xcwTcqmY8qrpOsUxyecm2YZfnGb
- RD0o4qZhZmJAjMEAAEKAB0WIQT8g9txgG5a3TOhiE6rTpvsapjmcAUCaJpgdQAKCRCrTpvsapjm
- cEb8D/9an6eblnzeoL0M2VSMUQ7QI7IMsT4MlMEeRG5w+2Lfijjtb+z92PO1JsMMYdLjP2ecPF6
- gs7b7OLUpbc6WSRODpT713hfswV+Sc+d4AEBGNCna0Tr9caRapg8JSiC1nMvL4TmlBnHlWfRfx8
- D5X57VtMAsqkaIoY0fs5yu8Ik6W+DXU5MT1TNz4MeI4sRAJc8heC+lXwgcA+gyPJAiW0rYyJVPe
- qUwFP6iq+udqTBRqiV5BOC7RvEU0onpuxdDz/sZk9h88Tpb7S8ZeJgVfaAehBkjaTTs2E/CcMtx
- 0xk1QN/JR4W/Xb9gIqB98G+YpdgpAECCH53nmNC0tGD4IzQkO7f35Jjmds6/6NSdzQ9PHmPPf54
- JOYIHEdepLhQoYj7PM5BgCn/UdVslFjYVRkBAFb+TLRMCKqTxMox3oR5dwSJuKmtSgRLAWL8sU+
- X4sZs46mogw9PuvFFxlvR6tYNeZp9qC3iXzprDYxaKYFppZxBpLVFXFFw5F5kUoR9/H5gM7jUgQ
- NRT/KRc1y7a8UkC+uWRzrd4zhT/O1LfM+hCmFOHxLPw3q4XlVoavqlZ1AJO60vLcIActCf+2z/l
- HS+ecvMMzlx+0FtND9QBIJ6e+WIOCH7XAG88mNVTBKPjAfyzYOkbZ4Mtdo3aHNquSSPjgNS/hba
- eWKqMemYBhQyNTg==
-X-Developer-Key: i=asmadeus@codewreck.org; a=openpgp;
- fpr=B894379F662089525B3FB1B9333F1F391BBBB00A
-X-Endpoint-Received: by B4 Relay for asmadeus@codewreck.org/default with auth_id=435
+X-B4-Tracking: v=1; b=H4sIAKw6m2gC/1WPu27DMAxFf8XgXAWS/PbUoVk7tGMRBDLNNATq2
+ KEUoUXgf6/iFAE6XhI85/IKnoTJQ5ddQSiy5+mUgn3KAI/u9EmKh5TBalvqWrfK87z3EfcsZ9X
+ 0VBSHonJDi5AuZqEDf6+0D3jbvm9fX2B3nwudLwke/pYPdlLdyCY3D/Jl9kHIjYrqZmiw7Ys8L
+ 7tY3gy986RwGkcOXRarjamVoFklR/Zhkp/1k2hWy720tf9KR6O0wrJvSVs0SNWz+wokbpOwsFu
+ W5ResF7K1FAEAAA==
+X-Change-ID: 20250709-sip_svc_irq-8be44f46ad9c
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Dinh Nguyen <dinguyen@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Mahesh Rao <mahesh.rao@altera.com>, 
+ Matthew Gerlach <matthew.gerlach@altera.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755003637; l=2301;
+ i=mahesh.rao@altera.com; s=20250107; h=from:subject:message-id;
+ bh=5G24HMkqs3027iS5fMHxKSUZFfk1VsRyGb1T/hVbmro=;
+ b=7M4WyEejYtnAdmZ44FFcu5Kbr5ci8cHlfQbPYOGgFHFxZeBTSSRecoJcbmUPKrTQmu4s1jV+G
+ OB0oaYnS3ptAHI+xEE8TF5Bmp7CPv0m+HpTFN5OgZXZmmWJyFxvv46K
+X-Developer-Key: i=mahesh.rao@altera.com; a=ed25519;
+ pk=tQiFUzoKxHrQLDtWeEeaeTeJTl/UfclUHWZy1fjSiyg=
+X-Endpoint-Received: by B4 Relay for mahesh.rao@altera.com/20250107 with auth_id=337
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After advancing into a folioq it makes more sense to point to the next
-slot than at the end of the current slot.
-This should not be needed for correctness, but this also happens to
-"fix" the 9p bug with iterate_folioq() not copying properly.
+This patch-set adds support for interrupt from
+Secure Device Manager(SDM) to Stratix10 SoC for
+asynchronous communication.
 
-Acked-by: David Howells <dhowells@redhat.com>
-Tested-by: Arnout Engelen <arnout@bzzt.net>
-Signed-off-by: Dominique Martinet <asmadeus@codewreck.org>
+Following things are added in this patch-set:
+- Add support for interrupt from SDM to Stratix10 SoC.
+- Add documentation for SDM interrupt in Stratix10 SoC.
+- Enable SDM interrupt in Stratix10 SoC.
+- Enable SDM interrupt in Agilex SoC.
+
+These patches were originally submitted within a
+different patch set, but were requested to be
+separated into their own series.
+Reference: https://lore.kernel.org/all/df8db66b-89a4-40d9-bd44-6705fdbb4517@kernel.org/
+
+Signed-off-by: Mahesh Rao <mahesh.rao@altera.com>
 ---
- lib/iov_iter.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Changes in v2:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://lore.kernel.org/r/20250722-sip_svc_irq-v1-0-c5b9e02c1ce6@altera.com
 
-diff --git a/lib/iov_iter.c b/lib/iov_iter.c
-index f9193f952f49945297479483755d68a34c6d4ffe..65c05134ab934e1e0bf5d010fff22983bfe9c680 100644
---- a/lib/iov_iter.c
-+++ b/lib/iov_iter.c
-@@ -1032,9 +1032,6 @@ static ssize_t iter_folioq_get_pages(struct iov_iter *iter,
- 			maxpages--;
- 		}
- 
--		if (maxpages == 0 || extracted >= maxsize)
--			break;
--
- 		if (iov_offset >= fsize) {
- 			iov_offset = 0;
- 			slot++;
-@@ -1043,6 +1040,9 @@ static ssize_t iter_folioq_get_pages(struct iov_iter *iter,
- 				slot = 0;
- 			}
- 		}
-+
-+		if (maxpages == 0 || extracted >= maxsize)
-+			break;
- 	}
- 
- 	iter->count = count;
+---
+Mahesh Rao (4):
+      dt-bindings: firmware: Add interrupt specification for Intel Stratix 10 Service Layer.
+      dts: stratix10: Add support for SDM mailbox interrupt for Intel Stratix10 SoC FPGA.
+      dts: agilex: Add support for SDM mailbox interrupt for Intel Agilex SoC FPGA.
+      firmware: stratix10-svc: Add for SDM mailbox doorbell interrupt
 
+ .../bindings/firmware/intel,stratix10-svc.yaml     |  10 ++
+ arch/arm64/boot/dts/altera/socfpga_stratix10.dtsi  |   4 +
+ arch/arm64/boot/dts/intel/socfpga_agilex.dtsi      |   2 +
+ drivers/firmware/stratix10-svc.c                   | 117 +++++++++++++++++++--
+ include/linux/firmware/intel/stratix10-smc.h       |  23 ++++
+ 5 files changed, 146 insertions(+), 10 deletions(-)
+---
+base-commit: 062b3e4a1f880f104a8d4b90b767788786aa7b78
+change-id: 20250709-sip_svc_irq-8be44f46ad9c
+prerequisite-change-id: 20250131-sip_svc_upstream-e78d8c9b4335:v5
+prerequisite-patch-id: 6a4223bd2c01a0fd20925e597c906dc64e11ec2f
+prerequisite-patch-id: 33ca4dbe8b8e18d3e51145c6bcaae55170878b22
+prerequisite-patch-id: cc72b86440a07b6311c0ac8cf2212072d2a0c561
+prerequisite-patch-id: 5c3dc9849364a5c6573b032b878459be252305e5
+prerequisite-patch-id: 5db2eb9fe78188c2dbc453d0d2d6e45c8d8e1be7
+prerequisite-patch-id: f7ffa416aef888c30d3fcf875e7b2f79e333dbfa
+prerequisite-patch-id: b827c6490b3ebef5de4ad67e3150e318df79a08e
+
+Best regards,
 -- 
-2.50.1
+Mahesh Rao <mahesh.rao@altera.com>
 
