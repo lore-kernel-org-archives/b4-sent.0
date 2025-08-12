@@ -1,54 +1,81 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Tue, 12 Aug 2025 19:59:15 +0200
-Subject: [PATCH b4 v2 2/2] git_range_to_patches: set minimum similarity
- index to 95%
+From: Sven Peter <sven@kernel.org>
+Subject: [PATCH 0/3] Apple Silicon SMC RTC driver
+Date: Tue, 12 Aug 2025 18:25:14 +0000
+Message-Id: <20250812-wip-smc-rtc-v1-0-66a8e96dad60@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250812-format-harder-v2-2-53f74982079a@oldschoolsolutions.biz>
-References: <20250812-format-harder-v2-0-53f74982079a@oldschoolsolutions.biz>
-In-Reply-To: <20250812-format-harder-v2-0-53f74982079a@oldschoolsolutions.biz>
-To: "Kernel.org Tools" <tools@kernel.org>
-Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAAqHm2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDC0Mj3fLMAt3i3GTdopJk3VQLU7MkszQjEzMDYyWgjoKi1LTMCrBp0bG
+ 1tQAIJoOQXQAAAA==
+X-Change-ID: 20250812-wip-smc-rtc-e856b6f24603
+To: Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Neal Gompa <neal@gompa.dev>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-rtc@vger.kernel.org, Sven Peter <sven@kernel.org>, 
+ Hector Martin <marcan@marcan.st>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755021559; l=982;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=AU+acsVaWeeFhgOmPkvemVaNu+t9PcDSpp4UH79XZ9k=;
- b=CnWGZ8FmPRYiCumCknELvDRaxC1xbVClRdko1RpqesIGaGUqEDXfS3W6Jy2TrjGKdjkOaUDvf
- Sd3lsL95EIlCfgP4laMDLCh2W/cz5Xi4F/nxXaO9sp7YbJdL1rUMTWb
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1886; i=sven@kernel.org;
+ h=from:subject:message-id; bh=k8kF1P6bFlbBEzuzYgvwP5CIW+2qmHksP+KG9Qod3gY=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8bsdiH55MV3rVh+O/X9Tp18KtNRpYD9+sY/Nev/1+ucv
+ r3ujdaDjlIWBjEOBlkxRZbt++1Nnzx8I7h006X3MHNYmUCGMHBxCsBEAhsY/gee63BWXp5xaoNo
+ Xvyps0Y7Izbf/umg7WMtE6pfWR+wLIXhv6cc2zRmsX8cyV9vfNiwjH2Sw2bp8+cctLj9sm96scn
+ VMwMA
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There was an occurrence of (correctly) showing the diff to the original
-source a file was copied from, but understandably it was classified as
-impossible to review. [1]
-To avoid this situation, require pretty high similarity to make it a
-diff against the original.
+Hi,
 
-[1]: https://lore.kernel.org/all/388aed37-03c1-4a5f-a425-5ed8c4f9cb34@oss.qualcomm.com/
+Now that the core mfd device has been upstream I've prepared one of the
+child drivers that is still missing: RTC support.
+This driver is required to read and set the hardware clock and requires
+a reference to an additional NVMEM cell to store the offset and thus
+requires a device tree node.
 
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+The series applies cleanly to 6.17-rc1 but is based on a tree with three
+additional commits to add the SMC nodes to the DTS which didn't make it
+into 6.17. You can just ignore that and pretend this is based on
+6.17-rc1 since I'll take the dts update through my tree anyway.
+
+Next to this SMC child driver we're still working on an input/misc HID
+driver for the powerbutton, a hwmon driver for the various sensors and a
+power-supply driver to manage the batteries.
+
+Best,
+
+Sven
+
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- src/b4/__init__.py | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Hector Martin (1):
+      rtc: Add new rtc-macsmc driver for Apple Silicon Macs
 
-diff --git a/src/b4/__init__.py b/src/b4/__init__.py
-index 93cf016bd705584ace4d61c4968be365a25f2502..99198fe29aca34f09646775303638764b4a3fef1 100644
---- a/src/b4/__init__.py
-+++ b/src/b4/__init__.py
-@@ -3596,7 +3596,7 @@ def git_range_to_patches(gitdir: Optional[str], start: str, end: str,
-             '--find-renames',
- 			'-M',
- 			'-B',
--			'-C',
-+			'-C95',
- 			'--find-copies-harder',
-         ]
-         smcfg = get_sendemail_config()
+Sven Peter (2):
+      dt-bindings: rtc: Add Apple SMC RTC
+      arm64: dts: apple: t8103,t600x,t8112: Add SMC RTC node
 
+ .../devicetree/bindings/mfd/apple,smc.yaml         |   9 ++
+ .../devicetree/bindings/rtc/apple,smc-rtc.yaml     |  35 +++++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t600x-die0.dtsi          |   6 +
+ arch/arm64/boot/dts/apple/t8103.dtsi               |   6 +
+ arch/arm64/boot/dts/apple/t8112.dtsi               |   6 +
+ drivers/mfd/macsmc.c                               |   1 +
+ drivers/rtc/Kconfig                                |  11 ++
+ drivers/rtc/Makefile                               |   1 +
+ drivers/rtc/rtc-macsmc.c                           | 141 +++++++++++++++++++++
+ 10 files changed, 218 insertions(+)
+---
+base-commit: 772c260c9c7f916c9a2508839df4f03fc19f3773
+change-id: 20250812-wip-smc-rtc-e856b6f24603
+
+Best regards,
 -- 
-2.48.1
+Sven Peter <sven@kernel.org>
 
