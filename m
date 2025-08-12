@@ -1,74 +1,64 @@
 From: Mahesh Rao <mahesh.rao@altera.com>
-Date: Tue, 12 Aug 2025 20:59:24 +0800
-Subject: [PATCH RESEND v2 1/4] dt-bindings: firmware: Add interrupt
- specification for Intel Stratix 10 Service Layer.
+Date: Tue, 12 Aug 2025 20:59:25 +0800
+Subject: [PATCH RESEND v2 2/4] dts: stratix10: Add support for SDM mailbox
+ interrupt for Intel Stratix10 SoC FPGA.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250812-sip_svc_irq-v2-1-53098e11705a@altera.com>
+Message-Id: <20250812-sip_svc_irq-v2-2-53098e11705a@altera.com>
 References: <20250812-sip_svc_irq-v2-0-53098e11705a@altera.com>
 In-Reply-To: <20250812-sip_svc_irq-v2-0-53098e11705a@altera.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Dinh Nguyen <dinguyen@kernel.org>
 Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mahesh Rao <mahesh.rao@altera.com>, 
- Matthew Gerlach <matthew.gerlach@altera.com>
+ Mahesh Rao <mahesh.rao@altera.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755003637; l=1851;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755003637; l=1326;
  i=mahesh.rao@altera.com; s=20250107; h=from:subject:message-id;
- bh=AOemBCgdL+N65O4/Not6GZwfFLWHmbGOTOms8z2w2Jo=;
- b=8S0XDud7rGHq5nBFQ8JWiz7ndCiGBA16NH2g3aA2nzxZLjooQTJ6gmSdIAd+o++rn8nS4hQGw
- eaxZtK7NPAYDdJu+vNaAqdulhgQA/H6DRbYbMKyjmD7jk6oaMVER+3d
+ bh=3ob8k9A6zIADp0lruGxd1g5augXf3tZBlKtdVmhWZZI=;
+ b=QDmzUwun/xgQqFFN4+DuH+uiOuoF/QBmwrB90Uyrqg31EOzLm47xWbWs1AquzPkOhYYYBlrb+
+ Do7ujBn5v7oC7qYfktIzQV2w4CYgPU7Xt5Huxw3qs5BbgYHOb1c9pXE
 X-Developer-Key: i=mahesh.rao@altera.com; a=ed25519;
  pk=tQiFUzoKxHrQLDtWeEeaeTeJTl/UfclUHWZy1fjSiyg=
 X-Endpoint-Received: by B4 Relay for mahesh.rao@altera.com/20250107 with auth_id=337
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add interrupt specification for Intel Stratix10 Service
-layer for asynchronous communication.
+Add support for Secure Device Manager (SDM) mailbox
+doorbell interrupt on Stratix10 SoC FPGA for
+supporting asynchronous transactions.
 
-Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Mahesh Rao <mahesh.rao@altera.com>
 ---
- .../devicetree/bindings/firmware/intel,stratix10-svc.yaml      | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ arch/arm64/boot/dts/altera/socfpga_stratix10.dtsi | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/firmware/intel,stratix10-svc.yaml b/Documentation/devicetree/bindings/firmware/intel,stratix10-svc.yaml
-index fac1e955852e4f9b966c991dcfac56222c5f7315..656cc50fd08217f270f95ae39010152423315ed1 100644
---- a/Documentation/devicetree/bindings/firmware/intel,stratix10-svc.yaml
-+++ b/Documentation/devicetree/bindings/firmware/intel,stratix10-svc.yaml
-@@ -54,6 +54,12 @@ properties:
-       reserved memory region for the service layer driver to
-       communicate with the secure device manager.
+diff --git a/arch/arm64/boot/dts/altera/socfpga_stratix10.dtsi b/arch/arm64/boot/dts/altera/socfpga_stratix10.dtsi
+index effd242f6bf709a53659b4de2a2da728052d086f..9e8b3b07dde3ff57382044f528c34bd52f8df123 100644
+--- a/arch/arm64/boot/dts/altera/socfpga_stratix10.dtsi
++++ b/arch/arm64/boot/dts/altera/socfpga_stratix10.dtsi
+@@ -1,11 +1,13 @@
+ // SPDX-License-Identifier: GPL-2.0-only
+ /*
+  * Copyright Altera Corporation (C) 2015. All rights reserved.
++ * Copyright (C) 2025, Altera Corporation
+  */
  
-+  interrupts:
-+    maxItems: 1
-+    description:
-+      This interrupt is used by the Secure Device Manager (SDM) to signal
-+      completion of an asynchronous operation to service layer driver.
-+
-   fpga-mgr:
-     $ref: /schemas/fpga/intel,stratix10-soc-fpga-mgr.yaml
-     description: Optional child node for fpga manager to perform fabric configuration.
-@@ -67,6 +73,8 @@ additionalProperties: false
+ /dts-v1/;
+ #include <dt-bindings/reset/altr,rst-mgr-s10.h>
+ #include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/arm-gic.h>
+ #include <dt-bindings/clock/stratix10-clock.h>
  
- examples:
-   - |
-+    #include <dt-bindings/interrupt-controller/arm-gic.h>
-+
-     reserved-memory {
-       #address-cells = <2>;
-       #size-cells = <2>;
-@@ -84,6 +92,8 @@ examples:
-         compatible = "intel,stratix10-svc";
-         method = "smc";
-         memory-region = <&service_reserved>;
-+        interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
-+        interrupt-parent = <&intc0>;
+ / {
+@@ -74,6 +76,8 @@ svc {
+ 			compatible = "intel,stratix10-svc";
+ 			method = "smc";
+ 			memory-region = <&service_reserved>;
++			interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-parent = <&intc>;
  
-         fpga-mgr {
-           compatible = "intel,stratix10-soc-fpga-mgr";
+ 			fpga_mgr: fpga-mgr {
+ 				compatible = "intel,stratix10-soc-fpga-mgr";
 
 -- 
 2.35.3
