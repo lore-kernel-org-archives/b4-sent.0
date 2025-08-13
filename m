@@ -1,35 +1,43 @@
 From: Ye He <ye.he@amlogic.com>
-Date: Wed, 13 Aug 2025 15:09:48 +0800
-Subject: [PATCH bluez] As a BIS sink role, BlueZ currently defaults to
- synchronizing with the first broadcast source device discovered by the le
- discovery procedure. This behavior may not align with user expectations,
- as it removes control over the target device selection.
+Date: Wed, 13 Aug 2025 15:55:04 +0800
+Subject: [PATCH bluez v2] device: Add SyncBroadcast method in device1
+ interface
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250813-adapter-sync-bcast-v1-1-4a739f99c156@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIADs6nGgC/x3MQQqDMBBA0avIrB1IoqL0KsXFJI7tQEklo6Uav
- LvB5Vv8n0E5CSs8qgyJf6LyjQW2riC8Kb4YZSoGZ1xnBtsgTbSsnFD3GNAH0hWH3s6+7UJvHEE
- Jl8Sz/O/pE/xn4wPG87wA3uyffWsAAAA=
+Message-Id: <20250813-adapter-sync-bcast-v2-1-d73b183b4bf1@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIANdEnGgC/32NSw6DMAxEr4K8bioSoHxWvUfFwhgDloCghKJSx
+ N0bcYAu34zmzQGenbCHKjrA8SZe7BzA3CKgAeeelbSBwcQmiwudKGxxWdkpv8+kGkK/qiLXXZN
+ mlMcGIQwXx518LukLmvHNX6hDPIhfrduvq01f5T/rppVWKeZJ2ZUl6ezxxGm0vdCd7AT1eZ4/6
+ sH13r0AAAA=
 X-Change-ID: 20250813-adapter-sync-bcast-871fb45c702a
 To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
 Cc: Ye He <ye.he@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755068992; l=7082;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755071705; l=7484;
  i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
- bh=q2SC32AafSEnETM59derQcFG0XRXIMhN77JsYS52bCw=;
- b=W7X6kRASot4+pW2kQYSKvMjRqE9X3esFCV5slysHjj6KAt5Nfyfj1fHIywl4n8Qm9yjC34lqS
- U9FZVgsEgo3ClcYghIz9YETOi9YjKFrkEE5mdvxqVFsyJW2qXGI2lxC
+ bh=bHugaR14fJPmBl/kzc7rmkbiWskuMBWEz7AHwPqplak=;
+ b=w0P5iP7jjamCGsvY9tDqZaLTa+VEDkMOCGEdKu7Nju/yG2eHN4sqnhCkxBZezNpyDdCaZv6In
+ VDS/PspL3XBDUF26fTXaZEabMwYqwG6btBhnNPbEFtt2q7JJGq1tyzi
 X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
  pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
 X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
+
+As a BIS sink role, BlueZ currently defaults to synchronizing
+with the first broadcast source device discovered by the le discovery
+procedure. This behavior may not align with user expectations,
+as it removes control over the target device selection.
 
 This patch introduces a new SyncBroadcast method to the device1 interface,
 allowing users to explicitly choose which broadcast source device to
 synchronize with.
 
 Signed-off-by: Ye He <ye.he@amlogic.com>
+---
+Changes in v2:
+- Update commit message.
+- Link to v1: https://patch.msgid.link/20250813-adapter-sync-bcast-v1-1-4a739f99c156@amlogic.com
 ---
  doc/org.bluez.Device.rst | 15 +++++++++++++++
  plugins/neard.c          |  2 +-
