@@ -1,14 +1,13 @@
 From: Janne Grunau <j@jannau.net>
-Subject: [PATCH 0/5] Apple device tree sync from downstream kernel
-Date: Wed, 13 Aug 2025 11:53:32 +0200
-Message-Id: <20250813-apple-dt-sync-6-17-v1-0-209f15d10aa0@jannau.net>
+Date: Wed, 13 Aug 2025 11:53:33 +0200
+Subject: [PATCH 1/5] arm64: dts: apple: t8103-j457: Fix PCIe ethernet
+ iommu-map
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJxgnGgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDC0Nj3cSCgpxU3ZQS3eLKvGRdM11Dc90Uw7Rkw2QLyzTz5EQloMaCotS
- 0zAqwodGxtbUAsOexiGQAAAA=
-X-Change-ID: 20250813-apple-dt-sync-6-17-d1fc1c89f7ca
+Message-Id: <20250813-apple-dt-sync-6-17-v1-1-209f15d10aa0@jannau.net>
+References: <20250813-apple-dt-sync-6-17-v1-0-209f15d10aa0@jannau.net>
+In-Reply-To: <20250813-apple-dt-sync-6-17-v1-0-209f15d10aa0@jannau.net>
 To: Sven Peter <sven@kernel.org>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
  Neal Gompa <neal@gompa.dev>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,69 +17,67 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Janne Grunau <j@jannau.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2447; i=j@jannau.net;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1645; i=j@jannau.net;
  s=yk2024; h=from:subject:message-id;
- bh=eiXrLuhR4xCamhoxoYxrnKpTHf3dzkLdi7yUfznol88=;
- b=owGbwMvMwCW2UNrmdq9+ahrjabUkhow5CWsePjDbkaGoumtOfrJAVFj2+dDzsUq7k1yFmWomB
- rzTN23sKGVhEONikBVTZEnSftnBsLpGMab2QRjMHFYmkCEMXJwCMJGtlgz/M1h7Y6/v4L+x4oP/
- RI4ntz55uvg3i6pPmO72bOd1h52eTgz/VJgv6D9JzLx50DnkkeJZ9vf8Vu/jO3dbafPaf9vWvuE
- GLwA=
+ bh=QgvjbU2+ige4nQSRScXv7jFxB1PnyJOY3TFJi0m6MY4=;
+ b=owGbwMvMwCW2UNrmdq9+ahrjabUkhow5CWv6+d6q8iq036ssZ9k4a2bJc/YEiR+rncWEAkSZp
+ gWaKkp0lLIwiHExyIopsiRpv+xgWF2jGFP7IAxmDisTyBAGLk4BmMj/n4wMv71Pm6wznqqQ9mvb
+ XdEah0w9419y0ctvufp4tH5hWPGqgJFhZ8FUhjc1l4wWtbzyUHm0Pv7yUr2OiAte+2/dCN/zWOw
+ PEwA=
 X-Developer-Key: i=j@jannau.net; a=openpgp;
  fpr=8B336A6BE4E5695E89B8532B81E806F586338419
 X-Endpoint-Received: by B4 Relay for j@jannau.net/yk2024 with auth_id=264
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series pulls changes from the downstream device trees which are
-supported in upstream kernel.
-Most importantly it fixes the PCIe description for a specific iMac model
-(iMac M1, 2 USB-C ports, 2021). This is worked around in the downstream
-kernel by not disabling the port. In preparation for submitting M2
-Pro/Max/Ultra devices trees I investigated the issue on the similarly
-affected M2 Pro Mac mini and fixed it this way.
-It completes the Wlan/BT device nodes for t600x based devices and adds
-the missing 15-inch Macbook Air (M2, 2023).
+PCIe `port01` of t8103-j457 (iMac, M1, 2 USB-C ports, 2021) is unused
+and disabled. Linux' PCI subsystem assigns the ethernet nic from
+`port02` to bus 02. This results into assigning `pcie0_dart_1` from the
+disabled port as iommu. The `pcie0_dart_1` instance is disabled and
+probably fused off (it is on the M2 Pro Mac mini which has a disabled
+PCIe port as well).
+Without iommu the ethernet nic is not expected work.
+Adjusts the "bus-range" and the PCIe devices "reg" property to PCI
+subsystem's bus number.
 
-Checkpatch emits following warnings:
-
-WARNING: DT compatible string vendor "pci14e4" appears un-documented --
-check ./Documentation/devicetree/bindings/vendor-prefixes.yaml
-
-Which I chose to ignore. `vendor-prefixes.yaml` prefixes contains no
-other mapping for PCI vendor code and the list of ignored prefixes
-forbids extending it. Both options feel wrong though. "pci${vendor}" is
-clearly a vendor prefix but duplicating the PCI vendor data base feels
-wrong. `vendor-prefixes.yaml` currently does not contain and PCI vendor
-aliases.
-
+Fixes: 7c77ab91b33d ("arm64: dts: apple: Add missing M1 (t8103) devices")
 Signed-off-by: Janne Grunau <j@jannau.net>
 ---
-Hector Martin (2):
-      arm64: dts: apple: t600x: Comple WiFi properties
-      arm64: dts: apple: t600x: Add bluetooth device nodes
+ arch/arm64/boot/dts/apple/t8103-j457.dts | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-Janne Grunau (3):
-      arm64: dts: apple: t8103-j457: Fix PCIe ethernet iommu-map
-      dt-bindings: arm: apple: Add t8112 j415 compatible
-      arm64: dts: apple: Add devicetreee for t8112-j415
+diff --git a/arch/arm64/boot/dts/apple/t8103-j457.dts b/arch/arm64/boot/dts/apple/t8103-j457.dts
+index 152f95fd49a2118093396838fbd8b6bd1b518f81..7089ccf3ce55661f3f83810496daed40c8199189 100644
+--- a/arch/arm64/boot/dts/apple/t8103-j457.dts
++++ b/arch/arm64/boot/dts/apple/t8103-j457.dts
+@@ -21,6 +21,14 @@ aliases {
+ 	};
+ };
+ 
++/*
++ * Adjust pcie0's iommu-map to account for the disabled port01.
++ */
++&pcie0 {
++	iommu-map = <0x100 &pcie0_dart_0 1 1>,
++			<0x200 &pcie0_dart_2 1 1>;
++};
++
+ &bluetooth0 {
+ 	brcm,board-type = "apple,santorini";
+ };
+@@ -36,10 +44,10 @@ &wifi0 {
+  */
+ 
+ &port02 {
+-	bus-range = <3 3>;
++	bus-range = <2 2>;
+ 	status = "okay";
+ 	ethernet0: ethernet@0,0 {
+-		reg = <0x30000 0x0 0x0 0x0 0x0>;
++		reg = <0x20000 0x0 0x0 0x0 0x0>;
+ 		/* To be filled by the loader */
+ 		local-mac-address = [00 10 18 00 00 00];
+ 	};
 
- Documentation/devicetree/bindings/arm/apple.yaml |  2 +
- arch/arm64/boot/dts/apple/Makefile               |  1 +
- arch/arm64/boot/dts/apple/t6000-j314s.dts        |  8 +++
- arch/arm64/boot/dts/apple/t6000-j316s.dts        |  8 +++
- arch/arm64/boot/dts/apple/t6001-j314c.dts        |  8 +++
- arch/arm64/boot/dts/apple/t6001-j316c.dts        |  8 +++
- arch/arm64/boot/dts/apple/t6001-j375c.dts        |  8 +++
- arch/arm64/boot/dts/apple/t6002-j375d.dts        |  8 +++
- arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi   | 10 +++
- arch/arm64/boot/dts/apple/t600x-j375.dtsi        | 10 +++
- arch/arm64/boot/dts/apple/t8103-j457.dts         | 12 +++-
- arch/arm64/boot/dts/apple/t8112-j415.dts         | 80 ++++++++++++++++++++++++
- 12 files changed, 161 insertions(+), 2 deletions(-)
----
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250813-apple-dt-sync-6-17-d1fc1c89f7ca
-
-Best regards,
 -- 
-Janne Grunau <j@jannau.net>
+2.50.1
 
