@@ -1,283 +1,141 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Thu, 14 Aug 2025 14:32:45 +0800
-Subject: [PATCH v2 2/2] clk: amlogic: add video-related clocks for S4 SoC
+From: Remi Buisson <remi.buisson@tdk.com>
+Subject: [PATCH v4 0/9] iio: imu: new inv_icm45600 driver
+Date: Thu, 14 Aug 2025 08:57:14 +0000
+Message-Id: <20250814-add_newport_driver-v4-0-4464b6600972@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250814-add_video_clk-v2-2-bb2b5a5f2904@amlogic.com>
-References: <20250814-add_video_clk-v2-0-bb2b5a5f2904@amlogic.com>
-In-Reply-To: <20250814-add_video_clk-v2-0-bb2b5a5f2904@amlogic.com>
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAOqknWgC/33NQQrCMBCF4atI1kZmxiZtXXkPkdImUw1iK0mJS
+ undTbtRQVz+D+abUQT2joPYrUbhObrg+i5Ftl4Jc667E0tnUwsCUpAhytraquP7rfdDZb2L7KW
+ i0rSqyZHrQqTDm+fWPRb0cEx9dmHo/XP5EXFe/3IRJUhUUBBqaADL/WAvG9NfxYxFegM5wk+AE
+ tC0ubYFZsQtfQPbTyD/CWwTYDSUJQMZpT+AaZpedMP2zTQBAAA=
+X-Change-ID: 20250411-add_newport_driver-529cf5b71ea8
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755153176; l=7096;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=sYvEeZ4oYnSosnGYzWTsQjmj6ZIK9npvOzvOGvDxsvM=;
- b=GskWItH4d/0b/sbn+Tk54ut4IfML7X3nSuWQxzqDIEhiXU8vGrZO/++k0PCCsuuaQy+dFr09u
- 9YPTK4QYziMCJCENfTq1TbI3y1RJBxsxmeq4qJJv6Tv47oDgRNrdrtu
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, Remi Buisson <remi.buisson@tdk.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755161842; l=5665;
+ i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
+ bh=Hb3GQT7RM484Hhe4IsbAEUh4pInqFElRKBofBQsMNaU=;
+ b=G9d2+kE1NstKzluSFNrswItyJYPG/nXXlDWZgeck8s4e0kkfxaloRdb7ZoiiLtcv5Ioh1hMOa
+ i8TLaUisaMxAe7Y3kPzc+UzCsFu7QKCViSR2PkO3UW5Cy2/sB037nRU
+X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
+ pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
+X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add video encoder, demodulator and CVBS clocks.
+This series add a new driver for managing InvenSense ICM-456xx 6-axis IMUs.
+This next generation of chips includes new generations of 3-axis gyroscope
+and 3-axis accelerometer, support of I3C in addition to I2C and SPI, and
+intelligent MotionTracking features like pedometer, tilt detection, and
+tap detection.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+This series is delivering a driver supporting gyroscope, accelerometer and
+temperature data, with polling and buffering using hwfifo and watermark,
+on I2C, SPI and I3C busses.
+
+Gyroscope and accelerometer sensors are completely independent and can have
+different ODRs. Since there is only a single FIFO a specific value is used to
+mark invalid data. For keeping the device standard we are de-multiplexing data
+from the FIFO to 2 IIO devices with 2 buffers, 1 for the accelerometer and 1
+for the gyroscope. This architecture also enables to easily turn each sensor
+on/off without impacting the other. The device interrupt is used to read the
+FIFO and launch parsing of accelerometer and gyroscope data. This driver
+relies on the common Invensense timestamping mechanism to handle correctly
+FIFO watermark and dynamic changes of settings.
+
+The structure of the driver is quite similar to the inv_icm42600 driver,
+however there are significant reasons for adding a different driver for
+inv_icm45600, such as:
+- A completely different register map.
+- Different FIFO management, based on number of samples instead of bytes.
+- Different indirect register access mechanism.
+
+Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
- drivers/clk/meson/s4-peripherals.c | 203 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 203 insertions(+)
+Changes in v4:
+- Introduce gyro and accel in different patches.
+- Move IRQ probe to next patch.
+- Allocate fifo memory instead of static definition.
+- Rework VDDIO management to avoid underflow.
+- Rework suspend/resume using force suspend/resume API.
+- Use helper min, clamp and sizeof instead of custom implementation.
+- Re-scoping some variables, using reverse xmas tree for declarations.
+- Fix formatting: end of list, end of file, spaces, alignments.
+- Use dev_err_probe for I3C errors.
+- Factorizing default config code.
+- Link to v3: https://lore.kernel.org/r/20250717-add_newport_driver-v3-0-c6099e02c562@tdk.com
 
-diff --git a/drivers/clk/meson/s4-peripherals.c b/drivers/clk/meson/s4-peripherals.c
-index c9400cf54c84..77c550376fc8 100644
---- a/drivers/clk/meson/s4-peripherals.c
-+++ b/drivers/clk/meson/s4-peripherals.c
-@@ -44,6 +44,7 @@
- #define CLKCTRL_VDIN_MEAS_CLK_CTRL                 0x0f8
- #define CLKCTRL_VAPBCLK_CTRL                       0x0fc
- #define CLKCTRL_HDCP22_CTRL                        0x100
-+#define CLKCTRL_CDAC_CLK_CTRL                      0x108
- #define CLKCTRL_VDEC_CLK_CTRL                      0x140
- #define CLKCTRL_VDEC2_CLK_CTRL                     0x144
- #define CLKCTRL_VDEC3_CLK_CTRL                     0x148
-@@ -1117,6 +1118,22 @@ static struct clk_regmap s4_cts_encp_sel = {
- 	},
- };
- 
-+static struct clk_regmap s4_cts_encl_sel = {
-+	.data = &(struct clk_regmap_mux_data){
-+		.offset = CLKCTRL_VIID_CLK_DIV,
-+		.mask = 0xf,
-+		.shift = 12,
-+		.table = mux_table_cts_sel,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cts_encl_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_hws = s4_cts_parent_hws,
-+		.num_parents = ARRAY_SIZE(s4_cts_parent_hws),
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- static struct clk_regmap s4_cts_vdac_sel = {
- 	.data = &(struct clk_regmap_mux_data){
- 		.offset = CLKCTRL_VIID_CLK_DIV,
-@@ -1196,6 +1213,22 @@ static struct clk_regmap s4_cts_encp = {
- 	},
- };
- 
-+static struct clk_regmap s4_cts_encl = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = CLKCTRL_VID_CLK_CTRL2,
-+		.bit_idx = 3,
-+	},
-+	.hw.init = &(struct clk_init_data) {
-+		.name = "cts_encl",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_cts_encl_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- static struct clk_regmap s4_cts_vdac = {
- 	.data = &(struct clk_regmap_gate_data){
- 		.offset = CLKCTRL_VID_CLK_CTRL2,
-@@ -3174,6 +3207,165 @@ static struct clk_regmap s4_gen_clk = {
- 	},
- };
- 
-+/* CVBS DAC */
-+static struct clk_regmap s4_cdac_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = CLKCTRL_CDAC_CLK_CTRL,
-+		.mask = 0x3,
-+		.shift = 16,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cdac_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_data = (const struct clk_parent_data []) {
-+			{ .fw_name = "xtal", },
-+			{ .fw_name = "fclk_div5" },
-+		},
-+		.num_parents = 2,
-+	},
-+};
-+
-+static struct clk_regmap s4_cdac_div = {
-+	.data = &(struct clk_regmap_div_data) {
-+		.offset = CLKCTRL_CDAC_CLK_CTRL,
-+		.shift = 0,
-+		.width = 16,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cdac_div",
-+		.ops = &clk_regmap_divider_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_cdac_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_cdac = {
-+	.data = &(struct clk_regmap_gate_data) {
-+		.offset = CLKCTRL_CDAC_CLK_CTRL,
-+		.bit_idx = 20,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cdac",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_cdac_div.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_demod_core_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.mask = 0x3,
-+		.shift = 9,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "demod_core_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_data = (const struct clk_parent_data []) {
-+			{ .fw_name = "xtal" },
-+			{ .fw_name = "fclk_div7" },
-+			{ .fw_name = "fclk_div4" }
-+		},
-+		.num_parents = 3,
-+	},
-+};
-+
-+static struct clk_regmap s4_demod_core_div = {
-+	.data = &(struct clk_regmap_div_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.shift = 0,
-+		.width = 7,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "demod_core_div",
-+		.ops = &clk_regmap_divider_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_demod_core_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_demod_core = {
-+	.data = &(struct clk_regmap_gate_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.bit_idx = 8
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "demod_core",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_demod_core_div.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+/* CVBS ADC */
-+static struct clk_regmap s4_adc_extclk_in_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.mask = 0x7,
-+		.shift = 25,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "adc_extclk_in_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_data = (const struct clk_parent_data []) {
-+			{ .fw_name = "xtal" },
-+			{ .fw_name = "fclk_div4" },
-+			{ .fw_name = "fclk_div3" },
-+			{ .fw_name = "fclk_div5" },
-+			{ .fw_name = "fclk_div7" },
-+			{ .fw_name = "mpll2" },
-+			{ .fw_name = "gp0_pll" },
-+			{ .fw_name = "hifi_pll" }
-+		},
-+		.num_parents = 8,
-+	},
-+};
-+
-+static struct clk_regmap s4_adc_extclk_in_div = {
-+	.data = &(struct clk_regmap_div_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.shift = 16,
-+		.width = 7,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "adc_extclk_in_div",
-+		.ops = &clk_regmap_divider_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_adc_extclk_in_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_adc_extclk_in = {
-+	.data = &(struct clk_regmap_gate_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.bit_idx = 24
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "adc_extclk_in",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_adc_extclk_in_div.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- #define MESON_GATE(_name, _reg, _bit) \
- 	MESON_PCLK(_name, _reg, _bit, &s4_sys_clk.hw)
- 
-@@ -3453,6 +3645,17 @@ static struct clk_hw *s4_periphs_hw_clks[] = {
- 	[CLKID_HDCP22_SKPCLK_SEL]	= &s4_hdcp22_skpclk_mux.hw,
- 	[CLKID_HDCP22_SKPCLK_DIV]	= &s4_hdcp22_skpclk_div.hw,
- 	[CLKID_HDCP22_SKPCLK]		= &s4_hdcp22_skpclk_gate.hw,
-+	[CLKID_CTS_ENCL_SEL]		= &s4_cts_encl_sel.hw,
-+	[CLKID_CTS_ENCL]		= &s4_cts_encl.hw,
-+	[CLKID_CDAC_SEL]		= &s4_cdac_sel.hw,
-+	[CLKID_CDAC_DIV]		= &s4_cdac_div.hw,
-+	[CLKID_CDAC]			= &s4_cdac.hw,
-+	[CLKID_DEMOD_CORE_SEL]		= &s4_demod_core_sel.hw,
-+	[CLKID_DEMOD_CORE_DIV]		= &s4_demod_core_div.hw,
-+	[CLKID_DEMOD_CORE]		= &s4_demod_core.hw,
-+	[CLKID_ADC_EXTCLK_IN_SEL]	= &s4_adc_extclk_in_sel.hw,
-+	[CLKID_ADC_EXTCLK_IN_DIV]	= &s4_adc_extclk_in_div.hw,
-+	[CLKID_ADC_EXTCLK_IN]		= &s4_adc_extclk_in.hw,
- };
- 
- static const struct regmap_config clkc_regmap_config = {
+Changes in v3:
+- Macros renamed and added to the patch using it.
+- Using unsigned for sensor configuration parameters.
+- Using sizeof instead of raw values.
+- Using fsleep instead of usleep.
+- Simplified dt-bindings examples, setting supplies as mandatory
+- Fix bad or useless casts.
+- Partially aligned power management following 20250709-icm42pmreg-v1-0-3d0e793c99b2@geanix.com
+- Fix "uninitialized symbols" warnings.
+- Link to v2: https://lore.kernel.org/r/20250710-add_newport_driver-v2-0-bf76d8142ef2@tdk.com
 
+Changes in v2:
+- Reworked patches order and content to ease review and make sure everything compiles
+- Reworked gyro and accel FSR as 2D arrays
+- Moved temperature processed sensor to core module
+- Use latest API to claim/release device
+- Implemented chip_info structure instead of relying on an enum
+- Removed power-mode ABI, only relying on ODR to switch power_mode
+- Reworked regulator control to use devm_ API where relevant
+- Reworked inv_icm45600_state.buffer as a union to avoid casts, using getter/setter instead of memcpy
+- Fixed dt-binding error and moved patch at the beginning of the patch-set
+- Reworked macros to use FIELD_PREP inline instead of inside the header
+- Fixed comment's grammar
+- Removed extra blank lines
+- Reordered part numbers alphanumerically
+- Removed useless default/error fallbacks
+- Typed accel, gyro and timestamp data when parsing FIFO
+- Fixed I2C module return code
+- Use Linux types instead of C standard
+- Reviewed headers inclusion to remove useless #include and to add missing ones
+- Link to v1: https://lore.kernel.org/r/20250411-add_newport_driver-v1-0-15082160b019@tdk.com
+
+---
+Remi Buisson (9):
+      dt-bindings: iio: imu: Add inv_icm45600
+      iio: imu: inv_icm45600: add new inv_icm45600 driver
+      iio: imu: inv_icm45600: add buffer support in iio devices
+      iio: imu: inv_icm45600: add IMU IIO gyroscope device
+      iio: imu: inv_icm45600: add IMU IIO accelerometer device
+      iio: imu: inv_icm45600: add I2C driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add SPI driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add I3C driver for inv_icm45600 driver
+      MAINTAINERS: add entry for inv_icm45600 6-axis imu sensor
+
+ .../bindings/iio/imu/invensense,icm45600.yaml      |  97 ++
+ MAINTAINERS                                        |   8 +
+ drivers/iio/imu/Kconfig                            |   1 +
+ drivers/iio/imu/Makefile                           |   1 +
+ drivers/iio/imu/inv_icm45600/Kconfig               |  70 ++
+ drivers/iio/imu/inv_icm45600/Makefile              |  16 +
+ drivers/iio/imu/inv_icm45600/inv_icm45600.h        | 380 ++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c  | 781 +++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 572 ++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.h | 101 +++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_core.c   | 976 +++++++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c   | 792 +++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c    |  98 +++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c    |  77 ++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c    | 106 +++
+ 15 files changed, 4076 insertions(+)
+---
+base-commit: f8f559752d573a051a984adda8d2d1464f92f954
+change-id: 20250411-add_newport_driver-529cf5b71ea8
+
+Best regards,
 -- 
-2.42.0
+Remi Buisson <remi.buisson@tdk.com>
 
