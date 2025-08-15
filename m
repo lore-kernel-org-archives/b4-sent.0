@@ -1,363 +1,63 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Fri, 15 Aug 2025 16:37:39 +0800
-Subject: [PATCH 13/13] arm64: dts: amlogic: S6: Add clk-measure controller
- node
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Fri, 15 Aug 2025 16:56:39 +0800
+Subject: [PATCH] ACPICA: add more parameter validation for
+ acpi_walk_namespace()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250815-add-more-socs-to-support-clk_measure-v1-13-59f04ba67457@amlogic.com>
-References: <20250815-add-more-socs-to-support-clk_measure-v1-0-59f04ba67457@amlogic.com>
-In-Reply-To: <20250815-add-more-socs-to-support-clk_measure-v1-0-59f04ba67457@amlogic.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755247057; l=7872;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=JGpYLHPu4HOmr+mDeiIXrC30j92VsgQpCg8JGdcHu0A=;
- b=sylv3HjOSOUxRyDdjkKPtqnqECv24/9zfray8sW2hRkH8c0a6IDZlEJc8fXAJVqS7Ler1D147
- 0DzlafTi20JCRcJxAJIEXrj2sQN9uc9o53uCfGf6MD/8chNiiW+Kzc3
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+Message-Id: <20250815-acpi_fix-v1-1-a05ebfe1b8ac@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAEb2nmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDC0NT3cTkgsz4tMwKXWNzI5NUs2STlEQDIyWg8oKiVKAw2Kjo2NpaAKq
+ N1oJaAAAA
+X-Change-ID: 20250815-acpi_fix-3724e6c4da02
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Robert Moore <robert.moore@intel.com>, Len Brown <lenb@kernel.org>
+Cc: linux-acpi@vger.kernel.org, acpica-devel@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, wangyuli@uniontech.com, 
+ guanwentao@uniontech.com, niecheng1@uniontech.com, zhanjun@uniontech.com, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755248199; l=1219;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=TsnirmhdVe95wU+g+49Bvoj0s1Au2GOZZ9diwqQO6Lc=;
+ b=sdZiZROQGQifna8Wfyn1Q9udujXPJBP3+KY88fRSul/V+zzMEqmEK6+0L2CgrbIC0AD/2g8sL
+ fRoZUvajx4oCPt7xrDmguQSeIxaJutZUblGtKdK3xHjwupTMI6Yzr3C
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the clk-measure controller node for S6 SoC family.
+On the Honor FMB-P-PCB laptop, an incorrect ACPI table causes
+sdw_intel_acpi_scan to pass a NULL pointer as start_object to
+acpi_walk_namespace() when calling it, which eventually causes the
+kernel to report a NULL pointer dereference[1].
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+1. https://gist.github.com/Cryolitia/a860ffc97437dcd2cd988371d5b73ed7
+
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi | 312 ++++++++++++++++++++++++++++
- 1 file changed, 312 insertions(+)
+ drivers/acpi/acpica/nsxfeval.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi
-index 5f602f1170c0..b8dbdad91d79 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi
-@@ -189,6 +189,318 @@ gpiocc: gpio@300 {
- 					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_CC<<8) 2>;
- 				};
- 			};
-+
-+			clk_msr: clock-measure@48000 {
-+				compatible = "amlogic,clk-measure";
-+				reg = <0x0 0x48000 0x0 0x1c>;
-+				clkmsr-reg-v2;
-+				clkmsr-indices = <0>,
-+						 <1>,
-+						 <2>,
-+						 <3>,
-+						 <4>,
-+						 <5>,
-+						 <6>,
-+						 <7>,
-+						 <8>,
-+						 <9>,
-+						 <10>,
-+						 <11>,
-+						 <12>,
-+						 <13>,
-+						 <15>,
-+						 <18>,
-+						 <19>,
-+						 <20>,
-+						 <21>,
-+						 <22>,
-+						 <23>,
-+						 <24>,
-+						 <25>,
-+						 <26>,
-+						 <27>,
-+						 <28>,
-+						 <29>,
-+						 <30>,
-+						 <32>,
-+						 <33>,
-+						 <34>,
-+						 <36>,
-+						 <37>,
-+						 <38>,
-+						 <39>,
-+						 <40>,
-+						 <49>,
-+						 <50>,
-+						 <51>,
-+						 <52>,
-+						 <53>,
-+						 <54>,
-+						 <55>,
-+						 <57>,
-+						 <58>,
-+						 <59>,
-+						 <60>,
-+						 <61>,
-+						 <62>,
-+						 <63>,
-+						 <64>,
-+						 <65>,
-+						 <66>,
-+						 <67>,
-+						 <70>,
-+						 <71>,
-+						 <72>,
-+						 <73>,
-+						 <74>,
-+						 <75>,
-+						 <76>,
-+						 <77>,
-+						 <78>,
-+						 <79>,
-+						 <80>,
-+						 <81>,
-+						 <82>,
-+						 <84>,
-+						 <85>,
-+						 <86>,
-+						 <87>,
-+						 <88>,
-+						 <89>,
-+						 <93>,
-+						 <99>,
-+						 <106>,
-+						 <108>,
-+						 <109>,
-+						 <110>,
-+						 <111>,
-+						 <113>,
-+						 <114>,
-+						 <115>,
-+						 <116>,
-+						 <117>,
-+						 <118>,
-+						 <121>,
-+						 <130>,
-+						 <132>,
-+						 <133>,
-+						 <134>,
-+						 <135>,
-+						 <136>,
-+						 <137>,
-+						 <138>,
-+						 <139>,
-+						 <140>,
-+						 <141>,
-+						 <142>,
-+						 <143>,
-+						 <144>,
-+						 <145>,
-+						 <147>,
-+						 <148>,
-+						 <149>,
-+						 <150>,
-+						 <151>,
-+						 <152>,
-+						 <153>,
-+						 <154>,
-+						 <160>,
-+						 <161>,
-+						 <162>,
-+						 <163>,
-+						 <164>,
-+						 <165>,
-+						 <166>,
-+						 <167>,
-+						 <168>,
-+						 <169>,
-+						 <175>,
-+						 <176>,
-+						 <177>,
-+						 <178>,
-+						 <179>,
-+						 <180>,
-+						 <181>,
-+						 <182>,
-+						 <183>,
-+						 <184>,
-+						 <185>,
-+						 <186>,
-+						 <187>,
-+						 <188>,
-+						 <189>,
-+						 <190>,
-+						 <191>,
-+						 <192>,
-+						 <193>,
-+						 <194>,
-+						 <195>,
-+						 <196>,
-+						 <197>,
-+						 <198>,
-+						 <199>,
-+						 <201>,
-+						 <204>,
-+						 <205>,
-+						 <206>,
-+						 <207>,
-+						 <208>,
-+						 <209>,
-+						 <210>;
-+				clkmsr-names = "sys_clk",
-+					       "axi_clk",
-+					       "rtc_clk",
-+					       "dspa",
-+					       "mali_stack",
-+					       "mali",
-+					       "cpu_clk_div16",
-+					       "mali_aclkm",
-+					       "cecb_clk",
-+					       "gp2_pll",
-+					       "fclk_div5",
-+					       "p21_usb2_ckout",
-+					       "p20_usb2_ckout",
-+					       "eth_mpll_test",
-+					       "fclk_50m",
-+					       "gp1_pll",
-+					       "hifi_pll",
-+					       "gp0_pll",
-+					       "hifi1_pll",
-+					       "eth_fclk_50m_ckout",
-+					       "sys_pll_div16",
-+					       "ddr_dpll_pt_clk",
-+					       "mod_Tsin_A_CLK_IN",
-+					       "ext_Tsin_B_CLK_IN",
-+					       "mod_Tsin_C_CLK_IN",
-+					       "mod_Tsin_D_CLK_IN",
-+					       "dsi_pll_div_clk_out",
-+					       "dsi_pll_clk",
-+					       "eth_125m",
-+					       "eth_rmii",
-+					       "co_clkin_to_mac",
-+					       "co_rx_clk",
-+					       "co_tx_clk",
-+					       "eth_phy_rxclk",
-+					       "eth_phy_plltxclk",
-+					       "ephy_test_clk",
-+					       "hdmi_vx1_pix_clk",
-+					       "vid_pll_div_clk_out",
-+					       "enci",
-+					       "encp",
-+					       "encl",
-+					       "vdac",
-+					       "cdac",
-+					       "lcd_an_ph2",
-+					       "lcd_an_ph3",
-+					       "hdmitx_pixel",
-+					       "vdin_meas",
-+					       "vpu",
-+					       "vpu_clkb",
-+					       "vpu_clkb_tmp",
-+					       "vpu_clkc",
-+					       "vid_lock",
-+					       "vapb",
-+					       "ge2d",
-+					       "dsi_meas",
-+					       "dsi_phy",
-+					       "csi_phy",
-+					       "cts_csi2_adapt_clk",
-+					       "cts_csi2_data ",
-+					       "csi_phy_out",
-+					       "hdmitx_tmds",
-+					       "hdmitx_sys",
-+					       "hdmitx_fe",
-+					       "rama_clk",
-+					       "hdmitx_prif",
-+					       "hdmitx_200m",
-+					       "hdmitx_aud",
-+					       "audio_tohdmitx_mclk",
-+					       "audio_tohdmitx_bclk",
-+					       "audio_tohdmitx_lrclk",
-+					       "audio_tohdmitx_spdif_clk",
-+					       "htx_aes_clk",
-+					       "amfc",
-+					       "vdec",
-+					       "hevcf",
-+					       "deskew_pll_clk_div32_out",
-+					       "cmpr",
-+					       "dewarpa",
-+					       "sc",
-+					       "aux_adc_clk",
-+					       "sd_emmc_c",
-+					       "sd_emmc_b",
-+					       "sd_emmc_a",
-+					       "gpio_msr_clk",
-+					       "aux_clk_o",
-+					       "spicc",
-+					       "ts",
-+					       "o_vad_clk",
-+					       "audio_locker_in_clk",
-+					       "audio_locker_out_clk",
-+					       "audio_tdmout_c_sclk",
-+					       "audio_tdmout_b_sclk",
-+					       "audio_tdmout_a_sclk",
-+					       "audio_tdmin_lb_sclk",
-+					       "audio_tdmin_c_sclk",
-+					       "audio_tdmin_b_sclk",
-+					       "audio_tdmin_a_sclk",
-+					       "audio_resamplea_clk",
-+					       "audio_pdm_sysclk",
-+					       "audio_spdifout_b_mst_clk",
-+					       "audio_spdifout_mst_clk",
-+					       "audio_spdifin_mst_clk",
-+					       "audio_resampleb_clk",
-+					       "pcie_pipe_clk",
-+					       "pcie_ref_clk",
-+					       "pcie_upcrx_cdrclk",
-+					       "pcie_upcrx_clk_sync_b20",
-+					       "pcie_u3p2pll1_clk_div16",
-+					       "pcie_u3p2pll0_clkout",
-+					       "pcie_ref_clk_p",
-+					       "pwm_j",
-+					       "pwm_i",
-+					       "pwm_h",
-+					       "pwm_g",
-+					       "pwm_f",
-+					       "pwm_e",
-+					       "pwm_d",
-+					       "pwm_c",
-+					       "pwm_b",
-+					       "pwm_a",
-+					       "rng_ring_clk[0]",
-+					       "rng_ring_clk[1]",
-+					       "rng_ring_clk[2]",
-+					       "rng_ring_clk[3]",
-+					       "rng_ring_clk[4]",
-+					       "am_ring_osc_clk_out[0]",
-+					       "am_ring_osc_clk_out[1]",
-+					       "am_ring_osc_clk_out[2]",
-+					       "am_ring_osc_clk_out[3]",
-+					       "am_ring_osc_clk_out[4]",
-+					       "am_ring_osc_clk_out[5]",
-+					       "am_ring_osc_clk_out[6]",
-+					       "am_ring_osc_clk_out[7]",
-+					       "am_ring_osc_clk_out[8]",
-+					       "am_ring_osc_clk_out[9]",
-+					       "am_ring_osc_clk_out[10]",
-+					       "am_ring_osc_clk_out[11]",
-+					       "am_ring_osc_clk_out[12]",
-+					       "am_ring_osc_clk_out[13]",
-+					       "am_ring_osc_clk_out[14]",
-+					       "am_ring_osc_clk_out[15]",
-+					       "am_ring_osc_clk_out[16]",
-+					       "nna_core",
-+					       "vc9000e_aclk",
-+					       "vc9000e_core",
-+					       "pcie_tl",
-+					       "u3p2pll1_clk_div16",
-+					       "u3p2pll0_clkout",
-+					       "upctx_clk_sync_b20",
-+					       "upcrx_carclk",
-+					       "usb_pipe_clk",
-+					       "earcrx_pll_out",
-+					       "mclk_pll";
-+			};
- 		};
- 	};
- };
+diff --git a/drivers/acpi/acpica/nsxfeval.c b/drivers/acpi/acpica/nsxfeval.c
+index f9d059647cc52e94ce013af3382addba338820e8..c1f318ea7d5fcd846dc158b155286a6f5bba4cff 100644
+--- a/drivers/acpi/acpica/nsxfeval.c
++++ b/drivers/acpi/acpica/nsxfeval.c
+@@ -564,7 +564,7 @@ acpi_walk_namespace(acpi_object_type type,
+ 
+ 	/* Parameter validation */
+ 
+-	if ((type > ACPI_TYPE_LOCAL_MAX) ||
++	if ((type > ACPI_TYPE_LOCAL_MAX) || (start_object == NULL) ||
+ 	    (!max_depth) || (!descending_callback && !ascending_callback)) {
+ 		return_ACPI_STATUS(AE_BAD_PARAMETER);
+ 	}
 
+---
+base-commit: 24ea63ea387714634813359e2c8e0e6c36952f73
+change-id: 20250815-acpi_fix-3724e6c4da02
+
+Best regards,
 -- 
-2.42.0
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
