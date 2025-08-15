@@ -1,151 +1,60 @@
-From: Nickolay Goppen <setotau@yandex.ru>
-Date: Fri, 15 Aug 2025 19:56:52 +0300
-Subject: [PATCH 2/2] clk: qcom: gcc-sdm660: Add missing LPASS/CDSP vote
- clocks
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH v2 0/2] Fixes for maxim tcpc contaminant detection logic
+Date: Fri, 15 Aug 2025 11:31:50 -0700
+Message-Id: <20250815-fix-upstream-contaminant-v2-0-6c8d6c3adafb@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250815-gcc-sdm660-vote-clocks-and-gdscs-v1-2-c5a8af040093@yandex.ru>
-References: <20250815-gcc-sdm660-vote-clocks-and-gdscs-v1-0-c5a8af040093@yandex.ru>
-In-Reply-To: <20250815-gcc-sdm660-vote-clocks-and-gdscs-v1-0-c5a8af040093@yandex.ru>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Nickolay Goppen <setotau@yandex.ru>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIABZ9n2gC/3WNwQ6CMBBEf4Xs2TW7VbFw8j8Mh6au0ERa0laiI
+ fy7lXj1+CYzbxZIEp0kaKsFoswuueALqF0FdjC+F3S3wqBInUiTwrt74XNKOYoZ0Qafzei88Rm
+ 5bphEnWtlDZT5FKV0N/W1Kzy4lEN8b08zf9OflI//pTMjoSa2okk3dOBLH0L/kL0NI3Trun4Ap
+ 7q6N8EAAAA=
+X-Change-ID: 20250802-fix-upstream-contaminant-16910e2762ca
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, RD Babiera <rdbabiera@google.com>, 
+ Kyle Tso <kyletso@google.com>, 
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, 
+ Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755277013; l=3670;
- i=setotau@yandex.ru; s=20250815; h=from:subject:message-id;
- bh=X6/ri844i2ly7ZOG0yiJaP7SUffxbwteMISWIbXh6r0=;
- b=HuolyR9GWC21w2uCY+YDwdApm9VK5PTQTV9zv+Iyv+j47UnMQ0TChMXhDiz1mi/kNU9pS0Cxk
- zccW+gYqsH8Cgdmf0cWJnjd3tkEahbU7MOkwgIfABI2afTNaz1wxDrM
-X-Developer-Key: i=setotau@yandex.ru; a=ed25519;
- pk=Og7YO6LfW+M2QfcJfjaUaXc8oOr5zoK8+4AtX5ICr4o=
-X-Endpoint-Received: by B4 Relay for setotau@yandex.ru/20250815 with auth_id=492
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755282735; l=964;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=9z3lCu74Prxu4L02rJ9U7O515gDUwPsAhghQTM6Eae4=;
+ b=Bfs56Qain5NfOqRZiiIJtu4ekQ+VVRIl0m0t7N1+x6vcxbjSKyqEoK6EXWZ5uJr/H1IreLjqr
+ Vr02/CkUb2pBZVM5X2fjzY3k2Z+FUCc7/nGe7h/nKAx0okOQQqr3wu8
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For the proper functioning of SMMUs related to the audio/compute DSPs,
-it makes sense that the clocks and power domains they rely on for
-communication should be online.
+Add fixes to the CC contaminant/connection detection logic to improve
+reliability and stability of the maxim tcpc driver. This patchset has
+been tested on a PD Tester.
 
-Add the vote clocks & GDSCs that, when enabled, ensure all such
-requirements are met, through various internal mechanisms.
-
-Co-developed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Nickolay Goppen <setotau@yandex.ru>
 ---
- drivers/clk/qcom/gcc-sdm660.c | 72 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 72 insertions(+)
+Changes in v2:
+- Fix improperly formatted patch for stable inclusion. Tagged every
+  patch in patchset for stable.
+- Link to v1: https://lore.kernel.org/r/20250814-fix-upstream-contaminant-v1-0-801ce8089031@google.com
 
-diff --git a/drivers/clk/qcom/gcc-sdm660.c b/drivers/clk/qcom/gcc-sdm660.c
-index 01a76f1b5b4c146937a4f5fa0011309fd6ed6be8..20253a06a5839b7265548b4f9fdc1ffc9cf6f9f5 100644
---- a/drivers/clk/qcom/gcc-sdm660.c
-+++ b/drivers/clk/qcom/gcc-sdm660.c
-@@ -2247,6 +2247,45 @@ static struct clk_branch gcc_usb_phy_cfg_ahb2phy_clk = {
- 	},
- };
- 
-+static struct clk_branch hlos1_vote_lpass_adsp_smmu_clk = {
-+	.halt_reg = 0x7d014,
-+	.halt_check = BRANCH_VOTED,
-+	.clkr = {
-+		.enable_reg = 0x7d014,
-+		.enable_mask = BIT(0),
-+		.hw.init = &(const struct clk_init_data) {
-+			.name = "hlos1_vote_lpass_adsp_smmu_clk",
-+			.ops = &clk_branch2_ops,
-+		},
-+	},
-+};
-+
-+static struct clk_branch hlos1_vote_turing_adsp_smmu_clk = {
-+	.halt_reg = 0x7d048,
-+	.halt_check = BRANCH_VOTED,
-+	.clkr = {
-+		.enable_reg = 0x7d048,
-+		.enable_mask = BIT(0),
-+		.hw.init = &(const struct clk_init_data) {
-+			.name = "hlos1_vote_turing_adsp_smmu_clk",
-+			.ops = &clk_branch2_ops,
-+		},
-+	},
-+};
-+
-+static struct clk_branch hlos2_vote_turing_adsp_smmu_clk = {
-+	.halt_reg = 0x7e048,
-+	.halt_check = BRANCH_VOTED,
-+	.clkr = {
-+		.enable_reg = 0x7e048,
-+		.enable_mask = BIT(0),
-+		.hw.init = &(const struct clk_init_data) {
-+			.name = "hlos2_vote_turing_adsp_smmu_clk",
-+			.ops = &clk_branch2_ops,
-+		},
-+	},
-+};
-+
- static struct gdsc ufs_gdsc = {
- 	.gdscr = 0x75004,
- 	.gds_hw_ctrl = 0x0,
-@@ -2277,6 +2316,33 @@ static struct gdsc pcie_0_gdsc = {
- 	.flags = VOTABLE,
- };
- 
-+static struct gdsc hlos1_vote_turing_adsp_gdsc = {
-+	.gdscr = 0x7d04c,
-+	.pd = {
-+		.name = "hlos1_vote_turing_adsp_gdsc",
-+	},
-+	.pwrsts = PWRSTS_OFF_ON,
-+	.flags = VOTABLE,
-+};
-+
-+static struct gdsc hlos2_vote_turing_adsp_gdsc = {
-+	.gdscr = 0x7e04c,
-+	.pd = {
-+		.name = "hlos2_vote_turing_adsp_gdsc",
-+	},
-+	.pwrsts = PWRSTS_OFF_ON,
-+	.flags = VOTABLE,
-+};
-+
-+static struct gdsc hlos1_vote_lpass_adsp_gdsc = {
-+	.gdscr = 0x7d034,
-+	.pd = {
-+		.name = "hlos1_vote_lpass_adsp_gdsc",
-+	},
-+	.pwrsts = PWRSTS_OFF_ON,
-+	.flags = VOTABLE,
-+};
-+
- static struct clk_hw *gcc_sdm660_hws[] = {
- 	&xo.hw,
- 	&gpll0_early_div.hw,
-@@ -2409,12 +2475,18 @@ static struct clk_regmap *gcc_sdm660_clocks[] = {
- 	[USB30_MASTER_CLK_SRC] = &usb30_master_clk_src.clkr,
- 	[USB30_MOCK_UTMI_CLK_SRC] = &usb30_mock_utmi_clk_src.clkr,
- 	[USB3_PHY_AUX_CLK_SRC] = &usb3_phy_aux_clk_src.clkr,
-+	[GCC_HLOS1_VOTE_LPASS_ADSP_SMMU_CLK] = &hlos1_vote_lpass_adsp_smmu_clk.clkr,
-+	[GCC_HLOS1_VOTE_TURING_ADSP_SMMU_CLK] = &hlos1_vote_turing_adsp_smmu_clk.clkr,
-+	[GCC_HLOS2_VOTE_TURING_ADSP_SMMU_CLK] = &hlos2_vote_turing_adsp_smmu_clk.clkr,
- };
- 
- static struct gdsc *gcc_sdm660_gdscs[] = {
- 	[UFS_GDSC] = &ufs_gdsc,
- 	[USB_30_GDSC] = &usb_30_gdsc,
- 	[PCIE_0_GDSC] = &pcie_0_gdsc,
-+	[HLOS1_VOTE_TURING_ADSP_GDSC] = &hlos1_vote_turing_adsp_gdsc,
-+	[HLOS2_VOTE_TURING_ADSP_GDSC] = &hlos2_vote_turing_adsp_gdsc,
-+	[HLOS1_VOTE_LPASS_ADSP_GDSC] = &hlos1_vote_lpass_adsp_gdsc,
- };
- 
- static const struct qcom_reset_map gcc_sdm660_resets[] = {
+---
+Amit Sunil Dhamne (2):
+      usb: typec: maxim_contaminant: disable low power mode when reading comparator values
+      usb: typec: maxim_contaminant: re-enable cc toggle if cc is open and port is clean
 
+ drivers/usb/typec/tcpm/maxim_contaminant.c | 58 ++++++++++++++++++++++++++++++
+ drivers/usb/typec/tcpm/tcpci_maxim.h       |  1 +
+ 2 files changed, 59 insertions(+)
+---
+base-commit: 89be9a83ccf1f88522317ce02f854f30d6115c41
+change-id: 20250802-fix-upstream-contaminant-16910e2762ca
+
+Best regards,
 -- 
-2.50.1
+Amit Sunil Dhamne <amitsd@google.com>
 
