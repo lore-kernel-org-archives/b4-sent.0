@@ -1,14 +1,13 @@
 From: Amit Sunil Dhamne <amitsd@google.com>
-Subject: [PATCH 0/2] Fixes for maxim tcpc contaminant detection logic
-Date: Thu, 14 Aug 2025 19:34:08 -0700
-Message-Id: <20250814-fix-upstream-contaminant-v1-0-801ce8089031@google.com>
+Date: Thu, 14 Aug 2025 19:34:09 -0700
+Subject: [PATCH 1/2] usb: typec: maxim_contaminant: disable low power mode
+ when reading comparator values
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKCcnmgC/x2MQQqDMBAAvyJ77kKyoLX9SulhiWvdQ1ZJUhGCf
- zd4HJiZClmSSoZ3VyHJrllXa+AfHYSF7SeoU2MgR70bHeGsB/63XJJwxLBa4ajGVtAPL++EngM
- FhpZvSZp7rz/f87wAiqpoo2oAAAA=
-X-Change-ID: 20250802-fix-upstream-contaminant-16910e2762ca
+Message-Id: <20250814-fix-upstream-contaminant-v1-1-801ce8089031@google.com>
+References: <20250814-fix-upstream-contaminant-v1-0-801ce8089031@google.com>
+In-Reply-To: <20250814-fix-upstream-contaminant-v1-0-801ce8089031@google.com>
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Badhri Jagan Sridharan <badhri@google.com>, 
@@ -21,32 +20,61 @@ Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org,
  Tudor Ambarus <tudor.ambarus@linaro.org>, 
  Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755225269; l=688;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755225269; l=2298;
  i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=WOkfKQC4WAjGci8A3ZUdsKmLH/c07Chzph9ljFleBWE=;
- b=kK7Du+pE7rMDWYGp31Blr5Vm6EadjFMHsK2roZUl+5IhWaPHLdacfMjsxdTaXDrc3e6QNNdVk
- ttUrzC/U+sODYQQf5pGyOKXpoRmiTfezbp3Q1lDT5b9UBId5SD7jdUW
+ bh=IsDjcaTu0txvpO4BMMBaJgeRGe/D8aQMvWNWtW/9v68=;
+ b=DhXf9G2VfVomiDbAtZDudyhA2IH0NYdVz0VlTPrYYAa+m4E0Jf4y6NSnhPTR5aANuZB0In+OX
+ 6t5MMxblL7QDvAY5ouWpewTNaYy7s3O9RwfbTYXUbt8xfinDe0v5vPx
 X-Developer-Key: i=amitsd@google.com; a=ed25519;
  pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
 X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add fixes to the CC contaminant/connection detection logic to improve
-reliability and stability of the maxim tcpc driver.
+Low power mode is enabled when reading CC resistance as part of
+`max_contaminant_read_resistance_kohm()` and left in that state.
+However, it's supposed to work with 1uA current source. To read CC
+comparator values current source is changed to 80uA. This causes a storm
+of CC interrupts as it (falsely) detects a potential contaminant. To
+prevent this, disable low power mode current sourcing before reading
+comparator values.
 
+Fixes: 02b332a06397 ("usb: typec: maxim_contaminant: Implement check_contaminant callback")
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
+Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
 ---
-Amit Sunil Dhamne (2):
-      usb: typec: maxim_contaminant: disable low power mode when reading comparator values
-      usb: typec: maxim_contaminant: re-enable cc toggle if cc is open and port is clean
+ drivers/usb/typec/tcpm/maxim_contaminant.c | 5 +++++
+ drivers/usb/typec/tcpm/tcpci_maxim.h       | 1 +
+ 2 files changed, 6 insertions(+)
 
- drivers/usb/typec/tcpm/maxim_contaminant.c | 58 ++++++++++++++++++++++++++++++
- drivers/usb/typec/tcpm/tcpci_maxim.h       |  1 +
- 2 files changed, 59 insertions(+)
----
-base-commit: 89be9a83ccf1f88522317ce02f854f30d6115c41
-change-id: 20250802-fix-upstream-contaminant-16910e2762ca
+diff --git a/drivers/usb/typec/tcpm/maxim_contaminant.c b/drivers/usb/typec/tcpm/maxim_contaminant.c
+index 0cdda06592fd3cc34e2179ccd49ef677f8ec9792..818cfe226ac7716de2fcbce205c67ea16acba592 100644
+--- a/drivers/usb/typec/tcpm/maxim_contaminant.c
++++ b/drivers/usb/typec/tcpm/maxim_contaminant.c
+@@ -188,6 +188,11 @@ static int max_contaminant_read_comparators(struct max_tcpci_chip *chip, u8 *ven
+ 	if (ret < 0)
+ 		return ret;
+ 
++	/* Disable low power mode */
++	ret = regmap_update_bits(regmap, TCPC_VENDOR_CC_CTRL2, CCLPMODESEL,
++				 FIELD_PREP(CCLPMODESEL,
++					    LOW_POWER_MODE_DISABLE));
++
+ 	/* Sleep to allow comparators settle */
+ 	usleep_range(5000, 6000);
+ 	ret = regmap_update_bits(regmap, TCPC_TCPC_CTRL, TCPC_TCPC_CTRL_ORIENTATION, PLUG_ORNT_CC1);
+diff --git a/drivers/usb/typec/tcpm/tcpci_maxim.h b/drivers/usb/typec/tcpm/tcpci_maxim.h
+index 76270d5c283880dc49b13cabe7d682f2c2bf15fe..b33540a42a953dc6d8197790ee4af3b6f52791ce 100644
+--- a/drivers/usb/typec/tcpm/tcpci_maxim.h
++++ b/drivers/usb/typec/tcpm/tcpci_maxim.h
+@@ -21,6 +21,7 @@
+ #define CCOVPDIS                                BIT(6)
+ #define SBURPCTRL                               BIT(5)
+ #define CCLPMODESEL                             GENMASK(4, 3)
++#define LOW_POWER_MODE_DISABLE                  0
+ #define ULTRA_LOW_POWER_MODE                    1
+ #define CCRPCTRL                                GENMASK(2, 0)
+ #define UA_1_SRC                                1
 
-Best regards,
 -- 
-Amit Sunil Dhamne <amitsd@google.com>
+2.51.0.rc1.167.g924127e9c0-goog
 
