@@ -1,11 +1,11 @@
 From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Fri, 15 Aug 2025 16:37:35 +0800
-Subject: [PATCH 09/13] arm64: dts: amlogic: A4: Add clk-measure controller
+Date: Fri, 15 Aug 2025 16:37:36 +0800
+Subject: [PATCH 10/13] arm64: dts: amlogic: A5: Add clk-measure controller
  node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250815-add-more-socs-to-support-clk_measure-v1-9-59f04ba67457@amlogic.com>
+Message-Id: <20250815-add-more-socs-to-support-clk_measure-v1-10-59f04ba67457@amlogic.com>
 References: <20250815-add-more-socs-to-support-clk_measure-v1-0-59f04ba67457@amlogic.com>
 In-Reply-To: <20250815-add-more-socs-to-support-clk_measure-v1-0-59f04ba67457@amlogic.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,31 +17,32 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Chuan Liu <chuan.liu@amlogic.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755247057; l=5269;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755247057; l=4959;
  i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=X0XY9aZjdMBy/BejERaULKB1+6dEiqZglq+Tq7M/WTk=;
- b=r7nrSwjawPgfJtx0VHM0LteREbh/rLUqECbuzDuRObH93zlbrdxKoHYaVrS33WF3uPmy86T+3
- tAQjLfMTPz9CuYpGDyRCoMp91fHSeBCv0ATINdpo3wpoBmJQBrSvH5m
+ bh=+rNhxW5k+895xe8+dWTUbJTXjfJCo6DlrCn7/3Oc7eA=;
+ b=3tf/QeTEs7Rnm4u+NO5CEpipA5qttEyM8fZzYxsaHoHpoc3j5zJngsaeFQ1MMnMExrV39Nl42
+ 14hJ8lqPF7EAXLtsjOXo9FZcfejmRqiZ9OFyOVq720u1UY8dTS0yGxW
 X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
  pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
 X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the clk-measure controller node for A4 SoC family.
+Add the clk-measure controller node for A5 SoC family.
 
 Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi | 212 ++++++++++++++++++++++++++++
- 1 file changed, 212 insertions(+)
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi | 202 ++++++++++++++++++++++++++++
+ 1 file changed, 202 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-index 563bc2e662fa..471a4bd24bfb 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-@@ -170,6 +170,218 @@ gpio_intc: interrupt-controller@4080 {
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
+index b1da8cbaa25a..4db3ff4a0522 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
+@@ -67,4 +67,206 @@ gpio_intc: interrupt-controller@4080 {
+ 		amlogic,channel-interrupts =
  			<10 11 12 13 14 15 16 17 18 19 20 21>;
  	};
- 
++
 +	clk_msr: clock-measure@48000 {
 +		compatible = "amlogic,clk-measure";
 +		reg = <0x0 0x48000 0x0 0x1c>;
@@ -50,36 +51,28 @@ index 563bc2e662fa..471a4bd24bfb 100644
 +				 <1>,
 +				 <2>,
 +				 <3>,
-+				 <4>,
-+				 <5>,
 +				 <6>,
-+				 <8>,
 +				 <10>,
++				 <11>,
++				 <12>,
++				 <13>,
++				 <14>,
 +				 <15>,
 +				 <16>,
 +				 <17>,
++				 <18>,
 +				 <19>,
 +				 <20>,
 +				 <21>,
-+				 <22>,
 +				 <23>,
 +				 <24>,
++				 <25>,
++				 <26>,
 +				 <27>,
 +				 <28>,
 +				 <30>,
 +				 <31>,
-+				 <32>,
-+				 <33>,
-+				 <34>,
 +				 <35>,
-+				 <36>,
-+				 <37>,
-+				 <38>,
-+				 <39>,
-+				 <40>,
-+				 <41>,
-+				 <51>,
-+				 <52>,
 +				 <79>,
 +				 <106>,
 +				 <111>,
@@ -148,43 +141,38 @@ index 563bc2e662fa..471a4bd24bfb 100644
 +				 <183>,
 +				 <184>,
 +				 <185>,
-+				 <186>;
++				 <186>,
++				 <187>,
++				 <188>,
++				 <189>;
 +		clkmsr-names = "sys_clk",
 +			       "axi_clk",
 +			       "rtc_clk",
-+			       "p22_usb2_ckout",
-+			       "p21_usb2_ckout",
-+			       "p20_usb2_ckout",
++			       "dspa",
 +			       "cpu_clk_div16",
-+			       "eth_mpll_test",
 +			       "fclk_div5",
++			       "mpll0",
++			       "mpll1",
++			       "mpll2",
++			       "mpll3",
 +			       "fclk_50m",
 +			       "sys_oscin32k_i",
 +			       "rtc_pll",
++			       "mpll_clk_test_out",
 +			       "hifi_pll",
 +			       "gp0_pll",
 +			       "gp1_pll",
-+			       "eth_fclk_50m_clkout",
 +			       "sys_pll_div16",
 +			       "ddr_dpll_pt_clk",
++			       "nna_axi",
++			       "nna_core",
 +			       "rtc_sec_pulse_out",
 +			       "rtc_osc_clk_out",
 +			       "mod_eth_phy_ref_clk",
 +			       "mod_eth_tx_clk",
-+			       "eth_125m",
-+			       "eth_rmii",
-+			       "co_clkin_to_mac",
 +			       "mod_eth_rx_clk_rmii",
-+			       "co_rx_clk",
-+			       "co_tx_clk",
-+			       "eth_phy_rxclk",
-+			       "eth_phy_plltxclk",
-+			       "ephy_test_clk",
-+			       "audio_core_clk",
-+			       "vout_venc_clk_ph",
-+			       "vout_venc_clk",
 +			       "rama_clk",
-+			       "deskew_pll_test_clk",
++			       "deskew_pll_clk_div32_out",
 +			       "saradc",
 +			       "ts",
 +			       "sd_emmc_c",
@@ -200,7 +188,7 @@ index 563bc2e662fa..471a4bd24bfb 100644
 +			       "earcrx_dmac_clk",
 +			       "earcrx_cmdc_clk",
 +			       "earctx_dmac_clk",
-+			       "earctx_cmdc_clk",
++			       "earctx_dmdc_clk",
 +			       "tohdmitx_bclk",
 +			       "tohdmitx_mclk",
 +			       "tohdmitx_spdif_clk",
@@ -245,18 +233,18 @@ index 563bc2e662fa..471a4bd24bfb 100644
 +			       "rng_ring_osc_clk[1]",
 +			       "rng_ring_osc_clk[2]",
 +			       "rng_ring_osc_clk[3]",
++			       "dmc_osc_ring(LVT16)",
++			       "dsp_osc_ring(SVT16)",
++			       "axi_srama_osc_ring(SVT16)",
++			       "nna_osc_ring[0](ULVT20)",
++			       "nna_osc_ring[1](LVT16)",
 +			       "sys_cpu_osc_ring[0](ULVT16)",
 +			       "sys_cpu_osc_ring[1](ULVT20)",
 +			       "sys_cpu_osc_ring[2](ULVT16)",
-+			       "sys_cpu_osc_ring[3](ULVT16)",
-+			       "sys_cpu_osc_ring[4](ULVT16)",
-+			       "am_ring_osc_clk_out_top[0](SVT16)",
-+			       "am_ring_osc_clk_out_top[1](LVT20)";
++			       "sys_cpu_osc_ring[3](LVT16)",
++			       "axi_sramb_osc_ring(SVT16)";
 +	};
-+
- 	ao_pinctrl: pinctrl@8e700 {
- 		compatible = "amlogic,pinctrl-a4";
- 		#address-cells = <2>;
+ };
 
 -- 
 2.42.0
