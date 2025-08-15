@@ -1,146 +1,228 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Fri, 15 Aug 2025 18:43:26 +0800
-Subject: [PATCH v2] iio: imu: bmi270: Match PNP ID found on newer GPD
- firmware
+From: Ye He <ye.he@amlogic.com>
+Date: Fri, 15 Aug 2025 18:52:52 +0800
+Subject: [PATCH bluez] device: allow selecting target broadcast device for
+ synchronization
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250815-bmi270-gpd-acpi-v2-1-8e1db68d36d1@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAE0Pn2gC/2WOyw7CIBBFf6WZtRgYBYyr/ofpooWhnUUfgUo0T
- f9drEszq3OTe+5skCgyJbhXG0TKnHieCuCpAje0U0+CfWFAiVqiNKIbGa0U/eJF6xYWnq5eYed
- IGwultUQK/DqMj6bwwGmd4/sYyOqb/lz2Iv9cWYlyIbib7pRFY+rnVP5ZyQ1nN4/Q7Pv+AaKmZ
- QWyAAAA
-X-Change-ID: 20250206-bmi270-gpd-acpi-de4d12bce567
-To: Alex Lanzano <lanzano.alex@gmail.com>, 
- Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yao Zi <ziyao@disroot.org>, WangYuli <wangyuli@uniontech.com>, 
- Jun Zhan <zhanjun@uniontech.com>, Niecheng1@uniontech.com, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250815-adapter-sync-broadcast-v1-1-40cb1c92a5d1@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAIMRn2gC/x3MwQrCMAyA4VcZORtYSyvqq4iHtM00IN1INlHH3
+ n1lx+/w/ysYq7DBrVtB+SMmY21wpw7yi+qTUUoz+N7H/uIiUqFpZkX71YxJRyqZbMZrit6dQ+A
+ wJGjxpDzI9xjfIb0X/sNj23bJLDKWbwAAAA==
+X-Change-ID: 20250815-adapter-sync-broadcast-9b521644e4fb
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Ye He <ye.he@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755254606; l=3638;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=cRdDaRlLYPiX6dG03rLc7quVy0SONfVczgAvR3VW1gE=;
- b=VPB8N+7w56/MR5SXHKN09rA32MIAb4EzJnIMz0nXOGWrtjwuoD2nVeV3PELYN7FjgdAia4Hoi
- aKIl2kwkW3tCEzjZSgPx76Mq0OUnnzYAdayWgBh/lhgsvq3xfxvZZYz
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755255172; l=7413;
+ i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
+ bh=DwemcypPS4PBkhzkEjalaJxSIH9Iq/JreurztloSqYw=;
+ b=lRtF+5WHMt3kU8KcGHygcigcE6n1CVDAGNzBRRaa6J4o3vKswhOb5EWOLp96mEZfP7KTCs46t
+ Z9BYCzgxsv8BfN6felYNAGD6XhF28DzzMq0X5LgnJurYL5/+5O3KhlE
+X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
+ pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
+X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-GPD devices originally used BMI160 sensors with the "BMI0160" PNP ID.
-When they switched to BMI260 sensors in newer hardware, they reused
-the existing Windows driver which accepts both "BMI0160" and "BMI0260"
-IDs. Consequently, they kept "BMI0160" in DSDT tables for new BMI260
-devices, causing driver mismatches in Linux.
+When multiple broadcast devices are present, bluez currently
+defaults to synchronizing with the first one encountered during
+the LE discovery procedure. This behavior may not align with
+user expectations.
 
-1. GPD updated BIOS v0.40+[1] for newer devices to report "BMI0260" for
-BMI260 sensors to avoid loading bmi160 driver on Linux. While this
-isn't Bosch's VID;
-2. Bosch's official Windows driver uses "BMI0260" as a compatible ID
-3. We're seeing real devices shipping with "BMI0260" in DSDT
+This patch introduces a new SyncBroadcast method in device1,
+allowing applications to select the desired target from cached
+broadcast devices according to their own criteria — for example,
+choosing the device with the strongest RSSI or one matching a
+specific set of UUIDs.
 
-The DSDT excerpt of GPD G1619-04 with BIOS v0.40:
-
-Scope (_SB.I2CC)
-{
-    Device (BMA2)
-    {
-        Name (_ADR, Zero)  // _ADR: Address
-        Name (_HID, "BMI0260")  // _HID: Hardware ID
-        Name (_CID, "BMI0260")  // _CID: Compatible ID
-        Name (_DDN, "Accelerometer")  // _DDN: DOS Device Name
-        Name (_UID, One)  // _UID: Unique ID
-        Method (_CRS, 0, NotSerialized)  // _CRS: Current Resource Settings
-        {
-            Name (RBUF, ResourceTemplate ()
-            {
-                I2cSerialBusV2 (0x0069, ControllerInitiated, 0x00061A80,
-                    AddressingMode7Bit, "\\_SB.I2CC",
-                    0x00, ResourceConsumer, , Exclusive,
-                    )
-            })
-            Return (RBUF) /* \_SB_.I2CC.BMA2._CRS.RBUF */
-        }
-
-        OperationRegion (CMS2, SystemIO, 0x72, 0x02)
-        Field (CMS2, ByteAcc, NoLock, Preserve)
-        {
-            IND2,   8,
-            DAT2,   8
-        }
-
-        IndexField (IND2, DAT2, ByteAcc, NoLock, Preserve)
-        {
-            Offset (0x74),
-            BACS,   32
-        }
-
-        Method (ROMS, 0, NotSerialized)
-        {
-            Name (RBUF, Package (0x03)
-            {
-                "0 -1 0",
-                "-1 0 0",
-                "0 0 -1"
-            })
-            Return (RBUF) /* \_SB_.I2CC.BMA2.ROMS.RBUF */
-        }
-
-        Method (CALS, 1, NotSerialized)
-        {
-            Local0 = Arg0
-            If (((Local0 == Zero) || (Local0 == Ones)))
-            {
-                Return (Local0)
-            }
-            Else
-            {
-                BACS = Local0
-            }
-        }
-
-        Method (_STA, 0, NotSerialized)  // _STA: Status
-        {
-            Return (0x0F)
-        }
-    }
-}
-
-1. http://download.softwincn.com/WIN%20Max%202024/Max2-7840-BIOS-V0.41.zip
-
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+Signed-off-by: Ye He <ye.he@amlogic.com>
 ---
-Changes in v2:
-- Improve commit message
-- Add DSDT table
-- Link to v1: https://lore.kernel.org/r/20250730-bmi270-gpd-acpi-v1-1-1ffc85b17266@uniontech.com
----
- drivers/iio/imu/bmi270/bmi270_i2c.c | 2 ++
- 1 file changed, 2 insertions(+)
+ doc/org.bluez.Device.rst | 15 +++++++++++++++
+ plugins/neard.c          |  2 +-
+ src/adapter.c            |  4 ++--
+ src/device.c             | 39 ++++++++++++++++++++++++++++++++++++---
+ src/device.h             |  3 ++-
+ 5 files changed, 56 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/iio/imu/bmi270/bmi270_i2c.c b/drivers/iio/imu/bmi270/bmi270_i2c.c
-index c77839b03a969f6f149c025a0305c4b9b8ac6571..b909a421ad0176ee414f2f96ff09db2297586ded 100644
---- a/drivers/iio/imu/bmi270/bmi270_i2c.c
-+++ b/drivers/iio/imu/bmi270/bmi270_i2c.c
-@@ -41,6 +41,8 @@ static const struct i2c_device_id bmi270_i2c_id[] = {
- static const struct acpi_device_id bmi270_acpi_match[] = {
- 	/* GPD Win Mini, Aya Neo AIR Pro, OXP Mini Pro, etc. */
- 	{ "BMI0160",  (kernel_ulong_t)&bmi260_chip_info },
-+	/* GPD Win Max 2 2023(sincice BIOS v0.40), etc. */
-+	{ "BMI0260",  (kernel_ulong_t)&bmi260_chip_info },
+diff --git a/doc/org.bluez.Device.rst b/doc/org.bluez.Device.rst
+index 61c394dd2d0b371fe10508b8e64087ed87a2e6e0..44d929e8850659cdfbcafa81f18dd44e4aa53d03 100644
+--- a/doc/org.bluez.Device.rst
++++ b/doc/org.bluez.Device.rst
+@@ -155,6 +155,21 @@ Possible errors:
+ :org.bluez.Error.NotConnected:
+ :org.bluez.Error.DoesNotExist:
+ 
++void SyncBroadcast() [experimental]
++```````````````````````````````````
++
++Initiates synchronization with a broadcast source device that contains Broadcast
++Announcements UUID. This method can be used on devices that are capable of
++broadcast synchronization.
++
++If the device is not capable of broadcast synchronization, this method will
++fail with `org.bluez.Error.NotSupported`.
++
++Possible errors:
++
++:org.bluez.Error.Failed:
++:org.bluez.Error.NotSupported:
++
+ Signals
+ -------
+ 
+diff --git a/plugins/neard.c b/plugins/neard.c
+index c84934025cd8541bf604efe9520c1c3e9c83068f..8c231a8e84b0090b450f3b61e75cc4d4c6e4a14f 100644
+--- a/plugins/neard.c
++++ b/plugins/neard.c
+@@ -633,7 +633,7 @@ static void store_params(struct btd_adapter *adapter, struct btd_device *device,
+ 	}
+ 
+ 	if (params->services)
+-		device_add_eir_uuids(device, params->services);
++		device_add_eir_uuids(device, params->services, true);
+ 
+ 	if (params->hash) {
+ 		btd_adapter_add_remote_oob_data(adapter, &params->address,
+diff --git a/src/adapter.c b/src/adapter.c
+index b771cf66ade30dcfe0a6fa41cd28f1ba46bed5a4..b12d75c815ee936aeaf3210f97831eee8ee945a2 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -1740,7 +1740,7 @@ static void discovery_cleanup(struct btd_adapter *adapter, int timeout)
+ 		next = g_slist_next(l);
+ 
+ 		if (device_is_temporary(dev) && !device_is_connectable(dev)
+-			&& !btd_device_is_connected(dev))
++			&& !btd_device_is_connected(dev) && !btd_device_is_bcast_syncable(dev))
+ 			btd_adapter_remove_device(adapter, dev);
+ 	}
+ }
+@@ -7452,7 +7452,7 @@ void btd_adapter_device_found(struct btd_adapter *adapter,
+ 							eir_data.did_product,
+ 							eir_data.did_version);
+ 
+-	device_add_eir_uuids(dev, eir_data.services);
++	device_add_eir_uuids(dev, eir_data.services, false);
+ 
+ 	if (adapter->discovery_list)
+ 		g_slist_foreach(adapter->discovery_list, filter_duplicate_data,
+diff --git a/src/device.c b/src/device.c
+index 0179c3dab603ece0faedfd122c87b99f35a2ca6e..410a051391529799d83102d3e8b041a264fd415a 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -78,6 +78,8 @@
+ 
+ #define RSSI_THRESHOLD		8
+ 
++#define BCAAS_UUID_STR "00001852-0000-1000-8000-00805f9b34fb"
++
+ static DBusConnection *dbus_conn = NULL;
+ static unsigned service_state_cb_id;
+ 
+@@ -2356,7 +2358,7 @@ done:
+ 	dev->connect = NULL;
+ }
+ 
+-void device_add_eir_uuids(struct btd_device *dev, GSList *uuids)
++void device_add_eir_uuids(struct btd_device *dev, GSList *uuids, bool probe)
+ {
+ 	GSList *l;
+ 	GSList *added = NULL;
+@@ -2372,7 +2374,8 @@ void device_add_eir_uuids(struct btd_device *dev, GSList *uuids)
+ 		dev->eir_uuids = g_slist_append(dev->eir_uuids, g_strdup(str));
+ 	}
+ 
+-	device_probe_profiles(dev, added);
++	if (probe)
++		device_probe_profiles(dev, added);
+ }
+ 
+ static void add_manufacturer_data(void *data, void *user_data)
+@@ -2411,7 +2414,7 @@ static void add_service_data(void *data, void *user_data)
+ 		return;
+ 
+ 	l = g_slist_append(NULL, sd->uuid);
+-	device_add_eir_uuids(dev, l);
++	device_add_eir_uuids(dev, l, false);
+ 	g_slist_free(l);
+ 
+ 	g_dbus_emit_property_changed(dbus_conn, dev->path,
+@@ -3488,6 +3491,21 @@ static DBusMessage *get_service_records(DBusConnection *conn, DBusMessage *msg,
+ 	return reply;
+ }
+ 
++static DBusMessage *sync_broadcast_device(DBusConnection *conn, DBusMessage *msg,
++							void *user_data)
++{
++	struct btd_device *dev = user_data;
++
++	DBG("Sync with broadcast device %s", batostr(&dev->bdaddr));
++
++	if (!btd_device_is_bcast_syncable(dev))
++		return btd_error_not_supported(msg);
++
++	btd_device_add_uuid(dev, BCAAS_UUID_STR);
++
++	return dbus_message_new_method_return(msg);
++}
++
+ static const GDBusMethodTable device_methods[] = {
+ 	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, dev_disconnect) },
+ 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
+@@ -3500,6 +3518,7 @@ static const GDBusMethodTable device_methods[] = {
+ 	{ GDBUS_EXPERIMENTAL_METHOD("GetServiceRecords", NULL,
+ 				    GDBUS_ARGS({ "Records", "aay" }),
+ 				    get_service_records) },
++	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("SyncBroadcast", NULL, NULL, sync_broadcast_device) },
  	{ }
  };
  
+@@ -3654,6 +3673,20 @@ bool btd_device_bdaddr_type_connected(struct btd_device *dev, uint8_t type)
+ 	return dev->le_state.connected;
+ }
+ 
++bool btd_device_is_bcast_syncable(struct btd_device *dev)
++{
++	if (dev->bredr_state.connected || dev->le_state.connected)
++		return false;
++
++	for (GSList *l = dev->eir_uuids; l != NULL; l = l->next) {
++		const char *str = l->data;
++		if (bt_uuid_strcmp(str, BCAAS_UUID_STR) == 0)
++			return true;
++	}
++
++	return false;
++}
++
+ static void clear_temporary_timer(struct btd_device *dev)
+ {
+ 	if (dev->temporary_timer) {
+diff --git a/src/device.h b/src/device.h
+index 9e7c30ad71864932d3da2211f30e3c7ffc4b02f7..70f4dc1a11a12bce4514fcfa362c713d4d2a5235 100644
+--- a/src/device.h
++++ b/src/device.h
+@@ -76,7 +76,7 @@ void btd_device_gatt_set_service_changed(struct btd_device *device,
+ 						uint16_t start, uint16_t end);
+ bool device_attach_att(struct btd_device *dev, GIOChannel *io);
+ void btd_device_add_uuid(struct btd_device *device, const char *uuid);
+-void device_add_eir_uuids(struct btd_device *dev, GSList *uuids);
++void device_add_eir_uuids(struct btd_device *dev, GSList *uuids, bool probe);
+ void device_set_manufacturer_data(struct btd_device *dev, GSList *list,
+ 							bool duplicate);
+ void device_set_service_data(struct btd_device *dev, GSList *list,
+@@ -110,6 +110,7 @@ void device_set_tx_power(struct btd_device *device, int8_t tx_power);
+ void device_set_flags(struct btd_device *device, uint8_t flags);
+ bool btd_device_is_connected(struct btd_device *dev);
+ bool btd_device_bearer_is_connected(struct btd_device *dev);
++bool btd_device_is_bcast_syncable(struct btd_device *dev);
+ bool btd_device_bdaddr_type_connected(struct btd_device *dev, uint8_t type);
+ uint8_t btd_device_get_bdaddr_type(struct btd_device *dev);
+ bool device_is_retrying(struct btd_device *device);
 
 ---
-base-commit: 24ea63ea387714634813359e2c8e0e6c36952f73
-change-id: 20250206-bmi270-gpd-acpi-de4d12bce567
+base-commit: ce82168f9f708a61efaa2bac734997db01c9ffdb
+change-id: 20250815-adapter-sync-broadcast-9b521644e4fb
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia@uniontech.com>
+Ye He <ye.he@amlogic.com>
 
