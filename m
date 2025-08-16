@@ -1,16 +1,13 @@
 From: Christoph Paasch <cpaasch@openai.com>
-Subject: [PATCH net-next v2 0/2] net: Speedup some nexthop handling when
- having A LOT of nexthops
-Date: Sat, 16 Aug 2025 16:12:47 -0700
-Message-Id: <20250816-nexthop_dump-v2-0-491da3462118@openai.com>
+Date: Sat, 16 Aug 2025 16:12:48 -0700
+Subject: [PATCH net-next v2 1/2] net: Make nexthop-dumps scale linearly
+ with the number of nexthops
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAG8QoWgC/22NywrDIBREfyXcdS3RvKCr/kcIJeq1uYuoqA0pw
- X+vuO5yODNnLogYCCM8mgsCHhTJ2RLErQG1rfaNjHTJIFoxtJPomcUzbc6/9Gf3zIyqE/0kpNI
- GysQHNHRW3QwWU23DUshGMbnwrT8Hr/y/8uCMs1H2nTFGD3JVT+fRrnRXbocl5/wDZKxDo7MAA
- AA=
-X-Change-ID: 20250724-nexthop_dump-f6c32472bcdf
+Message-Id: <20250816-nexthop_dump-v2-1-491da3462118@openai.com>
+References: <20250816-nexthop_dump-v2-0-491da3462118@openai.com>
+In-Reply-To: <20250816-nexthop_dump-v2-0-491da3462118@openai.com>
 To: David Ahern <dsahern@kernel.org>, 
  Nikolay Aleksandrov <razor@blackwall.org>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
@@ -18,46 +15,124 @@ To: David Ahern <dsahern@kernel.org>,
  Simon Horman <horms@kernel.org>, Ido Schimmel <idosch@idosch.org>
 Cc: netdev@vger.kernel.org, Christoph Paasch <cpaasch@openai.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755385987; l=1201;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755385987; l=2925;
  i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
- bh=6oq/r2Duv8TUJtLlhHnfA58qlBeaNbRXlhksPZnzC4w=;
- b=g8diLrmD17CmCr2q08HjVmvpTapBE/z+gcgdw+hgV8J2E7Qjp2+DGqmWfEYkPjfbBy/k8R1KR
- ScpZCndKkbBC2pnFdEARxR/9uBbYVXZwnxsK9cZbhDX0AOAOU1Fr/7C
+ bh=apKNtEHwkr4v5/jPGvEtuEPYhIYZl9VTHDdTthjYsCg=;
+ b=bf4ina5rN8+11TYjqY0Aqd6HmpsYSES9LNWSEvriUY+/pe2q6HlhdiZHmEzwCseWNcQMcJ27G
+ OFSIaSAvuDtDTmL9FHZ/S/JH9cRoFcnr6t0fvDZGD9ns8lrIvH3OPaM
 X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
  pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
 X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Configuring a very large number of nexthops is fairly possible within a
-reasonable time-frame. But, certain netlink commands can become
-extremely slow.
+When we have a (very) large number of nexthops, they do not fit within a
+single message. rtm_dump_walk_nexthops() thus will be called repeatedly
+and ctx->idx is used to avoid dumping the same nexthops again.
 
-This series addresses some of these, namely dumping and removing
-nexthops.
+The approach in which we avoid dumping the same nexthops is by basically
+walking the entire nexthop rb-tree from the left-most node until we find
+a node whose id is >= s_idx. That does not scale well.
+
+Instead of this inefficient approach, rather go directly through the
+tree to the nexthop that should be dumped (the one whose nh_id >=
+s_idx). This allows us to find the relevant node in O(log(n)).
+
+We have quite a nice improvement with this:
+
+Before:
+=======
+
+--> ~1M nexthops:
+$ time ~/libnl/src/nl-nh-list | wc -l
+1050624
+
+real	0m21.080s
+user	0m0.666s
+sys	0m20.384s
+
+--> ~2M nexthops:
+$ time ~/libnl/src/nl-nh-list | wc -l
+2101248
+
+real	1m51.649s
+user	0m1.540s
+sys	1m49.908s
+
+After:
+======
+
+--> ~1M nexthops:
+$ time ~/libnl/src/nl-nh-list | wc -l
+1050624
+
+real	0m1.157s
+user	0m0.926s
+sys	0m0.259s
+
+--> ~2M nexthops:
+$ time ~/libnl/src/nl-nh-list | wc -l
+2101248
+
+real	0m2.763s
+user	0m2.042s
+sys	0m0.776s
 
 Signed-off-by: Christoph Paasch <cpaasch@openai.com>
 ---
-Changes in v2:
-- Added another improvement to the series "net: When removing nexthops,
-  don't call synchronize_net if it is not necessary"
-- Fixed typos, made comments within 80-character limit and unified
-  comment-style. (Ido Schimmel)
-- Removed if (nh->id < s_idx) in the for-loop as it is no more needed.
-  (Ido Schimmel)
-- Link to v1: https://lore.kernel.org/r/20250724-nexthop_dump-v1-1-6b43fffd5bac@openai.com
+ net/ipv4/nexthop.c | 36 +++++++++++++++++++++++++++++++++---
+ 1 file changed, 33 insertions(+), 3 deletions(-)
 
----
-Christoph Paasch (2):
-      net: Make nexthop-dumps scale linearly with the number of nexthops
-      net: When removing nexthops, don't call synchronize_net if it is not necessary
+diff --git a/net/ipv4/nexthop.c b/net/ipv4/nexthop.c
+index 29118c43ebf5f1e91292fe227d4afde313e564bb..509004bfd08ec43de44c7ce4a540c983d0e70201 100644
+--- a/net/ipv4/nexthop.c
++++ b/net/ipv4/nexthop.c
+@@ -3511,12 +3511,42 @@ static int rtm_dump_walk_nexthops(struct sk_buff *skb,
+ 	int err;
+ 
+ 	s_idx = ctx->idx;
+-	for (node = rb_first(root); node; node = rb_next(node)) {
++
++	/* If this is not the first invocation, ctx->idx will contain the id of
++	 * the last nexthop we processed. Instead of starting from the very
++	 * first element of the red/black tree again and linearly skipping the
++	 * (potentially large) set of nodes with an id smaller than s_idx, walk
++	 * the tree and find the left-most node whose id is >= s_idx.  This
++	 * provides an efficient O(log n) starting point for the dump
++	 * continuation.
++	 */
++	if (s_idx != 0) {
++		struct rb_node *tmp = root->rb_node;
++
++		node = NULL;
++		while (tmp) {
++			struct nexthop *nh;
++
++			nh = rb_entry(tmp, struct nexthop, rb_node);
++			if (nh->id < s_idx) {
++				tmp = tmp->rb_right;
++			} else {
++				/* Track current candidate and keep looking on
++				 * the left side to find the left-most
++				 * (smallest id) that is still >= s_idx.
++				 */
++				node = tmp;
++				tmp = tmp->rb_left;
++			}
++		}
++	} else {
++		node = rb_first(root);
++	}
++
++	for (; node; node = rb_next(node)) {
+ 		struct nexthop *nh;
+ 
+ 		nh = rb_entry(node, struct nexthop, rb_node);
+-		if (nh->id < s_idx)
+-			continue;
+ 
+ 		ctx->idx = nh->id;
+ 		err = nh_cb(skb, cb, nh, data);
 
- net/ipv4/nexthop.c | 42 +++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 39 insertions(+), 3 deletions(-)
----
-base-commit: bab3ce404553de56242d7b09ad7ea5b70441ea41
-change-id: 20250724-nexthop_dump-f6c32472bcdf
-
-Best regards,
 -- 
-Christoph Paasch <cpaasch@openai.com>
+2.50.1
 
