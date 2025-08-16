@@ -1,96 +1,69 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 16 Aug 2025 01:03:21 -0500
-Subject: [PATCH] arm64: tegra: Enable NVDEC and NVENC on Tegra210
+From: Christoph Paasch <cpaasch@openai.com>
+Subject: [PATCH net-next v2 0/2] net/mlx5: Avoid payload in skb's linear
+ part for better GRO-processing
+Date: Sat, 16 Aug 2025 08:39:02 -0700
+Message-Id: <20250816-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v2-0-b11b30bc2d10@openai.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250816-tegra210-media-enable-v1-1-bdb1c2554f0d@gmail.com>
-X-B4-Tracking: v=1; b=H4sIACgfoGgC/x3MQQqDMBBG4avIrDuQRGOLVyldTPTXDmgqSRFBv
- LvB5bd476CMpMjUVQclbJr1Fwvso6L+K3EC61BMzjhvXrbhP6YkzhpeMKgwooQZ7J9tCK3UTfA
- 9lXZNGHW/v+/PeV7Rh4PlZwAAAA==
-X-Change-ID: 20250814-tegra210-media-enable-576bb6a34b5c
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABamoGgC/62OQYrDMAxFr1K0rkrixk3b1dxj6ELYaiNILGObk
+ BBy95owR5jl48H/b4PMSTjD87RB4lmyaKhgzidwA4UPo/jKYBpjm7416CJRdgPGNz5Mj4HLNC4
+ WaVbx6DSuEj5YBsZI66jkseiBE42jOvZIiQlv1nSPtu+spRvUr5j4LcvR8Qt1s+4uBV7VDJKLp
+ vUInNvD/7Vc/6llbrFBdsT+7sy96/hHIweSi9MJXvu+fwGiyscgJQEAAA==
+X-Change-ID: 20250712-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-6524917455a6
+To: Saeed Mahameed <saeedm@nvidia.com>, Leon Romanovsky <leon@kernel.org>, 
+ Tariq Toukan <tariqt@nvidia.com>, Mark Bloch <mbloch@nvidia.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Alexander Lobakin <aleksander.lobakin@intel.com>, 
+ Gal Pressman <gal@nvidia.com>
+Cc: linux-rdma@vger.kernel.org, netdev@vger.kernel.org, 
+ Christoph Paasch <cpaasch@openai.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755324210; l=2019;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=FBhRZXiIPTHOUSFEUddsbuop3pvSiuDmwcrMPsGiLyM=;
- b=EjnvL0KmoI3A2wSMUAvnWqw3XeIalqm2Jr2reVDXWjpc186wnONzAPqQ9B5CBRQN18IK3LZZk
- RabPK1Y4JM3CqWlsUUk1cQEiFn3d87FtcaifaVf9Zq01itwKQ2seRFL
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755358743; l=1531;
+ i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
+ bh=o+rHkyCjmB4hkyP7M3HLqZNJrf+AJVoFYhkrqijhjZg=;
+ b=l+5SKjfiweJsliNW8BZ12uhSvZ3HCGFk0I44HeHLd7jk2KjiqBT2AVdISiC4cm3l8R0KQFZGD
+ m8zotkOOwA+DIhQHVSicGgyv/ql/sM4st0Ck+gYjidoBBKPkOB+V3r2
+X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
+ pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
+X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The other engines are already enabled, finish filling out the media
-engine nodes and power domains.
+When LRO is enabled on the MLX, mlx5e_skb_from_cqe_mpwrq_nonlinear
+copies parts of the payload to the linear part of the skb.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+This triggers suboptimal processing in GRO, causing slow throughput,...
+
+This patch series addresses this by copying a lower-bound estimate of
+the protocol headers - trying to avoid the payload part. This results in
+a significant throughput improvement (detailled results in the specific
+patch).
+
+Signed-off-by: Christoph Paasch <cpaasch@openai.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra210.dtsi | 28 ++++++++++++++++++++++++++--
- 1 file changed, 26 insertions(+), 2 deletions(-)
-
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210.dtsi b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-index 402b0ede1472af625d9d9e811f5af306d436cc98..80d7571d0350205b080bcf48b8b8e2c1b93227f2 100644
---- a/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
-@@ -277,13 +277,25 @@ dsib: dsi@54400000 {
- 		nvdec@54480000 {
- 			compatible = "nvidia,tegra210-nvdec";
- 			reg = <0x0 0x54480000 0x0 0x00040000>;
--			status = "disabled";
-+			clocks = <&tegra_car TEGRA210_CLK_NVDEC>;
-+			clock-names = "nvdec";
-+			resets = <&tegra_car 194>;
-+			reset-names = "nvdec";
-+
-+			iommus = <&mc TEGRA_SWGROUP_NVDEC>;
-+			power-domains = <&pd_nvdec>;
- 		};
- 
- 		nvenc@544c0000 {
- 			compatible = "nvidia,tegra210-nvenc";
- 			reg = <0x0 0x544c0000 0x0 0x00040000>;
--			status = "disabled";
-+			clocks = <&tegra_car TEGRA210_CLK_NVENC>;
-+			clock-names = "nvenc";
-+			resets = <&tegra_car 219>;
-+			reset-names = "nvenc";
-+
-+			iommus = <&mc TEGRA_SWGROUP_NVENC>;
-+			power-domains = <&pd_nvenc>;
- 		};
- 
- 		tsec@54500000 {
-@@ -894,6 +906,18 @@ pd_audio: aud {
- 				#power-domain-cells = <0>;
- 			};
- 
-+			pd_nvenc: mpe {
-+				clocks = <&tegra_car TEGRA210_CLK_NVENC>;
-+				resets = <&tegra_car 219>;
-+				#power-domain-cells = <0>;
-+			};
-+
-+			pd_nvdec: nvdec {
-+				clocks = <&tegra_car TEGRA210_CLK_NVDEC>;
-+				resets = <&tegra_car 194>;
-+				#power-domain-cells = <0>;
-+			};
-+
- 			pd_sor: sor {
- 				clocks = <&tegra_car TEGRA210_CLK_SOR0>,
- 					 <&tegra_car TEGRA210_CLK_SOR1>,
+Changes in v2:
+- Refine commit-message with more info and testing data
+- Make mlx5e_cqe_get_min_hdr_len() return MLX5E_RX_MAX_HEAD when l3_type
+  is neither IPv4 nor IPv6. Same for the l4_type. That way behavior is
+  unchanged for other traffic types.
+- Rename mlx5e_cqe_get_min_hdr_len to mlx5e_cqe_estimate_hdr_len
+- Link to v1: https://lore.kernel.org/r/20250713-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v1-0-ecaed8c2844e@openai.com
 
 ---
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250814-tegra210-media-enable-576bb6a34b5c
+Christoph Paasch (2):
+      net/mlx5: Bring back get_cqe_l3_hdr_type
+      net/mlx5: Avoid copying payload to the skb's linear part
+
+ drivers/net/ethernet/mellanox/mlx5/core/en_rx.c | 37 ++++++++++++++++++++++++-
+ include/linux/mlx5/device.h                     | 12 +++++++-
+ 2 files changed, 47 insertions(+), 2 deletions(-)
+---
+base-commit: bab3ce404553de56242d7b09ad7ea5b70441ea41
+change-id: 20250712-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-6524917455a6
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Christoph Paasch <cpaasch@openai.com>
 
