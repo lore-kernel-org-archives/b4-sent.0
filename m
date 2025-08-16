@@ -1,56 +1,96 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 16 Aug 2025 00:53:37 -0500
-Subject: [PATCH 5/5] arm64: tegra: Limit max cpu frequency on P3450
+Date: Sat, 16 Aug 2025 01:03:21 -0500
+Subject: [PATCH] arm64: tegra: Enable NVDEC and NVENC on Tegra210
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250816-tegra210-speedo-v1-5-a981360adc27@gmail.com>
-References: <20250816-tegra210-speedo-v1-0-a981360adc27@gmail.com>
-In-Reply-To: <20250816-tegra210-speedo-v1-0-a981360adc27@gmail.com>
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+Message-Id: <20250816-tegra210-media-enable-v1-1-bdb1c2554f0d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACgfoGgC/x3MQQqDMBBG4avIrDuQRGOLVyldTPTXDmgqSRFBv
+ LvB5bd476CMpMjUVQclbJr1Fwvso6L+K3EC61BMzjhvXrbhP6YkzhpeMKgwooQZ7J9tCK3UTfA
+ 9lXZNGHW/v+/PeV7Rh4PlZwAAAA==
+X-Change-ID: 20250814-tegra210-media-enable-576bb6a34b5c
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, Joseph Lo <josephl@nvidia.com>, 
- Peter De Schrijver <pdeschrijver@nvidia.com>, 
- Prashant Gaikwad <pgaikwad@nvidia.com>
-Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Thierry Reding <treding@nvidia.com>, Aaron Kling <webgeek1234@gmail.com>
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755323658; l=935;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755324210; l=2019;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=JtR2frb8U61WYYSqhxHsZ+WqeNipPuKmeW1w+OFmzpU=;
- b=c8aF1tlFVKvuMAgjpH17Vx+W6YJ9ly6+2UZTmDmo879riiX6BemOb25Mah5RxcSAtHIDCI+VW
- kPtnx+v5hAcB7G6R9kog0SaaaP/PtAG4t6pc175XEY1HjM4RniK+1dA
+ bh=FBhRZXiIPTHOUSFEUddsbuop3pvSiuDmwcrMPsGiLyM=;
+ b=EjnvL0KmoI3A2wSMUAvnWqw3XeIalqm2Jr2reVDXWjpc186wnONzAPqQ9B5CBRQN18IK3LZZk
+ RabPK1Y4JM3CqWlsUUk1cQEiFn3d87FtcaifaVf9Zq01itwKQ2seRFL
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-P3450's cpu is only rated for 1.4 GHz while the CVB table it uses tries
-to scale to 1.5 GHz. Set an appropriate limit on the maximum scaling
-frequency.
+The other engines are already enabled, finish filling out the media
+engine nodes and power domains.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts | 1 +
- 1 file changed, 1 insertion(+)
+ arch/arm64/boot/dts/nvidia/tegra210.dtsi | 28 ++++++++++++++++++++++++++--
+ 1 file changed, 26 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts b/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts
-index ec0e84cb83ef9bf8f0e52e2958db33666813917c..10f878d3f50815d1f0297d15669048ab9cad73ee 100644
---- a/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts
-+++ b/arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts
-@@ -594,6 +594,7 @@ clock@70110000 {
- 		nvidia,droop-ctrl = <0x00000f00>;
- 		nvidia,force-mode = <1>;
- 		nvidia,sample-rate = <25000>;
-+		nvidia,dfll-max-freq = <1479000000>;
+diff --git a/arch/arm64/boot/dts/nvidia/tegra210.dtsi b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
+index 402b0ede1472af625d9d9e811f5af306d436cc98..80d7571d0350205b080bcf48b8b8e2c1b93227f2 100644
+--- a/arch/arm64/boot/dts/nvidia/tegra210.dtsi
++++ b/arch/arm64/boot/dts/nvidia/tegra210.dtsi
+@@ -277,13 +277,25 @@ dsib: dsi@54400000 {
+ 		nvdec@54480000 {
+ 			compatible = "nvidia,tegra210-nvdec";
+ 			reg = <0x0 0x54480000 0x0 0x00040000>;
+-			status = "disabled";
++			clocks = <&tegra_car TEGRA210_CLK_NVDEC>;
++			clock-names = "nvdec";
++			resets = <&tegra_car 194>;
++			reset-names = "nvdec";
++
++			iommus = <&mc TEGRA_SWGROUP_NVDEC>;
++			power-domains = <&pd_nvdec>;
+ 		};
  
- 		nvidia,pwm-min-microvolts = <708000>;
- 		nvidia,pwm-period-nanoseconds = <2500>; /* 2.5us */
+ 		nvenc@544c0000 {
+ 			compatible = "nvidia,tegra210-nvenc";
+ 			reg = <0x0 0x544c0000 0x0 0x00040000>;
+-			status = "disabled";
++			clocks = <&tegra_car TEGRA210_CLK_NVENC>;
++			clock-names = "nvenc";
++			resets = <&tegra_car 219>;
++			reset-names = "nvenc";
++
++			iommus = <&mc TEGRA_SWGROUP_NVENC>;
++			power-domains = <&pd_nvenc>;
+ 		};
+ 
+ 		tsec@54500000 {
+@@ -894,6 +906,18 @@ pd_audio: aud {
+ 				#power-domain-cells = <0>;
+ 			};
+ 
++			pd_nvenc: mpe {
++				clocks = <&tegra_car TEGRA210_CLK_NVENC>;
++				resets = <&tegra_car 219>;
++				#power-domain-cells = <0>;
++			};
++
++			pd_nvdec: nvdec {
++				clocks = <&tegra_car TEGRA210_CLK_NVDEC>;
++				resets = <&tegra_car 194>;
++				#power-domain-cells = <0>;
++			};
++
+ 			pd_sor: sor {
+ 				clocks = <&tegra_car TEGRA210_CLK_SOR0>,
+ 					 <&tegra_car TEGRA210_CLK_SOR1>,
 
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250814-tegra210-media-enable-576bb6a34b5c
+
+Best regards,
 -- 
-2.50.1
+Aaron Kling <webgeek1234@gmail.com>
 
