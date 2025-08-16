@@ -1,14 +1,13 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Subject: [PATCH 0/5] Properly Limit Tegra210 Clock Rates
-Date: Sat, 16 Aug 2025 00:53:32 -0500
-Message-Id: <20250816-tegra210-speedo-v1-0-a981360adc27@gmail.com>
+Date: Sat, 16 Aug 2025 00:53:33 -0500
+Subject: [PATCH 1/5] dt-bindings: clock: tegra124-dfll: Add property to
+ limit frequency
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANwcoGgC/x3MSwqAIBRG4a3EHSeo9LC2Eg3M/uxOLDQikPaeN
- PwG52RKiIxEY5Up4ubERyhQdUVut8FD8FpMWupWGqXFBR+tVlKkE1gP0fSyGxTMYpyjUp0RGz/
- /cZrf9wPHlmM/YQAAAA==
-X-Change-ID: 20250812-tegra210-speedo-470691e8b8cc
+Message-Id: <20250816-tegra210-speedo-v1-1-a981360adc27@gmail.com>
+References: <20250816-tegra210-speedo-v1-0-a981360adc27@gmail.com>
+In-Reply-To: <20250816-tegra210-speedo-v1-0-a981360adc27@gmail.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -21,40 +20,40 @@ Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org,
  linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Thierry Reding <treding@nvidia.com>, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755323658; l=1124;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755323658; l=1074;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=8klj2uYRMfs8FE617jEyAtR6aZOYS7SLudYM0j1xsJc=;
- b=YxZKMWmKba+krIJVoRlKTJR6SZv8sVtniqhXAmEvuC1t8HToXFXb2O9pGXk+SJ4NDI4UrjzhQ
- iSR3FVD6PuzDL/FRX2qtKMXMhf5HBqqGlA0s3BPkRJaKv8q50xfq3HX
+ bh=i008IfPSaYeZDCxQCAJ7fiLJ8vYgRkhMPyZzDoavqYE=;
+ b=RsGAR4X/ZLdBD17nQiWJrjizisf+BJBjuFoEXnTzahSr2JDZ4hFiMsowb5/xLuAlDn6sOrX9X
+ gmronvaJJWgAovoTwAAj/SWd+3XthQrlMvT1oUzBKVEHfVcnNjjYmMI
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Tegra210 CVB tables were added in commit 2b2dbc2f94e5. Since then,
-all Tegra210 socs have tried to scale the cpu to 1.9 GHz, when the
-supported devkits are only supposed to scale to 1.5 or 1.7 GHZ.
-Overclocking should not be the default state.
+Some devices report a cpu speedo value that corresponds to a table that
+scales beyond the chips capability. This allows devices to set a lower
+limit.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Aaron Kling (5):
-      dt-bindings: clock: tegra124-dfll: Add property to limit frequency
-      soc: tegra: fuse: speedo-tegra210: Update speedo ids
-      soc: tegra: fuse: speedo-tegra210: Add sku 0x8F
-      clk: tegra: dfll: Support limiting max clock per device
-      arm64: tegra: Limit max cpu frequency on P3450
+ Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt | 3 +++
+ 1 file changed, 3 insertions(+)
 
- .../bindings/clock/nvidia,tegra124-dfll.txt        |  3 ++
- arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts |  1 +
- drivers/clk/tegra/clk-tegra124-dfll-fcpu.c         |  8 ++++-
- drivers/soc/tegra/fuse/speedo-tegra210.c           | 39 ++++++++++++++++++----
- 4 files changed, 43 insertions(+), 8 deletions(-)
----
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250812-tegra210-speedo-470691e8b8cc
+diff --git a/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt b/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt
+index f7d347385b5775ddd702ecbb9821acfc9d4b9ff2..6cdbabc1f036a767bdc8e5df64eeff34171a3b85 100644
+--- a/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt
++++ b/Documentation/devicetree/bindings/clock/nvidia,tegra124-dfll.txt
+@@ -70,6 +70,9 @@ Required properties for PWM mode:
+   - dvfs_pwm_enable: I/O pad configuration when PWM control is enabled.
+   - dvfs_pwm_disable: I/O pad configuration when PWM control is disabled.
+ 
++Optional properties for limiting frequency:
++- nvidia,dfll-max-freq: Maximum scaling frequency.
++
+ Example for I2C:
+ 
+ clock@70110000 {
 
-Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+2.50.1
 
