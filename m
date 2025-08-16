@@ -1,144 +1,60 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Fri, 15 Aug 2025 11:31:52 -0700
-Subject: [PATCH v2 2/2] usb: typec: maxim_contaminant: re-enable cc toggle
- if cc is open and port is clean
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/5] Properly Limit Tegra210 Clock Rates
+Date: Sat, 16 Aug 2025 00:53:32 -0500
+Message-Id: <20250816-tegra210-speedo-v1-0-a981360adc27@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250815-fix-upstream-contaminant-v2-2-6c8d6c3adafb@google.com>
-References: <20250815-fix-upstream-contaminant-v2-0-6c8d6c3adafb@google.com>
-In-Reply-To: <20250815-fix-upstream-contaminant-v2-0-6c8d6c3adafb@google.com>
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, RD Babiera <rdbabiera@google.com>, 
- Kyle Tso <kyletso@google.com>, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>, 
- Amit Sunil Dhamne <amitsd@google.com>
+X-B4-Tracking: v=1; b=H4sIANwcoGgC/x3MSwqAIBRG4a3EHSeo9LC2Eg3M/uxOLDQikPaeN
+ PwG52RKiIxEY5Up4ubERyhQdUVut8FD8FpMWupWGqXFBR+tVlKkE1gP0fSyGxTMYpyjUp0RGz/
+ /cZrf9wPHlmM/YQAAAA==
+X-Change-ID: 20250812-tegra210-speedo-470691e8b8cc
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, Joseph Lo <josephl@nvidia.com>, 
+ Peter De Schrijver <pdeschrijver@nvidia.com>, 
+ Prashant Gaikwad <pgaikwad@nvidia.com>
+Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Thierry Reding <treding@nvidia.com>, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755282735; l=3851;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=EWnT1ifJAgl1Osv4yGiXsCaYOzDaaQyWwT/7zjrH7aQ=;
- b=rvbTFbaa4EqrfOIvMfO9ErfjvRxt6r3Sdvwn+i6BHgY7mrPr8wRcqwe4dtWipx1UX8lSKPRhY
- oAlPewPQ5ChCkfnXYhJI4SjTta/ErnBkXDKnVYD43mj5OnenRIoxDNx
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755323658; l=1124;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=8klj2uYRMfs8FE617jEyAtR6aZOYS7SLudYM0j1xsJc=;
+ b=YxZKMWmKba+krIJVoRlKTJR6SZv8sVtniqhXAmEvuC1t8HToXFXb2O9pGXk+SJ4NDI4UrjzhQ
+ iSR3FVD6PuzDL/FRX2qtKMXMhf5HBqqGlA0s3BPkRJaKv8q50xfq3HX
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Presently in `max_contaminant_is_contaminant()` if there's no
-contaminant detected previously, CC is open & stopped toggling and no
-contaminant is currently present, TCPC.RC would be programmed to do DRP
-toggling. However, it didn't actively look for a connection. This would
-lead to Type-C not detect *any* new connections. Hence, in the above
-situation, re-enable toggling & program TCPC to look for a new
-connection.
+The Tegra210 CVB tables were added in commit 2b2dbc2f94e5. Since then,
+all Tegra210 socs have tried to scale the cpu to 1.9 GHz, when the
+supported devkits are only supposed to scale to 1.5 or 1.7 GHZ.
+Overclocking should not be the default state.
 
-Also, return early if TCPC was looking for connection as this indicates
-TCPC has neither detected a potential connection nor a change in
-contaminant state.
-
-In addition, once dry detection is complete (port is dry), restart
-toggling.
-
-Fixes: 02b332a06397e ("usb: typec: maxim_contaminant: Implement check_contaminant callback")
-Cc: stable@vger.kernel.org
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/usb/typec/tcpm/maxim_contaminant.c | 53 ++++++++++++++++++++++++++++++
- 1 file changed, 53 insertions(+)
+Aaron Kling (5):
+      dt-bindings: clock: tegra124-dfll: Add property to limit frequency
+      soc: tegra: fuse: speedo-tegra210: Update speedo ids
+      soc: tegra: fuse: speedo-tegra210: Add sku 0x8F
+      clk: tegra: dfll: Support limiting max clock per device
+      arm64: tegra: Limit max cpu frequency on P3450
 
-diff --git a/drivers/usb/typec/tcpm/maxim_contaminant.c b/drivers/usb/typec/tcpm/maxim_contaminant.c
-index 818cfe226ac7716de2fcbce205c67ea16acba592..af8da6dc60ae0bc5900f6614514d51f41eded8ab 100644
---- a/drivers/usb/typec/tcpm/maxim_contaminant.c
-+++ b/drivers/usb/typec/tcpm/maxim_contaminant.c
-@@ -329,6 +329,39 @@ static int max_contaminant_enable_dry_detection(struct max_tcpci_chip *chip)
- 	return 0;
- }
- 
-+static int max_contaminant_enable_toggling(struct max_tcpci_chip *chip)
-+{
-+	struct regmap *regmap = chip->data.regmap;
-+	int ret;
-+
-+	/* Disable dry detection if enabled. */
-+	ret = regmap_update_bits(regmap, TCPC_VENDOR_CC_CTRL2, CCLPMODESEL,
-+				 FIELD_PREP(CCLPMODESEL,
-+					    LOW_POWER_MODE_DISABLE));
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_update_bits(regmap, TCPC_VENDOR_CC_CTRL1, CCCONNDRY, 0);
-+	if (ret)
-+		return ret;
-+
-+	ret = max_tcpci_write8(chip, TCPC_ROLE_CTRL, TCPC_ROLE_CTRL_DRP |
-+			       FIELD_PREP(TCPC_ROLE_CTRL_CC1,
-+					  TCPC_ROLE_CTRL_CC_RD) |
-+			       FIELD_PREP(TCPC_ROLE_CTRL_CC2,
-+					  TCPC_ROLE_CTRL_CC_RD));
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_update_bits(regmap, TCPC_TCPC_CTRL,
-+				 TCPC_TCPC_CTRL_EN_LK4CONN_ALRT,
-+				 TCPC_TCPC_CTRL_EN_LK4CONN_ALRT);
-+	if (ret)
-+		return ret;
-+
-+	return max_tcpci_write8(chip, TCPC_COMMAND, TCPC_CMD_LOOK4CONNECTION);
-+}
-+
- bool max_contaminant_is_contaminant(struct max_tcpci_chip *chip, bool disconnect_while_debounce,
- 				    bool *cc_handled)
- {
-@@ -345,6 +378,12 @@ bool max_contaminant_is_contaminant(struct max_tcpci_chip *chip, bool disconnect
- 	if (ret < 0)
- 		return false;
- 
-+	if (cc_status & TCPC_CC_STATUS_TOGGLING) {
-+		if (chip->contaminant_state == DETECTED)
-+			return true;
-+		return false;
-+	}
-+
- 	if (chip->contaminant_state == NOT_DETECTED || chip->contaminant_state == SINK) {
- 		if (!disconnect_while_debounce)
- 			msleep(100);
-@@ -377,6 +416,12 @@ bool max_contaminant_is_contaminant(struct max_tcpci_chip *chip, bool disconnect
- 				max_contaminant_enable_dry_detection(chip);
- 				return true;
- 			}
-+
-+			ret = max_contaminant_enable_toggling(chip);
-+			if (ret)
-+				dev_err(chip->dev,
-+					"Failed to enable toggling, ret=%d",
-+					ret);
- 		}
- 	} else if (chip->contaminant_state == DETECTED) {
- 		if (!(cc_status & TCPC_CC_STATUS_TOGGLING)) {
-@@ -384,6 +429,14 @@ bool max_contaminant_is_contaminant(struct max_tcpci_chip *chip, bool disconnect
- 			if (chip->contaminant_state == DETECTED) {
- 				max_contaminant_enable_dry_detection(chip);
- 				return true;
-+			} else {
-+				ret = max_contaminant_enable_toggling(chip);
-+				if (ret) {
-+					dev_err(chip->dev,
-+						"Failed to enable toggling, ret=%d",
-+						ret);
-+					return true;
-+				}
- 			}
- 		}
- 	}
+ .../bindings/clock/nvidia,tegra124-dfll.txt        |  3 ++
+ arch/arm64/boot/dts/nvidia/tegra210-p3450-0000.dts |  1 +
+ drivers/clk/tegra/clk-tegra124-dfll-fcpu.c         |  8 ++++-
+ drivers/soc/tegra/fuse/speedo-tegra210.c           | 39 ++++++++++++++++++----
+ 4 files changed, 43 insertions(+), 8 deletions(-)
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250812-tegra210-speedo-470691e8b8cc
 
+Best regards,
 -- 
-2.51.0.rc1.167.g924127e9c0-goog
+Aaron Kling <webgeek1234@gmail.com>
 
