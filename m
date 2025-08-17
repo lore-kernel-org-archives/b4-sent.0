@@ -1,11 +1,10 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sun, 17 Aug 2025 19:09:20 +0200
-Subject: [PATCH 1/7] dt-bindings: media: i2c: Add DW9718S, DW9719 and
- DW9761 VCM
+Date: Sun, 17 Aug 2025 19:09:21 +0200
+Subject: [PATCH 2/7] media: i2c: dw9719: Deprecate dongwoon,vcm-freq
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250817-dw9719-v1-1-426f46c69a5a@apitzsch.eu>
+Message-Id: <20250817-dw9719-v1-2-426f46c69a5a@apitzsch.eu>
 References: <20250817-dw9719-v1-0-426f46c69a5a@apitzsch.eu>
 In-Reply-To: <20250817-dw9719-v1-0-426f46c69a5a@apitzsch.eu>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -18,149 +17,52 @@ Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org,
  Val Packett <val@packett.cool>, 
  =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755450582; l=3802;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755450582; l=1393;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=uotT9zX/NyzbQ5ZP2dvOeAvtz2yUFcyTvMlfBKstnHQ=;
- b=H/CLKgAntzvZCcxKzMvVNrEb2+3T4O+GFwO6Oe/DcDOL1te1R7KMaafFTugwXS5sdH2NjG5mL
- 3iBwVze/E3UAYwYb5wqfOz7K4eQSS6u7bUW3uz0ZajR3UV+IfI86xdJ
+ bh=CNimidG5dpwY71WsspuUUXuvPQWxHyQ+3/Fs96sevrE=;
+ b=7mNobBa1+SXToZWZB7gk88AEgE+cOrgzJGmBazKbPW2H+dcQ4/MlyWas8Fj0jpKnHZVfykCRn
+ QQUA9Zx27CoDWWMZgQgefplhl96JCH2xgYf70zaZObQCEmyzdfZNfc3
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document Dongwoon DW9718S, DW9719 and DW9761 VCM devicetree bindings.
+The name of property "dongwoon,vcm-freq" doesn't match its purpose.
+Change the name of the property to "dongwoon,vcm-prescale" to better
+describe its purpose and deprecate the old one.
 
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
-
---
-
-The possible values for sac-mode and vcm-prescale of DW9719 and DW9761
-are missing because there is no documentation available.
 ---
- .../bindings/media/i2c/dongwoon,dw9719.yaml        | 115 +++++++++++++++++++++
- 1 file changed, 115 insertions(+)
+ drivers/media/i2c/dw9719.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9719.yaml b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9719.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..80fd3fd42327fcafe3ff209d1cd6bbe17b8a211b
---- /dev/null
-+++ b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9719.yaml
-@@ -0,0 +1,115 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/media/i2c/dongwoon,dw9719.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/drivers/media/i2c/dw9719.c b/drivers/media/i2c/dw9719.c
+index 032fbcb981f20f4e93202415e62f67379897a048..5ed0042fce18acd9e6ce9f6cf6c6982e36fed275 100644
+--- a/drivers/media/i2c/dw9719.c
++++ b/drivers/media/i2c/dw9719.c
+@@ -82,6 +82,7 @@ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
+ {
+ 	u64 val;
+ 	int ret;
++	int err;
+ 
+ 	ret = regulator_enable(dw9719->regulator);
+ 	if (ret)
+@@ -123,7 +124,13 @@ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
+ 					 &dw9719->sac_mode);
+ 
+ 		/* Optional indication of VCM frequency */
+-		device_property_read_u32(dw9719->dev, "dongwoon,vcm-freq",
++		err = device_property_read_u32(dw9719->dev, "dongwoon,vcm-freq",
++					       &dw9719->vcm_freq);
++		if (err == 0)
++			dev_warn(dw9719->dev, "dongwoon,vcm-freq property is deprecated, please use dongwoon,vcm-prescale\n");
 +
-+title: Dongwoon Anatech DW9719 Voice Coil Motor (VCM) Controller
-+
-+maintainers:
-+  - devicetree@vger.kernel.org
-+
-+description:
-+  The Dongwoon DW9718S/9719/9761 is a single 10-bit digital-to-analog converter
-+  with 100 mA output current sink capability, designed for linear control of
-+  voice coil motors (VCM) in camera lenses. This chip provides a Smart Actuator
-+  Control (SAC) mode intended for driving voice coil lenses in camera modules.
-+
-+properties:
-+  compatible:
-+    enum:
-+      - dongwoon,dw9718s
-+      - dongwoon,dw9719
-+      - dongwoon,dw9761
-+
-+  reg:
-+    maxItems: 1
-+
-+  vdd-supply:
-+    description: VDD power supply
-+
-+  dongwoon,sac-mode:
-+    description: |
-+      Slew Rate Control mode to use: direct, LSC (Linear Slope Control) or
-+      SAC1-SAC6 (Smart Actuator Control).
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+    enum:
-+      - 0   # Direct mode
-+      - 1   # LSC mode
-+      - 2   # SAC1 mode (operation time# 0.32 x Tvib)
-+      - 3   # SAC2 mode (operation time# 0.48 x Tvib)
-+      - 4   # SAC3 mode (operation time# 0.72 x Tvib)
-+      - 5   # SAC4 mode (operation time# 1.20 x Tvib)
-+      - 6   # SAC5 mode (operation time# 1.64 x Tvib)
-+      - 7   # SAC6 mode (operation time# 1.88 x Tvib)
-+    default: 4
-+
-+  dongwoon,vcm-prescale:
-+    description:
-+      Indication of VCM switching frequency dividing rate select.
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+
-+required:
-+  - compatible
-+  - reg
-+  - vdd-supply
-+
-+allOf:
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: dongwoon,dw9718s
-+    then:
-+      properties:
-+        dongwoon,sac-mode:
-+          default: 4
-+        dongwoon,vcm-prescale:
-+          description:
-+            The final frequency is 10 MHz divided by (value + 2).
-+          minimum: 0
-+          maximum: 15
-+          default: 0
-+
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: dongwoon,dw9719
-+    then:
-+      properties:
-+        dongwoon,sac-mode:
-+          default: 4
-+        dongwoon,vcm-prescale:
-+          default: 96
-+
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: dongwoon,dw9761
-+    then:
-+      properties:
-+        dongwoon,sac-mode:
-+          default: 6
-+        dongwoon,vcm-prescale:
-+          default: 62
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    i2c {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+
-+        actuator@c {
-+            compatible = "dongwoon,dw9718s";
-+            reg = <0x0c>;
-+
-+            vdd-supply = <&pm8937_l17>;
-+
-+            dongwoon,sac-mode = <4>;
-+            dongwoon,vcm-prescale = <0>;
-+        };
-+    };
++		/* Optional indication of VCM prescale */
++		device_property_read_u32(dw9719->dev, "dongwoon,vcm-prescale",
+ 					 &dw9719->vcm_freq);
+ 	}
+ 
 
 -- 
 2.50.1
