@@ -1,10 +1,10 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sun, 17 Aug 2025 19:09:25 +0200
-Subject: [PATCH 6/7] media: i2c: dw9719: Add an of_match_table
+Date: Sun, 17 Aug 2025 19:09:26 +0200
+Subject: [PATCH 7/7] media: i2c: dw9719: Fix power on/off sequence
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250817-dw9719-v1-6-426f46c69a5a@apitzsch.eu>
+Message-Id: <20250817-dw9719-v1-7-426f46c69a5a@apitzsch.eu>
 References: <20250817-dw9719-v1-0-426f46c69a5a@apitzsch.eu>
 In-Reply-To: <20250817-dw9719-v1-0-426f46c69a5a@apitzsch.eu>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -17,11 +17,11 @@ Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org,
  Val Packett <val@packett.cool>, 
  =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755450582; l=1283;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755450582; l=2482;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=AM7Z9vkbnJudtfa3G+0qxABOY9vGE5baE+qTSnLT+Z8=;
- b=Ev3iti+ynUBlBW3HpTug9XQTFEc2s+o/aUidJ5fnCuGNFFCKRRHDsHVUjfTFQrtcPHm+HXdJ8
- EzAPLWOxrY5DRZdNbOKnuXSQ+59OMHDVaHGqr2me0VjTTZHceNg3TdG
+ bh=WHp/XEAFOtAOYg6kNIcSWN2unJmOfneuc2Td8tZ6uiA=;
+ b=NJpVHJJszElHrcLxB/I+5PDwFas8+W1oFx/BrnqHoTG0l2JCXVt9E+ZVwigf9wxE3C+BFnwvZ
+ Zfmn26gH1EMDwjWpYBJ1sP5M72RPg2CtSw2YF8yWb+DQu8GSP9bEYEl
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
@@ -29,41 +29,69 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Val Packett <val@packett.cool>
 
-Allow the dw9719 driver to be attached via FDT.
+The "jiggle" code was not actually expecting failure, which it should
+because that's what actually happens when the device wasn't already woken
+up by the regulator power-on (i.e. in the case of a shared regulator).
+
+Also, do actually enter the internal suspend mode on shutdown, to save
+power in the case of a shared regulator.
+
+Also, wait a bit longer (2x tOPR) on waking up, 1x is not enough at least
+on the DW9718S as found on the motorola-nora smartphone.
 
 Signed-off-by: Val Packett <val@packett.cool>
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/media/i2c/dw9719.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ drivers/media/i2c/dw9719.c | 23 ++++++++++++++++-------
+ 1 file changed, 16 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/media/i2c/dw9719.c b/drivers/media/i2c/dw9719.c
-index 2952d8064899e4ac29f3b1af02692fe8043ccfac..63c7fd4ab70a0e02518252b23b89c45df4ba273d 100644
+index 63c7fd4ab70a0e02518252b23b89c45df4ba273d..dd28a0223d6ac980084b1f661bd029ea6b0be503 100644
 --- a/drivers/media/i2c/dw9719.c
 +++ b/drivers/media/i2c/dw9719.c
-@@ -419,6 +419,14 @@ static const struct i2c_device_id dw9719_id_table[] = {
- };
- MODULE_DEVICE_TABLE(i2c, dw9719_id_table);
+@@ -95,12 +95,19 @@ struct dw9719_device {
  
-+static const struct of_device_id dw9719_of_table[] = {
-+	{ .compatible = "dongwoon,dw9718s", .data = (const void *)DW9718S },
-+	{ .compatible = "dongwoon,dw9719", .data = (const void *)DW9719 },
-+	{ .compatible = "dongwoon,dw9761", .data = (const void *)DW9761 },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, dw9719_of_table);
+ static int dw9719_power_down(struct dw9719_device *dw9719)
+ {
++	u32 reg_pwr = (dw9719->model == DW9718S) ? DW9718S_PD : DW9719_CONTROL;
 +
- static DEFINE_RUNTIME_DEV_PM_OPS(dw9719_pm_ops, dw9719_suspend, dw9719_resume,
- 				 NULL);
++	/*
++	 * Worth engaging the internal SHUTDOWN mode especially due to the
++	 * regulator being potentially shared with other devices.
++	 */
++	cci_write(dw9719->regmap, reg_pwr, DW9719_SHUTDOWN, NULL);
+ 	return regulator_disable(dw9719->regulator);
+ }
  
-@@ -426,6 +434,7 @@ static struct i2c_driver dw9719_i2c_driver = {
- 	.driver = {
- 		.name = "dw9719",
- 		.pm = pm_sleep_ptr(&dw9719_pm_ops),
-+		.of_match_table = dw9719_of_table,
- 	},
- 	.probe = dw9719_probe,
- 	.remove = dw9719_remove,
+ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
+ {
+-	u32 reg_pwr;
++	u32 reg_pwr = (dw9719->model == DW9718S) ? DW9718S_PD : DW9719_CONTROL;
+ 	u64 val;
+ 	int ret;
+ 	int err;
+@@ -109,13 +116,15 @@ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
+ 	if (ret)
+ 		return ret;
+ 
+-	/* Jiggle SCL pin to wake up device */
+-	reg_pwr = (dw9719->model == DW9718S) ? DW9718S_PD : DW9719_CONTROL;
+-	cci_write(dw9719->regmap, reg_pwr, DW9719_SHUTDOWN, &ret);
+-	fsleep(100);
++	/*
++	 * Need 100us to transition from SHUTDOWN to STANDBY.
++	 * Jiggle the SCL pin to wake up the device (even when the regulator
++	 * is shared) and wait double the time to be sure, then retry the write.
++	 */
++	cci_write(dw9719->regmap, reg_pwr, DW9719_STANDBY, &ret);
++	ret = 0; /* the jiggle is expected to fail, don't even log that as error */
++	fsleep(200);
+ 	cci_write(dw9719->regmap, reg_pwr, DW9719_STANDBY, &ret);
+-	/* Need 100us to transit from SHUTDOWN to STANDBY */
+-	fsleep(100);
+ 
+ 	if (detect) {
+ 		/* This model does not have an INFO register */
 
 -- 
 2.50.1
