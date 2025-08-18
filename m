@@ -1,63 +1,76 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 18 Aug 2025 15:33:47 +0400
-Subject: [PATCH 2/2] arm64: dts: qcom: ipq5018: Remove tsens v1 fallback
- compatible
+From: Maud Spierings <maudspierings@gocontroll.com>
+Date: Mon, 18 Aug 2025 14:31:43 +0200
+Subject: [PATCH] media: nxp: imx8-isi: Check whether pad is non-NULL before
+ access
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250818-ipq5018-tsens-fix-v1-2-0f08cf09182d@outlook.com>
-References: <20250818-ipq5018-tsens-fix-v1-0-0f08cf09182d@outlook.com>
-In-Reply-To: <20250818-ipq5018-tsens-fix-v1-0-0f08cf09182d@outlook.com>
-To: Amit Kucheria <amitk@kernel.org>, 
- Thara Gopinath <thara.gopinath@gmail.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Sricharan Ramabadhran <quic_srichara@quicinc.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-pm@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Message-Id: <20250818-imx8_isi-v1-1-e9cfe994c435@gocontroll.com>
+X-B4-Tracking: v=1; b=H4sIAC4do2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDC0ML3czcCot4oDJdS1MTC0sLMyOLpCQzJaDygqLUtMwKsFHRsbW1ADT
+ i1PdaAAAA
+X-Change-ID: 20250818-imx8_isi-954898628bb6
+To: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, 
+ Stefan Riedmueller <s.riedmueller@phytec.de>, 
+ Jacopo Mondi <jacopo@jmondi.org>, Christian Hemp <c.hemp@phytec.de>, 
+ Guoniu Zhou <guoniu.zhou@nxp.com>
+Cc: Dong Aisheng <aisheng.dong@nxp.com>, linux-media@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755516829; l=972;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=HJcOgtw7oiilIyh0aWOOzNZ2iln5P6lSb3GMC6Gave0=;
- b=uR1EVwZAX79JKZzxxM9N7TA/hO1CtlDORhZ/FGhSsA68dLhwH953wdmIPFDj4vfeWpsTsB3Bh
- 4W66WWUho9RBMALQ66he3JtRH90AzRDuzcypOj7GRnzE6ehzDO8Gl3R
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755520303; l=1552;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=AcOnQUcEtLtKRIGyS551I2XQVk8kQXwsf7E/+Yff8TA=;
+ b=LxPyeY5OtSuWC0dqmLOomQR+CNhDogbAv7Ktm7eAvNyw3RLKGvRZnoWkjAVyF9zkpodT26fDt
+ BSNSf84OWnoCe6aD49C3B4Ijd31VQ5j0Tg6aujoKeWnTgkb3HIY05zI
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove qcom,tsens-v1 as fallback compatible since this IP has no RPM
-and, as such, must use its own init routine available in the driver.
+media_pad_remote_pad_first() can return NULL if no valid link is found.
+Check for this possibility before dereferencing it in the next line.
 
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Reported/investigated in [1]:
+
+Link: https://lore.kernel.org/all/1536a61b-b405-4762-9fb4-7e257f95e49e@gocontroll.com/ [1]
+Fixes: cf21f328fcaf ("media: nxp: Add i.MX8 ISI driver")
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I'm not sure if this should be a dev_dbg(), just following the pattern
+around it for now, also not sure if EPIPE is the correct error.
+---
+ drivers/media/platform/nxp/imx8-isi/imx8-isi-crossbar.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 4ddb56d63f8f9a963cb49bc20e0a78b2d3490344..db7051a659221d45949cda93472e52c49815531f 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -340,7 +340,7 @@ prng: rng@e3000 {
- 		};
+diff --git a/drivers/media/platform/nxp/imx8-isi/imx8-isi-crossbar.c b/drivers/media/platform/nxp/imx8-isi/imx8-isi-crossbar.c
+index ede6cc74c0234049fa225ad82aaddaad64aa53d7..1ed8b031178b7d934b04a8752747f556bd1fc5a9 100644
+--- a/drivers/media/platform/nxp/imx8-isi/imx8-isi-crossbar.c
++++ b/drivers/media/platform/nxp/imx8-isi/imx8-isi-crossbar.c
+@@ -160,6 +160,13 @@ mxc_isi_crossbar_xlate_streams(struct mxc_isi_crossbar *xbar,
+ 	}
  
- 		tsens: thermal-sensor@4a9000 {
--			compatible = "qcom,ipq5018-tsens", "qcom,tsens-v1";
-+			compatible = "qcom,ipq5018-tsens";
- 			reg = <0x004a9000 0x1000>,
- 			      <0x004a8000 0x1000>;
- 
+ 	pad = media_pad_remote_pad_first(&xbar->pads[sink_pad]);
++
++	if (pad == NULL) {
++		dev_dbg(xbar->isi->dev, "no valid link found to pad %u\n",
++			sink_pad);
++		return ERR_PTR(-EPIPE);
++	}
++
+ 	sd = media_entity_to_v4l2_subdev(pad->entity);
+ 	if (!sd) {
+ 		dev_dbg(xbar->isi->dev,
 
+---
+base-commit: 3ac864c2d9bb8608ee236e89bf561811613abfce
+change-id: 20250818-imx8_isi-954898628bb6
+
+Best regards,
 -- 
-2.50.1
+Maud Spierings <maudspierings@gocontroll.com>
 
