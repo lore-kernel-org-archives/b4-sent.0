@@ -1,11 +1,10 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Date: Tue, 19 Aug 2025 01:26:01 +0200
-Subject: [PATCH v10 09/13] arm64: defconfig: enable rockchip camera
- interface and mipi csi-2 receiver
+Date: Tue, 19 Aug 2025 01:26:02 +0200
+Subject: [PATCH v10 10/13] arm64: dts: rockchip: add the vip node to px30
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240220-rk3568-vicap-v10-9-62d8a7b209b4@collabora.com>
+Message-Id: <20240220-rk3568-vicap-v10-10-62d8a7b209b4@collabora.com>
 References: <20240220-rk3568-vicap-v10-0-62d8a7b209b4@collabora.com>
 In-Reply-To: <20240220-rk3568-vicap-v10-0-62d8a7b209b4@collabora.com>
 To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
@@ -32,40 +31,54 @@ Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, 
  Michael Riesch <michael.riesch@collabora.com>, 
- Michael Riesch <michael.riesch@collabora.com>
+ Michael Riesch <michael.riesch@collabora.com>, 
+ Mehdi Djait <mehdi.djait@bootlin.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755559554; l=834;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755559554; l=1272;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=ODTHuQlKuPRMOWRDe0uxoXXXqr9wwzui1kpqREL2WCM=;
- b=oOSjRvi11TmPA+x0kQ9FXOuacWH6jgGRCHVkESPgw1DTL00NYUCqTmnbjridOQh1GUTzJjKil
- Ugsof0WjXmUCmPrkcQ4HO0yAmp0rLbrwIq8NM6/fd1XyfmceXLUPdV+
+ bh=m3c8bukH8JH3mEv5rImUHD4w4Q0ojy92FXQmHLGEC/M=;
+ b=WkVFIPGSn7HJQ+fo0MG9h7XxAa6iGuRBWZxoSOPNxzPLu22KozfEllWyAlKKeYoICa6GMWkTz
+ 0Wz05qQCSr0B71gWrJOMdOs16SxmjIMbuL7rQwpEL2DwGbrIdykNyqQ
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Rockchip Camera Interface (CIF) and the Rockchip MIPI CSI-2 Receiver
-are featured in many Rockchip SoCs in different variations.
-Enable the drivers for them in the default configuration.
+From: Mehdi Djait <mehdi.djait@bootlin.com>
 
+Add the device tree node for the PX30 Video Input Processor (VIP).
+
+Signed-off-by: Mehdi Djait <mehdi.djait@bootlin.com>
+[added cosmetic changes]
+Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- arch/arm64/configs/defconfig | 2 ++
- 1 file changed, 2 insertions(+)
+ arch/arm64/boot/dts/rockchip/px30.dtsi | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index 58f87d09366c..625cb5b47fb5 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -876,6 +876,8 @@ CONFIG_VIDEO_RENESAS_FCP=m
- CONFIG_VIDEO_RENESAS_FDP1=m
- CONFIG_VIDEO_RENESAS_VSP1=m
- CONFIG_VIDEO_RCAR_DRIF=m
-+CONFIG_VIDEO_ROCKCHIP_CIF=m
-+CONFIG_VIDEO_ROCKCHIP_CSI=m
- CONFIG_VIDEO_ROCKCHIP_RGA=m
- CONFIG_VIDEO_SAMSUNG_EXYNOS_GSC=m
- CONFIG_VIDEO_SAMSUNG_S5P_JPEG=m
+diff --git a/arch/arm64/boot/dts/rockchip/px30.dtsi b/arch/arm64/boot/dts/rockchip/px30.dtsi
+index 46f64cd33b9b..ef52879d6a73 100644
+--- a/arch/arm64/boot/dts/rockchip/px30.dtsi
++++ b/arch/arm64/boot/dts/rockchip/px30.dtsi
+@@ -1280,6 +1280,18 @@ isp_mmu: iommu@ff4a8000 {
+ 		#iommu-cells = <0>;
+ 	};
+ 
++	cif: video-capture@ff490000 {
++		compatible = "rockchip,px30-vip";
++		reg = <0x0 0xff490000 0x0 0x200>;
++		interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&cru ACLK_CIF>, <&cru HCLK_CIF>, <&cru PCLK_CIF>;
++		clock-names = "aclk", "hclk", "pclk";
++		power-domains = <&power PX30_PD_VI>;
++		resets = <&cru SRST_CIF_A>, <&cru SRST_CIF_H>, <&cru SRST_CIF_PCLKIN>;
++		reset-names = "axi", "ahb", "pclkin";
++		status = "disabled";
++	};
++
+ 	qos_gmac: qos@ff518000 {
+ 		compatible = "rockchip,px30-qos", "syscon";
+ 		reg = <0x0 0xff518000 0x0 0x20>;
 
 -- 
 2.39.5
