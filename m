@@ -1,70 +1,81 @@
-From: Ye He <ye.he@amlogic.com>
-Date: Tue, 19 Aug 2025 16:03:22 +0800
-Subject: [PATCH bluez] bap: Fix setup double free with bis sink
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v2 0/4] backlight: add new max25014 backlight driver
+Date: Tue, 19 Aug 2025 12:58:58 +0200
+Message-Id: <20250819-max25014-v2-0-5fd7aeb141ea@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250819-bap-setup-double-free-v1-1-a7c64be0d807@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAMkvpGgC/x3MywqDMBBG4VeRWXcgiVgvr1K6cJpfHRANSVOK4
- rs3dPktzjkpISoSDdVJER9Num8F9lbRaxm3Gay+mJxxjelszzIGTnjnwH7PsoKnCHDd2XsvzrR
- eGiptiJj0+/8+SNaMg57X9QPAQIdqbgAAAA==
-X-Change-ID: 20250819-bap-setup-double-free-38169b207db5
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Ye He <ye.he@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAPJYpGgC/0XMTQrDIBCG4auEWdeiQ8xPV71HyULsJBESp2iQl
+ ODda9NFd/MOH88BkYKjCLfqgEDJRce+BF4qsLPxEwn3LA0oUcsGG7GavVyqFjXKVveKlBk1lPk
+ r0Oj2k3oMpWcXNw7vU07q+/0hLeo/kpSQQlJnLfXF6+g+sWW/BV6Wq+UVhpzzB8licAOlAAAA
+X-Change-ID: 20250626-max25014-4207591e1af5
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>, 
+ Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-fbdev@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>, 
+ "Maud Spierings maudspierings"@gocontroll.com
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755590604; l=1413;
- i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
- bh=Z/qONVZw2n+fP9ohFfxGXed1U3JcKAzWJdnNk5Mfa/s=;
- b=qVFsKXMCmUVnLnkyIsZgNUeGnpKPsZlFnL+ntGnb2NJfserSvdeFq0rwMbCGrFOPYpd8cPAHx
- 8sshX35mtt8A3jTUdVxFqdp9b7ZEOibk5WgIglpZxZgBdCyluuy+jAa
-X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
- pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
-X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755601142; l=1984;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=dqQAaSK5TLp2OGYn22cxx8W1zu8wpnCnRgOi6eRYTh0=;
+ b=tg5vLaPXsGCQxjf7wI8AaH2Njrai8idSmUxnlS+4gXs03tlqp5zKmNQ244mZ5Q/rRknUynI+6
+ VBoeyS3B4V8BW7W09dDMRELXD/LJyG0isydsmFlzv4EHKl325Mc8Pl9
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If try to remove the bis sink device that big sync lost with
-remote bis source, the following crash is observed:
+The Maxim MAX25014 is an automotive grade backlight driver IC. Its
+datasheet can be found at [1].
 
-0x00000a78 in ?? ()
-0x004c8970 in setup_free ()
-0x00551a78 in queue_remove_all ()
-0x00551abc in queue_destroy ()
-0x004cb590 in bap_data_remove ()
-0x004cb9f0 in bap_bcast_remove ()
-0x0051457c in service_remove ()
-0x005272e4 in device_remove ()
-0x0050e134 in adapter_remove_connection ()
-0x0050e24c in dev_disconnected ()
-0x00553478 in request_complete ()
-0x00554670 in can_read_data ()
-0x005850c4 in watch_callback ()
-0xf7d5ab9c in g_main_context_dispatch () from /usr/lib/libglib-2.0.so.0
-0xf7d5af28 in ?? () from /usr/lib/libglib-2.0.so.0
+With its integrated boost controller, it can power 4 channels (led
+strings) and has a number of different modes using pwm and or i2c.
+Currently implemented is only i2c control.
 
-Signed-off-by: Ye He <ye.he@amlogic.com>
+link: https://www.analog.com/media/en/technical-documentation/data-sheets/MAX25014.pdf [1]
+
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- profiles/audio/bap.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
-index 2994881ccc1d7daa1d97210edc6ff67381e74cc1..c8c83cf94c57878f3bd8b805e926bd58ff648d9a 100644
---- a/profiles/audio/bap.c
-+++ b/profiles/audio/bap.c
-@@ -1010,6 +1010,8 @@ static void setup_free(void *data)
- 
- 	if (setup->ep)
- 		queue_remove(setup->ep->setups, setup);
-+	else if (setup->data->bcast_snks)
-+		queue_remove(setup->data->bcast_snks, setup);
- 
- 	setup_io_close(setup, NULL);
- 
+Changes in v2:
+- Remove leftover unused property from the bindings example
+- Complete the bindings example with all properties
+- Remove some double info from the maxim,iset property
+- Remove platform_data header, fold its data into the max25014 struct
+- Don't force defines to be unsigned
+- Remove stray struct max25014 declaration
+- Remove chipname and device from the max25014 struct
+- Inline the max25014_backlight_register() and strings_mask() functions
+- Remove CONFIG_OF ifdef
+- Link to v1: https://lore.kernel.org/r/20250725-max25014-v1-0-0e8cce92078e@gocontroll.com
 
 ---
-base-commit: 0bb66d3d1abd7d25b840d535c03b1b9613727d5c
-change-id: 20250819-bap-setup-double-free-38169b207db5
+Maud Spierings (4):
+      dt-bindings: backlight: Add max25014 bindings
+      backlight: add max25014atg backlight
+      arm64: dts: freescale: moduline-display-av101hdt-a10: add backlight
+      arm64: dts: freescale: moduline-display-av123z7m-n17: add backlight
+
+ .../bindings/leds/backlight/maxim,max25014.yaml    |  79 +++++
+ MAINTAINERS                                        |   6 +
+ ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso |  21 ++
+ ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso |  19 +-
+ drivers/video/backlight/Kconfig                    |   7 +
+ drivers/video/backlight/Makefile                   |   1 +
+ drivers/video/backlight/max25014.c                 | 395 +++++++++++++++++++++
+ 7 files changed, 527 insertions(+), 1 deletion(-)
+---
+base-commit: 886e5e7b0432360842303d587bb4a65d10741ae8
+change-id: 20250626-max25014-4207591e1af5
 
 Best regards,
 -- 
-Ye He <ye.he@amlogic.com>
+Maud Spierings <maudspierings@gocontroll.com>
 
