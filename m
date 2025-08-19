@@ -1,98 +1,70 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Tue, 19 Aug 2025 01:26:05 +0200
-Subject: [PATCH v10 13/13] arm64: dts: rockchip: enable vicap dvp on
- wolfvision pf5 io expander
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Tue, 19 Aug 2025 10:45:57 +0800
+Subject: [PATCH] selftests: net: fix memory leak in tls.c
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240220-rk3568-vicap-v10-13-62d8a7b209b4@collabora.com>
-References: <20240220-rk3568-vicap-v10-0-62d8a7b209b4@collabora.com>
-In-Reply-To: <20240220-rk3568-vicap-v10-0-62d8a7b209b4@collabora.com>
-To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
- Thomas Petazzoni <thomas.petazzoni@bootlin.com>, 
- Gerald Loacker <gerald.loacker@wolfvision.net>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Markus Elfring <Markus.Elfring@web.de>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh+dt@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Paul Kocialkowski <paulk@sys-base.io>, 
- Alexander Shiyan <eagle.alexander923@gmail.com>, 
- Val Packett <val@packett.cool>, Rob Herring <robh@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, 
- Michael Riesch <michael.riesch@collabora.com>, 
- Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755559554; l=1661;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=tkvGHWW1RXCremqXv1+qTo26zNWU0UHQFUaztf+p/DI=;
- b=j7qJwJlBp3s4+kXK3PuFrOiM+R/iCDEB6TlcYawUBljlPPawlDA1Zopg2v3jYZx4rFr2cv++X
- Mz+eZ2QuKJLAzjERg5Jahspc5+jStsww1EGia6J/crJ/+cYIUdiHDUo
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+Message-Id: <20250819-memoryleak-v1-1-d4c70a861e62@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAGTlo2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDC0NL3dzU3PyiypzUxGxdy5Sk1GTLxDSzZANzJaCGgqLUtMwKsGHRsbW
+ 1APHd1ZpcAAAA
+X-Change-ID: 20250819-memoryleak-9dbec9af6c07
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Shuah Khan <shuah@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, zhanjun@uniontech.com, 
+ niecheng1@uniontech.com, guanwentao@uniontech.com, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755571557; l=1183;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=bJ2O1uJkJydfjBXKxT0NanxgQaONGN6lDC7g+1imYiw=;
+ b=xzQfIUFyWMrFvujCffyv+PN8PbAoSZ2gVir4MYYu1oaGPhjxkT884zXmNyYRWxQMZ4Rumu7Ms
+ XYBWpUhR09bAYeg8F5B+p2tk283oVjxbzbsV8eaet43ZEfxXqNBY/Sy
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Digital Video Port (DVP, the 16-bit variant) of the RK3568 VICAP
-is broken out to the PF5 mainboard expansion header.
-Enable it in the device tree overlay for the WolfVision PF5 IO
-Expander board.
+To free memory and close fd after use
 
-Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
-Reviewed-by: Gerald Loacker <gerald.loacker@wolfvision.net>
-Tested-by: Gerald Loacker <gerald.loacker@wolfvision.net>
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Suggested-by: Jun Zhan <zhanjun@uniontech.com>
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- .../rockchip/rk3568-wolfvision-pf5-io-expander.dtso  | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ tools/testing/selftests/net/tls.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-index 048933de2943..8cfce71dd318 100644
---- a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-@@ -11,6 +11,7 @@
- #include <dt-bindings/clock/rk3568-cru.h>
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/pinctrl/rockchip.h>
+diff --git a/tools/testing/selftests/net/tls.c b/tools/testing/selftests/net/tls.c
+index d8cfcf9bb82594ca078c998ce5849131bf46ade8..23cf6ff5fa49378bd7906334ff402aa61a205f29 100644
+--- a/tools/testing/selftests/net/tls.c
++++ b/tools/testing/selftests/net/tls.c
+@@ -427,6 +427,8 @@ TEST_F(tls, sendfile)
+ 	EXPECT_GE(filefd, 0);
+ 	fstat(filefd, &st);
+ 	EXPECT_GE(sendfile(self->fd, filefd, 0, st.st_size), 0);
++
++	close(filefd);
+ }
  
- &{/} {
-@@ -134,3 +135,22 @@ &usb2phy0_host {
- 	phy-supply = <&usb_host_vbus>;
- 	status = "okay";
- };
+ TEST_F(tls, send_then_sendfile)
+@@ -448,6 +450,9 @@ TEST_F(tls, send_then_sendfile)
+ 
+ 	EXPECT_GE(sendfile(self->fd, filefd, 0, st.st_size), 0);
+ 	EXPECT_EQ(recv(self->cfd, buf, st.st_size, MSG_WAITALL), st.st_size);
 +
-+&vicap {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&cif_clk &cif_dvp_clk &cif_dvp_bus16>;
-+	status = "okay";
-+};
-+
-+&vicap_dvp {
-+	vicap_dvp_input: endpoint {
-+		bus-type = <MEDIA_BUS_TYPE_BT656>;
-+		bus-width = <16>;
-+		pclk-sample = <MEDIA_PCLK_SAMPLE_DUAL_EDGE>;
-+		rockchip,dvp-clk-delay = <10>;
-+	};
-+};
-+
-+&vicap_mmu {
-+	status = "okay";
-+};
++	free(buf);
++	close(filefd);
+ }
+ 
+ static void chunked_sendfile(struct __test_metadata *_metadata,
 
+---
+base-commit: be48bcf004f9d0c9207ff21d0edb3b42f253829e
+change-id: 20250819-memoryleak-9dbec9af6c07
+
+Best regards,
 -- 
-2.39.5
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
