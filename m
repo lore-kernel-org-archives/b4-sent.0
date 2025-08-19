@@ -1,72 +1,70 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Tue, 19 Aug 2025 15:42:24 +0800
-Subject: [PATCH] Bluetooth: hci_event: Disconnect device when BIG sync is
- lost
+From: Ye He <ye.he@amlogic.com>
+Date: Tue, 19 Aug 2025 16:03:22 +0800
+Subject: [PATCH bluez] bap: Fix setup double free with bis sink
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250819-bis_dev_disconnect-v1-1-a87c540efc46@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAN8qpGgC/x3MTQqAIBBA4avErBPUiH6uEhHmTDUbCyckkO6et
- PwW72UQikwCY5UhUmLhMxSYugJ/uLCTYiwGq22rezOolWVBSguy+DME8rdqjEPrCG23eijhFWn
- j559O8/t+ujHoImQAAAA=
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
- linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755589361; l=1615;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=/vhHRnEjB+7Jmzi7phGDpbSSLMxQT6GFh7t8rujQBfY=;
- b=51iFZ4j+7dfQHrrvk+ZfzzZSwBLCVJ61HsQRjqSXJGCbY7lVHUWcHJA3kcrd34NnN4QaCnwKy
- 2ztKhhkfCZoApBo2wjDYODktyOGETXYQ11f+ApiWfqIjBE9XWF8kJis
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Message-Id: <20250819-bap-setup-double-free-v1-1-a7c64be0d807@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAMkvpGgC/x3MywqDMBBG4VeRWXcgiVgvr1K6cJpfHRANSVOK4
+ rs3dPktzjkpISoSDdVJER9Num8F9lbRaxm3Gay+mJxxjelszzIGTnjnwH7PsoKnCHDd2XsvzrR
+ eGiptiJj0+/8+SNaMg57X9QPAQIdqbgAAAA==
+X-Change-ID: 20250819-bap-setup-double-free-38169b207db5
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Ye He <ye.he@amlogic.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755590604; l=1413;
+ i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
+ bh=Z/qONVZw2n+fP9ohFfxGXed1U3JcKAzWJdnNk5Mfa/s=;
+ b=qVFsKXMCmUVnLnkyIsZgNUeGnpKPsZlFnL+ntGnb2NJfserSvdeFq0rwMbCGrFOPYpd8cPAHx
+ 8sshX35mtt8A3jTUdVxFqdp9b7ZEOibk5WgIglpZxZgBdCyluuy+jAa
+X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
+ pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
+X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a BIG sync is lost, the device should be set to "disconnected".
-This ensures symmetry with the ISO path setup, where the device is
-marked as "connected" once the path is established. Without this
-change, the device state remains inconsistent and may lead to a
-memory leak.
+If try to remove the bis sink device that big sync lost with
+remote bis source, the following crash is observed:
 
-Fixes: b2a5f2e1c127 ("Bluetooth: hci_event: Add support for handling LE BIG Sync Lost event")
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+0x00000a78 in ?? ()
+0x004c8970 in setup_free ()
+0x00551a78 in queue_remove_all ()
+0x00551abc in queue_destroy ()
+0x004cb590 in bap_data_remove ()
+0x004cb9f0 in bap_bcast_remove ()
+0x0051457c in service_remove ()
+0x005272e4 in device_remove ()
+0x0050e134 in adapter_remove_connection ()
+0x0050e24c in dev_disconnected ()
+0x00553478 in request_complete ()
+0x00554670 in can_read_data ()
+0x005850c4 in watch_callback ()
+0xf7d5ab9c in g_main_context_dispatch () from /usr/lib/libglib-2.0.so.0
+0xf7d5af28 in ?? () from /usr/lib/libglib-2.0.so.0
+
+Signed-off-by: Ye He <ye.he@amlogic.com>
 ---
- net/bluetooth/hci_event.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ profiles/audio/bap.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
-index 1686680a38c8..59aae893e0ed 100644
---- a/net/bluetooth/hci_event.c
-+++ b/net/bluetooth/hci_event.c
-@@ -6998,6 +6998,7 @@ static void hci_le_big_sync_lost_evt(struct hci_dev *hdev, void *data,
- {
- 	struct hci_evt_le_big_sync_lost *ev = data;
- 	struct hci_conn *bis, *conn;
-+	bool mgmt_conn;
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index 2994881ccc1d7daa1d97210edc6ff67381e74cc1..c8c83cf94c57878f3bd8b805e926bd58ff648d9a 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -1010,6 +1010,8 @@ static void setup_free(void *data)
  
- 	bt_dev_dbg(hdev, "big handle 0x%2.2x", ev->handle);
+ 	if (setup->ep)
+ 		queue_remove(setup->ep->setups, setup);
++	else if (setup->data->bcast_snks)
++		queue_remove(setup->data->bcast_snks, setup);
  
-@@ -7016,6 +7017,10 @@ static void hci_le_big_sync_lost_evt(struct hci_dev *hdev, void *data,
- 	while ((bis = hci_conn_hash_lookup_big_state(hdev, ev->handle,
- 						     BT_CONNECTED,
- 						     HCI_ROLE_SLAVE))) {
-+		mgmt_conn = test_and_clear_bit(HCI_CONN_MGMT_CONNECTED, &bis->flags);
-+		mgmt_device_disconnected(hdev, &bis->dst, bis->type, bis->dst_type,
-+					 ev->reason, mgmt_conn);
-+
- 		clear_bit(HCI_CONN_BIG_SYNC, &bis->flags);
- 		hci_disconn_cfm(bis, ev->reason);
- 		hci_conn_del(bis);
+ 	setup_io_close(setup, NULL);
+ 
 
 ---
-base-commit: c921e5d14590381e6db7e451488b7b9ddc67a32c
-change-id: 20250819-bis_dev_disconnect-31ad2aed27bc
+base-commit: 0bb66d3d1abd7d25b840d535c03b1b9613727d5c
+change-id: 20250819-bap-setup-double-free-38169b207db5
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Ye He <ye.he@amlogic.com>
 
