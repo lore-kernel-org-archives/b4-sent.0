@@ -1,14 +1,12 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Subject: [PATCH v2 0/4] backlight: add new max25014 backlight driver
-Date: Tue, 19 Aug 2025 12:58:58 +0200
-Message-Id: <20250819-max25014-v2-0-5fd7aeb141ea@gocontroll.com>
+Date: Tue, 19 Aug 2025 12:58:59 +0200
+Subject: [PATCH v2 1/4] dt-bindings: backlight: Add max25014 bindings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPJYpGgC/0XMTQrDIBCG4auEWdeiQ8xPV71HyULsJBESp2iQl
- ODda9NFd/MOH88BkYKjCLfqgEDJRce+BF4qsLPxEwn3LA0oUcsGG7GavVyqFjXKVveKlBk1lPk
- r0Oj2k3oMpWcXNw7vU07q+/0hLeo/kpSQQlJnLfXF6+g+sWW/BV6Wq+UVhpzzB8licAOlAAAA
-X-Change-ID: 20250626-max25014-4207591e1af5
+Message-Id: <20250819-max25014-v2-1-5fd7aeb141ea@gocontroll.com>
+References: <20250819-max25014-v2-0-5fd7aeb141ea@gocontroll.com>
+In-Reply-To: <20250819-max25014-v2-0-5fd7aeb141ea@gocontroll.com>
 To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
  Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -20,62 +18,129 @@ Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-fbdev@vger.kernel.org, imx@lists.linux.dev, 
  linux-arm-kernel@lists.infradead.org, 
- Maud Spierings <maudspierings@gocontroll.com>, 
- "Maud Spierings maudspierings"@gocontroll.com
+ Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755601142; l=1984;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755601142; l=3235;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=dqQAaSK5TLp2OGYn22cxx8W1zu8wpnCnRgOi6eRYTh0=;
- b=tg5vLaPXsGCQxjf7wI8AaH2Njrai8idSmUxnlS+4gXs03tlqp5zKmNQ244mZ5Q/rRknUynI+6
- VBoeyS3B4V8BW7W09dDMRELXD/LJyG0isydsmFlzv4EHKl325Mc8Pl9
+ bh=gBLVxlhNulxZHWAMI/J7tGBDaD7A4GreotsmuLvErdM=;
+ b=dRKO5J+x8LqnANMHECIzhMXV3SnGmTHTL5+VK1RZMQ1aWrBUfFjwgVf8WKkcIgEAMbZ6up8tW
+ VUml2CDRY42CHloYsu4Wb6efkSMsRg5W1FeaW1dKrPQn4w5GDUsb7Eg
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Maxim MAX25014 is an automotive grade backlight driver IC. Its
-datasheet can be found at [1].
-
-With its integrated boost controller, it can power 4 channels (led
-strings) and has a number of different modes using pwm and or i2c.
-Currently implemented is only i2c control.
-
-link: https://www.analog.com/media/en/technical-documentation/data-sheets/MAX25014.pdf [1]
+The Maxim MAX25014 is a 4-channel automotive grade backlight driver IC
+with intgrated boost controller.
 
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
-Changes in v2:
-- Remove leftover unused property from the bindings example
-- Complete the bindings example with all properties
-- Remove some double info from the maxim,iset property
-- Remove platform_data header, fold its data into the max25014 struct
-- Don't force defines to be unsigned
-- Remove stray struct max25014 declaration
-- Remove chipname and device from the max25014 struct
-- Inline the max25014_backlight_register() and strings_mask() functions
-- Remove CONFIG_OF ifdef
-- Link to v1: https://lore.kernel.org/r/20250725-max25014-v1-0-0e8cce92078e@gocontroll.com
+ .../bindings/leds/backlight/maxim,max25014.yaml    | 79 ++++++++++++++++++++++
+ MAINTAINERS                                        |  5 ++
+ 2 files changed, 84 insertions(+)
 
----
-Maud Spierings (4):
-      dt-bindings: backlight: Add max25014 bindings
-      backlight: add max25014atg backlight
-      arm64: dts: freescale: moduline-display-av101hdt-a10: add backlight
-      arm64: dts: freescale: moduline-display-av123z7m-n17: add backlight
+diff --git a/Documentation/devicetree/bindings/leds/backlight/maxim,max25014.yaml b/Documentation/devicetree/bindings/leds/backlight/maxim,max25014.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..30b591152fa31d5e43243cac44c72028b05b5f8a
+--- /dev/null
++++ b/Documentation/devicetree/bindings/leds/backlight/maxim,max25014.yaml
+@@ -0,0 +1,79 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/leds/backlight/maxim,max25014.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Maxim max25014 backlight controller
++
++maintainers:
++  - Maud Spierings <maudspierings@gocontroll.com>
++
++allOf:
++  - $ref: common.yaml#
++
++properties:
++  compatible:
++    enum:
++      - maxim,max25014
++
++  reg:
++    maxItems: 1
++
++  enable-gpios:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  power-supply:
++    description: Regulator which controls the boost converter input rail.
++
++  pwms:
++    maxItems: 1
++
++  maxim,iset:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    default: 11
++    description:
++      Value of the ISET register field (0-15).
++
++  maxim,strings:
++    $ref: /schemas/types.yaml#/definitions/uint32-array
++    description:
++      A 4-bit bitfield that describes which led strings to turn on.
++    minItems: 4
++    maxItems: 4
++
++required:
++  - compatible
++  - reg
++  - maxim,strings
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        backlight: backlight@6f {
++            reg = <0x6f>;
++            compatible = "maxim,max25014";
++            default-brightness = <50>;
++            enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
++            interrupt-parent = <&gpio1>;
++            interrupts = <2 IRQ_TYPE_EDGE_FALLING>;
++            pinctrl-names = "default";
++            pinctrl-0 = <&pinctrl_backlight>;
++            power-supply = <&reg_backlight>;
++            pwms = <&pwm1>;
++            maxim,iset = <7>;
++            maxim,strings = <1 1 1 1>;
++        };
++    };
++
+diff --git a/MAINTAINERS b/MAINTAINERS
+index e81d5f9fbd16cc384356804390d65652bbb9e3f6..11c73d2e37fac22aea852152746236c1472f41b8 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -14972,6 +14972,11 @@ F:	Documentation/userspace-api/media/drivers/max2175.rst
+ F:	drivers/media/i2c/max2175*
+ F:	include/uapi/linux/max2175.h
+ 
++MAX25014 BACKLIGHT DRIVER
++M:	Maud Spierings <maudspierings@gocontroll.com>
++S:	Maintained
++F:	Documentation/devicetree/bindings/leds/backlight/maxim,max25014.yaml
++
+ MAX31335 RTC DRIVER
+ M:	Antoniu Miclaus <antoniu.miclaus@analog.com>
+ L:	linux-rtc@vger.kernel.org
 
- .../bindings/leds/backlight/maxim,max25014.yaml    |  79 +++++
- MAINTAINERS                                        |   6 +
- ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso |  21 ++
- ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso |  19 +-
- drivers/video/backlight/Kconfig                    |   7 +
- drivers/video/backlight/Makefile                   |   1 +
- drivers/video/backlight/max25014.c                 | 395 +++++++++++++++++++++
- 7 files changed, 527 insertions(+), 1 deletion(-)
----
-base-commit: 886e5e7b0432360842303d587bb4a65d10741ae8
-change-id: 20250626-max25014-4207591e1af5
-
-Best regards,
 -- 
-Maud Spierings <maudspierings@gocontroll.com>
+2.50.1
 
