@@ -1,113 +1,157 @@
-From: John Cox <john.cox@raspberrypi.com>
-Date: Wed, 20 Aug 2025 11:28:06 +0100
-Subject: [PATCH] arm64/dma-mapping: Fix arch_sync_dma_for_device to respect
- dir parameter
+From: Remi Buisson <remi.buisson@tdk.com>
+Subject: [PATCH v5 0/9] iio: imu: new inv_icm45600 driver
+Date: Wed, 20 Aug 2025 14:24:18 +0000
+Message-Id: <20250820-add_newport_driver-v5-0-2fc9f13dddee@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250820-arm64-dma-direction-fix-v1-1-818a4ca8f879@raspberrypi.com>
-X-B4-Tracking: v=1; b=H4sIADWjpWgC/x2MSwqAMAwFryJZG2hL/V5FXFQbNQs/pCKCeHeDy
- 3nMmwcSCVOCNntA6OLE+6Zg8wzGJWwzIUdlcMYVprYNBllLj3ENGFloPNXHiW+sgq3i4AtnvAF
- 9H0I6/+Wuf98P26gJo2kAAAA=
-X-Change-ID: 20250819-arm64-dma-direction-fix-7a17db452040
-To: Catalin Marinas <catalin.marinas@arm.com>, 
- Will Deacon <will@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, 
- John Cox <john.cox@raspberrypi.com>
+X-B4-Tracking: v=1; b=H4sIAJLapWgC/33NTW7CMBCG4asgrzGaGfwTd9V7oAol9gQsRIKcy
+ LRCuXudbIAq6vIdaZ7vIQZOkQfxsXmIxDkOse9K6O1G+HPdnVjGUFoQkAaFKOsQjh3fb30ajyH
+ FzElqcr7VjUWuK1Eeb4nb+L2gh6/S5ziMffpZNjLO13+5jBIkaqgIDTSA7nMMl53vr2LGMj0Bi
+ 7AKUAGa1ppQoSJu6R3YvwJ2FdgXwBtwjoG8Nn8A9QTKwCqgCqCUUY0xAM6+ANM0/QK98Gj1dQE
+ AAA==
+X-Change-ID: 20250411-add_newport_driver-529cf5b71ea8
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, Remi Buisson <remi.buisson@tdk.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755685692; l=2865;
- i=john.cox@raspberrypi.com; s=20250820; h=from:subject:message-id;
- bh=A0faGdB6jvGvpOhr4yqKULcyxzYLZmrHeTUjS8AAS2I=;
- b=nrUwVChnIiNiher7bRqc6ipbU0fkP4TfLtEF+RtEpxE5xLugC4vRWGZBL2szJSAGBc60CXbWJ
- RzsIhegwfJoAg7TfnGbPK6FJzz5Y5fJxcjBgBQc5bz+7LOZ3MLrO8oc
-X-Developer-Key: i=john.cox@raspberrypi.com; a=ed25519;
- pk=a3LAIU66MAZzpHbiNZ4El5gKaDfA4ONOVlPUCzEGUDI=
-X-Endpoint-Received: by B4 Relay for john.cox@raspberrypi.com/20250820 with auth_id=497
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755699883; l=6453;
+ i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
+ bh=FaJBnayLLeeHXIkZMFvhM3bi2xMW6chEyzv8fyYvAg8=;
+ b=R0vZ7Y3wJaWHzjP29xah7pfLZ6dcKw0HI4Ac2msXQYpB3/uNeqWGKENXA0npWdES4bG8QbWcp
+ JaKg8GZsoVhAwgJkZoQ9gY/N7/Zgb0yHdm6pwtU5xhBkpFF19HKaMa7
+X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
+ pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
+X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All other architectures do different cache operations depending on the
-dir parameter. Fix arm64 to do the same.
+This series add a new driver for managing InvenSense ICM-456xx 6-axis IMUs.
+This next generation of chips includes new generations of 3-axis gyroscope
+and 3-axis accelerometer, support of I3C in addition to I2C and SPI, and
+intelligent MotionTracking features like pedometer, tilt detection, and
+tap detection.
 
-This fixes udmabuf operations when syncing for read e.g. when the CPU
-reads back a V4L2 decoded frame buffer.
+This series is delivering a driver supporting gyroscope, accelerometer and
+temperature data, with polling and buffering using hwfifo and watermark,
+on I2C, SPI and I3C busses.
 
-Signed-off-by: John Cox <john.cox@raspberrypi.com>
+Gyroscope and accelerometer sensors are completely independent and can have
+different ODRs. Since there is only a single FIFO a specific value is used to
+mark invalid data. For keeping the device standard we are de-multiplexing data
+from the FIFO to 2 IIO devices with 2 buffers, 1 for the accelerometer and 1
+for the gyroscope. This architecture also enables to easily turn each sensor
+on/off without impacting the other. The device interrupt is used to read the
+FIFO and launch parsing of accelerometer and gyroscope data. This driver
+relies on the common Invensense timestamping mechanism to handle correctly
+FIFO watermark and dynamic changes of settings.
+
+The structure of the driver is quite similar to the inv_icm42600 driver,
+however there are significant reasons for adding a different driver for
+inv_icm45600, such as:
+- A completely different register map.
+- Different FIFO management, based on number of samples instead of bytes.
+- Different indirect register access mechanism.
+
+Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
-This patch makes the arch_sync_dma_for_device function on arm64
-do different things depending on the value of the dir parameter. In
-particular it does a cache invalidate operation if the dir flag is
-set to DMA_FROM_DEVICE. The current code does a writeback without
-invalidate under all circumstances. Nearly all other architectures do
-an invalidate if the direction is FROM_DEVICE which seems like the
-correct thing to do to me.
+Changes in v5:
+- Simplified device tree, removed interrupts from mandatory param list
+- Allocated regmap_bulk_read/write buffers to dma-capable memory (for indirect reg accesses)
+- Use min/max to simplify code
+- Reordered some code/include/prototypes to the patch they belong
+- Updated to latest iio_push_to_buffers_with_ts API
+- Fix build warning with clang 18.1.8
+- Fixed some alignements
+- Avoiding irq_type silly assignation
+- Simplified fwnode_irq_get_byname error management
+- Re-ordered suspend/resume process to match + comments
+- Reverted VDDIO init to make it work without PM
+- Avoid PM underflow on VDDIO when removing inv_icm456000 module, by checking suspend state
+- Link to v4: https://lore.kernel.org/r/20250814-add_newport_driver-v4-0-4464b6600972@tdk.com
 
-This patch fixes a problem I was having with udmabuf allocated
-dmabufs. It also fixes a very similar problem I had with dma_heap
-allocated dmabuf but that occured very much less frequently and I
-haven't traced exactly what was going on there.
+Changes in v4:
+- Introduce gyro and accel in different patches.
+- Move IRQ probe to next patch.
+- Allocate fifo memory instead of static definition.
+- Rework VDDIO management to avoid underflow.
+- Rework suspend/resume using force suspend/resume API.
+- Use helper min, clamp and sizeof instead of custom implementation.
+- Re-scoping some variables, using reverse xmas tree for declarations.
+- Fix formatting: end of list, end of file, spaces, alignments.
+- Use dev_err_probe for I3C errors.
+- Factorizing default config code.
+- Link to v3: https://lore.kernel.org/r/20250717-add_newport_driver-v3-0-c6099e02c562@tdk.com
 
-My problem (on a Raspberry Pi5):
+Changes in v3:
+- Macros renamed and added to the patch using it.
+- Using unsigned for sensor configuration parameters.
+- Using sizeof instead of raw values.
+- Using fsleep instead of usleep.
+- Simplified dt-bindings examples, setting supplies as mandatory
+- Fix bad or useless casts.
+- Partially aligned power management following 20250709-icm42pmreg-v1-0-3d0e793c99b2@geanix.com
+- Fix "uninitialized symbols" warnings.
+- Link to v2: https://lore.kernel.org/r/20250710-add_newport_driver-v2-0-bf76d8142ef2@tdk.com
 
-[Userland]
-Alloc memory with memfd_create + ftruncate
-Derive dmabuf from memfd with udmabuf
-Close memfd
-Queue dmabuf into V4L2 with QBUF
-<decode a video frame>
-Extract dmabuf from V4L2 with DQBUF
-Map dmabuf for read with mmap
-Sync for read with DMA_BUF_IOCTL_SYNC with (DMA_BUF_SYNC_START |
-DMA_BUF_SYNC_READ)
-Read buffer
-Sync end
-Unmap
-
-I get old (zero) data out of the "Read buffer" stage in some cache
-lines sometimes.
-It doesn't matter which way round the mmap & sync are.
-
-I am aware that there is a patchset going through for udmabuf that may
-well fix the udmabuf case above, but given that this patch fixes
-something similar in dma_heap/system too I think it is still worth
-having.
----
- arch/arm64/mm/dma-mapping.c | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
-
-diff --git a/arch/arm64/mm/dma-mapping.c b/arch/arm64/mm/dma-mapping.c
-index b2b5792b2caaf81ccfc3204c94395bb0faeabddd..51c43c1f563015139e365ed86f0f5f0d9483fa7f 100644
---- a/arch/arm64/mm/dma-mapping.c
-+++ b/arch/arm64/mm/dma-mapping.c
-@@ -16,8 +16,22 @@ void arch_sync_dma_for_device(phys_addr_t paddr, size_t size,
- 			      enum dma_data_direction dir)
- {
- 	unsigned long start = (unsigned long)phys_to_virt(paddr);
-+	unsigned long end = start + size;
- 
--	dcache_clean_poc(start, start + size);
-+	switch (dir) {
-+	case DMA_BIDIRECTIONAL:
-+		dcache_clean_inval_poc(start, end);
-+		break;
-+	case DMA_TO_DEVICE:
-+		dcache_clean_poc(start, end);
-+		break;
-+	case DMA_FROM_DEVICE:
-+		dcache_inval_poc(start, end);
-+		break;
-+	case DMA_NONE:
-+	default:
-+		break;
-+	}
- }
- 
- void arch_sync_dma_for_cpu(phys_addr_t paddr, size_t size,
+Changes in v2:
+- Reworked patches order and content to ease review and make sure everything compiles
+- Reworked gyro and accel FSR as 2D arrays
+- Moved temperature processed sensor to core module
+- Use latest API to claim/release device
+- Implemented chip_info structure instead of relying on an enum
+- Removed power-mode ABI, only relying on ODR to switch power_mode
+- Reworked regulator control to use devm_ API where relevant
+- Reworked inv_icm45600_state.buffer as a union to avoid casts, using getter/setter instead of memcpy
+- Fixed dt-binding error and moved patch at the beginning of the patch-set
+- Reworked macros to use FIELD_PREP inline instead of inside the header
+- Fixed comment's grammar
+- Removed extra blank lines
+- Reordered part numbers alphanumerically
+- Removed useless default/error fallbacks
+- Typed accel, gyro and timestamp data when parsing FIFO
+- Fixed I2C module return code
+- Use Linux types instead of C standard
+- Reviewed headers inclusion to remove useless #include and to add missing ones
+- Link to v1: https://lore.kernel.org/r/20250411-add_newport_driver-v1-0-15082160b019@tdk.com
 
 ---
-base-commit: 14131859b2615fd3076ffdad370fc5500a037432
-change-id: 20250819-arm64-dma-direction-fix-7a17db452040
+Remi Buisson (9):
+      dt-bindings: iio: imu: Add inv_icm45600
+      iio: imu: inv_icm45600: add new inv_icm45600 driver
+      iio: imu: inv_icm45600: add buffer support in iio devices
+      iio: imu: inv_icm45600: add IMU IIO gyroscope device
+      iio: imu: inv_icm45600: add IMU IIO accelerometer device
+      iio: imu: inv_icm45600: add I2C driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add SPI driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add I3C driver for inv_icm45600 driver
+      MAINTAINERS: add entry for inv_icm45600 6-axis imu sensor
+
+ .../bindings/iio/imu/invensense,icm45600.yaml      |  90 ++
+ MAINTAINERS                                        |   8 +
+ drivers/iio/imu/Kconfig                            |   1 +
+ drivers/iio/imu/Makefile                           |   1 +
+ drivers/iio/imu/inv_icm45600/Kconfig               |  70 ++
+ drivers/iio/imu/inv_icm45600/Makefile              |  16 +
+ drivers/iio/imu/inv_icm45600/inv_icm45600.h        | 380 ++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c  | 781 +++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 566 ++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.h | 101 +++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_core.c   | 969 +++++++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c   | 792 +++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c    |  98 +++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c    |  77 ++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c    | 106 +++
+ 15 files changed, 4056 insertions(+)
+---
+base-commit: f8f559752d573a051a984adda8d2d1464f92f954
+change-id: 20250411-add_newport_driver-529cf5b71ea8
 
 Best regards,
 -- 
-John Cox <john.cox@raspberrypi.com>
+Remi Buisson <remi.buisson@tdk.com>
 
