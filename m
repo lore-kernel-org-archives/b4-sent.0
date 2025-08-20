@@ -1,11 +1,10 @@
 From: Per Larsen <perlarsen@google.com>
-Date: Wed, 20 Aug 2025 01:10:08 +0000
-Subject: [PATCH v11 4/6] KVM: arm64: Mark optional FF-A 1.2 interfaces as
- unsupported
+Date: Wed, 20 Aug 2025 01:10:09 +0000
+Subject: [PATCH v11 5/6] KVM: arm64: Mask response to FFA_FEATURE call
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250820-virtio-msg-ffa-v11-4-497ef43550a3@google.com>
+Message-Id: <20250820-virtio-msg-ffa-v11-5-497ef43550a3@google.com>
 References: <20250820-virtio-msg-ffa-v11-0-497ef43550a3@google.com>
 In-Reply-To: <20250820-virtio-msg-ffa-v11-0-497ef43550a3@google.com>
 To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
@@ -19,40 +18,52 @@ Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev,
  sebastianene@google.com, qwandor@google.com, 
  Per Larsen <perlarsen@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755652211; l=1035;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755652211; l=1408;
  i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=axvv1e3eXiB/+xexcDgx6JaWgpv5+SkVFL8SUFw7cGw=;
- b=GUSQIldlrNo8coOkbJ1NoBMsenhoCI9wnCj0kif4wX+McoVmMUpRsHZm9TM6nJaF+KYEu9Qo+
- 7KbJ9pgZlrUAG4or8PmT8Uz4LOrxJ/vDXPQgVSx+hzLMihsRyY7tq5i
+ bh=3+r7TtwJ1pvrBzvbuh6WKHBBgdJuz5zMPQcaMPudbmc=;
+ b=oL6lSKpTwfPP5RproVmd6Kyn1Qhr93I9kYWFlPEIJc4+cwaIz9LywwGKcsoEfOCO0kfbPhwLx
+ Hrsx9+U9Gk4Dw99/TMvf1seMeHsl8tP6wke67qGrvkKpYwqBYeNrBA7
 X-Developer-Key: i=perlarsen@google.com; a=ed25519;
  pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
 X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Mark FF-A 1.2 interfaces as unsupported lest they get proxied.
+The minimum size and alignment boundary for FFA_RXTX_MAP is returned in
+bit[1:0]. Mask off any other bits in w2 when reading the minimum buffer
+size in hyp_ffa_post_init.
 
 Acked-by: Will Deacon <will@kernel.org>
 Signed-off-by: Per Larsen <perlarsen@google.com>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 2 +-
+ include/linux/arm_ffa.h       | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index 40a785b6ed063f9de31f51f1e82ebd9c70b13de9..96109aa99c48741e45a2b85d8e7bf26440597398 100644
+index 96109aa99c48741e45a2b85d8e7bf26440597398..a8ec1a94f3f8a86551895f4606918246c4ac1f39 100644
 --- a/arch/arm64/kvm/hyp/nvhe/ffa.c
 +++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -678,6 +678,11 @@ static bool ffa_call_supported(u64 func_id)
- 	case FFA_NOTIFICATION_SET:
- 	case FFA_NOTIFICATION_GET:
- 	case FFA_NOTIFICATION_INFO_GET:
-+	/* Optional interfaces added in FF-A 1.2 */
-+	case FFA_MSG_SEND_DIRECT_REQ2:		/* Optional per 7.5.1 */
-+	case FFA_MSG_SEND_DIRECT_RESP2:		/* Optional per 7.5.1 */
-+	case FFA_CONSOLE_LOG:			/* Optional per 13.1: not in Table 13.1 */
-+	case FFA_PARTITION_INFO_GET_REGS:	/* Optional for virtual instances per 13.1 */
- 		return false;
- 	}
+@@ -739,7 +739,7 @@ static int hyp_ffa_post_init(void)
+ 	if (res.a0 != FFA_SUCCESS)
+ 		return -EOPNOTSUPP;
  
+-	switch (res.a2) {
++	switch (res.a2 & FFA_FEAT_RXTX_MIN_SZ_MASK) {
+ 	case FFA_FEAT_RXTX_MIN_SZ_4K:
+ 		min_rxtx_sz = SZ_4K;
+ 		break;
+diff --git a/include/linux/arm_ffa.h b/include/linux/arm_ffa.h
+index e1634897e159cdc208931938649eb0fb04d5a070..cd7ee4df9045dceca1c4e0dca2d533b770b1b056 100644
+--- a/include/linux/arm_ffa.h
++++ b/include/linux/arm_ffa.h
+@@ -128,6 +128,7 @@
+ #define FFA_FEAT_RXTX_MIN_SZ_4K		0
+ #define FFA_FEAT_RXTX_MIN_SZ_64K	1
+ #define FFA_FEAT_RXTX_MIN_SZ_16K	2
++#define FFA_FEAT_RXTX_MIN_SZ_MASK	GENMASK(1, 0)
+ 
+ /* FFA Bus/Device/Driver related */
+ struct ffa_device {
 
 -- 
 2.51.0.rc1.167.g924127e9c0-goog
