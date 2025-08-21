@@ -1,202 +1,163 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Thu, 21 Aug 2025 17:23:55 +0200
-Subject: [PATCH 2/2] iio: humditiy: hdc3020: fix units for thresholds and
- hysteresis
+From: Sven Peter <sven@kernel.org>
+Subject: [PATCH RFC 00/22] Apple Silicon USB3 support
+Date: Thu, 21 Aug 2025 15:38:52 +0000
+Message-Id: <20250821-atcphy-6-17-v1-0-172beda182b8@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250821-hdc3020-units-fix-v1-2-6ab0bc353c5e@liebherr.com>
-References: <20250821-hdc3020-units-fix-v1-0-6ab0bc353c5e@liebherr.com>
-In-Reply-To: <20250821-hdc3020-units-fix-v1-0-6ab0bc353c5e@liebherr.com>
-To: Javier Carrasco <javier.carrasco.cruz@gmail.com>, 
- Li peiyu <579lpy@gmail.com>, Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Dimitri Fedrau <dima.fedrau@gmail.com>
-Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Chris Lesiak <chris.lesiak@licorbio.com>
+X-B4-Tracking: v=1; b=H4sIAIw9p2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDCyMD3cSS5IKMSl0zXUNz3STz1MQ0I+OkVEPzZCWgjoKi1LTMCrBp0Up
+ Bbs5KsbW1ABc+4BViAAAA
+X-Change-ID: 20250820-atcphy-6-17-b7eaf23be17c
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Felipe Balbi <balbi@kernel.org>, 
+ Janne Grunau <j@jannau.net>, Alyssa Rosenzweig <alyssa@rosenzweig.io>, 
+ Neal Gompa <neal@gompa.dev>, Vinod Koul <vkoul@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Thinh Nguyen <Thinh.Nguyen@synopsys.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org, 
+ Sven Peter <sven@kernel.org>, Hector Martin <marcan@marcan.st>, 
+ stable@kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755789852; l=6554;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=s5RRuhM1n7kH5vaW9+kM6WoOD1OME6OW4rVjujM7FfY=;
- b=g31B7wJbKaVODCRVuwOaprig/4+jyJrLO+uj6n6eZdqUuf/ZGR/0FbHJ8BdtXyy0vir5Pw0Z/
- He5Lm2oKmlwDjVC1XTIbOp7PyusPjMy+flipaZo2sGZq8EB0pLk1RTM
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6416; i=sven@kernel.org;
+ h=from:subject:message-id; bh=Ffhri9SjHSf/0JyrOM8P9yB5VxqUTJqas+Uuy3v7zJ8=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8Zy27nOvKsmrbr5ZHFFULWSbmqNU6Cf/GdhsxZJDpOlr
+ /YtNZzUUcrCIMbBICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZhITQTD/yApX4eCr+cqeRw1
+ T5XvdD0t9Tg+mjlFZc70zo2Kl85v5WVkWPFqbkp+4sUwCT7P/bIazrIej3UUzwgFLfKW/b+uw4u
+ PBQA=
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-According to the ABI the units after application of scale and offset are
-milli degree celsius for temperature thresholds and milli percent for
-relative humidity thresholds. Change scale factor to fix this issue.
+Hi,
 
-Fixes: 3ad0e7e5f0cb ("iio: humidity: hdc3020: add threshold events support")
-Reported-by: Chris Lesiak <chris.lesiak@licorbio.com>
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+This series includes changes to dwc3, tipd and a new phy driver to enable
+USB3 on these machines. There's also some preparations to eventually enable
+DisplayPort AltMode and Thunderbolt but those need future work.
+Overall, this entire setup is quite a mess and we've tried to make it work
+for quite a while now and finally came up with this solution here.
+
+The USB3 controller is a very special kind of broken: It never sees any port
+plug/unplug events that should normally arrive directly at dwc3.
+Additionally, it needs to go through a full hard reset for every new connection
+and most mode change. Details on why this is required are in the commit
+description.
+
+On top of that we need to keep the Type-C PHY bringup and dwc3 bringup tightly
+synchronized. If there's a race between the two systems at best the port stops
+working until a system reboot and at worst there's a watchdog somewhere that 
+forcefully resets the entire SoC after ~5 seconds. I've only seen the latter
+when bringing up thunderbolt so far but wouldn't be surprised if it happens
+with just usb3 as well.
+
+The entire bringup/bringup is orchestrated by a TIPD variant called CD321x
+found on these machines. Unlike the original chips we however get no control
+over which mode is negotiated or are even able to see the PDOs or VDOs. We only
+get to know once the mode has been negotiated and have to act accordingly. I
+even went as far as dumping the firmware from the chip to confirm this [1][2].
+
+Hector wrote another summary of this early in January as well [3] and this
+series is the only way we've been able to bring these ports up reliably.
+It's not pretty in some places but I have no other idea how to implement this,
+hence the RFC tag. Happy to discuss other approaches as well.
+
+Both the PHY and the TIPD driver already include changes for DisplayPort
+AltMode and USB4/Thunderbolt. These need additional work though but
+since we can't control the mode devices end up in we can already merge
+them now.
+
+I used phy/qcom,sc8280xp-qmp-usb43dp-phy.yaml as a template for the dt-binding
+for atcphy (especially the ports). That was the most recent binding I found for
+a PHY with similar features.
+
+In order to test this you need to run the latest m1n1 master [4] because the
+1.5.0 release does not include the code that lifts the tunables from Apple's
+device tree. A kernel tree for testing is also tagged as apple-usb3-v1 at [5].
+
+If the overall approach here is fine and no one can think of a better way to
+support this SoC I'll drop the RFC and include the dts changes for the other
+M1 and M2 machines as well.
+
+Best,
+
+Sven
+
+[1] https://social.treehouse.systems/@sven/111092587315536174
+[2] https://social.treehouse.systems/@sven/111096589846468888
+[3] https://lore.kernel.org/all/fda8b831-1ffc-4087-8e7b-d97779b3ecc5@marcan.st/
+[4] https://github.com/AsahiLinux/m1n1
+[5] https://git.kernel.org/pub/scm/linux/kernel/git/sven/linux.git
+
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/iio/humidity/hdc3020.c | 42 +++++++++++++++++++++---------------------
- 1 file changed, 21 insertions(+), 21 deletions(-)
+Hector Martin (7):
+      usb: dwc3: apple: Use synchronous role switch for apple
+      usb: dwc3: apple: Adjust vendor-specific registers during init
+      usb: typec: tipd: Update partner identity when power status was updated
+      usb: typec: tipd: Use read_power_status function in probe
+      usb: typec: tipd: Read data status in probe and cache its value
+      usb: typec: mux: Introduce data_role to mux state
+      usb: typec: tipd: Handle mode transitions for CD321x
 
-diff --git a/drivers/iio/humidity/hdc3020.c b/drivers/iio/humidity/hdc3020.c
-index 9de52de628e04263a2b62a512a36203d6c02c5e0..8134d32fceedd2b88d9d4ed7bc9062759045aafe 100644
---- a/drivers/iio/humidity/hdc3020.c
-+++ b/drivers/iio/humidity/hdc3020.c
-@@ -379,12 +379,12 @@ static int hdc3020_thresh_get_temp(u16 thresh)
- 	 * Get the temperature threshold from 9 LSBs, shift them to get
- 	 * the truncated temperature threshold representation and
- 	 * calculate the threshold according to the formula in the
--	 * datasheet. Result is degree celsius scaled by 65535.
-+	 * datasheet. Result is degree celsius scaled by 13107.
- 	 */
- 	temp = FIELD_GET(HDC3020_THRESH_TEMP_MASK, thresh) <<
- 	       HDC3020_THRESH_TEMP_TRUNC_SHIFT;
- 
--	return -2949075 + (175 * temp);
-+	return -589815 + (35 * temp);
- }
- 
- static int hdc3020_thresh_get_hum(u16 thresh)
-@@ -395,12 +395,12 @@ static int hdc3020_thresh_get_hum(u16 thresh)
- 	 * Get the humidity threshold from 7 MSBs, shift them to get the
- 	 * truncated humidity threshold representation and calculate the
- 	 * threshold according to the formula in the datasheet. Result is
--	 * percent scaled by 65535.
-+	 * percent scaled by 13107.
- 	 */
- 	hum = FIELD_GET(HDC3020_THRESH_HUM_MASK, thresh) <<
- 	      HDC3020_THRESH_HUM_TRUNC_SHIFT;
- 
--	return hum * 100;
-+	return hum * 20;
- }
- 
- static u16 hdc3020_thresh_set_temp(int s_temp, u16 curr_thresh)
-@@ -455,8 +455,8 @@ int hdc3020_thresh_clr(s64 s_thresh, s64 s_hyst, enum iio_event_direction dir)
- 	else
- 		s_clr = s_thresh + s_hyst;
- 
--	/* Divide by 65535 to get units of micro */
--	return div_s64(s_clr, 65535);
-+	/* Divide by 13107 to get units of micro */
-+	return div_s64(s_clr, 13107);
- }
- 
- static int _hdc3020_write_thresh(struct hdc3020_data *data, u16 reg, u16 val)
-@@ -507,7 +507,7 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 
- 	clr = ret;
- 	/* Scale value to include decimal part into calculations */
--	s_val = (val < 0) ? (val * 1000000 - val2) : (val * 1000000 + val2);
-+	s_val = (val < 0) ? (val * 1000 - val2) : (val * 1000 + val2);
- 	switch (chan->type) {
- 	case IIO_TEMP:
- 		switch (info) {
-@@ -523,7 +523,7 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 			/* Calculate old hysteresis */
- 			s_thresh = (s64)hdc3020_thresh_get_temp(thresh) * 1000000;
- 			s_clr = (s64)hdc3020_thresh_get_temp(clr) * 1000000;
--			s_hyst = div_s64(abs(s_thresh - s_clr), 65535);
-+			s_hyst = div_s64(abs(s_thresh - s_clr), 13107);
- 			/* Set new threshold */
- 			thresh = reg_val;
- 			/* Set old hysteresis */
-@@ -532,16 +532,16 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 		case IIO_EV_INFO_HYSTERESIS:
- 			/*
- 			 * Function hdc3020_thresh_get_temp returns temperature
--			 * in degree celsius scaled by 65535. Scale by 1000000
-+			 * in degree celsius scaled by 13107. Scale by 1000000
- 			 * to be able to subtract scaled hysteresis value.
- 			 */
- 			s_thresh = (s64)hdc3020_thresh_get_temp(thresh) * 1000000;
- 			/*
- 			 * Units of s_val are in micro degree celsius, scale by
--			 * 65535 to get same units as s_thresh.
-+			 * 13107 to get same units as s_thresh.
- 			 */
- 			s_val = min(abs(s_val), HDC3020_MAX_TEMP_HYST_MICRO);
--			s_hyst = (s64)s_val * 65535;
-+			s_hyst = (s64)s_val * 13107;
- 			s_clr = hdc3020_thresh_clr(s_thresh, s_hyst, dir);
- 			s_clr = max(s_clr, HDC3020_MIN_TEMP_MICRO);
- 			s_clr = min(s_clr, HDC3020_MAX_TEMP_MICRO);
-@@ -565,7 +565,7 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 			/* Calculate old hysteresis */
- 			s_thresh = (s64)hdc3020_thresh_get_hum(thresh) * 1000000;
- 			s_clr = (s64)hdc3020_thresh_get_hum(clr) * 1000000;
--			s_hyst = div_s64(abs(s_thresh - s_clr), 65535);
-+			s_hyst = div_s64(abs(s_thresh - s_clr), 13107);
- 			/* Set new threshold */
- 			thresh = reg_val;
- 			/* Try to set old hysteresis */
-@@ -574,15 +574,15 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 		case IIO_EV_INFO_HYSTERESIS:
- 			/*
- 			 * Function hdc3020_thresh_get_hum returns relative
--			 * humidity in percent scaled by 65535. Scale by 1000000
-+			 * humidity in percent scaled by 13107. Scale by 1000000
- 			 * to be able to subtract scaled hysteresis value.
- 			 */
- 			s_thresh = (s64)hdc3020_thresh_get_hum(thresh) * 1000000;
- 			/*
--			 * Units of s_val are in micro percent, scale by 65535
-+			 * Units of s_val are in micro percent, scale by 13107
- 			 * to get same units as s_thresh.
- 			 */
--			s_hyst = (s64)s_val * 65535;
-+			s_hyst = (s64)s_val * 13107;
- 			s_clr = hdc3020_thresh_clr(s_thresh, s_hyst, dir);
- 			s_clr = max(s_clr, 0);
- 			s_clr = min(s_clr, HDC3020_MAX_HUM_MICRO);
-@@ -630,7 +630,7 @@ static int hdc3020_read_thresh(struct iio_dev *indio_dev,
- 		thresh = hdc3020_thresh_get_temp(ret);
- 		switch (info) {
- 		case IIO_EV_INFO_VALUE:
--			*val = thresh;
-+			*val = thresh * 1000;
- 			break;
- 		case IIO_EV_INFO_HYSTERESIS:
- 			ret = hdc3020_read_be16(data, reg_clr);
-@@ -638,18 +638,18 @@ static int hdc3020_read_thresh(struct iio_dev *indio_dev,
- 				return ret;
- 
- 			clr = hdc3020_thresh_get_temp(ret);
--			*val = abs(thresh - clr);
-+			*val = abs(thresh - clr) * 1000;
- 			break;
- 		default:
- 			return -EOPNOTSUPP;
- 		}
--		*val2 = 65535;
-+		*val2 = 13107;
- 		return IIO_VAL_FRACTIONAL;
- 	case IIO_HUMIDITYRELATIVE:
- 		thresh = hdc3020_thresh_get_hum(ret);
- 		switch (info) {
- 		case IIO_EV_INFO_VALUE:
--			*val = thresh;
-+			*val = thresh * 1000;
- 			break;
- 		case IIO_EV_INFO_HYSTERESIS:
- 			ret = hdc3020_read_be16(data, reg_clr);
-@@ -657,12 +657,12 @@ static int hdc3020_read_thresh(struct iio_dev *indio_dev,
- 				return ret;
- 
- 			clr = hdc3020_thresh_get_hum(ret);
--			*val = abs(thresh - clr);
-+			*val = abs(thresh - clr) * 1000;
- 			break;
- 		default:
- 			return -EOPNOTSUPP;
- 		}
--		*val2 = 65535;
-+		*val2 = 13107;
- 		return IIO_VAL_FRACTIONAL;
- 	default:
- 		return -EOPNOTSUPP;
+Janne Grunau (1):
+      usb: dwc3: apple: Do not use host-vbus-glitches workaround
 
+Sven Peter (14):
+      dt-bindings: usb: snps,dwc3: Allow multiple iommus
+      dt-bindings: usb: Add Apple dwc3
+      dt-bindings: phy: Add Apple Type-C PHY
+      usb: dwc3: apple: Reset dwc3 during role switches
+      usb: typec: tipd: Clear interrupts first
+      usb: typec: tipd: Move initial irq mask to tipd_data
+      usb: typec: tipd: Move switch_power_state to tipd_data
+      usb: typec: tipd: Trace data status for CD321x correctly
+      usb: typec: tipd: Add cd321x struct with separate size
+      usb: typec: tipd: Read USB4, Thunderbolt and DisplayPort status for cd321x
+      usb: typec: tipd: Register DisplayPort and Thunderbolt altmodes for cd321x
+      soc: apple: Add hardware tunable support
+      phy: apple: Add Apple Type-C PHY
+      arm64: dts: apple: t8103: Add Apple Type-C PHY and dwc3 nodes
+
+ .../devicetree/bindings/phy/apple,atcphy.yaml      |  210 ++
+ .../devicetree/bindings/usb/apple,dwc3.yaml        |   82 +
+ .../devicetree/bindings/usb/snps,dwc3.yaml         |    2 +-
+ MAINTAINERS                                        |    3 +
+ arch/arm64/boot/dts/apple/t8103-j274.dts           |   12 +
+ arch/arm64/boot/dts/apple/t8103-j293.dts           |   12 +
+ arch/arm64/boot/dts/apple/t8103-j313.dts           |   12 +
+ arch/arm64/boot/dts/apple/t8103-j456.dts           |   12 +
+ arch/arm64/boot/dts/apple/t8103-j457.dts           |   12 +
+ arch/arm64/boot/dts/apple/t8103-jxxx.dtsi          |  137 ++
+ arch/arm64/boot/dts/apple/t8103.dtsi               |  105 +
+ drivers/phy/Kconfig                                |    1 +
+ drivers/phy/Makefile                               |    1 +
+ drivers/phy/apple/Kconfig                          |   14 +
+ drivers/phy/apple/Makefile                         |    4 +
+ drivers/phy/apple/atc.c                            | 2537 ++++++++++++++++++++
+ drivers/soc/apple/Kconfig                          |    4 +
+ drivers/soc/apple/Makefile                         |    3 +
+ drivers/soc/apple/tunable.c                        |   77 +
+ drivers/usb/dwc3/core.c                            |   85 +-
+ drivers/usb/dwc3/core.h                            |   26 +
+ drivers/usb/dwc3/drd.c                             |   11 +-
+ drivers/usb/dwc3/host.c                            |    8 +-
+ drivers/usb/typec/tipd/core.c                      |  569 ++++-
+ drivers/usb/typec/tipd/tps6598x.h                  |    5 +
+ drivers/usb/typec/tipd/trace.h                     |   39 +
+ include/linux/soc/apple/tunable.h                  |   64 +
+ include/linux/usb/typec_mux.h                      |    1 +
+ 28 files changed, 3987 insertions(+), 61 deletions(-)
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250820-atcphy-6-17-b7eaf23be17c
+
+Best regards,
 -- 
-2.39.5
+Sven Peter <sven@kernel.org>
 
