@@ -1,11 +1,10 @@
 From: Sven Peter <sven@kernel.org>
-Date: Thu, 21 Aug 2025 15:38:59 +0000
-Subject: [PATCH RFC 07/22] usb: dwc3: apple: Adjust vendor-specific
- registers during init
+Date: Thu, 21 Aug 2025 15:39:00 +0000
+Subject: [PATCH RFC 08/22] usb: typec: tipd: Clear interrupts first
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250821-atcphy-6-17-v1-7-172beda182b8@kernel.org>
+Message-Id: <20250821-atcphy-6-17-v1-8-172beda182b8@kernel.org>
 References: <20250821-atcphy-6-17-v1-0-172beda182b8@kernel.org>
 In-Reply-To: <20250821-atcphy-6-17-v1-0-172beda182b8@kernel.org>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -20,92 +19,111 @@ To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 Cc: linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
  linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org, 
- Sven Peter <sven@kernel.org>, Hector Martin <marcan@marcan.st>
+ Sven Peter <sven@kernel.org>, stable@kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2771; i=sven@kernel.org;
- h=from:subject:message-id; bh=Ikp6czp+quI9KYT9CWH9WFMemYOvMSa7Gr19hm1ueGQ=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ8Zy2xVS+teCv0fd52+62njLwutKT41zZ+O9/bz75wlvL
- pgvVt/dUcrCIMbBICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZjI1B5GhjadZ9FrY78wRmp7
- NX++XLy80071lkXGivInUwP1uPbLRDL8T9LQdmuR5mrdu8jPKO/k4vYE4eU37k1duEylI+kKj+o
- NFgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3328; i=sven@kernel.org;
+ h=from:subject:message-id; bh=u2Zlown9pUIPvBVQ1qtJSypKTJVZhbvstB3kFMzlXCw=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8Zy21UcmpxL7i2sEtzw42XBFc5fH+KqHnzpmLXbdvKFv
+ 5WzM/kOdJSyMIhxMMiKKbJs329v+uThG8Glmy69h5nDygQyhIGLUwAmcsae4Z/Z69Na55TV0t7p
+ hvwxTFl0fb339oSpVx0jfoQ9n3twRsIpRoaWV3MWmYdOk/gWdKM9y/TQLLGNq65837CCiUk2vfT
+ SqV4WAA==
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+Right now the interrupt handler first reads all updated status registers
+and only then clears the interrupts. It's possible that a duplicate
+interrupt for a changed register or plug state comes in after the
+interrupts have been processed but before they have been cleared:
 
-When tracing Apple's dwc3 driver under our hypervisor and comparing its
-MMIO access with their kernel debug output these vendor-specific
-registers have been identified. We don't know exactly what these do
-or why they are required but without changing these parameters sometimes
-USB3 devices don't work or take an additional 5 seconds to be recognized.
+* plug is inserted, TPS_REG_INT_PLUG_EVENT is set
+* TPS_REG_INT_EVENT1 is read
+* tps6598x_handle_plug_event() has run and registered the plug
+* plug is removed again, TPS_REG_INT_PLUG_EVENT is set (again)
+* TPS_REG_INT_CLEAR1 is written, TPS_REG_INT_PLUG_EVENT is cleared
 
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Co-developed-by: Sven Peter <sven@kernel.org>
+We then have no plug connected and no pending interrupt but the tipd
+core still thinks there is a plug. It's possible to trigger this with
+e.g. a slightly broken Type-C to USB A converter.
+
+Fix this by first clearing the interrupts and only then reading the
+updated registers.
+
+Fixes: 45188f27b3d0 ("usb: typec: tipd: Add support for Apple CD321X")
+Fixes: 0a4c005bd171 ("usb: typec: driver for TI TPS6598x USB Power Delivery controllers")
+Cc: stable@kernel.org
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/usb/dwc3/core.c | 17 +++++++++++++++++
- drivers/usb/dwc3/core.h | 18 ++++++++++++++++++
- 2 files changed, 35 insertions(+)
+ drivers/usb/typec/tipd/core.c | 24 +++++++++++-------------
+ 1 file changed, 11 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/usb/dwc3/core.c b/drivers/usb/dwc3/core.c
-index f8013ba2bdc22fa5e719df0841b12b84d9465b62..e018e80778cf39a9981d438c7e54534b26cddf63 100644
---- a/drivers/usb/dwc3/core.c
-+++ b/drivers/usb/dwc3/core.c
-@@ -1366,6 +1366,23 @@ static int dwc3_core_init(struct dwc3 *dwc)
- 	 */
- 	dwc3_writel(dwc->regs, DWC3_GUID, LINUX_VERSION_CODE);
+diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
+index dcf141ada07812295a6f07e41d77f95f98116010..1c80296c3b273e24ceacb3feff432c4f6e6835cc 100644
+--- a/drivers/usb/typec/tipd/core.c
++++ b/drivers/usb/typec/tipd/core.c
+@@ -545,24 +545,23 @@ static irqreturn_t cd321x_interrupt(int irq, void *data)
+ 	if (!event)
+ 		goto err_unlock;
  
-+	/* Apply Apple quirks */
-+	if (of_device_is_compatible(dwc->dev->of_node, "apple,t8103-dwc3")) {
-+		dwc3_writel(dwc->regs,
-+			    APPLE_DWC3_CIO_LFPS_OFFSET,
-+			    APPLE_DWC3_CIO_LFPS_OFFSET_VALUE);
-+		dwc3_writel(dwc->regs,
-+			    APPLE_DWC3_CIO_BW_NGT_OFFSET,
-+			    APPLE_DWC3_CIO_BW_NGT_OFFSET_VALUE);
++	tps6598x_write64(tps, TPS_REG_INT_CLEAR1, event);
 +
-+		u32 link_timer = dwc3_readl(dwc->regs, APPLE_DWC3_CIO_LINK_TIMER);
-+
-+		link_timer &= ~APPLE_DWC3_CIO_PENDING_HP_TIMER;
-+		link_timer |= FIELD_PREP(APPLE_DWC3_CIO_PENDING_HP_TIMER,
-+					 APPLE_DWC3_CIO_PENDING_HP_TIMER_VALUE);
-+		dwc3_writel(dwc->regs, APPLE_DWC3_CIO_LINK_TIMER, link_timer);
-+	}
-+
- 	ret = dwc3_phy_setup(dwc);
- 	if (ret)
- 		return ret;
-diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
-index 98e748cc348dfd9de1962c93fcf9f6a6690c2388..1caa46ca8b2ffb74dd3e58b174122e8f8216dd48 100644
---- a/drivers/usb/dwc3/core.h
-+++ b/drivers/usb/dwc3/core.h
-@@ -181,6 +181,24 @@
+ 	if (!tps6598x_read_status(tps, &status))
+-		goto err_clear_ints;
++		goto err_unlock;
  
- #define DWC3_LLUCTL(n)		(0xd024 + ((n) * 0x80))
+ 	if (event & APPLE_CD_REG_INT_POWER_STATUS_UPDATE)
+ 		if (!tps6598x_read_power_status(tps))
+-			goto err_clear_ints;
++			goto err_unlock;
  
-+/*
-+ * Apple Silicon dwc3 vendor-specific registers
-+ *
-+ * These registers were identified by tracing XNU's memory access patterns
-+ * and correlating them with debug output over serial to determine their names.
-+ * We don't exactly know what these do but without these USB3 devices sometimes
-+ * don't work.
-+ */
-+#define APPLE_DWC3_CIO_LFPS_OFFSET 0xcd38
-+#define APPLE_DWC3_CIO_LFPS_OFFSET_VALUE 0xf800f80
-+
-+#define APPLE_DWC3_CIO_BW_NGT_OFFSET 0xcd3c
-+#define APPLE_DWC3_CIO_BW_NGT_OFFSET_VALUE 0xfc00fc0
-+
-+#define APPLE_DWC3_CIO_LINK_TIMER 0xcd40
-+#define APPLE_DWC3_CIO_PENDING_HP_TIMER GENMASK(23, 16)
-+#define APPLE_DWC3_CIO_PENDING_HP_TIMER_VALUE 0x14
-+
- /* Bit fields */
+ 	if (event & APPLE_CD_REG_INT_DATA_STATUS_UPDATE)
+ 		if (!tps6598x_read_data_status(tps))
+-			goto err_clear_ints;
++			goto err_unlock;
  
- /* Global SoC Bus Configuration INCRx Register 0 */
+ 	/* Handle plug insert or removal */
+ 	if (event & APPLE_CD_REG_INT_PLUG_EVENT)
+ 		tps6598x_handle_plug_event(tps, status);
+ 
+-err_clear_ints:
+-	tps6598x_write64(tps, TPS_REG_INT_CLEAR1, event);
+-
+ err_unlock:
+ 	mutex_unlock(&tps->lock);
+ 
+@@ -668,25 +667,24 @@ static irqreturn_t tps6598x_interrupt(int irq, void *data)
+ 	if (!(event1[0] | event1[1] | event2[0] | event2[1]))
+ 		goto err_unlock;
+ 
++	tps6598x_block_write(tps, TPS_REG_INT_CLEAR1, event1, intev_len);
++	tps6598x_block_write(tps, TPS_REG_INT_CLEAR2, event2, intev_len);
++
+ 	if (!tps6598x_read_status(tps, &status))
+-		goto err_clear_ints;
++		goto err_unlock;
+ 
+ 	if ((event1[0] | event2[0]) & TPS_REG_INT_POWER_STATUS_UPDATE)
+ 		if (!tps6598x_read_power_status(tps))
+-			goto err_clear_ints;
++			goto err_unlock;
+ 
+ 	if ((event1[0] | event2[0]) & TPS_REG_INT_DATA_STATUS_UPDATE)
+ 		if (!tps6598x_read_data_status(tps))
+-			goto err_clear_ints;
++			goto err_unlock;
+ 
+ 	/* Handle plug insert or removal */
+ 	if ((event1[0] | event2[0]) & TPS_REG_INT_PLUG_EVENT)
+ 		tps6598x_handle_plug_event(tps, status);
+ 
+-err_clear_ints:
+-	tps6598x_block_write(tps, TPS_REG_INT_CLEAR1, event1, intev_len);
+-	tps6598x_block_write(tps, TPS_REG_INT_CLEAR2, event2, intev_len);
+-
+ err_unlock:
+ 	mutex_unlock(&tps->lock);
+ 
 
 -- 
 2.34.1
