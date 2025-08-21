@@ -1,14 +1,13 @@
 From: Simon Schuster <schuster.simon@siemens-energy.com>
-Subject: [PATCH 0/2] nios2: Add architecture support for clone3
-Date: Thu, 21 Aug 2025 13:27:36 +0200
-Message-Id: <20250821-nios2-implement-clone3-v1-0-1bb24017376a@siemens-energy.com>
+Date: Thu, 21 Aug 2025 13:27:37 +0200
+Subject: [PATCH 1/2] copy_process: Handle architectures where
+ sizeof(unsigned long) < sizeof(u64)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKgCp2gC/x3MwQpAQBCA4VfRnE2tETavIgfWYIpZ7UpK3t3m+
- B3+/4HIQThCmz0Q+JIoXhOKPAO3DrowypQMZKgytrCo4iOh7MfGO+uJbvPKJTYzVeTI2NqMkOI
- j8Cz3P+769/0A89WUVmgAAAA=
-X-Change-ID: 20250818-nios2-implement-clone3-7f252c20860b
+Message-Id: <20250821-nios2-implement-clone3-v1-1-1bb24017376a@siemens-energy.com>
+References: <20250821-nios2-implement-clone3-v1-0-1bb24017376a@siemens-energy.com>
+In-Reply-To: <20250821-nios2-implement-clone3-v1-0-1bb24017376a@siemens-energy.com>
 To: Dinh Nguyen <dinguyen@kernel.org>, 
  Christian Brauner <brauner@kernel.org>, Arnd Bergmann <arnd@arndb.de>, 
  Andrew Morton <akpm@linux-foundation.org>, 
@@ -27,56 +26,91 @@ To: Dinh Nguyen <dinguyen@kernel.org>,
 Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
  Simon Schuster <schuster.simon@siemens-energy.com>
 X-Mailer: b4 0.14.3-dev-2ce6c
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755775663; l=1662;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755775663; l=2756;
  i=schuster.simon@siemens-energy.com; s=20250818; h=from:subject:message-id;
- bh=3jlVObemI8wNIqbrx4GvyEPDpvdLGZ3e4VpPlUqrZvQ=;
- b=EvDLXxPY5S6pbpEC5hc9qqVLOseYDpRYpX2Y6TYKHHZX+LeSi4Q1+g0YK6AAKayY4Ep67AapT
- z5MIMrak0rXAMAqA/7z5o+qoiazxY9e5SyLNyqkwcBCJL6n99MlLudo
+ bh=fATaBcMTm8PaXx+wvHRntwDrs2IKs0+IzRTpuUxyYa4=;
+ b=y7/IgnYV/3SkSNwCoqgDE/+S2MUsRejhrdpl2L+U7VnPzMzgttiqeo7QuevGlQKo7aBzvBcQ5
+ 485HV4aRh6JBpSGlbRD35ZZAmT8+Yb7t7dbqgXJf0B1MkEE0oKL4n0t
 X-Developer-Key: i=schuster.simon@siemens-energy.com; a=ed25519;
  pk=PUhOMiSp43aSeRE1H41KApxYOluamBFFiMfKlBjocvo=
 X-Endpoint-Received: by B4 Relay for schuster.simon@siemens-energy.com/20250818 with auth_id=495
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds support for the clone3 system call to the nios2
-architecture. This addresses the build-time warning "warning: clone3()
-entry point is missing, please fix" introduced in 505d66d1abfb9
-("clone3: drop __ARCH_WANT_SYS_CLONE3 macro"). The implementation passes
-the relevant clone3 tests of kselftest when applied on top of
-next-20250815:
+With the introduction of clone3 in commit 7f192e3cd316 ("fork: add
+clone3") the effective bit width of clone_flags on all architectures was
+increased from 32bit to 64bit. However, the signature of the copy_*
+helper functions (e.g., copy_sighand) used by copy_process was not
+adapted, as such, they potentially truncate the flags on architectures
+such as nios2, where unsigned long is a 32bit unsigned integer type.
 
-	./run_kselftest.sh
-	TAP version 13
-	1..4
-	# selftests: clone3: clone3
-	ok 1 selftests: clone3: clone3
-	# selftests: clone3: clone3_clear_sighand
-	ok 2 selftests: clone3: clone3_clear_sighand
-	# selftests: clone3: clone3_set_tid
-	ok 3 selftests: clone3: clone3_set_tid
-	# selftests: clone3: clone3_cap_checkpoint_restore
-	ok 4 selftests: clone3: clone3_cap_checkpoint_restore
+This can, for instance, be observed via failures of kernel selftest
+clone3_clear_sighand, which attempts to trigger the conditional
 
-The series also includes a small patch to kernel/fork.c that ensures
-that clone_flags are passed correctly on architectures where unsigned
-long is insufficient to store the u64 clone_flags.
+	if (clone_flags & CLONE_CLEAR_SIGHAND)
+
+in function copy_sighand within fork.c that will always fail given:
+
+	unsigned long /* == uint32_t */ clone_flags
+	#define CLONE_CLEAR_SIGHAND 0x100000000ULL
+
+This commit fixes the bug by always passing clone_flags via their
+declared u64 type, invariant of architecture-dependent integer sizes.
 
 Signed-off-by: Simon Schuster <schuster.simon@siemens-energy.com>
 ---
-Simon Schuster (2):
-      copy_process: Handle architectures where sizeof(unsigned long) < sizeof(u64)
-      nios2: implement architecture-specific portion of sys_clone3
+ kernel/fork.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
- arch/nios2/include/asm/syscalls.h |  1 +
- arch/nios2/include/asm/unistd.h   |  2 --
- arch/nios2/kernel/entry.S         |  6 ++++++
- arch/nios2/kernel/syscall_table.c |  1 +
- kernel/fork.c                     | 10 +++++-----
- 5 files changed, 13 insertions(+), 7 deletions(-)
----
-base-commit: 1357b2649c026b51353c84ddd32bc963e8999603
-change-id: 20250818-nios2-implement-clone3-7f252c20860b
+diff --git a/kernel/fork.c b/kernel/fork.c
+index 5115be549234..0e9b2dd6c365 100644
+--- a/kernel/fork.c
++++ b/kernel/fork.c
+@@ -1510,7 +1510,7 @@ static struct mm_struct *dup_mm(struct task_struct *tsk,
+ 	return NULL;
+ }
+ 
+-static int copy_mm(unsigned long clone_flags, struct task_struct *tsk)
++static int copy_mm(u64 clone_flags, struct task_struct *tsk)
+ {
+ 	struct mm_struct *mm, *oldmm;
+ 
+@@ -1548,7 +1548,7 @@ static int copy_mm(unsigned long clone_flags, struct task_struct *tsk)
+ 	return 0;
+ }
+ 
+-static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
++static int copy_fs(u64 clone_flags, struct task_struct *tsk)
+ {
+ 	struct fs_struct *fs = current->fs;
+ 	if (clone_flags & CLONE_FS) {
+@@ -1569,7 +1569,7 @@ static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
+ 	return 0;
+ }
+ 
+-static int copy_files(unsigned long clone_flags, struct task_struct *tsk,
++static int copy_files(u64 clone_flags, struct task_struct *tsk,
+ 		      int no_files)
+ {
+ 	struct files_struct *oldf, *newf;
+@@ -1599,7 +1599,7 @@ static int copy_files(unsigned long clone_flags, struct task_struct *tsk,
+ 	return 0;
+ }
+ 
+-static int copy_sighand(unsigned long clone_flags, struct task_struct *tsk)
++static int copy_sighand(u64 clone_flags, struct task_struct *tsk)
+ {
+ 	struct sighand_struct *sig;
+ 
+@@ -1648,7 +1648,7 @@ static void posix_cpu_timers_init_group(struct signal_struct *sig)
+ 	posix_cputimers_group_init(pct, cpu_limit);
+ }
+ 
+-static int copy_signal(unsigned long clone_flags, struct task_struct *tsk)
++static int copy_signal(u64 clone_flags, struct task_struct *tsk)
+ {
+ 	struct signal_struct *sig;
+ 
 
-Best regards,
 -- 
-Simon Schuster <schuster.simon@siemens-energy.com>
+2.39.5
 
