@@ -1,96 +1,80 @@
 From: Simon Schuster <schuster.simon@siemens-energy.com>
-Date: Thu, 21 Aug 2025 12:37:07 +0200
-Subject: [PATCH] nios2: ensure that memblock.current_limit is set when
- setting pfn limits
+Subject: [PATCH 0/2] nios2: Add architecture support for clone3
+Date: Thu, 21 Aug 2025 13:27:36 +0200
+Message-Id: <20250821-nios2-implement-clone3-v1-0-1bb24017376a@siemens-energy.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250821-nios2-adjust-lowmem-bounds-v1-1-ea2dd8661ae5@siemens-energy.com>
-X-B4-Tracking: v=1; b=H4sIANL2pmgC/x3MwQqDMAwA0F+RnA3UglD3K8NDZ9KZMVtpVhXEf
- 1/x+C7vBOUsrPBoTsi8iUqKFV3bwDT7+GYUqgZrbG9c5zBKUouePkV/+E37wgu+Uomk2JOlwfl
- ggndQgzVzkOPOn+N1/QFbLef4bAAAAA==
-X-Change-ID: 20250818-nios2-adjust-lowmem-bounds-5d2d98af0fa8
-To: Dinh Nguyen <dinguyen@kernel.org>
-Cc: linux-kernel@vger.kernel.org, 
- Simon Schuster <schuster.simon@siemens-energy.com>, 
- Andreas Oetken <andreas.oetken@siemens-energy.com>
+X-B4-Tracking: v=1; b=H4sIAKgCp2gC/x3MwQpAQBCA4VfRnE2tETavIgfWYIpZ7UpK3t3m+
+ B3+/4HIQThCmz0Q+JIoXhOKPAO3DrowypQMZKgytrCo4iOh7MfGO+uJbvPKJTYzVeTI2NqMkOI
+ j8Cz3P+769/0A89WUVmgAAAA=
+X-Change-ID: 20250818-nios2-implement-clone3-7f252c20860b
+To: Dinh Nguyen <dinguyen@kernel.org>, 
+ Christian Brauner <brauner@kernel.org>, Arnd Bergmann <arnd@arndb.de>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@redhat.com>, 
+ Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
+ "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
+ Vlastimil Babka <vbabka@suse.cz>, Mike Rapoport <rppt@kernel.org>, 
+ Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
+ Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
+ Juri Lelli <juri.lelli@redhat.com>, 
+ Vincent Guittot <vincent.guittot@linaro.org>, 
+ Dietmar Eggemann <dietmar.eggemann@arm.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
+ Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
+ Kees Cook <kees@kernel.org>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Simon Schuster <schuster.simon@siemens-energy.com>
 X-Mailer: b4 0.14.3-dev-2ce6c
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755772650; l=2529;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755775663; l=1662;
  i=schuster.simon@siemens-energy.com; s=20250818; h=from:subject:message-id;
- bh=XAavluzVGgOGPX323zI/x3pk1jtcKLayQnaSWVVemI4=;
- b=GcI81uCNpdeGjwM6REZsMNAj6DwIQzDGRCbchylCEARbO7bSUHPyscSO5GSDw63uq9NqcCk20
- zGrVRHgILeSCebLJY4VTfGDt6FGAlApBgqOENV2dbv+4T0ZzTkxcKWz
+ bh=3jlVObemI8wNIqbrx4GvyEPDpvdLGZ3e4VpPlUqrZvQ=;
+ b=EvDLXxPY5S6pbpEC5hc9qqVLOseYDpRYpX2Y6TYKHHZX+LeSi4Q1+g0YK6AAKayY4Ep67AapT
+ z5MIMrak0rXAMAqA/7z5o+qoiazxY9e5SyLNyqkwcBCJL6n99MlLudo
 X-Developer-Key: i=schuster.simon@siemens-energy.com; a=ed25519;
  pk=PUhOMiSp43aSeRE1H41KApxYOluamBFFiMfKlBjocvo=
 X-Endpoint-Received: by B4 Relay for schuster.simon@siemens-energy.com/20250818 with auth_id=495
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On nios2, with CONFIG_FLATMEM set, the kernel relies on
-memblock_get_current_limit() to determine the limits of mem_map, in
-particular for max_low_pfn.
-Unfortunately, memblock.current_limit is only default initialized to
-MEMBLOCK_ALLOC_ANYWHERE at this point of the bootup, potentially leading
-to situations where max_low_pfn can erroneously exceed the value of
-max_pfn and, thus, the valid range of available DRAM.
+This series adds support for the clone3 system call to the nios2
+architecture. This addresses the build-time warning "warning: clone3()
+entry point is missing, please fix" introduced in 505d66d1abfb9
+("clone3: drop __ARCH_WANT_SYS_CLONE3 macro"). The implementation passes
+the relevant clone3 tests of kselftest when applied on top of
+next-20250815:
 
-This can in turn cause kernel-level paging failures, e.g.:
+	./run_kselftest.sh
+	TAP version 13
+	1..4
+	# selftests: clone3: clone3
+	ok 1 selftests: clone3: clone3
+	# selftests: clone3: clone3_clear_sighand
+	ok 2 selftests: clone3: clone3_clear_sighand
+	# selftests: clone3: clone3_set_tid
+	ok 3 selftests: clone3: clone3_set_tid
+	# selftests: clone3: clone3_cap_checkpoint_restore
+	ok 4 selftests: clone3: clone3_cap_checkpoint_restore
 
-[   76.900000] Unable to handle kernel paging request at virtual address 20303000
-[   76.900000] ea = c0080890, ra = c000462c, cause = 14
-[   76.900000] Kernel panic - not syncing: Oops
-[   76.900000] ---[ end Kernel panic - not syncing: Oops ]---
-
-This patch fixes this by pre-calculating memblock.current_limit
-based on the upper limits of the available memory ranges via
-adjust_lowmem_bounds, a simplified version of the equivalent
-implementation within the arm architecture.
+The series also includes a small patch to kernel/fork.c that ensures
+that clone_flags are passed correctly on architectures where unsigned
+long is insufficient to store the u64 clone_flags.
 
 Signed-off-by: Simon Schuster <schuster.simon@siemens-energy.com>
-Signed-off-by: Andreas Oetken <andreas.oetken@siemens-energy.com>
 ---
-This patch was tested internally on 5.10.x stable for some time now and
-applies and boots cleanly on next-20250815, as well.
----
- arch/nios2/kernel/setup.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+Simon Schuster (2):
+      copy_process: Handle architectures where sizeof(unsigned long) < sizeof(u64)
+      nios2: implement architecture-specific portion of sys_clone3
 
-diff --git a/arch/nios2/kernel/setup.c b/arch/nios2/kernel/setup.c
-index 2a40150142c3..f43f01c4ab93 100644
---- a/arch/nios2/kernel/setup.c
-+++ b/arch/nios2/kernel/setup.c
-@@ -142,6 +142,20 @@ static void __init find_limits(unsigned long *min, unsigned long *max_low,
- 	*max_high = PFN_DOWN(memblock_end_of_DRAM());
- }
- 
-+static void __init adjust_lowmem_bounds(void)
-+{
-+	phys_addr_t block_start, block_end;
-+	u64 i;
-+	phys_addr_t memblock_limit = 0;
-+
-+	for_each_mem_range(i, &block_start, &block_end) {
-+		if (block_end > memblock_limit)
-+			memblock_limit = block_end;
-+	}
-+
-+	memblock_set_current_limit(memblock_limit);
-+}
-+
- void __init setup_arch(char **cmdline_p)
- {
- 	console_verbose();
-@@ -157,6 +171,7 @@ void __init setup_arch(char **cmdline_p)
- 	/* Keep a copy of command line */
- 	*cmdline_p = boot_command_line;
- 
-+	adjust_lowmem_bounds();
- 	find_limits(&min_low_pfn, &max_low_pfn, &max_pfn);
- 
- 	memblock_reserve(__pa_symbol(_stext), _end - _stext);
-
+ arch/nios2/include/asm/syscalls.h |  1 +
+ arch/nios2/include/asm/unistd.h   |  2 --
+ arch/nios2/kernel/entry.S         |  6 ++++++
+ arch/nios2/kernel/syscall_table.c |  1 +
+ kernel/fork.c                     | 10 +++++-----
+ 5 files changed, 13 insertions(+), 7 deletions(-)
 ---
 base-commit: 1357b2649c026b51353c84ddd32bc963e8999603
-change-id: 20250818-nios2-adjust-lowmem-bounds-5d2d98af0fa8
+change-id: 20250818-nios2-implement-clone3-7f252c20860b
 
 Best regards,
 -- 
