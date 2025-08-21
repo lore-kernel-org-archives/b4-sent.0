@@ -1,112 +1,98 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Thu, 21 Aug 2025 15:52:36 +0800
-Subject: [PATCH v4] iio: imu: bmi270: Match PNP ID found on newer GPD
- firmware
+From: Simon Schuster <schuster.simon@siemens-energy.com>
+Date: Thu, 21 Aug 2025 12:37:07 +0200
+Subject: [PATCH] nios2: ensure that memblock.current_limit is set when
+ setting pfn limits
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250821-bmi270-gpd-acpi-v4-1-5279b471d749@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAEPQpmgC/23OTQ6CMBAF4KuQrq3pTKGtrryHcUHbAbrgJ4BEQ
- 7i7BRcaMbN6k7xvZmYD9YEGdk5m1tMUhtA2MaSHhLkqb0riwcfMUGAmUChu64Ba8LLzPHdd4J5
- SD2gdZUqz2Op6KsJjE6+3mKswjG3/3A5MsG7flpZiZ03A4xSFM5kFjUpd7k38ZyRXHV1bs9Wb8
- GMYyPYGRsMQeKuMl8rDP0N+GQh7Q0bjBLnR0lmjnfg1lmV5ARyBTGo6AQAA
-X-Change-ID: 20250206-bmi270-gpd-acpi-de4d12bce567
-To: Alex Lanzano <lanzano.alex@gmail.com>, 
- Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yao Zi <ziyao@disroot.org>, WangYuli <wangyuli@deepin.org>, 
- Jun Zhan <zhanjun@uniontech.com>, niecheng1@uniontech.com2, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755762756; l=2972;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=ojAJFV6f2om+HVH8bpvM3aYA+vv3G8FtLoA7jKNCvHg=;
- b=Jz9YMcWQ7tePottvnpeSdzAj/hcp0KG7YXA9FjsfqPib6HKh2wgudPVAd2P9cVKm5ukVliv/q
- T3Oi0c117LbCujb0ONlaTaQ/oF5cujJVBRlliSsDwgi6iEmoNR9dllT
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+Message-Id: <20250821-nios2-adjust-lowmem-bounds-v1-1-ea2dd8661ae5@siemens-energy.com>
+X-B4-Tracking: v=1; b=H4sIANL2pmgC/x3MwQqDMAwA0F+RnA3UglD3K8NDZ9KZMVtpVhXEf
+ 1/x+C7vBOUsrPBoTsi8iUqKFV3bwDT7+GYUqgZrbG9c5zBKUouePkV/+E37wgu+Uomk2JOlwfl
+ ggndQgzVzkOPOn+N1/QFbLef4bAAAAA==
+X-Change-ID: 20250818-nios2-adjust-lowmem-bounds-5d2d98af0fa8
+To: Dinh Nguyen <dinguyen@kernel.org>
+Cc: linux-kernel@vger.kernel.org, 
+ Simon Schuster <schuster.simon@siemens-energy.com>, 
+ Andreas Oetken <andreas.oetken@siemens-energy.com>
+X-Mailer: b4 0.14.3-dev-2ce6c
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755772650; l=2529;
+ i=schuster.simon@siemens-energy.com; s=20250818; h=from:subject:message-id;
+ bh=XAavluzVGgOGPX323zI/x3pk1jtcKLayQnaSWVVemI4=;
+ b=GcI81uCNpdeGjwM6REZsMNAj6DwIQzDGRCbchylCEARbO7bSUHPyscSO5GSDw63uq9NqcCk20
+ zGrVRHgILeSCebLJY4VTfGDt6FGAlApBgqOENV2dbv+4T0ZzTkxcKWz
+X-Developer-Key: i=schuster.simon@siemens-energy.com; a=ed25519;
+ pk=PUhOMiSp43aSeRE1H41KApxYOluamBFFiMfKlBjocvo=
+X-Endpoint-Received: by B4 Relay for schuster.simon@siemens-energy.com/20250818 with auth_id=495
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-GPD devices originally used BMI160 sensors with the "BMI0160" PNP ID.
-When they switched to BMI260 sensors in newer hardware, they reused
-the existing Windows driver which accepts both "BMI0160" and "BMI0260"
-IDs. Consequently, they kept "BMI0160" in DSDT tables for new BMI260
-devices, causing driver mismatches in Linux.
+On nios2, with CONFIG_FLATMEM set, the kernel relies on
+memblock_get_current_limit() to determine the limits of mem_map, in
+particular for max_low_pfn.
+Unfortunately, memblock.current_limit is only default initialized to
+MEMBLOCK_ALLOC_ANYWHERE at this point of the bootup, potentially leading
+to situations where max_low_pfn can erroneously exceed the value of
+max_pfn and, thus, the valid range of available DRAM.
 
-1. GPD updated BIOS v0.40+[1] for newer devices to report "BMI0260" for
-BMI260 sensors to avoid loading the bmi160 driver on Linux. While this
-isn't Bosch's VID;
-2. Bosch's official Windows driver uses "BMI0260" as a compatible ID
-3. We're seeing real devices shipping with "BMI0260" in DSDT
+This can in turn cause kernel-level paging failures, e.g.:
 
-The DSDT excerpt of GPD G1619-04 with BIOS v0.40:
+[   76.900000] Unable to handle kernel paging request at virtual address 20303000
+[   76.900000] ea = c0080890, ra = c000462c, cause = 14
+[   76.900000] Kernel panic - not syncing: Oops
+[   76.900000] ---[ end Kernel panic - not syncing: Oops ]---
 
-Scope (_SB.I2CC)
-{
-    Device (BMA2)
-    {
-        Name (_ADR, Zero)  // _ADR: Address
-        Name (_HID, "BMI0260")  // _HID: Hardware ID
-        Name (_CID, "BMI0260")  // _CID: Compatible ID
-        Name (_DDN, "Accelerometer")  // _DDN: DOS Device Name
-        Name (_UID, One)  // _UID: Unique ID
-        Method (_CRS, 0, NotSerialized)  // _CRS: Current Resource Settings
-        {
-            Name (RBUF, ResourceTemplate ()
-            {
-                I2cSerialBusV2 (0x0069, ControllerInitiated, 0x00061A80,
-                    AddressingMode7Bit, "\\_SB.I2CC",
-                    0x00, ResourceConsumer, , Exclusive,
-                    )
-            })
-            Return (RBUF) /* \_SB_.I2CC.BMA2._CRS.RBUF */
-        }
-        # omit some noise
-    }
-}
+This patch fixes this by pre-calculating memblock.current_limit
+based on the upper limits of the available memory ranges via
+adjust_lowmem_bounds, a simplified version of the equivalent
+implementation within the arm architecture.
 
-Link: http://download.softwincn.com/WIN%20Max%202024/Max2-7840-BIOS-V0.41.zip #1
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+Signed-off-by: Simon Schuster <schuster.simon@siemens-energy.com>
+Signed-off-by: Andreas Oetken <andreas.oetken@siemens-energy.com>
 ---
-Changes in v4:
-- Improve commit message
-- Link to v3: https://lore.kernel.org/r/20250821-bmi270-gpd-acpi-v3-1-91a873cb87c0@uniontech.com
-
-Changes in v3:
-- Improve commit message
-- Link to v2: https://lore.kernel.org/r/20250815-bmi270-gpd-acpi-v2-1-8e1db68d36d1@uniontech.com
-
-Changes in v2:
-- Improve commit message
-- Add DSDT table
-- Link to v1: https://lore.kernel.org/r/20250730-bmi270-gpd-acpi-v1-1-1ffc85b17266@uniontech.com
+This patch was tested internally on 5.10.x stable for some time now and
+applies and boots cleanly on next-20250815, as well.
 ---
- drivers/iio/imu/bmi270/bmi270_i2c.c | 2 ++
- 1 file changed, 2 insertions(+)
+ arch/nios2/kernel/setup.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/drivers/iio/imu/bmi270/bmi270_i2c.c b/drivers/iio/imu/bmi270/bmi270_i2c.c
-index c77839b03a969f6f149c025a0305c4b9b8ac6571..b909a421ad0176ee414f2f96ff09db2297586ded 100644
---- a/drivers/iio/imu/bmi270/bmi270_i2c.c
-+++ b/drivers/iio/imu/bmi270/bmi270_i2c.c
-@@ -41,6 +41,8 @@ static const struct i2c_device_id bmi270_i2c_id[] = {
- static const struct acpi_device_id bmi270_acpi_match[] = {
- 	/* GPD Win Mini, Aya Neo AIR Pro, OXP Mini Pro, etc. */
- 	{ "BMI0160",  (kernel_ulong_t)&bmi260_chip_info },
-+	/* GPD Win Max 2 2023(sincice BIOS v0.40), etc. */
-+	{ "BMI0260",  (kernel_ulong_t)&bmi260_chip_info },
- 	{ }
- };
+diff --git a/arch/nios2/kernel/setup.c b/arch/nios2/kernel/setup.c
+index 2a40150142c3..f43f01c4ab93 100644
+--- a/arch/nios2/kernel/setup.c
++++ b/arch/nios2/kernel/setup.c
+@@ -142,6 +142,20 @@ static void __init find_limits(unsigned long *min, unsigned long *max_low,
+ 	*max_high = PFN_DOWN(memblock_end_of_DRAM());
+ }
  
++static void __init adjust_lowmem_bounds(void)
++{
++	phys_addr_t block_start, block_end;
++	u64 i;
++	phys_addr_t memblock_limit = 0;
++
++	for_each_mem_range(i, &block_start, &block_end) {
++		if (block_end > memblock_limit)
++			memblock_limit = block_end;
++	}
++
++	memblock_set_current_limit(memblock_limit);
++}
++
+ void __init setup_arch(char **cmdline_p)
+ {
+ 	console_verbose();
+@@ -157,6 +171,7 @@ void __init setup_arch(char **cmdline_p)
+ 	/* Keep a copy of command line */
+ 	*cmdline_p = boot_command_line;
+ 
++	adjust_lowmem_bounds();
+ 	find_limits(&min_low_pfn, &max_low_pfn, &max_pfn);
+ 
+ 	memblock_reserve(__pa_symbol(_stext), _end - _stext);
 
 ---
-base-commit: 24ea63ea387714634813359e2c8e0e6c36952f73
-change-id: 20250206-bmi270-gpd-acpi-de4d12bce567
+base-commit: 1357b2649c026b51353c84ddd32bc963e8999603
+change-id: 20250818-nios2-adjust-lowmem-bounds-5d2d98af0fa8
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia@uniontech.com>
+Simon Schuster <schuster.simon@siemens-energy.com>
 
