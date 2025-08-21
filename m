@@ -1,15 +1,15 @@
 From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Thu, 21 Aug 2025 14:17:50 +0800
-Subject: [PATCH v3] iio: imu: bmi270: Match PNP ID found on newer GPD
+Date: Thu, 21 Aug 2025 15:52:36 +0800
+Subject: [PATCH v4] iio: imu: bmi270: Match PNP ID found on newer GPD
  firmware
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250821-bmi270-gpd-acpi-v3-1-91a873cb87c0@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAA26pmgC/2XOTQ7CIBAF4Ks0rMXAVKBx5T2MiwLTdhb9CVSia
- Xp3aV2Y2MzqTfK+mYVFDISRXYuFBUwUaRxyKE8Fc109tMjJ58xAgBIgNLc9gRG8nTyv3UTc48V
- LsA6VNiy3poANvXbx/si5oziP4b0fSHLbfi1TioOVJM/TNK5SVhrQ+vYc8j8zuu7sxp5tXoKfU
- Ul1NCAbFUpvdeVL7eW/sa7rBzW6sh72AAAA
+Message-Id: <20250821-bmi270-gpd-acpi-v4-1-5279b471d749@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAEPQpmgC/23OTQ6CMBAF4KuQrq3pTKGtrryHcUHbAbrgJ4BEQ
+ 7i7BRcaMbN6k7xvZmYD9YEGdk5m1tMUhtA2MaSHhLkqb0riwcfMUGAmUChu64Ba8LLzPHdd4J5
+ SD2gdZUqz2Op6KsJjE6+3mKswjG3/3A5MsG7flpZiZ03A4xSFM5kFjUpd7k38ZyRXHV1bs9Wb8
+ GMYyPYGRsMQeKuMl8rDP0N+GQh7Q0bjBLnR0lmjnfg1lmV5ARyBTGo6AQAA
 X-Change-ID: 20250206-bmi270-gpd-acpi-de4d12bce567
 To: Alex Lanzano <lanzano.alex@gmail.com>, 
  Jonathan Cameron <jic23@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>, 
@@ -21,11 +21,11 @@ Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org,
  Jun Zhan <zhanjun@uniontech.com>, niecheng1@uniontech.com2, 
  Cryolitia PukNgae <cryolitia@uniontech.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755757073; l=2828;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755762756; l=2972;
  i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=1BJaTH0WmgAVQTuafmvfpaUKGXqYqrjXyykU4/x5k0w=;
- b=bYCc/+pZk+QLxlxEEs/zCvLhIQzpdfMtt0qc1684By1MebgKpEKRmorce3cjCNx1ukrLfUVj5
- yd8jXNYNzsbBBlHzFyXWLzR7UWbLMvs5Hw5zD8/xK2Lb9mosUw0h111
+ bh=ojAJFV6f2om+HVH8bpvM3aYA+vv3G8FtLoA7jKNCvHg=;
+ b=Jz9YMcWQ7tePottvnpeSdzAj/hcp0KG7YXA9FjsfqPib6HKh2wgudPVAd2P9cVKm5ukVliv/q
+ T3Oi0c117LbCujb0ONlaTaQ/oF5cujJVBRlliSsDwgi6iEmoNR9dllT
 X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
  pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
 X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
@@ -38,7 +38,7 @@ IDs. Consequently, they kept "BMI0160" in DSDT tables for new BMI260
 devices, causing driver mismatches in Linux.
 
 1. GPD updated BIOS v0.40+[1] for newer devices to report "BMI0260" for
-BMI260 sensors to avoid loading bmi160 driver on Linux. While this
+BMI260 sensors to avoid loading the bmi160 driver on Linux. While this
 isn't Bosch's VID;
 2. Bosch's official Windows driver uses "BMI0260" as a compatible ID
 3. We're seeing real devices shipping with "BMI0260" in DSDT
@@ -70,9 +70,12 @@ Scope (_SB.I2CC)
 }
 
 Link: http://download.softwincn.com/WIN%20Max%202024/Max2-7840-BIOS-V0.41.zip #1
-
 Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
+Changes in v4:
+- Improve commit message
+- Link to v3: https://lore.kernel.org/r/20250821-bmi270-gpd-acpi-v3-1-91a873cb87c0@uniontech.com
+
 Changes in v3:
 - Improve commit message
 - Link to v2: https://lore.kernel.org/r/20250815-bmi270-gpd-acpi-v2-1-8e1db68d36d1@uniontech.com
