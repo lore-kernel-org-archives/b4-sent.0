@@ -1,11 +1,11 @@
 From: Simon Schuster <schuster.simon@siemens-energy.com>
-Date: Thu, 21 Aug 2025 13:27:37 +0200
-Subject: [PATCH 1/2] copy_process: Handle architectures where
- sizeof(unsigned long) < sizeof(u64)
+Date: Thu, 21 Aug 2025 13:27:38 +0200
+Subject: [PATCH 2/2] nios2: implement architecture-specific portion of
+ sys_clone3
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250821-nios2-implement-clone3-v1-1-1bb24017376a@siemens-energy.com>
+Message-Id: <20250821-nios2-implement-clone3-v1-2-1bb24017376a@siemens-energy.com>
 References: <20250821-nios2-implement-clone3-v1-0-1bb24017376a@siemens-energy.com>
 In-Reply-To: <20250821-nios2-implement-clone3-v1-0-1bb24017376a@siemens-energy.com>
 To: Dinh Nguyen <dinguyen@kernel.org>, 
@@ -26,90 +26,81 @@ To: Dinh Nguyen <dinguyen@kernel.org>,
 Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
  Simon Schuster <schuster.simon@siemens-energy.com>
 X-Mailer: b4 0.14.3-dev-2ce6c
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755775663; l=2756;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755775663; l=2259;
  i=schuster.simon@siemens-energy.com; s=20250818; h=from:subject:message-id;
- bh=fATaBcMTm8PaXx+wvHRntwDrs2IKs0+IzRTpuUxyYa4=;
- b=y7/IgnYV/3SkSNwCoqgDE/+S2MUsRejhrdpl2L+U7VnPzMzgttiqeo7QuevGlQKo7aBzvBcQ5
- 485HV4aRh6JBpSGlbRD35ZZAmT8+Yb7t7dbqgXJf0B1MkEE0oKL4n0t
+ bh=ZGFd7PEXdNZQ3XvGm96hBqrgf0z3Sn12r48TmNzThTY=;
+ b=F2nKl2igsmfyyDF/eUV0oYb5mlZJyimIpk0NXRJVrpnKfItiOUjRR+lvhtzDMtKjVJKvuPs+u
+ 3hz69QALEOGCg5dAKDF1klwR3WkvjnC1lV0TyZQ2blO79aj8xnAMWyK
 X-Developer-Key: i=schuster.simon@siemens-energy.com; a=ed25519;
  pk=PUhOMiSp43aSeRE1H41KApxYOluamBFFiMfKlBjocvo=
 X-Endpoint-Received: by B4 Relay for schuster.simon@siemens-energy.com/20250818 with auth_id=495
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With the introduction of clone3 in commit 7f192e3cd316 ("fork: add
-clone3") the effective bit width of clone_flags on all architectures was
-increased from 32bit to 64bit. However, the signature of the copy_*
-helper functions (e.g., copy_sighand) used by copy_process was not
-adapted, as such, they potentially truncate the flags on architectures
-such as nios2, where unsigned long is a 32bit unsigned integer type.
-
-This can, for instance, be observed via failures of kernel selftest
-clone3_clear_sighand, which attempts to trigger the conditional
-
-	if (clone_flags & CLONE_CLEAR_SIGHAND)
-
-in function copy_sighand within fork.c that will always fail given:
-
-	unsigned long /* == uint32_t */ clone_flags
-	#define CLONE_CLEAR_SIGHAND 0x100000000ULL
-
-This commit fixes the bug by always passing clone_flags via their
-declared u64 type, invariant of architecture-dependent integer sizes.
+This commit adds the sys_clone3 entrypoint for nios2. An
+architecture-specific wrapper (__sys_clone3) is required to save and
+restore additional registers to the kernel stack via SAVE_SWITCH_STACK
+and RESTORE_SWITCH_STACK.
 
 Signed-off-by: Simon Schuster <schuster.simon@siemens-energy.com>
 ---
- kernel/fork.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ arch/nios2/include/asm/syscalls.h | 1 +
+ arch/nios2/include/asm/unistd.h   | 2 --
+ arch/nios2/kernel/entry.S         | 6 ++++++
+ arch/nios2/kernel/syscall_table.c | 1 +
+ 4 files changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/kernel/fork.c b/kernel/fork.c
-index 5115be549234..0e9b2dd6c365 100644
---- a/kernel/fork.c
-+++ b/kernel/fork.c
-@@ -1510,7 +1510,7 @@ static struct mm_struct *dup_mm(struct task_struct *tsk,
- 	return NULL;
- }
+diff --git a/arch/nios2/include/asm/syscalls.h b/arch/nios2/include/asm/syscalls.h
+index b4d4ed3bf9c8..0e214b0a0ac8 100644
+--- a/arch/nios2/include/asm/syscalls.h
++++ b/arch/nios2/include/asm/syscalls.h
+@@ -7,6 +7,7 @@
  
--static int copy_mm(unsigned long clone_flags, struct task_struct *tsk)
-+static int copy_mm(u64 clone_flags, struct task_struct *tsk)
- {
- 	struct mm_struct *mm, *oldmm;
+ int sys_cacheflush(unsigned long addr, unsigned long len,
+ 				unsigned int op);
++asmlinkage long __sys_clone3(struct clone_args __user *uargs, size_t size);
  
-@@ -1548,7 +1548,7 @@ static int copy_mm(unsigned long clone_flags, struct task_struct *tsk)
- 	return 0;
- }
+ #include <asm-generic/syscalls.h>
  
--static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
-+static int copy_fs(u64 clone_flags, struct task_struct *tsk)
- {
- 	struct fs_struct *fs = current->fs;
- 	if (clone_flags & CLONE_FS) {
-@@ -1569,7 +1569,7 @@ static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
- 	return 0;
- }
+diff --git a/arch/nios2/include/asm/unistd.h b/arch/nios2/include/asm/unistd.h
+index 1146e56473c5..213f6de3cf7b 100644
+--- a/arch/nios2/include/asm/unistd.h
++++ b/arch/nios2/include/asm/unistd.h
+@@ -7,6 +7,4 @@
+ #define __ARCH_WANT_STAT64
+ #define __ARCH_WANT_SET_GET_RLIMIT
  
--static int copy_files(unsigned long clone_flags, struct task_struct *tsk,
-+static int copy_files(u64 clone_flags, struct task_struct *tsk,
- 		      int no_files)
- {
- 	struct files_struct *oldf, *newf;
-@@ -1599,7 +1599,7 @@ static int copy_files(unsigned long clone_flags, struct task_struct *tsk,
- 	return 0;
- }
+-#define __ARCH_BROKEN_SYS_CLONE3
+-
+ #endif
+diff --git a/arch/nios2/kernel/entry.S b/arch/nios2/kernel/entry.S
+index 99f0a65e6234..dd40dfd908e5 100644
+--- a/arch/nios2/kernel/entry.S
++++ b/arch/nios2/kernel/entry.S
+@@ -403,6 +403,12 @@ ENTRY(sys_clone)
+ 	addi    sp, sp, 4
+ 	RESTORE_SWITCH_STACK
+ 	ret
++/* long syscall(SYS_clone3, struct clone_args *cl_args, size_t size); */
++ENTRY(__sys_clone3)
++	SAVE_SWITCH_STACK
++	call	sys_clone3
++	RESTORE_SWITCH_STACK
++	ret
  
--static int copy_sighand(unsigned long clone_flags, struct task_struct *tsk)
-+static int copy_sighand(u64 clone_flags, struct task_struct *tsk)
- {
- 	struct sighand_struct *sig;
+ ENTRY(sys_rt_sigreturn)
+ 	SAVE_SWITCH_STACK
+diff --git a/arch/nios2/kernel/syscall_table.c b/arch/nios2/kernel/syscall_table.c
+index 434694067d8f..c99818aac9e1 100644
+--- a/arch/nios2/kernel/syscall_table.c
++++ b/arch/nios2/kernel/syscall_table.c
+@@ -13,6 +13,7 @@
+ #define __SYSCALL_WITH_COMPAT(nr, native, compat)        __SYSCALL(nr, native)
  
-@@ -1648,7 +1648,7 @@ static void posix_cpu_timers_init_group(struct signal_struct *sig)
- 	posix_cputimers_group_init(pct, cpu_limit);
- }
+ #define sys_mmap2 sys_mmap_pgoff
++#define sys_clone3 __sys_clone3
  
--static int copy_signal(unsigned long clone_flags, struct task_struct *tsk)
-+static int copy_signal(u64 clone_flags, struct task_struct *tsk)
- {
- 	struct signal_struct *sig;
- 
+ void *sys_call_table[__NR_syscalls] = {
+ 	[0 ... __NR_syscalls-1] = sys_ni_syscall,
 
 -- 
 2.39.5
