@@ -1,163 +1,59 @@
-From: Dmitry Safonov <dima@arista.com>
-Date: Fri, 22 Aug 2025 05:55:37 +0100
-Subject: [PATCH net-next 2/2] tcp: Free TCP-AO/TCP-MD5 info/keys without
- RCU
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH 0/5] Power: Add power domain driver for S6 S7 S7D
+Date: Fri, 22 Aug 2025 13:39:54 +0800
+Message-Id: <20250822-pm-s6-s7-s7d-v1-0-82e3f3aff327@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250822-b4-tcp-ao-md5-rst-finwait2-v1-2-25825d085dcb@arista.com>
-References: <20250822-b4-tcp-ao-md5-rst-finwait2-v1-0-25825d085dcb@arista.com>
-In-Reply-To: <20250822-b4-tcp-ao-md5-rst-finwait2-v1-0-25825d085dcb@arista.com>
-To: Eric Dumazet <edumazet@google.com>, 
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: Bob Gilligan <gilligan@arista.com>, 
- Salam Noureddine <noureddine@arista.com>, 
- Dmitry Safonov <0x7f454c46@gmail.com>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dmitry Safonov <dima@arista.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755838557; l=4311;
- i=dima@arista.com; s=20250521; h=from:subject:message-id;
- bh=DTvDhQjie0nLc2vujkcuQmUlaLvJCsq+rW5VIp5uDdU=;
- b=BksfMbbtCwVQpxUCwvcI29WnXVacYK7bsGtS784QxTI5NoztdZ6jGs5sdQenKaqOmqV1hBK1B
- xs8S/UcQKpBAm7GEE849O6RzG06SBL1NeAXCVnca3CXCy9WSVGTr76k
-X-Developer-Key: i=dima@arista.com; a=ed25519;
- pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
-X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
+X-B4-Tracking: v=1; b=H4sIAKoCqGgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDCyMD3YJc3WIz3WJzIErRtTQ1SDM3MkhMTDZLUQJqKShKTcusABsXHVt
+ bCwC3esbIXgAAAA==
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jianxin Pan <jianxin.pan@amlogic.com>, Ulf Hansson <ulf.hansson@linaro.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-pm@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ "hongyu.chen1" <hongyu.chen1@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755841286; l=1213;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=SWllvQUuWXUiZ37XKVOHkxwQQPRk+5jHJR1X7QQbqWU=;
+ b=v6zP1X1MiyNWQVfGhjRcfGOC0lt9iG/FSAbPc+2Df+zqZf0YLjimp7/DcF5ze+DfN5jFWSfkw
+ C5A8U4wNBWFDDsajqvt6DFrIfF7N0vlKPmgrOvHh1HqITJru5NZz9yJ
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that the destruction of info/keys is delayed until the socket
-destructor, it's safe to use kfree() without an RCU callback.
-As either socket was yet in TCP_CLOSE state or the socket refcounter is
-zero and no one can discover it anymore, it's safe to release memory
-straight away.
-Similar thing was possible for twsk already.
+Add power controller driver support for Amlogic S6 S7 S7D SoC.
 
-Signed-off-by: Dmitry Safonov <dima@arista.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- net/ipv4/tcp.c           | 19 +++----------------
- net/ipv4/tcp_ao.c        |  5 ++---
- net/ipv4/tcp_ipv4.c      |  4 ++--
- net/ipv4/tcp_minisocks.c | 19 +++++--------------
- 4 files changed, 12 insertions(+), 35 deletions(-)
+hongyu.chen1 (5):
+      dt-bindings: power: add Amlogic S6 S7 S7D power domains
+      pmdomain: amlogic: Add support for S6 S7 S7D power domains controller
+      arm64: dts: amlogic: s6: add power domain controller node
+      arm64: dts: amlogic: s7: add power domain controller node
+      arm64: dts: amlogic: s7d: add power domain controller node
 
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 4e996e937e8e5f0e75764caa24240e25006deece..de10d38116a205863c290470fa0cbbddeb8d709e 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -412,30 +412,17 @@ static u64 tcp_compute_delivery_rate(const struct tcp_sock *tp)
- 	return rate64;
- }
- 
--#ifdef CONFIG_TCP_MD5SIG
--static void tcp_md5sig_info_free_rcu(struct rcu_head *head)
--{
--	struct tcp_md5sig_info *md5sig;
--
--	md5sig = container_of(head, struct tcp_md5sig_info, rcu);
--	kfree(md5sig);
--	static_branch_slow_dec_deferred(&tcp_md5_needed);
--	tcp_md5_release_sigpool();
--}
--#endif
--
- static void tcp_destruct_sock(struct sock *sk)
- {
- 	struct tcp_sock *tp = tcp_sk(sk);
- 
- #ifdef CONFIG_TCP_MD5SIG
- 	if (tp->md5sig_info) {
--		struct tcp_md5sig_info *md5sig;
- 
--		md5sig = rcu_dereference_protected(tp->md5sig_info, 1);
- 		tcp_clear_md5_list(sk);
--		call_rcu(&md5sig->rcu, tcp_md5sig_info_free_rcu);
--		rcu_assign_pointer(tp->md5sig_info, NULL);
-+		kfree(rcu_replace_pointer(tp->md5sig_info, NULL, 1));
-+		static_branch_slow_dec_deferred(&tcp_md5_needed);
-+		tcp_md5_release_sigpool();
- 	}
- #endif
- 	tcp_ao_destroy_sock(sk, false);
-diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
-index bbb8d5f0eae7d3d8887da3fa4d68e248af9060ad..31302be78bc4450b56fa23a390b6d03b2262741d 100644
---- a/net/ipv4/tcp_ao.c
-+++ b/net/ipv4/tcp_ao.c
-@@ -268,9 +268,8 @@ static void tcp_ao_key_free_rcu(struct rcu_head *head)
- 	kfree_sensitive(key);
- }
- 
--static void tcp_ao_info_free_rcu(struct rcu_head *head)
-+static void tcp_ao_info_free(struct tcp_ao_info *ao)
- {
--	struct tcp_ao_info *ao = container_of(head, struct tcp_ao_info, rcu);
- 	struct tcp_ao_key *key;
- 	struct hlist_node *n;
- 
-@@ -310,7 +309,7 @@ void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
- 
- 	if (!twsk)
- 		tcp_ao_sk_omem_free(sk, ao);
--	call_rcu(&ao->rcu, tcp_ao_info_free_rcu);
-+	tcp_ao_info_free(ao);
- }
- 
- void tcp_ao_time_wait(struct tcp_timewait_sock *tcptw, struct tcp_sock *tp)
-diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
-index 32814f205fdfdcbd4be4765a4e127c8f175d3b14..185d16ff2d0ad7b20e2404ceff71cccaff4ed4bc 100644
---- a/net/ipv4/tcp_ipv4.c
-+++ b/net/ipv4/tcp_ipv4.c
-@@ -1505,9 +1505,9 @@ void tcp_clear_md5_list(struct sock *sk)
- 	md5sig = rcu_dereference_protected(tp->md5sig_info, 1);
- 
- 	hlist_for_each_entry_safe(key, n, &md5sig->head, node) {
--		hlist_del_rcu(&key->node);
-+		hlist_del(&key->node);
- 		atomic_sub(sizeof(*key), &sk->sk_omem_alloc);
--		kfree_rcu(key, rcu);
-+		kfree(key);
- 	}
- }
- 
-diff --git a/net/ipv4/tcp_minisocks.c b/net/ipv4/tcp_minisocks.c
-index 2994c9222c9cb5ee86b60bdb553f92130e52c70e..c93812b19893742b071b0f7a49c4293a781e8de4 100644
---- a/net/ipv4/tcp_minisocks.c
-+++ b/net/ipv4/tcp_minisocks.c
-@@ -377,26 +377,17 @@ void tcp_time_wait(struct sock *sk, int state, int timeo)
- }
- EXPORT_SYMBOL(tcp_time_wait);
- 
--#ifdef CONFIG_TCP_MD5SIG
--static void tcp_md5_twsk_free_rcu(struct rcu_head *head)
--{
--	struct tcp_md5sig_key *key;
--
--	key = container_of(head, struct tcp_md5sig_key, rcu);
--	kfree(key);
--	static_branch_slow_dec_deferred(&tcp_md5_needed);
--	tcp_md5_release_sigpool();
--}
--#endif
--
- void tcp_twsk_destructor(struct sock *sk)
- {
- #ifdef CONFIG_TCP_MD5SIG
- 	if (static_branch_unlikely(&tcp_md5_needed.key)) {
- 		struct tcp_timewait_sock *twsk = tcp_twsk(sk);
- 
--		if (twsk->tw_md5_key)
--			call_rcu(&twsk->tw_md5_key->rcu, tcp_md5_twsk_free_rcu);
-+		if (twsk->tw_md5_key) {
-+			kfree(twsk->tw_md5_key);
-+			static_branch_slow_dec_deferred(&tcp_md5_needed);
-+			tcp_md5_release_sigpool();
-+		}
- 	}
- #endif
- 	tcp_ao_destroy_sock(sk, true);
+ .../bindings/power/amlogic,meson-sec-pwrc.yaml     |  3 +
+ arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi        | 10 +++
+ arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi        | 10 +++
+ arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi       | 10 +++
+ drivers/pmdomain/amlogic/meson-secure-pwrc.c       | 95 ++++++++++++++++++++++
+ include/dt-bindings/power/amlogic,s6-pwrc.h        | 29 +++++++
+ include/dt-bindings/power/amlogic,s7-pwrc.h        | 20 +++++
+ include/dt-bindings/power/amlogic,s7d-pwrc.h       | 27 ++++++
+ 8 files changed, 204 insertions(+)
+---
+base-commit: ffeebf7587f518a3717fad308cf735adbbcaba97
+change-id: 20250820-pm-s6-s7-s7d-950f720aac6d
 
+Best regards,
 -- 
-2.42.2
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
