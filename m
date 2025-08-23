@@ -1,291 +1,51 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 22 Aug 2025 19:58:00 -0500
-Subject: [PATCH] drm/nouveau: Support reclocking on gp10b
+From: Maud Spierings <maud_spierings@hotmail.com>
+Subject: [PATCH 0/3] arm64: dts: rockchip: Improvements for
+ rk3588-orangepi-5 and friends
+Date: Sat, 23 Aug 2025 14:43:49 +0200
+Message-Id: <20250823-orangepi5-v1-0-ae77dd0e06d7@hotmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250822-gp10b-reclock-v1-1-5b03eaf3735a@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABcSqWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDCyMj3fQCQ4Mk3aLU5Jz85Gxdc/OkNGMzAwPTRAszJaCegqLUtMwKsHn
- RsbW1AEdlYG1fAAAA
-X-Change-ID: 20250822-gp10b-reclock-77bf36005a86
-To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- nouveau@lists.freedesktop.org, Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIW3qWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDCyNj3fwikGhBpqluokWyhYGpuWFyWoqBElB9QVFqWmYF2Kzo2NpaAMS
+ YGExbAAAA
+X-Change-ID: 20250823-orangepi5-a8c80571cfd0
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Ondrej Jirman <megi@xff.cz>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755910728; l=7670;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=JGrVd9hnkLIjkMAR216GfQSoYVUlj9ur9vGETeozqoQ=;
- b=7CLqWpd25o1U/chnOF7hSNAUHHqJhjh2MKKOAUhlY533V11yuPngwZlPRsUEE6xYxNrqzgqea
- 0m6f5kQeY4QC7XrVEv3OlR4sKXLOX6kdPOXkrWbfVOJQZgjRbWoBpr+
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1755953033; l=829;
+ i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
+ bh=qmoItphEwgbnOc3Kx/jB+wrA6iB1hYbkpqBVKQ9GP5s=;
+ b=XW9abXAO3w57Ix2LwWlF3Yf5as+Mfqdo0VxxzjVLdssOTDU6o907NIN3Z3Qkd8L2uBlWiRCoe
+ hxfh6KYtzBVCQMRvy6MCvp55sK409dtkfYwwmBjZtik20y2cSgMZ2UM
+X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
+ pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
+X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Starting with Tegra186, gpu clock handling is done by the bpmp and there
-is little to be done by the kernel. The only thing necessary for
-reclocking is to set the gpcclk to the desired rate and the bpmp handles
-the rest. The pstate list is based on the downstream driver generates.
+Fix the headphone detection logic on the orangepi 5 plus.
+Enable the HDMI receiver on the orangepi 5 plus.
+Enable the NPU on all orangepi 5 boards.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
- drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h |   1 +
- drivers/gpu/drm/nouveau/nvkm/engine/device/base.c |   1 +
- drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild    |   1 +
- drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.c   | 180 ++++++++++++++++++++++
- drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.h   |  16 ++
- 5 files changed, 199 insertions(+)
+Maud Spierings (3):
+      arm64: dts: rockchip: Fix the headphone detection on the orangepi 5 plus
+      arm64: dts: rockchip: Enable HDMI receiver on orangepi 5 plus
+      arm64: dts: rockchip: Enable the NPU on the orangepi 5 boards
 
-diff --git a/drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h b/drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h
-index d5d8877064a71581d8e9e92f30a3e28551dabf17..6a09d397c651aa94718aff3d1937162df39cc2ae 100644
---- a/drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h
-+++ b/drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h
-@@ -134,4 +134,5 @@ int gf100_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct
- int gk104_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct nvkm_clk **);
- int gk20a_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct nvkm_clk **);
- int gm20b_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct nvkm_clk **);
-+int gp10b_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct nvkm_clk **);
- #endif
-diff --git a/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c b/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c
-index 3375a59ebf1a4af73daf4c029605a10a7721c725..2517b65d8faad9947244707f540eb281ad7652e4 100644
---- a/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c
-+++ b/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c
-@@ -2280,6 +2280,7 @@ nv13b_chipset = {
- 	.acr      = { 0x00000001, gp10b_acr_new },
- 	.bar      = { 0x00000001, gm20b_bar_new },
- 	.bus      = { 0x00000001, gf100_bus_new },
-+	.clk      = { 0x00000001, gp10b_clk_new },
- 	.fault    = { 0x00000001, gp10b_fault_new },
- 	.fb       = { 0x00000001, gp10b_fb_new },
- 	.fuse     = { 0x00000001, gm107_fuse_new },
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild
-index dcecd499d8dffae3b81276ed67bb8649dfa3efd1..9fe394740f568909de71a8c420cc8b6d8dc2235f 100644
---- a/drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild
-@@ -10,6 +10,7 @@ nvkm-y += nvkm/subdev/clk/gf100.o
- nvkm-y += nvkm/subdev/clk/gk104.o
- nvkm-y += nvkm/subdev/clk/gk20a.o
- nvkm-y += nvkm/subdev/clk/gm20b.o
-+nvkm-y += nvkm/subdev/clk/gp10b.o
- 
- nvkm-y += nvkm/subdev/clk/pllnv04.o
- nvkm-y += nvkm/subdev/clk/pllgt215.o
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.c b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..eeee0b1f819a54b082dd33f6597e7dd1889abf99
---- /dev/null
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.c
-@@ -0,0 +1,180 @@
-+// SPDX-License-Identifier: MIT
-+#include <subdev/clk.h>
-+#include <subdev/timer.h>
-+#include <core/device.h>
-+#include <core/tegra.h>
-+
-+#include "priv.h"
-+#include "gk20a.h"
-+#include "gp10b.h"
-+
-+static int
-+gp10b_clk_init(struct nvkm_clk *base)
-+{
-+	struct gp10b_clk *clk = gp10b_clk(base);
-+	struct nvkm_subdev *subdev = &clk->base.subdev;
-+	int ret;
-+
-+	/* Start with the highest frequency, matching the BPMP default */
-+	base->func->calc(base, &base->func->pstates[base->func->nr_pstates - 1].base);
-+	ret = base->func->prog(base);
-+	if (ret) {
-+		nvkm_error(subdev, "cannot initialize clock\n");
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+int
-+gp10b_clk_read(struct nvkm_clk *base, enum nv_clk_src src)
-+{
-+	struct gp10b_clk *clk = gp10b_clk(base);
-+	struct nvkm_subdev *subdev = &clk->base.subdev;
-+
-+	switch (src) {
-+	case nv_clk_src_gpc:
-+		return clk_get_rate(clk->clk) / GK20A_CLK_GPC_MDIV;
-+	default:
-+		nvkm_error(subdev, "invalid clock source %d\n", src);
-+		return -EINVAL;
-+	}
-+}
-+
-+static int
-+gp10b_clk_calc(struct nvkm_clk *base, struct nvkm_cstate *cstate)
-+{
-+	struct gp10b_clk *clk = gp10b_clk(base);
-+	u32 target_rate = cstate->domain[nv_clk_src_gpc] * GK20A_CLK_GPC_MDIV;
-+
-+	clk->new_rate = clk_round_rate(clk->clk, target_rate) / GK20A_CLK_GPC_MDIV;
-+
-+	return 0;
-+}
-+
-+static int
-+gp10b_clk_prog(struct nvkm_clk *base)
-+{
-+	struct gp10b_clk *clk = gp10b_clk(base);
-+	int ret;
-+
-+	ret = clk_set_rate(clk->clk, clk->new_rate * GK20A_CLK_GPC_MDIV);
-+	if (ret < 0)
-+		return ret;
-+
-+	clk->rate = clk_get_rate(clk->clk) / GK20A_CLK_GPC_MDIV;
-+
-+	return 0;
-+}
-+
-+static struct nvkm_pstate
-+gp10b_pstates[] = {
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 114750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 216750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 318750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 420750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 522750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 624750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 726750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 828750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 930750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 1032750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 1134750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 1236750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 1300500,
-+		},
-+	},
-+};
-+
-+static const struct nvkm_clk_func
-+gp10b_clk = {
-+	.init = gp10b_clk_init,
-+	.read = gp10b_clk_read,
-+	.calc = gp10b_clk_calc,
-+	.prog = gp10b_clk_prog,
-+	.tidy = gk20a_clk_tidy,
-+	.pstates = gp10b_pstates,
-+	.nr_pstates = ARRAY_SIZE(gp10b_pstates),
-+	.domains = {
-+		{ nv_clk_src_gpc, 0xff, 0, "core", GK20A_CLK_GPC_MDIV },
-+		{ nv_clk_src_max }
-+	}
-+};
-+
-+int
-+gp10b_clk_new(struct nvkm_device *device, enum nvkm_subdev_type type, int inst,
-+	      struct nvkm_clk **pclk)
-+{
-+	struct nvkm_device_tegra *tdev = device->func->tegra(device);
-+	const struct nvkm_clk_func *func = &gp10b_clk;
-+	struct gp10b_clk *clk;
-+	int ret, i;
-+
-+	clk = kzalloc(sizeof(*clk), GFP_KERNEL);
-+	if (!clk)
-+		return -ENOMEM;
-+	*pclk = &clk->base;
-+	clk->clk = tdev->clk;
-+
-+	/* Finish initializing the pstates */
-+	for (i = 0; i < func->nr_pstates; i++) {
-+		INIT_LIST_HEAD(&func->pstates[i].list);
-+		func->pstates[i].pstate = i + 1;
-+	}
-+
-+	ret = nvkm_clk_ctor(func, device, type, inst, true, &clk->base);
-+	if (ret)
-+		return ret;
-+
-+	return 0;
-+}
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.h b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..2f65a921a426e3f6339a31e964397f6eefa50250
---- /dev/null
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.h
-@@ -0,0 +1,16 @@
-+/* SPDX-License-Identifier: MIT */
-+#ifndef __NVKM_CLK_GP10B_H__
-+#define __NVKM_CLK_GP10B_H__
-+
-+struct gp10b_clk {
-+	/* currently applied parameters */
-+	struct nvkm_clk base;
-+	struct clk *clk;
-+	u32 rate;
-+
-+	/* new parameters to apply */
-+	u32 new_rate;
-+};
-+#define gp10b_clk(p) container_of((p), struct gp10b_clk, base)
-+
-+#endif
-
+ .../boot/dts/rockchip/rk3588-orangepi-5-plus.dts   | 19 +++++++-
+ .../arm64/boot/dts/rockchip/rk3588-orangepi-5.dtsi | 56 ++++++++++++++++++++++
+ 2 files changed, 74 insertions(+), 1 deletion(-)
 ---
-base-commit: c17b750b3ad9f45f2b6f7e6f7f4679844244f0b9
-change-id: 20250822-gp10b-reclock-77bf36005a86
+base-commit: 0f4c93f7eb861acab537dbe94441817a270537bf
+change-id: 20250823-orangepi5-a8c80571cfd0
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Maud Spierings <maud_spierings@hotmail.com>
 
