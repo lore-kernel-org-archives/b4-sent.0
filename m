@@ -1,295 +1,182 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 23 Aug 2025 12:26:05 -0500
-Subject: [PATCH v2] drm/nouveau: Support reclocking on gp10b
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Date: Sat, 23 Aug 2025 23:14:11 +0530
+Subject: [PATCH v2] PCI: qcom: Use pci_host_set_default_pcie_link_state()
+ API to enable ASPM for all platforms
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250823-gp10b-reclock-v2-1-90a1974a54e3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKz5qWgC/3XMSw6DIBSF4a2YOy4NjyCmo+7DOEB6wZuqGGhMG
- 8PeS513+J/kfAdkTIQZbs0BCXfKFNca8tKAm+wakNGjNkguNe+kZGETfGQJ3RzdkxkzetVyrm3
- XQv1sCT29T68fak+UXzF9Tn4Xv/WftAsmmB65QuuVUdrew2Jpvrq4wFBK+QKjMOw3qgAAAA==
-X-Change-ID: 20250822-gp10b-reclock-77bf36005a86
-To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- nouveau@lists.freedesktop.org, Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20250823-qcom_aspm_fix-v2-1-7cef4066663c@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAOv9qWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDI1MDCyNj3cLk/Nz4xOKC3Pi0zApdYyMzE0sjsyTTJEMTJaCegqJUoDDYvOj
+ Y2loAU4Asg18AAAA=
+X-Change-ID: 20250823-qcom_aspm_fix-3264926b5b14
+To: Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-pci@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, "David E. Box" <david.e.box@linux.intel.com>, 
+ Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
+ Johan Hovold <johan@kernel.org>, stable+noautosel@kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1755969966; l=7837;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=ORTgFAySW5YP39GAofc6irg3iux8MdjoBE9G2yJqggw=;
- b=p1rdWeJJgvZVq/cL66hpKKp/8N8spJmWxoJfDY06sn3iyJ/s5z8109b7Et7gJSudb5u8AuuFX
- pD+rjAfUN6DAhH8J+sTPV1mJudOyNbcHwttPfaJxPHKH9Z1YRAT1tP3
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5931;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=FvAS2lrBy4QcQciNcZNf/ZyUYHY+/IJEof92RVatcC8=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBoqf3uYNbOl0o5Jc7QJ8AgmJwxlhykuMzGO3fAH
+ /bOjc22Oq+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaKn97gAKCRBVnxHm/pHO
+ 9TlzB/4n4OPJa4xZvM+2Pt5FZm2cusOd4R0VaRaJFRA4MEZ9S1K0aVUhftS0Lp/lLuBIKJquAC2
+ Okhe1oT8qtTZ5lQ1+NBWg34I66VekaUSZX9hD1as0Uh+8V0/suT3Jo20AYxB7i6x2uxoOJhOp4u
+ iOSTQKbdk4cEITzaft1tCPrW25euQThCGIiTzqir5zkvmjDlCB1eppoFROzhEFRulD0FxRGZQOa
+ +a9CZSmDQ6PetY3H7crO1wAeHKob98a7JwBbRWSJ3JJXO9I5sVYSnWpCKmMrFns46szyybrbyvq
+ 7b0Npu0rSNZnWsLI4lPo+JESXkIXcswAADea7uvOf3DIO60l
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Starting with Tegra186, gpu clock handling is done by the bpmp and there
-is little to be done by the kernel. The only thing necessary for
-reclocking is to set the gpcclk to the desired rate and the bpmp handles
-the rest. The pstate list is based on the downstream driver generates.
+Commit 9f4f3dfad8cf ("PCI: qcom: Enable ASPM for platforms supporting 1.9.0
+ops") allowed the Qcom controller driver to enable ASPM for all PCI devices
+enumerated at the time of the controller driver probe. It proved to be
+useful for devices already powered on by the bootloader, as it allowed
+devices to enter ASPM without user intervention.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+However, it could not enable ASPM for the hotplug capable devices i.e.,
+devices enumerated *after* the controller driver probe. This limitation
+mostly went unnoticed as the Qcom PCI controllers are not hotplug capable
+and also the bootloader has been enabling the PCI devices before Linux
+Kernel boots (mostly on the Qcom compute platforms which users use on a
+daily basis).
+
+But with the advent of the commit b458ff7e8176 ("PCI/pwrctl: Ensure that
+pwrctl drivers are probed before PCI client drivers"), the pwrctrl driver
+started to block the PCI device enumeration until it had been probed.
+Though, the intention of the commit was to avoid race between the pwrctrl
+driver and PCI client driver, it also meant that the pwrctrl controlled PCI
+devices may get probed after the controller driver and will no longer have
+ASPM enabled. So users started noticing high runtime power consumption with
+WLAN chipsets on Qcom compute platforms like Thinkpad X13s, and Thinkpad
+T14s, etc...
+
+Obviously, it is the pwrctrl change that caused regression, but it
+ultimately uncovered a flaw in the ASPM enablement logic of the controller
+driver. So to address the actual issue, use the newly introduced
+pci_host_set_default_pcie_link_state() API, which allows the controller
+drivers to set the default ASPM state for *all* devices. This default state
+will be honored by the ASPM driver while enabling ASPM for all the devices.
+
+So with this change, we can get rid of the controller driver specific
+'qcom_pcie_ops::host_post_init' callback.
+
+Also with this change, ASPM is now enabled by default on all Qcom
+platforms as I haven't heard of any reported issues (apart from the
+unsupported L0s on some platorms, which is still handled separately).
+
+Cc: stable+noautosel@kernel.org # API dependency
+Fixes: 9f4f3dfad8cf ("PCI: qcom: Enable ASPM for platforms supporting 1.9.0 ops")
+Reported-by: Johan Hovold <johan@kernel.org>
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
 Changes in v2:
-- Fix missing static as reported by kernel ci
-- Link to v1: https://lore.kernel.org/r/20250822-gp10b-reclock-v1-1-5b03eaf3735a@gmail.com
----
- drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h |   1 +
- drivers/gpu/drm/nouveau/nvkm/engine/device/base.c |   1 +
- drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild    |   1 +
- drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.c   | 180 ++++++++++++++++++++++
- drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.h   |  16 ++
- 5 files changed, 199 insertions(+)
 
-diff --git a/drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h b/drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h
-index d5d8877064a71581d8e9e92f30a3e28551dabf17..6a09d397c651aa94718aff3d1937162df39cc2ae 100644
---- a/drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h
-+++ b/drivers/gpu/drm/nouveau/include/nvkm/subdev/clk.h
-@@ -134,4 +134,5 @@ int gf100_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct
- int gk104_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct nvkm_clk **);
- int gk20a_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct nvkm_clk **);
- int gm20b_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct nvkm_clk **);
-+int gp10b_clk_new(struct nvkm_device *, enum nvkm_subdev_type, int inst, struct nvkm_clk **);
- #endif
-diff --git a/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c b/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c
-index 3375a59ebf1a4af73daf4c029605a10a7721c725..2517b65d8faad9947244707f540eb281ad7652e4 100644
---- a/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c
-+++ b/drivers/gpu/drm/nouveau/nvkm/engine/device/base.c
-@@ -2280,6 +2280,7 @@ nv13b_chipset = {
- 	.acr      = { 0x00000001, gp10b_acr_new },
- 	.bar      = { 0x00000001, gm20b_bar_new },
- 	.bus      = { 0x00000001, gf100_bus_new },
-+	.clk      = { 0x00000001, gp10b_clk_new },
- 	.fault    = { 0x00000001, gp10b_fault_new },
- 	.fb       = { 0x00000001, gp10b_fb_new },
- 	.fuse     = { 0x00000001, gm107_fuse_new },
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild
-index dcecd499d8dffae3b81276ed67bb8649dfa3efd1..9fe394740f568909de71a8c420cc8b6d8dc2235f 100644
---- a/drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/Kbuild
-@@ -10,6 +10,7 @@ nvkm-y += nvkm/subdev/clk/gf100.o
- nvkm-y += nvkm/subdev/clk/gk104.o
- nvkm-y += nvkm/subdev/clk/gk20a.o
- nvkm-y += nvkm/subdev/clk/gm20b.o
-+nvkm-y += nvkm/subdev/clk/gp10b.o
+* Used the new API introduced in this patch instead of bus notifier:
+https://lore.kernel.org/linux-pci/20250822031159.4005529-1-david.e.box@linux.intel.com/
+
+* Enabled ASPM on all platforms as there is no specific reason to limit it to a
+few.
+---
+ drivers/pci/controller/dwc/pcie-qcom.c | 34 ++--------------------------------
+ 1 file changed, 2 insertions(+), 32 deletions(-)
+
+diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
+index 294babe1816e4d0c2b2343fe22d89af72afcd6cd..71f14bc3a06ade1da1374e88b0ebef8c4e266064 100644
+--- a/drivers/pci/controller/dwc/pcie-qcom.c
++++ b/drivers/pci/controller/dwc/pcie-qcom.c
+@@ -247,7 +247,6 @@ struct qcom_pcie_ops {
+ 	int (*get_resources)(struct qcom_pcie *pcie);
+ 	int (*init)(struct qcom_pcie *pcie);
+ 	int (*post_init)(struct qcom_pcie *pcie);
+-	void (*host_post_init)(struct qcom_pcie *pcie);
+ 	void (*deinit)(struct qcom_pcie *pcie);
+ 	void (*ltssm_enable)(struct qcom_pcie *pcie);
+ 	int (*config_sid)(struct qcom_pcie *pcie);
+@@ -1040,25 +1039,6 @@ static int qcom_pcie_post_init_2_7_0(struct qcom_pcie *pcie)
+ 	return 0;
+ }
  
- nvkm-y += nvkm/subdev/clk/pllnv04.o
- nvkm-y += nvkm/subdev/clk/pllgt215.o
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.c b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..a0be53ffeb4479e4c229bd6bde86bb6bdb082b56
---- /dev/null
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.c
-@@ -0,0 +1,180 @@
-+// SPDX-License-Identifier: MIT
-+#include <subdev/clk.h>
-+#include <subdev/timer.h>
-+#include <core/device.h>
-+#include <core/tegra.h>
+-static int qcom_pcie_enable_aspm(struct pci_dev *pdev, void *userdata)
+-{
+-	/*
+-	 * Downstream devices need to be in D0 state before enabling PCI PM
+-	 * substates.
+-	 */
+-	pci_set_power_state_locked(pdev, PCI_D0);
+-	pci_enable_link_state_locked(pdev, PCIE_LINK_STATE_ALL);
+-
+-	return 0;
+-}
+-
+-static void qcom_pcie_host_post_init_2_7_0(struct qcom_pcie *pcie)
+-{
+-	struct dw_pcie_rp *pp = &pcie->pci->pp;
+-
+-	pci_walk_bus(pp->bridge->bus, qcom_pcie_enable_aspm, NULL);
+-}
+-
+ static void qcom_pcie_deinit_2_7_0(struct qcom_pcie *pcie)
+ {
+ 	struct qcom_pcie_resources_2_7_0 *res = &pcie->res.v2_7_0;
+@@ -1358,19 +1338,9 @@ static void qcom_pcie_host_deinit(struct dw_pcie_rp *pp)
+ 	pcie->cfg->ops->deinit(pcie);
+ }
+ 
+-static void qcom_pcie_host_post_init(struct dw_pcie_rp *pp)
+-{
+-	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+-	struct qcom_pcie *pcie = to_qcom_pcie(pci);
+-
+-	if (pcie->cfg->ops->host_post_init)
+-		pcie->cfg->ops->host_post_init(pcie);
+-}
+-
+ static const struct dw_pcie_host_ops qcom_pcie_dw_ops = {
+ 	.init		= qcom_pcie_host_init,
+ 	.deinit		= qcom_pcie_host_deinit,
+-	.post_init	= qcom_pcie_host_post_init,
+ };
+ 
+ /* Qcom IP rev.: 2.1.0	Synopsys IP rev.: 4.01a */
+@@ -1432,7 +1402,6 @@ static const struct qcom_pcie_ops ops_1_9_0 = {
+ 	.get_resources = qcom_pcie_get_resources_2_7_0,
+ 	.init = qcom_pcie_init_2_7_0,
+ 	.post_init = qcom_pcie_post_init_2_7_0,
+-	.host_post_init = qcom_pcie_host_post_init_2_7_0,
+ 	.deinit = qcom_pcie_deinit_2_7_0,
+ 	.ltssm_enable = qcom_pcie_2_3_2_ltssm_enable,
+ 	.config_sid = qcom_pcie_config_sid_1_9_0,
+@@ -1443,7 +1412,6 @@ static const struct qcom_pcie_ops ops_1_21_0 = {
+ 	.get_resources = qcom_pcie_get_resources_2_7_0,
+ 	.init = qcom_pcie_init_2_7_0,
+ 	.post_init = qcom_pcie_post_init_2_7_0,
+-	.host_post_init = qcom_pcie_host_post_init_2_7_0,
+ 	.deinit = qcom_pcie_deinit_2_7_0,
+ 	.ltssm_enable = qcom_pcie_2_3_2_ltssm_enable,
+ };
+@@ -1979,6 +1947,8 @@ static int qcom_pcie_probe(struct platform_device *pdev)
+ 	if (pcie->mhi)
+ 		qcom_pcie_init_debugfs(pcie);
+ 
++	pci_host_set_default_pcie_link_state(pp->bridge, PCIE_LINK_STATE_ALL);
 +
-+#include "priv.h"
-+#include "gk20a.h"
-+#include "gp10b.h"
-+
-+static int
-+gp10b_clk_init(struct nvkm_clk *base)
-+{
-+	struct gp10b_clk *clk = gp10b_clk(base);
-+	struct nvkm_subdev *subdev = &clk->base.subdev;
-+	int ret;
-+
-+	/* Start with the highest frequency, matching the BPMP default */
-+	base->func->calc(base, &base->func->pstates[base->func->nr_pstates - 1].base);
-+	ret = base->func->prog(base);
-+	if (ret) {
-+		nvkm_error(subdev, "cannot initialize clock\n");
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static int
-+gp10b_clk_read(struct nvkm_clk *base, enum nv_clk_src src)
-+{
-+	struct gp10b_clk *clk = gp10b_clk(base);
-+	struct nvkm_subdev *subdev = &clk->base.subdev;
-+
-+	switch (src) {
-+	case nv_clk_src_gpc:
-+		return clk_get_rate(clk->clk) / GK20A_CLK_GPC_MDIV;
-+	default:
-+		nvkm_error(subdev, "invalid clock source %d\n", src);
-+		return -EINVAL;
-+	}
-+}
-+
-+static int
-+gp10b_clk_calc(struct nvkm_clk *base, struct nvkm_cstate *cstate)
-+{
-+	struct gp10b_clk *clk = gp10b_clk(base);
-+	u32 target_rate = cstate->domain[nv_clk_src_gpc] * GK20A_CLK_GPC_MDIV;
-+
-+	clk->new_rate = clk_round_rate(clk->clk, target_rate) / GK20A_CLK_GPC_MDIV;
-+
-+	return 0;
-+}
-+
-+static int
-+gp10b_clk_prog(struct nvkm_clk *base)
-+{
-+	struct gp10b_clk *clk = gp10b_clk(base);
-+	int ret;
-+
-+	ret = clk_set_rate(clk->clk, clk->new_rate * GK20A_CLK_GPC_MDIV);
-+	if (ret < 0)
-+		return ret;
-+
-+	clk->rate = clk_get_rate(clk->clk) / GK20A_CLK_GPC_MDIV;
-+
-+	return 0;
-+}
-+
-+static struct nvkm_pstate
-+gp10b_pstates[] = {
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 114750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 216750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 318750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 420750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 522750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 624750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 726750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 828750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 930750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 1032750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 1134750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 1236750,
-+		},
-+	},
-+	{
-+		.base = {
-+			.domain[nv_clk_src_gpc] = 1300500,
-+		},
-+	},
-+};
-+
-+static const struct nvkm_clk_func
-+gp10b_clk = {
-+	.init = gp10b_clk_init,
-+	.read = gp10b_clk_read,
-+	.calc = gp10b_clk_calc,
-+	.prog = gp10b_clk_prog,
-+	.tidy = gk20a_clk_tidy,
-+	.pstates = gp10b_pstates,
-+	.nr_pstates = ARRAY_SIZE(gp10b_pstates),
-+	.domains = {
-+		{ nv_clk_src_gpc, 0xff, 0, "core", GK20A_CLK_GPC_MDIV },
-+		{ nv_clk_src_max }
-+	}
-+};
-+
-+int
-+gp10b_clk_new(struct nvkm_device *device, enum nvkm_subdev_type type, int inst,
-+	      struct nvkm_clk **pclk)
-+{
-+	struct nvkm_device_tegra *tdev = device->func->tegra(device);
-+	const struct nvkm_clk_func *func = &gp10b_clk;
-+	struct gp10b_clk *clk;
-+	int ret, i;
-+
-+	clk = kzalloc(sizeof(*clk), GFP_KERNEL);
-+	if (!clk)
-+		return -ENOMEM;
-+	*pclk = &clk->base;
-+	clk->clk = tdev->clk;
-+
-+	/* Finish initializing the pstates */
-+	for (i = 0; i < func->nr_pstates; i++) {
-+		INIT_LIST_HEAD(&func->pstates[i].list);
-+		func->pstates[i].pstate = i + 1;
-+	}
-+
-+	ret = nvkm_clk_ctor(func, device, type, inst, true, &clk->base);
-+	if (ret)
-+		return ret;
-+
-+	return 0;
-+}
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.h b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..2f65a921a426e3f6339a31e964397f6eefa50250
---- /dev/null
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/clk/gp10b.h
-@@ -0,0 +1,16 @@
-+/* SPDX-License-Identifier: MIT */
-+#ifndef __NVKM_CLK_GP10B_H__
-+#define __NVKM_CLK_GP10B_H__
-+
-+struct gp10b_clk {
-+	/* currently applied parameters */
-+	struct nvkm_clk base;
-+	struct clk *clk;
-+	u32 rate;
-+
-+	/* new parameters to apply */
-+	u32 new_rate;
-+};
-+#define gp10b_clk(p) container_of((p), struct gp10b_clk, base)
-+
-+#endif
+ 	return 0;
+ 
+ err_host_deinit:
 
 ---
-base-commit: c17b750b3ad9f45f2b6f7e6f7f4679844244f0b9
-change-id: 20250822-gp10b-reclock-77bf36005a86
+base-commit: 681accdad91923ef4938b96ff3eea62e29af74c3
+change-id: 20250823-qcom_aspm_fix-3264926b5b14
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
