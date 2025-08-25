@@ -1,66 +1,188 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 25 Aug 2025 00:03:07 -0500
-Subject: [PATCH] cpufreq: tegra186: Default divider to 35 if register read
- fails
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Date: Mon, 25 Aug 2025 13:52:57 +0530
+Subject: [PATCH v3] PCI: qcom: Use pci_host_set_default_pcie_link_state()
+ API to enable ASPM for all platforms
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250825-tegra186-cpufreq-ndiv-v1-1-4669bf8f2992@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAIruq2gC/x3MQQqEMAxA0atI1hOwoWqdqwwuao2aTXVSFUG8u
- 8XlW/x/QWIVTvAtLlA+JMkSM8yngDD7ODHKkA1UUlU6srjxpN64GsO6j8p/jIMc2Ie28UTOWN9
- CblflUc73++vu+wGbzNXbZwAAAA==
-X-Change-ID: 20250824-tegra186-cpufreq-ndiv-bc97a22814a9
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-pm@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20250825-qcom_aspm_fix-v3-1-02c8d414eefb@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAGAdrGgC/3WMQQ6CMBBFr0JmbUmZQlVW3sMQUmqRJkKho42Gc
+ HdH9s7iJ+/nz1uBXPSOoM5WiC558mFiUIcM7GCmuxP+xgwosZInVGKxYWwNzWPb+7dQqMsz6q7
+ qihL4Z46O6913bZgHT88QP7s+4a/9Z0ooCnG0ri+l5lP2Eojy5WUePBtzDmi2bfsCkGEcrLEAA
+ AA=
+X-Change-ID: 20250823-qcom_aspm_fix-3264926b5b14
+To: Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-pci@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, "David E. Box" <david.e.box@linux.intel.com>, 
+ Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
+ Johan Hovold <johan@kernel.org>, stable+noautosel@kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756098191; l=1487;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=rfEcX8ls2L9Ghv6edI8v1CbFCLor3x2WRkwzlxZtph0=;
- b=Ut5weYR7xRwt2M+dlkUv1X8ffkKCHS5+SOthr91vOYmx3+lpcgnUN2WPB3d+b1HVn5TlJnnqE
- Y95qQ6uDk/uAb7Qt2A03opxPaUffsn0mbPZuC6O9sd+AU//d46EdphX
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6079;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=kD48LqXQ0kIw79nOsBnFczEUjdSW0UWpmm15mJe9M6U=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBorB1jzzCXC0f91MAypDDrWPKfrSfHgkD2tZwup
+ YvFwIquYrWJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaKwdYwAKCRBVnxHm/pHO
+ 9S78CACI7ucFiuz5aINc+QsLk7iMgfRf0Dfg0sG0icJdecH939+GeCvQC55tSqjQluzyA3+pp3N
+ 9T80f11MtdaQSn3LT9hs2H7Qf6TMjzxrzwMXDDhFUMrw6LW6s/GDa7r11s+kbe5Ejbui7kGHvja
+ s2cg9pW9hd3x1J7kc9NekinTl2lGzWCqZQ20iNJg9zRHOwHA52FC2KBINatpC5xobwtHry8MtAR
+ qNKkBDE/P7hZm2e7XJ1aHEsVnT7zTbMrayc9YDoZ1J3sPhjAQ40isKJz5LcG8Db0h8HYY/cTI4W
+ JOOY7udt0+A1pHkenj9ZFtZXKEQldmoYAkOwUHUo4aRgz6Bd
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Several of the cores fail to read any registers and thus fail to
-initialize cpufreq. With shared policies, this only affects the Denver
-cluster, but one of the A57 cores also exhibits this behaviour. If the
-value is initialized to match what is read by the downstream vendor
-kernel, scaling works as expected. I have never seen this value be
-anything other than 35, so it should be a relatively safe assumption.
+Commit 9f4f3dfad8cf ("PCI: qcom: Enable ASPM for platforms supporting 1.9.0
+ops") allowed the Qcom controller driver to enable ASPM for all PCI devices
+enumerated at the time of the controller driver probe. It proved to be
+useful for devices already powered on by the bootloader, as it allowed
+devices to enter ASPM without user intervention.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+However, it could not enable ASPM for the hotplug capable devices i.e.,
+devices enumerated *after* the controller driver probe. This limitation
+mostly went unnoticed as the Qcom PCI controllers are not hotplug capable
+and also the bootloader has been enabling the PCI devices before Linux
+Kernel boots (mostly on the Qcom compute platforms which users use on a
+daily basis).
+
+But with the advent of the commit b458ff7e8176 ("PCI/pwrctl: Ensure that
+pwrctl drivers are probed before PCI client drivers"), the pwrctrl driver
+started to block the PCI device enumeration until it had been probed.
+Though, the intention of the commit was to avoid race between the pwrctrl
+driver and PCI client driver, it also meant that the pwrctrl controlled PCI
+devices may get probed after the controller driver and will no longer have
+ASPM enabled. So users started noticing high runtime power consumption with
+WLAN chipsets on Qcom compute platforms like Thinkpad X13s, and Thinkpad
+T14s, etc...
+
+Obviously, it is the pwrctrl change that caused regression, but it
+ultimately uncovered a flaw in the ASPM enablement logic of the controller
+driver. So to address the actual issue, use the newly introduced
+pci_host_set_default_pcie_link_state() API, which allows the controller
+drivers to set the default ASPM state for *all* devices. This default state
+will be honored by the ASPM driver while enabling ASPM for all the devices.
+
+So with this change, we can get rid of the controller driver specific
+'qcom_pcie_ops::host_post_init' callback.
+
+Also with this change, ASPM is now enabled by default on all Qcom
+platforms as I haven't heard of any reported issues (apart from the
+unsupported L0s on some platorms, which is still handled separately).
+
+Cc: stable+noautosel@kernel.org # API dependency
+Fixes: 9f4f3dfad8cf ("PCI: qcom: Enable ASPM for platforms supporting 1.9.0 ops")
+Reported-by: Johan Hovold <johan@kernel.org>
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/cpufreq/tegra186-cpufreq.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Changes in v3:
 
-diff --git a/drivers/cpufreq/tegra186-cpufreq.c b/drivers/cpufreq/tegra186-cpufreq.c
-index cbabb726c6645d2e5f1857a47e5643c8552d1933..f017f903c6843f1881e8311753f6269637c6bc69 100644
---- a/drivers/cpufreq/tegra186-cpufreq.c
-+++ b/drivers/cpufreq/tegra186-cpufreq.c
-@@ -115,6 +115,11 @@ static unsigned int tegra186_cpufreq_get(unsigned int cpu)
+- Moved the ASPM change to qcom_pcie_host_init()
+- Link to v2: https://lore.kernel.org/r/20250823-qcom_aspm_fix-v2-1-7cef4066663c@oss.qualcomm.com
+
+Changes in v2:
+
+* Used the new API introduced in this patch instead of bus notifier:
+https://lore.kernel.org/linux-pci/20250822031159.4005529-1-david.e.box@linux.intel.com/
+
+* Enabled ASPM on all platforms as there is no specific reason to limit it to a
+few.
+---
+ drivers/pci/controller/dwc/pcie-qcom.c | 34 ++--------------------------------
+ 1 file changed, 2 insertions(+), 32 deletions(-)
+
+diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
+index 294babe1816e4d0c2b2343fe22d89af72afcd6cd..0c6741b9a9585bd5566b23ba68ef12f1febab56b 100644
+--- a/drivers/pci/controller/dwc/pcie-qcom.c
++++ b/drivers/pci/controller/dwc/pcie-qcom.c
+@@ -247,7 +247,6 @@ struct qcom_pcie_ops {
+ 	int (*get_resources)(struct qcom_pcie *pcie);
+ 	int (*init)(struct qcom_pcie *pcie);
+ 	int (*post_init)(struct qcom_pcie *pcie);
+-	void (*host_post_init)(struct qcom_pcie *pcie);
+ 	void (*deinit)(struct qcom_pcie *pcie);
+ 	void (*ltssm_enable)(struct qcom_pcie *pcie);
+ 	int (*config_sid)(struct qcom_pcie *pcie);
+@@ -1040,25 +1039,6 @@ static int qcom_pcie_post_init_2_7_0(struct qcom_pcie *pcie)
+ 	return 0;
+ }
  
- 	edvd_offset = data->cpus[policy->cpu].edvd_offset;
- 	ndiv = readl(data->regs + edvd_offset) & EDVD_CORE_VOLT_FREQ_F_MASK;
-+	if (ndiv == 0) {
-+		dev_warn_once(get_cpu_device(policy->cpu),
-+			 "Scaling registers invalid, using expected values");
-+		ndiv = 35;
-+	}
- 	cluster_id = data->cpus[policy->cpu].bpmp_cluster_id;
- 	cluster = &data->clusters[cluster_id];
- 	cpufreq_cpu_put(policy);
+-static int qcom_pcie_enable_aspm(struct pci_dev *pdev, void *userdata)
+-{
+-	/*
+-	 * Downstream devices need to be in D0 state before enabling PCI PM
+-	 * substates.
+-	 */
+-	pci_set_power_state_locked(pdev, PCI_D0);
+-	pci_enable_link_state_locked(pdev, PCIE_LINK_STATE_ALL);
+-
+-	return 0;
+-}
+-
+-static void qcom_pcie_host_post_init_2_7_0(struct qcom_pcie *pcie)
+-{
+-	struct dw_pcie_rp *pp = &pcie->pci->pp;
+-
+-	pci_walk_bus(pp->bridge->bus, qcom_pcie_enable_aspm, NULL);
+-}
+-
+ static void qcom_pcie_deinit_2_7_0(struct qcom_pcie *pcie)
+ {
+ 	struct qcom_pcie_resources_2_7_0 *res = &pcie->res.v2_7_0;
+@@ -1336,6 +1316,8 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
+ 			goto err_assert_reset;
+ 	}
+ 
++	pci_host_set_default_pcie_link_state(pp->bridge, PCIE_LINK_STATE_ALL);
++
+ 	return 0;
+ 
+ err_assert_reset:
+@@ -1358,19 +1340,9 @@ static void qcom_pcie_host_deinit(struct dw_pcie_rp *pp)
+ 	pcie->cfg->ops->deinit(pcie);
+ }
+ 
+-static void qcom_pcie_host_post_init(struct dw_pcie_rp *pp)
+-{
+-	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+-	struct qcom_pcie *pcie = to_qcom_pcie(pci);
+-
+-	if (pcie->cfg->ops->host_post_init)
+-		pcie->cfg->ops->host_post_init(pcie);
+-}
+-
+ static const struct dw_pcie_host_ops qcom_pcie_dw_ops = {
+ 	.init		= qcom_pcie_host_init,
+ 	.deinit		= qcom_pcie_host_deinit,
+-	.post_init	= qcom_pcie_host_post_init,
+ };
+ 
+ /* Qcom IP rev.: 2.1.0	Synopsys IP rev.: 4.01a */
+@@ -1432,7 +1404,6 @@ static const struct qcom_pcie_ops ops_1_9_0 = {
+ 	.get_resources = qcom_pcie_get_resources_2_7_0,
+ 	.init = qcom_pcie_init_2_7_0,
+ 	.post_init = qcom_pcie_post_init_2_7_0,
+-	.host_post_init = qcom_pcie_host_post_init_2_7_0,
+ 	.deinit = qcom_pcie_deinit_2_7_0,
+ 	.ltssm_enable = qcom_pcie_2_3_2_ltssm_enable,
+ 	.config_sid = qcom_pcie_config_sid_1_9_0,
+@@ -1443,7 +1414,6 @@ static const struct qcom_pcie_ops ops_1_21_0 = {
+ 	.get_resources = qcom_pcie_get_resources_2_7_0,
+ 	.init = qcom_pcie_init_2_7_0,
+ 	.post_init = qcom_pcie_post_init_2_7_0,
+-	.host_post_init = qcom_pcie_host_post_init_2_7_0,
+ 	.deinit = qcom_pcie_deinit_2_7_0,
+ 	.ltssm_enable = qcom_pcie_2_3_2_ltssm_enable,
+ };
 
 ---
-base-commit: 1b237f190eb3d36f52dffe07a40b5eb210280e00
-change-id: 20250824-tegra186-cpufreq-ndiv-bc97a22814a9
+base-commit: 681accdad91923ef4938b96ff3eea62e29af74c3
+change-id: 20250823-qcom_aspm_fix-3264926b5b14
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
