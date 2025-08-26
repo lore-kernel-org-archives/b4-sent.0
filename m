@@ -1,114 +1,115 @@
 From: Nikita Ofitserov <himikof@gmail.com>
-Date: Wed, 27 Aug 2025 01:49:12 +0300
-Subject: [PATCH 06/12] bcachefs: Refactor/rename btree_type_has_ptrs
+Date: Wed, 27 Aug 2025 01:49:13 +0300
+Subject: [PATCH 07/12] bcachefs: More accurate progress reporting for inner
+ node iteration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250827-better-progress-v1-6-74c24de7988a@gmail.com>
+Message-Id: <20250827-better-progress-v1-7-74c24de7988a@gmail.com>
 References: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
 In-Reply-To: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
 To: Kent Overstreet <kent.overstreet@linux.dev>
 Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3458; i=himikof@gmail.com;
- h=from:subject:message-id; bh=FQPiPFfaFbnjVux/gGFuoIpp03FQldNcu72MZxMYc9k=;
- b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5KRi5u9hss/eum6ddtMEmvkS2+c37hNwTBPcvs87
- mV9BeebOkpZGMS4GGTFFFk+LPn6Z02m9R9Lob2GMHNYmUCGMHBxCsBEvBkZGS4WFzH/brnPfmmV
- y4aU3TGTFTL95rQqTZXiPbuQi/Hrcl9Ghq3n5B5uPiIgcubgtrmJ2zkXlpvo+0Vl32xRq5u+N/V
- hDCcA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3496; i=himikof@gmail.com;
+ h=from:subject:message-id; bh=+yss3zKdgUo3M11y90XdgozWvwalA2Ur+GHO8RDFz14=;
+ b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5J5cuXmrKkLp5oKb7i//pfdkes9J8JrRJZGX92yx
+ 36C1wIdtY5SFgYxLgZZMUWWD0u+/lmTaf3HUmivIcwcViaQIQxcnAIwkYlfGf6neZs82bUqPNq6
+ TTRm0bmihGe2odd3TlIQ8VGI0WJrfbKNkWH/r9a8Nj5pyXuHLt78Uv3ol9v0yW3fpNLmXHf//If
+ h3iZmAA==
 X-Developer-Key: i=himikof@gmail.com; a=openpgp;
  fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
 X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The new name (btree_type_has_data_ptrs) better reflects the meaning.
-Also introduce the explicit mask constant.
-
 Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
 ---
- fs/bcachefs/backpointers.c | 2 +-
- fs/bcachefs/btree_gc.c     | 2 +-
- fs/bcachefs/btree_types.h  | 8 ++++----
- fs/bcachefs/migrate.c      | 2 +-
- fs/bcachefs/move.c         | 2 +-
- 5 files changed, 8 insertions(+), 8 deletions(-)
+ fs/bcachefs/backpointers.c |  4 +++-
+ fs/bcachefs/btree_gc.c     | 13 +++++--------
+ fs/bcachefs/migrate.c      | 13 +++++++++----
+ 3 files changed, 17 insertions(+), 13 deletions(-)
 
 diff --git a/fs/bcachefs/backpointers.c b/fs/bcachefs/backpointers.c
-index cb25cddb759b84bed48c653605ba195218f2140c..0d585e5662be3f02580558e9a590075ea73193d5 100644
+index 0d585e5662be3f02580558e9a590075ea73193d5..42370aebb7a442ee368df323eb1f4970f2e5f949 100644
 --- a/fs/bcachefs/backpointers.c
 +++ b/fs/bcachefs/backpointers.c
-@@ -809,7 +809,7 @@ static int bch2_check_extents_to_backpointers_pass(struct btree_trans *trans,
+@@ -804,7 +804,9 @@ static int bch2_check_extents_to_backpointers_pass(struct btree_trans *trans,
+ 	struct progress_indicator_state progress;
+ 	int ret = 0;
+ 
+-	bch2_progress_init(&progress, trans->c, BIT_ULL(BTREE_ID_extents)|BIT_ULL(BTREE_ID_reflink));
++	bch2_progress_init_inner(&progress, trans->c,
++		btree_has_data_ptrs_mask,
++		~0ULL);
+ 
  	for (enum btree_id btree_id = 0;
  	     btree_id < btree_id_nr_alive(c);
- 	     btree_id++) {
--		int level, depth = btree_type_has_ptrs(btree_id) ? 0 : 1;
-+		int level, depth = btree_type_has_data_ptrs(btree_id) ? 0 : 1;
- 
- 		ret = commit_do(trans, NULL, NULL,
- 				BCH_TRANS_COMMIT_no_enospc,
 diff --git a/fs/bcachefs/btree_gc.c b/fs/bcachefs/btree_gc.c
-index 2b1b6b7ffdf0af7ec0bf4cbaf68cc9a53a20cfce..006bdd5c90bc805219d4e38923135986425ccf17 100644
+index 006bdd5c90bc805219d4e38923135986425ccf17..b89e12a3112868f175d028ce9745c8b4944ca747 100644
 --- a/fs/bcachefs/btree_gc.c
 +++ b/fs/bcachefs/btree_gc.c
-@@ -1228,7 +1228,7 @@ int bch2_gc_gens(struct bch_fs *c)
- 	}
+@@ -717,16 +717,12 @@ static int bch2_gc_mark_key(struct btree_trans *trans, enum btree_id btree_id,
  
+ static int bch2_gc_btree(struct btree_trans *trans,
+ 			 struct progress_indicator_state *progress,
+-			 enum btree_id btree, bool initial)
++			 enum btree_id btree, unsigned target_depth,
++			 bool initial)
+ {
+ 	struct bch_fs *c = trans->c;
+-	unsigned target_depth = BIT_ULL(btree) & btree_leaf_has_triggers_mask ? 0 : 1;
+ 	int ret = 0;
+ 
+-	/* We need to make sure every leaf node is readable before going RW */
+-	if (initial)
+-		target_depth = 0;
+-
+ 	for (unsigned level = target_depth; level < BTREE_MAX_DEPTH; level++) {
+ 		struct btree *prev = NULL;
+ 		struct btree_iter iter;
+@@ -784,7 +780,7 @@ static int bch2_gc_btrees(struct bch_fs *c)
+ 	int ret = 0;
+ 
+ 	struct progress_indicator_state progress;
+-	bch2_progress_init(&progress, c, ~0ULL);
++	bch2_progress_init_inner(&progress, c, ~0ULL, ~0ULL);
+ 
+ 	enum btree_id ids[BTREE_ID_NR];
  	for (unsigned i = 0; i < BTREE_ID_NR; i++)
--		if (btree_type_has_ptrs(i)) {
-+		if (btree_type_has_data_ptrs(i)) {
- 			c->gc_gens_btree = i;
- 			c->gc_gens_pos = POS_MIN;
- 
-diff --git a/fs/bcachefs/btree_types.h b/fs/bcachefs/btree_types.h
-index ad9bd18fe9b6e51987da74d373830dca98df56ec..d06991c16d5c24c586e9449efa9553e2b8593bd4 100644
---- a/fs/bcachefs/btree_types.h
-+++ b/fs/bcachefs/btree_types.h
-@@ -886,15 +886,15 @@ static inline bool btree_type_has_snapshot_field(enum btree_id btree)
- 	return BIT_ULL(btree) & mask;
- }
- 
--static inline bool btree_type_has_ptrs(enum btree_id btree)
--{
--	const u64 mask = 0
-+static const u64 btree_has_data_ptrs_mask = 0
- #define x(name, nr, flags, ...)	|((!!((flags) & BTREE_IS_data)) << nr)
- 	BCH_BTREE_IDS()
- #undef x
- 	;
- 
--	return BIT_ULL(btree) & mask;
-+static inline bool btree_type_has_data_ptrs(enum btree_id btree)
-+{
-+	return BIT_ULL(btree) & btree_has_data_ptrs_mask;
- }
- 
- static inline bool btree_type_uses_write_buffer(enum btree_id btree)
-diff --git a/fs/bcachefs/migrate.c b/fs/bcachefs/migrate.c
-index 892990b4a6a6b16785e5030e5dc7cf15b05c0fc5..41657deb0e3807f4968272491faea09d05ec2299 100644
---- a/fs/bcachefs/migrate.c
-+++ b/fs/bcachefs/migrate.c
-@@ -122,7 +122,7 @@ static int bch2_dev_usrdata_drop(struct bch_fs *c,
- 	CLASS(btree_trans, trans)(c);
- 
- 	for (unsigned id = 0; id < BTREE_ID_NR; id++) {
--		if (!btree_type_has_ptrs(id))
-+		if (!btree_type_has_data_ptrs(id))
+@@ -797,7 +793,8 @@ static int bch2_gc_btrees(struct bch_fs *c)
+ 		if (IS_ERR_OR_NULL(bch2_btree_id_root(c, btree)->b))
  			continue;
  
- 		/* Stripe keys have pointers, but are handled separately */
-diff --git a/fs/bcachefs/move.c b/fs/bcachefs/move.c
-index 62aeb54ef11b33814f2d06e5ec2787b656a67c30..c30e74a3f89450b08b3a8b89a863752611482c69 100644
---- a/fs/bcachefs/move.c
-+++ b/fs/bcachefs/move.c
-@@ -671,7 +671,7 @@ static int bch2_move_data(struct bch_fs *c,
- 		unsigned min_depth_this_btree = min_depth;
+-		ret = bch2_gc_btree(trans, &progress, btree, true);
++		/* We need to make sure every leaf node is readable before going RW */
++		ret = bch2_gc_btree(trans, &progress, btree, 0, true);
+ 	}
  
- 		/* Stripe keys have pointers, but are handled separately */
--		if (!btree_type_has_ptrs(id) ||
-+		if (!btree_type_has_data_ptrs(id) ||
- 		    id == BTREE_ID_stripes)
- 			min_depth_this_btree = max(min_depth_this_btree, 1);
+ 	bch_err_fn(c, ret);
+diff --git a/fs/bcachefs/migrate.c b/fs/bcachefs/migrate.c
+index 41657deb0e3807f4968272491faea09d05ec2299..0ef576ec45c7310423cf7cdf902cad30dba257db 100644
+--- a/fs/bcachefs/migrate.c
++++ b/fs/bcachefs/migrate.c
+@@ -265,10 +265,15 @@ int bch2_dev_data_drop_by_backpointers(struct bch_fs *c, unsigned dev_idx, unsig
+ int bch2_dev_data_drop(struct bch_fs *c, unsigned dev_idx, unsigned flags)
+ {
+ 	struct progress_indicator_state progress;
++	int ret;
++
+ 	bch2_progress_init(&progress, c,
+-			   BIT_ULL(BTREE_ID_extents)|
+-			   BIT_ULL(BTREE_ID_reflink));
++			   btree_has_data_ptrs_mask & ~BIT_ULL(BTREE_ID_stripes));
++
++	if ((ret = bch2_dev_usrdata_drop(c, &progress, dev_idx, flags)))
++		return ret;
++
++	bch2_progress_init_inner(&progress, c, 0, ~0ULL);
  
+-	return bch2_dev_usrdata_drop(c, &progress, dev_idx, flags) ?:
+-		bch2_dev_metadata_drop(c, &progress, dev_idx, flags);
++	return bch2_dev_metadata_drop(c, &progress, dev_idx, flags);
+ }
 
 -- 
 2.50.1
