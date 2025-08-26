@@ -1,74 +1,79 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Tue, 26 Aug 2025 15:16:00 -0500
-Subject: [PATCH 2/2] cpufreq: tegra186: Initialize all cores to base
- frequencies
+From: Nikita Ofitserov <himikof@gmail.com>
+Subject: [PATCH 00/12] Accounting for accurate progress reporting
+Date: Wed, 27 Aug 2025 01:49:06 +0300
+Message-Id: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250826-tegra186-cpufreq-fixes-v1-2-97f98d3e0adb@gmail.com>
-References: <20250826-tegra186-cpufreq-fixes-v1-0-97f98d3e0adb@gmail.com>
-In-Reply-To: <20250826-tegra186-cpufreq-fixes-v1-0-97f98d3e0adb@gmail.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, Aaron Kling <luceoscutum@gmail.com>, 
- Sumit Gupta <sumitg@nvidia.com>
-Cc: Thierry Reding <treding@nvidia.com>, linux-pm@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>, 
- Mikko Perttunen <mperttunen@nvidia.com>
+X-B4-Tracking: v=1; b=H4sIAOI5rmgC/x3MQQqAIBBA0avErBNKU6yrRIvKyWaTMhMRRHdPW
+ r7F/w8IMqHAUD3AeJFQOgrauoJ1n4+IikIx6EbbxmunFjxPZJU5RUYR5Y0NfedmsxoPpcqMG93
+ /cZze9wNX2lPZYQAAAA==
+X-Change-ID: 20250826-better-progress-835d946a3c38
+To: Kent Overstreet <kent.overstreet@linux.dev>
+Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756239382; l=1607;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=9bUHeyaYYD5fuQRhqyZoy/YoCxZst0rIRpuE3PyDvxs=;
- b=Zu2irhRctxFYy8ShV3iS/NGGP7/GCtf5cIRe2O/vva1S8TPz5Mtf7QMi+4k9PQMx4+NC44Htj
- iBUqMvyf3/KBGshN+/S06gfLre71hS+9D7kdJZnQidiJcID01Pj5nzs
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2620; i=himikof@gmail.com;
+ h=from:subject:message-id; bh=8KztQX5RYFze7BGFBWYrQJ/vOs5MCiuY59PzEzAk1cU=;
+ b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5LOsNkz61H8E+ZLTQUalboWDLqPzGr3ZbFrX1zh3
+ xWuIbOlo5SFQYyLQVZMkeXDkq9/1mRa/7EU2msIM4eVCWQIAxenAExEPZrhf12URKB/sQGn3SYO
+ 48O69f927/7XrRE/f3n1X/mJhddiHjL8lbgZVZf7zelI0k7GigiBvVWNzOfiSq6ffmRvI/D/3cJ
+ KXgA=
+X-Developer-Key: i=himikof@gmail.com; a=openpgp;
+ fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
+X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-During initialization, the EDVD_COREx_VOLT_FREQ registers for some cores
-are still at reset values and not reflecting the actual frequency. This
-causes get calls to fail. Set all cores to their respective base
-frequency during probe to initialize the registers to working values.
+This patch series introduces new per-btree accounting counters and uses
+them for (hopefully) accurate progress reporting in recovery passes.
+Also includes various assorted bugfixes.
 
-Suggested-by: Mikko Perttunen <mperttunen@nvidia.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+The first commit ("Relax restrictions on the number of accounting 
+counters") is optional, but will likely greatly improve the 
+upgrade/tools version mismatch experience. Without it, all bree usage 
+accounting will be thrown out and rebuilt on any version mismatch.
+
+The second commit has the format change but does not contain the
+upgrade/downgrade table entries. It is intended to be integrated
+together with other accounting changes in a single version upgrade.
+
+The last four commits are drive-by fixes/improvements, especially 
+"Improve check_allocations pass speed not in fsck", which should make
+the future accounting upgrades much faster.
+
+Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
 ---
- drivers/cpufreq/tegra186-cpufreq.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+Nikita Ofitserov (12):
+      bcachefs: Relax restrictions on the number of accounting counters
+      bcachefs: Introduce btree node number accounting
+      bcachefs: Use explicit node counts in progress reporting
+      bcachefs: Introduce btree_leaf_has_triggers_mask
+      bcachefs: Better progress reporting for btree iteration without leaves
+      bcachefs: Refactor/rename btree_type_has_ptrs
+      bcachefs: More accurate progress reporting for inner node iteration
+      bcachefs: Fix progress reporting for unknown btrees
+      bcachefs: Partially fix old device removal with unknown btrees
+      bcachefs: Improve check_allocations pass speed not in fsck
+      bcachefs: Fix missing c->usage updates from early recovery
+      bcachefs: Fix online hidden (sb+journal) data accounting
 
-diff --git a/drivers/cpufreq/tegra186-cpufreq.c b/drivers/cpufreq/tegra186-cpufreq.c
-index 6c394b429b6182faffabf222e5af501393dbbba9..ef288705f00b0918d0f8963ef9cc9fc53be88091 100644
---- a/drivers/cpufreq/tegra186-cpufreq.c
-+++ b/drivers/cpufreq/tegra186-cpufreq.c
-@@ -229,7 +229,8 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
- {
- 	struct tegra186_cpufreq_data *data;
- 	struct tegra_bpmp *bpmp;
--	unsigned int i = 0, err;
-+	unsigned int i = 0, err, edvd_offset;
-+	u32 edvd_val, cpu;
- 
- 	data = devm_kzalloc(&pdev->dev,
- 			    struct_size(data, clusters, TEGRA186_NUM_CLUSTERS),
-@@ -257,6 +258,14 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
- 			err = PTR_ERR(cluster->table);
- 			goto put_bpmp;
- 		}
-+
-+		for (cpu = 0; cpu < ARRAY_SIZE(tegra186_cpus); cpu++) {
-+			if (data->cpus[cpu].bpmp_cluster_id == i) {
-+				edvd_val = cluster->table[0].driver_data;
-+				edvd_offset = data->cpus[cpu].edvd_offset;
-+				writel(edvd_val, data->regs + edvd_offset);
-+			}
-+		}
- 	}
- 
- 	tegra186_cpufreq_driver.driver_data = data;
+ fs/bcachefs/backpointers.c           |  6 ++++--
+ fs/bcachefs/btree_gc.c               | 28 ++++++++++++++++--------
+ fs/bcachefs/btree_trans_commit.c     |  3 +++
+ fs/bcachefs/btree_types.h            | 11 ++++++----
+ fs/bcachefs/buckets.c                | 16 +++++++++-----
+ fs/bcachefs/disk_accounting.c        | 23 ++++++++++++++------
+ fs/bcachefs/disk_accounting.h        | 14 +++++++-----
+ fs/bcachefs/disk_accounting_format.h | 10 ++++++++-
+ fs/bcachefs/migrate.c                | 18 ++++++++++------
+ fs/bcachefs/move.c                   |  2 +-
+ fs/bcachefs/progress.c               | 41 ++++++++++++++++++++++++++++++------
+ fs/bcachefs/progress.h               | 12 ++++++++++-
+ 12 files changed, 136 insertions(+), 48 deletions(-)
+---
+base-commit: 8bf9cabd6109efc82bdccf6c450102d0be3ed3da
+change-id: 20250826-better-progress-835d946a3c38
 
+Best regards,
 -- 
-2.50.1
+Nikita Ofitserov
 
