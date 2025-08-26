@@ -1,64 +1,56 @@
 From: Nikita Ofitserov <himikof@gmail.com>
-Date: Wed, 27 Aug 2025 01:49:16 +0300
-Subject: [PATCH 10/12] bcachefs: Improve check_allocations pass speed not
- in fsck
+Date: Wed, 27 Aug 2025 01:49:17 +0300
+Subject: [PATCH 11/12] bcachefs: Fix missing c->usage updates from early
+ recovery
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250827-better-progress-v1-10-74c24de7988a@gmail.com>
+Message-Id: <20250827-better-progress-v1-11-74c24de7988a@gmail.com>
 References: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
 In-Reply-To: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
 To: Kent Overstreet <kent.overstreet@linux.dev>
 Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1395; i=himikof@gmail.com;
- h=from:subject:message-id; bh=WSNOd5gV6NmNyQNbSGutydt83aC8FZuQ9bqlIo3aZ8o=;
- b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5Jdv4/5fMBGrp9TPzHrftzxw6zcu0KK1+hw2DOLu
- tLGzUdXd5SyMIhxMciKKbJ8WPL1z5pM6z+WQnsNYeawMoEMYeDiFICJfGFmZJjOcui6nX/j3eCb
- ziKHeJVMqrr8GGUNtqu+tP79dP+tNeKMDK+uy/LxXRGTWB3/OlPaeleq26MobWMewUsdh4r1zR6
- /YwUA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1234; i=himikof@gmail.com;
+ h=from:subject:message-id; bh=ANX9w19sEjOEn5vKRZr+Om3Rozy2fcgzJVXQu2XTjfA=;
+ b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5JtuOF94ZD0+bxpO3IMNria/zu89ci7D8lVLLmWs
+ 72yV8++11HKwiDGxSArpsjyYcnXP2syrf9YCu01hJnDygQyhIGLUwAm0v+dkWHJ3Nvfj1c8Zr39
+ 6ZHUleV3rD02vX6xTvTclVeCXCwMO7/OYGRoXLjZdI+Alf7C/nM74t2mss9hLIv0D5d8GOYVpGC
+ ftoIVAA==
 X-Developer-Key: i=himikof@gmail.com; a=openpgp;
  fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
 X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Skip reading unnecessary leaf btree nodes unless running fsck.
-For example, this should speed up version upgrade/downgrade when
-rebuilding accounting information.
+Make do_bch2_trans_commit_to_journal_replay apply global FS usage
+updates stored in trans->fs_usage_delta, too.
 
 Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
 ---
- fs/bcachefs/btree_gc.c | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ fs/bcachefs/btree_trans_commit.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/bcachefs/btree_gc.c b/fs/bcachefs/btree_gc.c
-index b89e12a3112868f175d028ce9745c8b4944ca747..c04e88ec5c0ac73c21f01db597b19d1b0c798299 100644
---- a/fs/bcachefs/btree_gc.c
-+++ b/fs/bcachefs/btree_gc.c
-@@ -793,8 +793,21 @@ static int bch2_gc_btrees(struct bch_fs *c)
- 		if (IS_ERR_OR_NULL(bch2_btree_id_root(c, btree)->b))
- 			continue;
+diff --git a/fs/bcachefs/btree_trans_commit.c b/fs/bcachefs/btree_trans_commit.c
+index 5fa7f2f9f1e9d0ddd1d4675774321b519313f477..e3f069ad4002e2b007600fb41cd220d13386d37f 100644
+--- a/fs/bcachefs/btree_trans_commit.c
++++ b/fs/bcachefs/btree_trans_commit.c
+@@ -970,6 +970,7 @@ do_bch2_trans_commit_to_journal_replay(struct btree_trans *trans,
  
--		/* We need to make sure every leaf node is readable before going RW */
--		ret = bch2_gc_btree(trans, &progress, btree, 0, true);
-+
-+		unsigned target_depth = BIT_ULL(btree) & btree_leaf_has_triggers_mask ? 0 : 1;
-+
-+		/*
-+		 * In fsck, we need to make sure every leaf node is readable
-+		 * before going RW, otherwise we can no longer rewind inside
-+		 * btree_lost_data to repair during the current fsck run.
-+		 *
-+		 * Otherwise, we can delay the repair to the next
-+		 * mount or offline fsck.
-+		 */
-+		if (test_bit(BCH_FS_in_fsck, &c->flags))
-+			target_depth = 0;
-+
-+		ret = bch2_gc_btree(trans, &progress, btree, target_depth, true);
+ 	struct bkey_i *accounting;
+ retry:
++	memset(&trans->fs_usage_delta, 0, sizeof(trans->fs_usage_delta));
+ 	percpu_down_read(&c->mark_lock);
+ 	for (accounting = btree_trans_subbuf_base(trans, &trans->accounting);
+ 	     accounting != btree_trans_subbuf_top(trans, &trans->accounting);
+@@ -981,6 +982,8 @@ do_bch2_trans_commit_to_journal_replay(struct btree_trans *trans,
+ 		if (ret)
+ 			goto revert_fs_usage;
  	}
++	/* Only fatal errors are possible later, so no need to revert this */
++	bch2_trans_account_disk_usage_change(trans);
+ 	percpu_up_read(&c->mark_lock);
  
- 	bch_err_fn(c, ret);
+ 	trans_for_each_update(trans, i) {
 
 -- 
 2.50.1
