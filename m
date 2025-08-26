@@ -1,86 +1,119 @@
 From: Nikita Ofitserov <himikof@gmail.com>
-Date: Wed, 27 Aug 2025 01:49:07 +0300
-Subject: [PATCH 01/12] bcachefs: Relax restrictions on the number of
- accounting counters
+Date: Wed, 27 Aug 2025 01:49:08 +0300
+Subject: [PATCH 02/12] bcachefs: Introduce btree node number accounting
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250827-better-progress-v1-1-74c24de7988a@gmail.com>
+Message-Id: <20250827-better-progress-v1-2-74c24de7988a@gmail.com>
 References: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
 In-Reply-To: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
 To: Kent Overstreet <kent.overstreet@linux.dev>
 Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2585; i=himikof@gmail.com;
- h=from:subject:message-id; bh=WspjNz+2OQeGGol11ZmxhSMg8j6kxU0wdnc6DgdevEM=;
- b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5LeMJ9hqQ9z+vGe2x5RQvGM3EGX380SPv8z49iFi
- kr2T+W3O0pZGMS4GGTFFFk+LPn6Z02m9R9Lob2GMHNYmUCGMHBxCsBEui8y/M98kSPgEPfO5daa
- rxt2u7rfbZfL/SfruXvN+7tmlZbhlRGMDEu+flst024W5v9vz9ryZslarRuH+D5/4PSsU3CdfKe
- KkwsA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3296; i=himikof@gmail.com;
+ h=from:subject:message-id; bh=zwjI5tCeCHw8e+Z7T2bZ8UaDq7Mjfrnlgre8FzWRL8g=;
+ b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5KR/R35wG5y3YQbe55n+uy+fyX35Q9Z8U6daIYVs
+ gt56yrCOkpZGMS4GGTFFFk+LPn6Z02m9R9Lob2GMHNYmUCGMHBxCsBELF8wMqxPfCoudjH9d31O
+ 3fEJirMaGr4Y3FomzrrwgJu7edgDiTyGv1J87y46Crdt9JAr2f1QaNc35rUSckcmXpWZ++LAUmv
+ DnSwA
 X-Developer-Key: i=himikof@gmail.com; a=openpgp;
  fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
 X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make adding/removing accounting counters easier when upgrading by
-removing their exact number from bch_accounting key validity invariants.
+Add 2 new counters for BCH_DISK_ACCOUNTING_btree: total number of btree
+nodes (ignoring replication) and the number of non-leaf btree nodes
+(likewise). Those are to be used by recovery progress reporting instead
+ of estimating them.
+
+This commit is missing the required upgrade/downgrade entries and
+should be included only together with other accounting updates!
 
 Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
 ---
- fs/bcachefs/disk_accounting.c | 11 ++++++++---
- fs/bcachefs/disk_accounting.h |  4 ++--
- 2 files changed, 10 insertions(+), 5 deletions(-)
+ fs/bcachefs/buckets.c                | 16 +++++++++++-----
+ fs/bcachefs/disk_accounting_format.h | 10 +++++++++-
+ 2 files changed, 20 insertions(+), 6 deletions(-)
 
-diff --git a/fs/bcachefs/disk_accounting.c b/fs/bcachefs/disk_accounting.c
-index d6c91abcdc4140ef98b407fa580b7cd0cf3b8f56..53080f4449737ff384d56a3a150b376dadbfdc73 100644
---- a/fs/bcachefs/disk_accounting.c
-+++ b/fs/bcachefs/disk_accounting.c
-@@ -239,10 +239,12 @@ int bch2_accounting_validate(struct bch_fs *c, struct bkey_s_c k,
- 			 c, accounting_key_junk_at_end,
- 			 "junk at end of accounting key");
+diff --git a/fs/bcachefs/buckets.c b/fs/bcachefs/buckets.c
+index 021f5cb7998de704be9d135064af2817cb2c52fe..99e928f7799971d052f24ba6043eb54765cf42b9 100644
+--- a/fs/bcachefs/buckets.c
++++ b/fs/bcachefs/buckets.c
+@@ -749,6 +749,7 @@ static int __trigger_extent(struct btree_trans *trans,
+ 			    enum btree_iter_update_trigger_flags flags)
+ {
+ 	bool gc = flags & BTREE_TRIGGER_gc;
++	bool insert = !(flags & BTREE_TRIGGER_overwrite);
+ 	struct bkey_ptrs_c ptrs = bch2_bkey_ptrs_c(k);
+ 	const union bch_extent_entry *entry;
+ 	struct extent_ptr_decoded p;
+@@ -802,7 +803,7 @@ static int __trigger_extent(struct btree_trans *trans,
  
--	bkey_fsck_err_on(bch2_accounting_counters(k.k) != bch2_accounting_type_nr_counters[acc_k.type],
-+	const unsigned nr_counters = bch2_accounting_counters(k.k);
+ 		if (cur_compression_type &&
+ 		    cur_compression_type != p.crc.compression_type) {
+-			if (flags & BTREE_TRIGGER_overwrite)
++			if (!insert)
+ 				bch2_u64s_neg(compression_acct, ARRAY_SIZE(compression_acct));
+ 
+ 			ret = bch2_disk_accounting_mod2(trans, gc, compression_acct,
+@@ -835,7 +836,7 @@ static int __trigger_extent(struct btree_trans *trans,
+ 	}
+ 
+ 	if (cur_compression_type) {
+-		if (flags & BTREE_TRIGGER_overwrite)
++		if (!insert)
+ 			bch2_u64s_neg(compression_acct, ARRAY_SIZE(compression_acct));
+ 
+ 		ret = bch2_disk_accounting_mod2(trans, gc, compression_acct,
+@@ -845,12 +846,17 @@ static int __trigger_extent(struct btree_trans *trans,
+ 	}
+ 
+ 	if (level) {
+-		ret = bch2_disk_accounting_mod2_nr(trans, gc, &replicas_sectors, 1, btree, btree_id);
++		const bool leaf_node = level == 1;
++		s64 v[3] = {
++			replicas_sectors,
++			insert ? 1 : -1,
++			!leaf_node ? (insert ? 1 : -1) : 0,
++		};
 +
-+	bkey_fsck_err_on(!nr_counters || nr_counters > BCH_ACCOUNTING_MAX_COUNTERS,
- 			 c, accounting_key_nr_counters_wrong,
- 			 "accounting key with %u counters, should be %u",
--			 bch2_accounting_counters(k.k), bch2_accounting_type_nr_counters[acc_k.type]);
-+			 nr_counters, bch2_accounting_type_nr_counters[acc_k.type]);
- fsck_err:
- 	return ret;
- }
-@@ -359,10 +361,13 @@ static int __bch2_accounting_mem_insert(struct bch_fs *c, struct bkey_s_c_accoun
- 			    accounting_pos_cmp, &a.k->p) < acc->k.nr)
- 		return 0;
++		ret = bch2_disk_accounting_mod2(trans, gc, v, btree, btree_id);
+ 		if (ret)
+ 			return ret;
+ 	} else {
+-		bool insert = !(flags & BTREE_TRIGGER_overwrite);
+-
+ 		s64 v[3] = {
+ 			insert ? 1 : -1,
+ 			insert ? k.k->size : -((s64) k.k->size),
+diff --git a/fs/bcachefs/disk_accounting_format.h b/fs/bcachefs/disk_accounting_format.h
+index 8269af1dbe2a094454f780194f4ece33c4a4e461..730a17ea42431012282cec9d7803b0ac0b1d339d 100644
+--- a/fs/bcachefs/disk_accounting_format.h
++++ b/fs/bcachefs/disk_accounting_format.h
+@@ -108,7 +108,7 @@ static inline bool data_type_is_hidden(enum bch_data_type type)
+ 	x(dev_data_type,	3,	3)	\
+ 	x(compression,		4,	3)	\
+ 	x(snapshot,		5,	1)	\
+-	x(btree,		6,	1)	\
++	x(btree,		6,	3)	\
+ 	x(rebalance_work,	7,	1)	\
+ 	x(inum,			8,	3)
  
-+	struct disk_accounting_pos acc_k;
-+	bpos_to_disk_accounting_pos(&acc_k, a.k->p);
-+
- 	struct accounting_mem_entry n = {
- 		.pos		= a.k->p,
- 		.bversion	= a.k->bversion,
--		.nr_counters	= bch2_accounting_counters(a.k),
-+		.nr_counters	= bch2_accounting_type_nr_counters[acc_k.type],
- 		.v[0]		= __alloc_percpu_gfp(n.nr_counters * sizeof(u64),
- 						     sizeof(u64), GFP_KERNEL),
- 	};
-diff --git a/fs/bcachefs/disk_accounting.h b/fs/bcachefs/disk_accounting.h
-index cc73cce98a447d96ad40683b88bfbc12689d8bf2..9e46aaf74704eaf51a643c3e746a440abd175b9e 100644
---- a/fs/bcachefs/disk_accounting.h
-+++ b/fs/bcachefs/disk_accounting.h
-@@ -212,9 +212,9 @@ static inline int bch2_accounting_mem_mod_locked(struct btree_trans *trans,
+@@ -174,6 +174,14 @@ struct bch_acct_snapshot {
+ 	__u32			id;
+ } __packed;
  
- 	struct accounting_mem_entry *e = &acc->k.data[idx];
- 
--	EBUG_ON(bch2_accounting_counters(a.k) != e->nr_counters);
-+	const unsigned nr = min_t(unsigned, bch2_accounting_counters(a.k), e->nr_counters);
- 
--	for (unsigned i = 0; i < bch2_accounting_counters(a.k); i++)
-+	for (unsigned i = 0; i < nr; i++)
- 		this_cpu_add(e->v[gc][i], a.v->d[i]);
- 	return 0;
- }
++/*
++ * Metadata accounting per btree id:
++ * [
++ *   total btree disk usage in sectors
++ *   total number of btree nodes
++ *   number of non-leaf btree nodes
++ * ]
++ */
+ struct bch_acct_btree {
+ 	__u32			id;
+ } __packed;
 
 -- 
 2.50.1
