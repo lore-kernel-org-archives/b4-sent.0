@@ -1,56 +1,64 @@
 From: Nikita Ofitserov <himikof@gmail.com>
-Date: Wed, 27 Aug 2025 01:49:15 +0300
-Subject: [PATCH 09/12] bcachefs: Partially fix old device removal with
- unknown btrees
+Date: Wed, 27 Aug 2025 01:49:16 +0300
+Subject: [PATCH 10/12] bcachefs: Improve check_allocations pass speed not
+ in fsck
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250827-better-progress-v1-9-74c24de7988a@gmail.com>
+Message-Id: <20250827-better-progress-v1-10-74c24de7988a@gmail.com>
 References: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
 In-Reply-To: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
 To: Kent Overstreet <kent.overstreet@linux.dev>
 Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1096; i=himikof@gmail.com;
- h=from:subject:message-id; bh=0parkIXY7SO5IS2HFFMEgzSsAvCaekrT6rPziZOcKFE=;
- b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5LJ2nfrztwrf2UK+Ps/lvy6ZqnT9zl6yjPBz6ePC
- N/ZeYJjQ0cpC4MYF4OsmCLLhyVf/6zJtP5jKbTXEGYOKxPIEAYuTgGYyOp8hv/RM9adPRt7c351
- Wl6hj0Sj77S7okpV37d4M/I0WcWHmFxm+O8TPcf0sW7R9Zip+24V2d+qWP88KUEvRf50+rEVwW+
- NQ7gB
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1395; i=himikof@gmail.com;
+ h=from:subject:message-id; bh=WSNOd5gV6NmNyQNbSGutydt83aC8FZuQ9bqlIo3aZ8o=;
+ b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5Jdv4/5fMBGrp9TPzHrftzxw6zcu0KK1+hw2DOLu
+ tLGzUdXd5SyMIhxMciKKbJ8WPL1z5pM6z+WQnsNYeawMoEMYeDiFICJfGFmZJjOcui6nX/j3eCb
+ ziKHeJVMqrr8GGUNtqu+tP79dP+tNeKMDK+uy/LxXRGTWB3/OlPaeleq26MobWMewUsdh4r1zR6
+ /YwUA
 X-Developer-Key: i=himikof@gmail.com; a=openpgp;
  fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
 X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Handle removal of unknown metadata only, data pointed to by unknown
-btrees cannot be supported currently.
+Skip reading unnecessary leaf btree nodes unless running fsck.
+For example, this should speed up version upgrade/downgrade when
+rebuilding accounting information.
 
 Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
 ---
- fs/bcachefs/migrate.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/bcachefs/btree_gc.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
 
-diff --git a/fs/bcachefs/migrate.c b/fs/bcachefs/migrate.c
-index 0ef576ec45c7310423cf7cdf902cad30dba257db..d67ca56d3f431980b104ea5528cce79be88f93fb 100644
---- a/fs/bcachefs/migrate.c
-+++ b/fs/bcachefs/migrate.c
-@@ -121,6 +121,7 @@ static int bch2_dev_usrdata_drop(struct bch_fs *c,
- {
- 	CLASS(btree_trans, trans)(c);
- 
-+	/* FIXME: this does not handle unknown btrees with data pointers */
- 	for (unsigned id = 0; id < BTREE_ID_NR; id++) {
- 		if (!btree_type_has_data_ptrs(id))
+diff --git a/fs/bcachefs/btree_gc.c b/fs/bcachefs/btree_gc.c
+index b89e12a3112868f175d028ce9745c8b4944ca747..c04e88ec5c0ac73c21f01db597b19d1b0c798299 100644
+--- a/fs/bcachefs/btree_gc.c
++++ b/fs/bcachefs/btree_gc.c
+@@ -793,8 +793,21 @@ static int bch2_gc_btrees(struct bch_fs *c)
+ 		if (IS_ERR_OR_NULL(bch2_btree_id_root(c, btree)->b))
  			continue;
-@@ -161,7 +162,7 @@ static int bch2_dev_metadata_drop(struct bch_fs *c,
- 	bch2_bkey_buf_init(&k);
- 	closure_init_stack(&cl);
  
--	for (id = 0; id < BTREE_ID_NR; id++) {
-+	for (id = 0; id < btree_id_nr_alive(c); id++) {
- 		bch2_trans_node_iter_init(trans, &iter, id, POS_MIN, 0, 0,
- 					  BTREE_ITER_prefetch);
- retry:
+-		/* We need to make sure every leaf node is readable before going RW */
+-		ret = bch2_gc_btree(trans, &progress, btree, 0, true);
++
++		unsigned target_depth = BIT_ULL(btree) & btree_leaf_has_triggers_mask ? 0 : 1;
++
++		/*
++		 * In fsck, we need to make sure every leaf node is readable
++		 * before going RW, otherwise we can no longer rewind inside
++		 * btree_lost_data to repair during the current fsck run.
++		 *
++		 * Otherwise, we can delay the repair to the next
++		 * mount or offline fsck.
++		 */
++		if (test_bit(BCH_FS_in_fsck, &c->flags))
++			target_depth = 0;
++
++		ret = bch2_gc_btree(trans, &progress, btree, target_depth, true);
+ 	}
+ 
+ 	bch_err_fn(c, ret);
 
 -- 
 2.50.1
