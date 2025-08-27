@@ -1,94 +1,149 @@
-From: Nikita Ofitserov <himikof@gmail.com>
-Date: Wed, 27 Aug 2025 01:49:18 +0300
-Subject: [PATCH 12/12] bcachefs: Fix online hidden (sb+journal) data
- accounting
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Wed, 27 Aug 2025 11:29:02 +0800
+Subject: [PATCH] ALSA: usb-audio: move mixer_quirks' min_mute into common
+ quirk
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250827-better-progress-v1-12-74c24de7988a@gmail.com>
-References: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
-In-Reply-To: <20250827-better-progress-v1-0-74c24de7988a@gmail.com>
-To: Kent Overstreet <kent.overstreet@linux.dev>
-Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
+Message-Id: <20250827-sound-quirk-min-mute-v1-1-4717aa8a4f6a@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAH17rmgC/x3MTQ5AMBBA4avIrE1SQxtxFbHwM5iIolWRiLtrL
+ L/Few94dsIequQBx5d42WxElibQz62dGGWIBlKkVUkG/RbsgEcQt+AqFtdwMpYZ5Zo61ZqugJj
+ ujke5/23dvO8HPNLnZ2YAAAA=
+X-Change-ID: 20250826-sound-quirk-min-mute-812352b0a6b4
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Mingcong Bai <jeffbai@aosc.io>, Kexy Biscuit <kexybiscuit@aosc.io>, 
+ Wang Yuli <wangyuli@deepin.org>, Guan Wentao <guanwentao@uniontech.com>, 
+ Nie Cheng <niecheng1@uniontech.com>, Zhan Jun <zhanjun@uniontech.com>, 
+ Celeste Liu <CoelacanthusHex@gmail.com>, Guoli An <anguoli@uniontech.com>, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3023; i=himikof@gmail.com;
- h=from:subject:message-id; bh=1Q8HEvyB0FO3EsoVNCjaKykQSmVWf4p/UpLyvqCelt8=;
- b=owGbwMvMwCW2edHtzWZP9DIYT6slMWSss5K9WuSjetZTemr2FWY+la1d/oqXNm46O1X9jMvrY
- 7/kprpv7yhlYRDjYpAVU2T5sOTrnzWZ1n8shfYawsxhZQIZwsDFKQATec/FyLDPzHCeTK7wk1uy
- /U8fOn7PrDrAv+OElq2s0Z0H67WvVJsw/DO/bmbaV9rzcvvbep3/ZV3CokxKt/24/kY52xndk+o
- IZgcA
-X-Developer-Key: i=himikof@gmail.com; a=openpgp;
- fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
-X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756265342; l=5419;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=XM4ODXE91Bv/DpvME8axcOEDeEvWXinY6fXYQ3VvonM=;
+ b=KKjy1xNjC7ijCwUpbdaYMUlrqS3ki5Xzkennqj6EpYPywDgVMiSOylGRim2B141goHfcZz5t+
+ Cx1JMYYk/QdBnxMG9zXeHGcFDuTqr0LN4uvTJcqrn+10rhZqwfHlAzr
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now the c->usage->hidden counters are kept up to date by the same
-trigger-based mechanism as the other ones.
+We have found more and more devices that have the same problem, that
+the mixer's minimum value is muted. Accroding to pipewire's MR[1]
+and Arch Linux wiki[2], this should be a very common problem in USB
+audio devices. Move the quirk into common quirk,as a preparation of
+more devices' quirk's patch coming on the road[3].
 
-Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
+1. https://gitlab.freedesktop.org/pipewire/pipewire/-/merge_requests/2514
+2. https://wiki.archlinux.org/index.php?title=PipeWire&oldid=804138#No_sound_from_USB_DAC_until_30%_volume
+3. On the road, in the physical sense. We have been buying ton of
+   these devices for testing the problem.
+
+Tested-by: Guoli An <anguoli@uniontech.com>
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- fs/bcachefs/disk_accounting.c | 12 ++++++++----
- fs/bcachefs/disk_accounting.h | 10 +++++++---
- 2 files changed, 15 insertions(+), 7 deletions(-)
+I also would like to know if the quirk worth a kernel param.
+---
+ sound/usb/mixer_quirks.c | 10 +++-------
+ sound/usb/quirks.c       | 12 ++++++++++--
+ sound/usb/usbaudio.h     |  4 ++++
+ 3 files changed, 17 insertions(+), 9 deletions(-)
 
-diff --git a/fs/bcachefs/disk_accounting.c b/fs/bcachefs/disk_accounting.c
-index 53080f4449737ff384d56a3a150b376dadbfdc73..ea375b8bcebc33917eeaf754934815581232a97e 100644
---- a/fs/bcachefs/disk_accounting.c
-+++ b/fs/bcachefs/disk_accounting.c
-@@ -1064,13 +1064,17 @@ void bch2_verify_accounting_clean(struct bch_fs *c)
- 		case BCH_DISK_ACCOUNTING_dev_data_type: {
- 			{
- 				guard(rcu)(); /* scoped guard is a loop, and doesn't play nicely with continue */
-+				const enum bch_data_type data_type = acc_k.dev_data_type.data_type;
- 				struct bch_dev *ca = bch2_dev_rcu_noerror(c, acc_k.dev_data_type.dev);
- 				if (!ca)
- 					continue;
- 
--				v[0] = percpu_u64_get(&ca->usage->d[acc_k.dev_data_type.data_type].buckets);
--				v[1] = percpu_u64_get(&ca->usage->d[acc_k.dev_data_type.data_type].sectors);
--				v[2] = percpu_u64_get(&ca->usage->d[acc_k.dev_data_type.data_type].fragmented);
-+				v[0] = percpu_u64_get(&ca->usage->d[data_type].buckets);
-+				v[1] = percpu_u64_get(&ca->usage->d[data_type].sectors);
-+				v[2] = percpu_u64_get(&ca->usage->d[data_type].fragmented);
+diff --git a/sound/usb/mixer_quirks.c b/sound/usb/mixer_quirks.c
+index 48e8c2014f0f27406ddca29f36e8b1d03be92f31..b8275c81802e60314ee483a31a0fcb7306b24c76 100644
+--- a/sound/usb/mixer_quirks.c
++++ b/sound/usb/mixer_quirks.c
+@@ -4540,16 +4540,12 @@ void snd_usb_mixer_fu_apply_quirk(struct usb_mixer_interface *mixer,
+ 		if (unitid == 7 && cval->control == UAC_FU_VOLUME)
+ 			snd_dragonfly_quirk_db_scale(mixer, cval, kctl);
+ 		break;
++	}
 +
-+				if (data_type == BCH_DATA_sb || data_type == BCH_DATA_journal)
-+					base.hidden += a.v->d[0] * ca->mi.bucket_size;
- 			}
+ 	/* lowest playback value is muted on some devices */
+-	case USB_ID(0x0572, 0x1b09): /* Conexant Systems (Rockwell), Inc. */
+-	case USB_ID(0x0d8c, 0x000c): /* C-Media */
+-	case USB_ID(0x0d8c, 0x0014): /* C-Media */
+-	case USB_ID(0x19f7, 0x0003): /* RODE NT-USB */
+-	case USB_ID(0x2d99, 0x0026): /* HECATE G2 GAMING HEADSET */
++	if (mixer->chip->quirk_flags & QUIRK_FLAG_MIXER_MIN_MUTE)
+ 		if (strstr(kctl->id.name, "Playback"))
+ 			cval->min_mute = 1;
+-		break;
+-	}
  
- 			if (memcmp(a.v->d, v, 3 * sizeof(u64))) {
-@@ -1098,7 +1102,7 @@ void bch2_verify_accounting_clean(struct bch_fs *c)
- 		mismatch = true;								\
- 	}
+ 	/* ALSA-ify some Plantronics headset control names */
+ 	if (USB_ID_VENDOR(mixer->chip->usb_id) == 0x047f &&
+diff --git a/sound/usb/quirks.c b/sound/usb/quirks.c
+index e75b0b1df6eb2120b1446b7bd54f3ba50a79f567..8bc1e247cdf1af0a3e9c506830d8428a86c25595 100644
+--- a/sound/usb/quirks.c
++++ b/sound/usb/quirks.c
+@@ -2199,6 +2199,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
+ 		   QUIRK_FLAG_SET_IFACE_FIRST),
+ 	DEVICE_FLG(0x0556, 0x0014, /* Phoenix Audio TMX320VC */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
++	DEVICE_FLG(0x0572, 0x1b09, /* Conexant Systems (Rockwell), Inc. */
++		   QUIRK_FLAG_MIXER_MIN_MUTE),
+ 	DEVICE_FLG(0x05a3, 0x9420, /* ELP HD USB Camera */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
+ 	DEVICE_FLG(0x05a7, 0x1020, /* Bose Companion 5 */
+@@ -2245,8 +2247,10 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
+ 	DEVICE_FLG(0x0c45, 0x636b, /* Microdia JP001 USB Camera */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
+-	DEVICE_FLG(0x0d8c, 0x0014, /* USB Audio Device */
+-		   QUIRK_FLAG_CTL_MSG_DELAY_1M),
++	DEVICE_FLG(0x0d8c, 0x000c, /* C-Media */
++		   QUIRK_FLAG_MIXER_MIN_MUTE),
++	DEVICE_FLG(0x0d8c, 0x0014, /* C-Media */
++		   QUIRK_FLAG_CTL_MSG_DELAY_1M | QUIRK_FLAG_MIXER_MIN_MUTE),
+ 	DEVICE_FLG(0x0ecb, 0x205c, /* JBL Quantum610 Wireless */
+ 		   QUIRK_FLAG_FIXED_RATE),
+ 	DEVICE_FLG(0x0ecb, 0x2069, /* JBL Quantum810 Wireless */
+@@ -2293,6 +2297,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
+ 		   QUIRK_FLAG_ITF_USB_DSD_DAC | QUIRK_FLAG_CTL_MSG_DELAY),
+ 	DEVICE_FLG(0x1901, 0x0191, /* GE B850V3 CP2114 audio interface */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
++	DEVICE_FLG(0x19f7, 0x0003, /* RODE NT-USB */
++		   QUIRK_FLAG_MIXER_MIN_MUTE),
+ 	DEVICE_FLG(0x19f7, 0x0035, /* RODE NT-USB+ */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
+ 	DEVICE_FLG(0x1bcf, 0x2281, /* HD Webcam */
+@@ -2353,6 +2359,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
+ 		   QUIRK_FLAG_CTL_MSG_DELAY_1M),
+ 	DEVICE_FLG(0x2d95, 0x8021, /* VIVO USB-C-XE710 HEADSET */
+ 		   QUIRK_FLAG_CTL_MSG_DELAY_1M),
++	DEVICE_FLG(0x2d99, 0x0026, /* HECATE G2 GAMING HEADSET */
++		   QUIRK_FLAG_MIXER_MIN_MUTE),
+ 	DEVICE_FLG(0x2fc6, 0xf0b7, /* iBasso DC07 Pro */
+ 		   QUIRK_FLAG_CTL_MSG_DELAY_1M),
+ 	DEVICE_FLG(0x30be, 0x0101, /* Schiit Hel */
+diff --git a/sound/usb/usbaudio.h b/sound/usb/usbaudio.h
+index 7521098ba391c04a83c2b6b6180c88c52ac6c5dc..59335b94103004b900285e4990b971d74bf37532 100644
+--- a/sound/usb/usbaudio.h
++++ b/sound/usb/usbaudio.h
+@@ -219,6 +219,9 @@ extern bool snd_usb_skip_validation;
+  *  for the given endpoint.
+  * QUIRK_FLAG_MIC_RES_16 and QUIRK_FLAG_MIC_RES_384
+  *  Set the fixed resolution for Mic Capture Volume (mostly for webcams)
++ * QUIRK_FLAG_MIXER_MIN_MUTE
++ *  Set minimum volume control value as mute for devices where the lowest
++ *  playback value represents muted state instead of minimum audible volume
+  */
  
--	//check(hidden);
-+	check(hidden);
- 	check(btree);
- 	check(data);
- 	check(cached);
-diff --git a/fs/bcachefs/disk_accounting.h b/fs/bcachefs/disk_accounting.h
-index 9e46aaf74704eaf51a643c3e746a440abd175b9e..9fcfc6a6e36958a27b312dad9de29455a6ee8f87 100644
---- a/fs/bcachefs/disk_accounting.h
-+++ b/fs/bcachefs/disk_accounting.h
-@@ -186,11 +186,15 @@ static inline int bch2_accounting_mem_mod_locked(struct btree_trans *trans,
- 			break;
- 		case BCH_DISK_ACCOUNTING_dev_data_type: {
- 			guard(rcu)();
-+			const enum bch_data_type data_type = acc_k.dev_data_type.data_type;
- 			struct bch_dev *ca = bch2_dev_rcu_noerror(c, acc_k.dev_data_type.dev);
- 			if (ca) {
--				this_cpu_add(ca->usage->d[acc_k.dev_data_type.data_type].buckets, a.v->d[0]);
--				this_cpu_add(ca->usage->d[acc_k.dev_data_type.data_type].sectors, a.v->d[1]);
--				this_cpu_add(ca->usage->d[acc_k.dev_data_type.data_type].fragmented, a.v->d[2]);
-+				this_cpu_add(ca->usage->d[data_type].buckets, a.v->d[0]);
-+				this_cpu_add(ca->usage->d[data_type].sectors, a.v->d[1]);
-+				this_cpu_add(ca->usage->d[data_type].fragmented, a.v->d[2]);
-+
-+				if (data_type == BCH_DATA_sb || data_type == BCH_DATA_journal)
-+					trans->fs_usage_delta.hidden += a.v->d[0] * ca->mi.bucket_size;
- 			}
- 			break;
- 		}
+ #define QUIRK_FLAG_GET_SAMPLE_RATE	(1U << 0)
+@@ -245,5 +248,6 @@ extern bool snd_usb_skip_validation;
+ #define QUIRK_FLAG_FIXED_RATE		(1U << 21)
+ #define QUIRK_FLAG_MIC_RES_16		(1U << 22)
+ #define QUIRK_FLAG_MIC_RES_384		(1U << 23)
++#define QUIRK_FLAG_MIXER_MIN_MUTE	(1U << 24)
+ 
+ #endif /* __USBAUDIO_H */
 
+---
+base-commit: 7656e95cbd3ee0c67bbedf0a184eb307bb9aa65f
+change-id: 20250826-sound-quirk-min-mute-812352b0a6b4
+
+Best regards,
 -- 
-2.50.1
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
