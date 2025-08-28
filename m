@@ -1,22 +1,22 @@
 From: Nikita Ofitserov <himikof@gmail.com>
-Date: Thu, 28 Aug 2025 17:16:16 +0300
-Subject: [PATCH v2 14/15] bcachefs: Better progress reporting for btree
- iteration without leaves
+Date: Thu, 28 Aug 2025 17:16:17 +0300
+Subject: [PATCH v2 15/15] bcachefs: More accurate progress reporting for
+ inner node iteration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250828-better-progress-v2-14-c088a2003940@gmail.com>
+Message-Id: <20250828-better-progress-v2-15-c088a2003940@gmail.com>
 References: <20250828-better-progress-v2-0-c088a2003940@gmail.com>
 In-Reply-To: <20250828-better-progress-v2-0-c088a2003940@gmail.com>
 To: Kent Overstreet <kent.overstreet@linux.dev>
 Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2715; i=himikof@gmail.com;
- h=from:subject:message-id; bh=wRKn0+FpY3mQVliUpbvtIlpx5Xz4Yan6xBO1SABanUM=;
- b=owGbwMvMwCW2edHtzWZP9DIYT6slMWRsSDmUuvlZgkmN7dW1549erufYdXin988pB6K/7BTZ+
- 03z0+7S/o5SFgYxLgZZMUWWD0u+/lmTaf3HUmivIcwcViaQIQxcnAIwEeEshv/VIbaXs60v6new
- LWvdo1Mq+aT4BfNdOdHLzZuydSe+FP3OyPAndIo0l0vggrYlTz4sjVlYveDNtcNbnh3/GlvWc/G
- /dgIPAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2418; i=himikof@gmail.com;
+ h=from:subject:message-id; bh=2Gi9QvTlP0kPo5mlJKbmm3EH65uDXG8So4G6gHv9ydM=;
+ b=owGbwMvMwCW2edHtzWZP9DIYT6slMWRsSDmUeLl6j+bDX7lqgc9W/A1oTlmk+IvpQb0r54ZFJ
+ /gNlW+ldZSyMIhxMciKKbJ8WPL1z5pM6z+WQnsNYeawMoEMYeDiFICJOC5i+KeS3lPjLxyeE3G/
+ 98+03y9zTlXeNm/dwx7zrNnI+EjL+n+MDF8FORrjsv4/OPN8T5r5kjsr3p/1c6mIvz3No8wn7sK
+ CaQwA
 X-Developer-Key: i=himikof@gmail.com; a=openpgp;
  fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
 X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
@@ -24,79 +24,63 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
 ---
- fs/bcachefs/progress.c | 17 +++++++++++++----
- fs/bcachefs/progress.h | 12 +++++++++++-
- 2 files changed, 24 insertions(+), 5 deletions(-)
+ fs/bcachefs/backpointers.c |  4 +++-
+ fs/bcachefs/btree_gc.c     |  2 +-
+ fs/bcachefs/migrate.c      | 13 +++++++++----
+ 3 files changed, 13 insertions(+), 6 deletions(-)
 
-diff --git a/fs/bcachefs/progress.c b/fs/bcachefs/progress.c
-index 8181f6d2ca3808f57bef179383bd969d9a375d5f..7cc16490ffa98fec34ff228cb56bd1af0f42da3d 100644
---- a/fs/bcachefs/progress.c
-+++ b/fs/bcachefs/progress.c
-@@ -4,9 +4,10 @@
- #include "disk_accounting.h"
- #include "progress.h"
+diff --git a/fs/bcachefs/backpointers.c b/fs/bcachefs/backpointers.c
+index 0d585e5662be3f02580558e9a590075ea73193d5..42370aebb7a442ee368df323eb1f4970f2e5f949 100644
+--- a/fs/bcachefs/backpointers.c
++++ b/fs/bcachefs/backpointers.c
+@@ -804,7 +804,9 @@ static int bch2_check_extents_to_backpointers_pass(struct btree_trans *trans,
+ 	struct progress_indicator_state progress;
+ 	int ret = 0;
  
--void bch2_progress_init(struct progress_indicator_state *s,
--			struct bch_fs *c,
--			u64 btree_id_mask)
-+void bch2_progress_init_inner(struct progress_indicator_state *s,
-+			      struct bch_fs *c,
-+			      u64 leaf_btree_id_mask,
-+			      u64 inner_btree_id_mask)
+-	bch2_progress_init(&progress, trans->c, BIT_ULL(BTREE_ID_extents)|BIT_ULL(BTREE_ID_reflink));
++	bch2_progress_init_inner(&progress, trans->c,
++		btree_has_data_ptrs_mask,
++		~0ULL);
+ 
+ 	for (enum btree_id btree_id = 0;
+ 	     btree_id < btree_id_nr_alive(c);
+diff --git a/fs/bcachefs/btree_gc.c b/fs/bcachefs/btree_gc.c
+index 2338feb8d8ed4bad85a01a6b9181116d918636b5..c04e88ec5c0ac73c21f01db597b19d1b0c798299 100644
+--- a/fs/bcachefs/btree_gc.c
++++ b/fs/bcachefs/btree_gc.c
+@@ -780,7 +780,7 @@ static int bch2_gc_btrees(struct bch_fs *c)
+ 	int ret = 0;
+ 
+ 	struct progress_indicator_state progress;
+-	bch2_progress_init(&progress, c, ~0ULL);
++	bch2_progress_init_inner(&progress, c, ~0ULL, ~0ULL);
+ 
+ 	enum btree_id ids[BTREE_ID_NR];
+ 	for (unsigned i = 0; i < BTREE_ID_NR; i++)
+diff --git a/fs/bcachefs/migrate.c b/fs/bcachefs/migrate.c
+index 4aa7dd483cab5a400974b5824bfaf0c0af2e9331..d67ca56d3f431980b104ea5528cce79be88f93fb 100644
+--- a/fs/bcachefs/migrate.c
++++ b/fs/bcachefs/migrate.c
+@@ -266,10 +266,15 @@ int bch2_dev_data_drop_by_backpointers(struct bch_fs *c, unsigned dev_idx, unsig
+ int bch2_dev_data_drop(struct bch_fs *c, unsigned dev_idx, unsigned flags)
  {
- 	memset(s, 0, sizeof(*s));
+ 	struct progress_indicator_state progress;
++	int ret;
++
+ 	bch2_progress_init(&progress, c,
+-			   BIT_ULL(BTREE_ID_extents)|
+-			   BIT_ULL(BTREE_ID_reflink));
++			   btree_has_data_ptrs_mask & ~BIT_ULL(BTREE_ID_stripes));
++
++	if ((ret = bch2_dev_usrdata_drop(c, &progress, dev_idx, flags)))
++		return ret;
++
++	bch2_progress_init_inner(&progress, c, 0, ~0ULL);
  
-@@ -16,6 +17,8 @@ void bch2_progress_init(struct progress_indicator_state *s,
- 	const u32 expected_node_disk_sectors =
- 		READ_ONCE(c->opts.metadata_replicas) * btree_sectors(c);
- 
-+	const u64 btree_id_mask = leaf_btree_id_mask | inner_btree_id_mask;
-+
- 	for (unsigned i = 0; i < btree_id_nr_alive(c); i++) {
- 		if (!(btree_id_mask & BIT_ULL(i)))
- 			continue;
-@@ -31,11 +34,17 @@ void bch2_progress_init(struct progress_indicator_state *s,
- 		bch2_accounting_mem_read(c, disk_accounting_pos_to_bpos(&acc),
- 			(u64 *)&v, sizeof(v) / sizeof(u64));
- 
-+		/* Better to estimate as 0 than the total node count */
-+		if (inner_btree_id_mask & BIT_ULL(i))
-+			s->nodes_total += v.inner_nodes;
-+
-+		if (!(leaf_btree_id_mask & BIT_ULL(i)))
-+			continue;
-+
- 		/*
- 		 * We check for zeros to degrade gracefully when run
- 		 * with un-upgraded accounting info (missing some counters).
- 		 */
--
- 		if (v.total_nodes != 0)
- 			s->nodes_total += v.total_nodes - v.inner_nodes;
- 		else
-diff --git a/fs/bcachefs/progress.h b/fs/bcachefs/progress.h
-index 972a73087ffe06632abef015e4556d8ee196eb24..91f3453377093e2713aa4198b68e13601223688e 100644
---- a/fs/bcachefs/progress.h
-+++ b/fs/bcachefs/progress.h
-@@ -20,7 +20,17 @@ struct progress_indicator_state {
- 	struct btree		*last_node;
- };
- 
--void bch2_progress_init(struct progress_indicator_state *, struct bch_fs *, u64);
-+void bch2_progress_init_inner(struct progress_indicator_state *s,
-+			      struct bch_fs *c,
-+			      u64 leaf_btree_id_mask,
-+			      u64 inner_btree_id_mask);
-+
-+static inline void bch2_progress_init(struct progress_indicator_state *s,
-+				      struct bch_fs *c, u64 btree_id_mask)
-+{
-+	bch2_progress_init_inner(s, c, btree_id_mask, 0);
-+}
-+
- void bch2_progress_update_iter(struct btree_trans *,
- 			       struct progress_indicator_state *,
- 			       struct btree_iter *,
+-	return bch2_dev_usrdata_drop(c, &progress, dev_idx, flags) ?:
+-		bch2_dev_metadata_drop(c, &progress, dev_idx, flags);
++	return bch2_dev_metadata_drop(c, &progress, dev_idx, flags);
+ }
 
 -- 
 2.50.1
