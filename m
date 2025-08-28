@@ -1,87 +1,56 @@
-From: Nikita Ofitserov <himikof@gmail.com>
-Date: Thu, 28 Aug 2025 17:16:17 +0300
-Subject: [PATCH v2 15/15] bcachefs: More accurate progress reporting for
- inner node iteration
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v2 0/2] cpufreq: tegra186: Fix initialization and scaling
+Date: Thu, 28 Aug 2025 11:57:19 -0500
+Message-Id: <20250828-tegra186-cpufreq-fixes-v2-0-fcffe4de1e15@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250828-better-progress-v2-15-c088a2003940@gmail.com>
-References: <20250828-better-progress-v2-0-c088a2003940@gmail.com>
-In-Reply-To: <20250828-better-progress-v2-0-c088a2003940@gmail.com>
-To: Kent Overstreet <kent.overstreet@linux.dev>
-Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAG+KsGgC/4WNTQ6CMBCFr0Jm7Zi2xlJceQ/DorRTmET+WiQaw
+ t2tXMDl916+9zZIFJkS3IoNIq2ceBwyqFMBrrNDS8g+MyihrsIojQu10Uqj0U2vEGnGwG9KWIY
+ mBCOdNlZBlqdIR5HdR52547SM8XP8rPKX/p1cJQqsylAZfyFhfXNve8vPsxt7qPd9/wKAUAMDv
+ AAAAA==
+X-Change-ID: 20250826-tegra186-cpufreq-fixes-7fbff81c68a2
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Viresh Kumar <viresh.kumar@linaro.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, Aaron Kling <luceoscutum@gmail.com>, 
+ Sumit Gupta <sumitg@nvidia.com>
+Cc: Thierry Reding <treding@nvidia.com>, linux-pm@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>, 
+ Mikko Perttunen <mperttunen@nvidia.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2418; i=himikof@gmail.com;
- h=from:subject:message-id; bh=2Gi9QvTlP0kPo5mlJKbmm3EH65uDXG8So4G6gHv9ydM=;
- b=owGbwMvMwCW2edHtzWZP9DIYT6slMWRsSDmUeLl6j+bDX7lqgc9W/A1oTlmk+IvpQb0r54ZFJ
- /gNlW+ldZSyMIhxMciKKbJ8WPL1z5pM6z+WQnsNYeawMoEMYeDiFICJOC5i+KeS3lPjLxyeE3G/
- 98+03y9zTlXeNm/dwx7zrNnI+EjL+n+MDF8FORrjsv4/OPN8T5r5kjsr3p/1c6mIvz3No8wn7sK
- CaQwA
-X-Developer-Key: i=himikof@gmail.com; a=openpgp;
- fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
-X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756400245; l=820;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=MyGuywaVJRTnrDuohxHecg+wMfhfMcnjDHdSphNISLY=;
+ b=jTkl4Ze5C2Hk4Gg/ssP9hc3eZzVbpeg/G2YMW+0uFbkBSrM1Is5s3uDGl/NemC36ypPtUO2wc
+ +E51dc/pgphCnTJY1zDIBifWBCbDNfAi8M2T/L6m6zrLM1j8mr5kqk3
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
+This series fixes an issue with shared policy per cluster not scaling
+all cpus and with some cores being initialized by the subsystem.
+
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- fs/bcachefs/backpointers.c |  4 +++-
- fs/bcachefs/btree_gc.c     |  2 +-
- fs/bcachefs/migrate.c      | 13 +++++++++----
- 3 files changed, 13 insertions(+), 6 deletions(-)
+Changes in v2:
+- Set max freq instead of base freq in patch 2
+- Link to v1: https://lore.kernel.org/r/20250826-tegra186-cpufreq-fixes-v1-0-97f98d3e0adb@gmail.com
 
-diff --git a/fs/bcachefs/backpointers.c b/fs/bcachefs/backpointers.c
-index 0d585e5662be3f02580558e9a590075ea73193d5..42370aebb7a442ee368df323eb1f4970f2e5f949 100644
---- a/fs/bcachefs/backpointers.c
-+++ b/fs/bcachefs/backpointers.c
-@@ -804,7 +804,9 @@ static int bch2_check_extents_to_backpointers_pass(struct btree_trans *trans,
- 	struct progress_indicator_state progress;
- 	int ret = 0;
- 
--	bch2_progress_init(&progress, trans->c, BIT_ULL(BTREE_ID_extents)|BIT_ULL(BTREE_ID_reflink));
-+	bch2_progress_init_inner(&progress, trans->c,
-+		btree_has_data_ptrs_mask,
-+		~0ULL);
- 
- 	for (enum btree_id btree_id = 0;
- 	     btree_id < btree_id_nr_alive(c);
-diff --git a/fs/bcachefs/btree_gc.c b/fs/bcachefs/btree_gc.c
-index 2338feb8d8ed4bad85a01a6b9181116d918636b5..c04e88ec5c0ac73c21f01db597b19d1b0c798299 100644
---- a/fs/bcachefs/btree_gc.c
-+++ b/fs/bcachefs/btree_gc.c
-@@ -780,7 +780,7 @@ static int bch2_gc_btrees(struct bch_fs *c)
- 	int ret = 0;
- 
- 	struct progress_indicator_state progress;
--	bch2_progress_init(&progress, c, ~0ULL);
-+	bch2_progress_init_inner(&progress, c, ~0ULL, ~0ULL);
- 
- 	enum btree_id ids[BTREE_ID_NR];
- 	for (unsigned i = 0; i < BTREE_ID_NR; i++)
-diff --git a/fs/bcachefs/migrate.c b/fs/bcachefs/migrate.c
-index 4aa7dd483cab5a400974b5824bfaf0c0af2e9331..d67ca56d3f431980b104ea5528cce79be88f93fb 100644
---- a/fs/bcachefs/migrate.c
-+++ b/fs/bcachefs/migrate.c
-@@ -266,10 +266,15 @@ int bch2_dev_data_drop_by_backpointers(struct bch_fs *c, unsigned dev_idx, unsig
- int bch2_dev_data_drop(struct bch_fs *c, unsigned dev_idx, unsigned flags)
- {
- 	struct progress_indicator_state progress;
-+	int ret;
-+
- 	bch2_progress_init(&progress, c,
--			   BIT_ULL(BTREE_ID_extents)|
--			   BIT_ULL(BTREE_ID_reflink));
-+			   btree_has_data_ptrs_mask & ~BIT_ULL(BTREE_ID_stripes));
-+
-+	if ((ret = bch2_dev_usrdata_drop(c, &progress, dev_idx, flags)))
-+		return ret;
-+
-+	bch2_progress_init_inner(&progress, c, 0, ~0ULL);
- 
--	return bch2_dev_usrdata_drop(c, &progress, dev_idx, flags) ?:
--		bch2_dev_metadata_drop(c, &progress, dev_idx, flags);
-+	return bch2_dev_metadata_drop(c, &progress, dev_idx, flags);
- }
+---
+Aaron Kling (2):
+      cpufreq: tegra186: Set target frequency for all cpus in policy
+      cpufreq: tegra186: Initialize all cores to max frequencies
 
+ drivers/cpufreq/tegra186-cpufreq.c | 26 +++++++++++++++++++++-----
+ 1 file changed, 21 insertions(+), 5 deletions(-)
+---
+base-commit: 1b237f190eb3d36f52dffe07a40b5eb210280e00
+change-id: 20250826-tegra186-cpufreq-fixes-7fbff81c68a2
+
+Best regards,
 -- 
-2.50.1
+Aaron Kling <webgeek1234@gmail.com>
 
