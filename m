@@ -1,99 +1,79 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Thu, 28 Aug 2025 11:57:21 -0500
-Subject: [PATCH v2 2/2] cpufreq: tegra186: Initialize all cores to max
- frequencies
+From: Nickolay Goppen <setotau@yandex.ru>
+Subject: [PATCH v4 0/3] Add SDM660 LPASS LPI TLMM
+Date: Thu, 28 Aug 2025 22:23:36 +0300
+Message-Id: <20250828-sdm660-lpass-lpi-v4-0-af4afdd52965@yandex.ru>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250828-tegra186-cpufreq-fixes-v2-2-fcffe4de1e15@gmail.com>
-References: <20250828-tegra186-cpufreq-fixes-v2-0-fcffe4de1e15@gmail.com>
-In-Reply-To: <20250828-tegra186-cpufreq-fixes-v2-0-fcffe4de1e15@gmail.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Viresh Kumar <viresh.kumar@linaro.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>, Aaron Kling <luceoscutum@gmail.com>, 
- Sumit Gupta <sumitg@nvidia.com>
-Cc: Thierry Reding <treding@nvidia.com>, linux-pm@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>, 
- Mikko Perttunen <mperttunen@nvidia.com>
+X-B4-Tracking: v=1; b=H4sIALissGgC/4XNwQ6CMAyA4VchOzszug2GJ9/DeCjbkCUKZNMFQ
+ nh3Byc1Ri9N/ib9OpNgvbOBHLKZeBtdcH2XQuwyolvsLpY6k5oAA8kUCBrMrSgYvQ4YQpqOoqo
+ ZIHBV5EjS2eBt48aNPJ1Tty7cez9tH2K+bn9gMaeMMsaN1BoUcHGcsDN23PsHWbEIr4D8AkACs
+ ClLXjVSQ2k/Af4P4AkopBEoTA2VegOWZXkCxYl36zIBAAA=
+X-Change-ID: 20250824-sdm660-lpass-lpi-a8b02a23861a
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ ~postmarketos/upstreaming@lists.sr.ht, Nickolay Goppen <setotau@yandex.ru>, 
+ Richard Acayan <mailingradian@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756400245; l=2602;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=6Wg/olsymhL3iTHVB65L4Tbz1bDTYeRv7QGuafdu3Ts=;
- b=cq59RVWvKCRsrVWPAoipifGivNEQpYMiPpNPJwrGMvU6ees48p4XzTffroZGdxWFZ0wcMrpcf
- K44ysojMCmuDXNrptjVXxKpI1NnZs9dtspMu+0VxTAAHVwdAmETTsay
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756409018; l=2199;
+ i=setotau@yandex.ru; s=20250815; h=from:subject:message-id;
+ bh=FZwL7XBHhgoAckbWlwEtMct61pGudjOnR3GfzuWKi34=;
+ b=a1gGoYgpK4ZQPNnQPogN3Kj0i8goX1ZnwWD6Rmv0VGgTs1Meo08YF4SbuOLptdWi58nc7KIVN
+ sABjBervZT0AQc1TZO0K10+nxUtrCOyG558kRTVY9ESg6GA2nunxBih
+X-Developer-Key: i=setotau@yandex.ru; a=ed25519;
+ pk=Og7YO6LfW+M2QfcJfjaUaXc8oOr5zoK8+4AtX5ICr4o=
+X-Endpoint-Received: by B4 Relay for setotau@yandex.ru/20250815 with auth_id=492
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-During initialization, the EDVD_COREx_VOLT_FREQ registers for some cores
-are still at reset values and not reflecting the actual frequency. This
-causes get calls to fail. Set all cores to their respective max
-frequency during probe to initialize the registers to working values.
+This patch series adds SDM660 LPASS LPI TLMM pinctrl driver and
+introduces pin_offset field for LPI pinctrl drivers to support
+SDM660's quirky pin_offsets taken from an array with 
+predefined offsets from downstream [1].
 
-Suggested-by: Mikko Perttunen <mperttunen@nvidia.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+[1] https://git.codelinaro.org/clo/la/kernel/msm-4.4/-/blob/LA.UM.7.2.c27-07400-sdm660.0/drivers/pinctrl/qcom/pinctrl-lpi.c#L107
+
+Signed-off-by: Nickolay Goppen <setotau@yandex.ru>
 ---
- drivers/cpufreq/tegra186-cpufreq.c | 18 +++++++++++++++---
- 1 file changed, 15 insertions(+), 3 deletions(-)
+Changes in v4:
+- Replaced pin_offset callback with a pin_offset field in lpi_pingroup struct
+- Introduced LPI_PINGROUP_OFFSET macro with additional pin_offset field handling
+- Introduced LPI_FLAG_USE_PREDEFINED_PIN_OFFSET flag for indicating use of predefined pin_offsets
+- Replaced an array with offsets in SDM660 LPASS LPI TLMM driver with pin_offset defined for each pin in the new pin_offset field
+- Link to v3: https://lore.kernel.org/r/20250825-sdm660-lpass-lpi-v3-0-65d4a4db298e@yandex.ru
 
-diff --git a/drivers/cpufreq/tegra186-cpufreq.c b/drivers/cpufreq/tegra186-cpufreq.c
-index 6c394b429b6182faffabf222e5af501393dbbba9..3cd42db955c1c705f9774879e34b71ae124e86d2 100644
---- a/drivers/cpufreq/tegra186-cpufreq.c
-+++ b/drivers/cpufreq/tegra186-cpufreq.c
-@@ -138,7 +138,8 @@ static struct cpufreq_driver tegra186_cpufreq_driver = {
- 
- static struct cpufreq_frequency_table *init_vhint_table(
- 	struct platform_device *pdev, struct tegra_bpmp *bpmp,
--	struct tegra186_cpufreq_cluster *cluster, unsigned int cluster_id)
-+	struct tegra186_cpufreq_cluster *cluster, unsigned int cluster_id,
-+	int *max_rate)
- {
- 	struct cpufreq_frequency_table *table;
- 	struct mrq_cpu_vhint_request req;
-@@ -218,6 +219,7 @@ static struct cpufreq_frequency_table *init_vhint_table(
- 	}
- 
- 	table[j].frequency = CPUFREQ_TABLE_END;
-+	*max_rate = num_rates - 1;
- 
- free:
- 	dma_free_coherent(bpmp->dev, sizeof(*data), virt, phys);
-@@ -229,7 +231,9 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
- {
- 	struct tegra186_cpufreq_data *data;
- 	struct tegra_bpmp *bpmp;
--	unsigned int i = 0, err;
-+	unsigned int i = 0, err, edvd_offset;
-+	int max_rate = 0;
-+	u32 edvd_val, cpu;
- 
- 	data = devm_kzalloc(&pdev->dev,
- 			    struct_size(data, clusters, TEGRA186_NUM_CLUSTERS),
-@@ -252,11 +256,19 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
- 	for (i = 0; i < TEGRA186_NUM_CLUSTERS; i++) {
- 		struct tegra186_cpufreq_cluster *cluster = &data->clusters[i];
- 
--		cluster->table = init_vhint_table(pdev, bpmp, cluster, i);
-+		cluster->table = init_vhint_table(pdev, bpmp, cluster, i, &max_rate);
- 		if (IS_ERR(cluster->table)) {
- 			err = PTR_ERR(cluster->table);
- 			goto put_bpmp;
- 		}
-+
-+		for (cpu = 0; cpu < ARRAY_SIZE(tegra186_cpus); cpu++) {
-+			if (data->cpus[cpu].bpmp_cluster_id == i) {
-+				edvd_val = cluster->table[max_rate].driver_data;
-+				edvd_offset = data->cpus[cpu].edvd_offset;
-+				writel(edvd_val, data->regs + edvd_offset);
-+			}
-+		}
- 	}
- 
- 	tegra186_cpufreq_driver.driver_data = data;
+Changes in v3:
+- Fixed compilation of LPI drivers as modules by changing pin_offset function determination logic 
+- Link to v2: https://lore.kernel.org/r/20250825-sdm660-lpass-lpi-v2-0-af7739f5c27e@yandex.ru
 
+Changes in v2:
+- Extended description of "pinctrl: qcom: Add SDM660 LPASS LPI TLMM" patch
+- Resent using b4 relay
+- Link to v1: https://lore.kernel.org/r/20250824-sdm660-lpass-lpi-v1-0-003d5cc28234@yandex.ru
+
+---
+Nickolay Goppen (2):
+      pinctrl: qcom: lpass-lpi: Add ability to use custom pin offsets
+      dt-bindings: pinctrl: qcom: Add SDM660 LPI pinctrl
+
+Richard Acayan (1):
+      pinctrl: qcom: Add SDM660 LPASS LPI TLMM
+
+ .../pinctrl/qcom,sdm660-lpass-lpi-pinctrl.yaml     |  74 ++++++++++
+ drivers/pinctrl/qcom/Kconfig                       |  10 ++
+ drivers/pinctrl/qcom/Makefile                      |   1 +
+ drivers/pinctrl/qcom/pinctrl-lpass-lpi.c           |  18 ++-
+ drivers/pinctrl/qcom/pinctrl-lpass-lpi.h           |  18 +++
+ drivers/pinctrl/qcom/pinctrl-sdm660-lpass-lpi.c    | 155 +++++++++++++++++++++
+ 6 files changed, 274 insertions(+), 2 deletions(-)
+---
+base-commit: d2798d0f96755807da0222cfc9793f2b1f38a2f1
+change-id: 20250824-sdm660-lpass-lpi-a8b02a23861a
+
+Best regards,
 -- 
-2.50.1
+Nickolay Goppen <setotau@yandex.ru>
 
