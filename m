@@ -1,246 +1,64 @@
-From: Nickolay Goppen <setotau@yandex.ru>
-Date: Thu, 28 Aug 2025 22:23:39 +0300
-Subject: [PATCH v4 3/3] pinctrl: qcom: Add SDM660 LPASS LPI TLMM
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Date: Thu, 28 Aug 2025 22:25:50 +0200
+Subject: [PATCH] arm64: dts: qcom: msm8976-longcheer-l9360: Add touch keys
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250828-sdm660-lpass-lpi-v4-3-af4afdd52965@yandex.ru>
-References: <20250828-sdm660-lpass-lpi-v4-0-af4afdd52965@yandex.ru>
-In-Reply-To: <20250828-sdm660-lpass-lpi-v4-0-af4afdd52965@yandex.ru>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250828-l9360_touch_keys-v1-1-1ce5a279c399@apitzsch.eu>
+X-B4-Tracking: v=1; b=H4sIAE27sGgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDCyML3RxLYzOD+JL80uSM+OzUymJdC7MUY8uk1KQ0czMjJaC2gqLUtMw
+ KsJHRsbW1AHibYtBiAAAA
+X-Change-ID: 20250828-l9360_touch_keys-86d39bebf762
 To: Bjorn Andersson <andersson@kernel.org>, 
- Linus Walleij <linus.walleij@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- ~postmarketos/upstreaming@lists.sr.ht, Nickolay Goppen <setotau@yandex.ru>, 
- Richard Acayan <mailingradian@gmail.com>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756409018; l=8801;
- i=setotau@yandex.ru; s=20250815; h=from:subject:message-id;
- bh=FAksBGnsZ8kDvC0bR8KQg80odraUiy0qtIYjCppkfNo=;
- b=H6FQVCwkTKEnaqCp8ClKVwTY50I120DOqK9XGjbXJpf2kN+GQv2hCdK5t+KPkOXr2182GzwJy
- LYnUEQUB67iBa+NJGR/dwvIrNTA4pE2eLRiFGR/x6UipX8V2jDcnouC
-X-Developer-Key: i=setotau@yandex.ru; a=ed25519;
- pk=Og7YO6LfW+M2QfcJfjaUaXc8oOr5zoK8+4AtX5ICr4o=
-X-Endpoint-Received: by B4 Relay for setotau@yandex.ru/20250815 with auth_id=492
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756412793; l=1031;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=vTTtjCb8Z411MNaWmMrf5RO0vPAzikIEIVbV7jqgHjA=;
+ b=GQmcnVaxe4XlTIV3hXAuGd8f+NaEBGwQTFW/0HdMjpWDp5q3CDOIExKIPF8y1k3AhkRvvnfpM
+ TqM3LRDbUVEA1GeM0Il7ypAMDopRVre7eGirUKhVpETU1iXjVDpEdn0
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Richard Acayan <mailingradian@gmail.com>
+The phone has three capacitive buttons on the screen bezel. Enable them
+by adding the keycodes in the dt.
 
-The Snapdragon 660 has a Low-Power Island (LPI) TLMM for configuring
-pins related to audio. Add the driver for this.
-Also, this driver uses predefined pin_offsets for each pin taken from
-downstream driver, which does not follow the usual 0x1000 distance
-between pins and uses an array with predefined offsets that do not
-follow any regular pattern [1].
-
-[1] https://git.codelinaro.org/clo/la/kernel/msm-4.4/-/blob/LA.UM.7.2.c27-07400-sdm660.0/drivers/pinctrl/qcom/pinctrl-lpi.c#L107
-
-Signed-off-by: Richard Acayan <mailingradian@gmail.com>
-Co-developed-by: Nickolay Goppen <setotau@yandex.ru>
-Signed-off-by: Nickolay Goppen <setotau@yandex.ru>
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/pinctrl/qcom/Kconfig                    |  10 ++
- drivers/pinctrl/qcom/Makefile                   |   1 +
- drivers/pinctrl/qcom/pinctrl-sdm660-lpass-lpi.c | 155 ++++++++++++++++++++++++
- 3 files changed, 166 insertions(+)
+ arch/arm64/boot/dts/qcom/msm8976-longcheer-l9360.dts | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/drivers/pinctrl/qcom/Kconfig b/drivers/pinctrl/qcom/Kconfig
-index dd9bbe8f3e11c37418d2143b33c21eeea10d456b..ef42520115f461302098d878cb76c6f25e55b5e4 100644
---- a/drivers/pinctrl/qcom/Kconfig
-+++ b/drivers/pinctrl/qcom/Kconfig
-@@ -68,6 +68,16 @@ config PINCTRL_SC7280_LPASS_LPI
- 	  Qualcomm Technologies Inc LPASS (Low Power Audio SubSystem) LPI
- 	  (Low Power Island) found on the Qualcomm Technologies Inc SC7280 platform.
+diff --git a/arch/arm64/boot/dts/qcom/msm8976-longcheer-l9360.dts b/arch/arm64/boot/dts/qcom/msm8976-longcheer-l9360.dts
+index e524d58cf0a4b7693741036e3988700559a507f0..18832a3b9a1c37d1c891bce64d1a9372e5be439e 100644
+--- a/arch/arm64/boot/dts/qcom/msm8976-longcheer-l9360.dts
++++ b/arch/arm64/boot/dts/qcom/msm8976-longcheer-l9360.dts
+@@ -190,6 +190,12 @@ rmi4-f12@12 {
+ 			reg = <0x12>;
+ 			syna,sensor-type = <1>;
+ 		};
++
++		rmi4-f1a@1a {
++			reg = <0x1a>;
++			/* Keys listed from right to left */
++			linux,keycodes = <KEY_APPSELECT KEY_HOMEPAGE KEY_BACK>;
++		};
+ 	};
+ };
  
-+config PINCTRL_SDM660_LPASS_LPI
-+	tristate "Qualcomm Technologies Inc SDM660 LPASS LPI pin controller driver"
-+	depends on GPIOLIB
-+	depends on ARM64 || COMPILE_TEST
-+	depends on PINCTRL_LPASS_LPI
-+	help
-+	  This is the pinctrl, pinmux, pinconf and gpiolib driver for the
-+	  Qualcomm Technologies Inc LPASS (Low Power Audio SubSystem) LPI
-+	  (Low Power Island) found on the Qualcomm Technologies Inc SDM660 platform.
-+
- config PINCTRL_SM4250_LPASS_LPI
- 	tristate "Qualcomm Technologies Inc SM4250 LPASS LPI pin controller driver"
- 	depends on ARM64 || COMPILE_TEST
-diff --git a/drivers/pinctrl/qcom/Makefile b/drivers/pinctrl/qcom/Makefile
-index 954f5291cc37242baffc021e3c68d850aabd57cd..cea8617ac650ecfc75c2a0c745a53d6a1b829842 100644
---- a/drivers/pinctrl/qcom/Makefile
-+++ b/drivers/pinctrl/qcom/Makefile
-@@ -43,6 +43,7 @@ obj-$(CONFIG_PINCTRL_SC7280_LPASS_LPI) += pinctrl-sc7280-lpass-lpi.o
- obj-$(CONFIG_PINCTRL_SC8180X)	+= pinctrl-sc8180x.o
- obj-$(CONFIG_PINCTRL_SC8280XP)	+= pinctrl-sc8280xp.o
- obj-$(CONFIG_PINCTRL_SDM660)   += pinctrl-sdm660.o
-+obj-$(CONFIG_PINCTRL_SDM660_LPASS_LPI) += pinctrl-sdm660-lpass-lpi.o
- obj-$(CONFIG_PINCTRL_SDM670) += pinctrl-sdm670.o
- obj-$(CONFIG_PINCTRL_SDM845) += pinctrl-sdm845.o
- obj-$(CONFIG_PINCTRL_SDX55) += pinctrl-sdx55.o
-diff --git a/drivers/pinctrl/qcom/pinctrl-sdm660-lpass-lpi.c b/drivers/pinctrl/qcom/pinctrl-sdm660-lpass-lpi.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..7e7e2202c6da75f4ccc60cecc4a47655f5aa5de1
---- /dev/null
-+++ b/drivers/pinctrl/qcom/pinctrl-sdm660-lpass-lpi.c
-@@ -0,0 +1,155 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * This driver is solely based on the limited information in downstream code.
-+ * Any verification with schematics would be greatly appreciated.
-+ *
-+ * Copyright (c) 2023, Richard Acayan. All rights reserved.
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/platform_device.h>
-+#include <linux/pinctrl/pinctrl.h>
-+
-+#include "pinctrl-lpass-lpi.h"
-+
-+enum lpass_lpi_functions {
-+	LPI_MUX_comp_rx,
-+	LPI_MUX_dmic12,
-+	LPI_MUX_dmic34,
-+	LPI_MUX_mclk0,
-+	LPI_MUX_pdm_2_gpios,
-+	LPI_MUX_pdm_clk,
-+	LPI_MUX_pdm_rx,
-+	LPI_MUX_pdm_sync,
-+
-+	LPI_MUX_gpio,
-+	LPI_MUX__,
-+};
-+
-+static const struct pinctrl_pin_desc sdm660_lpi_pinctrl_pins[] = {
-+	PINCTRL_PIN(0, "gpio0"),
-+	PINCTRL_PIN(1, "gpio1"),
-+	PINCTRL_PIN(2, "gpio2"),
-+	PINCTRL_PIN(3, "gpio3"),
-+	PINCTRL_PIN(4, "gpio4"),
-+	PINCTRL_PIN(5, "gpio5"),
-+	PINCTRL_PIN(6, "gpio6"),
-+	PINCTRL_PIN(7, "gpio7"),
-+	PINCTRL_PIN(8, "gpio8"),
-+	PINCTRL_PIN(9, "gpio9"),
-+	PINCTRL_PIN(10, "gpio10"),
-+	PINCTRL_PIN(11, "gpio11"),
-+	PINCTRL_PIN(12, "gpio12"),
-+	PINCTRL_PIN(13, "gpio13"),
-+	PINCTRL_PIN(14, "gpio14"),
-+	PINCTRL_PIN(15, "gpio15"),
-+	PINCTRL_PIN(16, "gpio16"),
-+	PINCTRL_PIN(17, "gpio17"),
-+	PINCTRL_PIN(18, "gpio18"),
-+	PINCTRL_PIN(19, "gpio19"),
-+	PINCTRL_PIN(20, "gpio20"),
-+	PINCTRL_PIN(21, "gpio21"),
-+	PINCTRL_PIN(22, "gpio22"),
-+	PINCTRL_PIN(23, "gpio23"),
-+	PINCTRL_PIN(24, "gpio24"),
-+	PINCTRL_PIN(25, "gpio25"),
-+	PINCTRL_PIN(26, "gpio26"),
-+	PINCTRL_PIN(27, "gpio27"),
-+	PINCTRL_PIN(28, "gpio28"),
-+	PINCTRL_PIN(29, "gpio29"),
-+	PINCTRL_PIN(30, "gpio30"),
-+	PINCTRL_PIN(31, "gpio31"),
-+};
-+
-+static const char * const comp_rx_groups[] = { "gpio22", "gpio24" };
-+static const char * const dmic12_groups[] = { "gpio26", "gpio28" };
-+static const char * const dmic34_groups[] = { "gpio27", "gpio29" };
-+static const char * const mclk0_groups[] = { "gpio18" };
-+static const char * const pdm_2_gpios_groups[] = { "gpio20" };
-+static const char * const pdm_clk_groups[] = { "gpio18" };
-+static const char * const pdm_rx_groups[] = { "gpio21", "gpio23", "gpio25" };
-+static const char * const pdm_sync_groups[] = { "gpio19" };
-+
-+const struct lpi_pingroup sdm660_lpi_pinctrl_groups[] = {
-+	LPI_PINGROUP_OFFSET(0, LPI_NO_SLEW, _, _, _, _, 0x0000),
-+	LPI_PINGROUP_OFFSET(1, LPI_NO_SLEW, _, _, _, _, 0x1000),
-+	LPI_PINGROUP_OFFSET(2, LPI_NO_SLEW, _, _, _, _, 0x2000),
-+	LPI_PINGROUP_OFFSET(3, LPI_NO_SLEW, _, _, _, _, 0x2010),
-+	LPI_PINGROUP_OFFSET(4, LPI_NO_SLEW, _, _, _, _, 0x3000),
-+	LPI_PINGROUP_OFFSET(5, LPI_NO_SLEW, _, _, _, _, 0x3010),
-+	LPI_PINGROUP_OFFSET(6, LPI_NO_SLEW, _, _, _, _, 0x4000),
-+	LPI_PINGROUP_OFFSET(7, LPI_NO_SLEW, _, _, _, _, 0x4010),
-+	LPI_PINGROUP_OFFSET(8, LPI_NO_SLEW, _, _, _, _, 0x5000),
-+	LPI_PINGROUP_OFFSET(9, LPI_NO_SLEW, _, _, _, _, 0x5010),
-+	LPI_PINGROUP_OFFSET(10, LPI_NO_SLEW, _, _, _, _, 0x5020),
-+	LPI_PINGROUP_OFFSET(11, LPI_NO_SLEW, _, _, _, _, 0x5030),
-+	LPI_PINGROUP_OFFSET(12, LPI_NO_SLEW, _, _, _, _, 0x6000),
-+	LPI_PINGROUP_OFFSET(13, LPI_NO_SLEW, _, _, _, _, 0x6010),
-+	LPI_PINGROUP_OFFSET(14, LPI_NO_SLEW, _, _, _, _, 0x7000),
-+	LPI_PINGROUP_OFFSET(15, LPI_NO_SLEW, _, _, _, _, 0x7010),
-+	LPI_PINGROUP_OFFSET(16, LPI_NO_SLEW, _, _, _, _, 0x5040),
-+	LPI_PINGROUP_OFFSET(17, LPI_NO_SLEW, _, _, _, _, 0x5050),
-+
-+	/* The function names of the PDM GPIOs are derived from SDM670 */
-+	LPI_PINGROUP_OFFSET(18, LPI_NO_SLEW, pdm_clk, mclk0, _, _, 0x8000),
-+	LPI_PINGROUP_OFFSET(19, LPI_NO_SLEW, pdm_sync, _, _, _, 0x8010),
-+	LPI_PINGROUP_OFFSET(20, LPI_NO_SLEW, pdm_2_gpios, _, _, _, 0x8020),
-+	LPI_PINGROUP_OFFSET(21, LPI_NO_SLEW, pdm_rx, _, _, _, 0x8030),
-+	LPI_PINGROUP_OFFSET(22, LPI_NO_SLEW, comp_rx, _, _, _, 0x8040),
-+	LPI_PINGROUP_OFFSET(23, LPI_NO_SLEW, pdm_rx, _, _, _, 0x8050),
-+	LPI_PINGROUP_OFFSET(24, LPI_NO_SLEW, comp_rx, _, _, _, 0x8060),
-+	LPI_PINGROUP_OFFSET(25, LPI_NO_SLEW, pdm_rx, _, _, _, 0x8070),
-+	LPI_PINGROUP_OFFSET(26, LPI_NO_SLEW, dmic12, _, _, _, 0x9000),
-+	LPI_PINGROUP_OFFSET(27, LPI_NO_SLEW, dmic34, _, _, _, 0x9010),
-+	LPI_PINGROUP_OFFSET(28, LPI_NO_SLEW, dmic12, _, _, _, 0xa000),
-+	LPI_PINGROUP_OFFSET(29, LPI_NO_SLEW, dmic34, _, _, _, 0xa010),
-+
-+	LPI_PINGROUP_OFFSET(30, LPI_NO_SLEW, _, _, _, _, 0xb000),
-+	LPI_PINGROUP_OFFSET(31, LPI_NO_SLEW, _, _, _, _, 0xb010),
-+};
-+
-+const struct lpi_function sdm660_lpi_pinctrl_functions[] = {
-+	LPI_FUNCTION(comp_rx),
-+	LPI_FUNCTION(dmic12),
-+	LPI_FUNCTION(dmic34),
-+	LPI_FUNCTION(mclk0),
-+	LPI_FUNCTION(pdm_2_gpios),
-+	LPI_FUNCTION(pdm_clk),
-+	LPI_FUNCTION(pdm_rx),
-+	LPI_FUNCTION(pdm_sync),
-+};
-+
-+static const struct lpi_pinctrl_variant_data sdm660_lpi_pinctrl_data = {
-+	.pins = sdm660_lpi_pinctrl_pins,
-+	.npins = ARRAY_SIZE(sdm660_lpi_pinctrl_pins),
-+	.groups = sdm660_lpi_pinctrl_groups,
-+	.ngroups = ARRAY_SIZE(sdm660_lpi_pinctrl_groups),
-+	.functions = sdm660_lpi_pinctrl_functions,
-+	.nfunctions = ARRAY_SIZE(sdm660_lpi_pinctrl_functions),
-+	.flags = LPI_FLAG_SLEW_RATE_SAME_REG | LPI_FLAG_USE_PREDEFINED_PIN_OFFSET
-+};
-+
-+static const struct of_device_id sdm660_lpi_pinctrl_of_match[] = {
-+	{
-+		.compatible = "qcom,sdm660-lpass-lpi-pinctrl",
-+		.data = &sdm660_lpi_pinctrl_data,
-+	},
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, sdm660_lpi_pinctrl_of_match);
-+
-+static struct platform_driver sdm660_lpi_pinctrl_driver = {
-+	.driver = {
-+		.name = "qcom-sdm660-lpass-lpi-pinctrl",
-+		.of_match_table = sdm660_lpi_pinctrl_of_match,
-+	},
-+	.probe = lpi_pinctrl_probe,
-+	.remove = lpi_pinctrl_remove,
-+};
-+module_platform_driver(sdm660_lpi_pinctrl_driver);
-+
-+MODULE_AUTHOR("Richard Acayan <mailingradian@gmail.com>");
-+MODULE_DESCRIPTION("QTI SDM660 LPI GPIO pin control driver");
-+MODULE_LICENSE("GPL");
 
+---
+base-commit: 8cd53fb40a304576fa86ba985f3045d5c55b0ae3
+change-id: 20250828-l9360_touch_keys-86d39bebf762
+
+Best regards,
 -- 
-2.51.0
+André Apitzsch <git@apitzsch.eu>
 
