@@ -1,59 +1,67 @@
 From: Nikita Ofitserov <himikof@gmail.com>
-Date: Thu, 28 Aug 2025 17:16:03 +0300
-Subject: [PATCH v2 01/15] bcachefs: Introduce btree_leaf_has_triggers_mask
+Date: Thu, 28 Aug 2025 17:16:04 +0300
+Subject: [PATCH v2 02/15] bcachefs: Refactor bch2_gc_btree/bch2_gc_btrees
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250828-better-progress-v2-1-c088a2003940@gmail.com>
+Message-Id: <20250828-better-progress-v2-2-c088a2003940@gmail.com>
 References: <20250828-better-progress-v2-0-c088a2003940@gmail.com>
 In-Reply-To: <20250828-better-progress-v2-0-c088a2003940@gmail.com>
 To: Kent Overstreet <kent.overstreet@linux.dev>
 Cc: linux-bcachefs@vger.kernel.org, Nikita Ofitserov <himikof@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1519; i=himikof@gmail.com;
- h=from:subject:message-id; bh=TYWLHU8w0/8UTBK1GkJbIUDQjni0TKSNwZ+FHNlfT2A=;
- b=owGbwMvMwCW2edHtzWZP9DIYT6slMWRsSDmYUaZ0VUCe0TZrVsbCrU1fOsKqTZiCPi/t1PMye
- /iufW1hRykLgxgXg6yYIsuHJV//rMm0/mMptNcQZg4rE8gQBi5OAZiI6E2Gf4ZneoOZX9S6T5i3
- zndpYs3shewV7jcfu554bs97hff/jVqGv8KlE7/p2Jy4r/6/pcmoykfoYqv8Mv1dRertsdvr2nd
- NZgEA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1558; i=himikof@gmail.com;
+ h=from:subject:message-id; bh=oDcgd9+Tw5O6XEbdGPb3cpQkJo1A036cADXhKke/lEI=;
+ b=owGbwMvMwCW2edHtzWZP9DIYT6slMWRsSDm4VmzdHM77gr8iLXhaFmpHTPYpkHcrEPxkGdwTz
+ cktpP+no5SFQYyLQVZMkeXDkq9/1mRa/7EU2msIM4eVCWQIAxenAEwkOoSR4c9iy6wXLKfi0z55
+ +h64Wnr+dsbZ7Sy9p8TvPNxsEK6/N4SRoW3tC88YvqSrKqt5Gqe9mHmdZ+v/Q7+6U01jnKWiBKJ
+ rmQA=
 X-Developer-Key: i=himikof@gmail.com; a=openpgp;
  fpr=F0A4F5FCAC693BFC3912BD31B3A2DBB336E42E68
 X-Endpoint-Received: by B4 Relay for himikof@gmail.com/default with auth_id=452
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+Concentrate iteration policy inside the caller so that accurate
+progress reporting would be possible.
+
 Signed-off-by: Nikita Ofitserov <himikof@gmail.com>
 ---
- fs/bcachefs/btree_gc.c    | 2 +-
- fs/bcachefs/btree_types.h | 3 +++
- 2 files changed, 4 insertions(+), 1 deletion(-)
+ fs/bcachefs/btree_gc.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
 diff --git a/fs/bcachefs/btree_gc.c b/fs/bcachefs/btree_gc.c
-index 43f294284d57473fd8868c974c4bdd847fcf2636..2b1b6b7ffdf0af7ec0bf4cbaf68cc9a53a20cfce 100644
+index 2b1b6b7ffdf0af7ec0bf4cbaf68cc9a53a20cfce..2a369aebdbe216ed665115e27388ab4821696bf8 100644
 --- a/fs/bcachefs/btree_gc.c
 +++ b/fs/bcachefs/btree_gc.c
-@@ -720,7 +720,7 @@ static int bch2_gc_btree(struct btree_trans *trans,
- 			 enum btree_id btree, bool initial)
+@@ -717,16 +717,12 @@ static int bch2_gc_mark_key(struct btree_trans *trans, enum btree_id btree_id,
+ 
+ static int bch2_gc_btree(struct btree_trans *trans,
+ 			 struct progress_indicator_state *progress,
+-			 enum btree_id btree, bool initial)
++			 enum btree_id btree, unsigned target_depth,
++			 bool initial)
  {
  	struct bch_fs *c = trans->c;
--	unsigned target_depth = btree_node_type_has_triggers(__btree_node_type(0, btree)) ? 0 : 1;
-+	unsigned target_depth = BIT_ULL(btree) & btree_leaf_has_triggers_mask ? 0 : 1;
+-	unsigned target_depth = BIT_ULL(btree) & btree_leaf_has_triggers_mask ? 0 : 1;
  	int ret = 0;
  
- 	/* We need to make sure every leaf node is readable before going RW */
-diff --git a/fs/bcachefs/btree_types.h b/fs/bcachefs/btree_types.h
-index e893eb938bb3da441f0ab0096ced3cc3c2a701e2..ad9bd18fe9b6e51987da74d373830dca98df56ec 100644
---- a/fs/bcachefs/btree_types.h
-+++ b/fs/bcachefs/btree_types.h
-@@ -840,6 +840,9 @@ static inline bool btree_node_type_has_triggers(enum btree_node_type type)
- 	return BIT_ULL(type) & BTREE_NODE_TYPE_HAS_TRIGGERS;
- }
+-	/* We need to make sure every leaf node is readable before going RW */
+-	if (initial)
+-		target_depth = 0;
+-
+ 	for (unsigned level = target_depth; level < BTREE_MAX_DEPTH; level++) {
+ 		struct btree *prev = NULL;
+ 		struct btree_iter iter;
+@@ -797,7 +793,8 @@ static int bch2_gc_btrees(struct bch_fs *c)
+ 		if (IS_ERR_OR_NULL(bch2_btree_id_root(c, btree)->b))
+ 			continue;
  
-+/* A mask of btree id bits that have triggers for their leaves */
-+static const u64 btree_leaf_has_triggers_mask = BTREE_NODE_TYPE_HAS_TRIGGERS >> 1;
-+
- static const u64 btree_is_extents_mask = 0
- #define x(name, nr, flags, ...)	|((!!((flags) & BTREE_IS_extents)) << nr)
- BCH_BTREE_IDS()
+-		ret = bch2_gc_btree(trans, &progress, btree, true);
++		/* We need to make sure every leaf node is readable before going RW */
++		ret = bch2_gc_btree(trans, &progress, btree, 0, true);
+ 	}
+ 
+ 	bch_err_fn(c, ret);
 
 -- 
 2.50.1
