@@ -1,113 +1,92 @@
-From: Christoph Paasch <cpaasch@openai.com>
-Date: Thu, 28 Aug 2025 20:36:19 -0700
-Subject: [PATCH net-next v4 2/2] net/mlx5: Avoid copying payload to the
- skb's linear part
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH RFC 0/7] Support Tegra210 actmon for dynamic EMC scaling
+Date: Thu, 28 Aug 2025 23:01:26 -0500
+Message-Id: <20250828-t210-actmon-v1-0-aeb19ec1f244@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250828-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v4-2-bfcd5033a77c@openai.com>
-References: <20250828-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v4-0-bfcd5033a77c@openai.com>
-In-Reply-To: <20250828-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v4-0-bfcd5033a77c@openai.com>
-To: Gal Pressman <gal@nvidia.com>, Dragos Tatulea <dtatulea@nvidia.com>, 
- Saeed Mahameed <saeedm@nvidia.com>, Tariq Toukan <tariqt@nvidia.com>, 
- Mark Bloch <mbloch@nvidia.com>, Leon Romanovsky <leon@kernel.org>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
- Jesper Dangaard Brouer <hawk@kernel.org>, 
- John Fastabend <john.fastabend@gmail.com>, 
- Stanislav Fomichev <sdf@fomichev.me>
-Cc: netdev@vger.kernel.org, linux-rdma@vger.kernel.org, bpf@vger.kernel.org, 
- Christoph Paasch <cpaasch@openai.com>
+X-B4-Tracking: v=1; b=H4sIABYmsWgC/02Ou47CMBREfyW6NZauHZs4aVfiA2hXFMZ3Ai6Ss
+ HYWrYT49zWPgnJmNEfnRgU5odDQ3Cjjmkpa5hr0pqF4DvMJKknNZNg49sao1WhWIa7TMqvW9mw
+ jOghHqo9Lxpj+nrRv2u++6PAqM35+K3l9L8dQoOIyTWkdGj+6gJZl20vnbAuApWP2rYTRCvwI7
+ cR5R59GQ/Py0dUHpxweTuUCyKJsx9tewx99jMNV0+F+/wfe2Va45QAAAA==
+X-Change-ID: 20250822-t210-actmon-34904ce7ed0c
+To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ MyungJoo Ham <myungjoo.ham@samsung.com>, 
+ Kyungmin Park <kyungmin.park@samsung.com>, 
+ Chanwoo Choi <cw00.choi@samsung.com>, Dmitry Osipenko <digetx@gmail.com>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756438601; l=3043;
- i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
- bh=y7LtUbcF5JRYBgmDw1NmNcS7qz3njkpiJ46UXeQKaCA=;
- b=gGL2dBi6b5WvPIfnKANxlMK5GS+xlLDFfZzpE/RbJFL6HXaKAleVBVuHG3e8MVgQtgHpHUAHB
- 0E+4z1eaWTgBkvFDh+nki1wdDeP6vX8t2EaFOgcSIS6aC/+bjNPRUl3
-X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
- pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
-X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756440091; l=2924;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=VcSv8G9xRrJjt3otAEwpuFiKaXlXE79WuR6v4AadA+Q=;
+ b=/424fg+xE/KGEXcg5aiIjDrTcGrW+87Z6V9HPNGlpVacKv5YWnwKTOs5G14szFYM6ZJKsXsHH
+ nLlOOFmqTWVBkjI+crN8eDa+20/XhULbbaXtkg+ptu/OoaHfucmFYGV
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mlx5e_skb_from_cqe_mpwrq_nonlinear() copies MLX5E_RX_MAX_HEAD (256)
-bytes from the page-pool to the skb's linear part. Those 256 bytes
-include part of the payload.
+This series adds interconnect support to tegra210 MC and EMC, then
+enables actmon. This enables dynamic emc scaling.
 
-When attempting to do GRO in skb_gro_receive, if headlen > data_offset
-(and skb->head_frag is not set), we end up aggregating packets in the
-frag_list.
+This series is marked RFC for two reasons:
 
-This is of course not good when we are CPU-limited. Also causes a worse
-skb->len/truesize ratio,...
+1) Calculating rate from bandwidth usage results in double the expected
+   rate. I thought this might be due to the ram being 64-bit, but the
+   related CFG5 register reports 32-bit on both p2371-2180 and
+   p3450-0000. I'm using the calculation used for Tegra124 and haven't
+   seen seen anything obviously different between the ram handling on
+   these archs to cause a different result. I have considered that the
+   number of channels might affect the reporting, and factoring in that
+   variable does result in the correct rate, but I don't want to assume
+   that's correct without confirmation.
 
-So, let's avoid copying parts of the payload to the linear part. We use
-eth_get_headlen() to parse the headers and compute the length of the
-protocol headers, which will be used to copy the relevant bits ot the
-skb's linear part.
+2) I am seeing intermittent instability when transitioning to rates of
+   204 MHz or below on p2371-2180. I have noted that if the first
+   transition to such a state works, then it continues to work for the
+   rest of that boot cycle. But the kernel will often panic the first
+   time it tries to downclock. I suspect this is a pre-existing issue
+   only brought to light now because nothing would ever lower the clock
+   rate previously.
 
-We still allocate MLX5E_RX_MAX_HEAD for the skb so that if the networking
-stack needs to call pskb_may_pull() later on, we don't need to reallocate
-memory.
-
-This gives a nice throughput increase (ARM Neoverse-V2 with CX-7 NIC and
-LRO enabled):
-
-BEFORE:
-=======
-(netserver pinned to core receiving interrupts)
-$ netperf -H 10.221.81.118 -T 80,9 -P 0 -l 60 -- -m 256K -M 256K
- 87380  16384 262144    60.01    32547.82
-
-(netserver pinned to adjacent core receiving interrupts)
-$ netperf -H 10.221.81.118 -T 80,10 -P 0 -l 60 -- -m 256K -M 256K
- 87380  16384 262144    60.00    52531.67
-
-AFTER:
-======
-(netserver pinned to core receiving interrupts)
-$ netperf -H 10.221.81.118 -T 80,9 -P 0 -l 60 -- -m 256K -M 256K
- 87380  16384 262144    60.00    52896.06
-
-(netserver pinned to adjacent core receiving interrupts)
- $ netperf -H 10.221.81.118 -T 80,10 -P 0 -l 60 -- -m 256K -M 256K
- 87380  16384 262144    60.00    85094.90
-
-Additional tests across a larger range of parameters w/ and w/o LRO, w/
-and w/o IPv6-encapsulation, different MTUs (1500, 4096, 9000), different
-TCP read/write-sizes as well as UDP benchmarks, all have shown equal or
-better performance with this patch.
-
-Signed-off-by: Christoph Paasch <cpaasch@openai.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/net/ethernet/mellanox/mlx5/core/en_rx.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Aaron Kling (7):
+      dt-bindings: memory: tegra210: Add memory client IDs
+      dt-bindings: devfreq: tegra30-actmon: Add Tegra124 fallback for Tegra210
+      soc: tegra: fuse: speedo-tegra210: Add soc speedo 2
+      memory: tegra210: Support interconnect framework
+      arm64: tegra: tegra210: Add actmon
+      arm64: tegra: Add interconnect properties to Tegra210 device-tree
+      arm64: tegra: Add OPP tables on Tegra210
 
-diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
-index 8bedbda522808cbabc8e62ae91a8c25d66725ebb..792bb647ba28668ad7789c328456e3609440455d 100644
---- a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
-+++ b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
-@@ -2047,6 +2047,8 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
- 		dma_sync_single_for_cpu(rq->pdev, addr + head_offset, headlen,
- 					rq->buff.map_dir);
- 
-+		headlen = eth_get_headlen(skb->dev, head_addr, headlen);
-+
- 		frag_offset += headlen;
- 		byte_cnt -= headlen;
- 		linear_hr = skb_headroom(skb);
-@@ -2123,6 +2125,9 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
- 				pagep->frags++;
- 			while (++pagep < frag_page);
- 		}
-+
-+		headlen = eth_get_headlen(skb->dev, mxbuf->xdp.data, headlen);
-+
- 		__pskb_pull_tail(skb, headlen);
- 	} else {
- 		if (xdp_buff_has_frags(&mxbuf->xdp)) {
+ .../bindings/devfreq/nvidia,tegra30-actmon.yaml    |  13 +-
+ .../boot/dts/nvidia/tegra210-peripherals-opp.dtsi  | 135 ++++++++++
+ arch/arm64/boot/dts/nvidia/tegra210.dtsi           |  43 ++++
+ drivers/memory/tegra/Kconfig                       |   1 +
+ drivers/memory/tegra/tegra210-emc-core.c           | 276 ++++++++++++++++++++-
+ drivers/memory/tegra/tegra210-emc.h                |  25 ++
+ drivers/memory/tegra/tegra210.c                    |  81 ++++++
+ drivers/soc/tegra/fuse/speedo-tegra210.c           |   1 +
+ include/dt-bindings/memory/tegra210-mc.h           |  58 +++++
+ 9 files changed, 626 insertions(+), 7 deletions(-)
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250822-t210-actmon-34904ce7ed0c
+prerequisite-change-id: 20250812-tegra210-speedo-470691e8b8cc:v1
+prerequisite-patch-id: 81859c81abbe79aed1cfbc95b4f5bcdc5637d6bd
+prerequisite-patch-id: 98bda8855bcc57c59b2231b7808d4478301afe68
+prerequisite-patch-id: 6e0b69d42ea542dc9f58b410abd5974644f75dc4
+prerequisite-patch-id: 9e3b9b2fdb8d9c2264dfa7641d1aec84fb7aedd9
+prerequisite-patch-id: ef4bcc4ddba7898b188fb3fc6e414a2662183f91
 
+Best regards,
 -- 
-2.50.1
+Aaron Kling <webgeek1234@gmail.com>
 
