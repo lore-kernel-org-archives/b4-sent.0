@@ -1,11 +1,11 @@
 From: Christoph Paasch <cpaasch@openai.com>
-Date: Thu, 28 Aug 2025 20:36:18 -0700
-Subject: [PATCH net-next v4 1/2] net/mlx5: DMA-sync earlier in
- mlx5e_skb_from_cqe_mpwrq_nonlinear
+Date: Thu, 28 Aug 2025 20:36:19 -0700
+Subject: [PATCH net-next v4 2/2] net/mlx5: Avoid copying payload to the
+ skb's linear part
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250828-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v4-1-bfcd5033a77c@openai.com>
+Message-Id: <20250828-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v4-2-bfcd5033a77c@openai.com>
 References: <20250828-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v4-0-bfcd5033a77c@openai.com>
 In-Reply-To: <20250828-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v4-0-bfcd5033a77c@openai.com>
 To: Gal Pressman <gal@nvidia.com>, Dragos Tatulea <dtatulea@nvidia.com>, 
@@ -21,95 +21,92 @@ To: Gal Pressman <gal@nvidia.com>, Dragos Tatulea <dtatulea@nvidia.com>,
 Cc: netdev@vger.kernel.org, linux-rdma@vger.kernel.org, bpf@vger.kernel.org, 
  Christoph Paasch <cpaasch@openai.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756438601; l=3092;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756438601; l=3043;
  i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
- bh=wZ6sujNCZEX35sUzLOUfZGnKZmRTmAIAxJyg34hRjcA=;
- b=rnMQRxqgOg0aVxfMv5HMSU/R+nK3utU0awxFrR/2DiC4G6bhKid5XH8jAzulXAnxLoff7+OtT
- D8Llm1LxhKaBrLKGLVNXb6iJQ+dNDLXYEaLMEs6QbeFGlWoZeutw/qI
+ bh=y7LtUbcF5JRYBgmDw1NmNcS7qz3njkpiJ46UXeQKaCA=;
+ b=gGL2dBi6b5WvPIfnKANxlMK5GS+xlLDFfZzpE/RbJFL6HXaKAleVBVuHG3e8MVgQtgHpHUAHB
+ 0E+4z1eaWTgBkvFDh+nki1wdDeP6vX8t2EaFOgcSIS6aC/+bjNPRUl3
 X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
  pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
 X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Doing the call to dma_sync_single_for_cpu() earlier will allow us to
-adjust headlen based on the actual size of the protocol headers.
+mlx5e_skb_from_cqe_mpwrq_nonlinear() copies MLX5E_RX_MAX_HEAD (256)
+bytes from the page-pool to the skb's linear part. Those 256 bytes
+include part of the payload.
 
-Doing this earlier means that we don't need to call
-mlx5e_copy_skb_header() anymore and rather can call
-skb_copy_to_linear_data() directly.
+When attempting to do GRO in skb_gro_receive, if headlen > data_offset
+(and skb->head_frag is not set), we end up aggregating packets in the
+frag_list.
+
+This is of course not good when we are CPU-limited. Also causes a worse
+skb->len/truesize ratio,...
+
+So, let's avoid copying parts of the payload to the linear part. We use
+eth_get_headlen() to parse the headers and compute the length of the
+protocol headers, which will be used to copy the relevant bits ot the
+skb's linear part.
+
+We still allocate MLX5E_RX_MAX_HEAD for the skb so that if the networking
+stack needs to call pskb_may_pull() later on, we don't need to reallocate
+memory.
+
+This gives a nice throughput increase (ARM Neoverse-V2 with CX-7 NIC and
+LRO enabled):
+
+BEFORE:
+=======
+(netserver pinned to core receiving interrupts)
+$ netperf -H 10.221.81.118 -T 80,9 -P 0 -l 60 -- -m 256K -M 256K
+ 87380  16384 262144    60.01    32547.82
+
+(netserver pinned to adjacent core receiving interrupts)
+$ netperf -H 10.221.81.118 -T 80,10 -P 0 -l 60 -- -m 256K -M 256K
+ 87380  16384 262144    60.00    52531.67
+
+AFTER:
+======
+(netserver pinned to core receiving interrupts)
+$ netperf -H 10.221.81.118 -T 80,9 -P 0 -l 60 -- -m 256K -M 256K
+ 87380  16384 262144    60.00    52896.06
+
+(netserver pinned to adjacent core receiving interrupts)
+ $ netperf -H 10.221.81.118 -T 80,10 -P 0 -l 60 -- -m 256K -M 256K
+ 87380  16384 262144    60.00    85094.90
+
+Additional tests across a larger range of parameters w/ and w/o LRO, w/
+and w/o IPv6-encapsulation, different MTUs (1500, 4096, 9000), different
+TCP read/write-sizes as well as UDP benchmarks, all have shown equal or
+better performance with this patch.
 
 Signed-off-by: Christoph Paasch <cpaasch@openai.com>
 ---
- drivers/net/ethernet/mellanox/mlx5/core/en_rx.c | 19 ++++++++++++-------
- 1 file changed, 12 insertions(+), 7 deletions(-)
+ drivers/net/ethernet/mellanox/mlx5/core/en_rx.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
 diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
-index b8c609d91d11bd315e8fb67f794a91bd37cd28c0..8bedbda522808cbabc8e62ae91a8c25d66725ebb 100644
+index 8bedbda522808cbabc8e62ae91a8c25d66725ebb..792bb647ba28668ad7789c328456e3609440455d 100644
 --- a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
 +++ b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
-@@ -2005,17 +2005,19 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
- 	struct skb_shared_info *sinfo;
- 	unsigned int truesize = 0;
- 	struct bpf_prog *prog;
-+	void *va, *head_addr;
- 	struct sk_buff *skb;
- 	u32 linear_frame_sz;
- 	u16 linear_data_len;
- 	u16 linear_hr;
--	void *va;
+@@ -2047,6 +2047,8 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
+ 		dma_sync_single_for_cpu(rq->pdev, addr + head_offset, headlen,
+ 					rq->buff.map_dir);
  
- 	prog = rcu_dereference(rq->xdp_prog);
- 
-+	head_addr = netmem_address(head_page->netmem) + head_offset;
-+
- 	if (prog) {
- 		/* area for bpf_xdp_[store|load]_bytes */
--		net_prefetchw(netmem_address(frag_page->netmem) + frag_offset);
-+		net_prefetchw(head_addr);
- 		if (unlikely(mlx5e_page_alloc_fragmented(rq->page_pool,
- 							 &wi->linear_page))) {
- 			rq->stats->buff_alloc_err++;
-@@ -2028,6 +2030,8 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
- 		linear_data_len = 0;
- 		linear_frame_sz = MLX5_SKB_FRAG_SZ(linear_hr + MLX5E_RX_MAX_HEAD);
- 	} else {
-+		dma_addr_t addr;
-+
- 		skb = napi_alloc_skb(rq->cq.napi,
- 				     ALIGN(MLX5E_RX_MAX_HEAD, sizeof(long)));
- 		if (unlikely(!skb)) {
-@@ -2039,6 +2043,10 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
- 		net_prefetchw(va); /* xdp_frame data area */
- 		net_prefetchw(skb->data);
- 
-+		addr = page_pool_get_dma_addr_netmem(head_page->netmem);
-+		dma_sync_single_for_cpu(rq->pdev, addr + head_offset, headlen,
-+					rq->buff.map_dir);
++		headlen = eth_get_headlen(skb->dev, head_addr, headlen);
 +
  		frag_offset += headlen;
  		byte_cnt -= headlen;
  		linear_hr = skb_headroom(skb);
-@@ -2117,8 +2125,6 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
- 		}
- 		__pskb_pull_tail(skb, headlen);
- 	} else {
--		dma_addr_t addr;
--
- 		if (xdp_buff_has_frags(&mxbuf->xdp)) {
- 			struct mlx5e_frag_page *pagep;
- 
-@@ -2133,9 +2139,8 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
+@@ -2123,6 +2125,9 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
+ 				pagep->frags++;
  			while (++pagep < frag_page);
  		}
- 		/* copy header */
--		addr = page_pool_get_dma_addr_netmem(head_page->netmem);
--		mlx5e_copy_skb_header(rq, skb, head_page->netmem, addr,
--				      head_offset, head_offset, headlen);
-+		skb_copy_to_linear_data(skb, head_addr, headlen);
 +
- 		/* skb linear part was allocated with headlen and aligned to long */
- 		skb->tail += headlen;
- 		skb->len  += headlen;
++		headlen = eth_get_headlen(skb->dev, mxbuf->xdp.data, headlen);
++
+ 		__pskb_pull_tail(skb, headlen);
+ 	} else {
+ 		if (xdp_buff_has_frags(&mxbuf->xdp)) {
 
 -- 
 2.50.1
