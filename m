@@ -1,97 +1,111 @@
-From: qaqland <anguoli@uniontech.com>
-Date: Fri, 29 Aug 2025 14:40:48 +0800
-Subject: [PATCH] ALSA: usb-audio: Add mute TLV for playback volumes on more
- devices
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Fri, 29 Aug 2025 16:46:06 +0800
+Subject: [PATCH] ALSA: docs: Add documents for recently changes in
+ snd-usb-audio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250829-sound_quirk-v1-1-745529b44440@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAG9LsWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDCyNL3eL80ryU+MLSzKJsXRODpNRU02RLY1MDIyWgjoKi1LTMCrBp0bG
- 1tQD9alItXQAAAA==
-X-Change-ID: 20250829-sound_quirk-40bee5c93502
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mingcong Bai <jeffbai@aosc.io>, Kexy Biscuit <kexybiscuit@aosc.io>, 
- Nie Cheng <niecheng1@uniontech.com>, Zhan Jun <zhanjun@uniontech.com>, 
- Feng Yuan <fengyuan@uniontech.com>, 
- Cryolitia PukNgae <cryolitia@uniontech.com>, 
- qaqland <anguoli@uniontech.com>
+Message-Id: <20250829-sound-doc-v1-1-e0110452b03d@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAM1osWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDCyNL3eL80rwU3ZT8ZF1z42SzVFMTEwvLFEMloPqCotS0zAqwWdGxtbU
+ AYedTW1sAAAA=
+X-Change-ID: 20250829-sound-doc-73c6e54489d1
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: linux-sound@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, niecheng1@uniontech.com, 
+ zhanjun@uniontech.com, Cryolitia PukNgae <cryolitia@uniontech.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756449669; l=3151;
- i=anguoli@uniontech.com; s=20250829; h=from:subject:message-id;
- bh=Hpktb+CQ4vd5dzIX+ki+zIh0ybyRu/1SRUs42KE6TK8=;
- b=LV4XUBokc49WaeVA5A9i9im5sdmxa1hF80JhOMs+Lb+JYP0H/clCAxAn0dvwCaQQbFgoWqYnk
- lO5adVEN5lBD6tfgMn0b2u3TEW5W5xxKtXR3MOcvNDmZhbQX8cX+OpS
-X-Developer-Key: i=anguoli@uniontech.com; a=ed25519;
- pk=boYZUYN5CUcKxq2lHODsag4XCrry/KC4N81H4GYjPpU=
-X-Endpoint-Received: by B4 Relay for anguoli@uniontech.com/20250829 with auth_id=503
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756457187; l=3763;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=HE89odsIwYI1Vul0J0CIerepfkejArZ/qTv9Q4oEXbY=;
+ b=K4pQlW5283gHmgF0tuapReYbIHgrysYjpS0ltdEVRBVl5YcdIkLPZNJiNbKub9gScdwYiODmH
+ koJvJicRJ6jAAjgm5wFOaskFcTntv3F86uVw9M/5r+XCm+6sbPDOBHQ
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Applying the quirk of that, the lowest Playback mixer volume setting
-mutes the audio output, on more devices.
+Changed:
+  - ignore_ctl_error
+  - lowlatency
+  - skip_validation
+  - quirk_flags[19:24]
 
-Suggested-by: Cryolitia PukNgae <cryolitia@uniontech.com>
-Signed-off-by: qaqland <anguoli@uniontech.com>
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- sound/usb/quirks.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ Documentation/sound/alsa-configuration.rst | 29 +++++++++++++++++++++++++----
+ 1 file changed, 25 insertions(+), 4 deletions(-)
 
-diff --git a/sound/usb/quirks.c b/sound/usb/quirks.c
-index 8bc1e247cdf1af0a3e9c506830d8428a86c25595..766db7d00cbc95984afa834200ebe3adfdf182ef 100644
---- a/sound/usb/quirks.c
-+++ b/sound/usb/quirks.c
-@@ -2199,6 +2199,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
- 		   QUIRK_FLAG_SET_IFACE_FIRST),
- 	DEVICE_FLG(0x0556, 0x0014, /* Phoenix Audio TMX320VC */
- 		   QUIRK_FLAG_GET_SAMPLE_RATE),
-+	DEVICE_FLG(0x0572, 0x1b08, /* Conexant Systems (Rockwell), Inc. */
-+		   QUIRK_FLAG_MIXER_MIN_MUTE),
- 	DEVICE_FLG(0x0572, 0x1b09, /* Conexant Systems (Rockwell), Inc. */
- 		   QUIRK_FLAG_MIXER_MIN_MUTE),
- 	DEVICE_FLG(0x05a3, 0x9420, /* ELP HD USB Camera */
-@@ -2243,6 +2245,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
- 		   QUIRK_FLAG_CTL_MSG_DELAY_1M),
- 	DEVICE_FLG(0x0b0e, 0x0349, /* Jabra 550a */
- 		   QUIRK_FLAG_CTL_MSG_DELAY_1M),
-+	DEVICE_FLG(0x0bda, 0x498a, /* Realtek Semiconductor Corp. */
-+		   QUIRK_FLAG_MIXER_MIN_MUTE),
- 	DEVICE_FLG(0x0c45, 0x6340, /* Sonix HD USB Camera */
- 		   QUIRK_FLAG_GET_SAMPLE_RATE),
- 	DEVICE_FLG(0x0c45, 0x636b, /* Microdia JP001 USB Camera */
-@@ -2259,6 +2263,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
- 		   QUIRK_FLAG_SHARE_MEDIA_DEVICE | QUIRK_FLAG_ALIGN_TRANSFER),
- 	DEVICE_FLG(0x1101, 0x0003, /* Audioengine D1 */
- 		   QUIRK_FLAG_GET_SAMPLE_RATE),
-+	DEVICE_FLG(0x12d1, 0x3a07, /* Huawei Technologies Co., Ltd. */
-+		   QUIRK_FLAG_MIXER_MIN_MUTE),
- 	DEVICE_FLG(0x1224, 0x2a25, /* Jieli Technology USB PHY 2.0 */
- 		   QUIRK_FLAG_GET_SAMPLE_RATE | QUIRK_FLAG_MIC_RES_16),
- 	DEVICE_FLG(0x1395, 0x740a, /* Sennheiser DECT */
-@@ -2349,6 +2355,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
- 		   QUIRK_FLAG_IGNORE_CTL_ERROR),
- 	DEVICE_FLG(0x2912, 0x30c8, /* Audioengine D1 */
- 		   QUIRK_FLAG_GET_SAMPLE_RATE),
-+	DEVICE_FLG(0x2a70, 0x1881, /* OnePlus Technology (Shenzhen) Co., Ltd. BE02T */
-+		   QUIRK_FLAG_MIXER_MIN_MUTE),
- 	DEVICE_FLG(0x2b53, 0x0023, /* Fiero SC-01 (firmware v1.0.0 @ 48 kHz) */
- 		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
- 	DEVICE_FLG(0x2b53, 0x0024, /* Fiero SC-01 (firmware v1.0.0 @ 96 kHz) */
-@@ -2365,6 +2373,8 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
- 		   QUIRK_FLAG_CTL_MSG_DELAY_1M),
- 	DEVICE_FLG(0x30be, 0x0101, /* Schiit Hel */
- 		   QUIRK_FLAG_IGNORE_CTL_ERROR),
-+	DEVICE_FLG(0x339b, 0x3a07, /* Synaptics HONOR USB-C HEADSET */
-+		   QUIRK_FLAG_MIXER_MIN_MUTE),
- 	DEVICE_FLG(0x413c, 0xa506, /* Dell AE515 sound bar */
- 		   QUIRK_FLAG_GET_SAMPLE_RATE),
- 	DEVICE_FLG(0x534d, 0x0021, /* MacroSilicon MS2100/MS2106 */
+diff --git a/Documentation/sound/alsa-configuration.rst b/Documentation/sound/alsa-configuration.rst
+index a45174d165ebdeadd89de5f556483465c5f6e808..77fd70ac12975a271600ebd542672a3afb443d39 100644
+--- a/Documentation/sound/alsa-configuration.rst
++++ b/Documentation/sound/alsa-configuration.rst
+@@ -2253,8 +2253,15 @@ device_setup
+     Default: 0x0000 
+ ignore_ctl_error
+     Ignore any USB-controller regarding mixer interface (default: no)
++    ``ignore_ctl_error=1`` may help when you get an error at accessing
++    the mixer element such as URB error -22.  This happens on some
++    buggy USB device or the controller.  This workaround corresponds to
++    the ``quirk_flags`` bit 14, too.
+ autoclock
+     Enable auto-clock selection for UAC2 devices (default: yes)
++lowlatency
++    Enable low latency playback mode (default: yes).
++    Could disable it to switch back to the old mode if face a regression.
+ quirk_alias
+     Quirk alias list, pass strings like ``0123abcd:5678beef``, which
+     applies the existing quirk for the device 5678:beef to a new
+@@ -2284,6 +2291,11 @@ delayed_register
+     The driver prints a message like "Found post-registration device
+     assignment: 1234abcd:04" for such a device, so that user can
+     notice the need.
++skip_validation
++    Skip unit descriptor validation (default: no).
++    The option is used to ignores the validation errors with the hexdump
++    of the unit descriptor instead of a driver probe error, so that we
++    can check its details.
+ quirk_flags
+     Contains the bit flags for various device specific workarounds.
+     Applied to the corresponding card index.
+@@ -2307,6 +2319,16 @@ quirk_flags
+         * bit 16: Set up the interface at first like UAC1
+         * bit 17: Apply the generic implicit feedback sync mode
+         * bit 18: Don't apply implicit feedback sync mode
++        * bit 19: Don't closed interface during setting sample rate
++        * bit 20: Force an interface reset whenever stopping & restarting
++          a stream
++        * bit 21: Do not set PCM rate (frequency) when only one rate is
++          available for the given endpoint.
++        * bit 22: Set the fixed resolution 16 for Mic Capture Volume
++        * bit 23: Set the fixed resolution 384 for Mic Capture Volume
++        * bit 24: Set minimum volume control value as mute for devices
++          where the lowest playback value represents muted state instead
++          of minimum audible volume
+ 
+ This module supports multiple devices, autoprobe and hotplugging.
+ 
+@@ -2314,10 +2336,9 @@ NB: ``nrpacks`` parameter can be modified dynamically via sysfs.
+ Don't put the value over 20.  Changing via sysfs has no sanity
+ check.
+ 
+-NB: ``ignore_ctl_error=1`` may help when you get an error at accessing
+-the mixer element such as URB error -22.  This happens on some
+-buggy USB device or the controller.  This workaround corresponds to
+-the ``quirk_flags`` bit 14, too.
++NB: ``ignore_ctl_error=1`` just provides A quick way to work around the
++issues.  If you have a buggy device that requires these quirks, please
++report it to the upstream.
+ 
+ NB: ``quirk_alias`` option is provided only for testing / development.
+ If you want to have a proper support, contact to upstream for
 
 ---
-base-commit: 112f7d3cff02e357c2f7a116fd7ab6a366ed27f4
-change-id: 20250829-sound_quirk-40bee5c93502
+base-commit: 15be520ab00cfc9c59fa1623de6757f61ab42d8a
+change-id: 20250829-sound-doc-73c6e54489d1
 
 Best regards,
 -- 
-qaqland <anguoli@uniontech.com>
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
