@@ -1,14 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v4 0/3] support for Amlogic SPI Flash Controller IP
-Date: Fri, 29 Aug 2025 13:16:12 +0800
-Message-Id: <20250829-spifc-v4-0-1e57fd39f584@amlogic.com>
+Date: Fri, 29 Aug 2025 13:16:13 +0800
+Subject: [PATCH v4 1/3] spi: dt-bindings: add Amlogic A113L2 SFC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJw3sWgC/2XMTQqDMBCG4atI1k3Jv9pV71G6MHGigWokKaFFv
- HujVLB0+Q3zvDOKEBxEdClmFCC56PyYhzgVyPTN2AF2bd6IESZJRQSOk7MGy1JR4NJqoBbl3ym
- Ada+tc7vn3bv49OG9ZRNdr3uh+hYSxQRbK4ATYKpR+toMD985czZ+QGsjsYNjdHcsO01pbZXQ0
- pD63/GjU7vj2ZVQM0UEbUurft2yLB+PAWnpDAEAAA==
+Message-Id: <20250829-spifc-v4-1-1e57fd39f584@amlogic.com>
+References: <20250829-spifc-v4-0-1e57fd39f584@amlogic.com>
+In-Reply-To: <20250829-spifc-v4-0-1e57fd39f584@amlogic.com>
 To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Liang Yang <liang.yang@amlogic.com>, 
@@ -17,59 +15,120 @@ Cc: linux-spi@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-amlogic@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756444577; l=1779;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756444577; l=2865;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=0HKyVc11qco89SpE9cjbxY8QuDwSLcwJI37c2AqdRc0=;
- b=UyfouoSwtVHlx1WRl75VGX6HTe6cWganyLSUw2IaoA+5TsZrKiSTg9OTDDON4+ckzjoF/oKb1
- Up6EETv31mdA+wjJVvFt27zDU2SLgzRMvWFJIOu6x+5wXCuuJ/+0v/H
+ bh=9fvNf0gnqsPZj5pbSaN5sASQ2RjSd/OTNrUg3zl92/k=;
+ b=s2PlpVWyRtQJwyUb/TTf8cQB7jhHRCVBm9leQv8rQCUFYbKpu/x9OnOPO349+i/87hiwkQxKT
+ PE85Mf9l1opDiCu938sE4Nuf73SKSFFkHErldgKvSjQGAcJi6X0ynSA
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This Flash Controller is derived by adding an SPI path to the original
+From: Feng Chen <feng.chen@amlogic.com>
+
+The Flash Controller is derived by adding an SPI path to the original
 raw NAND controller. This controller supports two modes: raw mode and
-SPI mode. The raw mode has already been implemented in the community
-(drivers/mtd/nand/raw/meson_nand.c).
-This submission supports the SPI mode.
+SPI mode. The raw mode has already been implemented in the community,
+and the SPI mode is described here.
 
-Add the drivers and bindings corresponding to the SPI Flash Controller.
+Add bindings for Amlogic A113L2 SPI Flash Controller.
 
+Signed-off-by: Feng Chen <feng.chen@amlogic.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v4:
-- Reword desc of 'amlogic, rx-adj' in bingding file.
-- Link to v3: https://lore.kernel.org/r/20250826-spifc-v3-0-7e926041d7f6@amlogic.com
+ .../devicetree/bindings/spi/amlogic,a4-spifc.yaml  | 82 ++++++++++++++++++++++
+ 1 file changed, 82 insertions(+)
 
-Changes in v3:
-- Restore message description and modify subject [1/3] that was omitted in v2. 
-- Link to v2: https://lore.kernel.org/r/20250821-spifc-v2-0-b119f64b5c09@amlogic.com
+diff --git a/Documentation/devicetree/bindings/spi/amlogic,a4-spifc.yaml b/Documentation/devicetree/bindings/spi/amlogic,a4-spifc.yaml
+new file mode 100644
+index 000000000000..b4cef838bcd4
+--- /dev/null
++++ b/Documentation/devicetree/bindings/spi/amlogic,a4-spifc.yaml
+@@ -0,0 +1,82 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++# Copyright (C) 2025 Amlogic, Inc. All rights reserved
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/spi/amlogic,a4-spifc.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: SPI flash controller for Amlogic ARM SoCs
++
++maintainers:
++  - Liang Yang <liang.yang@amlogic.com>
++  - Feng Chen <feng.chen@amlogic.com>
++  - Xianwei Zhao <xianwei.zhao@amlogic.com>
++
++description:
++  The Amlogic SPI flash controller is an extended version of the Amlogic NAND
++  flash controller. It supports SPI Nor Flash and SPI NAND Flash(where the Host
++  ECC HW engine could be enabled).
++
++allOf:
++  - $ref: /schemas/spi/spi-controller.yaml#
++
++properties:
++  compatible:
++    const: amlogic,a4-spifc
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    items:
++      - description: clock apb gate
++      - description: clock used for the controller
++
++  clock-names:
++    items:
++      - const: gate
++      - const: core
++
++  interrupts:
++    maxItems: 1
++
++  amlogic,rx-adj:
++    description:
++      Number of clock cycles by which sampling is delayed.
++    $ref: /schemas/types.yaml#/definitions/uint32
++    enum: [0, 1, 2, 3]
++    default: 0
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - clock-names
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    sfc0: spi@fe08d000 {
++      compatible = "amlogic,a4-spifc";
++      reg = <0xfe08d000 0x800>;
++      clocks = <&clkc_periphs 31>,
++               <&clkc_periphs 102>;
++      clock-names = "gate", "core";
++
++      pinctrl-0 = <&spiflash_default>;
++      pinctrl-names = "default";
++
++      #address-cells = <1>;
++      #size-cells = <0>;
++
++      flash@0 {
++          compatible = "spi-nand";
++          reg = <0>;
++          #address-cells = <1>;
++          #size-cells = <1>;
++          nand-ecc-engine = <&sfc0>;
++          nand-ecc-strength = <8>;
++          nand-ecc-step-size = <512>;
++      };
++    };
 
-Changes in v2:
-- Remove clock reg descriptor and get clock from common clk.
-- Remove ecc and ramdom descriptor in bindings.
-- Modify the format and message description.
-- Link to v1: https://lore.kernel.org/r/20250808-spifc-v1-0-ff4e30e26a6b@amlogic.com
-
----
-Feng Chen (2):
-      spi: dt-bindings: add Amlogic A113L2 SFC
-      spi: amlogic: add driver for Amlogic SPI Flash Controller
-
-Xianwei Zhao (1):
-      MAINTAINERS: Add an entry for Amlogic spifc driver
-
- .../devicetree/bindings/spi/amlogic,a4-spifc.yaml  |   82 ++
- MAINTAINERS                                        |   10 +
- drivers/spi/Kconfig                                |   10 +
- drivers/spi/Makefile                               |    1 +
- drivers/spi/spi-amlogic-spifc-a4.c                 | 1224 ++++++++++++++++++++
- 5 files changed, 1327 insertions(+)
----
-base-commit: f8b3f0d7b2a91ba84d06343c3ca4522e35a65f56
-change-id: 20250804-spifc-5761e35fbe1f
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
