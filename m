@@ -1,160 +1,159 @@
-From: Dmitry Safonov <dima@arista.com>
-Date: Sat, 30 Aug 2025 05:31:47 +0100
-Subject: [PATCH net-next v3 2/2] tcp: Free TCP-AO/TCP-MD5 info/keys without
- RCU
+From: Christoph Paasch <cpaasch@openai.com>
+Date: Sat, 30 Aug 2025 15:55:38 -0700
+Subject: [PATCH net] net/tcp: Fix socket memory leak in TCP-AO failure
+ handling for IPv6
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250830-b4-tcp-ao-md5-rst-finwait2-v3-2-9002fec37444@arista.com>
-References: <20250830-b4-tcp-ao-md5-rst-finwait2-v3-0-9002fec37444@arista.com>
-In-Reply-To: <20250830-b4-tcp-ao-md5-rst-finwait2-v3-0-9002fec37444@arista.com>
+Message-Id: <20250830-tcpao_leak-v1-1-e5878c2c3173@openai.com>
+X-B4-Tracking: v=1; b=H4sIAGmBs2gC/x3MSwqAIBRG4a3EHSdoD6i2EhFmv3UpLFQiiPaeN
+ PwG5zwU4BmBuuwhj4sDHy5B5RmZVbsFgudkKmRRy6aUIppTH+MOvQlbKhjUrZ5QUQpOD8v3P+v
+ JIdLwvh8q01JOYQAAAA==
+X-Change-ID: 20250830-tcpao_leak-f31ece59abe4
 To: Eric Dumazet <edumazet@google.com>, 
  Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
  "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: Bob Gilligan <gilligan@arista.com>, 
+ Simon Horman <horms@kernel.org>, Dmitry Safonov <0x7f454c46@gmail.com>, 
  Salam Noureddine <noureddine@arista.com>, 
- Dmitry Safonov <0x7f454c46@gmail.com>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dmitry Safonov <dima@arista.com>
+ Francesco Ruggeri <fruggeri@arista.com>
+Cc: netdev@vger.kernel.org, Christoph Paasch <cpaasch@openai.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756528313; l=4256;
- i=dima@arista.com; s=20250521; h=from:subject:message-id;
- bh=P64RHNAbzWoxqf+XTtQCld5UZ9RLOa3lgy1PDQwJoH4=;
- b=6ZJTPwTyoWZ2UO2BjROhGlxUBaYN/EKB+w6UlcoVXBIzi7poz4freVfZQo7IOf8OVRtbY62PZ
- tniskatGh21ADZxDVmoDnuPLubgXt5T+TnLLfDBSDMDUuiUs45EQjWC
-X-Developer-Key: i=dima@arista.com; a=ed25519;
- pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
-X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756594546; l=4109;
+ i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
+ bh=bs8zLk+wSSc+das9LF5n3Y0ftafMIM0Nr9MLDmbxX6g=;
+ b=qmFN1mCdYzoSk7RZE1YVj0U+s+kndOFpMCbtY9CzgESdjhV8M7uZKqlECkBvdP2+d70EkGfQy
+ ekj8kiyRCokCxcAwWurCCjPvCLnqKc7HxIg5hZeVOAk5LJsGlYgCiaR
+X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
+ pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
+X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that the destruction of info/keys is delayed until the socket
-destructor, it's safe to use kfree() without an RCU callback.
-As either socket was yet in TCP_CLOSE state or the socket refcounter is
-zero and no one can discover it anymore, it's safe to release memory
-straight away.
-Similar thing was possible for twsk already.
+When tcp_ao_copy_all_matching() fails in tcp_v6_syn_recv_sock() it just
+exits the function. This ends up causing a memory-leak:
 
-Signed-off-by: Dmitry Safonov <dima@arista.com>
+unreferenced object 0xffff0000281a8200 (size 2496):
+  comm "softirq", pid 0, jiffies 4295174684
+  hex dump (first 32 bytes):
+    7f 00 00 06 7f 00 00 06 00 00 00 00 cb a8 88 13  ................
+    0a 00 03 61 00 00 00 00 00 00 00 00 00 00 00 00  ...a............
+  backtrace (crc 5ebdbe15):
+    kmemleak_alloc+0x44/0xe0
+    kmem_cache_alloc_noprof+0x248/0x470
+    sk_prot_alloc+0x48/0x120
+    sk_clone_lock+0x38/0x3b0
+    inet_csk_clone_lock+0x34/0x150
+    tcp_create_openreq_child+0x3c/0x4a8
+    tcp_v6_syn_recv_sock+0x1c0/0x620
+    tcp_check_req+0x588/0x790
+    tcp_v6_rcv+0x5d0/0xc18
+    ip6_protocol_deliver_rcu+0x2d8/0x4c0
+    ip6_input_finish+0x74/0x148
+    ip6_input+0x50/0x118
+    ip6_sublist_rcv+0x2fc/0x3b0
+    ipv6_list_rcv+0x114/0x170
+    __netif_receive_skb_list_core+0x16c/0x200
+    netif_receive_skb_list_internal+0x1f0/0x2d0
+
+This is because in tcp_v6_syn_recv_sock (and the IPv4 counterpart), when
+exiting upon error, inet_csk_prepare_forced_close() and tcp_done() need
+to be called. They make sure the newsk will end up being correctly
+free'd.
+
+tcp_v4_syn_recv_sock() makes this very clear by having the put_and_exit
+label that takes care of things. So, this patch here makes sure
+tcp_v4_syn_recv_sock and tcp_v6_syn_recv_sock have similar
+error-handling and thus fixes the leak for TCP-AO.
+
+Fixes: 06b22ef29591 ("net/tcp: Wire TCP-AO to request sockets")
+Signed-off-by: Christoph Paasch <cpaasch@openai.com>
 ---
- net/ipv4/tcp.c           | 17 +++--------------
- net/ipv4/tcp_ao.c        |  5 ++---
- net/ipv4/tcp_ipv4.c      |  4 ++--
- net/ipv4/tcp_minisocks.c | 19 +++++--------------
- 4 files changed, 12 insertions(+), 33 deletions(-)
+ net/ipv6/tcp_ipv6.c | 32 +++++++++++++++-----------------
+ 1 file changed, 15 insertions(+), 17 deletions(-)
 
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index e2ec4ee0ff4a640e9e5501a0d93fc0ed312d488d..254ca95d0c3c5c44029be0e84120c5e9fb9d4514 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -413,27 +413,16 @@ static u64 tcp_compute_delivery_rate(const struct tcp_sock *tp)
- }
+diff --git a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
+index 7577e7eb2c97b821826f633a11dd5567dde7b7cb..e885629312a4a7a98df00222b420b646a351868f 100644
+--- a/net/ipv6/tcp_ipv6.c
++++ b/net/ipv6/tcp_ipv6.c
+@@ -1431,17 +1431,17 @@ static struct sock *tcp_v6_syn_recv_sock(const struct sock *sk, struct sk_buff *
+ 	ireq = inet_rsk(req);
  
- #ifdef CONFIG_TCP_MD5SIG
--static void tcp_md5sig_info_free_rcu(struct rcu_head *head)
--{
--	struct tcp_md5sig_info *md5sig;
--
--	md5sig = container_of(head, struct tcp_md5sig_info, rcu);
--	kfree(md5sig);
--	static_branch_slow_dec_deferred(&tcp_md5_needed);
--	tcp_md5_release_sigpool();
--}
--
- void tcp_md5_destruct_sock(struct sock *sk)
- {
- 	struct tcp_sock *tp = tcp_sk(sk);
+ 	if (sk_acceptq_is_full(sk))
+-		goto out_overflow;
++		goto exit_overflow;
  
- 	if (tp->md5sig_info) {
--		struct tcp_md5sig_info *md5sig;
- 
--		md5sig = rcu_dereference_protected(tp->md5sig_info, 1);
- 		tcp_clear_md5_list(sk);
--		rcu_assign_pointer(tp->md5sig_info, NULL);
--		call_rcu(&md5sig->rcu, tcp_md5sig_info_free_rcu);
-+		kfree(rcu_replace_pointer(tp->md5sig_info, NULL, 1));
-+		static_branch_slow_dec_deferred(&tcp_md5_needed);
-+		tcp_md5_release_sigpool();
+ 	if (!dst) {
+ 		dst = inet6_csk_route_req(sk, &fl6, req, IPPROTO_TCP);
+ 		if (!dst)
+-			goto out;
++			goto exit;
  	}
- }
- EXPORT_SYMBOL_GPL(tcp_md5_destruct_sock);
-diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
-index bbb8d5f0eae7d3d8887da3fa4d68e248af9060ad..31302be78bc4450b56fa23a390b6d03b2262741d 100644
---- a/net/ipv4/tcp_ao.c
-+++ b/net/ipv4/tcp_ao.c
-@@ -268,9 +268,8 @@ static void tcp_ao_key_free_rcu(struct rcu_head *head)
- 	kfree_sensitive(key);
- }
  
--static void tcp_ao_info_free_rcu(struct rcu_head *head)
-+static void tcp_ao_info_free(struct tcp_ao_info *ao)
- {
--	struct tcp_ao_info *ao = container_of(head, struct tcp_ao_info, rcu);
- 	struct tcp_ao_key *key;
- 	struct hlist_node *n;
+ 	newsk = tcp_create_openreq_child(sk, req, skb);
+ 	if (!newsk)
+-		goto out_nonewsk;
++		goto exit_nonewsk;
  
-@@ -310,7 +309,7 @@ void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
+ 	/*
+ 	 * No need to charge this sock to the relevant IPv6 refcnt debug socks
+@@ -1525,25 +1525,19 @@ static struct sock *tcp_v6_syn_recv_sock(const struct sock *sk, struct sk_buff *
+ 			const union tcp_md5_addr *addr;
  
- 	if (!twsk)
- 		tcp_ao_sk_omem_free(sk, ao);
--	call_rcu(&ao->rcu, tcp_ao_info_free_rcu);
-+	tcp_ao_info_free(ao);
- }
- 
- void tcp_ao_time_wait(struct tcp_timewait_sock *tcptw, struct tcp_sock *tp)
-diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
-index 68bb75bd419cdbfce17048252919996d764ddc1a..f914bda25d8f5170395157b707d3bd2ef04267a1 100644
---- a/net/ipv4/tcp_ipv4.c
-+++ b/net/ipv4/tcp_ipv4.c
-@@ -1503,9 +1503,9 @@ void tcp_clear_md5_list(struct sock *sk)
- 	md5sig = rcu_dereference_protected(tp->md5sig_info, 1);
- 
- 	hlist_for_each_entry_safe(key, n, &md5sig->head, node) {
--		hlist_del_rcu(&key->node);
-+		hlist_del(&key->node);
- 		atomic_sub(sizeof(*key), &sk->sk_omem_alloc);
--		kfree_rcu(key, rcu);
-+		kfree(key);
- 	}
- }
- 
-diff --git a/net/ipv4/tcp_minisocks.c b/net/ipv4/tcp_minisocks.c
-index d1c9e40886463ca308f9f3682c4039f491e7555f..7c2ae07d8d5d2a18d6ce3210cc09ee5d9850ea29 100644
---- a/net/ipv4/tcp_minisocks.c
-+++ b/net/ipv4/tcp_minisocks.c
-@@ -377,26 +377,17 @@ void tcp_time_wait(struct sock *sk, int state, int timeo)
- }
- EXPORT_SYMBOL(tcp_time_wait);
- 
--#ifdef CONFIG_TCP_MD5SIG
--static void tcp_md5_twsk_free_rcu(struct rcu_head *head)
--{
--	struct tcp_md5sig_key *key;
--
--	key = container_of(head, struct tcp_md5sig_key, rcu);
--	kfree(key);
--	static_branch_slow_dec_deferred(&tcp_md5_needed);
--	tcp_md5_release_sigpool();
--}
--#endif
--
- void tcp_twsk_destructor(struct sock *sk)
- {
- #ifdef CONFIG_TCP_MD5SIG
- 	if (static_branch_unlikely(&tcp_md5_needed.key)) {
- 		struct tcp_timewait_sock *twsk = tcp_twsk(sk);
- 
--		if (twsk->tw_md5_key)
--			call_rcu(&twsk->tw_md5_key->rcu, tcp_md5_twsk_free_rcu);
-+		if (twsk->tw_md5_key) {
-+			kfree(twsk->tw_md5_key);
-+			static_branch_slow_dec_deferred(&tcp_md5_needed);
-+			tcp_md5_release_sigpool();
-+		}
+ 			addr = (union tcp_md5_addr *)&newsk->sk_v6_daddr;
+-			if (tcp_md5_key_copy(newsk, addr, AF_INET6, 128, l3index, key)) {
+-				inet_csk_prepare_forced_close(newsk);
+-				tcp_done(newsk);
+-				goto out;
+-			}
++			if (tcp_md5_key_copy(newsk, addr, AF_INET6, 128, l3index, key))
++				goto put_and_exit;
+ 		}
  	}
  #endif
- 	tcp_ao_destroy_sock(sk, true);
+ #ifdef CONFIG_TCP_AO
+ 	/* Copy over tcp_ao_info if any */
+ 	if (tcp_ao_copy_all_matching(sk, newsk, req, skb, AF_INET6))
+-		goto out; /* OOM */
++		goto put_and_exit; /* OOM */
+ #endif
+ 
+-	if (__inet_inherit_port(sk, newsk) < 0) {
+-		inet_csk_prepare_forced_close(newsk);
+-		tcp_done(newsk);
+-		goto out;
+-	}
++	if (__inet_inherit_port(sk, newsk) < 0)
++		goto put_and_exit;
+ 	*own_req = inet_ehash_nolisten(newsk, req_to_sk(req_unhash),
+ 				       &found_dup_sk);
+ 	if (*own_req) {
+@@ -1570,13 +1564,17 @@ static struct sock *tcp_v6_syn_recv_sock(const struct sock *sk, struct sk_buff *
+ 
+ 	return newsk;
+ 
+-out_overflow:
++exit_overflow:
+ 	__NET_INC_STATS(sock_net(sk), LINUX_MIB_LISTENOVERFLOWS);
+-out_nonewsk:
++exit_nonewsk:
+ 	dst_release(dst);
+-out:
++exit:
+ 	tcp_listendrop(sk);
+ 	return NULL;
++put_and_exit:
++	inet_csk_prepare_forced_close(newsk);
++	tcp_done(newsk);
++	goto exit;
+ }
+ 
+ INDIRECT_CALLABLE_DECLARE(struct dst_entry *ipv4_dst_check(struct dst_entry *,
 
+---
+base-commit: 788bc43d8330511af433bf282021a8fecb6b9009
+change-id: 20250830-tcpao_leak-f31ece59abe4
+
+Best regards,
 -- 
-2.42.2
+Christoph Paasch <cpaasch@openai.com>
 
