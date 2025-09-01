@@ -1,173 +1,120 @@
-From: Simon Schuster <schuster.simon@siemens-energy.com>
-Date: Mon, 01 Sep 2025 15:09:53 +0200
-Subject: [PATCH v2 4/4] nios2: implement architecture-specific portion of
- sys_clone3
+From: Mahesh Rao <mahesh.rao@altera.com>
+Subject: [PATCH v6 0/4] stratix10: Add framework for asynchronous
+ communication with SDM
+Date: Mon, 01 Sep 2025 21:13:22 +0800
+Message-Id: <20250901-sip_svc_upstream-v6-0-b4db7f07cbb2@altera.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250901-nios2-implement-clone3-v2-4-53fcf5577d57@siemens-energy.com>
-References: <20250901-nios2-implement-clone3-v2-0-53fcf5577d57@siemens-energy.com>
-In-Reply-To: <20250901-nios2-implement-clone3-v2-0-53fcf5577d57@siemens-energy.com>
-To: Dinh Nguyen <dinguyen@kernel.org>, 
- Christian Brauner <brauner@kernel.org>, Arnd Bergmann <arnd@arndb.de>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@redhat.com>, 
- Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
- "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
- Vlastimil Babka <vbabka@suse.cz>, Mike Rapoport <rppt@kernel.org>, 
- Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
- Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
- Juri Lelli <juri.lelli@redhat.com>, 
- Vincent Guittot <vincent.guittot@linaro.org>, 
- Dietmar Eggemann <dietmar.eggemann@arm.com>, 
- Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
- Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
- Kees Cook <kees@kernel.org>, Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>, Guo Ren <guoren@kernel.org>, 
- Oleg Nesterov <oleg@redhat.com>, Jens Axboe <axboe@kernel.dk>, 
- Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>, 
- Tejun Heo <tj@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>, 
- =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>, 
- Paul Moore <paul@paul-moore.com>, Serge Hallyn <sergeh@kernel.org>, 
- James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>, 
- Anna-Maria Behnsen <anna-maria@linutronix.de>, 
- Frederic Weisbecker <frederic@kernel.org>, 
- Thomas Gleixner <tglx@linutronix.de>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- John Johansen <john.johansen@canonical.com>, 
- Stephen Smalley <stephen.smalley.work@gmail.com>, 
- Ondrej Mosnacek <omosnace@redhat.com>, 
- Kentaro Takeda <takedakn@nttdata.co.jp>, 
- Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>, 
- Richard Henderson <richard.henderson@linaro.org>, 
- Matt Turner <mattst88@gmail.com>, Vineet Gupta <vgupta@kernel.org>, 
- Russell King <linux@armlinux.org.uk>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Brian Cain <bcain@kernel.org>, Huacai Chen <chenhuacai@kernel.org>, 
- WANG Xuerui <kernel@xen0n.name>, Geert Uytterhoeven <geert@linux-m68k.org>, 
- Michal Simek <monstr@monstr.eu>, 
- Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
- Jonas Bonn <jonas@southpole.se>, 
- Stefan Kristiansson <stefan.kristiansson@saunalahti.fi>, 
- Stafford Horne <shorne@gmail.com>, 
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- Helge Deller <deller@gmx.de>, Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- Christophe Leroy <christophe.leroy@csgroup.eu>, 
- Heiko Carstens <hca@linux.ibm.com>, Vasily Gorbik <gor@linux.ibm.com>, 
- Alexander Gordeev <agordeev@linux.ibm.com>, 
- Christian Borntraeger <borntraeger@linux.ibm.com>, 
- Sven Schnelle <svens@linux.ibm.com>, 
- Yoshinori Sato <ysato@users.sourceforge.jp>, Rich Felker <dalias@libc.org>, 
- John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>, 
- Andreas Larsson <andreas@gaisler.com>, Richard Weinberger <richard@nod.at>, 
- Anton Ivanov <anton.ivanov@cambridgegreys.com>, 
- Johannes Berg <johannes@sipsolutions.net>, Borislav Petkov <bp@alien8.de>, 
- Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
- "H. Peter Anvin" <hpa@zytor.com>, Chris Zankel <chris@zankel.net>, 
- Max Filippov <jcmvbkbc@gmail.com>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- linux-riscv@lists.infradead.org, linux-csky@vger.kernel.org, 
- linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- cgroups@vger.kernel.org, linux-security-module@vger.kernel.org, 
- linux-trace-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- linux-perf-users@vger.kernel.org, apparmor@lists.ubuntu.com, 
- selinux@vger.kernel.org, linux-alpha@vger.kernel.org, 
- linux-snps-arc@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
- linux-hexagon@vger.kernel.org, loongarch@lists.linux.dev, 
- linux-m68k@lists.linux-m68k.org, linux-mips@vger.kernel.org, 
- linux-openrisc@vger.kernel.org, linux-parisc@vger.kernel.org, 
- linuxppc-dev@lists.ozlabs.org, linux-s390@vger.kernel.org, 
- linux-sh@vger.kernel.org, sparclinux@vger.kernel.org, 
- linux-um@lists.infradead.org, 
- Simon Schuster <schuster.simon@siemens-energy.com>
-X-Mailer: b4 0.14.3-dev-2ce6c
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756732247; l=2260;
- i=schuster.simon@siemens-energy.com; s=20250818; h=from:subject:message-id;
- bh=af84J4YQt0c2u1+xik140Isbk9cuIhCMOLjW6thJwsY=;
- b=d7NLA1iQDxLQGisMH0KtrKIUv8tslRZQ31+BK5A9IfF7XRRqtN0/NtBHPN1763CSVsp/AaVUs
- Xc5SawZJT/gDUL4ePU56689mSaXuGDc8R0/3KXZ7O8sV4jJB/D/Z4M0
-X-Developer-Key: i=schuster.simon@siemens-energy.com; a=ed25519;
- pk=PUhOMiSp43aSeRE1H41KApxYOluamBFFiMfKlBjocvo=
-X-Endpoint-Received: by B4 Relay for schuster.simon@siemens-energy.com/20250818 with auth_id=495
+X-B4-Tracking: v=1; b=H4sIAPObtWgC/3XR227DIAwG4FeJuC6VMYdAr/Ye01QRICvS2qSQR
+ puqvPtYOqmZkl3+yP5sizvJIcWQyaG6kxTGmGN3KUHtKuJO9vIeaPQlEwSUwDijOfbHPLrjrc9
+ DCvZMQ629dqYRnEtS2voU2vg5k69vj5zC9Vbk4fFIGpsDdd35HIdDNao9q2lygvwUn2IeuvQ1r
+ zOyuXqeLBDXk0dGgYLWIA0z0HL2Yj+GkOy+2LM24lOQbEvAIrQ2SCekK4xfCXwhoNoQeBGUBW2
+ FBPSBrwTxFBSDDUEUoXHeeAXaQL2+Qi4E3BJkEWqOXlhXFuG4FHa/f1eD/qfTOIHaoFReij+zp
+ 2n6BuDNVssgAgAA
+X-Change-ID: 20250131-sip_svc_upstream-e78d8c9b4335
+To: Dinh Nguyen <dinguyen@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Mahesh Rao <mahesh.rao@altera.com>, 
+ Richard Gong <richard.gong@intel.com>, Alan Tull <atull@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Matthew Gerlach <matthew.gerlach@altera.com>, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756732415; l=3555;
+ i=mahesh.rao@altera.com; s=20250107; h=from:subject:message-id;
+ bh=frSJ8z6OF+54546tm2d66zBCkU+yhVDJAZf07QWsMGQ=;
+ b=oSv2fw+9JX0dRpMK7yM4DvEenPAZyqOQB495Ldz11o7rI0Dz0mB4wz4wRCnnmBfmirrzS4TFD
+ +eNjUmSz3LFBGA+FRjGXrUMwvm8bEcKPZoT362giugbf1ZetIYujwVm
+X-Developer-Key: i=mahesh.rao@altera.com; a=ed25519;
+ pk=tQiFUzoKxHrQLDtWeEeaeTeJTl/UfclUHWZy1fjSiyg=
+X-Endpoint-Received: by B4 Relay for mahesh.rao@altera.com/20250107 with auth_id=337
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This commit adds the sys_clone3 entry point for nios2. An
-architecture-specific wrapper (__sys_clone3) is required to save and
-restore additional registers to the kernel stack via SAVE_SWITCH_STACK
-and RESTORE_SWITCH_STACK.
+The patch set includes the following changes:
 
-Signed-off-by: Simon Schuster <schuster.simon@siemens-energy.com>
+- Add protection for querying memory objects in multi-threaded flow.
+- Add support to generate and maintain message id and client id for
+  asynchronous communication with SDM.
+- Add framework to communicate with Secure Device Manager (SDM)
+  asynchronously by sending a request and polling for response.
+- Add commands for performing Remote System Update (RSU) operations
+  asynchronously.
+- Migrate RSU driver to use the asynchronous communication framework.
+
 ---
- arch/nios2/include/asm/syscalls.h | 1 +
- arch/nios2/include/asm/unistd.h   | 2 --
- arch/nios2/kernel/entry.S         | 6 ++++++
- arch/nios2/kernel/syscall_table.c | 1 +
- 4 files changed, 8 insertions(+), 2 deletions(-)
+Changes in v6:
+- Use guard() helper function for svc_mem_lock.
+- Fixed comment message style according to kernel coding style.
+- Added fixes tag to commit message.
+- Removed id generation patch and use in house ida allocator.
+- Changed lock of hashmap db lock from rcu to spinlock for better latency.
 
-diff --git a/arch/nios2/include/asm/syscalls.h b/arch/nios2/include/asm/syscalls.h
-index b4d4ed3bf9c8..0e214b0a0ac8 100644
---- a/arch/nios2/include/asm/syscalls.h
-+++ b/arch/nios2/include/asm/syscalls.h
-@@ -7,6 +7,7 @@
- 
- int sys_cacheflush(unsigned long addr, unsigned long len,
- 				unsigned int op);
-+asmlinkage long __sys_clone3(struct clone_args __user *uargs, size_t size);
- 
- #include <asm-generic/syscalls.h>
- 
-diff --git a/arch/nios2/include/asm/unistd.h b/arch/nios2/include/asm/unistd.h
-index 1146e56473c5..213f6de3cf7b 100644
---- a/arch/nios2/include/asm/unistd.h
-+++ b/arch/nios2/include/asm/unistd.h
-@@ -7,6 +7,4 @@
- #define __ARCH_WANT_STAT64
- #define __ARCH_WANT_SET_GET_RLIMIT
- 
--#define __ARCH_BROKEN_SYS_CLONE3
--
- #endif
-diff --git a/arch/nios2/kernel/entry.S b/arch/nios2/kernel/entry.S
-index 99f0a65e6234..dd40dfd908e5 100644
---- a/arch/nios2/kernel/entry.S
-+++ b/arch/nios2/kernel/entry.S
-@@ -403,6 +403,12 @@ ENTRY(sys_clone)
- 	addi    sp, sp, 4
- 	RESTORE_SWITCH_STACK
- 	ret
-+/* long syscall(SYS_clone3, struct clone_args *cl_args, size_t size); */
-+ENTRY(__sys_clone3)
-+	SAVE_SWITCH_STACK
-+	call	sys_clone3
-+	RESTORE_SWITCH_STACK
-+	ret
- 
- ENTRY(sys_rt_sigreturn)
- 	SAVE_SWITCH_STACK
-diff --git a/arch/nios2/kernel/syscall_table.c b/arch/nios2/kernel/syscall_table.c
-index 434694067d8f..c99818aac9e1 100644
---- a/arch/nios2/kernel/syscall_table.c
-+++ b/arch/nios2/kernel/syscall_table.c
-@@ -13,6 +13,7 @@
- #define __SYSCALL_WITH_COMPAT(nr, native, compat)        __SYSCALL(nr, native)
- 
- #define sys_mmap2 sys_mmap_pgoff
-+#define sys_clone3 __sys_clone3
- 
- void *sys_call_table[__NR_syscalls] = {
- 	[0 ... __NR_syscalls-1] = sys_ni_syscall,
+- Link to v5: https://lore.kernel.org/r/20250708-sip_svc_upstream-v5-0-9c4289256d54@altera.com
 
+- Link to v5: https://lore.kernel.org/r/20250620-sip_svc_upstream-v5-0-732d4ac08a32@altera.com
+
+Changes in v5:
+- Use FIELD_PREP, FIELD_GET() and GENMASK() for bit
+  manipulation for ids.
+- Bring down probing when stratix10_svc_async_init()
+  fails.
+- Other minor fixes.
+
+- Link to v4: https://lore.kernel.org/r/20250610-sip_svc_upstream-v4-0-bcd9d6089071@altera.com
+
+Changes in v4:
+- Added description for svc_mem_lock mutex.
+- Wrapped commit message and comments in source
+  code to kernel coding style as per coding style.
+- Added minor code fixes.
+- Moved variables to the top of the function
+- Removed HWMON support from in the patch-set, this
+  will be sent in a separate patch-set.
+- Added support for RSU commands to asynchronously
+  communicate with SDM.
+- Migrated RSU driver to use the supported 
+  asynchronous commands.
+
+- Link to v3: https://lore.kernel.org/r/20250526-sip_svc_upstream-v3-0-6a08a4502de3@altera.com
+
+Changes in v3:
+- Changed "Stratix 10" to "Stratix10" in the commit
+  message and in source code.
+- Simplified stratix10_svc_add_async_client() by removing
+  redundant code for async common channel initialization.
+- Fixed resource cleanup on negative path in
+  stratix10_svc_remove_async_client() and stratix10_svc_async_init().
+- Removed optional interrupt handler support, will send the patches
+  in a separate patch-set.
+
+- Link to v2: https://lore.kernel.org/r/20250512-sip_svc_upstream-v2-0-fae5c45c059d@altera.com
+
+Changes in v2:
+- Added Reviewed by tag from Rob Herring for dt-binding
+  patch.
+- Resending the patch-set as there is no response from
+  the maintainers for the previous patch submission.
+
+- Link to v1: https://lore.kernel.org/r/20250422-sip_svc_upstream-v1-0-088059190f31@altera.com
+
+---
+Mahesh Rao (4):
+      firmware: stratix10-svc: Add mutex in stratix10 memory management
+      firmware: stratix10-svc: Add support for async communication
+      firmware: stratix10-svc: Add support for RSU commands in asynchronous framework
+      firmware: stratix10-rsu: Migrate RSU driver to use stratix10 asynchronous framework.
+
+ drivers/firmware/stratix10-rsu.c                   | 272 ++++----
+ drivers/firmware/stratix10-svc.c                   | 739 ++++++++++++++++++++-
+ include/linux/firmware/intel/stratix10-smc.h       |  76 +++
+ .../linux/firmware/intel/stratix10-svc-client.h    |  92 +++
+ 4 files changed, 1045 insertions(+), 134 deletions(-)
+---
+base-commit: 5cc61f86dff464a63b6a6e4758f26557fda4d494
+change-id: 20250131-sip_svc_upstream-e78d8c9b4335
+
+Best regards,
 -- 
-2.39.5
+Mahesh Rao <mahesh.rao@altera.com>
 
