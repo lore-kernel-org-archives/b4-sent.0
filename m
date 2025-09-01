@@ -1,93 +1,254 @@
-From: Anthony Brandon <anthony@amarulasolutions.com>
-Date: Mon, 01 Sep 2025 13:37:24 +0200
-Subject: [PATCH] dmaengine: xilinx: xdma: Fix regmap max_register
+From: Simon Schuster <schuster.simon@siemens-energy.com>
+Subject: [PATCH v2 0/4] nios2: Add architecture support for clone3
+Date: Mon, 01 Sep 2025 15:09:49 +0200
+Message-Id: <20250901-nios2-implement-clone3-v2-0-53fcf5577d57@siemens-energy.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250901-xdma-max-reg-v1-1-b6a04561edb1@amarulasolutions.com>
-X-B4-Tracking: v=1; b=H4sIAHOFtWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDSwND3YqU3ETd3MQK3aLUdF1DMxPLZDMTU0tjUwsloJaCotS0zAqwcdG
- xtbUA6UUUal4AAAA=
-X-Change-ID: 20250901-xdma-max-reg-1649c6459358
-To: Lizhi Hou <lizhi.hou@amd.com>, Brian Xu <brian.xu@amd.com>, 
- Raj Kumar Rampelli <raj.kumar.rampelli@amd.com>, 
- Vinod Koul <vkoul@kernel.org>, Michal Simek <michal.simek@amd.com>
-Cc: dmaengine@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, 
- Anthony Brandon <anthony@amarulasolutions.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1961;
- i=anthony@amarulasolutions.com; h=from:subject:message-id;
- bh=Td8m3zq/WUtHpPPBIX28CApxSTxtvMscrufvMw7VZu4=;
- b=owGbwMvMwCUWIi5b4HjluATjabUkhoytrSW8+/XP1KYs0j29dsvB1Y8utfZ8jP7WWPvi9VJxy
- ZfKnuE7OkpZGMS4GGTFFFnKdeR5PZTrypVmPjGGmcPKBDKEgYtTACZyRYyR4VlU+MXDuZ7ZkUvk
- g/WmPFJvl5i5+/JVkYPei2Sd0swF9jH8U3JQ2qvbynxpfYqS/6WloWmyhjyKmW8WHD6UwDfr8Za
- NTAA=
-X-Developer-Key: i=anthony@amarulasolutions.com; a=openpgp;
- fpr=772C1F0D48237E772299E43354171D7041D4C718
-X-Endpoint-Received: by B4 Relay for anthony@amarulasolutions.com/default with auth_id=505
+X-B4-Tracking: v=1; b=H4sIAB2btWgC/3WNzQqDMBCEX0Vy7pZkrT/05HsUD5quuqCJZEUq4
+ rs3Sq89fsPMN7sSCkyinsmuAq0s7F0EvCXKDo3rCfgdWaHGTJemBMdeEHiaR5rILWBH7yiFosM
+ MLeoy162K4zlQx59L/KojDyyLD9v1s5oz/SnR/FOuBjSYtsWHNkVa5E0lfBYEyFHot7v1k6qP4
+ /gCMZ8FFcUAAAA=
+X-Change-ID: 20250818-nios2-implement-clone3-7f252c20860b
+To: Dinh Nguyen <dinguyen@kernel.org>, 
+ Christian Brauner <brauner@kernel.org>, Arnd Bergmann <arnd@arndb.de>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@redhat.com>, 
+ Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
+ "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
+ Vlastimil Babka <vbabka@suse.cz>, Mike Rapoport <rppt@kernel.org>, 
+ Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
+ Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
+ Juri Lelli <juri.lelli@redhat.com>, 
+ Vincent Guittot <vincent.guittot@linaro.org>, 
+ Dietmar Eggemann <dietmar.eggemann@arm.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
+ Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
+ Kees Cook <kees@kernel.org>, Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>, Guo Ren <guoren@kernel.org>, 
+ Oleg Nesterov <oleg@redhat.com>, Jens Axboe <axboe@kernel.dk>, 
+ Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>, 
+ Tejun Heo <tj@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>, 
+ =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>, 
+ Paul Moore <paul@paul-moore.com>, Serge Hallyn <sergeh@kernel.org>, 
+ James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>, 
+ Anna-Maria Behnsen <anna-maria@linutronix.de>, 
+ Frederic Weisbecker <frederic@kernel.org>, 
+ Thomas Gleixner <tglx@linutronix.de>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ John Johansen <john.johansen@canonical.com>, 
+ Stephen Smalley <stephen.smalley.work@gmail.com>, 
+ Ondrej Mosnacek <omosnace@redhat.com>, 
+ Kentaro Takeda <takedakn@nttdata.co.jp>, 
+ Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>, 
+ Richard Henderson <richard.henderson@linaro.org>, 
+ Matt Turner <mattst88@gmail.com>, Vineet Gupta <vgupta@kernel.org>, 
+ Russell King <linux@armlinux.org.uk>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Brian Cain <bcain@kernel.org>, Huacai Chen <chenhuacai@kernel.org>, 
+ WANG Xuerui <kernel@xen0n.name>, Geert Uytterhoeven <geert@linux-m68k.org>, 
+ Michal Simek <monstr@monstr.eu>, 
+ Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
+ Jonas Bonn <jonas@southpole.se>, 
+ Stefan Kristiansson <stefan.kristiansson@saunalahti.fi>, 
+ Stafford Horne <shorne@gmail.com>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ Helge Deller <deller@gmx.de>, Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Heiko Carstens <hca@linux.ibm.com>, Vasily Gorbik <gor@linux.ibm.com>, 
+ Alexander Gordeev <agordeev@linux.ibm.com>, 
+ Christian Borntraeger <borntraeger@linux.ibm.com>, 
+ Sven Schnelle <svens@linux.ibm.com>, 
+ Yoshinori Sato <ysato@users.sourceforge.jp>, Rich Felker <dalias@libc.org>, 
+ John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>, 
+ Andreas Larsson <andreas@gaisler.com>, Richard Weinberger <richard@nod.at>, 
+ Anton Ivanov <anton.ivanov@cambridgegreys.com>, 
+ Johannes Berg <johannes@sipsolutions.net>, Borislav Petkov <bp@alien8.de>, 
+ Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
+ "H. Peter Anvin" <hpa@zytor.com>, Chris Zankel <chris@zankel.net>, 
+ Max Filippov <jcmvbkbc@gmail.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ linux-riscv@lists.infradead.org, linux-csky@vger.kernel.org, 
+ linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ cgroups@vger.kernel.org, linux-security-module@vger.kernel.org, 
+ linux-trace-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-perf-users@vger.kernel.org, apparmor@lists.ubuntu.com, 
+ selinux@vger.kernel.org, linux-alpha@vger.kernel.org, 
+ linux-snps-arc@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-hexagon@vger.kernel.org, loongarch@lists.linux.dev, 
+ linux-m68k@lists.linux-m68k.org, linux-mips@vger.kernel.org, 
+ linux-openrisc@vger.kernel.org, linux-parisc@vger.kernel.org, 
+ linuxppc-dev@lists.ozlabs.org, linux-s390@vger.kernel.org, 
+ linux-sh@vger.kernel.org, sparclinux@vger.kernel.org, 
+ linux-um@lists.infradead.org, 
+ Simon Schuster <schuster.simon@siemens-energy.com>, stable@vger.kernel.org
+X-Mailer: b4 0.14.3-dev-2ce6c
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756732247; l=6552;
+ i=schuster.simon@siemens-energy.com; s=20250818; h=from:subject:message-id;
+ bh=l+zEh4GN06CwujvuIj3y3Fd32BGM/P2y+zLD4+u7l7M=;
+ b=GDpCexNrElu2yO/MxuDkpG+xctyQVH7o61ewBoPT3J8lEgMWXNxMsXtjVUaPsmeHSieQm4/hP
+ 49FpVyBe5rsBihPxAhRaNZH/1KUoHHYEsSlrwUEFI8iutPmfJs+jkNi
+X-Developer-Key: i=schuster.simon@siemens-energy.com; a=ed25519;
+ pk=PUhOMiSp43aSeRE1H41KApxYOluamBFFiMfKlBjocvo=
+X-Endpoint-Received: by B4 Relay for schuster.simon@siemens-energy.com/20250818 with auth_id=495
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The max_register field is assigned the size of the register memory
-region instead of the offset of the last register.
-The result is that reading from the regmap via debugfs can cause
-a segmentation fault:
+This series adds support for the clone3 system call to the nios2
+architecture. This addresses the build-time warning "warning: clone3()
+entry point is missing, please fix" introduced in 505d66d1abfb9
+("clone3: drop __ARCH_WANT_SYS_CLONE3 macro"). The implementation passes
+the relevant clone3 tests of kselftest when applied on top of
+next-20250815:
 
-tail /sys/kernel/debug/regmap/xdma.1.auto/registers
-Unable to handle kernel paging request at virtual address ffff800082f70000
-Mem abort info:
-  ESR = 0x0000000096000007
-  EC = 0x25: DABT (current EL), IL = 32 bits
-  SET = 0, FnV = 0
-  EA = 0, S1PTW = 0
-  FSC = 0x07: level 3 translation fault
-[...]
-Call trace:
- regmap_mmio_read32le+0x10/0x30
- _regmap_bus_reg_read+0x74/0xc0
- _regmap_read+0x68/0x198
- regmap_read+0x54/0x88
- regmap_read_debugfs+0x140/0x380
- regmap_map_read_file+0x30/0x48
- full_proxy_read+0x68/0xc8
- vfs_read+0xcc/0x310
- ksys_read+0x7c/0x120
- __arm64_sys_read+0x24/0x40
- invoke_syscall.constprop.0+0x64/0x108
- do_el0_svc+0xb0/0xd8
- el0_svc+0x38/0x130
- el0t_64_sync_handler+0x120/0x138
- el0t_64_sync+0x194/0x198
-Code: aa1e03e9 d503201f f9400000 8b214000 (b9400000)
----[ end trace 0000000000000000 ]---
-note: tail[1217] exited with irqs disabled
-note: tail[1217] exited with preempt_count 1
-Segmentation fault
+	./run_kselftest.sh
+	TAP version 13
+	1..4
+	# selftests: clone3: clone3
+	ok 1 selftests: clone3: clone3
+	# selftests: clone3: clone3_clear_sighand
+	ok 2 selftests: clone3: clone3_clear_sighand
+	# selftests: clone3: clone3_set_tid
+	ok 3 selftests: clone3: clone3_set_tid
+	# selftests: clone3: clone3_cap_checkpoint_restore
+	ok 4 selftests: clone3: clone3_cap_checkpoint_restore
 
-Signed-off-by: Anthony Brandon <anthony@amarulasolutions.com>
+The series also includes a small patch to kernel/fork.c that ensures
+that clone_flags are passed correctly on architectures where unsigned
+long is insufficient to store the u64 clone_flags. It is marked as a fix
+for stable backporting.
+
+As requested, in v2, this series now further tries to correct this type
+error throughout the whole code base. Thus, it now touches a larger
+number of subsystems and all architectures.
+
+Therefore, another test was performed for ARCH=x86_64 (as a
+representative for 64-bit architectures). Here, the series builds cleanly
+without warnings on defconfig with CONFIG_SECURITY_APPARMOR=y and
+CONFIG_SECURITY_TOMOYO=y (to compile-check the LSM-related changes).
+The build further successfully passes testing/selftests/clone3 (with the
+patch from 20241105062948.1037011-1-zhouyuhang1010@163.com to prepare
+clone3_cap_checkpoint_restore for compatibility with the newer libcap
+version on my system).
+
+Is there any option to further preflight check this patch series via
+lkp/KernelCI/etc. for a broader test across architectures, or is this
+degree of testing sufficient to eventually get the series merged?
+
+N.B.: The series is not checkpatch clean right now:
+ - include/linux/cred.h, include/linux/mnt_namespace.h:
+   function definition arguments without identifier name
+ - include/trace/events/task.h:
+   space prohibited after that open parenthesis
+
+I did not fix these warnings to keep my changes minimal and reviewable,
+as the issues persist throughout the files and they were not introduced
+by me; I only followed the existing code style and just replaced the
+types. If desired, I'd be happy to make the changes in a potential v3,
+though.
+
+Signed-off-by: Simon Schuster <schuster.simon@siemens-energy.com>
 ---
- drivers/dma/xilinx/xdma.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/dma/xilinx/xdma.c b/drivers/dma/xilinx/xdma.c
-index 0d88b1a670e142dac90d09c515809faa2476a816..cb73801fd6cf91fc420d6a8ab0c973dcdb5772f5 100644
---- a/drivers/dma/xilinx/xdma.c
-+++ b/drivers/dma/xilinx/xdma.c
-@@ -38,7 +38,7 @@ static const struct regmap_config xdma_regmap_config = {
- 	.reg_bits = 32,
- 	.val_bits = 32,
- 	.reg_stride = 4,
--	.max_register = XDMA_REG_SPACE_LEN,
-+	.max_register = XDMA_REG_SPACE_LEN - 4,
- };
- 
- /**
+Changes in v2:
+- Introduce "Fixes:" and "Cc: stable@vger.kernel.org" where necessary
+- Factor out "Fixes:" when adapting the datatype of clone_flags for
+  easier backports
+- Fix additional instances where `unsigned long` clone_flags is used
+- Reword commit message to make it clearer that any 32-bit arch is
+  affected by this bug
+- Link to v1: https://lore.kernel.org/r/20250821-nios2-implement-clone3-v1-0-1bb24017376a@siemens-energy.com
 
 ---
-base-commit: b320789d6883cc00ac78ce83bccbfe7ed58afcf0
-change-id: 20250901-xdma-max-reg-1649c6459358
+Simon Schuster (4):
+      copy_sighand: Handle architectures where sizeof(unsigned long) < sizeof(u64)
+      copy_process: pass clone_flags as u64 across calltree
+      arch: copy_thread: pass clone_flags as u64
+      nios2: implement architecture-specific portion of sys_clone3
+
+ arch/alpha/kernel/process.c       |  2 +-
+ arch/arc/kernel/process.c         |  2 +-
+ arch/arm/kernel/process.c         |  2 +-
+ arch/arm64/kernel/process.c       |  2 +-
+ arch/csky/kernel/process.c        |  2 +-
+ arch/hexagon/kernel/process.c     |  2 +-
+ arch/loongarch/kernel/process.c   |  2 +-
+ arch/m68k/kernel/process.c        |  2 +-
+ arch/microblaze/kernel/process.c  |  2 +-
+ arch/mips/kernel/process.c        |  2 +-
+ arch/nios2/include/asm/syscalls.h |  1 +
+ arch/nios2/include/asm/unistd.h   |  2 --
+ arch/nios2/kernel/entry.S         |  6 ++++++
+ arch/nios2/kernel/process.c       |  2 +-
+ arch/nios2/kernel/syscall_table.c |  1 +
+ arch/openrisc/kernel/process.c    |  2 +-
+ arch/parisc/kernel/process.c      |  2 +-
+ arch/powerpc/kernel/process.c     |  2 +-
+ arch/riscv/kernel/process.c       |  2 +-
+ arch/s390/kernel/process.c        |  2 +-
+ arch/sh/kernel/process_32.c       |  2 +-
+ arch/sparc/kernel/process_32.c    |  2 +-
+ arch/sparc/kernel/process_64.c    |  2 +-
+ arch/um/kernel/process.c          |  2 +-
+ arch/x86/include/asm/fpu/sched.h  |  2 +-
+ arch/x86/include/asm/shstk.h      |  4 ++--
+ arch/x86/kernel/fpu/core.c        |  2 +-
+ arch/x86/kernel/process.c         |  2 +-
+ arch/x86/kernel/shstk.c           |  2 +-
+ arch/xtensa/kernel/process.c      |  2 +-
+ block/blk-ioc.c                   |  2 +-
+ fs/namespace.c                    |  2 +-
+ include/linux/cgroup.h            |  4 ++--
+ include/linux/cred.h              |  2 +-
+ include/linux/iocontext.h         |  6 +++---
+ include/linux/ipc_namespace.h     |  4 ++--
+ include/linux/lsm_hook_defs.h     |  2 +-
+ include/linux/mnt_namespace.h     |  2 +-
+ include/linux/nsproxy.h           |  2 +-
+ include/linux/pid_namespace.h     |  4 ++--
+ include/linux/rseq.h              |  4 ++--
+ include/linux/sched/task.h        |  2 +-
+ include/linux/security.h          |  4 ++--
+ include/linux/sem.h               |  4 ++--
+ include/linux/time_namespace.h    |  4 ++--
+ include/linux/uprobes.h           |  4 ++--
+ include/linux/user_events.h       |  4 ++--
+ include/linux/utsname.h           |  4 ++--
+ include/net/net_namespace.h       |  4 ++--
+ include/trace/events/task.h       |  6 +++---
+ ipc/namespace.c                   |  2 +-
+ ipc/sem.c                         |  2 +-
+ kernel/cgroup/namespace.c         |  2 +-
+ kernel/cred.c                     |  2 +-
+ kernel/events/uprobes.c           |  2 +-
+ kernel/fork.c                     | 10 +++++-----
+ kernel/nsproxy.c                  |  4 ++--
+ kernel/pid_namespace.c            |  2 +-
+ kernel/sched/core.c               |  4 ++--
+ kernel/sched/fair.c               |  2 +-
+ kernel/sched/sched.h              |  4 ++--
+ kernel/time/namespace.c           |  2 +-
+ kernel/utsname.c                  |  2 +-
+ net/core/net_namespace.c          |  2 +-
+ security/apparmor/lsm.c           |  2 +-
+ security/security.c               |  2 +-
+ security/selinux/hooks.c          |  2 +-
+ security/tomoyo/tomoyo.c          |  2 +-
+ 68 files changed, 95 insertions(+), 89 deletions(-)
+---
+base-commit: 1357b2649c026b51353c84ddd32bc963e8999603
+change-id: 20250818-nios2-implement-clone3-7f252c20860b
 
 Best regards,
 -- 
-Anthony Brandon <anthony@amarulasolutions.com>
+Simon Schuster <schuster.simon@siemens-energy.com>
 
