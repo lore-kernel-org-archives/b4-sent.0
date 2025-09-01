@@ -1,99 +1,111 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Mon, 01 Sep 2025 22:47:48 +0200
-Subject: [PATCH v3 7/7] arm64: dts: rockchip: add mipi csi-2 dphy nodes to
- rk3588
+From: Anthony Brandon <anthony@amarulasolutions.com>
+Date: Mon, 01 Sep 2025 23:30:32 +0200
+Subject: [PATCH v2] dmaengine: xilinx: xdma: Fix regmap max_register
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250616-rk3588-csi-dphy-v3-7-a5ccd5f1f438@collabora.com>
-References: <20250616-rk3588-csi-dphy-v3-0-a5ccd5f1f438@collabora.com>
-In-Reply-To: <20250616-rk3588-csi-dphy-v3-0-a5ccd5f1f438@collabora.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Vinod Koul <vkoul@kernel.org>, Kishon Vijay Abraham I <kishon@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Jagan Teki <jagan@amarulasolutions.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Diederik de Haas <didi.debian@cknow.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Heiko Stuebner <heiko@sntech.de>, 
- Collabora Kernel Team <kernel@collabora.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-phy@lists.infradead.org, 
- Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756759662; l=1931;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=6HJuYpXttybyTSrCNqhc1jbMr3cQPoLfqzHZNqsOuiw=;
- b=McvJKQT7Br08M3TRS8UuRnrp3U7iZxUgI1O6Ym5fvVFYb8DPOOC7ruTNqjDKBlXnXRXmYEO7U
- x6hhasYYQPLA/WfT5QixZLRluPyl/iZyhzekZ4+vHruZ7iXZWWUvIqB
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+Message-Id: <20250901-xdma-max-reg-v2-1-fa3723a718cd@amarulasolutions.com>
+X-B4-Tracking: v=1; b=H4sIAHcQtmgC/3WOQQqDMBBFryKz7pSMNaF21XsUF6NONWCMJCoW8
+ e5N3Xf5HvzH3yFKsBLhke0QZLXR+jFBfsmg6XnsBG2bGHKVa1Uqwq11jI43DNIhmaJsTKHLm75
+ DmkxB3nY7c68qcW/j7MPnrK/0s39CKyFhbVgV2pC0NT3ZcVgGjn5Y5vQpXhvvoDqO4wvf58KTs
+ wAAAA==
+X-Change-ID: 20250901-xdma-max-reg-1649c6459358
+To: Lizhi Hou <lizhi.hou@amd.com>, Brian Xu <brian.xu@amd.com>, 
+ Raj Kumar Rampelli <raj.kumar.rampelli@amd.com>, 
+ Vinod Koul <vkoul@kernel.org>, Michal Simek <michal.simek@amd.com>
+Cc: dmaengine@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Anthony Brandon <anthony@amarulasolutions.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2662;
+ i=anthony@amarulasolutions.com; h=from:subject:message-id;
+ bh=EBsbI+2mqsOLjYpUAS5JaxRB+GFopFCZKJlHq1D/08o=;
+ b=owGbwMvMwCUWIi5b4HjluATjabUkhoxtAs3zz7lceM09Jf/+SkHWJQb5fB0zROt2ty1wUwr0v
+ 6V96varjlIWBjEuBlkxRZZyHXleD+W6cqWZT4xh5rAygQxh4OIUgInkH2X4nydzSpZLnumGyFw/
+ w1l2MyfMWdK0edbmfXkNUnyOpW/0eBn+x/evY7bwklfpea+6/sTppuM1CQ53NvW+7U/VfvD5H1M
+ ZCwA=
+X-Developer-Key: i=anthony@amarulasolutions.com; a=openpgp;
+ fpr=772C1F0D48237E772299E43354171D7041D4C718
+X-Endpoint-Received: by B4 Relay for anthony@amarulasolutions.com/default with auth_id=505
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Rockchip RK3588 features two MIPI CSI-2 DPHYs. Add the device
-tree nodes for them.
+The max_register field is assigned the size of the register memory
+region instead of the offset of the last register.
+The result is that reading from the regmap via debugfs can cause
+a segmentation fault:
 
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+tail /sys/kernel/debug/regmap/xdma.1.auto/registers
+Unable to handle kernel paging request at virtual address ffff800082f70000
+Mem abort info:
+  ESR = 0x0000000096000007
+  EC = 0x25: DABT (current EL), IL = 32 bits
+  SET = 0, FnV = 0
+  EA = 0, S1PTW = 0
+  FSC = 0x07: level 3 translation fault
+[...]
+Call trace:
+ regmap_mmio_read32le+0x10/0x30
+ _regmap_bus_reg_read+0x74/0xc0
+ _regmap_read+0x68/0x198
+ regmap_read+0x54/0x88
+ regmap_read_debugfs+0x140/0x380
+ regmap_map_read_file+0x30/0x48
+ full_proxy_read+0x68/0xc8
+ vfs_read+0xcc/0x310
+ ksys_read+0x7c/0x120
+ __arm64_sys_read+0x24/0x40
+ invoke_syscall.constprop.0+0x64/0x108
+ do_el0_svc+0xb0/0xd8
+ el0_svc+0x38/0x130
+ el0t_64_sync_handler+0x120/0x138
+ el0t_64_sync+0x194/0x198
+Code: aa1e03e9 d503201f f9400000 8b214000 (b9400000)
+---[ end trace 0000000000000000 ]---
+note: tail[1217] exited with irqs disabled
+note: tail[1217] exited with preempt_count 1
+Segmentation fault
+
+Signed-off-by: Anthony Brandon <anthony@amarulasolutions.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 33 +++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+Changes in v2:
+- Define new constant XDMA_MAX_REG_OFFSET and use that.
+- Link to v1: https://lore.kernel.org/r/20250901-xdma-max-reg-v1-1-b6a04561edb1@amarulasolutions.com
+---
+ drivers/dma/xilinx/xdma-regs.h | 1 +
+ drivers/dma/xilinx/xdma.c      | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-index 70f03e68ba55..eedf93247e9c 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-@@ -621,6 +621,16 @@ php_grf: syscon@fd5b0000 {
- 		reg = <0x0 0xfd5b0000 0x0 0x1000>;
- 	};
+diff --git a/drivers/dma/xilinx/xdma-regs.h b/drivers/dma/xilinx/xdma-regs.h
+index 6ad08878e93862b770febb71b8bc85e66813428e..70bca92621aa41b0367d1e236b3e276344a26320 100644
+--- a/drivers/dma/xilinx/xdma-regs.h
++++ b/drivers/dma/xilinx/xdma-regs.h
+@@ -9,6 +9,7 @@
  
-+	csidphy0_grf: syscon@fd5b4000 {
-+		compatible = "rockchip,rk3588-csidphy-grf", "syscon";
-+		reg = <0x0 0xfd5b4000 0x0 0x1000>;
-+	};
-+
-+	csidphy1_grf: syscon@fd5b5000 {
-+		compatible = "rockchip,rk3588-csidphy-grf", "syscon";
-+		reg = <0x0 0xfd5b5000 0x0 0x1000>;
-+	};
-+
- 	pipe_phy0_grf: syscon@fd5bc000 {
- 		compatible = "rockchip,rk3588-pipe-phy-grf", "syscon";
- 		reg = <0x0 0xfd5bc000 0x0 0x100>;
-@@ -3052,6 +3062,29 @@ mipidcphy1: phy@fedb0000 {
- 			 <&cru SRST_S_MIPI_DCPHY1>;
- 		reset-names = "m_phy", "apb", "grf", "s_phy";
- 		#phy-cells = <1>;
-+	};
-+
-+	csi_dphy0: phy@fedc0000 {
-+		compatible = "rockchip,rk3588-csi-dphy";
-+		reg = <0x0 0xfedc0000 0x0 0x8000>;
-+		clocks = <&cru PCLK_CSIPHY0>;
-+		clock-names = "pclk";
-+		#phy-cells = <0>;
-+		resets = <&cru SRST_P_CSIPHY0>, <&cru SRST_CSIPHY0>;
-+		reset-names = "apb", "phy";
-+		rockchip,grf = <&csidphy0_grf>;
-+		status = "disabled";
-+	};
-+
-+	csi_dphy1: phy@fedc8000 {
-+		compatible = "rockchip,rk3588-csi-dphy";
-+		reg = <0x0 0xfedc8000 0x0 0x8000>;
-+		clocks = <&cru PCLK_CSIPHY1>;
-+		clock-names = "pclk";
-+		#phy-cells = <0>;
-+		resets = <&cru SRST_P_CSIPHY1>, <&cru SRST_CSIPHY1>;
-+		reset-names = "apb", "phy";
-+		rockchip,grf = <&csidphy1_grf>;
- 		status = "disabled";
- 	};
+ /* The length of register space exposed to host */
+ #define XDMA_REG_SPACE_LEN	65536
++#define XDMA_MAX_REG_OFFSET	(XDMA_REG_SPACE_LEN - 4)
  
+ /*
+  * maximum number of DMA channels for each direction:
+diff --git a/drivers/dma/xilinx/xdma.c b/drivers/dma/xilinx/xdma.c
+index 0d88b1a670e142dac90d09c515809faa2476a816..5ecf8223c112e468c79ce635398ba393a535b9e0 100644
+--- a/drivers/dma/xilinx/xdma.c
++++ b/drivers/dma/xilinx/xdma.c
+@@ -38,7 +38,7 @@ static const struct regmap_config xdma_regmap_config = {
+ 	.reg_bits = 32,
+ 	.val_bits = 32,
+ 	.reg_stride = 4,
+-	.max_register = XDMA_REG_SPACE_LEN,
++	.max_register = XDMA_MAX_REG_OFFSET,
+ };
+ 
+ /**
 
+---
+base-commit: b320789d6883cc00ac78ce83bccbfe7ed58afcf0
+change-id: 20250901-xdma-max-reg-1649c6459358
+
+Best regards,
 -- 
-2.39.5
+Anthony Brandon <anthony@amarulasolutions.com>
 
