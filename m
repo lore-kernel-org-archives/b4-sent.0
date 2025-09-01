@@ -1,11 +1,11 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Date: Mon, 01 Sep 2025 22:47:47 +0200
-Subject: [PATCH v3 6/7] phy: rockchip: phy-rockchip-inno-csidphy: add
- support for rk3588 variant
+Date: Mon, 01 Sep 2025 22:47:48 +0200
+Subject: [PATCH v3 7/7] arm64: dts: rockchip: add mipi csi-2 dphy nodes to
+ rk3588
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250616-rk3588-csi-dphy-v3-6-a5ccd5f1f438@collabora.com>
+Message-Id: <20250616-rk3588-csi-dphy-v3-7-a5ccd5f1f438@collabora.com>
 References: <20250616-rk3588-csi-dphy-v3-0-a5ccd5f1f438@collabora.com>
 In-Reply-To: <20250616-rk3588-csi-dphy-v3-0-a5ccd5f1f438@collabora.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -24,94 +24,75 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-phy@lists.infradead.org, 
  Michael Riesch <michael.riesch@collabora.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756759662; l=2783;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756759662; l=1931;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=yeQXRqZNa57y0uWiIJSkXVpQ6zTLhd7z989yNwE9ju8=;
- b=axGHdEEOobUeI3zoNKyi3w/BvIeQnc8c0vieQuJvuILqmfq0hDhf2j9lz4n1HHC+mpZpcMGlQ
- sfnI99iovo6Aet9/dP2floam3L5KHcJtMU5lA8hHcrkYTxJ+rk2qwrA
+ bh=6HJuYpXttybyTSrCNqhc1jbMr3cQPoLfqzHZNqsOuiw=;
+ b=McvJKQT7Br08M3TRS8UuRnrp3U7iZxUgI1O6Ym5fvVFYb8DPOOC7ruTNqjDKBlXnXRXmYEO7U
+ x6hhasYYQPLA/WfT5QixZLRluPyl/iZyhzekZ4+vHruZ7iXZWWUvIqB
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Rockchip RK3588 MIPI CSI-2 DPHY can be supported using the existing
-phy-rockchip-inno-csidphy driver, the notable differences being
- - the control bits in the GRF
- - the additional reset line
-Add support for this variant.
+The Rockchip RK3588 features two MIPI CSI-2 DPHYs. Add the device
+tree nodes for them.
 
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- drivers/phy/rockchip/phy-rockchip-inno-csidphy.c | 28 ++++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 33 +++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
-diff --git a/drivers/phy/rockchip/phy-rockchip-inno-csidphy.c b/drivers/phy/rockchip/phy-rockchip-inno-csidphy.c
-index 6c4ddcd7e5de..c79fb53d8ee5 100644
---- a/drivers/phy/rockchip/phy-rockchip-inno-csidphy.c
-+++ b/drivers/phy/rockchip/phy-rockchip-inno-csidphy.c
-@@ -30,6 +30,8 @@
- #define RK3568_GRF_VI_CON0		0x0340
- #define RK3568_GRF_VI_CON1		0x0344
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+index 70f03e68ba55..eedf93247e9c 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+@@ -621,6 +621,16 @@ php_grf: syscon@fd5b0000 {
+ 		reg = <0x0 0xfd5b0000 0x0 0x1000>;
+ 	};
  
-+#define RK3588_CSIDPHY_GRF_CON0		0x0000
++	csidphy0_grf: syscon@fd5b4000 {
++		compatible = "rockchip,rk3588-csidphy-grf", "syscon";
++		reg = <0x0 0xfd5b4000 0x0 0x1000>;
++	};
 +
- /* PHY */
- #define CSIDPHY_CTRL_LANE_ENABLE		0x00
- #define CSIDPHY_CTRL_LANE_ENABLE_CK		BIT(6)
-@@ -117,6 +119,12 @@ static const struct dphy_reg rk3568_grf_dphy_regs[] = {
- 	[GRF_DPHY_CSIPHY_CLKLANE_EN] = PHY_REG(RK3568_GRF_VI_CON0, 1, 8),
- };
++	csidphy1_grf: syscon@fd5b5000 {
++		compatible = "rockchip,rk3588-csidphy-grf", "syscon";
++		reg = <0x0 0xfd5b5000 0x0 0x1000>;
++	};
++
+ 	pipe_phy0_grf: syscon@fd5bc000 {
+ 		compatible = "rockchip,rk3588-pipe-phy-grf", "syscon";
+ 		reg = <0x0 0xfd5bc000 0x0 0x100>;
+@@ -3052,6 +3062,29 @@ mipidcphy1: phy@fedb0000 {
+ 			 <&cru SRST_S_MIPI_DCPHY1>;
+ 		reset-names = "m_phy", "apb", "grf", "s_phy";
+ 		#phy-cells = <1>;
++	};
++
++	csi_dphy0: phy@fedc0000 {
++		compatible = "rockchip,rk3588-csi-dphy";
++		reg = <0x0 0xfedc0000 0x0 0x8000>;
++		clocks = <&cru PCLK_CSIPHY0>;
++		clock-names = "pclk";
++		#phy-cells = <0>;
++		resets = <&cru SRST_P_CSIPHY0>, <&cru SRST_CSIPHY0>;
++		reset-names = "apb", "phy";
++		rockchip,grf = <&csidphy0_grf>;
++		status = "disabled";
++	};
++
++	csi_dphy1: phy@fedc8000 {
++		compatible = "rockchip,rk3588-csi-dphy";
++		reg = <0x0 0xfedc8000 0x0 0x8000>;
++		clocks = <&cru PCLK_CSIPHY1>;
++		clock-names = "pclk";
++		#phy-cells = <0>;
++		resets = <&cru SRST_P_CSIPHY1>, <&cru SRST_CSIPHY1>;
++		reset-names = "apb", "phy";
++		rockchip,grf = <&csidphy1_grf>;
+ 		status = "disabled";
+ 	};
  
-+static const struct dphy_reg rk3588_grf_dphy_regs[] = {
-+	[GRF_DPHY_CSIPHY_FORCERXMODE] = PHY_REG(RK3588_CSIDPHY_GRF_CON0, 4, 0),
-+	[GRF_DPHY_CSIPHY_DATALANE_EN] = PHY_REG(RK3588_CSIDPHY_GRF_CON0, 4, 4),
-+	[GRF_DPHY_CSIPHY_CLKLANE_EN] = PHY_REG(RK3588_CSIDPHY_GRF_CON0, 1, 8),
-+};
-+
- struct hsfreq_range {
- 	u32 range_h;
- 	u8 cfg_bit;
-@@ -183,6 +191,11 @@ static const char *const rk3368_reset_names[] = {
- 	"apb"
- };
- 
-+static const char *const rk3588_reset_names[] = {
-+	"apb",
-+	"phy"
-+};
-+
- static void rockchip_inno_csidphy_ths_settle(struct rockchip_inno_csidphy *priv,
- 					     int hsfreq, int offset)
- {
-@@ -390,6 +403,17 @@ static const struct dphy_drv_data rk3568_mipidphy_drv_data = {
- 	.resets_num = ARRAY_SIZE(rk3368_reset_names),
- };
- 
-+static const struct dphy_drv_data rk3588_mipidphy_drv_data = {
-+	.pwrctl_offset = -1,
-+	.ths_settle_offset = RK3568_CSIDPHY_CLK_WR_THS_SETTLE,
-+	.calib_offset = RK3568_CSIDPHY_CLK_CALIB_EN,
-+	.hsfreq_ranges = rk1808_mipidphy_hsfreq_ranges,
-+	.num_hsfreq_ranges = ARRAY_SIZE(rk1808_mipidphy_hsfreq_ranges),
-+	.grf_regs = rk3588_grf_dphy_regs,
-+	.resets = rk3588_reset_names,
-+	.resets_num = ARRAY_SIZE(rk3588_reset_names),
-+};
-+
- static const struct of_device_id rockchip_inno_csidphy_match_id[] = {
- 	{
- 		.compatible = "rockchip,px30-csi-dphy",
-@@ -411,6 +435,10 @@ static const struct of_device_id rockchip_inno_csidphy_match_id[] = {
- 		.compatible = "rockchip,rk3568-csi-dphy",
- 		.data = &rk3568_mipidphy_drv_data,
- 	},
-+	{
-+		.compatible = "rockchip,rk3588-csi-dphy",
-+		.data = &rk3588_mipidphy_drv_data,
-+	},
- 	{}
- };
- MODULE_DEVICE_TABLE(of, rockchip_inno_csidphy_match_id);
 
 -- 
 2.39.5
