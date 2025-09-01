@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 31 Aug 2025 22:33:52 -0500
-Subject: [PATCH 4/8] memory: tegra186-emc: Support non-bpmp icc scaling
+Date: Sun, 31 Aug 2025 22:33:53 -0500
+Subject: [PATCH 5/8] memory: tegra186: Support icc scaling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250831-tegra186-icc-v1-4-607ddc53b507@gmail.com>
+Message-Id: <20250831-tegra186-icc-v1-5-607ddc53b507@gmail.com>
 References: <20250831-tegra186-icc-v1-0-607ddc53b507@gmail.com>
 In-Reply-To: <20250831-tegra186-icc-v1-0-607ddc53b507@gmail.com>
 To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -18,211 +18,94 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756697663; l=5749;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756697663; l=2383;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=nugNxNxYRHTU1Ah7DRFanUlqmkAHHZfFkwW/lWONkrk=;
- b=S5TROv7iE9e0xCzpglyFSafpRM359kRHrBmko4f7rDzF2zGDVLCfYmdWa79hINg41ke5qKmMS
- ZhearxNVvp0Djkg3KApdc3ME2s8gD0lTFEMy922IArF0Z+BaoCCqhBX
+ bh=oxIJSUp3ozTyoLouc+lEW3YE1MQYQJbWMy5w5OZ/8c0=;
+ b=6HE3/jakqKvQK0W06roOceFvPeItZFKCHApDFX9RQY94sI/gq8GlhcW0BqVLloyCF2g9NDBIK
+ puTwzDavdgDA8WSjScPk/vExPYyuwRC9wL2Q2tPYVhWIcgpHfae/U4w
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This adds support for dynamic frequency scaling of external memory on
-devices with bpmp firmware that does not support bwmgr.
+Add Interconnect framework support to dynamically set the DRAM
+bandwidth from different clients. The MC driver is added as an ICC
+provider and the EMC driver is already a provider.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/memory/tegra/tegra186-emc.c | 132 +++++++++++++++++++++++++++++++++++-
- 1 file changed, 130 insertions(+), 2 deletions(-)
+ drivers/memory/tegra/tegra186.c | 48 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
 
-diff --git a/drivers/memory/tegra/tegra186-emc.c b/drivers/memory/tegra/tegra186-emc.c
-index d6cd90c7ad5380a9ff9052a60f62c9bcc4fdac5f..1711f2e85ad07692feb8f6f14c8c2b10ea42fde5 100644
---- a/drivers/memory/tegra/tegra186-emc.c
-+++ b/drivers/memory/tegra/tegra186-emc.c
-@@ -18,6 +18,17 @@ struct tegra186_emc_dvfs {
- 	unsigned long rate;
+diff --git a/drivers/memory/tegra/tegra186.c b/drivers/memory/tegra/tegra186.c
+index aee11457bf8e032637d1772affb87da0cac68494..1384164f624af5d4aaccedc84443d203ba3db2c6 100644
+--- a/drivers/memory/tegra/tegra186.c
++++ b/drivers/memory/tegra/tegra186.c
+@@ -899,9 +899,56 @@ static const struct tegra_mc_client tegra186_mc_clients[] = {
+ 				.security = 0x51c,
+ 			},
+ 		},
++	}, {
++		.id = TEGRA_ICC_MC_CPU_CLUSTER0,
++		.name = "sw_cluster0",
++		.type = TEGRA_ICC_NISO,
++	}, {
++		.id = TEGRA_ICC_MC_CPU_CLUSTER1,
++		.name = "sw_cluster1",
++		.type = TEGRA_ICC_NISO,
+ 	},
  };
  
-+enum emc_rate_request_type {
-+	EMC_RATE_DEBUG,
-+	EMC_RATE_ICC,
-+	EMC_RATE_TYPE_MAX,
-+};
-+
-+struct emc_rate_request {
-+	unsigned long min_rate;
-+	unsigned long max_rate;
-+};
-+
- struct tegra186_emc {
- 	struct tegra_bpmp *bpmp;
- 	struct device *dev;
-@@ -33,8 +44,90 @@ struct tegra186_emc {
- 	} debugfs;
- 
- 	struct icc_provider provider;
-+
-+	/*
-+	 * There are multiple sources in the EMC driver which could request
-+	 * a min/max clock rate, these rates are contained in this array.
-+	 */
-+	struct emc_rate_request requested_rate[EMC_RATE_TYPE_MAX];
-+
-+	/* protect shared rate-change code path */
-+	struct mutex rate_lock;
- };
- 
-+static void tegra_emc_rate_requests_init(struct tegra186_emc *emc)
++static int tegra186_mc_icc_set(struct icc_node *src, struct icc_node *dst)
 +{
-+	unsigned int i;
-+
-+	for (i = 0; i < EMC_RATE_TYPE_MAX; i++) {
-+		emc->requested_rate[i].min_rate = 0;
-+		emc->requested_rate[i].max_rate = ULONG_MAX;
-+	}
++	/* TODO: program PTSA */
++	return 0;
 +}
 +
-+static int emc_request_rate(struct tegra186_emc *emc,
-+			    unsigned long new_min_rate,
-+			    unsigned long new_max_rate,
-+			    enum emc_rate_request_type type)
++static int tegra186_mc_icc_aggregate(struct icc_node *node, u32 tag, u32 avg_bw,
++				     u32 peak_bw, u32 *agg_avg, u32 *agg_peak)
 +{
-+	struct emc_rate_request *req = emc->requested_rate;
-+	unsigned long min_rate = 0, max_rate = ULONG_MAX;
-+	unsigned int i;
-+	int err;
++	struct icc_provider *p = node->provider;
++	struct tegra_mc *mc = icc_provider_to_tegra_mc(p);
 +
-+	/* select minimum and maximum rates among the requested rates */
-+	for (i = 0; i < EMC_RATE_TYPE_MAX; i++, req++) {
-+		if (i == type) {
-+			min_rate = max(new_min_rate, min_rate);
-+			max_rate = min(new_max_rate, max_rate);
-+		} else {
-+			min_rate = max(req->min_rate, min_rate);
-+			max_rate = min(req->max_rate, max_rate);
-+		}
++	if (node->id == TEGRA_ICC_MC_CPU_CLUSTER0 ||
++	    node->id == TEGRA_ICC_MC_CPU_CLUSTER1) {
++		if (mc)
++			peak_bw = peak_bw * mc->num_channels;
 +	}
 +
-+	if (min_rate > max_rate) {
-+		dev_err_ratelimited(emc->dev, "%s: type %u: out of range: %lu %lu\n",
-+				    __func__, type, min_rate, max_rate);
-+		return -ERANGE;
-+	}
-+
-+	err = clk_set_rate(emc->clk, min_rate);
-+	if (err)
-+		return err;
-+
-+	emc->requested_rate[type].min_rate = new_min_rate;
-+	emc->requested_rate[type].max_rate = new_max_rate;
++	*agg_avg += avg_bw;
++	*agg_peak = max(*agg_peak, peak_bw);
 +
 +	return 0;
 +}
 +
-+static int emc_set_min_rate(struct tegra186_emc *emc, unsigned long rate,
-+			    enum emc_rate_request_type type)
++static int tegra186_mc_icc_get_init_bw(struct icc_node *node, u32 *avg, u32 *peak)
 +{
-+	struct emc_rate_request *req = &emc->requested_rate[type];
-+	int ret;
++	*avg = 0;
++	*peak = 0;
 +
-+	mutex_lock(&emc->rate_lock);
-+	ret = emc_request_rate(emc, rate, req->max_rate, type);
-+	mutex_unlock(&emc->rate_lock);
-+
-+	return ret;
++	return 0;
 +}
 +
-+static int emc_set_max_rate(struct tegra186_emc *emc, unsigned long rate,
-+			    enum emc_rate_request_type type)
-+{
-+	struct emc_rate_request *req = &emc->requested_rate[type];
-+	int ret;
++static const struct tegra_mc_icc_ops tegra186_mc_icc_ops = {
++	.xlate = tegra_mc_icc_xlate,
++	.aggregate = tegra186_mc_icc_aggregate,
++	.get_bw = tegra186_mc_icc_get_init_bw,
++	.set = tegra186_mc_icc_set,
++};
 +
-+	mutex_lock(&emc->rate_lock);
-+	ret = emc_request_rate(emc, req->min_rate, rate, type);
-+	mutex_unlock(&emc->rate_lock);
-+
-+	return ret;
-+}
-+
- /*
-  * debugfs interface
-  *
-@@ -107,7 +200,7 @@ static int tegra186_emc_debug_min_rate_set(void *data, u64 rate)
- 	if (!tegra186_emc_validate_rate(emc, rate))
- 		return -EINVAL;
- 
--	err = clk_set_min_rate(emc->clk, rate);
-+	err = emc_set_min_rate(emc, rate, EMC_RATE_DEBUG);
- 	if (err < 0)
- 		return err;
- 
-@@ -137,7 +230,7 @@ static int tegra186_emc_debug_max_rate_set(void *data, u64 rate)
- 	if (!tegra186_emc_validate_rate(emc, rate))
- 		return -EINVAL;
- 
--	err = clk_set_max_rate(emc->clk, rate);
-+	err = emc_set_max_rate(emc, rate, EMC_RATE_DEBUG);
- 	if (err < 0)
- 		return err;
- 
-@@ -217,6 +310,12 @@ static int tegra186_emc_get_emc_dvfs_latency(struct tegra186_emc *emc)
- 	return 0;
- }
- 
-+static inline struct tegra186_emc *
-+to_tegra186_emc_provider(struct icc_provider *provider)
-+{
-+	return container_of(provider, struct tegra186_emc, provider);
-+}
-+
- /*
-  * tegra_emc_icc_set_bw() - Set BW api for EMC provider
-  * @src: ICC node for External Memory Controller (EMC)
-@@ -227,6 +326,33 @@ static int tegra186_emc_get_emc_dvfs_latency(struct tegra186_emc *emc)
-  */
- static int tegra_emc_icc_set_bw(struct icc_node *src, struct icc_node *dst)
- {
-+	struct tegra186_emc *emc = to_tegra186_emc_provider(dst->provider);
-+	struct tegra_mc *mc = dev_get_drvdata(emc->dev->parent);
-+	unsigned long long peak_bw = icc_units_to_bps(dst->peak_bw);
-+	unsigned long long avg_bw = icc_units_to_bps(dst->avg_bw);
-+	unsigned long long rate = max(avg_bw, peak_bw);
-+	const unsigned int ddr = 2;
-+	int err;
-+
-+	/*
-+	 * Do nothing here if bwmgr is supported in BPMP-FW. BPMP-FW sets the final
-+	 * Freq based on the passed values.
-+	 */
-+	if (mc->bwmgr_mrq_supported)
-+		return 0;
-+
-+	/*
-+	 * Tegra186 EMC runs on a clock rate of SDRAM bus. This means that
-+	 * EMC clock rate is twice smaller than the peak data rate because
-+	 * data is sampled on both EMC clock edges.
-+	 */
-+	do_div(rate, ddr);
-+	rate = min_t(u64, rate, U32_MAX);
-+
-+	err = emc_set_min_rate(emc, rate, EMC_RATE_ICC);
-+	if (err)
-+		return err;
-+
- 	return 0;
- }
- 
-@@ -334,6 +460,8 @@ static int tegra186_emc_probe(struct platform_device *pdev)
- 	platform_set_drvdata(pdev, emc);
- 	emc->dev = &pdev->dev;
- 
-+	tegra_emc_rate_requests_init(emc);
-+
- 	if (tegra_bpmp_mrq_is_supported(emc->bpmp, MRQ_EMC_DVFS_LATENCY)) {
- 		err = tegra186_emc_get_emc_dvfs_latency(emc);
- 		if (err)
+ const struct tegra_mc_soc tegra186_mc_soc = {
+ 	.num_clients = ARRAY_SIZE(tegra186_mc_clients),
+ 	.clients = tegra186_mc_clients,
+@@ -912,6 +959,7 @@ const struct tegra_mc_soc tegra186_mc_soc = {
+ 		   MC_INT_SECERR_SEC | MC_INT_DECERR_VPR |
+ 		   MC_INT_SECURITY_VIOLATION | MC_INT_DECERR_EMEM,
+ 	.ops = &tegra186_mc_ops,
++	.icc_ops = &tegra186_mc_icc_ops,
+ 	.ch_intmask = 0x0000000f,
+ 	.global_intstatus_channel_shift = 0,
+ };
 
 -- 
 2.50.1
