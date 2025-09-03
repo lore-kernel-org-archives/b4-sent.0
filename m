@@ -1,117 +1,52 @@
-From: Anthony Brandon <anthony@amarulasolutions.com>
-Date: Tue, 02 Sep 2025 19:19:08 +0200
-Subject: [PATCH v3] dmaengine: xilinx: xdma: Fix regmap max_register
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Subject: [PATCH 0/4] ALSA: usb-audio: series of improvements to min_mute
+Date: Wed, 03 Sep 2025 13:09:44 +0800
+Message-Id: <20250903-sound-v1-0-d4ca777b8512@uniontech.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250902-xdma-max-reg-v3-1-5fa37b8d2b15@amarulasolutions.com>
-X-B4-Tracking: v=1; b=H4sIAAsnt2gC/33OTQ6DIBCG4asY1qXhR1C76j2aLkZAJRFpQImN8
- e5F93b5fsk8mQ1FE6yJ6FFsKJhko/VTDn4rkBpg6g22OjdihAnSEIpX7QA7WHEwPaaybJQsRcN
- FjfLJJ5jOrif3eucebJx9+J56osd6ASWKKW4lkFJIanRLn+AgLCNEPy5z/inelXfoMBP757Dsd
- MArxqGitdIXzr7vP5y9ZwP7AAAA
-X-Change-ID: 20250901-xdma-max-reg-1649c6459358
-To: Lizhi Hou <lizhi.hou@amd.com>, Brian Xu <brian.xu@amd.com>, 
- Raj Kumar Rampelli <raj.kumar.rampelli@amd.com>, 
- Vinod Koul <vkoul@kernel.org>, Michal Simek <michal.simek@amd.com>
-Cc: dmaengine@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, 
- Anthony Brandon <anthony@amarulasolutions.com>
+X-B4-Tracking: v=1; b=H4sIAJjNt2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDSwMj3eL80rwUXVNjs0Qzy1Rzo0RLYyWg2oKi1LTMCrA50bG1tQByimc
+ vVwAAAA==
+X-Change-ID: 20250902-sound-536a69e72a93
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Jonathan Corbet <corbet@lwn.net>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Mingcong Bai <jeffbai@aosc.io>, Kexy Biscuit <kexybiscuit@aosc.io>, 
+ Nie Cheng <niecheng1@uniontech.com>, Zhan Jun <zhanjun@uniontech.com>, 
+ Feng Yuan <fengyuan@uniontech.com>, Celeste Liu <uwu@coelacanthus.name>, 
+ qaqland <anguoli@uniontech.com>, linux-doc@vger.kernel.org, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2916;
- i=anthony@amarulasolutions.com; h=from:subject:message-id;
- bh=RXW5CKC0f3s39M0SO5bLPVh0482yL+nz0tdpgoq7TKU=;
- b=owGbwMvMwCUWIi5b4HjluATjabUkhozt6vJT3T+IRyk+FS/t+zKd0+9zxrw96yOMjUTfNtiLx
- 7ntUJLrKGVhEONikBVTZCnXkef1UK4rV5r5xBhmDisTyBAGLk4BmMgbb0aGPydEFERjPZZpfez2
- a1cXOvrz1Z/+j1Zqp16f/8h96GywCMP/ahtnt8clNz3rnVqZ9DaUxkuf9V/37NmZd45JjtI7q1I
- ZAQ==
-X-Developer-Key: i=anthony@amarulasolutions.com; a=openpgp;
- fpr=772C1F0D48237E772299E43354171D7041D4C718
-X-Endpoint-Received: by B4 Relay for anthony@amarulasolutions.com/default with auth_id=505
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756876185; l=908;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=u9cu7HB6ZKQ+UYVov00HqMXQZI5HNQmOImREMoKCVsY=;
+ b=jUtYH3kvO6z2XVRsiRLHqkmWO/5NbLP1jz2uqcxBJyuYHw7amEwAOdh+Ahdp6mguSCly8YSxW
+ c+QqF3s1hLPDfk4A9kRnC+Pg3HjdubmwOztGjpw6HypX47rSh78agEL
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The max_register field is assigned the size of the register memory
-region instead of the offset of the last register.
-The result is that reading from the regmap via debugfs can cause
-a segmentation fault:
-
-tail /sys/kernel/debug/regmap/xdma.1.auto/registers
-Unable to handle kernel paging request at virtual address ffff800082f70000
-Mem abort info:
-  ESR = 0x0000000096000007
-  EC = 0x25: DABT (current EL), IL = 32 bits
-  SET = 0, FnV = 0
-  EA = 0, S1PTW = 0
-  FSC = 0x07: level 3 translation fault
-[...]
-Call trace:
- regmap_mmio_read32le+0x10/0x30
- _regmap_bus_reg_read+0x74/0xc0
- _regmap_read+0x68/0x198
- regmap_read+0x54/0x88
- regmap_read_debugfs+0x140/0x380
- regmap_map_read_file+0x30/0x48
- full_proxy_read+0x68/0xc8
- vfs_read+0xcc/0x310
- ksys_read+0x7c/0x120
- __arm64_sys_read+0x24/0x40
- invoke_syscall.constprop.0+0x64/0x108
- do_el0_svc+0xb0/0xd8
- el0_svc+0x38/0x130
- el0t_64_sync_handler+0x120/0x138
- el0t_64_sync+0x194/0x198
-Code: aa1e03e9 d503201f f9400000 8b214000 (b9400000)
----[ end trace 0000000000000000 ]---
-note: tail[1217] exited with irqs disabled
-note: tail[1217] exited with preempt_count 1
-Segmentation fault
-
-Fixes: 17ce252266c7 ("dmaengine: xilinx: xdma: Add xilinx xdma driver")
-Reviewed-by: Lizhi Hou <lizhi.hou@amd.com>
-Signed-off-by: Anthony Brandon <anthony@amarulasolutions.com>
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
-Changes in v3:
-- Add Fixes tag
-- Link to v2: https://lore.kernel.org/r/20250901-xdma-max-reg-v2-1-fa3723a718cd@amarulasolutions.com
+Cryolitia PukNgae (4):
+      ALSA: usb-audio: rename QUIRK_FLAG_MIXER_MIN_MUTE to QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE
+      ALSA: usb-audio: add quirk QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE
+      ALSA: usb-audio: apply "mixer_min_mute" quirks on some devices
+      ALSA: usb-audio: apply quirk for MOONDROP Quark2
 
-Changes in v2:
-- Define new constant XDMA_MAX_REG_OFFSET and use that.
-- Link to v1: https://lore.kernel.org/r/20250901-xdma-max-reg-v1-1-b6a04561edb1@amarulasolutions.com
+ Documentation/sound/alsa-configuration.rst |  1 +
+ sound/usb/mixer.c                          |  7 +++++++
+ sound/usb/mixer_quirks.c                   | 14 ++++++++++++--
+ sound/usb/quirks.c                         | 24 ++++++++++++++----------
+ sound/usb/usbaudio.h                       |  7 +++++--
+ 5 files changed, 39 insertions(+), 14 deletions(-)
 ---
- drivers/dma/xilinx/xdma-regs.h | 1 +
- drivers/dma/xilinx/xdma.c      | 2 +-
- 2 files changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/dma/xilinx/xdma-regs.h b/drivers/dma/xilinx/xdma-regs.h
-index 6ad08878e93862b770febb71b8bc85e66813428e..70bca92621aa41b0367d1e236b3e276344a26320 100644
---- a/drivers/dma/xilinx/xdma-regs.h
-+++ b/drivers/dma/xilinx/xdma-regs.h
-@@ -9,6 +9,7 @@
- 
- /* The length of register space exposed to host */
- #define XDMA_REG_SPACE_LEN	65536
-+#define XDMA_MAX_REG_OFFSET	(XDMA_REG_SPACE_LEN - 4)
- 
- /*
-  * maximum number of DMA channels for each direction:
-diff --git a/drivers/dma/xilinx/xdma.c b/drivers/dma/xilinx/xdma.c
-index 0d88b1a670e142dac90d09c515809faa2476a816..5ecf8223c112e468c79ce635398ba393a535b9e0 100644
---- a/drivers/dma/xilinx/xdma.c
-+++ b/drivers/dma/xilinx/xdma.c
-@@ -38,7 +38,7 @@ static const struct regmap_config xdma_regmap_config = {
- 	.reg_bits = 32,
- 	.val_bits = 32,
- 	.reg_stride = 4,
--	.max_register = XDMA_REG_SPACE_LEN,
-+	.max_register = XDMA_MAX_REG_OFFSET,
- };
- 
- /**
-
----
-base-commit: b320789d6883cc00ac78ce83bccbfe7ed58afcf0
-change-id: 20250901-xdma-max-reg-1649c6459358
+base-commit: d414194eefc275bd17ad059baa23f2cd29c7d213
+change-id: 20250902-sound-536a69e72a93
 
 Best regards,
 -- 
-Anthony Brandon <anthony@amarulasolutions.com>
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
