@@ -1,11 +1,11 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Date: Wed, 03 Sep 2025 19:04:50 +0200
-Subject: [PATCH v4 2/7] dt-bindings: phy: rockchip-inno-csi-dphy: make
- power-domains non-required
+Date: Wed, 03 Sep 2025 19:04:51 +0200
+Subject: [PATCH v4 3/7] dt-bindings: phy: rockchip-inno-csi-dphy: add
+ rk3588 variant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250616-rk3588-csi-dphy-v4-2-a4f340a7f0cf@collabora.com>
+Message-Id: <20250616-rk3588-csi-dphy-v4-3-a4f340a7f0cf@collabora.com>
 References: <20250616-rk3588-csi-dphy-v4-0-a4f340a7f0cf@collabora.com>
 In-Reply-To: <20250616-rk3588-csi-dphy-v4-0-a4f340a7f0cf@collabora.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -22,47 +22,62 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
  linux-phy@lists.infradead.org, 
- Michael Riesch <michael.riesch@collabora.com>, stable@kernel.org, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ Michael Riesch <michael.riesch@collabora.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756919100; l=1518;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756919100; l=2731;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=UY9k/CPSgZAnLld//8ZfWwv6Gh22vHYGKGPNRh5Nn0c=;
- b=eqrvA14lPudPcJ0HuzJerB94/LT2JWN09wGWEW9P+uiosVIJuYhOZHy9+edhlTU7bpXk2ePgV
- FhRofqJF7+MAB0j+vwm40TiJ+ScMZkN/tlltCZ/LdqOURSsAFJDwJKs
+ bh=7bigeg1F5lPwfgStFZZ4wKFyLRk3XbHpIpD0M72GMm0=;
+ b=LokOxU4EfIW0fGm4vKWQMR5FmC0PeGxu6+KsKQv2ROgNpcw1hbk8D+oy49nGl5PnLAz3/co7E
+ Og8j+IhAP9wDMHvR1s0BysO7/GM+jaqAna8v3Mq7yibY4/J3iMRybe2
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There are variants of the Rockchip Innosilicon CSI DPHY (e.g., the RK3568
-variant) that are powered on by default as they are part of the ALIVE power
-domain.
-Remove 'power-domains' from the required properties in order to avoid false
-positives.
+The Rockchip RK3588 variant of the CSI-2 DPHY features two reset lines.
+Add the variant and allow for the additional reset.
 
-Fixes: 22c8e0a69b7f ("dt-bindings: phy: add compatible for rk356x to rockchip-inno-csi-dphy")
-Cc: stable@kernel.org
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+While at it, fix the description of the first reset in order to avoid
+confusion.
+
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- .../devicetree/bindings/phy/rockchip-inno-csi-dphy.yaml   | 15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
+ .../bindings/phy/rockchip-inno-csi-dphy.yaml       | 50 +++++++++++++++++++++-
+ 1 file changed, 49 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/devicetree/bindings/phy/rockchip-inno-csi-dphy.yaml b/Documentation/devicetree/bindings/phy/rockchip-inno-csi-dphy.yaml
-index 5ac994b3c0aa..b304bc5a08c4 100644
+index b304bc5a08c4..03950b3cad08 100644
 --- a/Documentation/devicetree/bindings/phy/rockchip-inno-csi-dphy.yaml
 +++ b/Documentation/devicetree/bindings/phy/rockchip-inno-csi-dphy.yaml
-@@ -57,11 +57,24 @@ required:
-   - clocks
-   - clock-names
-   - '#phy-cells'
--  - power-domains
-   - resets
-   - reset-names
-   - rockchip,grf
+@@ -21,6 +21,7 @@ properties:
+       - rockchip,rk3326-csi-dphy
+       - rockchip,rk3368-csi-dphy
+       - rockchip,rk3568-csi-dphy
++      - rockchip,rk3588-csi-dphy
  
-+allOf:
+   reg:
+     maxItems: 1
+@@ -40,11 +41,15 @@ properties:
+ 
+   resets:
+     items:
+-      - description: exclusive PHY reset line
++      - description: APB reset line
++      - description: PHY reset line
++    minItems: 1
+ 
+   reset-names:
+     items:
+       - const: apb
++      - const: phy
++    minItems: 1
+ 
+   rockchip,grf:
+     $ref: /schemas/types.yaml#/definitions/phandle
+@@ -74,6 +79,30 @@ allOf:
+     then:
+       required:
+         - power-domains
 +  - if:
 +      properties:
 +        compatible:
@@ -72,13 +87,47 @@ index 5ac994b3c0aa..b304bc5a08c4 100644
 +              - rockchip,rk1808-csi-dphy
 +              - rockchip,rk3326-csi-dphy
 +              - rockchip,rk3368-csi-dphy
++              - rockchip,rk3568-csi-dphy
 +    then:
-+      required:
-+        - power-domains
++      properties:
++        resets:
++          maxItems: 1
 +
++        reset-names:
++          maxItems: 1
++    else:
++      properties:
++        resets:
++          minItems: 2
++
++        reset-names:
++          minItems: 2
+ 
  additionalProperties: false
  
- examples:
+@@ -91,3 +120,22 @@ examples:
+         reset-names = "apb";
+         rockchip,grf = <&grf>;
+     };
++  - |
++    #include <dt-bindings/clock/rockchip,rk3588-cru.h>
++    #include <dt-bindings/reset/rockchip,rk3588-cru.h>
++
++    soc {
++        #address-cells = <2>;
++        #size-cells = <2>;
++
++        phy@fedc0000 {
++            compatible = "rockchip,rk3588-csi-dphy";
++            reg = <0x0 0xfedc0000 0x0 0x8000>;
++            clocks = <&cru PCLK_CSIPHY0>;
++            clock-names = "pclk";
++            #phy-cells = <0>;
++            resets = <&cru SRST_P_CSIPHY0>, <&cru SRST_CSIPHY0>;
++            reset-names = "apb", "phy";
++            rockchip,grf = <&csidphy0_grf>;
++        };
++    };
 
 -- 
 2.39.5
