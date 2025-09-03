@@ -1,11 +1,11 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 03 Sep 2025 14:50:07 -0500
-Subject: [PATCH v2 1/8] dt-bindings: memory: tegra210: Add memory client
- IDs
+Date: Wed, 03 Sep 2025 14:50:08 -0500
+Subject: [PATCH v2 2/8] dt-bindings: devfreq: tegra30-actmon: Add Tegra124
+ fallback for Tegra210
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250903-t210-actmon-v2-1-e0d534d4f8ea@gmail.com>
+Message-Id: <20250903-t210-actmon-v2-2-e0d534d4f8ea@gmail.com>
 References: <20250903-t210-actmon-v2-0-e0d534d4f8ea@gmail.com>
 In-Reply-To: <20250903-t210-actmon-v2-0-e0d534d4f8ea@gmail.com>
 To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -20,90 +20,48 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756929080; l=2616;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756929080; l=1201;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=u4jz33x6Ez21364iFx09PcoppaXBOvLz3qVMpDfajQM=;
- b=jwCuxoaY3bOoo8wi4XjARXBSG/QkzkFM5CtaxIZHz+MOPAKmpnL3LAHrzhPLHPWcX020Nnxpk
- zledt4VNotnCt6ZZN/K2+TFgiAVHB4T91Crx4o4ltK6kIY4MLsqFqyq
+ bh=xdS30eId+rCA7n/+A0teGQz4FyQXYRBMZykKI3Thnc0=;
+ b=Mfq5tSzd+j2FvPyNwhUIkTI/PvaRw7O8B4wo2p+Aw9v1Yu8h6kgspGVtqQIOf6sobt1uTkJ2J
+ ruq7/jed9gGD3uoKIrbH/NPY/vdjdJ7a0v0k3jQAdTCXuN3LjwKfYcV
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Each memory client has unique hardware ID, add these IDs.
+The Tegra210 actmon is compatible with the existing Tegra124 driver.
+Describe the compatibles as such.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- include/dt-bindings/memory/tegra210-mc.h | 58 ++++++++++++++++++++++++++++++++
- 1 file changed, 58 insertions(+)
+ .../devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml  | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/include/dt-bindings/memory/tegra210-mc.h b/include/dt-bindings/memory/tegra210-mc.h
-index 5e082547f1794cba1f72872782e04d8747863b6d..48474942a000e049142014e3bcc132b88bf1a92d 100644
---- a/include/dt-bindings/memory/tegra210-mc.h
-+++ b/include/dt-bindings/memory/tegra210-mc.h
-@@ -75,4 +75,62 @@
- #define TEGRA210_MC_RESET_ETR		28
- #define TEGRA210_MC_RESET_TSECB		29
+diff --git a/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml b/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml
+index e3379d1067283e36d1bee303187c0205b410f610..ea1dc86bc31f635f91a0e36f908f5c0c4f9a804c 100644
+--- a/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml
++++ b/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml
+@@ -19,11 +19,14 @@ description: |
  
-+#define TEGRA210_MC_PTCR		0
-+#define TEGRA210_MC_DISPLAY0A		1
-+#define TEGRA210_MC_DISPLAY0AB		2
-+#define TEGRA210_MC_DISPLAY0B		3
-+#define TEGRA210_MC_DISPLAY0BB		4
-+#define TEGRA210_MC_DISPLAY0C		5
-+#define TEGRA210_MC_DISPLAY0CB		6
-+#define TEGRA210_MC_AFIR		14
-+#define TEGRA210_MC_AVPCARM7R		15
-+#define TEGRA210_MC_DISPLAYHC		16
-+#define TEGRA210_MC_DISPLAYHCB		17
-+#define TEGRA210_MC_HDAR		21
-+#define TEGRA210_MC_HOST1XDMAR		22
-+#define TEGRA210_MC_HOST1XR		23
-+#define TEGRA210_MC_NVENCSRD		28
-+#define TEGRA210_MC_PPCSAHBDMAR		29
-+#define TEGRA210_MC_PPCSAHBSLVR		30
-+#define TEGRA210_MC_SATAR		31
-+#define TEGRA210_MC_MPCORER		39
-+#define TEGRA210_MC_NVENCSWR		43
-+#define TEGRA210_MC_AFIW		49
-+#define TEGRA210_MC_AVPCARM7W		50
-+#define TEGRA210_MC_HDAW		53
-+#define TEGRA210_MC_HOST1XW		54
-+#define TEGRA210_MC_MPCOREW		57
-+#define TEGRA210_MC_PPCSAHBDMAW		59
-+#define TEGRA210_MC_PPCSAHBSLVW		60
-+#define TEGRA210_MC_SATAW		61
-+#define TEGRA210_MC_ISPRA		68
-+#define TEGRA210_MC_ISPWA		70
-+#define TEGRA210_MC_ISPWB		71
-+#define TEGRA210_MC_XUSB_HOSTR		74
-+#define TEGRA210_MC_XUSB_HOSTW		75
-+#define TEGRA210_MC_XUSB_DEVR		76
-+#define TEGRA210_MC_XUSB_DEVW		77
-+#define TEGRA210_MC_ISPRAB		78
-+#define TEGRA210_MC_ISPWAB		80
-+#define TEGRA210_MC_ISPWBB		81
-+#define TEGRA210_MC_TSECSRD		84
-+#define TEGRA210_MC_TSECSWR		85
-+#define TEGRA210_MC_A9AVPSCR		86
-+#define TEGRA210_MC_A9AVPSCW		87
-+#define TEGRA210_MC_GPUSRD		88
-+#define TEGRA210_MC_GPUSWR		89
-+#define TEGRA210_MC_DISPLAYT		90
-+#define TEGRA210_MC_SDMMCRA		96
-+#define TEGRA210_MC_SDMMCRAA		97
-+#define TEGRA210_MC_SDMMCR		98
-+#define TEGRA210_MC_SDMMCRAB		99
-+#define TEGRA210_MC_SDMMCWA		100
-+#define TEGRA210_MC_SDMMCWAA		101
-+#define TEGRA210_MC_SDMMCW		102
-+#define TEGRA210_MC_SDMMCWAB		103
-+#define TEGRA210_MC_VICSRD		108
-+#define TEGRA210_MC_VICSWR		109
-+#define TEGRA210_MC_VIW			114
-+#define TEGRA210_MC_DISPLAYD		115
-+
- #endif
+ properties:
+   compatible:
+-    enum:
+-      - nvidia,tegra30-actmon
+-      - nvidia,tegra114-actmon
+-      - nvidia,tegra124-actmon
+-      - nvidia,tegra210-actmon
++    oneOf:
++      - enum:
++          - nvidia,tegra30-actmon
++          - nvidia,tegra114-actmon
++          - nvidia,tegra124-actmon
++      - items:
++          - const: nvidia,tegra210-actmon
++          - const: nvidia,tegra124-actmon
+ 
+   reg:
+     maxItems: 1
 
 -- 
 2.50.1
