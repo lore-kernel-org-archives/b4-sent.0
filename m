@@ -1,11 +1,11 @@
 From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Wed, 03 Sep 2025 13:09:46 +0800
-Subject: [PATCH 2/4] ALSA: usb-audio: add quirk
- QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE
+Date: Wed, 03 Sep 2025 13:09:47 +0800
+Subject: [PATCH 3/4] ALSA: usb-audio: apply "mixer_min_mute" quirks on some
+ devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250903-sound-v1-2-d4ca777b8512@uniontech.com>
+Message-Id: <20250903-sound-v1-3-d4ca777b8512@uniontech.com>
 References: <20250903-sound-v1-0-d4ca777b8512@uniontech.com>
 In-Reply-To: <20250903-sound-v1-0-d4ca777b8512@uniontech.com>
 To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
@@ -17,78 +17,69 @@ Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org,
  qaqland <anguoli@uniontech.com>, linux-doc@vger.kernel.org, 
  Cryolitia PukNgae <cryolitia@uniontech.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756876185; l=2954;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756876185; l=2765;
  i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=96cffDbepRmoALzdF1FSb7F0QqJtNTtbDzVfX1s6B4Y=;
- b=1xID+OM09wKkCbq4mYuoUra031C0SMSRp8IgO3DkOilYh3ENGuVTBAiaX+EO+Dw97X+ppHjUq
- YtTR8KYtbsjDh6ng8vs2NO1XUY5BZ4hp+w3cVLHqQIicPRqRd+MvXwc
+ bh=H41Y5MiAPmIzKR0KIqAt9d3/JLqaw8uC28jKyIpFimE=;
+ b=1CHb8rMmE4hnWZhp4HI2TlFa19Re77zQ4+7SQPrj9hFdtAFeN5wJq1McJEn+fTT/cUvN2JkAq
+ CpDd6HxXiCUDlNhRxrjT5lXUDr9DpBFDcmWEieqOHjWRXn/k/eg+cBR
 X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
  pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
 X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The same hardware problem to QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE also
-occurs on the capture streams on some USB devices. Add a new flag for
-processing the quirk.
+- QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE
+- QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE
 
-Link: https://lore.kernel.org/all/C22C1A172EBB9BD9+eccc2e4a-d21e-4a7d-848c-bbf3982feb94@uniontech.com/
+Suggested-by: Guoli An <anguoli@uniontech.com>
 Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- Documentation/sound/alsa-configuration.rst | 1 +
- sound/usb/mixer_quirks.c                   | 7 +++++++
- sound/usb/usbaudio.h                       | 3 +++
- 3 files changed, 11 insertions(+)
+ sound/usb/quirks.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/sound/alsa-configuration.rst b/Documentation/sound/alsa-configuration.rst
-index 062b86522e4d9cc7ec19e978e0efc934dae9ab1b..bf45df1558bbc361ca165abaf9c5d83bfe3188e2 100644
---- a/Documentation/sound/alsa-configuration.rst
-+++ b/Documentation/sound/alsa-configuration.rst
-@@ -2329,6 +2329,7 @@ quirk_flags
-         * bit 24: Set minimum volume control value as mute for devices
-           where the lowest playback value represents muted state instead
-           of minimum audible volume
-+        * bit 25: Be similar to bit 24 but for capture streams
- 
- This module supports multiple devices, autoprobe and hotplugging.
- 
-diff --git a/sound/usb/mixer_quirks.c b/sound/usb/mixer_quirks.c
-index 2a1abc24dbfc0c6b69d64529eda01bc25f1a6dd1..828af3095b86ee0aa8f2d248d8e714b5d3ae20eb 100644
---- a/sound/usb/mixer_quirks.c
-+++ b/sound/usb/mixer_quirks.c
-@@ -4550,6 +4550,13 @@ void snd_usb_mixer_fu_apply_quirk(struct usb_mixer_interface *mixer,
- 			cval->min_mute = 1;
- 		}
- 
-+	/* lowest capture value is muted on some devices */
-+	if (mixer->chip->quirk_flags & QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE)
-+		if (strstr(kctl->id.name, "Capture")) {
-+			usb_audio_info(mixer->chip,
-+				       "applying capture min mute quirk\n");
-+			cval->min_mute = 1;
-+		}
- 	/* ALSA-ify some Plantronics headset control names */
- 	if (USB_ID_VENDOR(mixer->chip->usb_id) == 0x047f &&
- 	    (cval->control == UAC_FU_MUTE || cval->control == UAC_FU_VOLUME))
-diff --git a/sound/usb/usbaudio.h b/sound/usb/usbaudio.h
-index 707b3037b1b3a3d2997157154cf78d71455bfe4b..30b5102e3caed01eeb86d0075c41338104c58950 100644
---- a/sound/usb/usbaudio.h
-+++ b/sound/usb/usbaudio.h
-@@ -222,6 +222,8 @@ extern bool snd_usb_skip_validation;
-  * QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE
-  *  Set minimum volume control value as mute for devices where the lowest
-  *  playback value represents muted state instead of minimum audible volume
-+ * QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE
-+ *  Similar to QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE, but for capture streams
-  */
- 
- #define QUIRK_FLAG_GET_SAMPLE_RATE	(1U << 0)
-@@ -249,5 +251,6 @@ extern bool snd_usb_skip_validation;
- #define QUIRK_FLAG_MIC_RES_16		(1U << 22)
- #define QUIRK_FLAG_MIC_RES_384		(1U << 23)
- #define QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE	(1U << 24)
-+#define QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE	(1U << 25)
- 
- #endif /* __USBAUDIO_H */
+diff --git a/sound/usb/quirks.c b/sound/usb/quirks.c
+index 0fe31af3158f08a39849f8df99dbbfb10c5fdcc1..d736a4750356597bfb0f9d5ab01cdaeaac0f907c 100644
+--- a/sound/usb/quirks.c
++++ b/sound/usb/quirks.c
+@@ -2243,16 +2243,20 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
+ 		   QUIRK_FLAG_IGNORE_CTL_ERROR),
+ 	DEVICE_FLG(0x0951, 0x16ad, /* Kingston HyperX */
+ 		   QUIRK_FLAG_CTL_MSG_DELAY_1M),
++	DEVICE_FLG(0x0b05, 0x18a6, /* ASUSTek Computer, Inc. */
++		   QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE),
+ 	DEVICE_FLG(0x0b0e, 0x0349, /* Jabra 550a */
+ 		   QUIRK_FLAG_CTL_MSG_DELAY_1M),
+ 	DEVICE_FLG(0x0bda, 0x498a, /* Realtek Semiconductor Corp. */
+-		   QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE),
++		   QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE | QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE),
+ 	DEVICE_FLG(0x0c45, 0x6340, /* Sonix HD USB Camera */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
+ 	DEVICE_FLG(0x0c45, 0x636b, /* Microdia JP001 USB Camera */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
+ 	DEVICE_FLG(0x0d8c, 0x000c, /* C-Media */
+ 		   QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE),
++	DEVICE_FLG(0x0d8c, 0x0012, /* C-Media */
++		   QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE),
+ 	DEVICE_FLG(0x0d8c, 0x0014, /* C-Media */
+ 		   QUIRK_FLAG_CTL_MSG_DELAY_1M | QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE),
+ 	DEVICE_FLG(0x0ecb, 0x205c, /* JBL Quantum610 Wireless */
+@@ -2264,7 +2268,7 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
+ 	DEVICE_FLG(0x1101, 0x0003, /* Audioengine D1 */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
+ 	DEVICE_FLG(0x12d1, 0x3a07, /* Huawei Technologies Co., Ltd. */
+-		   QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE),
++		   QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE | QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE),
+ 	DEVICE_FLG(0x1224, 0x2a25, /* Jieli Technology USB PHY 2.0 */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE | QUIRK_FLAG_MIC_RES_16),
+ 	DEVICE_FLG(0x1395, 0x740a, /* Sennheiser DECT */
+@@ -2356,7 +2360,7 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
+ 	DEVICE_FLG(0x2912, 0x30c8, /* Audioengine D1 */
+ 		   QUIRK_FLAG_GET_SAMPLE_RATE),
+ 	DEVICE_FLG(0x2a70, 0x1881, /* OnePlus Technology (Shenzhen) Co., Ltd. BE02T */
+-		   QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE),
++		   QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE | QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE),
+ 	DEVICE_FLG(0x2b53, 0x0023, /* Fiero SC-01 (firmware v1.0.0 @ 48 kHz) */
+ 		   QUIRK_FLAG_GENERIC_IMPLICIT_FB),
+ 	DEVICE_FLG(0x2b53, 0x0024, /* Fiero SC-01 (firmware v1.0.0 @ 96 kHz) */
 
 -- 
 2.51.0
