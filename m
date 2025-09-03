@@ -1,15 +1,13 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Subject: [PATCH v4 0/7] phy: rockchip: phy-rockchip-inno-csidphy: add
- support for rk3588 variant
-Date: Wed, 03 Sep 2025 19:04:48 +0200
-Message-Id: <20250616-rk3588-csi-dphy-v4-0-a4f340a7f0cf@collabora.com>
+Date: Wed, 03 Sep 2025 19:04:49 +0200
+Subject: [PATCH v4 1/7] dt-bindings: soc: rockchip: add rk3588 csidphy grf
+ syscon
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIADB1uGgC/4XNTQ7CIBCG4as0rMXw10JdeQ/jAgawRC0NmMam6
- d2lXRpNl++XzDMzyi4Fl9GpmlFyY8gh9iXEoULQ6f7mcLClESOsJg1tcLrzWikMOWA7dBOG1lm
- mrQDbelSuhuR8eG/i5Vq6C/kV07Q9GOm6/rdGiglWwhlumJa8gTPEx0ObmPQR4hOt3sh2DFYMq
- VvhiWyNpOyXwXcMXgxdA9jaUy+4+jaWZfkApc8QXjoBAAA=
+Message-Id: <20250616-rk3588-csi-dphy-v4-1-a4f340a7f0cf@collabora.com>
+References: <20250616-rk3588-csi-dphy-v4-0-a4f340a7f0cf@collabora.com>
+In-Reply-To: <20250616-rk3588-csi-dphy-v4-0-a4f340a7f0cf@collabora.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
  Vinod Koul <vkoul@kernel.org>, Kishon Vijay Abraham I <kishon@kernel.org>, 
@@ -24,78 +22,39 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
  linux-phy@lists.infradead.org, 
- Michael Riesch <michael.riesch@collabora.com>, stable@kernel.org, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ Michael Riesch <michael.riesch@collabora.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756919100; l=2751;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756919100; l=927;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=Sp1oVh07PV5J1vHgtpAOsZp9J99yIuyi/v/VuN5rhXY=;
- b=6NCRuBLPC+EN/UwAOUVq62wlOgaZhr5BntQTg7A08B7KaV3CqcIuHyxpxS4zRDkiBeOAmpxWv
- CdsHYjMsTyWAa8YaBkBU/u+ViTzmhn/1Z4nhnjnBDbcw7n9svQkPeKq
+ bh=+caMXhRTVArPpx+x7pVyqXS9t7uDPpRu8sQdXP1mzpo=;
+ b=wG1IidUa2QHST5Z3WZhLbs1BKkObhL4egG+9FfeF6DpRFd2akprZNyXGUXX5xJtY+UK3vNQ75
+ aViQTtHPXncDe6KTa09aaDns2yQsvZ3Th0vCUdmYP7FaUKaB96WVPya
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Habidere,
+Add CSIDPHY GRF syscon compatible for the Rockchip RK3588.
 
-The Rockchip RK3588 features two MIPI CSI-2 DPHYs (not to be confused with
-the two combo MIPI DSI/CSI CPHY/DPHY blocks). The CSI-2 DPHYs can be
-supported using the existing phy-rockchip-inno-csidphy driver, the notable
-differences being
- - the control bits in the GRF
- - the additional reset line
-This patch series adds support for this variant.
-
-As you may have guessed, this is part of the efforts to bring the support
-for the RK3588 Video Capture (VICAP) unit mainline.
-
-Looking forward to your comments!
-
+Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
-Changes in v4:
-- fixed commit message "false negatives" -> "false positives"
-- fixed mipi csi dphy node addition -> mipidcphy1 remains as-is now
-- moved allOf: block after required: block (Krzysztof)
-- added remark w.r.t. the description of the original reset (Krzysztof)
-- name of the new reset remains "phy" as I didn't find any better
-  name. Suggestions welcome! (Krzysztof)
-- Link to v3: https://lore.kernel.org/r/20250616-rk3588-csi-dphy-v3-0-a5ccd5f1f438@collabora.com
+ Documentation/devicetree/bindings/soc/rockchip/grf.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-Changes in v3:
-- added if:then: for required 'power-domains' (Krzysztof)
-- fixed restriction of resets/reset-names (Rob)
-- Link to v2: https://lore.kernel.org/r/20250616-rk3588-csi-dphy-v2-0-7a94f079b712@collabora.com
+diff --git a/Documentation/devicetree/bindings/soc/rockchip/grf.yaml b/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
+index 1ab0b092e2a5..b6e04e6491e9 100644
+--- a/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
++++ b/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
+@@ -47,6 +47,7 @@ properties:
+               - rockchip,rk3576-vop-grf
+               - rockchip,rk3588-bigcore0-grf
+               - rockchip,rk3588-bigcore1-grf
++              - rockchip,rk3588-csidphy-grf
+               - rockchip,rk3588-dcphy-grf
+               - rockchip,rk3588-hdptxphy-grf
+               - rockchip,rk3588-ioc
 
-Changes in v2:
-- rebased onto v6.17-rc1
-- added patch that makes 'power-domains' non-required (Diederik)
-- added patch that allows for different sets of resets (Neil)
-- introduced name for additional reset line (Neil)
-- fixed example in bindings (Rob, Diederik)
-- Link to v1: https://lore.kernel.org/r/20250616-rk3588-csi-dphy-v1-0-84eb3b2a736c@collabora.com
-
----
-Michael Riesch (7):
-      dt-bindings: soc: rockchip: add rk3588 csidphy grf syscon
-      dt-bindings: phy: rockchip-inno-csi-dphy: make power-domains non-required
-      dt-bindings: phy: rockchip-inno-csi-dphy: add rk3588 variant
-      phy: rockchip: phy-rockchip-inno-csidphy: allow writes to grf register 0
-      phy: rockchip: phy-rockchip-inno-csidphy: allow for different reset lines
-      phy: rockchip: phy-rockchip-inno-csidphy: add support for rk3588 variant
-      arm64: dts: rockchip: add mipi csi-2 dphy nodes to rk3588
-
- .../bindings/phy/rockchip-inno-csi-dphy.yaml       | 65 ++++++++++++++++++++-
- .../devicetree/bindings/soc/rockchip/grf.yaml      |  1 +
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      | 34 +++++++++++
- drivers/phy/rockchip/phy-rockchip-inno-csidphy.c   | 67 ++++++++++++++++++++--
- 4 files changed, 159 insertions(+), 8 deletions(-)
----
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250616-rk3588-csi-dphy-c9ed2ad4cd9f
-
-Best regards,
 -- 
-Michael Riesch <michael.riesch@collabora.com>
+2.39.5
 
