@@ -1,10 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 03 Sep 2025 12:43:26 +0530
-Subject: [PATCH v2 4/5] PCI: qcom: Parse PERST# from all PCIe bridge nodes
+Date: Wed, 03 Sep 2025 12:43:27 +0530
+Subject: [PATCH v2 5/5] PCI: qcom: Allow pwrctrl core to toggle PERST# for
+ new DT binding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250903-pci-pwrctrl-perst-v2-4-2d461ed0e061@oss.qualcomm.com>
+Message-Id: <20250903-pci-pwrctrl-perst-v2-5-2d461ed0e061@oss.qualcomm.com>
 References: <20250903-pci-pwrctrl-perst-v2-0-2d461ed0e061@oss.qualcomm.com>
 In-Reply-To: <20250903-pci-pwrctrl-perst-v2-0-2d461ed0e061@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -18,232 +19,221 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  Brian Norris <briannorris@chromium.org>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7146;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6596;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=7C92JPcjtkyNOs7TgJky3UafrbHkSLG9ZHW4enf6l14=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBot+qbIM1j3nEbr74l9EOMdPDEtz+Ft4cZWWimL
- DletiDdmFuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaLfqmwAKCRBVnxHm/pHO
- 9UsiB/9krTVWCBwfjHxNEkg4dSJ+Bp14Dec2iEemD9P6L1W4nMsZeIk/8vSRmjoyoERKvs+r8ng
- 4uHCRj/VYqvlyLldyamM4OGSyxI2asAOcKAMtHSZcDMKz3JB0SRihsUbohg32cLzBBBF8bIwag4
- qGH+niU/LNuMH8/4dHjwq/O91n90xZ8suM9ks+aCTsxT/rZgLwtZUh+flkD7oODC83gDhutU96z
- CEoPWTiwxcK2261FHGsIHVHLhqcLT+ai9Tq7OtW6Gzae+mhyZCB3LUuIwoygghbgpWdP02w3TAG
- dz4t/NmAE7sP5gJqU0Yds3JyGH3RM5x0CIrUsXEOHW9kXOhK
+ bh=jE6WYZa4c9ydpNf35QrLmvbRouO2QM2tzBO/q32DEJQ=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBot+qbrxLuzhIzbFJu6Ak/dMgK/aqGgbOTZbDrX
+ G5u68sXRS2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaLfqmwAKCRBVnxHm/pHO
+ 9ZcFB/9yBkxFGLHK5AWr+zXcKlifi+99vBPZBRrUD0HFdcJnwnEu+7SSpp1HYpDchst7DV4Mnri
+ CiPFFkjkOiEmePyT9KK0bbj/gt+tr6k93kOqD8HK0UV9X08LkvR3F0ZvtJ3jHADCKDJSvqTaLwz
+ YTh1x1F7yD+4ok8PFwNDIS1V3c4CdaYWqFBCG8FjdUuIkDSpgPbTd1emMZQNASkAX2n0y+G14/9
+ gADrQgL3xPEUp4C7a7Uo0csD867v9OIuueOLd8qB3gXYGSEqvyPYpKZr4+1gz3sk+c5xHXMQs/6
+ 2iuSliSEzJ3oo8oLh1pOcEe4IsdxjJQUWJ8zMmW7lapCioV2
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Devicetree schema allows the PERST# GPIO to be present in all PCIe bridge
-nodes, not just in Root Port node. But the current logic parses PERST# only
-from the Root Port node. Though it is not causing any issue on the current
-platforms, the upcoming platforms will have PERST# in PCIe switch
-downstream ports also. So this requires parsing all the PCIe bridge nodes
-for the PERST# GPIO.
+If the platform is using the new DT binding, let the pwrctrl core toggle
+PERST# for the device. This is achieved by populating the
+'pci_host_bridge::toggle_perst' callback with qcom_pcie_toggle_perst().
 
-Hence, rework the parsing logic to extend to all PCIe bridge nodes starting
-from Root Port node. If the 'reset-gpios' property is found for a node, the
-GPIO descriptor will be stored in a list.
+qcom_pcie_toggle_perst() will find the PERST# GPIO descriptor associated
+with the supplied 'device_node' and toggles PERST#. If PERST# is not found
+in the supplied node, the function will look for PERST# in the parent node
+as a fallback. This is needed since PERST# won't be available in the
+endpoint node as per the DT binding.
 
-It should be noted that if more than one bridge node has the same GPIO for
-PERST# (shared PERST#), the driver will error out. This is due to the
-limitation in the GPIOLIB subsystem that allows only exclusive (non-shared)
-access to GPIOs from consumers. But this is soon going to get fixed. Once
-that happens, it will get incorporated in this driver.
-
-So for now, PERST# sharing is not supported.
+Note that the driver still asserts PERST# during the controller
+initialization as it is needed as per the hardware documentation. Apart
+from that, the driver wouldn't touch PERST# for the new binding.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/pci/controller/dwc/pcie-qcom.c | 95 +++++++++++++++++++++++++++-------
- 1 file changed, 76 insertions(+), 19 deletions(-)
+ drivers/pci/controller/dwc/pcie-qcom.c | 89 +++++++++++++++++++++++++++++-----
+ 1 file changed, 78 insertions(+), 11 deletions(-)
 
 diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
-index bcd080315d70e64eafdefd852740fe07df3dbe75..78355d12f10d263a0bb052e24c1e2d5e8f68603d 100644
+index 78355d12f10d263a0bb052e24c1e2d5e8f68603d..3c5c65d7d97cac186e1b671f80ba7296ad226d68 100644
 --- a/drivers/pci/controller/dwc/pcie-qcom.c
 +++ b/drivers/pci/controller/dwc/pcie-qcom.c
-@@ -273,6 +273,11 @@ struct qcom_pcie_port {
- 	struct phy *phy;
+@@ -276,6 +276,7 @@ struct qcom_pcie_port {
+ struct qcom_pcie_perst {
+ 	struct list_head list;
+ 	struct gpio_desc *desc;
++	struct device_node *np;
  };
  
-+struct qcom_pcie_perst {
-+	struct list_head list;
-+	struct gpio_desc *desc;
-+};
-+
  struct qcom_pcie {
- 	struct dw_pcie *pci;
- 	void __iomem *parf;			/* DT parf */
-@@ -286,6 +291,7 @@ struct qcom_pcie {
- 	const struct qcom_pcie_cfg *cfg;
- 	struct dentry *debugfs;
- 	struct list_head ports;
-+	struct list_head perst;
- 	bool suspended;
- 	bool use_pm_opp;
- };
-@@ -294,14 +300,14 @@ struct qcom_pcie {
+@@ -298,11 +299,50 @@ struct qcom_pcie {
  
- static void qcom_perst_assert(struct qcom_pcie *pcie, bool assert)
- {
--	struct qcom_pcie_port *port;
+ #define to_qcom_pcie(x)		dev_get_drvdata((x)->dev)
+ 
+-static void qcom_perst_assert(struct qcom_pcie *pcie, bool assert)
++static struct gpio_desc *qcom_find_perst(struct qcom_pcie *pcie, struct device_node *np)
++{
 +	struct qcom_pcie_perst *perst;
- 	int val = assert ? 1 : 0;
- 
--	if (list_empty(&pcie->ports))
-+	if (list_empty(&pcie->perst))
- 		gpiod_set_value_cansleep(pcie->reset, val);
--	else
--		list_for_each_entry(port, &pcie->ports, list)
--			gpiod_set_value_cansleep(port->reset, val);
 +
-+	list_for_each_entry(perst, &pcie->perst, list)
-+		gpiod_set_value_cansleep(perst->desc, val);
- }
- 
- static void qcom_ep_reset_assert(struct qcom_pcie *pcie)
-@@ -1702,20 +1708,58 @@ static const struct pci_ecam_ops pci_qcom_ecam_ops = {
- 	}
- };
- 
--static int qcom_pcie_parse_port(struct qcom_pcie *pcie, struct device_node *node)
-+/* Parse PERST# from all nodes in depth first manner starting from @np */
-+static int qcom_pcie_parse_perst(struct qcom_pcie *pcie,
-+				 struct device_node *np)
- {
- 	struct device *dev = pcie->pci->dev;
--	struct qcom_pcie_port *port;
-+	struct qcom_pcie_perst *perst;
- 	struct gpio_desc *reset;
--	struct phy *phy;
- 	int ret;
- 
--	reset = devm_fwnode_gpiod_get(dev, of_fwnode_handle(node),
--				      "reset", GPIOD_OUT_HIGH, "PERST#");
--	if (IS_ERR(reset))
-+	if (!of_find_property(np, "reset-gpios", NULL))
-+		goto parse_child_node;
-+
-+	reset = devm_fwnode_gpiod_get(dev, of_fwnode_handle(np), "reset",
-+				      GPIOD_OUT_HIGH, "PERST#");
-+	if (IS_ERR(reset)) {
-+		/*
-+		 * FIXME: GPIOLIB currently supports exclusive GPIO access only.
-+		 * Non exclusive access is broken. But shared PERST# requires
-+		 * non-exclusive access. So once GPIOLIB properly supports it,
-+		 * implement it here.
-+		 */
-+		if (PTR_ERR(reset) == -EBUSY)
-+			dev_err(dev, "Shared PERST# is not supported\n");
-+
- 		return PTR_ERR(reset);
++	list_for_each_entry(perst, &pcie->perst, list) {
++		if (np == perst->np)
++			return perst->desc;
 +	}
 +
-+	perst = devm_kzalloc(dev, sizeof(*perst), GFP_KERNEL);
-+	if (!perst)
-+		return -ENOMEM;
-+
-+	perst->desc = reset;
-+	list_add_tail(&perst->list, &pcie->perst);
- 
--	phy = devm_of_phy_get(dev, node, NULL);
-+parse_child_node:
-+	for_each_available_child_of_node_scoped(np, child) {
-+		ret = qcom_pcie_parse_perst(pcie, child);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return 0;
++	return NULL;
 +}
 +
-+static int qcom_pcie_parse_port(struct qcom_pcie *pcie, struct device_node *np)
++static void qcom_toggle_perst_per_device(struct qcom_pcie *pcie,
++					 struct device_node *np, bool assert)
 +{
-+	struct device *dev = pcie->pci->dev;
-+	struct qcom_pcie_port *port;
-+	struct phy *phy;
-+	int ret;
++	int val = assert ? 1 : 0;
++	struct gpio_desc *perst;
 +
-+	phy = devm_of_phy_get(dev, np, NULL);
- 	if (IS_ERR(phy))
- 		return PTR_ERR(phy);
- 
-@@ -1727,7 +1771,10 @@ static int qcom_pcie_parse_port(struct qcom_pcie *pcie, struct device_node *node
- 	if (ret)
- 		return ret;
- 
--	port->reset = reset;
-+	ret = qcom_pcie_parse_perst(pcie, np);
-+	if (ret)
-+		return ret;
++	perst = qcom_find_perst(pcie, np);
++	if (perst)
++		goto toggle_perst;
 +
- 	port->phy = phy;
- 	INIT_LIST_HEAD(&port->list);
- 	list_add_tail(&port->list, &pcie->ports);
-@@ -1738,8 +1785,9 @@ static int qcom_pcie_parse_port(struct qcom_pcie *pcie, struct device_node *node
- static int qcom_pcie_parse_ports(struct qcom_pcie *pcie)
++	/*
++	 * If PERST# is not available in the current node, try the parent. This
++	 * fallback is needed if the current node belongs to an endpoint or
++	 * switch upstream port.
++	 */
++	if (np->parent)
++		perst = qcom_find_perst(pcie, np->parent);
++
++toggle_perst:
++	/* gpiod* APIs handle NULL gpio_desc gracefully. So no need to check. */
++	gpiod_set_value_cansleep(perst, val);
++}
++
++static void qcom_perst_reset(struct qcom_pcie *pcie, struct device_node *np,
++			      bool assert)
  {
- 	struct device *dev = pcie->pci->dev;
--	struct qcom_pcie_port *port, *tmp;
--	int ret = -ENOENT;
-+	struct qcom_pcie_port *port, *tmp_port;
-+	struct qcom_pcie_perst *perst, *tmp_perst;
-+	int ret = -ENODEV;
+ 	struct qcom_pcie_perst *perst;
+ 	int val = assert ? 1 : 0;
  
- 	for_each_available_child_of_node_scoped(dev->of_node, of_port) {
- 		ret = qcom_pcie_parse_port(pcie, of_port);
-@@ -1750,8 +1798,13 @@ static int qcom_pcie_parse_ports(struct qcom_pcie *pcie)
- 	return ret;
- 
- err_port_del:
--	list_for_each_entry_safe(port, tmp, &pcie->ports, list)
-+	list_for_each_entry_safe(port, tmp_port, &pcie->ports, list) {
-+		phy_exit(port->phy);
- 		list_del(&port->list);
-+	}
++	if (np)
++		return qcom_toggle_perst_per_device(pcie, np, assert);
 +
-+	list_for_each_entry_safe(perst, tmp_perst, &pcie->perst, list)
-+		list_del(&perst->list);
+ 	if (list_empty(&pcie->perst))
+ 		gpiod_set_value_cansleep(pcie->reset, val);
+ 
+@@ -310,22 +350,34 @@ static void qcom_perst_assert(struct qcom_pcie *pcie, bool assert)
+ 		gpiod_set_value_cansleep(perst->desc, val);
+ }
+ 
+-static void qcom_ep_reset_assert(struct qcom_pcie *pcie)
++static void qcom_ep_reset_assert(struct qcom_pcie *pcie, struct device_node *np)
+ {
+-	qcom_perst_assert(pcie, true);
++	qcom_perst_reset(pcie, np, true);
+ 	usleep_range(PERST_DELAY_US, PERST_DELAY_US + 500);
+ }
+ 
+-static void qcom_ep_reset_deassert(struct qcom_pcie *pcie)
++static void qcom_ep_reset_deassert(struct qcom_pcie *pcie,
++				   struct device_node *np)
+ {
+ 	struct dw_pcie_rp *pp = &pcie->pci->pp;
+ 
+ 	msleep(PCIE_T_PVPERL_MS);
+-	qcom_perst_assert(pcie, false);
++	qcom_perst_reset(pcie, np, false);
+ 	if (!pp->use_linkup_irq)
+ 		msleep(PCIE_RESET_CONFIG_WAIT_MS);
+ }
+ 
++static void qcom_pcie_toggle_perst(struct pci_host_bridge *bridge,
++				    struct device_node *np, bool assert)
++{
++	struct qcom_pcie *pcie = dev_get_drvdata(bridge->dev.parent);
++
++	if (assert)
++		qcom_ep_reset_assert(pcie, np);
++	else
++		qcom_ep_reset_deassert(pcie, np);
++}
++
+ static int qcom_pcie_start_link(struct dw_pcie *pci)
+ {
+ 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
+@@ -1320,7 +1372,7 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
+ 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
+ 	int ret;
+ 
+-	qcom_ep_reset_assert(pcie);
++	qcom_ep_reset_assert(pcie, NULL);
+ 
+ 	ret = pcie->cfg->ops->init(pcie);
+ 	if (ret)
+@@ -1336,7 +1388,13 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
+ 			goto err_disable_phy;
+ 	}
+ 
+-	qcom_ep_reset_deassert(pcie);
++	/*
++	 * Only deassert PERST# for all devices here if legacy binding is used.
++	 * For the new binding, pwrctrl driver is expected to toggle PERST# for
++	 * individual devices.
++	 */
++	if (list_empty(&pcie->perst))
++		qcom_ep_reset_deassert(pcie, NULL);
+ 
+ 	if (pcie->cfg->ops->config_sid) {
+ 		ret = pcie->cfg->ops->config_sid(pcie);
+@@ -1344,10 +1402,12 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
+ 			goto err_assert_reset;
+ 	}
+ 
++	pci->pp.bridge->toggle_perst = qcom_pcie_toggle_perst;
++
+ 	return 0;
+ 
+ err_assert_reset:
+-	qcom_ep_reset_assert(pcie);
++	qcom_ep_reset_assert(pcie, NULL);
+ err_disable_phy:
+ 	qcom_pcie_phy_power_off(pcie);
+ err_deinit:
+@@ -1361,7 +1421,7 @@ static void qcom_pcie_host_deinit(struct dw_pcie_rp *pp)
+ 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
+ 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
+ 
+-	qcom_ep_reset_assert(pcie);
++	qcom_ep_reset_assert(pcie, NULL);
+ 	qcom_pcie_phy_power_off(pcie);
+ 	pcie->cfg->ops->deinit(pcie);
+ }
+@@ -1740,6 +1800,9 @@ static int qcom_pcie_parse_perst(struct qcom_pcie *pcie,
+ 		return -ENOMEM;
+ 
+ 	perst->desc = reset;
++	/* Increase the refcount to make sure 'np' is valid till it is stored */
++	of_node_get(np);
++	perst->np = np;
+ 	list_add_tail(&perst->list, &pcie->perst);
+ 
+ parse_child_node:
+@@ -1803,8 +1866,10 @@ static int qcom_pcie_parse_ports(struct qcom_pcie *pcie)
+ 		list_del(&port->list);
+ 	}
+ 
+-	list_for_each_entry_safe(perst, tmp_perst, &pcie->perst, list)
++	list_for_each_entry_safe(perst, tmp_perst, &pcie->perst, list) {
++		of_node_put(perst->np);
+ 		list_del(&perst->list);
++	}
  
  	return ret;
  }
-@@ -1778,9 +1831,10 @@ static int qcom_pcie_parse_legacy_binding(struct qcom_pcie *pcie)
- 
- static int qcom_pcie_probe(struct platform_device *pdev)
- {
-+	struct qcom_pcie_perst *perst, *tmp_perst;
-+	struct qcom_pcie_port *port, *tmp_port;
- 	const struct qcom_pcie_cfg *pcie_cfg;
- 	unsigned long max_freq = ULONG_MAX;
--	struct qcom_pcie_port *port, *tmp;
- 	struct device *dev = &pdev->dev;
- 	struct dev_pm_opp *opp;
- 	struct qcom_pcie *pcie;
-@@ -1848,6 +1902,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
- 	}
- 
- 	INIT_LIST_HEAD(&pcie->ports);
-+	INIT_LIST_HEAD(&pcie->perst);
- 
- 	pci->dev = dev;
- 	pci->ops = &dw_pcie_ops;
-@@ -1927,7 +1982,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
- 
- 	ret = qcom_pcie_parse_ports(pcie);
- 	if (ret) {
--		if (ret != -ENOENT) {
-+		if (ret != -ENODEV) {
- 			dev_err_probe(pci->dev, ret,
- 				      "Failed to parse Root Port: %d\n", ret);
- 			goto err_pm_runtime_put;
-@@ -1987,8 +2042,10 @@ static int qcom_pcie_probe(struct platform_device *pdev)
- 	dw_pcie_host_deinit(pp);
- err_phy_exit:
+@@ -2044,8 +2109,10 @@ static int qcom_pcie_probe(struct platform_device *pdev)
  	qcom_pcie_phy_exit(pcie);
--	list_for_each_entry_safe(port, tmp, &pcie->ports, list)
-+	list_for_each_entry_safe(port, tmp_port, &pcie->ports, list)
+ 	list_for_each_entry_safe(port, tmp_port, &pcie->ports, list)
  		list_del(&port->list);
-+	list_for_each_entry_safe(perst, tmp_perst, &pcie->perst, list)
-+		list_del(&perst->list);
+-	list_for_each_entry_safe(perst, tmp_perst, &pcie->perst, list)
++	list_for_each_entry_safe(perst, tmp_perst, &pcie->perst, list) {
++		of_node_put(perst->np);
+ 		list_del(&perst->list);
++	}
  err_pm_runtime_put:
  	pm_runtime_put(dev);
  	pm_runtime_disable(dev);
