@@ -1,11 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 03 Sep 2025 14:50:09 -0500
-Subject: [PATCH v2 3/8] dt-bindings: memory: tegra210: emc: Document OPP
- table and interconnect
+Date: Wed, 03 Sep 2025 14:50:10 -0500
+Subject: [PATCH v2 4/8] soc: tegra: fuse: speedo-tegra210: Add soc speedo 2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250903-t210-actmon-v2-3-e0d534d4f8ea@gmail.com>
+Message-Id: <20250903-t210-actmon-v2-4-e0d534d4f8ea@gmail.com>
 References: <20250903-t210-actmon-v2-0-e0d534d4f8ea@gmail.com>
 In-Reply-To: <20250903-t210-actmon-v2-0-e0d534d4f8ea@gmail.com>
 To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -20,65 +19,38 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756929080; l=1636;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756929080; l=904;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=K2FiUX5RaQ8JIyiwJYROz1L0fIFkHw1QV6kZZgZpZpE=;
- b=a3XwoxVKj3KIyN1sfx6WAt8dO8deBXsuTH5RUBeN0rOiebE0O1Zz2wuV/4gKo49fXFAUf5JWN
- 2x/8w2pD+N/CQYstWrDslVvNpu4CAJJWftTSeahU49I0yG4VKGcG2nK
+ bh=IRRKZEiLQdonkqHTuobp6JolP/SAC2dsrByPD6yqKl4=;
+ b=UgUDh8BGqyCC4bvag8hU2oislyDKSzclNPKEAvoLqqi8Y4SMtP8slXqeNp3TpYwtt5msVhOqC
+ jZ44x5QcxmKBKqpW692D8qfVo58xKa9tlaMvOPyUh3598ga1tCUqhJ5
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These are needed for dynamic frequency scaling of the EMC controller.
+The Jetson Nano series of modules only have 2 emc table entries,
+different from other soc sku's. As the emc driver uses the soc speedo to
+populate the emc opp tables, add a new speedo id to uniquely identify
+this.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- .../bindings/memory-controllers/nvidia,tegra210-emc.yaml    | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ drivers/soc/tegra/fuse/speedo-tegra210.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/memory-controllers/nvidia,tegra210-emc.yaml b/Documentation/devicetree/bindings/memory-controllers/nvidia,tegra210-emc.yaml
-index bc8477e7ab193b7880bb681037985f3fccebf02f..6cc1c7fc7a328bd18c7c0beb535c1ff918bcdb2a 100644
---- a/Documentation/devicetree/bindings/memory-controllers/nvidia,tegra210-emc.yaml
-+++ b/Documentation/devicetree/bindings/memory-controllers/nvidia,tegra210-emc.yaml
-@@ -33,6 +33,9 @@ properties:
-     items:
-       - description: EMC general interrupt
+diff --git a/drivers/soc/tegra/fuse/speedo-tegra210.c b/drivers/soc/tegra/fuse/speedo-tegra210.c
+index 60356159e00d2059e55eaacba27b5ca63bf96c90..c310bdabcfd06ea8f23facb4eaaf209f183dc4eb 100644
+--- a/drivers/soc/tegra/fuse/speedo-tegra210.c
++++ b/drivers/soc/tegra/fuse/speedo-tegra210.c
+@@ -97,6 +97,7 @@ static void __init rev_sku_to_speedo_ids(struct tegra_sku_info *sku_info,
+ 			break;
  
-+  "#interconnect-cells":
-+    const: 0
-+
-   memory-region:
-     maxItems: 1
-     description:
-@@ -44,12 +47,19 @@ properties:
-     description:
-       phandle of the memory controller node
- 
-+  operating-points-v2:
-+    description:
-+      Should contain freqs and voltages and opp-supported-hw property, which
-+      is a bitfield indicating SoC speedo ID mask.
-+
- required:
-   - compatible
-   - reg
-   - clocks
-   - clock-names
-+  - "#interconnect-cells"
-   - nvidia,memory-controller
-+  - operating-points-v2
- 
- additionalProperties: false
- 
-@@ -79,4 +89,7 @@ examples:
-         interrupts = <GIC_SPI 78 IRQ_TYPE_LEVEL_HIGH>;
-         memory-region = <&emc_table>;
-         nvidia,memory-controller = <&mc>;
-+        operating-points-v2 = <&dvfs_opp_table>;
-+
-+        #interconnect-cells = <0>;
-     };
+ 		case 0x8F:
++			sku_info->soc_speedo_id = 2;
+ 			sku_info->cpu_speedo_id = 9;
+ 			sku_info->gpu_speedo_id = 2;
+ 			break;
 
 -- 
 2.50.1
