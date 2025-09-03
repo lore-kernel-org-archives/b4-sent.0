@@ -1,16 +1,13 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Subject: [PATCH v2 0/8] Support Tegra210 actmon for dynamic EMC scaling
-Date: Wed, 03 Sep 2025 14:50:06 -0500
-Message-Id: <20250903-t210-actmon-v2-0-e0d534d4f8ea@gmail.com>
+Date: Wed, 03 Sep 2025 14:50:07 -0500
+Subject: [PATCH v2 1/8] dt-bindings: memory: tegra210: Add memory client
+ IDs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAO6buGgC/1XPQW7DIBAF0KtYsy4VYIixV71HlQWGbwepNglQq
- 1Xku5c4XbS7+SPN6P07ZaSATENzp4Qt5BDXGuRLQ+5i1xks+JpJcqm5kZIVKTizrixxZa3quXL
- o4LmjenFNmMLX8e39/MwJt8/6tDyXNNoM5uKyhDI0ZtIWLfen3ndatQC47zg3rbeT8jAThPbaa
- PqLqbaDIioFc7IPTr4CPjLV8VMvYEbj3LBJehAuIZeYvo9+mzgMv1XMvyqbYHXGKHo4MUml3ub
- Fho/XaqXzvu8/C/0UaykBAAA=
-X-Change-ID: 20250822-t210-actmon-34904ce7ed0c
+Message-Id: <20250903-t210-actmon-v2-1-e0d534d4f8ea@gmail.com>
+References: <20250903-t210-actmon-v2-0-e0d534d4f8ea@gmail.com>
+In-Reply-To: <20250903-t210-actmon-v2-0-e0d534d4f8ea@gmail.com>
 To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Thierry Reding <thierry.reding@gmail.com>, 
@@ -23,59 +20,91 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756929080; l=2134;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756929080; l=2616;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=gFOnd9Tvis+cqdyg6z7tcp79CJ2p06seEOHvLMOOC+Y=;
- b=7m8WkKu0VNb7sEqCcDhrpHkv7f/U7cahaSgZVOVvIR97hswjw2MAkyV//p2TxDSk41hOQskoF
- GrxPCHZ4hGDBGdPqo3E0mX6eFx9XKgADp0fWytPxmYmB57bPU+kq4/Y
+ bh=u4jz33x6Ez21364iFx09PcoppaXBOvLz3qVMpDfajQM=;
+ b=jwCuxoaY3bOoo8wi4XjARXBSG/QkzkFM5CtaxIZHz+MOPAKmpnL3LAHrzhPLHPWcX020Nnxpk
+ zledt4VNotnCt6ZZN/K2+TFgiAVHB4T91Crx4o4ltK6kIY4MLsqFqyq
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds interconnect support to tegra210 MC and EMC, then
-enables actmon. This enables dynamic emc scaling.
+Each memory client has unique hardware ID, add these IDs.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Changes in v2:
-- Assume 64-bit dram bus width in patch 4
-- Add dt-bindings patch to document the new properties on the
-  tegra210-emc node.
-- Link to v1: https://lore.kernel.org/r/20250828-t210-actmon-v1-0-aeb19ec1f244@gmail.com
+ include/dt-bindings/memory/tegra210-mc.h | 58 ++++++++++++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
 
----
-Aaron Kling (8):
-      dt-bindings: memory: tegra210: Add memory client IDs
-      dt-bindings: devfreq: tegra30-actmon: Add Tegra124 fallback for Tegra210
-      dt-bindings: memory: tegra210: emc: Document OPP table and interconnect
-      soc: tegra: fuse: speedo-tegra210: Add soc speedo 2
-      memory: tegra210: Support interconnect framework
-      arm64: tegra: tegra210: Add actmon
-      arm64: tegra: Add interconnect properties to Tegra210 device-tree
-      arm64: tegra: Add OPP tables on Tegra210
+diff --git a/include/dt-bindings/memory/tegra210-mc.h b/include/dt-bindings/memory/tegra210-mc.h
+index 5e082547f1794cba1f72872782e04d8747863b6d..48474942a000e049142014e3bcc132b88bf1a92d 100644
+--- a/include/dt-bindings/memory/tegra210-mc.h
++++ b/include/dt-bindings/memory/tegra210-mc.h
+@@ -75,4 +75,62 @@
+ #define TEGRA210_MC_RESET_ETR		28
+ #define TEGRA210_MC_RESET_TSECB		29
+ 
++#define TEGRA210_MC_PTCR		0
++#define TEGRA210_MC_DISPLAY0A		1
++#define TEGRA210_MC_DISPLAY0AB		2
++#define TEGRA210_MC_DISPLAY0B		3
++#define TEGRA210_MC_DISPLAY0BB		4
++#define TEGRA210_MC_DISPLAY0C		5
++#define TEGRA210_MC_DISPLAY0CB		6
++#define TEGRA210_MC_AFIR		14
++#define TEGRA210_MC_AVPCARM7R		15
++#define TEGRA210_MC_DISPLAYHC		16
++#define TEGRA210_MC_DISPLAYHCB		17
++#define TEGRA210_MC_HDAR		21
++#define TEGRA210_MC_HOST1XDMAR		22
++#define TEGRA210_MC_HOST1XR		23
++#define TEGRA210_MC_NVENCSRD		28
++#define TEGRA210_MC_PPCSAHBDMAR		29
++#define TEGRA210_MC_PPCSAHBSLVR		30
++#define TEGRA210_MC_SATAR		31
++#define TEGRA210_MC_MPCORER		39
++#define TEGRA210_MC_NVENCSWR		43
++#define TEGRA210_MC_AFIW		49
++#define TEGRA210_MC_AVPCARM7W		50
++#define TEGRA210_MC_HDAW		53
++#define TEGRA210_MC_HOST1XW		54
++#define TEGRA210_MC_MPCOREW		57
++#define TEGRA210_MC_PPCSAHBDMAW		59
++#define TEGRA210_MC_PPCSAHBSLVW		60
++#define TEGRA210_MC_SATAW		61
++#define TEGRA210_MC_ISPRA		68
++#define TEGRA210_MC_ISPWA		70
++#define TEGRA210_MC_ISPWB		71
++#define TEGRA210_MC_XUSB_HOSTR		74
++#define TEGRA210_MC_XUSB_HOSTW		75
++#define TEGRA210_MC_XUSB_DEVR		76
++#define TEGRA210_MC_XUSB_DEVW		77
++#define TEGRA210_MC_ISPRAB		78
++#define TEGRA210_MC_ISPWAB		80
++#define TEGRA210_MC_ISPWBB		81
++#define TEGRA210_MC_TSECSRD		84
++#define TEGRA210_MC_TSECSWR		85
++#define TEGRA210_MC_A9AVPSCR		86
++#define TEGRA210_MC_A9AVPSCW		87
++#define TEGRA210_MC_GPUSRD		88
++#define TEGRA210_MC_GPUSWR		89
++#define TEGRA210_MC_DISPLAYT		90
++#define TEGRA210_MC_SDMMCRA		96
++#define TEGRA210_MC_SDMMCRAA		97
++#define TEGRA210_MC_SDMMCR		98
++#define TEGRA210_MC_SDMMCRAB		99
++#define TEGRA210_MC_SDMMCWA		100
++#define TEGRA210_MC_SDMMCWAA		101
++#define TEGRA210_MC_SDMMCW		102
++#define TEGRA210_MC_SDMMCWAB		103
++#define TEGRA210_MC_VICSRD		108
++#define TEGRA210_MC_VICSWR		109
++#define TEGRA210_MC_VIW			114
++#define TEGRA210_MC_DISPLAYD		115
++
+ #endif
 
- .../bindings/devfreq/nvidia,tegra30-actmon.yaml    |  13 +-
- .../memory-controllers/nvidia,tegra210-emc.yaml    |  13 +
- .../boot/dts/nvidia/tegra210-peripherals-opp.dtsi  | 135 ++++++++++
- arch/arm64/boot/dts/nvidia/tegra210.dtsi           |  43 ++++
- drivers/memory/tegra/Kconfig                       |   1 +
- drivers/memory/tegra/tegra210-emc-core.c           | 274 ++++++++++++++++++++-
- drivers/memory/tegra/tegra210-emc.h                |  23 ++
- drivers/memory/tegra/tegra210.c                    |  81 ++++++
- drivers/soc/tegra/fuse/speedo-tegra210.c           |   1 +
- include/dt-bindings/memory/tegra210-mc.h           |  58 +++++
- 10 files changed, 635 insertions(+), 7 deletions(-)
----
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250822-t210-actmon-34904ce7ed0c
-prerequisite-change-id: 20250812-tegra210-speedo-470691e8b8cc:v2
-prerequisite-patch-id: 83adce426963f91482cc0928357dad36705a3328
-prerequisite-patch-id: f693f138b5d40cdc45d9066ce48cbcff782253f8
-prerequisite-patch-id: 9e3b9b2fdb8d9c2264dfa7641d1aec84fb7aedd9
-prerequisite-patch-id: ef4bcc4ddba7898b188fb3fc6e414a2662183f91
-
-Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+2.50.1
 
