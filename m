@@ -1,170 +1,101 @@
-From: Federico Fuga <fuga@studiofuga.com>
-Date: Wed, 03 Sep 2025 18:31:36 +0200
-Subject: [PATCH] SUNXI / TWSI: Implement I2C bus unlocking for stuck
- devices during initialization.
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH v4 0/7] phy: rockchip: phy-rockchip-inno-csidphy: add
+ support for rk3588 variant
+Date: Wed, 03 Sep 2025 19:04:48 +0200
+Message-Id: <20250616-rk3588-csi-dphy-v4-0-a4f340a7f0cf@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250903-fix-i2c_stuck_bus-v1-1-b2583ca6703b@studiofuga.com>
-X-B4-Tracking: v=1; b=H4sIAGdtuGgC/x2M0QpAQBAAf0X77GrdOeJXJHG32BS6RUr+3eVxa
- mYeEApMAnXyQKCLhbc1QpYm4OZ+nUixjwwatcUKjRr5VqxdJ8fplm44ReVojTdlX6C3ELs9UJT
- +Z9O+7wf0NDwKYwAAAA==
-X-Change-ID: 20250903-fix-i2c_stuck_bus-4053d37a60d5
-To: Stefan Roese <stefan.roese@mailbox.org>, 
- Heiko Schocher <hs@nabladev.com>, Tom Rini <trini@konsulko.com>
-Cc: u-boot@lists.denx.de, Federico Fuga <fuga@studiofuga.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5156; i=fuga@studiofuga.com;
- h=from:subject:message-id; bh=R2rYc4d7A5y6B8AyV0Sx/umAav/jlGPTR1mI0EJ4P1s=;
- b=owGbwMvMwCWWHKr8a5mpjg3jabUkhowduRmmWhzsr/dc7+3tvyQv/H/p67fPr4bx3Xum4X7r3
- tSKNY84OkpZGMS4GGTFFFnmvHx2Jutb9tmPuuu1YOawMoEMYeDiFICJHFvEyHB+w13Lm0XfBXUa
- moQXhV1qiRLM6917MijR/uGy+1Nu5RozMsx90lTBa984QV924vyW5sdX3G6e5zm/1Kcp616i8FK
- hGRwA
-X-Developer-Key: i=fuga@studiofuga.com; a=openpgp;
- fpr=9CE9E6CC6AF66BCDF12DAF2A635523FAA6352C3C
-X-Endpoint-Received: by B4 Relay for fuga@studiofuga.com/default with auth_id=333
+X-B4-Tracking: v=1; b=H4sIADB1uGgC/4XNTQ7CIBCG4as0rMXw10JdeQ/jAgawRC0NmMam6
+ d2lXRpNl++XzDMzyi4Fl9GpmlFyY8gh9iXEoULQ6f7mcLClESOsJg1tcLrzWikMOWA7dBOG1lm
+ mrQDbelSuhuR8eG/i5Vq6C/kV07Q9GOm6/rdGiglWwhlumJa8gTPEx0ObmPQR4hOt3sh2DFYMq
+ VvhiWyNpOyXwXcMXgxdA9jaUy+4+jaWZfkApc8QXjoBAAA=
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Vinod Koul <vkoul@kernel.org>, Kishon Vijay Abraham I <kishon@kernel.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Kever Yang <kever.yang@rock-chips.com>, 
+ Jagan Teki <jagan@amarulasolutions.com>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Diederik de Haas <didi.debian@cknow.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Heiko Stuebner <heiko@sntech.de>, 
+ Collabora Kernel Team <kernel@collabora.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-phy@lists.infradead.org, 
+ Michael Riesch <michael.riesch@collabora.com>, stable@kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756919100; l=2751;
+ i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
+ bh=Sp1oVh07PV5J1vHgtpAOsZp9J99yIuyi/v/VuN5rhXY=;
+ b=6NCRuBLPC+EN/UwAOUVq62wlOgaZhr5BntQTg7A08B7KaV3CqcIuHyxpxS4zRDkiBeOAmpxWv
+ CdsHYjMsTyWAa8YaBkBU/u+ViTzmhn/1Z4nhnjnBDbcw7n9svQkPeKq
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch introduces an I2C bus recovery mechanism for the Marvell mvtwsi controller, limited to sunxi versions.
+Habidere,
 
-Under certain conditions, such as a system reset during an active I2C transaction, a slave device can be left holding the SDA line low. This occurs because the slave is still waiting for the master to complete the transfer with clock pulses, but the master (CPU) has been reset.
+The Rockchip RK3588 features two MIPI CSI-2 DPHYs (not to be confused with
+the two combo MIPI DSI/CSI CPHY/DPHY blocks). The CSI-2 DPHYs can be
+supported using the existing phy-rockchip-inno-csidphy driver, the notable
+differences being
+ - the control bits in the GRF
+ - the additional reset line
+This patch series adds support for this variant.
 
-While the mvtwsi peripheral is reset during boot, this does not affect the state of the slave device on the bus. The bus remains stuck, which can be detected during driver initialization by observing that the I2C Status Register is not in its expected IDLE state (0xF8).
+As you may have guessed, this is part of the efforts to bring the support
+for the RK3588 Video Capture (VICAP) unit mainline.
 
-This patchset adds logic to check for this condition during init. If a non-IDLE state is detected, it triggers a bus recovery procedure to unlock the bus and return it to a functional state.
+Looking forward to your comments!
 
-This code is applicable for SUNXI devices only, that allow direct control of SDA/SCL signals.
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+---
+Changes in v4:
+- fixed commit message "false negatives" -> "false positives"
+- fixed mipi csi dphy node addition -> mipidcphy1 remains as-is now
+- moved allOf: block after required: block (Krzysztof)
+- added remark w.r.t. the description of the original reset (Krzysztof)
+- name of the new reset remains "phy" as I didn't find any better
+  name. Suggestions welcome! (Krzysztof)
+- Link to v3: https://lore.kernel.org/r/20250616-rk3588-csi-dphy-v3-0-a5ccd5f1f438@collabora.com
 
-Testing
-This implementation was successfully tested on an older version of U-Boot, where it reliably fixed a reproducible bus-hang issue. It has not been tested on the current master branch, but a review of the driver shows that the relevant code sections are very similar. Community testing on current hardware would be greatly appreciated.
+Changes in v3:
+- added if:then: for required 'power-domains' (Krzysztof)
+- fixed restriction of resets/reset-names (Rob)
+- Link to v2: https://lore.kernel.org/r/20250616-rk3588-csi-dphy-v2-0-7a94f079b712@collabora.com
+
+Changes in v2:
+- rebased onto v6.17-rc1
+- added patch that makes 'power-domains' non-required (Diederik)
+- added patch that allows for different sets of resets (Neil)
+- introduced name for additional reset line (Neil)
+- fixed example in bindings (Rob, Diederik)
+- Link to v1: https://lore.kernel.org/r/20250616-rk3588-csi-dphy-v1-0-84eb3b2a736c@collabora.com
 
 ---
-Federico Fuga
+Michael Riesch (7):
+      dt-bindings: soc: rockchip: add rk3588 csidphy grf syscon
+      dt-bindings: phy: rockchip-inno-csi-dphy: make power-domains non-required
+      dt-bindings: phy: rockchip-inno-csi-dphy: add rk3588 variant
+      phy: rockchip: phy-rockchip-inno-csidphy: allow writes to grf register 0
+      phy: rockchip: phy-rockchip-inno-csidphy: allow for different reset lines
+      phy: rockchip: phy-rockchip-inno-csidphy: add support for rk3588 variant
+      arm64: dts: rockchip: add mipi csi-2 dphy nodes to rk3588
 
-Signed-off-by: Federico Fuga <fuga@studiofuga.com>
+ .../bindings/phy/rockchip-inno-csi-dphy.yaml       | 65 ++++++++++++++++++++-
+ .../devicetree/bindings/soc/rockchip/grf.yaml      |  1 +
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      | 34 +++++++++++
+ drivers/phy/rockchip/phy-rockchip-inno-csidphy.c   | 67 ++++++++++++++++++++--
+ 4 files changed, 159 insertions(+), 8 deletions(-)
 ---
- drivers/i2c/mvtwsi.c | 81 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 79 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/i2c/mvtwsi.c b/drivers/i2c/mvtwsi.c
-index 44e8e191b0392b9a91e19f2e32c3df2039789064..b574bbe3173888a6202c057495c2d786b952bc33 100644
---- a/drivers/i2c/mvtwsi.c
-+++ b/drivers/i2c/mvtwsi.c
-@@ -63,6 +63,9 @@ struct  mvtwsi_registers {
- 	u32 status;
- 	u32 baudrate;
- 	u32 soft_reset;
-+	u32 enhanced_features;
-+	u32 twi_line;
-+	u32 twi_dvfs;
- 	u32 debug; /* Dummy field for build compatibility with mvebu */
- };
- 
-@@ -446,12 +449,75 @@ static uint twsi_calc_freq(const int n, const int m)
-  */
- static void twsi_reset(struct mvtwsi_registers *twsi)
- {
-+	int i;
-+
- 	/* Reset controller */
- 	writel(0, &twsi->soft_reset);
--	/* Wait 2 ms -- this is what the Marvell LSP does */
--	udelay(20000);
-+	for (i = 10; i > 0; --i) {
-+		/* poll the controller for reset. */
-+		if (readl(&twsi->soft_reset) == 0)
-+			break;
-+		udelay(2000);
-+	}
-+}
-+
-+#if defined(CONFIG_ARCH_SUNXI)
-+/*
-+ * twsi_bus_unblock() - Forcibly unblock i2c devices stuck on transactions.
-+ *
-+ * If a i2c/twsi transaction is aborted by resetting the controller, the bus might be locked by the
-+ * active slave device being stuck waiting for more clock pulse to complete the transaction. This
-+ * might happen if the CPU is reset during a transaction.
-+ *
-+ * In this case, the reset of the bus controller is uneffective. A special procedure is required:
-+ * the SCL signal must be pulsed 8 or more times while keeping the SDA signal weak (high), and
-+ * then by issuing a STOP signal.
-+ *
-+ * This function perform this procedure for SUNXI devices that has control of the SDA/SCL signals
-+ * through special registers.
-+ *
-+ * @twsi: The MVTWSI register structure to use.
-+ */
-+static void twsi_bus_unblock(struct mvtwsi_registers *twsi)
-+{
-+	int v;
-+
-+	// Take control of SDA and SCL
-+	writel(readl(&twsi->twi_line) | 0x05, &twsi->twi_line);
-+
-+	// Pull SCL and SDA high
-+	writel(readl(&twsi->twi_line) | 0x0a, &twsi->twi_line);
-+	ndelay(1000);
-+
-+	// Pulse SCL 16 times
-+	for (v = 0; v < 16; ++v) {
-+		writel(readl(&twsi->twi_line) | 0x08, &twsi->twi_line);
-+		ndelay(1000);
-+		writel(readl(&twsi->twi_line) & 0xf7, &twsi->twi_line);
-+		ndelay(1000);
-+	}
-+
-+	// Isse a stop: pull SDA low, then SCL up, then SDA up.
-+	writel(readl(&twsi->twi_line) & 0xfe, &twsi->twi_line);
-+	ndelay(1000);
-+	writel(readl(&twsi->twi_line) | 0x08, &twsi->twi_line);
-+	ndelay(1000);
-+	writel(readl(&twsi->twi_line) | 0x02, &twsi->twi_line);
-+	ndelay(1000);
-+
-+	// release control of SDA and SCL. Then proceed with init.
-+	writel(readl(&twsi->twi_line) & 0x0a, &twsi->twi_line);
-+	ndelay(1000);
-+}
-+
-+#else
-+
-+static void twsi_bus_unblock(struct mvtwsi_registers *twsi)
-+{
- }
- 
-+#endif
-+
- /*
-  * __twsi_i2c_set_bus_speed() - Set the speed of the I2C controller.
-  *
-@@ -510,9 +576,20 @@ static void __twsi_i2c_init(struct mvtwsi_registers *twsi, int speed,
- 			    int slaveadd, uint *actual_speed)
- {
- 	uint tmp_speed;
-+	uint v;
- 
- 	/* Reset controller */
- 	twsi_reset(twsi);
-+
-+	/* Check for Status Register. The register should be set at MVTWSI_STATUS_IDLE (0xf8) after reset.
-+	 * If this is not the case, the bus might be hard locked by a stuck device.
-+	 * Issue an emergency unlock procedure
-+	 */
-+	v = readl(&twsi->status);
-+	if (v != MVTWSI_STATUS_IDLE) {
-+		twsi_bus_unblock(twsi);
-+	}
-+
- 	/* Set speed */
- 	tmp_speed = __twsi_i2c_set_bus_speed(twsi, speed);
- 	if (actual_speed)
-
----
-base-commit: 9ba067aea83404243de08390e9177dd8f59e5e02
-change-id: 20250903-fix-i2c_stuck_bus-4053d37a60d5
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250616-rk3588-csi-dphy-c9ed2ad4cd9f
 
 Best regards,
 -- 
-Federico Fuga <fuga@studiofuga.com>
+Michael Riesch <michael.riesch@collabora.com>
 
