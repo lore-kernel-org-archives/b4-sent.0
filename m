@@ -1,11 +1,11 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 03 Sep 2025 14:30:17 -0500
-Subject: [PATCH v2 2/4] soc: tegra: fuse: speedo-tegra210: Update speedo
- ids
+Date: Wed, 03 Sep 2025 14:30:18 -0500
+Subject: [PATCH v2 3/4] clk: tegra: dfll: Support limiting max clock per
+ device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250903-tegra210-speedo-v2-2-89e6f86b8942@gmail.com>
+Message-Id: <20250903-tegra210-speedo-v2-3-89e6f86b8942@gmail.com>
 References: <20250903-tegra210-speedo-v2-0-89e6f86b8942@gmail.com>
 In-Reply-To: <20250903-tegra210-speedo-v2-0-89e6f86b8942@gmail.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -20,107 +20,51 @@ Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org,
  linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Thierry Reding <treding@nvidia.com>, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756927822; l=2732;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756927822; l=1454;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=+rnEMK4ZcZWLWnEqy8xfvGYxMDKH6aqGlW/aWu1EMXw=;
- b=Rtw4En8Nol3b3Pqyu9BdJK0rwTTTt5os7DFLrd70wJVDMZn+cLzJ4pMTGtnLG2QIX3EIyXxZX
- OH5UL6xYH9NDsYsEC1n7Yz/o+OUdc3oGJttdKKm2NHAlahOQuhPPMbP
+ bh=HHRtvxWltZLOQ+/PSjEx/VXgJfA/2/uQ/lKhb4XDMgk=;
+ b=AzsH+wmGolTg4V4dHGipf3kg2dmJoNVJ9qnBLjnDNA9iqyCI5SAu8/HjJ5D1MKfuU8+UVSvpK
+ LZ1CiYib7u9CX6v8N7ZJkoB7HgYqdCYjUquMiONQIYIV0PGE3mLK8Vn
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Existing code only sets cpu and gpu speedo ids 0 and 1. The cpu dvfs
-code supports 11 ids and nouveau supports 5. This aligns with what the
-downstream vendor kernel supports. Align skus with the downstream list.
+Some devices like the Jetson Nano report a cpu speedo value that scales
+past the thermal limits of the device. This allows limiting the maximum
+scaling to a lower value within the table.
 
-The Tegra210 CVB tables were added in the first referenced fixes commit.
-Since then, all Tegra210 socs have tried to scale to 1.9 GHz, when the
-supported devkits are only supposed to scale to 1.5 or 1.7 GHZ.
-Overclocking should not be the default state.
-
-Fixes: 2b2dbc2f94e5 ("clk: tegra: dfll: add CVB tables for Tegra210")
-Fixes: 579db6e5d9b8 ("arm64: tegra: Enable DFLL support on Jetson Nano")
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/soc/tegra/fuse/speedo-tegra210.c | 62 ++++++++++++++++++++++----------
- 1 file changed, 43 insertions(+), 19 deletions(-)
+ drivers/clk/tegra/clk-tegra124-dfll-fcpu.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/soc/tegra/fuse/speedo-tegra210.c b/drivers/soc/tegra/fuse/speedo-tegra210.c
-index 695d0b7f9a8abe53c497155603147420cda40b63..60356159e00d2059e55eaacba27b5ca63bf96c90 100644
---- a/drivers/soc/tegra/fuse/speedo-tegra210.c
-+++ b/drivers/soc/tegra/fuse/speedo-tegra210.c
-@@ -65,27 +65,51 @@ static void __init rev_sku_to_speedo_ids(struct tegra_sku_info *sku_info,
- 	sku_info->gpu_speedo_id = 0;
- 	*threshold = THRESHOLD_INDEX_0;
+diff --git a/drivers/clk/tegra/clk-tegra124-dfll-fcpu.c b/drivers/clk/tegra/clk-tegra124-dfll-fcpu.c
+index 0251618b82c8321724ba0aec7a5bd90b2c2ffaf2..0c84f7e85baaa96fee005a1c9a5dd6afbd1875fa 100644
+--- a/drivers/clk/tegra/clk-tegra124-dfll-fcpu.c
++++ b/drivers/clk/tegra/clk-tegra124-dfll-fcpu.c
+@@ -556,6 +556,7 @@ static int tegra124_dfll_fcpu_probe(struct platform_device *pdev)
+ 	struct tegra_dfll_soc_data *soc;
+ 	const struct dfll_fcpu_data *fcpu_data;
+ 	struct rail_alignment align;
++	u32 max_freq;
  
--	switch (sku) {
--	case 0x00: /* Engineering SKU */
--	case 0x01: /* Engineering SKU */
--	case 0x07:
--	case 0x17:
--	case 0x27:
--		if (speedo_rev >= 2)
-+	if (speedo_rev >= 2) {
-+		switch (sku) {
-+		case 0x00: /* Engineering SKU */
-+		case 0x01: /* Engineering SKU */
-+		case 0x13:
-+			sku_info->cpu_speedo_id = 5;
-+			sku_info->gpu_speedo_id = 2;
-+			break;
-+
-+		case 0x07:
-+		case 0x17:
-+		case 0x1F:
-+			sku_info->cpu_speedo_id = 7;
-+			sku_info->gpu_speedo_id = 2;
-+			break;
-+
-+		case 0x27:
-+			sku_info->cpu_speedo_id = 1;
-+			sku_info->gpu_speedo_id = 2;
-+			break;
-+
-+		case 0x83:
-+			sku_info->cpu_speedo_id = 3;
-+			sku_info->gpu_speedo_id = 3;
-+			break;
-+
-+		case 0x87:
-+			sku_info->cpu_speedo_id = 2;
- 			sku_info->gpu_speedo_id = 1;
--		break;
--
--	case 0x13:
--		if (speedo_rev >= 2)
--			sku_info->gpu_speedo_id = 1;
--
--		sku_info->cpu_speedo_id = 1;
--		break;
--
--	default:
-+			break;
-+
-+		case 0x8F:
-+			sku_info->cpu_speedo_id = 9;
-+			sku_info->gpu_speedo_id = 2;
-+			break;
-+
-+		default:
-+			pr_err("Tegra210: unknown revision 2 or newer SKU %#04x\n", sku);
-+			/* Using the default for the error case */
-+			break;
-+		}
-+	} else if (sku == 0x00 || sku == 0x01 || sku == 0x07 || sku == 0x13 || sku == 0x17) {
-+		sku_info->gpu_speedo_id = 1;
-+	} else {
- 		pr_err("Tegra210: unknown SKU %#04x\n", sku);
--		/* Using the default for the error case */
--		break;
+ 	fcpu_data = of_device_get_match_data(&pdev->dev);
+ 	if (!fcpu_data)
+@@ -589,7 +590,12 @@ static int tegra124_dfll_fcpu_probe(struct platform_device *pdev)
+ 			return err;
  	}
- }
  
+-	soc->max_freq = fcpu_data->cpu_max_freq_table[speedo_id];
++	if (!of_property_read_u32(pdev->dev.of_node,
++				 "nvidia,dfll-max-freq",
++				 &max_freq))
++		soc->max_freq = max_freq;
++	else
++		soc->max_freq = fcpu_data->cpu_max_freq_table[speedo_id];
+ 
+ 	soc->cvb = tegra_cvb_add_opp_table(soc->dev, fcpu_data->cpu_cvb_tables,
+ 					   fcpu_data->cpu_cvb_tables_size,
 
 -- 
 2.50.1
