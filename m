@@ -1,149 +1,84 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Thu, 04 Sep 2025 16:33:42 +0800
-Subject: [PATCH v8 2/2] hwmon: document: add gpd-fan
+From: Simon Schuster <schuster.simon@siemens-energy.com>
+Date: Thu, 04 Sep 2025 13:36:52 +0200
+Subject: [PATCH] rv/ltl_monitor: adapt handle_task_newtask to u64
+ clone_flags
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250904-gpd_fan-v8-2-0752584f16da@uniontech.com>
-References: <20250904-gpd_fan-v8-0-0752584f16da@uniontech.com>
-In-Reply-To: <20250904-gpd_fan-v8-0-0752584f16da@uniontech.com>
-To: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
- Jonathan Corbet <corbet@lwn.net>, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
-Cc: linux-kernel@vger.kernel.org, linux-hwmon@vger.kernel.org, 
- linux-doc@vger.kernel.org, Celeste Liu <CoelacanthusHex@gmail.com>, 
- Yao Zi <ziyao@disroot.org>, Derek John Clark <derekjohn.clark@gmail.com>, 
- Jun Zhan <zhanjun@uniontech.com>, Cheng Nie <niecheng1@uniontech.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756974821; l=3706;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=LpIT/dc1H9CoyCcFgvvZK2Mbndl3sEjj5NTpoDZaSng=;
- b=TpLbyysrkvlDAZXFVN6a6xnwrd6Zu4nmp7QsMEFNb5HGs1gGOag1kgmrf3SPXcFnEawtpaNMO
- cQK2ULzM/6GCL1cNYWBcBk+JPbNglTf1Um3479E+i6sDvBYzWxX+TnX
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250904-trace-task-newtask-fix-callbacks-v1-1-8edb3d557365@siemens-energy.com>
+X-B4-Tracking: v=1; b=H4sIANN5uWgC/x2NQQqDQAxFryJZGxitU7RXERcxRhuUsUwGWxDv3
+ sHV48Hj/xNMoorBqzghyqGme8hSlQXwm8IiqFN2qF3tXecaTJFYMJGtGOR7c9YfMm3bSLwajpV
+ vn4+GfTcR5JlPlBzcF/1wXX/dCTs2cgAAAA==
+X-Change-ID: 20250904-trace-task-newtask-fix-callbacks-b158634c59da
+To: Steven Rostedt <rostedt@goodmis.org>, 
+ Christian Brauner <brauner@kernel.org>, 
+ Stephen Rothwell <sfr@canb.auug.org.au>
+Cc: David Hildenbrand <david@redhat.com>, 
+ Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, Arnd Bergmann <arnd@arndb.de>, 
+ linux-trace-kernel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ kernel test robot <lkp@intel.com>, 
+ Simon Schuster <schuster.simon@siemens-energy.com>
+X-Mailer: b4 0.14.3-dev-2ce6c
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756985832; l=2094;
+ i=schuster.simon@siemens-energy.com; s=20250818; h=from:subject:message-id;
+ bh=csJ5txv6tqXJkqrIKhkf4TfiADTvCuVUIksSMgyFOQc=;
+ b=38kU7qTU3ePme9DQA8Us2hLlr+NTH5vWQV+CBallDDv1+gLQMyaXqtUPGu2nQ1fcpi28/61XV
+ ZZRnu69MyC5CqWYDz/cxbvX75QNMrlichdqEVJIep+QIIh6PWPsSZvz
+X-Developer-Key: i=schuster.simon@siemens-energy.com; a=ed25519;
+ pk=PUhOMiSp43aSeRE1H41KApxYOluamBFFiMfKlBjocvo=
+X-Endpoint-Received: by B4 Relay for schuster.simon@siemens-energy.com/20250818 with auth_id=495
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add GPD fan driver document
+Since commit edd3cb05c00a ("copy_process: pass clone_flags as u64 across
+calltree") the task_newtask trace event exposes clone_flags as u64 to
+its callbacks.
 
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+However, ltl_monitor was not adapted, resulting in a faulty callback.
+This also resulted in an lkp build warning due to
+-Wincompatible-pointer-types.
+
+Fixes: edd3cb05c00a ("copy_process: pass clone_flags as u64 across calltree")
+Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
+Closes: https://lore.kernel.org/lkml/20250904113334.18822d43@canb.auug.org.au/
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202509040134.bQVbm7ja-lkp@intel.com/
+Signed-off-by: Simon Schuster <schuster.simon@siemens-energy.com>
 ---
- Documentation/hwmon/gpd-fan.rst | 79 +++++++++++++++++++++++++++++++++++++++++
- Documentation/hwmon/index.rst   |  1 +
- MAINTAINERS                     |  1 +
- 3 files changed, 81 insertions(+)
+I did further search for other in-tree users of the task_newtask
+callback, but the trace macros make it a bit harder. Yet, as far as I
+could see, there are none, so this patch hopefully resolves the problem
+for good. The other matches all relate to "tp_btf/task_newtask", which
+seems to be unaffected.
 
-diff --git a/Documentation/hwmon/gpd-fan.rst b/Documentation/hwmon/gpd-fan.rst
-new file mode 100644
-index 0000000000000000000000000000000000000000..a8541049d680beef93c5f7623de77e759242ffac
---- /dev/null
-+++ b/Documentation/hwmon/gpd-fan.rst
-@@ -0,0 +1,79 @@
-+.. SPDX-License-Identifier: GPL-2.0-or-later
-+
-+Kernel driver gpd-fan
-+=========================
-+
-+Author:
-+    - Cryolitia PukNgae <cryolitia@uniontech.com>
-+
-+Description
-+------------
-+
-+Handheld devices from Shenzhen GPD Technology Co., Ltd. provide fan readings
-+and fan control through their embedded controllers.
-+
-+Supported devices
-+-----------------
-+
-+Currently the driver supports the following handhelds:
-+
-+ - GPD Win Mini (7840U)
-+ - GPD Win Mini (8840U)
-+ - GPD Win Mini (HX370)
-+ - GPD Pocket 4
-+ - GPD Duo
-+ - GPD Win Max 2 (6800U)
-+ - GPD Win Max 2 2023 (7840U)
-+ - GPD Win Max 2 2024 (8840U)
-+ - GPD Win Max 2 2025 (HX370)
-+ - GPD Win 4 (6800U)
-+ - GPD Win 4 (7840U)
-+
-+Module parameters
-+-----------------
-+
-+gpd_fan_board
-+  Force specific which module quirk should be used.
-+  Use it like "gpd_fan_board=wm2".
-+
-+   - wm2
-+       - GPD Win 4 (7840U)
-+       - GPD Win Max 2 (6800U)
-+       - GPD Win Max 2 2023 (7840U)
-+       - GPD Win Max 2 2024 (8840U)
-+       - GPD Win Max 2 2025 (HX370)
-+   - win4
-+       - GPD Win 4 (6800U)
-+   - win_mini
-+       - GPD Win Mini (7840U)
-+       - GPD Win Mini (8840U)
-+       - GPD Win Mini (HX370)
-+       - GPD Pocket 4
-+       - GPD Duo
-+
-+Sysfs entries
-+-------------
-+
-+The following attributes are supported:
-+
-+fan1_input
-+  Read Only. Reads current fan RPM.
-+
-+pwm1_enable
-+  Read/Write. Enable manual fan control. Write "0" to disable control and run
-+  at full speed. Write "1" to set to manual, write "2" to let the EC control
-+  decide fan speed. Read this attribute to see current status.
-+
-+  NB：In consideration of the safety of the device, when setting to manual mode,
-+  the pwm speed will be set to the maximum value (255) by default. You can set
-+  a different value by writing pwm1 later.
-+
-+pwm1
-+  Read/Write. Read this attribute to see current duty cycle in the range
-+  [0-255]. When pwm1_enable is set to "1" (manual) write any value in the
-+  range [0-255] to set fan speed.
-+
-+  NB: Many boards (except listed under wm2 above) don't support reading the
-+  current pwm value in auto mode. That will just return 255 as default on
-+  those boards, or a previously written value. In manual mode it will always
-+  return the real value.
-diff --git a/Documentation/hwmon/index.rst b/Documentation/hwmon/index.rst
-index d292a86ac5da902cad02c1965c90f5de530489df..ce4419f064e1368740387af70af38a85cadd952d 100644
---- a/Documentation/hwmon/index.rst
-+++ b/Documentation/hwmon/index.rst
-@@ -82,6 +82,7 @@ Hardware Monitoring Kernel Drivers
-    gigabyte_waterforce
-    gsc-hwmon
-    gl518sm
-+   gpd-fan
-    gxp-fan-ctrl
-    hih6130
-    hp-wmi-sensors
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 14a616be5ff08aaeee52436dff54a86c4a81e5fb..0b6ae95c2007f0737bc4a4e1f2bac52f71628f78 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -10425,6 +10425,7 @@ GPD FAN DRIVER
- M:	Cryolitia PukNgae <cryolitia@uniontech.com>
- L:	linux-hwmon@vger.kernel.org
- S:	Maintained
-+F:	Documentation/hwmon/gpd-fan.rst
- F:	drivers/hwmon/gpd-fan.c
+With this patch, ARCH=S390 allmodconfig -- that originally tripped the
+LKP builds -- now builds without further -Wincompatible-pointer-types
+warnings.
+
+Sorry for causing this trouble, and thanks to Stephen Rothwell for
+testing/reporting.
+---
+ include/rv/ltl_monitor.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/rv/ltl_monitor.h b/include/rv/ltl_monitor.h
+index 67031a774e3d..5368cf5fd623 100644
+--- a/include/rv/ltl_monitor.h
++++ b/include/rv/ltl_monitor.h
+@@ -56,7 +56,7 @@ static void ltl_task_init(struct task_struct *task, bool task_creation)
+ 	ltl_atoms_fetch(task, mon);
+ }
  
- GPD POCKET FAN DRIVER
+-static void handle_task_newtask(void *data, struct task_struct *task, unsigned long flags)
++static void handle_task_newtask(void *data, struct task_struct *task, u64 flags)
+ {
+ 	ltl_task_init(task, true);
+ }
 
+---
+base-commit: edd3cb05c00a040dc72bed20b14b5ba865188bce
+change-id: 20250904-trace-task-newtask-fix-callbacks-b158634c59da
+
+Best regards,
 -- 
-2.51.0
+Simon Schuster <schuster.simon@siemens-energy.com>
 
