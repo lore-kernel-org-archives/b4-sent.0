@@ -1,84 +1,75 @@
-From: Simon Schuster <schuster.simon@siemens-energy.com>
-Date: Thu, 04 Sep 2025 13:36:52 +0200
-Subject: [PATCH] rv/ltl_monitor: adapt handle_task_newtask to u64
- clone_flags
+From: Gregory Fuchedgi <gfuchedgi@gmail.com>
+Subject: [PATCH v3 0/2] hwmon: (tps23861) add class restrictions and
+ semi-auto mode support
+Date: Thu, 04 Sep 2025 10:33:43 -0700
+Message-Id: <20250904-hwmon-tps23861-add-class-restrictions-v3-0-b4e33e6d066c@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250904-trace-task-newtask-fix-callbacks-v1-1-8edb3d557365@siemens-energy.com>
-X-B4-Tracking: v=1; b=H4sIANN5uWgC/x2NQQqDQAxFryJZGxitU7RXERcxRhuUsUwGWxDv3
- sHV48Hj/xNMoorBqzghyqGme8hSlQXwm8IiqFN2qF3tXecaTJFYMJGtGOR7c9YfMm3bSLwajpV
- vn4+GfTcR5JlPlBzcF/1wXX/dCTs2cgAAAA==
-X-Change-ID: 20250904-trace-task-newtask-fix-callbacks-b158634c59da
-To: Steven Rostedt <rostedt@goodmis.org>, 
- Christian Brauner <brauner@kernel.org>, 
- Stephen Rothwell <sfr@canb.auug.org.au>
-Cc: David Hildenbrand <david@redhat.com>, 
- Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, Arnd Bergmann <arnd@arndb.de>, 
- linux-trace-kernel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- kernel test robot <lkp@intel.com>, 
- Simon Schuster <schuster.simon@siemens-energy.com>
-X-Mailer: b4 0.14.3-dev-2ce6c
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756985832; l=2094;
- i=schuster.simon@siemens-energy.com; s=20250818; h=from:subject:message-id;
- bh=csJ5txv6tqXJkqrIKhkf4TfiADTvCuVUIksSMgyFOQc=;
- b=38kU7qTU3ePme9DQA8Us2hLlr+NTH5vWQV+CBallDDv1+gLQMyaXqtUPGu2nQ1fcpi28/61XV
- ZZRnu69MyC5CqWYDz/cxbvX75QNMrlichdqEVJIep+QIIh6PWPsSZvz
-X-Developer-Key: i=schuster.simon@siemens-energy.com; a=ed25519;
- pk=PUhOMiSp43aSeRE1H41KApxYOluamBFFiMfKlBjocvo=
-X-Endpoint-Received: by B4 Relay for schuster.simon@siemens-energy.com/20250818 with auth_id=495
+X-B4-Tracking: v=1; b=H4sIAHjNuWgC/43OMY7CMBCF4asg1wyyx0owVHuPFYWxJ/FIJEYeb
+ xaEcvc1aAtKyr/53nsoocIk6rh5qEILC+e5hd1uVEh+Hgk4tlaosdNOO0i/U56hXgWt6w34GCF
+ cvAgUklo41AYIOBvIBo3RuU4161po4Ntr5/vUeih5gpoK+Xd9j6bTdr8z7mD6vgcD4/ATEsWRv
+ 8bJ82UX8vTkEkvN5f56veAT/SeM+fDggqCBztEgUujInt8GTuu6/gH4PEB4GQEAAA==
+X-Change-ID: 20250808-hwmon-tps23861-add-class-restrictions-83ce3c02d885
+To: Robert Marko <robert.marko@sartura.hr>, 
+ Luka Perkov <luka.perkov@sartura.hr>, Jean Delvare <jdelvare@suse.com>, 
+ Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Gregory Fuchedgi <gfuchedgi@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757007242; l=1732;
+ i=gfuchedgi@gmail.com; s=20250811; h=from:subject:message-id;
+ bh=Q8u5AE9BcSw1w6JnJ4OUyiCoWbJlKGuQEsgoN4gZJBo=;
+ b=VJ4sy7voS76B6MrrmBM9jkJElOp580d8nGAQMFNlkcJoFVup8atDGUKqpjGfVByJaGo5a7t+Y
+ NBWW8fstcO3DNgiZnuorfYNwHoEQk2gYfg+tbnIVho+elIBHOM988qV
+X-Developer-Key: i=gfuchedgi@gmail.com; a=ed25519;
+ pk=J3o48+1a2mUIebH8K4S3SPuR5bmamUvjlsf8onoIccA=
+X-Endpoint-Received: by B4 Relay for gfuchedgi@gmail.com/20250811 with auth_id=484
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit edd3cb05c00a ("copy_process: pass clone_flags as u64 across
-calltree") the task_newtask trace event exposes clone_flags as u64 to
-its callbacks.
+This patch series introduces per-port device tree configuration with poe
+class restrictions. Also adds optional reset/shutdown gpios.
 
-However, ltl_monitor was not adapted, resulting in a faulty callback.
-This also resulted in an lkp build warning due to
--Wincompatible-pointer-types.
+Tested with hw poe tester:
+ - Auto mode tested with no per-port DT settings as well as explicit port
+   DT ti,class=4. Tested that no IRQ is required in this case.
+ - Semi-Auto mode with class restricted to 0, 1, 2 or 3. IRQ required.
+ - Tested current cut-offs in Semi-Auto mode.
+ - On/off by default setting tested for both Auto and Semi-Auto modes.
+ - Tested fully disabling the ports in DT.
+ - Tested with both reset and ti,ports-shutdown gpios defined, as well as
+   with reset only, as well as with neither reset nor shutdown.
 
-Fixes: edd3cb05c00a ("copy_process: pass clone_flags as u64 across calltree")
-Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
-Closes: https://lore.kernel.org/lkml/20250904113334.18822d43@canb.auug.org.au/
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/oe-kbuild-all/202509040134.bQVbm7ja-lkp@intel.com/
-Signed-off-by: Simon Schuster <schuster.simon@siemens-energy.com>
+Signed-off-by: Gregory Fuchedgi <gfuchedgi@gmail.com>
 ---
-I did further search for other in-tree users of the task_newtask
-callback, but the trace macros make it a bit harder. Yet, as far as I
-could see, there are none, so this patch hopefully resolves the problem
-for good. The other matches all relate to "tp_btf/task_newtask", which
-seems to be unaffected.
+Changes in v3:
+ - cleaned up dt bindings in response to v2 review
+ - Link to v2: https://lore.kernel.org/r/20250811-hwmon-tps23861-add-class-restrictions-v2-0-ebd122ec5e3b@gmail.com
 
-With this patch, ARCH=S390 allmodconfig -- that originally tripped the
-LKP builds -- now builds without further -Wincompatible-pointer-types
-warnings.
-
-Sorry for causing this trouble, and thanks to Stephen Rothwell for
-testing/reporting.
----
- include/rv/ltl_monitor.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/include/rv/ltl_monitor.h b/include/rv/ltl_monitor.h
-index 67031a774e3d..5368cf5fd623 100644
---- a/include/rv/ltl_monitor.h
-+++ b/include/rv/ltl_monitor.h
-@@ -56,7 +56,7 @@ static void ltl_task_init(struct task_struct *task, bool task_creation)
- 	ltl_atoms_fetch(task, mon);
- }
- 
--static void handle_task_newtask(void *data, struct task_struct *task, unsigned long flags)
-+static void handle_task_newtask(void *data, struct task_struct *task, u64 flags)
- {
- 	ltl_task_init(task, true);
- }
+Changes in v2:
+ - code cleanup
+ - split bindings into separate patch
+ - use patternProperties
+ - use labels instead of DT node names
+ - add few comments for clarity
 
 ---
-base-commit: edd3cb05c00a040dc72bed20b14b5ba865188bce
-change-id: 20250904-trace-task-newtask-fix-callbacks-b158634c59da
+Gregory Fuchedgi (2):
+      dt-bindings: hwmon: update TI TPS23861 with per-port schema
+      hwmon: (tps23861) add class restrictions and semi-auto mode support
+
+ .../devicetree/bindings/hwmon/ti,tps23861.yaml     |  93 +++++++-
+ Documentation/hwmon/tps23861.rst                   |   6 +-
+ drivers/hwmon/tps23861.c                           | 249 ++++++++++++++++++++-
+ 3 files changed, 341 insertions(+), 7 deletions(-)
+---
+base-commit: 3db46a82d467bd23d9ebc473d872a865785299d8
+change-id: 20250808-hwmon-tps23861-add-class-restrictions-83ce3c02d885
 
 Best regards,
 -- 
-Simon Schuster <schuster.simon@siemens-energy.com>
+Gregory Fuchedgi <gfuchedgi@gmail.com>
 
