@@ -1,173 +1,145 @@
-From: Dmitry Safonov <dima@arista.com>
-Date: Wed, 03 Sep 2025 21:29:49 +0100
-Subject: [PATCH net-next v4 2/2] tcp: Free TCP-AO/TCP-MD5 info/keys without
- RCU
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Wed, 03 Sep 2025 20:58:58 -0500
+Subject: [PATCH v3] soc: tegra: fuse: speedo-tegra210: Update speedo ids
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250903-b4-tcp-ao-md5-rst-finwait2-v4-2-ef3a9eec3ef3@arista.com>
-References: <20250903-b4-tcp-ao-md5-rst-finwait2-v4-0-ef3a9eec3ef3@arista.com>
-In-Reply-To: <20250903-b4-tcp-ao-md5-rst-finwait2-v4-0-ef3a9eec3ef3@arista.com>
-To: Eric Dumazet <edumazet@google.com>, 
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: Bob Gilligan <gilligan@arista.com>, 
- Salam Noureddine <noureddine@arista.com>, 
- Dmitry Safonov <0x7f454c46@gmail.com>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dmitry Safonov <dima@arista.com>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1756931399; l=4415;
- i=dima@arista.com; s=20250521; h=from:subject:message-id;
- bh=65z7fQlb2eYUj9y2aIvG1Kqpl8vByndV104GRQRJLno=;
- b=xVlsgOWWeR5SMP9vXoOnB3O9FFp5x8MoOm8lMzw7lvzn4mVHpxevILcJcIO9RhlEFS9I7jwcCrMv
- mRmAFT9LCIgp8JxkXkzr8E01CTFdxiykfWuDYCRO0l+aUO4L+IK2
-X-Developer-Key: i=dima@arista.com; a=ed25519;
- pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
-X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
+Message-Id: <20250903-tegra210-speedo-v3-1-73e09e0fbb36@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGHyuGgC/2WN0QqDIBhGXyW8nkN/m+mu9h5jF2Z/JawMDdmI3
+ n0WjA26PB+c8y0kYnAYybVYSMDkovNjBnEqiO3N2CF1TWYCDC5McaAzdsEAZzROiI2nZcWk5qh
+ qZS3J1hSwda+9eH9k7l2cfXjvB4lv67clD63EKaNGKy4kM42F6tYNxj3P1g9kayX4+ZqJow/ZV
+ xplq2StdAn//rquH8g0yjLuAAAA
+X-Change-ID: 20250812-tegra210-speedo-470691e8b8cc
+To: Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, Joseph Lo <josephl@nvidia.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: Thierry Reding <treding@nvidia.com>, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1756951147; l=3689;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=RDXctTbmGxlSSv4dmzycEd2KLlflflCn0kxYFTnBz+U=;
+ b=e6WTY/oNHOtWBHpCY4U/f+KyFymNrmKE7TuAmaL9HV0ch8628dgXWr2YCOEiRnI8eQ3sdrRBB
+ oEnwbVA1IRzAAjIT2T/b6WlLzgS7mARcpaXNSHpvnUnSoy9k/suKWRw
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that the destruction of info/keys is delayed until the socket
-destructor, it's safe to use kfree() without an RCU callback.
-As either socket was yet in TCP_CLOSE state or the socket refcounter is
-zero and no one can discover it anymore, it's safe to release memory
-straight away.
-Similar thing was possible for twsk already.
+Existing code only sets cpu and gpu speedo ids 0 and 1. The cpu dvfs
+code supports 11 ids and nouveau supports 5. This aligns with what the
+downstream vendor kernel supports. Align skus with the downstream list.
 
-Signed-off-by: Dmitry Safonov <dima@arista.com>
+The Tegra210 CVB tables were added in the first referenced fixes commit.
+Since then, all Tegra210 socs have tried to scale to 1.9 GHz, when the
+supported devkits are only supposed to scale to 1.5 or 1.7 GHZ.
+Overclocking should not be the default state.
+
+Fixes: 2b2dbc2f94e5 ("clk: tegra: dfll: add CVB tables for Tegra210")
+Fixes: 579db6e5d9b8 ("arm64: tegra: Enable DFLL support on Jetson Nano")
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- include/net/tcp_ao.h     |  1 -
- net/ipv4/tcp.c           | 17 +++--------------
- net/ipv4/tcp_ao.c        |  5 ++---
- net/ipv4/tcp_ipv4.c      |  4 ++--
- net/ipv4/tcp_minisocks.c | 19 +++++--------------
- 5 files changed, 12 insertions(+), 34 deletions(-)
+The Tegra210 CVB tables were added in commit 2b2dbc2f94e5. Since then,
+all Tegra210 socs have tried to scale the cpu to 1.9 GHz, when the
+supported devkits are only supposed to scale to 1.5 or 1.7 GHZ.
+Overclocking should not be the default state.
+---
+Changes in v3:
+- Drop all patches related to limiting cpu frequency from a dt property
+- Link to v2: https://lore.kernel.org/r/20250903-tegra210-speedo-v2-0-89e6f86b8942@gmail.com
 
-diff --git a/include/net/tcp_ao.h b/include/net/tcp_ao.h
-index df655ce6987d..1e9e27d6e06b 100644
---- a/include/net/tcp_ao.h
-+++ b/include/net/tcp_ao.h
-@@ -130,7 +130,6 @@ struct tcp_ao_info {
- 	u32			snd_sne;
- 	u32			rcv_sne;
- 	refcount_t		refcnt;		/* Protects twsk destruction */
--	struct rcu_head		rcu;
- };
+Changes in v2:
+- Define units in patch 1
+- Update patch 1 commit message to better explain the need
+- Pull all downstream sku's into patch 2, which eliminates patch 3
+- Update patch 4 commit message to indicate the limit is due to thermal
+  constraints.
+- Link to v1: https://lore.kernel.org/r/20250816-tegra210-speedo-v1-0-a981360adc27@gmail.com
+---
+ drivers/soc/tegra/fuse/speedo-tegra210.c | 62 ++++++++++++++++++++++----------
+ 1 file changed, 43 insertions(+), 19 deletions(-)
+
+diff --git a/drivers/soc/tegra/fuse/speedo-tegra210.c b/drivers/soc/tegra/fuse/speedo-tegra210.c
+index 695d0b7f9a8abe53c497155603147420cda40b63..60356159e00d2059e55eaacba27b5ca63bf96c90 100644
+--- a/drivers/soc/tegra/fuse/speedo-tegra210.c
++++ b/drivers/soc/tegra/fuse/speedo-tegra210.c
+@@ -65,27 +65,51 @@ static void __init rev_sku_to_speedo_ids(struct tegra_sku_info *sku_info,
+ 	sku_info->gpu_speedo_id = 0;
+ 	*threshold = THRESHOLD_INDEX_0;
  
- #ifdef CONFIG_TCP_MD5SIG
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index da8bfa4d2fb8..98ed25cf76ce 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -413,27 +413,16 @@ static u64 tcp_compute_delivery_rate(const struct tcp_sock *tp)
- }
- 
- #ifdef CONFIG_TCP_MD5SIG
--static void tcp_md5sig_info_free_rcu(struct rcu_head *head)
--{
--	struct tcp_md5sig_info *md5sig;
+-	switch (sku) {
+-	case 0x00: /* Engineering SKU */
+-	case 0x01: /* Engineering SKU */
+-	case 0x07:
+-	case 0x17:
+-	case 0x27:
+-		if (speedo_rev >= 2)
++	if (speedo_rev >= 2) {
++		switch (sku) {
++		case 0x00: /* Engineering SKU */
++		case 0x01: /* Engineering SKU */
++		case 0x13:
++			sku_info->cpu_speedo_id = 5;
++			sku_info->gpu_speedo_id = 2;
++			break;
++
++		case 0x07:
++		case 0x17:
++		case 0x1F:
++			sku_info->cpu_speedo_id = 7;
++			sku_info->gpu_speedo_id = 2;
++			break;
++
++		case 0x27:
++			sku_info->cpu_speedo_id = 1;
++			sku_info->gpu_speedo_id = 2;
++			break;
++
++		case 0x83:
++			sku_info->cpu_speedo_id = 3;
++			sku_info->gpu_speedo_id = 3;
++			break;
++
++		case 0x87:
++			sku_info->cpu_speedo_id = 2;
+ 			sku_info->gpu_speedo_id = 1;
+-		break;
 -
--	md5sig = container_of(head, struct tcp_md5sig_info, rcu);
--	kfree(md5sig);
--	static_branch_slow_dec_deferred(&tcp_md5_needed);
--	tcp_md5_release_sigpool();
--}
+-	case 0x13:
+-		if (speedo_rev >= 2)
+-			sku_info->gpu_speedo_id = 1;
 -
- void tcp_md5_destruct_sock(struct sock *sk)
- {
- 	struct tcp_sock *tp = tcp_sk(sk);
- 
- 	if (tp->md5sig_info) {
--		struct tcp_md5sig_info *md5sig;
- 
--		md5sig = rcu_dereference_protected(tp->md5sig_info, 1);
- 		tcp_clear_md5_list(sk);
--		rcu_assign_pointer(tp->md5sig_info, NULL);
--		call_rcu(&md5sig->rcu, tcp_md5sig_info_free_rcu);
-+		kfree(rcu_replace_pointer(tp->md5sig_info, NULL, 1));
-+		static_branch_slow_dec_deferred(&tcp_md5_needed);
-+		tcp_md5_release_sigpool();
- 	}
- }
- EXPORT_SYMBOL_GPL(tcp_md5_destruct_sock);
-diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
-index bbb8d5f0eae7..31302be78bc4 100644
---- a/net/ipv4/tcp_ao.c
-+++ b/net/ipv4/tcp_ao.c
-@@ -268,9 +268,8 @@ static void tcp_ao_key_free_rcu(struct rcu_head *head)
- 	kfree_sensitive(key);
- }
- 
--static void tcp_ao_info_free_rcu(struct rcu_head *head)
-+static void tcp_ao_info_free(struct tcp_ao_info *ao)
- {
--	struct tcp_ao_info *ao = container_of(head, struct tcp_ao_info, rcu);
- 	struct tcp_ao_key *key;
- 	struct hlist_node *n;
- 
-@@ -310,7 +309,7 @@ void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
- 
- 	if (!twsk)
- 		tcp_ao_sk_omem_free(sk, ao);
--	call_rcu(&ao->rcu, tcp_ao_info_free_rcu);
-+	tcp_ao_info_free(ao);
- }
- 
- void tcp_ao_time_wait(struct tcp_timewait_sock *tcptw, struct tcp_sock *tp)
-diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
-index 17176a5d8638..2a0602035729 100644
---- a/net/ipv4/tcp_ipv4.c
-+++ b/net/ipv4/tcp_ipv4.c
-@@ -1503,9 +1503,9 @@ void tcp_clear_md5_list(struct sock *sk)
- 	md5sig = rcu_dereference_protected(tp->md5sig_info, 1);
- 
- 	hlist_for_each_entry_safe(key, n, &md5sig->head, node) {
--		hlist_del_rcu(&key->node);
-+		hlist_del(&key->node);
- 		atomic_sub(sizeof(*key), &sk->sk_omem_alloc);
--		kfree_rcu(key, rcu);
-+		kfree(key);
- 	}
- }
- 
-diff --git a/net/ipv4/tcp_minisocks.c b/net/ipv4/tcp_minisocks.c
-index d1c9e4088646..7c2ae07d8d5d 100644
---- a/net/ipv4/tcp_minisocks.c
-+++ b/net/ipv4/tcp_minisocks.c
-@@ -377,26 +377,17 @@ void tcp_time_wait(struct sock *sk, int state, int timeo)
- }
- EXPORT_SYMBOL(tcp_time_wait);
- 
--#ifdef CONFIG_TCP_MD5SIG
--static void tcp_md5_twsk_free_rcu(struct rcu_head *head)
--{
--	struct tcp_md5sig_key *key;
+-		sku_info->cpu_speedo_id = 1;
+-		break;
 -
--	key = container_of(head, struct tcp_md5sig_key, rcu);
--	kfree(key);
--	static_branch_slow_dec_deferred(&tcp_md5_needed);
--	tcp_md5_release_sigpool();
--}
--#endif
--
- void tcp_twsk_destructor(struct sock *sk)
- {
- #ifdef CONFIG_TCP_MD5SIG
- 	if (static_branch_unlikely(&tcp_md5_needed.key)) {
- 		struct tcp_timewait_sock *twsk = tcp_twsk(sk);
- 
--		if (twsk->tw_md5_key)
--			call_rcu(&twsk->tw_md5_key->rcu, tcp_md5_twsk_free_rcu);
-+		if (twsk->tw_md5_key) {
-+			kfree(twsk->tw_md5_key);
-+			static_branch_slow_dec_deferred(&tcp_md5_needed);
-+			tcp_md5_release_sigpool();
+-	default:
++			break;
++
++		case 0x8F:
++			sku_info->cpu_speedo_id = 9;
++			sku_info->gpu_speedo_id = 2;
++			break;
++
++		default:
++			pr_err("Tegra210: unknown revision 2 or newer SKU %#04x\n", sku);
++			/* Using the default for the error case */
++			break;
 +		}
++	} else if (sku == 0x00 || sku == 0x01 || sku == 0x07 || sku == 0x13 || sku == 0x17) {
++		sku_info->gpu_speedo_id = 1;
++	} else {
+ 		pr_err("Tegra210: unknown SKU %#04x\n", sku);
+-		/* Using the default for the error case */
+-		break;
  	}
- #endif
- 	tcp_ao_destroy_sock(sk, true);
+ }
+ 
 
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250812-tegra210-speedo-470691e8b8cc
+
+Best regards,
 -- 
-2.42.2
+Aaron Kling <webgeek1234@gmail.com>
 
