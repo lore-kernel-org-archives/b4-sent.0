@@ -1,115 +1,66 @@
-From: Christoph Paasch <cpaasch@openai.com>
-Date: Thu, 04 Sep 2025 15:53:36 -0700
-Subject: [PATCH net-next v5 2/2] net/mlx5: Avoid copying payload to the
- skb's linear part
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Fri, 05 Sep 2025 10:39:40 +0800
+Subject: [PATCH] dt-bindings: power: keep alphabetical order
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250904-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v5-2-ea492f7b11ac@openai.com>
-References: <20250904-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v5-0-ea492f7b11ac@openai.com>
-In-Reply-To: <20250904-cpaasch-pf-927-netmlx5-avoid-copying-the-payload-to-the-malloced-area-v5-0-ea492f7b11ac@openai.com>
-To: Gal Pressman <gal@nvidia.com>, Dragos Tatulea <dtatulea@nvidia.com>, 
- Saeed Mahameed <saeedm@nvidia.com>, Tariq Toukan <tariqt@nvidia.com>, 
- Mark Bloch <mbloch@nvidia.com>, Leon Romanovsky <leon@kernel.org>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
- Jesper Dangaard Brouer <hawk@kernel.org>, 
- John Fastabend <john.fastabend@gmail.com>, 
- Stanislav Fomichev <sdf@fomichev.me>, Amery Hung <ameryhung@gmail.com>
-Cc: netdev@vger.kernel.org, linux-rdma@vger.kernel.org, bpf@vger.kernel.org, 
- Christoph Paasch <cpaasch@openai.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757026645; l=3145;
- i=cpaasch@openai.com; s=20250712; h=from:subject:message-id;
- bh=IL2BQ6RwilnanWsFwUGaKxGp5LH0ZxwNNbUaCebgEgY=;
- b=iGLeJUjmReoTy77GeZlEeA7KYV6oYMc0TPFBJ1DVL9tTxSE5Hgf1zQh6tdPTNdJekk0ijz4Yg
- QdiWnSNrDULCm4Dj4OU9U1nB8rHK7JB/8ZiVvmLu+HfkifB2DxXREOS
-X-Developer-Key: i=cpaasch@openai.com; a=ed25519;
- pk=1HRHZlVUZPziMZvsAQFvP7n5+uEosTDAjXmNXykdxdg=
-X-Endpoint-Received: by B4 Relay for cpaasch@openai.com/20250712 with auth_id=459
+Message-Id: <20250905-pm-fix-order-v1-1-3596e03d66e6@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAGtNumgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDSwNT3YJc3bTMCt38opTUIl3TRDPLpDQTM0MjE3MloJaColSgJNi46Nj
+ aWgA2dWuCXgAAAA==
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jianxin Pan <jianxin.pan@amlogic.com>, Ulf Hansson <ulf.hansson@linaro.org>, 
+ "hongyu.chen1" <hongyu.chen1@amlogic.com>
+Cc: Conor Dooley <conor.dooley@microchip.com>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757039980; l=1166;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=v+dUEzn1Vq7pqlYwSYypI3RmFlt816zF2fbTkSK6CaI=;
+ b=0NIo6ncVhxzcSBYsUPwwNstjwwmTebpSb7P86Z3fS5sMjjo8uiUE2k4Q2oiWF1Ym+XQVj4maz
+ rorfr+gR0aNBFnqYjT9M3EUghIpXGKaFqKI+kHsytLqcqv892pudIQQ
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mlx5e_skb_from_cqe_mpwrq_nonlinear() copies MLX5E_RX_MAX_HEAD (256)
-bytes from the page-pool to the skb's linear part. Those 256 bytes
-include part of the payload.
+Keep the order of compatible property for amlogic sec power.
 
-When attempting to do GRO in skb_gro_receive, if headlen > data_offset
-(and skb->head_frag is not set), we end up aggregating packets in the
-frag_list.
-
-This is of course not good when we are CPU-limited. Also causes a worse
-skb->len/truesize ratio,...
-
-So, let's avoid copying parts of the payload to the linear part. We use
-eth_get_headlen() to parse the headers and compute the length of the
-protocol headers, which will be used to copy the relevant bits ot the
-skb's linear part.
-
-We still allocate MLX5E_RX_MAX_HEAD for the skb so that if the networking
-stack needs to call pskb_may_pull() later on, we don't need to reallocate
-memory.
-
-This gives a nice throughput increase (ARM Neoverse-V2 with CX-7 NIC and
-LRO enabled):
-
-BEFORE:
-=======
-(netserver pinned to core receiving interrupts)
-$ netperf -H 10.221.81.118 -T 80,9 -P 0 -l 60 -- -m 256K -M 256K
- 87380  16384 262144    60.01    32547.82
-
-(netserver pinned to adjacent core receiving interrupts)
-$ netperf -H 10.221.81.118 -T 80,10 -P 0 -l 60 -- -m 256K -M 256K
- 87380  16384 262144    60.00    52531.67
-
-AFTER:
-======
-(netserver pinned to core receiving interrupts)
-$ netperf -H 10.221.81.118 -T 80,9 -P 0 -l 60 -- -m 256K -M 256K
- 87380  16384 262144    60.00    52896.06
-
-(netserver pinned to adjacent core receiving interrupts)
- $ netperf -H 10.221.81.118 -T 80,10 -P 0 -l 60 -- -m 256K -M 256K
- 87380  16384 262144    60.00    85094.90
-
-Additional tests across a larger range of parameters w/ and w/o LRO, w/
-and w/o IPv6-encapsulation, different MTUs (1500, 4096, 9000), different
-TCP read/write-sizes as well as UDP benchmarks, all have shown equal or
-better performance with this patch.
-
-Reviewed-by: Eric Dumazet <edumazet@google.com>
-Reviewed-by: Saeed Mahameed <saeedm@nvidia.com>
-Signed-off-by: Christoph Paasch <cpaasch@openai.com>
+Fixes: 9428fff44f0c ("dt-bindings: power: add Amlogic S6 S7 S7D power domains")
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/net/ethernet/mellanox/mlx5/core/en_rx.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Keep alphabetical order.
+---
+ Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
-index 8bedbda522808cbabc8e62ae91a8c25d66725ebb..0ac31c7fb64cd60720d390de45a5b6b453ed0a3f 100644
---- a/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
-+++ b/drivers/net/ethernet/mellanox/mlx5/core/en_rx.c
-@@ -2047,6 +2047,8 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
- 		dma_sync_single_for_cpu(rq->pdev, addr + head_offset, headlen,
- 					rq->buff.map_dir);
+diff --git a/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml b/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml
+index 12b71688dd34..7b843e9f51c7 100644
+--- a/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml
++++ b/Documentation/devicetree/bindings/power/amlogic,meson-sec-pwrc.yaml
+@@ -23,10 +23,10 @@ properties:
+       - amlogic,a4-pwrc
+       - amlogic,a5-pwrc
+       - amlogic,c3-pwrc
+-      - amlogic,t7-pwrc
+       - amlogic,s6-pwrc
+       - amlogic,s7-pwrc
+       - amlogic,s7d-pwrc
++      - amlogic,t7-pwrc
  
-+		headlen = eth_get_headlen(rq->netdev, head_addr, headlen);
-+
- 		frag_offset += headlen;
- 		byte_cnt -= headlen;
- 		linear_hr = skb_headroom(skb);
-@@ -2123,6 +2125,9 @@ mlx5e_skb_from_cqe_mpwrq_nonlinear(struct mlx5e_rq *rq, struct mlx5e_mpw_info *w
- 				pagep->frags++;
- 			while (++pagep < frag_page);
- 		}
-+
-+		headlen = eth_get_headlen(rq->netdev, mxbuf->xdp.data, headlen);
-+
- 		__pskb_pull_tail(skb, headlen);
- 	} else {
- 		if (xdp_buff_has_frags(&mxbuf->xdp)) {
+   "#power-domain-cells":
+     const: 1
 
+---
+base-commit: b283b70967c0553b66e924f40e1c35b68fa8a1f7
+change-id: 20250905-pm-fix-order-5a69bf461247
+
+Best regards,
 -- 
-2.50.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
