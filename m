@@ -1,283 +1,94 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Fri, 05 Sep 2025 17:06:39 +0800
-Subject: [PATCH v3 2/2] clk: amlogic: add video-related clocks for S4 SoC
+From: Woodrow Douglass <wdouglass@carnegierobotics.com>
+Subject: [PATCH v7 0/2] regulator: pf530x: NXP PF530x regulator driver
+Date: Fri, 05 Sep 2025 08:39:41 -0400
+Message-Id: <20250902-pf530x-v7-0-10eb2542f944@carnegierobotics.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250905-add_video_clk-v3-2-8304c91b8b94@amlogic.com>
-References: <20250905-add_video_clk-v3-0-8304c91b8b94@amlogic.com>
-In-Reply-To: <20250905-add_video_clk-v3-0-8304c91b8b94@amlogic.com>
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757063204; l=7141;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=kLmXzk491eV2x81ro4ZED7Iyt5KXxTTTzbVBOuqxLYA=;
- b=QmC/l58/sloPfIy5YK9Z1FVq75GuUgALvxzAREqNgwP7JwIOzanXydlUyAE4u1or3EOQq5eVN
- MpGpDf+BwBiD0KSvE5uuhqf0aHUOGVezhejOxbUq2YEBTrSd1PA2etz
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+X-B4-Tracking: v=1; b=H4sIAA3aumgC/33QwW7DIAwG4FepOM8VMTiEnvoe0w5ATIO2JhWJo
+ k5V332Q07S1PVr4/2x8EzPnxLM47G4i85rmNI2lMG87EQY3nhhSX2qBEklaiXCJpOQV2t4bb7F
+ pUAZRmr2bGXx2Yxhq+9nNC+f6cMkc03Wb8P5R6pinMyxDZre55K2hQgORjqBNR2A7JIhsVaO66
+ HrVHD85j/y1n/KpikOalyl/byuvWF3hCA1LRDDketAWGZxiBWRscKE3vUL9W6mLrGqL/v3YiiA
+ hNpLYS6OCb47BldwpcZ78tKQw78N0rnv8S6qS1KiRTdsZ0z5JbrP149m6CgZNLHctEr8Q6LFAR
+ WipC1oqbstZXgjtY6EtgmPiyA4b2/VPhPv9/gOMj28WPQIAAA==
+To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Woodrow Douglass <wdouglass@carnegierobotics.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2451;
+ i=wdouglass@carnegierobotics.com; h=from:subject:message-id;
+ bh=tuNjf+8cgNDQrXfELfd8MfwKaydQiJBd15X3JTiaVHs=;
+ b=owEBbQGS/pANAwAKAewLuLlPNh4UAcsmYgBoutohDHhJ5uUpBNqYocZVZoMS8Xc2VjO5yhkD2
+ eKNYeo4szCJATMEAAEKAB0WIQSIUqjrbDLQw0mgxHLsC7i5TzYeFAUCaLraIQAKCRDsC7i5TzYe
+ FGk8B/9ZBU4eLtPe/tBr10uO4xRYoPCCt+c/ptYIyUsqqaJmKdsJMPnZStKFfqSsoKp+pW5Xq6j
+ +tjojpaMK1HNmQwztwpr02u+21CTFXiD2ZoUTGo07qVBrpjgA8JCeRf2YxxFM/mcphkRhS8KAzn
+ KlQX0Z2kA2Qp/vDMSRIIwjxkBbwF7bKX4P5TA+iFP9Qjj2YoRbaE97nneJPncPdGbnOA+u7Q6p4
+ W9Bounm/XiaX0ZUQpay+a9Y1e976vA4UgQ3nclh+xB1lf8JBfI5e2dyYVZH03n3HwJQmwO5Xkex
+ sr9+0fmH/chPBluCPwTG1/LIXXvb3pJ0m0e3TQLLDey0si5z
+X-Developer-Key: i=wdouglass@carnegierobotics.com; a=openpgp;
+ fpr=8852A8EB6C32D0C349A0C472EC0BB8B94F361E14
+X-Endpoint-Received: by B4 Relay for wdouglass@carnegierobotics.com/default with auth_id=514
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add video encoder, demodulator and CVBS clocks.
+I wrote this driver to read settings and state from the nxp pf530x
+regulator. Please consider it for inclusion, any criticism is welcome.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Thanks,
+Woodrow Douglass
+
+--
+2.39.5
+
 ---
- drivers/clk/meson/s4-peripherals.c | 203 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 203 insertions(+)
+Changes in v7:.
+- make vrange and pf530x_range_desc const, removed unused driver_data pointer
+- Drop "nxp,pf5301" and "nxp,pf5302" from of_device_id list, allow fallback
+- Add Reviewed-by to the dt-binding from Krzysztof Kozlowski (Thanks!)
+- Link to v6: https://lore.kernel.org/r/20250902-pf530x-v6-0-ae5efea2198d@carnegierobotics.com
 
-diff --git a/drivers/clk/meson/s4-peripherals.c b/drivers/clk/meson/s4-peripherals.c
-index 6d69b132d1e1..c0f877ce0993 100644
---- a/drivers/clk/meson/s4-peripherals.c
-+++ b/drivers/clk/meson/s4-peripherals.c
-@@ -44,6 +44,7 @@
- #define CLKCTRL_VDIN_MEAS_CLK_CTRL                 0x0f8
- #define CLKCTRL_VAPBCLK_CTRL                       0x0fc
- #define CLKCTRL_HDCP22_CTRL                        0x100
-+#define CLKCTRL_CDAC_CLK_CTRL                      0x108
- #define CLKCTRL_VDEC_CLK_CTRL                      0x140
- #define CLKCTRL_VDEC2_CLK_CTRL                     0x144
- #define CLKCTRL_VDEC3_CLK_CTRL                     0x148
-@@ -1126,6 +1127,22 @@ static struct clk_regmap s4_cts_encp_sel = {
- 	},
- };
- 
-+static struct clk_regmap s4_cts_encl_sel = {
-+	.data = &(struct clk_regmap_mux_data){
-+		.offset = CLKCTRL_VIID_CLK_DIV,
-+		.mask = 0xf,
-+		.shift = 12,
-+		.table = mux_table_cts_sel,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cts_encl_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_hws = s4_cts_parent_hws,
-+		.num_parents = ARRAY_SIZE(s4_cts_parent_hws),
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- static struct clk_regmap s4_cts_vdac_sel = {
- 	.data = &(struct clk_regmap_mux_data){
- 		.offset = CLKCTRL_VIID_CLK_DIV,
-@@ -1205,6 +1222,22 @@ static struct clk_regmap s4_cts_encp = {
- 	},
- };
- 
-+static struct clk_regmap s4_cts_encl = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = CLKCTRL_VID_CLK_CTRL2,
-+		.bit_idx = 3,
-+	},
-+	.hw.init = &(struct clk_init_data) {
-+		.name = "cts_encl",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_cts_encl_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- static struct clk_regmap s4_cts_vdac = {
- 	.data = &(struct clk_regmap_gate_data){
- 		.offset = CLKCTRL_VID_CLK_CTRL2,
-@@ -2735,6 +2768,165 @@ static struct clk_regmap s4_gen_clk = {
- 	},
- };
- 
-+/* CVBS DAC */
-+static struct clk_regmap s4_cdac_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = CLKCTRL_CDAC_CLK_CTRL,
-+		.mask = 0x3,
-+		.shift = 16,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cdac_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_data = (const struct clk_parent_data []) {
-+			{ .fw_name = "xtal", },
-+			{ .fw_name = "fclk_div5" },
-+		},
-+		.num_parents = 2,
-+	},
-+};
-+
-+static struct clk_regmap s4_cdac_div = {
-+	.data = &(struct clk_regmap_div_data) {
-+		.offset = CLKCTRL_CDAC_CLK_CTRL,
-+		.shift = 0,
-+		.width = 16,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cdac_div",
-+		.ops = &clk_regmap_divider_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_cdac_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_cdac = {
-+	.data = &(struct clk_regmap_gate_data) {
-+		.offset = CLKCTRL_CDAC_CLK_CTRL,
-+		.bit_idx = 20,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "cdac",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_cdac_div.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_demod_core_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.mask = 0x3,
-+		.shift = 9,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "demod_core_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_data = (const struct clk_parent_data []) {
-+			{ .fw_name = "xtal" },
-+			{ .fw_name = "fclk_div7" },
-+			{ .fw_name = "fclk_div4" }
-+		},
-+		.num_parents = 3,
-+	},
-+};
-+
-+static struct clk_regmap s4_demod_core_div = {
-+	.data = &(struct clk_regmap_div_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.shift = 0,
-+		.width = 7,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "demod_core_div",
-+		.ops = &clk_regmap_divider_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_demod_core_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_demod_core = {
-+	.data = &(struct clk_regmap_gate_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.bit_idx = 8
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "demod_core",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_demod_core_div.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+/* CVBS ADC */
-+static struct clk_regmap s4_adc_extclk_in_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.mask = 0x7,
-+		.shift = 25,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "adc_extclk_in_sel",
-+		.ops = &clk_regmap_mux_ops,
-+		.parent_data = (const struct clk_parent_data []) {
-+			{ .fw_name = "xtal" },
-+			{ .fw_name = "fclk_div4" },
-+			{ .fw_name = "fclk_div3" },
-+			{ .fw_name = "fclk_div5" },
-+			{ .fw_name = "fclk_div7" },
-+			{ .fw_name = "mpll2" },
-+			{ .fw_name = "gp0_pll" },
-+			{ .fw_name = "hifi_pll" }
-+		},
-+		.num_parents = 8,
-+	},
-+};
-+
-+static struct clk_regmap s4_adc_extclk_in_div = {
-+	.data = &(struct clk_regmap_div_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.shift = 16,
-+		.width = 7,
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "adc_extclk_in_div",
-+		.ops = &clk_regmap_divider_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_adc_extclk_in_sel.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
-+static struct clk_regmap s4_adc_extclk_in = {
-+	.data = &(struct clk_regmap_gate_data) {
-+		.offset = CLKCTRL_DEMOD_CLK_CTRL,
-+		.bit_idx = 24
-+	},
-+	.hw.init = &(struct clk_init_data){
-+		.name = "adc_extclk_in",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_hws = (const struct clk_hw *[]) {
-+			&s4_adc_extclk_in_div.hw
-+		},
-+		.num_parents = 1,
-+		.flags = CLK_SET_RATE_PARENT,
-+	},
-+};
-+
- static const struct clk_parent_data s4_pclk_parents = { .hw = &s4_sys_clk.hw };
- 
- #define S4_PCLK(_name, _reg, _bit, _flags) \
-@@ -3028,6 +3220,17 @@ static struct clk_hw *s4_peripherals_hw_clks[] = {
- 	[CLKID_HDCP22_SKPCLK_SEL]	= &s4_hdcp22_skpclk_sel.hw,
- 	[CLKID_HDCP22_SKPCLK_DIV]	= &s4_hdcp22_skpclk_div.hw,
- 	[CLKID_HDCP22_SKPCLK]		= &s4_hdcp22_skpclk.hw,
-+	[CLKID_CTS_ENCL_SEL]		= &s4_cts_encl_sel.hw,
-+	[CLKID_CTS_ENCL]		= &s4_cts_encl.hw,
-+	[CLKID_CDAC_SEL]		= &s4_cdac_sel.hw,
-+	[CLKID_CDAC_DIV]		= &s4_cdac_div.hw,
-+	[CLKID_CDAC]			= &s4_cdac.hw,
-+	[CLKID_DEMOD_CORE_SEL]		= &s4_demod_core_sel.hw,
-+	[CLKID_DEMOD_CORE_DIV]		= &s4_demod_core_div.hw,
-+	[CLKID_DEMOD_CORE]		= &s4_demod_core.hw,
-+	[CLKID_ADC_EXTCLK_IN_SEL]	= &s4_adc_extclk_in_sel.hw,
-+	[CLKID_ADC_EXTCLK_IN_DIV]	= &s4_adc_extclk_in_div.hw,
-+	[CLKID_ADC_EXTCLK_IN]		= &s4_adc_extclk_in.hw,
- };
- 
- static const struct meson_clkc_data s4_peripherals_clkc_data = {
+Changes in v6:
+- Make sure that the device tree binding properly references regulator.yaml
+- Link to v5: https://lore.kernel.org/r/20250902-pf530x-v5-0-658c403e6a52@carnegierobotics.com
 
+Changes in v5:
+- Fixed compatibility match to properly fall back to pf5300
+- Reordered patches so that devicetree schema comes before the driver itself
+- Modified nxp,pf5300 schema to pass `make dt_binding_check`
+- Link to v4: https://lore.kernel.org/r/20250902-pf530x-v4-0-4727f112424e@carnegierobotics.com
+
+Changes in v4:
+- Added REGULATOR_ERROR_OVER_TEMP_WARN to pf530x_get_error_flags
+- Added EMREV to the info print
+- Link to v3: https://lore.kernel.org/r/20250902-pf530x-v3-0-4242e7687761@carnegierobotics.com
+
+Changes in v3:
+- Replaced REGCACHE_RBTREE with REGCACHE_MAPLE
+- Replaced pf530x_is_enabled function with regulator_is_enabled_regmap
+- Added status bits from INT_SENSE1 to pf530x_get_status function
+- Added extra context to info print upon chip identification
+- Reworked devtree to not require nested "regulators" subnode
+- Some minor reformatting of comment style and long lines
+- Link to v2: https://lore.kernel.org/r/20250902-pf530x-v2-0-f105eb073cb1@carnegierobotics.com
+
+---
+Woodrow Douglass (2):
+      regulator: dt-bindings: nxp,pf530x: Add NXP PF5300/PF5301/PF5302 PMICs
+      regulator: pf530x: Add a driver for the NXP PF5300 Regulator
+
+ .../devicetree/bindings/regulator/nxp,pf5300.yaml  |  54 +++
+ MAINTAINERS                                        |   6 +
+ drivers/regulator/Kconfig                          |  12 +
+ drivers/regulator/Makefile                         |   1 +
+ drivers/regulator/pf530x-regulator.c               | 375 +++++++++++++++++++++
+ 5 files changed, 448 insertions(+)
+---
+base-commit: b320789d6883cc00ac78ce83bccbfe7ed58afcf0
+change-id: 20250902-pf530x-6db7b921120c
+
+Best regards,
 -- 
-2.42.0
+Woodrow Douglass <wdouglass@carnegierobotics.com>
 
