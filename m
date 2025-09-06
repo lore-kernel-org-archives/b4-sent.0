@@ -1,11 +1,11 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 06 Sep 2025 15:16:51 -0500
-Subject: [PATCH v3 1/9] dt-bindings: devfreq: tegra30-actmon: Add Tegra124
- fallback for Tegra210
+Date: Sat, 06 Sep 2025 15:16:52 -0500
+Subject: [PATCH v3 2/9] dt-bindings: memory: tegra210: emc: Document OPP
+ table and interconnect
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250906-t210-actmon-v3-1-1403365d571e@gmail.com>
+Message-Id: <20250906-t210-actmon-v3-2-1403365d571e@gmail.com>
 References: <20250906-t210-actmon-v3-0-1403365d571e@gmail.com>
 In-Reply-To: <20250906-t210-actmon-v3-0-1403365d571e@gmail.com>
 To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -18,53 +18,59 @@ To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>,
  Chanwoo Choi <cw00.choi@samsung.com>, Dmitry Osipenko <digetx@gmail.com>
 Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-tegra@vger.kernel.org, linux-pm@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>, Chanwoo Choi <cw00c.choi@samsung.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757189854; l=1317;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757189854; l=1483;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=Yja3M+BrtWErPH3UuVdCmx3ZLaQHPY9CfAi2XYCgd9s=;
- b=u/t7WCZ0BXsJqSC+o9rUlL3KPvNTjQf5d95jBEEs6hC/qt0eqRUKa3YdEv1sUE1njITK7Prv1
- ycbcosSFFxZDoS70d2+d0s6vqCB05MUdlUwZ1qZ9mH8wyuxr4L5OBLH
+ bh=Db/RIle5/AqORG8wYHRgMmE0c+WgodTWsv0fav4CnnQ=;
+ b=0BZh+ZvuQY/xP39Pqj0cEHRlDNsV+M8A9tUSMuq+PTdVrvd9lw7YYRl/R2rHaze3mvR1RGFcm
+ LftN6NFg34HCcVoEXi3Pkljrn8kCvrD3jEhRuqwoa2KURA86mjwo46c
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Tegra210 actmon is compatible with the existing Tegra124 driver.
-Describe the compatibles as such.
+These are needed for dynamic frequency scaling of the EMC controller.
 
-Acked-by: Chanwoo Choi <cw00c.choi@samsung.com>
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- .../devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml  | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+ .../bindings/memory-controllers/nvidia,tegra210-emc.yaml      | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml b/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml
-index e3379d1067283e36d1bee303187c0205b410f610..ea1dc86bc31f635f91a0e36f908f5c0c4f9a804c 100644
---- a/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml
-+++ b/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml
-@@ -19,11 +19,14 @@ description: |
+diff --git a/Documentation/devicetree/bindings/memory-controllers/nvidia,tegra210-emc.yaml b/Documentation/devicetree/bindings/memory-controllers/nvidia,tegra210-emc.yaml
+index bc8477e7ab193b7880bb681037985f3fccebf02f..4e4fb4acd7f9d376379a19b5f8e0256baaed5697 100644
+--- a/Documentation/devicetree/bindings/memory-controllers/nvidia,tegra210-emc.yaml
++++ b/Documentation/devicetree/bindings/memory-controllers/nvidia,tegra210-emc.yaml
+@@ -33,6 +33,9 @@ properties:
+     items:
+       - description: EMC general interrupt
  
- properties:
-   compatible:
--    enum:
--      - nvidia,tegra30-actmon
--      - nvidia,tegra114-actmon
--      - nvidia,tegra124-actmon
--      - nvidia,tegra210-actmon
-+    oneOf:
-+      - enum:
-+          - nvidia,tegra30-actmon
-+          - nvidia,tegra114-actmon
-+          - nvidia,tegra124-actmon
-+      - items:
-+          - const: nvidia,tegra210-actmon
-+          - const: nvidia,tegra124-actmon
- 
-   reg:
++  "#interconnect-cells":
++    const: 0
++
+   memory-region:
      maxItems: 1
+     description:
+@@ -44,6 +47,11 @@ properties:
+     description:
+       phandle of the memory controller node
+ 
++  operating-points-v2:
++    description:
++      Should contain freqs and voltages and opp-supported-hw property, which
++      is a bitfield indicating SoC speedo ID mask.
++
+ required:
+   - compatible
+   - reg
+@@ -79,4 +87,7 @@ examples:
+         interrupts = <GIC_SPI 78 IRQ_TYPE_LEVEL_HIGH>;
+         memory-region = <&emc_table>;
+         nvidia,memory-controller = <&mc>;
++        operating-points-v2 = <&dvfs_opp_table>;
++
++        #interconnect-cells = <0>;
+     };
 
 -- 
 2.50.1
