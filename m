@@ -1,11 +1,10 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sat, 06 Sep 2025 15:43:17 +0000
-Subject: [PATCH v2 04/22] usb: dwc3: Add Apple Silicon DWC3 glue layer
- driver
+Date: Sat, 06 Sep 2025 15:43:18 +0000
+Subject: [PATCH v2 05/22] usb: typec: tipd: Clear interrupts first
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250906-atcphy-6-17-v2-4-52c348623ef6@kernel.org>
+Message-Id: <20250906-atcphy-6-17-v2-5-52c348623ef6@kernel.org>
 References: <20250906-atcphy-6-17-v2-0-52c348623ef6@kernel.org>
 In-Reply-To: <20250906-atcphy-6-17-v2-0-52c348623ef6@kernel.org>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -21,537 +20,112 @@ To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 Cc: linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
  linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org, 
- Sven Peter <sven@kernel.org>
+ Sven Peter <sven@kernel.org>, stable@kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=17012; i=sven@kernel.org;
- h=from:subject:message-id; bh=WGR1Ei6umo7JOvKNb22kiN6fvXUGcDGeVS4t2p3ndto=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ8aesLmr7nTtmVbpJ5D2SbXhqITUWYdy30BH7YaIib57f
- IOUgxd3lLIwiHEwyIopsmzfb2/65OEbwaWbLr2HmcPKBDKEgYtTACZyM42R4cIetV3HjotfuvyD
- m3dlkIwC25rIzT6PGr9uVl/35z/jKieG/1GlRyq1LS3/NXNMVjlT+rn1y+Nbv9vMWeKUjTdt9Ps
- bzwMA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3392; i=sven@kernel.org;
+ h=from:subject:message-id; bh=15pym0980OuqLrEYjjB149fk5uGZSOarunjihhfaJPQ=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8aesLm+enUZnyVMG4Lu6VTucDnbnVBV66Aququgf037O
+ dFOmWsdpSwMYhwMsmKKLNv325s+efhGcOmmS+9h5rAygQxh4OIUgIloGDAybD0eNiHfe/opE21f
+ Xbea/rvM8QvF5vR9WSq7/fp5+ZLJZxn+F816IKz8doNEY/4/9zPfz2dfKuDeo9L/8pt88vaLxxt
+ /cwAA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As mad as it sounds, the dwc3 controller present on the Apple M1 must be
-reset and reinitialized whenever a device is unplugged from the root
-port or when the PHY mode is changed.
+Right now the interrupt handler first reads all updated status registers
+and only then clears the interrupts. It's possible that a duplicate
+interrupt for a changed register or plug state comes in after the
+interrupts have been processed but before they have been cleared:
 
-This is required for at least the following reasons:
+* plug is inserted, TPS_REG_INT_PLUG_EVENT is set
+* TPS_REG_INT_EVENT1 is read
+* tps6598x_handle_plug_event() has run and registered the plug
+* plug is removed again, TPS_REG_INT_PLUG_EVENT is set (again)
+* TPS_REG_INT_CLEAR1 is written, TPS_REG_INT_PLUG_EVENT is cleared
 
-  - The USB2 D+/D- lines are connected through a stateful eUSB2 repeater
-    which in turn is controlled by a variant of the TI TPS6598x USB PD
-    chip. When the USB PD controller detects a hotplug event it resets
-    the eUSB2 repeater. Afterwards, no new device is recognized before
-    the DWC3 core and PHY are reset as well because the eUSB2 repeater
-    and the PHY/dwc3 block disagree about the current state.
+We then have no plug connected and no pending interrupt but the tipd
+core still thinks there is a plug. It's possible to trigger this with
+e.g. a slightly broken Type-C to USB A converter.
 
-  - It's possible to completely break the dwc3 controller by switching
-    it to device mode and unplugging the cable at just the wrong time.
-    If this happens dwc3 behaves as if no device is connected.
-    CORESOFTRESET will also never clear after it has been set. The only
-    workaround is to trigger a hard reset of the entire dwc3 core with
-    its external reset line.
+Fix this by first clearing the interrupts and only then reading the
+updated registers.
 
-  - Whenever the PHY mode is changed (to e.g. transition to DisplayPort
-    alternate mode or USB4) dwc3 has to be shutdown and reinitialized.
-    Otherwise the Type-C port will not be usable until the entire SoC
-    has been reset.
-
-Additionally, these controllers have a Apple-specific MMIO region after
-the common dwc3 region where some controls have to be updated. PHY
-bringup and shutdown also requires SUSPHY to be enabled for the ports
-to work correctly.
-
-In the future, this driver will also gain support for USB3-via-USB4
-tunneling which will require additional tweaks.
-
-Add a glue driver that takes of all of these constraints.
-
+Fixes: 45188f27b3d0 ("usb: typec: tipd: Add support for Apple CD321X")
+Fixes: 0a4c005bd171 ("usb: typec: driver for TI TPS6598x USB Power Delivery controllers")
+Cc: stable@kernel.org
+Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- MAINTAINERS                   |   1 +
- drivers/usb/dwc3/Kconfig      |  11 ++
- drivers/usb/dwc3/Makefile     |   1 +
- drivers/usb/dwc3/dwc3-apple.c | 425 ++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 438 insertions(+)
+ drivers/usb/typec/tipd/core.c | 24 +++++++++++-------------
+ 1 file changed, 11 insertions(+), 13 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 0e085cb0762f765958d67be61ae0d3d773503431..e147e1b919d5737a34e684ec587872ce591c641a 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2424,6 +2424,7 @@ F:	drivers/pwm/pwm-apple.c
- F:	drivers/soc/apple/*
- F:	drivers/spi/spi-apple.c
- F:	drivers/spmi/spmi-apple-controller.c
-+F:	drivers/usb/dwc3/dwc3-apple.c
- F:	drivers/video/backlight/apple_dwi_bl.c
- F:	drivers/watchdog/apple_wdt.c
- F:	include/dt-bindings/interrupt-controller/apple-aic.h
-diff --git a/drivers/usb/dwc3/Kconfig b/drivers/usb/dwc3/Kconfig
-index 310d182e10b50b253d7e5a51674806e6ec442a2a..8161cd8f5d0d82826262518a1aefa3096aae83a8 100644
---- a/drivers/usb/dwc3/Kconfig
-+++ b/drivers/usb/dwc3/Kconfig
-@@ -189,4 +189,15 @@ config USB_DWC3_RTK
- 	  or dual-role mode.
- 	  Say 'Y' or 'M' if you have such device.
+diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
+index dcf141ada07812295a6f07e41d77f95f98116010..1c80296c3b273e24ceacb3feff432c4f6e6835cc 100644
+--- a/drivers/usb/typec/tipd/core.c
++++ b/drivers/usb/typec/tipd/core.c
+@@ -545,24 +545,23 @@ static irqreturn_t cd321x_interrupt(int irq, void *data)
+ 	if (!event)
+ 		goto err_unlock;
  
-+config USB_DWC3_APPLE
-+	tristate "Apple Silicon DWC3 Platform Driver"
-+	depends on OF && ARCH_APPLE
-+	default USB_DWC3
-+	select USB_ROLE_SWITCH
-+	help
-+	  Support Apple Silicon SoCs with DesignWare Core USB3 IP.
-+	  The DesignWare Core USB3 IP has to be used in dual-role
-+	  mode on these machines.
-+	  Say 'Y' or 'M' if you have such device.
++	tps6598x_write64(tps, TPS_REG_INT_CLEAR1, event);
 +
- endif
-diff --git a/drivers/usb/dwc3/Makefile b/drivers/usb/dwc3/Makefile
-index 830e6c9e5fe073c1f662ce34b6a4a2da34c407a2..10b5e68cfd68d5ca9aa5a27b04f349f9bf58e65c 100644
---- a/drivers/usb/dwc3/Makefile
-+++ b/drivers/usb/dwc3/Makefile
-@@ -43,6 +43,7 @@ endif
- ##
+ 	if (!tps6598x_read_status(tps, &status))
+-		goto err_clear_ints;
++		goto err_unlock;
  
- obj-$(CONFIG_USB_DWC3_AM62)		+= dwc3-am62.o
-+obj-$(CONFIG_USB_DWC3_APPLE)		+= dwc3-apple.o
- obj-$(CONFIG_USB_DWC3_OMAP)		+= dwc3-omap.o
- obj-$(CONFIG_USB_DWC3_EXYNOS)		+= dwc3-exynos.o
- obj-$(CONFIG_USB_DWC3_PCI)		+= dwc3-pci.o
-diff --git a/drivers/usb/dwc3/dwc3-apple.c b/drivers/usb/dwc3/dwc3-apple.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..27674f0c284104cbbe75f51cd55593a964c8c9d6
---- /dev/null
-+++ b/drivers/usb/dwc3/dwc3-apple.c
-@@ -0,0 +1,425 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Apple Silicon DWC3 Glue driver
-+ * Copyright (C) The Asahi Linux Contributors
-+ *
-+ * Based on:
-+ *  - dwc3-qcom.c Copyright (c) 2018, The Linux Foundation. All rights reserved.
-+ *  - dwc3-of-simple.c Copyright (c) 2015 Texas Instruments Incorporated - https://www.ti.com
-+ */
-+
-+#include <linux/of.h>
-+#include <linux/module.h>
-+#include <linux/mutex.h>
-+#include <linux/platform_device.h>
-+#include <linux/reset.h>
-+
-+#include "glue.h"
-+
-+enum dwc3_apple_mode {
-+	DWC3_APPLE_OFF,
-+	DWC3_APPLE_HOST,
-+	DWC3_APPLE_DEVICE,
-+};
-+
-+/**
-+ * struct dwc3_apple - Apple-specific DWC3 USB controller
-+ * @dwc: Core DWC3 structure
-+ * @dev: Pointer to the device structure
-+ * @mmio_resource: Resource to be passed to dwc3_core_probe
-+ * @apple_regs: Apple-specific DWC3 registers
-+ * @resets: Reset control
-+ * @role_sw: USB role switch
-+ * @lock: Mutex for synchronizing access
-+ * @core_probe_done: True if dwc3_core_probe was already called after the first plug
-+ * @mode: Current mode of the controller (off/host/device)
-+ */
-+struct dwc3_apple {
-+	struct dwc3 dwc;
-+
-+	struct device *dev;
-+	struct resource *mmio_resource;
-+	void __iomem *apple_regs;
-+
-+	struct reset_control *resets;
-+	struct usb_role_switch *role_sw;
-+
-+	struct mutex lock;
-+
-+	bool core_probe_done;
-+	enum dwc3_apple_mode mode;
-+};
-+
-+#define to_dwc3_apple(d) container_of((d), struct dwc3_apple, dwc)
-+
-+/*
-+ * Apple Silicon dwc3 vendor-specific registers
-+ *
-+ * These registers were identified by tracing XNU's memory access patterns
-+ * and correlating them with debug output over serial to determine their names.
-+ * We don't exactly know what these do but without these USB3 devices sometimes
-+ * don't work.
-+ */
-+#define APPLE_DWC3_REGS_START 0xcd00
-+#define APPLE_DWC3_REGS_END 0xcdff
-+
-+#define APPLE_DWC3_CIO_LFPS_OFFSET 0xcd38
-+#define APPLE_DWC3_CIO_LFPS_OFFSET_VALUE 0xf800f80
-+
-+#define APPLE_DWC3_CIO_BW_NGT_OFFSET 0xcd3c
-+#define APPLE_DWC3_CIO_BW_NGT_OFFSET_VALUE 0xfc00fc0
-+
-+#define APPLE_DWC3_CIO_LINK_TIMER 0xcd40
-+#define APPLE_DWC3_CIO_PENDING_HP_TIMER GENMASK(23, 16)
-+#define APPLE_DWC3_CIO_PENDING_HP_TIMER_VALUE 0x14
-+#define APPLE_DWC3_CIO_PM_LC_TIMER GENMASK(15, 8)
-+#define APPLE_DWC3_CIO_PM_LC_TIMER_VALUE 0xa
-+#define APPLE_DWC3_CIO_PM_ENTRY_TIMER GENMASK(7, 0)
-+#define APPLE_DWC3_CIO_PM_ENTRY_TIMER_VALUE 0x10
-+
-+static inline void dwc3_apple_writel(struct dwc3_apple *appledwc, u32 offset, u32 value)
-+{
-+	writel(value, appledwc->apple_regs + offset - APPLE_DWC3_REGS_START);
-+}
-+
-+static inline u32 dwc3_apple_readl(struct dwc3_apple *appledwc, u32 offset)
-+{
-+	return readl(appledwc->apple_regs + offset - APPLE_DWC3_REGS_START);
-+}
-+
-+static inline void dwc3_apple_mask(struct dwc3_apple *appledwc, u32 offset, u32 mask, u32 value)
-+{
-+	u32 reg;
-+
-+	reg = dwc3_apple_readl(appledwc, offset);
-+	reg &= ~mask;
-+	reg |= value;
-+	dwc3_apple_writel(appledwc, offset, reg);
-+}
-+
-+static void dwc3_apple_setup_cio(struct dwc3_apple *appledwc)
-+{
-+	dwc3_apple_writel(appledwc, APPLE_DWC3_CIO_LFPS_OFFSET, APPLE_DWC3_CIO_LFPS_OFFSET_VALUE);
-+	dwc3_apple_writel(appledwc, APPLE_DWC3_CIO_BW_NGT_OFFSET,
-+			  APPLE_DWC3_CIO_BW_NGT_OFFSET_VALUE);
-+	dwc3_apple_mask(appledwc, APPLE_DWC3_CIO_LINK_TIMER, APPLE_DWC3_CIO_PENDING_HP_TIMER,
-+			APPLE_DWC3_CIO_PENDING_HP_TIMER_VALUE);
-+	dwc3_apple_mask(appledwc, APPLE_DWC3_CIO_LINK_TIMER, APPLE_DWC3_CIO_PM_LC_TIMER,
-+			APPLE_DWC3_CIO_PM_LC_TIMER_VALUE);
-+	dwc3_apple_mask(appledwc, APPLE_DWC3_CIO_LINK_TIMER, APPLE_DWC3_CIO_PM_ENTRY_TIMER,
-+			APPLE_DWC3_CIO_PM_ENTRY_TIMER_VALUE);
-+}
-+
-+static void dwc3_apple_set_ptrcap(struct dwc3_apple *appledwc, u32 mode)
-+{
-+	guard(spinlock_irqsave)(&appledwc->dwc.lock);
-+	dwc3_set_prtcap(&appledwc->dwc, mode, false);
-+}
-+
-+static int dwc3_apple_core_probe(struct dwc3_apple *appledwc)
-+{
-+	struct dwc3_probe_data probe_data = {};
-+	int ret;
-+
-+	lockdep_assert_held(&appledwc->lock);
-+	WARN_ON_ONCE(appledwc->core_probe_done);
-+
-+	appledwc->dwc.dev = appledwc->dev;
-+	probe_data.dwc = &appledwc->dwc;
-+	probe_data.res = appledwc->mmio_resource;
-+	probe_data.ignore_clocks_and_resets = true;
-+	probe_data.skip_core_init_mode = true;
-+
-+	ret = dwc3_core_probe(&probe_data);
-+	if (ret)
-+		return ret;
-+
-+	appledwc->core_probe_done = true;
-+	return 0;
-+}
-+
-+static int dwc3_apple_core_init(struct dwc3_apple *appledwc)
-+{
-+	int ret;
-+
-+	lockdep_assert_held(&appledwc->lock);
-+
-+	if (appledwc->core_probe_done) {
-+		ret = dwc3_core_init(&appledwc->dwc);
-+		if (ret)
-+			dev_err(appledwc->dev, "Failed to initialize DWC3 Core, err=%d\n", ret);
-+	} else {
-+		ret = dwc3_apple_core_probe(appledwc);
-+		if (ret)
-+			dev_err(appledwc->dev, "Failed to probe DWC3 Core, err=%d\n", ret);
-+	}
-+
-+	return ret;
-+}
-+
-+static void dwc3_apple_phy_set_mode(struct dwc3_apple *appledwc, enum phy_mode mode)
-+{
-+	lockdep_assert_held(&appledwc->lock);
-+
-+	/*
-+	 * This platform requires SUSPHY to be enabled here already in order to properly
-+	 * configure the PHY
-+	 */
-+	dwc3_enable_susphy(&appledwc->dwc, true);
-+	phy_set_mode(appledwc->dwc.usb2_generic_phy[0], mode);
-+	phy_set_mode(appledwc->dwc.usb3_generic_phy[0], mode);
-+}
-+
-+static int dwc3_apple_init(struct dwc3_apple *appledwc, enum dwc3_apple_mode mode)
-+{
-+	int ret, ret_reset;
-+
-+	lockdep_assert_held(&appledwc->lock);
-+
-+	ret = reset_control_deassert(appledwc->resets);
-+	if (ret) {
-+		dev_err(appledwc->dev, "Failed to deassert resets, err=%d\n", ret);
-+		return ret;
-+	}
-+
-+	ret = dwc3_apple_core_init(appledwc);
-+	if (ret)
-+		goto reset_assert;
-+
-+	/*
-+	 * Now that the core is initialized and already went through dwc3_core_soft_reset we can
-+	 * configure some unknown Apple-specific settings.
-+	 */
-+	dwc3_apple_setup_cio(appledwc);
-+
-+	switch (mode) {
-+	case DWC3_APPLE_HOST:
-+		appledwc->dwc.dr_mode = USB_DR_MODE_HOST;
-+		dwc3_apple_set_ptrcap(appledwc, DWC3_GCTL_PRTCAP_HOST);
-+		dwc3_apple_phy_set_mode(appledwc, PHY_MODE_USB_HOST);
-+		ret = dwc3_host_init(&appledwc->dwc);
-+		if (ret) {
-+			dev_err(appledwc->dev, "Failed to initialize host, ret=%d\n", ret);
-+			goto core_exit;
-+		}
-+
-+		break;
-+	case DWC3_APPLE_DEVICE:
-+		appledwc->dwc.dr_mode = USB_DR_MODE_PERIPHERAL;
-+		dwc3_apple_set_ptrcap(appledwc, DWC3_GCTL_PRTCAP_DEVICE);
-+		dwc3_apple_phy_set_mode(appledwc, PHY_MODE_USB_DEVICE);
-+		ret = dwc3_gadget_init(&appledwc->dwc);
-+		if (ret) {
-+			dev_err(appledwc->dev, "Failed to initialize gadget, ret=%d\n", ret);
-+			goto core_exit;
-+		}
-+		break;
-+	default:
-+		/* Unreachable unless there's a bug in this driver */
-+		WARN_ON_ONCE(1);
-+		ret = -EINVAL;
-+		goto core_exit;
-+	}
-+
-+	appledwc->mode = mode;
-+	return 0;
-+
-+core_exit:
-+	dwc3_core_exit(&appledwc->dwc);
-+reset_assert:
-+	ret_reset = reset_control_assert(appledwc->resets);
-+	if (ret_reset)
-+		dev_warn(appledwc->dev, "Failed to assert resets, err=%d\n", ret_reset);
-+
-+	return ret;
-+}
-+
-+static int dwc3_apple_exit(struct dwc3_apple *appledwc)
-+{
-+	int ret = 0;
-+
-+	lockdep_assert_held(&appledwc->lock);
-+
-+	switch (appledwc->mode) {
-+	case DWC3_APPLE_OFF:
-+		/* Nothing to do if we're already off */
-+		return 0;
-+	case DWC3_APPLE_DEVICE:
-+		dwc3_gadget_exit(&appledwc->dwc);
-+		break;
-+	case DWC3_APPLE_HOST:
-+		dwc3_host_exit(&appledwc->dwc);
-+		break;
-+	}
-+
-+	/* This platform requires SUSPHY to be enabled in order to properly power down the PHY */
-+	dwc3_enable_susphy(&appledwc->dwc, true);
-+	dwc3_core_exit(&appledwc->dwc);
-+	appledwc->mode = DWC3_APPLE_OFF;
-+
-+	ret = reset_control_assert(appledwc->resets);
-+	if (ret) {
-+		dev_err(appledwc->dev, "Failed to assert resets, err=%d\n", ret);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static int dwc3_usb_role_switch_set(struct usb_role_switch *sw, enum usb_role role)
-+{
-+	struct dwc3_apple *appledwc = usb_role_switch_get_drvdata(sw);
-+	int ret;
-+
-+	guard(mutex)(&appledwc->lock);
-+
-+	/*
-+	 * The USB2 D+/D- lines are connected through a stateful eUSB2 repeater which in turn is
-+	 * controlled by a variant of the TI TPS6598x USB PD chip. When the USB PD controller
-+	 * detects a hotplug event it resets the eUSB2 repeater. Afterwards, no new device is
-+	 * recognized before the DWC3 core and PHY are reset as well because the eUSB2 repeater
-+	 * and the PHY/dwc3 block disagree about the current state.
-+	 * Additionally, the PHY is also incapable of switching between arbitrary modes when dwc3
-+	 * is kept online. It's also possible to get dwc3 into a state where no new device is
-+	 * recognized and even a soft reset is not enough to recover when unplugging a cable at the
-+	 * wrong time while in gadget mode. Only a hard reset triggered via the external reset line
-+	 * is able to recover from this state.
-+	 * We thus tear all of dwc3 down here and re-initialize it every time we get a plug change
-+	 * (or even mode change) event.
-+	 */
-+	ret = dwc3_apple_exit(appledwc);
-+	if (ret)
-+		return ret;
-+
-+	switch (role) {
-+	case USB_ROLE_NONE:
-+		/* Nothing to do if no cable is connected */
-+		return 0;
-+	case USB_ROLE_HOST:
-+		return dwc3_apple_init(appledwc, DWC3_APPLE_HOST);
-+	case USB_ROLE_DEVICE:
-+		return dwc3_apple_init(appledwc, DWC3_APPLE_DEVICE);
-+	default:
-+		dev_err(appledwc->dev, "Invalid target role: %d\n", role);
-+		return -EINVAL;
-+	}
-+}
-+
-+static enum usb_role dwc3_usb_role_switch_get(struct usb_role_switch *sw)
-+{
-+	struct dwc3_apple *appledwc = usb_role_switch_get_drvdata(sw);
-+
-+	guard(mutex)(&appledwc->lock);
-+
-+	switch (appledwc->mode) {
-+	case DWC3_APPLE_HOST:
-+		return USB_ROLE_HOST;
-+	case DWC3_APPLE_DEVICE:
-+		return USB_ROLE_DEVICE;
-+	case DWC3_APPLE_OFF:
-+		return USB_ROLE_NONE;
-+	default:
-+		/* Unreachable unless there's a bug in this driver */
-+		WARN_ON_ONCE(1);
-+		return USB_ROLE_NONE;
-+	}
-+}
-+
-+static int dwc3_apple_setup_role_switch(struct dwc3_apple *appledwc)
-+{
-+	struct usb_role_switch_desc dwc3_role_switch = { NULL };
-+
-+	dwc3_role_switch.fwnode = dev_fwnode(appledwc->dev);
-+	dwc3_role_switch.set = dwc3_usb_role_switch_set;
-+	dwc3_role_switch.get = dwc3_usb_role_switch_get;
-+	dwc3_role_switch.driver_data = appledwc;
-+	appledwc->role_sw = usb_role_switch_register(appledwc->dev, &dwc3_role_switch);
-+	if (IS_ERR(appledwc->role_sw))
-+		return PTR_ERR(appledwc->role_sw);
-+
-+	return 0;
-+}
-+
-+static int dwc3_apple_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	struct dwc3_apple *appledwc;
-+	int ret;
-+
-+	appledwc = devm_kzalloc(&pdev->dev, sizeof(*appledwc), GFP_KERNEL);
-+	if (!appledwc)
-+		return -ENOMEM;
-+
-+	appledwc->dev = &pdev->dev;
-+	mutex_init(&appledwc->lock);
-+
-+	appledwc->resets = devm_reset_control_array_get_exclusive(dev);
-+	if (IS_ERR(appledwc->resets))
-+		return dev_err_probe(&pdev->dev, PTR_ERR(appledwc->resets),
-+				     "Failed to get resets\n");
-+
-+	ret = reset_control_assert(appledwc->resets);
-+	if (ret) {
-+		dev_err(&pdev->dev, "Failed to assert resets, err=%d\n", ret);
-+		return ret;
-+	}
-+
-+	appledwc->mmio_resource = platform_get_resource_byname(pdev, IORESOURCE_MEM, "dwc3-core");
-+	if (!appledwc->mmio_resource) {
-+		dev_err(dev, "Failed to get DWC3 MMIO\n");
-+		return -EINVAL;
-+	}
-+
-+	appledwc->apple_regs = devm_platform_ioremap_resource_byname(pdev, "dwc3-apple");
-+	if (IS_ERR(appledwc->apple_regs))
-+		return dev_err_probe(dev, PTR_ERR(appledwc->apple_regs),
-+				     "Failed to map Apple-specific MMIO\n");
-+
-+	/*
-+	 * Note that we only bring up dwc3 once the first device is attached because we need to know
-+	 * the role (e.g. host), mode (e.g. USB3) and lane orientation to bring up the PHY which is
-+	 * tightly coupled to dwc3.
-+	 */
-+	appledwc->mode = DWC3_APPLE_OFF;
-+	appledwc->core_probe_done = false;
-+	ret = dwc3_apple_setup_role_switch(appledwc);
-+	if (ret)
-+		return dev_err_probe(&pdev->dev, ret, "Failed to setup role switch\n");
-+
-+	return 0;
-+}
-+
-+static void dwc3_apple_remove(struct platform_device *pdev)
-+{
-+	struct dwc3 *dwc = platform_get_drvdata(pdev);
-+	struct dwc3_apple *appledwc = to_dwc3_apple(dwc);
-+
-+	guard(mutex)(&appledwc->lock);
-+
-+	usb_role_switch_unregister(appledwc->role_sw);
-+
-+	dwc3_apple_exit(appledwc);
-+	if (appledwc->core_probe_done)
-+		dwc3_core_remove(&appledwc->dwc);
-+}
-+
-+static const struct of_device_id dwc3_apple_of_match[] = {
-+	{ .compatible = "apple,t8103-dwc3" },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, dwc3_apple_of_match);
-+
-+static struct platform_driver dwc3_apple_driver = {
-+	.probe		= dwc3_apple_probe,
-+	.remove		= dwc3_apple_remove,
-+	.driver		= {
-+		.name	= "dwc3-apple",
-+		.of_match_table	= dwc3_apple_of_match,
-+	},
-+};
-+
-+module_platform_driver(dwc3_apple_driver);
-+
-+MODULE_LICENSE("GPL");
-+MODULE_AUTHOR("Sven Peter <sven@kernel.org>");
-+MODULE_DESCRIPTION("DesignWare DWC3 Apple Silicon Glue Driver");
+ 	if (event & APPLE_CD_REG_INT_POWER_STATUS_UPDATE)
+ 		if (!tps6598x_read_power_status(tps))
+-			goto err_clear_ints;
++			goto err_unlock;
+ 
+ 	if (event & APPLE_CD_REG_INT_DATA_STATUS_UPDATE)
+ 		if (!tps6598x_read_data_status(tps))
+-			goto err_clear_ints;
++			goto err_unlock;
+ 
+ 	/* Handle plug insert or removal */
+ 	if (event & APPLE_CD_REG_INT_PLUG_EVENT)
+ 		tps6598x_handle_plug_event(tps, status);
+ 
+-err_clear_ints:
+-	tps6598x_write64(tps, TPS_REG_INT_CLEAR1, event);
+-
+ err_unlock:
+ 	mutex_unlock(&tps->lock);
+ 
+@@ -668,25 +667,24 @@ static irqreturn_t tps6598x_interrupt(int irq, void *data)
+ 	if (!(event1[0] | event1[1] | event2[0] | event2[1]))
+ 		goto err_unlock;
+ 
++	tps6598x_block_write(tps, TPS_REG_INT_CLEAR1, event1, intev_len);
++	tps6598x_block_write(tps, TPS_REG_INT_CLEAR2, event2, intev_len);
++
+ 	if (!tps6598x_read_status(tps, &status))
+-		goto err_clear_ints;
++		goto err_unlock;
+ 
+ 	if ((event1[0] | event2[0]) & TPS_REG_INT_POWER_STATUS_UPDATE)
+ 		if (!tps6598x_read_power_status(tps))
+-			goto err_clear_ints;
++			goto err_unlock;
+ 
+ 	if ((event1[0] | event2[0]) & TPS_REG_INT_DATA_STATUS_UPDATE)
+ 		if (!tps6598x_read_data_status(tps))
+-			goto err_clear_ints;
++			goto err_unlock;
+ 
+ 	/* Handle plug insert or removal */
+ 	if ((event1[0] | event2[0]) & TPS_REG_INT_PLUG_EVENT)
+ 		tps6598x_handle_plug_event(tps, status);
+ 
+-err_clear_ints:
+-	tps6598x_block_write(tps, TPS_REG_INT_CLEAR1, event1, intev_len);
+-	tps6598x_block_write(tps, TPS_REG_INT_CLEAR2, event2, intev_len);
+-
+ err_unlock:
+ 	mutex_unlock(&tps->lock);
+ 
 
 -- 
 2.34.1
