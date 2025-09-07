@@ -1,92 +1,90 @@
-From: Valerio Setti <vsetti@baylibre.com>
-Date: Sun, 07 Sep 2025 14:29:21 +0200
-Subject: [PATCH] arm64: dts: amlogic: gxbb-odroidc2: remove UHS capability
- for SD card
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH 0/4] Add CAMSS support for MSM8939
+Date: Mon, 08 Sep 2025 00:04:14 +0200
+Message-Id: <20250908-camss-8x39-vbif-v1-0-f198c9fd0d4d@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250907-fix-reboot-v1-1-7606fc91254e@baylibre.com>
-X-B4-Tracking: v=1; b=H4sIAKB6vWgC/x2MQQqAIBAAvyJ7bmGVIuwr0cFsrb1oaEQg/T3pO
- AwzFQpn4QKTqpD5liIpNtCdAn+4uDPK1hgMmYEsjRjkwcxrShdSzxS81dYxQQvOzM3+s3l53w+
- 6d6OLXAAAAA==
-X-Change-ID: 20250907-fix-reboot-04e0fc919ae0
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Valerio Setti <vsetti@baylibre.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAF4BvmgC/23OSw7CIBCA4asY1mIYcLC48h7GBeVRSVQMGFLT9
+ O7SxkVNXf6TzDczkOxScJkcNwNJroQc4qMGbDfEXPWjczTY2oQzjgzhQI2+50ybXiha2uCpOqD
+ 32IAC1ZC69UzOh34Wz5fa15BfMb3nAwWm6dfibGUVoIxq4MZKxqT26nTX4RbjLqaOTFjhSwDXA
+ K+AtMKiQe33KFeAWADizweiAt4osIBti/YXGMfxA/StPzgxAQAA
+X-Change-ID: 20250517-camss-8x39-vbif-975ff5819198
+To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Vincent Knecht <vincent.knecht@mailoo.org>, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2226; i=vsetti@baylibre.com;
- h=from:subject:message-id; bh=8EBu8xBycRGsUBCELcsXSIlLy471WBn+C9oMzb171Ho=;
- b=owGbwMvMwCF2z3ty7kUrRgbG02pJDBl7qzZ+EotTzK5mWfxPQoD3/DQxnkX1aVs1a1Z1aVvlx
- HUkbd7ZUcrCIMbBICumyMIy/d7vglK1h8YJJwtg5rAygQxh4OIUgIkcFWD4X21T+C1i+zvvZQeO
- e5zqsmt76n9o+7IXy1Z+TO1bva5APYbhD4dH72EDe83XX45zHOD27/+wJdz7NJfMPtPW+jXLO05
- vYgIA
-X-Developer-Key: i=vsetti@baylibre.com; a=openpgp;
- fpr=0497DEFB707526E13360C970DE4B936DD13A0100
-X-Endpoint-Received: by B4 Relay for vsetti@baylibre.com/default with auth_id=515
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757282673; l=2310;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=9+FmzHBVrcCtqXllvP6hTlSCZ5CvZZym/HB8c4kj5mE=;
+ b=sdrcJ3hmiqBjErZCuxj8R0+8gYYznFsn/UaMWjBactkUePKhr9bgMpGrsog5PwVLNWYRdbi7M
+ D2RLjHQ5hEmBgr4AfURmHK3x+otqq8amfVKoreTakUBvC4GTqTLlrgI
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is meant to resolve reboot not working on this board.
+(This series resumes [1].)
 
-The problem is as follows. In order to be able to switch from HS to UHS
-mode the bus voltage needs to be reduced from 3.3V down to 1.8V and this
-is achieved by the "vqmmc-supply" regulator. The ROM bootloader is only
-able to manage the card in HS mode (3.3V) and the switch HS->UHS happen
-at boottime in the kernel. The problem appears when the reboot command
-is issued or watchdog expires because in this case the "vqmmc-supply"
-voltage is not returned back at 3.3V before rebooting the board so the
-ROM bootloader will be completely stuck.
+This series adds CAMSS support for MSM8939.  It's mostly identical to
+MSM8916, except for some clocks and an additional CSI.
 
-Therefore this commit removes both "vqmmc-supply" property, which is the
-one causing the reboot problem, as well as all the UHS modes which would
-now became unreachable due to this regulator control removal.
+To fix black stripes across sensor output, and garbage in CSID TPG
+output, 2 VFE VBIF register settings are needed.  So the 2nd patch adds
+helper functions to do just that.
 
-In terms of performance the main drawback of this commit is limiting the
-SD card bus speed to HS (25 MB/s) instead of UHS DDR50 (50 MB/s). However
-this comes with the benefit of being able to reboot the board, so it
-sounds like a reasonable compromise.
+Patch 1: documents qcom,msm8939-camss DT bindings
+Patch 2: adds helper for VFE VBIF settings
+Patch 3: adds CAMSS_8x39 version in CAMSS driver
+Patch 4: adds camss and cci in msm8939.dtsi
 
-Signed-off-by: Valerio Setti <vsetti@baylibre.com>
+Changes compared to [1]:
+- Move bindings patch to the beginning
+- Make the order of {reg, clock, interrupt} items the same as in 8916 +
+  append additional items
+- Drop R-b tags from bindings and dts patches as order of items was
+  changed
+
+[1] https://lore.kernel.org/all/20250613-camss-8x39-vbif-v5-0-a002301a7730@mailoo.org/
+
+Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
+[André: Apply reviewer comments]
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+Vincent Knecht (4):
+      media: dt-bindings: Add qcom,msm8939-camss
+      media: qcom: camss: vfe: Add VBIF setting support
+      media: qcom: camss: Add support for MSM8939
+      arm64: dts: qcom: msm8939: Add camss and cci
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts b/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts
-index 959bd8d77a82ebc78c5e0592d7613e692e4ede4e..331a0a62b884389b4e0d4d157fff7f9c8738c89d 100644
---- a/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts
-+++ b/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts
-@@ -348,17 +348,16 @@ &sd_emmc_b {
- 
- 	bus-width = <4>;
- 	cap-sd-highspeed;
--	sd-uhs-sdr12;
--	sd-uhs-sdr25;
--	sd-uhs-sdr50;
--	sd-uhs-ddr50;
- 	max-frequency = <100000000>;
- 	disable-wp;
- 
- 	cd-gpios = <&gpio CARD_6 GPIO_ACTIVE_LOW>;
- 
- 	vmmc-supply = <&tflash_vdd>;
--	vqmmc-supply = <&tf_io>;
-+	/*
-+	 * Control of vqmmc-supply is intentionally omitted because it would
-+	 * prevent the board from rebooting properly.
-+	 */
- };
- 
- /* eMMC */
-
+ .../bindings/media/qcom,msm8939-camss.yaml         | 254 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi       |   4 +
+ arch/arm64/boot/dts/qcom/msm8939.dtsi              | 146 ++++++++++++
+ drivers/media/platform/qcom/camss/Makefile         |   1 +
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |   1 +
+ drivers/media/platform/qcom/camss/camss-ispif.c    |   8 +-
+ drivers/media/platform/qcom/camss/camss-vfe-4-1.c  |  12 +
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.c |  31 +++
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.h |  19 ++
+ drivers/media/platform/qcom/camss/camss-vfe.c      |  10 +
+ drivers/media/platform/qcom/camss/camss-vfe.h      |   3 +
+ drivers/media/platform/qcom/camss/camss.c          | 157 +++++++++++++
+ drivers/media/platform/qcom/camss/camss.h          |   1 +
+ 13 files changed, 645 insertions(+), 2 deletions(-)
 ---
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250907-fix-reboot-04e0fc919ae0
+base-commit: be5d4872e528796df9d7425f2bd9b3893eb3a42c
+change-id: 20250517-camss-8x39-vbif-975ff5819198
 
 Best regards,
 -- 
-Valerio Setti <vsetti@baylibre.com>
+André Apitzsch <git@apitzsch.eu>
 
