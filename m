@@ -1,148 +1,85 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Mon, 08 Sep 2025 10:25:45 +0800
-Subject: [PATCH v9 2/2] hwmon: document: add gpd-fan
+From: Valerio Setti <vsetti@baylibre.com>
+Date: Mon, 08 Sep 2025 21:50:03 +0200
+Subject: [PATCH v2] arm64: dts: amlogic: gxbb-odroidc2: remove UHS
+ capability for SD card
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250908-gpd_fan-v9-2-7b4506c03953@uniontech.com>
-References: <20250908-gpd_fan-v9-0-7b4506c03953@uniontech.com>
-In-Reply-To: <20250908-gpd_fan-v9-0-7b4506c03953@uniontech.com>
-To: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
- Jonathan Corbet <corbet@lwn.net>, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
-Cc: linux-kernel@vger.kernel.org, linux-hwmon@vger.kernel.org, 
- linux-doc@vger.kernel.org, Celeste Liu <CoelacanthusHex@gmail.com>, 
- Yao Zi <ziyao@disroot.org>, Derek John Clark <derekjohn.clark@gmail.com>, 
- Jun Zhan <zhanjun@uniontech.com>, Cheng Nie <niecheng1@uniontech.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250908-fix-reboot-v2-1-354d0e57c855@baylibre.com>
+X-B4-Tracking: v=1; b=H4sIAGozv2gC/23MTQqDMBCG4avIrDtlEvwhXfUe4iKmYx1oTUkkV
+ CR3b3Td5TvD9+wQOQhHuFU7BE4SxS8l9KUCN9vlySiP0qBJN2Sow0m+GHj0fkWqmSZnlLFMUAa
+ fwOV7Yv1Qepa4+rCddlLH9S+TFCrsWmoPSzc130e7vWQMfHX+DUPO+QcGgIQ9pwAAAA==
+X-Change-ID: 20250907-fix-reboot-04e0fc919ae0
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Valerio Setti <vsetti@baylibre.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757298351; l=3651;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=XJBaOZygIlHycO8BeXsmyRPcKndp0Zqqqn5Kg3pQ5T0=;
- b=qBznmcyRfPSdCHkxXtonLTap0YL4ULYMFkQDkYxMLZhjamDoZ9QXBldXz6xHA3arpPvGK1xSX
- Gbsr08fBfS2BszBtqwTCWyNyKAx73VpRpBLWVnACwP8/9RbKK4qHYFs
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2045; i=vsetti@baylibre.com;
+ h=from:subject:message-id; bh=BJc4SXxGYBhMfaPaAFk61MykLFrvMDIrqRdHH0rt9IY=;
+ b=owGbwMvMwCF2z3ty7kUrRgbG02pJDBn7jRuDXn3+sOHcgT2cDKu9ThrvSJgZ9VuAP9956mm9K
+ rNPfIqNHaUsDGIcDLJiiiws0+/9LihVe2iccLIAZg4rE8gQBi5OAZiIdhUjQ8eu7/dYbVV89FJ8
+ JDoFqtsmSq7tVWzIrV2loFGjF6IjzvDfZ97m1ZYLFvRJ2yT5vAq8z7zmp3f339s5Zzv4zBP3y/5
+ jAQA=
+X-Developer-Key: i=vsetti@baylibre.com; a=openpgp;
+ fpr=0497DEFB707526E13360C970DE4B936DD13A0100
+X-Endpoint-Received: by B4 Relay for vsetti@baylibre.com/default with auth_id=515
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add GPD fan driver document
+This is meant to resolve reboot not working on this board.
 
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+The problem is as follows. In order to be able to switch from HS to UHS
+mode the bus voltage needs to be reduced from 3.3V down to 1.8V and this
+is achieved by the "vqmmc-supply" regulator. The ROM bootloader is only
+able to manage the card in HS mode (3.3V) and the switch HS->UHS happen
+at boottime in the kernel. The problem appears when the reboot command
+is issued or watchdog expires because in this case the "vqmmc-supply"
+voltage is not returned back at 3.3V before rebooting the board so the
+ROM bootloader will be completely stuck.
+
+Therefore this commit removes all UHS modes which would cause
+"vqmmc-summply" to switch from 3.3V to 1.8V.
+
+In terms of performance the main drawback of this commit is limiting the
+SD card bus speed to HS (25 MB/s) instead of UHS DDR50 (50 MB/s). However
+this comes with the benefit of being able to reboot the board, so it
+sounds like a reasonable compromise.
+
+Reviewed-by: Jerome Brunet <jbrunet@baylibre.com>
+Signed-off-by: Valerio Setti <vsetti@baylibre.com>
 ---
- Documentation/hwmon/gpd-fan.rst | 78 +++++++++++++++++++++++++++++++++++++++++
- Documentation/hwmon/index.rst   |  1 +
- MAINTAINERS                     |  1 +
- 3 files changed, 80 insertions(+)
+Changes in v2:
+- Re-added vqmmc-supply to sd_emmc_b node.
+- Link to v1: https://lore.kernel.org/r/20250907-fix-reboot-v1-1-7606fc91254e@baylibre.com
+---
+ arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts | 4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/Documentation/hwmon/gpd-fan.rst b/Documentation/hwmon/gpd-fan.rst
-new file mode 100644
-index 0000000000000000000000000000000000000000..0b56b70e6264ddccaa4d84b326841c8f63b43a39
---- /dev/null
-+++ b/Documentation/hwmon/gpd-fan.rst
-@@ -0,0 +1,78 @@
-+.. SPDX-License-Identifier: GPL-2.0-or-later
-+
-+Kernel driver gpd-fan
-+=========================
-+
-+Author:
-+    - Cryolitia PukNgae <cryolitia@uniontech.com>
-+
-+Description
-+------------
-+
-+Handheld devices from Shenzhen GPD Technology Co., Ltd. provide fan readings
-+and fan control through their embedded controllers.
-+
-+Supported devices
-+-----------------
-+
-+Currently the driver supports the following handhelds:
-+
-+ - GPD Win Mini (7840U)
-+ - GPD Win Mini (8840U)
-+ - GPD Win Mini (HX370)
-+ - GPD Pocket 4
-+ - GPD Duo
-+ - GPD Win Max 2 (6800U)
-+ - GPD Win Max 2 2023 (7840U)
-+ - GPD Win Max 2 2024 (8840U)
-+ - GPD Win Max 2 2025 (HX370)
-+ - GPD Win 4 (6800U)
-+ - GPD Win 4 (7840U)
-+
-+Module parameters
-+-----------------
-+
-+gpd_fan_board
-+  Force specific which module quirk should be used.
-+  Use it like "gpd_fan_board=wm2".
-+
-+   - wm2
-+       - GPD Win 4 (7840U)
-+       - GPD Win Max 2 (6800U)
-+       - GPD Win Max 2 2023 (7840U)
-+       - GPD Win Max 2 2024 (8840U)
-+       - GPD Win Max 2 2025 (HX370)
-+   - win4
-+       - GPD Win 4 (6800U)
-+   - win_mini
-+       - GPD Win Mini (7840U)
-+       - GPD Win Mini (8840U)
-+       - GPD Win Mini (HX370)
-+       - GPD Pocket 4
-+       - GPD Duo
-+
-+Sysfs entries
-+-------------
-+
-+The following attributes are supported:
-+
-+fan1_input
-+  Read Only. Reads current fan RPM.
-+
-+pwm1_enable
-+  Read/Write. Enable manual fan control. Write "0" to disable control and run
-+  at full speed. Write "1" to set to manual, write "2" to let the EC control
-+  decide fan speed. Read this attribute to see current status.
-+
-+  NB：In consideration of the safety of the device, when setting to manual mode,
-+  the pwm speed will be set to the maximum value (255) by default. You can set
-+  a different value by writing pwm1 later.
-+
-+pwm1
-+  Read/Write. Read this attribute to see current duty cycle in the range
-+  [0-255]. When pwm1_enable is set to "1" (manual) write any value in the
-+  range [0-255] to set fan speed.
-+
-+  NB: Many boards (except listed under wm2 above) don't support reading the
-+  current pwm value in auto mode. That will just return EOPNOTSUPP. In manual
-+  mode it will always return the real value.
-diff --git a/Documentation/hwmon/index.rst b/Documentation/hwmon/index.rst
-index d292a86ac5da902cad02c1965c90f5de530489df..ce4419f064e1368740387af70af38a85cadd952d 100644
---- a/Documentation/hwmon/index.rst
-+++ b/Documentation/hwmon/index.rst
-@@ -82,6 +82,7 @@ Hardware Monitoring Kernel Drivers
-    gigabyte_waterforce
-    gsc-hwmon
-    gl518sm
-+   gpd-fan
-    gxp-fan-ctrl
-    hih6130
-    hp-wmi-sensors
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 14a616be5ff08aaeee52436dff54a86c4a81e5fb..0b6ae95c2007f0737bc4a4e1f2bac52f71628f78 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -10425,6 +10425,7 @@ GPD FAN DRIVER
- M:	Cryolitia PukNgae <cryolitia@uniontech.com>
- L:	linux-hwmon@vger.kernel.org
- S:	Maintained
-+F:	Documentation/hwmon/gpd-fan.rst
- F:	drivers/hwmon/gpd-fan.c
+diff --git a/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts b/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts
+index 959bd8d77a82ebc78c5e0592d7613e692e4ede4e..12e26f99d4f080a216e305981dc4291a49063b60 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts
++++ b/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts
+@@ -348,10 +348,6 @@ &sd_emmc_b {
  
- GPD POCKET FAN DRIVER
+ 	bus-width = <4>;
+ 	cap-sd-highspeed;
+-	sd-uhs-sdr12;
+-	sd-uhs-sdr25;
+-	sd-uhs-sdr50;
+-	sd-uhs-ddr50;
+ 	max-frequency = <100000000>;
+ 	disable-wp;
+ 
 
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250907-fix-reboot-04e0fc919ae0
+
+Best regards,
 -- 
-2.51.0
+Valerio Setti <vsetti@baylibre.com>
 
