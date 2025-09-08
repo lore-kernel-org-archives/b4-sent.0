@@ -1,228 +1,112 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Mon, 08 Sep 2025 00:04:18 +0200
-Subject: [PATCH 4/4] arm64: dts: qcom: msm8939: Add camss and cci
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Subject: [PATCH v9 0/2] hwmon: add GPD devices sensor driver
+Date: Mon, 08 Sep 2025 10:25:43 +0800
+Message-Id: <20250908-gpd_fan-v9-0-7b4506c03953@uniontech.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250908-camss-8x39-vbif-v1-4-f198c9fd0d4d@apitzsch.eu>
-References: <20250908-camss-8x39-vbif-v1-0-f198c9fd0d4d@apitzsch.eu>
-In-Reply-To: <20250908-camss-8x39-vbif-v1-0-f198c9fd0d4d@apitzsch.eu>
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Vincent Knecht <vincent.knecht@mailoo.org>, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAKc+vmgC/3XR3UrDQBAF4FcpubWRmf2PIFQrVNB7EZGyye4mU
+ ZO0SU1bS9/dbVASU7ycZb8zB+YQNLbObRNcTQ5Bbdu8yavSD9F0EiSZLlMb5sbPAQHCQKII05V
+ ZOl2GXDoKEaGJUizwv1e1dfmuS3p59XOWN5uq3nfBLZ5ezzNaDCGkDDgaI1GDmKWFzj8uk6oIT
+ hktGTrZO+Kdk7G0Io4cwXjs6D+OeqeMtC5GImgsx44Nneod8w5RWM4o6sjZseO/jgNB7B33ToB
+ yjHDuwOLYic7Nbxbb6mu7QNpsn9/mt2L5VJBMaTI39ztdXJD9dYoFI6t9+f6wXpu7x3TW5YzSZ
+ N9CwaCF9C04U3FklOPSyNln6a+8sUnW2enkxxD4axASBdy3N7EemW6f6vdFwHqrvAXJCVfMoTB
+ n9ng8fgMLVnyWeAIAAA==
+X-Change-ID: 20240716-gpd_fan-57f30923c884
+To: Jean Delvare <jdelvare@suse.com>, Guenter Roeck <linux@roeck-us.net>, 
+ Jonathan Corbet <corbet@lwn.net>, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>
+Cc: linux-kernel@vger.kernel.org, linux-hwmon@vger.kernel.org, 
+ linux-doc@vger.kernel.org, Celeste Liu <CoelacanthusHex@gmail.com>, 
+ Yao Zi <ziyao@disroot.org>, Derek John Clark <derekjohn.clark@gmail.com>, 
+ Jun Zhan <zhanjun@uniontech.com>, Cheng Nie <niecheng1@uniontech.com>, 
+ =?utf-8?q?Marcin_Str=C4=85gowski?= <marcin@stragowski.com>, 
+ someone5678 <someone5678.dev@gmail.com>, 
+ Justin Weiss <justin@justinweiss.com>, 
+ Antheas Kapenekakis <lkml@antheas.dev>, command_block <mtf@ik.me>, 
+ derjohn <himself@derjohn.de>, Crashdummyy <crashdummy1337@proton.me>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757282673; l=5528;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=Lwz747jRCUvpyRjQGDYnWcOgT3CYQhxSZ9w8lZX4jnE=;
- b=qFI80c15/O9BWbEQVlMk6+1LUZEJPKZJAYARQuykB2uZKjb22gy81TeCwjBwtyyFAwFar9Yg/
- FXyNjOrjXjmDBH04B0UbwRXLd3jl09B7fJwIC3ShSzaXN5V6mXLojLl
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757298351; l=2549;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=VlQ+fCB+M02Tun0Cg1gDM4KSeejvTJCZ9PTIGgb0l70=;
+ b=DFvCSSaNtt5d1rnOGKyjPlySnLwJZIpRrg+MUNNTEBevYKoka9AXndtj4ZyCEtoltN9iN4oLG
+ JupqTB0TLdPAFhlCdTR2qCci4snhqGrWPkYq7xegZsKQVvufcTud4rK
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Vincent Knecht <vincent.knecht@mailoo.org>
+Sensors driver for GPD Handhelds that expose fan reading and control
+via hwmon sysfs.
 
-Add the camera subsystem and CCI used to interface with cameras on the
-Snapdragon 615.
+Shenzhen GPD Technology Co., Ltd. manufactures a series of handheld
+devices. This driver implements these functions through x86 port-mapped
+IO.
 
-Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
-[André: Make order of items the same as in 8916]
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+
 ---
- arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi |   4 +
- arch/arm64/boot/dts/qcom/msm8939.dtsi        | 146 +++++++++++++++++++++++++++
- 2 files changed, 150 insertions(+)
+Changes in v9:
+- remove worthlessness EC access mutex lock
+- just return EOPNOTSUPP on device that not support read pwm in auto
+  mode
+- cleanup code
+- Link to v8: https://lore.kernel.org/r/20250904-gpd_fan-v8-0-0752584f16da@uniontech.com
 
-diff --git a/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi b/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-index adb96cd8d643e5fde1ac95c0fc3c9c3c3efb07e8..659d127b1bc3570d137ca986e4eacf600c183e5e 100644
---- a/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-+++ b/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-@@ -11,6 +11,10 @@
- #include "msm8939.dtsi"
- #include "pm8916.dtsi"
- 
-+&camss {
-+	vdda-supply = <&pm8916_l2>;
-+};
-+
- &mdss_dsi0 {
- 	vdda-supply = <&pm8916_l2>;
- 	vddio-supply = <&pm8916_l6>;
-diff --git a/arch/arm64/boot/dts/qcom/msm8939.dtsi b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-index 68b92fdb996c26e7a1aadedf0f52e1afca85c4ab..15ca28ed21ca80f9b35b5e64d3b704d14c9174f5 100644
---- a/arch/arm64/boot/dts/qcom/msm8939.dtsi
-+++ b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-@@ -1434,6 +1434,145 @@ mdss_dsi1_phy: phy@1aa0300 {
- 			};
- 		};
- 
-+		camss: isp@1b0ac00 {
-+			compatible = "qcom,msm8939-camss";
-+			reg = <0x01b0ac00 0x200>,
-+			      <0x01b00030 0x4>,
-+			      <0x01b0b000 0x200>,
-+			      <0x01b00038 0x4>,
-+			      <0x01b08000 0x100>,
-+			      <0x01b08400 0x100>,
-+			      <0x01b0a000 0x500>,
-+			      <0x01b00020 0x10>,
-+			      <0x01b10000 0x1000>,
-+			      <0x01b08800 0x100>,
-+			      <0x01b40000 0x200>;
-+			reg-names = "csiphy0",
-+				    "csiphy0_clk_mux",
-+				    "csiphy1",
-+				    "csiphy1_clk_mux",
-+				    "csid0",
-+				    "csid1",
-+				    "ispif",
-+				    "csi_clk_mux",
-+				    "vfe0",
-+				    "csid2",
-+				    "vfe0_vbif";
-+
-+			clocks = <&gcc GCC_CAMSS_TOP_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_ISPIF_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PHYTIMER_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PHYTIMER_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0RDI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1RDI_CLK>,
-+				 <&gcc GCC_CAMSS_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_VFE0_CLK>,
-+				 <&gcc GCC_CAMSS_CSI_VFE0_CLK>,
-+				 <&gcc GCC_CAMSS_VFE_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_VFE_AXI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2RDI_CLK>;
-+			clock-names = "top_ahb",
-+				      "ispif_ahb",
-+				      "csiphy0_timer",
-+				      "csiphy1_timer",
-+				      "csi0_ahb",
-+				      "csi0",
-+				      "csi0_phy",
-+				      "csi0_pix",
-+				      "csi0_rdi",
-+				      "csi1_ahb",
-+				      "csi1",
-+				      "csi1_phy",
-+				      "csi1_pix",
-+				      "csi1_rdi",
-+				      "ahb",
-+				      "vfe0",
-+				      "csi_vfe0",
-+				      "vfe_ahb",
-+				      "vfe_axi",
-+				      "csi2_ahb",
-+				      "csi2",
-+				      "csi2_phy",
-+				      "csi2_pix",
-+				      "csi2_rdi";
-+
-+			interrupts = <GIC_SPI 78 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 79 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 51 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 52 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 55 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 57 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 153 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "csiphy0",
-+					  "csiphy1",
-+					  "csid0",
-+					  "csid1",
-+					  "ispif",
-+					  "vfe0",
-+					  "csid2";
-+
-+			iommus = <&apps_iommu 3>;
-+
-+			power-domains = <&gcc VFE_GDSC>;
-+
-+			status = "disabled";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+				};
-+			};
-+		};
-+
-+		cci: cci@1b0c000 {
-+			compatible = "qcom,msm8916-cci", "qcom,msm8226-cci";
-+			reg = <0x01b0c000 0x1000>;
-+			interrupts = <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>;
-+			clocks = <&gcc GCC_CAMSS_TOP_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CCI_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CCI_CLK>,
-+				 <&gcc GCC_CAMSS_AHB_CLK>;
-+			clock-names = "camss_top_ahb",
-+				      "cci_ahb",
-+				      "cci",
-+				      "camss_ahb";
-+			assigned-clocks = <&gcc GCC_CAMSS_CCI_AHB_CLK>,
-+					  <&gcc GCC_CAMSS_CCI_CLK>;
-+			assigned-clock-rates = <80000000>,
-+					       <19200000>;
-+			pinctrl-0 = <&cci0_default>;
-+			pinctrl-names = "default";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			status = "disabled";
-+
-+			cci_i2c0: i2c-bus@0 {
-+				reg = <0>;
-+				clock-frequency = <400000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+		};
-+
- 		gpu: gpu@1c00000 {
- 			compatible = "qcom,adreno-405.0", "qcom,adreno";
- 			reg = <0x01c00000 0x10000>;
-@@ -1498,6 +1637,13 @@ apps_iommu: iommu@1ef0000 {
- 			#iommu-cells = <1>;
- 			qcom,iommu-secure-id = <17>;
- 
-+			/* vfe */
-+			iommu-ctx@3000 {
-+				compatible = "qcom,msm-iommu-v1-sec";
-+				reg = <0x3000 0x1000>;
-+				interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
-+			};
-+
- 			/* mdp_0: */
- 			iommu-ctx@4000 {
- 				compatible = "qcom,msm-iommu-v1-ns";
+Changes in v8:
+- add mutex lock to protect an entire hwmon operation sequence
+- clear manual model action
+- improve error check
+- style fix
+- Link to v7: https://lore.kernel.org/r/20250820-gpd_fan-v7-0-10c8058f4dba@uniontech.com
 
+Changes in v7:
+- Add support for GPD Duo
+- Change email from cryolitia@gmail.com to cryolitia@uniontech.com
+- Link to v6: https://lore.kernel.org/r/CAGwozwG13swYjCB6_Wm2h8a2CdHxam+2y=g1m42pynkKqqdDLg@mail.gmail.com
+
+Changes in v6:
+- fix: nullptr and label followed by a declaration
+- cleanup: clean up code and rename some function
+- format code
+- dmi: add 2025 new GPD devices
+- Link to v5: https://lore.kernel.org/r/20250211-gpd_fan-v5-0-608f4255f0e1@gmail.com
+
+Changes in v5:
+- Rebase on kernel 6.13
+- Remove all value-cache related code
+- Clean up code
+- Link to v4: https://lore.kernel.org/r/20240718-gpd_fan-v4-0-116e5431a9fe@gmail.com
+
+Changes in v4:
+- Apply suggest by Krzysztof Kozlowski, thanks!
+- Link to v3: https://lore.kernel.org/r/20240717-gpd_fan-v3-0-8d7efb1263b7@gmail.com
+
+Changes in v3:
+- Re-arrange code, thanks to Krzysztof Kozlowski, Guenter Roeck, Yao Zi!
+- Link to v2: https://lore.kernel.org/r/20240717-gpd_fan-v2-0-f7b7e6b9f21b@gmail.com
+
+Changes in v2:
+- Improved documentation, thanks to Randy Dunlap!
+- Link to v1: https://lore.kernel.org/r/20240716-gpd_fan-v1-0-34051dd71a06@gmail.com
+
+---
+Cryolitia PukNgae (2):
+      hwmon: add GPD devices sensor driver
+      hwmon: document: add gpd-fan
+
+ Documentation/hwmon/gpd-fan.rst |  78 +++++
+ Documentation/hwmon/index.rst   |   1 +
+ MAINTAINERS                     |   7 +
+ drivers/hwmon/Kconfig           |  10 +
+ drivers/hwmon/Makefile          |   1 +
+ drivers/hwmon/gpd-fan.c         | 715 ++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 812 insertions(+)
+---
+base-commit: e6b9dce0aeeb91dfc0974ab87f02454e24566182
+change-id: 20240716-gpd_fan-57f30923c884
+
+Best regards,
 -- 
-2.51.0
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
