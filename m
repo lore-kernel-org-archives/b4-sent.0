@@ -1,69 +1,123 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Tue, 09 Sep 2025 10:58:01 +0200
-Subject: [PATCH] intel/vt-d: Send Page Request Drain only if supported
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v8 0/3] arm64: dts: qcom: x1-hp-x14: Add support for
+ X1P42100 HP Omnibook X14
+Date: Tue, 09 Sep 2025 19:02:32 +0200
+Message-Id: <20250909-hp-x14-x1p-v8-0-8082ab069911@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250909-jag-pds-v1-1-ad8cba0e494e@kernel.org>
-X-B4-Tracking: v=1; b=H4sIABjsv2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDSwNL3azEdN2ClGJd8xQL0yQzg8QUyxQjJaDqgqLUtMwKsEnRsbW1APN
- AWXlZAAAA
-X-Change-ID: 20250909-jag-pds-7d85b60ad9d2
-To: David Woodhouse <dwmw2@infradead.org>, 
- Lu Baolu <baolu.lu@linux.intel.com>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>
-Cc: iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
- Joel Granados <joel.granados@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAKpdwGgC/33Py2rEMAwF0F8ZvK6L5be76n+ULhw/GkMYh3gap
+ h3y71WySqCThRZXoMPVg7Q0ldTI2+VBpjSXVuoVg325kND761eiJWImnHHFDOO0H+kdJM5IUyd
+ 4ltrp6DTBg3FKudw37OMTc1/arU4/mz3Duv2XmYEyysEJpZMVnJn3OsQW+lqHVofvGzZqr135J
+ as58+cOR8dn1SlrIzjjTh2xd8TBEZuTEzDRSWx16si9ow6ORAeCUBC75DPYU0ftHXtwFDpSBgc
+ 6Ze+MOHX03nEHR6OTpQoBrPaax1PH7BxgB8esf7kALFgwIPxTZ1mWP0lsjNhhAgAA
+X-Change-ID: 20250702-hp-x14-x1p-eb32f4696d96
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1333;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=R84Vk67aONLqs9yimOEnlLpQaSiDWiX/yLC0yfwDvQg=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGi/7DWIt1dxbKK1nES9puS/0fThmuhAYzX+C
- KcoH0a+wd/n7okBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJov+w1AAoJELqXzVK3
- lkFP5hML/RA+hoWbDh4Sjga0mdO0hQB0LiYXRME/LTlVph89SDbZ8jSCT0qO7IY+reePdmmoikV
- onj5AofS+EKfs1v/eEIR7RatVbIA1E4LIu08JYArFUDAu2T8Nwfvzy+qipRCxmwPSlWzx6ZMlf3
- l1KQW7hJS+5NMq8GrD7AXwmZhy+RjviHRoLwQ1ENenOxR6Q6xqFRF3pgi2/wdtXmOpTdjDk3tOq
- wsh69V2ayejpTCtawtNeBp13p3hdKCo30gmtKEeDc537JInEKXuj3iMT+fZm+5oYyfbN7YtAZh2
- 3I4T1Wks2opapNkdksLunm0FOw8q0RM3arMO8AqToBf2YteaQ9QZe/YQS+Ye7As9Q3QGXM2RAZA
- 5+KVd2GKM68juxuSUUh5f/Ym/d+W02ZUi36c3METWuF9n3rMXOgf5DzVGhnlrr4GyLwrp/ARQpS
- amSxE23nSVOgb5sVPkYrVJ/snxWte190HsgaqDXPfjAVdTFd20IjDboLAUx6781f5brfaelHGd7
- d0=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757437358; l=3619;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=DtoJG7abkzsETSxv7OldiFAld+o5s9NMo3AjMGSPYiU=;
+ b=tpfJB7ah+j3pZkJKGYYIYfOfiV9l2YhBGKfAP2IE5W/bfLFmbX99IRk9NhmrMlnkbF1JcDzHC
+ TdxjL12fQ2rAtPuc8S+bvydp3msSv2vs4q/0zhqeyGkxvUrDKsS0mJN
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The intel_iommu_drain_pasid_prq function sends QI_OPT_WAIT_DRAIN to
-hardware without verifying Page Request Drain Support (PDS). According
-to VT-d specification section 6.5.2.8, PRQ drain functionality should
-only be used when PDS (bit 42) is set in the extended capability
-register. Add ecap_pds() check to conditionally use QI_OPT_WAIT_DRAIN
-based on hardware capability.
+This patch series adds support for the HP Omnibook X Laptop 14-fe1xxx. [1]
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+Since this is actually the same model as the 14-fe0xxx, but with an
+X1P-42-100 SoC (Purwa), it needs a slightly different device tree.
+To have as minimal duplicate definition as possible, the hp X14 gets 
+commonalized into a dtsi (and it stays compatible to the derived 
+device trees, like the Ultrabook G1q). 
+
+The supported features are the same as for the original Omnibook X14:
+
+- Keyboard (no function keys though)
+- Display
+- PWM brightness control
+- Touchpad
+- Touchscreen
+- PCIe ports (pcie4, pcie6a)
+- USB type-c, type-a
+- WCN6855 Wifi-6E
+- WCN6855 Bluetooth
+- ADSP and CDSP
+- X1 GPU
+- GPIO Keys (Lid switch)
+- Audio definition (works via USB and with internal speakers)
+
+[1]: https://www.hp.com/us-en/shop/pdp/hp-omnibook-x-laptop-next-gen-ai-pc-14-fe100-14-a4nd1av-1#techSpecs
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/iommu/intel/prq.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v8:
+- rebased to next-20250909.
+- picked up reviewed-by from Konrad (Thanks!)
+- Link to v7: https://lore.kernel.org/r/20250710-hp-x14-x1p-v7-0-19c10c81713a@oldschoolsolutions.biz
 
-diff --git a/drivers/iommu/intel/prq.c b/drivers/iommu/intel/prq.c
-index 52570e42a14c05b7492957909568805dc9c7b6ef..f89916de31a3439866f059f5400e45fb362a6a7d 100644
---- a/drivers/iommu/intel/prq.c
-+++ b/drivers/iommu/intel/prq.c
-@@ -119,7 +119,7 @@ void intel_iommu_drain_pasid_prq(struct device *dev, u32 pasid)
- 	}
- qi_retry:
- 	reinit_completion(&iommu->prq_complete);
--	qi_submit_sync(iommu, desc, 3, QI_OPT_WAIT_DRAIN);
-+	qi_submit_sync(iommu, desc, 3, ecap_pds(iommu->ecap) ? QI_OPT_WAIT_DRAIN : 0);
- 	if (readl(iommu->reg + DMAR_PRS_REG) & DMA_PRS_PRO) {
- 		wait_for_completion(&iommu->prq_complete);
- 		goto qi_retry;
+Changes in v7:
+- rebased to next-20250710.
+- reworded commit message for patch #2
+- picked up reviewed-by for patch #3 (thanks)
+- fixed link ref in patch #3
+- Link to v6: https://lore.kernel.org/r/20250709-hp-x14-x1p-v6-0-f45cc186a62d@oldschoolsolutions.biz
+
+Changes in v6:
+- rebased to next-20250709.
+- picked up reviewed-by for patch #1 (thanks)
+- corrected typo in patch #1
+- removed model, compatible, chassis nodes from x1-hp-omnibook-x14.dtsi
+- amended copyright strings as discussed
+- Link to v5: https://lore.kernel.org/r/20250708-hp-x14-x1p-v5-0-44c916efa973@oldschoolsolutions.biz
+
+Changes in v5:
+- rebased to next-20250708.
+- changed commit message for patch #1 to reflect what happens
+- moved gpu node into the common dtsi part (always supported now)
+- switched over to gpu_zap_shader definition in the individual parts
+- Link to v4: https://lore.kernel.org/r/20250705-hp-x14-x1p-v4-0-1c351dbeaf18@oldschoolsolutions.biz
+
+Changes in v4:
+- leave the qcom,jp-omnibook-x14 ABI unchanged, reuse it for the -fe0 variant
+- hacked b4 to create an easier reviewable patch: https://lore.kernel.org/all/20250705-format-harder-v1-1-55c5342be55c@oldschoolsolutions.biz
+- Link to v3: https://lore.kernel.org/r/20250703-hp-x14-x1p-v3-0-affe103b4356@oldschoolsolutions.biz
+
+Changes in v3:
+- removed copyright strings
+- amended changed commit message  
+- Link to v2: https://lore.kernel.org/r/20250702-hp-x14-x1p-v2-0-af5b588d1979@oldschoolsolutions.biz
+
+Changes in v2:
+- remove pm8010 handling
+- Link to v1: https://lore.kernel.org/r/20250702-hp-x14-x1p-v1-0-219356e83207@oldschoolsolutions.biz
 
 ---
-base-commit: f777d1112ee597d7f7dd3ca232220873a34ad0c8
-change-id: 20250909-jag-pds-7d85b60ad9d2
+Jens Glathe (3):
+      dt-bindings: arm: qcom: Add HP Omnibook X14 AI X1P4200 variant
+      arm64: dts: qcom: x1-hp-x14: Unify HP Omnibook X14 device tree structure
+      arm64: dts: qcom: x1-hp-x14: Add support for X1P42100 HP Omnibook X14
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    2 +
+ arch/arm64/boot/dts/qcom/x1-hp-omnibook-x14.dtsi   | 1549 ++++++++++++++++++++
+ .../boot/dts/qcom/x1e80100-hp-omnibook-x14.dts     | 1544 +------------------
+ .../boot/dts/qcom/x1p42100-hp-omnibook-x14.dts     |   33 +
+ 5 files changed, 1589 insertions(+), 1540 deletions(-)
+---
+base-commit: 65dd046ef55861190ecde44c6d9fcde54b9fb77d
+change-id: 20250702-hp-x14-x1p-eb32f4696d96
 
 Best regards,
 -- 
-Joel Granados <joel.granados@kernel.org>
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
