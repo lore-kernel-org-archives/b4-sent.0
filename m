@@ -1,85 +1,87 @@
-From: Valerio Setti <vsetti@baylibre.com>
-Date: Mon, 08 Sep 2025 21:50:03 +0200
-Subject: [PATCH v2] arm64: dts: amlogic: gxbb-odroidc2: remove UHS
- capability for SD card
+From: Dmitry Safonov <dima@arista.com>
+Subject: [PATCH net-next v5 0/2] tcp: Destroy TCP-AO, TCP-MD5 keys in
+ .sk_destruct()
+Date: Tue, 09 Sep 2025 02:18:49 +0100
+Message-Id: <20250909-b4-tcp-ao-md5-rst-finwait2-v5-0-9ffaaaf8b236@arista.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250908-fix-reboot-v2-1-354d0e57c855@baylibre.com>
-X-B4-Tracking: v=1; b=H4sIAGozv2gC/23MTQqDMBCG4avIrDtlEvwhXfUe4iKmYx1oTUkkV
- CR3b3Td5TvD9+wQOQhHuFU7BE4SxS8l9KUCN9vlySiP0qBJN2Sow0m+GHj0fkWqmSZnlLFMUAa
- fwOV7Yv1Qepa4+rCddlLH9S+TFCrsWmoPSzc130e7vWQMfHX+DUPO+QcGgIQ9pwAAAA==
-X-Change-ID: 20250907-fix-reboot-04e0fc919ae0
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Valerio Setti <vsetti@baylibre.com>
+X-B4-Tracking: v=1; b=H4sIAHmAv2gC/43OTU7DMBAF4KtUXjPgjO1is+IeiIV/xsSLOJVth
+ aIqd8eNhCiqFLGb0dN88y6sUklU2cvhwgotqaY590U9HJgfbf4gSKHvDDkqrhHBSWj+BHaGKSg
+ otUFM+dOmhkBHgU4GHZUOrAOnQjGdN/yNZWqQ6dzYe0+crQSu2OzHK/6TPU025evlmGqby9fWa
+ hm2+/8UWAbggEqjClyr4N2rLV2yj36etr8L3lp618JuHZXgxjiyyg93lrixBN+1RLcM5xjJi2c
+ p5Z0lfy3Dxa4lu0VRWEMd68Mfa13Xb6NfrzDTAQAA
+X-Change-ID: 20250822-b4-tcp-ao-md5-rst-finwait2-e632b4d8f58d
+To: Eric Dumazet <edumazet@google.com>, 
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: Bob Gilligan <gilligan@arista.com>, 
+ Salam Noureddine <noureddine@arista.com>, 
+ Dmitry Safonov <0x7f454c46@gmail.com>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dmitry Safonov <dima@arista.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2045; i=vsetti@baylibre.com;
- h=from:subject:message-id; bh=BJc4SXxGYBhMfaPaAFk61MykLFrvMDIrqRdHH0rt9IY=;
- b=owGbwMvMwCF2z3ty7kUrRgbG02pJDBn7jRuDXn3+sOHcgT2cDKu9ThrvSJgZ9VuAP9956mm9K
- rNPfIqNHaUsDGIcDLJiiiws0+/9LihVe2iccLIAZg4rE8gQBi5OAZiIdhUjQ8eu7/dYbVV89FJ8
- JDoFqtsmSq7tVWzIrV2loFGjF6IjzvDfZ97m1ZYLFvRJ2yT5vAq8z7zmp3f339s5Zzv4zBP3y/5
- jAQA=
-X-Developer-Key: i=vsetti@baylibre.com; a=openpgp;
- fpr=0497DEFB707526E13360C970DE4B936DD13A0100
-X-Endpoint-Received: by B4 Relay for vsetti@baylibre.com/default with auth_id=515
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757380735; l=2207;
+ i=dima@arista.com; s=20250521; h=from:subject:message-id;
+ bh=NLOeQjxGPHH5ZNeF2UrBn+JdoQWtZuLs3UGlctvi6TE=;
+ b=sEBgYb6o5PRmHxL0XQY6soj/z5HK+FLUgHUwj5maddX7iE/M5Yf4mI6ReLfqqVfxg1ZPQyn3N
+ oBn4unGdpC5A+Shz3bWRiWpNL2zN1DauyZFmW7qelKGedqjMxzg9Bpg
+X-Developer-Key: i=dima@arista.com; a=ed25519;
+ pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
+X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is meant to resolve reboot not working on this board.
+On one side a minor/cosmetic issue, especially nowadays when
+TCP-AO/TCP-MD5 signature verification failures aren't logged to dmesg.
 
-The problem is as follows. In order to be able to switch from HS to UHS
-mode the bus voltage needs to be reduced from 3.3V down to 1.8V and this
-is achieved by the "vqmmc-supply" regulator. The ROM bootloader is only
-able to manage the card in HS mode (3.3V) and the switch HS->UHS happen
-at boottime in the kernel. The problem appears when the reboot command
-is issued or watchdog expires because in this case the "vqmmc-supply"
-voltage is not returned back at 3.3V before rebooting the board so the
-ROM bootloader will be completely stuck.
+Yet, I think worth addressing for two reasons:
+- unsigned RST gets ignored by the peer and the connection is alive for
+  longer (keep-alive interval)
+- netstat counters increase and trace events report that trusted BGP peer
+  is sending unsigned/incorrectly signed segments, which can ring alarm
+  on monitoring.
 
-Therefore this commit removes all UHS modes which would cause
-"vqmmc-summply" to switch from 3.3V to 1.8V.
-
-In terms of performance the main drawback of this commit is limiting the
-SD card bus speed to HS (25 MB/s) instead of UHS DDR50 (50 MB/s). However
-this comes with the benefit of being able to reboot the board, so it
-sounds like a reasonable compromise.
-
-Reviewed-by: Jerome Brunet <jbrunet@baylibre.com>
-Signed-off-by: Valerio Setti <vsetti@baylibre.com>
+Signed-off-by: Dmitry Safonov <dima@arista.com>
 ---
+Changes in v5:
+- Use EXPORT_IPV6_MOD_GPL() instead of EXPORT_SYMBOL_GPL()
+  for tcp_md5_destruct_sock (thanks to Kuniyuki Iwashima)
+- Re-worded the destructor conditions, the socket is in TCP_CLOSE
+  in both cases (Kuniyuki Iwashima)
+- Link to v4: https://lore.kernel.org/r/20250903-b4-tcp-ao-md5-rst-finwait2-v4-0-ef3a9eec3ef3@arista.com
+
+Changes in v4:
+- Remove struct tcp_ao_info::rcu as it's no longer used (Jakub)
+- Link to v3: https://lore.kernel.org/r/20250830-b4-tcp-ao-md5-rst-finwait2-v3-0-9002fec37444@arista.com
+
+Changes in v3:
+- Assign NULL to md5sig_info before call_rcu() (catched by Eric Dumazet)
+- Link to v2: https://lore.kernel.org/r/20250828-b4-tcp-ao-md5-rst-finwait2-v2-0-653099bea5c1@arista.com
+
 Changes in v2:
-- Re-added vqmmc-supply to sd_emmc_b node.
-- Link to v1: https://lore.kernel.org/r/20250907-fix-reboot-v1-1-7606fc91254e@baylibre.com
----
- arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts | 4 ----
- 1 file changed, 4 deletions(-)
-
-diff --git a/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts b/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts
-index 959bd8d77a82ebc78c5e0592d7613e692e4ede4e..12e26f99d4f080a216e305981dc4291a49063b60 100644
---- a/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts
-+++ b/arch/arm64/boot/dts/amlogic/meson-gxbb-odroidc2.dts
-@@ -348,10 +348,6 @@ &sd_emmc_b {
- 
- 	bus-width = <4>;
- 	cap-sd-highspeed;
--	sd-uhs-sdr12;
--	sd-uhs-sdr25;
--	sd-uhs-sdr50;
--	sd-uhs-ddr50;
- 	max-frequency = <100000000>;
- 	disable-wp;
- 
+- Fixed TCP-MD5 ifdeffery (Reported-by: Victor Nogueira)
+- Call proper destructor for inet_ipv6 (Reported-by: syzbot@syzkaller.appspotmail.com)
+- Link to v1: https://lore.kernel.org/r/20250822-b4-tcp-ao-md5-rst-finwait2-v1-0-25825d085dcb@arista.com
 
 ---
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250907-fix-reboot-04e0fc919ae0
+Dmitry Safonov (2):
+      tcp: Destroy TCP-AO, TCP-MD5 keys in .sk_destruct()
+      tcp: Free TCP-AO/TCP-MD5 info/keys without RCU
+
+ include/net/tcp.h        |  4 ++++
+ include/net/tcp_ao.h     |  1 -
+ net/ipv4/tcp.c           | 16 ++++++++++++++++
+ net/ipv4/tcp_ao.c        |  5 ++---
+ net/ipv4/tcp_ipv4.c      | 37 ++++++++++---------------------------
+ net/ipv4/tcp_minisocks.c | 19 +++++--------------
+ net/ipv6/tcp_ipv6.c      |  8 ++++++++
+ 7 files changed, 45 insertions(+), 45 deletions(-)
+---
+base-commit: abcf9f662bc7ec72b3591d785eccd7dd8c239365
+change-id: 20250822-b4-tcp-ao-md5-rst-finwait2-e632b4d8f58d
 
 Best regards,
 -- 
-Valerio Setti <vsetti@baylibre.com>
+Dmitry Safonov <dima@arista.com>
 
