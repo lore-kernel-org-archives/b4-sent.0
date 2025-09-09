@@ -1,14 +1,13 @@
 From: Chuan Liu <chuan.liu@amlogic.com>
-Subject: [PATCH v4 0/2] clk: amlogic: add video-related clocks for S4 SoC
-Date: Tue, 09 Sep 2025 15:29:10 +0800
-Message-Id: <20250909-add_video_clk-v4-0-5e0c01d47aa8@amlogic.com>
+Date: Tue, 09 Sep 2025 15:29:11 +0800
+Subject: [PATCH v4 1/2] dt-bindings: clock: add video clock indices for
+ Amlogic S4 SoC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEbXv2gC/3XNSwqDMBSF4a2UjJuSpyYddR+lSJ4aqqZoCS3i3
- hudCEqH58L33wmMbghuBNfTBAaXwhhinwc7n4BpVF87GGzegCDCUYk5VNZWKVgXK9M+oTVUaM6
- 4RFiAbF6D8+Gz9u6PvJswvuPwXfMJL9d/pYQhggy50heUelrgm+raWAdzMbEDSyuRzQvM9p5kr
- zXRXHFPJGJHTzcv0eE/zV5QxIzEWmi58/M8/wA0WCiRLAEAAA==
+Message-Id: <20250909-add_video_clk-v4-1-5e0c01d47aa8@amlogic.com>
+References: <20250909-add_video_clk-v4-0-5e0c01d47aa8@amlogic.com>
+In-Reply-To: <20250909-add_video_clk-v4-0-5e0c01d47aa8@amlogic.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -21,51 +20,47 @@ Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, Chuan Liu <chuan.liu@amlogic.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757402973; l=1370;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757402973; l=1224;
  i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=VdFf4gK8OI+xzT6h3uwJdXQFG43m8vn/Jt66A+K1OhI=;
- b=VqbrJOceJlc/Q2NatDtM8IYSiB6c80Qzc90doSqPAWs5h9HtoADXKA1PAXlWHugPJQNONaby2
- WNjm62jEbQyDJ/Z9+9A/Wxx0CTEbzXU7A8PNFgDUer2L7djydKqW7T/
+ bh=slpmx/KfVVq60h+CXDXC7IwZgqak4zePml0fpt3Y4+4=;
+ b=gO5dTZsUoIpIzbuoYVrT/Xd4KYCf0kds59m28nMGG8953yhHU8LpJJS8J73YA4Tpa/BfYL0Dy
+ A15wpJ+8PRoDLkT6bgpLyYTasu0TlMphLMnmgs8nbHoKIIbQ8m6zg33
 X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
  pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
 X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch introduces new clock support for video processing components
-including the encoder, demodulator and CVBS interface modules.
+Add indices for video encoder, demodulator and CVBS clocks.
 
-The related clocks have passed clk-measure verification.
-
+Acked-by: Rob Herring (Arm) <robh@kernel.org>
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
-Changes in v4:
-- Add Acked-by tags from Rob and Krzysztof.
-- Fix compilation errors.
-- Link to v3: https://lore.kernel.org/r/20250905-add_video_clk-v3-0-8304c91b8b94@amlogic.com
+ include/dt-bindings/clock/amlogic,s4-peripherals-clkc.h | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-Changes in v3:
-- Rebase with Jerome's latest code base.
-- Link to v2: https://lore.kernel.org/r/20250814-add_video_clk-v2-0-bb2b5a5f2904@amlogic.com
+diff --git a/include/dt-bindings/clock/amlogic,s4-peripherals-clkc.h b/include/dt-bindings/clock/amlogic,s4-peripherals-clkc.h
+index 861a331963ac..b0fc549f53e3 100644
+--- a/include/dt-bindings/clock/amlogic,s4-peripherals-clkc.h
++++ b/include/dt-bindings/clock/amlogic,s4-peripherals-clkc.h
+@@ -232,5 +232,16 @@
+ #define CLKID_HDCP22_SKPCLK_SEL		222
+ #define CLKID_HDCP22_SKPCLK_DIV		223
+ #define CLKID_HDCP22_SKPCLK		224
++#define CLKID_CTS_ENCL_SEL		225
++#define CLKID_CTS_ENCL			226
++#define CLKID_CDAC_SEL			227
++#define CLKID_CDAC_DIV			228
++#define CLKID_CDAC			229
++#define CLKID_DEMOD_CORE_SEL		230
++#define CLKID_DEMOD_CORE_DIV		231
++#define CLKID_DEMOD_CORE		232
++#define CLKID_ADC_EXTCLK_IN_SEL		233
++#define CLKID_ADC_EXTCLK_IN_DIV		234
++#define CLKID_ADC_EXTCLK_IN		235
+ 
+ #endif /* _DT_BINDINGS_CLOCK_AMLOGIC_S4_PERIPHERALS_CLKC_H */
 
-Changes in v2:
-- Removed lcd_an clock tree (previously used in meson series but obsolete in
-newer chips).
-- Removed Rob's 'Acked-by' tag due to dt-binding changes (Is it necessary?).
-- Link to v1: https://lore.kernel.org/r/20250715-add_video_clk-v1-0-40e7f633f361@amlogic.com
-
----
-Chuan Liu (2):
-      dt-bindings: clock: add video clock indices for Amlogic S4 SoC
-      clk: amlogic: add video-related clocks for S4 SoC
-
- drivers/clk/meson/s4-peripherals.c                 | 203 +++++++++++++++++++++
- .../clock/amlogic,s4-peripherals-clkc.h            |  11 ++
- 2 files changed, 214 insertions(+)
----
-base-commit: 01f3a6d1d59b8e25a6de243b0d73075cf0415eaf
-change-id: 20250715-add_video_clk-dc38b5459018
-
-Best regards,
 -- 
-Chuan Liu <chuan.liu@amlogic.com>
+2.42.0
 
