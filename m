@@ -1,10 +1,11 @@
 From: Rohan G Thomas <rohan.g.thomas@altera.com>
-Date: Thu, 11 Sep 2025 16:22:59 +0800
-Subject: [PATCH net 1/2] net: stmmac: est: Fix GCL bounds checks
+Date: Thu, 11 Sep 2025 16:23:00 +0800
+Subject: [PATCH net 2/2] net: stmmac: Consider Tx VLAN offload tag length
+ for maxSDU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250911-qbv-fixes-v1-1-e81e9597cf1f@altera.com>
+Message-Id: <20250911-qbv-fixes-v1-2-e81e9597cf1f@altera.com>
 References: <20250911-qbv-fixes-v1-0-e81e9597cf1f@altera.com>
 In-Reply-To: <20250911-qbv-fixes-v1-0-e81e9597cf1f@altera.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -19,11 +20,11 @@ Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  Rohan G Thomas <rohan.g.thomas@altera.com>, 
  Matthew Gerlach <matthew.gerlach@altera.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757579008; l=1329;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757579008; l=2479;
  i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
- bh=08KV5iTtWBP58r0AMyc5QP0+5U8/3Bb20vU2hpRSVqk=;
- b=RKVL8L4shTtsE0yMWktLB7UBTuTa5UWJgk5bAXN9GwEGjDkZuaPg7txbFStG1fwxJBY0LIErS
- eYMjClFcT76BBd+UOuHoOQAlvwTtkpfhVFDcJ60tcbGH5COJq7AZ5kT
+ bh=eTWmL606f3oYOV0qUeKRaPXnGZ0t6qItbR3wWeC6D1c=;
+ b=EDvj8phpndTc3hNkoyw7M0iVbCa4P7nqQt6SJ1KQa45vJvvOkJC8WbBXDlreFnKXxieSCVo3x
+ kfKcEo9wqWYB19X/Va7sRFb63+luJvaYFcmDC06AF0n9burngz9EWNu
 X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
  pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
 X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
@@ -31,38 +32,67 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Rohan G Thomas <rohan.g.thomas@intel.com>
 
-Fix the bounds checks for the hw supported maximum GCL entry
-count and gate interval time.
+On hardware with Tx VLAN offload enabled, add the VLAN tag
+length to the skb length before checking the Qbv maxSDU.
+Add 4 bytes for 802.1Q an add 8 bytes for 802.1AD tagging.
 
-Fixes: b60189e0392f ("net: stmmac: Integrate EST with TAPRIO scheduler API")
+Fixes: c5c3e1bfc9e0 ("net: stmmac: Offload queueMaxSDU from tc-taprio")
 Signed-off-by: Rohan G Thomas <rohan.g.thomas@intel.com>
 Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 25 ++++++++++++++++-------
+ 1 file changed, 18 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
-index 694d6ee1438197bd4434af6e9b78f022e94ff98f..89d094abb6be5c993c81901e3f79a6b03f310511 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
-@@ -981,7 +981,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
- 	if (qopt->cmd == TAPRIO_CMD_DESTROY)
- 		goto disable;
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index 419cb49ee5a25519a60a84bae6bcdb0be655384e..c487ce95436c2a1f502f96d00afab6270d77c0bb 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -4531,6 +4531,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
+ 	bool has_vlan, set_ic;
+ 	int entry, first_tx;
+ 	dma_addr_t des;
++	u32 sdu_len;
  
--	if (qopt->num_entries >= dep)
-+	if (qopt->num_entries > dep)
- 		return -EINVAL;
- 	if (!qopt->cycle_time)
- 		return -ERANGE;
-@@ -1012,7 +1012,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
- 		s64 delta_ns = qopt->entries[i].interval;
- 		u32 gates = qopt->entries[i].gate_mask;
+ 	tx_q = &priv->dma_conf.tx_queue[queue];
+ 	txq_stats = &priv->xstats.txq_stats[queue];
+@@ -4547,13 +4548,6 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
+ 			return stmmac_tso_xmit(skb, dev);
+ 	}
  
--		if (delta_ns > GENMASK(wid, 0))
-+		if (delta_ns >= BIT(wid))
- 			return -ERANGE;
- 		if (gates > GENMASK(31 - wid, 0))
- 			return -ERANGE;
+-	if (priv->est && priv->est->enable &&
+-	    priv->est->max_sdu[queue] &&
+-	    skb->len > priv->est->max_sdu[queue]){
+-		priv->xstats.max_sdu_txq_drop[queue]++;
+-		goto max_sdu_err;
+-	}
+-
+ 	if (unlikely(stmmac_tx_avail(priv, queue) < nfrags + 1)) {
+ 		if (!netif_tx_queue_stopped(netdev_get_tx_queue(dev, queue))) {
+ 			netif_tx_stop_queue(netdev_get_tx_queue(priv->dev,
+@@ -4569,6 +4563,23 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
+ 	/* Check if VLAN can be inserted by HW */
+ 	has_vlan = stmmac_vlan_insert(priv, skb, tx_q);
+ 
++	sdu_len = skb->len;
++	if (has_vlan) {
++		/* Add VLAN tag length to sdu length in case of txvlan offload */
++		if (priv->dev->features & NETIF_F_HW_VLAN_CTAG_TX)
++			sdu_len += VLAN_HLEN;
++		if (skb->vlan_proto == htons(ETH_P_8021AD) &&
++		    priv->dev->features & NETIF_F_HW_VLAN_STAG_TX)
++			sdu_len += VLAN_HLEN;
++	}
++
++	if (priv->est && priv->est->enable &&
++	    priv->est->max_sdu[queue] &&
++	    sdu_len > priv->est->max_sdu[queue]) {
++		priv->xstats.max_sdu_txq_drop[queue]++;
++		goto max_sdu_err;
++	}
++
+ 	entry = tx_q->cur_tx;
+ 	first_entry = entry;
+ 	WARN_ON(tx_q->tx_skbuff[first_entry]);
 
 -- 
 2.25.1
