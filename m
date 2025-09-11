@@ -1,105 +1,137 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 10 Sep 2025 23:09:21 +0530
-Subject: [PATCH 2/2] iommu/of: Call pci_request_acs() before enumerating
- the Root Port device
+From: Sung-Chi Li <lschyi@google.com>
+Subject: [PATCH v6 0/3] Export fan control and register fans as cooling
+ devices
+Date: Thu, 11 Sep 2025 06:56:33 +0000
+Message-Id: <20250911-cros_ec_fan-v6-0-a1446cc098af@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250910-pci-acs-v1-2-fe9adb65ad7d@oss.qualcomm.com>
-References: <20250910-pci-acs-v1-0-fe9adb65ad7d@oss.qualcomm.com>
-In-Reply-To: <20250910-pci-acs-v1-0-fe9adb65ad7d@oss.qualcomm.com>
-To: Bjorn Helgaas <bhelgaas@google.com>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joerg Roedel <jroedel@suse.de>, iommu@lists.linux.dev, 
- Anders Roxell <anders.roxell@linaro.org>, 
- Naresh Kamboju <naresh.kamboju@linaro.org>, 
- Pavankumar Kondeti <quic_pkondeti@quicinc.com>, 
- Xingang Wang <wangxingang5@huawei.com>, 
- Marek Szyprowski <m.szyprowski@samsung.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- stable@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAKJywmgC/23OTW7DIBCG4atErEPF8OOYrHKPqooGGGIWMRG0V
+ qvIdy/OJonl5Yf0vMOdVSqJKjvu7qzQlGrKYxvdfsf8gOOFeAptMymkEVpa7kuuZ/LniCMPqFy
+ n0VsPgjVxKxTT76P2+dX2kOp3Ln+P+ATL63ZnAi449sGSougc4MkPJV/Tz/UjlwtbUpN8ciPkO
+ 5eN62D6vqVRQNzg6oXDiqvluo3SSWOi8GGD6yfvYPV53bhHAKN7T1rbDW5euBTv3DRu7MESAjq
+ nYMXnef4HfgesnaUBAAA=
+X-Change-ID: 20250429-cros_ec_fan-da3b64ac9c10
+To: Benson Leung <bleung@chromium.org>, Guenter Roeck <groeck@chromium.org>, 
+ =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>, 
+ Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>
+Cc: chrome-platform@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Sung-Chi Li <lschyi@google.com>, Sung-Chi Li <lschyi@chromium.org>, 
+ Tzung-Bi Shih <tzungbi@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2676;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=s3IWPWrtmYAF1td5P6U9N7afV7EwajwvWtWy1fRfcR0=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBowbfLBKMpPRmXeHjCf82JrGyQlLaBTrURN4KsN
- QgzqkNRMXCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaMG3ywAKCRBVnxHm/pHO
- 9cuaB/9aEE0RS60+8mmPH7waGER7/F4s9uVWLBpZtCDkWRZyWUdJ7SMdDR50TXthG97BiOw0ZEl
- 4e6l/R90xwaAnmLqpLJMEtBSGR9tGHIrcG+/CiSN5xNqV2SZBSFPxxdsp4DSywhRmXfHw1KShMd
- RC4g15WALpt1tcpI7nYLmC2Ice8R9lTycjTI23MvuU8H+F5CVsODjWbHUN+5xH1MGM0LoQnpdVd
- jH1+LY4a3TqtbeSVCGJPg8zBe/WRZzLLGB85PgXMKoINILTQu6Zxt/OlppSIEbwIL9KFB9nYhmW
- XWvmR+84jPDpHrO27Hyx7es3T68W6UA577cF56W8GUUtYQrl
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757573797; l=4712;
+ i=lschyi@google.com; s=20250911; h=from:subject:message-id;
+ bh=46arA/lH7SdZSTJ5xBxmcsnCS+WGoy0Kg9jo9NDY2A4=;
+ b=B7QcF+Tso7OCahfqv2JRFF3a8wa3lJpkeGcMTa2CXPT29mcddNiEF8QEln6/+eioVfTsNPtU5
+ /IhynE37JxuBq1Y3nYvr727c65S3Jayg1wbuw06lEqXpa0cI/6NnkL3
+X-Developer-Key: i=lschyi@google.com; a=ed25519;
+ pk=fBhhFxZrEyInLLODzeoq06UxQhKVqNjmZ2680pwMBCM=
+X-Endpoint-Received: by B4 Relay for lschyi@google.com/20250911 with auth_id=518
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Xingang Wang <wangxingang5@huawei.com>
+This is a continuation of the previous series "Export the target RPM fan
+control by ChromeOS EC under hwmon"
+(https://lore.kernel.org/lkml/20250313-extend_ec_hwmon_fan-v1-0-5c566776f2c4@chromium.org/T/#t).
+There is a change from controlling the target fan RPM value to control
+the PWM value, and this version (v6) includes the dropped commit
+"update pwm fan control host commands" for maintainers to apply this
+series easier.
 
-When booting with devicetree, ACS is enabled for all ACS capable PCI
-devices except the first Root Port enumerated in the system. This is due to
-calling pci_request_acs() after the enumeration and initialization of the
-Root Port device. But afterwards, ACS is getting enabled for the rest of
-the PCI devices, since pci_request_acs() sets the 'pci_acs_enable' flag and
-the PCI core uses this flag to enable ACS for the rest of the ACS capable
-devices.
+We anticipate to involve fans connected to EC as thermal cooling
+devices, so we can utilize the thermal framework to have further thermal
+control strategies.
 
-Ideally, pci_request_acs() should only be called if the 'iommu-map' DT
-property is set for the host bridge device. Hence, call pci_request_acs()
-from devm_of_pci_bridge_init() if the 'iommu-map' property is present in
-the host bridge DT node. This aligns with the implementation of the ARM64
-ACPI driver (drivers/acpi/arm64/iort.c) as well.
+This series updates the required EC controls definitions, implements the
+mechanism for controlling fan PWM values, and registers these fans under
+thermal framework as cooling devices.
 
-With this change, ACS will be enabled for all the PCI devices including the
-first Root Port device of the DT platforms.
+Adapting comments from the previous series, the driver probes the host
+command capability at beginning to see whether a fan is controllable:
+  - if command `EC_CMD_PWM_GET_FAN_DUTY` is supported (v0, this is a
+    new command).
+  - if command `EC_CMD_THERMAL_AUTO_FAN_CTRL` v2 is supported.
+  - if command `EC_CMD_PWM_SET_FAN_DUTY` v1 is supported.
 
-Cc: stable@vger.kernel.org # 5.6
-Fixes: 6bf6c24720d33 ("iommu/of: Request ACS from the PCI core when configuring IOMMU linkage")
-Signed-off-by: Xingang Wang <wangxingang5@huawei.com>
-Signed-off-by: Pavankumar Kondeti <quic_pkondeti@quicinc.com>
-[mani: reworded subject, description and comment]
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+This combination is selected as this is the minimum requirement for a
+fan to be fully controllable under hwmon framework.
+
+The driver supports changing the fan control mode, and allows to change
+the fan PWM value only if the fan is in manual control mode. The power
+management hook is implemented as well for keeping the fan control
+settings, as EC will automatically restore the control method to auto
+when device is suspended.
+
+Change-Id: Ia7789a1ea13a1708893c1f86b7d7706612d7b59d
+Signed-off-by: Sung-Chi Li <lschyi@google.com>
 ---
- drivers/iommu/of_iommu.c | 1 -
- drivers/pci/of.c         | 8 +++++++-
- 2 files changed, 7 insertions(+), 2 deletions(-)
+Changes in v6:
+- Rebase to newer kernel commit.
+- Fix lines over 100 characters.
+- Remove unnecessary out of memory message.
+- Link to v5: https://lore.kernel.org/r/20250620-cros_ec_fan-v5-0-5979ea1abb31@chromium.org
 
-diff --git a/drivers/iommu/of_iommu.c b/drivers/iommu/of_iommu.c
-index 6b989a62def20ecafd833f00a3a92ce8dca192e0..c31369924944d36a3afd3d4ff08c86fc6daf55de 100644
---- a/drivers/iommu/of_iommu.c
-+++ b/drivers/iommu/of_iommu.c
-@@ -141,7 +141,6 @@ int of_iommu_configure(struct device *dev, struct device_node *master_np,
- 			.np = master_np,
- 		};
- 
--		pci_request_acs();
- 		err = pci_for_each_dma_alias(to_pci_dev(dev),
- 					     of_pci_iommu_init, &info);
- 		of_pci_check_device_ats(dev, master_np);
-diff --git a/drivers/pci/of.c b/drivers/pci/of.c
-index 3579265f119845637e163d9051437c89662762f8..98c2523f898667b1618c37451d1759959d523da1 100644
---- a/drivers/pci/of.c
-+++ b/drivers/pci/of.c
-@@ -638,9 +638,15 @@ static int pci_parse_request_of_pci_ranges(struct device *dev,
- 
- int devm_of_pci_bridge_init(struct device *dev, struct pci_host_bridge *bridge)
- {
--	if (!dev->of_node)
-+	struct device_node *node = dev->of_node;
-+
-+	if (!node)
- 		return 0;
- 
-+	/* Enable ACS if IOMMU mapping is detected for the host bridge */
-+	if (of_property_read_bool(node, "iommu-map"))
-+		pci_request_acs();
-+
- 	bridge->swizzle_irq = pci_common_swizzle;
- 	bridge->map_irq = of_irq_parse_and_map_pci;
- 
+Changes in v5:
+- Fix line breaks.
+- Directly return 0 when there is no error (rather than return ret
+  variable).
+- Rename CROS to CrOS.
+- Preserve Acked-by and Reviewed-by tags.
+- Link to v4: https://lore.kernel.org/r/20250619-cros_ec_fan-v4-0-ca11548ce449@chromium.org
 
+Changes in v4:
+- Treat fan control is supported without `CONFIG_PM` is enabled.
+- Change logic of registering cooling devices for fan from abandom
+  immediately to log warning logs, then continue with the next fan.
+- Fix error checking logic to use IS_ERR for
+  devm_thermal_of_cooling_device_register.
+- Revise variable declaration ordering with reverse christmas tree.
+- Rename member variable `manual_fan_pwm_values` to `manual_fan_pwm`.
+- Use %pe for printing error pointers, and add newline for logs.
+- Revise comments in suspend and resume hook.
+- Link to v3: https://lore.kernel.org/r/20250512-cros_ec_fan-v3-0-a9f2b255f0cd@chromium.org
+
+Changes in v3:
+- Make required EC command versions macros.
+- Add `CONFIG_THERMAL` guarding for registering as thermal fan cooling
+  devices.
+- Add error handling during registering thermal cooling devices, and
+  immediately abort the registration if any error occurred to align with
+  the thermal sensor registration in hwmon core.
+- Add error handling for EC fan communication during suspend and resume.
+- Add `CONFIG_PM` guarding for checking whether the EC supports a
+  complete fan control in hwmon driver.
+- Sort variables order in declaration.
+- Separate declaration and logic to different sections.
+- Move `cros_ec_thermal_cooling_ops` next right after the operation
+  functions declaration.
+- Improve describing the resume behavior in documentation.
+
+Changes in v2:
+- Change column from 80 to 100 and fix styles.
+- Directly store driver data into platform dev with
+  platform_set_drvdata.
+- Unify the PWM unit (from 0 ~ 255) between hwmon and thermal cooling
+  devices.
+- Only fetch the fan control mode and PWM value when suspending rather
+  than caching values when writing. The suspend hook is thus added.
+- Link to v1: https://lore.kernel.org/r/20250429-cros_ec_fan-v1-0-a8d9e3efbb1a@chromium.org
+
+---
+Sung-Chi Li (3):
+      platform/chrome: update pwm fan control host commands
+      hwmon: (cros_ec) add PWM control over fans
+      hwmon: (cros_ec) register fans into thermal framework cooling devices
+
+ Documentation/hwmon/cros_ec_hwmon.rst          |   7 +-
+ drivers/hwmon/cros_ec_hwmon.c                  | 313 +++++++++++++++++++++++++
+ include/linux/platform_data/cros_ec_commands.h |  29 ++-
+ 3 files changed, 347 insertions(+), 2 deletions(-)
+---
+base-commit: 5f540c4aade9f1d58fb7b9490b4b7d5214ec9746
+change-id: 20250429-cros_ec_fan-da3b64ac9c10
+
+Best regards,
 -- 
-2.45.2
+Sung-Chi Li <lschyi@google.com>
 
