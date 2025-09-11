@@ -1,15 +1,12 @@
 From: Rohan G Thomas <rohan.g.thomas@altera.com>
-Subject: [PATCH net 0/2] net: stmmac: Minor fixes for stmmac EST
- implementation
-Date: Thu, 11 Sep 2025 16:22:58 +0800
-Message-Id: <20250911-qbv-fixes-v1-0-e81e9597cf1f@altera.com>
+Date: Thu, 11 Sep 2025 16:22:59 +0800
+Subject: [PATCH net 1/2] net: stmmac: est: Fix GCL bounds checks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOKGwmgC/x3KSwqAIBRG4a3IHSdo2HMr0cDqr+7ESkOCcO9Jw
- 49zXgrwjEC9eMkjcuDDZehC0Lxbt0Hykk2lKivVaS2vKcqVHwRpLGqzoK2BhvJ/evwh7wM53DS
- m9AHmLbwtYAAAAA==
-X-Change-ID: 20250911-qbv-fixes-4ae64de86ee7
+Message-Id: <20250911-qbv-fixes-v1-1-e81e9597cf1f@altera.com>
+References: <20250911-qbv-fixes-v1-0-e81e9597cf1f@altera.com>
+In-Reply-To: <20250911-qbv-fixes-v1-0-e81e9597cf1f@altera.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -22,35 +19,51 @@ Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  Rohan G Thomas <rohan.g.thomas@altera.com>, 
  Matthew Gerlach <matthew.gerlach@altera.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757579008; l=729;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757579008; l=1329;
  i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
- bh=1NTqCYvC1K8jjPMv2VYdraK1iRDgvz7FsY1W+cOys54=;
- b=/0L8KgDwlzFCr8RVOL5SgK/pXkurP0ELzcipg5jz0KqFqfz7OjcBHkJi9PknfxYLHM1GdYnME
- v5v0C/w9B7TBnsTcDbFxJQY0Jdl7+CyWmJD9rD5EXlB2gHxKlKOoeeO
+ bh=08KV5iTtWBP58r0AMyc5QP0+5U8/3Bb20vU2hpRSVqk=;
+ b=RKVL8L4shTtsE0yMWktLB7UBTuTa5UWJgk5bAXN9GwEGjDkZuaPg7txbFStG1fwxJBY0LIErS
+ eYMjClFcT76BBd+UOuHoOQAlvwTtkpfhVFDcJ60tcbGH5COJq7AZ5kT
 X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
  pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
 X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patchset includes following minor fixes for stmmac EST
-implementation:
-   1. Fix GCL bounds checks
-   2. Consider Tx VLAN offload tag length for maxSDU
+From: Rohan G Thomas <rohan.g.thomas@intel.com>
 
-Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
+Fix the bounds checks for the hw supported maximum GCL entry
+count and gate interval time.
+
+Fixes: b60189e0392f ("net: stmmac: Integrate EST with TAPRIO scheduler API")
+Signed-off-by: Rohan G Thomas <rohan.g.thomas@intel.com>
+Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
 ---
-Rohan G Thomas (2):
-      net: stmmac: est: Fix GCL bounds checks
-      net: stmmac: Consider Tx VLAN offload tag length for maxSDU
+ drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 25 ++++++++++++++++-------
- drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c   |  4 ++--
- 2 files changed, 20 insertions(+), 9 deletions(-)
----
-base-commit: 1f24a240974589ce42f70502ccb3ff3f5189d69a
-change-id: 20250911-qbv-fixes-4ae64de86ee7
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
+index 694d6ee1438197bd4434af6e9b78f022e94ff98f..89d094abb6be5c993c81901e3f79a6b03f310511 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
+@@ -981,7 +981,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
+ 	if (qopt->cmd == TAPRIO_CMD_DESTROY)
+ 		goto disable;
+ 
+-	if (qopt->num_entries >= dep)
++	if (qopt->num_entries > dep)
+ 		return -EINVAL;
+ 	if (!qopt->cycle_time)
+ 		return -ERANGE;
+@@ -1012,7 +1012,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
+ 		s64 delta_ns = qopt->entries[i].interval;
+ 		u32 gates = qopt->entries[i].gate_mask;
+ 
+-		if (delta_ns > GENMASK(wid, 0))
++		if (delta_ns >= BIT(wid))
+ 			return -ERANGE;
+ 		if (gates > GENMASK(31 - wid, 0))
+ 			return -ERANGE;
 
-Best regards,
 -- 
-Rohan G Thomas <rohan.g.thomas@altera.com>
+2.25.1
 
