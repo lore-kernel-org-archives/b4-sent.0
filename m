@@ -1,15 +1,12 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Subject: [PATCH 0/2] Initial Amediatech X96Q support based on Allwinner
- H313
-Date: Fri, 12 Sep 2025 01:52:08 +0200
-Message-Id: <20250912-x96q-v1-0-8471daaf39db@posteo.net>
+Date: Fri, 12 Sep 2025 01:52:09 +0200
+Subject: [PATCH 1/2] dt-bindings: arm: sunxi: Add Amediatech X96Q
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAKhgw2gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDS0ND3QpLs0JdU/NUM2NjCwMLA5NUJaDSgqLUtMwKsDHRsbW1ABhukK1
- WAAAA
-X-Change-ID: 20250911-x96q-57e63380804e
+Message-Id: <20250912-x96q-v1-1-8471daaf39db@posteo.net>
+References: <20250912-x96q-v1-0-8471daaf39db@posteo.net>
+In-Reply-To: <20250912-x96q-v1-0-8471daaf39db@posteo.net>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@csie.org>, 
  Jernej Skrabec <jernej.skrabec@gmail.com>, 
@@ -18,37 +15,44 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757634731; l=937;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757634731; l=1100;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=rXQlLipzuO460hLM6yk6F8xNPGedj1EQygxLedmpBzk=;
- b=M0EgaUBY/bR66z8j4+11q/JqRm4pXPtp1UZ7NvBJPd6gL5yfBzHzCDkiWsBp+AaLirOtDR1Dr
- DGry5a6MTTIATIpQgaOccON/kpyi2do+5HKGBE9ZynXJ1z/i4K7Kkk6
+ bh=4vwduiIPx4gIZNv7o5hxBa5Uq0ID3f0a+4J6CQ7VeRs=;
+ b=u4hR9YAItZhZw9wjTyrYUtnXOHA5ksrnXQXlt/qdfsKd6Q58sNeQQfGFd8zR+5MJLO2FunhNn
+ 5dxn69HNd10CN720fFMNoytLp+8zyr0dhTndceuRPrFAzulIRKeB2aV
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patchset adds an initial devicetree for the X96Q set-top box.
-WiFi, Ethernet, and HDMI depend on drivers that are currently not
-available in mainline Linux, and I didn't enable them in the devicetree.
-The builtin infrared receiver produces IRQs when a nearby remote sends
-events, but I have not checked whether the events are decoded correctly.
+The X96Q is a set-top box with an H313 SoC, AXP305 PMIC, 1 or 2 GiB RAM,
+8 or 16 GiB eMMC flash, 2x USB A, Micro-SD, HDMI, Ethernet, audio/video
+output, and infrared input.
+
+  https://x96mini.com/products/x96q-tv-box-android-10-set-top-box
 
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-J. Neuschäfer (2):
-      dt-bindings: arm: sunxi: Add Amediatech X96Q
-      arm64: dts: allwinner: h313: Add Amediatech X96Q
+ Documentation/devicetree/bindings/arm/sunxi.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
 
- Documentation/devicetree/bindings/arm/sunxi.yaml   |   5 +
- arch/arm64/boot/dts/allwinner/Makefile             |   1 +
- arch/arm64/boot/dts/allwinner/sun50i-h313-x96q.dts | 235 +++++++++++++++++++++
- 3 files changed, 241 insertions(+)
----
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250911-x96q-57e63380804e
+diff --git a/Documentation/devicetree/bindings/arm/sunxi.yaml b/Documentation/devicetree/bindings/arm/sunxi.yaml
+index c25a22fe4d25cbd8a8132689f1326548f7f43f2c..c9940b44bc888f7ab81ace671040bd663556c113 100644
+--- a/Documentation/devicetree/bindings/arm/sunxi.yaml
++++ b/Documentation/devicetree/bindings/arm/sunxi.yaml
+@@ -963,6 +963,11 @@ properties:
+           - const: hechuang,x96-mate
+           - const: allwinner,sun50i-h616
+ 
++      - description: X96Q
++        items:
++          - const: amediatech,x96q
++          - const: allwinner,sun50i-h616
++
+       - description: X96Q Pro+
+         items:
+           - const: amediatech,x96q-pro-plus
 
-Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+2.48.0.rc1.219.gb6b6757d772
 
