@@ -1,70 +1,61 @@
-From: Alejandro Enrique <alejandroe1@geotab.com>
-Date: Thu, 11 Sep 2025 14:58:29 +0200
-Subject: [PATCH v3 2/2] gnss: ubx: add support for the safeboot gpio
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Subject: [PATCH v3 0/3] Audio and other peripherals on Orange Pi Zero
+Date: Thu, 11 Sep 2025 22:23:54 +0200
+Message-Id: <20250911-opz-audio-v3-0-9dfd317a8163@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250911-ubx-safeboot-v3-2-32fe6b882a3c@geotab.com>
-References: <20250911-ubx-safeboot-v3-0-32fe6b882a3c@geotab.com>
-In-Reply-To: <20250911-ubx-safeboot-v3-0-32fe6b882a3c@geotab.com>
-To: Johan Hovold <johan@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Alejandro Enrique <alejandroe1@geotab.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIANovw2gC/1WMwQ6CMBAFf4X07Jq2tLJ48j+MBwqL9EJJWxuV8
+ O8WEiMe5+XNzCyQtxTYuZiZp2SDdWOG8lCwdmjGO4HtMjPJpeZKVOCmNzSPzjrAmqOqWzRGEsv
+ /yVNvn1vress82BCdf23pJNb1W8FdJQkQoAhPxmjTVqW6TC5EcseRIlszSf5U5PVelcChV30nt
+ NayQfmnLsvyAewWE7DeAAAA
+X-Change-ID: 20250417-opz-audio-890849c8bb2e
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@csie.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757595528; l=1402;
- i=alejandroe1@geotab.com; s=20250514; h=from:subject:message-id;
- bh=5q+UP/BRI1cuC24cDBux+9AkjID15/gPXOINM1Yuf4o=;
- b=rRCMSESk1rEYlgXKUteE+7c0xEi3bqDkte0d+THCuBDLnkdbs7IHbt0XPyswev8+71HIKDGC6
- 5QIVoYII0w7AwcEVKlAmjWgVtOQcMtx3h0PB1Ed+QqwkjtWGE6UVZjY
-X-Developer-Key: i=alejandroe1@geotab.com; a=ed25519;
- pk=xzHMPbqczL/tMsjXr26iLoHwIzLveHVnT+GIU4p1k38=
-X-Endpoint-Received: by B4 Relay for alejandroe1@geotab.com/20250514 with auth_id=404
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757622235; l=1167;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=EbMD20lOlZxBydAK7zCQataQpHJmiIQr5rbqpG7Zzpc=;
+ b=wrDUZIaMhF3qOeFIsCo2Hiqq6KZy/a7n1QcgKTmhRJX9sBv2YeeyfbFOsg1KkbXU4p7XXCuuU
+ /H5tiRvvRcXB2dd2l6Syk5t8My1EdZRf2a9hUdq3dBNHUuRh8m4r6LV
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-U-Blox 8/M8/M9 chip have a pin to start it in safeboot mode, to be
-used to recover from situations where the flash content has become
-corrupted and needs to be restored. If this pin is asserted at power
-up/reset, the receiver starts in safeboot mode and GNSS operation is
-disabled.
-
-Deassert the safeboot pin when probing this driver.
-
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Signed-off-by: Alejandro Enrique <alejandroe1@geotab.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- drivers/gnss/ubx.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Changes in v3:
+- Fix name of orangepi-zero-plus2 in patch title
+- Link to v2: https://lore.kernel.org/r/20250809-opz-audio-v2-0-f4fd15552a82@posteo.net
 
-diff --git a/drivers/gnss/ubx.c b/drivers/gnss/ubx.c
-index 92402f6082c415c7b9051338eef5406b09e09455..1d6acace84f76f8d5d2eacdbbf5ab7a934b33486 100644
---- a/drivers/gnss/ubx.c
-+++ b/drivers/gnss/ubx.c
-@@ -67,6 +67,7 @@ static int ubx_probe(struct serdev_device *serdev)
- {
- 	struct gnss_serial *gserial;
- 	struct gpio_desc *reset;
-+	struct gpio_desc *safeboot;
- 	struct ubx_data *data;
- 	int ret;
- 
-@@ -82,6 +83,13 @@ static int ubx_probe(struct serdev_device *serdev)
- 
- 	data = gnss_serial_get_drvdata(gserial);
- 
-+	/* Deassert safeboot */
-+	safeboot = devm_gpiod_get_optional(&serdev->dev, "safeboot", GPIOD_OUT_LOW);
-+	if (IS_ERR(safeboot)) {
-+		ret = PTR_ERR(safeboot);
-+		goto err_free_gserial;
-+	}
-+
- 	data->vcc = devm_regulator_get(&serdev->dev, "vcc");
- 	if (IS_ERR(data->vcc)) {
- 		ret = PTR_ERR(data->vcc);
+Changes in v2:
+- Rebase on (almost) 6.17-rc1
+- Disable audio pins by default
+- Provide separate DT overlay for the Orange Pi Zero Interface Board
+- Link to v1: https://lore.kernel.org/r/20250418-opz-audio-v1-1-4e86bb5bc734@posteo.net
 
+---
+J. Neuschäfer (3):
+      ARM: dts: allwinner: orangepi-zero: Add default audio routing
+      ARM: dts: allwinner: orangepi-zero-plus2: Add default audio routing
+      ARM: dts: allwinner: Add Orange Pi Zero Interface Board overlay
+
+ arch/arm/boot/dts/allwinner/Makefile               |  7 ++++
+ .../dts/allwinner/sun8i-h2-plus-orangepi-zero.dts  | 14 +++++++
+ .../dts/allwinner/sun8i-h3-orangepi-zero-plus2.dts | 14 +++++++
+ .../sun8i-orangepi-zero-interface-board.dtso       | 46 ++++++++++++++++++++++
+ 4 files changed, 81 insertions(+)
+---
+base-commit: 29fdda97f8d5797b160aa8ad1c7248710bb8ffda
+change-id: 20250417-opz-audio-890849c8bb2e
+
+Best regards,
 -- 
-2.34.1
+J. Neuschäfer <j.ne@posteo.net>
 
