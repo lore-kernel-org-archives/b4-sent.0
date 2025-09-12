@@ -1,15 +1,13 @@
 From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Subject: [PATCH v2 0/3] ALSA: usb-audio: add module param
- device_quirk_flags
-Date: Fri, 12 Sep 2025 14:48:57 +0800
-Message-Id: <20250912-sound-v2-0-01ea3d279f4b@uniontech.com>
+Date: Fri, 12 Sep 2025 14:48:58 +0800
+Subject: [PATCH v2 1/3] ALSA: usb-audio: add two-way convert between name
+ and bit for QUIRK_FLAG_*
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFnCw2gC/zXNwQ7CIAzG8VdZehYDTTTiyfcwO2DppAfBwEY0C
- +8uLnr8f2l+XaFwFi5wHlbIXKVIij1wNwAFF++sxPcG1HjQ1mhV0hK9ctbQ6UgW/c1Bv31mnuS
- 1Odexd5Ayp/ze2Gq+61/An1CN0orI0uTthF6byxL775kp7Ck9YGytfQDyM5rMngAAAA==
-X-Change-ID: 20250910-sound-a91c86c92dba
+Message-Id: <20250912-sound-v2-1-01ea3d279f4b@uniontech.com>
+References: <20250912-sound-v2-0-01ea3d279f4b@uniontech.com>
+In-Reply-To: <20250912-sound-v2-0-01ea3d279f4b@uniontech.com>
 To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
  Jonathan Corbet <corbet@lwn.net>
 Cc: linux-sound@vger.kernel.org, linux-usb@vger.kernel.org, 
@@ -19,55 +17,149 @@ Cc: linux-sound@vger.kernel.org, linux-usb@vger.kernel.org,
  Feng Yuan <fengyuan@uniontech.com>, qaqland <anguoli@uniontech.com>, 
  kernel@uniontech.com, Cryolitia PukNgae <cryolitia@uniontech.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757659749; l=1787;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757659749; l=4063;
  i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=jpa6rq+2V3zYCzSXmZnw1ZVzdo6cU0uu6N1P0LBv+cE=;
- b=dj/zGxlegARGAtOG6O5oa3GsH/z4iu8jDMZJrIn6DCVT9L6Z8PMg9UAzoH73Y3dug0FcBe1/y
- r3dxT4h7H8iCdvrzgpFAFBu+0aAOPXwDT7xVlz8FyYMmhDjUB7DYOEd
+ bh=/BXquMWJMNiFdz+nh5s6GogPhAqR6jecE2iPTQLfG8w=;
+ b=+sfLtT4u8nox/3hjkxd/5tp3ulZEsn8icd5sLuV50YzaSnwSLQFiixNhBdw2yzRdjeQhN4Udi
+ EL3r0yhHFRLD4xa0q6nNqDHp2ITf6aMhuyqRR2Yjv+l1ICVaGEZaF8i
 X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
  pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
 X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As an implementation of what has been discussed previously[1].
-
-> An open question is whether we may want yet a new module option or
-> rather extend the existing quirk option to accept the strings
-> instead.  Basically, when the given argument has a colon, it's a new
-> syntax.  If it's only a number, it's an old syntax, and parse like
-> before.  But, I'm open for either way (a new option or extend the
-> existing one).
-
-I would like to add a new param. The existed param
-`static unsigned int quirk_flags[SNDRV_CARDS]` seems to related to
-some sequence the card probed. To be honest, I havn't fully understood
-it. And it seems hard to improve it while keeping compatibility.
-
-1. https://lore.kernel.org/all/87h5xm5g7f.wl-tiwai@suse.de/
+Also improve debug logs for applied quirks
 
 Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
-Changes in v2:
-- Cleaned up some internal rebase confusion, sorry for that
-- Link to v1: https://lore.kernel.org/r/20250912-sound-v1-0-cc9cfd9f2d01@uniontech.com
+ sound/usb/quirks.c   | 82 +++++++++++++++++++++++++++++++++++++++++++++++++---
+ sound/usb/quirks.h   |  3 ++
+ sound/usb/usbaudio.h |  1 +
+ 3 files changed, 82 insertions(+), 4 deletions(-)
 
----
-Cryolitia PukNgae (3):
-      ALSA: usb-audio: add two-way convert between name and bit for QUIRK_FLAG_*
-      ALSA: usb-audio: add module param device_quirk_flags
-      ALSA: doc: add docs about device_device_quirk_flags in snd-usb-audio
+diff --git a/sound/usb/quirks.c b/sound/usb/quirks.c
+index d736a4750356597bfb0f9d5ab01cdaeaac0f907c..94854f352b1702b491e1bf3c8b769f7088e03976 100644
+--- a/sound/usb/quirks.c
++++ b/sound/usb/quirks.c
+@@ -2446,6 +2446,62 @@ static const struct usb_audio_quirk_flags_table quirk_flags_table[] = {
+ 	{} /* terminator */
+ };
+ 
++static const char *const snd_usb_audio_quirk_flag_names[] = {
++	"get_sample_rate",
++	"share_media_device",
++	"align_transfer",
++	"tx_length",
++	"playback_first",
++	"skip_clock_selector",
++	"ignore_clock_source",
++	"itf_usb_dsd_dac",
++	"ctl_msg_delay",
++	"ctl_msg_delay_1m",
++	"ctl_msg_delay_5m",
++	"iface_delay",
++	"validate_rates",
++	"disable_autosuspend",
++	"ignore_ctl_error",
++	"dsd_raw",
++	"set_iface_first",
++	"generic_implicit_fb",
++	"skip_implicit_fb",
++	"iface_skip_close",
++	"force_iface_reset",
++	"fixed_rate",
++	"mic_res_16",
++	"mic_res_384",
++	"mixer_playback_min_mute",
++	"mixer_capture_min_mute",
++	NULL
++};
++
++const char *snd_usb_quirk_flag_find_name(unsigned long index)
++{
++	if (index >= ARRAY_SIZE(snd_usb_audio_quirk_flag_names))
++		return NULL;
++
++	return snd_usb_audio_quirk_flag_names[index];
++}
++
++u32 snd_usb_quirk_flags_from_name(char *name)
++{
++	u32 flag = 0;
++	u32 i;
++
++	if (!name || !*name)
++		return 0;
++
++	for (i = 0; snd_usb_audio_quirk_flag_names[i]; i++) {
++		if (strcmp(name, snd_usb_audio_quirk_flag_names[i]) == 0) {
++			flag = (1U << i);
++			break;
++		}
++	}
++
++	return flag;
++}
++
+ void snd_usb_init_quirk_flags(struct snd_usb_audio *chip)
+ {
+ 	const struct usb_audio_quirk_flags_table *p;
+@@ -2454,10 +2510,28 @@ void snd_usb_init_quirk_flags(struct snd_usb_audio *chip)
+ 		if (chip->usb_id == p->id ||
+ 		    (!USB_ID_PRODUCT(p->id) &&
+ 		     USB_ID_VENDOR(chip->usb_id) == USB_ID_VENDOR(p->id))) {
+-			usb_audio_dbg(chip,
+-				      "Set quirk_flags 0x%x for device %04x:%04x\n",
+-				      p->flags, USB_ID_VENDOR(chip->usb_id),
+-				      USB_ID_PRODUCT(chip->usb_id));
++			unsigned long flags = p->flags;
++			unsigned long bit;
++
++			for_each_set_bit(bit, &flags,
++					 BYTES_TO_BITS(sizeof(p->flags))) {
++				const char *name =
++					snd_usb_audio_quirk_flag_names[bit];
++
++				if (name)
++					usb_audio_dbg(chip,
++						      "Set quirk flag %s for device %04x:%04x\n",
++						      name,
++						      USB_ID_VENDOR(chip->usb_id),
++						      USB_ID_PRODUCT(chip->usb_id));
++				else
++					usb_audio_warn(chip,
++						       "Set unknown quirk flag 0x%lx for device %04x:%04x\n",
++						       bit,
++						       USB_ID_VENDOR(chip->usb_id),
++						       USB_ID_PRODUCT(chip->usb_id));
++			}
++
+ 			chip->quirk_flags |= p->flags;
+ 			return;
+ 		}
+diff --git a/sound/usb/quirks.h b/sound/usb/quirks.h
+index f9bfd5ac7bab01717de3a76227482a128bf73165..bd5baf2b193a1985f3a0e52bf4a77ca741364769 100644
+--- a/sound/usb/quirks.h
++++ b/sound/usb/quirks.h
+@@ -50,4 +50,7 @@ void snd_usb_audioformat_attributes_quirk(struct snd_usb_audio *chip,
+ 
+ void snd_usb_init_quirk_flags(struct snd_usb_audio *chip);
+ 
++const char *snd_usb_quirk_flag_find_name(unsigned long flag);
++u32 snd_usb_quirk_flags_from_name(char *name);
++
+ #endif /* __USBAUDIO_QUIRKS_H */
+diff --git a/sound/usb/usbaudio.h b/sound/usb/usbaudio.h
+index 30b5102e3caed01eeb86d0075c41338104c58950..0a22cb4a02344b2dcf4009c560a759f2da25ca67 100644
+--- a/sound/usb/usbaudio.h
++++ b/sound/usb/usbaudio.h
+@@ -252,5 +252,6 @@ extern bool snd_usb_skip_validation;
+ #define QUIRK_FLAG_MIC_RES_384		(1U << 23)
+ #define QUIRK_FLAG_MIXER_PLAYBACK_MIN_MUTE	(1U << 24)
+ #define QUIRK_FLAG_MIXER_CAPTURE_MIN_MUTE	(1U << 25)
++/* Please also edit snd_usb_audio_quirk_flag_names */
+ 
+ #endif /* __USBAUDIO_H */
 
- Documentation/sound/alsa-configuration.rst | 105 ++++++++++++------
- sound/usb/card.c                           | 165 ++++++++++++++++++++++++++++-
- sound/usb/quirks.c                         | 110 ++++++++++++++++++-
- sound/usb/quirks.h                         |   5 +
- sound/usb/usbaudio.h                       |  14 +++
- 5 files changed, 362 insertions(+), 37 deletions(-)
----
-base-commit: 82ad508a85dc64cb4bd648edec5a4ce741648426
-change-id: 20250910-sound-a91c86c92dba
-
-Best regards,
 -- 
-Cryolitia PukNgae <cryolitia@uniontech.com>
+2.51.0
 
