@@ -1,167 +1,166 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Fri, 12 Sep 2025 14:49:00 +0800
-Subject: [PATCH v2 3/3] ALSA: doc: add docs about device_device_quirk_flags
- in snd-usb-audio
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v3 0/4] PCI/pwrctrl: Allow pwrctrl framework to control
+ PERST# if available
+Date: Fri, 12 Sep 2025 14:05:00 +0530
+Message-Id: <20250912-pci-pwrctrl-perst-v3-0-3c0ac62b032c@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250912-sound-v2-3-01ea3d279f4b@uniontech.com>
-References: <20250912-sound-v2-0-01ea3d279f4b@uniontech.com>
-In-Reply-To: <20250912-sound-v2-0-01ea3d279f4b@uniontech.com>
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Jonathan Corbet <corbet@lwn.net>
-Cc: linux-sound@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Mingcong Bai <jeffbai@aosc.io>, Kexy Biscuit <kexybiscuit@aosc.io>, 
- Nie Cheng <niecheng1@uniontech.com>, Zhan Jun <zhanjun@uniontech.com>, 
- Feng Yuan <fengyuan@uniontech.com>, qaqland <anguoli@uniontech.com>, 
- kernel@uniontech.com, Cryolitia PukNgae <cryolitia@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIADTbw2gC/23NSw7CIBCA4as0rKUZKH258h7GRYHRkrSCUFHT9
+ O7SJsZNN5P8k8w3MwnoDQZyzGbiMZpg7D1FcciI6rv7DanRqQkHXkLDGuqUoe7l1eQH6tCHiYK
+ UtdYVl6XgJN05j1fz3szzJXVvwmT9Z3sR2br9ae2OFhkFKmQt2rrRHKA+2RDyx7MblB3HPA2yo
+ pH/oRaKPYgniGtRMdSAULEdaFmWL++6HykCAQAA
+X-Change-ID: 20250818-pci-pwrctrl-perst-0bb7dd62b542
+To: Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, Saravana Kannan <saravanak@google.com>
+Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
+ Brian Norris <briannorris@chromium.org>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Bjorn Helgaas <helgaas@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757659749; l=7115;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=s/0dZ04dkumVF/ET0AfUgOb4GzZPo7Sb5MusAYIlxoQ=;
- b=MzHSOU9T94yHiBeBcOyihqZ8o2FViu1+bHrllNTq/IVFuryeOQEIR1P9Axf6Tb+3H2KUZM8IE
- Rli8GvTTN2uD5E3OLkngF0LIFxxbIa/EwtajnfFJMOWSP6fzgWr1nzy
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6268;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=qyyu6lVr8aS+pwNpu2pxm2nQHlu6k5+BhoJaWT8jQsw=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBow9tH4sj+7abdCzaJm5sybCBQUIhypL2tNyEbN
+ DOK7mxLyjWJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaMPbRwAKCRBVnxHm/pHO
+ 9dCsCACOiqSBWO6U6Yc8SFQLOvnVQ+8M1S9l5b/fj1r/NKFeg1umUjpEaQW+4pxCu8xKBi2V15B
+ LVgYRfhENYTRYnftMMHhvZvKSYMifbzpaMyNkbhBhsGbM6lH/9/suD9U7pnrWB3wz007VRPzp/A
+ FO0+uc3TQbkFpyleK5h2AT5kghoW53an/ICC4v83CLIn+LZzOYxI5dmRzTpUNZL7XzUkOzTskcD
+ kNqT+R4gWzqWVry9V+bM6bCdkXYyONUsbJ9k4itKkfPGMnzQNQ4vPjLsEWpMUVazWN7Y4w2VpaO
+ RYIlt+lsmNhC3x44Z9VpxDuI6OWCoNEE2aGYJy6r5k/9Y6iD
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Just briefly described about the new option.
+Hi,
 
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+This series is the proper version for toggling PERST# from the pwrctrl
+framework after the initial RFC posted earlier [1].
+
+Problem statement
+=================
+
+Pwrctrl framework is intented to control the supplies to the components on the
+PCI bus. However, if the platform supports the PERST# signal, it should be
+toggled as per the requirements in the electromechanical specifications like
+PCIe CEM, Mini, and M.2. Since the pwrctrl framework is controlling the power
+supplies, it should also toggle PERST# as per the requirements in the above
+mentioned specifications. Right now, it is just controlling the power to the
+components and rely on controller drivers to toggle PERST#, which goes against
+the specs. For instance, controller drivers will deassert PERST# even before the
+pwrctrl driver enables the supplies. This causes the device to see PERST#
+deassert immediately after power on, thereby violating the delay requirements in
+the PCI Electromechanical specs.
+
+Proposal
+========
+
+To fix this issue, the pwrctrl framework has to control the PERST# signal. But
+unfortunately, it is not straightforward. This is mostly due to controller
+drivers still need to assert PERST# as a part of their own initialization
+sequence. The controller drivers will parse PERST# from the devicetree nodes
+even before the pwrctrl drivers get probed. So the PERST# control needs to be
+shared between both drivers in a logical manner.
+
+This is achieved by adding a new callback, 'pci_host_bridge::perst_assert'. This
+callback if available, will be called by the pwrctrl framework during the power
+on and power off scenarios. The callback implementation in the controller driver
+has to take care of asserting/deasserting PERST# in an implementation specific
+way i.e., if the PERST# signal is a GPIO, then it should be toggled using gpiod
+APIs, or if the signal is implemented as a CSR, then the relevant registers
+should be written.
+
+Ideally, the PERST# delay requirements should be implemented in the pwrctrl
+framework (before/after calling the callback), but some controller drivers
+perform some post-link_up operations requiring them to control the delay within
+the driver. Those drivers may use this callback to assert/deassert PERST# and
+perform post-link_up operations.
+
+For reference, I've implemented the callback in the Qcom RC driver where it just
+asserts/deasserts PERST# and handles delay. Since the Qcom driver supports both
+legacy DT binding (all Root Port properties in host bridge node) and new binding
+(Root Port properies in Root Port node), I've moved the PERST# handling to
+pwrctrl driver only if the newly introduced 'qcom_pcie::legacy_binding' flag is
+not set. This flag if set, implies that the platform is using the legacy DT
+binding, so the controller driver has to control PERST#. 
+
+DT binding requirement
+======================
+
+This series has some assumptions on the DT binding. But some of them are not
+enforced right now:
+
+1. Pwrctrl driver requires the PCIe device node to have atleast one -supply
+property. Those supplies are already documented in the dtschema [2], but they
+are optional. So if those supplies are not present, pwrctrl driver will not get
+probed. For platforms having a fixed power supply to the components, they should
+describe those fixed supplies in DT. Otherwise, they cannot use pwrctrl drivers.
+(NOT ENFROCED)
+
+2. Optional PERST# GPIO (reset-gpios property) is only allowed in the bridge
+node in the DT binding [3]. So for looking up the PERST# for an endpoint node,
+the controller driver has to look up the parent node where PERST# would be
+available. (ENFORCED)
+
+3. If shared PERST# is implemented, all the bridge nodes (Root port and switch
+downstream) should have the same 'reset-gpios' property. This way, the
+controller drivers parsing PERST# could know if it is shared and invoke relevant
+gpiod APIs/flags. (NOT ENFORCED)
+
+I don't know how we can make sure DT binding enforces option 1 and 3.
+
+Testing
+=======
+
+This series is tested on Qcom X1E based T14s laptop, SM8250 based RB5 board, and
+QCS6490 based RB3Gen2 board with DTS specifying Root Port properties in host
+bridge node and in Root Port node.
+
+[1] https://lore.kernel.org/linux-pci/20250707-pci-pwrctrl-perst-v1-0-c3c7e513e312@kernel.org/
+[2] https://github.com/devicetree-org/dt-schema/blob/main/dtschema/schemas/pci/pci-bus-common.yaml#L173
+[3] https://github.com/devicetree-org/dt-schema/blob/main/dtschema/schemas/pci/pci-bus-common.yaml#L141
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- Documentation/sound/alsa-configuration.rst | 105 ++++++++++++++++++++---------
- 1 file changed, 73 insertions(+), 32 deletions(-)
+Changes in v3:
+- Dropped the pci_pwrctrl_init() move patch as it is no longer required
+- Added a patch to cleanup the usage of 'phy' and 'reset' pointers
+- Renamed the callback from 'toggle_perst' to 'perst_assert'
+- Reworded the patch descriptions
+- Link to v2: https://lore.kernel.org/r/20250903-pci-pwrctrl-perst-v2-0-2d461ed0e061@oss.qualcomm.com
 
-diff --git a/Documentation/sound/alsa-configuration.rst b/Documentation/sound/alsa-configuration.rst
-index a2fb8ed251dd0294e7a62209ca15d5c32c6adfae..060dfbd4197d3134f20d3d86300d97b14071eee9 100644
---- a/Documentation/sound/alsa-configuration.rst
-+++ b/Documentation/sound/alsa-configuration.rst
-@@ -2296,40 +2296,81 @@ skip_validation
-     The option is used to ignore the validation errors with the hexdump
-     of the unit descriptor instead of a driver probe error, so that we
-     can check its details.
-+device_device_quirk_flags
-+    The option povides a refined and flexible control for applying quirk
-+    flags.  It allows to specify the quirk flags for each device, and could
-+    be modified dynamically via sysfs.
-+    The option accepts a string in the format of ``VID1:PID1:FLAGS1;VID2:PID2:
-+    FLAGS2;...``, where ``VIDx`` and ``PIDx`` specify the device, and
-+    ``FLAGSx`` specify the flags to be applied.  ``VIDx`` and ``PIDx`` are
-+    4-digit hexadecimal numbers, and could be specified as ``*`` to match any
-+    value.  ``FLAGSx`` could be a set of flags given by name, separated by
-+    comma, or a hexadecimal number representing the bit flags.  The available
-+    flag names are listed above.  An exclamation mark could be prefixed to a
-+    flag name to negate the flag. For example,
-+    ``1234:abcd:mixer_playback_min_mute,!ignore_ctl_error;*:*:0x01;``
-+    applies the ``mixer_playback_min_mute`` flag and clears the
-+    ``ignore_ctl_error`` flag for the device 1234:abcd, and applies
-+    the ``skip_sample_rate`` flag for all devices.
- quirk_flags
-     Contains the bit flags for various device specific workarounds.
-     Applied to the corresponding card index.
- 
--        * bit 0: Skip reading sample rate for devices
--        * bit 1: Create Media Controller API entries
--        * bit 2: Allow alignment on audio sub-slot at transfer
--        * bit 3: Add length specifier to transfers
--        * bit 4: Start playback stream at first in implement feedback mode
--        * bit 5: Skip clock selector setup
--        * bit 6: Ignore errors from clock source search
--        * bit 7: Indicates ITF-USB DSD based DACs
--        * bit 8: Add a delay of 20ms at each control message handling
--        * bit 9: Add a delay of 1-2ms at each control message handling
--        * bit 10: Add a delay of 5-6ms at each control message handling
--        * bit 11: Add a delay of 50ms at each interface setup
--        * bit 12: Perform sample rate validations at probe
--        * bit 13: Disable runtime PM autosuspend
--        * bit 14: Ignore errors for mixer access
--        * bit 15: Support generic DSD raw U32_BE format
--        * bit 16: Set up the interface at first like UAC1
--        * bit 17: Apply the generic implicit feedback sync mode
--        * bit 18: Don't apply implicit feedback sync mode
--        * bit 19: Don't closed interface during setting sample rate
--        * bit 20: Force an interface reset whenever stopping & restarting
--          a stream
--        * bit 21: Do not set PCM rate (frequency) when only one rate is
--          available for the given endpoint.
--        * bit 22: Set the fixed resolution 16 for Mic Capture Volume
--        * bit 23: Set the fixed resolution 384 for Mic Capture Volume
--        * bit 24: Set minimum volume control value as mute for devices
--          where the lowest playback value represents muted state instead
--          of minimum audible volume
--        * bit 25: Be similar to bit 24 but for capture streams
-+        * bit 0: ``get_sample_rate``
-+          Skip reading sample rate for devices
-+        * bit 1: ``share_media_device``
-+          Create Media Controller API entries
-+        * bit 2: ``align_transfer``
-+          Allow alignment on audio sub-slot at transfer
-+        * bit 3: ``tx_length``
-+          Add length specifier to transfers
-+        * bit 4: ``playback_first``
-+          Start playback stream at first in implement feedback mode
-+        * bit 5: ``skip_clock_selector``
-+          Skip clock selector setup
-+        * bit 6: ``ignore_clock_source``
-+          Ignore errors from clock source search
-+        * bit 7: ``itf_usb_dsd_dac``
-+          Indicates ITF-USB DSD based DACs
-+        * bit 8: ``ctl_msg_delay``
-+          Add a delay of 20ms at each control message handling
-+        * bit 9: ``ctl_msg_delay_1m``
-+          Add a delay of 1-2ms at each control message handling
-+        * bit 10: ``ctl_msg_delay_5m``
-+          Add a delay of 5-6ms at each control message handling
-+        * bit 11: ``iface_delay``
-+          Add a delay of 50ms at each interface setup
-+        * bit 12: ``validate_rates``
-+          Perform sample rate validations at probe
-+        * bit 13: ``disable_autosuspend``
-+          Disable runtime PM autosuspend
-+        * bit 14: ``ignore_ctl_error``
-+          Ignore errors for mixer access
-+        * bit 15: ``dsd_raw``
-+          Support generic DSD raw U32_BE format
-+        * bit 16: ``set_iface_first``
-+          Set up the interface at first like UAC1
-+        * bit 17: ``generic_implicit_fb``
-+          Apply the generic implicit feedback sync mode
-+        * bit 18: ``skip_implicit_fb``
-+          Don't apply implicit feedback sync mode
-+        * bit 19: ``iface_skip_close``
-+          Don't closed interface during setting sample rate
-+        * bit 20: ``force_iface_reset``
-+          Force an interface reset whenever stopping & restarting a stream
-+        * bit 21: ``fixed_rate``
-+          Do not set PCM rate (frequency) when only one rate is available
-+          for the given endpoint
-+        * bit 22: ``mic_res_16``
-+          Set the fixed resolution 16 for Mic Capture Volume
-+        * bit 23: ``mic_res_384``
-+          Set the fixed resolution 384 for Mic Capture Volume
-+        * bit 24: ``mixer_playback_min_mute``
-+          Set minimum volume control value as mute for devices where the
-+          lowest playback value represents muted state instead of minimum
-+          audible volume
-+        * bit 25: ``mixer_capture_min_mute``
-+          Be similar to bit 24 but for capture streams
- 
- This module supports multiple devices, autoprobe and hotplugging.
- 
-@@ -2344,8 +2385,8 @@ report it to the upstream.
- NB: ``quirk_alias`` option is provided only for testing / development.
- If you want to have a proper support, contact to upstream for
- adding the matching quirk in the driver code statically.
--Ditto for ``quirk_flags``.  If a device is known to require specific
--workarounds, please report to the upstream.
-+Ditto for ``quirk_flags`` and ``device_device_quirk_flags``.  If a device
-+is known to require specific workarounds, please report to the upstream.
- 
- Module snd-usb-caiaq
- --------------------
+Changes in v2:
+- Reworked the PERST# lookup logic to use the node pointer instead of BDF
+- Added PWRCTRL guard to the toggle_perst callback
+- Link to v1: https://lore.kernel.org/r/20250819-pci-pwrctrl-perst-v1-0-4b74978d2007@oss.qualcomm.com
 
+Changes since RFC:
+* Implemented PERST# toggling using a callback since GPIO based PERST# is not
+  available on all platforms. This also moves all PERST# handling to the
+  controller drivers allowing them to add any additional post-link_up logic.
+
+---
+Manivannan Sadhasivam (4):
+      PCI/pwrctrl: Add support for asserting/deasserting PERST#
+      PCI: qcom: Move host bridge 'phy' and 'reset' pointers to struct qcom_pcie_port
+      PCI: qcom: Parse PERST# from all PCIe bridge nodes
+      PCI: qcom: Allow pwrctrl core to control PERST# if 'reset-gpios' property is available
+
+ drivers/pci/controller/dwc/pcie-qcom.c | 269 ++++++++++++++++++++++++---------
+ drivers/pci/pwrctrl/core.c             |  27 ++++
+ include/linux/pci.h                    |   3 +
+ 3 files changed, 227 insertions(+), 72 deletions(-)
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250818-pci-pwrctrl-perst-0bb7dd62b542
+
+Best regards,
 -- 
-2.51.0
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
