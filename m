@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Fri, 12 Sep 2025 14:05:01 +0530
-Subject: [PATCH v3 1/4] PCI/pwrctrl: Add support for asserting/deasserting
- PERST#
+Date: Fri, 12 Sep 2025 14:05:02 +0530
+Subject: [PATCH v3 2/4] PCI: qcom: Move host bridge 'phy' and 'reset'
+ pointers to struct qcom_pcie_port
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250912-pci-pwrctrl-perst-v3-1-3c0ac62b032c@oss.qualcomm.com>
+Message-Id: <20250912-pci-pwrctrl-perst-v3-2-3c0ac62b032c@oss.qualcomm.com>
 References: <20250912-pci-pwrctrl-perst-v3-0-3c0ac62b032c@oss.qualcomm.com>
 In-Reply-To: <20250912-pci-pwrctrl-perst-v3-0-3c0ac62b032c@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -17,125 +17,203 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
  Brian Norris <briannorris@chromium.org>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Bjorn Helgaas <helgaas@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4251;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5606;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=jCv+iKeOMcKQiy+sgTT5FskEFZPk4zscRN+1zwZTLe8=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBow9tHNza8f0jG3b+AspCiBV7VAMWXAy5GxYIcV
- +W5YLUQLBWJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaMPbRwAKCRBVnxHm/pHO
- 9TV+B/0Sb2Sb+ByTUWUhwh9Jb8VcxsX+SYLJX5HFb3MYZsh7tHjpaa+Q6rEIJq4+5aciNw4iOj5
- v5FCy4gvVNsws1rRHvO9/lT+hav92CuRXJvDCiGfImYYLERBX2O4q5rn5l4Ms+r3BTMdUFZB2na
- zR+6Fqa3vKD3CjqSSbRB04VeBMT9HwmFamrMpDwDHh6r/alWJ+0F67epE0UJfFtO2dzcWCdeuji
- 6pZ7OoUMllq66vwvcgByO5hx8ntSpGfzO036H0CGBcJTKKEc8AdjddiLBLFKkYkNLqqRsJECb50
- 8CL6tomfbk7Pd+ZMZsSdVf8dxnZF4NVVPcZl4wStPvZTAID4
+ bh=ilMHp9ACJpgKD/1mza53pL/FtXeYmnYLmD/AOSCLn64=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBow9tHlBV2ozXmZ6TcjJDPHdZiNQOTQ00RKlaJF
+ sHK9ehx10GJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaMPbRwAKCRBVnxHm/pHO
+ 9V1iCACAudhIJ/fiXFFRAGifKsnk4g1c/W/IrhCfCqem/LRcwLkUitvhpk4zmwx9M9AJqJnraLS
+ ZvjesBeeNaiyrZ4FWumDQ7ZcBIMsqjqNufSNqDdfW7ZexOWC/OEvao44/mhxH7s6k9KbOkBfUeD
+ BEB/5tjyh8l+pgZg5uCbBuT/TOkiGxez5OcrkNrbNRrg+6q+6pKUCd7RRhdOvSCY8BOmQC4lOyt
+ Pap3jdElUfWWADIwekhNA8Sma+b8dYj6m+GFl+dGC9MA7+wxeujJ7Hk6CxiO6djQE/GFjiyD0pj
+ XDWLLBwjJ4h6mZ4OmZMabd93nQvozvz2VNVxSwl9Y2VNyG3q
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As per PCIe spec r6.0, sec 6.6.1, PERST# is an auxiliary signal provided by
-the system to a component as a Fundamental Reset. This signal if available,
-should conform to the rules defined by the Electromechanical form factor
-specifications like PCIe CEM spec r4.0, sec 2.2.
+DT binding allows specifying 'phy' and 'reset' properties in both host
+bridge and Root Port nodes, though specifying in the host bridge node is
+marked as deprecated. Still, the pcie-qcom driver should support both
+combinations for maintaining the DT backwards compatibility. For this
+purpose, the driver is holding the relevant pointers of these properties in
+two structs: struct qcom_pcie_port and struct qcom_pcie.
 
-Since pwrctrl driver is meant to control the power supplies to the PCI
-components, it should also control the PERST# signal if available. But
-traditionally, the host bridge (controller) drivers are the ones parsing
-and controlling the PERST# signal. They also sometimes need to assert
-PERST# during their own hardware initialization. So it is not possible to
-move the PERST# control away from the controller drivers and it must be
-shared logically.
+However, this causes confusion and increases the driver complexity. Hence,
+move the pointers from struct qcom_pcie to struct qcom_pcie_port. As a
+result, even if these properties are specified in the host bridge node,
+the pointers will be stored in struct qcom_pcie_port as if the properties
+are specified in a single Root Port node. This logic simplifies the driver
+a lot.
 
-Hence, add a new callback 'pci_host_bridge::perst_assert', that allows the
-pwrctrl core to assert/deassert PERST# with the help of the controller
-drivers. But care must be taken care by the controller drivers to not
-deassert the PERST# signal if this callback is populated.
-
-This callback if available, will be called by the pwrctrl core during the
-device power up and power down scenarios. Controller drivers should
-identify the device using the 'struct device_node' passed during the
-callback and assert/deassert PERST# accordingly.
-
+Suggested-by: Bjorn Helgaas <helgaas@kernel.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/pci/pwrctrl/core.c | 27 +++++++++++++++++++++++++++
- include/linux/pci.h        |  3 +++
- 2 files changed, 30 insertions(+)
+ drivers/pci/controller/dwc/pcie-qcom.c | 87 ++++++++++++++--------------------
+ 1 file changed, 36 insertions(+), 51 deletions(-)
 
-diff --git a/drivers/pci/pwrctrl/core.c b/drivers/pci/pwrctrl/core.c
-index 6bdbfed584d6d79ce28ba9e384a596b065ca69a4..54d3dbc24020e979f668bb294448e8429cd8bdd3 100644
---- a/drivers/pci/pwrctrl/core.c
-+++ b/drivers/pci/pwrctrl/core.c
-@@ -6,6 +6,7 @@
- #include <linux/device.h>
- #include <linux/export.h>
- #include <linux/kernel.h>
-+#include <linux/of.h>
- #include <linux/pci.h>
- #include <linux/pci-pwrctrl.h>
- #include <linux/property.h>
-@@ -61,6 +62,28 @@ void pci_pwrctrl_init(struct pci_pwrctrl *pwrctrl, struct device *dev)
+diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
+index 294babe1816e4d0c2b2343fe22d89af72afcd6cd..6170c86f465f43f980f5b2f88bd8799c3c152e68 100644
+--- a/drivers/pci/controller/dwc/pcie-qcom.c
++++ b/drivers/pci/controller/dwc/pcie-qcom.c
+@@ -279,8 +279,6 @@ struct qcom_pcie {
+ 	void __iomem *elbi;			/* DT elbi */
+ 	void __iomem *mhi;
+ 	union qcom_pcie_resources res;
+-	struct phy *phy;
+-	struct gpio_desc *reset;
+ 	struct icc_path *icc_mem;
+ 	struct icc_path *icc_cpu;
+ 	const struct qcom_pcie_cfg *cfg;
+@@ -297,11 +295,8 @@ static void qcom_perst_assert(struct qcom_pcie *pcie, bool assert)
+ 	struct qcom_pcie_port *port;
+ 	int val = assert ? 1 : 0;
+ 
+-	if (list_empty(&pcie->ports))
+-		gpiod_set_value_cansleep(pcie->reset, val);
+-	else
+-		list_for_each_entry(port, &pcie->ports, list)
+-			gpiod_set_value_cansleep(port->reset, val);
++	list_for_each_entry(port, &pcie->ports, list)
++		gpiod_set_value_cansleep(port->reset, val);
+ 
+ 	usleep_range(PERST_DELAY_US, PERST_DELAY_US + 500);
  }
- EXPORT_SYMBOL_GPL(pci_pwrctrl_init);
+@@ -1253,57 +1248,32 @@ static bool qcom_pcie_link_up(struct dw_pcie *pci)
+ 	return val & PCI_EXP_LNKSTA_DLLLA;
+ }
  
-+static void pci_pwrctrl_perst_deassert(struct pci_pwrctrl *pwrctrl)
-+{
-+	struct pci_host_bridge *host_bridge = to_pci_host_bridge(pwrctrl->dev->parent);
-+	struct device_node *np = dev_of_node(pwrctrl->dev);
-+
-+	if (!host_bridge->perst_assert)
-+		return;
-+
-+	host_bridge->perst_assert(host_bridge, np, false);
-+}
-+
-+static void pci_pwrctrl_perst_assert(struct pci_pwrctrl *pwrctrl)
-+{
-+	struct pci_host_bridge *host_bridge = to_pci_host_bridge(pwrctrl->dev->parent);
-+	struct device_node *np = dev_of_node(pwrctrl->dev);
-+
-+	if (!host_bridge->perst_assert)
-+		return;
-+
-+	host_bridge->perst_assert(host_bridge, np, true);
-+}
-+
- /**
-  * pci_pwrctrl_device_set_ready() - Notify the pwrctrl subsystem that the PCI
-  * device is powered-up and ready to be detected.
-@@ -82,6 +105,8 @@ int pci_pwrctrl_device_set_ready(struct pci_pwrctrl *pwrctrl)
- 	if (!pwrctrl->dev)
- 		return -ENODEV;
- 
-+	pci_pwrctrl_perst_deassert(pwrctrl);
-+
- 	pwrctrl->nb.notifier_call = pci_pwrctrl_notify;
- 	ret = bus_register_notifier(&pci_bus_type, &pwrctrl->nb);
- 	if (ret)
-@@ -103,6 +128,8 @@ void pci_pwrctrl_device_unset_ready(struct pci_pwrctrl *pwrctrl)
+-static void qcom_pcie_phy_exit(struct qcom_pcie *pcie)
+-{
+-	struct qcom_pcie_port *port;
+-
+-	if (list_empty(&pcie->ports))
+-		phy_exit(pcie->phy);
+-	else
+-		list_for_each_entry(port, &pcie->ports, list)
+-			phy_exit(port->phy);
+-}
+-
+ static void qcom_pcie_phy_power_off(struct qcom_pcie *pcie)
  {
- 	cancel_work_sync(&pwrctrl->work);
+ 	struct qcom_pcie_port *port;
  
-+	pci_pwrctrl_perst_assert(pwrctrl);
+-	if (list_empty(&pcie->ports)) {
+-		phy_power_off(pcie->phy);
+-	} else {
+-		list_for_each_entry(port, &pcie->ports, list)
+-			phy_power_off(port->phy);
+-	}
++	list_for_each_entry(port, &pcie->ports, list)
++		phy_power_off(port->phy);
+ }
+ 
+ static int qcom_pcie_phy_power_on(struct qcom_pcie *pcie)
+ {
+ 	struct qcom_pcie_port *port;
+-	int ret = 0;
++	int ret;
+ 
+-	if (list_empty(&pcie->ports)) {
+-		ret = phy_set_mode_ext(pcie->phy, PHY_MODE_PCIE, PHY_MODE_PCIE_RC);
++	list_for_each_entry(port, &pcie->ports, list) {
++		ret = phy_set_mode_ext(port->phy, PHY_MODE_PCIE, PHY_MODE_PCIE_RC);
+ 		if (ret)
+ 			return ret;
+ 
+-		ret = phy_power_on(pcie->phy);
+-		if (ret)
++		ret = phy_power_on(port->phy);
++		if (ret) {
++			qcom_pcie_phy_power_off(pcie);
+ 			return ret;
+-	} else {
+-		list_for_each_entry(port, &pcie->ports, list) {
+-			ret = phy_set_mode_ext(port->phy, PHY_MODE_PCIE, PHY_MODE_PCIE_RC);
+-			if (ret)
+-				return ret;
+-
+-			ret = phy_power_on(port->phy);
+-			if (ret) {
+-				qcom_pcie_phy_power_off(pcie);
+-				return ret;
+-			}
+ 		}
+ 	}
+ 
+-	return ret;
++	return 0;
+ }
+ 
+ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
+@@ -1748,8 +1718,10 @@ static int qcom_pcie_parse_ports(struct qcom_pcie *pcie)
+ 	return ret;
+ 
+ err_port_del:
+-	list_for_each_entry_safe(port, tmp, &pcie->ports, list)
++	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
++		phy_exit(port->phy);
+ 		list_del(&port->list);
++	}
+ 
+ 	return ret;
+ }
+@@ -1757,20 +1729,32 @@ static int qcom_pcie_parse_ports(struct qcom_pcie *pcie)
+ static int qcom_pcie_parse_legacy_binding(struct qcom_pcie *pcie)
+ {
+ 	struct device *dev = pcie->pci->dev;
++	struct qcom_pcie_port *port;
++	struct gpio_desc *reset;
++	struct phy *phy;
+ 	int ret;
+ 
+-	pcie->phy = devm_phy_optional_get(dev, "pciephy");
+-	if (IS_ERR(pcie->phy))
+-		return PTR_ERR(pcie->phy);
++	phy = devm_phy_optional_get(dev, "pciephy");
++	if (IS_ERR(phy))
++		return PTR_ERR(phy);
+ 
+-	pcie->reset = devm_gpiod_get_optional(dev, "perst", GPIOD_OUT_HIGH);
+-	if (IS_ERR(pcie->reset))
+-		return PTR_ERR(pcie->reset);
++	reset = devm_gpiod_get_optional(dev, "perst", GPIOD_OUT_HIGH);
++	if (IS_ERR(reset))
++		return PTR_ERR(reset);
+ 
+-	ret = phy_init(pcie->phy);
++	ret = phy_init(phy);
+ 	if (ret)
+ 		return ret;
+ 
++	port = devm_kzalloc(dev, sizeof(*port), GFP_KERNEL);
++	if (!port)
++		return -ENOMEM;
 +
- 	/*
- 	 * We don't have to delete the link here. Typically, this function
- 	 * is only called when the power control device is being detached. If
-diff --git a/include/linux/pci.h b/include/linux/pci.h
-index 59876de13860dbe50ee6c207cd57e54f51a11079..08007ef244c0a8bc2be27496bea7249ce3e00935 100644
---- a/include/linux/pci.h
-+++ b/include/linux/pci.h
-@@ -605,6 +605,9 @@ struct pci_host_bridge {
- 	void (*release_fn)(struct pci_host_bridge *);
- 	int (*enable_device)(struct pci_host_bridge *bridge, struct pci_dev *dev);
- 	void (*disable_device)(struct pci_host_bridge *bridge, struct pci_dev *dev);
-+#if IS_ENABLED(CONFIG_PCI_PWRCTRL)
-+	void (*perst_assert)(struct pci_host_bridge *bridge, struct device_node *np, bool assert);
-+#endif
- 	void		*release_data;
- 	unsigned int	ignore_reset_delay:1;	/* For entire hierarchy */
- 	unsigned int	no_ext_tags:1;		/* No Extended Tags */
++	port->reset = reset;
++	port->phy = phy;
++	INIT_LIST_HEAD(&port->list);
++	list_add_tail(&port->list, &pcie->ports);
++
+ 	return 0;
+ }
+ 
+@@ -1984,9 +1968,10 @@ static int qcom_pcie_probe(struct platform_device *pdev)
+ err_host_deinit:
+ 	dw_pcie_host_deinit(pp);
+ err_phy_exit:
+-	qcom_pcie_phy_exit(pcie);
+-	list_for_each_entry_safe(port, tmp, &pcie->ports, list)
++	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
++		phy_exit(port->phy);
+ 		list_del(&port->list);
++	}
+ err_pm_runtime_put:
+ 	pm_runtime_put(dev);
+ 	pm_runtime_disable(dev);
 
 -- 
 2.45.2
