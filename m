@@ -1,11 +1,11 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sun, 14 Sep 2025 12:56:09 +0000
-Subject: [PATCH 04/11] usb: typec: tipd: Trace data status for CD321x
- correctly
+Date: Sun, 14 Sep 2025 12:56:10 +0000
+Subject: [PATCH 05/11] usb: typec: tipd: Add cd321x struct with separate
+ size
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250914-apple-usb3-tipd-v1-4-4e99c8649024@kernel.org>
+Message-Id: <20250914-apple-usb3-tipd-v1-5-4e99c8649024@kernel.org>
 References: <20250914-apple-usb3-tipd-v1-0-4e99c8649024@kernel.org>
 In-Reply-To: <20250914-apple-usb3-tipd-v1-0-4e99c8649024@kernel.org>
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
@@ -15,150 +15,113 @@ Cc: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>,
  asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5739; i=sven@kernel.org;
- h=from:subject:message-id; bh=bkv8jzt0SlhPpGAzBP2M8JpCFXBPIbTEJnxp6p0XalI=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ8ax3TWOx5a5PDk+//kDq4+bnjO8VtS7GLfdIn6ayaaYu
- 3xVNbcud5SyMIhxMMiKKbJs329v+uThG8Glmy69h5nDygQyhIGLUwAmMsmdkaF7c6PJOa7Q3B0f
- Qn/kPk8KmmF+c6Jx2F2huKD0Ov5zd/cwMkys3p097WyZ0Y69JX+UpkeZNDW+/cS/vTZRr1ymQe5
- OFgsA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3612; i=sven@kernel.org;
+ h=from:subject:message-id; bh=nZk44p+QqpioWkfSX5+bKeVart8pQqEx9xjGIa/iQGY=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8ax3XXXeGo/cS64FZzr0VBfuOOJ08LZDfe2sJjYfhDU9
+ njHybm6o5SFQYyDQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjAR3zhGhsd/r5yxm+Z99z6j
+ gcqcsPxq32Xli15WKzfe9/nVo1ySO4eR4dzc/72zq9otPnX/aZghd2uby8rJeqli7+7//bS8euH
+ JD+wA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some bits inside the CD321x TPS_DATA_STATUS register have a different
-function compared to the original tipd chip. Add these and introduce a
-separate trace function to show them correctly.
+We're about to add more fields to struct tps6598x which are only relevant
+for Apple's CD321x and to ensure that we don't waste memory everywhere for
+those add a separate struct for cd321x and prepare to allocate more space
+inside probe.
 
 Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
 Reviewed-by: Neal Gompa <neal@gompa.dev>
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/usb/typec/tipd/core.c     |  8 +++++++-
- drivers/usb/typec/tipd/tps6598x.h |  5 +++++
- drivers/usb/typec/tipd/trace.h    | 39 +++++++++++++++++++++++++++++++++++++++
- 3 files changed, 51 insertions(+), 1 deletion(-)
+ drivers/usb/typec/tipd/core.c | 20 +++++++++++++++-----
+ 1 file changed, 15 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
-index 4815c5c462837865a5f9d37bbc139249c82c2f75..19d713937870304e68325a441b0de63eb5db3b80 100644
+index 19d713937870304e68325a441b0de63eb5db3b80..51b0f3be8b66a743ddc3ea96c1b25f597a1e8f6c 100644
 --- a/drivers/usb/typec/tipd/core.c
 +++ b/drivers/usb/typec/tipd/core.c
-@@ -114,6 +114,7 @@ struct tipd_data {
+@@ -113,6 +113,7 @@ struct tps6598x;
+ struct tipd_data {
  	irq_handler_t irq_handler;
  	u64 irq_mask1;
++	size_t tps_struct_size;
  	int (*register_port)(struct tps6598x *tps, struct fwnode_handle *node);
-+	void (*trace_data_status)(u32 status);
+ 	void (*trace_data_status)(u32 status);
  	void (*trace_power_status)(u16 status);
- 	void (*trace_status)(u32 status);
- 	int (*apply_patch)(struct tps6598x *tps);
-@@ -492,7 +493,9 @@ static bool tps6598x_read_data_status(struct tps6598x *tps)
- 		dev_err(tps->dev, "failed to read data status: %d\n", ret);
- 		return false;
- 	}
--	trace_tps6598x_data_status(data_status);
-+
-+	if (tps->data->trace_data_status)
-+		tps->data->trace_data_status(data_status);
+@@ -148,6 +149,10 @@ struct tps6598x {
+ 	const struct tipd_data *data;
+ };
  
- 	return true;
- }
-@@ -1519,6 +1522,7 @@ static const struct tipd_data cd321x_data = {
++struct cd321x {
++	struct tps6598x tps;
++};
++
+ static enum power_supply_property tps6598x_psy_props[] = {
+ 	POWER_SUPPLY_PROP_USB_TYPE,
+ 	POWER_SUPPLY_PROP_ONLINE,
+@@ -1297,18 +1302,24 @@ tps25750_register_port(struct tps6598x *tps, struct fwnode_handle *fwnode)
+ 
+ static int tps6598x_probe(struct i2c_client *client)
+ {
++	const struct tipd_data *data;
+ 	struct tps6598x *tps;
+ 	struct fwnode_handle *fwnode;
+ 	u32 status;
+ 	u32 vid;
+ 	int ret;
+ 
+-	tps = devm_kzalloc(&client->dev, sizeof(*tps), GFP_KERNEL);
++	data = i2c_get_match_data(client);
++	if (!data)
++		return -EINVAL;
++
++	tps = devm_kzalloc(&client->dev, data->tps_struct_size, GFP_KERNEL);
+ 	if (!tps)
+ 		return -ENOMEM;
+ 
+ 	mutex_init(&tps->lock);
+ 	tps->dev = &client->dev;
++	tps->data = data;
+ 
+ 	tps->reset = devm_gpiod_get_optional(tps->dev, "reset", GPIOD_OUT_LOW);
+ 	if (IS_ERR(tps->reset))
+@@ -1334,10 +1345,6 @@ static int tps6598x_probe(struct i2c_client *client)
+ 	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
+ 		tps->i2c_protocol = true;
+ 
+-	tps->data = i2c_get_match_data(client);
+-	if (!tps->data)
+-		return -EINVAL;
+-
+ 	if (tps->data->switch_power_state) {
+ 		ret = tps->data->switch_power_state(tps, TPS_SYSTEM_POWER_STATE_S0);
+ 		if (ret)
+@@ -1521,6 +1528,7 @@ static const struct tipd_data cd321x_data = {
+ 	.irq_mask1 = APPLE_CD_REG_INT_POWER_STATUS_UPDATE |
  		     APPLE_CD_REG_INT_DATA_STATUS_UPDATE |
  		     APPLE_CD_REG_INT_PLUG_EVENT,
++	.tps_struct_size = sizeof(struct cd321x),
  	.register_port = tps6598x_register_port,
-+	.trace_data_status = trace_cd321x_data_status,
+ 	.trace_data_status = trace_cd321x_data_status,
  	.trace_power_status = trace_tps6598x_power_status,
- 	.trace_status = trace_tps6598x_status,
- 	.init = cd321x_init,
-@@ -1532,6 +1536,7 @@ static const struct tipd_data tps6598x_data = {
+@@ -1535,6 +1543,7 @@ static const struct tipd_data tps6598x_data = {
+ 	.irq_mask1 = TPS_REG_INT_POWER_STATUS_UPDATE |
  		     TPS_REG_INT_DATA_STATUS_UPDATE |
  		     TPS_REG_INT_PLUG_EVENT,
++	.tps_struct_size = sizeof(struct tps6598x),
  	.register_port = tps6598x_register_port,
-+	.trace_data_status = trace_tps6598x_data_status,
+ 	.trace_data_status = trace_tps6598x_data_status,
  	.trace_power_status = trace_tps6598x_power_status,
- 	.trace_status = trace_tps6598x_status,
- 	.apply_patch = tps6598x_apply_patch,
-@@ -1545,6 +1550,7 @@ static const struct tipd_data tps25750_data = {
+@@ -1549,6 +1558,7 @@ static const struct tipd_data tps25750_data = {
+ 	.irq_mask1 = TPS_REG_INT_POWER_STATUS_UPDATE |
  		     TPS_REG_INT_DATA_STATUS_UPDATE |
  		     TPS_REG_INT_PLUG_EVENT,
++	.tps_struct_size = sizeof(struct tps6598x),
  	.register_port = tps25750_register_port,
-+	.trace_data_status = trace_tps6598x_data_status,
+ 	.trace_data_status = trace_tps6598x_data_status,
  	.trace_power_status = trace_tps25750_power_status,
- 	.trace_status = trace_tps25750_status,
- 	.apply_patch = tps25750_apply_patch,
-diff --git a/drivers/usb/typec/tipd/tps6598x.h b/drivers/usb/typec/tipd/tps6598x.h
-index cecb8d11d23972dab0d8c15458b4052af7510b03..03edbb77bbd6d8093b2560db83e5913e25d06154 100644
---- a/drivers/usb/typec/tipd/tps6598x.h
-+++ b/drivers/usb/typec/tipd/tps6598x.h
-@@ -197,6 +197,11 @@
- #define TPS_DATA_STATUS_FORCE_LSX	     BIT(23)
- #define TPS_DATA_STATUS_POWER_MISMATCH	     BIT(24)
- 
-+/* modified TPS_REG_DATA_STATUS bits for CD321x (and likely also TPS65987DDK) */
-+#define CD321X_DATA_STATUS_HPD_IRQ	     BIT(14)
-+#define CD321X_DATA_STATUS_HPD_LEVEL	     BIT(15)
-+#define CD321X_DATA_STATUS_USB4_CONNECTION   BIT(23)
-+
- #define TPS_DATA_STATUS_DP_PIN_ASSIGNMENT_MASK GENMASK(11, 10)
- #define TPS_DATA_STATUS_DP_PIN_ASSIGNMENT(x) \
- 	TPS_FIELD_GET(TPS_DATA_STATUS_DP_PIN_ASSIGNMENT_MASK, (x))
-diff --git a/drivers/usb/typec/tipd/trace.h b/drivers/usb/typec/tipd/trace.h
-index bea383f2db9de5bbf1804fbad9ee6b134407b932..e9e40425138a01f15e35867f38f62e13623dbcec 100644
---- a/drivers/usb/typec/tipd/trace.h
-+++ b/drivers/usb/typec/tipd/trace.h
-@@ -217,6 +217,26 @@
- 		{ TPS_DATA_STATUS_FORCE_LSX,		"FORCE_LSX" }, \
- 		{ TPS_DATA_STATUS_POWER_MISMATCH,	"POWER_MISMATCH" })
- 
-+#define show_cd321x_data_status_flags(data_status) \
-+	__print_flags(data_status & TPS_DATA_STATUS_FLAGS_MASK, "|", \
-+		{ TPS_DATA_STATUS_DATA_CONNECTION,	"DATA_CONNECTION" }, \
-+		{ TPS_DATA_STATUS_UPSIDE_DOWN,		"DATA_UPSIDE_DOWN" }, \
-+		{ TPS_DATA_STATUS_ACTIVE_CABLE,		"ACTIVE_CABLE" }, \
-+		{ TPS_DATA_STATUS_USB2_CONNECTION,	"USB2_CONNECTION" }, \
-+		{ TPS_DATA_STATUS_USB3_CONNECTION,	"USB3_CONNECTION" }, \
-+		{ TPS_DATA_STATUS_USB3_GEN2,		"USB3_GEN2" }, \
-+		{ TPS_DATA_STATUS_USB_DATA_ROLE,	"USB_DATA_ROLE" }, \
-+		{ TPS_DATA_STATUS_DP_CONNECTION,	"DP_CONNECTION" }, \
-+		{ TPS_DATA_STATUS_DP_SINK,		"DP_SINK" }, \
-+		{ CD321X_DATA_STATUS_HPD_IRQ,		"HPD_IRQ" }, \
-+		{ CD321X_DATA_STATUS_HPD_LEVEL,		"HPD_LEVEL" }, \
-+		{ TPS_DATA_STATUS_TBT_CONNECTION,	"TBT_CONNECTION" }, \
-+		{ TPS_DATA_STATUS_TBT_TYPE,		"TBT_TYPE" }, \
-+		{ TPS_DATA_STATUS_OPTICAL_CABLE,	"OPTICAL_CABLE" }, \
-+		{ TPS_DATA_STATUS_ACTIVE_LINK_TRAIN,	"ACTIVE_LINK_TRAIN" }, \
-+		{ CD321X_DATA_STATUS_USB4_CONNECTION,	"USB4" }, \
-+		{ TPS_DATA_STATUS_POWER_MISMATCH,	"POWER_MISMATCH" })
-+
- #define show_data_status_dp_pin_assignment(data_status) \
- 	__print_symbolic(TPS_DATA_STATUS_DP_SPEC_PIN_ASSIGNMENT(data_status), \
- 		{ TPS_DATA_STATUS_DP_SPEC_PIN_ASSIGNMENT_E, "E" }, \
-@@ -388,6 +408,25 @@ TRACE_EVENT(tps6598x_data_status,
- 		    )
- );
- 
-+TRACE_EVENT(cd321x_data_status,
-+	TP_PROTO(u32 data_status),
-+	TP_ARGS(data_status),
-+
-+	TP_STRUCT__entry(
-+			 __field(u32, data_status)
-+			 ),
-+
-+	TP_fast_assign(
-+		       __entry->data_status = data_status;
-+		       ),
-+
-+	TP_printk("%s%s%s",
-+		  show_cd321x_data_status_flags(__entry->data_status),
-+		  __entry->data_status & TPS_DATA_STATUS_DP_CONNECTION ? ", DP pinout " : "",
-+		  maybe_show_data_status_dp_pin_assignment(__entry->data_status)
-+		)
-+);
-+
- #endif /* _TPS6598X_TRACE_H_ */
- 
- /* This part must be outside protection */
 
 -- 
 2.34.1
