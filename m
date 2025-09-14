@@ -1,11 +1,11 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sun, 14 Sep 2025 12:56:10 +0000
-Subject: [PATCH 05/11] usb: typec: tipd: Add cd321x struct with separate
- size
+Date: Sun, 14 Sep 2025 12:56:11 +0000
+Subject: [PATCH 06/11] usb: typec: tipd: Read USB4, Thunderbolt and
+ DisplayPort status for cd321x
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250914-apple-usb3-tipd-v1-5-4e99c8649024@kernel.org>
+Message-Id: <20250914-apple-usb3-tipd-v1-6-4e99c8649024@kernel.org>
 References: <20250914-apple-usb3-tipd-v1-0-4e99c8649024@kernel.org>
 In-Reply-To: <20250914-apple-usb3-tipd-v1-0-4e99c8649024@kernel.org>
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
@@ -15,113 +15,196 @@ Cc: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>,
  asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3612; i=sven@kernel.org;
- h=from:subject:message-id; bh=nZk44p+QqpioWkfSX5+bKeVart8pQqEx9xjGIa/iQGY=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ8ax3XXXeGo/cS64FZzr0VBfuOOJ08LZDfe2sJjYfhDU9
- njHybm6o5SFQYyDQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjAR3zhGhsd/r5yxm+Z99z6j
- gcqcsPxq32Xli15WKzfe9/nVo1ySO4eR4dzc/72zq9otPnX/aZghd2uby8rJeqli7+7//bS8euH
- JD+wA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5790; i=sven@kernel.org;
+ h=from:subject:message-id; bh=Ja/ouRqKzMAB5q3ltXQSrR3nQhDkrwWQY9JfEOnd8P0=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8ax3fUcdXnfq/Y1Rdx/3hLsOCddX+5s7Dzt5VJr/+7UZ
+ 7uwsWR9RykLgxgHg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAiNTcYGebG3LwexRLsqLns
+ nZ1r60I21Rd5BocYHwf8atWMeK/csYDhN8tb1mPyh39deJBm/fLmpM8OIVW3GRnE2hfkx+oq1Hu
+ wcAMA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We're about to add more fields to struct tps6598x which are only relevant
-for Apple's CD321x and to ensure that we don't waste memory everywhere for
-those add a separate struct for cd321x and prepare to allocate more space
-inside probe.
+CD321x supports various alternate modes and stores information once
+these are entered into separate status registers. Read those when they
+are active when reading TPS_DATA_STATUS to prepare supporting these.
 
 Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
 Reviewed-by: Neal Gompa <neal@gompa.dev>
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/usb/typec/tipd/core.c | 20 +++++++++++++++-----
- 1 file changed, 15 insertions(+), 5 deletions(-)
+ drivers/usb/typec/tipd/core.c | 80 ++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 76 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
-index 19d713937870304e68325a441b0de63eb5db3b80..51b0f3be8b66a743ddc3ea96c1b25f597a1e8f6c 100644
+index 51b0f3be8b66a743ddc3ea96c1b25f597a1e8f6c..afd11b3e1ae596c7f3283e4336aaa57874c9378d 100644
 --- a/drivers/usb/typec/tipd/core.c
 +++ b/drivers/usb/typec/tipd/core.c
-@@ -113,6 +113,7 @@ struct tps6598x;
- struct tipd_data {
- 	irq_handler_t irq_handler;
- 	u64 irq_mask1;
-+	size_t tps_struct_size;
- 	int (*register_port)(struct tps6598x *tps, struct fwnode_handle *node);
- 	void (*trace_data_status)(u32 status);
- 	void (*trace_power_status)(u16 status);
-@@ -148,6 +149,10 @@ struct tps6598x {
- 	const struct tipd_data *data;
+@@ -35,14 +35,18 @@
+ #define TPS_REG_INT_MASK2		0x17
+ #define TPS_REG_INT_CLEAR1		0x18
+ #define TPS_REG_INT_CLEAR2		0x19
+-#define TPS_REG_SYSTEM_POWER_STATE	0x20
+ #define TPS_REG_STATUS			0x1a
++#define TPS_REG_SYSTEM_POWER_STATE	0x20
++#define TPS_REG_USB4_STATUS		0x24
+ #define TPS_REG_SYSTEM_CONF		0x28
+ #define TPS_REG_CTRL_CONF		0x29
+ #define TPS_REG_BOOT_STATUS		0x2D
+ #define TPS_REG_POWER_STATUS		0x3f
+ #define TPS_REG_PD_STATUS		0x40
+ #define TPS_REG_RX_IDENTITY_SOP		0x48
++#define TPS_REG_CF_VID_STATUS		0x5e
++#define TPS_REG_DP_SID_STATUS		0x58
++#define TPS_REG_INTEL_VID_STATUS	0x59
+ #define TPS_REG_DATA_STATUS		0x5f
+ #define TPS_REG_SLEEP_CONF		0x70
+ 
+@@ -85,6 +89,31 @@ struct tps6598x_rx_identity_reg {
+ 	struct usb_pd_identity identity;
+ } __packed;
+ 
++/* TPS_REG_USB4_STATUS */
++struct tps6598x_usb4_status_reg {
++	u8 mode_status;
++	__le32 eudo;
++	__le32 unknown;
++} __packed;
++
++/* TPS_REG_DP_SID_STATUS */
++struct tps6598x_dp_sid_status_reg {
++	u8 mode_status;
++	__le32 status_tx;
++	__le32 status_rx;
++	__le32 configure;
++	__le32 mode_data;
++} __packed;
++
++/* TPS_REG_INTEL_VID_STATUS */
++struct tps6598x_intel_vid_status_reg {
++	u8 mode_status;
++	__le32 attention_vdo;
++	__le16 enter_vdo;
++	__le16 device_mode;
++	__le16 cable_mode;
++} __packed;
++
+ /* Standard Task return codes */
+ #define TPS_TASK_TIMEOUT		1
+ #define TPS_TASK_REJECTED		3
+@@ -121,6 +150,7 @@ struct tipd_data {
+ 	int (*apply_patch)(struct tps6598x *tps);
+ 	int (*init)(struct tps6598x *tps);
+ 	int (*switch_power_state)(struct tps6598x *tps, u8 target_state);
++	bool (*read_data_status)(struct tps6598x *tps);
+ 	int (*reset)(struct tps6598x *tps);
  };
  
-+struct cd321x {
-+	struct tps6598x tps;
-+};
+@@ -151,6 +181,10 @@ struct tps6598x {
+ 
+ struct cd321x {
+ 	struct tps6598x tps;
 +
++	struct tps6598x_dp_sid_status_reg dp_sid_status;
++	struct tps6598x_intel_vid_status_reg intel_vid_status;
++	struct tps6598x_usb4_status_reg usb4_status;
+ };
+ 
  static enum power_supply_property tps6598x_psy_props[] = {
- 	POWER_SUPPLY_PROP_USB_TYPE,
- 	POWER_SUPPLY_PROP_ONLINE,
-@@ -1297,18 +1302,24 @@ tps25750_register_port(struct tps6598x *tps, struct fwnode_handle *fwnode)
+@@ -505,6 +539,41 @@ static bool tps6598x_read_data_status(struct tps6598x *tps)
+ 	return true;
+ }
  
- static int tps6598x_probe(struct i2c_client *client)
- {
-+	const struct tipd_data *data;
- 	struct tps6598x *tps;
- 	struct fwnode_handle *fwnode;
- 	u32 status;
- 	u32 vid;
- 	int ret;
- 
--	tps = devm_kzalloc(&client->dev, sizeof(*tps), GFP_KERNEL);
-+	data = i2c_get_match_data(client);
-+	if (!data)
-+		return -EINVAL;
++static bool cd321x_read_data_status(struct tps6598x *tps)
++{
++	struct cd321x *cd321x = container_of(tps, struct cd321x, tps);
++	int ret;
 +
-+	tps = devm_kzalloc(&client->dev, data->tps_struct_size, GFP_KERNEL);
- 	if (!tps)
- 		return -ENOMEM;
++	ret = tps6598x_read_data_status(tps);
++	if (ret < 0)
++		return false;
++
++	if (tps->data_status & TPS_DATA_STATUS_DP_CONNECTION) {
++		ret = tps6598x_block_read(tps, TPS_REG_DP_SID_STATUS,
++				&cd321x->dp_sid_status, sizeof(cd321x->dp_sid_status));
++		if (ret)
++			dev_err(tps->dev, "Failed to read DP SID Status: %d\n",
++				ret);
++	}
++
++	if (tps->data_status & TPS_DATA_STATUS_TBT_CONNECTION) {
++		ret = tps6598x_block_read(tps, TPS_REG_INTEL_VID_STATUS,
++				&cd321x->intel_vid_status, sizeof(cd321x->intel_vid_status));
++		if (ret)
++			dev_err(tps->dev, "Failed to read Intel VID Status: %d\n", ret);
++	}
++
++	if (tps->data_status & CD321X_DATA_STATUS_USB4_CONNECTION) {
++		ret = tps6598x_block_read(tps, TPS_REG_USB4_STATUS,
++				&cd321x->usb4_status, sizeof(cd321x->usb4_status));
++		if (ret)
++			dev_err(tps->dev,
++				"Failed to read USB4 Status: %d\n", ret);
++	}
++
++	return true;
++}
++
+ static bool tps6598x_read_power_status(struct tps6598x *tps)
+ {
+ 	u16 pwr_status;
+@@ -565,7 +634,7 @@ static irqreturn_t cd321x_interrupt(int irq, void *data)
+ 			goto err_unlock;
  
- 	mutex_init(&tps->lock);
- 	tps->dev = &client->dev;
-+	tps->data = data;
+ 	if (event & APPLE_CD_REG_INT_DATA_STATUS_UPDATE)
+-		if (!tps6598x_read_data_status(tps))
++		if (!tps->data->read_data_status(tps))
+ 			goto err_unlock;
  
- 	tps->reset = devm_gpiod_get_optional(tps->dev, "reset", GPIOD_OUT_LOW);
- 	if (IS_ERR(tps->reset))
-@@ -1334,10 +1345,6 @@ static int tps6598x_probe(struct i2c_client *client)
- 	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
- 		tps->i2c_protocol = true;
+ 	/* Handle plug insert or removal */
+@@ -614,7 +683,7 @@ static irqreturn_t tps25750_interrupt(int irq, void *data)
+ 			goto err_clear_ints;
  
--	tps->data = i2c_get_match_data(client);
--	if (!tps->data)
--		return -EINVAL;
--
- 	if (tps->data->switch_power_state) {
- 		ret = tps->data->switch_power_state(tps, TPS_SYSTEM_POWER_STATE_S0);
- 		if (ret)
-@@ -1521,6 +1528,7 @@ static const struct tipd_data cd321x_data = {
- 	.irq_mask1 = APPLE_CD_REG_INT_POWER_STATUS_UPDATE |
- 		     APPLE_CD_REG_INT_DATA_STATUS_UPDATE |
- 		     APPLE_CD_REG_INT_PLUG_EVENT,
-+	.tps_struct_size = sizeof(struct cd321x),
- 	.register_port = tps6598x_register_port,
- 	.trace_data_status = trace_cd321x_data_status,
+ 	if (event[0] & TPS_REG_INT_DATA_STATUS_UPDATE)
+-		if (!tps6598x_read_data_status(tps))
++		if (!tps->data->read_data_status(tps))
+ 			goto err_clear_ints;
+ 
+ 	/*
+@@ -688,7 +757,7 @@ static irqreturn_t tps6598x_interrupt(int irq, void *data)
+ 			goto err_unlock;
+ 
+ 	if ((event1[0] | event2[0]) & TPS_REG_INT_DATA_STATUS_UPDATE)
+-		if (!tps6598x_read_data_status(tps))
++		if (!tps->data->read_data_status(tps))
+ 			goto err_unlock;
+ 
+ 	/* Handle plug insert or removal */
+@@ -1534,6 +1603,7 @@ static const struct tipd_data cd321x_data = {
  	.trace_power_status = trace_tps6598x_power_status,
-@@ -1535,6 +1543,7 @@ static const struct tipd_data tps6598x_data = {
- 	.irq_mask1 = TPS_REG_INT_POWER_STATUS_UPDATE |
- 		     TPS_REG_INT_DATA_STATUS_UPDATE |
- 		     TPS_REG_INT_PLUG_EVENT,
-+	.tps_struct_size = sizeof(struct tps6598x),
- 	.register_port = tps6598x_register_port,
- 	.trace_data_status = trace_tps6598x_data_status,
- 	.trace_power_status = trace_tps6598x_power_status,
-@@ -1549,6 +1558,7 @@ static const struct tipd_data tps25750_data = {
- 	.irq_mask1 = TPS_REG_INT_POWER_STATUS_UPDATE |
- 		     TPS_REG_INT_DATA_STATUS_UPDATE |
- 		     TPS_REG_INT_PLUG_EVENT,
-+	.tps_struct_size = sizeof(struct tps6598x),
- 	.register_port = tps25750_register_port,
- 	.trace_data_status = trace_tps6598x_data_status,
- 	.trace_power_status = trace_tps25750_power_status,
+ 	.trace_status = trace_tps6598x_status,
+ 	.init = cd321x_init,
++	.read_data_status = cd321x_read_data_status,
+ 	.reset = cd321x_reset,
+ 	.switch_power_state = cd321x_switch_power_state,
+ };
+@@ -1550,6 +1620,7 @@ static const struct tipd_data tps6598x_data = {
+ 	.trace_status = trace_tps6598x_status,
+ 	.apply_patch = tps6598x_apply_patch,
+ 	.init = tps6598x_init,
++	.read_data_status = tps6598x_read_data_status,
+ 	.reset = tps6598x_reset,
+ };
+ 
+@@ -1565,6 +1636,7 @@ static const struct tipd_data tps25750_data = {
+ 	.trace_status = trace_tps25750_status,
+ 	.apply_patch = tps25750_apply_patch,
+ 	.init = tps25750_init,
++	.read_data_status = tps6598x_read_data_status,
+ 	.reset = tps25750_reset,
+ };
+ 
 
 -- 
 2.34.1
