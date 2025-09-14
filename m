@@ -1,140 +1,84 @@
-From: Demi Marie Obenour <demiobenour@gmail.com>
-Date: Sat, 13 Sep 2025 18:28:49 -0400
-Subject: [PATCH] kernel: Prevent prctl(PR_SET_PDEATHSIG) from racing with
- parent process exit
+From: Sven Peter <sven@kernel.org>
+Subject: [PATCH 00/11] Apple Silicon USB3 support - TIPD changes
+Date: Sun, 14 Sep 2025 12:56:05 +0000
+Message-Id: <20250914-apple-usb3-tipd-v1-0-4e99c8649024@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250913-fix-prctl-pdeathsig-race-v1-1-44e2eb426fe9@gmail.com>
-X-B4-Tracking: v=1; b=H4sIACDwxWgC/x2MWwqAIBAArxL73YIPhOoq0YfoVgthskYE4d2TP
- gdm5oVCwlRg6l4QurnwmRrovoOw+7QRcmwMRhmnRm1x5QezhOvAHMlfe+ENxQfClaKzwXg3OA0
- tz0LN/dfzUusHfP+BRmoAAAA=
-X-Change-ID: 20250913-fix-prctl-pdeathsig-race-fed53c2a5851
-To: linux-kernel@vger.kernel.org
-Cc: Demi Marie Obenour <demiobenour@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGW7xmgC/x3MQQqAIBBA0avErBvQTMKuEi00pxoIE60IorsnL
+ d/i/wcyJaYMffVAoosz76FA1hVMqw0LIftiaESjhZEt2hg3wjM7hQdHj9qITqvOS3IaShUTzXz
+ /x2F83w/4AgR6YQAAAA==
+X-Change-ID: 20250914-apple-usb3-tipd-5907537d1eb5
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
+ linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Sven Peter <sven@kernel.org>, stable@kernel.org, 
+ Hector Martin <marcan@marcan.st>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757802531; l=4260;
- i=demiobenour@gmail.com; s=20250731; h=from:subject:message-id;
- bh=p8I08OCbW2U/ck1jmNRahTKGCgOB/aX3lWg1CCaFPzE=;
- b=A1dzZzRdsvNHlTbvcgzqE0Xo63/KNrfxknlr9qE7rdR1d82wxgDwQOK51C8dpw7klX8LtuATM
- Ut3iX4SaWc5AwR4NxpWPjPBqS5LwSbLA6kxXU8RZJ24sIifbbqDO30x
-X-Developer-Key: i=demiobenour@gmail.com; a=ed25519;
- pk=4iGY+ynEKxIfs+fIUK9EzsvZ44yGE0GvXLeLTPKKPhI=
-X-Endpoint-Received: by B4 Relay for demiobenour@gmail.com/20250731 with auth_id=473
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2202; i=sven@kernel.org;
+ h=from:subject:message-id; bh=nhfs+mEuuE8OzOKQk+B9DPGOqq0cCbj6Jqm6nThYyu0=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8ax3aUW55adaz7+q4BDcRbvi28b+jek9dwN2m74X2lF3
+ NKtWp3nOkpZGMQ4GGTFFFm277c3ffLwjeDSTZfew8xhZQIZwsDFKQATWVXC8E+PPfVNaej1N/Of
+ Pt3gnOkxMbrmtEtr/JMVaxL9nuRwpP1nZLhmYZByw/eBv4r7gVopj3CHjboTQxsaZpdurloVvak
+ 3gg0A
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If a process calls prctl(PR_SET_PDEATHSIG) at the same time that the
-parent process exits, the child will write to me->pdeath_sig at the same
-time the parent is reading it.  Since there is no synchronization, this
-is a data race.
+This series contains the required TIPD changes to support USB3 on Apple
+Silicon machines and also prepares DisplayPort alternate mode and
+Thunderbolt/USB4 support there.
 
-Worse, it is possible that a subsequent call to getppid() can continue
-to return the previous parent process ID without the parent death signal
-being delivered.  This happens in the following scenario:
+As discussed in the series combining TIPD, DWC3, PHY, and DTS changes
+this series contains only the TIPD changes which are already in a pretty
+decent shape.
 
-parent                                                 child
+Link to v2 of the combined series: https://lore.kernel.org/asahi/20250906-atcphy-6-17-v2-0-52c348623ef6@kernel.org/
+Changes since v2 of that series:
+- Added r-b tags from Heikki and Neal
+- Addressed Janne's feedback:
+  - Updated the tipd commit description to match the dwc3 glue driver
+    approach
+  - Removed a stale comment left-over from a WIP version and no longer
+    required
+  - Cleared cd321x->state.data after typec_set_mode is done
+  - Removed spurious NULL checks for typec_mux_put and typec_unregister_altmode
+  - Call cd321x_connect instead of open-coding almost the same logic
+    inside cd321x_interrupt
 
-forget_original_parent()                               prctl(PR_SET_PDEATHSIG, SIGKILL)
-                                                         sys_prctl()
-                                                           me->pdeath_sig = SIGKILL;
-                                                       getppid();
-  RCU_INIT_POINTER(t->real_parent, reaper);
-  if (t->pdeath_signal) /* reads stale me->pdeath_sig */
-           group_send_sig_info(t->pdeath_signal, ...);
+Best,
 
-And in the following:
+Sven
 
-parent                                                 child
-
-forget_original_parent()
-    RCU_INIT_POINTER(t->real_parent, reaper);
-    /* also no barrier */
-     if (t->pdeath_signal) /* reads stale me->pdeath_sig */
-             group_send_sig_info(t->pdeath_signal, ...);
-
-                                                       prctl(PR_SET_PDEATHSIG, SIGKILL)
-                                                         sys_prctl()
-                                                           me->pdeath_sig = SIGKILL;
-                                                       getppid(); /* reads old ppid() */
-
-As a result, the following pattern is racy:
-
-	pid_t parent_pid = getpid();
-	pid_t child_pid = fork();
-	if (child_pid == -1) {
-		/* handle error... */
-		return;
-	}
-	if (child_pid == 0) {
-		if (prctl(PR_SET_PDEATHSIG, SIGKILL) != 0) {
-			/* handle error */
-			_exit(126);
-		}
-		if (getppid() != parent_pid) {
-			/* parent died already */
-			raise(SIGKILL);
-		}
-		/* keep going in child */
-	}
-	/* keep going in parent */
-
-If the parent is killed at exactly the wrong time, the child process can
-(wrongly) stay running.
-
-I didn't manage to reproduce this in my testing, but I'm pretty sure the
-race is real.  KCSAN is probably the best way to spot the race.
-
-Fix the bug by holding tasklist_lock for reading whenever pdeath_signal
-is being written to.  This prevents races on me->pdeath_sig, and the
-locking and unlocking of the rwlock provide the needed memory barriers.
-If prctl(PR_SET_PDEATHSIG) happens before the parent exits, the signal
-will be sent.  If it happens afterwards, a subsequent getppid() will
-return the new value.
-
-Signed-off-by: Demi Marie Obenour <demiobenour@gmail.com>
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
-I believe this is not the only code missing locking, but I'm
-not familiar enough with the rest of the kernel to know if
-read_lock(&tasklist_lock) is safe in the other places (AppArmor,
-execve(), SELinux, commit_creds()) that change it.
+Hector Martin (4):
+      usb: typec: tipd: Update partner identity when power status was updated
+      usb: typec: tipd: Use read_power_status function in probe
+      usb: typec: tipd: Read data status in probe and cache its value
+      usb: typec: tipd: Handle mode transitions for CD321x
 
-checkpatch complains about overly long lines in the commit message.  I
-don't see a way to wrap them without making the description of the race
-harder to read.
+Sven Peter (7):
+      usb: typec: tipd: Clear interrupts first
+      usb: typec: tipd: Move initial irq mask to tipd_data
+      usb: typec: tipd: Move switch_power_state to tipd_data
+      usb: typec: tipd: Trace data status for CD321x correctly
+      usb: typec: tipd: Add cd321x struct with separate size
+      usb: typec: tipd: Read USB4, Thunderbolt and DisplayPort status for cd321x
+      usb: typec: tipd: Register DisplayPort and Thunderbolt altmodes for cd321x
 
-Only compile-tested, but this looks obvious.
+ drivers/usb/typec/tipd/core.c     | 559 ++++++++++++++++++++++++++++++++++----
+ drivers/usb/typec/tipd/tps6598x.h |   5 +
+ drivers/usb/typec/tipd/trace.h    |  39 +++
+ 3 files changed, 550 insertions(+), 53 deletions(-)
 ---
- kernel/sys.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
-
-diff --git a/kernel/sys.c b/kernel/sys.c
-index 1e28b40053ce206d7d0ed27e8a4fce8b616c3565..5e0e0bdca386492dace6341e3ce8083d7aa732cb 100644
---- a/kernel/sys.c
-+++ b/kernel/sys.c
-@@ -2470,7 +2470,17 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
- 			error = -EINVAL;
- 			break;
- 		}
-+		/*
-+		 * Ensure that either:
-+		 *
-+		 * 1. Subsequent getppid() calls reflect the parent process having died.
-+		 * 2. forget_original_parent() will send the new me->pdeath_signal.
-+		 *
-+		 * Also prevent the read of me->pdeath_signal from being a data race.
-+		 */
-+		read_lock(&tasklist_lock);
- 		me->pdeath_signal = arg2;
-+		read_unlock(&tasklist_lock);
- 		break;
- 	case PR_GET_PDEATHSIG:
- 		error = put_user(me->pdeath_signal, (int __user *)arg2);
-
----
-base-commit: 5cd64d4f92683afa691a6b83dcad5adfb2165ed0
-change-id: 20250913-fix-prctl-pdeathsig-race-fed53c2a5851
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250914-apple-usb3-tipd-5907537d1eb5
 
 Best regards,
 -- 
-Demi Marie Obenour <demiobenour@gmail.com>
+Sven Peter <sven@kernel.org>
 
