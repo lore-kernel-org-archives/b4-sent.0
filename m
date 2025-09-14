@@ -1,10 +1,10 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sun, 14 Sep 2025 12:56:06 +0000
-Subject: [PATCH 01/11] usb: typec: tipd: Clear interrupts first
+Date: Sun, 14 Sep 2025 12:56:07 +0000
+Subject: [PATCH 02/11] usb: typec: tipd: Move initial irq mask to tipd_data
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250914-apple-usb3-tipd-v1-1-4e99c8649024@kernel.org>
+Message-Id: <20250914-apple-usb3-tipd-v1-2-4e99c8649024@kernel.org>
 References: <20250914-apple-usb3-tipd-v1-0-4e99c8649024@kernel.org>
 In-Reply-To: <20250914-apple-usb3-tipd-v1-0-4e99c8649024@kernel.org>
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
@@ -12,113 +12,106 @@ To: Heikki Krogerus <heikki.krogerus@linux.intel.com>,
 Cc: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
  linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- Sven Peter <sven@kernel.org>, stable@kernel.org
+ Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3434; i=sven@kernel.org;
- h=from:subject:message-id; bh=5qN1hUYg/yBslXEFHt0WeCqqqta8eTqmgCNW+CF8HKk=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ8ax3eXmpxaJGW7hWvku6r/UlmL1WZzVa39n3rHYbfzm/
- 3ydczOzOkpZGMQ4GGTFFFm277c3ffLwjeDSTZfew8xhZQIZwsDFKQATOSDKyHAtf1se//3Tsldn
- r9gafFjd2yItkudRSr397lsdIsVTwv4z/NPp7X316dnxSfaHhG4uzFl0/m7i9U+SGfoHNCqzLvR
- KP+EAAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3274; i=sven@kernel.org;
+ h=from:subject:message-id; bh=PWktnbKRR/csBSa+TtAeLTOjYJ8uGFc3oo299yXS8Bk=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8ax3ZWnNi1l1+uPmrJ70m6BRIn6Tff6bR4bhm6v+qTrE
+ bNiYp1kRykLgxgHg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAi+VqMDFe454eVH1vL+FtT
+ ZP3SBak+XzJeTmp58mp7QNv8pdYiNQYM/2vfndrw/hFb/937Ex83TLR8p26723Lp4pM5iZNcvu5
+ u38oOAA==
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Right now the interrupt handler first reads all updated status registers
-and only then clears the interrupts. It's possible that a duplicate
-interrupt for a changed register or plug state comes in after the
-interrupts have been processed but before they have been cleared:
+Since the irq mask was originally added more tipd variants have been
+introduced and there's now struct tipd_data. Move the initial mask in
+there.
 
-* plug is inserted, TPS_REG_INT_PLUG_EVENT is set
-* TPS_REG_INT_EVENT1 is read
-* tps6598x_handle_plug_event() has run and registered the plug
-* plug is removed again, TPS_REG_INT_PLUG_EVENT is set (again)
-* TPS_REG_INT_CLEAR1 is written, TPS_REG_INT_PLUG_EVENT is cleared
-
-We then have no plug connected and no pending interrupt but the tipd
-core still thinks there is a plug. It's possible to trigger this with
-e.g. a slightly broken Type-C to USB A converter.
-
-Fix this by first clearing the interrupts and only then reading the
-updated registers.
-
-Fixes: 45188f27b3d0 ("usb: typec: tipd: Add support for Apple CD321X")
-Fixes: 0a4c005bd171 ("usb: typec: driver for TI TPS6598x USB Power Delivery controllers")
-Cc: stable@kernel.org
 Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
 Reviewed-by: Neal Gompa <neal@gompa.dev>
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/usb/typec/tipd/core.c | 24 +++++++++++-------------
- 1 file changed, 11 insertions(+), 13 deletions(-)
+ drivers/usb/typec/tipd/core.c | 23 +++++++++++------------
+ 1 file changed, 11 insertions(+), 12 deletions(-)
 
 diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
-index dcf141ada07812295a6f07e41d77f95f98116010..1c80296c3b273e24ceacb3feff432c4f6e6835cc 100644
+index 1c80296c3b273e24ceacb3feff432c4f6e6835cc..6d8bcbc9cad8a1394e066504d4c5ca570edd4e4f 100644
 --- a/drivers/usb/typec/tipd/core.c
 +++ b/drivers/usb/typec/tipd/core.c
-@@ -545,24 +545,23 @@ static irqreturn_t cd321x_interrupt(int irq, void *data)
- 	if (!event)
- 		goto err_unlock;
+@@ -112,6 +112,7 @@ struct tps6598x;
  
-+	tps6598x_write64(tps, TPS_REG_INT_CLEAR1, event);
-+
- 	if (!tps6598x_read_status(tps, &status))
--		goto err_clear_ints;
-+		goto err_unlock;
+ struct tipd_data {
+ 	irq_handler_t irq_handler;
++	u64 irq_mask1;
+ 	int (*register_port)(struct tps6598x *tps, struct fwnode_handle *node);
+ 	void (*trace_power_status)(u16 status);
+ 	void (*trace_status)(u32 status);
+@@ -1298,7 +1299,6 @@ static int tps6598x_probe(struct i2c_client *client)
+ 	u32 status;
+ 	u32 vid;
+ 	int ret;
+-	u64 mask1;
  
- 	if (event & APPLE_CD_REG_INT_POWER_STATUS_UPDATE)
- 		if (!tps6598x_read_power_status(tps))
--			goto err_clear_ints;
-+			goto err_unlock;
+ 	tps = devm_kzalloc(&client->dev, sizeof(*tps), GFP_KERNEL);
+ 	if (!tps)
+@@ -1337,16 +1337,6 @@ static int tps6598x_probe(struct i2c_client *client)
+ 		if (ret)
+ 			return ret;
  
- 	if (event & APPLE_CD_REG_INT_DATA_STATUS_UPDATE)
- 		if (!tps6598x_read_data_status(tps))
--			goto err_clear_ints;
-+			goto err_unlock;
- 
- 	/* Handle plug insert or removal */
- 	if (event & APPLE_CD_REG_INT_PLUG_EVENT)
- 		tps6598x_handle_plug_event(tps, status);
- 
--err_clear_ints:
--	tps6598x_write64(tps, TPS_REG_INT_CLEAR1, event);
+-		/* CD321X chips have all interrupts masked initially */
+-		mask1 = APPLE_CD_REG_INT_POWER_STATUS_UPDATE |
+-			APPLE_CD_REG_INT_DATA_STATUS_UPDATE |
+-			APPLE_CD_REG_INT_PLUG_EVENT;
 -
- err_unlock:
- 	mutex_unlock(&tps->lock);
+-	} else {
+-		/* Enable power status, data status and plug event interrupts */
+-		mask1 = TPS_REG_INT_POWER_STATUS_UPDATE |
+-			TPS_REG_INT_DATA_STATUS_UPDATE |
+-			TPS_REG_INT_PLUG_EVENT;
+ 	}
  
-@@ -668,25 +667,24 @@ static irqreturn_t tps6598x_interrupt(int irq, void *data)
- 	if (!(event1[0] | event1[1] | event2[0] | event2[1]))
- 		goto err_unlock;
+ 	tps->data = i2c_get_match_data(client);
+@@ -1364,7 +1354,7 @@ static int tps6598x_probe(struct i2c_client *client)
+ 			return ret;
+ 	}
  
-+	tps6598x_block_write(tps, TPS_REG_INT_CLEAR1, event1, intev_len);
-+	tps6598x_block_write(tps, TPS_REG_INT_CLEAR2, event2, intev_len);
-+
- 	if (!tps6598x_read_status(tps, &status))
--		goto err_clear_ints;
-+		goto err_unlock;
+-	ret = tps6598x_write64(tps, TPS_REG_INT_MASK1, mask1);
++	ret = tps6598x_write64(tps, TPS_REG_INT_MASK1, tps->data->irq_mask1);
+ 	if (ret)
+ 		goto err_reset_controller;
  
- 	if ((event1[0] | event2[0]) & TPS_REG_INT_POWER_STATUS_UPDATE)
- 		if (!tps6598x_read_power_status(tps))
--			goto err_clear_ints;
-+			goto err_unlock;
+@@ -1527,6 +1517,9 @@ static const struct dev_pm_ops tps6598x_pm_ops = {
  
- 	if ((event1[0] | event2[0]) & TPS_REG_INT_DATA_STATUS_UPDATE)
- 		if (!tps6598x_read_data_status(tps))
--			goto err_clear_ints;
-+			goto err_unlock;
+ static const struct tipd_data cd321x_data = {
+ 	.irq_handler = cd321x_interrupt,
++	.irq_mask1 = APPLE_CD_REG_INT_POWER_STATUS_UPDATE |
++		     APPLE_CD_REG_INT_DATA_STATUS_UPDATE |
++		     APPLE_CD_REG_INT_PLUG_EVENT,
+ 	.register_port = tps6598x_register_port,
+ 	.trace_power_status = trace_tps6598x_power_status,
+ 	.trace_status = trace_tps6598x_status,
+@@ -1536,6 +1529,9 @@ static const struct tipd_data cd321x_data = {
  
- 	/* Handle plug insert or removal */
- 	if ((event1[0] | event2[0]) & TPS_REG_INT_PLUG_EVENT)
- 		tps6598x_handle_plug_event(tps, status);
+ static const struct tipd_data tps6598x_data = {
+ 	.irq_handler = tps6598x_interrupt,
++	.irq_mask1 = TPS_REG_INT_POWER_STATUS_UPDATE |
++		     TPS_REG_INT_DATA_STATUS_UPDATE |
++		     TPS_REG_INT_PLUG_EVENT,
+ 	.register_port = tps6598x_register_port,
+ 	.trace_power_status = trace_tps6598x_power_status,
+ 	.trace_status = trace_tps6598x_status,
+@@ -1546,6 +1542,9 @@ static const struct tipd_data tps6598x_data = {
  
--err_clear_ints:
--	tps6598x_block_write(tps, TPS_REG_INT_CLEAR1, event1, intev_len);
--	tps6598x_block_write(tps, TPS_REG_INT_CLEAR2, event2, intev_len);
--
- err_unlock:
- 	mutex_unlock(&tps->lock);
- 
+ static const struct tipd_data tps25750_data = {
+ 	.irq_handler = tps25750_interrupt,
++	.irq_mask1 = TPS_REG_INT_POWER_STATUS_UPDATE |
++		     TPS_REG_INT_DATA_STATUS_UPDATE |
++		     TPS_REG_INT_PLUG_EVENT,
+ 	.register_port = tps25750_register_port,
+ 	.trace_power_status = trace_tps25750_power_status,
+ 	.trace_status = trace_tps25750_status,
 
 -- 
 2.34.1
