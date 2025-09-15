@@ -1,11 +1,11 @@
 From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-Date: Mon, 15 Sep 2025 16:49:55 +0800
-Subject: [PATCH v4 3/8] power: supply: qcom_battmgr: Add resistance power
- supply property
+Date: Mon, 15 Sep 2025 16:49:56 +0800
+Subject: [PATCH v4 4/8] power: supply: qcom_battmgr: Add state_of_health
+ property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250915-qcom_battmgr_update-v4-3-6f6464a41afe@oss.qualcomm.com>
+Message-Id: <20250915-qcom_battmgr_update-v4-4-6f6464a41afe@oss.qualcomm.com>
 References: <20250915-qcom_battmgr_update-v4-0-6f6464a41afe@oss.qualcomm.com>
 In-Reply-To: <20250915-qcom_battmgr_update-v4-0-6f6464a41afe@oss.qualcomm.com>
 To: Sebastian Reichel <sre@kernel.org>, 
@@ -26,80 +26,72 @@ Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>,
  linux-usb@vger.kernel.org, Fenglin Wu <fenglin.wu@oss.qualcomm.com>, 
  Neil Armstrong <neil.armstrong@linaro.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757926212; l=2552;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757926212; l=2278;
  i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
- bh=OQgd2W4o/rV8XW+P2dEYESDwonjckeDW+a75iXfgrNE=;
- b=m9Y49dtk+T+Sbp6QODq3a2bJ+WmTVL5YUTEdrlBQLSszbTukWLjh7UHFJZKWl+OSqVSLHGL1Z
- 9jqn9Tf8/D7BKj/wPqia4ptMcamPbXa1r/jNoiGRt1e7EOZOb953g0W
+ bh=VIN2pXk/U1+wm3Thq8v/fKUD3hKeRjRBB653GlANfdk=;
+ b=Ox21fema1o1mrdUdH2t3LlgNM+skvt0wpjfURX8IBrf2Ta9Iv+7KqncS380cQJOUHifFy7uao
+ KPEZgenQYPoDyIvke0TiPZksVedf0I1rWLa/CopiRCUnt+jJkFNKtQf
 X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
  pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
 X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add power supply property to get battery internal resistance from
-the battery management firmware.
+Add state_of_health property to read battery health percentage from
+battery management firmware.
 
 Tested-by: Neil Armstrong <neil.armstrong@linaro.org> # on Thinkpad T14S OLED
 Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
- drivers/power/supply/qcom_battmgr.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ drivers/power/supply/qcom_battmgr.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
 diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
-index fe27676fbc7cd12292caa6fb3b5b46a18c426e6d..55477ae92fd56ede465b32d6f7ed9da78ebd869c 100644
+index 55477ae92fd56ede465b32d6f7ed9da78ebd869c..008e241e3eac3574a78459a2256e006e48c9f508 100644
 --- a/drivers/power/supply/qcom_battmgr.c
 +++ b/drivers/power/supply/qcom_battmgr.c
-@@ -2,6 +2,7 @@
- /*
-  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
-  * Copyright (c) 2022, Linaro Ltd
-+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
-  */
- #include <linux/auxiliary_bus.h>
- #include <linux/module.h>
-@@ -254,6 +255,7 @@ struct qcom_battmgr_status {
- 	unsigned int voltage_now;
+@@ -256,6 +256,7 @@ struct qcom_battmgr_status {
  	unsigned int voltage_ocv;
  	unsigned int temperature;
-+	unsigned int resistance;
+ 	unsigned int resistance;
++	unsigned int soh_percent;
  
  	unsigned int discharge_time;
  	unsigned int charge_time;
-@@ -418,6 +420,7 @@ static const u8 sm8350_bat_prop_map[] = {
- 	[POWER_SUPPLY_PROP_MODEL_NAME] = BATT_MODEL_NAME,
+@@ -421,6 +422,7 @@ static const u8 sm8350_bat_prop_map[] = {
  	[POWER_SUPPLY_PROP_TIME_TO_FULL_AVG] = BATT_TTF_AVG,
  	[POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG] = BATT_TTE_AVG,
-+	[POWER_SUPPLY_PROP_INTERNAL_RESISTANCE] = BATT_RESISTANCE,
+ 	[POWER_SUPPLY_PROP_INTERNAL_RESISTANCE] = BATT_RESISTANCE,
++	[POWER_SUPPLY_PROP_STATE_OF_HEALTH] = BATT_SOH,
  	[POWER_SUPPLY_PROP_POWER_NOW] = BATT_POWER_NOW,
  };
  
-@@ -582,6 +585,9 @@ static int qcom_battmgr_bat_get_property(struct power_supply *psy,
- 	case POWER_SUPPLY_PROP_TEMP:
- 		val->intval = battmgr->status.temperature;
+@@ -588,6 +590,9 @@ static int qcom_battmgr_bat_get_property(struct power_supply *psy,
+ 	case POWER_SUPPLY_PROP_INTERNAL_RESISTANCE:
+ 		val->intval = battmgr->status.resistance;
  		break;
-+	case POWER_SUPPLY_PROP_INTERNAL_RESISTANCE:
-+		val->intval = battmgr->status.resistance;
++	case POWER_SUPPLY_PROP_STATE_OF_HEALTH:
++		val->intval = battmgr->status.soh_percent;
 +		break;
  	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG:
  		val->intval = battmgr->status.discharge_time;
  		break;
-@@ -665,6 +671,7 @@ static const enum power_supply_property sm8350_bat_props[] = {
- 	POWER_SUPPLY_PROP_MODEL_NAME,
+@@ -672,6 +677,7 @@ static const enum power_supply_property sm8350_bat_props[] = {
  	POWER_SUPPLY_PROP_TIME_TO_FULL_AVG,
  	POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG,
-+	POWER_SUPPLY_PROP_INTERNAL_RESISTANCE,
+ 	POWER_SUPPLY_PROP_INTERNAL_RESISTANCE,
++	POWER_SUPPLY_PROP_STATE_OF_HEALTH,
  	POWER_SUPPLY_PROP_POWER_NOW,
  };
  
-@@ -1174,6 +1181,9 @@ static void qcom_battmgr_sm8350_callback(struct qcom_battmgr *battmgr,
- 		case BATT_TTE_AVG:
- 			battmgr->status.discharge_time = le32_to_cpu(resp->intval.value);
+@@ -1141,6 +1147,9 @@ static void qcom_battmgr_sm8350_callback(struct qcom_battmgr *battmgr,
+ 		case BATT_CAPACITY:
+ 			battmgr->status.percent = le32_to_cpu(resp->intval.value) / 100;
  			break;
-+		case BATT_RESISTANCE:
-+			battmgr->status.resistance = le32_to_cpu(resp->intval.value);
++		case BATT_SOH:
++			battmgr->status.soh_percent = le32_to_cpu(resp->intval.value);
 +			break;
- 		case BATT_POWER_NOW:
- 			battmgr->status.power_now = le32_to_cpu(resp->intval.value);
+ 		case BATT_VOLT_OCV:
+ 			battmgr->status.voltage_ocv = le32_to_cpu(resp->intval.value);
  			break;
 
 -- 
