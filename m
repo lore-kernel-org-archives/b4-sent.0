@@ -1,115 +1,61 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Mon, 15 Sep 2025 09:35:06 +0200
-Subject: [PATCH v9 3/3] arm64: dts: qcom: x1-hp-x14: Add support for
- X1P42100 HP Omnibook X14
+From: Rohan G Thomas <rohan.g.thomas@altera.com>
+Subject: [PATCH net v2 0/2] net: stmmac: Minor fixes for stmmac EST
+ implementation
+Date: Mon, 15 Sep 2025 16:17:17 +0800
+Message-Id: <20250915-qbv-fixes-v2-0-ec90673bb7d4@altera.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250915-hp-x14-x1p-v9-3-fa457ca30ffe@oldschoolsolutions.biz>
-References: <20250915-hp-x14-x1p-v9-0-fa457ca30ffe@oldschoolsolutions.biz>
-In-Reply-To: <20250915-hp-x14-x1p-v9-0-fa457ca30ffe@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Stephan Gerhold <stephan.gerhold@linaro.org>, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAI7Lx2gC/22Myw7CIBQFf6W5azG9pC9c+R+mC2xPLYlCBUI0D
+ f8u6drlnJmcnQK8QaBLtZNHMsE4W0CeKppWbR8QZi5MspZtrZjF+57EYj4IotHomhlDB/RU+s3
+ jECW/kUWksYyrCdH57/Gf+FB/rhKLWmBgqFb108LLVT8jvD5P7kVjzvkHWuVGd6gAAAA=
+X-Change-ID: 20250911-qbv-fixes-4ae64de86ee7
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Jose Abreu <Jose.Abreu@synopsys.com>, 
+ Rohan G Thomas <rohan.g.thomas@intel.com>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Rohan G Thomas <rohan.g.thomas@altera.com>, 
+ Matthew Gerlach <matthew.gerlach@altera.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757921715; l=3070;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=+BT4fsKiJVWxM7tmSzqIpmCAL57kITWb6Otasrz9a90=;
- b=CLSjXfOV6Yze+dg43nNL0rP0wYTQG4d4igf8FVp4yp+C/8W1E2l3e04G3fXSua53i3m/8N42S
- ALptVYLp3OCBy6dYu3YdU4/4uSuLXipSwPqX/6gGtcNpBsUc1UCsCw8
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757924239; l=899;
+ i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
+ bh=F/X+TtZHooGZVCVdoXlX23gyuHCMQDwSSkVtX3di3Hg=;
+ b=bi6AtS44Cm+PAB1TLYBv/5mE8nemeFtjJHyyt2gUpKfTRwLORFKt6gXA8FrQeXWPi9muVBfYJ
+ Lh5o/Pnal8SCzk2Xrv11tNs0rwrZbC5HqjijLT6SOGWlDtKX5riau4o
+X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
+ pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
+X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These laptops are the same as the already known 14-fe0xxx models, but
-with a Purwa SoC, SKU number 14-fe1xxx. [1]
+This patchset includes following minor fixes for stmmac EST
+implementation:
+   1. Fix GCL bounds checks
+   2. Consider Tx VLAN offload tag length for maxSDU
 
-The supported features are the same as for the original Omnibook X14:
-
-- Keyboard (no function keys though)
-- Display
-- PWM brightness control
-- Touchpad
-- Touchscreen
-- PCIe ports (pcie4, pcie6a)
-- USB type-c, type-a
-- WCN6855 Wifi-6E
-- WCN6855 Bluetooth
-- ADSP and CDSP
-- X1 GPU
-- GPIO Keys (Lid switch)
-- Audio definition (works via USB and with internal speakers)
-
-[1]: https://www.hp.com/us-en/shop/pdp/hp-omnibook-x-laptop-next-gen-ai-pc-14-fe100-14-a4nd1av-1#techSpecs
-
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |  2 ++
- .../boot/dts/qcom/x1p42100-hp-omnibook-x14.dts     | 33 ++++++++++++++++++++++
- 2 files changed, 35 insertions(+)
+Changes in v2:
+- Use GENMASK instead of BIT for clarity and consistency
+- Link to v1: https://lore.kernel.org/r/20250911-qbv-fixes-v1-0-e81e9597cf1f@altera.com
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 5b52f9e4e5f31ac5a398d0762337a0a31af1f4dd..0840ccf5c84795b5fdfe65db44bafc6984329847 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -339,5 +339,7 @@ x1p42100-asus-zenbook-a14-el2-dtbs	:= x1p42100-asus-zenbook-a14.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-asus-zenbook-a14.dtb x1p42100-asus-zenbook-a14-el2.dtb
- x1p42100-crd-el2-dtbs	:= x1p42100-crd.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-crd.dtb x1p42100-crd-el2.dtb
-+x1p42100-hp-omnibook-x14-el2-dtbs := x1p42100-hp-omnibook-x14.dtb x1-el2.dtbo
-+dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-hp-omnibook-x14.dtb x1p42100-hp-omnibook-x14-el2.dtb
- x1p42100-lenovo-thinkbook-16-el2-dtbs	:= x1p42100-lenovo-thinkbook-16.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-lenovo-thinkbook-16.dtb x1p42100-lenovo-thinkbook-16-el2.dtb
-diff --git a/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts b/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..6696cab2de3ec899d7ae5498f2f4b75e2131a19c
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/x1p42100-hp-omnibook-x14.dts
-@@ -0,0 +1,33 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+
-+/dts-v1/;
-+
-+#include "x1p42100.dtsi"
-+#include "x1e80100-pmics.dtsi"
-+#include "x1-hp-omnibook-x14.dtsi"
-+/delete-node/ &pmc8380_6;
-+/delete-node/ &pmc8380_6_thermal;
-+
-+/ {
-+	model = "HP Omnibook X 14-fe1";
-+	compatible = "hp,omnibook-x14-fe1", "qcom,x1p42100";
-+	chassis-type = "laptop";
-+};
-+
-+&gpu_zap_shader {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qcdxkmsucpurwa.mbn";
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qcadsp8380.mbn",
-+			"qcom/x1p42100/hp/omnibook-x14/adsp_dtbs.elf";
-+
-+	status = "okay";
-+};
-+
-+&remoteproc_cdsp {
-+	firmware-name = "qcom/x1p42100/hp/omnibook-x14/qccdsp8380.mbn",
-+			"qcom/x1p42100/hp/omnibook-x14/cdsp_dtbs.elf";
-+
-+	status = "okay";
-+};
+---
+Rohan G Thomas (2):
+      net: stmmac: est: Fix GCL bounds checks
+      net: stmmac: Consider Tx VLAN offload tag length for maxSDU
 
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 25 ++++++++++++++++-------
+ drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c   |  4 ++--
+ 2 files changed, 20 insertions(+), 9 deletions(-)
+---
+base-commit: 5b5ba63a54cc7cb050fa734dbf495ffd63f9cbf7
+change-id: 20250911-qbv-fixes-4ae64de86ee7
+
+Best regards,
 -- 
-2.48.1
+Rohan G Thomas <rohan.g.thomas@altera.com>
 
