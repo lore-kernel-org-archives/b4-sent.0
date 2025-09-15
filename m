@@ -1,15 +1,12 @@
 From: Rohan G Thomas <rohan.g.thomas@altera.com>
-Subject: [PATCH net v2 0/2] net: stmmac: Minor fixes for stmmac EST
- implementation
-Date: Mon, 15 Sep 2025 16:17:17 +0800
-Message-Id: <20250915-qbv-fixes-v2-0-ec90673bb7d4@altera.com>
+Date: Mon, 15 Sep 2025 16:17:18 +0800
+Subject: [PATCH net v2 1/2] net: stmmac: est: Fix GCL bounds checks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAI7Lx2gC/22Myw7CIBQFf6W5azG9pC9c+R+mC2xPLYlCBUI0D
- f8u6drlnJmcnQK8QaBLtZNHMsE4W0CeKppWbR8QZi5MspZtrZjF+57EYj4IotHomhlDB/RU+s3
- jECW/kUWksYyrCdH57/Gf+FB/rhKLWmBgqFb108LLVT8jvD5P7kVjzvkHWuVGd6gAAAA=
-X-Change-ID: 20250911-qbv-fixes-4ae64de86ee7
+Message-Id: <20250915-qbv-fixes-v2-1-ec90673bb7d4@altera.com>
+References: <20250915-qbv-fixes-v2-0-ec90673bb7d4@altera.com>
+In-Reply-To: <20250915-qbv-fixes-v2-0-ec90673bb7d4@altera.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -22,40 +19,49 @@ Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  Rohan G Thomas <rohan.g.thomas@altera.com>, 
  Matthew Gerlach <matthew.gerlach@altera.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757924239; l=899;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757924239; l=1340;
  i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
- bh=F/X+TtZHooGZVCVdoXlX23gyuHCMQDwSSkVtX3di3Hg=;
- b=bi6AtS44Cm+PAB1TLYBv/5mE8nemeFtjJHyyt2gUpKfTRwLORFKt6gXA8FrQeXWPi9muVBfYJ
- Lh5o/Pnal8SCzk2Xrv11tNs0rwrZbC5HqjijLT6SOGWlDtKX5riau4o
+ bh=HUAYKbtaVV7CCEfir5e4410D4ZIncaawEtn3kXUUXA0=;
+ b=nYTLQKzxU0RExj8QRfyzQi45pvskNrqlgXE7azX/stBzmOcQXm//u60lh2AbIaP2zFrQzFKzO
+ T7brkbXToO1Bd3aK6yoT/ytTZTdTiMx3Gt63WLur+WUAucOkfZdju6R
 X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
  pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
 X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patchset includes following minor fixes for stmmac EST
-implementation:
-   1. Fix GCL bounds checks
-   2. Consider Tx VLAN offload tag length for maxSDU
+Fix the bounds checks for the hw supported maximum GCL entry
+count and gate interval time.
 
+Fixes: b60189e0392f ("net: stmmac: Integrate EST with TAPRIO scheduler API")
 Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
+Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
 ---
-Changes in v2:
-- Use GENMASK instead of BIT for clarity and consistency
-- Link to v1: https://lore.kernel.org/r/20250911-qbv-fixes-v1-0-e81e9597cf1f@altera.com
+ drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
----
-Rohan G Thomas (2):
-      net: stmmac: est: Fix GCL bounds checks
-      net: stmmac: Consider Tx VLAN offload tag length for maxSDU
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
+index 694d6ee1438197bd4434af6e9b78f022e94ff98f..9c84bde848263976cf08f286751ee09e2dbac09b 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
+@@ -981,7 +981,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
+ 	if (qopt->cmd == TAPRIO_CMD_DESTROY)
+ 		goto disable;
+ 
+-	if (qopt->num_entries >= dep)
++	if (qopt->num_entries > dep)
+ 		return -EINVAL;
+ 	if (!qopt->cycle_time)
+ 		return -ERANGE;
+@@ -1012,7 +1012,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
+ 		s64 delta_ns = qopt->entries[i].interval;
+ 		u32 gates = qopt->entries[i].gate_mask;
+ 
+-		if (delta_ns > GENMASK(wid, 0))
++		if (delta_ns > GENMASK(wid - 1, 0))
+ 			return -ERANGE;
+ 		if (gates > GENMASK(31 - wid, 0))
+ 			return -ERANGE;
 
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 25 ++++++++++++++++-------
- drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c   |  4 ++--
- 2 files changed, 20 insertions(+), 9 deletions(-)
----
-base-commit: 5b5ba63a54cc7cb050fa734dbf495ffd63f9cbf7
-change-id: 20250911-qbv-fixes-4ae64de86ee7
-
-Best regards,
 -- 
-Rohan G Thomas <rohan.g.thomas@altera.com>
+2.26.2
 
