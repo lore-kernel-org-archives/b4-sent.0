@@ -1,10 +1,10 @@
 From: Dang Huynh <dang.huynh@mainlining.org>
-Date: Wed, 17 Sep 2025 03:25:04 +0700
-Subject: [PATCH 07/25] ARM: dts: unisoc: rda8810pl: Enable Real-Time Clock
+Date: Wed, 17 Sep 2025 03:25:05 +0700
+Subject: [PATCH 08/25] ARM: dts: unisoc: rda8810pl: Enable ARM PMU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250917-rda8810pl-drivers-v1-7-9ca9184ca977@mainlining.org>
+Message-Id: <20250917-rda8810pl-drivers-v1-8-9ca9184ca977@mainlining.org>
 References: <20250917-rda8810pl-drivers-v1-0-9ca9184ca977@mainlining.org>
 In-Reply-To: <20250917-rda8810pl-drivers-v1-0-9ca9184ca977@mainlining.org>
 To: Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -25,39 +25,47 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-unisoc@lists.infradead.org,
  dmaengine@vger.kernel.org, linux-hardening@vger.kernel.org, 
  linux-mmc@vger.kernel.org, Dang Huynh <dang.huynh@mainlining.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758054322; l=779;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758054322; l=907;
  i=dang.huynh@mainlining.org; s=20250917; h=from:subject:message-id;
- bh=CMytnUCPsfWK+Zir9iDw5CkhUnTaS4MnLkyTK6BwbAk=;
- b=8EhQxw0LLMM2LDVQTNZ8vl25jTC3/GCxaDYQ7uSwHCHHdz62F1wVQJjmy1WNmtyxi2SS9g+G1
- ldz7HeyKeUcBO6vdkIEyJR4XdsV1mIPJnTtzHx2ZgUV1OLieWUsiZ6x
+ bh=YAW/bGAZr0vX0B6I3xTMN5lJP76jY17Qpzu5kruaYow=;
+ b=Xx4eEf+AW3RfI/PbEY5JiaKmRAPppuTYEIz3HyHrxewzcQWqWGWhkO1ddTilsHUwqfkZstlrk
+ 2wL45PEan/qADgsP0ddnn6WAkTtuRkV+QW9c5fDgsFPwxfxBZIgttWj
 X-Developer-Key: i=dang.huynh@mainlining.org; a=ed25519;
  pk=RyzH4CL4YU/ItXYUurA51EVBidfx4lIy8/E4EKRJCUk=
 X-Endpoint-Received: by B4 Relay for dang.huynh@mainlining.org/20250917 with auth_id=526
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RDA8810PL has built-in RTC.
+The SoC uses a standard ARM PMU, enable it.
 
 Signed-off-by: Dang Huynh <dang.huynh@mainlining.org>
 ---
- arch/arm/boot/dts/unisoc/rda8810pl.dtsi | 5 +++++
- 1 file changed, 5 insertions(+)
+ arch/arm/boot/dts/unisoc/rda8810pl.dtsi | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/arch/arm/boot/dts/unisoc/rda8810pl.dtsi b/arch/arm/boot/dts/unisoc/rda8810pl.dtsi
-index 6553fc102c6751696e75e4de614fc3428d182061..609359aa91537168435934077e736b216adf50f4 100644
+index 609359aa91537168435934077e736b216adf50f4..45a2fd3e04cea5aac4fb6b40a6b332ce3eee4f2c 100644
 --- a/arch/arm/boot/dts/unisoc/rda8810pl.dtsi
 +++ b/arch/arm/boot/dts/unisoc/rda8810pl.dtsi
-@@ -39,6 +39,11 @@ modem@10000000 {
- 		#size-cells = <1>;
- 		ranges = <0x0 0x10000000 0xfffffff>;
+@@ -6,6 +6,7 @@
+  * Copyright (c) 2018 Manivannan Sadhasivam
+  */
  
-+		rtc@1a06000 {
-+			compatible = "rda,8810pl-rtc";
-+			reg = <0x1a06000 0x1000>;
-+		};
++#include <dt-bindings/interrupt-controller/arm-gic.h>
+ #include <dt-bindings/interrupt-controller/irq.h>
+ 
+ / {
+@@ -25,6 +26,11 @@ cpu@0 {
+ 		};
+ 	};
+ 
++	pmu {
++		compatible = "arm,cortex-a5-pmu";
++		interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
++	};
 +
- 		gpioc: gpioc@1a08000 {
- 			compatible = "rda,8810pl-gpio";
- 			reg = <0x1a08000 0x1000>;
+ 	sram@100000 {
+ 		compatible = "mmio-sram";
+ 		reg = <0x100000 0x10000>;
 
 -- 
 2.51.0
