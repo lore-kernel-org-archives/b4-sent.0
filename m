@@ -1,10 +1,10 @@
 From: Dang Huynh <dang.huynh@mainlining.org>
-Date: Wed, 17 Sep 2025 03:24:58 +0700
-Subject: [PATCH 01/25] ARM: dts: unisoc: rda8810pl: Add label to GPIO nodes
+Date: Wed, 17 Sep 2025 03:24:59 +0700
+Subject: [PATCH 02/25] drivers: gpio: rda: Make IRQ optional
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250917-rda8810pl-drivers-v1-1-9ca9184ca977@mainlining.org>
+Message-Id: <20250917-rda8810pl-drivers-v1-2-9ca9184ca977@mainlining.org>
 References: <20250917-rda8810pl-drivers-v1-0-9ca9184ca977@mainlining.org>
 In-Reply-To: <20250917-rda8810pl-drivers-v1-0-9ca9184ca977@mainlining.org>
 To: Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -25,63 +25,41 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-unisoc@lists.infradead.org,
  dmaengine@vger.kernel.org, linux-hardening@vger.kernel.org, 
  linux-mmc@vger.kernel.org, Dang Huynh <dang.huynh@mainlining.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758054322; l=1425;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758054322; l=961;
  i=dang.huynh@mainlining.org; s=20250917; h=from:subject:message-id;
- bh=gehgcAARQ8SuL4G+2lQ4aVqQ18cLEbIKhDsg1ccbtlY=;
- b=vkVKhU4yFFQMGNx4j1vlk9SkqiDmkH60RhCQ7wo0S9uGQumeaKqLqNlS0OScNrteBhazOecZ8
- T9KNvTq6xRZAUqrRvG/mu3SAX3P636QQs8gFg7biuveiCHR5chOs6NK
+ bh=Fax4H41w25n5u6GELyum7Uq2SVrab6rxKUOtQRQV09k=;
+ b=8NPdXoYR6QMjpq7tWNquTNmGzt1Zr4mpACDx1zfor3wYw4pn/Zqu2jUfRZ99rq5r4TeUYxPub
+ D4syMEvbMWWAYGlhGdETHjrWpszpet/JuedVRzqk5g7xv9O7nsvn0Hz
 X-Developer-Key: i=dang.huynh@mainlining.org; a=ed25519;
  pk=RyzH4CL4YU/ItXYUurA51EVBidfx4lIy8/E4EKRJCUk=
 X-Endpoint-Received: by B4 Relay for dang.huynh@mainlining.org/20250917 with auth_id=526
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-So we can add devices to these GPIO nodes for each board.
+Not all GPIO have IRQ. When we use this driver with
+GPIOC (handled by modem) we get:
+
+rda-gpio 11a08000.gpioc: error -ENXIO: IRQ index 0 not found
+
+Let's mark IRQ as optional so this error doesn't show up.
 
 Signed-off-by: Dang Huynh <dang.huynh@mainlining.org>
 ---
- arch/arm/boot/dts/unisoc/rda8810pl.dtsi | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ drivers/gpio/gpio-rda.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm/boot/dts/unisoc/rda8810pl.dtsi b/arch/arm/boot/dts/unisoc/rda8810pl.dtsi
-index f30d6ece49fb33d9c5c3ad9522c83bb8e4f8b488..6553fc102c6751696e75e4de614fc3428d182061 100644
---- a/arch/arm/boot/dts/unisoc/rda8810pl.dtsi
-+++ b/arch/arm/boot/dts/unisoc/rda8810pl.dtsi
-@@ -39,7 +39,7 @@ modem@10000000 {
- 		#size-cells = <1>;
- 		ranges = <0x0 0x10000000 0xfffffff>;
+diff --git a/drivers/gpio/gpio-rda.c b/drivers/gpio/gpio-rda.c
+index bcd85a2237a532b875df9470d972ac88b95a91cc..b4db8553a2371ae407fdb7e681d0f82c4d9f74b7 100644
+--- a/drivers/gpio/gpio-rda.c
++++ b/drivers/gpio/gpio-rda.c
+@@ -229,7 +229,7 @@ static int rda_gpio_probe(struct platform_device *pdev)
+ 	 * RDA8810PL, GPIOC doesn't support interrupt. So we must handle
+ 	 * those also.
+ 	 */
+-	rda_gpio->irq = platform_get_irq(pdev, 0);
++	rda_gpio->irq = platform_get_irq_optional(pdev, 0);
  
--		gpioc@1a08000 {
-+		gpioc: gpioc@1a08000 {
- 			compatible = "rda,8810pl-gpio";
- 			reg = <0x1a08000 0x1000>;
- 			gpio-controller;
-@@ -76,7 +76,7 @@ timer@10000 {
- 			interrupt-names = "hwtimer", "ostimer";
- 		};
- 
--		gpioa@30000 {
-+		gpioa: gpioa@30000 {
- 			compatible = "rda,8810pl-gpio";
- 			reg = <0x30000 0x1000>;
- 			gpio-controller;
-@@ -87,7 +87,7 @@ gpioa@30000 {
- 			interrupts = <12 IRQ_TYPE_LEVEL_HIGH>;
- 		};
- 
--		gpiob@31000 {
-+		gpiob: gpiob@31000 {
- 			compatible = "rda,8810pl-gpio";
- 			reg = <0x31000 0x1000>;
- 			gpio-controller;
-@@ -98,7 +98,7 @@ gpiob@31000 {
- 			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
- 		};
- 
--		gpiod@32000 {
-+		gpiod: gpiod@32000 {
- 			compatible = "rda,8810pl-gpio";
- 			reg = <0x32000 0x1000>;
- 			gpio-controller;
+ 	rda_gpio->base = devm_platform_ioremap_resource(pdev, 0);
+ 	if (IS_ERR(rda_gpio->base))
 
 -- 
 2.51.0
