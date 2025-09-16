@@ -1,135 +1,93 @@
-From: Thomas Antoine <t.antoine@uclouvain.be>
-Date: Mon, 15 Sep 2025 12:14:11 +0200
-Subject: [PATCH v6 2/2] dt-bindings: power: supply: add support for
- MAX77759 fuel gauge
+From: David Heidelberg <david@ixit.cz>
+Date: Tue, 16 Sep 2025 02:33:36 +0200
+Subject: [PATCH] drm/panel: samsung-sofef00: clean up panel description
+ after s6e3fc2x01 removal
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250915-b4-gs101_max77759_fg-v6-2-31d08581500f@uclouvain.be>
-References: <20250915-b4-gs101_max77759_fg-v6-0-31d08581500f@uclouvain.be>
-In-Reply-To: <20250915-b4-gs101_max77759_fg-v6-0-31d08581500f@uclouvain.be>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Sebastian Reichel <sre@kernel.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>
-Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, Thomas Antoine <t.antoine@uclouvain.be>
+Message-Id: <20250916-sofef00-cleanup-v1-1-b29e1664e898@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAF+wyGgC/x3MQQqAIBBA0avErBMmw6iuEi3UZmogLJQiCO+et
+ HyL/19IFIUSjNULkW5JcoSCpq7AbzaspGQpBo3a4NB0Kh1MjKj8TjZcp/LYG+u5ddoZKNUZieX
+ 5j9Oc8weA+4LuYQAAAA==
+X-Change-ID: 20250916-sofef00-cleanup-c085acf3b2b5
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jessica.zhang@oss.qualcomm.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Casey Connolly <casey.connolly@linaro.org>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757931256; l=3462;
- i=t.antoine@uclouvain.be; s=20241202; h=from:subject:message-id;
- bh=RmrJkFcdKdGw/nW9mrN2NqAI0SHNuIVBB+BVTG5fu5w=;
- b=hlTQFthVMw1e+fIMoGX7ZzBZTtDfMDVZ4HJOwUPGLh7Pdjnr032ocqXmFWxuIkKD+btGyotPc
- uINIS045cq4BE2MWbKh7rBGhv620OIMxlAtpKAveKZiNv17bMPfc/yV
-X-Developer-Key: i=t.antoine@uclouvain.be; a=ed25519;
- pk=sw7UYl31W1LTpgWRiX4xIF5x6ok7YWZ6XZnHqy/d3dY=
-X-Endpoint-Received: by B4 Relay for t.antoine@uclouvain.be/20241202 with auth_id=289
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2248; i=david@ixit.cz;
+ h=from:subject:message-id; bh=vo30ySEKbwVLd4wJGZXK3DYrwb+5uoOUHN9Z3tkw/RA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBoyLBgQisV2RZYzpW9l4L7c2tCagnZkiNAjX5b9
+ 325Qg8xWkCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaMiwYAAKCRBgAj/E00kg
+ cqklEADFxFkk6JcLnrtONGgJ8vcty5k0M/XCKuwWdupm27YgtftI5wqj0uBwNoGJ4XSfqCvhINg
+ vTiubUVj/FRdBWl+5NCzRSHFwjLm5UJTbb1+ek5Ie9lfbyF3RWm4/xhKnxxGGwgWYRLA2OHfIP+
+ 5oexo0x0VQ7DhVy1EWmLcs53SUkAXXvZ/G74LxJyrMQSenvH/VFLi+4KmLA1dogJ3VBKwmdMv9a
+ XxLsYrZt/nkp3B9iO1us4d819dvlQ5hKThKHfyUZsPuLHkBWQINLRoGZ4N3tljS7i0ps5d/9L7G
+ 6MRwWfEnU3lEZzgwqamExt3gkhu7fAi7rdT9aK1ttNxBBSjU+/ePnFFROWBEEkprlbRhcKMqqJJ
+ gMXtvclSji21QIy/5zlBmK/5daTgDe800ZxaFMzDuyz31crpRv2WehBMhYOa+m3fRR0X47u2FVC
+ 1uZe4OkC9E7TGMjR+ZS5NGpRjCmnsB3Ak6ICHdW1eA30GydnphTBXNgIIwbr4LhDoL2yulIla5g
+ IgInBT1lxCGLL8fQ0qhsfiu4gpqOP+tkjsNJGqsPU2IXr40YY/J+HGoUpkfHEAvkpaE/5f2wrO9
+ fAbtThhZVE2ZDkgQuVa6qYJu/RgDMC2UrJ0CfCf0X+kjeZ6FbOCGLWQ2LsWDn5gN4Yy0R5+Txl+
+ 8VIp1uv2v5TcARQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Maxim MAX77759 is a companion PMIC for USB Type-C. It contains
-Battery Charger, Fuel Gauge, temperature sensors, USB Type-C Port
-Controller (TCPC), NVMEM, and additional GPIO interfaces
+Remove leftover from s6e3fc2x01 support drop.
 
-Use max77759-fg compatible to avoid conflict with drivers for other
-functions.
-
-The battery node is used to pass the REPCAP and ICHGTERM values
-needed for the initialization of the fuel gauge.
-
-The nvmem cells are used to get initialization values and to backup
-the learning and the number of cycles. It should work out of the box
-with gs101-oriole and gs101-raven which were previously running
-Android.
-
-Signed-off-by: Thomas Antoine <t.antoine@uclouvain.be>
+Fixes: e1eb7293ab41 ("drm/panel: samsung-sofef00: Drop s6e3fc2x01 support")
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../bindings/power/supply/maxim,max77759.yaml      | 78 ++++++++++++++++++++++
- 1 file changed, 78 insertions(+)
+ drivers/gpu/drm/panel/Kconfig                 | 6 +++---
+ drivers/gpu/drm/panel/panel-samsung-sofef00.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/power/supply/maxim,max77759.yaml b/Documentation/devicetree/bindings/power/supply/maxim,max77759.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..4d45739fcaf26273ec57b60049d6d0421df38efb
---- /dev/null
-+++ b/Documentation/devicetree/bindings/power/supply/maxim,max77759.yaml
-@@ -0,0 +1,78 @@
-+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/power/supply/maxim,max77759.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Maxim Integrated MAX77759 fuel gauge
-+
-+maintainers:
-+  - Thomas Antoine <t.antoine@uclouvain.be>
-+
-+allOf:
-+  - $ref: power-supply.yaml#
-+
-+properties:
-+  compatible:
-+    const: maxim,max77759-fg
-+
-+  reg:
-+    maxItems: 1
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  shunt-resistor-micro-ohms:
-+    description: The value of the current sense resistor in microohms.
-+
-+  monitored-battery:
-+    description: |
-+      The fuel gauge needs the following battery properties:
-+      - charge-full-design-microamp-hours
-+      - charge-term-current-microamp
-+
-+  nvmem-cells:
-+    maxItems: 1
-+    description: |
-+      Saved fuel gauge state. This state will be used during the initialization
-+      and saved on exit. It must be initialized beforehand.
-+      Its layout must be composed of
-+        - RCOMP0 (characterization of the open-circuit voltage)
-+        - TCOMPO (temperature compensation information)
-+        - FULLCAPREP (reported full capacity)
-+        - QRTABLE00, QRTABLE10, QRTABLE20, QRTABLE30 (cell capacity information)
-+        - cv_mixcap (remaining capacity of the cell without empty compensation)
-+        - cv_halftime (time-to-full characterization time constant)
-+      They must all be aligned on 2 bytes. A valid CRC8 checksum must
-+      also be found at the end (polynomial x^8 + x^2 + x + 1).
-+
-+  nvmem-cell-names:
-+    const: fg_state
-+
-+required:
-+  - compatible
-+  - reg
-+  - shunt-resistor-micro-ohms
-+  - monitored-battery
-+  - nvmem-cells
-+  - nvmem-cell-names
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+    i2c {
-+      #address-cells = <1>;
-+      #size-cells = <0>;
-+
-+      fuel-gauge@36 {
-+        compatible = "maxim,max77759-fg";
-+        reg = <0x36>;
-+        interrupts-extended = <&gpa9 3 IRQ_TYPE_LEVEL_LOW>;
-+        shunt-resistor-micro-ohms = <5000>;
-+        monitored-battery = <&battery>;
-+        nvmem-cells = <&fg_state>;
-+        nvmem-cell-names = "fg_state";
-+      };
-+    };
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+index 407c5f6a268b2ec66e5d0eddae26b3368e4cb2cb..d9c472534214f8bdf74545bc6b439354559d5d12 100644
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -868,16 +868,16 @@ config DRM_PANEL_SAMSUNG_S6E8AA5X01_AMS561RA01
+ 	  DSI protocol with 4 lanes.
+ 
+ config DRM_PANEL_SAMSUNG_SOFEF00
+-	tristate "Samsung sofef00/s6e3fc2x01 OnePlus 6/6T DSI cmd mode panels"
++	tristate "Samsung sofef00 OnePlus 6 DSI cmd mode panel"
+ 	depends on OF
+ 	depends on DRM_MIPI_DSI
+ 	depends on BACKLIGHT_CLASS_DEVICE
+ 	select VIDEOMODE_HELPERS
+ 	help
+ 	  Say Y or M here if you want to enable support for the Samsung AMOLED
+-	  command mode panels found in the OnePlus 6/6T smartphones.
++	  command mode panel found in the OnePlus 6 smartphone.
+ 
+-	  The panels are 2280x1080@60Hz and 2340x1080@60Hz respectively
++	  This panel resolution is 2280x1080@60Hz
+ 
+ config DRM_PANEL_SEIKO_43WVF1G
+ 	tristate "Seiko 43WVF1G panel"
+diff --git a/drivers/gpu/drm/panel/panel-samsung-sofef00.c b/drivers/gpu/drm/panel/panel-samsung-sofef00.c
+index 064258217d50ad6f02d27a97f8aff2e298260d4b..c181ff3c7d761263b289a46781a3041372dac656 100644
+--- a/drivers/gpu/drm/panel/panel-samsung-sofef00.c
++++ b/drivers/gpu/drm/panel/panel-samsung-sofef00.c
+@@ -260,5 +260,5 @@ static struct mipi_dsi_driver sofef00_panel_driver = {
+ module_mipi_dsi_driver(sofef00_panel_driver);
+ 
+ MODULE_AUTHOR("Casey Connolly <casey.connolly@linaro.org>");
+-MODULE_DESCRIPTION("DRM driver for Samsung AMOLED DSI panels found in OnePlus 6/6T phones");
++MODULE_DESCRIPTION("DRM driver for Samsung AMOLED DSI panel found in OnePlus 6 phone");
+ MODULE_LICENSE("GPL v2");
 
+---
+base-commit: 590b221ed4256fd6c34d3dea77aa5bd6e741bbc1
+change-id: 20250916-sofef00-cleanup-c085acf3b2b5
+
+Best regards,
 -- 
-2.51.0
+David Heidelberg <david@ixit.cz>
 
