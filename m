@@ -1,11 +1,11 @@
 From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Tue, 16 Sep 2025 12:47:42 +0800
-Subject: [PATCH RESEND v3 2/5] drm/bridge: it6505: check
- INT_LINK_TRAIN_FAIL while link auto training
+Date: Tue, 16 Sep 2025 12:47:43 +0800
+Subject: [PATCH RESEND v3 3/5] drm/bridge: it6505: modify DP link auto
+ training
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250916-fix-link-training-v3-2-0f55bfdb272a@ite.com.tw>
+Message-Id: <20250916-fix-link-training-v3-3-0f55bfdb272a@ite.com.tw>
 References: <20250916-fix-link-training-v3-0-0f55bfdb272a@ite.com.tw>
 In-Reply-To: <20250916-fix-link-training-v3-0-0f55bfdb272a@ite.com.tw>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
@@ -19,91 +19,74 @@ Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org,
  dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757998107; l=2919;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1757998107; l=2426;
  i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=jMRBMAfZXvgPInoi2ZG2fBNx0MmsnJGVHvslLR/IkmI=;
- b=T9SmPE4rzwxkt7minVSirH2lNbREqXWJrFQAl1Rn6bq7YENYu6/UwsQdADRcRUZKdOVxSHi1o
- TWYfM6uA304Cj0nsS7HjhchJ1B5+V+Lzk8LJbU10lNvTor2h3z6mdXE
+ bh=w0mjd1b/vD9l754Z7HEk7/mi9+TqCrQ9as279Ea9bf8=;
+ b=IO78MXtKw2LNi4+s8tj6sHGMURIF+yDdF7Kq8Xfe2p+lN6zAV80lQHrkBUlWaC/cDhdEkEomZ
+ CRWoEaKbz+tAMASNTGDAmXuM794aJOBhgpLmeN0213Uduk+FTrY2j9u
 X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
  pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
 X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When start link training, interrupt status INT_LINK_TRAIN_FAIL can
-use to check link training fail and no need to wait until timeout.
+IT6505 supports HW link training which will write DPCD and check
+training status automatically.
 
-it6505_irq_link_train_fail() remove from interrupt and no longer used.
+In the case that driver set link rate at 2.7G and HW fail to training,
+it will change link configuration and try 1.65G. And this will cause
+INT_VID_FIFO_ERROR triggered when link clock is changed.
+
+When video error occurs, video logic is reset and link training restart,
+this will cause endless auto link training.
+
+Modify link auto training with disable INT_VID_FIFO_ERROR to avoid loop
+and check INT_LINK_TRAIN_FAIL event to abort wait training done.
 
 Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- drivers/gpu/drm/bridge/ite-it6505.c | 26 +++++++++++++++-----------
- 1 file changed, 15 insertions(+), 11 deletions(-)
+ drivers/gpu/drm/bridge/ite-it6505.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index b47042dc06bb1e1dfd92bc0dc6d69dc918a140ba..7f6227c278a51358c70a3de93454aafeef64f2bb 100644
+index 7f6227c278a51358c70a3de93454aafeef64f2bb..f9b99c70789eea6beb3c6513155c9a4ca103d219 100644
 --- a/drivers/gpu/drm/bridge/ite-it6505.c
 +++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -821,8 +821,8 @@ static void it6505_int_mask_enable(struct it6505 *it6505)
- 	it6505_write(it6505, INT_MASK_02, BIT(INT_AUX_CMD_FAIL) |
- 		     BIT(INT_HDCP_KSV_CHECK) | BIT(INT_AUDIO_FIFO_ERROR));
- 
--	it6505_write(it6505, INT_MASK_03, BIT(INT_LINK_TRAIN_FAIL) |
--		     BIT(INT_VID_FIFO_ERROR) | BIT(INT_IO_LATCH_FIFO_OVERFLOW));
-+	it6505_write(it6505, INT_MASK_03, BIT(INT_VID_FIFO_ERROR) |
-+		     BIT(INT_IO_LATCH_FIFO_OVERFLOW));
- }
- 
- static void it6505_int_mask_disable(struct it6505 *it6505)
-@@ -1802,6 +1802,8 @@ static bool it6505_link_start_auto_train(struct it6505 *it6505)
- {
- 	int timeout = 500, link_training_state;
- 	bool state = false;
-+	int int03;
-+	struct device *dev = it6505->dev;
+@@ -1806,6 +1806,13 @@ static bool it6505_link_start_auto_train(struct it6505 *it6505)
+ 	struct device *dev = it6505->dev;
  
  	mutex_lock(&it6505->aux_lock);
++
++	/* Disable FIFO error interrupt trigger  */
++	/* to prevent training fail loop issue   */
++	it6505_set_bits(it6505, INT_MASK_03, BIT(INT_VID_FIFO_ERROR), 0);
++
++	it6505_write(it6505, INT_STATUS_03,
++		     BIT(INT_LINK_TRAIN_FAIL) | BIT(INT_VID_FIFO_ERROR));
  	it6505_set_bits(it6505, REG_TRAIN_CTRL0,
-@@ -1814,6 +1816,17 @@ static bool it6505_link_start_auto_train(struct it6505 *it6505)
- 	while (timeout > 0) {
- 		usleep_range(1000, 2000);
+ 			FORCE_CR_DONE | FORCE_EQ_DONE, 0x00);
+ 	/* reset link state machine and re start training*/
+@@ -1818,8 +1825,10 @@ static bool it6505_link_start_auto_train(struct it6505 *it6505)
  		link_training_state = it6505_read(it6505, REG_LINK_TRAIN_STS);
-+		int03 = it6505_read(it6505, INT_STATUS_03);
-+		if (int03 & BIT(INT_LINK_TRAIN_FAIL)) {
-+			it6505_write(it6505, INT_STATUS_03,
-+				     BIT(INT_LINK_TRAIN_FAIL));
-+
-+			DRM_DEV_DEBUG_DRIVER(dev,
-+					     "INT_LINK_TRAIN_FAIL(%x)!",
-+					      int03);
-+
-+			break;
-+		}
+ 		int03 = it6505_read(it6505, INT_STATUS_03);
+ 		if (int03 & BIT(INT_LINK_TRAIN_FAIL)) {
++			/* Ignore INT_VID_FIFO_ERROR when auto training fail*/
+ 			it6505_write(it6505, INT_STATUS_03,
+-				     BIT(INT_LINK_TRAIN_FAIL));
++				     BIT(INT_LINK_TRAIN_FAIL) |
++				     BIT(INT_VID_FIFO_ERROR));
  
- 		if (link_training_state > 0 &&
- 		    (link_training_state & LINK_STATE_NORP)) {
-@@ -2693,14 +2706,6 @@ static void it6505_irq_audio_fifo_error(struct it6505 *it6505)
- 		it6505_enable_audio(it6505);
- }
+ 			DRM_DEV_DEBUG_DRIVER(dev,
+ 					     "INT_LINK_TRAIN_FAIL(%x)!",
+@@ -1837,6 +1846,9 @@ static bool it6505_link_start_auto_train(struct it6505 *it6505)
+ 		timeout--;
+ 	}
+ unlock:
++	/* recover interrupt trigger*/
++	it6505_set_bits(it6505, INT_MASK_03,
++			BIT(INT_VID_FIFO_ERROR), BIT(INT_VID_FIFO_ERROR));
+ 	mutex_unlock(&it6505->aux_lock);
  
--static void it6505_irq_link_train_fail(struct it6505 *it6505)
--{
--	struct device *dev = it6505->dev;
--
--	DRM_DEV_DEBUG_DRIVER(dev, "link training fail interrupt");
--	schedule_work(&it6505->link_works);
--}
--
- static bool it6505_test_bit(unsigned int bit, const unsigned int *addr)
- {
- 	return 1 & (addr[bit / BITS_PER_BYTE] >> (bit % BITS_PER_BYTE));
-@@ -2765,7 +2770,6 @@ static irqreturn_t it6505_int_threaded_handler(int unused, void *data)
- 		{ BIT_INT_AUX_CMD_FAIL, it6505_irq_aux_cmd_fail },
- 		{ BIT_INT_HDCP_KSV_CHECK, it6505_irq_hdcp_ksv_check },
- 		{ BIT_INT_AUDIO_FIFO_ERROR, it6505_irq_audio_fifo_error },
--		{ BIT_INT_LINK_TRAIN_FAIL, it6505_irq_link_train_fail },
- 	};
- 	int int_status[3], i;
- 
+ 	return state;
 
 -- 
 2.34.1
