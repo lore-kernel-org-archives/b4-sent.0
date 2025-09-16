@@ -1,95 +1,59 @@
-From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Tue, 16 Sep 2025 12:47:45 +0800
-Subject: [PATCH RESEND v3 5/5] drm/bridge: it6505: skip auto training when
- previous try fail
+From: Arturs Artamonovs <Arturs.Artamonovs@analog.com>
+Date: Tue, 16 Sep 2025 16:57:17 +0100
+Subject: [PATCH] tty: serial: fix help message for SERIAL_CPM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250916-fix-link-training-v3-5-0f55bfdb272a@ite.com.tw>
-References: <20250916-fix-link-training-v3-0-0f55bfdb272a@ite.com.tw>
-In-Reply-To: <20250916-fix-link-training-v3-0-0f55bfdb272a@ite.com.tw>
-To: Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Hermes Wu <Hermes.wu@ite.com.tw>
+Message-Id: <20250916-tty-serial-kconfig-fix-v1-1-f603824e494a@analog.com>
+X-B4-Tracking: v=1; b=H4sIANyIyWgC/x2MQQqAIBAAvxJ7bkGXJOor0UF0q6Ww0Igi+nvWc
+ QZmbkgchRO0xQ2RD0myhgy6LMBNNoyM4jMDKTKq0Qb3/cKvsQvObg2DjDjIiVVtjSLfKKsJcrx
+ Fzvofd/3zvAvBfoJoAAAA
+X-Change-ID: 20250915-tty-serial-kconfig-fix-47a502d90a12
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ Arturs Artamonovs <Arturs.Artamonovs@analog.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1757998107; l=2181;
- i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=pLytI76dbGjTNwcbsSYeds6mdd5OwXNWVjluMga6s9U=;
- b=JY8tgX+eYXvPeTbxNaV7UrIwPK91wF7/U5zi8MM9ecEKoV2Bl2728E4KvmmBeAPdGcyAZrKS7
- PS+CLxRC/6jDOShl424eq7Mu0xWPm6aPsdfVu2xsvX2W6xKc5+B/AcH
-X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758038243; l=1155;
+ i=Arturs.Artamonovs@analog.com; s=20240910; h=from:subject:message-id;
+ bh=yjMgUPZ9DVsVDd5Qs/QLwakOMWYigatGAbBXRitE/vs=;
+ b=kAiOk5rg5tzci+cACspD0J4h1CKJQrhFLIiuBO3TT7JXCAoMBeX2SmwGDbZpRwXcb53i+6sRk
+ qxS1DrUMssMBYLQm2MhDXhCJo2Ph6lV+jGsnWOWAxURVmCeuWTIwQNu
+X-Developer-Key: i=Arturs.Artamonovs@analog.com; a=ed25519;
+ pk=UXODIid/MrmBXvqkX4PeEfetDaNAw9xKMINHIc5oZCk=
+X-Endpoint-Received: by B4 Relay for Arturs.Artamonovs@analog.com/20240910 with auth_id=327
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When connect to device which can only training done by
-step training, skip auto training when link training restart,
-usually happen when display resolution is changed.
+Running checkpatch reported error extra whitespace at the
+end of help message for SERIAL_CPM menu entry
 
-Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
+Signed-off-by: Arturs Artamonovs <Arturs.Artamonovs@analog.com>
 ---
- drivers/gpu/drm/bridge/ite-it6505.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+Running checkpath.pl on drivers/tty/serial reports error
+Removing white space at the end of the line in Kconfig for SERIAL_CPM entry
+---
+ drivers/tty/serial/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index bff5f18fb5ae7192242308f034b60af9807c192c..20eae23cb46a4cb3fc18dd2ed3b764f2265262ca 100644
---- a/drivers/gpu/drm/bridge/ite-it6505.c
-+++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -467,6 +467,7 @@ struct it6505 {
- 	struct delayed_work hdcp_work;
- 	struct work_struct hdcp_wait_ksv_list;
- 	struct completion extcon_completion;
-+	u8 step_train_only;
- 	bool hdcp_desired;
- 	bool is_repeater;
- 	u8 hdcp_down_stream_count;
-@@ -2452,11 +2453,13 @@ static void it6505_link_step_train_process(struct it6505 *it6505)
- 				     ret ? "pass" : "failed", i + 1);
- 		if (ret) {
- 			it6505_link_train_ok(it6505);
-+			it6505->step_train_only = true;
- 			return;
- 		}
- 	}
+diff --git a/drivers/tty/serial/Kconfig b/drivers/tty/serial/Kconfig
+index 44427415a80d7da63a8f2328b1932bff48500974..ac690f5cfbfe870a0c7eed4dc974d6ec28bb2c5f 100644
+--- a/drivers/tty/serial/Kconfig
++++ b/drivers/tty/serial/Kconfig
+@@ -782,7 +782,7 @@ config SERIAL_CPM
+ 	depends on CPM2 || CPM1
+ 	select SERIAL_CORE
+ 	help
+-	  This driver supports the SCC and SMC serial ports on Motorola 
++	  This driver supports the SCC and SMC serial ports on Motorola
+ 	  embedded PowerPC that contain a CPM1 (8xx) or CPM2 (8xxx)
  
- 	DRM_DEV_DEBUG_DRIVER(dev, "training fail");
-+	it6505->step_train_only = false;
- 	it6505->link_state = LINK_IDLE;
- 	it6505_video_reset(it6505);
- }
-@@ -2473,14 +2476,14 @@ static void it6505_link_training_work(struct work_struct *work)
- 	if (!it6505_get_sink_hpd_status(it6505))
- 		return;
- 
--	for (retry = AUTO_TRAIN_RETRY; retry > 0; retry--) {
-+	for (retry = AUTO_TRAIN_RETRY; retry > 0 && !it6505->step_train_only; retry--) {
- 		it6505_link_training_setup(it6505);
- 		it6505_reset_hdcp(it6505);
- 		it6505_aux_reset(it6505);
- 
- 		ret = it6505_link_start_auto_train(it6505);
- 		DRM_DEV_DEBUG_DRIVER(dev, "auto train %s,",
--				     ret ? "pass" : "failed");
-+					ret ? "pass" : "failed");
- 		if (ret) {
- 			it6505_link_train_ok(it6505);
- 			return;
-@@ -2594,6 +2597,7 @@ static void it6505_irq_hpd(struct it6505 *it6505)
- 			it6505_variable_config(it6505);
- 			it6505_parse_link_capabilities(it6505);
- 		}
-+		it6505->step_train_only = false;
- 
- 		it6505_drm_dp_link_set_power(&it6505->aux, &it6505->link,
- 					     DP_SET_POWER_D0);
+ config SERIAL_CPM_CONSOLE
 
+---
+base-commit: f83ec76bf285bea5727f478a68b894f5543ca76e
+change-id: 20250915-tty-serial-kconfig-fix-47a502d90a12
+
+Best regards,
 -- 
-2.34.1
+Arturs Artamonovs <Arturs.Artamonovs@analog.com>
 
