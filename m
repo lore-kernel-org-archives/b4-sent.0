@@ -1,10 +1,11 @@
 From: Dang Huynh <dang.huynh@mainlining.org>
-Date: Wed, 17 Sep 2025 03:25:13 +0700
-Subject: [PATCH 16/25] dts: unisoc: rda8810pl: Enable modem reset
+Date: Wed, 17 Sep 2025 03:25:14 +0700
+Subject: [PATCH 17/25] drivers: gpio: rda: Make direction register
+ unreadable
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250917-rda8810pl-drivers-v1-16-9ca9184ca977@mainlining.org>
+Message-Id: <20250917-rda8810pl-drivers-v1-17-9ca9184ca977@mainlining.org>
 References: <20250917-rda8810pl-drivers-v1-0-9ca9184ca977@mainlining.org>
 In-Reply-To: <20250917-rda8810pl-drivers-v1-0-9ca9184ca977@mainlining.org>
 To: Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -25,39 +26,37 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-unisoc@lists.infradead.org,
  dmaengine@vger.kernel.org, linux-hardening@vger.kernel.org, 
  linux-mmc@vger.kernel.org, Dang Huynh <dang.huynh@mainlining.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758054322; l=793;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758054322; l=890;
  i=dang.huynh@mainlining.org; s=20250917; h=from:subject:message-id;
- bh=u8ofUfZnyL6AGUSAsraDhXZ8KtNj+jiTPktMzMifzHg=;
- b=fWZT1Fx32Hx9ZahhNzlPhngPS7qH4nNWfABkCpfT5wJanor1eQSweXur3kGePA0KRJvMK5TAB
- H8UQagjuGEgAjgojs4svCTAlHhh0Ir2INO/LHEgYgExeaecrkrYKpEG
+ bh=Ej4sfxzJ/Gsg0f6d9t0Id5MGonhTVkngeFDG/IpOGqc=;
+ b=7/dQ+zSEH7UofRPjo+bKlBs6ViTT+WuJvSx4Gecx+bo6BYwM3Re5lMQKArpXET7WxhoCPOvfe
+ Rk52QJ6IW9cA55W805ijHTkhu0687ofj0g1SAA1xQxJl5AhXuzcWLTL
 X-Developer-Key: i=dang.huynh@mainlining.org; a=ed25519;
  pk=RyzH4CL4YU/ItXYUurA51EVBidfx4lIy8/E4EKRJCUk=
 X-Endpoint-Received: by B4 Relay for dang.huynh@mainlining.org/20250917 with auth_id=526
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This allows us to reboot the board from the OS.
+The register doesn't like to be read, this causes the SD Card
+Card Detect GPIO to misbehaves in the OS.
 
 Signed-off-by: Dang Huynh <dang.huynh@mainlining.org>
 ---
- arch/arm/boot/dts/unisoc/rda8810pl.dtsi | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/gpio/gpio-rda.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm/boot/dts/unisoc/rda8810pl.dtsi b/arch/arm/boot/dts/unisoc/rda8810pl.dtsi
-index 299b29e4df6e0a04c5769a568eba73ed1684a9e5..e90ae7845de7b79e55e9cd339a82313b423e0252 100644
---- a/arch/arm/boot/dts/unisoc/rda8810pl.dtsi
-+++ b/arch/arm/boot/dts/unisoc/rda8810pl.dtsi
-@@ -98,6 +98,11 @@ modem@10000000 {
- 		#size-cells = <1>;
- 		ranges = <0x0 0x10000000 0xfffffff>;
+diff --git a/drivers/gpio/gpio-rda.c b/drivers/gpio/gpio-rda.c
+index b4db8553a2371ae407fdb7e681d0f82c4d9f74b7..56aaa9f33d29469dfb1bf86ed7b63c54b413c89c 100644
+--- a/drivers/gpio/gpio-rda.c
++++ b/drivers/gpio/gpio-rda.c
+@@ -245,7 +245,7 @@ static int rda_gpio_probe(struct platform_device *pdev)
+ 		.clr = rda_gpio->base + RDA_GPIO_CLR,
+ 		.dirout = rda_gpio->base + RDA_GPIO_OEN_SET_OUT,
+ 		.dirin = rda_gpio->base + RDA_GPIO_OEN_SET_IN,
+-		.flags = BGPIOF_READ_OUTPUT_REG_SET,
++		.flags = BGPIOF_READ_OUTPUT_REG_SET | BGPIOF_UNREADABLE_REG_DIR,
+ 	};
  
-+		reset-controller@1a00000 {
-+			compatible = "rda,md-reset";
-+			reg = <0x1a00000 0x4>;
-+		};
-+
- 		rtc@1a06000 {
- 			compatible = "rda,8810pl-rtc";
- 			reg = <0x1a06000 0x1000>;
+ 	ret = gpio_generic_chip_init(&rda_gpio->chip, &config);
 
 -- 
 2.51.0
