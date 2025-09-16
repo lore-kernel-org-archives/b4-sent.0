@@ -1,59 +1,98 @@
-From: Arturs Artamonovs <Arturs.Artamonovs@analog.com>
-Date: Tue, 16 Sep 2025 16:57:17 +0100
-Subject: [PATCH] tty: serial: fix help message for SERIAL_CPM
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH 0/2] PCI/ASPM: Enable ASPM and Clock PM by default on
+ devicetree platforms
+Date: Tue, 16 Sep 2025 21:42:51 +0530
+Message-Id: <20250916-pci-dt-aspm-v1-0-778fe907c9ad@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250916-tty-serial-kconfig-fix-v1-1-f603824e494a@analog.com>
-X-B4-Tracking: v=1; b=H4sIANyIyWgC/x2MQQqAIBAAvxJ7bkGXJOor0UF0q6Ww0Igi+nvWc
- QZmbkgchRO0xQ2RD0myhgy6LMBNNoyM4jMDKTKq0Qb3/cKvsQvObg2DjDjIiVVtjSLfKKsJcrx
- Fzvofd/3zvAvBfoJoAAAA
-X-Change-ID: 20250915-tty-serial-kconfig-fix-47a502d90a12
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- Arturs Artamonovs <Arturs.Artamonovs@analog.com>
+X-B4-Tracking: v=1; b=H4sIAIOMyWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDS0Mz3YLkTN2UEt3E4oJcXYsk40TzVIsUo+Q0QyWgjoKi1LTMCrBp0bG
+ 1tQAOseteXQAAAA==
+X-Change-ID: 20250916-pci-dt-aspm-8b3a7e8d2cf1
+To: Bjorn Helgaas <bhelgaas@google.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Rob Herring <robh@kernel.org>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, "David E. Box" <david.e.box@linux.intel.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Bjorn Helgaas <helgaas@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758038243; l=1155;
- i=Arturs.Artamonovs@analog.com; s=20240910; h=from:subject:message-id;
- bh=yjMgUPZ9DVsVDd5Qs/QLwakOMWYigatGAbBXRitE/vs=;
- b=kAiOk5rg5tzci+cACspD0J4h1CKJQrhFLIiuBO3TT7JXCAoMBeX2SmwGDbZpRwXcb53i+6sRk
- qxS1DrUMssMBYLQm2MhDXhCJo2Ph6lV+jGsnWOWAxURVmCeuWTIwQNu
-X-Developer-Key: i=Arturs.Artamonovs@analog.com; a=ed25519;
- pk=UXODIid/MrmBXvqkX4PeEfetDaNAw9xKMINHIc5oZCk=
-X-Endpoint-Received: by B4 Relay for Arturs.Artamonovs@analog.com/20240910 with auth_id=327
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2777;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=L2+ZDh3UGreX3UT53788BxJ/PaPdkpBoEUyyO5eDBek=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBoyYyPvSVBLAP3nba8usDeBa0NE5WcMNjGOq/ub
+ Mjyq9RkIRWJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaMmMjwAKCRBVnxHm/pHO
+ 9Uv7B/47zt08wW4RzxQU+B4SGa3xwsCAdTj+VZfow21WgNXFQlT3NJ+iKL0WmbJswMJqFO4JWm7
+ QD0G9WlwjPaKC72uV/iAhROjUDsDW8BCHF+9y6/KUdyRLGOIe0vbj0P4Hd+Lao2FY1lKo1EhrRk
+ QUVvbz63nUDLC6r44EvxHsflVFhDknIS0voUmMyh6SOEdMX4d11tdq4CDxLIoALHXzRPuE6jR/R
+ 8eYnuhCv26L8VcIRLQ5CdUzs2u+OEI1eLxXouBXCyLdxSbSbjr1Y21oBbRJYhNCWHTqkq3PMObE
+ MK1sudLBIUcSxsxStNXlR2tyvDzRMDhJMyjXXFFVkILdMIIc
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Running checkpatch reported error extra whitespace at the
-end of help message for SERIAL_CPM menu entry
+Hi,
 
-Signed-off-by: Arturs Artamonovs <Arturs.Artamonovs@analog.com>
----
-Running checkpath.pl on drivers/tty/serial reports error
-Removing white space at the end of the line in Kconfig for SERIAL_CPM entry
----
- drivers/tty/serial/Kconfig | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+This series is one of the 'let's bite the bullet' kind, where we have decided to
+enable all ASPM and Clock PM states by default on devicetree platforms [1]. The
+reason why devicetree platforms were chosen because, it will be of minimal
+impact compared to the ACPI platforms. So seemed ideal to test the waters.
 
-diff --git a/drivers/tty/serial/Kconfig b/drivers/tty/serial/Kconfig
-index 44427415a80d7da63a8f2328b1932bff48500974..ac690f5cfbfe870a0c7eed4dc974d6ec28bb2c5f 100644
---- a/drivers/tty/serial/Kconfig
-+++ b/drivers/tty/serial/Kconfig
-@@ -782,7 +782,7 @@ config SERIAL_CPM
- 	depends on CPM2 || CPM1
- 	select SERIAL_CORE
- 	help
--	  This driver supports the SCC and SMC serial ports on Motorola 
-+	  This driver supports the SCC and SMC serial ports on Motorola
- 	  embedded PowerPC that contain a CPM1 (8xx) or CPM2 (8xxx)
- 
- config SERIAL_CPM_CONSOLE
+Problem Statement
+=================
 
+Historically, PCI subsystem relied on the BIOS to enable ASPM and Clock PM
+states for PCI devices before the kernel boot. This was done to avoid enabling
+ASPM for the buggy devices that are known to create issues with ASPM (even
+though they advertise the ASPM capability). But BIOS is not at all a thing on
+most of the non-x86 platforms. For instance, the majority of the Embedded and
+Compute ARM based platforms using devicetree have something called bootloader,
+which is not anyway near the standard BIOS used in x86 based platforms. And
+these bootloaders wouldn't touch PCIe at all, unless they boot using PCIe
+storage, even then there would be no guarantee that the ASPM states will get
+enabled. Another example is the Intel's VMD domain that is not at all configured
+by the BIOS. But, this series is not enabling ASPM/Clock PM for VMD domain. I
+hope it will be done similarly in the future patches.
+
+Solution
+========
+
+So to avoid relying on BIOS, it was agreed [2] that the PCI subsystem has to
+enable ASPM and Clock PM states based on the device capability. If any devices
+misbehave, then they should be quirked accordingly.
+
+First patch of this series introduces two helper functions to enable all ASPM
+and Clock PM states if CONFIG_OF is enabled. Second patch drops the custom ASPM
+enablement code from the pcie-qcom driver as it is no longer needed.
+
+Testing
+=======
+
+This series is tested on Lenovo Thinkpad T14s based on Snapdragon X1 SoC. All
+supported ASPM states are getting enabled for both the NVMe and WLAN devices by
+default.
+
+[1] https://lore.kernel.org/linux-pci/a47sg5ahflhvzyzqnfxvpk3dw4clkhqlhznjxzwqpf4nyjx5dk@bcghz5o6zolk
+[2] https://lore.kernel.org/linux-pci/20250828204345.GA958461@bhelgaas
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
-base-commit: f83ec76bf285bea5727f478a68b894f5543ca76e
-change-id: 20250915-tty-serial-kconfig-fix-47a502d90a12
+Manivannan Sadhasivam (2):
+      PCI/ASPM: Override the ASPM and Clock PM states set by BIOS for devicetree platforms
+      PCI: qcom: Remove the custom ASPM enablement code
+
+ drivers/pci/controller/dwc/pcie-qcom.c | 32 -----------------------
+ drivers/pci/pcie/aspm.c                | 48 ++++++++++++++++++++++++++++++----
+ 2 files changed, 43 insertions(+), 37 deletions(-)
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250916-pci-dt-aspm-8b3a7e8d2cf1
 
 Best regards,
 -- 
-Arturs Artamonovs <Arturs.Artamonovs@analog.com>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
