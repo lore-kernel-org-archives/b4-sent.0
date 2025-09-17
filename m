@@ -1,11 +1,11 @@
 From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-Date: Wed, 17 Sep 2025 18:15:15 +0800
-Subject: [PATCH v5 2/9] power: supply: core: Add state_of_health power
+Date: Wed, 17 Sep 2025 18:15:16 +0800
+Subject: [PATCH v5 3/9] power: supply: qcom_battmgr: Add resistance power
  supply property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250917-qcom_battmgr_update-v5-2-270ade9ffe13@oss.qualcomm.com>
+Message-Id: <20250917-qcom_battmgr_update-v5-3-270ade9ffe13@oss.qualcomm.com>
 References: <20250917-qcom_battmgr_update-v5-0-270ade9ffe13@oss.qualcomm.com>
 In-Reply-To: <20250917-qcom_battmgr_update-v5-0-270ade9ffe13@oss.qualcomm.com>
 To: Sebastian Reichel <sre@kernel.org>, 
@@ -25,82 +25,80 @@ Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>,
  kernel@oss.qualcomm.com, devicetree@vger.kernel.org, 
  linux-usb@vger.kernel.org, Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758104128; l=3021;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758104128; l=2467;
  i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
- bh=X9IUekcuEDwrQoqMr14tBuaW1CVOe9cZSoRRoug9QqU=;
- b=Akh6bpMVbnZx/CKFVHWtmhT7lnXnEtn9x+I8Wqb4ZILtv6+40r5RLgfhCpVuMb/22B827MkSW
- kaE6l2AITO6BwB3GAVou9vciqIXt+nOPFb5nE2E47PyIOgkfPuCjC5y
+ bh=qFMmKwGjAYDQaWpF4fZvL+OO1QDC0goTFTZPyo/iQsQ=;
+ b=LGtrOwVCH8GU29tX00F/p/pfnmJCYFnJuLa10sNpEAu4DGcrhmuJeOOIrrRWOo7NELg77Lw5F
+ KjkQuhdXvC8AFnngZWuTUy6bgxJON+fh1t+8avcuvqc0RP2tG7uyra6
 X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
  pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
 X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add state_of_health power supply property to represent battery
-health percentage.
+Add power supply property to get battery internal resistance from
+the battery management firmware.
 
 Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
- Documentation/ABI/testing/sysfs-class-power | 21 +++++++++++++++++++++
- drivers/power/supply/power_supply_sysfs.c   |  1 +
- include/linux/power_supply.h                |  1 +
- 3 files changed, 23 insertions(+)
+ drivers/power/supply/qcom_battmgr.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/Documentation/ABI/testing/sysfs-class-power b/Documentation/ABI/testing/sysfs-class-power
-index cea1a38f5a8fb754d4e6323967ef6cf2e20a68ce..d9e1ad7646f14892bb7ed55ac72d0de7569f104e 100644
---- a/Documentation/ABI/testing/sysfs-class-power
-+++ b/Documentation/ABI/testing/sysfs-class-power
-@@ -568,6 +568,27 @@ Description:
+diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
+index fe27676fbc7cd12292caa6fb3b5b46a18c426e6d..6026266907c9dfd902240d451a0d1c50fa5dbc59 100644
+--- a/drivers/power/supply/qcom_battmgr.c
++++ b/drivers/power/supply/qcom_battmgr.c
+@@ -2,6 +2,7 @@
+ /*
+  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+  * Copyright (c) 2022, Linaro Ltd
++ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+  */
+ #include <linux/auxiliary_bus.h>
+ #include <linux/module.h>
+@@ -254,6 +255,7 @@ struct qcom_battmgr_status {
+ 	unsigned int voltage_now;
+ 	unsigned int voltage_ocv;
+ 	unsigned int temperature;
++	unsigned int resistance;
  
- 		Valid values: Represented in microohms
+ 	unsigned int discharge_time;
+ 	unsigned int charge_time;
+@@ -418,6 +420,7 @@ static const u8 sm8350_bat_prop_map[] = {
+ 	[POWER_SUPPLY_PROP_MODEL_NAME] = BATT_MODEL_NAME,
+ 	[POWER_SUPPLY_PROP_TIME_TO_FULL_AVG] = BATT_TTF_AVG,
+ 	[POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG] = BATT_TTE_AVG,
++	[POWER_SUPPLY_PROP_INTERNAL_RESISTANCE] = BATT_RESISTANCE,
+ 	[POWER_SUPPLY_PROP_POWER_NOW] = BATT_POWER_NOW,
+ };
  
-+What:		/sys/class/power_supply/<supply_name>/state_of_health
-+Date:		August 2025
-+Contact:	linux-arm-msm@vger.kernel.org
-+Description:
-+		The state_of_health parameter quantifies the overall condition
-+		of a battery as a percentage, reflecting its ability to deliver
-+		rated performance relative to its original specifications. It is
-+		dynamically computed using a combination of learned capacity
-+		and impedance-based degradation indicators, both of which evolve
-+		over the battery's lifecycle.
-+		Note that the exact algorithms are kept secret by most battery
-+		vendors and the value from different battery vendors cannot be
-+		compared with each other as there is no vendor-agnostic definition
-+		of "performance". Also this usually cannot be used for any
-+		calculations (i.e. this is not the factor between charge_full and
-+		charge_full_design).
-+
-+		Access: Read
-+
-+		Valid values: 0 - 100 (percent)
-+
- **USB Properties**
- 
- What:		/sys/class/power_supply/<supply_name>/input_current_limit
-diff --git a/drivers/power/supply/power_supply_sysfs.c b/drivers/power/supply/power_supply_sysfs.c
-index cfa8f90a88ebc8fc1c7447198f138e5d2e699e5a..d96a8578308e3af60cc1a352845662aa922c29b3 100644
---- a/drivers/power/supply/power_supply_sysfs.c
-+++ b/drivers/power/supply/power_supply_sysfs.c
-@@ -221,6 +221,7 @@ static struct power_supply_attr power_supply_attrs[] __ro_after_init = {
- 	POWER_SUPPLY_ATTR(MANUFACTURE_MONTH),
- 	POWER_SUPPLY_ATTR(MANUFACTURE_DAY),
- 	POWER_SUPPLY_ATTR(INTERNAL_RESISTANCE),
-+	POWER_SUPPLY_ATTR(STATE_OF_HEALTH),
- 	/* Properties of type `const char *' */
- 	POWER_SUPPLY_ATTR(MODEL_NAME),
- 	POWER_SUPPLY_ATTR(MANUFACTURER),
-diff --git a/include/linux/power_supply.h b/include/linux/power_supply.h
-index 8bc3b7a67eb5693a16db9b7d123e7881711c6bf4..ccb43fe44381965069dc3bd9505d45050b9b1bd8 100644
---- a/include/linux/power_supply.h
-+++ b/include/linux/power_supply.h
-@@ -175,6 +175,7 @@ enum power_supply_property {
- 	POWER_SUPPLY_PROP_MANUFACTURE_MONTH,
- 	POWER_SUPPLY_PROP_MANUFACTURE_DAY,
- 	POWER_SUPPLY_PROP_INTERNAL_RESISTANCE,
-+	POWER_SUPPLY_PROP_STATE_OF_HEALTH,
- 	/* Properties of type `const char *' */
+@@ -582,6 +585,9 @@ static int qcom_battmgr_bat_get_property(struct power_supply *psy,
+ 	case POWER_SUPPLY_PROP_TEMP:
+ 		val->intval = battmgr->status.temperature;
+ 		break;
++	case POWER_SUPPLY_PROP_INTERNAL_RESISTANCE:
++		val->intval = battmgr->status.resistance;
++		break;
+ 	case POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG:
+ 		val->intval = battmgr->status.discharge_time;
+ 		break;
+@@ -665,6 +671,7 @@ static const enum power_supply_property sm8350_bat_props[] = {
  	POWER_SUPPLY_PROP_MODEL_NAME,
- 	POWER_SUPPLY_PROP_MANUFACTURER,
+ 	POWER_SUPPLY_PROP_TIME_TO_FULL_AVG,
+ 	POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG,
++	POWER_SUPPLY_PROP_INTERNAL_RESISTANCE,
+ 	POWER_SUPPLY_PROP_POWER_NOW,
+ };
+ 
+@@ -1174,6 +1181,9 @@ static void qcom_battmgr_sm8350_callback(struct qcom_battmgr *battmgr,
+ 		case BATT_TTE_AVG:
+ 			battmgr->status.discharge_time = le32_to_cpu(resp->intval.value);
+ 			break;
++		case BATT_RESISTANCE:
++			battmgr->status.resistance = le32_to_cpu(resp->intval.value);
++			break;
+ 		case BATT_POWER_NOW:
+ 			battmgr->status.power_now = le32_to_cpu(resp->intval.value);
+ 			break;
 
 -- 
 2.34.1
