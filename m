@@ -1,173 +1,283 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Wed, 17 Sep 2025 20:46:43 +0800
-Subject: [PATCH v3 4/4] ALSA: doc: add docs about device_device_quirk_flags
- in snd-usb-audio
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH v11 00/17] media: rockchip: add a driver for the rockchip
+ camera interface
+Date: Wed, 17 Sep 2025 17:38:40 +0200
+Message-Id: <20240220-rk3568-vicap-v11-0-af0eada54e5d@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250917-sound-v3-4-92ebe9472a0a@uniontech.com>
-References: <20250917-sound-v3-0-92ebe9472a0a@uniontech.com>
-In-Reply-To: <20250917-sound-v3-0-92ebe9472a0a@uniontech.com>
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Jonathan Corbet <corbet@lwn.net>, Luis Chamberlain <mcgrof@kernel.org>, 
- Petr Pavlu <petr.pavlu@suse.com>, Daniel Gomez <da.gomez@kernel.org>, 
- Sami Tolvanen <samitolvanen@google.com>
-Cc: linux-sound@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Mingcong Bai <jeffbai@aosc.io>, Kexy Biscuit <kexybiscuit@aosc.io>, 
- Nie Cheng <niecheng1@uniontech.com>, Zhan Jun <zhanjun@uniontech.com>, 
- Feng Yuan <fengyuan@uniontech.com>, qaqland <anguoli@uniontech.com>, 
- kernel@uniontech.com, linux-modules@vger.kernel.org, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758113201; l=7243;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=FrGLJBJnqo9zN6+xgDNO+WYVjRiKsb3cKaYsHmjiH7E=;
- b=gE/1lcbGSKLIyPWnGhSWN9s4EGeSj22aOYnwzSYGBlHiz/h4eoEflKVPMBXlJbVITGCM5tsKK
- 2SPYbCo7t7dB5hFGmA2W+zwcRfvQsES/Bs2Y7C1hW+2eqgK2UiC7rOs
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAHWymgC/33RS07DQAwG4KtUWTOV7XlkhlXvgVjMk4xokyipA
+ qjq3Zm0glKUZmlb/n5LPlVjHHIcq+fNqRrilMfctaVAfNpUvrHtW2Q5lEZFQAKIgA3vXCrNpux
+ tz5xxPBlDMglRlRVnx8jcYFvfzEuH2ITMJuTzrB9iyp+XrJfXUjd5PHbD1yV6wrl7C5kU0+zY9
+ dnf503IgJHSYDFZJcDtPrp9up69beOxmuGJfjEkrB9jVDCHQWidvIfAFzH+g0kgUI8xXjBlAiY
+ 0UXoBi5j4g6F5jImCRQNKAdjI3TImbxhfu0wWLJU8SZKLxP0ipu4fcC+oIgRKMrkYUUrc+W6/t
+ 64b7NZ3hytQrwF1AWqpMQWjLOd2CdBrgC6ACcY7L5wkEZYAswaYAlgfsfzGC6tpCUBYExDmD1P
+ QtnYExon/xPl8/gapqh0BUAMAAA==
+To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
+ Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
+ Thomas Petazzoni <thomas.petazzoni@bootlin.com>, 
+ Gerald Loacker <gerald.loacker@wolfvision.net>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Markus Elfring <Markus.Elfring@web.de>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh+dt@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Kever Yang <kever.yang@rock-chips.com>, 
+ Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Collabora Kernel Team <kernel@collabora.com>, 
+ Paul Kocialkowski <paulk@sys-base.io>, 
+ Alexander Shiyan <eagle.alexander923@gmail.com>, 
+ Val Packett <val@packett.cool>, Rob Herring <robh@kernel.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, 
+ Michael Riesch <michael.riesch@collabora.com>, 
+ Michael Riesch <michael.riesch@collabora.com>, 
+ Mehdi Djait <mehdi.djait@bootlin.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Bryan O'Donoghue <bod@kernel.org>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758123529; l=11099;
+ i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
+ bh=3pSUyCvPtlKEAoyO55jMWubK5+XvPSCaonS4zDZvGwY=;
+ b=DCAqz8jFy+PT802s8GcvQxmc14KKL1P2E7I9XX0XIz2vvZkd0/YiE8ndiHaE2uMvuR5BiR46v
+ N7Zmii2Daw2Ai56G4GjP+TmXyuHeisvgjyJi7h02a6/vrpCfU7vnQxc
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Just briefly described about the new option.
+Habidere,
 
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+This series introduces support for the Rockchip Camera Interface (CIF),
+which is featured in many Rockchip SoCs in different variations.
+For example, the PX30 Video Input Processor (VIP) is able to receive
+video data via the Digital Video Port (DVP, a parallel data interface)
+and transfer it into system memory using a double-buffering mechanism
+called ping-pong mode.
+The RK3568 Video Capture (VICAP) unit, on the other hand, features a
+DVP and a MIPI CSI-2 receiver that can receive video data independently
+(both using the ping-pong scheme).
+The different variants may have additional features, such as scaling
+and/or cropping.
+Finally, the RK3588 VICAP unit constitutes an essential piece of the
+camera interface with one DVP, six MIPI CSI-2 receivers, scale/crop
+units, and a data path multiplexer (to scaler units, to ISP, ...).
+
+The v11 of the series adds a media controller centric V4L2 device driver
+for the Rockchip CIF with
+ - support for the PX30 VIP (not tested, though, due to the lack of HW)
+ - support for the RK3568 VICAP, including
+    - capturing frames from the DVP
+    - capturing frames from the MIPI CSI-2 receiver
+ - abstraction for the ping-pong scheme to allow for future extensions
+ - abstraction for the INTERFACE and CROP parts to allow for future
+   extensions
+ - initial support for different virtual channels (not tested, though,
+   due to the lack of HW)
+and a V4L2 subdevice driver for the Rockchip MIPI CSI-2 Receiver.
+
+The driver can be readily extended to provide support for the RK3588
+VICAP variant. In order to keep things simple, however, this extension
+shall be submitted separately.
+
+Looking forward to your comments!
+
+To: Mehdi Djait <mehdi.djait@linux.intel.com>
+To: Maxime Chevallier <maxime.chevallier@bootlin.com>
+To: Théo Lebrun <theo.lebrun@bootlin.com>
+To: Thomas Petazzoni <thomas.petazzoni@bootlin.com>
+To: Gerald Loacker <gerald.loacker@wolfvision.net>
+To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
+To: Markus Elfring <Markus.Elfring@web.de>
+To: Sakari Ailus <sakari.ailus@iki.fi>
+To: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+To: Mauro Carvalho Chehab <mchehab@kernel.org>
+To: Rob Herring <robh+dt@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Heiko Stuebner <heiko@sntech.de>
+To: Kever Yang <kever.yang@rock-chips.com>
+To: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+To: Sebastian Reichel <sebastian.reichel@collabora.com>
+To: Collabora Kernel Team <kernel@collabora.com>
+To: Paul Kocialkowski <paulk@sys-base.io>
+To: Alexander Shiyan <eagle.alexander923@gmail.com>
+To: Val Packett <val@packett.cool>
+To: Rob Herring <robh@kernel.org>
+To: Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-media@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
+Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+
+Changes in v11:
+- rkcif: split large driver patch (6/13 of v10) into smaller
+  patches (6-11/17 of v11) (Bryan)
+- rkcsi: replaced devm_reset_control_array_get_exclusive with 
+  devm_reset_control_get_exclusive (Philipp)
+- Link to v10: https://lore.kernel.org/r/20240220-rk3568-vicap-v10-0-62d8a7b209b4@collabora.com
+
+Changes in v10:
+- rkcsi: fixed error handling in rkcsi_start (Bryan)
+- rkcsi: fixed interrupt references in device tree and bindings
+  (Rob's bot)
+- added missing call to rkcif_mipi_stop_streaming from rkcif_mipi_isr
+  (Mehdi)
+- renamed remaining instances "cif_" -> "rkcif_" in functions
+- Link to v9: https://lore.kernel.org/r/20240220-rk3568-vicap-v9-0-ace1e5cc4a82@collabora.com
+
+Changes in v9:
+- added compatible for RK3588 MIPI CSI-2 receiver, thus dropped
+  Krzysztof's R-b
+- added interrupts to rkcsi DT binding and RK356x DT
+- added variant specific callback to rkcif-capture-mipi that puts
+  together the CTRL0 register content (which varies between RK3568
+  and RK3588)
+- fixed v4l2_fill_pixfmt_mp() return value handling (Mehdi)
+- Link to v8: https://lore.kernel.org/r/20240220-rk3568-vicap-v8-0-9d9cbc4b524d@collabora.com
+
+Changes in v8:
+- rebased onto v6.16-rc1
+- fixed RKCIF_MIPI_MAX value in rkcif-common.h
+- fixed rkcsi Kconfig (kernel test robot)
+- sorted rkcsi DT bindings document properly, completed example
+  (Krzysztof)
+- squashed the defconfig patches (Krzysztof), dropped Bryan's R-b
+- Link to v7: https://lore.kernel.org/r/20240220-rk3568-vicap-v7-0-7581fd96a33a@collabora.com
+
+Changes in v7:
+- moved MIPI CSI-2 receiver driver into separate directory (Laurent)
+- rkcsi: fixed return values (Bryan)
+- rkcsi: fixed v4l2_get_link_freq to use pad instead of control
+  handler (Sakari)
+- rkcsi: added data-lanes property (Mehdi)
+- rkcif: fixed formatting (Bryan)
+- fixed "int" -> "unsigned int" in all for loops (Sakari)
+- rkcif-stream: fixed minimum number of required buffers (Mehdi)
+- rkcif-stream: used guards for the spinlock (Markus and Mehdi)
+- rkcif-stream: made driver less noisy with dev_dbg (Mehdi)
+- rkcif-stream: fixed issues detected by v4l2-compliance (Mehdi)
+- rkcif-dvp-capture: fixed return value propagation in _register()
+  (Mehdi)
+- removed stray "phy-names" from required properties (Rob's bot)
+- Link to v6: https://lore.kernel.org/r/20240220-rk3568-vicap-v6-0-d2f5fbee1551@collabora.com
+
+Changes in v6:
+- rebased onto v6.15-rc1
+- renamed "MIPI CSI HOST" -> "MIPI CSI RECEIVER" (Laurent)
+- s/@wolfvision.net/@collabora.com where appropriate
+- renamed DVP delay property and moved it to the endpoint (Sakari)
+- implemented DT review comments (Krzysztof and Sakari)
+- implemented driver review comments (Sakari)
+- fixed issues raised by media-ci (yet again)
+- added documentation including a RK3568 topology (new patch 1)
+  (Sakari)
+- added patch that enables rkcif in the defconfig (new patch 9)
+- Link to v5: https://lore.kernel.org/r/20250306-v6-8-topic-rk3568-vicap-v5-0-f02152534f3c@wolfvision.net
+
+Changes in v5:
+- fixed issues raised by media-ci
+- fixed dt bindings (comments by Rob and Sakari)
+- fixed probe on systems with no DVP in DT (comment by Alexander)
+- fixed error path in register offset calculation
+- split off MIPI CSI host driver into separate module (comment
+  by Mehdi)
+- added MODULE_DEVICE_TABLE() for both drivers (comment by Mehdi)
+- Link to v4: https://lore.kernel.org/r/20250219-v6-8-topic-rk3568-vicap-v4-0-e906600ae3b0@wolfvision.net
+
+Changes in v4:
+- added support for the MIPI CSI-2 receiver (new patches 4, 6, 7, 10)
+- fixed asserts on stream stop
+- fixed register address lookup
+- fixed link validiation callback
+- fixed issues raised by Rob's bot, kernel test robot, and media-ci
+- Link to v3: https://lore.kernel.org/r/20250206-v6-8-topic-rk3568-vicap-v3-0-69d1f19e5c40@wolfvision.net
+
+Changes in v3:
+- renamed the driver "cif" -> "rkcif"
+- rebased onto v6.14-rc1
+- abstracted the generic INTERFACE+CROP part
+- addressed comments by Rob and Sakari
+- added V4L2 MPLANE formats to DVP
+- added patch that enables the RK3568 VICAP DVP on PF5 IO Expander
+- fixed formatting issues raised by media-ci bot
+- Link to v2: https://lore.kernel.org/r/20241217-v6-8-topic-rk3568-vicap-v2-0-b1d488fcc0d3@wolfvision.net
+
+Changes in v2:
+- merged with Mehdi's v13
+- refactored the complete driver towards a media controller centric driver
+- abstracted the generic ping-pong stream (can be used for DVP as well as for CSI-2)
+- switched to MPLANE API
+- added support for notifications
+- Link to v1: https://lore.kernel.org/r/20240220-v6-8-topic-rk3568-vicap-v1-0-2680a1fa640b@wolfvision.net
+
 ---
- Documentation/sound/alsa-configuration.rst | 112 ++++++++++++++++++++---------
- 1 file changed, 77 insertions(+), 35 deletions(-)
+Mehdi Djait (2):
+      media: dt-bindings: add rockchip px30 vip
+      arm64: dts: rockchip: add the vip node to px30
 
-diff --git a/Documentation/sound/alsa-configuration.rst b/Documentation/sound/alsa-configuration.rst
-index a2fb8ed251dd0294e7a62209ca15d5c32c6adfae..23ee37f24ff89a983b3dffe6312057cd84b8f579 100644
---- a/Documentation/sound/alsa-configuration.rst
-+++ b/Documentation/sound/alsa-configuration.rst
-@@ -2297,39 +2297,81 @@ skip_validation
-     of the unit descriptor instead of a driver probe error, so that we
-     can check its details.
- quirk_flags
--    Contains the bit flags for various device specific workarounds.
--    Applied to the corresponding card index.
--
--        * bit 0: Skip reading sample rate for devices
--        * bit 1: Create Media Controller API entries
--        * bit 2: Allow alignment on audio sub-slot at transfer
--        * bit 3: Add length specifier to transfers
--        * bit 4: Start playback stream at first in implement feedback mode
--        * bit 5: Skip clock selector setup
--        * bit 6: Ignore errors from clock source search
--        * bit 7: Indicates ITF-USB DSD based DACs
--        * bit 8: Add a delay of 20ms at each control message handling
--        * bit 9: Add a delay of 1-2ms at each control message handling
--        * bit 10: Add a delay of 5-6ms at each control message handling
--        * bit 11: Add a delay of 50ms at each interface setup
--        * bit 12: Perform sample rate validations at probe
--        * bit 13: Disable runtime PM autosuspend
--        * bit 14: Ignore errors for mixer access
--        * bit 15: Support generic DSD raw U32_BE format
--        * bit 16: Set up the interface at first like UAC1
--        * bit 17: Apply the generic implicit feedback sync mode
--        * bit 18: Don't apply implicit feedback sync mode
--        * bit 19: Don't closed interface during setting sample rate
--        * bit 20: Force an interface reset whenever stopping & restarting
--          a stream
--        * bit 21: Do not set PCM rate (frequency) when only one rate is
--          available for the given endpoint.
--        * bit 22: Set the fixed resolution 16 for Mic Capture Volume
--        * bit 23: Set the fixed resolution 384 for Mic Capture Volume
--        * bit 24: Set minimum volume control value as mute for devices
--          where the lowest playback value represents muted state instead
--          of minimum audible volume
--        * bit 25: Be similar to bit 24 but for capture streams
-+    The option provides a refined and flexible control for applying quirk
-+    flags.  It allows to specify the quirk flags for each device, and could
-+    be modified dynamically via sysfs.
-+    The old usage accepts an array of integers, each of which apply quirk
-+    flags on the device in the order of probing.
-+    e.g. ``quirk_flags=0x01,0x02`` applies get_sample_rate to the first
-+    device, and share_media_device to the second device.
-+    The new usage accepts a string in the format of
-+    ``VID1:PID1:FLAGS1;VID2:PID2:FLAGS2;...``, where ``VIDx`` and ``PIDx``
-+    specify the device, and ``FLAGSx`` specify the flags to be applied.
-+    ``VIDx`` and ``PIDx`` are 4-digit hexadecimal numbers, and could be
-+    specified as ``*`` to match any value.  ``FLAGSx`` could be a set of
-+    flags given by name, separated by ``|``, or a hexadecimal number
-+    representing the bit flags.  The available flag names are listed above.
-+    An exclamation mark could be prefixed to a flag name to negate the flag.
-+    For example, ``1234:abcd:mixer_playback_min_mute|!ignore_ctl_error;*:*:0x01;``
-+    applies the ``mixer_playback_min_mute`` flag and clears the
-+    ``ignore_ctl_error`` flag for the device 1234:abcd, and applies the
-+    ``skip_sample_rate`` flag for all devices.
-+
-+        * bit 0: ``get_sample_rate``
-+          Skip reading sample rate for devices
-+        * bit 1: ``share_media_device``
-+          Create Media Controller API entries
-+        * bit 2: ``align_transfer``
-+          Allow alignment on audio sub-slot at transfer
-+        * bit 3: ``tx_length``
-+          Add length specifier to transfers
-+        * bit 4: ``playback_first``
-+          Start playback stream at first in implement feedback mode
-+        * bit 5: ``skip_clock_selector``
-+          Skip clock selector setup
-+        * bit 6: ``ignore_clock_source``
-+          Ignore errors from clock source search
-+        * bit 7: ``itf_usb_dsd_dac``
-+          Indicates ITF-USB DSD based DACs
-+        * bit 8: ``ctl_msg_delay``
-+          Add a delay of 20ms at each control message handling
-+        * bit 9: ``ctl_msg_delay_1m``
-+          Add a delay of 1-2ms at each control message handling
-+        * bit 10: ``ctl_msg_delay_5m``
-+          Add a delay of 5-6ms at each control message handling
-+        * bit 11: ``iface_delay``
-+          Add a delay of 50ms at each interface setup
-+        * bit 12: ``validate_rates``
-+          Perform sample rate validations at probe
-+        * bit 13: ``disable_autosuspend``
-+          Disable runtime PM autosuspend
-+        * bit 14: ``ignore_ctl_error``
-+          Ignore errors for mixer access
-+        * bit 15: ``dsd_raw``
-+          Support generic DSD raw U32_BE format
-+        * bit 16: ``set_iface_first``
-+          Set up the interface at first like UAC1
-+        * bit 17: ``generic_implicit_fb``
-+          Apply the generic implicit feedback sync mode
-+        * bit 18: ``skip_implicit_fb``
-+          Don't apply implicit feedback sync mode
-+        * bit 19: ``iface_skip_close``
-+          Don't closed interface during setting sample rate
-+        * bit 20: ``force_iface_reset``
-+          Force an interface reset whenever stopping & restarting a stream
-+        * bit 21: ``fixed_rate``
-+          Do not set PCM rate (frequency) when only one rate is available
-+          for the given endpoint
-+        * bit 22: ``mic_res_16``
-+          Set the fixed resolution 16 for Mic Capture Volume
-+        * bit 23: ``mic_res_384``
-+          Set the fixed resolution 384 for Mic Capture Volume
-+        * bit 24: ``mixer_playback_min_mute``
-+          Set minimum volume control value as mute for devices where the
-+          lowest playback value represents muted state instead of minimum
-+          audible volume
-+        * bit 25: ``mixer_capture_min_mute``
-+          Be similar to bit 24 but for capture streams
- 
- This module supports multiple devices, autoprobe and hotplugging.
- 
-@@ -2344,8 +2386,8 @@ report it to the upstream.
- NB: ``quirk_alias`` option is provided only for testing / development.
- If you want to have a proper support, contact to upstream for
- adding the matching quirk in the driver code statically.
--Ditto for ``quirk_flags``.  If a device is known to require specific
--workarounds, please report to the upstream.
-+Ditto for ``quirk_flags``.  If a device
-+is known to require specific workarounds, please report to the upstream.
- 
- Module snd-usb-caiaq
- --------------------
+Michael Riesch (15):
+      Documentation: admin-guide: media: add rockchip camera interface
+      media: dt-bindings: video-interfaces: add defines for sampling modes
+      media: dt-bindings: add rockchip rk3568 vicap
+      media: dt-bindings: add rockchip rk3568 mipi csi-2 receiver
+      media: rockchip: add driver for the rockchip mipi csi-2 receiver
+      media: rockchip: add driver for the rockchip camera interface
+      media: rockchip: rkcif: add abstraction for interface and crop blocks
+      media: rockchip: rkcif: add abstraction for dma blocks
+      media: rockchip: rkcif: add support for px30 vip dvp capture
+      media: rockchip: rkcif: add support for rk3568 vicap dvp capture
+      media: rockchip: rkcif: add support for rk3568 vicap mipi capture
+      arm64: defconfig: enable rockchip camera interface and mipi csi-2 receiver
+      arm64: dts: rockchip: add vicap node to rk356x
+      arm64: dts: rockchip: add mipi csi-2 receiver node to rk356x
+      arm64: dts: rockchip: enable vicap dvp on wolfvision pf5 io expander
 
+ .../admin-guide/media/rkcif-rk3568-vicap.dot       |  21 +
+ Documentation/admin-guide/media/rkcif.rst          |  83 ++
+ Documentation/admin-guide/media/v4l-drivers.rst    |   1 +
+ .../bindings/media/rockchip,px30-vip.yaml          | 122 +++
+ .../bindings/media/rockchip,rk3568-mipi-csi.yaml   | 144 ++++
+ .../bindings/media/rockchip,rk3568-vicap.yaml      | 170 ++++
+ MAINTAINERS                                        |  17 +
+ arch/arm64/boot/dts/rockchip/px30.dtsi             |  12 +
+ .../rk3568-wolfvision-pf5-io-expander.dtso         |  20 +
+ arch/arm64/boot/dts/rockchip/rk356x-base.dtsi      |  78 ++
+ arch/arm64/configs/defconfig                       |   2 +
+ drivers/media/platform/rockchip/Kconfig            |   2 +
+ drivers/media/platform/rockchip/Makefile           |   2 +
+ drivers/media/platform/rockchip/rkcif/Kconfig      |  18 +
+ drivers/media/platform/rockchip/rkcif/Makefile     |   8 +
+ .../platform/rockchip/rkcif/rkcif-capture-dvp.c    | 864 +++++++++++++++++++++
+ .../platform/rockchip/rkcif/rkcif-capture-dvp.h    |  24 +
+ .../platform/rockchip/rkcif/rkcif-capture-mipi.c   | 777 ++++++++++++++++++
+ .../platform/rockchip/rkcif/rkcif-capture-mipi.h   |  22 +
+ .../media/platform/rockchip/rkcif/rkcif-common.h   | 249 ++++++
+ drivers/media/platform/rockchip/rkcif/rkcif-dev.c  | 301 +++++++
+ .../platform/rockchip/rkcif/rkcif-interface.c      | 425 ++++++++++
+ .../platform/rockchip/rkcif/rkcif-interface.h      |  30 +
+ drivers/media/platform/rockchip/rkcif/rkcif-regs.h | 153 ++++
+ .../media/platform/rockchip/rkcif/rkcif-stream.c   | 637 +++++++++++++++
+ .../media/platform/rockchip/rkcif/rkcif-stream.h   |  31 +
+ drivers/media/platform/rockchip/rkcsi/Kconfig      |  16 +
+ drivers/media/platform/rockchip/rkcsi/Makefile     |   3 +
+ drivers/media/platform/rockchip/rkcsi/rkcsi.c      | 741 ++++++++++++++++++
+ include/dt-bindings/media/video-interfaces.h       |   4 +
+ 30 files changed, 4977 insertions(+)
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20240220-rk3568-vicap-b9b3f9925f44
+
+Best regards,
 -- 
-2.51.0
+Michael Riesch <michael.riesch@collabora.com>
 
