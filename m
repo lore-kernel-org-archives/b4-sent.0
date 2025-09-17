@@ -1,98 +1,207 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Wed, 17 Sep 2025 17:38:57 +0200
-Subject: [PATCH v11 17/17] arm64: dts: rockchip: enable vicap dvp on
- wolfvision pf5 io expander
+From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+Subject: [PATCH v11 0/6] add support for pf1550 PMIC MFD-based drivers
+Date: Wed, 17 Sep 2025 11:52:33 -0400
+Message-Id: <20250917-pf1550-v11-0-e0649822fcc9@savoirfairelinux.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240220-rk3568-vicap-v11-17-af0eada54e5d@collabora.com>
-References: <20240220-rk3568-vicap-v11-0-af0eada54e5d@collabora.com>
-In-Reply-To: <20240220-rk3568-vicap-v11-0-af0eada54e5d@collabora.com>
-To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
- Thomas Petazzoni <thomas.petazzoni@bootlin.com>, 
- Gerald Loacker <gerald.loacker@wolfvision.net>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Markus Elfring <Markus.Elfring@web.de>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh+dt@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Paul Kocialkowski <paulk@sys-base.io>, 
- Alexander Shiyan <eagle.alexander923@gmail.com>, 
- Val Packett <val@packett.cool>, Rob Herring <robh@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, 
- Michael Riesch <michael.riesch@collabora.com>, 
- Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758123529; l=1661;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=tkvGHWW1RXCremqXv1+qTo26zNWU0UHQFUaztf+p/DI=;
- b=TMdNC5j/SVR7CAj/qWuxaE52WvzsrdCM4LEMOhzl/DeDBHvBAEKWLOH7lzmoQKdF4PjLGiSZK
- wakOtUAk3azAWu8a5NsJ76faVqTvIo5LdF6z3bnKXTL62O2uINdkUKg
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+X-B4-Tracking: v=1; b=H4sIAEHZymgC/33RTWrDMBAF4KsEresw+hnJzqr3KF3I0qgRNHEqO
+ yYl5O6dOmCbQr2c4fFpeLqLnkqmXhx2d1FozH3uzjxI+bIT4ejPH1TlyAuhQCGgctUlSUSoogG
+ ZIIJraxAcvhRK+TZJb+/PudDXlcHhuRSt76kK3emUh8NutHuJ4jd4zP3Qle/pglFPyb9vjbqCy
+ mCyjUEdIsrX3o9dLsnnQp/5fL3t2Z200SyCBT0LhoU2xYSSCJsQNgRcCRJmAVmgCLEh7b0PbkO
+ wa0HOgmVBm6RiTAQGaUNwa0HNgmMBSDe6hWQwbt1QL4KDpcmaBdtaaq0LoD1sCM1KkHYWGhYQl
+ LfGJTCUNgQJC1GrpUpulf8zAN9hDBeh/zEej8cPNDg6uaECAAA=
+X-Change-ID: 20250527-pf1550-d401f0d07b80
+To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Sebastian Reichel <sre@kernel.org>, Frank Li <Frank.li@nxp.com>
+Cc: imx@lists.linux.dev, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
+ linux-pm@vger.kernel.org, Abel Vesa <abelvesa@kernel.org>, 
+ Abel Vesa <abelvesa@linux.com>, Robin Gong <b38343@freescale.com>, 
+ Robin Gong <yibin.gong@nxp.com>, 
+ Enric Balletbo i Serra <eballetbo@gmail.com>, 
+ Sean Nyekjaer <sean@geanix.com>, 
+ Christophe JAILLET <christophe.jaillet@wanadoo.fr>, 
+ Samuel Kayode <samuel.kayode@savoirfairelinux.com>, 
+ Abel Vesa <abelvesa@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Frank Li <Frank.Li@nxp.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758124466; l=7914;
+ i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
+ bh=SdZcfdOgfQT1VapBMcYSTO195l+3oQZ2Js3KUssxv2o=;
+ b=WESgbZnBRl2T0eyj+9AwNzSwFB5XMpsbF/bNj3KQ2Uu/e483oQ6RamltEFWmJESflmH4YBkBp
+ x6r/xbkHXj3DklZt3VcaZUwQwRBoDj8CcbAT1Vn0gk9jinE9UAML8fL
+X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
+ pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
+X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Digital Video Port (DVP, the 16-bit variant) of the RK3568 VICAP
-is broken out to the PF5 mainboard expansion header.
-Enable it in the device tree overlay for the WolfVision PF5 IO
-Expander board.
+This series adds support for pf1550 PMIC. It provides the core driver and
+sub-drivers for the regulator, power supply and input subsystems.
 
-Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
-Reviewed-by: Gerald Loacker <gerald.loacker@wolfvision.net>
-Tested-by: Gerald Loacker <gerald.loacker@wolfvision.net>
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Patch 1 adds the DT binding document for the PMIC. Patches 2-5 adds the
+pertinent drivers. Last patch adds a MAINTAINERS entry for the drivers.
+
+The patches 3-5 depend on the core driver provided in patch 2.
+
+Changes since v1:
+   - DT bindings for all devices included
+   - Add onkey driver
+   - Add driver for the regulators
+   - Ensure charger is activated as some variants have it off by default
+   - Update mfd and charger driver per feedback from eballetbo@gmail.com
+   - Add myself as maintainer for these drivers
+   - Link to v1: https://lore.kernel.org/1523974819-8711-1-git-send-email-abel.vesa@nxp.com/
+
+Changes since v2:
+   - Rebase on recent mainline kernel v6.15
+   - Single yaml file containing dt bindings for all pf1550 devices
+   - irq mapping done in MFD driver as suggested by Dmitry Torokhov
+   - Drop unnecessary includes in drivers
+   - Replace dev_err with dev_err_probe in probe method of drivers
+   - Drop compatible string from drivers of the sub-devices
+   - Remove dependency on OF from drivers of the sub-devices
+   - onkey: move driver from input/keyboard into input/misc
+   - onkey: remove dependency on OF
+   - onkey: use onkey virqs instead of central irq
+   - onkey: fix integer overflow for regmap_write when unmasking
+     interrupts during pf1550_onkey_resume
+   - charger: add support for monitored-battery which is used in setting
+     a constant voltage for the charger.
+   - Address other feedback from Dmitry Torokhov and Krzysztof Kozlowski
+   - Link to v2: https://lore.kernel.org/cover.1747409892.git.samuel.kayode@savoirfairelinux.com/
+
+Changes since v3:
+   - Update manufacturer from Freescale to NXP in compatible,
+     dt-binding and Kconfigs
+   - Use C++ style comments for SPDX license in .c code
+   - Add portions copyright to source code
+   - irqs are defined as struct resource in mfd cell such that
+     platform_get_irq is used in the sub-devices
+   - Make struct pf1550_dev of type const in sub-device driver
+   - irq variable dropped from sub-device driver struct
+   - EXPORT_SYMBOL of global pf1550_read_otp function for use in
+     regulator driver
+   - Drop unneeded info in driver_data when defining device table id
+   - regulator: validate ramp_delay
+   - regulator: report overcurrent and over temperature events
+   - onkey: drop unnecessary keycode variable
+   - onkey: change wakeup variable to type bool
+   - onkey: replace (error < 0) with error in if statement when possible
+   - onkey: use pm_sleep_ptr when defining driver.pm
+   - charger: finish handling of some interrupts in threaded irq handler
+   - Link to v3: https://lore.kernel.org/20250527-pf1550-v3-0-45f69453cd51@savoirfairelinux.com/
+
+Changes since v4:
+   - Use top level interrupt to minimize number of registers checked on
+     each interrupt
+   - Fix bad offset for temperature interrupts of regulator irq chip
+   - Address Krzysztof's comments for dt-binding
+   - regulator: add comments to clarify difference in its interrupts
+   - regulator: issue warn event for _LS interrupt and error event for
+     _HS interrupt
+   - regulator: validate maximum and minimum ramp_delay
+   - charger: drop lock in battery and charger delayed_work
+   - charger: more conservative locking for vbus delayed_work
+   - charger: apply lock when setting power_supply type during register
+     intialization
+   - Link to v4: https://lore.kernel.org/r/20250603-pf1550-v4-0-bfdf51ee59cc@savoirfairelinux.com
+
+Changes since v5:
+   - Ensure lowercase when assigning hex values
+   - Add imx@lists.linux.dev to relevant mailing list in MAINTAINERS file
+   - Use GENMASK macro
+   - Drop unused chips variable
+   - Read the OTP in the mfd driver probe for new dvs_enb variable
+   - Hardcode IRQ flags in pf1550_add_child function
+   - charger: drop the mutex entirely
+   - charger: reverse christmas tree style local variable definition in
+     probe
+   - Link to v5: https://lore.kernel.org/r/20250610-pf1550-v5-0-ed0d9e3aaac7@savoirfairelinux.com
+
+Changes since v6:
+   - Use reverse christmas tree order
+   - Drop 0 in table id's driver data
+   - charger: store virq to avoid reinvoking platform_get_irq in ISR
+   - Link to v6: https://lore.kernel.org/r/20250611-pf1550-v6-0-34f2ddfe045e@savoirfairelinux.com
+
+Changes since v7:
+  - Thanks everyone for the reviews
+  - Use C++ comment only for SPDX license header in core, charger and
+    onkey drivers
+  - Drop filenames from comments
+  - Rename pf1550_dev to pf1550_ddata
+  - Define OTP register for accessing status of DVS
+  - core: rename from `mfd driver` to `core driver`
+  - core: add child devices in a cleaner manner
+  - charger: define two power supplies: battery and external power
+  - charger: use devm_delayed_work_autocancel
+  - Link to v7: https://lore.kernel.org/r/20250612-pf1550-v7-0-0e393b0f45d7@savoirfairelinux.com
+
+Changes since v8:
+  - Collect Frank's `Reviewed-by` tags
+  - core: use consistent whitespace
+  - regulator: add standby support for regulators requested by Sean Nyekjaer
+  - regulator: add support for SW1 DVS enable/disable
+  - regulator: fix improper DVS activation
+  - regulator: add map_voltage for regulators
+  - regulator: add enable/disable for regulators
+  - charger: use datasheet thermal regulation temperature ranges
+  - charger: select charger operation mode based on the application
+  - onkey: add support for disabling system power down via onkey
+  - dt-bindings: changed temperature ranges
+  - dt-bindings: added `disable-key-power`
+  - Link to v8: https://lore.kernel.org/r/20250707-pf1550-v8-0-6b6eb67c03a0@savoirfairelinux.com
+
+Changes since v9:
+  - add Sean's Tested-by tag
+  - core: style changes
+  - dt-bindings: add regulator-state-mem to examples
+  - onkey: use regmap_clear_bits to avoid overwriting all bits of the
+    PWRCTRL register
+  - Link to v9: https://lore.kernel.org/r/20250716-pf1550-v9-0-502a647f04ef@savoirfairelinux.com
+
+Changes since v10:
+  - add Sean's Tested-by tag on mfd patch
+  - charger: separate battery properties from charger properties
+  - Link to v10: https://lore.kernel.org/r/20250820-pf1550-v10-0-4c0b6e4445e3@savoirfairelinux.com
+
+Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 ---
- .../rockchip/rk3568-wolfvision-pf5-io-expander.dtso  | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+Samuel Kayode (6):
+      dt-bindings: mfd: add pf1550
+      mfd: pf1550: add core driver
+      regulator: pf1550: add support for regulator
+      input: pf1550: add onkey support
+      power: supply: pf1550: add battery charger support
+      MAINTAINERS: add an entry for pf1550 mfd driver
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-index 048933de2943..8cfce71dd318 100644
---- a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-@@ -11,6 +11,7 @@
- #include <dt-bindings/clock/rk3568-cru.h>
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/pinctrl/rockchip.h>
- 
- &{/} {
-@@ -134,3 +135,22 @@ &usb2phy0_host {
- 	phy-supply = <&usb_host_vbus>;
- 	status = "okay";
- };
-+
-+&vicap {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&cif_clk &cif_dvp_clk &cif_dvp_bus16>;
-+	status = "okay";
-+};
-+
-+&vicap_dvp {
-+	vicap_dvp_input: endpoint {
-+		bus-type = <MEDIA_BUS_TYPE_BT656>;
-+		bus-width = <16>;
-+		pclk-sample = <MEDIA_PCLK_SAMPLE_DUAL_EDGE>;
-+		rockchip,dvp-clk-delay = <10>;
-+	};
-+};
-+
-+&vicap_mmu {
-+	status = "okay";
-+};
+ .../devicetree/bindings/mfd/nxp,pf1550.yaml        | 161 ++++++
+ MAINTAINERS                                        |  11 +
+ drivers/input/misc/Kconfig                         |  11 +
+ drivers/input/misc/Makefile                        |   1 +
+ drivers/input/misc/pf1550-onkey.c                  | 197 +++++++
+ drivers/mfd/Kconfig                                |  16 +
+ drivers/mfd/Makefile                               |   2 +
+ drivers/mfd/pf1550.c                               | 367 ++++++++++++
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/pf1550-charger.c              | 641 +++++++++++++++++++++
+ drivers/regulator/Kconfig                          |   9 +
+ drivers/regulator/Makefile                         |   1 +
+ drivers/regulator/pf1550-regulator.c               | 429 ++++++++++++++
+ include/linux/mfd/pf1550.h                         | 273 +++++++++
+ 15 files changed, 2131 insertions(+)
+---
+base-commit: 0a4b866d08c6adaea2f4592d31edac6deeb4dcbd
+change-id: 20250527-pf1550-d401f0d07b80
 
+Best regards,
 -- 
-2.39.5
+Samuel Kayode <samuel.kayode@savoirfairelinux.com>
 
