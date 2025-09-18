@@ -1,255 +1,78 @@
-From: Keke Li <keke.li@amlogic.com>
-Date: Thu, 18 Sep 2025 16:35:09 +0800
-Subject: [PATCH RESEND] dts: arm64: amlogic: Add ISP related nodes for C3
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Subject: [PATCH v4 0/5] ALSA: usb-audio: add module param
+ device_quirk_flags
+Date: Thu, 18 Sep 2025 17:24:29 +0800
+Message-Id: <20250918-sound-v4-0-82cf8123d61c@uniontech.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250918-b4-c3isp-v1-1-5f48db6516c9@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Keke Li <keke.li@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758184516; l=5995;
- i=keke.li@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=UmVS1PU/90tdLntCDKm08KbbQoIVC5jklVv6ZZ2RpE0=;
- b=rOF2nql3OL4yABLAuC+LQqHynH/oDDl+RTCOUrGInFY9HEDC/KN8vaRuOultWR8rlGgKKIJWT
- mzviPpJYSmBA10Cqza6TcVMTR41EHARbh2ZWa72nAbwjbMEmcFmKK6j
-X-Developer-Key: i=keke.li@amlogic.com; a=ed25519;
- pk=XxNPTsQ0YqMJLLekV456eoKV5gbSlxnViB1k1DhfRmU=
-X-Endpoint-Received: by B4 Relay for keke.li@amlogic.com/20240902 with auth_id=204
+X-B4-Tracking: v=1; b=H4sIAM3Py2gC/23NQQ7CIBCF4as0rMXAtFrHlfcwLigMloXUQEs0T
+ e8ubWxiTJdvwvczskjBUWTnYmSBkouu83lUu4LpVvk7cWfyZiDgIFAKHrvBG65Q6tNRI5hGsfz
+ 2Gci619K53vJuXey78F6ySc7XtQDfQpJccK1RW4MWjJCXwee/e9LtXncPNlcSbErIUkhSpYEab
+ dVsyfJX1qsss0SghrCqQQn1L6dp+gB1mO8YEgEAAA==
+X-Change-ID: 20250910-sound-a91c86c92dba
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Jonathan Corbet <corbet@lwn.net>, Luis Chamberlain <mcgrof@kernel.org>, 
+ Petr Pavlu <petr.pavlu@suse.com>, Daniel Gomez <da.gomez@kernel.org>, 
+ Sami Tolvanen <samitolvanen@google.com>
+Cc: linux-sound@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Mingcong Bai <jeffbai@aosc.io>, Kexy Biscuit <kexybiscuit@aosc.io>, 
+ Nie Cheng <niecheng1@uniontech.com>, Zhan Jun <zhanjun@uniontech.com>, 
+ Feng Yuan <fengyuan@uniontech.com>, qaqland <anguoli@uniontech.com>, 
+ kernel@uniontech.com, linux-modules@vger.kernel.org, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>, Takashi Iwai <tiwai@suse.de>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758187473; l=1700;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=LGd4NE5xucIBmY8TEZN2nv2o/wj6Qe3DoMkc6uy1Dow=;
+ b=o2HzUJjj8jUfJ9woKChJmX3gWxj5JbpwyEU3iaRqY0FfnwX6uiBX0fHNdH+fF0E5nfcvHmLBS
+ xu/wmAobUA0AZ7u5RdI2TJTlv9etPSjZ1pwL/8DdYCs3vLImHdcDw4m
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the IMX290 sensor node description to the device tree file,
-which will be controlled via I2C bus with image data transmission
-through MIPI CSI-2 interface.
+As an implementation of what has been discussed previously[1].
 
-Add CSI-2, adapter and ISP nodes for C3 family.
+1. https://lore.kernel.org/all/87h5xm5g7f.wl-tiwai@suse.de/
 
-Signed-off-by: Keke Li <keke.li@amlogic.com>
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
-The C3 ISP driver and device-tree bindings have been
-submitted. To facilitate using the C3 ISP driver, the
-related device nodes need to be added.
----
- .../boot/dts/amlogic/amlogic-c3-c308l-aw419.dts    | 84 +++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi        | 88 ++++++++++++++++++++++
- 2 files changed, 172 insertions(+)
+Changes in v4:
+- Split basic parse and dynamic change
+- Drop usage of linked list
+- Link to v3: https://lore.kernel.org/r/20250917-sound-v3-0-92ebe9472a0a@uniontech.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts b/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts
-index 45f8631f9feb..e026604c55e6 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3-c308l-aw419.dts
-@@ -17,6 +17,7 @@ / {
- 	aliases {
- 		serial0 = &uart_b;
- 		spi0 = &spifc;
-+		i2c2 = &i2c2;
- 	};
- 
- 	memory@0 {
-@@ -146,6 +147,36 @@ sdcard: regulator-sdcard {
- 		regulator-boot-on;
- 		regulator-always-on;
- 	};
-+
-+	camera_vdddo_1v8: regulator-camera-1v8 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "CAMERA_VDDDO";
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+		vin-supply = <&vcc_3v3>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	camera_vdda_2v9: regulator-camera-2v9 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "CAMERA_VDDA";
-+		regulator-min-microvolt = <2900000>;
-+		regulator-max-microvolt = <2900000>;
-+		vin-supply = <&vcc_5v>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
-+
-+	camera_vddd_1v2: regulator-camera-1v2 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "CAMERA_VDDD";
-+		regulator-min-microvolt = <1200000>;
-+		regulator-max-microvolt = <1200000>;
-+		vin-supply = <&vcc_3v3>;
-+		regulator-boot-on;
-+		regulator-always-on;
-+	};
- };
- 
- &uart_b {
-@@ -258,3 +289,56 @@ &sd {
- 	vmmc-supply = <&sdcard>;
- 	vqmmc-supply = <&sdcard>;
- };
-+
-+&i2c2 {
-+	status = "okay";
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c2_pins1>;
-+	clock-frequency = <100000>; /* default 100k */
-+
-+	imx290: sensor0@1a {
-+		compatible = "sony,imx290";
-+		reg = <0x1a>;
-+		clocks = <&clkc_pll CLKID_MCLK0>;
-+		clock-names = "xclk";
-+		clock-frequency = <37125000>;
-+		assigned-clocks = <&clkc_pll CLKID_MCLK_PLL>,
-+				  <&clkc_pll CLKID_MCLK0>;
-+		assigned-clock-rates = <74250000>, <37125000>;
-+
-+		vdddo-supply = <&camera_vdddo_1v8>;
-+		vdda-supply = <&camera_vdda_2v9>;
-+		vddd-supply = <&camera_vddd_1v2>;
-+
-+		reset-gpios = <&gpio GPIOE_4 GPIO_ACTIVE_LOW>;
-+
-+		port {
-+			imx290_out: endpoint {
-+				data-lanes = <1 2 3 4>;
-+				link-frequencies = /bits/ 64 <222750000 148500000>;
-+				remote-endpoint = <&c3_mipi_csi_in>;
-+			};
-+		};
-+	};
-+};
-+
-+&csi2 {
-+	status = "okay";
-+
-+	ports {
-+		port@0 {
-+			c3_mipi_csi_in: endpoint {
-+				remote-endpoint = <&imx290_out>;
-+				data-lanes = <1 2 3 4>;
-+			};
-+		};
-+	};
-+};
-+
-+&adap {
-+	status = "okay";
-+};
-+
-+&isp {
-+	status = "okay";
-+};
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-index cb9ea3ca6ee0..a62fd8534209 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-@@ -992,5 +992,93 @@ mdio0: mdio {
- 				#size-cells = <0>;
- 			};
- 		};
-+
-+		csi2: csi2@ff018000 {
-+			compatible = "amlogic,c3-mipi-csi2";
-+			reg = <0x0 0xff018000 0x0 0x100>,
-+			      <0x0 0xff019000 0x0 0x300>,
-+			      <0x0 0xff01a000 0x0 0x100>;
-+			reg-names = "aphy", "dphy", "host";
-+			power-domains = <&pwrc PWRC_C3_MIPI_ISP_WRAP_ID>;
-+			clocks = <&clkc_periphs CLKID_VAPB>,
-+				 <&clkc_periphs CLKID_CSI_PHY0>;
-+			clock-names = "vapb", "phy0";
-+			assigned-clocks = <&clkc_periphs CLKID_VAPB>,
-+					  <&clkc_periphs CLKID_CSI_PHY0>;
-+			assigned-clock-rates = <0>, <200000000>;
-+			status = "disabled";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+					c3_mipi_csi_out: endpoint {
-+						remote-endpoint = <&c3_adap_in>;
-+					};
-+				};
-+			};
-+		};
-+
-+		adap: adap@ff010000 {
-+			compatible = "amlogic,c3-mipi-adapter";
-+			reg = <0x0 0xff010000 0x0 0x100>,
-+			      <0x0 0xff01b000 0x0 0x100>,
-+			      <0x0 0xff01d000 0x0 0x200>;
-+			reg-names = "top", "fd", "rd";
-+			power-domains = <&pwrc PWRC_C3_ISP_TOP_ID>;
-+			clocks = <&clkc_periphs CLKID_VAPB>,
-+				 <&clkc_periphs CLKID_ISP0>;
-+			clock-names = "vapb", "isp0";
-+			assigned-clocks = <&clkc_periphs CLKID_VAPB>,
-+					  <&clkc_periphs CLKID_ISP0>;
-+			assigned-clock-rates = <0>, <400000000>;
-+			status = "disabled";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+					c3_adap_in: endpoint {
-+						remote-endpoint = <&c3_mipi_csi_out>;
-+					};
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+					c3_adap_out: endpoint {
-+						remote-endpoint = <&c3_isp_in>;
-+					};
-+				};
-+			};
-+		};
-+
-+		isp: isp@ff000000 {
-+			compatible = "amlogic,c3-isp";
-+			reg = <0x0 0xff000000 0x0 0xf000>;
-+			reg-names = "isp";
-+			power-domains = <&pwrc PWRC_C3_ISP_TOP_ID>;
-+			clocks = <&clkc_periphs CLKID_VAPB>,
-+				 <&clkc_periphs CLKID_ISP0>;
-+			clock-names = "vapb", "isp0";
-+			assigned-clocks = <&clkc_periphs CLKID_VAPB>,
-+					  <&clkc_periphs CLKID_ISP0>;
-+			assigned-clock-rates = <0>, <400000000>;
-+			interrupts = <GIC_SPI 145 IRQ_TYPE_EDGE_RISING>;
-+			status = "disabled";
-+
-+			port {
-+				c3_isp_in: endpoint {
-+					remote-endpoint = <&c3_adap_out>;
-+				};
-+			};
-+		};
- 	};
- };
+Changes in v3:
+- Instead of a new param, improve the existed one.
+- Link to v2: https://lore.kernel.org/r/20250912-sound-v2-0-01ea3d279f4b@uniontech.com
+
+Changes in v2:
+- Cleaned up some internal rebase confusion, sorry for that
+- Link to v1: https://lore.kernel.org/r/20250912-sound-v1-0-cc9cfd9f2d01@uniontech.com
 
 ---
-base-commit: 84b92a499e7eca54ba1df6f6c6e01766025943f1
-change-id: 20250731-b4-c3isp-16531391a1cb
+Cryolitia PukNgae (5):
+      ALSA: usb-audio: add two-way convert between name and bit for QUIRK_FLAG_*
+      param: export param_array related functions
+      ALSA: usb-audio: improve module param quirk_flags
+      ALSA: usb-audio: make param quirk_flags change-able in runtime
+      ALSA: doc: add docs about improved quirk_flags in snd-usb-audio
+
+ Documentation/sound/alsa-configuration.rst | 108 ++++++++++-----
+ include/linux/moduleparam.h                |   3 +
+ kernel/params.c                            |   9 +-
+ sound/usb/card.c                           |  63 ++++++++-
+ sound/usb/quirks.c                         | 206 ++++++++++++++++++++++++++++-
+ sound/usb/quirks.h                         |   6 +-
+ sound/usb/usbaudio.h                       |   6 +
+ 7 files changed, 352 insertions(+), 49 deletions(-)
+---
+base-commit: 4c421c40c8b30ab7aae1edc7f7e294fcd33fc186
+change-id: 20250910-sound-a91c86c92dba
 
 Best regards,
 -- 
-Keke Li <keke.li@amlogic.com>
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
