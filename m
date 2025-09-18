@@ -1,10 +1,10 @@
 From: Dang Huynh <dang.huynh@mainlining.org>
-Date: Fri, 19 Sep 2025 01:48:43 +0700
-Subject: [PATCH 03/10] dt-bindings: dma: Add RDA IFC DMA
+Date: Fri, 19 Sep 2025 01:48:44 +0700
+Subject: [PATCH 04/10] dt-bindings: mmc: Add RDA SDMMC controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250919-rda8810pl-mmc-v1-3-d4f08a05ba4d@mainlining.org>
+Message-Id: <20250919-rda8810pl-mmc-v1-4-d4f08a05ba4d@mainlining.org>
 References: <20250919-rda8810pl-mmc-v1-0-d4f08a05ba4d@mainlining.org>
 In-Reply-To: <20250919-rda8810pl-mmc-v1-0-d4f08a05ba4d@mainlining.org>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -23,110 +23,122 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-unisoc@lists.infradead.org,
  dmaengine@vger.kernel.org, linux-mmc@vger.kernel.org, 
  linux-hardening@vger.kernel.org, Dang Huynh <dang.huynh@mainlining.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758221395; l=2618;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758221395; l=2667;
  i=dang.huynh@mainlining.org; s=20250917; h=from:subject:message-id;
- bh=fdIibseK6J9eF4DEbb0by9y6/svLXlDdAKxdYmnzlAc=;
- b=QviwbPBtxpdoWdT5r4lpY8XknciVPiPjmERLRTaOaBzvDTRddjvGsVcO6iHE8kT4emUpiQt4E
- 1MLJW+wwCTHAOBt+3nucNpqiToQ4PDL0uwMLtxtR+eUzpkVGgG8tCe2
+ bh=AsSx2jfyiIl9tD1PzUkU8B/80/dNLISAbs6T475/JWo=;
+ b=m1jZ5iiJdDLR2oNGhbZc1KvGaZ/RhK/lM0bAsauM7cx684WiuGLwZlK4HFh7moDg6YJ4FQU+R
+ ttMceldPwaYBD+EGfHCFOX0uBSgU42qv2H8yNPUABQPx0Skg+RH4jnz
 X-Developer-Key: i=dang.huynh@mainlining.org; a=ed25519;
  pk=RyzH4CL4YU/ItXYUurA51EVBidfx4lIy8/E4EKRJCUk=
 X-Endpoint-Received: by B4 Relay for dang.huynh@mainlining.org/20250917 with auth_id=526
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Intelligent Flow Controller (IFC) is a scatter/gather DMA
-controller.
+Add documentation describing the SD/MMC controller in RDA Micro
+RDA8810PL SoC.
 
 Signed-off-by: Dang Huynh <dang.huynh@mainlining.org>
 ---
- Documentation/devicetree/bindings/dma/rda,ifc.yaml | 45 ++++++++++++++++++++++
- include/dt-bindings/dma/rda-ifc.h                  | 28 ++++++++++++++
- 2 files changed, 73 insertions(+)
+ Documentation/devicetree/bindings/mmc/rda,mmc.yaml | 92 ++++++++++++++++++++++
+ 1 file changed, 92 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/dma/rda,ifc.yaml b/Documentation/devicetree/bindings/dma/rda,ifc.yaml
+diff --git a/Documentation/devicetree/bindings/mmc/rda,mmc.yaml b/Documentation/devicetree/bindings/mmc/rda,mmc.yaml
 new file mode 100644
-index 0000000000000000000000000000000000000000..323e1e87cee09cfc7b64bf44bef61e4d1e91afa5
+index 0000000000000000000000000000000000000000..f3cda38abd66023ca9bc94d1c29df5ae9e211e7c
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/dma/rda,ifc.yaml
-@@ -0,0 +1,45 @@
++++ b/Documentation/devicetree/bindings/mmc/rda,mmc.yaml
+@@ -0,0 +1,92 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/dma/rda,ifc.yaml#
++$id: http://devicetree.org/schemas/mmc/rda,mmc.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: RDA Intelligent Flow Controller (IFC)
++title: RDA Micro SD/MMC Controller
++
++allOf:
++  - $ref: mmc-controller.yaml
 +
 +maintainers:
 +  - Dang Huynh <dang.huynh@mainlining.org>
-+
-+description: |
-+  RDA IFC is a DMA controller, it only supports scatter/gather lists.
-+
-+allOf:
-+  - $ref: dma-controller.yaml#
 +
 +properties:
 +  compatible:
 +    items:
 +      - enum:
-+          - rda,8810pl-ifc
-+      - const: rda,ifc
++          - rda,8810pl-mmc
++      - const: rda,mmc
 +
 +  reg:
 +    maxItems: 1
 +
-+  "#dma-cells":
-+    const: 1
++  interrupts:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++
++  clock-names:
++    const: mclk
++
++  resets:
++    maxItems: 1
++
++  dmas:
++    maxItems: 2
++
++  dma-names:
++    items:
++      - const: tx
++      - const: rx
++
++  rda,mclk-adj:
++    $ref: /schemas/types.yaml#/definitions/uint8
 +    description:
-+      The cell corresponding to DMA request ID
++      Some board need MCLK output to be delayed for the card to work.
++      If not present, MCLK output is not delayed.
++    minimum: 0
++    maximum: 255
++
++  rda,mclk-inv:
++    $ref: /schemas/types.yaml#/definitions/flag
++    description:
++      Some board need MCLK to be inverted for the card to work.
++      If not present, MCLK is not inverted.
 +
 +required:
 +  - compatible
 +  - reg
++  - interrupts
++  - clocks
++  - clock-names
++  - resets
++  - dmas
++  - dma-names
++  - vmmc-supply
 +
-+additionalProperties: false
++unevaluatedProperties: false
 +
 +examples:
 +  - |
-+    dma-controller@f0000 {
-+      compatible = "rda,8810pl-ifc", "rda,ifc";
-+      reg = <0xf0000 0x1000>;
-+      #dma-cells = <1>;
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
++    #include <dt-bindings/clock/rda,8810pl-apclk.h>
++    #include <dt-bindings/dma/rda-ifc.h>
++    mmc@20950000 {
++      compatible = "rda,8810pl-mmc", "rda,mmc";
++      reg = <0x20950000 0x1000>;
++      interrupts = <3 IRQ_TYPE_LEVEL_HIGH>;
++      clocks = <&ap_syscon CLK_APB2>;
++      clock-names = "mclk";
++      resets = <&ap_syscon RST_APB2_SDMMC1>;
++      dmas = <&ifc IFC_SDMMC1_TX>, <&ifc IFC_SDMMC1_RX>;
++      dma-names = "tx", "rx";
++      vmmc-supply = <&vdd_sdmmc>;
++      rda,mclk-adj = /bits/ 8 <1>;
++      rda,mclk-inv;
 +    };
-diff --git a/include/dt-bindings/dma/rda-ifc.h b/include/dt-bindings/dma/rda-ifc.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..af4bae0542aa71690351e2406d0945a61eff72c1
---- /dev/null
-+++ b/include/dt-bindings/dma/rda-ifc.h
-@@ -0,0 +1,28 @@
-+/* SPDX-License-Identifier: GPL-2.0 OR BSD-2-Clause */
 +
-+#ifndef __DT_BINDINGS_DMA_RDA_IFC_H__
-+#define __DT_BINDINGS_DMA_RDA_IFC_H__
-+
-+#define IFC_UART1_TX		0
-+#define IFC_UART1_RX		1
-+#define IFC_UART2_TX		2
-+#define IFC_UART2_RX		3
-+#define IFC_SPI1_TX		4
-+#define IFC_SPI1_RX		5
-+#define IFC_SPI2_TX		6
-+#define IFC_SPI2_RX		7
-+#define IFC_SPI3_TX		8
-+#define IFC_SPI3_RX		9
-+#define IFC_SDMMC1_TX		10
-+#define IFC_SDMMC1_RX		11
-+#define IFC_SDMMC2_TX		12
-+#define IFC_SDMMC2_RX		13
-+#define IFC_SDMMC3_TX		14
-+#define IFC_SDMMC3_RX		15
-+#define IFC_NFSC_TX		16
-+#define IFC_NFSC_RX		17
-+#define IFC_UART3_TX		18
-+#define IFC_UART3_RX		19
-+#define IFC_NO_REQUEST		20
-+
-+#endif /* __DT_BINDINGS_DMA_RDA_IFC_H__ */
++...
 
 -- 
 2.51.0
