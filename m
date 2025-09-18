@@ -1,340 +1,95 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Thu, 18 Sep 2025 12:58:44 +0200
-Subject: [PATCH v2 2/2] arm64: dts: allwinner: h313: Add Amediatech X96Q
+From: Dang Huynh <dang.huynh@mainlining.org>
+Subject: [PATCH 00/10] RDA8810PL SD/MMC support
+Date: Fri, 19 Sep 2025 01:48:40 +0700
+Message-Id: <20250919-rda8810pl-mmc-v1-0-d4f08a05ba4d@mainlining.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250918-x96q-v2-2-51bd39928806@posteo.net>
-References: <20250918-x96q-v2-0-51bd39928806@posteo.net>
-In-Reply-To: <20250918-x96q-v2-0-51bd39928806@posteo.net>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@csie.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>, 
- Andre Przywara <andre.przywara@arm.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAhUzGgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDS0ML3aKURAsLQ4OCHN3c3GRd4zRj4yQL42RjQ+MUJaCegqLUtMwKsHn
+ RsbW1ANyU/p1fAAAA
+X-Change-ID: 20250918-rda8810pl-mmc-3f33b83c313d
+To: Manivannan Sadhasivam <mani@kernel.org>, 
+ Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+ Ulf Hansson <ulf.hansson@linaro.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-unisoc@lists.infradead.org, 
+ linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ dmaengine@vger.kernel.org, linux-mmc@vger.kernel.org, 
+ linux-hardening@vger.kernel.org, Dang Huynh <dang.huynh@mainlining.org>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758193136; l=7815;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=cZj2m00YOVK7IJwAMGtwDtxtTWMWa5ExPqDO69uVrjo=;
- b=DTX6Ua+KxTrdLRXkeaxSf7NFx+vZkixrg9Iy3eOn8Y9gHDSLI0OS7TOQ+wQ+IuP4NXVK2nO+E
- z/c6HOu0vITALuFssF94EnXM6vNbEPlpD8EE648Iv+LESrqhTQiTKz7
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758221395; l=2690;
+ i=dang.huynh@mainlining.org; s=20250917; h=from:subject:message-id;
+ bh=kZ31Cj+9SlIwCue4nf87udZAy0O4rgTArK6cH8v5gE0=;
+ b=qOqMjxWy0QtL3Ogxpb8gkzjO7d5vmQGyKe+kb/6NkDaSg1BsYLRsnjbZgBDstvASeAx0n2d2c
+ 3shNDl4Z4C4Bf3HZJfK9hqW3+uGf3bq50x8EsDU0gvAu95HssYcfjYM
+X-Developer-Key: i=dang.huynh@mainlining.org; a=ed25519;
+ pk=RyzH4CL4YU/ItXYUurA51EVBidfx4lIy8/E4EKRJCUk=
+X-Endpoint-Received: by B4 Relay for dang.huynh@mainlining.org/20250917 with auth_id=526
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The X96Q is a set-top box with an H313 SoC, AXP305 PMIC, 1 or 2 GiB RAM,
-8 or 16 GiB eMMC flash, 2x USB A, Micro-SD, HDMI, Ethernet, audio/video
-output, and infrared input.
+This patch series aims to add SDMMC driver and various drivers required
+for SDMMC controller to function.
 
-  https://x96mini.com/products/x96q-tv-box-android-10-set-top-box
+This also fixed a bug where all the GPIO switched from INPUT to OUTPUT
+after the GPIO driver probed or by reading the GPIO debugfs.
 
-Tested, works:
-- debug UART
-- status LED
-- USB ports in host mode
-- MicroSD
-- eMMC
-- recovery button hidden behind audio/video port
-- analog audio (line out)
+This patch series is a split from [1] to ease the maintainers.
 
-Does not work:
-- Ethernet (requires AC200 MFD/EPHY driver)
-- WLAN (requires out-of-tree XRadio driver)
-- analog video output (requires AC200 driver)
-- HDMI audio/video output
+Tested on Orange Pi 2G-IOT using a Buildroot environment.
 
-Untested:
-- "OTG" USB port in device mode
-- built-in IR receiver
-- external IR receiver
+[1]: https://lore.kernel.org/all/20250917-rda8810pl-drivers-v1-0-9ca9184ca977@mainlining.org/
 
-Table of regulators on the downstream kernel, for reference:
-
- vcc-5v      1   15      0 unknown  5000mV     0mA  5000mV  5000mV
-    dcdca    0    0      0 unknown   900mV     0mA     0mV     0mV
-    dcdcb    0    0      0 unknown  1350mV     0mA     0mV     0mV
-    dcdcc    0    0      0 unknown   900mV     0mA     0mV     0mV
-    dcdcd    0    0      0 unknown  1500mV     0mA     0mV     0mV
-    dcdce    0    0      0 unknown  3300mV     0mA     0mV     0mV
-    aldo1    0    0      0 unknown  3300mV     0mA     0mV     0mV
-    aldo2    0    0      0 unknown   700mV     0mA     0mV     0mV
-    aldo3    0    0      0 unknown   700mV     0mA     0mV     0mV
-    bldo1    0    0      0 unknown  1800mV     0mA     0mV     0mV
-    bldo2    0    0      0 unknown  1800mV     0mA     0mV     0mV
-    bldo3    0    0      0 unknown   700mV     0mA     0mV     0mV
-    bldo4    0    0      0 unknown   700mV     0mA     0mV     0mV
-    cldo1    0    0      0 unknown  2500mV     0mA     0mV     0mV
-    cldo2    0    0      0 unknown   700mV     0mA     0mV     0mV
-    cldo3    0    0      0 unknown   700mV     0mA     0mV     0mV
-
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: Dang Huynh <dang.huynh@mainlining.org>
 ---
+Dang Huynh (10):
+      dt-bindings: gpio: rda: Make interrupts optional
+      dt-bindings: clock: Add RDA Micro RDA8810PL clock/reset controller
+      dt-bindings: dma: Add RDA IFC DMA
+      dt-bindings: mmc: Add RDA SDMMC controller
+      gpio: rda: Make IRQ optional
+      gpio: rda: Make direction register unreadable
+      clk: Add Clock and Reset Driver for RDA Micro RDA8810PL SoC
+      dmaengine: Add RDA IFC driver
+      mmc: host: Add RDA Micro SD/MMC driver
+      ARM: dts: unisoc: rda8810pl: Add SDMMC controllers
 
-v2:
-- remove mmc aliases, &mmc0/max-frequency property (Andre Przywara)
-- document reason for &mmc2/max-frequency property
-- clean up mmc-releated comments (Andre Przywara)
-- rename dcdcd regulator to vdd-dram, because it's the only source of
-  1.5V (needed by the Micron MT41J256M4 DDR3 RAM), and the system halts
-  when it's turned off.
+ .../bindings/clock/rda,8810pl-apsyscon.yaml        |  43 ++
+ Documentation/devicetree/bindings/dma/rda,ifc.yaml |  45 ++
+ .../devicetree/bindings/gpio/gpio-rda.yaml         |   3 -
+ Documentation/devicetree/bindings/mmc/rda,mmc.yaml |  92 +++
+ MAINTAINERS                                        |  18 +
+ .../boot/dts/unisoc/rda8810pl-orangepi-2g-iot.dts  |  20 +
+ .../arm/boot/dts/unisoc/rda8810pl-orangepi-i96.dts |  20 +
+ arch/arm/boot/dts/unisoc/rda8810pl.dtsi            |  47 +-
+ drivers/clk/Kconfig                                |   1 +
+ drivers/clk/Makefile                               |   1 +
+ drivers/clk/rda/Kconfig                            |  14 +
+ drivers/clk/rda/Makefile                           |   2 +
+ drivers/clk/rda/clk-rda8810.c                      | 769 +++++++++++++++++++
+ drivers/dma/Kconfig                                |  10 +
+ drivers/dma/Makefile                               |   1 +
+ drivers/dma/rda-ifc.c                              | 450 +++++++++++
+ drivers/gpio/gpio-rda.c                            |   4 +-
+ drivers/mmc/host/Kconfig                           |  12 +
+ drivers/mmc/host/Makefile                          |   1 +
+ drivers/mmc/host/rda-mmc.c                         | 853 +++++++++++++++++++++
+ include/dt-bindings/clock/rda,8810pl-apclk.h       |  70 ++
+ include/dt-bindings/dma/rda-ifc.h                  |  28 +
+ 22 files changed, 2495 insertions(+), 9 deletions(-)
 ---
- arch/arm64/boot/dts/allwinner/Makefile             |   1 +
- arch/arm64/boot/dts/allwinner/sun50i-h313-x96q.dts | 230 +++++++++++++++++++++
- 2 files changed, 231 insertions(+)
+base-commit: ae2d20002576d2893ecaff25db3d7ef9190ac0b6
+change-id: 20250918-rda8810pl-mmc-3f33b83c313d
 
-diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
-index 780aeba0f3a4e14d69c9602e37b8d299165507b9..2edfa7bf4ab31c4aa934da98e5e042edc9aaf600 100644
---- a/arch/arm64/boot/dts/allwinner/Makefile
-+++ b/arch/arm64/boot/dts/allwinner/Makefile
-@@ -41,6 +41,7 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-pine-h64-model-b.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h6-tanix-tx6-mini.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h313-tanix-tx1.dtb
-+dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h313-x96q.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h616-bigtreetech-cb1-manta.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h616-bigtreetech-pi.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h616-orangepi-zero2.dtb
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-h313-x96q.dts b/arch/arm64/boot/dts/allwinner/sun50i-h313-x96q.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..b2275eb3d55b9dacbd9006b93795a8011e06bf2f
---- /dev/null
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-h313-x96q.dts
-@@ -0,0 +1,230 @@
-+// SPDX-License-Identifier: (GPL-2.0-or-later OR MIT)
-+/*
-+ * Copyright (C) 2025 J. Neuschäfer <j.ne@posteo.net>
-+ */
-+
-+/dts-v1/;
-+
-+#include "sun50i-h616.dtsi"
-+#include "sun50i-h616-cpu-opp.dtsi"
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/interrupt-controller/arm-gic.h>
-+#include <dt-bindings/input/linux-event-codes.h>
-+#include <dt-bindings/leds/common.h>
-+
-+/ {
-+	model = "X96Q";
-+	compatible = "amediatech,x96q", "allwinner,sun50i-h616";
-+
-+	aliases {
-+		serial0 = &uart0;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	reg_vcc5v: vcc5v {
-+		/* board wide 5V supply directly from the DC input */
-+		compatible = "regulator-fixed";
-+		regulator-name = "vcc-5v";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		regulator-always-on;
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		key-recovery {
-+			label = "Recovery";
-+			linux,code = <KEY_VENDOR>;
-+			gpios = <&pio 7 9 GPIO_ACTIVE_LOW>;
-+		};
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+
-+		led-0 {
-+			color = <LED_COLOR_ID_BLUE>;
-+			gpios = <&pio 7 6 GPIO_ACTIVE_LOW>;
-+			default-state = "on";
-+		};
-+	};
-+};
-+
-+&codec {
-+	allwinner,audio-routing = "Line Out", "LINEOUT";
-+	status = "okay";
-+};
-+
-+&cpu0 {
-+	cpu-supply = <&reg_dcdca>;
-+};
-+
-+&ehci0 {
-+	status = "okay";
-+};
-+
-+&ehci3 {
-+	status = "okay";
-+};
-+
-+/* TODO: EMAC1 connected to AC200 PHY */
-+
-+&gpu {
-+	mali-supply = <&reg_dcdcc>;
-+	status = "okay";
-+};
-+
-+&ir {
-+	status = "okay";
-+};
-+
-+&mmc0 {
-+	/* microSD */
-+	vmmc-supply = <&reg_aldo1>;
-+	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>;	/* PF6 */
-+	disable-wp;
-+	bus-width = <4>;
-+	status = "okay";
-+};
-+
-+/* TODO: XRadio XR819 WLAN @ mmc1 */
-+
-+&mmc2 {
-+	/* eMMC */
-+	vmmc-supply = <&reg_aldo1>;
-+	vqmmc-supply = <&reg_bldo1>;
-+	non-removable;
-+	cap-mmc-hw-reset;
-+	mmc-ddr-1_8v;
-+	mmc-hs200-1_8v;
-+	max-frequency = <100000000>; /* required for stable operation */
-+	bus-width = <8>;
-+	status = "okay";
-+};
-+
-+&ohci0 {
-+	status = "okay";
-+};
-+
-+&ohci3 {
-+	status = "okay";
-+};
-+
-+&r_i2c {
-+	status = "okay";
-+
-+	axp305: pmic@36 {
-+		compatible = "x-powers,axp305", "x-powers,axp805",
-+			     "x-powers,axp806";
-+		interrupt-controller;
-+		#interrupt-cells = <1>;
-+		reg = <0x36>;
-+
-+		x-powers,self-working-mode;
-+		vina-supply = <&reg_vcc5v>;
-+		vinb-supply = <&reg_vcc5v>;
-+		vinc-supply = <&reg_vcc5v>;
-+		vind-supply = <&reg_vcc5v>;
-+		vine-supply = <&reg_vcc5v>;
-+		aldoin-supply = <&reg_vcc5v>;
-+		bldoin-supply = <&reg_vcc5v>;
-+		cldoin-supply = <&reg_vcc5v>;
-+
-+		regulators {
-+			reg_dcdca: dcdca {
-+				regulator-always-on;
-+				regulator-min-microvolt = <810000>;
-+				regulator-max-microvolt = <1100000>;
-+				regulator-name = "vdd-cpu";
-+			};
-+
-+			dcdcb {
-+				/* unused */
-+			};
-+
-+			reg_dcdcc: dcdcc {
-+				regulator-always-on;
-+				regulator-min-microvolt = <810000>;
-+				regulator-max-microvolt = <990000>;
-+				regulator-name = "vdd-gpu-sys";
-+			};
-+
-+			dcdcd {
-+				regulator-always-on;
-+				regulator-min-microvolt = <1500000>;
-+				regulator-max-microvolt = <1500000>;
-+				regulator-name = "vdd-dram";
-+			};
-+
-+			dcdce {
-+				/* unused */
-+			};
-+
-+			reg_aldo1: aldo1 {
-+				regulator-always-on;
-+				regulator-min-microvolt = <3300000>;
-+				regulator-max-microvolt = <3300000>;
-+				regulator-name = "vcc3v3";
-+			};
-+
-+			aldo2 {
-+				/* unused */
-+			};
-+
-+			aldo3 {
-+				/* unused */
-+			};
-+
-+			reg_bldo1: bldo1 {
-+				regulator-always-on;
-+				regulator-min-microvolt = <1800000>;
-+				regulator-max-microvolt = <1800000>;
-+				regulator-name = "vcc1v8";
-+			};
-+
-+			bldo2 {
-+				/* unused */
-+			};
-+
-+			bldo3 {
-+				/* unused */
-+			};
-+
-+			bldo4 {
-+				/* unused */
-+			};
-+
-+			cldo1 {
-+				/* unused */
-+			};
-+
-+			cldo2 {
-+				/* unused */
-+			};
-+
-+			cldo3 {
-+				/* unused */
-+			};
-+		};
-+	};
-+};
-+
-+&uart0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart0_ph_pins>;
-+	status = "okay";
-+};
-+
-+&usbotg {
-+	dr_mode = "host";	/* USB A type receptacle */
-+	status = "okay";
-+};
-+
-+&usbphy {
-+	status = "okay";
-+};
-
+Best regards,
 -- 
-2.48.0.rc1.219.gb6b6757d772
+Dang Huynh <dang.huynh@mainlining.org>
 
