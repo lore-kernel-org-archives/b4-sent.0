@@ -1,11 +1,10 @@
 From: Dang Huynh <dang.huynh@mainlining.org>
-Date: Fri, 19 Sep 2025 01:48:42 +0700
-Subject: [PATCH 02/10] dt-bindings: clock: Add RDA Micro RDA8810PL
- clock/reset controller
+Date: Fri, 19 Sep 2025 01:48:43 +0700
+Subject: [PATCH 03/10] dt-bindings: dma: Add RDA IFC DMA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250919-rda8810pl-mmc-v1-2-d4f08a05ba4d@mainlining.org>
+Message-Id: <20250919-rda8810pl-mmc-v1-3-d4f08a05ba4d@mainlining.org>
 References: <20250919-rda8810pl-mmc-v1-0-d4f08a05ba4d@mainlining.org>
 In-Reply-To: <20250919-rda8810pl-mmc-v1-0-d4f08a05ba4d@mainlining.org>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -24,150 +23,110 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-unisoc@lists.infradead.org,
  dmaengine@vger.kernel.org, linux-mmc@vger.kernel.org, 
  linux-hardening@vger.kernel.org, Dang Huynh <dang.huynh@mainlining.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758221395; l=3620;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758221395; l=2618;
  i=dang.huynh@mainlining.org; s=20250917; h=from:subject:message-id;
- bh=yG1beL4lbbZE3Cyw7kV4xFP4ZLuCcjFcdAuQ/q4oW2c=;
- b=JF6dfaJsAusUyjBVwoIXfKUz19P5AWybOy4EvgWhd2pjj31nJtH6FOD0h+2fiLlOazh9s+xlj
- HEwzlje4oP5DeSea12PeZ2gEI5kYukFumlHp1Rs2zLRm4HdqCrnp6ZZ
+ bh=fdIibseK6J9eF4DEbb0by9y6/svLXlDdAKxdYmnzlAc=;
+ b=QviwbPBtxpdoWdT5r4lpY8XknciVPiPjmERLRTaOaBzvDTRddjvGsVcO6iHE8kT4emUpiQt4E
+ 1MLJW+wwCTHAOBt+3nucNpqiToQ4PDL0uwMLtxtR+eUzpkVGgG8tCe2
 X-Developer-Key: i=dang.huynh@mainlining.org; a=ed25519;
  pk=RyzH4CL4YU/ItXYUurA51EVBidfx4lIy8/E4EKRJCUk=
 X-Endpoint-Received: by B4 Relay for dang.huynh@mainlining.org/20250917 with auth_id=526
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add documentation describing the RDA8810PL Clock and Reset
+The Intelligent Flow Controller (IFC) is a scatter/gather DMA
 controller.
 
 Signed-off-by: Dang Huynh <dang.huynh@mainlining.org>
 ---
- .../bindings/clock/rda,8810pl-apsyscon.yaml        | 43 +++++++++++++
- include/dt-bindings/clock/rda,8810pl-apclk.h       | 70 ++++++++++++++++++++++
- 2 files changed, 113 insertions(+)
+ Documentation/devicetree/bindings/dma/rda,ifc.yaml | 45 ++++++++++++++++++++++
+ include/dt-bindings/dma/rda-ifc.h                  | 28 ++++++++++++++
+ 2 files changed, 73 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/rda,8810pl-apsyscon.yaml b/Documentation/devicetree/bindings/clock/rda,8810pl-apsyscon.yaml
+diff --git a/Documentation/devicetree/bindings/dma/rda,ifc.yaml b/Documentation/devicetree/bindings/dma/rda,ifc.yaml
 new file mode 100644
-index 0000000000000000000000000000000000000000..d90dae8ebaa270aa822e4855d2a4a892168c5eea
+index 0000000000000000000000000000000000000000..323e1e87cee09cfc7b64bf44bef61e4d1e91afa5
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/clock/rda,8810pl-apsyscon.yaml
-@@ -0,0 +1,43 @@
++++ b/Documentation/devicetree/bindings/dma/rda,ifc.yaml
+@@ -0,0 +1,45 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/clock/rda,8810pl-apsyscon.yaml#
++$id: http://devicetree.org/schemas/dma/rda,ifc.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: RDA Micro RDA8810PL AP Clock Controller
++title: RDA Intelligent Flow Controller (IFC)
 +
 +maintainers:
 +  - Dang Huynh <dang.huynh@mainlining.org>
 +
++description: |
++  RDA IFC is a DMA controller, it only supports scatter/gather lists.
++
++allOf:
++  - $ref: dma-controller.yaml#
++
 +properties:
 +  compatible:
 +    items:
-+      - const: rda,8810pl-apsyscon
-+      - const: syscon
++      - enum:
++          - rda,8810pl-ifc
++      - const: rda,ifc
 +
 +  reg:
 +    maxItems: 1
 +
-+  '#clock-cells':
++  "#dma-cells":
 +    const: 1
-+
-+  '#reset-cells':
-+    const: 1
++    description:
++      The cell corresponding to DMA request ID
 +
 +required:
 +  - compatible
 +  - reg
-+  - '#clock-cells'
-+  - '#reset-cells'
 +
 +additionalProperties: false
 +
 +examples:
 +  - |
-+    #include <dt-bindings/clock/rda,8810pl-apclk.h>
-+    syscon@0 {
-+      compatible = "rda,8810pl-apsyscon", "syscon";
-+      reg = <0x0 0x1000>;
-+      #clock-cells = <1>;
-+      #reset-cells = <1>;
++    dma-controller@f0000 {
++      compatible = "rda,8810pl-ifc", "rda,ifc";
++      reg = <0xf0000 0x1000>;
++      #dma-cells = <1>;
 +    };
-diff --git a/include/dt-bindings/clock/rda,8810pl-apclk.h b/include/dt-bindings/clock/rda,8810pl-apclk.h
+diff --git a/include/dt-bindings/dma/rda-ifc.h b/include/dt-bindings/dma/rda-ifc.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..b6d68af9596a7ef827f6d18f1f19ed359e147629
+index 0000000000000000000000000000000000000000..af4bae0542aa71690351e2406d0945a61eff72c1
 --- /dev/null
-+++ b/include/dt-bindings/clock/rda,8810pl-apclk.h
-@@ -0,0 +1,70 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
++++ b/include/dt-bindings/dma/rda-ifc.h
+@@ -0,0 +1,28 @@
++/* SPDX-License-Identifier: GPL-2.0 OR BSD-2-Clause */
 +
-+#ifndef _DT_BINDINGS_CLK_RDA8810_H_
-+#define _DT_BINDINGS_CLK_RDA8810_H_
++#ifndef __DT_BINDINGS_DMA_RDA_IFC_H__
++#define __DT_BINDINGS_DMA_RDA_IFC_H__
 +
-+/* soc clocks */
-+#define CLK_CPU			0
-+#define CLK_BUS			1
-+#define CLK_MEM			2
-+#define CLK_USB			3
-+#define CLK_AXI			4
-+#define CLK_GCG			5
-+#define CLK_AHB1			6
-+#define CLK_APB1			7
-+#define CLK_APB2			8
-+#define CLK_GPU			9
-+#define CLK_VPU			10
-+#define CLK_VOC			11
-+#define CLK_SFLSH			12
-+#define CLK_UART1			13
-+#define CLK_UART2			14
-+#define CLK_UART3			15
-+#define CLK_VOC2			16
-+#define CLK_EMMC			17
++#define IFC_UART1_TX		0
++#define IFC_UART1_RX		1
++#define IFC_UART2_TX		2
++#define IFC_UART2_RX		3
++#define IFC_SPI1_TX		4
++#define IFC_SPI1_RX		5
++#define IFC_SPI2_TX		6
++#define IFC_SPI2_RX		7
++#define IFC_SPI3_TX		8
++#define IFC_SPI3_RX		9
++#define IFC_SDMMC1_TX		10
++#define IFC_SDMMC1_RX		11
++#define IFC_SDMMC2_TX		12
++#define IFC_SDMMC2_RX		13
++#define IFC_SDMMC3_TX		14
++#define IFC_SDMMC3_RX		15
++#define IFC_NFSC_TX		16
++#define IFC_NFSC_RX		17
++#define IFC_UART3_TX		18
++#define IFC_UART3_RX		19
++#define IFC_NO_REQUEST		20
 +
-+/* resets */
-+#define RST_CPU			0
-+
-+#define RST_AXI_VOC			1
-+#define RST_AXI_DMA			2
-+#define RST_AXI_CONNECT		3
-+#define RST_AXI_VPU			4
-+
-+#define RST_GCG_GOUDA			5
-+#define RST_GCG_CAMERA			6
-+#define RST_GCG_LCDC			7
-+
-+#define RST_AHB1_USBC			8
-+#define RST_AHB1_SPIFLASH		9
-+#define RST_APB1_TIMER			10
-+#define RST_APB1_KEYPAD		11
-+#define RST_APB1_GPIO			12
-+#define RST_APB1_PWM			13
-+#define RST_APB1_AIF			14
-+#define RST_APB1_AUIFC			15
-+#define RST_APB1_I2C1			16
-+#define RST_APB1_I2C2			17
-+#define RST_APB1_I2C3			18
-+#define RST_APB1_COMREGS		19
-+#define RST_APB1_DMC			20
-+#define RST_APB1_DDRPHY_P		21
-+
-+#define RST_APB2_IFC			22
-+#define RST_APB2_UART1			23
-+#define RST_APB2_UART2			24
-+#define RST_APB2_UART3			25
-+#define RST_APB2_SPI1			26
-+#define RST_APB2_SPI2			27
-+#define RST_APB2_SPI3			28
-+#define RST_APB2_SDMMC1		29
-+#define RST_APB2_SDMMC2		30
-+#define RST_APB2_SDMMC3		31
-+#define RST_APB2_NAND			32
-+
-+#define RST_MEM_GPU			33
-+#define RST_MEM_VPU			34
-+#define RST_MEM_DMC			35
-+#define RST_MEM_DDRPHY_P		36
-+
-+#endif /* _DT_BINDINGS_CLK_RDA8810_H_ */
++#endif /* __DT_BINDINGS_DMA_RDA_IFC_H__ */
 
 -- 
 2.51.0
