@@ -1,78 +1,61 @@
-From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-Date: Wed, 17 Sep 2025 11:52:39 -0400
-Subject: [PATCH v11 6/6] MAINTAINERS: add an entry for pf1550 mfd driver
+From: Jiucheng Xu <jiucheng.xu@amlogic.com>
+Date: Thu, 18 Sep 2025 03:32:42 +0000
+Subject: [PATCH] f2fs: Use mapping->gfp_mask to get file cache for writing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250917-pf1550-v11-6-e0649822fcc9@savoirfairelinux.com>
-References: <20250917-pf1550-v11-0-e0649822fcc9@savoirfairelinux.com>
-In-Reply-To: <20250917-pf1550-v11-0-e0649822fcc9@savoirfairelinux.com>
-To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Sebastian Reichel <sre@kernel.org>, Frank Li <Frank.li@nxp.com>
-Cc: imx@lists.linux.dev, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
- linux-pm@vger.kernel.org, Abel Vesa <abelvesa@kernel.org>, 
- Abel Vesa <abelvesa@linux.com>, Robin Gong <b38343@freescale.com>, 
- Robin Gong <yibin.gong@nxp.com>, 
- Enric Balletbo i Serra <eballetbo@gmail.com>, 
- Sean Nyekjaer <sean@geanix.com>, 
- Christophe JAILLET <christophe.jaillet@wanadoo.fr>, 
- Samuel Kayode <samuel.kayode@savoirfairelinux.com>, 
- Abel Vesa <abelvesa@kernel.org>, Frank Li <Frank.Li@nxp.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Message-Id: <20250918-origin-dev-v1-1-8d9877df9e77@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAFl9y2gC/x3MQQqAIBBA0avIrBtQwaiuEi0sR5uNhoIE4t2Tl
+ m/xf4NCmanAJhpkqlw4xQE1CbhuGwMhu2HQUhu5Kokpc+CIjiou1ng/n0TKaxjBk8nz+8/2o/c
+ PLoFscVwAAAA=
+X-Change-ID: 20250910-origin-dev-8a5ff6bee1f2
+To: Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>
+Cc: linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org, 
+ tuan.zhang@amlogic.com, jianxin.pan@amlogic.com, 
+ Jiucheng Xu <jiucheng.xu@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758124466; l=1227;
- i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
- bh=v9TE3OjU72u4FujlV703JbwctqJD/5aDkzjsVneeZaY=;
- b=wo/vDSX+LocQ+hwwZWxnBThF4cG31DtJbry4+NKbGNQav5Z8+dFHZjVhbR7g18P/mXLleV/lv
- z2ppe3KXzJEBnd0mBFi+rDALgzNhQdYI5RmfW65PMXuK6hLSsgZFZLy
-X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
- pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
-X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758166370; l=1204;
+ i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
+ bh=Cfox4dJD5Z2I7UJ/AEjRgz28jZFDDgARsCgPQjW/S2A=;
+ b=Tt6i/YFFmrIxDb3zDxPDh8BLNgR4ijbjwG/tkeEdWisUTLHUlLWv8JzFkU0BNDud+e04A9d1f
+ U6Q8769JzCRCiUr5cpMFT+GqDKx2k6WOhaq6ElusJ12hhH59FX8Uyn/
+X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
+ pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
+X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MAINTAINERS entry for pf1550 PMIC.
+On 32-bit architectures, when GFP_NOFS is used, the file cache for write
+operations cannot be allocated from the highmem and CMA.
 
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Tested-by: Sean Nyekjaer <sean@geanix.com>
-Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+Since mapping->gfp_mask is set to GFP_HIGHUSER_MOVABLE during inode
+allocation, using mapping_gfp_mask(mapping) as the GFP flag of getting file
+cache for writing is more efficient for 32-bit architectures.
+
+Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
 ---
-v9:
- - Pick up Frank's `Reviewed-by` tag
-v6:
- - Add imx mailing list
+ fs/f2fs/data.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 7961e0ddfca3aaa332b7dbd4985ae7766551834f..9fbc41f9accb2626da22754f1a424da4805ca823 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -3587,7 +3587,8 @@ static int f2fs_write_begin(const struct kiocb *iocb,
+ 	 * Will wait that below with our IO control.
+ 	 */
+ 	folio = __filemap_get_folio(mapping, index,
+-				FGP_LOCK | FGP_WRITE | FGP_CREAT, GFP_NOFS);
++				FGP_LOCK | FGP_WRITE | FGP_CREAT,
++				mapping_gfp_mask(mapping));
+ 	if (IS_ERR(folio)) {
+ 		err = PTR_ERR(folio);
+ 		goto fail;
+
 ---
- MAINTAINERS | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+base-commit: c872b6279cd26762339ff02513e2a3f16149a6f1
+change-id: 20250910-origin-dev-8a5ff6bee1f2
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 60bba48f5479a025f9da3eaf9dbacb67a194df07..ffc834aace4272e663f9717bcffd67100eb546c7 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -17996,6 +17996,17 @@ F:	Documentation/devicetree/bindings/clock/imx*
- F:	drivers/clk/imx/
- F:	include/dt-bindings/clock/imx*
- 
-+NXP PF1550 PMIC MFD DRIVER
-+M:	Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-+L:	imx@lists.linux.dev
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/mfd/nxp,pf1550.yaml
-+F:	drivers/input/misc/pf1550-onkey.c
-+F:	drivers/mfd/pf1550.c
-+F:	drivers/power/supply/pf1550-charger.c
-+F:	drivers/regulator/pf1550-regulator.c
-+F:	include/linux/mfd/pfd1550.h
-+
- NXP PF8100/PF8121A/PF8200 PMIC REGULATOR DEVICE DRIVER
- M:	Jagan Teki <jagan@amarulasolutions.com>
- S:	Maintained
-
+Best regards,
 -- 
-2.50.1
+Jiucheng Xu <jiucheng.xu@amlogic.com>
 
