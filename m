@@ -1,80 +1,62 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Fri, 19 Sep 2025 13:59:01 +0800
-Subject: [PATCH v6 3/3] clk: amlogic: remove potentially unsafe flags from
- S4 video clocks
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Fri, 19 Sep 2025 16:38:49 +0800
+Subject: [PATCH] hwmon: (gpd-fan) Fix range check for pwm input
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250919-add_video_clk-v6-3-fe223161fb3f@amlogic.com>
-References: <20250919-add_video_clk-v6-0-fe223161fb3f@amlogic.com>
-In-Reply-To: <20250919-add_video_clk-v6-0-fe223161fb3f@amlogic.com>
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758261548; l=1493;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=pOpocCKNpaziWiHhDcJu1vTMZ5jdWqLvQRMLrgn1IXk=;
- b=r14O5cCFsk9df7Bw/kETEQkh7o9IKmZ5Q7JHBFdXPEM/dxZevMJ3AfIfwazFWlcs/xX0Ssh/0
- S6wSIFg/QLZBFbHr4/RDzoZr2PLcvw8lScuSWpG6CdNg7pj084sfRQX
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+Message-Id: <20250919-hwmon-v1-1-2b69c8b9c062@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAJgWzWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDS0NL3Yzy3Pw8XUtzA+NE45REQ0vTRCWg2oKi1LTMCrA50bG1tQAG7sl
+ gVwAAAA==
+X-Change-ID: 20250919-hwmon-9703a3da195a
+To: Guenter Roeck <linux@roeck-us.net>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ niecheng1@uniontech.com, zhanjun@uniontech.com, 
+ Chenx Dust <chenx_dust@outlook.com>, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758271130; l=1169;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=afIndOhFyRIpJBSDKmekESS308i/EUBmxUVarGxW7lY=;
+ b=UU9NK+el/HvToO6JeXG6lF9yDJmp4kowqe6RJJadveUBwOdNADYAxD1khU+xxXv4hM3W4QeOh
+ IpqArxawtJUDtaQ3kP05C6UCZf8qYy9M7ViixdgkK9JDo53JpeXoTNU
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The video clocks enci, encp, vdac and hdmitx share the same clock
-source. Adding CLK_SET_RATE_PARENT to the mux may unintentionally change
-the shared parent clock, which could affect other video clocks.
+Fixed the maximum value in the PWM input range check, allowing the
+input to be set to 255.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Fixes: 0ab88e239439 ("hwmon: add GPD devices sensor driver")
+Reported-by: Chenx Dust <chenx_dust@outlook.com>
+Link: https://github.com/Cryolitia/gpd-fan-driver/pull/18
+Co-developed-by: Chenx Dust <chenx_dust@outlook.com>
+Signed-off-by: Chenx Dust <chenx_dust@outlook.com>
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- drivers/clk/meson/s4-peripherals.c | 4 ----
- 1 file changed, 4 deletions(-)
+ drivers/hwmon/gpd-fan.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/clk/meson/s4-peripherals.c b/drivers/clk/meson/s4-peripherals.c
-index aa500ea8ef9c..ba41fcd90588 100644
---- a/drivers/clk/meson/s4-peripherals.c
-+++ b/drivers/clk/meson/s4-peripherals.c
-@@ -1107,7 +1107,6 @@ static struct clk_regmap s4_cts_enci_sel = {
- 		.ops = &clk_regmap_mux_ops,
- 		.parent_hws = s4_cts_parents,
- 		.num_parents = ARRAY_SIZE(s4_cts_parents),
--		.flags = CLK_SET_RATE_PARENT,
- 	},
- };
- 
-@@ -1123,7 +1122,6 @@ static struct clk_regmap s4_cts_encp_sel = {
- 		.ops = &clk_regmap_mux_ops,
- 		.parent_hws = s4_cts_parents,
- 		.num_parents = ARRAY_SIZE(s4_cts_parents),
--		.flags = CLK_SET_RATE_PARENT,
- 	},
- };
- 
-@@ -1154,7 +1152,6 @@ static struct clk_regmap s4_cts_vdac_sel = {
- 		.ops = &clk_regmap_mux_ops,
- 		.parent_hws = s4_cts_parents,
- 		.num_parents = ARRAY_SIZE(s4_cts_parents),
--		.flags = CLK_SET_RATE_PARENT,
- 	},
- };
- 
-@@ -1185,7 +1182,6 @@ static struct clk_regmap s4_hdmi_tx_sel = {
- 		.ops = &clk_regmap_mux_ops,
- 		.parent_hws = s4_hdmi_tx_parents,
- 		.num_parents = ARRAY_SIZE(s4_hdmi_tx_parents),
--		.flags = CLK_SET_RATE_PARENT,
- 	},
- };
- 
+diff --git a/drivers/hwmon/gpd-fan.c b/drivers/hwmon/gpd-fan.c
+index e0b3b46e1bf12a10097600f857c627a766f61a27..644dc3ca9df7da0174e513c47a820a6ff39eb0ef 100644
+--- a/drivers/hwmon/gpd-fan.c
++++ b/drivers/hwmon/gpd-fan.c
+@@ -571,7 +571,7 @@ static int gpd_fan_hwmon_write(__always_unused struct device *dev,
+ 			ret = 0;
+ 			goto OUT;
+ 		case hwmon_pwm_input:
+-			if (!in_range(val, 0, 255)) {
++			if (!in_range(val, 0, 256)) {
+ 				ret = -ERANGE;
+ 				goto OUT;
+ 			}
 
+---
+base-commit: 80038a758b7fc0cdb6987532cbbf3f75b13e0826
+change-id: 20250919-hwmon-9703a3da195a
+
+Best regards,
 -- 
-2.42.0
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
