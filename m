@@ -1,68 +1,83 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Fri, 19 Sep 2025 16:53:33 +0800
-Subject: [PATCH] checkpatch: Suppress warnings when Reported-by: is
- followed by Link:
+From: Joel Selvaraj <foss@joelselvaraj.com>
+Date: Fri, 19 Sep 2025 04:02:29 -0500
+Subject: [PATCH] arm64: dts: qcom: sdm845-shift-axolotl: fix touchscreen
+ properties
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250919-checkpatch-v1-1-d889973932fa@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAAwazWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDS0NL3eSM1OTsgsSS5AxdAyNzM3ML89SktKRUJaCGgqLUtMwKsGHRsbW
- 1AG4CVdhcAAAA
-X-Change-ID: 20250919-checkpatch-0276787ebfbe
-To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>, 
- Dwaipayan Ray <dwaipayanray1@gmail.com>, 
- Lukas Bulwahn <lukas.bulwahn@gmail.com>
-Cc: linux-kernel@vger.kernel.org, niecheng1@uniontech.com, 
- zhanjun@uniontech.com, Cryolitia PukNgae <cryolitia@uniontech.com>
+Message-Id: <20250919-shift-axolotl-fix-touchscreen-dts-v1-1-60e26ad4e038@joelselvaraj.com>
+X-B4-Tracking: v=1; b=H4sIACUczWgC/x2NQQqAIBAAvxJ7bqGsiPpKdBBdcyE0XIsg+nvSc
+ WCYeUAoMQnM1QOJLhaOoUBbV2C8Dhsh28KgGjU0UzuheHYZ9R33mHd0fGOOp/FiElFAmwW102r
+ sjeo6S1A6R6Ki/Y9lfd8P3kSGknMAAAA=
+X-Change-ID: 20250919-shift-axolotl-fix-touchscreen-dts-afa274c233de
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Joel Selvaraj <foss@joelselvaraj.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758272014; l=1763;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=Iyk6yjBAdRxSTomegUDUJm0OiNce0KlYMkESMKoKGyk=;
- b=0hOu1V1/1ECrRUw2hyfnfh4IfkHPYcD+eTUzyG1iEzyK3LZ1oMmLtHteADCJYzSdoYKZxL+5D
- +OaR3TwnuivAu7rLi4UGKGxW5p+CaPRpF/POVW46nJpy1jpDrFyyc+w
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758272571; l=1992;
+ i=foss@joelselvaraj.com; s=20250919; h=from:subject:message-id;
+ bh=6LBH+r1kb4SLbj+q2QfBWT2d9IJvx4qETyl2gI3HG/E=;
+ b=A//B6TSPiw9hGoryvpzwQBGolYnGD8pHdgBCJFbRqADxMePhaVm8ZvlzGqjNC64tW080SNCPE
+ x1J7WRb5LM7ASwcLijqa2/VDMrzeeBrDN6RViRYR/cErbb3YzNvwWyX
+X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
+ pk=BBMos4ph15apUFh2AkG9rLZIrBWl5LD4egPOhEv63X0=
+X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20250919 with auth_id=529
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-> The tag should be followed by a Closes: tag pointing to the report,
-> unless the report is not available on the web. The Link: tag can be
-> used instead of Closes: if the patch fixes a part of the issue(s)
-> being reported.
+The touchscreen properties previously upstreamed was based on downstream
+touchscreen driver. We ended up adapting upstream edt_ft5x06 driver to
+support the FocalTech FT5452 touchscreen controller used in this device.
+Update the touchscreen properties to match with the upstream edt_ft5x06
+driver. Also, as mentioned, the touchscreen controller used in this
+device is ft5452 and not fts8719. Fix it.
 
-Accroding to Documentation/process/submitting-patches.rst , Link: is
-also acceptable to followed a Reported-by:
-
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
 ---
- scripts/checkpatch.pl | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
-diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
-index e722dd6fa8ef3d7062988e2b3ec8f5872bdfefeb..f09e3d0536d71d60184f15018202cc36a5f3832e 100755
---- a/scripts/checkpatch.pl
-+++ b/scripts/checkpatch.pl
-@@ -3200,10 +3200,10 @@ sub process {
- 			if ($sign_off =~ /^reported(?:|-and-tested)-by:$/i) {
- 				if (!defined $lines[$linenr]) {
- 					WARN("BAD_REPORTED_BY_LINK",
--					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . "\n");
--				} elsif ($rawlines[$linenr] !~ /^closes:\s*/i) {
-+					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . "\n");
-+				} elsif ($rawlines[$linenr] !~ /^(closes|link):\s*/i) {
- 					WARN("BAD_REPORTED_BY_LINK",
--					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
-+					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
- 				}
- 			}
- 		}
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+index 89260fce6513937224f76a94e1833a5a8d59faa4..d4062844234e33b0d501bcb7d0b6d5386c822937 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+@@ -434,20 +434,19 @@ &i2c5 {
+ 	status = "okay";
+ 
+ 	touchscreen@38 {
+-		compatible = "focaltech,fts8719";
++		compatible = "focaltech,ft5452";
+ 		reg = <0x38>;
+-		wakeup-source;
+-		interrupt-parent = <&tlmm>;
+-		interrupts = <125 IRQ_TYPE_EDGE_FALLING>;
+-		vdd-supply = <&vreg_l28a_3p0>;
+-		vcc-i2c-supply = <&vreg_l14a_1p88>;
+ 
+-		pinctrl-names = "default", "suspend";
++		interrupts-extended = <&tlmm 125 IRQ_TYPE_EDGE_FALLING>;
++		reset-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
++
++		vcc-supply = <&vreg_l28a_3p0>;
++		iovcc-supply = <&vreg_l14a_1p88>;
++
+ 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+ 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
++		pinctrl-names = "default", "suspend";
+ 
+-		reset-gpio = <&tlmm 99 GPIO_ACTIVE_HIGH>;
+-		irq-gpio = <&tlmm 125 GPIO_TRANSITORY>;
+ 		touchscreen-size-x = <1080>;
+ 		touchscreen-size-y = <2160>;
+ 	};
 
 ---
-base-commit: 097a6c336d0080725c626fda118ecfec448acd0f
-change-id: 20250919-checkpatch-0276787ebfbe
+base-commit: 8f7f8b1b3f4c613dd886f53f768f82816b41eaa3
+change-id: 20250919-shift-axolotl-fix-touchscreen-dts-afa274c233de
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia@uniontech.com>
+Joel Selvaraj <foss@joelselvaraj.com>
 
