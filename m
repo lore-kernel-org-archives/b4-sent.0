@@ -1,60 +1,66 @@
 From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Fri, 19 Sep 2025 16:38:49 +0800
-Subject: [PATCH] hwmon: (gpd-fan) Fix range check for pwm input
+Date: Fri, 19 Sep 2025 16:53:33 +0800
+Subject: [PATCH] checkpatch: Suppress warnings when Reported-by: is
+ followed by Link:
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250919-hwmon-v1-1-2b69c8b9c062@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAJgWzWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDS0NL3Yzy3Pw8XUtzA+NE45REQ0vTRCWg2oKi1LTMCrA50bG1tQAG7sl
- gVwAAAA==
-X-Change-ID: 20250919-hwmon-9703a3da195a
-To: Guenter Roeck <linux@roeck-us.net>
-Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- niecheng1@uniontech.com, zhanjun@uniontech.com, 
- Chenx Dust <chenx_dust@outlook.com>, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
+Message-Id: <20250919-checkpatch-v1-1-d889973932fa@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAAwazWgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDS0NL3eSM1OTsgsSS5AxdAyNzM3ML89SktKRUJaCGgqLUtMwKsGHRsbW
+ 1AG4CVdhcAAAA
+X-Change-ID: 20250919-checkpatch-0276787ebfbe
+To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>, 
+ Dwaipayan Ray <dwaipayanray1@gmail.com>, 
+ Lukas Bulwahn <lukas.bulwahn@gmail.com>
+Cc: linux-kernel@vger.kernel.org, niecheng1@uniontech.com, 
+ zhanjun@uniontech.com, Cryolitia PukNgae <cryolitia@uniontech.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758271130; l=1169;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758272014; l=1763;
  i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=afIndOhFyRIpJBSDKmekESS308i/EUBmxUVarGxW7lY=;
- b=UU9NK+el/HvToO6JeXG6lF9yDJmp4kowqe6RJJadveUBwOdNADYAxD1khU+xxXv4hM3W4QeOh
- IpqArxawtJUDtaQ3kP05C6UCZf8qYy9M7ViixdgkK9JDo53JpeXoTNU
+ bh=Iyk6yjBAdRxSTomegUDUJm0OiNce0KlYMkESMKoKGyk=;
+ b=0hOu1V1/1ECrRUw2hyfnfh4IfkHPYcD+eTUzyG1iEzyK3LZ1oMmLtHteADCJYzSdoYKZxL+5D
+ +OaR3TwnuivAu7rLi4UGKGxW5p+CaPRpF/POVW46nJpy1jpDrFyyc+w
 X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
  pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
 X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fixed the maximum value in the PWM input range check, allowing the
-input to be set to 255.
+> The tag should be followed by a Closes: tag pointing to the report,
+> unless the report is not available on the web. The Link: tag can be
+> used instead of Closes: if the patch fixes a part of the issue(s)
+> being reported.
 
-Fixes: 0ab88e239439 ("hwmon: add GPD devices sensor driver")
-Reported-by: Chenx Dust <chenx_dust@outlook.com>
-Link: https://github.com/Cryolitia/gpd-fan-driver/pull/18
-Co-developed-by: Chenx Dust <chenx_dust@outlook.com>
-Signed-off-by: Chenx Dust <chenx_dust@outlook.com>
+Accroding to Documentation/process/submitting-patches.rst , Link: is
+also acceptable to followed a Reported-by:
+
 Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- drivers/hwmon/gpd-fan.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ scripts/checkpatch.pl | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/hwmon/gpd-fan.c b/drivers/hwmon/gpd-fan.c
-index e0b3b46e1bf12a10097600f857c627a766f61a27..644dc3ca9df7da0174e513c47a820a6ff39eb0ef 100644
---- a/drivers/hwmon/gpd-fan.c
-+++ b/drivers/hwmon/gpd-fan.c
-@@ -571,7 +571,7 @@ static int gpd_fan_hwmon_write(__always_unused struct device *dev,
- 			ret = 0;
- 			goto OUT;
- 		case hwmon_pwm_input:
--			if (!in_range(val, 0, 255)) {
-+			if (!in_range(val, 0, 256)) {
- 				ret = -ERANGE;
- 				goto OUT;
+diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
+index e722dd6fa8ef3d7062988e2b3ec8f5872bdfefeb..f09e3d0536d71d60184f15018202cc36a5f3832e 100755
+--- a/scripts/checkpatch.pl
++++ b/scripts/checkpatch.pl
+@@ -3200,10 +3200,10 @@ sub process {
+ 			if ($sign_off =~ /^reported(?:|-and-tested)-by:$/i) {
+ 				if (!defined $lines[$linenr]) {
+ 					WARN("BAD_REPORTED_BY_LINK",
+-					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . "\n");
+-				} elsif ($rawlines[$linenr] !~ /^closes:\s*/i) {
++					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . "\n");
++				} elsif ($rawlines[$linenr] !~ /^(closes|link):\s*/i) {
+ 					WARN("BAD_REPORTED_BY_LINK",
+-					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
++					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
+ 				}
  			}
+ 		}
 
 ---
-base-commit: 80038a758b7fc0cdb6987532cbbf3f75b13e0826
-change-id: 20250919-hwmon-9703a3da195a
+base-commit: 097a6c336d0080725c626fda118ecfec448acd0f
+change-id: 20250919-checkpatch-0276787ebfbe
 
 Best regards,
 -- 
