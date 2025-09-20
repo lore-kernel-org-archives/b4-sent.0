@@ -1,101 +1,95 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sat, 20 Sep 2025 14:03:47 +0200
-Subject: [PATCH v2 8/8] media: i2c: dw9719: Fix power on/off sequence
+From: Sven Peter <sven@kernel.org>
+Date: Sat, 20 Sep 2025 12:28:03 +0000
+Subject: [PATCH] usb: typec: tipd: Fix error handling in
+ cd321x_read_data_status
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250920-dw9719-v2-8-028cdaa156e5@apitzsch.eu>
-References: <20250920-dw9719-v2-0-028cdaa156e5@apitzsch.eu>
-In-Reply-To: <20250920-dw9719-v2-0-028cdaa156e5@apitzsch.eu>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, devicetree@vger.kernel.org, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Daniel Scally <djrscally@gmail.com>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Val Packett <val@packett.cool>, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250920-tipd-fix-v1-1-49886d4f081d@kernel.org>
+X-B4-Tracking: v=1; b=H4sIANKdzmgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDSyMD3ZLMghTdtMwKXYNkU4M0yzRLy0TTRCWg8oKiVKAw2Kjo2NpaAHd
+ 1ZmJaAAAA
+X-Change-ID: 20250920-tipd-fix-0c50f9f99a5a
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dan Carpenter <dan.carpenter@linaro.org>, Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758369833; l=2638;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=lWInwMIPju+2fGg21WtvyMeSsmiEJjQGEVNl36kgA5M=;
- b=20LuL86xoHl8ObMDtgsUU553lDH+HxYDd+BmsOKQ1iZH3yVfc3GnWu0FBJmSQYoN4JbcKL0IP
- ++37YmoQgnNCwOD2sf4DXCRJrDQ/6RxFjJDh+rcb/Xw06riboZv5eSC
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2170; i=sven@kernel.org;
+ h=from:subject:message-id; bh=0b5NmMOnbDP9MtwNwBgV04ka112u6zlExhIdniRtJx0=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8a5udctpXkWrnv+976tQobui80y03UL3mz2e5jNy3GsZ
+ j7/wafMHaUsDGIcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJhL9n+J8vmfzsVXKd8sSH
+ PmdlI59ci/y1asWhlR8maLhtLQ++9+IZw0/GbzeLePfPtHoz44mmnf98OxmmlTtcT+16GnBwi6k
+ i8xI2AA==
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Val Packett <val@packett.cool>
+Right now cd321x_read_data_status always returns true even if it
+encounters any errors: tps6598x_read_data_status returns a boolean but
+we treated it as an errno and then we have a bunch of dev_errs in case
+tps6598x_block_read fails but just continue along and return true.
+Fix that to correctly report errors to the callee.
 
-The "jiggle" code was not actually expecting failure, which it should
-because that's what actually happens when the device wasn't already woken
-up by the regulator power-on (i.e. in the case of a shared regulator).
-
-Also, do actually enter the internal suspend mode on shutdown, to save
-power in the case of a shared regulator.
-
-Also, wait a bit longer (2x tOPR) on waking up, 1x is not enough at least
-on the DW9718S as found on the motorola-nora smartphone.
-
-Signed-off-by: Val Packett <val@packett.cool>
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+Reported-by: Dan Carpenter <dan.carpenter@linaro.org>
+Closes: https://lore.kernel.org/linux-usb/aMvWJo3IkClmFoAA@stanley.mountain/
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/media/i2c/dw9719.c | 26 +++++++++++++++++++-------
- 1 file changed, 19 insertions(+), 7 deletions(-)
+ drivers/usb/typec/tipd/core.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/media/i2c/dw9719.c b/drivers/media/i2c/dw9719.c
-index a24594523030df7df7fb60afb5248472b4a8ea13..3627e78b8b6668933c4ecd92231465ce4105ff0c 100644
---- a/drivers/media/i2c/dw9719.c
-+++ b/drivers/media/i2c/dw9719.c
-@@ -95,12 +95,20 @@ struct dw9719_device {
- 
- static int dw9719_power_down(struct dw9719_device *dw9719)
- {
-+	u32 reg_pwr = dw9719->model == DW9718S ? DW9718S_PD : DW9719_CONTROL;
-+
-+	/*
-+	 * Worth engaging the internal SHUTDOWN mode especially due to the
-+	 * regulator being potentially shared with other devices.
-+	 */
-+	if (cci_write(dw9719->regmap, reg_pwr, DW9719_SHUTDOWN, NULL))
-+		dev_err(dw9719->dev, "Error writing to power register\n");
- 	return regulator_disable(dw9719->regulator);
- }
- 
- static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
- {
--	u32 reg_pwr;
-+	u32 reg_pwr = dw9719->model == DW9718S ? DW9718S_PD : DW9719_CONTROL;
- 	u64 val;
+diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
+index 2b1049c9a6f3c4300f4a25a97fe502c47e82a134..d0c86347251c5cc19a9b377550c00c27966f8329 100644
+--- a/drivers/usb/typec/tipd/core.c
++++ b/drivers/usb/typec/tipd/core.c
+@@ -577,30 +577,36 @@ static bool cd321x_read_data_status(struct tps6598x *tps)
  	int ret;
- 	int err;
-@@ -109,13 +117,17 @@ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
- 	if (ret)
- 		return ret;
  
--	/* Jiggle SCL pin to wake up device */
--	reg_pwr = dw9719->model == DW9718S ? DW9718S_PD : DW9719_CONTROL;
--	cci_write(dw9719->regmap, reg_pwr, DW9719_SHUTDOWN, &ret);
--	fsleep(100);
-+	/*
-+	 * Need 100us to transition from SHUTDOWN to STANDBY.
-+	 * Jiggle the SCL pin to wake up the device (even when the regulator is
-+	 * shared) and wait double the time to be sure, as 100us is not enough
-+	 * at least on the DW9718S as found on the motorola-nora smartphone,
-+	 * then retry the write.
-+	 */
-+	cci_write(dw9719->regmap, reg_pwr, DW9719_STANDBY, NULL);
-+	/* the jiggle is expected to fail, don't even log that as error */
-+	fsleep(200);
- 	cci_write(dw9719->regmap, reg_pwr, DW9719_STANDBY, &ret);
--	/* Need 100us to transit from SHUTDOWN to STANDBY */
--	fsleep(100);
+ 	ret = tps6598x_read_data_status(tps);
+-	if (ret < 0)
++	if (!ret)
+ 		return false;
  
- 	if (detect) {
- 		/* This model does not have an INFO register */
+ 	if (tps->data_status & TPS_DATA_STATUS_DP_CONNECTION) {
+ 		ret = tps6598x_block_read(tps, TPS_REG_DP_SID_STATUS,
+ 				&cd321x->dp_sid_status, sizeof(cd321x->dp_sid_status));
+-		if (ret)
++		if (ret) {
+ 			dev_err(tps->dev, "Failed to read DP SID Status: %d\n",
+ 				ret);
++			return false;
++		}
+ 	}
+ 
+ 	if (tps->data_status & TPS_DATA_STATUS_TBT_CONNECTION) {
+ 		ret = tps6598x_block_read(tps, TPS_REG_INTEL_VID_STATUS,
+ 				&cd321x->intel_vid_status, sizeof(cd321x->intel_vid_status));
+-		if (ret)
++		if (ret) {
+ 			dev_err(tps->dev, "Failed to read Intel VID Status: %d\n", ret);
++			return false;
++		}
+ 	}
+ 
+ 	if (tps->data_status & CD321X_DATA_STATUS_USB4_CONNECTION) {
+ 		ret = tps6598x_block_read(tps, TPS_REG_USB4_STATUS,
+ 				&cd321x->usb4_status, sizeof(cd321x->usb4_status));
+-		if (ret)
++		if (ret) {
+ 			dev_err(tps->dev,
+ 				"Failed to read USB4 Status: %d\n", ret);
++			return false;
++		}
+ 	}
+ 
+ 	return true;
 
+---
+base-commit: a4e143636d5def935dd461539b67b61287a8dfef
+change-id: 20250920-tipd-fix-0c50f9f99a5a
+
+Best regards,
 -- 
-2.51.0
+Sven Peter <sven@kernel.org>
 
