@@ -1,10 +1,11 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sat, 20 Sep 2025 14:03:41 +0200
-Subject: [PATCH v2 2/8] media: i2c: dw9719: Deprecate dongwoon,vcm-freq
+Date: Sat, 20 Sep 2025 14:03:42 +0200
+Subject: [PATCH v2 3/8] media: i2c: dw9719: Remove unused i2c device id
+ table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250920-dw9719-v2-2-028cdaa156e5@apitzsch.eu>
+Message-Id: <20250920-dw9719-v2-3-028cdaa156e5@apitzsch.eu>
 References: <20250920-dw9719-v2-0-028cdaa156e5@apitzsch.eu>
 In-Reply-To: <20250920-dw9719-v2-0-028cdaa156e5@apitzsch.eu>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -17,51 +18,48 @@ Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org,
  Val Packett <val@packett.cool>, 
  =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758369833; l=1393;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758369833; l=1027;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=IAzlkl9/y7ZEPjP9FcEzM1T6TtpgJTz8PkPbMDCgBe8=;
- b=gjEM7rLw/wEH6ScrAvo6wFfzvqisjK8oB1sN23asixFFyLUrJS4O72PxhPtWGP8TFoPyf2WEu
- vmdVKYSGDWEDQNwztzi3axDLOfYAshNjVibLIkTEGdg84QMv7ycfBwB
+ bh=mUZrDSJoYo2aj0olxKZRSTyHXKgynAJkOjdM9pfxGf4=;
+ b=Yz8roYjQv9VoTv5p5CUVXxBWr5bvH5xPSAv3GxDTUwWmlZWQFujcMtDTNcchUuaoVdmIEBxS8
+ XutCP8Dh55dC0ZGY3fc4+ttaKn56oPuJ4Tvk1jhU9drzCQDLyeUPgww
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The name of property "dongwoon,vcm-freq" doesn't match its purpose.
-Change the name of the property to "dongwoon,vcm-prescale" to better
-describe its purpose and deprecate the old one.
+Nothing depends on the I²C device ID table, so remove it.
 
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/media/i2c/dw9719.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ drivers/media/i2c/dw9719.c | 8 --------
+ 1 file changed, 8 deletions(-)
 
 diff --git a/drivers/media/i2c/dw9719.c b/drivers/media/i2c/dw9719.c
-index 032fbcb981f20f4e93202415e62f67379897a048..5ed0042fce18acd9e6ce9f6cf6c6982e36fed275 100644
+index 5ed0042fce18acd9e6ce9f6cf6c6982e36fed275..8d83e6fb478124d83d65f80d33a50c0aff438a6d 100644
 --- a/drivers/media/i2c/dw9719.c
 +++ b/drivers/media/i2c/dw9719.c
-@@ -82,6 +82,7 @@ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
- {
- 	u64 val;
- 	int ret;
-+	int err;
+@@ -360,13 +360,6 @@ static void dw9719_remove(struct i2c_client *client)
+ 	pm_runtime_set_suspended(&client->dev);
+ }
  
- 	ret = regulator_enable(dw9719->regulator);
- 	if (ret)
-@@ -123,7 +124,13 @@ static int dw9719_power_up(struct dw9719_device *dw9719, bool detect)
- 					 &dw9719->sac_mode);
+-static const struct i2c_device_id dw9719_id_table[] = {
+-	{ "dw9719" },
+-	{ "dw9761" },
+-	{ }
+-};
+-MODULE_DEVICE_TABLE(i2c, dw9719_id_table);
+-
+ static DEFINE_RUNTIME_DEV_PM_OPS(dw9719_pm_ops, dw9719_suspend, dw9719_resume,
+ 				 NULL);
  
- 		/* Optional indication of VCM frequency */
--		device_property_read_u32(dw9719->dev, "dongwoon,vcm-freq",
-+		err = device_property_read_u32(dw9719->dev, "dongwoon,vcm-freq",
-+					       &dw9719->vcm_freq);
-+		if (err == 0)
-+			dev_warn(dw9719->dev, "dongwoon,vcm-freq property is deprecated, please use dongwoon,vcm-prescale\n");
-+
-+		/* Optional indication of VCM prescale */
-+		device_property_read_u32(dw9719->dev, "dongwoon,vcm-prescale",
- 					 &dw9719->vcm_freq);
- 	}
+@@ -377,7 +370,6 @@ static struct i2c_driver dw9719_i2c_driver = {
+ 	},
+ 	.probe = dw9719_probe,
+ 	.remove = dw9719_remove,
+-	.id_table = dw9719_id_table,
+ };
+ module_i2c_driver(dw9719_i2c_driver);
  
 
 -- 
