@@ -1,64 +1,77 @@
-From: Max Shevchenko <wctrl@proton.me>
-Date: Sun, 21 Sep 2025 14:03:42 +0300
-Subject: [PATCH 3/3] arm64: dts: mediatek: mt6795: drop mediatek,dma-33bits
- property
+From: Rudraksha Gupta <guptarud@gmail.com>
+Subject: [PATCH v3 0/5] Upstreaming Pinephone Pro Patches
+Date: Sun, 21 Sep 2025 14:05:53 -0700
+Message-Id: <20250921-ppp_light_accel_mag_vol-down-v3-0-7af6651f77e4@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250921-uart-apdma-v1-3-107543c7102c@proton.me>
-References: <20250921-uart-apdma-v1-0-107543c7102c@proton.me>
-In-Reply-To: <20250921-uart-apdma-v1-0-107543c7102c@proton.me>
-To: Sean Wang <sean.wang@mediatek.com>, Vinod Koul <vkoul@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Long Cheng <long.cheng@mediatek.com>
-Cc: dmaengine@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Max Shevchenko <wctrl@proton.me>
+X-B4-Tracking: v=1; b=H4sIALFo0GgC/43NQQ6CMBCF4auQrq0pBaG68h7GkDIdyiSFEiBVQ
+ 7i7hRU7Xf5v8b2FTTgSTuyWLGzEQBP5PkZ2Shi0urfIycRmUsiLuErBh2GoHNl2rjQAuqrTtgr
+ eceNfPVdpCSpvjEZlWCSGERt67/zjGbulafbjZ38L6bb+CYeUCw6qrsFkKPGa322nyZ3Bd2yDg
+ zxi6Q9MRgyLGqAAXeYaj9i6rl8CYUdAFQEAAA==
+X-Change-ID: 20250920-ppp_light_accel_mag_vol-down-817c84fdae8d
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Rudraksha Gupta <guptarud@gmail.com>, Ondrej Jirman <megi@xff.cz>, 
+ "Leonardo G. Trombetta" <lgtrombetta@gmx.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758452646; l=1089;
- i=wctrl@proton.me; s=20250603; h=from:subject:message-id;
- bh=efNh38U+hbw7SE9tyV1qJBxX+aihILQofpcGc0kC/ts=;
- b=P2Den4CzqXR4nni1RZlcgJUrU+BdnDEx6nZid1RneZyCMn5h8Mysh1cY8Rig6oOMQpbLsXBdS
- golrZUGOoSGA2ZCKjBqltNqDh1rkr621J5L7bYeinB8Sw0aZmqZIF3B
-X-Developer-Key: i=wctrl@proton.me; a=ed25519;
- pk=JXUx3mL/OrnRvbK57HXgugBjEBKq4QgDKJqp7BALm74=
-X-Endpoint-Received: by B4 Relay for wctrl@proton.me/20250603 with auth_id=421
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758488760; l=2092;
+ i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
+ bh=p36wcFyPQqlAAPFV8kif2hBbqmR6V3mP2tc/m/CbJ/4=;
+ b=khC8t4v1Xu2EYfXP+DQY1VBR1+l0j/G7ns8n+3Uvymukxh1d3LQBBOqQmCJhHs7Fu9juXzzqq
+ YjcenQ0Ge0WDV1e1PLp2Plg2a/OL903KHrvnQARvu9wQ3uhqCRbw8r8
+X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
+ pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
+X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Drop the mediatek,dma-33bits property and use compatible for the
-platform data instead.
+Throughout the years, many have contributed to the Pinephone Pro (ppp)
+development. Unfortunately, these patches are scattered around various
+repositories in different states.
 
-Signed-off-by: Max Shevchenko <wctrl@proton.me>
+I will be attempting to upstream these patches. I will start off with the
+following small series:
+- Add light/proximity sensor support
+  - https://codeberg.org/megi/linux/commit/f171bc7013bc7ad3de9af817bfbcbfa548ebe01c
+- Add accelerometer sensor support
+  - https://codeberg.org/megi/linux/commit/b0bb7633e073a6760fa213b8c4a78ea2e73c7bf1
+- Add magnetometer sensor support
+  - https://codeberg.org/megi/linux/commit/2f7e67f451f16eaf15b81aa1dbdf126d54927d35
+- Add mount-matrix for magnetometer
+  - https://codeberg.org/megi/linux/commit/d7cd2eab931e32fa94408a96d73b4e6c0616107a
+- Fix voltage threshold for volume down key
+  - https://codeberg.org/megi/linux/commit/7c496a5cc27ed4e38b740f36c2d8b2c62f80ae54
+
+Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- arch/arm64/boot/dts/mediatek/mt6795.dtsi | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+Changes in v3:
+- change magnetometer mount matrix
+- update volume button threshold
+- Link to v2: https://lore.kernel.org/r/20250921-ppp_light_accel_mag_vol-down-v2-0-e6bcc6ca74ae@gmail.com
 
-diff --git a/arch/arm64/boot/dts/mediatek/mt6795.dtsi b/arch/arm64/boot/dts/mediatek/mt6795.dtsi
-index e5e269a660b11b0e94da1a1cf362ff0839f0dabf..5123316b21285cf589c0c616c0a12420f0b1ef19 100644
---- a/arch/arm64/boot/dts/mediatek/mt6795.dtsi
-+++ b/arch/arm64/boot/dts/mediatek/mt6795.dtsi
-@@ -547,8 +547,7 @@ uart1: serial@11003000 {
- 		};
- 
- 		apdma: dma-controller@11000380 {
--			compatible = "mediatek,mt6795-uart-dma",
--				     "mediatek,mt6577-uart-dma";
-+			compatible = "mediatek,mt6795-uart-dma";
- 			reg = <0 0x11000380 0 0x60>,
- 			      <0 0x11000400 0 0x60>,
- 			      <0 0x11000480 0 0x60>,
-@@ -568,7 +567,6 @@ apdma: dma-controller@11000380 {
- 			dma-requests = <8>;
- 			clocks = <&pericfg CLK_PERI_AP_DMA>;
- 			clock-names = "apdma";
--			mediatek,dma-33bits;
- 			#dma-cells = <1>;
- 		};
- 
+Changes in v2:
+- remove usb-typec node in dts from light/proximity sensor patch
+- Link to v1: https://lore.kernel.org/r/20250920-ppp_light_accel_mag_vol-down-v1-0-c8bbcd3e2e94@gmail.com
 
+---
+Leonardo G. Trombetta (1):
+      arm64: dts: rk3399-pinephone-pro: Add mount-matrix for magnetometer
+
+Ondrej Jirman (4):
+      arm64: dts: rk3399-pinephone-pro: Add light/proximity sensor support
+      arm64: dts: rk3399-pinephone-pro: Add accelerometer sensor support
+      arm64: dts: rk3399-pinephone-pro: Add magnetometer sensor support
+      arm64: dts: rk3399-pinephone-pro: Fix voltage threshold for volume keys
+
+ .../boot/dts/rockchip/rk3399-pinephone-pro.dts     | 42 ++++++++++++++++++++--
+ 1 file changed, 40 insertions(+), 2 deletions(-)
+---
+base-commit: f83ec76bf285bea5727f478a68b894f5543ca76e
+change-id: 20250920-ppp_light_accel_mag_vol-down-817c84fdae8d
+
+Best regards,
 -- 
-2.51.0
+Rudraksha Gupta <guptarud@gmail.com>
 
