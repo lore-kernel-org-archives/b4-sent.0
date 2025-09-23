@@ -1,58 +1,54 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Tue, 23 Sep 2025 01:10:01 +0200
-Subject: [PATCH] dt-bindings: net: ethernet-controller: Fix grammar in
- comment
+Date: Tue, 23 Sep 2025 02:14:50 +0200
+Subject: [PATCH] Input: ps2-gpio - fix typo
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250923-dt-net-typo-v1-1-08e1bdd14c74@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAEjX0WgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDSyNj3ZQS3bzUEt2SyoJ8XcvU1DRLk1SjNGMDMyWgjoKi1LTMCrBp0bG
- 1tQC13EunXQAAAA==
-X-Change-ID: 20250923-dt-net-typo-9eef94e2f306
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
+Message-Id: <20250923-ps2-typo-v1-1-03d2468acc32@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAHnm0WgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDSyNj3YJiI92SyoJ8XVMzcxOzZFMzC1ODRCWg8oKi1LTMCrBR0bG1tQC
+ l/lTBWgAAAA==
+X-Change-ID: 20250923-ps2-typo-56746c56850a
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758582614; l=1216;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758586497; l=1181;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=UG1p5Ilscqfsthqo/vFuqDREG76+9qwWwF2C33lkH4U=;
- b=YKEwhNmEE7v9/7DglAAFg5iNOpL05owbfonhI07MdVIUhy1zsCQPerkREszKe6k3OBfRb+quw
- uL4A71PB/lQDY0xKFZI+F3Ixt7FAoPHyOZfJsUo8bbiS31l7594Q84P
+ bh=IPy139GDL40Ao6EBEyf0Bsm3lBOPa8B5AbzRx2Cm4mo=;
+ b=0utriwySV/XiOEb9kOXBBXidP+4XaLTRlLPAaNEOcq1fRowy6LyK5hrLbVNuQ4g2HcXq8A1/w
+ +WW8rCLQcRNBp+XDkZ6eoN9ONeLve3nHjGMRB3uiFLMRv+ePmLzQh/r
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-"difference" is a noun, so "sufficient" is an adjective without "ly".
+"The data line must be sampled" makes much more sense than what was
+previously written, and given that "s" and "d" are neighbors on the
+QWERTY keybord, it was probably a typo.
 
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- Documentation/devicetree/bindings/net/ethernet-controller.yaml | 2 +-
+ drivers/input/serio/ps2-gpio.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/net/ethernet-controller.yaml b/Documentation/devicetree/bindings/net/ethernet-controller.yaml
-index 66b1cfbbfe221112286af4a14839ea039564113a..812f2c7aaa83777cf8c863e93d9597b951ac54d7 100644
---- a/Documentation/devicetree/bindings/net/ethernet-controller.yaml
-+++ b/Documentation/devicetree/bindings/net/ethernet-controller.yaml
-@@ -274,7 +274,7 @@ additionalProperties: true
- # specified.
- #
- # One option is to make the clock traces on the PCB longer than the
--# data traces. A sufficiently difference in length can provide the 2ns
-+# data traces. A sufficient difference in length can provide the 2ns
- # delay. If both the RX and TX delays are implemented in this manner,
- # 'rgmii' should be used, so indicating the PCB adds the delays.
- #
+diff --git a/drivers/input/serio/ps2-gpio.c b/drivers/input/serio/ps2-gpio.c
+index 93769910ce24ea96265b67e2d04dfd768b9d6c6b..46fb7667b244a37e29c19ac363d17e0c32d7f822 100644
+--- a/drivers/input/serio/ps2-gpio.c
++++ b/drivers/input/serio/ps2-gpio.c
+@@ -50,7 +50,7 @@
+  * interrupt interval should be ~60us. Let's allow +/- 20us for frequency
+  * deviations and interrupt latency.
+  *
+- * The data line must be samples after ~30us to 50us after the falling edge,
++ * The data line must be sampled after ~30us to 50us after the falling edge,
+  * since the device updates the data line at the rising edge.
+  *
+  * ___            ______            ______            ______            ___
 
 ---
 base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250923-dt-net-typo-9eef94e2f306
+change-id: 20250923-ps2-typo-56746c56850a
 
 Best regards,
 -- 
