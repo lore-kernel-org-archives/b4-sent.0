@@ -1,49 +1,63 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Subject: [PATCH RESEND 0/4] dma: dma-axi-dmac: fixes and improvements
-Date: Tue, 23 Sep 2025 09:23:34 +0100
-Message-Id: <20250923-b4-dev-axi-dmac-fixes-v1-0-5896dcbbd909@analog.com>
+Date: Tue, 23 Sep 2025 09:23:35 +0100
+Subject: [PATCH RESEND 1/4] dma: dma-axi-dmac: fix SW cyclic transfers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAZZ0mgC/x3LuwqDQBBG4VeRqR3QIQZMra2FKSXFXv5NpvDCL
- oggvrtLyo/DOSkhKhK9ipMidk26Lhl1WZD7meULVp9NUklTtSJsH+yxszmU/WwcBz2Q2NrwlOA
- boHWU3y3iH/I60di/+6Gjz3Xddxj4728AAAA=
-X-Change-ID: 20250922-b4-dev-axi-dmac-fixes-bbf62fd5ee9c
+Message-Id: <20250923-b4-dev-axi-dmac-fixes-v1-1-5896dcbbd909@analog.com>
+References: <20250923-b4-dev-axi-dmac-fixes-v1-0-5896dcbbd909@analog.com>
+In-Reply-To: <20250923-b4-dev-axi-dmac-fixes-v1-0-5896dcbbd909@analog.com>
 To: dmaengine@vger.kernel.org
 Cc: Vinod Koul <vkoul@kernel.org>, Lars-Peter Clausen <lars@metafoo.de>, 
  Paul Cercueil <paul@crapouillou.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758615815; l=794;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758615815; l=1461;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=aEcU6mSTdWkmiEX7gNxqh2qLkoNW20dvqKm8ckSwD/c=;
- b=jtQbHQyTX3z+s2B0dfVGKudcqIclK98s6CBhhMTYpem83HtdpHKle4a474nE88KR6SkLuJ77E
- Tgxc6uH7uxyBNAnpfyZ0Q0rQDoVBo5IiOdNTpZ+phcEKTn0DBwjs6K+
+ bh=BAuoxEsSrmFa/FKz+UWCZwjeXC6UYdc6O9UDaRqXuRY=;
+ b=Dv5EdzWjRC4w+RwTCWLgSMfXZwZTy90VSGG8JGHegvWnstMM6cxCtISHRnVYCsgvX2qcxfOct
+ 9kRCFoBmiwhA8LtAbj7jvMJ+4MxQoTQoBH0m9yFYRTC1XQMQW26Icbu
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds some fixes to the DMA core with respect with cyclic
-transfer and HW scatter gather.
+If 'hw_cyclic' is false we should still be able to do cyclic transfers in
+"software". That was not working for the case where 'desc->num_sgs' is 1
+because 'chan->next_desc' is never set with the current desc which means
+that the cyclic transfer only runs once and in the next SOT interrupt we
+do nothing since vchan_next_desc() will return NULL.
 
-It also adds some improvements. Most notably for allowing bigger that
-32bits DMA masks so we do not have to rely on bounce buffers from
-swiotlb.
+Fix it by setting 'chan->next_desc' as soon as we get a new desc via
+vchan_next_desc().
 
+Fixes: 0e3b67b348b8 ("dmaengine: Add support for the Analog Devices AXI-DMAC DMA controller")
+Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
-Nuno Sá (4):
-      dma: dma-axi-dmac: fix SW cyclic transfers
-      dma: dma-axi-dmac: fix HW scatter-gather not looking at the queue
-      dma: dma-axi-dmac: support bigger than 32bits addresses
-      dma: dma-axi-dmac: simplify axi_dmac_parse_dt()
+ drivers/dma/dma-axi-dmac.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
- drivers/dma/dma-axi-dmac.c | 48 +++++++++++++++++++++++++++++++---------------
- 1 file changed, 33 insertions(+), 15 deletions(-)
----
-base-commit: cc0bacac6de7763a038550cf43cb94634d8be9cd
-change-id: 20250922-b4-dev-axi-dmac-fixes-bbf62fd5ee9c
---
+diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
+index 5b06b0dc67ee12017c165bf815fb7c0e1bf5abd8..e22639822045f237ebcd1fa012a75bbe7dc536c5 100644
+--- a/drivers/dma/dma-axi-dmac.c
++++ b/drivers/dma/dma-axi-dmac.c
+@@ -247,6 +247,7 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
+ 			return;
+ 		list_move_tail(&vdesc->node, &chan->active_descs);
+ 		desc = to_axi_dmac_desc(vdesc);
++		chan->next_desc = desc;
+ 	}
+ 	sg = &desc->sg[desc->num_submitted];
+ 
+@@ -265,8 +266,6 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
+ 		else
+ 			chan->next_desc = NULL;
+ 		flags |= AXI_DMAC_FLAG_LAST;
+-	} else {
+-		chan->next_desc = desc;
+ 	}
+ 
+ 	sg->hw->id = axi_dmac_read(dmac, AXI_DMAC_REG_TRANSFER_ID);
 
-Thanks!
-- Nuno Sá
+-- 
+2.51.0
 
