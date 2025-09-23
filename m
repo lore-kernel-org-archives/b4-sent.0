@@ -1,111 +1,150 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Tue, 23 Sep 2025 09:41:48 +0100
-Subject: [PATCH 2/2] iio: dac: ltc2688: use the auto lock API
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Tue, 23 Sep 2025 11:58:05 -0500
+Subject: [PATCH v4] soc: tegra: fuse: speedo-tegra210: Update speedo ids
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250923-dev-ltc2688-minor-v1-2-ef92c441dc42@analog.com>
-References: <20250923-dev-ltc2688-minor-v1-0-ef92c441dc42@analog.com>
-In-Reply-To: <20250923-dev-ltc2688-minor-v1-0-ef92c441dc42@analog.com>
-To: linux-iio@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250923-tegra210-speedo-v4-1-c12b5400ca91@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJzR0mgC/4XN0QqCMBTG8VeRXbc422xuXfUe0cWcRx2kk02kE
+ N+9KUSRF11+B37/M5OIwWEk52wmAScXne/TyA8Zsa3pG6SuSptw4CdQjNMRm2A4AxoHxMrTvAC
+ pGapSWUuSGgLW7rEVr7e0WxdHH57bg4mt13dL7loTo0CNVkxIMJXlxaXpjLsfre/I2pr4x2sQe
+ 8+TVxplrWSpdM5/vfjjBWW0EAgaoS5LIb/9siwvliuo2C4BAAA=
+X-Change-ID: 20250812-tegra210-speedo-470691e8b8cc
+To: Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, Joseph Lo <josephl@nvidia.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: Thierry Reding <treding@nvidia.com>, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758616915; l=2667;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=6yZ3xMxARLZBD4UHPpqf5e19eNf49oSofH3MuyGQxbU=;
- b=SScT76jCCJfUextKNuxpmW3OwlMcUylhHKjDk0DTIqmXlfZsdhec91xEB32ETQHOjt5oxxaf3
- CyKhVEdy0BUBpY7bV/A4hA1Qq3JKavzzHJqJ6lFixyWXm8g8N5JmYwz
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758646690; l=3907;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=SiEd93vSO5dn+t0YuAV9jSFCu4bFUsC1WsQK0UT2860=;
+ b=z3Ik+c+D6z1y4LobgQ55xWUWutuIQY5AVuHWT0YUc83dy4lmfL8kqHbiVg63RVspaYXAU3gaE
+ nKvrwDjo0OCDkjhTJobYFeOIJH98Xbaxj0GBuLf43Kbr3vIfYNMzBLb
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make use of the cleanup API so that we can simplify some code paths.
+Existing code only sets cpu and gpu speedo ids 0 and 1. The cpu dvfs
+code supports 11 ids and nouveau supports 5. This aligns with what the
+downstream vendor kernel supports. Align skus with the downstream list.
 
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+The Tegra210 CVB tables were added in the first referenced fixes commit.
+Since then, all Tegra210 socs have tried to scale to 1.9 GHz, when the
+supported devkits are only supposed to scale to 1.5 or 1.7 GHZ.
+Overclocking should not be the default state.
+
+Fixes: 2b2dbc2f94e5 ("clk: tegra: dfll: add CVB tables for Tegra210")
+Fixes: 579db6e5d9b8 ("arm64: tegra: Enable DFLL support on Jetson Nano")
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/iio/dac/ltc2688.c | 24 ++++++++++--------------
- 1 file changed, 10 insertions(+), 14 deletions(-)
+The Tegra210 CVB tables were added in commit 2b2dbc2f94e5. Since then,
+all Tegra210 socs have tried to scale the cpu to 1.9 GHz, when the
+supported devkits are only supposed to scale to 1.5 or 1.7 GHZ.
+Overclocking should not be the default state.
+---
+Changes in v4:
+- Check soc chip revision instead of speedo revision in speedo id
+  conversion
+- Link to v3: https://lore.kernel.org/r/20250903-tegra210-speedo-v3-1-73e09e0fbb36@gmail.com
 
-diff --git a/drivers/iio/dac/ltc2688.c b/drivers/iio/dac/ltc2688.c
-index 57028d422868ec48e6900ef1cc4be6dee9cd4547..628e96e20375c06bffe16878fc90cfdde99ae565 100644
---- a/drivers/iio/dac/ltc2688.c
-+++ b/drivers/iio/dac/ltc2688.c
-@@ -6,6 +6,7 @@
-  */
- #include <linux/bitfield.h>
- #include <linux/bits.h>
-+#include <linux/cleanup.h>
- #include <linux/clk.h>
- #include <linux/device.h>
- #include <linux/gpio/consumer.h>
-@@ -208,12 +209,12 @@ static int ltc2688_dac_code_write(struct ltc2688_state *st, u32 chan, u32 input,
- 		code = FIELD_PREP(LTC2688_DITHER_RAW_MASK, code);
+Changes in v3:
+- Drop all patches related to limiting cpu frequency from a dt property
+- Link to v2: https://lore.kernel.org/r/20250903-tegra210-speedo-v2-0-89e6f86b8942@gmail.com
+
+Changes in v2:
+- Define units in patch 1
+- Update patch 1 commit message to better explain the need
+- Pull all downstream sku's into patch 2, which eliminates patch 3
+- Update patch 4 commit message to indicate the limit is due to thermal
+  constraints.
+- Link to v1: https://lore.kernel.org/r/20250816-tegra210-speedo-v1-0-a981360adc27@gmail.com
+---
+ drivers/soc/tegra/fuse/speedo-tegra210.c | 62 ++++++++++++++++++++++----------
+ 1 file changed, 43 insertions(+), 19 deletions(-)
+
+diff --git a/drivers/soc/tegra/fuse/speedo-tegra210.c b/drivers/soc/tegra/fuse/speedo-tegra210.c
+index 695d0b7f9a8abe53c497155603147420cda40b63..a8cc3632977230fbfda0f8c3bfa7b7b25c2378fe 100644
+--- a/drivers/soc/tegra/fuse/speedo-tegra210.c
++++ b/drivers/soc/tegra/fuse/speedo-tegra210.c
+@@ -65,27 +65,51 @@ static void __init rev_sku_to_speedo_ids(struct tegra_sku_info *sku_info,
+ 	sku_info->gpu_speedo_id = 0;
+ 	*threshold = THRESHOLD_INDEX_0;
+ 
+-	switch (sku) {
+-	case 0x00: /* Engineering SKU */
+-	case 0x01: /* Engineering SKU */
+-	case 0x07:
+-	case 0x17:
+-	case 0x27:
+-		if (speedo_rev >= 2)
++	if (sku_info->revision >= TEGRA_REVISION_A02) {
++		switch (sku) {
++		case 0x00: /* Engineering SKU */
++		case 0x01: /* Engineering SKU */
++		case 0x13:
++			sku_info->cpu_speedo_id = 5;
++			sku_info->gpu_speedo_id = 2;
++			break;
++
++		case 0x07:
++		case 0x17:
++		case 0x1F:
++			sku_info->cpu_speedo_id = 7;
++			sku_info->gpu_speedo_id = 2;
++			break;
++
++		case 0x27:
++			sku_info->cpu_speedo_id = 1;
++			sku_info->gpu_speedo_id = 2;
++			break;
++
++		case 0x83:
++			sku_info->cpu_speedo_id = 3;
++			sku_info->gpu_speedo_id = 3;
++			break;
++
++		case 0x87:
++			sku_info->cpu_speedo_id = 2;
+ 			sku_info->gpu_speedo_id = 1;
+-		break;
+-
+-	case 0x13:
+-		if (speedo_rev >= 2)
+-			sku_info->gpu_speedo_id = 1;
+-
+-		sku_info->cpu_speedo_id = 1;
+-		break;
+-
+-	default:
++			break;
++
++		case 0x8F:
++			sku_info->cpu_speedo_id = 9;
++			sku_info->gpu_speedo_id = 2;
++			break;
++
++		default:
++			pr_err("Tegra210: unknown revision 2 or newer SKU %#04x\n", sku);
++			/* Using the default for the error case */
++			break;
++		}
++	} else if (sku == 0x00 || sku == 0x01 || sku == 0x07 || sku == 0x13 || sku == 0x17) {
++		sku_info->gpu_speedo_id = 1;
++	} else {
+ 		pr_err("Tegra210: unknown SKU %#04x\n", sku);
+-		/* Using the default for the error case */
+-		break;
  	}
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 	/* select the correct input register to read from */
- 	ret = regmap_update_bits(st->regmap, LTC2688_CMD_A_B_SELECT, BIT(chan),
- 				 input << chan);
- 	if (ret)
--		goto out_unlock;
-+		return ret;
- 
- 	/*
- 	 * If in dither/toggle mode the dac should be updated by an
-@@ -224,10 +225,7 @@ static int ltc2688_dac_code_write(struct ltc2688_state *st, u32 chan, u32 input,
- 	else
- 		reg = LTC2688_CMD_CH_CODE(chan);
- 
--	ret = regmap_write(st->regmap, reg, code);
--out_unlock:
--	mutex_unlock(&st->lock);
--	return ret;
-+	return regmap_write(st->regmap, reg, code);
  }
  
- static int ltc2688_dac_code_read(struct ltc2688_state *st, u32 chan, u32 input,
-@@ -236,15 +234,15 @@ static int ltc2688_dac_code_read(struct ltc2688_state *st, u32 chan, u32 input,
- 	struct ltc2688_chan *c = &st->channels[chan];
- 	int ret;
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 	ret = regmap_update_bits(st->regmap, LTC2688_CMD_A_B_SELECT, BIT(chan),
- 				 input << chan);
- 	if (ret)
--		goto out_unlock;
-+		return ret;
- 
- 	ret = regmap_read(st->regmap, LTC2688_CMD_CH_CODE(chan), code);
--out_unlock:
--	mutex_unlock(&st->lock);
-+	if (ret)
-+		return ret;
- 
- 	if (!c->toggle_chan && input == LTC2688_INPUT_B)
- 		*code = FIELD_GET(LTC2688_DITHER_RAW_MASK, *code);
-@@ -359,15 +357,13 @@ static ssize_t ltc2688_dither_toggle_set(struct iio_dev *indio_dev,
- 	if (ret)
- 		return ret;
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 	ret = regmap_update_bits(st->regmap, LTC2688_CMD_TOGGLE_DITHER_EN,
- 				 BIT(chan->channel), en << chan->channel);
- 	if (ret)
--		goto out_unlock;
-+		return ret;
- 
- 	c->mode = en ? LTC2688_MODE_DITHER_TOGGLE : LTC2688_MODE_DEFAULT;
--out_unlock:
--	mutex_unlock(&st->lock);
- 
- 	return ret ?: len;
- }
 
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250812-tegra210-speedo-470691e8b8cc
+
+Best regards,
 -- 
-2.51.0
+Aaron Kling <webgeek1234@gmail.com>
 
