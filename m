@@ -1,11 +1,11 @@
 From: Remi Buisson <remi.buisson@tdk.com>
-Date: Wed, 24 Sep 2025 09:23:59 +0000
-Subject: [PATCH v6 6/9] iio: imu: inv_icm45600: add I2C driver for
+Date: Wed, 24 Sep 2025 09:24:00 +0000
+Subject: [PATCH v6 7/9] iio: imu: inv_icm45600: add SPI driver for
  inv_icm45600 driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250924-add_newport_driver-v6-6-76687b9d8a6e@tdk.com>
+Message-Id: <20250924-add_newport_driver-v6-7-76687b9d8a6e@tdk.com>
 References: <20250924-add_newport_driver-v6-0-76687b9d8a6e@tdk.com>
 In-Reply-To: <20250924-add_newport_driver-v6-0-76687b9d8a6e@tdk.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -17,42 +17,42 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
  devicetree@vger.kernel.org, Remi Buisson <remi.buisson@tdk.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758705845; l=5052;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1758705845; l=5349;
  i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
- bh=sBMP9Nob/m9bf7U1Inc9JV4s0JfRRB/2JECgb0ifR6Q=;
- b=9+bTZMv9su3csI7YoGJWLHRx/wPgemgLp0OO0KsSPxok3znaMTtLkwrtHhSg0xlTUSwY/WiFc
- uyb3rzM4L74A0793pUtSvzkQ6j1JdmmakmLnvo/FnHdXXJ1fpGZAjHx
+ bh=JAt38ivZFI3Dnetu2VE7wDZyorI8H8MoLa7FioXfC2o=;
+ b=xhL7czCXJ18V4gq139gZWdh1kUOAY0AD0AgSJkF+JnaRH+epKu/bqLRcP/IOZqv+4KaDmxjIJ
+ YYMX+gN2ss8DskeKlMrXno0ig+jmR12a2V8+kLJsIjlSMuBs5tLZ6KT
 X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
  pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
 X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add I2C driver for InvenSense ICM-456000 devices.
+Add SPI driver for InvenSense ICM-456000 devices.
 
 Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
- drivers/iio/imu/inv_icm45600/Kconfig            | 21 ++++++
- drivers/iio/imu/inv_icm45600/Makefile           |  3 +
- drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c | 98 +++++++++++++++++++++++++
- 3 files changed, 122 insertions(+)
+ drivers/iio/imu/inv_icm45600/Kconfig            |  21 +++++
+ drivers/iio/imu/inv_icm45600/Makefile           |   3 +
+ drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c | 107 ++++++++++++++++++++++++
+ 3 files changed, 131 insertions(+)
 
 diff --git a/drivers/iio/imu/inv_icm45600/Kconfig b/drivers/iio/imu/inv_icm45600/Kconfig
-index ea0a8d20cba26549b74105fa6fdbca1ddb222633..5b044a954e952ffa8e44507eea42872e1f3161bc 100644
+index 5b044a954e952ffa8e44507eea42872e1f3161bc..01399d136a7ea3aa92a3a18ea455c95c0a6578b3 100644
 --- a/drivers/iio/imu/inv_icm45600/Kconfig
 +++ b/drivers/iio/imu/inv_icm45600/Kconfig
-@@ -5,3 +5,24 @@ config INV_ICM45600
- 	select IIO_BUFFER
- 	select IIO_KFIFO_BUF
- 	select IIO_INV_SENSORS_TIMESTAMP
+@@ -26,3 +26,24 @@ config INV_ICM45600_I2C
+ 
+ 	  This driver can be built as a module. The module will be called
+ 	  inv-icm45600-i2c.
 +
-+config INV_ICM45600_I2C
-+	tristate "InvenSense ICM-456xx I2C driver"
-+	depends on I2C
++config INV_ICM45600_SPI
++	tristate "InvenSense ICM-456xx SPI driver"
++	depends on SPI_MASTER
 +	select INV_ICM45600
-+	select REGMAP_I2C
++	select REGMAP_SPI
 +	help
 +	  This driver supports the InvenSense ICM-456xx motion tracking
-+	  devices over I2C.
++	  devices over SPI.
 +	  Supported devices:
 +	  - ICM-45605
 +	  - ICM-45606
@@ -64,33 +64,34 @@ index ea0a8d20cba26549b74105fa6fdbca1ddb222633..5b044a954e952ffa8e44507eea42872e
 +	  - ICM-45689
 +
 +	  This driver can be built as a module. The module will be called
-+	  inv-icm45600-i2c.
++	  inv-icm45600-spi.
 diff --git a/drivers/iio/imu/inv_icm45600/Makefile b/drivers/iio/imu/inv_icm45600/Makefile
-index e34553d2b74dc46bb0f533d2bd0875655f91c781..c43e5d6ad3a2ddbd666d77630015c440e740d969 100644
+index c43e5d6ad3a2ddbd666d77630015c440e740d969..3692636d393a109a0ad68e955e1cad59005e9128 100644
 --- a/drivers/iio/imu/inv_icm45600/Makefile
 +++ b/drivers/iio/imu/inv_icm45600/Makefile
-@@ -5,3 +5,6 @@ inv-icm45600-y += inv_icm45600_core.o
- inv-icm45600-y += inv_icm45600_buffer.o
- inv-icm45600-y += inv_icm45600_gyro.o
- inv-icm45600-y += inv_icm45600_accel.o
+@@ -8,3 +8,6 @@ inv-icm45600-y += inv_icm45600_accel.o
+ 
+ obj-$(CONFIG_INV_ICM45600_I2C) += inv-icm45600-i2c.o
+ inv-icm45600-i2c-y += inv_icm45600_i2c.o
 +
-+obj-$(CONFIG_INV_ICM45600_I2C) += inv-icm45600-i2c.o
-+inv-icm45600-i2c-y += inv_icm45600_i2c.o
-diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c
++obj-$(CONFIG_INV_ICM45600_SPI) += inv-icm45600-spi.o
++inv-icm45600-spi-y += inv_icm45600_spi.o
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..5ebc18121a11f8ad576efb4d4cf80091c13af31d
+index 0000000000000000000000000000000000000000..49a36b694ac68f79730ac2cbb9787416b0f95158
 --- /dev/null
-+++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c
-@@ -0,0 +1,98 @@
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c
+@@ -0,0 +1,107 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/* Copyright (C) 2025 InvenSense, Inc. */
 +
 +#include <linux/device.h>
 +#include <linux/err.h>
-+#include <linux/i2c.h>
 +#include <linux/module.h>
 +#include <linux/mod_devicetable.h>
 +#include <linux/regmap.h>
++
++#include <linux/spi/spi.h>
 +
 +#include "inv_icm45600.h"
 +
@@ -99,30 +100,38 @@ index 0000000000000000000000000000000000000000..5ebc18121a11f8ad576efb4d4cf80091
 +	.val_bits = 8,
 +};
 +
-+static int inv_icm45600_probe(struct i2c_client *client)
++static int inv_icm45600_spi_bus_setup(struct inv_icm45600_state *st)
++{
++	/* Set slew rates for SPI. */
++	return regmap_update_bits(st->map, INV_ICM45600_REG_DRIVE_CONFIG0,
++				INV_ICM45600_DRIVE_CONFIG0_SPI_MASK,
++				FIELD_PREP(INV_ICM45600_DRIVE_CONFIG0_SPI_MASK,
++					INV_ICM45600_SPI_SLEW_RATE_5NS));
++}
++
++static int inv_icm45600_probe(struct spi_device *spi)
 +{
 +	const struct inv_icm45600_chip_info *chip_info;
 +	struct regmap *regmap;
 +
-+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_I2C_BLOCK))
-+		return -ENODEV;
-+
-+	chip_info = device_get_match_data(&client->dev);
++	chip_info = spi_get_device_match_data(spi);
 +	if (!chip_info)
 +		return -ENODEV;
 +
-+	regmap = devm_regmap_init_i2c(client, &inv_icm45600_regmap_config);
++	/* Use SPI specific regmap. */
++	regmap = devm_regmap_init_spi(spi, &inv_icm45600_regmap_config);
 +	if (IS_ERR(regmap))
 +		return PTR_ERR(regmap);
 +
-+	return inv_icm45600_core_probe(regmap, chip_info, true, NULL);
++	return inv_icm45600_core_probe(regmap, chip_info, true,
++				       inv_icm45600_spi_bus_setup);
 +}
 +
 +/*
 + * The device id table is used to identify which device is
 + * supported by this driver.
 + */
-+static const struct i2c_device_id inv_icm45600_id[] = {
++static const struct spi_device_id inv_icm45600_id[] = {
 +	{ "icm45605", (kernel_ulong_t)&inv_icm45605_chip_info },
 +	{ "icm45606", (kernel_ulong_t)&inv_icm45606_chip_info },
 +	{ "icm45608", (kernel_ulong_t)&inv_icm45608_chip_info },
@@ -133,7 +142,7 @@ index 0000000000000000000000000000000000000000..5ebc18121a11f8ad576efb4d4cf80091
 +	{ "icm45689", (kernel_ulong_t)&inv_icm45689_chip_info },
 +	{ }
 +};
-+MODULE_DEVICE_TABLE(i2c, inv_icm45600_id);
++MODULE_DEVICE_TABLE(spi, inv_icm45600_id);
 +
 +static const struct of_device_id inv_icm45600_of_matches[] = {
 +	{
@@ -165,19 +174,19 @@ index 0000000000000000000000000000000000000000..5ebc18121a11f8ad576efb4d4cf80091
 +};
 +MODULE_DEVICE_TABLE(of, inv_icm45600_of_matches);
 +
-+static struct i2c_driver inv_icm45600_driver = {
++static struct spi_driver inv_icm45600_driver = {
 +	.driver = {
-+		.name = "inv-icm45600-i2c",
++		.name = "inv-icm45600-spi",
 +		.of_match_table = inv_icm45600_of_matches,
 +		.pm = pm_ptr(&inv_icm45600_pm_ops),
 +	},
 +	.id_table = inv_icm45600_id,
 +	.probe = inv_icm45600_probe,
 +};
-+module_i2c_driver(inv_icm45600_driver);
++module_spi_driver(inv_icm45600_driver);
 +
 +MODULE_AUTHOR("InvenSense, Inc.");
-+MODULE_DESCRIPTION("InvenSense ICM-456xx I2C driver");
++MODULE_DESCRIPTION("InvenSense ICM-456xx SPI driver");
 +MODULE_LICENSE("GPL");
 +MODULE_IMPORT_NS("IIO_ICM45600");
 
