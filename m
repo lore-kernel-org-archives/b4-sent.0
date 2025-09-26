@@ -1,75 +1,94 @@
-From: Rohan G Thomas <rohan.g.thomas@altera.com>
-Date: Thu, 25 Sep 2025 22:06:14 +0800
-Subject: [PATCH net-next v3 2/2] net: stmmac: tc: Add HLBS drop count to
- taprio stats
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v2 0/2] interconnect: qcom: sdx75: Drop QP0 interconnect
+ and BCM nodes
+Date: Fri, 26 Sep 2025 12:12:08 +0530
+Message-Id: <20250926-sdx75-icc-v2-0-20d6820e455c@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250925-hlbs_2-v3-2-3b39472776c2@altera.com>
-References: <20250925-hlbs_2-v3-0-3b39472776c2@altera.com>
-In-Reply-To: <20250925-hlbs_2-v3-0-3b39472776c2@altera.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Rohan G Thomas <rohan.g.thomas@altera.com>, 
- Matthew Gerlach <matthew.gerlach@altera.com>
+X-B4-Tracking: v=1; b=H4sIAME11mgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDI1MDSyMz3eKUCnNT3czkZF0z82QjgyTjlFQLk0QloPqCotS0zAqwWdGxtbU
+ A34DkpVsAAAA=
+X-Change-ID: 20250926-sdx75-icc-67c20b3de84a
+To: Georgi Djakov <djakov@kernel.org>, 
+ Rohit Agarwal <quic_rohiagar@quicinc.com>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ devicetree@vger.kernel.org, Manivannan Sadhasivam <mani@kernel.org>, 
+ Raviteja Laggyshetty <quic_rlaggysh@quicinc.com>, 
+ Lakshmi Sowjanya D <quic_laksd@quicinc.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1758809186; l=1901;
- i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
- bh=yQq3VlBwoMaeIk8RqufK4UtuoZY2MJJUDQlkLWwWmPU=;
- b=hMdALF2Fprn4xVt2wKIRH3p+R12E3UBo6KtGBycM/0VaCD43UCQOfL6aRH7GT37DTEzaquy94
- rybizx/a9NfB7Wi/Vz9npKmXRfGA6OTViRZojhai+kF+f2vKAwnzA0S
-X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
- pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
-X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2092;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=w50rQbsUwHAX7rQjt1NnSquIVsSXVF6HpsxQbh+X4Zo=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBo1jXImIUMosVMEtE4ghqPdD1MJv1QPBohfPPr7
+ jcaWqgcHH+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaNY1yAAKCRBVnxHm/pHO
+ 9frcB/9Zc7MG+v8da1LYI1ZK1cOzGIBzmucX9iVFdcve/fQzbHEVk+Xq1Xuwi0WQZCcMB5HIfRv
+ G0vwDGCkPB46Krt3X35JtJ6b7aiC4i+CGwWSQkFpuuzq9TZNyBT7Tw4EKIAEoLKjXeYQxaS+oLT
+ Rw0Hu4Us1HOHpiiXrDAZguzfrQLgcta8Ck2Jnl1vI6ggK1mO6ffU3rUPsxthIvP+Dv0AX4Fpzc4
+ nc7xJaLYWRTEOAMqaJHuP0NEf6934HaF5SG0481sz8cLPEUFzpgXA7R/PM0DjScLm7vrUmkm4HR
+ uofBSBwY/gYOOAqxCwz7l43Iy4TaKB3YLAFy3ldMViMv0shN
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the count of the frames dropped by Head-Of-Line Blocking due to
-Scheduling(HLBS) error to taprio window drop count stats.
+Hi,
 
-Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
-Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
+This series drops the QPIC interconnect and BCM nodes for the SDX75 SoC. The
+reason is that this QPIC BCM resource is already defined as a RPMh clock in
+clk-rpmh driver as like other SDX SoCs. So it is wrong to describe the same
+resource in two different providers.
+
+Also, without this series, the NAND driver fails to probe on SDX75 as the
+interconnect sync state disables the QPIC nodes as there were no clients voting
+for this ICC resource. However, the NAND driver had already voted for this BCM
+resource through the clk-rpmh driver. Since both votes come from Linux, RPMh was
+unable to distinguish between these two and ends up disabling the resource
+during sync state.
+
+Cc: linux-arm-msm@vger.kernel.org
+Cc: linux-pm@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Cc: devicetree@vger.kernel.org
+Cc: Manivannan Sadhasivam <mani@kernel.org>
+Cc: Raviteja Laggyshetty <quic_rlaggysh@quicinc.com>
+Cc: Lakshmi Sowjanya D <quic_laksd@quicinc.com>
+To: Georgi Djakov <djakov@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+
+Changes in v2:
+
+- Taken over the series from Raviteja
+- Reordered the patches to avoid breaking build
+- Improved the patch descriptions and kept the values for other defines
+  unchanged
+
 ---
- drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+Raviteja Laggyshetty (2):
+      interconnect: qcom: sdx75: Drop QPIC interconnect and BCM nodes
+      dt-bindings: interconnect: qcom: Drop QPIC_CORE IDs
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
-index 694d6ee1438197bd4434af6e9b78f022e94ff98f..97e89a604abd7a01bb8e904c38f10716e0a911c1 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
-@@ -1080,6 +1080,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
- 		for (i = 0; i < priv->plat->tx_queues_to_use; i++) {
- 			priv->xstats.max_sdu_txq_drop[i] = 0;
- 			priv->xstats.mtl_est_txq_hlbf[i] = 0;
-+			priv->xstats.mtl_est_txq_hlbs[i] = 0;
- 		}
- 		mutex_unlock(&priv->est_lock);
- 	}
-@@ -1097,7 +1098,8 @@ static void tc_taprio_stats(struct stmmac_priv *priv,
- 
- 	for (i = 0; i < priv->plat->tx_queues_to_use; i++)
- 		window_drops += priv->xstats.max_sdu_txq_drop[i] +
--				priv->xstats.mtl_est_txq_hlbf[i];
-+				priv->xstats.mtl_est_txq_hlbf[i] +
-+				priv->xstats.mtl_est_txq_hlbs[i];
- 	qopt->stats.window_drops = window_drops;
- 
- 	/* Transmission overrun doesn't happen for stmmac, hence always 0 */
-@@ -1111,7 +1113,8 @@ static void tc_taprio_queue_stats(struct stmmac_priv *priv,
- 	int queue = qopt->queue_stats.queue;
- 
- 	q_stats->stats.window_drops = priv->xstats.max_sdu_txq_drop[queue] +
--				      priv->xstats.mtl_est_txq_hlbf[queue];
-+				      priv->xstats.mtl_est_txq_hlbf[queue] +
-+				      priv->xstats.mtl_est_txq_hlbs[queue];
- 
- 	/* Transmission overrun doesn't happen for stmmac, hence always 0 */
- 	q_stats->stats.tx_overruns = 0;
+ drivers/interconnect/qcom/sdx75.c             | 26 --------------------------
+ drivers/interconnect/qcom/sdx75.h             |  2 --
+ include/dt-bindings/interconnect/qcom,sdx75.h |  2 --
+ 3 files changed, 30 deletions(-)
+---
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20250926-sdx75-icc-67c20b3de84a
 
+Best regards,
 -- 
-2.35.3
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
