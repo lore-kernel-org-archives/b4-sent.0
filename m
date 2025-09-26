@@ -1,14 +1,12 @@
 From: Dominique Martinet <asmadeus@codewreck.org>
-Subject: [PATCH 0/3] Split patches sent earlier
-Date: Fri, 26 Sep 2025 18:27:28 +0900
-Message-Id: <20250926-v9fs_misc-v1-0-a8b3907fc04d@codewreck.org>
+Date: Fri, 26 Sep 2025 18:27:29 +0900
+Subject: [PATCH 1/3] 9p: clean up comment typos
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIBc1mgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDSyMz3TLLtOL43MziZF1jM2Mjg8TUNAuLFEsloPqCotS0zAqwWdGxtbU
- As/KtgFsAAAA=
-X-Change-ID: 20250926-v9fs_misc-36320aef88d9
+Content-Transfer-Encoding: 8bit
+Message-Id: <20250926-v9fs_misc-v1-1-a8b3907fc04d@codewreck.org>
+References: <20250926-v9fs_misc-v1-0-a8b3907fc04d@codewreck.org>
+In-Reply-To: <20250926-v9fs_misc-v1-0-a8b3907fc04d@codewreck.org>
 To: "Randall P. Embry" <rpembry@gmail.com>, 
  Eric Van Hensbergen <ericvh@kernel.org>, 
  Latchesar Ionkov <lucho@ionkov.net>, 
@@ -16,47 +14,69 @@ To: "Randall P. Embry" <rpembry@gmail.com>,
 Cc: v9fs@lists.linux.dev, linux-kernel@vger.kernel.org, 
  Dominique Martinet <asmadeus@codewreck.org>
 X-Mailer: b4 0.15-dev-7be4f
-X-Developer-Signature: v=1; a=openpgp-sha256; l=878; i=asmadeus@codewreck.org;
- h=from:subject:message-id; bh=qfXgb+yYLhRa2IcpPHI2iywFY1Y2Fm3oR9YEiLZQd44=;
- b=owEBbQKS/ZANAwAKAatOm+xqmOZwAcsmYgBo1lyH+7NBIAYbEA8NOLVRhtoIVCFkD0YMEyn5K
- r+Ga74xinqJAjMEAAEKAB0WIQT8g9txgG5a3TOhiE6rTpvsapjmcAUCaNZchwAKCRCrTpvsapjm
- cNIMD/9ZXhaWrq3pKI+K2orBC21oEcSf3qlXPhQsbLpLxWhfabSaDWI6ojpw3uDrNLGduPo2iAy
- IRRZbEUMFia2kPXomFhhG52rbAWJyT6AYqwzMqsJfcR6NEhX05pP81H/X1nPbqKBN7hKZFAMZVu
- d7/3OeDnIpkoXGGMtwa5WBhA8LAjC7aG5iUr9AEUGE4xf/nOgcjXoB5nZTT0KHBFbzplttMDdt2
- Qo65psDVWdEpH1LlQ3aocA5YK3GarAR3yIfn6c+y4CHMPNoWMoNHTRxLJQpxL7SftONwvbvdIn0
- 1iKCTqDasoYu/8YQqXIht30F+9Fsn1o/YEyn94AimHbZEDzsIOzRfFOIX8moP9QGrd7DF78whh4
- iqR4tlotSm12eILBaf/c6X2ep4g/Oh4RNV7yzaMGyBDRX4w6oWs1rgtp/po3FH90qFg71v7pD8U
- sTlrJeB3LzQsmFqjNDrU5KMq/iVQk9QgJUWbbwMQEsPqQ96oPyzHHg/ev+dC3qIbgugb/XuFNFf
- HTWxun331eeqtcJot7tw+WsVVY0vUAOU3bWZx5OhSlh7ddVhZkuOwIufxfjV+IAjSTkITf1DTWz
- /WGWbWCby2YXTtDPuUtCYx6taI8oaZT9qt5aosrvLhzr4wgOngxoa1fH/djuBj0R0cfQyfwWFfC
- bhPcsEbD/K2/SWg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1608;
+ i=asmadeus@codewreck.org; h=from:subject:message-id;
+ bh=iGmjLo6EVujPyWtH4nBhmJfViu8T3yF4qPnQ2nTMqIQ=;
+ b=owEBbQKS/ZANAwAKAatOm+xqmOZwAcsmYgBo1lyJAj4Xfe7DptT70ZeU109wolge7hWv3ztiB
+ RRMQoL9sFqJAjMEAAEKAB0WIQT8g9txgG5a3TOhiE6rTpvsapjmcAUCaNZciQAKCRCrTpvsapjm
+ cFSkD/9Naw3YNi2op0W1lypB3TgDOma9d+PCgWVVAh/7sKyE6LFQN+d9MRCBnj6FdYeV6wdNR6T
+ c3xZuv/KPuAKMjTwDmXRlZ9Zgc46oayf1Vb5Ar9bNBFZI7qHLPLusS936HzsHEJQO5E72Kc8g2v
+ ianuKT/qQ1k0ihNXkyy+kQO7mlp61Qf+KI99bVGNb/zYRg3PG9RM0oRo9oqCzQfZ6iaYK8BGNgA
+ xtMFhGP/MKwF+Dx84beu6zwmavUL7cm/Z2Aknz65CGRAWFKC2Ku0vhSuRup7DSH2nIgz4IOxhoj
+ 1Xol7sEh10HyPKazMwKEdh10mD9/vElDVhmEHHTY0zzLJCvtC78gD5iulq1n0tfRvYM2KX77uHG
+ il7aZFlGiJfjRqIoXzs7TqraOMoMnN0K7ud4DFkW+B6E2Eulv4VPttRgarZDVQhbN5fp/DdsaYw
+ WvETUpj6u+CafhtGY62NGDoklMyA7aa8gZkjNruQVOMlDK5mpwP2fAbHw0mmDCfD4sFS+8oSUjf
+ QzbcRCXS7KFl5NHV0nKwz2U8trZPPx2B3JcZsKQlxkZCVC9LLU54uxb1QaC20Jn8BXilyrA6dIM
+ 0XewSpZ9Oh8gaeWB9XrisNnSvbKo7W9x6W7NQCck3zGLPDObkgaS+GWlKA1zQW+Rwsa/KJaYOKD
+ e29ABbxJ8zfZfWQ==
 X-Developer-Key: i=asmadeus@codewreck.org; a=openpgp;
  fpr=B894379F662089525B3FB1B9333F1F391BBBB00A
 X-Endpoint-Received: by B4 Relay for asmadeus@codewreck.org/default with auth_id=435
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This was a pretty simple patch overall but "bullet point" commits are
-not great for later debugging, so just split this commit in 3:
-https://lkml.kernel.org/r/20250925122802.72580-1-rpembry@gmail.com
+From: "Randall P. Embry" <rpembry@gmail.com>
 
-Randall, I kept you as author, so please comment if you have anything to
-say about commit messages or anything else, and I'll pick these up and
-push to Linus in a couple of weeks.
+Fix a few minor typos in comments (e.g. "trasnport" → "transport").
 
+Signed-off-by: Randall P. Embry <rpembry@gmail.com>
 Signed-off-by: Dominique Martinet <asmadeus@codewreck.org>
 ---
-Randall P. Embry (3):
-      9p: clean up comment typos
-      9p: fix /sys/fs/9p/caches overwriting itself
-      9p: sysfs_init: don't hardcode error to ENOMEM
+ fs/9p/v9fs.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
- fs/9p/v9fs.c | 16 +++++++++-------
- 1 file changed, 9 insertions(+), 7 deletions(-)
----
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250926-v9fs_misc-36320aef88d9
+diff --git a/fs/9p/v9fs.c b/fs/9p/v9fs.c
+index 77e9c4387c1dfd4de8a54e9b6f676bdf987dbdc9..01e70a464b6039231df272e43b4ebdd3b5afb967 100644
+--- a/fs/9p/v9fs.c
++++ b/fs/9p/v9fs.c
+@@ -438,8 +438,7 @@ struct p9_fid *v9fs_session_init(struct v9fs_session_info *v9ses,
+ 		v9ses->flags &= ~V9FS_ACCESS_MASK;
+ 		v9ses->flags |= V9FS_ACCESS_USER;
+ 	}
+-	/*FIXME !! */
+-	/* for legacy mode, fall back to V9FS_ACCESS_ANY */
++	/* FIXME: for legacy mode, fall back to V9FS_ACCESS_ANY */
+ 	if (!(v9fs_proto_dotu(v9ses) || v9fs_proto_dotl(v9ses)) &&
+ 		((v9ses->flags&V9FS_ACCESS_MASK) == V9FS_ACCESS_USER)) {
+ 
+@@ -450,7 +449,7 @@ struct p9_fid *v9fs_session_init(struct v9fs_session_info *v9ses,
+ 	if (!v9fs_proto_dotl(v9ses) ||
+ 		!((v9ses->flags & V9FS_ACCESS_MASK) == V9FS_ACCESS_CLIENT)) {
+ 		/*
+-		 * We support ACL checks on clinet only if the protocol is
++		 * We support ACL checks on client only if the protocol is
+ 		 * 9P2000.L and access is V9FS_ACCESS_CLIENT.
+ 		 */
+ 		v9ses->flags &= ~V9FS_ACL_MASK;
+@@ -669,7 +668,7 @@ static int __init init_v9fs(void)
+ 	int err;
+ 
+ 	pr_info("Installing v9fs 9p2000 file system support\n");
+-	/* TODO: Setup list of registered trasnport modules */
++	/* TODO: Setup list of registered transport modules */
+ 
+ 	err = v9fs_init_inode_cache();
+ 	if (err < 0) {
 
-Best regards,
 -- 
-Dominique Martinet <asmadeus@codewreck.org>
+2.51.0
 
