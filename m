@@ -1,135 +1,95 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Mon, 29 Sep 2025 14:35:32 +0100
-Subject: [PATCH v2] iio: dac: ltc2688: use the auto lock API
+From: Joel Granados <joel.granados@kernel.org>
+Date: Mon, 29 Sep 2025 17:55:07 +0200
+Subject: [PATCH] watchdog: move nmi_watchdog sysctl into .rodata
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20250929-dev-ltc2688-minor-v2-1-47f9508ca4cc@analog.com>
-X-B4-Tracking: v=1; b=H4sIACOL2mgC/x3MTQqAIBBA4avErBuQCUW7SrToZ6qBstCQQLp70
- vJbvJchchCO0FYZAieJcvoCqiuYtsGvjDIXAynSylGDMyfc74mMtXiIPwOqwVh22ozKWSjdFXi
- R5392/ft+t+3r9WMAAAA=
-X-Change-ID: 20250923-dev-ltc2688-minor-0a68e956b098
-To: linux-iio@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250929-jag-nmiwd_const-v1-1-92200d503b1f@kernel.org>
+X-B4-Tracking: v=1; b=H4sIANqr2mgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDSyNL3azEdN283MzylPjk/LziEt0UcxMj48QkI1MTSzMloK6CotS0zAq
+ widGxtbUAqzFcmmEAAAA=
+X-Change-ID: 20250929-jag-nmiwd_const-d7423ab25496
+To: Petr Mladek <pmladek@suse.com>, Daniel Xu <dlxu@meta.com>
+Cc: linux-kernel@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759152933; l=3254;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=+06WQn+0U+kCXC/irDjEh0uloonpQaNhwKn4KabVt4E=;
- b=j/eTxj2w7RDiFG9F6OjxD7eMgsunK6sn8eZ0oUNpEA4ujNUluTAJNnKSLe2xzRZ85nFKcZEr8
- Pfym8c0eSkPDTEtLqlA0Jqx/ZUkxedf0qbbQw6QRsdUgOPGU85u+WHT
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2198;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=5ZiYViMmHyYTGbotSTQoJNHs5BRuX6SdoxN8p8nXJh0=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGjaq+COM2Svc8jNNFjm5q85lI9TkhtAfjlfy
+ 8z8sh5u2LRDLokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJo2qvgAAoJELqXzVK3
+ lkFPzlAL/3fhRZbC1qSPUyUYd6UjCH1DU3lx6hp+FzCodX/p2mgTY/luqaOVtuTMqewvQVAJ4dV
+ RbrlwckF82kME1qIKhRyrdZrlIGxNwoe6wMf7Ji58iV0YKQXLySYW/Q44x5byReySl6ONNJ1fvR
+ 3KFPTGU3FQKR8tYayZjjVQyUa/U0B2NyvoPfPJJoqnTo0fXcZTbWdldXDrloJ/HBaip9agWMrgk
+ slAItrraZlt3emPeLB0BslyyaClokokTiB4hwq9iaJhLBTtPF/r0E/UQ3nu21DSIRe9z9+HCuuP
+ 3gPD5+XdsN6Xk0ZKJYivG+5NlHFSa4utglLilzdyiUGvRy9NQAprx/I/8X+Po0cZgfUxEvGaHmA
+ 0oW/14sZzvzR0WBb6qAIacHvUF2cKkhXohfFxYPrsiK4zH7oc10HM5pctdsLOogMS47+raE+NqC
+ ktzJ4mcOjjaTZtKO+Q3mjb3eRdqXoAXabOVJIRQlugNiUI8PpGIWrfZTKqxiV7yLcXYqqu+MIt7
+ eU=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make use of the cleanup API so that we can simplify some code paths.
+Move nmi_watchdog into the watchdog_sysctls array to prevent it from
+unnecessary modification. This move effectively moves it inside the
+.rodata section.
 
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Initially moved out into its own non-const array in commit 9ec272c586b0
+("watchdog/hardlockup: keep kernel.nmi_watchdog sysctl as 0444 if probe
+fails"), which made it writable only when watchdog_hardlockup_available
+was true. Moving it back to watchdog_sysctl keeps this behavior as
+writing to nmi_watchdog still fails when watchdog_hardlockup_available
+is false.
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-Here it goes v2 with the remaining patch.
+This patch is a followup on the discussion/question I had in [1]. I
+would prefer this to be const as it locks things in .rodata and prevents
+inadvertent modifications [2].
 
-Link to v1:
- - https://lore.kernel.org/linux-iio/20250923-dev-ltc2688-minor-v1-0-ef92c441dc42@analog.com/T/#mccd0040948b14f05ad7411e170701129fd2bea90
-
-Changes in v2:
- * Simplify to 'return 0' and 'return len' as suggested.
+[1] https://lore.kernel.org/all/588ec9ab-b38a-40b3-8db5-575a09e9a126@meta.com/
+[2] https://lore.kernel.org/all/20250109-jag-ctl_table_const-v1-1-622aea7230cf@kernel.org/
 ---
- drivers/iio/dac/ltc2688.c | 28 ++++++++++++----------------
- 1 file changed, 12 insertions(+), 16 deletions(-)
+ kernel/watchdog.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
 
-diff --git a/drivers/iio/dac/ltc2688.c b/drivers/iio/dac/ltc2688.c
-index 7a2ee26a7d68730fe90d9cc91ea764f05eb61791..ca0ec131abad0203823db2589bccd407fba3c83a 100644
---- a/drivers/iio/dac/ltc2688.c
-+++ b/drivers/iio/dac/ltc2688.c
-@@ -6,6 +6,7 @@
-  */
- #include <linux/bitfield.h>
- #include <linux/bits.h>
-+#include <linux/cleanup.h>
- #include <linux/clk.h>
- #include <linux/device.h>
- #include <linux/gpio/consumer.h>
-@@ -208,12 +209,12 @@ static int ltc2688_dac_code_write(struct ltc2688_state *st, u32 chan, u32 input,
- 		code = FIELD_PREP(LTC2688_DITHER_RAW_MASK, code);
- 	}
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 	/* select the correct input register to read from */
- 	ret = regmap_update_bits(st->regmap, LTC2688_CMD_A_B_SELECT, BIT(chan),
- 				 input << chan);
- 	if (ret)
--		goto out_unlock;
-+		return ret;
- 
- 	/*
- 	 * If in dither/toggle mode the dac should be updated by an
-@@ -224,10 +225,7 @@ static int ltc2688_dac_code_write(struct ltc2688_state *st, u32 chan, u32 input,
- 	else
- 		reg = LTC2688_CMD_CH_CODE(chan);
- 
--	ret = regmap_write(st->regmap, reg, code);
--out_unlock:
--	mutex_unlock(&st->lock);
--	return ret;
-+	return regmap_write(st->regmap, reg, code);
+diff --git a/kernel/watchdog.c b/kernel/watchdog.c
+index 80b56c002c7f123c49f65465fe7af9c74de4f46a..1e4e3eccb065a5ce95486f24fa07387e8218cd62 100644
+--- a/kernel/watchdog.c
++++ b/kernel/watchdog.c
+@@ -1213,14 +1213,11 @@ static const struct ctl_table watchdog_sysctls[] = {
+ 	},
+ #endif /* CONFIG_SMP */
+ #endif
+-};
+-
+-static struct ctl_table watchdog_hardlockup_sysctl[] = {
+ 	{
+ 		.procname       = "nmi_watchdog",
+ 		.data		= &watchdog_hardlockup_user_enabled,
+ 		.maxlen		= sizeof(int),
+-		.mode		= 0444,
++		.mode		= 0644,
+ 		.proc_handler   = proc_nmi_watchdog,
+ 		.extra1		= SYSCTL_ZERO,
+ 		.extra2		= SYSCTL_ONE,
+@@ -1230,10 +1227,6 @@ static struct ctl_table watchdog_hardlockup_sysctl[] = {
+ static void __init watchdog_sysctl_init(void)
+ {
+ 	register_sysctl_init("kernel", watchdog_sysctls);
+-
+-	if (watchdog_hardlockup_available)
+-		watchdog_hardlockup_sysctl[0].mode = 0644;
+-	register_sysctl_init("kernel", watchdog_hardlockup_sysctl);
  }
  
- static int ltc2688_dac_code_read(struct ltc2688_state *st, u32 chan, u32 input,
-@@ -236,20 +234,20 @@ static int ltc2688_dac_code_read(struct ltc2688_state *st, u32 chan, u32 input,
- 	struct ltc2688_chan *c = &st->channels[chan];
- 	int ret;
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 	ret = regmap_update_bits(st->regmap, LTC2688_CMD_A_B_SELECT, BIT(chan),
- 				 input << chan);
- 	if (ret)
--		goto out_unlock;
-+		return ret;
- 
- 	ret = regmap_read(st->regmap, LTC2688_CMD_CH_CODE(chan), code);
--out_unlock:
--	mutex_unlock(&st->lock);
-+	if (ret)
-+		return ret;
- 
- 	if (!c->toggle_chan && input == LTC2688_INPUT_B)
- 		*code = FIELD_GET(LTC2688_DITHER_RAW_MASK, *code);
- 
--	return ret;
-+	return 0;
- }
- 
- static const int ltc2688_raw_range[] = {0, 1, U16_MAX};
-@@ -359,17 +357,15 @@ static ssize_t ltc2688_dither_toggle_set(struct iio_dev *indio_dev,
- 	if (ret)
- 		return ret;
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 	ret = regmap_update_bits(st->regmap, LTC2688_CMD_TOGGLE_DITHER_EN,
- 				 BIT(chan->channel), en << chan->channel);
- 	if (ret)
--		goto out_unlock;
-+		return ret;
- 
- 	c->mode = en ? LTC2688_MODE_DITHER_TOGGLE : LTC2688_MODE_DEFAULT;
--out_unlock:
--	mutex_unlock(&st->lock);
- 
--	return ret ?: len;
-+	return len;
- }
- 
- static ssize_t ltc2688_reg_bool_get(struct iio_dev *indio_dev,
+ #else
 
 ---
-base-commit: 411e8b72c181e4f49352c12ced0fd8426eb683aa
-change-id: 20250923-dev-ltc2688-minor-0a68e956b098
---
+base-commit: e5f0a698b34ed76002dc5cff3804a61c80233a7a
+change-id: 20250929-jag-nmiwd_const-d7423ab25496
 
-Thanks!
-- Nuno Sá
+Best regards,
+-- 
+Joel Granados <joel.granados@kernel.org>
 
