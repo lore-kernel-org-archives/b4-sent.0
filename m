@@ -1,95 +1,114 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Mon, 29 Sep 2025 17:55:07 +0200
-Subject: [PATCH] watchdog: move nmi_watchdog sysctl into .rodata
+From: Chuan Liu <chuan.liu@amlogic.com>
+Subject: [PATCH 00/19] clk: amlogic: Add PLLs and peripheral clocks for A4
+ and A5 SoCs
+Date: Tue, 30 Sep 2025 17:37:13 +0800
+Message-Id: <20250930-a4_a5_add_clock_driver-v1-0-a9acf7951589@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250929-jag-nmiwd_const-v1-1-92200d503b1f@kernel.org>
-X-B4-Tracking: v=1; b=H4sIANqr2mgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDSyNL3azEdN283MzylPjk/LziEt0UcxMj48QkI1MTSzMloK6CotS0zAq
- widGxtbUAqzFcmmEAAAA=
-X-Change-ID: 20250929-jag-nmiwd_const-d7423ab25496
-To: Petr Mladek <pmladek@suse.com>, Daniel Xu <dlxu@meta.com>
-Cc: linux-kernel@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2198;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=5ZiYViMmHyYTGbotSTQoJNHs5BRuX6SdoxN8p8nXJh0=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGjaq+COM2Svc8jNNFjm5q85lI9TkhtAfjlfy
- 8z8sh5u2LRDLokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJo2qvgAAoJELqXzVK3
- lkFPzlAL/3fhRZbC1qSPUyUYd6UjCH1DU3lx6hp+FzCodX/p2mgTY/luqaOVtuTMqewvQVAJ4dV
- RbrlwckF82kME1qIKhRyrdZrlIGxNwoe6wMf7Ji58iV0YKQXLySYW/Q44x5byReySl6ONNJ1fvR
- 3KFPTGU3FQKR8tYayZjjVQyUa/U0B2NyvoPfPJJoqnTo0fXcZTbWdldXDrloJ/HBaip9agWMrgk
- slAItrraZlt3emPeLB0BslyyaClokokTiB4hwq9iaJhLBTtPF/r0E/UQ3nu21DSIRe9z9+HCuuP
- 3gPD5+XdsN6Xk0ZKJYivG+5NlHFSa4utglLilzdyiUGvRy9NQAprx/I/8X+Po0cZgfUxEvGaHmA
- 0oW/14sZzvzR0WBb6qAIacHvUF2cKkhXohfFxYPrsiK4zH7oc10HM5pctdsLOogMS47+raE+NqC
- ktzJ4mcOjjaTZtKO+Q3mjb3eRdqXoAXabOVJIRQlugNiUI8PpGIWrfZTKqxiV7yLcXYqqu+MIt7
- eU=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAMmk22gC/x3M0QoCIRBA0V9Z5jnBNC37lSXEnKmGYl1GkED89
+ 6TH83Bvh0rCVOG6dBBqXLlsE8fDAvmVticpxmkw2jgdzEWlU0wuJsSYPyW/Iwo3EmXu5xzQB+e
+ thRnvQg/+/sfrbYwfl8Id9GgAAAA=
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-amlogic@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, Chuan Liu <chuan.liu@amlogic.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1759225047; l=4218;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=5o+htP+rM/HKQyGn1eH3S7+MzThwQ+uX1Hq8VqONr8g=;
+ b=9UB/pSh4Qx25JQAEirqjDzvZLuzERi70Cm6gW7FIEkZawGXnWeEHArseYuIOn4cVV4sEtZAa/
+ JbTQPGuAcNjD5619B0r6CFtJhOhE2icgF32q6i9IBU4mc7tmLmTgXXe
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move nmi_watchdog into the watchdog_sysctls array to prevent it from
-unnecessary modification. This move effectively moves it inside the
-.rodata section.
+This patch series includes changes related to the PLL and peripheral
+clocks for both the A4 and A5 SoCs.
 
-Initially moved out into its own non-const array in commit 9ec272c586b0
-("watchdog/hardlockup: keep kernel.nmi_watchdog sysctl as 0444 if probe
-fails"), which made it writable only when watchdog_hardlockup_available
-was true. Moving it back to watchdog_sysctl keeps this behavior as
-writing to nmi_watchdog still fails when watchdog_hardlockup_available
-is false.
+The patches for A5 were previously submitted up to V3 by Xianwei.
+https://lore.kernel.org/all/20250103-a5-clk-v3-0-a207ce83b9e9@amlogic.com/
+After friendly coordination, I’ve taken over and continued the
+submission as part of this series. The dt-bindings patch retains Rob's
+original "Reviewed-by" tag, and I hope this hasn’t caused any
+additional confusion.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+Both A4 and A5 belong to the Audio series. Judging by their names, one
+might assume that A5 is an upgrade to A4, but in fact, A5 was released
+a year earlier than A4.
+
+Since there are differences in the PLLs and peripheral clocks between
+the A4 and A5 SoCs (especially the PLL), and taking into account factors
+such as memory footprint and maintainability, this series does not
+attempt to merge the two into a shared driver as was done for
+G12A/G12B/SM1.
+
+This patch series includes all related dt-bindings, driver, and dts
+changes for the PLLs and peripheral clocks. Following our past convention
+for clock-related submissions, the dts changes are placed at the end
+and submitted separately. If this ordering makes it harder for
+maintainers to review or pick patches, please feel free to point it out.
+
+Co-developed-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
-This patch is a followup on the discussion/question I had in [1]. I
-would prefer this to be const as it locks things in .rodata and prevents
-inadvertent modifications [2].
+Chuan Liu (19):
+      dt-bindings: clock: Add Amlogic A4 SCMI clock controller
+      dt-bindings: clock: Add Amlogic A4 PLL clock controller
+      dt-bindings: clock: Add Amlogic A4 peripherals clock controller
+      clk: amlogic: Optimize PLL enable timing
+      clk: amlogic: Correct l_detect bit control
+      clk: amlogic: Fix out-of-range PLL frequency setting
+      clk: amlogic: Add A4 PLL clock controller driver
+      clk: amlogic: Add A4 clock peripherals controller driver
+      arm64: dts: amlogic: A4: Add scmi-clk node
+      arm64: dts: amlogic: A4: Add PLL controller node
+      arm64: dts: amlogic: A4: Add peripherals clock controller node
+      dt-bindings: clock: Add Amlogic A5 SCMI clock controller support
+      dt-bindings: clock: Add Amlogic A5 PLL clock controller
+      dt-bindings: clock: Add Amlogic A5 peripherals clock controller
+      clk: amlogic: Add A5 PLL clock controller driver
+      clk: amlogic: Add A5 clock peripherals controller driver
+      arm64: dts: amlogic: A5: Add scmi-clk node
+      arm64: dts: amlogic: A5: Add PLL controller node
+      arm64: dts: amlogic: A5: Add peripheral clock controller node
 
-[1] https://lore.kernel.org/all/588ec9ab-b38a-40b3-8db5-575a09e9a126@meta.com/
-[2] https://lore.kernel.org/all/20250109-jag-ctl_table_const-v1-1-622aea7230cf@kernel.org/
+ .../clock/amlogic,a4-peripherals-clkc.yaml         | 122 +++
+ .../bindings/clock/amlogic,a4-pll-clkc.yaml        |  61 ++
+ .../clock/amlogic,a5-peripherals-clkc.yaml         | 134 ++++
+ .../bindings/clock/amlogic,a5-pll-clkc.yaml        |  63 ++
+ arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi        |  80 ++
+ arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi        |  87 ++
+ drivers/clk/meson/Kconfig                          |  53 ++
+ drivers/clk/meson/Makefile                         |   4 +
+ drivers/clk/meson/a1-pll.c                         |   1 +
+ drivers/clk/meson/a4-peripherals.c                 | 764 ++++++++++++++++++
+ drivers/clk/meson/a4-pll.c                         | 242 ++++++
+ drivers/clk/meson/a5-peripherals.c                 | 883 +++++++++++++++++++++
+ drivers/clk/meson/a5-pll.c                         | 476 +++++++++++
+ drivers/clk/meson/clk-pll.c                        |  76 +-
+ drivers/clk/meson/clk-pll.h                        |   2 +
+ .../clock/amlogic,a4-peripherals-clkc.h            | 129 +++
+ include/dt-bindings/clock/amlogic,a4-pll-clkc.h    |  15 +
+ include/dt-bindings/clock/amlogic,a4-scmi-clkc.h   |  42 +
+ .../clock/amlogic,a5-peripherals-clkc.h            | 132 +++
+ include/dt-bindings/clock/amlogic,a5-pll-clkc.h    |  24 +
+ include/dt-bindings/clock/amlogic,a5-scmi-clkc.h   |  44 +
+ 21 files changed, 3406 insertions(+), 28 deletions(-)
 ---
- kernel/watchdog.c | 9 +--------
- 1 file changed, 1 insertion(+), 8 deletions(-)
-
-diff --git a/kernel/watchdog.c b/kernel/watchdog.c
-index 80b56c002c7f123c49f65465fe7af9c74de4f46a..1e4e3eccb065a5ce95486f24fa07387e8218cd62 100644
---- a/kernel/watchdog.c
-+++ b/kernel/watchdog.c
-@@ -1213,14 +1213,11 @@ static const struct ctl_table watchdog_sysctls[] = {
- 	},
- #endif /* CONFIG_SMP */
- #endif
--};
--
--static struct ctl_table watchdog_hardlockup_sysctl[] = {
- 	{
- 		.procname       = "nmi_watchdog",
- 		.data		= &watchdog_hardlockup_user_enabled,
- 		.maxlen		= sizeof(int),
--		.mode		= 0444,
-+		.mode		= 0644,
- 		.proc_handler   = proc_nmi_watchdog,
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_ONE,
-@@ -1230,10 +1227,6 @@ static struct ctl_table watchdog_hardlockup_sysctl[] = {
- static void __init watchdog_sysctl_init(void)
- {
- 	register_sysctl_init("kernel", watchdog_sysctls);
--
--	if (watchdog_hardlockup_available)
--		watchdog_hardlockup_sysctl[0].mode = 0644;
--	register_sysctl_init("kernel", watchdog_hardlockup_sysctl);
- }
- 
- #else
-
----
-base-commit: e5f0a698b34ed76002dc5cff3804a61c80233a7a
-change-id: 20250929-jag-nmiwd_const-d7423ab25496
+base-commit: 01f3a6d1d59b8e25a6de243b0d73075cf0415eaf
+change-id: 20250928-a4_a5_add_clock_driver-2b7c9d695633
 
 Best regards,
 -- 
-Joel Granados <joel.granados@kernel.org>
+Chuan Liu <chuan.liu@amlogic.com>
 
