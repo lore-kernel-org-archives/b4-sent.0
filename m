@@ -1,11 +1,10 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Tue, 30 Sep 2025 16:33:14 +0100
-Subject: [PATCH 5/9] iio: adc: mt6360-adc: replace snprintf() with
- sysfs_emit()
+Date: Tue, 30 Sep 2025 16:33:15 +0100
+Subject: [PATCH 6/9] iio: adc: pac1921: replace sprintf() with sysfs_emit()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250930-dev-sprintf-cleanup-v1-5-5d65d096a952@analog.com>
+Message-Id: <20250930-dev-sprintf-cleanup-v1-6-5d65d096a952@analog.com>
 References: <20250930-dev-sprintf-cleanup-v1-0-5d65d096a952@analog.com>
 In-Reply-To: <20250930-dev-sprintf-cleanup-v1-0-5d65d096a952@analog.com>
 To: linux-iio@vger.kernel.org
@@ -21,37 +20,46 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Matteo Martelli <matteomartelli3@gmail.com>, Jiri Kosina <jikos@kernel.org>, 
  Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759246391; l=910;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1759246391; l=1061;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=3f+W95hXwHL+jJYIyyCbGXqeeocZadZ1pyBxrDdqaHo=;
- b=8aP4W/p5srujnnNMnnPeKKFdtx8Tg/Gk/cxjEf0uazyj+bbAs5UmxKbFFfZk4rRfpY6eWLdrT
- bmfWmx7C/kBDiNSBA04XAST79B4jYbQzprH4UoB4Sp+0iH1a47lrOsH
+ bh=466V0/0B47csEqruRL0ob9WL3H9t/OmaPrXaNfsTut4=;
+ b=aC8PK+hT8/opOKbqTScLPZGn7FfUBiDJH5hEDNdfTS0WHI3CsiB0NI8Gfe++DZySSebxuKkkf
+ hal60izx0NtBw+F1QY3qptKS1pc2sm97DaoNVAix7GtMp8PR4jizhE0
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update the mt6360_adc_read_label() function to use sysfs_emit() for
+Update the pac1921_read_label() function to use sysfs_emit() for
 generating labels.
 
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/iio/adc/mt6360-adc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/iio/adc/pac1921.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/iio/adc/mt6360-adc.c b/drivers/iio/adc/mt6360-adc.c
-index 69b3569c90e5b665e1d2c59621df00d6142fbe9c..e0e4df418612469bb11a88bdbeb77aeb7cb833eb 100644
---- a/drivers/iio/adc/mt6360-adc.c
-+++ b/drivers/iio/adc/mt6360-adc.c
-@@ -216,7 +216,7 @@ static const char *mt6360_channel_labels[MT6360_CHAN_MAX] = {
- static int mt6360_adc_read_label(struct iio_dev *iio_dev, const struct iio_chan_spec *chan,
- 				 char *label)
+diff --git a/drivers/iio/adc/pac1921.c b/drivers/iio/adc/pac1921.c
+index 35433250b00872edfc9214c632917a8b8ae6e281..a0227b57f23883034f84ac2ada3d4f9319e5047d 100644
+--- a/drivers/iio/adc/pac1921.c
++++ b/drivers/iio/adc/pac1921.c
+@@ -672,13 +672,13 @@ static int pac1921_read_label(struct iio_dev *indio_dev,
  {
--	return snprintf(label, PAGE_SIZE, "%s\n", mt6360_channel_labels[chan->channel]);
-+	return sysfs_emit(label, "%s\n", mt6360_channel_labels[chan->channel]);
- }
- 
- static const struct iio_info mt6360_adc_iio_info = {
+ 	switch (chan->channel) {
+ 	case PAC1921_CHAN_VBUS:
+-		return sprintf(label, "vbus\n");
++		return sysfs_emit(label, "vbus\n");
+ 	case PAC1921_CHAN_VSENSE:
+-		return sprintf(label, "vsense\n");
++		return sysfs_emit(label, "vsense\n");
+ 	case PAC1921_CHAN_CURRENT:
+-		return sprintf(label, "current\n");
++		return sysfs_emit(label, "current\n");
+ 	case PAC1921_CHAN_POWER:
+-		return sprintf(label, "power\n");
++		return sysfs_emit(label, "power\n");
+ 	default:
+ 		return -EINVAL;
+ 	}
 
 -- 
 2.51.0
