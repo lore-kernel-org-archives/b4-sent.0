@@ -1,11 +1,11 @@
 From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Tue, 30 Sep 2025 17:37:24 +0800
-Subject: [PATCH 11/19] arm64: dts: amlogic: A4: Add peripherals clock
- controller node
+Date: Tue, 30 Sep 2025 17:37:25 +0800
+Subject: [PATCH 12/19] dt-bindings: clock: Add Amlogic A5 SCMI clock
+ controller support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250930-a4_a5_add_clock_driver-v1-11-a9acf7951589@amlogic.com>
+Message-Id: <20250930-a4_a5_add_clock_driver-v1-12-a9acf7951589@amlogic.com>
 References: <20250930-a4_a5_add_clock_driver-v1-0-a9acf7951589@amlogic.com>
 In-Reply-To: <20250930-a4_a5_add_clock_driver-v1-0-a9acf7951589@amlogic.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -20,80 +20,76 @@ Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>, Chuan Liu <chuan.liu@amlogic.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759225047; l=1947;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1759225047; l=2047;
  i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=WkZjCGYH9SRZ1p+CbboLb8KN0Yvea30tPFS+Yn032E8=;
- b=24BHjpOH4gCCvBgh+DjCK5+2l9sJd9v4b8UIh947+UdrksdwZhUuw12uWaJw/27TRTxRo5Ddb
- KHdpac5OKj9DyJkBJV814kMWQ5dG6ngI/Z2tXLhRKgltH8WEvNX+vCD
+ bh=CUR2pdjRbzn6+DAqRfbcYQodptVVflwPa6cKLrjmKRk=;
+ b=mNi+DwQap04YFOWpZvxQdv0PnR84ND8ajhtbq1nTfik0/qcmbdTbCUyL+SC8+DqnnzrhaYSQc
+ h2xW+BQE8aKDDBn1nx3hFYwP4uEJsOgKWt6SPCM7DV9fmBnjR6+X/M7
 X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
  pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
 X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the peripherals clock controller node for A4 SoC family.
+Add the SCMI clock controller dt-bindings for the Amlogic A5 SoC family.
 
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Co-developed-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi | 39 +++++++++++++++++++++++++++++
- 1 file changed, 39 insertions(+)
+ include/dt-bindings/clock/amlogic,a5-scmi-clkc.h | 44 ++++++++++++++++++++++++
+ 1 file changed, 44 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-index aca81e658654..3404358aff58 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a4.dtsi
-@@ -9,6 +9,7 @@
- #include <dt-bindings/pinctrl/amlogic,pinctrl.h>
- #include <dt-bindings/clock/amlogic,a4-pll-clkc.h>
- #include <dt-bindings/clock/amlogic,a4-scmi-clkc.h>
-+#include <dt-bindings/clock/amlogic,a4-peripherals-clkc.h>
- 
- / {
- 	cpus {
-@@ -83,6 +84,44 @@ scmi_clk: protocol@14 {
- };
- 
- &apb {
-+	clkc_periphs: clock-controller@0 {
-+		compatible = "amlogic,a4-peripherals-clkc";
-+		reg = <0x0 0x0 0x0 0x20c>;
-+		#clock-cells = <1>;
-+		clocks = <&xtal>,
-+			 <&scmi_clk CLKID_OSC>,
-+			 <&scmi_clk CLKID_FIXED_PLL>,
-+			 <&scmi_clk CLKID_FCLK_DIV2>,
-+			 <&scmi_clk CLKID_FCLK_DIV2P5>,
-+			 <&scmi_clk CLKID_FCLK_DIV3>,
-+			 <&scmi_clk CLKID_FCLK_DIV4>,
-+			 <&scmi_clk CLKID_FCLK_DIV5>,
-+			 <&scmi_clk CLKID_FCLK_DIV7>,
-+			 <&clkc_pll CLKID_GP0_PLL>,
-+			 <&scmi_clk CLKID_GP1_PLL>,
-+			 <&clkc_pll CLKID_HIFI_PLL>,
-+			 <&scmi_clk CLKID_SYS_CLK>,
-+			 <&scmi_clk CLKID_AXI_CLK>,
-+			 <&scmi_clk CLKID_SYS_PLL_DIV16>,
-+			 <&scmi_clk CLKID_CPU_CLK_DIV16>;
-+		clock-names = "xtal",
-+			      "oscin",
-+			      "fix",
-+			      "fdiv2",
-+			      "fdiv2p5",
-+			      "fdiv3",
-+			      "fdiv4",
-+			      "fdiv5",
-+			      "fdiv7",
-+			      "gp0",
-+			      "gp1",
-+			      "hifi",
-+			      "sysclk",s
-+			      "axiclk",
-+			      "sysplldiv16",
-+			      "cpudiv16";
-+	};
+diff --git a/include/dt-bindings/clock/amlogic,a5-scmi-clkc.h b/include/dt-bindings/clock/amlogic,a5-scmi-clkc.h
+new file mode 100644
+index 000000000000..1bf027d0110a
+--- /dev/null
++++ b/include/dt-bindings/clock/amlogic,a5-scmi-clkc.h
+@@ -0,0 +1,44 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
++/*
++ * Copyright (c) 2024 Amlogic, Inc. All rights reserved.
++ * Author: Chuan Liu <chuan.liu@amlogic.com>
++ */
 +
- 	reset: reset-controller@2000 {
- 		compatible = "amlogic,a4-reset",
- 			     "amlogic,meson-s4-reset";
++#ifndef __AMLOGIC_A5_SCMI_CLKC_H
++#define __AMLOGIC_A5_SCMI_CLKC_H
++
++#define CLKID_OSC				0
++#define CLKID_SYS_CLK				1
++#define CLKID_AXI_CLK				2
++#define CLKID_CPU_CLK				3
++#define CLKID_DSU_CLK				4
++#define CLKID_GP1_PLL				5
++#define CLKID_FIXED_PLL_DCO			6
++#define CLKID_FIXED_PLL				7
++#define CLKID_ACLKM				8
++#define CLKID_SYS_PLL_DIV16			9
++#define CLKID_CPU_CLK_DIV16			10
++#define CLKID_FCLK_50M_PREDIV			11
++#define CLKID_FCLK_50M_DIV			12
++#define CLKID_FCLK_50M				13
++#define CLKID_FCLK_DIV2_DIV			14
++#define CLKID_FCLK_DIV2				15
++#define CLKID_FCLK_DIV2P5_DIV			16
++#define CLKID_FCLK_DIV2P5			17
++#define CLKID_FCLK_DIV3_DIV			18
++#define CLKID_FCLK_DIV3				19
++#define CLKID_FCLK_DIV4_DIV			20
++#define CLKID_FCLK_DIV4				21
++#define CLKID_FCLK_DIV5_DIV			22
++#define CLKID_FCLK_DIV5				23
++#define CLKID_FCLK_DIV7_DIV			24
++#define CLKID_FCLK_DIV7				25
++#define CLKID_SYS_MMC_PCLK			26
++#define CLKID_SYS_CPU_CTRL			27
++#define CLKID_SYS_IRQ_CTRL			28
++#define CLKID_SYS_GIC				29
++#define CLKID_SYS_BIG_NIC			30
++#define CLKID_AXI_SYS_NIC			31
++#define CLKID_AXI_CPU_DMC			32
++
++#endif /* __AMLOGIC_A5_SCMI_CLKC_H */
 
 -- 
 2.42.0
