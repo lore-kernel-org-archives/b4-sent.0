@@ -1,10 +1,11 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Tue, 30 Sep 2025 16:33:12 +0100
-Subject: [PATCH 3/9] iio: adc: mcp3564: replace sprintf() with sysfs_emit()
+Date: Tue, 30 Sep 2025 16:33:13 +0100
+Subject: [PATCH 4/9] iio: adc: meson_saradc: replace sprintf() with
+ sysfs_emit()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20250930-dev-sprintf-cleanup-v1-3-5d65d096a952@analog.com>
+Message-Id: <20250930-dev-sprintf-cleanup-v1-4-5d65d096a952@analog.com>
 References: <20250930-dev-sprintf-cleanup-v1-0-5d65d096a952@analog.com>
 In-Reply-To: <20250930-dev-sprintf-cleanup-v1-0-5d65d096a952@analog.com>
 To: linux-iio@vger.kernel.org
@@ -20,37 +21,44 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Matteo Martelli <matteomartelli3@gmail.com>, Jiri Kosina <jikos@kernel.org>, 
  Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759246391; l=813;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1759246391; l=1089;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=Rp9zqAHR7um92cdrmdYf87T1TPcS5eCjH+Y/yw2ogfs=;
- b=TSEbpHN0Ta7K7iH/bVI6lgGBHEHfP7HzGhBHW8wDELffXwzKA7ksrSA22uIRbkL1qThkdU8qF
- XdYqd1+kxJwDCALJ5U4Q4IOyTqykx9mQ4TJ4SpJToB5/b7AGfpDZsLf
+ bh=CO1dW13uEq5iQy8PTF8+VarBtppTsSzenQ9AxsdRKFs=;
+ b=4y4uDQITwsisSt6tGbaCrHAG7F6eERYGflEv1FzUMEcWRuohGhkZ81PLpLQFSU4g0KZTs3PrO
+ eTmGjJUS8BwBZ5BVXFJg3udBxU2crACim+Fj4KHs1T3EnolD+l+15q5
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update the mcp3564_read_label() function to use sysfs_emit() for
-generating labels.
+Update the read_label() function to use sysfs_emit() for generating
+labels.
 
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/iio/adc/mcp3564.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/iio/adc/meson_saradc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/iio/adc/mcp3564.c b/drivers/iio/adc/mcp3564.c
-index cd679ff10a97c4be19ca461126bdfae2fa8431f2..fcdf13f49c48f31ba3a0a9079686d2b81a792744 100644
---- a/drivers/iio/adc/mcp3564.c
-+++ b/drivers/iio/adc/mcp3564.c
-@@ -987,7 +987,7 @@ static int mcp3564_read_label(struct iio_dev *indio_dev,
+diff --git a/drivers/iio/adc/meson_saradc.c b/drivers/iio/adc/meson_saradc.c
+index f7e7172ef4f6c2042f9ad54583d399f477ef7f5d..47cd350498a0d42536445ab324cc9249966b37d0 100644
+--- a/drivers/iio/adc/meson_saradc.c
++++ b/drivers/iio/adc/meson_saradc.c
+@@ -1181,12 +1181,12 @@ static int read_label(struct iio_dev *indio_dev,
+ 		      char *label)
  {
- 	struct mcp3564_state *adc = iio_priv(indio_dev);
- 
--	return sprintf(label, "%s\n", adc->labels[chan->scan_index]);
-+	return sysfs_emit(label, "%s\n", adc->labels[chan->scan_index]);
+ 	if (chan->type == IIO_TEMP)
+-		return sprintf(label, "temp-sensor\n");
++		return sysfs_emit(label, "temp-sensor\n");
+ 	if (chan->type == IIO_VOLTAGE && chan->channel >= NUM_MUX_0_VSS)
+-		return sprintf(label, "%s\n",
++		return sysfs_emit(label, "%s\n",
+ 			       chan7_mux_names[chan->channel - NUM_MUX_0_VSS]);
+ 	if (chan->type == IIO_VOLTAGE)
+-		return sprintf(label, "channel-%d\n", chan->channel);
++		return sysfs_emit(label, "channel-%d\n", chan->channel);
+ 	return 0;
  }
  
- static int mcp3564_parse_fw_children(struct iio_dev *indio_dev)
 
 -- 
 2.51.0
