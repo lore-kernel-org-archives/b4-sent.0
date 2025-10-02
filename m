@@ -1,78 +1,80 @@
-From: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-Date: Wed, 01 Oct 2025 11:42:42 -0400
-Subject: [PATCH v12 6/6] MAINTAINERS: add an entry for pf1550 mfd driver
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH 0/3] iio: buffer: Fix DMABUF mapping in some systems
+Date: Thu, 02 Oct 2025 16:06:27 +0100
+Message-Id: <20251002-fix-iio-dmabuf-get-dma-device-v1-0-c1c9945029d0@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251001-pf1550-v12-6-a3302aa41687@savoirfairelinux.com>
-References: <20251001-pf1550-v12-0-a3302aa41687@savoirfairelinux.com>
-In-Reply-To: <20251001-pf1550-v12-0-a3302aa41687@savoirfairelinux.com>
-To: Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Sebastian Reichel <sre@kernel.org>, Frank Li <Frank.li@nxp.com>
-Cc: imx@lists.linux.dev, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
- linux-pm@vger.kernel.org, Abel Vesa <abelvesa@kernel.org>, 
- Abel Vesa <abelvesa@linux.com>, Robin Gong <b38343@freescale.com>, 
- Robin Gong <yibin.gong@nxp.com>, 
- Enric Balletbo i Serra <eballetbo@gmail.com>, 
- Sean Nyekjaer <sean@geanix.com>, 
- Christophe JAILLET <christophe.jaillet@wanadoo.fr>, 
- Samuel Kayode <samuel.kayode@savoirfairelinux.com>, 
- Abel Vesa <abelvesa@kernel.org>, Frank Li <Frank.Li@nxp.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAPSU3mgC/x2Myw5AMBAAf0X2bJNSjfAr4lDtlj14pEUk4t8tt
+ 5nDzA2JIlOCNrsh0smJ10WkyDNwk11GQvbiUKrSqEYrDHwh84p+tsMRcKT9Q/TSOkKtG+tqZSr
+ tB5DHFkmC/9/1z/MCLvqmO28AAAA=
+X-Change-ID: 20250930-fix-iio-dmabuf-get-dma-device-339ac70543db
+To: linux-iio@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759333360; l=1229;
- i=samuel.kayode@savoirfairelinux.com; s=20250527; h=from:subject:message-id;
- bh=GUpwedwZ6iTM/9T8xwTWsw5t21VrPDOJAhQDVkmdBtI=;
- b=2WpW9lNVxnpyGsfvRtsbtDpNK6l2vH8C+8r+KLHpzefyxsWELgNa2VO1R6dhsXCuawvudv3dg
- wpUIgtg1lJKBm+N7Z+21QXTnU0Y4Ff2vUKhqfFEczjiZU9ln+KhAtiV
-X-Developer-Key: i=samuel.kayode@savoirfairelinux.com; a=ed25519;
- pk=TPSQGQ5kywnnPyGs0EQqLajLFbdDu17ahXz8/gxMfio=
-X-Endpoint-Received: by B4 Relay for samuel.kayode@savoirfairelinux.com/20250527 with auth_id=412
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1759417589; l=2313;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=c4hJSA3YwlBRou/PF7hgqaEAdC4ZDRCylMUuk6DTVJ4=;
+ b=Dn+i1lCkYx11dlqRH3vRS3LEFNioXXKGsvX7R61/HdGhgtz1YnqRW6cUM+J0XxhMUp0Acqs1l
+ qlJJm4l4wQTDe3bdhYyeNUy/xGn03MXJvRuZrRxi+di7ZyYRr8ReJM1
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MAINTAINERS entry for pf1550 PMIC.
+This series fixes an issue with DMABUF support in the IIO subsystem where
+the wrong DMA device could be used for buffer mapping operations. This
+becomes critical on systems like Xilinx/AMD ZynqMP Ultrascale where memory
+can be mapped above the 32-bit address range.
 
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Tested-by: Sean Nyekjaer <sean@geanix.com>
-Signed-off-by: Samuel Kayode <samuel.kayode@savoirfairelinux.com>
+Problem:
+--------
+The current IIO DMABUF implementation assumes it can use the parent device
+of the IIO device for DMA operations. However, this device may not have
+the appropriate DMA mask configuration for accessing high memory addresses.
+On systems where memory is mapped above 32-bits, this leads to the use of
+bounce buffers through swiotlb, significantly impacting performance.
+
+Solution:
+---------
+This series introduces a new .get_dma_dev() callback in the buffer access
+functions that allows buffer implementations to specify the correct DMA
+device that should be used for DMABUF operations. The DMA buffer
+infrastructure implements this callback to return the device that actually
+owns the DMA channel, ensuring proper memory mapping without bounce buffers.
+
+Changes:
+--------
+1. Add .get_dma_dev() callback to iio_buffer_access_funcs and update core
+   DMABUF code to use it when available
+2. Implement the callback in the DMA buffer infrastructure
+3. Wire up the callback in the dmaengine buffer implementation
+
+This ensures that DMABUF operations use the device with the correct DMA
+configuration, eliminating unnecessary bounce buffer usage and improving
+performance on high-memory systems.
+
+(AI generated cover. I would not be this formal but I guess is not
+that bad :))
+
 ---
-v9:
- - Pick up Frank's `Reviewed-by` tag
-v6:
- - Add imx mailing list
+Nuno Sá (3):
+      iio: buffer: support getting dma channel from the buffer
+      iio: buffer-dma: support getting the DMA channel
+      iio: buffer-dmaengine: enable .get_dma_dev()
+
+ drivers/iio/buffer/industrialio-buffer-dma.c       |  6 +++++
+ drivers/iio/buffer/industrialio-buffer-dmaengine.c |  2 ++
+ drivers/iio/industrialio-buffer.c                  | 28 +++++++++++++++++-----
+ include/linux/iio/buffer-dma.h                     |  1 +
+ include/linux/iio/buffer_impl.h                    |  2 ++
+ 5 files changed, 33 insertions(+), 6 deletions(-)
 ---
- MAINTAINERS | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+base-commit: b9700f87939f0f477e5c00db817f54ab8a97702b
+change-id: 20250930-fix-iio-dmabuf-get-dma-device-339ac70543db
+--
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 97d958c945e4ffa3031590823f7a2867f577ebf3..5cc042b7ffe31a79bbbcbfd1fec7831b3546054d 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -18293,6 +18293,17 @@ F:	Documentation/devicetree/bindings/clock/*imx*
- F:	drivers/clk/imx/
- F:	include/dt-bindings/clock/*imx*
- 
-+NXP PF1550 PMIC MFD DRIVER
-+M:	Samuel Kayode <samuel.kayode@savoirfairelinux.com>
-+L:	imx@lists.linux.dev
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/mfd/nxp,pf1550.yaml
-+F:	drivers/input/misc/pf1550-onkey.c
-+F:	drivers/mfd/pf1550.c
-+F:	drivers/power/supply/pf1550-charger.c
-+F:	drivers/regulator/pf1550-regulator.c
-+F:	include/linux/mfd/pfd1550.h
-+
- NXP PF8100/PF8121A/PF8200 PMIC REGULATOR DEVICE DRIVER
- M:	Jagan Teki <jagan@amarulasolutions.com>
- S:	Maintained
-
--- 
-2.50.1
+Thanks!
+- Nuno Sá
 
