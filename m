@@ -1,55 +1,58 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Thu, 02 Oct 2025 16:06:30 +0100
-Subject: [PATCH 3/3] iio: buffer-dmaengine: enable .get_dma_dev()
+From: Massimiliano Minella <massimiliano.minella@se.com>
+Date: Fri, 03 Oct 2025 11:06:16 +0200
+Subject: [PATCH] docs: domain: add watchdog notification support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251002-fix-iio-dmabuf-get-dma-device-v1-3-c1c9945029d0@analog.com>
-References: <20251002-fix-iio-dmabuf-get-dma-device-v1-0-c1c9945029d0@analog.com>
-In-Reply-To: <20251002-fix-iio-dmabuf-get-dma-device-v1-0-c1c9945029d0@analog.com>
-To: linux-iio@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759417589; l=1345;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=yJC4GNQK3Hwol76Ccm2x0viKzmxMmSpwBpEjDDwJ0A8=;
- b=okklS07vDafBxpDvWPNm8fR0XCQshCnyywCnmkl5Y2URNUejiOLLeKWG/GEE+qf5FbA75H/ky
- J0K+m9osg9TDPGfLHFECWqpoq0sxKO3QTx71kJnjzSm1BfgpvBmkvGI
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251003-update_wd_doc-v1-1-d96fa45fe994@se.com>
+X-B4-Tracking: v=1; b=H4sIAAeS32gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDAwNj3dKClMSS1PjylPiU/GRd08REyyQT46RUA8tEJaCegqLUtMwKsHn
+ RsbW1AHL5ITVfAAAA
+To: devel@lists.libvirt.org
+Cc: Massimiliano Minella <massimiliano.minella@se.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1759482381; l=1351;
+ i=massimiliano.minella@se.com; s=20250121; h=from:subject:message-id;
+ bh=bFiEzWJz+fIM7frUH+1OEWNe/qWrDsiA5JUdcmLOdoM=;
+ b=FpPI+OKHP1J/TogVfdapssFKgknaVtrvjCkzxyO2AsAW1LfOKDHAFtRnuVIbIPzvRaiVHNmkA
+ jbgo1cpjHu5BmplOe2T8ssxNFAWfCc/b9mfrk64ex/ad9hOPvwG/wZa
+X-Developer-Key: i=massimiliano.minella@se.com; a=ed25519;
+ pk=p6Og4stDBPm4cBEySH8oVWARLO52pxVayNFqHslSXU0=
+X-Endpoint-Received: by B4 Relay for massimiliano.minella@se.com/20250121 with auth_id=325
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Wire up the .get_dma_dev() callback to use the DMA buffer infrastructure's
-implementation. This ensures that DMABUF operations use the correct DMA
-device for mapping, which is essential for proper operation on systems
-where memory is mapped above the 32-bit range.
+Since v0.8.0 a watchdog notification is available under event ID
+VIR_DOMAIN_EVENT_ID_WATCHDOG, update the documentation to remove the
+previous limitation.
 
-Without this callback, the core would fall back to using the IIO device's
-parent, which may not have the appropriate DMA mask configuration for
-high memory access.
-
-Fixes: 7a86d469983a ("iio: buffer-dmaengine: Support new DMABUF based userspace API")
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Signed-off-by: Massimiliano Minella <massimiliano.minella@se.com>
 ---
- drivers/iio/buffer/industrialio-buffer-dmaengine.c | 2 ++
- 1 file changed, 2 insertions(+)
+Remove limitation on notification support for watchdog.
+---
+ docs/formatdomain.rst | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/iio/buffer/industrialio-buffer-dmaengine.c b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-index e9d9a7d39fe191c2b6e8c196a08cdd26cd3a8d4b..27dd56334345135742d077fab157e2f091d07488 100644
---- a/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-+++ b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-@@ -177,6 +177,8 @@ static const struct iio_buffer_access_funcs iio_dmaengine_buffer_ops = {
- 	.lock_queue = iio_dma_buffer_lock_queue,
- 	.unlock_queue = iio_dma_buffer_unlock_queue,
+diff --git docs/formatdomain.rst docs/formatdomain.rst
+index f50dce477f..d70022a239 100644
+--- docs/formatdomain.rst
++++ docs/formatdomain.rst
+@@ -8350,8 +8350,8 @@ The watchdog device requires an additional driver and management daemon in the
+ guest. Just enabling the watchdog in the libvirt configuration does not do
+ anything useful on its own.
  
-+	.get_dma_dev = iio_dma_buffer_get_dma_dev,
-+
- 	.modes = INDIO_BUFFER_HARDWARE,
- 	.flags = INDIO_BUFFER_FLAG_FIXED_WATERMARK,
- };
+-Currently libvirt does not support notification when the watchdog fires. This
+-feature is planned for a future version of libvirt.
++:since:`Since 0.8.0`, a notification is available when the watchdog fires, using
++the event ID ``VIR_DOMAIN_EVENT_ID_WATCHDOG``.
+ 
+ Having multiple watchdogs is usually not something very common, but be aware
+ that this might happen, for example, when an implicit watchdog device is added
 
+---
+base-commit: eb99bbaf2e5b1e91f4999c7a1ccc90d67dfbe471
+change-id: 20251003-update_wd_doc-5aa9b43be09a
+
+Best regards,
 -- 
-2.51.0
+Massimiliano Minella <massimiliano.minella@se.com>
 
