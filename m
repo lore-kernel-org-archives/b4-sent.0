@@ -1,317 +1,77 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Mon, 06 Oct 2025 18:31:28 +0200
-Subject: [PATCH] arm64: dts: freescale: Add GMAC Ethernet for S32G2 EVB and
- RDB2 and S32G3 RDB3
+From: Valerio Setti <vsetti@baylibre.com>
+Date: Tue, 07 Oct 2025 00:12:19 +0200
+Subject: [PATCH] ASoC: meson: aiu-encoder-i2s: fix bit clock polarity
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251006-nxp-s32g-boards-v1-1-f70a57b8087f@oss.nxp.com>
-X-B4-Tracking: v=1; b=H4sIAN/u42gC/x3MMQqAMAxA0atIZgNtJIJeRRysjTVLlQZEEO9uc
- XzD/w+YFBWDsXmgyKWmR67wbQPrvuQkqLEayBF753rM94nWUcJwLCUaUvTcE3PggaBWZ5FN7/8
- 4ze/7AaoG5dxhAAAA
-To: Chester Lin <chester62515@gmail.com>, 
- Matthias Brugger <mbrugger@suse.com>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Richard Cochran <richardcochran@gmail.com>
-Cc: linux-arm-kernel@lists.infradead.org, imx@lists.linux.dev, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org, "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759768312; l=7038;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=TMWFQ/FCO7r1LG54aYnEDegZ7oUI5MIx6sPdhGBxOcA=;
- b=BYkrZtIcJy8FigoNiS7KdvSacfpqLvQ8+glEubaeNymGK1JA+8tu/tR1m9gshcgR22HkuQ5Mw
- Cmy9eQyLBqgD4z5OxjWHaoTIiGXyJAXPiv+S2FEYTssNJq0IC465zL+
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+Message-Id: <20251007-fix-i2s-polarity-v1-1-86704d9cda10@baylibre.com>
+X-B4-Tracking: v=1; b=H4sIAMI+5GgC/x2MWwqAIBAArxL73YKt9qCrRB9SWy2EhkYU0t2TP
+ gdmJkHkIByhLxIEviSKdxmqsoBps25llDkzkKK6UqrBRW4Uinj43QY5H5xbY7TuFkukIWdH4Oz
+ 8y2F83w/n6ZUSYgAAAA==
+X-Change-ID: 20251006-fix-i2s-polarity-d744338fa223
+To: Jerome Brunet <jbrunet@baylibre.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-sound@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Valerio Setti <vsetti@baylibre.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1584; i=vsetti@baylibre.com;
+ h=from:subject:message-id; bh=yhS4Hp8u/Or3vlCBo8NKBwUHK5bFZ95+lSDqT7ffm68=;
+ b=owGbwMvMwCF2z3ty7kUrRgbG02pJDBlP7G7Vcrw8+WNXspbGklMbFI6a5LY+1/gg9v5pfgqHn
+ ozu2umiHaUsDGIcDLJiiiws0+/9LihVe2iccLIAZg4rE8gQBi5OAZhIlAzDT0aRdVUTjRINNFhD
+ Sg6cPrPmuFXCOu/OksauQpW5T2W/+zIy/FO7m1Wq8VTx9nf/GRt3bdV6nfajzTH9xteVf6afa9P
+ azgAA
+X-Developer-Key: i=vsetti@baylibre.com; a=openpgp;
+ fpr=0497DEFB707526E13360C970DE4B936DD13A0100
+X-Endpoint-Received: by B4 Relay for vsetti@baylibre.com/default with auth_id=515
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the Ethernet connection over GMAC controller connected to
-the Micrel KSZ9031 Ethernet RGMII PHY located on the boards.
+According to I2S specs audio data is sampled on the rising edge of the
+clock and it can change on the falling one. When operating in normal mode
+this SoC behaves the opposite so a clock polarity inversion is required
+in this case.
 
-The mentioned GMAC controller is one of two network controllers
-embedded on the NXP Automotive SoCs S32G2 and S32G3.
+This was tested on an OdroidC2 (Amlogic S905 SoC) board.
 
-The supported boards:
- * EVB:  S32G-VNP-EVB with S32G2 SoC
- * RDB2: S32G-VNP-RDB2
- * RDB3: S32G-VNP-RDB3
-
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Signed-off-by: Valerio Setti <vsetti@baylibre.com>
 ---
- arch/arm64/boot/dts/freescale/s32g2.dtsi        | 50 ++++++++++++++++++++++++-
- arch/arm64/boot/dts/freescale/s32g274a-evb.dts  | 21 ++++++++++-
- arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts | 19 ++++++++++
- arch/arm64/boot/dts/freescale/s32g3.dtsi        | 50 ++++++++++++++++++++++++-
- arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts | 21 ++++++++++-
- 5 files changed, 157 insertions(+), 4 deletions(-)
+ sound/soc/meson/aiu-encoder-i2s.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/freescale/s32g2.dtsi b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-index d167624d1f0c..d06103e9564e 100644
---- a/arch/arm64/boot/dts/freescale/s32g2.dtsi
-+++ b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-@@ -3,7 +3,7 @@
-  * NXP S32G2 SoC family
-  *
-  * Copyright (c) 2021 SUSE LLC
-- * Copyright 2017-2021, 2024 NXP
-+ * Copyright 2017-2021, 2024-2025 NXP
-  */
+diff --git a/sound/soc/meson/aiu-encoder-i2s.c b/sound/soc/meson/aiu-encoder-i2s.c
+index a0dd914c8ed13616fbcbc0828e36418cfd255391..3b4061508c18047fe8d6f3f98061720f8ce238f2 100644
+--- a/sound/soc/meson/aiu-encoder-i2s.c
++++ b/sound/soc/meson/aiu-encoder-i2s.c
+@@ -236,8 +236,12 @@ static int aiu_encoder_i2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ 	    inv == SND_SOC_DAIFMT_IB_IF)
+ 		val |= AIU_CLK_CTRL_LRCLK_INVERT;
  
- #include <dt-bindings/interrupt-controller/arm-gic.h>
-@@ -738,5 +738,53 @@ gic: interrupt-controller@50800000 {
- 			interrupt-controller;
- 			#interrupt-cells = <3>;
- 		};
-+
-+		gmac0: ethernet@4033c000 {
-+			compatible = "nxp,s32g2-dwmac";
-+			reg = <0x4033c000 0x2000>, /* gmac IP */
-+			      <0x4007c004 0x4>;    /* GMAC_0_CTRL_STS */
-+			interrupt-parent = <&gic>;
-+			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "macirq";
-+			snps,mtl-rx-config = <&mtl_rx_setup>;
-+			snps,mtl-tx-config = <&mtl_tx_setup>;
-+			status = "disabled";
-+
-+			mtl_rx_setup: rx-queues-config {
-+				snps,rx-queues-to-use = <5>;
-+
-+				queue0 {
-+				};
-+				queue1 {
-+				};
-+				queue2 {
-+				};
-+				queue3 {
-+				};
-+				queue4 {
-+				};
-+			};
-+
-+			mtl_tx_setup: tx-queues-config {
-+				snps,tx-queues-to-use = <5>;
-+
-+				queue0 {
-+				};
-+				queue1 {
-+				};
-+				queue2 {
-+				};
-+				queue3 {
-+				};
-+				queue4 {
-+				};
-+			};
-+
-+			gmac0mdio: mdio {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+				compatible = "snps,dwmac-mdio";
-+			};
-+		};
- 	};
+-	if (inv == SND_SOC_DAIFMT_IB_NF ||
+-	    inv == SND_SOC_DAIFMT_IB_IF)
++	/*
++	 * The SoC changes data on the rising edge of the bitclock
++	 * so an inversion of the bitclock is required in normal mode
++	 */
++	if (inv == SND_SOC_DAIFMT_NB_NF ||
++	    inv == SND_SOC_DAIFMT_NB_IF)
+ 		val |= AIU_CLK_CTRL_AOCLK_INVERT;
+ 
+ 	/* Signal skew */
+@@ -328,4 +332,3 @@ const struct snd_soc_dai_ops aiu_encoder_i2s_dai_ops = {
+ 	.startup	= aiu_encoder_i2s_startup,
+ 	.shutdown	= aiu_encoder_i2s_shutdown,
  };
-diff --git a/arch/arm64/boot/dts/freescale/s32g274a-evb.dts b/arch/arm64/boot/dts/freescale/s32g274a-evb.dts
-index c4a195dd67bf..f020da03979a 100644
---- a/arch/arm64/boot/dts/freescale/s32g274a-evb.dts
-+++ b/arch/arm64/boot/dts/freescale/s32g274a-evb.dts
-@@ -1,7 +1,7 @@
- // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
- /*
-  * Copyright (c) 2021 SUSE LLC
-- * Copyright 2019-2021, 2024 NXP
-+ * Copyright 2019-2021, 2024-2025 NXP
-  */
- 
- /dts-v1/;
-@@ -15,6 +15,7 @@ / {
- 
- 	aliases {
- 		serial0 = &uart0;
-+		ethernet0 = &gmac0;
- 	};
- 
- 	chosen {
-@@ -43,3 +44,21 @@ &usdhc0 {
- 	no-1-8-v;
- 	status = "okay";
- };
-+
-+&gmac0 {
-+	clocks = <&clks 24>, <&clks 19>, <&clks 18>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "rgmii-id";
-+	phy-handle = <&rgmiiaphy4>;
-+	status = "okay";
-+};
-+
-+&gmac0mdio {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	/* KSZ 9031 on RGMII */
-+	rgmiiaphy4: ethernet-phy@4 {
-+		reg = <4>;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts b/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts
-index 4f58be68c818..b9c2f964b3f7 100644
---- a/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts
-+++ b/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts
-@@ -16,6 +16,7 @@ / {
- 	aliases {
- 		serial0 = &uart0;
- 		serial1 = &uart1;
-+		ethernet0 = &gmac0;
- 	};
- 
- 	chosen {
-@@ -77,3 +78,21 @@ &usdhc0 {
- 	no-1-8-v;
- 	status = "okay";
- };
-+
-+&gmac0 {
-+	clocks = <&clks 24>, <&clks 19>, <&clks 18>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "rgmii-id";
-+	phy-handle = <&rgmiiaphy1>;
-+	status = "okay";
-+};
-+
-+&gmac0mdio {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	/* KSZ 9031 on RGMII */
-+	rgmiiaphy1: ethernet-phy@1 {
-+		reg = <1>;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/freescale/s32g3.dtsi b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-index be3a582ebc1b..e31184847371 100644
---- a/arch/arm64/boot/dts/freescale/s32g3.dtsi
-+++ b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
- /*
-- * Copyright 2021-2024 NXP
-+ * Copyright 2021-2025 NXP
-  *
-  * Authors: Ghennadi Procopciuc <ghennadi.procopciuc@nxp.com>
-  *          Ciprian Costea <ciprianmarian.costea@nxp.com>
-@@ -883,6 +883,54 @@ gic: interrupt-controller@50800000 {
- 			      <0x50420000 0x2000>;
- 			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
- 		};
-+
-+		gmac0: ethernet@4033c000 {
-+			compatible = "nxp,s32g2-dwmac";
-+			reg = <0x4033c000 0x2000>, /* gmac IP */
-+			      <0x4007c004 0x4>;    /* GMAC_0_CTRL_STS */
-+			interrupt-parent = <&gic>;
-+			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "macirq";
-+			snps,mtl-rx-config = <&mtl_rx_setup>;
-+			snps,mtl-tx-config = <&mtl_tx_setup>;
-+			status = "disabled";
-+
-+			mtl_rx_setup: rx-queues-config {
-+				snps,rx-queues-to-use = <5>;
-+
-+				queue0 {
-+				};
-+				queue1 {
-+				};
-+				queue2 {
-+				};
-+				queue3 {
-+				};
-+				queue4 {
-+				};
-+			};
-+
-+			mtl_tx_setup: tx-queues-config {
-+				snps,tx-queues-to-use = <5>;
-+
-+				queue0 {
-+				};
-+				queue1 {
-+				};
-+				queue2 {
-+				};
-+				queue3 {
-+				};
-+				queue4 {
-+				};
-+			};
-+
-+			gmac0mdio: mdio {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+				compatible = "snps,dwmac-mdio";
-+			};
-+		};
- 	};
- 
- 	timer {
-diff --git a/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts b/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts
-index e94f70ad82d9..4a74923789ae 100644
---- a/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts
-+++ b/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
- /*
-- * Copyright 2021-2024 NXP
-+ * Copyright 2021-2025 NXP
-  *
-  * NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3)
-  */
-@@ -18,6 +18,7 @@ aliases {
- 		mmc0 = &usdhc0;
- 		serial0 = &uart0;
- 		serial1 = &uart1;
-+		ethernet0 = &gmac0;
- 	};
- 
- 	chosen {
-@@ -93,3 +94,21 @@ &usdhc0 {
- 	disable-wp;
- 	status = "okay";
- };
-+
-+&gmac0 {
-+	clocks = <&clks 24>, <&clks 19>, <&clks 18>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "rgmii-id";
-+	phy-handle = <&rgmiiaphy1>;
-+	status = "okay";
-+};
-+
-+&gmac0mdio {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	/* KSZ 9031 on RGMII */
-+	rgmiiaphy1: ethernet-phy@1 {
-+		reg = <1>;
-+	};
-+};
+-
 
 ---
-base-commit: fd94619c43360eb44d28bd3ef326a4f85c600a07
-change-id: 20251006-nxp-s32g-boards-2d156255b592
+base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
+change-id: 20251006-fix-i2s-polarity-d744338fa223
 
 Best regards,
 -- 
-Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Valerio Setti <vsetti@baylibre.com>
 
