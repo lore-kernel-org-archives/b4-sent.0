@@ -1,123 +1,183 @@
-From: Dmitry Safonov <dima@arista.com>
-Date: Tue, 07 Oct 2025 07:08:36 +0100
-Subject: [PATCH] net/ip6_tunnel: Prevent perpetual tunnel growth
+From: Remi Buisson <remi.buisson@tdk.com>
+Subject: [PATCH v7 0/9] iio: imu: new inv_icm45600 driver
+Date: Tue, 07 Oct 2025 07:20:01 +0000
+Message-Id: <20251007-add_newport_driver-v7-0-137223a1f79e@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251007-ip6_tunnel-headroom-v1-1-c1287483a592@arista.com>
-X-B4-Tracking: v=1; b=H4sIAGOu5GgC/x3MQQrCMBBA0auUWRtMo1brVURk0oxmoE3KTCxC6
- d2NLt/i/xWUhEnh2qwgtLByThXtroEhYnqR4VANzrpTa+3Z8Nw9yjslGk0kDJLzZDz23QUd9sc
- DQi1noSd//tfbvdqjkvGCaYi/V8my4Bh0P6EWEti2L7hx7O2HAAAA
-X-Change-ID: 20251007-ip6_tunnel-headroom-ba968a2a943a
-To: "David S. Miller" <davem@davemloft.net>, 
- David Ahern <dsahern@kernel.org>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Tom Herbert <tom@herbertland.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Florian Westphal <fw@strlen.de>, Francesco Ruggeri <fruggeri05@gmail.com>, 
- Dmitry Safonov <dima@arista.com>
+X-B4-Tracking: v=1; b=H4sIACG/5GgC/33PwWrDMAwG4FcpPi9DUmw53mnvMUZJbHk1Y0lxQ
+ rZR8u5ze0lawo6/QN8vXdQoOcmoXg4XlWVOYxr6EuzTQflT239IlULJioAMaMSqDeHYy/d5yNM
+ x5DRLrgw5H01nUdpGlcVzlph+bujbe8mnNE5D/r11zHid/svNWEGFBhpChg7QvU7h89kPX+qKz
+ bQCFmEXoAJ00XJoUJNEugfqLWB3gboAnsE5AfKGHwC9AqVgF9AF0Jp1xwzg7ANgNgDtv2AKQNG
+ 7iHUIQeQe4BVwtH8BF8AyN7ZzoWl5AyzL8ge98B7Y9wEAAA==
+X-Change-ID: 20250411-add_newport_driver-529cf5b71ea8
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, Remi Buisson <remi.buisson@tdk.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759817335; l=3578;
- i=dima@arista.com; s=20250521; h=from:subject:message-id;
- bh=B0Jlh8RDVwjqLnA0Qj6JzNQbbltz7rJFTIJJo5dDy3w=;
- b=rATwaMJDQEhKExQr2WdFI9D4UGwHdjuQADmB7GCXlGA1fSZX7scBr+wKxxp+SBVqnWDWMGayV
- dmxe/bVYeiOCEJnrZZl4VmXElsVxhZhTZ6YoSRm8u92KskISZQZFRHN
-X-Developer-Key: i=dima@arista.com; a=ed25519;
- pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
-X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1759821607; l=7448;
+ i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
+ bh=ER0SU+1zzs8K7dMqFtnkyg7P9Ccr/vG5+GixVT2p8CQ=;
+ b=23gMtBlJJOp5U+AN9RX7DH4anSUEpZg2zRihm/nXIir2ulLyP68nPsd81H/TZi6XUNbdTmXTY
+ 7xZAJa2Ib34CN2TvjJ2ecqJnjusyZvPcILCQKmJvcB8ytbqEbNJnqBr
+X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
+ pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
+X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Similarly to ipv4 tunnel, ipv6 version updates dev->needed_headroom, too.
-While ipv4 tunnel headroom adjustment growth was limited in
-commit 5ae1e9922bbd ("net: ip_tunnel: prevent perpetual headroom growth"),
-ipv6 tunnel yet increases the headroom without any ceiling.
+This series add a new driver for managing InvenSense ICM-456xx 6-axis IMUs.
+This next generation of chips includes new generations of 3-axis gyroscope
+and 3-axis accelerometer, support of I3C in addition to I2C and SPI, and
+intelligent MotionTracking features like pedometer, tilt detection, and
+tap detection.
 
-Reflect ipv4 tunnel headroom adjustment limit on ipv6 version.
+This series is delivering a driver supporting gyroscope, accelerometer and
+temperature data, with polling and buffering using hwfifo and watermark,
+on I2C, SPI and I3C busses.
 
-Credits to Francesco Ruggeri, who was originally debugging this issue
-and wrote local Arista-specific patch and a reproducer.
+Gyroscope and accelerometer sensors are completely independent and can have
+different ODRs. Since there is only a single FIFO a specific value is used
+to mark invalid data. To keep the device standard we are de-multiplexing
+data from the FIFO to 2 IIO devices with 2 buffers, 1 for the accelerometer
+and 1 for the gyroscope. This architecture also enables to easily turn each
+sensor on/off without impacting the other. The device interrupt is used to
+read the FIFO and launch parsing of accelerometer and gyroscope data.
+This driver relies on the common Invensense timestamping mechanism to
+handle correctly FIFO watermark and dynamic changes of settings.
 
-Fixes: 8eb30be0352d ("ipv6: Create ip6_tnl_xmit")
-Cc: Florian Westphal <fw@strlen.de>
-Cc: Francesco Ruggeri <fruggeri05@gmail.com>
-Signed-off-by: Dmitry Safonov <dima@arista.com>
+The structure of the driver is quite similar to the inv_icm42600 driver,
+however there are significant reasons for adding a different driver for
+inv_icm45600, such as:
+- A completely different register map.
+- Different FIFO management, based on number of samples instead of bytes.
+- Different indirect register access mechanism.
+
+Note that regmap cache will be added in a dedicated patch set, to avoid
+increasing too much this one.
+
+Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
- include/net/ip_tunnels.h | 15 +++++++++++++++
- net/ipv4/ip_tunnel.c     | 14 --------------
- net/ipv6/ip6_tunnel.c    |  3 +--
- 3 files changed, 16 insertions(+), 16 deletions(-)
+Changes in v7:
+- Fix SPI module missing header.
+- Add comments on sub-field for fifo structure.
+- Use designated initializers in odr_to_period table.
+- Fix typo.
+- Rework regmap usage in inv_icm45600_buffer_set_fifo_en.
+- Added a comment to explain why we dont use fallbacks in DT.
+- Link to v6: https://lore.kernel.org/r/20250924-add_newport_driver-v6-0-76687b9d8a6e@tdk.com
 
-diff --git a/include/net/ip_tunnels.h b/include/net/ip_tunnels.h
-index 4314a97702eae094f2defc65d914390864c21006..d88532c0fbcd30110e41907722fcaf31ce2e4fda 100644
---- a/include/net/ip_tunnels.h
-+++ b/include/net/ip_tunnels.h
-@@ -611,6 +611,21 @@ struct metadata_dst *iptunnel_metadata_reply(struct metadata_dst *md,
- int skb_tunnel_check_pmtu(struct sk_buff *skb, struct dst_entry *encap_dst,
- 			  int headroom, bool reply);
- 
-+static inline void ip_tunnel_adj_headroom(struct net_device *dev,
-+					  unsigned int headroom)
-+{
-+	/* we must cap headroom to some upperlimit, else pskb_expand_head
-+	 * will overflow header offsets in skb_headers_offset_update().
-+	 */
-+	static const unsigned int max_allowed = 512;
-+
-+	if (headroom > max_allowed)
-+		headroom = max_allowed;
-+
-+	if (headroom > READ_ONCE(dev->needed_headroom))
-+		WRITE_ONCE(dev->needed_headroom, headroom);
-+}
-+
- int iptunnel_handle_offloads(struct sk_buff *skb, int gso_type_mask);
- 
- static inline int iptunnel_pull_offloads(struct sk_buff *skb)
-diff --git a/net/ipv4/ip_tunnel.c b/net/ipv4/ip_tunnel.c
-index aaeb5d16f0c9a46d90564dc2b6d7fd0a5b33d037..158a30ae7c5f2f1fa39eea7c3d64e36fb5f7551a 100644
---- a/net/ipv4/ip_tunnel.c
-+++ b/net/ipv4/ip_tunnel.c
-@@ -568,20 +568,6 @@ static int tnl_update_pmtu(struct net_device *dev, struct sk_buff *skb,
- 	return 0;
- }
- 
--static void ip_tunnel_adj_headroom(struct net_device *dev, unsigned int headroom)
--{
--	/* we must cap headroom to some upperlimit, else pskb_expand_head
--	 * will overflow header offsets in skb_headers_offset_update().
--	 */
--	static const unsigned int max_allowed = 512;
--
--	if (headroom > max_allowed)
--		headroom = max_allowed;
--
--	if (headroom > READ_ONCE(dev->needed_headroom))
--		WRITE_ONCE(dev->needed_headroom, headroom);
--}
--
- void ip_md_tunnel_xmit(struct sk_buff *skb, struct net_device *dev,
- 		       u8 proto, int tunnel_hlen)
- {
-diff --git a/net/ipv6/ip6_tunnel.c b/net/ipv6/ip6_tunnel.c
-index 3262e81223dfc859a06b55087d5dac20f43e6c11..6405072050e0ef7521ca1fdddc4a0252e2159d2a 100644
---- a/net/ipv6/ip6_tunnel.c
-+++ b/net/ipv6/ip6_tunnel.c
-@@ -1257,8 +1257,7 @@ int ip6_tnl_xmit(struct sk_buff *skb, struct net_device *dev, __u8 dsfield,
- 	 */
- 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr)
- 			+ dst->header_len + t->hlen;
--	if (max_headroom > READ_ONCE(dev->needed_headroom))
--		WRITE_ONCE(dev->needed_headroom, max_headroom);
-+	ip_tunnel_adj_headroom(dev, max_headroom);
- 
- 	err = ip6_tnl_encap(skb, t, &proto, fl6);
- 	if (err)
+Changes in v6:
+- Reviewed headers inclusion
+- Formatting (line too short, ...)
+- moving code to patch it belongs
+- kernel doc fixes
+- Comments reviewed and simplified
+- removed dev_error_probe with ENOMEM
+- fixed useless ssize_t to size_t
+- removed useless pack attribute
+- Fixed unclear or malformed if
+- Removed useless fifo_is_data_valid wrapper
+- Use available macros instead of hardcoded values
+- Link to v5: https://lore.kernel.org/r/20250820-add_newport_driver-v5-0-2fc9f13dddee@tdk.com
+
+Changes in v5:
+- Simplified device tree, removed interrupts from mandatory param list
+- Allocated regmap_bulk_read/write buffers to dma-capable memory (for indirect reg accesses)
+- Use min/max to simplify code
+- Reordered some code/include/prototypes to the patch they belong
+- Updated to latest iio_push_to_buffers_with_ts API
+- Fix build warning with clang 18.1.8
+- Fixed some alignements
+- Avoiding irq_type silly assignation
+- Simplified fwnode_irq_get_byname error management
+- Re-ordered suspend/resume process to match + comments
+- Reverted VDDIO init to make it work without PM
+- Avoid PM underflow on VDDIO when removing inv_icm456000 module, by checking suspend state
+- Link to v4: https://lore.kernel.org/r/20250814-add_newport_driver-v4-0-4464b6600972@tdk.com
+
+Changes in v4:
+- Introduce gyro and accel in different patches.
+- Move IRQ probe to next patch.
+- Allocate fifo memory instead of static definition.
+- Rework VDDIO management to avoid underflow.
+- Rework suspend/resume using force suspend/resume API.
+- Use helper min, clamp and sizeof instead of custom implementation.
+- Re-scoping some variables, using reverse xmas tree for declarations.
+- Fix formatting: end of list, end of file, spaces, alignments.
+- Use dev_err_probe for I3C errors.
+- Factorizing default config code.
+- Link to v3: https://lore.kernel.org/r/20250717-add_newport_driver-v3-0-c6099e02c562@tdk.com
+
+Changes in v3:
+- Macros renamed and added to the patch using it.
+- Using unsigned for sensor configuration parameters.
+- Using sizeof instead of raw values.
+- Using fsleep instead of usleep.
+- Simplified dt-bindings examples, setting supplies as mandatory
+- Fix bad or useless casts.
+- Partially aligned power management following 20250709-icm42pmreg-v1-0-3d0e793c99b2@geanix.com
+- Fix "uninitialized symbols" warnings.
+- Link to v2: https://lore.kernel.org/r/20250710-add_newport_driver-v2-0-bf76d8142ef2@tdk.com
+
+Changes in v2:
+- Reworked patches order and content to ease review and make sure everything compiles
+- Reworked gyro and accel FSR as 2D arrays
+- Moved temperature processed sensor to core module
+- Use latest API to claim/release device
+- Implemented chip_info structure instead of relying on an enum
+- Removed power-mode ABI, only relying on ODR to switch power_mode
+- Reworked regulator control to use devm_ API where relevant
+- Reworked inv_icm45600_state.buffer as a union to avoid casts, using getter/setter instead of memcpy
+- Fixed dt-binding error and moved patch at the beginning of the patch-set
+- Reworked macros to use FIELD_PREP inline instead of inside the header
+- Fixed comment's grammar
+- Removed extra blank lines
+- Reordered part numbers alphanumerically
+- Removed useless default/error fallbacks
+- Typed accel, gyro and timestamp data when parsing FIFO
+- Fixed I2C module return code
+- Use Linux types instead of C standard
+- Reviewed headers inclusion to remove useless #include and to add missing ones
+- Link to v1: https://lore.kernel.org/r/20250411-add_newport_driver-v1-0-15082160b019@tdk.com
 
 ---
-base-commit: c746c3b5169831d7fb032a1051d8b45592ae8d78
-change-id: 20251007-ip6_tunnel-headroom-ba968a2a943a
+Remi Buisson (9):
+      dt-bindings: iio: imu: Add inv_icm45600
+      iio: imu: inv_icm45600: add new inv_icm45600 driver
+      iio: imu: inv_icm45600: add buffer support in iio devices
+      iio: imu: inv_icm45600: add IMU IIO gyroscope device
+      iio: imu: inv_icm45600: add IMU IIO accelerometer device
+      iio: imu: inv_icm45600: add I2C driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add SPI driver for inv_icm45600 driver
+      iio: imu: inv_icm45600: add I3C driver for inv_icm45600 driver
+      MAINTAINERS: add entry for inv_icm45600 6-axis imu sensor
+
+ .../bindings/iio/imu/invensense,icm45600.yaml      |  90 ++
+ MAINTAINERS                                        |   8 +
+ drivers/iio/imu/Kconfig                            |   1 +
+ drivers/iio/imu/Makefile                           |   1 +
+ drivers/iio/imu/inv_icm45600/Kconfig               |  70 ++
+ drivers/iio/imu/inv_icm45600/Makefile              |  16 +
+ drivers/iio/imu/inv_icm45600/inv_icm45600.h        | 385 ++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c  | 782 ++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 557 ++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.h | 101 +++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_core.c   | 988 +++++++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c   | 791 +++++++++++++++++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c    |  98 ++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c    |  78 ++
+ drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c    | 108 +++
+ 15 files changed, 4074 insertions(+)
+---
+base-commit: 411e8b72c181e4f49352c12ced0fd8426eb683aa
+change-id: 20250411-add_newport_driver-529cf5b71ea8
 
 Best regards,
 -- 
-Dmitry Safonov <dima@arista.com>
+Remi Buisson <remi.buisson@tdk.com>
 
