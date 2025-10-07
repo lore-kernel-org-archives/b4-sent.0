@@ -1,56 +1,76 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Tue, 07 Oct 2025 10:15:23 +0100
-Subject: [PATCH v3 3/3] iio: buffer-dmaengine: enable .get_dma_dev()
+From: Ali Khan <abdulalikhan1337@gmail.com>
+Date: Tue, 07 Oct 2025 12:53:09 +0000
+Subject: [PATCH] ARM: OMAP2+: Fix falg->flag typo in omap_smc2()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251007-fix-iio-dmabuf-get-dma-device-v3-3-0c73e2c0653b@analog.com>
-References: <20251007-fix-iio-dmabuf-get-dma-device-v3-0-0c73e2c0653b@analog.com>
-In-Reply-To: <20251007-fix-iio-dmabuf-get-dma-device-v3-0-0c73e2c0653b@analog.com>
-To: linux-iio@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759828521; l=1397;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=SH+6aeEgKQBCjds6ZFDBBEeFJ1iJGjBDhHrdT0JOhHI=;
- b=tJE4oFtLFpUyMH84A6JLjdPPiI1wWisReD3XmtJTQKnpJhKfQLDGLqMNZd9hIjCV929Gw+YuT
- rz0aSPq0pqMBYC8ipHVUWJzBO2mPjg4t326W//bEpT4m4gGH377TR72
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251007-omap-falg-fix-v1-1-545a1de74a0a@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADQN5WgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDAwNz3fzcxALdtMScdN20zArd5ERD0zRDY7NkE0MzJaCegqJUoDDYvOj
+ Y2loA1fbSbV8AAAA=
+To: Aaro Koskinen <aaro.koskinen@iki.fi>, 
+ Andreas Kemnade <andreas@kemnade.info>, Kevin Hilman <khilman@baylibre.com>, 
+ Roger Quadros <rogerq@kernel.org>, Tony Lindgren <tony@atomide.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: linux-omap@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Jens Schleusener <Jens.Schleusener@fossies.org>, 
+ Ali Khan <abdulalikhan1337@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1759841606; l=1869;
+ i=abdulalikhan1337@gmail.com; s=20251007; h=from:subject:message-id;
+ bh=LO4l4xtXGeg/5kuikNmT+7wW9ZSxcTZ7VwPYOe2JJsc=;
+ b=X2XrdnImlsmvmIP+rT9bIf5q8oh9/l/ssN5g7kMwZcb9W2GPAp/bQU6mmsmOCgNYJcnpOYrMR
+ zpTqzrk9+cPCmAjP4dclW02HoeYB1Lx2r4qXbIEO9HAdqXxIGuMrSNd
+X-Developer-Key: i=abdulalikhan1337@gmail.com; a=ed25519;
+ pk=MGvpDjvgp0SIh0jkqpHnh8BE7tUnGwAv3jhzd3o/xS4=
+X-Endpoint-Received: by B4 Relay for abdulalikhan1337@gmail.com/20251007 with auth_id=538
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Wire up the .get_dma_dev() callback to use the DMA buffer infrastructure's
-implementation. This ensures that DMABUF operations use the correct DMA
-device for mapping, which is essential for proper operation on systems
-where memory is mapped above the 32-bit range.
+Fix a spelling error in the omap_smc2() function declaration
+and in a corresponding comment within the assembly source.
+This was reported via bugzilla in 2019.
 
-Without this callback, the core would fall back to using the IIO device's
-parent, which may not have the appropriate DMA mask configuration for
-high memory access.
-
-Fixes: 7a86d469983a ("iio: buffer-dmaengine: Support new DMABUF based userspace API")
-Reviewed-by: David Lechner <dlechner@baylibre.com>
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Reported-by: Jens Schleusener <Jens.Schleusener@fossies.org>
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=205891
+Signed-off-by: Ali Khan <abdulalikhan1337@gmail.com>
 ---
- drivers/iio/buffer/industrialio-buffer-dmaengine.c | 2 ++
- 1 file changed, 2 insertions(+)
+ arch/arm/mach-omap2/omap-secure.h | 2 +-
+ arch/arm/mach-omap2/omap-smc.S    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/iio/buffer/industrialio-buffer-dmaengine.c b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-index e9d9a7d39fe191c2b6e8c196a08cdd26cd3a8d4b..27dd56334345135742d077fab157e2f091d07488 100644
---- a/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-+++ b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-@@ -177,6 +177,8 @@ static const struct iio_buffer_access_funcs iio_dmaengine_buffer_ops = {
- 	.lock_queue = iio_dma_buffer_lock_queue,
- 	.unlock_queue = iio_dma_buffer_unlock_queue,
+diff --git a/arch/arm/mach-omap2/omap-secure.h b/arch/arm/mach-omap2/omap-secure.h
+index 2517c4a5a0e2..04b4ba0f59ab 100644
+--- a/arch/arm/mach-omap2/omap-secure.h
++++ b/arch/arm/mach-omap2/omap-secure.h
+@@ -68,7 +68,7 @@ extern u32 omap_secure_dispatcher(u32 idx, u32 flag, u32 nargs,
+ 				u32 arg1, u32 arg2, u32 arg3, u32 arg4);
+ extern void omap_smccc_smc(u32 fn, u32 arg);
+ extern void omap_smc1(u32 fn, u32 arg);
+-extern u32 omap_smc2(u32 id, u32 falg, u32 pargs);
++extern u32 omap_smc2(u32 id, u32 flag, u32 pargs);
+ extern u32 omap_smc3(u32 id, u32 process, u32 flag, u32 pargs);
+ extern int omap_secure_ram_reserve_memblock(void);
+ extern u32 save_secure_ram_context(u32 args_pa);
+diff --git a/arch/arm/mach-omap2/omap-smc.S b/arch/arm/mach-omap2/omap-smc.S
+index 7376f528034d..fe3b5478200a 100644
+--- a/arch/arm/mach-omap2/omap-smc.S
++++ b/arch/arm/mach-omap2/omap-smc.S
+@@ -32,7 +32,7 @@ ENTRY(_omap_smc1)
+ ENDPROC(_omap_smc1)
  
-+	.get_dma_dev = iio_dma_buffer_get_dma_dev,
-+
- 	.modes = INDIO_BUFFER_HARDWARE,
- 	.flags = INDIO_BUFFER_FLAG_FIXED_WATERMARK,
- };
+ /**
+- * u32 omap_smc2(u32 id, u32 falg, u32 pargs)
++ * u32 omap_smc2(u32 id, u32 flag, u32 pargs)
+  * Low level common routine for secure HAL and PPA APIs.
+  * @id: Application ID of HAL APIs
+  * @flag: Flag to indicate the criticality of operation
 
+---
+base-commit: 07e27ad16399afcd693be20211b0dfae63e0615f
+change-id: 20251007-omap-falg-fix-ca15f136c416
+
+Best regards,
 -- 
-2.51.0
+Ali Khan <abdulalikhan1337@gmail.com>
 
