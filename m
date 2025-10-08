@@ -1,151 +1,109 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Wed, 08 Oct 2025 14:25:13 +0200
-Subject: [PATCH] ARM: imx: add ddr3 ram support
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v2 0/7] Add OnePlus 6T display (Samsung S6E3FC2X01 DDIC
+ with AMS641RW panel)
+Date: Wed, 08 Oct 2025 16:05:27 +0200
+Message-Id: <20251008-s6e3fc2x01-v2-0-21eca1d5c289@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251008-ddr3-v1-1-8fe874a12878@gocontroll.com>
-X-B4-Tracking: v=1; b=H4sIAChY5mgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDAwML3ZSUImNdQ3PzNDOLVAOzRGNDJaDSgqLUtMwKsDHRsbW1AHv2E/p
- WAAAA
-X-Change-ID: 20251008-ddr3-177f68e06a31
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: Maud Spierings <maudspierings@gocontroll.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759926314; l=4199;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=o82eVy6DzFF0oKEpcJDJ/aDJ2Y8KjKmtjSUq7cJKdGk=;
- b=i5SuiIvXmEI++sOzKnqxVnfrPMspvNkhp6d+dZs1OuJZcR8OQS8rjypEt8Mu2R3E7kj5vz/H+
- lwmp9jaar1FAkebjhYU2DJC6uh9qkHHf0GwKNCxizENoPjItHdNMmRb
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+X-B4-Tracking: v=1; b=H4sIAKdv5mgC/03MQQ7CIBCF4as0sxYDQ6DFlfcwXSgOdjatgYagD
+ XcXm5i4/F/yvg0SRaYEp26DSJkTL3MLPHTgp+v8IMH31oASjXSoRbKkg8cilQjOGHkbEAMZaId
+ npMBlxy5j64nTusTXbmf1XX+M+WeyElI4dFoq29sh9GcuvB79G8Za6we7/hzYogAAAA==
+X-Change-ID: 20250923-s6e3fc2x01-f9550b822fe5
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jessica.zhang@oss.qualcomm.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, Sam Ravnborg <sam@ravnborg.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Casey Connolly <casey.connolly@linaro.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2718; i=david@ixit.cz;
+ h=from:subject:message-id; bh=agTZVVmdqx9pobjeJ46jC9gSHyxn89Ywa2Q1fCm/NhM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo5m+oaZnPSmruAyRfu3d01fCRQiEN17hyQnmfG
+ xIMnIZs67mJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaOZvqAAKCRBgAj/E00kg
+ ctejEACEfmutlZ1j+l8Po12Swx8lJu/R3b5592nUbUYS+908mR5Bt6VMStvUQ0eapAX0MxScMSc
+ urNyLa7UGIeNzYiQP4QzAoQZTF3GjVQY1q9Azeces8CkZx3+EIj9EPI7nb/V2IEVUijUxKQV0kp
+ tchSHPzH4yfDLfpqy+UXksUZ8LjhhbCKZUQdjTEIzpEfgOsUpXbnJD+RSxtgnqfXBcm+AZq/Ufc
+ ClOgnxfikRxj5rJdNJgaDIVvbaKx3ADteKSy7ksD+UqDrnsAc5V5LR1ir1V+D1gHk8vfSS+VRZi
+ guW4MWr9LtDY9D6NunkoePGKR6D+fiYXsAEh99TSIRGzL/FhQbXAcZMfzLhXVAkT3P7YUy/wljJ
+ AxWC06UiXIQ53PxeyqxPGNYv2zB7HVtfZHJgaLN3aznHgVh5kUpYwyHVj6OTuLqIQSUUqqTcpSP
+ YzcTBr2zA6C9Ry/7SmkjqN6plkaaVW9BoNltsFQs3+Qos2hRjRDHqzHlV5BJZKMGIv+zwTRKl08
+ HkpcC/H9yvnbggJN/kMNWeX5jduc1IZqHUiYu2kPuv3sxgg6sLekkgyBnelx0saz/HjtSs9nI04
+ GM/29JG+zCGaLsnUu+Je/6qgIF3U+4TswyTv8Y9Mdn1WG1JCi9+Xkrk6ysVxvDUicTn9zt1aIsg
+ tDhHrhGdKzm5epw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the necessary bits to use DDR3 on imx platforms.
+First, proper bindings for the DDIC and panel are added.
 
-Tested on Ka-Ro tx8m-1610 (imx8mm) based platform with DDR3L memory.
+Next, the VCI and POC supplies are introduced for the OnePlus 6 and 6T
+phones, and the OnePlus 6T device tree is updated with the new compatible
+string.
 
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+This series also documents the tearing-effect GPIO line.
+
+Finally, a new DDIC driver is introduced along with the AMS641RW panel
+initialization sequences.
+
+This patchset enables the display on the OnePlus 6T smartphone.
+
+Since the display node is shared between the OnePlus 6 and 6T,
+the following warning appears:
+
+..sdm845-oneplus-enchilada.dtb: panel@0 (samsung,sofef00): 'poc-supply', 'te-gpios', 'vci-supply' do not match any of the regexes: '^pinctrl-[0-9]+$'
+
+This will be addressed in a follow-up patch, as the SOFEF00 DDIC also
+requires additional overhaul to properly initialize and function in mainline.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/ddr/imx/ddrphy_train.c | 18 ++++++++++++++++++
- firmware/Kconfig               |  3 +++
- firmware/Makefile              |  4 ++++
- include/soc/imx/ddr.h          | 10 ++++++++++
- 4 files changed, 35 insertions(+)
-
-diff --git a/drivers/ddr/imx/ddrphy_train.c b/drivers/ddr/imx/ddrphy_train.c
-index 24997a6f36676b61b548e08c330dbfdcf336abc0..3185aaf61e494a72ecfac5760fa06f6c39b398ce 100644
---- a/drivers/ddr/imx/ddrphy_train.c
-+++ b/drivers/ddr/imx/ddrphy_train.c
-@@ -52,6 +52,19 @@ void ddr_get_firmware_ddr4(void)
- 			     &ddr4_dmem_2d_size);
- }
- 
-+static const u16 *ddr3_imem_1d;
-+static size_t ddr3_imem_1d_size;
-+static const u16 *ddr3_dmem_1d;
-+static size_t ddr3_dmem_1d_size;
-+
-+void ddr_get_firmware_ddr3(void)
-+{
-+	get_builtin_firmware(ddr3_imem_1d_bin, &ddr3_imem_1d,
-+			     &ddr3_imem_1d_size);
-+	get_builtin_firmware(ddr3_dmem_1d_bin, &ddr3_dmem_1d,
-+			     &ddr3_dmem_1d_size);
-+}
-+
- void ddr_load_train_code(struct dram_controller *dram, enum dram_type dram_type,
- 			 enum fw_type fw_type)
- {
-@@ -82,6 +95,11 @@ void ddr_load_train_code(struct dram_controller *dram, enum dram_type dram_type,
- 			dmem = ddr4_dmem_2d;
- 			dsize = ddr4_dmem_2d_size;
- 		}
-+	} else if (dram_is_ddr3(dram_type)) {
-+		imem = ddr3_imem_1d;
-+		isize = ddr3_imem_1d_size;
-+		dmem = ddr3_dmem_1d;
-+		dsize = ddr3_dmem_1d_size;
- 	} else {
- 		panic("No matching DDR PHY firmware found");
- 	}
-diff --git a/firmware/Kconfig b/firmware/Kconfig
-index 14a1c3d3a84407029e576e8e46993f828784f48b..a97a1e0dd324fa2ff95a0e77d1057bc45aa1ad07 100644
---- a/firmware/Kconfig
-+++ b/firmware/Kconfig
-@@ -22,6 +22,9 @@ config MISSING_FIRMWARE_ERROR
- 	  If in doubt, say Y and refer to the documentation on where to acquire the
- 	  needed firmware.
- 
-+config FIRMWARE_IMX_DDR3_PMU_TRAIN
-+	bool
-+
- config FIRMWARE_IMX_LPDDR4_PMU_TRAIN
- 	bool
- 
-diff --git a/firmware/Makefile b/firmware/Makefile
-index 1fe770a2d900f216dd457d88aee761df4ada26c6..163055554d51b0cc9547f4a43f97c39d23f8eb65 100644
---- a/firmware/Makefile
-+++ b/firmware/Makefile
-@@ -12,6 +12,10 @@ pbl-firmware-$(CONFIG_FIRMWARE_IMX_DDR4_PMU_TRAIN) += \
- 	ddr4_imem_1d.bin \
- 	ddr4_imem_2d.bin
- 
-+pbl-firmware-$(CONFIG_FIRMWARE_IMX_DDR3_PMU_TRAIN) += \
-+	ddr3_dmem_1d.bin \
-+	ddr3_imem_1d.bin
-+
- pbl-firmware-$(CONFIG_FIRMWARE_IMX8MM_ATF) += imx8mm-bl31.bin$(if $(CONFIG_FIRMWARE_IMX8MM_OPTEE),-optee,)
- pbl-firmware-$(CONFIG_FIRMWARE_IMX8MN_ATF) += imx8mn-bl31.bin$(if $(CONFIG_FIRMWARE_IMX8MN_OPTEE),-optee,)
- pbl-firmware-$(CONFIG_FIRMWARE_IMX8MP_ATF) += imx8mp-bl31.bin$(if $(CONFIG_FIRMWARE_IMX8MP_OPTEE),-optee,)
-diff --git a/include/soc/imx/ddr.h b/include/soc/imx/ddr.h
-index 1e64613895d1b0bcfd5f48a55e0a8bcabd4d96c5..642606290082643dfed9fbeb283652b877d28639 100644
---- a/include/soc/imx/ddr.h
-+++ b/include/soc/imx/ddr.h
-@@ -18,6 +18,7 @@ enum dram_type {
- #define DRAM_TYPE_MASK	0x00ff
- 	DRAM_TYPE_LPDDR4	= 0 << 0,
- 	DRAM_TYPE_DDR4		= 1 << 0,
-+	DRAM_TYPE_DDR3		= 2 << 0,
- };
- 
- static inline enum dram_type get_dram_type(unsigned type)
-@@ -115,11 +116,14 @@ struct dram_controller {
- 
- void ddr_get_firmware_lpddr4(void);
- void ddr_get_firmware_ddr4(void);
-+void ddr_get_firmware_ddr3(void);
- 
- static inline void ddr_get_firmware(enum dram_type dram_type)
- {
- 	if (dram_type == DRAM_TYPE_LPDDR4)
- 		ddr_get_firmware_lpddr4();
-+	else if (dram_type == DRAM_TYPE_DDR3)
-+		ddr_get_firmware_ddr3();
- 	else
- 		ddr_get_firmware_ddr4();
- }
-@@ -188,6 +192,12 @@ static inline bool dram_is_ddr4(enum dram_type dram_type)
- 		dram_type == DRAM_TYPE_DDR4;
- }
- 
-+static inline bool dram_is_ddr3(enum dram_type dram_type)
-+{
-+	return IS_ENABLED(CONFIG_FIRMWARE_IMX_DDR3_PMU_TRAIN) &&
-+		dram_type == DRAM_TYPE_DDR3;
-+}
-+
- #define DDRC_PHY_REG(x)	((x) * 4)
- 
- #endif /* __SOC_IMX_DDR_H */
+Changes in v2:
+- Dropped the gpio reset polarity change as suggested (Jens and Dmitry).
+- Fixed unused warnings (kernel test robot).
+- Added a pinctrl config for the VCI and POC supply.
+- Removed patch "dt-bindings: display: panel-simple-dsi: Remove Samsung S6E3FC2 compatible"
+  while the compatible is used in device-tree, but without any driver
+  serving it, do not touch it (Rob)
+- Added more details into the device-tree about the OnePlus 6T panel properties
+- Put display gpio -pins into one -state block.
+- Link to v1: https://lore.kernel.org/r/20250925-s6e3fc2x01-v1-0-9293016768f7@ixit.cz
 
 ---
-base-commit: 8785a6ad7467b6f1f70b6e12aa2ceb2fdd5d8546
-change-id: 20251008-ddr3-177f68e06a31
+Casey Connolly (1):
+      arm64: dts: qcom: sdm845-oneplus: Describe panel vci and poc supplies
+
+David Heidelberg (6):
+      dt-bindings: panel: Add Samsung S6E3FC2X01 DDIC with panel
+      arm64: dts: qcom: sdm845-oneplus-fajita: Use the freshly introduced driver
+      arm64: dts: qcom: sdm845-oneplus: Describe TE gpio
+      drm/panel: Add Samsung S6E3FC2X01 DDIC with AMS641RW panel
+      arm64: dts: qcom: sdm845-oneplus: Group panel pinctrl
+      arm64: dts: qcom: sdm845-oneplus: Implement panel sleep pinctrl
+
+ .../bindings/display/panel/samsung,s6e3fc2x01.yaml |  78 ++++
+ MAINTAINERS                                        |   6 +
+ .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 113 ++++--
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts |   2 +-
+ drivers/gpu/drm/panel/Kconfig                      |  13 +
+ drivers/gpu/drm/panel/Makefile                     |   1 +
+ drivers/gpu/drm/panel/panel-samsung-s6e3fc2x01.c   | 402 +++++++++++++++++++++
+ 7 files changed, 593 insertions(+), 22 deletions(-)
+---
+base-commit: 7c3ba4249a3604477ea9c077e10089ba7ddcaa03
+change-id: 20250923-s6e3fc2x01-f9550b822fe5
 
 Best regards,
 -- 
-Maud Spierings <maudspierings@gocontroll.com>
+David Heidelberg <david@ixit.cz>
 
