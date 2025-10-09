@@ -1,74 +1,61 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Thu, 09 Oct 2025 17:03:31 +0800
-Subject: [PATCH RESEND] checkpatch: Suppress warnings when Reported-by: is
- followed by Link:
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH 0/5] arm64: dts: freescale: add support for the GOcontroll
+ Moduline IV/Mini
+Date: Thu, 09 Oct 2025 12:54:16 +0200
+Message-Id: <20251009-mini_iv-v1-0-f3889c492457@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251009-checkpatch-v1-1-baf0e614b96a@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAGJ652gC/22OsQ7CIBiEX6X5ZzGFRgEnB7s66Gg6UPojpLFtA
- Imm6btLmB3vLvfdrRDQOwxwqlbwmFxw85QF3VWgrZqeSNyQNbCaHWpJJdEW9bioqC2pGT9ywbE
- 3PUIuLB6N+xTYA27tvb1eoMu+dSHO/ls2Ei3pP1yihJJBCCl5Ixtm1Pk95TcRtd3r+QXdtm0/n
- G1MG7AAAAA=
-X-Change-ID: 20250919-checkpatch-0276787ebfbe
-To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>, 
- Dwaipayan Ray <dwaipayanray1@gmail.com>, 
- Lukas Bulwahn <lukas.bulwahn@gmail.com>
-Cc: linux-kernel@vger.kernel.org, niecheng1@uniontech.com, 
- zhanjun@uniontech.com, Cryolitia PukNgae <cryolitia@uniontech.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760000615; l=1986;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=GglgwOO4sGxm/0cSmViQByo3JCllbsUslkPqrpN9emg=;
- b=Zh6nWoXotL3I2+RstXgrvRLgEvdeD5diRbxWeBBiU8VsOpFXfPRXdeWD1Py/cm2GTgeuVZ16J
- 1BM/EAVNjALCUzPYURiB8Tcokbu+EeFMujIByKIKGrOQDnmdnteKVq6
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+X-B4-Tracking: v=1; b=H4sIAFiU52gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDAwNL3dzMvMz4zDLdRAPTVNNko2RDIyNjJaDqgqLUtMwKsEnRsbW1AA1
+ gqCRZAAAA
+X-Change-ID: 20251009-mini_iv-a05e5c2c1223
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760007259; l=1210;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=AH1YWT1PmOpsxR4ljF1m4JmyHPJPRdfWYF5LAjqppjw=;
+ b=cBmGj7Wqbc/xkjDIXBHq1BeswMYmO+gRfkT82CTX4YzTxUswkiR/3SzGkj0EaLLjOEdiluSQS
+ oIPsQDCYFNfAcq4xre8PD+0SBdcfQDubafa3oXaTWbr6FRGhUXT026R
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-> The tag should be followed by a Closes: tag pointing to the report,
-> unless the report is not available on the web. The Link: tag can be
-> used instead of Closes: if the patch fixes a part of the issue(s)
-> being reported.
+Add initial support for the Moduline IV and Moduline Mini embedded
+controllers.
 
-Accroding to Documentation/process/submitting-patches.rst , Link: is
-also acceptable to followed a Reported-by:
+These systems are powered by the Ka-Ro Electronics tx8m-1610 COM, which
+features an imx8mm SoC.
 
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
-Changes in v2:
-- EDITME: describe what is new in this series revision.
-- EDITME: use bulletpoints and terse descriptions.
-- Link to v1: https://lore.kernel.org/r/20250919-checkpatch-v1-1-d889973932fa@uniontech.com
----
- scripts/checkpatch.pl | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Maud Spierings (5):
+      dt-bindings: arm: fsl: Add GOcontroll Moduline IV/Mini
+      arm64: dts: imx8mm: Add pinctrl config definitions
+      arm64: dts: freescale: add Ka-Ro Electronics tx8m-1610 COM
+      arm64: dts: freescale: Add the GOcontroll Moduline IV
+      arm64: dts: freescale: Add the GOcontroll Moduline Mini
 
-diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
-index 92669904eecc7a8d2afd3f2625528e02b6d17cd6..01c4e70b19a0992c2f2d56347be9ae73005be025 100755
---- a/scripts/checkpatch.pl
-+++ b/scripts/checkpatch.pl
-@@ -3205,10 +3205,10 @@ sub process {
- 			if ($sign_off =~ /^reported(?:|-and-tested)-by:$/i) {
- 				if (!defined $lines[$linenr]) {
- 					WARN("BAD_REPORTED_BY_LINK",
--					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . "\n");
--				} elsif ($rawlines[$linenr] !~ /^closes:\s*/i) {
-+					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . "\n");
-+				} elsif ($rawlines[$linenr] !~ /^(closes|link):\s*/i) {
- 					WARN("BAD_REPORTED_BY_LINK",
--					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
-+					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
- 				}
- 			}
- 		}
-
+ Documentation/devicetree/bindings/arm/fsl.yaml     |   2 +
+ arch/arm64/boot/dts/freescale/Makefile             |   3 +
+ arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h     |  33 +
+ .../imx8mm-tx8m-1610-moduline-iv-306-d.dts         | 801 +++++++++++++++++++++
+ .../imx8mm-tx8m-1610-moduline-mini-111.dts         | 691 ++++++++++++++++++
+ .../arm64/boot/dts/freescale/imx8mm-tx8m-1610.dtsi | 562 +++++++++++++++
+ 6 files changed, 2092 insertions(+)
 ---
-base-commit: ec714e371f22f716a04e6ecb2a24988c92b26911
-change-id: 20250919-checkpatch-0276787ebfbe
+base-commit: 7c3ba4249a3604477ea9c077e10089ba7ddcaa03
+change-id: 20251009-mini_iv-a05e5c2c1223
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia@uniontech.com>
+Maud Spierings <maudspierings@gocontroll.com>
 
