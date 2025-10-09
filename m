@@ -1,11 +1,11 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Thu, 09 Oct 2025 08:48:27 +0200
-Subject: [PATCH v4 3/4] arm64: dts: freescale:
- moduline-display-av101hdt-a10: add backlight
+Date: Thu, 09 Oct 2025 08:48:28 +0200
+Subject: [PATCH v4 4/4] arm64: dts: freescale:
+ moduline-display-av123z7m-n17: add backlight
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251009-max25014-v4-3-6adb2a0aa35f@gocontroll.com>
+Message-Id: <20251009-max25014-v4-4-6adb2a0aa35f@gocontroll.com>
 References: <20251009-max25014-v4-0-6adb2a0aa35f@gocontroll.com>
 In-Reply-To: <20251009-max25014-v4-0-6adb2a0aa35f@gocontroll.com>
 To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
@@ -22,43 +22,40 @@ Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, 
  Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759992506; l=1656;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1759992506; l=1639;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=y4Wl1rNyuel5kjZN3m44EWcCr4I5S9GstAu3HGV56iM=;
- b=h40vWHPkpauVPc3CSs+IWxRf0co2q25wUyI39psVNwuRLJaoHF4qyjaaCAsXuXxpZxcj2atBu
- HRKSG8k/wxcBEH4CbI2I2L2NS+ooRR/mNPBGmG/yIUkazhrUMHGmx8z
+ bh=pWeAK4Rn7wjoYLcVlDOrdhK/tMcB60QeJTaIHG+EMUw=;
+ b=M1+ka83/gjtFmtqPnLvMWm+kXFyj+0T+dYJTiIImhhAqPMKlwgthVMhg/haaB6ZkpiwXQMoQE
+ R/U68uJ0KQUBSRMKPSpeeKyR+gkZXexQBuiIbfUL3OxNmbGA6yOxHX8
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the missing backlight driver.
+Add the missing backlight.
 
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso | 32 ++++++++++++++++++++++
- 1 file changed, 32 insertions(+)
+ ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso | 27 +++++++++++++++++++++-
+ 1 file changed, 26 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso
-index e3965caca6be4..e8107145a7f3b 100644
---- a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av101hdt-a10.dtso
-@@ -17,6 +17,7 @@
+diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
+index 3eb665ce9d5d2..c320e0f563af9 100644
+--- a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
++++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
+@@ -16,6 +16,7 @@
  
  	panel {
- 		compatible = "boe,av101hdt-a10";
+ 		compatible = "boe,av123z7m-n17";
 +		backlight = <&backlight>;
  		enable-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
  		pinctrl-0 = <&pinctrl_panel>;
  		pinctrl-names = "default";
-@@ -40,7 +41,38 @@ reg_vbus: regulator-vbus {
+@@ -91,10 +92,34 @@ lvds1_out: endpoint {
+ 		};
  	};
- };
  
-+&i2c4 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
+-	/* max25014 @ 0x6f */
 +	backlight: backlight@6f {
 +		compatible = "maxim,max25014";
 +		reg = <0x6f>;
@@ -73,12 +70,12 @@ index e3965caca6be4..e8107145a7f3b 100644
 +
 +		led@0 {
 +			reg = <0>;
-+			led-sources = <0 1 2>;
++			led-sources = <0 1 2 3>;
 +			default-brightness = <50>;
 +		};
 +	};
-+};
-+
+ };
+ 
  &iomuxc {
 +	pinctrl_backlight: backlightgrp {
 +		fsl,pins = <
@@ -87,9 +84,9 @@ index e3965caca6be4..e8107145a7f3b 100644
 +		>;
 +	};
 +
- 	pinctrl_panel: panelgrp {
+ 	pinctrl_lvds_bridge: lvdsbridgegrp {
  		fsl,pins = <
- 			MX8MP_IOMUXC_GPIO1_IO07__GPIO1_IO07
+ 			MX8MP_IOMUXC_SAI1_TXD2__GPIO4_IO14
 
 -- 
 2.51.0
