@@ -1,93 +1,74 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Thu, 09 Oct 2025 08:48:28 +0200
-Subject: [PATCH v4 4/4] arm64: dts: freescale:
- moduline-display-av123z7m-n17: add backlight
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Thu, 09 Oct 2025 17:03:31 +0800
+Subject: [PATCH RESEND] checkpatch: Suppress warnings when Reported-by: is
+ followed by Link:
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251009-max25014-v4-4-6adb2a0aa35f@gocontroll.com>
-References: <20251009-max25014-v4-0-6adb2a0aa35f@gocontroll.com>
-In-Reply-To: <20251009-max25014-v4-0-6adb2a0aa35f@gocontroll.com>
-To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
- Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>, 
- Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-fbdev@vger.kernel.org, imx@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, 
- Maud Spierings <maudspierings@gocontroll.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1759992506; l=1639;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=pWeAK4Rn7wjoYLcVlDOrdhK/tMcB60QeJTaIHG+EMUw=;
- b=M1+ka83/gjtFmtqPnLvMWm+kXFyj+0T+dYJTiIImhhAqPMKlwgthVMhg/haaB6ZkpiwXQMoQE
- R/U68uJ0KQUBSRMKPSpeeKyR+gkZXexQBuiIbfUL3OxNmbGA6yOxHX8
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+Message-Id: <20251009-checkpatch-v1-1-baf0e614b96a@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAGJ652gC/22OsQ7CIBiEX6X5ZzGFRgEnB7s66Gg6UPojpLFtA
+ Imm6btLmB3vLvfdrRDQOwxwqlbwmFxw85QF3VWgrZqeSNyQNbCaHWpJJdEW9bioqC2pGT9ywbE
+ 3PUIuLB6N+xTYA27tvb1eoMu+dSHO/ls2Ei3pP1yihJJBCCl5Ixtm1Pk95TcRtd3r+QXdtm0/n
+ G1MG7AAAAA=
+X-Change-ID: 20250919-checkpatch-0276787ebfbe
+To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>, 
+ Dwaipayan Ray <dwaipayanray1@gmail.com>, 
+ Lukas Bulwahn <lukas.bulwahn@gmail.com>
+Cc: linux-kernel@vger.kernel.org, niecheng1@uniontech.com, 
+ zhanjun@uniontech.com, Cryolitia PukNgae <cryolitia@uniontech.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760000615; l=1986;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=GglgwOO4sGxm/0cSmViQByo3JCllbsUslkPqrpN9emg=;
+ b=Zh6nWoXotL3I2+RstXgrvRLgEvdeD5diRbxWeBBiU8VsOpFXfPRXdeWD1Py/cm2GTgeuVZ16J
+ 1BM/EAVNjALCUzPYURiB8Tcokbu+EeFMujIByKIKGrOQDnmdnteKVq6
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the missing backlight.
+> The tag should be followed by a Closes: tag pointing to the report,
+> unless the report is not available on the web. The Link: tag can be
+> used instead of Closes: if the patch fixes a part of the issue(s)
+> being reported.
 
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+Accroding to Documentation/process/submitting-patches.rst , Link: is
+also acceptable to followed a Reported-by:
+
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso | 27 +++++++++++++++++++++-
- 1 file changed, 26 insertions(+), 1 deletion(-)
+Changes in v2:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://lore.kernel.org/r/20250919-checkpatch-v1-1-d889973932fa@uniontech.com
+---
+ scripts/checkpatch.pl | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
-index 3eb665ce9d5d2..c320e0f563af9 100644
---- a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
-@@ -16,6 +16,7 @@
- 
- 	panel {
- 		compatible = "boe,av123z7m-n17";
-+		backlight = <&backlight>;
- 		enable-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
- 		pinctrl-0 = <&pinctrl_panel>;
- 		pinctrl-names = "default";
-@@ -91,10 +92,34 @@ lvds1_out: endpoint {
- 		};
- 	};
- 
--	/* max25014 @ 0x6f */
-+	backlight: backlight@6f {
-+		compatible = "maxim,max25014";
-+		reg = <0x6f>;
-+		default-brightness = <50>;
-+		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pinctrl_backlight>;
-+		maxim,iset = <7>;
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		led@0 {
-+			reg = <0>;
-+			led-sources = <0 1 2 3>;
-+			default-brightness = <50>;
-+		};
-+	};
- };
- 
- &iomuxc {
-+	pinctrl_backlight: backlightgrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_GPIO1_IO04__GPIO1_IO04
-+				(MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
- 	pinctrl_lvds_bridge: lvdsbridgegrp {
- 		fsl,pins = <
- 			MX8MP_IOMUXC_SAI1_TXD2__GPIO4_IO14
+diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
+index 92669904eecc7a8d2afd3f2625528e02b6d17cd6..01c4e70b19a0992c2f2d56347be9ae73005be025 100755
+--- a/scripts/checkpatch.pl
++++ b/scripts/checkpatch.pl
+@@ -3205,10 +3205,10 @@ sub process {
+ 			if ($sign_off =~ /^reported(?:|-and-tested)-by:$/i) {
+ 				if (!defined $lines[$linenr]) {
+ 					WARN("BAD_REPORTED_BY_LINK",
+-					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . "\n");
+-				} elsif ($rawlines[$linenr] !~ /^closes:\s*/i) {
++					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . "\n");
++				} elsif ($rawlines[$linenr] !~ /^(closes|link):\s*/i) {
+ 					WARN("BAD_REPORTED_BY_LINK",
+-					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
++					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
+ 				}
+ 			}
+ 		}
 
+---
+base-commit: ec714e371f22f716a04e6ecb2a24988c92b26911
+change-id: 20250919-checkpatch-0276787ebfbe
+
+Best regards,
 -- 
-2.51.0
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
