@@ -1,128 +1,69 @@
-From: Dmitry Safonov <dima@arista.com>
-Date: Thu, 09 Oct 2025 16:02:19 +0100
-Subject: [PATCH v2] net/ip6_tunnel: Prevent perpetual tunnel growth
+From: Jiucheng Xu <jiucheng.xu@amlogic.com>
+Date: Fri, 10 Oct 2025 10:45:50 +0000
+Subject: [PATCH v2] f2fs: Use mapping->gfp_mask to get file cache for
+ writing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251009-ip6_tunnel-headroom-v2-1-8e4dbd8f7e35@arista.com>
-X-B4-Tracking: v=1; b=H4sIAHrO52gC/32OTQ7CIBBGr9KwFi3035X3MI2Z0lFICjRDJZqmd
- 5f2AC7fJO99s7KAZDCwa7YywmiC8S6BPGVMaXAv5GZMzGQuK5HnDTdz/VjezuHENcJI3ls+QFe
- 3IKErC2DJnAmf5nNU733iAQLygcApvbcWTxGmMVwshAVpN7QJ6fo93ohi9/4vRsEFV0K2TdkWU
- HXyBpQScFbesn7bth9CxeHO2QAAAA==
-X-Change-ID: 20251007-ip6_tunnel-headroom-ba968a2a943a
-To: "David S. Miller" <davem@davemloft.net>, 
- David Ahern <dsahern@kernel.org>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Tom Herbert <tom@herbertland.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dmitry Safonov <0x7f454c46@gmail.com>, Florian Westphal <fw@strlen.de>, 
- Francesco Ruggeri <fruggeri05@gmail.com>, Dmitry Safonov <dima@arista.com>
+Message-Id: <20251010-origin-dev-v2-1-952a3c98cd9c@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAN3j6GgC/03MwQoCIRSF4VcZ7jpDhUlt1XvELEyvzoVmDA0pB
+ t89Gwha/gfOt0HBTFjgPGyQsVKhtPaQhwHcbNeIjHxvkFyO3AjOUqZIK/NYmbZjCKcboggS+uG
+ RMdBrx65T75nKM+X3blfxXX+M/meqYIJpb7RSPhhU6mKXe4rkji4tMLXWPrgQj7OmAAAA
+X-Change-ID: 20250910-origin-dev-8a5ff6bee1f2
+To: Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>
+Cc: linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org, 
+ tuan.zhang@amlogic.com, jianxin.pan@amlogic.com, 
+ Jiucheng Xu <jiucheng.xu@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760022147; l=3753;
- i=dima@arista.com; s=20250521; h=from:subject:message-id;
- bh=QP0aw6XFbqBaKIxubuBQan+TnP0JhZPSMwD0ZXJHoWo=;
- b=0crxKtxxohvisEkl0rV59JpOcc/F2hdWJB8uSwEG9Z4igHS+nkyOlefV/5yUVqin7dbIzh1x7
- urEgRaoO7PvD1MUrRxcfd3DuhVFsf8qAXrJ8xhFDOG+Qx/UVqgzWV++
-X-Developer-Key: i=dima@arista.com; a=ed25519;
- pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
-X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760093171; l=1482;
+ i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
+ bh=ys2NNWUvMRWSNrqqE75d/Agpj0X5GunxR0O5cIjS0+s=;
+ b=zBpqK6IpjtdrVtovPKjZFXMscyFRS/aovVGopagjDr07kHZ2g+Rn8Bz2l8yn850QC/rwg1Z2W
+ 5EdQvlweuoxAm5ybl4mHETIzsjc2dHIS0i4oIw3YzP9HmnTx/8heVz7
+X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
+ pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
+X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Similarly to ipv4 tunnel, ipv6 version updates dev->needed_headroom, too.
-While ipv4 tunnel headroom adjustment growth was limited in
-commit 5ae1e9922bbd ("net: ip_tunnel: prevent perpetual headroom growth"),
-ipv6 tunnel yet increases the headroom without any ceiling.
+On 32-bit architectures, when GFP_NOFS is used, the file cache for write
+operations cannot be allocated from the highmem and CMA.
 
-Reflect ipv4 tunnel headroom adjustment limit on ipv6 version.
+Since mapping->gfp_mask is set to GFP_HIGHUSER_MOVABLE during inode
+allocation, using mapping_gfp_mask(mapping) as the GFP flag of getting file
+cache for writing is more efficient for 32-bit architectures.
 
-Credits to Francesco Ruggeri, who was originally debugging this issue
-and wrote local Arista-specific patch and a reproducer.
+Additionally, use FGP_NOFS to avoid potential deadlock issues caused by
+GFP_FS in GFP_HIGHUSER_MOVABLE
 
-Fixes: 8eb30be0352d ("ipv6: Create ip6_tnl_xmit")
-Cc: Florian Westphal <fw@strlen.de>
-Cc: Francesco Ruggeri <fruggeri05@gmail.com>
-Signed-off-by: Dmitry Safonov <dima@arista.com>
+Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
 ---
 Changes in v2:
-- Drop 'static' for local variable max_allowed (Jakub's nit)
-- Link to v1: https://lore.kernel.org/r/20251007-ip6_tunnel-headroom-v1-1-c1287483a592@arista.com
+- Add FGP_NOFS to keep original GFP_NOFS flag.
+- Link to v1: https://lore.kernel.org/r/20250918-origin-dev-v1-1-8d9877df9e77@amlogic.com
 ---
- include/net/ip_tunnels.h | 15 +++++++++++++++
- net/ipv4/ip_tunnel.c     | 14 --------------
- net/ipv6/ip6_tunnel.c    |  3 +--
- 3 files changed, 16 insertions(+), 16 deletions(-)
+ fs/f2fs/data.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/include/net/ip_tunnels.h b/include/net/ip_tunnels.h
-index 4314a97702eae094f2defc65d914390864c21006..ecae35512b9b449fa061d96e66eb4533d1816bef 100644
---- a/include/net/ip_tunnels.h
-+++ b/include/net/ip_tunnels.h
-@@ -611,6 +611,21 @@ struct metadata_dst *iptunnel_metadata_reply(struct metadata_dst *md,
- int skb_tunnel_check_pmtu(struct sk_buff *skb, struct dst_entry *encap_dst,
- 			  int headroom, bool reply);
- 
-+static inline void ip_tunnel_adj_headroom(struct net_device *dev,
-+					  unsigned int headroom)
-+{
-+	/* we must cap headroom to some upperlimit, else pskb_expand_head
-+	 * will overflow header offsets in skb_headers_offset_update().
-+	 */
-+	const unsigned int max_allowed = 512;
-+
-+	if (headroom > max_allowed)
-+		headroom = max_allowed;
-+
-+	if (headroom > READ_ONCE(dev->needed_headroom))
-+		WRITE_ONCE(dev->needed_headroom, headroom);
-+}
-+
- int iptunnel_handle_offloads(struct sk_buff *skb, int gso_type_mask);
- 
- static inline int iptunnel_pull_offloads(struct sk_buff *skb)
-diff --git a/net/ipv4/ip_tunnel.c b/net/ipv4/ip_tunnel.c
-index aaeb5d16f0c9a46d90564dc2b6d7fd0a5b33d037..158a30ae7c5f2f1fa39eea7c3d64e36fb5f7551a 100644
---- a/net/ipv4/ip_tunnel.c
-+++ b/net/ipv4/ip_tunnel.c
-@@ -568,20 +568,6 @@ static int tnl_update_pmtu(struct net_device *dev, struct sk_buff *skb,
- 	return 0;
- }
- 
--static void ip_tunnel_adj_headroom(struct net_device *dev, unsigned int headroom)
--{
--	/* we must cap headroom to some upperlimit, else pskb_expand_head
--	 * will overflow header offsets in skb_headers_offset_update().
--	 */
--	static const unsigned int max_allowed = 512;
--
--	if (headroom > max_allowed)
--		headroom = max_allowed;
--
--	if (headroom > READ_ONCE(dev->needed_headroom))
--		WRITE_ONCE(dev->needed_headroom, headroom);
--}
--
- void ip_md_tunnel_xmit(struct sk_buff *skb, struct net_device *dev,
- 		       u8 proto, int tunnel_hlen)
- {
-diff --git a/net/ipv6/ip6_tunnel.c b/net/ipv6/ip6_tunnel.c
-index 3262e81223dfc859a06b55087d5dac20f43e6c11..6405072050e0ef7521ca1fdddc4a0252e2159d2a 100644
---- a/net/ipv6/ip6_tunnel.c
-+++ b/net/ipv6/ip6_tunnel.c
-@@ -1257,8 +1257,7 @@ int ip6_tnl_xmit(struct sk_buff *skb, struct net_device *dev, __u8 dsfield,
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 7961e0ddfca3aaa332b7dbd4985ae7766551834f..b449edb519d9069f58572685d607a2502e4c9473 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -3587,7 +3587,8 @@ static int f2fs_write_begin(const struct kiocb *iocb,
+ 	 * Will wait that below with our IO control.
  	 */
- 	max_headroom = LL_RESERVED_SPACE(tdev) + sizeof(struct ipv6hdr)
- 			+ dst->header_len + t->hlen;
--	if (max_headroom > READ_ONCE(dev->needed_headroom))
--		WRITE_ONCE(dev->needed_headroom, max_headroom);
-+	ip_tunnel_adj_headroom(dev, max_headroom);
- 
- 	err = ip6_tnl_encap(skb, t, &proto, fl6);
- 	if (err)
+ 	folio = __filemap_get_folio(mapping, index,
+-				FGP_LOCK | FGP_WRITE | FGP_CREAT, GFP_NOFS);
++				FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_NOFS,
++				mapping_gfp_mask(mapping));
+ 	if (IS_ERR(folio)) {
+ 		err = PTR_ERR(folio);
+ 		goto fail;
 
 ---
-base-commit: ec714e371f22f716a04e6ecb2a24988c92b26911
-change-id: 20251007-ip6_tunnel-headroom-ba968a2a943a
+base-commit: c872b6279cd26762339ff02513e2a3f16149a6f1
+change-id: 20250910-origin-dev-8a5ff6bee1f2
 
 Best regards,
 -- 
-Dmitry Safonov <dima@arista.com>
+Jiucheng Xu <jiucheng.xu@amlogic.com>
 
