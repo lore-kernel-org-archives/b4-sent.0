@@ -1,69 +1,109 @@
-From: Jiucheng Xu <jiucheng.xu@amlogic.com>
-Date: Fri, 10 Oct 2025 10:45:50 +0000
-Subject: [PATCH v2] f2fs: Use mapping->gfp_mask to get file cache for
- writing
+From: Shubhang Kaushik <shubhang@os.amperecomputing.com>
+Date: Fri, 10 Oct 2025 13:38:17 -0700
+Subject: [PATCH] sched/fair: Add helper to handle leaf cfs_rq addition
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251010-origin-dev-v2-1-952a3c98cd9c@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAN3j6GgC/03MwQoCIRSF4VcZ7jpDhUlt1XvELEyvzoVmDA0pB
- t89Gwha/gfOt0HBTFjgPGyQsVKhtPaQhwHcbNeIjHxvkFyO3AjOUqZIK/NYmbZjCKcboggS+uG
- RMdBrx65T75nKM+X3blfxXX+M/meqYIJpb7RSPhhU6mKXe4rkji4tMLXWPrgQj7OmAAAA
-X-Change-ID: 20250910-origin-dev-8a5ff6bee1f2
-To: Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>
-Cc: linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org, 
- tuan.zhang@amlogic.com, jianxin.pan@amlogic.com, 
- Jiucheng Xu <jiucheng.xu@amlogic.com>
+Message-Id: <20251010-sched-cfs-refactor-propagate-v1-1-b5928aa36771@os.amperecomputing.com>
+X-B4-Tracking: v=1; b=H4sIALhu6WgC/x3MQQqEMAxA0atI1gbaOg7MXGVwEWKq2diSiAji3
+ S2zfPD5F7iYisO3u8DkUNeyNcS+A15pWwR1boYU0hhDDOi8yoycHU0y8V4Mq5VKC+2C8h5eI6V
+ PzANDW9TW6Pnf/6b7fgBmh82IbgAAAA==
+X-Change-ID: 20251010-sched-cfs-refactor-propagate-e6345a291f3c
+To: Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
+ Juri Lelli <juri.lelli@redhat.com>, 
+ Vincent Guittot <vincent.guittot@linaro.org>, 
+ Dietmar Eggemann <dietmar.eggemann@arm.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
+ Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>
+Cc: Shubhang Kaushik <sh@gentwo.org>, Christopher Lameter <cl@gentwo.org>, 
+ linux-kernel@vger.kernel.org, 
+ Shubhang Kaushik <shubhang@os.amperecomputing.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760093171; l=1482;
- i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
- bh=ys2NNWUvMRWSNrqqE75d/Agpj0X5GunxR0O5cIjS0+s=;
- b=zBpqK6IpjtdrVtovPKjZFXMscyFRS/aovVGopagjDr07kHZ2g+Rn8Bz2l8yn850QC/rwg1Z2W
- 5EdQvlweuoxAm5ybl4mHETIzsjc2dHIS0i4oIw3YzP9HmnTx/8heVz7
-X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
- pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
-X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760128713; l=2865;
+ i=shubhang@os.amperecomputing.com; s=20251010; h=from:subject:message-id;
+ bh=PoMBnuR5rndeOerIM079JrSnbV5lxjXSoJlYvGNDmFk=;
+ b=Pnfun07Y50EISghGQEvlrJChPVOFGksQ6XRZQu0/jfMWv6keif6pHq7dPcfC3QL1n8Bk2BVGB
+ kX5ls7ykMs9CF9yDaTgjGVZ7ETv2Nl0RHZLSZC1aNgRC8aZDFV7Frkq
+X-Developer-Key: i=shubhang@os.amperecomputing.com; a=ed25519;
+ pk=jc8YIRvxPSyJaBRe5y+a4N0RXKBUEcAh8+OFhlROXPY=
+X-Endpoint-Received: by B4 Relay for shubhang@os.amperecomputing.com/20251010 with auth_id=539
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On 32-bit architectures, when GFP_NOFS is used, the file cache for write
-operations cannot be allocated from the highmem and CMA.
+Refactor the logic for adding a cfs_rq to the leaf list into a helper
+function.
 
-Since mapping->gfp_mask is set to GFP_HIGHUSER_MOVABLE during inode
-allocation, using mapping_gfp_mask(mapping) as the GFP flag of getting file
-cache for writing is more efficient for 32-bit architectures.
+The existing code repeated the logic to check if the cfs_rq was
+throttled and added it to the leaf list. This change extracts that
+logic into the static inline helper `__cfs_rq_maybe_add_leaf()`, which
+is a more robust naming convention for an internal helper.
 
-Additionally, use FGP_NOFS to avoid potential deadlock issues caused by
-GFP_FS in GFP_HIGHUSER_MOVABLE
+This refactoring removes code duplication and makes the parent function,
+`propagate_entity_cfs_rq()`, cleaner and easier to read.
 
-Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
+Signed-off-by: Shubhang Kaushik <shubhang@os.amperecomputing.com>
 ---
-Changes in v2:
-- Add FGP_NOFS to keep original GFP_NOFS flag.
-- Link to v1: https://lore.kernel.org/r/20250918-origin-dev-v1-1-8d9877df9e77@amlogic.com
+Refactor repeated cfs_rq leaf logic in `propagate_entity_cfs_rq()`
+into a new helper function, `__cfs_rq_maybe_add_leaf()`, to
+remove code duplication and improve readability.
 ---
- fs/f2fs/data.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ kernel/sched/fair.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
 
-diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index 7961e0ddfca3aaa332b7dbd4985ae7766551834f..b449edb519d9069f58572685d607a2502e4c9473 100644
---- a/fs/f2fs/data.c
-+++ b/fs/f2fs/data.c
-@@ -3587,7 +3587,8 @@ static int f2fs_write_begin(const struct kiocb *iocb,
- 	 * Will wait that below with our IO control.
- 	 */
- 	folio = __filemap_get_folio(mapping, index,
--				FGP_LOCK | FGP_WRITE | FGP_CREAT, GFP_NOFS);
-+				FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_NOFS,
-+				mapping_gfp_mask(mapping));
- 	if (IS_ERR(folio)) {
- 		err = PTR_ERR(folio);
- 		goto fail;
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index bc0b7ce8a65d6bbe616953f530f7a02bb619537c..fe714c68f0ef52c08c552ce93741f29df95d7d1c 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -13159,6 +13159,18 @@ prio_changed_fair(struct rq *rq, struct task_struct *p, int oldprio)
+ }
+ 
+ #ifdef CONFIG_FAIR_GROUP_SCHED
++/*
++ * If a task gets attached to this cfs_rq and, before being queued,
++ * it gets migrated to another CPU (e.g., due to reasons like affinity change),
++ * this cfs_rq must remain on leaf cfs_rq list. This allows the
++ * removed load to decay properly; otherwise, it can cause a fairness problem.
++ */
++static inline void __cfs_rq_maybe_add_leaf(struct cfs_rq *cfs_rq)
++{
++	if (!cfs_rq_pelt_clock_throttled(cfs_rq))
++		list_add_leaf_cfs_rq(cfs_rq);
++}
++
+ /*
+  * Propagate the changes of the sched_entity across the tg tree to make it
+  * visible to the root
+@@ -13167,14 +13179,7 @@ static void propagate_entity_cfs_rq(struct sched_entity *se)
+ {
+ 	struct cfs_rq *cfs_rq = cfs_rq_of(se);
+ 
+-	/*
+-	 * If a task gets attached to this cfs_rq and before being queued,
+-	 * it gets migrated to another CPU due to reasons like affinity
+-	 * change, make sure this cfs_rq stays on leaf cfs_rq list to have
+-	 * that removed load decayed or it can cause faireness problem.
+-	 */
+-	if (!cfs_rq_pelt_clock_throttled(cfs_rq))
+-		list_add_leaf_cfs_rq(cfs_rq);
++	__cfs_rq_maybe_add_leaf(cfs_rq);
+ 
+ 	/* Start to propagate at parent */
+ 	se = se->parent;
+@@ -13184,8 +13189,7 @@ static void propagate_entity_cfs_rq(struct sched_entity *se)
+ 
+ 		update_load_avg(cfs_rq, se, UPDATE_TG);
+ 
+-		if (!cfs_rq_pelt_clock_throttled(cfs_rq))
+-			list_add_leaf_cfs_rq(cfs_rq);
++		__cfs_rq_maybe_add_leaf(cfs_rq);
+ 	}
+ }
+ #else /* !CONFIG_FAIR_GROUP_SCHED: */
 
 ---
-base-commit: c872b6279cd26762339ff02513e2a3f16149a6f1
-change-id: 20250910-origin-dev-8a5ff6bee1f2
+base-commit: 0d97f2067c166eb495771fede9f7b73999c67f66
+change-id: 20251010-sched-cfs-refactor-propagate-e6345a291f3c
 
 Best regards,
 -- 
-Jiucheng Xu <jiucheng.xu@amlogic.com>
+Shubhang Kaushik <shubhang@os.amperecomputing.com>
 
