@@ -1,206 +1,131 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Mon, 13 Oct 2025 15:24:58 +0200
-Subject: [PATCH 8/8] sysctl: Add optional range checking to
- SYSCTL_INT_CONV_CUSTOM
+From: Anthony Brandon <anthony@amarulasolutions.com>
+Date: Mon, 13 Oct 2025 17:48:49 +0200
+Subject: [PATCH v5] dmaengine: xilinx: xdma: Fix regmap max_register
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251013-jag-sysctl_conv-v1-8-4dc35ceae733@kernel.org>
-References: <20251013-jag-sysctl_conv-v1-0-4dc35ceae733@kernel.org>
-In-Reply-To: <20251013-jag-sysctl_conv-v1-0-4dc35ceae733@kernel.org>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Kees Cook <kees@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joel Granados <joel.granados@kernel.org>
+Message-Id: <20251013-xdma-max-reg-v5-1-83efeedce19d@amarulasolutions.com>
+X-B4-Tracking: v=1; b=H4sIAGAf7WgC/33OSw6CMBCA4auYrq1h+uDhynsYFwOt0ASoaYFgC
+ Hd3cGVIZPlPZr7MwqINzkZ2PS0s2MlF53sKfT6xqsG+ttwZaiYSoZMiAT6bDnmHMw+25pCqokq
+ VLqTOGZ28gn26+cvdH9SNi4MP768+wTb9A03AgZcpJkqnYE0JN+wwjC1G344D/RQvle/YZk7iy
+ BHkPFFmQmIGeWUOHPnriJ0jydEbVOZGlKAPHPXryJ2jyMkLlQmATNPKH2dd1w9iAz6ziwEAAA=
+ =
+X-Change-ID: 20250901-xdma-max-reg-1649c6459358
+To: Lizhi Hou <lizhi.hou@amd.com>, Brian Xu <brian.xu@amd.com>, 
+ Raj Kumar Rampelli <raj.kumar.rampelli@amd.com>, 
+ Vinod Koul <vkoul@kernel.org>, Michal Simek <michal.simek@amd.com>, 
+ Sonal Santan <sonal.santan@amd.com>, Max Zhen <max.zhen@amd.com>
+Cc: dmaengine@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Radhey Shyam Pandey <radhey.shyam.pandey@amd.com>, 
+ Alexander Stein <alexander.stein@ew.tq-group.com>, 
+ Anthony Brandon <anthony@amarulasolutions.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6108;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=WFmYwNqRtEEV71HErtXjnELu0hh+bKYykNpfWVGpcO8=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGjs/df2qPSmaNQsmWp35kE3R6r63EL/tLd3D
- jxjLSoMwd++h4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJo7P3XAAoJELqXzVK3
- lkFPJi8MAIsUkiq0T8pTVzJVdJ/BJTkqWnf5Um2Na/zccXAaszr1sCjtpLDsIvXs+lUxaBiARZE
- P4eq/fFNTFmaT4sq4jYdC3EPtORgZ61iyjZzGI3553loRzVKs46qzAs3U9XToNARkYbLxaEpNg8
- WLzOrqMC0opJtspwPgs2utluKOs9GALRizcUaGF32CatM8H02sG4G3wF3Fz3eY1bYTe6TvtvYKc
- 96LMMkjvkG6mPQ3DGXyq5JYJ8ZHyDfv+JgIIHIuGzEKnhB/Zpu0DR2AJGLQOUnmMXJvwA/LNqyt
- 74asicQIoxXhTItx6XsxZOoQyegEakioEs033CKM80g4mcMuOpwwU5cp+hT3OtNIGMcOFjg6SAL
- vC+LrNATNM6heKtwR6O9Ps4v+kKafUcVoPvsqYwSPhiG+BFcGp+sxdx55R9x7WXXbKljQryrr1r
- DQSqbHwsg+grMOmu+zyAfPiNyBTJILnJM+CsNIgzRfUe3ed6Yx6Qnik6BNyUkxpL5FrNrOgWz57
- Ro=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3329;
+ i=anthony@amarulasolutions.com; h=from:subject:message-id;
+ bh=zm9B3BfNwF6YoIlqBfCv8ID8sIfD6lc0Mod18hncI6s=;
+ b=owGbwMvMwCUWIi5b4HjluATjabUkhoy38i3rlObXltcKZGfnZTPlh9lcYd6vyn/49ZLII2Z7V
+ zfmbuLqKGVhEONikBVTZCnXkef1UK4rV5r5xBhmDisTyBAGLk4BmIjSK0aG74I+Eye1VMtoRaSf
+ vfenvyH4HtOzP/dPvvCf3pkzt2STEcP/ml6O2V2P+g8ziN2LO621z2pZv9of2R0yt3/ofpY4s72
+ eDwA=
+X-Developer-Key: i=anthony@amarulasolutions.com; a=openpgp;
+ fpr=772C1F0D48237E772299E43354171D7041D4C718
+X-Endpoint-Received: by B4 Relay for anthony@amarulasolutions.com/default with auth_id=505
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extend the SYSCTL_INT_CONV_CUSTOM macro with a k_ptr_range_check
-parameter to conditionally generate range validation code. When enabled,
-validation is done against table->extra1 (min) and table->extra2 (max)
-bounds before assignment. Add base minmax and ms_jiffies_minmax
-converter instances that utilize the range checking functionality.
+The max_register field is assigned the size of the register memory
+region instead of the offset of the last register.
+The result is that reading from the regmap via debugfs can cause
+a segmentation fault:
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+tail /sys/kernel/debug/regmap/xdma.1.auto/registers
+Unable to handle kernel paging request at virtual address ffff800082f70000
+Mem abort info:
+  ESR = 0x0000000096000007
+  EC = 0x25: DABT (current EL), IL = 32 bits
+  SET = 0, FnV = 0
+  EA = 0, S1PTW = 0
+  FSC = 0x07: level 3 translation fault
+[...]
+Call trace:
+ regmap_mmio_read32le+0x10/0x30
+ _regmap_bus_reg_read+0x74/0xc0
+ _regmap_read+0x68/0x198
+ regmap_read+0x54/0x88
+ regmap_read_debugfs+0x140/0x380
+ regmap_map_read_file+0x30/0x48
+ full_proxy_read+0x68/0xc8
+ vfs_read+0xcc/0x310
+ ksys_read+0x7c/0x120
+ __arm64_sys_read+0x24/0x40
+ invoke_syscall.constprop.0+0x64/0x108
+ do_el0_svc+0xb0/0xd8
+ el0_svc+0x38/0x130
+ el0t_64_sync_handler+0x120/0x138
+ el0t_64_sync+0x194/0x198
+Code: aa1e03e9 d503201f f9400000 8b214000 (b9400000)
+---[ end trace 0000000000000000 ]---
+note: tail[1217] exited with irqs disabled
+note: tail[1217] exited with preempt_count 1
+Segmentation fault
+
+Fixes: 17ce252266c7 ("dmaengine: xilinx: xdma: Add xilinx xdma driver")
+Reviewed-by: Lizhi Hou <lizhi.hou@amd.com>
+Reviewed-by: Radhey Shyam Pandey <radhey.shyam.pandey@amd.com>
+Reviewed-by: Alexander Stein <alexander.stein@ew.tq-group.com>
+Signed-off-by: Anthony Brandon <anthony@amarulasolutions.com>
 ---
- kernel/sysctl.c | 106 +++++++++++++++++++++-----------------------------------
- 1 file changed, 40 insertions(+), 66 deletions(-)
+Changes in v5:
+- Update Reviewed-by
+- Link to v4: https://lore.kernel.org/r/20250903-xdma-max-reg-v4-1-894721175025@amarulasolutions.com
 
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index e7dc4b79e93ea9ab929ce0465143aed74be444e5..60f7618083516a24530f46f6eabccd108e90c74f 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -402,6 +402,34 @@ int sysctl_kern_to_user_int_conv##name(bool *negp,		\
- 	return 0;						\
- }
+Changes in v4:
+- Reorder Reviewed-by
+- Link to v3: https://lore.kernel.org/r/20250902-xdma-max-reg-v3-1-5fa37b8d2b15@amarulasolutions.com
+
+Changes in v3:
+- Add Fixes tag
+- Link to v2: https://lore.kernel.org/r/20250901-xdma-max-reg-v2-1-fa3723a718cd@amarulasolutions.com
+
+Changes in v2:
+- Define new constant XDMA_MAX_REG_OFFSET and use that.
+- Link to v1: https://lore.kernel.org/r/20250901-xdma-max-reg-v1-1-b6a04561edb1@amarulasolutions.com
+---
+ drivers/dma/xilinx/xdma-regs.h | 1 +
+ drivers/dma/xilinx/xdma.c      | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/dma/xilinx/xdma-regs.h b/drivers/dma/xilinx/xdma-regs.h
+index 6ad08878e93862b770febb71b8bc85e66813428e..70bca92621aa41b0367d1e236b3e276344a26320 100644
+--- a/drivers/dma/xilinx/xdma-regs.h
++++ b/drivers/dma/xilinx/xdma-regs.h
+@@ -9,6 +9,7 @@
  
-+/**
-+ * To range check on a converted value, use a temp k_ptr
-+ * When checking range, value should be within (tbl->extra1, tbl->extra2)
-+ */
-+#define SYSCTL_INT_CONV_CUSTOM(name, user_to_kern, kern_to_user,	\
-+			       k_ptr_range_check)			\
-+int do_proc_int_conv##name(bool *negp, unsigned long *u_ptr, int *k_ptr,\
-+			   int dir, const struct ctl_table *tbl)	\
-+{									\
-+	if (SYSCTL_KERN_TO_USER(dir))					\
-+		return kern_to_user(negp, u_ptr, k_ptr);		\
-+									\
-+	if (k_ptr_range_check) {					\
-+		int tmp_k, ret;						\
-+		if (!tbl)						\
-+			return -EINVAL;					\
-+		ret = user_to_kern(negp, u_ptr, &tmp_k);		\
-+		if (ret)						\
-+			return ret;					\
-+		if ((tbl->extra1 && *(int *)tbl->extra1 > tmp_k) ||	\
-+		    (tbl->extra2 && *(int *)tbl->extra2 < tmp_k))	\
-+			return -EINVAL;					\
-+		WRITE_ONCE(*k_ptr, tmp_k);				\
-+	} else								\
-+		return user_to_kern(negp, u_ptr, k_ptr);		\
-+	return 0;							\
-+}
-+
- #define SYSCTL_CONV_IDENTITY(val) val
- #define SYSCTL_CONV_MULT_HZ(val) ((val) * HZ)
- #define SYSCTL_CONV_DIV_HZ(val) ((val) / HZ)
-@@ -418,24 +446,21 @@ static SYSCTL_KERN_TO_USER_INT_CONV(_userhz, jiffies_to_clock_t)
- static SYSCTL_USER_TO_KERN_INT_CONV(_ms, msecs_to_jiffies)
- static SYSCTL_KERN_TO_USER_INT_CONV(_ms, jiffies_to_msecs)
+ /* The length of register space exposed to host */
+ #define XDMA_REG_SPACE_LEN	65536
++#define XDMA_MAX_REG_OFFSET	(XDMA_REG_SPACE_LEN - 4)
  
--#define SYSCTL_INT_CONV_CUSTOM(name, user_to_kern, kern_to_user)	\
--int do_proc_int_conv##name(bool *negp, unsigned long *u_ptr, int *k_ptr,\
--			   int dir, const struct ctl_table *table)	\
--{									\
--	if (SYSCTL_USER_TO_KERN(dir))					\
--		return user_to_kern(negp, u_ptr, k_ptr);		\
--	return kern_to_user(negp, u_ptr, k_ptr);			\
--}
--
- static SYSCTL_INT_CONV_CUSTOM(, sysctl_user_to_kern_int_conv,
--			      sysctl_kern_to_user_int_conv)
-+			      sysctl_kern_to_user_int_conv, false)
- static SYSCTL_INT_CONV_CUSTOM(_jiffies, sysctl_user_to_kern_int_conv_hz,
--			      sysctl_kern_to_user_int_conv_hz)
-+			      sysctl_kern_to_user_int_conv_hz, false)
- static SYSCTL_INT_CONV_CUSTOM(_userhz_jiffies,
- 			      sysctl_user_to_kern_int_conv_userhz,
--			      sysctl_kern_to_user_int_conv_userhz)
-+			      sysctl_kern_to_user_int_conv_userhz, false)
- static SYSCTL_INT_CONV_CUSTOM(_ms_jiffies, sysctl_user_to_kern_int_conv_ms,
--			      sysctl_kern_to_user_int_conv_ms)
-+			      sysctl_kern_to_user_int_conv_ms, false)
-+
-+static SYSCTL_INT_CONV_CUSTOM(_minmax, sysctl_user_to_kern_int_conv,
-+			      sysctl_kern_to_user_int_conv, true)
-+static SYSCTL_INT_CONV_CUSTOM(_ms_jiffies_minmax,
-+			      sysctl_user_to_kern_int_conv_ms,
-+			      sysctl_kern_to_user_int_conv_ms, true)
- 
- static int do_proc_douintvec_conv(unsigned long *u_ptr,
- 				  unsigned int *k_ptr, int dir,
-@@ -721,32 +746,6 @@ int proc_douintvec(const struct ctl_table *table, int dir, void *buffer,
- 				 do_proc_douintvec_conv);
- }
- 
--static int do_proc_dointvec_minmax_conv(bool *negp, unsigned long *u_ptr,
--					int *k_ptr, int dir,
--					const struct ctl_table *table)
--{
--	int tmp, ret, *min, *max;
--	/*
--	 * If writing to a kernel variable, first do so via a temporary
--	 * local int so we can bounds-check it before touching *k_ptr.
--	 */
--	int *ip = SYSCTL_USER_TO_KERN(dir) ? &tmp : k_ptr;
--
--	ret = do_proc_int_conv(negp, u_ptr, ip, dir, table);
--	if (ret)
--		return ret;
--
--	if (SYSCTL_USER_TO_KERN(dir)) {
--		min = (int *) table->extra1;
--		max = (int *) table->extra2;
--		if ((min && *min > tmp) || (max && *max < tmp))
--			return -EINVAL;
--		WRITE_ONCE(*k_ptr, tmp);
--	}
--
--	return 0;
--}
--
- /**
-  * proc_dointvec_minmax - read a vector of integers with min/max values
-  * @table: the sysctl table
-@@ -768,7 +767,7 @@ int proc_dointvec_minmax(const struct ctl_table *table, int dir,
- 		  void *buffer, size_t *lenp, loff_t *ppos)
- {
- 	return do_proc_dointvec(table, dir, buffer, lenp, ppos,
--				do_proc_dointvec_minmax_conv);
-+				do_proc_int_conv_minmax);
- }
- 
- static int do_proc_douintvec_minmax_conv(unsigned long *u_ptr,
-@@ -994,31 +993,6 @@ int proc_doulongvec_ms_jiffies_minmax(const struct ctl_table *table, int dir,
- 					 lenp, ppos, HZ, 1000l);
- }
- 
--static int do_proc_dointvec_ms_jiffies_minmax_conv(bool *negp, unsigned long *u_ptr,
--						int *k_ptr, int dir,
--						const struct ctl_table *table)
--{
--	int tmp, ret, *min, *max;
--	/*
--	 * If writing to a kernel var, first do so via a temporary local
--	 * int so we can bounds-check it before touching *k_ptr.
--	 */
--	int *ip = SYSCTL_USER_TO_KERN(dir) ? &tmp : k_ptr;
--
--	ret = do_proc_int_conv_ms_jiffies(negp, u_ptr, ip, dir, table);
--	if (ret)
--		return ret;
--
--	if (SYSCTL_USER_TO_KERN(dir)) {
--		min = (int *) table->extra1;
--		max = (int *) table->extra2;
--		if ((min && *min > tmp) || (max && *max < tmp))
--			return -EINVAL;
--		*k_ptr = tmp;
--	}
--	return 0;
--}
--
- /**
-  * proc_dointvec_jiffies - read a vector of integers as seconds
-  * @table: the sysctl table
-@@ -1045,7 +1019,7 @@ int proc_dointvec_ms_jiffies_minmax(const struct ctl_table *table, int dir,
- 			  void *buffer, size_t *lenp, loff_t *ppos)
- {
- 	return do_proc_dointvec(table, dir, buffer, lenp, ppos,
--			do_proc_dointvec_ms_jiffies_minmax_conv);
-+			do_proc_int_conv_ms_jiffies_minmax);
- }
+ /*
+  * maximum number of DMA channels for each direction:
+diff --git a/drivers/dma/xilinx/xdma.c b/drivers/dma/xilinx/xdma.c
+index 0d88b1a670e142dac90d09c515809faa2476a816..5ecf8223c112e468c79ce635398ba393a535b9e0 100644
+--- a/drivers/dma/xilinx/xdma.c
++++ b/drivers/dma/xilinx/xdma.c
+@@ -38,7 +38,7 @@ static const struct regmap_config xdma_regmap_config = {
+ 	.reg_bits = 32,
+ 	.val_bits = 32,
+ 	.reg_stride = 4,
+-	.max_register = XDMA_REG_SPACE_LEN,
++	.max_register = XDMA_MAX_REG_OFFSET,
+ };
  
  /**
 
+---
+base-commit: 52ba76324a9d7c39830c850999210a36ef023cde
+change-id: 20250901-xdma-max-reg-1649c6459358
+
+Best regards,
 -- 
-2.50.1
+Anthony Brandon <anthony@amarulasolutions.com>
 
