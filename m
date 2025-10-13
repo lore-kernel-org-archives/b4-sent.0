@@ -1,15 +1,13 @@
 From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Subject: [PATCH v3 0/2] iio: humditiy: hdc3020: fix units
-Date: Mon, 13 Oct 2025 10:12:24 +0200
-Message-Id: <20251013-hdc3020-units-fix-v3-0-b21fab32b882@liebherr.com>
+Date: Mon, 13 Oct 2025 10:12:25 +0200
+Subject: [PATCH v3 1/2] iio: humditiy: hdc3020: fix units for temperature
+ and humidity measurement
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGi07GgC/23OwQrCMAwG4FcZPVtJW+o2T76HeFjbaAO6STuLM
- vbuZgMRxFP4f8iXTCJjIsxiX00iYaFMQ8/BbCrhY9dfUFLgLDRoC40GGYM3wPPR05jlmZ6yVRi
- ca7wPUAveuyfkejWPJ86R8jik13qiqKX9aOqPVpQEuescOG+s8RYPV0IXMaWtH25iAYv+Ii38R
- TQjy7um6ZRtVf2DzPP8BqlA69j6AAAA
-X-Change-ID: 20250820-hdc3020-units-fix-91edbb8ccd07
+Message-Id: <20251013-hdc3020-units-fix-v3-1-b21fab32b882@liebherr.com>
+References: <20251013-hdc3020-units-fix-v3-0-b21fab32b882@liebherr.com>
+In-Reply-To: <20251013-hdc3020-units-fix-v3-0-b21fab32b882@liebherr.com>
 To: Javier Carrasco <javier.carrasco.cruz@gmail.com>, 
  Li peiyu <579lpy@gmail.com>, Jonathan Cameron <jic23@kernel.org>, 
  David Lechner <dlechner@baylibre.com>, 
@@ -20,48 +18,48 @@ Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>,
  Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
  Chris Lesiak <chris.lesiak@licorbio.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760343146; l=1432;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760343146; l=1338;
  i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=Q9TzgMoAejlDFlmZ5G079fvuQS5MtL4UbyrPJYcppzc=;
- b=juZNio1LzXN5fafKQhIIT7T4eSqo3PTXRc+NPXmYQahkQ7XX4Qg3Lf/fyiiv57XPAT8FmTdHA
- ti5K4zIBS/JAjiAW7Iy9UP31YkRbhIZd6p17scYlJj4XNiQlU9N1D0l
+ bh=1Poi65ufYWSrgXpM9TeB84HDWnd8hM9UVI5WIoXbC1w=;
+ b=s8LClymFEp1kf0mUNZQXxOPLSgpCZB00Z4q7LsFJFhPs5OYF7J0Cl8e6ofHXyXS+CYBj4Orkl
+ tkFFpO3ev62DBXC3+p4bqo2wzz8O+KHKQ4XhyNoiEXzZow1+qlsxwn5
 X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
  pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
 X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix units to milli degree celsius and milli percent for temperature
-respectively relative humidity measurements and thresholds.
+According to the ABI the units after application of scale and offset are
+milli degrees for temperature measurements and milli percent for relative
+humidity measurements. Currently the resulting units are degree celsius for
+temperature measurements and percent for relative humidity measurements.
+Change scale factor to fix this issue.
 
+Fixes: c9180b8e39be ("iio: humidity: Add driver for ti HDC302x humidity sensors")
+Reported-by: Chris Lesiak <chris.lesiak@licorbio.com>
+Suggested-by: Chris Lesiak <chris.lesiak@licorbio.com>
+Reviewed-by: Javier Carrasco <javier.carrasco.cruz@gmail.com>
 Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
-Changes in v3:
-- Fix verbose comment for define HDC3020_THRESH_FRACTION (Javier)
-- Embed prescale into define HDC3020_THRESH_FRACTION to make the division
-  by 5 calculation in threshold calculations explicit. (Andy)
-- Add resulting units into comments again in hdc3020_thresh_get_temp and
-  hdc3020_thresh_get_hum (Andy)
-- Link to v2: https://lore.kernel.org/r/20250901-hdc3020-units-fix-v2-0-082038a15917@liebherr.com
+ drivers/iio/humidity/hdc3020.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Changes in v2:
-- Added explanation what is wrong at the moment into commit msg
-- Added define HDC3020_THRESH_FRACTION and comment at the beginning of the
-  code.
-- Use MILLI for instead of hardcoded 1000.
-- Link to v1: https://lore.kernel.org/r/20250821-hdc3020-units-fix-v1-0-6ab0bc353c5e@liebherr.com
+diff --git a/drivers/iio/humidity/hdc3020.c b/drivers/iio/humidity/hdc3020.c
+index ffb25596d3a8bad01d1f84a9a972561266f65d76..8aa567d9aded9cab461f1f905b6b5ada721ba2f0 100644
+--- a/drivers/iio/humidity/hdc3020.c
++++ b/drivers/iio/humidity/hdc3020.c
+@@ -301,9 +301,9 @@ static int hdc3020_read_raw(struct iio_dev *indio_dev,
+ 	case IIO_CHAN_INFO_SCALE:
+ 		*val2 = 65536;
+ 		if (chan->type == IIO_TEMP)
+-			*val = 175;
++			*val = 175 * MILLI;
+ 		else
+-			*val = 100;
++			*val = 100 * MILLI;
+ 		return IIO_VAL_FRACTIONAL;
+ 
+ 	case IIO_CHAN_INFO_OFFSET:
 
----
-Dimitri Fedrau (2):
-      iio: humditiy: hdc3020: fix units for temperature and humidity measurement
-      iio: humditiy: hdc3020: fix units for thresholds and hysteresis
-
- drivers/iio/humidity/hdc3020.c | 71 ++++++++++++++++++++++++------------------
- 1 file changed, 41 insertions(+), 30 deletions(-)
----
-base-commit: 875e7d357a7f2e77a7f3fc4759d0aa0872c33027
-change-id: 20250820-hdc3020-units-fix-91edbb8ccd07
-
-Best regards,
 -- 
-Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+2.39.5
 
