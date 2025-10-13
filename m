@@ -1,79 +1,67 @@
-From: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
-Date: Sat, 11 Oct 2025 17:51:18 +0800
-Subject: [PATCH] ALSA: usb-audio: apply quirk for Huawei Technologies Co.,
- Ltd. CM-Q3
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Subject: [PATCH v3 0/2] iio: humditiy: hdc3020: fix units
+Date: Mon, 13 Oct 2025 10:12:24 +0200
+Message-Id: <20251013-hdc3020-units-fix-v3-0-b21fab32b882@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251011-sound_quirk-v1-1-d693738108ee@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAJUo6mgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDA0ND3eL80ryU+MLSzKJsXbNEC2MjM2MjUxNTQyWgjoKi1LTMCrBp0bG
- 1tQD01tW+XQAAAA==
-X-Change-ID: 20251011-sound_quirk-6a8326325451
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, zhanjun@uniontech.com, niecheng1@uniontech.com, 
- anguoli@uniontech.com, zhaochengyi@uniontech.com, fengyuan@uniontech.com, 
- Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+X-B4-Tracking: v=1; b=H4sIAGi07GgC/23OwQrCMAwG4FcZPVtJW+o2T76HeFjbaAO6STuLM
+ vbuZgMRxFP4f8iXTCJjIsxiX00iYaFMQ8/BbCrhY9dfUFLgLDRoC40GGYM3wPPR05jlmZ6yVRi
+ ca7wPUAveuyfkejWPJ86R8jik13qiqKX9aOqPVpQEuescOG+s8RYPV0IXMaWtH25iAYv+Ii38R
+ TQjy7um6ZRtVf2DzPP8BqlA69j6AAAA
+X-Change-ID: 20250820-hdc3020-units-fix-91edbb8ccd07
+To: Javier Carrasco <javier.carrasco.cruz@gmail.com>, 
+ Li peiyu <579lpy@gmail.com>, Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Dimitri Fedrau <dima.fedrau@gmail.com>
+Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
+ linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
+ Chris Lesiak <chris.lesiak@licorbio.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760176282; l=1832;
- i=cryolitia.pukngae@linux.dev; s=20250730; h=from:subject:message-id;
- bh=c9Dv+k+WMCSOf8X6lgtRzh+GIEDTCEfsKKsqpy5DtgY=;
- b=wbp7xEW18wbmtw1ngB9hiPnogk1zwwypB0R5ze/0nCz7RPFSzg38kofd2SAaZfo+CLgutOA/t
- +SKFP291munD1kixPWbiEcz6xwMIQ5abOt9OQ3Pq9q3D4bahtbTm5MD
-X-Developer-Key: i=cryolitia.pukngae@linux.dev; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia.pukngae@linux.dev/20250730 with auth_id=540
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760343146; l=1432;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=Q9TzgMoAejlDFlmZ5G079fvuQS5MtL4UbyrPJYcppzc=;
+ b=juZNio1LzXN5fafKQhIIT7T4eSqo3PTXRc+NPXmYQahkQ7XX4Qg3Lf/fyiiv57XPAT8FmTdHA
+ ti5K4zIBS/JAjiAW7Iy9UP31YkRbhIZd6p17scYlJj4XNiQlU9N1D0l
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There're several different actual hardwares sold by Huawei, using the
-same USB ID 12d1:3a07.
+Fix units to milli degree celsius and milli percent for temperature
+respectively relative humidity measurements and thresholds.
 
-The first one we found, having a volume control named "Headset Playback
-Volume", reports a min value -15360, and will mute iff setting it to
--15360. It can be simply fixed by quirk flag MIXER_PLAYBACK_MIN_MUTE,
-which we have already submitted previously.[1]
-
-The second one we found today, having a volume control named "PCM
-Playback Volume", reports its min -11520 and res 256, and will mute
-when less than -11008. Because of the already existing quirk flag, we
-can just set its min to -11264, and the new minimum value will still
-not be available to userspace, so that userspace's minimum will be the
-correct -11008.
-
-1. https://lore.kernel.org/all/20250903-sound-v1-3-d4ca777b8512@uniontech.com/
-
-Tested-by: Guoli An <anguoli@uniontech.com>
-Signed-off-by: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
- sound/usb/mixer.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v3:
+- Fix verbose comment for define HDC3020_THRESH_FRACTION (Javier)
+- Embed prescale into define HDC3020_THRESH_FRACTION to make the division
+  by 5 calculation in threshold calculations explicit. (Andy)
+- Add resulting units into comments again in hdc3020_thresh_get_temp and
+  hdc3020_thresh_get_hum (Andy)
+- Link to v2: https://lore.kernel.org/r/20250901-hdc3020-units-fix-v2-0-082038a15917@liebherr.com
 
-diff --git a/sound/usb/mixer.c b/sound/usb/mixer.c
-index 34bcbfd8b54e66abc0229eefd354eb7bc4c01576..ae412e651faf905c9f7d600de8e19c51995cd3f9 100644
---- a/sound/usb/mixer.c
-+++ b/sound/usb/mixer.c
-@@ -1189,6 +1189,13 @@ static void volume_control_quirks(struct usb_mixer_elem_info *cval,
- 			cval->min = -14208; /* Mute under it */
- 		}
- 		break;
-+	case USB_ID(0x12d1, 0x3a07): /* Huawei Technologies Co., Ltd. CM-Q3 */
-+		if (!strcmp(kctl->id.name, "PCM Playback Volume")) {
-+			usb_audio_info(chip,
-+				       "set volume quirk for Huawei Technologies Co., Ltd. CM-Q3\n");
-+			cval->min = -11264; /* Mute under it */
-+		}
-+		break;
- 	}
- }
- 
+Changes in v2:
+- Added explanation what is wrong at the moment into commit msg
+- Added define HDC3020_THRESH_FRACTION and comment at the beginning of the
+  code.
+- Use MILLI for instead of hardcoded 1000.
+- Link to v1: https://lore.kernel.org/r/20250821-hdc3020-units-fix-v1-0-6ab0bc353c5e@liebherr.com
 
 ---
-base-commit: 7e9827afc78073096149cf3565ba668fe2ef4831
-change-id: 20251011-sound_quirk-6a8326325451
+Dimitri Fedrau (2):
+      iio: humditiy: hdc3020: fix units for temperature and humidity measurement
+      iio: humditiy: hdc3020: fix units for thresholds and hysteresis
+
+ drivers/iio/humidity/hdc3020.c | 71 ++++++++++++++++++++++++------------------
+ 1 file changed, 41 insertions(+), 30 deletions(-)
+---
+base-commit: 875e7d357a7f2e77a7f3fc4759d0aa0872c33027
+change-id: 20250820-hdc3020-units-fix-91edbb8ccd07
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
