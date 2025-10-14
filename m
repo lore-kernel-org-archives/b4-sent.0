@@ -1,82 +1,98 @@
-From: Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>
-Date: Tue, 14 Oct 2025 14:57:10 +0530
-Subject: [PATCH v2] soc: qcom: pd-mapper: Add Kaanapali compatible
+From: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
+Subject: [PATCH v2 0/3] Add DisplayPort support to QCS615 devicetree
+Date: Tue, 14 Oct 2025 17:42:09 +0800
+Message-Id: <20251014-add-displayport-support-to-qcs615-devicetree-v2-0-1209df74d410@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251014-knp-pdmapper-v2-v2-1-ba44422ac503@oss.qualcomm.com>
-X-B4-Tracking: v=1; b=H4sIAG0X7mgC/13MywrCMBCF4Vcps3ZKkkaCrnwPcTFNJzZoLiZah
- NJ3N7hw4ebAtzj/CpWL5wrHboXCi68+xQa168DOFK+MfmoGJdReCqnxFjPmKVDOXHBRaNjI0Zn
- BajbQXrmw8+9v8XxpdiUFfM6F6dcRB/XfkSjRWaf1SDwYQ6dUa/940d2mEPo2sG0f20QgkKwAA
- AA=
-X-Change-ID: 20251014-knp-pdmapper-v2-7e71bf73c4e7
-To: Bjorn Andersson <andersson@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAPUa7mgC/5XQwWrDMAwG4FcJPk/FdhOnLWP0PUYPjq2shiROL
+ TeslL77lJSNDTrYTubXQZ9/XQVhCkhiV1xFwilQiAMH/VQId7TDG0LwnIWWulJSlWC9Bx9o7Ox
+ ljCkDncflzRFOjoyqwPMahzkhAjprvdG1la0VvHJM2Ib3hXs9cD4GyjFdFn1S83SGSqWV/B80K
+ ZAgdbsp7Va7smz2p3NwYXArF3txuN3thDylkO8fED0S2aXhrnieC8qtXH93v8w2pk+U55ljD9O
+ GyXpbKycrr7TR+0i0Op1tx2Q/uy9z5QeIMndkBBeHnGLXYfpBUc+ShGkNCrw3EpvG8/Hxz4I2v
+ 57vYZWaq3hXobfWGaebx1BjCWGehLwrKt3Y2qw1H9zzgW8fdcqOeUoCAAA=
+X-Change-ID: 20251014-add-displayport-support-to-qcs615-devicetree-ecaad627a0fa
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jessica.zhang@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>, 
- Jingyi Wang <jingyi.wang@oss.qualcomm.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760434031; l=1855;
- i=prasad.kumpatla@oss.qualcomm.com; s=20251014; h=from:subject:message-id;
- bh=sCqvfA32ZCOl3TIUlO+J7YRwsshujOttwAP0Dgj/0+A=;
- b=/84Xt5SlsU4+IEZFisXbbIcOZxoiS/C2GvlOxuDvVZ2jn9L/zQ+eub17Jy8qQOSf3uT7eIFop
- 95v6Npr3K4NB5QkrDmdmaJqm07H5Y+pBgI8Gwe6QzhOrH8Fw7OwQCDL
-X-Developer-Key: i=prasad.kumpatla@oss.qualcomm.com; a=ed25519;
- pk=I3mn8JNlYnnm7frqMGXms1Rm2H+0gpAfknMlnBYqCzw=
-X-Endpoint-Received: by B4 Relay for prasad.kumpatla@oss.qualcomm.com/20251014 with auth_id=541
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, fange.zhang@oss.qualcomm.com, 
+ yongxing.mou@oss.qualcomm.com, li.liu@oss.qualcomm.com, 
+ Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760434945; l=3054;
+ i=xiangxu.yin@oss.qualcomm.com; s=20241125; h=from:subject:message-id;
+ bh=/Gr1HOypuaP7bHUbs4AJMAplf1XetGJO7uuSZqoK1n8=;
+ b=gwQREpPH6oPRGuFJyAotQ4FMnOfcb7rlgLTOfL6ic8K9UVIf8Cudu+8OYPJW3miQIXXhlK+7h
+ LEf55W1wdoEC+erdvElZjjdQNMH70pS7v5tau+N3ZnHazLyx71Ml0X5
+X-Developer-Key: i=xiangxu.yin@oss.qualcomm.com; a=ed25519;
+ pk=F1TwipJzpywfbt3n/RPi4l/A4AVF+QC89XzCHgZYaOc=
+X-Endpoint-Received: by B4 Relay for xiangxu.yin@oss.qualcomm.com/20241125 with auth_id=542
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the Qualcomm Kaanapali SoC to the protection
-domain mapper. Kaanapali shares the same protection domain
-configuration as SM8550, except charger_pd as it move to SoCCP.
+This series enables DisplayPort functionality on QCS615 platforms.
+It introduces the required bindings, updates SM6150 dtsi for DP controller
+and QMP USB3-DP PHY, and enables DP on the QCS615 Ride board with 
+connector and link configuration.
 
-Signed-off-by: Jingyi Wang <jingyi.wang@oss.qualcomm.com>
-Signed-off-by: Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>
+Depends-on:
+https://lore.kernel.org/all/20250903-add-display-support-for-qcs615-platform-v8-1-7971c05d1262@oss.qualcomm.com/
+https://lore.kernel.org/all/20250916-add-dp-controller-support-for-sm6150-v3-1-dd60ebbd101e@oss.qualcomm.com/
+https://lore.kernel.org/all/20250926-add-displayport-support-for-qcs615-platform-v7-1-dc5edaac6c2b@oss.qualcomm.com/
+
+Signed-off-by: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 ---
 Changes in v2:
-- Add separate pd domain data for Kaanapali SoC.
-- Link to v1: https://lore.kernel.org/r/20250924-knp-pdmapper-v1-1-fcf44bae377a@oss.qualcomm.com
----
+
+- Update register padding and ordering [Dmitry]
+- Rebase the series on the latest driver
+- Link to v1:
+  https://lore.kernel.org/all/20241210-add-displayport-support-to-qcs615-devicetree-v1-0-02f84a92c44b@quicinc.com/
 
 ---
- drivers/soc/qcom/qcom_pd_mapper.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Xiangxu Yin (3):
+      dt-bindings: display/msm: Add SM6150 DisplayPort controller
+      arm64: dts: qcom: Add DisplayPort and QMP USB3DP PHY for SM6150
+      arm64: dts: qcom: Enable DisplayPort on QCS615 Ride platform
 
-diff --git a/drivers/soc/qcom/qcom_pd_mapper.c b/drivers/soc/qcom/qcom_pd_mapper.c
-index 6384f271953d..1bcbe69688d2 100644
---- a/drivers/soc/qcom/qcom_pd_mapper.c
-+++ b/drivers/soc/qcom/qcom_pd_mapper.c
-@@ -360,6 +360,15 @@ static const struct qcom_pdm_domain_data mpss_wlan_pd = {
- 	},
- };
- 
-+static const struct qcom_pdm_domain_data *kaanapali_domains[] = {
-+	&adsp_audio_pd,
-+	&adsp_root_pd,
-+	&adsp_sensor_pd,
-+	&cdsp_root_pd,
-+	&mpss_root_pd_gps,
-+	NULL,
-+};
-+
- static const struct qcom_pdm_domain_data *msm8996_domains[] = {
- 	&msm8996_adsp_audio_pd,
- 	&msm8996_adsp_root_pd,
-@@ -552,6 +561,7 @@ static const struct of_device_id qcom_pdm_domains[] __maybe_unused = {
- 	{ .compatible = "qcom,apq8074", .data = NULL, },
- 	{ .compatible = "qcom,apq8084", .data = NULL, },
- 	{ .compatible = "qcom,apq8096", .data = msm8996_domains, },
-+	{ .compatible = "qcom,kaanapali", .data = kaanapali_domains, },
- 	{ .compatible = "qcom,msm8226", .data = NULL, },
- 	{ .compatible = "qcom,msm8909", .data = NULL, },
- 	{ .compatible = "qcom,msm8916", .data = NULL, },
-
+ .../bindings/display/msm/qcom,sm6150-mdss.yaml     |  11 +++
+ arch/arm64/boot/dts/qcom/qcs615-ride.dts           |  31 ++++++
+ arch/arm64/boot/dts/qcom/sm6150.dtsi               | 110 ++++++++++++++++++++-
+ 3 files changed, 150 insertions(+), 2 deletions(-)
 ---
-base-commit: 2b763d4652393c90eaa771a5164502ec9dd965ae
-change-id: 20251014-knp-pdmapper-v2-7e71bf73c4e7
+base-commit: 52ba76324a9d7c39830c850999210a36ef023cde
+change-id: 20251014-add-displayport-support-to-qcs615-devicetree-ecaad627a0fa
+prerequisite-message-id: <20250903-add-display-support-for-qcs615-platform-v8-0-7971c05d1262@oss.qualcomm.com>
+prerequisite-patch-id: 58be7053007469980bd7cc9fe315b66bbe021c31
+prerequisite-patch-id: 3c2120117f72c64f69beff32c0239fbc7f808f36
+prerequisite-message-id: <20250916-add-dp-controller-support-for-sm6150-v3-1-dd60ebbd101e@oss.qualcomm.com>
+prerequisite-patch-id: eb07ea58347e77ee18fb6dade040affb0ab68954
+prerequisite-message-id: <20250926-add-displayport-support-for-qcs615-platform-v7-0-dc5edaac6c2b@oss.qualcomm.com>
+prerequisite-patch-id: 8c6c905df7ee55a92a4e52362c8fa7cd9742de04
+prerequisite-patch-id: 0dba0fafd032bbd6cd117175f61efd1e56ae9228
+prerequisite-patch-id: d954b18774cfc0cfdb23de09aab3c56cefb8e1ea
+prerequisite-patch-id: 13f2d2efbcee6337001b5f8519a6da9a41d05276
+prerequisite-patch-id: 3a7144645ede23ccc7d54420e5a32e5bfa3bb776
+prerequisite-patch-id: b3ea55e92953c1526eaf7c5c21d939a5f8502711
+prerequisite-patch-id: 977189ef7cecbe7237175a8ef611fffb814193b0
+prerequisite-patch-id: 3a12c1b4f00eb1d074e51d586f2dae3a44de0613
+prerequisite-patch-id: 7f80e93057c1fd088ac6b4b0652cdfe2ea221cd5
+prerequisite-patch-id: 8b29d292717782982e4450a509f4428fe6e895f2
+prerequisite-patch-id: 621c3ba6bcf5b5782a5264faed72fdadfd47c630
+prerequisite-patch-id: 9c63f2c5bb39527e3031b2d168e3c9419441e8df
+prerequisite-patch-id: 364f6a7d8f4e1bc79a8f236b8d5a2425ffd225fe
+prerequisite-patch-id: eb09ea48625b5c0d39ffb37babe7d8c32a4b3122
 
 Best regards,
 -- 
-Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>
+Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 
