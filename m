@@ -1,17 +1,13 @@
 From: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
-Subject: [PATCH v2 0/3] Add DisplayPort support to QCS615 devicetree
-Date: Tue, 14 Oct 2025 17:42:09 +0800
-Message-Id: <20251014-add-displayport-support-to-qcs615-devicetree-v2-0-1209df74d410@oss.qualcomm.com>
+Date: Tue, 14 Oct 2025 17:42:10 +0800
+Subject: [PATCH v2 1/3] dt-bindings: display/msm: Add SM6150 DisplayPort
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPUa7mgC/5XQwWrDMAwG4FcJPk/FdhOnLWP0PUYPjq2shiROL
- TeslL77lJSNDTrYTubXQZ9/XQVhCkhiV1xFwilQiAMH/VQId7TDG0LwnIWWulJSlWC9Bx9o7Ox
- ljCkDncflzRFOjoyqwPMahzkhAjprvdG1la0VvHJM2Ib3hXs9cD4GyjFdFn1S83SGSqWV/B80K
- ZAgdbsp7Va7smz2p3NwYXArF3txuN3thDylkO8fED0S2aXhrnieC8qtXH93v8w2pk+U55ljD9O
- GyXpbKycrr7TR+0i0Op1tx2Q/uy9z5QeIMndkBBeHnGLXYfpBUc+ShGkNCrw3EpvG8/Hxz4I2v
- 57vYZWaq3hXobfWGaebx1BjCWGehLwrKt3Y2qw1H9zzgW8fdcqOeUoCAAA=
-X-Change-ID: 20251014-add-displayport-support-to-qcs615-devicetree-ecaad627a0fa
+Message-Id: <20251014-add-displayport-support-to-qcs615-devicetree-v2-1-1209df74d410@oss.qualcomm.com>
+References: <20251014-add-displayport-support-to-qcs615-devicetree-v2-0-1209df74d410@oss.qualcomm.com>
+In-Reply-To: <20251014-add-displayport-support-to-qcs615-devicetree-v2-0-1209df74d410@oss.qualcomm.com>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
  Dmitry Baryshkov <lumag@kernel.org>, 
  Abhinav Kumar <abhinav.kumar@linux.dev>, 
@@ -29,70 +25,53 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  yongxing.mou@oss.qualcomm.com, li.liu@oss.qualcomm.com, 
  Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760434945; l=3054;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760434945; l=1330;
  i=xiangxu.yin@oss.qualcomm.com; s=20241125; h=from:subject:message-id;
- bh=/Gr1HOypuaP7bHUbs4AJMAplf1XetGJO7uuSZqoK1n8=;
- b=gwQREpPH6oPRGuFJyAotQ4FMnOfcb7rlgLTOfL6ic8K9UVIf8Cudu+8OYPJW3miQIXXhlK+7h
- LEf55W1wdoEC+erdvElZjjdQNMH70pS7v5tau+N3ZnHazLyx71Ml0X5
+ bh=pd0jI9Dkdm+Hpa42+VfaO85gcD6oUV4iAuhBm2NnzVg=;
+ b=lnMjfaYw369vUsnd+dbLjva1gpyTXOX7x5OFH9Bf7zEF1A5UwDY93zxCpfJh3bc1mpBo9nmYU
+ eo1cYeAb9BQAVtUxgXjGiN8+UFKXlgAsTT1ePqEQrbf9ElcK/9aLEad
 X-Developer-Key: i=xiangxu.yin@oss.qualcomm.com; a=ed25519;
  pk=F1TwipJzpywfbt3n/RPi4l/A4AVF+QC89XzCHgZYaOc=
 X-Endpoint-Received: by B4 Relay for xiangxu.yin@oss.qualcomm.com/20241125 with auth_id=542
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series enables DisplayPort functionality on QCS615 platforms.
-It introduces the required bindings, updates SM6150 dtsi for DP controller
-and QMP USB3-DP PHY, and enables DP on the QCS615 Ride board with 
-connector and link configuration.
-
-Depends-on:
-https://lore.kernel.org/all/20250903-add-display-support-for-qcs615-platform-v8-1-7971c05d1262@oss.qualcomm.com/
-https://lore.kernel.org/all/20250916-add-dp-controller-support-for-sm6150-v3-1-dd60ebbd101e@oss.qualcomm.com/
-https://lore.kernel.org/all/20250926-add-displayport-support-for-qcs615-platform-v7-1-dc5edaac6c2b@oss.qualcomm.com/
+Describe the DisplayPort controller for Qualcomm SM6150 SoC.
 
 Signed-off-by: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 ---
-Changes in v2:
+ .../devicetree/bindings/display/msm/qcom,sm6150-mdss.yaml     | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-- Update register padding and ordering [Dmitry]
-- Rebase the series on the latest driver
-- Link to v1:
-  https://lore.kernel.org/all/20241210-add-displayport-support-to-qcs615-devicetree-v1-0-02f84a92c44b@quicinc.com/
+diff --git a/Documentation/devicetree/bindings/display/msm/qcom,sm6150-mdss.yaml b/Documentation/devicetree/bindings/display/msm/qcom,sm6150-mdss.yaml
+index 9ac24f99d3ada1c197c9654dc9babebccae972ed..935eca23ce6b30b81b3ad778e5fcacc817a230c3 100644
+--- a/Documentation/devicetree/bindings/display/msm/qcom,sm6150-mdss.yaml
++++ b/Documentation/devicetree/bindings/display/msm/qcom,sm6150-mdss.yaml
+@@ -51,6 +51,16 @@ patternProperties:
+       compatible:
+         const: qcom,sm6150-dpu
+ 
++  "^displayport-controller@[0-9a-f]+$":
++    type: object
++    additionalProperties: true
++    properties:
++      compatible:
++        items:
++          - const: qcom,sm6150-dp
++          - const: qcom,sm8150-dp
++          - const: qcom,sm8350-dp
++
+   "^dsi@[0-9a-f]+$":
+     type: object
+     additionalProperties: true
+@@ -132,6 +142,7 @@ examples:
+                 port@0 {
+                   reg = <0>;
+                   dpu_intf0_out: endpoint {
++                      remote-endpoint = <&mdss_dp0_in>;
+                   };
+                 };
+ 
 
----
-Xiangxu Yin (3):
-      dt-bindings: display/msm: Add SM6150 DisplayPort controller
-      arm64: dts: qcom: Add DisplayPort and QMP USB3DP PHY for SM6150
-      arm64: dts: qcom: Enable DisplayPort on QCS615 Ride platform
-
- .../bindings/display/msm/qcom,sm6150-mdss.yaml     |  11 +++
- arch/arm64/boot/dts/qcom/qcs615-ride.dts           |  31 ++++++
- arch/arm64/boot/dts/qcom/sm6150.dtsi               | 110 ++++++++++++++++++++-
- 3 files changed, 150 insertions(+), 2 deletions(-)
----
-base-commit: 52ba76324a9d7c39830c850999210a36ef023cde
-change-id: 20251014-add-displayport-support-to-qcs615-devicetree-ecaad627a0fa
-prerequisite-message-id: <20250903-add-display-support-for-qcs615-platform-v8-0-7971c05d1262@oss.qualcomm.com>
-prerequisite-patch-id: 58be7053007469980bd7cc9fe315b66bbe021c31
-prerequisite-patch-id: 3c2120117f72c64f69beff32c0239fbc7f808f36
-prerequisite-message-id: <20250916-add-dp-controller-support-for-sm6150-v3-1-dd60ebbd101e@oss.qualcomm.com>
-prerequisite-patch-id: eb07ea58347e77ee18fb6dade040affb0ab68954
-prerequisite-message-id: <20250926-add-displayport-support-for-qcs615-platform-v7-0-dc5edaac6c2b@oss.qualcomm.com>
-prerequisite-patch-id: 8c6c905df7ee55a92a4e52362c8fa7cd9742de04
-prerequisite-patch-id: 0dba0fafd032bbd6cd117175f61efd1e56ae9228
-prerequisite-patch-id: d954b18774cfc0cfdb23de09aab3c56cefb8e1ea
-prerequisite-patch-id: 13f2d2efbcee6337001b5f8519a6da9a41d05276
-prerequisite-patch-id: 3a7144645ede23ccc7d54420e5a32e5bfa3bb776
-prerequisite-patch-id: b3ea55e92953c1526eaf7c5c21d939a5f8502711
-prerequisite-patch-id: 977189ef7cecbe7237175a8ef611fffb814193b0
-prerequisite-patch-id: 3a12c1b4f00eb1d074e51d586f2dae3a44de0613
-prerequisite-patch-id: 7f80e93057c1fd088ac6b4b0652cdfe2ea221cd5
-prerequisite-patch-id: 8b29d292717782982e4450a509f4428fe6e895f2
-prerequisite-patch-id: 621c3ba6bcf5b5782a5264faed72fdadfd47c630
-prerequisite-patch-id: 9c63f2c5bb39527e3031b2d168e3c9419441e8df
-prerequisite-patch-id: 364f6a7d8f4e1bc79a8f236b8d5a2425ffd225fe
-prerequisite-patch-id: eb09ea48625b5c0d39ffb37babe7d8c32a4b3122
-
-Best regards,
 -- 
-Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
+2.34.1
 
