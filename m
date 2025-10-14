@@ -1,109 +1,82 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 14 Oct 2025 11:20:35 +0200
-Subject: [PATCH v7 3/3] arm64: dts: qcom: sdm845-oneplus: Add alert-slider
+From: Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>
+Date: Tue, 14 Oct 2025 14:57:10 +0530
+Subject: [PATCH v2] soc: qcom: pd-mapper: Add Kaanapali compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251014-op6-tri-state-v7-3-938a6367197b@ixit.cz>
-References: <20251014-op6-tri-state-v7-0-938a6367197b@ixit.cz>
-In-Reply-To: <20251014-op6-tri-state-v7-0-938a6367197b@ixit.cz>
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Jonathan Corbet <corbet@lwn.net>, Jiri Kosina <jikos@kernel.org>, 
- Benjamin Tissoires <bentiss@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
-Cc: linux-input@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
- Gergo Koteles <soyer@irl.hu>, Casey Connolly <casey@connolly.tech>, 
- David Heidelberg <david@ixit.cz>, Konrad Dybcio <konradybcio@kernel.org>
+Message-Id: <20251014-knp-pdmapper-v2-v2-1-ba44422ac503@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAG0X7mgC/13MywrCMBCF4Vcps3ZKkkaCrnwPcTFNJzZoLiZah
+ NJ3N7hw4ebAtzj/CpWL5wrHboXCi68+xQa168DOFK+MfmoGJdReCqnxFjPmKVDOXHBRaNjI0Zn
+ BajbQXrmw8+9v8XxpdiUFfM6F6dcRB/XfkSjRWaf1SDwYQ6dUa/940d2mEPo2sG0f20QgkKwAA
+ AA=
+X-Change-ID: 20251014-knp-pdmapper-v2-7e71bf73c4e7
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>, 
+ Jingyi Wang <jingyi.wang@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1948; i=david@ixit.cz;
- h=from:subject:message-id; bh=L6s7O1s8v/Sby4jirhhYQ1ffxzp8BzROoJRus6IJ3N0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo7hXniF18Aacb9/oEkiWJMPXVtusl336X6/LAy
- 8/OTZ0iBAaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaO4V5wAKCRBgAj/E00kg
- ciNrEACnITmXN760aW8eSm4YI+2YbwuumfXairfYu0xa9bLKypn/P2K3Xq9c7P+t0d/9CCH32YX
- icqmpy17hZBHfQ/EkKTD0SpHttYXXEkwB83IeuI90KpycNQeIBMLfbZeMjZVxsFGJy3IxCy6FO7
- stDxhhOa0/biOj62UTReNoKNHyQb+1+ML6Bx3f3ADvPPEKBC8tmZpHLePGH4R0rj7dGAS6eRbfG
- ofxPqRe52eVoymurikB+/nzi9MDKoI87QQ44Led6O9b9+P+mHuOJzYce+45WjqvbdBzP37PdHcW
- V1o4iQhqFocdcMDB5VWlIxh1PR+vCvTQFsJgav/z6gGnIu8RkrHPO8gmelR9R5AJVpBOct51Ru9
- FGGEriYD3C7IGOt+AMu7GbqfyBVLBRJXsaTddJgejLxwYtIp2UwJ2grc9cDRSHn56O2ikx67eXs
- q1s6cJl08bY6IX6n2cVwoiZhvnbG0JjYHvOzceZuxHUvBZR7SyQQog5x2Sa5qEd+TdVNmjGSiEl
- DU8i1tFGYqCMcR+O0cAZGrkaM7ctnhUpYg5LPJwJPKc+6koEo4WtHZ4+LFWf+BzN1V7uhrLeCwW
- 9/RPEZ+542rSS8opmI5pa3h8Tw1OhQMpUT9xyzUx6SvjjO1sZ1oKtifvyJm6WSMKhq+vg2zdhUK
- o0WDTA8Kl0UY5/Q==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760434031; l=1855;
+ i=prasad.kumpatla@oss.qualcomm.com; s=20251014; h=from:subject:message-id;
+ bh=sCqvfA32ZCOl3TIUlO+J7YRwsshujOttwAP0Dgj/0+A=;
+ b=/84Xt5SlsU4+IEZFisXbbIcOZxoiS/C2GvlOxuDvVZ2jn9L/zQ+eub17Jy8qQOSf3uT7eIFop
+ 95v6Npr3K4NB5QkrDmdmaJqm07H5Y+pBgI8Gwe6QzhOrH8Fw7OwQCDL
+X-Developer-Key: i=prasad.kumpatla@oss.qualcomm.com; a=ed25519;
+ pk=I3mn8JNlYnnm7frqMGXms1Rm2H+0gpAfknMlnBYqCzw=
+X-Endpoint-Received: by B4 Relay for prasad.kumpatla@oss.qualcomm.com/20251014 with auth_id=541
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Gergo Koteles <soyer@irl.hu>
+Add support for the Qualcomm Kaanapali SoC to the protection
+domain mapper. Kaanapali shares the same protection domain
+configuration as SM8550, except charger_pd as it move to SoCCP.
 
-The alert-slider is a tri-state sound profile switch found on the
-OnePlus 6, Android maps the states to "silent", "vibrate" and "ring".
-Expose them as ABS_SND_PROFILE events.
-The previous GPIO numbers were wrong. Update them to the correct ones.
-
-Co-developed-by: Casey Connolly <casey@connolly.tech>
-Signed-off-by: Casey Connolly <casey@connolly.tech>
-Signed-off-by: Gergo Koteles <soyer@irl.hu>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Jingyi Wang <jingyi.wang@oss.qualcomm.com>
+Signed-off-by: Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>
 ---
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 35 ++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+Changes in v2:
+- Add separate pd domain data for Kaanapali SoC.
+- Link to v1: https://lore.kernel.org/r/20250924-knp-pdmapper-v1-1-fcf44bae377a@oss.qualcomm.com
+---
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index 51a9a276399ac..98f5e4c8237a0 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -25,6 +25,41 @@ / {
- 	chassis-type = "handset";
- 	qcom,msm-id = <QCOM_ID_SDM845 0x20001>;
+---
+ drivers/soc/qcom/qcom_pd_mapper.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/drivers/soc/qcom/qcom_pd_mapper.c b/drivers/soc/qcom/qcom_pd_mapper.c
+index 6384f271953d..1bcbe69688d2 100644
+--- a/drivers/soc/qcom/qcom_pd_mapper.c
++++ b/drivers/soc/qcom/qcom_pd_mapper.c
+@@ -360,6 +360,15 @@ static const struct qcom_pdm_domain_data mpss_wlan_pd = {
+ 	},
+ };
  
-+	alert-slider {
-+		compatible = "gpio-keys";
-+		label = "Alert slider";
++static const struct qcom_pdm_domain_data *kaanapali_domains[] = {
++	&adsp_audio_pd,
++	&adsp_root_pd,
++	&adsp_sensor_pd,
++	&cdsp_root_pd,
++	&mpss_root_pd_gps,
++	NULL,
++};
 +
-+		pinctrl-0 = <&alert_slider_default>;
-+		pinctrl-names = "default";
-+
-+		switch-top {
-+			label = "Silent";
-+			linux,input-type = <EV_ABS>;
-+			linux,code = <ABS_SND_PROFILE>;
-+			linux,input-value = <SND_PROFILE_SILENT>;
-+			gpios = <&tlmm 126 GPIO_ACTIVE_LOW>;
-+			linux,can-disable;
-+		};
-+
-+		switch-middle {
-+			label = "Vibrate";
-+			linux,input-type = <EV_ABS>;
-+			linux,code = <ABS_SND_PROFILE>;
-+			linux,input-value = <SND_PROFILE_VIBRATE>;
-+			gpios = <&tlmm 52 GPIO_ACTIVE_LOW>;
-+			linux,can-disable;
-+		};
-+
-+		switch-bottom {
-+			label = "Ring";
-+			linux,input-type = <EV_ABS>;
-+			linux,code = <ABS_SND_PROFILE>;
-+			linux,input-value = <SND_PROFILE_RING>;
-+			gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
-+			linux,can-disable;
-+		};
-+	};
-+
- 	aliases {
- 		serial0 = &uart9;
- 		serial1 = &uart6;
+ static const struct qcom_pdm_domain_data *msm8996_domains[] = {
+ 	&msm8996_adsp_audio_pd,
+ 	&msm8996_adsp_root_pd,
+@@ -552,6 +561,7 @@ static const struct of_device_id qcom_pdm_domains[] __maybe_unused = {
+ 	{ .compatible = "qcom,apq8074", .data = NULL, },
+ 	{ .compatible = "qcom,apq8084", .data = NULL, },
+ 	{ .compatible = "qcom,apq8096", .data = msm8996_domains, },
++	{ .compatible = "qcom,kaanapali", .data = kaanapali_domains, },
+ 	{ .compatible = "qcom,msm8226", .data = NULL, },
+ 	{ .compatible = "qcom,msm8909", .data = NULL, },
+ 	{ .compatible = "qcom,msm8916", .data = NULL, },
 
+---
+base-commit: 2b763d4652393c90eaa771a5164502ec9dd965ae
+change-id: 20251014-knp-pdmapper-v2-7e71bf73c4e7
+
+Best regards,
 -- 
-2.51.0
+Prasad Kumpatla <prasad.kumpatla@oss.qualcomm.com>
 
