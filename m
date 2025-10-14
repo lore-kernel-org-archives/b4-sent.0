@@ -1,11 +1,11 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Date: Tue, 14 Oct 2025 15:02:03 +0200
-Subject: [PATCH v12 17/18] arm64: dts: rockchip: enable vicap dvp on
- wolfvision pf5 io expander
+Date: Tue, 14 Oct 2025 15:02:04 +0200
+Subject: [PATCH v12 18/18] arm64: dts: rockchip: add overlay for radxa
+ camera 8m
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240220-rk3568-vicap-v12-17-c6dbece6bb98@collabora.com>
+Message-Id: <20240220-rk3568-vicap-v12-18-c6dbece6bb98@collabora.com>
 References: <20240220-rk3568-vicap-v12-0-c6dbece6bb98@collabora.com>
 In-Reply-To: <20240220-rk3568-vicap-v12-0-c6dbece6bb98@collabora.com>
 To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
@@ -34,59 +34,141 @@ Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org,
  Michael Riesch <michael.riesch@collabora.com>, 
  Michael Riesch <michael.riesch@collabora.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760446963; l=1661;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760446963; l=3860;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=tkvGHWW1RXCremqXv1+qTo26zNWU0UHQFUaztf+p/DI=;
- b=yWG8JnFKatIrNG3BtVfMvhkpkCRZqmDcfCxXOvBX8GKDRXewVG6MEtYeBPdEOYAnn5MW4Pmp5
- eXS8yn1GQb8CEag/a671YoexAgOJmk5ZodB+7cU+7kVgL9tSYO7Cv5F
+ bh=s8ffrmhVqarbGXNmyNRzp/PbAgcLyEWIBK3xolazp2A=;
+ b=fvfo9TJNZHxhbS4B5qJgnlYi59MIORohISYnTHbyYsDFCfdJU9cWmnaLvd2Cv0BqSzR7kUZyr
+ ggyw6q/zBhcAUVfLTPPPB33SrjoXSQ2r6psno90Zq9tNIC5CFvf8ejy
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Digital Video Port (DVP, the 16-bit variant) of the RK3568 VICAP
-is broken out to the PF5 mainboard expansion header.
-Enable it in the device tree overlay for the WolfVision PF5 IO
-Expander board.
+Add a device tree overlay for the Radxa Camera 8M featuring the Sony
+IMX219 image sensor. The sensor is connected to the RK3568 VICAP MIPI
+CSI-2 port, since as at the time of writing this there is no mainline
+support for the RK3568 ISP.
 
-Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
-Reviewed-by: Gerald Loacker <gerald.loacker@wolfvision.net>
-Tested-by: Gerald Loacker <gerald.loacker@wolfvision.net>
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- .../rockchip/rk3568-wolfvision-pf5-io-expander.dtso  | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ arch/arm64/boot/dts/rockchip/Makefile              |  5 ++
+ .../dts/rockchip/rk3568-rock-3a-radxa-cam8m.dtso   | 90 ++++++++++++++++++++++
+ 2 files changed, 95 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-index 048933de2943..8cfce71dd318 100644
---- a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-@@ -11,6 +11,7 @@
- #include <dt-bindings/clock/rk3568-cru.h>
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/pinctrl/rockchip.h>
+diff --git a/arch/arm64/boot/dts/rockchip/Makefile b/arch/arm64/boot/dts/rockchip/Makefile
+index ad684e3831bc..d6b969a0dab9 100644
+--- a/arch/arm64/boot/dts/rockchip/Makefile
++++ b/arch/arm64/boot/dts/rockchip/Makefile
+@@ -146,6 +146,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-qnap-ts433.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-radxa-e25.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-roc-pc.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3a.dtb
++dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3a-radxa-cam8m.dtbo
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3b.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-wolfvision-pf5.dtb
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-wolfvision-pf5-display-vz.dtbo
+@@ -243,6 +244,10 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-rockpro64-v2-screen.dtb
+ rk3399-rockpro64-v2-screen-dtbs := rk3399-rockpro64-v2.dtb \
+ 	rk3399-rockpro64-screen.dtbo
  
- &{/} {
-@@ -134,3 +135,22 @@ &usb2phy0_host {
- 	phy-supply = <&usb_host_vbus>;
- 	status = "okay";
- };
++dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3a-radxa-8m-cam.dtb
++rk3568-rock-3a-radxa-8m-cam-dtbs := rk3568-rock-3a.dtb \
++	rk3568-rock-3a-radxa-cam8m.dtbo
 +
-+&vicap {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&cif_clk &cif_dvp_clk &cif_dvp_bus16>;
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-wolfvision-pf5-vz-2-uhd.dtb
+ rk3568-wolfvision-pf5-vz-2-uhd-dtbs := rk3568-wolfvision-pf5.dtb \
+ 	rk3568-wolfvision-pf5-display-vz.dtbo \
+diff --git a/arch/arm64/boot/dts/rockchip/rk3568-rock-3a-radxa-cam8m.dtso b/arch/arm64/boot/dts/rockchip/rk3568-rock-3a-radxa-cam8m.dtso
+new file mode 100644
+index 000000000000..4db177b1c701
+--- /dev/null
++++ b/arch/arm64/boot/dts/rockchip/rk3568-rock-3a-radxa-cam8m.dtso
+@@ -0,0 +1,90 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Device tree overlay for the Radxa Camera 8M attached to the CSI port of
++ * the Radxa ROCK 3A.
++ */
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pinctrl/rockchip.h>
++
++&{/} {
++	clk_cam: clock-cam {
++		compatible = "fixed-clock";
++		clock-frequency = <24000000>;
++		clock-output-names = "clk_cam";
++		#clock-cells = <0>;
++	};
++
++	vcc_camera: regulator-vcc-camera {
++		compatible = "regulator-fixed";
++		enable-active-high;
++		gpio = <&gpio4 RK_PD2 GPIO_ACTIVE_HIGH>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&camera_power_en>;
++		regulator-always-on;
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-name = "vcc_camera";
++		vin-supply = <&vcc_cam>;
++	};
++};
++
++&i2c5 {
++	#address-cells = <1>;
++	clock-frequency = <100000>;
++	#size-cells = <0>;
++	status = "okay";
++
++	imx219: camera-sensor@10 {
++		compatible = "sony,imx219";
++		reg = <0x10>;
++		clocks = <&clk_cam>;
++		clock-names = "xclk";
++		VANA-supply = <&vcc_camera>;
++		VDIG-supply = <&vcc_camera>;
++		VDDL-supply = <&vcc_camera>;
++
++		port {
++			imx219_output: endpoint {
++				data-lanes = <1 2>;
++				link-frequencies = /bits/ 64 <456000000>;
++				remote-endpoint = <&csi_input>;
++			};
++		};
++	};
++};
++
++&pinctrl {
++	cam {
++		camera_power_en: camera-power-en-pinctrl {
++			rockchip,pins = <4 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++};
++
++&csi {
 +	status = "okay";
 +};
 +
-+&vicap_dvp {
-+	vicap_dvp_input: endpoint {
-+		bus-type = <MEDIA_BUS_TYPE_BT656>;
-+		bus-width = <16>;
-+		pclk-sample = <MEDIA_PCLK_SAMPLE_DUAL_EDGE>;
-+		rockchip,dvp-clk-delay = <10>;
++&csi_dphy {
++	status = "okay";
++};
++
++&csi_in {
++	csi_input: endpoint {
++		data-lanes = <1 2>;
++		link-frequencies = /bits/ 64 <456000000>;
++		remote-endpoint = <&imx219_output>;
 +	};
++};
++
++&vicap {
++	status = "okay";
 +};
 +
 +&vicap_mmu {
