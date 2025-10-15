@@ -1,11 +1,10 @@
 From: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
-Date: Wed, 15 Oct 2025 09:53:19 +0800
-Subject: [PATCH v4 2/3] arm64: dts: qcom: Add DisplayPort and QMP USB3DP
- PHY for SM6150
+Date: Wed, 15 Oct 2025 09:53:20 +0800
+Subject: [PATCH v4 3/3] arm64: dts: qcom: qcs615-ride: Enable DisplayPort
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251015-add-displayport-support-to-qcs615-devicetree-v4-2-aa2cb8470e9d@oss.qualcomm.com>
+Message-Id: <20251015-add-displayport-support-to-qcs615-devicetree-v4-3-aa2cb8470e9d@oss.qualcomm.com>
 References: <20251015-add-displayport-support-to-qcs615-devicetree-v4-0-aa2cb8470e9d@oss.qualcomm.com>
 In-Reply-To: <20251015-add-displayport-support-to-qcs615-devicetree-v4-0-aa2cb8470e9d@oss.qualcomm.com>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
@@ -25,177 +24,79 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  yongxing.mou@oss.qualcomm.com, li.liu@oss.qualcomm.com, 
  Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760493278; l=4674;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760493278; l=1548;
  i=xiangxu.yin@oss.qualcomm.com; s=20241125; h=from:subject:message-id;
- bh=FCeC46MGBCbZzKw6tDNV6y0T6thNWku2Gy7wUdKgq50=;
- b=RQa9VcDbHLUF5irKwNqcYABO75K9ms3QO5oTBVT8vKgnlfmzj1tWxyIGux8FCdoJqSshwCku7
- 9VysGTXZ3FhDjt2NsJbwD/yuWfaSUP0HPjGS8VSwmPEooSffWsypzOS
+ bh=d+cJKrXD4tfTqdXBaY3G1wbp7JyY9CM0nzg66HGu5Rc=;
+ b=5hm9x33yHefPI2x0XBMqblgJfCbItC5qN6Hz9DeShMLuP/9I3VYkMY6Zv1gcLnIOU6tYnx5+H
+ Fyj27Ghd1dPB+Yym4haixCYI5CVOcX275qygSfb0QC4Rl4xgdQarS6T
 X-Developer-Key: i=xiangxu.yin@oss.qualcomm.com; a=ed25519;
  pk=F1TwipJzpywfbt3n/RPi4l/A4AVF+QC89XzCHgZYaOc=
 X-Endpoint-Received: by B4 Relay for xiangxu.yin@oss.qualcomm.com/20241125 with auth_id=542
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce DisplayPort controller node and associated QMP USB3-DP PHY
-for SM6150 SoC. Add data-lanes property to the DP endpoint and update
-clock assignments for proper DP integration.
+Add DP connector node and configure MDSS DisplayPort controller for
+QCS615 Ride platform. Include PHY supply settings to support DP output.
 
 Signed-off-by: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/qcom/sm6150.dtsi | 113 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 111 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/qcom/qcs615-ride.dts | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm6150.dtsi b/arch/arm64/boot/dts/qcom/sm6150.dtsi
-index 6128d8c48f9c0807ac488ddac3b2377678e8f8c3..36a536cef99a095938f3e18a9b5e7825308ca426 100644
---- a/arch/arm64/boot/dts/qcom/sm6150.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm6150.dtsi
-@@ -17,6 +17,7 @@
- #include <dt-bindings/power/qcom-rpmpd.h>
- #include <dt-bindings/power/qcom,rpmhpd.h>
- #include <dt-bindings/soc/qcom,rpmh-rsc.h>
-+#include <dt-bindings/phy/phy-qcom-qmp.h>
- 
- / {
- 	interrupt-parent = <&intc>;
-@@ -3717,6 +3718,7 @@ port@0 {
- 						reg = <0>;
- 
- 						dpu_intf0_out: endpoint {
-+							remote-endpoint = <&mdss_dp0_in>;
- 						};
- 					};
- 
-@@ -3749,6 +3751,87 @@ opp-307200000 {
- 				};
- 			};
- 
-+			mdss_dp0: displayport-controller@ae90000 {
-+				compatible = "qcom,sm6150-dp", "qcom,sm8150-dp", "qcom,sm8350-dp";
-+
-+				reg = <0x0 0x0ae90000 0x0 0x200>,
-+				      <0x0 0x0ae90200 0x0 0x200>,
-+				      <0x0 0x0ae90400 0x0 0x600>,
-+				      <0x0 0x0ae90a00 0x0 0x600>,
-+				      <0x0 0x0ae91000 0x0 0x600>;
-+
-+				interrupt-parent = <&mdss>;
-+				interrupts = <12>;
-+
-+				clocks = <&dispcc DISP_CC_MDSS_AHB_CLK>,
-+					 <&dispcc DISP_CC_MDSS_DP_AUX_CLK>,
-+					 <&dispcc DISP_CC_MDSS_DP_LINK_CLK>,
-+					 <&dispcc DISP_CC_MDSS_DP_LINK_INTF_CLK>,
-+					 <&dispcc DISP_CC_MDSS_DP_PIXEL_CLK>,
-+					 <&dispcc DISP_CC_MDSS_DP_PIXEL1_CLK>;
-+				clock-names = "core_iface",
-+					      "core_aux",
-+					      "ctrl_link",
-+					      "ctrl_link_iface",
-+					      "stream_pixel",
-+					      "stream_1_pixel";
-+
-+				assigned-clocks = <&dispcc DISP_CC_MDSS_DP_LINK_CLK_SRC>,
-+						  <&dispcc DISP_CC_MDSS_DP_PIXEL_CLK_SRC>,
-+						  <&dispcc DISP_CC_MDSS_DP_PIXEL1_CLK_SRC>;
-+				assigned-clock-parents = <&usb_qmpphy_2 QMP_USB43DP_DP_LINK_CLK>,
-+							 <&usb_qmpphy_2 QMP_USB43DP_DP_VCO_DIV_CLK>,
-+							 <&usb_qmpphy_2 QMP_USB43DP_DP_VCO_DIV_CLK>;
-+
-+				phys = <&usb_qmpphy_2 QMP_USB43DP_DP_PHY>;
-+				phy-names = "dp";
-+
-+				operating-points-v2 = <&dp_opp_table>;
-+				power-domains = <&rpmhpd RPMHPD_CX>;
-+
-+				#sound-dai-cells = <0>;
-+
-+				status = "disabled";
-+
-+				ports {
-+					#address-cells = <1>;
-+					#size-cells = <0>;
-+
-+					port@0 {
-+						reg = <0>;
-+						mdss_dp0_in: endpoint {
-+							remote-endpoint = <&dpu_intf0_out>;
-+						};
-+					};
-+
-+					port@1 {
-+						reg = <1>;
-+						mdss_dp0_out: endpoint {
-+							data-lanes = <3 2 0 1>;
-+						};
-+					};
-+				};
-+
-+				dp_opp_table: opp-table {
-+					compatible = "operating-points-v2";
-+
-+					opp-160000000 {
-+						opp-hz = /bits/ 64 <160000000>;
-+						required-opps = <&rpmhpd_opp_low_svs>;
-+					};
-+
-+					opp-270000000 {
-+						opp-hz = /bits/ 64 <270000000>;
-+						required-opps = <&rpmhpd_opp_svs>;
-+					};
-+
-+					opp-540000000 {
-+						opp-hz = /bits/ 64 <540000000>;
-+						required-opps = <&rpmhpd_opp_svs_l1>;
-+					};
-+				};
-+			};
-+
- 			mdss_dsi0: dsi@ae94000 {
- 				compatible = "qcom,sm6150-dsi-ctrl", "qcom,mdss-dsi-ctrl";
- 				reg = <0x0 0x0ae94000 0x0 0x400>;
-@@ -3844,8 +3927,8 @@ dispcc: clock-controller@af00000 {
- 				 <&mdss_dsi0_phy DSI_BYTE_PLL_CLK>,
- 				 <&mdss_dsi0_phy DSI_PIXEL_PLL_CLK>,
- 				 <0>,
--				 <0>,
--				 <0>;
-+				 <&usb_qmpphy_2 QMP_USB43DP_DP_LINK_CLK>,
-+				 <&usb_qmpphy_2 QMP_USB43DP_DP_VCO_DIV_CLK>;
- 
- 			#clock-cells = <1>;
- 			#reset-cells = <1>;
-@@ -4214,6 +4297,32 @@ usb_qmpphy: phy@88e6000 {
- 			status = "disabled";
+diff --git a/arch/arm64/boot/dts/qcom/qcs615-ride.dts b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
+index 9ac1dd3483b56f9d1652f8a38f62d759efa92b6a..bb0f4b8265e4807e50d067aed8b21557d97b20dd 100644
+--- a/arch/arm64/boot/dts/qcom/qcs615-ride.dts
++++ b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
+@@ -39,6 +39,20 @@ xo_board_clk: xo-board-clk {
  		};
+ 	};
  
-+		usb_qmpphy_2: phy@88e8000 {
-+			compatible = "qcom,qcs615-qmp-usb3-dp-phy";
-+			reg = <0x0 0x088e8000 0x0 0x2000>;
++	dp0-connector {
++		compatible = "dp-connector";
++		label = "DP0";
++		type = "mini";
 +
-+			clocks = <&gcc GCC_USB2_SEC_PHY_AUX_CLK>,
-+				 <&gcc GCC_USB3_SEC_CLKREF_CLK>,
-+				 <&gcc GCC_AHB2PHY_WEST_CLK>,
-+				 <&gcc GCC_USB2_SEC_PHY_PIPE_CLK>;
-+			clock-names = "aux",
-+				      "ref",
-+				      "cfg_ahb",
-+				      "pipe";
++		hpd-gpios = <&io_expander 8 GPIO_ACTIVE_HIGH>;
 +
-+			resets = <&gcc GCC_USB3PHY_PHY_SEC_BCR >,
-+				 <&gcc GCC_USB3_DP_PHY_SEC_BCR>;
-+			reset-names = "phy_phy",
-+				      "dp_phy";
-+
-+			#clock-cells = <1>;
-+			#phy-cells = <1>;
-+
-+			qcom,tcsr-reg = <&tcsr 0xbff0 0xb24c>;
-+
-+			status = "disabled";
++		port {
++			dp0_connector_in: endpoint {
++				remote-endpoint = <&mdss_dp0_out>;
++			};
 +		};
++	};
 +
- 		usb_1: usb@a6f8800 {
- 			compatible = "qcom,qcs615-dwc3", "qcom,dwc3";
- 			reg = <0x0 0x0a6f8800 0x0 0x400>;
+ 	dp-dsi0-connector {
+ 		compatible = "dp-connector";
+ 		label = "DSI0";
+@@ -423,6 +437,15 @@ &mdss {
+ 	status = "okay";
+ };
+ 
++&mdss_dp0 {
++	status = "okay";
++};
++
++&mdss_dp0_out {
++	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000>;
++	remote-endpoint = <&dp0_connector_in>;
++};
++
+ &mdss_dsi0 {
+ 	vdda-supply = <&vreg_l11a>;
+ 	status = "okay";
+@@ -623,6 +646,13 @@ &usb_qmpphy {
+ 	status = "okay";
+ };
+ 
++&usb_qmpphy_2 {
++	vdda-phy-supply = <&vreg_l5a>;
++	vdda-pll-supply = <&vreg_l12a>;
++
++	status = "okay";
++};
++
+ &usb_1 {
+ 	status = "okay";
+ };
 
 -- 
 2.34.1
