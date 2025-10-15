@@ -1,24 +1,22 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Subject: [PATCH 0/2] gpio: i.MX: make _get_value() able to read output pin
+Date: Wed, 15 Oct 2025 20:03:28 +0200
+Subject: [PATCH 1/2] gpio: i.MX: make _get_value() able to read output pin
  state
-Date: Wed, 15 Oct 2025 20:03:27 +0200
-Message-Id: <20251015-imx_gpio-v1-0-e57925f906bb@hotmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAO/h72gC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDA0NT3czcivj0gsx8XROz1LRUw1TzxKQUYyWg8oKi1LTMCrBR0bG1tQC
- IoRihWgAAAA==
-X-Change-ID: 20251015-imx_gpio-46efe1e7abd3
+Message-Id: <20251015-imx_gpio-v1-1-e57925f906bb@hotmail.com>
+References: <20251015-imx_gpio-v1-0-e57925f906bb@hotmail.com>
+In-Reply-To: <20251015-imx_gpio-v1-0-e57925f906bb@hotmail.com>
 To: Sascha Hauer <s.hauer@pengutronix.de>, 
  BAREBOX <barebox@lists.infradead.org>
 Cc: Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760551410; l=833;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760551410; l=1859;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=fUinb2GjLx6gLrcWShw0RkZz2MWyw79BFrjlkNZPwMQ=;
- b=mGIYu2VABkMCmEl1mOcsB7hQ730IERmxY6FooLlW/gGWSx9nzfz+k3giEw9O8MUxhBQafLucs
- 9TuMok9JUdZBiIBH09LAj0/y5gSqRUawO0h0Ozy2D6KxVqJLTNWmLg9
+ bh=vHG+T7ogHMzxgW2g14+AoBAOsNOAEGw4hWLbHaKKG9E=;
+ b=Dxh71KgmyI4sYbilLElVX6/jr19He7APi7Z/tiJYmom3pU+vIGJMfHhy1WhMnZoPcPBwrPDsY
+ V7EliWA5+MQAqnzB5h0+sYeEBV1LFfM5EpBl54VALetYursSNZCuO8W
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
@@ -28,22 +26,55 @@ Make _get_value() read back the dr register instead of the psr register
 when the direction is set to output. Now _get_value() can actually read
 the state of an output gpio instead of being always low.
 
-Also add a new empty migration guide file.
-
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
----
-Maud Spierings (2):
-      gpio: i.MX: make _get_value() able to read output pin state
-      Documentation: migration-2025.11.0: add new empty file
 
- .../migration-guides/migration-2025.11.0.rst          |  0
- drivers/gpio/gpio-imx.c                               | 19 +++++++++++--------
- 2 files changed, 11 insertions(+), 8 deletions(-)
 ---
-base-commit: 8defba1d0ab1aef9dd5d57710e18d0d02e2c48e2
-change-id: 20251015-imx_gpio-46efe1e7abd3
+inspired by similar logic being used in u-boot and Linux
+---
+ drivers/gpio/gpio-imx.c | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
 
-Best regards,
+diff --git a/drivers/gpio/gpio-imx.c b/drivers/gpio/gpio-imx.c
+index d9499c66cd..bb14c56399 100644
+--- a/drivers/gpio/gpio-imx.c
++++ b/drivers/gpio/gpio-imx.c
+@@ -89,24 +89,27 @@ static int imx_gpio_direction_output(struct gpio_chip *chip, unsigned gpio, int
+ 	return 0;
+ }
+ 
+-static int imx_gpio_get_value(struct gpio_chip *chip, unsigned gpio)
++static int imx_get_direction(struct gpio_chip *chip, unsigned offset)
+ {
+ 	struct imx_gpio_chip *imxgpio = container_of(chip, struct imx_gpio_chip, chip);
+ 	void __iomem *base = imxgpio->base;
+-	u32 val;
+-
+-	val = readl(base + imxgpio->regs->psr);
++	u32 val = readl(base + imxgpio->regs->gdir);
+ 
+-	return val & (1 << gpio) ? 1 : 0;
++	return (val & (1 << offset)) ? GPIOF_DIR_OUT : GPIOF_DIR_IN;
+ }
+ 
+-static int imx_get_direction(struct gpio_chip *chip, unsigned offset)
++static int imx_gpio_get_value(struct gpio_chip *chip, unsigned gpio)
+ {
+ 	struct imx_gpio_chip *imxgpio = container_of(chip, struct imx_gpio_chip, chip);
+ 	void __iomem *base = imxgpio->base;
+-	u32 val = readl(base + imxgpio->regs->gdir);
++	u32 val;
+ 
+-	return (val & (1 << offset)) ? GPIOF_DIR_OUT : GPIOF_DIR_IN;
++	if (imx_get_direction(chip, gpio) == GPIOF_DIR_IN)
++		val = readl(base + imxgpio->regs->psr);
++	else
++		val = readl(base + imxgpio->regs->dr);
++
++	return val & (1 << gpio) ? 1 : 0;
+ }
+ 
+ static struct gpio_ops imx_gpio_ops = {
+
 -- 
-Maud Spierings <maud_spierings@hotmail.com>
+2.51.0
 
