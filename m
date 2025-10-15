@@ -1,79 +1,36 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Wed, 15 Oct 2025 20:03:28 +0200
-Subject: [PATCH 1/2] gpio: i.MX: make _get_value() able to read output pin
- state
+Date: Wed, 15 Oct 2025 20:03:29 +0200
+Subject: [PATCH 2/2] Documentation: migration-2025.11.0: add new empty file
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251015-imx_gpio-v1-1-e57925f906bb@hotmail.com>
+Message-Id: <20251015-imx_gpio-v1-2-e57925f906bb@hotmail.com>
 References: <20251015-imx_gpio-v1-0-e57925f906bb@hotmail.com>
 In-Reply-To: <20251015-imx_gpio-v1-0-e57925f906bb@hotmail.com>
 To: Sascha Hauer <s.hauer@pengutronix.de>, 
  BAREBOX <barebox@lists.infradead.org>
 Cc: Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760551410; l=1859;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760551410; l=428;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=vHG+T7ogHMzxgW2g14+AoBAOsNOAEGw4hWLbHaKKG9E=;
- b=Dxh71KgmyI4sYbilLElVX6/jr19He7APi7Z/tiJYmom3pU+vIGJMfHhy1WhMnZoPcPBwrPDsY
- V7EliWA5+MQAqnzB5h0+sYeEBV1LFfM5EpBl54VALetYursSNZCuO8W
+ bh=gW8TCPiEx6B8yJ+EHdrW4GHmjOlCnTVrBL5K+YZgGoQ=;
+ b=xQaCI7t5r2yNJQ7TAqd7vydYqJ0+tAAXWxEuZC1sYRbzgNgzwG0Jq+prMl+ydXYc1FGOTohxT
+ JipT4orQP5eAbUlSWkWJe/itRdQ9DQRTbXkWLIkgaMam/6o6ftchCBK
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make _get_value() read back the dr register instead of the psr register
-when the direction is set to output. Now _get_value() can actually read
-the state of an output gpio instead of being always low.
+Add an empty file to hold any future migration notes.
 
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
-
 ---
-inspired by similar logic being used in u-boot and Linux
----
- drivers/gpio/gpio-imx.c | 19 +++++++++++--------
- 1 file changed, 11 insertions(+), 8 deletions(-)
+ Documentation/migration-guides/migration-2025.11.0.rst | 0
+ 1 file changed, 0 insertions(+), 0 deletions(-)
 
-diff --git a/drivers/gpio/gpio-imx.c b/drivers/gpio/gpio-imx.c
-index d9499c66cd..bb14c56399 100644
---- a/drivers/gpio/gpio-imx.c
-+++ b/drivers/gpio/gpio-imx.c
-@@ -89,24 +89,27 @@ static int imx_gpio_direction_output(struct gpio_chip *chip, unsigned gpio, int
- 	return 0;
- }
- 
--static int imx_gpio_get_value(struct gpio_chip *chip, unsigned gpio)
-+static int imx_get_direction(struct gpio_chip *chip, unsigned offset)
- {
- 	struct imx_gpio_chip *imxgpio = container_of(chip, struct imx_gpio_chip, chip);
- 	void __iomem *base = imxgpio->base;
--	u32 val;
--
--	val = readl(base + imxgpio->regs->psr);
-+	u32 val = readl(base + imxgpio->regs->gdir);
- 
--	return val & (1 << gpio) ? 1 : 0;
-+	return (val & (1 << offset)) ? GPIOF_DIR_OUT : GPIOF_DIR_IN;
- }
- 
--static int imx_get_direction(struct gpio_chip *chip, unsigned offset)
-+static int imx_gpio_get_value(struct gpio_chip *chip, unsigned gpio)
- {
- 	struct imx_gpio_chip *imxgpio = container_of(chip, struct imx_gpio_chip, chip);
- 	void __iomem *base = imxgpio->base;
--	u32 val = readl(base + imxgpio->regs->gdir);
-+	u32 val;
- 
--	return (val & (1 << offset)) ? GPIOF_DIR_OUT : GPIOF_DIR_IN;
-+	if (imx_get_direction(chip, gpio) == GPIOF_DIR_IN)
-+		val = readl(base + imxgpio->regs->psr);
-+	else
-+		val = readl(base + imxgpio->regs->dr);
-+
-+	return val & (1 << gpio) ? 1 : 0;
- }
- 
- static struct gpio_ops imx_gpio_ops = {
+diff --git a/Documentation/migration-guides/migration-2025.11.0.rst b/Documentation/migration-guides/migration-2025.11.0.rst
+new file mode 100644
+index 0000000000..e69de29bb2
 
 -- 
 2.51.0
