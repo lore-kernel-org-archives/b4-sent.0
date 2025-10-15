@@ -1,197 +1,88 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Wed, 15 Oct 2025 16:56:41 +0200
-Subject: [PATCH v13 18/18] arm64: dts: rockchip: add radxa camera 8m on
- rock 3a csi port
+From: Sven Peter <sven@kernel.org>
+Subject: [PATCH usb-next v2 0/5] Apple Silicon USB3 support - dwc3
+Date: Wed, 15 Oct 2025 15:40:40 +0000
+Message-Id: <20251015-b4-aplpe-dwc3-v2-0-cbd65a2d511a@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240220-rk3568-vicap-v13-18-da164b4918fe@collabora.com>
-References: <20240220-rk3568-vicap-v13-0-da164b4918fe@collabora.com>
-In-Reply-To: <20240220-rk3568-vicap-v13-0-da164b4918fe@collabora.com>
-To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
- Thomas Petazzoni <thomas.petazzoni@bootlin.com>, 
- Gerald Loacker <gerald.loacker@wolfvision.net>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Markus Elfring <Markus.Elfring@web.de>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh+dt@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Paul Kocialkowski <paulk@sys-base.io>, 
- Alexander Shiyan <eagle.alexander923@gmail.com>, 
- Val Packett <val@packett.cool>, Rob Herring <robh@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, 
- Michael Riesch <michael.riesch@collabora.com>, 
- Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760540185; l=4380;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=bWQQTyrmHj2T8R0YJb/80IDIFMO0lILMJZpkYBRnj/o=;
- b=76DdHcEdx4dUGs3ZgThl9xjSHh0R+tkTOaCxcMISXgqSkNLL+fURqzNIQOXZV34VbJDS0uN4h
- eqHgjJIPtshCvGOQG2rVp/4Fl9Z4yY04CbUZG2KjmKphx2bpkxJUS8H
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+X-B4-Tracking: v=1; b=H4sIAHjA72gC/3WNQQ6CMBBFr0Jm7ZiZUoO44h6GBZQpNJJCWkQM4
+ e427F2+vPz3d4gSnER4ZDsEWV10k0+gLhmYofG9oOsSgyJ1Y+IcW43NPM6C3cfkqG1REpeFZlt
+ C2sxBrNvO3hPesUUv2wJ1MoOLyxS+59HKp//TXBkJWTXFnYgMsa5eEryM1yn0UB/H8QMSfIMRt
+ QAAAA==
+X-Change-ID: 20251013-b4-aplpe-dwc3-4f79019741f9
+To: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thinh Nguyen <Thinh.Nguyen@synopsys.com>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sven Peter <sven@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, stable@kernel.org
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2138; i=sven@kernel.org;
+ h=from:subject:message-id; bh=jDD1jxLWDqxUDxesIU9RCN0rgJCoWLFeBdfc8PLouSE=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ8b7A93N2e//l16/ae2y5/XqqMWmLmbfWU6WG6zirWaUS
+ e8Pkn/TUcrCIMbBICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZiIzl6G/56xG6JyT7r+iFV+
+ 9Wvx5YgDi5+ntc2Y5ioaZ/TnaM/r6UsZGaY/errN7IaZ5rYq329vmDVmvvK5f2FC9dElvDN3GoY
+ 7tLIBAA==
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a device tree overlay for the Radxa Camera 8M (featuring the
-Sony IMX219 image sensor) to be connected to the Radxa ROCK 3A CSI
-port.
+Hi,
 
-The image sensor is connected to the RK3568 VICAP MIPI CSI-2
-port, since as at the time of writing this there is no mainline
-support for the RK3568 ISP.
+As discussed in v2 of the combined Apple Silicon USB3 support series
+this one only contains the dwc3 changes without the DTS changes.
 
-Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Changes since v1 of the dwc3-only series:
+- Link to v1: https://lore.kernel.org/r/20251013-b4-aplpe-dwc3-v1-0-12a78000c014@kernel.org
+- Rebased on usb-testing
+- Fixed a trivial merge conflict in glue.h regarding struct dwc3_properties
+- Added DWC3_DEFAULT_PROPERTIES to dwc3-apple.c
+- Added Thinh's Acks (thanks!)
+
+Link to v2 of the combined series: https://lore.kernel.org/asahi/20250906-atcphy-6-17-v2-0-52c348623ef6@kernel.org/
+Changes since v2 of that series:
+- Documented all functions in glue.h
+- Fixed a typo in the example for the dt-bindings
+- Added detailed documentation about how the dwc3 hardware needs to be
+  driven on this platform to the glue driver
+- Renamed dwc3_apple.mode to state and folded in the probe check into
+  the new DWC3_APPLE_PROBE_PENDING state
+- Collected tags
+
+Best,
+
+Sven
+
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- arch/arm64/boot/dts/rockchip/Makefile              |   5 +
- .../dts/rockchip/rk3568-rock-3a-radxa-cam8m.dtso   | 103 +++++++++++++++++++++
- 2 files changed, 108 insertions(+)
+---
+Sven Peter (5):
+      dt-bindings: usb: Add Apple dwc3
+      usb: dwc3: dwc3_power_off_all_roothub_ports: Use ioremap_np when required
+      usb: dwc3: glue: Add documentation
+      usb: dwc3: glue: Allow more fine grained control over mode switches
+      usb: dwc3: Add Apple Silicon DWC3 glue layer driver
 
-diff --git a/arch/arm64/boot/dts/rockchip/Makefile b/arch/arm64/boot/dts/rockchip/Makefile
-index ad684e3831bc..d6b969a0dab9 100644
---- a/arch/arm64/boot/dts/rockchip/Makefile
-+++ b/arch/arm64/boot/dts/rockchip/Makefile
-@@ -146,6 +146,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-qnap-ts433.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-radxa-e25.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-roc-pc.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3a.dtb
-+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3a-radxa-cam8m.dtbo
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3b.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-wolfvision-pf5.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-wolfvision-pf5-display-vz.dtbo
-@@ -243,6 +244,10 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-rockpro64-v2-screen.dtb
- rk3399-rockpro64-v2-screen-dtbs := rk3399-rockpro64-v2.dtb \
- 	rk3399-rockpro64-screen.dtbo
- 
-+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3a-radxa-8m-cam.dtb
-+rk3568-rock-3a-radxa-8m-cam-dtbs := rk3568-rock-3a.dtb \
-+	rk3568-rock-3a-radxa-cam8m.dtbo
-+
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-wolfvision-pf5-vz-2-uhd.dtb
- rk3568-wolfvision-pf5-vz-2-uhd-dtbs := rk3568-wolfvision-pf5.dtb \
- 	rk3568-wolfvision-pf5-display-vz.dtbo \
-diff --git a/arch/arm64/boot/dts/rockchip/rk3568-rock-3a-radxa-cam8m.dtso b/arch/arm64/boot/dts/rockchip/rk3568-rock-3a-radxa-cam8m.dtso
-new file mode 100644
-index 000000000000..3aa1ffdc22d8
---- /dev/null
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-rock-3a-radxa-cam8m.dtso
-@@ -0,0 +1,103 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Device tree overlay for the Radxa Camera 8M attached to the CSI port of
-+ * the Radxa ROCK 3A.
-+ */
-+
-+/dts-v1/;
-+/plugin/;
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/pinctrl/rockchip.h>
-+
-+&{/} {
-+	clk_camera: clock-camera {
-+		compatible = "fixed-clock";
-+		clock-frequency = <24000000>;
-+		clock-output-names = "clk_camera";
-+		#clock-cells = <0>;
-+	};
-+
-+	vana_camera: regulator-vana-camera {
-+		compatible = "regulator-fixed";
-+		regulator-min-microvolt = <2800000>;
-+		regulator-max-microvolt = <2800000>;
-+		regulator-name = "vana_camera";
-+		vin-supply = <&vcc_cam>;
-+	};
-+
-+	vddl_camera: regulator-vddl-camera {
-+		compatible = "regulator-fixed";
-+		regulator-min-microvolt = <1200000>;
-+		regulator-max-microvolt = <1200000>;
-+		regulator-name = "vddl_camera";
-+		vin-supply = <&vcc_cam>;
-+	};
-+
-+	vdig_camera: regulator-vdig-camera {
-+		compatible = "regulator-fixed";
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+		regulator-name = "vdig_camera";
-+		vin-supply = <&vcc_cam>;
-+	};
-+};
-+
-+&i2c5 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
-+
-+	imx219: camera-sensor@10 {
-+		compatible = "sony,imx219";
-+		reg = <0x10>;
-+		clocks = <&clk_camera>;
-+		clock-names = "xclk";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&camera_reset>;
-+		reset-gpios = <&gpio4 RK_PD2 GPIO_ACTIVE_HIGH>;
-+		VANA-supply = <&vana_camera>;
-+		VDDL-supply = <&vddl_camera>;
-+		VDIG-supply = <&vdig_camera>;
-+
-+		port {
-+			imx219_output: endpoint {
-+				data-lanes = <1 2>;
-+				link-frequencies = /bits/ 64 <456000000>;
-+				remote-endpoint = <&csi_input>;
-+			};
-+		};
-+	};
-+};
-+
-+&pinctrl {
-+	cam {
-+		camera_reset: camera-reset-pinctrl {
-+			rockchip,pins = <4 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+};
-+
-+&csi {
-+	status = "okay";
-+};
-+
-+&csi_dphy {
-+	status = "okay";
-+};
-+
-+&csi_in {
-+	csi_input: endpoint {
-+		data-lanes = <1 2>;
-+		link-frequencies = /bits/ 64 <456000000>;
-+		remote-endpoint = <&imx219_output>;
-+	};
-+};
-+
-+&vicap {
-+	status = "okay";
-+};
-+
-+&vicap_mmu {
-+	status = "okay";
-+};
+ .../devicetree/bindings/usb/apple,dwc3.yaml        |  80 ++++
+ MAINTAINERS                                        |   2 +
+ drivers/usb/dwc3/Kconfig                           |  11 +
+ drivers/usb/dwc3/Makefile                          |   1 +
+ drivers/usb/dwc3/core.c                            |  16 +-
+ drivers/usb/dwc3/dwc3-apple.c                      | 489 +++++++++++++++++++++
+ drivers/usb/dwc3/gadget.c                          |   2 +
+ drivers/usb/dwc3/glue.h                            | 143 ++++++
+ drivers/usb/dwc3/host.c                            |   7 +-
+ 9 files changed, 745 insertions(+), 6 deletions(-)
+---
+base-commit: 877c80dfbf788e57a3338627899033b7007037ee
+change-id: 20251013-b4-aplpe-dwc3-4f79019741f9
 
+Best regards,
 -- 
-2.39.5
+Sven Peter <sven@kernel.org>
 
