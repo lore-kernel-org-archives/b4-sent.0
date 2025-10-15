@@ -1,103 +1,78 @@
-From: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
-Date: Wed, 15 Oct 2025 09:53:20 +0800
-Subject: [PATCH v4 3/3] arm64: dts: qcom: qcs615-ride: Enable DisplayPort
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Wed, 15 Oct 2025 15:36:59 +0800
+Subject: [PATCH] spi: amlogic: fix spifc build error
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251015-add-displayport-support-to-qcs615-devicetree-v4-3-aa2cb8470e9d@oss.qualcomm.com>
-References: <20251015-add-displayport-support-to-qcs615-devicetree-v4-0-aa2cb8470e9d@oss.qualcomm.com>
-In-Reply-To: <20251015-add-displayport-support-to-qcs615-devicetree-v4-0-aa2cb8470e9d@oss.qualcomm.com>
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jessica.zhang@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, fange.zhang@oss.qualcomm.com, 
- yongxing.mou@oss.qualcomm.com, li.liu@oss.qualcomm.com, 
- Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760493278; l=1548;
- i=xiangxu.yin@oss.qualcomm.com; s=20241125; h=from:subject:message-id;
- bh=d+cJKrXD4tfTqdXBaY3G1wbp7JyY9CM0nzg66HGu5Rc=;
- b=5hm9x33yHefPI2x0XBMqblgJfCbItC5qN6Hz9DeShMLuP/9I3VYkMY6Zv1gcLnIOU6tYnx5+H
- Fyj27Ghd1dPB+Yym4haixCYI5CVOcX275qygSfb0QC4Rl4xgdQarS6T
-X-Developer-Key: i=xiangxu.yin@oss.qualcomm.com; a=ed25519;
- pk=F1TwipJzpywfbt3n/RPi4l/A4AVF+QC89XzCHgZYaOc=
-X-Endpoint-Received: by B4 Relay for xiangxu.yin@oss.qualcomm.com/20241125 with auth_id=542
+Message-Id: <20251015-fix-spifc-a4-v1-1-08e0900e5b7e@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIABpP72gC/x2MQQqAMAzAvjJ6ttBOHeJXxINo1V5UVhBB9neLx
+ xCSF0yyikEfXshyq+l5OHAVYN6nYxPUxRkixZaJW1z1Qbt0nXFqkLo6ifBClBJ4cmVx/++GsZQ
+ PwDhbkl4AAAA=
+To: Liang Yang <liang.yang@amlogic.com>, Feng Chen <feng.chen@amlogic.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Guenter Roeck <linux@roeck-us.net>, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760513827; l=1872;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=ib4K3AKweceHACtvQk2qAu1Cu/KOa08Hppl4rd6zBYY=;
+ b=8MdBsfApJXW2O9AH4npOlocTZ3FbpagtH4/ZTFZY9aaslApccjLdZcT/BXHUPBJGo1s0YlV/W
+ lFZuormMTOvBtGgqksRN9YUyQZCgOPpnnO2bEryepLQwFmbybNKJmvI
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add DP connector node and configure MDSS DisplayPort controller for
-QCS615 Ride platform. Include PHY supply settings to support DP output.
+There is an error building when
+Compiler version: gcc (GCC) 14.3.0
+Assembler version: GNU assembler (GNU Binutils) 2.44
+"
+ Error log:
+ WARNING: modpost: missing MODULE_DESCRIPTION() in arch/arm/probes/kprobes/test-kprobes.o
+ ERROR: modpost: "__ffsdi2" [drivers/spi/spi-amlogic-spifc-a4.ko] undefined!
+"
 
-Signed-off-by: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
+Use __ffs API instead of __bf_shf to be safer.
+
+Reported-by: Guenter Roeck <linux@roeck-us.net>
+Closes: https://lore.kernel.org/all/f594c621-f9e1-49f2-af31-23fbcb176058@roeck-us.net/
+Fixes: 4670db6f32e9 ("spi: amlogic: add driver for Amlogic SPI Flash Controller")
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/boot/dts/qcom/qcs615-ride.dts | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+Fix build err for spifc.
+---
+ drivers/spi/spi-amlogic-spifc-a4.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/qcs615-ride.dts b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-index 9ac1dd3483b56f9d1652f8a38f62d759efa92b6a..bb0f4b8265e4807e50d067aed8b21557d97b20dd 100644
---- a/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-+++ b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-@@ -39,6 +39,20 @@ xo_board_clk: xo-board-clk {
- 		};
- 	};
+diff --git a/drivers/spi/spi-amlogic-spifc-a4.c b/drivers/spi/spi-amlogic-spifc-a4.c
+index 4338d00e56a6..35a7c4965e11 100644
+--- a/drivers/spi/spi-amlogic-spifc-a4.c
++++ b/drivers/spi/spi-amlogic-spifc-a4.c
+@@ -286,7 +286,7 @@ static int aml_sfc_set_bus_width(struct aml_sfc *sfc, u8 buswidth, u32 mask)
  
-+	dp0-connector {
-+		compatible = "dp-connector";
-+		label = "DP0";
-+		type = "mini";
-+
-+		hpd-gpios = <&io_expander 8 GPIO_ACTIVE_HIGH>;
-+
-+		port {
-+			dp0_connector_in: endpoint {
-+				remote-endpoint = <&mdss_dp0_out>;
-+			};
-+		};
-+	};
-+
- 	dp-dsi0-connector {
- 		compatible = "dp-connector";
- 		label = "DSI0";
-@@ -423,6 +437,15 @@ &mdss {
- 	status = "okay";
- };
+ 	for (i = 0; i <= LANE_MAX; i++) {
+ 		if (buswidth == 1 << i) {
+-			conf = i << __bf_shf(mask);
++			conf = i << __ffs(mask);
+ 			return regmap_update_bits(sfc->regmap_base, SFC_SPI_CFG,
+ 						  mask, conf);
+ 		}
+@@ -566,7 +566,7 @@ static int aml_sfc_raw_io_op(struct aml_sfc *sfc, const struct spi_mem_op *op)
+ 	if (!op->data.nbytes)
+ 		goto end_xfer;
  
-+&mdss_dp0 {
-+	status = "okay";
-+};
-+
-+&mdss_dp0_out {
-+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000>;
-+	remote-endpoint = <&dp0_connector_in>;
-+};
-+
- &mdss_dsi0 {
- 	vdda-supply = <&vreg_l11a>;
- 	status = "okay";
-@@ -623,6 +646,13 @@ &usb_qmpphy {
- 	status = "okay";
- };
- 
-+&usb_qmpphy_2 {
-+	vdda-phy-supply = <&vreg_l5a>;
-+	vdda-pll-supply = <&vreg_l12a>;
-+
-+	status = "okay";
-+};
-+
- &usb_1 {
- 	status = "okay";
- };
+-	conf = (op->data.nbytes >> RAW_SIZE_BW) << __bf_shf(RAW_EXT_SIZE);
++	conf = (op->data.nbytes >> RAW_SIZE_BW) << __ffs(RAW_EXT_SIZE);
+ 	ret = regmap_update_bits(sfc->regmap_base, SFC_SPI_CFG, RAW_EXT_SIZE, conf);
+ 	if (ret)
+ 		goto err_out;
 
+---
+base-commit: 4412ab501677606436e5c49e41151a1e6eac7ac0
+change-id: 20251015-fix-spifc-a4-0836ee1d0066
+
+Best regards,
 -- 
-2.34.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
