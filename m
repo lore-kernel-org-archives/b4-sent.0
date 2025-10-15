@@ -1,78 +1,78 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 15 Oct 2025 15:36:59 +0800
-Subject: [PATCH] spi: amlogic: fix spifc build error
+From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+Subject: [PATCH v4 0/2] phy: add basic support for NXPs TJA1145 CAN
+ transceiver
+Date: Wed, 15 Oct 2025 09:37:07 +0200
+Message-Id: <20251015-tja1145-support-v4-0-4d3ca13c8881@liebherr.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251015-fix-spifc-a4-v1-1-08e0900e5b7e@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIABpP72gC/x2MQQqAMAzAvjJ6ttBOHeJXxINo1V5UVhBB9neLx
- xCSF0yyikEfXshyq+l5OHAVYN6nYxPUxRkixZaJW1z1Qbt0nXFqkLo6ifBClBJ4cmVx/++GsZQ
- PwDhbkl4AAAA=
-To: Liang Yang <liang.yang@amlogic.com>, Feng Chen <feng.chen@amlogic.com>, 
- Mark Brown <broonie@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Guenter Roeck <linux@roeck-us.net>, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760513827; l=1872;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=ib4K3AKweceHACtvQk2qAu1Cu/KOa08Hppl4rd6zBYY=;
- b=8MdBsfApJXW2O9AH4npOlocTZ3FbpagtH4/ZTFZY9aaslApccjLdZcT/BXHUPBJGo1s0YlV/W
- lFZuormMTOvBtGgqksRN9YUyQZCgOPpnnO2bEryepLQwFmbybNKJmvI
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+X-B4-Tracking: v=1; b=H4sIACNP72gC/23N0Q6CIBTG8VdpXEeDA6h01Xu0LhSOSStxYK7mf
+ PfQrdqyy/+3nd8ZScTgMJL9ZiQBBxedb1PI7YaYpmzPSJ1NTYCBYjlktL+UnEtF473rfOipzYy
+ xRlqwpSDpqgtYu8ciHk+pGxd7H57Lg4HP69sqVtbAKaNY2UJqaZVU5nB1WDUYws74G5m5Ab5EA
+ XpNQCIypnVeCyh0rv8Q4kNwxsWaEImQpbYgVY0sy3+IaZpejYzTjjcBAAA=
+X-Change-ID: 20250726-tja1145-support-d6ccdc4d2da3
+To: Vinod Koul <vkoul@kernel.org>, 
+ Kishon Vijay Abraham I <kishon@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-phy@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
+ Dimitri Fedrau <dima.fedrau@gmail.com>, 
+ Marc Kleine-Budde <mkl@pengutronix.de>, linux-can@vger.kernel.org
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760513844; l=1889;
+ i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
+ bh=Oi5QOWrlBOX6yjuVT9iWF7d8j671eUjkCoZ0gfy4CMQ=;
+ b=mPtPFEbP4lBXsbQ5kzDNF6r8woIMJ57Bjg3T/ImFi75H7cQwfG6o+SE6c571+dwh9D3G/2nG9
+ CrfMlvJiIVXB60dK0CgTrpHMofbu0z3gGbrJrI0jIeQy+OOuc3uUikf
+X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
+ pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
+X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There is an error building when
-Compiler version: gcc (GCC) 14.3.0
-Assembler version: GNU assembler (GNU Binutils) 2.44
-"
- Error log:
- WARNING: modpost: missing MODULE_DESCRIPTION() in arch/arm/probes/kprobes/test-kprobes.o
- ERROR: modpost: "__ffsdi2" [drivers/spi/spi-amlogic-spifc-a4.ko] undefined!
-"
+Add basic driver support for NXPs TJA1145 CAN transceiver which brings the
+PHY up/down by switching to normal/standby mode using SPI commands.
 
-Use __ffs API instead of __bf_shf to be safer.
-
-Reported-by: Guenter Roeck <linux@roeck-us.net>
-Closes: https://lore.kernel.org/all/f594c621-f9e1-49f2-af31-23fbcb176058@roeck-us.net/
-Fixes: 4670db6f32e9 ("spi: amlogic: add driver for Amlogic SPI Flash Controller")
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
-Fix build err for spifc.
----
- drivers/spi/spi-amlogic-spifc-a4.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Changes in v4:
+- Change compatible to: nxp,tja1145 (Connor)
+- Mark spi-cpha as required (Connor)
+- Switch from unevaluatedProperties: false to
+  additionalProperties: false (Connor)
+- Remove double newline after tja1145_rd_table (Marc)
+- Link to v3: https://lore.kernel.org/r/20251013-tja1145-support-v3-0-4a9d245fe067@liebherr.com
 
-diff --git a/drivers/spi/spi-amlogic-spifc-a4.c b/drivers/spi/spi-amlogic-spifc-a4.c
-index 4338d00e56a6..35a7c4965e11 100644
---- a/drivers/spi/spi-amlogic-spifc-a4.c
-+++ b/drivers/spi/spi-amlogic-spifc-a4.c
-@@ -286,7 +286,7 @@ static int aml_sfc_set_bus_width(struct aml_sfc *sfc, u8 buswidth, u32 mask)
- 
- 	for (i = 0; i <= LANE_MAX; i++) {
- 		if (buswidth == 1 << i) {
--			conf = i << __bf_shf(mask);
-+			conf = i << __ffs(mask);
- 			return regmap_update_bits(sfc->regmap_base, SFC_SPI_CFG,
- 						  mask, conf);
- 		}
-@@ -566,7 +566,7 @@ static int aml_sfc_raw_io_op(struct aml_sfc *sfc, const struct spi_mem_op *op)
- 	if (!op->data.nbytes)
- 		goto end_xfer;
- 
--	conf = (op->data.nbytes >> RAW_SIZE_BW) << __bf_shf(RAW_EXT_SIZE);
-+	conf = (op->data.nbytes >> RAW_SIZE_BW) << __ffs(RAW_EXT_SIZE);
- 	ret = regmap_update_bits(sfc->regmap_base, SFC_SPI_CFG, RAW_EXT_SIZE, conf);
- 	if (ret)
- 		goto err_out;
+Changes in v3:
+- bindings: fix SPI bus unit address format error
+- bindings: added resolution of discussion into commit msg
+- Checked binding with:
+  make dt_binding_check DT_SCHEMA_FILES=nxp,tja1145-can.yaml
+  Missed it for V2, didn't do it intentionally. Sorry.
+- Link to v2: https://lore.kernel.org/r/20250829-tja1145-support-v2-0-60997f328979@liebherr.com
+
+Changes in v2:
+- bindings: Change node name in example to can-phy
+- bindings: Fix order of properties, reg property is second
+- bindings: Change compatible to match filename
+- change compatible to nxp,tja1145-can
+- Link to v1: https://lore.kernel.org/r/20250728-tja1145-support-v1-0-ebd8494d545c@liebherr.com
 
 ---
-base-commit: 4412ab501677606436e5c49e41151a1e6eac7ac0
-change-id: 20251015-fix-spifc-a4-0836ee1d0066
+Dimitri Fedrau (2):
+      dt-bindings: phy: add support for NXPs TJA1145 CAN transceiver
+      phy: add basic support for NXPs TJA1145 CAN transceiver
+
+ .../devicetree/bindings/phy/nxp,tja1145.yaml       |  80 +++++++++
+ drivers/phy/Kconfig                                |  10 ++
+ drivers/phy/Makefile                               |   1 +
+ drivers/phy/phy-nxp-tja1145.c                      | 184 +++++++++++++++++++++
+ 4 files changed, 275 insertions(+)
+---
+base-commit: 920852baf6bdffb2818c0de8ff3437d8f6570dc2
+change-id: 20250726-tja1145-support-d6ccdc4d2da3
 
 Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 
