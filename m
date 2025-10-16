@@ -1,236 +1,130 @@
-From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Date: Thu, 16 Oct 2025 07:20:39 +0200
-Subject: [PATCH v4 2/2] iio: humditiy: hdc3020: fix units for thresholds
- and hysteresis
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH v2 00/11] sysctl: Generalize proc handler converter
+ creation
+Date: Thu, 16 Oct 2025 14:57:46 +0200
+Message-Id: <20251016-jag-sysctl_conv-v2-0-a2f16529acc4@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251016-hdc3020-units-fix-v4-2-2d9e9f33c7b1@liebherr.com>
-References: <20251016-hdc3020-units-fix-v4-0-2d9e9f33c7b1@liebherr.com>
-In-Reply-To: <20251016-hdc3020-units-fix-v4-0-2d9e9f33c7b1@liebherr.com>
-To: Javier Carrasco <javier.carrasco.cruz@gmail.com>, 
- Li peiyu <579lpy@gmail.com>, Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Dimitri Fedrau <dima.fedrau@gmail.com>
-Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dimitri Fedrau <dimitri.fedrau@liebherr.com>, 
- Chris Lesiak <chris.lesiak@licorbio.com>
+X-B4-Tracking: v=1; b=H4sIAMrr8GgC/2WNywrDIBQFfyXcdS0+Semq/1FCEb0a26BBgzSE/
+ HttoKsuZ+DM2aBgDljg2m2QsYYSUmzATx2YUUePJNjGwClXjDJOntqTshazTA+TYiWqpxcpnXJ
+ WO2irOaML76N4HxqPoSwpr8dBZV/7a4m/VmWEEmmNUAY19kLcXpgjTueUPQz7vn8ASGbnx68AA
+ AA=
+X-Change-ID: 20251012-jag-sysctl_conv-570844f5fdaf
+To: Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+ Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760592043; l=8181;
- i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=Pt1owPyqLdIRddee1tPxLJWpsWGI1P4HraZXhUC0xE0=;
- b=ZzDCBgNtci+xbUKg9SnQ8tgJomzqWfj1vF8GFn587n4EfP5A94hP/VViOqZE3x8Mm3nrrJgJm
- ooVdcnk9QAFDRcYdUVT6sPHW+t7gF8QBWQMwzARXN1jY4dVrkXhPY5m
-X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
- pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
-X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4137;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=4+HSqZIQ5bS9EKW17QMDP9M3ASEnduvLXw6N2k0mFYQ=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGjw69TK4Q/XJn/jNUe2s4Idect6fUZtE12V5
+ urDrI+vxczpUYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJo8OvUAAoJELqXzVK3
+ lkFPWUIL/AppNzwct+2sP6xYBFj8qjy1lU+wa6BJ35raoOLGlVN7PD5ZdINjwlXhtwMIq70O0H9
+ B9KdxN5LVk1cVlNZd9xh6/irFwPgbUhSL1ZQj4DVSnrlWvzRp+qvep6G4GI+hUaccBbHJ8zoe5D
+ IQOJueiLr9iA/vOrVwywyyoVnZuoVW1LUUKhXkWqsKWmRrtU5MNcueILGVB/3wDNvo0eSFCkw08
+ 0KJtYzhJPnbzctb6HYRlQJe/usmoOAfX9VdOFvzAUm3M9BDlqkapC3daZscAQkvfUSPqzTpbMky
+ l6aWV5Zz34xn4/ZLhIi7I1SBpoLorDu/6YYLbgfijyYhaAK0SIcSh7vkQzwNtHTd8R6ssXFFJD6
+ cSQpWKemFEUb0qWN9gvvmQMK+Q1NU7c9P/TaE4x84XWPhQbJoihNlHlxO5dUP9xKFhB0qnvv73K
+ B78E+iFMxAnBcs0ukeHaGKynlRrgcH5+DbYpFrAme+g37O7Q4YukQxRVgcQ2k0wyNLVIZwjCzu7
+ Hk=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-According to the ABI the units after application of scale and offset are
-milli degree celsius for temperature thresholds and milli percent for
-relative humidity thresholds. Currently the resulting units are degree
-celsius for temperature thresholds and hysteresis and percent for relative
-humidity thresholds and hysteresis. Change scale factor to fix this issue.
+Implement new converter generation macros that remove repeated logic and
+prep the proc handler converter infrastructure for exposure to the
+greater kernel. Macros will be exposed in a later series so they can be
+used in jiffies.c and pipe.c (like in this branch [1]).
 
-Fixes: 3ad0e7e5f0cb ("iio: humidity: hdc3020: add threshold events support")
-Reported-by: Chris Lesiak <chris.lesiak@licorbio.com>
-Reviewed-by: Javier Carrasco <javier.carrasco.cruz@gmail.com>
-Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+What is done?
+=============
+
+Three integer macros (SYSCTL_{KERN_TO_USER,USER_TO_KERN}_INT_CONV and
+SYSCTL_INT_CONV_CUSTOM) are created.
+  * SYSCTL_INT_CONV_CUSTOM: creates a bi-directional (handles both user
+    to kernel and kernel to user writes) converter that optionally
+    implements a range checker for when kernel memory is written.
+  * SYSCTL_KERN_TO_USER_INT_CONV: is a uni-directional converter that
+    writes to a user buffer avoiding tears with READ_ONCE and setting
+    the negp variable appropriately; it generates functions that do not
+    fail.
+  * SYSCTL_USER_TO_KERN_INT_CONV: is a uni-directional converter that
+    writes to a kernel buffer, checks for integer overflow and avoids
+    tears by using with WRITE_ONCE; returns -EINVAL when an overflow is
+    detected.
+
+Two unsigned integer macros (SYSCTL_USER_TO_KERN_UINT_CONV and
+SYSCTL_UINT_CONV_CUSTOM) are created.
+  * SYSCTL_UINT_CONV_CUSTOM: Same as SYSCTL_INT_CONV_CUSTOM except that
+    there are no special cases for negative values.
+  * SYSCTL_USER_TO_KERN_UINT_CONV: Same as SYSCTL_USER_TO_KERN_INT_CONV
+    except that there is no need to indicate when the value is negative.
+    The check for overflow is done against UINT_MAX instead of INT_MAX.
+
+For now these macros produce static functions that are used from within
+kernel/sysctl.c. The idea is to move them to include/kernel/sysctl.h in
+another series so they can be used to create custom converters.
+
+Why it is done?
+===============
+
+Motivation is to move non-sysctl logic out of kernel/sysctl.c which had
+become a dumping ground for ctl_tables until this trend was changed by
+the commits leading to (and including) 73184c8e4ff4 ("sysctl: rename
+kern_table -> sysctl_subsys_table"). This series does not move the
+jiffie logic out, but it sets things up so it can eventually be evicted
+from kernel/sysctl.c.
+
+Testing
+=======
+
+* I ran this through the sysctl selftests and sysctl kunit tests on an
+  x86_64 arch
+* This also goes through the sysctl-testing 0-day CI infra.
+
+Versions
+========
+
+Changes in v2:
+- Corrected cover letter wording
+- Added macros for unsigned int converters. Three new commits:
+    - sysctl: Create macro for user-to-kernel uint converter
+    - sysctl: Add optional range checking to SYSCTL_UINT_CONV_CUSTOM
+    - sysctl: Create unsigned int converter using new macro
+  Added to prepare for when the macros will be used from outside of
+  sysctl.c (to be added in another series)
+- Link to v1: https://lore.kernel.org/r/20251013-jag-sysctl_conv-v1-0-4dc35ceae733@kernel.org
+
+Any comments are greatly appreciated
+
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/joel.granados/linux.git/log/?h=jag/sysctl_jiffies
+
 ---
- drivers/iio/humidity/hdc3020.c | 69 +++++++++++++++++++++++++-----------------
- 1 file changed, 41 insertions(+), 28 deletions(-)
+Joel Granados (11):
+      sysctl: Replace void pointer with const pointer to ctl_table
+      sysctl: Remove superfluous tbl_data param from "dovec" functions
+      sysctl: Remove superfluous __do_proc_* indirection
+      sysctl: Indicate the direction of operation with macro names
+      sysctl: Discriminate between kernel and user converter params
+      sysctl: Create converter functions with two new macros
+      sysctl: Create integer converters with one macro
+      sysctl: Add optional range checking to SYSCTL_INT_CONV_CUSTOM
+      sysctl: Create unsigned int converter using new macro
+      sysctl: Add optional range checking to SYSCTL_UINT_CONV_CUSTOM
+      sysctl: Create macro for user-to-kernel uint converter
 
-diff --git a/drivers/iio/humidity/hdc3020.c b/drivers/iio/humidity/hdc3020.c
-index 8aa567d9aded9cab461f1f905b6b5ada721ba2f0..78b2c171c8dac2f11fcd5404497ffeba76e837f6 100644
---- a/drivers/iio/humidity/hdc3020.c
-+++ b/drivers/iio/humidity/hdc3020.c
-@@ -72,6 +72,9 @@
- #define HDC3020_MAX_TEMP_HYST_MICRO	164748607
- #define HDC3020_MAX_HUM_MICRO		99220264
- 
-+/* Divide 65535 from the datasheet by 5 to avoid overflows */
-+#define HDC3020_THRESH_FRACTION		(65535 / 5)
-+
- struct hdc3020_data {
- 	struct i2c_client *client;
- 	struct gpio_desc *reset_gpio;
-@@ -376,15 +379,18 @@ static int hdc3020_thresh_get_temp(u16 thresh)
- 	int temp;
- 
- 	/*
--	 * Get the temperature threshold from 9 LSBs, shift them to get
--	 * the truncated temperature threshold representation and
--	 * calculate the threshold according to the formula in the
--	 * datasheet. Result is degree celsius scaled by 65535.
-+	 * Get the temperature threshold from 9 LSBs, shift them to get the
-+	 * truncated temperature threshold representation and calculate the
-+	 * threshold according to the explicit formula in the datasheet:
-+	 * T(C) = -45 + (175 * temp) / 65535.
-+	 * Additionally scale by HDC3020_THRESH_FRACTION to avoid precision loss
-+	 * when calculating threshold and hysteresis values. Result is degree
-+	 * celsius scaled by HDC3020_THRESH_FRACTION.
- 	 */
- 	temp = FIELD_GET(HDC3020_THRESH_TEMP_MASK, thresh) <<
- 	       HDC3020_THRESH_TEMP_TRUNC_SHIFT;
- 
--	return -2949075 + (175 * temp);
-+	return -2949075 / 5 + (175 / 5 * temp);
- }
- 
- static int hdc3020_thresh_get_hum(u16 thresh)
-@@ -394,13 +400,16 @@ static int hdc3020_thresh_get_hum(u16 thresh)
- 	/*
- 	 * Get the humidity threshold from 7 MSBs, shift them to get the
- 	 * truncated humidity threshold representation and calculate the
--	 * threshold according to the formula in the datasheet. Result is
--	 * percent scaled by 65535.
-+	 * threshold according to the explicit formula in the datasheet:
-+	 * RH(%) = 100 * hum / 65535.
-+	 * Additionally scale by HDC3020_THRESH_FRACTION to avoid precision loss
-+	 * when calculating threshold and hysteresis values. Result is percent
-+	 * scaled by HDC3020_THRESH_FRACTION.
- 	 */
- 	hum = FIELD_GET(HDC3020_THRESH_HUM_MASK, thresh) <<
- 	      HDC3020_THRESH_HUM_TRUNC_SHIFT;
- 
--	return hum * 100;
-+	return hum * 100 / 5;
- }
- 
- static u16 hdc3020_thresh_set_temp(int s_temp, u16 curr_thresh)
-@@ -455,8 +464,8 @@ int hdc3020_thresh_clr(s64 s_thresh, s64 s_hyst, enum iio_event_direction dir)
- 	else
- 		s_clr = s_thresh + s_hyst;
- 
--	/* Divide by 65535 to get units of micro */
--	return div_s64(s_clr, 65535);
-+	/* Divide by HDC3020_THRESH_FRACTION to get units of micro */
-+	return div_s64(s_clr, HDC3020_THRESH_FRACTION);
- }
- 
- static int _hdc3020_write_thresh(struct hdc3020_data *data, u16 reg, u16 val)
-@@ -507,7 +516,7 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 
- 	clr = ret;
- 	/* Scale value to include decimal part into calculations */
--	s_val = (val < 0) ? (val * 1000000 - val2) : (val * 1000000 + val2);
-+	s_val = (val < 0) ? (val * 1000 - val2) : (val * 1000 + val2);
- 	switch (chan->type) {
- 	case IIO_TEMP:
- 		switch (info) {
-@@ -523,7 +532,8 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 			/* Calculate old hysteresis */
- 			s_thresh = (s64)hdc3020_thresh_get_temp(thresh) * 1000000;
- 			s_clr = (s64)hdc3020_thresh_get_temp(clr) * 1000000;
--			s_hyst = div_s64(abs(s_thresh - s_clr), 65535);
-+			s_hyst = div_s64(abs(s_thresh - s_clr),
-+					 HDC3020_THRESH_FRACTION);
- 			/* Set new threshold */
- 			thresh = reg_val;
- 			/* Set old hysteresis */
-@@ -532,16 +542,17 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 		case IIO_EV_INFO_HYSTERESIS:
- 			/*
- 			 * Function hdc3020_thresh_get_temp returns temperature
--			 * in degree celsius scaled by 65535. Scale by 1000000
--			 * to be able to subtract scaled hysteresis value.
-+			 * in degree celsius scaled by HDC3020_THRESH_FRACTION.
-+			 * Scale by 1000000 to be able to subtract scaled
-+			 * hysteresis value.
- 			 */
- 			s_thresh = (s64)hdc3020_thresh_get_temp(thresh) * 1000000;
- 			/*
- 			 * Units of s_val are in micro degree celsius, scale by
--			 * 65535 to get same units as s_thresh.
-+			 * HDC3020_THRESH_FRACTION to get same units as s_thresh.
- 			 */
- 			s_val = min(abs(s_val), HDC3020_MAX_TEMP_HYST_MICRO);
--			s_hyst = (s64)s_val * 65535;
-+			s_hyst = (s64)s_val * HDC3020_THRESH_FRACTION;
- 			s_clr = hdc3020_thresh_clr(s_thresh, s_hyst, dir);
- 			s_clr = max(s_clr, HDC3020_MIN_TEMP_MICRO);
- 			s_clr = min(s_clr, HDC3020_MAX_TEMP_MICRO);
-@@ -565,7 +576,8 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 			/* Calculate old hysteresis */
- 			s_thresh = (s64)hdc3020_thresh_get_hum(thresh) * 1000000;
- 			s_clr = (s64)hdc3020_thresh_get_hum(clr) * 1000000;
--			s_hyst = div_s64(abs(s_thresh - s_clr), 65535);
-+			s_hyst = div_s64(abs(s_thresh - s_clr),
-+					 HDC3020_THRESH_FRACTION);
- 			/* Set new threshold */
- 			thresh = reg_val;
- 			/* Try to set old hysteresis */
-@@ -574,15 +586,16 @@ static int hdc3020_write_thresh(struct iio_dev *indio_dev,
- 		case IIO_EV_INFO_HYSTERESIS:
- 			/*
- 			 * Function hdc3020_thresh_get_hum returns relative
--			 * humidity in percent scaled by 65535. Scale by 1000000
--			 * to be able to subtract scaled hysteresis value.
-+			 * humidity in percent scaled by HDC3020_THRESH_FRACTION.
-+			 * Scale by 1000000 to be able to subtract scaled
-+			 * hysteresis value.
- 			 */
- 			s_thresh = (s64)hdc3020_thresh_get_hum(thresh) * 1000000;
- 			/*
--			 * Units of s_val are in micro percent, scale by 65535
--			 * to get same units as s_thresh.
-+			 * Units of s_val are in micro percent, scale by
-+			 * HDC3020_THRESH_FRACTION to get same units as s_thresh.
- 			 */
--			s_hyst = (s64)s_val * 65535;
-+			s_hyst = (s64)s_val * HDC3020_THRESH_FRACTION;
- 			s_clr = hdc3020_thresh_clr(s_thresh, s_hyst, dir);
- 			s_clr = max(s_clr, 0);
- 			s_clr = min(s_clr, HDC3020_MAX_HUM_MICRO);
-@@ -630,7 +643,7 @@ static int hdc3020_read_thresh(struct iio_dev *indio_dev,
- 		thresh = hdc3020_thresh_get_temp(ret);
- 		switch (info) {
- 		case IIO_EV_INFO_VALUE:
--			*val = thresh;
-+			*val = thresh * MILLI;
- 			break;
- 		case IIO_EV_INFO_HYSTERESIS:
- 			ret = hdc3020_read_be16(data, reg_clr);
-@@ -638,18 +651,18 @@ static int hdc3020_read_thresh(struct iio_dev *indio_dev,
- 				return ret;
- 
- 			clr = hdc3020_thresh_get_temp(ret);
--			*val = abs(thresh - clr);
-+			*val = abs(thresh - clr) * MILLI;
- 			break;
- 		default:
- 			return -EOPNOTSUPP;
- 		}
--		*val2 = 65535;
-+		*val2 = HDC3020_THRESH_FRACTION;
- 		return IIO_VAL_FRACTIONAL;
- 	case IIO_HUMIDITYRELATIVE:
- 		thresh = hdc3020_thresh_get_hum(ret);
- 		switch (info) {
- 		case IIO_EV_INFO_VALUE:
--			*val = thresh;
-+			*val = thresh * MILLI;
- 			break;
- 		case IIO_EV_INFO_HYSTERESIS:
- 			ret = hdc3020_read_be16(data, reg_clr);
-@@ -657,12 +670,12 @@ static int hdc3020_read_thresh(struct iio_dev *indio_dev,
- 				return ret;
- 
- 			clr = hdc3020_thresh_get_hum(ret);
--			*val = abs(thresh - clr);
-+			*val = abs(thresh - clr) * MILLI;
- 			break;
- 		default:
- 			return -EOPNOTSUPP;
- 		}
--		*val2 = 65535;
-+		*val2 = HDC3020_THRESH_FRACTION;
- 		return IIO_VAL_FRACTIONAL;
- 	default:
- 		return -EOPNOTSUPP;
+ fs/pipe.c              |   6 +-
+ include/linux/sysctl.h |   5 +-
+ kernel/sysctl.c        | 694 +++++++++++++++++++++----------------------------
+ 3 files changed, 298 insertions(+), 407 deletions(-)
+---
+base-commit: e5f0a698b34ed76002dc5cff3804a61c80233a7a
+change-id: 20251012-jag-sysctl_conv-570844f5fdaf
 
+Best regards,
 -- 
-2.39.5
+Joel Granados <joel.granados@kernel.org>
 
