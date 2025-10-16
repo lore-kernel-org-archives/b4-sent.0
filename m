@@ -1,80 +1,71 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Thu, 16 Oct 2025 14:57:57 +0200
-Subject: [PATCH v2 11/11] sysctl: Create macro for user-to-kernel uint
- converter
+From: David Heidelberg <david@ixit.cz>
+Date: Thu, 16 Oct 2025 17:10:50 +0200
+Subject: [PATCH RESEND v3] ARM: multi_v7_defconfig add /proc/config.gz
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251016-jag-sysctl_conv-v2-11-a2f16529acc4@kernel.org>
-References: <20251016-jag-sysctl_conv-v2-0-a2f16529acc4@kernel.org>
-In-Reply-To: <20251016-jag-sysctl_conv-v2-0-a2f16529acc4@kernel.org>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1590;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=xP7pIUDrYB9KQ96n73WKDlnF/Xja1RjBW7d+EpQMu6M=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGjw6+har3JgRhpb7X+yT2YZZPpLBCCBReffZ
- 4u3JcnC1qd+QYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJo8OvoAAoJELqXzVK3
- lkFPC0wL/2nGgxIGHWL6XlsbrXL1jKFc+w1KHAEWTglDc1POPTTpP0zMycx8vI8WergoKcGZm0a
- 8aT2lbab9gWuYsWRK4OQKgIZtfFNKmVNza80mg6bwPVMvOe8UFUWasZDXxWkhUqND35JfHebMET
- HxjVwILebsi/RFWCkyjpqRdcWUESrGwWQ7jxUj4087BkUmtZ2LXt8FUGTyIUxVktZltIUtHwtm0
- cXQIrDUtT7Dt646yB/2LioExvw64/q68vWZGXmCMoz6r1lHFBRLwaL2DrrezclwqRPjNcAYZVeA
- HjiI9bG5e2y7mOOYP0ZLpbvkobJzMVBDVjNJuPXv6rLy8wTBjXE52k7Uj/uXf/j+IuLB57uANrG
- Wxk66e3TUicvF0V3XVEwHeGrY4oTDt4TQeP6jhhwvfBQ5Uh2cjq+EhxJeVvlgrwmTNLejWIc5Ac
- c3oyCTpJpMF2SGQW3W+ClMH2oAwoKENliAh1ow2rgFEGsdBDPUKSuepPQ6ShlEGg0UnHEDjBiw5
- qI=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+Message-Id: <20251016-arm-config_gz-v3-1-3874adbf07ad@ixit.cz>
+To: Russell King <linux@armlinux.org.uk>
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1307; i=david@ixit.cz;
+ h=from:subject:message-id; bh=7w/aD3shZMm8S2nIaaI4q8HkXYxgH0I/7K7GWxdOw78=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo8QsAL6yf9pjJS3iO30WWOBjT6+PwMNJHZhFwG
+ qnooKwCd8SJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPELAAAKCRBgAj/E00kg
+ csuTEACboB0BZzXR0uwri8Qb1JkyA8RYDzGFFe4g9Hrf2EFiCVtOdkvzmo/H5wnnUvXkSKVyNYA
+ jwIMrQRxPDciNoL1AaIqVN2K97isMpKKR2koVJVaWHkhBQiWqQxynMVBHsmjUE0R/mssFizOfa8
+ B5Bi9ILpz9GYlM80tgC3/Tbkx75CgYHbYj4dXfSO+qB2jd5OYX63asmXQwlszi9AkSGj/SKpf7Z
+ t8Vqri322w29wCdzDnDFDoHWqfNO07mR4zfibE0zX2RhKzNvvLwPBq0gSk8r1KUL680F0L9pexx
+ rTlwFOR01b65TFxLfHJP1awvFBnzZ1JZPi2EEzZXUvillNszbJ9yTTIOsNjp2Pfq+rUWk4kDeAX
+ FJ9mYE+ufWvHlR2erSE4V8u+8EP4wRpMhU45KVS0lXmcjtxpQDYkIz5/78rupQrLii1tcqNhppw
+ yOuXkR3Xuw2Et2qyyxsLWPwj8IEzRXxXS5+1DZKcYMdn0YfO+drS7gxik8YfB1lXudeFAJi4fyU
+ I+BJ+0EvDuz7nfz//pTCiiHR7EewLZmEmCLIuy5RS0Bpv4eAS2PhhjjWFQQL5c8unEIc/vy8/3u
+ 2ZwpUhBfOmhtd5BS+SgwKhSgPYjVGAv1GbZ3Ms/LwlyHJuOqlj59BYvT77GtmfMVJSvnyh470Jb
+ cHsrH31gU1Y/LWw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace sysctl_user_to_kern_uint_conv function with
-SYSCTL_USER_TO_KERN_UINT_CONV macro that accepts u_ptr_op parameter for
-value transformation. Replacing sysctl_kern_to_user_uint_conv is not
-needed as it will only be used from within sysctl.c. This is a
-preparation commit for creating a custom converter in fs/pipe.c. No
-Functional changes are intended.
+While 32-bit ARM isn't that widespread, multi_v7_defconfig is used for
+building more generic images, where having access to config can be handy.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+arm64 and x86_64 already bundle config.gz, so this is an effort to provide
+the same level of comfort with ARMv7 devices.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- kernel/sysctl.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+Changes in v3:
+- Rebased against next-20250715; otherwise, just a resend.
+- Link to v2: https://lore.kernel.org/r/20250329-arm-config_gz-v2-1-f725d331fb5d@ixit.cz
 
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 750c94313c1fd23551e03f455585d2dd94f3c758..9b08573bbacdfa0ec036a8043561253c21300c9a 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -462,15 +462,19 @@ static SYSCTL_INT_CONV_CUSTOM(_ms_jiffies_minmax,
- 			      sysctl_user_to_kern_int_conv_ms,
- 			      sysctl_kern_to_user_int_conv_ms, true)
- 
--static int sysctl_user_to_kern_uint_conv(const unsigned long *u_ptr,
--					 unsigned int *k_ptr)
--{
--	if (*u_ptr > UINT_MAX)
--		return -EINVAL;
--	WRITE_ONCE(*k_ptr, *u_ptr);
--	return 0;
-+#define SYSCTL_USER_TO_KERN_UINT_CONV(name, u_ptr_op)		\
-+int sysctl_user_to_kern_uint_conv##name(const unsigned long *u_ptr,\
-+					unsigned int *k_ptr)	\
-+{								\
-+	unsigned long u = u_ptr_op(*u_ptr);			\
-+	if (u > UINT_MAX)					\
-+		return -EINVAL;					\
-+	WRITE_ONCE(*k_ptr, u);					\
-+	return 0;						\
- }
- 
-+static SYSCTL_USER_TO_KERN_UINT_CONV(, SYSCTL_CONV_IDENTITY)
-+
- static int sysctl_kern_to_user_uint_conv(unsigned long *u_ptr,
- 					 const unsigned int *k_ptr)
- {
+Changes in v2:
+- IKCONFIG is now module instead of built-in (Greg).
+- Link to v1: https://lore.kernel.org/r/20230612210208.109267-1-david@ixit.cz
+---
+ arch/arm/configs/multi_v7_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
 
+diff --git a/arch/arm/configs/multi_v7_defconfig b/arch/arm/configs/multi_v7_defconfig
+index 65df4014c4a60..5180c90cb5da1 100644
+--- a/arch/arm/configs/multi_v7_defconfig
++++ b/arch/arm/configs/multi_v7_defconfig
+@@ -1,6 +1,8 @@
+ CONFIG_SYSVIPC=y
+ CONFIG_NO_HZ_IDLE=y
+ CONFIG_HIGH_RES_TIMERS=y
++CONFIG_IKCONFIG=m
++CONFIG_IKCONFIG_PROC=y
+ CONFIG_CGROUPS=y
+ CONFIG_BLK_DEV_INITRD=y
+ CONFIG_EXPERT=y
+
+---
+base-commit: f2b1f6a9f382564b1d4cf16c45e73ccccb917f1f
+change-id: 20250329-arm-config_gz-7d656859ad59
+
+Best regards,
 -- 
-2.50.1
+David Heidelberg <david@ixit.cz>
 
